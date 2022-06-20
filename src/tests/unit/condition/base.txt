@@ -606,8 +606,13 @@ match &reply
 #  Expansions of environment variables
 #  and empty strings
 #
-condition ("$ENV{SOMETHING_OR_OTHER}" == '')
-match true
+#  @todo - disabled due to moving cf_expand_variables() from
+#  cond_tokenize() to cf_file.c.  The new xlat expression parser
+#  will *not* optimize this at parse time, but *will* optimize
+#  this at purification time.
+#
+#condition ("$ENV{SOMETHING_OR_OTHER}" == '')
+#match true
 
 #
 #  Attributes with a protocol namespace
@@ -640,4 +645,4 @@ condition (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
 match (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
 
 count
-match 309
+match 307

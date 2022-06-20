@@ -1157,15 +1157,24 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
+	tmpl_rules_t	t_rules;
 
 	/*
 	 *	Short names are nicer.
 	 */
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
+	buff[3] = stack->buff[3];
 
 	dict = virtual_server_dict_by_child_ci(cf_section_to_item(parent));
 
+	t_rules = (tmpl_rules_t) {
+		.attr = {
+			.dict_def = dict,
+			.allow_unresolved = true,
+			.allow_unknown = true
+		}
+	};
 	/*
 	 *	fr_cond_tokenize needs the current section, so we
 	 *	create it first.  We don't pass a name2, as it hasn't
@@ -1179,61 +1188,43 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	cf_filename_set(cs, frame->filename);
 	cf_lineno_set(cs, frame->lineno);
 
+	RULES_VERIFY(cs, &t_rules);
+
 	/*
-	 *	Skip (...) to find the {
+	 *	Keep parsing the condition until we hit EOL, or a real error.
 	 */
 	while (true) {
-		tmpl_rules_t t_rules = {
-			.attr = {
-				.dict_def = dict,
-				.allow_unresolved = true,
-				.allow_unknown = true
-			}
-		};
-
-		RULES_VERIFY(cs, &t_rules);
-
-		slen = fr_cond_tokenize(cs, &cond,
-					&t_rules, &FR_SBUFF_IN(ptr, strlen(ptr)));
-		if (slen < 0) {
-			ssize_t end = -slen;
-
-			/*
-			 *	For paranoia, check that "end" is valid.
-			 */
-			if ((ptr + end) > (stack->buff[0] + stack->bufsize)) {
-				cf_log_err(parent, "Failed parsing condition");
-				return NULL;
-			}
-
-			/*
-			 *	The condition failed to parse at EOL.
-			 *	Therefore we try to read another line.
-			 */
-			if (!ptr[end]) {
-				int rcode;
-
-				memcpy(&stack->fill, &ptr, sizeof(ptr)); /* const issues */
-				stack->fill += end;
-				rcode = cf_file_fill(stack);
-				if (rcode < 0) return NULL;
-				continue;
-			}
-
-			/*
-			 *	@todo - suppress leading spaces
-			 */
-		}
-		break;
-	}
-
-	/*
-	 *	We either read the whole line, OR there was a
-	 *	different error parsing the condition.
-	 */
-	if (slen < 0) {
+		ssize_t end;
 		char *spaces, *text;
 
+		/*
+		 *	Parse the condition.  If it succeeded, stop
+		 *	trying to expand the buffer.
+		 */
+		slen = fr_cond_tokenize(cs, &cond,
+					&t_rules, &FR_SBUFF_IN(ptr, strlen(ptr)));
+		if (slen > 0) break;
+
+		end = -slen;
+		fr_assert((ptr + end) < (stack->buff[0] + stack->bufsize));
+
+		/*
+		 *	We hit EOL, so the parse error is really "read more data".
+		 */
+		if (!ptr[end]) {
+			int rcode;
+
+			memcpy(&stack->fill, &ptr, sizeof(ptr)); /* const issues */
+			stack->fill += end;
+			rcode = cf_file_fill(stack);
+			if (rcode < 0) return NULL;
+			continue;
+		}
+
+		/*
+		 *	We didn't hit EOL, so it's a real error.
+		 */
+	parse_error:
 		fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
 
 		cf_log_err(cs, "Parse error in condition");
@@ -1246,20 +1237,11 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		return NULL;
 	}
 
-	/*
-	 *	The input file buffer may be larger
-	 *	than the buffer we put the condition
-	 *	into.
-	 */
-	if ((size_t) slen >= (stack->bufsize - 1)) {
-		cf_log_err(cs, "Condition is too large after \"%s\"", buff[1]);
-		talloc_free(cs);
-		return NULL;
-	}
+	fr_assert((size_t) slen < (stack->bufsize - 1));
 
 	/*
-	 *	Copy the expanded and parsed condition into buff[2].
-	 *	Then suppress any trailing whitespace.
+	 *	Save the parsed condition (minus trailing whitespace)
+	 *	into a buffer.
 	 */
 	memcpy(buff[2], ptr, slen);
 	buff[2][slen] = '\0';
@@ -1267,6 +1249,31 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	while ((p > buff[2]) && isspace((int) *p)) {
 		*p = '\0';
 		p--;
+	}
+
+	/*
+	 *	Now that we know how big the condition is, see if we
+	 *	need to expand the variables.  If so, free the old
+	 *	condition, expand the variables, and reparse the
+	 *	condition.
+	 */
+	if (strchr(ptr, '$') != NULL) {
+		ssize_t my_slen;
+
+		talloc_free(cond);
+		
+		if (!cf_expand_variables(frame->filename, frame->lineno, parent,
+					 buff[3], stack->bufsize, buff[2], slen, NULL)) {
+			fr_strerror_const("Failed expanding configuration variable");
+			return NULL;
+		}
+
+		my_slen = fr_cond_tokenize(cs, &cond, &t_rules, &FR_SBUFF_IN(buff[3], strlen(buff[3])));
+		if (my_slen <= 0) {
+			ptr = buff[3];
+			slen = my_slen;
+			goto parse_error;
+		}
 	}
 
 	MEM(cs->name2 = talloc_typed_strdup(cs, buff[2]));

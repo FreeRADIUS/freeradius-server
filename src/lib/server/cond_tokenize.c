@@ -1486,20 +1486,12 @@ static void cond_reparent(fr_cond_t *c, fr_cond_t *parent)
  */
 ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const *rules, fr_sbuff_t *in)
 {
-	char buffer[8192];
-	ssize_t diff, slen;
+	ssize_t slen;
+	fr_sbuff_t our_in = FR_SBUFF(in);
 
 	*head = NULL;
 
-	if (!cf_expand_variables(cf_filename(cs), cf_lineno(cs), cf_item_to_section(cf_parent(cs)),
-				 buffer, sizeof(buffer),
-				 fr_sbuff_current(in), fr_sbuff_remaining(in), NULL)) {
-		fr_strerror_const("Failed expanding configuration variable");
-		return 0;
-	}
-
-	diff = fr_sbuff_remaining(in) - strlen(buffer); /* Hack so that we appear to consume more of the string */
-	slen = cond_tokenize(cs, head, cs, &FR_SBUFF_IN(buffer, strlen(buffer)), 0, rules);
+	slen = cond_tokenize(cs, head, cs, &our_in, 0, rules);
 	if (slen <= 0) return slen;
 
 	/*
@@ -1527,7 +1519,7 @@ ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const 
 		cond_reparent(*head, NULL);
 	}
 
-	return slen + diff;
+	return fr_sbuff_set(in, &our_in);
 }
 
 /** Initialise a cond iterator
