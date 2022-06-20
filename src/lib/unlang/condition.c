@@ -27,17 +27,31 @@ RCSID("$Id$")
 #include "condition_priv.h"
 #include "group_priv.h"
 
-static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+#ifdef WITH_XLAT_COND
+typedef struct {
+	fr_value_box_list_t	out;				//!< Head of the result of a nested
+								///< expansion.
+	bool			success;			//!< If set, where to record the result
+								///< of the execution.
+} unlang_frame_state_cond_t;
+
+static unlang_action_t unlang_if_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_group_t		*g = unlang_generic_to_group(frame->instruction);
-	unlang_cond_t		*gext = unlang_group_to_cond(g);
+	unlang_frame_state_cond_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_cond_t);
+	fr_value_box_t			*box = fr_dlist_head(&state->out);
+	bool				value;
 
-	fr_assert(gext->cond != NULL);
+	if (!box) {
+		value = false;
 
-	/*
-	 *	Didn't pass.  Remember that.
-	 */
-	if (!cond_eval(request, *p_result, gext->cond)) {
+	} else if (fr_dlist_next(&state->out, box) != NULL) {
+		value = true;
+
+	} else {
+		value = fr_value_box_is_truthy(box);
+	}
+
+	if (!value) {
 		RDEBUG2("...");
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
@@ -57,6 +71,59 @@ static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unla
 	 */
 	return unlang_group(p_result, request, frame);
 }
+#endif
+
+static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
+	unlang_cond_t			*gext = unlang_group_to_cond(g);
+#ifdef WITH_XLAT_COND	
+	unlang_frame_state_cond_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_cond_t);
+#endif
+
+	fr_assert(gext->cond != NULL);
+
+#ifndef WITH_XLAT_COND	
+	if (!cond_eval(request, *p_result, gext->cond)) {
+		RDEBUG2("...");
+		return UNLANG_ACTION_EXECUTE_NEXT;
+	}
+
+        /*
+         *      Tell the main interpreter to skip over the else /
+         *      elsif blocks, as this "if" condition was taken.
+         */
+        while (frame->next &&
+               ((frame->next->type == UNLANG_TYPE_ELSE) ||
+                (frame->next->type == UNLANG_TYPE_ELSIF))) {
+                frame->next = frame->next->next;
+        }
+
+        /*
+         *      We took the "if".  Go recurse into its' children.
+         */
+        return unlang_group(p_result, request, frame);
+#else
+
+	/*
+	 *	If we always run this condition, then don't bother pushing anything onto the stack.
+	 */
+	if (gext->is_truthy) {
+		fr_assert(gext->value); /* otherwise it would have been omitted from the unlang tree */
+
+		return unlang_group(p_result, request, frame);
+	}
+
+	frame_repeat(frame, unlang_if_resume);
+
+	fr_value_box_list_init(&state->out);
+
+	if (unlang_xlat_push(state, &state->success, &state->out,
+			     request, gext->cond, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+#endif
+}
 
 void unlang_condition_init(void)
 {
@@ -64,7 +131,11 @@ void unlang_condition_init(void)
 			   &(unlang_op_t){
 				.name = "if",
 				.interpret = unlang_if,
-				.debug_braces = true
+				.debug_braces = true,
+#ifdef WITH_XLAT_COND
+				.frame_state_size = sizeof(unlang_frame_state_cond_t),
+				.frame_state_type = "unlang_frame_state_cond_t",
+#endif
 			   });
 
 	unlang_register(UNLANG_TYPE_ELSE,
@@ -78,6 +149,10 @@ void unlang_condition_init(void)
 			   &(unlang_op_t){
 				.name = "elseif",
 				.interpret = unlang_if,
-				.debug_braces = true
+				.debug_braces = true,
+#ifdef WITH_XLAT_COND
+				.frame_state_size = sizeof(unlang_frame_state_cond_t),
+				.frame_state_type = "unlang_frame_state_cond_t",
+#endif
 			   });
 }
