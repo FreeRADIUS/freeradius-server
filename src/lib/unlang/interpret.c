@@ -1243,12 +1243,40 @@ TALLOC_CTX *unlang_interpret_frame_talloc_ctx(request_t *request)
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 
 	switch (frame->instruction->type) {
-	default:
+	case UNLANG_TYPE_MODULE:
+	case UNLANG_TYPE_FUNCTION:
+	case UNLANG_TYPE_REDUNDANT:
+	case UNLANG_TYPE_LOAD_BALANCE:
+	case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
+	case UNLANG_TYPE_PARALLEL:
+	case UNLANG_TYPE_IF:
+	case UNLANG_TYPE_FILTER:
+	case UNLANG_TYPE_UPDATE:
+	case UNLANG_TYPE_SWITCH:
+	case UNLANG_TYPE_FOREACH:
+	case UNLANG_TYPE_MAP:
+	case UNLANG_TYPE_SUBREQUEST:
+	case UNLANG_TYPE_CALL:
+	case UNLANG_TYPE_EDIT:
+	case UNLANG_TYPE_XLAT:
+	case UNLANG_TYPE_TMPL:
+		return (TALLOC_CTX *) frame->state;
+
+	case UNLANG_TYPE_GROUP:
+	case UNLANG_TYPE_ELSE:
+	case UNLANG_TYPE_ELSIF:
+	case UNLANG_TYPE_CASE:
+	case UNLANG_TYPE_BREAK:
+	case UNLANG_TYPE_RETURN:
+	case UNLANG_TYPE_DETACH:
+	case UNLANG_TYPE_CALLER:
+	case UNLANG_TYPE_POLICY:
 		break;
 
-	case UNLANG_TYPE_MODULE:
-	case UNLANG_TYPE_XLAT:
-		return (TALLOC_CTX *) frame->state;
+	case UNLANG_TYPE_NULL:
+	case UNLANG_TYPE_MAX:
+		fr_assert(0);
+		break;
 	}
 
 	/*
