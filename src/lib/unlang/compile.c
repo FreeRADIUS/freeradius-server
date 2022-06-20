@@ -3038,8 +3038,10 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	unlang_cond_t		*gext;
 
 	fr_cond_t		*cond;
+#ifdef WITH_XLAT_COND
 	xlat_exp_head_t		*head;
 	bool			is_truthy, value;
+#endif
 
 	if (!cf_section_name2(cs)) {
 		cf_log_err(cs, "'%s' without condition", unlang_ops[ext->type].name);
@@ -3049,6 +3051,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	cond = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
 	fr_assert(cond != NULL);
 
+#ifdef WITH_XLAT_COND
 	head = cf_data_value(cf_data_find(cs, xlat_exp_head_t, NULL));
 	fr_assert(head != NULL);
 
@@ -3061,6 +3064,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	}
 
 	is_truthy = xlat_is_truthy(head, &value);
+#endif
 
 	if (cond->type == COND_TYPE_FALSE) {
 		cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
@@ -3111,9 +3115,12 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	g = unlang_generic_to_group(c);
 	gext = unlang_group_to_cond(g);
 	gext->cond = cond;
+
+#ifdef WITH_XLAT_COND
 	gext->head = head;
 	gext->is_truthy = is_truthy;
 	gext->value = value;
+#endif
 
 	return c;
 }
