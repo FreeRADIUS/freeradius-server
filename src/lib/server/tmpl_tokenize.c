@@ -2625,6 +2625,29 @@ static ssize_t tmpl_afrom_float_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
 	return fr_sbuff_set(in, &our_in);
 }
 
+static ssize_t tmpl_afrom_time_delta(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+				     fr_sbuff_parse_rules_t const *p_rules)
+{
+	tmpl_t		*vpt;
+	fr_sbuff_t	our_in = FR_SBUFF(in);
+	fr_time_delta_t	a_delta;
+	fr_slen_t	slen;
+	fr_value_box_t	*vb;
+
+	slen = fr_time_delta_from_substr(&a_delta, &our_in, FR_TIME_RES_SEC, true, p_rules ? p_rules->terminals : NULL);
+	if (slen <= 0) return 0;
+
+	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA,
+			     T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
+	vb = tmpl_value(vpt);
+	fr_value_box_init(vb, FR_TYPE_TIME_DELTA, NULL, false);
+	vb->vb_time_delta = a_delta;
+
+	*out = vpt;
+
+	return fr_sbuff_set(in, &our_in);
+}
+
 /** Convert an arbitrary string into a #tmpl_t
  *
  * @note Unlike #tmpl_afrom_attr_str return code 0 doesn't necessarily indicate failure,
@@ -2770,6 +2793,17 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	See if it's a float
 		 */
 		slen = tmpl_afrom_float_substr(ctx, out, &our_in, p_rules);
+		if (slen > 0) goto done_bareword;
+		fr_assert(!*out);
+
+		/*
+		 *	See if it's a time delta
+		 *
+		 *	We do this after floats and integers so that
+		 *	they get parsed as integer and float types
+		 *	and not time deltas.
+		 */
+		slen = tmpl_afrom_time_delta(ctx, out, &our_in, p_rules);
 		if (slen > 0) goto done_bareword;
 		fr_assert(!*out);
 
