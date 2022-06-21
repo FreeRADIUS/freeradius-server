@@ -1,0 +1,55 @@
+#	.methods = {
+#		[MOD_AUTHENTICATE]	= mod_authenticate,
+#		[MOD_AUTHORIZE]		= mod_authorize,
+#		[MOD_PREACCT]		= mod_preacct,
+#		[MOD_ACCOUNTING]	= mod_accounting,
+#	},
+#	.method_names = (module_method_names_t[]){
+#		{ .name1 = "recv",		.name2 = "Access-Challenge",	.method = mod_return },
+#		{ .name1 = "name1_null",	.name2 = NULL,			.method = mod_return },
+#		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_return },
+#		{ .name1 = "retry",		.name2 = NULL,			.method = mod_retry },
+#
+#		MODULE_NAME_TERMINATOR
+#	}
+
+noop
+test
+if (!ok) {
+	test_fail
+}
+
+noop
+test.authorize
+if (!ok) {
+	test_fail
+}
+
+noop
+test.accounting
+if (!ok) {
+	test_fail
+}
+
+noop
+test.recv.Access-Challenge
+if (!ok) {
+	test_fail
+}
+
+noop
+test.send
+if (!ok) {
+	test_fail
+}
+
+noop
+test.send.vroom
+if (!ok) {
+	test_fail
+}
+
+# Same thing but as a policy
+section_names
+
+test_pass
