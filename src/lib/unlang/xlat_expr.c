@@ -1442,12 +1442,11 @@ static const int precedence[T_TOKEN_LAST] = {
 static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules,
-				   fr_sbuff_parse_rules_t const *input_rules, bool expect_regex, int depth);
+				   fr_sbuff_parse_rules_t const *input_rules, bool expect_regex);
 
 static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_sbuff_parse_rules_t const *bracket_rules,
-			      fr_sbuff_parse_rules_t const *input_rules, bool expect_regex, int depth);
+			      fr_sbuff_parse_rules_t const *bracket_rules, bool expect_regex);
 
 static fr_table_num_sorted_t const expr_quote_table[] = {
 	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
@@ -1473,8 +1472,7 @@ static size_t expr_quote_table_len = NUM_ELEMENTS(expr_quote_table);
  */
 static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_sbuff_parse_rules_t const *bracket_rules,
-			      fr_sbuff_parse_rules_t const *input_rules, bool expect_regex, int depth)
+			      fr_sbuff_parse_rules_t const *bracket_rules, bool expect_regex)
 {
 	ssize_t			slen;
 	xlat_exp_t		*node = NULL, *unary = NULL;
@@ -1530,7 +1528,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	that we return that, and not the child node
 	 */
 	if (!func) {
-		return tokenize_field(head, out, in, p_rules, t_rules, bracket_rules, input_rules, expect_regex, depth);
+		return tokenize_field(head, out, in, p_rules, t_rules, bracket_rules, expect_regex);
 	}
 	
 	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, func->name, strlen(func->name)));
@@ -1539,7 +1537,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	unary->call.func = func;
 	unary->flags = func->flags;
 
-	slen = tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules, input_rules, expect_regex, depth);
+	slen = tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules, expect_regex);
 	if (slen < 0) {
 		talloc_free(unary);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
@@ -1656,8 +1654,7 @@ static ssize_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
  */
 static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_sbuff_parse_rules_t const *bracket_rules,
-			      fr_sbuff_parse_rules_t const *input_rules, bool expect_regex, int depth)
+			      fr_sbuff_parse_rules_t const *bracket_rules, bool expect_regex)
 {
 	ssize_t			slen;
 	xlat_exp_t		*node = NULL;
@@ -1698,7 +1695,11 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 			my_head = cast->call.args;
 		}
 
-		slen = tokenize_expression(my_head, &node, &our_in, bracket_rules, t_rules, T_INVALID, bracket_rules, input_rules, false, depth + 1);
+		/*
+		 *	No input rules means "ignore external terminal sequences, as we're expecting a ')' as
+		 *	our terminal sequence.
+		 */
+		slen = tokenize_expression(my_head, &node, &our_in, bracket_rules, t_rules, T_INVALID, bracket_rules, NULL, false);
 		if (slen <= 0) {
 			talloc_free(cast);
 			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
@@ -2063,7 +2064,7 @@ static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow)
 static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules,
-				   fr_sbuff_parse_rules_t const *input_rules, bool expect_regex, int depth)
+				   fr_sbuff_parse_rules_t const *input_rules, bool expect_regex)
 {
 	xlat_exp_t	*lhs = NULL, *rhs = NULL, *node;
 	xlat_t		*func = NULL;
@@ -2083,9 +2084,9 @@ static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_s
 	 *	Get the LHS of the operation.
 	 */
 	if (expect_regex) {
-		slen = tokenize_field(head, &lhs, &our_in, p_rules, t_rules, bracket_rules, input_rules, expect_regex, depth);
+		slen = tokenize_field(head, &lhs, &our_in, p_rules, t_rules, bracket_rules, expect_regex);
 	} else {
-		slen = tokenize_unary(head, &lhs, &our_in, p_rules, t_rules, bracket_rules, input_rules, false, depth);
+		slen = tokenize_unary(head, &lhs, &our_in, p_rules, t_rules, bracket_rules, false);
 	}
 	if (slen < 0) return slen;
 
@@ -2133,7 +2134,7 @@ redo:
 	/*
 	 *	We hit a terminal sequence, stop.
 	 */
-	if (input_rules && (depth == 0) && fr_sbuff_is_terminal(&our_in, input_rules->terminals)) goto done;
+	if (input_rules && fr_sbuff_is_terminal(&our_in, input_rules->terminals)) goto done;
 
 	/*
 	 *	Remember where we were after parsing the LHS.
@@ -2178,7 +2179,7 @@ redo:
 	 */
 	XLAT_DEBUG("    recurse RHS <-- %pV", fr_box_strvalue_len(fr_sbuff_current(&our_in), fr_sbuff_remaining(&our_in)));
 	slen = tokenize_expression(head, &rhs, &our_in, p_rules, t_rules, op, bracket_rules, input_rules,
-				   ((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)), depth);
+				   ((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)));
 	if (slen <= 0) {
 		talloc_free(lhs);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
@@ -2351,7 +2352,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuf
 		t_rules = &my_rules;
 	}
 
-	slen = tokenize_expression(head, &node, in, terminal_rules, t_rules, T_INVALID, bracket_rules, p_rules, false, 0);
+	slen = tokenize_expression(head, &node, in, terminal_rules, t_rules, T_INVALID, bracket_rules, p_rules, false);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
@@ -2451,7 +2452,7 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 	my_rules.xlat.runtime_el = el;
 	my_rules.at_runtime = true;
 
-	slen = tokenize_expression(head, &node, in, terminal_rules, &my_rules, T_INVALID, bracket_rules, p_rules, false, 0);
+	slen = tokenize_expression(head, &node, in, terminal_rules, &my_rules, T_INVALID, bracket_rules, p_rules, false);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
