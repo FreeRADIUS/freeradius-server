@@ -443,8 +443,9 @@ rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: freeradius
 	@cp $< $@
 
 rpm: rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
-	@if ! sudo yum-builddep -q -C --assumeno redhat/freeradius.spec 1> /dev/null 2>&1; then \
+	@if ! sudo yum-builddep -q -C --assumeno redhat/freeradius.spec 1> $(BUILD_DIR)/builddep.log 2>&1; then \
 		echo "ERROR: Required dependencies not found, install them with: yum-builddep redhat/freeradius.spec"; \
+		cat $(BUILD_DIR)/builddep.log; \
 		exit 1; \
 	fi
 	@cwd=`pwd` && cd redhat && QA_RPATHS=0x0003 rpmbuild --define "_topdir $$cwd/rpmbuild" -bb freeradius.spec
