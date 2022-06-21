@@ -142,8 +142,8 @@ jobs:
     #
     - name: Install build dependencies
       run: |
-        yum-builddep -y redhat/freeradius.spec && yum-builddep -y redhat/freeradius.spec
-      working-directory: freeradius
+        yum-builddep -y freeradius.spec && yum-builddep -y freeradius.spec
+      working-directory: freeradius/redhat
 
     - name: Build RPMs
       run: |
