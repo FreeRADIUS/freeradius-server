@@ -1446,7 +1446,7 @@ static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_s
 
 static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_sbuff_parse_rules_t const *bracket_rules, bool expect_regex);
+			      fr_sbuff_parse_rules_t const *bracket_rules);
 
 static fr_table_num_sorted_t const expr_quote_table[] = {
 	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
@@ -1528,7 +1528,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	that we return that, and not the child node
 	 */
 	if (!func) {
-		return tokenize_field(head, out, in, p_rules, t_rules, bracket_rules, false);
+		return tokenize_field(head, out, in, p_rules, t_rules, bracket_rules);
 	}
 	
 	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, func->name, strlen(func->name)));
@@ -1537,7 +1537,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	unary->call.func = func;
 	unary->flags = func->flags;
 
-	slen = tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules, false);
+	slen = tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules);
 	if (slen < 0) {
 		talloc_free(unary);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
@@ -1650,11 +1650,114 @@ static ssize_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
 }
 
 /*
+ *	Tokenize the RHS of a regular expression.
+ */
+static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
+				  tmpl_rules_t const *t_rules,
+				  fr_sbuff_parse_rules_t const *bracket_rules)
+{
+	ssize_t			slen;
+	xlat_exp_t		*node = NULL;
+	fr_sbuff_t		our_in = FR_SBUFF(in);
+	fr_sbuff_marker_t	opand_m;
+	tmpl_t			*vpt;
+
+	XLAT_DEBUG("REGEX_RHS <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+
+	fr_sbuff_skip_whitespace(&our_in);
+
+	/*
+	 *	Record where the operand begins for better error offsets later
+	 */
+	fr_sbuff_marker(&opand_m, &our_in);
+
+	/*
+	 *	Regexes cannot have casts or sub-expressions.
+	 */
+	if (!fr_sbuff_next_if_char(&our_in, '/')) {
+		fr_strerror_const("Expected regular expression");
+		goto error;
+	}
+
+	/*
+	 *	Allocate the xlat node now so the talloc hierarchy is correct
+	 */
+	MEM(node = xlat_exp_alloc_null(head));
+	xlat_exp_set_type(node, XLAT_TMPL);
+
+	/*
+	 *	tmpl_afrom_substr does pretty much all the work of
+	 *	parsing the operand.
+	 */
+	slen = tmpl_afrom_substr(node, &vpt, &our_in, T_SOLIDUS_QUOTED_STRING, value_parse_rules_quoted[T_SOLIDUS_QUOTED_STRING], t_rules);
+	if (!vpt) {
+	error:
+		talloc_free(node);
+		fr_sbuff_set(&our_in, &opand_m);
+		return -fr_sbuff_used(&our_in);
+	}
+
+	/*
+	 *	@todo - allow for the RHS to be an attribute, too?
+	 */
+	fr_assert(tmpl_contains_regex(vpt));
+
+	/*
+	 *	It would be nice if tmpl_afrom_substr() did this :(
+	 */
+	if (!fr_sbuff_next_if_char(&our_in, '/')) {
+		fr_strerror_const("Unterminated regular expression");
+		goto error;
+	}
+
+	slen = tmpl_regex_flags_substr(vpt, &our_in, bracket_rules->terminals);
+	if (slen < 0) {
+		talloc_free(node);
+		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen - 2); /* account for // */
+	}
+
+	node->vpt = vpt;
+	node->quote = T_SOLIDUS_QUOTED_STRING;
+	node->fmt = vpt->name;
+
+	/*
+	 *	Resolve things if we can.
+	 */
+	if (tmpl_is_unresolved(node->vpt) && (tmpl_resolve(node->vpt, NULL) < 0)) goto error;
+
+	node->flags.pure = tmpl_is_data(node->vpt);
+	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
+	xlat_flags_merge(&head->flags, &node->flags);
+
+	fr_sbuff_skip_whitespace(&our_in);
+
+	/*
+	 *	Try to compile regular expressions, but only if
+	 *	they're not being dynamically expanded.
+	 */
+	if (tmpl_is_regex_uncompiled(node->vpt) && !tmpl_is_regex_xlat(node->vpt)) {
+		slen = tmpl_regex_compile(node->vpt, true);
+		if (slen <= 0) goto error;
+	}
+
+#ifdef __clang_analyzer__
+	if (!node) return 0;	/* shut up stupid analyzer */
+#else
+	fr_assert(node != NULL);
+#endif
+
+	*out = node;
+
+	return fr_sbuff_set(in, &our_in);
+}
+
+
+/*
  *	Tokenize a field without unary operators.
  */
 static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_sbuff_parse_rules_t const *bracket_rules, bool expect_regex)
+			      fr_sbuff_parse_rules_t const *bracket_rules)
 {
 	ssize_t			slen;
 	xlat_exp_t		*node = NULL;
@@ -1665,11 +1768,6 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	fr_token_t		quote;
 
 	XLAT_DEBUG("FIELD <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
-
-	/*
-	 *	Regexes cannot have casts or subgroups.
-	 */
-	if (expect_regex && !fr_sbuff_is_char(&our_in, '/')) goto expected_regex_error;
 
 	/*
 	 *	Allow for explicit casts.  Non-leaf types are forbidden.
@@ -1741,12 +1839,9 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		break;
 
 	case T_SOLIDUS_QUOTED_STRING:
-		if (!expect_regex) {
-			fr_strerror_const("Unexpected regular expression");
-			fr_sbuff_set(&our_in, &opand_m);	/* Error points to the quoting char at the start of the string */
-			goto error;
-		}
-		FALL_THROUGH;
+		fr_strerror_const("Unexpected regular expression");
+		fr_sbuff_set(&our_in, &opand_m);	/* Error points to the quoting char at the start of the string */
+		goto error;
 
 	case T_BACK_QUOTED_STRING:
 	case T_DOUBLE_QUOTED_STRING:
@@ -1773,23 +1868,6 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	error:
 		return -fr_sbuff_used(&our_in);
-	}
-
-	/*
-	 *	If there's a regex, we have to expect it.
-	 */
-	if (expect_regex) {
-		if (quote != T_SOLIDUS_QUOTED_STRING) {
-			fr_sbuff_advance(&our_in, -(slen + 1)); /* account for quote */
-		expected_regex_error:
-			fr_strerror_const("Expected regular expression");
-			goto error;
-		}
-
-		/*
-		 *	@todo - allow for the RHS to be an attribute, too?
-		 */
-		fr_assert(tmpl_contains_regex(vpt));
 	}
 
 	/*
@@ -1828,27 +1906,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	node->flags.pure = tmpl_is_data(node->vpt);
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
-
-	/*
-	 *	Parse the regex flags if necessary.
-	 */
-	if (quote == T_SOLIDUS_QUOTED_STRING) {
-		slen = tmpl_regex_flags_substr(node->vpt, &our_in, bracket_rules->terminals);
-		if (slen < 0) goto error;
-	}
-
-	*out = node;
-	node->flags.pure = tmpl_is_data(node->vpt);
-	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 	xlat_flags_merge(&head->flags, &node->flags);
-
-	/* don't merge flags.  That will happen when the node is added to the head */
-
-	/*
-	 *	Don't call tmpl_resolve() here, it should be called
-	 *	in pass2 or later during tokenization if we've managed
-	 *	to resolve all the operands in the expression.
-	 */
 
 	fr_sbuff_skip_whitespace(&our_in);
 
@@ -1897,14 +1955,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		}
 	}
 
-	/*
-	 *	Try to compile regular expressions, but only if
-	 *	they're not being dynamically expanded.
-	 */
-	if (tmpl_is_regex_uncompiled(node->vpt) && !tmpl_is_regex_xlat(node->vpt)) {
-		slen = tmpl_regex_compile(node->vpt, true);
-		if (slen <= 0) goto error;
-	}
+	fr_assert(!tmpl_contains_regex(vpt));
 
 done:
 #ifdef __clang_analyzer__
@@ -2175,7 +2226,7 @@ redo:
 	 */
 	XLAT_DEBUG("    recurse RHS <-- %pV", fr_box_strvalue_len(fr_sbuff_current(&our_in), fr_sbuff_remaining(&our_in)));
 	if ((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)) {
-		slen = tokenize_field(head, &rhs, &our_in, p_rules, t_rules, bracket_rules, true);
+		slen = tokenize_regex_rhs(head, &rhs, &our_in, t_rules, bracket_rules);
 	} else {
 		slen = tokenize_expression(head, &rhs, &our_in, p_rules, t_rules, op, bracket_rules, input_rules);
 	}

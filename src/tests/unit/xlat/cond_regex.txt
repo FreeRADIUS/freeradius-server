@@ -35,10 +35,10 @@ xlat_purify &User-Name =~ /bar/ima
 match ERROR offset 19: Unsupported regex flag 'a'
 
 xlat_purify &User-Name =~ /bar/ii
-match ERROR offset 19: Duplicate regex flag 'i'
+match ERROR offset 20: Duplicate regex flag 'i'
 
 xlat_purify &User-Name =~ /bar/iia
-match ERROR offset 19: Duplicate regex flag 'i'
+match ERROR offset 20: Duplicate regex flag 'i'
 
 #
 #  Escape the backslashes correctly
