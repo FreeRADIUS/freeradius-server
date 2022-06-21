@@ -1249,7 +1249,7 @@ TALLOC_CTX *unlang_interpret_frame_talloc_ctx(request_t *request)
 	 *	state, assume the caller knows what it's
 	 *	doing and allocate one.
 	 */
-	return (TALLOC_CTX *)frame->state = talloc_new(request);
+	return (TALLOC_CTX *)(frame->state = talloc_new(request));
 }
 
 static xlat_arg_parser_t const unlang_interpret_xlat_args[] = {
