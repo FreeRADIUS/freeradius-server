@@ -266,9 +266,6 @@ Requires: freeradius-libfreeradius-json = %{version}-%{release}
 %description json
 This plugin provides JSON tree mapping, and JSON string escaping for the FreeRADIUS server project.
 
-%description krb5
-This plugin provides Kerberos 5 support for the FreeRADIUS server project.
-
 %package krb5
 Summary: Kerberos 5 support for FreeRADIUS
 Group: System Environment/Daemons

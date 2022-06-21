@@ -5,7 +5,7 @@ Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: librdkafka
 BuildRequires: librdkafka-devel
 
-%description libfreeradius-radius
+%description libfreeradius-kafka
 Provides common functions for Kafka production and consumer modules
 
 %files libfreeradius-kafka
@@ -20,7 +20,7 @@ Requires: librdkafka
 Requires: freeradius-libfreeradius-kafka = %{version}-%{release}
 BuildRequires: librdkafka-devel
 
-%description Kafka
+%description kafka
 Provides a producer module to push messages into a Kafka queue
 
 %files kafka
