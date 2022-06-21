@@ -1211,12 +1211,14 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		ssize_t end;
 		char *spaces, *text;
 
+		ERROR("INPUT %s", ptr);
+
 		/*
 		 *	Parse the condition.  If it succeeded, stop
 		 *	trying to expand the buffer.
 		 */
 		slen = fr_cond_tokenize(cs, &cond,
-					&t_rules, &FR_SBUFF_IN(ptr, strlen(ptr)));
+					&t_rules, &FR_SBUFF_IN(ptr, strlen(ptr)), true);
 		if (slen > 0) break;
 
 		end = -slen;
@@ -1271,7 +1273,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	condition, expand the variables, and reparse the
 	 *	condition.
 	 */
-	if (strchr(ptr, '$') != NULL) {
+	{
 		ssize_t my_slen;
 
 		talloc_free(cond);
@@ -1282,7 +1284,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			return NULL;
 		}
 
-		my_slen = fr_cond_tokenize(cs, &cond, &t_rules, &FR_SBUFF_IN(buff[3], strlen(buff[3])));
+		my_slen = fr_cond_tokenize(cs, &cond, &t_rules, &FR_SBUFF_IN(buff[3], strlen(buff[3])), false);
 		if (my_slen <= 0) {
 			ptr = buff[3];
 			slen = my_slen;
@@ -1293,15 +1295,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		my_slen = xlat_tokenize_expression(cs, &head, &FR_SBUFF_IN(buff[3], strlen(buff[3])), &p_rules, &t_rules);
 		if (my_slen <= 0) {
 			ptr = buff[3];
-			slen = my_slen;
-			goto parse_error;
-		}
-	} else {
-		ssize_t my_slen;
-
-		my_slen = xlat_tokenize_expression(cs, &head, &FR_SBUFF_IN(buff[2], strlen(buff[2])), &p_rules, &t_rules);
-		if (my_slen <= 0) {
-			ptr = buff[2];
 			slen = my_slen;
 			goto parse_error;
 		}

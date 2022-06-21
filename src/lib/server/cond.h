@@ -99,9 +99,9 @@ typedef struct {
 	fr_cond_t	*cond;
 } fr_cond_iter_t;
 
-ssize_t	fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const *rules, fr_sbuff_t *in) CC_HINT(nonnull(1,2,4));
+ssize_t	fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const *rules, fr_sbuff_t *in, bool flag) CC_HINT(nonnull(1,2,4));
 
-int	fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs, fr_sbuff_marker_t *m_rhs) CC_HINT(nonnull(1));
+int	fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs, fr_sbuff_marker_t *m_rhs, bool flag) CC_HINT(nonnull(1));
 
 ssize_t	cond_print(fr_sbuff_t *out, fr_cond_t const *c);
 

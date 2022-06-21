@@ -303,7 +303,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 		 *	Now that we have known data types for the LHS
 		 *	/ RHS attribute(s), go check them.
 		 */
-		if (fr_cond_promote_types(c, NULL, NULL, NULL) < 0) {
+		if (fr_cond_promote_types(c, NULL, NULL, NULL, false) < 0) {
 			cf_log_perr(ci, "Failed parsing condition after dynamic attributes were defined");
 			return false;
 		}
