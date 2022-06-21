@@ -216,7 +216,7 @@ BuildRequires: json-c-devel >= 0.13
 %description libfreeradius-json
 Internal support library for FreeRADIUS modules using json-c, required by all modules that use json-c.
 
-%include ./kafka.inc
+%include %{_topdir}/kafka.inc
 
 %package libfreeradius-radius
 Summary: RADIUS protocol library for FreeRADIUS
