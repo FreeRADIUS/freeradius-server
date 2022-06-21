@@ -1146,18 +1146,17 @@ static int process_template(cf_stack_t *stack)
 
 static int cf_file_fill(cf_stack_t *stack);
 
+#ifdef WITH_XLAT_COND
 static const fr_sbuff_term_t if_terminals = FR_SBUFF_TERMS(
 	L(""),
 	L("{"),
 );
+#endif
 
 static CONF_ITEM *process_if(cf_stack_t *stack)
 {
 	ssize_t		slen = 0;
 	fr_cond_t	*cond = NULL;
-#ifdef WITH_XLAT_COND
-	xlat_exp_head_t *head = NULL;
-#endif
 	fr_dict_t const	*dict = NULL;
 	CONF_SECTION	*cs;
 	char		*p;
@@ -1166,7 +1165,12 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
 	tmpl_rules_t	t_rules;
+#ifdef WITH_XLAT_COND
+	xlat_exp_head_t *head = NULL;
 	fr_sbuff_parse_rules_t p_rules = { };
+
+	p_rules.terminals = &if_terminals;
+#endif
 
 	/*
 	 *	Short names are nicer.
@@ -1184,8 +1188,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			.allow_unknown = true
 		}
 	};
-
-	p_rules.terminals = &if_terminals;
 
 	/*
 	 *	fr_cond_tokenize needs the current section, so we
