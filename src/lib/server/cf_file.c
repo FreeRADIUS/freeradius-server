@@ -1211,8 +1211,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		ssize_t end;
 		char *spaces, *text;
 
-		ERROR("INPUT %s", ptr);
-
 		/*
 		 *	Parse the condition.  If it succeeded, stop
 		 *	trying to expand the buffer.
@@ -1277,7 +1275,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		ssize_t my_slen;
 
 		talloc_free(cond);
-		
+
 		if (!cf_expand_variables(frame->filename, frame->lineno, parent,
 					 buff[3], stack->bufsize, buff[2], slen, NULL)) {
 			fr_strerror_const("Failed expanding configuration variable");
