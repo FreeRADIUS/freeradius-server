@@ -256,6 +256,7 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
  */
 size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 {
+	fr_sbuff_t		*sbuff_i;
 	size_t			read, available, total_read;
 	fr_sbuff_uctx_file_t	*fctx;
 
@@ -290,7 +291,9 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 	}
 
 	read = fread(sbuff->end, 1, available, fctx->file);
-	sbuff->end += read;	/* Advance end, which increases fr_sbuff_remaining() */
+	for (sbuff_i = sbuff; sbuff_i; sbuff_i = sbuff_i->parent) {
+		sbuff_i->end += read;	/* Advance end, which increases fr_sbuff_remaining() */
+	}
 
 	/** Check for errors
 	 */
