@@ -1042,8 +1042,8 @@ static void test_file_extend_max(void)
 	TEST_CHECK(fr_sbuff_init_file(&sbuff, &fctx, buff, sizeof(buff), fp, sizeof(fbuff) - 8) == &sbuff);
 
 	TEST_CASE("Confirm that max stops us from seeing xyzzy");
-	TEST_CHECK_LEN(sizeof(fbuff) - 8, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL));
-	(void) fr_sbuff_out_abstrncpy(NULL, &post_ws, &sbuff, 24);
+	TEST_CHECK_SLEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL), sizeof(fbuff) - 8);
+	TEST_CHECK_SLEN(fr_sbuff_out_abstrncpy(NULL, &post_ws, &sbuff, 24), 0);
 	TEST_CHECK_STRCMP(post_ws, "");
 	talloc_free(post_ws);
 	fclose(fp);

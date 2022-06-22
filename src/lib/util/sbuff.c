@@ -266,7 +266,7 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 
 	if (extension == SIZE_MAX) extension = 0;
 
-	total_read = sbuff->shifted + (sbuff->end - sbuff->buff);
+	total_read = fctx->shifted + (sbuff->end - sbuff->buff);
 	if (total_read >= fctx->max) {
 		fr_strerror_const("Can't satisfy extension request, max bytes read");
 		return 0;	/* There's no way we could satisfy the extension request */
@@ -279,7 +279,7 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 		 *
 		 *	Note: p and markers are constraints here.
 		 */
-		fr_sbuff_shift(sbuff, fr_sbuff_used(sbuff));
+		fctx->shifted += fr_sbuff_shift(sbuff, fr_sbuff_used(sbuff));
 	}
 
 	available = fctx->buff_end - sbuff->end;

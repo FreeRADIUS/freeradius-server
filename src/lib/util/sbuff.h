@@ -124,6 +124,7 @@ typedef struct {
 	FILE			*file;			//!< FILE * we're reading from.
 	char			*buff_end;		//!< The true end of the buffer.
 	size_t			max;			//!< Maximum number of bytes to read.
+	size_t			shifted;		//!< How much we've read from this file.
 	bool			eof;			//!< are we at EOF?
 } fr_sbuff_uctx_file_t;
 
@@ -406,7 +407,7 @@ do { \
 	.p		= (_current), \
 	.is_const 	= fr_sbuff_ptr(_sbuff_or_marker)->is_const, \
 	.adv_parent 	= (_adv_parent), \
-	.shifted	= fr_sbuff_ptr(_sbuff_or_marker)->shifted, \
+	.shifted	= 0, \
 	.extend		= (_extend), \
 	.uctx		= fr_sbuff_ptr(_sbuff_or_marker)->uctx, \
 	.parent 	= fr_sbuff_ptr(_sbuff_or_marker) \
