@@ -1689,7 +1689,7 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 	 *	tmpl_afrom_substr does pretty much all the work of
 	 *	parsing the operand.
 	 */
-	slen = tmpl_afrom_substr(node, &vpt, &our_in, T_SOLIDUS_QUOTED_STRING, value_parse_rules_quoted[T_SOLIDUS_QUOTED_STRING], t_rules);
+	(void) tmpl_afrom_substr(node, &vpt, &our_in, T_SOLIDUS_QUOTED_STRING, value_parse_rules_quoted[T_SOLIDUS_QUOTED_STRING], t_rules);
 	if (!vpt) {
 	error:
 		talloc_free(node);
@@ -1740,12 +1740,6 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 	node->flags.pure = !tmpl_contains_xlat(node->vpt);
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 	xlat_flags_merge(&head->flags, &node->flags);
-
-#ifdef __clang_analyzer__
-	if (!node) return 0;	/* shut up stupid analyzer */
-#else
-	fr_assert(node != NULL);
-#endif
 
 	*out = node;
 
@@ -1961,12 +1955,6 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	fr_assert(!tmpl_contains_regex(vpt));
 
 done:
-#ifdef __clang_analyzer__
-	if (!node) return 0;	/* shut up stupid analyzer */
-#else
-	fr_assert(node != NULL);
-#endif
-
 	*out = node;
 
 	return fr_sbuff_set(in, &our_in);
