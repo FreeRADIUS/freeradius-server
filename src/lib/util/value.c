@@ -5318,10 +5318,14 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
 			break;
 
 		case FR_TYPE_OCTETS:
+			if (vb->tainted && e_rules) goto cast;
+
 			slen = fr_sbuff_in_bstrncpy(&our_sbuff, (char const *)vb->vb_strvalue, vb->vb_length);
 			break;
 
 		case FR_TYPE_STRING:
+			if (vb->tainted && e_rules) goto cast;
+
 			slen = fr_sbuff_in_bstrncpy(&our_sbuff, vb->vb_strvalue, vb->vb_length);
 			break;
 
