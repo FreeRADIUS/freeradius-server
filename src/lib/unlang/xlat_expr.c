@@ -366,9 +366,10 @@ static fr_slen_t xlat_expr_print_regex(fr_sbuff_t *out, xlat_exp_t const *node, 
 
 	fr_assert(tmpl_contains_regex(inst->xlat->vpt));
 
-	FR_SBUFF_IN_CHAR_RETURN(out, '/');
+	if (inst->xlat->quote == T_SINGLE_QUOTED_STRING) FR_SBUFF_IN_CHAR_RETURN(out, 'm');
+	FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[inst->xlat->quote]);
 	FR_SBUFF_IN_STRCPY_RETURN(out, inst->xlat->vpt->name);
-	FR_SBUFF_IN_CHAR_RETURN(out, '/');
+	FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[inst->xlat->quote]);
 
 	FR_SBUFF_RETURN(regex_flags_print, out, inst->regex_flags);
 
@@ -1661,6 +1662,7 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_sbuff_marker_t	opand_m;
 	tmpl_t			*vpt;
+	fr_token_t		quote = T_SOLIDUS_QUOTED_STRING;
 
 	XLAT_DEBUG("REGEX_RHS <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
@@ -1672,11 +1674,20 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 	fr_sbuff_marker(&opand_m, &our_in);
 
 	/*
+	 *	@todo - add m'regex' to support single-quoted regex strings, ala Perl.
+	 */
+
+	/*
 	 *	Regexes cannot have casts or sub-expressions.
 	 */
 	if (!fr_sbuff_next_if_char(&our_in, '/')) {
-		fr_strerror_const("Expected regular expression");
-		goto error;
+		if (!fr_sbuff_is_str(&our_in, "m'", 2)) {
+			fr_strerror_const("Expected regular expression");
+			goto error;
+		}
+
+		fr_sbuff_advance(&our_in, 2);
+		quote = T_SINGLE_QUOTED_STRING;
 	}
 
 	/*
@@ -1686,10 +1697,10 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 	xlat_exp_set_type(node, XLAT_TMPL);
 
 	/*
-	 *	tmpl_afrom_substr does pretty much all the work of
-	 *	parsing the operand.
+	 *	tmpl_afrom_substr does pretty much all the work of parsing the operand.  Note that we pass '/'
+	 *	as the quote, so that the tmpl gets parsed as a regex.
 	 */
-	(void) tmpl_afrom_substr(node, &vpt, &our_in, T_SOLIDUS_QUOTED_STRING, value_parse_rules_quoted[T_SOLIDUS_QUOTED_STRING], t_rules);
+	(void) tmpl_afrom_substr(node, &vpt, &our_in, T_SOLIDUS_QUOTED_STRING, value_parse_rules_quoted[quote], t_rules);
 	if (!vpt) {
 	error:
 		talloc_free(node);
@@ -1700,12 +1711,11 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 	/*
 	 *	@todo - allow for the RHS to be an attribute, too?
 	 */
-	fr_assert(tmpl_contains_regex(vpt));
 
 	/*
 	 *	It would be nice if tmpl_afrom_substr() did this :(
 	 */
-	if (!fr_sbuff_next_if_char(&our_in, '/')) {
+	if (!fr_sbuff_next_if_char(&our_in, fr_token_quote[quote])) {
 		fr_strerror_const("Unterminated regular expression");
 		goto error;
 	}
@@ -1734,7 +1744,7 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 	}
 
 	node->vpt = vpt;
-	node->quote = T_SOLIDUS_QUOTED_STRING;
+	node->quote = quote;
 	node->fmt = vpt->name;
 
 	node->flags.pure = !tmpl_contains_xlat(node->vpt);

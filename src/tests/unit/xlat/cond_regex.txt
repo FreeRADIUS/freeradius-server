@@ -73,5 +73,11 @@ match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
 xlat_purify &User-Name == /foo/
 match ERROR offset 14: Unexpected regular expression
 
+#
+#  single-quoted strings in regexes!
+#
+xlat_purify &User-Name =~ m'foo%'
+match (&User-Name =~ m'foo%')
+
 count
-match 41
+match 43
