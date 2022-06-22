@@ -136,8 +136,8 @@ static xlat_action_t xlat_idna(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	vb = fr_value_box_alloc_null(ctx);
-	fr_value_box_strdup(ctx, vb, NULL, idna, false);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	MEM(fr_value_box_strdup(ctx, vb, NULL, idna, false) >= 0);
 	fr_dcursor_append(out, vb);
 	free(idna);
 
