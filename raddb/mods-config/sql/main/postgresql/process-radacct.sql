@@ -136,3 +136,142 @@ BEGIN
 
 END
 $$;
+
+
+--  ------------------------------------------------------
+--  - "Lightweight" Accounting-On/Off strategy resources -
+--  ------------------------------------------------------
+--
+--  The following resources are for use only when the "lightweight"
+--  Accounting-On/Off strategy is enabled in queries.conf.
+--
+--  Instead of bulk closing the radacct sessions belonging to a reloaded NAS,
+--  this strategy leaves them open and records the NAS reload time in the
+--  nasreload table.
+--
+--  Where applicable, the onus is on the administator to:
+--
+--    * Consider the nas reload times when deriving a list of
+--      active/inactive sessions, and when determining the duration of sessions
+--      interrupted by a NAS reload. (Refer to the view below.)
+--
+--    * Close the affected sessions out of band. (Refer to the SP below.)
+--
+--
+--  The radacct_with_reloads view presents the radacct table with two additional
+--  columns: acctstoptime_with_reloads and acctsessiontime_with_reloads
+--
+--  Where the session isn't closed (acctstoptime IS NULL), yet it started before
+--  the last reload of the NAS (radacct.acctstarttime < nasreload.reloadtime),
+--  the derived columns are set based on the reload time of the NAS (effectively
+--  the point in time that the session was interrupted.)
+--
+CREATE VIEW radacct_with_reloads AS
+SELECT
+    a.*,
+    COALESCE(a.AcctStopTime,
+        CASE WHEN a.AcctStartTime < n.ReloadTime THEN n.ReloadTime END
+    ) AS AcctStopTime_With_Reloads,
+    COALESCE(a.AcctSessionTime,
+        CASE WHEN a.AcctStopTime IS NULL AND a.AcctStartTime < n.ReloadTime THEN
+            EXTRACT(EPOCH FROM (n.ReloadTime - a.AcctStartTime))
+        END
+    ) AS AcctSessionTime_With_Reloads
+FROM radacct a
+LEFT OUTER JOIN nasreload n USING (nasipaddress);
+
+
+--
+--  It may be desirable to periodically "close" radacct sessions belonging to a
+--  reloaded NAS, replicating the "bulk close" Accounting-On/Off behaviour,
+--  just not in real time.
+--
+--  The fr_radacct_close_after_reload SP will set radacct.acctstoptime to
+--  nasreload.reloadtime, calculate the corresponding radacct.acctsessiontime,
+--  and set acctterminatecause to "NAS reboot" for interrupted sessions. It
+--  does so in batches, which avoids long-lived locks on the affected rows.
+--
+--  It can be invoked as follows:
+--
+--      CALL fr_radacct_close_after_reload();
+--
+--  Note: This SP requires PostgreSQL >= 11 which was the first version to
+--  introduce PROCEDUREs which permit transaction control. This allows COMMIT
+--  to be called to incrementally apply successive batch updates prior to the
+--  end of the procedure. Prior to version 11 there exists only FUNCTIONs that
+--  execute atomically. You can convert this procedure to a function, but by
+--  doing so you are really no better off than performing a single,
+--  long-running bulk update.
+--
+--  Note: This SP walks radacct in strides of v_batch_size. It will typically
+--  skip closed and ongoing sessions at a rate significantly faster than
+--  500,000 rows per second and process batched updates faster than 25,000
+--  orphaned sessions per second. If this isn't fast enough then you should
+--  really consider using a custom schema that includes partitioning by
+--  nasipaddress or acct{start,stop}time.
+--
+CREATE OR REPLACE PROCEDURE fr_radacct_close_after_reload ()
+LANGUAGE plpgsql
+AS $$
+
+DECLARE v_a bigint;
+DECLARE v_z bigint;
+DECLARE v_updated bigint DEFAULT 0;
+DECLARE v_last_report bigint DEFAULT 0;
+DECLARE v_now bigint;
+DECLARE v_last boolean DEFAULT false;
+DECLARE v_rowcount integer;
+
+--
+--  This works for many circumstances
+--
+DECLARE v_batch_size CONSTANT integer := 2500;
+
+BEGIN
+
+    SELECT MIN(RadAcctId) INTO v_a FROM radacct WHERE AcctStopTime IS NULL;
+
+    LOOP
+
+        v_z := NULL;
+        SELECT RadAcctId INTO v_z FROM radacct WHERE RadAcctId > v_a ORDER BY RadAcctId OFFSET v_batch_size LIMIT 1;
+
+        IF v_z IS NULL THEN
+            SELECT MAX(RadAcctId) INTO v_z FROM radacct;
+            v_last := true;
+        END IF;
+
+        UPDATE radacct a
+        SET
+            AcctStopTime = n.reloadtime,
+            AcctSessionTime = EXTRACT(EPOCH FROM (n.ReloadTime - a.AcctStartTime)),
+            AcctTerminateCause = 'NAS reboot'
+        FROM nasreload n
+        WHERE
+            a.NASIPAddress = n.NASIPAddress
+            AND RadAcctId BETWEEN v_a AND v_z
+            AND AcctStopTime IS NULL
+            AND AcctStartTime < n.ReloadTime;
+
+        GET DIAGNOSTICS v_rowcount := ROW_COUNT;
+        v_updated := v_updated + v_rowcount;
+
+        COMMIT;     -- Make the update visible
+
+        v_a := v_z + 1;
+
+        --
+        --  Periodically report how far we've got
+        --
+        SELECT EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) INTO v_now;
+        IF v_last_report != v_now OR v_last THEN
+            RAISE NOTICE 'RadAcctID: %; Sessions closed: %', v_z, v_updated;
+            v_last_report := v_now;
+        END IF;
+
+        EXIT WHEN v_last;
+
+    END LOOP;
+
+END
+$$;
