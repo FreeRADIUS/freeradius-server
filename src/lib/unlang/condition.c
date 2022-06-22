@@ -119,7 +119,7 @@ static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unla
 	fr_value_box_list_init(&state->out);
 
 	if (unlang_xlat_push(state, &state->success, &state->out,
-			     request, gext->cond, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
+			     request, gext->head, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 #endif
