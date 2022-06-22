@@ -19,7 +19,7 @@ src/freeradius-devel: | src/include/${1}
 
 src/include/${1}:
 	@echo LN-SF src/lib/${1} $$@
-	$${Q}[ -e $$@ ] || ln -sf $${top_srcdir}/src/lib/${1} $$@
+	$${Q}[ -e $$@ ] || ln -sf ../lib/${1} $$@
 
 install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${1}/base.h)
 endef
@@ -29,7 +29,7 @@ src/freeradius-devel: | src/include/${1}
 
 src/include/${1}:
 	@echo LN-SF src/protocols/${1} $$@
-	$${Q}[ -e $$@ ] || ln -sf $${top_srcdir}/src/protocols/${1} $$@
+	$${Q}[ -e $$@ ] || ln -sf ../protocols/${1} $$@
 
 install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/${1}/,$(notdir $(wildcard src/protocols/${1}/*.h)))
 endef
