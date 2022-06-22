@@ -495,6 +495,37 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_va
 	return XLAT_ACTION_DONE;
 }
 
+static const fr_sbuff_escape_rules_t regex_escape_rules = {
+	.name = "regex",
+	.chr = '\\',
+	.subs = {
+		['$'] = '$',
+		['('] = '(',
+		['*'] = '*',
+		['+'] = '+',
+		['.'] = '.',
+		['/'] = '/',
+		['?'] = '?',
+		['['] = '[',
+		['\\'] = '\\',
+		['^'] = '^',
+		['`'] = '`',
+		['|'] = '|',
+		['\a'] = 'a',
+		['\b'] = 'b',
+		['\n'] = 'n',
+		['\r'] = 'r',
+		['\t'] = 't',
+		['\v'] = 'v'
+	},
+	.esc = {
+		SBUFF_CHAR_UNPRINTABLES_LOW,
+		SBUFF_CHAR_UNPRINTABLES_EXTENDED
+	},
+	.do_utf8 = true,
+	.do_oct = true
+};
+
 static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_ctx_t const *xctx,
 				       request_t *request, fr_value_box_list_t *in)
@@ -502,8 +533,11 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	xlat_regex_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_regex_inst_t);
 	xlat_regex_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_regex_rctx_t);
 	ssize_t			slen;
-	fr_value_box_t		*lhs, *rhs;
+	fr_value_box_t		*lhs;
 	regex_t			*preg = NULL;
+	fr_sbuff_t		*agg;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, 8192);
 
 	/*
 	 *	If the expansions fails, then we fail the entire thing.
@@ -521,20 +555,17 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Because we expanded the RHS ourselves, the "concat"
 	 *	flag to the RHS argument is ignored.  So we just
-	 *	concatenate it here.
+	 *	concatenate it here.  We escape the various untrusted inputs.
 	 */
-	rhs = fr_dlist_head(&rctx->list);
-	if (fr_value_box_list_concat_in_place(rctx, rhs, &rctx->list, FR_TYPE_STRING,
-					      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+	if (fr_value_box_list_concat_as_string(NULL, agg, &rctx->list, NULL, 0, &regex_escape_rules,
+					       FR_VALUE_BOX_LIST_REMOVE, true) < 0) {
 		RPEDEBUG("Failed concatenating regular expression string");
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_assert(rhs != NULL);
-
 	fr_assert(inst->regex == NULL);
 
-	slen = regex_compile(rctx, &preg, rhs->vb_strvalue, rhs->vb_length,
+	slen = regex_compile(rctx, &preg, fr_sbuff_start(agg), fr_sbuff_used(agg),
 			     tmpl_regex_flags(inst->xlat->vpt), true, true); /* flags, allow subcaptures, at runtime */
 	if (slen <= 0) return XLAT_ACTION_FAIL;
 
