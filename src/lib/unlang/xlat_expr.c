@@ -1716,29 +1716,30 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen - 2); /* account for // */
 	}
 
-	node->vpt = vpt;
-	node->quote = T_SOLIDUS_QUOTED_STRING;
-	node->fmt = vpt->name;
-
-	/*
-	 *	Resolve things if we can.
-	 */
-	if (tmpl_is_unresolved(node->vpt) && (tmpl_resolve(node->vpt, NULL) < 0)) goto error;
-
-	node->flags.pure = tmpl_is_data(node->vpt);
-	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
-	xlat_flags_merge(&head->flags, &node->flags);
-
 	fr_sbuff_skip_whitespace(&our_in);
 
 	/*
 	 *	Try to compile regular expressions, but only if
 	 *	they're not being dynamically expanded.
 	 */
-	if (tmpl_is_regex_uncompiled(node->vpt) && !tmpl_is_regex_xlat(node->vpt)) {
-		slen = tmpl_regex_compile(node->vpt, true);
+	if (!tmpl_contains_xlat(vpt)) {
+		slen = tmpl_regex_compile(vpt, true);
 		if (slen <= 0) goto error;
+
+	} else if (tmpl_is_unresolved(vpt)) {
+		/*
+		 *	Resolve attributes in xlat'd regular expressions.
+		 */
+		if (tmpl_resolve(vpt, NULL) < 0) goto error;
 	}
+
+	node->vpt = vpt;
+	node->quote = T_SOLIDUS_QUOTED_STRING;
+	node->fmt = vpt->name;
+
+	node->flags.pure = !tmpl_contains_xlat(node->vpt);
+	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
+	xlat_flags_merge(&head->flags, &node->flags);
 
 #ifdef __clang_analyzer__
 	if (!node) return 0;	/* shut up stupid analyzer */
