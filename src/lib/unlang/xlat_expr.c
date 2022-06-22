@@ -1882,32 +1882,21 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		}
 
 		fr_sbuff_advance(&our_in, 1);
+
+		/*
+		 *	Quoted strings just get resolved now.
+		 *
+		 *	@todo - this means that things like
+		 *
+		 *		&Session-Timeout == '10'
+		 *
+		 *	are run-time errors, instead of load-time parse errors.
+		 *
+		 *	On the other hand, if people assign static strings to non-string
+		 *	attributes... they sort of deserve what they get.
+		 */
+		if (tmpl_is_unresolved(vpt) && (tmpl_resolve(vpt, NULL) < 0)) goto error;
 	}
-
-	node->vpt = vpt;
-	node->quote = quote;
-	node->fmt = vpt->name;
-
-	/*
-	 *	Quoted strings just get resolved now.
-	 *
-	 *	@todo - this means that things like
-	 *
-	 *		&Session-Timeout == '10'
-	 *
-	 *	are run-time errors, instead of load-time parse errors.
-	 *
-	 *	On the other hand, if people assign static strings to non-string
-	 *	attributes... they sort of deserve what they get.
-	 */
-	if ((quote != T_BARE_WORD) && tmpl_is_unresolved(node->vpt)) {
-		fr_assert(quote != T_BACK_QUOTED_STRING);
-		if (tmpl_resolve(node->vpt, NULL) < 0) return -1;
-	}
-
-	node->flags.pure = tmpl_is_data(node->vpt);
-	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
-	xlat_flags_merge(&head->flags, &node->flags);
 
 	fr_sbuff_skip_whitespace(&our_in);
 
@@ -1920,18 +1909,31 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	the xlat to be a child of this node. Exec and regexes
 	 *	are left alone, as they are handled by different code.
 	 */
-	if (tmpl_contains_xlat(node->vpt) && !tmpl_is_exec(node->vpt) && !tmpl_contains_regex(node->vpt)) {
-		xlat_exp_head_t *xlat = tmpl_xlat(node->vpt);
+	if (tmpl_contains_xlat(vpt) && !tmpl_is_exec(vpt) && !tmpl_contains_regex(vpt)) {
+		xlat_exp_head_t *xlat = tmpl_xlat(vpt);
 
 		talloc_steal(node, xlat);
 		node->fmt = talloc_typed_strdup(node, node->fmt);
-		talloc_free(node->vpt);
+		talloc_free(vpt);
 
-		node->type = XLAT_GROUP;
+		xlat_exp_set_type(node, XLAT_GROUP);
+		node->quote = quote;
 		node->group = xlat;
 
 		node->flags = xlat->flags;
+
+	} else {
+		/*
+		 *	Else we're not hoisting, set the node to the VPT
+		 */
+		node->vpt = vpt;
+		node->quote = quote;
+		node->fmt = vpt->name;
+
+		node->flags.pure = tmpl_is_data(node->vpt);
+		node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 	}
+	xlat_flags_merge(&head->flags, &node->flags);
 
 	/*
 	 *	Try and add any unknown attributes to the dictionary
