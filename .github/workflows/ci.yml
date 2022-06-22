@@ -140,6 +140,15 @@ jobs:
       if: ${{ matrix.env.OS == 'ubuntu-18.04' }}
       run: sudo ./scripts/ci/cassandra-install.sh
 
+    - name: "Install Couchbase driver on Ubuntu-20.04"
+      if: ${{ matrix.env.OS == 'ubuntu-20.04' }}
+      run: |
+        wget -4 -O /tmp/couchbase.key https://packages.couchbase.com/clients/c/repos/deb/couchbase.key
+        sudo apt-key add /tmp/couchbase.key
+        echo "deb https://packages.couchbase.com/clients/c/repos/deb/ubuntu2004 focal focal/main" | sudo tee /etc/apt/sources.list.d/couchbase.list
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends libcouchbase-dev libcouchbase3 libcouchbase3-tools
+
     - name: Install dependencies (macOS)
       if: ${{ runner.os == 'macOS' }}
       run: |
@@ -148,6 +157,7 @@ jobs:
           gperftools \
           hiredis \
           json-c \
+          libcouchbase@3 \
           libidn \
           libmemcached \
           luajit \
@@ -302,6 +312,12 @@ jobs:
         sudo sh -c 'echo "#!/bin/sh"          >  /usr/bin/ucf'
         sudo sh -c 'echo "shift && cp -v \$@" >> /usr/bin/ucf'
         sudo chmod +x /usr/bin/ucf
+
+        echo "deb [ arch=amd64 ] http://packages.couchbase.com/releases/couchbase-server/enterprise/deb/ focal focal/main" > /etc/apt/sources.list.d/couchbase.list
+        echo "deb [ arch=amd64 ] http://packages.couchbase.com/releases/couchbase-server/community/deb/ focal focal/main" >> /etc/apt/sources.list.d/couchbase.list
+        echo "deb http://packages.couchbase.com/releases/couchbase-lite-repo/enterprise/deb/ focal focal/main" >> /etc/apt/sources.list.d/couchbase.list
+        echo "deb http://packages.couchbase.com/releases/couchbase-lite-repo/community/deb/ focal focal/main" >> /etc/apt/sources.list.d/couchbase.list
+
         wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
         echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
         sudo apt-get update
@@ -311,7 +327,8 @@ jobs:
           exim4 \
           openresty \
           redis-server redis-tools \
-          slapd ldap-utils
+          slapd ldap-utils \
+          couchbase-server-community=7.1.0-2556-1
         sudo mv -f /usr/bin/ucf.disabled /usr/bin/ucf
         sudo systemctl stop dovecot exim4 slapd openresty
         sudo aa-complain /usr/sbin/slapd
@@ -320,11 +337,12 @@ jobs:
         sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
         sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
 
-        sudo systemctl start mysql postgresql redis-server
+        sudo systemctl start mysql postgresql redis-server couchbase-server
 
         mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';";
 
         for i in \
+            couchbase-setup.sh \
             postgresql-setup.sh \
             imap-setup.sh \
             exim-setup.sh \
@@ -342,6 +360,7 @@ jobs:
         make ci-test
 
       env:
+        COUCHBASE_TEST_SERVER: 127.0.0.1
         SQL_MYSQL_TEST_SERVER: 127.0.0.1
         SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
         LDAP_TEST_SERVER: 127.0.0.1

@@ -38,6 +38,7 @@ function run-tests() {
         export LDAP_TEST_SERVER="127.0.0.1"
         export LDAP_TEST_SERVER_PORT="3890"
         export REDIS_IPPOOL_TEST_SERVER="127.0.0.1"
+        export COUCHBASE_TEST_SERVER="127.0.0.1"
         export ANALYZE_C_DUMP="1"
         export FR_GLOBAL_POOL=4M
         ## before_install

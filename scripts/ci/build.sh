@@ -64,6 +64,7 @@ fi
 echo "Setting up fixtures"
 
 for i in \
+    couchbase-setup.sh \
     postgresql-setup.sh \
     imap-setup.sh \
     exim-setup.sh \

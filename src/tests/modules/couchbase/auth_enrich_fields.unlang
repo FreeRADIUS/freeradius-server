@@ -1,0 +1,19 @@
+couchbase.authorize
+if (!updated) {
+    test_fail
+}
+
+# we expected to see...
+if (&reply.Reply-Message != "loaded-from-couchbase") {
+    test_fail
+}
+
+if (&reply.Called-Station-Id != "Over-my-Tapioca-NAS") {
+    test_fail
+}
+
+if (&control.NAS-Port != 12345) {
+    test_fail
+}
+
+test_pass

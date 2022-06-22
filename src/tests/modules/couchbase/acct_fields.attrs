@@ -1,0 +1,23 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+Acct-Status-Type = Start
+Acct-Unique-Session-Id = a4e1f8b4bd0d1d0583b0647a2805e6d4
+User-Name = "Scald@RoscaFrouxa"
+Acct-Session-Id = "0123456789"
+Acct-Unique-Session-Id = "12345"
+Service-Type = Framed-User
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 1234
+Calling-Station-Id = "tapioca@id_29323"
+NAS-Identifier = "1234"
+Framed-IP-Address = 10.153.10.1
+Acct-Input-Octets = 929
+Acct-Output-Octets = 22793
+Event-Timestamp = "Jan  1 1970 00:01:40 UTC"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept

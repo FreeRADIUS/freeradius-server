@@ -1,0 +1,9 @@
+{
+	"_id": "_design/client",
+	"language": "javascript",
+	"views": {
+		"by_id": {
+			"map": "function(doc,meta){if(doc['clientIdentifier'])emit(meta.id,doc);}"
+		}
+	}
+}

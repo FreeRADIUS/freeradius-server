@@ -1,0 +1,47 @@
+# store all the Accounting request
+couchbase.accounting
+if (!ok) {
+    test_fail
+}
+
+# cleanup everything and set stop
+update request {
+    &Acct-Status-Type := Stop
+    &User-Name !* ANY
+    &Acct-Session-Id !* ANY
+    &Service-Type !* ANY
+    &NAS-IP-Address !* ANY
+    &NAS-Port !* ANY
+    &Calling-Station-Id !* ANY
+    &NAS-Identifier !* ANY
+    &Framed-IP-Address !* ANY
+    &Acct-Input-Octets !* ANY
+    &Acct-Output-Octets !* ANY
+}
+couchbase.accounting
+if (!ok) {
+    test_fail
+}
+
+# let's check if we updated the Couchbase 'lastStatus' as 'Stop'
+update control {
+    &Tmp-String-0 := %(rest:GET "http://radius:radius@localhost:8091/pools/default/buckets/radius/docs/radacct_%{Acct-Unique-Session-Id}")
+}
+
+if (&REST-HTTP-Status-Code != 200) {
+    test_fail
+}
+
+map json &control.Tmp-String-0 {
+    &control.Tmp-String-1 := '$.json'
+}
+
+map json &control.Tmp-String-1 {
+    &control.Tmp-String-2 := '$.lastStatus'
+}
+
+if (&control.Tmp-String-2 != "Stop") {
+    test_fail
+}
+
+test_pass

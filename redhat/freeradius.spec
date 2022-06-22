@@ -561,6 +561,7 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --without-rlm_eap_ikev2 \
         --without-rlm_sql_firebird \
         --without-rlm_sql_db2 \
+        --without-rlm_couchbase \
 %if 0%{?rhel}%{?fedora} < 8
         --with-jsonc-lib-dir=/opt/nwkrad/lib64 \
         --with-jsonc-include-dir=/opt/nwkrad/include \
