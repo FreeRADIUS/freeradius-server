@@ -558,7 +558,7 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	concatenate it here.  We escape the various untrusted inputs.
 	 */
 	if (fr_value_box_list_concat_as_string(NULL, agg, &rctx->list, NULL, 0, &regex_escape_rules,
-					       FR_VALUE_BOX_LIST_REMOVE, true) < 0) {
+					       FR_VALUE_BOX_LIST_FREE_BOX, true) < 0) {
 		RPEDEBUG("Failed concatenating regular expression string");
 		return XLAT_ACTION_FAIL;
 	}
