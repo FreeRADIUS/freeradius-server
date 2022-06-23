@@ -47,6 +47,7 @@
 
 #include <pwd.h>
 #include <grp.h>
+#include <ctype.h>
 
 typedef struct fr_command_table_t fr_command_table_t;
 
@@ -1647,75 +1648,98 @@ static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 
 #ifdef WITH_PROXY
 static home_server_t *get_home_server(rad_listen_t *listener, int argc,
-				    char *argv[], int *last)
+				      char *argv[], int *last)
 {
-	int myarg;
+	int myarg = 2;
 	home_server_t *home;
 	uint16_t port;
 	int proto = IPPROTO_UDP;
 	fr_ipaddr_t ipaddr, src_ipaddr;
 
 	if (argc < 2) {
-		cprintf_error(listener, "Must specify <ipaddr> <port> [udp|tcp]\n");
+		cprintf_error(listener, "Must specify <ipaddr> <port> [udp|tcp] OR <name> <type>\n");
 		return NULL;
 	}
 
-	if (ip_hton(&ipaddr, AF_UNSPEC, argv[0], false) < 0) {
-		cprintf_error(listener, "Failed parsing IP address; %s\n",
-			fr_strerror());
-		return NULL;
-	}
-
-	memset(&src_ipaddr, 0, sizeof(src_ipaddr));
-	src_ipaddr.af = ipaddr.af;
-
-	port = atoi(argv[1]);
-
-	myarg = 2;
-
-	while (myarg < argc) {
-		if (strcmp(argv[myarg], "udp") == 0) {
-			proto = IPPROTO_UDP;
-			myarg++;
-			continue;
+	if (isdigit(*argv[1])) {
+		if (ip_hton(&ipaddr, AF_UNSPEC, argv[0], false) < 0) {
+			cprintf_error(listener, "Failed parsing IP address; %s\n",
+				      fr_strerror());
+			return NULL;
 		}
+
+		memset(&src_ipaddr, 0, sizeof(src_ipaddr));
+		src_ipaddr.af = ipaddr.af;
+
+		port = atoi(argv[1]);
+
+		while (myarg < argc) {
+			if (strcmp(argv[myarg], "udp") == 0) {
+				proto = IPPROTO_UDP;
+				myarg++;
+				continue;
+			}
 
 #ifdef WITH_TCP
-		if (strcmp(argv[myarg], "tcp") == 0) {
-			proto = IPPROTO_TCP;
-			myarg++;
-			continue;
-		}
+			if (strcmp(argv[myarg], "tcp") == 0) {
+				proto = IPPROTO_TCP;
+				myarg++;
+				continue;
+			}
 #endif
 
-		/*
-		 *	Allow the caller to specify src, too.
-		 */
-		if (strcmp(argv[myarg], "src") == 0) {
-			if ((myarg + 2) < argc) {
-				cprintf_error(listener, "You must specify an address after 'src' \n");
-				return NULL;
-			}
+			/*
+			 *	Allow the caller to specify src, too.
+			 */
+			if (strcmp(argv[myarg], "src") == 0) {
+				if ((myarg + 2) < argc) {
+					cprintf_error(listener, "You must specify an address after 'src' \n");
+					return NULL;
+				}
 
-			if (ip_hton(&src_ipaddr, ipaddr.af, argv[myarg + 1], false) < 0) {
-				cprintf_error(listener, "Failed parsing IP address; %s\n",
-					      fr_strerror());
-				return NULL;
-			}
+				if (ip_hton(&src_ipaddr, ipaddr.af, argv[myarg + 1], false) < 0) {
+					cprintf_error(listener, "Failed parsing IP address; %s\n",
+						      fr_strerror());
+					return NULL;
+				}
 
-			myarg += 2;
+				myarg += 2;
 			continue;
+			}
+
+			/*
+			 *	Unknown argument.  Leave it for the caller.
+			 */
+			break;
 		}
 
-		/*
-		 *	Unknown argument.  Leave it for the caller.
-		 */
-		break;
+		home = home_server_find_bysrc(&ipaddr, port, proto, &src_ipaddr);
+	} else {
+		int type;
+
+		static const FR_NAME_NUMBER home_server_types[] = {
+			{ "auth",		HOME_TYPE_AUTH },
+			{ "acct",		HOME_TYPE_ACCT },
+			{ "auth+acct",		HOME_TYPE_AUTH_ACCT },
+			{ "coa",		HOME_TYPE_COA },
+#ifdef WITH_COA_TUNNEL
+			{ "auth+coa",		HOME_TYPE_AUTH_COA },
+			{ "auth+acct+coa",	HOME_TYPE_AUTH_ACCT_COA },
+#endif
+			{ NULL, 0 }
+		};
+
+		type = fr_str2int(home_server_types, argv[1], HOME_TYPE_INVALID);
+		if (type == HOME_TYPE_INVALID) {
+			cprintf_error(listener, "Invalid home server type '%s'\n", argv[1]);
+			return NULL;
+		}
+
+		home = home_server_byname(argv[0], type);
 	}
 
-	home = home_server_find_bysrc(&ipaddr, port, proto, &src_ipaddr);
 	if (!home) {
-		cprintf_error(listener, "No such home server\n");
+		cprintf_error(listener, "No such home server - %s %s\n", argv[0], argv[1]);
 		return NULL;
 	}
 
