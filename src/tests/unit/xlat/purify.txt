@@ -166,7 +166,7 @@ match (&Reply-Message == "foo")
 #  Strings are single quoted
 #
 xlat_purify &Filter-Id == ("foo" + "bar")
-match (&Filter-Id == 'foobar')
+match (&Filter-Id == "foobar")
 
 xlat_purify !&User-Name
 match !&User-Name

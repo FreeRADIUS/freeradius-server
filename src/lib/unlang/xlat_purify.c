@@ -42,7 +42,7 @@ static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *
 		talloc_free(box);
 
 		if (node->data.type == FR_TYPE_STRING) {
-			node->quote = T_SINGLE_QUOTED_STRING;
+			node->quote = T_DOUBLE_QUOTED_STRING;
 			node->fmt = node->data.vb_strvalue;
 		} else {
 			node->quote = T_BARE_WORD;

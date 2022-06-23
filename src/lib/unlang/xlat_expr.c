@@ -1943,9 +1943,15 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	Don't keep an intermediate tmpl for xlats.  Just hoist
 	 *	the xlat to be a child of this node. Exec and regexes
 	 *	are left alone, as they are handled by different code.
+	 *
+	 *	However, we also add a cast if the tmpl had a cast.
+	 *	And if there was no cast, but the input was a string,
+	 *	then we cast the result to a string, too.
 	 */
 	if (tmpl_contains_xlat(vpt) && !tmpl_is_exec(vpt) && !tmpl_contains_regex(vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(vpt);
+		xlat_exp_t *cast;
+		fr_type_t type;
 
 		talloc_steal(node, xlat);
 		node->fmt = talloc_typed_strdup(node, node->fmt);
@@ -1956,6 +1962,19 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		node->group = xlat;
 
 		node->flags = xlat->flags;
+
+		if (quote != T_BARE_WORD) {
+			if (tmpl_rules_cast(vpt) != FR_TYPE_NULL) {
+				type = tmpl_rules_cast(vpt);
+			} else {
+				type = FR_TYPE_STRING;
+			}
+
+			MEM(cast = expr_cast_alloc(head, type));
+
+			xlat_func_append_arg(cast, node);
+			node = cast;
+		}
 
 	} else {
 		/*

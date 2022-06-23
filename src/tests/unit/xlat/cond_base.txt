@@ -90,6 +90,9 @@ match ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 xlat_purify (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 
+#xlat_purify (!&User-Name == &User-Password || &Filter-Id == &Reply-Message)
+#match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+
 #  different from the previous ones.
 xlat_purify (!((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)))
 match !((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
@@ -221,7 +224,7 @@ match (&Session-Timeout == '10')
 #  @todo - yuck.  Suppress full path?
 #
 xlat_purify &Event-Timestamp == "January 1, 2012 %{User-Name}"
-match (&Event-Timestamp == "January 1, 2012 %{Request[0].User-Name}")
+match (&Event-Timestamp == %(cast:string "January 1, 2012 %{Request[0].User-Name}"))
 
 # This one is NOT an expansion, so it's parsed into normal form
 xlat_purify &Event-Timestamp == 'January 1 2012'
@@ -310,18 +313,13 @@ xlat_purify ('foo' == 'foo')
 match true
 
 #
-#  @todo - if the types are incompatible, what to do?
+#  MD4 hash is not equal to other things
 #
-# Cannot compare incompatible types
 xlat_purify ("foo" == "%{md4: foo}")
-match NULL
+match false
 
-#
-#  @todo - maybe we just want to allow this?
-#
-# Cannot compare incompatible types
 xlat_purify ("foo bar" == "%{md4: foo}")
-match NULL
+match false
 
 xlat_purify ("foo" == "bar")
 match false
@@ -337,8 +335,14 @@ match false
 xlat_purify (&User-Name == "bob")
 match (&User-Name == "bob")
 
+xlat_purify (&User-Name == %{md4: blah})
+match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
+
+xlat_purify (&User-Name == (string) %{md4: blah})
+match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
+
 xlat_purify (&User-Name == "%{md4: blah}")
-match (&User-Name == "0x544924d05ec4481925ba3749a096a0a7")
+match (&User-Name == "TI$\320^\304H\031\%\2727I\240\226\240\247")
 
 xlat_purify <ipaddr>127.0.0.1 == 2130706433
 match true
@@ -430,8 +434,13 @@ match ("foo" == &User-Name)
 
 # This used to be expr, but expr isn't a builtin, so it failed...
 
+#
+#  @todo - arguably this is a failed thing, we should get:
+#
+#  ERROR: Failed casting 0x002ade8665c69219ca16bd108d92c8d5 to data type uint32: Invalid cast from octets to uint32.  Source length 16 is greater than destination type size 4
+#
 xlat_purify <integer>"%{md4: 1 + 1}" < &NAS-Port
-match ("0x002ade8665c69219ca16bd108d92c8d5" < &NAS-Port)
+match (%(cast:uint32 "%{md4: 1 + 1}") < &NAS-Port)
 
 #
 #  The string gets parsed as an IP address.
@@ -464,7 +473,7 @@ match ((ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address)
 
 # but these are allowed
 xlat_purify <ether>&Tmp-uint64-0 == "%{module: foo}"
-match  ((ether)&Tmp-uint64-0 == "%{module: foo}")
+match  ((ether)&Tmp-uint64-0 == %(cast:string "%{module: foo}"))
 
 xlat_purify <ipaddr>&Filter-Id == &Framed-IP-Address
 match ((ipaddr)&Filter-Id == &Framed-IP-Address)
@@ -493,7 +502,7 @@ match (&User-Name[n] == "bob")
 #match &Foo-Bar
 
 xlat_purify &Acct-Input-Octets > "%{Session-Timeout}"
-match (&Acct-Input-Octets > "%{Request[0].Session-Timeout}")
+match (&Acct-Input-Octets > %(cast:string "%{Request[0].Session-Timeout}"))
 
 xlat_purify &Acct-Input-Octets > &Session-Timeout
 match (&Acct-Input-Octets > &Session-Timeout)
@@ -732,4 +741,4 @@ match %{rcode:'handled'}
 
 
 count
-match 300
+match 304
