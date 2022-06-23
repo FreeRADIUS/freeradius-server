@@ -1530,8 +1530,8 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 
 	mod_p[total] = NULL;
 
-	ttrunk = fr_thread_ldap_trunk_get(thread, inst->handle_config.server, inst->handle_config.admin_identity,
-					  inst->handle_config.admin_password, request, &inst->handle_config);
+	MEM(ttrunk = fr_thread_ldap_trunk_get(thread, inst->handle_config.server, inst->handle_config.admin_identity,
+					      inst->handle_config.admin_password, request, &inst->handle_config));
 
 
 	dn = rlm_ldap_find_user(inst, request, ttrunk, NULL, false, NULL, NULL, &rcode);

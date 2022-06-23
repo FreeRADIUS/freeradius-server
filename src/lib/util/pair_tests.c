@@ -269,9 +269,12 @@ static void test_fr_pair_append(void)
 
 	fr_pair_list_init(&local_pairs);
 
-	fr_pair_append(&local_pairs, fr_pair_afrom_da(autofree, fr_dict_attr_test_octets));
-	fr_pair_append(&local_pairs, fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32));
-	fr_pair_append(&local_pairs, fr_pair_afrom_da(autofree, fr_dict_attr_test_tlv));
+	MEM(vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_octets));
+	fr_pair_append(&local_pairs, vp);
+	MEM(vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32));
+	fr_pair_append(&local_pairs, vp);
+	MEM(vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_tlv));
+	fr_pair_append(&local_pairs, vp);
 
 	/* lets' count */
 	for (vp = fr_pair_dcursor_init(&cursor, &local_pairs);
