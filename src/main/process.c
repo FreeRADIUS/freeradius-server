@@ -3192,9 +3192,10 @@ static int request_will_proxy(REQUEST *request)
 		}
 
 		/*
-		 *	Nothing does CoA over TCP.
+		 *	Find the home server.
 		 */
 		home = home_server_find(&dst_ipaddr, dst_port, IPPROTO_UDP);
+		if (!home) home = home_server_find(&dst_ipaddr, dst_port, IPPROTO_TCP);
 		if (!home) {
 			char buffer[256];
 
