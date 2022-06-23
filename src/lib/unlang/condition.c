@@ -118,6 +118,13 @@ static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unla
 
 	fr_value_box_list_init(&state->out);
 
+	/*
+	 *	Make the rcode available to the caller.  Note that the caller can't call
+	 *	unlang_interpret_stack_result(), as that returns the result from the xlat frame, and not from
+	 *	the calling frame.
+	 */
+	request->rcode = *p_result;
+
 	if (unlang_xlat_push(state, &state->success, &state->out,
 			     request, gext->head, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 
