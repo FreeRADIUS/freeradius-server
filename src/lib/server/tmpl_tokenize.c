@@ -4479,8 +4479,6 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 {
 	fr_sbuff_t	our_out = FR_SBUFF(out);
 
-	if (unlikely(!vpt)) return 0;
-
 	TMPL_VERIFY(vpt);
 
 	switch (vpt->type) {
