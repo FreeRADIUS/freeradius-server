@@ -381,7 +381,7 @@ static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, char const *
 	}
 
 	/* Copy the filename into the buffer */
-	/* coverity[checked_return] */
+	/* coverity[check_return] */
 	fr_sbuff_in_bstrncpy(path_buffer, str, len);
 
 	/* Add the file attachment as a mime encoded part */
@@ -486,7 +486,7 @@ static int generate_from_header(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struc
 	(void) fr_sbuff_in_strcpy(&sbuff, from);
 
 	/* Copy the envelope address as the FROM: source */
-	/* coverity[checked_return] */
+	/* coverity[check_return] */
 	fr_sbuff_in_bstrncpy(&sbuff, inst->envelope_address, strlen(inst->envelope_address));
 	*out = curl_slist_append(*out, sbuff.buff);
 
@@ -569,7 +569,7 @@ static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, rlm_smtp_t c
 		}
 
 		/* Format the conf item to be a valid SMTP header */
-		/* coverity[checked_return] */
+		/* coverity[check_return] */
 		fr_sbuff_in_bstrncpy(&conf_buffer, conf_map->lhs->name, conf_map->lhs->len);
 		fr_sbuff_in_strcpy(&conf_buffer, ": ");
 		fr_sbuff_in_bstrncpy(&conf_buffer, expanded_rhs, strlen(expanded_rhs));
