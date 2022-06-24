@@ -508,7 +508,7 @@ static inline CC_HINT(nonnull) void fr_tlist_verify(char const *file, int line, 
 		if (entry->children) {
 			fr_assert_msg(tlist_type(entry->children) != NULL, "CONSISTENCY CHECK FAILED %s[%i]: tlist entry %p has non-talloc'd child list",
 				      file, line, entry);
-			
+
 			fr_assert_msg(strcmp(tlist_type(entry->children), tlist_type(list_head)) == 0,
 				      "CONSISTENCY CHECK FAILED %s[%i]: tlist entry %p has different child type from parent",
 				      file, line, entry);
@@ -933,7 +933,7 @@ static inline void fr_tlist_init_children(fr_tlist_t *entry, fr_tlist_head_t *ch
 {
 	fr_tlist_head_t *list_head;
 
-	fr_assert(entry->children == NULL);	
+	fr_assert(entry->children == NULL);
 	fr_assert(entry->list_head != NULL);
 
 	list_head = entry->list_head;
