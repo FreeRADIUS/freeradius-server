@@ -3253,6 +3253,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 		command_result_t	result = { .rcode = RESULT_OK };	/* Reset to OK */
 		char			*p = strchr(buffer, '\n');
 
+		fr_strerror_clear();
 		cc->lineno++;	/* The first line of the file becomes line 1 */
 
 		if (lr) {
