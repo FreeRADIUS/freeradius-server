@@ -672,9 +672,9 @@ void fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, i
 			fr_sbuff_in_vsprintf(&sbuff, fmt, aq);
 			va_end(aq);
 
-			/* coverity[checked_return] */
+			/* coverity[check_return] */
 			fr_sbuff_in_strcpy(&sbuff, ": ");
-			/* coverity[checked_return] */
+			/* coverity[check_return] */
 			fr_sbuff_in_strcpy(&sbuff, error);	/* may not be talloced with const */
 			error = fr_sbuff_start(&sbuff);
 		}
@@ -700,7 +700,7 @@ void fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, i
 
 	fr_sbuff_set_to_start(&sbuff);
 	if (f_rules->subsq_prefix) {
-		/* coverity[checked_return] */
+		/* coverity[check_return] */
 		fr_sbuff_in_strcpy(&sbuff, f_rules->subsq_prefix);
 		fr_sbuff_marker(&prefix_m, &sbuff);
 	}
@@ -711,7 +711,7 @@ void fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, i
 	while ((error = fr_strerror_pop())) {
 		if (f_rules->subsq_prefix) {
 			fr_sbuff_set(&sbuff, &prefix_m);
-			/* coverity[checked_return] */
+			/* coverity[check_return] */
 			fr_sbuff_in_strcpy(&sbuff, error);	/* may not be talloced with const */
 			error = fr_sbuff_start(&sbuff);
 		}

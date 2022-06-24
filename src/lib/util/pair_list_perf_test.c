@@ -215,13 +215,13 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 			 *  to use for duplicating attributes to required percentage.
 			 *  Duplicates are at the beginning of the source list
 			 */
-			/* coverity[null_returns] */
+			/* coverity[dereference] */
 			vp = fr_pair_list_head(&list);
 			for (j = 0; j < (size_t)(input_count * perc / 100); j++) {
-				/* coverity[null_returns] */
+				/* coverity[dereference] */
 				new_vp = fr_pair_copy(ctx, vp);
 				fr_pair_append(&dups, new_vp);
-				/* coverity[null_returns] */
+				/* coverity[dereference] */
 				vp = fr_pair_list_next(&list, vp);
 			}
 		}
