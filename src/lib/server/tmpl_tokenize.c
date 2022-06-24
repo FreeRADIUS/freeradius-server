@@ -40,6 +40,55 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+/** Define a global variable for specifying a default request reference
+ *
+ * @param[in] _name	what the global variable should be called.
+ * @param[in] _ref	one of the values of tmpl_request_ref_t
+ *			- REQUEST_CURRENT
+ *			- REQUEST_OUTER,
+ *			- REQUEST_PARENT,
+ *			- REQUEST_UNKNOWN
+ */
+#define TMPL_REQUEST_REF_DEF(_name, _def) \
+extern FR_DLIST_HEAD(tmpl_request_list) _name; \
+static tmpl_request_t _name ## _entry = { \
+	.entry = { \
+		.entry = { \
+			.next = &_name.head.entry, \
+			.prev = &_name.head.entry \
+		} \
+	}, \
+	.request = _def \
+}; \
+FR_DLIST_HEAD(tmpl_request_list) _name = { \
+	.head = { \
+		.offset = offsetof(tmpl_request_t, entry), \
+		.entry = { \
+			.next = &_name ## _entry.entry.entry, \
+			.prev = &_name ## _entry.entry.entry, \
+		}, \
+		.num_elements = 1, \
+	} \
+}
+
+/** Use the current request as the default
+ *
+ * Used as .attr.request_def = &tmpl_request_def_current;
+ */
+TMPL_REQUEST_REF_DEF(tmpl_request_def_current, REQUEST_CURRENT);
+
+/** Use the outer request as the default
+ *
+ * Used as .attr.request_def = &tmpl_request_def_outer;
+ */
+TMPL_REQUEST_REF_DEF(tmpl_request_def_outer, REQUEST_OUTER);
+
+/** Use the parent request as the default
+ *
+ * Used as .attr.request_def = &tmpl_request_def_parent;
+ */
+TMPL_REQUEST_REF_DEF(tmpl_request_def_parent, REQUEST_PARENT);
+
 /** Default parser rules
  *
  * Because this is getting to be a ridiculous number of parsing rules
@@ -47,12 +96,10 @@ RCSID("$Id$")
  *
  * Defaults are used if a NULL rules pointer is passed to the parsing function.
  */
-static tmpl_rules_t const default_attr_rules = {
-	.attr = {
-		.request_def = REQUEST_CURRENT,
-		.list_def = PAIR_LIST_REQUEST
-	}
+static tmpl_rules_t const default_rules = {
+
 };
+
 
 /* clang-format off */
 /** Map #tmpl_type_t values to descriptive strings
@@ -129,6 +176,30 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref);
  */
 #define UNRESOLVED_SET(_flags) (*(_flags) = (*(_flags) | TMPL_FLAG_UNRESOLVED))
 #define RESOLVED_SET(_flags) (*(_flags) = (*(_flags) & ~TMPL_FLAG_UNRESOLVED))
+
+/** Verify, after skipping whitespace, that a substring ends in a terminal char, or ends without further chars
+ *
+ * @param[in] in	the sbuff to check.
+ * @param[in] p_rules	to use terminals from.
+ * @return
+ *	- true if substr is terminated correctly.
+ *	- false if subst is not terminated correctly.
+ */
+static inline bool CC_HINT(always_inline) tmpl_substr_terminal_check(fr_sbuff_t *in,
+								     fr_sbuff_parse_rules_t const *p_rules)
+{
+	fr_sbuff_marker_t	m;
+	bool			ret;
+
+	if (!fr_sbuff_extend(in)) return true;		/* we're at the end of the string */
+	if (!p_rules || !p_rules->terminals) return false;	/* more stuff to parse but don't have a terminal set */
+
+	fr_sbuff_marker(&m, in);
+	ret = fr_sbuff_is_terminal(in, p_rules->terminals);
+	fr_sbuff_set(in, &m);
+	fr_sbuff_marker_release(&m);
+	return ret;
+}
 
 void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 {
@@ -403,54 +474,252 @@ size_t tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_li
 	}
 }
 
-/** Resolve attribute name to a #tmpl_request_ref_t value.
+ /** Allocate a new request reference and add it to the end of the attribute reference list
  *
- * Check the name string for qualifiers that reference a parent #request_t.
- *
- * If we find a string that matches a #tmpl_request_ref_t qualifier, return the number of chars
- * we consumed.
- *
- * If we're sure we've definitely found a list qualifier token delimiter (``*``) but the
- * qualifier doesn't match one of the #tmpl_request_ref_t qualifiers, return 0 and set out to
- * #REQUEST_UNKNOWN.
- *
- * If we can't find a string that looks like a request qualifier, set out to def, and
- * return 0.
- *
- * @param[out] out The #tmpl_request_ref_t value the name resolved to (or #REQUEST_UNKNOWN).
- * @param[in] name of attribute.
- * @param[in] def default request ref to return if no request qualifier is present.
- * @return 0 if no valid request qualifier could be found, else the number of bytes consumed.
- *	The caller may then advanced the name pointer by the value returned, to get the
- *	start of the attribute list or attribute name(if any).
- *
- * @see tmpl_pair_list_name
- * @see tmpl_request_ref_table
  */
-size_t tmpl_request_ref_by_name(tmpl_request_ref_t *out, char const *name, tmpl_request_ref_t def)
+static inline CC_HINT(always_inline) CC_HINT(nonnull(2,3))
+void tmpl_request_ref_list_copy(TALLOC_CTX *ctx,
+			        FR_DLIST_HEAD(tmpl_request_list) *out, FR_DLIST_HEAD(tmpl_request_list) const *in)
 {
-	char const *p, *q;
-
-	p = name;
-	/*
-	 *	Try and determine the end of the token
-	 */
-	for (q = p; fr_dict_attr_allowed_chars[(uint8_t) *q] && (*q != '.') && (*q != '-'); q++);
+	tmpl_request_t	*rr = NULL;
+	tmpl_request_t	*n_rr = NULL;
 
 	/*
-	 *	First token delimiter wasn't a '.'
+	 *	Duplicate the complete default list
 	 */
-	if (*q != '.') {
-		*out = def;
-		return 0;
+	while ((rr = tmpl_request_list_next(in, rr))) {
+		MEM(n_rr = talloc(ctx, tmpl_request_t));
+		*n_rr = (tmpl_request_t){
+			.request = rr->request
+		};
+		tmpl_request_list_insert_tail(out, n_rr);
+		ctx = n_rr;	/* Chain the contexts */
 	}
-
-	*out = fr_table_value_by_substr(tmpl_request_ref_table, name, q - p, REQUEST_UNKNOWN);
-	if (*out == REQUEST_UNKNOWN) return 0;
-
-	return (q + 1) - p;
 }
 
+ /** Allocate a new request reference list and copy request references into it
+ *
+ */
+static inline CC_HINT(always_inline) CC_HINT(nonnull(2,3))
+void tmpl_request_ref_list_acopy(TALLOC_CTX *ctx,
+			         FR_DLIST_HEAD(tmpl_request_list) **out, FR_DLIST_HEAD(tmpl_request_list) const *in)
+{
+	FR_DLIST_HEAD(tmpl_request_list) *rql;
+
+	MEM(rql = talloc_zero(ctx, FR_DLIST_HEAD(tmpl_request_list)));
+	tmpl_request_list_talloc_init(rql);
+
+	tmpl_request_ref_list_copy(rql, rql, in);
+
+	*out = rql;
+}
+
+/** Dump a request list to stderr
+ *
+ */
+void tmpl_request_ref_list_debug(FR_DLIST_HEAD(tmpl_request_list) const *rql)
+{
+	tmpl_request_t *rr = NULL;
+
+	while ((rr = tmpl_request_list_next(rql, rr))) {
+		FR_FAULT_LOG("request - %s (%u)",
+			     fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"),
+			     rr->request);
+	}
+}
+
+/** Compare a list of request qualifiers
+ *
+ * @param[in] a		first list.  If NULL tmpl_request_def_current will be used.
+ * @param[in] b		second list.  If NULL tmpl_request_def_current will be used.
+ * @return
+ *	- >0 a > b
+ *	- 0 a == b
+ *	- <0 a < b
+ */
+int8_t tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a, FR_DLIST_HEAD(tmpl_request_list) const *b)
+{
+	tmpl_request_t *a_rr = NULL, *b_rr = NULL;
+
+	/*
+	 *	NULL, uninit, empty are all equivalent
+	 *	to tmpl_request_def_current.
+	 *
+	 *	We need all these equivalent checks to
+	 *	deal with uninitialised tmpl rules.
+	 */
+	if (!a || !tmpl_request_list_initialised(a) || tmpl_request_list_empty(a)) a = &tmpl_request_def_current;
+	if (!b || !tmpl_request_list_initialised(b) || tmpl_request_list_empty(b)) b = &tmpl_request_def_current;
+
+	/*
+	 *	Fast path...
+	 */
+	if (a == b) return 0;
+
+	for (;;) {
+		a_rr = tmpl_request_list_next(a, a_rr);
+		b_rr = tmpl_request_list_next(b, b_rr);
+
+		if (!a_rr || !b_rr) return CMP(tmpl_request_list_num_elements(a), tmpl_request_list_num_elements(b));
+
+		CMP_RETURN(a_rr, b_rr, request);
+	}
+}
+
+/** Parse one or more request references, writing the list to out
+ *
+ * @parma[in] ctx	to allocate request refs in.
+ * @param[out] err	If !NULL where to write the parsing error.
+ * @param[in] in	Sbuff to read request references from.
+ * @param[in] p_rules	Parse rules.
+ * @param[in] at_rules	Default list and other rules.
+ * @return
+ *	- >= 0 the number of bytes parsed.
+ *      - <0 negative offset for where the error occurred
+ */
+static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+						   FR_DLIST_HEAD(tmpl_request_list) *out,
+						   fr_sbuff_t *in,
+						   fr_sbuff_parse_rules_t const *p_rules,
+						   tmpl_attr_rules_t const *at_rules)
+{
+	tmpl_request_ref_t	ref;
+	tmpl_request_t		*rr;
+	size_t			ref_len;
+	fr_sbuff_t		our_in = FR_SBUFF(in);
+	tmpl_request_t		*tail = tmpl_request_list_tail(out);
+	unsigned int		depth = 0;
+	fr_sbuff_marker_t	m;
+
+	if (!at_rules) at_rules = &default_rules.attr;
+
+	/*
+	 *	We could make the caller do this but as this
+	 *	function is intended to help populate tmpl rules,
+	 *	just be nice...
+	 */
+	if (!tmpl_request_list_initialised(out)) tmpl_request_list_talloc_init(out);
+
+	fr_sbuff_marker(&m, &our_in);
+	for (depth = 0; depth < TMPL_MAX_REQUEST_REF_NESTING; depth++) {
+		bool end;
+
+
+		/*
+		 *	Search for a known request reference like
+		 *	'current', or 'parent'.
+		 */
+		fr_sbuff_out_by_longest_prefix(&ref_len, &ref, tmpl_request_ref_table, &our_in, REQUEST_UNKNOWN);
+
+		/*
+		 *	No match
+		 */
+		if (ref_len == 0) {
+			/*
+			 *	If depth == 0, we're at the start
+			 *	so just use the default request
+			 *	reference.
+			 */
+		default_ref:
+			if ((depth == 0) && at_rules->request_def) {
+				tmpl_request_ref_list_copy(ctx, out, at_rules->request_def);
+			}
+			break;
+		}
+
+		/*
+		 *	We don't want to misidentify the list
+		 *	as being part of an attribute.
+		 */
+		if (!fr_sbuff_is_char(&our_in, '.') && !tmpl_substr_terminal_check(&our_in, p_rules)) {
+			goto default_ref;
+		}
+
+		if (at_rules->parent || at_rules->disallow_qualifiers) {
+			fr_strerror_const("It is not permitted to specify a request reference here");
+			if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
+
+			fr_sbuff_set(&our_in, in);	/* Marker at the start */
+		error:
+			tmpl_request_list_talloc_free_to_tail(out, tail);
+			return fr_sbuff_error(&our_in);
+		}
+
+		/*
+		 *	Add a new entry to the dlist
+		 */
+		MEM(rr = talloc(ctx, tmpl_request_t));
+		*rr = (tmpl_request_t){
+			.request = ref
+		};
+		tmpl_request_list_insert_tail(out, rr);
+
+		/*
+		 *	Advance past the separator (if there is one)
+		 */
+		end = !fr_sbuff_next_if_char(&our_in, '.');
+
+		/*
+		 *	Update to the last successfully parsed component
+		 *
+		 *	This makes it easy to backtrack from refs like
+		 *
+		 *		parent.outer-realm-name
+		 */
+		fr_sbuff_set(&m, &our_in);
+
+		if (end) break;
+	}
+
+	/*
+	 *	Nesting level too deep
+	 */
+	if (depth > TMPL_MAX_REQUEST_REF_NESTING) {
+		fr_strerror_const("Request ref nesting too deep");
+		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
+		goto error;	/* Leave marker at the end */
+	}
+
+	return fr_sbuff_set(in, &m);
+
+}
+
+/** Parse one or more request references, allocing a new list and adding the references to it
+ *
+ * This can be used to create request ref lists for rules and for tmpls.
+ *
+ * @parma[in] ctx	to allocate request refs in.
+ * @param[out] err	If !NULL where to write the parsing error.
+ * @param[in] in	Sbuff to read request references from.
+ * @param[in] p_rules	Parse rules.
+ * @param[in] at_rules	Default list and other rules.
+ * @return
+ *	- >= 0 the number of bytes parsed.
+ *      - <0 negative offset for where the error occurred
+ */
+fr_slen_t tmpl_request_ref_list_afrom_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+					     FR_DLIST_HEAD(tmpl_request_list) **out,
+					     fr_sbuff_t *in,
+					     fr_sbuff_parse_rules_t const *p_rules,
+					     tmpl_attr_rules_t const *at_rules)
+{
+	fr_slen_t	slen;
+
+	FR_DLIST_HEAD(tmpl_request_list) *rql;
+
+	MEM(rql = talloc_zero(ctx, FR_DLIST_HEAD(tmpl_request_list)));
+	tmpl_request_list_talloc_init(rql);
+
+	slen = tmpl_request_ref_list_from_substr(rql, err, rql, in, p_rules, at_rules);
+	if (slen < 0) {
+		talloc_free(rql);
+		return slen;
+	}
+
+	*out = rql;
+
+	return slen;
+}
 /** @} */
 
 /** @name Alloc or initialise #tmpl_t
@@ -682,29 +951,6 @@ tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, fr_token_t quote, char con
  * @{
  */
 
- /** Allocate a new request reference and add it to the end of the attribute reference list
- *
- */
-static tmpl_request_t *tmpl_req_ref_add(tmpl_t *vpt, tmpl_request_ref_t request)
-{
-	tmpl_request_t	*rr;
-	TALLOC_CTX	*ctx;
-
-	if (tmpl_request_list_num_elements(&vpt->data.attribute.rr) == 0) {
-		ctx = vpt;
-	} else {
-		ctx = tmpl_request_list_tail(&vpt->data.attribute.rr);
-	}
-
-	MEM(rr = talloc(ctx, tmpl_request_t));
-	*rr = (tmpl_request_t){
-		.request = request
-	};
-	tmpl_request_list_insert_tail(&vpt->data.attribute.rr, rr);
-
-	return rr;
-}
-
 /** Allocate a new attribute reference and add it to the end of the attribute reference list
  *
  */
@@ -772,8 +1018,7 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bo
  */
 int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 {
-	tmpl_attr_t		*src_ar = NULL, *dst_ar;
-	tmpl_request_t	*src_rr = NULL, *dst_rr;
+	tmpl_attr_t *src_ar = NULL, *dst_ar;
 
 	/*
 	 *	Clear any existing attribute references
@@ -804,14 +1049,10 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 
 	/*
 	 *	Clear any existing request references
+	 *	and copy the ones from the source.
 	 */
-	if (tmpl_request_list_num_elements(&dst->data.attribute.rr) > 0) {
-		tmpl_request_list_talloc_reverse_free(&dst->data.attribute.rr);
-	}
-
-	while ((src_rr = tmpl_request_list_next(&src->data.attribute.rr, src_rr))) {
-		MEM(dst_rr = tmpl_req_ref_add(dst, src_rr->request));
-	}
+	tmpl_request_list_talloc_reverse_free(&dst->data.attribute.rr);
+	tmpl_request_ref_list_copy(dst, &dst->data.attribute.rr, &src->data.attribute.rr);
 
 	/*
 	 *	Remove me...
@@ -962,14 +1203,16 @@ void tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to)
 /** Set the request for an attribute ref
  *
  */
-void tmpl_attr_set_request(tmpl_t *vpt, tmpl_request_ref_t request)
+void tmpl_attr_set_request_ref(tmpl_t *vpt, FR_DLIST_HEAD(tmpl_request_list) const *request_def)
 {
 	fr_assert_msg(tmpl_is_attr(vpt), "Expected tmpl type 'attr', got '%s'",
 		      tmpl_type_to_str(vpt->type));
 
-	if (tmpl_request_list_num_elements(&vpt->data.attribute.rr) > 0) tmpl_request_list_talloc_reverse_free(&vpt->data.attribute.rr);
-
-	tmpl_req_ref_add(vpt, request);
+	/*
+	 *	Clear any existing request references
+	 */
+	tmpl_request_list_talloc_reverse_free(&vpt->data.attribute.rr);
+	tmpl_request_ref_list_copy(vpt, &vpt->data.attribute.rr, request_def);
 
 	TMPL_ATTR_VERIFY(vpt);
 }
@@ -1025,30 +1268,6 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	return 0;
 }
 /** @} */
-
-/** Verify, after skipping whitespace, that a substring ends in a terminal char, or ends without further chars
- *
- * @param[in] in	the sbuff to check.
- * @param[in] p_rules	to use terminals from.
- * @return
- *	- true if substr is terminated correctly.
- *	- false if subst is not terminated correctly.
- */
-static inline bool CC_HINT(always_inline) tmpl_substr_terminal_check(fr_sbuff_t *in,
-								     fr_sbuff_parse_rules_t const *p_rules)
-{
-	fr_sbuff_marker_t	m;
-	bool			ret;
-
-	if (!fr_sbuff_extend(in)) return true;		/* we're at the end of the string */
-	if (!p_rules || !p_rules->terminals) return false;	/* more stuff to parse but don't have a terminal set */
-
-	fr_sbuff_marker(&m, in);
-	ret = fr_sbuff_is_terminal(in, p_rules->terminals);
-	fr_sbuff_set(in, &m);
-	fr_sbuff_marker_release(&m);
-	return ret;
-}
 
 /** Descriptive return values for filter parsing
  *
@@ -1692,94 +1911,6 @@ do_suffix:
 	return 0;
 }
 
-static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-						     tmpl_t *vpt,
-						     fr_sbuff_t *name,
-						     fr_sbuff_parse_rules_t const *p_rules,
-						     tmpl_attr_rules_t const **pt_rules,
-					      	     unsigned int depth)
-{
-	tmpl_request_ref_t			ref;
-	size_t					ref_len;
-	tmpl_request_t				*rr;
-	FR_DLIST_HEAD(tmpl_request_list)	*list = &vpt->data.attribute.rr;
-	fr_sbuff_marker_t			s_m;
-	tmpl_attr_rules_t const			*t_rules = *pt_rules;
-
-	fr_sbuff_marker(&s_m, name);
-	fr_sbuff_out_by_longest_prefix(&ref_len, &ref, tmpl_request_ref_table, name, t_rules->request_def);
-
-	/*
-	 *	No match
-	 */
-	if (ref_len == 0) {
-		/*
-		 *	If depth == 0, then just use
-		 *	the default request reference.
-		 */
-	default_ref:
-		if (depth == 0) {
-			MEM(rr = talloc(ctx, tmpl_request_t));
-			*rr = (tmpl_request_t){
-				.request = ref
-			};
-			tmpl_request_list_insert_tail(list, rr);
-		}
-		fr_sbuff_marker_release(&s_m);
-
-		return 0;
-	}
-
-	/*
-	 *	We don't want to misidentify the list
-	 *	as being part of an attribute.
-	 */
-	if (!fr_sbuff_is_char(name, '.') &&
-	    ((!p_rules || !p_rules->terminals) ||
-	    !tmpl_substr_terminal_check(name, p_rules))) {
-	    	fr_sbuff_set(name, &s_m);
-	    	goto default_ref;
-	}
-
-	fr_sbuff_marker_release(&s_m);
-
-	/*
-	 *	Nesting level too deep
-	 */
-	if (depth > TMPL_MAX_REQUEST_REF_NESTING) {
-		fr_strerror_const("Request ref nesting too deep");
-		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
-		return -1;
-	}
-
-	if (t_rules->parent || t_rules->disallow_qualifiers) {
-		fr_strerror_const("It is not permitted to specify a request reference here");
-		if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
-		return -1;
-	}
-
-	/*
-	 *	Add a new entry to the dlist
-	 */
-	MEM(rr = talloc(ctx, tmpl_request_t));
-	*rr = (tmpl_request_t){
-		.request = ref
-	};
-	tmpl_request_list_insert_tail(list, rr);
-
-	/*
-	 *	Advance past the separator (if there is one)
-	 */
-	if (fr_sbuff_next_if_char(name, '.')) {
-		if (tmpl_request_ref_afrom_attr_substr(ctx, err, vpt, name, p_rules, pt_rules, depth + 1) < 0) {
-			tmpl_request_list_talloc_free_tail(list); /* Remove and free rr */
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
 /** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #tmpl_t
  *
  * @param[in,out] ctx		to allocate #tmpl_t in.
@@ -1839,9 +1970,11 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	tmpl_attr_rules_t const		*t_attr_rules;
 	fr_sbuff_marker_t		m_l;
 
-	if (!t_rules) t_rules = &default_attr_rules;	/* Use the defaults */
-
-	t_attr_rules = &t_rules->attr;
+	if (!t_rules) {
+		t_attr_rules = &default_rules.attr;	/* Use the defaults */
+	} else {
+		t_attr_rules = &t_rules->attr;
+	}
 
 	if (err) *err = TMPL_ATTR_ERROR_NONE;
 
@@ -1894,7 +2027,11 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	/*
 	 *	Parse one or more request references
 	 */
-	ret = tmpl_request_ref_afrom_attr_substr(vpt, err, vpt, &our_name, p_rules, &t_attr_rules, 0);
+	ret = tmpl_request_ref_list_from_substr(vpt, NULL,
+					      &vpt->data.attribute.rr,
+					      &our_name,
+					      p_rules,
+				              t_attr_rules);
 	if (ret < 0) {
 	error:
 		*out = NULL;
@@ -2044,6 +2181,18 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 
 	tmpl_set_name(vpt, T_BARE_WORD, fr_sbuff_start(&our_name), fr_sbuff_used(&our_name));
 	vpt->rules = *t_rules;	/* Record the rules */
+
+	/*
+	 *	If there are actual requests, duplicate them
+	 *	and move them into the list.
+	 *
+	 *	A NULL request_def pointer is equivalent to the
+	 *	current request.
+	 */
+	if (t_rules->attr.request_def) {
+		tmpl_request_ref_list_acopy(vpt, &vpt->rules.attr.request_def, t_rules->attr.request_def);
+	}
+
 	if (tmpl_is_attr(vpt) && (tmpl_da(vpt)->type == tmpl_rules_cast(vpt))) vpt->rules.cast = FR_TYPE_NULL;
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
@@ -2090,7 +2239,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 {
 	ssize_t slen, name_len;
 
-	if (!t_rules) t_rules = &default_attr_rules;	/* Use the defaults */
+	if (!t_rules) t_rules = &default_rules;	/* Use the defaults */
 
 	name_len = strlen(name);
 	slen = tmpl_afrom_attr_substr(ctx, err, out, &FR_SBUFF_IN(name, name_len), NULL, t_rules);
@@ -2688,7 +2837,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 	tmpl_t			*vpt = NULL;
 
-	if (!t_rules) t_rules = &default_attr_rules;	/* Use the defaults */
+	if (!t_rules) t_rules = &default_rules;	/* Use the defaults */
 
 	*out = NULL;
 

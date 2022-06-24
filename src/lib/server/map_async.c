@@ -212,14 +212,11 @@ static inline fr_pair_list_t *map_check_src_or_dst(request_t *request, map_t con
 {
 	request_t		*context = request;
 	fr_pair_list_t		*list;
-	tmpl_request_ref_t	request_ref;
 	tmpl_pair_list_t	list_ref;
 
-	request_ref = tmpl_request(src_dst);
-	if (tmpl_request_ptr(&context, request_ref) < 0) {
-		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to invalid request reference \"%s\"",
-			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
-			fr_table_str_by_value(tmpl_request_ref_table, request_ref, "<INVALID>"));
+	if (tmpl_request_ptr(&context, tmpl_request(src_dst)) < 0) {
+		RPEDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed",
+			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
 		return NULL;
 	}
 

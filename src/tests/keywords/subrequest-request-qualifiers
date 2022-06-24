@@ -1,0 +1,79 @@
+subrequest Access-Request {
+	#
+	#  Prefix/attribute parsing disambiguation
+	#
+	update outer.request {
+		&Outer-Realm-Name := 'testing123'
+	}
+
+	update {
+		&User-Name := "obo"
+	}
+
+	subrequest Access-Request {
+		update {
+			&User-Name := "jim"
+		}
+
+		subrequest Access-Request {
+			update {
+				&User-Name := "joe"
+			}
+
+			update outer.request {
+				&Tmp-String-0 := &current.User-Name
+				&Tmp-String-1 := &parent.User-Name
+				&Tmp-String-2 := &parent.parent.User-Name
+				&Tmp-String-3 := &parent.parent.parent.User-Name
+				&Tmp-String-4 := &outer.User-Name
+				&Tmp-String-5 := &current.outer.User-Name
+				&Tmp-String-6 := &parent.current.outer.User-Name
+				&Tmp-String-7 := "%{parent.parent.parent.parent.User-Name}"
+				&Tmp-String-8 := "%{outer.parent.User-Name}"
+
+			}
+		}
+	}
+}
+
+if (&Outer-Realm-Name != 'testing123') {
+	test_fail
+}
+
+if (&Tmp-String-0 != 'joe') {
+	test_fail
+}
+
+if (&Tmp-String-1 != 'jim') {
+	test_fail
+}
+
+if (&tmp-String-2 != 'obo') {
+	test_fail
+}
+
+if (&Tmp-String-3 != 'bob') {
+	test_fail
+}
+
+if (&Tmp-String-4 != 'bob') {
+	test_fail
+}
+
+if (&Tmp-String-5 != 'bob') {
+	test_fail
+}
+
+if (&Tmp-String-6 != 'bob') {
+	test_fail
+}
+
+if (&Tmp-String-7 != '') {
+	test_fail
+}
+
+if (&Tmp-String-8 != '') {
+	test_fail
+}
+
+success

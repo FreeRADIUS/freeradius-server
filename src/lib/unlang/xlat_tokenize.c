@@ -1102,12 +1102,23 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 			break;
 
 		case XLAT_TMPL:
+		{
 			if (tmpl_is_attr(node->vpt)) {
 				fr_assert(!node->flags.pure);
 				INFO_INDENT("attribute (%s)", tmpl_da(node->vpt)->name);
 				if (tmpl_num(node->vpt) != NUM_ANY) {
+					FR_DLIST_HEAD(tmpl_request_list) const *list;
+					tmpl_request_t *rr = NULL;
+
 					INFO_INDENT("{");
-					INFO_INDENT("ref  %d", tmpl_request(node->vpt));
+
+					/*
+					 *	Loop over the request references
+					 */
+					list = tmpl_request(node->vpt);
+					while ((rr = tmpl_request_list_next(list, rr))) {
+						INFO_INDENT("ref  %d", rr->request);
+					}
 					INFO_INDENT("list %d", tmpl_list(node->vpt));
 					if (tmpl_num(node->vpt) != NUM_ANY) {
 						if (tmpl_num(node->vpt) == NUM_COUNT) {
@@ -1125,6 +1136,7 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 			} else {
 				INFO_INDENT("tmpl (%s)", node->fmt);
 			}
+		}
 			break;
 
 		case XLAT_VIRTUAL:

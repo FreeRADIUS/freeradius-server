@@ -280,6 +280,11 @@ typedef enum {
 	TMPL_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
 } tmpl_attr_prefix_t;
 
+/** Define entry and head types for tmpl request references
+ *
+ */
+FR_DLIST_TYPES(tmpl_request_list)
+
 struct tmpl_attr_rules_s {
 	fr_dict_t const		*dict_def;		//!< Default dictionary to use
 							///< with unqualified attribute references.
@@ -290,8 +295,18 @@ struct tmpl_attr_rules_s {
 							///< and the presence of any of those qualifiers
 							///< will be treated as an error.
 
-	tmpl_request_ref_t	request_def;		//!< Default request to use with
+	FR_DLIST_HEAD(tmpl_request_list) _CONST *request_def;	//!< Default request to use with
 							///< unqualified attribute references.
+							///< If NULL the request is assumed to
+							///< but the current request.
+							///< Usually this will be one of
+							///< - tmpl_request_def_current
+							///< - tmpl_request_def_outer
+							///< - tmpl_request_def_parent
+							///< If a custom list needs to be
+							///< used it should be allocated on
+							///< the stack and a pointer to it
+							///< placed here.
 
 	tmpl_pair_list_t	list_def;		//!< Default list to use with unqualified
 							///< attribute reference.
@@ -434,11 +449,6 @@ typedef struct {
  */
 FR_DLIST_FUNCS(tmpl_attr_list, tmpl_attr_t, entry)
 
-/** Define entry and head types for tmpl request references
- *
- */
-FR_DLIST_TYPES(tmpl_request_list)
-
 /** An element in a list of request references
  *
  */
@@ -575,7 +585,7 @@ typedef struct {
 						///< were evaluated.
 
 	TALLOC_CTX		*list_ctx;	//!< Where to allocate new attributes if building
-						///< out from the current extents of the tree.X
+						///< out from the current extents of the tree.
 	fr_pair_list_t		*list;		//!< List that we tried to evaluate ar in and failed.
 						///< Or if ar is NULL, the list that represents the
 						///< deepest grouping or TLV attribute the chain of
@@ -618,13 +628,13 @@ static inline tmpl_type_t tmpl_type_from_str(char const *type)
  *
  * @{
  */
-static inline tmpl_request_ref_t tmpl_request(tmpl_t const *vpt)
+static inline FR_DLIST_HEAD(tmpl_request_list) const *tmpl_request(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unresolved(vpt) ||
 			 tmpl_is_list(vpt));
 
-	return ((tmpl_request_t *)tmpl_request_list_tail(&vpt->data.attribute.rr))->request;
+	return &vpt->data.attribute.rr;
 }
 
 /** The number of request references contained within a tmpl
@@ -892,10 +902,6 @@ TALLOC_CTX		*tmpl_list_ctx(request_t *request, tmpl_pair_list_t list_name);
 
 size_t			tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_list_t default_list) CC_HINT(nonnull);
 
-int			tmpl_request_ptr(request_t **request, tmpl_request_ref_t name) CC_HINT(nonnull);
-
-size_t			tmpl_request_ref_by_name(tmpl_request_ref_t *out, char const *name, tmpl_request_ref_t unknown) CC_HINT(nonnull);
-
 tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,4));
 
 tmpl_t			*tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote,
@@ -907,6 +913,70 @@ tmpl_t			*tmpl_init(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote,
 				   tmpl_rules_t const *t_rules) CC_HINT(nonnull(1,4));
 
 tmpl_t			*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len);
+
+/** @name Parse request qualifiers
+ *
+ * @{
+ */
+/** Static default request ref list for the current request
+ *
+ * Passed as request_def in tmpl_attr_rules_t.
+ */
+extern FR_DLIST_HEAD(tmpl_request_list) tmpl_request_def_current;
+
+/** Static default request ref list for the outer request
+ *
+ * Passed as request_def in tmpl_attr_rules_t.
+ */
+extern FR_DLIST_HEAD(tmpl_request_list) tmpl_request_def_outer;
+
+/** Static default request ref list for the parent request
+ *
+ * Passed as request_def in tmpl_attr_rules_t.
+ */
+extern FR_DLIST_HEAD(tmpl_request_list) tmpl_request_def_parent;
+
+int			tmpl_request_ptr(request_t **request, FR_DLIST_HEAD(tmpl_request_list) const *rql) CC_HINT(nonnull);
+
+void			tmpl_request_ref_list_debug(FR_DLIST_HEAD(tmpl_request_list) const *rql);
+
+int8_t			tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a,
+						  FR_DLIST_HEAD(tmpl_request_list) const *b);
+
+/** Returns true if the specified qualifier list points to the current request
+ *
+ * @param[in] _list	to check.
+ * @return
+ *	- true if the list only contains a current request qualifier.
+ *	- false otherwise.
+ */
+#define tmpl_request_ref_is_current(_list) (tmpl_request_ref_list_cmp(_list, &tmpl_request_def_current) == 0)
+
+/** Returns true if the specified qualifier list points to the parent request
+ *
+ * @param[in] _list	to check.
+ * @return
+ *	- true if the list only contains a parent request qualifier.
+ *	- false otherwise.
+ */
+#define tmpl_request_ref_is_parent(_list) (tmpl_request_ref_list_cmp(_list, &tmpl_request_def_parent) == 0)
+
+/** Returns true if the specified qualifier list points to the outer request
+ *
+ * @param[in] _list	to check.
+ * @return
+ *	- true if the list only contains a outer request qualifier.
+ *	- false otherwise.
+ */
+#define tmpl_request_ref_is_outer(_list) (tmpl_request_ref_list_cmp(_list, &tmpl_request_def_outer) == 0)
+
+
+fr_slen_t		tmpl_request_ref_list_afrom_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+							   FR_DLIST_HEAD(tmpl_request_list) _CONST **out,
+							   fr_sbuff_t *in,
+							   fr_sbuff_parse_rules_t const *p_rules,
+							   tmpl_attr_rules_t const *t_rules);
+/** @} */
 
 void			tmpl_set_name_printf(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,3));
 
@@ -936,7 +1006,7 @@ void			tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t from, int16_t to) CC_HINT
 
 void			tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonnull);
 
-void			tmpl_attr_set_request(tmpl_t *vpt, tmpl_request_ref_t request) CC_HINT(nonnull);
+void			tmpl_attr_set_request_ref(tmpl_t *vpt, FR_DLIST_HEAD(tmpl_request_list) const *request_def) CC_HINT(nonnull);
 
 void			tmpl_attr_set_list(tmpl_t *vpt, tmpl_pair_list_t list) CC_HINT(nonnull);
 

@@ -657,6 +657,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 	TALLOC_CTX	*parent_ctx;
 
 	tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
+	TALLOC_CTX	*tmp_ctx = NULL;		/* Temporary context for request lists */
 
 	/*
 	 *	The first map has ctx as the parent context.
@@ -671,15 +672,23 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 	 */
 	cs_list = p = cf_section_name2(cs);
 	if (cs_list && (strcmp(cf_section_name1(cs), "update") == 0)) {
-		p += tmpl_request_ref_by_name(&our_lhs_rules.attr.request_def, p, REQUEST_CURRENT);
-		if (our_lhs_rules.attr.request_def == REQUEST_UNKNOWN) {
+		fr_slen_t slen;
+
+		MEM(tmp_ctx = talloc_init_const("tmp"));
+
+		slen = tmpl_request_ref_list_afrom_substr(ctx, NULL, &our_lhs_rules.attr.request_def,
+							  &FR_SBUFF_IN(p, strlen(p)), NULL, NULL);
+		if (slen < 0) {
 			cf_log_err(ci, "Default request specified in mapping section is invalid");
+			talloc_free(tmp_ctx);
 			return -1;
 		}
+		p += slen;
 
 		our_lhs_rules.attr.list_def = fr_table_value_by_str(pair_list_table, p, PAIR_LIST_UNKNOWN);
 		if (our_lhs_rules.attr.list_def == PAIR_LIST_UNKNOWN) {
 			cf_log_err(ci, "Default list \"%s\" specified in mapping section is invalid", p);
+			talloc_free(tmp_ctx);
 			return -1;
 		}
 	}
@@ -694,6 +703,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 			 *	Free in reverse as successive entries have their
 			 *	prececessors as talloc parent contexts
 			 */
+			talloc_free(tmp_ctx);
 			map_list_talloc_reverse_free(out);
 			return -1;
 		}
@@ -819,6 +829,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 		map_list_insert_tail(out, map);
 	}
 
+	talloc_free(tmp_ctx);
 	return 0;
 
 }
@@ -969,7 +980,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	tmpl_attr_set_leaf_da(map->lhs, vp->da);
 	tmpl_attr_set_leaf_num(map->lhs, NUM_ANY);
 
-	tmpl_attr_set_request(map->lhs, rules->attr.request_def);
+	tmpl_attr_set_request_ref(map->lhs, rules->attr.request_def);
 	tmpl_attr_set_list(map->lhs, rules->attr.list_def);
 
 	tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->lhs, TMPL_ATTR_REF_PREFIX_YES, NULL);
@@ -1404,7 +1415,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 	map_t			exp_map;
 	tmpl_t			*exp_lhs;
-	tmpl_request_ref_t	request_ref;
 	tmpl_pair_list_t	list_ref;
 
 	tmpl_dcursor_ctx_t	cc = {};
@@ -1488,11 +1498,9 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	}
 
 	context = request;
-	request_ref = tmpl_request(map->lhs);
-	if (tmpl_request_ptr(&context, request_ref) < 0) {
-		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to invalid request reference \"%s\" in left side of map",
-			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
-			fr_table_str_by_value(tmpl_request_ref_table, request_ref, "<INVALID>"));
+	if (tmpl_request_ptr(&context, tmpl_request(map->lhs)) < 0) {
+		RPEDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to error in left side of map",
+			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
 		rcode = -2;
 		goto finish;
 	}

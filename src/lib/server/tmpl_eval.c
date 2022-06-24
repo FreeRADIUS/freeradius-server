@@ -199,37 +199,41 @@ fr_radius_packet_t *tmpl_packet_ptr(request_t *request, tmpl_pair_list_t list)
  * to a #request_t higher in the chain than the current #request_t.
  *
  * @see tmpl_pair_list
- * @param[in,out] context #request_t to start resolving from, and where to write
- *	a pointer to the resolved #request_t back to.
- * @param[in] name (request) to resolve.
+ * @param[in,out] context	#request_t to start resolving from, and where to write
+ *				a pointer to the resolved #request_t back to.
+ * @param[in] rql		list of request qualifiers to follow.
  * @return
  *	- 0 if request is valid in this context.
  *	- -1 if request is not valid in this context.
  */
-int tmpl_request_ptr(request_t **context, tmpl_request_ref_t name)
+int tmpl_request_ptr(request_t **context, FR_DLIST_HEAD(tmpl_request_list) const *rql)
 {
+	tmpl_request_t *rr = NULL;
 	request_t *request = *context;
 
-	switch (name) {
-	case REQUEST_CURRENT:
-		return 0;
+	while ((rr = tmpl_request_list_next(rql, rr))) {
+		switch (rr->request) {
+		case REQUEST_CURRENT:
+			continue;	/* noop */
 
-	case REQUEST_PARENT:	/* Navigate up one level */
-		if (!request->parent) return -1;
-		*context = request->parent;
-		break;
+		case REQUEST_PARENT:	/* Navigate up one level */
+			if (!request->parent) return -1;
+			request = request->parent;
+			break;
 
-	case REQUEST_OUTER:	/* Navigate to the outermost request */
-		if (!request->parent) return -1;
-		while (request->parent) request = request->parent;
-		*context = request;
-		break;
+		case REQUEST_OUTER:	/* Navigate to the outermost request */
+			if (!request->parent) return -1;
+			while (request->parent) request = request->parent;
+			break;
 
-	case REQUEST_UNKNOWN:
-	default:
-		fr_assert(0);
-		return -1;
+		case REQUEST_UNKNOWN:
+		default:
+			fr_assert(0);
+			return -1;
+		}
 	}
+
+	*context = request;
 
 	return 0;
 }

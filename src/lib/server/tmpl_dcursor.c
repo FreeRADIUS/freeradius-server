@@ -340,7 +340,6 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 {
 	fr_pair_t		*vp = NULL;
 	fr_pair_list_t		*list_head;
-	tmpl_request_t		*rr = NULL;
 	TALLOC_CTX		*list_ctx;
 
 	TMPL_VERIFY(vpt);
@@ -352,17 +351,11 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 	/*
 	 *	Navigate to the correct request context
 	 */
-	while ((rr = tmpl_request_list_next(&vpt->data.attribute.rr, rr))) {
-		if (tmpl_request_ptr(&request, rr->request) < 0) {
-			if (err) {
-				*err = -3;
-				fr_strerror_printf("Request context \"%s\" not available",
-						   fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"));
-			}
-		error:
-			memset(cc, 0, sizeof(*cc));	/* so tmpl_dursor_clear doesn't explode */
-			return NULL;
-		}
+	if (tmpl_request_ptr(&request, tmpl_request(vpt)) < 0) {
+		if (err) *err = -3;
+	error:
+		memset(cc, 0, sizeof(*cc));	/* so tmpl_dursor_clear doesn't explode */
+		return NULL;
 	}
 
 	/*
@@ -497,7 +490,6 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	tmpl_dcursor_ctx_t	cc;
 	tmpl_dcursor_nested_t	*ns = NULL;
 
-	tmpl_request_t		*rr = NULL;
 	tmpl_attr_t const	*ar = NULL;
 
 	TMPL_VERIFY(vpt);
@@ -507,13 +499,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	/*
 	 *	Navigate to the correct request context
 	 */
-	while ((rr = tmpl_request_list_next(&vpt->data.attribute.rr, rr))) {
-		if (tmpl_request_ptr(&request, rr->request) < 0) {
-			fr_strerror_printf("Request context \"%s\" not available",
-					   fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"));
-			return -3;
-		}
-	}
+	if (tmpl_request_ptr(&request, tmpl_request(vpt)) < 0) return -3;
 
 	if (!vpt->rules.attr.list_as_attr) {
 		/*

@@ -485,7 +485,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 	 *	with the request pairs.
 	 */
 	if (!tmpl_is_attr(map->lhs) ||
-	    (tmpl_request(map->lhs) != REQUEST_CURRENT) ||
+	    !tmpl_request_ref_is_current(tmpl_request(map->lhs)) ||
 	    (tmpl_list(map->lhs) != PAIR_LIST_REQUEST)) {
 		return true;
 	}

@@ -2417,9 +2417,9 @@ static size_t command_touch(command_result_t *result, UNUSED command_file_ctx_t 
 /** Callback for a tmpl rule parser
  *
  */
-typedef ssize_t(*command_tmpl_rule_func)(tmpl_rules_t *rules, fr_sbuff_t *value);
+typedef ssize_t(*command_tmpl_rule_func)(TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value);
 
-static ssize_t command_tmpl_rule_allow_foreign(tmpl_rules_t *rules, fr_sbuff_t *value)
+static ssize_t command_tmpl_rule_allow_foreign(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	bool res;
 	ssize_t slen;
@@ -2429,7 +2429,7 @@ static ssize_t command_tmpl_rule_allow_foreign(tmpl_rules_t *rules, fr_sbuff_t *
 	return slen;
 }
 
-static ssize_t command_tmpl_rule_allow_unknown(tmpl_rules_t *rules, fr_sbuff_t *value)
+static ssize_t command_tmpl_rule_allow_unknown(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	bool res;
 	ssize_t slen;
@@ -2439,7 +2439,7 @@ static ssize_t command_tmpl_rule_allow_unknown(tmpl_rules_t *rules, fr_sbuff_t *
 	return slen;
 }
 
-static ssize_t command_tmpl_rule_allow_unresolved(tmpl_rules_t *rules, fr_sbuff_t *value)
+static ssize_t command_tmpl_rule_allow_unresolved(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	bool res;
 	ssize_t slen;
@@ -2449,7 +2449,7 @@ static ssize_t command_tmpl_rule_allow_unresolved(tmpl_rules_t *rules, fr_sbuff_
 	return slen;
 }
 
-static ssize_t command_tmpl_rule_attr_parent(tmpl_rules_t *rules, fr_sbuff_t *value)
+static ssize_t command_tmpl_rule_attr_parent(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	return fr_dict_attr_by_oid_substr(NULL,
 					  &rules->attr.parent,
@@ -2458,7 +2458,7 @@ static ssize_t command_tmpl_rule_attr_parent(tmpl_rules_t *rules, fr_sbuff_t *va
 					  value, NULL);
 }
 
-static ssize_t command_tmpl_rule_disallow_internal(tmpl_rules_t *rules, fr_sbuff_t *value)
+static ssize_t command_tmpl_rule_disallow_internal(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	bool res;
 	ssize_t slen;
@@ -2468,7 +2468,7 @@ static ssize_t command_tmpl_rule_disallow_internal(tmpl_rules_t *rules, fr_sbuff
 	return slen;
 }
 
-static ssize_t command_tmpl_rule_disallow_qualifiers(tmpl_rules_t *rules, fr_sbuff_t *value)
+static ssize_t command_tmpl_rule_disallow_qualifiers(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	bool res;
 	ssize_t slen;
@@ -2478,7 +2478,7 @@ static ssize_t command_tmpl_rule_disallow_qualifiers(tmpl_rules_t *rules, fr_sbu
 	return slen;
 }
 
-static ssize_t command_tmpl_rule_list_def(tmpl_rules_t *rules, fr_sbuff_t *value)
+static ssize_t command_tmpl_rule_list_def(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	ssize_t slen;
 
@@ -2492,13 +2492,16 @@ static ssize_t command_tmpl_rule_list_def(tmpl_rules_t *rules, fr_sbuff_t *value
 	return slen;
 }
 
-static ssize_t command_tmpl_rule_request_def(tmpl_rules_t *rules, fr_sbuff_t *value)
+static ssize_t command_tmpl_rule_request_def(TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	ssize_t slen;
+	fr_slen_t			 slen;
 
-	fr_sbuff_out_by_longest_prefix(&slen, &rules->attr.request_def, tmpl_request_ref_table, value, REQUEST_UNKNOWN);
-
-	if (rules->attr.request_def == REQUEST_UNKNOWN) {
+	slen = tmpl_request_ref_list_afrom_substr(ctx, NULL,
+						  &rules->attr.request_def,
+						  value,
+						  NULL,
+						  NULL);
+	if (slen < 0) {
 		fr_strerror_printf("Invalid request specifier \"%pV\"",
 				   fr_box_strvalue_len(fr_sbuff_current(value), fr_sbuff_remaining(value)));
 	}
@@ -2547,7 +2550,7 @@ static size_t command_tmpl_rules(command_result_t *result, command_file_ctx_t *c
 
 		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 
-		if (func(&cc->tmpl_rules, &sbuff) <= 0) RETURN_COMMAND_ERROR();
+		if (func(cc->tmp_ctx, &cc->tmpl_rules, &sbuff) <= 0) RETURN_COMMAND_ERROR();
 	}
 
 	return fr_sbuff_used(&sbuff);
