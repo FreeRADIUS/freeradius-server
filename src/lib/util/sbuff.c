@@ -1140,11 +1140,14 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
+	/* coverity[result_independent_of_operands] */ \
 	if ((num > (_max)) || ((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == LLONG_MAX))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return -1; \
-	} else if ((num < (_min)) || ((errno == ERANGE) && (num == LLONG_MIN))) { \
+	} else \
+	/* coverity[result_independent_of_operands] */ \
+	if ((num < (_min)) || ((errno == ERANGE) && (num == LLONG_MIN))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
 		*out = (_type)(_min); \
 		return -1; \
@@ -1203,6 +1206,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
+	/* coverity[result_independent_of_operands] */ \
 	if ((num > (_max)) || ((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == ULLONG_MAX))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
