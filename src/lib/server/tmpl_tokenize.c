@@ -50,7 +50,6 @@ RCSID("$Id$")
  *			- REQUEST_UNKNOWN
  */
 #define TMPL_REQUEST_REF_DEF(_name, _def) \
-extern FR_DLIST_HEAD(tmpl_request_list) _name; \
 static tmpl_request_t _name ## _entry = { \
 	.entry = { \
 		.entry = { \
