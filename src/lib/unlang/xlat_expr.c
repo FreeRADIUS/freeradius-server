@@ -1478,7 +1478,7 @@ static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_s
 
 static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_sbuff_parse_rules_t const *bracket_rules);
+			      fr_sbuff_parse_rules_t const *bracket_rules, char *out_c);
 
 static fr_table_num_sorted_t const expr_quote_table[] = {
 	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
@@ -1504,7 +1504,7 @@ static size_t expr_quote_table_len = NUM_ELEMENTS(expr_quote_table);
  */
 static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_sbuff_parse_rules_t const *bracket_rules)
+			      fr_sbuff_parse_rules_t const *bracket_rules, char *out_c)
 {
 	ssize_t			slen;
 	xlat_exp_t		*node = NULL, *unary = NULL;
@@ -1560,16 +1560,21 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	that we return that, and not the child node
 	 */
 	if (!func) {
-		return tokenize_field(head, out, in, p_rules, t_rules, bracket_rules);
+		return tokenize_field(head, out, in, p_rules, t_rules, bracket_rules, out_c);
 	}
-	
+
+	/*
+	 *	Tokenize_field may reset this.
+	 */
+	*out_c = c;
+
 	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, func->name, strlen(func->name)));
 	MEM(unary->call.args = xlat_exp_head_alloc(unary));
 	unary->fmt = fmt;
 	unary->call.func = func;
 	unary->flags = func->flags;
 
-	slen = tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules);
+	slen = tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules, out_c);
 	if (slen < 0) {
 		talloc_free(unary);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
@@ -1600,6 +1605,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 */
 
 	*out = unary;
+
 	return fr_sbuff_set(in, &our_in);
 }
 
@@ -1793,7 +1799,7 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
  */
 static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_sbuff_parse_rules_t const *bracket_rules)
+			      fr_sbuff_parse_rules_t const *bracket_rules, char *out_c)
 {
 	ssize_t			slen;
 	xlat_exp_t		*node = NULL;
@@ -1858,6 +1864,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		 *	next thing shoud be an operator, not another
 		 *	value.
 		 */
+		*out_c = '\0';
 		goto done;
 	}
 
@@ -2175,6 +2182,7 @@ static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_s
 	fr_sbuff_marker_t  m_lhs, m_op, m_rhs;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_head_t *args;
+	char c = '\0';
 
 	XLAT_DEBUG("EXPRESSION <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
@@ -2185,7 +2193,7 @@ static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_s
 	/*
 	 *	Get the LHS of the operation.
 	 */
-	slen = tokenize_unary(head, &lhs, &our_in, p_rules, t_rules, bracket_rules);
+	slen = tokenize_unary(head, &lhs, &our_in, p_rules, t_rules, bracket_rules, &c);
 	if (slen < 0) return slen;
 
 	if (slen == 0) {
@@ -2267,6 +2275,15 @@ redo:
 	if (precedence[op] <= precedence[prev]) {
 		fr_sbuff_set(&our_in, &m_op);
 		goto done;
+	}
+
+	/*
+	 *	&Foo and !&Foo are permitted as the LHS of || and &&
+	 */
+	if (((c == '!') || (c == '~')) && (op != T_LAND) && (op != T_LOR)) {
+		fr_strerror_printf("Operator '%c' is only applied to the left hand side of the '%s' operation, add (..) to evaluate the operation first", c, fr_tokens[op]);
+		fr_sbuff_set(&our_in, &m_lhs);
+		return -fr_sbuff_used(&our_in);
 	}
 
 	fr_sbuff_skip_whitespace(&our_in);

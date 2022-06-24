@@ -90,15 +90,30 @@ match ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 xlat_purify (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 
-#xlat_purify (!&User-Name == &User-Password || &Filter-Id == &Reply-Message)
-#match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-
 #  different from the previous ones.
 xlat_purify (!((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)))
 match !((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 
 xlat_purify (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+
+#
+#  '!' is higher precedence that '==', so the '!' applies just to the User-Name
+#
+xlat_purify (!&User-Name == &User-Password || &Filter-Id == &Reply-Message)
+match ERROR offset 1: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
+
+#
+#  LHS is a boolean, which we then compare to a string
+#
+xlat_purify (!"foo" == "bar")
+match ERROR offset 1: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
+
+xlat_purify ((!"foo") == "bar")
+match NULL
+
+xlat_purify ((!"foo") == false)
+match true
 
 #
 #  @todo - add a flag which says to parse the FULL thing, or only parse part of it?
@@ -143,7 +158,7 @@ xlat_purify &User-Name != &User-Password
 match (&User-Name != &User-Password)
 
 xlat_purify !&User-Name != &User-Password
-match (!&User-Name != &User-Password)
+match ERROR offset 0: Operator '!' is only applied to the left hand side of the '!=' operation, add (..) to evaluate the operation first
 
 #
 #  We allow a cast for the existence check.  Why not?
@@ -741,4 +756,4 @@ match %{rcode:'handled'}
 
 
 count
-match 304
+match 312
