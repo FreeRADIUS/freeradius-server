@@ -1071,12 +1071,28 @@ ssize_t			tmpl_regex_compile(tmpl_t *vpt, bool subcaptures) CC_HINT(nonnull);
 /** @name Print the contents of a #tmpl_t
  * @{
  */
-ssize_t			tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix) CC_HINT(nonnull(1));
+fr_slen_t		tmpl_request_ref_list_print(fr_sbuff_t *out, FR_DLIST_HEAD(tmpl_request_list) const *rql)
+			CC_HINT(nonnull(1,2));
 
-ssize_t			tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
-				   tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1));
+static inline fr_slen_t tmpl_request_ref_list_aprint(TALLOC_CTX *ctx, char **out, FR_DLIST_HEAD(tmpl_request_list) const *rql)
+			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_request_ref_list_print, rql)
 
-ssize_t			tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix) CC_HINT(nonnull);
+fr_slen_t		tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix) CC_HINT(nonnull(1,2));
+
+static inline fr_slen_t tmpl_attr_aprint(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
+			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_attr_print, vpt, ar_prefix)
+
+fr_slen_t		tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
+				   tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1,2));
+
+static inline fr_slen_t tmpl_aprint(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt,
+				    tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules)
+			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_print, vpt, ar_prefix, e_rules)
+
+fr_slen_t		tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix) CC_HINT(nonnull);
+
+static inline fr_slen_t tmpl_aprint_quoted(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
+			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_print_quoted, vpt, ar_prefix)
 /** @} */
 
 /** @name Expand the tmpl, returning one or more values

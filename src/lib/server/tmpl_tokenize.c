@@ -4220,6 +4220,22 @@ ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures)
 /** @name Print the contents of a #tmpl_t
  * @{
  */
+fr_slen_t tmpl_request_ref_list_print(fr_sbuff_t *out, FR_DLIST_HEAD(tmpl_request_list) const *rql)
+{
+	fr_sbuff_t		our_out = FR_SBUFF(out);
+	tmpl_request_t		*rr = tmpl_request_list_head(rql);
+
+	/*
+	 *	Print request references
+	 */
+	while (rr) {
+		FR_SBUFF_IN_TABLE_STR_RETURN(&our_out, tmpl_request_ref_table, rr->request, "<INVALID>");
+		rr = tmpl_request_list_next(rql, rr);
+		if (rr) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+	}
+
+	return fr_sbuff_set(out, &our_out);
+}
 
 /** Print an attribute or list #tmpl_t to a string
  *
@@ -4238,15 +4254,13 @@ ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures)
  *	- 0 invalid argument.
  *	- <0 the number of bytes we would have needed to complete the print.
  */
-ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
+fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
 {
-	tmpl_request_t		*rr = NULL;
 	tmpl_attr_t		*ar = NULL;
 	fr_da_stack_t		stack;
 	char			printed_rr = false;
 	fr_sbuff_t		our_out = FR_SBUFF(out);
-
-	if (unlikely(!vpt)) return 0;
+	fr_slen_t		slen;
 
 	TMPL_VERIFY(vpt);
 
@@ -4275,12 +4289,9 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 	/*
 	 *	Print request references
 	 */
-	while ((rr = tmpl_request_list_next(&vpt->data.attribute.rr, rr))) {
-		if (rr->request == REQUEST_CURRENT) continue;	/* Don't print the default request */
-
-		FR_SBUFF_IN_TABLE_STR_RETURN(&our_out, tmpl_request_ref_table, rr->request, "<INVALID>");
-		printed_rr = true;
-	}
+	slen = tmpl_request_ref_list_print(&our_out, &vpt->data.attribute.rr);
+	if (slen > 0) printed_rr = true;
+	if (slen < 0) return slen;
 
 	/*
 	 *	Print list
@@ -4463,8 +4474,8 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
  *	- 0 invalid argument.
  *	- <0 the number of bytes we would have needed to complete the print.
  */
-ssize_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
-		   tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules)
+fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
+		     tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules)
 {
 	fr_sbuff_t	our_out = FR_SBUFF(out);
 
@@ -4543,7 +4554,7 @@ ssize_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
  *	- 0 invalid argument.
  *	- <0 the number of bytes we would have needed to complete the print.
  */
-ssize_t tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
+fr_slen_t tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
 {
 	fr_sbuff_t our_out = FR_SBUFF(out);
 
