@@ -120,7 +120,7 @@ RUN git clone --depth 1 --no-single-branch -b ${branch} ${source}
 #  Install build dependencies for all branches from v3 onwards
 #
 WORKDIR freeradius-server
-RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[0-9x]*\.x|master)$");\
+RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[0-9x]*\.x|master|${branch})$" | sort -u);\
     do \
         echo "BRANCH $i"; \
         git checkout $i; \
