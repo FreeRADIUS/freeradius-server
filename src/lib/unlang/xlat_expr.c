@@ -1509,7 +1509,6 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	ssize_t			slen;
 	xlat_exp_t		*node = NULL, *unary = NULL;
 	xlat_t			*func = NULL;
-	char const		*fmt = NULL;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	char			c = '\0';
 
@@ -1521,7 +1520,6 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	we allocate.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '!')) { /* unary not */
-		fmt = "!";
 		func = xlat_func_find("unary_not", 9);
 		fr_assert(func != NULL);
 		c = '!';
@@ -1529,7 +1527,6 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	}
 	else if (fr_sbuff_next_if_char(&our_in, '-')) { /* unary minus */
-		fmt = "-";
 		func = xlat_func_find("unary_minus", 11);
 		fr_assert(func != NULL);
 		c = '-';
@@ -1537,7 +1534,6 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	}
 	else if (fr_sbuff_next_if_char(&our_in, '~')) { /* unary complement */
-		fmt = "~";
 		func = xlat_func_find("unary_complement", 16);
 		fr_assert(func != NULL);
 		c = '~';
@@ -1564,13 +1560,13 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	}
 
 	/*
-	 *	Tokenize_field may reset this.
+	 *	Tokenize_field may reset this if the operation is wrapped inside of another expression.
 	 */
 	*out_c = c;
 
 	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, func->name, strlen(func->name)));
 	MEM(unary->call.args = xlat_exp_head_alloc(unary));
-	unary->fmt = fmt;
+	unary->fmt = fr_tokens[func->token];
 	unary->call.func = func;
 	unary->flags = func->flags;
 
