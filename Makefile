@@ -364,16 +364,17 @@ BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 # This can't depend on .git/ (dirs don't work) or .git/HEAD (not present in submodules)
 # so it's just left as a phony target.
 freeradius-server-$(RADIUSD_VERSION_STRING).tar:
-	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) > $@
+	rm -rf $(top_srcdir)/$(BUILD_DIR)/freeradius-server-$(RADIUSD_VERSION_STRING)
+	mkdir -p $(top_srcdir)/$(BUILD_DIR)
+	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) | tar -C $(top_srcdir)/$(BUILD_DIR) -xf -
+	git submodule foreach --recursive 'git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/$$sm_path/ $$sha1 | tar -C $(top_srcdir)/$(BUILD_DIR) -xf -'
 ifneq "$(EXT_MODULES)" ""
-	rm -rf build/freeradius-server-$(RADIUSD_VERSION_STRING)
-	cd $(BUILD_DIR) && tar -xf ../$@
 	for x in $(subst _ext,,$(EXT_MODULES)); do \
-		cd ${top_srcdir}/$${x}_ext; \
-		git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/$$x/ $(BRANCH) | (cd ${top_srcdir}/$(BUILD_DIR) && tar -xf -); \
+		cd $(top_srcdir)/$${x}_ext && \
+		git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/$$x/ $(BRANCH) | tar -C $(top_srcdir)/$(BUILD_DIR) -xf -; \
 	done
-	cd $(BUILD_DIR) && tar -cf ../$@ freeradius-server-$(RADIUSD_VERSION_STRING)
 endif
+	tar -cf $@ -C $(top_srcdir)/$(BUILD_DIR) freeradius-server-$(RADIUSD_VERSION_STRING)
 
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz: freeradius-server-$(RADIUSD_VERSION_STRING).tar
 	gzip < $^ > $@
