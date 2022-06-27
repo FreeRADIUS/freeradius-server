@@ -263,7 +263,7 @@ do { \
  *	struct field size
  */
 #define SIZEOF_MEMBER(_t, _m) sizeof(((_t *)0)->_m)
-#define NUM_ELEMENTS(_t) (sizeof((_t)) / sizeof(*(_t)))
+#define NUM_ELEMENTS(_t) (sizeof((_t)) / sizeof((_t)[0]))
 
 /*
  *	For use with multidimensional arrays where

@@ -34,16 +34,20 @@
 #include <assert.h>
 #include <signal.h>
 
+#ifndef FALL_THROUGH
 /** clang 10 doesn't recognised the FALL-THROUGH comment anymore
  */
-#if (defined(__clang__) && (__clang_major__ >= 10)) || (defined(__GNUC__) && __GNUC__ >= 7)
-#  define FALL_THROUGH		CC_HINT(fallthrough)
-#else
-#  define FALL_THROUGH		((void)0)
+#  if (defined(__clang__) && (__clang_major__ >= 10)) || (defined(__GNUC__) && __GNUC__ >= 7)
+#    define FALL_THROUGH		__attribute__((fallthrough))
+#  else
+#    define FALL_THROUGH		((void)0)
+#  endif
 #endif
 
 #define XSTRINGIFY(x) #x
 #define STRINGIFY(x) XSTRINGIFY(x)
+
+#define UNCONST(_type, _ptr)		((_type)((uintptr_t)(_ptr)))
 
 /** The set of executables used
  *
@@ -590,7 +594,7 @@ static void add_rpath(count_chars *cc, char const *path);
 static pid_t spawn_pid;
 static char const *program = NULL;
 
-static void usage(int code)
+static void __attribute__((noreturn)) usage(int code)
 {
 	printf("Usage: jlibtool [OPTIONS...] COMMANDS...\n");
 	printf("jlibtool is a replacement for GNU libtool with similar functionality.\n\n");
@@ -843,10 +847,8 @@ static void external_spawn_sig_handler(int signo)
 	kill(spawn_pid, signo);	/* Forward the signal to the process we're executing */
 }
 
-static int external_spawn(command_t *cmd, char const *file, char const **argv)
+static int external_spawn(command_t *cmd, __attribute__((unused)) char const *file, char const **argv)
 {
-	file = file;		/* -Wunused */
-
 	if (!cmd->options.silent) {
 		char const **argument = argv;
 		NOTICE("Executing: ");
@@ -870,7 +872,7 @@ static int external_spawn(command_t *cmd, char const *file, char const **argv)
 		 */
 		spawn_pid = fork();
 		if (spawn_pid == 0) {
-			return execvp(argv[0], (char**)argv);
+			return execvp(argv[0], UNCONST(char **, argv));
 		}
 		else if (spawn_pid < 0) {
 			fprintf(stderr, "Failed fork: %s\n", strerror(errno));
@@ -1274,7 +1276,7 @@ static long safe_strtol(char const *nptr, char const **endptr, int base)
 
 	errno = 0;
 
-	rv = strtol(nptr, (char**)endptr, base);
+	rv = strtol(nptr, UNCONST(char **, endptr), base);
 
 	if (errno == ERANGE) {
 		return 0;
@@ -1355,11 +1357,13 @@ static char const *file_name_stripped(char const *path, bool *allocated)
 static char const *darwin_dynamic_link_function(char const *version_info)
 {
 	char *newarg;
-	long major, minor, patch;
+	long major, minor;
 
 	major = 0;
 	minor = 0;
+#if 0
 	patch = 0;
+#endif
 
 	if (version_info) {
 		major = safe_strtol(version_info, &version_info, 10);
@@ -1376,8 +1380,9 @@ static char const *darwin_dynamic_link_function(char const *version_info)
 					version_info++;
 				}
 
+#if 0
 				patch = safe_strtol(version_info, &version_info, 10);
-
+#endif
 			}
 		}
 	}
@@ -1737,6 +1742,7 @@ static void add_rpath_noinstall(count_chars *cc, char const *arg, int pathlen)
 	lt_const_free(path);
 }
 
+#if 0
 static void add_dylink_noinstall(count_chars *cc, char const *arg, int pathlen,
 						  int extlen)
 {
@@ -1783,6 +1789,7 @@ static void add_dylink_noinstall(count_chars *cc, char const *arg, int pathlen,
 	lt_const_free(install_path);
 	lt_const_free(current_path);
 }
+#endif
 
 /* use -L -llibname to allow to use installed libraries */
 static void add_minus_l(count_chars *cc, char const *arg)
@@ -2090,7 +2097,6 @@ static int parse_output_file_name(char const *arg, command_t *cmd)
 	char const *name;
 	char const *ext;
 	char *newarg = NULL;
-	size_t pathlen;
 
 	cmd->fake_output_name = arg;
 
@@ -2115,7 +2121,6 @@ static int parse_output_file_name(char const *arg, command_t *cmd)
 	}
 
 	ext++;
-	pathlen = name - arg;
 
 	if (strcmp(ext, "la") == 0) {
 		assert(cmd->mode == MODE_LINK);
@@ -2273,7 +2278,7 @@ static void generate_def_file(command_t *cmd)
 	int num_export_args = 0;
 	char *cmd_str;
 	int cmd_size = 0;
-	int a;
+
 
 	if (cmd->output_name) {
 		strcpy(def_file, cmd->output_name);
@@ -2760,7 +2765,7 @@ static int add_for_runtime(command_t *cmd)
 		cmd->output == OUT_LIB) {
 		int i;
 		FILE *f=fopen(cmd->fake_output_name,"w");
-		char *lib_so = basename((char *)cmd->module_name.normal);
+		char *lib_so = basename(UNCONST(char *, cmd->module_name.normal));
 		count_chars *dep = cmd->shared_opts.dependencies;
 
 		if (f == NULL) {
