@@ -218,6 +218,7 @@ static void _raddict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *l
 	children = dict_attr_children(da);
 	len = talloc_array_length(children);
 	for (i = 0; i < len; i++) {
+		/* coverity[dereference] */
 		for (p = children[i]; p; p = p->next) {
 			_raddict_export(dict, count, low, high, p, lvl + 1);
 		}
