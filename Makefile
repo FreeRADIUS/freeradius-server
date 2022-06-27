@@ -342,6 +342,12 @@ check-includes:
 TAGS:
 	etags `find src -type f -name '*.[ch]' -print` > $@
 
+.PHONY: compile_commands.json
+compile_commands.json:
+	@echo '[' > $@ ; \
+	find ./build/objs/src -type f -name '*.cc.json' -exec cat {} \; >> $@;\
+	echo ']' >> $@
+
 #
 #  Make test certificates.
 #
