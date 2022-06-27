@@ -1,0 +1,19 @@
+# Should apply only to header files
+If:
+  PathMatch: .*\.h
+Diagnostics:
+  Suppress: [
+      # Clangd doesn't register that functions or macros are used in source files which
+      # include the header files, making these warnings useless.
+      "unused-macros",
+      "unused-function"
+  ]
+---
+# Applies to all files
+Diagnostics:
+  ClangTidy:
+    Remove: [
+      # This is stupid and warns over talloc_array_length using sizeof(foo) / sizeof(foo *)
+      # to determine the number of elements in an array.
+      "bugprone-sizeof-expression"
+    ]
