@@ -1527,6 +1527,13 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	}
 	else if (fr_sbuff_next_if_char(&our_in, '-')) { /* unary minus */
+		fr_sbuff_skip_whitespace(&our_in);
+
+		/*
+		 *	-4 is a number, not minus(4).
+		 */
+		if (fr_sbuff_is_digit(&our_in)) goto field;
+
 		func = xlat_func_find("unary_minus", 11);
 		fr_assert(func != NULL);
 		c = '-';
@@ -1545,6 +1552,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	check_for_double:
 		fr_sbuff_skip_whitespace(&our_in);
+		fr_sbuff_skip_whitespace(&our_in);
 		if (fr_sbuff_next_if_char(&our_in, c)) {
 			fr_strerror_const("Double operator is invalid");
 			return (-fr_sbuff_used(&our_in) + 1);
@@ -1556,6 +1564,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	that we return that, and not the child node
 	 */
 	if (!func) {
+	field:
 		return tokenize_field(head, out, in, p_rules, t_rules, bracket_rules, out_c);
 	}
 
