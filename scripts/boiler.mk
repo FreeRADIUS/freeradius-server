@@ -326,6 +326,7 @@ define COMPILE_C_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(ECHO) CC $<
 	$(Q)$(strip ${SRC_CC} -o $@ -c -MD ${CPPFLAGS} ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
+	    $(if $(findstring clang,${SRC_CC}),-MJ $(basename $@).cc.json) \
 	    $(addprefix -I, ${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS} $<)
 endef
 else
