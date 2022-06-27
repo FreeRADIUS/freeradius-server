@@ -4,6 +4,9 @@ RCSIDH(rlm_mschap_h, "$Id$")
 
 #include "config.h"
 
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/server/tmpl.h>
+
 #ifdef WITH_AUTH_WINBIND
 #  include <wbclient.h>
 
