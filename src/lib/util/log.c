@@ -185,7 +185,7 @@ void fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void 
 	fr_sbuff_term_t const 	line_endings = FR_SBUFF_TERMS(L("\n"), L("\r"));
 
 	if (log_info->lvl < fr_debug_lvl) {
-		while (read(fd, buffer, sizeof(buffer) > 0));
+		while (read(fd, buffer, sizeof(buffer)) > 0);
 		return;
 	}
 
