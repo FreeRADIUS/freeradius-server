@@ -34,6 +34,17 @@
 #include <assert.h>
 #include <signal.h>
 
+/** clang 10 doesn't recognised the FALL-THROUGH comment anymore
+ */
+#if (defined(__clang__) && (__clang_major__ >= 10)) || (defined(__GNUC__) && __GNUC__ >= 7)
+#  define FALL_THROUGH		CC_HINT(fallthrough)
+#else
+#  define FALL_THROUGH		((void)0)
+#endif
+
+#define XSTRINGIFY(x) #x
+#define STRINGIFY(x) XSTRINGIFY(x)
+
 /** The set of executables used
  *
  */
@@ -471,9 +482,6 @@ static const target_map_t target_map[] = {
 #define PATH_MAX			1024
 #endif
 
-#define XSTRINGIFY(x) #x
-#define STRINGIFY(x) XSTRINGIFY(x)
-
 /* We want to say we are libtool 1.4 for shlibtool compatibility. */
 #define VERSION "1.4"
 
@@ -580,7 +588,7 @@ typedef struct {
 static void add_rpath(count_chars *cc, char const *path);
 
 static pid_t spawn_pid;
-char const *program = NULL;
+static char const *program = NULL;
 
 static void usage(int code)
 {
@@ -871,7 +879,7 @@ static int external_spawn(command_t *cmd, char const *file, char const **argv)
 		else {
 			int status;
 
-#define SIGNAL_FORWARD(_sig) if (signal(_sig, external_spawn_sig_handler) < 0) \
+#define SIGNAL_FORWARD(_sig) if (signal(_sig, external_spawn_sig_handler) == SIG_ERR) \
 	do { \
 		fprintf(stderr, "Failed setting signal handler for %i: %s\n", _sig, strerror(errno)); \
 		exit(EXIT_FAILURE); \
@@ -1266,7 +1274,7 @@ static long safe_strtol(char const *nptr, char const **endptr, int base)
 
 	errno = 0;
 
-	rv = strtol(nptr, (char**)endptr, 10);
+	rv = strtol(nptr, (char**)endptr, base);
 
 	if (errno == ERANGE) {
 		return 0;
@@ -1542,7 +1550,8 @@ static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
 				break;
 			}
 			pass = 1;
-			/* Fall through */
+			FALL_THROUGH;
+
 		case 1:
 			strcpy(ext, target->static_lib_ext);
 			*libtype = TYPE_STATIC_LIB;
@@ -2462,7 +2471,7 @@ static void post_parse_fixup(command_t *cmd)
 			push_count_chars(cmd->arglist, cmd->output_name);
 		}
 		break;
-		
+
 	case MODE_LINK:
 		link_fixup(cmd);
 		break;
