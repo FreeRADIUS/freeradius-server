@@ -296,10 +296,15 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 	if (ifindex) *ifindex = 0;
 	if (when) *when = fr_time_wrap(0);
 
+/*
+ *	Needed for emscripten, seems to be an issue in CMSG_NXTHDR
+ */
+DIAG_OFF(sign-compare)
 	/* Process auxiliary received data in msgh */
 	for (cmsg = CMSG_FIRSTHDR(&msgh);
 	     cmsg != NULL;
 	     cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
+DIAG_ON(sign-compare)
 
 #ifdef IP_PKTINFO
 		if ((cmsg->cmsg_level == SOL_IP) &&
