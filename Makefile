@@ -132,12 +132,12 @@ define n
 
 endef
 $(info $(subst CC,$nCC,$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.${BUILD_LIB_EXT} libfreeradius-make-version.${BUILD_LIB_EXT})))
-endif
+endif # BUILD_MAKE_LIBS
 
 load build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT}(dlopen_gmk_setup)
 load build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT}(version_gmk_setup)
 
-else
+else # libfreeradius-make
 #
 #  We're building ONLY the libfreeradius-make-* files.
 #  Leave the outputs at the default location, but take the
@@ -145,16 +145,22 @@ else
 #
 BUILD_DIR:=${top_srcdir}/build
 top_builddir:=${top_srcdir}/scripts/build
-endif
-endif
+endif # libfreeradius-make
+endif # clean
 
 #
 #  Load the huge boilermake framework.
 #
 include scripts/boiler.mk
-endif
-endif
-endif
+endif # crossbuild
+else # rpm
+#
+#  We're building rpm
+#
+top_srcdir=	$(realpath $(dir $(lastword $(MAKEFILE_LIST))))
+BUILD_DIR=	build
+endif # rpm
+endif # deb
 
 #
 # The $(R) is a magic variable not defined anywhere in this source.
@@ -449,7 +455,7 @@ rpm: rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
 		cat rpmbuild/builddep.log; \
 		exit 1; \
 	fi
-	@cwd=`pwd` && cd redhat && QA_RPATHS=0x0003 rpmbuild --define "_topdir $$cwd/rpmbuild" -bb $(RPMBUILD_FLAGS) freeradius.spec
+	@cd redhat && QA_RPATHS=0x0003 rpmbuild --define "_topdir $(top_srcdir)/rpmbuild" -bb $(RPMBUILD_FLAGS) freeradius.spec
 
 # Developer checks
 .PHONY: warnings
