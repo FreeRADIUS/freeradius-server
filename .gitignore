@@ -38,6 +38,10 @@
 # Exuberant ctags
 tags
 
+# This is essentially a log of all source files and how they were compiled.
+# It's consumed by clangd, and is local to the system.
+compile_commands.json
+
 # Local icon files
 icon.png
 
