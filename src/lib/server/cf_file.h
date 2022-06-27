@@ -39,11 +39,6 @@ RCSIDH(cf_file_h, "$Id$")
 extern "C" {
 #endif
 
-#define CF_FILE_NONE   (0)
-#define CF_FILE_ERROR  (1)
-#define CF_FILE_CONFIG (1 << 2)
-#define CF_FILE_MODULE (1 << 3)
-
 /*
  *	Config file parsing
  */

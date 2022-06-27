@@ -578,14 +578,11 @@ bool cf_item_is_data(CONF_ITEM const *ci)
  */
 CONF_PAIR *cf_item_to_pair(CONF_ITEM const *ci)
 {
-	CONF_PAIR *out;
-
 	if (ci == NULL) return NULL;
 
 	fr_assert(ci->type == CONF_ITEM_PAIR);
 
-	memcpy(&out, &ci, sizeof(out));
-	return out;
+	return UNCONST(CONF_PAIR *, ci);
 }
 
 /** Cast a #CONF_ITEM to a #CONF_SECTION
@@ -601,14 +598,11 @@ CONF_PAIR *cf_item_to_pair(CONF_ITEM const *ci)
  */
 CONF_SECTION *cf_item_to_section(CONF_ITEM const *ci)
 {
-	CONF_SECTION *out;
-
 	if (ci == NULL) return NULL;
 
 	fr_assert(ci->type == CONF_ITEM_SECTION);
 
-	memcpy(&out, &ci, sizeof(out));
-	return out;
+	return UNCONST(CONF_SECTION *, ci);
 }
 
 /** Cast #CONF_ITEM to #CONF_DATA performing a type check
@@ -624,14 +618,11 @@ CONF_SECTION *cf_item_to_section(CONF_ITEM const *ci)
  */
 CONF_DATA *cf_item_to_data(CONF_ITEM const *ci)
 {
-	CONF_DATA *out;
-
 	if (ci == NULL) return NULL;
 
 	fr_assert(ci->type == CONF_ITEM_DATA);
 
-	memcpy(&out, &ci, sizeof(out));
-	return out;
+	return UNCONST(CONF_DATA *, ci);
 }
 
 /** Cast a #CONF_PAIR to a #CONF_ITEM
@@ -645,12 +636,9 @@ CONF_DATA *cf_item_to_data(CONF_ITEM const *ci)
  */
 CONF_ITEM *cf_pair_to_item(CONF_PAIR const *cp)
 {
-	CONF_ITEM *out;
-
 	if (cp == NULL) return NULL;
 
-	memcpy(&out, &cp, sizeof(out));
-	return out;
+	return UNCONST(CONF_ITEM *, cp);
 }
 
 /** Cast a #CONF_SECTION to a #CONF_ITEM
@@ -664,12 +652,9 @@ CONF_ITEM *cf_pair_to_item(CONF_PAIR const *cp)
  */
 CONF_ITEM *cf_section_to_item(CONF_SECTION const *cs)
 {
-	CONF_ITEM *out;
-
 	if (cs == NULL) return NULL;
 
-	memcpy(&out, &cs, sizeof(out));
-	return out;
+	return UNCONST(CONF_ITEM *, cs);
 }
 
 /** Cast #CONF_DATA to a #CONF_ITEM
@@ -683,12 +668,9 @@ CONF_ITEM *cf_section_to_item(CONF_SECTION const *cs)
  */
 CONF_ITEM *cf_data_to_item(CONF_DATA const *cd)
 {
-	CONF_ITEM *out;
-
 	if (cd == NULL) return NULL;
 
-	memcpy(&out, &cd, sizeof(out));
-	return out;
+	return UNCONST(CONF_ITEM *, cd);
 }
 
 /** Free a section and associated trees

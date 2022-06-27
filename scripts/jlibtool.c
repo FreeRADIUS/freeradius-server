@@ -2462,13 +2462,17 @@ static void post_parse_fixup(command_t *cmd)
 			push_count_chars(cmd->arglist, cmd->output_name);
 		}
 		break;
+		
 	case MODE_LINK:
 		link_fixup(cmd);
 		break;
+
 	case MODE_INSTALL:
 		if (cmd->output == OUT_LIB) {
 			link_fixup(cmd);
 		}
+		break;
+
 	default:
 		break;
 	}
