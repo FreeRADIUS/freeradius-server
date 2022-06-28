@@ -94,13 +94,19 @@ struct dl_loader_s {
 	 */
 	fr_dlist_head_t		sym_free;
 
-	bool			do_dlclose;	//!< dlclose modules when we're done with them.
+	bool			do_dlclose;		//!< dlclose modules when we're done with them.
 
-	fr_rb_tree_t		*tree;		//!< Tree of shared objects loaded.
+	bool			do_static;		//!< Do all symbol resolution using the special
+							///< RTLD_DEFAULT handle, instead of attempting
+							///< to load modules using dlopen().  This is
+							///< useful when FreeRADIUS has been built as
+							///< a monolithic binary.
 
-	void			*uctx;		//!< dl private extension data.
+	fr_rb_tree_t		*tree;			//!< Tree of shared objects loaded.
 
-	bool			uctx_free;	//!< Free uctx when dl_loader_t is freed.
+	void			*uctx;			//!< dl private extension data.
+
+	bool			uctx_free;		//!< Free uctx when dl_loader_t is freed.
 
 	bool			defer_symbol_init;	//!< Do not call dl_symbol_init in dl_loader_init.
 };
@@ -470,6 +476,25 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 		return dl;
 	}
 
+	/*
+	 *	Get a reference to the internal RTLD_HANDLE,
+	 *	which is used to search through all current loaded
+	 *	modules.
+	 *
+	 *	This is useful for static builds which don't actually
+	 *	want to dlopen anything, and just want to look at the
+	 *	current global symbol table to load everything
+	 *	from there.
+	 */
+	if (dl_loader->do_static) {
+		handle = dlopen(NULL, 0);
+		if (!handle) {
+			fr_strerror_printf("Failed opening RTLD_DEFAULT handle - %s", dlerror());
+			return NULL;
+		}
+		goto do_symbol_check;
+	}
+
 	flags |= RTLD_LOCAL;
 
 	/*
@@ -580,6 +605,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 		}
 	}
 
+do_symbol_check:
 	dl = talloc(dl_loader, dl_t);
 	if (unlikely(!dl)) {
 		dlclose(handle);
@@ -824,10 +850,41 @@ dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool de
 	dl_loader->uctx = uctx;
 	dl_loader->uctx_free = uctx_free;
 	dl_loader->defer_symbol_init = defer_symbol_init;
+
+	/*
+	 *	It's not clear yet whether we still want
+	 *	some dynamic loading capability in
+	 *	emscripten, so keep this as a potentially
+	 *	runtime toggle for now.
+	 */
+#ifdef __EMCRIPTEN__
+	dl_loader->do_static = true;
+#else
+	dl_loader->do_static = false;
+#endif
 	fr_dlist_init(&dl_loader->sym_init, dl_symbol_init_t, entry);
 	fr_dlist_init(&dl_loader->sym_free, dl_symbol_free_t, entry);
 
 	return dl_loader;
+}
+
+/** Runtime override for doing static or dynamic module loading
+ *
+ * @param[in] dl_loader		to configure.
+ * @param[in] do_static		If true, all dlopen calls result in a
+ *				reference to RTLD_DEFAULT being returned
+ *				which allows all the dynamic loading
+ *				infrastructure to worth correctly with
+ *				a monolithic binary.
+ * @return The previous value of do_static
+ */
+bool dl_loader_set_static(dl_loader_t *dl_loader, bool do_static)
+{
+	bool old = dl_loader->do_static;
+
+	dl_loader->do_static = do_static;
+
+	return old;
 }
 
 /** Called from a debugger to print information about a dl_loader

@@ -125,6 +125,8 @@ void			*dl_loader_uctx(dl_loader_t *dl_loader) CC_HINT(nonnull);
 
 dl_loader_t		*dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool defer_symbol_init);
 
+bool			dl_loader_set_static(dl_loader_t *dl_loader, bool do_static) CC_HINT(nonnull);
+
 void			dl_loader_debug(dl_loader_t *dl);
 #ifdef __cplusplus
 }
