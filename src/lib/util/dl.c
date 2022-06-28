@@ -857,7 +857,7 @@ dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool de
 	 *	emscripten, so keep this as a potentially
 	 *	runtime toggle for now.
 	 */
-#ifdef __EMCRIPTEN__
+#ifdef __EMSCRIPTEN__
 	dl_loader->do_static = true;
 #else
 	dl_loader->do_static = false;

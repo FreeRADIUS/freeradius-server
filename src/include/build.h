@@ -66,6 +66,18 @@ extern "C" {
 #include <string.h>
 
 /*
+ *	These are compile time options to toggle whether
+ *	we're building with thread support.
+ *
+ *	With EMSCRIPTEN threading support isn't guaranteed
+ *	as many browsers have explicitly disabled support
+ *	due to spectre attacks.
+ */
+#if (defined(__EMSCRIPTEN__) && defined(__EMSCRIPTEN_PTHREADS__)) || !defined(__EMSCRIPTEN__) && defined(HAVE_PTHREADS_H)
+#  define HAVE_PTHREADS 1
+#endif
+
+/*
  *	GCC will sometimes define "unix" as well as "__unix",
  *	which gets confusing and is unnecessary.
  */
