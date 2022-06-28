@@ -40,6 +40,11 @@ RCSID("$Id$")
 int server_init(CONF_SECTION *cs)
 {
 	/*
+	 *	Initialize the dictionary attributes needed by the tmpl code.
+	 */
+	if (tmpl_global_init() < 0) return -1;
+
+	/*
 	 *	Load dictionary attributes used
 	 *	for requests.
 	 */
@@ -135,4 +140,9 @@ void server_free(void)
 	 *	Free the internal dictionaries the request uses
 	 */
 	request_global_free();
+
+	/*
+	 *	Free the internal dictionaries the tmpl code uses
+	 */
+	tmpl_global_free();
 }
