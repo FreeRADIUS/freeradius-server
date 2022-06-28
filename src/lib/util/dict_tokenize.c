@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dict_fixup_priv.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/rand.h>
+#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/value.h>
 
@@ -1900,15 +1901,17 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 	/*
 	 *	If fopen works, this works.
 	 */
-	if (stat(fn, &statbuf) < 0) {
+	if (fstat(fileno(fp), &statbuf) < 0) {
+		fr_strerror_printf_push("Failed stating dictionary \"%s\" - %s", fn, fr_syserror(errno));
+
+	perm_error:
 		fclose(fp);
 		return -1;
 	}
 
 	if (!S_ISREG(statbuf.st_mode)) {
-		fclose(fp);
 		fr_strerror_printf_push("Dictionary is not a regular file: %s", fn);
-		return -1;
+		goto perm_error;
 	}
 
 	/*
@@ -1920,7 +1923,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		fclose(fp);
 		fr_strerror_printf_push("Dictionary is globally writable: %s. "
 					"Refusing to start due to insecure configuration", fn);
-		return -1;
+		goto perm_error;
 	}
 #endif
 
@@ -2048,8 +2051,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		 */
 		if (strcasecmp(argv[0], "ENUM") == 0) {
 			if (dict_read_process_enum(ctx,
-							argv + 1, argc - 1,
-							&base_flags) == -1) goto error;
+						   argv + 1, argc - 1,
+						   &base_flags) == -1) goto error;
 			continue;
 		}
 
@@ -2111,15 +2114,13 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 
 			if (ret < 0) {
 				fr_strerror_printf_push("from $INCLUDE at %s[%d]", fr_cwd_strip(fn), line);
-				fclose(fp);
-				return -1;
+				goto error;
 			}
 
 			if (ctx->stack_depth < stack_depth) {
 				fr_strerror_printf_push("unexpected END-??? in $INCLUDE at %s[%d]",
 							fr_cwd_strip(fn), line);
-				fclose(fp);
-				return -1;
+				goto error;
 			}
 
 			while (ctx->stack_depth > stack_depth) {
@@ -2130,8 +2131,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 
 				fr_strerror_printf_push("BEGIN-??? without END-... in file $INCLUDEd from %s[%d]",
 							fr_cwd_strip(fn), line);
-				fclose(fp);
-				return -1;
+				goto error;
 			}
 
 			/*
@@ -2270,10 +2270,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	error. So we don't need to do that
 			 *	here.
 			 */
-			if (dict_finalise(ctx) < 0) {
-				fclose(fp);
-				return -1;
-			}
+			if (dict_finalise(ctx) < 0) goto error;
 
 			ctx->stack_depth--;
 			ctx->dict = ctx->stack[ctx->stack_depth].dict;
@@ -2325,8 +2322,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				fr_strerror_const_push("Invalid END-TLV entry");
 				goto error;
 			}
-
-
 
 			da = fr_dict_attr_by_oid(NULL, ctx->stack[ctx->stack_depth - 1].da, argv[1]);
 			if (!da) {
@@ -2533,8 +2528,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 	 *	was copied from the parent, so there are guaranteed to
 	 *	be missing things.
 	 */
-
 	fclose(fp);
+
 	return 0;
 }
 
