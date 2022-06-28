@@ -506,29 +506,6 @@ export CFLAGS="$CFLAGS -g3 -fpic"
 export CXXFLAGS="$CFLAGS"
 %endif
 
-# The build system seems to feed the compiler relative paths for the source files.  This is usually fine
-# but it means the source paths in the ELF headers of the binaries are also relative.
-#
-# As a post install step a helper script (find-debuginfo.sh) is called to create the debug info files and
-# perform stripping on the original binaries.
-#
-# find-debuginfo.sh calls another utility (debugedit) to rewrite the source paths in the ELF headers of
-# the binaries so they'll match where the source files will actually be installed.
-#
-# find-debuginfo.sh assumes that the paths in the ELF headers will be '$RPM_BUILD_DIR/src', but because the
-# compiler only gets relative paths, they end up being 'src/'.
-#
-# Unfortunately another helper utility (check-buildroot) gets excited when it finds $RPM_BUILD_ROOT in the
-# any binaries due to be installed, and as debugedit doesn't do a perfect job of correcting the paths
-# and we record the CFLAGS freeradius was built with, it fires and fails the build if we try to rewrite
-# the paths to $RPM_BUILD_ROOT/src/.
-#
-# The only remaining option is to rewrite the paths at the compiler level, to what debugedit would have
-# used, so we do that below.
-#
-# This flag has only been supported since clang10 and gcc8, so ensure a recent compiler is being used.
-export CFLAGS="$CFLAGS -ffile-prefix-map=src/=%{_usrsrc}/debug/%{name}-%{version}-%{release}.%{_arch}/src/"
-
 # Need to pass these explicitly for clang, else rpmbuilder bails when trying to extract debug info from
 # the libraries.  Guessing GCC does this by default.  Why use clang over gcc? The version of clang
 # which ships with RHEL 6 has basic C11 support, gcc doesn't.
