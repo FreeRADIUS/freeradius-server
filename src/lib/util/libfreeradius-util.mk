@@ -3,7 +3,12 @@
 #
 # Version:      $Id$
 #
+
+ifeq "$(TARGET_IS_WASM)" "yes"
+TARGET		:= libfreeradius-util.js
+else
 TARGET		:= libfreeradius-util$(L)
+endif
 
 SOURCES		:= \
 		   atexit.c \

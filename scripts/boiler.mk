@@ -448,23 +448,26 @@ define INCLUDE_SUBMAKEFILE
         #  If we link to FOO, and FOO itself links to things, then we also link to the things
         #  which FOO needs.  That way we don't have to manually specify the recursive library
         #  references.
-	$${TGT}_PREREQS := $$(strip $$(call uniq,$$(foreach x,$${TGT_PREREQS},$$(or $${$${x}_PREREQS},) $${x})))
+        $${TGT}_PREREQS := $$(strip $$(call uniq,$$(foreach x,$${TGT_PREREQS},$$(or $${$${x}_PREREQS},) $${x})))
         $${TGT}_PRLIBS := $$(addprefix $${BUILD_DIR}/lib/,$$(filter %.a %.la %.${TARGET_LIB_EXT},$${$${TGT}_PREREQS}))
 
         # If it's an EXE, ensure that transitive library linking works.
         # i.e. we build libfoo.a which in turn requires -lbar.  So, the executable
         # has to be linked to both libfoo.a and -lbar.
-	ifeq "$${$${TGT}_SUFFIX}" ".${TARGET_EXE_EXT}"
-		$${TGT}_LDLIBS += $$(filter-out %.a %.la %.${TARGET_LIB_EXT},$${$${TGT_PREREQS}_LDLIBS})
+        ifeq "$${$${TGT}_SUFFIX}" ".${TARGET_EXE_EXT}"
+            # This breaks compilation by listing the same libraries multiple times, jlibtool either
+            # needs to be made smarter to filter out the duplicates, or we need to find a way of
+            # doing it here.
+#           $${TGT}_LDLIBS += $$(filter-out %.a %.la %.${TARGET_LIB_EXT},$${$${TGT_PREREQS}_LDLIBS})
 
-		#
-		#  OSX does lazy linking by default.  We want to over-ride that for binaries.
-		#  That way we catch errors at compile time, and not at run time.
-		#
-		ifneq "$(findstring apple-darwin,$(TARGET_SYSTEM))" ""
-			$${TGT}_LDFLAGS += -Wl,-undefined -Wl,error
-		endif
-	endif
+            #
+            #  OSX does lazy linking by default.  We want to over-ride that for binaries.
+            #  That way we catch errors at compile time, and not at run time.
+            #
+            ifneq "$(findstring apple-darwin,$(TARGET_SYSTEM))" ""
+                $${TGT}_LDFLAGS += -Wl,-undefined -Wl,error
+            endif
+        endif
 
         $${TGT}_BUILD := $$(if $$(suffix $${TGT}),$${BUILD_DIR}/lib,$${BUILD_DIR}/bin)
         $${TGT}_MAKEFILES += ${1}
