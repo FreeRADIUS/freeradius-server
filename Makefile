@@ -16,7 +16,7 @@ all:
 #  Catch people who try to use BSD make
 #
 ifeq "0" "1"
-$(error GNU Make is required to build FreeRADIUS)
+  $(error GNU Make is required to build FreeRADIUS)
 endif
 
 #
@@ -24,7 +24,7 @@ endif
 #  don't use it (.FEATURES variable was added in 3.81)
 #
 ifndef .FEATURES
-$(error This build system requires GNU Make 4.0 or higher)
+  $(error This build system requires GNU Make 4.0 or higher)
 endif
 
 #
@@ -32,7 +32,7 @@ endif
 #
 is_feature = $(if $(filter $1,$(.FEATURES)),T)
 ifeq "$(call is_feature,load)" ""
-$(error GNU Make $(MAKE_VERSION) does not support the "load" keyword (dynamically loaded extensions), upgrade to GNU Make 4.0 or higher)
+  $(error GNU Make $(MAKE_VERSION) does not support the "load" keyword (dynamically loaded extensions), upgrade to GNU Make 4.0 or higher)
 endif
 
 #
@@ -42,21 +42,19 @@ endif
 #  requiring the developer to run configure *before* making
 #  the debian packages.
 #
-ifneq "$(MAKECMDGOALS)" "deb"
-ifneq "$(MAKECMDGOALS)" "rpm"
-ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
-$(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
-
-include Make.inc
-endif
-endif
+ifeq "$(filter deb rpm crossbuild freeradius-server-%,$(MAKECMDGLOBALS))" ""
+  $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
+  include Make.inc
+else
+  top_srcdir:=$(realpath $(dir $(lastword $(MAKEFILE_LIST))))
+  BUILD_DIR:=build
 endif
 
 #
 #  'configure' was not run?  Get the version number from the file.
 #
 ifeq "$(RADIUS_VERSION_STRING)" ""
-RADIUSD_VERSION_STRING := $(shell cat VERSION)
+  RADIUSD_VERSION_STRING := $(shell cat VERSION)
 endif
 
 MFLAGS += --no-print-directory
@@ -86,9 +84,10 @@ PROTOCOLS    := \
 #  If we're building packages or crossbuilding, just do that.
 #  Don't try to do a local build.
 #
-ifneq "$(MAKECMDGOALS)" "deb"
-ifneq "$(MAKECMDGOALS)" "rpm"
-ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
+ifeq "$(filter deb freeradius-server-%,$(MAKECMDGLOBALS))" ""
+  ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
+
+
 #
 #  Include all of the autoconf definitions into the Make variable space
 #
@@ -99,61 +98,53 @@ ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 build/autoconf.mk: src/include/autoconf.h
 	@mkdir -p build
 	${Q}grep '^#define' $^ | sed 's/#define /AC_/;s/ / := /' > $@
--include build/autoconf.mk
 
-#
-#  Autoload the various libraries needed for building.
-#
-#  If the build is targeting these explicitly, then we are OK if their
-#  features don't exist.  If we're building everything else, then
-#  build these first, and then load the libraries.
-#
-#  Ensure that these libraries are built ONLY when doing a full build,
-#  AND that they are built and loaded before using the rest of the
-#  boilermake framework, UNLESS we're doing "make clean", in which case
-#  don't include the magic libraries.
-#
-ifeq "$(findstring clean,$(MAKECMDGOALS))" ""
-ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
+      -include build/autoconf.mk
 
-#
-#  Avoid calling shell if we don't need to build support libraries
-#
-ifeq "$(wildcard build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT})" ""
-BUILD_MAKE_LIBS=yes
-endif
-ifeq "$(wildcard build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT})" ""
-BUILD_MAKE_LIBS=yes
-endif
+      #
+      #  Autoload the various libraries needed for building.
+      #
+      #  If the build is targeting these explicitly, then we are OK if their
+      #  features don't exist.  If we're building everything else, then
+      #  build these first, and then load the libraries.
+      #
+      #  Ensure that these libraries are built ONLY when doing a full build,
+      #  AND that they are built and loaded before using the rest of the
+      #  boilermake framework, UNLESS we're doing "make clean", in which case
+      #  don't include the magic libraries.
+      #
+      ifeq "$(findstring clean,$(MAKECMDGOALS))" ""
+        ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
 
-ifdef BUILD_MAKE_LIBS
-define n
+          #
+          #  Avoid calling shell if we don't need to build support libraries
+          #
+          ifeq "$(wildcard build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT})" ""
+            BUILD_MAKE_LIBS=yes
+          endif
+          ifeq "$(wildcard build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT})" ""
+            BUILD_MAKE_LIBS=yes
+          endif
 
+          ifdef BUILD_MAKE_LIBS
+            define n
+          endef
+          $(info $(subst CC,$nCC,$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.${BUILD_LIB_EXT} libfreeradius-make-version.${BUILD_LIB_EXT})))
+        endif
 
-endef
-$(info $(subst CC,$nCC,$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.${BUILD_LIB_EXT} libfreeradius-make-version.${BUILD_LIB_EXT})))
-endif
+        load build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT}(dlopen_gmk_setup)
+        load build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT}(version_gmk_setup)
+      else
+        BUILD_DIR:=${top_srcdir}/build
+        top_builddir:=${top_srcdir}/scripts/build
+      endif
+    endif
 
-load build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT}(dlopen_gmk_setup)
-load build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT}(version_gmk_setup)
-
-else
-#
-#  We're building ONLY the libfreeradius-make-* files.
-#  Leave the outputs at the default location, but take the
-#  inputs from the scripts/build directory.
-#
-BUILD_DIR:=${top_srcdir}/build
-top_builddir:=${top_srcdir}/scripts/build
-endif
-endif
-
-#
-#  Load the huge boilermake framework.
-#
-include scripts/boiler.mk
-endif
-endif
+    #
+    #  Load the huge boilermake framework.
+    #
+    include scripts/boiler.mk
+  endif
 endif
 
 #
@@ -176,8 +167,8 @@ endif
 #  If R is defined, ensure that it ends in a '/'.
 #
 ifneq "$(R)" ""
-R:=$(subst //,/,$(R)/)
-export DESTDIR := $(R)
+  R:=$(subst //,/,$(R)/)
+  export DESTDIR := $(R)
 endif
 
 DICTIONARIES := $(wildcard $(addsuffix /dictionary*,$(addprefix share/dictionary/,$(PROTOCOLS))))
@@ -220,7 +211,7 @@ install: install.share install.man
 	@$(INSTALL) -d -m 700	$(R)$(radacctdir)
 
 ifneq ($(RADMIN),)
-ifneq ($(RGROUP),)
+  ifneq ($(RGROUP),)
 .PHONY: install-chown
 install-chown:
 	chown -R $(RADMIN)   $(R)$(raddbdir)
@@ -237,7 +228,7 @@ install-chown:
 	find $(R)$(RUNDIR) -type d -exec chmod u=rwx,g=rwx,o= {} \;
 	find $(R)$(RUNDIR) -type d -exec chmod g+s {} \;
 	find $(R)$(RUNDIR) -type f -exec chmod u=rw,g=rw,o= {} \;
-endif
+  endif
 endif
 
 distclean: clean
@@ -262,28 +253,28 @@ distclean: clean
 #  these rules enabled by default, then they're run too often.
 #
 ifeq "$(MAKECMDGOALS)" "reconfig"
-CONFIGURE_FILES=1
+  CONFIGURE_FILES=1
 endif
 
 ifneq "$(filter %configure,$(MAKECMDGOALS))" ""
-CONFIGURE_FILES=1
+  CONFIGURE_FILES=1
 endif
 
 ifeq "$(CONFIGURE_FILES)" "1"
 
-CONFIGURE_AC_FILES := $(shell find . -name configure.ac -print)
-CONFIGURE_FILES	   := $(patsubst %.ac,%,$(CONFIGURE_AC_FILES))
+  CONFIGURE_AC_FILES := $(shell find . -name configure.ac -print)
+  CONFIGURE_FILES	   := $(patsubst %.ac,%,$(CONFIGURE_AC_FILES))
 
-#
-#  The GNU tools make autoconf=="missing autoconf", which then returns
-#  0, even when autoconf doesn't exist.  This check is to ensure that
-#  we run AUTOCONF only when it exists.
-#
-AUTOCONF_EXISTS := $(shell autoconf --version 2>/dev/null)
+  #
+  #  The GNU tools make autoconf=="missing autoconf", which then returns
+  #  0, even when autoconf doesn't exist.  This check is to ensure that
+  #  we run AUTOCONF only when it exists.
+  #
+  AUTOCONF_EXISTS := $(shell autoconf --version 2>/dev/null)
 
-ifeq "$(AUTOCONF_EXISTS)" ""
-$(error You need to install autoconf to re-build the "configure" scripts)
-endif
+  ifeq "$(AUTOCONF_EXISTS)" ""
+    $(error You need to install autoconf to re-build the "configure" scripts)
+  endif
 
 # Configure files depend on "in" files, and on the top-level macro files
 # If there are headers, run auto-header, too.
@@ -318,7 +309,7 @@ endif
 #  the configure script.
 #
 ifneq "$(wildcard config.log)" ""
-CONFIGURE_ARGS	   := $(shell head -10 config.log | grep '^  \$$' | sed 's/^....//;s:.*configure ::')
+  CONFIGURE_ARGS	   := $(shell head -10 config.log | grep '^  \$$' | sed 's/^....//;s:.*configure ::')
 
 #
 #  ONLY re-run "configure" if we're told to do that.  Otherwise every
@@ -443,7 +434,6 @@ deb:
 	fakeroot dpkg-buildpackage -b -uc
 
 .PHONY: rpm
-
 rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
 	@mkdir -p $(addprefix rpmbuild/,SOURCES SPECS BUILD RPMS SRPMS BUILDROOT)
 	@for file in `awk '/^Source...:/ {print $$2}' redhat/freeradius.spec` ; do cp redhat/$$file rpmbuild/SOURCES/$$file ; done
@@ -476,7 +466,7 @@ whitespace:
 #  Include the crossbuild make file only if we're cross building
 #
 ifneq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
-include scripts/docker/crossbuild/crossbuild.mk
+  include scripts/docker/crossbuild/crossbuild.mk
 endif
 
 #
