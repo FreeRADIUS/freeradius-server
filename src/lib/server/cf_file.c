@@ -1153,13 +1153,93 @@ static const fr_sbuff_term_t if_terminals = FR_SBUFF_TERMS(
 );
 #endif
 
+static uint8_t const *skip_string(uint8_t const *p, char c)
+{
+	while (*p >= ' ') {
+		if (*p == c) {
+			p++;
+			return p;
+		}
+
+		if (*p != '\\') {
+			p++;
+			continue;
+		}
+
+		if (p[1] < ' ') {
+			return NULL;
+		}
+
+		if (!isdigit((int) p[1])) {
+			p += 2;
+			continue;
+		}
+
+		if (!isdigit((int) p[2]) || !isdigit((int) p[3])) {
+			return NULL;
+		}
+
+		p += 4;
+	}
+
+	return NULL;
+}
+
+/*
+ *	Expansions can contain other expansions, but can't contain regexes.
+ */
+static uint8_t const *skip_expanse(uint8_t const *p)
+{
+	int depth = 1;		/* caller skips '{' */
+
+	while (*p >= ' ') {
+		if (*p == '{') {
+			p++;
+			depth++;
+			continue;
+		}
+		if (*p == '}') {
+			p++;
+			depth--;
+			if (!depth) return p;
+
+			continue;
+		}
+
+		if (*p == '\\') {
+			if (p[1] < ' ') return NULL;
+			p += 2;
+			continue;
+		}
+
+		if (((p[0] == '$') || (p[0] == '%')) && (p[1] == '{')) {
+			p = skip_expanse(p + 2);
+			if (!p) return NULL;
+			continue;
+		}
+
+		if ((*p == '"') || (*p == '\'') || (*p == '`')) {
+			char c = *p++;
+
+			p = skip_string(p, c);
+			if (!p) return NULL;
+			continue;
+		}
+
+		p++;
+	}
+
+
+	return NULL;
+}
+
 static CONF_ITEM *process_if(cf_stack_t *stack)
 {
 	ssize_t		slen = 0;
 	fr_cond_t	*cond = NULL;
 	fr_dict_t const	*dict = NULL;
 	CONF_SECTION	*cs;
-	char		*p;
+	uint8_t const   *p;
 	char const	*ptr = stack->ptr;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
@@ -1205,48 +1285,147 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	RULES_VERIFY(cs, &t_rules);
 
 	/*
-	 *	Keep parsing the condition until we hit EOL, or a real error.
+	 *	Keep "parsing" the condition until we hit EOL.
+	 *
+	 *
 	 */
 	while (true) {
-		ssize_t end;
-		char *spaces, *text;
+		char c;
+		bool found = false;
+		bool was_regex = false;
+		int depth = 0;
+
+		p = (uint8_t const *) ptr;
+
+		while (*p >= ' ') {
+			if (*p == '(') {
+				depth++;
+				p++;
+				continue;
+			}
+
+			if (*p == ')') {
+				p++;
+				if (!depth) {
+					cf_log_err(cs, "Unexpected ')'");
+					talloc_free(cs);
+					return NULL;
+				}
+				depth--;
+
+				if (depth > 0) continue;
+
+				/*
+				 *	Conditions end with ") {"
+				 */
+				if (depth == 0) {
+					while (isspace((int) *p)) p++;
+
+					if (*p == '{') {
+						found = true;
+						break;
+					}
+				}
+
+				continue;
+			}
+
+			if (*p == '\\') {
+				if (!p[1]) {
+					cf_log_err(cs, "Unexpected escape at end of line");
+					talloc_free(cs);
+					return NULL;
+				}
+
+				if (p[1] < ' ') goto crlf;
+
+				p += 2;
+				continue;
+			}
+
+			/*
+			 *	Bare words of ${..} or %{...}
+			 */
+			if (((p[0] == '$') || (p[0] == '%')) && (p[1] == '{')) {
+				p = skip_expanse(p + 2);
+				if (!p) {
+					cf_log_err(cs, "Unexpected end of expansion");
+					talloc_free(cs);
+					return NULL;
+				}
+
+				continue;
+			}
+
+			/*
+			 *	We have a quoted string, ignore '(' and ')' within it.
+			 */
+			if ((*p == '"') || (*p == '\'') || (*p == '`') || (was_regex && (*p == '/'))) {
+				was_regex = false;
+				c = *p++;
+				p = skip_string(p, c);
+				if (!p) {
+					cf_log_err(cs, "Unexpected end of string");
+					talloc_free(cs);
+					return NULL;
+				}
+
+				continue;
+			}
+
+			/*
+			 *	192.168/16 is a netmask.  So we only
+			 *	allow regex after a regex operator.
+			 *
+			 *	This isn't perfect, but is good enough
+			 *	for most purposes.
+			 */
+			if (((p[0] == '=') || (p[0] == '!')) && (p[1] == '~')) {
+				was_regex = true;
+				p += 2;
+				continue;
+			}
+
+			if (isspace((int) *p)) {
+				p++;
+				continue;
+			}
+
+			was_regex = false;
+			p++;
+		} /* loop over string */
+
+		if (found) {
+			slen = p - (uint8_t const *) ptr;
+			break;
+		}
 
 		/*
-		 *	Parse the condition.  If it succeeded, stop
-		 *	trying to expand the buffer.
+		 *	Auto-continue across CR LF
 		 */
-		slen = fr_cond_tokenize(cs, &cond,
-					&t_rules, &FR_SBUFF_IN(ptr, strlen(ptr)), true);
-		if (slen > 0) break;
+		if (*p && (*p < ' ')) {
+			char *q;
 
-		end = -slen;
-		fr_assert((ptr + end) < (stack->buff[0] + stack->bufsize));
+		crlf:
+			q = UNCONST(char *, p);
+			*q = ' ';
+			p++;
+			continue;
+		}
 
 		/*
 		 *	We hit EOL, so the parse error is really "read more data".
 		 */
-		if (!ptr[end]) {
+		if (!*p) {
 			int rcode;
 
-			memcpy(&stack->fill, &ptr, sizeof(ptr)); /* const issues */
-			stack->fill += end;
+			stack->fill = UNCONST(char *, p);
 			rcode = cf_file_fill(stack);
 			if (rcode < 0) return NULL;
 			continue;
 		}
 
-		/*
-		 *	We didn't hit EOL, so it's a real error.
-		 */
-	parse_error:
-		fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
-
-		cf_log_err(cs, "Parse error in condition");
-		cf_log_err(cs, "%s", text);
-		cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
-
-		talloc_free(spaces);
-		talloc_free(text);
+		cf_log_err(cs, "Unknown error parsing condition at %s", p);
 		talloc_free(cs);
 		return NULL;
 	}
@@ -1257,12 +1436,13 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	Save the parsed condition (minus trailing whitespace)
 	 *	into a buffer.
 	 */
-	memcpy(buff[2], ptr, slen);
+	memcpy(buff[2], stack->ptr, slen);
 	buff[2][slen] = '\0';
-	p = buff[2] + slen - 1;
-	while ((p > buff[2]) && isspace((int) *p)) {
-		*p = '\0';
-		p--;
+	while (slen > 0) {
+		if (!isspace((int) buff[2][slen])) break;
+
+		buff[2][slen] = '\0';
+		slen--;
 	}
 
 	/*
@@ -1284,9 +1464,24 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 
 		my_slen = fr_cond_tokenize(cs, &cond, &t_rules, &FR_SBUFF_IN(buff[3], strlen(buff[3])), false);
 		if (my_slen <= 0) {
+			char *spaces, *text;
+
 			ptr = buff[3];
 			slen = my_slen;
-			goto parse_error;
+
+#ifdef WITH_XLAT_COND
+		parse_error:
+#endif
+			fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
+
+			cf_log_err(cs, "Parse error in condition");
+			cf_log_err(cs, "%s", text);
+			cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
+
+			talloc_free(spaces);
+			talloc_free(text);
+			talloc_free(cs);
+			return NULL;
 		}
 
 #ifdef WITH_XLAT_COND
