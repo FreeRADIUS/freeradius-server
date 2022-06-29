@@ -77,6 +77,13 @@ static void unlang_tmpl_signal(request_t *request, unlang_stack_frame_t *frame, 
 static unlang_action_t unlang_tmpl_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
+	unlang_tmpl_t			*ut = unlang_generic_to_tmpl(frame->instruction);
+
+	if (tmpl_eval_cast(request, &state->list, ut->tmpl) < 0) {
+		RPEDEBUG("Failed casting expansion");
+		*p_result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	if (state->out) fr_dlist_move(state->out, &state->list);
 

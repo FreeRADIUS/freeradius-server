@@ -920,6 +920,11 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	case XLAT_TMPL:
 		fr_assert(tmpl_is_exec(node->vpt));
 
+		if (tmpl_eval_cast(ctx, result, node->vpt) < 0) {
+			fr_dlist_talloc_free(result);
+			return XLAT_ACTION_FAIL;
+		}
+
 		/*
 		 *	First entry is the command to run.  Subsequent entries are the options to pass to the
 		 *	command.
