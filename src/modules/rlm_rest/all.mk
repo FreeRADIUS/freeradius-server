@@ -6,7 +6,7 @@ TARGET		:=
 
 #  Add libfreeradius-json to the prereqs (so rlm_rest links to it)
 ifneq "$(TARGETNAME)" ""
-TGT_PREREQS	:= libfreeradius-json
+TGT_PREREQS	:= libfreeradius-json$(L)
 endif
 
 #  Check to see if we libfreeradius-curl, as that's a hard dependency
