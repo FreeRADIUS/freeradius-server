@@ -33,7 +33,6 @@
 *.cproject
 *.project
 *.bbprojectd
-/.vscode
 
 # Exuberant ctags
 tags
