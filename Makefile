@@ -84,7 +84,7 @@ PROTOCOLS    := \
 #  If we're building packages or crossbuilding, just do that.
 #  Don't try to do a local build.
 #
-ifeq "$(filter deb freeradius-server-%,$(MAKECMDGOALS))" ""
+ifeq "$(filter deb rpm freeradius-server-%,$(MAKECMDGOALS))" ""
   ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 
 
