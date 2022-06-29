@@ -328,10 +328,6 @@ module_rlm_t rlm_dhcpv4 = {
 		.thread_inst_type	= "rlm_dhcpv4_thread_t",
 		.thread_instantiate	= mod_thread_instantiate
 	},
-	.methods = {
-		[MOD_AUTHORIZE]		= mod_process,
-		[MOD_POST_AUTH]		= mod_process,
-	},
         .method_names = (module_method_names_t[]){
                 { .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,	.method = mod_process },
                 MODULE_NAME_TERMINATOR

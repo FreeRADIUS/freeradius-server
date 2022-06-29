@@ -865,24 +865,23 @@ module_rlm_t rlm_sqlippool = {
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
 	},
-	.methods = {
-		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_POST_AUTH]		= mod_alloc
-	},
 	.method_names = (module_method_names_t[]){
-		{ .name1 = "recv",	.name2 = "Discover",	.method = mod_alloc },
-		{ .name1 = "recv",	.name2 = "Request",	.method = mod_update },
-		{ .name1 = "recv",	.name2 = "Confirm",	.method = mod_update },
-		{ .name1 = "recv",	.name2 = "Rebind",	.method = mod_update },
-		{ .name1 = "recv",	.name2 = "Renew",	.method = mod_update },
-		{ .name1 = "recv",	.name2 = "Release",	.method = mod_release },
-		{ .name1 = "recv",	.name2 = "Decline",	.method = mod_mark },
+		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting },
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_alloc },
 
-		{ .name1 = "ippool",	.name2 = "alloc",	.method = mod_alloc },
-		{ .name1 = "ippool",	.name2 = "update",	.method = mod_update },
-		{ .name1 = "ippool",	.name2 = "release",	.method = mod_release },
-		{ .name1 = "ippool",	.name2 = "bulk-release",.method = mod_bulk_release },
-		{ .name1 = "ippool",	.name2 = "mark",	.method = mod_mark },
+		{ .name1 = "recv",		.name2 = "Discover",		.method = mod_alloc },
+		{ .name1 = "recv",		.name2 = "Request",		.method = mod_update },
+		{ .name1 = "recv",		.name2 = "Confirm",		.method = mod_update },
+		{ .name1 = "recv",		.name2 = "Rebind",		.method = mod_update },
+		{ .name1 = "recv",		.name2 = "Renew",		.method = mod_update },
+		{ .name1 = "recv",		.name2 = "Release",		.method = mod_release },
+		{ .name1 = "recv",		.name2 = "Decline",		.method = mod_mark },
+
+		{ .name1 = "ippool",		.name2 = "alloc",		.method = mod_alloc },
+		{ .name1 = "ippool",		.name2 = "update",		.method = mod_update },
+		{ .name1 = "ippool",		.name2 = "release",		.method = mod_release },
+		{ .name1 = "ippool",		.name2 = "bulk-release",	.method = mod_bulk_release },
+		{ .name1 = "ippool",		.name2 = "mark",		.method = mod_mark },
 
 		MODULE_NAME_TERMINATOR
 	}

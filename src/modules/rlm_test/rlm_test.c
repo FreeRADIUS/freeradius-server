@@ -519,14 +519,13 @@ module_rlm_t rlm_test = {
 		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach
 	},
-	.methods = {
-		[MOD_AUTHENTICATE]	= mod_authenticate,
-		[MOD_AUTHORIZE]		= mod_authorize,
-		[MOD_PREACCT]		= mod_preacct,
-		[MOD_ACCOUNTING]	= mod_accounting,
-	},
 	.method_names = (module_method_names_t[]){
-		{ .name1 = "recv",		.name2 = "Access-Challenge",	.method = mod_return },
+		{ .name1 = "recv",		.name2 = "accounting-request",	.method = mod_preacct },
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize },
+		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting },
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
+
+		{ .name1 = "recv",		.name2 = "access-challenge",	.method = mod_return },
 		{ .name1 = "name1_null",	.name2 = NULL,			.method = mod_return },
 		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_return },
 		{ .name1 = "retry",		.name2 = NULL,			.method = mod_retry },

@@ -470,8 +470,9 @@ module_rlm_t rlm_yubikey = {
 		.detach		= mod_detach,
 #endif
 	},
-	.methods = {
-		[MOD_AUTHENTICATE]	= mod_authenticate,
-		[MOD_AUTHORIZE]		= mod_authorize
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_authorize },
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
+		MODULE_NAME_TERMINATOR
+	}
 };

@@ -1437,17 +1437,24 @@ module_rlm_t rlm_redis_ippool = {
 		.onload		= mod_load,
 		.instantiate	= mod_instantiate
 	},
-	.methods = {
-		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_AUTHORIZE]		= mod_authorize,
-		[MOD_POST_AUTH]		= mod_post_auth,
-	},
-	.method_names = (module_method_names_t[]) {
-		{ .name1 = "recv",	.name2 = "Request",	.method = mod_request },
-		{ .name1 = "recv",	.name2 = "Confirm",	.method = mod_request },
-		{ .name1 = "recv",	.name2 = "Renew",	.method = mod_request },
-		{ .name1 = "recv",	.name2 = "Rebind",	.method = mod_request },
-		{ .name1 = "recv",	.name2 = "Release",	.method = mod_release },
+	.method_names = (module_method_names_t[]){
+		/*
+		 *	RADIUS specific
+		 */
+		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_authorize },
+		{ .name1 = "accounting",	.name2 = "stop",		.method = mod_release },
+
+		/*
+		 *	DHCPv4
+		 */
+		{ .name1 = "recv",		.name2 = "release",		.method = mod_release },
+
+		/*
+		 *	Generic
+		 */
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_request },
+		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting },
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth },
 		MODULE_NAME_TERMINATOR
 	}
 };

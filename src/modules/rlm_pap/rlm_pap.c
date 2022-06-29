@@ -1082,8 +1082,14 @@ module_rlm_t rlm_pap = {
 		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
-	.methods = {
-		[MOD_AUTHENTICATE]	= mod_authenticate,
-		[MOD_AUTHORIZE]		= mod_authorize
-	},
+	.method_names = (module_method_names_t[]){
+		/*
+		 *	Hack to support old configurations
+		 */
+		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
+
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate	},
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
+		MODULE_NAME_TERMINATOR
+	}
 };

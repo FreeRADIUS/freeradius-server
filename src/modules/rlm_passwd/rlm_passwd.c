@@ -618,10 +618,9 @@ module_rlm_t rlm_passwd = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
 	},
-	.methods = {
-		[MOD_AUTHORIZE]		= mod_passwd_map,
-		[MOD_ACCOUNTING]	= mod_passwd_map,
-		[MOD_POST_AUTH]		= mod_passwd_map,
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_passwd_map },
+		MODULE_NAME_TERMINATOR
+	}
 };
 #endif /* TEST */

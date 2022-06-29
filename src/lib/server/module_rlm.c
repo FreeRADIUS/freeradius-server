@@ -428,14 +428,13 @@ bool module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_
  *
  *  If the module exists but the method doesn't exist, then `method` is set to NULL.
  */
-module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_components_t *component,
+module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED rlm_components_t *component,
 						 char const **name1, char const **name2,
 						 char const *name)
 {
 	char				*p, *q, *inst_name;
 	size_t				len;
 	int				j;
-	rlm_components_t		i;
 	module_instance_t		*mi;
 	module_method_names_t const	*methods;
 	char const			*method_name1, *method_name2;
@@ -581,14 +580,6 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 
 	return_component:
 		/*
-		 *	No matching method.  Just return a method
-		 *	based on the component.
-		 */
-		if (component && mrlm->methods[*component]) {
-			*method = mrlm->methods[*component];
-		}
-
-		/*
 		 *	Didn't find a matching method.  Just return
 		 *	the module.
 		 */
@@ -651,37 +642,6 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 	 */
 	p++;
 	q = strchr(p, '.');
-
-	/*
-	 *	If there's only one component, look for it in the
-	 *	"authorize", etc. list first.
-	 */
-	if (!q) {
-		for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
-			if (strcmp(section_type_value[i], p) != 0) continue;
-
-			/*
-			 *	Tell the caller which component was
-			 *	referenced, and set the method to the found
-			 *	function.
-			 */
-			if (component) {
-				*component = i;
-				if (method) *method = mrlm->methods[*component];
-			}
-
-			/*
-			 *	The string matched.  Return it.  Also set the
-			 *	names so that the caller gets told the method
-			 *	name being used.
-			 */
-			*name1 = name + (p - inst_name);
-			*name2 = NULL;
-			talloc_free(inst_name);
-			return mi;
-		}
-	}
-
 	/*
 	 *	We've found the module, but it has no named methods.
 	 */

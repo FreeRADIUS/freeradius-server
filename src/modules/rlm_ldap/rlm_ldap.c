@@ -2031,10 +2031,16 @@ module_rlm_t rlm_ldap = {
 		.thread_instantiate	= mod_thread_instatiate,
 		.thread_detach		= mod_thread_detach,
 	},
-	.methods = {
-		[MOD_AUTHENTICATE]	= mod_authenticate,
-		[MOD_AUTHORIZE]		= mod_authorize,
-		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_POST_AUTH]		= mod_post_auth
-	},
+	.method_names = (module_method_names_t[]){
+		/*
+		 *	Hack to support old configurations
+		 */
+		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
+
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
+		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting	},
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate	},
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth		},
+		MODULE_NAME_TERMINATOR
+	}
 };

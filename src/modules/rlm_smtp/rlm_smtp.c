@@ -1113,8 +1113,9 @@ module_rlm_t rlm_smtp = {
 		.thread_instantiate 	= mod_thread_instantiate,
 		.thread_detach      	= mod_thread_detach,
 	},
-	.methods = {
-		[MOD_AUTHENTICATE]	= mod_authenticate,
-		[MOD_AUTHORIZE]         = mod_authorize,
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize },
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
+		MODULE_NAME_TERMINATOR
+	}
 };

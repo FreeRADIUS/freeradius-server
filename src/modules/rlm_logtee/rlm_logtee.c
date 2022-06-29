@@ -665,11 +665,8 @@ module_rlm_t rlm_logtee = {
 		.instantiate		= mod_instantiate,
 		.thread_instantiate	= mod_thread_instantiate,
 	},
-	.methods = {
-		[MOD_AUTHENTICATE]	= mod_insert_logtee,
-		[MOD_AUTHORIZE]		= mod_insert_logtee,
-		[MOD_PREACCT]		= mod_insert_logtee,
-		[MOD_ACCOUNTING]	= mod_insert_logtee,
-		[MOD_POST_AUTH]		= mod_insert_logtee,
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_insert_logtee },
+		MODULE_NAME_TERMINATOR
+	}
 };

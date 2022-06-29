@@ -168,11 +168,8 @@ module_rlm_t rlm_always = {
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
 	},
-	.methods = {
-		[MOD_AUTHENTICATE]	= mod_always_return,
-		[MOD_AUTHORIZE]		= mod_always_return,
-		[MOD_PREACCT]		= mod_always_return,
-		[MOD_ACCOUNTING]	= mod_always_return,
-		[MOD_POST_AUTH]		= mod_always_return,
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = CF_IDENT_ANY, .name2 = CF_IDENT_ANY,		.method = mod_always_return     },
+		MODULE_NAME_TERMINATOR
+	}
 };

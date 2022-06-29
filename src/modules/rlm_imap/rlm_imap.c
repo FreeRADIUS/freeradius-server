@@ -218,7 +218,8 @@ module_rlm_t rlm_imap = {
 		.thread_instantiate 	= mod_thread_instantiate,
 		.thread_detach      	= mod_thread_detach,
 	},
-	.methods = {
-		[MOD_AUTHENTICATE]	= mod_authenticate,
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
+		MODULE_NAME_TERMINATOR
+	}
 };

@@ -376,11 +376,16 @@ module_rlm_t rlm_attr_filter = {
 		.config		= module_config,
 		.instantiate	= mod_instantiate,
 	},
-	.methods = {
-		[MOD_AUTHORIZE]		= mod_authorize,
-		[MOD_PREACCT]		= mod_preacct,
-		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_POST_AUTH]		= mod_post_auth,
-	},
-};
+	.method_names = (module_method_names_t[]){
+		/*
+		 *	Hack to support old configurations
+		 */
+		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
 
+		{ .name1 = "recv",		.name2 = "accounting-request",	.method = mod_preacct		},
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
+		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting	},
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth		},
+		MODULE_NAME_TERMINATOR
+	}
+};

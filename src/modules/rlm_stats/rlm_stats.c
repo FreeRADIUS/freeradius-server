@@ -446,9 +446,8 @@ module_rlm_t rlm_stats = {
 		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach
 	},
-	.methods = {
-		[MOD_AUTHORIZE]		= mod_stats, /* @mod_stats_query */
-		[MOD_POST_AUTH]		= mod_stats,
-		[MOD_ACCOUNTING]	= mod_stats,
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_stats },
+		MODULE_NAME_TERMINATOR
+	}
 };

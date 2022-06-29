@@ -463,9 +463,10 @@ module_rlm_t rlm_wimax = {
 		.config		= module_config,
 	},
 	.dict		= &dict_radius,
-	.methods = {
-		[MOD_AUTHORIZE]		= mod_authorize,
-		[MOD_PREACCT]		= mod_preacct,
-		[MOD_POST_AUTH]		= mod_post_auth
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = "recv",		.name2 = "accounting-request",	.method = mod_preacct },
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize },
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth },
+		MODULE_NAME_TERMINATOR
+	}
 };

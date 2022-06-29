@@ -1380,19 +1380,13 @@ module_rlm_t rlm_cache = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
 	},
-	.methods = {
-		[MOD_AUTHORIZE]		= mod_cache_it,
-		[MOD_PREACCT]		= mod_cache_it,
-		[MOD_ACCOUNTING]	= mod_cache_it,
-		[MOD_POST_AUTH]		= mod_cache_it
-	},
 	.method_names = (module_method_names_t[]){
-		{ .name1 = "status", .name2 = CF_IDENT_ANY,	.method = mod_method_status },
-		{ .name1 = "load", .name2 = CF_IDENT_ANY,	.method = mod_method_load   },
-		{ .name1 = "store", .name2 = CF_IDENT_ANY,	.method = mod_method_store  },
-		{ .name1 = "clear", .name2 = CF_IDENT_ANY,	.method = mod_method_clear  },
-		{ .name1 = "ttl", .name2 = CF_IDENT_ANY,	.method = mod_method_ttl    },
-
+		{ .name1 = "status", .name2 = CF_IDENT_ANY,		.method = mod_method_status },
+		{ .name1 = "load", .name2 = CF_IDENT_ANY,		.method = mod_method_load   },
+		{ .name1 = "store", .name2 = CF_IDENT_ANY,		.method = mod_method_store  },
+		{ .name1 = "clear", .name2 = CF_IDENT_ANY,		.method = mod_method_clear  },
+		{ .name1 = "ttl", .name2 = CF_IDENT_ANY,		.method = mod_method_ttl    },
+		{ .name1 = CF_IDENT_ANY, .name2 = CF_IDENT_ANY,		.method = mod_cache_it      },
 		MODULE_NAME_TERMINATOR
 	}
 };

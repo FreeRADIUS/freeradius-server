@@ -2239,9 +2239,9 @@ module_rlm_t rlm_isc_dhcp = {
 		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
-
-	.methods = {
-		[MOD_AUTHORIZE]	= mod_authorize,
-		[MOD_POST_AUTH]	= mod_post_auth,
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize },
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth },
+		MODULE_NAME_TERMINATOR
+	}
 };

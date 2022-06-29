@@ -162,11 +162,9 @@ module_rlm_t rlm_sometimes = {
 		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
-	.methods = {
-		[MOD_AUTHENTICATE]	= mod_sometimes_packet,
-		[MOD_AUTHORIZE]		= mod_sometimes_packet,
-		[MOD_PREACCT]		= mod_sometimes_packet,
-		[MOD_ACCOUNTING]	= mod_sometimes_packet,
-		[MOD_POST_AUTH]		= mod_sometimes_reply,
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_sometimes_reply },
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_sometimes_packet },
+		MODULE_NAME_TERMINATOR
+	}
 };

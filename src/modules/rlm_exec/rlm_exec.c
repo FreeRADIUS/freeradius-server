@@ -481,11 +481,8 @@ module_rlm_t rlm_exec = {
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
 	},
-	.methods = {
-		[MOD_AUTHENTICATE]	= mod_exec_dispatch,
-		[MOD_AUTHORIZE]		= mod_exec_dispatch,
-		[MOD_PREACCT]		= mod_exec_dispatch,
-		[MOD_ACCOUNTING]	= mod_exec_dispatch,
-		[MOD_POST_AUTH]		= mod_exec_dispatch,
-	},
+        .method_names = (module_method_names_t[]){
+                { .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_exec_dispatch },
+                MODULE_NAME_TERMINATOR
+        }
 };

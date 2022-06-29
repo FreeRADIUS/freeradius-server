@@ -269,8 +269,8 @@ module_rlm_t rlm_logintime = {
 		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
-	.methods = {
-		[MOD_AUTHORIZE]		= mod_authorize,
-		[MOD_POST_AUTH]		= mod_authorize
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_authorize },
+		MODULE_NAME_TERMINATOR
+	}
 };

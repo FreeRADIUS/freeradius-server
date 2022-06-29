@@ -280,9 +280,8 @@ module_rlm_t rlm_delay = {
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap
 	},
-	.methods = {
-		[MOD_PREACCT]		= mod_delay,
-		[MOD_AUTHORIZE]		= mod_delay,
-		[MOD_POST_AUTH]		= mod_delay,
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,	.method = mod_delay },
+		MODULE_NAME_TERMINATOR
+	}
 };

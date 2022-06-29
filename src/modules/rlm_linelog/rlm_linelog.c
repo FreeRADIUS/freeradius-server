@@ -800,11 +800,8 @@ module_rlm_t rlm_linelog = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
 	},
-	.methods = {
-		[MOD_AUTHENTICATE]	= mod_do_linelog,
-		[MOD_AUTHORIZE]		= mod_do_linelog,
-		[MOD_PREACCT]		= mod_do_linelog,
-		[MOD_ACCOUNTING]	= mod_do_linelog,
-		[MOD_POST_AUTH]		= mod_do_linelog,
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_do_linelog },
+		MODULE_NAME_TERMINATOR
+	}
 };

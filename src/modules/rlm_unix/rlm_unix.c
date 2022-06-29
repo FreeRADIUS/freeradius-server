@@ -516,8 +516,9 @@ module_rlm_t rlm_unix = {
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap
 	},
-	.methods = {
-		[MOD_AUTHORIZE]		= mod_authorize,
-		[MOD_ACCOUNTING]	= mod_accounting
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_authorize },
+		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting },
+		MODULE_NAME_TERMINATOR
+	}
 };

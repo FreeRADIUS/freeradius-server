@@ -23,6 +23,7 @@
  * @copyright 2008 Alan DeKok (aland@deployingradius.com)
  * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
+#include "lib/server/cf_util.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
@@ -383,7 +384,8 @@ module_rlm_t rlm_client = {
 		.onload		= mod_load,
 		.unload		= mod_unload
 	},
-	.methods = {
-		[MOD_AUTHORIZE]		= mod_authorize
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = CF_IDENT_ANY, .name2 = CF_IDENT_ANY,		.method = mod_authorize   },
+		MODULE_NAME_TERMINATOR
+	}
 };

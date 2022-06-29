@@ -277,8 +277,8 @@ module_rlm_t rlm_pam = {
 		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
-	.methods = {
-		[MOD_AUTHENTICATE]	= mod_authenticate
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
+		MODULE_NAME_TERMINATOR
+	}
 };
-

@@ -64,8 +64,8 @@ module_rlm_t rlm_utf8 = {
 		.name		= "utf8",
 		.type		= MODULE_TYPE_THREAD_SAFE
 	},
-	.methods = {
-		[MOD_AUTHORIZE]		= mod_utf8_clean,
-		[MOD_PREACCT]		= mod_utf8_clean,
-	},
+	.method_names = (module_method_names_t[]){
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_utf8_clean },
+		MODULE_NAME_TERMINATOR
+	}
 };
