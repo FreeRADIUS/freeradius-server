@@ -1,16 +1,32 @@
+update {
+	&Tmp-Bool-0 := yes
+}
 # Should be compiled out
 if ('${a_term}' != '${a_term}') {
-        test_fail
+	test_fail
+}
+
+if ("${a_term}" != "${a_term}") {
+	test_fail
+}
+
+if (&Tmp-Bool-0 != ${d_term}) {
+	test_fail
+}
+
+if ('${a_term}' !~ /${a_term}/) {
+	test_fail
 }
 
 # Check it's not just expanded to a zero length string
 if ('${a_term}' == '${b_term}') {
-        test_fail
+	test_fail
 }
 
 # Check against dynamic attributes
 if ('${c_term}' != &User-Name) {
-        test_fail
+	test_fail
 }
+
 dollar_expansions
 test_pass
