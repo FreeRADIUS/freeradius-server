@@ -1135,6 +1135,8 @@ int			tmpl_extents_build_to_leaf_parent(fr_dlist_head_t *leaf, fr_dlist_head_t *
 void			tmpl_extents_debug(fr_dlist_head_t *head) CC_HINT(nonnull);
 
 int			tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt);
+
+int			tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *out, tmpl_t const *vpt);
 /** @} */
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,

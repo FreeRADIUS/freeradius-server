@@ -1246,8 +1246,11 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 	tmpl_dcursor_ctx_t	cc;
 
 	int			ret = 0;
+	fr_value_box_list_t	list;
 
 	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+
+	fr_value_box_list_init(&list);
 
 	/*
 	 *	See if we're dealing with an attribute in the request
@@ -1265,7 +1268,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 	 */
 	if (!vp) {
 		if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
-			ret = tmpl_eval_pair_virtual(ctx, out, request, vpt);
+			ret = tmpl_eval_pair_virtual(ctx, &list, request, vpt);
 			goto done;
 		}
 
@@ -1277,11 +1280,11 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 			if (!value) {
 			oom:
 				fr_strerror_const("Out of memory");
-				ret = XLAT_ACTION_FAIL;
-				goto done;
+				ret = -1;
+				goto fail;
 			}
 			value->datum.int32 = 0;
-			fr_dlist_insert_tail(out, value);
+			fr_dlist_insert_tail(&list, value);
 		} /* Fall through to being done */
 
 		goto done;
@@ -1301,7 +1304,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 
 		value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
 		value->datum.uint32 = count;
-		fr_dlist_insert_tail(out, value);
+		fr_dlist_insert_tail(&list, value);
 		break;
 	}
 
@@ -1320,7 +1323,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		     vp = fr_dcursor_next(&cursor)) {
 			value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
 			fr_value_box_copy(value, value, &vp->data);
-			fr_dlist_insert_tail(out, value);
+			fr_dlist_insert_tail(&list, value);
 		}
 		break;
 
@@ -1335,13 +1338,90 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 
 		fr_assert(fr_type_is_leaf(vp->da->type));
 		fr_value_box_copy(value, value, &vp->data);	/* Also dups taint */
-		fr_dlist_insert_tail(out, value);
+		fr_dlist_insert_tail(&list, value);
 		break;
 	}
 
 done:
+	/*
+	 *	Evaluate casts if necessary.
+	 */
+	if (ret == 0) {
+		if (tmpl_eval_cast(ctx, &list, vpt) < 0) {
+			fr_dlist_talloc_free(&list);
+			goto fail;
+		}
+
+		fr_dlist_move(out, &list);
+	}
+
+fail:
 	tmpl_dursor_clear(&cc);
 	return ret;
+}
+
+/** Casts a value or list of values according to the tmpl
+ *
+ * @param[in] ctx	to allocate boxed value, and buffers in.
+ * @param[in,out] list	Where to write the boxed value.
+ * @param[in] vpt	Representing the attribute.
+ * @return
+ *	- <0		the cast failed
+ *	- 0		we successfully evaluated the tmpl
+ */
+int tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *list, tmpl_t const *vpt)
+{
+	fr_type_t cast = tmpl_rules_cast(vpt);
+	fr_value_box_t *vb;
+	bool tainted;
+	ssize_t slen, vlen;
+	fr_sbuff_t *agg;
+
+	if (cast == FR_TYPE_NULL) return 0;
+
+	/*
+	 *	Apply a cast to the results if required.
+	 */
+	vb = fr_dlist_head(list);
+
+	switch (cast) {
+	default:
+		/*
+		 *	One box, we cast it as the destination type.
+		 *
+		 *	Many boxes, turn them into strings, and try to parse it as the
+		 *	output type.
+		 */
+		if (!fr_dlist_next(list, vb)) {
+			return fr_value_box_cast_in_place(vb, vb, cast, NULL);
+		}
+
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, 256);
+
+		slen = fr_value_box_list_concat_as_string(&tainted, agg, list, NULL, 0, NULL,
+							  FR_VALUE_BOX_LIST_FREE_BOX, true);
+		if (slen < 0) return -1;
+
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		vlen = fr_value_box_from_str(vb, vb, cast, NULL,
+					     fr_sbuff_start(agg), fr_sbuff_used(agg),
+					     NULL, tainted);
+		if ((vlen < 0) || (slen != vlen)) return -1;
+
+		fr_dlist_insert_tail(list, vb);
+		break;
+
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		return fr_value_box_list_concat_in_place(vb, vb, list, cast,
+							 FR_VALUE_BOX_LIST_FREE_BOX, true, SIZE_MAX);
+	case FR_TYPE_STRUCTURAL:
+		fr_strerror_printf("Cannot cast to structural type '%s'",
+				   fr_type_to_str(cast));
+		return -1;
+	}
+
+	return 0;
 }
 
 int tmpl_global_init(void)
