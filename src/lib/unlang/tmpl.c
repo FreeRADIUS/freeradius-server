@@ -189,36 +189,11 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 	return UNLANG_ACTION_YIELD;
 }
 
-/** Wrapper to call exec after a tmpl has been expanded
- *
- */
-static unlang_action_t unlang_tmpl_exec_nowait_resume(rlm_rcode_t *p_result, request_t *request,
-						      unlang_stack_frame_t *frame)
-{
-	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
-
-	if (fr_exec_fork_nowait(request, &state->list, state->exec.env_pairs, false, false) < 0) {
-		RPEDEBUG("Failed executing program");
-		*p_result = RLM_MODULE_FAIL;
-
-	} else {
-		*p_result = RLM_MODULE_OK;
-	}
-
-	/*
-	 *	state->resume MUST be NULL, as we don't yet support
-	 *	exec from unlang_tmpl_push().
-	 */
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
-}
-
 
 static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 	unlang_tmpl_t			*ut = unlang_generic_to_tmpl(frame->instruction);
-	xlat_exp_head_t const		*xlat;
 
 	/*
 	 *	If we're not called from unlang_tmpl_push(), then
@@ -230,64 +205,39 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 		fr_value_box_list_init(&state->list);
 	}
 
-	if (!tmpl_async_required(ut->tmpl)) {
-		if (!ut->inline_exec) {
-			if (tmpl_aexpand_type(state->ctx, &state->list, FR_TYPE_STRING, request, ut->tmpl, NULL, NULL) < 0) {
-				RPEDEBUG("Failed expanding %s", ut->tmpl->name);
-				*p_result = RLM_MODULE_FAIL;
-			}
-
-			*p_result = RLM_MODULE_OK;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+	/*
+	 *	Synchronous tmpls can just be resolved immediately, and directly to the output list.
+	 *
+	 *	However, xlat expansions (including fully synchronous function calls!) need to be expanded by
+	 *	the xlat framework.
+	 */
+	if (!tmpl_async_required(ut->tmpl) && !tmpl_contains_xlat(ut->tmpl)) {
+		if (tmpl_eval(state->ctx, state->out, request, ut->tmpl) < 0) {
+			RPEDEBUG("Failed evaluating expansion");
+			goto fail;
 		}
 
-		/*
-		 *	Inline exec's are only called from in-line
-		 *	text in the configuration files.
-		 */
-		frame_repeat(frame, unlang_tmpl_exec_nowait_resume);
-		if (unlang_xlat_push(state->ctx, NULL, &state->list, request, tmpl_xlat(ut->tmpl), false) < 0) {
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_STOP_PROCESSING;
-		}
-		return UNLANG_ACTION_PUSHED_CHILD;
+		*p_result = RLM_MODULE_OK;
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	/*
 	 *	XLAT structs are allowed.
 	 */
-	if (ut->tmpl->type == TMPL_TYPE_XLAT) {
+	if (tmpl_is_xlat(ut->tmpl)) {
 		frame_repeat(frame, unlang_tmpl_resume);
-		if (unlang_xlat_push(state->ctx, NULL, &state->list, request, tmpl_xlat(ut->tmpl), false) < 0) {
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_STOP_PROCESSING;
-		}
-		return UNLANG_ACTION_PUSHED_CHILD;
+		goto push;
 	}
 
-	if (ut->tmpl->type == TMPL_TYPE_XLAT_UNRESOLVED) {
-		REDEBUG("Xlat expansions MUST be fully resolved before being run asynchronously");
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	/*
-	 *	Attribute expansions, etc. don't require YIELD.
-	 */
-	if (ut->tmpl->type != TMPL_TYPE_EXEC) {
-		REDEBUG("Internal error - template '%s' should not require async", ut->tmpl->name);
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	xlat = tmpl_xlat(ut->tmpl);
-	fr_assert(xlat);
+	fr_assert(tmpl_is_exec(ut->tmpl));
 
 	/*
 	 *	Expand the arguments to the program we're executing.
 	 */
 	frame_repeat(frame, unlang_tmpl_exec_wait_resume);
-	if (unlang_xlat_push(state->ctx, NULL, &state->list, request, xlat, false) < 0) {
+push:
+	if (unlang_xlat_push(state->ctx, NULL, &state->list, request, tmpl_xlat(ut->tmpl), false) < 0) {
+	fail:
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
@@ -333,6 +283,13 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 			.retry = RETRY_INIT,
 		},
 	};
+
+	if (tmpl_needs_resolving(tmpl)) {
+		REDEBUG("Expansion %s needs to be resolved before it is used.", tmpl->name);
+		return -1;
+	}
+
+	fr_assert(!tmpl_contains_regex(tmpl));
 
 	MEM(ut = talloc(stack, unlang_tmpl_t));
 	*ut = (unlang_tmpl_t){

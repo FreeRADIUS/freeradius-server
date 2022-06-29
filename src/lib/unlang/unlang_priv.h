@@ -158,7 +158,6 @@ typedef struct {
 typedef struct {
 	unlang_t		self;
 	tmpl_t const		*tmpl;
-	bool			inline_exec;
 	xlat_flags_t		flags;
 } unlang_tmpl_t;
 
