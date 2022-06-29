@@ -42,7 +42,7 @@ endif
 #  requiring the developer to run configure *before* making
 #  the debian packages.
 #
-ifeq "$(filter deb rpm crossbuild freeradius-server-%,$(MAKECMDGLOBALS))" ""
+ifeq "$(filter deb rpm crossbuild freeradius-server-%,$(MAKECMDGOALS))" ""
   $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
   include Make.inc
 else
@@ -84,7 +84,7 @@ PROTOCOLS    := \
 #  If we're building packages or crossbuilding, just do that.
 #  Don't try to do a local build.
 #
-ifeq "$(filter deb freeradius-server-%,$(MAKECMDGLOBALS))" ""
+ifeq "$(filter deb freeradius-server-%,$(MAKECMDGOALS))" ""
   ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 
 
