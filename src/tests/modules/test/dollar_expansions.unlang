@@ -1,5 +1,5 @@
 update {
-	&Tmp-Bool-0 := yes
+	&Fall-Through := yes
 }
 # Should be compiled out
 if ('${a_term}' != '${a_term}') {
@@ -10,7 +10,7 @@ if ("${a_term}" != "${a_term}") {
 	test_fail
 }
 
-if (&Tmp-Bool-0 != ${d_term}) {
+if (&Fall-Through != ${d_term}) {
 	test_fail
 }
 
