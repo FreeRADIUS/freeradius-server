@@ -259,7 +259,7 @@ static xlat_action_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 static char		proto_name_prev[128];
 static dl_t		*dl;
-static dl_loader_t	*dl_loader;
+static dl_loader_t	*dl_loader = NULL;
 
 static fr_event_list_t	*el = NULL;
 
@@ -3632,7 +3632,10 @@ int main(int argc, char *argv[])
 	 *	of a process.  Initialise it here so that we don't attempt
 	 *	to unload and load it multiple times.
 	 */
-	fr_openssl_init();
+	if (fr_openssl_init() < 0) {
+		fr_perror("unit_test_attribute");
+		EXIT_WITH_FAILURE;
+	}
 #endif
 
 	modules_init(NULL);
@@ -3793,11 +3796,11 @@ cleanup:
 	 */
 	if (dl_loader && (talloc_free(dl_loader) < 0)) {
 		fr_perror("unit_test_attribute - dl_loader - ");	/* Print free order issues */
-		ret = EXIT_FAILURE;
+		EXIT_WITH_FAILURE;
 	}
 	if (fr_dict_free(&config.dict, __FILE__) < 0) {
 		fr_perror("unit_test_attribute");
-		ret = EXIT_FAILURE;
+		EXIT_WITH_FAILURE;
 	}
 
 	unlang_free_global();
@@ -3806,7 +3809,7 @@ cleanup:
 
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_attribute");
-		ret = EXIT_FAILURE;
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -3815,7 +3818,7 @@ cleanup:
 	 */
 	if (talloc_free(autofree) < 0) {
 		fr_perror("unit_test_attribute");
-		ret = EXIT_FAILURE;
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
