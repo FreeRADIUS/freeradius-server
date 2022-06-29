@@ -73,7 +73,7 @@ extern "C" {
  *	as many browsers have explicitly disabled support
  *	due to spectre attacks.
  */
-#if (defined(__EMSCRIPTEN__) && defined(__EMSCRIPTEN_PTHREADS__)) || !defined(__EMSCRIPTEN__) && defined(HAVE_PTHREADS_H)
+#if (defined(__EMSCRIPTEN__) && defined(__EMSCRIPTEN_PTHREADS__)) || !defined(__EMSCRIPTEN__) && defined(HAVE_PTHREAD_H)
 #  define HAVE_PTHREADS 1
 #endif
 
