@@ -165,7 +165,7 @@ do { \
 } while(0);
 #  define fr_atexit_thread_local_disarm(...)		fr_atexit_global_disarm(__VA_ARGS__)
 #  define fr_atexit_thread_local_disarm_all(...)	fr_atexit_global_disarm_all(__VA_ARGS__)
-#  define fr_atexit_thread_trigger_all(...)		fr_atexit_global_trigger_all(__VA_ARGS__)
+#  define fr_atexit_thread_trigger_all(...)
 #endif
 
 #ifdef __cplusplus
