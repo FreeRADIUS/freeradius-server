@@ -1360,6 +1360,91 @@ fail:
 	return ret;
 }
 
+
+/** Gets the value of a tmpl
+ *
+ *  The result is returned "raw".  The caller must do any escaping it desires.
+ *
+ * @param[in] ctx	to allocate boxed value, and buffers in.
+ * @param[out] out	Where to write the boxed value.
+ * @param[in] request	The current request.
+ * @param[in] vpt	Representing the tmpl
+ * @return
+ *	- <0		we failed getting a value for the tmpl
+ *	- 0		we successfully evaluated the tmpl
+ */
+int tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt)
+{
+	char *p;
+	fr_value_box_t		*value;
+	fr_value_box_list_t	list;
+
+	if (tmpl_needs_resolving(vpt)) {
+		fr_strerror_const("Cannot evaluate unresolved tmpl");
+		return -1;
+	}
+
+	if (tmpl_async_required(vpt)) {
+		fr_strerror_const("Cannot statically evaluate asynchronous expansions");
+		return -1;
+	}
+
+	if (tmpl_contains_regex(vpt)) {
+		fr_strerror_const("Cannot statically evaluate regular expression");
+		return -1;
+	}
+
+	if (tmpl_is_attr(vpt) || tmpl_is_list(vpt)) {
+		return tmpl_eval_pair(ctx, out, request, vpt);
+	}
+
+	if (tmpl_is_data(vpt)) {
+		MEM(value = fr_value_box_alloc(ctx, tmpl_value_type(vpt), NULL,
+					       tmpl_value(vpt)->tainted));
+
+		fr_value_box_copy(value, value, tmpl_value(vpt));	/* Also dups taint */
+		goto done;
+	}
+
+	fr_assert(tmpl_is_xlat(vpt));
+
+	if (xlat_async_required(tmpl_xlat(vpt))) {
+		fr_strerror_const("Cannot evaluate async xlat");
+		return -1;
+	}
+
+	/*
+	 *	@todo - respect escaping functions.  But the sync
+	 *	escaping uses a different method than the async ones.
+	 *	And we then also need to escape the output of
+	 *	tmpl_eval_pair(), too.
+	 */
+	MEM(value = fr_value_box_alloc_null(ctx));
+
+	if (tmpl_aexpand(value, &p, request, vpt, NULL, NULL) < 0) {
+		talloc_free(value);
+		return -1;
+	}
+	fr_value_box_bstrndup_shallow(value, NULL, p, talloc_array_length(p) - 1, true);
+
+	/*
+	 *	Cast the results if necessary.
+	 */
+done:
+	fr_value_box_list_init(&list);
+	fr_dlist_insert_tail(&list, value);
+
+	if (tmpl_eval_cast(ctx, &list, vpt) < 0) {
+		fr_dlist_talloc_free(&list);
+		return -1;
+	};
+
+	fr_dlist_move(out, &list);
+	return 0;		
+}
+
+
+
 /** Casts a value or list of values according to the tmpl
  *
  * @param[in] ctx	to allocate boxed value, and buffers in.
@@ -1423,6 +1508,8 @@ int tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *list, tmpl_t const *vpt
 
 	return 0;
 }
+
+
 
 int tmpl_global_init(void)
 {

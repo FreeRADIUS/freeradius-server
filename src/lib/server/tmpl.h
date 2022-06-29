@@ -1136,6 +1136,8 @@ void			tmpl_extents_debug(fr_dlist_head_t *head) CC_HINT(nonnull);
 
 int			tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt);
 
+int			tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt);
+
 int			tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *out, tmpl_t const *vpt);
 /** @} */
 
