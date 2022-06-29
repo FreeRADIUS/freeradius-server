@@ -615,6 +615,7 @@ static void ad_have_feature(char const *symbol)
 	for (last = &ad_define_head; *last != NULL; last = &(*last)->next) {
 		if (def->name[5] > (*last)->name[5]) continue; /* avoid strcmp() for the common case */
 
+		/* coverity[string_null] */
 		if (strcmp(def->name + 5, (*last)->name + 5) > 0) continue;
 		break;
 	}
