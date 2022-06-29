@@ -87,7 +87,7 @@ static xlat_action_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	da = fr_dict_attr_child_by_num(parent, attr);
+	MEM(da = fr_dict_attr_child_by_num(parent, attr));
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
