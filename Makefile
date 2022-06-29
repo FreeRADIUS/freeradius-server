@@ -36,11 +36,12 @@ ifeq "$(call is_feature,load)" ""
 endif
 
 #
-#  We require Make.inc, UNLESS the target is "make deb"
+#  We require Make.inc, UNLESS we're building packages running
+#  VMs or producing tar files tar files.
 #
-#  Since "make deb" re-runs configure... there's no point in
-#  requiring the developer to run configure *before* making
-#  the debian packages.
+#  Since "make deb" and "make rpm" re-run configure...
+#  there's no point in requiring the developer to run configure
+#  *before* making packages.
 #
 ifeq "$(filter deb rpm crossbuild freeradius-server-%,$(MAKECMDGOALS))" ""
   $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
