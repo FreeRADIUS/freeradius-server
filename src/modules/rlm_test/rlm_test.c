@@ -519,7 +519,7 @@ module_rlm_t rlm_test = {
 		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach
 	},
-	.method_names = (module_method_names_t[]){
+	.method_names = (module_method_name_t[]){
 		{ .name1 = "recv",		.name2 = "accounting-request",	.method = mod_preacct },
 		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize },
 		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting },

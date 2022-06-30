@@ -436,7 +436,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED
 	size_t				len;
 	int				j;
 	module_instance_t		*mi;
-	module_method_names_t const	*methods;
+	module_method_name_t const	*methods;
 	char const			*method_name1, *method_name2;
 	module_rlm_t const		*mrlm;
 

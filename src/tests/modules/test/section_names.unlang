@@ -1,10 +1,4 @@
-#	.methods = {
-#		[MOD_AUTHENTICATE]	= mod_authenticate,
-#		[MOD_AUTHORIZE]		= mod_authorize,
-#		[MOD_PREACCT]		= mod_preacct,
-#		[MOD_ACCOUNTING]	= mod_accounting,
-#	},
-#	.method_names = (module_method_names_t[]){
+#	.method_names = (module_method_name_t[]){
 #		{ .name1 = "recv",		.name2 = "Access-Challenge",	.method = mod_return },
 #		{ .name1 = "name1_null",	.name2 = NULL,			.method = mod_return },
 #		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_return },

@@ -1437,7 +1437,7 @@ module_rlm_t rlm_redis_ippool = {
 		.onload		= mod_load,
 		.instantiate	= mod_instantiate
 	},
-	.method_names = (module_method_names_t[]){
+	.method_names = (module_method_name_t[]){
 		/*
 		 *	RADIUS specific
 		 */

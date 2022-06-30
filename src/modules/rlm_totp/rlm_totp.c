@@ -293,7 +293,7 @@ module_rlm_t rlm_totp = {
 		.name		= "totp",
 		.type		= MODULE_TYPE_THREAD_SAFE
 	},
-	.method_names = (module_method_names_t[]){
+	.method_names = (module_method_name_t[]){
 		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
 		MODULE_NAME_TERMINATOR
 	}

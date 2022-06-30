@@ -1198,7 +1198,7 @@ module_rlm_t rlm_eap = {
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
 	},
-        .method_names = (module_method_names_t[]){
+        .method_names = (module_method_name_t[]){
                 { .name1 = "recv",		.name2 = "access-request",	.method = mod_authorize },
                 { .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
                 { .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth },

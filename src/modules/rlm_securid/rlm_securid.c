@@ -560,7 +560,7 @@ module_rlm_t rlm_securid = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
 	},
-	.method_names = (module_method_names_t[]){
+	.method_names = (module_method_name_t[]){
 		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
 		MODULE_NAME_TERMINATOR
 	}

@@ -664,7 +664,7 @@ module_rlm_t rlm_radius = {
 
 		.bootstrap	= mod_bootstrap,
 	},
-	.method_names = (module_method_names_t[]){
+	.method_names = (module_method_name_t[]){
 		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,	.method = mod_process },
 		MODULE_NAME_TERMINATOR
 	},

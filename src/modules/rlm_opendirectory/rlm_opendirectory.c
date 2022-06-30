@@ -537,7 +537,7 @@ module_rlm_t rlm_opendirectory = {
 		.type		= MODULE_TYPE_THREAD_SAFE,
 		.instantiate	= mod_instantiate
 	},
-	.method_names = (module_method_names_t[]){
+	.method_names = (module_method_name_t[]){
 		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize },
 		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
 		MODULE_NAME_TERMINATOR

@@ -168,7 +168,7 @@ module_rlm_t rlm_always = {
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
 	},
-	.method_names = (module_method_names_t[]){
+	.method_names = (module_method_name_t[]){
 		{ .name1 = CF_IDENT_ANY, .name2 = CF_IDENT_ANY,		.method = mod_always_return     },
 		MODULE_NAME_TERMINATOR
 	}

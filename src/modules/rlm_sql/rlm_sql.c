@@ -1620,7 +1620,7 @@ module_rlm_t rlm_sql = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
 	},
-	.method_names = (module_method_names_t[]){
+	.method_names = (module_method_name_t[]){
 		/*
 		 *	Hack to support old configurations
 		 */

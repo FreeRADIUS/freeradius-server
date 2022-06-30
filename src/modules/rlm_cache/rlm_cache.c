@@ -1380,7 +1380,7 @@ module_rlm_t rlm_cache = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
 	},
-	.method_names = (module_method_names_t[]){
+	.method_names = (module_method_name_t[]){
 		{ .name1 = "status", .name2 = CF_IDENT_ANY,		.method = mod_method_status },
 		{ .name1 = "load", .name2 = CF_IDENT_ANY,		.method = mod_method_load   },
 		{ .name1 = "store", .name2 = CF_IDENT_ANY,		.method = mod_method_store  },

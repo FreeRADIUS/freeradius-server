@@ -1246,7 +1246,7 @@ module_rlm_t rlm_rest = {
 		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach
 	},
-	.method_names = (module_method_names_t[]){
+	.method_names = (module_method_name_t[]){
 		/*
 		 *	Hack to support old configurations
 		 */

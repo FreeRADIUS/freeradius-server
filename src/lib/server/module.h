@@ -38,7 +38,7 @@ extern "C" {
 #include <freeradius-devel/util/event.h>
 
 typedef struct module_s				module_t;
-typedef struct module_method_names_s		module_method_names_t;
+typedef struct module_method_name_s		module_method_name_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
 typedef struct module_list_t			module_list_t;
@@ -119,7 +119,7 @@ extern "C" {
 /** Named methods exported by a module
  *
  */
-struct module_method_names_s {
+struct module_method_name_s {
 	char const		*name1;			//!< i.e. "recv", "send", "process"
 	char const		*name2;			//!< The packet type i.e Access-Request, Access-Reject.
 

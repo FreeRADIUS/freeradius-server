@@ -865,7 +865,7 @@ module_rlm_t rlm_sqlippool = {
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
 	},
-	.method_names = (module_method_names_t[]){
+	.method_names = (module_method_name_t[]){
 		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting },
 		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_alloc },
 
