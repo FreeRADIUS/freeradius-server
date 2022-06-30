@@ -1920,7 +1920,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 	 */
 #ifdef S_IWOTH
 	if (dict_gctx->perm_check && ((statbuf.st_mode & S_IWOTH) != 0)) {
-		fclose(fp);
 		fr_strerror_printf_push("Dictionary is globally writable: %s. "
 					"Refusing to start due to insecure configuration", fn);
 		goto perm_error;
