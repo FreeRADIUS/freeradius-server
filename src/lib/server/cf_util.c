@@ -1026,6 +1026,36 @@ char const *cf_section_value_find(CONF_SECTION const *cs, char const *attr)
 	return (cp ? cp->value : NULL);
 }
 
+/** Check if a given section matches the specified name1/name2 identifiers
+ *
+ * @param[in] cs	to check.
+ * @param[in] name1	identifier.  May be CF_IDENT_ANY for wildcard matches.
+ * @param[in] name2	identifier.  May be CF_IDENT_ANY for wildcard matches.
+ * @return
+ *	- >1 if cs is greater than the identifiers.
+ *	- 0 if cs matches the identifiers.
+ *	- <0 if cs is less than the identifiers.
+ */
+int8_t *cf_section_name_cmp(CONF_SECTION const *cs, char const *name1, char const *name2)
+{
+	int8_t ret;
+
+	if (name1 != CF_IDENT_ANY) {
+		ret = CMP(strcmp(cf_section_name1(cs), name1), 0);
+		if (ret != 0) return ret;
+	}
+
+	if (name2 != CF_IDENT_ANY) {
+		char const *cs_name2 = cf_section_name2(cs);
+
+		if (!cs_name2) return 1;
+
+		return CMP(strcmp(cs_name2, name2), 0);
+	}
+
+	return 0;
+}
+
 /** Return the second identifier of a #CONF_SECTION
  *
  * @param[in] cs	to return identifiers for.

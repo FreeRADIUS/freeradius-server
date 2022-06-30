@@ -157,6 +157,7 @@ CONF_SECTION	*cf_section_has_parent(CONF_SECTION const *cs,
 
 char const 	*cf_section_value_find(CONF_SECTION const *, char const *attr);
 
+int8_t		*cf_section_name_cmp(CONF_SECTION const *cs, char const *name1, char const *name2);
 /** @hidecallergraph */
 char const	*cf_section_name1(CONF_SECTION const *cs);
 /** @hidecallergraph */
