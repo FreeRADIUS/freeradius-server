@@ -1969,11 +1969,9 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	tmpl_attr_rules_t const		*t_attr_rules;
 	fr_sbuff_marker_t		m_l;
 
-	if (!t_rules) {
-		t_attr_rules = &default_rules.attr;	/* Use the defaults */
-	} else {
-		t_attr_rules = &t_rules->attr;
-	}
+	if (t_rules == NULL) t_rules = &default_rules;	/* Use the defaults */
+
+	t_attr_rules = &t_rules->attr;
 
 	if (err) *err = TMPL_ATTR_ERROR_NONE;
 
