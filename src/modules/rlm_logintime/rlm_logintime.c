@@ -143,9 +143,6 @@ static int time_of_day(UNUSED void *instance, request_t *request, fr_pair_t cons
 		when += scan;
 	}
 
-	fprintf(stderr, "returning %d - %d\n",
-		hhmmss, when);
-
 	return hhmmss - when;
 }
 
