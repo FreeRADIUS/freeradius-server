@@ -78,7 +78,7 @@ fr_dict_attr_autoload_t rlm_logintime_dict_attr[] = {
 /*
  *      Compare the current time to a range.
  */
-static int timecmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t const *check)
+static int timecmp(UNUSED void *instance, request_t *request, fr_pair_t const *check)
 {
 	fr_time_delta_t left;
 
@@ -96,8 +96,7 @@ static int timecmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_lis
 /*
  *	Time-Of-Day support
  */
-static int time_of_day(UNUSED void *instance, request_t *request,
-		       UNUSED fr_pair_list_t *request_list, fr_pair_t const *check)
+static int time_of_day(UNUSED void *instance, request_t *request, fr_pair_t const *check)
 {
 	int		scan;
 	int		hhmmss, when;

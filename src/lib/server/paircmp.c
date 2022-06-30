@@ -45,7 +45,7 @@ struct paircmp_s {
 	fr_dict_attr_t const	*from;
 	bool			first_only;
 	void			*instance; /* module instance */
-	RAD_COMPARE_FUNC	compare;
+	fr_paircmp_func_t	compare;
 	paircmp_t		*next;
 };
 
@@ -105,7 +105,6 @@ static paircmp_t *cmp;
  */
 static int packet_cmp(UNUSED void *instance,
 		      request_t *request,
-		      UNUSED fr_pair_list_t *request_list,
 		      fr_pair_t const *check_item)
 {
 	PAIR_VERIFY(check_item);
@@ -120,7 +119,6 @@ static int packet_cmp(UNUSED void *instance,
  */
 static int generic_cmp(UNUSED void *instance,
 		       request_t *request,
-		       UNUSED fr_pair_list_t *request_list,
 		       fr_pair_t const *check_item)
 {
 	PAIR_VERIFY(check_item);
@@ -412,7 +410,6 @@ finish:
  *
  * @param[in] request		Current request.
  * @param[in] request_item	item to compare.
- * @param[in] request_list	list pairs.
  * @param[in] check_item	item to compare.
  * @return
  *	- 0 if check_item and vp are equal.
@@ -421,7 +418,6 @@ finish:
  */
 static int paircmp_func(request_t *request,
 			fr_pair_t *request_item,
-			fr_pair_list_t *request_list,
 			fr_pair_t *check_item)
 {
 	paircmp_t *c;
@@ -441,7 +437,7 @@ static int paircmp_func(request_t *request,
 	 */
 	for (c = cmp; c; c = c->next) {
 		if (c->da == check_item->da) {
-			return (c->compare)(c->instance, request, request_list, check_item);
+			return (c->compare)(c->instance, request, check_item);
 		}
 	}
 
@@ -459,22 +455,19 @@ static int paircmp_func(request_t *request,
  * comparison function called.
  *
  * @param[in] request		Current request.
- * @param[in] request_list	list pairs.
  * @param[in] check_item	item to compare.
  * @return
  *	- 0 if check_item matches
  *	- -1 if check_item is smaller
  *	- 1 if check_item is larger
  */
-int paircmp_virtual(request_t *request,
-		    fr_pair_list_t *request_list,
-		    fr_pair_t const *check_item)
+int paircmp_virtual(request_t *request, fr_pair_t const *check_item)
 {
 	paircmp_t *c;
 
 	for (c = cmp; c; c = c->next) {
 		if (c->da == check_item->da) {
-			return (c->compare)(c->instance, request, request_list, check_item);
+			return (c->compare)(c->instance, request, check_item);
 		}
 	}
 
@@ -585,7 +578,7 @@ int paircmp(request_t *request,
 		/*
 		 *	OK it is present now compare them.
 		 */
-		compare = paircmp_func(request, auth_item, request_list, check_item);
+		compare = paircmp_func(request, auth_item, check_item);
 		switch (check_item->op) {
 		case T_OP_EQ:
 		default:
@@ -678,7 +671,7 @@ int paircmp_find(fr_dict_attr_t const *da)
  *	- <0 on error
  */
 int paircmp_register_by_name(char const *name, fr_dict_attr_t const *from,
-			     bool first_only, RAD_COMPARE_FUNC func, void *instance)
+			     bool first_only, fr_paircmp_func_t func, void *instance)
 {
 	fr_dict_attr_flags_t	flags;
 	fr_dict_attr_t const	*da;
@@ -726,7 +719,7 @@ int paircmp_register_by_name(char const *name, fr_dict_attr_t const *from,
  * @return 0
  */
 int paircmp_register(fr_dict_attr_t const *da, fr_dict_attr_t const *from,
-		     bool first_only, RAD_COMPARE_FUNC func, void *instance)
+		     bool first_only, fr_paircmp_func_t func, void *instance)
 {
 	paircmp_t *c;
 
@@ -751,7 +744,7 @@ int paircmp_register(fr_dict_attr_t const *da, fr_dict_attr_t const *from,
  * @param[in] da		dict reference to unregister for.
  * @param[in] func		comparison function to remove.
  */
-void paircmp_unregister(fr_dict_attr_t const *da, RAD_COMPARE_FUNC func)
+void paircmp_unregister(fr_dict_attr_t const *da, fr_paircmp_func_t func)
 {
 	paircmp_t *c, *last;
 

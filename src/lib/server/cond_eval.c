@@ -584,7 +584,7 @@ static bool cond_compare_virtual(request_t *request, map_t const *map)
 		virt->op = map->op;
 		fr_value_box_copy(virt, &virt->data, rhs);
 
-		rcode = paircmp_virtual(request, &request->request_pairs, virt);
+		rcode = paircmp_virtual(request, virt);
 		talloc_free(virt);
 		rcode = (rcode == 0) ? 1 : 0;
 		if (rhs == &rhs_cast) fr_value_box_clear(&rhs_cast);
@@ -739,7 +739,7 @@ static bool cond_eval_map(request_t *request, fr_cond_t const *c,
 		 *	Do JUST the virtual attribute comparison.
 		 *	Skip all of the rest of the complexity of paircmp().
 		 */
-		rcode = paircmp_virtual(request, &request->request_pairs, vp);
+		rcode = paircmp_virtual(request, vp);
 		talloc_free(vp);
 		rcode = (rcode == 0) ? 1 : 0;
 		goto done;

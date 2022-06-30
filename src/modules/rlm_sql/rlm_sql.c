@@ -760,11 +760,9 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
  * The group membership query should only return one element which is the username. The returned
  * username will then be checked with the passed check string.
  */
-static int sql_groupcmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list,
-			fr_pair_t const *check) CC_HINT(nonnull (1, 2, 4));
+static int sql_groupcmp(void *instance, request_t *request, fr_pair_t const *check) CC_HINT(nonnull);
 
-static int sql_groupcmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list,
-			fr_pair_t const *check)
+static int sql_groupcmp(void *instance, request_t *request, fr_pair_t const *check)
 {
 	rlm_sql_handle_t	*handle;
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(instance, rlm_sql_t);
