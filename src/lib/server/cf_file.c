@@ -1485,7 +1485,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		}
 
 #ifdef WITH_XLAT_COND
-		my_slen = xlat_tokenize_expression(cs, &head, &FR_SBUFF_IN(buff[3], strlen(buff[3])), &p_rules, &t_rules);
+		my_slen = xlat_tokenize_condition(cs, &head, &FR_SBUFF_IN(buff[3], strlen(buff[3])), &p_rules, &t_rules);
 		if (my_slen <= 0) {
 			ptr = buff[3];
 			slen = my_slen;
