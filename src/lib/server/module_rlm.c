@@ -493,7 +493,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED
 			/*
 			 *	If name1 doesn't match, skip it.
 			 */
-			if (strcmp(methods->name1, method_name1) != 0) continue;
+			if (strcasecmp(methods->name1, method_name1) != 0) continue;
 
 			/*
 			 *	The module can declare a
@@ -512,7 +512,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED
 			 */
 			if (!methods->name2 || !method_name2) continue;
 
-			if (strcmp(methods->name2, method_name2) == 0) goto found;
+			if (strcasecmp(methods->name2, method_name2) == 0) goto found;
 		}
 
 		/*
@@ -552,7 +552,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED
 
 				fr_assert(methods->name1 != CF_IDENT_ANY); /* should have been caught above */
 
-				if (strcmp(methods->name1, allowed->name) != 0) continue;
+				if (strcasecmp(methods->name1, allowed->name) != 0) continue;
 
 				/*
 				 *	The module matches "recv *",
@@ -570,11 +570,11 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED
 				if (!methods->name2 && !allowed->name2) goto found_allowed;
 
 				/*
-				 *	Don't do strcmp on NULLs
+				 *	Don't do strcasecmp on NULLs
 				 */
 				if (!methods->name2 || !allowed->name2) continue;
 
-				if (strcmp(methods->name2, allowed->name2) == 0) goto found_allowed;
+				if (strcasecmp(methods->name2, allowed->name2) == 0) goto found_allowed;
 			}
 		}
 
@@ -675,7 +675,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED
 			/*
 			 *	If name1 doesn't match, skip it.
 			 */
-			if (strcmp(methods->name1, p) != 0) continue;
+			if (strcasecmp(methods->name1, p) != 0) continue;
 
 		found_name1:
 			/*
@@ -742,7 +742,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED
 		 */
 		if (!methods->name2) continue;
 
-		if (strcmp(methods->name2, q) != 0) continue;
+		if (strcasecmp(methods->name2, q) != 0) continue;
 
 	found_name2:
 		/*
