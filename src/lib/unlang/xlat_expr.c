@@ -1259,6 +1259,193 @@ static xlat_action_t xlat_func_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+typedef struct {
+	tmpl_t const		*vpt;		//!< the attribute reference
+	xlat_exp_head_t		*xlat;		//!< the xlat which needs expanding
+} xlat_exists_inst_t;
+
+typedef struct {
+	bool			last_success;
+	fr_value_box_list_t	list;
+} xlat_exists_rctx_t;
+
+static xlat_arg_parser_t const xlat_func_exists_arg = {
+	.concat = true, .type = FR_TYPE_STRING,
+};
+
+static int xlat_expr_resolve_exists(xlat_exp_t *node, void *instance, xlat_res_rules_t const *xr_rules)
+{
+	xlat_exists_inst_t	*inst = talloc_get_type_abort(instance, xlat_exists_inst_t);
+
+	if (xlat_resolve(inst->xlat, xr_rules) < 0) return -1;
+
+	node->flags = node->call.func->flags;
+	inst->xlat->flags.needs_resolving = false;
+	xlat_flags_merge(&node->flags, &inst->xlat->flags);
+
+	node->flags.can_purify = (node->call.func->flags.pure && inst->xlat->flags.pure) | inst->xlat->flags.can_purify;
+	return 0;
+}
+
+/*
+ *	We just print the xlat as-is.
+ */
+static fr_slen_t xlat_expr_print_exists(fr_sbuff_t *out, UNUSED xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
+{
+	size_t			at_in = fr_sbuff_used_total(out);
+	xlat_exists_inst_t	*inst = instance;
+
+	xlat_print(out, inst->xlat, e_rules);
+
+	return fr_sbuff_used_total(out) - at_in;
+}
+
+/*
+ *	Don't expand the argument if it's already an attribute reference.
+ */
+static int xlat_instantiate_exists(xlat_inst_ctx_t const *xctx)
+{
+	xlat_exists_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_exists_inst_t);
+	xlat_exp_t		*arg, *xlat;
+
+	arg = xlat_exp_head(xctx->ex->call.args);
+	(void) fr_dlist_remove(&xctx->ex->call.args->dlist, arg);
+
+	fr_assert(arg->type == XLAT_GROUP);
+	xlat = xlat_exp_head(arg->group);
+
+	inst->xlat = talloc_steal(inst, arg->group);
+	talloc_free(arg);
+
+	/*
+	 *	If it's an attribute, we can cache a reference to it.
+	 */
+	if ((xlat->type == XLAT_TMPL) && (tmpl_contains_attr(xlat->vpt))) {
+		inst->vpt = xlat->vpt;
+	}
+
+	return 0;
+}
+
+static xlat_action_t xlat_attr_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      request_t *request, tmpl_t const *vpt, bool do_free)
+{
+	fr_pair_t		*vp;
+	fr_value_box_t		*dst;
+	fr_dcursor_t		cursor;
+	tmpl_dcursor_ctx_t	cc;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
+
+	vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	if (!vp) {
+		dst->vb_bool = tmpl_da(vpt)->flags.virtual;
+	} else {
+		dst->vb_bool = true;
+	}
+
+	if (do_free) talloc_const_free(vpt);
+	tmpl_dursor_clear(&cc);
+	fr_dcursor_append(out, dst);
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_action_t xlat_exists_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					xlat_ctx_t const *xctx,
+					request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	xlat_exists_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_exists_rctx_t);
+	ssize_t			slen;
+	tmpl_t			*vpt;
+	fr_value_box_t		*vb;
+	fr_sbuff_t		*agg;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, 8192);
+
+	/*
+	 *	If the expansions fails, then we fail the entire thing.
+	 */
+	if (!rctx->last_success) {
+	fail:
+		talloc_free(rctx);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Because we expanded the RHS ourselves, the "concat"
+	 *	flag to the RHS argument is ignored.  So we just
+	 *	concatenate it here.  We escape the various untrusted inputs.
+	 */
+	if (fr_value_box_list_concat_as_string(NULL, agg, &rctx->list, NULL, 0, NULL,
+					       FR_VALUE_BOX_LIST_FREE_BOX, true) < 0) {
+		RPEDEBUG("Failed concatenating attribute name string");
+		return XLAT_ACTION_FAIL;
+	}
+
+	vb = fr_dlist_head(&rctx->list);
+
+	slen = tmpl_afrom_attr_str(ctx, NULL, &vpt, vb->vb_strvalue,
+				   &(tmpl_rules_t) {
+					   .attr = {
+						   .dict_def = request->dict,
+						   .request_def = &tmpl_request_def_current,
+						   .list_def = PAIR_LIST_REQUEST,
+						   .prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+						   .allow_unknown = false,
+						   .allow_unresolved = false,
+						   .list_as_attr = true,
+					   },
+						   });
+	if (slen <= 0) goto fail;
+
+	talloc_free(rctx);	/* no longer needed */
+	return xlat_attr_exists(ctx, out, request, vpt, true);
+}
+
+/** See if a named attribute exists
+ *
+ * Example:
+@verbatim
+"%{exists:&Foo}" == true
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				     xlat_ctx_t const *xctx,
+				     request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	xlat_exists_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_exists_inst_t);
+	xlat_exists_rctx_t	*rctx;
+
+	/*
+	 *	We return "true" if the attribute exists.  Otherwise we return "false".
+	 *
+	 *	Except for virtual attributes.  If we're testing for
+	 *	their existence, we always return "true".
+	 */
+	if (inst->vpt) {
+		return xlat_attr_exists(ctx, out, request, inst->vpt, false);
+	}
+
+	/*
+	 *	Expand the xlat into a string.
+	 */
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_exists_rctx_t));
+	fr_value_box_list_init(&rctx->list);
+
+	if (unlang_xlat_yield(request, xlat_exists_resume, NULL, rctx) != XLAT_ACTION_YIELD) {
+	fail:
+		talloc_free(rctx);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (unlang_xlat_push(ctx, &rctx->last_success, &rctx->list,
+			     request, inst->xlat, UNLANG_SUB_FRAME) < 0) goto fail;
+
+	return XLAT_ACTION_PUSH_UNLANG;
+}
+
 #undef XLAT_REGISTER_BINARY_OP
 #define XLAT_REGISTER_BINARY_OP(_op, _name) \
 do { \
@@ -1350,6 +1537,10 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_NARY_OP(T_LOR, logical_or, logical);
 
 	XLAT_REGISTER_MONO("rcode", xlat_func_rcode, xlat_func_rcode_arg);
+	XLAT_REGISTER_MONO("exists", xlat_func_exists, xlat_func_exists_arg);
+	xlat_async_instantiate_set(xlat, xlat_instantiate_exists, xlat_exists_inst_t, NULL, NULL);
+	xlat_print_set(xlat, xlat_expr_print_exists);
+	xlat_resolve_set(xlat, xlat_expr_resolve_exists);
 
 	/*
 	 *	-EXPR
