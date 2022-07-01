@@ -1036,7 +1036,7 @@ char const *cf_section_value_find(CONF_SECTION const *cs, char const *attr)
  *	- 0 if cs matches the identifiers.
  *	- <0 if cs is less than the identifiers.
  */
-int8_t *cf_section_name_cmp(CONF_SECTION const *cs, char const *name1, char const *name2)
+int8_t cf_section_name_cmp(CONF_SECTION const *cs, char const *name1, char const *name2)
 {
 	int8_t ret;
 
