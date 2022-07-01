@@ -389,7 +389,9 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 	xlat_exp_t		*lhs, *rhs, *regex;
 
 	lhs = xlat_exp_head(xctx->ex->call.args);
+	fr_assert(lhs);
 	rhs = xlat_exp_next(xctx->ex->call.args, lhs);
+	fr_assert(rhs);
 
 	(void) fr_dlist_remove(&xctx->ex->call.args->dlist, rhs);
 
@@ -2307,7 +2309,7 @@ redo:
 		talloc_free(lhs);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 	}
-	
+
 #ifdef __clang_analyzer__
 	if (!rhs) {
 		talloc_free(lhs);
