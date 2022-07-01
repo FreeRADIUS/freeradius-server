@@ -1233,22 +1233,22 @@ static xlat_arg_parser_t const xlat_func_rcode_arg = {
  */
 static xlat_action_t xlat_func_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     UNUSED xlat_ctx_t const *xctx,
-				     request_t *request, fr_value_box_list_t *args)
+				     request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*vb;
-	fr_value_box_t	*in = fr_dlist_head(args);
+	fr_value_box_t	*src = fr_dlist_head(in);
 
 	/*
 	 *	Query the rcode if there's no argument.  Otherwise do a boolean check if the passed string
 	 *	matches the current rcode.
 	 */
-	if (!in) {
+	if (!src) {
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, attr_module_return_code, false));
 		vb->datum.int32 = request->rcode;
 	} else {
 		rlm_rcode_t rcode;
 
-		rcode = fr_table_value_by_str(rcode_table, in->vb_strvalue, RLM_MODULE_NOT_SET);
+		rcode = fr_table_value_by_str(rcode_table, src->vb_strvalue, RLM_MODULE_NOT_SET);
 
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
 		vb->vb_bool = (request->rcode == rcode);
