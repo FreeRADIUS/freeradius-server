@@ -69,7 +69,9 @@ date date_iso {
 #
 #  If the argument to `%{date:...}` is an attribute of `date` or
 #  `integer` type, the date used will be the time given by the
-#  relevant attribute.
+#  relevant attribute.   If the attributes is of type `string`, the
+#  string will be parsed according to the `format` configuration,
+#  and a Unix date will be returned, as integer seconds since the epoch.
 #
 #  For example, `%{date:&Event-Timestamp}` will use the date from the
 #  `Event-Timestamp` attribute as the source of the date for printing.
