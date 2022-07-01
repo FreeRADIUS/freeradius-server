@@ -1055,7 +1055,7 @@ authenticate eap {
 #  not be in the packet.
 #
 send Access-Challenge {
-	attr_filter.access-challenge.post-auth
+	attr_filter
 	handled
 }
 
