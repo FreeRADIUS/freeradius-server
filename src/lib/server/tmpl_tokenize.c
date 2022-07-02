@@ -3617,7 +3617,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 	TMPL_VERIFY(vpt);
 
 	dict_def = vpt->rules.attr.dict_def;
-	if (!tr_rules->dict_def || tr_rules->force_dict_def) dict_def = tr_rules->dict_def;
+	if (!dict_def || tr_rules->force_dict_def) dict_def = tr_rules->dict_def;
 
 	/*
 	 *	First component is special becase we may need
