@@ -1403,7 +1403,7 @@ static xlat_action_t xlat_func_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_ctx_t const *xctx,
 				     request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	xlat_exists_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_exists_inst_t);
+	xlat_exists_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_exists_inst_t);
 	xlat_exists_rctx_t	*rctx;
 
 	/*
