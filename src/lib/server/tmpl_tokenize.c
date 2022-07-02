@@ -630,7 +630,7 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 		 *	We don't want to misidentify the list
 		 *	as being part of an attribute.
 		 */
-		if (!fr_sbuff_is_char(&our_in, '.') && !tmpl_substr_terminal_check(&our_in, p_rules)) {
+		if (!fr_sbuff_is_char(&our_in, '.') && (fr_sbuff_is_in_charset(&our_in, fr_dict_attr_allowed_chars) || !tmpl_substr_terminal_check(&our_in, p_rules))) {
 			goto default_ref;
 		}
 
