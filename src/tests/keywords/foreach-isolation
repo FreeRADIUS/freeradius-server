@@ -1,5 +1,5 @@
 #
-#  PRE: foreach if-multivalue
+#  PRE: foreach
 #
 
 update {
