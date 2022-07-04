@@ -2552,6 +2552,56 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
+static xlat_arg_parser_t const xlat_func_print_args[] = {
+	{ .required = true, .variadic = true, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Create printable versions of things.
+ *
+@verbatim
+%(print:&Tmp-Octets-0) results in the printable version of the attribute.
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_print(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED xlat_ctx_t const *xctx,
+				    request_t *request, fr_value_box_list_t *in)
+{
+	fr_sbuff_t *agg;
+	fr_value_box_t *dst;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, 8192);
+
+	fr_dlist_foreach(in, fr_value_box_t, arg) {
+		fr_assert(arg->type == FR_TYPE_GROUP);
+
+		fr_dlist_foreach(&arg->vb_group, fr_value_box_t, vb) {
+			ssize_t slen;
+
+			/*
+			 *	If the input is tainted, escape it using the normal double-quoting rules.
+			 *
+			 *	The resulting output string is not tainted.
+			 */
+			slen = fr_value_box_print(agg, vb, vb->tainted ? &fr_value_escape_double : NULL);
+			if (slen < 0) {
+				RPEDEBUG("Failed printing %pV to data type 'string'", vb);
+				return XLAT_ACTION_FAIL;
+			}
+		}
+	}
+
+	MEM(dst = fr_value_box_alloc_null(ctx));
+	fr_value_box_bstrndup_shallow(dst, NULL, fr_sbuff_start(agg), fr_sbuff_used(agg), false);
+	fr_dcursor_append(out, dst);
+
+	fr_dlist_talloc_free(in);
+
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_arg_parser_t const xlat_func_rand_arg = {
 	.required = true,
 	.single = true,
@@ -3771,6 +3821,7 @@ do { \
 	XLAT_REGISTER_ARGS("length", xlat_func_length, xlat_func_length_args);
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_pad_args);
+	XLAT_REGISTER_ARGS("print", xlat_func_print, xlat_func_print_args);
 
 	/*
 	 *	The inputs to these functions are variable.
