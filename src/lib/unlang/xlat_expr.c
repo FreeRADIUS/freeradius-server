@@ -2156,11 +2156,24 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		if (quote != T_BARE_WORD) {
 			if (tmpl_rules_cast(vpt) != FR_TYPE_NULL) {
 				type = tmpl_rules_cast(vpt);
+				MEM(cast = expr_cast_alloc(head, type));
+
 			} else {
 				type = FR_TYPE_STRING;
-			}
 
-			MEM(cast = expr_cast_alloc(head, type));
+				/*
+				 *	The string is T_DOUBLE_QUOTED_STRING, or T_BACK_QUOTED_STRING,
+				 *	both of which have double-quoting rules.
+				 *
+				 *	'foo' can't contain an xlat.
+				 *	/foo/ is forbidden, as we don't expect a regex here.
+				 */
+				MEM(cast = xlat_exp_alloc(head, XLAT_FUNC, "print", 5));
+				MEM(cast->call.args = xlat_exp_head_alloc(cast));
+				MEM(cast->call.func = xlat_func_find("print", 5));
+				fr_assert(cast->call.func != NULL);
+				cast->flags = cast->call.func->flags;
+			}
 
 			xlat_func_append_arg(cast, node, false);
 			node = cast;
