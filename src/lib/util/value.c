@@ -5215,9 +5215,6 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		break;
 
 	case FR_TYPE_GROUP:
-	{
-		fr_sbuff_escape_rules_t my_e_rules;
-
 		/*
 		 *	If the caller didn't ask to escape binary data
 		 *	in 'octets' types, then we force that now.
@@ -5240,7 +5237,6 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 				", ", (sizeof(", ") - 1), e_rules,
 				0, false);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
-	}
 		break;
 
 	case FR_TYPE_NULL:
