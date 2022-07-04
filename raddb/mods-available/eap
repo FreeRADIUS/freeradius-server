@@ -200,7 +200,7 @@ eap {
 		#  server.pem, followed by CA1.pem, followed by
 		#  CA2.pem.
 		#
-		#  When using "ca_file" or "ca_dir", the
+		#  When using "ca_file" or "ca_path", the
 		#  "certificate_file" should contain only
 		#  "server.pem".  And then you may (or may not) need
 		#  to set "auto_chain", depending on your version of
