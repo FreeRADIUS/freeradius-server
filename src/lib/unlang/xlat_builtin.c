@@ -2104,7 +2104,7 @@ static xlat_action_t xlat_func_cast(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 			p = fr_dlist_remove(&arg->vb_group, vb);
 
 			if (fr_value_box_cast_in_place(vb, vb, type, NULL) < 0) {
-				RPEDEBUG("Failed casting %pV to data type %s", vb, fr_type_to_str(type));
+				RPEDEBUG("Failed casting %pV to data type '%s'", vb, fr_type_to_str(type));
 				return XLAT_ACTION_FAIL;
 			}
 			fr_dcursor_append(out, vb);
