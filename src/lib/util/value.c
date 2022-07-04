@@ -5215,6 +5215,20 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		break;
 
 	case FR_TYPE_GROUP:
+	{
+		fr_sbuff_escape_rules_t my_e_rules;
+
+		/*
+		 *	If the caller didn't ask to escape binary data
+		 *	in 'octets' types, then we force that now.
+		 *	Otherwise any 'octets' type which is buried
+		 *	inside of a 'group' will get copied verbatim
+		 *	from input to output, with no escaping!
+		 */
+		if (!e_rules || (!e_rules->do_oct && !e_rules->do_hex)) {
+			e_rules = &fr_value_escape_double;
+		}
+
 		/*
 		 *	Represent groups as:
 		 *
@@ -5226,6 +5240,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 				", ", (sizeof(", ") - 1), e_rules,
 				0, false);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
+	}
 		break;
 
 	case FR_TYPE_NULL:
@@ -5318,9 +5333,14 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
 			break;
 
 		case FR_TYPE_OCTETS:
-			if (vb->tainted && e_rules) goto cast;
-
-			slen = fr_sbuff_in_bstrncpy(&our_sbuff, (char const *)vb->vb_strvalue, vb->vb_length);
+			/*
+			 *	Copy the raw string over, if necessary with escaping.
+			 */
+			if (e_rules && (vb->tainted || e_rules->do_oct || e_rules->do_hex)) {
+				slen = fr_sbuff_in_escape(&our_sbuff, (char const *)vb->vb_strvalue, vb->vb_length, e_rules);
+			} else {
+				slen = fr_sbuff_in_bstrncpy(&our_sbuff, (char const *)vb->vb_strvalue, vb->vb_length);
+			}
 			break;
 
 		case FR_TYPE_STRING:

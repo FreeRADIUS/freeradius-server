@@ -264,14 +264,15 @@ match ERROR offset 0: Failed parsing string as type 'uint32'
 xlat_purify <ipaddr>127.0.0.1 == "127.0.0.1"
 match true
 
-# Invalid cast from octets to ipaddr.
+# LHS is IPaddr, RHS is string.
 xlat_purify <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
-match NULL
+match false
 
 #
 #  Bare %{...} is allowed.
 #
 
+# Invalid cast from octets to ipaddr.
 xlat_purify <ipaddr>127.0.0.1 == %{md4:127.0.0.1}
 match NULL
 
@@ -357,7 +358,11 @@ xlat_purify (&User-Name == (string) %{md4: blah})
 match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
 
 xlat_purify (&User-Name == "%{md4: blah}")
-match (&User-Name == "TI$\320^\304H\031\%\2727I\240\226\240\247")
+match (&User-Name == "0x544924d05ec4481925ba3749a096a0a7")
+
+#  and without the double quotes.
+xlat_purify (&User-Name == %{md4: blah})
+match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
 
 xlat_purify <ipaddr>127.0.0.1 == 2130706433
 match true
@@ -756,4 +761,4 @@ match %{rcode:'handled'}
 
 
 count
-match 312
+match 314
