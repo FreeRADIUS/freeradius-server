@@ -1089,8 +1089,9 @@ int tmpl_value_list_insert_tail(fr_value_box_list_t *list, fr_value_box_t *box, 
 static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 				  request_t *request, tmpl_t const *vpt)
 {
-	fr_radius_packet_t	*packet = NULL;
+	fr_radius_packet_t *packet = NULL;
 	fr_value_box_t	*value;
+	fr_value_box_list_t list;
 
 	/*
 	 *	Virtual attributes always have a count of 1
@@ -1221,8 +1222,15 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	}
 
 done:
-	fr_dlist_insert_tail(out, value);
+	fr_value_box_list_init(&list);
+	fr_dlist_insert_tail(&list, value);
 
+	if (tmpl_eval_cast(ctx, &list, vpt) < 0) {
+		fr_dlist_talloc_free(&list);
+		return -1;
+	};
+
+	fr_dlist_move(out, &list);
 	return 0;
 }
 
