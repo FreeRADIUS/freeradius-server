@@ -99,7 +99,6 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 {
 	map_t		*map;
 	char const	*attr, *value, *marker_subject;
-	fr_sbuff_parse_rules_t const *p_rules;
 	ssize_t		slen;
 	fr_token_t	type;
 
@@ -165,23 +164,11 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	 *	RHS might be an attribute reference.
 	 */
 	type = cf_pair_value_quote(cp);
-	p_rules = value_parse_rules_unquoted[type]; /* We're not searching for quotes */
-	if (type == T_DOUBLE_QUOTED_STRING || type == T_BACK_QUOTED_STRING) {
-		char *unescaped_value;
-		slen = fr_sbuff_out_aunescape_until(map, &unescaped_value,
-				&FR_SBUFF_IN(value, strlen(value)), SIZE_MAX, p_rules->terminals, p_rules->escapes);
-		if (slen < 0) {
-			marker_subject = value;
-			goto marker;
-		}
-		value = unescaped_value;
-		p_rules = NULL;
-	}
 
 	slen = tmpl_afrom_substr(map, &map->rhs,
 				 &FR_SBUFF_IN(value, strlen(value)),
 				 type,
-				 p_rules,
+				 value_parse_rules_unquoted[type],	/* We're not searching for quotes */
 				 rhs_rules);
 	if (slen < 0) {
 		marker_subject = value;
