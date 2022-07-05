@@ -4,13 +4,17 @@ Dynamic expansion is a feature that allows values to be dynamically
 expanded at run time. For historical reasons, these string expansions
 are called "xlats".
 
-Dynamioc expansion is performed via the following syntax:
+Dynamic expansion is performed via the following syntax:
 
 `%{...}`
 
 Where the `%{` signals the start of a dynamic expansion, and `}`
-signals the end of the dynamic expansion.  The contents of the
-expansion can be many things:
+signals the end of the dynamic expansion.  Dynamic expansions are most
+commonly used in xref:type/string/double.adoc[double-quoted strings],
+and xref:unlang/expression.adoc[expressions / conditions].
+
+The contents of an expansion can be many things, such as attribute
+references, function calls, etc.  The table below gives more examples of expansions.
 
 .Types of Expansions
 [options="header"]
@@ -20,23 +24,20 @@ expansion can be many things:
 | xref:xlat/character.adoc[single character]        | Single character expansions.
 | xref:xlat/module.adoc[modules]                    | Pass a string to a module such as `sql`.
 | xref:xlat/alternation.adoc[condition]             | Conditionally expand a string.
-| xref:xlat/builtin.adoc[built-in expansions]       | Such as string length, tolower, etc...
+| xref:xlat/builtin.adoc[built-in expansions]       | Functions as string length, tolower, etc...
 |=====
 
-This feature is used to create policies which refer to concepts rather
-than to specific values. For example, a policy can be created that
-refers to the User-Name in a request, via:
-
-`%{User-Name}`
-
-This expansion is done only for double-quoted strings and for
-the back-tick operator.
+Expansions are used inside of
+xref:type/string/double.adoc[double-quoted strings] and for the
+xref:string/backticks.adoc[back-tick quoted strings]
 
 == Caveats
 
 Unlike other languages, there is no way to define new variables.  All
-of the expansions must refer to attributes that already exist,
-or to modules that will return a string value.
+of the expansions must refer to attributes that already exist, or to
+pre-defined functions which take arguments, and return values.
+
+New variables are defined in the xref:raddb:dictionary.adoc[site-local dictionaries].
 
 == Character Escaping
 
@@ -44,9 +45,12 @@ Some characters need to be escaped within a dynamically expanded
 string `%{...}`. The `%` character is used for variable expansion, so a
 literal `%` character can be created by using `%%`.
 
-Other than within a dynamically expanded string, very little
-character escaping is needed. The rules of the enclosing string context
-determine whether or not a space or " character needs to be escaped.
+Other than within a dynamically expanded string, very little character
+escaping is needed. The rules of the enclosing string context
+determine whether or not a space or `"` character needs to be escaped.
+See the ref:type/string/double.adoc[double-quoted strings] and
+xref:string/backticks.adoc[back-tick quoted strings] pages for more
+information.
 
 .Example
 

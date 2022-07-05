@@ -75,6 +75,10 @@ The suffix can then be "subtracted" off, with:
 
 Will result in `&Reply-Message == "foo"` !.
 
+Note that the `-=` operator behaves differently from earlier versions
+of the server!  Since the server no longer needs `update` sections, we
+could re-purpose the operator.
+
 Other data types will generally yield results which make sense.  For
 example:
 
@@ -106,5 +110,13 @@ deprecated.
 Mathematical operations which cause overflow, underflow, or division
 by zero will return a `null` result.  This result will propagate
 through any calculations, so that an expression which relies on `null`
-will also return `null`.
+will generally also return `null`.
 
+A `null` result can be removed via the `||` operator.  For example:
+
+[source,unlang]
+----
+&NAS-Port-Id = (5 - "foo") || 6
+----
+
+Will return `6`, as the left side expression of the `||` operator evaluates to `null`.

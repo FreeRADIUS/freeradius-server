@@ -22,7 +22,7 @@ The output of the dynamic expansion can be interpreted as a string,
 a number, or an IP address, depending on its context.
 
 Note that the interpretation of text _strongly_ depends on the
-context.  The text `"0000"` can be interpreted as a data type
+context.  The text `0000` can be interpreted as a data type
 "integer", having value zero, or a data type "string", having value
 `"0000"`.  In general when a particular piece of text is used, it is
 used with the context of a known attribute.  That attribute has a
@@ -34,6 +34,67 @@ data type.
 `"word"` +
 `"a string"` +
 `"this has embedded\ncharacters"`
+
+== Methods of Creating Strings
+
+There are a few different ways in which double-quoted strings can be
+created.  The simplest is just an in-line string, as in `"string"`.
+However, strings can also be created via
+xref:unlang/expression.adoc[expressions]. and
+xref:xlat/index.adoc[dynamic expansions].
+
+In general, creating strings via xref:xlat/index.adoc[dynamic
+expansions] will result in the _printed_ version of the expansion
+being used.
+
+.Example
+[source,unlang]
+----
+"User-Name is %{User-Name}"
+"IP Address is %{reply.Framed-IP-Address}
+----
+
+Both of the above expansions will return the _printed_ version of the
+expansion.  For `User-Name`, it will be the string version of the
+users name, as would be expected.  However, for the
+`Framed-IP-Address` example, the printed version will be an ASCII
+string such as `192.0.2.1`, even though the actual IP address is a
+32-bit number.
+
+When a string is created via an
+xref:unlang/expression.adoc[expression] using the `+` operator, the
+resulting string can be quite different, depending on the inputs.
+
+.Example
+[source,unlang]
+----
+"User-Name is " + &User-Name
+"IP Address is " + (string) &reply.Framed-IP-Address
+----
+
+The first expansion here returns the same string as the previous
+example `"User-Name is %{User-Name}"`.  This behavior is because the
+`User-Name` attribute is defined as type `string`.  So appending a
+`string` to a `string` yields a `string`.
+
+However, the second example returns the string `"IP Address is "`
+followed by four (4) bytes of the actual IP address, with embedded
+zeros, and other non-ASCII characters
+
+This behavior is because the xref:type/cast.doc[cast] operator
+`(string)` will convert the data type from `ipv4addr` to `string`, but
+it will not change or modify the _contents_ of the data.  The result
+of the `+` concatenation is therefore the original `string`, followed
+by the 4 bytes of the `ipv4addr` data.
+
+If the printed version of the data is needed, the expansion should be
+enclosed in double-quotes, as in the first example.
+
+=== To Remember
+
+`"foo" + (string) &Bar` produces `"foo"` plus `&Bar` _cast_ to a string.
+
+`"foo%{Bar}"` produces `"foo"` plus `&Bar` _printed_ to a string.
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

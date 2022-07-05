@@ -1,0 +1,69 @@
+= Casts
+
+Values can be *cast* from one data type to another.  However, this
+cast only changes the _type_ of the data, it does not change the datas
+_value_.  That is, a cast allows you to convert an `octets` data type
+to a `string`, but the resulting `string` may still contain
+non-printable characters.
+
+Casting is used when the server is unable to automatically figure out
+the correct data type to use.  For example, in the following
+expansion, it is not immediately obvious that the right side of the
+expression is an IP address.  It could instead be interpreted as a string
+`"192.0.2.1"`.
+
+[source,unlang]
+----
+if ("%{sql:SELECT ipaddress FROM table WHERE user=%{User-Name}}" == 192.0.2.1) }
+    ....
+}
+----
+
+Since there is no attribute reference on either side of the `==`
+operator, the interpreter has no way of knowing that the string
+`192.0.2.1` is an IP address.  There is unfortunately no way of
+_always_ parsing strings in order to automatically determine which
+data type to use.  Any such automatic parsing would work most of the
+time, but it would have error cases where the parsing was incorrect.
+
+The solution is to resolve these ambiguities by allowing the values to
+be cast to a particular type.  Casting a value to a type tells the
+interpreter how that value should be parsed.  Casting is done by
+prefixing a value with the type name, surrounded by brackets;
+`(...)`.
+
+.Syntax
+----
+(...)value
+----
+
+We can add a cast to the above example, as follows:
+
+[source,unlang]
+----
+if ("%{sql:SELECT ipaddress FROM table WHERE user=%{User-Name}}" == (ipaddr)192.0.2.1) }
+    ....
+}
+----
+
+In this example, we prefix the IP address with the string `(ipaddr)`.
+The interpreter then knows that the value `192.0.2.` should be
+interpreted as the data type `ipaddr`, and not as the literal string
+`"192.0.2."`.
+
+For a full list of data types which can be used in a cast, please see
+the xref:unlang/type/all_types.adoc[list of data types] page, and the
+"Basic Type Types" section.
+
+In most cases, the server can automatically determine what data type
+to use.  The cast syntax is used when either the data type is
+ambiguous, or when data should be normalized prior to comparison, or
+when a specific data type is required.
+
+=== Compatibility
+
+For compatibility with version 3, the `<cast>` syntax is also
+supported.  We recommend, however, that people use the new syntax.
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
