@@ -2141,7 +2141,6 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	if (tmpl_contains_xlat(vpt) && !tmpl_is_exec(vpt) && !tmpl_contains_regex(vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(vpt);
 		xlat_exp_t *cast;
-		fr_type_t type;
 
 		talloc_steal(node, xlat);
 		node->fmt = talloc_typed_strdup(node, node->fmt);
@@ -2155,12 +2154,9 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 		if (quote != T_BARE_WORD) {
 			if (tmpl_rules_cast(vpt) != FR_TYPE_NULL) {
-				type = tmpl_rules_cast(vpt);
-				MEM(cast = expr_cast_alloc(head, type));
+				MEM(cast = expr_cast_alloc(head, tmpl_rules_cast(vpt)));
 
 			} else {
-				type = FR_TYPE_STRING;
-
 				/*
 				 *	The string is T_DOUBLE_QUOTED_STRING, or T_BACK_QUOTED_STRING,
 				 *	both of which have double-quoting rules.
