@@ -6,7 +6,7 @@ conditional expressions or when assigning a value to an attribute.
 == Using Data Types
 
 The server support a wide range of data types, as given in the
-xref:unlang/type/all_types.adoc[list of data types] page.  The choice
+xref:type/all_types.adoc[list of data types] page.  The choice
 of which data type applies is determined by the context in which that
 data type is used.  This context is usually taken from an attribute
 which is being assigned a value.
