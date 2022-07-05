@@ -402,6 +402,13 @@ eap {
 		#
 		cipher_list = "DEFAULT"
 
+		#  Set this option to specify the allowed
+		#  TLS signature algorithms for OpenSSL 1.1.1 and above.
+		#  The format and available signature algorithms are listed
+		#  in "man 3 SSL_CTX_set1_sigalgs_list".
+		#
+		# sigalgs_list = ""
+
 		#  If enabled, OpenSSL will use server cipher list
 		#  (possibly defined by cipher_list option above)
 		#  for choosing right cipher suite rather than
