@@ -2565,7 +2565,7 @@ static xlat_arg_parser_t const xlat_func_print_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_print(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t xlat_func_print(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED xlat_ctx_t const *xctx,
 				    request_t *request, fr_value_box_list_t *in)
 {
