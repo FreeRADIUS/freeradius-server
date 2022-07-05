@@ -39,6 +39,7 @@ prefixing a value with the type name, surrounded by brackets;
 
 We can add a cast to the above example, as follows:
 
+.Example
 [source,unlang]
 ----
 if ("%{sql:SELECT ipaddress FROM table WHERE user=%{User-Name}}" == (ipaddr)192.0.2.1) }
@@ -52,13 +53,48 @@ interpreted as the data type `ipaddr`, and not as the literal string
 `"192.0.2."`.
 
 For a full list of data types which can be used in a cast, please see
-the xref:unlang/type/all_types.adoc[list of data types] page, and the
+the xref:type/all_types.adoc[list of data types] page, and the
 "Basic Type Types" section.
 
 In most cases, the server can automatically determine what data type
 to use.  The cast syntax is used when either the data type is
 ambiguous, or when data should be normalized prior to comparison, or
 when a specific data type is required.
+
+=== Expressions
+
+Unlang xref:unlang/expression.adoc[expressions] can use casts, too, as
+in the following example:
+
+.Example Casting numbers to a 'string'
+[source,unlang]
+----
+(string)(5 + 6)
+----
+
+The output of this cast will be the string value `"11"`.
+
+Casting expressions can also be used to "force" specific data types.
+For example, if we want to get the network byte-order value of a
+16-bit integer, we can do the following:
+
+.Example Casting numbers to a fixed-size network byte order
+[source,unlang]
+----
+(octets)((uint16) 258)
+----
+
+The output of this cast will be an `octet` string having value
+`0x0103`.  This kind of casting can be used to create and pack "ad
+hoc" data structures for sending in a packet:
+
+.Example Ad-hoc network structures
+[source,unlang]
+----
+(octets)((uint16) 258) + (octets)((uint16) 4) + (octets)((ipv4addr) 127.0.0.1)
+----
+
+will result in the `octet` string value `0x010300047f000001`.
 
 === Compatibility
 
