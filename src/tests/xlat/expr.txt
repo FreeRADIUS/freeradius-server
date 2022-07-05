@@ -98,17 +98,11 @@ match 0x666f6f7f000001
 #  any escaping.
 #
 xlat_expr "foo" + (string)&Packet-Authentication-Vector
-match foo
+match foo0x00000000000000000000000000000000
 
+# string + octets gets promoted to octets
 xlat_expr "foo" + &Packet-Authentication-Vector
 match 0x666f6f00000000000000000000000000000000
-
-#
-#  Really "foo" + 16 octets of 0, but it isn't
-#  printed correctly.  See xlat_expr in unit_test_module.
-#
-xlat_expr "foo" + (string) &Packet-Authentication-Vector
-match foo
 
 #  this is "foo" + PRINTABLE version of &Packet-Authentication-Vector
 xlat_expr "foo%{Packet-Authentication-Vector}"

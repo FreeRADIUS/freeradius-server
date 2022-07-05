@@ -1488,11 +1488,17 @@ int tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *list, tmpl_t const *vpt
 		if (!fr_dlist_next(list, vb)) {
 			return fr_value_box_cast_in_place(vb, vb, cast, NULL);
 		}
+		FALL_THROUGH;
 
+		/*
+		 *	Strings aren't *cast* to the output.  They're *printed* to the output.
+		 */
+	case FR_TYPE_STRING:
 		FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, 256);
 
-		slen = fr_value_box_list_concat_as_string(&tainted, agg, list, NULL, 0, NULL,
-							  FR_VALUE_BOX_LIST_FREE_BOX, true);
+		slen = fr_value_box_list_concat_as_string(&tainted, agg, list, NULL, 0,
+							  (cast == FR_TYPE_STRING) ? &fr_value_escape_double : NULL,
+							  FR_VALUE_BOX_LIST_FREE_BOX, true, true);
 		if (slen < 0) return -1;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
@@ -1504,7 +1510,6 @@ int tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *list, tmpl_t const *vpt
 		fr_dlist_insert_tail(list, vb);
 		break;
 
-	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
 		return fr_value_box_list_concat_in_place(vb, vb, list, cast,
 							 FR_VALUE_BOX_LIST_FREE_BOX, true, SIZE_MAX);

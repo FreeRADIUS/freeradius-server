@@ -239,7 +239,7 @@ match (&Session-Timeout == '10')
 #  @todo - yuck.  Suppress full path?
 #
 xlat_purify &Event-Timestamp == "January 1, 2012 %{User-Name}"
-match (&Event-Timestamp == %(print:"January 1, 2012 %{Request[0].User-Name}"))
+match (&Event-Timestamp == %(cast:string "January 1, 2012 %{Request[0].User-Name}"))
 
 # This one is NOT an expansion, so it's parsed into normal form
 xlat_purify &Event-Timestamp == 'January 1 2012'
@@ -493,7 +493,7 @@ match ((ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address)
 
 # but these are allowed
 xlat_purify <ether>&Tmp-uint64-0 == "%{module: foo}"
-match  ((ether)&Tmp-uint64-0 == %(print:"%{module: foo}"))
+match  ((ether)&Tmp-uint64-0 == %(cast:string "%{module: foo}"))
 
 xlat_purify <ipaddr>&Filter-Id == &Framed-IP-Address
 match ((ipaddr)&Filter-Id == &Framed-IP-Address)
@@ -522,7 +522,7 @@ match (&User-Name[n] == "bob")
 #match &Foo-Bar
 
 xlat_purify &Acct-Input-Octets > "%{Session-Timeout}"
-match (&Acct-Input-Octets > %(print:"%{Request[0].Session-Timeout}"))
+match (&Acct-Input-Octets > %(cast:string "%{Request[0].Session-Timeout}"))
 
 xlat_purify &Acct-Input-Octets > &Session-Timeout
 match (&Acct-Input-Octets > &Session-Timeout)

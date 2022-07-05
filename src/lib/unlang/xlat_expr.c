@@ -590,7 +590,7 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	concatenate it here.  We escape the various untrusted inputs.
 	 */
 	if (fr_value_box_list_concat_as_string(NULL, agg, &rctx->list, NULL, 0, &regex_escape_rules,
-					       FR_VALUE_BOX_LIST_FREE_BOX, true) < 0) {
+					       FR_VALUE_BOX_LIST_FREE_BOX, true, false) < 0) {
 		RPEDEBUG("Failed concatenating regular expression string");
 		return XLAT_ACTION_FAIL;
 	}
@@ -1365,7 +1365,7 @@ static xlat_action_t xlat_exists_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	concatenate it here.  We escape the various untrusted inputs.
 	 */
 	if (fr_value_box_list_concat_as_string(NULL, agg, &rctx->list, NULL, 0, NULL,
-					       FR_VALUE_BOX_LIST_FREE_BOX, true) < 0) {
+					       FR_VALUE_BOX_LIST_FREE_BOX, true, true) < 0) {
 		RPEDEBUG("Failed concatenating attribute name string");
 		return XLAT_ACTION_FAIL;
 	}
@@ -2141,6 +2141,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	if (tmpl_contains_xlat(vpt) && !tmpl_is_exec(vpt) && !tmpl_contains_regex(vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(vpt);
 		xlat_exp_t *cast;
+		fr_type_t type;
 
 		talloc_steal(node, xlat);
 		node->fmt = talloc_typed_strdup(node, node->fmt);
@@ -2154,23 +2155,24 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 		if (quote != T_BARE_WORD) {
 			if (tmpl_rules_cast(vpt) != FR_TYPE_NULL) {
-				MEM(cast = expr_cast_alloc(head, tmpl_rules_cast(vpt)));
+				type = tmpl_rules_cast(vpt);
 
 			} else {
+				type = FR_TYPE_STRING;
+
 				/*
 				 *	The string is T_DOUBLE_QUOTED_STRING, or T_BACK_QUOTED_STRING,
 				 *	both of which have double-quoting rules.
 				 *
 				 *	'foo' can't contain an xlat.
 				 *	/foo/ is forbidden, as we don't expect a regex here.
+				 *
+				 *	We rely on xlat_func_cast() to see the `string` cast, and then to
+				 *	_print_ the result to a string.
 				 */
-				MEM(cast = xlat_exp_alloc(head, XLAT_FUNC, "print", 5));
-				MEM(cast->call.args = xlat_exp_head_alloc(cast));
-				MEM(cast->call.func = xlat_func_find("print", 5));
-				fr_assert(cast->call.func != NULL);
-				cast->flags = cast->call.func->flags;
 			}
 
+			MEM(cast = expr_cast_alloc(head, type));
 			xlat_func_append_arg(cast, node, false);
 			node = cast;
 		}

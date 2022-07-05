@@ -983,7 +983,7 @@ ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  */
 ssize_t		fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 						   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
-						   fr_value_box_list_action_t proc_action, bool flatten)
+						   fr_value_box_list_action_t proc_action, bool flatten, bool printable)
 		CC_HINT(nonnull(2,3));
 
 ssize_t		fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
