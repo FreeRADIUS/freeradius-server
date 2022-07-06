@@ -608,7 +608,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	default:
 		fr_strerror_printf("Attributes of type '%s' cannot have child attributes",
-				   fr_type_to_str(type));
+				   fr_type_to_str(parent->type));
 		return false;
 	}
 
