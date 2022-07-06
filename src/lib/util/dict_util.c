@@ -859,6 +859,28 @@ int dict_protocol_add(fr_dict_t *dict)
 
 	dict_dependent_add(dict, "global");
 
+	/*
+	 *	Create and add sub-attributes which allow other
+	 *	protocols to be encapsulated in the internal
+	 *	namespace.
+	 */
+	if (dict_gctx->internal && (dict != dict_gctx->internal)) {
+		static fr_dict_attr_t const *encap;
+		fr_dict_attr_t const *da;
+		fr_dict_attr_flags_t flags = { 0 };
+
+		if (!encap) encap = fr_dict_attr_by_name(NULL, dict_gctx->internal->root, "Protocol-Encapsulation");
+		fr_assert(encap != NULL);
+
+		if (fr_dict_attr_add(dict_gctx->internal, encap, dict->root->name, dict->root->attr, FR_TYPE_GROUP, &flags) < 0) {
+			return -1;
+		}
+
+		da = fr_dict_attr_child_by_num(encap, dict->root->attr);
+		fr_assert(da != NULL);
+		dict_attr_ref_set(da, dict->root);
+	}
+
 	return 0;
 }
 
