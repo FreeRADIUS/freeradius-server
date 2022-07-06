@@ -87,8 +87,7 @@ static unlang_action_t sometimes_return(rlm_rcode_t *p_result, module_ctx_t cons
 	/*
 	 *	Hash based on the given key.  Usually User-Name.
 	 */
-	tmpl_find_vp(&vp, request, inst->key);
-	if (!vp) RETURN_MODULE_NOOP;
+	if (tmpl_find_vp(&vp, request, inst->key) < 0) RETURN_MODULE_NOOP;
 
 	switch (vp->vp_type) {
 	case FR_TYPE_OCTETS:
