@@ -545,7 +545,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 			sibling = fr_dict_attr_child_by_num(parent, (*attr) - 1);
 			if (!sibling) {
-				fr_strerror_printf("Child \"%s\" of 'struct' ttribute \"%s\" MUST be "
+				fr_strerror_printf("Child \"%s\" of 'struct' attribute \"%s\" MUST be "
 						   "numbered consecutively %u.",
 						   name, parent->name, *attr);
 				return false;
