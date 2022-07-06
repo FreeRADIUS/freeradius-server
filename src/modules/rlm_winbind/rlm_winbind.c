@@ -76,7 +76,6 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
  *
  * @param instance	Instance of this module
  * @param request	The current request
- * @param request_list	The request list
  * @param check		Value pair containing group to be searched
  *
  * @return
