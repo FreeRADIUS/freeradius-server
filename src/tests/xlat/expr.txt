@@ -112,7 +112,9 @@ match foo0x00000000000000000000000000000000
 xlat_expr 'foo%{Packet-Authentication-Vector}'
 match foo%{Packet-Authentication-Vector}
 
-
+# Ad-hoc packing of TLVs!
+xlat_expr (octets)((uint16) 258) + (octets)((uint16) 4) + (octets)((ipv4addr) 127.0.0.1)
+match 0x010200047f000001
 
 xlat_expr (uint16) ((uint32) 1 + (uint8) 2)
 match 3
