@@ -128,6 +128,8 @@ void		_cf_filename_set(CONF_ITEM *cs, char const *filename);
 #define		cf_lineno_set(_ci, _lineno) _cf_lineno_set(CF_TO_ITEM(_ci), _lineno)
 void		_cf_lineno_set(CONF_ITEM *cs, int lineno);
 
+void		cf_item_free_children(CONF_ITEM *ci);
+
 /*
  *	Section manipulation and searching
  */
@@ -167,6 +169,9 @@ char const	*cf_section_name(CONF_SECTION const *cs);
 char const	*cf_section_argv(CONF_SECTION const *cs, int argc);
 fr_token_t	cf_section_name2_quote(CONF_SECTION const *cs);
 fr_token_t	cf_section_argv_quote(CONF_SECTION const *cs, int argc);
+
+#define cf_section_free_children(_x) cf_item_free_children(cf_section_to_item(_x))
+
 
 /*
  *	Pair manipulation and searching

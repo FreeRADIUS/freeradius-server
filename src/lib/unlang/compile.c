@@ -3070,9 +3070,12 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
 				    unlang_ops[ext->type].name);
 
-		c = compile_section(parent, unlang_ctx, cs, ext);
-		talloc_free(c);
-
+		/*
+		 *	Free the children, which frees any xlats,
+		 *	conditions, etc. which were defined, but are
+		 *	now entirely unused.
+		 */
+		cf_section_free_children(cs);
 		c = compile_empty(parent, unlang_ctx, cs, ext);
 
 	} else {

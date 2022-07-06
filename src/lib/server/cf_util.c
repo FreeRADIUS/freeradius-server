@@ -2196,3 +2196,15 @@ void _cf_debug(CONF_ITEM const *ci)
 		}
 	}
 }
+
+/*
+ *	Used when we don't need the children any more, as with
+ *
+ *		if (0) { ... }
+ */
+void cf_item_free_children(CONF_ITEM *ci)
+{
+	fr_dlist_talloc_free(&ci->children);
+	TALLOC_FREE(ci->ident1);
+	TALLOC_FREE(ci->ident2);
+}
