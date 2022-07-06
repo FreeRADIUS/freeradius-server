@@ -2109,7 +2109,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		fr_value_box_bstrndup_shallow(dst, NULL, fr_sbuff_start(agg), fr_sbuff_used(agg), false);
+		fr_value_box_bstrndup(dst, dst, NULL, fr_sbuff_start(agg), fr_sbuff_used(agg), false);
 		fr_dcursor_append(out, dst);
 
 		return XLAT_ACTION_DONE;
