@@ -1995,7 +1995,7 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	 *	If what we stopped at wasn't a '.', then there
 	 *	can't be a protocol name in this string.
 	 */
-	if (*(our_name.p) != '.') {
+	if (*(our_name.p) && (*(our_name.p) != '.')) {
 		memcpy(out, &dict_def, sizeof(*out));
 		return 0;
 	}

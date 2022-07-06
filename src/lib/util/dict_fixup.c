@@ -294,6 +294,14 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 	if (slen == 0) goto invalid_reference;
 
 	/*
+	 *	Just a bare reference to the protocol.  Use the root.
+	 */
+	if (!ref[slen]) {
+		*dict_def = dict;
+		return fr_dict_root(dict);
+	}
+
+	/*
 	 *	Look up the attribute.
 	 */
 	da = fr_dict_attr_by_oid(NULL, fr_dict_root(dict), ref + slen + 1);
