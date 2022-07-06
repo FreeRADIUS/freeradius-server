@@ -281,9 +281,10 @@ VALUE	Listen-Socket-Type		coa			8
 ATTRIBUTE	Outer-Realm-Name			1251	string
 ATTRIBUTE	Inner-Realm-Name			1252	string
 ATTRIBUTE	Request-Lifetime			1253	integer
+ATTRIBUTE	Protocol-Encapsulation			1254	tlv
 
 #
-#	Range:	1254 - 1699
+#	Range:	1255 - 1699
 #		Unused
 #
 
