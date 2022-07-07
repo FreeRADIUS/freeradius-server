@@ -3738,7 +3738,9 @@ int main(int argc, char *argv[])
 
 			fr_dlist_init(&lines, command_line_range_t, entry);
 
-			while (fr_sbuff_adv_until(&in, SIZE_MAX, &dir_sep, '\0')) {
+			while (fr_sbuff_extend(&in)) {
+				fr_sbuff_adv_until(&in, SIZE_MAX, &dir_sep, '\0');
+
 				switch (*fr_sbuff_current(&in)) {
 				case '/':
 					fr_sbuff_set(&dir_end, &in);
