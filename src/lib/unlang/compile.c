@@ -3041,6 +3041,11 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 #ifdef WITH_XLAT_COND
 	xlat_exp_head_t		*head;
 	bool			is_truthy, value;
+	xlat_res_rules_t	xr_rules = {
+		.tr_rules = &(tmpl_res_rules_t) {
+			.dict_def = unlang_ctx->rules->attr.dict_def,
+		},
+	};
 #endif
 
 	if (!cf_section_name2(cs)) {
@@ -3058,7 +3063,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	/*
 	 *	Resolve the xlat first.
 	 */
-	if (xlat_resolve(head, NULL) < 0) {
+	if (xlat_resolve(head, &xr_rules) < 0) {
 		cf_log_err(cs, "Failed resolving condition - %s", fr_strerror());
 		return NULL;
 	}
