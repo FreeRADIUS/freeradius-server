@@ -1,0 +1,23 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+
+ATTRIBUTE	Access-Technology-Type			82.13	struct
+MEMBER		reserved				uint8
+
+# Values are in https://www.rfc-editor.org/rfc/rfc5213
+MEMBER		ATT					uint8
+
+ATTRIBUTE	Network-Name				82.14	string
+ATTRIBUTE	Access-Point-Name			82.15	string
+ATTRIBUTE	Access-Point-BSSID			82.16	octets[6]
+
+#
+#  Section 4.4.1 says that the length is variable, but the "Length"
+#  field says it's "4".  We've filed an errata to change it to uint32.
+#
+#  And both of these definitions refer to https://www.rfc-editor.org/rfc/rfc6757
+#
+ATTRIBUTE	Operator-Identifier			82.17	uint32
+ATTRIBUTE	Operator-Realm				82.18	string

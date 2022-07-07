@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+
+#
+#  If this attribute exists, then the reply is sent to the relay agent on the UDP
+#  source port, and not to port 67.
+#
+ATTRIBUTE	Remember-Relay-Port			82.19	bool	encode=exists
+
