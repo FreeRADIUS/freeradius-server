@@ -572,10 +572,13 @@ xlat_purify &User-Name[-1] == 'bob'
 match ERROR offset 11: Invalid array index '-1' (should be between 0-1000)
 
 #
-#  The attribute/xlat_purify parser does not fall back to bare words
+#  attributes MUST be prefixed with '&'.
 #
 xlat_purify request.Foo == 'request.Foo'
-match ERROR offset 0: Failed resolving attribute in expansion: request.Foo
+match true
+
+xlat_purify &request.Foo == 'request.Foo'
+match ERROR offset 9: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 xlat_purify &not-a-list.User-Name == &not-a-list.User-Name
 match ERROR offset 1: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
@@ -761,4 +764,4 @@ match %{rcode:'handled'}
 
 
 count
-match 314
+match 316

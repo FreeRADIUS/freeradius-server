@@ -983,6 +983,11 @@ int main_config_init(main_config_t *config)
 	char		buffer[1024];
 	xlat_t		*xlat;
 
+	/*
+	 *	Initialize the xlats before we load the configuration files, so that we can later call xlat_register().
+	 */
+	xlat_init();
+
 	if (stat(config->raddb_dir, &statbuf) < 0) {
 		ERROR("Error checking raddb_dir \"%s\": %s", config->raddb_dir, fr_syserror(errno));
 		return -1;

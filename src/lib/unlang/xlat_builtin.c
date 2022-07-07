@@ -173,7 +173,7 @@ xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 	xlat_t	*c;
 	module_inst_ctx_t *our_mctx = NULL;
 
-	if (!xlat_root) xlat_init();
+	fr_assert(xlat_root);
 
 	if (!*name) {
 		ERROR("%s: Invalid xlat name", __FUNCTION__);
