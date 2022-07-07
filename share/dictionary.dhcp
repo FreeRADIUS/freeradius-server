@@ -262,6 +262,8 @@ ATTRIBUTE	DHCP-Docsis-Device-Class		82.4	integer
 ATTRIBUTE	DHCP-Relay-Link-Selection		82.5	ipaddr
 ATTRIBUTE	DHCP-Subscriber-Id			82.6	string
 
+
+
 # AGH!  RADIUS inside of DHCP!
 ATTRIBUTE	DHCP-RADIUS-Attributes			82.7	octets
 
@@ -275,6 +277,23 @@ ATTRIBUTE	DHCP-Vendor-Specific-Information	82.9	octets
 
 ATTRIBUTE	DHCP-Relay-Agent-Flags			82.10	byte
 ATTRIBUTE	DHCP-Server-Identifier-Override		82.11	ipaddr
+
+# Values are in https://www.rfc-editor.org/rfc/rfc5213
+ATTRIBUTE	Access-Technology-Type			82.13	uint16
+ATTRIBUTE	Network-Name				82.14	string
+ATTRIBUTE	Access-Point-Name			82.15	string
+ATTRIBUTE	Access-Point-BSSID			82.16	octets # 6 octets
+
+#
+#  Section 4.4.1 says that the length is variable, but the "Length"
+#  field says it's "4".  We've filed an errata to change it to uint32.
+#
+#  And both of these definitions refer to https://www.rfc-editor.org/rfc/rfc6757
+#
+ATTRIBUTE	Operator-Identifier			82.17	uint32
+ATTRIBUTE	Operator-Realm				82.18	string
+
+ATTRIBUTE	Remember-Relay-Port			82.19	octets # 0-length, true=exists
 
 # Internet Storage Name Service
 ATTRIBUTE	DHCP-iSNS				83	octets
