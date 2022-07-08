@@ -61,6 +61,10 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(Q)if [ "$$(uname -s)" = "Darwin" ]; then sed -i .bak 's/via lo0/via lo/g' $(FOUND); fi
 	$(Q)if [ "$$(uname -s)" = "FreeBSD" ]; then sed -i .bak 's/via (null)/via lo/g' $(FOUND); fi
 #
+#	Lets normalize pathnames
+#
+	$(Q)sed -i.bak 's,[^" ]*\(src/tests\),\1,' $(FOUND)
+#
 #	Remove all entries with "^_EXIT.*CALLED .*/"
 #	It is necessary to match all builds with/without -DNDEBUG
 #
