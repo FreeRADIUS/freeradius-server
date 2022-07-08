@@ -117,6 +117,15 @@ string, and assigning the resulting value to the `string`.  For
 Casting a `string` value to another data type means _parsing_ the
 string as that data type.
 
+See xref:types/string/double.adoc[double-quoted strings] for examples
+of how double-quoted strings are used.
+
+==== Other Data Types
+
+Other data types such as `ethernet`, etc. can generally be cast
+to/from `octet`, and printed to/from `string`.  Most other casts do
+not make sense, and will not work.
+
 === Expressions
 
 Unlang xref:unlang/expression.adoc[expressions] can use casts, too, as

@@ -135,26 +135,27 @@ The tag value of the second instance of Tunnel-Server-Enpoint is 192.0.5.2
 
 === %{string:<data>}
 
-Convert input to a string if (possible).  For _octets_ type attributes, this
-means interpreting the data as a UTF8 string, and inserting octal escape
-sequences where appropriate.
+Convert input to a string if (possible).  For _octets_ type
+attributes, this means interpreting the data as a UTF8 string.  Any
+non-printable characters are left in place.
 
 For other types, this means printing the value in its _presentation_ format,
 i.e. dotted quads for IPv4 addresses, link:https://en.wikipedia.org/wiki/ISO_8601[ISO 8601]
 time for date types, enumeration values for attributes such as `radius.Service-Type` etc.
 
-.Return: _string_
+In practice, the only real use of this expansion is to insert `octets`
+data types into a `string`.  For other data types, using
+`%{string:...}` is not necessary.  For example, for any data type
+other than `octets`, the following equivalency holds true.
 
-.String interpolation using the raw octets value of Tmp-Octets-0, and the stringified version
+See xref:types/string/double.adoc[double-quoted strings] and
+xref:type/cast.adoc[casting] for examples of how strings are used.
+
+.String expansion equivalents
 ====
 [source,unlang]
 ----
-update control {
-    &Tmp-Octets-0 := 0x7465737431
-}
-update reply {
-    &Reply-Message := "The string value of %{control.Tmp-Octets-0} is %{string:%{control.Tmp-Octets-0}}"
-}
+"foo" + (string)&Bar == "foo%{Bar}"
 ----
 ====
 

@@ -100,6 +100,30 @@ because it is already a string.
 The output strings here are completely different than for the previous
 examples.  The output data type is `octets`, and not `string`.
 
+If the goal is to have the _raw_ `octets` data inserted into a
+`string`, you must use the `%{string:...}` expansion.  This expansion
+will copy the input `octets` value to a the output, changing the data
+type to `string`.  The value is left alone.
+
+.Example of casting to raw 'octets'
+[source,unlang]
+----
+"User-Name is %{Tmp-Octets-0}"
+"User-Name is %{string:%{Tmp-Octets-0}}"
+----
+
+if the `&Tmp-Octets-0` attribute has value `0x666f6f` (`foo`)
+
+In the first expansion, the resulting output is `User-Name is
+0x666f6f`.  In the second expansion, the resulting output is
+`User-name is foo`.
+
+Note that placing raw `octets` data into a string may allow for binary
+data to be inserted into what should be a printable string.  Any uses
+of the string will result in the non-printable data being escaped as
+`\000` or other methods such a `\n`, depending on how and wheere the
+string is being used.
+
 .Examples
 
 `"word"` +
