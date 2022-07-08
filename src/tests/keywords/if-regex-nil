@@ -1,0 +1,8 @@
+#
+#  PRE: if
+#
+if (&User-Name !~ /^\0/) {
+	success
+} else {
+	test_fail
+}

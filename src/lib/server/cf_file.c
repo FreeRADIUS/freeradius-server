@@ -1175,6 +1175,15 @@ static uint8_t const *skip_string(uint8_t const *p, char c)
 			continue;
 		}
 
+		/*
+		 *	Double-quoted strings use \000
+		 *	Regexes use \0
+		 */
+		if (c == '/') {
+			p++;
+			continue;
+		}
+
 		if (!isdigit((int) p[2]) || !isdigit((int) p[3])) {
 			return NULL;
 		}
