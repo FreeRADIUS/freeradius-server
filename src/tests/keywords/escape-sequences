@@ -14,6 +14,8 @@ update request {
 
 	&Tmp-String-2 := 'i have scary embedded things\000 inside me'
 	&Tmp-String-2 += "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°"
+
+	&Tmp-IP-Address-0 := 127.0.0.1
 }
 
 
@@ -76,5 +78,17 @@ if ("%{Tmp-String-2[1]}" != "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°") {
 if (&Tmp-String-2[1] != "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°") {
 	test_fail
 }
+
+#
+#  Other data types
+#
+update request {
+	&Tmp-String-0 := "%{string:&Tmp-IP-Address-0}"
+}
+
+if ("%(length:%{Tmp-String-0})" != 17) {
+	test_fail
+}
+
 
 success
