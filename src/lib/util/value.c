@@ -5814,8 +5814,6 @@ DIAG_ON(nonnull-compare)
 
 	switch (vb->type) {
 	case FR_TYPE_STRING:
-		if (!vb->vb_length) return;
-
 		fr_fatal_assert_msg(vb->vb_strvalue, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t strvalue field "
 				    "was NULL", file, line);
 		fr_fatal_assert_msg(vb->vb_strvalue[vb->vb_length] == '\0',
@@ -5824,15 +5822,11 @@ DIAG_ON(nonnull-compare)
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (!vb->vb_length) return;
-
 		fr_fatal_assert_msg(vb->vb_octets, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t octets field "
 				    "was NULL", file, line);
 		break;
 
 	case FR_TYPE_VOID:
-		if (!vb->vb_length) return;
-
 		fr_fatal_assert_msg(vb->vb_void, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t ptr field "
 				    "was NULL", file, line);
 		break;
