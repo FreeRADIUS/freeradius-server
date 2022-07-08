@@ -35,6 +35,8 @@ RCSID("$Id$")
 
 fr_dict_gctx_t *dict_gctx = NULL;	//!< Top level structure containing global dictionary state.
 
+static fr_dict_attr_t const *attr_protocol_encapsulation = NULL;
+
 /** Characters allowed in dictionary names
  *
  */
@@ -611,6 +613,18 @@ static int _dict_attr_free(fr_dict_attr_t *da)
 {
 	fr_dict_attr_ext_enumv_t	*ext;
 
+#if 0
+#ifdef WITH_VERIFY_PTR
+	/*
+	 *	Check that any attribute we reference is still valid
+	 *	when we're being freed.
+	 */
+	fr_dict_attr_t const *ref = fr_dict_attr_ref(da);
+
+	if (ref) (void)talloc_get_type_abort_const(ref, fr_dict_attr_t);
+#endif
+#endif
+
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 	if (ext) talloc_free(ext->value_by_name);		/* Ensure this is freed before the enumvs */
 
@@ -865,19 +879,22 @@ int dict_protocol_add(fr_dict_t *dict)
 	 *	namespace.
 	 */
 	if (dict_gctx->internal && (dict != dict_gctx->internal)) {
-		static fr_dict_attr_t const *encap;
 		fr_dict_attr_t const *da;
 		fr_dict_attr_flags_t flags = { 0 };
 
-		if (!encap) encap = fr_dict_attr_by_name(NULL, dict_gctx->internal->root, "Protocol-Encapsulation");
-		fr_assert(encap != NULL);
+		if (!attr_protocol_encapsulation) attr_protocol_encapsulation = fr_dict_attr_by_name(NULL, dict_gctx->internal->root, "Protocol-Encapsulation");
+		fr_assert(attr_protocol_encapsulation != NULL);
 
-		if (fr_dict_attr_add(dict_gctx->internal, encap, dict->root->name, dict->root->attr, FR_TYPE_GROUP, &flags) < 0) {
-			return -1;
+		da = fr_dict_attr_child_by_num(attr_protocol_encapsulation, dict->root->attr);
+		if (!da) {
+			if (fr_dict_attr_add(dict_gctx->internal, attr_protocol_encapsulation, dict->root->name, dict->root->attr, FR_TYPE_GROUP, &flags) < 0) {
+				return -1;
+			}
+
+			da = fr_dict_attr_child_by_num(attr_protocol_encapsulation, dict->root->attr);
+			fr_assert(da != NULL);
 		}
 
-		da = fr_dict_attr_child_by_num(encap, dict->root->attr);
-		fr_assert(da != NULL);
 		dict_attr_ref_set(da, dict->root);
 	}
 
@@ -3204,6 +3221,19 @@ bool dict_has_dependents(fr_dict_t *dict)
 
 static int _dict_free(fr_dict_t *dict)
 {
+	/*
+	 *	We don't necessarily control the order of freeing
+	 *	children.
+	 */
+	if (dict != dict->gctx->internal) {
+		fr_dict_attr_t const *da;
+
+		if (attr_protocol_encapsulation && dict->root) {
+			da = fr_dict_attr_child_by_num(attr_protocol_encapsulation, dict->root->attr);
+			if (da && fr_dict_attr_ref(da)) dict_attr_ref_set(da, NULL);
+		}
+	}
+
 	if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(dict->gctx->protocol_by_name, dict))) {
 		fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
 		return -1;
@@ -3256,11 +3286,10 @@ static int _dict_free(fr_dict_t *dict)
 	 */
 	dl_free(dict->dl);
 
-	/*
-	 *	We don't necessarily control the order of freeing
-	 *	children.
-	 */
-	if (dict == dict->gctx->internal) dict->gctx->internal = NULL;
+	if (dict == dict->gctx->internal) {
+		dict->gctx->internal = NULL;
+		attr_protocol_encapsulation = NULL;
+	}
 
 	return 0;
 }
