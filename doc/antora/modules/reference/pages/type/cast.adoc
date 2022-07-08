@@ -61,6 +61,62 @@ to use.  The cast syntax is used when either the data type is
 ambiguous, or when data should be normalized prior to comparison, or
 when a specific data type is required.
 
+=== Casting Behavior
+
+In general, casting data types of different sizes will fail.  For
+example, casting an `octet` string of length `3` to `uint32` is
+impossible, because `uint32` data types are 4 bytes in length.
+
+However, in many cases casting from one data type will "just work".
+
+When the cast fails, the result is a `NULL` or empty value.
+
+==== IP Addresses
+
+Casting `ipv4addr` to `ipv6addr` will return an IPv6 address which
+contains the IPv4 address, with the upper bits as `::ffff`.  This
+result is then a valid "IPv4-mapped IPv6 address".
+
+Casting `ipv6addr` to `ipv4addr` will work if the IPv6 address is a
+valid "IPv4-mapped IPv6 address".
+
+Similar rules apply to casting between IPv4 and IPv6 prefixes.
+
+Casting an IPv4 address to an IPv4 prefix is allowed, and will return
+a prefix of using a `/32`.  Casting the other way is also allowed, but
+only if the prefix is `/32`.
+
+==== Numbers
+
+Numbers can generally be cast from one data type to another, if the
+input value can be represented in the new data type.
+
+For example, casting `uint8` to `uint16` will always succeed.
+However, casting a signed `int8` to `uint16` may fail, as negative
+values cannot be represented in the `uint16` data type.
+
+==== Octets
+
+Casting any data type to `octets` means returning the "raw" value of
+the underlying data type.  For example, casting an IPv4 address of
+value `127.0.0.1` to `octets` will return the `octets` string
+`0x7f000001`.
+
+Casting an `octets` value to any other data type means interpreting
+the raw value as that data type, generally as if the data had been
+received from the network.  For example, casting the `octets` string
+`0x7f000001` to `ipvaddr` will return the IPv4 address `127.0.0.1`.
+
+==== Strings
+
+Casting any data type to `string` means _printing_ the data type to a
+string, and assigning the resulting value to the `string`.  For
+`octets`, this means that the output is a hex string, prefixed with
+`0x`.
+
+Casting a `string` value to another data type means _parsing_ the
+string as that data type.
+
 === Expressions
 
 Unlang xref:unlang/expression.adoc[expressions] can use casts, too, as

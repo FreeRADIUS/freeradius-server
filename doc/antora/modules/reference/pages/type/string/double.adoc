@@ -3,9 +3,10 @@
 .Syntax
 `"string"`
 
-A double-quoted string allows escape sequences and xref:xlat/index.adoc[dynamic
-expansions]. As with xref:type/string/single.adoc[single-quoted strings], text
-within double quotes can include spaces.
+A double-quoted string allows escape sequences and
+xref:xlat/index.adoc[dynamic expansions]. As with
+xref:type/string/single.adoc[single-quoted strings], text within
+double quotes can include spaces.
 
 The main difference between the single and double quoted strings is
 that the double quoted strings can be dynamically expanded. The syntax
@@ -47,6 +48,57 @@ represent in datastores, or the FreeRADIUS configuration files.
 | `\x<hex><hex>`      | A byte whose numerical value is given by `<hex><hex>` interpreted as a hexadecimal number.
 | `\x<oct><oct><oct>` | A byte whose numerical value is given by `<oct><oct><oct>` interpreted as an octal number.
 |=====
+
+== Methods of Creating Strings
+
+There are a few different ways in which double-quoted strings can be
+created.  The simplest is just an in-line string, as in `"string"`.
+However, strings can also be created via
+xref:unlang/expression.adoc[expressions]. and
+xref:xlat/index.adoc[dynamic expansions].
+
+In general, creating strings via xref:xlat/index.adoc[dynamic
+expansions] will result in the _printed_ version of the expansion
+being used.
+
+.Example of double-quoted string expansion
+[source,unlang]
+----
+"User-Name is %{User-Name}"
+"IP Address is %{reply.Framed-IP-Address}
+----
+
+Both of the above expansions will return the _printed_ version of the
+expansion.  For `User-Name`, it will be the string version of the
+users name, as would be expected.  However, for the
+`Framed-IP-Address` example, the printed version will be an ASCII
+string such as `192.0.2.1`, even though the actual IP address is a
+32-bit number.
+
+When a string is created via an
+xref:unlang/expression.adoc[expression] using the `+` operator, the
+resulting string can be quite different, depending on the inputs.
+
+.Example of casting to 'string'
+[source,unlang]
+----
+"User-Name is " + &User-Name
+"IP Address is " + (string) &reply.Framed-IP-Address
+----
+
+The output strings here (with casting) are the same as for the
+previous example.  Note that we do not have to cast `&User-Name`,
+because it is already a string.
+
+.Example of casting to 'octets'
+[source,unlang]
+----
+"User-Name is " + (octets) &User-Name
+"IP Address is " + (octets) &reply.Framed-IP-Address
+----
+
+The output strings here are completely different than for the previous
+examples.  The output data type is `octets`, and not `string`.
 
 .Examples
 
