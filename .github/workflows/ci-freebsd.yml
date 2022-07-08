@@ -78,7 +78,7 @@ jobs:
             net-snmp             \
             openldap25-client    \
             python3              \
-            py38-pip             \
+            py39-pip             \
             postgresql12-client  \
             talloc               \
             unixODBC
