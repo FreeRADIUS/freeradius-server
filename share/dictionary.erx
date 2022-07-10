@@ -230,7 +230,7 @@ ATTRIBUTE	ERX-Client-Profile-Name			174	string
 ATTRIBUTE	ERX-Redirect-GW-Address			175	ipaddr
 ATTRIBUTE	ERX-APN-Name				176	string
 ATTRIBUTE	ERX-Cos-Shaping-Rate			177	string
-
+ATTRIBUTE	ERX-Action-Reason			178	string
 ATTRIBUTE	ERX-Service-Volume-Gigawords		179	integer has_tag
 ATTRIBUTE	ERX-Update-Service			180	string has_tag
 ATTRIBUTE	ERX-DHCPv6-Guided-Relay-Server		181	ipv6addr
