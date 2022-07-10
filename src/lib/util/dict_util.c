@@ -3234,6 +3234,10 @@ static int _dict_free(fr_dict_t *dict)
 		}
 	}
 
+#ifdef __clang_analyzer__
+	if (!dict->root) return -1;
+#endif
+
 	if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(dict->gctx->protocol_by_name, dict))) {
 		fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
 		return -1;
