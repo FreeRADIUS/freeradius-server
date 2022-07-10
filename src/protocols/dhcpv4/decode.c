@@ -277,7 +277,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		}
 
 		if (exact && (slen != (end - p))) {
-			talloc_free(vp);
 			goto raw;
 		}
 
