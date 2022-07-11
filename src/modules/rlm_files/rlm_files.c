@@ -60,15 +60,17 @@ typedef struct {
 	char const *postauth_usersfile;
 	fr_htrie_t *postauth_users;
 	PAIR_LIST_LIST *postauth_users_def;
+
+	/* proto */
+	char const *proto;
+	fr_dict_t *dict;
 } rlm_files_t;
 
 static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_files_dict[];
 fr_dict_autoload_t rlm_files_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
@@ -91,6 +93,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("auth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile) },
 	{ FR_CONF_OFFSET("postauth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile) },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, rlm_files_t, key), .dflt = "%{%{Stripped-User-Name}:-%{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("proto", FR_TYPE_STRING, rlm_files_t, proto), .dflt = "radius" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -115,6 +118,7 @@ static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
 
 static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault, fr_type_t data_type)
 {
+	rlm_files_t *inst = talloc_get_type_abort(ctx, rlm_files_t);
 	int rcode;
 	PAIR_LIST_LIST users;
 	PAIR_LIST_LIST search_list;	// Temporary list header used for matching in htrie
@@ -124,13 +128,17 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 	fr_htrie_type_t htype;
 	fr_value_box_t *box;
 
+	if (!inst->dict && fr_dict_protocol_afrom_file(&inst->dict, inst->proto, NULL, __FILE__) < 0) {
+		return -1;
+	}
+
 	if (!filename) {
 		*ptree = NULL;
 		return 0;
 	}
 
 	pairlist_list_init(&users);
-	rcode = pairlist_read(ctx, dict_radius, filename, &users, 1);
+	rcode = pairlist_read(ctx, inst->dict, filename, &users, 1);
 	if (rcode < 0) {
 		return -1;
 	}

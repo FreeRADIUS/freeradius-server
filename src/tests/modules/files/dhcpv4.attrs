@@ -1,0 +1,10 @@
+#
+#  Input packet
+#
+Packet-Type = Discover
+
+#
+#  Expected answer
+#
+Packet-Type == Offer
+IP-Address-Lease-Time == 3600

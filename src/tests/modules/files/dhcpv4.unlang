@@ -1,0 +1,9 @@
+#
+# PROTOCOL: dhcpv4
+#
+
+update request {
+	&IP-Pool.Name := "test"
+}
+
+dhcpv4
