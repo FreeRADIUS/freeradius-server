@@ -2177,3 +2177,54 @@ brute_force:
 
 	return 0;
 }
+
+
+/*
+ *	Loop over input lists, calling fr_value_calc_binary_op()
+ *
+ *	This implementation is arguably wrong... it should be checking individual entries in list1 against individual entries in list2.
+ *	Instead, it checks if ANY entry in list1 matches ANY entry in list2.
+ */
+int fr_value_calc_list_cmp(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_list_t const *list1, fr_token_t op, fr_value_box_list_t const *list2)
+{
+	int rcode;
+	bool invert = false;
+
+	/*
+	 *	v3 hack.  != really means !( ... == ... )
+	 */
+	if (op == T_OP_NE) {
+		invert = true;
+		op = T_OP_CMP_EQ;
+	}
+
+	/*
+	 *	Emulate v3.  :(
+	 */
+	fr_dlist_foreach(list1, fr_value_box_t, a) {
+		fr_dlist_foreach(list2, fr_value_box_t, b) {
+			rcode = fr_value_calc_binary_op(ctx, dst, FR_TYPE_BOOL, a, op, b);
+			if (rcode < 0) return rcode;
+
+			/*
+			 *	No match: keep looking for a match.
+			 */
+			fr_assert(dst->type == FR_TYPE_BOOL);
+			if (!dst->vb_bool) continue;
+
+			/*
+			 *	Found a match, we're done.
+			 */
+			dst->vb_bool = !invert;
+			return 0;
+		}
+	}
+
+	/*
+	 *	No match.
+	 */
+	fr_value_box_clear(dst);
+	fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false); // @todo - add enum!
+	dst->vb_bool = invert;
+	return 0;
+}
