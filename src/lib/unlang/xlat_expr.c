@@ -652,7 +652,7 @@ XLAT_REGEX_FUNC(reg_eq,  T_OP_REG_EQ)
 XLAT_REGEX_FUNC(reg_ne,  T_OP_REG_NE)
 
 typedef struct {
-	bool		stop;
+	bool		stop_on_match;
 	int		argc;
 	xlat_exp_head_t	**argv;
 } xlat_logical_inst_t;
@@ -715,7 +715,7 @@ static int xlat_instantiate_logical(xlat_inst_ctx_t const *xctx)
 	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
 
 	inst->argc = xlat_flatten_compiled_argv(inst, &inst->argv, xctx->ex->call.args);
-	inst->stop = (xctx->ex->call.func->token == T_LOR);
+	inst->stop_on_match = (xctx->ex->call.func->token == T_LOR);
 
 	return 0;
 }
@@ -799,9 +799,9 @@ static void xlat_ungroup(xlat_exp_head_t *head)
 	head->flags = node->flags;
 }
 
-/** If any argument resolves to inst->stop, the entire thing is a bool of inst->stop.
+/** If any argument resolves to inst->stop_on_match, the entire thing is a bool of inst->stop_on_match.
  *
- *  If any argument resolves to !inst->stop, it is removed.
+ *  If any argument resolves to !inst->stop_on_match, it is removed.
  */
 static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t *request)
 {
@@ -838,7 +838,7 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 		 *	result is "false" for "delete this argument"
 		 *	result is "true" for "return this argument".
 		 */
-		if (!xlat_node_matches_bool(node, inst->argv[i], inst->stop, &result)) {
+		if (!xlat_node_matches_bool(node, inst->argv[i], inst->stop_on_match, &result)) {
 			continue;
 		}
 
@@ -932,7 +932,9 @@ static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t const *
 	/*
 	 *	Empty lists are !truthy.
 	 */
-	if (!fr_dlist_num_elements(in)) return false;
+	if (!fr_dlist_num_elements(in)) {
+		return false;
+	}
 
 	/*
 	 *	Loop over the input list.  If the box is a group, then do this recursively.
@@ -948,6 +950,7 @@ static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t const *
 				last = box; /* stop at the first matching one, and return it. */
 				break;
 			}
+
 			continue;
 		}
 
@@ -1033,7 +1036,7 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *
 	 *	(a, b, c) || (d, e, f) == a || b || c || d || e || f
 	 */
-	if (!xlat_logical_match(&rctx->box, &rctx->list, inst->stop)) {
+	if (!xlat_logical_match(&rctx->box, &rctx->list, inst->stop_on_match)) {
 		/*
 		 *	If nothing matches, we return a "false" box.
 		 */
@@ -1044,8 +1047,18 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		rctx->box->vb_bool = false;
 
 		/*
-		 *	If we do have a match, then we return the last matching thing.
+		 *	Try for another match, if possible.
 		 */
+		if (inst->stop_on_match) goto next;
+
+		/*
+		 *	Otherwise we stop on failure, with the boolean
+		 *	we just updated.
+		 */
+		goto done;
+	}
+
+	if (inst->stop_on_match) {
 	done:
 		fr_dcursor_append(out, rctx->box);
 
@@ -1053,13 +1066,16 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_DONE;
 	}
 
+next:
 	fr_dlist_talloc_free(&rctx->list);
 	rctx->current++;
 
 	/*
 	 *	Nothing to expand, return the final value we saw.
 	 */
-	if (inst->stop || (rctx->current >= inst->argc)) goto done;
+	if (rctx->current >= inst->argc) {
+		goto done;
+	}
 
 	return xlat_logical_process_arg(ctx, out, xctx, request, in);
 }

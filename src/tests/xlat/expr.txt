@@ -118,3 +118,6 @@ match 0x010200047f000001
 
 xlat_expr (uint16) ((uint32) 1 + (uint8) 2)
 match 3
+
+xlat_expr (&Framed-IP-Address || &Packet-Src-IP-Address) == (ipaddr) 127.0.0.1
+match true
