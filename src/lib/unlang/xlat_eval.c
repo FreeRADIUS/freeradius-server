@@ -228,6 +228,7 @@ static inline void xlat_debug_log_result(request_t *request, fr_value_box_t cons
  * @param[in] ctx	to allocate any additional buffers in
  * @param[in,out] list	of value boxes representing one argument
  * @param[in] request	currently being processed
+ * @param[in] name	of the function being called
  * @param[in] arg	specification of current argument
  * @param[in] arg_num	number of current argument in the argument specifications
  * @return
@@ -235,7 +236,7 @@ static inline void xlat_debug_log_result(request_t *request, fr_value_box_t cons
  *	- XLAT_ACTION_FAIL on failure.
  */
 static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
-					   xlat_arg_parser_t const *arg, unsigned int arg_num)
+					   char const *name, xlat_arg_parser_t const *arg, unsigned int arg_num)
 {
 	fr_value_box_t *vb;
 
@@ -243,14 +244,14 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 do { \
 	if ((_arg)->func && ((_vb)->tainted || (_arg)->always_escape) && \
 	    ((_arg)->func(request, _vb, (_arg)->uctx) < 0)) { \
-		RPEDEBUG("Failed escaping argument %u", _arg_num); \
+		RPEDEBUG("Function %s failed escaping argument %u", name, _arg_num); \
 		return XLAT_ACTION_FAIL; \
 	} \
 } while (0)
 
 	if (fr_dlist_empty(list)) {
 		if (arg->required) {
-			REDEBUG("Required argument %u is null", arg_num);
+			REDEBUG("Function %s is missing required argument %u", name, arg_num);
 			return XLAT_ACTION_FAIL;
 		}
 		return XLAT_ACTION_DONE;
@@ -273,7 +274,7 @@ do { \
 						      vb, list, arg->type,
 						      FR_VALUE_BOX_LIST_FREE, true,
 						      SIZE_MAX) < 0) {
-			RPEDEBUG("Failed concatenating arguments");
+			RPEDEBUG("Function %s failed concatenating arguments to type %s", name, fr_type_to_str(arg->type));
 			return XLAT_ACTION_FAIL;
 		}
 		fr_assert(fr_dlist_num_elements(list) <= 1);
@@ -287,9 +288,9 @@ do { \
 	 */
 	if (arg->single) {
 		if (fr_dlist_num_elements(list) > 1) {
-			RPEDEBUG("Incorrect number of values provided to argument %u, "
+			RPEDEBUG("Function %s was provided an incorrect number of values at argument %u, "
 				 "expected %s got %u",
-				 arg_num,
+				 name, arg_num,
 				 arg->required ? "0-1" : "1",
 				 fr_dlist_num_elements(list));
 			return XLAT_ACTION_FAIL;
@@ -301,7 +302,7 @@ do { \
 		cast_error:
 			if (fr_value_box_cast_in_place(ctx, vb,
 						       arg->type, NULL) < 0) {
-				RPEDEBUG("Failed casting argument %u", arg_num);
+				RPEDEBUG("Function %s failed cast argument %u to type %s", name, arg_num, fr_type_to_str(arg->type));
 				return XLAT_ACTION_FAIL;
 			}
 		}
@@ -344,26 +345,24 @@ do { \
  * @param[in,out] list		value boxes provided as input.
  * 				List will be modified in accordance to rules
  * 				provided in the args array.
- * @param[in] input_type	required by xlat.
- * @param[in] args		definition of arguments required by xlat.
+ * @param[in] func		to call
  */
 static inline CC_HINT(always_inline)
-xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
-				xlat_input_type_t input_type, xlat_arg_parser_t const args[])
+xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request, xlat_t const *func)
 {
-	xlat_arg_parser_t const	*arg_p = args;
+	xlat_arg_parser_t const	*arg_p = func->args;
 	xlat_action_t		xa;
 	fr_value_box_t		*vb, *next;
 
 	/*
 	 *	No args registered for this xlat
 	 */
-	if (!args) return XLAT_ACTION_DONE;
+	if (!func->args) return XLAT_ACTION_DONE;
 
 	/*
 	 *	xlat needs no input processing just return.
 	 */
-	switch (input_type) {
+	switch (func->input_type) {
 	case XLAT_INPUT_UNPROCESSED:
 		return XLAT_ACTION_DONE;
 
@@ -371,7 +370,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 	 *	xlat takes all input as a single vb.
 	 */
 	case XLAT_INPUT_MONO:
-		return xlat_process_arg_list(ctx, list, request, arg_p, 1);
+		return xlat_process_arg_list(ctx, list, request, func->name, arg_p, 1);
 
 	/*
 	 *	xlat consumes a sequence of arguments.
@@ -388,7 +387,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 			if (!vb) {
 				if (arg_p->required) {
 				missing:
-					REDEBUG("Missing required argument %u", (unsigned int)((arg_p - args) + 1));
+					REDEBUG("Function %s is missing required argument %u", func->name, (unsigned int)((arg_p - func->args) + 1));
 					return XLAT_ACTION_FAIL;
 				}
 
@@ -410,8 +409,8 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 			 *	during processing.
 			 */
 			next = fr_dlist_next(list, vb);
-			xa = xlat_process_arg_list(ctx, &vb->vb_group, request, arg_p,
-						   (unsigned int)((arg_p - args) + 1));
+			xa = xlat_process_arg_list(ctx, &vb->vb_group, request, func->name, arg_p,
+						   (unsigned int)((arg_p - func->args) + 1));
 			if (xa != XLAT_ACTION_DONE) return xa;
 
 			/*
@@ -816,7 +815,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	the async function mucks with it.
 		 */
 		if (RDEBUG_ENABLED2) fr_value_box_list_acopy(NULL, &result_copy, result);
-		xa = xlat_process_args(ctx, result, request, node->call.func->input_type, node->call.func->args);
+		xa = xlat_process_args(ctx, result, request, node->call.func);
 		if (xa == XLAT_ACTION_FAIL) {
 			fr_dlist_talloc_free(&result_copy);
 			return xa;
