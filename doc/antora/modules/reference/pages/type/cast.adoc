@@ -110,9 +110,11 @@ received from the network.  For example, casting the `octets` string
 ==== Strings
 
 Casting any data type to `string` means _printing_ the data type to a
-string, and assigning the resulting value to the `string`.  For
-`octets`, this means that the output is a hex string, prefixed with
-`0x`.
+string, and assigning the resulting value to the `string`.  For a
+value of typ e `octets`, this means that the output is a hex string,
+prefixed with `0x`.  In order to get the "raw" hex values of an
+`octets` data type, the `%{hex:...}` expansion is used.  It prints out
+the hex value of its input, without the leading `0x` characters.
 
 Casting a `string` value to another data type means _parsing_ the
 string as that data type.
