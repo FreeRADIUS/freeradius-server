@@ -298,28 +298,31 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(a->type == FR_TYPE_GROUP);
 	fr_assert(b->type == FR_TYPE_GROUP);
 
-	if (fr_dlist_num_elements(&a->vb_group) != 1) {
-		REDEBUG("Expected one value as the first argument, got %d",
-			fr_dlist_num_elements(&a->vb_group));
-		return XLAT_ACTION_FAIL;
+	if (!fr_equality_op[op]) {
+		if (fr_dlist_num_elements(&a->vb_group) != 1) {
+			REDEBUG("Expected one value as the first argument, got %d",
+				fr_dlist_num_elements(&a->vb_group));
+			return XLAT_ACTION_FAIL;
+		}
+
+		if (fr_dlist_num_elements(&b->vb_group) != 1) {
+			REDEBUG("Expected one value as the second argument, got %d",
+				fr_dlist_num_elements(&b->vb_group));
+			return XLAT_ACTION_FAIL;
+		}
+
+		rcode = fr_value_calc_binary_op(dst, dst, default_type,
+						fr_dlist_head(&a->vb_group),
+						op,
+						fr_dlist_head(&b->vb_group));
+	} else {
+		rcode = fr_value_calc_list_cmp(dst, dst, &a->vb_group, op, &b->vb_group);
 	}
-
-
-	if (fr_dlist_num_elements(&b->vb_group) != 1) {
-		REDEBUG("Expected one value as the second argument, got %d",
-			fr_dlist_num_elements(&b->vb_group));
-		return XLAT_ACTION_FAIL;
-	}
-
-	rcode = fr_value_calc_binary_op(dst, dst, default_type,
-					fr_dlist_head(&a->vb_group),
-					op,
-					fr_dlist_head(&b->vb_group));
 	if (rcode < 0) {
 		RPEDEBUG("Failed calculating result, returning NULL");
 		goto done;
 	}
-
+	
 	/*
 	 *	Over-write, but only if it's present.  Otherwise leave
 	 *	any existing enum alone.
