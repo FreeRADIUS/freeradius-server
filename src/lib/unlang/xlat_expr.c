@@ -2154,7 +2154,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	And if there was no cast, but the input was a string,
 	 *	then we cast the result to a string, too.
 	 */
-	if (tmpl_contains_xlat(vpt) && !tmpl_is_exec(vpt) && !tmpl_contains_regex(vpt)) {
+	if (tmpl_is_xlat(vpt) || tmpl_is_xlat_unresolved(vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(vpt);
 		xlat_exp_t *cast;
 		fr_type_t type;
