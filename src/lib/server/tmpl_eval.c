@@ -1306,9 +1306,10 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 	{
 		uint32_t		count = 0;
 
-		for (vp = fr_dcursor_current(&cursor);
-		     vp;
-		     vp = fr_dcursor_next(&cursor)) count++;
+		while (vp != NULL) {
+			count++;
+			vp = fr_dcursor_next(&cursor);
+		}
 
 		value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
 		value->datum.uint32 = count;
@@ -1320,27 +1321,19 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 	 *	Output multiple #value_box_t, one per attribute.
 	 */
 	case NUM_ALL:
-		if (!fr_dcursor_current(&cursor)) goto done;
-
 		/*
 		 *	Loop over all matching #fr_value_pair
 		 *	shallow copying buffers.
 		 */
-		for (vp = fr_dcursor_current(&cursor);	/* Initialised above to the first matching attribute */
-		     vp;
-		     vp = fr_dcursor_next(&cursor)) {
+		while (vp != NULL) {
 			value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
 			fr_value_box_copy(value, value, &vp->data);
 			fr_dlist_insert_tail(&list, value);
+			vp = fr_dcursor_next(&cursor);
 		}
 		break;
 
 	default:
-		/*
-		 *	The cursor was set to the correct
-		 *	position above by tmpl_dcursor_init.
-		 */
-		vp = fr_dcursor_current(&cursor);			/* NULLness checked above */
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
 		if (!value) goto oom;
 
