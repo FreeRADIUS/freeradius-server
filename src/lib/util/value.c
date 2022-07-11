@@ -3550,7 +3550,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 
 	case FR_TYPE_OCTETS:
 	{
-		uint8_t *bin = NULL;
+		uint8_t *bin;
 
 		if (src->vb_length) {
 			bin = talloc_memdup(ctx, src->vb_octets, src->vb_length);
@@ -3559,6 +3559,8 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 				return -1;
 			}
 			talloc_set_type(bin, uint8_t);
+		} else {
+			bin = talloc_array(ctx, uint8_t, 0);
 		}
 		dst->vb_octets = bin;
 		fr_value_box_copy_meta(dst, src);
