@@ -460,75 +460,6 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 	return 0;
 }
 
-static xlat_arg_parser_t const regex_op_xlat_args[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
-	{ .concat = true, .type = FR_TYPE_STRING },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
-
-/** Perform a regular expressions comparison between two operands
- *
- * @param[in] request		The current request.
- * @param[in] subject		to executed regex against.
- * @param[in,out] preg		Pointer to pre-compiled or runtime-compiled
- *				regular expression.  In the case of runtime-compiled
- *				the pattern may be stolen by the `regex_sub_to_request`
- *				function as the original pattern is needed to resolve
- *				capture groups.
- *				The caller should only free the `regex_t *` if it
- *				compiled it, and the pointer has not been set to NULL
- *				when this function returns.
- * @param[in] op		the operation to perform.
- * @return
- *	- -1 on failure.
- *	- 0 for "no match".
- *	- 1 for "match".
- */
-static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_value_box_t const *subject, regex_t **preg,
-				      fr_dcursor_t *out, fr_token_t op)
-{
-	uint32_t	subcaptures;
-	int		ret;
-
-	fr_regmatch_t	*regmatch;
-	fr_value_box_t	*dst;
-
-	if (!fr_cond_assert(subject != NULL)) return XLAT_ACTION_FAIL;
-	if (!fr_cond_assert(subject->type == FR_TYPE_STRING)) return XLAT_ACTION_FAIL;
-
-	subcaptures = regex_subcapture_count(*preg);
-	if (!subcaptures) subcaptures = REQUEST_MAX_REGEX + 1;	/* +1 for %{0} (whole match) capture group */
-	MEM(regmatch = regex_match_data_alloc(NULL, subcaptures));
-
-	/*
-	 *	Evaluate the expression
-	 */
-	ret = regex_exec(*preg, subject->vb_strvalue, subject->vb_length, regmatch);
-	switch (ret) {
-	default:
-		RPEDEBUG("REGEX failed");
-		return XLAT_ACTION_FAIL;
-
-	case 0:
-		regex_sub_to_request(request, NULL, NULL);	/* clear out old entries */
-		break;
-
-	case 1:
-		regex_sub_to_request(request, preg, &regmatch);
-		break;
-
-	}
-
-	talloc_free(regmatch);	/* free if not consumed */
-
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
-	dst->vb_bool = (ret == (op == T_OP_REG_EQ));
-
-	fr_dcursor_append(out, dst);
-
-	return XLAT_ACTION_DONE;
-}
 
 static const fr_sbuff_escape_rules_t regex_escape_rules = {
 	.name = "regex",
@@ -561,6 +492,117 @@ static const fr_sbuff_escape_rules_t regex_escape_rules = {
 	.do_oct = true
 };
 
+static xlat_arg_parser_t const regex_op_xlat_args[] = {
+	{ .required = true, .type = FR_TYPE_STRING },
+	{ .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+
+/** Perform a regular expressions comparison between two operands
+ *
+ * @param[in] request		The current request.
+ * @param[in] in		list of item or items
+ * @param[in,out] preg		Pointer to pre-compiled or runtime-compiled
+ *				regular expression.  In the case of runtime-compiled
+ *				the pattern may be stolen by the `regex_sub_to_request`
+ *				function as the original pattern is needed to resolve
+ *				capture groups.
+ *				The caller should only free the `regex_t *` if it
+ *				compiled it, and the pointer has not been set to NULL
+ *				when this function returns.
+ * @param[in] op		the operation to perform.
+ * @return
+ *	- -1 on failure.
+ *	- 0 for "no match".
+ *	- 1 for "match".
+ */
+static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_value_box_list_t *in, regex_t **preg,
+				      fr_dcursor_t *out, fr_token_t op)
+{
+	uint32_t	subcaptures;
+	int		ret = 0;
+
+	fr_regmatch_t	*regmatch;
+	fr_value_box_t	*dst;
+	fr_value_box_t	*arg, *vb;
+	fr_sbuff_t	*agg;
+	char const	*subject;
+	size_t		len;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, 8192);
+
+	arg = fr_dlist_head(in);
+	fr_assert(arg != NULL);
+	fr_assert(arg->type == FR_TYPE_GROUP);
+
+	subcaptures = regex_subcapture_count(*preg);
+	if (!subcaptures) subcaptures = REQUEST_MAX_REGEX + 1;	/* +1 for %{0} (whole match) capture group */
+	MEM(regmatch = regex_match_data_alloc(NULL, subcaptures));
+
+	while ((vb = fr_dlist_pop_head(&arg->vb_group)) != NULL) {
+		if (vb->type == FR_TYPE_STRING) {
+			subject = vb->vb_strvalue;
+			len = vb->vb_length;
+
+		} else {
+			fr_value_box_list_t	list;
+
+			fr_value_box_list_init(&list);
+			fr_dlist_insert_head(&list, vb);
+			vb = NULL;
+
+			/*
+			 *	Concatenate everything, and escape untrusted inputs.
+			 */
+			if (fr_value_box_list_concat_as_string(NULL, agg, &list, NULL, 0, &regex_escape_rules,
+							       FR_VALUE_BOX_LIST_FREE_BOX, true, false) < 0) {
+				RPEDEBUG("Failed concatenating regular expression string");
+				talloc_free(regmatch);
+				return XLAT_ACTION_FAIL;
+			}
+
+			subject = fr_sbuff_start(agg);
+			len = fr_sbuff_used(agg);
+		}
+
+		/*
+		 *	Evaluate the expression
+		 */
+		ret = regex_exec(*preg, subject, len, regmatch);
+		switch (ret) {
+		default:
+			RPEDEBUG("REGEX failed");
+			talloc_free(vb);
+			talloc_free(regmatch);
+			return XLAT_ACTION_FAIL;
+
+		case 0:
+			regex_sub_to_request(request, NULL, NULL);	/* clear out old entries */
+			continue;
+
+		case 1:
+			RDEBUG("MATCH");
+			regex_sub_to_request(request, preg, &regmatch);
+			talloc_free(vb);
+			goto done;
+
+		}
+
+		talloc_free(vb);
+	}
+
+done:	
+	talloc_free(regmatch);	/* free if not consumed */
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
+	dst->vb_bool = (ret == (op == T_OP_REG_EQ));
+
+	fr_dcursor_append(out, dst);
+
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_ctx_t const *xctx,
 				       request_t *request, fr_value_box_list_t *in)
@@ -568,7 +610,6 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	xlat_regex_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_regex_inst_t);
 	xlat_regex_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_regex_rctx_t);
 	ssize_t			slen;
-	fr_value_box_t		*lhs;
 	regex_t			*preg = NULL;
 	fr_sbuff_t		*agg;
 
@@ -583,14 +624,9 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	/*
-	 *	LHS should already have been expanded.  RHS was just expanded by us.
-	 */
-	lhs = fr_dlist_head(in);
-
-	/*
-	 *	Because we expanded the RHS ourselves, the "concat"
-	 *	flag to the RHS argument is ignored.  So we just
-	 *	concatenate it here.  We escape the various untrusted inputs.
+	 *      Because we expanded the RHS ourselves, the "concat"
+	 *      flag to the RHS argument is ignored.  So we just
+	 *      concatenate it here.  We escape the various untrusted inputs.
 	 */
 	if (fr_value_box_list_concat_as_string(NULL, agg, &rctx->list, NULL, 0, &regex_escape_rules,
 					       FR_VALUE_BOX_LIST_FREE_BOX, true, false) < 0) {
@@ -604,7 +640,7 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			     tmpl_regex_flags(inst->xlat->vpt), true, true); /* flags, allow subcaptures, at runtime */
 	if (slen <= 0) return XLAT_ACTION_FAIL;
 
-	return xlat_regex_match(ctx, request, lhs, &preg, out, inst->op);
+	return xlat_regex_match(ctx, request, in, &preg, out, inst->op);
 }
 
 static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
@@ -615,9 +651,6 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	xlat_regex_inst_t const	*inst = talloc_get_type_abort_const(xctx->inst, xlat_regex_inst_t);
 	xlat_regex_rctx_t	*rctx;
 	regex_t			*preg;
-	fr_value_box_t		*lhs;
-
-	lhs = fr_dlist_head(in);
 
 	/*
 	 *	Just run precompiled regexes.
@@ -625,7 +658,7 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (inst->regex) {
 		preg = tmpl_regex(inst->xlat->vpt);
 
-		return xlat_regex_match(ctx, request, lhs, &preg, out, op);
+		return xlat_regex_match(ctx, request, in, &preg, out, op);
 	}
 
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_regex_rctx_t));
