@@ -3234,7 +3234,7 @@ static int _dict_free(fr_dict_t *dict)
 		}
 	}
 
-#ifdef __clang_analyzer__
+#if defined(__clang_analyzer__) || defined(__COVERITY__)
 	if (!dict->root) return -1;
 #endif
 
