@@ -107,10 +107,12 @@ static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unla
 
 	/*
 	 *	If we always run this condition, then don't bother pushing anything onto the stack.
+	 *
+	 *	We still run this condition, even for "false" values, due to things like
+	 *
+	 *		if (0) { ... } elsif ....
 	 */
 	if (gext->is_truthy) {
-		fr_assert(gext->value); /* otherwise it would have been omitted from the unlang tree */
-
 		return unlang_group(p_result, request, frame);
 	}
 

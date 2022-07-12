@@ -1520,9 +1520,9 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	Now that the CONF_SECTION and condition are OK, add
 	 *	the condition to the CONF_SECTION.
 	 */
-	cf_data_add(cs, cond, NULL, false);
+	cf_data_add(cs, cond, NULL, true);
 #ifdef WITH_XLAT_COND
-	cf_data_add(cs, head, NULL, false);
+	cf_data_add(cs, head, NULL, true);
 #endif
 	stack->ptr = ptr;
 

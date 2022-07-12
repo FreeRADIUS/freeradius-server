@@ -2220,6 +2220,18 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 				 *	So we skip this "elsif" or "else".
 				 */
 				if (skip_else) {
+					void *ptr;
+
+					/*
+					 *	And manually free this.
+					 */
+					ptr = cf_data_remove(subcs, fr_cond_t, NULL);
+					talloc_free(ptr);
+					ptr = cf_data_remove(subcs, xlat_exp_head_t, NULL);
+					talloc_free(ptr);
+
+					cf_section_free_children(subcs);
+
 					cf_log_debug_prefix(ci, "Skipping contents of '%s' due to previous "
 							    "'%s' being always being taken.",
 							    name, skip_else);
@@ -3079,9 +3091,11 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		 *	Free the children, which frees any xlats,
 		 *	conditions, etc. which were defined, but are
 		 *	now entirely unused.
+		 *
+		 *	However, we still need to cache the conditions, as they will be accessed at run-time.
 		 */
-		cf_section_free_children(cs);
 		c = compile_empty(parent, unlang_ctx, cs, ext);
+		cf_section_free_children(cs);
 
 	} else {
 		fr_cond_iter_t	iter;

@@ -2204,7 +2204,13 @@ void _cf_debug(CONF_ITEM const *ci)
  */
 void cf_item_free_children(CONF_ITEM *ci)
 {
-	fr_dlist_talloc_free(&ci->children);
-	TALLOC_FREE(ci->ident1);
-	TALLOC_FREE(ci->ident2);
+	CONF_ITEM *child = NULL;
+
+	while ((child = fr_dlist_next(&ci->children, child)) != NULL) {
+		if (child->type == CONF_ITEM_DATA) {
+			continue;
+		}
+
+		child = fr_dlist_talloc_free_item(&ci->children, child);
+	}
 }
