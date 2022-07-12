@@ -116,7 +116,7 @@ define TEST_BOOTSTRAP
 #
 #  The test files are files without extensions.
 #
-OUTPUT.$(TEST) := $(patsubst %/,%,$(subst $(top_srcdir)/src,$(BUILD_DIR),$(abspath $(DIR))))
+OUTPUT.$(TEST) := $(patsubst %/,%,$(subst src/,$(BUILD_DIR)/,$(call CANONICAL_PATH,$(DIR))))
 OUTPUT := $$(OUTPUT.$(TEST))
 
 #
