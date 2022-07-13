@@ -1066,6 +1066,9 @@ static size_t xlat_quote_table_len = NUM_ELEMENTS(xlat_quote_table);
 static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 {
 	int i = 0;
+#ifndef NDEBUG
+	bool needs_resolving = false;
+#endif
 
 #define INFO_INDENT(_fmt, ...)  INFO("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
 
@@ -1083,6 +1086,15 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 			    node->flags.needs_async ? "need_async" : "",
 			    node->flags.pure ? "pure" : "",
 			    node->flags.can_purify ? "can_purify" : "");
+
+#ifndef NDEBUG
+		if (node->flags.needs_resolving) fr_assert(head->flags.needs_resolving);
+
+		if (!head->flags.needs_resolving) fr_assert(!node->flags.needs_resolving);
+
+		needs_resolving |= node->flags.needs_resolving;
+#endif
+
 		if (node->quote != T_BARE_WORD) INFO_INDENT("quote = %c", fr_token_quote[node->quote]);
 
 		switch (node->type) {
@@ -1188,6 +1200,8 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 			break;
 		}
 	}
+
+	fr_assert(needs_resolving == head->flags.needs_resolving);
 }
 
 void xlat_debug(xlat_exp_head_t const *head)
