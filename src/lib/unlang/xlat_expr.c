@@ -153,7 +153,6 @@ static int xlat_expr_resolve_binary(xlat_exp_t *node, UNUSED void *inst, xlat_re
 			XLAT_DEBUG("\tresolve attr a\n");
 			if (tmpl_resolve(a->vpt, &my_tr_rules) < 0) return -1;
 			a->flags.needs_resolving = false;
-			arg1->flags = a->flags;
 		}
 
 		my_tr_rules.enumv = tmpl_da(a->vpt);
@@ -163,7 +162,6 @@ static int xlat_expr_resolve_binary(xlat_exp_t *node, UNUSED void *inst, xlat_re
 
 		b->flags.needs_resolving = false;
 		b->flags.pure = tmpl_is_data(b->vpt);
-		arg2->flags = b->flags;
 		goto flags;
 	}
 
@@ -175,7 +173,6 @@ static int xlat_expr_resolve_binary(xlat_exp_t *node, UNUSED void *inst, xlat_re
 			if (tmpl_resolve(b->vpt, &my_tr_rules) < 0) return -1;
 
 			b->flags.needs_resolving = false;
-			arg2->flags = b->flags;
 		}
 
 		my_tr_rules.enumv = tmpl_da(b->vpt);
@@ -185,20 +182,27 @@ static int xlat_expr_resolve_binary(xlat_exp_t *node, UNUSED void *inst, xlat_re
 
 		a->flags.needs_resolving = false;
 		a->flags.pure = tmpl_is_data(b->vpt);
-		arg1->flags = a->flags;
-
 		goto flags;
 	}
 
 resolve:
-	if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
+	/*
+	 *	This call will fix everything recursively.
+	 */
+	return xlat_resolve(node->call.args, xr_rules);
 
 flags:
-	node->flags = node->call.func->flags;
-	node->call.args->flags.needs_resolving = false;
-	xlat_flags_merge(&node->flags, &node->call.args->flags);
+	arg1->flags = arg1->group->flags = a->flags;
+	arg2->flags = arg2->group->flags = b->flags;
+	xlat_flags_merge(&node->call.args->flags, &arg2->flags);
 
-	node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
+	fr_assert(!a->flags.needs_resolving);
+	fr_assert(!b->flags.needs_resolving);
+
+	fr_assert(!arg1->flags.needs_resolving);
+	fr_assert(!arg2->flags.needs_resolving);
+
+	node->call.args->flags.needs_resolving = false;
 
 	return 0;
 }
@@ -2021,7 +2025,6 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 
 	node->flags.pure = !tmpl_contains_xlat(node->vpt);
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
-	xlat_flags_merge(&head->flags, &node->flags);
 
 	*out = node;
 
