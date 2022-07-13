@@ -1232,7 +1232,6 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	int		i, *pi;
 	char		**p;
 	RADCLIENT	*c;
-	CONF_PAIR	*cp = NULL;
 	char		buffer[128];
 
 	vp_cursor_t	cursor;
@@ -1263,6 +1262,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	for (i = 0; dynamic_config[i].name != NULL; i++) {
 		DICT_ATTR const *da;
 		char *strvalue = NULL;
+		CONF_PAIR *cp = NULL;
 
 		da = dict_attrbyname(dynamic_config[i].name);
 		if (!da) {
@@ -1434,6 +1434,8 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	fr_cursor_first(&cursor);
 	vp = fr_cursor_remove(&cursor);
 	if (vp) {
+		CONF_PAIR *cp;
+
 		do {
 			char *value;
 
