@@ -2240,7 +2240,6 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		node->flags.pure = tmpl_is_data(node->vpt);
 		node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 	}
-	xlat_flags_merge(&head->flags, &node->flags);
 
 	/*
 	 *	Try and add any unknown attributes to the dictionary
