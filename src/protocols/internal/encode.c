@@ -204,11 +204,12 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	case FR_TYPE_GROUP:
 	{
 		fr_dcursor_t	children;
+		fr_pair_t	*child;
 
-		for (vp = fr_pair_dcursor_init(&children, &vp->vp_group);
-		     vp;
-		     vp = fr_dcursor_current(&children)) {
-		     	FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, vp->da->name);
+		for (child = fr_pair_dcursor_init(&children, &vp->vp_group);
+		     child;
+		     child = fr_dcursor_current(&children)) {
+		     	FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, child->da->name);
 
 			slen = fr_internal_encode_pair(&value_dbuff, &children, encode_ctx);
 			if (slen < 0) return slen;
