@@ -243,7 +243,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 			}
 	     	}
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 		/*
 		 *	Container can never be NULL, because if container
 		 *	was previously NULL, i will be <= depth.

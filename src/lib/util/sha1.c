@@ -81,7 +81,7 @@ void fr_sha1_transform(uint32_t state[static 5], uint8_t const buffer[static 64]
 	state[3] += d;
 	state[4] += e;
 
-#  ifndef __clang_analyzer__
+#  ifndef STATIC_ANALYZER
 	/* Wipe variables */
 	a = b = c = d = e = 0;
 #  endif
@@ -155,7 +155,7 @@ void fr_sha1_final(uint8_t digest[static SHA1_DIGEST_LENGTH], fr_sha1_ctx *conte
 		digest[i] = (uint8_t)((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
 	}
 
-#  ifndef __clang_analyzer__
+#  ifndef STATIC_ANALYZER
 	/* Wipe variables */
 	i = j = 0;
 	memset(context->buffer, 0, 64);
@@ -177,7 +177,7 @@ void fr_sha1_final_no_len(uint8_t digest[static SHA1_DIGEST_LENGTH], fr_sha1_ctx
 		digest[i] = (uint8_t)((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
 	}
 
-#  ifndef __clang_analyzer__
+#  ifndef STATIC_ANALYZER
 	/* Wipe variables */
 	i = j = 0;
 	memset(context->buffer, 0, 64);

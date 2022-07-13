@@ -98,10 +98,10 @@ int udpfromto_init(int s)
 	errno = ENOSYS;
 
 	/*
-	 *	Clang analyzer doesn't see that getsockname initialises
+	 *	Static analyzer doesn't see that getsockname initialises
 	 *	the memory passed to it.
 	 */
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	memset(&si, 0, sizeof(si));
 #endif
 
@@ -214,10 +214,10 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 	}
 
 	/*
-	 *	Clang analyzer doesn't see that getsockname initialises
+	 *	Static analyzer doesn't see that getsockname initialises
 	 *	the memory passed to it.
 	 */
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	memset(&si, 0, sizeof(si));
 #endif
 

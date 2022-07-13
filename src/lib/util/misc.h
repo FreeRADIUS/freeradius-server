@@ -85,7 +85,7 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
  */
 static inline bool is_whitespace(char const *value)
 {
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (*value == '\0') return false;	/* clang analyzer doesn't seem to know what isspace does */
 #endif
 	do {
@@ -127,7 +127,7 @@ static inline bool is_whitespace(char const *value)
  */
 static inline bool is_integer(char const *value)
 {
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (*value == '\0') return false;	/* clang analyzer doesn't seem to know what isdigit does */
 #endif
 	do {

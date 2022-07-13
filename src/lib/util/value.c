@@ -2811,7 +2811,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 #define SIGN_PROMOTE(_int, _len)	((_len) < sizeof(_int) ? \
 					(_int) | (~((__typeof__(_int))0)) << ((_len) << 3) : (_int))
 
-#if !defined(NDEBUG) || defined(__clang_analyzer__)
+#if !defined(NDEBUG) || defined(STATIC_ANALYZER)
 	/*
 	 *	Helps catch invalid fr_value_box_field_sizes
 	 *	entries, and shuts up clang analyzer.

@@ -38,11 +38,25 @@ extern "C" {
 #endif
 
 /*
- *	Reduce spurious errors from clang scan by having
+ *	Static analyzers don't notice or can't infer some properties
+ *	of the code, and hence may give false positives. To deal with
+ *	them, there is some conditionally compiled code in various
+ *	places. The following lets the code change minimally if and
+ *	when new static analyzers are added.
+ */
+#ifdef __clang_analyzer__
+#define STATIC_ANALYZER	1
+#endif
+#ifdef __COVERITY__
+#define STATIC_ANALYZER 1
+#endif
+
+/*
+ *	Reduce spurious errors from static analyzers by having
  *	all paths that find the da to be NULL, result
  *	in program exit.
  */
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 #  define WITH_VERIFY_PTR	1
 #endif
 

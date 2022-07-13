@@ -1268,7 +1268,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	case SSL_TICKET_FATAL_ERR_MALLOC:
 	case SSL_TICKET_FATAL_ERR_OTHER:
 	case SSL_TICKET_NONE:
-#if defined(__clang_analyzer__) || defined(__COVERITY__)
+#ifdef STATIC_ANALYZER
 	default:
 #endif
 		return SSL_TICKET_RETURN_IGNORE_RENEW;	/* Send a new ticket */

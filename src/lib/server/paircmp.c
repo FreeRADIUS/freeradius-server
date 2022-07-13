@@ -582,7 +582,7 @@ int paircmp(request_t *request,
 		switch (check_item->op) {
 		case T_OP_EQ:
 		default:
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 			if (!check_item->da) return -1;
 #endif
 

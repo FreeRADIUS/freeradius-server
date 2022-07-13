@@ -436,7 +436,7 @@ static ssize_t decode_rfc(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_dict_attr_t const	*da;
 	fr_radius_ctx_t		*packet_ctx = decode_ctx;
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!packet_ctx || !packet_ctx->tmp_ctx) return PAIR_DECODE_FATAL_ERROR;
 #endif
 
@@ -658,7 +658,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_list_init(&head);
 	if (data_len < 3) return -1; /* type, length, value */
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!packet_ctx->tmp_ctx) return -1;
 #endif
 
@@ -720,7 +720,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	ssize_t			attrlen, my_len;
 	fr_dict_attr_t const	*da;
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!packet_ctx->tmp_ctx) return -1;
 #endif
 
@@ -1004,7 +1004,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	uint8_t	const		*attr, *end;
 	fr_dict_attr_t const	*da;
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!packet_ctx->tmp_ctx) return -1;
 #endif
 
@@ -1244,7 +1244,7 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 
 	fr_pair_list_init(&head);
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!packet_ctx->tmp_ctx) return -1;
 #endif
 

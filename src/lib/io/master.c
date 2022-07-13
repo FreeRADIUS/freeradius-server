@@ -1246,8 +1246,8 @@ redo:
 			return 0;
 		}
 
-#ifdef __clang_analyzer__
-		saremote.ss_family = AF_INET; /* clang doesn't know that accept() initializes this */
+#ifdef STATIC_ANALYZER
+		saremote.ss_family = AF_INET; /* static analyzer doesn't know that accept() initializes this */
 #endif
 
 		/*

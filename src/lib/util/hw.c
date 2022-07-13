@@ -93,14 +93,14 @@ uint32_t fr_hw_num_cores_active(void)
 	/*
 	 *	Catch Linux weirdness.
 	 *
-	 *	You'd think this'd be enough to quite clang scan,
+	 *	You'd think this'd be enough to quiet clang scan,
 	 *	but it's not.
 	 */
 	if (unlikely((tsibs == 0) || (lcores == 0) || (lcores > tsibs))) return 1;
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	/*
-	 *	Prevent clang scanner from warning about divide by zero
+	 *	Prevent static analyzer from warning about divide by zero
 	 */
 	if ((tsibs / lcores) == 0) return 1;
 #endif

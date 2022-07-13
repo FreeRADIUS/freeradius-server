@@ -126,7 +126,7 @@ static int8_t dl_symbol_init_cmp(void const *one, void const *two)
 
 	if (!a->symbol && !b->symbol) return 0;
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!fr_cond_assert(a->symbol && b->symbol)) return 0;	/* Bug in clang scan ? */
 #endif
 
@@ -149,7 +149,7 @@ static int8_t dl_symbol_free_cmp(void const *one, void const *two)
 
 	if (!a->symbol && !b->symbol) return 0;
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!fr_cond_assert(a->symbol && b->symbol)) return 0;	/* Bug in clang scan ? */
 #endif
 

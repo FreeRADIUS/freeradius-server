@@ -158,7 +158,7 @@ unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 #endif
 
 	if (!request->async) {
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 		if (!request->parent) RETURN_MODULE_FAIL;
 #endif
 		fr_assert(request->parent != NULL);
