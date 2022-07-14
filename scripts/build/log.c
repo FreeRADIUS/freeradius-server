@@ -38,6 +38,7 @@ void _make_vlog(char const *log_keyword, char const *file, int line, char const 
 	char	buffer[256];
 	char	*p = buffer, *end = (p + (sizeof(buffer) - 1));
 
+	/* coverity[fixed_size_dest] */
 	strcpy(p, log_keyword);
 	p += strlen(p);
 	*p++ = ' ';
