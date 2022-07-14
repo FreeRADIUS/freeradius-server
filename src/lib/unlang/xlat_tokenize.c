@@ -1808,41 +1808,14 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			break;
 
 		/*
-		 *	A resolved function with unresolved args
-		 */
-		case XLAT_FUNC:
-			node->flags = node->call.func->flags;
-
-			if (node->call.func->resolve) {
-				void *inst = node->call.inst ? node->call.inst->data : NULL;
-
-				if (node->call.func->resolve(node, inst, xr_rules) < 0) return -1;
-			} else {
-				if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
-			}
-
-			xlat_flags_merge(&node->flags, &node->call.args->flags);
-			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
-			break;
-
-		/*
 		 *	An unresolved function.
 		 */
 		case XLAT_FUNC_UNRESOLVED:
-		{
-			xlat_t		*func;
-
 			/*
-			 *	We can't tell if it's just the function
-			 *	that needs resolving or its children too.
+			 *	Try to find the function
 			 */
-			if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
-
-			/*
-			 *	Try and find the function
-			 */
-			func = xlat_func_find(node->fmt, talloc_array_length(node->fmt) - 1);
-			if (!func) {
+			node->call.func = xlat_func_find(node->fmt, talloc_array_length(node->fmt) - 1);
+			if (!node->call.func) {
 				/*
 				 *	FIXME - Produce proper error with marker
 				 */
@@ -1855,7 +1828,6 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			}
 
 			xlat_exp_set_type(node, XLAT_FUNC);
-			node->call.func = func;
 
 			/*
 			 *	Check input arguments of our freshly
@@ -1885,24 +1857,33 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			}
 
 			/*
-			 *	Reset node flags
-			 */
-			node->flags = func->flags;
-
-			/*
-			 *	Merge the result of trying to resolve
-			 *	the child nodes.
-			 */
-			xlat_flags_merge(&node->flags, &node->call.args->flags);
-
-			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
-
-			/*
 			 *	Add the freshly resolved function
 			 *	to the bootstrap tree.
 			 */
 			if (xlat_bootstrap_func(node) < 0) return -1;
-		}
+
+			/*
+			 *	The function is now resolved, so we go through the normal process of resolving
+			 *	its arguments, etc.
+			 */
+			FALL_THROUGH;
+
+		/*
+		 *	A resolved function with unresolved args
+		 */
+		case XLAT_FUNC:
+			node->flags = node->call.func->flags;
+
+			if (node->call.func->resolve) {
+				void *inst = node->call.inst ? node->call.inst->data : NULL;
+
+				if (node->call.func->resolve(node, inst, xr_rules) < 0) return -1;
+			} else {
+				if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
+			}
+
+			xlat_flags_merge(&node->flags, &node->call.args->flags);
+			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
 			break;
 
 		/*
