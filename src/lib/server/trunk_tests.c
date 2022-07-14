@@ -120,10 +120,12 @@ static void test_demux(UNUSED fr_event_list_t *el, UNUSED fr_trunk_connection_t 
 			break;		/* Hack - just ignore it */
 
 		case FR_TRUNK_REQUEST_STATE_CANCEL_SENT:
+			/* coverity[tainted_data] */
 			fr_trunk_request_signal_cancel_complete(preq->treq);
 			break;
 
 		case FR_TRUNK_REQUEST_STATE_SENT:
+			/* coverity[tainted_data] */
 			fr_trunk_request_signal_complete(preq->treq);
 			break;
 
