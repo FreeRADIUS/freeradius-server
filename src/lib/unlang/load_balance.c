@@ -36,7 +36,7 @@ static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t
 	unlang_frame_state_redundant_t	*redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!redundant->found) {
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;

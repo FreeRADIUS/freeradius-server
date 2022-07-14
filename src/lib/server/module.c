@@ -268,7 +268,7 @@ static int8_t module_instance_name_cmp(void const *one, void const *two)
 	 *	This happens, as dl_inst is is used in
 	 *	as the loop condition above.
 	 */
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!fr_cond_assert(a->dl_inst)) return +1;
 	if (!fr_cond_assert(b->dl_inst)) return -1;
 #endif

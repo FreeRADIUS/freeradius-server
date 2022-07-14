@@ -279,7 +279,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 
 	fr_assert(state->lhs.vp != NULL);
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!state->lhs.vp) return -1;
 #endif
 
@@ -657,7 +657,7 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			goto check_rhs;
 
 		case UNLANG_EDIT_EXPANDED_RHS:
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 			if (!state->lhs.vp) goto error;
 #endif
 

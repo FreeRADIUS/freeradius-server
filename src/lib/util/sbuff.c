@@ -43,7 +43,7 @@ fr_table_num_ordered_t const sbuff_parse_error_table[] = {
 };
 size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 
-#if defined(__clang_analyzer__) || !defined(NDEBUG)
+#if defined(STATIC_ANALYZER) || !defined(NDEBUG)
 #  define CHECK_SBUFF_INIT(_sbuff)	if (!(_sbuff)->extend && (unlikely(!(_sbuff)->buff) || unlikely(!(_sbuff)->start) || unlikely(!(_sbuff)->end) || unlikely(!(_sbuff)->p))) return 0;
 #else
 #  define CHECK_SBUFF_INIT(_sbuff)

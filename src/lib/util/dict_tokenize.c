@@ -831,7 +831,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	}
 #endif
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!ctx->dict) return -1;
 #endif
 
@@ -1044,7 +1044,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
 	 *	Maybe we do want a flag field for named time deltas?
 	 */
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!ctx->dict) return -1;
 #endif
 
@@ -1136,7 +1136,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		if (!dict_attr_flags_valid(ctx->dict, ctx->stack[ctx->stack_depth].da, argv[2], NULL, type, &flags)) return -1;
 	}
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!ctx->dict) return -1;
 #endif
 
@@ -1675,7 +1675,7 @@ post_option:
 	 */
 	dict = dict_by_protocol_name(argv[0]);
 	if (dict) {
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 		if (!dict->root) return -1;
 #endif
 
@@ -1686,7 +1686,7 @@ post_option:
 		}
 
 	} else if ((dict = dict_by_protocol_num(value)) != NULL) {
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 		if (!dict->root || !dict->root->name || !argv[0]) return -1;
 #endif
 

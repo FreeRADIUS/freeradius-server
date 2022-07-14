@@ -3234,7 +3234,7 @@ static int _dict_free(fr_dict_t *dict)
 		}
 	}
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!dict->root) return -1;
 #endif
 

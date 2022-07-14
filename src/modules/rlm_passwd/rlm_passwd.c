@@ -581,9 +581,9 @@ static unlang_action_t CC_HINT(nonnull) mod_passwd_map(rlm_rcode_t *p_result, mo
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 		/*
-		 *	clang scan misses that fr_pair_print_value_quoted
+		 *	static analyzer misses that fr_pair_print_value_quoted
 		 *	always terminates the buffer.
 		 */
 		buffer[0] = '\0';

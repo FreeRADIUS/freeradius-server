@@ -288,7 +288,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	a = fr_dlist_head(in);
 	b = fr_dlist_next(in, a);
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!a || !b) return XLAT_ACTION_FAIL;
 #else
 	fr_assert(a != NULL);
@@ -2413,7 +2413,7 @@ static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_s
 	}
 
 redo:
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!lhs) return 0;	/* shut up stupid analyzer */
 #else
 	fr_assert(lhs != NULL);
@@ -2512,8 +2512,8 @@ redo:
 		talloc_free(lhs);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 	}
-	
-#ifdef __clang_analyzer__
+
+#ifdef STATIC_ANALYZER
 	if (!rhs) {
 		talloc_free(lhs);
 		FR_SBUFF_ERROR_RETURN(&our_in);

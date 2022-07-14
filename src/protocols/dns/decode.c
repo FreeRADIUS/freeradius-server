@@ -58,7 +58,7 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		return fr_pair_dns_labels_from_network(ctx, out, parent, packet_ctx->packet, data, data_len, packet_ctx->lb, false);
 	}
-	
+
 	return decode_value(ctx, out, parent, data, data_len, decode_ctx);
 }
 
@@ -181,7 +181,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_dict_attr_t const	*da;
 	fr_dns_ctx_t		*packet_ctx = decode_ctx;
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!packet_ctx || !packet_ctx->tmp_ctx) return PAIR_DECODE_FATAL_ERROR;
 #endif
 

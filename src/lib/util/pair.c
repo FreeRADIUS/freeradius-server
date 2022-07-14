@@ -1618,7 +1618,7 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2])
 	fr_pair_aprint(ctx, &value, NULL, list);
 	fr_pair_aprint(ctx, &str, NULL, filter);
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	if (!value || !str) return;
 #endif
 

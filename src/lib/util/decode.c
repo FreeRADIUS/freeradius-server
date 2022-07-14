@@ -84,7 +84,7 @@ ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	fr_dict_attr_t *unknown;
 	fr_dict_attr_t const *child;
 
-#if defined(__clang_analyzer__) || !defined(NDEBUG)
+#if defined(STATIC_ANALYZER) || !defined(NDEBUG)
 	if (!parent->parent) return -1; /* stupid static analyzers */
 #endif
 

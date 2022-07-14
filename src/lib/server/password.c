@@ -700,9 +700,9 @@ do_header:
 		return new;
 	}
 
-#ifdef __clang_analyzer__
+#ifdef STATIC_ANALYZER
 	/*
-	 *	clang isn't smart enough to notice that "normify" clears out n1.
+	 *	static analyzer isn't smart enough to notice that "normify" clears out n1.
 	 */
 	memset(n1, 0, sizeof(n1));
 #endif
