@@ -46,6 +46,10 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 		return NULL;
 	}
 
+#ifdef STATIC_ANALYZER
+	if (!unknown->name || !unknown->parent) return NULL;
+#endif
+
 	da = fr_dict_attr_by_name(NULL, unknown->parent, unknown->name);
 	if (da) {
 		if (da->attr == unknown->attr) return da;
@@ -65,9 +69,6 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 			return NULL;
 		}
 	} else {
-#ifdef STATIC_ANALYZER
-		if (!unknown->parent) return NULL;
-#endif
 		parent = unknown->parent;
 	}
 
@@ -123,10 +124,6 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 
 		return n;
 	}
-
-#ifdef STATIC_ANALYZER
-	if (!unknown->name) return NULL;
-#endif
 
 	/*
 	 *	Add the attribute by both name and number.
