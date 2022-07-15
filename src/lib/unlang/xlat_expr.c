@@ -413,6 +413,49 @@ done:
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_paircmp_xlat_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/*
+ *	Wrapper around &LDAP-Group == "foo"
+ */
+static xlat_action_t xlat_paircmp_func(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED xlat_ctx_t const *xctx,
+				    request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t	*dst, *vb_da, *vb;
+	fr_dict_attr_t const *da;
+	char const *p;
+
+	vb_da = fr_dlist_head(in);
+	vb = fr_dlist_next(in, vb_da);
+
+#ifdef STATIC_ANALYZER
+	if (!vb_da || !vb) return XLAT_ACTION_FAIL;
+#endif
+
+	p = vb_da->vb_strvalue;
+	if (*p == '&') p++;
+
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), p);
+	if (!da) {
+		RERROR("Unknown attribute '%s'", vb_da->vb_strvalue);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	These callbacks only implement equality.  Nothing else works.
+	 */
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
+	dst->vb_bool = (paircmp_virtual(request, da, T_OP_CMP_EQ, vb) == 0);
+	fr_dcursor_append(out, dst);
+
+	return XLAT_ACTION_DONE;
+}
+
 #define XLAT_BINARY_FUNC(_name, _op)  \
 static xlat_action_t xlat_func_ ## _name(TALLOC_CTX *ctx, fr_dcursor_t *out, \
 				   xlat_ctx_t const *xctx, \
@@ -1668,6 +1711,13 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_UNARY(T_SUB, "unary_minus", xlat_func_unary_minus);
 	XLAT_REGISTER_UNARY(T_COMPLEMENT, "unary_complement", xlat_func_unary_complement);
 	XLAT_REGISTER_UNARY(T_NOT, "unary_not", xlat_func_unary_not);
+
+	/*
+	 *	Callback wrapper around old paircmp() API.
+	 */
+	if (!(xlat = xlat_register(NULL, "paircmp", xlat_paircmp_func, NULL))) return -1; /* never pure! */
+	xlat_func_args(xlat, xlat_paircmp_xlat_args);
+	xlat_internal(xlat);
 
 	return 0;
 }

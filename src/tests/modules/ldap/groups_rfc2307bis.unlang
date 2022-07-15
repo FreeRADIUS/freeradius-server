@@ -10,6 +10,18 @@ if (&LDAP-Group != 'foo') {
         test_fail
 }
 
+if (&LDAP-Group != 'foo') {
+        test_fail
+}
+
+#
+#  Using paircmp xlat expansion.  This is only for internal use,
+#  and will be removed before v4 alpha.
+#
+if (!%{paircmp:&LDAP-Group foo}) {
+        test_fail
+}
+
 #
 #  Resolve using group DN
 #
