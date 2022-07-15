@@ -35,8 +35,6 @@ RCSID("$Id$")
 
 fr_dict_gctx_t *dict_gctx = NULL;	//!< Top level structure containing global dictionary state.
 
-static fr_dict_attr_t const *attr_protocol_encapsulation = NULL;
-
 /** Characters allowed in dictionary names
  *
  */
@@ -882,16 +880,16 @@ int dict_protocol_add(fr_dict_t *dict)
 		fr_dict_attr_t const *da;
 		fr_dict_attr_flags_t flags = { 0 };
 
-		if (!attr_protocol_encapsulation) attr_protocol_encapsulation = fr_dict_attr_by_name(NULL, dict_gctx->internal->root, "Protocol-Encapsulation");
-		fr_assert(attr_protocol_encapsulation != NULL);
+		if (!dict_gctx->attr_protocol_encapsulation) dict_gctx->attr_protocol_encapsulation = fr_dict_attr_by_name(NULL, dict_gctx->internal->root, "Protocol-Encapsulation");
+		fr_assert(dict_gctx->attr_protocol_encapsulation != NULL);
 
-		da = fr_dict_attr_child_by_num(attr_protocol_encapsulation, dict->root->attr);
+		da = fr_dict_attr_child_by_num(dict_gctx->attr_protocol_encapsulation, dict->root->attr);
 		if (!da) {
-			if (fr_dict_attr_add(dict_gctx->internal, attr_protocol_encapsulation, dict->root->name, dict->root->attr, FR_TYPE_GROUP, &flags) < 0) {
+			if (fr_dict_attr_add(dict_gctx->internal, dict_gctx->attr_protocol_encapsulation, dict->root->name, dict->root->attr, FR_TYPE_GROUP, &flags) < 0) {
 				return -1;
 			}
 
-			da = fr_dict_attr_child_by_num(attr_protocol_encapsulation, dict->root->attr);
+			da = fr_dict_attr_child_by_num(dict_gctx->attr_protocol_encapsulation, dict->root->attr);
 			fr_assert(da != NULL);
 		}
 
@@ -3228,8 +3226,8 @@ static int _dict_free(fr_dict_t *dict)
 	if (dict != dict->gctx->internal) {
 		fr_dict_attr_t const *da;
 
-		if (attr_protocol_encapsulation && dict->root) {
-			da = fr_dict_attr_child_by_num(attr_protocol_encapsulation, dict->root->attr);
+		if (dict->gctx->attr_protocol_encapsulation && dict->root) {
+			da = fr_dict_attr_child_by_num(dict->gctx->attr_protocol_encapsulation, dict->root->attr);
 			if (da && fr_dict_attr_ref(da)) dict_attr_ref_set(da, NULL);
 		}
 	}
@@ -3292,7 +3290,7 @@ static int _dict_free(fr_dict_t *dict)
 
 	if (dict == dict->gctx->internal) {
 		dict->gctx->internal = NULL;
-		attr_protocol_encapsulation = NULL;
+		dict->gctx->attr_protocol_encapsulation = NULL;
 	}
 
 	return 0;

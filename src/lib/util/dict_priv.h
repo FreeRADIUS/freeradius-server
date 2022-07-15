@@ -137,6 +137,8 @@ struct fr_dict_gctx_s {
 	 * protocol.
 	 */
 	fr_dict_t		*internal;
+
+	fr_dict_attr_t const	*attr_protocol_encapsulation;
 };
 
 extern fr_dict_gctx_t *dict_gctx;
