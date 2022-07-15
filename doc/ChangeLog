@@ -1,6 +1,6 @@
 FreeRADIUS 3.2.1 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	Feature improvements
-	* Add dictionary.ciena.
+	* Add dictionary.ciena, and DHCPv4 dictionaries,
 	* Add simultaneous-use queries for MS SQL.
 	* Add radmin command for "stats pool <module-name>"
 	  Which prints out statistics about the connection pools
@@ -9,6 +9,15 @@ FreeRADIUS 3.2.1 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	* New optional "lightweight accounting-on/off" strategy.  When
 	  refreshing queries.conf you should also add the new nasreload table
 	  and corresponding GRANTs to your DB schema.
+	* Add TLS-Client-Cert-X509v3-Certificate-Policies, which helps with
+	  Eduroam.  Suggested by Stefan Winter.
+	* Allow auth+acct for TCP sockets, too.
+	* Add rlm_
+	* Allow radnmin to look up home servers by name, too.
+	* Ensure that dynamic clients don't create loops on duplicates.
+	  Reported by Sam Yee.
+	* Removed rlm_sqlhpwippool.  There was no documentation, no configuration,
+	  and the module was ~15 years old with no one using it.
 
 	Bug fixes
 	* Correct test for open sessions in radacct for MS SQL.
