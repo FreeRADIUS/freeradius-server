@@ -649,10 +649,6 @@ fi
 %{_libdir}/freeradius/rlm_sqlippool.so
 %{_libdir}/freeradius/rlm_sql_map.so
 
-%if %{?_with_developer:1}%{!?_with_developer:0}
-%{_libdir}/freeradius/rlm_sqlhpwippool.so
-%endif
-
 %{_libdir}/freeradius/rlm_totp.so
 %{_libdir}/freeradius/rlm_unpack.so
 %{_libdir}/freeradius/rlm_unix.so
