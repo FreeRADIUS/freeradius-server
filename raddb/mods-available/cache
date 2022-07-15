@@ -28,6 +28,7 @@ cache {
 	#    rlm_cache_memcached - A non persistent "webscale" distributed datastore.
 	#                          Useful if the cached data need to be shared between
 	#                          a cluster of RADIUS servers.
+	#    rlm_cache_redis     - uses Redis.
 #	driver = "rlm_cache_rbtree"
 
 	#
@@ -51,6 +52,23 @@ cache {
 #			lifetime = 0
 #			idle_timeout = 60
 #		}
+#	}
+
+	#
+	#  See mods-available/redis for documentation on the following
+	#  configuration items.  They are identical here.
+	#
+	#  Note that the "pool" section can re-use the normal Redis
+	#  connections.  This is done by setting the "pool" configuration
+	#  item to the name of the Redis module.  The other configuration
+	#  items should then be the same as for the original "redis" module.
+	#
+#	redis {
+#		server = ...
+#		port = 
+#		database = 
+#		query_timeout = ...
+#		pool = redis
 #	}
 
 	#  The key used to index the cache.  It is dynamically expanded
