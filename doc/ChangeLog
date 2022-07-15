@@ -12,7 +12,7 @@ FreeRADIUS 3.2.1 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	* Add TLS-Client-Cert-X509v3-Certificate-Policies, which helps with
 	  Eduroam.  Suggested by Stefan Winter.
 	* Allow auth+acct for TCP sockets, too.
-	* Add rlm_
+	* Add rlm_cache_redis. See raddb/mods-available/cache for details
 	* Allow radnmin to look up home servers by name, too.
 	* Ensure that dynamic clients don't create loops on duplicates.
 	  Reported by Sam Yee.
