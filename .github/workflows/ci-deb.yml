@@ -36,8 +36,10 @@ jobs:
 
     - name: Package manager performance and stability improvements
       run: |
+        if [ -f "/etc/apt/sources.list" ]; then
         sed -i 's/deb.debian.org/debian-archive.trafficmanager.net/' /etc/apt/sources.list
         sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/' /etc/apt/sources.list
+        fi
         echo 'Acquire::Retries "10";' > /etc/apt/apt.conf.d/80-retries
         echo 'force-unsafe-io' > /etc/dpkg/dpkg.cfg.d/02speedup
         echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
