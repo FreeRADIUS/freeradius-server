@@ -65,7 +65,144 @@ RCSID("$Id$")
  *	which is not trivial.  Or, maybe we attach it to the request somehow?
  */
 
-static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow);
+static xlat_exp_t *xlat_exists_alloc(TALLOC_CTX *ctx, xlat_exp_t *child);
+
+static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node, bool exists)
+{
+	xlat_exp_t *group;
+
+	fr_assert(head->type == XLAT_FUNC);
+
+	if (node->type == XLAT_GROUP) {
+		xlat_exp_insert_tail(head->call.args, node);
+		xlat_flags_merge(&head->flags, &head->call.args->flags);
+		return;
+	}
+
+	/*
+	 *	Wrap existence checks for attribute reference.
+	 */
+	if (exists && (node->type == XLAT_TMPL) && tmpl_contains_attr(node->vpt)) {
+		node = xlat_exists_alloc(head, node);
+	}
+
+	group = xlat_exp_alloc_null(head->call.args);
+	xlat_exp_set_type(group, XLAT_GROUP);
+	group->quote = T_BARE_WORD;
+
+	group->fmt = node->fmt;	/* not entirely correct, but good enough for now */
+	group->flags = node->flags;
+
+	MEM(group->group = xlat_exp_head_alloc(group));
+	talloc_steal(group->group, node);
+	xlat_exp_insert_tail(group->group, node);
+
+	xlat_exp_insert_tail(head->call.args, group);
+
+	xlat_flags_merge(&head->flags, &head->call.args->flags);
+}
+
+
+/** Allocate a specific cast node.
+ *
+ *  With the first argument being a UINT8 of the data type.
+ *  See xlat_func_cast() for the implementation.
+ *
+ */
+static xlat_exp_t *xlat_exists_alloc(TALLOC_CTX *ctx, xlat_exp_t *child)
+{
+	xlat_exp_t *node;
+
+	/*
+	 *	Create an "exists" node.
+	 */
+	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, "exists", 6));
+	MEM(node->call.args = xlat_exp_head_alloc(node));
+	MEM(node->call.func = xlat_func_find("exists", 6));
+	fr_assert(node->call.func != NULL);
+	node->flags = node->call.func->flags;
+
+	xlat_func_append_arg(node, child, false);
+
+	return node;
+}
+
+
+static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow)
+{
+	rlm_rcode_t rcode;
+	ssize_t slen;
+	size_t len;
+	xlat_t *func;
+	xlat_exp_t *arg = *p_arg;
+	xlat_exp_t *node;
+
+	if ((arg->type != XLAT_TMPL) || (arg->quote != T_BARE_WORD)) return 0;
+
+	if (!tmpl_is_unresolved(arg->vpt)) return 0;
+
+	len = talloc_array_length(arg->vpt->name) - 1;
+
+	/*
+	 *	Check for module return codes.  If we find one,
+	 *	replace it with a function call that returns "true" if
+	 *	the current module code matches what we supplied here.
+	 */
+	fr_sbuff_out_by_longest_prefix(&slen, &rcode, rcode_table,
+				       &FR_SBUFF_IN(arg->vpt->name, len), T_BARE_WORD);
+	if (slen < 0) return 0;
+
+	/*
+	 *	It did match, so it must match exactly.
+	 *
+	 *	@todo - what about (ENUM == &Attr), where the ENUM starts with "ok"?
+	 *	Maybe just fix that later. Or, if it's a typo such as
+	 */
+	if (((size_t) slen) != len) {
+		fr_strerror_const("Unexpected text - attribute names must prefixed with '&'");
+		return -1;
+	}
+
+	/*
+	 *	For unary operations.
+	 *
+	 *	-RCODE is not allowed.
+	 *	~RCODE is not allowed.
+	 *	!RCODE is allowed.
+	 */
+	if (!allow) {
+		fr_strerror_const("Invalid operation on module return code");
+		return -1;
+	}
+
+	func = xlat_func_find("rcode", 5);
+	fr_assert(func != NULL);
+
+	/*
+	 *	@todo - free the arg, and replace it with XLAT_BOX of uint32.  Then also update func_rcode()
+	 *	to take UINT32 or string...
+	 */
+	if (tmpl_cast_in_place(arg->vpt, FR_TYPE_STRING, NULL) < 0) {
+		return -1;
+	}
+
+	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, arg->vpt->name, len));
+	MEM(node->call.args = xlat_exp_head_alloc(node));
+	node->call.func = func;
+	node->flags = func->flags;
+
+	/*
+	 *	Doesn't need resolving, isn't pure, doesn't need anything else.
+	 */
+	arg->flags = (xlat_flags_t) { };
+
+	xlat_func_append_arg(node, arg, false);
+
+	*p_arg = node;
+
+	return 0;
+}
+
 
 static fr_slen_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
 {
@@ -206,68 +343,6 @@ flags:
 
 	return 0;
 }
-
-static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node, bool exists);
-
-/** Allocate a specific cast node.
- *
- *  With the first argument being a UINT8 of the data type.
- *  See xlat_func_cast() for the implementation.
- *
- */
-static xlat_exp_t *xlat_exists_alloc(TALLOC_CTX *ctx, xlat_exp_t *child)
-{
-	xlat_exp_t *node;
-
-	/*
-	 *	Create an "exists" node.
-	 */
-	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, "exists", 6));
-	MEM(node->call.args = xlat_exp_head_alloc(node));
-	MEM(node->call.func = xlat_func_find("exists", 6));
-	fr_assert(node->call.func != NULL);
-	node->flags = node->call.func->flags;
-
-	xlat_func_append_arg(node, child, false);
-
-	return node;
-}
-
-static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node, bool exists)
-{
-	xlat_exp_t *group;
-
-	fr_assert(head->type == XLAT_FUNC);
-
-	if (node->type == XLAT_GROUP) {
-		xlat_exp_insert_tail(head->call.args, node);
-		xlat_flags_merge(&head->flags, &head->call.args->flags);
-		return;
-	}
-
-	/*
-	 *	Wrap existence checks for attribute reference.
-	 */
-	if (exists && (node->type == XLAT_TMPL) && tmpl_contains_attr(node->vpt)) {
-		node = xlat_exists_alloc(head, node);
-	}
-
-	group = xlat_exp_alloc_null(head->call.args);
-	xlat_exp_set_type(group, XLAT_GROUP);
-	group->quote = T_BARE_WORD;
-
-	group->fmt = node->fmt;	/* not entirely correct, but good enough for now */
-	group->flags = node->flags;
-
-	MEM(group->group = xlat_exp_head_alloc(group));
-	talloc_steal(group->group, node);
-	xlat_exp_insert_tail(group->group, node);
-
-	xlat_exp_insert_tail(head->call.args, group);
-
-	xlat_flags_merge(&head->flags, &head->call.args->flags);
-}
-
 
 static xlat_arg_parser_t const binary_op_xlat_args[] = {
 	{ .required = true, .type = FR_TYPE_VOID },
@@ -2332,81 +2407,6 @@ static bool valid_type(xlat_exp_t *node)
 	}
 
 	return true;
-}
-
-static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow)
-{
-	rlm_rcode_t rcode;
-	ssize_t slen;
-	size_t len;
-	xlat_t *func;
-	xlat_exp_t *arg = *p_arg;
-	xlat_exp_t *node;
-
-	if ((arg->type != XLAT_TMPL) || (arg->quote != T_BARE_WORD)) return 0;
-
-	if (!tmpl_is_unresolved(arg->vpt)) return 0;
-
-	len = talloc_array_length(arg->vpt->name) - 1;
-
-	/*
-	 *	Check for module return codes.  If we find one,
-	 *	replace it with a function call that returns "true" if
-	 *	the current module code matches what we supplied here.
-	 */
-	fr_sbuff_out_by_longest_prefix(&slen, &rcode, rcode_table,
-				       &FR_SBUFF_IN(arg->vpt->name, len), T_BARE_WORD);
-	if (slen < 0) return 0;
-
-	/*
-	 *	It did match, so it must match exactly.
-	 *
-	 *	@todo - what about (ENUM == &Attr), where the ENUM starts with "ok"?
-	 *	Maybe just fix that later. Or, if it's a typo such as
-	 */
-	if (((size_t) slen) != len) {
-		fr_strerror_const("Unexpected text - attribute names must prefixed with '&'");
-		return -1;
-	}
-
-	/*
-	 *	For unary operations.
-	 *
-	 *	-RCODE is not allowed.
-	 *	~RCODE is not allowed.
-	 *	!RCODE is allowed.
-	 */
-	if (!allow) {
-		fr_strerror_const("Invalid operation on module return code");
-		return -1;
-	}
-
-	func = xlat_func_find("rcode", 5);
-	fr_assert(func != NULL);
-
-	/*
-	 *	@todo - free the arg, and replace it with XLAT_BOX of uint32.  Then also update func_rcode()
-	 *	to take UINT32 or string...
-	 */
-	if (tmpl_cast_in_place(arg->vpt, FR_TYPE_STRING, NULL) < 0) {
-		return -1;
-	}
-
-	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, arg->vpt->name, len));
-	MEM(node->call.args = xlat_exp_head_alloc(node));
-	node->call.func = func;
-	node->flags = func->flags;
-
-	/*
-	 *	Doesn't need resolving, isn't pure, doesn't need anything else.
-	 */
-	arg->flags = (xlat_flags_t) { };
-
-	xlat_func_append_arg(node, arg, false);
-
-	*p_arg = node;
-
-	return 0;
 }
 
 /** Tokenize a mathematical operation.
