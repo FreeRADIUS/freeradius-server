@@ -556,7 +556,7 @@ static bool cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t co
 static bool cond_compare_virtual(request_t *request, map_t const *map)
 {
 	int	       		rcode;
-	fr_pair_t		*virt, *vp;
+	fr_pair_t		*vp;
 	fr_value_box_t		*rhs, rhs_cast;
 	fr_dcursor_t		cursor;
 	tmpl_dcursor_ctx_t	cc;
@@ -577,15 +577,7 @@ static bool cond_compare_virtual(request_t *request, map_t const *map)
 			break;
 		}
 
-		/*
-		 *	Create the virtual check item.
-		 */
-		MEM(virt = fr_pair_afrom_da(request->request_ctx, tmpl_da(map->lhs)));
-		virt->op = map->op;
-		fr_value_box_copy(virt, &virt->data, rhs);
-
-		rcode = paircmp_virtual(request, virt);
-		talloc_free(virt);
+		rcode = paircmp_virtual(request, tmpl_da(map->lhs), map->op, rhs);
 		rcode = (rcode == 0) ? 1 : 0;
 		if (rhs == &rhs_cast) fr_value_box_clear(&rhs_cast);
 		if (rcode != 0) break;
@@ -703,8 +695,6 @@ static bool cond_eval_map(request_t *request, fr_cond_t const *c,
 	 *	an attribute or a list.
 	 */
 	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
-		fr_pair_t *vp;
-
 		fr_assert(tmpl_is_attr(map->lhs));
 
 		if (map->op == T_OP_REG_EQ) {
@@ -731,16 +721,11 @@ static bool cond_eval_map(request_t *request, fr_cond_t const *c,
 			return false;
 		}
 
-		MEM(vp = fr_pair_afrom_da(request->request_ctx, tmpl_da(map->lhs)));
-		vp->op = c->data.map->op;
-		fr_value_box_copy(vp, &vp->data, rhs);
-
 		/*
 		 *	Do JUST the virtual attribute comparison.
 		 *	Skip all of the rest of the complexity of paircmp().
 		 */
-		rcode = paircmp_virtual(request, vp);
-		talloc_free(vp);
+		rcode = paircmp_virtual(request, tmpl_da(map->lhs), c->data.map->op, rhs);
 		rcode = (rcode == 0) ? 1 : 0;
 		goto done;
 	}

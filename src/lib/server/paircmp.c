@@ -455,19 +455,32 @@ static int paircmp_func(request_t *request,
  * comparison function called.
  *
  * @param[in] request		Current request.
- * @param[in] check_item	item to compare.
+ * @param[in] da		the da to use
+ * @param[in] op		operator to use
+ * @param[in] value		value-box to use.
  * @return
  *	- 0 if check_item matches
  *	- -1 if check_item is smaller
  *	- 1 if check_item is larger
  */
-int paircmp_virtual(request_t *request, fr_pair_t const *check_item)
+int paircmp_virtual(request_t *request, fr_dict_attr_t const *da, fr_token_t op, fr_value_box_t const *value)
 {
 	paircmp_t *c;
 
 	for (c = cmp; c; c = c->next) {
-		if (c->da == check_item->da) {
-			return (c->compare)(c->instance, request, check_item);
+		if (c->da == da) {
+			fr_pair_t *vp;
+			int rcode;
+
+			vp = fr_pair_afrom_da(request->request_ctx, da);
+			if (!vp) return -1;
+
+			vp->op = op;
+			fr_value_box_copy(vp, &vp->data, value);
+
+			rcode = (c->compare)(c->instance, request, vp);
+			talloc_free(vp);
+			return rcode;
 		}
 	}
 
