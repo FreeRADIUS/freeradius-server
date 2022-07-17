@@ -597,11 +597,6 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 					goto error;
 				}
 
-				if (tmpl_is_attr(state->lhs.vpt) && fr_type_is_structural(tmpl_da(state->lhs.vpt)->type)) {
-					REDEBUG("Can't edit structural %s", state->lhs.vpt->name);
-					goto error;
-				}
-
 				fr_assert(!tmpl_is_list(state->lhs.vpt));
 
 				/*
