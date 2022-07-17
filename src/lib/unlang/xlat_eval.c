@@ -1628,21 +1628,7 @@ void xlat_eval_free(void)
  */
 bool xlat_async_required(xlat_exp_head_t const *head)
 {
-	xlat_exp_t *first;
-
 	if (!head) return false;
 
-	first = xlat_exp_head(head);
-	if (first->type != XLAT_GROUP) {
-		return first->flags.needs_async;
-	}
-
-	/*
-	 *	Set needs_async on the entire list.
-	 */
-	xlat_exp_foreach(head, node) {
-		if (node->flags.needs_async) return true;
-	}
-
-	return false;
+	return head->flags.needs_async;
 }
