@@ -981,6 +981,107 @@ static xlat_arg_parser_t const xlat_func_debug_attr_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
+static void debug_attr_list(request_t *request, fr_pair_list_t const *list);
+
+static void debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
+{
+	fr_dict_vendor_t const		*vendor;
+	fr_table_num_ordered_t const	*type;
+	size_t				i;
+
+	switch (vp->da->type) {
+	case FR_TYPE_STRUCTURAL:
+		if (vpt) {
+			RIDEBUG2("&%s.%s = {",
+				 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
+				 vp->da->name);
+		} else {
+			RIDEBUG2("%s = {", vp->da->name);
+		}
+		RINDENT();
+		debug_attr_list(request, &vp->vp_group);
+		REXDENT();
+		RIDEBUG2("}");
+		break;
+		
+	default:
+		if (vpt) {
+			RIDEBUG2("&%s.%s = %pV",
+				 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
+				 vp->da->name,
+				 &vp->data);
+		} else {
+			RIDEBUG2("%s = %pV", vp->da->name, &vp->data);
+		}
+	}
+
+	if (!RDEBUG_ENABLED3) return;
+
+	RIDEBUG3("da         : %p", vp->da);
+	RIDEBUG3("is_raw     : %pV", fr_box_bool(vp->da->flags.is_raw));
+	RIDEBUG3("is_unknown : %pV", fr_box_bool(vp->da->flags.is_unknown));
+
+	if (RDEBUG_ENABLED3) {
+		RIDEBUG3("parent     : %s (%p)", vp->da->parent->name, vp->da->parent);
+	} else {
+		RIDEBUG2("parent     : %s", vp->da->parent->name);
+	}
+	RIDEBUG3("attr       : %u", vp->da->attr);
+	vendor = fr_dict_vendor_by_da(vp->da);
+	if (vendor) RIDEBUG2("vendor     : %i (%s)", vendor->pen, vendor->name);
+	RIDEBUG3("type       : %s", fr_type_to_str(vp->vp_type));
+
+	if (fr_box_is_variable_size(&vp->data)) {
+		RIDEBUG3("length     : %zu", vp->vp_length);
+	}
+
+	if (!RDEBUG_ENABLED4) return;
+
+	for (i = 0; i < fr_type_table_len; i++) {
+		int pad;
+
+		fr_value_box_t *dst = NULL;
+
+		type = &fr_type_table[i];
+
+		if ((fr_type_t) type->value == vp->vp_type) goto next_type;
+
+		switch (type->value) {
+		case FR_TYPE_NON_LEAF:	/* Skip everything that's not a value */
+			goto next_type;
+
+		default:
+			break;
+		}
+
+		dst = fr_value_box_alloc_null(vp);
+		/* We expect some to fail */
+		if (fr_value_box_cast(dst, dst, type->value, NULL, &vp->data) < 0) {
+			goto next_type;
+		}
+
+		if ((pad = (11 - type->name.len)) < 0) pad = 0;
+
+		RINDENT();
+		RDEBUG4("as %s%*s: %pV", type->name.str, pad, " ", dst);
+		REXDENT();
+
+	next_type:
+		talloc_free(dst);
+	}
+}
+
+static void debug_attr_list(request_t *request, fr_pair_list_t const *list)
+{
+	fr_pair_t *vp;
+
+	for (vp = fr_pair_list_next(list, NULL);
+	     vp != NULL;
+	     vp = fr_pair_list_next(list, vp)) {
+		debug_attr_vp(request, vp, NULL);
+	}
+}
+
 /** Print out attribute info
  *
  * Prints out all instances of a current attribute, or all attributes in a list.
@@ -1030,84 +1131,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
-		fr_dict_vendor_t const		*vendor;
-		fr_table_num_ordered_t const	*type;
-		size_t				i;
-
-		switch (vp->da->type) {
-		case FR_TYPE_STRUCTURAL:
-			if (fr_pair_list_empty(&vp->vp_group)) {
-				RIDEBUG2("&%s.%s = {}",
-					 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
-					 vp->da->name);
-			} else {
-				RIDEBUG2("&%s.%s = {...}", /* @todo */
-					 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
-					 vp->da->name);
-			}
-			break;
-
-		default:
-			RIDEBUG2("&%s.%s = %pV",
-				 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
-				 vp->da->name,
-				 &vp->data);
-		}
-
-		if (!RDEBUG_ENABLED3) continue;
-
-		RIDEBUG3("da         : %p", vp->da);
-		RIDEBUG3("is_raw     : %pV", fr_box_bool(vp->da->flags.is_raw));
-		RIDEBUG3("is_unknown : %pV", fr_box_bool(vp->da->flags.is_unknown));
-
-		if (RDEBUG_ENABLED3) {
-			RIDEBUG3("parent     : %s (%p)", vp->da->parent->name, vp->da->parent);
-		} else {
-			RIDEBUG2("parent     : %s", vp->da->parent->name);
-		}
-		RIDEBUG3("attr       : %u", vp->da->attr);
-		vendor = fr_dict_vendor_by_da(vp->da);
-		if (vendor) RIDEBUG2("vendor     : %i (%s)", vendor->pen, vendor->name);
-		RIDEBUG3("type       : %s", fr_type_to_str(vp->vp_type));
-
-		if (fr_box_is_variable_size(&vp->data)) {
-			RIDEBUG3("length     : %zu", vp->vp_length);
-		}
-
-		if (!RDEBUG_ENABLED4) continue;
-
-		for (i = 0; i < fr_type_table_len; i++) {
-			int pad;
-
-			fr_value_box_t *dst = NULL;
-
-			type = &fr_type_table[i];
-
-			if ((fr_type_t) type->value == vp->vp_type) goto next_type;
-
-			switch (type->value) {
-			case FR_TYPE_NON_LEAF:	/* Skip everything that's not a value */
-				goto next_type;
-
-			default:
-				break;
-			}
-
-			dst = fr_value_box_alloc_null(vp);
-			/* We expect some to fail */
-			if (fr_value_box_cast(dst, dst, type->value, NULL, &vp->data) < 0) {
-				goto next_type;
-			}
-
-			if ((pad = (11 - type->name.len)) < 0) pad = 0;
-
-			RINDENT();
-			RDEBUG4("as %s%*s: %pV", type->name.str, pad, " ", dst);
-			REXDENT();
-
-		next_type:
-			talloc_free(dst);
-		}
+		debug_attr_vp(request, vp, vpt);
 	}
 	tmpl_dursor_clear(&cc);
 	REXDENT();
