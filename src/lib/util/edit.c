@@ -235,6 +235,15 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 	}
 
 	/*
+	 *	Catch NOOPs
+	 */
+	if (op == FR_EDIT_CLEAR) {
+		fr_assert(fr_type_is_structural(vp->vp_type));
+
+		if (fr_pair_list_empty(&vp->vp_group)) return 0;
+	}
+
+	/*
 	 *	Search for previous edits.
 	 *
 	 *	@todo - if we're modifying values of a child VP, and
@@ -570,6 +579,11 @@ int fr_edit_list_free_pair_children(fr_edit_list_t *el, fr_pair_t *vp)
 		fr_pair_list_free(&vp->children);
 		return 0;
 	}
+
+	/*
+	 *	No children == do nothing.
+	 */
+	if (fr_pair_list_empty(&vp->vp_group)) return 0;
 
 	/*
 	 *	Record the list, even if it's empty.  That way if we
