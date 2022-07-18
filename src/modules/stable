@@ -25,6 +25,7 @@ rlm_passwd
 rlm_perl
 rlm_preprocess
 rlm_python
+rlm_python3
 rlm_radutmp
 rlm_realm
 rlm_rest
