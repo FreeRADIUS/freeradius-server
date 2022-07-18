@@ -31,6 +31,10 @@ RCSIDH(openssl3_h, "$Id$")
  *	fill the code with ifdef's, so we define some horrific
  *	wrappers here.
  *
+ *	For FIPS environments, we need to define an OSSL_LIB_CTX that will
+ *	hold both default and legacy providers, which will allow us to access MD5
+ *	and MD4 under these systems.
+ * 
  *	This file should be included AFTER all OpenSSL header files.
  */
 #ifdef HAVE_OPENSSL_SSL_H
@@ -38,6 +42,18 @@ RCSIDH(openssl3_h, "$Id$")
 #include <string.h>
 #include <openssl/evp.h>
 #include <openssl/core_names.h>
+#include <openssl/provider.h>
+#include <freeradius-devel/threads.h>
+
+typedef struct {
+	OSSL_LIB_CTX *libctx;
+	OSSL_PROVIDER *default_provider;
+	OSSL_PROVIDER *legacy_provider;
+	EVP_MD *md5;
+	EVP_MD *md4;
+} OSSL_FIPS_LIBCTX;
+
+fr_thread_local_setup(OSSL_FIPS_LIBCTX *, fips_ossl_libctx)	/* macro */
 
 typedef struct {
 	EVP_MAC		*mac;
@@ -53,6 +69,58 @@ static inline HMAC3_CTX *HMAC3_CTX_new(void)
 	return h;
 }
 
+static inline void _fips_ossl_libctx_free(void *arg) {
+	OSSL_FIPS_LIBCTX *ctx = arg;
+	if (ctx->legacy_provider) {
+		OSSL_PROVIDER_unload(ctx->legacy_provider);
+		ctx->legacy_provider = NULL;
+	}
+	if (ctx->default_provider) {
+		OSSL_PROVIDER_unload(ctx->default_provider);
+		ctx->default_provider = NULL;
+	}
+	if (ctx->libctx) {
+		OSSL_LIB_CTX_free(ctx->libctx);
+		ctx->libctx = NULL;
+	}
+	if (ctx->md5) {
+		EVP_MD_free(ctx->md5);
+		ctx->md5 = NULL;
+	}
+	if (ctx->md4) {
+		EVP_MD_free(ctx->md4);
+		ctx->md4 = NULL;
+	}
+	free(arg);
+	fips_ossl_libctx = NULL;
+}
+
+static inline OSSL_FIPS_LIBCTX *_fips_ossl_libctx_create() {
+	OSSL_FIPS_LIBCTX *ret = calloc(1, sizeof(*ret));
+	ret->libctx = OSSL_LIB_CTX_new();
+	ret->default_provider = OSSL_PROVIDER_load(ret->libctx, "default");
+	if (!ret->default_provider) {
+			fprintf(stderr, "Failed loading OpenSSL default provider.");
+			return NULL;
+	}
+	ret->legacy_provider = OSSL_PROVIDER_load(ret->libctx, "legacy");
+	if (!ret->legacy_provider) {
+			fprintf(stderr, "Failed loading OpenSSL legacy provider.");
+			return NULL;
+	}
+	ret->md5 = EVP_MD_fetch(ret->libctx, "MD5", NULL);
+	if (!ret->md5) {
+			fprintf(stderr, "Failed loading OpenSSL MD5 function.");
+			return NULL;
+	}
+	ret->md4 = EVP_MD_fetch(ret->libctx, "MD4", NULL);
+	if (!ret->md4) {
+			fprintf(stderr, "Failed loading OpenSSL MD4 function.");
+			return NULL;
+	}
+	return ret;
+}
+
 #define HMAC_Init_ex(_ctx, _key, _keylen, _md, _engine) HMAC3_Init_ex(_ctx, _key, _keylen, _md, _engine)
 static inline int HMAC3_Init_ex(HMAC3_CTX *ctx, const unsigned char *key, unsigned int keylen, const EVP_MD *md, UNUSED void *engine)
 {
@@ -60,7 +128,16 @@ static inline int HMAC3_Init_ex(HMAC3_CTX *ctx, const unsigned char *key, unsign
 	char const *name;
 	char *unconst;
 
-	ctx->mac = EVP_MAC_fetch(NULL, "HMAC", NULL);
+	OSSL_LIB_CTX *libctx = NULL;
+	if (EVP_default_properties_is_fips_enabled(NULL)) {
+		OSSL_FIPS_LIBCTX *fips_libctx = fr_thread_local_init(fips_ossl_libctx, _fips_ossl_libctx_free);
+		if (!fips_libctx) {
+			fips_libctx = _fips_ossl_libctx_create();
+			fr_thread_local_set(fips_ossl_libctx, fips_libctx);
+		}
+		libctx = fips_libctx->libctx;
+	}
+	ctx->mac = EVP_MAC_fetch(libctx, "HMAC", NULL);
 	if (!ctx->mac) return 0;
 
 	ctx->ctx = EVP_MAC_CTX_new(ctx->mac);
