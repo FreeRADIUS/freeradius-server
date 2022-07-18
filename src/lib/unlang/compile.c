@@ -1630,6 +1630,7 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 	case TMPL_TYPE_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
 		break;
