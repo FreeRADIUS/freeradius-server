@@ -277,9 +277,11 @@ static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, edit
  */
 static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current, map_t const *map)
 {
-	fr_pair_t *vp, *vp_to_free = NULL;
+	fr_pair_t *vp;
 	fr_pair_list_t *children;
 	fr_value_box_t const *rhs_box = NULL;
+	bool copy_vps = true;
+	int rcode;
 
 	fr_assert(current->lhs.vp != NULL);
 
@@ -289,6 +291,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edi
 
 	if (!current->rhs.vpt) {
 		children = &current->rhs.pair_list;
+		copy_vps = false;
 		goto apply_list;
 	}
 
@@ -314,6 +317,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edi
 		if (fr_type_is_group(da->type)) da = fr_dict_root(request->dict);
 
 		children = &current->rhs.pair_list;
+		copy_vps = false;
 
 		switch (rhs_box->type) {
 		case FR_TYPE_STRING:
@@ -414,15 +418,16 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edi
 	 *	treats the RHS as a one-member list.
 	 */
 	if (fr_type_is_leaf(vp->vp_type)) {
-		vp_to_free = fr_pair_copy(request, vp);
-		if (!vp_to_free) return -1;
+		fr_pair_t *vp_copy;
+
+		vp_copy = fr_pair_copy(request, vp);
+		if (!vp_copy) return -1;
 
 		fr_assert(fr_pair_list_empty(&current->rhs.pair_list));
 
-		fr_pair_append(&current->rhs.pair_list, vp_to_free);
+		fr_pair_append(&current->rhs.pair_list, vp_copy);
 		children = &current->rhs.pair_list;
-
-		vp_to_free = NULL; /* it's not in the pair list, and will be freed there */
+		copy_vps = false;
 
 	} else {
 		/*
@@ -440,7 +445,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edi
 			return -1;
 		}
 
-		children = &vp->children;
+		children = &vp->vp_group; /* and copy_vps for any VP we edit */
 	}
 
 	/*
@@ -465,17 +470,14 @@ apply_list:
 		RDEBUG2("}");
 	}
 
-	if (fr_edit_list_apply_list_assignment(state->el,
-					       current->lhs.vp,
-					       map->op,
-					       children) < 0) {
-		RPERROR("Failed performing list %s operation", fr_tokens[map->op]);
-		talloc_free(vp_to_free);
-		return -1;
-	}
+	rcode = fr_edit_list_apply_list_assignment(state->el, current->lhs.vp, map->op, children, copy_vps);
+	if (rcode < 0) RPERROR("Failed performing list %s operation", fr_tokens[map->op]);
 
-	talloc_free(vp_to_free);
-	return 0;
+	/*
+	 *	If the child list wasn't copied, then we just created it, and we need to free it.
+	 */
+	if (!copy_vps) fr_pair_list_free(children);
+	return rcode;
 
 leaf:
 	/*

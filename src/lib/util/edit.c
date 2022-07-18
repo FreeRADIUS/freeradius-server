@@ -747,13 +747,21 @@ int fr_edit_list_apply_pair_assignment(fr_edit_list_t *el, fr_pair_t *vp, fr_tok
 	return fr_value_calc_assignment_op(vp, &vp->data, op, in);
 }
 
+#undef COPY
+#define COPY(_x) do { if (copy) { \
+		        c = fr_pair_copy(dst, _x); \
+			if (!c) return -1; \
+                      } else { \
+			c = talloc_steal(dst, _x); \
+		      } \
+		 } while (0)
 
 /** A UNION B
  *
  */
-static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
+static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, bool copy)
 {
-	fr_pair_t *a, *b;
+	fr_pair_t *a, *b, *c;
 	fr_dcursor_t cursor1, cursor2;
 
 	/*
@@ -791,7 +799,9 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
 		 *	A is done, so we always union in B at the end of A.
 		 */
 		if (!a) {
-			if (fr_edit_list_insert_pair_tail(el, &dst->children, fr_pair_copy(dst, b)) < 0) {
+			COPY(b);
+
+			if (fr_edit_list_insert_pair_tail(el, &dst->children, c) < 0) {
 				return -1;
 			}
 
@@ -821,7 +831,9 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
 		 *	to the destination list, before A.
 		 */
 		if (rcode > 0) {
-			if (fr_edit_list_insert_pair_before(el, &dst->children, a, fr_pair_copy(dst, b)) < 0) {
+			COPY(b);
+
+			if (fr_edit_list_insert_pair_before(el, &dst->children, a, c) < 0) {
 				return -1;
 			}
 
@@ -849,7 +861,7 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
 		 *	been added in.
 		 */
 		if (fr_type_is_structural(a->vp_type)) {
-			rcode = list_union(el, a, &b->children);
+			rcode = list_union(el, a, &b->children, copy);
 			if (rcode < 0) return rcode;
 
 			fr_dcursor_next(&cursor1);
@@ -857,10 +869,8 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
 			continue;
 		}
 
-		/*
-		 *
-		 */
-		if (fr_edit_list_insert_pair_after(el, &dst->children, a, fr_pair_copy(dst, b)) < 0) {
+		COPY(b);
+		if (fr_edit_list_insert_pair_after(el, &dst->children, a, c) < 0) {
 			return -1;
 		}
 
@@ -877,9 +887,9 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
  *
  * with priority to A
  */
-static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
+static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, bool copy)
 {
-	fr_pair_t *a, *b;
+	fr_pair_t *a, *b, *c;
 	fr_dcursor_t cursor1, cursor2;
 
 	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
@@ -903,7 +913,9 @@ static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 		 *	A is done, so we always merge in B at the end of A.
 		 */
 		if (!a) {
-			if (fr_edit_list_insert_pair_tail(el, &dst->children, fr_pair_copy(dst, b)) < 0) {
+			COPY(b);
+
+			if (fr_edit_list_insert_pair_tail(el, &dst->children, c) < 0) {
 				return -1;
 			}
 
@@ -933,7 +945,9 @@ static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 		 *	to before A.
 		 */
 		if (rcode > 0) {
-			if (fr_edit_list_insert_pair_before(el, &dst->children, a, fr_pair_copy(dst, b)) < 0) {
+			COPY(b);
+
+			if (fr_edit_list_insert_pair_before(el, &dst->children, a, c) < 0) {
 				return -1;
 			}
 
@@ -955,7 +969,7 @@ static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 		fr_assert(a->da == b->da);
 
 		if (fr_type_is_structural(a->vp_type)) {
-			rcode = list_merge_lhs(el, a, &b->children);
+			rcode = list_merge_lhs(el, a, &b->children, copy);
 			if (rcode < 0) return rcode;
 		}
 
@@ -973,9 +987,9 @@ static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
  *
  * with priority to B
  */
-static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
+static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, bool copy)
 {
-	fr_pair_t *a, *b;
+	fr_pair_t *a, *b, *c;
 	fr_dcursor_t cursor1, cursor2;
 
 	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
@@ -999,7 +1013,9 @@ static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 		 *	A is done, so we always merge in B at the end of A.
 		 */
 		if (!a) {
-			if (fr_edit_list_insert_pair_tail(el, &dst->children, fr_pair_copy(dst, b)) < 0) {
+			COPY(b);
+
+			if (fr_edit_list_insert_pair_tail(el, &dst->children, c) < 0) {
 				return -1;
 			}
 
@@ -1029,7 +1045,9 @@ static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 		 *	to before A.
 		 */
 		if (rcode < 0) {
-			if (fr_edit_list_insert_pair_before(el, &dst->children, a, fr_pair_copy(dst, b)) < 0) {
+			COPY(b);
+
+			if (fr_edit_list_insert_pair_before(el, &dst->children, a, c) < 0) {
 				return -1;
 			}
 
@@ -1051,7 +1069,7 @@ static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 		fr_assert(a->da == b->da);
 
 		if (fr_type_is_structural(a->vp_type)) {
-			rcode = list_merge_rhs(el, a, &b->children);
+			rcode = list_merge_rhs(el, a, &b->children, copy);
 			if (rcode < 0) return rcode;
 		}
 
@@ -1182,9 +1200,9 @@ static int list_intersection(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t 
  *
  *  The src list is sorted, but is otherwise not modified.
  */
-int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_token_t op, fr_pair_list_t *src)
+int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_token_t op, fr_pair_list_t *src, bool copy)
 {
-	fr_pair_list_t copy;
+	fr_pair_list_t list;
 
 	if (!fr_type_is_structural(dst->vp_type)) {
 		fr_strerror_printf("Cannot perform list assignment to non-structural type '%s'",
@@ -1192,9 +1210,14 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 		return -1;
 	}
 
-#define COPY do { \
-		fr_pair_list_init(&copy); \
-		if (fr_pair_list_copy(dst, &copy, src) < 0) return -1; \
+#undef COPY
+#define COPY do { if (copy) { \
+		    fr_pair_list_init(&list); \
+		    if (fr_pair_list_copy(dst, &list, src) < 0) return -1;\
+                    src = &list; \
+                  } else { \
+		    fr_pair_list_steal(dst, src); \
+	          } \
 	} while (0)
 
 
@@ -1216,7 +1239,7 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 		}
 
 		COPY;
-		return fr_edit_list_insert_list_tail(el, &dst->children, &copy);
+		return fr_edit_list_insert_list_tail(el, &dst->children, src);
 
 	case T_OP_PREPEND:
 		if (&dst->children == src) {
@@ -1225,7 +1248,7 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 		}
 
 		COPY;
-		return fr_edit_list_insert_list_head(el, &dst->children, &copy);
+		return fr_edit_list_insert_list_head(el, &dst->children, src);
 
 	case T_OP_AND_EQ:
 		if (&dst->children == src) return 0; /* A INTERSECTION A == A */
@@ -1235,17 +1258,17 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 	case T_OP_OR_EQ:
 		if (&dst->children == src) return 0; /* A UNION A == A */
 
-		return list_union(el, dst, src);
+		return list_union(el, dst, src, copy);
 
 	case T_OP_GE:
 		if (&dst->children == src) return 0; /* A MERGE A == A */
 
-		return list_merge_lhs(el, dst, src);
+		return list_merge_lhs(el, dst, src, copy);
 
 	case T_OP_LE:
 		if (&dst->children == src) return 0; /* A MERGE A == A */
 
-		return list_merge_rhs(el, dst, src);
+		return list_merge_rhs(el, dst, src, copy);
 
 	default:
 		break;

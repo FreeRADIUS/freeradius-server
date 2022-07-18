@@ -71,7 +71,7 @@ int fr_edit_list_insert_list_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_
 
 #define fr_edit_list_insert_list_tail(_el, _list, _to_insert) fr_edit_list_insert_list_after(_el, _list, fr_pair_list_tail(_list), _to_insert)
 
-int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_token_t op, fr_pair_list_t *src) CC_HINT(nonnull(1,2,4));
+int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_token_t op, fr_pair_list_t *src, bool copy) CC_HINT(nonnull(1,2,4));
 
 #ifdef __cplusplus
 }
