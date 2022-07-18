@@ -49,23 +49,27 @@ typedef struct {
 	fr_pair_list_t		pair_list;		//!< for structural attributes
 } edit_result_t;
 
+typedef struct {
+	unlang_edit_state_t	state;			//!< What we're currently doing.
+	map_list_t const	*map_head;
+	map_t const		*map;			//!< the map to evaluate
+
+	edit_result_t		lhs;			//!< LHS child entries
+	edit_result_t		rhs;			//!< RHS child entries
+} edit_map_t;
+
 /** State of an edit block
  *
  */
 typedef struct {
 	fr_edit_list_t		*el;				//!< edit list
 
-	unlang_edit_state_t	state;				//!< What we're currently doing.
-	map_list_t const	*map_head;
-	map_t const		*map;				//!< the map to evaluate
-
-	edit_result_t		lhs;				//!< LHS child entries
-	edit_result_t		rhs;				//!< RHS child entries
+	edit_map_t		current;			//!< what we're currently doing.
 } unlang_frame_state_edit_t;
 
 static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *request) CC_HINT(nonnull);
 static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request) CC_HINT(nonnull);
-static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map_t const *map) CC_HINT(nonnull);
+static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current, map_t const *map) CC_HINT(nonnull);
 
 /*
  *  Convert a value-box list to a LHS #tmpl_t
@@ -198,7 +202,7 @@ static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_
 /** Remove VPs for laziness
  *
  */
-static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, map_t const *map)
+static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current, map_t const *map)
 {
 	fr_pair_t *vp, *next, *last;
 	fr_pair_list_t *list;
@@ -206,16 +210,16 @@ static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, map_
 	int16_t num, count;
 
 	fr_assert(map->op == T_OP_SUB_EQ);
-	fr_assert(tmpl_is_attr(state->rhs.vpt));
-	fr_assert(state->lhs.vp != NULL);
-	fr_assert(fr_type_is_structural(state->lhs.vp->vp_type));
+	fr_assert(tmpl_is_attr(current->rhs.vpt));
+	fr_assert(current->lhs.vp != NULL);
+	fr_assert(fr_type_is_structural(current->lhs.vp->vp_type));
 
-	list = &state->lhs.vp->vp_group;
-	da = tmpl_da(state->rhs.vpt);
+	list = &current->lhs.vp->vp_group;
+	da = tmpl_da(current->rhs.vpt);
 
-	RDEBUG2("%s %s %s", state->lhs.vpt->name, fr_tokens[map->op], state->rhs.vpt->name);
+	RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[map->op], current->rhs.vpt->name);
 
-	num = tmpl_num(state->rhs.vpt);
+	num = tmpl_num(current->rhs.vpt);
 	count = 0;
 
 	/*
@@ -271,33 +275,33 @@ static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, map_
  *
  *  which is an implicit sum over all RHS "Baz" attributes.
  */
-static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map_t const *map)
+static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current, map_t const *map)
 {
 	fr_pair_t *vp, *vp_to_free = NULL;
 	fr_pair_list_t *children;
 	fr_value_box_t const *rhs_box = NULL;
 
-	fr_assert(state->lhs.vp != NULL);
+	fr_assert(current->lhs.vp != NULL);
 
 #ifdef STATIC_ANALYZER
-	if (!state->lhs.vp) return -1;
+	if (!current->lhs.vp) return -1;
 #endif
 
-	if (!state->rhs.vpt) {
-		children = &state->rhs.pair_list;
+	if (!current->rhs.vpt) {
+		children = &current->rhs.pair_list;
 		goto apply_list;
 	}
 
 	/*
 	 *	Get the resulting value box.
 	 */
-	if (tmpl_is_data(state->rhs.vpt)) {
+	if (tmpl_is_data(current->rhs.vpt)) {
 		fr_token_t token;
 		fr_dict_attr_t const *da;
 
-		rhs_box = tmpl_value(state->rhs.vpt);
+		rhs_box = tmpl_value(current->rhs.vpt);
 
-		if (fr_type_is_leaf(state->lhs.vp->vp_type)) {
+		if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
 			goto leaf;
 		}
 
@@ -306,10 +310,10 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 			return -1;
 		}
 
-		da = state->lhs.vp->da;
+		da = current->lhs.vp->da;
 		if (fr_type_is_group(da->type)) da = fr_dict_root(request->dict);
 
-		children = &state->rhs.pair_list;
+		children = &current->rhs.pair_list;
 
 		switch (rhs_box->type) {
 		case FR_TYPE_STRING:
@@ -339,7 +343,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 		default:
 			fr_strerror_printf("Cannot assign '%s' type to structural type '%s'",
 					   fr_type_to_str(rhs_box->type),
-					   fr_type_to_str(state->lhs.vp->vp_type));
+					   fr_type_to_str(current->lhs.vp->vp_type));
 			return -1;
 		}
 
@@ -349,8 +353,8 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	/*
 	 *	If it's not data, it must be an attribute or a list.
 	 */
-	if (!tmpl_is_attr(state->rhs.vpt) && !tmpl_is_list(state->rhs.vpt)) {
-		REDEBUG("Unknown RHS %s", state->rhs.vpt->name);
+	if (!tmpl_is_attr(current->rhs.vpt) && !tmpl_is_list(current->rhs.vpt)) {
+		REDEBUG("Unknown RHS %s", current->rhs.vpt->name);
 		return -1;
 	}
 
@@ -363,12 +367,12 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	 *	unlang_fixup_edit()
 	 */
 	if (map->op == T_OP_SUB_EQ) {
-		if (!tmpl_is_attr(state->rhs.vpt)) {
+		if (!tmpl_is_attr(current->rhs.vpt)) {
 			REDEBUG("Cannot remove ??? from list");
 			return -1;
 		}
 
-		return remove_vps(request, state, map);
+		return remove_vps(request, state, current, map);
 	}
 
 	/*
@@ -379,12 +383,12 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	 *	remove from the LHS?  i.e. "remove all DAs of name
 	 *	FOO"?
 	 */
-	if (tmpl_find_vp(&vp, request, state->rhs.vpt) < 0) {
-		REDEBUG("Can't find %s", state->rhs.vpt->name);
+	if (tmpl_find_vp(&vp, request, current->rhs.vpt) < 0) {
+		REDEBUG("Can't find %s", current->rhs.vpt->name);
 		return -1;
 	}
 
-	fr_assert(state->lhs.vp != NULL);
+	fr_assert(current->lhs.vp != NULL);
 
 	/*
 	 *	LHS is a leaf.  The RHS must be a leaf.
@@ -392,10 +396,10 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	 *	@todo - or RHS is a list of boxes of the same data
 	 *	type.
 	 */
-	if (fr_type_is_leaf(state->lhs.vp->vp_type)) {
+	if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
 		if (!fr_type_is_leaf(vp->vp_type)) {
 			REDEBUG("Cannot assign structural %s to leaf %s",
-				vp->da->name, state->lhs.vp->da->name);
+				vp->da->name, current->lhs.vp->da->name);
 			return -1;
 		}
 
@@ -403,7 +407,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 		goto leaf;
 	}
 
-	fr_assert(fr_type_is_structural(state->lhs.vp->vp_type));
+	fr_assert(fr_type_is_structural(current->lhs.vp->vp_type));
 
 	/*
 	 *	As a special operation, allow "list OP attr", which
@@ -413,10 +417,10 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 		vp_to_free = fr_pair_copy(request, vp);
 		if (!vp_to_free) return -1;
 
-		fr_assert(fr_pair_list_empty(&state->rhs.pair_list));
+		fr_assert(fr_pair_list_empty(&current->rhs.pair_list));
 
-		fr_pair_append(&state->rhs.pair_list, vp_to_free);
-		children = &state->rhs.pair_list;
+		fr_pair_append(&current->rhs.pair_list, vp_to_free);
+		children = &current->rhs.pair_list;
 
 		vp_to_free = NULL; /* it's not in the pair list, and will be freed there */
 
@@ -430,9 +434,9 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 		 *	Forbid copying incompatible structs, TLVs, groups,
 		 *	etc.
 		 */
-		if (!fr_dict_attr_compatible(state->lhs.vp->da, vp->da)) {
+		if (!fr_dict_attr_compatible(current->lhs.vp->da, vp->da)) {
 			REDEBUG("DAs are incompatible (%s vs %s)",
-			       state->lhs.vp->da->name, vp->da->name);
+			       current->lhs.vp->da->name, vp->da->name);
 			return -1;
 		}
 
@@ -443,15 +447,15 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	 *	Apply structural thingies!
 	 */
 apply_list:
-	if (state->rhs.vpt) {
-		RDEBUG2("%s %s %s", state->lhs.vpt->name, fr_tokens[map->op], state->rhs.vpt->name);
+	if (current->rhs.vpt) {
+		RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[map->op], current->rhs.vpt->name);
 	} else {
 		fr_assert(children != NULL);
 
 		/*
 		 *	@todo - we need a debug function which takes a request list...
 		 */
-		RDEBUG2("%s %s {", state->lhs.vpt->name, fr_tokens[map->op]);
+		RDEBUG2("%s %s {", current->lhs.vpt->name, fr_tokens[map->op]);
 		if (fr_debug_lvl >= L_DBG_LVL_3) {
 			RINDENT();
 			fr_pair_list_debug(children);
@@ -462,7 +466,7 @@ apply_list:
 	}
 
 	if (fr_edit_list_apply_list_assignment(state->el,
-					       state->lhs.vp,
+					       current->lhs.vp,
 					       map->op,
 					       children) < 0) {
 		RPERROR("Failed performing list %s operation", fr_tokens[map->op]);
@@ -478,13 +482,13 @@ leaf:
 	 *	The leaf assignment also checks many
 	 *	of these, but not all of them.
 	 */
-	if (!tmpl_is_attr(state->lhs.vpt) || !state->lhs.vp ||
-	    !fr_type_is_leaf(state->lhs.vp->vp_type)) {
+	if (!tmpl_is_attr(current->lhs.vpt) || !current->lhs.vp ||
+	    !fr_type_is_leaf(current->lhs.vp->vp_type)) {
 		REDEBUG("Cannot assign data to list %s", map->lhs->name);
 		return -1;
 	}
 
-	RDEBUG2("%s %s %pV", state->lhs.vpt->name, fr_tokens[map->op], rhs_box);
+	RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], rhs_box);
 
 	/*
 	 *	The apply function also takes care of
@@ -494,7 +498,7 @@ leaf:
 	 *	the LHS and RHS.
 	 */
 	if (fr_edit_list_apply_pair_assignment(state->el,
-					       state->lhs.vp,
+					       current->lhs.vp,
 					       map->op,
 					       rhs_box) < 0) {
 		RPERROR("Failed performing %s operation", fr_tokens[map->op]);
@@ -504,7 +508,7 @@ leaf:
 	return 0;
 }
 
-static int expand_rhs_list(NDEBUG_UNUSED unlang_frame_state_edit_t *state, request_t *request, map_t const *map)
+static int expand_rhs_list( request_t *request, NDEBUG_UNUSED edit_map_t *current, map_t const *map)
 {
 	if (map->op != T_OP_SET) {
 		REDEBUG("Operator not implemented");
@@ -516,7 +520,7 @@ static int expand_rhs_list(NDEBUG_UNUSED unlang_frame_state_edit_t *state, reque
 		return -1;
 	}
 
-	fr_assert(fr_pair_list_empty(&state->rhs.pair_list));
+	fr_assert(fr_pair_list_empty(&current->rhs.pair_list));
 
 	return 0;
 }
@@ -534,23 +538,24 @@ static int expand_rhs_list(NDEBUG_UNUSED unlang_frame_state_edit_t *state, reque
 static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
+	edit_map_t			*current = &state->current;
 	map_t const    			*map;
 	int				rcode;
 
 	/*
 	 *	Iterate over the maps, expanding the LHS and RHS.
 	 */
-	for (map = state->map;
+	for (map = current->map;
 	     map != NULL;
-	     map = state->map = map_list_next(state->map_head, map)) {
+	     map = current->map = map_list_next(current->map_head, map)) {
 	     	repeatable_set(frame);	/* Call us again when done */
 
-		switch (state->state) {
+		switch (current->state) {
 		case UNLANG_EDIT_INIT:
-			fr_assert(fr_dlist_empty(&state->lhs.result));	/* Should have been consumed */
-			fr_assert(fr_dlist_empty(&state->rhs.result));	/* Should have been consumed */
+			fr_assert(fr_dlist_empty(&current->lhs.result));	/* Should have been consumed */
+			fr_assert(fr_dlist_empty(&current->rhs.result));	/* Should have been consumed */
 
-			rcode = template_realize(state, &state->lhs.result, request, map->lhs);
+			rcode = template_realize(state, &current->lhs.result, request, map->lhs);
 			if (rcode < 0) {
 			error:
 				fr_edit_list_abort(state->el);
@@ -567,18 +572,18 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			}
 
 			if (rcode == 1) {
-				state->state = UNLANG_EDIT_EXPANDED_LHS;
+				current->state = UNLANG_EDIT_EXPANDED_LHS;
 				return UNLANG_ACTION_PUSHED_CHILD;
 			}
 
-			state->state = UNLANG_EDIT_CHECK_LHS; /* data, attr, list */
-			state->lhs.vpt = map->lhs;
+			current->state = UNLANG_EDIT_CHECK_LHS; /* data, attr, list */
+			current->lhs.vpt = map->lhs;
 			goto check_lhs;
 
 		case UNLANG_EDIT_EXPANDED_LHS:
-			if (templatize_lhs(state, &state->lhs, request) < 0) goto error;
+			if (templatize_lhs(state, &current->lhs, request) < 0) goto error;
 
-			state->state = UNLANG_EDIT_CHECK_LHS;
+			current->state = UNLANG_EDIT_CHECK_LHS;
 			FALL_THROUGH;
 
 		case UNLANG_EDIT_CHECK_LHS:
@@ -586,25 +591,25 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			/*
 			 *	Find the LHS VP to edit.
 			 */
-			if (tmpl_find_vp(&state->lhs.vp, request, state->lhs.vpt) < 0) {
+			if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
 				fr_pair_t *parent;
 
 				/*
 				 *	Get the list.
 				 */
 				if ((map->op != T_OP_SET) && (map->op != T_OP_EQ)) {
-					REDEBUG("Failed to find %s", state->lhs.vpt->name);
+					REDEBUG("Failed to find %s", current->lhs.vpt->name);
 					goto error;
 				}
 
-				fr_assert(!tmpl_is_list(state->lhs.vpt));
+				fr_assert(!tmpl_is_list(current->lhs.vpt));
 
 				/*
 				 *	The VP doesn't exist, get the list it's in.
 				 */
-				parent = tmpl_get_list(request, state->lhs.vpt);
+				parent = tmpl_get_list(request, current->lhs.vpt);
 				if (!parent) {
-					REDEBUG("Failed to find list for %s", state->lhs.vpt->name);
+					REDEBUG("Failed to find list for %s", current->lhs.vpt->name);
 					goto error;
 				}
 
@@ -612,8 +617,8 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 				 *	Add the new VP to the parent.  The edit list code is safe for multiple
 				 *	edits of the same VP, so we don't have to do anything else here.
 				 */
-				MEM(state->lhs.vp = fr_pair_afrom_da(parent, tmpl_da(state->lhs.vpt)));
-				if (fr_edit_list_insert_pair_tail(state->el, &parent->vp_group, state->lhs.vp) < 0) goto error;
+				MEM(current->lhs.vp = fr_pair_afrom_da(parent, tmpl_da(current->lhs.vpt)));
+				if (fr_edit_list_insert_pair_tail(state->el, &parent->vp_group, current->lhs.vp) < 0) goto error;
 
 			} else if (map->op == T_OP_EQ) {
 				/*
@@ -628,49 +633,49 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			 *	Structural attributes MAY have a RHS.
 			 */
 			if (!map->rhs) {
-				if (fr_type_is_leaf(state->lhs.vp->vp_type)) {
+				if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
 					REDEBUG("Cannot assign list as a value");
 					goto error;
 				}
 
-				rcode = expand_rhs_list(state, request, map);
+				rcode = expand_rhs_list(request, current, map);
 				if (rcode < 0) goto error;
 
 				goto check_rhs;
 			}
 
-			rcode = template_realize(state, &state->rhs.result, request, map->rhs);
+			rcode = template_realize(state, &current->rhs.result, request, map->rhs);
 			if (rcode < 0) goto error;
 
 			if (rcode == 1) {
-				state->state = UNLANG_EDIT_EXPANDED_RHS;
+				current->state = UNLANG_EDIT_EXPANDED_RHS;
 				return UNLANG_ACTION_PUSHED_CHILD;
 			}
 
-			state->state = UNLANG_EDIT_CHECK_RHS;
-			state->rhs.vpt = map->rhs;
+			current->state = UNLANG_EDIT_CHECK_RHS;
+			current->rhs.vpt = map->rhs;
 			goto check_rhs;
 
 		case UNLANG_EDIT_EXPANDED_RHS:
 #ifdef STATIC_ANALYZER
-			if (!state->lhs.vp) goto error;
+			if (!current->lhs.vp) goto error;
 #endif
 
-			if (templatize_rhs(state, &state->rhs, state->lhs.vp, request) < 0) goto error;
+			if (templatize_rhs(state, &current->rhs, current->lhs.vp, request) < 0) goto error;
 
-			state->state = UNLANG_EDIT_CHECK_RHS;
+			current->state = UNLANG_EDIT_CHECK_RHS;
 			FALL_THROUGH;
 
 		case UNLANG_EDIT_CHECK_RHS:
 		check_rhs:
-			if (apply_edits(request, state, map) < 0) goto error;
+			if (apply_edits(request, state, current, map) < 0) goto error;
 
 		next:
-			state->state = UNLANG_EDIT_INIT;
-			TALLOC_FREE(state->lhs.to_free);
-			TALLOC_FREE(state->rhs.to_free);
-			fr_pair_list_free(&state->rhs.pair_list);
-			state->lhs.vp = NULL;
+			current->state = UNLANG_EDIT_INIT;
+			TALLOC_FREE(current->lhs.to_free);
+			TALLOC_FREE(current->rhs.to_free);
+			fr_pair_list_free(&current->rhs.pair_list);
+			current->lhs.vp = NULL;
 			break;
 		}
 
@@ -700,9 +705,10 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 {
 	unlang_edit_t			*edit = unlang_generic_to_edit(frame->instruction);
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
+	edit_map_t			*current = &state->current;
 
-	fr_value_box_list_init(&state->lhs.result);
-	fr_value_box_list_init(&state->rhs.result);
+	fr_value_box_list_init(&current->lhs.result);
+	fr_value_box_list_init(&current->rhs.result);
 
 	/*
 	 *	The edit list creates a local pool which should
@@ -710,9 +716,9 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 	 */
 	MEM(state->el = fr_edit_list_alloc(state, map_list_num_elements(&edit->maps)));
 
-	state->map_head = &edit->maps;
-	state->map = map_list_head(state->map_head);
-	fr_pair_list_init(&state->rhs.pair_list);
+	current->map_head = &edit->maps;
+	current->map = map_list_head(current->map_head);
+	fr_pair_list_init(&current->rhs.pair_list);
 
 	/*
 	 *	Call process_edit to do all of the work.
