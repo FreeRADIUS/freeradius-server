@@ -49,14 +49,21 @@ typedef struct {
 	fr_pair_list_t		pair_list;		//!< for structural attributes
 } edit_result_t;
 
-typedef struct {
+typedef struct edit_map_s edit_map_t;
+
+struct edit_map_s {
+	edit_map_t		*parent;
+	edit_map_t		*child;
+
+	fr_pair_t		*vp_parent;
+
 	unlang_edit_state_t	state;			//!< What we're currently doing.
 	map_list_t const	*map_head;
 	map_t const		*map;			//!< the map to evaluate
 
 	edit_result_t		lhs;			//!< LHS child entries
 	edit_result_t		rhs;			//!< RHS child entries
-} edit_map_t;
+};
 
 /** State of an edit block
  *
@@ -64,7 +71,8 @@ typedef struct {
 typedef struct {
 	fr_edit_list_t		*el;				//!< edit list
 
-	edit_map_t		current;			//!< what we're currently doing.
+	edit_map_t		*current;			//!< what we're currently doing.
+	edit_map_t		first;
 } unlang_frame_state_edit_t;
 
 static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *request) CC_HINT(nonnull);
@@ -510,22 +518,6 @@ leaf:
 	return 0;
 }
 
-static int expand_rhs_list( request_t *request, NDEBUG_UNUSED edit_map_t *current, map_t const *map)
-{
-	if (map->op != T_OP_SET) {
-		REDEBUG("Operator not implemented");
-		return -1;
-	}
-
-	if (!map_list_empty(&map->child)) {
-		REDEBUG("In-place lists not yet implemented");
-		return -1;
-	}
-
-	fr_assert(fr_pair_list_empty(&current->rhs.pair_list));
-
-	return 0;
-}
 
 /** Create a list of modifications to apply to one or more fr_pair_t lists
  *
@@ -540,10 +532,11 @@ static int expand_rhs_list( request_t *request, NDEBUG_UNUSED edit_map_t *curren
 static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
-	edit_map_t			*current = &state->current;
+	edit_map_t			*current = state->current;
 	map_t const    			*map;
 	int				rcode;
 
+redo:
 	/*
 	 *	Iterate over the maps, expanding the LHS and RHS.
 	 */
@@ -590,9 +583,6 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 
 		case UNLANG_EDIT_CHECK_LHS:
 		check_lhs:
-			/*
-			 *	Find the LHS VP to edit.
-			 */
 			if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
 				fr_pair_t *parent;
 
@@ -606,9 +596,6 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 
 				fr_assert(!tmpl_is_list(current->lhs.vpt));
 
-				/*
-				 *	The VP doesn't exist, get the list it's in.
-				 */
 				parent = tmpl_get_list(request, current->lhs.vpt);
 				if (!parent) {
 					REDEBUG("Failed to find list for %s", current->lhs.vpt->name);
@@ -635,15 +622,55 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			 *	Structural attributes MAY have a RHS.
 			 */
 			if (!map->rhs) {
+				edit_map_t *child = current->child;
+
 				if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
 					REDEBUG("Cannot assign list as a value");
 					goto error;
 				}
 
-				rcode = expand_rhs_list(request, current, map);
-				if (rcode < 0) goto error;
+				/*
+				 *	Fast path: child is empty, we don't need to do anything.
+				 */
+				if (fr_dlist_empty(&map->child.head)) {
+					fr_pair_list_empty(&current->rhs.pair_list);
+					goto check_rhs;
+				}
 
-				goto check_rhs;
+				fr_assert(0); /* not done! */
+
+				/*
+				 *	Allocate a new child structure if necessary.
+				 */
+				if (!child) {
+					MEM(child = talloc_zero(state, edit_map_t));
+					current->child = child;
+					child->parent = current;
+				}
+
+				/*
+				 *	Initialize the child structure.
+				 */
+				child->state = UNLANG_EDIT_INIT;
+				child->vp_parent = current->lhs.vp;
+				child->map_head = &map->child;
+				child->map = map_list_head(child->map_head);
+				child->vp_parent = current->lhs.vp;
+
+				memset(&child->lhs, 0, sizeof(child->lhs));
+				memset(&child->rhs, 0, sizeof(child->rhs));
+
+				fr_pair_list_init(&child->rhs.pair_list);
+				fr_value_box_list_init(&child->lhs.result);
+				fr_value_box_list_init(&child->rhs.result);
+
+				/*
+				 *	Continue back with the expanded RHS when we're done expanding the
+				 *	child.  The go process the child.
+				 */
+				current->state = UNLANG_EDIT_EXPANDED_RHS;
+				state->current = child;
+				goto redo;
 			}
 
 			rcode = template_realize(state, &current->rhs.result, request, map->rhs);
@@ -684,6 +711,14 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 	} /* loop over the map */
 
 	/*
+	 *	There's a parent map, go update that.
+	 */
+	if (current->parent) {
+		state->current = current->parent;
+		goto redo;
+	}
+
+	/*
 	 *	Freeing the edit list will automatically commit the edits.
 	 */
 
@@ -707,8 +742,9 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 {
 	unlang_edit_t			*edit = unlang_generic_to_edit(frame->instruction);
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
-	edit_map_t			*current = &state->current;
+	edit_map_t			*current = &state->first;
 
+	state->current = current;
 	fr_value_box_list_init(&current->lhs.result);
 	fr_value_box_list_init(&current->rhs.result);
 
