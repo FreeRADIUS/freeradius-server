@@ -1782,6 +1782,20 @@ mismatch:
 	return false;
 }
 
+/** Steal a list of pairs to a new context
+ *
+ */
+void fr_pair_list_steal(TALLOC_CTX *ctx, fr_pair_list_t *list)
+{
+	fr_pair_t	*vp;
+
+	for (vp = fr_pair_list_head(list);
+	     vp;
+	     vp = fr_pair_list_next(list, vp)) {
+		(void) fr_pair_steal(ctx, vp);
+	}
+}
+
 /** Duplicate a list of pairs
  *
  * Copy all pairs from 'from' regardless of tag, attribute or vendor.
