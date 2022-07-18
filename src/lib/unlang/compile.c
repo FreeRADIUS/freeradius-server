@@ -736,6 +736,8 @@ static void unlang_dump(unlang_t *instruction, int depth)
 			edit = unlang_generic_to_edit(c);
 			map = NULL;
 			while ((map = map_list_next(&edit->maps, map))) {
+				if (!map->rhs) continue; /* @todo - fixme */
+
 				map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
 				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
 			}
