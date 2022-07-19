@@ -91,6 +91,8 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
+	fr_assert(rcode < RLM_MODULE_NUMCODES);
+
 	/*
 	 *	If there is a subtype vp, verify the return
 	 *	code allows us send EAP-SIM/AKA/AKA' data back.
