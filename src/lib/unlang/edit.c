@@ -77,7 +77,6 @@ typedef struct {
 
 static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *request) CC_HINT(nonnull);
 static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request) CC_HINT(nonnull);
-static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current, map_t const *map) CC_HINT(nonnull);
 
 /*
  *  Convert a value-box list to a LHS #tmpl_t
@@ -210,14 +209,13 @@ static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_
 /** Remove VPs for laziness
  *
  */
-static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current, map_t const *map)
+static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	fr_pair_t *vp, *next, *last;
 	fr_pair_list_t *list;
 	fr_dict_attr_t const *da;
 	int16_t num, count;
 
-	fr_assert(map->op == T_OP_SUB_EQ);
 	fr_assert(tmpl_is_attr(current->rhs.vpt));
 	fr_assert(current->lhs.vp != NULL);
 	fr_assert(fr_type_is_structural(current->lhs.vp->vp_type));
@@ -225,7 +223,7 @@ static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, edit
 	list = &current->lhs.vp->vp_group;
 	da = tmpl_da(current->rhs.vpt);
 
-	RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[map->op], current->rhs.vpt->name);
+	RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[T_OP_SUB_EQ], current->rhs.vpt->name);
 
 	num = tmpl_num(current->rhs.vpt);
 	count = 0;
@@ -283,7 +281,7 @@ static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, edit
  *
  *  which is an implicit sum over all RHS "Baz" attributes.
  */
-static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current, map_t const *map)
+static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current, map_t const *map)
 {
 	fr_pair_t *vp;
 	fr_pair_list_t *children;
@@ -297,6 +295,9 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edi
 	if (!current->lhs.vp) return -1;
 #endif
 
+	/*
+	 *	RHS is a sublist, go apply that.
+	 */
 	if (!current->rhs.vpt) {
 		children = &current->rhs.pair_list;
 		copy_vps = false;
@@ -304,7 +305,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edi
 	}
 
 	/*
-	 *	Get the resulting value box.
+	 *	For RHS of data, it should be a string which contains the pairs to use.
 	 */
 	if (tmpl_is_data(current->rhs.vpt)) {
 		fr_token_t token;
@@ -312,10 +313,9 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edi
 
 		rhs_box = tmpl_value(current->rhs.vpt);
 
-		if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
-			goto leaf;
-		}
-
+		/*
+		 *	@todo - just parse the data as a string, and remove it?
+		 */
 		if (map->op == T_OP_SUB_EQ) {
 			REDEBUG("Cannot remove data from a list");
 			return -1;
@@ -384,7 +384,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edi
 			return -1;
 		}
 
-		return remove_vps(request, state, current, map);
+		return remove_vps(request, state, current);
 	}
 
 	/*
@@ -401,25 +401,6 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, edi
 	}
 
 	fr_assert(current->lhs.vp != NULL);
-
-	/*
-	 *	LHS is a leaf.  The RHS must be a leaf.
-	 *
-	 *	@todo - or RHS is a list of boxes of the same data
-	 *	type.
-	 */
-	if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
-		if (!fr_type_is_leaf(vp->vp_type)) {
-			REDEBUG("Cannot assign structural %s to leaf %s",
-				vp->da->name, current->lhs.vp->da->name);
-			return -1;
-		}
-
-		rhs_box = &vp->data;
-		goto leaf;
-	}
-
-	fr_assert(fr_type_is_structural(current->lhs.vp->vp_type));
 
 	/*
 	 *	As a special operation, allow "list OP attr", which
@@ -486,18 +467,64 @@ apply_list:
 	 */
 	if (!copy_vps) fr_pair_list_free(children);
 	return rcode;
+}
 
-leaf:
-	/*
-	 *	The leaf assignment also checks many
-	 *	of these, but not all of them.
-	 */
-	if (!tmpl_is_attr(current->lhs.vpt) || !current->lhs.vp ||
-	    !fr_type_is_leaf(current->lhs.vp->vp_type)) {
-		REDEBUG("Cannot assign data to list %s", map->lhs->name);
+
+static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current, map_t const *map)
+{
+	fr_pair_t *vp;
+	fr_value_box_t const *rhs_box = NULL;
+
+	fr_assert(current->lhs.vp != NULL);
+
+#ifdef STATIC_ANALYZER
+	if (!current->lhs.vp) return -1;
+#endif
+
+	if (!tmpl_is_attr(current->lhs.vpt)) {
+		REDEBUG("The left side of an assignment must be an attribute reference");
 		return -1;
 	}
 
+	fr_assert(current->rhs.vpt);
+
+	/*
+	 *	Any expansions have been turned into data.
+	 */
+	if (tmpl_is_data(current->rhs.vpt)) {
+		rhs_box = tmpl_value(current->rhs.vpt);
+		goto assign;
+
+	}
+
+	/*
+	 *	If it's not data, it must be an attribute.
+	 */
+	if (!tmpl_is_attr(current->rhs.vpt)) {
+		REDEBUG("Unknown RHS %s", current->rhs.vpt->name);
+		return -1;
+	}
+
+	/*
+	 *	LHS is a leaf.  The RHS must be a leaf.
+	 */
+	if (!fr_type_is_leaf(tmpl_da(current->rhs.vpt)->type)) {
+		REDEBUG("Cannot assign structural %s to leaf %s",
+			tmpl_da(current->rhs.vpt)->name, current->lhs.vp->da->name);
+		return -1;
+	}
+
+	/*
+	 *	Find the RHS attribute.
+	 */
+	if (tmpl_find_vp(&vp, request, current->rhs.vpt) < 0) {
+		REDEBUG("Can't find %s", current->rhs.vpt->name);
+		return -1;
+	}
+
+	rhs_box = &vp->data;
+
+assign:
 	RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], rhs_box);
 
 	/*
@@ -697,7 +724,11 @@ redo:
 
 		case UNLANG_EDIT_CHECK_RHS:
 		check_rhs:
-			if (apply_edits(request, state, current, map) < 0) goto error;
+			if (fr_type_is_leaf(current->lhs.vp->da->type)) {
+				if (apply_edits_to_leaf(request, state, current, map) < 0) goto error;
+			} else {
+				if (apply_edits_to_list(request, state, current, map) < 0) goto error;
+			}
 
 		next:
 			current->state = UNLANG_EDIT_INIT;
