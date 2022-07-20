@@ -379,6 +379,8 @@ int		xlat_register_redundant(CONF_SECTION *cs);
 int		xlat_init(void);
 void		xlat_free(void);
 
+void		xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list);
+void		xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt);
 /*
  *	xlat_tokenize.c
  */

@@ -981,9 +981,7 @@ static xlat_arg_parser_t const xlat_func_debug_attr_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-static void debug_attr_list(request_t *request, fr_pair_list_t const *list);
-
-static void debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
+void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 {
 	fr_dict_vendor_t const		*vendor;
 	fr_table_num_ordered_t const	*type;
@@ -999,7 +997,7 @@ static void debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 			RIDEBUG2("%s = {", vp->da->name);
 		}
 		RINDENT();
-		debug_attr_list(request, &vp->vp_group);
+		xlat_debug_attr_list(request, &vp->vp_group);
 		REXDENT();
 		RIDEBUG2("}");
 		break;
@@ -1071,14 +1069,14 @@ static void debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 	}
 }
 
-static void debug_attr_list(request_t *request, fr_pair_list_t const *list)
+void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list)
 {
 	fr_pair_t *vp;
 
 	for (vp = fr_pair_list_next(list, NULL);
 	     vp != NULL;
 	     vp = fr_pair_list_next(list, vp)) {
-		debug_attr_vp(request, vp, NULL);
+		xlat_debug_attr_vp(request, vp, NULL);
 	}
 }
 
@@ -1131,7 +1129,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
-		debug_attr_vp(request, vp, vpt);
+		xlat_debug_attr_vp(request, vp, vpt);
 	}
 	tmpl_dursor_clear(&cc);
 	REXDENT();
