@@ -52,10 +52,10 @@ typedef struct {
 typedef struct edit_map_s edit_map_t;
 
 struct edit_map_s {
+	fr_edit_list_t		*el;			//!< edit list
+
 	edit_map_t		*parent;
 	edit_map_t		*child;
-
-	fr_pair_t		*vp_parent;
 
 	unlang_edit_state_t	state;			//!< What we're currently doing.
 	map_list_t const	*map_head;
@@ -209,7 +209,7 @@ static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_
 /** Remove VPs for laziness
  *
  */
-static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+static int remove_vps(request_t *request, edit_map_t *current)
 {
 	fr_pair_t *vp, *next, *last;
 	fr_pair_list_t *list;
@@ -237,12 +237,12 @@ static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, edit
 		next = fr_pair_list_next(list, vp);
 		if (da == vp->da) {
 			if ((num >= 0) && (count == num)) {
-				if (fr_edit_list_pair_delete(state->el, list, vp) < 0) return -1;
+				if (fr_edit_list_pair_delete(current->el, list, vp) < 0) return -1;
 				break;
 			}
 
 			if (num == NUM_ALL) {
-				if (fr_edit_list_pair_delete(state->el, list, vp) < 0) return -1;
+				if (fr_edit_list_pair_delete(current->el, list, vp) < 0) return -1;
 				continue;
 			}
 
@@ -258,7 +258,7 @@ static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, edit
 	/*
 	 *	Delete the last one.
 	 */
-	if (last) return fr_edit_list_pair_delete(state->el, list, last);
+	if (last) return fr_edit_list_pair_delete(current->el, list, last);
 
 	return 0;
 }
@@ -281,7 +281,7 @@ static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, edit
  *
  *  which is an implicit sum over all RHS "Baz" attributes.
  */
-static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current, map_t const *map)
+static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t const *map)
 {
 	fr_pair_t *vp;
 	fr_pair_list_t *children;
@@ -330,9 +330,13 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 		switch (rhs_box->type) {
 		case FR_TYPE_STRING:
 			/*
+			 *	For exec, etc., parse the pair list from a string, in the context of the
+			 *	parent VP.  Because we're going to be moving them to the parent VP at some
+			 *	point.  The ones which aren't moved will get deleted in this function.
+			 *
 			 *	@todo - keep parsing until the end.
 			 */
-			token = fr_pair_list_afrom_str(state, da, rhs_box->vb_strvalue, rhs_box->length, children);
+			token = fr_pair_list_afrom_str(current->lhs.vp, da, rhs_box->vb_strvalue, rhs_box->length, children);
 			if (token == T_INVALID) {
 				RPEDEBUG("Failed parsing string as attribute list");
 				return -1;
@@ -342,7 +346,6 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 				REDEBUG("Failed to parse the entire string.");
 				return -1;
 			}
-
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -384,7 +387,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			return -1;
 		}
 
-		return remove_vps(request, state, current);
+		return remove_vps(request, current);
 	}
 
 	/*
@@ -443,11 +446,12 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 apply_list:
 	if (current->rhs.vpt) {
 		RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[map->op], current->rhs.vpt->name);
+
 	} else {
 		fr_assert(children != NULL);
 
 		/*
-		 *	@todo - we need a debug function which takes a request list...
+		 *	@todo - export and use the %{debug_attr:} functions.
 		 */
 		RDEBUG2("%s %s {", current->lhs.vpt->name, fr_tokens[map->op]);
 		if (fr_debug_lvl >= L_DBG_LVL_3) {
@@ -459,7 +463,7 @@ apply_list:
 		RDEBUG2("}");
 	}
 
-	rcode = fr_edit_list_apply_list_assignment(state->el, current->lhs.vp, map->op, children, copy_vps);
+	rcode = fr_edit_list_apply_list_assignment(current->el, current->lhs.vp, map->op, children, copy_vps);
 	if (rcode < 0) RPERROR("Failed performing list %s operation", fr_tokens[map->op]);
 
 	/*
@@ -470,7 +474,7 @@ apply_list:
 }
 
 
-static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current, map_t const *map)
+static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t const *map)
 {
 	fr_pair_t *vp;
 	fr_value_box_t const *rhs_box = NULL;
@@ -534,7 +538,7 @@ assign:
 	 *	for compatibility of the data types on
 	 *	the LHS and RHS.
 	 */
-	if (fr_edit_list_apply_pair_assignment(state->el,
+	if (fr_edit_list_apply_pair_assignment(current->el,
 					       current->lhs.vp,
 					       map->op,
 					       rhs_box) < 0) {
@@ -610,7 +614,25 @@ redo:
 
 		case UNLANG_EDIT_CHECK_LHS:
 		check_lhs:
-			if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
+			if (current->parent) {
+				/*
+				 *	Child attributes are created in a temporary list.  Any list editing is
+				 *	taken care of by the parent map.
+				 */
+				fr_assert(map->op == T_OP_EQ);
+
+				/*
+				 *	We create this VP in the "current" context, so that it's freed on
+				 *	error.  If we create it in the LHS VP context, then we have to
+				 *	manually free rhs.pair_list on any error.  Creating it in the
+				 *	"current" context means we have to reparent it when we move it to the
+				 *	parent list, but fr_edit_list_apply_list_assignment() does that
+				 *	anyways.
+				 */
+				MEM(current->lhs.vp = fr_pair_afrom_da(current, tmpl_da(current->lhs.vpt)));
+				fr_pair_append(&current->parent->rhs.pair_list, current->lhs.vp);
+
+			} else if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
 				fr_pair_t *parent;
 
 				/*
@@ -623,6 +645,22 @@ redo:
 
 				fr_assert(!tmpl_is_list(current->lhs.vpt));
 
+				/*
+				 *	@todo - compile_edit() always sets list_as_attr, and when that
+				 *	happens, the tmpl list is _always_ set to 0 (request).
+				 *
+				 *	What we really need is to create a dcursor, and then do something
+				 *	like:
+				 *
+				 *	vp = tmpl_dcursor_init(&err, request, &cc, &cursor, request, vpt);
+				 *	if (!vp) {
+				 *		while (tmpl_dcursor_required(&cursor, &vp, &da) == 1) {
+				 *			child = fr_pair_afrom_da(vp, da);
+				 *			fr_pair_append(&vp->vp_group, child);
+				 *		}
+				 *		// vp is the pair we need to edit.
+				 *	}
+				 */
 				parent = tmpl_get_list(request, current->lhs.vpt);
 				if (!parent) {
 					REDEBUG("Failed to find list for %s", current->lhs.vpt->name);
@@ -652,7 +690,7 @@ redo:
 				edit_map_t *child = current->child;
 
 				if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
-					REDEBUG("Cannot assign list as a value");
+					REDEBUG("Cannot assign list to a non-list data type");
 					goto error;
 				}
 
@@ -660,11 +698,8 @@ redo:
 				 *	Fast path: child is empty, we don't need to do anything.
 				 */
 				if (fr_dlist_empty(&map->child.head)) {
-					fr_pair_list_empty(&current->rhs.pair_list);
-					goto check_rhs;
+					goto check_rhs_list;
 				}
-
-				fr_assert(0); /* not done! */
 
 				/*
 				 *	Allocate a new child structure if necessary.
@@ -676,13 +711,17 @@ redo:
 				}
 
 				/*
-				 *	Initialize the child structure.
+				 *	Initialize the child structure.  There's no edit list here, as we're
+				 *	creating a temporary pair list.  Any edits to this list aren't
+				 *	tracked, as it only exists in current->parent->rhs.pair_list.
+				 *
+				 *	The parent edit_state_t will take care of applying any edits to the
+				 *	parent vp.  Any child pairs which aren't used will be freed.
 				 */
 				child->state = UNLANG_EDIT_INIT;
-				child->vp_parent = current->lhs.vp;
+				child->el = NULL;
 				child->map_head = &map->child;
 				child->map = map_list_head(child->map_head);
-				child->vp_parent = current->lhs.vp;
 
 				memset(&child->lhs, 0, sizeof(child->lhs));
 				memset(&child->rhs, 0, sizeof(child->rhs));
@@ -725,9 +764,10 @@ redo:
 		case UNLANG_EDIT_CHECK_RHS:
 		check_rhs:
 			if (fr_type_is_leaf(current->lhs.vp->da->type)) {
-				if (apply_edits_to_leaf(request, state, current, map) < 0) goto error;
+				if (apply_edits_to_leaf(request, current, map) < 0) goto error;
 			} else {
-				if (apply_edits_to_list(request, state, current, map) < 0) goto error;
+		check_rhs_list:
+				if (apply_edits_to_list(request, current, map) < 0) goto error;
 			}
 
 		next:
@@ -785,6 +825,7 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 	 */
 	MEM(state->el = fr_edit_list_alloc(state, map_list_num_elements(&edit->maps)));
 
+	current->el = state->el;
 	current->map_head = &edit->maps;
 	current->map = map_list_head(current->map_head);
 	fr_pair_list_init(&current->rhs.pair_list);
