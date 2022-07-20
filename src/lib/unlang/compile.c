@@ -574,25 +574,9 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 	}
 
 	if (map->rhs) {
-		if (tmpl_is_xlat_unresolved(map->rhs)) {
-			fr_assert(tmpl_xlat(map->rhs) == NULL);
+		if (tmpl_is_unresolved(map->rhs)) {
+			fr_assert(!tmpl_is_regex_xlat_unresolved(map->rhs));
 
-			/*
-			 *	FIXME: compile to attribute && handle
-			 *	the conversion in map_to_vp().
-			 */
-			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->attr.dict_def)) {
-				return false;
-			}
-		}
-
-		fr_assert(!tmpl_is_regex_xlat_unresolved(map->rhs));
-
-		if (tmpl_is_attr_unresolved(map->rhs)) {
-			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->attr.dict_def)) return false;
-		}
-
-		if (tmpl_is_exec(map->rhs)) {
 			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->attr.dict_def)) {
 				return false;
 			}
