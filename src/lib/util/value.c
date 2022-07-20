@@ -4716,9 +4716,7 @@ parse:
 		 */
 		fr_sbuff_set(&our_in, &hex_start);
 
-		if (unlikely(fr_base16_decode(NULL,
-					      &FR_DBUFF_TMP(bin_buff, hex_len),
-					      &our_in, false) != (ssize_t)ret) < 0) {
+		if (unlikely(fr_base16_decode(NULL, &FR_DBUFF_TMP(bin_buff, hex_len), &our_in, false) < 0)) {
 			talloc_free(bin_buff);
 			return fr_sbuff_error(&our_in);
 		}
