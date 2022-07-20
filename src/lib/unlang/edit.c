@@ -451,12 +451,12 @@ apply_list:
 		fr_assert(children != NULL);
 
 		/*
-		 *	@todo - export and use the %{debug_attr:} functions.
+		 *	Print the children before we do the modifications.
 		 */
 		RDEBUG2("%s %s {", current->lhs.vpt->name, fr_tokens[map->op]);
-		if (fr_debug_lvl >= L_DBG_LVL_3) {
+		if (fr_debug_lvl >= L_DBG_LVL_2) {
 			RINDENT();
-			fr_pair_list_debug(children);
+			xlat_debug_attr_list(request, children);
 			REXDENT();
 		}
 
