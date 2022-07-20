@@ -95,6 +95,18 @@ fr_pair_t *tmpl_get_list(request_t *request, tmpl_t const *vpt)
 
 	if (!request) return NULL;
 
+	if (vpt->rules.attr.list_as_attr) {
+		fr_dict_attr_t const *da;
+		da = ((tmpl_attr_t *)tmpl_attr_list_head(&vpt->data.attribute.ar))->ar_da;
+
+		if (da == request_attr_request) return request->pair_list.request;
+		if (da == request_attr_reply) return request->pair_list.reply;
+		if (da == request_attr_control) return request->pair_list.control;
+		if (da == request_attr_state) return request->pair_list.state;
+
+		return NULL;
+	}
+
 	list = tmpl_list(vpt);
 
 	switch (list) {
