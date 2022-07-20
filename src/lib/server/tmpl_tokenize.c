@@ -4863,7 +4863,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 						     fr_type_to_str(da->type));
 			}
 
-			if (tmpl_list(vpt) >= PAIR_LIST_UNKNOWN) {
+			if (!vpt->rules.attr.list_as_attr && (tmpl_list(vpt) >= PAIR_LIST_UNKNOWN)) {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" has invalid list (%i)",
 						     file, line, tmpl_da(vpt)->name, tmpl_list(vpt));
