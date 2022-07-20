@@ -563,11 +563,13 @@ assign:
 static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
-	edit_map_t			*current = state->current;
+	edit_map_t			*current;
 	map_t const    			*map;
 	int				rcode;
 
 redo:
+	current = state->current;
+
 	/*
 	 *	Iterate over the maps, expanding the LHS and RHS.
 	 */
@@ -670,6 +672,8 @@ redo:
 				/*
 				 *	Add the new VP to the parent.  The edit list code is safe for multiple
 				 *	edits of the same VP, so we don't have to do anything else here.
+				 *
+				 *	@todo - this works for only one level.  We really need to support multiple levels. :(
 				 */
 				MEM(current->lhs.vp = fr_pair_afrom_da(parent, tmpl_da(current->lhs.vpt)));
 				if (fr_edit_list_insert_pair_tail(state->el, &parent->vp_group, current->lhs.vp) < 0) goto error;
@@ -756,7 +760,7 @@ redo:
 			if (!current->lhs.vp) goto error;
 #endif
 
-			if (templatize_rhs(state, &current->rhs, current->lhs.vp, request) < 0) goto error;
+			if (map->rhs && (templatize_rhs(state, &current->rhs, current->lhs.vp, request) < 0)) goto error;
 
 			current->state = UNLANG_EDIT_CHECK_RHS;
 			FALL_THROUGH;
