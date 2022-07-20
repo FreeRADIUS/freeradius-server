@@ -767,7 +767,9 @@ redo:
 
 		case UNLANG_EDIT_CHECK_RHS:
 		check_rhs:
-			fr_assert(current->lhs.vp != NULL);
+#ifdef STATIC_ANALYZER
+			if (!current->lhs.vp) goto error;
+#endif
 
 			if (fr_type_is_leaf(current->lhs.vp->da->type)) {
 				if (apply_edits_to_leaf(request, current, map) < 0) goto error;
