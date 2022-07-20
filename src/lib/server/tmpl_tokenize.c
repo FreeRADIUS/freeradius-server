@@ -1848,6 +1848,14 @@ do_suffix:
 		 */
 		case FR_TYPE_GROUP:
 			our_parent = namespace = fr_dict_attr_ref(da);
+
+			/*
+			 *	if there's a real dictionary, and this reference is to group which is in fact
+			 *	the internal dict, then just keep using our dict_def.
+			 */
+			if (t_rules->dict_def && (namespace == fr_dict_root(fr_dict_internal()))) {
+				our_parent = namespace = fr_dict_root(t_rules->dict_def);
+			}
 			break;
 
 		case FR_TYPE_STRUCT:

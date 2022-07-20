@@ -11,22 +11,16 @@ update control {
 #  @todo - we only support ONE layer of nesting under &control,
 #  &request, etc. for now.  We should support more.
 #
-#  i.e. &control.Tmp-Group-0.Tmp-Group-1 := { ... } will NOT work.
-#
-#  There are also issues with changing dictionaries.  Putting RADIUS
-#  attributes into a Tmp-Group (internal dict) will work, but they
-#  cannot be referenced.
-#
 &control.Tmp-Group-0 := {
 	&Tmp-Integer-0 = 1
 }
 
 if (!&control.Tmp-Group-0.Tmp-Integer-0) {
-	test_fail;
+	test_fail
 }
 
 if (&control.Tmp-Group-0.Tmp-Integer-0 != 1) {
-	test_fail;
+	test_fail
 }
 
 #
@@ -35,7 +29,7 @@ if (&control.Tmp-Group-0.Tmp-Integer-0 != 1) {
 &control.Tmp-Group-0.Tmp-Integer-0 += 5
 
 if (&control.Tmp-Group-0.Tmp-Integer-0 != 6) {
-	test_fail;
+	test_fail
 }
 
 #
@@ -44,7 +38,7 @@ if (&control.Tmp-Group-0.Tmp-Integer-0 != 6) {
 &control.Tmp-Group-0 -= &Tmp-Integer-0
 
 if (&control.Tmp-Group-0.Tmp-Integer-0) {
-	test_fail;
+	test_fail
 }
 
 #
@@ -59,7 +53,7 @@ if (&control.Tmp-Group-0.Tmp-Integer-0) {
 }
 
 if (&control.Tmp-Group-0.Tmp-IP-Address-0 != 127.0.0.1) {
-	test_fail;
+	test_fail
 }
 
 #
@@ -70,11 +64,11 @@ if (&control.Tmp-Group-0.Tmp-IP-Address-0 != 127.0.0.1) {
 }
 
 if (&control.Tmp-Group-0.Tmp-IP-Address-0 != 127.0.0.1) {
-	test_fail;
+	test_fail
 }
 
 if (&control.Tmp-Group-0.Tmp-Octets-0 != 0xabcdef) {
-	test_fail;
+	test_fail
 }
 
 success
