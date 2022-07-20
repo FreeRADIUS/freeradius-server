@@ -20,6 +20,28 @@
  * @file src/lib/util/edit.c
  * @brief Functions to edit pair lists, and track undo operations
  *
+ *  This file implements an "edit list" for changing values of
+ *  #fr_pair_t.  After some investigation, it turns out that it's much
+ *  easier to have an "undo list" than to track partially applied
+ *  transactions.  Tracking partial transactions means that none of
+ *  the fr_pair_foo() functions will work, as some pairs are in the
+ *  "old" list and some in the "new" list.  Also, a transaction may
+ *  still fail when we finalize it by moving the pairs around.
+ *
+ *  In contrast, an "undo" list means that all of the fr_pair_foo()
+ *  functions will work, as any list contains only "active" pairs.
+ *  And we never need to "finalize" a transaction, as the lists are
+ *  already in their final form.  The only thing needed for
+ *  finalization is to free the undo list.  Which can never fail.
+ *
+ *  Note that the functions here require the input VPs to already have
+ *  the correct talloc parent!  The only thing the edit list does is
+ *  to record "undo" actions.
+ *
+ *  The only exception to this is fr_edit_list_apply_list_assignment().
+ *  Which does call talloc_steal, and then also frees any pairs which
+ *  weren't applied to the LHS.
+ *
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
 
