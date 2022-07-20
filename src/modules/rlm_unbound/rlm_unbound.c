@@ -217,7 +217,7 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 					REDEBUG("%s - Invalid data returned", ur->t->inst->name);
 					goto error;
 				}
-				priority_vb = fr_value_box_alloc_null(ur->out_ctx);
+				MEM(priority_vb = fr_value_box_alloc_null(ur->out_ctx));
 				if (fr_value_box_from_network(ur->out_ctx, priority_vb, FR_TYPE_UINT16, NULL,
 							      &dbuff, 2, true) < 0) {
 					talloc_free(priority_vb);

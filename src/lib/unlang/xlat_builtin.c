@@ -1003,7 +1003,7 @@ static void debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 		REXDENT();
 		RIDEBUG2("}");
 		break;
-		
+
 	default:
 		if (vpt) {
 			RIDEBUG2("&%s.%s = %pV",
@@ -1054,7 +1054,7 @@ static void debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 			break;
 		}
 
-		dst = fr_value_box_alloc_null(vp);
+		MEM(dst = fr_value_box_alloc_null(vp));
 		/* We expect some to fail */
 		if (fr_value_box_cast(dst, dst, type->value, NULL, &vp->data) < 0) {
 			goto next_type;
