@@ -588,6 +588,7 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 	 */
 	if (!map_list_empty(&map->child)) {
 		fr_dict_attr_t const *da;
+		map_t *child;
 
 		if (!tmpl_is_attr(map->lhs)) {
 			cf_log_err(map->ci, "Sublists can only be assigned to a known attribute");
@@ -606,7 +607,16 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 			return false;
 		}
 
-		return pass2_fixup_map(map_list_head(&map->child), rules, da);
+		/*
+		 *	Resolve all children.
+		 */
+		for (child = map_list_next(&map->child, NULL);
+		     child != NULL;
+		     child = map_list_next(&map->child, child)) {
+			if (!pass2_fixup_map(child, rules, da)) {
+				return false;
+			}
+		}
 	}
 
 	return true;
