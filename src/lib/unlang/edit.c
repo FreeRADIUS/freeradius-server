@@ -208,6 +208,7 @@ static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_
 
 /** Remove VPs for laziness
  *
+ *	@todo - replace this with a dcursor, and remove everything which matches the dcursor.
  */
 static int remove_vps(request_t *request, edit_map_t *current)
 {
@@ -636,6 +637,7 @@ redo:
 
 			} else if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
 				fr_pair_t *parent;
+				request_t *other = request;
 
 				/*
 				 *	Get the list.
@@ -663,7 +665,13 @@ redo:
 				 *		// vp is the pair we need to edit.
 				 *	}
 				 */
-				parent = tmpl_get_list(request, current->lhs.vpt);
+				if (tmpl_request_ptr(&other, tmpl_request(current->lhs.vpt)) < 0) {
+					REDEBUG("Failed to find request for %s", current->lhs.vpt->name);
+					goto error;
+				}
+				fr_assert(other != NULL);
+
+				parent = tmpl_get_list(other, current->lhs.vpt);
 				if (!parent) {
 					REDEBUG("Failed to find list for %s", current->lhs.vpt->name);
 					goto error;
