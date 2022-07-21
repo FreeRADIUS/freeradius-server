@@ -174,6 +174,18 @@ const bool fr_assignment_op[T_TOKEN_LAST] = {
 	T(PREPEND),
 };
 
+const bool fr_list_assignment_op[T_TOKEN_LAST] = {
+	T(ADD_EQ),		/* append */
+	T(AND_EQ),		/* intersection */
+	T(OR_EQ),		/* union */
+	T(LE),			/* merge RHS */
+	T(GE),			/* merge LHS */
+
+	T(SET),
+	T(EQ),
+	T(PREPEND),		/* prepend */
+};
+
 const bool fr_equality_op[T_TOKEN_LAST] = {
 	T(NE),
 	T(GE),

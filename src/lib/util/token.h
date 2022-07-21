@@ -143,6 +143,7 @@ extern const bool fr_assignment_op[T_TOKEN_LAST];
 extern const bool fr_equality_op[T_TOKEN_LAST];
 extern const bool fr_binary_op[T_TOKEN_LAST];
 extern const bool fr_str_tok[T_TOKEN_LAST];
+extern const bool fr_list_assignment_op[T_TOKEN_LAST];
 
 int		getword (char const **ptr, char *buf, int buflen, bool unescape);
 fr_token_t	gettoken(char const **ptr, char *buf, int buflen, bool unescape);

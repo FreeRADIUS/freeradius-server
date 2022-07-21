@@ -2180,8 +2180,8 @@ static int parse_input(cf_stack_t *stack)
 			return -1;
 		}
 
-		if (!fr_assignment_op[name2_token]) {
-			ERROR("%s[%d]: Parse error: Invalid assignment operator '%s' for group",
+		if (!fr_list_assignment_op[name2_token]) {
+			ERROR("%s[%d]: Parse error: Invalid assignment operator '%s' for list",
 			      frame->filename, frame->lineno, buff[2]);
 			return -1;
 		}
