@@ -715,6 +715,9 @@ typedef struct {
 ssize_t		fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen) CC_HINT(nonnull);
 void		fr_pair_ctx_reset(fr_pair_ctx_t *pair_ctx, fr_dict_t const *dict) CC_HINT(nonnull);
 
+void		fr_fprintf_pair(FILE *fp, char const *msg, fr_pair_t const *vp);
+void		fr_fprintf_pair_list(FILE *fp, fr_pair_list_t const *list);
+
 #undef _CONST
 #ifdef __cplusplus
 }
