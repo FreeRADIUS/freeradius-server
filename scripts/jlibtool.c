@@ -2668,6 +2668,7 @@ static int run_mode(command_t *cmd)
 		/*
 		 *	jlibtool is in $(BUILD_DIR)/make/jlibtool
 		 */
+		/* coverity[fixed_size_dest] */
 		strcpy(libpath, program);
 
 		/*
