@@ -1,22 +1,29 @@
 = Editing Lists and Attributes
 
-Editing a list or attribute is signified by starting a line with the
-`&` character.  This character indicates that the following text
-should be interpreted as commands to edit lists and/or attributes.
+Editing a list or attribute is done by starting an `unlang` policy
+line with the `&` character.  This character indicates that the
+following text should be interpreted as commands to edit lists and/or
+attributes.
 
 .Syntax
 [source,unlang]
 ----
+&attribute := value
+&attribute = value
+&attribute += value
+&attribute -= value
+...
+
 &list1 := &list2
 &list1 += { ... }
-
-&attribute := value
+...
 ----
 
-In version 4, the `update` statements have been deprecated.  They
+In version 4, the `update` statements have been deprecated.  They may
 still work, but using them will give warnings.  In addition, the
-`update` sections are generally incapable of dealing with nested
-attributes.
+`update` sections are incapable of dealing with nested attributes, and
+will simply not work with them.  We recommend switching to the new
+syntax, which is more powerful, and less verbose.
 
 An edit statement has the following standard syntax:
 
@@ -40,6 +47,48 @@ NOTE: Despite the edit statements having syntax similar to `update`
 sections, the meaning of the operators have changed significantly.
 You _cannot_ convert an `update` section to the new syntax simply by
 removing the `update` keyword.
+
+== Atomic "Transactions" and Errors
+
+The edit process is atomic, in that either all of the attributes are
+modified, or none of them are modified.  If the edit fails for any
+reason, then all of the results are discarded, and the edit does not
+affect any attributes.
+
+Note also that the server tracks overflows, underflows, and division
+by zero.  These issues are caught, and cause the problematic
+calculation to fail.
+
+For example, if an attribute is of type `uint8`, then it can only
+contain 8-bit integers.  Any attempt to overflow the value to more
+than `255`, or underflow it to lower than zero (`0`), or to divide by
+zero, will cause the edit operation to fail.
+
+Nothing bad will happen to the server, it will just encounter a
+run-time failure while editing the attribute, and the edit operation
+will not succeed.  All other packet processing will continue
+processing as normal.
+
+In short, failed edit operations are effectively a "noop" operation,
+and do not result in any changes.
+
+Multiple attributes may be grouped into a set by using the `group`
+keyword.  This keyword is not usually needed, and offers no benefit
+other than grouping changes to multiple attributes.  When changes are
+done in a `group`, then either all of the changes are applied, or none
+of them are applied.
+
+.Grouping multiple edits
+[source,unlang]
+----
+group {
+    &reply.Reply-Message += %(sql:SELECT ...)
+    &reply.Filter-Id := "foo"
+}
+----
+
+If the above SQL `select` statement fails, then then
+`&reply.Filter-Id` attribute will not exist.
 
 == List Editing
 
@@ -74,6 +123,11 @@ the list operations are simple, and well defined.
 | >=       | Perform a priority merge of two lists. The resulting list has all of the contents of the original _<list>_, and of all _<rhs>_ list attributes which are not already in _<list>_.
 | \<=       | Perform a priority merge of two lists. The resulting list has all of the contents of the original _<rhs>_, and of all _<list>_ list attributes which are not in _<rhs>_ are left alone..
 |=====
+
+Note that operations on lists are generally performed recursively on
+sub-lists.  For example, the `\|=` operator will perform the union of
+not only two lists, but also will recurse to perform a union of any
+sub-lists.
 
 The _<rhs>_ can be a reference to another list (e.g. `request`,
 `reply`), or to a nested / grouped attribute.
@@ -113,17 +167,20 @@ empty list to `request` does nothing.
 
 === Adding an attribute to a list
 
-This operation appends the `Filter-Id` attribute to the tail of the
-`reply` list.  Note again that the operator associated with the
+Attributes (or lists of attributes) can be added using the `+=` operator.
+
+The following example appends the `Filter-Id` attribute to the tail of
+the `reply` list.  Note again that the operator associated with the
 `Filter-Id` attribute is simply `=`.
 
 This operation can best be understood as a two-step process:
 
 1. Create a temporary "in-place" list from the _<rhs>_ of the edit
 operation.  This "in-place" list is not associated with any previous
-list, but is instead existing on its own.  As such, there is no need
-to use operators here.  Instead, the attributes are created in order,
-exactly as they are given.
+list, but instead exists on its own, independt of anything else.  As
+such, there is no need to use operators for the _<rhs>_ list.
+Instead, the attributes for this list are created in order, exactly as they are
+given.
 
 2. Perform the `+=` ("list append") operation, in which case the
 "in-place" list is appended to the `reply` list.
@@ -140,7 +197,8 @@ exactly as they are given.
 
 As a special case, where the right side is an
 xref:reference:unlang/attr.adoc[attribute reference], it is possible
-to use `+=`.
+to use `+=`.  In that case, a copy of the referenced attribute is
+appended to the list.
 
 .Appending the `User-Name` attribute from the `request` list, to the `reply` list.
 ====
@@ -196,9 +254,12 @@ hacks.
 Note also that the `-=` operator allows an attribute on the _<rhs>_,
 only when the meaning of the operation is clear.
 
+It is not currently possible to remove a set of attributes from a
+list.  Instead, the attributes must be removed one at a time.
+
 === List to List Operatons
 
-Lists can also be copied, using the operators.
+Lists can also be copied using the operators.
 
 .Remove all existing attributes in the `reply` list, and
 copies all of the `request` list contents to the `reply` list.
@@ -221,7 +282,8 @@ copies all of the `request` list contents to the `reply` list.
 
 It is also possible to have strings on the _<rhs>_ of a list
 assignment.  This funtionality is most useful for putting attribute
-lists into a database, and then reading them back programmatically.
+lists into a database, and then reading them back when a request is
+processed.
 
 .Assigning attributes taken from a string
 ====
@@ -277,8 +339,8 @@ change the attribute _value_.
 | /=       | Perform subtraction. The value of the _<attribute>_ is divided by the contents of the _<rhs>_.
 | \|=       | Perform logical "or".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.
 | \&=       | Perform logical "and".  The value of the _<attribute>_ is "and"ed with the contents of the _<rhs>_.
-| \<<=       | Perform left shift (integers only).  The value of the _<attribute>_ is shifted left by the value of _<rhs>_
-| \>>=       | Perform right shift (integers only).  The value of the _<attribute>_ is shifted right by the value of _<rhs>_
+| \<<=       | Perform left shift.  The value of the _<attribute>_ is shifted left by the value of _<rhs>_
+| \>>=       | Perform right shift.  The value of the _<attribute>_ is shifted right by the value of _<rhs>_
 |=====
 
 The _<rhs>_ can be a reference to another attribute
@@ -289,33 +351,12 @@ value is processed as described above.
 In most cases, the edit operations "do the right thing".  For example,
 adding a number to an `ipv4prefix` results in an `ipv4addr` data type.
 Similarly, subtracting two 'ipv4addr' data types results in a
-numerical value.
-
-The edit process is atomic, in that either all of the attributes are
-modified, or none of them are modified.  If the edit fails for any
-reason, then all of the results are discarded, and the edit does not
-affect any server attributes.
-
-Note also that the server tracks overflows, underflows, and division
-by zero.  These issues are caught, and cause the problematic
-calculation to fail.
-
-For example, if an attribute is of type `uint8`, then it can only
-contain 8-bit integers.  Any attempt to overflow the value to more
-than `255`, or underflow it to lower than zero (`0`), or to divide by
-zero, will cause the edit operation to fail.
-
-Nothing bad will happen to the server, it will just encounter a
-run-time failure while editing the attribute, and the edit operation
-will not succeed.  All other packet processing will continue
-processing as normal.
-
-In short, failed edit operations are effectively a "noop" operation,
-and do not result in any changes.
+numerical value.  Adding a `time_delta` or `integer` to a `date` will
+result in a `date`.
 
 === Operations on `string` and `octet` Data Types
 
-The operators also apply to non-integer attributes.
+The operators also apply to variable-sized values.
 
 .Attribute Editing Operators for `string` and `octet`
 [options="header"]
