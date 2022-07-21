@@ -129,6 +129,11 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	fr_type_t cast_type = FR_TYPE_STRING;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
 
+	if (!box) {
+		RPEDEBUG("No value found for assignment");
+		return -1;
+	}
+
 	/*
 	 *	There's only one box, and it's the correct type.  Just
 	 *	return that.  This is the fast path.
