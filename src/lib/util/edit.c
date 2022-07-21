@@ -419,6 +419,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 
 	switch (op) {
 	case FR_EDIT_INVALID:
+	fail:
 		talloc_free(e);
 		return -1;
 
@@ -447,7 +448,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 		 *	just delete this pair from the list.
 		 */
 		e->list = list;
-		fr_pair_insert_after(list, ref, vp);
+		if (fr_pair_insert_after(list, ref, vp) < 0) goto fail;
 		break;
 
 	case FR_EDIT_DELETE:
@@ -775,6 +776,7 @@ int fr_edit_list_apply_pair_assignment(fr_edit_list_t *el, fr_pair_t *vp, fr_tok
 			if (!c) return -1; \
                       } else { \
 			c = talloc_steal(dst, _x); \
+			fr_pair_remove(src, c); \
 		      } \
 		 } while (0)
 
