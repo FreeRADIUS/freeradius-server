@@ -646,8 +646,12 @@ redo:
 
 				/*
 				 *	Get the list.
+				 *
+				 *	When we assign via :=, we create the LHS vp if it doesn't exist.  The
+				 *	same goes for =, <=, and |=.  Other operators require something on the
+				 *	LHS, so they will fail if the LHS doesn't exist.
 				 */
-				if ((map->op != T_OP_SET) && (map->op != T_OP_EQ)) {
+				if ((map->op != T_OP_SET) && (map->op != T_OP_EQ) && (map->op != T_OP_LE) && (map->op != T_OP_OR_EQ)) {
 					REDEBUG("Failed to find %s", current->lhs.vpt->name);
 					goto error;
 				}
@@ -655,10 +659,7 @@ redo:
 				fr_assert(!tmpl_is_list(current->lhs.vpt));
 
 				/*
-				 *	@todo - compile_edit() always sets list_as_attr, and when that
-				 *	happens, the tmpl list is _always_ set to 0 (request).
-				 *
-				 *	What we really need is to create a dcursor, and then do something
+				 *	@todo - What we really need is to create a dcursor, and then do something
 				 *	like:
 				 *
 				 *	vp = tmpl_dcursor_init(&err, request, &cc, &cursor, request, vpt);
