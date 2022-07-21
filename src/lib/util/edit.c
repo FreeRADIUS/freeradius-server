@@ -780,13 +780,18 @@ int fr_edit_list_apply_pair_assignment(fr_edit_list_t *el, fr_pair_t *vp, fr_tok
 		      } \
 		 } while (0)
 
+#define NEXT_A do { a = an; an = fr_pair_list_next(&dst->children, a); } while (0)
+#define NEXT_B do { b = bn; bn = fr_pair_list_next(src, b); } while (0)
+
+
 /** A UNION B
  *
  */
 static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, bool copy)
 {
-	fr_pair_t *a, *b, *c;
-	fr_dcursor_t cursor1, cursor2;
+	fr_pair_t *a, *an;
+	fr_pair_t *b, *bn;
+	fr_pair_t *c;
 
 	/*
 	 *	Prevent people from doing stupid things.
@@ -805,22 +810,24 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, b
 	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
 	fr_pair_list_sort(src, fr_pair_cmp_by_parent_num);
 
-	fr_pair_dcursor_init(&cursor1, &dst->children);
-	fr_pair_dcursor_init(&cursor2, src);
+	PAIR_LIST_VERIFY(&dst->children);
+	PAIR_LIST_VERIFY(src);
+
+	a = fr_pair_list_head(&dst->children);
+	an = fr_pair_list_next(&dst->children, a);
+	b = fr_pair_list_head(src);
+	bn = fr_pair_list_next(src, b);
 
 	while (true) {
 		int rcode;
 
-		a = fr_dcursor_current(&cursor1);
-		b = fr_dcursor_current(&cursor2);
-
 		/*
-		 *	B is done, so we stop processing the union.
+		 *	B is done, so we stop processing.
 		 */
 		if (!b) break;
 
 		/*
-		 *	A is done, so we always union in B at the end of A.
+		 *	A is done, so we can add in B at the end of A.
 		 */
 		if (!a) {
 			COPY(b);
@@ -829,21 +836,21 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, b
 				return -1;
 			}
 
-			fr_dcursor_next(&cursor2);
+			NEXT_B;
 			continue;
 		}
 
+		/*
+		 *	Compare the da's
+		 */
 		rcode = fr_pair_cmp_by_parent_num(a, b);
 
 		/*
-		 *	a < b
-		 *
-		 *	A stays in its list, but we advance to the
-		 *	next item.  Maybe at that point we will be
-		 *	able to take the union of A and B.
+		 *	We've seen things in A which aren't in B, so
+		 *	we just increment A.
 		 */
 		if (rcode < 0) {
-			fr_dcursor_next(&cursor1);
+			NEXT_A;
 			continue;
 		}
 
@@ -852,56 +859,64 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, b
 		 *
 		 *	This means that in the ordered set, the
 		 *	equivalent to B does not exist.  So we copy B
-		 *	to the destination list, before A.
+		 *	to after A.
 		 */
 		if (rcode > 0) {
 			COPY(b);
 
-			if (fr_edit_list_insert_pair_before(el, &dst->children, a, c) < 0) {
+			if (fr_edit_list_insert_pair_after(el, &dst->children, a, c) < 0) {
 				return -1;
 			}
 
-			fr_dcursor_next(&cursor2);
+			NEXT_B;
 			continue;
 		}
 
 		fr_assert(rcode == 0);
 
 		/*
-		 *	They're the same.  Recurse if necessary.
-		 *
-		 *	Then, copy B to after A.
-		 *
-		 *	The attributes are the same.  Add both in.
-		 *
-		 *	For leaf attributes, this means just adding
-		 *	both attributes.
+		 *	They're the same.
 		 */
 		fr_assert(a->da == b->da);
 
 		/*
-		 *	UNION the children, and then don't bother
-		 *	copying B to A, as its children have already
-		 *	been added in.
+		 *	Union lists recursively.
+		 *
+		 *	Note that this doesn't mean copying both VPs!  We just merge their contents.
 		 */
 		if (fr_type_is_structural(a->vp_type)) {
 			rcode = list_union(el, a, &b->children, copy);
 			if (rcode < 0) return rcode;
 
-			fr_dcursor_next(&cursor1);
-			fr_dcursor_next(&cursor2);
+			NEXT_A;
+			NEXT_B;
 			continue;
 		}
 
-		COPY(b);
-		if (fr_edit_list_insert_pair_after(el, &dst->children, a, c) < 0) {
-			return -1;
+		/*
+		 *	Process all identical attributes, but by
+		 *	value.  If the value is the same, we keep only
+		 *	one.  If the values are different, we keep
+		 *	both.
+		 */
+		while (a && b && (a->da == b->da)) {
+			/*
+			 *	Check if the values are the same.  This
+			 *	returns 0 for "equal", and non-zero for
+			 *	anything else.
+			 */
+			rcode = fr_value_box_cmp(&a->data, &b->data);
+			if (rcode != 0) {
+				COPY(b);
+
+				if (fr_edit_list_insert_pair_after(el, &dst->children, a, c) < 0) {
+					return -1;
+				}
+			}
+
+			NEXT_A;
+			NEXT_B;
 		}
-
-		fr_dcursor_next(&cursor1); /* skip A */
-		fr_dcursor_next(&cursor1); /* skip copy of B we just added */
-
-		fr_dcursor_next(&cursor2);
 	}
 
 	return 0;
@@ -913,28 +928,31 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, b
  */
 static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, bool copy)
 {
-	fr_pair_t *a, *b, *c;
-	fr_dcursor_t cursor1, cursor2;
+	fr_pair_t *a, *an;
+	fr_pair_t *b, *bn;
+	fr_pair_t *c;
 
 	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
 	fr_pair_list_sort(src, fr_pair_cmp_by_parent_num);
 
-	fr_pair_dcursor_init(&cursor1, &dst->children);
-	fr_pair_dcursor_init(&cursor2, src);
+	PAIR_LIST_VERIFY(&dst->children);
+	PAIR_LIST_VERIFY(src);
+
+	a = fr_pair_list_head(&dst->children);
+	an = fr_pair_list_next(&dst->children, a);
+	b = fr_pair_list_head(src);
+	bn = fr_pair_list_next(src, b);
 
 	while (true) {
 		int rcode;
 
-		a = fr_dcursor_current(&cursor1);
-		b = fr_dcursor_current(&cursor2);
-
 		/*
-		 *	B is done, so we stop processing the merge.
+		 *	B is done, so we stop processing.
 		 */
 		if (!b) break;
 
 		/*
-		 *	A is done, so we always merge in B at the end of A.
+		 *	A is done, so we can add in B at the end of A.
 		 */
 		if (!a) {
 			COPY(b);
@@ -943,21 +961,21 @@ static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 				return -1;
 			}
 
-			fr_dcursor_next(&cursor2);
+			NEXT_B;
 			continue;
 		}
 
+		/*
+		 *	Compare the da's
+		 */
 		rcode = fr_pair_cmp_by_parent_num(a, b);
 
 		/*
-		 *	a < b
-		 *
-		 *	A stays in its list, but we advance to the
-		 *	next item.  Maybe at that point we will be
-		 *	able to merge A and B.
+		 *	We've seen things in A which aren't in B, so
+		 *	we just increment A.
 		 */
 		if (rcode < 0) {
-			fr_dcursor_next(&cursor1);
+			NEXT_A;
 			continue;
 		}
 
@@ -975,33 +993,34 @@ static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 				return -1;
 			}
 
-			fr_dcursor_next(&cursor2);
+			NEXT_B;
 			continue;
 		}
 
 		fr_assert(rcode == 0);
 
 		/*
-		 *	They're the same.  Recurse if necessary.
-		 *
-		 *	Then, ignore B, because we already have A.
-		 *
-		 *	The attributes are the same.  Keep A, but also
-		 *	check if we have to merge the children of A
-		 *	and B.
+		 *	They're the same.
 		 */
 		fr_assert(a->da == b->da);
 
+		/*
+		 *	Merge lists recursively.
+		 */
 		if (fr_type_is_structural(a->vp_type)) {
 			rcode = list_merge_lhs(el, a, &b->children, copy);
 			if (rcode < 0) return rcode;
+
+			goto next_both;
 		}
 
 		/*
-		 *	We have both A and B, so we prefer A.
+		 *	We have both A and B, so we prefer A, which means just skipping B.
 		 */
-		fr_dcursor_next(&cursor1);
-		fr_dcursor_next(&cursor2);
+
+	next_both:
+		NEXT_A;
+		NEXT_B;
 	}
 
 	return 0;
@@ -1009,32 +1028,35 @@ static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 
 /** A MERGE B
  *
- * with priority to B
+ * with priority to B.
  */
 static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, bool copy)
 {
-	fr_pair_t *a, *b, *c;
-	fr_dcursor_t cursor1, cursor2;
+	fr_pair_t *a, *an;
+	fr_pair_t *b, *bn;
+	fr_pair_t *c;
 
 	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
 	fr_pair_list_sort(src, fr_pair_cmp_by_parent_num);
 
-	fr_pair_dcursor_init(&cursor1, &dst->children);
-	fr_pair_dcursor_init(&cursor2, src);
+	PAIR_LIST_VERIFY(&dst->children);
+	PAIR_LIST_VERIFY(src);
+
+	a = fr_pair_list_head(&dst->children);
+	an = fr_pair_list_next(&dst->children, a);
+	b = fr_pair_list_head(src);
+	bn = fr_pair_list_next(src, b);
 
 	while (true) {
 		int rcode;
 
-		a = fr_dcursor_current(&cursor1);
-		b = fr_dcursor_current(&cursor2);
-
 		/*
-		 *	B is done, so we stop processing the merge.
+		 *	B is done, so we stop processing.
 		 */
 		if (!b) break;
 
 		/*
-		 *	A is done, so we always merge in B at the end of A.
+		 *	A is done, so we can in B at the end of A.
 		 */
 		if (!a) {
 			COPY(b);
@@ -1043,62 +1065,57 @@ static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 				return -1;
 			}
 
-			fr_dcursor_next(&cursor2);
+			NEXT_B;
 			continue;
 		}
 
+		/*
+		 *	Compare the da's
+		 */
 		rcode = fr_pair_cmp_by_parent_num(a, b);
 
 		/*
-		 *	a > b
-		 *
-		 *	A stays in its list, but we advance to the
-		 *	next item.  Maybe at that point we will be
-		 *	able to merge A and B.
+		 *	We've seen things in A which aren't in B, so
+		 *	we just increment A.
 		 */
-		if (rcode > 0) {
-			fr_dcursor_next(&cursor1);
+		if (rcode < 0) {
+			NEXT_A;
 			continue;
 		}
 
 		/*
-		 *	a < b
+		 *	a > b
 		 *
 		 *	This means that in the ordered set, the
 		 *	equivalent to B does not exist.  So we copy B
 		 *	to before A.
 		 */
-		if (rcode < 0) {
+		if (rcode > 0) {
 			COPY(b);
 
 			if (fr_edit_list_insert_pair_before(el, &dst->children, a, c) < 0) {
 				return -1;
 			}
 
-			fr_dcursor_next(&cursor2);
+			NEXT_B;
 			continue;
 		}
 
 		fr_assert(rcode == 0);
 
 		/*
-		 *	They're the same.  Recurse if necessary.
-		 *
-		 *	Then, ignore B, because we already have A.
-		 *
-		 *	The attributes are the same.  Keep A, but also
-		 *	check if we have to merge the children of A
-		 *	and B.
+		 *	They're the same.
 		 */
 		fr_assert(a->da == b->da);
 
+		/*
+		 *	Merge lists recursively.
+		 */
 		if (fr_type_is_structural(a->vp_type)) {
 			rcode = list_merge_rhs(el, a, &b->children, copy);
 			if (rcode < 0) return rcode;
 
-			fr_dcursor_next(&cursor1);
-			fr_dcursor_next(&cursor2);
-			continue;
+			goto next_both;
 		}
 
 		/*
@@ -1109,8 +1126,9 @@ static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 			return -1;
 		}
 
-		fr_dcursor_next(&cursor1);
-		fr_dcursor_next(&cursor2);
+	next_both:
+		NEXT_A;
+		NEXT_B;
 	}
 
 	return 0;
@@ -1121,8 +1139,8 @@ static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
  */
 static int list_intersection(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
 {
-	fr_pair_t *a, *b;
-	fr_dcursor_t cursor1, cursor2;
+	fr_pair_t *a, *an;
+	fr_pair_t *b, *bn;
 
 	/*
 	 *	Prevent people from doing stupid things.
@@ -1135,17 +1153,18 @@ static int list_intersection(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t 
 	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
 	fr_pair_list_sort(src, fr_pair_cmp_by_parent_num);
 
-	fr_pair_dcursor_init(&cursor1, &dst->children);
-	fr_pair_dcursor_init(&cursor2, src);
+	a = fr_pair_list_head(&dst->children);
+	an = fr_pair_list_next(&dst->children, a);
+	b = fr_pair_list_head(src);
+	bn = fr_pair_list_next(src, b);
 
 	while (true) {
 		int rcode;
 
-		a = fr_dcursor_current(&cursor1);
-		b = fr_dcursor_current(&cursor2);
-
 		/*
-		 *	A is done, so we can return.
+		 *	A is done, so we can return.  We don't need to
+		 *	delete everything from B, as that will be
+		 *	cleaned up by the caller when we exit.
 		 */
 		if (!a) break;
 
@@ -1153,12 +1172,15 @@ static int list_intersection(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t 
 		 *	B is done, so we delete everything else in A.
 		 */
 		if (!b) {
-		delete:
-			fr_dcursor_next(&cursor1);
+		delete_a:
 			if (fr_edit_list_pair_delete(el, &dst->children, a) < 0) return -1;
+			NEXT_A;
 			continue;
 		}
 
+		/*
+		 *	Compare the da's
+		 */
 		rcode = fr_pair_cmp_by_parent_num(a, b);
 
 		/*
@@ -1166,7 +1188,7 @@ static int list_intersection(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t 
 		 *
 		 *	A gets removed.
 		 */
-		if (rcode < 0) goto delete;
+		if (rcode < 0) goto delete_a;
 
 		/*
 		 *	a > b
@@ -1174,7 +1196,7 @@ static int list_intersection(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t 
 		 *      Skip forward in B until we have it better matching A.
 		 */
 		if (rcode > 0) {
-			fr_dcursor_next(&cursor2);
+			NEXT_B;
 			continue;
 		}
 
@@ -1189,12 +1211,11 @@ static int list_intersection(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t 
 			rcode = list_intersection(el, a, &b->children);
 			if (rcode < 0) return rcode;
 
-			if (fr_pair_list_empty(&a->children)) {
-				if (fr_edit_list_pair_delete(el, &dst->children, a) < 0) return -1;
-			}
+			NEXT_B;
 
-			fr_dcursor_next(&cursor1);
-			fr_dcursor_next(&cursor2);
+			if (fr_pair_list_empty(&a->children)) goto delete_a;
+
+			NEXT_A;
 			continue;
 		}
 
@@ -1203,11 +1224,6 @@ static int list_intersection(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t 
 		 *	value.
 		 */
 		while (a && b && (a->da == b->da)) {
-			fr_pair_t *next1, *next2;
-
-			next1 = fr_dcursor_next(&cursor1);
-			next2 = fr_dcursor_next(&cursor2);
-
 			/*
 			 *	Check if the values are the same.  This
 			 *	returns 0 for "equal", and non-zero for
@@ -1218,8 +1234,8 @@ static int list_intersection(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t 
 				if (fr_edit_list_pair_delete(el, &dst->children, a) < 0) return -1;
 			}
 
-			a = next1;
-			b = next2;
+			NEXT_A;
+			NEXT_B;
 		}
 	}
 
