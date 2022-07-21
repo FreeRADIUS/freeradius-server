@@ -1093,11 +1093,20 @@ static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 		if (fr_type_is_structural(a->vp_type)) {
 			rcode = list_merge_rhs(el, a, &b->children, copy);
 			if (rcode < 0) return rcode;
+
+			fr_dcursor_next(&cursor1);
+			fr_dcursor_next(&cursor2);
+			continue;
 		}
 
 		/*
-		 *	We have both A and B, so we prefer A.
+		 *	We have both A and B, so we prefer B.
 		 */
+		COPY(b);
+		if (fr_edit_list_replace_pair(el, &dst->children, a, c) < 0) {
+			return -1;
+		}
+
 		fr_dcursor_next(&cursor1);
 		fr_dcursor_next(&cursor2);
 	}
