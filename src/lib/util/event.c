@@ -690,7 +690,7 @@ static ssize_t fr_event_build_evset(
 			}
 
 			new_func = *(fr_event_fd_cb_t const *)((uint8_t const *)new + map->offset);
-			if (new_func) {
+			if (new_func && (new_func != fr_event_fd_noop)) {
 				EVENT_DEBUG("\t%s curr set (%p)", map->name, new_func);
 				current_fflags |= map->fflags;
 				has_current_func = true;
