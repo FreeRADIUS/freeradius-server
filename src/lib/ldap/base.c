@@ -619,6 +619,7 @@ static void ldap_trunk_query_cancel(UNUSED request_t *request, fr_state_signal_t
 	if (!query->treq) return;
 
 	fr_trunk_request_signal_cancel(query->treq);
+	query->treq = NULL;
 
 }
 
@@ -648,9 +649,7 @@ static unlang_action_t ldap_trunk_query_start(UNUSED rlm_rcode_t *p_result, UNUS
  */
 static void _ldap_search_sync_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
-	fr_trunk_request_t *treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
-
-	fr_trunk_request_signal_cancel(treq);
+	ldap_trunk_query_cancel(NULL, FR_SIGNAL_CANCEL, uctx);
 }
 
 /** Run an async or sync search LDAP query on a trunk connection
@@ -722,7 +721,7 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 		 */
 		if (fr_time_delta_ispos(timeout)) {
 			if (fr_event_timer_in(ctx, unlang_interpret_event_list(request), &ev, timeout,
-					      _ldap_search_sync_timeout, query->treq) < 0) goto error;
+					      _ldap_search_sync_timeout, query) < 0) goto error;
 		}
 
 		*p_result = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
