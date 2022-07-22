@@ -974,6 +974,7 @@ void unlang_interpret_request_stop(request_t *request)
 
 	intp = stack->intp;
 	intp->funcs.stop(request, intp->uctx);
+	request->log.unlang_indent = 0;			/* nothing unwinds the indentation stack */
 }
 
 static inline CC_HINT(always_inline)
@@ -1084,7 +1085,6 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 	switch (action) {
 	case FR_SIGNAL_CANCEL:
 		unlang_interpret_request_stop(request);		/* Stop gets the request in a consistent state */
-		request->log.unlang_indent = 0;			/* nothing unwinds the indentation stack */
 		unlang_interpret_request_done(request);		/* Done signals the request is complete */
 		break;
 
