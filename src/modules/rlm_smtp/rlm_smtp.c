@@ -387,7 +387,10 @@ static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, char const *
 	/* Add the file attachment as a mime encoded part */
 	part = curl_mime_addpart(mime);
 	curl_mime_encoder(part, "base64");
-	curl_mime_filedata(part, path_buffer->buff);
+	if (curl_mime_filedata(part, path_buffer->buff) != CURLE_OK) {
+		REDEBUG2("Cannot add file attachment");
+		return 0;
+	}
 
 	return 1;
 }
