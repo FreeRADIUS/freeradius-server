@@ -1338,8 +1338,21 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		 *	shallow copying buffers.
 		 */
 		while (vp != NULL) {
-			value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
-			fr_value_box_copy(value, value, &vp->data);
+			if (fr_type_is_structural(vp->da->type)) {
+				value = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false);
+				if (!value) goto oom;
+
+				if (fr_pair_list_copy_to_box(value, &vp->vp_group) < 0) {
+					talloc_free(value);
+					goto oom;
+				}
+
+			} else {
+				value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
+				if (!value) goto oom;
+				fr_value_box_copy(value, value, &vp->data);
+			}
+
 			fr_dlist_insert_tail(&list, value);
 			vp = fr_dcursor_next(&cursor);
 		}

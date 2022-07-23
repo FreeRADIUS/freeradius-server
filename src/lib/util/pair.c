@@ -1831,6 +1831,58 @@ int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const 
 	return cnt;
 }
 
+
+/** Copy the contents of a pair list to a set of value-boxes
+ *
+ * This function should be removed when the xlats use dcursors
+ * of copying all of the boxes.
+ *
+ * @param[in] dst		where boxes will be created
+ * @param[in] from		whence to copy #fr_pair_t (s).
+ * @return
+ *	- >0 the number of boxes copied.
+ *	- 0 if no boxes copied.
+ *	- -1 on error.
+ */
+int fr_pair_list_copy_to_box(fr_value_box_t *dst, fr_pair_list_t *from)
+{
+	int cnt = 0;
+	fr_value_box_t *value, *first_added = NULL;
+	fr_pair_t *vp;
+
+	fr_assert(dst->type == FR_TYPE_GROUP);
+
+	for (vp = fr_pair_list_head(from);
+	     vp;
+	     vp = fr_pair_list_next(from, vp), cnt++) {
+		PAIR_VERIFY_WITH_LIST(from, vp);
+
+		if (fr_type_is_structural(vp->da->type)) {
+			value = fr_value_box_alloc(dst, FR_TYPE_GROUP, NULL, false);
+			if (!value) goto fail;
+
+			if (fr_pair_list_copy_to_box(value, &vp->vp_group) < 0) {
+				talloc_free(value);
+				goto fail;
+			}
+
+		} else {
+			value = fr_value_box_alloc(dst, vp->data.type, vp->da, vp->data.tainted);
+			if (!value) {
+			fail:
+				fr_dlist_talloc_free_to_tail(&dst->vb_group, first_added);
+				return -1;
+			}
+			fr_value_box_copy(value, value, &vp->data);
+		}
+
+		if (!first_added) first_added = value;
+		fr_dlist_insert_tail(&dst->vb_group, value);
+	}
+
+	return cnt;
+}
+
 /** Duplicate pairs in a list matching the specified da
  *
  * Copy all pairs from 'from' matching the specified da.

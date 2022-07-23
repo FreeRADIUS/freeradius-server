@@ -567,6 +567,8 @@ int		fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const
 
 void		fr_pair_list_steal(TALLOC_CTX *ctx, fr_pair_list_t *list);
 
+int		fr_pair_list_copy_to_box(fr_value_box_t *dst, fr_pair_list_t *from);
+
 int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 					fr_pair_list_t const *from, fr_dict_attr_t const *da, unsigned int count);
 
