@@ -1362,6 +1362,7 @@ done:
 	if (ret == 0) {
 		if (tmpl_eval_cast(ctx, &list, vpt) < 0) {
 			fr_dlist_talloc_free(&list);
+			ret = -1;
 			goto fail;
 		}
 
