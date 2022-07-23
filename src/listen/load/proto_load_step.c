@@ -208,7 +208,7 @@ static int mod_open(fr_listen_t *li)
 
 	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
 
-	thread->name = talloc_typed_asprintf(thread, "load_step from filename %s", inst->filename ? inst->filename : "none");
+	thread->name = talloc_typed_asprintf(thread, "load_step from filename %s", inst->filename);
 	thread->parent = talloc_parent(li);
 
 	return 0;
