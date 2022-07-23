@@ -2399,6 +2399,7 @@ static void link_fixup(command_t *cmd)
 
 				{
 					char *tmp = lt_malloc(PATH_MAX + 30);
+					char *suffix;
 
 					if (cmd->install_path) {
 						strcpy(tmp, cmd->install_path);
@@ -2406,11 +2407,14 @@ static void link_fixup(command_t *cmd)
 						strcpy(tmp, "");
 					}
 
-					if (cmd->shared_name.install) {
-						strcat(tmp, strrchr(cmd->shared_name.install, '/'));
-					} else {
-						strcat(tmp, strrchr(cmd->shared_name.normal, '/'));
+					suffix = strrchr((cmd->shared_name.install ?
+							 cmd->shared_name.install : cmd->shared_name.normal),
+							 '/');
+					if (!suffix) {
+						ERROR("Installation mode requires directory\n");
+						exit(1);
 					}
+					strcat(tmp, suffix);
 
 					/*
 					 *	Add the version as "libfoo.so.PROGRAM_VERSION"
