@@ -137,6 +137,9 @@ to the `update` section.  However, for "in-place" lists, _the only
 operator which is permitted is `=`.  The server *will not start* if
 any other operator is used._
 
+NOTE: If the right-hand side of an assignment is a list, then _only_
+operator allowed inside of the right-hand side list is `=`.
+
 If the _<rhs>_ is an "in-place" list, then all of the
 xref:xlat/index.adoc[dynamic expansions] are valid, just as are
 xref:reference:unlang/attr.adoc[attribute references].

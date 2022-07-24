@@ -67,22 +67,22 @@ if ((&User-Name == "bob") && (&Calling-Station-Id == "00:01:03:04:05")) {
 }
 ----
 
-== Update Statements
+== Editing Attribures and lists.
 
-xref:unlang/update.adoc[update] statements are used to edit attributes and
-lists of attributes.
+xref:unlang/edit.adoc[attribute editing] statements are used to edit
+attributes and lists of attributes.  The old-style
+xref:unlang/update.adoc[update] sections are deprecated, and no longer
+supported.
 
 Most request packets will result in reply packets that contain
-additional information for the requestor.  The `update` section allows
+additional information for the requestor.  Attribute editing allows
 policies to add attributes to requests, replies, or to other places.
 
 .Example
 [source,unlang]
 ----
-update reply {
-	&Session-Timeout := 3600
-	&Framed-IP-Address := 192.0.2.4
-}
+&reply.Session-Timeout := 3600
+&reply.Framed-IP-Address := 192.0.2.4
 ----
 
 == Dynamic Expansions
@@ -98,9 +98,7 @@ attributes, databases, and scripts.
 .Example
 [source,unlang]
 ----
-update reply {
-	&Framed-IP-Address := "%{sql:SELECT static_ip from table WHERE user = '%{User-Name}'}"
-}
+&reply.Framed-IP-Address := "%{sql:SELECT static_ip from table WHERE user = '%{User-Name}'}"
 ----
 
 == Data Types
@@ -114,10 +112,10 @@ error.
 .Example
 [source,unlang]
 ----
-update reply {
-	&Framed-IP-Address := 192.0.2.4
-	&Session-Timeout := 5
-	&Reply-Message := "hello"
+&reply += {
+	&Framed-IP-Address = 192.0.2.4
+	&Session-Timeout = 5
+	&Reply-Message = "hello"
 }
 ----
 
@@ -144,10 +142,10 @@ and values for those variables.  Those values do not change when the
 server is running.
 
 In contrast, `unlang` performs run-time processing of requests.
-Conditional statements such as xref:unlang/if.adoc[if] are evaluated for every
-packet that is received.  Attribute editing statements such as
-xref:unlang/update.adoc[update] can be used to edit attribute contents or lists
-of attributes.
+Conditional statements such as xref:unlang/if.adoc[if] are evaluated
+for every packet that is received.  Attribute
+xref:unlang/edit.adoc[editing] statements such as can be used to edit
+attribute contents or lists of attributes.
 
 .Example
 [source,unlang]
@@ -158,15 +156,11 @@ of attributes.
 # attribute has value "bob"
 
 if (&User-Name == "bob") {
-    # keyword "update"
-
     # followed by instructions to add the Reply-Message
     # attribute to the "reply" list, with contents
     # "Hello, bob"
 
-    update reply {
-        Reply-Message := "Hello, bob"
-    }
+    &reply.Reply-Message := "Hello, bob"
 }
 ----
 
