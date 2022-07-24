@@ -1,8 +1,6 @@
 # PRE: switch
 #
-update request {
-	&Filter-Id := ""
-}
+&request.Filter-Id := ""
 
 switch &Filter-Id {
 	case "" {
@@ -10,14 +8,10 @@ switch &Filter-Id {
 	}
 
 	case "doug" {
-		update reply {
-			&Filter-Id := "doug"
-		}
+		&reply.Filter-Id := "doug"
 	}
 
 	case {
-		update reply {
-			&Filter-Id := "default"
-		}
+		&reply.Filter-Id := "default"
 	}
 }

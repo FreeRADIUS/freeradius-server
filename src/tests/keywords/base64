@@ -1,31 +1,35 @@
 #
 # PRE: hex
 #
-update request {
-	&Tmp-String-0		:= '9870'
-	&Tmp-Octets-0		:= 0x39383731
-	&Tmp-IP-Address-0	:= 57.56.55.50
-	&Tmp-Integer-0		:= 959985460
-	&Tmp-Cast-IfId		:= '0000:0000:3938:3737'
-	&Tmp-Cast-IPv6Addr	:= '::3938:3738'
-	&Tmp-Cast-IPv6Prefix	:= '::3938:3739/128'
-	&Tmp-Cast-Byte		:= 58
-	&Tmp-Cast-Short		:= 14139
-	&Tmp-Cast-Ether		:= 00:00:39:38:37:3c
-	&Tmp-Cast-Integer64	:= 1152921505566832445
-	&Tmp-Cast-IPv4Prefix	:= 57.56.55.62/32
+&request += {
+	&Tmp-String-0		= '9870'
+	&Tmp-Octets-0		= 0x39383731
+	&Tmp-IP-Address-0	= 57.56.55.50
+	&Tmp-Integer-0		= 959985460
+	&Tmp-Cast-IfId		= '0000:0000:3938:3737'
+	&Tmp-Cast-IPv6Addr	= '::3938:3738'
+	&Tmp-Cast-IPv6Prefix	= '::3938:3739/128'
+	&Tmp-Cast-Byte		= 58
+	&Tmp-Cast-Short		= 14139
+	&Tmp-Cast-Ether		= 00:00:39:38:37:3c
+	&Tmp-Cast-Integer64	= 1152921505566832445
+	&Tmp-Cast-IPv4Prefix	= 57.56.55.62/32
 }
 
-update request {
-	&Tmp-String-0		:= "%{base64:%{Tmp-String-0}}"
-	&Tmp-String-1		:= "%{base64:%{Tmp-Octets-0}}"
-	&Tmp-String-2		:= "%{base64:%{Tmp-IP-Address-0}}"
-	&Tmp-String-4		:= "%{base64:%{Tmp-Integer-0}}"
-	&Tmp-String-6		:= "%{base64:%{Tmp-Cast-Ifid}}"
-	&Tmp-String-7		:= "%{base64:%{Tmp-Cast-IPv6Addr}}"
-	&Tmp-String-8		:= "%{base64:%{Tmp-Cast-IPv6Prefix}}"
-	&Tmp-String-9		:= "%{base64:%{Tmp-Cast-Byte}}"
+ok
+
+&request <= {
+	&Tmp-String-0		= "%{base64:%{Tmp-String-0}}"
+	&Tmp-String-1		= "%{base64:%{Tmp-Octets-0}}"
+	&Tmp-String-2		= "%{base64:%{Tmp-IP-Address-0}}"
+	&Tmp-String-4		= "%{base64:%{Tmp-Integer-0}}"
+	&Tmp-String-6		= "%{base64:%{Tmp-Cast-Ifid}}"
+	&Tmp-String-7		= "%{base64:%{Tmp-Cast-IPv6Addr}}"
+	&Tmp-String-8		= "%{base64:%{Tmp-Cast-IPv6Prefix}}"
+	&Tmp-String-9		= "%{base64:%{Tmp-Cast-Byte}}"
 }
+
+%(debug_attr:request[*])
 
 # String - bin 0x39383730
 if (&Tmp-String-0[0] != 'OTg3MA==') {
@@ -67,11 +71,11 @@ if (&Tmp-String-9[0] != 'Og==') {
 	test_fail
 }
 
-update request {
-	&Tmp-String-0		:= "%{base64:%{Tmp-Cast-Short}}"
-	&Tmp-String-1		:= "%{base64:%{Tmp-Cast-Ether}}"
-	&Tmp-String-2		:= "%{base64:%{Tmp-Cast-Integer64}}"
-	&Tmp-String-3		:= "%{base64:%{Tmp-Cast-IPv4Prefix}}"
+&request <= {
+	&Tmp-String-0		= "%{base64:%{Tmp-Cast-Short}}"
+	&Tmp-String-1		= "%{base64:%{Tmp-Cast-Ether}}"
+	&Tmp-String-2		= "%{base64:%{Tmp-Cast-Integer64}}"
+	&Tmp-String-3		= "%{base64:%{Tmp-Cast-IPv4Prefix}}"
 }
 
 # short - bin 0x373b
@@ -94,9 +98,9 @@ if (&Tmp-String-3[0] != 'IDk4Nz4=') {
 	test_fail
 }
 
-update request {
-	&Tmp-Octets-0		:= "%{base64decode:Zm9v}"
-	&Tmp-Octets-1		:= "%{base64decode:AIAAAAAAAAAAAAAAAAA5ODc5}"
+&request <= {
+	&Tmp-Octets-0		= "%{base64decode:Zm9v}"
+	&Tmp-Octets-1		= "%{base64decode:AIAAAAAAAAAAAAAAAAA5ODc5}"
 }
 
 if (&Tmp-Octets-0 != "foo") {
@@ -108,16 +112,16 @@ if (&Tmp-Octets-1 != 0x008000000000000000000000000039383739) {
 }
 
 # Regression tests
-update request {
-	&Tmp-Octets-0 := %{base64decode:5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK}
+&request <= {
+	&Tmp-Octets-0 = %{base64decode:5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK}
 }
 
 if (&Tmp-Octets-0 != 0xe5136a365f2260b6e409cec9851f1ab384ed0c3097ea8b6eb96b5c8daf2b213532c7dceb9c749ef6d4c71a628a) {
 	test_fail
 }
 
-update request {
-	&Tmp-Octets-0 := "%{base64decode:eHfXPKZ+2iv9cnMV1MOmE/moYYA1Uk5xTmw4aVlMYmtDYzdKaFI4YXM0VHRERENYNm90dXVXdGNqYThySVRVeXg5enJuSFNlOXRUSEdtS0s=}"
+&request <= {
+	&Tmp-Octets-0 = "%{base64decode:eHfXPKZ+2iv9cnMV1MOmE/moYYA1Uk5xTmw4aVlMYmtDYzdKaFI4YXM0VHRERENYNm90dXVXdGNqYThySVRVeXg5enJuSFNlOXRUSEdtS0s=}"
 }
 
 if (&Tmp-Octets-0 != 0x7877d73ca67eda2bfd727315d4c3a613f9a8618035524e714e6c3869594c626b4363374a685238617334547444444358366f7475755774636a6138724954557978397a726e48536539745448476d4b4b) {

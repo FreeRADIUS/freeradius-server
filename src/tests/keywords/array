@@ -3,13 +3,15 @@
 #
 #  Tests for dereferencing the Nth attribute
 #
-update request {
-       &Class := 0x01020304
-       &Class += 0x05060708
-       &Class += 0x090a0b0c
+&request += {
+       &Class = 0x01020304,
+       &Class = 0x05060708,
+       &Class = 0x090a0b0c,
 }
 
-debug_request
+if (%{Class[#]} != 3) {
+	test_fail
+}
 
 if (&Class[0] != 0x01020304) {
 	test_fail

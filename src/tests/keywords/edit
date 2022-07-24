@@ -20,5 +20,4 @@ if (&Tmp-Integer-0 != 15) {
 	test_fail
 }
 
-
 success

@@ -1,22 +1,22 @@
 #
-# PRE: update if
+# PRE: if
 #
-update {
-	&request.Packet-Type !* ANY
+&request -= &Packet-Type
+
+&request += {
+	&Tmp-String-0 = "ab c"
+	&Tmp-String-0 = "de fg"
+	&Tmp-Integer-0 = 123
 }
 
-update {
-	&request.Tmp-String-0 := "ab c"
-	&request.Tmp-String-0 += "de fg"
-	&request.Tmp-Integer-0 := 123
-}
+ok	# separate updates
 
-update {
-	&request.Tmp-String-1 := "%(concat:%{request[*]} ', ')"
-	&request.Tmp-String-2 := "%(concat:%{Tmp-String-0[*]} ', ')"
-	&request.Tmp-String-3 := "%(concat:%{Tmp-String-0[*]})"
-	&request.Tmp-String-4 := "%(concat:%{Tmp-String-0[*]} ,)"
-	&request.Tmp-String-5 := "%(concat:%{Tmp-String-0[*]} |-)"
+&request += {
+	&Tmp-String-1 = "%(concat:%{request[*]} ', ')"
+	&Tmp-String-2 = "%(concat:%{Tmp-String-0[*]} ', ')"
+	&Tmp-String-3 = "%(concat:%{Tmp-String-0[*]})"
+	&Tmp-String-4 = "%(concat:%{Tmp-String-0[*]} ,)"
+	&Tmp-String-5 = "%(concat:%{Tmp-String-0[*]} |-)"
 }
 
 if (&request.Tmp-String-1 != "bob, hello, ab c, de fg, 123") {

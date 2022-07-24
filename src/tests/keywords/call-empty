@@ -1,5 +1,5 @@
 #
-#  PRE: update
+#  PRE: if call
 #
 
 # Test empty call section
@@ -14,8 +14,6 @@ if (&reply.Reply-Message[0] != "call second") {
 	test_fail
 }
 
-update reply {
-	&Reply-Message !* ANY
-}
+&reply -= &Reply-Message
 
 success

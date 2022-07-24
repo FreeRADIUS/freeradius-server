@@ -1,22 +1,16 @@
 #
-#  PRE: update if
+#  PRE: if
 #
-update {
-	&request.Class := 0x00000101
-}
+&request.Class := 0x00000101
 
 if (<integer>&Class[0] == 257) {
 	success
 }
 
 if (<integer>&Class[0] < 256) {
-	update reply {
-		&Filter-Id += "wrong"
-	}
+	test_fail
 }
 
 if (<integer>&Class[0] > 257) {
-	update reply {
-		&Filter-Id += "wrong"
-	}
+	test_fail
 }

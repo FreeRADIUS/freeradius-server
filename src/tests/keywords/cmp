@@ -1,10 +1,8 @@
 #
-#  PRE: update
+#  PRE: 
 #
-update request {
-       &Called-Station-Id  := "This is a test"
-       &Calling-Station-Id := "This is a test"
-}
+&request.Called-Station-Id  := "This is a test"
+&request.Calling-Station-Id := "This is a test"
 
 #
 #  Check attribute references

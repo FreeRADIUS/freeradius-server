@@ -1,14 +1,10 @@
 #
 #  PRE: update if redundant
 #
-update {
-	&request.NAS-IP-Address		:= 127.0.0.1
-	&request.Tmp-Integer-0		:= 0x7f000001
-}
+&request.NAS-IP-Address		:= 127.0.0.1
+&request.Tmp-Integer-0		:= 0x7f000001
 
-update request {
-	&Tmp-String-0[0] := &NAS-IP-Address
-}
+&Tmp-String-0			:= &NAS-IP-Address
 
 if (<ipaddr>&Tmp-Integer-0[0] != &NAS-IP-Address) {
 	test_fail

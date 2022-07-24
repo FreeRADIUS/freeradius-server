@@ -1,7 +1,7 @@
-update request {
-	&Tmp-Ethernet-0 := "00:11:22:33:44:54"
-	&Tmp-Ethernet-0 += "00:11:22:33:44:55"
-	&Tmp-Octets-0 := 0x001122334456
+&request += {
+	&Tmp-Ethernet-0 = 00:11:22:33:44:54,
+	&Tmp-Ethernet-0 = 00:11:22:33:44:55,
+	&Tmp-Octets-0 = 0x001122334456,
 }
 
 if (&Tmp-Ethernet-0[0] != 00:11:22:33:44:54) {
@@ -12,26 +12,24 @@ if (&Tmp-Ethernet-0[1] != 00:11:22:33:44:55) {
 	test_fail
 }
 
-update request {
-	&Tmp-Ethernet-0 += &Tmp-Octets-0[0]
+&request += {
+	&Tmp-Ethernet-0 = &Tmp-Octets-0[0]
 }
 
 if (&Tmp-Ethernet-0[2] != 00:11:22:33:44:56) {
 	test_fail
 }
 
-# NULL assignment
-group {
-	update request {
-		&Tmp-Ethernet-0 += "%{Tmp-Ethernet-1[42]}"
-	}
-
-	actions {
-		fail = 1
-	}
+# invalid assignment
+&request += {
+	&Tmp-Ethernet-0 = %{Tmp-Ethernet-1[42]}
 }
 
-if (!fail) {
+if (&request.Module-Failure-Message != "No value found for assignment") {
+	test_fail
+}
+
+if (%{request.Tmp-Ethernet-0[#]} != 3) {
 	test_fail
 }
 
