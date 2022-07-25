@@ -397,7 +397,10 @@ int fr_openssl_init(void)
 	 *      they may unload elements of providers once all
 	 *	the contexts have been cleaned up.
 	 */
-	OPENSSL_init_crypto(OPENSSL_INIT_NO_ATEXIT | OPENSSL_INIT_LOAD_CONFIG, NULL);
+	if (OPENSSL_init_ssl(OPENSSL_INIT_NO_ATEXIT | OPENSSL_INIT_LOAD_CONFIG, NULL) != 1) {
+		fr_tls_log_error(NULL, "Failed calling OPENSSL_init_crypto()");
+		return -1;
+	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	/*
