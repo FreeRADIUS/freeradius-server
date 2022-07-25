@@ -59,7 +59,7 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(sort $(FILES))) | $(OUTPUT)
 		fi; \
 		y=`grep 'PROTOCOL: ' $$x | sed 's/.*://;s/  / /g'`; \
 		if [ "$$y" != "" ]; then \
-			z=`echo $$x | sed 's,.*/,,;s/-/_/g'`; \
+			z=`echo $$x | sed 's,src/tests/keywords/,,;s/-/_/g'`; \
 			echo "UNIT_TEST_KEYWORD_ARGS.$$z=-p $$y" >> $@; \
 			echo "" >> $@; \
 		fi \

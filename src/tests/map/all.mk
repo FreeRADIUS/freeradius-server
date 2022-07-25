@@ -32,7 +32,7 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_map
 			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r \"$@\" \"$<\""; \
 			exit 1; \
 		fi; \
-		FOUND=$$(grep -E '^(Error : )?.*/$(notdir $<)' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
+		FOUND=$$(grep -E '^(Error : )?$<' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
 		EXPECTED=$$(grep -n ERROR $< | sed 's/:.*//'); \
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat "$@.log"; \
