@@ -3,9 +3,7 @@
 # PROTOCOL: dhcpv4
 #
 
-update control {
-        &Tmp-Octets-0 := 0x520d0103abcdef0206010203040506
-}
+&control.Tmp-Octets-0 := 0x520d0103abcdef0206010203040506
 
 if ("%(decode.dhcpv4:%{control.Tmp-Octets-0})" != 2) {
         test_fail
@@ -13,19 +11,17 @@ if ("%(decode.dhcpv4:%{control.Tmp-Octets-0})" != 2) {
 
 debug_request
 
-if ( &Relay-Agent-Information.Circuit-Id != 0xabcdef ) {
+if (&control.Relay-Agent-Information.Circuit-Id != 0xabcdef) {
         test_fail
 }
 
-if ( &Relay-Agent-Information.Remote-Id != 0x010203040506 ) {
+if (&control.Relay-Agent-Information.Remote-Id != 0x010203040506) {
         test_fail
 }
 
-update control {
-        &Tmp-Octets-1 := "%(encode.dhcpv4:&request[*])"
-}
+&control.Tmp-Octets-1 := "%(encode.dhcpv4:&control.request[*])"
 
-if ( &control.Tmp-Octets-1 != 0x520d0103abcdef0206010203040506 ) {
+if (&control.Tmp-Octets-1 != 0x520d0103abcdef0206010203040506 ) {
         test_fail
 }
 

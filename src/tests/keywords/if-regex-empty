@@ -35,9 +35,7 @@ if ("%{1}") {
 #  Check assignment of regex null-match
 #
 if (&control.Password.Cleartext =~ /hell(o)(.*)/) {
-	update {
-		&control.Tmp-String-1 := "%{2}"
-	}
+	&control.Tmp-String-1 := "%{2}"
 }
 
 if (!&control.Tmp-String-1) {

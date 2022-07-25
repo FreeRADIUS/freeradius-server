@@ -1,10 +1,8 @@
 #
 #  PRE: if update
 #
-update request {
-	&Tmp-Integer-0 := 4
-	&Tmp-Integer-1 := 6
-}
+&Tmp-Integer-0 := 4
+&Tmp-Integer-1 := 6
 
 #
 #  Many, many, years of work led up to this!

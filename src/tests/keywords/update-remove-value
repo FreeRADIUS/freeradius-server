@@ -2,89 +2,75 @@
 # PRE: update
 #
 
-update {
-	&request.Tmp-String-0 := 'foobarbaz'
-	&request.Tmp-Integer-0 := 123456789
-	&request.Tmp-IP-Address-0 := 192.0.2.1
-	&request.Tmp-IP-Address-0 += 192.0.2.2
-	&request.Tmp-IP-Address-0 += 192.0.2.3
-	&request.Tmp-IP-Address-0 += 192.0.2.4
-	&control.Tmp-IP-Address-0 := 192.0.2.1
-	&control.Tmp-IP-Address-0 += 192.0.2.3
-}
+&request.Tmp-String-0 := 'foobarbaz'
+&request.Tmp-Integer-0 := 123456789
+&request.Tmp-IP-Address-0 := 192.0.2.1
+&request.Tmp-IP-Address-0 += 192.0.2.2
+&request.Tmp-IP-Address-0 += 192.0.2.3
+&request.Tmp-IP-Address-0 += 192.0.2.4
+&control.Tmp-IP-Address-0 := 192.0.2.1
+&control.Tmp-IP-Address-0 += 192.0.2.3
 
-if (("%{Tmp-IP-Address-0[0]}" != 192.0.2.1) || \
-    ("%{Tmp-IP-Address-0[1]}" != 192.0.2.2) || \
-    ("%{Tmp-IP-Address-0[2]}" != 192.0.2.3) || \
-    ("%{Tmp-IP-Address-0[3]}" != 192.0.2.4)) {
+if (("%{request.Tmp-IP-Address-0[0]}" != 192.0.2.1) || \
+    ("%{request.Tmp-IP-Address-0[1]}" != 192.0.2.2) || \
+    ("%{request.Tmp-IP-Address-0[2]}" != 192.0.2.3) || \
+    ("%{request.Tmp-IP-Address-0[3]}" != 192.0.2.4)) {
 	test_fail
 }
 
 # Remove Tmp-IP-Address-0 with a specific value
-update {
-	&request.Tmp-IP-Address-0 -= 192.0.2.1
-}
+&request.Tmp-IP-Address-0 -= 192.0.2.1
 
 # Only the 2nd, 3rd and 4th Tmp-IP-Address attributes should still be in the list
-if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
-    ("%{Tmp-IP-Address-0[1]}" != '192.0.2.3') || \
-    ("%{Tmp-IP-Address-0[2]}" != '192.0.2.4') || \
-    ("%{Tmp-IP-Address-0[3]}" != '')) {
+if (("%{request.Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
+    ("%{request.Tmp-IP-Address-0[1]}" != '192.0.2.3') || \
+    ("%{request.Tmp-IP-Address-0[2]}" != '192.0.2.4') || \
+    ("%{request.Tmp-IP-Address-0[3]}" != '')) {
 	test_fail
 }
 
 # Remove Tmp-IP-Address-0 with a specific value (somewhere in the middle)
-update {
-	&request.Tmp-IP-Address-0 -= 192.0.2.3
-}
+&request.Tmp-IP-Address-0 -= 192.0.2.3
 
 # Only the 1st, and 3rd Tmp-IP-Address attributes should still be in the list
-if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
-    ("%{Tmp-IP-Address-0[1]}" != '192.0.2.4') || \
-    ("%{Tmp-IP-Address-0[2]}" != '')) {
+if (("%{request.Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
+    ("%{request.Tmp-IP-Address-0[1]}" != '192.0.2.4') || \
+    ("%{request.Tmp-IP-Address-0[2]}" != '')) {
 	test_fail
 }
 
 # Remove Tmp-IP-Address-0 with a specific value (which doesn't exist)
-update {
-	&request.Tmp-IP-Address-0 -= 192.0.2.3
-}
+&request.Tmp-IP-Address-0 -= 192.0.2.3
 
 # Only the 1st, and 3rd Tmp-IP-Address attributes should still be in the list
-if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
-    ("%{Tmp-IP-Address-0[1]}" != '192.0.2.4') || \
-    ("%{Tmp-IP-Address-0[2]}" != '')) {
+if (("%{request.Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
+    ("%{request.Tmp-IP-Address-0[1]}" != '192.0.2.4') || \
+    ("%{request.Tmp-IP-Address-0[2]}" != '')) {
 	test_fail
 }
 
 # Remove Tmp-IP-Address-4 (which doesn't exist - more to check for SEGV/assert)
-update {
-	&request.Tmp-IP-Address-4 -= 192.0.2.3
-}
+&request.Tmp-IP-Address-4 -= 192.0.2.3
 
 # Remove Tmp-IP-Address-0 with a specific value
-update {
-	&request.Tmp-IP-Address-0 -= 192.0.2.4
-}
+&request.Tmp-IP-Address-0 -= 192.0.2.4
 
 # Only the 1st, and 3rd Tmp-IP-Address attributes should still be in the list
-if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
-    ("%{Tmp-IP-Address-0[1]}" != '')) {
+if (("%{request.Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
+    ("%{request.Tmp-IP-Address-0[1]}" != '')) {
 	test_fail
 }
 
 # Remove Tmp-IP-Address-0 with a specific value
-update {
-	&request.Tmp-IP-Address-0 -= 192.0.2.2
-}
+&request.Tmp-IP-Address-0 -= 192.0.2.2
 
 # Only the 1st, and 3rd Tmp-IP-Address attributes should still be in the list
-if ("%{Tmp-IP-Address-0[0]}" != '') {
+if ("%{request.Tmp-IP-Address-0[0]}" != '') {
 	test_fail
 }
 
 # Non Tmp-IP-Address-0 address attributes should still be in the request list
-if ((&Tmp-String-0 != 'foobarbaz') || (&Tmp-Integer-0 != 123456789)) {
+if ((&request.Tmp-String-0 != 'foobarbaz') || (&request.Tmp-Integer-0 != 123456789)) {
 	test_fail
 }
 

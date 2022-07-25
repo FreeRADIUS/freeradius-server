@@ -2,25 +2,19 @@
 
 # This is what most people end up using foreach for,
 # so we should probably test it works.
-update request {
-	&Tmp-String-0 := "cisco"
-}
+&request.Tmp-String-0 := "cisco"
 
 # Expanded regex
 foreach &Vendor-Specific.Cisco.AVPair {
-	if ("%{Foreach-Variable-0}"  =~ /^%{Tmp-String-0}=(.*)$/i) {
-		update reply {
-			&Called-Station-Id += "%{1}"
-		}
+	if ("%{Foreach-Variable-0}"  =~ /^%{request.Tmp-String-0}=(.*)$/i) {
+		&reply.Called-Station-Id += "%{1}"
 	}
 }
 
 # Compiled regex
 foreach &Vendor-Specific.Cisco.AVPair {
 	if ("%{Foreach-Variable-0}"  =~ /^stupid=(.*)$/i) {
-		update reply {
-			&Called-Station-Id += "%{1}"
-		}
+		&reply.Called-Station-Id += "%{1}"
 	}
 }
 

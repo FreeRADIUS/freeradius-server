@@ -4,6 +4,4 @@
 #  It's an error to assign literal values which are not
 #  part of the set of enumerated values for an attribute
 #
-update {
-	&Service-Type := 'hello'	# ERROR
-}
+&request.Service-Type := 'hello'	# ERROR

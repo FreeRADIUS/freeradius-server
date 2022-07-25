@@ -1,55 +1,49 @@
 #
 # PRE: update if
 #
-update {
-	# Some encoders replace ~ with %7E RFC3986 Section 2.4 says this should not be done.
-	&Tmp-String-0 := '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_.~'
-	&Tmp-String-2 := '±§!@#$%^&*()+={[}]:;"\'|\<,>?/`'
-	&Tmp-String-4 := '™œ¥¤'
-	&Tmp-String-6 := '%C2%B1%C2%A7%21%40%23%24%25%5E%26%2A%28%29%2B%3D%7B%5B%7D%5D%3A%3B%22%27%7C%5C%3C%2C%3E%3F%2F%60'
-	&Tmp-String-8 := '%E2%84%A2%C5%93%C2%A5%C2%A4'
-}
+# Some encoders replace ~ with %7E RFC3986 Section 2.4 says this should not be done.
+&request.Tmp-String-0 := '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_.~'
+&request.Tmp-String-2 := '±§!@#$%^&*()+={[}]:;"\'|\<,>?/`'
+&request.Tmp-String-4 := '™œ¥¤'
+&request.Tmp-String-6 := '%C2%B1%C2%A7%21%40%23%24%25%5E%26%2A%28%29%2B%3D%7B%5B%7D%5D%3A%3B%22%27%7C%5C%3C%2C%3E%3F%2F%60'
+&request.Tmp-String-8 := '%E2%84%A2%C5%93%C2%A5%C2%A4'
 
-update {
-	&Tmp-String-1 := "%{urlquote:%{Tmp-String-0}}"
-	&Tmp-String-3 := "%{urlquote:%{Tmp-String-2}}"
-	&Tmp-String-5 := "%{urlquote:%{Tmp-String-4}}"
-	&Tmp-String-7 := "%{urlunquote:%{Tmp-String-6}}"
-	&Tmp-String-9 := "%{urlunquote:%{Tmp-String-8}}"
-}
+&request.Tmp-String-1 := "%{urlquote:%{request.Tmp-String-0}}"
+&request.Tmp-String-3 := "%{urlquote:%{request.Tmp-String-2}}"
+&request.Tmp-String-5 := "%{urlquote:%{request.Tmp-String-4}}"
+&request.Tmp-String-7 := "%{urlunquote:%{request.Tmp-String-6}}"
+&request.Tmp-String-9 := "%{urlunquote:%{request.Tmp-String-8}}"
 
 
-if (&Tmp-String-1 != &Tmp-String-0) {
+if (&request.Tmp-String-1 != &request.Tmp-String-0) {
 	test_fail
 }
 
-if (&Tmp-String-3 != &Tmp-String-6) {
+if (&request.Tmp-String-3 != &request.Tmp-String-6) {
 	test_fail
 }
 
-if (&Tmp-String-5 != &Tmp-String-8) {
+if (&request.Tmp-String-5 != &request.Tmp-String-8) {
 	test_fail
 }
 
-if (&Tmp-String-7 != &Tmp-String-2) {
+if (&request.Tmp-String-7 != &request.Tmp-String-2) {
 	test_fail
 }
 
-if (&Tmp-String-9 != &Tmp-String-4) {
+if (&request.Tmp-String-9 != &request.Tmp-String-4) {
 	test_fail
 }
 
-update request {
-	&Tmp-String-1 := "%{urlunquote:%{Tmp-String-0}}"
-	&Tmp-String-2 := "%{urlunquote:%%E,123}"
-}
+&request.Tmp-String-1 := "%{urlunquote:%{request.Tmp-String-0}}"
+&request.Tmp-String-2 := "%{urlunquote:%%E,123}"
 
-if (&Tmp-String-1 != &Tmp-String-0) {
+if (&request.Tmp-String-1 != &request.Tmp-String-0) {
 	test_fail
 }
 
 # Test decoding invalid encoded string
-if (&Tmp-String-2 != "") {
+if (&request.Tmp-String-2 != "") {
 	test_fail
 }
 

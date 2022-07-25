@@ -1,12 +1,10 @@
 #
 #  PRE: update if return foreach
 #
-update control {
-	&Tmp-Integer-0 += 0
-	&Tmp-Integer-0 += 1
-	&Tmp-Integer-0 += 2
-	&Tmp-Integer-0 += 3
-}
+&control.Tmp-Integer-0 += 0
+&control.Tmp-Integer-0 += 1
+&control.Tmp-Integer-0 += 2
+&control.Tmp-Integer-0 += 3
 
 group {
 	foreach &control.Tmp-Integer-0 {

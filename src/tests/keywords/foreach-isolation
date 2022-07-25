@@ -2,20 +2,14 @@
 #  PRE: foreach
 #
 
-update {
-	&control.Tmp-String-0 := '0'
-	&control.Tmp-String-0 += '1'
-	&control.Tmp-String-0 += '2'
-	&control.Tmp-String-0 += '3'
-}
+&control.Tmp-String-0 := '0'
+&control.Tmp-String-0 += '1'
+&control.Tmp-String-0 += '2'
+&control.Tmp-String-0 += '3'
 
 foreach &control.Tmp-String-0 {
-	update control {
-		&Tmp-String-0 -= "%{expr:%{Foreach-Variable-0} + 1}"
-	}
-	update request {
-		&Tmp-String-0 += "%{Foreach-Variable-0}"
-	}
+	&control.Tmp-String-0 -= "%{expr:%{Foreach-Variable-0} + 1}"
+	&request.Tmp-String-0 += "%{Foreach-Variable-0}"
 }
 
 if (!&Tmp-String-0[0] || !&Tmp-String-0[1] || !&Tmp-String-0[2] || !&Tmp-String-0[3]) {

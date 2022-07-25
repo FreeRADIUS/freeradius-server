@@ -59,11 +59,9 @@ if ("%{Packet-Dst-Port}" != '1812') {
 
 
 # We should allow the user to overload virtual attributes
-update request {
-	&Client-Shortname := 'my_test_client'
-}
+&request.Client-Shortname := 'my_test_client'
 
-if ("%{Client-Shortname}" != 'my_test_client') {
+if ("%{request.Client-Shortname}" != 'my_test_client') {
 	test_fail
 }
 

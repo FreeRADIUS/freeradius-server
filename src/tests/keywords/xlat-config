@@ -2,23 +2,16 @@
 # PRE: update if
 #
 
-update request {
-        &Tmp-String-0 := "%(config:modules.test.boolean)"
-}
+&request.Tmp-String-0 := "%(config:modules.test.boolean)"
 
-if (&Tmp-String-0 != "no") {
+if (&request.Tmp-String-0 != "no") {
         test_fail
 }
 
-update request {
-        &Tmp-String-0 := "test"
-}
+&request.Tmp-String-0 := "test"
+&request.Tmp-Integer-0 := "%(config:modules.%{request.Tmp-String-0}.integer)"
 
-update request {
-        &Tmp-Integer-0 := "%(config:modules.%{Tmp-String-0}.integer)"
-}
-
-if (&Tmp-Integer-0 != 1) {
+if (&request.Tmp-Integer-0 != 1) {
         test_fail
 }
 

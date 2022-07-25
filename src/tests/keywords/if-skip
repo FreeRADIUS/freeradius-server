@@ -1,4 +1,4 @@
-# PRE: if
+# PRE: if update
 #
 #  Conditions which statically evaluate to "false"
 #  have their entire contents skipped on load.

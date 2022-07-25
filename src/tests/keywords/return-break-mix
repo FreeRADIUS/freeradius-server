@@ -1,12 +1,10 @@
 #
 #  PRE: update if return foreach
 #
-update control {
-	&Tmp-Integer-0 += 0
-	&Tmp-Integer-0 += 1
-	&Tmp-Integer-0 += 2
-	&Tmp-Integer-0 += 3
-}
+&control.Tmp-Integer-0 += 0
+&control.Tmp-Integer-0 += 1
+&control.Tmp-Integer-0 += 2
+&control.Tmp-Integer-0 += 3
 
 foreach &control.Tmp-Integer-0 {
 	policy_return
@@ -16,9 +14,7 @@ foreach &control.Tmp-Integer-0 {
 		break
 	}
 
-	update control {
-		&Tmp-Integer-0 -= "%{Foreach-Variable-0}"
-	}
+	&control.Tmp-Integer-0 -= "%{Foreach-Variable-0}"
 }
 
 # Everything should have been removed except
@@ -26,6 +22,7 @@ foreach &control.Tmp-Integer-0 {
 if (!&control.Tmp-Integer-0) {
 	test_fail
 }
+
 if (&control.Tmp-Integer-0[0] != 2) {
 	test_fail
 }

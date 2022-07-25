@@ -1,58 +1,38 @@
 #
-#  PRE: if update
+#  PRE: update if
 #
-update request {
-	&Framed-IP-Address := 127.0.0.1
-}
+&request.Framed-IP-Address := 127.0.0.1
+&request.Tmp-Octets-0 := &request.Framed-IP-Address
+&request.Tmp-String-0 := "%(unpack:%{request.Tmp-Octets-0} 0 ipaddr)"
+&request.Tmp-IP-Address-0 := "%(unpack:%{request.Tmp-Octets-0} 0 ipaddr)"
 
-update request {
-	&Tmp-Octets-0 := &Framed-IP-Address
-}
-
-update request {
-	&Tmp-String-0 := "%(unpack:%{Tmp-Octets-0} 0 ipaddr)"
-	&Tmp-IP-Address-0 := "%(unpack:%{Tmp-Octets-0} 0 ipaddr)"
-}
-
-if (&Tmp-String-0 != "127.0.0.1") {
+if (&request.Tmp-String-0 != "127.0.0.1") {
 	test_fail
 }
 
-if (&Tmp-IP-Address-0 != 127.0.0.1) {
+if (&request.Tmp-IP-Address-0 != 127.0.0.1) {
 	test_fail
 }
 
-update request {
-	&Tmp-Octets-0 := 0x000001020304
-}
-
-update request {
-	&Tmp-Integer-0 := "%(unpack:%{Tmp-Octets-0} 4 uint16)"
-}
+&request.Tmp-Octets-0 := 0x000001020304
+&request.Tmp-Integer-0 := "%(unpack:%{Tmp-Octets-0} 4 uint16)"
 
 # Octets 4 and 5 == 0x0304 == 772
 if (&Tmp-Integer-0 != 772) {
 	test_fail
 }
 
-update request {
-	&Tmp-String-0 := "0x48656C6C6F"
-}
-
-update request {
-	&Tmp-String-1 := "%(unpack:%{Tmp-String-0} 0 string)"
-}
+&request.Tmp-String-0 := "0x48656C6C6F"
+&request.Tmp-String-1 := "%(unpack:%{request.Tmp-String-0} 0 string)"
 
 if (&Tmp-String-1 != "Hello") {
 	test_fail
 }
 
 # Offset beyond data length
-update request {
-	&Tmp-String-1 := "%(unpack:%{Tmp-String-0} 10 string)"
-}
+&request.Tmp-String-1 := "%(unpack:%{request.Tmp-String-0} 10 string)"
 
-if (&Tmp-String-1 != "") {
+if (&request.Tmp-String-1 != "") {
 	test_fail
 }
 
@@ -61,11 +41,9 @@ if (&Module-Failure-Message != "unpack offset 10 is larger than input data lengt
 }
 
 # Invalid destination data type
-update request {
-	&Tmp-String-1 := "%(unpack:%{Tmp-String-0} 0 thing)"
-}
+&request.Tmp-String-1 := "%(unpack:%{request.Tmp-String-0} 0 thing)"
 
-if (&Tmp-String-1 != "") {
+if (&request.Tmp-String-1 != "") {
 	test_fail
 }
 
@@ -74,9 +52,7 @@ if (&Module-Failure-Message != "Invalid data type 'thing'") {
 }
 
 # Invalid source data type
-update request {
-	&Tmp-String-1 := "%(unpack:%{Tmp-Integer-0} 0 string)"
-}
+&request.Tmp-String-1 := "%(unpack:%{Tmp-Integer-0} 0 string)"
 
 if (&Tmp-String-1 != "") {
 	test_fail
@@ -87,13 +63,8 @@ if (&Module-Failure-Message != "unpack requires the input attribute to be 'strin
 }
 
 # Invalid hex string
-update request {
-	&Tmp-String-0 := '0x014sdgw'
-}
-
-update request {
-	&Tmp-String-1 := "%(unpack:%{Tmp-String-0} 0 string)"
-}
+&request.Tmp-String-0 := '0x014sdgw'
+&request.Tmp-String-1 := "%(unpack:%{request.Tmp-String-0} 0 string)"
 
 if (&Tmp-String-1 != "") {
 	test_fail
@@ -104,15 +75,10 @@ if (&Module-Failure-Message != "Invalid hex string in '0x014sdgw'") {
 }
 
 # Zero length hex string
-update request {
-	&Tmp-String-0 := '0x'
-}
+&request.Tmp-String-0 := '0x'
+&request.Tmp-String-1 := "%(unpack:%{Tmp-String-0} 0 string)"
 
-update request {
-	&Tmp-String-1 := "%(unpack:%{Tmp-String-0} 0 string)"
-}
-
-if (&Tmp-String-1 != "") {
+if (&request.Tmp-String-1 != "") {
 	test_fail
 }
 

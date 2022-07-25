@@ -1,55 +1,53 @@
 #
 #  PRE: update if xlat-attr-index
 #
-update request {
-	&Tmp-String-0 := '@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /'
-	&Tmp-String-1 := '±§#$%^&+={[}];<,>?`|"'
-	&Tmp-String-2 := '™¥¤'
-	&Tmp-String-3 := '=C2=B1=C2=A7=23=24=25=5E=26=2B=3D=7B=5B=7D=5D=3B=3C=2C=3E=3F=60=7C=22'
-	&Tmp-String-4 := '=E2=84=A2=C2=A5=C2=A4'
-	&Tmp-String-5 := '=40=61=62=63=64=65=66=67'
+&request.Tmp-String-0 := '@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /'
+&request.Tmp-String-1 := '±§#$%^&+={[}];<,>?`|"'
+&request.Tmp-String-2 := '™¥¤'
+&request.Tmp-String-3 := '=C2=B1=C2=A7=23=24=25=5E=26=2B=3D=7B=5B=7D=5D=3B=3C=2C=3E=3F=60=7C=22'
+&request.Tmp-String-4 := '=E2=84=A2=C2=A5=C2=A4'
+&request.Tmp-String-5 := '=40=61=62=63=64=65=66=67'
 
-	# Mixture of safe and unsafe chars
-	&Tmp-String-6 := 'ŒČÿ'
-	&Tmp-String-7 := 'Œ=C4=8Cÿ'
+# Mixture of safe and unsafe chars
+&request.Tmp-String-6 := 'ŒČÿ'
+&request.Tmp-String-7 := 'Œ=C4=8Cÿ'
 
-	# = not followed by hex and without 2 following chars
-	&Tmp-String-8 := 'a=Az=y'
-}
+# = not followed by hex and without 2 following chars
+&request.Tmp-String-8 := 'a=Az=y'
 
-if (<string>"%{escape:%{Tmp-String-0}}" != &Tmp-String-0) {
+if (<string>"%{escape:%{request.Tmp-String-0}}" != &request.Tmp-String-0) {
 	test_fail
 }
 
-if (<string>"%{escape:%{Tmp-String-1}}" != &Tmp-String-3) {
+if (<string>"%{escape:%{request.Tmp-String-1}}" != &request.Tmp-String-3) {
 	test_fail
 }
 
-if (<string>"%{escape:%{Tmp-String-2}}" != &Tmp-String-4) {
+if (<string>"%{escape:%{request.Tmp-String-2}}" != &request.Tmp-String-4) {
 	test_fail
 }
 
-if (<string>"%{unescape:%{Tmp-String-0}}" != &Tmp-String-0) {
+if (<string>"%{unescape:%{request.Tmp-String-0}}" != &request.Tmp-String-0) {
 	test_fail
 }
 
-if (<string>"%{unescape:%{Tmp-String-3}}" != "%{Tmp-String-1}") {
+if (<string>"%{unescape:%{request.Tmp-String-3}}" != "%{request.Tmp-String-1}") {
 	test_fail
 }
 
-if (<string>"%{unescape:%{Tmp-String-4}}" != &Tmp-String-2) {
+if (<string>"%{unescape:%{request.Tmp-String-4}}" != &request.Tmp-String-2) {
 	test_fail
 }
 
-if (<string>"%{escape:%{Tmp-String-6}}" != &Tmp-String-7) {
+if (<string>"%{escape:%{request.Tmp-String-6}}" != &request.Tmp-String-7) {
 	test_fail
 }
 
-if (<string>"%{unescape:%{Tmp-String-7}}" != &Tmp-String-6) {
+if (<string>"%{unescape:%{request.Tmp-String-7}}" != &request.Tmp-String-6) {
 	test_fail
 }
 
-if (<string>"%{unescape:%{Tmp-String-8}}" != &Tmp-String-8) {
+if (<string>"%{unescape:%{request.Tmp-String-8}}" != &request.Tmp-String-8) {
 	test_fail
 }
 

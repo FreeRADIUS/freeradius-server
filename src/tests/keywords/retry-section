@@ -1,13 +1,9 @@
 # PRE: update if
 
-update request {
-       &Tmp-Integer-0 := 0
-}
+&request.Tmp-Integer-0 := 0
 
 group {
-	update request {
-		&Tmp-Integer-0 := "%{expr: &Tmp-Integer-0 + 1}"
-	}
+	&request.Tmp-Integer-0 := "%{expr: &request.Tmp-Integer-0 + 1}"
 
 	noop
 	actions {
@@ -19,7 +15,7 @@ group {
 	}
 }
 
-if (&Tmp-Integer-0 != 3) {
+if (&request.Tmp-Integer-0 != 3) {
 	test_fail
 }
 

@@ -3,11 +3,9 @@
 #
 #  Test the map xlat
 #
-update {
-	&Tmp-String-0 := '&control.Tmp-String-0 := \'testing123\''
-	&Tmp-String-1 := "request.Vendor-Specific.Nokia-SR.MSAP-Interface = 'UNICAST_7360OLT3'"
-	&Tmp-String-1 += "request.Vendor-Specific.Nokia-SR.MSAP-Interface += 'UNICAST_7360OLT4'"
-}
+&Tmp-String-0 := '&control.Tmp-String-0 := \'testing123\''
+&Tmp-String-1 := "request.Vendor-Specific.Nokia-SR.MSAP-Interface = 'UNICAST_7360OLT3'"
+&Tmp-String-1 += "request.Vendor-Specific.Nokia-SR.MSAP-Interface += 'UNICAST_7360OLT4'"
 
 if ("%{map:%{Tmp-String-0}}" != 1) {
 	test_fail

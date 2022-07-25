@@ -4,19 +4,15 @@
 #  Update using a bareword containing a hex string
 #
 
-update {
-	&Tmp-String-0 := 0x626f62
-}
+&request.Tmp-String-0 := 0x626f62
 
-if (&Tmp-String-0 != 'bob') {
+if (&request.Tmp-String-0 != 'bob') {
 	test_fail
 }
 
-update {
-	&Tmp-String-0 := '0x626f62'
-}
+&request.Tmp-String-0 := '0x626f62'
 
-if (&Tmp-String-0 != '0x626f62') {
+if (&request.Tmp-String-0 != '0x626f62') {
 	test_fail
 }
 

@@ -3,15 +3,11 @@
 #  Matching "if" conditions
 #
 if (&User-Name != "bob") {
-	update reply {
-		&Filter-Id := "not bob"
-	}
+	&reply.Filter-Id := "not bob"
 }
 elsif (&User-Name == "bob") {
 	success
 }
 else {
-	update reply {
-		&Filter-Id := "last else"
-	}
+	&reply.Filter-Id := "last else"
 }

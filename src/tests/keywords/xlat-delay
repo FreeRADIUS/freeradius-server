@@ -6,18 +6,16 @@
 
 "%(delay_10s:)"	# Should 'blip' the request
 
-update request {
-	&Tmp-Float-0 := "%(delay_10s:0.1)"
-}
+&request.Tmp-Float-0 := "%(delay_10s:0.1)"
 
-if (!&Tmp-Float-0) {
+if (!&request.Tmp-Float-0) {
 	fail
 }
 
 #
 # Check the delay was ~100ms
 #
-if (&Tmp-Float-0 < 0.1) {
+if (&request.Tmp-Float-0 < 0.1) {
 	fail
 }
 

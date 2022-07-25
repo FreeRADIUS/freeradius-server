@@ -1,25 +1,20 @@
 #
-# PRE: update if
+# PRE: if update
 #
-update {
-        &Tmp-String-0           := "AbCdE"
-}
+&request.Tmp-String-0 := "AbCdE"
+&request.Tmp-String-0 := "%{tolower:%{request.Tmp-String-0}}"
+&request.Tmp-String-1 := "%{tolower:AAbbCCdd}"
+&request.Tmp-String-2 := "%{tolower:%{request.Tmp-String-9}}"
 
-update request {
-        &Tmp-String-0           := "%{tolower:%{Tmp-String-0}}"
-        &Tmp-String-1           := "%{tolower:AAbbCCdd}"
-        &Tmp-String-2           := "%{tolower:%{Tmp-String-9}}"
-}
-
-if (&Tmp-String-0 != "abcde") {
+if (&request.Tmp-String-0 != "abcde") {
 	test_fail
 }
 
-if (&Tmp-String-1 != "aabbccdd") {
+if (&request.Tmp-String-1 != "aabbccdd") {
 	test_fail
 }
 
-if (&Tmp-String-2 != "") {
+if (&request.Tmp-String-2 != "") {
 	test_fail
 }
 

@@ -2,36 +2,25 @@ subrequest Access-Request {
 	#
 	#  Prefix/attribute parsing disambiguation
 	#
-	update outer.request {
-		&Outer-Realm-Name := 'testing123'
-	}
+	&outer.request.Outer-Realm-Name := 'testing123'
 
-	update {
-		&User-Name := "obo"
-	}
+	&request.User-Name := "obo"
 
 	subrequest Access-Request {
-		update {
-			&User-Name := "jim"
-		}
+		&request.User-Name := "jim"
 
 		subrequest Access-Request {
-			update {
-				&User-Name := "joe"
-			}
+			&request.User-Name := "joe"
 
-			update outer.request {
-				&Tmp-String-0 := &current.User-Name
-				&Tmp-String-1 := &parent.User-Name
-				&Tmp-String-2 := &parent.parent.User-Name
-				&Tmp-String-3 := &parent.parent.parent.User-Name
-				&Tmp-String-4 := &outer.User-Name
-				&Tmp-String-5 := &current.outer.User-Name
-				&Tmp-String-6 := &parent.current.outer.User-Name
-				&Tmp-String-7 := "%{parent.parent.parent.parent.User-Name}"
-				&Tmp-String-8 := "%{outer.parent.User-Name}"
-
-			}
+			&outer.request.Tmp-String-0 := &current.User-Name
+			&outer.request.Tmp-String-1 := &parent.User-Name
+			&outer.request.Tmp-String-2 := &parent.parent.User-Name
+			&outer.request.Tmp-String-3 := &parent.parent.parent.User-Name
+			&outer.request.Tmp-String-4 := &outer.User-Name
+			&outer.request.Tmp-String-5 := &current.outer.User-Name
+			&outer.request.Tmp-String-6 := &parent.current.outer.User-Name
+			&outer.request.Tmp-String-7 := "%{parent.parent.parent.parent.User-Name}"
+			&outer.request.Tmp-String-8 := "%{outer.parent.User-Name}"
 		}
 	}
 }

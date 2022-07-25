@@ -1,48 +1,44 @@
 #
-# PRE: update if
+# PRE: if
 #
 
-update request {
-	&Tmp-String-0 := 'foo'
-	&Tmp-String-0 += 'bar'
-	&Tmp-String-0 += 'baz'
+&request.Tmp-String-0 := 'foo'
+&request.Tmp-String-0 += 'bar'
+&request.Tmp-String-0 += 'baz'
 
-	&Tmp-String-1 := 'GROUP ADMINISTRATORS'
-	&Tmp-String-1 += 'GROUP STUDENTS'
-	&Tmp-String-1 += 'GROUP PEONS'
+&request.Tmp-String-1 := 'GROUP ADMINISTRATORS'
+&request.Tmp-String-1 += 'GROUP STUDENTS'
+&request.Tmp-String-1 += 'GROUP PEONS'
 
-	&Tmp-String-2 := 'PEONS'
-	&Tmp-String-2 += 'STUDENTS'
-	&Tmp-String-2 += 'ADMINISTRATORS'
+&request.Tmp-String-2 := 'PEONS'
+&request.Tmp-String-2 += 'STUDENTS'
+&request.Tmp-String-2 += 'ADMINISTRATORS'
 
-	&Tmp-String-3 := 'no'
-	&Tmp-String-3 += 'no'
-	&Tmp-String-3 += 'yes'
+&request.Tmp-String-3 := 'no'
+&request.Tmp-String-3 += 'no'
+&request.Tmp-String-3 += 'yes'
 
-	&Tmp-Integer-0 := 1
-	&Tmp-Integer-0 += 2
-	&Tmp-Integer-0 += 5
-}
+&request.Tmp-Integer-0 := 1
+&request.Tmp-Integer-0 += 2
+&request.Tmp-Integer-0 += 5
 
-update control {
-	&Tmp-String-0 := 'foo'
-	&Tmp-String-0 += 'bar'
-	&Tmp-String-0 += 'baz'
+&control.Tmp-String-0 := 'foo'
+&control.Tmp-String-0 += 'bar'
+&control.Tmp-String-0 += 'baz'
 
-	&Tmp-String-1 := 'boink'
-	&Tmp-String-1 += 'tard'
-	&Tmp-String-1 += 'dink'
-	&Tmp-String-1 += 'slink'
+&control.Tmp-String-1 := 'boink'
+&control.Tmp-String-1 += 'tard'
+&control.Tmp-String-1 += 'dink'
+&control.Tmp-String-1 += 'slink'
 
-	&Tmp-Integer-0 := 01
-	&Tmp-Integer-0 += 02
-	&Tmp-Integer-0 += 05
-	&Tmp-Integer-0 += 04
+&control.Tmp-Integer-0 := 01
+&control.Tmp-Integer-0 += 02
+&control.Tmp-Integer-0 += 05
+&control.Tmp-Integer-0 += 04
 
-	&Tmp-Integer-1 := 10
-	&Tmp-Integer-1 += 20
-	&Tmp-Integer-1 += 30
-}
+&control.Tmp-Integer-1 := 10
+&control.Tmp-Integer-1 += 20
+&control.Tmp-Integer-1 += 30
 
 #
 #  Mmmm O(N^2)

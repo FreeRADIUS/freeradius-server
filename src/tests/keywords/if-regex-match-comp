@@ -14,9 +14,7 @@ if ("%{User-Name}" !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) 
 # Matching on attribute ref with capture groups
 if (&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
 	# Test all the capture groups
-	update {
-		&reply.User-Name := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
-	}
+	&reply.User-Name := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
 }
 else {
 	test_fail
@@ -67,17 +65,15 @@ if (&Service-Type =~ /^framed-user$/) {
 	test_fail
 }
 
-update request {
-	&Tmp-String-0 := "foo\nbar"
-}
+&request.Tmp-String-0 := "foo\nbar"
 
 # compiled - ref - multiline
-if (&Tmp-String-0 !~ /^foo$/m) {
+if (&request.Tmp-String-0 !~ /^foo$/m) {
 	test_fail
 }
 
 # compiled - ref - non-multiline
-if (&Tmp-String-0 =~ /^foo$/) {
+if (&request.Tmp-String-0 =~ /^foo$/) {
 	test_fail
 }
 
@@ -89,22 +85,22 @@ if ((('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) 
 }
 
 # compiled - ref - multiline
-if (&Tmp-String-0 !~ /^bar$/m) {
+if (&request.Tmp-String-0 !~ /^bar$/m) {
 	test_fail
 }
 
 # compiled - ref - multiline - sensitive
-if (&Tmp-String-0 =~ /^BAR$/m) {
+if (&request.Tmp-String-0 =~ /^BAR$/m) {
 	test_fail
 }
 
 # compiled - ref - multiline - insensitive
-if (&Tmp-String-0 !~ /^BAR$/mi) {
+if (&request.Tmp-String-0 !~ /^BAR$/mi) {
 	test_fail
 }
 
 # compiled - ref - multiline - insensitive (flag order reversed)
-if (&Tmp-String-0 !~ /^BAR$/im) {
+if (&request.Tmp-String-0 !~ /^BAR$/im) {
 	test_fail
 }
 

@@ -26,9 +26,8 @@ if (!fail) {
 group {
 	parallel {
 		fail
-		update request {	# This should *NOT* be dispatched
-			&Tmp-String-0 := 'foo'
-		}
+		# This should *NOT* be dispatched
+		&Tmp-String-0 := 'foo'
 	}
 	actions {
 		fail = 1
@@ -50,17 +49,19 @@ group {
 		fail {
 			fail = 10	# Higher priority than ok and no longer action return
 		}
-		update parent.request {	# This should now be dispatched
-			&Tmp-String-0 := 'foo'
-		}
+
+		# This should now be dispatched
+		&parent.request.Tmp-String-0 := 'foo'
 	}
 	actions {
 		fail = 1
 	}
 }
+
 if (!fail) {
 	test_fail
 }
+
 if (&request.Tmp-String-0 != 'foo') {
 	test_fail
 }

@@ -49,6 +49,7 @@ test: \
 		test.trie	\
 		test.dict	\
 		test.unit	\
+		test.update	\
 		test.keywords	\
 		test.xlat	\
 		test.map	\

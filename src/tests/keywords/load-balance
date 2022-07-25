@@ -4,79 +4,75 @@
 #
 #  Should distribute load between the modules.
 #
-update request {
-    &Tmp-Integer-0 := 0
-    &Tmp-Integer-1 := 0
+&request.Tmp-Integer-0 := 0
+&request.Tmp-Integer-1 := 0
 
-    &Tmp-Integer-2 += 0		# 0
-    &Tmp-Integer-2 += 1
-    &Tmp-Integer-2 += 2
-    &Tmp-Integer-2 += 3
-    &Tmp-Integer-2 += 4
-    &Tmp-Integer-2 += 5
-    &Tmp-Integer-2 += 6
-    &Tmp-Integer-2 += 7
-    &Tmp-Integer-2 += 8
-    &Tmp-Integer-2 += 9		# 10
-    &Tmp-Integer-2 += 0
-    &Tmp-Integer-2 += 1
-    &Tmp-Integer-2 += 2
-    &Tmp-Integer-2 += 3
-    &Tmp-Integer-2 += 4
-    &Tmp-Integer-2 += 5
-    &Tmp-Integer-2 += 6
-    &Tmp-Integer-2 += 7
-    &Tmp-Integer-2 += 8
-    &Tmp-Integer-2 += 9		# 20
-    &Tmp-Integer-2 += 0
-    &Tmp-Integer-2 += 1
-    &Tmp-Integer-2 += 2
-    &Tmp-Integer-2 += 3
-    &Tmp-Integer-2 += 4
-    &Tmp-Integer-2 += 5
-    &Tmp-Integer-2 += 6
-    &Tmp-Integer-2 += 7
-    &Tmp-Integer-2 += 8
-    &Tmp-Integer-2 += 9		# 30
-    &Tmp-Integer-2 += 0
-    &Tmp-Integer-2 += 1
-    &Tmp-Integer-2 += 2
-    &Tmp-Integer-2 += 3
-    &Tmp-Integer-2 += 4
-    &Tmp-Integer-2 += 5
-    &Tmp-Integer-2 += 6
-    &Tmp-Integer-2 += 7
-    &Tmp-Integer-2 += 8
-    &Tmp-Integer-2 += 9		# 40
-    &Tmp-Integer-2 += 0
-    &Tmp-Integer-2 += 1
-    &Tmp-Integer-2 += 2
-    &Tmp-Integer-2 += 3
-    &Tmp-Integer-2 += 4
-    &Tmp-Integer-2 += 5
-    &Tmp-Integer-2 += 6
-    &Tmp-Integer-2 += 7
-    &Tmp-Integer-2 += 8
-    &Tmp-Integer-2 += 9		# 49
-}
+&request.Tmp-Integer-2 += 0		# 0
+&request.Tmp-Integer-2 += 1
+&request.Tmp-Integer-2 += 2
+&request.Tmp-Integer-2 += 3
+&request.Tmp-Integer-2 += 4
+&request.Tmp-Integer-2 += 5
+&request.Tmp-Integer-2 += 6
+&request.Tmp-Integer-2 += 7
+&request.Tmp-Integer-2 += 8
+&request.Tmp-Integer-2 += 9		# 10
+&request.Tmp-Integer-2 += 0
+&request.Tmp-Integer-2 += 1
+&request.Tmp-Integer-2 += 2
+&request.Tmp-Integer-2 += 3
+&request.Tmp-Integer-2 += 4
+&request.Tmp-Integer-2 += 5
+&request.Tmp-Integer-2 += 6
+&request.Tmp-Integer-2 += 7
+&request.Tmp-Integer-2 += 8
+&request.Tmp-Integer-2 += 9		# 20
+&request.Tmp-Integer-2 += 0
+&request.Tmp-Integer-2 += 1
+&request.Tmp-Integer-2 += 2
+&request.Tmp-Integer-2 += 3
+&request.Tmp-Integer-2 += 4
+&request.Tmp-Integer-2 += 5
+&request.Tmp-Integer-2 += 6
+&request.Tmp-Integer-2 += 7
+&request.Tmp-Integer-2 += 8
+&request.Tmp-Integer-2 += 9		# 30
+&request.Tmp-Integer-2 += 0
+&request.Tmp-Integer-2 += 1
+&request.Tmp-Integer-2 += 2
+&request.Tmp-Integer-2 += 3
+&request.Tmp-Integer-2 += 4
+&request.Tmp-Integer-2 += 5
+&request.Tmp-Integer-2 += 6
+&request.Tmp-Integer-2 += 7
+&request.Tmp-Integer-2 += 8
+&request.Tmp-Integer-2 += 9		# 40
+&request.Tmp-Integer-2 += 0
+&request.Tmp-Integer-2 += 1
+&request.Tmp-Integer-2 += 2
+&request.Tmp-Integer-2 += 3
+&request.Tmp-Integer-2 += 4
+&request.Tmp-Integer-2 += 5
+&request.Tmp-Integer-2 += 6
+&request.Tmp-Integer-2 += 7
+&request.Tmp-Integer-2 += 8
+&request.Tmp-Integer-2 += 9		# 49
 
 #
 #  Loop 0..9
 #
-foreach &Tmp-Integer-2 {
+foreach &request.Tmp-Integer-2 {
 	load-balance {
 		group {
-			update request {
-				&Tmp-Integer-0 := "%{expr:%{Tmp-Integer-0} + 1}"
-				&Filter-Id += "PICKED GROUP 1 %{Tmp-Integer-0} TIME(S)"
-			}
+			&request.Tmp-Integer-0 := "%{expr:%{request.Tmp-Integer-0} + 1}"
+			&request.Filter-Id += "PICKED GROUP 1 %{request.Tmp-Integer-0} TIME(S)"
+
 			ok
 		}
 		group {
-			update request {
-				&Tmp-Integer-1 := "%{expr:%{Tmp-Integer-1} + 1}"
-				&Filter-Id += "PICKED GROUP 2 %{Tmp-Integer-1} TIME(S)"
-			}
+			&request.Tmp-Integer-1 := "%{expr:%{request.Tmp-Integer-1} + 1}"
+			&request.Filter-Id += "PICKED GROUP 2 %{request.Tmp-Integer-1} TIME(S)"
+
 			ok
 		}
 	}
@@ -85,7 +81,7 @@ foreach &Tmp-Integer-2 {
 # The chances of one group being used over another 50 times by random occurrence
 # is quite small, and if this happens repeatedly, it's likely there's a bug in
 # the load-balance code or random number generator.
-if ((&Tmp-Integer-0 == 0) || (&Tmp-Integer-1 == 0)) {
+if ((&request.Tmp-Integer-0 == 0) || (&request.Tmp-Integer-1 == 0)) {
 	test_fail
 }
 else {

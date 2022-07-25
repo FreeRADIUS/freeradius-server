@@ -13,9 +13,7 @@ if (&session-state.) {
 	test_fail
 }
 
-update session-state {
-	&User-Name := 'foo'
-}
+&session-state.User-Name := 'foo'
 
 if (!&session-state.) {
 	test_fail

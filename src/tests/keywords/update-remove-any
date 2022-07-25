@@ -1,32 +1,28 @@
 #
 # PRE: update
 #
-update {
-	&request.Tmp-String-0 := 'foobarbaz'
-	&request.Tmp-Integer-0 := 123456789
-	&request.Tmp-IP-Address-0 := 192.0.2.1
-	&request.Tmp-IP-Address-0 += 192.0.2.2
-	&control.Tmp-IP-Address-0 := 192.0.2.1
-	&control.Tmp-IP-Address-0 += 192.0.2.3
-	&control.Tmp-IP-Address-1 := 192.0.3.1
-}
+&request.Tmp-String-0 := 'foobarbaz'
+&request.Tmp-Integer-0 := 123456789
+&request.Tmp-IP-Address-0 := 192.0.2.1
+&request.Tmp-IP-Address-0 += 192.0.2.2
+&control.Tmp-IP-Address-0 := 192.0.2.1
+&control.Tmp-IP-Address-0 += 192.0.2.3
+&control.Tmp-IP-Address-1 := 192.0.3.1
 
-if (("%{Tmp-IP-Address-0[0]}" != 192.0.2.1) || ("%{Tmp-IP-Address-0[1]}" != 192.0.2.2)) {
+if (("%{request.Tmp-IP-Address-0[0]}" != 192.0.2.1) || ("%{request.Tmp-IP-Address-0[1]}" != 192.0.2.2)) {
 	test_fail
 }
 
 # Remove all attributes in the request list
-update {
-	&request.Tmp-IP-Address-0 !* ANY
-}
+&request.Tmp-IP-Address-0 !* ANY
 
 # Non Tmp-IP-Address-0 address attributes should still be in the request list
-if ((&Tmp-String-0 != 'foobarbaz') || (&Tmp-Integer-0 != 123456789)) {
+if ((&request.Tmp-String-0 != 'foobarbaz') || (&request.Tmp-Integer-0 != 123456789)) {
 	test_fail
 }
 
 # There should be no Tmp-IP-Address attributes in the request list
-if (&Tmp-IP-Address-0 || ("%{Tmp-IP-Address-0[1]}" != '')) {
+if (&request.Tmp-IP-Address-0 || ("%{request.Tmp-IP-Address-0[1]}" != '')) {
 	test_fail
 }
 
@@ -35,10 +31,8 @@ if ((&control.Tmp-IP-Address-0 != 192.0.2.1) || ("%{control.Tmp-IP-Address-0[1]}
 	test_fail
 }
 
-update {
-	&control.Tmp-IP-Address-0 !* ANY
-	&control.Tmp-IP-Address-1 !* ANY
-}
+&control.Tmp-IP-Address-0 !* ANY
+&control.Tmp-IP-Address-1 !* ANY
 
 if (&control.Tmp-IP-Address-0 || &control.Tmp-IP-Address-1) {
 	test_fail

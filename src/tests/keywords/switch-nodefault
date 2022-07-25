@@ -4,9 +4,7 @@
 #
 switch &User-Name {
 	case "doug" {
-		update reply {
-			&Filter-Id := "doug"
-		}
+		&reply.Filter-Id := "doug"
 	}
 }
 

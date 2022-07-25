@@ -4,24 +4,20 @@
 #  Form attribute references with xlats
 #
 
-update request {
-	&Tmp-String-0 := 'Tmp-String-1'
-}
+&request.Tmp-String-0 := 'Tmp-String-1'
 
 #
 #  Shouldn't update Tmp-String-0, should instead update Tmp-String-1
 #  ... maybe this is what Alan meant when he was talking about people
 #  doing stupid things with this feature.
 #
-update request {
-	"%{Tmp-String-0}" := 'hello'
-}
+"%{request.Tmp-String-0}" := 'hello'
 
-if (&Tmp-String-1 != 'hello') {
+if (&request.Tmp-String-1 != 'hello') {
 	test_fail
 }
 
-if (&Tmp-String-0 == 'hello') {
+if (&request.Tmp-String-0 == 'hello') {
 	test_fail
 }
 
@@ -29,14 +25,10 @@ if (&Tmp-String-0 == 'hello') {
 #  Try updating an attribute specified by an OID string
 #  for an unknown vendor
 #
-update {
-	&Tmp-Integer-0 := 66
-}
-update {
-	"Vendor-%{Tmp-Integer-0}-1" := 0x01020304
-}
+&request.Tmp-Integer-0 := 66
+"Vendor-%{request.Tmp-Integer-0}-1" := 0x01020304
 
-if (&Vendor-66-1 != 0x01020304) {
+if (&request.Vendor-66-1 != 0x01020304) {
 	test_fail
 }
 
@@ -44,22 +36,16 @@ if (&Vendor-66-1 != 0x01020304) {
 #  Try updating an attribute specified by an OID string
 #  for a known vendor
 #
-update {
-	&Tmp-Integer-0 := 11344
-}
-update {
-	"Vendor-%{Tmp-Integer-0}-1" := 127.0.0.1
-}
+&request.Tmp-Integer-0 := 11344
+"Vendor-%{request.Tmp-Integer-0}-1" := 127.0.0.1
 
-if (&Vendor-Specific.FreeRADIUS.Proxied-To != 127.0.0.1) {
+if (&request.Vendor-Specific.FreeRADIUS.Proxied-To != 127.0.0.1) {
 	test_fail
 }
 
-update {
-	"%(attr_num:Tmp-String-1)" := 'hello2'
-}
+"%(attr_num:request.Tmp-String-1)" := 'hello2'
 
-if (&Tmp-String-1 != 'hello2') {
+if (&request.Tmp-String-1 != 'hello2') {
 	test_fail
 }
 

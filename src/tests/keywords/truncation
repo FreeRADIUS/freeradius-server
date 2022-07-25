@@ -1,8 +1,8 @@
 # cat /dev/urandom | env LC_CTYPE=C tr -cd 'a-f0-9' | head -c <n>
 
 # 8192 - 0x (2) - '' (2) there are unlikely to be any static buffers this big outside of the conffile parser
-update request {
-	&Tmp-Octets-0 := 0x\
+
+&request.Tmp-Octets-0 := 0x\
 d8abccb7834711af1de1812be2579febe946f5d7beef6fa5c7074c0cb917e9b91e23e14b016f27610097c16c0e0fad88176e077b24198c770746159\
 05b8810d1c8b774d98889fa5c6027cde5e9c56dd4f7c48298c7713aeca5ba5dcfd506032ad05b1396f50e825b633d5a6af0dce6181b640287e03a65\
 8734df46a86341556f28455b3f377313a5a2ac8c8267b8a5de559b95f9b493a68b9e0278485f9e3914d702b2b7b90ee85ff393461f197386d09b836\
@@ -72,27 +72,22 @@ fc813bd2e58c6d0dfd951570dbff4b5e73ce547cd100ab320b6944e887d611b3425bfcdf3bfa852f
 fc6afab4c5dd4aae4a2e6f0293c15278d557c2925acba90c73eeea09ebb95f0d469aa77ae983a0e69dacd55bd8a7e78a41df5227de35af05127fa3b\
 a02f4a3ab98d75992d68a15d393387fe9ef01041569570ad6fe884764e55567311bcacfcffae76554dcfebfde607500f50ec85f589eaade607500f5\
 3ae4bcef324b9a3f47ba5c835b54a010ca42f3b9cc5368278c148c9b02ea8c4c9f244fd49f
-}
 
 # Actual length of octet string is 4083 bytes
-update request {
-	&Tmp-Integer-0 := "%(length:%{Tmp-Octets-0})"
-}
+&request.Tmp-Integer-0 := "%(length:%{request.Tmp-Octets-0})"
 
-if (&Tmp-Integer-0 != 4083) {
+if (&request.Tmp-Integer-0 != 4083) {
 	test_fail
 }
 
 # Octets are expanded to 8168 hexits
-if ("%{Tmp-Octets-0}" !~ /^0x([0-9a-f]+)$/) {
+if ("%{request.Tmp-Octets-0}" !~ /^0x([0-9a-f]+)$/) {
 	test_fail
 }
 
-update request {
-	&Tmp-String-0 := "%{1}"
-}
+&request.Tmp-String-0 := "%{1}"
 
-if ("%(length:%{Tmp-String-0})" != 8166) {
+if ("%(length:%{request.Tmp-String-0})" != 8166) {
 	test_fail
 }
 

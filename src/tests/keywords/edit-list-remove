@@ -2,11 +2,9 @@
 # PRE: edit-list
 #
 
-update request {
-	&Tmp-Octets-0 := 0x00
-	&Tmp-String-0 := "foo"
-	&Tmp-Integer-0 := 1
-}
+&Tmp-Octets-0 := 0x00
+&Tmp-String-0 := "foo"
+&Tmp-Integer-0 := 1
 
 #  Does exist
 if (!&request.Tmp-String-0) {
@@ -33,11 +31,9 @@ if (!&request.Tmp-Integer-0) {
 #
 #  Add multiple of the same type
 #
-update request {
-	&Tmp-String-0 := "foo"
-	&Tmp-String-0 += "bar"
-	&Tmp-String-0 += "baz"
-}
+&Tmp-String-0 := "foo"
+&Tmp-String-0 += "bar"
+&Tmp-String-0 += "baz"
 
 if (!&request.Tmp-String-0) {
 	test_fail

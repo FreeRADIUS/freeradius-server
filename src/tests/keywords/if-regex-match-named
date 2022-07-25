@@ -1,10 +1,8 @@
 # PRE: if if-failed-xlat
 #
 if (('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) {
-update request {
-	&Tmp-Integer-0 := '123456789'
-	&Tmp-Integer-1 := 1
-}
+&request.Tmp-Integer-0 := '123456789'
+&request.Tmp-Integer-1 := 1
 
 # Check failure when no previous capture - full capture
 if ("%{regex:}") {
@@ -15,9 +13,7 @@ if (&Module-Failure-Message[*] != "No previous regex capture") {
 	test_fail
 }
 
-update request {
-	&Module-Failure-Message !* ANY
-}
+&request.Module-Failure-Message !* ANY
 
 # Check failure when no previous capture - named group
 if ("%{regex:foo}") {
@@ -28,9 +24,7 @@ if (&Module-Failure-Message[*] != "No previous named regex capture group") {
 	test_fail
 }
 
-update request {
-	&Module-Failure-Message !* ANY
-}
+&request.Module-Failure-Message !* ANY
 
 # Check failure when no previous capture - numbered group
 if ("%{regex:%{Tmp-Integer-1}}") {
@@ -41,15 +35,12 @@ if (&Module-Failure-Message[*] != "No previous numbered regex capture group") {
 	test_fail
 }
 
-update request {
-	&Module-Failure-Message !* ANY
-}
+&request.Module-Failure-Message !* ANY
 
 # uncompiled - ref - named capture groups
 if (&User-Name =~ /^(?<one>[0-9])_(?<two>[0-9])?_(?<three>[0-9]*)_(?<four>[0-9]+)_(?<five>[^_])_(?<six>6)_(?<seven>[7-8])%{Tmp-String-1}/) {
-	update request {
-		&Tmp-String-0 := "%{regex:seven}_%{regex:six}_%{regex:five}_%{regex:four}_%{regex:three}_%{regex:two}_%{regex:one}_%{0}"
-	}
+	&request.Tmp-String-0 := "%{regex:seven}_%{regex:six}_%{regex:five}_%{regex:four}_%{regex:three}_%{regex:two}_%{regex:one}_%{0}"
+	
 	if (&Tmp-String-0 != '7_6_5_4_3_2_1_1_2_3_4_5_6_7') {
 		test_fail
 	}
@@ -60,9 +51,8 @@ else {
 
 # Checking capture groups are cleared out correctly
 if (&User-Name =~ /^(?<one>[0-9])_%{Tmp-String-1}/) {
-	update request {
-		&Tmp-String-0 := "%{0}%{regex:one}%{regex:two}%{regex:three}%{regex:four}%{regex:five}%{regex:six}%{regex:seven}"
-	}
+	&request.Tmp-String-0 := "%{0}%{regex:one}%{regex:two}%{regex:three}%{regex:four}%{regex:five}%{regex:six}%{regex:seven}"
+
 	if (&Tmp-String-0 != '1_1') {
 		test_fail
 	}
@@ -73,10 +63,9 @@ else {
 
 # Checking capture groups are cleared out correctly when there are no matches
 if (&User-Name =~ /^.%{Tmp-String-1}/) {
-	update request {
-		&Tmp-String-0 := "%{0}%{regex:one}%{regex:two}%{regex:three}%{regex:four}%{regex:five}%{regex:six}%{regex:seven}"
-	}
-	if (&Tmp-String-0 != '1') {
+	&request.Tmp-String-0 := "%{0}%{regex:one}%{regex:two}%{regex:three}%{regex:four}%{regex:five}%{regex:six}%{regex:seven}"
+
+	if (&request.Tmp-String-0 != '1') {
 		test_fail
 	}
 }
@@ -86,10 +75,9 @@ else {
 
 # compiled - ref - named capture groups
 if (&User-Name =~ /^(?<one>[0-9])_(?<two>[0-9])?_(?<three>[0-9]*)_(?<four>[0-9]+)_(?<five>[^_])_(?<six>6)_(?<seven>[7-8])/) {
-	update request {
-		&Tmp-String-0 := "%{regex:seven}_%{regex:six}_%{regex:five}_%{regex:four}_%{regex:three}_%{regex:two}_%{regex:one}_%{0}"
-	}
-	if (&Tmp-String-0 != '7_6_5_4_3_2_1_1_2_3_4_5_6_7') {
+	&request.Tmp-String-0 := "%{regex:seven}_%{regex:six}_%{regex:five}_%{regex:four}_%{regex:three}_%{regex:two}_%{regex:one}_%{0}"
+
+	if (&request.Tmp-String-0 != '7_6_5_4_3_2_1_1_2_3_4_5_6_7') {
 		test_fail
 	}
 }
@@ -99,10 +87,9 @@ else {
 
 # compiled - xlat - named capture groups
 if ('1_2_3_4_5_6_7' =~ /^(?<one>[0-9])_(?<two>[0-9])?_(?<three>[0-9]*)_(?<four>[0-9]+)_(?<five>[^_])_(?<six>6)_(?<seven>[7-8])/) {
-	update request {
-		&Tmp-String-0 := "%{regex:seven}_%{regex:six}_%{regex:five}_%{regex:four}_%{regex:three}_%{regex:two}_%{regex:one}_%{0}"
-	}
-	if (&Tmp-String-0 != '7_6_5_4_3_2_1_1_2_3_4_5_6_7') {
+	&request.Tmp-String-0 := "%{regex:seven}_%{regex:six}_%{regex:five}_%{regex:four}_%{regex:three}_%{regex:two}_%{regex:one}_%{0}"
+
+	if (&request.Tmp-String-0 != '7_6_5_4_3_2_1_1_2_3_4_5_6_7') {
 		test_fail
 	}
 }
@@ -112,10 +99,9 @@ else {
 
 # compiled - ref - named capture groups (numeric indexes)
 if (&User-Name =~ /^(?<one>[0-9])_(?<two>[0-9])?_(?<three>[0-9]*)_(?<four>[0-9]+)_(?<five>[^_])_(?<six>6)_(?<seven>[7-8])/) {
-	update request {
-		&Tmp-String-0 := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
-	}
-	if (&Tmp-String-0 != '7_6_5_4_3_2_1_1_2_3_4_5_6_7') {
+	&request.Tmp-String-0 := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
+
+	if (&request.Tmp-String-0 != '7_6_5_4_3_2_1_1_2_3_4_5_6_7') {
 		test_fail
 	}
 
@@ -126,19 +112,16 @@ else {
 
 # compiled - ref - named capture groups (numeric indexes using expansion)
 if (&User-Name =~ /^(?<one>[0-9])_(?<two>[0-9])?_(?<three>[0-9]*)_(?<four>[0-9]+)_(?<five>[^_])_(?<six>6)_(?<seven>[7-8])/) {
-	update request {
-		&Tmp-Integer-0 := 0
-		&Tmp-Integer-1 := 1
-		&Tmp-Integer-2 := 2
-		&Tmp-Integer-3 := 3
-		&Tmp-Integer-4 := 4
-		&Tmp-Integer-5 := 5
-		&Tmp-Integer-6 := 6
-		&Tmp-Integer-7 := 7
-	}
-	update request {
-		&Tmp-String-0 := "%{regex:%{Tmp-Integer-7}}_%{regex:%{Tmp-Integer-6}}_%{regex:%{Tmp-Integer-5}}_%{regex:%{Tmp-Integer-4}}_%{regex:%{Tmp-Integer-3}}_%{regex:%{Tmp-Integer-2}}_%{regex:%{Tmp-Integer-1}}_%{regex:%{Tmp-Integer-0}}"
-	}
+	&request.Tmp-Integer-0 := 0
+	&request.Tmp-Integer-1 := 1
+	&request.Tmp-Integer-2 := 2
+	&request.Tmp-Integer-3 := 3
+	&request.Tmp-Integer-4 := 4
+	&request.Tmp-Integer-5 := 5
+	&request.Tmp-Integer-6 := 6
+	&request.Tmp-Integer-7 := 7
+	&request.Tmp-String-0 := "%{regex:%{Tmp-Integer-7}}_%{regex:%{Tmp-Integer-6}}_%{regex:%{Tmp-Integer-5}}_%{regex:%{Tmp-Integer-4}}_%{regex:%{Tmp-Integer-3}}_%{regex:%{Tmp-Integer-2}}_%{regex:%{Tmp-Integer-1}}_%{regex:%{Tmp-Integer-0}}"
+
 	if (&Tmp-String-0 != '7_6_5_4_3_2_1_1_2_3_4_5_6_7') {
 		test_fail
 	}

@@ -4,9 +4,7 @@
 #  "else" has to be preceded by an "if" or "elsif"
 #
 if (1) {
-	update control {
-		&Password.Cleartext := "fail"
-	}
+	&control.Password.Cleartext := "fail"
 
 	else {	# ERROR
 	     ok

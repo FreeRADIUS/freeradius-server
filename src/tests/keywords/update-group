@@ -1,13 +1,11 @@
 #
 #  PRE: update
 #
-update reply {
-	#
-	#  Update the contents of a group
-	#
-	&Tmp-Group-0 := {
-		Tmp-String-0 = "foo"
-	}
+#
+#  Update the contents of a group
+#
+&reply.Tmp-Group-0 := {
+	Tmp-String-0 = "foo"
 }
 
 success

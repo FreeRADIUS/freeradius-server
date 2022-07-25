@@ -1,13 +1,11 @@
 #
 #  PRE: update
 #
-update reply {
-       &Tmp-String-0 := "foo"
+&request.Tmp-String-0 := "foo"
 
-       #
-       #  This is a string, so it's NOT allowed.
-       #
-       &Tmp-String-1 := {
-		Tmp-String-2 := "1.0" # ERROR
-       }
+#
+#  This is a string, so it's NOT allowed.
+#
+&requestTmp-String-1 := {
+	Tmp-String-2 := "1.0" # ERROR
 }

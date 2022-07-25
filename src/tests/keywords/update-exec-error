@@ -5,6 +5,4 @@
 #
 #  Malformed expansion should be a parse error.
 #
-update request {
-	&Tmp-String-0 = `/bin/sh -c %{User-Name`   # ERROR
-}
+&request.Tmp-String-0 = `/bin/sh -c %{User-Name`   # ERROR

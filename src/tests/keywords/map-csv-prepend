@@ -2,9 +2,7 @@
 #  PRE: update map
 #
 
-update control {
-	&Tmp-String-0 := "fail"
-}
+&control.Tmp-String-0 := "fail"
 
 map csv &User-Name {
 	&control.Tmp-String-0 ^= 'field3'

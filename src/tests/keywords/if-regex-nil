@@ -1,5 +1,5 @@
 #
-#  PRE: if
+#  PRE: if update
 #
 if (&User-Name !~ /^\0/) {
 	success

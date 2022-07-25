@@ -1,17 +1,15 @@
 #
 #  PRE: edit
 #
-update request {
-	&Tmp-Integer-0 := 4
-	&Tmp-Integer-1 := 5
-}
+&request.Tmp-Integer-0 := 4
+&request.Tmp-Integer-1 := 5
 
 #
 #  First modification succeeds.  The second modification fails, which
 #  also reverts the changes to the first one.
 #
-&Tmp-Integer-0 += 5
-&Tmp-Integer-1 -= 16	# Run-time underflow!
+&request.Tmp-Integer-0 += 5
+&request.Tmp-Integer-1 -= 16	# Run-time underflow!
 
 # try to see what's up
 %(debug_attr:request[*])
@@ -19,11 +17,11 @@ update request {
 #
 #  The various edits above should have been reverted.
 #
-if (&Tmp-Integer-0 != 4) {
+if (&request.Tmp-Integer-0 != 4) {
 	test_fail
 }
 
-if (&Tmp-Integer-1 != 5) {
+if (&request.Tmp-Integer-1 != 5) {
 	test_fail
 }
 success

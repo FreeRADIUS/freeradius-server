@@ -1,102 +1,96 @@
 #
-# PRE: update
+# PRE:
 #
-update request {
-	&Tmp-String-0		:= '9870'
-	&Tmp-Octets-0		:= 0x39383731
-	&Tmp-IP-Address-0	:= 57.56.55.50
-	&Tmp-Integer-0		:= 959985460
-	&Tmp-Cast-IfId		:= '0000:0000:3938:3737'
-	&Tmp-Cast-IPv6Addr	:= '::3938:3738'
-	&Tmp-Cast-IPv6Prefix	:= '::3938:3739/128'
-	&Tmp-Cast-Byte		:= 58
-	&Tmp-Cast-Short		:= 14139
-	&Tmp-Cast-Ether		:= 00:00:39:38:37:3c
-	&Tmp-Cast-Integer64 	:= 1152921505566832445
-	&Tmp-Cast-IPv4Prefix	:= 57.56.55.62/32
-}
+&request.Tmp-String-0		:= '9870'
+&request.Tmp-Octets-0		:= 0x39383731
+&request.Tmp-IP-Address-0	:= 57.56.55.50
+&request.Tmp-Integer-0		:= 959985460
+&request.Tmp-Cast-IfId		:= '0000:0000:3938:3737'
+&request.Tmp-Cast-IPv6Addr	:= '::3938:3738'
+&request.Tmp-Cast-IPv6Prefix	:= '::3938:3739/128'
+&request.Tmp-Cast-Byte		:= 58
+&request.Tmp-Cast-Short		:= 14139
+&request.Tmp-Cast-Ether		:= 00:00:39:38:37:3c
+&request.Tmp-Cast-Integer64 	:= 1152921505566832445
+&request.Tmp-Cast-IPv4Prefix	:= 57.56.55.62/32
 
-update request {
-	&Tmp-String-0		:= "%{hex:%{Tmp-String-0}}"
-	&Tmp-String-1		:= "%{hex:%{Tmp-Octets-0}}"
-	&Tmp-String-2		:= "%{hex:%{Tmp-IP-Address-0}}"
-	&Tmp-String-4		:= "%{hex:%{Tmp-Integer-0}}"
-	&Tmp-String-6		:= "%{hex:%{Tmp-Cast-Ifid}}"
-	&Tmp-String-7		:= "%{hex:%{Tmp-Cast-IPv6Addr}}"
-	&Tmp-String-8		:= "%{hex:%{Tmp-Cast-IPv6Prefix}}"
-	&Tmp-String-9		:= "%{hex:%{Tmp-Cast-Byte}}"
-}
+&request.Tmp-String-0		:= "%{hex:%{Tmp-String-0}}"
+&request.Tmp-String-1		:= "%{hex:%{Tmp-Octets-0}}"
+&request.Tmp-String-2		:= "%{hex:%{Tmp-IP-Address-0}}"
+&request.Tmp-String-4		:= "%{hex:%{Tmp-Integer-0}}"
+&request.Tmp-String-6		:= "%{hex:%{Tmp-Cast-Ifid}}"
+&request.Tmp-String-7		:= "%{hex:%{Tmp-Cast-IPv6Addr}}"
+&request.Tmp-String-8		:= "%{hex:%{Tmp-Cast-IPv6Prefix}}"
+&request.Tmp-String-9		:= "%{hex:%{Tmp-Cast-Byte}}"
 
 # String
-if (&Tmp-String-0 != '39383730') {
+if (&request.Tmp-String-0 != '39383730') {
 	test_fail
 }
 
 # Octets
-if (&Tmp-String-1 != '39383731') {
+if (&request.Tmp-String-1 != '39383731') {
 	test_fail
 }
 
 # IP Address
-if (&Tmp-String-2 != '39383732') {
+if (&request.Tmp-String-2 != '39383732') {
 	test_fail
 }
 
 # Integer
-if (&Tmp-String-4 != '39383734') {
+if (&request.Tmp-String-4 != '39383734') {
 	test_fail
 }
 
 # ifid
-if (&Tmp-String-6 != '0000000039383737') {
+if (&request.Tmp-String-6 != '0000000039383737') {
 	test_fail
 }
 
 # ipv6addr
-if (&Tmp-String-7 != '00000000000000000000000039383738') {
+if (&request.Tmp-String-7 != '00000000000000000000000039383738') {
 	test_fail
 }
 
 # ipv6addrprefix
-if (&Tmp-String-8 != '008000000000000000000000000039383739') {
+if (&request.Tmp-String-8 != '008000000000000000000000000039383739') {
 	test_fail
 }
 
 # byte
-if (&Tmp-String-9 != '3a') {
+if (&request.Tmp-String-9 != '3a') {
 	test_fail
 }
 
-update request {
-	&Tmp-String-0        := "%{hex:%{Tmp-Cast-Short}}"
-	&Tmp-String-1        := "%{hex:%{Tmp-Cast-Ether}}"
-	&Tmp-String-2        := "%{hex:%{Tmp-Cast-Integer64}}"
-	&Tmp-String-3        := "%{hex:%{Tmp-Cast-IPv4Prefix}}"
-	&Tmp-String-4        := "%{hex:%{Tmp-Octets-9}}"
-}
+&request.Tmp-String-0        := "%{hex:%{Tmp-Cast-Short}}"
+&request.Tmp-String-1        := "%{hex:%{Tmp-Cast-Ether}}"
+&request.Tmp-String-2        := "%{hex:%{Tmp-Cast-Integer64}}"
+&request.Tmp-String-3        := "%{hex:%{Tmp-Cast-IPv4Prefix}}"
+&request.Tmp-String-4        := "%{hex:%{Tmp-Octets-9}}"
 
 # short
-if (&Tmp-String-0 != '373b') {
+if (&request.Tmp-String-0 != '373b') {
 	test_fail
 }
 
 # ethernet
-if (&Tmp-String-1 != '00003938373c') {
+if (&request.Tmp-String-1 != '00003938373c') {
 	test_fail
 }
 
 # integer64
-if (&Tmp-String-2 != '100000003938373d') {
+if (&request.Tmp-String-2 != '100000003938373d') {
 	test_fail
 }
 
 # ipv4prefix
-if (&Tmp-String-3 != '203938373e') {
+if (&request.Tmp-String-3 != '203938373e') {
 	test_fail
 }
 
 # Empty input
-if (&Tmp-String-4 != '') {
+if (&request.Tmp-String-4 != '') {
 	test_fail
 }
 

@@ -7,7 +7,5 @@ if (&User-Name == "bob") {
 }
 
 if (&User-Name != "bob") {
-	update reply {
-		&Filter-Id := "not bob"
-	}
+	&reply.Filter-Id := "not bob"
 }

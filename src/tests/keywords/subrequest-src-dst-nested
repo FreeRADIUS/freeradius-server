@@ -1,6 +1,4 @@
-update request {
-        &User-Name := 'bob'
-}
+&request.User-Name := 'bob'
 
 subrequest Access-Request &request &reply.Tmp-Group-0 {
         subrequest Access-Request &request &reply.Tmp-Group-0 {
@@ -12,9 +10,7 @@ subrequest Access-Request &request &reply.Tmp-Group-0 {
                         test_fail
                 }
 
-                update reply {
-                        &Tmp-String-0 := 'hello from subrequest'
-                }
+                &reply.Tmp-String-0 := 'hello from subrequest'
         }
 }
 
@@ -31,4 +27,3 @@ if (&reply.Tmp-Group-0.Tmp-Group-0.Tmp-String-0 != 'hello from subrequest') {
 }
 
 success
-

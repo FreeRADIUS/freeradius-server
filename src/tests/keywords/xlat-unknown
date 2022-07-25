@@ -1,9 +1,7 @@
 #
-# PRE: update escape
+# PRE: escape
 #
-update reply {
-	&Vendor-Specific.WiMAX.Capability.Release = "foo"
-}
+&reply.Vendor-Specific.WiMAX.Capability.Release = "foo"
 
 #
 #  This should be Vendor-Specific.WiMAX.Relase, so the

@@ -1,48 +1,46 @@
 
-update request {
-        &Tmp-String-0           := "%{randstr:%{Tmp-String-0}}"
-        &Tmp-String-1           := "%{randstr:nnn}"
-        &Tmp-String-2           := "%{randstr:24a}"
-        &Tmp-String-3           := "%{randstr:1030aa}"
-        &Tmp-String-4           := "%{randstr:G}"
-        &Tmp-String-5           := "%{randstr:10b}"
-}
+&request.Tmp-String-0 := "%{randstr:%{request.Tmp-String-0}}"
+&request.Tmp-String-1 := "%{randstr:nnn}"
+&request.Tmp-String-2 := "%{randstr:24a}"
+&request.Tmp-String-3 := "%{randstr:1030aa}"
+&request.Tmp-String-4 := "%{randstr:G}"
+&request.Tmp-String-5 := "%{randstr:10b}"
 
 #
 #  Empty output on empty input
 #
-if (&Tmp-String-0 != "") {
+if (&request.Tmp-String-0 != "") {
 	test_fail
 }
 
 #
 #  Check length of output
 #
-if ("%{strlen:%{Tmp-String-1}}" != 3) {
+if ("%{strlen:%{request.Tmp-String-1}}" != 3) {
 	test_fail
 }
 
-if ("%{strlen:%{Tmp-String-2}}" != 24) {
+if ("%{strlen:%{request.Tmp-String-2}}" != 24) {
 	test_fail
 }
 #
 #  Check maximum repetition
 #
-if ("%{strlen:%{Tmp-String-3}}" != 1025) {
+if ("%{strlen:%{request.Tmp-String-3}}" != 1025) {
 	test_fail
 }
 
 #
 #  Check invalid character class
 #
-if (&Tmp-String-4 != "") {
+if (&request.Tmp-String-4 != "") {
 	test_fail
 }
 
 #
 #  Check repetition of binary output
 #
-if ("%(length:%{Tmp-String-5})" != 10) {
+if ("%(length:%{request.Tmp-String-5})" != 10) {
 	test_fail
 }
 

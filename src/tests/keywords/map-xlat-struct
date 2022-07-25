@@ -4,9 +4,7 @@
 #
 #  Test the map xlat
 #
-update {
-	&Tmp-String-0 := "IA-PD.IAID = 11"
-}
+&request.Tmp-String-0 := "IA-PD.IAID = 11"
 
 if ("%{map:%{Tmp-String-0}}" != 1) {
 	test_fail

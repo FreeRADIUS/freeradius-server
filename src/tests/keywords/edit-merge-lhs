@@ -8,13 +8,8 @@
 #	= A' MERGE B' if A and B are lists
 #
 
-update request {
-	&Tmp-String-0 := "foo"
-}
-
-update control {
-	&Tmp-String-0 := "bar"
-}
+&request.Tmp-String-0 := "foo"
+&control.Tmp-String-0 := "bar"
 
 # merge
 &request <= &control

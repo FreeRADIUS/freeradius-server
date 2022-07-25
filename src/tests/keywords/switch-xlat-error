@@ -7,9 +7,7 @@ switch &User-Name {
 	}
 
 	case {
-		update reply {
-			Filter-Id := "default"
-		}
+		&reply.Filter-Id := "default"
 	}
 
 }

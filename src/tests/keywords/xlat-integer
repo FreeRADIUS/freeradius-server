@@ -1,71 +1,61 @@
 #
-# PRE: update
+# PRE:
 #
-update request {
-	&Tmp-String-0        := '9870'
-	&Tmp-String-1        := '98709870'
-	&Tmp-String-2        := '184467440737095516157'
-	&Tmp-Octets-0        := 0x39383731
-	&Tmp-Octets-1        := 0x3938373139383731
-	&Tmp-Octets-2        := 0x393837313938373139383731
-	&Tmp-IP-Address-0    := 57.56.55.50
-	&Tmp-Date-0          := 959985459
-	&Tmp-Integer-0       := 959985460
-	&Tmp-Cast-IfId       := '0000:0000:3938:3737'
-	&Tmp-Cast-IPv6Addr   := '::3938:3738'
-	&Tmp-Cast-IPv6Prefix := '::3938:3739/128'
-	&Tmp-Cast-Byte       := 58
-	&Tmp-Cast-Short      := 14139
-	&Tmp-Cast-Ether      := 00:00:39:38:37:3c
-	&Tmp-Cast-Integer64  := 1152921505566832445
-	&Tmp-Cast-IPv4Prefix := 57.56.55.62/32
-}
+&request.Tmp-String-0        := '9870'
+&request.Tmp-String-1        := '98709870'
+&request.Tmp-String-2        := '184467440737095516157'
+&request.Tmp-Octets-0        := 0x39383731
+&request.Tmp-Octets-1        := 0x3938373139383731
+&request.Tmp-Octets-2        := 0x393837313938373139383731
+&request.Tmp-IP-Address-0    := 57.56.55.50
+&request.Tmp-Date-0          := 959985459
+&request.Tmp-Integer-0       := 959985460
+&request.Tmp-Cast-IfId       := '0000:0000:3938:3737'
+&request.Tmp-Cast-IPv6Addr   := '::3938:3738'
+&request.Tmp-Cast-IPv6Prefix := '::3938:3739/128'
+&request.Tmp-Cast-Byte       := 58
+&request.Tmp-Cast-Short      := 14139
+&request.Tmp-Cast-Ether      := 00:00:39:38:37:3c
+&request.Tmp-Cast-Integer64  := 1152921505566832445
+&request.Tmp-Cast-IPv4Prefix := 57.56.55.62/32
 
 # String - network order representation of a 4 char string
-update request {
-	&Tmp-Integer-1 := "%(integer:%{Tmp-String-0})"
-}
-if ((<integer>&Tmp-String-0 != &Tmp-Integer-1) || (&Tmp-Integer-1 != 9870)) {
+&request.Tmp-Integer-1 := "%(integer:%{request.Tmp-String-0})"
+if ((<integer>&Tmp-String-0 != &request.Tmp-Integer-1) || (&request.Tmp-Integer-1 != 9870)) {
 	test_fail
 }
 
 # String - network order representation of a 8 char string
-update request {
-	&Tmp-uint64-0 := "%(integer:%{Tmp-String-1})"
-}
-if ((<integer64>&Tmp-String-1 != &Tmp-uint64-0) || (&Tmp-uint64-0 != 98709870)) {
+&request.Tmp-uint64-0 := "%(integer:%{request.Tmp-String-1})"
+if ((<integer64>&request.Tmp-String-1 != &request.Tmp-uint64-0) || (&request.Tmp-uint64-0 != 98709870)) {
 	test_fail
 }
 
 # String - Can't convert 12 byte string to integer (our biggest native size is a 64bit unsigned int)
-if ("%(integer:%{Tmp-String-2})") {
+if ("%(integer:%{request.Tmp-String-2})") {
 	test_fail
 }
 
 # Octets - network order representation of a 4 byte octet string
-update request {
-	&Tmp-Integer-1 := "%(integer:%{Tmp-Octets-0})"
-}
+&request.Tmp-Integer-1 := "%(integer:%{request.Tmp-Octets-0})"
 
 #
 #  Disabled until xlats can return binary data
 #
-#if (&Tmp-Octets-0 != "%{hex:Tmp-Integer-1}") {
+#if (&request.Tmp-Octets-0 != "%{hex:request.Tmp-Integer-1}") {
 #	test_fail
 #}
-if (&Tmp-Integer-1 != 959985457) {
+if (&request.Tmp-Integer-1 != 959985457) {
 	test_fail
 }
 
 # Octets - network order representation of a 8 byte octet string
-update request {
-	&Tmp-uint64-0 := "%(integer:%{Tmp-Octets-1})"
-}
+&request.Tmp-uint64-0 := "%(integer:%{request.Tmp-Octets-1})"
 
 #
 #  Disabled until xlats can return binary data
 #
-#if (&Tmp-Octets-1 != "%{hex:Tmp-uint64-0}") {
+#if (&request.Tmp-Octets-1 != "%{hex:request.Tmp-uint64-0}") {
 #	test_fail
 #}
 
@@ -74,72 +64,69 @@ if (&Tmp-uint64-0 != 4123106143410599729) {
 }
 
 # String - Can't convert 12 byte octet string to integer (our biggest native size is a 64bit unsigned int)
-if ("%(integer:%{Tmp-Octets-2})") {
+if ("%(integer:%{request.Tmp-Octets-2})") {
 	test_fail
 }
 
-update request {
-	&Tmp-String-2        := "%(integer:%{Tmp-IP-Address-0})"
-	&Tmp-String-3        := "%(integer:%{Tmp-Date-0})"
-	&Tmp-String-4        := "%(integer:%{Tmp-Integer-0})"
-	&Tmp-String-6        := "%(integer:%{Tmp-Cast-Ifid})"
-	&Tmp-String-7        := "%(integer:%{Tmp-Cast-IPv6Addr})"
-	&Tmp-String-8        := "%(integer:%{Tmp-Cast-IPv6Prefix})"
-}
+&request.Tmp-String-2 := "%(integer:%{request.Tmp-IP-Address-0})"
+&request.Tmp-String-3 := "%(integer:%{request.Tmp-Date-0})"
+&request.Tmp-String-4 := "%(integer:%{request.Tmp-Integer-0})"
+&request.Tmp-String-6 := "%(integer:%{request.Tmp-Cast-Ifid})"
+&request.Tmp-String-7 := "%(integer:%{request.Tmp-Cast-IPv6Addr})"
+&request.Tmp-String-8 := "%(integer:%{request.Tmp-Cast-IPv6Prefix})"
 
 # IP Address
-if (&Tmp-String-2 != '959985458') {
+if (&request.Tmp-String-2 != '959985458') {
 	test_fail
 }
 
-if (<ipaddr>&Tmp-String-2 != &Tmp-IP-Address-0) {
+if (<ipaddr>&request.Tmp-String-2 != &request.Tmp-IP-Address-0) {
 	test_fail
 }
 
 # Date
-if (&Tmp-String-3 != '959985459') {
+if (&request.Tmp-String-3 != '959985459') {
 	test_fail
 }
 
 # Integer
-if (&Tmp-String-4 != '959985460') {
+if (&request.Tmp-String-4 != '959985460') {
 	test_fail
 }
 
 # ifid - Can't convert interface ID to an integer
-if (&Tmp-String-6 != '') {
+if (&request.Tmp-String-6 != '') {
 	test_fail
 }
 
 # ipv6addr - Can't convert IPv6 to integer
-if (&Tmp-String-7 != '959985464') {
+if (&request.Tmp-String-7 != '959985464') {
 	test_fail
 }
 
 # ipv6addrprefix
-if (&Tmp-String-8 != '959985465') {
+if (&request.Tmp-String-8 != '959985465') {
 	test_fail
 }
-update request {
-	&Tmp-String-0        := "%(integer:%{Tmp-Cast-Byte})"
-	&Tmp-String-1        := "%(integer:%{Tmp-Cast-Short})"
-	&Tmp-uint64-2     := "%(integer:%{Tmp-Cast-Ether})"
-	&Tmp-String-3        := "%(integer:%{Tmp-Cast-Integer64})"
-	&Tmp-String-4        := "%(integer:%{Tmp-Cast-IPv4Prefix})"
-}
+
+&request.Tmp-String-0 := "%(integer:%{request.Tmp-Cast-Byte})"
+&request.Tmp-String-1 := "%(integer:%{request.Tmp-Cast-Short})"
+&request.Tmp-uint64-2 := "%(integer:%{request.Tmp-Cast-Ether})"
+&request.Tmp-String-3 := "%(integer:%{request.Tmp-Cast-Integer64})"
+&request.Tmp-String-4 := "%(integer:%{request.Tmp-Cast-IPv4Prefix})"
 
 # byte
-if (&Tmp-String-0 != '58') {
+if (&request.Tmp-String-0 != '58') {
 	test_fail
 }
 
 # short
-if (&Tmp-String-1 != '14139') {
+if (&request.Tmp-String-1 != '14139') {
 	test_fail
 }
 
 # ethernet
-if (&Tmp-uint64-2 != 959985468) {
+if (&request.Tmp-uint64-2 != 959985468) {
 	test_fail
 }
 
@@ -148,29 +135,24 @@ if (&Tmp-uint64-2 != 959985468) {
 #  with the lowest octet of the integer mapping to the right-most
 #  ethernet octet (in network order)
 #
-if (<ether>&Tmp-uint64-2 != &Tmp-Cast-Ether) {
+if (<ether>&request.Tmp-uint64-2 != &request.Tmp-Cast-Ether) {
 	test_fail
 }
 
 # integer64
-if (&Tmp-String-3 != '1152921505566832445') {
+if (&request.Tmp-String-3 != '1152921505566832445') {
 	test_fail
 }
 
 # ipv4prefix
-if (&Tmp-String-4 != '959985470') {
+if (&request.Tmp-String-4 != '959985470') {
 	test_fail
 }
 
-update request {
-	&Service-Type := Login-User
-}
+&request.Service-Type := Login-User
+&request.Tmp-Integer-2 := "%(integer:%{request.Service-Type})"
 
-update request {
-	&Tmp-Integer-2 := "%(integer:%{Service-Type})"
-}
-
-if (&Tmp-Integer-2 != 1) {
+if (&request.Tmp-Integer-2 != 1) {
 	test_fail
 }
 

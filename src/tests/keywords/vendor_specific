@@ -3,6 +3,4 @@
 #
 #  Tests for Vendor-Specific 
 #
-update reply {
-	Vendor-Specific := "foo"	# ERROR
-}
+&reply.Vendor-Specific := "foo"	# ERROR

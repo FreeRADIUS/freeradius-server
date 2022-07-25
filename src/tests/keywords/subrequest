@@ -1,7 +1,5 @@
 subrequest Access-Request {
-	update parent.control {
-		&User-Name := 'bob'
-	}
+	&parent.control.User-Name := 'bob'
 
 	success
 }

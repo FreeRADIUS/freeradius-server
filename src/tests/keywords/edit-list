@@ -2,9 +2,7 @@
 # PRE: edit
 #
 
-update control {
-	&Tmp-String-0 := "foo"
-}
+&control.Tmp-String-0 := "foo"
 
 #  Doesn't exist
 if (&request.Tmp-String-0) {
@@ -19,9 +17,7 @@ if (!&request.Tmp-String-0[n]) {
 	test_fail
 }
 
-update request {
-	&Tmp-String-0 !* ANY
-}
+&request.Tmp-String-0 !* ANY
 
 #  Doesn't exist
 if (&request.Tmp-String-0) {
