@@ -1,0 +1,10 @@
+#
+#  PRE: map-2arg-error
+#
+
+#
+#  The "always ok" module doesn't have a map, but it's useful
+#  for tests.
+#
+map ok "bar" {	# ERROR
+}

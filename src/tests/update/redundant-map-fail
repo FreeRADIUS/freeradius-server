@@ -1,0 +1,12 @@
+redundant {
+	map test-fail &Tmp-String-0 {
+		&Tmp-Integer-0 := '$[3][2]'
+	}
+	noop
+}
+
+if (noop || (&Tmp-Integer-0 == 4294967295)) {
+	success
+} else {
+	fail
+}

@@ -1,0 +1,17 @@
+#
+#  PRE: switch
+#
+switch &Service-Type {
+	case Login-User {
+		test_fail
+	}
+
+	case No-Such-Value {	# ERROR
+		test_fail
+	}
+
+	case {
+		test_fail
+	}
+
+}

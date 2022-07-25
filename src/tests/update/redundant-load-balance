@@ -1,0 +1,63 @@
+# PRE: update if foreach
+#
+#  Redundant blocks.
+#
+#  The first one fails, so the second one is used
+#
+update request {
+	&Tmp-Integer-0 := 0
+	&Tmp-Integer-1 += 0
+	&Tmp-Integer-1 += 1
+	&Tmp-Integer-1 += 2
+	&Tmp-Integer-1 += 3
+	&Tmp-Integer-1 += 4
+	&Tmp-Integer-1 += 5
+	&Tmp-Integer-1 += 6
+	&Tmp-Integer-1 += 7
+	&Tmp-Integer-1 += 8
+	&Tmp-Integer-1 += 9
+}
+
+#
+#  Loop 0..9
+#
+foreach &Tmp-Integer-1 {
+	redundant-load-balance {
+		group {
+			# fail on even numbered values, succeed on odd numbered ones
+			if ("%{expr:%{Foreach-Variable-0} % 2}" == 0) {
+				fail
+			}
+			else {
+				update request {
+					&Tmp-Integer-0 := "%{expr:%{Tmp-Integer-0} + 1}"
+					&Filter-Id += "SUCCEED ODD %{Foreach-Variable-0} %{Tmp-Integer-0}"
+				}
+				ok
+			}
+		}
+		group {
+			# succeed on even-numbered values, fail on off-numbered ones.
+			if ("%{expr:%{Foreach-Variable-0} % 2}" == 1) {
+				fail
+			}
+			else {
+				update request {
+					&Tmp-Integer-0 := "%{expr:%{Tmp-Integer-0} + 1}"
+					&Filter-Id += "SUCCEED EVEN %{Foreach-Variable-0} %{Tmp-Integer-0}"
+				}
+				ok
+			}
+		}
+	}
+}
+
+if (&Tmp-Integer-0 != "%{Tmp-Integer-1[#]}") {
+   update reply {
+   	  &Filter-Id := "shit %{Tmp-Integer-0}"
+   }
+	test_fail
+}
+else {
+	success
+}

@@ -1,0 +1,12 @@
+#
+#  PRE: 
+#
+&request.Called-Station-Id  := "This is a test"
+&request.Calling-Station-Id := "This is a test"
+
+#
+#  Check attribute references
+#
+if (&Called-Station-Id == &Calling-Station-Id) {
+	success
+}

@@ -1,0 +1,21 @@
+#
+#  PRE: if
+#
+#  Static if condition
+#
+if (1) {
+	#
+	#  We're not running the 'pap' module, so
+	#  we have to set this ourselves.
+	#
+	&control.Auth-Type := pap
+
+	# not at the end of a section
+	actions {		# ERROR
+		noop = return
+	}
+
+	ok
+}
+
+test_fail

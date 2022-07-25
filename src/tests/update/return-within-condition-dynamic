@@ -1,0 +1,13 @@
+#
+#  PRE: update if
+#
+if (&User-Name == 'bob') {
+	accept
+	success
+	return
+}
+
+# Should not execute this condition
+if (&User-Name == 'bob') {
+	reject
+}

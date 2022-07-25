@@ -1,0 +1,67 @@
+#
+# PRE: update if
+#
+update {
+	&request.Tmp-String-0 := "This is a string\n"
+	&request.Tmp-Octets-0 := 0x000504030201
+	&request.Tmp-String-1 := "what do ya want for nothing?"
+	&request.Tmp-String-2 := "Jefe"
+	&request.Tmp-String-3 := ""
+}
+
+
+update request {
+        &Tmp-Octets-1           := "%{md5:This is a string\n}"
+        &Tmp-Octets-2           := "%{md5:%{Tmp-String-0}}"
+        &Tmp-Octets-3           := "%{md5:%{request.Tmp-String-0}}"
+        &Tmp-Octets-4           := "%{md5:%{request.Tmp-Octets-0}}"
+        &Tmp-Octets-5           := "%{md5:%{Tmp-String-9}}"
+        &Tmp-Octets-6           := "%(hmacmd5:%{Tmp-String-1} %{Tmp-String-2})"
+        &Tmp-Octets-7           := "%(hmacmd5:%{Tmp-String-3} %{Tmp-String-3})"
+}
+
+#
+#  Put "This is a string" into a file and call "md5sum" on it.
+#  You should get this string.
+#
+if (&Tmp-Octets-1 != 0x9ac4dbbc3c0ad2429e61d0df5dc28add) {
+	test_fail
+}
+
+if (&Tmp-Octets-2 != 0x9ac4dbbc3c0ad2429e61d0df5dc28add) {
+	test_fail
+}
+
+if (&Tmp-Octets-3 != 0x9ac4dbbc3c0ad2429e61d0df5dc28add) {
+	test_fail
+}
+
+#
+#  MD5 should also be able to cope with references to octet attributes
+#
+if (&Tmp-Octets-4 != 0xc1e7fa505b2fc1fd0da6cac3db6f6f44) {
+	test_fail
+}
+
+#
+#  MD5 of null string is d41d8cd98f00b204e9800998ecf8427e
+#
+if (&Tmp-Octets-5 != 0xd41d8cd98f00b204e9800998ecf8427e) {
+	test_fail
+}
+
+#
+#  MD5 HMAC with attribute references
+#
+if (&Tmp-Octets-6 != 0x750c783e6ab0b503eaa86e310a5db738) {
+	test_fail
+}
+
+#
+#  MD5 HMAC with empty key and data
+#
+if (&Tmp-Octets-7 != 0x74e6f7298a9c2d168935f58c001bad88) {
+	test_fail
+}
+
+success

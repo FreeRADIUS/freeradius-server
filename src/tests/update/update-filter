@@ -1,0 +1,248 @@
+#
+#  PRE: update
+#
+update control {
+	&Tmp-Integer-0 := 5
+	&Tmp-Integer-0 += 10
+	&Tmp-Integer-0 += 15
+	&Tmp-Integer-0 += 20
+	&Tmp-String-0 := 'foo'
+	&Tmp-String-0 += 'baz'
+	&Tmp-String-0 += 'boink'
+}
+
+# Reset the request list
+update {
+	&request !* ANY
+	&request += &control[*]
+}
+
+debug_request
+
+#
+#  Integer ==
+#
+update request {
+	&Tmp-Integer-0 == 10
+}
+
+if (&Tmp-Integer-0[0] != 10) {
+	test_fail
+}
+
+if ("%{Tmp-Integer-0[#]}" != 1) {
+	test_fail
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	test_fail
+}
+
+debug_request
+
+# Reset the request list
+update {
+	&request !* ANY
+	&request += &control[*]
+}
+
+#
+#  String ==
+#
+update request {
+	&Tmp-String-0 == 'baz'
+}
+
+if (&Tmp-String-0[0] != 'baz') {
+	test_fail
+}
+
+if ("%{Tmp-String-0[#]}" != 1) {
+	test_fail
+}
+
+debug_request
+
+# Reset the request list
+update {
+	&request !* ANY
+	&request += &control[*]
+}
+
+#
+#  Integer <
+#
+update request {
+	&Tmp-Integer-0 < 10
+}
+
+if (&Tmp-Integer-0[0] != 5) {
+	test_fail
+}
+
+if ("%{Tmp-Integer-0[#]}" != 1) {
+	test_fail
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	test_fail
+}
+
+# Reset the request list
+update {
+	&request !* ANY
+	&request += &control[*]
+}
+
+#
+#  Integer >
+#
+update request {
+	&Tmp-Integer-0 > 10
+}
+
+if (&Tmp-Integer-0[0] != 15) {
+	test_fail
+}
+
+if (&Tmp-Integer-0[1] != 20) {
+	test_fail
+}
+
+
+if ("%{Tmp-Integer-0[#]}" != 2) {
+	test_fail
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	test_fail
+}
+
+# Reset the request list
+update {
+	&request !* ANY
+	&request += &control[*]
+}
+
+#
+#  Integer <=
+#
+update request {
+	&Tmp-Integer-0 <= 10
+}
+
+if (&Tmp-Integer-0[0] != 5) {
+	test_fail
+}
+
+if (&Tmp-Integer-0[1] != 10) {
+	test_fail
+}
+
+if ("%{Tmp-Integer-0[#]}" != 2) {
+	test_fail
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	test_fail
+}
+
+# Reset the request list
+update {
+	&request !* ANY
+	&request += &control[*]
+}
+
+#
+#  Integer >=
+#
+update request {
+	&Tmp-Integer-0 >= 10
+}
+
+if (&Tmp-Integer-0[0] != 10) {
+	test_fail
+}
+
+if (&Tmp-Integer-0[1] != 15) {
+	test_fail
+}
+
+if (&Tmp-Integer-0[2] != 20) {
+	test_fail
+}
+
+if ("%{Tmp-Integer-0[#]}" != 3) {
+	test_fail
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	test_fail
+}
+
+# Reset the request list
+update {
+	&request !* ANY
+	&request += &control[*]
+}
+
+#
+#  Integer !=
+#
+update request {
+	&Tmp-Integer-0 != 10
+}
+
+if (&Tmp-Integer-0[0] != 5) {
+	test_fail
+}
+
+if (&Tmp-Integer-0[1] != 15) {
+	test_fail
+}
+
+if (&Tmp-Integer-0[2] != 20) {
+	test_fail
+}
+
+if ("%{Tmp-Integer-0[#]}" != 3) {
+	test_fail
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	test_fail
+}
+
+# Reset the request list
+update {
+	&request !* ANY
+	&request += &control[*]
+}
+
+update request {
+	&Tmp-String-1 := 'baz'
+	&Tmp-String-1 += 'boink'
+}
+
+#
+#  String (Intersection)
+#
+update request {
+	&Tmp-String-0 == &Tmp-String-1[0]
+}
+
+if (&Tmp-String-0[0] != &Tmp-String-1[0]) {
+	test_fail
+}
+
+if ("%{Tmp-String-0[#]}" != 1) {
+	test_fail
+}
+
+debug_request
+
+update control {
+	&Auth-Type := Accept
+}
+
+success

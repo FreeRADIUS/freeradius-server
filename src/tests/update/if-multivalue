@@ -1,0 +1,137 @@
+#
+# PRE: update if
+#
+
+update request {
+	&Tmp-String-0 := 'foo'
+	&Tmp-String-0 += 'bar'
+	&Tmp-String-0 += 'baz'
+
+	&Tmp-String-1 := 'GROUP ADMINISTRATORS'
+	&Tmp-String-1 += 'GROUP STUDENTS'
+	&Tmp-String-1 += 'GROUP PEONS'
+
+	&Tmp-String-2 := 'PEONS'
+	&Tmp-String-2 += 'STUDENTS'
+	&Tmp-String-2 += 'ADMINISTRATORS'
+
+	&Tmp-String-3 := 'no'
+	&Tmp-String-3 += 'no'
+	&Tmp-String-3 += 'yes'
+
+	&Tmp-Integer-0 := 1
+	&Tmp-Integer-0 += 2
+	&Tmp-Integer-0 += 5
+}
+
+update control {
+	&Tmp-String-0 := 'foo'
+	&Tmp-String-0 += 'bar'
+	&Tmp-String-0 += 'baz'
+
+	&Tmp-String-1 := 'boink'
+	&Tmp-String-1 += 'tard'
+	&Tmp-String-1 += 'dink'
+	&Tmp-String-1 += 'slink'
+
+	&Tmp-Integer-0 := 01
+	&Tmp-Integer-0 += 02
+	&Tmp-Integer-0 += 05
+	&Tmp-Integer-0 += 04
+
+	&Tmp-Integer-1 := 10
+	&Tmp-Integer-1 += 20
+	&Tmp-Integer-1 += 30
+}
+
+#
+#  Mmmm O(N^2)
+#
+if (&request.Tmp-String-0[*] != &control.Tmp-String-0[*]) {
+	test_fail
+}
+
+if (&request.Tmp-String-0[*] == &control.Tmp-String-1[*]) {
+	test_fail
+}
+
+if (&request.Tmp-String-1[*] == &control.Tmp-String-0[*]) {
+	test_fail
+}
+
+#
+#  Integer comparison and normalisation
+#
+if (&request.Tmp-Integer-0 != &control.Tmp-Integer-0) {
+	test_fail
+}
+
+#
+#  if any value of request.Tmp-Integer-0 > any value of
+#  request.Tmp-Integer-1 then evaluate to true
+#
+if (&request.Tmp-Integer-0[*] > &control.Tmp-Integer-1[*]) {
+	test_fail
+}
+
+#
+#  Compiled regex comparisons
+#
+if (&request.Tmp-String-1[*] !~ /PEONS$/) {
+	test_fail
+}
+
+if (&control.Tmp-String-1 =~ /PEONS$/) {
+	test_fail
+}
+
+if (&control.Tmp-String-1 =~ /DINKS$/) {
+	test_fail
+}
+
+#
+#  Dynamic regex comparisons
+#
+if (&request.Tmp-String-1[*] !~ /%{Tmp-String-2[0]}$/) {
+	test_fail
+}
+
+if (&request.Tmp-String-1 =~ /%{Tmp-String-2[1]}$/) {
+	test_fail
+}
+
+if (&request.Tmp-String-1 !~ /%{Tmp-String-2[2]}$/) {
+	test_fail
+}
+
+if (&request.Tmp-String-1 =~ /%{Tmp-String-2[#]}$/) {
+	test_fail
+}
+
+#
+#  XLAT virtual comparisons
+#
+if (&control.Tmp-Integer-0[*] != "%{control.Tmp-Integer-0[#]}") {
+	test_fail
+}
+
+#
+#  Literal comparisons
+#
+if (&control.Tmp-String-1[*] != 'boink') {
+	test_fail
+}
+
+if (&control.Tmp-String-1[*] == 'foo') {
+	test_fail
+}
+
+if (&request.Tmp-Integer-0[*] > 10) {
+	test_fail
+}
+
+if (!(&request.Tmp-Integer-0[*] < 10)) {
+	test_fail
+}
+
+success

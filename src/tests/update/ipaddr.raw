@@ -1,0 +1,27 @@
+#
+#  PRE: update if
+#
+
+#
+#  Malformed NAS-IP-Address
+#
+update request {
+	&raw.4 = 0x010203
+}
+
+debug_request
+
+if (!&raw.4) {
+	update reply {
+		&Filter-Id := "Cannot find newly added raw attribute"
+	}
+}
+else {
+	if (&raw.4 != 0x010203) {
+		update reply {
+			&Filter-Id := "raw.4 is not 0x0120203"
+		}
+	}
+}
+
+success

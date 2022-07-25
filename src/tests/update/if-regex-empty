@@ -1,0 +1,51 @@
+#
+# PRE: update if if-regex-match
+#
+
+if (&control.Password.Cleartext !~ /hell(o)(.*)/) {
+	test_fail
+}
+
+#
+#  Verify non-empty capture groups evaluate to true
+#
+if (!"%{1}") {
+	test_fail
+}
+
+#
+#  Verify empty capture groups evaluate to false
+#
+if ("%{2}") {
+	test_fail
+}
+
+if (&control.Password.Cleartext !~ /hello(.*)/) {
+	test_fail
+}
+
+#
+#  Check for stale capture group values
+#
+if ("%{1}") {
+	test_fail
+}
+
+#
+#  Check assignment of regex null-match
+#
+if (&control.Password.Cleartext =~ /hell(o)(.*)/) {
+	update {
+		&control.Tmp-String-1 := "%{2}"
+	}
+}
+
+if (!&control.Tmp-String-1) {
+	test_fail
+}
+
+if (&control.Tmp-String-1 != "") {
+	test_fail
+}
+
+success

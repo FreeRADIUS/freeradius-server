@@ -1,0 +1,33 @@
+#
+#  PRE: update
+#
+update request {
+       &NAS-IP-Address    := 127.0.0.1
+       &Framed-IP-Address := 127.0.0.1
+}
+
+#
+#  Check attribute references
+#
+if (!(&NAS-IP-Address == &Framed-IP-Address)) {
+	test_fail
+}
+
+update request {
+       &NAS-IP-Address    := 0.0.0.0
+       &Framed-IP-Address := 255.255.255.255
+}
+
+if (!(&NAS-IP-Address != &Framed-IP-Address)) {
+	test_fail
+}
+
+if (!(&NAS-IP-Address < &Framed-IP-Address)) {
+	test_fail
+}
+
+if (&NAS-IP-Address > &Framed-IP-Address) {
+	test_fail
+}
+
+success

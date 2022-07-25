@@ -1,0 +1,13 @@
+#
+# PRE: if
+#
+#  Matching "if" conditions
+#
+if (&User-Name != "bob") {
+	update reply {
+		&Filter-Id := "not bob"
+	}
+}
+else {
+	success
+}

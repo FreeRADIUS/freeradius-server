@@ -1,0 +1,39 @@
+#
+#  PRE: update if
+#
+
+update request {
+	# Dotted Quad
+	&Tmp-IP-Address-0 := 127.0.0.1
+
+	# Dotted Quad with prefix
+	&Tmp-IP-Address-1 := 127.0.0.2/32
+
+	# Hex (0x)
+	&Tmp-IP-Address-2 := 0x7f000003
+
+	# Decimal
+	&Tmp-IP-Address-3 := 2130706436
+}
+
+if (&NAS-IP-Address != 127.0.0.1) {
+	test_fail
+}
+
+if (&Tmp-IP-Address-0 != 127.0.0.1) {
+	test_fail
+}
+
+if (&Tmp-IP-Address-1 != 127.0.0.2) {
+	test_fail
+}
+
+if (&Tmp-IP-Address-2 != 127.0.0.3) {
+	test_fail
+}
+
+if (&Tmp-IP-Address-3 != 127.0.0.4) {
+	test_fail
+}
+
+success

@@ -1,0 +1,31 @@
+update request {
+	&Tmp-String-0 := 'foo'
+}
+
+switch "%{tolower:%{Tmp-String-0}}" {
+	case 'foo' {
+		success
+	}
+
+	case '' {
+		test_fail
+	}
+
+	case {
+		test_fail
+	}
+}
+
+switch "%{Tmp-String-0}" {
+	case 'foo' {
+		success
+	}
+
+	case '' {
+		test_fail
+	}
+
+	case {
+		test_fail
+	}
+}

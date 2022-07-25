@@ -1,0 +1,6 @@
+#
+#  PRE: update if
+#
+if (&Packet-Type == Access-Request) {
+	success
+}

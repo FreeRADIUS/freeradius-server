@@ -1,0 +1,16 @@
+# PRE: case-empty
+#
+test_fail
+
+switch &reply.Filter-Id {
+	# deliberately empty
+	case "filter" {
+	}
+
+	case &Not-Dynamically-Allocated {	# ERROR
+		test_fail
+	}
+
+	case {
+	}
+}

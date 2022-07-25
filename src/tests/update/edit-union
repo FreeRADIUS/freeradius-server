@@ -1,0 +1,39 @@
+#
+# PRE: edit-list
+#
+#  A UNION B
+#
+#	= B if there's no A
+#	= A if there's no B
+#	= A' UNION B' if A and B are lists
+#
+
+update request {
+	&Tmp-String-0 := "foo"
+}
+
+update control {
+	&Tmp-String-0 := "bar"
+}
+
+# union
+&request |= &control
+	%(debug_attr:request[*])
+
+if (!&request.Tmp-String-0) {
+	test_fail
+}
+
+# The original value should be unchanged
+if (&request.Tmp-String-0[0] != "foo") {
+	%(debug_attr:request[*])
+	test_fail
+}
+
+#  and the new value should be there, too
+if (&request.Tmp-String-0[1] != "bar") {
+	%(debug_attr:request[*])
+	test_fail
+}
+
+success

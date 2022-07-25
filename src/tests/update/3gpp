@@ -1,0 +1,17 @@
+#
+#  PRE: update
+#
+update request {
+	&Vendor-Specific.3GPP.IMSI := "hello"
+}
+
+#
+#  "request.[0-9]" should be parsed as a list followed
+#  by an attribute.
+#
+update control {
+	&Tmp-String-0 := &Vendor-Specific.3GPP.IMSI
+	&Tmp-String-1 := &request.Vendor-Specific.3GPP.IMSI
+}
+
+success

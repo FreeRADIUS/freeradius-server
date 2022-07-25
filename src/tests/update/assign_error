@@ -1,0 +1,4 @@
+#
+#  MUST have a value after an assignment operator
+#
+foo = # ERROR

@@ -1,0 +1,38 @@
+#
+#  PRE: if
+#
+#  Tests for dereferencing the Nth attribute
+#
+&request += {
+       &Class = 0x01020304,
+       &Class = 0x05060708,
+       &Class = 0x090a0b0c,
+}
+
+if (%{Class[#]} != 3) {
+	test_fail
+}
+
+if (&Class[0] != 0x01020304) {
+	test_fail
+}
+
+if (&Class[1] != 0x05060708) {
+	test_fail
+}
+
+if (&Class[2] != 0x090a0b0c) {
+	test_fail
+}
+
+# must not exist
+if (&Class[3]) {
+	test_fail
+}
+
+# Last element of the array
+if (&Class[n] != 0x090a0b0c) {
+	test_fail
+}
+
+success

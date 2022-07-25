@@ -1,0 +1,17 @@
+#
+# PRE: if-regex-match if-regex-error
+#
+
+#
+#  This should parse
+#
+if (&User-Name =~ /%{User-Name}/) {
+	ok
+}
+
+#
+#  Check regexes which refer to unknown attributes
+#
+if (&User-Name =~ /%{What-The-Heck-Is-This-Thing}/) {	# ERROR
+	ok
+}

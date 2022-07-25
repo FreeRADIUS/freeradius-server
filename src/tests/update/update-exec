@@ -1,0 +1,79 @@
+#
+#  PRE: update update-remove-any if redundant
+#
+
+#
+# Exec with script output to attribute
+#
+update request {
+	&Tmp-String-0 = `/bin/sh -c "echo 'foo bar baz'"`
+}
+
+if (!&Tmp-String-0 || (&Tmp-String-0 != "foo bar baz")) {
+	test_fail
+}
+
+#
+# Exec with output to list (single attribute)
+#
+update {
+	&request = `/bin/sh -c "echo Tmp-String-0 := foo"`
+}
+
+if (!&Tmp-String-0 || (&Tmp-String-0 != 'foo')) {
+	test_fail
+}
+
+#
+# Exec with output to list (multiple attributes)
+#
+update {
+	&request = `/bin/sh -c 'echo Tmp-String-0 := foo, Tmp-String-1 := bar'`
+}
+
+if (!&Tmp-String-0 || !&Tmp-String-1 || (&Tmp-String-0 != 'foo') || (&Tmp-String-1 != 'bar')) {
+	test_fail
+}
+
+#
+# Failed exec (malformed attributes) - check no attributes are added
+#
+update request {
+	&Tmp-String-0 !* ANY
+	&Tmp-String-1 !* ANY
+}
+
+redundant {
+	group {
+		update {
+			&request = `/bin/sh -c 'echo Tmp-String-0 := foo, Tmp-String-1 ?= bar'`
+		}
+	}
+	ok
+}
+if (&Tmp-String-0 || &Tmp-String-1) {
+	test_fail
+}
+
+#
+# Exec with output to list - error code
+#
+update request {
+	&Tmp-String-0 !* ANY
+	&Tmp-String-1 !* ANY
+}
+
+redundant {
+	group {
+		update {
+			&request = `/bin/sh -c 'echo Tmp-String-0 := foo; exit 64'`
+		}
+	}
+	ok
+}
+if (&Tmp-String-0) {
+	test_fail
+}
+
+accept
+success

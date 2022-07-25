@@ -1,0 +1,19 @@
+#
+#  PRE: update if
+#
+#  Static if condition
+#
+if (1) {
+   # we allow empty 'if' conditions
+}
+
+if (0) {
+   # this never gets compiled
+
+}
+
+elsif (1) {
+  # we allow empty 'elsif' conditions
+}
+
+success

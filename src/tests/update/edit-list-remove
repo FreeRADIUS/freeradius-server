@@ -1,0 +1,70 @@
+#
+# PRE: edit-list
+#
+
+update request {
+	&Tmp-Octets-0 := 0x00
+	&Tmp-String-0 := "foo"
+	&Tmp-Integer-0 := 1
+}
+
+#  Does exist
+if (!&request.Tmp-String-0) {
+	test_fail
+}
+
+# Remove the first one
+&request -= &Tmp-String-0
+
+#  Does not exist
+if (&request.Tmp-String-0) {
+	test_fail
+}
+
+# Other things still exist
+if (!&request.Tmp-Octets-0) {
+	test_fail
+}
+
+if (!&request.Tmp-Integer-0) {
+	test_fail
+}
+
+#
+#  Add multiple of the same type
+#
+update request {
+	&Tmp-String-0 := "foo"
+	&Tmp-String-0 += "bar"
+	&Tmp-String-0 += "baz"
+}
+
+if (!&request.Tmp-String-0) {
+	test_fail
+}
+
+&request -= &Tmp-String-0[0]
+
+#  the first one has been removed
+if (&request.Tmp-String-0[0] != "bar") {
+	test_fail
+}
+
+# Other things still exist
+if (!&request.Tmp-Octets-0) {
+	test_fail
+}
+
+if (!&request.Tmp-Integer-0) {
+	test_fail
+}
+
+&request -= &Tmp-String-0[*]
+
+# Does not exist
+if (&request.Tmp-String-0) {
+	test_fail
+}
+
+
+success

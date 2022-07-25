@@ -1,0 +1,7 @@
+#
+#  PRE: map
+#
+
+map csv "%{tolower:%{User-Name}}" {
+	&reply.Result-Status := 'field3'
+}

@@ -1,0 +1,73 @@
+#
+# PRE: update if
+#
+#  Remove all attributes in a list
+#
+update request {
+	&Tmp-Octets-0 := 0x5c5c
+	&Tmp-Octets-1 := 0x49206c696b6520636869636b656e2049206c696b65206c69766572
+	&Tmp-Octets-2 := 0x490049
+	&Tmp-Octets-3 := 0x00
+	&Tmp-Octets-4 := 0x7465737431
+	&Tmp-Octets-5 := 0x7465737432
+}
+
+update request {
+	&Tmp-String-0 := "%{string:%{Tmp-Octets-0}}"
+	&Tmp-String-1 := "%{string:%{Tmp-Octets-1}}"
+	&Tmp-String-2 := "%{string:%{Tmp-Octets-2}}"
+	&Tmp-String-3 := "%{string:%{Tmp-Octets-3}}"
+}
+
+if (<string>&Tmp-Octets-0 != &Tmp-String-0) {
+	test_fail
+}
+
+if (<string>&Tmp-Octets-1 != &Tmp-String-1) {
+	test_fail
+}
+
+if (<string>&Tmp-Octets-2 != &Tmp-String-2) {
+	test_fail
+}
+
+if (<string>&Tmp-Octets-3 != &Tmp-String-3) {
+	test_fail
+}
+
+if (&Tmp-String-0 != "\\\\") {
+	test_fail
+}
+
+if (<string>&Tmp-Octets-0 != "%{string:%{Tmp-Octets-0}}") {
+	test_fail
+}
+
+#
+#  Test interpolation between string expansions and strings
+#
+if ("%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}" != "test1test2") {
+	test_fail
+}
+
+if ("test0%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}" != "test0test1test2") {
+	test_fail
+}
+
+if ("%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}test3" != "test1test2test3") {
+	test_fail
+}
+
+if (&Tmp-String-1 != 'I like chicken I like liver') {
+	test_fail
+}
+
+if (&Tmp-String-2 != "I\000I") {
+	test_fail
+}
+
+if (&Tmp-String-3 != "\000") {
+	test_fail
+}
+
+success

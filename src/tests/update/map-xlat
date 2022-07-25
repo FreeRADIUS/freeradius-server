@@ -1,0 +1,34 @@
+#
+# PRE: update
+#
+#  Test the map xlat
+#
+update {
+	&Tmp-String-0 := '&control.Tmp-String-0 := \'testing123\''
+	&Tmp-String-1 := "request.Vendor-Specific.Nokia-SR.MSAP-Interface = 'UNICAST_7360OLT3'"
+	&Tmp-String-1 += "request.Vendor-Specific.Nokia-SR.MSAP-Interface += 'UNICAST_7360OLT4'"
+}
+
+if ("%{map:%{Tmp-String-0}}" != 1) {
+	test_fail
+}
+
+if (&control.Tmp-String-0 != 'testing123') {
+	test_fail
+}
+
+foreach &Tmp-String-1[*] {
+	if ("%{map:%{Foreach-Variable-0}}" != 1) {
+		test_fail
+	}
+}
+
+if (&request.Vendor-Specific.Nokia-SR.MSAP-Interface[0] != 'UNICAST_7360OLT3') {
+	test_fail
+}
+
+if (&request.Vendor-Specific.Nokia-SR.MSAP-Interface[1] != 'UNICAST_7360OLT4') {
+	test_fail
+}
+
+success

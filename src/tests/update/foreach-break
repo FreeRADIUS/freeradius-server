@@ -1,0 +1,65 @@
+# PRE: foreach
+#
+
+#
+#  We DON'T want to see this one.
+#
+update request {
+       &Filter-Id += "broken"
+}
+
+foreach &Filter-Id {
+	#
+	#  If we see this one, "break" out of the
+	#  foreach loop.
+	#
+	if ("%{Foreach-Variable-0}" == "broken") {
+		break
+	}
+
+	update reply {
+		&Called-Station-Id += "%{Foreach-Variable-0}"
+	}
+}
+
+
+#
+# Adding attribute during request and immediately breaking
+#
+update {
+	&request.Filter-Id += "1"
+	&request.Filter-Id += "2"
+}
+
+foreach &request.Reply-Message {
+	if("%{Foreach-Variable-0}" == "1") {
+		update {
+			&request.Filter-Id += "3"
+		}
+		break
+	}
+}
+
+update {
+	&request.Filter-Id !* ANY
+}
+
+#
+# Adding attribute during request and continuing
+#
+update {
+	&request.Filter-Id += "1"
+	&request.Filter-Id += "2"
+}
+
+foreach &request.Reply-Message {
+	if("%{Foreach-Variable-0}" == "1") {
+		update {
+			&request.Filter-Id += "3"
+		}
+	}
+
+	if ("%{Foreach-Variable-0}" == "3") {
+		break
+	}
+}

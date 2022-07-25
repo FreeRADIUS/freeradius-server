@@ -1,0 +1,26 @@
+#
+# PRE: update
+#
+#  Form attribute references with xlats
+#
+update request {
+	&Tmp-String-0 += 'foo'
+	&Tmp-String-0 += 'bar'
+	&Tmp-String-1 += 'baz'
+	&control !* ANY
+}
+
+if (&Tmp-String-0[0] != 'foo') {
+	fail
+}
+
+# Now delete the LHS by assigning the control list to it (which is empty)
+update {
+	&request := &control
+}
+
+if (&Tmp-String-0 || &Tmp-String-1) {
+	fail
+}
+
+success

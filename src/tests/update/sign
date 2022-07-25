@@ -1,0 +1,8 @@
+#
+#  PRE: update if
+#
+update request {
+	&Tmp-Integer-0 := -1000  # ERROR
+}
+
+test_fail

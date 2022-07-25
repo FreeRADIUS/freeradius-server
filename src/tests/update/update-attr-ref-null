@@ -1,0 +1,49 @@
+#
+# PRE: update
+#
+#  Form attribute references with xlats
+#
+update request {
+	&Tmp-String-0 += 'foo'
+	&Tmp-String-0 += 'bar'
+	&Tmp-String-1 += 'baz'
+	&control !* ANY
+}
+
+if ("%{Tmp-String-0[#]}" != 2) {
+	test_fail
+}
+
+if (&Tmp-String-0[0] != 'foo') {
+	fail
+}
+
+# Delete an attribute by assigning a non-existent attribute to it
+update {
+	&Tmp-String-0[1] := &Reply-Message
+}
+
+# Should only remove 'bar'
+if (&Tmp-String-0[0] != 'foo') {
+	fail
+}
+
+# Nothing should exist for this attribute.
+if (&Tmp-String-0[1]) {
+	fail
+}
+
+if (&Tmp-String-0[2]) {
+	fail
+}
+
+update {
+	&Tmp-String-0 := &Reply-Message
+}
+
+# All instances should be removed
+if (&Tmp-String-0) {
+	fail
+}
+
+success

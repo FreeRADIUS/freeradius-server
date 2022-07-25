@@ -1,0 +1,135 @@
+# PRE: if
+#
+update request {
+	&Tmp-Integer-0 := '123456789'
+}
+
+# Non matching on attribute ref
+if (&User-Name !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
+	test_fail
+}
+
+# Matching on xlat expanded value
+if ("%{User-Name}" !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
+	test_fail
+}
+
+# Matching on attribute ref with capture groups
+if (&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
+	# Test all the capture groups
+	update {
+		&reply.User-Name := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
+	}
+}
+else {
+	test_fail
+}
+
+# Checking capture groups are cleared out correctly
+if (&User-Name =~ /^([0-9])_%{Tmp-String-0}/) {
+	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" != '1_1') {
+		test_fail
+	}
+}
+else {
+	test_fail
+}
+
+# Checking capture groups are cleared out correctly when there are no matches
+if (&User-Name =~ /^.%{Tmp-String-0}/) {
+	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" != '1') {
+		test_fail
+	}
+}
+else {
+	test_fail
+}
+
+# Checking full capture group range
+if ('a_b_c_d_e_f_g_h_i_j_k_l_m_n_o_p_q_r_s_t_u_v_w_x_y_z_A_B_C_D_E_F' =~ /^(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)$/) {
+	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}%{8}%{9}%{10}%{11}%{12}%{13}%{14}%{15}%{16}%{17}%{18}%{19}%{20}%{21}%{22}%{23}%{24}%{25}%{26}%{27}%{28}%{29}%{30}%{31}%{32}" != 'a_b_c_d_e_f_g_h_i_j_k_l_m_n_o_p_q_r_s_t_u_v_w_x_y_z_A_B_C_D_E_FabcdefghijklmnopqrstuvwxyzABCDEF') {
+		test_fail
+	}
+}
+else {
+	test_fail
+}
+
+# Checking full capture group overun
+if ('a_b_c_d_e_f_g_h_i_j_k_l_m_n_o_p_q_r_s_t_u_v_w_x_y_z_A_B_C_D_E_F_G' =~ /^(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)_(.)$/) {
+	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}%{8}%{9}%{10}%{11}%{12}%{13}%{14}%{15}%{16}%{17}%{18}%{19}%{20}%{21}%{22}%{23}%{24}%{25}%{26}%{27}%{28}%{29}%{30}%{31}%{32}" != 'a_b_c_d_e_f_g_h_i_j_k_l_m_n_o_p_q_r_s_t_u_v_w_x_y_z_A_B_C_D_E_F_GabcdefghijklmnopqrstuvwxyzABCDEF') {
+		test_fail
+	}
+}
+else {
+	test_fail
+}
+
+# uncompiled - ref - insensitive
+if (&Calling-Station-Id !~ /:roamyroam%{Tmp-String-0}$/i) {
+	test_fail
+}
+
+# uncompiled - expansion - insensitive
+if ("%{Calling-Station-Id}" !~ /:roamyroam%{Tmp-String-0}$/i) {
+	test_fail
+}
+
+# uncompiled - enum - ref - insensitive
+if (&Service-Type !~ /^framed-user%{Tmp-String-0}$/i) {
+	test_fail
+}
+
+# uncompiled - enum - expansion - insensitive
+if ("%{Service-Type}" !~ /^framed-user%{Tmp-String-0}$/i) {
+	test_fail
+}
+
+# uncompiled - enum - ref
+if (&Service-Type =~ /^framed-user%{Tmp-String-0}$/) {
+	test_fail
+}
+
+# uncompiled - integer - ref
+if (&Tmp-Integer-0 !~ /%{Tmp-Integer-0}/) {
+	test_fail
+}
+
+update request {
+	&Tmp-String-0 := "foo\nbar"
+}
+
+# uncompiled - ref - multiline
+if (&Tmp-String-0 !~ /^foo$%{Tmp-String-8}/m) {
+	test_fail
+}
+
+# uncompiled - ref - non-multiline
+if (&Tmp-String-0 =~ /^foo$%{Tmp-String-8}/) {
+	test_fail
+}
+
+# uncompiled - ref - non-multiline
+if (&Tmp-String-0 !~ /^foo\nbar%{Tmp-String-8}$/) {
+	test_fail
+}
+
+# uncompiled - ref - multiline
+if (&Tmp-String-0 !~ /^bar%{Tmp-String-8}$/m) {
+	test_fail
+}
+
+# uncompiled - ref - multiline - sensitive
+if (&Tmp-String-0 =~ /^BAR%{Tmp-String-8}$/m) {
+	test_fail
+}
+
+# uncompiled - ref - multiline - insensitive
+if (&Tmp-String-0 !~ /^BAR%{Tmp-String-8}$/mi) {
+	test_fail
+}
+
+# uncompiled - ref - multiline - insensitive (flag order reversed)
+if (&Tmp-String-0 !~ /^BAR%{Tmp-String-8}$/im) {
+	test_fail
+}

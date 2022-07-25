@@ -1,0 +1,17 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "bob"
+User-Password = "hello"
+Vendor-Specific.Cisco.AVPair = "stupid=1"
+Vendor-Specific.Cisco.AVPair += "retarded=2"
+Vendor-Specific.Cisco.AVPair += "cisco=3"
+Vendor-Specific.Cisco.AVPair += "shit=4"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Called-Station-Id == "3"
+Called-Station-Id == "1"

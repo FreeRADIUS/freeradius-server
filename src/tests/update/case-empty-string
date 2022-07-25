@@ -1,0 +1,17 @@
+# PRE: switch
+#
+&request.Filter-Id := ""
+
+switch &Filter-Id {
+	case "" {
+		success
+	}
+
+	case "doug" {
+		&reply.Filter-Id := "doug"
+	}
+
+	case {
+		&reply.Filter-Id := "default"
+	}
+}

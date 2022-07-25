@@ -1,0 +1,25 @@
+#
+# PRE: update if
+
+#
+#  Regression test for 0x prefix. xlat expanded
+#  octet strings must NOT have a 0x prefix added
+#
+update request {
+	&Tmp-Octets-0 := 0x0001020304050607
+	&Tmp-Octets-0 += 0x0706050403020100
+}
+
+if ("%{Tmp-Octets-0}" != '0x0001020304050607') {
+	test_fail
+}
+
+if ("%{Tmp-Octets-0[0]}" != '0x0001020304050607') {
+	test_fail
+}
+
+if ("%{Tmp-Octets-0[*]}" != '0x00010203040506070x0706050403020100') {
+	test_fail
+}
+
+success

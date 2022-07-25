@@ -1,0 +1,12 @@
+# PRE: update if foreach
+#
+#  Virtual Load-Balance blocks.
+#
+
+#
+#  Both of these should parse.
+#
+virtual_instantiate
+virtual_instantiate.post-auth
+
+success

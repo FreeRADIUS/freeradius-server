@@ -1,0 +1,39 @@
+#
+#  REVISIT THIS WHEN WE HAVE SOME CLEAR RULES ABOUT NULL ASSIGNMENTS
+#
+
+
+#
+#  Tmp-Octets-1 doesn't exist, so Tmp-Octets-0 shouldn't be created
+#
+update request {
+	&Tmp-Octets-0 := "%{Tmp-Octets-1}"
+}
+if (&Tmp-Integer-0) {
+	fail
+}
+
+#
+#  NULL valued strings get converted to empty length strings
+#
+update request {
+	&Tmp-String-0 := "%{Reply-Message}"
+}
+if (!&Tmp-String-0) {
+	fail
+}
+if (&Tmp-String-0 != '') {
+	fail
+}
+
+#
+#  NULL valued octet strings get converted to zero length octets strings?!
+#
+update request {
+	&Tmp-Octets-0 := "%{Reply-Message}"
+}
+if (&Tmp-Octets-0 != "") {
+	fail
+}
+
+success

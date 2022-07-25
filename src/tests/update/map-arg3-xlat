@@ -1,0 +1,12 @@
+#
+#  PRE: map
+#
+
+#
+#  lowercase the User-Name.  This doesn't change the
+#  value of the field, but does allow us to test that
+#  arg3 can be an xlat
+#
+map csv "%{tolower:%{User-Name}}" {
+	&reply.Result-Status := 'field3'
+}

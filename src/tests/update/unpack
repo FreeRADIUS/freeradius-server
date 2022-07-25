@@ -1,0 +1,123 @@
+#
+#  PRE: if update
+#
+update request {
+	&Framed-IP-Address := 127.0.0.1
+}
+
+update request {
+	&Tmp-Octets-0 := &Framed-IP-Address
+}
+
+update request {
+	&Tmp-String-0 := "%(unpack:%{Tmp-Octets-0} 0 ipaddr)"
+	&Tmp-IP-Address-0 := "%(unpack:%{Tmp-Octets-0} 0 ipaddr)"
+}
+
+if (&Tmp-String-0 != "127.0.0.1") {
+	test_fail
+}
+
+if (&Tmp-IP-Address-0 != 127.0.0.1) {
+	test_fail
+}
+
+update request {
+	&Tmp-Octets-0 := 0x000001020304
+}
+
+update request {
+	&Tmp-Integer-0 := "%(unpack:%{Tmp-Octets-0} 4 uint16)"
+}
+
+# Octets 4 and 5 == 0x0304 == 772
+if (&Tmp-Integer-0 != 772) {
+	test_fail
+}
+
+update request {
+	&Tmp-String-0 := "0x48656C6C6F"
+}
+
+update request {
+	&Tmp-String-1 := "%(unpack:%{Tmp-String-0} 0 string)"
+}
+
+if (&Tmp-String-1 != "Hello") {
+	test_fail
+}
+
+# Offset beyond data length
+update request {
+	&Tmp-String-1 := "%(unpack:%{Tmp-String-0} 10 string)"
+}
+
+if (&Tmp-String-1 != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message != "unpack offset 10 is larger than input data length 5") {
+	test_fail
+}
+
+# Invalid destination data type
+update request {
+	&Tmp-String-1 := "%(unpack:%{Tmp-String-0} 0 thing)"
+}
+
+if (&Tmp-String-1 != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message != "Invalid data type 'thing'") {
+	test_fail
+}
+
+# Invalid source data type
+update request {
+	&Tmp-String-1 := "%(unpack:%{Tmp-Integer-0} 0 string)"
+}
+
+if (&Tmp-String-1 != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message != "unpack requires the input attribute to be 'string' or 'octets'") {
+	test_fail
+}
+
+# Invalid hex string
+update request {
+	&Tmp-String-0 := '0x014sdgw'
+}
+
+update request {
+	&Tmp-String-1 := "%(unpack:%{Tmp-String-0} 0 string)"
+}
+
+if (&Tmp-String-1 != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message != "Invalid hex string in '0x014sdgw'") {
+	test_fail
+}
+
+# Zero length hex string
+update request {
+	&Tmp-String-0 := '0x'
+}
+
+update request {
+	&Tmp-String-1 := "%(unpack:%{Tmp-String-0} 0 string)"
+}
+
+if (&Tmp-String-1 != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message != "Zero length hex string in '0x'") {
+	test_fail
+}
+
+success

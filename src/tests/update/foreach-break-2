@@ -1,0 +1,41 @@
+#
+#  PRE: foreach foreach-break
+#
+
+update request {
+	&Tmp-String-0 := "ABCDEF_8"
+}
+
+update control {
+	&Tmp-String-0 := "0"
+	&Tmp-String-0 += "1"
+	&Tmp-String-0 += "2"
+	&Tmp-String-0 += "3"
+	&Tmp-String-0 += "4"
+	&Tmp-String-0 += "5"
+	&Tmp-String-0 += "6"
+	&Tmp-String-0 += "7"
+	&Tmp-String-0 += "8"
+	&Tmp-String-0 += "9"
+	&Tmp-String-0 += "a"
+	&Tmp-String-0 += "b"
+	&Tmp-String-0 += "c"
+	&Tmp-String-0 += "d"
+	&Tmp-String-0 += "e"
+	&Tmp-String-0 += "f"
+	&Tmp-String-0 += "g"
+}
+
+foreach &control.Tmp-String-0 {
+	if ("%{Tmp-String-0[*]}" =~ /([A-Z0-9\-]*)_%{Foreach-Variable-0}/) {
+		update request {
+			&Tmp-String-0 := "%{1}"
+		}
+		success
+		break
+	}
+	elsif ("%{Foreach-Variable-0}" == '9') {
+		test_fail
+		reject
+	}
+}

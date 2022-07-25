@@ -1,0 +1,45 @@
+#
+# PRE: update concat
+#
+#  Check explode works correctly
+#
+update {
+	&request.Class := '1=1|my_attr=2|my_attr=hello|'
+	&request.Calling-Station-ID += '|'
+	&control.User-Name += '|hello|goodbye'
+	&control.User-Name += '|morning|night|1|'
+	&control.Reply-Message := 'Can\'t touch this'
+	&control.Tmp-String-0 := 'here.  are . some.  words. '
+}
+
+update {
+	&request.Tmp-String-1 := "%(concat:%(explode:%{Class} |) ,)"
+	&request.Tmp-String-2 := "%(concat:%(explode:%{Calling-Station-ID} |) ,)"
+	&request.Tmp-String-3 := "%(concat:%(explode:%{control.User-Name[*]} |) ,)"
+	&request.Tmp-String-4 := "%(concat:%(explode:%{control.Reply-Message} |) ,)"
+	&request.Tmp-String-5 := "%(concat:%(explode:%{control.Tmp-String-0} '. ') ,)"
+}
+
+debug_all
+
+if ("%{Tmp-String-1}" != "1=1,my_attr=2,my_attr=hello") {
+	test_fail
+}
+
+if ("%{Tmp-String-2}" != "") {
+	test_fail
+}
+
+if ("%{Tmp-String-3}" != "hello,goodbye,morning,night,1") {
+	test_fail
+}
+
+if ("%{Tmp-String-4}" != 'Can\'t touch this') {
+	test_fail
+}
+
+if ("%{Tmp-String-5}" != 'here, are ,some, words') {
+	test_fail
+}
+
+success

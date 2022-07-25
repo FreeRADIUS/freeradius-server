@@ -1,0 +1,47 @@
+#
+#  PRE: if update return
+#
+
+update request {
+	&Tmp-String-0 = "test"
+}
+
+#
+#	rpad tests
+#
+if ("%(rpad:%{Tmp-String-0} 7)" != "test   ") {
+	test_fail
+}
+
+if ("%(rpad:%{Tmp-String-0} 2)" != "test") {
+	test_fail
+}
+
+if ("%(rpad:%{Tmp-String-0} 7 x)" != "testxxx") {
+	test_fail
+}
+
+if ("%(rpad:%{Tmp-String-0} 7 xy)" != "testxyx") {
+	test_fail
+}
+
+#
+#	lpad tests
+#
+if ("%(lpad:%{Tmp-String-0} 7)" != "   test") {
+	test_fail
+}
+
+if ("%(lpad:%{Tmp-String-0} 2)" != "test") {
+	test_fail
+}
+
+if ("%(lpad:%{Tmp-String-0} 7 x)" != "xxxtest") {
+	test_fail
+}
+
+if ("%(lpad:%{Tmp-String-0} 7 xy)" != "xyxtest") {
+	test_fail
+}
+
+success

@@ -1,0 +1,18 @@
+#
+#  PRE: vendor_specific
+#
+#  Tests for Vendor-Specific
+#
+update request {
+	&raw.26 := 0x01020304
+}
+
+if (!&raw.26) {
+	test_fail
+}
+elsif (&raw.26 != 0x01020304) {
+	test_fail
+}
+else {
+	success
+}

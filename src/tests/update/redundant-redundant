@@ -1,0 +1,70 @@
+# PRE: update if foreach redundant redundant-load-balance
+#
+#  Nested redundant blocks.
+#
+#
+update request {
+	&Tmp-Integer-2 := 0
+	&Tmp-Integer-3 := 0
+	&Tmp-Integer-4 := 0
+	&Tmp-Integer-5 := 0
+}
+
+redundant {
+	redundant-load-balance {
+		group {
+			update request {
+				&Tmp-Integer-2 := "%{expr:&Tmp-Integer-2 + 1}"
+			}
+			fail
+		}
+		group {
+			update request {
+				&Tmp-Integer-3 := "%{expr:&Tmp-Integer-3 + 1}"
+			}
+			fail
+		}
+		group {
+			update request {
+				&Tmp-Integer-4 := "%{expr:&Tmp-Integer-4 + 1}"
+			}
+			fail
+		}
+		group {
+			update request {
+				&Tmp-Integer-5 := "%{expr:&Tmp-Integer-5 + 1}"
+			}
+			fail
+		}
+	}
+	ok
+}
+
+if (!ok) {
+	update reply {
+		&Filter-Id := "did not return OK"
+	}
+	return
+}
+
+if (&Tmp-Integer-2 != 1) {
+	test_fail
+	return
+}
+
+if (&Tmp-Integer-3 != 1) {
+	test_fail
+	return
+}
+
+if (&Tmp-Integer-4 != 1) {
+	test_fail
+	return
+}
+
+if (&Tmp-Integer-5 != 1) {
+	test_fail
+	return
+}
+
+success

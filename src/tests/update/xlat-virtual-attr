@@ -1,0 +1,83 @@
+#
+#  PRE: if
+#
+
+if ("%{Client-Shortname}" != 'test') {
+	test_fail
+}
+
+if ("%{Virtual-Server}" != 'default') {
+	test_fail
+}
+
+ok
+if ("%{Module-Return-Code}" != 'ok') {
+	test_fail
+}
+
+if ("%{Packet-Type}" != 'Access-Request') {
+	test_fail
+}
+
+# Response hasn't been set yet
+if ("%{reply.Packet-Type}" != '') {
+	test_fail
+}
+
+if ("%{Packet-Authentication-Vector}" != '0x00000000000000000000000000000000') {
+	test_fail
+}
+
+if ("%{Client-IP-Address}" != 127.0.0.1) {
+	test_fail
+}
+
+if ("%{Packet-Src-IP-Address}" != 127.0.0.1) {
+	test_fail
+}
+
+if ("%{Packet-Dst-IP-Address}" != 127.0.0.1) {
+	test_fail
+}
+
+# Can't have both...
+if ("%{Packet-Src-IPv6-Address}" != '') {
+	test_fail
+}
+
+if ("%{Packet-Dst-IPv6-Address}" != '') {
+	test_fail
+}
+
+if ("%{Packet-Src-Port}" != '18120') {
+	test_fail
+}
+
+if ("%{Packet-Dst-Port}" != '1812') {
+	test_fail
+}
+
+
+# We should allow the user to overload virtual attributes
+update request {
+	&Client-Shortname := 'my_test_client'
+}
+
+if ("%{Client-Shortname}" != 'my_test_client') {
+	test_fail
+}
+
+# Operations on virtual attributes should be the same as on real ones
+if ("%{Virtual-Server[0]}" != 'default') {
+	test_fail
+}
+
+if ("%{Virtual-Server[*]}" != 'default') {
+	test_fail
+}
+
+if ("%{Virtual-Server[#]}" != 1) {
+	test_fail
+}
+
+success

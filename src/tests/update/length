@@ -1,0 +1,110 @@
+#
+# PRE: hex
+#
+update request {
+	&Tmp-String-0        := '\
+abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
+abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
+abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz'
+	&Tmp-String-2        := '9870'
+	&Tmp-Octets-0        := 0x39383731
+	&Tmp-IP-Address-0    := 57.56.55.50
+	&Tmp-Integer-0       := 959985460
+	&Tmp-Cast-IfId       := '0000:0000:3938:3737'
+	&Tmp-Cast-IPv6Addr   := '::3938:3738'
+	&Tmp-Cast-IPv6Prefix := '::3938:3739/128'
+	&Tmp-Cast-Byte       := 58
+	&Tmp-Cast-Short      := 14139
+	&Tmp-Cast-Ether   := 00:00:39:38:37:3c
+	&Tmp-Cast-Integer64  := 1152921505566832445
+	&Tmp-Cast-IPv4Prefix := 57.56.55.62/32
+}
+
+update request {
+	&Tmp-Integer-0        := "%(length:%{Tmp-String-0})"
+}
+
+if (&Tmp-Integer-0 != 260) {
+	test_fail
+}
+
+update request {
+	&Tmp-Integer-0        := "%(length:%{Tmp-String-2})"
+	&Tmp-Integer-1        := "%(length:%{Tmp-Octets-0})"
+	&Tmp-Integer-2        := "%(length:%{Tmp-IP-Address-0})"
+	&Tmp-Integer-4        := "%(length:%{Tmp-Integer-0})"
+	&Tmp-Integer-6        := "%(length:%{Tmp-Cast-Ifid})"
+	&Tmp-Integer-7        := "%(length:%{Tmp-Cast-IPv6Addr})"
+	&Tmp-Integer-8        := "%(length:%{Tmp-Cast-IPv6Prefix})"
+	&Tmp-Integer-9        := "%(length:%{Tmp-Cast-Byte})"
+}
+
+# String - bin 0x39383730
+if (&Tmp-Integer-0 != 4) {
+	test_fail
+}
+
+# Octets - bin 0x39383731
+if (&Tmp-Integer-1 != 4) {
+	test_fail
+}
+
+# IP Address - bin 0x39383732
+if (&Tmp-Integer-2 != 4) {
+	test_fail
+}
+
+
+# Integer - bin 0x39383734
+if (&Tmp-Integer-4 != 4) {
+	test_fail
+}
+
+# ifid - bin 0x0000000039383737
+if (&Tmp-Integer-6 != 8) {
+	test_fail
+}
+
+# ipv6addr - bin 0x00000000000000000000000039383738
+if (&Tmp-Integer-7 != 16) {
+	test_fail
+}
+
+# ipv6addrprefix - bin 0x8000000000000000000000000039383739
+if (&Tmp-Integer-8 != 17) {
+	test_fail
+}
+
+# byte - bin 0x3a
+if (&Tmp-Integer-9 != 1) {
+	test_fail
+}
+
+update request {
+	&Tmp-Integer-0        := "%(length:%{Tmp-Cast-Short})"
+	&Tmp-Integer-1        := "%(length:%{Tmp-Cast-Ether})"
+	&Tmp-Integer-2        := "%(length:%{Tmp-Cast-Integer64})"
+	&Tmp-Integer-3        := "%(length:%{Tmp-Cast-IPv4Prefix})"
+}
+
+# short - bin 0x373b
+if (&Tmp-Integer-0 != 2) {
+	test_fail
+}
+
+# ethernet - bin 0x00003938373c
+if (&Tmp-Integer-1 != 6) {
+	test_fail
+}
+
+# integer64 - bin 0x100000003938373d
+if (&Tmp-Integer-2 != 8) {
+	test_fail
+}
+
+# ipv4prefix - bin 0x203938373e
+if (&Tmp-Integer-3 != 5) {
+	test_fail
+}
+
+success

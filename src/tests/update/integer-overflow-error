@@ -1,0 +1,6 @@
+#
+# PRE: xlat-integer
+#
+
+if (&NAS-Port == 4294967298) { # ERROR
+}

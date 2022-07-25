@@ -1,0 +1,30 @@
+#
+# PRE: update
+#
+
+#
+#  Create some unknown attributes.
+#
+#  These should all be created as octets types, and added to the main dictionaries
+#  during parsing.
+#
+
+update {
+	&26.6139.1 = 0x00000013
+	&26.9.42 = 0x0001020304
+	&255 = 0x00
+}
+
+if (&26.6139.1 != 0x00000013) {
+	test_fail
+}
+
+if (&26.9.42 != 0x0001020304) {
+	test_fail
+}
+
+if (&255 != 0x00) {
+	test_fail
+}
+
+success

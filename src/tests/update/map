@@ -1,0 +1,6 @@
+#
+#  PRE: map-2arg-error map-empty-error map-module-error map-field-error
+#
+map csv &User-Name {
+	&reply.Result-Status := 'field3'
+}

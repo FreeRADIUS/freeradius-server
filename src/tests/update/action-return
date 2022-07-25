@@ -1,0 +1,20 @@
+#
+#  PRE: if
+#
+#  Static if condition
+#
+if (1) {
+	success
+
+	#
+	#  We're not running the 'pap' module, so
+	#  we have to set this ourselves.
+	#
+	&control.Auth-Type := pap
+
+	actions {
+		ok = return
+	}
+}
+
+test_fail

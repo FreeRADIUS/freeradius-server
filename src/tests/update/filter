@@ -1,0 +1,32 @@
+#
+#  PRE: update
+#
+update request {
+	&Session-Timeout := 100
+}
+
+filter request {
+	&Session-Timeout < 50
+}
+
+if (&Session-Timeout) {
+	fail
+}
+
+update request {
+	&Session-Timeout := 100
+}
+
+filter request {
+	&Session-Timeout < 200
+}
+
+if (!&Session-Timeout) {
+	fail
+}
+
+if (&Session-Timeout != 100) {
+	fail
+}
+
+success

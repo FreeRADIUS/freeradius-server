@@ -1,0 +1,16 @@
+#
+#  PRE: if
+#
+&request.Class := 0xad
+
+if (<byte>&Class == 173) {
+	success
+}
+
+if (<byte>&Class < 173) {
+	test_fail
+}
+
+if (<byte>&Class > 173) {
+	test_fail
+}

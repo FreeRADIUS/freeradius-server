@@ -1,0 +1,35 @@
+#
+#  PRE: update expr
+#
+
+#
+#  Calculations based on month and year are not consistent due to
+#  different numbers of days involved.  Check hour / day / week
+#
+
+update request {
+        &Tmp-Integer-0 := "%{expr:%(nexttime:2h) - %(nexttime:1h)}"
+}
+
+# We have a fudge factor of 1 second either way
+if ((&Tmp-Integer-0 < 3599) || (&Tmp-Integer-0 > 3601)) {
+        test_fail
+}
+
+update request {
+        &Tmp-Integer-0 := "%{expr:%(nexttime:3d) - %(nexttime:1d)}"
+}
+
+if ((&Tmp-Integer-0 < 172799) || (&Tmp-Integer-0 > 172801)) {
+        test_fail
+}
+
+update request {
+        &Tmp-Integer-0 := "%{expr:%(nexttime:4w) - %(nexttime:2w)}"
+}
+
+if ((&Tmp-Integer-0 < 1209599) || (&Tmp-Integer-0 > 1209601)) {
+        test_fail
+}
+
+success

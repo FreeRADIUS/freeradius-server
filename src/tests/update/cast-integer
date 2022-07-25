@@ -1,0 +1,16 @@
+#
+#  PRE: if
+#
+&request.Class := 0x00000101
+
+if (<integer>&Class[0] == 257) {
+	success
+}
+
+if (<integer>&Class[0] < 256) {
+	test_fail
+}
+
+if (<integer>&Class[0] > 257) {
+	test_fail
+}

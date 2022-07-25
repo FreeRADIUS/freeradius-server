@@ -1,0 +1,25 @@
+#
+#  PRE: if update
+#
+
+#
+#  This doesn't exist, so  the condition shouldn't match.
+#
+if (&Tmp-String-0 == "foo") {
+	test_fail
+}
+else {
+	ok
+}
+
+#
+# Since the middle part doesn't match, "NOT" the middle part SHOULD match.
+#
+if (!(&Tmp-String-0 == "foo")) {
+	ok
+}
+else {
+	test_fail
+}
+
+success

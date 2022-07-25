@@ -1,0 +1,17 @@
+#
+#  PRE: edit
+#
+
+#
+#  Lists can be assigned strings, in which case the string MUST be a
+#  list of value-pairs.
+#
+#  The purpose of this functionality is mainly for xlat, exec, etc.
+#
+&control += "Tmp-Integer-0 = 9"
+
+if (&control.Tmp-Integer-0 != 9) {
+	test_fail
+}
+
+success

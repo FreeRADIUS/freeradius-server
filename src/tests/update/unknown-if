@@ -1,0 +1,6 @@
+#
+#  PRE: unknown-update
+#
+if (&This-Does-Not-Exist == 1) {	# ERROR
+	test_fail
+}

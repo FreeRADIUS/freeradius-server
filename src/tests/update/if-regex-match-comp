@@ -1,0 +1,110 @@
+# PRE: if
+#
+
+# Non matching on attribute ref
+if (&User-Name !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
+	test_fail
+}
+
+# Matching on xlat expanded value
+if ("%{User-Name}" !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
+	test_fail
+}
+
+# Matching on attribute ref with capture groups
+if (&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
+	# Test all the capture groups
+	update {
+		&reply.User-Name := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
+	}
+}
+else {
+	test_fail
+}
+
+# Checking capture groups are cleared out correctly
+if (&User-Name =~ /^([0-9])_/) {
+	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" != '1_1') {
+		test_fail
+	}
+}
+else {
+	test_fail
+}
+
+# Checking capture groups are cleared out correctly when there are no matches
+if (&User-Name =~ /^./) {
+	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" != '1') {
+		test_fail
+	}
+}
+else {
+	test_fail
+}
+
+# compiled - ref - insensitive
+if (&Calling-Station-Id !~ /:roamyroam$/i) {
+	test_fail
+}
+
+# compiled - expansion - insensitive
+if ("%{Calling-Station-Id}" !~ /:roamyroam$/i) {
+	test_fail
+}
+
+# compiled - enum - ref - insensitive
+if (&Service-Type !~ /^framed-user$/i) {
+	test_fail
+}
+
+# compiled - enum - expansion - insensitive
+if ("%{Service-Type}" !~ /^framed-user$/i) {
+	test_fail
+}
+
+# compiled - enum - ref
+if (&Service-Type =~ /^framed-user$/) {
+	test_fail
+}
+
+update request {
+	&Tmp-String-0 := "foo\nbar"
+}
+
+# compiled - ref - multiline
+if (&Tmp-String-0 !~ /^foo$/m) {
+	test_fail
+}
+
+# compiled - ref - non-multiline
+if (&Tmp-String-0 =~ /^foo$/) {
+	test_fail
+}
+
+# compiled - ref - non-multiline
+# Not all POSIX implementations support the \n character classes
+# so only run this test if the server was built with libpcre.
+if ((('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) && (&Tmp-String-0 !~ /^foo\nbar$/)) {
+	test_fail
+}
+
+# compiled - ref - multiline
+if (&Tmp-String-0 !~ /^bar$/m) {
+	test_fail
+}
+
+# compiled - ref - multiline - sensitive
+if (&Tmp-String-0 =~ /^BAR$/m) {
+	test_fail
+}
+
+# compiled - ref - multiline - insensitive
+if (&Tmp-String-0 !~ /^BAR$/mi) {
+	test_fail
+}
+
+# compiled - ref - multiline - insensitive (flag order reversed)
+if (&Tmp-String-0 !~ /^BAR$/im) {
+	test_fail
+}
+

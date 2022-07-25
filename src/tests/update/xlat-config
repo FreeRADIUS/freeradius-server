@@ -1,0 +1,25 @@
+#
+# PRE: update if
+#
+
+update request {
+        &Tmp-String-0 := "%(config:modules.test.boolean)"
+}
+
+if (&Tmp-String-0 != "no") {
+        test_fail
+}
+
+update request {
+        &Tmp-String-0 := "test"
+}
+
+update request {
+        &Tmp-Integer-0 := "%(config:modules.%{Tmp-String-0}.integer)"
+}
+
+if (&Tmp-Integer-0 != 1) {
+        test_fail
+}
+
+success

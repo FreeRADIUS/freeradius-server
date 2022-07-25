@@ -1,0 +1,20 @@
+# PRE: switch
+#
+switch &User-Name {
+	case "harry" {
+		update reply {
+			&Filter-Id := "harry"
+		}
+	}
+
+	case "doug" {
+		update reply {
+			&Filter-Id := "doug"
+		}
+	}
+
+	case {
+		success
+	}
+
+}

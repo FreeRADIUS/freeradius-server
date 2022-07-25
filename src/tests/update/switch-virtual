@@ -1,0 +1,16 @@
+#
+#  PRE: update switch
+#
+
+#
+#  Virtual attribute references get mashed to xlats
+#
+switch &Packet-Type {
+	case Access-Request {
+		success
+	}
+
+	case {
+		test_fail
+	}
+}

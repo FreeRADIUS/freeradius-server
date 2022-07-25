@@ -1,0 +1,40 @@
+# PRE: if
+#
+#  Conditions which statically evaluate to "false"
+#  have their entire contents skipped on load.
+#
+#  Conditions which statically evaluate to "true"
+#  have the following "else" sections skipped, too.
+#
+#  i.e. we can reference things which don't exist,
+#  and they'll get ignored.
+#
+if (0) {
+	no-such-module
+}
+
+if (0) {
+	no-such-module
+}
+else {
+	ok
+}
+
+if (1) {
+	ok
+}
+else {
+	no-such-module
+}
+
+if (1) {
+	ok
+}
+elsif ("%{foo:bar}") {	# no pass2
+	no-such-module
+}
+else {
+	no-such-module
+}
+
+success

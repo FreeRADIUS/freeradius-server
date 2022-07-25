@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "bob"
+User-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Result-Status == "success"

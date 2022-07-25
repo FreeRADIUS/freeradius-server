@@ -1,0 +1,43 @@
+#
+#  PRE: foreach
+#
+update {
+	&control.Tmp-String-0 := "ssid=ABCDEF"
+	&control.Tmp-String-0 += "ssid=GHIJKL"
+}
+
+if (&User-Name) {
+	foreach &control.Tmp-String-0 {
+		if ("%{Foreach-Variable-0}" =~ /(.*)/) {
+			update control {
+				&Tmp-String-1 := "%{1}"
+			}
+		}
+	}
+}
+
+if (&control.Tmp-String-1 != 'ssid=GHIJKL') {
+	test_fail
+}
+
+update control {
+	&Tmp-String-1 !* ANY
+}
+
+foreach &control.Tmp-String-0 {
+	if ("%{Foreach-Variable-0}" =~ /(.*)/) {
+		update control {
+			&Tmp-String-1 := "%{1}"
+		}
+	}
+}
+
+if (&control.Tmp-String-1 != 'ssid=GHIJKL') {
+	test_fail
+}
+
+update control {
+	&Tmp-String-1 !* ANY
+}
+
+success

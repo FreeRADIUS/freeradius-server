@@ -1,0 +1,21 @@
+#
+# PRE: update if
+#
+
+#
+#  Paircmp
+#
+
+#
+#  Passing 'yes' causes the test paircmp to return match
+#  Passing 'no' causes the test paircmp to return a non-match
+#
+if (&Test-Paircmp != 'yes') {
+	test_fail
+}
+
+if (&Test-Paircmp == 'no') {
+	test_fail
+}
+
+success

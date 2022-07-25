@@ -1,0 +1,26 @@
+#
+# PRE: update if
+#
+update {
+        &Tmp-String-0           := "AbCdE"
+}
+
+update request {
+        &Tmp-String-0           := "%{tolower:%{Tmp-String-0}}"
+        &Tmp-String-1           := "%{tolower:AAbbCCdd}"
+        &Tmp-String-2           := "%{tolower:%{Tmp-String-9}}"
+}
+
+if (&Tmp-String-0 != "abcde") {
+	test_fail
+}
+
+if (&Tmp-String-1 != "aabbccdd") {
+	test_fail
+}
+
+if (&Tmp-String-2 != "") {
+	test_fail
+}
+
+success

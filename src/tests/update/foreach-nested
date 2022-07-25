@@ -1,0 +1,9 @@
+# PRE: foreach
+#
+foreach &Filter-Id {
+	foreach &Calling-Station-Id {
+		update reply {
+			&Called-Station-Id += "%{Foreach-Variable-0} %{Foreach-Variable-1}"
+		}
+	}
+}

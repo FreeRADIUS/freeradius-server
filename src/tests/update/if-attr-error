@@ -1,0 +1,11 @@
+#
+#  PRE: if
+#
+#  An attribute may be dynamically allocated by a module.
+#  Unknown attributes should get parsed provisionally, but
+#  then fail in the compilation stage, because the
+#  attribute doesn't exist.
+#
+if (&Not-Dynamically-Allocated) {	# ERROR
+   # foo
+}

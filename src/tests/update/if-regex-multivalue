@@ -1,0 +1,29 @@
+#
+# PRE: update if
+#
+
+update request {
+	&Vendor-Specific.Cisco.AVPair := 'foo=bar'
+	&Vendor-Specific.Cisco.AVPair += 'bar=baz'
+	&Vendor-Specific.Cisco.AVPair += 'baz=foo'
+}
+
+if (&Vendor-Specific.Cisco.AVPair[1] =~ /bar=(.*)/) {
+	if ("%{1}" != 'baz') {
+		test_fail
+	}
+}
+else {
+	test_fail
+}
+
+if (&Vendor-Specific.Cisco.AVPair[*] =~ /bar=(.*)/) {
+	if ("%{1}" != 'baz') {
+		test_fail
+	}
+}
+else {
+	test_fail
+}
+
+success

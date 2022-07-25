@@ -1,0 +1,39 @@
+#
+# PRE: update
+#
+
+update request {
+	&Tmp-IP-Address-0 := 192.0.2.1
+	&Tmp-IP-Address-0 += 192.0.2.2
+}
+
+if ("%{Tmp-IP-Address-0[#]}" != 2) {
+	test_fail
+}
+
+if (("%{Tmp-IP-Address-0[0]}" != 192.0.2.1) || ("%{Tmp-IP-Address-0[1]}" != 192.0.2.2)) {
+	test_fail
+}
+
+if ("%{Tmp-IP-Address-0[*]}" != '192.0.2.1192.0.2.2') {
+	test_fail
+}
+
+# Try calling these xlats in mapping too, they may get optimised to VPTs which is a
+# different code path.
+update request {
+	&Tmp-IP-Address-1 += "%{Tmp-IP-Address-0[1]}"
+	&Tmp-IP-Address-1 += "%{Tmp-IP-Address-0[0]}"
+	&Tmp-String-0 = "%(concat:%{Tmp-IP-Address-0[*]} ,)"
+	&Tmp-Integer-0 = "%{Tmp-IP-Address-0[#]}"
+}
+
+if (&Tmp-String-0 != '192.0.2.1,192.0.2.2') {
+	test_fail
+}
+
+if (&Tmp-Integer-0 != 2) {
+	test_fail
+}
+
+success

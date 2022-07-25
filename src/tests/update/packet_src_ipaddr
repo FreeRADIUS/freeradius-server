@@ -1,0 +1,6 @@
+if (&Packet-Src-IP-Address == 127.0.0.1) {
+	success
+}
+else {
+	test_fail
+}

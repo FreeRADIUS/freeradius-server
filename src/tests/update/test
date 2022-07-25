@@ -1,0 +1,25 @@
+#
+#  Test the method parsing
+#
+
+#
+#  "test" can be run in the "recv Access-Request" section
+#
+test
+
+#
+#  It also has a bare "send" method
+#
+test.send
+
+#
+#  which accepts anything after "send".
+#
+test.send.Access-Accept
+
+#
+#  And a named "recv Access-Request" method.
+#
+#test.recv.Access-Request
+
+success
