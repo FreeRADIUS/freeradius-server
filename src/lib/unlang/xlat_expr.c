@@ -2587,6 +2587,25 @@ redo:
 	fr_sbuff_skip_whitespace(&our_in);
 	fr_sbuff_marker(&m_rhs, &our_in);
 
+#if 0
+	/*
+	 *	If LHS is attr && structural, allow only == and !=, then check that the RHS is {}.
+	 *
+	 *	However, we don't want the LHS evaluated, so just re-write it as an "exists" xlat?
+	 *
+	 *	@todo - check lists for equality?
+	 */
+	if ((lhs->type == XLAT_TMPL) && tmpl_is_attr(lhs->vpt) && fr_type_is_structural(tmpl_da(lhs->vpt)->type)) {
+		if ((op != T_OP_CMP_EQ) && (op != T_OP_NE)) {
+			fr_strerror_printf("Invalid operatord '%s' for left hand side structural attribute", fr_tokens[op]);
+			fr_sbuff_set(&our_in, &m_op);
+			return -fr_sbuff_used(&our_in);
+		}
+
+		fr_assert(0);
+	}
+#endif
+
 	/*
 	 *	We now parse the RHS, allowing a (perhaps different) cast on the RHS.
 	 */
@@ -2635,6 +2654,13 @@ redo:
 
 	/*
 	 *	Remove invalid comparisons.
+	 *
+	 *	@todo - allow
+	 *
+	 *		&structural == {}
+	 *		&structural != {}
+	 *
+	 *	as special cases, so we can check lists for emptiness.
 	 */
 	if (fr_equality_op[op]) {
 		if (!valid_type(lhs)) {
