@@ -77,24 +77,24 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 
 static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	fr_pair_t			*vp;
-	unlang_frame_state_foreach_t	*foreach = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
+	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
+	fr_pair_t			*vp;
 
 	if (is_stack_unwinding_to_break(request->stack)) return UNLANG_ACTION_CALCULATE_RESULT;
 
-	vp = fr_dcursor_current(&foreach->cursor);
+	vp = fr_dcursor_current(&state->cursor);
 	if (!vp) {
 		*p_result = frame->result;
 #ifndef NDEBUG
-		fr_assert(foreach->indent == request->log.unlang_indent);
+		fr_assert(state->indent == request->log.unlang_indent);
 #endif
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
-	(void) fr_dcursor_next(&foreach->cursor);
+	(void) fr_dcursor_next(&state->cursor);
 
 #ifndef NDEBUG
-	RDEBUG2("# looping with: Foreach-Variable-%d = %pV", foreach->depth, &vp->data);
+	RDEBUG2("# looping with: Foreach-Variable-%d = %pV", state->depth, &vp->data);
 #endif
 
 	fr_assert(vp);
@@ -103,8 +103,8 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 	 *	Add the vp to the request, so that
 	 *	xlat.c, xlat_foreach() can find it.
 	 */
-	foreach->variable = vp;
-	request_data_add(request, FOREACH_REQUEST_DATA, foreach->depth, &foreach->variable,
+	state->variable = vp;
+	request_data_add(request, FOREACH_REQUEST_DATA, state->depth, &state->variable,
 			 false, false, false);
 
 	/*
@@ -123,12 +123,12 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 
 static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_frame_state_foreach_t	*foreach = NULL;
 	unlang_stack_t			*stack = request->stack;
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_foreach_t		*gext = unlang_group_to_foreach(g);
+	unlang_frame_state_foreach_t	*state;
 
-	int				i, foreach_depth = 0;
+	int				i, depth = 0;
 	fr_pair_list_t			vps;
 
 	fr_pair_list_init(&vps);
@@ -145,17 +145,17 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 			unlang_t const *our_instruction;
 			our_instruction = stack->frame[i].instruction;
 			if (!our_instruction || (our_instruction->type != UNLANG_TYPE_FOREACH)) continue;
-			foreach_depth++;
+			depth++;
 		}
 
-	if (foreach_depth >= (int)NUM_ELEMENTS(xlat_foreach_names)) {
+	if (depth >= (int)NUM_ELEMENTS(xlat_foreach_names)) {
 		REDEBUG("foreach Nesting too deep!");
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	MEM(frame->state = foreach = talloc_zero(request->stack, unlang_frame_state_foreach_t));
-	fr_pair_list_init(&foreach->vps);
+	MEM(frame->state = state = talloc_zero(request->stack, unlang_frame_state_foreach_t));
+	fr_pair_list_init(&state->vps);
 
 	/*
 	 *	Copy the VPs from the original request, this ensures deterministic
@@ -169,14 +169,14 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 
 	fr_assert(!fr_pair_list_empty(&vps));
 
-	foreach->request = request;
-	foreach->depth = foreach_depth;
-	fr_pair_list_append(&foreach->vps, &vps);
-	fr_pair_dcursor_init(&foreach->cursor, &foreach->vps);
+	state->request = request;
+	state->depth = depth;
+	fr_pair_list_append(&state->vps, &vps);
+	fr_pair_dcursor_init(&state->cursor, &state->vps);
 #ifndef NDEBUG
-	foreach->indent = request->log.unlang_indent;
+	state->indent = request->log.unlang_indent;
 #endif
-	talloc_set_destructor(foreach, _free_unlang_frame_state_foreach);
+	talloc_set_destructor(state, _free_unlang_frame_state_foreach);
 
 	frame->process = unlang_foreach_next;
 	return unlang_foreach_next(p_result, request, frame);
