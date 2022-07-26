@@ -2158,26 +2158,26 @@ dnl #
 smart_try_dir=$execinfo_include_dir
 FR_SMART_CHECK_INCLUDE(execinfo.h)
 if test "x$ac_cv_header_execinfo_h" = "xyes"; then
-  smart_try_dir=$execinfo_lib_dir
-  FR_SMART_CHECK_LIB(execinfo, backtrace_symbols)
+  dnl # Might be provided as part of libc
+  AC_MSG_CHECKING([if execinfo provided as part of libc])
+  AC_TRY_LINK(
+    [
+      #include <execinfo.h>
+    ],
+    [
+      void *sym[1];
+      backtrace_symbols(&sym, sizeof(sym)) ],
+    [
+      AC_MSG_RESULT(yes)
+      ac_cv_lib_execinfo_backtrace_symbols="yes"
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
   if test "x$ac_cv_lib_execinfo_backtrace_symbols" != "xyes"; then
-    dnl # Might be provided as part of libc
-    AC_MSG_CHECKING([if execinfo provided as part of libc])
-    AC_TRY_LINK(
-      [
-        #include <execinfo.h>
-      ],
-      [
-        void *sym[1];
-        backtrace_symbols(&sym, sizeof(sym)) ],
-      [
-        AC_MSG_RESULT(yes)
-        ac_cv_lib_execinfo_backtrace_symbols="yes"
-      ],
-      [
-        AC_MSG_RESULT(no)
-      ]
-    )
+    smart_try_dir=$execinfo_lib_dir
+    FR_SMART_CHECK_LIB(execinfo, backtrace_symbols)
   fi
 
   if test "x$ac_cv_lib_execinfo_backtrace_symbols" = "xyes"; then
