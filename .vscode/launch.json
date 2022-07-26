@@ -7,7 +7,7 @@
                 {
                         "type": "lldb",
                         "request": "launch",
-                        "name": "Debug",
+                        "name": "Debug (lldb)",
                         "program": "${workspaceFolder}/build/bin/local/radiusd",
                         "args": [
                                 "-X",
@@ -18,8 +18,28 @@
                         ],
                         "cwd": "${workspaceFolder}",
                         "env": {
-                                "FR_LIBRARY_PATH": "${workspaceFolder}/build/lib/local/.libs"
+                                "FR_LIBRARY_PATH": "${workspaceFolder}/build/lib/local/.libs",
+                                "DEBUGGER_ATTACHED": "yes"
                         }
+                },
+                {
+                        "type": "cppdbg",
+                        "request": "launch",
+                        "name": "Debug (gdb)",
+                        "program": "${workspaceFolder}/build/bin/local/radiusd",
+                        "args": [
+                                "-X",
+                                "-D",
+                                "${workspaceFolder}/share/dictionary",
+                                "-d",
+                                "${workspaceFolder}/raddb"
+                        ],
+                        "cwd": "${workspaceFolder}",
+                        "environment": [
+                                { "name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                { "name": "DEBUGGER_ATTACHED", "value": "yes" }
+                        ],
+                        "MIMode": "gdb"
                 }
         ]
 }
