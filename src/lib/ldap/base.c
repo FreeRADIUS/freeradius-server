@@ -612,6 +612,11 @@ static void ldap_trunk_query_cancel(UNUSED request_t *request, fr_state_signal_t
 	fr_ldap_query_t	*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
 
 	if (action != FR_SIGNAL_CANCEL) return;
+	/*
+	 *	Query may have completed, but the request
+	 *	not yet have been resumed.
+	 */
+	if (!query->treq) return;
 
 	fr_trunk_request_signal_cancel(query->treq);
 
