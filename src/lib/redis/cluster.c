@@ -625,7 +625,8 @@ do { \
 			return rcode;
 		}
 
-		spare->pending_addr = find.addr;
+		spare->pending_addr.inet.dst_ipaddr = find.addr.inet.dst_ipaddr;
+		spare->pending_addr.inet.dst_port = find.addr.inet.dst_port;
 		rcode = cluster_node_connect(cluster, spare);
 		if (rcode < 0) goto error;
 
@@ -660,7 +661,8 @@ do { \
 			spare = fr_fifo_peek(cluster->free_nodes);
 			if (!spare) goto out_of_nodes;
 
-			spare->pending_addr = find.addr;
+			spare->pending_addr.inet.dst_ipaddr = find.addr.inet.dst_ipaddr;
+			spare->pending_addr.inet.dst_port = find.addr.inet.dst_port;
 			if (cluster_node_connect(cluster, spare) < 0) continue;	/* Slave failure is non-fatal */
 
 			SET_ACTIVE(spare);
@@ -2053,7 +2055,8 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 			pthread_mutex_unlock(&cluster->mutex);
 			return -1;
 		}
-		spare->pending_addr = find.addr;	/* Set the config to be applied */
+		spare->pending_addr.inet.dst_ipaddr = find.addr.inet.dst_ipaddr;	/* Set the config to be applied */
+		spare->pending_addr.inet.dst_port = find.addr.inet.dst_port;
 		if (cluster_node_connect(cluster, spare) < 0) {
 			pthread_mutex_unlock(&cluster->mutex);
 			return -1;
