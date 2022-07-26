@@ -1169,19 +1169,35 @@ if test "x$WITH_PCAP" = xyes; then
   LIBS="${old_LIBS}"
 fi
 
+dnl extra argument: --with-collectdclient=yes/no
+WITH_COLLECTDCLIENT=yes
+AC_ARG_WITH(collectdclient,
+[  --with-collectdclient  use collectd client. (default=yes)],
+[ case "$withval" in
+  no)
+    WITH_COLLECTDCLIENT=no
+    ;;
+  *)
+    WITH_COLLECTDCLIENT=yes
+    ;;
+  esac ]
+)
+
 dnl #
 dnl #  Check for collectdclient
 dnl #
-smart_try_dir="$collectdclient_lib_dir"
-FR_SMART_CHECK_LIB(collectdclient, lcc_connect)
-if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
-  AC_MSG_WARN([collectdclient library not found. Use --with-collectdclient-lib-dir=<path>.])
-else
-  COLLECTDC_LIBS="${smart_lib}"
-  COLLECTDC_LDFLAGS="${smart_ldflags}"
+if test "x$WITH_COLLECTDCLIENT" = xyes; then
+  smart_try_dir="$collectdclient_lib_dir"
+  FR_SMART_CHECK_LIB(collectdclient, lcc_connect)
+  if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
+    AC_MSG_WARN([collectdclient library not found. Use --with-collectdclient-lib-dir=<path>.])
+  else
+    COLLECTDC_LIBS="${smart_lib}"
+    COLLECTDC_LDFLAGS="${smart_ldflags}"
+  fi
+  dnl Set by FR_SMART_CHECKLIB
+  LIBS="${old_LIBS}"
 fi
-dnl Set by FR_SMART_CHECKLIB
-LIBS="${old_LIBS}"
 
 dnl #
 dnl #  extra argument: --with-libcap
