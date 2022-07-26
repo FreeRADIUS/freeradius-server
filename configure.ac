@@ -1135,23 +1135,39 @@ LIBS="$old_LIBS"
 dnl #
 dnl #  Check for libpcap
 dnl #
-smart_try_dir="$pcap_lib_dir"
-FR_SMART_CHECK_LIB(pcap, pcap_open_live)
-if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
-  AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>.])
-else
-  AC_CHECK_FUNCS(\
-    pcap_fopen_offline \
-    pcap_dump_fopen \
-    pcap_create \
-    pcap_activate
-  )
+dnl extra argument: --with-pcap=yes/no
+WITH_PCAP=yes
+AC_ARG_WITH(pcap,
+[  --with-pcap          use pcap library for the RADIUS sniffer. (default=yes)],
+[ case "$withval" in
+  no)
+    WITH_PCAP=no
+    ;;
+  *)
+    WITH_PCAP=yes
+    ;;
+  esac ]
+)
 
-  PCAP_LIBS="${smart_lib}"
-  PCAP_LDFLAGS="${smart_ldflags}"
+if test "x$WITH_PCAP" = xyes; then
+  smart_try_dir="$pcap_lib_dir"
+  FR_SMART_CHECK_LIB(pcap, pcap_open_live)
+  if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
+    AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>.])
+  else
+    AC_CHECK_FUNCS(\
+      pcap_fopen_offline \
+      pcap_dump_fopen \
+      pcap_create \
+      pcap_activate
+    )
+
+    PCAP_LIBS="${smart_lib}"
+    PCAP_LDFLAGS="${smart_ldflags}"
+  fi
+  dnl Set by FR_SMART_CHECK_LIB
+  LIBS="${old_LIBS}"
 fi
-dnl Set by FR_SMART_CHECK_LIB
-LIBS="${old_LIBS}"
 
 dnl #
 dnl #  Check for collectdclient
