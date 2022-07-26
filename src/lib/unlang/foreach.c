@@ -52,7 +52,6 @@ typedef struct {
 								///< we're iterating over.
 	fr_pair_list_t 		vps;				//!< List containing the attribute(s) we're
 								///< iterating over.
-	fr_pair_t		*variable;			//!< Attribute we update the value of.
 	int			depth;				//!< Level of nesting of this foreach loop.
 #ifndef NDEBUG
 	int			indent;				//!< for catching indentation issues
@@ -83,7 +82,7 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 
 	if (is_stack_unwinding_to_break(request->stack)) return UNLANG_ACTION_CALCULATE_RESULT;
 
-	vp = fr_dcursor_current(&state->cursor);
+	vp = fr_dcursor_next(&state->cursor);
 	if (!vp) {
 		*p_result = frame->result;
 #ifndef NDEBUG
@@ -91,21 +90,10 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 #endif
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
-	(void) fr_dcursor_next(&state->cursor);
 
 #ifndef NDEBUG
 	RDEBUG2("# looping with: Foreach-Variable-%d = %pV", state->depth, &vp->data);
 #endif
-
-	fr_assert(vp);
-
-	/*
-	 *	Add the vp to the request, so that
-	 *	xlat.c, xlat_foreach() can find it.
-	 */
-	state->variable = vp;
-	request_data_add(request, FOREACH_REQUEST_DATA, state->depth, &state->variable,
-			 false, false, false);
 
 	/*
 	 *	Push the child, and yield for a later return.
@@ -176,10 +164,27 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 #ifndef NDEBUG
 	state->indent = request->log.unlang_indent;
 #endif
+
+	/*
+	 *	Add a (hopefully) faster lookup to get the state.
+	 */
+	request_data_add(request, FOREACH_REQUEST_DATA, state->depth, state, false, false, false);
+
 	talloc_set_destructor(state, _free_unlang_frame_state_foreach);
 
 	frame->process = unlang_foreach_next;
-	return unlang_foreach_next(p_result, request, frame);
+
+	/*
+	 *	Push the child, and go process it.
+	 */
+	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
+		*p_result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
+	repeatable_set(frame);
+
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -203,15 +208,19 @@ static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 xlat_ctx_t const *xctx,
 					 request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	fr_pair_t			**pvp;
+	fr_pair_t			*vp;
 	int const			*inst = xctx->inst;
 	fr_value_box_t			*vb;
+	unlang_frame_state_foreach_t	*state;
 
-	pvp = (fr_pair_t **) request_data_reference(request, FOREACH_REQUEST_DATA, *inst);
-	if (!pvp || !*pvp) return XLAT_ACTION_FAIL;
+	state = request_data_reference(request, FOREACH_REQUEST_DATA, *inst);
+	if (!state) return XLAT_ACTION_FAIL;
+
+	vp = fr_dcursor_current(&state->cursor);
+	fr_assert(vp != NULL);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_copy(ctx, vb, &(*pvp)->data);
+	fr_value_box_copy(ctx, vb, &vp->data);
 	fr_dcursor_append(out, vb);
 	return XLAT_ACTION_DONE;
 }
