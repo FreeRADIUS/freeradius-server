@@ -2184,6 +2184,19 @@ void fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq)
 
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_CANCEL_SENT:
+	/*
+	 *	This is allowed, as we may not need to wait
+	 *	for the database to ACK our cancellation
+	 *	request.
+	 *
+	 *	Note: FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL
+	 *	is not allowed here, as that'd mean we'd half
+	 *	written the cancellation request out to the
+	 *	socket, and then decided to abandon it.
+	 *
+	 *	That'd leave the socket in an unusable state.
+	 */
+	case FR_TRUNK_REQUEST_STATE_CANCEL:
 		trunk_request_enter_cancel_complete(treq);
 		break;
 
