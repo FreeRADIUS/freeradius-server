@@ -619,6 +619,12 @@ static void ldap_trunk_query_cancel(UNUSED request_t *request, fr_state_signal_t
 	if (!query->treq) return;
 
 	fr_trunk_request_signal_cancel(query->treq);
+
+	/*
+	 *	Once we've called cancel, the treq is no
+	 *	longer ours to manipulate, it belongs to
+	 *	the trunk code.
+	 */
 	query->treq = NULL;
 
 }
