@@ -782,7 +782,6 @@ finish:
 	talloc_free(vpt);
 	talloc_free(vector);
 
-	/* coverity[missing_unlock] */
 	RETURN_MODULE_RCODE(rcode);
 }
 
