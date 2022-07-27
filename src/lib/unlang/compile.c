@@ -864,12 +864,12 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 	}
 
 	/*
-	 *	Fixup LHS attribute references to change NUM_ANY to NUM_ALL.
+	 *	Fixup LHS attribute references to change NUM_UNSPEC to NUM_ALL.
 	 */
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-		tmpl_attr_rewrite_leaf_num(map->lhs, NUM_ANY, NUM_ALL);
+		tmpl_attr_rewrite_leaf_num(map->lhs, NUM_UNSPEC, NUM_ALL);
 		break;
 
 	default:
@@ -877,12 +877,12 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 	}
 
 	/*
-	 *	Fixup RHS attribute references to change NUM_ANY to NUM_ALL.
+	 *	Fixup RHS attribute references to change NUM_UNSPEC to NUM_ALL.
 	 */
 	switch (map->rhs->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-		tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ANY, NUM_ALL);
+		tmpl_attr_rewrite_leaf_num(map->rhs, NUM_UNSPEC, NUM_ALL);
 		break;
 
 	default:
@@ -1093,14 +1093,14 @@ static int unlang_fixup_filter(map_t *map, UNUSED void *ctx)
 	}
 
 	/*
-	 *	Fixup LHS attribute references to change NUM_ANY to NUM_ALL.
+	 *	Fixup LHS attribute references to change NUM_UNSPEC to NUM_ALL.
 	 */
-	if (tmpl_is_attr(map->lhs)) tmpl_attr_rewrite_leaf_num(map->lhs, NUM_ANY, NUM_ALL);
+	if (tmpl_is_attr(map->lhs)) tmpl_attr_rewrite_leaf_num(map->lhs, NUM_UNSPEC, NUM_ALL);
 
 	/*
-	 *	Fixup RHS attribute references to change NUM_ANY to NUM_ALL.
+	 *	Fixup RHS attribute references to change NUM_UNSPEC to NUM_ALL.
 	 */
-	if (tmpl_is_attr(map->rhs)) tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ANY, NUM_ALL);
+	if (tmpl_is_attr(map->rhs)) tmpl_attr_rewrite_leaf_num(map->rhs, NUM_UNSPEC, NUM_ALL);
 
 	/*
 	 *	Values used by unary operators should be literal ANY
@@ -2876,7 +2876,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		return NULL;
 	}
 
-	if ((tmpl_num(vpt) != NUM_ALL) && (tmpl_num(vpt) != NUM_ANY)) {
+	if ((tmpl_num(vpt) != NUM_ALL) && (tmpl_num(vpt) != NUM_UNSPEC)) {
 		cf_log_err(cs, "MUST NOT use instance selectors in 'foreach'");
 		talloc_free(vpt);
 		return NULL;
@@ -2887,7 +2887,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	the attribute. In a perfect consistent world, users would do
 	 *	foreach &attr[*], but that's taking the consistency thing a bit far.
 	 */
-	tmpl_attr_rewrite_leaf_num(vpt, NUM_ANY, NUM_ALL);
+	tmpl_attr_rewrite_leaf_num(vpt, NUM_UNSPEC, NUM_ALL);
 
 	c = compile_section(parent, unlang_ctx, cs, &foreach_ext);
 	if (!c) {

@@ -1126,7 +1126,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	 *	This operation has two modes:
 	 *	- If tmpl_num(map->lhs) > 0, we check each of the src_list attributes against
 	 *	  the found attribute, to see if any of their values match.
-	 *	- If tmpl_num(map->lhs) == NUM_ANY, we compare all instances of the found attribute
+	 *	- If tmpl_num(map->lhs) == NUM_UNSPEC, we compare all instances of the found attribute
 	 *	  against each of the src_list attributes.
 	 */
 	case T_OP_SUB_EQ:

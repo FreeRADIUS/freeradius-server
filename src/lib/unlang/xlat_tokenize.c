@@ -1118,7 +1118,7 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 			if (tmpl_is_attr(node->vpt)) {
 				fr_assert(!node->flags.pure);
 				INFO_INDENT("attribute (%s)", tmpl_da(node->vpt)->name);
-				if (tmpl_num(node->vpt) != NUM_ANY) {
+				if (tmpl_num(node->vpt) != NUM_UNSPEC) {
 					FR_DLIST_HEAD(tmpl_request_list) const *list;
 					tmpl_request_t *rr = NULL;
 
@@ -1132,7 +1132,7 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 						INFO_INDENT("ref  %d", rr->request);
 					}
 					INFO_INDENT("list %d", tmpl_list(node->vpt));
-					if (tmpl_num(node->vpt) != NUM_ANY) {
+					if (tmpl_num(node->vpt) != NUM_UNSPEC) {
 						if (tmpl_num(node->vpt) == NUM_COUNT) {
 							INFO_INDENT("[#]");
 						} else if (tmpl_num(node->vpt) == NUM_ALL) {

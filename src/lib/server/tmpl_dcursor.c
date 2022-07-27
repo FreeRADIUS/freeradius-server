@@ -179,7 +179,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_d
 	/*
 	 *	Get the first instance
 	 */
-	case NUM_ANY:
+	case NUM_UNSPEC:
 		vp = ns->func(list_head, curr, ns);
 		_tmpl_cursor_common_pop(cc);
 		break;

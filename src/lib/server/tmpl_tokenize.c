@@ -162,7 +162,7 @@ size_t tmpl_request_ref_table_len = NUM_ELEMENTS(tmpl_request_ref_table);
 static fr_table_num_sorted_t const attr_num_table[] = {
 	{ L("*"),		NUM_ALL				},
 	{ L("#"),		NUM_COUNT			},
-	{ L("any"),		NUM_ANY				},
+	{ L("u"),		NUM_UNSPEC			},
 	{ L("n"),		NUM_LAST			}
 };
 static size_t attr_num_table_len = NUM_ELEMENTS(attr_num_table);
@@ -213,9 +213,9 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 			FR_FAULT_LOG("\t[%u] %s null%s%s%s",
 				     i,
 				     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
-				     ar->num != NUM_ANY ? "[" : "",
-				     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
-				     ar->num != NUM_ANY ? "]" : "");
+				     ar->num != NUM_UNSPEC ? "[" : "",
+				     ar->num != NUM_UNSPEC ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
+				     ar->num != NUM_UNSPEC ? "]" : "");
 			return;
 		}
 
@@ -224,9 +224,9 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 			     fr_type_to_str(ar->da->type),
 			     ar->da->name,
-			     ar->num != NUM_ANY ? "[" : "",
-			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
-			     ar->num != NUM_ANY ? "]" : "",
+			     ar->num != NUM_UNSPEC ? "[" : "",
+			     ar->num != NUM_UNSPEC ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
+			     ar->num != NUM_UNSPEC ? "]" : "",
 			     ar->da,
 			     ar->da->attr
 		);
@@ -245,9 +245,9 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 			     i,
 			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 			     ar->ar_unresolved,
-			     ar->num != NUM_ANY ? "[" : "",
-			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
-			     ar->num != NUM_ANY ? "]" : "");
+			     ar->num != NUM_UNSPEC ? "[" : "",
+			     ar->num != NUM_UNSPEC ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
+			     ar->num != NUM_UNSPEC ? "]" : "");
 		if (ar->ar_parent) 			FR_FAULT_LOG("\t    parent     : %s", ar->ar_parent->name);
 		if (ar->ar_unresolved_namespace)	FR_FAULT_LOG("\t    namespace  : %s", ar->ar_unresolved_namespace->name);
 		break;
@@ -967,7 +967,7 @@ static tmpl_attr_t *tmpl_attr_add(tmpl_t *vpt, tmpl_attr_type_t type)
 	MEM(ar = talloc(ctx, tmpl_attr_t));
 	*ar = (tmpl_attr_t){
 		.type = type,
-		.num = NUM_ANY
+		.num = NUM_UNSPEC
 	};
 	tmpl_attr_list_insert_tail(&vpt->data.attribute.ar, ar);
 
@@ -1299,7 +1299,7 @@ static inline CC_HINT(always_inline) void tmpl_attr_insert(tmpl_t *vpt, tmpl_att
 
 	switch (ar->num) {
 	case 0:
-	case NUM_ANY:
+	case NUM_UNSPEC:
 		break;
 
 	default:
@@ -1468,7 +1468,7 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 	}
 
 	*ar = (tmpl_attr_t){
-		.ar_num = NUM_ANY,
+		.ar_num = NUM_UNSPEC,
 		.ar_type = TMPL_ATTR_TYPE_UNRESOLVED,
 		.ar_unresolved = unresolved,
 		.ar_unresolved_namespace = namespace,
@@ -1631,7 +1631,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		if (da) {
 			MEM(ar = talloc(ctx, tmpl_attr_t));
 			*ar = (tmpl_attr_t){
-				.ar_num = NUM_ANY,
+				.ar_num = NUM_UNSPEC,
 				.ar_type = TMPL_ATTR_TYPE_NORMAL,
 				.ar_da = da,
 				.ar_parent = our_parent
@@ -1688,7 +1688,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 			 */
 			MEM(ar = talloc(ctx, tmpl_attr_t));
 			*ar = (tmpl_attr_t){
-				.ar_num = NUM_ANY,
+				.ar_num = NUM_UNSPEC,
 				.ar_type = TMPL_ATTR_TYPE_NORMAL,
 				.ar_da = da,
 				.ar_parent = our_parent,
@@ -1727,7 +1727,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		da_unknown->flags.internal = 1;
 
 		*ar = (tmpl_attr_t){
-			.ar_num = NUM_ANY,
+			.ar_num = NUM_UNSPEC,
 			.ar_type = TMPL_ATTR_TYPE_UNKNOWN,
 			.ar_unknown = da_unknown,
 			.ar_da = da_unknown,
@@ -3745,7 +3745,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 		 *	be removed.
 		 */
 		prev = tmpl_attr_list_prev(&vpt->data.attribute.ar, ar);
-		if (prev && (prev->ar_da->type != FR_TYPE_GROUP) && (prev->ar_num == NUM_ANY)) {
+		if (prev && (prev->ar_da->type != FR_TYPE_GROUP) && (prev->ar_num == NUM_UNSPEC)) {
 			tmpl_attr_list_remove(&vpt->data.attribute.ar, prev);
 			ar->ar_parent = prev->ar_parent;
 			talloc_free(prev);
@@ -4428,7 +4428,7 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 		 *	Will later be complex filters.
 		 */
 		switch (ar->ar_num) {
-		case NUM_ANY:
+		case NUM_UNSPEC:
 			break;
 
 		case NUM_ALL:

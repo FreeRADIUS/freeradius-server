@@ -399,7 +399,7 @@ typedef enum {
 #define tmpl_attr_is_unresolved(_ar)	(_ar->ar_type == TMPL_ATTR_TYPE_UNRESOLVED)
 
 
-#define NUM_ANY			INT16_MIN
+#define NUM_UNSPEC			INT16_MIN
 #define NUM_ALL			(INT16_MIN + 1)
 #define NUM_COUNT		(INT16_MIN + 2)
 #define NUM_LAST		(INT16_MIN + 3)

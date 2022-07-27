@@ -978,7 +978,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	if (!map->lhs) goto oom;
 
 	tmpl_attr_set_leaf_da(map->lhs, vp->da);
-	tmpl_attr_set_leaf_num(map->lhs, NUM_ANY);
+	tmpl_attr_set_leaf_num(map->lhs, NUM_UNSPEC);
 
 	tmpl_attr_set_request_ref(map->lhs, rules->attr.request_def);
 	tmpl_attr_set_list(map->lhs, rules->attr.list_def);
@@ -1621,7 +1621,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		/*
 		 *	Wildcard: delete all of the matching ones
 		 */
-		if (tmpl_num(map->lhs) == NUM_ANY) {
+		if (tmpl_num(map->lhs) == NUM_UNSPEC) {
 			fr_pair_delete_by_child_num(list, tmpl_da(map->lhs)->parent, tmpl_da(map->lhs)->attr);
 			dst = NULL;
 		/*
@@ -1645,7 +1645,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	This operation has two modes:
 	 *	- If tmpl_num(map->lhs) > 0, we check each of the src_list attributes against
 	 *	  the dst attribute, to see if any of their values match.
-	 *	- If tmpl_num(map->lhs) == NUM_ANY, we compare all instances of the dst attribute
+	 *	- If tmpl_num(map->lhs) == NUM_UNSPEC, we compare all instances of the dst attribute
 	 *	  against each of the src_list attributes.
 	 */
 	case T_OP_SUB_EQ:
@@ -1658,7 +1658,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		/*
 		 *	Instance specific[n] delete
 		 */
-		if (tmpl_num(map->lhs) != NUM_ANY) {
+		if (tmpl_num(map->lhs) != NUM_UNSPEC) {
 			for (vp = fr_pair_list_head(&src_list);
 			     vp;
 			     vp = fr_pair_list_next(&src_list, vp)) {
@@ -2038,7 +2038,7 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 		 */
 		tmpl_attr_copy(vpt, map->rhs);
 		tmpl_attr_set_leaf_da(vpt, vp->da);
-		tmpl_attr_set_leaf_num(vpt, NUM_ANY);
+		tmpl_attr_set_leaf_num(vpt, NUM_UNSPEC);
 
 		/*
 		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
