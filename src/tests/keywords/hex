@@ -1,30 +1,32 @@
 #
-# PRE: update
+# PRE: if
 #
-update request {
-	&Tmp-String-0		:= '9870'
-	&Tmp-Octets-0		:= 0x39383731
-	&Tmp-IP-Address-0	:= 57.56.55.50
-	&Tmp-Integer-0		:= 959985460
-	&Tmp-Cast-IfId		:= '0000:0000:3938:3737'
-	&Tmp-Cast-IPv6Addr	:= '::3938:3738'
-	&Tmp-Cast-IPv6Prefix	:= '::3938:3739/128'
-	&Tmp-Cast-Byte		:= 58
-	&Tmp-Cast-Short		:= 14139
-	&Tmp-Cast-Ether		:= 00:00:39:38:37:3c
-	&Tmp-Cast-Integer64 	:= 1152921505566832445
-	&Tmp-Cast-IPv4Prefix	:= 57.56.55.62/32
+&request <= {
+	&Tmp-String-0		= '9870'
+	&Tmp-Octets-0		= 0x39383731
+	&Tmp-IP-Address-0	= 57.56.55.50
+	&Tmp-Integer-0		= 959985460
+	&Tmp-Cast-IfId		= '0000:0000:3938:3737'
+	&Tmp-Cast-IPv6Addr	= '::3938:3738'
+	&Tmp-Cast-IPv6Prefix	= '::3938:3739/128'
+	&Tmp-Cast-Byte		= 58
+	&Tmp-Cast-Short		= 14139
+	&Tmp-Cast-Ether		= 00:00:39:38:37:3c
+	&Tmp-Cast-Integer64 	= 1152921505566832445
+	&Tmp-Cast-IPv4Prefix	= 57.56.55.62/32
 }
 
-update request {
-	&Tmp-String-0		:= "%{hex:%{Tmp-String-0}}"
-	&Tmp-String-1		:= "%{hex:%{Tmp-Octets-0}}"
-	&Tmp-String-2		:= "%{hex:%{Tmp-IP-Address-0}}"
-	&Tmp-String-4		:= "%{hex:%{Tmp-Integer-0}}"
-	&Tmp-String-6		:= "%{hex:%{Tmp-Cast-Ifid}}"
-	&Tmp-String-7		:= "%{hex:%{Tmp-Cast-IPv6Addr}}"
-	&Tmp-String-8		:= "%{hex:%{Tmp-Cast-IPv6Prefix}}"
-	&Tmp-String-9		:= "%{hex:%{Tmp-Cast-Byte}}"
+ok  # break up edit sections
+
+&request <= {
+	&Tmp-String-0		= "%{hex:%{Tmp-String-0}}"
+	&Tmp-String-1		= "%{hex:%{Tmp-Octets-0}}"
+	&Tmp-String-2		= "%{hex:%{Tmp-IP-Address-0}}"
+	&Tmp-String-4		= "%{hex:%{Tmp-Integer-0}}"
+	&Tmp-String-6		= "%{hex:%{Tmp-Cast-Ifid}}"
+	&Tmp-String-7		= "%{hex:%{Tmp-Cast-IPv6Addr}}"
+	&Tmp-String-8		= "%{hex:%{Tmp-Cast-IPv6Prefix}}"
+	&Tmp-String-9		= "%{hex:%{Tmp-Cast-Byte}}"
 }
 
 # String
@@ -67,12 +69,12 @@ if (&Tmp-String-9 != '3a') {
 	test_fail
 }
 
-update request {
-	&Tmp-String-0        := "%{hex:%{Tmp-Cast-Short}}"
-	&Tmp-String-1        := "%{hex:%{Tmp-Cast-Ether}}"
-	&Tmp-String-2        := "%{hex:%{Tmp-Cast-Integer64}}"
-	&Tmp-String-3        := "%{hex:%{Tmp-Cast-IPv4Prefix}}"
-	&Tmp-String-4        := "%{hex:%{Tmp-Octets-9}}"
+&request <= {
+	&Tmp-String-0        = "%{hex:%{Tmp-Cast-Short}}"
+	&Tmp-String-1        = "%{hex:%{Tmp-Cast-Ether}}"
+	&Tmp-String-2        = "%{hex:%{Tmp-Cast-Integer64}}"
+	&Tmp-String-3        = "%{hex:%{Tmp-Cast-IPv4Prefix}}"
+	&Tmp-String-4        = "%{hex:%{Tmp-Octets-9}}"
 }
 
 # short

@@ -1,10 +1,8 @@
 #
-#  PRE: update if
+#  PRE: if
 #
 
-update request {
-	&Tmp-Integer-0 := "%(debug:4)"
-}
+&Tmp-Integer-0 := "%(debug:4)"
 
 # Check debug level is now 4
 if ("%(debug:3)" != 4) {
