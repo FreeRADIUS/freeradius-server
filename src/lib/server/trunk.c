@@ -1433,6 +1433,7 @@ static void trunk_request_enter_cancel_complete(fr_trunk_request_t *treq)
 
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_CANCEL_SENT:
+	case FR_TRUNK_REQUEST_STATE_CANCEL:
 		REQUEST_EXTRACT_CANCEL_SENT(treq);
 		break;
 
