@@ -189,10 +189,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		marker_subject = value;
 		goto marker;
 	}
-	if (unescaped_value != NULL) {
-		talloc_free(unescaped_value);
-		unescaped_value = NULL;
-	}
+	TALLOC_FREE(unescaped_value);
 
 	if (!map->rhs) {
 		cf_log_perr(cp, "Failed parsing RHS");
@@ -233,10 +230,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	return 0;
 
 error:
-	if (unescaped_value != NULL) {
-		talloc_free(unescaped_value);
-		unescaped_value = NULL;
-	}
+	talloc_free(unescaped_value);
 	talloc_free(map);
 	return -1;
 }
