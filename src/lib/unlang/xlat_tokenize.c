@@ -693,7 +693,7 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 		/*
 		 *	Could it be a virtual attribute?
 		 */
-		if ((tmpl_attr_count(vpt) == 1) && (xlat_resolve_virtual_attribute(node, vpt) == 0)) goto done;
+		if ((tmpl_attr_count(vpt) == (1 + vpt->rules.attr.list_as_attr)) && (xlat_resolve_virtual_attribute(node, vpt) == 0)) goto done;
 
 		if (!t_rules || !t_rules->attr.allow_unresolved) {
 			talloc_free(vpt);
