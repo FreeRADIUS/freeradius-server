@@ -141,7 +141,8 @@ if test x$with_[]modname != xno; then
 		FR_SMART_CHECK_LIB(krb5, krb5_is_thread_safe)
 		if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" = xyes; then
 			AC_RUN_IFELSE([AC_LANG_PROGRAM([[#include <krb5.h>]], [[return krb5_is_thread_safe() ? 0 : 1]])],
-				[krb5threadsafe="-DKRB5_IS_THREAD_SAFE"], [AC_MSG_WARN([[libkrb5 is not threadsafe]])])
+				[krb5threadsafe="-DKRB5_IS_THREAD_SAFE"], [AC_MSG_WARN([[libkrb5 is not threadsafe]])],
+				[AC_MSG_WARN(cross compiling: not checking)])
 		fi
 	else
 		krb5threadsafe=""

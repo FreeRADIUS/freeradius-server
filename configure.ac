@@ -1135,50 +1135,100 @@ LIBS="$old_LIBS"
 dnl #
 dnl #  Check for libpcap
 dnl #
-smart_try_dir="$pcap_lib_dir"
-FR_SMART_CHECK_LIB(pcap, pcap_open_live)
-if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
-  AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>.])
-else
-  AC_CHECK_FUNCS(\
-    pcap_fopen_offline \
-    pcap_dump_fopen \
-    pcap_create \
-    pcap_activate
-  )
+dnl extra argument: --with-pcap=yes/no
+WITH_PCAP=yes
+AC_ARG_WITH(pcap,
+[  --with-pcap          use pcap library for the RADIUS sniffer. (default=yes)],
+[ case "$withval" in
+  no)
+    WITH_PCAP=no
+    ;;
+  *)
+    WITH_PCAP=yes
+    ;;
+  esac ]
+)
 
-  PCAP_LIBS="${smart_lib}"
-  PCAP_LDFLAGS="${smart_ldflags}"
+if test "x$WITH_PCAP" = xyes; then
+  smart_try_dir="$pcap_lib_dir"
+  FR_SMART_CHECK_LIB(pcap, pcap_open_live)
+  if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
+    AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>.])
+  else
+    AC_CHECK_FUNCS(\
+      pcap_fopen_offline \
+      pcap_dump_fopen \
+      pcap_create \
+      pcap_activate
+    )
+
+    PCAP_LIBS="${smart_lib}"
+    PCAP_LDFLAGS="${smart_ldflags}"
+  fi
+  dnl Set by FR_SMART_CHECK_LIB
+  LIBS="${old_LIBS}"
 fi
-dnl Set by FR_SMART_CHECK_LIB
-LIBS="${old_LIBS}"
+
+dnl extra argument: --with-collectdclient=yes/no
+WITH_COLLECTDCLIENT=yes
+AC_ARG_WITH(collectdclient,
+[  --with-collectdclient  use collectd client. (default=yes)],
+[ case "$withval" in
+  no)
+    WITH_COLLECTDCLIENT=no
+    ;;
+  *)
+    WITH_COLLECTDCLIENT=yes
+    ;;
+  esac ]
+)
 
 dnl #
 dnl #  Check for collectdclient
 dnl #
-smart_try_dir="$collectdclient_lib_dir"
-FR_SMART_CHECK_LIB(collectdclient, lcc_connect)
-if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
-  AC_MSG_WARN([collectdclient library not found. Use --with-collectdclient-lib-dir=<path>.])
-else
-  COLLECTDC_LIBS="${smart_lib}"
-  COLLECTDC_LDFLAGS="${smart_ldflags}"
+if test "x$WITH_COLLECTDCLIENT" = xyes; then
+  smart_try_dir="$collectdclient_lib_dir"
+  FR_SMART_CHECK_LIB(collectdclient, lcc_connect)
+  if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
+    AC_MSG_WARN([collectdclient library not found. Use --with-collectdclient-lib-dir=<path>.])
+  else
+    COLLECTDC_LIBS="${smart_lib}"
+    COLLECTDC_LDFLAGS="${smart_ldflags}"
+  fi
+  dnl Set by FR_SMART_CHECKLIB
+  LIBS="${old_LIBS}"
 fi
-dnl Set by FR_SMART_CHECKLIB
-LIBS="${old_LIBS}"
+
+dnl #
+dnl #  extra argument: --with-libcap
+dnl #
+WITH_LIBCAP=yes
+AC_ARG_WITH(libcap,
+[  --with-libcap          use libcap for debugger checks. (default=yes)],
+[ case "$withval" in
+  no)
+    WITH_LIBCAP=no
+    ;;
+  *)
+    WITH_LIBCAP=yes
+    ;;
+  esac ]
+)
 
 dnl #
 dnl #  Check for cap (Linux capabilities)
 dnl #
-smart_try_dir="$cap_lib_dir"
-FR_SMART_CHECK_LIB(cap, cap_get_proc)
-if test "x$ac_cv_lib_cap_cap_get_proc" != "xyes"; then
-  AC_MSG_WARN([cap library not found, debugger checks will not be enabled. Use --with-cap-lib-dir=<path>.])
-else
-  AC_DEFINE(HAVE_LIBCAP, 1,
-    [Define to 1 if you have the `cap' library (-lcap).]
-  )
-  HAVE_LIBCAP=1
+if test "x$WITH_LIBCAP" = xyes; then
+  smart_try_dir="$cap_lib_dir"
+  FR_SMART_CHECK_LIB(cap, cap_get_proc)
+  if test "x$ac_cv_lib_cap_cap_get_proc" != "xyes"; then
+    AC_MSG_WARN([cap library not found, debugger checks will not be enabled. Use --with-cap-lib-dir=<path>.])
+  else
+    AC_DEFINE(HAVE_LIBCAP, 1,
+      [Define to 1 if you have the `cap' library (-lcap).]
+    )
+    HAVE_LIBCAP=1
+  fi
 fi
 
 dnl #
@@ -2108,26 +2158,26 @@ dnl #
 smart_try_dir=$execinfo_include_dir
 FR_SMART_CHECK_INCLUDE(execinfo.h)
 if test "x$ac_cv_header_execinfo_h" = "xyes"; then
-  smart_try_dir=$execinfo_lib_dir
-  FR_SMART_CHECK_LIB(execinfo, backtrace_symbols)
+  dnl # Might be provided as part of libc
+  AC_MSG_CHECKING([if execinfo provided as part of libc])
+  AC_TRY_LINK(
+    [
+      #include <execinfo.h>
+    ],
+    [
+      void *sym[1];
+      backtrace_symbols(&sym, sizeof(sym)) ],
+    [
+      AC_MSG_RESULT(yes)
+      ac_cv_lib_execinfo_backtrace_symbols="yes"
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
   if test "x$ac_cv_lib_execinfo_backtrace_symbols" != "xyes"; then
-    dnl # Might be provided as part of libc
-    AC_MSG_CHECKING([if execinfo provided as part of libc])
-    AC_TRY_LINK(
-      [
-        #include <execinfo.h>
-      ],
-      [
-        void *sym[1];
-        backtrace_symbols(&sym, sizeof(sym)) ],
-      [
-        AC_MSG_RESULT(yes)
-        ac_cv_lib_execinfo_backtrace_symbols="yes"
-      ],
-      [
-        AC_MSG_RESULT(no)
-      ]
-    )
+    smart_try_dir=$execinfo_lib_dir
+    FR_SMART_CHECK_LIB(execinfo, backtrace_symbols)
   fi
 
   if test "x$ac_cv_lib_execinfo_backtrace_symbols" = "xyes"; then
