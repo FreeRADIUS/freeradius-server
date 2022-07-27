@@ -32,6 +32,7 @@ update request {
 	&Tmp-Integer-0        := "%(length:%{Tmp-String-2})"
 	&Tmp-Integer-1        := "%(length:%{Tmp-Octets-0})"
 	&Tmp-Integer-2        := "%(length:%{Tmp-IP-Address-0})"
+	&Tmp-Integer-3        := "%(length:\"hello, world\")"
 	&Tmp-Integer-4        := "%(length:%{Tmp-Integer-0})"
 	&Tmp-Integer-6        := "%(length:%{Tmp-Cast-Ifid})"
 	&Tmp-Integer-7        := "%(length:%{Tmp-Cast-IPv6Addr})"
@@ -54,6 +55,10 @@ if (&Tmp-Integer-2 != 4) {
 	test_fail
 }
 
+# String - "hello, world"
+if (&Tmp-Integer-3 != 12) {
+	test_fail
+}
 
 # Integer - bin 0x39383734
 if (&Tmp-Integer-4 != 4) {
