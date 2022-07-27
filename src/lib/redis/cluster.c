@@ -592,7 +592,7 @@ do { \
 		long long int		k;
 		int			slaves = 0;
 		fr_redis_cluster_node_t		*found, *spare;
-		fr_redis_cluster_node_t		find;
+		fr_redis_cluster_node_t		find = {}; /* Initialise unused fields to stop Coverity complaints */
 		fr_redis_cluster_key_slot_t	tmpl_slot;
 		redisReply		*map = reply->element[i];
 
