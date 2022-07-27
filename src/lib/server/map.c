@@ -662,10 +662,8 @@ check_for_child:
 static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_SECTION *cs,
 			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			 map_validate_t validate, void *uctx,
-			 unsigned int max)
+			 unsigned int max, bool update)
 {
-	char const	*cs_list, *p;
-
 	CONF_ITEM 	*ci;
 	CONF_PAIR 	*cp;
 
@@ -685,11 +683,14 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 	ci = cf_section_to_item(cs);
 
 	/*
-	 *	Check the destination list for "update" sections.
+	 *	Check the "update" section for destination lists.
 	 */
-	cs_list = p = cf_section_name2(cs);
-	if (cs_list && (strcmp(cf_section_name1(cs), "update") == 0)) {
+	if (update) {
 		fr_slen_t slen;
+		char const *p;
+
+		p = cf_section_name2(cs);
+		if (!p) goto do_children;
 
 		MEM(tmp_ctx = talloc_init_const("tmp"));
 
@@ -710,6 +711,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 		}
 	}
 
+do_children:
 	for (ci = cf_item_next(cs, NULL);
 	     ci != NULL;
 	     ci = cf_item_next(cs, ci)) {
@@ -808,7 +810,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 			 *	correct parent map.
 			 */
 			if (_map_afrom_cs(map, &child_list, map, cf_item_to_section(ci),
-					 &our_lhs_rules, rhs_rules, validate, uctx, max) < 0) {
+					 &our_lhs_rules, rhs_rules, validate, uctx, max, false) < 0) {
 				map_list_talloc_free(&child_list);
 				talloc_free(map);
 				goto error;
@@ -851,9 +853,9 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 
 }
 
-/** Convert an 'update' config section into an attribute map.
+/** Convert a config section into an attribute map.
  *
- * Uses 'name2' of section to set default request and lists.
+ *  For "update" sections, Uses 'name2' of section to set default request and lists.
  *
  * @param[in] ctx		for talloc.
  * @param[out] out		Where to store the allocated map.
@@ -872,7 +874,13 @@ int map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
 		 map_validate_t validate, void *uctx,
 		 unsigned int max)
 {
-	return _map_afrom_cs(ctx, out, NULL, cs, lhs_rules, rhs_rules, validate, uctx, max);
+	bool update;
+	char const *name2;
+
+	name2 = cf_section_name1(cs);
+	update = (name2 && (strcmp(name2, "update") == 0));
+
+	return _map_afrom_cs(ctx, out, NULL, cs, lhs_rules, rhs_rules, validate, uctx, max, update);
 }
 
 /** Convert a value box to a map
