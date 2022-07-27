@@ -1694,6 +1694,9 @@ int xlat_register_expressions(void)
 
 	/*
 	 *	&&, ||
+	 *
+	 *	@todo - remove tmpl_resolve() from tokenize_field(), and add xlat_resolve_logical_or() / xlat_resolve_logical_and()
+	 *	functions which do partial resolution.
 	 */
 	XLAT_REGISTER_NARY_OP(T_LAND, logical_and, logical);
 	XLAT_REGISTER_NARY_OP(T_LOR, logical_or, logical);
@@ -2136,12 +2139,6 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 	if (!tmpl_contains_xlat(vpt)) {
 		slen = tmpl_regex_compile(vpt, true);
 		if (slen <= 0) goto error;
-
-	} else if (tmpl_is_unresolved(vpt)) {
-		/*
-		 *	Resolve attributes in xlat'd regular expressions.
-		 */
-		if (tmpl_resolve(vpt, NULL) < 0) goto error;
 	}
 
 	node->vpt = vpt;
