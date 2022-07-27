@@ -52,6 +52,8 @@ int fr_edit_list_insert_pair_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_
 
 int fr_edit_list_pair_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull(2,3));
 
+int fr_edit_list_pair_delete_by_da(fr_edit_list_t *el, fr_pair_list_t *list, fr_dict_attr_t const *da) CC_HINT(nonnull(2,3));
+
 int fr_edit_list_save_pair_value(fr_edit_list_t *el, fr_pair_t *vp) CC_HINT(nonnull(2));
 
 int fr_edit_list_replace_pair_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_box_t *box) CC_HINT(nonnull(2,3));

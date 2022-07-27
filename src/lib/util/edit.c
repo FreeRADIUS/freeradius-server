@@ -513,6 +513,37 @@ int fr_edit_list_pair_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t
 	return edit_record(el, FR_EDIT_DELETE, vp, list, NULL);
 }
 
+/** Delete VPs with a matching da
+ *
+ *  This function mirrors fr_pair_delete_by_da()
+ */
+int fr_edit_list_pair_delete_by_da(fr_edit_list_t *el, fr_pair_list_t *list, fr_dict_attr_t const *da)
+{
+	fr_pair_t *vp, *next;
+
+	if (!el) {
+		fr_pair_delete_by_da(list, da);
+		return 0;
+	}
+
+	/*
+	 *	Delete all VPs with a matching da.
+	 */
+	for (vp = fr_pair_list_head(list);
+	     vp != NULL;
+	     vp = next) {
+		next = fr_pair_list_next(list, vp);
+		if (vp->da != da) continue;
+
+		(void) fr_pair_remove(list, vp);
+
+		if (edit_record(el, FR_EDIT_DELETE, vp, list, NULL) < 0) return -1;
+	}
+
+	return 0;
+}
+
+
 /** Record the value of a leaf #fr_value_box_t
  *
  *  After this function returns, it's safe to edit the pair.
