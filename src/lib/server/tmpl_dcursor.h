@@ -53,19 +53,8 @@ struct tmpl_dcursor_nested_s {
 						///< evaluation already.  This is mainly used where
 						///< the build cursor is used.
 
-	union {
-		struct {
-			fr_dcursor_t		cursor;			//!< Group traversal is much easier
-									///< but we still need to keep track
-									///< where we are in the list in case
-									///< we're doing counts.
-		} group;
-
-		struct {
-			fr_pair_list_t		*list_head;		//!< Head of the list we're currently
-									///< iterating over.
-		} leaf;
-	};
+	fr_dcursor_t		cursor;		//!< Cursor to track where we are in the list in case
+						///< we're doing counts.
 };
 
 /** Maintains state between cursor calls
