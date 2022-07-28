@@ -2,7 +2,9 @@
 #  PRE: if
 #
 call second {
-	&reply.Reply-Message += 'call second post'
+	&reply += {
+		&Reply-Message = 'call second post'
+	}
 }
 
 if (!&reply.Reply-Message) {
