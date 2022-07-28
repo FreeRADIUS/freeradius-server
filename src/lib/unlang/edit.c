@@ -142,7 +142,10 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	 *	return that.  This is the fast path.
 	 */
 	if (fr_type_is_leaf(type) && (type == box->type) && !fr_dlist_next(&out->result, box)) {
-		if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) return -1;
+		if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) {
+			RPEDEBUG("Failed parsing data %pV", box);
+			return -1;
+		}
 		goto done;
 	}
 
