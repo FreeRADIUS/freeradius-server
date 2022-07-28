@@ -16,15 +16,15 @@ if (&request.Tmp-String-0[0] != "foo") {
 	test_fail
 }
 
-if (&request.Tmp-String-0[0] != "bar") {
+if (&request.Tmp-String-0[1] != "bar") {
 	test_fail
 }
 
-if (&request.Tmp-String-0[0] != "baz") {
+if (&request.Tmp-String-0[2] != "baz") {
 	test_fail
 }
 
-if (&request.Tmp-String-0[0] != "bob") {
+if (&request.Tmp-String-0[3] != "bob") {
 	test_fail
 }
 
