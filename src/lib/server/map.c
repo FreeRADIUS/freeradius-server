@@ -883,6 +883,181 @@ int map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
 	return _map_afrom_cs(ctx, out, NULL, cs, lhs_rules, rhs_rules, validate, uctx, max, update);
 }
 
+/** Convert CONFIG_PAIR (which may contain refs) to map_t.
+ *
+ * Treats the CONFIG_PAIR name as a value.
+ *
+ * Treatment of left operand depends on quotation, barewords are treated as
+ * attribute , double quoted values are treated as expandable strings,
+ * single quoted values are treated as literal strings.
+ *
+ * Return must be freed with talloc_free
+ *
+ * @param[in] ctx		for talloc.
+ * @param[in] out		Where to write the pointer to the new #map_t.
+ * @param[in] parent		the parent map
+ * @param[in] cp		to convert to map.
+ * @param[in] t_rules		rules for parsing name
+ * @return
+ *	- #map_t if successful.
+ *	- NULL on error.
+ */
+static int map_value_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
+			      tmpl_rules_t const *t_rules)
+{
+	map_t		*map;
+	char const	*attr, *marker_subject;
+	ssize_t		slen;
+	fr_token_t	type;
+
+	*out = NULL;
+
+	if (!cp) return -1;
+
+	MEM(map = map_alloc(ctx, parent));
+	map->op = T_OP_EQ;	/* @todo - should probably be T_INVALID */
+	map->ci = cf_pair_to_item(cp);
+
+	attr = cf_pair_attr(cp);
+
+	/*
+	 *	LHS may be an expansion (that expands to an attribute reference)
+	 *	or an attribute reference. Quoting determines which it is.
+	 */
+	type = cf_pair_attr_quote(cp);
+	switch (type) {
+	case T_DOUBLE_QUOTED_STRING:
+	case T_BACK_QUOTED_STRING:
+		slen = tmpl_afrom_substr(ctx, &map->lhs,
+					 &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1),
+					 type,
+					 value_parse_rules_unquoted[type],	/* We're not searching for quotes */
+					 t_rules);
+		if (slen <= 0) {
+			char *spaces, *text;
+
+			marker_subject = attr;
+		marker:
+			fr_canonicalize_error(ctx, &spaces, &text, slen, marker_subject);
+			cf_log_err(cp, "%s", text);
+			cf_log_perr(cp, "%s^", spaces);
+
+			talloc_free(spaces);
+			talloc_free(text);
+			goto error;
+		}
+		break;
+
+	default:
+		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, attr, t_rules);
+		if (slen <= 0) {
+			cf_log_err(cp, "Failed parsing attribute reference %s - %s", attr, fr_strerror());
+			marker_subject = attr;
+			goto marker;
+		}
+
+		if (tmpl_is_attr(map->lhs) && tmpl_attr_unknown_add(map->lhs) < 0) {
+			cf_log_perr(cp, "Failed creating attribute %s", map->lhs->name);
+			goto error;
+		}
+		break;
+	}
+
+	MAP_VERIFY(map);
+
+	*out = map;
+
+	return 0;
+
+error:
+	talloc_free(map);
+	return -1;
+}
+
+/*
+ *	Where the RHS are all values.
+ */
+static int _map_list_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_SECTION *cs,
+			     tmpl_rules_t const *t_rules,
+			     map_validate_t validate, void *uctx,
+			     unsigned int max)
+{
+	CONF_ITEM 	*ci;
+	CONF_PAIR 	*cp;
+
+	unsigned int 	total = 0;
+	map_t		*map;
+	TALLOC_CTX	*parent_ctx;
+
+	/*
+	 *	The first map has ctx as the parent context.
+	 *	The rest have the previous map as the parent context.
+	 */
+	parent_ctx = ctx;
+
+	for (ci = cf_item_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_next(cs, ci)) {
+		if (total++ == max) {
+			cf_log_err(ci, "Map size exceeded");
+		error:
+			/*
+			 *	Free in reverse as successive entries have their
+			 *	prececessors as talloc parent contexts
+			 */
+			map_list_talloc_reverse_free(out);
+			return -1;
+		}
+
+		if (cf_item_is_section(ci)) {
+			cf_log_err(ci, "Cannot create sub-lists");
+			goto error;
+		}
+
+		cp = cf_item_to_pair(ci);
+		fr_assert(cp != NULL);
+
+		if (map_value_afrom_cp(parent_ctx, &map, parent, cp, t_rules) < 0) {
+			cf_log_err(ci, "Failed creating map from '%s", cf_pair_attr(cp));
+			goto error;
+		}
+
+		MAP_VERIFY(map);
+
+		/*
+		 *	Check the types in the map are valid
+		 */
+		if (validate && (validate(map, uctx) < 0)) goto error;
+
+		parent_ctx = map;
+		map_list_insert_tail(out, map);
+	}
+
+	return 0;
+
+}
+
+/** Convert a config section into a list of { a, b, c, d, ... }
+ *
+ * @param[in] ctx		for talloc.
+ * @param[out] out		Where to store the allocated map.
+ * @param[in] cs		the update section
+ * @param[in] t_rules		rules for parsing the data.
+ * @param[in] validate		map using this callback (may be NULL).
+ * @param[in] uctx		to pass to callback.
+ * @param[in] max		number of mappings to process.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int map_list_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
+		      tmpl_rules_t const *t_rules,
+		      map_validate_t validate, void *uctx,
+		      unsigned int max)
+{
+	return _map_list_afrom_cs(ctx, out, NULL, cs, t_rules, validate, uctx, max);
+}
+
 /** Convert a value box to a map
  *
  * This is mainly used in IO modules, where another function is used to convert

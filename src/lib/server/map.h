@@ -124,6 +124,11 @@ int		map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
 			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			     map_validate_t validate, void *uctx, unsigned int max) CC_HINT(nonnull(2, 3));
 
+int		map_list_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
+				  tmpl_rules_t const *t_rules,
+				  map_validate_t validate, void *uctx,
+				  unsigned int max);
+
 int		map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
 				    char const *lhs, fr_token_t lhs_type, tmpl_rules_t const *lhs_rules,
 				    fr_token_t op,
