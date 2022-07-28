@@ -776,18 +776,6 @@ redo:
 				fr_pair_t *parent;
 				request_t *other = request;
 
-				/*
-				 *	Get the list.
-				 *
-				 *	When we assign via :=, we create the LHS vp if it doesn't exist.  The
-				 *	same goes for =, <=, and |=.  Other operators require something on the
-				 *	LHS, so they will fail if the LHS doesn't exist.
-				 */
-				if ((map->op != T_OP_SET) && (map->op != T_OP_EQ) && (map->op != T_OP_LE) && (map->op != T_OP_OR_EQ)) {
-					REDEBUG("Invalid operator %s for list", fr_tokens[map->op]);
-					goto error;
-				}
-
 				fr_assert(!tmpl_is_list(current->lhs.vpt));
 
 				/*
