@@ -707,7 +707,11 @@ redo:
 			 *
 			 *	which will assign one value to the result for each column returned by the SQL query.
 			 */
-			if (templatize_lhs(state, &current->lhs, request) < 0) goto error;
+			if (!current->is_leaf_list) {
+				if (templatize_lhs(state, &current->lhs, request) < 0) goto error;
+			} else {
+				if (templatize_rhs(state, &current->lhs, current->parent->lhs.vp, request) < 0) goto error;
+			}
 
 			current->state = UNLANG_EDIT_CHECK_LHS;
 			FALL_THROUGH;
@@ -820,6 +824,38 @@ redo:
 				 *	NOOP.
 				 */
 				goto next;
+			} else {
+				fr_pair_t *parent;
+				request_t *other = request;
+
+				fr_assert(!tmpl_is_list(current->lhs.vpt));
+
+				/*
+				 *	@todo - What we really need is to create a dcursor, and then do something
+				 *	like:
+				 *
+				 *	vp = tmpl_dcursor_init(&err, request, &cc, &cursor, request, vpt);
+				 *	if (!vp) {
+				 *		while (tmpl_dcursor_required(&cursor, &vp, &da) == 1) {
+				 *			child = fr_pair_afrom_da(vp, da);
+				 *			fr_pair_append(&vp->vp_group, child);
+				 *		}
+				 *		// vp is the pair we need to edit.
+				 *	}
+				 */
+				if (tmpl_request_ptr(&other, tmpl_request(current->lhs.vpt)) < 0) {
+					REDEBUG("Failed to find request for %s", current->lhs.vpt->name);
+					goto error;
+				}
+				fr_assert(other != NULL);
+
+				parent = tmpl_get_list(other, current->lhs.vpt);
+				if (!parent) {
+					REDEBUG("Failed to find list for %s", current->lhs.vpt->name);
+					goto error;
+				}
+
+				current->lhs.vp_parent = parent;
 			}
 
 			/*
