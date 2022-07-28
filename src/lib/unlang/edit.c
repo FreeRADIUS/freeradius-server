@@ -682,7 +682,7 @@ redo:
 
 					fr_assert(tmpl_is_attr(current->lhs.vpt));
 					if (tmpl_find_vp(&ref, request, current->lhs.vpt) < 0) {
-						REDEBUG("Failed to find %s", current->lhs.vpt->name);						
+						REDEBUG("Failed to find %s", current->lhs.vpt->name);
 						goto error;
 					}
 
