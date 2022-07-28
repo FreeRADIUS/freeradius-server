@@ -214,6 +214,53 @@ static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_
 	return -1;
 }
 
+#if 0
+/** Remove VPs via a dcursor
+ *
+ *  Except you can't do:  &reply -= &Reply-Message
+ *  Instead, you need	  &reply -= &reply.Reply-Message[*]
+ *
+ *  Which is a bit annoying.
+ */
+static int remove_vps(request_t *request, edit_map_t *current)
+{
+	fr_pair_t *vp, *next;
+	tmpl_dcursor_ctx_t cc;
+	fr_dcursor_t cursor;
+
+	fr_assert(tmpl_is_attr(current->rhs.vpt));
+	fr_assert(current->lhs.vp != NULL);
+	fr_assert(fr_type_is_structural(current->lhs.vp->vp_type));
+
+	RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[T_OP_SUB_EQ], current->rhs.vpt->name);
+
+	vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, current->rhs.vpt);
+
+	while (vp) {
+		fr_pair_list_t *list;
+
+		next = fr_dcursor_next(&cursor);
+
+		list = fr_pair_parent_list(vp);
+		fr_assert(list != NULL);
+
+		RINDENT();
+		RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[T_OP_SUB_EQ], &vp->data);
+		REXDENT();
+
+		if (fr_edit_list_pair_delete(current->el, list, vp) < 0) {
+			tmpl_dursor_clear(&cc);
+			return -1;
+		}
+
+		vp = next;
+	}
+
+	tmpl_dursor_clear(&cc);
+	return 0;
+}
+#endif
+
 /** Remove VPs for laziness
  *
  *	@todo - replace this with a dcursor, and remove everything which matches the dcursor.
