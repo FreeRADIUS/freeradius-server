@@ -133,7 +133,7 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	fr_value_box_t *box = fr_dlist_head(&out->result);
 
 	if (!box) {
-		RPEDEBUG("No value found for assignment");
+		RWDEBUG("No value found for assignment");
 		return -1;
 	}
 

@@ -21,12 +21,9 @@ if (&Tmp-Ethernet-0[2] != 00:11:22:33:44:56) {
 }
 
 # invalid assignment
+# this will silently fail with a no Module-Failure-Message.
 &request += {
 	&Tmp-Ethernet-0 = %{Tmp-Ethernet-1[42]}
-}
-
-if (&request.Module-Failure-Message != "No value found for assignment") {
-	test_fail
 }
 
 if (%{request.Tmp-Ethernet-0[#]} != 3) {
