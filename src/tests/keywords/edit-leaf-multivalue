@@ -1,0 +1,31 @@
+#
+# PRE: edit
+#
+&request.Tmp-String-0 := {
+	"foo",
+	"bar",
+	"baz",
+	&request.User-Name
+}
+
+if (%{request.Tmp-String-0[#]} != 4) {
+	test_fail
+}
+
+if (&request.Tmp-String-0[0] != "foo") {
+	test_fail
+}
+
+if (&request.Tmp-String-0[0] != "bar") {
+	test_fail
+}
+
+if (&request.Tmp-String-0[0] != "baz") {
+	test_fail
+}
+
+if (&request.Tmp-String-0[0] != "bob") {
+	test_fail
+}
+
+success

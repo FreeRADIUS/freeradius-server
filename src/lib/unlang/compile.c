@@ -578,16 +578,6 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 
 		da = tmpl_da(map->lhs);
 
-		switch (da->type) {
-		case FR_TYPE_STRUCTURAL:
-			break;
-
-		default:
-			cf_log_err(map->ci, "Sublists can only be assigned to structural attributes, not to type %s",
-				fr_type_to_str(da->type));
-			return false;
-		}
-
 		/*
 		 *	Resolve all children.
 		 */
@@ -1701,13 +1691,17 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	 *	If the DA isn't structural, then it can't have children.
 	 */
 	parent_da = tmpl_da(map->lhs);
-	if (!fr_type_is_structural(parent_da->type)) {
-		cf_log_err(cs, "Only structural data types can be assigned a list");
-		goto fail;
-	}
-
-	if (map_afrom_cs(map, &map->child, cs, &t_rules, &t_rules, unlang_fixup_edit, &parent_da, 256) < 0) {
-		goto fail;
+	if (fr_type_is_structural(parent_da->type)) {
+		if (map_afrom_cs(map, &map->child, cs, &t_rules, &t_rules, unlang_fixup_edit, &parent_da, 256) < 0) {
+			goto fail;
+		}
+	} else {
+		/*
+		 *	&foo := { a, b, c }
+		 */
+		if (map_list_afrom_cs(map, &map->child, cs, &t_rules, NULL, NULL, 256) < 0) {
+			goto fail;
+		}
 	}
 
 	/*

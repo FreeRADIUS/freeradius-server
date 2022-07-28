@@ -46,6 +46,7 @@ typedef struct {
 	tmpl_t const		*vpt;			//!< expanded tmpl
 	tmpl_t			*to_free;		//!< tmpl to free.
 	fr_pair_t		*vp;			//!< VP referenced by tmpl.  @todo - make it a cursor
+	fr_pair_t		*vp_parent;		//!< parent of the current VP
 	fr_pair_list_t		pair_list;		//!< for structural attributes
 } edit_result_t;
 
@@ -60,6 +61,8 @@ struct edit_map_s {
 	unlang_edit_state_t	state;			//!< What we're currently doing.
 	map_list_t const	*map_head;
 	map_t const		*map;			//!< the map to evaluate
+
+	bool			is_leaf_list;
 
 	edit_result_t		lhs;			//!< LHS child entries
 	edit_result_t		rhs;			//!< RHS child entries
@@ -487,6 +490,8 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 
 	fr_assert(current->lhs.vp != NULL);
 
+	fr_assert(!current->is_leaf_list);
+
 #ifdef STATIC_ANALYZER
 	if (!current->lhs.vp) return -1;
 #endif
@@ -496,7 +501,34 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 		return -1;
 	}
 
-	fr_assert(current->rhs.vpt);
+	/*
+	 *	&Foo := { a, b, c }
+	 */
+	if (!current->rhs.vpt) {
+		fr_assert(current->lhs.vp_parent != NULL);
+
+		if (fr_edit_list_pair_delete_by_da(current->el, &current->lhs.vp_parent->vp_group,
+						   tmpl_da(current->lhs.vpt)) < 0) {
+			return -1;
+		}
+
+		if (fr_pair_list_empty(&current->rhs.pair_list)) return 0;
+
+		if (RDEBUG_ENABLED2) {
+			for (vp = fr_pair_list_head(&current->rhs.pair_list);
+			     vp != NULL;
+			     vp = fr_pair_list_next(&current->rhs.pair_list, vp)) {
+				RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], &vp->data);
+			}
+		}
+
+		if (fr_edit_list_insert_list_tail(current->el, &current->lhs.vp_parent->vp_group,
+						  &current->rhs.pair_list) < 0) {
+			return -1;
+		}
+
+		return 0;
+	}
 
 	/*
 	 *	Any expansions have been turned into data.
@@ -615,6 +647,15 @@ redo:
 			goto check_lhs;
 
 		case UNLANG_EDIT_EXPANDED_LHS:
+			/*
+			 *	@todo - if current->is_leaf_list, AND lhs is an XLAT, AND the result is a
+			 *	value-box group, AND the LHS data type isn't octets/string, THEN apply each
+			 *	individual member of the group.  This lets us do:
+			 *
+			 *		&Tmp-String-0 := { %{sql:...} }
+			 *
+			 *	which will assign one value to the result for each column returned by the SQL query.
+			 */
 			if (templatize_lhs(state, &current->lhs, request) < 0) goto error;
 
 			current->state = UNLANG_EDIT_CHECK_LHS;
@@ -622,7 +663,48 @@ redo:
 
 		case UNLANG_EDIT_CHECK_LHS:
 		check_lhs:
-			if (current->parent) {
+			if (current->is_leaf_list) {
+				fr_pair_t *vp;
+
+				fr_assert(current->parent);
+				fr_assert(current->parent->lhs.vp_parent != NULL);
+
+				MEM(vp = fr_pair_afrom_da(current->parent->lhs.vp_parent, current->parent->lhs.vp->da));
+
+				/*
+				 *	@todo - handle lists from xlats?
+				 */
+				if (tmpl_is_data(current->lhs.vpt)) {
+					if (fr_value_box_copy(vp, &vp->data, tmpl_value(current->lhs.vpt)) < 0) goto error;
+
+				} else {
+					fr_pair_t *ref;
+
+					fr_assert(tmpl_is_attr(current->lhs.vpt));
+					if (tmpl_find_vp(&ref, request, current->lhs.vpt) < 0) {
+						REDEBUG("Failed to find %s", current->lhs.vpt->name);						
+						goto error;
+					}
+
+					/*
+					 *	Can only copy the same types.  For now, automatic casting
+					 *	isn't supported.
+					 */
+					if (ref->da->type == vp->da->type) {
+						if (fr_value_box_copy(vp, &vp->data, &ref->data) < 0) goto error;
+
+					} else if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &ref->data) < 0) {
+						RPEDEBUG("Cannot copy data from source %s (type %s) to destination %s (different type %s)",
+							 ref->da->name, fr_type_to_str(ref->da->type),
+							 vp->da->name, fr_type_to_str(vp->da->type));
+						goto error;
+					}
+				}
+
+				fr_pair_append(&current->parent->rhs.pair_list, vp);
+				goto next;
+
+			} else if (current->parent) {
 				/*
 				 *	Child attributes are created in a temporary list.  Any list editing is
 				 *	taken care of by the parent map.
@@ -652,7 +734,7 @@ redo:
 				 *	LHS, so they will fail if the LHS doesn't exist.
 				 */
 				if ((map->op != T_OP_SET) && (map->op != T_OP_EQ) && (map->op != T_OP_LE) && (map->op != T_OP_OR_EQ)) {
-					REDEBUG("Failed to find %s", current->lhs.vpt->name);
+					REDEBUG("Invalid operator %s for list", fr_tokens[map->op]);
 					goto error;
 				}
 
@@ -691,6 +773,7 @@ redo:
 				 */
 				MEM(current->lhs.vp = fr_pair_afrom_da(parent, tmpl_da(current->lhs.vpt)));
 				if (fr_edit_list_insert_pair_tail(state->el, &parent->vp_group, current->lhs.vp) < 0) goto error;
+				current->lhs.vp_parent = parent;
 
 			} else if (map->op == T_OP_EQ) {
 				/*
@@ -707,16 +790,28 @@ redo:
 			if (!map->rhs) {
 				edit_map_t *child = current->child;
 
-				if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
-					REDEBUG("Cannot assign list to a non-list data type");
-					goto error;
-				}
-
 				/*
 				 *	Fast path: child is empty, we don't need to do anything.
 				 */
 				if (fr_dlist_empty(&map->child.head)) {
+					if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
+						REDEBUG("Cannot assign empty list to a normal data type");
+						goto error;
+					}
+
 					goto check_rhs_list;
+				}
+
+				/*
+				 *	&Tmp-Integer-0 := { 0, 1 2, 3, 4 }
+				 */
+				if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
+					if (map->op != T_OP_SET) {
+						REDEBUG("Must use ':=' when editing list of normal data types");
+						goto error;
+					}
+
+					// delete all existing attributes of the relevant vp
 				}
 
 				/*
@@ -740,6 +835,7 @@ redo:
 				child->el = NULL;
 				child->map_head = &map->child;
 				child->map = map_list_head(child->map_head);
+				child->is_leaf_list = fr_type_is_leaf(current->lhs.vp->vp_type);
 
 				memset(&child->lhs, 0, sizeof(child->lhs));
 				memset(&child->rhs, 0, sizeof(child->rhs));
@@ -798,6 +894,7 @@ redo:
 			TALLOC_FREE(current->rhs.to_free);
 			fr_pair_list_free(&current->rhs.pair_list);
 			current->lhs.vp = NULL;
+			current->lhs.vp_parent = NULL;
 			break;
 		}
 
