@@ -171,7 +171,8 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	 *	values.
 	 */
 	if (fr_type_is_leaf(type) &&
-	    (fr_value_box_cast_in_place(ctx, box, type, lhs->data.enumv) <= 0)) {
+	    (fr_value_box_cast_in_place(ctx, box, type, lhs->data.enumv) < 0)) {
+		RPEDEBUG("Failed casting %pV to %s type %s enum %s", box, lhs->da->name, fr_type_to_str(type), lhs->data.enumv->name);
 		return -1;
 	}
 
