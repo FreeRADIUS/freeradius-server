@@ -565,12 +565,12 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 
 		if (fr_pair_list_empty(&current->rhs.pair_list)) return 0;
 
-		if (RDEBUG_ENABLED2) {
-			for (vp = fr_pair_list_head(&current->rhs.pair_list);
-			     vp != NULL;
-			     vp = fr_pair_list_next(&current->rhs.pair_list, vp)) {
-				RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], &vp->data);
-			}
+		for (vp = fr_pair_list_head(&current->rhs.pair_list);
+		     vp != NULL;
+		     vp = fr_pair_list_next(&current->rhs.pair_list, vp)) {
+			(void) talloc_steal(current->lhs.vp_parent, vp);
+
+			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], &vp->data);
 		}
 
 		if (fr_edit_list_insert_list_tail(current->el, &current->lhs.vp_parent->vp_group,
@@ -724,7 +724,7 @@ redo:
 				fr_assert(current->parent);
 				fr_assert(current->parent->lhs.vp_parent != NULL);
 
-				MEM(vp = fr_pair_afrom_da(current->parent->lhs.vp_parent, current->parent->lhs.vp->da));
+				MEM(vp = fr_pair_afrom_da(current, current->parent->lhs.vp->da));
 
 				/*
 				 *	@todo - handle lists from xlats?
