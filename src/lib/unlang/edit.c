@@ -81,6 +81,8 @@ typedef struct {
 static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *request) CC_HINT(nonnull);
 static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request) CC_HINT(nonnull);
 
+#define MAP_INFO cf_filename(map->ci), cf_lineno(map->ci)
+
 /*
  *  Convert a value-box list to a LHS #tmpl_t
  */
@@ -377,7 +379,7 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 		 *	@todo - just parse the data as a string, and remove it?
 		 */
 		if (map->op == T_OP_SUB_EQ) {
-			REDEBUG("Cannot remove data from a list");
+			REDEBUG("%s[%d] Cannot remove data from a list", MAP_INFO);
 			return -1;
 		}
 
@@ -403,7 +405,7 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 			}
 
 			if (token != T_EOL) {
-				REDEBUG("Failed to parse the entire string.");
+				REDEBUG("%s[%d] Failed to parse the entire string.", MAP_INFO);
 				return -1;
 			}
 			break;
@@ -429,7 +431,7 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 	 *	If it's not data, it must be an attribute or a list.
 	 */
 	if (!tmpl_is_attr(current->rhs.vpt) && !tmpl_is_list(current->rhs.vpt)) {
-		REDEBUG("Unknown RHS %s", current->rhs.vpt->name);
+		REDEBUG("%s[%d] Unknown RHS %s", MAP_INFO, current->rhs.vpt->name);
 		return -1;
 	}
 
@@ -443,7 +445,7 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 	 */
 	if (map->op == T_OP_SUB_EQ) {
 		if (!tmpl_is_attr(current->rhs.vpt)) {
-			REDEBUG("Cannot remove ??? from list");
+			REDEBUG("%s[%d] Cannot remove ??? from list", MAP_INFO);
 			return -1;
 		}
 
@@ -452,14 +454,10 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 
 	/*
 	 *	Find the RHS attribute / list.
-	 *
-	 *	@todo - if the LHS is structural, and the operator is
-	 *	"-=", then treat the RHS vp as the name of the DA to
-	 *	remove from the LHS?  i.e. "remove all DAs of name
-	 *	FOO"?
 	 */
 	if (tmpl_find_vp(&vp, request, current->rhs.vpt) < 0) {
-		REDEBUG("Can't find %s", current->rhs.vpt->name);
+		REDEBUG("%s[%d] Failed to find %s for %s %s ...", MAP_INFO,
+			current->rhs.vpt->name, map->lhs->name, fr_tokens[map->op]);
 		return -1;
 	}
 
@@ -492,7 +490,7 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 		 *	etc.
 		 */
 		if (!fr_dict_attr_compatible(current->lhs.vp->da, vp->da)) {
-			REDEBUG("DAs are incompatible (%s vs %s)",
+			REDEBUG("%s[%d] Attribute data types are not compatible (%s vs %s)", MAP_INFO,
 			       current->lhs.vp->da->name, vp->da->name);
 			return -1;
 		}
@@ -548,7 +546,7 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 #endif
 
 	if (!tmpl_is_attr(current->lhs.vpt)) {
-		REDEBUG("The left side of an assignment must be an attribute reference");
+		REDEBUG("%s[%d] The left side of an assignment must be an attribute reference", MAP_INFO);
 		return -1;
 	}
 
@@ -594,7 +592,7 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 	 *	If it's not data, it must be an attribute.
 	 */
 	if (!tmpl_is_attr(current->rhs.vpt)) {
-		REDEBUG("Unknown RHS %s", current->rhs.vpt->name);
+		REDEBUG("%s[%d] Unknown RHS %s", MAP_INFO, current->rhs.vpt->name);
 		return -1;
 	}
 
@@ -602,7 +600,7 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 	 *	LHS is a leaf.  The RHS must be a leaf.
 	 */
 	if (!fr_type_is_leaf(tmpl_da(current->rhs.vpt)->type)) {
-		REDEBUG("Cannot assign structural %s to leaf %s",
+		REDEBUG("%s[%d] Cannot assign structural %s to leaf %s", MAP_INFO,
 			tmpl_da(current->rhs.vpt)->name, current->lhs.vp->da->name);
 		return -1;
 	}
@@ -611,7 +609,7 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 	 *	Find the RHS attribute.
 	 */
 	if (tmpl_find_vp(&vp, request, current->rhs.vpt) < 0) {
-		REDEBUG("Can't find %s", current->rhs.vpt->name);
+		REDEBUG("%s[%d] Failed to find attribute reference %s", MAP_INFO, current->rhs.vpt->name);
 		return -1;
 	}
 
@@ -737,7 +735,7 @@ redo:
 
 					fr_assert(tmpl_is_attr(current->lhs.vpt));
 					if (tmpl_find_vp(&ref, request, current->lhs.vpt) < 0) {
-						REDEBUG("Failed to find %s", current->lhs.vpt->name);
+						REDEBUG("%s[%d] Failed to find attribute %s", MAP_INFO, current->lhs.vpt->name);
 						goto error;
 					}
 
@@ -797,14 +795,14 @@ redo:
 				 *	}
 				 */
 				if (tmpl_request_ptr(&other, tmpl_request(current->lhs.vpt)) < 0) {
-					REDEBUG("Failed to find request for %s", current->lhs.vpt->name);
+					REDEBUG("%s[%d] Failed to find request for %s", MAP_INFO, current->lhs.vpt->name);
 					goto error;
 				}
 				fr_assert(other != NULL);
 
 				parent = tmpl_get_list(other, current->lhs.vpt);
 				if (!parent) {
-					REDEBUG("Failed to find list for %s", current->lhs.vpt->name);
+					REDEBUG("%s[%d] Failed to find list for %s", MAP_INFO, current->lhs.vpt->name);
 					goto error;
 				}
 
@@ -844,14 +842,14 @@ redo:
 				 *	}
 				 */
 				if (tmpl_request_ptr(&other, tmpl_request(current->lhs.vpt)) < 0) {
-					REDEBUG("Failed to find request for %s", current->lhs.vpt->name);
+					REDEBUG("%s[%d] Failed to find request for %s", MAP_INFO, current->lhs.vpt->name);
 					goto error;
 				}
 				fr_assert(other != NULL);
 
 				parent = tmpl_get_list(other, current->lhs.vpt);
 				if (!parent) {
-					REDEBUG("Failed to find list for %s", current->lhs.vpt->name);
+					REDEBUG("%s[%d] Failed to find list for %s", MAP_INFO, current->lhs.vpt->name);
 					goto error;
 				}
 
@@ -870,7 +868,7 @@ redo:
 				 */
 				if (fr_dlist_empty(&map->child.head)) {
 					if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
-						REDEBUG("Cannot assign empty list to a normal data type");
+						REDEBUG("%s[%d] Cannot assign empty list to a normal data type", MAP_INFO);
 						goto error;
 					}
 
@@ -882,7 +880,7 @@ redo:
 				 */
 				if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
 					if (map->op != T_OP_SET) {
-						REDEBUG("Must use ':=' when editing list of normal data types");
+						REDEBUG("%s[%d] Must use ':=' when editing list of normal data types", MAP_INFO);
 						goto error;
 					}
 
