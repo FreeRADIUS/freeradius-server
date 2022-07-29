@@ -970,6 +970,8 @@ redo:
 			fr_pair_list_free(&current->rhs.pair_list);
 			current->lhs.vp = NULL;
 			current->lhs.vp_parent = NULL;
+			current->lhs.vpt = NULL;
+			current->rhs.vpt = NULL;
 			break;
 		}
 
