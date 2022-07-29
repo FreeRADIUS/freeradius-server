@@ -107,10 +107,13 @@ void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 /** Stub list eval function until we can remove lists
  *
  */
-static fr_pair_t *_tmpl_cursor_list_eval(UNUSED fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_dcursor_nested_t *ns)
+static fr_pair_t *_tmpl_cursor_list_eval(UNUSED fr_dlist_head_t *list_head, UNUSED fr_pair_t *current, tmpl_dcursor_nested_t *ns)
 {
+	fr_pair_t *vp;
+
+	vp = fr_dcursor_current(&ns->cursor);
 	fr_dcursor_next(&ns->cursor);
-	return curr;
+	return vp;
 }
 
 static inline CC_HINT(always_inline)
@@ -181,8 +184,6 @@ fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_d
 		vp = NULL;
 		while ((iter = ns->func(list_head, iter, ns))) {
 			vp = iter;
-
-			if (!fr_dcursor_next_peek(&ns->cursor)) break;
 		}
 		_tmpl_cursor_common_pop(cc);
 		break;
