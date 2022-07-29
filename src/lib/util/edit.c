@@ -794,6 +794,40 @@ int fr_edit_list_insert_list_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_
 	return 0;
 }
 
+/** Removes elements matching a list
+ *
+ *  O(N^2) unfortunately.
+ */
+static int fr_edit_list_delete_list(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_list_t *to_remove)
+{
+	fr_pair_t *vp;
+
+	for (vp = fr_pair_list_head(to_remove);
+	     vp != NULL;
+	     vp = fr_pair_list_next(to_remove, vp)) {
+		fr_pair_t *found;
+
+		/*
+		 *	@todo - do this recursively.
+		 */
+		if (fr_type_is_structural(vp->da->type)) continue;
+
+		for (found = fr_pair_find_by_da(list, NULL, vp->da);
+		     found != NULL;
+		     found = fr_pair_find_by_da(list, found, vp->da)) {
+			int rcode;
+
+			rcode = fr_value_box_cmp(&vp->data, &found->data);
+			if (rcode != 0) continue;
+
+			if (fr_edit_list_pair_delete(el, list, found) < 0) return -1;
+			break;			    
+		}
+	}
+
+	return 0;
+}
+
 /** Apply operators to pairs.
  *
  *  := is "if found vp, call fr_edit_list_pair_replace().  Otherwise call fr_edit_list_insert_pair_tail()
@@ -1326,6 +1360,22 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 
 		COPY;
 		return fr_edit_list_insert_list_tail(el, &dst->children, src);
+
+	case T_OP_SUB_EQ:
+		/*
+		 *	foo -= foo --> {}
+		 */
+		if (&dst->children == src) {
+			fr_pair_t *vp;
+
+			while ((vp = fr_pair_list_head(&dst->children)) != NULL) {
+				if (fr_edit_list_pair_delete(el, &dst->children, vp) < 0) return -1;
+			}
+
+			return 0;
+		}
+
+		return fr_edit_list_delete_list(el, &dst->children, src);
 
 	case T_OP_PREPEND:
 		if (&dst->children == src) {

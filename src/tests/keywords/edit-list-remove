@@ -66,5 +66,30 @@ if (&request.Tmp-String-0) {
 	test_fail
 }
 
+&request.Tmp-String-0 := { "foo", "bar", "baz" }
+
+#
+#  Remove one by value.
+#
+#  @todo - allow for == or =~ in the RHS list,
+#  as a condition?  For now, it's an exact match. :(
+#
+&request -= {
+	&Tmp-String-0 = "bar"
+}
+
+if (&Tmp-String-0[0] != "foo") {
+	test_fail
+}
+
+if (&Tmp-String-0[1] != "baz") {
+	test_fail
+}
+
+if (&Tmp-String-0[2]) {
+	test_fail
+}
+
+%(debug_attr:request[*])
 
 success

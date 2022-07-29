@@ -176,6 +176,7 @@ const bool fr_assignment_op[T_TOKEN_LAST] = {
 
 const bool fr_list_assignment_op[T_TOKEN_LAST] = {
 	T(ADD_EQ),		/* append */
+	T(SUB_EQ),		/* remove */
 	T(AND_EQ),		/* intersection */
 	T(OR_EQ),		/* union */
 	T(LE),			/* merge RHS */

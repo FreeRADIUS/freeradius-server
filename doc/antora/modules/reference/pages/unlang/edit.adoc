@@ -73,10 +73,10 @@ In short, failed edit operations are effectively a "noop" operation,
 and do not result in any changes.
 
 Multiple attributes may be grouped into a set by using the `group`
-keyword.  This keyword is not usually needed, and offers no benefit
-other than grouping changes to multiple attributes.  When changes are
-done in a `group`, then either all of the changes are applied, or none
-of them are applied.
+keyword.  When changes are done in a `group`, then either all of the
+changes are applied, or none of them are applied.  This functionality
+is best used to conditionally apply attribute changes, generally when
+retrieving data from a database.
 
 .Grouping multiple edits
 [source,unlang]
@@ -117,9 +117,9 @@ the list operations are simple, and well defined.
 | :=       | Override the list to the contents with the _<rhs>_.  If the list already exists, its value is over-written.  If the list does not exist, it is created, and the contents set to thex value of the _<rhs>_
 | +=       | Perform list append operation.  The contents of the _<rhs>_ are appended to the _<list>_.  The resulting list is _<list><rhs>_.
 | ^=       | Perform a list prepend operation.  The contents of the _<rhs>_ are prepended to the _<list>_.  The resulting list is _<rhs><list>_.
-| -=       | Remove attributes from the _<list>_ which match the _<rhs>_
+| -=       | Remove attributes from the _<list>_ which match the _<rhs>_ attribute or list.
 | \|=       | Perform a list union.  The resulting list has all of the contents of the original _<list>_, and the _<rhs>_ list.
-| \&=       | Perform a list intersection.  The resulting list has only the attributes which are in both the origianl _<list>_, and the _<rhs>_ list.
+| &=       | Perform a list intersection.  The resulting list has only the attributes which are in both the origianl _<list>_, and the _<rhs>_ list.
 | >=       | Perform a priority merge of two lists. The resulting list has all of the contents of the original _<list>_, and of all _<rhs>_ list attributes which are not already in _<list>_.
 | \<=       | Perform a priority merge of two lists. The resulting list has all of the contents of the original _<rhs>_, and of all _<list>_ list attributes which are not in _<rhs>_ are left alone..
 |=====
@@ -251,6 +251,17 @@ Attributes can be removed from a list using the `-=` (remove) operator.
 ----
 ====
 
+.Remove instance of `Filter-Id` which have value `bar`
+====
+[source,unlang]
+----
+&reply -= {
+    &Filter-Id = "bar"
+}
+----
+====
+
+
 This syntax is clearer and more consistent than the old `!* ANY`
 hacks.
 
@@ -341,7 +352,7 @@ change the attribute _value_.
 | *=       | Perform multiplication.  The value of the _<attribute>_ is multiplied by the contents of the _<rhs>_.
 | /=       | Perform subtraction. The value of the _<attribute>_ is divided by the contents of the _<rhs>_.
 | \|=       | Perform logical "or".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.
-| \&=       | Perform logical "and".  The value of the _<attribute>_ is "and"ed with the contents of the _<rhs>_.
+| &=       | Perform logical "and".  The value of the _<attribute>_ is "and"ed with the contents of the _<rhs>_.
 | \<<=       | Perform left shift.  The value of the _<attribute>_ is shifted left by the value of _<rhs>_
 | \>>=       | Perform right shift.  The value of the _<attribute>_ is shifted right by the value of _<rhs>_
 |=====
