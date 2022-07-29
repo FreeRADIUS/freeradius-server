@@ -1116,6 +1116,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Run commands from the command-line.
 	 */
+	/* coverity[check_after_sink] */
 	if (num_commands >= 0) {
 		int i;
 
