@@ -1,0 +1,48 @@
+#
+#  PRE: edit
+#
+
+#
+#  ALl of these edits are grouped.  So if one of them fails, all of
+#  them are rolled back.
+#
+group {
+	&request.Tmp-String-0 := "foo"
+	&request.Tmp-String-1 := %{request.Tmp-Integer-0}  # doesn't exist
+	&request.Tmp-String-2 := "bar"
+}
+
+if (&request.Tmp-String-0) {
+	test_fail
+}
+
+if (&request.Tmp-String-1) {
+	test_fail
+}
+
+if (&request.Tmp-String-2) {
+	test_fail
+}
+
+#
+#  All of these succeed individually, so all of them should succeed.
+#
+group {
+	&request.Tmp-String-0 := "foo"
+	&request.Tmp-String-1 := "yup"
+	&request.Tmp-String-2 := "bar"
+}
+
+if (&request.Tmp-String-0 != "foo") {
+	test_fail
+}
+
+if (&request.Tmp-String-1 != "yup") {
+	test_fail
+}
+
+if (&request.Tmp-String-2 != "bar") {
+	test_fail
+}
+
+success

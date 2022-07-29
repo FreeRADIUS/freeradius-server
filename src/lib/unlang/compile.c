@@ -85,6 +85,7 @@ typedef struct {
 	rlm_components_t	component;
 	char const		*section_name1;
 	char const		*section_name2;
+	bool			all_edits;
 	unlang_actions_t	actions;
 	tmpl_rules_t const	*rules;
 } unlang_compile_t;
@@ -2161,7 +2162,10 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 				goto add_child;
 			}
 
-			edit = NULL; /* no longer doing implicit merging of edits */
+			/*
+			 *	Only merge edits if they're all in a group { ... }
+			 */
+			if (!unlang_ctx->all_edits) edit = NULL;
 
 			if (strcmp(name, "actions") == 0) {
 				if (!compile_action_subsection(c, g->cs, subcs)) {
@@ -2396,6 +2400,10 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
+	CONF_ITEM *ci = NULL;
+	bool all_edits = true;
+	unlang_compile_t unlang_ctx2;
+
 	static unlang_ext_t const group = {
 		.type = UNLANG_TYPE_GROUP,
 		.len = sizeof(unlang_group_t),
@@ -2403,6 +2411,44 @@ static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	};
 
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
+
+	if (!unlang_ctx->all_edits) {
+		while ((ci = cf_item_next(cs, ci)) != NULL) {
+			char const *name;
+
+			if (cf_item_is_section(ci)) {
+				CONF_SECTION *subcs;
+
+				subcs = cf_item_to_section(ci);
+				name = cf_section_name1(subcs);
+
+			} else if (cf_item_is_pair(ci)) {
+				CONF_PAIR *cp;
+
+				cp = cf_item_to_pair(ci);
+				name = cf_pair_attr(cp);
+
+			} else {
+				continue;
+			}
+
+			if (*name != '&') {
+				all_edits = false;
+				break;
+			}
+		}
+
+		/*
+		 *	The parent wasn't all edits, but we are.  Set
+		 *	the "all edits" flag, and recurse.
+		 */
+		if (all_edits) {
+			compile_copy_context(&unlang_ctx2, unlang_ctx, unlang_ctx->component);
+			unlang_ctx2.all_edits = true;
+
+			return compile_section(parent, &unlang_ctx2, cs, &group);
+		}
+	}
 
 	return compile_section(parent, unlang_ctx, cs, &group);
 }
