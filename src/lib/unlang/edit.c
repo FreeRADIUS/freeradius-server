@@ -716,6 +716,10 @@ redo:
 
 		case UNLANG_EDIT_CHECK_LHS:
 		check_lhs:
+#ifdef STATIC_ANALYZER
+			if (!current->lhs.vpt) return -1;
+#endif
+
 			if (current->is_leaf_list) {
 				fr_pair_t *vp;
 
