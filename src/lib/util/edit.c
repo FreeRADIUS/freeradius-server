@@ -117,6 +117,12 @@ typedef struct {
 	fr_pair_list_t	*list;		//!< list to ignore (never dereferenced)
 } fr_edit_ignore_t;
 
+
+static bool fr_edit_list_empty(fr_edit_list_t *el)
+{
+	return fr_dlist_empty(&el->undo) && fr_dlist_empty(&el->ignore) && fr_pair_list_empty(&el->deleted_pairs);
+}
+
 /** Undo one particular edit.
  */
 static int edit_undo(fr_edit_t *e)
@@ -1333,20 +1339,32 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 	case T_OP_AND_EQ:
 		if (&dst->children == src) return 0; /* A INTERSECTION A == A */
 
+		if (!fr_edit_list_empty(el)) {
+		not_empty:
+			fr_strerror_printf("Failed to perform %s - undo list is not empty", fr_tokens[op]);
+			return -1;
+		}
+
 		return list_intersection(el, dst, src);
 
 	case T_OP_OR_EQ:
 		if (&dst->children == src) return 0; /* A UNION A == A */
+
+		if (!fr_edit_list_empty(el)) goto not_empty;
 
 		return list_union(el, dst, src, copy);
 
 	case T_OP_GE:
 		if (&dst->children == src) return 0; /* A MERGE A == A */
 
+		if (!fr_edit_list_empty(el)) goto not_empty;
+
 		return list_merge_lhs(el, dst, src, copy);
 
 	case T_OP_LE:
 		if (&dst->children == src) return 0; /* A MERGE A == A */
+
+		if (!fr_edit_list_empty(el)) goto not_empty;
 
 		return list_merge_rhs(el, dst, src, copy);
 
