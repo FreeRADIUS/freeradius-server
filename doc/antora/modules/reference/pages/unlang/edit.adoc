@@ -261,15 +261,13 @@ Attributes can be removed from a list using the `-=` (remove) operator.
 ----
 ====
 
+Multiple attributes can be specified in the _<rhs>_ list.
 
 This syntax is clearer and more consistent than the old `!* ANY`
 hacks.
 
 Note also that the `-=` operator allows an attribute on the _<rhs>_,
 only when the meaning of the operation is clear.
-
-It is not currently possible to remove a set of attributes from a
-list.  Instead, the attributes must be removed one at a time.
 
 === List to List Operatons
 
