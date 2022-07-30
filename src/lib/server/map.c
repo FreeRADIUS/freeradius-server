@@ -876,11 +876,14 @@ int map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
 {
 	bool update;
 	char const *name2;
+	map_t *parent = NULL;
 
 	name2 = cf_section_name1(cs);
 	update = (name2 && (strcmp(name2, "update") == 0));
 
-	return _map_afrom_cs(ctx, out, NULL, cs, lhs_rules, rhs_rules, validate, uctx, max, update);
+	if (ctx) parent = talloc_get_type(ctx, map_t);
+
+	return _map_afrom_cs(ctx, out, parent, cs, lhs_rules, rhs_rules, validate, uctx, max, update);
 }
 
 /** Convert CONFIG_PAIR (which may contain refs) to map_t.
@@ -1055,7 +1058,11 @@ int map_list_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
 		      map_validate_t validate, void *uctx,
 		      unsigned int max)
 {
-	return _map_list_afrom_cs(ctx, out, NULL, cs, t_rules, validate, uctx, max);
+	map_t *parent = NULL;
+
+	if (ctx) parent = talloc_get_type(ctx, map_t);
+
+	return _map_list_afrom_cs(ctx, out, parent, cs, t_rules, validate, uctx, max);
 }
 
 /** Convert a value box to a map
