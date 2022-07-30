@@ -547,7 +547,7 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 	 *	Enforce parent-child relationships in nested maps.
 	 */
 	if (parent) {
-		if (map->op != T_OP_EQ) {
+		if ((map->op != T_OP_EQ) && (!map->parent || (map->parent->op != T_OP_SUB_EQ))) {
 			cf_log_err(map->ci, "Invalid operator \"%s\" in nested map section.  "
 				   "Only '=' is allowed",
 				   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
@@ -1525,6 +1525,17 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	return c;
 }
 
+#define T(_x) [T_OP_ ## _x] = true
+
+static const bool edit_list_sub_op[T_TOKEN_LAST] = {
+	T(NE),
+	T(GE),
+	T(GT),
+	T(LE),
+	T(LT),
+	T(CMP_EQ),
+};
+
 /** Validate and fixup a map that's part of an edit section.
  *
  * @param map to validate.
@@ -1542,18 +1553,23 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 	CONF_PAIR *cp = cf_item_to_pair(map->ci);
 	fr_dict_attr_t const *da;
 	fr_dict_attr_t const *parent = NULL;
+	map_t		*parent_map = ctx;
 
-	if (map->op != T_OP_EQ) {
-		cf_log_err(cp, "When creating an 'in-place list', the attributes can only be specified with with \"=\" operator");
+	fr_assert(parent_map);
+	fr_assert(tmpl_is_attr(parent_map->lhs));
+
+	if (parent_map && (parent_map->op == T_OP_SUB_EQ)) {
+		if (!edit_list_sub_op[map->op]) {
+			cf_log_err(cp, "Invalid operator '%s' for right-hand side list.  It must be a comparison operator", fr_tokens[map->op]);
+			return -1;
+		}
+
+	} else if (map->op != T_OP_EQ) {
+		cf_log_err(cp, "Invalid operator '%s' for right-hand side list.  It must be '='", fr_tokens[map->op]);
 		return -1;
 	}
 
-	if (!map->parent) {
-		parent = *(fr_dict_attr_t **) ctx;
-
-	} else if (tmpl_is_attr(map->parent->lhs)) {
-		parent = tmpl_da(map->parent->lhs);
-	}
+	parent = tmpl_da(parent_map->lhs);
 
 	/*
 	 *	Anal-retentive checks.
@@ -1693,7 +1709,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	 */
 	parent_da = tmpl_da(map->lhs);
 	if (fr_type_is_structural(parent_da->type)) {
-		if (map_afrom_cs(map, &map->child, cs, &t_rules, &t_rules, unlang_fixup_edit, &parent_da, 256) < 0) {
+		if (map_afrom_cs(map, &map->child, cs, &t_rules, &t_rules, unlang_fixup_edit, map, 256) < 0) {
 			goto fail;
 		}
 	} else {
