@@ -75,7 +75,7 @@ if (&request.Tmp-String-0) {
 #  as a condition?  For now, it's an exact match. :(
 #
 &request -= {
-	&Tmp-String-0 = "bar"
+	&Tmp-String-0 == "bar"
 }
 
 if (&Tmp-String-0[0] != "foo") {

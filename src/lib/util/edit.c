@@ -817,8 +817,10 @@ static int fr_edit_list_delete_list(fr_edit_list_t *el, fr_pair_list_t *list, fr
 		     found = fr_pair_find_by_da(list, found, vp->da)) {
 			int rcode;
 
-			rcode = fr_value_box_cmp(&vp->data, &found->data);
-			if (rcode != 0) continue;
+			rcode = fr_value_box_cmp_op(vp->op, &vp->data, &found->data);
+			if (rcode < 0) return -1;
+
+			if (!rcode) continue;
 
 			if (fr_edit_list_pair_delete(el, list, found) < 0) return -1;
 			break;			    

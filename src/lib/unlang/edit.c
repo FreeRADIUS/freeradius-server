@@ -780,7 +780,7 @@ redo:
 				 *	Child attributes are created in a temporary list.  Any list editing is
 				 *	taken care of by the parent map.
 				 */
-				fr_assert(map->op == T_OP_EQ);
+				fr_assert((map->op == T_OP_EQ) || (current->parent->map->op == T_OP_SUB_EQ));
 
 				/*
 				 *	We create this VP in the "current" context, so that it's freed on
@@ -792,6 +792,7 @@ redo:
 				 */
 				MEM(current->lhs.vp = fr_pair_afrom_da(current, tmpl_da(current->lhs.vpt)));
 				fr_pair_append(&current->parent->rhs.pair_list, current->lhs.vp);
+				current->lhs.vp->op = map->op;
 				current->in_parent_list = true;
 
 			} else if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
