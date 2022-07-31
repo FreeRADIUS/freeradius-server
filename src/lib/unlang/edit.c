@@ -63,6 +63,7 @@ struct edit_map_s {
 	map_t const		*map;			//!< the map to evaluate
 
 	bool			is_leaf_list;
+	bool			in_parent_list;
 
 	edit_result_t		lhs;			//!< LHS child entries
 	edit_result_t		rhs;			//!< RHS child entries
@@ -619,6 +620,15 @@ assign:
 	RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], rhs_box);
 
 	/*
+	 *	Don't apply the edit, as the VP is in a temporary list.  The parent will actually apply it.
+	 */
+	if (current->in_parent_list) {
+		vp = current->lhs.vp;
+
+		return fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, rhs_box);
+	}
+
+	/*
 	 *	The apply function also takes care of
 	 *	doing data type upcasting and
 	 *	conversion.  So we don't have to check
@@ -758,6 +768,10 @@ redo:
 					}
 				}
 
+				/*
+				 *	We've already evaluated the RHS, and put the VP where the parent will
+				 *	apply it.  Just go to the next map entry.
+				 */
 				fr_pair_append(&current->parent->rhs.pair_list, vp);
 				goto next;
 
@@ -778,6 +792,7 @@ redo:
 				 */
 				MEM(current->lhs.vp = fr_pair_afrom_da(current, tmpl_da(current->lhs.vpt)));
 				fr_pair_append(&current->parent->rhs.pair_list, current->lhs.vp);
+				current->in_parent_list = true;
 
 			} else if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
 				fr_pair_t *parent;
@@ -876,7 +891,7 @@ redo:
 						goto error;
 					}
 
-					goto check_rhs_list;
+					goto check_rhs;
 				}
 
 				/*
@@ -961,7 +976,6 @@ redo:
 			if (fr_type_is_leaf(current->lhs.vp->da->type)) {
 				if (apply_edits_to_leaf(request, current, map) < 0) goto error;
 			} else {
-		check_rhs_list:
 				if (apply_edits_to_list(request, current, map) < 0) goto error;
 			}
 
@@ -970,6 +984,7 @@ redo:
 			TALLOC_FREE(current->lhs.to_free);
 			TALLOC_FREE(current->rhs.to_free);
 			fr_pair_list_free(&current->rhs.pair_list);
+			current->in_parent_list = false;
 			current->lhs.vp = NULL;
 			current->lhs.vp_parent = NULL;
 			current->lhs.vpt = NULL;
