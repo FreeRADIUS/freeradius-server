@@ -1556,6 +1556,10 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 	map_t		*parent_map = ctx;
 
 	fr_assert(parent_map);
+#ifdef STATIC_ANALYZER
+	if (!parent_map) return -1;
+#endif
+
 	fr_assert(tmpl_is_attr(parent_map->lhs));
 
 	if (parent_map && (parent_map->op == T_OP_SUB_EQ)) {
