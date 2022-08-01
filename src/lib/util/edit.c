@@ -805,7 +805,7 @@ static int fr_edit_list_delete_list(fr_edit_list_t *el, fr_pair_list_t *list, fr
 	for (vp = fr_pair_list_head(to_remove);
 	     vp != NULL;
 	     vp = fr_pair_list_next(to_remove, vp)) {
-		fr_pair_t *found;
+		fr_pair_t *found, *next;
 
 		/*
 		 *	@todo - do this recursively.
@@ -814,8 +814,10 @@ static int fr_edit_list_delete_list(fr_edit_list_t *el, fr_pair_list_t *list, fr
 
 		for (found = fr_pair_find_by_da(list, NULL, vp->da);
 		     found != NULL;
-		     found = fr_pair_find_by_da(list, found, vp->da)) {
+		     found = next) {
 			int rcode;
+
+			next = fr_pair_find_by_da(list, found, vp->da);
 
 			rcode = fr_value_box_cmp_op(vp->op, &vp->data, &found->data);
 			if (rcode < 0) return -1;
@@ -823,7 +825,6 @@ static int fr_edit_list_delete_list(fr_edit_list_t *el, fr_pair_list_t *list, fr
 			if (!rcode) continue;
 
 			if (fr_edit_list_pair_delete(el, list, found) < 0) return -1;
-			break;			    
 		}
 	}
 
