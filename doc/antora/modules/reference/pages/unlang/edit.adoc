@@ -256,18 +256,30 @@ Attributes can be removed from a list using the `-=` (remove) operator.
 [source,unlang]
 ----
 &reply -= {
-    &Filter-Id = "bar"
+    &Filter-Id == "bar"
 }
 ----
 ====
 
-Multiple attributes can be specified in the _<rhs>_ list.
+Multiple attributes can be specified in the _<rhs>_ list.  All
+attributes which match the comparison are removed.
 
 This syntax is clearer and more consistent than the old `!* ANY`
 hacks.
 
-Note also that the `-=` operator allows an attribute on the _<rhs>_,
-only when the meaning of the operation is clear.
+.List Removal Operators
+[options="header"]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| ==       | attributes matching the value exactly
+| <        | attributes having value less than the given one
+| <=       | attributes having value less than or equal to the given one
+| >        | attributes having value greater than the given one
+| >=       | attributes having value greater than or equal to the given one
+|=====
+
+For now, regular expression operators are not supported.
 
 === List to List Operatons
 
