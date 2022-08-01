@@ -67,6 +67,17 @@
                                 { "name": "DEBUGGER_ATTACHED", "value": "yes"}
                         ],
                         "MIMode": "gdb"
+                },
+                {
+                        "type": "cppdbg",
+                        "request": "launch",
+                        "name": "Bin Test (gdb)",
+                        "program": "${workspaceFolder}/build/bin/local/${input:bintest}",
+                        "cwd": "${workspaceFolder}",
+                        "environment": [
+                                {"name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                {"name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" }
+                        ]
                 }
         ],
         "inputs": [
@@ -74,6 +85,11 @@
                         "id": "keyword",
                         "type": "promptString",
                         "description": "Keyword to test"
+                },
+                {
+                        "id": "bintest",
+                        "type": "promptString",
+                        "description": "Bin test to run"
                 }
         ]
 }
