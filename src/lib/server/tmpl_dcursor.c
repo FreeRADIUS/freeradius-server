@@ -59,7 +59,11 @@ static fr_pair_t *_tmpl_cursor_child_eval(UNUSED fr_dlist_head_t *list_head, UNU
 	for (vp = fr_dcursor_current(&ns->cursor);
 	     vp;
 	     vp = fr_dcursor_next(&ns->cursor)) {
-		if (fr_dict_attr_cmp(ns->ar->ar_da, vp->da) == 0) {
+		/*
+		 *	List tmpls do not have a da to match
+		 *	This can be simplified when list tmpls are removed
+		 */
+		if ((!ns->ar) || (!ns->ar->ar_da) || (fr_dict_attr_cmp(ns->ar->ar_da, vp->da) == 0)) {
 			fr_dcursor_next(&ns->cursor);	/* Advance to correct position for next call */
 			return vp;
 		}
@@ -98,33 +102,6 @@ void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 	*ns = (tmpl_dcursor_nested_t){
 		.ar = ar,
 		.func = _tmpl_cursor_child_eval,
-		.list_ctx = list_ctx
-	};
-	fr_pair_dcursor_init(&ns->cursor, list);
-	fr_dlist_insert_tail(&cc->nested, ns);
-}
-
-/** Stub list eval function until we can remove lists
- *
- */
-static fr_pair_t *_tmpl_cursor_list_eval(UNUSED fr_dlist_head_t *list_head, UNUSED fr_pair_t *current, tmpl_dcursor_nested_t *ns)
-{
-	fr_pair_t *vp;
-
-	vp = fr_dcursor_current(&ns->cursor);
-	fr_dcursor_next(&ns->cursor);
-	return vp;
-}
-
-static inline CC_HINT(always_inline)
-void _tmpl_cursor_list_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_dcursor_ctx_t *cc)
-{
-	tmpl_dcursor_nested_t *ns;
-
-	ns = &cc->leaf;
-	*ns = (tmpl_dcursor_nested_t){
-		.ar = ar,
-		.func = _tmpl_cursor_list_eval,
 		.list_ctx = list_ctx
 	};
 	fr_pair_dcursor_init(&ns->cursor, list);
@@ -338,11 +315,8 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 	 */
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
-		_tmpl_cursor_pair_init(list, cc->list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
-		break;
-
 	case TMPL_TYPE_LIST:
-		_tmpl_cursor_list_init(list, cc->list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
+		_tmpl_cursor_pair_init(list, cc->list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
 		break;
 
 	default:
