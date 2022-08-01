@@ -40,6 +40,40 @@
                                 { "name": "DEBUGGER_ATTACHED", "value": "yes" }
                         ],
                         "MIMode": "gdb"
+                },
+                {
+                        "type": "cppdbg",
+                        "request": "launch",
+                        "name": "Keyword Test (gdb)",
+                        "program": "${workspaceFolder}/build/bin/local/unit_test_module",
+                        "args": [
+                                "-D",
+                                "${workspaceFolder}/share/dictionary",
+                                "-d",
+                                "${workspaceFolder}/src/tests/keywords",
+                                "-i",
+                                "${workspaceFolder}/build/tests/keywords/${input:keyword}.attrs",
+                                "-f",
+                                "${workspaceFolder}/build/tests/keywords/${input:keyword}.attrs",
+                                "-r",
+                                "${workspaceFolder}/build/tests/keywords/${input:keyword}",
+                                "-xx"
+                        ],
+                        "cwd": "${workspaceFolder}",
+                        "environment": [
+                                { "name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                { "name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                { "name": "KEYWORD", "value": "${input:keyword}" },
+                                { "name": "DEBUGGER_ATTACHED", "value": "yes"}
+                        ],
+                        "MIMode": "gdb"
+                }
+        ],
+        "inputs": [
+                {
+                        "id": "keyword",
+                        "type": "promptString",
+                        "description": "Keyword to test"
                 }
         ]
 }
