@@ -78,6 +78,32 @@
                                 {"name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
                                 {"name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" }
                         ]
+                },
+                {
+                        "type": "cppdbg",
+                        "request": "launch",
+                        "name": "Module Test (gdb)",
+                        "program": "${workspaceFolder}/build/bin/local/unit_test_module",
+                        "cwd": "${workspaceFolder}",
+                        "args": [
+                                "-D",
+                                "share/dictionary",
+                                "-d",
+                                "src/tests/modules/",
+                                "-i",
+                                "build/tests/modules/${input:module}/${input:moduletest}.attrs",
+                                "-f",
+                                "build/tests/modules/${input:module}/${input:moduletest}.attrs",
+                                "-r",
+                                "build/tests/modules/${input:module}/${input:moduletest}",
+                                "-xx"
+                        ],
+                        "environment": [
+                                { "name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                { "name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                { "name": "MODULE_TEST_DIR", "value": "src/tests/modules/${input:module}/"},
+                                { "name": "MODULE_TEST_UNLANG", "value": "src/tests/modules/${input:module}/${input:moduletest}.unlang" }
+                        ],
                 }
         ],
         "inputs": [
@@ -90,6 +116,16 @@
                         "id": "bintest",
                         "type": "promptString",
                         "description": "Bin test to run"
+                },
+                {
+                        "id": "module",
+                        "type": "promptString",
+                        "description": "Module to test"
+                },
+                {
+                        "id": "moduletest",
+                        "type": "promptString",
+                        "description": "Test to run"
                 }
         ]
 }
