@@ -4172,6 +4172,7 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 		/*
 		 *	Check the namespace hash table is ok
 		 */
+		/* coverity[dereference] */
 		fr_hash_table_verify(dict_attr_namespace(da));
 	}
 		break;
