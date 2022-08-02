@@ -2586,6 +2586,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (unlikely(fr_pair_aprint(vb, &buff, NULL, vp) < 0)) {
 			RPEDEBUG("Failed printing pair");
 			talloc_free(vb);
+			tmpl_dursor_clear(&cc);
 			return XLAT_ACTION_FAIL;
 		}
 
