@@ -89,13 +89,13 @@ static inline map_t *map_alloc(TALLOC_CTX *ctx, map_t *parent)
  * @param[in] parent		the parent map
  * @param[in] cp		to convert to map.
  * @param[in] lhs_rules		rules for parsing LHS attribute references.
- * @param[in] rhs_rules		rules for parsing RHS attribute references.
+ * @param[in] input_rhs_rules	rules for parsing RHS attribute references.
  * @return
  *	- #map_t if successful.
  *	- NULL on error.
  */
 int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
-		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
+		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *input_rhs_rules)
 {
 	map_t		*map;
 	char const	*attr, *value, *marker_subject;
@@ -103,6 +103,9 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	fr_sbuff_parse_rules_t const *p_rules;
 	ssize_t		slen;
 	fr_token_t	type;
+	fr_dict_attr_t const *da;
+	tmpl_rules_t	my_rhs_rules;
+	tmpl_rules_t const *rhs_rules = input_rhs_rules;
 
 	*out = NULL;
 
@@ -118,6 +121,15 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		cf_log_err(cp, "Missing attribute value");
 		goto error;
 	}
+
+	/*
+	 *	Allow for the RHS rules to be taken from the LHS rules.
+	 */
+	if (!rhs_rules) {
+		rhs_rules = lhs_rules;
+		fr_assert(lhs_rules->attr.list_as_attr); /* so we don't worry about list_def? */
+	}
+
 
 	/*
 	 *	LHS may be an expansion (that expands to an attribute reference)
@@ -158,6 +170,50 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		if (tmpl_is_attr(map->lhs) && tmpl_attr_unknown_add(map->lhs) < 0) {
 			cf_log_perr(cp, "Failed creating attribute %s", map->lhs->name);
 			goto error;
+		}
+
+		/*
+		 *	The caller wants the RHS attributes to be parsed in the context of the LHS.
+		 */
+		if (!input_rhs_rules && lhs_rules->attr.list_as_attr && tmpl_is_attr(map->lhs)) {
+			da = tmpl_da(map->lhs);
+
+			/*
+			 *	LHS is a leaf.  We must parse the RHS as a full attribute reference (or raw
+			 *	data).
+			 */
+			if (!fr_type_structural[da->type]) {
+				break;
+			}
+
+			my_rhs_rules = *lhs_rules;
+			my_rhs_rules.parent = lhs_rules;
+			rhs_rules = &my_rhs_rules;
+
+			/*
+			 *	struct, tlv, VSA, etc. have their children in the parent attribute.
+			 */
+			if (da->type != FR_TYPE_GROUP) {
+				my_rhs_rules.attr.parent = da;
+
+			} else {
+				fr_dict_attr_t const *ref = fr_dict_attr_ref(da);
+				fr_dict_t const *dict = fr_dict_by_da(ref);
+
+				/*
+				 *	Groups live within their parent dictionary.
+				 *
+				 *	If we're swapping away from internal to a different dictionary, then
+				 *	allow that.
+				 *
+				 *	If we're swapping TO an internal dictionary, then leave well enough alone.
+				 */
+				if (((my_rhs_rules.attr.dict_def == fr_dict_internal()) && (dict != my_rhs_rules.attr.dict_def)) ||
+				    (dict != fr_dict_internal())) {
+					my_rhs_rules.attr.dict_def = dict;
+					my_rhs_rules.attr.parent = ref;
+				}
+			}
 		}
 		break;
 	}
@@ -215,7 +271,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	 *	If we know that the assignment is forbidden, then fail early.
 	 */
 	if (tmpl_is_attr(map->lhs) && tmpl_is_data(map->rhs)) {
-		fr_dict_attr_t const *da = tmpl_da(map->lhs);
+		da = tmpl_da(map->lhs);
 
 		if (tmpl_cast_in_place(map->rhs, da->type, da) < 0) {
 			cf_log_err(cp, "Invalid assignment - %s", fr_strerror());
