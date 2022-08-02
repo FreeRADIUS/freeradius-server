@@ -598,14 +598,9 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		 *      If the reference was structural, record this
 		 *	as an extent.
 		 */
-		if (existing) switch (ar->da->type) {
-		case FR_TYPE_STRUCTURAL:
-			EXTENT_ADD(existing, NULL, curr, list_head);
-			break;
+		if (existing) EXTENT_ADD(existing, NULL, list_ctx, list_head);
 
-		default:
-			break;
-		}
+		break;
 	}
 
 	return 0;
