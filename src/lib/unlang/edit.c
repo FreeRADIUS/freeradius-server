@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/edit.h>
 #include <freeradius-devel/unlang/tmpl.h>
@@ -221,7 +221,6 @@ static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_
 	return -1;
 }
 
-#if 0
 /** Remove VPs via a dcursor
  *
  *  Except you can't do:  &reply -= &Reply-Message
@@ -251,10 +250,6 @@ static int remove_vps(request_t *request, edit_map_t *current)
 		list = fr_pair_parent_list(vp);
 		fr_assert(list != NULL);
 
-		RINDENT();
-		RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[T_OP_SUB_EQ], &vp->data);
-		REXDENT();
-
 		if (fr_edit_list_pair_delete(current->el, list, vp) < 0) {
 			tmpl_dursor_clear(&cc);
 			return -1;
@@ -264,65 +259,6 @@ static int remove_vps(request_t *request, edit_map_t *current)
 	}
 
 	tmpl_dursor_clear(&cc);
-	return 0;
-}
-#endif
-
-/** Remove VPs for laziness
- *
- *	@todo - replace this with a dcursor, and remove everything which matches the dcursor.
- */
-static int remove_vps(request_t *request, edit_map_t *current)
-{
-	fr_pair_t *vp, *next, *last;
-	fr_pair_list_t *list;
-	fr_dict_attr_t const *da;
-	int16_t num, count;
-
-	fr_assert(tmpl_is_attr(current->rhs.vpt));
-	fr_assert(current->lhs.vp != NULL);
-	fr_assert(fr_type_is_structural(current->lhs.vp->vp_type));
-
-	list = &current->lhs.vp->vp_group;
-	da = tmpl_da(current->rhs.vpt);
-
-	RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[T_OP_SUB_EQ], current->rhs.vpt->name);
-
-	num = tmpl_num(current->rhs.vpt);
-	count = 0;
-
-	/*
-	 *	@todo - tmpl_dcursor, which handles more things.  But
-	 *	that isn't done yet.  So we hack stuff here.
-	 */
-	last = NULL;
-	for (vp = fr_pair_list_head(list); vp; vp = next) {
-		next = fr_pair_list_next(list, vp);
-		if (da == vp->da) {
-			if ((num >= 0) && (count == num)) {
-				if (fr_edit_list_pair_delete(current->el, list, vp) < 0) return -1;
-				break;
-			}
-
-			if (num == NUM_ALL) {
-				if (fr_edit_list_pair_delete(current->el, list, vp) < 0) return -1;
-				continue;
-			}
-
-			if (num == NUM_LAST) {
-				last = vp;
-				continue;
-			}
-
-			count++;
-		}
-	}
-
-	/*
-	 *	Delete the last one.
-	 */
-	if (last) return fr_edit_list_pair_delete(current->el, list, last);
-
 	return 0;
 }
 
@@ -515,6 +451,9 @@ apply_list:
 		RDEBUG2("%s %s {", current->lhs.vpt->name, fr_tokens[map->op]);
 		if (fr_debug_lvl >= L_DBG_LVL_2) {
 			RINDENT();
+			/*
+			 *	@todo - this logs at INFO level, and doesn't log the operators.
+			 */
 			xlat_debug_attr_list(request, children);
 			REXDENT();
 		}

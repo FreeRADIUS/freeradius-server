@@ -1789,7 +1789,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	/*
 	 *	Convert this particular map.
 	 */
-	if (map_afrom_cp(edit, &map, map_list_tail(&edit->maps), cp, &t_rules, &t_rules) < 0) {
+	if (map_afrom_cp(edit, &map, map_list_tail(&edit->maps), cp, &t_rules, NULL) < 0) {
 	fail:
 		talloc_free(edit_free);
 		return NULL;
