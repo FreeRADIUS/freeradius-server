@@ -35,6 +35,18 @@ USES_APPLE_DEPRECATED_API
 
 static const char specials[] = ",+\"\\<>;*=()";
 static const char hextab[] = "0123456789abcdef";
+static const bool escapes[UINT8_MAX + 1] = {
+	[' '] = true,
+	['#'] = true,
+	['='] = true,
+	['"'] = true,
+	['+'] = true,
+	[','] = true,
+	[';'] = true,
+	['<'] = true,
+	['>'] = true,
+	['\''] = true
+};
 
 /** Converts "bad" strings into ones which are safe for LDAP
  *
@@ -189,23 +201,10 @@ bool fr_ldap_util_is_dn(char const *in, size_t inlen)
 			/*
 			 *	Special, consume two chars
 			 */
-			switch (p[1]) {
-			case ' ':
-			case '#':
-			case '=':
-			case '"':
-			case '+':
-			case ',':
-			case ';':
-			case '<':
-			case '>':
-			case '\'':
+			if (escapes[(uint8_t) p[1]]) {
 				inlen -= 1;
 				p += 1;
 				continue;
-
-			default:
-				break;
 			}
 
 			/*
@@ -423,26 +422,13 @@ size_t fr_ldap_util_normalise_dn(char *out, char const *in)
 			 *	special encoding, get rewritten to the
 			 *	special encoding.
 			 */
-			if (fr_base16_decode(NULL, &FR_DBUFF_TMP((uint8_t *) &c, 1), &FR_SBUFF_IN(p + 1, 2), false) == 1) {
-				switch (c) {
-				case ' ':
-				case '#':
-				case '=':
-				case '"':
-				case '+':
-				case ',':
-				case ';':
-				case '<':
-				case '>':
-				case '\'':
-					*o++ = '\\';
-					*o++ = c;
-					p += 2;
-					continue;
-
-				default:
-					break;
-				}
+			/* coverity[dead_error_condition] */
+			if (fr_base16_decode(NULL, &FR_DBUFF_TMP((uint8_t *) &c, 1), &FR_SBUFF_IN(p + 1, 2), false) == 1 &&
+			    escapes[(uint8_t) c]) {
+				*o++ = '\\';
+				*o++ = c;
+				p += 2;
+				continue;
 			}
 		}
 		*o++ = *p;
