@@ -45,14 +45,13 @@ void _tmpl_cursor_pool_init(tmpl_dcursor_ctx_t *cc)
  *
  * Here we just look for a particular attribute in the context of its parent
  *
- * @param[in] list_head The head of the pair_list being evaluated.
  * @param[in] current	The pair to evaluate.
  * @param[in] ns	Tracks tree position between cursor calls.
  * @return
  *	- the next matching attribute
  *	- NULL if none found
  */
-static fr_pair_t *_tmpl_cursor_child_eval(UNUSED fr_dlist_head_t *list_head, UNUSED fr_pair_t *current, tmpl_dcursor_nested_t *ns)
+static fr_pair_t *_tmpl_cursor_child_eval(UNUSED fr_pair_t *current, tmpl_dcursor_nested_t *ns)
 {
 	fr_pair_t *vp;
 
@@ -120,13 +119,12 @@ static inline CC_HINT(always_inline) void _tmpl_cursor_common_pop(tmpl_dcursor_c
  * To pop or not to pop is determined by whether evaluating the context again
  * would/should/could produce another fr_pair_t.
  *
- * @param[in] list_head The head of the pair_list being evaluated.
  * @param[in] curr	The pair to evaluate.
  * @param[in] cc	Tracks state between cursor calls.
  * @return the vp evaluated.
  */
 static inline CC_HINT(always_inline)
-fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
+fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 {
 	tmpl_attr_t const	*ar;
 	tmpl_dcursor_nested_t	*ns;
@@ -140,7 +138,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_d
 	 *	Get the first instance
 	 */
 	case NUM_UNSPEC:
-		vp = ns->func(list_head, curr, ns);
+		vp = ns->func(curr, ns);
 		_tmpl_cursor_common_pop(cc);
 		break;
 
@@ -150,7 +148,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_d
 	case NUM_ALL:
 	case NUM_COUNT:
 	all_inst:
-		vp = ns->func(list_head, curr, ns);
+		vp = ns->func(curr, ns);
 		if (!vp) _tmpl_cursor_common_pop(cc);	/* pop only when we're done */
 		break;
 
@@ -159,7 +157,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_d
 	 */
 	case NUM_LAST:
 		vp = NULL;
-		while ((iter = ns->func(list_head, iter, ns))) {
+		while ((iter = ns->func(iter, ns))) {
 			vp = iter;
 		}
 		_tmpl_cursor_common_pop(cc);
@@ -173,7 +171,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_d
 		int16_t		i = 0;
 
 		for (;;) {
-			vp = ns->func(list_head, iter, ns);
+			vp = ns->func(iter, ns);
 			if (!vp) break;	/* Prev and next at the correct points */
 
 			if (++i > ar->num) break;
@@ -201,7 +199,7 @@ void _tmpl_cursor_pair_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 	} else goto leaf;
 }
 
-static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
+static void *_tmpl_cursor_next(UNUSED fr_dlist_head_t *list, void *curr, void *uctx)
 {
 	tmpl_dcursor_ctx_t	*cc = uctx;
 	tmpl_t const		*vpt = cc->vpt;
@@ -225,7 +223,7 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 		 */
 		while ((ns = fr_dlist_tail(&cc->nested))) {
 			ar = ns->ar;
-			vp = _tmpl_cursor_eval(list, curr, cc);
+			vp = _tmpl_cursor_eval(curr, cc);
 			if (!vp) continue;
 
 			ar = tmpl_attr_list_next(&vpt->data.attribute.ar, ar);
@@ -235,7 +233,6 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 				list_head = &vp->vp_group;
 				_tmpl_cursor_pair_init(vp, list_head, ar, cc);
 				curr = fr_pair_list_head(list_head);
-				list = fr_pair_list_dlist_head(list_head);
 				continue;
 			}
 
@@ -253,7 +250,7 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 	case TMPL_TYPE_LIST:
 		if (!fr_dlist_tail(&cc->nested)) goto null_result;	/* end of list */
 
-		vp = _tmpl_cursor_eval(list, curr, cc);
+		vp = _tmpl_cursor_eval(curr, cc);
 		if (!vp) goto null_result;
 
 		return vp;
@@ -557,7 +554,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 
 		list_ctx = ns->list_ctx;
 		ar = ns->ar;
-		curr = _tmpl_cursor_eval(fr_pair_list_dlist_head(list_head), curr, &cc);
+		curr = _tmpl_cursor_eval(curr, &cc);
 		if (!curr) {
 			/*
 			 *	References extend beyond current

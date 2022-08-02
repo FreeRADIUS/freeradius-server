@@ -33,11 +33,10 @@ typedef struct tmpl_dcursor_nested_s tmpl_dcursor_nested_t;
  * Currently attributes are divided into structural and leaf attributes,
  * so we need an evaluation function for each of those.
  *
- * @param[in] list_head		to evaluate.
  * @param[in] current		position in the list.
  * @param[in] ns		Nested state.
  */
-typedef fr_pair_t *(*tmpl_dursor_eval_t)(fr_dlist_head_t *list_head, fr_pair_t *current, tmpl_dcursor_nested_t *ns);
+typedef fr_pair_t *(*tmpl_dursor_eval_t)(fr_pair_t *current, tmpl_dcursor_nested_t *ns);
 
 /** State for traversing an attribute reference
  *
