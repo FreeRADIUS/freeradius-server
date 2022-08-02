@@ -152,13 +152,14 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			 */
 			success = false;
 			(void) unlang_interpret_synchronous(NULL, request);
-			/* coverity[deadcode] */
+
 			if (!success) return -1;
 
 			/*
 			 *	The function call becomes a GROUP of boxes.  We just re-use the argument head,
 			 *	which is already of the type we need.
 			 */
+			/* coverity[dead_error_begin] */
 			group = node->call.args;
 			fr_dlist_talloc_free(&group->dlist);
 
