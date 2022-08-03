@@ -313,11 +313,10 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
  * @see tmpl_cursor_next
  */
 fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
-				 fr_dcursor_t *cursor, request_t *request, tmpl_t const *vpt)
+			     fr_dcursor_t *cursor, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp = NULL;
-	fr_pair_list_t		*list_head;
-	TALLOC_CTX		*list_ctx;
+	fr_pair_t		*list;
 
 	TMPL_VERIFY(vpt);
 
@@ -339,17 +338,15 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 	 *	Get the right list in the specified context
 	 */
 	if (!vpt->rules.attr.list_as_attr) {
-		list_head = tmpl_list_head(request, tmpl_list(vpt));
-		if (!list_head) {
+		list = tmpl_get_list(request, vpt);
+		if (!list) {
 			fr_strerror_printf("List \"%s\" not available in this context",
 					   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
 			if (err) *err = -2;
 			goto error;
 		}
-		list_ctx = tmpl_list_ctx(request, tmpl_list(vpt));
 	} else {
-		list_head = &request->pair_root->vp_group;
-		list_ctx = request->pair_root;
+		list = request->pair_root;
 	}
 
 	/*
@@ -359,7 +356,7 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 		.vpt = vpt,
 		.ctx = ctx,
 		.request = request,
-		.list = list_head
+		.list = &list->vp_group
 	};
 	fr_dlist_init(&cc->nested, tmpl_dcursor_nested_t, entry);
 
@@ -368,11 +365,11 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 	 */
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
-		_tmpl_cursor_pair_init(list_ctx, cc->list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
+		_tmpl_cursor_pair_init(list, cc->list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
 		break;
 
 	case TMPL_TYPE_LIST:
-		_tmpl_cursor_list_init(list_ctx, cc->list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
+		_tmpl_cursor_list_init(list, cc->list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
 		break;
 
 	default:
@@ -383,7 +380,7 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 	/*
 	 *	Get the first entry from the tmpl
 	 */
-	vp = fr_pair_dcursor_iter_init(cursor, list_head, _tmpl_cursor_next, cc);
+	vp = fr_pair_dcursor_iter_init(cursor, cc->list, _tmpl_cursor_next, cc);
 	if (!vp) {
 		if (err) {
 			*err = -1;
