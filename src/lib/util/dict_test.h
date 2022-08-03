@@ -78,6 +78,11 @@ typedef enum {
 
 	FR_TEST_ATTR_GROUP,
 
+	FR_TEST_ATTR_NESTED_TOP_TLV,
+	FR_TEST_ATTR_NESTED_CHILD_TLV,
+	FR_TEST_ATTR_NESTED_LEAF_STRING,
+	FR_TEST_ATTR_NESTED_LEAF_INT32,
+
 	FR_TEST_ATTR_ENUM
 } fr_dict_test_attr_number_t;
 
@@ -145,6 +150,11 @@ extern fr_dict_attr_t const *fr_dict_attr_test_vendor;
 extern fr_dict_attr_t const *fr_dict_attr_test_vendor_string;
 
 extern fr_dict_attr_t const *fr_dict_attr_test_group;
+
+extern fr_dict_attr_t const *fr_dict_attr_test_nested_top_tlv;
+extern fr_dict_attr_t const *fr_dict_attr_test_nested_child_tlv;
+extern fr_dict_attr_t const *fr_dict_attr_test_nested_leaf_string;
+extern fr_dict_attr_t const *fr_dict_attr_test_nested_leaf_int32;
 
 extern fr_dict_attr_t const *fr_dict_attr_test_enum;
 

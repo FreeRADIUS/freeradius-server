@@ -73,6 +73,11 @@ fr_dict_attr_t const *fr_dict_attr_test_vendor_string;
 
 fr_dict_attr_t const *fr_dict_attr_test_group;
 
+fr_dict_attr_t const *fr_dict_attr_test_nested_top_tlv;
+fr_dict_attr_t const *fr_dict_attr_test_nested_child_tlv;
+fr_dict_attr_t const *fr_dict_attr_test_nested_leaf_string;
+fr_dict_attr_t const *fr_dict_attr_test_nested_leaf_int32;
+
 fr_dict_attr_t const *fr_dict_attr_test_enum;
 
 fr_dict_test_attr_t const fr_dict_test_attrs[] = {
@@ -130,6 +135,14 @@ fr_dict_test_attr_t const fr_dict_test_attrs[] = {
 	{ .attr = FR_TEST_ATTR_VENDOR_STRING, .parent = &fr_dict_attr_test_vendor, .da = &fr_dict_attr_test_vendor_string, .name = "String", .type = FR_TYPE_STRING },
 
 	{ .attr = FR_TEST_ATTR_GROUP, .da = &fr_dict_attr_test_group, .name = "Test-Group", .type = FR_TYPE_GROUP },
+
+	/*
+	 *	Deeper nesting
+	 */
+	{ .attr = FR_TEST_ATTR_NESTED_TOP_TLV, .da = &fr_dict_attr_test_nested_top_tlv, .name = "Test-Nested-Top-TLV", .type = FR_TYPE_TLV },
+	{ .attr = FR_TEST_ATTR_NESTED_CHILD_TLV, .parent = &fr_dict_attr_test_nested_top_tlv, .da = &fr_dict_attr_test_nested_child_tlv, .name = "Child-TLV", .type = FR_TYPE_TLV },
+	{ .attr = FR_TEST_ATTR_NESTED_LEAF_STRING, .parent = &fr_dict_attr_test_nested_child_tlv, .da = &fr_dict_attr_test_nested_leaf_string, .name = "Leaf-String", .type = FR_TYPE_STRING },
+	{ .attr = FR_TEST_ATTR_NESTED_LEAF_INT32, .parent = &fr_dict_attr_test_nested_child_tlv, .da = &fr_dict_attr_test_nested_leaf_int32, .name = "Leaf-Int32", .type = FR_TYPE_INT32 },
 
 	/*
 	 *	Enumeration
