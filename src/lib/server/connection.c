@@ -296,7 +296,7 @@ static void connection_deferred_signal_process(fr_connection_t *conn)
 		 *	One of the signal handlers freed the connection
 		 *	return immediately.
 		 */
-		/* coverity[deadcode] */
+		/* coverity[dead_error_line] */
 		if (freed) return;
 	}
 
