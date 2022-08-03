@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/event.h>
 
 #ifdef HAVE_GETOPT_H
 #	include <getopt.h>
@@ -53,6 +54,8 @@ char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 ", built on " __DATE__ " at " __TIME__
 #endif
 ;
+
+fr_event_list_t	*el = NULL;
 
 /*
  *	Static functions.
@@ -620,6 +623,16 @@ static bool do_xlats(char const *filename, FILE *fp)
 	return true;
 }
 
+/*
+ *	Dummy event_list_corral
+ */
+fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint) {
+	if (!el) {
+		el = fr_event_list_create(NULL, NULL);
+	}
+
+	return el;
+}
 
 /*
  *	The main guy.
@@ -926,6 +939,8 @@ finish:
 	 *	Free the configuration items.
 	 */
 	main_config_free();
+
+	if (el) talloc_free(el);
 
 	if (memory_report) {
 		INFO("Allocated memory at time of report:");
