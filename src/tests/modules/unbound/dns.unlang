@@ -1,0 +1,53 @@
+#  Use builtin "local" zone
+update request {
+	&Tmp-IP-Address-0 := "%{dns-a:localhost}"
+}
+
+if (&Tmp-IP-Address-0 != 127.0.0.1) {
+	test_fail
+}
+
+update request {
+	&Tmp-String-0 := "%{dns-aaaa:localhost}"
+}
+
+if (&Tmp-String-0 != "::1") {
+	test_fail
+}
+
+update request {
+	&Tmp-String-1 := "%{dns-ptr:1.0.0.127.in-addr.arpa}"
+}
+
+if (&Tmp-String-1 != "localhost") {
+	test_fail
+}
+
+#  Use local data in module config to allow for dotted names
+update request {
+	&Tmp-IP-Address-0 := "%{dns-a:www.example.com}"
+}
+
+if (&Tmp-IP-Address-0 != 192.168.1.1) {
+	test_fail
+}
+
+update request {
+	&Tmp-String-0 := "%{dns-ptr:1.1.168.192.in-addr.arpa}"
+}
+
+if (&Tmp-String-0 != "www.example.com") {
+	test_fail
+}
+
+# Try a real, known, network response
+# Temporarily disabled while there is a bug in unbound
+#update request {
+#	&Tmp-String-0 := "%{dns-ptr:8.8.8.8.in-addr.arpa}"
+#}
+
+#if (&Tmp-String-0 != "dns.google") {
+#	test_fail
+#}
+
+test_pass
