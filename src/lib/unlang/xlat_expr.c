@@ -401,7 +401,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		RPEDEBUG("Failed calculating result, returning NULL");
 		goto done;
 	}
-	
+
 	/*
 	 *	Over-write, but only if it's present.  Otherwise leave
 	 *	any existing enum alone.
@@ -550,6 +550,7 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 
 	(void) fr_dlist_remove(&xctx->ex->call.args->dlist, rhs);
 
+	fr_assert(rhs);
 	fr_assert(rhs->type == XLAT_GROUP);
 	regex = xlat_exp_head(rhs->group);
 	fr_assert(tmpl_contains_regex(regex->vpt));
@@ -714,7 +715,7 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_va
 		talloc_free(vb);
 	}
 
-done:	
+done:
 	talloc_free(regmatch);	/* free if not consumed */
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
