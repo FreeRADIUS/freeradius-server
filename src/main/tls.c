@@ -1660,6 +1660,10 @@ static CONF_PARSER tls_server_config[] = {
 	{ "check_cert_issuer", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_issuer), NULL },
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, require_client_cert), NULL },
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	{ "sigalgs_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, sigalgs_list), NULL },
+#endif
+
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	{ "reject_unknown_intermediate_ca", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disallow_untrusted), .dflt = "no", },
 #endif
@@ -4232,6 +4236,19 @@ post_ca:
 			return NULL;
 		}
 	}
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	if (conf->sigalgs_list) {
+		char *list;
+
+		memcpy(&list, &(conf->sigalgs_list), sizeof(list)); /* const issues */
+
+		if (SSL_CTX_set1_sigalgs_list(ctx, list) == 0) {
+			tls_error_log(NULL, "Failed setting signature list '%s'", conf->sigalgs_list);
+			return NULL;
+		}
+	}
+#endif
 
 	/*
 	 *	Tell OpenSSL PRETTY PLEASE MAY WE USE TLS 1.1.

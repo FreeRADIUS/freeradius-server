@@ -388,6 +388,7 @@ struct fr_tls_server_conf_t {
 	char const	*cipher_list;
 	bool		cipher_server_preference;
 	char const	*check_cert_issuer;
+	char const	*sigalgs_list;
 
 	bool     	session_cache_enable;
 	uint32_t     	session_lifetime;
