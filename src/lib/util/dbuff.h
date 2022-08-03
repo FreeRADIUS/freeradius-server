@@ -348,6 +348,7 @@ static inline CC_HINT(nonnull) void _fr_dbuff_init(fr_dbuff_t *out, uint8_t cons
  *				of the buffer we're deconding.
  */
 #define fr_dbuff_init(_out, _start, _len_or_end) \
+/* coverity[overrun-local] */ \
 _fr_dbuff_init(_out, \
 	       (uint8_t const *)(_start), \
 	       _Generic((_len_or_end), \
