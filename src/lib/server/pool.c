@@ -295,7 +295,6 @@ static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 #endif
 
 			fr_assert(this->in_use == true);
-			/* coverity[missing_unlock] */
 			return this;
 		}
 	}
@@ -518,7 +517,6 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	pthread_cond_broadcast(&pool->done_spawn);
 	if (unlock) pthread_mutex_unlock(&pool->mutex);
 
-	/* coverity[missing_unlock] */
 	return this;
 }
 
@@ -1051,7 +1049,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 		goto error;
 	}
 
-	/* coverity[missing_unlock] */
+	/* coverity[missing_lock] */
 	pool->pending_window = (pool->max_pending > 0) ? pool->max_pending : pool->max;
 
 	if (pool->min > pool->max) {

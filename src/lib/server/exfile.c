@@ -508,7 +508,6 @@ try_lock:
 
 	exfile_trigger_exec(ef, &ef->entries[i], "reserve");
 
-	/* coverity[missing_unlock] */
 	return ef->entries[i].fd;
 }
 
