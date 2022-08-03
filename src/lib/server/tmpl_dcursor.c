@@ -288,7 +288,7 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 	return NULL;
 }
 
-/** Initialise a #fr_dcursor_t to the #fr_pair_t specified by a #tmpl_t
+/** Initialise a #fr_dcursor_t at the specified point in a pair tree
  *
  * This makes iterating over the one or more #fr_pair_t specified by a #tmpl_t
  * significantly easier.
@@ -304,7 +304,9 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
  *				Must be explicitly cleared with tmpl_cursor_state_clear
  *				otherwise we will leak memory.
  * @param[in] cursor		to store iterator position.
- * @param[in] request		The current #request_t.
+ * @param[in] request		the current request.
+ * @param[in] list		a nested list to start evaluating from.
+ *				May be the child list of a pair in the request's pair tree.
  * @param[in] vpt		specifying the #fr_pair_t type or list to iterate over.
  * @return
  *	- First #fr_pair_t specified by the #tmpl_t.
@@ -312,42 +314,13 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
  *
  * @see tmpl_cursor_next
  */
-fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
-			     fr_dcursor_t *cursor, request_t *request, tmpl_t const *vpt)
+fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
+				      fr_dcursor_t *cursor,
+				      request_t *request, fr_pair_t *list, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp = NULL;
-	fr_pair_t		*list;
 
 	TMPL_VERIFY(vpt);
-
-	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
-
-	if (err) *err = 0;
-
-	/*
-	 *	Navigate to the correct request context
-	 */
-	if (tmpl_request_ptr(&request, tmpl_request(vpt)) < 0) {
-		if (err) *err = -3;
-	error:
-		memset(cc, 0, sizeof(*cc));	/* so tmpl_dursor_clear doesn't explode */
-		return NULL;
-	}
-
-	/*
-	 *	Get the right list in the specified context
-	 */
-	if (!vpt->rules.attr.list_as_attr) {
-		list = tmpl_get_list(request, vpt);
-		if (!list) {
-			fr_strerror_printf("List \"%s\" not available in this context",
-					   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
-			if (err) *err = -2;
-			goto error;
-		}
-	} else {
-		list = request->pair_root;
-	}
 
 	/*
 	 *	Initialise the temporary cursor context
@@ -394,6 +367,67 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 	}
 
 	return vp;
+}
+
+/** Initialise a #fr_dcursor_t to the #fr_pair_t specified by a #tmpl_t
+ *
+ * This makes iterating over the one or more #fr_pair_t specified by a #tmpl_t
+ * significantly easier.
+ *
+ * @param[out] err		May be NULL if no error code is required.
+ *				Will be set to:
+ *				- 0 on success.
+ *				- -1 if no matching #fr_pair_t could be found.
+ *				- -2 if list could not be found (doesn't exist in current #request_t).
+ *				- -3 if context could not be found (no parent #request_t available).
+ * @param[in] ctx		to make temporary allocations under.
+ * @param[in] cc		to initialise.  Tracks evaluation state.
+ *				Must be explicitly cleared with tmpl_cursor_state_clear
+ *				otherwise we will leak memory.
+ * @param[in] cursor		to store iterator position.
+ * @param[in] request		The current #request_t.
+ * @param[in] vpt		specifying the #fr_pair_t type or list to iterate over.
+ * @return
+ *	- First #fr_pair_t specified by the #tmpl_t.
+ *	- NULL if no matching #fr_pair_t found, and NULL on error.
+ *
+ * @see tmpl_cursor_next
+ */
+fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
+			     fr_dcursor_t *cursor, request_t *request, tmpl_t const *vpt)
+{
+	fr_pair_t		*list;
+
+	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+
+	if (err) *err = 0;
+
+	/*
+	 *	Navigate to the correct request context
+	 */
+	if (tmpl_request_ptr(&request, tmpl_request(vpt)) < 0) {
+		if (err) *err = -3;
+	error:
+		memset(cc, 0, sizeof(*cc));	/* so tmpl_dursor_clear doesn't explode */
+		return NULL;
+	}
+
+	/*
+	 *	Get the right list in the specified context
+	 */
+	if (!vpt->rules.attr.list_as_attr) {
+		list = tmpl_get_list(request, vpt);
+		if (!list) {
+			fr_strerror_printf("List \"%s\" not available in this context",
+					   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
+			if (err) *err = -2;
+			goto error;
+		}
+	} else {
+		list = request->pair_root;
+	}
+
+	return tmpl_dcursor_init_relative(err, ctx, cc, cursor, request, list, vpt);
 }
 
 /** Clear any temporary state allocations
