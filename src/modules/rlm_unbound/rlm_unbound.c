@@ -222,7 +222,6 @@ static ssize_t xlat_a(void *instance, REQUEST *request, char const *fmt, char *o
 	rlm_unbound_t *inst = instance;
 	struct ub_result **ubres;
 	int async_id;
-	char *fmt2; /* For const warnings.  Keep till new libunbound ships. */
 
 	/* This has to be on the heap, because threads. */
 	ubres = talloc(inst, struct ub_result *);
@@ -230,9 +229,7 @@ static ssize_t xlat_a(void *instance, REQUEST *request, char const *fmt, char *o
 	/* Used and thus impossible value from heap to designate incomplete */
 	*ubres = (void *)instance;
 
-	fmt2 = talloc_typed_strdup(inst, fmt);
-	ub_resolve_async(inst->ub, fmt2, 1, 1, ubres, link_ubres, &async_id);
-	talloc_free(fmt2);
+	ub_resolve_async(inst->ub, fmt, 1, 1, ubres, link_ubres, &async_id);
 
 	if (ub_common_wait(inst, request, inst->xlat_a_name, ubres, async_id)) {
 		goto error0;
@@ -267,7 +264,6 @@ static ssize_t xlat_aaaa(void *instance, REQUEST *request, char const *fmt, char
 	rlm_unbound_t *inst = instance;
 	struct ub_result **ubres;
 	int async_id;
-	char *fmt2; /* For const warnings.  Keep till new libunbound ships. */
 
 	/* This has to be on the heap, because threads. */
 	ubres = talloc(inst, struct ub_result *);
@@ -275,9 +271,7 @@ static ssize_t xlat_aaaa(void *instance, REQUEST *request, char const *fmt, char
 	/* Used and thus impossible value from heap to designate incomplete */
 	*ubres = (void *)instance;
 
-	fmt2 = talloc_typed_strdup(inst, fmt);
-	ub_resolve_async(inst->ub, fmt2, 28, 1, ubres, link_ubres, &async_id);
-	talloc_free(fmt2);
+	ub_resolve_async(inst->ub, fmt, 28, 1, ubres, link_ubres, &async_id);
 
 	if (ub_common_wait(inst, request, inst->xlat_aaaa_name, ubres, async_id)) {
 		goto error0;
@@ -310,7 +304,6 @@ static ssize_t xlat_ptr(void *instance, REQUEST *request, char const *fmt, char 
 	rlm_unbound_t *inst = instance;
 	struct ub_result **ubres;
 	int async_id;
-	char *fmt2; /* For const warnings.  Keep till new libunbound ships. */
 
 	/* This has to be on the heap, because threads. */
 	ubres = talloc(inst, struct ub_result *);
@@ -318,9 +311,7 @@ static ssize_t xlat_ptr(void *instance, REQUEST *request, char const *fmt, char 
 	/* Used and thus impossible value from heap to designate incomplete */
 	*ubres = (void *)instance;
 
-	fmt2 = talloc_typed_strdup(inst, fmt);
-	ub_resolve_async(inst->ub, fmt2, 12, 1, ubres, link_ubres, &async_id);
-	talloc_free(fmt2);
+	ub_resolve_async(inst->ub, fmt, 12, 1, ubres, link_ubres, &async_id);
 
 	if (ub_common_wait(inst, request, inst->xlat_ptr_name,
 			   ubres, async_id)) {
@@ -433,8 +424,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	int log_level;
 	int log_fd = -1;
 
-	char k[64]; /* To silence const warns until newer unbound in distros */
-
 	inst->el = radius_event_list_corral(EVENT_CORRAL_AUX);
 	inst->log_pipe_stream[0] = NULL;
 	inst->log_pipe_stream[1] = NULL;
@@ -525,12 +514,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	case L_DST_FILES:
 		if (main_config.log_file) {
-			char *log_file;
-
-			strcpy(k, "logfile:");
-			/* 3rd argument isn't const'd in libunbounds API */
-			memcpy(&log_file, &main_config.log_file, sizeof(log_file));
-			res = ub_ctx_set_option(inst->ub, k, log_file);
+			res = ub_ctx_set_option(inst->ub, "logfile:", main_config.log_file);
 			if (res) {
 				goto error;
 			}
@@ -550,10 +534,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	/* Now load the config file, which can override gleaned settings. */
 	{
-		char *file;
-
-		memcpy(&file, &inst->filename, sizeof(file));
-		res = ub_ctx_config(inst->ub, file);
+		res = ub_ctx_config(inst->ub, inst->filename);
 		if (res) goto error;
 	}
 
@@ -561,37 +542,26 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Check if the config file tried to use syslog.  Unbound
 	 *	does not share syslog gracefully.
 	 */
-	strcpy(k, "use-syslog");
-	res = ub_ctx_get_option(inst->ub, k, &optval);
+	res = ub_ctx_get_option(inst->ub, "use-syslog", &optval);
 	if (res || !optval) goto error;
 
 	if (!strcmp(optval, "yes")) {
-		char v[3];
-
 		free(optval);
 
 		WARN("rlm_unbound (%s): Overriding syslog settings.", inst->name);
-		strcpy(k, "use-syslog:");
-		strcpy(v, "no");
-		res = ub_ctx_set_option(inst->ub, k, v);
+		res = ub_ctx_set_option(inst->ub, "use-syslog:", "no");
 		if (res) goto error;
 
 		if (log_dst == L_DST_FILES) {
-			char *log_file;
-
 			/* Reinstate the log file name JIC */
-			strcpy(k, "logfile:");
-			/* 3rd argument isn't const'd in libunbounds API */
-			memcpy(&log_file, &main_config.log_file, sizeof(log_file));
-			res = ub_ctx_set_option(inst->ub, k, log_file);
+			res = ub_ctx_set_option(inst->ub, "logfile:", main_config.log_file);
 			if (res) goto error;
 		}
 
 	} else {
 		if (optval) free(optval);
-		strcpy(k, "logfile");
 
-		res = ub_ctx_get_option(inst->ub, k, &optval);
+		res = ub_ctx_get_option(inst->ub, "logfile", &optval);
 		if (res) goto error;
 
 		if (optval && strlen(optval)) {
@@ -702,8 +672,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *  which as it happens fails quickly and quietly even though the
 	 *  data did not exist.
 	 */
-	strcpy(k, "notar33lsite.foo123.nottld A 127.0.0.1");
-	ub_ctx_data_remove(inst->ub, k);
+	ub_ctx_data_remove(inst->ub, "notar33lsite.foo123.nottld A 127.0.0.1");
 
 	inst->log_fd = ub_fd(inst->ub);
 	if (inst->log_fd >= 0) {
