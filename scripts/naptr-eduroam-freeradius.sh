@@ -1,7 +1,17 @@
-#!/bin/bash
+#!/bin/bsh
 # $1 is the realm to look up
 # $2 is the $prefix of FreeRADIUS
 # $3 is the optional NAPTR tag to look up
+
+#
+#  This script performs the DNS lookup, writes the home_server
+#  configuration file, and then tells FreeRADIUS (via radmin) that
+#  there is a new home server.
+#
+#  Note that in order for it to work, you need to have the
+#  "control-socket" enabled.
+#
+
 DIRECTORY=$2
 TARGET1=`$DIRECTORY/bin/naptr-eduroam.sh $1 $3 | \
 	sed s/'^server dynamic_radsec.'/'home_server '/g | \
