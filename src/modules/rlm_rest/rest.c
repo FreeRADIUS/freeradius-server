@@ -2165,6 +2165,7 @@ size_t rest_uri_escape(UNUSED request_t *request, char *out, size_t outlen, char
 {
 	char *escaped;
 
+	/* coverity[alloc_strlen] */
 	escaped = curl_escape(raw, strlen(raw));
 	strlcpy(out, escaped, outlen);
 	curl_free(escaped);
