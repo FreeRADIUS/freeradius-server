@@ -1,6 +1,3 @@
-#
-#  PRE: 
-#
 &request.Called-Station-Id  := "This is a test"
 &request.Calling-Station-Id := "This is a test"
 
