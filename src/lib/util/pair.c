@@ -1268,6 +1268,75 @@ int fr_pair_prepend_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list
 	return 0;
 }
 
+/** Alloc a new fr_pair_t, adding the parent attributes if required
+ *
+ * A child pair will be added to the first available matching parent
+ * found.
+ *
+ * @param[in] ctx	to allocate new #fr_pair_t in
+ * @param[out] out	Pair we allocated.  May be NULL if the caller doesn't
+ *			care about manipulating the fr_pair_t.
+ * @param[in] list	in which to insert the pair.
+ * @param[in] da	of the attribute to create.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_append_by_da_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da)
+{
+	fr_pair_t		*vp = NULL;
+	fr_da_stack_t		da_stack;
+	fr_dict_attr_t const	**find;
+	TALLOC_CTX		*pair_ctx = ctx;
+
+	/*
+	 *	Fast path for non-nested attributes
+	 */
+	if (da->depth <= 1) return fr_pair_append_by_da(ctx, out, list, da);
+
+	fr_proto_da_stack_build(&da_stack, da);
+	find = &da_stack.da[0];
+
+	/*
+	 *	Walk down the da stack looking for candidate parent
+	 *	attributes and then allocating the leaf.
+	 */
+	while (true) {
+		fr_assert((*find)->depth <= da->depth);
+
+		/*
+		 *	We're not at the leaf, look for a potential parent
+		 */
+		if ((*find) != da) vp = fr_pair_find_by_da(list, NULL, *find);
+
+		/*
+		 *	Nothing found, create the pair
+		 */
+		if (!vp) {
+			if (fr_pair_append_by_da(pair_ctx, &vp, list, *find) < 0) {
+				*out = NULL;
+				return -1;
+			}
+		}
+
+		/*
+		 *	We're at the leaf, return
+		 */
+		if ((*find) == da) {
+			*out = vp;
+			return 0;
+		}
+
+		/*
+		 *	Prepare for next level
+		 */
+		list = &vp->vp_group;
+		pair_ctx = vp;
+		vp = NULL;
+		find++;
+	}
+}
+
 /** Return the first fr_pair_t matching the #fr_dict_attr_t or alloc a new fr_pair_t (and append)
  *
  * @param[in] ctx	to allocate any new #fr_pair_t in.
