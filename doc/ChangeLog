@@ -21,6 +21,8 @@ FreeRADIUS 3.2.1 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 
 	Bug fixes
 	* Correct test for open sessions in radacct for MS SQL.
+	* The linelog module now opens /dev/stdout in "write-only" mode
+	  if the permissions are set to "u+w" (0002).
 
 FreeRADIUS 3.2.0 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	Configuration changes
