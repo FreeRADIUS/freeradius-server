@@ -70,13 +70,17 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 {
 
 	ssize_t		slen;
-	fr_pair_list_t	children;
-	fr_dcursor_t	cursor;
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
+	fr_pair_t	*tlv;
 
 	FR_PROTO_TRACE("Decoding TLV - %s (%zu bytes)", parent_da->name, fr_dbuff_len(&work_dbuff));
 
-	fr_pair_list_init(&children);
+	/*
+	 *	Create intermediary TLV VP to retain
+	 *	the nesting structure
+	 */
+	tlv = fr_pair_afrom_da(ctx, parent_da);
+	if (!tlv) return PAIR_DECODE_OOM;
 
 	/*
 	 *	Decode all the children of this TLV
@@ -85,31 +89,14 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 		FR_PROTO_HEX_MARKER(fr_dbuff_start(&work_dbuff), fr_dbuff_len(&work_dbuff),
 				    fr_dbuff_remaining(&work_dbuff), "Decoding child");
 
-		slen = internal_decode_pair(ctx, &children, parent_da, &work_dbuff, decode_ctx);
-		if (slen <= 0) return slen;
-	}
-
-	/*
-	 *	If decoding produced more than one child
-	 *	we need to do an intermediary TLV
-	 *	VP to retain the nesting structure.
-	 */
-	if (fr_pair_dcursor_init(&cursor, &children) && fr_dcursor_next_peek(&cursor)) {
-		fr_pair_t	*tlv;
-
-		tlv = fr_pair_afrom_da(ctx, parent_da);
-		if (!tlv) return PAIR_DECODE_OOM;
-
-		while (fr_dcursor_head(&cursor)) {
-		     	FR_PROTO_TRACE("Moving %s into %s",
-		     		       ((fr_pair_t *)fr_dcursor_head(&cursor))->da->name, tlv->da->name);
-			fr_pair_append(&tlv->vp_group, talloc_reparent(ctx, tlv, fr_dcursor_remove(&cursor)));
+		slen = internal_decode_pair(tlv, &tlv->vp_group, parent_da, &work_dbuff, decode_ctx);
+		if (slen <= 0) {
+			talloc_free(tlv);
+			return slen;
 		}
-
-		fr_pair_append(head, tlv);
-	} else {
-		fr_pair_append(head, fr_dcursor_remove(&cursor));
 	}
+
+	fr_pair_append(head, tlv);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
