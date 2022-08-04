@@ -269,6 +269,28 @@ do { \
 	} \
 } while (0)
 
+#define fr_pair_list_append_by_da_parent(_ctx, _vp, _list, _attr, _val, _tainted) \
+do { \
+	_vp = NULL; \
+	if (fr_pair_append_by_da_parent(_ctx, &_vp, _list, _attr) < 0) break; \
+	fr_value_box(&_vp->data, _val, _tainted); \
+	if (!vp_da_data_type_check(_vp)) { \
+		fr_pair_delete(_list, _vp); \
+		_vp = NULL; \
+	} \
+} while (0)
+
+#define fr_pair_list_append_by_da_parent_len(_ctx, _vp, _list, _attr, _val, _len, _tainted) \
+do { \
+	_vp = NULL; \
+	if (fr_pair_append_by_da_parent(_ctx, &vp, _list, _attr) < 0) break; \
+	fr_value_box_len(_vp, &_vp->data, _val, _len, _tainted); \
+	if (!vp_da_data_type_check(_vp)) { \
+		fr_pair_delete(_list, _vp); \
+		_vp = NULL; \
+	} \
+} while (0)
+
 /** Prepend a pair to a list, assigning its value
  *
  * Version for simple C data types
@@ -442,6 +464,9 @@ int		fr_pair_append_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list
 
 int		fr_pair_prepend_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
 				      fr_dict_attr_t const *da) CC_HINT(nonnull(3,4));
+
+int		fr_pair_append_by_da_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
+					    fr_dict_attr_t const *da) CC_HINT(nonnull(3,4));
 
 int		fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
 				     fr_dict_attr_t const *da, unsigned int n) CC_HINT(nonnull(3,4));
