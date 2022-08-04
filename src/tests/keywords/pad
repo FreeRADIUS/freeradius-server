@@ -1,10 +1,8 @@
 #
-#  PRE: if update return
+#  PRE: if return
 #
 
-update request {
-	&Tmp-String-0 = "test"
-}
+&Tmp-String-0 = "test"
 
 #
 #	rpad tests

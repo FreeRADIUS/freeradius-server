@@ -1,25 +1,37 @@
 #
-#  PRE: update
+#  PRE:
 #
 parallel {
-	update parent.control {
-	       &Tmp-Integer-0 += 1
+	group {
+		&parent.control += {
+			&Tmp-Integer-0 = 1
+		}
 	}
-	update parent.control {
-	       &Tmp-Integer-0 += 2
+	group {
+		&parent.control += {
+			&Tmp-Integer-0 = 3
+		}
 	}
-	update parent.control {
-	       &Tmp-Integer-0 += 3
+	group {
+		&parent.control += {
+			&Tmp-Integer-0 = 5
+		}
 	}
-	update parent.control {
-	       &Tmp-Integer-0 += 4
+	group {
+		&parent.control += {
+			&Tmp-Integer-0 = 7
+		}
 	}
 }
 
 if ("%{control.Tmp-Integer-0[#]}" != 4) {
 	test_fail
-
-	return
 }
+
+#
+#  We can't check order, as there's offically no guarantee on the
+#  order in which child sections will be evaluated.
+#
+
 
 success

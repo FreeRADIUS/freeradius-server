@@ -1,5 +1,5 @@
 #
-#  PRE: update
+#  PRE: if
 #
 
 # MS CHAPv1
@@ -9,11 +9,11 @@ update request {
 	&Vendor-Specific.Microsoft.CHAP-Response := 0x00010000000000000000000000000000000000000000000000008860bbaac0cd3960b4ce5dc6f0f7a462b897ef530484e80f
 }
 
-update request {
-        &Tmp-Octets-0 := "%(mschap:Challenge)"
-        &Tmp-Octets-1 := "%(mschap:NT-Response)"
-        &Tmp-String-0 := "%(mschap:NT-Domain)"
-        &Tmp-String-1 := "%(mschap:User-Name)"
+&request += {
+        &Tmp-Octets-0 = "%(mschap:Challenge)"
+        &Tmp-Octets-1 = "%(mschap:NT-Response)"
+        &Tmp-String-0 = "%(mschap:NT-Domain)"
+        &Tmp-String-1 = "%(mschap:User-Name)"
 }
 
 if (&Tmp-Octets-0 != 0xe96e4fff2955c4f1) {

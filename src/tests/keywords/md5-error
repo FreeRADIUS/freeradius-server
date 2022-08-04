@@ -1,16 +1,12 @@
 #
-# PRE: update
+# PRE: md5
 #
 
-update request {
-        &Tmp-String-1 := "hello"
-}
+&Tmp-String-1 := "hello"
 
 #
 #  MD5 HMAC with missing key should fail
 #
-update request {
-        &Tmp-Octets-1 := "%(hmacmd5:%{Tmp-String-1} )" # ERROR
-}
+&Tmp-Octets-1 := "%(hmacmd5:%{Tmp-String-1} )" # ERROR
 
 test_fail
