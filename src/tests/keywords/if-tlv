@@ -1,5 +1,5 @@
 #
-# PRE: update if
+# PRE: if
 #
 
 "%{map:&TLS-Certificate.Issuer = 'foo'}"

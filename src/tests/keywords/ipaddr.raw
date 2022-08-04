@@ -5,6 +5,8 @@
 #
 #  Malformed NAS-IP-Address
 #
+#  @todo - allow "raw" in the new edit sections!
+#
 update request {
 	&raw.4 = 0x010203
 }
@@ -12,16 +14,10 @@ update request {
 debug_request
 
 if (!&raw.4) {
-	update reply {
-		&Filter-Id := "Cannot find newly added raw attribute"
-	}
+	test_fail
 }
-else {
-	if (&raw.4 != 0x010203) {
-		update reply {
-			&Filter-Id := "raw.4 is not 0x0120203"
-		}
-	}
+elsif (&raw.4 != 0x010203) {
+	test_fail
 }
 
 success

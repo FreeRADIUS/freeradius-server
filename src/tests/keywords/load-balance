@@ -1,63 +1,64 @@
-# PRE: update if foreach
+#
+# PRE: if foreach
 #
 #  Load-Balance blocks.
 #
 #  Should distribute load between the modules.
 #
-update request {
-    &Tmp-Integer-0 := 0
-    &Tmp-Integer-1 := 0
+&request += {
+    &Tmp-Integer-0 = 0
+    &Tmp-Integer-1 = 0
 
-    &Tmp-Integer-2 += 0		# 0
-    &Tmp-Integer-2 += 1
-    &Tmp-Integer-2 += 2
-    &Tmp-Integer-2 += 3
-    &Tmp-Integer-2 += 4
-    &Tmp-Integer-2 += 5
-    &Tmp-Integer-2 += 6
-    &Tmp-Integer-2 += 7
-    &Tmp-Integer-2 += 8
-    &Tmp-Integer-2 += 9		# 10
-    &Tmp-Integer-2 += 0
-    &Tmp-Integer-2 += 1
-    &Tmp-Integer-2 += 2
-    &Tmp-Integer-2 += 3
-    &Tmp-Integer-2 += 4
-    &Tmp-Integer-2 += 5
-    &Tmp-Integer-2 += 6
-    &Tmp-Integer-2 += 7
-    &Tmp-Integer-2 += 8
-    &Tmp-Integer-2 += 9		# 20
-    &Tmp-Integer-2 += 0
-    &Tmp-Integer-2 += 1
-    &Tmp-Integer-2 += 2
-    &Tmp-Integer-2 += 3
-    &Tmp-Integer-2 += 4
-    &Tmp-Integer-2 += 5
-    &Tmp-Integer-2 += 6
-    &Tmp-Integer-2 += 7
-    &Tmp-Integer-2 += 8
-    &Tmp-Integer-2 += 9		# 30
-    &Tmp-Integer-2 += 0
-    &Tmp-Integer-2 += 1
-    &Tmp-Integer-2 += 2
-    &Tmp-Integer-2 += 3
-    &Tmp-Integer-2 += 4
-    &Tmp-Integer-2 += 5
-    &Tmp-Integer-2 += 6
-    &Tmp-Integer-2 += 7
-    &Tmp-Integer-2 += 8
-    &Tmp-Integer-2 += 9		# 40
-    &Tmp-Integer-2 += 0
-    &Tmp-Integer-2 += 1
-    &Tmp-Integer-2 += 2
-    &Tmp-Integer-2 += 3
-    &Tmp-Integer-2 += 4
-    &Tmp-Integer-2 += 5
-    &Tmp-Integer-2 += 6
-    &Tmp-Integer-2 += 7
-    &Tmp-Integer-2 += 8
-    &Tmp-Integer-2 += 9		# 49
+    &Tmp-Integer-2 = 0		# 0
+    &Tmp-Integer-2 = 1
+    &Tmp-Integer-2 = 2
+    &Tmp-Integer-2 = 3
+    &Tmp-Integer-2 = 4
+    &Tmp-Integer-2 = 5
+    &Tmp-Integer-2 = 6
+    &Tmp-Integer-2 = 7
+    &Tmp-Integer-2 = 8
+    &Tmp-Integer-2 = 9		# 10
+    &Tmp-Integer-2 = 0
+    &Tmp-Integer-2 = 1
+    &Tmp-Integer-2 = 2
+    &Tmp-Integer-2 = 3
+    &Tmp-Integer-2 = 4
+    &Tmp-Integer-2 = 5
+    &Tmp-Integer-2 = 6
+    &Tmp-Integer-2 = 7
+    &Tmp-Integer-2 = 8
+    &Tmp-Integer-2 = 9		# 20
+    &Tmp-Integer-2 = 0
+    &Tmp-Integer-2 = 1
+    &Tmp-Integer-2 = 2
+    &Tmp-Integer-2 = 3
+    &Tmp-Integer-2 = 4
+    &Tmp-Integer-2 = 5
+    &Tmp-Integer-2 = 6
+    &Tmp-Integer-2 = 7
+    &Tmp-Integer-2 = 8
+    &Tmp-Integer-2 = 9		# 30
+    &Tmp-Integer-2 = 0
+    &Tmp-Integer-2 = 1
+    &Tmp-Integer-2 = 2
+    &Tmp-Integer-2 = 3
+    &Tmp-Integer-2 = 4
+    &Tmp-Integer-2 = 5
+    &Tmp-Integer-2 = 6
+    &Tmp-Integer-2 = 7
+    &Tmp-Integer-2 = 8
+    &Tmp-Integer-2 = 9		# 40
+    &Tmp-Integer-2 = 0
+    &Tmp-Integer-2 = 1
+    &Tmp-Integer-2 = 2
+    &Tmp-Integer-2 = 3
+    &Tmp-Integer-2 = 4
+    &Tmp-Integer-2 = 5
+    &Tmp-Integer-2 = 6
+    &Tmp-Integer-2 = 7
+    &Tmp-Integer-2 = 8
+    &Tmp-Integer-2 = 9		# 49
 }
 
 #
@@ -66,16 +67,16 @@ update request {
 foreach &Tmp-Integer-2 {
 	load-balance {
 		group {
-			update request {
-				&Tmp-Integer-0 := "%{expr:%{Tmp-Integer-0} + 1}"
-				&Filter-Id += "PICKED GROUP 1 %{Tmp-Integer-0} TIME(S)"
+			&Tmp-Integer-0 += 1
+			&request += {
+				&Tmp-String-0 = "Picked group 1 - %{Tmp-Integer-0} time(s)"
 			}
 			ok
 		}
 		group {
-			update request {
-				&Tmp-Integer-1 := "%{expr:%{Tmp-Integer-1} + 1}"
-				&Filter-Id += "PICKED GROUP 2 %{Tmp-Integer-1} TIME(S)"
+			&Tmp-Integer-1 += 1
+			&request += {
+				&Tmp-String-1 = "Picked group 2 %{Tmp-Integer-1} Time(s)"
 			}
 			ok
 		}
@@ -88,6 +89,9 @@ foreach &Tmp-Integer-2 {
 if ((&Tmp-Integer-0 == 0) || (&Tmp-Integer-1 == 0)) {
 	test_fail
 }
-else {
-	success
+
+if (%{expr:%{Tmp-Integer-0} + %{Tmp-Integer-1}} != 50) {
+	test_fail
 }
+
+success
