@@ -362,6 +362,56 @@ ssize_t fr_internal_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+static fr_dict_attr_t const *attr_protocol_encapsulation;
+
+/** Retrieve all pairs from the dbuff
+ *
+ * @param ctx		to create new pairs in
+ * @param out		list to append pairs to
+ * @param parent	attribute within which which to decode
+ * @param dbuff		to parse
+ * @param decode_ctx	to pass to decoder funtion
+ * @return
+ *	- bytes of dbuff consumed
+ *	- < 0 on error
+ */
+ssize_t fr_internal_decode_list_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+					  fr_dbuff_t *dbuff, void *decode_ctx)
+{
+	ssize_t		ret, len = 0;
+	fr_pair_t	*vp = NULL;
+	fr_pair_t	*child, *grandchild;
+
+	while (fr_dbuff_remaining(dbuff)) {
+		ret = fr_internal_decode_pair_dbuff(ctx, out, parent, dbuff, decode_ctx);
+		if (ret < 0) return ret;
+		len += ret;
+	}
+
+	if (!attr_protocol_encapsulation) {
+		attr_protocol_encapsulation = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), "Protocol-Encapsulation");
+	}
+
+	/*
+	 *  Move any attributes inside Protocol-Encapsulation and it's child protocol
+	 *  attributes to the parent list
+	 */
+	while ((vp = fr_pair_find_by_da(out, NULL, attr_protocol_encapsulation))) {
+		while ((child = fr_pair_list_head(&vp->children))) {
+			fr_pair_remove(&vp->children, child);
+			while ((grandchild = fr_pair_list_head(&child->children))) {
+				fr_pair_remove(&child->children, grandchild);
+				fr_pair_steal_append(ctx, out, grandchild);
+			}
+			talloc_free(child);
+		}
+		fr_pair_remove(out, vp);
+		talloc_free(vp);
+	}
+
+	return len;
+}
+
 /*
  *	Test points
  */

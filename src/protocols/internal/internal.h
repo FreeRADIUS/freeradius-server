@@ -50,3 +50,6 @@ ssize_t fr_internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_at
 
 ssize_t fr_internal_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 				fr_dbuff_t *dbuff, void *decode_ctx);
+
+ssize_t fr_internal_decode_list_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				fr_dbuff_t *dbuff, void *decode_ctx);
