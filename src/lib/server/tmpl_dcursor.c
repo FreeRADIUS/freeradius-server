@@ -436,15 +436,15 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 void tmpl_dursor_clear(tmpl_dcursor_ctx_t *cc)
 {
 	/*
-	 *	Always free the pool because it's allocated when
-	 *	any nested ctxs are used.
+	 *	If the pool wasn't created, nothing was talloc'd which
+	 *	needs freeing.
 	 */
-	TALLOC_FREE(cc->pool);
-
-	if (!fr_dlist_num_elements(&cc->nested)) return;/* Help simplify dealing with unused cursor ctxs */
+	if (!cc->pool) return;
 
 	fr_dlist_remove(&cc->nested, &cc->leaf);	/* Noop if leaf isn't inserted */
 	fr_dlist_talloc_free(&cc->nested);
+
+	TALLOC_FREE(cc->pool);
 }
 
 
