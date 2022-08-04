@@ -158,7 +158,19 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 	 *	the files.
 	 */
 	if (strncmp(filename, "/dev/", 5) == 0) {
-		fd = open(filename, O_RDWR, permissions);
+		int oflag;
+
+		if (((permissions & 0222) == 0) && (permissions & 0444) != 0) { /* !W + R */
+			oflag = O_RDONLY;
+
+		} else if (((permissions & 0222) != 0) && (permissions & 0444) == 0) { /* W + !R */
+			oflag = O_WRONLY;
+
+		} else {	/* unknown, make it R+W */
+			oflag = O_RDWR;
+		}
+
+		fd = open(filename, oflag, permissions);
 		if (fd < 0) {
 			fr_strerror_printf("Failed to open file %s: %s",
 					   filename, strerror(errno));
