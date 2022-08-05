@@ -45,7 +45,6 @@ struct tmpl_dcursor_nested_s {
 	fr_dlist_t		entry;		//!< Entry in the dlist that forms the evaluation stack.
 	tmpl_attr_t const	*ar;		//!< Attribute reference this state
 						///< entry is associated with.  Mainly for debugging.
-	tmpl_dursor_eval_t	func;		//!< Function used to evaluate this attribute reference.
 	TALLOC_CTX		*list_ctx;	//!< Track where we should be allocating attributes.
 
 	bool			seen;		//!< Whether we've seen an attribute at this level of

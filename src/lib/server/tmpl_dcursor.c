@@ -43,32 +43,30 @@ void _tmpl_cursor_pool_init(tmpl_dcursor_ctx_t *cc)
 
 /** Traverse a list of attributes
  *
- * Here we just look for a particular attribute in the context of its parent
+ * A dcursor iterator function for matching attributes
  *
- * @param[in] current	The pair to evaluate.
- * @param[in] ns	Tracks tree position between cursor calls.
+ * @param[in] list	being traversed.
+ * @param[in] curr	item in the list to start tests from.
+ * @param[in] uctx	Context for evaluation - in this instance a #tmpl_nested_dcursor_t
  * @return
  *	- the next matching attribute
  *	- NULL if none found
  */
-static fr_pair_t *_tmpl_cursor_child_eval(UNUSED fr_pair_t *current, tmpl_dcursor_nested_t *ns)
+static void *_tmpl_cursor_child_next(fr_dlist_head_t *list, void *curr, void *uctx)
 {
-	fr_pair_t *vp;
+	tmpl_dcursor_nested_t	*ns = uctx;
+	fr_pair_t		*vp = curr;
 
-	for (vp = fr_dcursor_current(&ns->cursor);
-	     vp;
-	     vp = fr_dcursor_next(&ns->cursor)) {
-		/*
-		 *	List tmpls do not have a da to match
-		 *	This can be simplified when list tmpls are removed
-		 */
-		if ((!ns->ar) || (!ns->ar->ar_da) || (fr_dict_attr_cmp(ns->ar->ar_da, vp->da) == 0)) {
-			fr_dcursor_next(&ns->cursor);	/* Advance to correct position for next call */
-			return vp;
-		}
+	/*
+	 *	Only applies to TMPL_TYPE_LIST - remove when that is gone.
+	 */
+	if ((!ns->ar) || (!ns->ar->ar_da)) return fr_dlist_next(list, curr);
+
+	while ((vp = fr_dlist_next(list, vp))) {
+		if (fr_dict_attr_cmp(ns->ar->ar_da, vp->da) == 0) break;
 	}
 
-	return NULL;
+	return vp;
 }
 
 static inline CC_HINT(always_inline) void _tmpl_cursor_common_push(tmpl_dcursor_ctx_t *cc, tmpl_dcursor_nested_t *ns)
@@ -88,10 +86,9 @@ void _tmpl_cursor_child_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_at
 	MEM(ns = talloc(cc->pool, tmpl_dcursor_nested_t));
 	*ns = (tmpl_dcursor_nested_t){
 		.ar = ar,
-		.func = _tmpl_cursor_child_eval,
 		.list_ctx = list_ctx
 	};
-	fr_pair_dcursor_init(&ns->cursor, list);
+	fr_pair_dcursor_iter_init(&ns->cursor, list, _tmpl_cursor_child_next, ns);
 
 	_tmpl_cursor_common_push(cc, ns);
 }
@@ -106,10 +103,9 @@ void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 
 	*ns = (tmpl_dcursor_nested_t){
 		.ar = ar,
-		.func = _tmpl_cursor_child_eval,
 		.list_ctx = list_ctx
 	};
-	fr_pair_dcursor_init(&ns->cursor, list);
+	fr_pair_dcursor_iter_init(&ns->cursor, list, _tmpl_cursor_child_next, ns);
 
 	_tmpl_cursor_common_push(cc, ns);
 }
@@ -139,13 +135,13 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 
 	ns = fr_dlist_tail(&cc->nested);
 	ar = ns->ar;
+	vp = fr_dcursor_current(&ns->cursor);
 
 	if (ar) switch (ar->ar_num) {
 	/*
 	 *	Get the first instance
 	 */
 	case NUM_UNSPEC:
-		vp = ns->func(curr, ns);
 		_tmpl_cursor_common_pop(cc);
 		break;
 
@@ -155,16 +151,15 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	case NUM_ALL:
 	case NUM_COUNT:
 	all_inst:
-		vp = ns->func(curr, ns);
 		if (!vp) _tmpl_cursor_common_pop(cc);	/* pop only when we're done */
+		fr_dcursor_next(&ns->cursor);
 		break;
 
 	/*
 	 *	Get the last instance
 	 */
 	case NUM_LAST:
-		vp = NULL;
-		while ((iter = ns->func(iter, ns))) {
+		while ((iter = fr_dcursor_next(&ns->cursor))) {
 			vp = iter;
 		}
 		_tmpl_cursor_common_pop(cc);
@@ -177,12 +172,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	{
 		int16_t		i = 0;
 
-		for (;;) {
-			vp = ns->func(iter, ns);
-			if (!vp) break;	/* Prev and next at the correct points */
-
-			if (++i > ar->num) break;
-		};
+		while ((i++ < ar->num) && vp) vp = fr_dcursor_next(&ns->cursor);
 		_tmpl_cursor_common_pop(cc);
 	}
 		break;
