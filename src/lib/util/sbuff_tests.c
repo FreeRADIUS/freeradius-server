@@ -427,6 +427,7 @@ static void test_unescape_until(void)
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5, NULL, &rules);
 	TEST_CHECK_SLEN(slen, 5);
+	/* coverity[uninit_use_in_call] */
 	TEST_CHECK_STRCMP(out, "i am ");
 	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
@@ -512,6 +513,7 @@ static void test_unescape_until(void)
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(escape_out, sizeof(escape_out)), &sbuff, SIZE_MAX,
 					   &FR_SBUFF_TERM("g"), &pipe_rules_sub);
 	TEST_CHECK_SLEN(slen, 20);
+	/* coverity[uninit_use_in_call] */
 	TEST_CHECK_STRCMP(escape_out, "i am a |t|est strinh");
 	TEST_CHECK_STRCMP(sbuff.p, "");
 
