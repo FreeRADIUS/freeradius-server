@@ -1750,7 +1750,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_PAIR *cp)
 {
 	unlang_edit_t		*edit, *edit_free;
-	unlang_t		*c, *out = UNLANG_IGNORE;
+	unlang_t		*c = NULL, *out = UNLANG_IGNORE;
 	map_t			*map;
 
 	tmpl_rules_t		t_rules;
@@ -1763,7 +1763,10 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	t_rules.attr.list_as_attr = true;
 	RULES_VERIFY(&t_rules);
 
-	c = *prev;
+	/*
+	 *	Auto-merge pairs only if they're all in a group.
+	 */
+	if (unlang_ctx->all_edits) c = *prev;
 	edit = edit_free = NULL;
 
 	if (c && (c->type == UNLANG_TYPE_EDIT)) {
