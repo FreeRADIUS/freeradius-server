@@ -798,6 +798,11 @@ do_children:
 			subcs = cf_item_to_section(ci);
 			token = cf_section_name2_quote(subcs);
 
+			if (token == T_INVALID) {
+				cf_log_err(ci, "Section '%s { ... }' is missing the '=' operator", cf_section_name1(subcs));
+				goto error;
+			}
+
 			if (!fr_assignment_op[token]) {
 				cf_log_err(ci, "Invalid operator '%s'", fr_tokens[token]);
 				goto error;
