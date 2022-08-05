@@ -1,5 +1,5 @@
 #
-#  PRE: update if return
+#  PRE: if return
 #
 group {
 	# Return must stop after the policy, otherwise we don't setup the test for success

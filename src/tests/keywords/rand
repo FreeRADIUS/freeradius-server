@@ -1,32 +1,25 @@
-
-update request {
-        &Tmp-String-0           := "%{rand:-1}"
-}
+&Tmp-String-0 := "%{rand:-1}"
 
 #
-#  Negative limit should have failed
+#  Negative limit should have failed assignment
 #
-if (&Tmp-String-0 != '') {
+if (&Tmp-String-0) {
 	test_fail
 }
 
-update request {
-        &Tmp-String-0           := "%{rand:hello world}"
-}
+&Tmp-String-0 := "%{rand:hello world}"
 
 #
-#  Invalid limit should have failed
+#  Invalid limit should have failed assignment
 #
-if (&Tmp-String-0 != '') {
+if (&Tmp-String-0) {
 	test_fail
 }
 
-update request {
-        &Tmp-Integer-0           := "%{rand:123}"
-}
+&Tmp-Integer-0 := "%{rand:123}"
 
 #
-#  Make sure random number is whithin limit
+#  Make sure random number is within limit
 #
 if (&Tmp-Integer-0 < 0 || &Tmp-Integer-0 > 123) {
 	test_fail

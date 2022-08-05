@@ -1,14 +1,14 @@
 #
-#  PRE: update if regex-escape
+#  PRE: if regex-escape
 #
 
 #
 #  Strings which are expanded in a regex have regex special
 #  characters escaped.  Because the input strings are unsafe.
 #
-update request {
-	&Tmp-String-0 := "example.com"
-	&Tmp-String-1 := "^foo$bar"
+&request += {
+	&Tmp-String-0 = "example.com"
+	&Tmp-String-1 = "^foo$bar"
 }
 
 if (&Tmp-String-0 !~ /example\.com$/) {
@@ -16,6 +16,6 @@ if (&Tmp-String-0 !~ /example\.com$/) {
 }
 elsif (&Tmp-String-1 !~ /\^foo\$bar/) {
 	test_fail
-} else {
-	success
 }
+
+success

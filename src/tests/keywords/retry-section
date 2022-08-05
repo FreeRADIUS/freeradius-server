@@ -1,13 +1,9 @@
-# PRE: update if
+# PRE: if
 
-update request {
-       &Tmp-Integer-0 := 0
-}
+&Tmp-Integer-0 := 0
 
 group {
-	update request {
-		&Tmp-Integer-0 := "%{expr: &Tmp-Integer-0 + 1}"
-	}
+	&Tmp-Integer-0 += 1
 
 	noop
 	actions {

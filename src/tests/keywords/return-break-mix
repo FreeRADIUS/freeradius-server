@@ -1,11 +1,11 @@
 #
-#  PRE: update if return foreach
+#  PRE: if return foreach
 #
-update control {
-	&Tmp-Integer-0 += 0
-	&Tmp-Integer-0 += 1
-	&Tmp-Integer-0 += 2
-	&Tmp-Integer-0 += 3
+&control += {
+	&Tmp-Integer-0 = 0
+	&Tmp-Integer-0 = 1
+	&Tmp-Integer-0 = 2
+	&Tmp-Integer-0 = 3
 }
 
 foreach &control.Tmp-Integer-0 {
@@ -16,8 +16,8 @@ foreach &control.Tmp-Integer-0 {
 		break
 	}
 
-	update control {
-		&Tmp-Integer-0 -= "%{Foreach-Variable-0}"
+	&control -= {
+		&Tmp-Integer-0 == "%{Foreach-Variable-0}"
 	}
 }
 
