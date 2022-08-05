@@ -1827,7 +1827,7 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 	 *	with '&' (or %), so we don't pick up attribute
 	 *	references.
 	 */
-	if ((*attr >= 'A') && (name1_token == T_BARE_WORD) && value) {
+	if ((*attr >= 'A') && (name1_token == T_BARE_WORD) && value && !parent->attr) {
 		char const *p = strchr(attr, '.');
 
 		if (p && (add_section_pair(&parent, &attr, p, buff, talloc_array_length(buff), filename, lineno) < 0)) {

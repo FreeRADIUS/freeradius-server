@@ -100,7 +100,8 @@ struct cf_section {
 
 	void			*base;
 	int			depth;
-	int			allow_unlang;
+	int			allow_unlang;	//!< depth at which we allow unlang
+	bool			attr;		//!< is this thing an attribute definition?
 
 	CONF_SECTION		*template;
 };
