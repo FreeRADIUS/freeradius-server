@@ -71,6 +71,11 @@ static fr_pair_t *_tmpl_cursor_child_eval(UNUSED fr_pair_t *current, tmpl_dcurso
 	return NULL;
 }
 
+static inline CC_HINT(always_inline) void _tmpl_cursor_common_push(tmpl_dcursor_ctx_t *cc, tmpl_dcursor_nested_t *ns)
+{
+	fr_dlist_insert_tail(&cc->nested, ns);
+}
+
 /** Initialise the evaluation context for traversing a group attribute
  *
  */
@@ -87,7 +92,8 @@ void _tmpl_cursor_child_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_at
 		.list_ctx = list_ctx
 	};
 	fr_pair_dcursor_init(&ns->cursor, list);
-	fr_dlist_insert_tail(&cc->nested, ns);
+
+	_tmpl_cursor_common_push(cc, ns);
 }
 
 /** Initialise the evaluation context for finding a leaf attribute
@@ -104,7 +110,8 @@ void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 		.list_ctx = list_ctx
 	};
 	fr_pair_dcursor_init(&ns->cursor, list);
-	fr_dlist_insert_tail(&cc->nested, ns);
+
+	_tmpl_cursor_common_push(cc, ns);
 }
 
 static inline CC_HINT(always_inline) void _tmpl_cursor_common_pop(tmpl_dcursor_ctx_t *cc)
