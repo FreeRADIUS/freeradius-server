@@ -561,6 +561,8 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 	}
 }
 
+#define WORKER_OUTSTANDING(w) ((w)->stats.in - (w)->stats.out)
+
 /** Send a message on the "best" channel.
  *
  * @param nr the network
@@ -591,25 +593,29 @@ retry:
 			two = fr_rand() % nr->num_workers;
 		} while (two == one);
 
-		if (fr_time_delta_lt(nr->workers[one]->cpu_time, nr->workers[two]->cpu_time)) {
+		if (WORKER_OUTSTANDING(nr->workers[one]) < WORKER_OUTSTANDING(nr->workers[two])) {
 			worker = nr->workers[one];
 		} else {
 			worker = nr->workers[two];
 		}
 	} else {
 		int i;
-		fr_time_delta_t cpu_time = fr_time_delta_max();
+		int64_t min_outstanding = INT64_MAX;
 		fr_network_worker_t *found = NULL;
 
 		/*
 		 *	Some workers are blocked.  Pick an active
-		 *	worker with low CPU time.
+		 *	worker with lowest outstanding requests.
 		 */
 		for (i = 0; i < nr->num_workers; i++) {
+			int64_t worker_outstanding;
+
 			worker = nr->workers[i];
 			if (worker->blocked) continue;
 
-			if (fr_time_delta_lt(worker->cpu_time, cpu_time)) {
+			worker_outstanding = WORKER_OUTSTANDING(worker);
+			if (worker_outstanding < min_outstanding) {
+				min_outstanding = worker_outstanding;
 				found = worker;
 			}
 		}
@@ -633,8 +639,7 @@ retry:
 	 *	local/temporary set of blacklisted workers.
 	 */
 	fr_assert(worker->stats.in >= worker->stats.out);
-	if (nr->config.max_outstanding &&
-	    ((worker->stats.in - worker->stats.out) >= nr->config.max_outstanding)) {
+	if (nr->config.max_outstanding && WORKER_OUTSTANDING(worker) >= nr->config.max_outstanding) {
 		RATE_LIMIT_GLOBAL(PERROR, "max_outstanding reached - dropping packet");
 		goto drop;
 	}
