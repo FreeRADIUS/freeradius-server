@@ -611,6 +611,7 @@ retry:
 
 			if (fr_time_delta_lt(worker->cpu_time, cpu_time)) {
 				found = worker;
+				cpu_time = work->cpu_time;
 			}
 		}
 
