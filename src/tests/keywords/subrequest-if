@@ -2,17 +2,17 @@
 #  PRE: subrequest
 #
 subrequest Access-Request {
-	update request {
-		&User-Name := &parent.request.User-Name
-	}
+	&request.User-Name := &parent.request.User-Name
 
 	if (!&User-Name) {
 		test_fail
 	}
 
-	update parent.control {
-		&User-Name := 'bob'
+	if (&User-Name != 'bob') {
+		test_fail
 	}
+
+	&parent.control.User-Name := 'bob'
 
 	success
 }

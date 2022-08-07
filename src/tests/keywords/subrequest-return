@@ -1,21 +1,20 @@
 subrequest Access-Request {
-	update parent.request {
-		&Tmp-String-0 := "testing1234"
-	}
+	&parent.request.Tmp-String-0 := "testing1234"
 
 	return
 
 	#
 	#  Should be ignored
 	#
-	update parent.request {
-		&Tmp-String-1 := "testing1234"
-	}
+	&parent.request.Tmp-String-1 := "testing1234"
 }
 
-if ((&request.Tmp-String-0 == "testing1234") && !&reply.Tmp-String-1) {
-	success
-}
-else {
+if (&Tmp-String-1) {
 	test_fail
 }
+
+if (&request.Tmp-String-0 != "testing1234") {
+	test_fail
+}
+
+success

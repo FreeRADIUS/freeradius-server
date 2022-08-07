@@ -2,36 +2,31 @@ subrequest Access-Request {
 	#
 	#  Prefix/attribute parsing disambiguation
 	#
-	update outer.request {
-		&Outer-Realm-Name := 'testing123'
-	}
+	&outer.request.Outer-Realm-Name := 'testing123'
 
-	update {
-		&User-Name := "obo"
-	}
+	&User-Name := "obo"
 
 	subrequest Access-Request {
-		update {
-			&User-Name := "jim"
-		}
+		&User-Name := "jim"
 
 		subrequest Access-Request {
-			update {
-				&User-Name := "joe"
+			&User-Name := "joe"
+
+			&outer.request += {
+				&Tmp-String-0 = &current.User-Name
+				&Tmp-String-1 = &parent.User-Name
+				&Tmp-String-2 = &parent.parent.User-Name
+				&Tmp-String-3 = &parent.parent.parent.User-Name
+				&Tmp-String-4 = &outer.User-Name
+				&Tmp-String-5 = &current.outer.User-Name
+				&Tmp-String-6 = &parent.current.outer.User-Name
 			}
 
-			update outer.request {
-				&Tmp-String-0 := &current.User-Name
-				&Tmp-String-1 := &parent.User-Name
-				&Tmp-String-2 := &parent.parent.User-Name
-				&Tmp-String-3 := &parent.parent.parent.User-Name
-				&Tmp-String-4 := &outer.User-Name
-				&Tmp-String-5 := &current.outer.User-Name
-				&Tmp-String-6 := &parent.current.outer.User-Name
-				&Tmp-String-7 := "%{parent.parent.parent.parent.User-Name}"
-				&Tmp-String-8 := "%{outer.parent.User-Name}"
-
-			}
+			#
+			#  These fail, so they belong on their own.
+			#
+			&outer.request.Tmp-String-7 := "%{parent.parent.parent.parent.User-Name}"
+			&outer.request.Tmp-String-8 := "%{outer.parent.User-Name}"
 		}
 	}
 }
@@ -68,11 +63,11 @@ if (&Tmp-String-6 != 'bob') {
 	test_fail
 }
 
-if (&Tmp-String-7 != '') {
+if (&Tmp-String-7) {
 	test_fail
 }
 
-if (&Tmp-String-8 != '') {
+if (&Tmp-String-8) {
 	test_fail
 }
 

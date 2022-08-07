@@ -1,5 +1,5 @@
 #
-#  PRE: update
+#  PRE: if
 #
 template_test
 if (!ok) {

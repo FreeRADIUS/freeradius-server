@@ -1,7 +1,13 @@
 subrequest Access-Request {
-	update parent.control {
-		&User-Name := 'bob'
-	}
+	&parent.control.User-Name := 'bob'
 
 	success
+}
+
+if (!&control.User-Name) {
+	test_fail
+}
+
+if (&control.User-Name != 'bob') {
+	test_fail
 }
