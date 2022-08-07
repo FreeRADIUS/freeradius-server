@@ -1,0 +1,16 @@
+&reply.Reply-Message := "foo"
+if (!&reply.Reply-Message) {
+	test_fail
+}
+
+#
+#  The default list here is the LHS list, not "request".
+#
+&reply -= &Reply-Message[*]
+
+#  Does not exist
+if (&reply.Reply-Message) {
+	test_fail
+}
+
+success

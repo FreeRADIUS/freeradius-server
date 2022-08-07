@@ -1152,6 +1152,8 @@ fr_pair_t		*tmpl_get_list(request_t *request, tmpl_t const *vpt) CC_HINT(nonnull
 
 int			tmpl_value_list_insert_tail(fr_value_box_list_t *list, fr_value_box_t *vb, tmpl_t const *vpt) CC_HINT(nonnull);
 
+void			tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t const *parent, tmpl_t *vpt) CC_HINT(nonnull);
+
 int			tmpl_global_init(void);
 void			tmpl_global_free(void);
 

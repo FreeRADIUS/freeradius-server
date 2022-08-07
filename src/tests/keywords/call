@@ -19,9 +19,6 @@ if (&reply.Reply-Message[1] != "call second post") {
 	test_fail
 }
 
-#
-#  @todo - The LHS SHOULD set the default context for the RHS.
-#
-&reply -= &reply.Reply-Message
+&reply -= &Reply-Message[*]
 
 success

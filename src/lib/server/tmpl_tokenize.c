@@ -2163,7 +2163,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *
 	 *	Eventually we'll remove TMPL_TYPE_LIST
 	 */
-	if (tmpl_attr_list_num_elements(&vpt->data.attribute.ar) == 0) {
+	if (!t_attr_rules->list_as_attr && (tmpl_attr_list_num_elements(&vpt->data.attribute.ar) == 0)) {
 		tmpl_attr_t *ar;
 
 		MEM(ar = talloc_zero(vpt, tmpl_attr_t));
@@ -5459,4 +5459,63 @@ bool tmpl_async_required(tmpl_t const *vpt)
 	default:
 		return false;
 	}
+}
+
+/** Initialize a set of rules from a parent set of rules, and a parsed tmpl_t
+ *
+ */
+void tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t const *parent, tmpl_t *vpt)
+{
+	fr_dict_attr_t const *da;
+	fr_dict_attr_t const *ref;
+	fr_dict_t const *dict, *internal;
+
+	*out = *parent;
+	out->parent = parent;
+
+	if (!tmpl_is_attr(vpt)) return;
+
+	da = tmpl_da(vpt);
+
+	/*
+	 *	The input tmpl is a leaf.  We must parse the child as
+	 *	a normal attribute reference (as with the parent tmpl).
+	 */
+	if (!fr_type_structural[da->type]) {
+		return;
+	}
+
+	if (vpt->rules.attr.request_def) {
+		tmpl_request_ref_list_acopy(ctx, &out->attr.request_def, vpt->rules.attr.request_def);
+	}
+	out->attr.list_def = tmpl_list(vpt);
+
+	/*
+	 *	Parse the child attributes in the context of the parent struct / tlv / whatever.
+	 */
+	if (da->type != FR_TYPE_GROUP) {
+		out->attr.dict_def = fr_dict_by_da(da);
+		out->attr.parent = da;
+		return;
+	}
+
+	ref = fr_dict_attr_ref(da);
+	dict = fr_dict_by_da(ref);
+	internal = fr_dict_internal();
+
+	/*
+	 *	Groups MAY change dictionaries.  If so, then swap the dictionary and the parent.
+	 */
+	if ((dict != internal) && (dict != out->attr.dict_def)) {
+		out->attr.dict_def = dict;
+		out->attr.parent = ref;
+	}
+
+	/*
+	 *	Otherwise the reference is swapping FROM a protocol
+	 *	dictionary TO the internal dictionary, and TO an
+	 *	internal group.  We fall back to leaving well enough
+	 *	alone, and leave things as-is.  This allows internal
+	 *	grouping attributes to appear anywhere.
+	 */
 }

@@ -106,6 +106,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	fr_dict_attr_t const *da;
 	tmpl_rules_t	my_rhs_rules;
 	tmpl_rules_t const *rhs_rules = input_rhs_rules;
+	TALLOC_CTX	*child_ctx = NULL;
 
 	*out = NULL;
 
@@ -130,6 +131,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		fr_assert(lhs_rules->attr.list_as_attr); /* so we don't worry about list_def? */
 	}
 
+	MEM(child_ctx = talloc(map, uint8_t));
 
 	/*
 	 *	LHS may be an expansion (that expands to an attribute reference)
@@ -173,47 +175,13 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		}
 
 		/*
-		 *	The caller wants the RHS attributes to be parsed in the context of the LHS.
+		 *	The caller wants the RHS attributes to be
+		 *	parsed in the context of the LHS, but only if
+		 *	the LHS attribute was a group / structural attribute.
 		 */
-		if (!input_rhs_rules && lhs_rules->attr.list_as_attr && tmpl_is_attr(map->lhs)) {
-			da = tmpl_da(map->lhs);
-
-			/*
-			 *	LHS is a leaf.  We must parse the RHS as a full attribute reference (or raw
-			 *	data).
-			 */
-			if (!fr_type_structural[da->type]) {
-				break;
-			}
-
-			my_rhs_rules = *lhs_rules;
-			my_rhs_rules.parent = lhs_rules;
+		if (!input_rhs_rules && lhs_rules->attr.list_as_attr) {
+			tmpl_rules_child_init(child_ctx, &my_rhs_rules, lhs_rules, map->lhs);
 			rhs_rules = &my_rhs_rules;
-
-			/*
-			 *	struct, tlv, VSA, etc. have their children in the parent attribute.
-			 */
-			if (da->type != FR_TYPE_GROUP) {
-				my_rhs_rules.attr.parent = da;
-
-			} else {
-				fr_dict_attr_t const *ref = fr_dict_attr_ref(da);
-				fr_dict_t const *dict = fr_dict_by_da(ref);
-
-				/*
-				 *	Groups live within their parent dictionary.
-				 *
-				 *	If we're swapping away from internal to a different dictionary, then
-				 *	allow that.
-				 *
-				 *	If we're swapping TO an internal dictionary, then leave well enough alone.
-				 */
-				if (((my_rhs_rules.attr.dict_def == fr_dict_internal()) && (dict != my_rhs_rules.attr.dict_def)) ||
-				    (dict != fr_dict_internal())) {
-					my_rhs_rules.attr.dict_def = dict;
-					my_rhs_rules.attr.parent = ref;
-				}
-			}
 		}
 		break;
 	}
@@ -224,7 +192,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	type = cf_pair_value_quote(cp);
 	p_rules = value_parse_rules_unquoted[type]; /* We're not searching for quotes */
 	if (type == T_DOUBLE_QUOTED_STRING || type == T_BACK_QUOTED_STRING) {
-		slen = fr_sbuff_out_aunescape_until(map, &unescaped_value,
+		slen = fr_sbuff_out_aunescape_until(child_ctx, &unescaped_value,
 				&FR_SBUFF_IN(value, talloc_array_length(value) - 1), SIZE_MAX, p_rules->terminals, p_rules->escapes);
 		if (slen < 0) {
 			marker_subject = value;
@@ -245,7 +213,6 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		marker_subject = value;
 		goto marker;
 	}
-	TALLOC_FREE(unescaped_value);
 
 	if (!map->rhs) {
 		cf_log_perr(cp, "Failed parsing RHS");
@@ -280,13 +247,14 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	}
 
 	MAP_VERIFY(map);
+	TALLOC_FREE(child_ctx);
 
 	*out = map;
 
 	return 0;
 
 error:
-	talloc_free(unescaped_value);
+	TALLOC_FREE(child_ctx);
 	talloc_free(map);
 	return -1;
 }
@@ -857,8 +825,25 @@ do_children:
 			 *	is used as the parsing context of the
 			 *	inner section.
 			 */
-			our_lhs_rules.attr.parent = tmpl_da(map->lhs);
 			our_lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_NO;
+			our_lhs_rules.attr.parent = tmpl_da(map->lhs);
+
+			/*
+			 *	Groups MAY change dictionaries.  If so, then swap the dictionary and the parent.
+			 */
+			if (our_lhs_rules.attr.parent->type == FR_TYPE_GROUP) {
+				fr_dict_attr_t const *ref;
+				fr_dict_t const *dict, *internal;
+
+				ref = fr_dict_attr_ref(our_lhs_rules.attr.parent);
+				dict = fr_dict_by_da(ref);
+				internal = fr_dict_internal();
+
+				if ((dict != internal) && (dict != our_lhs_rules.attr.dict_def)) {
+					our_lhs_rules.attr.dict_def = dict;
+					our_lhs_rules.attr.parent = ref;
+				}
+			}
 
 			/*
 			 *	This prints out any relevant error
