@@ -123,6 +123,11 @@ static request_t *request_fake_alloc(void)
 	tmpl_afrom_attr_substr(autofree, NULL, &vpt, &FR_SBUFF_IN(ref, strlen(ref)), NULL, &(tmpl_rules_t){.attr = {.dict_def = test_dict}}); \
 	vp = tmpl_dcursor_init(&err, NULL, &cc, &cursor, request, vpt);
 
+#define tmpl_setup_and_cursor_build_init(_attr) \
+	ref = _attr; \
+	tmpl_afrom_attr_substr(autofree, NULL, &vpt, &FR_SBUFF_IN(ref, strlen(ref)), NULL, &(tmpl_rules_t){.attr = {.dict_def = test_dict}}); \
+	inserted = tmpl_dcursor_build_init(&err, autofree, &cc, &cursor, request, vpt, &tmpl_dcursor_pair_build, NULL);
+
 /*
  *	How every test ends
  */
@@ -132,6 +137,16 @@ static request_t *request_fake_alloc(void)
 	TEST_CHECK(vp == NULL); \
 	tmpl_dcursor_clear(&cc); \
 	TEST_CHECK_RET(talloc_free(request), 0)
+
+/*
+ *	Call after "build" cursors
+ *	Checks that no additional attributes are created
+ */
+#define build_test_end \
+	debug_attr_list(&request->request_pairs, 0); \
+	vp = fr_dcursor_next(&cursor); \
+	TEST_CHECK(vp == NULL); \
+	tmpl_dcursor_clear(&cc)
 
 static void debug_attr_list(fr_pair_list_t *list, int indent)
 {
@@ -571,6 +586,162 @@ static void test_level_3_two_last(void)
 	test_end;
 }
 
+static void test_level_1_build(void)
+{
+	common_vars;
+	pair_defs(1);
+	fr_pair_t	*inserted;
+
+	pair_populate(1);
+	tmpl_setup_and_cursor_build_init("&Test-Int16-0");
+	TEST_CHECK(inserted != NULL);
+	build_test_end;
+
+	tmpl_setup_and_cursor_init("&Test-Int16-0");
+	TEST_CHECK(vp == inserted);
+
+	test_end;
+}
+
+static void test_level_2_build_leaf(void)
+{
+	common_vars;
+	pair_defs(1);
+	fr_pair_t	*inserted;
+
+	pair_populate(1);
+	tmpl_setup_and_cursor_build_init("&Test-Group-0.Test-Int32-0");
+	TEST_CHECK(inserted != NULL);
+	build_test_end;
+
+	tmpl_setup_and_cursor_init("&Test-Group-0.Test-Int32-0");
+	TEST_CHECK(vp == inserted);
+
+	test_end;
+}
+
+static void test_level_2_build_intermediate(void)
+{
+	common_vars;
+	fr_pair_t	*inserted;
+
+	tmpl_setup_and_cursor_build_init("&Test-Group-0.Test-Int16-0");
+	TEST_CHECK(inserted != NULL);
+	build_test_end;
+
+	tmpl_setup_and_cursor_init("&Test-Group-0.Test-Int16-0");
+	TEST_CHECK(vp == inserted);
+
+	test_end;
+}
+
+static void test_level_2_build_multi(void)
+{
+	common_vars;
+	pair_defs_thin(1);
+	pair_defs_thin(2);
+	fr_pair_t	*inserted, *second;
+
+	pair_populate_thin(1);
+	pair_populate_thin(2);
+	tmpl_setup_and_cursor_build_init("&Test-Group-0[*].Test-Int32-0");
+	TEST_CHECK(inserted != NULL);
+
+	second = fr_dcursor_next(&cursor);
+	TEST_CHECK(second != NULL);
+	TEST_CHECK(second != inserted);
+	build_test_end;
+
+	tmpl_setup_and_cursor_init("&Test-Group-0[*].Test-Int32-0");
+	TEST_CHECK(vp == inserted);
+	vp = fr_dcursor_next(&cursor);
+	TEST_CHECK(vp == second);
+
+	test_end;
+}
+
+static void test_level_3_build_leaf(void)
+{
+	common_vars;
+	pair_defs(1);
+	fr_pair_t	*inserted;
+
+	pair_populate(1);
+	tmpl_setup_and_cursor_build_init("&Test-Group-0.Test-Group-0.Test-String-0");
+	TEST_CHECK(inserted != NULL);
+	build_test_end;
+
+	tmpl_setup_and_cursor_init("&Test-Group-0.Test-Group-0.Test-String-0");
+	TEST_CHECK(vp == inserted);
+
+	test_end;
+}
+
+static void test_level_3_build_entire(void)
+{
+	common_vars;
+	fr_pair_t	*inserted;
+
+	tmpl_setup_and_cursor_build_init("&Test-Nested-Top-TLV-0[0].Child-TLV[0].Leaf-String");
+	TEST_CHECK(inserted != NULL);
+	build_test_end;
+
+	tmpl_setup_and_cursor_init("&Test-Nested-Top-TLV-0[0].Child-TLV[0].Leaf-String");
+	TEST_CHECK(vp == inserted);
+
+	test_end;
+}
+
+static void test_level_3_build_partial(void)
+{
+	common_vars;
+	pair_defs(1);
+	pair_defs_thin(2);
+	fr_pair_t	*inserted;
+
+	pair_populate(1);
+	pair_populate_thin(2);
+	tmpl_setup_and_cursor_build_init("&Test-Nested-Top-TLV-0[1].Child-TLV[0].Leaf-String");
+	TEST_CHECK(inserted != NULL);
+	TEST_CHECK(inserted != leaf_string_vp1);
+	build_test_end;
+
+	tmpl_setup_and_cursor_init("&Test-Nested-Top-TLV-0[1].Child-TLV[0].Leaf-String");
+	TEST_CHECK(vp == inserted);
+
+	test_end;
+}
+
+static void test_level_3_build_invalid1(void)
+{
+	common_vars;
+	fr_pair_t	*inserted;
+
+	tmpl_setup_and_cursor_build_init("&Test-Nested-Top-TLV-0[3].Child-TLV[0].Leaf-String");
+	TEST_CHECK(inserted == NULL);
+	build_test_end;
+
+	tmpl_setup_and_cursor_init("&Test-Nested-Top-TLV-0[3].Child-TLV[0].Leaf-String");
+	TEST_CHECK(vp == NULL);
+
+	test_end;
+}
+
+static void test_level_3_build_invalid2(void)
+{
+	common_vars;
+	fr_pair_t	*inserted;
+
+	tmpl_setup_and_cursor_build_init("&Test-Nested-Top-TLV-0[*].Child-TLV[0].Leaf-String");
+	TEST_CHECK(inserted == NULL);
+	build_test_end;
+
+	tmpl_setup_and_cursor_init("&Test-Nested-Top-TLV-0[*].Child-TLV[0].Leaf-String");
+	TEST_CHECK(vp == NULL);
+
+	test_end;
+}
+
 TEST_LIST = {
 	{ "test_level_1_one",		test_level_1_one },
 	{ "test_level_1_one_second",	test_level_1_one_second },
@@ -598,6 +769,16 @@ TEST_LIST = {
 	{ "test_level_3_two",		test_level_3_two },
 	{ "test_level_3_two_all",	test_level_3_two_all },
 	{ "test_level_3_two_last",	test_level_3_two_last },
+
+	{ "test_level_1_build",			test_level_1_build },
+	{ "test_level_2_build_leaf",		test_level_2_build_leaf },
+	{ "test_level_2_build_intermediate",	test_level_2_build_intermediate },
+	{ "test_level_2_build_multi",		test_level_2_build_multi },
+	{ "test_level_3_build_leaf",		test_level_3_build_leaf },
+	{ "test_level_3_build_entire",		test_level_3_build_entire },
+	{ "test_level_3_build_partial",		test_level_3_build_partial },
+	{ "test_level_3_build_invalid1",	test_level_3_build_invalid1 },
+	{ "test_level_3_build_invalid2",	test_level_3_build_invalid2 },
 
 	{ NULL }
 };
