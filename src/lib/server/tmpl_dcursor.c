@@ -78,28 +78,16 @@ static inline CC_HINT(always_inline) void _tmpl_cursor_common_push(tmpl_dcursor_
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_child_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_dcursor_ctx_t *cc)
+void _tmpl_cursor_pair_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_dcursor_ctx_t *cc)
 {
 	tmpl_dcursor_nested_t *ns;
 
-	_tmpl_cursor_pool_init(cc);
-	MEM(ns = talloc(cc->pool, tmpl_dcursor_nested_t));
-	*ns = (tmpl_dcursor_nested_t){
-		.ar = ar,
-		.list_ctx = list_ctx
-	};
-	fr_pair_dcursor_iter_init(&ns->cursor, list, _tmpl_cursor_child_next, ns);
-
-	_tmpl_cursor_common_push(cc, ns);
-}
-
-/** Initialise the evaluation context for finding a leaf attribute
- *
- */
-static inline CC_HINT(always_inline)
-void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_dcursor_ctx_t *cc)
-{
-	tmpl_dcursor_nested_t	*ns = &cc->leaf;
+	if (tmpl_attr_list_next(&cc->vpt->data.attribute.ar, ar)) {
+		_tmpl_cursor_pool_init(cc);
+		MEM(ns = talloc(cc->pool, tmpl_dcursor_nested_t));
+	} else {
+		ns = &cc->leaf;
+	}
 
 	*ns = (tmpl_dcursor_nested_t){
 		.ar = ar,
@@ -179,21 +167,6 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	} else goto all_inst;	/* Used for TMPL_TYPE_LIST */
 
 	return vp;
-}
-
-static inline CC_HINT(always_inline)
-void _tmpl_cursor_pair_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_dcursor_ctx_t *cc)
-{
-	if (tmpl_attr_list_next(&cc->vpt->data.attribute.ar, ar)) switch (ar->ar_da->type) {
-	case FR_TYPE_STRUCTURAL:
-		_tmpl_cursor_child_init(list_ctx, list, ar, cc);
-		break;
-
-	default:
-	leaf:
-		_tmpl_cursor_leaf_init(list_ctx, list, ar, cc);
-		break;
-	} else goto leaf;
 }
 
 static void *_tmpl_cursor_next(UNUSED fr_dlist_head_t *list, void *curr, void *uctx)
