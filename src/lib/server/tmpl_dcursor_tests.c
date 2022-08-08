@@ -113,10 +113,27 @@ static request_t *request_fake_alloc(void)
  *	How every test ends
  */
 #define test_end \
+	debug_attr_list(&request->request_pairs, 0); \
 	vp = fr_dcursor_next(&cursor); \
 	TEST_CHECK(vp == NULL); \
 	tmpl_dcursor_clear(&cc); \
 	TEST_CHECK_RET(talloc_free(request), 0)
+
+static void debug_attr_list(fr_pair_list_t *list, int indent)
+{
+	fr_pair_t *vp = NULL;
+	while ((vp = fr_pair_list_next(list, vp))) {
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+			TEST_MSG("%*s%s => {", indent, "", vp->da->name);
+			debug_attr_list(&vp->vp_group, indent + 2);
+			TEST_MSG("%*s}", indent, "");
+			break;
+		default:
+			TEST_MSG("%*s%s", indent, "", vp->da->name);
+		}
+	}
+}
 
 /*
  *	One instance of attribute at the top level
