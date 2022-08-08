@@ -1417,7 +1417,7 @@ static void add_dotlibs(char *buffer)
 	} else {
 		name++;
 	}
-	memmove(name + 6, name, strlen(name));
+	memmove(name + 6, name, strlen(name) + 1);
 	memcpy(name, ".libs/", 6);
 }
 
