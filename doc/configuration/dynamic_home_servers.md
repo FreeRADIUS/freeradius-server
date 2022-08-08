@@ -38,6 +38,12 @@ This directory should contain nothing other than definitions for
 dynamic home servers.  These definitions are simply normal
 `home_server` definitions:
 
+Home servers which use RadSec can `$INCLUDE tls.conf` in this
+directory to use a common site-local TLS configuration.  The script
+`freeradius-naptr-to-home-server.sh` referenced below assumes that
+this file exists.  If you are not using that file, it is safe to just
+replace it with an empty file.
+
 ```
 home_server example.com {
 	...
@@ -192,7 +198,7 @@ authorize {
 				update control {
 					# you can add a third parameter for the NAPTR tag to look up, e.g. "aaa+auth:radius.tls.tcp" (RFC7585, OpenRoaming)
 					# if the third parameter is omitted, defaults to "x-eduroam:radius.tls"
-					&Temp-Home-Server-String := `%{config:prefix}/bin/naptr-eduroam-freeradius.sh %{1} %{config:prefix}`
+					&Temp-Home-Server-String := `%{config:prefix}/bin/freeradius-naptr-to-home-server.sh -d %{config:confdir} %{1}`
 				}
 				if ("%{control:Temp-Home-Server-String}" == "" ) {
 					reject
@@ -223,18 +229,18 @@ with an empty home_server directory regularly, for two reasons:
 * dynamic home servers are often RADIUS/TLS based with client and server certificates,
   and the server should refresh CRL information regularly
 
-As a result, we recommend emptying the home_servers directory,
-refreshing CRLs and then restarting the server once per day.
+As a result, we recommend emptying the home_servers directory (except
+for the tls.conf file), refreshing CRLs and then restarting the server
+once per day.  e.g.
+
+```
+rm -f $(ls -1 raddb/home_servers | egrep -v tls.conf)
+```
 
 ## Adding a new home server for a new realm
 
 TODO:
 
-* when receiving a packet for a realm which is unknown
-* check if there's already a dynamic home server
-* if not, run a shell script to add one
-* for details, see https://tools.ietf.org/html/rfc7585
-* and examples at https://wiki.geant.org/display/H2eduroam/DNS-NAPTR
 * note that we don't do multiple home servers right now...
 * the internal framework *may* be able to support dynamically loading home_server_pool, too
 * but one thing at a time
