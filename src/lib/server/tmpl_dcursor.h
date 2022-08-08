@@ -39,6 +39,16 @@ typedef struct tmpl_dcursor_nested_s tmpl_dcursor_nested_t;
  */
 typedef fr_pair_t *(*tmpl_dursor_eval_t)(fr_dlist_head_t *list_head, fr_pair_t *current, tmpl_dcursor_nested_t *ns);
 
+/** Callback function for populating missing pair
+ *
+ * @param[in] parent	to allocate the new pair in.
+ * @param[in] cursor	to append the pair to.
+ * @param[in] da	of the attribute to create.
+ * @param[in] uctx	context data.
+ * @return		newly allocated pair.
+ */
+typedef fr_pair_t *(*tmpl_dcursor_build_t)(fr_pair_t *parent, fr_dcursor_t *cursor, fr_dict_attr_t const *da, void *uctx);
+
 /** State for traversing an attribute reference
  *
  */
@@ -80,6 +90,9 @@ struct tmpl_dcursor_ctx_s {
 	tmpl_dcursor_nested_t	leaf;		//!< Pre-allocated leaf state.  We always need
 						///< one of these so it doesn't make sense to
 						///< allocate it later.
+
+	tmpl_dcursor_build_t	build;		//!< Callback to build missing pairs.
+	void			*uctx;		//!< Context for building new pairs.
 };
 
 fr_pair_t		*tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
