@@ -206,6 +206,21 @@ fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_d
 		break;
 	} else goto all_inst;	/* Used for TMPL_TYPE_LIST */
 
+	/*
+	 *	If no pair was found and there is a fill
+	 *	callback, call that, depending on the suffix
+	 */
+	if ((!vp) && (cc->build) && (ar)) switch (ar->ar_num) {
+	case NUM_UNSPEC:
+	case NUM_LAST:
+	case 0:
+		vp = cc->build(ns->list_ctx, &ns->cursor, ar->da, cc->uctx);
+		break;
+
+	default:
+		break;
+	}
+
 	return vp;
 }
 
