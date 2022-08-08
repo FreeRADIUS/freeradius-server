@@ -97,10 +97,17 @@ struct tmpl_dcursor_ctx_s {
 
 fr_pair_t		*tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 						    fr_dcursor_t *cursor,
-						    request_t *request, fr_pair_t *list, tmpl_t const *vpt);
+						    request_t *request, fr_pair_t *list, tmpl_t const *vpt,
+						    tmpl_dcursor_build_t build, void *uctx);
 
-fr_pair_t		*tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
-					   fr_dcursor_t *cursor, request_t *request,
-					   tmpl_t const *vpt);
+fr_pair_t		*_tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
+					    fr_dcursor_t *cursor, request_t *request,
+					    tmpl_t const *vpt, tmpl_dcursor_build_t build, void *uctx);
 
 void			tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc);
+
+#define tmpl_dcursor_init(_err, _ctx, _cc, _cursor, _request, _vpt) \
+	_tmpl_dcursor_init(_err, _ctx, _cc, _cursor, _request, _vpt, NULL, NULL)
+
+#define tmpl_dcursor_build_init(_err, _ctx, _cc, _cursor, _request, _vpt, _build, _uctx) \
+	_tmpl_dcursor_init(_err, _ctx, _cc, _cursor, _request, _vpt, _build, _uctx)

@@ -316,7 +316,8 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
  */
 fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 				      fr_dcursor_t *cursor,
-				      request_t *request, fr_pair_t *list, tmpl_t const *vpt)
+				      request_t *request, fr_pair_t *list, tmpl_t const *vpt,
+				      tmpl_dcursor_build_t build, void *uctx)
 {
 	fr_pair_t		*vp = NULL;
 
@@ -329,7 +330,9 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 		.vpt = vpt,
 		.ctx = ctx,
 		.request = request,
-		.list = &list->vp_group
+		.list = &list->vp_group,
+		.build = build,
+		.uctx = uctx
 	};
 	fr_dlist_init(&cc->nested, tmpl_dcursor_nested_t, entry);
 
@@ -393,8 +396,9 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
  *
  * @see tmpl_cursor_next
  */
-fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
-			     fr_dcursor_t *cursor, request_t *request, tmpl_t const *vpt)
+fr_pair_t *_tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
+			      fr_dcursor_t *cursor, request_t *request, tmpl_t const *vpt,
+			      tmpl_dcursor_build_t build, void *uctx)
 {
 	fr_pair_t		*list;
 
@@ -427,7 +431,7 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 		list = request->pair_root;
 	}
 
-	return tmpl_dcursor_init_relative(err, ctx, cc, cursor, request, list, vpt);
+	return tmpl_dcursor_init_relative(err, ctx, cc, cursor, request, list, vpt, build, uctx);
 }
 
 /** Clear any temporary state allocations
