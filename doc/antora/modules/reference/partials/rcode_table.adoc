@@ -33,7 +33,7 @@
 
 [NOTE]
 ====
-In versions ≤ v3.0.x the `disallow` rcode was called `userlock`. `disallow` and
+In versions ≤ v3.2.x the `disallow` rcode was called `userlock`. `disallow` and
 `userlock` have an identical meaning. `disallow` will be returned in any
-instance where `userlock` was returned in v3.0.x
+instance where `userlock` was returned in v3.0.x or v3.2.x
 ====

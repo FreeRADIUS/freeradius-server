@@ -29,6 +29,6 @@ sought. If this describes you, then version 4 is for you! (But
 don't come complaining if it breaks.)
 
 Hopefully it is clear, *we recommend 99.9%+ of users use
-https://freeradius.org/releases/[FreeRADIUS 3.0.x]* and the
+https://freeradius.org/releases/[FreeRADIUS 3.2.x]* and the
 https://packages.networkradius.com/[pre-built packages]
 available from https://networkradius.com/[Network RADIUS].

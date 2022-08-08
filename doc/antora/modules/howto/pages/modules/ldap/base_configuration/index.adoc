@@ -86,7 +86,7 @@ function(s) it's performing.
 
 For simple authentication types like `PAP` and `CHAP` the LDAP module
 should be listed in the `recv Access-Request { ... }` (≥ v4.0.x)
-or `authorize { ... }` (≤ v3.0.x) section of the virtual server
+or `authorize { ... }` (≤ v3.2.x) section of the virtual server
 listening on the network (usually found in `sites-available/default`).
 
 For EAP authentication the LDAP module should be listed in
@@ -140,7 +140,7 @@ and authentication protocols.
 
 LDAP binds for simple authentication types like `PAP` the LDAP module should be
 listed in the `recv Access-Request { ... }` and `authenticate ldap { ... }` (≥
-v4.0.x) or `authorize { ... }` and `authenticate { ... }` (≤ v3.0.x) sections of
+v4.0.x) or `authorize { ... }` and `authenticate { ... }` (≤ v3.2.x) sections of
 the virtual server listening on the network (usually found in
 `sites-available/default`).
 
