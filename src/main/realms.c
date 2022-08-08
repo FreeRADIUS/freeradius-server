@@ -2486,6 +2486,11 @@ int realms_init(CONF_SECTION *config)
 			if (dp->d_name[0] == '.') continue;
 
 			/*
+			 *	Skip the TLS configuration.
+			 */
+			if (strcmp(dp->d_name, "tls.conf") == 0) continue;
+		
+			/*
 			 *	Check for valid characters
 			 */
 			for (p = dp->d_name; *p != '\0'; p++) {
@@ -2497,7 +2502,7 @@ int realms_init(CONF_SECTION *config)
 				break;
 			}
 			if (*p != '\0') continue;
-		
+
 			snprintf(conf_file, sizeof(conf_file), "%s/%s", rc->directory, dp->d_name);
 			if (home_server_afrom_file(conf_file) < 0) {
 				ERROR("Failed reading home_server from %s - %s",
