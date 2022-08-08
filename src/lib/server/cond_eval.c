@@ -549,7 +549,7 @@ static bool cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t co
 		if (rcode != 0) break;
 	}
 
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	return (rcode == 1);
 }
 
@@ -583,7 +583,7 @@ static bool cond_compare_virtual(request_t *request, map_t const *map)
 		if (rcode != 0) break;
 	}
 
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	return (rcode == 1);
 }
 
@@ -806,7 +806,7 @@ check_attrs:
 			continue;
 		}
 
-		tmpl_dursor_clear(&cc);
+		tmpl_dcursor_clear(&cc);
 	}
 		break;
 

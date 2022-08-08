@@ -90,4 +90,4 @@ fr_pair_t		*tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 					   fr_dcursor_t *cursor, request_t *request,
 					   tmpl_t const *vpt);
 
-void			tmpl_dursor_clear(tmpl_dcursor_ctx_t *cc);
+void			tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc);

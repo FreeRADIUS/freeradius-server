@@ -1508,7 +1508,7 @@ static xlat_action_t xlat_attr_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	if (do_free) talloc_const_free(vpt);
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	fr_dcursor_append(out, dst);
 	return XLAT_ACTION_DONE;
 }

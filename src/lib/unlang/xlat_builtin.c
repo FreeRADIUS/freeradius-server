@@ -1131,7 +1131,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	     vp = fr_dcursor_next(&cursor)) {
 		xlat_debug_attr_vp(request, vp, vpt);
 	}
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	REXDENT();
 
 	talloc_free(vpt);
@@ -2586,14 +2586,14 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (unlikely(fr_pair_aprint(vb, &buff, NULL, vp) < 0)) {
 			RPEDEBUG("Failed printing pair");
 			talloc_free(vb);
-			tmpl_dursor_clear(&cc);
+			tmpl_dcursor_clear(&cc);
 			return XLAT_ACTION_FAIL;
 		}
 
 		fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, false);
 		fr_dcursor_append(out, vb);
 	}
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	talloc_free(vpt);
 
 	return XLAT_ACTION_DONE;
@@ -3668,7 +3668,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		len = tp_encode->func(&FR_DBUFF_TMP(p, end), &cursor, encode_ctx);
 		if (len < 0) {
 			RPEDEBUG("Protocol encoding failed");
-			tmpl_dursor_clear(&cc);
+			tmpl_dcursor_clear(&cc);
 			talloc_free(vpt);
 			return XLAT_ACTION_FAIL;
 		}
@@ -3677,7 +3677,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		p += len;
 	}
 
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	talloc_free(vpt);
 
 	/*

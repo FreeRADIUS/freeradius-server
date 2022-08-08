@@ -568,20 +568,20 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			 *	we should delete all LHS attributes.
 			 */
 			if (mutated->op == T_OP_SET) n = list_mod_delete_afrom_map(ctx, original, mutated);
-			tmpl_dursor_clear(&cc_attr);
+			tmpl_dcursor_clear(&cc_attr);
 			goto finish;
 
 		case -2:		/* No matching list */
 		case -3:		/* No request context */
 		case -4:		/* memory allocation error */
 			RPEDEBUG("Failed resolving attribute source");
-			tmpl_dursor_clear(&cc_attr);
+			tmpl_dcursor_clear(&cc_attr);
 			goto error;
 		}
 
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
 		if (!n) {
-			tmpl_dursor_clear(&cc_attr);
+			tmpl_dcursor_clear(&cc_attr);
 			goto error;
 		}
 
@@ -593,7 +593,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			attr_error:
 				fr_dcursor_head(&values);
 				fr_dcursor_free_list(&values);
-				tmpl_dursor_clear(&cc_attr);
+				tmpl_dcursor_clear(&cc_attr);
 				goto error;
 			}
 
@@ -611,7 +611,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			fr_dcursor_append(&values, n_vb);
 		} while ((vp = fr_dcursor_next(&from)));
 
-		tmpl_dursor_clear(&cc_attr);
+		tmpl_dcursor_clear(&cc_attr);
 	}
 		break;
 
@@ -1287,6 +1287,6 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	}
 
 finish:
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	return rcode;
 }

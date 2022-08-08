@@ -251,14 +251,14 @@ static int remove_vps(request_t *request, edit_map_t *current)
 		fr_assert(list != NULL);
 
 		if (fr_edit_list_pair_delete(current->el, list, vp) < 0) {
-			tmpl_dursor_clear(&cc);
+			tmpl_dcursor_clear(&cc);
 			return -1;
 		}
 
 		vp = next;
 	}
 
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	return 0;
 }
 

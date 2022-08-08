@@ -247,7 +247,7 @@ static int tmpl_attr_to_slist(fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl
 	}
 
 	/* Return the number of elements which were found */
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	return count;
 }
 
@@ -301,7 +301,7 @@ static ssize_t tmpl_attr_to_sbuff(fr_mail_ctx_t *uctx, fr_sbuff_t *out, tmpl_t c
 			copied += fr_sbuff_in_strcpy(out, delimiter);
 		}
 	}
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	return copied;
 }
 
@@ -418,7 +418,7 @@ static int tmpl_attr_to_attachment(fr_mail_ctx_t *uctx, curl_mime *mime, const t
 		attachments_set += str_to_attachments(uctx, mime, vp->vp_strvalue, vp->vp_length, path_buffer, m);
 	}
 
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	return attachments_set;
 }
 

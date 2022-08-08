@@ -601,7 +601,7 @@ build_vector:
 				vector[i].iov_len = inst->delimiter_len;
 			}
 		}
-		tmpl_dursor_clear(&cc);
+		tmpl_dcursor_clear(&cc);
 		vector_p = vector;
 		vector_len = i;
 	}

@@ -920,7 +920,7 @@ int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, tm
 		}
 		fr_pair_append(out, vp);
 	}
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 
 	return err;
 }
@@ -971,7 +971,7 @@ int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 	     	}
 	}
 done:
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 
 	return err;
 }
@@ -1001,7 +1001,7 @@ int tmpl_find_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 	TMPL_VERIFY(vpt);
 
 	vp = tmpl_dcursor_init(&err, request, &cc, &cursor, request, vpt);
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 
 	if (out) *out = vp;
 
@@ -1033,7 +1033,7 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 	*out = NULL;
 
 	vp = tmpl_dcursor_init(&err, NULL, &cc, &cursor, request, vpt);
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 
 	switch (err) {
 	case 0:
@@ -1383,7 +1383,7 @@ done:
 	}
 
 fail:
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	return ret;
 }
 

@@ -2182,7 +2182,7 @@ update:
 	fr_assert(fr_pair_list_empty(&src_list));
 
 finish:
-	tmpl_dursor_clear(&cc);
+	tmpl_dcursor_clear(&cc);
 	talloc_free(tmp_ctx);
 	return rcode;
 }

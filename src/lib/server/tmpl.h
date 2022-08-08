@@ -767,7 +767,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
    	vp = tmpl_cursor_next(&cursor, &list)) {
    	// Do something
    }
-   tmpl_dursor_clear(&cc);
+   tmpl_dcursor_clear(&cc);
  @endcode
  *
  * @param _request to locate the list in.

@@ -408,7 +408,7 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 	if (tmpl_request_ptr(&request, tmpl_request(vpt)) < 0) {
 		if (err) *err = -3;
 	error:
-		memset(cc, 0, sizeof(*cc));	/* so tmpl_dursor_clear doesn't explode */
+		memset(cc, 0, sizeof(*cc));	/* so tmpl_dcursor_clear doesn't explode */
 		return NULL;
 	}
 
@@ -433,7 +433,7 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 /** Clear any temporary state allocations
  *
  */
-void tmpl_dursor_clear(tmpl_dcursor_ctx_t *cc)
+void tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc)
 {
 	/*
 	 *	If the pool wasn't created, nothing was talloc'd which

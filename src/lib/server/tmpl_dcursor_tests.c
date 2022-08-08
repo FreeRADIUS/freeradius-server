@@ -115,7 +115,7 @@ static request_t *request_fake_alloc(void)
 #define test_end \
 	vp = fr_dcursor_next(&cursor); \
 	TEST_CHECK(vp == NULL); \
-	tmpl_dursor_clear(&cc); \
+	tmpl_dcursor_clear(&cc); \
 	TEST_CHECK_RET(talloc_free(request), 0)
 
 /*
