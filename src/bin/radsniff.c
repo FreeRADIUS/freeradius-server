@@ -470,6 +470,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 
 			fr_base16_encode(&FR_SBUFF_OUT(vector, sizeof(vector)),
 					 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH));
+			/* coverity[uninit_use_in_call] */
 			INFO("\tAuthenticator-Field = 0x%s", vector);
 		}
 	}
