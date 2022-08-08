@@ -67,6 +67,13 @@ static request_t *request_fake_alloc(void)
 	fr_pair_t	*leaf_string_vp ## _x; \
 	fr_pair_t	*leaf_int32_vp ## _x
 
+#define pair_defs_thin(_x) \
+	fr_pair_t	*int32_vp ## _x; \
+	fr_pair_t	*group_vp ## _x; \
+	fr_pair_t	*top_vp ## _x; \
+	fr_pair_t	*mid_vp ## _x; \
+	fr_pair_t	*leaf_int32_vp ## _x
+
 #define pair_populate(_x) \
 	pair_append_request(&int32_vp ## _x, fr_dict_attr_test_int32); \
 	pair_append_request(&string_vp ## _x, fr_dict_attr_test_string); \
@@ -75,6 +82,13 @@ static request_t *request_fake_alloc(void)
 	pair_append_request(&top_vp ## _x, fr_dict_attr_test_nested_top_tlv); \
 	fr_pair_append_by_da(top_vp ## _x, &mid_vp ## _x, &top_vp ## _x->children, fr_dict_attr_test_nested_child_tlv); \
 	fr_pair_append_by_da(mid_vp ## _x, &leaf_string_vp ## _x, &mid_vp ## _x->children, fr_dict_attr_test_nested_leaf_string); \
+	fr_pair_append_by_da(mid_vp ## _x, &leaf_int32_vp ## _x, &mid_vp ## _x->children, fr_dict_attr_test_nested_leaf_int32);
+
+#define pair_populate_thin(_x) \
+	pair_append_request(&int32_vp ## _x, fr_dict_attr_test_int32); \
+	pair_append_request(&group_vp ## _x, fr_dict_attr_test_group); \
+	pair_append_request(&top_vp ## _x, fr_dict_attr_test_nested_top_tlv); \
+	fr_pair_append_by_da(top_vp ## _x, &mid_vp ## _x, &top_vp ## _x->children, fr_dict_attr_test_nested_child_tlv); \
 	fr_pair_append_by_da(mid_vp ## _x, &leaf_int32_vp ## _x, &mid_vp ## _x->children, fr_dict_attr_test_nested_leaf_int32);
 
 /*
