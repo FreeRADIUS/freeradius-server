@@ -2197,7 +2197,41 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		tmpl_request_ref_list_acopy(vpt, &vpt->rules.attr.request_def, t_rules->attr.request_def);
 	}
 
-	if (tmpl_is_attr(vpt) && (tmpl_da(vpt)->type == tmpl_rules_cast(vpt))) vpt->rules.cast = FR_TYPE_NULL;
+	if (tmpl_is_attr(vpt)) {
+		/*
+		 *	Suppress useless casts.
+		 */
+		if (tmpl_da(vpt)->type == tmpl_rules_cast(vpt)) {
+			vpt->rules.cast = FR_TYPE_NULL;
+		}
+
+		/*
+		 *	Ensure that the list is set correctly, so that
+		 *	the returned vpt just doesn't just match the
+		 *	input rules, it is also internally consistent.
+		 */
+		if (t_attr_rules->list_as_attr) {
+			tmpl_attr_t *ar;
+
+			ar = tmpl_attr_list_head(&vpt->data.attribute.ar);
+			fr_assert(ar != NULL);
+
+			if (ar->ar_da == request_attr_request) {
+				vpt->rules.attr.list_def = PAIR_LIST_REQUEST;
+
+			} else if (ar->ar_da == request_attr_reply) {
+				vpt->rules.attr.list_def = PAIR_LIST_REPLY;
+
+			} else if (ar->ar_da == request_attr_control) {
+				vpt->rules.attr.list_def = PAIR_LIST_CONTROL;
+
+			} else if (ar->ar_da == request_attr_state) {
+				vpt->rules.attr.list_def = PAIR_LIST_STATE;
+			}
+
+			vpt->data.attribute.list = vpt->rules.attr.list_def;
+		}
+	}
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
 		fr_strerror_const("Unexpected text after attribute reference");
