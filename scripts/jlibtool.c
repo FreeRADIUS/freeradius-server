@@ -1533,7 +1533,7 @@ static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
 
 	strcpy(newarg + newpathlen, arg + pathlen);
 	ext = strrchr(newarg, '.');
-	if (!ext) {
+	if (!ext || ext == newarg) {
 		ERROR("Error: Library path does not have an extension\n");
 		free(newarg);
 
