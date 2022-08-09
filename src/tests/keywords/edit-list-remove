@@ -90,6 +90,16 @@ if (&Tmp-String-0[2]) {
 	test_fail
 }
 
-%(debug_attr:request[*])
+#
+#  Remove via in-place list, too.
+#
+&request -= "Tmp-String-0 == 'foo'"
+if (&Tmp-String-0[0] != "baz") {
+	test_fail
+}
+
+if (&Tmp-String-0[1]) {
+	test_fail
+}
 
 success

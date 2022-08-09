@@ -313,14 +313,6 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 
 		rhs_box = tmpl_value(current->rhs.vpt);
 
-		/*
-		 *	@todo - just parse the data as a string, and remove it?
-		 */
-		if (map->op == T_OP_SUB_EQ) {
-			REDEBUG("%s[%d] Cannot remove data from a list", MAP_INFO);
-			return -1;
-		}
-
 		da = current->lhs.vp->da;
 		if (fr_type_is_group(da->type)) da = fr_dict_root(request->dict);
 
