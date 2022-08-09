@@ -695,17 +695,24 @@ static void strip_double_chars(char *str, char c)
 	*out = '\0';
 }
 
-static void *lt_malloc(size_t size)
+static void *lt_alloc_check(void *out)
 {
-	void *out;
-
-	out = malloc(size);
 	if (!out) {
-		ERROR("Failed allocating %zu bytes, OOM\n", size);
+		ERROR("Failed to allocate, OOM\n");
 		exit(1);
 	}
 
 	return out;
+}
+
+static void *lt_malloc(size_t size)
+{
+	return lt_alloc_check(malloc(size));
+}
+
+static char *lt_strdup(char const *str)
+{
+	return lt_alloc_check(strdup(str));
 }
 
 static void lt_const_free(const void *ptr)
@@ -1244,7 +1251,7 @@ static int parse_short_opt(char const *arg, command_t *cmd)
 static char *truncate_dll_name(char const *path)
 {
 	/* Cut DLL name down to 8 characters after removing any mod_ prefix */
-	char *tmppath = strdup(path);
+	char *tmppath = lt_strdup(path);
 	char *newname = strrchr(tmppath, '/') + 1;
 	char *ext = strrchr(newname, '.');
 	int len, ext_len;
@@ -2042,14 +2049,9 @@ static int parse_input_file_name(char const *arg, command_t *cmd)
 			 *	Otherwise, we'll do odd things.
 			 */
 			if (cmd->output == OUT_LIB) {
-				char *tmp;
-
-				tmp = strdup(arg);
-				if (!tmp) exit(1);
-
+				char *tmp = lt_strdup(arg);
 				tmp[pathlen] = '\0';
 				push_count_chars(cmd->arglist, tmp);
-
 			} else {
 				cmd->output = OUT_LIB;
 				cmd->output_name = arg;
@@ -2323,7 +2325,7 @@ static void generate_def_file(command_t *cmd)
 			export_args[num_export_args++] = NULL;
 			external_spawn(cmd, export_args[0], (char const**)export_args);
 #if 0	/* No num args ? */
-			cmd->arglist[cmd->num_args++] = strdup(def_file);
+			cmd->arglist[cmd->num_args++] = lt_strdup(def_file);
 #endif
 			/* Now make an import library for the dll */
 			num_export_args = 0;
