@@ -106,6 +106,8 @@ fr_pair_t		*_tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc
 
 void			tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc);
 
+fr_pair_t *tmpl_dcursor_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, fr_dict_attr_t const *da, UNUSED void *uctx);
+
 #define tmpl_dcursor_init(_err, _ctx, _cc, _cursor, _request, _vpt) \
 	_tmpl_dcursor_init(_err, _ctx, _cc, _cursor, _request, _vpt, NULL, NULL)
 

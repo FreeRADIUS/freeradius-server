@@ -466,6 +466,23 @@ void tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc)
 	TALLOC_FREE(cc->pool);
 }
 
+/** Simple pair building callback for use with tmpl_dcursors
+ *
+ * @param[in] parent		to allocate new pair within.
+ * @param[in,out] cursor	to append new pair to.
+ * @param[in] da		of new pair.
+ * @param[in] uctx		unused.
+ * @return
+ *	- newly allocated #fr_pair_t.
+ *	- NULL on error.
+ */
+fr_pair_t *tmpl_dcursor_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, fr_dict_attr_t const *da, UNUSED void *uctx)
+{
+	fr_pair_t *vp;
+	vp = fr_pair_afrom_da(parent, da);
+	if (vp) fr_dcursor_append(cursor, vp);
+	return vp;
+}
 
 #define EXTENT_ADD(_out, _ar, _list_ctx, _list) \
 	do { \
