@@ -1279,21 +1279,6 @@ static char *truncate_dll_name(char const *path)
 	return tmppath;
 }
 
-static long safe_strtol(char const *nptr, char const **endptr, int base)
-{
-	long rv;
-
-	errno = 0;
-
-	rv = strtol(nptr, UNCONST(char **, endptr), base);
-
-	if (errno == ERANGE) {
-		return 0;
-	}
-
-	return rv;
-}
-
 static void safe_mkdir(command_t *cmd, char const *path)
 {
 	int status;
@@ -1365,46 +1350,27 @@ static char const *file_name_stripped(char const *path, bool *allocated)
 /* version_info is in the form of MAJOR:MINOR:PATCH */
 static char const *darwin_dynamic_link_function(char const *version_info)
 {
+	static const char seps[] = ":.,-_";
+	const char *major, *minor;
+	int major_len, minor_len;
 	char *newarg;
-	long major, minor;
-
-	major = 0;
-	minor = 0;
-#if 0
-	patch = 0;
-#endif
 
 	if (version_info) {
-		major = safe_strtol(version_info, &version_info, 10);
-
-		if (version_info) {
-			if (version_info[0] == ':') {
-				version_info++;
-			}
-
-			minor = safe_strtol(version_info, &version_info, 10);
-
-			if (version_info) {
-				if (version_info[0] == ':') {
-					version_info++;
-				}
-
-#if 0
-				patch = safe_strtol(version_info, &version_info, 10);
-#endif
-			}
-		}
-	}
-
-	/* Avoid -dylib_compatibility_version must be greater than zero errors. */
-	if (major == 0) {
-		major = 1;
+		major = version_info;
+		major_len = strcspn(major, seps);
+		minor = major + major_len;
+		minor += strspn(minor, seps);
+		minor_len = strcspn(major, seps);
+	} else {
+		major = "1";
+		major_len = 1;
+		minor = "0";
+		minor_len = 1;
 	}
 	newarg = (char*)lt_malloc(100);
 	snprintf(newarg, 99,
-			 "-compatibility_version %ld -current_version %ld.%ld",
-			 major, major, minor);
-
+		 "-compatibility_version %.*s -current_version %.*s.%.*s",
+		 major_len, major, major_len, major, minor_len, minor);
 	return newarg;
 }
 
