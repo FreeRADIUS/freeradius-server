@@ -631,7 +631,7 @@ retry:
 			if (worker->blocked) continue;
 
 			outstanding = OUTSTANDING(worker);
-			if (outstanding < min_outstanding) {
+			if ((outstanding < min_outstanding) || !found) {
 				found = worker;
 				min_outstanding = outstanding;
 
