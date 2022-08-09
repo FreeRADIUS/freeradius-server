@@ -137,6 +137,7 @@ static void test_bstrncpy(void)
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_bstrncpy(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5);
 	TEST_CHECK_SLEN(slen, 5);
+	/* coverity[uninit_use_in_call] */
 	TEST_CHECK_STRCMP(out, "i am ");
 	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
@@ -212,6 +213,7 @@ static void test_bstrncpy_allowed(void)
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5, allow_lowercase_and_space);
 	TEST_CHECK_SLEN(slen, 5);
+	/* coverity[uninit_use_in_call] */
 	TEST_CHECK_STRCMP(out, "i am ");
 	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
@@ -300,6 +302,7 @@ static void test_bstrncpy_until(void)
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5, NULL, NULL);
 	TEST_CHECK_SLEN(slen, 5);
+	/* coverity[uninit_use_in_call] */
 	TEST_CHECK_STRCMP(out, "i am ");
 	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
@@ -571,6 +574,7 @@ static void test_unescape_until(void)
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
 						   &FR_SBUFF_TERM("g"), &pipe_rules_both);
 		TEST_CHECK_SLEN(slen, 26);
+		/* coverity[uninit_use_in_call] */
 		TEST_CHECK_STRCMP(tmp_out, "i |x|0am a |t|est strinh  ");
 		TEST_CHECK_STRCMP(sbuff.p, "");
 	}
@@ -685,6 +689,7 @@ static void test_unescape_multi_char_terminals(void)
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt, NULL);
 	TEST_CHECK(slen == 3);
+	/* coverity[uninit_use_in_call] */
 	TEST_CHECK_STRCMP(out, "foo");
 
 	fr_sbuff_advance(&sbuff, 1);
@@ -724,6 +729,7 @@ static void test_eof_terminal(void)
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt_eof, NULL);
 	TEST_CHECK(slen == 4);
+	/* coverity[uninit_use_in_call] */
 	TEST_CHECK_STRCMP(out, " bar");
 
 	TEST_CHECK(fr_sbuff_is_terminal(&sbuff, &tt_eof) == true);
@@ -807,6 +813,7 @@ static void test_no_advance(void)
 	TEST_CHECK(sbuff.p == sbuff.start);
 	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &FR_SBUFF(&sbuff), 5);
 	TEST_CHECK(slen == 5);
+	/* coverity[uninit_use_in_call] */
 	TEST_CHECK(strcmp(out, "i am ") == 0);
 	TEST_CHECK(sbuff.p == sbuff.start);
 }
