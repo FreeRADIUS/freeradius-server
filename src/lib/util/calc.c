@@ -1958,7 +1958,7 @@ static const fr_token_t assignment2op[T_TOKEN_LAST] = {
  */
 int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, fr_value_box_t const *src)
 {
-	int rcode = -1;
+	int rcode;
 
 	if (!fr_type_is_leaf(dst->type)) return invalid_type(dst->type);
 	if (!fr_type_is_leaf(src->type)) return invalid_type(src->type);
@@ -1986,7 +1986,22 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 	 *	Just call the binary op function.  It already ensures that (a) the inputs are "const", and (b)
 	 *	the output is over-written only at the final step.
 	 */
-	rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, op, src);
+	if (src->type != FR_TYPE_GROUP) {
+		rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, op, src);
+
+	} else {
+		fr_value_box_t *vb = NULL;
+
+		/*
+		 *	If the RHS is a group, then we loop over the group recursively, doing the operation.
+		 */
+		rcode = 0;	/* in case group is empty */
+
+		while ((vb = fr_dlist_next(&src->vb_group, vb)) != NULL) {
+			rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, op, vb);
+			if (rcode < 0) break;
+		}
+	}
 
 	if (rcode < 0) handle_result(dst->type, op, rcode);
 
