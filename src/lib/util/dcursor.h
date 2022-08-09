@@ -162,23 +162,16 @@ static inline void *dcursor_next(fr_dcursor_t *cursor, fr_dcursor_iter_t iter, v
 	if (!current) {
 		if (cursor->at_end) return NULL;				/* At tail of the list */
 
-		next = iter(cursor->dlist, fr_dlist_head(cursor->dlist), cursor->iter_uctx);
+		next = iter(cursor->dlist, NULL, cursor->iter_uctx);
 		VALIDATE(next);
 		return next;
 	}
 	VALIDATE(current);
 
 	/*
-	 *	Get the next entry, and pass it to the iterator.
+	 *	The iterator will advance to the next matching entry.
 	 */
-	next = fr_dlist_next(cursor->dlist, current);
-	if (!next) return NULL;
-
-	/*
-	 *	The iterator can just return what it was passed for curr
-	 *	if it just wants to advance by one.
-	 */
-	next = iter(cursor->dlist, next, cursor->iter_uctx);
+	next = iter(cursor->dlist, current, cursor->iter_uctx);
 	VALIDATE(next);
 
 	return next;
