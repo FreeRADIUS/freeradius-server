@@ -161,8 +161,7 @@ static int templatize_to_value(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t co
 	 *	Slow path: mash all of the results together as a
 	 *	string and then cast it to the correct data type.
 	 *
-	 *	@todo - if all of the boxes are of the correct type,
-	 *	then return a vector.
+	 *	@todo - allow groups to be returned for leaf attributes.
 	 */
 	if (fr_value_box_list_concat_in_place(box, box, &out->result, cast_type, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		RPEDEBUG("Right side expansion failed");
@@ -325,8 +324,6 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 			 *	For exec, etc., parse the pair list from a string, in the context of the
 			 *	parent VP.  Because we're going to be moving them to the parent VP at some
 			 *	point.  The ones which aren't moved will get deleted in this function.
-			 *
-			 *	@todo - keep parsing until the end.
 			 */
 			token = fr_pair_list_afrom_str(current->lhs.vp, da, rhs_box->vb_strvalue, rhs_box->length, children);
 			if (token == T_INVALID) {
@@ -345,7 +342,6 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 			 *	@todo - do something like protocol_decode_xlat / xlat_decode_value_box_list(),
 			 *	except all of that requires a decode context :(
 			 */
-
 
 		default:
 			fr_strerror_printf("Cannot assign '%s' type to structural type '%s'",
@@ -561,8 +557,6 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 
 	/*
 	 *	Find the RHS attribute.
-	 *
-	 *	@todo - allow &Tmp-String-0 := &Filter-Id[*], which is a list. 
 	 */
 	vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, current->rhs.vpt);
 	if (!vp) {
@@ -755,6 +749,7 @@ redo:
 
 			} else if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
 				fr_pair_t *parent;
+
 				request_t *other = request;
 
 				fr_assert(!tmpl_is_list(current->lhs.vpt));
@@ -783,6 +778,7 @@ redo:
 					REDEBUG("%s[%d] Failed to find list for %s", MAP_INFO, current->lhs.vpt->name);
 					goto error;
 				}
+				current->lhs.vp_parent = parent;
 
 				/*
 				 *	Add the new VP to the parent.  The edit list code is safe for multiple
@@ -792,52 +788,23 @@ redo:
 				 */
 				MEM(current->lhs.vp = fr_pair_afrom_da(parent, tmpl_da(current->lhs.vpt)));
 				if (fr_edit_list_insert_pair_tail(state->el, &parent->vp_group, current->lhs.vp) < 0) goto error;
-				current->lhs.vp_parent = parent;
 
 			} else if (map->op == T_OP_EQ) {
 				/*
 				 *	We're setting the value, but the attribute already exists.  This is a
-				 *	NOOP.
+				 *	NOOP, where we ignore this assignment.
 				 */
 				goto next;
 
 			} else {
-				fr_pair_t *parent;
-				request_t *other = request;
-
-				fr_assert(!tmpl_is_list(current->lhs.vpt));
-
 				/*
-				 *	@todo - for T_OP_SET, What we really need is to create a dcursor, and
-				 *	then do something like:
-				 *
-				 *	vp = tmpl_dcursor_init(&err, request, &cc, &cursor, request, vpt);
-				 *	if (!vp) {
-				 *		while (tmpl_dcursor_required(&cursor, &vp, &da) == 1) {
-				 *			child = fr_pair_afrom_da(vp, da);
-				 *			fr_pair_append(&vp->vp_group, child);
-				 *		}
-				 *		// vp is the pair we need to edit.
-				 *	}
+				 *	Get the parent list of the attribute we're editing.
 				 */
-				if (tmpl_request_ptr(&other, tmpl_request(current->lhs.vpt)) < 0) {
-					REDEBUG("%s[%d] Failed to find request for %s", MAP_INFO, current->lhs.vpt->name);
-					goto error;
-				}
-				fr_assert(other != NULL);
-
-				parent = tmpl_get_list(other, current->lhs.vpt);
-				if (!parent) {
-					REDEBUG("%s[%d] Failed to find list for %s", MAP_INFO, current->lhs.vpt->name);
-					goto error;
-				}
-
-				current->lhs.vp_parent = parent;
+				current->lhs.vp_parent = fr_pair_parent(current->lhs.vp);
 			}
 
 			/*
-			 *	Leaf attributes MUST have a RHS.
-			 *	Structural attributes MAY have a RHS.
+			 *	If there's no RHS tmpl, then the RHS is a child list.
 			 */
 			if (!map->rhs) {
 				edit_map_t *child = current->child;
@@ -856,14 +823,13 @@ redo:
 
 				/*
 				 *	&Tmp-Integer-0 := { 0, 1 2, 3, 4 }
+				 *
+				 *	@todo - when we support value-box groups on the RHS in
+				 *	apply_edits_to_leaf(), this next block can be deleted.
 				 */
-				if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
-					if (map->op != T_OP_SET) {
-						REDEBUG("%s[%d] Must use ':=' when editing list of normal data types", MAP_INFO);
-						goto error;
-					}
-
-					// delete all existing attributes of the relevant vp
+				if (fr_type_is_leaf(current->lhs.vp->vp_type) && (map->op != T_OP_SET)) {
+					REDEBUG("%s[%d] Must use ':=' when editing list of normal data types", MAP_INFO);
+					goto error;
 				}
 
 				/*
