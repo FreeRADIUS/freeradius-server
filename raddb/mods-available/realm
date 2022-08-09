@@ -15,6 +15,11 @@
 #			  and "NULL" are allowed, too.
 #	delimiter      -  must be a single character
 
+#
+#  For dynamic home servers, see doc/configuration/dynamic_home_servers.md,
+#  and the script in mods-config/realm/freeradius-naptr-to-home-server.sh
+#
+
 #  'realm/username'
 #
 #  Using this entry, IPASS users have their realm set to "IPASS".

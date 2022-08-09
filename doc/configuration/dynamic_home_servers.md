@@ -1,6 +1,7 @@
 # Dynamic Home Servers in v3
 
-As of 3.0.22, FreeRADIUS has limited support for dynamic home servers.
+FreeRADIUS has some support for dynamic home servers, with certain
+limitations.
 
 
 ## Configuration
@@ -38,12 +39,6 @@ This directory should contain nothing other than definitions for
 dynamic home servers.  These definitions are simply normal
 `home_server` definitions:
 
-Home servers which use RadSec can `$INCLUDE tls.conf` in this
-directory to use a common site-local TLS configuration.  The script
-`freeradius-naptr-to-home-server.sh` referenced below assumes that
-this file exists.  If you are not using that file, it is safe to just
-replace it with an empty file.
-
 ```
 home_server example.com {
 	...
@@ -59,11 +54,16 @@ server definition.
 Each file in the directory should have one, and only one,
 `home_server` definition.
 
+Home servers which use RadSec can `$INCLUDE tls.conf` in this
+directory to use a common site-local TLS configuration.  The script
+`freeradius-naptr-to-home-server.sh` referenced below assumes that
+this file exists.  If you are not using that file, it is safe to just
+replace it with an empty file.
 
 ### The Control Socket
 
-The virtual server `sites-enabled/control` *MUST* be enabled for
-dynamic home servers to work.  The `radmin` program *MUST* have
+The virtual server `sites-enabled/control` *must* be enabled for
+dynamic home servers to work.  The `radmin` program *must* have
 read/write permission in order for dynamic home servers to work.
 
 Please see that `sites-enabled/control` file for information on
@@ -92,15 +92,15 @@ $ radmin -e "add home_server file /path/to/raddb/home_servers/example/com"
 If all goes well, the home server will be added.  If there are issues,
 `radmin` will print a descriptive error.
 
-Once a dynamic home server is added, it can be used just like any
-other home server.
+Once a dynamic home server has been added, it can be used just like
+any other home server.
 
 
 ## Deleting a Home Server
 
 Dynamically created home servers can be deleted via `radmin`.  Note
-also that dynamic home servers loaded when FreeRADIUS starts can also be
-deleted.
+also that dynamic home servers which are loaded when FreeRADIUS starts
+can be deleted.
 
 ```
 $ radmin -e "del home_server file <name> <type>"
@@ -196,9 +196,9 @@ authorize {
 			case {
 				# no home server exists, ask DNS
 				update control {
-					# you can add a third parameter for the NAPTR tag to look up, e.g. "aaa+auth:radius.tls.tcp" (RFC7585, OpenRoaming)
-					# if the third parameter is omitted, defaults to "x-eduroam:radius.tls"
-					&Temp-Home-Server-String := `%{config:prefix}/bin/freeradius-naptr-to-home-server.sh -d %{config:confdir} %{1}`
+					# you can add a parameter for the NAPTR tag to look up, e.g. "aaa+auth:radius.tls.tcp" (RFC7585, OpenRoaming)
+					# if the third parameter is omitted, it defaults to "x-eduroam:radius.tls"
+					&Temp-Home-Server-String := `%{config:confdir}/mods-config/realm/freeradius-naptr-to-home-server.sh -d %{config:confdir} %{1}`
 				}
 				if ("%{control:Temp-Home-Server-String}" == "" ) {
 					reject
@@ -230,17 +230,9 @@ with an empty home_server directory regularly, for two reasons:
   and the server should refresh CRL information regularly
 
 As a result, we recommend emptying the home_servers directory (except
-for the tls.conf file), refreshing CRLs and then restarting the server
+for the `tls.conf` file), refreshing CRLs and then restarting the server
 once per day.  e.g.
 
 ```
 rm -f $(ls -1 raddb/home_servers | egrep -v tls.conf)
 ```
-
-## Adding a new home server for a new realm
-
-TODO:
-
-* note that we don't do multiple home servers right now...
-* the internal framework *may* be able to support dynamically loading home_server_pool, too
-* but one thing at a time

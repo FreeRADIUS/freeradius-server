@@ -14,6 +14,7 @@ case "$1" in
           /etc/freeradius/mods-config/preprocess/huntgroups \
           /etc/freeradius/mods-config/preprocess/hints \
           /etc/freeradius/mods-config/files/accounting \
+          /etc/freeradius/mods-config/realm/freeradius-naptr-to-home-server.sh \
           /etc/freeradius/experimental.conf \
           /etc/freeradius/proxy.conf \
           /etc/freeradius/clients.conf

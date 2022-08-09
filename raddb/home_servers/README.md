@@ -13,3 +13,9 @@ Each file in the directory should have one, and only one,
 
 See doc/configuration/dynamic_home_servers.md for more information on
 dynamic home_servers.
+
+See also `mods-config/realm/freeradius-naptr-to-home-server.sh` for a
+sample shell script which creates home servers.
+
+This directory also has a `tls.conf` file which contains site-specific
+TLS configuration for home servers.

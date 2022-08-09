@@ -53,6 +53,15 @@ DIGCMD=$(command -v dig)
 HOSTCMD=$(command -v host)
 PRINTCMD=$(command -v printf)
 
+#
+#  These validations prevent rogue DNS records from pwning your RADIUS installation.
+#
+#  See https://github.com/radsecproxy/radsecproxy/security/advisories/GHSA-56gw-9rj9-55rc
+#  and https://www.usenix.org/conference/usenixsecurity21/presentation/jeitner
+#
+#  The contents of these validation routines should NOT be changed without a deep understanding
+#  of DNS!
+#
 validate_host() {
 	echo ${@} | tr -d '\n\t\r' | grep -E '^[_0-9a-zA-Z][-._0-9a-zA-Z]*$'
 }

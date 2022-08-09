@@ -698,6 +698,8 @@ fi
 %if %{?el6:0}%{!?el6:1}
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/python
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/python/*
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/realm
+%attr(-,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/realm/*
 %endif
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-enabled
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-enabled/*

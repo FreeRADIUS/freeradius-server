@@ -39,6 +39,13 @@ case "$1" in
             fi
           done
 
+          for file in /etc/freeradius/mods-config/realm/freeradius-naptr-to-home-server.sh
+	  do
+            if ! dpkg-statoverride --list | grep -qw $file$; then
+              dpkg-statoverride --add --update root freerad 0750 $file
+            fi
+          done	  
+
           for dir in /etc/freeradius/certs \
             /etc/freeradius/sites-available \
             /etc/freeradius/sites-enabled \
