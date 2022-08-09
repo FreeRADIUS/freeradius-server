@@ -1408,11 +1408,13 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 		 *	as "unused".  Unclear why this is done as it's
 		 *	not deprecated.
 		 */
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)
 		while ((ssl_err = ERR_peek_error()) && (ERR_GET_REASON(ssl_err) == BIO_R_UNSUPPORTED_METHOD)) {
 			(void) ERR_get_error();
 		}
 DIAG_ON(used-but-marked-unused)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 	}
 #endif
 
