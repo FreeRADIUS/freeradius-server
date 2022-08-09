@@ -586,7 +586,7 @@ retry:
 		}
 
 	} else if (nr->num_blocked == 0) {
-		int cmp;
+		int64_t cmp;
 		uint32_t one, two;
 
 		one = fr_rand() % nr->num_workers;
@@ -631,11 +631,7 @@ retry:
 			if (worker->blocked) continue;
 
 			outstanding = OUTSTANDING(worker);
-			if (!found) {
-				found = worker;
-				min_outstanding = outstanding;
-
-			} else if (outstanding < min_outstanding) {
+			if (outstanding < min_outstanding) {
 				found = worker;
 				min_outstanding = outstanding;
 
