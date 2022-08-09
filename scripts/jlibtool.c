@@ -2014,9 +2014,10 @@ static int parse_input_file_name(char const *arg, command_t *cmd)
 			 *	directory, not the .la file itself.
 			 *	Otherwise, we'll do odd things.
 			 */
-			if (cmd->output == OUT_LIB) {
+			if (cmd->output == OUT_LIB && pathlen > 0) {
 				char *tmp = lt_strdup(arg);
 				tmp[pathlen] = '\0';
+				DEBUG("Adding: %s\n", tmp);
 				push_count_chars(cmd->arglist, tmp);
 			} else {
 				cmd->output = OUT_LIB;
