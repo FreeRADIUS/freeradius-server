@@ -46,7 +46,7 @@ typedef struct {
 	fr_value_box_list_t	result;			//!< result of expansion
 	tmpl_t const		*vpt;			//!< expanded tmpl
 	tmpl_t			*to_free;		//!< tmpl to free.
-	fr_pair_t		*vp;			//!< VP referenced by tmpl.  @todo - make it a cursor
+	fr_pair_t		*vp;			//!< VP referenced by tmpl.
 	fr_pair_t		*vp_parent;		//!< parent of the current VP
 	fr_pair_list_t		pair_list;		//!< for structural attributes
 } edit_result_t;
@@ -133,7 +133,6 @@ static int templatize_to_attribute(TALLOC_CTX *ctx, edit_result_t *out, request_
 static int templatize_to_value(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request)
 {
 	fr_type_t type = lhs->vp_type;
-	fr_type_t cast_type = FR_TYPE_STRING;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
 
 	if (!box) {
@@ -145,17 +144,7 @@ static int templatize_to_value(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t co
 	 *	There's only one box, and it's the correct type.  Just
 	 *	return that.  This is the fast path.
 	 */
-	if (fr_type_is_leaf(type) && (type == box->type) && !fr_dlist_next(&out->result, box)) {
-		if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) {
-			RPEDEBUG("Failed parsing data %pV", box);
-			return -1;
-		}
-		goto done;
-	}
-
-	if (fr_type_is_structural(type) && (box->type == FR_TYPE_OCTETS)) {
-		cast_type = FR_TYPE_OCTETS;
-	}
+	if (fr_type_is_leaf(type) && (type == box->type) && !fr_dlist_next(&out->result, box)) goto make_tmpl;
 
 	/*
 	 *	Slow path: mash all of the results together as a
@@ -163,25 +152,17 @@ static int templatize_to_value(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t co
 	 *
 	 *	@todo - allow groups to be returned for leaf attributes.
 	 */
-	if (fr_value_box_list_concat_in_place(box, box, &out->result, cast_type, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		RPEDEBUG("Right side expansion failed");
 		return -1;
 	}
 
-	/*
-	 *	Leaf types are cast to the correct type.  Either by
-	 *	decoding them from octets, or by parsing the string
-	 *	values.
-	 */
-	if (fr_type_is_leaf(type) &&
-	    (fr_value_box_cast_in_place(ctx, box, type, lhs->data.enumv) < 0)) {
-		RPEDEBUG("Failed casting %pV to %s type %s enum %s", box, lhs->da->name, fr_type_to_str(type), lhs->data.enumv->name);
+make_tmpl:
+	if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) {
+			RPEDEBUG("Failed parsing data %pV", box);
 		return -1;
 	}
 
-	if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) return -1;
-
-done:
 	out->vpt = out->to_free;
 	fr_dlist_talloc_free(&out->result);
 
@@ -783,8 +764,6 @@ redo:
 				/*
 				 *	Add the new VP to the parent.  The edit list code is safe for multiple
 				 *	edits of the same VP, so we don't have to do anything else here.
-				 *
-				 *	@todo - this works for only one level.  We really need to support multiple levels. :(
 				 */
 				MEM(current->lhs.vp = fr_pair_afrom_da(parent, tmpl_da(current->lhs.vpt)));
 				if (fr_edit_list_insert_pair_tail(state->el, &parent->vp_group, current->lhs.vp) < 0) goto error;
