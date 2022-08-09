@@ -1166,6 +1166,8 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 		print_config(value);
 
 		exit(0);
+	} else if (strcmp(var, "tag") == 0) {
+		DEBUG("discard --tag=%s\n", value);
 	} else {
 		return 0;
 	}
