@@ -600,19 +600,19 @@ int fr_pair_to_unknown(fr_pair_t *vp)
 /** Iterate over pairs with a specified da
  *
  * @param[in] list	to iterate over.
- * @param[in] to_eval	The fr_pair_t after cursor->current.  Will be checked to
+ * @param[in] current	The fr_pair_t cursor->current.  Will be advanced and checked to
  *			see if it matches the specified fr_dict_attr_t.
  * @param[in] uctx	The fr_dict_attr_t to search for.
  * @return
  *	- Next matching fr_pair_t.
  *	- NULL if not more matching fr_pair_ts could be found.
  */
-static void *fr_pair_iter_next_by_da(fr_dlist_head_t *list, void *to_eval, void *uctx)
+static void *fr_pair_iter_next_by_da(fr_dlist_head_t *list, void *current, void *uctx)
 {
-	fr_pair_t	*c;
+	fr_pair_t	*c = current;
 	fr_dict_attr_t	*da = uctx;
 
-	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
+	while ((c = fr_dlist_next(list, c))) {
 		PAIR_VERIFY(c);
 		if (c->da == da) break;
 	}
@@ -623,19 +623,19 @@ static void *fr_pair_iter_next_by_da(fr_dlist_head_t *list, void *to_eval, void 
 /** Iterate over pairs which are decedents of the specified da
  *
  * @param[in] list	to itterate over.
- * @param[in] to_eval	The fr_pair_t after cursor->current.  Will be checked to
+ * @param[in] current	The fr_pair_t cursor->current.  Will be advanced and checked to
  *			see if it matches the specified fr_dict_attr_t.
  * @param[in] uctx	The fr_dict_attr_t to search for.
  * @return
  *	- Next matching fr_pair_t.
  *	- NULL if not more matching fr_pair_ts could be found.
  */
-static void *fr_pair_iter_next_by_ancestor(fr_dlist_head_t *list, void *to_eval, void *uctx)
+static void *fr_pair_iter_next_by_ancestor(fr_dlist_head_t *list, void *current, void *uctx)
 {
-	fr_pair_t	*c;
+	fr_pair_t	*c = current;
 	fr_dict_attr_t	*da = uctx;
 
-	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
+	while ((c = fr_dlist_next(list, c))) {
 		PAIR_VERIFY(c);
 		if (fr_dict_attr_common_parent(da, c->da, true)) break;
 	}
