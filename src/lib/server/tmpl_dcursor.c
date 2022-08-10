@@ -468,6 +468,10 @@ void tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc)
 
 /** Simple pair building callback for use with tmpl_dcursors
  *
+ * Which always appends the new pair to the tail of the list
+ * since it is only called when no matching pairs were found when
+ * walking the list.
+ *
  * @param[in] parent		to allocate new pair within.
  * @param[in,out] cursor	to append new pair to.
  * @param[in] da		of new pair.
