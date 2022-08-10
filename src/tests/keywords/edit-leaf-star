@@ -1,13 +1,7 @@
 #
 #  PRE: edit
 #
-&request += {
-	&Tmp-Integer-0 = 1
-	&Tmp-Integer-0 = 3
-	&Tmp-Integer-0 = 5
-	&Tmp-Integer-0 = 7
-	&Tmp-Integer-0 = 11
-}
+&request.Tmp-Integer-0 := { 1, 3, 5, 7, 11 }
 
 &Tmp-Integer-1 := 0
 

@@ -679,7 +679,7 @@ redo:
 				MEM(vp = fr_pair_afrom_da(current, current->parent->lhs.vp->da));
 
 				if (tmpl_is_data(current->lhs.vpt)) {
-					if (fr_value_box_copy(vp, &vp->data, tmpl_value(current->lhs.vpt)) < 0) goto error;
+					if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, tmpl_value(current->lhs.vpt)) < 0) goto error;
 
 				} else {
 					fr_pair_t *ref;
