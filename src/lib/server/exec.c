@@ -590,7 +590,7 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 
 	if (stdin_fd) {
 		*stdin_fd = stdin_pipe[1];
-		close(stdout_pipe[0]);
+		close(stdin_pipe[0]);
 	}
 
 	if (stdout_fd) {
