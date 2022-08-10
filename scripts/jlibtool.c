@@ -2344,6 +2344,9 @@ static void link_fixup(command_t *cmd)
 		if (cmd->options.shared == SHARE_SHARED) {
 			cmd->install_path = LIBDIR;
 		}
+		if (cmd->output == OUT_LIB) {
+			cmd->output = OUT_STATIC_LIB_ONLY;
+		}
 	}
 
 	if (cmd->output == OUT_DYNAMIC_LIB_ONLY ||
