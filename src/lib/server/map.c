@@ -977,6 +977,7 @@ static int map_value_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_
 	switch (type) {
 	case T_DOUBLE_QUOTED_STRING:
 	case T_BACK_QUOTED_STRING:
+	case T_SINGLE_QUOTED_STRING:
 		slen = tmpl_afrom_substr(ctx, &map->lhs,
 					 &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1),
 					 type,
@@ -985,8 +986,8 @@ static int map_value_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_
 		if (slen <= 0) {
 			char *spaces, *text;
 
-			marker_subject = attr;
 		marker:
+			marker_subject = attr;
 			fr_canonicalize_error(ctx, &spaces, &text, slen, marker_subject);
 			cf_log_err(cp, "%s", text);
 			cf_log_perr(cp, "%s^", spaces);
@@ -997,16 +998,29 @@ static int map_value_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_
 		}
 		break;
 
+	case T_SOLIDUS_QUOTED_STRING:
+		fr_strerror_const("Invalid location for regular expression");
+		slen = 0;
+		goto marker;
+
 	default:
-		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, attr, t_rules);
-		if (slen <= 0) {
-			cf_log_err(cp, "Failed parsing attribute reference %s - %s", attr, fr_strerror());
-			marker_subject = attr;
-			goto marker;
+		/*
+		 *	Don't bother trying things which we know aren't attributes.
+		 */
+		if ((t_rules->attr.prefix == TMPL_ATTR_REF_PREFIX_YES) && (*attr != '&')) {
+			slen = tmpl_afrom_substr(ctx, &map->lhs, &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1), T_BARE_WORD, NULL, t_rules);
+			if (slen <= 0) goto marker;
+			break;
 		}
 
+		/*
+		 *	Else parse it as an attribute reference.
+		 */
+		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, attr, t_rules);
+		if (slen <= 0) goto marker;
+
 		if (tmpl_is_attr(map->lhs) && tmpl_attr_unknown_add(map->lhs) < 0) {
-			cf_log_perr(cp, "Failed creating attribute %s", map->lhs->name);
+			fr_strerror_printf("Failed defining attribute %s", map->lhs->name);
 			goto error;
 		}
 		break;
@@ -1067,7 +1081,7 @@ static int _map_list_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, C
 		fr_assert(cp != NULL);
 
 		if (map_value_afrom_cp(parent_ctx, &map, parent, cp, t_rules) < 0) {
-			cf_log_err(ci, "Failed creating map from '%s", cf_pair_attr(cp));
+			cf_log_err(ci, "Failed creating map from '%s'", cf_pair_attr(cp));
 			goto error;
 		}
 
