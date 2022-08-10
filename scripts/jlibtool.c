@@ -2969,7 +2969,7 @@ static void parse_args(int argc, char *argv[], command_t *cmd)
 					push_count_chars(cmd->arglist, arg);
 					arg = argv[++a];
 
-					NOTICE(" %s\n", arg);
+					DEBUG("Adding: %s\n", arg);
 
 					push_count_chars(cmd->arglist, arg);
 					arg_used = 1;
