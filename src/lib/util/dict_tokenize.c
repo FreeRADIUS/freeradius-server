@@ -888,6 +888,9 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 			goto check;
 		}
 
+		/*
+		 *	Else we find the reference.
+		 */
 		da = fr_dict_attr_by_oid(NULL, parent, ref);
 		if (da) {
 			dict = ctx->dict;
@@ -900,7 +903,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		 *	dictionary.
 		 */
 		p = strchr(ref, '.');
-		if (!p) goto save;
+		if (!p) goto fixup;
 
 		/*
 		 *	Get / skip protocol name.
@@ -915,10 +918,13 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		 *	No known dictionary, so we're asked to just
 		 *	use the whole string.  Which we did above.  So
 		 *	either it's a bad ref, OR it's a ref to a
-		 *	dictionary which doesn't exist.
+		 *	dictionary which hasn't yet been loaded.
+		 *
+		 *	Save the fixup for later, when we've hopefully
+		 *	loaded the dictionary.
 		 */
 		if (slen == 0) {
-		save:
+		fixup:
 			if (dict_fixup_group(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
 					     self, ref, talloc_array_length(ref) - 1) < 0) {
 			oom:

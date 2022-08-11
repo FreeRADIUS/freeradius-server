@@ -563,13 +563,23 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 	switch (type) {
 	case FR_TYPE_STRUCTURAL:
 	structural:
-		if (dict_attr_ref_init(da_p, NULL) < 0) return -1;	/* Just allocate space */
-
 		/*
-		 *	Groups don't have children or
-		 *	namespaces.
+		 *	Groups don't have children or namespaces.  But
+		 *	they always have refs.  Either to the root of
+		 *	the current dictionary, or to another dictionary,
+		 *	via its top-level TLV.
+		 *
+		 *	Note that when multiple TLVs have the same
+		 *	children, the dictionary has to use "clone="
+		 *	instead of "ref=".  That's because the
+		 *	children of the TLVs all require the correct
+		 *	parentage.  Perhaps that can be changed when
+		 *	the encoders / decoders are updated.  It would be good to just reference the DAs instead of cloning an entire subtree.
 		 */
-		if (type == FR_TYPE_GROUP) break;
+		if (type == FR_TYPE_GROUP) {
+			if (dict_attr_ref_init(da_p, NULL) < 0) return -1;
+			break;
+		}
 
 		if (dict_attr_children_init(da_p) < 0) return -1;
 		if (dict_attr_namespace_init(da_p) < 0) return -1;	/* Needed for all TLV style attributes */
