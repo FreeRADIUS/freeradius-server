@@ -1251,6 +1251,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	tmpl_attr_set_list(map->lhs, rules->attr.list_def);
 
 	tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->lhs, TMPL_ATTR_REF_PREFIX_YES, NULL);
+	/* coverity[uninit_use_in_call] */
 	tmpl_set_name(map->lhs, T_BARE_WORD, buffer, -1);
 
 	/*
