@@ -788,6 +788,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_lm(rlm_rcode_t *p_result,
 	len = xlat_eval(charbuf, sizeof(charbuf), request, "%(mschap:LM-Hash %{User-Password})", NULL, NULL);
 	if (len < 0) RETURN_MODULE_FAIL;
 
+	/* coverity[uninit_use_in_call] */
 	if ((fr_base16_decode(NULL, &FR_DBUFF_TMP(digest, sizeof(digest)), &FR_SBUFF_IN(charbuf, len), false) !=
 	     (ssize_t)known_good->vp_length) ||
 	    (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0)) {
@@ -853,6 +854,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_resul
 		fr_md5_calc(buff, (uint8_t *) buff2, p - buff2);
 	}
 
+	/* coverity[uninit_use_in_call] */
 	if (fr_digest_cmp(digest, buff, 16) != 0) {
 		REDEBUG("NS-MTA-MD5 digest does not match \"known good\" digest");
 		RETURN_MODULE_REJECT;
