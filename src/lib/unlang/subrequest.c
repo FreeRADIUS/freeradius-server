@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
 #include "unlang_priv.h"
 #include "interpret_priv.h"
 #include "subrequest_priv.h"
@@ -90,28 +91,24 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 	 */
 	gext = unlang_group_to_subrequest(g);
 	if (gext->dst) {
-		tmpl_attr_extent_t 	*extent = NULL;
-		fr_dlist_head_t		leaf;
-		fr_dlist_head_t		interior;
-
-		fr_dlist_talloc_init(&leaf, tmpl_attr_extent_t, entry);
-		fr_dlist_talloc_init(&interior, tmpl_attr_extent_t, entry);
+		fr_pair_t		*vp = NULL;
+		tmpl_dcursor_ctx_t	cc;
+		fr_dcursor_t		cursor;
 
 		/*
-		 *	Find out what we need to build and build it
+		 *	Use callback to build missing destination container.
 		 */
-		if ((tmpl_extents_find(state, &leaf, &interior, request, gext->dst) < 0) ||
-		    (tmpl_extents_build_to_leaf_parent(&leaf, &interior, gext->dst) < 0)) {
+		vp = tmpl_dcursor_build_init(NULL, request, &cc, &cursor, request, gext->dst, tmpl_dcursor_pair_build, NULL);
+		if (!vp) {
 			RPDEBUG("Discarding subrequest attributes - Failed allocating groups");
-			fr_dlist_talloc_free(&leaf);
-			fr_dlist_talloc_free(&interior);
 			*p_result = RLM_MODULE_FAIL;
+			tmpl_dcursor_clear(&cc);
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
-		while ((extent = fr_dlist_tail(&leaf))) {
-			MEM(fr_pair_list_copy(extent->list_ctx, extent->list, &child->reply_pairs) >= 0);
-			fr_dlist_talloc_free_tail(&leaf);
-		}
+
+		MEM(fr_pair_list_copy(vp, &vp->vp_group, &child->reply_pairs) >= 0);
+
+		tmpl_dcursor_clear(&cc);
 	}
 
 	unlang_subrequest_detach_and_free(&child);
