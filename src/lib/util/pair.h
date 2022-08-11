@@ -388,7 +388,7 @@ void		fr_pair_list_free(fr_pair_list_t *list) CC_HINT(nonnull);
 /** @hidecallergraph */
 bool		fr_pair_list_empty(fr_pair_list_t const *list) CC_HINT(nonnull);
 
-size_t		fr_pair_list_len(fr_pair_list_t const *list) CC_HINT(nonnull);
+size_t		fr_pair_list_num_elements(fr_pair_list_t const *list) CC_HINT(nonnull);
 
 fr_dlist_head_t *fr_pair_list_dlist_head(fr_pair_list_t const *list) CC_HINT(nonnull);
 

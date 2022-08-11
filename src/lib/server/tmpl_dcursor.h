@@ -28,17 +28,6 @@ extern "C" {
 typedef struct tmpl_dcursor_ctx_s tmpl_dcursor_ctx_t;
 typedef struct tmpl_dcursor_nested_s tmpl_dcursor_nested_t;
 
-/** Evaluation function for iterating over a given type of attribute
- *
- * Currently attributes are divided into structural and leaf attributes,
- * so we need an evaluation function for each of those.
- *
- * @param[in] list_head		to evaluate.
- * @param[in] current		position in the list.
- * @param[in] ns		Nested state.
- */
-typedef fr_pair_t *(*tmpl_dursor_eval_t)(fr_dlist_head_t *list_head, fr_pair_t *current, tmpl_dcursor_nested_t *ns);
-
 /** Callback function for populating missing pair
  *
  * @param[in] parent	to allocate the new pair in.
@@ -56,7 +45,6 @@ struct tmpl_dcursor_nested_s {
 	fr_dlist_t		entry;		//!< Entry in the dlist that forms the evaluation stack.
 	tmpl_attr_t const	*ar;		//!< Attribute reference this state
 						///< entry is associated with.  Mainly for debugging.
-	tmpl_dursor_eval_t	func;		//!< Function used to evaluate this attribute reference.
 	TALLOC_CTX		*list_ctx;	//!< Track where we should be allocating attributes.
 
 	bool			seen;		//!< Whether we've seen an attribute at this level of

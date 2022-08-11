@@ -1417,7 +1417,7 @@ static void add_dotlibs(char *buffer)
 	} else {
 		name++;
 	}
-	memmove(name + 6, name, strlen(name));
+	memmove(name + 6, name, strlen(name) + 1);
 	memcpy(name, ".libs/", 6);
 }
 
@@ -1533,7 +1533,7 @@ static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
 
 	strcpy(newarg + newpathlen, arg + pathlen);
 	ext = strrchr(newarg, '.');
-	if (!ext) {
+	if (!ext || ext == newarg) {
 		ERROR("Error: Library path does not have an extension\n");
 		free(newarg);
 

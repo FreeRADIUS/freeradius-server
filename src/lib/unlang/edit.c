@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/edit.h>
+#include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/unlang_priv.h>
 #include "edit_priv.h"
@@ -45,7 +46,7 @@ typedef struct {
 	fr_value_box_list_t	result;			//!< result of expansion
 	tmpl_t const		*vpt;			//!< expanded tmpl
 	tmpl_t			*to_free;		//!< tmpl to free.
-	fr_pair_t		*vp;			//!< VP referenced by tmpl.  @todo - make it a cursor
+	fr_pair_t		*vp;			//!< VP referenced by tmpl.
 	fr_pair_t		*vp_parent;		//!< parent of the current VP
 	fr_pair_list_t		pair_list;		//!< for structural attributes
 } edit_result_t;
@@ -79,15 +80,15 @@ typedef struct {
 	edit_map_t		first;
 } unlang_frame_state_edit_t;
 
-static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *request) CC_HINT(nonnull);
-static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request) CC_HINT(nonnull);
+static int templatize_to_attribute(TALLOC_CTX *ctx, edit_result_t *out, request_t *request) CC_HINT(nonnull);
+static int templatize_to_value(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request) CC_HINT(nonnull);
 
 #define MAP_INFO cf_filename(map->ci), cf_lineno(map->ci)
 
 /*
- *  Convert a value-box list to a LHS #tmpl_t
+ *  Convert a value-box list to a LHS attribute #tmpl_t
  */
-static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *request)
+static int templatize_to_attribute(TALLOC_CTX *ctx, edit_result_t *out, request_t *request)
 {
 	ssize_t slen;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
@@ -129,10 +130,9 @@ static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
  *  the calling code should parse the RHS as a set of VPs, and return
  *  that.
  */
-static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request)
+static int templatize_to_value(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request)
 {
 	fr_type_t type = lhs->vp_type;
-	fr_type_t cast_type = FR_TYPE_STRING;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
 
 	if (!box) {
@@ -144,44 +144,25 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	 *	There's only one box, and it's the correct type.  Just
 	 *	return that.  This is the fast path.
 	 */
-	if (fr_type_is_leaf(type) && (type == box->type) && !fr_dlist_next(&out->result, box)) {
-		if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) {
-			RPEDEBUG("Failed parsing data %pV", box);
-			return -1;
-		}
-		goto done;
-	}
-
-	if (fr_type_is_structural(type) && (box->type == FR_TYPE_OCTETS)) {
-		cast_type = FR_TYPE_OCTETS;
-	}
+	if (fr_type_is_leaf(type) && (type == box->type) && !fr_dlist_next(&out->result, box)) goto make_tmpl;
 
 	/*
 	 *	Slow path: mash all of the results together as a
 	 *	string and then cast it to the correct data type.
 	 *
-	 *	@todo - if all of the boxes are of the correct type,
-	 *	then return a vector.
+	 *	@todo - allow groups to be returned for leaf attributes.
 	 */
-	if (fr_value_box_list_concat_in_place(box, box, &out->result, cast_type, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		RPEDEBUG("Right side expansion failed");
 		return -1;
 	}
 
-	/*
-	 *	Leaf types are cast to the correct type.  Either by
-	 *	decoding them from octets, or by parsing the string
-	 *	values.
-	 */
-	if (fr_type_is_leaf(type) &&
-	    (fr_value_box_cast_in_place(ctx, box, type, lhs->data.enumv) < 0)) {
-		RPEDEBUG("Failed casting %pV to %s type %s enum %s", box, lhs->da->name, fr_type_to_str(type), lhs->data.enumv->name);
+make_tmpl:
+	if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) {
+			RPEDEBUG("Failed parsing data %pV", box);
 		return -1;
 	}
 
-	if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) return -1;
-
-done:
 	out->vpt = out->to_free;
 	fr_dlist_talloc_free(&out->result);
 
@@ -271,7 +252,7 @@ static int remove_vps(request_t *request, edit_map_t *current)
  *  Loop over VPs on the LHS, doing the operation with the RHS.
  *
  *  For now, we only support one VP on the LHS, and one value-box on
- *  the RHS.  Fixing this means updating templatize_rhs() to peek at
+ *  the RHS.  Fixing this means updating templatize_to_value() to peek at
  *  the RHS list, and if they're all of the same data type, AND the
  *  same data type as the expected output, leave them alone.  This
  *  lets us do things like:
@@ -312,14 +293,6 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 
 		rhs_box = tmpl_value(current->rhs.vpt);
 
-		/*
-		 *	@todo - just parse the data as a string, and remove it?
-		 */
-		if (map->op == T_OP_SUB_EQ) {
-			REDEBUG("%s[%d] Cannot remove data from a list", MAP_INFO);
-			return -1;
-		}
-
 		da = current->lhs.vp->da;
 		if (fr_type_is_group(da->type)) da = fr_dict_root(request->dict);
 
@@ -332,8 +305,6 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 			 *	For exec, etc., parse the pair list from a string, in the context of the
 			 *	parent VP.  Because we're going to be moving them to the parent VP at some
 			 *	point.  The ones which aren't moved will get deleted in this function.
-			 *
-			 *	@todo - keep parsing until the end.
 			 */
 			token = fr_pair_list_afrom_str(current->lhs.vp, da, rhs_box->vb_strvalue, rhs_box->length, children);
 			if (token == T_INVALID) {
@@ -352,7 +323,6 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 			 *	@todo - do something like protocol_decode_xlat / xlat_decode_value_box_list(),
 			 *	except all of that requires a decode context :(
 			 */
-
 
 		default:
 			fr_strerror_printf("Cannot assign '%s' type to structural type '%s'",
@@ -373,12 +343,8 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t co
 	}
 
 	/*
-	 *	Remove an attribute from a list.
-	 *
-	 *	@todo - ensure RHS is only an attribute which is
-	 *	parented from the LHS, and that it has no list
-	 *	reference?  This probably needs to be done in
-	 *	unlang_fixup_edit()
+	 *	Remove an attribute from a list.  The tmpl_dcursor and tmpl_parser ensures that the RHS
+	 *	references are done in the context of the LHS attribute.
 	 */
 	if (map->op == T_OP_SUB_EQ) {
 		if (!tmpl_is_attr(current->rhs.vpt)) {
@@ -476,6 +442,8 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 {
 	fr_pair_t *vp;
 	fr_value_box_t const *rhs_box = NULL;
+	tmpl_dcursor_ctx_t cc;
+	fr_dcursor_t cursor;
 
 	fr_assert(current->lhs.vp != NULL);
 
@@ -524,8 +492,31 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 	 */
 	if (tmpl_is_data(current->rhs.vpt)) {
 		rhs_box = tmpl_value(current->rhs.vpt);
-		goto assign;
 
+		RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], rhs_box);
+
+		/*
+		 *	Don't apply the edit, as the VP is in a temporary list.  The parent will actually apply it.
+		 */
+		if (current->in_parent_list) {
+			vp = current->lhs.vp;
+
+			return fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, rhs_box);
+		}
+
+		/*
+		 *	The apply function also takes care of doing data type upcasting and conversion.  So we don't
+		 *	have to check for compatibility of the data types on the LHS and RHS.
+		 */
+		if (fr_edit_list_apply_pair_assignment(current->el,
+						       current->lhs.vp,
+						       map->op,
+						       rhs_box) < 0) {
+			RPERROR("Failed performing %s operation", fr_tokens[map->op]);
+			return -1;
+		}
+
+		return 0;
 	}
 
 	/*
@@ -548,38 +539,33 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 	/*
 	 *	Find the RHS attribute.
 	 */
-	if (tmpl_find_vp(&vp, request, current->rhs.vpt) < 0) {
+	vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, current->rhs.vpt);
+	if (!vp) {
 		REDEBUG("%s[%d] Failed to find attribute reference %s", MAP_INFO, current->rhs.vpt->name);
 		return -1;
 	}
 
-	rhs_box = &vp->data;
-
-assign:
-	RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], rhs_box);
-
 	/*
-	 *	Don't apply the edit, as the VP is in a temporary list.  The parent will actually apply it.
+	 *	Save the VP we're editing.
 	 */
-	if (current->in_parent_list) {
-		vp = current->lhs.vp;
-
-		return fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, rhs_box);
+	if (fr_edit_list_save_pair_value(current->el, current->lhs.vp) < 0) {
+	fail:
+			tmpl_dcursor_clear(&cc);
+			return -1;
 	}
 
+	RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[map->op], current->rhs.vpt->name);
+
 	/*
-	 *	The apply function also takes care of
-	 *	doing data type upcasting and
-	 *	conversion.  So we don't have to check
-	 *	for compatibility of the data types on
-	 *	the LHS and RHS.
+	 *	Loop over all input VPs, doing the operation.
 	 */
-	if (fr_edit_list_apply_pair_assignment(current->el,
-					       current->lhs.vp,
-					       map->op,
-					       rhs_box) < 0) {
-		RPERROR("Failed performing %s operation", fr_tokens[map->op]);
-		return -1;
+	while (vp != NULL) {
+		int rcode;
+
+		rcode = fr_value_calc_assignment_op(current->lhs.vp, &current->lhs.vp->data, map->op, &vp->data);
+		if (rcode < 0) goto fail;
+
+		vp = fr_dcursor_next(&cursor);
 	}
 
 	return 0;
@@ -615,6 +601,10 @@ redo:
 	     	repeatable_set(frame);	/* Call us again when done */
 
 		switch (current->state) {
+			/*
+			 *	Turn the LHS into a tmpl_t.  This can involve just referencing an existing
+			 *	tmpl in map->lhs, or expanding an xlat to get an attribute name.
+			 */
 		case UNLANG_EDIT_INIT:
 			fr_assert(fr_dlist_empty(&current->lhs.result));	/* Should have been consumed */
 			fr_assert(fr_dlist_empty(&current->rhs.result));	/* Should have been consumed */
@@ -646,22 +636,18 @@ redo:
 
 		case UNLANG_EDIT_EXPANDED_LHS:
 			/*
-			 *	@todo - if current->is_leaf_list, AND lhs is an XLAT, AND the result is a
-			 *	value-box group, AND the LHS data type isn't octets/string, THEN apply each
-			 *	individual member of the group.  This lets us do:
+			 *	In normal situations, the LHS is an attribute name.
 			 *
-			 *		&Tmp-String-0 := { %{sql:...} }
-			 *
-			 *	which will assign one value to the result for each column returned by the SQL query.
+			 *	For leaf lists, the LHS is a value, so we templatize it as a value.
 			 */
 			if (!current->is_leaf_list) {
-				if (templatize_lhs(state, &current->lhs, request) < 0) goto error;
+				if (templatize_to_attribute(state, &current->lhs, request) < 0) goto error;
 			} else {
-				if (templatize_rhs(state, &current->lhs, current->parent->lhs.vp, request) < 0) goto error;
+				if (templatize_to_value(state, &current->lhs, current->parent->lhs.vp, request) < 0) goto error;
 			}
 
 			current->state = UNLANG_EDIT_CHECK_LHS;
-			FALL_THROUGH;
+			goto check_lhs;
 
 		case UNLANG_EDIT_CHECK_LHS:
 		check_lhs:
@@ -669,6 +655,21 @@ redo:
 			if (!current->lhs.vpt) return -1;
 #endif
 
+			/*
+			 *	@todo - if current->is_leaf_list, AND lhs is an XLAT, AND the result is a
+			 *	value-box group, AND the LHS data type isn't octets/string, THEN apply each
+			 *	individual member of the group.  This lets us do:
+			 *
+			 *		&Tmp-String-0 := { %{sql:...} }
+			 *
+			 *	which will assign one value to the result for each column returned by the SQL query.
+			 *
+			 *	Also if we have &Tmp-String-0 := &Filter-Id[*], we should handle that, too.
+			 *
+			 *	The easiest way is likely to just push the values into a #fr_value_box_list
+			 *	for the parent, and then don't do anything else.  Once the parent leaf is
+			 *	capable of handling value-box groups, it can just do everything.
+			 */
 			if (current->is_leaf_list) {
 				fr_pair_t *vp;
 
@@ -677,11 +678,8 @@ redo:
 
 				MEM(vp = fr_pair_afrom_da(current, current->parent->lhs.vp->da));
 
-				/*
-				 *	@todo - handle lists from xlats?
-				 */
 				if (tmpl_is_data(current->lhs.vpt)) {
-					if (fr_value_box_copy(vp, &vp->data, tmpl_value(current->lhs.vpt)) < 0) goto error;
+					if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, tmpl_value(current->lhs.vpt)) < 0) goto error;
 
 				} else {
 					fr_pair_t *ref;
@@ -692,10 +690,6 @@ redo:
 						goto error;
 					}
 
-					/*
-					 *	Can only copy the same types.  For now, automatic casting
-					 *	isn't supported.
-					 */
 					if (ref->da->type == vp->da->type) {
 						if (fr_value_box_copy(vp, &vp->data, &ref->data) < 0) goto error;
 
@@ -736,6 +730,7 @@ redo:
 
 			} else if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
 				fr_pair_t *parent;
+
 				request_t *other = request;
 
 				fr_assert(!tmpl_is_list(current->lhs.vpt));
@@ -764,60 +759,31 @@ redo:
 					REDEBUG("%s[%d] Failed to find list for %s", MAP_INFO, current->lhs.vpt->name);
 					goto error;
 				}
+				current->lhs.vp_parent = parent;
 
 				/*
 				 *	Add the new VP to the parent.  The edit list code is safe for multiple
 				 *	edits of the same VP, so we don't have to do anything else here.
-				 *
-				 *	@todo - this works for only one level.  We really need to support multiple levels. :(
 				 */
 				MEM(current->lhs.vp = fr_pair_afrom_da(parent, tmpl_da(current->lhs.vpt)));
 				if (fr_edit_list_insert_pair_tail(state->el, &parent->vp_group, current->lhs.vp) < 0) goto error;
-				current->lhs.vp_parent = parent;
 
 			} else if (map->op == T_OP_EQ) {
 				/*
 				 *	We're setting the value, but the attribute already exists.  This is a
-				 *	NOOP.
+				 *	NOOP, where we ignore this assignment.
 				 */
 				goto next;
+
 			} else {
-				fr_pair_t *parent;
-				request_t *other = request;
-
-				fr_assert(!tmpl_is_list(current->lhs.vpt));
-
 				/*
-				 *	@todo - What we really need is to create a dcursor, and then do something
-				 *	like:
-				 *
-				 *	vp = tmpl_dcursor_init(&err, request, &cc, &cursor, request, vpt);
-				 *	if (!vp) {
-				 *		while (tmpl_dcursor_required(&cursor, &vp, &da) == 1) {
-				 *			child = fr_pair_afrom_da(vp, da);
-				 *			fr_pair_append(&vp->vp_group, child);
-				 *		}
-				 *		// vp is the pair we need to edit.
-				 *	}
+				 *	Get the parent list of the attribute we're editing.
 				 */
-				if (tmpl_request_ptr(&other, tmpl_request(current->lhs.vpt)) < 0) {
-					REDEBUG("%s[%d] Failed to find request for %s", MAP_INFO, current->lhs.vpt->name);
-					goto error;
-				}
-				fr_assert(other != NULL);
-
-				parent = tmpl_get_list(other, current->lhs.vpt);
-				if (!parent) {
-					REDEBUG("%s[%d] Failed to find list for %s", MAP_INFO, current->lhs.vpt->name);
-					goto error;
-				}
-
-				current->lhs.vp_parent = parent;
+				current->lhs.vp_parent = fr_pair_parent(current->lhs.vp);
 			}
 
 			/*
-			 *	Leaf attributes MUST have a RHS.
-			 *	Structural attributes MAY have a RHS.
+			 *	If there's no RHS tmpl, then the RHS is a child list.
 			 */
 			if (!map->rhs) {
 				edit_map_t *child = current->child;
@@ -836,14 +802,13 @@ redo:
 
 				/*
 				 *	&Tmp-Integer-0 := { 0, 1 2, 3, 4 }
+				 *
+				 *	@todo - when we support value-box groups on the RHS in
+				 *	apply_edits_to_leaf(), this next block can be deleted.
 				 */
-				if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
-					if (map->op != T_OP_SET) {
-						REDEBUG("%s[%d] Must use ':=' when editing list of normal data types", MAP_INFO);
-						goto error;
-					}
-
-					// delete all existing attributes of the relevant vp
+				if (fr_type_is_leaf(current->lhs.vp->vp_type) && (map->op != T_OP_SET)) {
+					REDEBUG("%s[%d] Must use ':=' when editing list of normal data types", MAP_INFO);
+					goto error;
 				}
 
 				/*
@@ -885,6 +850,10 @@ redo:
 				goto redo;
 			}
 
+			/*
+			 *	Turn the RHS into a tmpl_t.  This can involve just referencing an existing
+			 *	tmpl in map->rhs, or expanding an xlat to get an attribute name.
+			 */
 			rcode = template_realize(state, &current->rhs.result, request, map->rhs);
 			if (rcode < 0) goto error;
 
@@ -902,7 +871,10 @@ redo:
 			if (!current->lhs.vp) goto error;
 #endif
 
-			if (map->rhs && (templatize_rhs(state, &current->rhs, current->lhs.vp, request) < 0)) goto error;
+			/*
+			 *	Get the value of the RHS tmpl.
+			 */
+			if (map->rhs && (templatize_to_value(state, &current->rhs, current->lhs.vp, request) < 0)) goto error;
 
 			current->state = UNLANG_EDIT_CHECK_RHS;
 			FALL_THROUGH;

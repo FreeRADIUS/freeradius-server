@@ -439,14 +439,12 @@ static int8_t pair_sort_increasing(void const *a, void const *b)
 	return CMP_PREFER_SMALLER(my_a->da->attr, my_b->da->attr);
 }
 
-static void *struct_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx)
+static void *struct_next_encodable(fr_dlist_head_t *list, void *current, void *uctx)
 {
-	fr_pair_t	*c;
+	fr_pair_t	*c = current;
 	fr_dict_attr_t	*parent = talloc_get_type_abort(uctx, fr_dict_attr_t);
 
-	if (!to_eval) return NULL;
-
-	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
+	while ((c = fr_dlist_next(list, c))) {
 		PAIR_VERIFY(c);
 
 		if (c->da->dict != parent->dict || c->da->flags.internal) continue;

@@ -206,7 +206,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 		if (ret == T_INVALID) fr_perror("pair_list_perf_tests");
 		TEST_ASSERT(ret != T_INVALID);
 
-		input_count = fr_pair_list_len(&list);
+		input_count = fr_pair_list_num_elements(&list);
 
 		if ((i == 0) && (perc > 0) && (reps > 0)) {
 			fr_pair_t	*new_vp;
@@ -243,7 +243,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 			 *  Walk past equivalent pairs in new source list
 			 */
 			vp = fr_pair_list_head(&list);
-			for (j = 0; j < fr_pair_list_len(&dups); j++) vp = fr_pair_list_next(&list, vp);
+			for (j = 0; j < fr_pair_list_num_elements(&dups); j++) vp = fr_pair_list_next(&list, vp);
 
 			/*
 			 *  Append copy remaining pairs from source list to destination
@@ -262,7 +262,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 	/*
 	 *  Move vps to array so we can pick them randomly to populate the test list.
 	 */
-	vp_array = talloc_array(ctx, fr_pair_t *, fr_pair_list_len(&full_list));
+	vp_array = talloc_array(ctx, fr_pair_t *, fr_pair_list_num_elements(&full_list));
 	for (vp = fr_pair_list_head(&full_list), i = 0; vp; vp = next, i++) {
 		next = fr_pair_list_next(&full_list, vp);
 		fr_pair_remove(&full_list, vp);
@@ -334,7 +334,7 @@ static void do_test_fr_pair_append(unsigned int len, unsigned int perc, unsigned
 			end = fr_time();
 			used = fr_time_delta_add(used, fr_time_sub(end, start));
 		}
-		TEST_CHECK(fr_pair_list_len(&test_vps) == len);
+		TEST_CHECK(fr_pair_list_num_elements(&test_vps) == len);
 		fr_pair_list_free(&test_vps);
 	}
 	TEST_MSG_ALWAYS("repetitions=%d", reps);
