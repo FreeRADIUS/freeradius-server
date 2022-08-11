@@ -437,7 +437,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		 *	attributes on a particular line, but only if
 		 *	it's comments.
 		 */
-		if (!fr_pair_list_len(&tmp_list)) {
+		if (!fr_pair_list_num_elements(&tmp_list)) {
 			if (last_token == T_EOL) break;
 
 			/*

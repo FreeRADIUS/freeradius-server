@@ -209,7 +209,7 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	then without using the dictionary.  We
 		 *	therefore enforce the limits here, too.
 		 */
-		if ((max_attributes > 0) && (fr_pair_list_len(out) > max_attributes)) {
+		if ((max_attributes > 0) && (fr_pair_list_num_elements(out) > max_attributes)) {
 			char host_ipaddr[INET6_ADDRSTRLEN];
 
 			fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request "
@@ -217,7 +217,7 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					   inet_ntop(packet->socket.inet.src_ipaddr.af,
 						     &packet->socket.inet.src_ipaddr.addr,
 						     host_ipaddr, sizeof(host_ipaddr)),
-					   fr_pair_list_len(out), max_attributes);
+					   fr_pair_list_num_elements(out), max_attributes);
 			goto fail;
 		}
 

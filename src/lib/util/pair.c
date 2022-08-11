@@ -2952,7 +2952,7 @@ bool fr_pair_matches_da(void const *item, void const *uctx)
  *
  * @return number of entries in the list
  */
-size_t fr_pair_list_len(fr_pair_list_t const *list)
+size_t fr_pair_list_num_elements(fr_pair_list_t const *list)
 {
 	return fr_pair_order_list_num_elements(&list->order);
 }

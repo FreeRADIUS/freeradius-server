@@ -456,7 +456,7 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result, module_ctx_t cons
 	 */
 	tuple_len = 0;
 	if (request != NULL) {
-		tuple_len = fr_pair_list_len(&request->request_pairs);
+		tuple_len = fr_pair_list_num_elements(&request->request_pairs);
 	}
 
 	if (tuple_len == 0) {

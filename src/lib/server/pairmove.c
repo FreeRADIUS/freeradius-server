@@ -76,14 +76,14 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 	fr_pair_list_init(&append);
 	fr_pair_list_init(&prepend);
 
-	to_count = fr_pair_list_len(to);
+	to_count = fr_pair_list_num_elements(to);
 	tailto = to_count;
 	edited = talloc_zero_array(request, bool, to_count);
 	deleted = talloc_zero_array(request, bool, to_count);
 
-	count = to_count + fr_pair_list_len(from);
+	count = to_count + fr_pair_list_num_elements(from);
 
-	RDEBUG4("::: FROM %ld TO %d MAX %d", fr_pair_list_len(from), to_count, count);
+	RDEBUG4("::: FROM %ld TO %d MAX %d", fr_pair_list_num_elements(from), to_count, count);
 
 	/*
 	 *	Now that we have the lists initialized, start working

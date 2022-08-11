@@ -127,7 +127,7 @@ int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		}
 	}
 
-	decoded = fr_pair_list_len(&head);
+	decoded = fr_pair_list_num_elements(&head);
 
 	fr_pair_list_append(out, &head);
 
