@@ -69,9 +69,16 @@ static void *_tmpl_cursor_child_next(fr_dlist_head_t *list, void *curr, void *uc
 	return vp;
 }
 
-static inline CC_HINT(always_inline) void _tmpl_cursor_common_push(tmpl_dcursor_ctx_t *cc, tmpl_dcursor_nested_t *ns)
+static inline CC_HINT(always_inline) void tmpl_cursor_nested_push(tmpl_dcursor_ctx_t *cc, tmpl_dcursor_nested_t *ns)
 {
 	fr_dlist_insert_tail(&cc->nested, ns);
+}
+
+static inline CC_HINT(always_inline) void tmpl_cursor_nested_pop(tmpl_dcursor_ctx_t *cc)
+{
+	tmpl_dcursor_nested_t *ns = fr_dlist_pop_tail(&cc->nested);
+
+	if (ns != &cc->leaf) talloc_free(ns);
 }
 
 /** Initialise the evaluation context for traversing a group attribute
@@ -95,14 +102,7 @@ void _tmpl_cursor_pair_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 	};
 	fr_pair_dcursor_iter_init(&ns->cursor, list, _tmpl_cursor_child_next, ns);
 
-	_tmpl_cursor_common_push(cc, ns);
-}
-
-static inline CC_HINT(always_inline) void _tmpl_cursor_common_pop(tmpl_dcursor_ctx_t *cc)
-{
-	tmpl_dcursor_nested_t *ns = fr_dlist_pop_tail(&cc->nested);
-
-	if (ns != &cc->leaf) talloc_free(ns);
+	tmpl_cursor_nested_push(cc, ns);
 }
 
 /** Evaluates, then, sometimes, pops evaluation contexts from the tmpl stack
@@ -130,7 +130,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	 *	Get the first instance
 	 */
 	case NUM_UNSPEC:
-		_tmpl_cursor_common_pop(cc);
+		tmpl_cursor_nested_pop(cc);
 		break;
 
 	/*
@@ -139,7 +139,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	case NUM_ALL:
 	case NUM_COUNT:
 	all_inst:
-		if (!vp) _tmpl_cursor_common_pop(cc);	/* pop only when we're done */
+		if (!vp) tmpl_cursor_nested_pop(cc);	/* pop only when we're done */
 		fr_dcursor_next(&ns->cursor);
 		break;
 
@@ -150,7 +150,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 		while ((iter = fr_dcursor_next(&ns->cursor))) {
 			vp = iter;
 		}
-		_tmpl_cursor_common_pop(cc);
+		tmpl_cursor_nested_pop(cc);
 		break;
 
 	/*
@@ -161,7 +161,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 		int16_t		i = 0;
 
 		while ((i++ < ar->num) && vp) vp = fr_dcursor_next(&ns->cursor);
-		_tmpl_cursor_common_pop(cc);
+		tmpl_cursor_nested_pop(cc);
 	}
 		break;
 	} else goto all_inst;	/* Used for TMPL_TYPE_LIST */
