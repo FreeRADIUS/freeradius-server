@@ -120,6 +120,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	tmpl_attr_t const	*ar;
 	tmpl_dcursor_nested_t	*ns;
 	fr_pair_t		*iter = curr, *vp;
+	bool			pop = false;
 
 	ns = fr_dlist_tail(&cc->nested);
 	ar = ns->ar;
@@ -130,7 +131,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	 *	Get the first instance
 	 */
 	case NUM_UNSPEC:
-		tmpl_cursor_nested_pop(cc);
+		pop = true;
 		break;
 
 	/*
@@ -139,7 +140,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	case NUM_ALL:
 	case NUM_COUNT:
 	all_inst:
-		if (!vp) tmpl_cursor_nested_pop(cc);	/* pop only when we're done */
+		if (!vp) pop = true;	/* pop only when we're done */
 		fr_dcursor_next(&ns->cursor);
 		break;
 
@@ -150,7 +151,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 		while ((iter = fr_dcursor_next(&ns->cursor))) {
 			vp = iter;
 		}
-		tmpl_cursor_nested_pop(cc);
+		pop = true;
 		break;
 
 	/*
@@ -161,7 +162,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 		int16_t		i = 0;
 
 		while ((i++ < ar->num) && vp) vp = fr_dcursor_next(&ns->cursor);
-		tmpl_cursor_nested_pop(cc);
+		pop = true;
 	}
 		break;
 	} else goto all_inst;	/* Used for TMPL_TYPE_LIST */
@@ -180,6 +181,8 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	default:
 		break;
 	}
+
+	if (pop) tmpl_cursor_nested_pop(cc);
 
 	return vp;
 }
