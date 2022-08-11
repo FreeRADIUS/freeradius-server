@@ -510,8 +510,7 @@ fr_dict_t const		*fr_dict_by_attr_name(fr_dict_attr_t const **found, char const 
 static inline bool fr_dict_attr_is_top_level(fr_dict_attr_t const *da)
 {
 	if (unlikely(!da) || unlikely(!da->parent)) return false;
-	if (!da->parent->flags.is_root) return false;
-	return true;
+	return da->parent->flags.is_root;
 }
 
 fr_dict_vendor_t const	*fr_dict_vendor_by_da(fr_dict_attr_t const *da);
