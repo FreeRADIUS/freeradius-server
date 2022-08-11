@@ -182,7 +182,7 @@ static void test_dbuff_net_encode(void)
 		for (int j = num_bytes; --j >= 0; ) {
 			uint8_t	byte = 0;
 
-			fr_dbuff_out(&byte, &dbuff);
+			TEST_CHECK(fr_dbuff_out(&byte, &dbuff) == 1);
 			TEST_CHECK(byte == (uint8_t) (val >> (8 * j)));
 		}
 	}
