@@ -166,6 +166,21 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 		break;
 	} else goto all_inst;	/* Used for TMPL_TYPE_LIST */
 
+	/*
+	 *	If no pair was found and there is a fill
+	 *	callback, call that, depending on the suffix
+	 */
+	if ((!vp) && (cc->build) && (ar)) switch (ar->ar_num) {
+	case NUM_UNSPEC:
+	case NUM_LAST:
+	case 0:
+		vp = cc->build(ns->list_ctx, &ns->cursor, ar->da, cc->uctx);
+		break;
+
+	default:
+		break;
+	}
+
 	return vp;
 }
 
@@ -260,7 +275,8 @@ static void *_tmpl_cursor_next(UNUSED fr_dlist_head_t *list, void *curr, void *u
  */
 fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 				      fr_dcursor_t *cursor,
-				      request_t *request, fr_pair_t *list, tmpl_t const *vpt)
+				      request_t *request, fr_pair_t *list, tmpl_t const *vpt,
+				      tmpl_dcursor_build_t build, void *uctx)
 {
 	fr_pair_t		*vp = NULL;
 
@@ -273,7 +289,9 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 		.vpt = vpt,
 		.ctx = ctx,
 		.request = request,
-		.list = &list->vp_group
+		.list = &list->vp_group,
+		.build = build,
+		.uctx = uctx
 	};
 	fr_dlist_init(&cc->nested, tmpl_dcursor_nested_t, entry);
 
@@ -334,8 +352,9 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
  *
  * @see tmpl_cursor_next
  */
-fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
-			     fr_dcursor_t *cursor, request_t *request, tmpl_t const *vpt)
+fr_pair_t *_tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
+			      fr_dcursor_t *cursor, request_t *request, tmpl_t const *vpt,
+			      tmpl_dcursor_build_t build, void *uctx)
 {
 	fr_pair_t		*list;
 
@@ -368,7 +387,7 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 		list = request->pair_root;
 	}
 
-	return tmpl_dcursor_init_relative(err, ctx, cc, cursor, request, list, vpt);
+	return tmpl_dcursor_init_relative(err, ctx, cc, cursor, request, list, vpt, build, uctx);
 }
 
 /** Clear any temporary state allocations
@@ -388,6 +407,27 @@ void tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc)
 	TALLOC_FREE(cc->pool);
 }
 
+/** Simple pair building callback for use with tmpl_dcursors
+ *
+ * Which always appends the new pair to the tail of the list
+ * since it is only called when no matching pairs were found when
+ * walking the list.
+ *
+ * @param[in] parent		to allocate new pair within.
+ * @param[in,out] cursor	to append new pair to.
+ * @param[in] da		of new pair.
+ * @param[in] uctx		unused.
+ * @return
+ *	- newly allocated #fr_pair_t.
+ *	- NULL on error.
+ */
+fr_pair_t *tmpl_dcursor_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, fr_dict_attr_t const *da, UNUSED void *uctx)
+{
+	fr_pair_t *vp;
+	vp = fr_pair_afrom_da(parent, da);
+	if (vp) fr_dcursor_append(cursor, vp);
+	return vp;
+}
 
 #define EXTENT_ADD(_out, _ar, _list_ctx, _list) \
 	do { \

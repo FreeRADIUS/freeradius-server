@@ -728,6 +728,8 @@ void *_fr_dcursor_init(fr_dcursor_t *cursor, fr_dlist_head_t const *head,
 	};
 	if (!fr_dlist_empty(cursor->dlist)) return fr_dcursor_next(cursor);	/* Initialise current */
 
+	if (iter) return fr_dcursor_next(cursor);	/* An iterator may do something, even on an empty list */
+
 	return NULL;
 }
 

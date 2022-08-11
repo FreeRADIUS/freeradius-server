@@ -28,6 +28,16 @@ extern "C" {
 typedef struct tmpl_dcursor_ctx_s tmpl_dcursor_ctx_t;
 typedef struct tmpl_dcursor_nested_s tmpl_dcursor_nested_t;
 
+/** Callback function for populating missing pair
+ *
+ * @param[in] parent	to allocate the new pair in.
+ * @param[in] cursor	to append the pair to.
+ * @param[in] da	of the attribute to create.
+ * @param[in] uctx	context data.
+ * @return		newly allocated pair.
+ */
+typedef fr_pair_t *(*tmpl_dcursor_build_t)(fr_pair_t *parent, fr_dcursor_t *cursor, fr_dict_attr_t const *da, void *uctx);
+
 /** State for traversing an attribute reference
  *
  */
@@ -68,14 +78,26 @@ struct tmpl_dcursor_ctx_s {
 	tmpl_dcursor_nested_t	leaf;		//!< Pre-allocated leaf state.  We always need
 						///< one of these so it doesn't make sense to
 						///< allocate it later.
+
+	tmpl_dcursor_build_t	build;		//!< Callback to build missing pairs.
+	void			*uctx;		//!< Context for building new pairs.
 };
 
 fr_pair_t		*tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 						    fr_dcursor_t *cursor,
-						    request_t *request, fr_pair_t *list, tmpl_t const *vpt);
+						    request_t *request, fr_pair_t *list, tmpl_t const *vpt,
+						    tmpl_dcursor_build_t build, void *uctx);
 
-fr_pair_t		*tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
-					   fr_dcursor_t *cursor, request_t *request,
-					   tmpl_t const *vpt);
+fr_pair_t		*_tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
+					    fr_dcursor_t *cursor, request_t *request,
+					    tmpl_t const *vpt, tmpl_dcursor_build_t build, void *uctx);
 
 void			tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc);
+
+fr_pair_t *tmpl_dcursor_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, fr_dict_attr_t const *da, UNUSED void *uctx);
+
+#define tmpl_dcursor_init(_err, _ctx, _cc, _cursor, _request, _vpt) \
+	_tmpl_dcursor_init(_err, _ctx, _cc, _cursor, _request, _vpt, NULL, NULL)
+
+#define tmpl_dcursor_build_init(_err, _ctx, _cc, _cursor, _request, _vpt, _build, _uctx) \
+	_tmpl_dcursor_init(_err, _ctx, _cc, _cursor, _request, _vpt, _build, _uctx)
