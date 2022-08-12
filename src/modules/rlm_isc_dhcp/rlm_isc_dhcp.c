@@ -1422,7 +1422,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	/*
 	 *	The 'host' entry might not have a client identifier option.
 	 */
-	vp = fr_pair_find_by_da_idx(&info->options, attr_client_identifier, 0);
+	vp = fr_pair_find_by_da(&info->options, NULL, attr_client_identifier);
 	if (vp) {
 		my_uid = talloc_zero(info, isc_host_uid_t);
 		my_uid->client = &vp->data;
@@ -1613,7 +1613,7 @@ static rlm_isc_dhcp_info_t *get_host(request_t *request, fr_hash_table_t *hosts_
 	 *	If that doesn't match, use client hardware
 	 *	address.
 	 */
-	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_client_identifier, 0);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_client_identifier);
 	if (vp) {
 		isc_host_uid_t *client, my_client;
 
@@ -1627,7 +1627,7 @@ static rlm_isc_dhcp_info_t *get_host(request_t *request, fr_hash_table_t *hosts_
 	}
 
 
-	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_client_hardware_address, 0);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_client_hardware_address);
 	if (!vp) return NULL;
 
 	memcpy(&my_ether.ether, vp->vp_ether, sizeof(my_ether.ether));
@@ -1748,7 +1748,7 @@ static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, request_t *request)
 	/*
 	 *	If there's already a fixed IP, don't do anything
 	 */
-	yiaddr = fr_pair_find_by_da_idx(&request->reply_pairs, attr_your_ip_address, 0);
+	yiaddr = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_your_ip_address);
 	if (yiaddr) return 0;
 
 	host = get_host(request, inst->hosts_by_ether, inst->hosts_by_uid);
@@ -1795,7 +1795,7 @@ static int apply(rlm_isc_dhcp_t const *inst, request_t *request, rlm_isc_dhcp_in
 	fr_pair_t *yiaddr;
 
 	ret = 0;
-	yiaddr = fr_pair_find_by_da_idx(&request->reply_pairs, attr_your_ip_address, 0);
+	yiaddr = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_your_ip_address);
 
 	/*
 	 *	First, apply any "host" options
@@ -1872,7 +1872,7 @@ recurse:
 		     vp = fr_pair_list_next(&head->options, vp)) {
 			fr_pair_t *reply;
 
-			reply = fr_pair_find_by_da_idx(&request->reply_pairs, vp->da, 0);
+			reply = fr_pair_find_by_da(&request->reply_pairs, NULL, vp->da);
 			if (reply) continue;
 
 			/*

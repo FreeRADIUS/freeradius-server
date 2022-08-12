@@ -93,19 +93,19 @@ static xlat_action_t soh_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 * There will be no point unless SoH-Supported = yes
 	 */
-	vp[0] = fr_pair_find_by_da_idx(&request->request_pairs, attr_soh_supported, 0);
+	vp[0] = fr_pair_find_by_da(&request->request_pairs, NULL, attr_soh_supported);
 	if (!vp[0])
 		return XLAT_ACTION_FAIL;
 
 
 	if (strncasecmp(in_head->vb_strvalue, "OS", 2) == 0) {
 		/* OS vendor */
-		vp[0] = fr_pair_find_by_da_idx(&request->request_pairs, attr_soh_ms_machine_os_vendor, 0);
-		vp[1] = fr_pair_find_by_da_idx(&request->request_pairs, attr_soh_ms_machine_os_version, 0);
-		vp[2] = fr_pair_find_by_da_idx(&request->request_pairs, attr_soh_ms_machine_os_release, 0);
-		vp[3] = fr_pair_find_by_da_idx(&request->request_pairs, attr_soh_ms_machine_os_build, 0);
-		vp[4] = fr_pair_find_by_da_idx(&request->request_pairs, attr_soh_ms_machine_sp_version, 0);
-		vp[5] = fr_pair_find_by_da_idx(&request->request_pairs, attr_soh_ms_machine_sp_release, 0);
+		vp[0] = fr_pair_find_by_da(&request->request_pairs, NULL, attr_soh_ms_machine_os_vendor);
+		vp[1] = fr_pair_find_by_da(&request->request_pairs, NULL, attr_soh_ms_machine_os_version);
+		vp[2] = fr_pair_find_by_da(&request->request_pairs, NULL, attr_soh_ms_machine_os_release);
+		vp[3] = fr_pair_find_by_da(&request->request_pairs, NULL, attr_soh_ms_machine_os_build);
+		vp[4] = fr_pair_find_by_da(&request->request_pairs, NULL, attr_soh_ms_machine_sp_version);
+		vp[5] = fr_pair_find_by_da(&request->request_pairs, NULL, attr_soh_ms_machine_sp_release);
 
 		if (vp[0] && vp[0]->vp_uint32 == attr_ms_vendor->attr) {
 			MEM(vb=fr_value_box_alloc_null(ctx));
@@ -191,7 +191,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 
 	if (!inst->dhcp) RETURN_MODULE_NOOP;
 
-	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_dhcp_vendor, 0);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_dhcp_vendor);
 	if (vp) {
 		/*
 		 * vendor-specific options contain
@@ -252,7 +252,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	int rv;
 
 	/* try to find the MS-SoH payload */
-	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_ms_quarantine_soh, 0);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_ms_quarantine_soh);
 	if (!vp) {
 		RDEBUG2("SoH radius VP not found");
 		RETURN_MODULE_NOOP;

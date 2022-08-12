@@ -503,7 +503,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	 *	The admin can dynamically change the MTU.
 	 */
 	session->mtu = inst->fragment_size;
-	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_framed_mtu, 0);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_framed_mtu);
 
 	/*
 	 *	session->mtu is *our* MTU.  We need to subtract off the EAP

@@ -348,7 +348,7 @@ static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSE
 	uint8_t const		*q, **p;
 	SSL_SESSION		*sess;
 
-	vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_tls_packet_type, 0);
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_packet_type);
 	if (!vp || (vp->vp_uint32 != enum_tls_packet_type_success->vb_uint32)) {
 		RWDEBUG("Failed acquiring session data");
 	error:
@@ -356,7 +356,7 @@ static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSE
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_tls_session_data, 0);
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_session_data);
 	if (!vp) {
 		RWDEBUG("No cached session found");
 		goto error;
@@ -458,7 +458,7 @@ static unlang_action_t tls_cache_store_result(UNUSED rlm_rcode_t *p_result, UNUS
 
 	tls_cache_store_state_reset(request, tls_cache);
 
-	vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_tls_packet_type, 0);
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_packet_type);
 	if (vp && (vp->vp_uint32 == enum_tls_packet_type_success->vb_uint32)) {
 		tls_cache->store.state = FR_TLS_CACHE_STORE_PERSISTED;	/* Avoid spurious clear calls */
 	} else {
@@ -590,7 +590,7 @@ static unlang_action_t tls_cache_clear_result(UNUSED rlm_rcode_t *p_result, UNUS
 
 	tls_cache_clear_state_reset(request, tls_cache);
 
-	vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_tls_packet_type, 0);
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_packet_type);
 	if (vp &&
 	    ((vp->vp_uint32 == enum_tls_packet_type_success->vb_uint32) ||
 	     (vp->vp_uint32 == enum_tls_packet_type_notfound->vb_uint32))) {
@@ -1025,7 +1025,7 @@ int fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure)
 		goto disable;
 	}
 
-	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_allow_session_resumption, 0);
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_allow_session_resumption);
 	if (vp && (vp->vp_uint32 == 0)) {
 		RDEBUG2("&control.Allow-Session-Resumption == no, denying session resumption");
 	disable:

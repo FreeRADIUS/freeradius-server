@@ -214,7 +214,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	/*
 	 *	We can only send relayed packets, which have a gateway IP
 	 */
-	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_gateway_ip_address, 0);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_gateway_ip_address);
 	if (!vp) {
 		REDEBUG("Relayed packets MUST have a Gateway-IP-Address attribute");
 		RETURN_MODULE_FAIL;
@@ -223,7 +223,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	/*
 	 *	Get the transaction ID.
 	 */
-	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_transaction_id, 0);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_transaction_id);
 	if (vp) {
 		xid = vp->vp_uint32;
 
@@ -239,11 +239,11 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *
 	 *	@todo - make sure it's a client type.
 	 */
-	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_packet_type, 0);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_packet_type);
 	if (vp) {
 		code = vp->vp_uint32;
 
-	} else if ((vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_message_type, 0)) != NULL) {
+	} else if ((vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_type)) != NULL) {
 		code = vp->vp_uint8;
 
 	} else {
@@ -253,7 +253,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	/*
 	 *	Set the destination port, defaulting to 67
 	 */
-	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_packet_dst_port, 0);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_packet_dst_port);
 	if (vp) {
 		port = vp->vp_uint16;
 	} else {
@@ -263,7 +263,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	/*
 	 *	Get the destination address / port, and unicast it there.
 	 */
-	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_packet_dst_ip_address, 0);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_packet_dst_ip_address);
 	if (!vp) {
 		RDEBUG("No Packet-Dst-IP-Address, cannot relay packet");
 		RETURN_MODULE_NOOP;

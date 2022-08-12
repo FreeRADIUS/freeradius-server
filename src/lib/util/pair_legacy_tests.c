@@ -92,7 +92,7 @@ static void test_fr_pair_list_afrom_str(void)
 	TEST_CHECK(fr_pair_list_afrom_str(autofree, fr_dict_root(test_dict), buffer, strlen(buffer), &list) == T_EOL);
 
 	TEST_CASE("Looking for Test-Uint32-0");
-	TEST_CHECK((vp = fr_pair_find_by_da_idx(&list, fr_dict_attr_test_uint32, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da(&list, NULL, fr_dict_attr_test_uint32)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -101,7 +101,7 @@ static void test_fr_pair_list_afrom_str(void)
 	TEST_CHECK(vp && vp->vp_uint32 == 123);
 
 	TEST_CASE("Looking for Test-String-0");
-	TEST_CHECK((vp = fr_pair_find_by_da_idx(&list, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da(&list, NULL, fr_dict_attr_test_string)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -142,7 +142,7 @@ static void test_fr_pair_list_afrom_file(void)
 	TEST_CHECK(fr_pair_list_afrom_file(autofree, test_dict, &list, fp, &pfiledone) == 0);
 
 	TEST_CASE("Looking for Test-Uint32-0");
-	TEST_CHECK((vp = fr_pair_find_by_da_idx(&list, fr_dict_attr_test_uint32, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da(&list, NULL, fr_dict_attr_test_uint32)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -151,7 +151,7 @@ static void test_fr_pair_list_afrom_file(void)
 	TEST_CHECK(vp && vp->vp_uint32 == 123);
 
 	TEST_CASE("Looking for Test-String-0");
-	TEST_CHECK((vp = fr_pair_find_by_da_idx(&list, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da(&list, NULL, fr_dict_attr_test_string)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -184,7 +184,7 @@ static void test_fr_pair_list_move_op(void)
 	fr_pair_list_move_op(&new_list, &old_list, T_OP_ADD_EQ);
 
 	TEST_CASE("Looking for Test-Uint32-0");
-	TEST_CHECK((vp = fr_pair_find_by_da_idx(&new_list, fr_dict_attr_test_uint32, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da(&new_list, NULL, fr_dict_attr_test_uint32)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -195,7 +195,7 @@ static void test_fr_pair_list_move_op(void)
 	TEST_CHECK(vp && vp->vp_uint32 == 123);
 
 	TEST_CASE("Looking for Test-String-0");
-	TEST_CHECK((vp = fr_pair_find_by_da_idx(&new_list, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da(&new_list, NULL, fr_dict_attr_test_string)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);

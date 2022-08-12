@@ -674,7 +674,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
-		vp = fr_pair_find_by_da_idx(&eap_session->request->control_pairs, attr_eap_type, 0);
+		vp = fr_pair_find_by_da(&eap_session->request->control_pairs, NULL, attr_eap_type);
 		if (vp) {
 			RDEBUG2("Using method from &control.EAP-Type");
 			next = vp->vp_uint32;
@@ -848,7 +848,7 @@ static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t cons
 	eap_packet_raw_t	*eap_packet;
 	unlang_action_t		ua;
 
-	if (!fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_message, 0)) {
+	if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message)) {
 		REDEBUG("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
 		RETURN_MODULE_INVALID;
 	}
@@ -965,12 +965,12 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 	 *	says that we MUST include a User-Name attribute in the
 	 *	Access-Accept.
 	 */
-	username = fr_pair_find_by_da_idx(&request->request_pairs, attr_user_name, 0);
+	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
 	if ((request->reply->code == FR_RADIUS_CODE_ACCESS_ACCEPT) && username) {
 		/*
 		 *	Doesn't exist, add it in.
 		 */
-		vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_user_name, 0);
+		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_user_name);
 		if (!vp) {
 			vp = fr_pair_copy(request->reply_ctx, username);
 			fr_pair_append(&request->reply_pairs, vp);
@@ -983,12 +983,12 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 	 */
 	if (request->reply->code != FR_RADIUS_CODE_ACCESS_REJECT) RETURN_MODULE_NOOP;
 
-	if (!fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_message, 0)) {
+	if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message)) {
 		RDEBUG3("Request didn't contain an EAP-Message, not inserting EAP-Failure");
 		RETURN_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_message, 0)) {
+	if (fr_pair_find_by_da(&request->reply_pairs, NULL, attr_eap_message)) {
 		RDEBUG3("Reply already contained an EAP-Message, not inserting EAP-Failure");
 		RETURN_MODULE_NOOP;
 	}

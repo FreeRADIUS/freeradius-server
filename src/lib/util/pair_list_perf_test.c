@@ -377,7 +377,7 @@ static void do_test_fr_pair_find_by_da_idx(unsigned int len, unsigned int perc, 
 			int idx = fr_fast_rand(&rand_ctx) % input_count;
 			da = source_vps[idx]->da;
 			start = fr_time();
-			(void) fr_pair_find_by_da_idx(&test_vps, da, 0);
+			(void) fr_pair_find_by_da(&test_vps, NULL, da);
 			end = fr_time();
 			used = fr_time_delta_add(used, fr_time_sub(end, start));
 		}

@@ -1269,13 +1269,13 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	/*
 	 *	IP-Pool.Action override
 	 */
-	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_pool_action, 0);
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_pool_action);
 	if (vp) return mod_action(p_result, inst, request, vp->vp_uint32);
 
 	/*
 	 *	Otherwise, guess the action by Acct-Status-Type
 	 */
-	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_acct_status_type, 0);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_acct_status_type);
 	if (!vp) {
 		RDEBUG2("Couldn't find &request.Acct-Status-Type or &control.IP-Pool.Action, doing nothing...");
 		RETURN_MODULE_NOOP;
@@ -1306,7 +1306,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_pool_action, 0);
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_pool_action);
 	return mod_action(p_result, inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
 }
 
@@ -1320,7 +1320,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_pool_action, 0);
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_pool_action);
 	if (vp) {
 		if ((vp->vp_uint32 > 0) && (vp->vp_uint32 <= POOL_ACTION_BULK_RELEASE)) {
 			action = vp->vp_uint32;
@@ -1331,7 +1331,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 		}
 
 	} else if (request->dict == dict_dhcpv4) {
-		vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_message_type, 0);
+		vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_message_type);
 		if (!vp) goto run;
 
 		if (vp->vp_uint8 == FR_DHCP_REQUEST) action = POOL_ACTION_UPDATE;
@@ -1351,7 +1351,7 @@ static unlang_action_t CC_HINT(nonnull) mod_request(rlm_rcode_t *p_result, modul
 	 *	when called by DHCP request
 	 */
 
-	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_pool_action, 0);
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_pool_action);
 	return mod_action(p_result, inst, request, vp ? vp->vp_uint32 : POOL_ACTION_UPDATE);
 }
 
@@ -1365,7 +1365,7 @@ static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, modul
 	 *	when called by DHCP release
 	 */
 
-	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_pool_action, 0);
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_pool_action);
 	return mod_action(p_result, inst, request, vp ? vp->vp_uint32 : POOL_ACTION_RELEASE);
 }
 

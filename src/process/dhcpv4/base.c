@@ -95,7 +95,7 @@ static void dhcpv4_packet_debug(request_t *request, fr_radius_packet_t *packet, 
 
 		if (!*dhcp_header_attrs[i]) continue;
 
-		vp = fr_pair_find_by_da_idx(list, *dhcp_header_attrs[i], 0);
+		vp = fr_pair_find_by_da(list, NULL, *dhcp_header_attrs[i]);
 		if (!vp) continue;
 		RDEBUGX(L_DBG_LVL_1, "%pP", vp);
 	}
@@ -142,7 +142,7 @@ RESUME(check_yiaddr)
 {
 	fr_pair_t *vp;
 
-	vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_yiaddr, 0);
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_yiaddr);
 	if (!vp) {
 		REDEBUG("%s packet does not have YIADDR.  The client will not receive an IP address.",
 			dhcp_message_types[request->reply->code]);

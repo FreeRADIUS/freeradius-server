@@ -79,7 +79,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 	uint16_t 	opcode;
 	char const 	*buf;
 
-	vp = fr_pair_find_by_da_idx(vps, attr_tftp_opcode, 0);
+	vp = fr_pair_find_by_da(vps, NULL, attr_tftp_opcode);
 	if (!vp) {
 		fr_strerror_printf("Cannot send TFTP packet without %s", attr_tftp_opcode->name);
 		return -1;
@@ -100,7 +100,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 		 */
 
 		/* <Filename> */
-		vp = fr_pair_find_by_da_idx(vps, attr_tftp_filename, 0);
+		vp = fr_pair_find_by_da(vps, NULL, attr_tftp_filename);
 		if (!vp) {
 			fr_strerror_printf("Invalid TFTP packet without %s", attr_tftp_filename->name);
 			return -1;
@@ -110,7 +110,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 		fr_dbuff_in_bytes(&work_dbuff, '\0');
 
 		/* <mode> */
-		vp = fr_pair_find_by_da_idx(vps, attr_tftp_mode, 0);
+		vp = fr_pair_find_by_da(vps, NULL, attr_tftp_mode);
 		if (!vp) {
 			fr_strerror_printf("Invalid TFTP packet without %s", attr_tftp_mode->name);
 			return -1;
@@ -128,7 +128,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 		fr_dbuff_in_bytes(&work_dbuff, '\0');
 
 		/* <blksize> is optional */
-		vp = fr_pair_find_by_da_idx(vps, attr_tftp_block_size, 0);
+		vp = fr_pair_find_by_da(vps, NULL, attr_tftp_block_size);
 		if (vp) {
 			char tmp[5+1];                                   /* max: 65535 */
 
@@ -153,7 +153,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 		 */
 
 		/* <Block> */
-		vp = fr_pair_find_by_da_idx(vps, attr_tftp_block, 0);
+		vp = fr_pair_find_by_da(vps, NULL, attr_tftp_block);
 		if (!vp) {
 			fr_strerror_printf("Invalid TFTP packet without %s", attr_tftp_block->name);
 			return -1;
@@ -173,7 +173,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 		if (opcode != FR_OPCODE_VALUE_DATA) goto done;
 
 		/* <Data> */
-		vp = fr_pair_find_by_da_idx(vps, attr_tftp_data, 0);
+		vp = fr_pair_find_by_da(vps, NULL, attr_tftp_data);
 		if (!vp) {
 			fr_strerror_printf("Invalid TFTP packet without %s", attr_tftp_data->name);
 			return -1;
@@ -198,7 +198,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 		size_t 		error_msg_len;
 
 		/* <ErroCode> */
-		vp = fr_pair_find_by_da_idx(vps, attr_tftp_error_code, 0);
+		vp = fr_pair_find_by_da(vps, NULL, attr_tftp_error_code);
 		if (!vp) {
 			fr_strerror_printf("Invalid TFTP packet without %s", attr_tftp_error_code->name);
 			return -1;
@@ -208,7 +208,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 		fr_dbuff_in(&work_dbuff, error_code);
 
 		/* <ErrMsg> */
-		vp = fr_pair_find_by_da_idx(vps, attr_tftp_error_message, 0);
+		vp = fr_pair_find_by_da(vps, NULL, attr_tftp_error_message);
 		if (vp) {
 			error_msg = vp->vp_strvalue;
 			error_msg_len = vp->vp_length;

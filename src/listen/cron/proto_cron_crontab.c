@@ -747,7 +747,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	fclose(fp);
 
-	vp = fr_pair_find_by_da_idx(&inst->pair_list, inst->parent->attr_packet_type, 0);
+	vp = fr_pair_find_by_da(&inst->pair_list, NULL, inst->parent->attr_packet_type);
 	if (vp) inst->code = vp->vp_uint32;
 
 	return 0;

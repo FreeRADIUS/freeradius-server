@@ -334,7 +334,7 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 	fr_pair_t			*transaction_id, *client_id, *server_id;
 	process_dhcpv6_client_fields_t	*rctx;
 
-	transaction_id = fr_pair_find_by_da_idx(&request->request_pairs, attr_transaction_id, 0);
+	transaction_id = fr_pair_find_by_da(&request->request_pairs, NULL, attr_transaction_id);
 	if (!transaction_id) {
 		REDEBUG("Missing Transaction-ID");
 		return NULL;
@@ -461,7 +461,7 @@ int restore_field(request_t *request, fr_pair_t **to_restore)
 
 	PAIR_VERIFY(*to_restore);
 
-	vp = fr_pair_find_by_da_idx(&request->reply_pairs, (*to_restore)->da, 0);
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, (*to_restore)->da);
 	if (vp) {
 		if (fr_pair_cmp(vp, *to_restore) != 0) {
 			RWDEBUG("&reply.%pP does not match &request.%pP", vp, *to_restore);
@@ -624,25 +624,25 @@ process_dhcpv6_relay_fields_t *dhcpv6_relay_fields_store(request_t *request)
 	fr_pair_t		 	*hop_count, *link_address, *peer_address, *interface_id;
 	process_dhcpv6_relay_fields_t	*rctx;
 
-	hop_count = fr_pair_find_by_da_idx(&request->request_pairs, attr_hop_count, 0);
+	hop_count = fr_pair_find_by_da(&request->request_pairs, NULL, attr_hop_count);
 	if (!hop_count) {
 		REDEBUG("Missing Hop-Count");
 		return NULL;
 	}
 
-	link_address = fr_pair_find_by_da_idx(&request->request_pairs, attr_relay_link_address, 0);
+	link_address = fr_pair_find_by_da(&request->request_pairs, NULL, attr_relay_link_address);
 	if (!link_address) {
 		REDEBUG("Missing Link-Address");
 		return NULL;
 	}
 
-	peer_address = fr_pair_find_by_da_idx(&request->request_pairs, attr_relay_peer_address, 0);
+	peer_address = fr_pair_find_by_da(&request->request_pairs, NULL, attr_relay_peer_address);
 	if (!peer_address) {
 		REDEBUG("Missing Peer-Address");
 		return NULL;
 	}
 
-	interface_id = fr_pair_find_by_da_idx(&request->request_pairs, attr_interface_id, 0);
+	interface_id = fr_pair_find_by_da(&request->request_pairs, NULL, attr_interface_id);
 
 	/*
 	 *	Remember the relay fields
