@@ -1324,6 +1324,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		}
 
 		value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
+		if (!value) goto oom;
 		value->datum.uint32 = count;
 		fr_dlist_insert_tail(&list, value);
 		break;
@@ -1467,7 +1468,7 @@ done:
 	};
 
 	fr_dlist_move(out, &list);
-	return 0;		
+	return 0;
 }
 
 
