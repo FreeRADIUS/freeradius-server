@@ -171,7 +171,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	 *	If no pair was found and there is a fill
 	 *	callback, call that, depending on the suffix
 	 */
-	if ((!vp) && (cc->build) && (ar)) switch (ar->ar_num) {
+	if (!vp && cc->build && ar) switch (ar->ar_num) {
 	case NUM_UNSPEC:
 	case NUM_LAST:
 	case 0:
