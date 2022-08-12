@@ -572,6 +572,54 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 }
 
 
+/** Simple pair building callback for use with tmpl_dcursors
+ *
+ * Which always appends the new pair to the tail of the list
+ * since it is only called when no matching pairs were found when
+ * walking the list.
+ *
+ * @param[in] parent		to allocate new pair within.
+ * @param[in,out] cursor	to append new pair to.
+ * @param[in] da		of new pair.
+ * @param[in] uctx		unused.
+ * @return
+ *	- newly allocated #fr_pair_t.
+ *	- NULL on error.
+ */
+static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, fr_dict_attr_t const *da, void *uctx)
+{
+	fr_pair_t *vp;
+	edit_map_t *current = uctx;
+
+	vp = fr_pair_afrom_da(parent, da);
+	if (!vp) return NULL;
+
+	current->lhs.vp_parent = parent;
+	current->lhs.vp = vp;
+
+	if (fr_edit_list_insert_pair_tail(current->el, &parent->vp_group, vp) < 0) {
+		talloc_free(vp);
+		return NULL;
+	}
+
+	/*
+	 *	Tell the cursor that we appended a pair.  This
+	 *	function only gets called when we've ran off of the
+	 *	end of the list, and can't find the thing we're
+	 *	looking for.  So it's safe at set the current one
+	 *	here.
+	 *
+	 *	@todo - mainly only because we don't allow creating
+	 *	foo[4] when there's <3 matching entries.  i.e. the
+	 *	"arrays" here are really lists, so we can't create
+	 *	"holes" in the list.
+	 */
+	fr_dcursor_set_current(cursor, vp);
+
+	return vp;
+}
+
+
 /** Create a list of modifications to apply to one or more fr_pair_t lists
  *
  * @param[out] p_result	The rcode indicating what the result
@@ -729,44 +777,21 @@ redo:
 				current->in_parent_list = true;
 
 			} else if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
-				fr_pair_t *parent;
-
-				request_t *other = request;
-
-				fr_assert(!tmpl_is_list(current->lhs.vpt));
-
-				/*
-				 *	@todo - What we really need is to create a dcursor, and then do something
-				 *	like:
-				 *
-				 *	vp = tmpl_dcursor_init(&err, request, &cc, &cursor, request, vpt);
-				 *	if (!vp) {
-				 *		while (tmpl_dcursor_required(&cursor, &vp, &da) == 1) {
-				 *			child = fr_pair_afrom_da(vp, da);
-				 *			fr_pair_append(&vp->vp_group, child);
-				 *		}
-				 *		// vp is the pair we need to edit.
-				 *	}
-				 */
-				if (tmpl_request_ptr(&other, tmpl_request(current->lhs.vpt)) < 0) {
-					REDEBUG("%s[%d] Failed to find request for %s", MAP_INFO, current->lhs.vpt->name);
-					goto error;
-				}
-				fr_assert(other != NULL);
-
-				parent = tmpl_get_list(other, current->lhs.vpt);
-				if (!parent) {
-					REDEBUG("%s[%d] Failed to find list for %s", MAP_INFO, current->lhs.vpt->name);
-					goto error;
-				}
-				current->lhs.vp_parent = parent;
+				int			err;
+				fr_pair_t		*vp;
+				tmpl_dcursor_ctx_t	cc;
+				fr_dcursor_t		cursor;
 
 				/*
-				 *	Add the new VP to the parent.  The edit list code is safe for multiple
-				 *	edits of the same VP, so we don't have to do anything else here.
+				 *	Use callback to build missing destination container.
 				 */
-				MEM(current->lhs.vp = fr_pair_afrom_da(parent, tmpl_da(current->lhs.vpt)));
-				if (fr_edit_list_insert_pair_tail(state->el, &parent->vp_group, current->lhs.vp) < 0) goto error;
+				fr_strerror_clear();
+				vp = tmpl_dcursor_build_init(&err, state, &cc, &cursor, request, current->lhs.vpt, edit_list_pair_build, current);
+				tmpl_dcursor_clear(&cc);
+				if (!vp) {
+					RPDEBUG("Failed finding or creating %s - %d", current->lhs.vpt->name, err);
+					goto error;
+				}
 
 			} else if (map->op == T_OP_EQ) {
 				/*
