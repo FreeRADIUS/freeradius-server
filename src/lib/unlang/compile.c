@@ -816,7 +816,7 @@ static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
  *	- 0 if valid.
  *	- -1 not valid.
  */
-int unlang_fixup_update(map_t *map, UNUSED void *ctx)
+int unlang_fixup_update(map_t *map, void *ctx)
 {
 	CONF_PAIR *cp = cf_item_to_pair(map->ci);
 
@@ -836,29 +836,31 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 	}
 
 	/*
-	 *	Fixup LHS attribute references to change NUM_UNSPEC to NUM_ALL.
+	 *	Fixup LHS attribute references to change NUM_UNSPEC to NUM_ALL, but only for "update" sections.
 	 */
-	switch (map->lhs->type) {
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
-		tmpl_attr_rewrite_leaf_num(map->lhs, NUM_UNSPEC, NUM_ALL);
-		break;
+	if (!ctx) {
+		switch (map->lhs->type) {
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_LIST:
+			tmpl_attr_rewrite_leaf_num(map->lhs, NUM_UNSPEC, NUM_ALL);
+			break;
 
-	default:
-		break;
-	}
+		default:
+			break;
+		}
 
-	/*
-	 *	Fixup RHS attribute references to change NUM_UNSPEC to NUM_ALL.
-	 */
-	switch (map->rhs->type) {
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
-		tmpl_attr_rewrite_leaf_num(map->rhs, NUM_UNSPEC, NUM_ALL);
-		break;
+		/*
+		 *	Fixup RHS attribute references to change NUM_UNSPEC to NUM_ALL.
+		 */
+		switch (map->rhs->type) {
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_LIST:
+			tmpl_attr_rewrite_leaf_num(map->rhs, NUM_UNSPEC, NUM_ALL);
+			break;
 
-	default:
-		break;
+		default:
+			break;
+		}
 	}
 
 	/*
@@ -1807,7 +1809,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	 *	Check operators, and ensure that the RHS has been
 	 *	resolved.
 	 */
-	if (unlang_fixup_update(map, NULL) < 0) goto fail;
+	if (unlang_fixup_update(map, c) < 0) goto fail;
 
 	map_list_insert_tail(&edit->maps, map);
 
