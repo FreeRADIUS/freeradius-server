@@ -547,29 +547,6 @@ int fr_pair_steal_prepend(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t 
 	return 0;
 }
 
-/** Free memory used by a valuepair list.
- *
- * @todo TLV: needs to free all dependents of each VP freed.
- *
- * @hidecallergraph
- */
-void fr_pair_list_free(fr_pair_list_t *list)
-{
-	fr_pair_order_list_talloc_free(&list->order);
-}
-
-/** Is a valuepair list empty
- *
- * @param[in] list to check
- * @return true if empty
- *
- * @hidecallergraph
- */
-bool fr_pair_list_empty(fr_pair_list_t const *list)
-{
-	return fr_pair_order_list_empty(&list->order);
-}
-
 /** Mark malformed or unrecognised attributed as unknown
  *
  * @param vp to change fr_dict_attr_t of.
@@ -596,6 +573,187 @@ int fr_pair_to_unknown(fr_pair_t *vp)
 
 	return 0;
 }
+
+/*
+ *	Start of magic macros / functions.
+ *
+ *	We want to hide the implementation details of the pairs and
+ *	pair lists from the caller.  So we need to have public
+ *	wrappers around the internal functions which do the actual
+ *	work.
+ *
+ *	However... in many cases those wrappers are only one line.
+ *	When that happens, we define a public function, and then use a
+ *	macro to re-define the public function to use the internal API.
+ *
+ *	This lets us use the "public" functions in this file, while
+ *	avoiding a function call bounce through the public functions.
+ *
+ *	It also lets us avoid what would otherwise be random uses of
+ *	public versus internal functions in this file, based on who
+ *	edited what when, and what they remembered to do.  In most
+ *	cases, the public functions can be used, and there will be no
+ *	extra cost to using them.
+ */
+
+/** Get the head of a valuepair list
+ *
+ * @param[in] list	to return the head of
+ *
+ * @return
+ *	- NULL if the list is empty
+ *	- pointer to the first item in the list.
+ * @hidecallergraph
+ */
+fr_pair_t *fr_pair_list_head(fr_pair_list_t const *list)
+{
+	return fr_pair_order_list_head(&list->order);
+}
+#define fr_pair_list_head(_x) fr_pair_order_list_head(&(_x)->order)
+
+/** Get the tail of a valuepair list
+ *
+ * @param[in] list	to return the tail of
+ *
+ * @return
+ *	- NULL if the list is empty
+ *	- pointer to the last item in the list.
+ */
+fr_pair_t *fr_pair_list_tail(fr_pair_list_t const *list)
+{
+	return fr_pair_order_list_tail(&list->order);
+}
+//#define fr_pair_list_tail(_x) fr_pair_order_list_tail(&(_x)->order)
+
+/** Get the next item in a valuepair list after a specific entry
+ *
+ * @param[in] list	to walk
+ * @param[in] item	whose "next" item to return
+ * @return
+ *	- NULL if the end of the list has been reached
+ *	- pointer to the next item
+ * @hidecallergraph
+ */
+fr_pair_t *fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item)
+{
+	return fr_pair_order_list_next(&list->order, item);
+}
+#define fr_pair_list_next(_x, _item) fr_pair_order_list_next(&(_x)->order, _item)
+
+/** Get the previous item in a valuepair list before a specific entry
+ *
+ * @param[in] list	to walk
+ * @param[in] item	whose "prev" item to return
+ * @return
+ *	- NULL if the head of the list has been reached
+ *	- pointer to the previous item
+ */
+fr_pair_t *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item)
+{
+	return fr_pair_order_list_prev(&list->order, item);
+}
+//#define fr_pair_list_prev(_x, _item) fr_pair_order_list_prev(&(_x)->order, )item)
+
+/** Remove fr_pair_t from a list without freeing
+ *
+ * @param[in] list	of value pairs to remove VP from.
+ * @param[in] vp	to remove
+ * @return previous item in the list to the one being removed.
+ */
+fr_pair_t *fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp)
+{
+	return fr_pair_order_list_remove(&list->order, vp);
+}
+#define fr_pair_remove(_x, _item) fr_pair_order_list_remove(&(_x)->order, _item)
+
+/** Free memory used by a valuepair list.
+ *
+ * @hidecallergraph
+ */
+void fr_pair_list_free(fr_pair_list_t *list)
+{
+	fr_pair_order_list_talloc_free(&list->order);
+}
+//#define fr_pair_list_free(_x) fr_pair_order_list_talloc_free(&(_x)->order)
+
+/** Is a valuepair list empty
+ *
+ * @param[in] list to check
+ * @return true if empty
+ *
+ * @hidecallergraph
+ */
+bool fr_pair_list_empty(fr_pair_list_t const *list)
+{
+	return fr_pair_order_list_empty(&list->order);
+}
+#define fr_pair_list_empty(_x) fr_pair_order_list_empty(&(_x)->order)
+
+/** Sort a doubly linked list of fr_pair_ts using merge sort
+ *
+ * @note We use a merge sort (which is a stable sort), making this
+ *	suitable for use on lists with things like EAP-Message
+ *	fragments where the order of EAP-Message attributes needs to
+ *	be maintained.
+ *
+ * @param[in,out] list head of dlinked fr_pair_ts to sort.
+ * @param[in] cmp to sort with
+ */
+void fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp)
+{
+	fr_pair_order_list_sort(&list->order, cmp);
+}
+//#define fr_pair_list_sort(_x, _cmp) fr_pair_order_list_sort(&(_x)->order, _cmp)
+
+/** Get the length of a list of fr_pair_t
+ *
+ * @param[in] list to return the length of
+ *
+ * @return number of entries in the list
+ */
+size_t fr_pair_list_num_elements(fr_pair_list_t const *list)
+{
+	return fr_pair_order_list_num_elements(&list->order);
+}
+//#define fr_pair_list_num_elements(_x) fr_pair_order_list_num_elements(&(_x)->order)
+
+/** Get the dlist head from a pair list
+ *
+ * @param[in] list to get the head from
+ *
+ * @return number of entries in the list
+ */
+fr_dlist_head_t *fr_pair_list_dlist_head(fr_pair_list_t const *list)
+{
+	return fr_pair_order_list_dlist_head(&list->order);
+}
+//#define fr_pair_list_dlist_head(_x) fr_pair_order_list_dlist_head(&(_x)->order)
+
+/** Appends a list of fr_pair_t from a temporary list to a destination list
+ *
+ * @param dst list to move pairs into
+ * @param src list from which to take pairs
+ */
+void fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src)
+{
+	fr_pair_order_list_move(&dst->order, &src->order);
+}
+//#define fr_pair_list_append(_dst, _src) fr_pair_order_list_move(&(_dst)->order, &(_src)->order)
+
+/** Move a list of fr_pair_t from a temporary list to the head of a destination list
+ *
+ * @param dst list to move pairs into
+ * @param src from which to take pairs
+ */
+void fr_pair_list_prepend(fr_pair_list_t *dst, fr_pair_list_t *src)
+{
+	fr_pair_order_list_move_head(&dst->order, &src->order);
+}
+//#define fr_pair_list_prepend(_dst, _src) fr_pair_order_list_move_head(&(_dst)->order, &(_src)->order)
+
+/*
+ *	End of magic macros.
+ */
 
 /** Iterate over pairs with a specified da
  *
@@ -656,9 +814,9 @@ unsigned int fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t cons
 	fr_pair_t	*vp = NULL;
 	unsigned int	count = 0;
 
-	if (fr_pair_order_list_empty(&list->order)) return 0;
+	if (fr_pair_list_empty(list)) return 0;
 
-	while ((vp = fr_pair_order_list_next(&list->order, vp))) if (da == vp->da) count++;
+	while ((vp = fr_pair_list_next(list, vp))) if (da == vp->da) count++;
 
 	return count;
 }
@@ -678,11 +836,11 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_pair_t const *prev,
 {
 	fr_pair_t *vp = UNCONST(fr_pair_t *, prev);
 
-	if (fr_pair_order_list_empty(&list->order)) return NULL;
+	if (fr_pair_list_empty(list)) return NULL;
 
 	PAIR_LIST_VERIFY(list);
 
-	while ((vp = fr_pair_order_list_next(&list->order, vp))) if (da == vp->da) return vp;
+	while ((vp = fr_pair_list_next(list, vp))) if (da == vp->da) return vp;
 
 	return NULL;
 }
@@ -702,7 +860,7 @@ fr_pair_t *fr_pair_find_by_da_idx(fr_pair_list_t const *list, fr_dict_attr_t con
 {
 	fr_pair_t *vp = NULL;
 
-	if (fr_pair_order_list_empty(&list->order)) return NULL;
+	if (fr_pair_list_empty(list)) return NULL;
 
 	PAIR_LIST_VERIFY(list);
 
@@ -783,7 +941,7 @@ fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t const *list, fr_pair_t const
 	fr_dict_attr_t const	*da;
 
 	/* List head may be NULL if it contains no VPs */
-	if (fr_pair_order_list_empty(&list->order)) return NULL;
+	if (fr_pair_list_empty(list)) return NULL;
 
 	PAIR_LIST_VERIFY(list);
 
@@ -809,7 +967,7 @@ fr_pair_t *fr_pair_find_by_child_num_idx(fr_pair_list_t const *list,
 	fr_dict_attr_t const	*da;
 
 	/* List head may be NULL if it contains no VPs */
-	if (fr_pair_order_list_empty(&list->order)) return NULL;
+	if (fr_pair_list_empty(list)) return NULL;
 
 	PAIR_LIST_VERIFY(list);
 
@@ -1000,60 +1158,6 @@ fr_pair_t *_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
 	return _fr_dcursor_init(cursor, fr_pair_order_list_dlist_head(&list->order),
 				fr_pair_iter_next_by_ancestor, NULL, da,
 				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
-}
-
-/** Get the head of a valuepair list
- *
- * @param[in] list	to return the head of
- *
- * @return
- *	- NULL if the list is empty
- *	- pointer to the first item in the list.
- * @hidecallergraph
- */
-fr_pair_t *fr_pair_list_head(fr_pair_list_t const *list)
-{
-	return fr_pair_order_list_head(&list->order);
-}
-
-/** Get the next item in a valuepair list after a specific entry
- *
- * @param[in] list	to walk
- * @param[in] item	whose "next" item to return
- * @return
- *	- NULL if the end of the list has been reached
- *	- pointer to the next item
- * @hidecallergraph
- */
-fr_pair_t *fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item)
-{
-	return fr_pair_order_list_next(&list->order, item);
-}
-
-/** Get the previous item in a valuepair list before a specific entry
- *
- * @param[in] list	to walk
- * @param[in] item	whose "prev" item to return
- * @return
- *	- NULL if the head of the list has been reached
- *	- pointer to the previous item
- */
-fr_pair_t *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item)
-{
-	return fr_pair_order_list_prev(&list->order, item);
-}
-
-/** Get the tail of a valuepair list
- *
- * @param[in] list	to return the tail of
- *
- * @return
- *	- NULL if the list is empty
- *	- pointer to the last item in the list.
- */
-fr_pair_t *fr_pair_list_tail(fr_pair_list_t const *list)
-{
-	return fr_pair_order_list_tail(&list->order);
 }
 
 /** Add a VP to the start of the list.
@@ -1316,22 +1420,6 @@ int fr_pair_delete_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *pare
 	return fr_pair_delete_by_da(list, da);
 }
 
-/** Remove fr_pair_t from a list without freeing
- *
- * @param[in] list	of value pairs to remove VP from.
- * @param[in] vp	to remove
- * @return previous item in the list to the one being removed.
- */
-fr_pair_t *fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp)
-{
-	fr_pair_t *prev;
-
-	prev = fr_pair_order_list_prev(&list->order, vp);
-	fr_pair_order_list_remove(&list->order, vp);
-
-	return prev;
-}
-
 /** Remove fr_pair_t from a list and free
  *
  * @param[in] list	of value pairs to remove VP from.
@@ -1342,8 +1430,7 @@ fr_pair_t *fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp)
 {
 	fr_pair_t *prev;
 
-	prev = fr_pair_order_list_prev(&list->order, vp);
-	fr_pair_order_list_remove(&list->order, vp);
+	prev = fr_pair_remove(list, vp);
 	talloc_free(vp);
 
 	return prev;
@@ -1568,21 +1655,6 @@ int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
 	return 1;
 }
 
-/** Sort a doubly linked list of fr_pair_ts using merge sort
- *
- * @note We use a merge sort (which is a stable sort), making this
- *	suitable for use on lists with things like EAP-Message
- *	fragments where the order of EAP-Message attributes needs to
- *	be maintained.
- *
- * @param[in,out] list head of dlinked fr_pair_ts to sort.
- * @param[in] cmp to sort with
- */
-void fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp)
-{
-	fr_pair_order_list_sort(&list->order, cmp);
-}
-
 /** Write an error to the library errorbuff detailing the mismatch
  *
  * Retrieve output with fr_strerror();
@@ -1643,7 +1715,7 @@ bool fr_pair_validate(fr_pair_t const *failed[2], fr_pair_list_t *filter, fr_pai
 {
 	fr_pair_t *check, *match;
 
-	if (fr_pair_order_list_empty(&filter->order) && fr_pair_order_list_empty(&list->order)) return true;
+	if (fr_pair_list_empty(filter) && fr_pair_list_empty(list)) return true;
 
 	/*
 	 *	This allows us to verify the sets of validate and reply are equal
@@ -1716,7 +1788,7 @@ bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter
 {
 	fr_pair_t *check, *last_check = NULL, *match = NULL;
 
-	if (fr_pair_order_list_empty(&filter->order) && fr_pair_order_list_empty(&list->order)) return true;
+	if (fr_pair_list_empty(filter) && fr_pair_list_empty(list)) return true;
 
 	/*
 	 *	This allows us to verify the sets of validate and reply are equal
@@ -2022,7 +2094,7 @@ void fr_pair_value_clear(fr_pair_t *vp)
 		break;
 
 	case FR_TYPE_STRUCTURAL:
-		if (!fr_pair_order_list_empty(&vp->vp_group.order)) return;
+		if (!fr_pair_list_empty(&vp->vp_group)) return;
 
 		while ((child = fr_pair_order_list_pop_tail(&vp->vp_group.order))) {
 			fr_pair_value_clear(child);
@@ -2910,26 +2982,6 @@ void fr_pair_list_tainted(fr_pair_list_t *list)
 	}
 }
 
-/** Appends a list of fr_pair_t from a temporary list to a destination list
- *
- * @param dst list to move pairs into
- * @param src list from which to take pairs
- */
-void fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src)
-{
-	fr_pair_order_list_move(&dst->order, &src->order);
-}
-
-/** Move a list of fr_pair_t from a temporary list to the head of a destination list
- *
- * @param dst list to move pairs into
- * @param src from which to take pairs
- */
-void fr_pair_list_prepend(fr_pair_list_t *dst, fr_pair_list_t *src)
-{
-	fr_pair_order_list_move_head(&dst->order, &src->order);
-}
-
 /** Evaluation function for matching if vp matches a given da
  *
  * Can be used as a filter function for fr_dcursor_filter_next()
@@ -2944,28 +2996,6 @@ bool fr_pair_matches_da(void const *item, void const *uctx)
 	fr_pair_t const		*vp = item;
 	fr_dict_attr_t const	*da = uctx;
 	return da == vp->da;
-}
-
-/** Get the length of a list of fr_pair_t
- *
- * @param[in] list to return the length of
- *
- * @return number of entries in the list
- */
-size_t fr_pair_list_num_elements(fr_pair_list_t const *list)
-{
-	return fr_pair_order_list_num_elements(&list->order);
-}
-
-/** Get the dlist head from a pair list
- *
- * @param[in] list to get the head from
- *
- * @return number of entries in the list
- */
-fr_dlist_head_t *fr_pair_list_dlist_head(fr_pair_list_t const *list)
-{
-	return fr_pair_order_list_dlist_head(&list->order);
 }
 
 /** Parse a list of VPs from a value box.
