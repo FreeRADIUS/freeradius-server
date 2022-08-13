@@ -234,7 +234,6 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *s
 static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 			fr_radius_packet_t *packet, fr_pair_list_t *list, bool compat)
 {
-	fr_pair_t *vp;
 	char timestamp[256];
 	char *header;
 
@@ -317,20 +316,16 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 		detail_fr_pair_fprint(request, out, &dst_vp);
 	}
 
-	{
-		/* Write each attribute/value to the log file */
-		for (vp = fr_pair_list_head(list);
-		     vp;
-		     vp = fr_pair_list_next(list, vp)) {
-			if (inst->ht && fr_hash_table_find(inst->ht, vp->da)) continue;
+	/* Write each attribute/value to the log file */
+	fr_pair_list_foreach(list, vp) {
+		if (inst->ht && fr_hash_table_find(inst->ht, vp->da)) continue;
 
-			/*
-			 *	Don't print passwords in old format...
-			 */
-			if (compat && (vp->da == attr_user_password)) continue;
+		/*
+		 *	Don't print passwords in old format...
+		 */
+		if (compat && (vp->da == attr_user_password)) continue;
 
-			fr_pair_fprint(out, vp);
-		}
+		fr_pair_fprint(out, vp);
 	}
 
 	/*

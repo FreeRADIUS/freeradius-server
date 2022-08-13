@@ -947,7 +947,6 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 	static int	cnt;
 	CONF_SECTION	*cs;
 	char		src_buf[128], buffer[256];
-	fr_pair_t	*vp;
 	RADCLIENT	*c;
 
 	if (!request) return NULL;
@@ -961,9 +960,7 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 	RDEBUG2("Converting &request.control to client {...} section");
 	RINDENT();
 
-	for (vp = fr_pair_list_head(&request->control_pairs);
-	     vp != NULL;
-	     vp = fr_pair_list_next(&request->control_pairs, vp)) {
+	fr_pair_list_foreach(&request->control_pairs, vp) {
 		CONF_PAIR	*cp = NULL;
 		char const	*value;
 		char const	*attr;

@@ -1375,7 +1375,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map, UNUSED void *uctx)
 {
 	int		rcode = 0;
-	fr_pair_t	*vp, *n = NULL;
+	fr_pair_t	*n = NULL;
 	fr_pair_list_t	found;
 	request_t	*context = request;
 	ssize_t		slen;
@@ -1472,9 +1472,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		 */
 		if (fr_pair_list_empty(&found)) return 0;
 
-		for (vp = fr_pair_list_head(&found);
-		     vp;
-		     vp = fr_pair_list_next(&found, vp)) {
+		fr_pair_list_foreach(&found, vp) {
 			vp->op = T_OP_ADD_EQ;
 		}
 
@@ -1539,6 +1537,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 
 	case TMPL_TYPE_ATTR:
 	{
+		fr_pair_t *vp;
 		fr_dcursor_t from;
 
 		fr_assert((tmpl_is_attr(map->lhs) && tmpl_da(map->lhs)) ||
@@ -1670,7 +1669,7 @@ do {\
 int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t func, void *ctx)
 {
 	int			rcode = 0;
-	fr_pair_t		*vp, *dst;
+	fr_pair_t		*dst;
 	fr_pair_list_t		*list, src_list;
 	request_t		*context, *tmp_ctx = NULL;
 	TALLOC_CTX		*parent;
@@ -1810,9 +1809,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	if (RDEBUG_ENABLED)
 #endif
 	{
-		for (vp = fr_pair_list_head(&src_list);
-		     vp;
-		     vp = fr_pair_list_next(&src_list, vp)) {
+		fr_pair_list_foreach(&src_list, vp) {
 			PAIR_VERIFY(vp);
 
 			if (RDEBUG_ENABLED) map_debug_log(request, map, vp);
@@ -1924,9 +1921,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		 *	Instance specific[n] delete
 		 */
 		if (tmpl_num(map->lhs) != NUM_UNSPEC) {
-			for (vp = fr_pair_list_head(&src_list);
-			     vp;
-			     vp = fr_pair_list_next(&src_list, vp)) {
+			fr_pair_list_foreach(&src_list, vp) {
 				vp->op = T_OP_CMP_EQ;
 				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
@@ -1947,9 +1942,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		for (dst = fr_dcursor_current(&dst_list);
 		     dst;
 		     dst = fr_dcursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_da(map->lhs))) {
-			for (vp = fr_pair_list_head(&src_list);
-			     vp;
-			     vp = fr_pair_list_next(&src_list, vp)) {
+			fr_pair_list_foreach(&src_list, vp) {
 				vp->op = T_OP_CMP_EQ;
 				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
@@ -2138,16 +2131,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	case T_OP_LE:
 	case T_OP_LT:
 	{
-		fr_pair_t *a, *b;
+		fr_pair_t *a;
 
 		fr_pair_list_sort(&src_list, fr_pair_cmp_by_da);
 		fr_pair_list_sort(list, fr_pair_cmp_by_da);
 
 		fr_dcursor_head(&dst_list);
 
-		for (b = fr_pair_list_head(&src_list);
-		     b;
-		     b = fr_pair_list_next(&src_list, b)) {
+		fr_pair_list_foreach(&src_list, b) {
 			for (a = fr_dcursor_current(&dst_list);
 			     a;
 			     a = fr_dcursor_next(&dst_list)) {

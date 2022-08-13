@@ -1386,11 +1386,9 @@ int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
  */
 int fr_pair_delete_by_da(fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
-	fr_pair_t	*vp, *next;
 	int		cnt = 0;
 
-	for (vp = fr_pair_list_head(list); vp; vp = next) {
-		next = fr_pair_list_next(list, vp);
+	fr_pair_list_foreach(list, vp) {
 		if (da == vp->da) {
 			cnt++;
 			fr_pair_delete(list, vp);
@@ -1786,7 +1784,7 @@ mismatch:
  */
 bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter, fr_pair_list_t *list)
 {
-	fr_pair_t *check, *last_check = NULL, *match = NULL;
+	fr_pair_t *last_check = NULL, *match = NULL;
 
 	if (fr_pair_list_empty(filter) && fr_pair_list_empty(list)) return true;
 
@@ -1799,9 +1797,7 @@ bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter
 	fr_pair_list_sort(filter, fr_pair_cmp_by_da);
 	fr_pair_list_sort(list, fr_pair_cmp_by_da);
 
-	for (check = fr_pair_list_head(filter);
-	     check;
-	     check = fr_pair_list_next(filter, check)) {
+	fr_pair_list_foreach(filter, check) {
 		/*
 		 *	Were processing check attributes of a new type.
 		 */
@@ -1838,20 +1834,20 @@ bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter
 				/*
 				 *	This attribute passed the filter
 				 */
-				if (!fr_pair_cmp(check, match)) goto mismatch;
+				if (!fr_pair_cmp(check, match)) {
+				mismatch:
+					if (failed) {
+						failed[0] = check;
+						failed[1] = match;
+					}
+					return false;
+				}
 				break;
 			}
 		}
 	}
 
 	return true;
-
-mismatch:
-	if (failed) {
-		failed[0] = check;
-		failed[1] = match;
-	}
-	return false;
 }
 
 /** Steal a list of pairs to a new context
@@ -1859,11 +1855,7 @@ mismatch:
  */
 void fr_pair_list_steal(TALLOC_CTX *ctx, fr_pair_list_t *list)
 {
-	fr_pair_t	*vp;
-
-	for (vp = fr_pair_list_head(list);
-	     vp;
-	     vp = fr_pair_list_next(list, vp)) {
+	fr_pair_list_foreach(list, vp) {
 		(void) fr_pair_steal(ctx, vp);
 	}
 }
@@ -1882,12 +1874,11 @@ void fr_pair_list_steal(TALLOC_CTX *ctx, fr_pair_list_t *list)
  */
 int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const *from)
 {
-	fr_pair_t	*vp, *new_vp, *first_added = NULL;
+	fr_pair_t	*new_vp, *first_added = NULL;
 	int		cnt = 0;
 
-	for (vp = fr_pair_list_head(from);
-	     vp;
-	     vp = fr_pair_list_next(from, vp), cnt++) {
+	fr_pair_list_foreach(from, vp) {
+		cnt++;
 		PAIR_VERIFY_WITH_LIST(from, vp);
 
 		new_vp = fr_pair_copy(ctx, vp);
@@ -1920,13 +1911,11 @@ int fr_pair_list_copy_to_box(fr_value_box_t *dst, fr_pair_list_t *from)
 {
 	int cnt = 0;
 	fr_value_box_t *value, *first_added = NULL;
-	fr_pair_t *vp;
 
 	fr_assert(dst->type == FR_TYPE_GROUP);
 
-	for (vp = fr_pair_list_head(from);
-	     vp;
-	     vp = fr_pair_list_next(from, vp), cnt++) {
+	fr_pair_list_foreach(from, vp) {
+		cnt++;
 		PAIR_VERIFY_WITH_LIST(from, vp);
 
 		if (fr_type_is_structural(vp->da->type)) {
@@ -2838,11 +2827,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 
        case FR_TYPE_STRUCTURAL:
        {
-		fr_pair_t	*child;
-
-		for (child = fr_pair_list_head(&vp->vp_group);
-		     child;
-		     child = fr_pair_list_next(&vp->vp_group, child)) {
+	       fr_pair_list_foreach(&vp->vp_group, child) {
 			TALLOC_CTX *parent = talloc_parent(child);
 
 			fr_fatal_assert_msg(parent == vp,
@@ -2960,13 +2945,9 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
  */
 void fr_pair_list_tainted(fr_pair_list_t *list)
 {
-	fr_pair_t	*vp;
-
 	if (fr_pair_list_empty(list)) return;
 
-	for (vp = fr_pair_list_head(list);
-	     vp;
-	     vp = fr_pair_list_next(list, vp)) {
+	fr_pair_list_foreach(list, vp) {
 		PAIR_VERIFY_WITH_LIST(list, vp);
 
 		switch (vp->da->type) {
@@ -3082,11 +3063,7 @@ static const char spaces[] = "                                                  
 
 static void fprintf_pair_list(FILE *fp, fr_pair_list_t const *list, int depth)
 {
-	fr_pair_t *vp;
-
-	for (vp = fr_pair_list_head(list);
-	     vp != NULL;
-	     vp = fr_pair_list_next(list, vp)) {
+	fr_pair_list_foreach(list, vp) {
 		fprintf(fp, "%.*s", depth, spaces);
 
 		if (fr_type_is_leaf(vp->da->type)) {

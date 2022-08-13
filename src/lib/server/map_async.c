@@ -1023,7 +1023,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		{
 			bool		exists = false;
 			fr_pair_list_t	vp_from, vp_to_insert;
-			fr_pair_t	*vp, *vp_to = NULL;
+			fr_pair_t	*vp;
 
 			fr_pair_list_init(&vp_from);
 			fr_pair_list_init(&vp_to_insert);
@@ -1031,9 +1031,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			if (fr_pair_list_empty(&vp_from)) goto finish;
 
 			while ((vp = fr_pair_remove(&vp_from, fr_pair_list_head(&vp_from)))) {
-				for (vp_to = fr_pair_list_head(vp_list);
-				     vp_to;
-				     vp_to = fr_pair_list_head(vp_list)) {
+				fr_pair_list_foreach(vp_list, vp_to) {
 					if (fr_pair_cmp_by_da(vp_to, vp) == 0) {
 						exists = true;
 						break;

@@ -525,8 +525,6 @@ int fr_edit_list_pair_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t
  */
 int fr_edit_list_pair_delete_by_da(fr_edit_list_t *el, fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
-	fr_pair_t *vp, *next;
-
 	if (!el) {
 		fr_pair_delete_by_da(list, da);
 		return 0;
@@ -535,10 +533,7 @@ int fr_edit_list_pair_delete_by_da(fr_edit_list_t *el, fr_pair_list_t *list, fr_
 	/*
 	 *	Delete all VPs with a matching da.
 	 */
-	for (vp = fr_pair_list_head(list);
-	     vp != NULL;
-	     vp = next) {
-		next = fr_pair_list_next(list, vp);
+	fr_pair_list_foreach(list, vp) {
 		if (vp->da != da) continue;
 
 		(void) fr_pair_remove(list, vp);
@@ -800,11 +795,7 @@ int fr_edit_list_insert_list_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_
  */
 static int fr_edit_list_delete_list(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_list_t *to_remove)
 {
-	fr_pair_t *vp;
-
-	for (vp = fr_pair_list_head(to_remove);
-	     vp != NULL;
-	     vp = fr_pair_list_next(to_remove, vp)) {
+	fr_pair_list_foreach(to_remove, vp) {
 		fr_pair_t *found, *next;
 
 		/*

@@ -502,7 +502,6 @@ int paircmp(request_t *request,
 	    fr_pair_list_t *request_list,
 	    fr_pair_list_t *check_list)
 {
-	fr_pair_t		*check_item;
 	fr_pair_t		*auth_item;
 	fr_dict_attr_t const	*from;
 
@@ -510,9 +509,7 @@ int paircmp(request_t *request,
 	int			compare;
 	bool			first_only;
 
-	for (check_item = fr_pair_list_head(check_list);
-	     check_item;
-	     check_item = fr_pair_list_next(check_list, check_item)) {
+	fr_pair_list_foreach(check_list, check_item) {
 		/*
 		 *	If the user is setting a configuration value,
 		 *	then don't bother comparing it to any attributes

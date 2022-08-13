@@ -143,11 +143,10 @@ void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
 
 static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_list_t const *list, char const *file, int line, fr_sbuff_t *sbuff)
 {
-	fr_pair_t *vp;
 	fr_dict_attr_t const *parent_da = NULL;
 
-	for (vp = fr_pair_list_head(list); vp; vp = fr_pair_list_next(list, vp)) {
-		PAIR_VERIFY(vp);
+	fr_pair_list_foreach(list, vp) {
+		PAIR_VERIFY_WITH_LIST(list, vp);
 
 		fr_sbuff_set_to_start(sbuff);
 

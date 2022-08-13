@@ -471,12 +471,10 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 
 		if (fr_pair_list_empty(&current->rhs.pair_list)) return 0;
 
-		for (vp = fr_pair_list_head(&current->rhs.pair_list);
-		     vp != NULL;
-		     vp = fr_pair_list_next(&current->rhs.pair_list, vp)) {
-			(void) talloc_steal(current->lhs.vp_parent, vp);
+		fr_pair_list_foreach(&current->rhs.pair_list, child) {
+			(void) talloc_steal(current->lhs.vp_parent, child);
 
-			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], &vp->data);
+			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], &child->data);
 		}
 
 		if (fr_edit_list_insert_list_tail(current->el, &current->lhs.vp_parent->vp_group,
