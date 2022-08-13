@@ -462,9 +462,13 @@ fr_pair_t	*fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 /* functions for FR_TYPE_STRUCTURAL */
 fr_pair_list_t	*fr_pair_children(fr_pair_t *head) CC_HINT(nonnull);
 
-fr_pair_list_t *fr_pair_parent_list(fr_pair_t const *vp);
+fr_pair_list_t	*fr_pair_parent_list(fr_pair_t const *vp);
 
-fr_pair_t *fr_pair_parent(fr_pair_t const *vp);
+fr_pair_t	*fr_pair_parent(fr_pair_t const *vp);
+
+void		fr_pair_flatten(fr_pair_t *vp)  CC_HINT(nonnull);
+
+int		fr_pair_unflatten(fr_pair_t *vp)  CC_HINT(nonnull);
 
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
  *

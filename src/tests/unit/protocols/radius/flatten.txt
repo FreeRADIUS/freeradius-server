@@ -1,0 +1,74 @@
+#  -*- text -*-
+#  Copyright (C) 2022 Network RADIUS SARL (legal@networkradius.com)
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+#  Flatten attributes which were created as nested ones.
+#
+#  This test isn't strictly RADIUS, but RADIUS is useful for everything other than structs.
+#
+proto radius
+proto-dictionary radius
+
+flatten Vendor-Specific = { Cisco = { AVPair = "foo" } }
+match Vendor-Specific.Cisco.AVPair = "foo"
+
+#
+#  Some basic unflatten tests.  Things already at the root aren't touched, and groups aren't touched.
+#
+unflatten User-Name = "foo"
+match User-Name = "foo"
+
+unflatten User-Name = "foo", User-Password = "bar"
+match User-Name = "foo", User-Password = "bar"
+
+unflatten Tag-1 = { Tunnel-Type = PPTP }
+match Tag-1 = { Tunnel-Type = PPTP }
+
+
+flatten Vendor-Specific = { Cisco = { AVPair = "foo", AVPair = "bar" } }
+match Vendor-Specific.Cisco.AVPair = "foo", Vendor-Specific.Cisco.AVPair = "bar"
+
+flatten Vendor-Specific = { Cisco = { AVPair = "foo" }, HP = { Privilege-Level = 1 } }
+match Vendor-Specific.Cisco.AVPair = "foo", Vendor-Specific.HP.Privilege-Level = 1
+
+flatten Vendor-Specific = { Cisco = { AVPair = "foo", AVPair = "bar"  }, HP = { Privilege-Level = 1, Command-String = "baz" } }
+match Vendor-Specific.Cisco.AVPair = "foo", Vendor-Specific.Cisco.AVPair = "bar", Vendor-Specific.HP.Privilege-Level = 1, Vendor-Specific.HP.Command-String = "baz"
+
+#
+#  The HP children are inverted on parsing, but are ordered by number when flattened.
+#
+flatten Vendor-Specific = { Cisco = { AVPair = "foo", AVPair = "bar"  }, HP = { Command-String = "baz", Privilege-Level = 1 } }
+match Vendor-Specific.Cisco.AVPair = "foo", Vendor-Specific.Cisco.AVPair = "bar", Vendor-Specific.HP.Privilege-Level = 1, Vendor-Specific.HP.Command-String = "baz"
+
+#
+#  Groups aren't flattened.
+#
+flatten Tag-1 = { Tunnel-Type = PPTP }
+match Tag-1 = { Tunnel-Type = PPTP }
+
+#
+#  TLVs
+#
+flatten Vendor-Specific = { WiMAX = { Capability = { Release = "1.0", Accounting-Capabilities = IP-Session-Based } } }
+match Vendor-Specific.WiMAX.Capability = { Release = "1.0", Accounting-Capabilities = IP-Session-Based }
+
+unflatten -
+match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0", Accounting-Capabilities = IP-Session-Based } } }
+
+flatten Vendor-Specific = { WiMAX = { Capability = { Release = "1.0", Accounting-Capabilities = IP-Session-Based }, AAA-Session-Id = 0x00, Packet-Flow-Descriptor = { Packet-Data-Flow-Id = 1, Service-Data-Flow-Id = 2, Service-Profile-Id = 3 } } }
+match Vendor-Specific.WiMAX.Capability = { Release = "1.0", Accounting-Capabilities = IP-Session-Based }, Vendor-Specific.WiMAX.AAA-Session-Id = 0x00, Vendor-Specific.WiMAX.Packet-Flow-Descriptor = { Packet-Data-Flow-Id = 1, Service-Data-Flow-Id = 2, Service-Profile-Id = 3 }
+
+encode-pair -
+match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 03 01 1a 0a 00 00 60 b5 04 04 00 00 1a 17 00 00 60 b5 1c 11 00 01 04 00 01 02 04 00 02 03 06 00 00 00 03
+
+#
+#  The opposite of the "flatten" above
+#
+unflatten Vendor-Specific.WiMAX.Capability = { Release = "1.0", Accounting-Capabilities = IP-Session-Based }, Vendor-Specific.WiMAX.AAA-Session-Id = 0x00, Vendor-Specific.WiMAX.Packet-Flow-Descriptor = { Packet-Data-Flow-Id = 1, Service-Data-Flow-Id = 2, Service-Profile-Id = 3 }
+match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0", Accounting-Capabilities = IP-Session-Based }, AAA-Session-Id = 0x00, Packet-Flow-Descriptor = { Packet-Data-Flow-Id = 1, Service-Data-Flow-Id = 2, Service-Profile-Id = 3 } } }
+
+
+count
+match 30

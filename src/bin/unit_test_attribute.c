@@ -2012,6 +2012,101 @@ static size_t command_returned(command_result_t *result, command_file_ctx_t *cc,
 	RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "%zd", cc->last_ret));
 }
 
+/** Common code.
+ *
+ */
+static size_t flatten_common(command_result_t *result, char *data, UNUSED size_t data_used, fr_pair_t *head)
+{
+	ssize_t		slen;
+	char		*p, *end;
+	fr_pair_t	*vp;
+
+	/*
+	 *	Set p to be the output buffer
+	 */
+	p = data;
+	end = p + COMMAND_OUTPUT_MAX;
+
+	/*
+	 *	Output may be an error, and we ignore
+	 *	it if so.
+	 */
+
+	if (!fr_pair_list_empty(&head->vp_group)) {
+		for (vp = fr_pair_list_head(&head->vp_group);
+		     vp;
+		     vp = fr_pair_list_next(&head->vp_group, vp)) {
+			if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) < 0) {
+			oob:
+				fr_strerror_const("Out of output buffer space for printed pairs");
+				RETURN_COMMAND_ERROR();
+			}
+			p += slen;
+
+			if (fr_pair_list_next(&head->vp_group, vp)) {
+				slen = strlcpy(p, ", ", end - p);
+				if (is_truncated((size_t)slen, end - p)) goto oob;
+				p += slen;
+			}
+		}
+	} else {
+		*p = '\0';
+	}
+
+	talloc_free(head);
+
+	RETURN_OK(p - data);
+}
+
+
+/** Flatten a list of value-pairs
+ *
+ */
+static size_t command_flatten(command_result_t *result, command_file_ctx_t *cc,
+			      char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	fr_dict_attr_t	const *da;
+	fr_pair_t	*head;
+	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
+
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), "request");
+	fr_assert(da != NULL);
+	head = fr_pair_afrom_da(cc->tmp_ctx, da);
+
+	if (fr_pair_list_afrom_str(head, fr_dict_root(dict), in, inlen, &head->vp_group) != T_EOL) {
+		RETURN_OK_WITH_ERROR();
+	}
+
+	fr_pair_flatten(head);
+
+	return flatten_common(result, data, data_used, head);
+}
+
+
+/** Un-flatten a list of value-pairs
+ *
+ */
+static size_t command_unflatten(command_result_t *result, command_file_ctx_t *cc,
+			      char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	fr_dict_attr_t	const *da;
+	fr_pair_t	*head;
+	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
+
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), "request");
+	fr_assert(da != NULL);
+	head = fr_pair_afrom_da(cc->tmp_ctx, da);
+
+	if (fr_pair_list_afrom_str(head, fr_dict_root(dict), in, inlen, &head->vp_group) != T_EOL) {
+		RETURN_OK_WITH_ERROR();
+	}
+
+	fr_pair_unflatten(head);
+
+	return flatten_common(result, data, data_used, head);
+}
+
+
 static size_t command_encode_proto(command_result_t *result, command_file_ctx_t *cc,
 				  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
@@ -2941,6 +3036,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "exit[ <num>]",
 					.description = "Exit with the specified error number.  If no <num> is provided, process will exit with 0"
 				}},
+	{ L("flatten"),		&(command_entry_t){
+					.func = command_flatten,
+					.usage = "flatten (-|<attribute> = <value>[,<attribute = <value>])",
+					.description = "Parse the input pairs into a temporary group, and then flatten the resulting pairs.  The input MUST NOT be already flattened, or bad things will happen.",
+				}},
 	{ L("fuzzer-out"),	&(command_entry_t){
 					.func = command_fuzzer_out,
 					.usage = "fuzzer-out <dir>",
@@ -3011,6 +3111,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_touch,
 					.usage = "touch <file>",
 					.description = "Touch a file, updating its created timestamp.  Useful for marking the completion of a series of tests"
+				}},
+	{ L("unflatten"),		&(command_entry_t){
+					.func = command_unflatten,
+					.usage = "unflatten (-|<attribute> = <value>[,<attribute = <value>])",
+					.description = "The opposite of 'flatten'"
 				}},
 	{ L("value "),		&(command_entry_t){
 					.func = command_value_box_normalise,

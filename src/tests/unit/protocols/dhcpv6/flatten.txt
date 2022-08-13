@@ -1,0 +1,42 @@
+#  -*- text -*-
+#  Copyright (C) 2022 Network RADIUS SARL (legal@networkradius.com)
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+#
+#  Flatten attributes which were created as nested ones.
+#
+#  This test isn't strictly DHCPv6, but DHCPv6 is useful for testing structs
+#
+
+proto dhcpv6
+proto-dictionary dhcpv6
+
+#
+#  The parser needs partial names for keyed structs.
+#
+flatten Client-ID = { DUID = UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f } }
+match Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
+
+flatten Client-ID = { DUID = UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f } }, Client-ID = { DUID = UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f } }
+match Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
+
+#
+#  If we try to put two sets of struct children into one parent struct, that won't work.  The result is screwed up.
+#
+flatten Client-ID = { DUID = UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f }, DUID = UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f } }
+match Client-ID.DUID = UUID, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
+
+#
+#  Each struct has to be in its own container.
+#
+flatten Client-ID = { DUID = UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f } }, Client-ID = { DUID = UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f } }
+match Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
+
+#unflatten -
+#match Client-ID = { DUID = UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f } }, Client-ID = { DUID = UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f } }
+
+
+count
+match 10

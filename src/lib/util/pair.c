@@ -821,7 +821,7 @@ unsigned int fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t cons
 	return count;
 }
 
-/** Find a pair with a matching da at a given index
+/** Find the first pair with a matching da
  *
  * @param[in] list	to search in.
  * @param[in] prev	the previous attribute in the list.
@@ -2977,6 +2977,409 @@ bool fr_pair_matches_da(void const *item, void const *uctx)
 	fr_pair_t const		*vp = item;
 	fr_dict_attr_t const	*da = uctx;
 	return da == vp->da;
+}
+
+/** Flatten a source list into a destination list.
+ *
+ * @param[in] ctx	new talloc ctx for the VPs we move
+ * @param[in] to	list to which the VPs are moved
+ * @param[in] from	list from which the VPs are removed
+ */
+static void pair_list_flatten(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t *from)
+{
+	fr_pair_t *vp, *next;
+
+	/*
+	 *	Sort the source list before flattening it.  This is
+	 *	really necessary only for struct and tlv types.  But
+	 *	it doesn't hurt to do it for other types.
+	 *
+	 *	Since the VPs are already in a tree, we don't need to
+	 *	sort by parent da.  We just sort by number, and the
+	 *	encoders will ignore non-protocol attributes.
+	 *
+	 *	The input tree MUST be correct, and MUST NOT contain
+	 *	parts which are "tree" like, and parts which are
+	 *	"flattened", otherwise who knows what will happen.
+	 */
+	fr_pair_list_sort(from, pair_cmp_by_num);
+
+	/*
+	 *	Flatten the list.
+	 */
+	for (vp = fr_pair_list_head(from); vp; vp = next) {
+		next = fr_pair_list_next(from, vp);
+
+		/*
+		 *	The members of a group are left in the group,
+		 *	but each member flattened into the groups children.
+		 *
+		 *	Note that a group MAY change dictionaries, but
+		 *	we don't care.  We just flatten all of the
+		 *	children of the group into the group itself.
+		 *	And then move the group to the destination.
+		 */
+		if ((vp->da->type == FR_TYPE_GROUP) || (vp->da->type == FR_TYPE_TLV)) {
+			fr_pair_flatten(vp);
+			goto move;
+		}
+
+		/*
+		 *	Leaf attributes are hoisted up, way... up to
+		 *	the root list.
+		 */
+		if (fr_type_is_leaf(vp->da->type)) {
+		move:
+			fr_pair_remove(from, vp);
+			talloc_steal(ctx, vp);
+			fr_pair_append(to, vp);
+			continue;
+		}
+
+
+		/*
+		 *	Structural types have their children flattened
+		 *	to the output list.  Then the structural
+		 *	container is empty, so we delete it.
+		 */
+		fr_pair_remove(from, vp);
+		pair_list_flatten(ctx, to, &vp->vp_group);
+		talloc_free(vp);
+	}
+}
+
+/** Flatten VSA / vendor / etc. in a pair list
+ *
+ * @param[in] vp	where the children will be flattened into.
+ */
+void fr_pair_flatten(fr_pair_t *vp)
+{
+	fr_pair_list_t list;
+
+	fr_pair_list_init(&list);
+
+	fr_assert(fr_type_is_structural(vp->da->type));
+
+	/*
+	 *	Flatten to an intermediate list, so that we don't loop
+	 *	over things we already flattened.
+	 */
+	pair_list_flatten(vp, &list, &vp->vp_group);
+
+	/*
+	 *	The input group should really be empty by now.
+	 */
+	fr_pair_list_append(&vp->vp_group, &list);
+}
+
+/** Find or allocate a parent attribute.
+ *
+ *  The input da is somewhere down inside of the da hierarchy.  We
+ *  need to recursively find or create parent VPs which match the
+ *  given da.
+ *
+ *  We find (or add) the VP into the "in" list.  Any newly created VP
+ *  is inserted before "next".  Or if "next==NULL", at the tail of
+ *  "in".
+ *
+ * @param[in] in	the parent vp to look in
+ * @param[in] item	if we create a new vp, insert it before this item
+ * @param[in] da	look for vps in the parent which match this da
+ * @return
+ *	- NULL on OOM
+ *	- parent vp we've found or allocated.
+ */
+static fr_pair_t *pair_alloc_parent(fr_pair_t *in, fr_pair_t *item, fr_dict_attr_t const *da)
+{
+	fr_pair_t *parent, *vp;
+
+	/*
+	 *	We should never be called with a leaf da.
+	 */
+	fr_assert(fr_type_is_structural(da->type));
+
+	/*
+	 *	We're looking for a parent in the root of the
+	 *	dictionary.  Find the relevant VP in the current
+	 *	container.
+	 *
+	 *	If it's not found, allocate it, and insert it into the
+	 *	list.  Note that we insert it before the given "item"
+	 *	vp so that we don't loop over the newly created pair
+	 *	as we're processing the list.
+	 */
+	if (da->flags.is_root || (da->parent == in->da)) {
+		return in;
+	}
+
+	/*
+	 *	We're not at the root.  Go find (or create) the parent
+	 *	of this da.
+	 */
+	parent = pair_alloc_parent(in, item, da->parent);
+	if (!parent) return NULL;
+
+	/*
+	 *	We have the parent attribute, maybe it already
+	 *	contains the da we're looking for?
+	 */
+	vp = fr_pair_find_by_da(&parent->vp_group, NULL, da);
+	if (vp) return vp;
+
+	/*
+	 *	Now that the entire set of parents has been created,
+	 *	create the final VP.  Make sure it's in the parent,
+	 *	and return it.
+	 */
+	vp = fr_pair_afrom_da(parent, da);
+	if (!vp) return NULL;
+
+	fr_pair_append(&parent->vp_group, vp);
+	return vp;
+}
+
+static int pair_reparent_group(fr_pair_t *in);
+
+/** Reparent childrent of a struct / tlv as necessary.
+ *
+ *	The fr_pair_unflatten() routine created a tree which had all
+ *	pairs allocated with a 1-1 correlation between parent VPs and
+ *	parent DAs.  However, for structs and TLVs, the flat list has
+ *	an *implicit* new parent VP when the child attribute number
+ *	decreases.
+ *
+ *	i.e. we have
+ *
+ *		struct = { 1, 2, 3, 1, 2, 3 }
+ *
+ *	And we want to turn that into
+ *
+ *		struct = { 1, 2, 3 }, struct = { 1, 2, 3 }
+ *
+ *	We walk over the children, and find the point where a new
+ *	parent is needed.  Then, create the new parent.
+ *
+*	The subsquent children of the current structure are moved (in
+ *	order) into the new parent.
+ */
+static int pair_reparent_struct(fr_pair_t *parent, fr_pair_t *item, fr_pair_t *in)
+{
+	fr_pair_t *vp, *next;
+	unsigned int child_num = 0;
+	fr_pair_t *new_parent = in;
+
+	for (vp = fr_pair_list_head(&in->vp_group); vp; vp = next) {
+		next = fr_pair_list_next(&in->vp_group, vp);
+
+		fr_assert((vp->da->parent == parent->da) || (parent->da->type == FR_TYPE_GROUP) || (parent->da->type == FR_TYPE_VENDOR));
+
+		/*
+		 *	If we need a new parent, allocate it.
+		 *
+		 *	MEMBERs of a struct can never have value 0.
+		 */
+		if (child_num >= vp->da->attr) {
+			new_parent = fr_pair_afrom_da(parent, in->da);
+			if (!new_parent) return -1;
+
+			/*
+			 *	Ensure that the new parent is
+			 *	*appended* to the list, either before
+			 *	the next item, or if there's no next
+			 *	item, then at the end of the list.
+			 */
+			if (item) {
+				fr_pair_insert_before(&parent->vp_group, item, new_parent);
+			} else {
+				fr_pair_append(&parent->vp_group, new_parent);
+			}
+
+			child_num = 0;
+		} else {
+			/*
+			 *	Track the child number so we can
+			 *	notice when it decreases.
+			 */
+			child_num = vp->da->attr;
+
+			/*
+			 *	The child is already in the correct
+			 *	parent, so we don't need to move it.
+			 */
+			if (new_parent == in) continue;
+		}
+
+		/*
+		 *	Move the child to the new parent.
+		 */
+		fr_pair_remove(&in->vp_group, vp);
+		talloc_steal(new_parent, vp);
+		fr_pair_append(&new_parent->vp_group, vp);
+
+		if (fr_type_is_leaf(vp->da->type)) continue;
+
+		/*
+		 *	If the child is a group, we have to check its
+		 *	children for struct / tlv pairs.
+		 */
+		if (vp->da->type == FR_TYPE_GROUP) {
+			if (pair_reparent_group(vp) < 0) return -1;
+			continue;
+		}
+
+		/*
+		 *	Can't have vendor-specific or vendor in a struct.
+		 */
+		fr_assert((vp->da->type == FR_TYPE_STRUCT) || (vp->da->type == FR_TYPE_TLV));
+
+		/*
+		 *	The current VP is a struct / tlv, we need to
+		 *	recursively check its children for struct /
+		 *	tlv pairs.  If we're inserting the new
+		 *	children into "in", then do so before the
+		 *	"next" VP of this list.  Otherwise insert into
+		 *	the tail of the new parent.
+		 */
+		if (pair_reparent_struct(new_parent, (new_parent == in) ? next : NULL, vp) < 0) return -1;
+	}
+
+	return 0;
+}
+
+/** Reparent children of a group.
+ *
+ */
+static int pair_reparent_group(fr_pair_t *in)
+{
+	fr_pair_t *vp, *next;
+
+	for (vp = fr_pair_list_head(&in->vp_group); vp; vp = next) {
+		next = fr_pair_list_next(&in->vp_group, vp);
+
+		/*
+		 *	The leaf is already in the right place, we
+		 *	don't have to create any new pairs.
+		 */
+		if (fr_type_is_leaf(vp->da->type)) continue;
+
+		/*
+		 *	Check the children of this struct/tlv for sequencing.
+		 *
+		 *	This function will create new parents of type
+		 *	vp->da, if the children of vp contain multiple
+		 *	struct/tlvs.
+		 */
+		if ((vp->da->type == FR_TYPE_STRUCT) || (vp->da->type == FR_TYPE_TLV)) {
+			if (pair_reparent_struct(in, next, vp) < 0) return -1;
+			continue;
+		}
+
+		/*
+		 *	Restructure the children of this group, but
+		 *	don't add more group attributes.
+		 */
+		if (pair_reparent_group(vp) < 0) return -1;
+	}
+
+	return 0;
+}
+
+/** Move children of a VP from a flat list to as nested as possible.
+ *
+ *  We still have to pay attention to members of struct/tlv, where the
+ *  children are ordered, and we create a new parent as soon as we go
+ *  from child N to child 1.
+ *
+ *  In addition, this function MUST ONLY be called immediately after
+ *  the decoder, and before any "internal" attributes are added to the
+ *  list.  If there are internal attributes mixed in with the
+ *  protocol-specific ones, it may erroneously create new struct/tlv
+ *  parents when the children should have been placed into the
+ *  previous struct/tlv parent.
+ *
+ * @param[in] in	attribute to modify in-place.
+ * @return
+ *	- <0 on error, memory allocation failed
+ *	- 0 on success
+ */
+int fr_pair_unflatten(fr_pair_t *in)
+{
+	fr_pair_t *vp, *next;
+
+	for (vp = fr_pair_list_head(&in->vp_group); vp; vp = next) {
+		fr_pair_t *parent;
+
+		next = fr_pair_list_next(&in->vp_group, vp);
+		PAIR_VERIFY(vp);
+
+		/*
+		 *	The VP is already at the root (dictionary, or
+		 *	parent vp).
+		 *
+		 *	This VP is not necessarily the root of
+		 *	protocol dictionary, as we may have internal
+		 *	attributes, too.  But it's already at *a*
+		 *	root.
+		 */
+		if (vp->da->parent->flags.is_root || (vp->da->parent == in->da)) {
+			/*
+			 *	Leaf data types are left at the root.
+			 */
+			if (fr_type_is_leaf(vp->da->type)) continue;
+
+			/*
+			 *	Other structural attributes are left
+			 *	at the root, but their children are
+			 *	unflattened.
+			 *
+			 *	This step isn't strictly necessary, as
+			 *	flattened lists shouldn't have
+			 *	structural members.  But it's worth
+			 *	doing for consistency.
+			 */
+			if (fr_pair_unflatten(vp) < 0) return -1;
+			continue;
+		}
+
+		/*
+		 *	Allocate or find the parent attribute.
+		 *
+		 *	If the parent is created, it's inserted before
+		 *	the "next" pair, so that we don't walk over
+		 *	the newly created pair.
+		 */
+		parent = pair_alloc_parent(in, next, vp->da->parent);
+		if (!parent) return -1;
+
+		fr_pair_remove(&in->vp_group, vp);
+		talloc_steal(parent, vp);
+		fr_pair_append(&parent->vp_group, vp);
+
+		if (fr_type_is_leaf(vp->da->type)) continue;
+
+		/*
+		 *	If the VP is structural, unflatten its
+		 *	children, too.
+		 */
+		if (fr_pair_unflatten(vp) < 0) return -1;
+	}
+
+	/*
+	 *	The above code puts all of the child pairs into one
+	 *	parent pair.  This is OK for group, vendor-specific,
+	 *	and vendor.  But it's not OK for struct and tlv.  For
+	 *	those types, we have to walk over the children, and
+	 *	create a new parent when the child number decreases.
+	 *
+	 *	For now, it's easier to just walk over everything
+	 *	twice, rather than trying to keep track of child
+	 *	numbers across multiple layers of parents.
+	 */
+	if (pair_reparent_group(in) < 0) return -1;
+
+	PAIR_VERIFY(in);
+
+	return 0;
 }
 
 /** Parse a list of VPs from a value box.
