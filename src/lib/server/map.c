@@ -1375,7 +1375,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map, UNUSED void *uctx)
 {
 	int		rcode = 0;
-	fr_pair_t	*vp = NULL, *n;
+	fr_pair_t	*vp, *n = NULL;
 	fr_pair_list_t	found;
 	request_t	*context = request;
 	ssize_t		slen;
@@ -1516,9 +1516,9 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		rcode = fr_pair_value_from_str(n, str, strlen(str), NULL, false);
 		talloc_free(str);
 		if (rcode < 0) {
-			talloc_free(&n);
 			goto error;
 		}
+
 		n->op = map->op;
 		fr_pair_append(out, n);
 		break;
@@ -1531,7 +1531,6 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 
 		if (fr_pair_value_from_str(n, map->rhs->name, strlen(map->rhs->name), NULL, false) < 0) {
 			rcode = 0;
-			talloc_free(n);
 			goto error;
 		}
 		n->op = map->op;
@@ -1601,14 +1600,12 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		if (tmpl_da(map->lhs)->type == tmpl_value_type(map->rhs)) {
 			if (fr_value_box_copy(n, &n->data, tmpl_value(map->rhs)) < 0) {
 				rcode = -1;
-				talloc_free(n);
 				goto error;
 			}
 
 		} else if (fr_value_box_cast(n, &n->data, n->vp_type, n->da, tmpl_value(map->rhs)) < 0) {
 			RPEDEBUG("Implicit cast failed");
 			rcode = -1;
-			talloc_free(n);
 			goto error;
 		}
 		n->op = map->op;
@@ -1631,7 +1628,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		fr_assert(0);	/* Should have been caught at parse time */
 
 	error:
-		talloc_free(&vp);
+		talloc_free(n);
 		return rcode;
 	}
 
