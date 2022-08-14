@@ -586,9 +586,9 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out, re
 		value->datum.uint8 = ts.tm_hour;
 		break;
 
-	case 'l': /* Request timestamp as a 32-bit integer */
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
-		value->datum.uint32 = (uint32_t ) now;
+	case 'l': /* Request timestamp as seconds since the epoch */
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		value->datum.uint64 = (uint64_t ) now;
 		break;
 
 	case 'm': /* Request month */
