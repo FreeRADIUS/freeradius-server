@@ -591,6 +591,8 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 			fprintf(fr_log_fp, "server %s {\n", fake->server);
 		}
 
+		fake->reply->code = PW_CODE_ACCESS_ACCEPT;
+
 		/*
 		 *	Perform a post-auth stage, which will get the EAP
 		 *	handler, too...
