@@ -1,4 +1,13 @@
 unbound dns {
+	# Configuration for libunbound
 	# filename = "${raddbdir}/mods-config/unbound/default.conf"
+
+	# File to load resolver details from.
+	# Without this set unbound will query root servers
+	# resolvconf = "/etc/resolv.conf"
+
+	# Hosts entries to load
+	# hosts = "/etc/hosts"
+
 	# timeout = 3000
 }

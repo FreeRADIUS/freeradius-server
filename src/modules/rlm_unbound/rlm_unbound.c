@@ -49,6 +49,8 @@ typedef struct rlm_unbound_t {
 	uint32_t	timeout;
 
 	char const	*filename;
+	char const	*resolvconf;
+	char const	*hosts;
 
 	int		log_fd;
 	FILE		*log_stream;
@@ -63,6 +65,8 @@ typedef struct rlm_unbound_t {
  */
 static const CONF_PARSER module_config[] = {
 	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_unbound_t, filename), "${modconfdir}/unbound/default.conf"  },
+	{ "resolvconf", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_unbound_t, resolvconf), NULL },
+	{ "hosts", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_unbound_t, hosts), NULL },
 	{ "timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_unbound_t, timeout), "3000" },
 	CONF_PARSER_TERMINATOR
 };
@@ -663,6 +667,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	default:
 		break;
 	}
+
+	/*
+	 *	Load resolv.conf if specified
+	 */
+	if (inst->resolvconf) ub_ctx_resolvconf(inst->ub, inst->resolvconf);
+
+	/*
+	 *	Load hosts file if specified
+	 */
+	if (inst->hosts) ub_ctx_hosts(inst->ub, inst->hosts);
 
 	/*
 	 *  Now we need to finalize the context.
