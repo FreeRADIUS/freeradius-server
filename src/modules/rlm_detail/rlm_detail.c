@@ -216,7 +216,7 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *s
 	vp = talloc(ctx, fr_pair_t);
 	if (!vp) return;
 
-	memcpy(vp, stacked, sizeof(*vp));
+	memcpy((void *) vp, stacked, sizeof(*vp));
 	vp->op = T_OP_EQ;
 	fr_pair_fprint(out, vp);
 	talloc_free(vp);

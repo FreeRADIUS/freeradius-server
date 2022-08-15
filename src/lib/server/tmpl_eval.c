@@ -864,7 +864,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		default:
 			break;
 		}
-		memcpy(&from_cast, to_cast, sizeof(from_cast));
+		memcpy((void *) &from_cast, to_cast, sizeof(from_cast));
 	}
 
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
@@ -1467,7 +1467,7 @@ done:
 	};
 
 	fr_dlist_move(out, &list);
-	return 0;		
+	return 0;
 }
 
 

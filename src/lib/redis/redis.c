@@ -210,7 +210,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 	fr_value_box_t	*to_cast;
 
 	if (dst_type != FR_TYPE_VOID) {
-		memset(&in, 0, sizeof(in));
+		memset((void *) &in, 0, sizeof(in));
 		to_cast = &in;
 	} else {
 		to_cast = out;

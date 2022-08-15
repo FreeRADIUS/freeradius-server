@@ -442,7 +442,7 @@ void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const 
 	 *	Hopefully the compiler is smart enough to optimise
 	 *	this away.
 	 */
-	memcpy(vb, &(fr_value_box_t){
+	memcpy((void *) vb, &(fr_value_box_t){
 		.type = type,
 		.enumv = enumv,
 		.tainted = tainted

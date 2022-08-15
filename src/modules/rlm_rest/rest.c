@@ -870,7 +870,7 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 		return NULL;
 	}
 
-	memset(&src, 0, sizeof(src));
+	memset((void *) &src, 0, sizeof(src));
 
 	switch (json_object_get_type(leaf)) {
 	case json_type_int:

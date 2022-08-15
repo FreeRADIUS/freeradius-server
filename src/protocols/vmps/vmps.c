@@ -170,7 +170,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 	vp = fr_pair_afrom_da(ctx, attr_sequence_number);
 	if (!vp) goto oom;
 
-	memcpy(&vp->vp_uint32, data + 4, 4);
+	memcpy((void *) &vp->vp_uint32, data + 4, 4);
 	vp->vp_uint32 = ntohl(vp->vp_uint32);
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);

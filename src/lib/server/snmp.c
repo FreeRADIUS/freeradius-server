@@ -778,9 +778,7 @@ static ssize_t snmp_process_leaf(fr_dcursor_t *out, request_t *request,
 
 	case FR_FREERADIUS_SNMP_OPERATION_VALUE_GET:
 	{
-		fr_value_box_t data;
-
-		memset(&data, 0, sizeof(data));
+		fr_value_box_t data = {};
 
 		/*
 		 *	Verify map is a leaf

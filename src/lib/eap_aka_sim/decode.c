@@ -802,7 +802,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 		break;
 
 	case FR_TYPE_UINT16:
-		memcpy(&vp->vp_uint16, p, sizeof(vp->vp_uint16));
+		memcpy((void *) &vp->vp_uint16, p, sizeof(vp->vp_uint16));
 		vp->vp_uint16 = ntohs(vp->vp_uint32);
 		break;
 
