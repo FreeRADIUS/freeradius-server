@@ -977,10 +977,7 @@ redo:
 		 *	possible.
 		 */
 		if (!c->async_required) {
-			rcode = cond_eval(request, a->modreturn, a->c);
-			if (rcode < 0) return rcode;
-
-			a->result = (rcode == 1);
+			a->result = cond_eval(request, a->modreturn, a->c);
 			goto return_to_parent;
 		}
 
