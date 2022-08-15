@@ -62,6 +62,7 @@ void fr_rand_seed(void const *data, size_t size)
 			close(fd);
 		} else {
 			fr_rand_pool.randrsl[0] = fd;
+			/* coverity[store_truncates_time_t] */
 			fr_rand_pool.randrsl[1] = time(NULL);
 			fr_rand_pool.randrsl[2] = errno;
 		}
