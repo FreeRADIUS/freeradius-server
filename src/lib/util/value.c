@@ -4826,7 +4826,7 @@ parse:
 		 *	For barewords we also allow 0 for false and any other
 		 *      integer value for true.
 		 */
-		if ((slen < 0) && (!rules->escapes)) {
+		if (!rules->escapes) {
 			int64_t	stmp;
 			uint64_t utmp;
 
