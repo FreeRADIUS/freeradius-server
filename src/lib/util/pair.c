@@ -843,6 +843,18 @@ fr_pair_t *fr_pair_parent(fr_pair_t const *vp)
 	return (fr_pair_t *) (UNCONST(uint8_t *, list) - offsetof(fr_pair_t, vp_group));
 }
 
+/** Return a pointer to the parent pair which contains this list.
+ *
+ */
+fr_pair_t *fr_pair_list_parent(fr_pair_list_t const *list)
+{
+	if (!list) return NULL;
+
+	if (!list->is_child) return NULL;
+
+	return (fr_pair_t *) (UNCONST(uint8_t *, list) - offsetof(fr_pair_t, vp_group));
+}
+
 /** Keep attr tree and sublists synced on cursor insert
  *
  * @param[in] list	Underlying order list from the fr_pair_list_t.
