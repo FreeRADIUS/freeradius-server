@@ -316,9 +316,7 @@ cache {
 	#
 	#  ```
 	#  # Add a cache entry
-	#  update {
-	#    &control.Cache-TTL := 3600 # 1h
-	#  }
+	#  &control.Cache-TTL := 1h
 	#  cache.store
 	#  if (updated) {
 	#    ..keys stored
@@ -337,9 +335,7 @@ cache {
 	#  }
 	#
 	#  # Change the entries TTL
-	#  update {
-	#    &control.Cache-TTL := 1600 # 30m
-	#  }
+	#  &control.Cache-TTL := 30m
 	#  cache.ttl
 	#  if (updated) {
 	#    ..ttl changed

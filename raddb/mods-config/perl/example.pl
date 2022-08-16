@@ -49,9 +49,9 @@ our (%RAD_REQUEST, %RAD_REPLY, %RAD_CONFIG, %RAD_STATE);
 
 # Multi-value attributes are mapped to perl arrayrefs.
 #
-#  update request {
-#    Filter-Id := 'foo'
-#    Filter-Id += 'bar'
+#  &request.Filter-Id := 'foo'
+#  &request += {
+#    &Filter-Id += 'bar'
 #  }
 #
 # This results to the following entry in %RAD_REQUEST:

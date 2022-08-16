@@ -33,9 +33,7 @@
 #  it will be `redundant_sql`.  You can then use this expansion
 #  just like any other:
 #
-#  	update reply {
-#  		Filter-Id := "%{redundant_sql: ... }"
-#  	}
+#  	&reply.Filter-Id := "%{redundant_sql: ... }"
 #
 #  In this example, the expansion is done via module `sql1`, and if
 #  that expansion fails, using module `sql2`.
