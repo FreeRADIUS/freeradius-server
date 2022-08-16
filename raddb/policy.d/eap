@@ -8,14 +8,11 @@ Xeap.authorize {
 		#	Expire previous cache entry
 		#
 		if (&control.State) {
-			update control {
-				&Cache-TTL := 0
-			}
+			&control.Cache-TTL := 0
+
 			cache_eap
 
-			update control {
-				&State !* ANY
-			}
+			&control -= &State[*]
 		}
 
 		handled
@@ -91,10 +88,8 @@ remove_reply_message_if_eap {
 #	to copy now have to be explicitly listed.
 #
 copy_request_to_tunnel {
-	update request {
-		Calling-Station-Id = &outer.request.Calling-Station-Id
-		Called-Station-Id = &outer.request.Called-Station-Id
-	}
+	&request.Calling-Station-Id = &outer.request.Calling-Station-Id
+	&request.Called-Station-Id = &outer.request.Called-Station-Id
 }
 
 #
@@ -109,16 +104,7 @@ use_tunneled_reply {
 	#  These attributes are for the inner-tunnel only,
 	#  and MUST NOT be copied to the outer reply.
 	#
-	update reply {
-		User-Name !* ANY
-		Message-Authenticator !* ANY
-		EAP-Message !* ANY
-		Proxy-State !* ANY
-		MS-CHAP-NT-Enc-PW !* ANY
-		MS-MPPE-Encryption-Types !* ANY
-		MS-MPPE-Send-Key !* ANY
-		MS-MPPE-Recv-Key !* ANY
-	}
+	&reply -= &User-Name[*]
 
 	#
 	#  Copy the remaining inner reply attributes to the outer
@@ -129,8 +115,6 @@ use_tunneled_reply {
 	#  'send Access-Accept' policy in sites-available/default will
 	#  copy the outer session-state list to the final reply.
 	#
-	update {
-		&outer.session-state. += &reply
-	}
+	&outer.session-state += &reply
 }
 

@@ -3,13 +3,11 @@ dhcp_common {
 	#  The contents here are invented.  Change them!
 	#  Lease time is referencing the lease time set in the
 	#  named module instance configuration
-	update reply {
-		&Domain-Name-Server = 127.0.0.1
-		&Domain-Name-Server = 127.0.0.2
-		&Subnet-Mask = 255.255.255.0
-		&Router-Address = 192.0.2.1
-		&IP-Address-Lease-Time = 7200
-#		&IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
-		&Server-Identifier = &control.Server-Identifier
-	}
+	&reply.Domain-Name-Server = 127.0.0.1
+	&reply.Domain-Name-Server = 127.0.0.2
+	&reply.Subnet-Mask = 255.255.255.0
+	&reply.Router-Address = 192.0.2.1
+	&reply.IP-Address-Lease-Time = 7200
+#	&reply.IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
+	&reply.Server-Identifier = &control.Server-Identifier
 }
