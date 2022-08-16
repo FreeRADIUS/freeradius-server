@@ -61,9 +61,18 @@ void fr_rand_seed(void const *data, size_t size)
 			}
 			close(fd);
 		} else {
-			fr_rand_pool.randrsl[0] = fd;
-			fr_rand_pool.randrsl[1] = time(NULL);
-			fr_rand_pool.randrsl[2] = errno;
+			/*
+			 *	We use unix_time, because fr_time() is
+			 *	nanoseconds since the server started.
+			 *	Which is likely a very small number.
+			 *	Whereas unix time is somewhat more
+			 *	unknown.  If we're not seeding off of
+			 *	/dev/urandom, then any randomness we
+			 *	get here is terrible.
+			 */
+			int64_t when = fr_unix_time_unwrap(fr_time_to_unix_time(fr_time()));
+
+			memcpy((void *) &fr_rand_pool.randrsl[0], &when, sizeof(when));
 		}
 
 		fr_rand_init(&fr_rand_pool, 1);
