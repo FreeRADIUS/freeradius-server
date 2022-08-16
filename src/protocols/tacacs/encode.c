@@ -70,10 +70,10 @@ static uint8_t tacacs_encode_body_arg_cnt(fr_pair_list_t *vps, fr_dict_attr_t co
 	return arg_cnt;
 }
 
-static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t *arg_cnt_p, fr_pair_list_t *vps, fr_dict_attr_t const *da)
+static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint8_t *arg_len, fr_pair_list_t *vps, fr_dict_attr_t const *da)
 {
 	fr_pair_t   *vp;
-	uint8_t     arg_cnt = 0;
+	uint8_t     i = 0;
 	fr_dbuff_t  work_dbuff = FR_DBUFF(dbuff);
 
 	for (vp = fr_pair_list_head(vps);
@@ -81,8 +81,8 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t *arg_cnt_p, f
 	     vp = fr_pair_list_next(vps,vp)) {
 		int len;
 
-		if (arg_cnt == 255) break;
-		if (arg_cnt > *arg_cnt_p) break;
+		if (i == 255) break;
+		if (i > arg_cnt) break;
 
 		if (vp->da->flags.internal) continue;
 
@@ -95,7 +95,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t *arg_cnt_p, f
 			/* Append the <arg_N> field */
 			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_strvalue, vp->vp_length);
 
-			FR_PROTO_TRACE("arg[%d] --> %s", arg_cnt, vp->vp_strvalue);
+			FR_PROTO_TRACE("arg[%d] --> %s", i, vp->vp_strvalue);
 			len = vp->vp_length;
 
 		} else if (fr_dict_by_da(vp->da) != dict_tacacs) {
@@ -124,14 +124,13 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t *arg_cnt_p, f
 
 			len = fr_dbuff_used(&arg_dbuff);
 
-			FR_PROTO_TRACE("arg[%d] --> %.*s", arg_cnt, len, fr_dbuff_start(&arg_dbuff));
+			FR_PROTO_TRACE("arg[%d] --> %.*s", i, len, fr_dbuff_start(&arg_dbuff));
 
 			fr_dbuff_set(&work_dbuff, &arg_dbuff);
 		}
 
-		FR_PROTO_TRACE("len(arg[%d]) = %d", arg_cnt, len);
-		arg_cnt_p[1 + arg_cnt] = len;
-		arg_cnt++;
+		FR_PROTO_TRACE("len(arg[%d]) = %d", i, len);
+		arg_len[i++] = len;
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -471,7 +470,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->author.req.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, &packet->author.req.arg_cnt, vps, attr_tacacs_argument_list) < 0) goto error;
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author.req.arg_cnt, &packet->author.req.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
 			}
 
 			goto check_request;
@@ -542,7 +541,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->author.res.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, &packet->author.res.arg_cnt, vps, attr_tacacs_argument_list) < 0) goto error;
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author.res.arg_cnt, &packet->author.res.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
 			}
 
 			goto check_reply;
@@ -612,7 +611,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->acct.req.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, &packet->acct.req.arg_cnt, vps, attr_tacacs_argument_list) < 0) goto error;
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->acct.req.arg_cnt, &packet->acct.req.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
 			}
 
 		check_request:

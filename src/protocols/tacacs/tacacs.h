@@ -195,6 +195,7 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t				port_len;
 	uint8_t				rem_addr_len;
 	uint8_t				arg_cnt;
+	uint8_t				arg_len[];
 } fr_tacacs_packet_author_req_hdr_t;
 
 typedef enum {
@@ -210,6 +211,7 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t				arg_cnt;
 	uint16_t			server_msg_len;
 	uint16_t			data_len;
+	uint8_t				arg_len[];
 } fr_tacacs_packet_author_res_hdr_t;
 
 typedef enum {
@@ -228,6 +230,7 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t				port_len;
 	uint8_t				rem_addr_len;
 	uint8_t				arg_cnt;
+	uint8_t				arg_len[];
 } fr_tacacs_packet_acct_req_hdr_t;
 
 typedef enum {
