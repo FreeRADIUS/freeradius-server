@@ -24,6 +24,7 @@
 RCSID("$Id$")
 
 #define _PAIR_PRIVATE 1
+#define _PAIR_INLINE 1
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
@@ -33,6 +34,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/regex.h>
 
 FR_TLIST_FUNCS(fr_pair_order_list, fr_pair_t, order_entry)
+
+#include <freeradius-devel/util/pair_inline.c>
 
 /** Initialise a pair list header
  *
@@ -573,187 +576,6 @@ int fr_pair_to_unknown(fr_pair_t *vp)
 
 	return 0;
 }
-
-/*
- *	Start of magic macros / functions.
- *
- *	We want to hide the implementation details of the pairs and
- *	pair lists from the caller.  So we need to have public
- *	wrappers around the internal functions which do the actual
- *	work.
- *
- *	However... in many cases those wrappers are only one line.
- *	When that happens, we define a public function, and then use a
- *	macro to re-define the public function to use the internal API.
- *
- *	This lets us use the "public" functions in this file, while
- *	avoiding a function call bounce through the public functions.
- *
- *	It also lets us avoid what would otherwise be random uses of
- *	public versus internal functions in this file, based on who
- *	edited what when, and what they remembered to do.  In most
- *	cases, the public functions can be used, and there will be no
- *	extra cost to using them.
- */
-
-/** Get the head of a valuepair list
- *
- * @param[in] list	to return the head of
- *
- * @return
- *	- NULL if the list is empty
- *	- pointer to the first item in the list.
- * @hidecallergraph
- */
-fr_pair_t *fr_pair_list_head(fr_pair_list_t const *list)
-{
-	return fr_pair_order_list_head(&list->order);
-}
-#define fr_pair_list_head(_x) fr_pair_order_list_head(&(_x)->order)
-
-/** Get the tail of a valuepair list
- *
- * @param[in] list	to return the tail of
- *
- * @return
- *	- NULL if the list is empty
- *	- pointer to the last item in the list.
- */
-fr_pair_t *fr_pair_list_tail(fr_pair_list_t const *list)
-{
-	return fr_pair_order_list_tail(&list->order);
-}
-//#define fr_pair_list_tail(_x) fr_pair_order_list_tail(&(_x)->order)
-
-/** Get the next item in a valuepair list after a specific entry
- *
- * @param[in] list	to walk
- * @param[in] item	whose "next" item to return
- * @return
- *	- NULL if the end of the list has been reached
- *	- pointer to the next item
- * @hidecallergraph
- */
-fr_pair_t *fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item)
-{
-	return fr_pair_order_list_next(&list->order, item);
-}
-#define fr_pair_list_next(_x, _item) fr_pair_order_list_next(&(_x)->order, _item)
-
-/** Get the previous item in a valuepair list before a specific entry
- *
- * @param[in] list	to walk
- * @param[in] item	whose "prev" item to return
- * @return
- *	- NULL if the head of the list has been reached
- *	- pointer to the previous item
- */
-fr_pair_t *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item)
-{
-	return fr_pair_order_list_prev(&list->order, item);
-}
-//#define fr_pair_list_prev(_x, _item) fr_pair_order_list_prev(&(_x)->order, )item)
-
-/** Remove fr_pair_t from a list without freeing
- *
- * @param[in] list	of value pairs to remove VP from.
- * @param[in] vp	to remove
- * @return previous item in the list to the one being removed.
- */
-fr_pair_t *fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp)
-{
-	return fr_pair_order_list_remove(&list->order, vp);
-}
-#define fr_pair_remove(_x, _item) fr_pair_order_list_remove(&(_x)->order, _item)
-
-/** Free memory used by a valuepair list.
- *
- * @hidecallergraph
- */
-void fr_pair_list_free(fr_pair_list_t *list)
-{
-	fr_pair_order_list_talloc_free(&list->order);
-}
-//#define fr_pair_list_free(_x) fr_pair_order_list_talloc_free(&(_x)->order)
-
-/** Is a valuepair list empty
- *
- * @param[in] list to check
- * @return true if empty
- *
- * @hidecallergraph
- */
-bool fr_pair_list_empty(fr_pair_list_t const *list)
-{
-	return fr_pair_order_list_empty(&list->order);
-}
-#define fr_pair_list_empty(_x) fr_pair_order_list_empty(&(_x)->order)
-
-/** Sort a doubly linked list of fr_pair_ts using merge sort
- *
- * @note We use a merge sort (which is a stable sort), making this
- *	suitable for use on lists with things like EAP-Message
- *	fragments where the order of EAP-Message attributes needs to
- *	be maintained.
- *
- * @param[in,out] list head of dlinked fr_pair_ts to sort.
- * @param[in] cmp to sort with
- */
-void fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp)
-{
-	fr_pair_order_list_sort(&list->order, cmp);
-}
-//#define fr_pair_list_sort(_x, _cmp) fr_pair_order_list_sort(&(_x)->order, _cmp)
-
-/** Get the length of a list of fr_pair_t
- *
- * @param[in] list to return the length of
- *
- * @return number of entries in the list
- */
-size_t fr_pair_list_num_elements(fr_pair_list_t const *list)
-{
-	return fr_pair_order_list_num_elements(&list->order);
-}
-//#define fr_pair_list_num_elements(_x) fr_pair_order_list_num_elements(&(_x)->order)
-
-/** Get the dlist head from a pair list
- *
- * @param[in] list to get the head from
- *
- * @return number of entries in the list
- */
-fr_dlist_head_t *fr_pair_list_dlist_head(fr_pair_list_t const *list)
-{
-	return fr_pair_order_list_dlist_head(&list->order);
-}
-//#define fr_pair_list_dlist_head(_x) fr_pair_order_list_dlist_head(&(_x)->order)
-
-/** Appends a list of fr_pair_t from a temporary list to a destination list
- *
- * @param dst list to move pairs into
- * @param src list from which to take pairs
- */
-void fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src)
-{
-	fr_pair_order_list_move(&dst->order, &src->order);
-}
-//#define fr_pair_list_append(_dst, _src) fr_pair_order_list_move(&(_dst)->order, &(_src)->order)
-
-/** Move a list of fr_pair_t from a temporary list to the head of a destination list
- *
- * @param dst list to move pairs into
- * @param src from which to take pairs
- */
-void fr_pair_list_prepend(fr_pair_list_t *dst, fr_pair_list_t *src)
-{
-	fr_pair_order_list_move_head(&dst->order, &src->order);
-}
-//#define fr_pair_list_prepend(_dst, _src) fr_pair_order_list_move_head(&(_dst)->order, &(_src)->order)
-
-/*
- *	End of magic macros.
- */
 
 /** Iterate over pairs with a specified da
  *

@@ -1204,7 +1204,6 @@ DIAG_OFF(unused-function) \
 		{		fr_dlist_sort(&list->head, cmp); } \
 DIAG_ON(unused-function)
 
-
 #ifdef __cplusplus
 }
 #endif

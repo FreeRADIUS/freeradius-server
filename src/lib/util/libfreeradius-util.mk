@@ -58,6 +58,7 @@ SOURCES		:= \
 		   net.c \
 		   packet.c \
 		   pair.c \
+		   pair_inline.c \
 		   pair_legacy.c \
 		   pair_print.c \
 		   pair_tokenize.c \

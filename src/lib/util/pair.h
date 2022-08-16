@@ -393,16 +393,6 @@ int		fr_pair_steal_append(TALLOC_CTX *nctx, fr_pair_list_t *list, fr_pair_t *vp)
 
 int		fr_pair_steal_prepend(TALLOC_CTX *nctx, fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
-/** @hidecallergraph */
-void		fr_pair_list_free(fr_pair_list_t *list) CC_HINT(nonnull);
-
-/** @hidecallergraph */
-bool		fr_pair_list_empty(fr_pair_list_t const *list) CC_HINT(nonnull);
-
-size_t		fr_pair_list_num_elements(fr_pair_list_t const *list) CC_HINT(nonnull);
-
-fr_dlist_head_t *fr_pair_list_dlist_head(fr_pair_list_t const *list) CC_HINT(nonnull);
-
 /* Searching and list modification */
 int		fr_pair_to_unknown(fr_pair_t *vp) CC_HINT(nonnull);
 
@@ -454,8 +444,6 @@ int		fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list
 				     fr_dict_attr_t const *da, unsigned int n) CC_HINT(nonnull(3,4));
 
 int		fr_pair_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da) CC_HINT(nonnull);
-
-fr_pair_t	*fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
 fr_pair_t	*fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
@@ -566,8 +554,6 @@ int		fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b);
 
 int		fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b) CC_HINT(nonnull);
 
-void		fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp) CC_HINT(nonnull);
-
 /* Filtering */
 void		fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2]) CC_HINT(nonnull(2));
 
@@ -595,6 +581,22 @@ int		fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to,
 				     fr_pair_list_t const *from,
 				     fr_pair_t const *start, unsigned int count) CC_HINT(nonnull(2,3));
 
+#ifndef _PAIR_INLINE
+/** @hidecallergraph */
+void		fr_pair_list_free(fr_pair_list_t *list) CC_HINT(nonnull);
+
+fr_pair_t	*fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
+
+
+/** @hidecallergraph */
+bool		fr_pair_list_empty(fr_pair_list_t const *list) CC_HINT(nonnull);
+
+size_t		fr_pair_list_num_elements(fr_pair_list_t const *list) CC_HINT(nonnull);
+
+fr_dlist_head_t *fr_pair_list_dlist_head(fr_pair_list_t const *list) CC_HINT(nonnull);
+
+void		fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp) CC_HINT(nonnull);
+
 void		fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src) CC_HINT(nonnull);
 
 void		fr_pair_list_prepend(fr_pair_list_t *dst, fr_pair_list_t *src) CC_HINT(nonnull);
@@ -608,6 +610,7 @@ fr_pair_t      	*fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *
 fr_pair_t      	*fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item) CC_HINT(nonnull(1));
 
 fr_pair_t      	*fr_pair_list_tail(fr_pair_list_t const *list) CC_HINT(nonnull);
+#endif
 
 /** @name Pair to pair copying
  *
