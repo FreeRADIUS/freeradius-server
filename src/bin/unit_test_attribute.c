@@ -2063,7 +2063,7 @@ static size_t flatten_common(command_result_t *result, char *data, UNUSED size_t
  *
  */
 static size_t command_flatten(command_result_t *result, command_file_ctx_t *cc,
-			      char *data, UNUSED size_t data_used, char *in, size_t inlen)
+			      char *data, size_t data_used, char *in, size_t inlen)
 {
 	fr_dict_attr_t	const *da;
 	fr_pair_t	*head;
@@ -2087,7 +2087,7 @@ static size_t command_flatten(command_result_t *result, command_file_ctx_t *cc,
  *
  */
 static size_t command_unflatten(command_result_t *result, command_file_ctx_t *cc,
-			      char *data, UNUSED size_t data_used, char *in, size_t inlen)
+			      char *data, size_t data_used, char *in, size_t inlen)
 {
 	fr_dict_attr_t	const *da;
 	fr_pair_t	*head;
