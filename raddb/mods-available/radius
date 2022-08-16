@@ -129,13 +129,11 @@ radius {
 		type = Status-Server
 
 		#
-		#  update request { ... }::
-		#
 		#  `Status-Server` packet contents are fixed and cannot
 		#  be edited.
 		#
-		#  For other packet types, you can create the contents
-		#  here.  The section MUST be "update request", and
+		#  For other packet types, you can set the contents
+		#  here.  The section MUST be set over "&request.<attribute> = value", and
 		#  anything else will cause a parse error.
 		#
 		#  We RECOMMEND that you use packet contents which
@@ -155,12 +153,10 @@ radius {
 		#  created when a connection is opened, and are not
 		#  changeable after that.
 		#
-#		update request {
-#			&User-Name := "test-user"
-#			&User-Password := "this-is-not-a-real-password"
-#			&NAS-Identifier := "Status check.  Are you alive?"
-#			&Event-Timestamp = 0
-#		}
+#		&request.User-Name := "test-user"
+#		&request.User-Password := "this-is-not-a-real-password"
+#		&request.NAS-Identifier := "Status check.  Are you alive?"
+#		&request.Event-Timestamp = 0
 
 	}
 
