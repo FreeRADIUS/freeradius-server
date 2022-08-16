@@ -11,6 +11,7 @@ In general, we have the following changes:
 
 * most module configuration is very close to v3.
 * most of the `unlang` processing is very close to v3.
+  * `update` is now replaced just by editing the attribute in place.
 * each `server` section need a `namespace` parameter.
 * Packet processing sections are now `recv Access-Request`, etc. Not
   `authorize`, etc.
@@ -30,6 +31,9 @@ the new configuration. Start the server after every change via
 Take your time. It is better to make small incremental progress, than
 to make massive changes, and then to spend weeks debugging it.  Use a
 revision control system such as `git` to save and track your changes.
+If the changes work as you expect, do `git commit`, and continue with
+the next change.  If the changes do not work, either keep at it, or
+move to a different portion of the configuration
 
 All of the attribute names used in v3 have been changed in v4.  Please
 see the xref:attribute_names.adoc[attribute names] document for more
@@ -42,6 +46,66 @@ protocols.
 If you are upgrading from v2 you should read the v3 version of this
 file.  It describes changed from v2 to v3. This file describes only
 the changes from v3 to v4.
+
+== Attribute Names
+
+Much of the information in this section is also in the
+`raddb/dictionary` file
+
+All of the attributes have been renamed from v3.  This change was
+necessary in order to support new funtionality in v4.  The
+unfortunate side effect of this change is that all of the names in
+SQL, LDAP, and the `files` module are incompatible with v4.
+
+We recognize that is is difficult to change every entry in a
+database, especially when there's no clear mapping between the
+"old" and "new" names.  This renaming is made more complex because
+the "new" names need to be grouped and arranged in ways that the
+old ones were not.
+
+The "old" names were all in flat lists, so that `User-Name` appeared
+next to `Cisco-AVPAir`.  This organization was simple enough to work
+for 20 years, but its time has come.  The new names are hierarchical,
+and are nested by definition.
+
+For v4, the `Cisco-AVPair` attribute is called `AVPair`, and it lives
+inside of the `Cisco` namespace, which in turn lives inside of the
+`Vendor-Specific` namespace.  So the new name for `Cisco-AVPair` is
+`Vendor-Specific.Cisco.AVPair`.
+
+This process continues for many thousands of vendor-specific
+attributes.
+
+Happily, it is possible to (mostly) use the old names with v4.
+There are limitations, but it will mostly work.  The main reason
+for enabling the old names is to try out v4 with a database that is
+also used by v3.  This lets you test that v4 works, without going
+through a complex "upgrade everything" process.
+
+The old v3 names are in "alias" dictionaries, in the
+`${dictdir}/alias/` directory.  To find out where this directory is on
+your local system, run "radiusd -h" or "radclient -h".  Then look for
+the "-D" command-line option, and it will tell you where the
+dictionary files are located.
+
+The v3 names are in a file named `${dictdir}/radius/alias/VENDOR.txt` where
+`VENDOR` is the name of the vendor, which is taken from the `VENDOR`
+definition in the v3 dictionaries.
+
+You will need to add a `$INCLUDE` line for each vendor-specific
+dictionary which is used by your local system.  The default v4
+dictionaries do not enable all of v3 compatibilty names.  The reason
+is simple: the alias names _mostly_ work, in most situations.  But
+there are situations where the aliases do not behave correctly.
+
+We recognize that this process is a bit of work.  However, we wish to
+encourage everyone using v4 to upgrade to using the new v4 features.
+Our experience shows that if we automatically enable "compatibility
+functions", then those compatiblity functions will be used for a
+decade.  So we need to find a balance between upgrades and ongoing
+support.  Easy upgrades will mean complex ongoing support.  Complex
+upgrades make ongoing support easier, but also make it less likely
+that people will upgrade.
 
 == radiusd.conf
 

@@ -92,7 +92,7 @@
 #  command-line option, and it will tell you where the dictionary
 #  files are located.
 #
-#  The v3 names are in ${dictdir}/radius/alias/alias.VENDOR where
+#  The v3 names are in ${dictdir}/radius/alias/VENDOR.txt where
 #  VENDOR is the name of the vendor, which is taken from the VENDOR
 #  definition in the v3 dictionaries.
 #
@@ -114,5 +114,5 @@
 #
 
 #BEGIN-PROTOCOL RADIUS
-#$INCLUDE ${dictdir}/radius/alias/alias.cisco
+#$INCLUDE ${dictdir}/radius/alias/cisco.txt
 #END-PROTOCOL RADIUS
