@@ -1662,7 +1662,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	}
 
 	if ((op == T_OP_CMP_TRUE) || (op == T_OP_CMP_FALSE)) {
-		cf_log_err(cp, "Invalid operator \"%s\".",
+		cf_log_err(cs, "Invalid operator \"%s\".",
 			   fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"));
 		return NULL;
 	}
