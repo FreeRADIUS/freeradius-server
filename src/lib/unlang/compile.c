@@ -1661,6 +1661,12 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 		return NULL;
 	}
 
+	if ((op == T_OP_CMP_TRUE) || (op == T_OP_CMP_FALSE)) {
+		cf_log_err(cp, "Invalid operator \"%s\".",
+			   fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"));
+		return NULL;
+	}
+
 	/*
 	 *	We allow unknown attributes here.
 	 */
@@ -1756,6 +1762,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	map_t			*map;
 
 	tmpl_rules_t		t_rules;
+	fr_token_t		op;
 
 	/*
 	 *	We allow unknown attributes here.
@@ -1789,6 +1796,13 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 		edit_free = edit;
 
 		compile_action_defaults(c, unlang_ctx);
+	}
+
+	op = cf_pair_operator(cp);
+	if ((op == T_OP_CMP_TRUE) || (op == T_OP_CMP_FALSE)) {
+		cf_log_err(cp, "Invalid operator \"%s\".",
+			   fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"));
+		return NULL;
 	}
 
 	/*
