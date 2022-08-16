@@ -7,9 +7,8 @@
 broadsoft-decode {
 	foreach &BroadSoft-Attr-255 {
 		if ("%{Foreach-Variable-0}" =~ /^([0-9]+)=(.*)$/) {
-			update request {
-#				Broadsoft-Attr-255 -= "%{Foreach-Variable-0}"
-				"BroadSoft-Attr-%{1}" += "%{2}"
+#				&request.Broadsoft-Attr-255 -= "%{Foreach-Variable-0}"
+				"&request.BroadSoft-Attr-%{1}" += "%{2}"
 			}
 		}
 	}

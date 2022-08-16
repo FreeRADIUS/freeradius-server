@@ -15,9 +15,8 @@ abfab_psk_authorize {
 			# do things here
 		}
 		else {
-			update reply {
-				&Reply-Message = "RP not authorized for this ABFAB request"
-			}
+			&reply.Reply-Message = "RP not authorized for this ABFAB request"
+
 			reject
 		}
 	}
@@ -27,25 +26,20 @@ abfab_client_check {
 	# check that the acceptor host name is correct
 	if ("%(client:gss_acceptor_host_name)" && &GSS-acceptor-host-name) {
 		if ("%(client:gss_acceptor_host_name)" != "%{gss-acceptor-host-name}") {
-			update reply {
-				&Reply-Message = "GSS-Acceptor-Host-Name incorrect"
-			}
+			&reply.Reply-Message = "GSS-Acceptor-Host-Name incorrect"
+
 			reject
 		}
 	}
 
 	# set trust-router-coi attribute from the client configuration
 	if ("%(client:trust_router_coi)") {
-		update request {
-			&Trust-Router-COI := "%(client:trust_router_coi)"
-		}
+		&request.Trust-Router-COI := "%(client:trust_router_coi)"
 	}
 
 	# set gss-acceptor-realm-name attribute from the client configuration
 	if ("%(client:gss_acceptor_realm_name)") {
-		update request {
-			&GSS-Acceptor-Realm-Name := "%(client:gss_acceptor_realm_name)"
-		}
+		&request.GSS-Acceptor-Realm-Name := "%(client:gss_acceptor_realm_name)"
 	}
 }
 
@@ -65,9 +59,7 @@ abfab_channel_bindings {
 	}
 
 	if (&GSS-Acceptor-Service-Name || &GSS-Acceptor-Realm-Name || &GSS-Acceptor-Host-Name) {
-		update control {
-			&Chbind-Response-Code := success
-		}
+		&control.Chbind-Response-Code := success
 
 		#
 		#  ACK the attributes in the request.
@@ -75,11 +67,9 @@ abfab_channel_bindings {
 		#  If any one of these attributes don't exist in the request,
 		#  then they won't be copied to the reply.
 		#
-		update reply {
-			&GSS-Acceptor-Service-Name = &GSS-Acceptor-Service-Name
-			&GSS-Acceptor-Host-Name = &GSS-Acceptor-Host-Name
-			&GSS-Acceptor-Realm-Name = &GSS-Acceptor-Realm-Name
-		}
+		&reply.GSS-Acceptor-Service-Name = &GSS-Acceptor-Service-Name
+		&reply.GSS-Acceptor-Host-Name = &GSS-Acceptor-Host-Name
+		&reply.GSS-Acceptor-Realm-Name = &GSS-Acceptor-Realm-Name
 	}
 
 	#

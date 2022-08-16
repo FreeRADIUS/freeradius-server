@@ -19,15 +19,15 @@ filter_username {
 	if (&State) {
 		if (&User-Name) {
 			if (!&session-state.Session-State-User-Name) {
-				update request {
-					&Module-Failure-Message += 'No cached session-state.Session-State-User-Name'
+				&request += {
+					&Module-Failure-Message = "No cached session-state.Session-State-User-Name"
 				}
 				reject
 			}
 
 			if (&User-Name != &session-state.Session-State-User-Name) {
-				update request {
-					&Module-Failure-Message += 'User-Name does not match cached session-state.Session-State-User-Name'
+				&request += {
+					&Module-Failure-Message = "User-Name does not match cached session-state.Session-State-User-Name"
 				}
 				reject
 			}
@@ -46,8 +46,8 @@ filter_username {
 		#  e.g. "user@ site.com", or "us er", or " user", or "user "
 		#
 		if (&User-Name =~ / /) {
-			update request {
-				&Module-Failure-Message += 'User-Name contains whitespace'
+			&request += {
+				&Module-Failure-Message = "User-Name contains whitespace"
 			}
 			reject
 		}
@@ -57,8 +57,8 @@ filter_username {
 		#  e.g. "user@site.com@site.com"
 		#
 		if (&User-Name =~ /@[^@]*@/ ) {
-			update request {
-				&Module-Failure-Message += 'Multiple @ in User-Name'
+			&request += {
+				&Module-Failure-Message = "Multiple @ in User-Name"
 			}
 			reject
 		}
@@ -68,8 +68,8 @@ filter_username {
 		#  e.g. "user@site..com"
 		#
 		if (&User-Name =~ /\.\./ ) {
-			update request {
-				&Module-Failure-Message += 'User-Name contains multiple dots (e.g. user@site..com)'
+			&request += {
+				&Module-Failure-Message = "User-Name contains multiple dots (e.g. user@site..com)"
 			}
 			reject
 		}
@@ -79,8 +79,8 @@ filter_username {
 		#  e.g. "user@site.com"
 		#
 		if ((&User-Name =~ /@/) && (&User-Name !~ /@[^.]+(\.[^.]+)+$/))  {
-			update request {
-				&Module-Failure-Message += 'Realm does not have at least one dot separator'
+			&request += {
+				&Module-Failure-Message = "Realm does not have at least one dot separator"
 			}
 			reject
 		}
@@ -90,8 +90,8 @@ filter_username {
 		#  e.g. "user@site.com."
 		#
 		if (&User-Name =~ /\.$/)  {
-			update request {
-				&Module-Failure-Message += 'Realm ends with a dot'
+			&request += {
+				&Module-Failure-Message = "Realm ends with a dot"
 			}
 			reject
 		}
@@ -101,15 +101,13 @@ filter_username {
 		#  e.g. "user@.site.com"
 		#
 		if (&User-Name =~ /@\./)  {
-			update request {
-				&Module-Failure-Message += 'Realm begins with a dot'
+			&request += {
+				&Module-Failure-Message = "Realm begins with a dot"
 			}
 			reject
 		}
 
-		update session-state {
-			&Session-State-User-Name := &User-Name
-		}
+		&session-state.Session-State-User-Name := &User-Name
 	}
 }
 
@@ -122,10 +120,8 @@ filter_username {
 filter_password {
 	if (&User-Password && \
 	   (&User-Password != "%{string:User-Password}")) {
-		update request {
-			&Tmp-String-0 := "%{string:User-Password}"
-			&User-Password := "%{string:Tmp-String-0}"
-		}
+		&request.Tmp-String-0 := %{string:User-Password}
+		&request.User-Password := %{string:Tmp-String-0}
 	 }
 }
 
@@ -134,8 +130,8 @@ filter_inner_identity {
 	#  No names, reject.
 	#
 	if (!&outer.request.User-Name || !&User-Name) {
-		update request {
-			&Module-Failure-Message += "User-Name is required for tunneled authentication"
+		&request += {
+			&Module-Failure-Message = "User-Name is required for tunneled authentication"
 		}
 		reject
 	}
@@ -152,9 +148,7 @@ filter_inner_identity {
 		#  Get the outer realm.
 		#
 		if (&outer.request.User-Name =~ /@([^@]+)$/) {
-			update request {
-				&Outer-Realm-Name = "%{1}"
-			}
+			&request.Outer-Realm-Name = "%{1}"
 
 			#
 			#  When we have an outer realm name, the user portion
@@ -164,8 +158,8 @@ filter_inner_identity {
 			#  some vendors don't follow the standards.
 			#
 			if (&outer.request.User-Name !~ /^(anon|@)/) {
-				update request {
-					&Module-Failure-Message += "User-Name is not anonymized"
+				&request += {
+					&Module-Failure-Message = "User-Name is not anonymized"
 				}
 				reject
 			}
@@ -179,8 +173,8 @@ filter_inner_identity {
 		#  and we'd have no idea which one was correct.
 		#
 		elsif (&outer.request.User-Name !~ /^anon/) {
-			update request {
-				&Module-Failure-Message += "User-Name is not anonymized"
+			&request += {
+				&Module-Failure-Message = "User-Name is not anonymized"
 			}
 			reject
 		}
@@ -189,9 +183,7 @@ filter_inner_identity {
 		#  Get the inner realm.
 		#
 		if (&User-Name =~ /@([^@]+)$/) {
-			update request {
-				&Inner-Realm-Name = "%{1}"
-			}
+			&request.Inner-Realm-Name = "%{1}"
 
 			#
 			#  Note that we do EQUALITY checks for realm names.
@@ -207,8 +199,8 @@ filter_inner_identity {
 			if (&Outer-Realm-Name && \
 			    (&Inner-Realm-Name != &Outer-Realm-Name) && \
 			    (&Inner-Realm-Name !~ /\.%{Outer-Realm-Name}$/)) {
-				update request {
-					&Module-Failure-Message += "Inner realm '%{Inner-Realm-Name}' and outer realm '%{Outer-Realm-Name}' are not from the same domain."
+				&request += {
+					&Module-Failure-Message = "Inner realm '%{Inner-Realm-Name}' and outer realm '%{Outer-Realm-Name}' are not from the same domain."
 				}
 				reject
 			}

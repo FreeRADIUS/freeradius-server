@@ -4,23 +4,18 @@
 
 tacacs_set_authentication_status {
 	if (ok) {
-		update reply {
-			&Authentication-Status = Pass
-		}
+		&reply.Authentication-Status = Pass
 	} else {
-		update reply {
-			&Authentication-Status = Fail
-		}
+		&reply.Authentication-Status = Fail
 	}
 }
 
 tacacs_pap {
 	subrequest RADIUS.Access-Request {
-		update {
-			&request.User-Name := &parent.request.User-Name
-			&request.User-Password := &parent.request.Data
-			&control.Password.Cleartext := &parent.control.Password.Cleartext
-		}
+		&request.User-Name := &parent.request.User-Name
+		&request.User-Password := &parent.request.Data
+		&control.Password.Cleartext := &parent.control.Password.Cleartext
+
 		pap.authorize
 		pap.authenticate
 	}
@@ -30,21 +25,20 @@ tacacs_pap {
 
 tacacs_chap {
 	subrequest RADIUS.Access-Request {
-		update {
-			&request.User-Name := &parent.request.User-Name
+		&request.User-Name := &parent.request.User-Name
 
-			#
-			#  Data length N is 1 octet of ID, followed by
-			#  N-17 octets of challenge, followed by 16 octets of
-			#  CHAP-Password.
-			#
-			#  @todo - update code to create these, so that the
-			#  poor user doesn't need to.
-			#
-#			&request.CHAP-Password := ...
-#			&request.CHAP-Challenge := ...
-			&control.Password.Cleartext := &parent.control.Password.Cleartext
-		}
+		#
+		#  Data length N is 1 octet of ID, followed by
+		#  N-17 octets of challenge, followed by 16 octets of
+		#  CHAP-Password.
+		#
+		#  @todo - update code to create these, so that the
+		#  poor user doesn't need to.
+		#
+#		&request.CHAP-Password := ...
+#		&request.CHAP-Challenge := ...
+		&control.Password.Cleartext := &parent.control.Password.Cleartext
+
 		chap.authenticate
 	}
 
@@ -53,21 +47,20 @@ tacacs_chap {
 
 tacacs_mschap {
 	subrequest RADIUS.Access-Request {
-		update {
-			&request.User-Name := &parent.request.User-Name
+		&request.User-Name := &parent.request.User-Name
 
-			#
-			#  Data length N is 1 octet of ID, followed by
-			#  N-49 octets of challenge, followed by 49 octets of
-			#  MS-CHAP stuff.
-			#
-			#  @todo - update code to create these, so that the
-			#  poor user doesn't need to.
-			#
-#			&request.MS-CHAP-Challenge := ...
-#			&request.MS-CHAP-Response := ...
-			&control.Password.Cleartext := &parent.control.Password.Cleartext
-		}
+		#
+		#  Data length N is 1 octet of ID, followed by
+		#  N-49 octets of challenge, followed by 49 octets of
+		#  MS-CHAP stuff.
+		#
+		#  @todo - update code to create these, so that the
+		#  poor user doesn't need to.
+		#
+#		&request.MS-CHAP-Challenge := ...
+#		&request.MS-CHAP-Response := ...
+		&control.Password.Cleartext := &parent.control.Password.Cleartext
+
 		chap.authenticate
 	}
 

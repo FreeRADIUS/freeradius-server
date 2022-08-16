@@ -27,8 +27,6 @@
 #
 operator-name.authorize {
 	if ("%(client:Operator-Name)") {
-		update request {
-			&Operator-Name = "%(client:Operator-Name)"
-		}
+		&request.Operator-Name = "%(client:Operator-Name)"
 	}
 }

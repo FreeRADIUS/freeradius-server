@@ -3,9 +3,8 @@
 #  then use the "do_not_respond" policy.
 #
 do_not_respond {
-	update reply {
-		&Packet-Type := Do-Not-Respond
-	}
+	&reply.Packet-Type := Do-Not-Respond
+
 	handled
 }
 
@@ -13,9 +12,8 @@ do_not_respond {
 #  Send Access-Accept immediately
 #
 accept {
-	update reply {
-		&Packet-Type := Access-Accept
-	}
+	&reply.Packet-Type := Access-Accept
+
 	handled
 }
 
@@ -23,9 +21,8 @@ accept {
 #  Send Access-Challenge immediately
 #
 challenge {
-	update reply {
-		&Packet-Type := Access-Challenge
-	}
+	&reply.Packet-Type := Access-Challenge
+
 	handled
 }
 
@@ -33,9 +30,8 @@ challenge {
 #  Send an Accounting-Response immediately
 #
 acct_response {
-	update reply {
-		&Packet-Type := Accounting-Response
-	}
+	&reply.Packet-Type := Accounting-Response
+
 	handled
 }
 
@@ -46,10 +42,9 @@ acct_response {
 #  include the original packet code in the reply.
 #
 protocol_error {
-	update reply {
-		&Packet-Type := Accounting-Response
-		&Original-Packet-Code := "%{Packet-Type}"
-	}
+	&reply.Packet-Type := Accounting-Response
+	&reply.Original-Packet-Code := "%{Packet-Type}"
+
 	handled
 }
 
@@ -57,8 +52,7 @@ protocol_error {
 #  Discard the packet without replying
 #
 discard {
-	update reply {
-		&Packet-Type := Do-Not-Respond
-	}
+	&reply.Packet-Type := Do-Not-Respond
+
 	handled
 }
