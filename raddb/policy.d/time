@@ -20,7 +20,7 @@ expiration {
 			disallow
 		}
 
-		elsif (!&reply.Session-Timeout || (&Session-Timeout > "%{expr:%{Expiration} - %l}")) {
+		elsif (!&reply.Session-Timeout || (&Session-Timeout > %{expr:%{Expiration} - %l})) {
 			&reply.Session-Timeout := %{expr:%{Expiration} - %l}
 		}
 	}
