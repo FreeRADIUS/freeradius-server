@@ -802,18 +802,15 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 		break;
 
 	case FR_TYPE_UINT16:
-		memcpy(&vp->vp_uint16, p, sizeof(vp->vp_uint16));
-		vp->vp_uint16 = ntohs(vp->vp_uint32);
+		vp->vp_uint16 = fr_nbo_to_uint16(p);
 		break;
 
 	case FR_TYPE_UINT32:
-		memcpy(&vp->vp_uint32, p, sizeof(vp->vp_uint32));
-		vp->vp_uint32 = ntohl(vp->vp_uint32);
+		vp->vp_uint32 = fr_nbo_to_uint32(p);
 		break;
 
 	case FR_TYPE_UINT64:
-		memcpy(&vp->vp_uint64, p, sizeof(vp->vp_uint64));
-		vp->vp_uint64 = ntohll(vp->vp_uint64);
+		vp->vp_uint64 = fr_nbo_to_uint64(p);
 		break;
 
 	default:
