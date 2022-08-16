@@ -634,8 +634,7 @@ modules {
 #
 #  .Policies
 #
-#  Policies are virtual modules, similar to those defined in the
-#  `instantiate` section above.
+#  Policies are virtual modules.
 #
 #  Defining a policy in one of the `policy.d` files means that it can be
 #  referenced in multiple places as a *name*, rather than as a series of
