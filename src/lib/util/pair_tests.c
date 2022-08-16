@@ -258,6 +258,69 @@ static void test_fr_pair_find_by_child_num_idx(void)
 	TEST_CHECK(vp && vp->da == fr_dict_attr_test_string);
 }
 
+static void test_fr_pair_find_by_da_nested(void)
+{
+	fr_pair_t	*vp1, *vp2, *vp3, *vp_found;
+	fr_pair_list_t	local_pairs;
+
+	fr_pair_list_init(&local_pairs);
+
+	/*
+	 *	Build a list with 2 TLV structures, each with different leaf nodes
+	 */
+	MEM(vp1 = fr_pair_afrom_da(autofree, fr_dict_attr_test_nested_top_tlv));
+	fr_pair_append(&local_pairs, vp1);
+	MEM(vp2 = fr_pair_afrom_da(vp1, fr_dict_attr_test_nested_child_tlv));
+	fr_pair_append(&vp1->vp_group, vp2);
+	MEM(vp1 = fr_pair_afrom_da(vp2, fr_dict_attr_test_nested_leaf_string));
+	fr_pair_append(&vp2->vp_group, vp1);
+	MEM(vp2 = fr_pair_afrom_da(autofree, fr_dict_attr_test_nested_top_tlv));
+	fr_pair_append(&local_pairs, vp2);
+	MEM(vp3 = fr_pair_afrom_da(vp2, fr_dict_attr_test_nested_child_tlv));
+	fr_pair_append(&vp2->vp_group, vp3);
+	MEM(vp2 = fr_pair_afrom_da(vp3, fr_dict_attr_test_nested_leaf_int32));
+	fr_pair_append(&vp3->vp_group, vp2);
+
+	vp_found = fr_pair_find_by_da_nested(&local_pairs, NULL, fr_dict_attr_test_nested_leaf_string);
+	TEST_CASE("Find child node in first TLV");
+	TEST_CHECK(vp_found == vp1);
+
+	vp_found = fr_pair_find_by_da_nested(&local_pairs, NULL, fr_dict_attr_test_nested_leaf_int32);
+	TEST_CASE("Find child node in second TLV");
+	TEST_CHECK(vp_found == vp2);
+
+	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
+	TEST_CASE("Look for child in first node after second");
+	TEST_CHECK(vp_found == NULL);
+
+	/*
+	 *	Add third nested TLV with child of same type as first
+	 */
+	MEM(vp3 = fr_pair_afrom_da(autofree, fr_dict_attr_test_nested_top_tlv));
+	fr_pair_append(&local_pairs, vp3);
+	MEM(vp4 = fr_pair_afrom_da(vp3, fr_dict_attr_test_nested_child_tlv));
+	fr_pair_append(&vp3->vp_group, vp4);
+	MEM(vp3 = fr_pair_afrom_da(vp4, fr_dict_attr_test_nested_leaf_string));
+	fr_pair_append(&vp4->vp_group, vp3);
+
+	/*
+	 *	Repeat search 3 times to find both instances and then NULL
+	 */
+	vp_found = fr_pair_find_by_da_nested(&local_pairs, NULL, fr_dict_attr_test_nested_leaf_string);
+	TEST_CASE("Find child node in first TLV");
+	TEST_CHECK(vp_found == vp1);
+
+	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
+	TEST_CASE("Find child node in third TLV");
+	TEST_CHECK(vp_found == vp3);
+
+	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
+	TEST_CASE("Find child node after third TLV");
+	TEST_CHECK(vp_found == NULL);
+
+	fr_pair_list_free(&local_pairs);
+}
+
 static void test_fr_pair_append(void)
 {
 	fr_dcursor_t   cursor;
@@ -1149,6 +1212,7 @@ TEST_LIST = {
 	{ "fr_pair_to_unknown",                   test_fr_pair_to_unknown },
 	{ "fr_pair_find_by_da_idx",                   test_fr_pair_find_by_da_idx },
 	{ "fr_pair_find_by_child_num_idx",            test_fr_pair_find_by_child_num_idx },
+	{ "fr_pair_find_by_da_nested",            test_fr_pair_find_by_da_nested },
 	{ "fr_pair_append",                       test_fr_pair_append },
 	{ "fr_pair_prepend_by_da",                test_fr_pair_prepend_by_da },
 	{ "fr_pair_delete_by_child_num",          test_fr_pair_delete_by_child_num },
