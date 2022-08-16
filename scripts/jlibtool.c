@@ -1980,6 +1980,7 @@ static int parse_input_file_name(char const *arg, command_t *cmd)
 			 */
 			if (target->add_minus_l) {
 				if (libtype == TYPE_DYNAMIC_LIB) {
+					/* coverity[string_null] */
 					add_minus_l(cmd->shared_opts.dependencies, newarg);
 				} else if ((cmd->output == OUT_LIB) && (libtype == TYPE_STATIC_LIB)) {
 					explode_static_lib(cmd, newarg);
