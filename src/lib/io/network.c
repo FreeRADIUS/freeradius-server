@@ -1866,7 +1866,7 @@ int fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats)
 	if (num < 0) return -1;
 	if (num == 0) return 0;
 
-	if (num >= 1) stats[0] = nr->stats.in;
+	stats[0] = nr->stats.in;
 	if (num >= 2) stats[1] = nr->stats.out;
 	if (num >= 3) stats[2] = nr->stats.dup;
 	if (num >= 4) stats[3] = nr->stats.dropped;

@@ -1496,7 +1496,7 @@ int fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats)
 	if (num < 0) return -1;
 	if (num == 0) return 0;
 
-	if (num >= 1) stats[0] = worker->stats.in;
+	stats[0] = worker->stats.in;
 	if (num >= 2) stats[1] = worker->stats.out;
 	if (num >= 3) stats[2] = worker->stats.dup;
 	if (num >= 4) stats[3] = worker->stats.dropped;
