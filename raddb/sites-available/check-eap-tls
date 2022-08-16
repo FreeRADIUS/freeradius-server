@@ -41,42 +41,28 @@ recv Access-Request {
 	#
 	#  By default, we just accept the request:
 	#
-	update config {
-		&Auth-Type := Accept
-	}
-
+	&control.Auth-Type := Accept
 
 	#
 	#  Check the client certificate matches a string, and reject otherwise
 	#
 
 #	if ("%{session-state.TLS-Client-Cert-Common-Name}" == 'client.example.com') {
-#		update config {
-#			&Auth-Type := Accept
-#		}
+#		&control.Auth-Type := Accept
 #	}
 #	else {
-#		update config {
-#			&Auth-Type := Reject
-#		}
-#		update reply {
-#			&Reply-Message := "Your certificate is not valid."
-#		}
+#		&control.Auth-Type := Reject
+#		&reply.Reply-Message := "Your certificate is not valid."
 #	}
-
 
 	#
 	#  Check the client certificate common name against the supplied User-Name
 	#
 #	if (&User-Name == "host/%{session-state.TLS-Client-Cert-Common-Name}") {
-#		update config {
-#			&Auth-Type := Accept
-#		}
+#		&control.Auth-Type := Accept
 #	}
 #	else {
-#		update config {
-#			&Auth-Type := Reject
-#		}
+#		&control.Auth-Type := Reject
 #	}
 
 
@@ -103,9 +89,7 @@ recv Access-Request {
 	#  need permission to read this group membership):
 
 #	if (!(Ldap-Group == "Permitted-Laptops")) {
-#		update config {
-#			&Auth-Type := Reject
-#		}
+#		&control.Auth-Type := Reject
 #	}
 
 	#  or, to be more specific, you could use the group's full DN:

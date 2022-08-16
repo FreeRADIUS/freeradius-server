@@ -287,8 +287,6 @@ server radrelay {
 		#  Note that we do not use the realm for anything else such
 		#  as prefix/suffix stripping, or comparisons.
 		#
-		update control {
-			Proxy-To-Realm := "radrelay"
-		}
+		&control.Proxy-To-Realm := "radrelay"
 	}
 }

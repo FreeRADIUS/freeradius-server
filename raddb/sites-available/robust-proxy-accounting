@@ -149,9 +149,7 @@ server home.example.com {
 	recv Accounting-Request {
 		#  You may want accounting policies here...
 
-		update control {
-			&Proxy-To-Realm := 'acct_realm.example.com'
-		}
+		&control.Proxy-To-Realm := 'acct_realm.example.com'
 	}
 
 }

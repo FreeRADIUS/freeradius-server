@@ -93,9 +93,7 @@ server example {
 		#  Some example policies.  See "man unlang" for more.
 		#
 		if (&User-Name == 'bob') {
-			update control {
-				&Password.Cleartext := 'bob'
-			}
+			&control.Password.Cleartext := 'bob'
 		}
 
 		#
@@ -111,9 +109,6 @@ server example {
 	}
 
 	send Access-Reject {
-		update reply {
-			&Reply-Message = 'This is only an example.'
-		}
+		&reply.Reply-Message = 'This is only an example.'
 	}
-
 }

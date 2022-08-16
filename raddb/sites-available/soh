@@ -9,24 +9,16 @@ server soh-server {
 	recv Access-Request {
 		if (&SoH-Supported == no) {
 			#  client NAKed our request for SoH - not supported, or turned off
-			update config {
-				&Auth-Type = Accept
-			}
+			&control.Auth-Type = Accept
 		}
 		else {
 			#  client replied; check something - this is a local policy issue!
 			if (&SoH-MS-Windows-Health-Status =~ /antivirus (warn|error) /) {
-				update config {
-					&Auth-Type = Reject
-				}
-				update reply {
-					&Reply-Message = 'You must have antivirus enabled & installed!'
-				}
+				&control.Auth-Type = Reject
+				&reply.Reply-Message = 'You must have antivirus enabled & installed!'
 			}
 			else {
-				update config {
-					&Auth-Type = Accept
-				}
+				&control.Auth-Type = Accept
 			}
 		}
 	}

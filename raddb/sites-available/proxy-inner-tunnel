@@ -22,10 +22,8 @@ recv Access-Request {
 	#  the inner tunnel request.
 	#
 
-	update control {
-		#  You should update this to be one of your realms.
-		&Proxy-To-Realm := "example.com"
-	}
+	#  You should update this to be one of your realms.
+	&control.Proxy-To-Realm := "example.com"
 }
 
 authenticate eap {

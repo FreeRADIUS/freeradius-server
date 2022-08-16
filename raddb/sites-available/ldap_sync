@@ -94,10 +94,8 @@ server ldap {
 #			attr = 'cn'
 #			attr = 'foo'
 
-			update {
-				&User-Name := 'cn'
-				&Password.With-Header := 'userPassword'
-			}
+			&request.User-Name := 'cn'
+			&request.Password.With-Header := 'userPassword'
 		}
 
 		sync {

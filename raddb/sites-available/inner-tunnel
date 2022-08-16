@@ -242,7 +242,8 @@ authenticate eap {
 #  Attributes that should be provided in the reply should be
 #  copied to the outer.session-state list:
 #
-#      update outer.session-state {
+#      &outer.session-state += {
+#          ...,
 #          ...
 #      }
 #
@@ -307,8 +308,6 @@ send Access-Reject {
 	#
 	#  Let the outer session know which module failed, and why.
 	#
-	update outer.session-state {
-		&Module-Failure-Message := &request.Module-Failure-Message
-	}
+	&outer.session-state.Module-Failure-Message := &request.Module-Failure-Message
 }
 } # inner-tunnel server block

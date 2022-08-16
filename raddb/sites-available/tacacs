@@ -98,9 +98,7 @@ server tacacs {
 		#
 		#  Set _our_ authentication method to the _requested_ one.
 		#
-		update control {
-			&Auth-Type := &Authentication-Type
-		}
+		&control.Auth-Type := &Authentication-Type
 	}
 
 	authenticate PAP {
@@ -131,9 +129,7 @@ server tacacs {
 	#
 	send Authentication-Start-Reply {
 		if (&Authentication-Status == Pass) {
-			update reply {
-				&Server-Message := "Hello %{User-Name}"
-			}
+			&reply.Server-Message := "Hello %{User-Name}"
 		}
 	}
 
@@ -160,9 +156,7 @@ server tacacs {
 	#
 	send Authentication-Continue-Reply {
 		if (&Authentication-Status == Pass) {
-			update reply {
-				&Server-Message := "Hello %{User-Name}"
-			}
+			&reply.Server-Message := "Hello %{User-Name}"
 		}
 	}
 
@@ -188,12 +182,10 @@ server tacacs {
 	#	### Send
 	#
 	send Authorization-Reply {
-		update reply {
-			&Authorization-Status := Pass-Add
-			&Server-Message := "authorization-response-server"
-			&Data := "authorization-response-data"
-			&ArgumentList := "key1=var1"
-		}
+		&reply.Authorization-Status := Pass-Add
+		&reply.Server-Message := "authorization-response-server"
+		&reply.Data := "authorization-response-data"
+		&reply.ArgumentList := "key1=var1"
 	}
 
 	#
@@ -230,11 +222,9 @@ server tacacs {
 	#	### Send
 	#
 	send Accounting-Reply {
-		update reply {
-			&Accounting-Status := Success
-			&Server-Message := "Success"
-			&Data := 0x00
-		}
+		&reply.Accounting-Status := Success
+		&reply.Server-Message := "Success"
+		&reply.Data := 0x00
 	}
 
 	#
