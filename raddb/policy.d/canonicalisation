@@ -18,14 +18,14 @@ nai_regexp = '^([^@]*)(@([-[:alnum:]]+\.[-[:alnum:].]+))?$'
 
 split_username_nai {
 	if (&User-Name && (&User-Name =~ /${policy.nai_regexp}/)) {
-		&request.Stripped-User-Name := %{1}
+		&request.Stripped-User-Name := "%{1}"
 
 
 		# Only add the Stripped-User-Domain attribute if
 		# we have a domain. This means presence checks
 		# for Stripped-User-Domain work.
-		if (%{3} != '') {
-			&request.Stripped-User-Domain = %{3}
+		if ("%{3}" != '') {
+			&request.Stripped-User-Domain = "%{3}"
 		}
 
 		# If any of the expansions result in a null
@@ -52,11 +52,11 @@ mac-addr-regexp = '([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^
 #
 rewrite_called_station_id {
 	if (&Called-Station-Id && (&Called-Station-Id =~ /^${policy.mac-addr-regexp}([^0-9a-f](.+))?$/i)) {
-		&request.Called-Station-Id := %{toupper:%{1}-%{2}-%{3}-%{4}-%{5}-%{6}}
+		&request.Called-Station-Id := "%{toupper:%{1}-%{2}-%{3}-%{4}-%{5}-%{6}}"
 
 		# SSID component?
-		if (%{8}) {
-			&request.Called-Station-SSID := %{8}
+		if ("%{8}") {
+			&request.Called-Station-SSID := "%{8}"
 		}
 		updated
 	}
@@ -74,7 +74,7 @@ rewrite_called_station_id {
 #
 rewrite_calling_station_id {
 	if (&Calling-Station-Id && (&Calling-Station-Id =~ /^${policy.mac-addr-regexp}$/i)) {
-		&request.Calling-Station-Id := %{toupper:%{1}-%{2}-%{3}-%{4}-%{5}-%{6}}
+		&request.Calling-Station-Id := "%{toupper:%{1}-%{2}-%{3}-%{4}-%{5}-%{6}}"
 
 		updated
 	}
