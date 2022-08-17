@@ -229,9 +229,7 @@ server detail {
 #  The detail file reader runs the normal RADIUS / DHCP / etc. processing sections.
 #
 recv Accounting-Request {
-	update request {
-		&Acct-Delay-Time := "%{expr:%{%{Acct-Delay-Time}:-0} + %c - %(integer:%{%{Event-Timestamp}:-%{Packet-Original-Timestamp}})}"
-	}
+	&request.Acct-Delay-Time := "%{expr:%{%{Acct-Delay-Time}:-0} + %c - %(integer:%{%{Event-Timestamp}:-%{Packet-Original-Timestamp}})}"
 
 	#
 	#  We handled the packet successfully.  Run the "send ok" section.

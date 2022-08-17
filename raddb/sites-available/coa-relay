@@ -123,24 +123,21 @@ server coa {
 		#  what these attributes are unfortunately, so we
 		#  cannot give more detailed advice here.
 		#
-		update control {
 
-			#
-			#  Example MySQL lookup
-			#
-#			&Tmp-String-0 := "%{sql:SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
+		#
+		#  Example MySQL lookup
+		#
+#		&control.Tmp-String-0 := "%{sql:SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
 
-			#
-			#  Example PostgreSQL lookup
-			#
-#			&Tmp-String-0 := "%{sql:SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
+		#
+		#  Example PostgreSQL lookup
+		#
+#		&control.Tmp-String-0 := "%{sql:SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
 
-			#
-			#  Keep a count of what we send.
-			#
-			&Tmp-Integer-0 := 0
-
-		}
+		#
+		#  Keep a count of what we send.
+		#
+		&control.Tmp-Integer-0 := 0
 
 		#
 		#  Split the string and split into pieces.
@@ -153,39 +150,29 @@ server coa {
 				#  Send an update for each session we find.
 				#
 				if ("%{Foreach-Variable-0}" =~ /([^#]*)#(.*)/) {
+					#  NAS-IP-Address
+					&control.Tmp-IP-Address-0 := "%{1}"
 
-					update control {
-
-						#  NAS-IP-Address
-						&Tmp-IP-Address-0 := "%{1}"
-
-						#  Acct-Session-Id
-						&Tmp-String-1 := "%{2}"
-
-					}
+					#  Acct-Session-Id
+					&control.Tmp-String-1 := "%{2}"
 
 					subrequest CoA-Request {
+						#
+						#  The subrequest begins empty, so initially copy all attributes
+						#  from the incoming request.
+						#
+						&request := &parent.request
 
-						update request {
+						#
+						#  Add/override the session identification attributes looked up
+						#
+						&request.Acct-Session-Id := &parent.control.Tmp-String-1
 
-							#
-							#  The subrequest begins empty, so initially copy all attributes
-							#  from the incoming request.
-							#
-							&request := &parent.request[*]
-
-							#
-							#  Add/override the session identification attributes looked up
-							#
-							&Acct-Session-Id := &parent.control.Tmp-String-1
-
-							#
-							#  Some NASs want these, others don't
-							#
-							&Event-Timestamp := "%l"
-							&Message-Authenticator := 0x00
-
-						}
+						#
+						#  Some NASs want these, others don't
+						#
+						&request.Event-Timestamp := "%l"
+						&request.Message-Authenticator := 0x00
 
 						#
 						#  Remove attributes which will confuse the NAS
@@ -194,25 +181,22 @@ server coa {
 						#  if it contains attributes which are NOT
 						#  "session identification" attributes.
 						#
-						filter request {
 
-							#
-							#  SQL-User-Name is a side-effect of the xlat
-							#
-							&SQL-User-Name !* ANY
+						#
+						#  SQL-User-Name is a side-effect of the xlat
+						#
+						&request -= &SQL-User-Name[*]
 
-							#
-							#  Those attributes should be listed here
-							#
-							&Acct-Delay-Time !* ANY
-							&Proxy-State !* ANY
+						#
+						#  Those attributes should be listed here
+						#
+						&request -= &Acct-Delay-Time[*]
+						&request -= &Proxy-State[*]
 
-							#
-							#  Uncomment if the NAS does not expect User-Name
-							#
-							#&User-Name !* ANY
-
-						}
+						#
+						#  Uncomment if the NAS does not expect User-Name
+						#
+						#&request -= &User-Name[*]
 
 						#
 						#  Call the radius client module instance for the NAS-IP-Address
@@ -226,9 +210,7 @@ server coa {
 								#
 								#  Increment count of sent updates
 								#
-								update parent.control {
-									&Tmp-Integer-0 := %{expr: %{parent.control.Tmp-Integer-0} + 1}
-								}
+								&parent.control.Tmp-Integer-0 += 1
 
 								radius-originate-coa-192.0.2.1
 
@@ -238,8 +220,8 @@ server coa {
 							#  Likely a missing "case" if we can't map NAS-IP-Address to a module
 							#
 							case {
-								update parent.control {
-									&Reply-Message += "Missing map for NAS: %{parent.control.Tmp-IP-Address-0}"
+								&parent.control += {
+									&Reply-Message = "Missing map for NAS: %{parent.control.Tmp-IP-Address-0}"
 								}
 							}
 
@@ -256,14 +238,16 @@ server coa {
 		#  Report what we did
 		#
 		if (&control.Tmp-Integer-0) {
-			update reply {
-				&Reply-Message += "Sent updates for %{control.Tmp-Integer-0} active sessions"
+			&reply += {
+				&Reply-Message = "Sent updates for %{control.Tmp-Integer-0} active sessions"
 			}
+
 			ok
 		} else {
-			update reply {
-				&Reply-Message += "No active sessions found"
+			&reply += {
+				&Reply-Message = "No active sessions found"
 			}
+
 			reject
 		}
 

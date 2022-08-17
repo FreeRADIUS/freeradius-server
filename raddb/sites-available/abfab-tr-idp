@@ -99,9 +99,7 @@ server abfab-idp {
 		#  The `session-state` attributes are automatically deleted after
 		#  an `Access-Reject` or `Access-Accept` is sent.
 		#
-		update {
-			&reply += &session-state
-		}
+		&reply += &session-state
 
 		#
 		#  Create the `CUI` value and add the attribute to `Access-Accept`.

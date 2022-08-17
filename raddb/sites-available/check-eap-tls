@@ -1,3 +1,8 @@
+#  -*- text -*-
+#  $Id$
+
+#######################################################################
+#
 #  This virtual server allows EAP-TLS to reject access requests
 #  based on some attributes of the certificates involved.
 #
@@ -27,10 +32,9 @@
 #  modules that check for further authorization, especially if they
 #  hit external services such as sql or ldap.
 
-
 server check-eap-tls {
 
-
+#
 #  Authorize - this is the only section required.
 #
 #  To accept the access request, set Auth-Type = Accept, otherwise
@@ -41,27 +45,18 @@ recv Access-Request {
 	#
 	#  By default, we just accept the request:
 	#
-	update config {
-		&Auth-Type := Accept
-	}
-
+	&control.Auth-Type := Accept
 
 	#
 	#  Check the client certificate matches a string, and reject otherwise
 	#
 
 #	if ("%{session-state.TLS-Client-Cert-Common-Name}" == 'client.example.com') {
-#		update config {
-#			&Auth-Type := Accept
-#		}
+#		&control.Auth-Type := Accept
 #	}
 #	else {
-#		update config {
-#			&Auth-Type := Reject
-#		}
-#		update reply {
-#			&Reply-Message := "Your certificate is not valid."
-#		}
+#		&control.Auth-Type := Reject
+#		&reply.Reply-Message := "Your certificate is not valid."
 #	}
 
 
@@ -69,14 +64,10 @@ recv Access-Request {
 	#  Check the client certificate common name against the supplied User-Name
 	#
 #	if (&User-Name == "host/%{session-state.TLS-Client-Cert-Common-Name}") {
-#		update config {
-#			&Auth-Type := Accept
-#		}
+#		&control.Auth-Type := Accept
 #	}
 #	else {
-#		update config {
-#			&Auth-Type := Reject
-#		}
+#		&control.Auth-Type := Reject
 #	}
 
 
@@ -96,21 +87,21 @@ recv Access-Request {
 	#  base_filter = "(objectClass=computer)"
 	#  groupname_attribute = cn
 	#  groupmembership_filter = "(&(objectClass=group)(member=%{control.Ldap-UserDn}))"
+	#
 
 #	ldap
 
+	#
 	#  Now let's test membership of an LDAP group (the ldap bind user will
 	#  need permission to read this group membership):
+	#
 
 #	if (!(Ldap-Group == "Permitted-Laptops")) {
-#		update config {
-#			&Auth-Type := Reject
-#		}
+#		&control.Auth-Type := Reject
 #	}
 
 	#  or, to be more specific, you could use the group's full DN:
 	#  if (!(Ldap-Group == "CN=Permitted-Laptops,OU=Groups,DC=example,DC=org")) {
-
 
 	#
 	#  This may be a better place to call the files modules when using
@@ -119,7 +110,6 @@ recv Access-Request {
 	#
 
 #	files
-
 
 	#
 	#  Log all request attributes, plus TLS certificate details, to the
@@ -130,7 +120,6 @@ recv Access-Request {
 	#
 
 	auth_log
-
 }
 }
 

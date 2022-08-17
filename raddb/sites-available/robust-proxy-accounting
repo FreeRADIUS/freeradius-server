@@ -21,7 +21,7 @@
 #	packets were written to the detail file.  But that would
 #	involve a lot more disk writes, which may not be a good idea.
 #
-#	This file is NOT meant to be used as-is.  It needs to be
+#	NOTE: This file is NOT meant to be used as-is.  It needs to be
 #	edited to match your local configuration.
 #
 #	$Id$
@@ -149,9 +149,7 @@ server home.example.com {
 	recv Accounting-Request {
 		#  You may want accounting policies here...
 
-		update control {
-			&Proxy-To-Realm := 'acct_realm.example.com'
-		}
+		&control.Proxy-To-Realm := "acct_realm.example.com"
 	}
 
 }
