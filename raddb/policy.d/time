@@ -2,14 +2,14 @@
 #
 # Sets Tmp-uint64-0 with the current epoch time in ms
 time_current_ms {
-	&request.Tmp-uint64-0 := %{expr:(%c*1000) + (%C/1000)}
+	&request.Tmp-uint64-0 := "%{expr:(%c*1000) + (%C/1000)}"
 }
 
 # Returns elapsed time in ms since time_current_ms
 #
 # Sets Tmp-uint64-1 with number of milliseconds
 time_elapsed_ms {
-	&request.Tmp-uint64-1 := %{expr:(%c*1000) + (%C/1000) - %{Tmp-uint64-0}}
+	&request.Tmp-uint64-1 := "%{expr:(%c*1000) + (%C/1000) - %{Tmp-uint64-0}}"
 }
 
 # Handles the Expiration attribute
