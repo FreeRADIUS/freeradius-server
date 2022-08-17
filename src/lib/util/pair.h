@@ -607,6 +607,24 @@ fr_value_box_t	*_fr_pair_dcursor_value_init(fr_dcursor_t *cursor, fr_pair_list_t
 					     bool is_const) CC_HINT(nonnull);
 
 
+/** Initialises a special dcursor which returns only the values of a pair from a parent dcursor
+ *
+ *  @note - the list cannot be modified, and structural attributes are not returned.
+ *
+ * @param[out] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @return
+ *	- NULL if src does not point to any items.
+ *	- The first pair in the list.
+ */
+#define		fr_pair_dcursor_nested_init(_cursor, _list, _parent) \
+		_fr_pair_dcursor_nested_init(_cursor, \
+					    _list,    \
+					    _parent,    \
+					    IS_CONST(fr_pair_list_t *, _list))
+fr_value_box_t	*_fr_pair_dcursor_nested_init(fr_dcursor_t *cursor, fr_pair_list_t const *list, fr_dcursor_t *parent,
+					     bool is_const) CC_HINT(nonnull);
+
 /** Compare two attributes using and operator.
  *
  * @return
