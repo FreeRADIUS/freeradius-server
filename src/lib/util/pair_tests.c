@@ -382,6 +382,57 @@ static void test_fr_pair_append(void)
 	fr_pair_list_free(&local_pairs);
 }
 
+static void test_fr_pair_append_by_da_parent(void)
+{
+	fr_pair_t	*leaf1, *leaf2, *found, *inter1, *inter2;
+	fr_pair_list_t	local_pairs;
+	int		ret;
+
+	fr_pair_list_init(&local_pairs);
+
+	TEST_CASE("Add nested attribute including parents");
+	ret = fr_pair_append_by_da_parent(autofree, &leaf1, &local_pairs, fr_dict_attr_test_nested_leaf_int32);
+	TEST_CHECK(ret == 0);
+	TEST_CHECK(leaf1 != NULL);
+
+	TEST_CASE("Check nested attributes added");
+	found = fr_pair_find_by_da(&local_pairs, NULL, fr_dict_attr_test_nested_top_tlv);
+	TEST_ASSERT(found != NULL);
+	inter1 = found;
+	found = fr_pair_find_by_da(&inter1->vp_group, NULL, fr_dict_attr_test_nested_child_tlv);
+	TEST_ASSERT(found != NULL);
+	inter2 = found;
+	found = fr_pair_find_by_da(&inter2->vp_group, NULL, fr_dict_attr_test_nested_leaf_int32);
+	TEST_CHECK_PAIR(found, leaf1);
+
+	TEST_CASE("Ensure no flat list attribute created");
+	found = fr_pair_find_by_da(&local_pairs, NULL, fr_dict_attr_test_nested_leaf_int32);
+	TEST_CHECK_PAIR(found, NULL);
+
+	TEST_CASE("Add additional nested attribute where parents exist");
+	ret = fr_pair_append_by_da_parent(autofree, &leaf2, &local_pairs, fr_dict_attr_test_nested_leaf_string);
+	TEST_CHECK(ret == 0);
+	TEST_CHECK(leaf2 != NULL);
+	TEST_CHECK(leaf2 != leaf1);
+
+	TEST_CASE("Check additional leaf added under existing parent");
+	found = fr_pair_find_by_da(&inter2->vp_group, NULL, fr_dict_attr_test_nested_leaf_string);
+	TEST_CHECK_PAIR(found, leaf2);
+
+	TEST_CASE("Check no extra parent attributes created");
+	found = fr_pair_find_by_da(&local_pairs, NULL, fr_dict_attr_test_nested_top_tlv);
+	TEST_CHECK_PAIR(found, inter1);
+	found = fr_pair_find_by_da(&local_pairs, inter1, fr_dict_attr_test_nested_top_tlv);
+	TEST_CHECK_PAIR(found, NULL);
+
+	found = fr_pair_find_by_da(&inter1->vp_group, NULL, fr_dict_attr_test_nested_child_tlv);
+	TEST_CHECK_PAIR(found, inter2);
+	found = fr_pair_find_by_da(&inter1->vp_group, inter2, fr_dict_attr_test_nested_child_tlv);
+	TEST_CHECK_PAIR(found, NULL);
+
+	fr_pair_list_free(&local_pairs);
+}
+
 static void test_fr_pair_delete_by_child_num(void)
 {
 	TEST_CASE("Delete fr_dict_attr_test_string using fr_pair_delete_by_child_num()");
@@ -1247,6 +1298,7 @@ TEST_LIST = {
 	{ "fr_pair_find_by_da_nested",            test_fr_pair_find_by_da_nested },
 	{ "fr_pair_append",                       test_fr_pair_append },
 	{ "fr_pair_prepend_by_da",                test_fr_pair_prepend_by_da },
+	{ "fr_pair_append_by_da_parent",          test_fr_pair_append_by_da_parent },
 	{ "fr_pair_delete_by_child_num",          test_fr_pair_delete_by_child_num },
 	{ "fr_pair_update_by_da",                 test_fr_pair_update_by_da },
 	{ "fr_pair_delete",                       test_fr_pair_delete },
