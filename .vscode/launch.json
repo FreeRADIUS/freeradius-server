@@ -94,8 +94,6 @@
                                 "build/tests/modules/${input:module}/${input:moduletest}.attrs",
                                 "-f",
                                 "build/tests/modules/${input:module}/${input:moduletest}.attrs",
-                                "-r",
-                                "build/tests/modules/${input:module}/${input:moduletest}",
                                 "-xx"
                         ],
                         "environment": [
