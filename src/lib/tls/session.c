@@ -1448,6 +1448,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 		ua = fr_tls_cache_pending_push(request, tls_session);
 		switch (ua) {
 		case UNLANG_ACTION_FAIL:
+			/* coverity[identical_branches] */
 			if (unlang_function_clear(request) < 0) goto error;
 			goto error;
 
@@ -1465,6 +1466,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 		ua = fr_tls_verify_cert_pending_push(request, tls_session);
 		switch (ua) {
 		case UNLANG_ACTION_FAIL:
+			/* coverity[identical_branches] */
 			if (unlang_function_clear(request) < 0) goto error;
 			goto error;
 
