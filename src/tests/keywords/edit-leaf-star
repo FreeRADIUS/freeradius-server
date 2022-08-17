@@ -13,4 +13,19 @@ if (&Tmp-Integer-1 != 27) {
 	test_fail
 }
 
+#
+#  We should be able to copy multiple attributes
+#
+&Tmp-Integer-2 := &Tmp-Integer-0[*]
+&Tmp-Integer-1 := 0
+
+
+#
+#  Do operations on sets of inputs.
+#
+&Tmp-Integer-1 += &Tmp-Integer-2[*]
+if (&Tmp-Integer-1 != 27) {
+	test_fail
+}
+
 success

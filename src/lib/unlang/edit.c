@@ -462,6 +462,7 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 	 *	&Foo := { a, b, c }
 	 */
 	if (!current->rhs.vpt) {
+	apply_list:
 		fr_assert(current->lhs.vp_parent != NULL);
 
 		if (fr_edit_list_pair_delete_by_da(current->el, &current->lhs.vp_parent->vp_group,
@@ -487,6 +488,8 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 
 	/*
 	 *	Any expansions have been turned into data.
+	 *
+	 *	@todo - set of FR_TYPE_GROUP to leaf?
 	 */
 	if (tmpl_is_data(current->rhs.vpt)) {
 		rhs_box = tmpl_value(current->rhs.vpt);
@@ -544,7 +547,35 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 	}
 
 	/*
-	 *	Save the VP we're editing.
+	 *	Set means "delete ALL matching things, and add new ones".
+	 */
+	if (map->op == T_OP_SET) {
+		fr_dict_attr_t const *da = current->lhs.vp->da;
+
+		/*
+		 *	Create all of the relevant VPs.
+		 *
+		 *	@todo - this really just be a dcursor, so that
+		 *	the "list of data" case is indistinguishable
+		 *	from the "list of vps".  But in order to do
+		 *	that, we will need a dcursor which walks over
+		 *	VPs, but returns a pointer to the data.  :(
+		 */
+		while (vp != NULL) {
+			fr_pair_t *set;
+
+			MEM(set = fr_pair_afrom_da(current->lhs.vp_parent, da));
+			if (fr_value_box_cast(set, &set->data, da->type, da, &vp->data) < 0) return -1;
+			fr_pair_append(&current->rhs.pair_list, set);
+
+			vp = fr_dcursor_next(&cursor);
+		}
+
+		goto apply_list;
+	}
+
+	/*
+	 *	Save the VP we're doing to edit.
 	 */
 	if (fr_edit_list_save_pair_value(current->el, current->lhs.vp) < 0) {
 	fail:
