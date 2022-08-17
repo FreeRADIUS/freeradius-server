@@ -183,6 +183,13 @@ jobs:
         sudo apt-get install -y --no-install-recommends gcc-11 gdb lldb
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60 && sudo update-alternatives --set gcc /usr/bin/gcc-11
 
+    #
+    #  Ensure the homebrew version of clang is run rather than the Apple compiler.
+    #
+    - name: Set path for clang
+      if: ${{ runner.os == 'macOS' }}
+      run: |
+        echo "PATH=`brew --prefix`/opt/llvm/bin/:$PATH" >> $GITHUB_ENV
 
     #
     #  Build using some alternative libraries
