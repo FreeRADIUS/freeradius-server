@@ -322,23 +322,23 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	Make room for such body request.
 			 */
-			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->authen.start));
+			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->authen_start));
 
 			/*
 			 *	Encode 4 octets of various flags.
 			 */
-			ENCODE_FIELD_UINT8(packet->authen.start.action, attr_tacacs_action);
-			ENCODE_FIELD_UINT8(packet->authen.start.priv_lvl, attr_tacacs_privilege_level);
-			ENCODE_FIELD_UINT8(packet->authen.start.authen_type, attr_tacacs_authentication_type);
-			ENCODE_FIELD_UINT8(packet->authen.start.authen_service, attr_tacacs_authentication_service);
+			ENCODE_FIELD_UINT8(packet->authen_start.action, attr_tacacs_action);
+			ENCODE_FIELD_UINT8(packet->authen_start.priv_lvl, attr_tacacs_privilege_level);
+			ENCODE_FIELD_UINT8(packet->authen_start.authen_type, attr_tacacs_authentication_type);
+			ENCODE_FIELD_UINT8(packet->authen_start.authen_service, attr_tacacs_authentication_service);
 
 			/*
 			 *	Encode 4 mandatory fields.
 			 */
-			ENCODE_FIELD_STRING8(packet->authen.start.user_len, attr_tacacs_user_name);
-			ENCODE_FIELD_STRING8(packet->authen.start.port_len, attr_tacacs_client_port);
-			ENCODE_FIELD_STRING8(packet->authen.start.rem_addr_len, attr_tacacs_remote_address);
-			ENCODE_FIELD_STRING8(packet->authen.start.data_len, attr_tacacs_data);
+			ENCODE_FIELD_STRING8(packet->authen_start.user_len, attr_tacacs_user_name);
+			ENCODE_FIELD_STRING8(packet->authen_start.port_len, attr_tacacs_client_port);
+			ENCODE_FIELD_STRING8(packet->authen_start.rem_addr_len, attr_tacacs_remote_address);
+			ENCODE_FIELD_STRING8(packet->authen_start.data_len, attr_tacacs_data);
 
 			goto check_request;
 
@@ -362,18 +362,18 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	Make room for such body request.
 			 */
-			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->authen.cont));
+			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->authen_cont));
 
 			/*
 			 *	Encode 2 mandatory fields.
 			 */
-			ENCODE_FIELD_STRING16(packet->authen.cont.user_msg_len, attr_tacacs_user_message);
-			ENCODE_FIELD_STRING16(packet->authen.cont.data_len, attr_tacacs_data);
+			ENCODE_FIELD_STRING16(packet->authen_cont.user_msg_len, attr_tacacs_user_message);
+			ENCODE_FIELD_STRING16(packet->authen_cont.data_len, attr_tacacs_data);
 
 			/*
 			 *	Look at the abort flag after encoding the fields.
 			 */
-			ENCODE_FIELD_UINT8(packet->authen.cont.flags, attr_tacacs_authentication_continue_flags);
+			ENCODE_FIELD_UINT8(packet->authen_cont.flags, attr_tacacs_authentication_continue_flags);
 
 			goto check_request;
 
@@ -394,16 +394,16 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	Make room for such body request.
 			 */
-			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->authen.reply));
+			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->authen_reply));
 
-			ENCODE_FIELD_UINT8(packet->authen.reply.status, attr_tacacs_authentication_status);
-			ENCODE_FIELD_UINT8(packet->authen.reply.flags, attr_tacacs_authentication_flags);
+			ENCODE_FIELD_UINT8(packet->authen_reply.status, attr_tacacs_authentication_status);
+			ENCODE_FIELD_UINT8(packet->authen_reply.flags, attr_tacacs_authentication_flags);
 
 			/*
 			 *	Encode 2 mandatory fields.
 			 */
-			ENCODE_FIELD_STRING16(packet->authen.reply.server_msg_len, attr_tacacs_server_message);
-			ENCODE_FIELD_STRING16(packet->authen.reply.data_len, attr_tacacs_data);
+			ENCODE_FIELD_STRING16(packet->authen_reply.server_msg_len, attr_tacacs_server_message);
+			ENCODE_FIELD_STRING16(packet->authen_reply.data_len, attr_tacacs_data);
 
 			goto check_reply;
 		}
@@ -443,34 +443,34 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	Make room for such body request.
 			 */
-			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->author.req));
+			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->author_req));
 
 			/*
 			 *	Encode 4 octets of various flags.
 			 */
-			ENCODE_FIELD_UINT8(packet->author.req.authen_method, attr_tacacs_authentication_method);
-			ENCODE_FIELD_UINT8(packet->author.req.priv_lvl, attr_tacacs_privilege_level);
-			ENCODE_FIELD_UINT8(packet->author.req.authen_type, attr_tacacs_authentication_type);
-			ENCODE_FIELD_UINT8(packet->author.req.authen_service, attr_tacacs_authentication_service);
+			ENCODE_FIELD_UINT8(packet->author_req.authen_method, attr_tacacs_authentication_method);
+			ENCODE_FIELD_UINT8(packet->author_req.priv_lvl, attr_tacacs_privilege_level);
+			ENCODE_FIELD_UINT8(packet->author_req.authen_type, attr_tacacs_authentication_type);
+			ENCODE_FIELD_UINT8(packet->author_req.authen_service, attr_tacacs_authentication_service);
 
 			/*
 			 *	Encode 'arg_N' arguments (horrible format)
 			 */
-			packet->author.req.arg_cnt = tacacs_encode_body_arg_cnt(vps, attr_tacacs_argument_list);
-			if (packet->author.req.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->author.req.arg_cnt);
+			packet->author_req.arg_cnt = tacacs_encode_body_arg_cnt(vps, attr_tacacs_argument_list);
+			if (packet->author_req.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->author_req.arg_cnt);
 
 			/*
 			 *	Encode 3 mandatory fields.
 			 */
-			ENCODE_FIELD_STRING8(packet->author.req.user_len, attr_tacacs_user_name);
-			ENCODE_FIELD_STRING8(packet->author.req.port_len, attr_tacacs_client_port);
-			ENCODE_FIELD_STRING8(packet->author.req.rem_addr_len, attr_tacacs_remote_address);
+			ENCODE_FIELD_STRING8(packet->author_req.user_len, attr_tacacs_user_name);
+			ENCODE_FIELD_STRING8(packet->author_req.port_len, attr_tacacs_client_port);
+			ENCODE_FIELD_STRING8(packet->author_req.rem_addr_len, attr_tacacs_remote_address);
 
 			/*
 			 *	Append 'args_body' to the end of buffer
 			 */
-			if (packet->author.req.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author.req.arg_cnt, &packet->author.req.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
+			if (packet->author_req.arg_cnt > 0) {
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author_req.arg_cnt, &packet->author_req.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
 			}
 
 			goto check_request;
@@ -501,12 +501,12 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	Make room for such body request.
 			 */
-			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->author.res));
+			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->author_res));
 
 			/*
 			 * 	Encode 1 mandatory field.
 			 */
-			ENCODE_FIELD_UINT8(packet->author.res.status, attr_tacacs_authorization_status);
+			ENCODE_FIELD_UINT8(packet->author_res.status, attr_tacacs_authorization_status);
 
 			/*
 			 *	Encode 'arg_N' arguments (horrible format)
@@ -523,25 +523,25 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	   When the status equals TAC_PLUS_AUTHOR_STATUS_FOLLOW, then the
 			 *	   arg_cnt MUST be 0.
 			 */
-			if (!((packet->author.res.status == FR_AUTHORIZATION_STATUS_VALUE_ERROR) ||
-			      (packet->author.res.status == FR_AUTHORIZATION_STATUS_VALUE_FOLLOW))) {
-				packet->author.res.arg_cnt = tacacs_encode_body_arg_cnt(vps, attr_tacacs_argument_list);
-				if (packet->author.res.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->author.res.arg_cnt);
+			if (!((packet->author_res.status == FR_AUTHORIZATION_STATUS_VALUE_ERROR) ||
+			      (packet->author_res.status == FR_AUTHORIZATION_STATUS_VALUE_FOLLOW))) {
+				packet->author_res.arg_cnt = tacacs_encode_body_arg_cnt(vps, attr_tacacs_argument_list);
+				if (packet->author_res.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->author_res.arg_cnt);
 			} else {
-				packet->author.res.arg_cnt = 0;
+				packet->author_res.arg_cnt = 0;
 			}
 
 			/*
 			 *	Encode 2 mandatory fields.
 			 */
-			ENCODE_FIELD_STRING16(packet->author.res.server_msg_len, attr_tacacs_server_message);
-			ENCODE_FIELD_STRING16(packet->author.res.data_len, attr_tacacs_data);
+			ENCODE_FIELD_STRING16(packet->author_res.server_msg_len, attr_tacacs_server_message);
+			ENCODE_FIELD_STRING16(packet->author_res.data_len, attr_tacacs_data);
 
 			/*
 			 *	Append 'args_body' to the end of buffer
 			 */
-			if (packet->author.res.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author.res.arg_cnt, &packet->author.res.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
+			if (packet->author_res.arg_cnt > 0) {
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author_res.arg_cnt, &packet->author_res.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
 			}
 
 			goto check_reply;
@@ -583,35 +583,35 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	Make room for such body request.
 			 */
-			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->acct.req));
+			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->acct_req));
 
 			/*
 			 *	Encode 5 octets of various flags.
 			 */
-			ENCODE_FIELD_UINT8(packet->acct.req.flags, attr_tacacs_accounting_flags);
-			ENCODE_FIELD_UINT8(packet->acct.req.authen_method, attr_tacacs_authentication_method);
-			ENCODE_FIELD_UINT8(packet->acct.req.priv_lvl, attr_tacacs_privilege_level);
-			ENCODE_FIELD_UINT8(packet->acct.req.authen_type, attr_tacacs_authentication_type);
-			ENCODE_FIELD_UINT8(packet->acct.req.authen_service, attr_tacacs_authentication_service);
+			ENCODE_FIELD_UINT8(packet->acct_req.flags, attr_tacacs_accounting_flags);
+			ENCODE_FIELD_UINT8(packet->acct_req.authen_method, attr_tacacs_authentication_method);
+			ENCODE_FIELD_UINT8(packet->acct_req.priv_lvl, attr_tacacs_privilege_level);
+			ENCODE_FIELD_UINT8(packet->acct_req.authen_type, attr_tacacs_authentication_type);
+			ENCODE_FIELD_UINT8(packet->acct_req.authen_service, attr_tacacs_authentication_service);
 
 			/*
 			 *	Encode 'arg_N' arguments (horrible format)
 			 */
-			packet->acct.req.arg_cnt = tacacs_encode_body_arg_cnt(vps, attr_tacacs_argument_list);
-			if (packet->acct.req.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->acct.req.arg_cnt);
+			packet->acct_req.arg_cnt = tacacs_encode_body_arg_cnt(vps, attr_tacacs_argument_list);
+			if (packet->acct_req.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->acct_req.arg_cnt);
 
 			/*
 			 *	Encode 3 mandatory fields.
 			 */
-			ENCODE_FIELD_STRING8(packet->acct.req.user_len, attr_tacacs_user_name);
-			ENCODE_FIELD_STRING8(packet->acct.req.port_len, attr_tacacs_client_port);
-			ENCODE_FIELD_STRING8(packet->acct.req.rem_addr_len, attr_tacacs_remote_address);
+			ENCODE_FIELD_STRING8(packet->acct_req.user_len, attr_tacacs_user_name);
+			ENCODE_FIELD_STRING8(packet->acct_req.port_len, attr_tacacs_client_port);
+			ENCODE_FIELD_STRING8(packet->acct_req.rem_addr_len, attr_tacacs_remote_address);
 
 			/*
 			 *	Append 'args_body' to the end of buffer
 			 */
-			if (packet->acct.req.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, packet->acct.req.arg_cnt, &packet->acct.req.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
+			if (packet->acct_req.arg_cnt > 0) {
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->acct_req.arg_cnt, &packet->acct_req.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
 			}
 
 		check_request:
@@ -655,18 +655,18 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	Make room for such body request.
 			 */
-			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->acct.reply));
+			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->acct_reply));
 
 			/*
 			 *	Encode 2 mandatory fields.
 			 */
-			ENCODE_FIELD_STRING16(packet->acct.reply.server_msg_len, attr_tacacs_server_message);
-			ENCODE_FIELD_STRING16(packet->acct.reply.data_len, attr_tacacs_data);
+			ENCODE_FIELD_STRING16(packet->acct_reply.server_msg_len, attr_tacacs_server_message);
+			ENCODE_FIELD_STRING16(packet->acct_reply.data_len, attr_tacacs_data);
 
 			/*
 			 *	And also, the status field.
 			 */
-			ENCODE_FIELD_UINT8(packet->acct.reply.status, attr_tacacs_accounting_status);
+			ENCODE_FIELD_UINT8(packet->acct_reply.status, attr_tacacs_accounting_status);
 
 		check_reply:
 			/*

@@ -248,32 +248,32 @@ ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
 
 	case FR_TAC_PLUS_AUTHEN:
 		if (packet_is_authen_start_request(pkt)) {
-			want = sizeof(pkt->hdr) + sizeof(pkt->authen.start);
+			want = sizeof(pkt->hdr) + sizeof(pkt->authen_start);
 
 		} else if (packet_is_authen_continue(pkt)) {
-			want = sizeof(pkt->hdr) + sizeof(pkt->authen.cont);
+			want = sizeof(pkt->hdr) + sizeof(pkt->authen_cont);
 
 		} else {
 			fr_assert(packet_is_authen_reply(pkt));
-			want = sizeof(pkt->hdr) + sizeof(pkt->authen.reply);
+			want = sizeof(pkt->hdr) + sizeof(pkt->authen_reply);
 		}
 		break;
 
 	case FR_TAC_PLUS_AUTHOR:
 		if (packet_is_author_request(pkt)) {
-			want = sizeof(pkt->hdr) + sizeof(pkt->author.req);
+			want = sizeof(pkt->hdr) + sizeof(pkt->author_req);
 		} else {
 			fr_assert(packet_is_author_response(pkt));
-			want = sizeof(pkt->hdr) + sizeof(pkt->author.res);
+			want = sizeof(pkt->hdr) + sizeof(pkt->author_res);
 		}
 		break;
 
 	case FR_TAC_PLUS_ACCT:
 		if (packet_is_acct_request(pkt)) {
-			want = sizeof(pkt->hdr) + sizeof(pkt->acct.req);
+			want = sizeof(pkt->hdr) + sizeof(pkt->acct_req);
 		} else {
 			fr_assert(packet_is_acct_reply(pkt));
-			want = sizeof(pkt->hdr) + sizeof(pkt->acct.reply);
+			want = sizeof(pkt->hdr) + sizeof(pkt->acct_reply);
 		}
 		break;
 	}

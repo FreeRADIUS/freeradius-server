@@ -388,11 +388,11 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 * |    data...
 			 * +----------------+----------------+----------------+----------------+
 			 */
-			p = BODY(authen.start);
+			p = BODY(authen_start);
 			PACKET_HEADER_CHECK("Authentication Start");
 
 			if ((pkt->hdr.ver.minor == 0) &&
-			    (pkt->authen.start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
+			    (pkt->authen_start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
 				fr_strerror_const("TACACS+ minor version 1 MUST be used for non-ASCII authentication methods");
 				goto fail;
 			}
@@ -402,23 +402,23 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 4 octets of various flags.
 			 */
-			DECODE_FIELD_UINT8(attr_tacacs_action, pkt->authen.start.action);
-			DECODE_FIELD_UINT8(attr_tacacs_privilege_level, pkt->authen.start.priv_lvl);
-			DECODE_FIELD_UINT8(attr_tacacs_authentication_type, pkt->authen.start.authen_type);
-			DECODE_FIELD_UINT8(attr_tacacs_authentication_service, pkt->authen.start.authen_service);
+			DECODE_FIELD_UINT8(attr_tacacs_action, pkt->authen_start.action);
+			DECODE_FIELD_UINT8(attr_tacacs_privilege_level, pkt->authen_start.priv_lvl);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_type, pkt->authen_start.authen_type);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_service, pkt->authen_start.authen_service);
 
 			/*
 			 *	Decode 4 fields, based on their "length"
 			 */
-			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->authen.start.user_len);
-			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->authen.start.port_len);
-			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->authen.start.rem_addr_len);
+			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->authen_start.user_len);
+			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->authen_start.port_len);
+			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->authen_start.rem_addr_len);
 
 			/*
 			 *	Check the length on the various
 			 *	authentication types.
 			 */
-			switch (pkt->authen.start.authen_type) {
+			switch (pkt->authen_start.authen_type) {
 			default:
 				want = 255;
 				break;
@@ -442,15 +442,15 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	Otherwise, decode it as an unknown
 			 *	attribute.
 			 */
-			if (pkt->authen.start.data_len <= want) {
-				DECODE_FIELD_STRING8(attr_tacacs_data, pkt->authen.start.data_len);
+			if (pkt->authen_start.data_len <= want) {
+				DECODE_FIELD_STRING8(attr_tacacs_data, pkt->authen_start.data_len);
 			} else {
 				fr_dict_attr_t *da;
 
 				da = fr_dict_unknown_attr_afrom_da(ctx, attr_tacacs_data);
 				if (da) {
 					da->flags.is_raw = 1;
-					DECODE_FIELD_STRING8(da, pkt->authen.start.data_len);
+					DECODE_FIELD_STRING8(da, pkt->authen_start.data_len);
 					talloc_free(da); /* the VP makes it's own copy */
 				}
 
@@ -483,10 +483,10 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 				goto fail;
 			}
 
-			p = BODY(authen.cont);
+			p = BODY(authen_cont);
 			PACKET_HEADER_CHECK("Authentication Continue");
 
-			if (pkt->authen.start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII) {
+			if (pkt->authen_start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII) {
 				fr_strerror_const("Authentication-Continue packets MUST NOT be used for PAP, CHAP, MS-CHAP");
 				goto fail;
 			}
@@ -496,13 +496,13 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 2 fields, based on their "length"
 			 */
-			DECODE_FIELD_STRING16(attr_tacacs_user_message, pkt->authen.cont.user_msg_len);
-			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->authen.cont.data_len);
+			DECODE_FIELD_STRING16(attr_tacacs_user_message, pkt->authen_cont.user_msg_len);
+			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->authen_cont.data_len);
 
 			/*
 			 *	And finally the flags.
 			 */
-			DECODE_FIELD_UINT8(attr_tacacs_authentication_continue_flags, pkt->authen.cont.flags);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_continue_flags, pkt->authen_cont.flags);
 
 		} else if (packet_is_authen_reply(pkt)) {
 			/*
@@ -523,18 +523,18 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	We just echo whatever was sent in the request.
 			 */
 
-			p = BODY(authen.reply);
+			p = BODY(authen_reply);
 			PACKET_HEADER_CHECK("Authentication Reply");
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REPLY);
 
-			DECODE_FIELD_UINT8(attr_tacacs_authentication_status, pkt->authen.reply.status);
-			DECODE_FIELD_UINT8(attr_tacacs_authentication_flags, pkt->authen.reply.flags);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_status, pkt->authen_reply.status);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_flags, pkt->authen_reply.flags);
 
 			/*
 			 *	Decode 2 fields, based on their "length"
 			 */
-			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->authen.reply.server_msg_len);
-			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->authen.reply.data_len);
+			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->authen_reply.server_msg_len);
+			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->authen_reply.data_len);
 
 		} else {
 		unknown_packet:
@@ -574,31 +574,31 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 
 			if (pkt->hdr.ver.minor != 0) goto invalid_version;
 
-			p = BODY(author.req);
+			p = BODY(author_req);
 			PACKET_HEADER_CHECK("Authorization REQUEST");
-			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author.req.arg_cnt);
+			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author_req.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
 			/*
 			 *	Decode 4 octets of various flags.
 			 */
-			DECODE_FIELD_UINT8(attr_tacacs_authentication_method, pkt->author.req.authen_method);
-			DECODE_FIELD_UINT8(attr_tacacs_privilege_level, pkt->author.req.priv_lvl);
-			DECODE_FIELD_UINT8(attr_tacacs_authentication_type, pkt->author.req.authen_type);
-			DECODE_FIELD_UINT8(attr_tacacs_authentication_service, pkt->author.req.authen_service);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_method, pkt->author_req.authen_method);
+			DECODE_FIELD_UINT8(attr_tacacs_privilege_level, pkt->author_req.priv_lvl);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_type, pkt->author_req.authen_type);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_service, pkt->author_req.authen_service);
 
 			/*
 			 *	Decode 3 fields, based on their "length"
 			 */
-			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->author.req.user_len);
-			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->author.req.port_len);
-			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->author.req.rem_addr_len);
+			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->author_req.user_len);
+			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->author_req.port_len);
+			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->author_req.rem_addr_len);
 
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					       pkt->author.req.arg_cnt, BODY(author.req), &p, end) < 0) goto fail;
+					       pkt->author_req.arg_cnt, BODY(author_req), &p, end) < 0) goto fail;
 
 		} else if (packet_is_author_response(pkt)) {
 			/*
@@ -629,27 +629,27 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	We just echo whatever was sent in the request.
 			 */
 
-			p = BODY(author.res);
+			p = BODY(author_res);
 			PACKET_HEADER_CHECK("Authorization RESPONSE");
-			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author.res.arg_cnt);
+			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author_res.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_RESPONSE);
 
 			/*
 			 *	Decode 1 octets
 			 */
-			DECODE_FIELD_UINT8(attr_tacacs_authorization_status, pkt->author.res.status);
+			DECODE_FIELD_UINT8(attr_tacacs_authorization_status, pkt->author_res.status);
 
 			/*
 			 *	Decode 2 fields, based on their "length"
 			 */
-			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->author.res.server_msg_len);
-			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->author.res.data_len);
+			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->author_res.server_msg_len);
+			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->author_res.data_len);
 
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					pkt->author.res.arg_cnt, BODY(author.res), &p, end) < 0) goto fail;
+					pkt->author_res.arg_cnt, BODY(author_res), &p, end) < 0) goto fail;
 
 		} else {
 			goto unknown_packet;
@@ -687,32 +687,32 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 
 			if (pkt->hdr.ver.minor != 0) goto invalid_version;
 
-			p = BODY(acct.req);
+			p = BODY(acct_req);
 			PACKET_HEADER_CHECK("Accounting REQUEST");
-			ARG_COUNT_CHECK("Accounting REQUEST", pkt->acct.req.arg_cnt);
+			ARG_COUNT_CHECK("Accounting REQUEST", pkt->acct_req.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
 			/*
 			 *	Decode 5 octets of various flags.
 			 */
-			DECODE_FIELD_UINT8(attr_tacacs_accounting_flags, pkt->acct.req.flags);
-			DECODE_FIELD_UINT8(attr_tacacs_authentication_method, pkt->acct.req.authen_method);
-			DECODE_FIELD_UINT8(attr_tacacs_privilege_level, pkt->acct.req.priv_lvl);
-			DECODE_FIELD_UINT8(attr_tacacs_authentication_type, pkt->acct.req.authen_type);
-			DECODE_FIELD_UINT8(attr_tacacs_authentication_service, pkt->acct.req.authen_service);
+			DECODE_FIELD_UINT8(attr_tacacs_accounting_flags, pkt->acct_req.flags);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_method, pkt->acct_req.authen_method);
+			DECODE_FIELD_UINT8(attr_tacacs_privilege_level, pkt->acct_req.priv_lvl);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_type, pkt->acct_req.authen_type);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_service, pkt->acct_req.authen_service);
 
 			/*
 			 *	Decode 3 fields, based on their "length"
 			 */
-			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->acct.req.user_len);
-			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->acct.req.port_len);
-			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->acct.req.rem_addr_len);
+			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->acct_req.user_len);
+			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->acct_req.port_len);
+			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->acct_req.rem_addr_len);
 
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					pkt->acct.req.arg_cnt, BODY(acct.req), &p, end) < 0) goto fail;
+					pkt->acct_req.arg_cnt, BODY(acct_req), &p, end) < 0) goto fail;
 
 		} else if (packet_is_acct_reply(pkt)) {
 			/**
@@ -733,18 +733,18 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	We just echo whatever was sent in the request.
 			 */
 
-			p = BODY(acct.reply);
+			p = BODY(acct_reply);
 			PACKET_HEADER_CHECK("Accounting REPLY");
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REPLY);
 
 			/*
 			 *	Decode 2 fields, based on their "length"
 			 */
-			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->acct.reply.server_msg_len);
-			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->acct.reply.data_len);
+			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->acct_reply.server_msg_len);
+			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->acct_reply.data_len);
 
 			/* Decode 1 octet */
-			DECODE_FIELD_UINT8(attr_tacacs_accounting_status, pkt->acct.reply.status);
+			DECODE_FIELD_UINT8(attr_tacacs_accounting_status, pkt->acct_reply.status);
 		} else {
 			goto unknown_packet;
 		}

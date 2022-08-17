@@ -257,19 +257,13 @@ typedef struct CC_HINT(__packed__) {
 typedef struct CC_HINT(__packed__) {
 	fr_tacacs_packet_hdr_t					hdr;
 	union {
-		union {
-			fr_tacacs_packet_authen_start_hdr_t	start;
-			fr_tacacs_packet_authen_reply_hdr_t	reply;
-			fr_tacacs_packet_authen_cont_hdr_t	cont;
-		} authen;
-		union {
-			fr_tacacs_packet_author_req_hdr_t	req;
-			fr_tacacs_packet_author_res_hdr_t	res;
-		} author;
-		union {
-			fr_tacacs_packet_acct_req_hdr_t		req;
-			fr_tacacs_packet_acct_reply_hdr_t	reply;
-		} acct;
+		fr_tacacs_packet_authen_start_hdr_t	authen_start;
+		fr_tacacs_packet_authen_reply_hdr_t	authen_reply;
+		fr_tacacs_packet_authen_cont_hdr_t	authen_cont;
+		fr_tacacs_packet_author_req_hdr_t	author_req;
+		fr_tacacs_packet_author_res_hdr_t	author_res;
+		fr_tacacs_packet_acct_req_hdr_t		acct_req;
+		fr_tacacs_packet_acct_reply_hdr_t	acct_reply;
 	};
 } fr_tacacs_packet_t;
 
