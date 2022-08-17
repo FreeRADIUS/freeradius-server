@@ -1053,7 +1053,6 @@ fr_pair_t *_fr_pair_dcursor_init(fr_dcursor_t *cursor, fr_pair_list_t const *lis
 				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
 }
 
-
 /** Initialise a cursor that will return only attributes matching the specified #fr_dict_attr_t
  *
  * @param[in] cursor	to initialise.
@@ -1090,6 +1089,57 @@ fr_pair_t *_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
 	return _fr_dcursor_init(cursor, fr_pair_order_list_dlist_head(&list->order),
 				fr_pair_iter_next_by_ancestor, NULL, da,
 				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
+}
+
+/** Iterate over pairs
+ *
+ * @param[in] list	to iterate over.
+ * @param[in] current	The fr_value_box_t cursor->current.  Will be advanced and checked to
+ *			see if it matches the specified fr_dict_attr_t.
+ * @param[in] uctx	The fr_dict_attr_t to search for.
+ * @return
+ *	- Next matching fr_pair_t.
+ *	- NULL if not more matching fr_pair_ts could be found.
+ */
+static void *_fr_pair_iter_next_value(fr_dlist_head_t *list, void *current, UNUSED void *uctx)
+{
+	fr_pair_t *vp;
+
+	if (!current) {
+		vp = NULL;
+	} else {
+		vp = (fr_pair_t *) ((uint8_t *) current - offsetof(fr_pair_t, data));
+		PAIR_VERIFY(vp);
+	}
+
+	while ((vp = fr_dlist_next(list, vp))) {
+		PAIR_VERIFY(vp);
+		if (!fr_type_is_leaf(vp->da->type)) break;
+
+		continue;
+	}
+
+	return vp;
+}
+
+/** Initialises a special dcursor over a #fr_pair_list_t, but which returns #fr_value_box_t
+ *
+ * Filters can be applied later with fr_dcursor_filter_set.
+ *
+ * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
+ *
+ * @param[out] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @param[in] is_const	whether the fr_pair_list_t is const.
+ * @return
+ *	- NULL if src does not point to any items.
+ *	- The first pair in the list.
+ */
+fr_value_box_t *_fr_pair_dcursor_value_init(fr_dcursor_t *cursor, fr_pair_list_t const *list,
+					    bool is_const)
+{
+	return _fr_dcursor_init(cursor, fr_pair_order_list_dlist_head(&list->order),
+				_fr_pair_iter_next_value, NULL, NULL, NULL, NULL, NULL, is_const);
 }
 
 /** Add a VP to the start of the list.

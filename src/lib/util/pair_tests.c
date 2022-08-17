@@ -230,6 +230,61 @@ static void test_fr_pair_dcursor_by_ancestor_init(void)
 	TEST_CHECK(needle && needle->da == fr_dict_attr_test_tlv_string);
 }
 
+static void test_fr_pair_dcursor_value_init(void)
+{
+	int i = 0;
+	fr_value_box_t *box;
+	fr_dcursor_t	cursor;
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+
+	fr_pair_list_init(&local_pairs);
+
+	MEM(vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string));
+	fr_pair_value_strdup(vp, "hello", false);
+	fr_pair_append(&local_pairs, vp);
+
+	MEM(vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32));
+	vp->vp_uint32 = 6809;
+	fr_pair_append(&local_pairs, vp);
+
+	MEM(vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint8));
+	vp->vp_uint8 = 12;
+	fr_pair_append(&local_pairs, vp);
+
+	TEST_CASE("Searching for fr_dict_attr_test_tlv_string as ascend of fr_dict_attr_test_tlv using fr_pair_dcursor_by_ancestor_init()");
+	for (box = fr_pair_dcursor_value_init(&cursor, &local_pairs);
+	     box;
+	     box = fr_dcursor_next(&cursor), i++) {
+		switch (i) {
+		case 0:
+			TEST_CASE("First box is a string with value 'hello'");
+			TEST_CHECK(box->type == FR_TYPE_STRING);
+			TEST_CHECK(strcmp(box->vb_strvalue, "hello") == 0);
+			break;
+
+		case 1:
+			TEST_CASE("First box is a uint32 with value 6809");
+			TEST_CHECK(box->type == FR_TYPE_UINT32);
+			TEST_CHECK(box->vb_uint32 == 6809);
+			break;
+
+		case 2:
+			TEST_CASE("First box is a uint8 r with value 12");
+			TEST_CHECK(box->type == FR_TYPE_UINT8);
+			TEST_CHECK(box->vb_uint8 == 12);
+			break;
+
+		default:
+			TEST_CASE("Too many pairs");
+			TEST_CHECK(i < 3);
+			break;
+		}
+	}
+
+	fr_pair_list_free(&local_pairs);
+}
+
 static void test_fr_pair_find_by_da_idx(void)
 {
 	fr_pair_t *vp;
@@ -1292,6 +1347,7 @@ TEST_LIST = {
 	/* Searching and list modification */
 	{ "fr_dcursor_iter_by_da_init",           test_fr_pair_dcursor_by_da_init },
 	{ "fr_pair_dcursor_by_ancestor_init",     test_fr_pair_dcursor_by_ancestor_init },
+	{ "fr_pair_dcursor_value_init",           test_fr_pair_dcursor_value_init },
 	{ "fr_pair_to_unknown",                   test_fr_pair_to_unknown },
 	{ "fr_pair_find_by_da_idx",                   test_fr_pair_find_by_da_idx },
 	{ "fr_pair_find_by_child_num_idx",            test_fr_pair_find_by_child_num_idx },
