@@ -86,7 +86,7 @@ static inline void exfile_trigger_exec(exfile_t *ef, exfile_entry_t *entry, char
 		return;
 	}
 
-	fr_pair_list_copy(NULL, &args, &ef->trigger_args);
+	(void) fr_pair_list_copy(NULL, &args, &ef->trigger_args);
 	fr_pair_dcursor_init(&cursor, &args);
 
 	MEM(vp = fr_pair_afrom_da(NULL, da));
