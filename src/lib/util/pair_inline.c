@@ -147,11 +147,21 @@ _INLINE size_t fr_pair_list_num_elements(fr_pair_list_t const *list)
  *
  * @param[in] list to get the head from
  *
- * @return number of entries in the list
+ * @return the pointer to the dlist wihin the pair list.
  */
-_INLINE fr_dlist_head_t *fr_pair_list_dlist_head(fr_pair_list_t const *list)
+_INLINE fr_dlist_head_t *fr_pair_list_to_dlist(fr_pair_list_t const *list)
 {
 	return fr_pair_order_list_dlist_head(&list->order);
+}
+
+/** Get the pair list head from a dlist
+ *
+ * @param[in] list	The order list from a pair list.
+ * @return The pair list head.
+ */
+_INLINE fr_pair_list_t *fr_pair_list_from_dlist(fr_dlist_head_t const *list)
+{
+	return (uintptr_t)list - offsetof(fr_pair_list_t, order);
 }
 
 /** Appends a list of fr_pair_t from a temporary list to a destination list
