@@ -161,7 +161,7 @@ _INLINE fr_dlist_head_t *fr_pair_list_to_dlist(fr_pair_list_t const *list)
  */
 _INLINE fr_pair_list_t *fr_pair_list_from_dlist(fr_dlist_head_t const *list)
 {
-	return (uintptr_t)list - offsetof(fr_pair_list_t, order);
+	return (fr_pair_list_t *)((uintptr_t)list - offsetof(fr_pair_list_t, order));
 }
 
 /** Appends a list of fr_pair_t from a temporary list to a destination list
