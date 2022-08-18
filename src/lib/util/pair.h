@@ -191,6 +191,28 @@ DIAG_ON(nonnull-compare)
 #  define PAIR_LIST_VERIFY(_x)	fr_pair_list_nonnull_assert(_x)
 #endif
 
+
+#ifdef TEST_CHECK
+/** Macro for use in acutest tests
+ */
+#define TEST_CHECK_PAIR(_got, _exp) \
+do { \
+	fr_pair_t const *_our_got = (_got); \
+	fr_pair_t const *_our_exp = (_exp); \
+	TEST_CHECK_(_exp == _our_got, "%s", #_got); \
+	if (_our_exp) { \
+		TEST_MSG("Expected pair : %s - %p (%s)", (_our_exp)->da->name, _our_exp, talloc_get_name(_our_exp)); \
+	} else { \
+		TEST_MSG("Expected pair : NULL"); \
+	} \
+	if (_our_got) { \
+		TEST_MSG("Got pair      : %s - %p (%s)", (_our_got)->da->name, _our_got, talloc_get_name(_our_got)); \
+	} else { \
+		TEST_MSG("Got Pair      : NULL"); \
+	} \
+} while(0)
+#endif
+
 /*
  *	Helper macros for adding pairs to lists and assigning a value to them
  */
