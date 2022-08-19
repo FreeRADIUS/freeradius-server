@@ -325,6 +325,11 @@ jobs:
         sudo systemctl stop dovecot exim4 slapd openresty
         sudo aa-complain /usr/sbin/slapd
 
+        echo "samba-common samba-common/workgroup string WORKGROUP" | sudo debconf-set-selections
+        echo "samba-common samba-common/dhcp boolean false" | sudo debconf-set-selections
+        echo "samba-common samba-common/do_debconf boolean true" | sudo debconf-set-selections
+        sudo apt-get install -y samba winbind krb5-user
+
         export PG_VER=14
         sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
         sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
@@ -342,6 +347,7 @@ jobs:
             ldap-setup.sh \
             ldap2-setup.sh \
             389ds-setup.sh \
+            samba-setup.sh \
             redis-setup.sh; do
 
             script="./scripts/ci/$i"
