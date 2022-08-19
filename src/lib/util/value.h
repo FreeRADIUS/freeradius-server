@@ -414,6 +414,38 @@ void fr_value_box_list_init(fr_value_box_list_t *list)
 }
 /** @} */
 
+/** @name Box to box copying
+ *
+ * @{
+ */
+void		fr_value_box_clear_value(fr_value_box_t *data)
+		CC_HINT(nonnull(1));
+
+void		fr_value_box_clear(fr_value_box_t *data)
+		CC_HINT(nonnull(1));
+
+int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
+		CC_HINT(nonnull(2,3));
+
+void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,
+					  const fr_value_box_t *src)
+		CC_HINT(nonnull(2,3));
+
+/*
+ *	fr_value_box_copy_unsafe() copies the raw bytes from one value box
+ *	to another. Its uses are rare.
+ */
+static inline CC_HINT(nonnull, always_inline)
+void		fr_value_box_copy_unsafe(fr_value_box_t *dst, const fr_value_box_t *src)
+{
+	/* coverity[store_writes_const_field] */
+	memcpy(dst, src, sizeof(*dst));
+}
+
+int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src)
+		CC_HINT(nonnull(2,3));
+/** @} */
+
 /** @name Value box assignment functions
  *
  * These functions allow C values to be assigned to value boxes.
@@ -434,19 +466,11 @@ void fr_value_box_list_init(fr_value_box_list_t *list)
 static inline CC_HINT(nonnull(1), always_inline)
 void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
 {
-	/*
-	 *	An inventive way of defeating const on the type
-	 *      field so that we don't have the overhead of
-	 *	making these proper functions.
-	 *
-	 *	Hopefully the compiler is smart enough to optimise
-	 *	this away.
-	 */
-	memcpy(vb, &(fr_value_box_t){
+	fr_value_box_copy_unsafe(vb, &(fr_value_box_t){
 		.type = type,
 		.enumv = enumv,
 		.tainted = tainted
-	}, sizeof(*vb));
+	});
 	fr_dlist_entry_init(&vb->entry);
 
 	/*
@@ -836,26 +860,7 @@ int		fr_value_box_mark_safe(fr_value_box_t *box, uint16_t safe)
 void		fr_value_box_mark_unsafe(fr_value_box_t *box)
 		CC_HINT(nonnull);
 
-/** @name Box to box copying
- *
- * @{
- */
-void		fr_value_box_clear_value(fr_value_box_t *data)
-		CC_HINT(nonnull(1));
 
-void		fr_value_box_clear(fr_value_box_t *data)
-		CC_HINT(nonnull(1));
-
-int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
-		CC_HINT(nonnull(2,3));
-
-void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					  const fr_value_box_t *src)
-		CC_HINT(nonnull(2,3));
-
-int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src)
-		CC_HINT(nonnull(2,3));
-/** @} */
 
 /** @name Assign and manipulate binary-unsafe C strings
  *

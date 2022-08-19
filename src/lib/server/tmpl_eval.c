@@ -864,7 +864,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		default:
 			break;
 		}
-		memcpy(&from_cast, to_cast, sizeof(from_cast));
+		fr_value_box_copy_unsafe(&from_cast, to_cast);
 	}
 
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
