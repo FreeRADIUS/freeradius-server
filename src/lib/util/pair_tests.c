@@ -283,15 +283,15 @@ static void test_fr_pair_find_by_da_nested(void)
 
 	vp_found = fr_pair_find_by_da_nested(&local_pairs, NULL, fr_dict_attr_test_nested_leaf_string);
 	TEST_CASE("Find child node in first TLV");
-	TEST_CHECK(vp_found == vp1);
+	TEST_CHECK_PAIR(vp_found, vp1);
 
 	vp_found = fr_pair_find_by_da_nested(&local_pairs, NULL, fr_dict_attr_test_nested_leaf_int32);
 	TEST_CASE("Find child node in second TLV");
-	TEST_CHECK(vp_found == vp2);
+	TEST_CHECK_PAIR(vp_found, vp2);
 
 	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
 	TEST_CASE("Look for child in first node after second");
-	TEST_CHECK(vp_found == NULL);
+	TEST_CHECK_PAIR(vp_found, NULL);
 
 	/*
 	 *	Add third nested TLV with child of same type as first
@@ -308,15 +308,15 @@ static void test_fr_pair_find_by_da_nested(void)
 	 */
 	vp_found = fr_pair_find_by_da_nested(&local_pairs, NULL, fr_dict_attr_test_nested_leaf_string);
 	TEST_CASE("Find child node in first TLV");
-	TEST_CHECK(vp_found == vp1);
+	TEST_CHECK_PAIR(vp_found, vp1);
 
 	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
 	TEST_CASE("Find child node in third TLV");
-	TEST_CHECK(vp_found == vp3);
+	TEST_CHECK_PAIR(vp_found, vp3);
 
 	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
 	TEST_CASE("Find child node after third TLV");
-	TEST_CHECK(vp_found == NULL);
+	TEST_CHECK_PAIR(vp_found, NULL);
 
 	/*
 	 *	Add some "flat list" attributes
@@ -332,23 +332,23 @@ static void test_fr_pair_find_by_da_nested(void)
 	 */
 	vp_found = fr_pair_find_by_da_nested(&local_pairs, NULL, fr_dict_attr_test_nested_leaf_string);
 	TEST_CASE("Find child node in first TLV");
-	TEST_CHECK(vp_found == vp1);
+	TEST_CHECK_PAIR(vp_found, vp1);
 
 	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
 	TEST_CASE("Find child node in third TLV");
-	TEST_CHECK(vp_found == vp3);
+	TEST_CHECK_PAIR(vp_found, vp3);
 
 	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
 	TEST_CASE("Find first entry in \"flat\" list");
-	TEST_CHECK(vp_found == vp4);
+	TEST_CHECK_PAIR(vp_found, vp4);
 
 	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
 	TEST_CASE("Find second \"flat\" list entry");
-	TEST_CHECK(vp_found == vp5);
+	TEST_CHECK_PAIR(vp_found, vp5);
 
 	vp_found = fr_pair_find_by_da_nested(&local_pairs, vp_found, fr_dict_attr_test_nested_leaf_string);
 	TEST_CASE("Find NULL at end of list");
-	TEST_CHECK(vp_found == NULL);
+	TEST_CHECK_PAIR(vp_found, NULL);
 
 	fr_pair_list_free(&local_pairs);
 }
