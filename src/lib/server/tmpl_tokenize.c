@@ -1877,7 +1877,10 @@ do_suffix:
 			 *
 			 *	Flatten / nested migration hack. :(
 			 */
-			if ((main_config && main_config->tmpl_tokenize_all_nested) || ((filter == TMPL_ATTR_REF_NO_FILTER) && (ar->type == TMPL_ATTR_TYPE_NORMAL))) {
+			if (main_config && main_config->tmpl_tokenize_all_nested) {
+				our_parent = da;	/* Only update the parent if we're not stripping */
+
+			} else if ((filter == TMPL_ATTR_REF_NO_FILTER) && (ar->type == TMPL_ATTR_TYPE_NORMAL)) {
 				TALLOC_FREE(ar);
 			} else {
 				our_parent = da;	/* Only update the parent if we're not stripping */
