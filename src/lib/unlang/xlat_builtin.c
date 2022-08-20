@@ -1139,6 +1139,98 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	return XLAT_ACTION_DONE;
 }
 
+/** Flatten a given group.
+ *
+ *  This is a temporary function for migration purposes
+ *
+ * Example:
+@verbatim
+"%(flatten:&request)"
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_flatten(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					  UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *in)
+{
+	fr_pair_t		*vp;
+	tmpl_t			*vpt;
+	fr_value_box_t		*attr = fr_dlist_head(in);
+	char const		*fmt;
+
+	fmt = attr->vb_strvalue;
+	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
+				&(tmpl_rules_t){
+					.attr = {
+						.dict_def = request->dict,
+						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+					}
+				}) <= 0) {
+		RPEDEBUG("Invalid input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if ((tmpl_find_vp(&vp, request, vpt) < 0) ||
+	    (vp->da->type != FR_TYPE_GROUP)) {
+		REDEBUG("Can't find '%s', or it's not a group", fmt);
+		talloc_free(vpt);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_pair_flatten(vp);
+
+	talloc_free(vpt);
+
+	return XLAT_ACTION_DONE;
+}
+
+/** Unflatten a given group.
+ *
+ *  This is a temporary function for migration purposes
+ *
+ * Example:
+@verbatim
+"%(unflatten:&request)"
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_unflatten(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					  UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *in)
+{
+	fr_pair_t		*vp;
+	tmpl_t			*vpt;
+	fr_value_box_t		*attr = fr_dlist_head(in);
+	char const		*fmt;
+
+	fmt = attr->vb_strvalue;
+	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
+				&(tmpl_rules_t){
+					.attr = {
+						.dict_def = request->dict,
+						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+					}
+				}) <= 0) {
+		RPEDEBUG("Invalid input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if ((tmpl_find_vp(&vp, request, vpt) < 0) ||
+	    (vp->da->type != FR_TYPE_GROUP)) {
+		REDEBUG("Can't find '%s', or it's not a group", fmt);
+		talloc_free(vpt);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_pair_unflatten(vp);
+
+	talloc_free(vpt);
+
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_action_t xlat_func_untaint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       UNUSED xlat_ctx_t const *xctx,
 				       UNUSED request_t *request, fr_value_box_list_t *in)
@@ -3839,6 +3931,12 @@ do { \
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("subst", xlat_func_subst, xlat_func_subst_args);
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, trigger_xlat_args);
+
+	/*
+	 *	Temporary functions for migration.
+	 */
+	XLAT_REGISTER_ARGS("flatten", xlat_func_flatten, xlat_func_debug_attr_args); /* takes an attribute reference */
+	XLAT_REGISTER_ARGS("unflatten", xlat_func_unflatten, xlat_func_debug_attr_args); /* takes an attribute reference */
 
 	xlat = xlat_register(NULL, "untaint", xlat_func_untaint, NULL);
 	xlat_internal(xlat);

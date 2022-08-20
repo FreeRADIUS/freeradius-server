@@ -816,8 +816,13 @@ int main(int argc, char *argv[])
 		schedule->stats_interval = config->stats_interval;
 
 		schedule->network.max_outstanding = config->max_requests;
-		schedule->worker.max_requests = config->max_requests;
-		schedule->worker.max_request_time = config->max_request_time;
+
+#define COPY(_x) schedule->worker._x = config->_x
+		COPY(max_requests);
+		COPY(max_request_time);
+		COPY(unflatten_after_decode);
+		COPY(unflatten_before_encode);
+		COPY(flatten_before_encode);
 
 		/*
 		 *	Single server mode: use the global event list.

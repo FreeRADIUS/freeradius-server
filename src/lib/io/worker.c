@@ -541,6 +541,13 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t si
 		ssize_t slen = 0;
 		fr_listen_t const *listen = request->async->listen;
 
+		if (worker->config.flatten_before_encode) {
+			fr_pair_flatten(request->pair_list.reply);
+
+		} else if (worker->config.unflatten_before_encode) {
+			fr_pair_unflatten(request->pair_list.reply);
+		} /* else noop */
+
 		if (listen->app->encode) {
 			slen = listen->app->encode(listen->app_instance, request,
 						   reply->m.data, reply->m.rb_size);
@@ -718,6 +725,10 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 nak:
 		worker_nak(worker, cd, now);
 		return;
+	}
+
+	if (worker->config.unflatten_after_decode) {
+		fr_pair_unflatten(request->pair_list.request);
 	}
 
 	/*

@@ -150,6 +150,15 @@ struct main_config_s {
 	uint32_t	max_workers;			//!< for the scheduler
 	fr_time_delta_t	stats_interval;			//!< for the scheduler
 
+	/*
+	 *	Migration tools
+	 */
+	bool		unflatten_after_decode;		//!< the worker will call "unflatten" after protocol decoding
+	bool		flatten_before_encode;		//!< the worker will call "flatten" before all encoding
+	bool		unflatten_before_encode;	//!< the worker will call "unflatten" before all encoding
+	bool		tmpl_tokenize_all_nested;      	//!< tmpl_tokenize will create nested tmpls instead of flat ones
+	bool		parse_new_conditions;		//!< the new xlat expressions will be parsed, but not used.
+	bool		use_new_conditions;		//!< the new xlat expressions will be used for conditions, instead of the old code
 };
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);

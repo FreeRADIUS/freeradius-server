@@ -1874,8 +1874,10 @@ do_suffix:
 			 *	each tmpl talloc pool, unless the attribute
 			 *	reference list contains a group, there's no performance
 			 *	penalty in repeatedly allocating and freeing this ar.
+			 *
+			 *	Flatten / nested migration hack. :(
 			 */
-			if ((filter == TMPL_ATTR_REF_NO_FILTER) && (ar->type == TMPL_ATTR_TYPE_NORMAL)) {
+			if ((main_config && main_config->tmpl_tokenize_all_nested) || ((filter == TMPL_ATTR_REF_NO_FILTER) && (ar->type == TMPL_ATTR_TYPE_NORMAL))) {
 				TALLOC_FREE(ar);
 			} else {
 				our_parent = da;	/* Only update the parent if we're not stripping */
