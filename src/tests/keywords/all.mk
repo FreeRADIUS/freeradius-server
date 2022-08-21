@@ -36,6 +36,15 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 define KEYWORD_TEST
 test.keywords.${1}: $(addprefix $(OUTPUT)/,${1})
+
+#
+#  Migration support.  Some of the tests don't run under the new
+#  conditions, so we don't run them under the new conditions.
+#
+ifeq "$(findstring ${1}, paircmp xlat-string xlat-subst)" ""
+$(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=yes -S use_new_conditions=yes
+endif
+
 endef
 $(foreach x,$(FILES),$(eval $(call KEYWORD_TEST,$x)))
 
@@ -97,7 +106,7 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_csv.la
 #  NOTE: Grepping for $< is not safe cross platform, as on Linux it
 #  expands to the full absolute path, and on macOS it appears to be relative.
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_test.la rlm_csv.la rlm_unpack.la
-	$(eval CMD:=KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx)
+	$(eval CMD:=KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(NEW_COND) $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx)
 	@echo "KEYWORD-TEST $(notdir $@)"
 	${Q}cp $(if $(wildcard $<.attrs),$<.attrs,$(dir $<)/default-input.attrs) $@.attrs
 	${Q}if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \

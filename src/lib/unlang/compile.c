@@ -41,7 +41,6 @@ RCSID("$Id$")
 #include "switch_priv.h"
 #include "edit_priv.h"
 
-
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
 static unsigned int unlang_number = 1;
@@ -3107,7 +3106,6 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	unlang_cond_t		*gext;
 
 	fr_cond_t		*cond;
-#ifdef WITH_XLAT_COND
 	xlat_exp_head_t		*head;
 	bool			is_truthy, value;
 	xlat_res_rules_t	xr_rules = {
@@ -3115,7 +3113,6 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 			.dict_def = unlang_ctx->rules->attr.dict_def,
 		},
 	};
-#endif
 
 	if (!cf_section_name2(cs)) {
 		cf_log_err(cs, "'%s' without condition", unlang_ops[ext->type].name);
@@ -3125,21 +3122,28 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	cond = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
 	fr_assert(cond != NULL);
 
-#ifdef WITH_XLAT_COND
-	head = cf_data_value(cf_data_find(cs, xlat_exp_head_t, NULL));
-	fr_assert(head != NULL);
-
 	/*
-	 *	Resolve the xlat first.
+	 *	Migration support.
 	 */
-	if (xlat_resolve(head, &xr_rules) < 0) {
-		cf_log_err(cs, "Failed resolving condition - %s", fr_strerror());
-		return NULL;
+	if (main_config->parse_new_conditions) {
+		head = cf_data_value(cf_data_find(cs, xlat_exp_head_t, NULL));
+		fr_assert(head != NULL);
+
+		/*
+		 *	Resolve the xlat first.
+		 */
+		if (xlat_resolve(head, &xr_rules) < 0) {
+			cf_log_err(cs, "Failed resolving condition - %s", fr_strerror());
+			return NULL;
+		}
+
+		is_truthy = xlat_is_truthy(head, &value);
 	}
 
-	is_truthy = xlat_is_truthy(head, &value);
-#endif
-
+	/*
+	 *	We still do some resolving of old-style conditions,
+	 *	and skipping of sections.
+	 */
 	if (cond->type == COND_TYPE_FALSE) {
 		cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
 				    unlang_ops[ext->type].name);
@@ -3195,11 +3199,9 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	gext = unlang_group_to_cond(g);
 	gext->cond = cond;
 
-#ifdef WITH_XLAT_COND
 	gext->head = head;
 	gext->is_truthy = is_truthy;
 	gext->value = value;
-#endif
 
 	return c;
 }

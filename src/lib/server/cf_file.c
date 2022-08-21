@@ -60,6 +60,8 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <fcntl.h>
 
+#include <freeradius-devel/server/main_config.h>
+
 bool check_config = false;
 static uid_t conf_check_uid = (uid_t)-1;
 static gid_t conf_check_gid = (gid_t)-1;
@@ -1146,12 +1148,10 @@ static int process_template(cf_stack_t *stack)
 
 static int cf_file_fill(cf_stack_t *stack);
 
-#ifdef WITH_XLAT_COND
 static const fr_sbuff_term_t if_terminals = FR_SBUFF_TERMS(
 	L(""),
 	L("{"),
 );
-#endif
 
 static uint8_t const *skip_string(uint8_t const *p, char c)
 {
@@ -1254,12 +1254,10 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
 	tmpl_rules_t	t_rules;
-#ifdef WITH_XLAT_COND
 	xlat_exp_head_t *head = NULL;
 	fr_sbuff_parse_rules_t p_rules = { };
 
 	p_rules.terminals = &if_terminals;
-#endif
 
 	/*
 	 *	Short names are nicer.
@@ -1478,9 +1476,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			ptr = buff[3];
 			slen = my_slen;
 
-#ifdef WITH_XLAT_COND
 		parse_error:
-#endif
 			fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
 
 			cf_log_err(cs, "Parse error in condition");
@@ -1493,14 +1489,14 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			return NULL;
 		}
 
-#ifdef WITH_XLAT_COND
-		my_slen = xlat_tokenize_condition(cs, &head, &FR_SBUFF_IN(buff[3], strlen(buff[3])), &p_rules, &t_rules);
-		if (my_slen <= 0) {
-			ptr = buff[3];
-			slen = my_slen;
-			goto parse_error;
+		if (main_config->parse_new_conditions) {
+			my_slen = xlat_tokenize_condition(cs, &head, &FR_SBUFF_IN(buff[3], strlen(buff[3])), &p_rules, &t_rules);
+			if (my_slen <= 0) {
+				ptr = buff[3];
+				slen = my_slen;
+				goto parse_error;
+			}
 		}
-#endif
 	}
 
 	MEM(cs->name2 = talloc_typed_strdup(cs, buff[2]));
@@ -1521,9 +1517,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	the condition to the CONF_SECTION.
 	 */
 	cf_data_add(cs, cond, NULL, true);
-#ifdef WITH_XLAT_COND
 	cf_data_add(cs, head, NULL, true);
-#endif
 	stack->ptr = ptr;
 
 	cs->allow_unlang = true;

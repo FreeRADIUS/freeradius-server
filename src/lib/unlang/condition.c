@@ -27,7 +27,6 @@ RCSID("$Id$")
 #include "condition_priv.h"
 #include "group_priv.h"
 
-#ifdef WITH_XLAT_COND
 typedef struct {
 	fr_value_box_list_t	out;				//!< Head of the result of a nested
 								///< expansion.
@@ -71,39 +70,39 @@ static unlang_action_t unlang_if_resume(rlm_rcode_t *p_result, request_t *reques
 	 */
 	return unlang_group(p_result, request, frame);
 }
-#endif
 
 static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_cond_t			*gext = unlang_group_to_cond(g);
-#ifdef WITH_XLAT_COND	
 	unlang_frame_state_cond_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_cond_t);
-#endif
 
 	fr_assert(gext->cond != NULL);
 
-#ifndef WITH_XLAT_COND	
-	if (!cond_eval(request, *p_result, gext->cond)) {
-		RDEBUG2("...");
-		return UNLANG_ACTION_EXECUTE_NEXT;
+	/*
+	 *	Migration support.
+	 */
+	if (!main_config->use_new_conditions) {
+		if (!cond_eval(request, *p_result, gext->cond)) {
+			RDEBUG2("...");
+			return UNLANG_ACTION_EXECUTE_NEXT;
+		}
+
+		/*
+		 *      Tell the main interpreter to skip over the else /
+		 *      elsif blocks, as this "if" condition was taken.
+		 */
+		while (frame->next &&
+		       ((frame->next->type == UNLANG_TYPE_ELSE) ||
+			(frame->next->type == UNLANG_TYPE_ELSIF))) {
+			frame->next = frame->next->next;
+		}
+
+		/*
+		 *      We took the "if".  Go recurse into its' children.
+		 */
+		return unlang_group(p_result, request, frame);
 	}
-
-        /*
-         *      Tell the main interpreter to skip over the else /
-         *      elsif blocks, as this "if" condition was taken.
-         */
-        while (frame->next &&
-               ((frame->next->type == UNLANG_TYPE_ELSE) ||
-                (frame->next->type == UNLANG_TYPE_ELSIF))) {
-                frame->next = frame->next->next;
-        }
-
-        /*
-         *      We took the "if".  Go recurse into its' children.
-         */
-        return unlang_group(p_result, request, frame);
-#else
 
 	/*
 	 *	If we always run this condition, then don't bother pushing anything onto the stack.
@@ -131,7 +130,6 @@ static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unla
 			     request, gext->head, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
-#endif
 }
 
 void unlang_condition_init(void)
@@ -141,10 +139,8 @@ void unlang_condition_init(void)
 				.name = "if",
 				.interpret = unlang_if,
 				.debug_braces = true,
-#ifdef WITH_XLAT_COND
 				.frame_state_size = sizeof(unlang_frame_state_cond_t),
 				.frame_state_type = "unlang_frame_state_cond_t",
-#endif
 			   });
 
 	unlang_register(UNLANG_TYPE_ELSE,
@@ -159,9 +155,7 @@ void unlang_condition_init(void)
 				.name = "elseif",
 				.interpret = unlang_if,
 				.debug_braces = true,
-#ifdef WITH_XLAT_COND
 				.frame_state_size = sizeof(unlang_frame_state_cond_t),
 				.frame_state_type = "unlang_frame_state_cond_t",
-#endif
 			   });
 }
