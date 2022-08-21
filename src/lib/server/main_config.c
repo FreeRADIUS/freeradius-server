@@ -174,6 +174,9 @@ static const CONF_PARSER thread_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/*
+ *	Migration configuration.
+ */
 static const CONF_PARSER migrate_config[] = {
 	{ FR_CONF_OFFSET("unflatten_after_decode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, unflatten_after_decode) },
 	{ FR_CONF_OFFSET("unflatten_before_encode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, unflatten_before_encode) },
@@ -1419,4 +1422,44 @@ void main_config_hup(main_config_t *config)
 	last_hup = when;
 
 	INFO("HUP - NYI in version 4");	/* Not yet implemented in v4 */
+}
+
+static fr_table_num_ordered_t config_arg_table[] = {
+	{ L("parse_new_conditions"),	 offsetof(main_config_t, parse_new_conditions) },
+	{ L("use_new_conditions"),	 offsetof(main_config_t, use_new_conditions) },
+	{ L("tmpl_tokenize_all_nested"), offsetof(main_config_t, tmpl_tokenize_all_nested) },
+};
+static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
+
+/*
+ *	Migration function that allows for command-line over-ride of
+ *	data structures which need to be initialized before the
+ *	configuration files are loaded.
+ *
+ *	This should really only be temporary, until we get rid of flat vs nested.
+ */
+int main_config_parse_option(char const *value)
+{
+	fr_value_box_t box;
+	size_t offset;
+	char const *p;
+
+	p = strchr(value, '=');
+	if (!p) return -1;
+
+	offset = fr_table_value_by_substr(config_arg_table, value, p - value, 0);
+	if (!offset) return -1;
+
+	p += 1;
+
+	fr_value_box_init(&box, FR_TYPE_BOOL, NULL, false);
+	if (fr_value_box_from_str(NULL, &box, FR_TYPE_BOOL, NULL,
+				  p, strlen(p), NULL, false) < 0) {
+		fr_perror("Invalid boolean \"%s\"", p);
+		fr_exit(1);
+	}
+
+       *(bool *) (((uintptr_t) main_config) + offset) = box.vb_bool;
+
+	return 0;
 }

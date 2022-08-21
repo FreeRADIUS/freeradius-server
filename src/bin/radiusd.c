@@ -354,7 +354,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "Cd:D:e:fhi:l:Mmn:p:PrstTvxX")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "Cd:D:e:fhi:l:Mmn:p:PrsS:tTvxX")) != -1) switch (c) {
 		case 'C':
 			check_config = true;
 			config->spawn_workers = false;
@@ -423,6 +423,14 @@ int main(int argc, char *argv[])
 		case 's':	/* Single process mode */
 			config->spawn_workers = false;
 			config->daemonize = false;
+			break;
+
+		case 'S':	/* Migration support */
+			if (main_config_parse_option(optarg) < 0) {
+				fprintf(stderr, "%s: Unknown configuration option '%s'\n",
+					config->name, optarg);
+				EXIT_WITH_FAILURE;
+			}
 			break;
 
 		case 't':	/* no child threads */
