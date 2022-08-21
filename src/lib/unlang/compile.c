@@ -2326,7 +2326,8 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		case UNLANG_TYPE_ELSIF:
 		case UNLANG_TYPE_IF:
 			was_if = true;
-			{
+
+			if (!main_config->use_new_conditions) {
 				unlang_group_t	*f;
 				unlang_cond_t	*gext;
 
@@ -2350,6 +2351,30 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 
 				default:
 					break;
+				}
+			} else {
+				unlang_group_t	*f;
+				unlang_cond_t	*gext;
+
+				/*
+				 *	Skip else, and/or omit things which will never be run.
+				 */
+				f = unlang_generic_to_group(single);
+				gext = unlang_group_to_cond(f);
+
+				if (gext->is_truthy) {
+					if (gext->value) {
+						skip_else = single->debug_name;
+					} else {
+						/*
+						 *	The condition never
+						 *	matches, so we can
+						 *	avoid putting it into
+						 *	the unlang tree.
+						 */
+						talloc_free(single);
+						continue;
+					}
 				}
 			}
 			break;
@@ -3105,9 +3130,9 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	unlang_group_t		*g;
 	unlang_cond_t		*gext;
 
-	fr_cond_t		*cond;
-	xlat_exp_head_t		*head;
-	bool			is_truthy, value;
+	fr_cond_t		*cond = NULL;
+	xlat_exp_head_t		*head = NULL;
+	bool			is_truthy = false, value = false;
 	xlat_res_rules_t	xr_rules = {
 		.tr_rules = &(tmpl_res_rules_t) {
 			.dict_def = unlang_ctx->rules->attr.dict_def,
@@ -3118,9 +3143,6 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		cf_log_err(cs, "'%s' without condition", unlang_ops[ext->type].name);
 		return NULL;
 	}
-
-	cond = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
-	fr_assert(cond != NULL);
 
 	/*
 	 *	Migration support.
@@ -3138,13 +3160,27 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		}
 
 		is_truthy = xlat_is_truthy(head, &value);
+
+		/*
+		 *	If the condition is always false, we don't compile the
+		 *	children.
+		 */
+		if (main_config->use_new_conditions) {
+			if (is_truthy && !value) goto skip;
+
+			goto do_compile;
+		}
 	}
+
+	cond = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
+	fr_assert(cond != NULL);
 
 	/*
 	 *	We still do some resolving of old-style conditions,
 	 *	and skipping of sections.
 	 */
 	if (cond->type == COND_TYPE_FALSE) {
+	skip:
 		cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
 				    unlang_ops[ext->type].name);
 
@@ -3190,6 +3226,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 
 		fr_cond_async_update(cond);
 
+	do_compile:
 		c = compile_section(parent, unlang_ctx, cs, ext);
 	}
 	if (!c) return NULL;

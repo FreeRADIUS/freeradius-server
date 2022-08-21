@@ -1469,24 +1469,26 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			return NULL;
 		}
 
-		my_slen = fr_cond_tokenize(cs, &cond, &t_rules, &FR_SBUFF_IN(buff[3], strlen(buff[3])), false);
-		if (my_slen <= 0) {
-			char *spaces, *text;
+		if (!main_config->use_new_conditions) {
+			my_slen = fr_cond_tokenize(cs, &cond, &t_rules, &FR_SBUFF_IN(buff[3], strlen(buff[3])), false);
+			if (my_slen <= 0) {
+				char *spaces, *text;
 
-			ptr = buff[3];
-			slen = my_slen;
+				ptr = buff[3];
+				slen = my_slen;
 
-		parse_error:
-			fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
+			parse_error:
+				fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
 
-			cf_log_err(cs, "Parse error in condition");
-			cf_log_err(cs, "%s", text);
-			cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
+				cf_log_err(cs, "Parse error in condition");
+				cf_log_err(cs, "%s", text);
+				cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
 
-			talloc_free(spaces);
-			talloc_free(text);
-			talloc_free(cs);
-			return NULL;
+				talloc_free(spaces);
+				talloc_free(text);
+				talloc_free(cs);
+				return NULL;
+			}
 		}
 
 		if (main_config->parse_new_conditions) {
@@ -1516,8 +1518,13 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	Now that the CONF_SECTION and condition are OK, add
 	 *	the condition to the CONF_SECTION.
 	 */
-	cf_data_add(cs, cond, NULL, true);
-	cf_data_add(cs, head, NULL, true);
+	if (!main_config->use_new_conditions) {
+		cf_data_add(cs, cond, NULL, true);
+	}
+
+	if (main_config->parse_new_conditions) {
+		cf_data_add(cs, head, NULL, true);
+	}
 	stack->ptr = ptr;
 
 	cs->allow_unlang = true;
