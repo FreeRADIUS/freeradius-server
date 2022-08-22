@@ -1305,6 +1305,18 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		p = (uint8_t const *) ptr;
 
 		while (*p >= ' ') {
+			while (isspace((int) *p)) p++;
+
+			/*
+			 *	Conditions end with ") {"
+			 */
+			if (depth == 0) {
+				if (*p == '{') {
+					found = true;
+					break;
+				}
+			}
+
 			if (*p == '(') {
 				depth++;
 				p++;
@@ -1319,21 +1331,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 					return NULL;
 				}
 				depth--;
-
-				if (depth > 0) continue;
-
-				/*
-				 *	Conditions end with ") {"
-				 */
-				if (depth == 0) {
-					while (isspace((int) *p)) p++;
-
-					if (*p == '{') {
-						found = true;
-						break;
-					}
-				}
-
 				continue;
 			}
 
