@@ -135,7 +135,7 @@ do { \
 do { \
 	char const *ref = _attr_str; \
 	tmpl_afrom_attr_substr(autofree, NULL, &vpt, &FR_SBUFF_IN(ref, strlen(ref)), NULL, &(tmpl_rules_t){.attr = {.dict_def = test_dict}}); \
-	*(_out) = tmpl_dcursor_build_init(&err, autofree, &cc, &cursor, request, vpt); \
+	*(_out) = tmpl_dcursor_build_init(&err, autofree, &cc, &cursor, request, vpt, &tmpl_dcursor_pair_build, NULL); \
 } while (0)
 
 /*
