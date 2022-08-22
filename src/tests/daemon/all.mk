@@ -2,6 +2,15 @@
 #  Don't bother running the shell commands every time.
 #  If the file exists,
 #
+#  This is run only on the 'ci-debug' branch.  Push to that branch,
+#  and on failure, the log will be spitting out a tmux command which
+#  can be used to access the system.
+#
+#  The shell may have temporary issues (network, etc.) which is added
+#  by GitHub in order to prevent people using CI to host things.  But
+#  it will still work.
+#
+#
 ifeq "$(wildcard $(BUILD_DIR)/tests/tmux.key)" ""
 
 MD5SUM	:= $(shell which md5sum 2>/dev/null)
