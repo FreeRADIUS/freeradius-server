@@ -661,7 +661,7 @@ static void test_level_2_build_multi(void)
 
 	second = fr_dcursor_next(&cursor);
 	TEST_CHECK_PAIR_NEQ(second, NULL);
-	TEST_CHECK_PAIR(second, inserted);
+	TEST_CHECK_PAIR_NEQ(second, inserted);
 	build_test_end;
 
 	tmpl_setup_and_cursor_init(&vp, "&Test-Group-0[*].Test-Int32-0");
