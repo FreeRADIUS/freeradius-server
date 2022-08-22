@@ -1015,6 +1015,7 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 
 	if (!RDEBUG_ENABLED3) return;
 
+	RINDENT();
 	RIDEBUG3("da         : %p", vp->da);
 	RIDEBUG3("is_raw     : %pV", fr_box_bool(vp->da->flags.is_raw));
 	RIDEBUG3("is_unknown : %pV", fr_box_bool(vp->da->flags.is_unknown));
@@ -1032,8 +1033,12 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 	if (fr_box_is_variable_size(&vp->data)) {
 		RIDEBUG3("length     : %zu", vp->vp_length);
 	}
+	RIDEBUG3("tainted    : %pV", fr_box_bool(vp->data.tainted));
 
-	if (!RDEBUG_ENABLED4) return;
+	if (!RDEBUG_ENABLED4) {
+		REXDENT();
+		return;
+	}
 
 	for (i = 0; i < fr_type_table_len; i++) {
 		int pad;
@@ -1067,6 +1072,8 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 	next_type:
 		talloc_free(dst);
 	}
+
+	REXDENT();
 }
 
 void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list)
