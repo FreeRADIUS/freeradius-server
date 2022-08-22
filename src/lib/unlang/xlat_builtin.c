@@ -1242,11 +1242,12 @@ static xlat_action_t xlat_func_untaint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out
 				       UNUSED xlat_ctx_t const *xctx,
 				       UNUSED request_t *request, fr_value_box_list_t *in)
 {
-	fr_dcursor_t cursor_in;
+	fr_value_box_t *vb;
 
-	fr_dcursor_init(&cursor_in, in);
 	fr_value_box_list_untaint(in);
-	fr_dcursor_merge(out, &cursor_in);
+	while ((vb = fr_dlist_pop_head(in)) != NULL) {
+		fr_dcursor_append(out, vb);
+	}
 
 	return XLAT_ACTION_DONE;
 }
@@ -1255,11 +1256,12 @@ static xlat_action_t xlat_func_taint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     UNUSED xlat_ctx_t const *xctx,
 				     UNUSED request_t *request, fr_value_box_list_t *in)
 {
-	fr_dcursor_t cursor_in;
+	fr_value_box_t *vb;
 
-	fr_dcursor_init(&cursor_in, in);
 	fr_value_box_list_taint(in);
-	fr_dcursor_merge(out, &cursor_in);
+	while ((vb = fr_dlist_pop_head(in)) != NULL) {
+		fr_dcursor_append(out, vb);
+	}
 
 	return XLAT_ACTION_DONE;
 }
