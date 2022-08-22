@@ -172,8 +172,6 @@ ssize_t udp_recv(int sockfd, int flags,
 	 */
 	if ((flags & UDP_FLAGS_CONNECTED) != 0) {
 		slen = recv(sockfd, data, data_len, sock_flags);
-		if (slen <= 0) goto done;
-
 		goto done;
 	}
 
