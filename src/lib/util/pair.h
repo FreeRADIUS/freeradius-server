@@ -199,7 +199,7 @@ DIAG_ON(nonnull-compare)
 do { \
 	fr_pair_t const *_our_got = (_got); \
 	fr_pair_t const *_our_exp = (_exp); \
-	TEST_CHECK_(_exp == _our_got, "%s", #_got); \
+	TEST_CHECK_(_our_exp == _our_got, "%s", #_got); \
 	if (_our_exp) { \
 		TEST_MSG("Expected pair : %s - %p (%s)", (_our_exp)->da->name, _our_exp, talloc_get_name(_our_exp)); \
 	} else { \
@@ -209,6 +209,18 @@ do { \
 		TEST_MSG("Got pair      : %s - %p (%s)", (_our_got)->da->name, _our_got, talloc_get_name(_our_got)); \
 	} else { \
 		TEST_MSG("Got Pair      : NULL"); \
+	} \
+} while(0)
+
+#define TEST_CHECK_PAIR_NEQ(_got, _neq) \
+do { \
+	fr_pair_t const *_our_got = (_got); \
+	fr_pair_t const *_our_neq = (_neq); \
+	TEST_CHECK_(_our_got != _our_neq, "%s", #_got); \
+	if (_our_neq) { \
+		TEST_MSG("Pair must not equal : %s - %p (%s)", (_our_neq)->da->name, _our_neq, talloc_get_name(_our_neq)); \
+	} else { \
+		TEST_MSG("Pair must not equal : NULL"); \
 	} \
 } while(0)
 #endif

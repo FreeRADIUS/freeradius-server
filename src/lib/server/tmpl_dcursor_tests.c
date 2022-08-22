@@ -135,6 +135,7 @@ static request_t *request_fake_alloc(void)
 	debug_attr_list(&request->request_pairs, 0); \
 	vp = fr_dcursor_next(&cursor); \
 	TEST_CHECK_PAIR(vp, NULL); \
+	TEST_MSG("Cursor should've been empty (i.e. returned NULL) at end of test"); \
 	tmpl_dcursor_clear(&cc); \
 	TEST_CHECK_RET(talloc_free(request), 0)
 
@@ -437,7 +438,7 @@ static void test_level_2_two_second(void)
 	pair_populate(1);
 	pair_populate(2);
 	tmpl_setup_and_cursor_init("&Test-Group-0[1].Test-Int16-0");
-	TEST_CHECK(vp == child_vp2);
+	TEST_CHECK_PAIR(vp, child_vp2);
 
 	test_end;
 }
@@ -457,7 +458,7 @@ static void test_level_2_two_all(void)
 	TEST_CHECK_PAIR(vp, child_vp1);
 
 	vp = fr_dcursor_next(&cursor);
-	TEST_CHECK(vp == child_vp2);
+	TEST_CHECK_PAIR(vp, child_vp2);
 
 	test_end;
 }
@@ -474,7 +475,7 @@ static void test_level_2_two_last(void)
 	pair_populate(1);
 	pair_populate(2);
 	tmpl_setup_and_cursor_init("&Test-Group-0[n].Test-Int16-0");
-	TEST_CHECK(vp == child_vp2);
+	TEST_CHECK_PAIR(vp, child_vp2);
 
 	test_end;
 }
@@ -550,7 +551,7 @@ static void test_level_3_two(void)
 	pair_populate(1);
 	pair_populate(2);
 	tmpl_setup_and_cursor_init("&Test-Nested-Top-TLV-0[0].Child-TLV[0].Leaf-Int32");
-	TEST_CHECK(vp == leaf_int32_vp1);
+	TEST_CHECK_PAIR(vp, leaf_int32_vp1);
 
 	test_end;
 }
@@ -564,10 +565,10 @@ static void test_level_3_two_all(void)
 	pair_populate(1);
 	pair_populate(2);
 	tmpl_setup_and_cursor_init("&Test-Nested-Top-TLV-0[*].Child-TLV[*].Leaf-Int32");
-	TEST_CHECK(vp == leaf_int32_vp1);
+	TEST_CHECK_PAIR(vp, leaf_int32_vp1);
 
 	vp = fr_dcursor_next(&cursor);
-	TEST_CHECK(vp == leaf_int32_vp2);
+	TEST_CHECK_PAIR(vp, leaf_int32_vp2);
 
 	test_end;
 }
@@ -581,7 +582,7 @@ static void test_level_3_two_last(void)
 	pair_populate(1);
 	pair_populate(2);
 	tmpl_setup_and_cursor_init("&Test-Nested-Top-TLV-0[n].Child-TLV[n].Leaf-Int32[n]");
-	TEST_CHECK(vp == leaf_int32_vp2);
+	TEST_CHECK_PAIR(vp, leaf_int32_vp2);
 
 	test_end;
 }
@@ -594,11 +595,11 @@ static void test_level_1_build(void)
 
 	pair_populate(1);
 	tmpl_setup_and_cursor_build_init("&Test-Int16-0");
-	TEST_CHECK(inserted != NULL);
+	TEST_CHECK_PAIR_NEQ(inserted, NULL);
 	build_test_end;
 
 	tmpl_setup_and_cursor_init("&Test-Int16-0");
-	TEST_CHECK(vp == inserted);
+	TEST_CHECK_PAIR(vp, inserted);
 
 	test_end;
 }
@@ -611,11 +612,11 @@ static void test_level_2_build_leaf(void)
 
 	pair_populate(1);
 	tmpl_setup_and_cursor_build_init("&Test-Group-0.Test-Int32-0");
-	TEST_CHECK(inserted != NULL);
+	TEST_CHECK_PAIR_NEQ(inserted, NULL);
 	build_test_end;
 
 	tmpl_setup_and_cursor_init("&Test-Group-0.Test-Int32-0");
-	TEST_CHECK(vp == inserted);
+	TEST_CHECK_PAIR(vp, inserted);
 
 	test_end;
 }
@@ -626,11 +627,11 @@ static void test_level_2_build_intermediate(void)
 	fr_pair_t	*inserted;
 
 	tmpl_setup_and_cursor_build_init("&Test-Group-0.Test-Int16-0");
-	TEST_CHECK(inserted != NULL);
+	TEST_CHECK_PAIR_NEQ(inserted, NULL);
 	build_test_end;
 
 	tmpl_setup_and_cursor_init("&Test-Group-0.Test-Int16-0");
-	TEST_CHECK(vp == inserted);
+	TEST_CHECK_PAIR(vp, inserted);
 
 	test_end;
 }
@@ -645,17 +646,17 @@ static void test_level_2_build_multi(void)
 	pair_populate_thin(1);
 	pair_populate_thin(2);
 	tmpl_setup_and_cursor_build_init("&Test-Group-0[*].Test-Int32-0");
-	TEST_CHECK(inserted != NULL);
+	TEST_CHECK_PAIR_NEQ(inserted, NULL);
 
 	second = fr_dcursor_next(&cursor);
-	TEST_CHECK(second != NULL);
-	TEST_CHECK(second != inserted);
+	TEST_CHECK_PAIR_NEQ(second, NULL);
+	TEST_CHECK_PAIR(second, inserted);
 	build_test_end;
 
 	tmpl_setup_and_cursor_init("&Test-Group-0[*].Test-Int32-0");
-	TEST_CHECK(vp == inserted);
+	TEST_CHECK_PAIR(vp, inserted);
 	vp = fr_dcursor_next(&cursor);
-	TEST_CHECK(vp == second);
+	TEST_CHECK_PAIR(vp, second);
 
 	test_end;
 }
@@ -668,11 +669,11 @@ static void test_level_3_build_leaf(void)
 
 	pair_populate(1);
 	tmpl_setup_and_cursor_build_init("&Test-Group-0.Test-Group-0.Test-String-0");
-	TEST_CHECK(inserted != NULL);
+	TEST_CHECK_PAIR_NEQ(inserted, NULL);
 	build_test_end;
 
 	tmpl_setup_and_cursor_init("&Test-Group-0.Test-Group-0.Test-String-0");
-	TEST_CHECK(vp == inserted);
+	TEST_CHECK_PAIR(vp, inserted);
 
 	test_end;
 }
@@ -683,11 +684,11 @@ static void test_level_3_build_entire(void)
 	fr_pair_t	*inserted;
 
 	tmpl_setup_and_cursor_build_init("&Test-Nested-Top-TLV-0[0].Child-TLV[0].Leaf-String");
-	TEST_CHECK(inserted != NULL);
+	TEST_CHECK_PAIR_NEQ(inserted, NULL);
 	build_test_end;
 
 	tmpl_setup_and_cursor_init("&Test-Nested-Top-TLV-0[0].Child-TLV[0].Leaf-String");
-	TEST_CHECK(vp == inserted);
+	TEST_CHECK_PAIR(vp, inserted);
 
 	test_end;
 }
@@ -702,12 +703,12 @@ static void test_level_3_build_partial(void)
 	pair_populate(1);
 	pair_populate_thin(2);
 	tmpl_setup_and_cursor_build_init("&Test-Nested-Top-TLV-0[1].Child-TLV[0].Leaf-String");
-	TEST_CHECK(inserted != NULL);
-	TEST_CHECK(inserted != leaf_string_vp1);
+	TEST_CHECK_PAIR_NEQ(inserted, NULL);
+	TEST_CHECK_PAIR_NEQ(inserted, leaf_string_vp1);
 	build_test_end;
 
 	tmpl_setup_and_cursor_init("&Test-Nested-Top-TLV-0[1].Child-TLV[0].Leaf-String");
-	TEST_CHECK(vp == inserted);
+	TEST_CHECK_PAIR(vp, inserted);
 
 	test_end;
 }
@@ -718,7 +719,7 @@ static void test_level_3_build_invalid1(void)
 	fr_pair_t	*inserted;
 
 	tmpl_setup_and_cursor_build_init("&Test-Nested-Top-TLV-0[3].Child-TLV[0].Leaf-String");
-	TEST_CHECK(inserted == NULL);
+	TEST_CHECK_PAIR(inserted, NULL);
 	build_test_end;
 
 	tmpl_setup_and_cursor_init("&Test-Nested-Top-TLV-0[3].Child-TLV[0].Leaf-String");
@@ -733,7 +734,7 @@ static void test_level_3_build_invalid2(void)
 	fr_pair_t	*inserted;
 
 	tmpl_setup_and_cursor_build_init("&Test-Nested-Top-TLV-0[*].Child-TLV[0].Leaf-String");
-	TEST_CHECK(inserted == NULL);
+	TEST_CHECK_PAIR(inserted, NULL);
 	build_test_end;
 
 	tmpl_setup_and_cursor_init("&Test-Nested-Top-TLV-0[*].Child-TLV[0].Leaf-String");
