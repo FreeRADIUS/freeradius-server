@@ -1758,17 +1758,6 @@ static const fr_sbuff_term_elem_t binary_ops[T_TOKEN_LAST] = {
 };
 
 /*
- *	These operations are N-ary.  i.e. we can concatenate all of
- *	their arguments together.
- *
- *	@todo - add T_ADD
- */
-static const bool nary_ops[T_TOKEN_LAST] = {
-	[T_LAND] = true,
-	[T_LOR] = true,
-};
-
-/*
  *	Which are logical operations
  */
 static const bool logical_ops[T_TOKEN_LAST] = {
@@ -2636,14 +2625,12 @@ redo:
 	fr_assert(func != NULL);
 
 	/*
-	 *	If it's an n-ary operation, AND the LHS is the function we're currently using, then just add "rhs" to the
-	 *	"lhs" children.
+	 *	If it's a logical operator, then perhaps we can
+	 *	statically evaluate the arguments, and simplify the
+	 *	condition.  If we can't simplify the con
 	 */
-	if (nary_ops[op] && (lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {
-		/*
-		 *	Reparse module return codes if necessary.
-		 */
-		if (logical_ops[op] && (reparse_rcode(head, &rhs, true) < 0)) {
+	if (logical_ops[op] && (lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {
+		if (reparse_rcode(head, &rhs, true) < 0) {
 			fr_sbuff_set(&our_in, &m_rhs);
 			return -fr_sbuff_used(&our_in);
 		}
