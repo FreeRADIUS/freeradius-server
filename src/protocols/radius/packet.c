@@ -552,7 +552,7 @@ void _fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *pa
 	       p = buffer + strlen(buffer);
                if ((attr[0] == FR_VENDOR_SPECIFIC) &&
                    (attr[1] > 6)) {
-                       vendor = (attr[2] << 25) | (attr[3] << 16) | (attr[4] << 8) | attr[5];
+                       vendor = (attr[2] << 24) | (attr[3] << 16) | (attr[4] << 8) | attr[5];
 
 		       snprintf(p, buffer + sizeof(buffer) - p, "%02x%02x%02x%02x (%u)  ",
 				attr[2], attr[3], attr[4], attr[5], vendor);
