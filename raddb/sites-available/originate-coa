@@ -37,7 +37,7 @@
 #	       ...
 #	}
 #
-#  Note that this functionality is configured differently from v3.
+#  NOTE: This functionality is configured differently from v3.
 #
 ######################################################################
 
@@ -71,15 +71,13 @@ recv Accounting-Request {
 		#  The subrequest begins empty, so copy all necessary
 		#  attributes over.
 		#
-		update request {
-			&User-Name := &parent.request.User-Name
-			&Acct-Session-Id := &parent.request.Acct-Session-Id
-			&NAS-Identifier := &parent.request.NAS-Identifier
-			&NAS-IP-Address := &parent.request.NAS-IP-Addres
-			&NAS-IPv6-Address := &parent.request.NAS-IPv6-Address
-			&NAS-Port := &parent.request.NAS-Port
-			&Framed-IP-Address := &parent.request.Framed-IP-Address
-		}
+		&request.User-Name := &parent.request.User-Name
+		&request.Acct-Session-Id := &parent.request.Acct-Session-Id
+		&request.NAS-Identifier := &parent.request.NAS-Identifier
+		&request.NAS-IP-Address := &parent.request.NAS-IP-Addres
+		&request.NAS-IPv6-Address := &parent.request.NAS-IPv6-Address
+		&request.NAS-Port := &parent.request.NAS-Port
+		&request.Framed-IP-Address := &parent.request.Framed-IP-Address
 
 		#
 		#  Call the `radius` module to send a CoA packet.

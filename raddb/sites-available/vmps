@@ -71,14 +71,10 @@ server vmps {
 		#  create one using other attributes.
 		if (!&MAC-Address) {
 			if (&Ethernet-Frame =~ /0x.{12}(..)(..)(..)(..)(..)(..).*/) {
-				update request {
-					&MAC-Address = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
-				}
+				&request.MAC-Address = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
 			}
 			else {
-				update request {
-					&MAC-Address = &Cookie
-				}
+				&request.MAC-Address = &Cookie
 			}
 		}
 
@@ -93,19 +89,17 @@ server vmps {
 		#
 		#  required VMPS reply attributes
 		#
-		update reply {
-			&Packet-Type = Join-Response
-			&Error-Code = No-Error
-			&Cookie = &MAC-Address
+		&reply.Packet-Type = Join-Response
+		&reply.Error-Code = No-Error
+		&reply.Cookie = &MAC-Address
 
-			&VLAN-Name = "please_use_real_vlan_here"
+		&reply.VLAN-Name = "please_use_real_vlan_here"
 
-			#
-			#  NOTE: If you have VLAN's in a database, you can `select`
-			#  the VLAN name based on the MAC address.
-			#
-#			&VLAN-Name = "%{sql:select ... where mac='%{MAC-Address}'}"
-		}
+		#
+		#  NOTE: If you have VLAN's in a database, you can `select`
+		#  the VLAN name based on the MAC address.
+		#
+#		&reply.VLAN-Name = "%{sql:select ... where mac='%{MAC-Address}'}"
 	}
 
 	#
