@@ -119,13 +119,12 @@ bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len)
 		 *
 		 *	It's OK for ethernet frames to be longer.
 		 */
-		if ((ptr[3] != 5) &&
-		    ((ptr[4] != 0) || (ptr[5] > 250))) {
+		attrlen = fr_nbo_to_uint16(ptr + 4);
+		if ((ptr[3] != 5) && (attrlen > 250)) {
 			fr_strerror_printf("Packet contains attribute with invalid length %02x %02x", ptr[4], ptr[5]);
 			return false;
 		}
 
-		attrlen = (ptr[4] << 8) | ptr[5];
 		ptr += 6 + attrlen;
 		data_len -= (6 + attrlen);
 	}
@@ -189,8 +188,8 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 			return -1;
 		}
 
-		attr = (ptr[2] << 8) | ptr[3];
-		attr_len = (ptr[4] << 8) | ptr[5];
+		attr = fr_nbo_to_uint16(ptr + 2);
+		attr_len = fr_nbo_to_uint16(ptr + 4);
 		ptr += 6;
 
 		/*
@@ -401,7 +400,7 @@ ssize_t fr_vmps_packet_size(uint8_t const *data, size_t data_len)
 		/*
 		 *	Length of the data NOT including the header.
 		 */
-		attr_len = (ptr[4] << 8) | ptr[5];
+		attr_len = fr_nbo_to_uint16(ptr + 4);
 
 		ptr += 6 + attr_len;
 
@@ -490,7 +489,7 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 		memcpy(&id, attr, 4);
 		id = ntohl(id);
 
-		length = (attr[4] << 8) | attr[5];
+		length = fr_nbo_to_uint16(attr + 4);
 		if ((attr + length) > end) break;
 
 		fprintf(fp, "\t\t%08x  %04x  ", id, length);

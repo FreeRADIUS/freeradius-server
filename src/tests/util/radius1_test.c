@@ -373,7 +373,7 @@ static void master_process(TALLOC_CTX *ctx)
 				goto discard;
 			}
 
-			total_len = (packet[2] << 8) | packet[3];
+			total_len = fr_nbo_to_uint16(packet + 2);
 			if (total_len < 20) {
 				MPRINT1("Master ignoring packet (header length %zu)\n", total_len);
 				goto discard;

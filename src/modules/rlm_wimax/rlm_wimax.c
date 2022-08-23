@@ -240,8 +240,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	 *	Take the 4 most significant octets.
 	 *	If less than 256, add 256.
 	 */
-	mip_spi = ((mip_rk_1[0] << 24) | (mip_rk_1[1] << 16) |
-		   (mip_rk_1[2] << 8) | mip_rk_1[3]);
+	mip_spi = fr_nbo_to_uint32(mip_rk_1);
 	if (mip_spi < 256) mip_spi += 256;
 
 	REDEBUG2("MIP-RK = 0x%pH", fr_box_octets(mip_rk, rk_len));

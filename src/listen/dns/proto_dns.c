@@ -195,7 +195,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	@todo -
 	 */
 	request->packet->code = packet->opcode;
-	request->packet->id = (data[0] << 8) | data[1];
+	request->packet->id = fr_nbo_to_uint16(data);
 	request->reply->id = request->packet->id;
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);

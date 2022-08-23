@@ -1085,8 +1085,8 @@ char *fr_inet_ntop_prefix(char out[static FR_IPADDR_PREFIX_STRLEN], size_t outle
 char *fr_inet_ifid_ntop(char *out, size_t outlen, uint8_t const *ifid)
 {
 	snprintf(out, outlen, "%x:%x:%x:%x",
-		 (ifid[0] << 8) + ifid[1], (ifid[2] << 8) + ifid[3],
-		 (ifid[4] << 8) + ifid[5], (ifid[6] << 8) + ifid[7]);
+		 fr_nbo_to_uint16(ifid),     fr_nbo_to_uint16(ifid + 2),
+		 fr_nbo_to_uint16(ifid + 4), fr_nbo_to_uint16(ifid + 6));
 	return out;
 }
 

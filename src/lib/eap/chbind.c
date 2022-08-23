@@ -149,7 +149,7 @@ static size_t chbind_get_data(chbind_packet_t const *packet,
 		 */
 		if ((end - ptr) < 4) return 0;
 
-		length = (ptr[0] << 8) | ptr[1];
+		length = fr_nbo_to_uint16(ptr);
 		if (length == 0) return 0;
 
 		if ((ptr + length + 3) > end) return 0;

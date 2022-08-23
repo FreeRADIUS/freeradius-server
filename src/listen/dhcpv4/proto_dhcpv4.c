@@ -212,7 +212,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	/*
 	 *	Hacks for now until we have a lower-level decode routine.
 	 */
-	request->packet->id = (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
+	request->packet->id = fr_nbo_to_uint32(data + 4);
 	request->reply->id = request->packet->id;
 	memcpy(request->packet->vector, data + 4, sizeof(request->packet->vector));
 

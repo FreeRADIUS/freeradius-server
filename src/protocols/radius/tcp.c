@@ -88,7 +88,7 @@ int fr_tcp_read_packet(fr_radius_packet_t *packet, uint32_t max_attributes, bool
 			return 0;
 		}
 
-		packet_len = (packet->vector[2] << 8) | packet->vector[3];
+		packet_len = fr_nbo_to_uint16(packet->vector + 2);
 
 		if (packet_len < RADIUS_HEADER_LENGTH) {
 			fr_strerror_const("Discarding packet: Smaller than RFC minimum of 20 bytes");

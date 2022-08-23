@@ -463,14 +463,14 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 		if (cnt <= INET6_ADDRSTRLEN) return NULL;
 
 		snprintf(dst, cnt, "%x:%x:%x:%x:%x:%x:%x:%x",
-			 (ipaddr->s6_addr[0] << 8) | ipaddr->s6_addr[1],
-			 (ipaddr->s6_addr[2] << 8) | ipaddr->s6_addr[3],
-			 (ipaddr->s6_addr[4] << 8) | ipaddr->s6_addr[5],
-			 (ipaddr->s6_addr[6] << 8) | ipaddr->s6_addr[7],
-			 (ipaddr->s6_addr[8] << 8) | ipaddr->s6_addr[9],
-			 (ipaddr->s6_addr[10] << 8) | ipaddr->s6_addr[11],
-			 (ipaddr->s6_addr[12] << 8) | ipaddr->s6_addr[13],
-			 (ipaddr->s6_addr[14] << 8) | ipaddr->s6_addr[15]);
+			 fr_nbo_to_uint16(ipaddr->a6_addr),
+			 fr_nbo_to_uint16(ipaddr->a6_addr + 2),
+			 fr_nbo_to_uint16(ipaddr->a6_addr + 4),
+			 fr_nbo_to_uint16(ipaddr->a6_addr + 6),
+			 fr_nbo_to_uint16(ipaddr->a6_addr + 8),
+			 fr_nbo_to_uint16(ipaddr->a6_addr + 10),
+			 fr_nbo_to_uint16(ipaddr->a6_addr + 12),
+			 fr_nbo_to_uint16(ipaddr->a6_addr + 14));
 		return dst;
 	}
 

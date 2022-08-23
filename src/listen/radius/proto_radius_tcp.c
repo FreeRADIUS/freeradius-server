@@ -151,7 +151,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	/*
 	 *	Figure out how large the RADIUS packet is.
 	 */
-	packet_len = (buffer[2] << 8) | buffer[3];
+	packet_len = fr_nbo_to_uint16(buffer + 2);
 
 	/*
 	 *	We don't have a complete RADIUS packet.  Tell the

@@ -317,7 +317,7 @@ static ssize_t sim_decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	length.
 	 */
 	if (!parent->flags.length || (parent->flags.length % 4)) {
-		actual_len = (p[0] << 8) | p[1];
+		actual_len = fr_nbo_to_uint16(p);
 		if (actual_len > (attr_len - 2)) {
 			fr_strerror_printf("%s: Actual length field value (%hu) > attribute value length (%zu)",
 					   __FUNCTION__, actual_len, attr_len - 2);
@@ -585,7 +585,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 
 		if (attr_len < 2) goto raw;	/* Need at least two bytes for the length field */
 
-		res_len = (p[0] << 8) | p[1];
+		res_len = fr_nbo_to_uint16(p);
 		if (res_len % 8) {
 			fr_strerror_printf("%s: RES Length (%hu) is not a multiple of 8",
 					   __FUNCTION__, res_len);
@@ -737,7 +737,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	 */
 	case FR_TYPE_STRING:
 	{
-		uint16_t actual_len = (p[0] << 8) | p[1];
+		uint16_t actual_len = fr_nbo_to_uint16(p);
 
 		if (actual_len > (attr_len - 2)) {
 			fr_strerror_printf("%s: Actual length field value (%hu) > attribute value length (%zu)",
@@ -754,7 +754,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 		 *	Variable length octets buffer
 		 */
 		if (!parent->flags.length) {
-			uint16_t actual_len = (p[0] << 8) | p[1];
+			uint16_t actual_len = fr_nbo_to_uint16(p);
 
 			if (actual_len > (attr_len - prefix)) {
 				fr_strerror_printf("%s: Actual length field value (%hu) > attribute value length (%zu)",
