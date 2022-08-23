@@ -2077,6 +2077,7 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	memcpy(original + 4, test_ctx->vector, sizeof(test_ctx->vector));
 	test_ctx->end = data + packet_len;
 
+	/* coverity[tainted_data] */
 	return fr_radius_decode(ctx, out, data, packet_len, original,
 				test_ctx->secret, talloc_array_length(test_ctx->secret) - 1);
 }
