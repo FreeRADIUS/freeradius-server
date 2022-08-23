@@ -1486,7 +1486,7 @@ int tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *list, tmpl_t const *vpt
 {
 	fr_type_t cast = tmpl_rules_cast(vpt);
 	fr_value_box_t *vb;
-	bool tainted;
+	bool tainted = false;
 	ssize_t slen, vlen;
 	fr_sbuff_t *agg;
 
