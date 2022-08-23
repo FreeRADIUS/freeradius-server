@@ -90,7 +90,7 @@ if ((&Tmp-Integer-0 == 0) || (&Tmp-Integer-1 == 0)) {
 	test_fail
 }
 
-if (%{expr:%{Tmp-Integer-0} + %{Tmp-Integer-1}} != 50) {
+if (&Tmp-Integer-0 + &Tmp-Integer-1 != 50) {
 	test_fail
 }
 

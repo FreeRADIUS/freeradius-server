@@ -8,11 +8,17 @@
 if ("%{expr: 1 + 2 + 3 + 4}" != 10) {
 	test_fail
 }
+if (1 + 2 + 3 + 4 != 10) {
+	test_fail
+}
 
 #
 #  Precedence
 #
 if ("%{expr: 1 + 2 * 3 + 4}" != 11) {
+	test_fail
+}
+if (1 + 2 * 3 + 4 != 11) {
 	test_fail
 }
 
@@ -27,37 +33,64 @@ if ("%{expr: 1 + 2 * 3 + 4}" != 11) {
 if ("%{expr: 1 + 2 * &Tmp-Integer-1 + 4}" != 11) {
 	test_fail
 }
+if (1 + 2 * &Tmp-Integer-1 + 4 != 11) {
+	test_fail
+}
 
 
 if ("%{expr: 1 + 2 * (&Tmp-Integer-1 + 4)}" != 15) {
+	test_fail
+}
+if (1 + 2 * (&Tmp-Integer-1 + 4) != 15) {
 	test_fail
 }
 
 if ("%{expr: 1 + 2 * (&Tmp-Integer-1 + &Tmp-Integer-2)}" != 15) {
 	test_fail
 }
+if (1 + 2 * (&Tmp-Integer-1 + &Tmp-Integer-2) != 15) {
+	test_fail
+}
 
 if ("%{expr: 1 & ~1}" != 0) {
+	test_fail
+}
+if ((1 & ~1) != 0) {	# needs an extra () to resolve ambiguities and warnings
 	test_fail
 }
 
 if ("%{expr: 1 & ~2}" != 1) {
 	test_fail
 }
+if ((1 & ~2) != 1) {	# needs an extra () to resolve ambiguities and warnings
+	test_fail
+}
 
 if ("%{expr: -1 * 2}" != -2) {
+	test_fail
+}
+if (-1 * 2 != -2) {
 	test_fail
 }
 
 if ("%{expr: 2 - -1}" != 3) {
 	test_fail
 }
+if (2 - -1 != 3) {
+	test_fail
+}
 
 if ("%{expr: 1 << 2 | 1}" != 5) {
 	test_fail
 }
+if (((1 << 2) | 1) != 5) {	# needs extra () to resolve precedence
+	test_fail
+}
 
 if ("%{expr: &Tmp-Date-0}" <= 0) {
+	test_fail
+}
+if (&Tmp-Date-0 <= 0) {
 	test_fail
 }
 
@@ -67,8 +100,14 @@ if ("%{expr: &Tmp-Date-0}" <= 0) {
 if ("%{expr: 6 + -(1 + 3)}" != 2) {
 	test_fail
 }
+if (6 + -(1 + 3) != 2) {
+	test_fail
+}
 
 if ("%{expr: 6 * -&Tmp-Integer-2}" != -24) {
+	test_fail
+}
+if (6 * -&Tmp-Integer-2 != -24) {
 	test_fail
 }
 
