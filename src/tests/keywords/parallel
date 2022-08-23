@@ -1,6 +1,3 @@
-#
-#  PRE:
-#
 parallel {
 	group {
 		&parent.control += {
