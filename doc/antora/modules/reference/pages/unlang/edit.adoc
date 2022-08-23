@@ -193,7 +193,7 @@ given.
 [source,unlang]
 ----
 &reply += {
-	Filter-Id = "foo"
+	&Filter-Id = "foo"
 }
 ----
 ====
@@ -223,7 +223,7 @@ overriding the contents of a list.
 [source,unlang]
 ----
 &reply := {
-	Filter-Id = "foo"
+	&Filter-Id = "foo"
 }
 ----
 ====
