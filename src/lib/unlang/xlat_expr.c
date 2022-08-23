@@ -2451,6 +2451,64 @@ static bool valid_type(xlat_exp_t *node)
 	return true;
 }
 
+static bool is_truthy(xlat_exp_t const *node, bool *out)
+{
+	fr_value_box_t const *box;
+
+	if (node->type == XLAT_BOX) {
+		box = &node->data;
+
+	} else if ((node->type == XLAT_TMPL) && tmpl_is_data(node->vpt)) {
+		box = tmpl_value(node->vpt);
+
+	} else {
+		*out = false;
+		return false;
+	}
+
+	*out = fr_value_box_is_truthy(box);
+	return true;
+}
+
+/*
+ *	Do local optimizations.
+ *
+ *	@todo - check for tail of LHS
+ *
+ *	if ((lhs->type == XLAT_FUNC) && (lhs->call.func->token == op))
+ *		&& tail is truthy, then remove tail, replace it with RHS
+ *		and return LHS.
+ *
+ *	lhs->call.args->flags.can_purify |= rhs->flags.can_purify | rhs->flags.pure;
+ *	lhs->flags.can_purify = lhs->call.args->flags.can_purify;
+ */
+static xlat_exp_t *logical_purify(xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
+{
+	bool value;
+
+	if (!is_truthy(lhs, &value)) return NULL;
+
+	/*
+	 *	1 && FOO   --> FOO
+	 *	0 && FOO   --> 0
+	 *	FOO && BAR --> FOO && BAR
+	 */
+
+
+	/*
+	 *	1 || FOO   --> 1
+	 *	0 || FOO   --> FOO
+	 *	FOO || BAR --> FOO || BAR
+	 */
+	if (value == (op != T_LAND)) {
+		talloc_free(rhs);
+		return lhs;
+	}
+	
+	talloc_free(lhs);
+	return rhs;
+}
+
 /** Tokenize a mathematical operation.
  *
  *	(EXPR)
@@ -2625,21 +2683,41 @@ redo:
 	fr_assert(func != NULL);
 
 	/*
-	 *	If it's a logical operator, then perhaps we can
-	 *	statically evaluate the arguments, and simplify the
-	 *	condition.  If we can't simplify the con
+	 *	If it's a logical operator, check for rcodes, and also
+	 *	merge sequences of the same operator together.
 	 */
-	if (logical_ops[op] && (lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {
+	if (logical_ops[op]) {
 		if (reparse_rcode(head, &rhs, true) < 0) {
 			fr_sbuff_set(&our_in, &m_rhs);
 			return -fr_sbuff_used(&our_in);
 		}
+		fr_assert(rhs != NULL);
 
-		xlat_func_append_arg(lhs, rhs, cond);
+		if ((lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {
+			xlat_func_append_arg(lhs, rhs, cond);
 
-		lhs->call.args->flags.can_purify |= rhs->flags.can_purify | rhs->flags.pure;
-		lhs->flags.can_purify = lhs->call.args->flags.can_purify;
-		goto redo;
+			lhs->call.args->flags.can_purify |= rhs->flags.can_purify | rhs->flags.pure;
+			lhs->flags.can_purify = lhs->call.args->flags.can_purify;
+			goto redo;
+		}
+
+		if (reparse_rcode(head, &lhs, true) < 0) {
+			fr_sbuff_set(&our_in, &m_lhs);
+			return -fr_sbuff_used(&our_in);
+		}
+
+		/*
+		 *	Peephole optimizer.
+		 *
+		 *		FOO || 0 --> FOO
+		 *		FOO && 1 --> 1
+		 */
+		node = logical_purify(lhs, op, rhs);
+		if (node) {
+			lhs = node;
+			rhs = node = NULL;
+			goto redo;
+		}
 	}
 
 	/*
@@ -2662,27 +2740,12 @@ redo:
 			fr_sbuff_set(&our_in, &m_rhs);
 			return -fr_sbuff_used(&our_in);
 		}
-	}
 
-	/*
-	 *	Convert a bare
-	 *
-	 *		handled
-	 *
-	 *	to
-	 *
-	 *		%{rcode:handled}
-	 */
-	if (logical_ops[op]) {
-		if (reparse_rcode(head, &lhs, true) < 0) {
-			fr_sbuff_set(&our_in, &m_lhs);
-			return -fr_sbuff_used(&our_in);
-		}
-
-		if (reparse_rcode(head, &rhs, true) < 0) {
-			fr_sbuff_set(&our_in, &m_rhs);
-			return -fr_sbuff_used(&our_in);
-		}
+		/*
+		 *	@todo - peephole optimization.  If both LHS
+		 *	and RHS are static values, then just call the
+		 *	relevant condition code to get the result.
+		 */
 	}
 
 	/*

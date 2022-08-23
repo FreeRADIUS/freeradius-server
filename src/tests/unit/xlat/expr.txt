@@ -74,8 +74,11 @@ match (192.168.0.0/24 > &Framed-IP-Address)
 xlat_expr 1 < 2 || 4 > 3
 match ((1 < 2) || (4 > 3))
 
+#
+#  Peephole optimization for some cases
+#
 xlat_expr 2 || (1 > 4)
-match (2 || (1 > 4))
+match 2
 
 #
 #  Repeated operations of the same type are mashed together into one list.
