@@ -110,6 +110,12 @@ sql {
 		# Send application_name to the postgres server
 		# Only supported in PG 9.0 and greater. Defaults to no.
 		send_application_name = yes
+
+		#
+		#  The default application name is "FreeRADIUS - .." with the current version.
+		#  The application name can be customized here to any non-zero value.
+		#
+#		application_name = ""
 	}
 
 	#
