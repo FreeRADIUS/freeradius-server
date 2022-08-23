@@ -15,7 +15,7 @@ The following operators are supported (in order of precedence).
 | -         | subtraction
 | *         | multiplication
 | /         | division
-| %%        | remainder TODO
+| %         | remainder
 | ^         | xor
 | (...)     | sub-expression
 |===

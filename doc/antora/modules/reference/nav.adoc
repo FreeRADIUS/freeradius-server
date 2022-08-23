@@ -33,7 +33,7 @@
 
 *** xref:unlang/condition/index.adoc[Conditional Expressions]
 **** xref:unlang/condition/cmp.adoc[Comparisons]
-**** xref:unlang/expressions.adoc[expressions]
+**** xref:unlang/expression.adoc[expressions]
 **** xref:unlang/condition/operands.adoc[Operands]
 **** xref:unlang/condition/return_code.adoc[The Return Code Operator]
 **** xref:unlang/condition/eq.adoc[The '==' Operator]

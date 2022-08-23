@@ -1436,6 +1436,12 @@ static int calc_float32(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		dst->vb_float32 = a->vb_float64 / b->vb_float64;
 		break;
 
+	case T_MOD:
+		if (fpclassify(b->vb_float64) == FP_ZERO) return ERR_ZERO;
+
+		dst->vb_float32 = fmod(a->vb_float64, b->vb_float64);
+		break;
+
 	default:
 		return ERR_INVALID;
 	}
@@ -1474,6 +1480,12 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		dst->vb_float64 = a->vb_float64 / b->vb_float64;
 		break;
 
+	case T_MOD:
+		if (fpclassify(b->vb_float64) == FP_ZERO) return ERR_ZERO;
+
+		dst->vb_float64 = fmod(a->vb_float64, b->vb_float64);
+		break;
+
 	default:
 		return ERR_INVALID;
 	}
@@ -1498,7 +1510,15 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		break; \
  \
 	case T_DIV: \
+		if (in2->vb_ ## _t == 0) return ERR_ZERO; \
+ \
 		dst->vb_ ## _t = in1->vb_ ## _t /  in2->vb_ ## _t; \
+		break; \
+ \
+	case T_MOD: \
+		if (in2->vb_ ## _t == 0) return ERR_ZERO; \
+ \
+		dst->vb_ ## _t = in1->vb_ ## _t %  in2->vb_ ## _t; \
 		break; \
  \
 	case T_AND: \
@@ -1761,6 +1781,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 		case T_SUB:
 		case T_MUL:
 		case T_DIV:
+		case T_MOD:
 		case T_XOR:
 			/*
 			 *	Nothing else set it.  If the input types are
@@ -1896,6 +1917,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	case T_SUB:
 	case T_MUL:
 	case T_DIV:
+	case T_MOD:
 	case T_AND:
 	case T_OR:
 	case T_XOR:

@@ -23,6 +23,9 @@ match 13
 calc int32 -1 + uint8 14 -> int16
 match 13
 
+calc int32 11 % uint8 2 -> int16
+match 1
+
 calc int8 0x7f & uint8 0x40 -> uint8
 match 64
 
@@ -150,6 +153,12 @@ match 3.500000
 calc float32 1.0 * float32 2.5 -> float32
 match 2.500000
 
+calc float32 11.0 % float32 2.0 -> float32
+match 1.000000
+
+calc float32 11.0 % float32 0.0 -> float32
+match Cannot divide by zero.
+
 ######################################################################
 #
 #  Assignment operations
@@ -164,4 +173,4 @@ calc string "2" += string "test"
 match 2test
 
 count
-match 70
+match 76

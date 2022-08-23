@@ -69,7 +69,7 @@ fr_table_num_sorted_t const fr_token_quotes_table[] = {
 size_t fr_token_quotes_table_len = NUM_ELEMENTS(fr_token_quotes_table);
 
 /*
- *  This is a hack, and has to be kept in sync with tokens.h
+ *  String versions for all of the tokens.
  */
 char const *fr_tokens[T_TOKEN_LAST] = {
 	[T_INVALID] = "?",
@@ -91,6 +91,7 @@ char const *fr_tokens[T_TOKEN_LAST] = {
 	[T_NOT]	     = "!",
 	[T_XOR]	     = "^",
 	[T_COMPLEMENT]  = "~",
+	[T_MOD]  = "%",
 
 	[T_RSHIFT]   = ">>",
 	[T_LSHIFT]   = "<<",
@@ -210,6 +211,7 @@ const bool fr_binary_op[T_TOKEN_LAST] = {
 	T(DIV),
 	T(AND),
 	T(OR),
+	T(MOD),
 	T(RSHIFT),
 	T(LSHIFT),
 };

@@ -73,6 +73,13 @@ if (-1 * 2 != -2) {
 	test_fail
 }
 
+if ("%{expr: 11 % 2}" != 1) {
+	test_fail
+}
+if (11 % 2 != 1) {
+	test_fail
+}
+
 if ("%{expr: 2 - -1}" != 3) {
 	test_fail
 }

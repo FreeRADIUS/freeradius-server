@@ -57,6 +57,7 @@ typedef enum fr_token {
 	T_NOT,				/* ! */
 	T_XOR,				/* ^ */
 	T_COMPLEMENT,	       		/* ~ */
+	T_MOD,		       		/* % */
 
 	T_RSHIFT,			/* >> */
 	T_LSHIFT,			/* << */

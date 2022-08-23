@@ -468,6 +468,7 @@ XLAT_BINARY_FUNC(op_add, T_ADD)
 XLAT_BINARY_FUNC(op_sub, T_SUB)
 XLAT_BINARY_FUNC(op_mul, T_MUL)
 XLAT_BINARY_FUNC(op_div, T_DIV)
+XLAT_BINARY_FUNC(op_mod, T_MOD)
 XLAT_BINARY_FUNC(op_and, T_AND)
 XLAT_BINARY_FUNC(op_or,  T_OR)
 XLAT_BINARY_FUNC(op_xor,  T_XOR)
@@ -1677,6 +1678,7 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_BINARY_OP(T_SUB, sub);
 	XLAT_REGISTER_BINARY_OP(T_MUL, mul);
 	XLAT_REGISTER_BINARY_OP(T_DIV, div);
+	XLAT_REGISTER_BINARY_OP(T_MOD, mod);
 	XLAT_REGISTER_BINARY_OP(T_AND, and);
 	XLAT_REGISTER_BINARY_OP(T_OR, or);
 	XLAT_REGISTER_BINARY_OP(T_XOR, xor);
@@ -1734,6 +1736,7 @@ static const fr_sbuff_term_elem_t binary_ops[T_TOKEN_LAST] = {
 	[ T_SUB ]		= L("op_sub"),
 	[ T_MUL ]		= L("op_mul"),
 	[ T_DIV ]		= L("op_div"),
+	[ T_MOD ]		= L("op_mod"),
 	[ T_AND ]		= L("op_and"),
 	[ T_OR ]		= L("op_or"),
 	[ T_XOR ]		= L("op_xor"),
@@ -1822,6 +1825,7 @@ static const int precedence[T_TOKEN_LAST] = {
 
 	[T_MUL]		= P(8,0),
 	[T_DIV]		= P(8,1),
+	[T_MOD]		= P(8,2),
 
 	[T_OP_REG_EQ]	= P(9,0),
 	[T_OP_REG_NE]	= P(9,0),
@@ -2410,6 +2414,7 @@ static fr_table_num_ordered_t const expr_assignment_op_table[] = {
 	{ L("+"),	T_ADD			},
 	{ L("-"),	T_SUB			},
 	{ L("/"),	T_DIV			},
+	{ L("%"),	T_MOD			},
 	{ L("^"),	T_XOR			},
 
 	{ L("|"),	T_OR			},
