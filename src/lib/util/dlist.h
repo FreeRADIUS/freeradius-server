@@ -1185,8 +1185,8 @@ DIAG_OFF(unused-function) \
 	static inline	void _name ## _talloc_free_tail(FR_DLIST_HEAD(_name) *list) \
 		{		fr_dlist_talloc_free_tail(&list->head); } \
 \
-	static inline	void _name ## _talloc_free_item(FR_DLIST_HEAD(_name) *list, _element_type *ptr) \
-		{		fr_dlist_talloc_free_item(&list->head, ptr); } \
+	static inline	_element_type * _name ## _talloc_free_item(FR_DLIST_HEAD(_name) *list, _element_type *ptr) \
+		{return		fr_dlist_talloc_free_item(&list->head, ptr); } \
 \
 	static inline	void _name ## _talloc_free(FR_DLIST_HEAD(_name) *list) \
 		{		fr_dlist_talloc_free(&list->head); } \
