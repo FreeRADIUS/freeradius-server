@@ -2480,7 +2480,7 @@ static bool is_truthy(xlat_exp_t *node, bool *out)
 }
 
 /*
- *	Do local optimizations.
+ *	Do some optimizations.
  *
  *	@todo - check for tail of LHS
  *
@@ -2491,7 +2491,7 @@ static bool is_truthy(xlat_exp_t *node, bool *out)
  *	lhs->call.args->flags.can_purify |= rhs->flags.can_purify | rhs->flags.pure;
  *	lhs->flags.can_purify = lhs->call.args->flags.can_purify;
  */
-static xlat_exp_t *logical_purify(xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
+static xlat_exp_t *logical_peephole_optimize(xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
 {
 	bool value;
 
@@ -2502,7 +2502,6 @@ static xlat_exp_t *logical_purify(xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rh
 	 *	0 && FOO   --> 0
 	 *	FOO && BAR --> FOO && BAR
 	 */
-
 
 	/*
 	 *	1 || FOO   --> 1
@@ -2520,9 +2519,9 @@ static xlat_exp_t *logical_purify(xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rh
 
 
 /*
- *	Purify static values.
+ *	Do some optimizations
  */
-static int binary_purify(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
+static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
 {
 	fr_value_box_t *lhs_box, *rhs_box;
 	fr_value_box_t box;
@@ -2673,6 +2672,7 @@ redo:
 	 */
 	if (((c == '!') || (c == '~')) && (op != T_LAND) && (op != T_LOR)) {
 		fr_strerror_printf("Operator '%c' is only applied to the left hand side of the '%s' operation, add (..) to evaluate the operation first", c, fr_tokens[op]);
+	fail_lhs:
 		fr_sbuff_set(&our_in, &m_lhs);
 		return -fr_sbuff_used(&our_in);
 	}
@@ -2731,6 +2731,7 @@ redo:
 	 */
 	if (logical_ops[op]) {
 		if (reparse_rcode(head, &rhs, true) < 0) {
+		fail_rhs:
 			fr_sbuff_set(&our_in, &m_rhs);
 			return -fr_sbuff_used(&our_in);
 		}
@@ -2744,10 +2745,7 @@ redo:
 			goto redo;
 		}
 
-		if (reparse_rcode(head, &lhs, true) < 0) {
-			fr_sbuff_set(&our_in, &m_lhs);
-			return -fr_sbuff_used(&our_in);
-		}
+		if (reparse_rcode(head, &lhs, true) < 0) goto fail_lhs;
 
 		/*
 		 *	Peephole optimizer.
@@ -2755,8 +2753,9 @@ redo:
 		 *		FOO || 0 --> FOO
 		 *		FOO && 1 --> 1
 		 */
-		node = logical_purify(lhs, op, rhs);
+		node = logical_peephole_optimize(lhs, op, rhs);
 		if (node) {
+		replace:
 			lhs = node;
 			rhs = node = NULL;
 			goto redo;
@@ -2774,16 +2773,9 @@ redo:
 	 *	as special cases, so we can check lists for emptiness.
 	 */
 	if (fr_equality_op[op]) {
-		if (!valid_type(lhs)) {
-		fail_lhs:
-			fr_sbuff_set(&our_in, &m_lhs);
-			return -fr_sbuff_used(&our_in);
-		}
+		if (!valid_type(lhs)) goto fail_lhs;
 
-		if (!valid_type(rhs)) {
-			fr_sbuff_set(&our_in, &m_rhs);
-			return -fr_sbuff_used(&our_in);
-		}
+		if (!valid_type(rhs)) goto fail_rhs;
 
 		/*
 		 *	Peephole optimization.  If both LHS
@@ -2793,14 +2785,10 @@ redo:
 		if (cond) {
 			int rcode;
 
-			rcode = binary_purify(head, &node, lhs, op, rhs);
+			rcode = binary_peephole_optimize(head, &node, lhs, op, rhs);
 			if (rcode < 0) goto fail_lhs;
 
-			if (rcode) {
-				lhs = node;
-				rhs = node = NULL;
-				goto redo;
-			}
+			if (rcode) goto replace;
 		}
 	}
 

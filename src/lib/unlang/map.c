@@ -371,16 +371,6 @@ static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *r
 
 void unlang_map_init(void)
 {
-	/*
-	 *	For now, FILTER and UPDATE use the same processor.
-	 */
-	unlang_register(UNLANG_TYPE_FILTER,
-			   &(unlang_op_t){
-				.name = "filter",
-				.interpret = unlang_update_state_init,
-				.debug_braces = true
-			   });
-
 	unlang_register(UNLANG_TYPE_UPDATE,
 			   &(unlang_op_t){
 				.name = "update",

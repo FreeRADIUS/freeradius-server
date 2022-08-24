@@ -64,7 +64,6 @@ typedef enum {
 	UNLANG_TYPE_IF,				//!< Condition.
 	UNLANG_TYPE_ELSE,			//!< !Condition.
 	UNLANG_TYPE_ELSIF,			//!< !Condition && Condition.
-	UNLANG_TYPE_FILTER,			//!< Filter block.
 	UNLANG_TYPE_UPDATE,			//!< Update block.
 	UNLANG_TYPE_SWITCH,			//!< Switch section.
 	UNLANG_TYPE_CASE,			//!< Case section (within a #UNLANG_TYPE_SWITCH).

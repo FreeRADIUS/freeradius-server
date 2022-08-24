@@ -33,9 +33,9 @@ modify attributes in any list or packet.
 [cols="30%,70%"]
 |=====
 | Keyword | Description
-| xref:unlang/filter.adoc[filter]   | Filter attributes from a list
 | xref:unlang/map.adoc[map]         | Map database fields to server attributes.
-| xref:unlang/update.adoc[update]   | Add attributes to a list
+| xref:unlang/edit.adoc[editing]    | Creating, modifying, and deleting attributes.
+| xref:unlang/update.adoc[update]   | DEPRECATED - v3 compatible attribute editing.
 |=====
 
 == Grouping Keywords

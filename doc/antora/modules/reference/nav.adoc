@@ -11,7 +11,6 @@
 **** xref:unlang/edit.adoc[editing]
 **** xref:unlang/else.adoc[else]
 **** xref:unlang/elsif.adoc[elsif]
-**** xref:unlang/filter.adoc[filter]
 **** xref:unlang/foreach.adoc[foreach]
 **** xref:unlang/group.adoc[group]
 **** xref:unlang/if.adoc[if]
