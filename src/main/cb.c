@@ -47,7 +47,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 		if (RDEBUG_ENABLED3) {
 			char const *abbrv = SSL_state_string(s);
 			size_t len;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 			STACK_OF(SSL_CIPHER) *client_ciphers;
 			STACK_OF(SSL_CIPHER) *server_ciphers;
 #endif
@@ -64,7 +64,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 			/*
 			 *	After a ClientHello, list all the proposed ciphers from the client
 			 */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 			if (SSL_get_state(s) == TLS_ST_SR_CLNT_HELLO) {
 				int i;
 				int num_ciphers;
@@ -136,7 +136,7 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	 *	content types.  Which breaks our tracking of
 	 *	the SSL Session state.
 	 */
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
+#if OPENSSL_VERSION_NUMBER < 0x30000000L || defined(LIBRESSL_VERSION_NUMBER)
 	if ((msg_version == 0) && (content_type > UINT8_MAX)) {
 #else
 	/*
@@ -201,7 +201,7 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 		state->info.alert_level = 0x00;
 		state->info.alert_description = 0x00;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
 	} else if (content_type == SSL3_RT_INNER_CONTENT_TYPE && buf[0] == SSL3_RT_APPLICATION_DATA) {
 		/* let tls_ack_handler set application_data */
 		state->info.content_type = SSL3_RT_HANDSHAKE;

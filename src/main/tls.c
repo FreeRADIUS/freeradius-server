@@ -684,7 +684,8 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 				/*
 				 * Swap empty store with the old one.
 				 */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+	!(defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x30500000L)
 				conf->old_x509_store = SSL_CTX_get_cert_store(conf->ctx);
 				/* Bump refcnt so the store is kept allocated till next store replacement */
 				X509_STORE_up_ref(conf->old_x509_store);
@@ -3166,7 +3167,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	}
 
 	if (lookup == 0) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+	!(defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x30500000L)
 		ext_list = X509_get0_extensions(client_cert);
 #else
 		X509_CINF	*client_inf;
@@ -4257,7 +4259,7 @@ post_ca:
 	 *	send it flowers and cake.
 	 */
 	if (min_version <= TLS1_1_VERSION) {
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
 		int seclevel = SSL_CTX_get_security_level(ctx);
 		int required;;
 
