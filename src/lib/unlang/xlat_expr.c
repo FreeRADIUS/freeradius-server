@@ -2451,17 +2451,26 @@ static bool valid_type(xlat_exp_t *node)
 	return true;
 }
 
-static bool is_truthy(xlat_exp_t const *node, bool *out)
+
+static fr_value_box_t *xlat_value_box(xlat_exp_t *node)
+{
+	if (node->type == XLAT_BOX) {
+		return &node->data;
+
+	} else if ((node->type == XLAT_TMPL) && tmpl_is_data(node->vpt)) {
+		return tmpl_value(node->vpt);
+	}
+
+	return NULL;
+}
+
+
+static bool is_truthy(xlat_exp_t *node, bool *out)
 {
 	fr_value_box_t const *box;
 
-	if (node->type == XLAT_BOX) {
-		box = &node->data;
-
-	} else if ((node->type == XLAT_TMPL) && tmpl_is_data(node->vpt)) {
-		box = tmpl_value(node->vpt);
-
-	} else {
+	box = xlat_value_box(node);
+	if (!box) {
 		*out = false;
 		return false;
 	}
@@ -2507,6 +2516,40 @@ static xlat_exp_t *logical_purify(xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rh
 	
 	talloc_free(lhs);
 	return rhs;
+}
+
+
+/*
+ *	Purify static values.
+ */
+static int binary_purify(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
+{
+	fr_value_box_t *lhs_box, *rhs_box;
+	fr_value_box_t box;
+	xlat_exp_t *node;
+	char *name;
+
+	lhs_box = xlat_value_box(lhs);
+	if (!lhs_box) return 0;
+
+	rhs_box = xlat_value_box(rhs);
+	if (!rhs_box) return 0;
+
+	if (fr_value_calc_binary_op(lhs, &box, FR_TYPE_NULL, lhs_box, op, rhs_box) < 0) return -1;
+
+	MEM(node = xlat_exp_alloc_null(ctx));
+	xlat_exp_set_type(node, XLAT_BOX);
+
+	if (box.type == FR_TYPE_BOOL) box.enumv = attr_expr_bool_enum;
+
+	(void) fr_value_box_aprint(node, &name, &box, NULL);
+
+	xlat_exp_set_name_buffer_shallow(node, name);
+	fr_value_box_copy(node, &node->data, &box);
+
+	*out = node;
+
+	return 1;
 }
 
 /** Tokenize a mathematical operation.
@@ -2732,6 +2775,7 @@ redo:
 	 */
 	if (fr_equality_op[op]) {
 		if (!valid_type(lhs)) {
+		fail_lhs:
 			fr_sbuff_set(&our_in, &m_lhs);
 			return -fr_sbuff_used(&our_in);
 		}
@@ -2742,10 +2786,22 @@ redo:
 		}
 
 		/*
-		 *	@todo - peephole optimization.  If both LHS
+		 *	Peephole optimization.  If both LHS
 		 *	and RHS are static values, then just call the
 		 *	relevant condition code to get the result.
 		 */
+		if (cond) {
+			int rcode;
+
+			rcode = binary_purify(head, &node, lhs, op, rhs);
+			if (rcode < 0) goto fail_lhs;
+
+			if (rcode) {
+				lhs = node;
+				rhs = node = NULL;
+				goto redo;
+			}
+		}
 	}
 
 	/*
