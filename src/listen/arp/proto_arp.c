@@ -79,7 +79,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	}
 
 	arp = (fr_arp_packet_t const *) data;
-	request->packet->code = (arp->op[0] << 8) | arp->op[1];
+	request->packet->code = fr_nbo_to_uint16(arp->op);
 	fr_assert(request->packet->code < FR_ARP_CODE_MAX);
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);

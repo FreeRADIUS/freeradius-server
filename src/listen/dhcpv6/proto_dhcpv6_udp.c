@@ -195,7 +195,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	proto_dhcpv6 sets the priority
 	 */
 
-	xid = (packet->transaction_id[0] << 16) | (packet->transaction_id[1] << 8) | packet->transaction_id[2];
+	xid = fr_nbo_to_uint24(packet->transaction_id);
 
 	/*
 	 *	Print out what we received.
@@ -398,7 +398,7 @@ static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_i
 		option = fr_dhcpv6_option_find(packet + 2 + 32, packet + packet_len, attr_relay_message->attr);
 		if (!option) return NULL;
 
-		option_len = (option[2] << 8) | option[3];
+		option_len = fr_nbo_to_uint16(option + 2);
 
 		packet = option + 4; /* skip option header */
 		packet_len = option_len;
@@ -412,7 +412,7 @@ static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_i
 	option = fr_dhcpv6_option_find(packet + 4, packet + packet_len, attr_client_id->attr);
 	if (!option) return NULL;
 
-	option_len = (option[2] << 8) | option[3];
+	option_len = fr_nbo_to_uint16(option + 2);
 
 	t = (proto_dhcpv6_track_t *) talloc_zero_array(track, uint8_t, t_size + option_len);
 	if (!t) return NULL;

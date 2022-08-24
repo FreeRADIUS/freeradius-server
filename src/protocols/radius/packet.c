@@ -531,7 +531,7 @@ void _fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *pa
        }
 
        fr_log(log, L_DBG, file, line, "  Id       : %u", packet->data[1]);
-       fr_log(log, L_DBG, file, line, "  Length   : %u", ((packet->data[2] << 8) | (packet->data[3])));
+       fr_log(log, L_DBG, file, line, "  Length   : %u", fr_nbo_to_uint16(packet->data + 2));
        fr_log(log, L_DBG, file, line, "  Vector   : %pH", fr_box_octets(packet->data + 4, RADIUS_AUTH_VECTOR_LENGTH));
 
        if (packet->data_len <= 20) return;
@@ -552,7 +552,7 @@ void _fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *pa
 	       p = buffer + strlen(buffer);
                if ((attr[0] == FR_VENDOR_SPECIFIC) &&
                    (attr[1] > 6)) {
-                       vendor = (attr[2] << 24) | (attr[3] << 16) | (attr[4] << 8) | attr[5];
+                       vendor = fr_nbo_to_uint32(attr + 2);
 
 		       snprintf(p, buffer + sizeof(buffer) - p, "%02x%02x%02x%02x (%u)  ",
 				attr[2], attr[3], attr[4], attr[5], vendor);

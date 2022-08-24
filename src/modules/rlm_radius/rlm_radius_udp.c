@@ -2185,7 +2185,7 @@ static void protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_t
 	uint32_t  	response_length = 0;
 	uint8_t const	*attr, *end;
 
-	end = h->buffer + ((h->buffer[2] << 8) | h->buffer[3]);
+	end = h->buffer + fr_nbo_to_uint16(h->buffer + 2);
 
 	for (attr = h->buffer + RADIUS_HEADER_LENGTH;
 	     attr < end;

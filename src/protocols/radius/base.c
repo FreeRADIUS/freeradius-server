@@ -278,7 +278,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		   uint8_t const *secret, size_t secret_len)
 {
 	uint8_t		*msg, *end;
-	size_t		packet_len = (packet[2] << 8) | packet[3];
+	size_t		packet_len = fr_nbo_to_uint16(packet + 2);
 
 	/*
 	 *	No real limit on secret length, this is just
@@ -465,7 +465,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	i.e. We've received 128 bytes, and the packet header
 	 *	says it's 256 bytes long.
 	 */
-	totallen = (packet[2] << 8) | packet[3];
+	totallen = fr_nbo_to_uint16(packet + 2);
 
 	/*
 	 *	Code of 0 is not understood.
@@ -710,7 +710,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	bool found_ma;
 	int rcode;
 	uint8_t *msg, *end;
-	size_t packet_len = (packet[2] << 8) | packet[3];
+	size_t packet_len = fr_nbo_to_uint16(packet + 2);
 	uint8_t request_authenticator[RADIUS_AUTH_VECTOR_LENGTH];
 	uint8_t message_authenticator[RADIUS_AUTH_VECTOR_LENGTH];
 

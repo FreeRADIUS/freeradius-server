@@ -818,7 +818,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 		if ((len >= 3) && (p[0] == 1)) {
 			size_t payload_len;
 
-			payload_len = (p[1] << 8) | p[2];
+			payload_len = fr_nbo_to_uint16(p + 1);
 			if ((payload_len + 3) > len) {
 				tls_session->invalid = true;
 				ROPTIONAL(REDEBUG, ERROR, "OpenSSL Heartbeat attack detected.  Closing connection");

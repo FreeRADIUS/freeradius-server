@@ -622,7 +622,7 @@ failure:
 	 *	The MS-Length field is 5 + value_size + length
 	 *	of name, which is put after the response.
 	 */
-	length = (eap_round->response->type.data[2] << 8) | eap_round->response->type.data[3];
+	length = fr_nbo_to_uint16(eap_round->response->type.data + 2);
 	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
 		REDEBUG("Response contains contradictory length %zu %d", length, 5 + 49);
 		RETURN_MODULE_INVALID;
