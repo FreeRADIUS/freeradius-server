@@ -4922,6 +4922,7 @@ parse:
 		fr_base16_decode(&err, &dbuff, &our_in, true);
 		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
 
+		/* coverity[uninit_use_in_call] */
 		fr_value_box_ethernet_addr(dst, dst_enumv, &ether, tainted);
 
 		return fr_sbuff_set(in, &our_in);
