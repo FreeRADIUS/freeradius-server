@@ -1,3 +1,5 @@
+
+
 This virtual server allows EAP-TLS to reject access requests
 based on some attributes of the certificates involved.
 
@@ -26,6 +28,7 @@ multiple times for each challenge / response. For this reason,
 here may be a good location to put authentication logging, and
 modules that check for further authorization, especially if they
 hit external services such as sql or ldap.
+
 
 
 Authorize - this is the only section required.
@@ -65,8 +68,11 @@ groupname_attribute = cn
 groupmembership_filter = "(&(objectClass=group)(member=%{control.Ldap-UserDn}))"
 
 
+
+
 Now let's test membership of an LDAP group (the ldap bind user will
 need permission to read this group membership):
+
 
 
 or, to be more specific, you could use the group's full DN:
@@ -89,43 +95,28 @@ Post-Auth REJECT sections to log reply packet details, too.
 
 
 
-
 == Default Configuration
 
 ```
 server check-eap-tls {
 recv Access-Request {
-	update config {
-		&Auth-Type := Accept
-	}
+	&control.Auth-Type := Accept
 #	if ("%{session-state.TLS-Client-Cert-Common-Name}" == 'client.example.com') {
-#		update config {
-#			&Auth-Type := Accept
-#		}
+#		&control.Auth-Type := Accept
 #	}
 #	else {
-#		update config {
-#			&Auth-Type := Reject
-#		}
-#		update reply {
-#			&Reply-Message := "Your certificate is not valid."
-#		}
+#		&control.Auth-Type := Reject
+#		&reply.Reply-Message := "Your certificate is not valid."
 #	}
 #	if (&User-Name == "host/%{session-state.TLS-Client-Cert-Common-Name}") {
-#		update config {
-#			&Auth-Type := Accept
-#		}
+#		&control.Auth-Type := Accept
 #	}
 #	else {
-#		update config {
-#			&Auth-Type := Reject
-#		}
+#		&control.Auth-Type := Reject
 #	}
 #	ldap
 #	if (!(Ldap-Group == "Permitted-Laptops")) {
-#		update config {
-#			&Auth-Type := Reject
-#		}
+#		&control.Auth-Type := Reject
 #	}
 #	files
 	auth_log

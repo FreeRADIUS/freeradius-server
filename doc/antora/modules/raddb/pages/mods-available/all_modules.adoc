@@ -47,6 +47,7 @@ of the module.
 | xref:mods-available/couchbase.adoc[couchbase]	| Allows attributes to be stored and retrieved from a couchbase server. Client definitions may also be bulk loaded from a
 couchbase server as FreeRADIUS starts.
 | xref:mods-available/csv.adoc[csv]	| Maps values in a CSV file to FreeRADIUS attributes and adds them to the request.
+| xref:mods-available/kafka.adoc[kafka]	| Produces messages, placing them in a Kafka messaging queue
 | xref:mods-available/passwd.adoc[passwd]	| Reads and caches line-oriented files that are in a format similar to ``/etc/passwd``.
 | xref:mods-available/radutmp.adoc[radutmp]	| Writes a utmp style file that lists the users who are logged in. The file is used mainly for Simultaneous-Use checking
 and by radwho to see who has current sessions.
@@ -110,9 +111,11 @@ including syslog, flat files, and raw UDP/TCP sockets.
 | xref:mods-available/mac2ip.adoc[mac2ip]	| Mac2IP
 | xref:mods-available/mac2vlan.adoc[mac2vlan]	| Mac2Vlan
 | xref:mods-available/ntlm_auth.adoc[ntlm_auth]	| NTLM Auth
+| xref:mods-available/redundant_sql.adoc[redundant_sql]	| redundant_sql
 | xref:mods-available/smbpasswd.adoc[smbpasswd]	| SMBPasswd
 | xref:mods-available/sradutmp.adoc[sradutmp]	| sRadutmp
 | xref:mods-available/stats.adoc[stats]	| Stats
+| xref:mods-available/totp.adoc[totp]	| 
 |=====
 
 == Policy Modules
@@ -126,8 +129,6 @@ including syslog, flat files, and raw UDP/TCP sockets.
 | xref:mods-available/date.adoc[date]	| Converts date strings between user configurable formats.
 | xref:mods-available/delay.adoc[delay]	| Introduces an artificial non-blocking delay when processing a request.
 | xref:mods-available/escape.adoc[escape]	| Escapes and unescapes strings using the MIME escape format
-| xref:mods-available/expiration.adoc[expiration]	| Determines whether a user account has expired, with the expiration time set by another module.
-| xref:mods-available/expr.adoc[expr]	| Registers a string expansion "%{expr:}" that allows basic arithmetic and binary operations.
 | xref:mods-available/idn.adoc[idn]	| Converts internationalized domain names to ASCII.
 | xref:mods-available/json.adoc[json]	| Parses JSON strings into an in memory format using the json-c library.
 | xref:mods-available/logintime.adoc[logintime]	| Enforces the time span during which a user may login to the system.

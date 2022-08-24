@@ -117,14 +117,6 @@ After the Notification is ACKed by the peer, we send
 the final `EAP-Success` packet containing `MPPE` keys.
 
 
-
-protected_success:: Send protected success messages
-
-
-
-virtual_server:: Same as for `TTLS`, `PEAP`, etc.
-
-
 request_identity:: Send a AKA-Identity message to request
 an additional identity to the one from the EAP-Identity-Response.
 
@@ -149,9 +141,6 @@ See sites-available/eap-aka-sim for details.
 
 ephemeral_id_length:: The length of any pseudonyms or
 fastauth identities we generate (not including hint byte).
-
-See sites-available/eap-aka-sim for details on how to trigger
-the generation of pseudonym or fastauth identities.
 
 
 
@@ -347,6 +336,25 @@ NOTE: Setting `&Method-Hint = Fastauth` here will cause the server
 to execute the `load session { ... }` section next.  This is
 sometimes useful when dealing with non-standard fastauth identities.
 
+#### Custom identity schemes
+
+Multiple identity privacy schemes have been proposed for
+EAP-SIM/AKA/AKA'.  Instead of hard coding implementations in the server
+source we've provided the necessary cryptographic functions for them to be
+implemented in policy.
+
+The notable exception to this is the scheme described in
+3GPP TS 33.234 which is supported via the following expansions functions:
+
+- 3gpp_temporary_id_key_index
+- 3gpp_temporary_id_decrypt
+- 3gpp_temporary_id_encrypt
+
+The rlm_cipher module and the &control.KDF-Identity attribute override
+(see notes below) are provided to allow the "Privacy Protection for EAP-AKA"
+scheme described by 3GPP S3-170116 and the Wireless Broadband Allowance
+document "IMSI PRIVACY PROTECTION FOR WI-FI".
+
 
 
 ### `send Identity-Request { ... }` - Allow user massaging of Identity-Request
@@ -450,20 +458,20 @@ following control attributes:
 If retrieving triplets from the AuC, you should should provide
 three sets of the following control attributes:
 
-- `SIM-KC`::		Authentication value from the AuC.
-- `SIM-RAND`::	User authentication challenge.
-- `SIM-SRES`::	Signing response.
+- `KC`::		Authentication value from the AuC.
+- `RAND`::		User authentication challenge.
+- `SRES`::		Signing response.
 
 If retrieving quintuplets from an AuC, you should provide the
 following control attributes:
 
-- `SIM-AUTN`::	Authentication value from the AuC.
-- `SIM-CK`::		Ciphering Key.
-- `SIM-IK`::		Integrity Key.
-- `SIM-RAND`::	User authentication challenge.
-- `SIM-XRES`::	Signing response.
-- `SIM-SQN`::	(optional)
-- `SIM-AK`::  	(optional)
+- `AUTN`::		Authentication value from the AuC.
+- `CK`::		Ciphering Key.
+- `IK`::		Integrity Key.
+- `RAND`::		User authentication challenge.
+- `XRES`::		Signing response.
+- `SQN`::		(optional)
+- `AK`::  		(optional)
 
 ### Pseudonyms
 
@@ -522,7 +530,18 @@ require an identity not provided in the EAP-Response/Identity
 message, or sent as an AT_IDENTITY value. One such identity privacy
 scheme described by 3GPP S3-170116 "Privacy Protection for EAP-AKA",
 where the cryptographic identity is the plaintext extracted from
-the encrypted identity blob.
+the encrypted identity blob.  The same behaviour is required for the
+evolution of that standard published by the WBA
+"IMSI PRIVACY PROTECTION FOR WI-FI".
+
+Both standards as implemented in iOS and Android violate https://tools.ietf.org/html/rfc4186[RFC 4186],
+https://tools.ietf.org/html/rfc4187[RFC 4187],and https://tools.ietf.org/html/rfc5448[RFC 5448] in requiring that the Identity input to the
+cryptographic function used to derive the MK for the session be set
+to the decrypted identity, not the last value of AT_IDENTITY as
+stated by the original RFCs.
+
+No where is this mentioned in either the original 3GPP proposal or the
+WBA document.
 
 If you need to implement one of these identity privacy schemes, the
 cryptographic identity can be specified with `&control.KDF-Identity`.
@@ -827,8 +846,6 @@ server eap-aka-sim {
 #		protected_success = yes
 #	}
 	eap-aka {
-#		protected_success = no
-#		virtual_server = ""
 #		request_identity = no
 #		ephemeral_id_length = 14
 #		strip_permanent_identity_hint = yes

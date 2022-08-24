@@ -1,7 +1,5 @@
 
 
-
-
 = The default Virtual Server
 
 The `default` virtual server is the first one that is enabled on a
@@ -52,6 +50,8 @@ documentation.  If you need the functionality of that module, then:
 
 In most cases, those small changes will result in the server being
 able to connect to the database, and to authenticate users.
+
+
 
 ## The Virtual Server
 
@@ -1282,7 +1282,7 @@ server default {
 			}
 		}
 	}
-	listen {
+	listen tcp_auth {
 		type = Access-Request
 		type = Status-Server
 		transport = tcp
@@ -1297,7 +1297,7 @@ server default {
 			}
 		}
 	}
-	listen {
+	listen udp_acct {
 		type = Accounting-Request
 		transport = udp
 		udp {
@@ -1315,9 +1315,7 @@ recv Access-Request {
 #	filter_password
 #	operator-name
 #	if (&User-Name =~ /@example\.com$/) {
-#		update control {
-#			&Auth-Type := "proxy-example.com"
-#		}
+#		&control.Auth-Type := "proxy-example.com"
 #	}
 #	cui
 #	auth_log
@@ -1382,18 +1380,14 @@ authenticate eap {
 #	post_proxy_log.post-proxy
 #}
 send Access-Challenge {
-	attr_filter.access_challenge.post-auth
+	attr_filter.access_challenge
 	handled
 }
 send Access-Accept {
 #	if (!&reply.State) {
-#		update reply {
-#			&State := "0x%{randstr:16h}"
-#		}
+#		&reply.State := "0x%{randstr:16h}"
 #	}
-	update {
-		&reply += &session-state
-	}
+	&reply += &session-state
 	eap
 #	sqlippool
 #	cui
@@ -1401,27 +1395,23 @@ send Access-Accept {
 	-sql
 #	sql_log
 #	ldap
-#	update request {
-#		&WiMAX-MN-NAI = "%{User-Name}"
-#	}
+#	&request.WiMAX-MN-NAI = "%{User-Name}"
 #	update reply {
 #		&Vendor-Specific.WiMAX.FA-RK-Key = 0x00
 #		&Vendor-Specific.WiMAX.MSK = "%{reply.EAP-MSK}"
 #	}
 #	wimax
-#	update reply {
-#		&Reply-Message += "%{session-state.TLS-Certificate.Serial}"
-#		&Reply-Message += "%{session-state.TLS-Certificate.Not-After}"
-#		&Reply-Message += "%{session-state.TLS-Certificate.Subject}"
-#		&Reply-Message += "%{session-state.TLS-Certificate.Issuer}"
-#		&Reply-Message += "%{session-state.TLS-Certificate.Common-Name}"
-#		&Reply-Message += "%{session-state.TLS-Certificate.Subject-Alt-Name-Email}"
+#	&reply += {
+#		&Reply-Message = "%{session-state.TLS-Certificate.Serial}"
+#		&Reply-Message = "%{session-state.TLS-Certificate.Not-After}"
+#		&Reply-Message = "%{session-state.TLS-Certificate.Subject}"
+#		&Reply-Message = "%{session-state.TLS-Certificate.Issuer}"
+#		&Reply-Message = "%{session-state.TLS-Certificate.Common-Name}"
+#		&Reply-Message = "%{session-state.TLS-Certificate.Subject-Alt-Name-Email}"
 #	}
 #	insert_acct_class
 #	if (&reply.EAP-Session-Id) {
-#		update reply {
-#			&EAP-Key-Name := &reply.EAP-Session-Id
-#		}
+#		&reply.EAP-Key-Name := &reply.EAP-Session-Id
 #	}
 	remove_reply_message_if_eap
 }
@@ -1434,13 +1424,9 @@ send Access-Reject {
 }
 recv Accounting-Request {
 #	acct_counters64
-#	update request {
-#		&FreeRADIUS-Acct-Session-Start-Time = "%{expr: %{%{Event-Timestamp}:-%l} - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
-#	}
+#	&request.FreeRADIUS-Acct-Session-Start-Time = "%{expr: %{%{Event-Timestamp}:-%l} - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
 	if (!&Event-Timestamp) {
-		update request {
-			&Event-Timestamp := "%{expr:%l - &Acct-Delay-Time}"
-		}
+		&request.Event-Timestamp := "%{expr:%l - &Acct-Delay-Time}"
 	}
 	acct_unique
 	files

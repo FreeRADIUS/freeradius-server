@@ -25,7 +25,7 @@ certificate, if you're using ldaps.  See OpenLDAP documentation
 for the behavioral semantics of specifying more than one host.
 
 Depending on the `libldap` in use, server may be specified as an LDAP
-URI.  In the case of `OpenLDAP` this allows additional the following
+URI.  In the case of `OpenLDAP` this allows the following
 additional schemes:
 
 [options="header,autowidth"]
@@ -125,24 +125,11 @@ Where:
 | Parameter  | Description
 | <fr attr>  | Is the attribute you wish to create,
                with any valid list and request qualifiers.
-| <op>       | Is any assignment operator (`=`, `:=`, `+=`, `^=`, `-=`).
+| <op>       | Is any assignment operator (`=`, `:=`, `+=`, `-=`).
 | <value>    | Is the value to parse into the new attribute.
                If the value is wrapped in double quotes it
                will be xlat expanded.
 |===
-
-
-
-### Global
-
-
-random_file:: Provides random number generator.
-
-
-
-ldap_debug:: Debug flags for libldap (see OpenLDAP documentation).
-
-.Please see the option 'ldap_debug'
 
 
 
@@ -163,7 +150,7 @@ Where:
 | Parameter   | Description
 | <fr attr>   | Is the destination RADIUS attribute
                 with any valid list and request qualifiers.
-| <op>        | Is any assignment attribute (=, :=, +=, ^=, -=).
+| <op>        | Is any assignment attribute (=, :=, +=, -=).
 | <ldap attr> | Is the attribute associated with user or
                 profile objects in the LDAP directory.
                 If the attribute name is wrapped in double quotes
@@ -207,9 +194,7 @@ e.g:
 ----
 ldap
 if ((ok || updated) && &User-Password) {
-	update {
-		&control.Auth-Type := ldap
-	}
+	&control.Auth-Type := ldap
 }
 ----
 ====
@@ -484,7 +469,8 @@ NOTE: `LDAP_OPT_DEREF` is set to this value.
 
 
 
-chase_referrals:: controls whether the server follows references returned by LDAP directory.
+chase_referrals:: controls whether the server follows references returned
+by the LDAP directory.
 
 They are mostly for Active Directory compatibility.
 If you set this to `no`, then searches will likely return 'operations error',
@@ -492,10 +478,11 @@ instead of a useful result.
 
 
 
-rebind:: If `chase_referrals` is `yes`, then, when a referral is followed, having `rebind`
-set to `no` will cause libldap to do an anonymous bind when making any additional connections.
-Setting this to `yes` will either bind with the admin credentials or the credientials from the
-rebind url depending on `use_referral_credentials`.
+rebind:: If `chase_referrals` is `yes` then, when a referral is followed
+having `rebind` set to `no` will cause the server to do an anonymous bind when
+making any additional connections.  Setting this to `yes` will either bind
+with the admin credentials or the credentials from the rebind url depending
+on `use_referral_credentials`.
 
 
 
@@ -559,43 +546,9 @@ NOTE: `LDAP_OPT_X_KEEPALIVE_INTERVAL` is set to this value.
 
 
 
-ldap_debug:: Debug flags for libldap (see OpenLDAP documentation).
-Set this to enable debugging output from different code areas within libldap.
-
-NOTE: These debugging options can produce significant amounts of logging output.
-
-[options="header,autowidth"]
-|===
-| Option             | Value
-| LDAP_DEBUG_TRACE   | 0x0001
-| LDAP_DEBUG_PACKETS | 0x0002
-| LDAP_DEBUG_ARGS    | 0x0004
-| LDAP_DEBUG_CONNS   | 0x0008
-| LDAP_DEBUG_BER     | 0x0010
-| LDAP_DEBUG_FILTER  | 0x0020
-| LDAP_DEBUG_CONFIG  | 0x0040
-| LDAP_DEBUG_ACL     | 0x0080
-| LDAP_DEBUG_STATS   | 0x0100
-| LDAP_DEBUG_STATS2  | 0x0200
-| LDAP_DEBUG_SHELL   | 0x0400
-| LDAP_DEBUG_PARSE   | 0x0800
-| LDAP_DEBUG_SYNC    | 0x4000
-| LDAP_DEBUG_NONE    | 0x8000
-| LDAP_DEBUG_ANY     | (-1)
-|===
-
-e.g:
-
-If you want to see the LDAP logs only for `trace` and `parse`,
-facilities you should use:
-
-  (LDAP_DEBUG_TRACE + LDAP_DEBUG_PARSE) = 0x0801
-
-Setting the `ldap_debug` configuration item as follows:
-
-   ldap_debug = 0x0801
-
-Default: 0x0000 (no debugging messages)
+reconnection_delay:: Sets the time in seconds before a failed connection
+will attempt reconnection.  This includes failures to bind as the admin
+user due to incorrect credentials.
 
 
 
@@ -801,10 +754,6 @@ ldap {
 #		realm = 'example.org'
 	}
 #	valuepair_attribute = 'radiusAttribute'
-	global {
-#		random_file = /dev/urandom
-#		ldap_debug = 0x0000
-	}
 	update {
 		&control.Password.With-Header	+= 'userPassword'
 #		&control.NT-Password		:= 'ntPassword'
@@ -887,7 +836,7 @@ ldap {
 		idle = 60
 		probes = 3
 		interval = 3
-		ldap_debug = 0x0000
+		reconnection_delay = 10
 	}
 	tls {
 #		start_tls = yes

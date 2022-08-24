@@ -62,10 +62,6 @@ Location of config and logfiles.
 
 
 
-Should likely be ${localstatedir}/lib/radiusd
-
-
-
 libdir:: Where to find the rlm_* modules.
 
 This should be automatically set at configuration time.
@@ -243,7 +239,7 @@ logging to go to stdout.
 
 colourise:: Highlight important messages sent to stderr and stdout.
 
-Option will be ignored (disabled) if output if `TERM` is not
+Option will be ignored (disabled) if output of `TERM` is not
 an xterm or output is not to a TTY.
 
 
@@ -514,6 +510,13 @@ the `trigger.conf` file.
 
 
 
+.Global Library Settings
+
+Each library which has global settings will have its own configuration
+file in global.d
+
+
+
 .Module Configuration
 
 The names and configuration of each module is located in this section.
@@ -570,81 +573,9 @@ pre/post-proxy, etc.
 
 
 
-.Instantiation
-
-This section orders the loading of the modules.  Modules
-listed here will get loaded BEFORE the later sections like
-authorize, authenticate, etc. get examined.
-
-This section is not strictly needed.  When a section like
-authorize refers to a module, it's automatically loaded and
-initialized.  However, some modules may not be listed in any
-of the following sections, so they can be listed here.
-
-Also, listing modules here ensures that you have control over
-the order in which they are initialized.  If one module needs
-something defined by another module, you can list them in order
-here, and ensure that the configuration will be OK.
-
-After the modules listed here have been loaded, all of the modules
-in the "mods-enabled" directory will be loaded.  Loading the
-"mods-enabled" directory means that unlike Version 2, you usually
-don't need to list modules here.
-
-
-We list the counter module here so that it registers
-the check_name attribute before any module which sets
-it.
-
-
-
-subsections here can be thought of as `virtual` modules.
-
-e.g. If you have two redundant SQL servers, and you want to
-use them in the authorize and accounting sections, you could
-place a `redundant` block in each section, containing the
-exact same text.  Or, you could uncomment the following
-lines, and list `redundant_sql` in the authorize and
-accounting sections.
-
-The `virtual` module defined here can also be used with
-dynamic expansions, under a few conditions:
-
-  * The section is `redundant`, or `load-balance`, or
-  `redundant-load-balance`
-  * The section contains modules ONLY, and no sub-sections
-  * All modules in the section are using the same rlm_
-  driver, e.g. They are all sql, or all ldap, etc.
-
-When those conditions are satisfied, the server will
-automatically register a dynamic expansion, using the
-name of the `virtual` module.  In the example below,
-it will be `redundant_sql`.  You can then use this expansion
-just like any other:
-
-	update reply {
-		Filter-Id := "%{redundant_sql: ... }"
-	}
-
-In this example, the expansion is done via module `sql1`,
-and if that expansion fails, using module `sql2`.
-
-For best results, configure the `pool` subsection of the
-module so that `retry_delay` is non-zero.  That will allow
-the redundant block to quickly ignore all "down" SQL
-databases.  If instead we have `retry_delay = 0`, then
-every time the redundant block is used, the server will try
-to open a connection to every `down` database, causing
-problems.
-
-		sql1
-		sql2
-
-
 .Policies
 
-Policies are virtual modules, similar to those defined in the
-`instantiate` section above.
+Policies are virtual modules.
 
 Defining a policy in one of the `policy.d` files means that it can be
 referenced in multiple places as a *name*, rather than as a series of
@@ -701,7 +632,7 @@ modconfdir = ${confdir}/mods-config
 certdir = ${confdir}/certs
 cadir   = ${confdir}/certs
 run_dir = ${localstatedir}/run/${name}
-db_dir = ${raddbdir}
+db_dir = ${localstatedir}/lib/${name}
 libdir = ${exec_prefix}/lib
 pidfile = ${run_dir}/${name}.pid
 #panic_action = "gdb %e %p"
@@ -743,14 +674,12 @@ thread pool {
 #	openssl_async_pool_max = 1024
 }
 #$INCLUDE trigger.conf
+global {
+	$INCLUDE global.d/
+}
 modules {
 #	$INCLUDE mods-enabled/sql
 	$INCLUDE mods-enabled/
-}
-instantiate {
-#	dailycounter
-#	redundant redundant_sql {
-#	}
 }
 policy {
 	$INCLUDE policy.d/

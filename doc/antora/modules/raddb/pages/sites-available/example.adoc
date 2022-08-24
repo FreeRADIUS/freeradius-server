@@ -14,6 +14,7 @@
 
 
 
+
 Listen on 192.0.2.1:1812 for Access-Requests
 
 When the server receives a packet, it is processed
@@ -100,19 +101,15 @@ server example {
 		secret		= testing123
 	}
 	recv Access-Request {
-		if (&User-Name == 'bob') {
-			update control {
-				&Password.Cleartext := 'bob'
-			}
+		if (&User-Name == "bob") {
+			&control.Password.Cleartext := "bob"
 		}
 		reject
 	}
 	send Access-Accept {
 	}
 	send Access-Reject {
-		update reply {
-			&Reply-Message = 'This is only an example.'
-		}
+		&reply.Reply-Message = "This is only an example."
 	}
 }
 ```

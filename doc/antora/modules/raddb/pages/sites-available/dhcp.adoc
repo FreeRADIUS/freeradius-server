@@ -109,7 +109,6 @@ Do a simple mapping of MAC to assigned IP.
 See below for the definition of the "mac2ip"
 module.
 
-mac2ip
 
 If the MAC wasn't found in that list, do something else.
 You could call a Perl, Python, or Java script here.
@@ -135,16 +134,12 @@ In the event that Message-Type is not set then the
 server will fall back to determining the type of reply
 based on the rcode of this section.
 
-update reply {
-     &Message-Type = Offer
-}
 
 If Message-Type is not set, returning "ok" or
 "updated" from this section will respond with a Offer
 message.
 
 Other rcodes will tell the server to not return any response.
-ok
 
 
 The DHCP Server Identifier is set here since it is returned in OFFERs
@@ -152,9 +147,6 @@ The DHCP Server Identifier is set here since it is returned in OFFERs
 If the request is not for this server then silently discard it
 
 Response packet type. See Discover section above.
-update reply {
-     &Message-Type = Ack
-}
 
 Call a policy (defined in policy.d/dhcp) to set common reply attributes
 
@@ -163,7 +155,6 @@ Do a simple mapping of MAC to assigned IP.
 See below for the definition of the "mac2ip"
 module.
 
-mac2ip
 
 If the MAC wasn't found in that list, do something else.
 You could call a Perl, Python, or Java script here.
@@ -182,7 +173,6 @@ packet.
 
 "handled" will not return a packet, all other rcodes will
 send back a NAK.
-ok
 
 
 Other DHCP packet types
@@ -232,6 +222,8 @@ if it can't find anything.
 
 
 
+
+
 Add more logic here.  Is the lease inactive?
 If so, respond with Lease-Unassigned.
 
@@ -249,7 +241,6 @@ The reply types are:
 Lease-Unknown
 Lease-Active
 Lease-Unassigned
-
 
 
 
@@ -302,38 +293,32 @@ listen {
 #client private {
 #}
 recv Discover {
-	update control {
-		&Server-Identifier = 192.0.2.1
-	}
+	&control.Server-Identifier = 192.0.2.1
 	dhcp_common
-#	update control {
-#		&IP-Pool.Name := "local"
-#	}
+#	mac2ip
+#	&control.IP-Pool.Name := "local"
 #	dhcp_sqlippool
+#	&reply.Message-Type = Offer
+#	ok
 }
 recv Request {
-	update control {
-		&Server-Identifier = 192.0.2.1
-	}
+	&control.Server-Identifier = 192.0.2.1
 	if (&request.Server-Identifier && \
 	    &request.Server-Identifier != &control.Server-Identifier) {
 	        do_not_respond
 	}
+#	&reply.Message-Type = Ack
 	dhcp_common
-#	update control {
-#		&IP-Pool.Name := "local"
-#	}
+#	mac2ip
+#	&control.IP-Pool.Name := "local"
 #	dhcp_sqlippool
 	if (ok) {
-		update reply {
-			&Your-IP-Address := "%{%{request.Requested-IP-Address}:-%{request.Client-IP-Address}}"
-		}
+		&reply.Your-IP-Address := "%{%{request.Requested-IP-Address}:-%{request.Client-IP-Address}}"
 	}
+#	ok
 }
 recv Decline {
-#	update control {
-#		&IP-Pool.Name := "local"
-#	}
+#	&control.IP-Pool.Name := "local"
 #	dhcp_sqlippool
 	ok
 }
@@ -342,18 +327,14 @@ recv Inform {
 	ok
 }
 #recv Inform {
-#	update reply {
-#		Packet-Dst-Port = 67
-#		Message-Type = Ack
-#		Server-Identifier = "%{Packet-Dst-IP-Address}"
-#		Site-specific-28 = 0x0a00
-#	}
+#	&reply.Packet-Dst-Port = 67
+#	&reply.Message-Type = Ack
+#	&reply.Server-Identifier = "%{Packet-Dst-IP-Address}"
+#	&reply.Site-specific-28 = 0x0a00
 #	ok
 #}
 recv Release {
-#	update control {
-#		&IP-Pool.Name := "local"
-#	}
+#	&control.IP-Pool.Name := "local"
 #	dhcp_sqlippool
 	ok
 }
@@ -365,22 +346,16 @@ recv Lease-Query {
 	elsif (&Client-Identifier) {
 	}
 	else {
-		update reply {
-			&Message-Type = Lease-Unknown
-		}
+		&reply.Message-Type = Lease-Unknown
 		ok
 		return
 	}
 	if (notfound) {
-		update reply {
-			&Message-Type = Lease-Unknown
-		}
+		&reply.Message-Type = Lease-Unknown
 		ok
 		return
 	}
-	update reply {
-		&Message-Type = Lease-Unassigned
-	}
+	&reply.Message-Type = Lease-Unassigned
 }
 }
 #	00:01:02:03:04:05,192.0.2.100

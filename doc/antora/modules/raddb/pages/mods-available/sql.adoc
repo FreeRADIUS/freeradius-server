@@ -46,7 +46,7 @@ should usually match the `dialect` above.
 
 In some cases, the driver is different from the `dialect`.
 
-The rlm_sql_null driver can be used with any `dialect`,
+The null driver can be used with any `dialect`,
 along with the `logfile` directive below.  It will then
 write the SQL queries to a log file.
 
@@ -58,11 +58,11 @@ we can fix them,
 [options="header,autowidth"]
 |===
 | Driver            | Dialect
-| rlm_sql_db2       | mssql
-| rlm_sql_firebird  | mssql
-| rlm_sql_freetds   | mssql
-| rlm_sql_null      | any
-| rlm_sql_unixodbc  | mssql
+| db2               | mssql
+| firebird          | mssql
+| freetds           | mssql
+| null              | any
+| unixodbc          | mssql
 |===
 
 
@@ -157,7 +157,7 @@ Per-section logging can be disabled by setting "logfile = ''"
 
 
 
-query_timeout:: Set the maximum query duration for `rlm_sql_mysql` and `rlm_sql_cassandra`.
+query_timeout:: Set the maximum query duration for `mysql` and `cassandra`.
 
 
 
@@ -258,10 +258,10 @@ Not supported by:
 
 [options="header,autowidth"]
 |===
-| Driver             | Description
-| rlm_sql_firebird   | Likely possible but no documentation.
-| rlm_sql_oracle     | Not possible.
-| rlm_sql_postgresql | Should be set via the radius_db string instead.
+| Driver     | Description
+| firebird   | Likely possible but no documentation.
+| oracle     | Not possible.
+| postgresql | Should be set via the radius_db string instead.
 |===
 
 

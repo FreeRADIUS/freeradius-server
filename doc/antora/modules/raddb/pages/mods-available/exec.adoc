@@ -108,6 +108,16 @@ That is to say:
 
   User-Name=BobUser => USER_NAME="BobUser"
 
+Note that this escaping only applies to environmental variables
+created from the request list.  For environmental variables inherited
+from the main radiusd process no escaping is applied.
+
+
+
+env_inherit:: Inherit the environment of the current radiusd process.
+
+Any `input_pairs` will be merged with these environmental variables.
+
 
 
 timeout:: Set a time wait for the program to finish.
@@ -130,6 +140,7 @@ exec {
 	input_pairs = request
 #	output_pairs = reply
 	shell_escape = yes
+#	env_inherit = no
 	timeout = 10
 }
 ```

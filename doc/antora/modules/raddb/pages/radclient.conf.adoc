@@ -59,9 +59,7 @@ server default {
 	recv Access-Request {
 		radius
 		if (ok) {
-			update reply {
-				&Packet-Type := Access-Accept
-			}
+			&reply.Packet-Type := Access-Accept
 		}
 	}
 	send Access-Accept {

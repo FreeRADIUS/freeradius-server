@@ -104,7 +104,7 @@ You may want accounting policies here...
 #	This configuration could be done MUCH more simply if ALL
 #	packets were written to the detail file.  But that would
 #	involve a lot more disk writes, which may not be a good idea.
-#	This file is NOT meant to be used as-is.  It needs to be
+#	NOTE: This file is NOT meant to be used as-is.  It needs to be
 #	edited to match your local configuration.
 home_server home1.example.com {
 	type = acct
@@ -149,9 +149,7 @@ server home.example.com {
 		load_factor = 10
 	}
 	recv Accounting-Request {
-		update control {
-			&Proxy-To-Realm := 'acct_realm.example.com'
-		}
+		&control.Proxy-To-Realm := "acct_realm.example.com"
 	}
 }
 ```

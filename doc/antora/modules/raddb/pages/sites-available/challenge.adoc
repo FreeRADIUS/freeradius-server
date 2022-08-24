@@ -48,27 +48,19 @@ listen {
 }
 server challenge {
 recv Access-Request {
-	if (!State) {
-		update control {
-			Auth-Type := Step1
-			Password.Cleartext := "hello"
-		}
+	if (!&State) {
+		&control.Auth-Type := Step1
+		&control.Password.Cleartext := "hello"
 	}
 	else {
-		update control {
-			Auth-Type := Step2
-			Password.Cleartext := &session-state.Tmp-Integer-0
-		}
+		&control.Auth-Type := Step2
+		&control.Password.Cleartext := &session-state.Tmp-Integer-0
 	}
 }
 authenticate step1 {
 	pap
-	update session-state {
-		Tmp-Integer-0 := "%{randstr:n}"
-	}
-	update reply {
-		Reply-Message := &session-state.Tmp-Integer-0
-	}
+	&session-state.Tmp-Integer-0 := "%{randstr:n}"
+	&reply.Reply-Message := &session-state.Tmp-Integer-0
 	challenge
 }
 authenticate step2 {

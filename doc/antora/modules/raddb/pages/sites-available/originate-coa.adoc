@@ -24,7 +24,7 @@ Accounting-Request packet is received.  Simply create a subrequest,
 and call the `radius` module to send the packet.
 
 
-Note that this functionality is configured differently from v3.
+NOTE: This functionality is configured differently from v3.
 
 
 
@@ -84,15 +84,13 @@ server originate-coa.example.com {
 	}
 recv Accounting-Request {
 	subrequest Disconnect-Request {
-		update request {
-			&User-Name := &parent.request.User-Name
-			&Acct-Session-Id := &parent.request.Acct-Session-Id
-			&NAS-Identifier := &parent.request.NAS-Identifier
-			&NAS-IP-Address := &parent.request.NAS-IP-Addres
-			&NAS-IPv6-Address := &parent.request.NAS-IPv6-Address
-			&NAS-Port := &parent.request.NAS-Port
-			&Framed-IP-Address := &parent.request.Framed-IP-Address
-		}
+		&request.User-Name := &parent.request.User-Name
+		&request.Acct-Session-Id := &parent.request.Acct-Session-Id
+		&request.NAS-Identifier := &parent.request.NAS-Identifier
+		&request.NAS-IP-Address := &parent.request.NAS-IP-Addres
+		&request.NAS-IPv6-Address := &parent.request.NAS-IPv6-Address
+		&request.NAS-Port := &parent.request.NAS-Port
+		&request.Framed-IP-Address := &parent.request.Framed-IP-Address
 		radius.coa
 	}
 }  # recv Accounting-Request

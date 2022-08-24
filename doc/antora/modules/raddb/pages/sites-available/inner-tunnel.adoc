@@ -183,13 +183,11 @@ exact functionality depends on both the inner and outer
 authentication methods.
 
 If you need to send a reply attribute in the outer session,
-the ONLY safe way is to update the outer session-state.
+the ONLY safe way is to set the outer session-state list.
 Attributes that should be provided in the reply should be
 copied to the outer.session-state list:
 
-    update outer.session-state {
-        ...
-    }
+    &outer.session-state.Attribute := <Value>
 
 The default configuration in the outer post-auth "send" section
 will copy this to the reply. To copy the entire reply see
@@ -305,9 +303,7 @@ send Access-Accept {
 send Access-Reject {
 	-sql
 	attr_filter.access_reject
-	update outer.session-state {
-		&Module-Failure-Message := &request.Module-Failure-Message
-	}
+	&outer.session-state.Module-Failure-Message := &request.Module-Failure-Message
 }
 } # inner-tunnel server block
 ```

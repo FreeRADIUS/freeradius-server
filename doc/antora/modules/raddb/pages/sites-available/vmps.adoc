@@ -11,32 +11,38 @@ only accept packets for that protocol.
 
 
 
-Type of VMPS packets to listen for.
+transport::
 
-VMPS sockets only support IPv4 addresses.
 
-Port on which to listen.
-Allowed values are:
-integer port number
-1589 is the default VMPS port.
+
+type:: Type of VMPS packets to listen for.
+
+
+
+ipaddr:: VMPS sockets only support IPv4 addresses.
+
+
+
+port:: Port on which to listen.
+
+NOTE: 1589 is the default VMPS port.
+
+
 
 Some systems support binding to an interface, in addition
 to the IP address.  This feature isn't strictly necessary,
 but for sites with many IP addresses on one interface,
-it's useful to say "listen on all addresses for
-eth0".
+it's useful to say "listen on all addresses for eth0".
 
 If your system does not support this feature, you will
 get an error if you try to use it.
 
-interface = eth0
 
-If you have switches that are allowed to send VMPS, but NOT
-RADIUS packets, then list them here as "client" sections.
 
-Note that for compatibility with RADIUS, you still have to
-list a "secret" for each client, though that secret will not
-be used for anything.
+You can list multiple "client" sections here in order to define
+clients which apply only to this virtual server.  i.e. only for
+the VMPS protocol.
+
 
 
 This section is called when it receives a Join-Request.
@@ -45,21 +51,22 @@ This section is called when it receives a Join-Request.
 Some requests may not have a MAC address.  Try to
 create one using other attributes.
 
+
 Do a simple mapping of MAC to VLAN.
 
-See radiusd.conf for the definition of the "mac2vlan"
+See `raddb/mods-available/mac2vlan` for the definition of the "mac2vlan"
 module.
 
-mac2vlan
+
 
 required VMPS reply attributes
 
 
 
-If you have VLAN's in a database, you can select
+
+NOTE: If you have VLAN's in a database, you can `select`
 the VLAN name based on the MAC address.
 
-&VLAN-Name = "%{sql:select ... where mac='%{Mac}'}"
 
 
 This section is called when it sends a Join-Response.
@@ -97,29 +104,27 @@ server vmps {
 		udp {
 			ipaddr = *
 			port = 1589
+#			interface = eth0
 		}
 	}
 	recv Join-Request {
 		if (!&MAC-Address) {
 			if (&Ethernet-Frame =~ /0x.{12}(..)(..)(..)(..)(..)(..).*/) {
-				update request {
-					&MAC-Address = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
-				}
+				&request.MAC-Address = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
 			}
 			else {
-				update request {
-					&MAC-Address = &Cookie
-				}
+				&request.MAC-Address = &Cookie
 			}
 		}
-		update reply {
-			&Packet-Type = Join-Response
-			&Cookie = &MAC-Address
-			&VLAN-Name = "please_use_real_vlan_here"
-		}
+#		mac2vlan
+		&reply.Packet-Type = Join-Response
+		&reply.Error-Code = No-Error
+		&reply.Cookie = &MAC-Address
+		&reply.VLAN-Name = "please_use_real_vlan_here"
+#		&reply.VLAN-Name = "%{sql:select ... where mac='%{MAC-Address}'}"
 	}
 	send Join-Response {
-	     ok
+		ok
 	}
 	recv Reconfirm-Request {
 		ok
@@ -128,7 +133,7 @@ server vmps {
 		ok
 	}
 	send Do-Not-Respond {
-	     ok
+		ok
 	}
 }
 ```

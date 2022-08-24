@@ -29,9 +29,7 @@ EAP-MSCHAPv2 into plain MS-CHAPv2, if necessary.
 #	requests for EAP-TTLS and PEAP types.
 server proxy-inner-tunnel {
 recv Access-Request {
-	update control {
-		&Proxy-To-Realm := "example.com"
-	}
+	&control.Proxy-To-Realm := "example.com"
 }
 authenticate eap {
 	eap

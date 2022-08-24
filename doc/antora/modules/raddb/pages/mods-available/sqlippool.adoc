@@ -32,6 +32,14 @@ lease_duration:: IP lease duration.
 
 
 
+offer_duration:: DHCP offer duration.
+
+
+
+pool_name: The attribute in the `control` list which contains the pool name.
+
+
+
 allocated_address_attr:: List and attribute where the allocated address is written to.
 
 [NOTE]
@@ -149,6 +157,8 @@ sqlippool {
 	dialect = "mysql"
 	ippool_table = "fr_ippool"
 	lease_duration = 3600
+	offer_duration = 60
+	pool_name = IP-Pool.Name
 	allocated_address_attr = radius.Framed-IP-Address
 	owner = "%{radius.Calling-Station-ID}"
 #	owner = "%{%{dhcpv4.Client-Identifier}:-%{dhcpv4.Client-Hardware-Address}}"

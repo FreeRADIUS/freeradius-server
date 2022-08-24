@@ -163,9 +163,7 @@ server abfab-idp {
 		eap
 	}
 	send Access-Accept {
-		update {
-			&reply += &session-state
-		}
+		&reply += &session-state
 #		cui
 #		reply_log
 		-sql
