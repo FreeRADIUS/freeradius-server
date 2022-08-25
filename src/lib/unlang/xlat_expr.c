@@ -2058,7 +2058,7 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 	ssize_t			slen;
 	xlat_exp_t		*node = NULL;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
-	fr_sbuff_marker_t	opand_m;
+	fr_sbuff_marker_t	opand_m, flag;
 	tmpl_t			*vpt;
 	fr_token_t		quote = T_SOLIDUS_QUOTED_STRING;
 
@@ -2072,13 +2072,12 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 	fr_sbuff_marker(&opand_m, &our_in);
 
 	/*
-	 *	@todo - add m'regex' to support single-quoted regex strings, ala Perl.
-	 */
-
-	/*
 	 *	Regexes cannot have casts or sub-expressions.
 	 */
 	if (!fr_sbuff_next_if_char(&our_in, '/')) {
+		/*
+		 *	Allow for m'...' ala Perl
+		 */
 		if (!fr_sbuff_is_str(&our_in, "m'", 2)) {
 			fr_strerror_const("Expected regular expression");
 			goto error;
@@ -2118,10 +2117,16 @@ static ssize_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_sb
 		goto error;
 	}
 
+	/*
+	 *	Remember where the flags start
+	 */
+	fr_sbuff_marker(&flag, &our_in);
 	slen = tmpl_regex_flags_substr(vpt, &our_in, bracket_rules->terminals);
 	if (slen < 0) {
 		talloc_free(node);
-		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen - 2); /* account for // */
+		fr_sbuff_set(&our_in, &flag);
+		fr_sbuff_advance(&our_in, -slen);
+		return -fr_sbuff_used(&our_in);
 	}
 
 	fr_sbuff_skip_whitespace(&our_in);
@@ -2430,6 +2435,10 @@ static bool valid_type(xlat_exp_t *node)
 {
 	fr_dict_attr_t const *da;
 
+#ifdef STATIC_ANALYZER
+	if (!node) return false;
+#endif
+
 	if (node->type != XLAT_TMPL) return true;
 
 	if (tmpl_is_list(node->vpt)) {
@@ -2565,7 +2574,7 @@ static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_s
 				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules,
 				   fr_sbuff_parse_rules_t const *input_rules, bool cond)
 {
-	xlat_exp_t	*lhs = NULL, *rhs = NULL, *node;
+	xlat_exp_t	*lhs = NULL, *rhs, *node;
 	xlat_t		*func = NULL;
 	fr_token_t	op;
 	ssize_t		slen;
@@ -2593,6 +2602,8 @@ static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_s
 	}
 
 redo:
+	rhs = NULL;
+
 #ifdef STATIC_ANALYZER
 	if (!lhs) return 0;	/* shut up stupid analyzer */
 #else
@@ -2714,13 +2725,8 @@ redo:
 	}
 
 #ifdef STATIC_ANALYZER
-	if (!rhs) {
-		talloc_free(lhs);
-		FR_SBUFF_ERROR_RETURN(&our_in);
-	}
+	if (!rhs) return -1;
 #endif
-
-	fr_assert(rhs != NULL);
 
 	func = xlat_func_find(binary_ops[op].str, binary_ops[op].len);
 	fr_assert(func != NULL);
@@ -2735,7 +2741,6 @@ redo:
 			fr_sbuff_set(&our_in, &m_rhs);
 			return -fr_sbuff_used(&our_in);
 		}
-		fr_assert(rhs != NULL);
 
 		if ((lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {
 			xlat_func_append_arg(lhs, rhs, cond);
@@ -2757,7 +2762,6 @@ redo:
 		if (node) {
 		replace:
 			lhs = node;
-			rhs = node = NULL;
 			goto redo;
 		}
 	}
@@ -2774,7 +2778,6 @@ redo:
 	 */
 	if (fr_equality_op[op]) {
 		if (!valid_type(lhs)) goto fail_lhs;
-
 		if (!valid_type(rhs)) goto fail_rhs;
 
 		/*
