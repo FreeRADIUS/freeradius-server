@@ -192,6 +192,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	/*
 	 *	Print out what we received.
 	 */
+	/* coverity[tainted_data] */
 	DEBUG2("proto_radius_tcp - Received %s ID %d length %d %s",
 	       fr_packet_codes[buffer[0]], buffer[1],
 	       (int) packet_len, thread->name);
