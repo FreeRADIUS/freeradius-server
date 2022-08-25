@@ -1,0 +1,11 @@
+#
+#  PRE: if
+#
+#  Now that we ignore whitespace (including \r\n) inside of a *bracketed* expression,
+#  we can magically have multiline "if" statements.
+#
+if (1 + 2
+     != 3) {
+	test_fail
+}
+success
