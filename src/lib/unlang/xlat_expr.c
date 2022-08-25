@@ -2463,6 +2463,8 @@ static bool valid_type(xlat_exp_t *node)
 
 static fr_value_box_t *xlat_value_box(xlat_exp_t *node)
 {
+	if (!node) return NULL;
+
 	if (node->type == XLAT_BOX) {
 		return &node->data;
 
