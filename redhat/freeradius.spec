@@ -223,7 +223,12 @@ This plugin provides Python support for the FreeRADIUS server project.
 Summary: MySQL support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
+%if 0%{?rhel} <= 7
 Requires: mysql
+%endif
+%if 0%{?rhel} >= 8
+Requires: mysql-libs
+%endif
 BuildRequires: mysql-devel
 
 %description mysql
