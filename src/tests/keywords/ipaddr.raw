@@ -1,15 +1,11 @@
 #
-#  PRE: update if
+#  PRE: if
 #
 
 #
 #  Malformed NAS-IP-Address
 #
-#  @todo - allow "raw" in the new edit sections!
-#
-update request {
-	&raw.4 = 0x010203
-}
+&raw.4 = 0x010203
 
 debug_request
 
