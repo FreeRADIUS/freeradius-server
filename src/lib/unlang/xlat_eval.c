@@ -250,7 +250,7 @@ do { \
 
 	if (fr_dlist_empty(list)) {
 		if (arg->required) {
-			REDEBUG("Function %s is missing required argument %u", name, arg_num);
+			RWDEBUG("Function %s is missing required argument %u", name, arg_num);
 			return XLAT_ACTION_FAIL;
 		}
 		return XLAT_ACTION_DONE;
