@@ -279,15 +279,7 @@ ssize_t fr_internal_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 	return internal_encode(dbuff, &da_stack, 0, cursor, encode_ctx);
 }
 
-static fr_dict_attr_t const *attr_protocol_encapsulation;
-
 /** Encode a list of pairs using the internal encoder
- *
- *  Any attributes outside the internal dictionary will be wrapped in a
- *  Protocol-Encapsulation attribute and an attribute referring to the
- *  dictionary root attribute for the dictionary to which they belong.  e.g.
- *
- *    Protocol-Encapsulation = { RADIUS = { User-Name, User-Password } }
  *
  * @param[out] dbuff		Where to write encoded data.
  * @param[in] list		List of attributes to encode.
@@ -302,74 +294,16 @@ ssize_t fr_internal_encode_list(fr_dbuff_t *dbuff, fr_pair_list_t const *list, v
 	fr_dcursor_t		dcursor;
 	ssize_t			ret = 0, len = 0;
 	fr_da_stack_t		da_stack;
-	fr_pair_list_t		enc_list;
-	fr_pair_t		*enc = NULL, *proto_vp;
-	fr_dict_attr_t const	*da;
-	TALLOC_CTX		*proto_ctx = NULL;
-
-	if (!attr_protocol_encapsulation) {
-		attr_protocol_encapsulation = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()),
-								  "Protocol-Encapsulation");
-	}
 
 	for (vp = fr_pair_dcursor_init(&dcursor, list);
 	     vp;
 	     vp = fr_dcursor_current(&dcursor)) {
-
-		/*
-		 *	Internal dictionary attributes are encoded as is.
-		 */
-		if (vp->da->dict == fr_dict_internal()) {
-			fr_proto_da_stack_build(&da_stack, vp->da);
-			ret = internal_encode(dbuff, &da_stack, 0, &dcursor, encode_ctx);
-			if (ret < 0) {
-			error:
-				talloc_free(proto_ctx);
-				return ret;
-			}
-			len += ret;
-		} else {
-			/*
-			 *  Create an encapsulation protocol attribute to hold
-			 *  all non-internal dictionary attributes within their
-			 *  protocol container.
-			 */
-			if (!enc) {
-				proto_ctx = talloc_new(NULL);
-				fr_pair_list_init(&enc_list);
-				if (fr_pair_append_by_da(proto_ctx, &enc, &enc_list,
-							 attr_protocol_encapsulation) < 0) goto error;
-			}
-
-			/*
-			 *  Find or create the protocol specific container
-			 */
-			da = fr_dict_attr_child_by_num(attr_protocol_encapsulation, fr_dict_root(vp->da->dict)->attr);
-			proto_vp = fr_pair_find_by_da(&enc->children, NULL, da);
-			if (!proto_vp) {
-				if (fr_pair_append_by_da(enc, &proto_vp, &enc->children, da) < 0) goto error;
-			}
-
-			fr_pair_append(&proto_vp->children, fr_pair_copy(proto_vp, vp));
-
-			/*
-			 *  As the encoder is not called, need to advance through the list
-			 */
-			fr_dcursor_next(&dcursor);
-		}
-	}
-
-	/*
-	 *  Now encode any protocol attributes
-	 */
-	if ((vp = fr_pair_dcursor_init(&dcursor, &enc_list))){
 		fr_proto_da_stack_build(&da_stack, vp->da);
 		ret = internal_encode(dbuff, &da_stack, 0, &dcursor, encode_ctx);
-		if (ret < 0) goto error;
+		if (ret < 0) return ret;
 		len += ret;
 	}
 
-	talloc_free(proto_ctx);
 	return len;
 }
 
