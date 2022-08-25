@@ -28,6 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
+#include <freeradius-devel/util/calc.h>
 
 static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *list)
 {
@@ -210,4 +211,126 @@ int xlat_purify(xlat_exp_head_t *head, unlang_interpret_t *intp)
 	talloc_free(request);
 
 	return rcode;
+}
+
+static fr_value_box_t *xlat_value_box(xlat_exp_t *node)
+{
+#ifdef STATIC_ANALYZER
+	if (!node) return NULL;
+#endif
+
+	if (node->type == XLAT_BOX) {
+		return &node->data;
+
+	} else if ((node->type == XLAT_TMPL) && tmpl_is_data(node->vpt)) {
+		return tmpl_value(node->vpt);
+	}
+
+	return NULL;
+}
+
+
+static bool is_truthy(xlat_exp_t *node, bool *out)
+{
+	fr_value_box_t const *box;
+
+	box = xlat_value_box(node);
+	if (!box) {
+		*out = false;
+		return false;
+	}
+
+	*out = fr_value_box_is_truthy(box);
+	return true;
+}
+
+/*
+ *	Do some optimizations.
+ *
+ */
+static xlat_exp_t *logical_peephole_optimize(xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
+{
+	bool value;
+
+	/*
+	 *	@todo - check for tail of LHS
+	 *		&& tail is truthy, then remove tail, and call ourselves recursively
+	 *		if there's a new node, it becomes the new tail.  Otherwise
+	 *		we append the rhs to the lhs args.
+	 *
+	 *	lhs->call.args->flags.can_purify |= rhs->flags.can_purify | rhs->flags.pure;
+	 *	lhs->flags.can_purify = lhs->call.args->flags.can_purify;
+	 */
+	if (!is_truthy(lhs, &value)) return NULL;
+
+	/*
+	 *	1 && FOO   --> FOO
+	 *	0 && FOO   --> 0
+	 *	FOO && BAR --> FOO && BAR
+	 */
+
+	/*
+	 *	1 || FOO   --> 1
+	 *	0 || FOO   --> FOO
+	 *	FOO || BAR --> FOO || BAR
+	 */
+	if (value == (op != T_LAND)) {
+		talloc_free(rhs);
+		return lhs;
+	}
+
+	talloc_free(lhs);
+	return rhs;
+}
+
+
+/*
+ *	Do some optimizations
+ *
+ *	@todo check types, if one side is uint8, and the other side is uint32, there are some situations where
+ *	the comparison will always fail.  And should therefore be invalid?
+ */
+static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
+{
+	fr_value_box_t *lhs_box, *rhs_box;
+	fr_value_box_t box;
+	xlat_exp_t *node;
+	char *name;
+
+	lhs_box = xlat_value_box(lhs);
+	if (!lhs_box) return 0;
+
+	rhs_box = xlat_value_box(rhs);
+	if (!rhs_box) return 0;
+
+	if (fr_value_calc_binary_op(lhs, &box, FR_TYPE_NULL, lhs_box, op, rhs_box) < 0) return -1;
+
+	MEM(node = xlat_exp_alloc_null(ctx));
+	xlat_exp_set_type(node, XLAT_BOX);
+
+	if (box.type == FR_TYPE_BOOL) box.enumv = attr_expr_bool_enum;
+
+	(void) fr_value_box_aprint(node, &name, &box, NULL);
+
+	xlat_exp_set_name_buffer_shallow(node, name);
+	fr_value_box_copy(node, &node->data, &box);
+
+	*out = node;
+
+	return 1;
+}
+
+int xlat_purify_op(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
+{
+	if ((op == T_LAND) || (op == T_LOR)) {
+		xlat_exp_t *node;
+
+		node = logical_peephole_optimize(lhs, op, rhs);
+		if (!node) return 0;
+
+		*out = node;
+		return 1;
+	}
+
+	return binary_peephole_optimize(ctx, out, lhs, op, rhs);
 }

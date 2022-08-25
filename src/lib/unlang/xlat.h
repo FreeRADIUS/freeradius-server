@@ -417,6 +417,8 @@ void		xlat_instances_free(void);
 typedef struct unlang_interpret_s unlang_interpret_t;
 int		xlat_purify(xlat_exp_head_t *head, unlang_interpret_t *intp);
 
+int		xlat_purify_op(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs);
+
 /*
  *	xlat.c
  */

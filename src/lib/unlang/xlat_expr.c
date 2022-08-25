@@ -2461,107 +2461,6 @@ static bool valid_type(xlat_exp_t *node)
 }
 
 
-static fr_value_box_t *xlat_value_box(xlat_exp_t *node)
-{
-	if (!node) return NULL;
-
-	if (node->type == XLAT_BOX) {
-		return &node->data;
-
-	} else if ((node->type == XLAT_TMPL) && tmpl_is_data(node->vpt)) {
-		return tmpl_value(node->vpt);
-	}
-
-	return NULL;
-}
-
-
-static bool is_truthy(xlat_exp_t *node, bool *out)
-{
-	fr_value_box_t const *box;
-
-	box = xlat_value_box(node);
-	if (!box) {
-		*out = false;
-		return false;
-	}
-
-	*out = fr_value_box_is_truthy(box);
-	return true;
-}
-
-/*
- *	Do some optimizations.
- *
- *	@todo - check for tail of LHS
- *
- *	if ((lhs->type == XLAT_FUNC) && (lhs->call.func->token == op))
- *		&& tail is truthy, then remove tail, replace it with RHS
- *		and return LHS.
- *
- *	lhs->call.args->flags.can_purify |= rhs->flags.can_purify | rhs->flags.pure;
- *	lhs->flags.can_purify = lhs->call.args->flags.can_purify;
- */
-static xlat_exp_t *logical_peephole_optimize(xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
-{
-	bool value;
-
-	if (!is_truthy(lhs, &value)) return NULL;
-
-	/*
-	 *	1 && FOO   --> FOO
-	 *	0 && FOO   --> 0
-	 *	FOO && BAR --> FOO && BAR
-	 */
-
-	/*
-	 *	1 || FOO   --> 1
-	 *	0 || FOO   --> FOO
-	 *	FOO || BAR --> FOO || BAR
-	 */
-	if (value == (op != T_LAND)) {
-		talloc_free(rhs);
-		return lhs;
-	}
-	
-	talloc_free(lhs);
-	return rhs;
-}
-
-
-/*
- *	Do some optimizations
- */
-static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
-{
-	fr_value_box_t *lhs_box, *rhs_box;
-	fr_value_box_t box;
-	xlat_exp_t *node;
-	char *name;
-
-	lhs_box = xlat_value_box(lhs);
-	if (!lhs_box) return 0;
-
-	rhs_box = xlat_value_box(rhs);
-	if (!rhs_box) return 0;
-
-	if (fr_value_calc_binary_op(lhs, &box, FR_TYPE_NULL, lhs_box, op, rhs_box) < 0) return -1;
-
-	MEM(node = xlat_exp_alloc_null(ctx));
-	xlat_exp_set_type(node, XLAT_BOX);
-
-	if (box.type == FR_TYPE_BOOL) box.enumv = attr_expr_bool_enum;
-
-	(void) fr_value_box_aprint(node, &name, &box, NULL);
-
-	xlat_exp_set_name_buffer_shallow(node, name);
-	fr_value_box_copy(node, &node->data, &box);
-
-	*out = node;
-
-	return 1;
-}
-
 /** Tokenize a mathematical operation.
  *
  *	(EXPR)
@@ -2734,8 +2633,8 @@ redo:
 	fr_assert(func != NULL);
 
 	/*
-	 *	If it's a logical operator, check for rcodes, and also
-	 *	merge sequences of the same operator together.
+	 *	If it's a logical operator, check for rcodes, and then
+	 *	try to purify the results.
 	 */
 	if (logical_ops[op]) {
 		if (reparse_rcode(head, &rhs, true) < 0) {
@@ -2753,23 +2652,11 @@ redo:
 		}
 
 		if (reparse_rcode(head, &lhs, true) < 0) goto fail_lhs;
-
-		/*
-		 *	Peephole optimizer.
-		 *
-		 *		FOO || 0 --> FOO
-		 *		FOO && 1 --> 1
-		 */
-		node = logical_peephole_optimize(lhs, op, rhs);
-		if (node) {
-		replace:
-			lhs = node;
-			goto redo;
-		}
+		goto purify;
 	}
 
 	/*
-	 *	Remove invalid comparisons.
+	 *	Complain on comparisons between invalid data types.
 	 *
 	 *	@todo - allow
 	 *
@@ -2790,10 +2677,14 @@ redo:
 		if (cond) {
 			int rcode;
 
-			rcode = binary_peephole_optimize(head, &node, lhs, op, rhs);
+		purify:
+			rcode = xlat_purify_op(head, &node, lhs, op, rhs);
 			if (rcode < 0) goto fail_lhs;
 
-			if (rcode) goto replace;
+			if (rcode) {
+				lhs = node;
+				goto redo;
+			}
 		}
 	}
 
