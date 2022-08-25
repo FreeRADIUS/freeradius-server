@@ -890,7 +890,7 @@ int dict_protocol_add(fr_dict_t *dict)
 		fr_dict_attr_t const *da;
 		fr_dict_attr_flags_t flags = { 0 };
 
-		if (!dict_gctx->attr_protocol_encapsulation) dict_gctx->attr_protocol_encapsulation = fr_dict_attr_by_name(NULL, dict_gctx->internal->root, "Protocol-Encapsulation");
+		if (!dict_gctx->attr_protocol_encapsulation) dict_gctx->attr_protocol_encapsulation = fr_dict_attr_by_name(NULL, dict_gctx->internal->root, "Proto");
 		fr_assert(dict_gctx->attr_protocol_encapsulation != NULL);
 
 		da = fr_dict_attr_child_by_num(dict_gctx->attr_protocol_encapsulation, dict->root->attr);
