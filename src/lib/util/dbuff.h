@@ -327,7 +327,11 @@ DIAG_OFF(maybe-uninitialized)
 /** Does the actual work of initialising a dbuff
  * @private
  */
-static inline CC_HINT(nonnull) void _fr_dbuff_init(fr_dbuff_t *out, uint8_t const *start, uint8_t const *end, bool is_const)
+static inline
+#ifndef __COVERITY__
+CC_HINT(nonnull)
+#endif
+void _fr_dbuff_init(fr_dbuff_t *out, uint8_t const *start, uint8_t const *end, bool is_const)
 {
 	if (unlikely(end < start)) end = start;	/* Could be an assert? */
 
