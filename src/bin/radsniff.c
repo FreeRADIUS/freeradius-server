@@ -1370,16 +1370,17 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			return;
 		}
 #endif
-	}
-	if ((version == 4) && conf->verify_udp_checksum) {
-		uint16_t expected;
+		if ((version == 4) && conf->verify_udp_checksum) {
+			uint16_t expected;
 
-		expected = fr_udp_checksum((uint8_t const *) udp, ntohs(udp->len), udp->checksum,
-					   ip->ip_src, ip->ip_dst);
-		if (udp->checksum != expected) {
-			REDEBUG("UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx",
-				ntohs(udp->checksum), ntohs(expected));
+			/* coverity[tainted_data] */
+			expected = fr_udp_checksum((uint8_t const *) udp, udp_len, udp->checksum,
+						   ip->ip_src, ip->ip_dst);
+			if (udp->checksum != expected) {
+				REDEBUG("UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx",
+					ntohs(udp->checksum), ntohs(expected));
 			/* Not a fatal error */
+			}
 		}
 	}
 	p += sizeof(udp_header_t);
