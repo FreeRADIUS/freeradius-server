@@ -2,9 +2,7 @@
 # PRE: edit-list
 #
 
-update control {
-	&Tmp-String-0 := "foo"
-}
+&control.Tmp-String-0 := "foo"
 
 #  must exist
 if (!&control.Tmp-String-0) {

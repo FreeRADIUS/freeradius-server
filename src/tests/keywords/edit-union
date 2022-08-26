@@ -8,17 +8,11 @@
 #	= A' UNION B' if A and B are lists
 #
 
-update request {
-	&Tmp-String-0 := "foo"
-}
-
-update control {
-	&Tmp-String-0 := "bar"
-}
+&request.Tmp-String-0 := "foo"
+&control.Tmp-String-0 := "bar"
 
 # union
 &request |= &control
-	%(debug_attr:request[*])
 
 if (!&request.Tmp-String-0) {
 	test_fail

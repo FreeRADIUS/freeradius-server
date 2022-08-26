@@ -2,13 +2,8 @@
 # PRE: edit-list
 #
 
-update control {
-	&Tmp-String-0 := "foo"
-}
-
-update reply {
-	&Tmp-String-0 := "foo"
-}
+&control.Tmp-String-0 := "foo"
+&reply.Tmp-String-0 := "foo"
 
 &reply &= &control
 
@@ -30,9 +25,7 @@ if (&reply.Tmp-String-0 != "foo") {
 #
 # Same attribute, but different value
 #
-update reply {
-	&Tmp-String-0 := "bar"
-}
+&reply.Tmp-String-0 := "bar"
 
 &reply &= &control
 

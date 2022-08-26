@@ -1,9 +1,7 @@
 #
 #  PRE: if edit-list
 #
-update control {
-	&User-Name := "foo"
-}
+&control.User-Name := "foo"
 
 #
 #  Create a nested group.

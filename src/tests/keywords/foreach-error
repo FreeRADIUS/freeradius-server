@@ -1,5 +1,3 @@
 foreach "%{expr:1 + 2}" {	# ERROR
-	update reply {
-	       Called-Station-Id += "%{Foreach-Variable-0}"
-	}
+	&reply.Called-Station-Id += "%{Foreach-Variable-0}"
 }
