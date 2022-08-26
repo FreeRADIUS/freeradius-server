@@ -74,6 +74,7 @@ PROTOCOLS    := \
 	eap/aka-sim \
 	ethernet \
 	freeradius \
+	ldap \
 	radius \
 	snmp \
 	tacacs \
