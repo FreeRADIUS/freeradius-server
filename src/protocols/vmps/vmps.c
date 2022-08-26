@@ -494,7 +494,7 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 		fprintf(fp, "\t\t%08x  %04x  ", id, length);
 
-		print_hex_data(attr + 5, length, 3);
+		print_hex_data(attr + 6, length - 6, 3);
 	}
 }
 
