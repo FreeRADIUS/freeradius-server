@@ -1125,6 +1125,9 @@ int			tmpl_find_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt) CC_HI
 
 int			tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt) CC_HINT(nonnull);
 
+int 			pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
+						   tmpl_t const *vpt) CC_HINT(nonnull(1,3,4));
+
 int			tmpl_extents_find(TALLOC_CTX *ctx,
 		      			  fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 					  request_t *request, tmpl_t const *vpt) CC_HINT(nonnull(5));

@@ -1061,6 +1061,74 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 	}
 }
 
+/** Allocate and insert a leaf vp from a tmpl_t, building the parent vps if needed.
+ *
+ * This is the simple case - just add a vp at the first place where
+ * the parents exist, or create the parents, with no attempt to handle filters.
+ *
+ * It is functionally equivalent to fr_pair_append_by_da_parent() but
+ * uses a tmpl_t to build the nested structure rather than a fr_dict_attr_t.
+ *
+ * @param[in] ctx	to allocate new pair(s) in
+ * @param[out] out	Leaf pair we allocated.
+ * @param[in] list	to insert into.
+ * @param[in] vpt	tmpl representing the attribute to add.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, tmpl_t const *vpt)
+{
+	fr_pair_t			*vp = NULL;
+	TALLOC_CTX			*pair_ctx = ctx;
+	tmpl_attr_t			*ar, *leaf;
+	tmpl_attr_list_head_t const	*ar_list = &vpt->data.attribute.ar;
+
+	if (!tmpl_is_attr(vpt)) {
+	error:
+		*out = NULL;
+		return -1;
+	}
+
+	leaf = tmpl_attr_list_tail(ar_list);
+	ar = tmpl_attr_list_head(ar_list);
+
+	/*
+	 *	Walk down the tmpl ar stack looking for candidate parent
+	 *	attributes and then allocating the leaf.
+	 */
+	while (true) {
+		/*
+		 *	We're not at the leaf, look for a potential parent
+		 */
+		fr_assert(ar);
+		if (ar != leaf) vp = fr_pair_find_by_da(list, NULL, ar->da);
+
+		/*
+		 *	Nothing found, create the pair
+		 */
+		if (!vp) {
+			if (fr_pair_append_by_da(pair_ctx, &vp, list, ar->da) < 0) goto error;
+		}
+
+		/*
+		 *	We're at the leaf, return
+		 */
+		if (ar == leaf) {
+			*out = vp;
+			return 0;
+		}
+
+		/*
+		 *	Prepare for next level
+		 */
+		list = &vp->vp_group;
+		pair_ctx = vp;
+		vp = NULL;
+		ar = tmpl_attr_list_next(ar_list, ar);
+	}
+}
+
 /** Insert a value-box to a list, with casting.
  *
  * @param list	to append to
