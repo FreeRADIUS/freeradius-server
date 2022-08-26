@@ -1098,10 +1098,10 @@ int pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t 
 	 *	attributes and then allocating the leaf.
 	 */
 	while (true) {
+		if (unlikely(!ar)) goto error;
 		/*
 		 *	We're not at the leaf, look for a potential parent
 		 */
-		fr_assert(ar);
 		if (ar != leaf) vp = fr_pair_find_by_da(list, NULL, ar->da);
 
 		/*
