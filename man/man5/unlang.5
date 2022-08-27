@@ -129,7 +129,7 @@ request.
 
 Load-balance sections can contain only a list of modules, and cannot
 contain keywords that perform conditional operations (if, else, etc)
-or which update an attribute list.
+or which modify an attribute list.
 
 Load-balance sections can optionally take a key.  The key is expanded
 at run time, hashed, and the hash used to select a module.  If no
@@ -169,11 +169,11 @@ as if it were listed in the named section.
 .IP parallel
 This section runs subsections in parallel.  Each subsection runs as a
 child request, which is a clone of the parent request.  Policies in
-the child can update the original parent request by using "update
-parent.request", or "update parent.reply".
+the child can modify the original parent request by referencing
+"parent.request", or "parent.reply".
 
 The child requests are required because each subsection is run
-simultaneously.  If each subsection updated the original request at
+simultaneously.  If each subsection modified xthe original request at
 the same time, it would be impossible to separate the state of each
 subsection.
 
@@ -210,7 +210,7 @@ succeeds, or until the list has been exhausted.
 
 Redundant sections can contain only a list of modules, and cannot
 contain keywords that perform conditional operations (if, else, etc)
-or update an attribute list.
+or modify an attribute list.
 
 .DS
 	redundant {
@@ -238,7 +238,7 @@ the same request.
 
 Redundant-load-balance sections can contain only a list of modules, and cannot
 contain keywords that perform conditional operations (if, else, etc)
-or update an attribute list. Please see raddb/radiusd.conf
+or modify  an attribute list. Please see raddb/radiusd.conf
 "instantiate" section for more configuration examples.
 
 Redundant-load-balance sections can optionally take a key.  The key is expanded
@@ -281,8 +281,8 @@ statements.
 .IP subrequest
 .br
 The "subrequest" keyword creates an empty subrequest (i.e. child
-request).  Attributes in the child can be copied from the parent via
-an "update" block.
+request).  Attributes in the child can be copied from the parent by
+referencing the "parent" list.
 
 The packet type and protocol can be changed in a subrequest, by
 changing the second parameter to the subrequest.  That parameter can
@@ -311,7 +311,7 @@ parent.
 .DS
 	subrequest <type> {
 .br
-		update request {
+		&request += {
 .br
 			&User-Name = &parent.request.User-Name
 .br
@@ -324,7 +324,7 @@ parent.
 	}
 .DE
 The purpose of a "subrequest" section is to create a child request
-which can be edited and updated independently of the parent.
+which can be edited independently of the parent.
 
 The return value of the subrequest is taken from the return value of
 the subsection being run.
@@ -399,103 +399,7 @@ Only one default entry can exist in a "switch" section.
 .DE
 .IP update
 .br
-Update a particular attribute list, based on the attributes given in
-the current block.
-
-.DS
-	update <list> {
-.br
-		&Attribute-Reference = value
-.br
-		...
-.br
-	}
-.DE
-
-The <list> can be one of "request", "reply", "session-state", or
-"control".  As of Version 3, the <list> can be omitted, in which case
-"request" is assumed.
-
-The "control" list is the list of attributes maintained internally by
-the server that controls how the server processes the request.  Any
-attribute that does not go in a packet on the network will generally
-be placed in the "control" list.
-
-For EAP methods with tunneled authentication sessions (i.e. PEAP and
-EAP-TTLS), the inner tunnel session can also reference
-"outer.request", "outer.reply", and "outer.control".  Those references
-allow you to address the relevant list in the outer tunnel session.
-
-The word "parent" may also be used as a synonym to "outer".
-e.g. "parent.request", etc.
-
-The "session-state" list is primarily used for EAP.  Attributes put
-into the "session-state" list are saved for the next packet in the
-session.  They are automatically retrieved when the next packet is
-received.
-
-The only contents permitted in an "update" section are attributes and
-values.  The contents of the "update" section are described in the
-ATTRIBUTE REFERENCE and ATTRIBUTE ASSIGNMENT sections below.
-.SH ATTRIBUTE REFERENCES
-
-Attributes may be referenced via the following syntax:
-.DS
-	&Attribute-Name
-	&Attribute-Name[NUM]
-	&<list>.Attribute-Name
-.DE
-Where <list> is one of "request", "reply", "control",
-or "outer.request", "outer.reply", "outer.control",
-just as with the "update" section, above.  The "<list>."
-prefix is optional, and if omitted, is assumed to refer to the
-"request" list.
-
-The TAG portion is a decimal integer between 1 and 31.  Please see RFC
-2868 for more information about tags.  Tags can only be used for
-attributes which are marked in the dictionary as "has_tag".
-
-The NUM portion is used when there are multiple attributes of the same
-name in a list.  The "Attribute-Name" reference will return the first
-attribute.  Using an array offset allows the policy to refer to the
-second and subsequent attributes.
-
-If '*' is used in the NUM portion, it evaluates to all instances of
-the attribute in the request.
-
-If 'n' is used in the NUM portion, it evaluates to the last instance
-of the attribute in the request.
-
-When an attribute name is encountered, the given list is examined for
-an attribute of the given name.  Some examples are:
-.DS
-	User-Name
-.br
-	request.User-Name # same as above
-.br
-	reply.User-Name
-.br
-	Tunnel-Password:1
-.br
-	Cisco-AVPAir[2]
-.br
-	outer.request.User-Name # from inside of a TTLS/PEAP tunnel
-.DE
-Note that unlike C, there is no way to define new attributes at
-run-time.  They MUST be declared in a dictionary file, and loaded when
-the server starts.
-
-All attributes are defined in the dictionaries that accompany the
-server.  These definitions define only the name and type, and do not
-define the value of the attribute.  When the server receives a packet,
-it uses the packet contents to look up entries in the dictionary, and
-instantiates attributes with a name taken from the dictionaries, and a
-value taken from the packet contents.  This process means that if an
-attribute does not exist, it is usually because it was not contained
-in a packet that the server received.
-
-Once the attribute is instantiated, it is added to a list.  It can
-then be referenced, updated, replaced, etc.
+This keyword has been removed in v4.  Please see the new edit syntax.
 
 .SH CONDITIONS
 The conditions are similar to C conditions in syntax, though
@@ -1010,126 +914,20 @@ Right-pad a string.
 e.g. if User-Name is "foo": "%(rpad:%{User-Name} 5 -)" == "foo--"
 
 .SH ATTRIBUTE ASSIGNMENTS
-The attribute lists described above may be edited by listing one or
-more attributes in an "update" section.  Once the attributes have been
-defined, they may be referenced as described above in the VARIABLES
-section.
+The attributes described above may be edited by simply assigning a
+value..  Once the attributes have been defined, they may be referenced
+as described above in the VARIABLES section.
 
-The following syntax defines attributes in an "update" section.  Each
-attribute and value has to be all on one line in the configuration
-file.  There is no need for commas or semi-colons after the value.
+The following syntax defines how to edit an attribute.  Each attribute
+and value has to be all on one line in the configuration file.  There
+is no need for commas or semi-colons after the value.
 
 .DS
-	Attribute-Reference = value
+	&Attribute-Reference = value
 .DE
-.PP
-Attribute Reference
-.RS
-The Attribute-Reference must be a reference (see above), using a name
-previously defined in a dictionary.  If an undefined name is used, the
-server will return an error, and will not start.
 
-.RE
-.IP Operators
-The operator used to assign the value of the attribute may be one of
-the following, with the given meaning.
-.RS
-.IP =
-Add the attribute to the list, if and only if an attribute of the same
-name is not already present in that list.
-.IP :=
-Add the attribute to the list.  If any attribute of the same name is
-already present in that list, its value is replaced with the value of
-the current attribute.
-.IP +=
-Add the attribute to the tail of the list, even if attributes of the
-same name are already present in the list. When the right hand side
-of the expression resolves to multiple values, it means add all values
-to the tail of the list.
-.IP ^=
-Add the attribute to the head of the list, even if attributes of the
-same name are already present in the list. When the right hand side
-of the expression resolves to multiple values, it means prepend all
-values to the head of the list.
-.RE
-.PP
-Filtering Operators
-.RS
-The following operators may also be used in addition to the ones
-listed above.  Their function is to perform filtering of attributes in
-a list.
+Please see the HTML documentation for more information.
 
-Note that unlike earlier versions of the server, there is no
-enforcement.  That is, if the attribute does not exist, it is not
-added with the given value.
-.IP -=
-Remove all matching attributes from the list.  Both the attribute name
-and value have to match in order for the attribute to be removed from
-the list.
-.IP ==
-Keep only those attributes which have values matching the given one.
-
-Note that this operator (equality filtering) is very different than
-the '=' operator (set if not already existing) described above!
-.IP !=
-Keep only those attributes which have values not equal to the
-given one.
-.IP <
-Keep only those attributes which have values less than the given one.
-.IP <=
-Keep only those attributes which have values less than, or equal to,
-the given one.
-.IP >
-Keep only those attributes which have values greater than the given
-one.
-.IP >=
-Keep only those attributes which have values greater than, or equal
-to, the given one.
-.IP !*
-Delete all occurrences of the named attribute, no matter what the
-value.
-.RE
-.IP Values
-.br
-The value can be an attribute reference, or an attribute-specific
-string.
-
-When the value is an an attribute reference, it must take the form of
-"&Attribute-Name".  The leading "&" signifies that the value is a
-reference.  The "Attribute-Name" is an attribute name, such as
-"User-Name" or "request.User-Name".  When an attribute reference is
-used, both attributes must have the same data type.  For example,
-"User-Name := &NAS-Port" is invalid, because "User-Name" is a string,
-and "NAS-Port" is an integer.
-
-We recommend using the form "Attribute-1 = &Attribute-2" for updates,
-instead of "Attribute-1 = "%{Attribute-2}".  The first version will
-copy the attribute data, no matter what its form.  The second
-version will print the Attribute-2 to a string, and then parse it to
-create the value for Attribute-1.  This second version is slower
-and more fragile than the first one.
-
-When the value is an attribute-specific string, it can be a string,
-integer, IP address, etc.  The value may be expanded as described
-above in the DATA TYPES section, above.  For example, specifying
-"Framed-IP-Address = 127.0.0.1" will cause the "Framed-IP-Address"
-attribute to be set to the IP address "127.0.0.1".  However, using
-"Framed-IP-Address := \"%{echo: 127.0.0.1}\"" will cause the "echo"
-module to be run with a string "127.0.0.1".  The output of the "echo"
-module will then be parsed as an IP address, and placed into the
-Framed-IP-Address attribute.
-
-This flexibility means that you can assign an IP address by specifying
-it directly, or by having the address returned from a database query,
-or by having the address returned as the output of a program that is
-executed.
-
-When string values are finally assigned to an attribute, they can have a
-maximum length of 253 characters.  This limit is due in part to both
-protocol and internal server requirements.  That is, the strings in
-the language can be nearly 8k in length, say for a long SQL query.
-However, the output of that SQL query should be no more than 253
-characters in length.
 .SH OTHER KEYWORDS
 Other keywords in the language are taken from the names of modules
 loaded by the server.  These keywords are dependent on both the
