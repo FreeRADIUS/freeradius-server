@@ -966,6 +966,18 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
 		break;
 
+	case T_XOR:		/* is prepend for strings */
+		buf = talloc_array(ctx, char, len + 1);
+		if (!buf) goto oom;
+
+		len = a->vb_length + b->vb_length;
+		memcpy(buf, b->vb_strvalue, b->vb_length);
+		memcpy(buf + b->vb_length, a->vb_strvalue, a->vb_length);
+		buf[len] = '\0';
+
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
+		break;
+
 	case T_SUB:
 		/*
 		 *  The inverse of add!

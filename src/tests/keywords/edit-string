@@ -1,0 +1,27 @@
+#
+#  PRE: edit
+#
+&Tmp-String-0 := "foo"
+&Tmp-String-0 ^= "bar"
+
+if (&Tmp-String-0 != "barfoo") {
+	test_fail
+}
+
+&Tmp-String-0 := "foo"
+&Tmp-String-0 += "bar"
+
+if (&Tmp-String-0 != "foobar") {
+	test_fail
+}
+
+#
+#  Subtract is the inverse of add.
+#
+&Tmp-String-0 -= "bar"
+
+if (&Tmp-String-0 != "foo") {
+	test_fail
+}
+
+success

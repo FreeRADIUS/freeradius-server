@@ -391,12 +391,18 @@ The operators also apply to variable-sized values.
 | :=       | Override the attribute with the contents with the _<rhs>_.  If the attribute already exists, its value is over-written.  If the attribute does not exist, it is created, and the contents set to thex value of the _<rhs>_
 | +=       | Perform string append.  The contents of the _<rhs>_ are appended to the _<attribute>_.
 | -=       | Inverse of string append. The contents of the _<rhs>_ are deleted from from the _<attribute>_, if the `_<rhs>_` is a suffix of _<attribute>_ 
-| ^=       | Perform logical "xor".  The contents of the _<rhs>_ are "xor"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
-| \|=       | Perform logical "or".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
-| &=        | Perform logical "and".  The value of the _<attribute>_ is "and"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
-| <\<=       | Perform left shift / truncation.  The first _<rhs>_ bytes of _<attribute>_ are dropped. i.e. shifted off of the start of the string.
-| >>=       | Perform right shift / truncation.  The last _<rhs>_ bytes of _<attribute>_ are dropped. i.e. shifted off of the end of the string.
+| ^=       | For `string`, performs a "prepend" operation.  The contents of the _<rhs>_ are prepended to the _<attribute>_.  This is the opposite of `+=`.
+|          | For `octets`, perform logical "xor".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
+| \|=      | Perform logical "or".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
+| &=       | Perform logical "and".  The value of the _<attribute>_ is "and"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
+| <\<=     | Perform left shift / truncation.  The first _<rhs>_ bytes of _<attribute>_ are dropped. i.e. shifted off of the start of the string.
+| >>=      | Perform right shift / truncation.  The last _<rhs>_ bytes of _<attribute>_ are dropped. i.e. shifted off of the end of the string.
 |=====
+
+Note that the `^=` operator behaves differently for `string` and
+`octets`.  The output of "xor"ing two strings is likely to be binary
+data, and therefore not a printable string.  As a result, it is more
+useful for strings to have `^-` be a "prepend" operation.
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
