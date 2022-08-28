@@ -264,6 +264,7 @@ $INCLUDE dictionary.netelastic
 $INCLUDE dictionary.netscreen
 $INCLUDE dictionary.networkphysics
 $INCLUDE dictionary.nexans
+$INCLUDE dictionary.nile
 $INCLUDE dictionary.nokia
 $INCLUDE dictionary.nomadix
 $INCLUDE dictionary.nortel
