@@ -14,16 +14,16 @@
 ok	# separate updates
 
 #
-#  Tmp-String-1 ends up as a group ????
+#  We need "ungroup" here, because request[*] is "all attributes with
+#  da of request", not "all attributes contained by the request VP."
 #
-#  @todo - track down and fix this!.  This is different behavior
-#  than `update`.
+#  We don't (yet) have syntax like "request.[*]", so we need this hack.
 #
 &request += {
-	&Tmp-String-1 = "%(concat:%{request[*]} ', ')"
+	&Tmp-String-1 = "%(concat:%(ungroup:%{request[*]}) ', ')"
 }
 
-if (&request.Tmp-String-1 != "{bob, hello, ab c, de fg, 123}") {
+if (&request.Tmp-String-1 != "bob, hello, ab c, de fg, 123") {
 	test_fail
 }
 

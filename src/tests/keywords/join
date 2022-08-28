@@ -12,13 +12,20 @@
 &control.Tmp-IP-Address-0 := 192.168.1.254
 
 #
-#  The new code produces a group of groups?
+#  Don't insert this string into the request list, because we're getting its value
+#  from all of the request attributes.  And the insertion of the new attribute happens before the
+#  RHS value is created?  That seems wrong...
 #
-#update request {
-        &Tmp-String-1 := "%(concat:%(join:%{request[*]} %{control.Tmp-IP-Address-0}) '. ')"
-#}
+#  This is because edit_list_pair_build() is called before the value is created, when we're trying to
+#  see if the attribute already exists.  In order to fix this, we have to create the value first, and
+#  then modify the list.  Changing that involves fixing the logic in edit.c to check for ":=", and if
+#  it is there, do a simple "find" first.
+#
+#  @todo - fix this...
+#
+&control.Tmp-String-1 := "%(concat:%(join:%(ungroup:%{request[*]}) %{control.Tmp-IP-Address-0}) '. ')"
 
-if (&request.Tmp-String-1 != "bob. hello. ab c. de fg. 123. 192.168.1.254") {
+if (&control.Tmp-String-1 != "bob. hello. ab c. de fg. 123. 192.168.1.254") {
         test_fail
 }
 

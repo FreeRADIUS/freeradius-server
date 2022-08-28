@@ -2451,6 +2451,36 @@ static xlat_action_t xlat_func_join(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static void ungroup(fr_dcursor_t *out, fr_value_box_list_t *in)
+{
+	fr_value_box_t *vb;
+
+	while ((vb = fr_dlist_pop_head(in)) != NULL) {
+		if (vb->type != FR_TYPE_GROUP) {
+			fr_dcursor_append(out, vb);
+			continue;
+		}
+		talloc_free(vb);
+	}
+}
+
+/** Ungroups all of its arguments into one flat list.
+ *
+ */
+static xlat_action_t xlat_func_ungroup(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       UNUSED xlat_ctx_t const *xctx,
+				       UNUSED request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t	*arg = NULL;
+
+	while ((arg = fr_dlist_next(in, arg)) != NULL) {
+		fr_assert(arg->type == FR_TYPE_GROUP);
+
+		ungroup(out, &arg->vb_group);
+	}
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_arg_parser_t const xlat_func_length_args[] = {
 	{ .single = true, .variadic = true, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -3919,6 +3949,7 @@ do { \
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("integer", xlat_func_integer, xlat_func_integer_args);
 	XLAT_REGISTER_ARGS("join", xlat_func_join, xlat_func_join_args);
+	XLAT_REGISTER_ARGS("ungroup", xlat_func_ungroup, xlat_func_join_args);
 	XLAT_REGISTER_ARGS("length", xlat_func_length, xlat_func_length_args);
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_pad_args);
