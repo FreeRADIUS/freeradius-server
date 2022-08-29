@@ -444,8 +444,8 @@ authorize {
 	#  This will let you do PAP authentication to AD.
 	#
 #	if ((ok || updated) && User-Password && !control:Auth-Type) {
-#		update {
-#			control:Auth-Type := ldap
+#		update control {
+#			&Auth-Type := ldap
 #		}
 #	}
 
