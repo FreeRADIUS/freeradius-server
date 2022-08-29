@@ -1,0 +1,6 @@
+#
+# ARGV: -x -H ${PERSISTENT_SEARCH_TEST_SERVER} -D "cn=manager" -w "secret123"
+#
+dn: cn=bosses,ou=groups,dc=example,dc=com
+changetype: delete
+
