@@ -120,7 +120,7 @@ if [ x"$dir_arg" != x ]; then
 		instcmd=:
 		chmodcmd=""
 	else
-		instcmd=mkdir
+		instcmd="$mkdirprog -p"
 	fi
 else
 
@@ -181,7 +181,7 @@ while [ $# -ne 0 ] ; do
 
 	if [ ! -d "${pathcomp}" ] ;
         then
-		$mkdirprog "${pathcomp}"
+		$mkdirprog -p "${pathcomp}"
 	else
 		true
 	fi
