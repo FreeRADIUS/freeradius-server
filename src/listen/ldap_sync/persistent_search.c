@@ -246,7 +246,10 @@ int persistent_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, LDAPContr
 	}
 
 	if (ber_peek_tag(ber, &len) == 0x02) {
-		ber_scanf(ber, "i", &change_no);
+		if (ber_scanf(ber, "i", &change_no) == LBER_ERROR) {
+			ERROR("Malformed changeNumber control");
+			goto free_ber;
+		}
 		/*
 		 *	The server has returned a changeNumber, treat it as a new cookie
 		 */
@@ -255,7 +258,7 @@ int persistent_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, LDAPContr
 		if (ldap_sync_cookie_store(sync, sync->cookie, false) < 0) goto error;
 	}
 
-	if (ber_scanf(ber, "}") == LBER_ERROR ) {
+	if (ber_scanf(ber, "}") == LBER_ERROR) {
 		ERROR("Malformed syncStatevalue sequence");
 		goto free_ber;
 	}
