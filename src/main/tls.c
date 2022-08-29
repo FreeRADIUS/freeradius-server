@@ -2985,22 +2985,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	lookup = depth;
 
 	/*
-	 *	Log client/issuing cert.  If there's an error, log
-	 *	issuing cert.
-	 *
-	 *	Inbound:   0 = client, 1 = server (intermediate CA), 2 = issuing CA
-	 *	Outbound:  0 = server, 2 = issuing CA.
-	 *
-	 *	Our array of certificates uses 0 for client, and 1 for server.  We
-	 *	also ignore subsequent certs.
-	 */
-	if (lookup > 1) {
-		if (!my_ok) lookup = 1;
-	} else {
-		lookup = (SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_FIX_CERT_ORDER) != NULL);
-	}
-
-	/*
 	 * Retrieve the pointer to the SSL of the connection currently treated
 	 * and the application specific data stored into the SSL object.
 	 */
@@ -3018,6 +3002,22 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 #endif
 
 	talloc_ctx = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TALLOC);
+
+	/*
+	 *	Log client/issuing cert.  If there's an error, log
+	 *	issuing cert.
+	 *
+	 *	Inbound:   0 = client, 1 = server (intermediate CA), 2 = issuing CA
+	 *	Outbound:  0 = server, 2 = issuing CA.
+	 *
+	 *	Our array of certificates uses 0 for client, and 1 for server.  We
+	 *	also ignore subsequent certs.
+	 */
+	if (lookup > 1) {
+		if (!my_ok) lookup = 1;
+	} else {
+		lookup = (SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_FIX_CERT_ORDER) != NULL);
+	}
 
 	/*
 	 *	Get the Serial Number
