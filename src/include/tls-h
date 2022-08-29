@@ -341,6 +341,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request);
 #define FR_TLS_EX_INDEX_STORE	 (14)
 #define FR_TLS_EX_INDEX_SSN	 (15)
 #define FR_TLS_EX_INDEX_TALLOC	 (16)
+#define FR_TLS_EX_INDEX_FIX_CERT_ORDER (17)
 
 extern int fr_tls_ex_index_certs;
 extern int fr_tls_ex_index_vps;
@@ -403,6 +404,8 @@ struct fr_tls_server_conf_t {
 	char const	*verify_tmp_dir;
 	char const	*verify_client_cert_cmd;
 	bool		require_client_cert;
+
+	bool		fix_cert_order;
 
 	pthread_mutex_t	mutex;
 

@@ -205,7 +205,7 @@ listen {
 		#  For OpenSSL >= 1.1.0, just leave this commented
 		#  out, and OpenSSL will do the right thing.
 		#
-	#	dh_file = ${certdir}/dh
+#		dh_file = ${certdir}/dh
 
 		#
 		#  If your system doesn't have /dev/urandom,
@@ -583,6 +583,15 @@ home_server tls {
 		ca_file = ${cadir}/ca.pem
 
 		#
+		#  Before version 3.2.1, outbound RadSec connections
+		#  would put the home server certificate into the
+		#  TLS-Client-Cert* attributes.  Set this configuration
+		#  item to "yes" in order to have the home server
+		#  certificates placed into the "TLS-Cert-*" attributes.
+		#
+#		fix_cert_order = yes
+
+		#
 		#  For TLS-PSK, the key should be specified
 		#  dynamically, instead of using a hard-coded
 		#  psk_identity and psk_hexphrase.
@@ -602,8 +611,8 @@ home_server tls {
 		#
 		#  	openssl dhparam -out certs/dh 1024
 		#
-		dh_file = ${certdir}/dh
-		random_file = /dev/urandom
+#		dh_file = ${certdir}/dh
+#		random_file = /dev/urandom
 
 		#
 		#  The default fragment size is 1K.

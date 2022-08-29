@@ -593,6 +593,10 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 
+	if (conf->fix_cert_order) {
+		SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_FIX_CERT_ORDER, (void *) &conf->fix_cert_order);
+	}
+
 	/*
 	 *	Add the message callback to identify what type of
 	 *	message/handshake is passed
@@ -1728,6 +1732,8 @@ static CONF_PARSER tls_client_config[] = {
 	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_list), NULL },
 	{ "check_cert_issuer", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_issuer), NULL },
 	{ "ca_path_reload_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, ca_path_reload_interval), "0" },
+
+	{ "fix_cert_order", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, fix_cert_order), NULL },
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
@@ -2981,8 +2987,18 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	/*
 	 *	Log client/issuing cert.  If there's an error, log
 	 *	issuing cert.
+	 *
+	 *	Inbound:   0 = client, 1 = server (intermediate CA), 2 = issuing CA
+	 *	Outbound:  0 = server, 2 = issuing CA.
+	 *
+	 *	Our array of certificates uses 0 for client, and 1 for server.  We
+	 *	also ignore subsequent certs.
 	 */
-	if ((lookup > 1) && !my_ok) lookup = 1;
+	if (lookup > 1) {
+		if (!my_ok) lookup = 1;
+	} else {
+		lookup = (SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_FIX_CERT_ORDER) != NULL);
+	}
 
 	/*
 	 * Retrieve the pointer to the SSL of the connection currently treated
@@ -3009,7 +3025,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	buf[0] = '\0';
 	sn = X509_get_serialNumber(client_cert);
 
-	RDEBUG2("(TLS) Creating attributes from %s certificate", cert_names[lookup]);
+	RDEBUG2("(TLS) Creating attributes from %s certificate", cert_names[lookup ]);
  	RINDENT();
 
 	/*
