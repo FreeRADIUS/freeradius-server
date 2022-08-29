@@ -236,6 +236,7 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 
 	count = fr_nbo_to_uint16(counter);
 	FR_PROTO_TRACE("Decoding %u of %s", count, attr->name);
+	/* coverity[tainted_data] */
 	for (i = 0; i < count; i++) {
 		ssize_t slen;
 

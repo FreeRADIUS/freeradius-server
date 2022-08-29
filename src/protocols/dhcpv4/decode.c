@@ -403,6 +403,7 @@ next:
 	}
 	p++;
 
+	/* coverity[tainted_data] */
 	len = fr_pair_tlvs_from_network(ctx, out, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, false);
 	if (len <= 0) return len;
 

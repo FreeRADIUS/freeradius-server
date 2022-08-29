@@ -332,8 +332,9 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 
 		client_id = fr_dhcpv6_option_find(request->packet->data + 4, request->packet->data + request->packet->data_len, attr_client_id->attr);
 		if (client_id) {
-			size_t len = (client_id[2] << 8) | client_id[3];
+			size_t len = fr_nbo_to_uint16(client_id + 2);
 			if ((data_len + 4 + len) <= buffer_len) {
+				/* coverity[tainted_data} */
 				memcpy(buffer + data_len, client_id, 4 + len);
 				data_len += 4 + len;
 			}
