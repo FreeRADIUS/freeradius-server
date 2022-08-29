@@ -1,6 +1,6 @@
 FreeRADIUS 3.2.1 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	Feature improvements
-	* Add dictionary.ciena, and DHCPv4 dictionaries,
+	* Add dictionary.ciena, dictionary.nile, and DHCPv4 dictionaries,
 	* Add simultaneous-use queries for MS SQL.
 	* Add radmin command for "stats pool <module-name>"
 	  Which prints out statistics about the connection pools
@@ -13,16 +13,28 @@ FreeRADIUS 3.2.1 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	  Eduroam.  Suggested by Stefan Winter.
 	* Allow auth+acct for TCP sockets, too.
 	* Add rlm_cache_redis. See raddb/mods-available/cache for details
-	* Allow radnmin to look up home servers by name, too.
+	* Allow radmin to look up home servers by name, too.
 	* Ensure that dynamic clients don't create loops on duplicates.
 	  Reported by Sam Yee.
 	* Removed rlm_sqlhpwippool.  There was no documentation, no configuration,
 	  and the module was ~15 years old with no one using it.
+	* Marked rlm_python3 as stable.
+	* Add sigalgs_list.  See raddb/mods-available/eap.  Patch from
+	  Boris Lytochkin.
+	* For rlm_linelog, when opening files in /dev, look at "permissions" to see
+	  whether to open them r/w.
+	* More flexibility for dynamic home servers.  See doc/configuration/dynamic_home_servers.md
+	  and raddb/home_servers/README.md
+	* Allow setting of application_name for PostgreSQL.  See mods-available/sql.
 
 	Bug fixes
 	* Correct test for open sessions in radacct for MS SQL.
 	* The linelog module now opens /dev/stdout in "write-only" mode
 	  if the permissions are set to "u+w" (0002).
+	* Various fixes to rlm_unbound from Nick Porter.
+	* PEAP now correctly runs Post-Auth-Type Accept
+	* Create "TLS-Cert-*" for outbound Radsec, instead of TLS-Client-Cert-*
+	  Fixes #4698.  See sites-available/tls, and fix_cert_order.
 
 FreeRADIUS 3.2.0 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	Configuration changes
