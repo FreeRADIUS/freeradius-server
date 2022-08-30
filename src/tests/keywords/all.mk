@@ -37,6 +37,8 @@ $(eval $(call TEST_BOOTSTRAP))
 define KEYWORD_TEST
 test.keywords.${1}: $(addprefix $(OUTPUT)/,${1})
 
+test.keywords.help: TEST_KEYWORDS_HELP += test.keywords.${1}
+
 #
 #  Migration support.  Some of the tests don't run under the new
 #  conditions, so we don't run them under the new conditions.
@@ -132,3 +134,6 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYW
 
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@
+
+$(TEST).help:
+	@echo make $(TEST_KEYWORDS_HELP)
