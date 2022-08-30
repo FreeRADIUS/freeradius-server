@@ -7,6 +7,6 @@ if (1) {
 	&control.Password.Cleartext := "fail"
 
 	else {	# ERROR
-	     ok
+		ok
 	}
 }

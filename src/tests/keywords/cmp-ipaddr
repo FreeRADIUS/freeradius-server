@@ -1,7 +1,7 @@
 #
 #  PRE: if
 #
-&NAS-IP-Address    := 127.0.0.1
+&NAS-IP-Address	:= 127.0.0.1
 &Framed-IP-Address := 127.0.0.1
 
 #
@@ -11,7 +11,7 @@ if (!(&NAS-IP-Address == &Framed-IP-Address)) {
 	test_fail
 }
 
-&NAS-IP-Address    := 0.0.0.0
+&NAS-IP-Address	:= 0.0.0.0
 &Framed-IP-Address := 255.255.255.255
 
 if (!(&NAS-IP-Address != &Framed-IP-Address)) {

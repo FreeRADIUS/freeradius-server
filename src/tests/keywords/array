@@ -4,9 +4,9 @@
 #  Tests for dereferencing the Nth attribute
 #
 &request += {
-       &Class = 0x01020304,
-       &Class = 0x05060708,
-       &Class = 0x090a0b0c,
+	&Class = 0x01020304,
+	&Class = 0x05060708,
+	&Class = 0x090a0b0c,
 }
 
 if (%{Class[#]} != 3) {

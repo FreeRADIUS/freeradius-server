@@ -15,7 +15,7 @@ if (&User-Name == "bob") {
 	#  Stop processing "authorize", and go to the next section.
 	#
 	return {	# ERROR
-	       ok = 1
+		ok = 1
 	}
 
 	#

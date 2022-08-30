@@ -7,5 +7,5 @@
 #  attribute doesn't exist.
 #
 if (&Not-Dynamically-Allocated) {	# ERROR
-   # foo
+	# foo
 }

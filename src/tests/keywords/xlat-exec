@@ -1,8 +1,8 @@
-update control {   
+update control {	
 	&Tmp-String-0 = "foo"
 }
 
-update control {   
+update control {	
 	&Tmp-String-1 := `/bin/echo hello 1234:%{control.Tmp-String-0} world`
 }
 
@@ -10,7 +10,7 @@ if (&control.Tmp-String-1 != "hello 1234:foo world") {
 	test_fail
 }
 
-update control {   
+update control {	
 	&Tmp-String-1 := `/bin/echo hello %{control.Tmp-String-0}:1234 world`
 }
 

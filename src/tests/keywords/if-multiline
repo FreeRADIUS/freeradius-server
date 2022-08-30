@@ -5,7 +5,7 @@
 #  we can magically have multiline "if" statements.
 #
 if (1 + 2
-     != 3) {
+	!= 3) {
 	test_fail
 }
 success

@@ -4,11 +4,11 @@
 #  Static if condition
 #
 if (1) {
-   # we allow empty 'if' conditions
+	# we allow empty 'if' conditions
 }
 
 if (0) {
-   # this never gets compiled
+	# this never gets compiled
 
 }
 

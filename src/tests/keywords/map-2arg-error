@@ -1,3 +1,3 @@
 map foo {	# ERROR
-    User-Name = 'foo'
+	User-Name = 'foo'
 }

@@ -2,7 +2,7 @@
 #
 switch &reply.Filter-Id {
 	case "filter" {
-	     ok
+		ok
 	}
 
 	case "filter" {  # ERROR

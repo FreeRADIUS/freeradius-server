@@ -19,8 +19,8 @@ update {
 
 # All attributes should now of been removed
 if ((&Tmp-String-0 && (&Tmp-String-0 == 'foobarbaz')) || \
-    (&Tmp-Integer-0 && (&Tmp-Integer-0 == 123456789)) || \
-    (&Tmp-IP-Address-0 && (&Tmp-IP-Address-0 == 192.0.2.1))) {
+	(&Tmp-Integer-0 && (&Tmp-Integer-0 == 123456789)) || \
+	(&Tmp-IP-Address-0 && (&Tmp-IP-Address-0 == 192.0.2.1))) {
 	test_fail
 }
 
