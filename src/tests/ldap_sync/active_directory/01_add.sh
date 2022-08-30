@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ "$ACTIVE_DIRECTORY_TEST_SERVER " = " " ]; then
+if [ -z $ACTIVE_DIRECTORY_TEST_SERVER ]; then
   echo ACTIVE_DIRECTORY_TEST_SERVER not defined
   exit 1;
 fi
