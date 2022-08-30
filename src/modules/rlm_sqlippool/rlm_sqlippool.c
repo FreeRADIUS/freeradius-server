@@ -537,7 +537,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	if (inst->allocate_clear) {
-		FR_INTEGER_BOUND_CHECK("allocate_clear_timeout", inst->allocate_clear_timeout, >, 1);
+		FR_INTEGER_BOUND_CHECK("allocate_clear_timeout", inst->allocate_clear_timeout, >=, 1);
 		FR_INTEGER_BOUND_CHECK("allocate_clear_timeout", inst->allocate_clear_timeout, <=, 2*86400);
 	}
 
