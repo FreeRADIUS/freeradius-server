@@ -509,6 +509,7 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 		 *	The apply function also takes care of doing data type upcasting and conversion.  So we don't
 		 *	have to check for compatibility of the data types on the LHS and RHS.
 		 */
+	apply_pair_assignment:
 		if (fr_edit_list_apply_pair_assignment(current->el,
 						       current->lhs.vp,
 						       map->op,
@@ -550,7 +551,26 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 	 *	Set means "delete ALL matching things, and add new ones".
 	 */
 	if (map->op == T_OP_SET) {
+		int num;
 		fr_dict_attr_t const *da = current->lhs.vp->da;
+
+		/*
+		 *	&foo[1] = ...
+		 *
+		 *	Assign only ONE value.
+		 */
+		num = tmpl_num(map->lhs);
+		if (num != NUM_UNSPEC) {
+			if (tmpl_num(map->rhs) == NUM_ALL) {
+				REDEBUG("%s[%d] Cannot assign multiple attributes on the to one", MAP_INFO);
+				return -1;
+			}
+
+			rhs_box = &vp->data;
+
+			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], rhs_box);
+			goto apply_pair_assignment;
+		}
 
 		/*
 		 *	Create all of the relevant VPs.
