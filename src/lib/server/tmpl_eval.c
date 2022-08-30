@@ -668,7 +668,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	fr_value_box_t		from_cast;
 
 	fr_pair_t		*vp = NULL;
-	fr_value_box_t		value;
+	fr_value_box_t		value = (fr_value_box_t){};
 	bool			needs_dup = false;
 
 	ssize_t			slen = -1;
@@ -677,8 +677,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	TALLOC_CTX		*tmp_ctx = talloc_new(ctx);
 
 	TMPL_VERIFY(vpt);
-
-	memset(&value, 0, sizeof(value));
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNRESOLVED:
