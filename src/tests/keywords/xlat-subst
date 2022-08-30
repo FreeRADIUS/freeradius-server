@@ -1,11 +1,6 @@
-#
-# PRE: update
-#
-update request {
-	&Tmp-String-0 := 'aaa'
-	&Tmp-String-1 := "\n\n\n"
-	&Tmp-String-2 := "the quick brown fox jumped over the lazy dog"
-}
+&Tmp-String-0 := 'aaa'
+&Tmp-String-1 := "\n\n\n"
+&Tmp-String-2 := "the quick brown fox jumped over the lazy dog"
 
 #
 #  Non-regex base substitutions
@@ -114,9 +109,7 @@ if (&Module-Failure-Message[0] != 'Failed compiling regex: quantifier does not f
 	test_fail
 }
 
-update request {
-	&Module-Failure-Message !* ANY
-}
+&request -= &Module-Failure-Message[*]
 
 # Empty regex
 if ("%(subst:%{Tmp-String-0} //g .)") {

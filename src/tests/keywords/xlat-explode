@@ -1,23 +1,26 @@
 #
-# PRE: update concat
+# PRE: concat
 #
 #  Check explode works correctly
 #
-update {
-	&request.Class := '1=1|my_attr=2|my_attr=hello|'
-	&request.Calling-Station-ID += '|'
-	&control.User-Name += '|hello|goodbye'
-	&control.User-Name += '|morning|night|1|'
-	&control.Reply-Message := 'Can\'t touch this'
-	&control.Tmp-String-0 := 'here.  are . some.  words. '
+&request += {
+	&Class = '1=1|my_attr=2|my_attr=hello|'
+	&Calling-Station-ID = '|'
 }
 
-update {
-	&request.Tmp-String-1 := "%(concat:%(explode:%{Class} |) ,)"
-	&request.Tmp-String-2 := "%(concat:%(explode:%{Calling-Station-ID} |) ,)"
-	&request.Tmp-String-3 := "%(concat:%(explode:%{control.User-Name[*]} |) ,)"
-	&request.Tmp-String-4 := "%(concat:%(explode:%{control.Reply-Message} |) ,)"
-	&request.Tmp-String-5 := "%(concat:%(explode:%{control.Tmp-String-0} '. ') ,)"
+&control += {
+	&User-Name = '|hello|goodbye'
+	&User-Name = '|morning|night|1|'
+	&Reply-Message = 'Can\'t touch this'
+	&Tmp-String-0 = 'here.  are . some.  words. '
+}
+
+&request += {
+	&Tmp-String-1 = "%(concat:%(explode:%{Class} |) ,)"
+	&Tmp-String-2 = "%(concat:%(explode:%{Calling-Station-ID} |) ,)"
+	&Tmp-String-3 = "%(concat:%(explode:%{control.User-Name[*]} |) ,)"
+	&Tmp-String-4 = "%(concat:%(explode:%{control.Reply-Message} |) ,)"
+	&Tmp-String-5 = "%(concat:%(explode:%{control.Tmp-String-0} '. ') ,)"
 }
 
 debug_all

@@ -1,14 +1,11 @@
-#
-# PRE: update
-#
-update request {
-	&Tmp-String-1 := 'foo'
-	&Tmp-String-1 += 'bar'
-	&Tmp-Integer-0 := '4'
-	&Tmp-Integer-0 += '8'
-	&Tmp-Integer-0 += '1'
+&request += {
+	&Tmp-String-1  = 'foo'
+	&Tmp-String-1  = 'bar'
+	&Tmp-Integer-0 = '4'
+	&Tmp-Integer-0 = '8'
+	&Tmp-Integer-0 = '1'
 
-	&Tmp-String-0 := '%{Tmp-String-1}'
+	&Tmp-String-0 = '%{Tmp-String-1}'
 }
 
 #
