@@ -640,6 +640,18 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 	fr_pair_t *vp;
 	edit_map_t *current = uctx;
 
+	/*
+	 *	We only build for `:=` and `=`.
+	 */
+	switch (current->map->op) {
+	case T_OP_SET:
+	case T_OP_EQ:
+		break;
+
+	default:
+		return NULL;
+	}
+
 	vp = fr_pair_afrom_da(parent, da);
 	if (!vp) return NULL;
 
