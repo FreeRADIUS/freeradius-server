@@ -868,7 +868,7 @@ server eap-aka-sim {
 	#  attribute is found, this section will be called.
 	#
 	#  You should restore the contents of the following attributes using
-	#  `&session-state.Session-ID` or `&reply.Next-Reauth-Id` as a key:
+	#  `&request.Session-ID` as a key:
 	#
  	#  - `&session-state.Counter`::		How many times this session has
  	#					been resumed.
@@ -894,7 +894,7 @@ server eap-aka-sim {
 	#  This section will be called prior to attempting re-authentication.
 	#
 	#  You should restore the contents of the following attributes using
-	#  `&session-state.Session-ID` or `&reply.Next-Reauth-Id` as a key:
+	#  `&request.Session-ID` as a key:
 	#
  	#  - `&session-state.Counter`::		How many times this session has
  	#					been resumed.
@@ -925,8 +925,7 @@ server eap-aka-sim {
 	#
 	#  This section we be called if authentication or re-authentication fails.
 	#
-	#  You should remove any session information stored against
-	#  `&Next-Reauth-Id`.
+	#  You should remove any session information stored against `&request.Session-ID`.
 	#
 	clear session {
 		ok
