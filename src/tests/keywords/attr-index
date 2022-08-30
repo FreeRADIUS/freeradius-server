@@ -1,0 +1,36 @@
+&request += {
+	&Tmp-String-0 = "foo"
+	&Tmp-String-0 = "bar"
+	&Tmp-String-0 = "baz"
+}
+
+&Tmp-String-0[1] := "yellow"
+
+if ("%{Tmp-String-0[*]}" != "fooyellowbaz") {
+	test_fail
+}
+
+&Tmp-String-0[2] += "red"
+
+if ("%{Tmp-String-0[*]}" != "fooyellowbazred") {
+	test_fail
+}
+
+&Tmp-String-0[2] -= "red"
+
+if ("%{Tmp-String-0[*]}" != "fooyellowbaz") {
+	test_fail
+}
+
+&Tmp-String-0[0] := "oof"
+if ("%{Tmp-String-0[*]}" != "oofyellowbaz") {
+	test_fail
+}
+
+&Tmp-String-0[1] := "bar"
+if ("%{Tmp-String-0[*]}" != "oofbarbaz") {
+	test_fail
+}
+
+
+success
