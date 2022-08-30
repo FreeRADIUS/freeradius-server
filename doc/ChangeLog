@@ -39,6 +39,7 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Remove sample "cache_eap" module.  It does not work, and
 	  offers no benefit.
 	* Fix crash in RadSec with expired server certificate. #4447.
+	* PEAP now correctly runs Post-Auth-Type Accept.
 
 FreeRADIUS 3.0.25 Thu 07 Oct 2021 12:00:00 EDT urgency=medium
 	Feature improvements
