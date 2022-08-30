@@ -189,6 +189,7 @@ unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bo
 				.type = UNLANG_TYPE_CALL,
 				.name = name,
 				.debug_name = name,
+				.ci = CF_TO_ITEM(server_cs),
 				.actions = {
 					.actions = {
 						[RLM_MODULE_REJECT]	= 0,

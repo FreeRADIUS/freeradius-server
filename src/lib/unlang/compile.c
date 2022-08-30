@@ -1047,6 +1047,7 @@ static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang
 	c = unlang_group_to_generic(g);
 	c->parent = parent;
 	c->type = ext->type;
+	c->ci = CF_TO_ITEM(cs);
 
 	return g;
 }
@@ -1507,6 +1508,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 		c->name = cf_section_name1(cs);
 		c->debug_name = c->name;
 		c->type = UNLANG_TYPE_EDIT;
+		c->ci = CF_TO_ITEM(cs);
 
 		map_list_init(&edit->maps);
 		edit_free = edit;
@@ -1607,6 +1609,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 		c->name = cf_pair_attr(cp);
 		c->debug_name = c->name;
 		c->type = UNLANG_TYPE_EDIT;
+		c->ci = CF_TO_ITEM(cp);
 
 		map_list_init(&edit->maps);
 		edit_free = edit;
@@ -2911,6 +2914,7 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 	c->name = p;
 	c->debug_name = c->name;
 	c->type = UNLANG_TYPE_TMPL;
+	c->ci = CF_TO_ITEM(cp);
 
 	RULES_VERIFY(unlang_ctx->rules);
 	slen = tmpl_afrom_substr(ut, &vpt,
@@ -3995,6 +3999,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	c->name = talloc_typed_strdup(c, realname);
 	c->debug_name = c->name;
 	c->type = UNLANG_TYPE_MODULE;
+	c->ci = ci;
 
 	/*
 	 *	Set the default actions for this module.

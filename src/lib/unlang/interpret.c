@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include "module_priv.h"
 #include "parallel_priv.h"
 
+
 /** The default interpreter instance for this thread
  */
 static _Thread_local unlang_interpret_t *intp_thread_default;
@@ -1332,20 +1333,18 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	/*
+	 *	All of the remaining things need a CONF_ITEM.
+	 */
+	if (!instruction->ci) {
+		if (fr_value_box_bstrndup(ctx, vb, NULL, "???", 3, false) < 0) goto error;
+			goto finish;
+	}
+
+	/*
 	 *	Line number of the current section.
 	 */
 	if (strcmp(fmt, "line") == 0) {
-		unlang_group_t const *g;
-
-		if (!unlang_ops[instruction->type].debug_braces) {
-			if (fr_value_box_bstrndup(ctx, vb, NULL, "???", 3, false) < 0) goto error;
-			goto finish;
-		}
-
-		g = (unlang_group_t const *) instruction;
-		fr_assert(g->cs != NULL);
-
-		fr_value_box_int32(vb, NULL, cf_lineno(g->cs), false);
+		fr_value_box_int32(vb, NULL, cf_lineno(instruction->ci), false);
 		goto finish;
 	}
 
@@ -1353,18 +1352,9 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Filename of the current section.
 	 */
 	if (strcmp(fmt, "filename") == 0) {
-		unlang_group_t const *g;
+		char const *filename = cf_filename(instruction->ci);
 
-		if (!unlang_ops[instruction->type].debug_braces) {
-			if (fr_value_box_bstrndup(ctx, vb, NULL, "???", 3, false) < 0) goto error;
-			goto finish;
-		}
-
-		g = (unlang_group_t const *) instruction;
-		fr_assert(g->cs != NULL);
-
-		if (fr_value_box_bstrndup(ctx, vb, NULL, cf_filename(g->cs),
-					  strlen(cf_filename(g->cs)), false) < 0) goto error;
+		if (fr_value_box_bstrndup(ctx, vb, NULL, filename, strlen(filename), false) < 0) goto error;
 		goto finish;
 	}
 
