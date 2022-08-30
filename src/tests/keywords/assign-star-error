@@ -1,0 +1,4 @@
+#
+#  We might allow this later.  But for now, the code doesn't implement it, so we don't allow it.
+#
+&User-Name[*] = "foo" # ERROR

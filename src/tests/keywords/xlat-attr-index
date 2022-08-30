@@ -1,17 +1,12 @@
-#
-# PRE: update
-#
-
-update request {
-	&Tmp-IP-Address-0 := 192.0.2.1
-	&Tmp-IP-Address-0 += 192.0.2.2
+&request += {
+	&Tmp-IP-Address-0 = 192.0.2.1
+	&Tmp-IP-Address-0 = 192.0.2.2
 }
-
 if ("%{Tmp-IP-Address-0[#]}" != 2) {
 	test_fail
 }
 
-if (("%{Tmp-IP-Address-0[0]}" != 192.0.2.1) || ("%{Tmp-IP-Address-0[1]}" != 192.0.2.2)) {
+if ((&Tmp-IP-Address-0[0] != 192.0.2.1) || ("%{Tmp-IP-Address-0[1]}" != 192.0.2.2)) {
 	test_fail
 }
 

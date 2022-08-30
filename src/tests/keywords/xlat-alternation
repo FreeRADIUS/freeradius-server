@@ -1,19 +1,14 @@
 #
-# PRE: update
+# PRE:
 #
 
-update request {
-	&Tmp-String-0 := "foo"
-	&Tmp-String-1 := "bar"
-}
+&Tmp-String-0 := "foo"
+&Tmp-String-1 := "bar"
 
 #
 #  First choice
 #
-update request {
-	&Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]}}"
-}
-
+&Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]}}"
 if (&Tmp-String-2[0] != 'foo') {
 	fail
 }
@@ -21,12 +16,8 @@ if (&Tmp-String-2[0] != 'foo') {
 #
 #  Second choice
 #
-update request {
-	&Tmp-String-0 !* ANY
-}
-update request {
-	&Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]}}"
-}
+&request -= &Tmp-String-0[*]
+&Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]}}"
 if (&Tmp-String-2[0] != 'bar') {
 	fail
 }
@@ -34,9 +25,7 @@ if (&Tmp-String-2[0] != 'bar') {
 #
 #  Multiple things in an alternation
 #
-update request {
-	&Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]} foo}"
-}
+&Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]} foo}"
 if (&Tmp-String-2[0] != 'bar foo') {
 	fail
 }
@@ -44,12 +33,8 @@ if (&Tmp-String-2[0] != 'bar foo') {
 #
 #  Everything null
 #
-update request {
-	&Tmp-String-1 !* ANY
-}
-update request {
-	&Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]}}"
-}
+&request -= &Tmp-String-1[*]
+&Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]}}"
 if (!&Tmp-String-2[0] || (&Tmp-String-2[0] != "")) {
 	fail
 }

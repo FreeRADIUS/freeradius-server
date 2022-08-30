@@ -1464,6 +1464,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	fr_token_t		op;
 	ssize_t			slen;
 	fr_dict_attr_t const	*parent_da;
+	int			num;
 
 	tmpl_rules_t		t_rules;
 
@@ -1552,6 +1553,15 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	}
 
 	/*
+	 *	Can't assign to [*] or [#]
+	 */
+	num = tmpl_num(map->lhs);
+	if ((num == NUM_ALL) || (num == NUM_COUNT)) {
+		cf_log_err(cs, "Invalid array reference in %s", name);
+		goto fail;
+	}
+
+	/*
 	 *	Do basic sanity checks and resolving.
 	 */
 	if (!pass2_fixup_map(map, unlang_ctx->rules, NULL)) goto fail;
@@ -1578,6 +1588,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	unlang_edit_t		*edit, *edit_free;
 	unlang_t		*c = NULL, *out = UNLANG_IGNORE;
 	map_t			*map;
+	int			num;
 
 	tmpl_rules_t		t_rules;
 	fr_token_t		op;
@@ -1631,6 +1642,15 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	fail:
 		talloc_free(edit_free);
 		return NULL;
+	}
+
+	/*
+	 *	Can't assign to [*] or [#]
+	 */
+	num = tmpl_num(map->lhs);
+	if ((num == NUM_ALL) || (num == NUM_COUNT)) {
+		cf_log_err(cp, "Invalid array reference in %s", map->lhs->name);
+		goto fail;
 	}
 
 	/*
