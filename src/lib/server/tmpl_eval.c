@@ -1562,6 +1562,7 @@ int tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *list, tmpl_t const *vpt
 	 *	Apply a cast to the results if required.
 	 */
 	vb = fr_dlist_head(list);
+	if (!vb) return 0;
 
 	switch (cast) {
 	default:
