@@ -203,7 +203,9 @@ unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bo
 					},
 					.retry = RETRY_INIT,
 				},
-			}
+			},
+
+			.cs = server_cs,
 		},
 		.server_cs = server_cs,
 		.attr_packet_type = attr_packet_type
