@@ -259,13 +259,14 @@ static int remove_vps(request_t *request, edit_map_t *current)
  *
  *  which is an implicit sum over all RHS "Baz" attributes.
  */
-static int apply_edits_to_list(request_t *request, edit_map_t *current, map_t const *map)
+static int apply_edits_to_list(request_t *request, edit_map_t *current)
 {
 	fr_pair_t *vp;
 	fr_pair_list_t *children;
 	fr_value_box_t const *rhs_box = NULL;
 	bool copy_vps = true;
 	int rcode;
+	map_t const *map = current->map;
 
 	fr_assert(current->lhs.vp != NULL);
 
@@ -436,12 +437,13 @@ apply_list:
 }
 
 
-static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t const *map)
+static int apply_edits_to_leaf(request_t *request, edit_map_t *current)
 {
 	fr_pair_t *vp;
 	fr_value_box_t const *rhs_box = NULL;
 	tmpl_dcursor_ctx_t cc;
 	fr_dcursor_t cursor;
+	map_t const *map = current->map;
 
 	fr_assert(current->lhs.vp != NULL);
 
@@ -701,21 +703,23 @@ static int next_map(UNUSED request_t *request, UNUSED unlang_frame_state_edit_t 
 	current->map = map_list_next(current->map_head, current->map);
 	current->func = expand_lhs;
 
+	/*
+	 *	Don't touch the other callbacks.
+	 */
+
 	return 0;
 }
 
 static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-	map_t const *map = current->map;
-
 #ifdef STATIC_ANALYZER
 	if (!current->lhs.vp) return -1;
 #endif
 
 	if (fr_type_is_leaf(current->lhs.vp->da->type)) {
-		if (apply_edits_to_leaf(request, current, map) < 0) return -1;
+		if (apply_edits_to_leaf(request, current) < 0) return -1;
 	} else {
-		if (apply_edits_to_list(request, current, map) < 0) return -1;
+		if (apply_edits_to_list(request, current) < 0) return -1;
 	}
 
 	return next_map(request, state, current);
@@ -723,16 +727,16 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 
 static int expanded_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-	map_t const *map = current->map;
-
 #ifdef STATIC_ANALYZER
 	if (!current->lhs.vp) return -1;
 #endif
 
+	fr_assert(current->map->rhs != NULL);
+
 	/*
 	 *	Get the value of the RHS tmpl.
 	 */
-	if (map->rhs && (templatize_to_value(state, &current->rhs, current->lhs.vp, request) < 0)) return -1;
+	if (templatize_to_value(state, &current->rhs, current->lhs.vp, request) < 0) return -1;
 
 	return check_rhs(request, state, current);
 }
@@ -809,10 +813,10 @@ static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit
 		fr_value_box_list_init(&child->rhs.result);
 
 		/*
-		 *	Continue back with the expanded RHS when we're done expanding the
+		 *	Continue back with the RHS when we're done processing the
 		 *	child.  The go process the child.
 		 */
-		current->func = expanded_rhs;
+		current->func = check_rhs;
 		state->current = child;
 		return 0;
 	}
