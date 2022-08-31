@@ -560,9 +560,9 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 		 *	Assign only ONE value.
 		 */
 		num = tmpl_num(map->lhs);
-		if (num != NUM_UNSPEC) {
+		if ((num != NUM_UNSPEC) && map->rhs) {
 			if (tmpl_num(current->rhs.vpt) == NUM_ALL) {
-				REDEBUG("%s[%d] Cannot assign multiple attributes on the to one", MAP_INFO);
+				REDEBUG("%s[%d] Cannot assign to multiple attributes", MAP_INFO);
 				return -1;
 			}
 
