@@ -624,10 +624,11 @@ fr_value_box_t	*_fr_pair_dcursor_value_init(fr_dcursor_t *cursor, fr_pair_list_t
  *  @note - the list cannot be modified, and structural attributes are not returned.
  *
  * @param[out] cursor	to initialise.
- * @param[in] list	to iterate over.
+ * @param[in] list	to iterate over, must be the the same list as was passed to the parent dcursor
+ * @param[in] parent	dcursor which returns #fr_pair_t
  * @return
  *	- NULL if src does not point to any items.
- *	- The first pair in the list.
+ *	- The first value in the list.
  */
 #define		fr_pair_dcursor_nested_init(_cursor, _list, _parent) \
 		_fr_pair_dcursor_nested_init(_cursor, \
