@@ -34,14 +34,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/unlang_priv.h>
 #include "edit_priv.h"
 
-typedef enum {
-	UNLANG_EDIT_INIT = 0,				//!< Start processing a map.
-	UNLANG_EDIT_EXPANDED_LHS,			//!< Expand the LHS xlat or exec (if needed).
-	UNLANG_EDIT_CHECK_LHS,				//!< check the LHS for things
-	UNLANG_EDIT_EXPANDED_RHS,			//!< Expand the RHS xlat or exec (if needed).
-	UNLANG_EDIT_CHECK_RHS,				//!< check the LHS for things
-} unlang_edit_state_t;
-
 typedef struct {
 	fr_value_box_list_t	result;			//!< result of expansion
 	tmpl_t const		*vpt;			//!< expanded tmpl
@@ -53,13 +45,16 @@ typedef struct {
 
 typedef struct edit_map_s edit_map_t;
 
+typedef struct unlang_frame_state_edit_s unlang_frame_state_edit_t;
+
+typedef int (*unlang_edit_expand_t)(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current);
+
 struct edit_map_s {
 	fr_edit_list_t		*el;			//!< edit list
 
 	edit_map_t		*parent;
 	edit_map_t		*child;
 
-	unlang_edit_state_t	state;			//!< What we're currently doing.
 	map_list_t const	*map_head;
 	map_t const		*map;			//!< the map to evaluate
 
@@ -68,17 +63,19 @@ struct edit_map_s {
 
 	edit_result_t		lhs;			//!< LHS child entries
 	edit_result_t		rhs;			//!< RHS child entries
+
+	unlang_edit_expand_t	func;			//!< for process state
 };
 
 /** State of an edit block
  *
  */
-typedef struct {
+struct unlang_frame_state_edit_s {
 	fr_edit_list_t		*el;				//!< edit list
 
 	edit_map_t		*current;			//!< what we're currently doing.
 	edit_map_t		first;
-} unlang_frame_state_edit_t;
+};
 
 static int templatize_to_attribute(TALLOC_CTX *ctx, edit_result_t *out, request_t *request) CC_HINT(nonnull);
 static int templatize_to_value(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request) CC_HINT(nonnull);
@@ -680,6 +677,298 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 	return vp;
 }
 
+static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current);
+
+/*
+ *	Clean up the current state, and go to the next mapl
+ */
+static int next_map(UNUSED request_t *request, UNUSED unlang_frame_state_edit_t *state, edit_map_t *current)
+{
+	TALLOC_FREE(current->lhs.to_free);
+	TALLOC_FREE(current->rhs.to_free);
+	fr_pair_list_free(&current->rhs.pair_list);
+	current->in_parent_list = false;
+	current->lhs.vp = NULL;
+	current->lhs.vp_parent = NULL;
+	current->lhs.vpt = NULL;
+	current->rhs.vpt = NULL;
+
+	current->map = map_list_next(current->map_head, current->map);
+	current->func = expand_lhs;
+
+	return 0;
+}
+
+static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+{
+	map_t const *map = current->map;
+
+#ifdef STATIC_ANALYZER
+	if (!current->lhs.vp) return -1;
+#endif
+
+	if (fr_type_is_leaf(current->lhs.vp->da->type)) {
+		if (apply_edits_to_leaf(request, current, map) < 0) return -1;
+	} else {
+		if (apply_edits_to_list(request, current, map) < 0) return -1;
+	}
+
+	return next_map(request, state, current);
+}
+
+static int expanded_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+{
+	map_t const *map = current->map;
+
+#ifdef STATIC_ANALYZER
+	if (!current->lhs.vp) return -1;
+#endif
+
+	/*
+	 *	Get the value of the RHS tmpl.
+	 */
+	if (map->rhs && (templatize_to_value(state, &current->rhs, current->lhs.vp, request) < 0)) return -1;
+
+	return check_rhs(request, state, current);
+}
+
+static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+{
+	int rcode;
+	map_t const *map = current->map;
+
+	/*
+	 *	If there's no RHS tmpl, then the RHS is a child list.
+	 */
+	if (!map->rhs) {
+		edit_map_t *child = current->child;
+
+		/*
+		 *	Fast path: child is empty, we don't need to do anything.
+		 */
+		if (fr_dlist_empty(&map->child.head)) {
+			if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
+				REDEBUG("%s[%d] Cannot assign empty list to a normal data type", MAP_INFO);
+				return -1;
+			}
+
+			return check_rhs(request, state, current);
+		}
+
+		/*
+		 *	&Tmp-Integer-0 := { 0, 1 2, 3, 4 }
+		 *
+		 *	@todo - when we support value-box groups on the RHS in
+		 *	apply_edits_to_leaf(), this next block can be deleted.
+		 */
+		if (fr_type_is_leaf(current->lhs.vp->vp_type) && (map->op != T_OP_SET)) {
+			REDEBUG("%s[%d] Must use ':=' when editing list of normal data types", MAP_INFO);
+			return -1;
+		}
+
+		/*
+		 *	Allocate a new child structure if necessary.
+		 */
+		if (!child) {
+			MEM(child = talloc_zero(state, edit_map_t));
+			current->child = child;
+			child->parent = current;
+		}
+
+		/*
+		 *	Initialize the child structure.  There's no edit list here, as we're
+		 *	creating a temporary pair list.  Any edits to this list aren't
+		 *	tracked, as it only exists in current->parent->rhs.pair_list.
+		 *
+		 *	The parent edit_state_t will take care of applying any edits to the
+		 *	parent vp.  Any child pairs which aren't used will be freed.
+		 */
+		child->el = NULL;
+		child->map_head = &map->child;
+		child->map = map_list_head(child->map_head);
+		child->is_leaf_list = fr_type_is_leaf(current->lhs.vp->vp_type);
+		child->func = expand_lhs;
+
+		memset(&child->lhs, 0, sizeof(child->lhs));
+		memset(&child->rhs, 0, sizeof(child->rhs));
+
+		fr_pair_list_init(&child->rhs.pair_list);
+		fr_value_box_list_init(&child->lhs.result);
+		fr_value_box_list_init(&child->rhs.result);
+
+		/*
+		 *	Continue back with the expanded RHS when we're done expanding the
+		 *	child.  The go process the child.
+		 */
+		current->func = expanded_rhs;
+		state->current = child;
+		return 0;
+	}
+
+	/*
+	 *	Turn the RHS into a tmpl_t.  This can involve just referencing an existing
+	 *	tmpl in map->rhs, or expanding an xlat to get an attribute name.
+	 */
+	rcode = template_realize(state, &current->rhs.result, request, map->rhs);
+	if (rcode < 0) return -1;
+
+	if (rcode == 1) {
+		current->func = expanded_rhs;
+		return 1;
+	}
+
+	current->rhs.vpt = map->rhs;
+	return check_rhs(request, state, current);
+}
+
+static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+{
+	map_t const *map = current->map;
+
+	/*
+	 *	@todo - if current->is_leaf_list, AND lhs is an XLAT, AND the result is a
+	 *	value-box group, AND the LHS data type isn't octets/string, THEN apply each
+	 *	individual member of the group.  This lets us do:
+	 *
+	 *		&Tmp-String-0 := { %{sql:...} }
+	 *
+	 *	which will assign one value to the result for each column returned by the SQL query.
+	 *
+	 *	Also if we have &Tmp-String-0 := &Filter-Id[*], we should handle that, too.
+	 *
+	 *	The easiest way is likely to just push the values into a #fr_value_box_list
+	 *	for the parent, and then don't do anything else.  Once the parent leaf is
+	 *	capable of handling value-box groups, it can just do everything.
+	 */
+	if (current->is_leaf_list) {
+		fr_pair_t *vp;
+
+		fr_assert(current->parent);
+		fr_assert(current->parent->lhs.vp_parent != NULL);
+
+		MEM(vp = fr_pair_afrom_da(current, current->parent->lhs.vp->da));
+
+		if (tmpl_is_data(current->lhs.vpt)) {
+			if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, tmpl_value(current->lhs.vpt)) < 0) return -1;
+
+		} else {
+			fr_pair_t *ref;
+
+			fr_assert(tmpl_is_attr(current->lhs.vpt));
+			if (tmpl_find_vp(&ref, request, current->lhs.vpt) < 0) {
+				REDEBUG("%s[%d] Failed to find attribute %s", MAP_INFO, current->lhs.vpt->name);
+				return -1;
+			}
+
+			if (ref->da->type == vp->da->type) {
+				if (fr_value_box_copy(vp, &vp->data, &ref->data) < 0) return -1;
+
+			} else if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &ref->data) < 0) {
+				RPEDEBUG("Cannot copy data from source %s (type %s) to destination %s (different type %s)",
+					 ref->da->name, fr_type_to_str(ref->da->type),
+					 vp->da->name, fr_type_to_str(vp->da->type));
+				return -1;
+			}
+		}
+
+		/*
+		 *	We've already evaluated the RHS, and put the VP where the parent will
+		 *	apply it.  Just go to the next map entry.
+		 */
+		fr_pair_append(&current->parent->rhs.pair_list, vp);
+		return next_map(request, state, current);
+	}
+
+	if (current->parent) {
+		/*
+		 *	Child attributes are created in a temporary list.  Any list editing is
+		 *	taken care of by the parent map.
+		 */
+		fr_assert((map->op == T_OP_EQ) || (current->parent->map->op == T_OP_SUB_EQ));
+
+		/*
+		 *	We create this VP in the "current" context, so that it's freed on
+		 *	error.  If we create it in the LHS VP context, then we have to
+		 *	manually free rhs.pair_list on any error.  Creating it in the
+		 *	"current" context means we have to reparent it when we move it to the
+		 *	parent list, but fr_edit_list_apply_list_assignment() does that
+		 *	anyways.
+		 */
+		MEM(current->lhs.vp = fr_pair_afrom_da(current, tmpl_da(current->lhs.vpt)));
+		fr_pair_append(&current->parent->rhs.pair_list, current->lhs.vp);
+		current->lhs.vp->op = map->op;
+		current->in_parent_list = true;
+
+	} else if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
+		int			err;
+		fr_pair_t		*vp;
+		tmpl_dcursor_ctx_t	cc;
+		fr_dcursor_t		cursor;
+
+		/*
+		 *	Use callback to build missing destination container.
+		 */
+		fr_strerror_clear();
+		vp = tmpl_dcursor_build_init(&err, state, &cc, &cursor, request, current->lhs.vpt, edit_list_pair_build, current);
+		tmpl_dcursor_clear(&cc);
+		if (!vp) {
+			RPDEBUG("Failed finding or creating %s - %d", current->lhs.vpt->name, err);
+			return -1;
+		}
+
+	} else if (map->op == T_OP_EQ) {
+		/*
+		 *	We're setting the value, but the attribute already exists.  This is a
+		 *	NOOP, where we ignore this assignment.
+		 */
+		return next_map(request, state, current);
+
+	} else {
+		/*
+		 *	Get the parent list of the attribute we're editing.
+		 */
+		current->lhs.vp_parent = fr_pair_parent(current->lhs.vp);
+	}
+
+	return expand_rhs(request, state, current);
+}
+
+static int expanded_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+{
+	/*
+	 *	In normal situations, the LHS is an attribute name.
+	 *
+	 *	For leaf lists, the LHS is a value, so we templatize it as a value.
+	 */
+	if (!current->is_leaf_list) {
+		if (templatize_to_attribute(state, &current->lhs, request) < 0) return -1;
+	} else {
+		if (templatize_to_value(state, &current->lhs, current->parent->lhs.vp, request) < 0) return -1;
+	}
+
+	return check_lhs(request, state, current);
+}
+
+static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+{
+	int rcode;
+	map_t const *map = current->map;
+
+	fr_assert(fr_dlist_empty(&current->lhs.result));	/* Should have been consumed */
+	fr_assert(fr_dlist_empty(&current->rhs.result));	/* Should have been consumed */
+
+	rcode = template_realize(state, &current->lhs.result, request, map->lhs);
+	if (rcode < 0) return -1;
+
+	if (rcode == 1) {
+		current->func = expanded_lhs;
+		return 1;
+	}
+
+	current->lhs.vpt = map->lhs;
+
+	return check_lhs(request, state, current);
+}
 
 /** Create a list of modifications to apply to one or more fr_pair_t lists
  *
@@ -694,33 +983,16 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
-	edit_map_t			*current;
-	map_t const    			*map;
-	int				rcode;
-
-redo:
-	current = state->current;
 
 	/*
-	 *	Iterate over the maps, expanding the LHS and RHS.
+	 *	Keep running the "expand map" function until done.
 	 */
-	for (map = current->map;
-	     map != NULL;
-	     map = current->map = map_list_next(current->map_head, map)) {
-	     	repeatable_set(frame);	/* Call us again when done */
+	while (state->current) {
+		while (state->current->map) {
+			int rcode;
 
-		switch (current->state) {
-			/*
-			 *	Turn the LHS into a tmpl_t.  This can involve just referencing an existing
-			 *	tmpl in map->lhs, or expanding an xlat to get an attribute name.
-			 */
-		case UNLANG_EDIT_INIT:
-			fr_assert(fr_dlist_empty(&current->lhs.result));	/* Should have been consumed */
-			fr_assert(fr_dlist_empty(&current->rhs.result));	/* Should have been consumed */
-
-			rcode = template_realize(state, &current->lhs.result, request, map->lhs);
+			rcode = state->current->func(request, state, state->current);
 			if (rcode < 0) {
-			error:
 				fr_edit_list_abort(state->el);
 				TALLOC_FREE(frame->state);
 				repeatable_clear(frame);
@@ -735,269 +1007,17 @@ redo:
 			}
 
 			if (rcode == 1) {
-				current->state = UNLANG_EDIT_EXPANDED_LHS;
+				repeatable_set(frame);
 				return UNLANG_ACTION_PUSHED_CHILD;
 			}
-
-			current->state = UNLANG_EDIT_CHECK_LHS; /* data, attr, list */
-			current->lhs.vpt = map->lhs;
-			goto check_lhs;
-
-		case UNLANG_EDIT_EXPANDED_LHS:
-			/*
-			 *	In normal situations, the LHS is an attribute name.
-			 *
-			 *	For leaf lists, the LHS is a value, so we templatize it as a value.
-			 */
-			if (!current->is_leaf_list) {
-				if (templatize_to_attribute(state, &current->lhs, request) < 0) goto error;
-			} else {
-				if (templatize_to_value(state, &current->lhs, current->parent->lhs.vp, request) < 0) goto error;
-			}
-
-			current->state = UNLANG_EDIT_CHECK_LHS;
-			goto check_lhs;
-
-		case UNLANG_EDIT_CHECK_LHS:
-		check_lhs:
-#ifdef STATIC_ANALYZER
-			if (!current->lhs.vpt) return -1;
-#endif
-
-			/*
-			 *	@todo - if current->is_leaf_list, AND lhs is an XLAT, AND the result is a
-			 *	value-box group, AND the LHS data type isn't octets/string, THEN apply each
-			 *	individual member of the group.  This lets us do:
-			 *
-			 *		&Tmp-String-0 := { %{sql:...} }
-			 *
-			 *	which will assign one value to the result for each column returned by the SQL query.
-			 *
-			 *	Also if we have &Tmp-String-0 := &Filter-Id[*], we should handle that, too.
-			 *
-			 *	The easiest way is likely to just push the values into a #fr_value_box_list
-			 *	for the parent, and then don't do anything else.  Once the parent leaf is
-			 *	capable of handling value-box groups, it can just do everything.
-			 */
-			if (current->is_leaf_list) {
-				fr_pair_t *vp;
-
-				fr_assert(current->parent);
-				fr_assert(current->parent->lhs.vp_parent != NULL);
-
-				MEM(vp = fr_pair_afrom_da(current, current->parent->lhs.vp->da));
-
-				if (tmpl_is_data(current->lhs.vpt)) {
-					if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, tmpl_value(current->lhs.vpt)) < 0) goto error;
-
-				} else {
-					fr_pair_t *ref;
-
-					fr_assert(tmpl_is_attr(current->lhs.vpt));
-					if (tmpl_find_vp(&ref, request, current->lhs.vpt) < 0) {
-						REDEBUG("%s[%d] Failed to find attribute %s", MAP_INFO, current->lhs.vpt->name);
-						goto error;
-					}
-
-					if (ref->da->type == vp->da->type) {
-						if (fr_value_box_copy(vp, &vp->data, &ref->data) < 0) goto error;
-
-					} else if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &ref->data) < 0) {
-						RPEDEBUG("Cannot copy data from source %s (type %s) to destination %s (different type %s)",
-							 ref->da->name, fr_type_to_str(ref->da->type),
-							 vp->da->name, fr_type_to_str(vp->da->type));
-						goto error;
-					}
-				}
-
-				/*
-				 *	We've already evaluated the RHS, and put the VP where the parent will
-				 *	apply it.  Just go to the next map entry.
-				 */
-				fr_pair_append(&current->parent->rhs.pair_list, vp);
-				goto next;
-
-			} else if (current->parent) {
-				/*
-				 *	Child attributes are created in a temporary list.  Any list editing is
-				 *	taken care of by the parent map.
-				 */
-				fr_assert((map->op == T_OP_EQ) || (current->parent->map->op == T_OP_SUB_EQ));
-
-				/*
-				 *	We create this VP in the "current" context, so that it's freed on
-				 *	error.  If we create it in the LHS VP context, then we have to
-				 *	manually free rhs.pair_list on any error.  Creating it in the
-				 *	"current" context means we have to reparent it when we move it to the
-				 *	parent list, but fr_edit_list_apply_list_assignment() does that
-				 *	anyways.
-				 */
-				MEM(current->lhs.vp = fr_pair_afrom_da(current, tmpl_da(current->lhs.vpt)));
-				fr_pair_append(&current->parent->rhs.pair_list, current->lhs.vp);
-				current->lhs.vp->op = map->op;
-				current->in_parent_list = true;
-
-			} else if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
-				int			err;
-				fr_pair_t		*vp;
-				tmpl_dcursor_ctx_t	cc;
-				fr_dcursor_t		cursor;
-
-				/*
-				 *	Use callback to build missing destination container.
-				 */
-				fr_strerror_clear();
-				vp = tmpl_dcursor_build_init(&err, state, &cc, &cursor, request, current->lhs.vpt, edit_list_pair_build, current);
-				tmpl_dcursor_clear(&cc);
-				if (!vp) {
-					RPDEBUG("Failed finding or creating %s - %d", current->lhs.vpt->name, err);
-					goto error;
-				}
-
-			} else if (map->op == T_OP_EQ) {
-				/*
-				 *	We're setting the value, but the attribute already exists.  This is a
-				 *	NOOP, where we ignore this assignment.
-				 */
-				goto next;
-
-			} else {
-				/*
-				 *	Get the parent list of the attribute we're editing.
-				 */
-				current->lhs.vp_parent = fr_pair_parent(current->lhs.vp);
-			}
-
-			/*
-			 *	If there's no RHS tmpl, then the RHS is a child list.
-			 */
-			if (!map->rhs) {
-				edit_map_t *child = current->child;
-
-				/*
-				 *	Fast path: child is empty, we don't need to do anything.
-				 */
-				if (fr_dlist_empty(&map->child.head)) {
-					if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
-						REDEBUG("%s[%d] Cannot assign empty list to a normal data type", MAP_INFO);
-						goto error;
-					}
-
-					goto check_rhs;
-				}
-
-				/*
-				 *	&Tmp-Integer-0 := { 0, 1 2, 3, 4 }
-				 *
-				 *	@todo - when we support value-box groups on the RHS in
-				 *	apply_edits_to_leaf(), this next block can be deleted.
-				 */
-				if (fr_type_is_leaf(current->lhs.vp->vp_type) && (map->op != T_OP_SET)) {
-					REDEBUG("%s[%d] Must use ':=' when editing list of normal data types", MAP_INFO);
-					goto error;
-				}
-
-				/*
-				 *	Allocate a new child structure if necessary.
-				 */
-				if (!child) {
-					MEM(child = talloc_zero(state, edit_map_t));
-					current->child = child;
-					child->parent = current;
-				}
-
-				/*
-				 *	Initialize the child structure.  There's no edit list here, as we're
-				 *	creating a temporary pair list.  Any edits to this list aren't
-				 *	tracked, as it only exists in current->parent->rhs.pair_list.
-				 *
-				 *	The parent edit_state_t will take care of applying any edits to the
-				 *	parent vp.  Any child pairs which aren't used will be freed.
-				 */
-				child->state = UNLANG_EDIT_INIT;
-				child->el = NULL;
-				child->map_head = &map->child;
-				child->map = map_list_head(child->map_head);
-				child->is_leaf_list = fr_type_is_leaf(current->lhs.vp->vp_type);
-
-				memset(&child->lhs, 0, sizeof(child->lhs));
-				memset(&child->rhs, 0, sizeof(child->rhs));
-
-				fr_pair_list_init(&child->rhs.pair_list);
-				fr_value_box_list_init(&child->lhs.result);
-				fr_value_box_list_init(&child->rhs.result);
-
-				/*
-				 *	Continue back with the expanded RHS when we're done expanding the
-				 *	child.  The go process the child.
-				 */
-				current->state = UNLANG_EDIT_EXPANDED_RHS;
-				state->current = child;
-				goto redo;
-			}
-
-			/*
-			 *	Turn the RHS into a tmpl_t.  This can involve just referencing an existing
-			 *	tmpl in map->rhs, or expanding an xlat to get an attribute name.
-			 */
-			rcode = template_realize(state, &current->rhs.result, request, map->rhs);
-			if (rcode < 0) goto error;
-
-			if (rcode == 1) {
-				current->state = UNLANG_EDIT_EXPANDED_RHS;
-				return UNLANG_ACTION_PUSHED_CHILD;
-			}
-
-			current->state = UNLANG_EDIT_CHECK_RHS;
-			current->rhs.vpt = map->rhs;
-			goto check_rhs;
-
-		case UNLANG_EDIT_EXPANDED_RHS:
-#ifdef STATIC_ANALYZER
-			if (!current->lhs.vp) goto error;
-#endif
-
-			/*
-			 *	Get the value of the RHS tmpl.
-			 */
-			if (map->rhs && (templatize_to_value(state, &current->rhs, current->lhs.vp, request) < 0)) goto error;
-
-			current->state = UNLANG_EDIT_CHECK_RHS;
-			FALL_THROUGH;
-
-		case UNLANG_EDIT_CHECK_RHS:
-		check_rhs:
-#ifdef STATIC_ANALYZER
-			if (!current->lhs.vp) goto error;
-#endif
-
-			if (fr_type_is_leaf(current->lhs.vp->da->type)) {
-				if (apply_edits_to_leaf(request, current, map) < 0) goto error;
-			} else {
-				if (apply_edits_to_list(request, current, map) < 0) goto error;
-			}
-
-		next:
-			current->state = UNLANG_EDIT_INIT;
-			TALLOC_FREE(current->lhs.to_free);
-			TALLOC_FREE(current->rhs.to_free);
-			fr_pair_list_free(&current->rhs.pair_list);
-			current->in_parent_list = false;
-			current->lhs.vp = NULL;
-			current->lhs.vp_parent = NULL;
-			current->lhs.vpt = NULL;
-			current->rhs.vpt = NULL;
-			break;
 		}
 
-	} /* loop over the map */
+		/*
+		 *	Stop if there's no parnt to process.
+		 */
+		if (!state->current->parent) break;
 
-	/*
-	 *	There's a parent map, go update that.
-	 */
-	if (current->parent) {
-		state->current = current->parent;
-		goto redo;
+		state->current = state->current->parent;
 	}
 
 	/*
@@ -1040,6 +1060,7 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 	current->map_head = &edit->maps;
 	current->map = map_list_head(current->map_head);
 	fr_pair_list_init(&current->rhs.pair_list);
+	current->func = expand_lhs;
 
 	/*
 	 *	Call process_edit to do all of the work.
