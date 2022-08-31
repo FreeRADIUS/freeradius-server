@@ -190,6 +190,7 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	This may return many VPs
 		 */
 		fr_assert(ptr != NULL);
+		/* coverity[tainted_data] */
 		my_len = fr_radius_decode_pair(ctx, &tmp_list, ptr, packet_length, &packet_ctx);
 		if (my_len < 0) {
 		fail:
