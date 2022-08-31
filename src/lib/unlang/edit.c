@@ -58,13 +58,14 @@ struct edit_map_s {
 	map_list_t const	*map_head;
 	map_t const		*map;			//!< the map to evaluate
 
-	bool			is_leaf_list;
 	bool			in_parent_list;
 
 	edit_result_t		lhs;			//!< LHS child entries
 	edit_result_t		rhs;			//!< RHS child entries
 
 	unlang_edit_expand_t	func;			//!< for process state
+	unlang_edit_expand_t	check_lhs;		//!< for special cases
+	unlang_edit_expand_t	expanded_lhs;		//!< for special cases
 };
 
 /** State of an edit block
@@ -444,8 +445,6 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current, map_t co
 
 	fr_assert(current->lhs.vp != NULL);
 
-	fr_assert(!current->is_leaf_list);
-
 #ifdef STATIC_ANALYZER
 	if (!current->lhs.vp) return -1;
 #endif
@@ -677,7 +676,13 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 	return vp;
 }
 
-static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current);
+#define DECLARE(_x) static int _x(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+
+DECLARE(expand_lhs);
+DECLARE(check_lhs);
+DECLARE(check_lhs_leaf);
+DECLARE(expanded_lhs);
+DECLARE(expanded_lhs_leaf);
 
 /*
  *	Clean up the current state, and go to the next mapl
@@ -786,8 +791,15 @@ static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit
 		child->el = NULL;
 		child->map_head = &map->child;
 		child->map = map_list_head(child->map_head);
-		child->is_leaf_list = fr_type_is_leaf(current->lhs.vp->vp_type);
 		child->func = expand_lhs;
+
+		if (!fr_type_is_leaf(current->lhs.vp->vp_type)) {
+			child->check_lhs = check_lhs;
+			child->expanded_lhs = expanded_lhs;
+		} else {
+			child->check_lhs = check_lhs_leaf;
+			child->expanded_lhs = expanded_lhs_leaf;
+		}
 
 		memset(&child->lhs, 0, sizeof(child->lhs));
 		memset(&child->rhs, 0, sizeof(child->rhs));
@@ -821,63 +833,65 @@ static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit
 	return check_rhs(request, state, current);
 }
 
+/*
+ *	@todo - AND lhs is an XLAT, AND the result is a
+ *	value-box group, AND the LHS data type isn't octets/string, THEN apply each
+ *	individual member of the group.  This lets us do:
+ *
+ *		&Tmp-String-0 := { %{sql:...} }
+ *
+ *	which will assign one value to the result for each column returned by the SQL query.
+ *
+ *	Also if we have &Tmp-String-0 := &Filter-Id[*], we should handle that, too.
+ *
+ *	The easiest way is likely to just push the values into a #fr_value_box_list
+ *	for the parent, and then don't do anything else.  Once the parent leaf is
+ *	capable of handling value-box groups, it can just do everything.
+ */
+static int check_lhs_leaf(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+{
+	fr_pair_t *vp;
+	map_t const *map = current->map;
+
+	fr_assert(current->parent);
+	fr_assert(current->parent->lhs.vp_parent != NULL);
+
+	MEM(vp = fr_pair_afrom_da(current, current->parent->lhs.vp->da));
+
+	if (tmpl_is_data(current->lhs.vpt)) {
+		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, tmpl_value(current->lhs.vpt)) < 0) return -1;
+
+	} else {
+		fr_pair_t *ref;
+
+		fr_assert(tmpl_is_attr(current->lhs.vpt));
+		if (tmpl_find_vp(&ref, request, current->lhs.vpt) < 0) {
+			REDEBUG("%s[%d] Failed to find attribute %s", MAP_INFO, current->lhs.vpt->name);
+			return -1;
+		}
+
+		if (ref->da->type == vp->da->type) {
+			if (fr_value_box_copy(vp, &vp->data, &ref->data) < 0) return -1;
+
+		} else if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &ref->data) < 0) {
+			RPEDEBUG("Cannot copy data from source %s (type %s) to destination %s (different type %s)",
+				 ref->da->name, fr_type_to_str(ref->da->type),
+				 vp->da->name, fr_type_to_str(vp->da->type));
+			return -1;
+		}
+	}
+
+	/*
+	 *	We've already evaluated the RHS, and put the VP where the parent will
+	 *	apply it.  Just go to the next map entry.
+	 */
+	fr_pair_append(&current->parent->rhs.pair_list, vp);
+	return next_map(request, state, current);
+}
+
 static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	map_t const *map = current->map;
-
-	/*
-	 *	@todo - if current->is_leaf_list, AND lhs is an XLAT, AND the result is a
-	 *	value-box group, AND the LHS data type isn't octets/string, THEN apply each
-	 *	individual member of the group.  This lets us do:
-	 *
-	 *		&Tmp-String-0 := { %{sql:...} }
-	 *
-	 *	which will assign one value to the result for each column returned by the SQL query.
-	 *
-	 *	Also if we have &Tmp-String-0 := &Filter-Id[*], we should handle that, too.
-	 *
-	 *	The easiest way is likely to just push the values into a #fr_value_box_list
-	 *	for the parent, and then don't do anything else.  Once the parent leaf is
-	 *	capable of handling value-box groups, it can just do everything.
-	 */
-	if (current->is_leaf_list) {
-		fr_pair_t *vp;
-
-		fr_assert(current->parent);
-		fr_assert(current->parent->lhs.vp_parent != NULL);
-
-		MEM(vp = fr_pair_afrom_da(current, current->parent->lhs.vp->da));
-
-		if (tmpl_is_data(current->lhs.vpt)) {
-			if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, tmpl_value(current->lhs.vpt)) < 0) return -1;
-
-		} else {
-			fr_pair_t *ref;
-
-			fr_assert(tmpl_is_attr(current->lhs.vpt));
-			if (tmpl_find_vp(&ref, request, current->lhs.vpt) < 0) {
-				REDEBUG("%s[%d] Failed to find attribute %s", MAP_INFO, current->lhs.vpt->name);
-				return -1;
-			}
-
-			if (ref->da->type == vp->da->type) {
-				if (fr_value_box_copy(vp, &vp->data, &ref->data) < 0) return -1;
-
-			} else if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &ref->data) < 0) {
-				RPEDEBUG("Cannot copy data from source %s (type %s) to destination %s (different type %s)",
-					 ref->da->name, fr_type_to_str(ref->da->type),
-					 vp->da->name, fr_type_to_str(vp->da->type));
-				return -1;
-			}
-		}
-
-		/*
-		 *	We've already evaluated the RHS, and put the VP where the parent will
-		 *	apply it.  Just go to the next map entry.
-		 */
-		fr_pair_append(&current->parent->rhs.pair_list, vp);
-		return next_map(request, state, current);
-	}
 
 	if (current->parent) {
 		/*
@@ -933,20 +947,23 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	return expand_rhs(request, state, current);
 }
 
+/*
+ *	In normal situations, the LHS is an attribute name.
+ *
+ *	For leaf lists, the LHS is a value, so we templatize it as a value.
+ */
+static int expanded_lhs_leaf(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+{
+	if (templatize_to_attribute(state, &current->lhs, request) < 0) return -1;
+
+	return check_lhs_leaf(request, state, current);
+}
+
 static int expanded_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-	/*
-	 *	In normal situations, the LHS is an attribute name.
-	 *
-	 *	For leaf lists, the LHS is a value, so we templatize it as a value.
-	 */
-	if (!current->is_leaf_list) {
-		if (templatize_to_attribute(state, &current->lhs, request) < 0) return -1;
-	} else {
-		if (templatize_to_value(state, &current->lhs, current->parent->lhs.vp, request) < 0) return -1;
-	}
+	if (templatize_to_value(state, &current->lhs, current->parent->lhs.vp, request) < 0) return -1;
 
-	return check_lhs(request, state, current);
+	return current->check_lhs(request, state, current);
 }
 
 static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
@@ -967,7 +984,7 @@ static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit
 
 	current->lhs.vpt = map->lhs;
 
-	return check_lhs(request, state, current);
+	return current->check_lhs(request, state, current);
 }
 
 /** Create a list of modifications to apply to one or more fr_pair_t lists
@@ -1061,6 +1078,8 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 	current->map = map_list_head(current->map_head);
 	fr_pair_list_init(&current->rhs.pair_list);
 	current->func = expand_lhs;
+	current->check_lhs = check_lhs;
+	current->expanded_lhs = expanded_lhs;
 
 	/*
 	 *	Call process_edit to do all of the work.
