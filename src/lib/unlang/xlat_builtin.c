@@ -1299,6 +1299,7 @@ static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char const		*delim;
 	fr_value_box_t		*string, *vb;
 
+	/* coverity[dereference] */
 	if (delim_vb->vb_length == 0) {
 		REDEBUG("Delimiter must be greater than zero characters");
 		return XLAT_ACTION_FAIL;
@@ -1858,6 +1859,7 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_list_t	*list = &values->vb_group;
 	fr_value_box_t		*pad = fr_dlist_next(args, values);
 	size_t			pad_len = (size_t)pad->vb_uint64;
+	/* coverity[dereference] */
 	fr_value_box_t		*fill = fr_dlist_next(args, pad);
 	char const		*fill_str = NULL;
 	size_t			fill_len = 0;
@@ -1945,6 +1947,7 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*values = fr_dlist_head(args);
 	fr_value_box_list_t	*list = &values->vb_group;
 	fr_value_box_t		*pad = fr_dlist_next(args, values);
+	/* coverity[dereference] */
 	size_t			pad_len = (size_t)pad->vb_uint64;
 	fr_value_box_t		*fill = fr_dlist_next(args, pad);
 	char const		*fill_str = NULL;
@@ -3282,7 +3285,7 @@ static xlat_action_t xlat_func_subst_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*regex_vb = fr_dlist_next(in, subject_vb);
 	fr_value_box_t		*rep_vb = fr_dlist_next(in, regex_vb);
 
-
+	/* coverity[dereference] */
 	p = regex_vb->vb_strvalue;
 	end = p + regex_vb->vb_length;
 
@@ -3382,6 +3385,7 @@ static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*subject_vb = fr_dlist_head(in);
 	fr_value_box_t		*pattern_vb = fr_dlist_next(in, subject_vb);
 
+	/* coverity[dereference] */
 	pattern = pattern_vb->vb_strvalue;
 
 	if (*pattern == '/') {

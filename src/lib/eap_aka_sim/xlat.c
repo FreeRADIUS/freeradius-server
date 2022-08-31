@@ -236,6 +236,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_
 	size_t		id_len = id_vb->vb_length;
 
 	fr_value_box_t	*key_vb = fr_dlist_next(in, id_vb);
+	/* coverity[dereference] */
 	uint8_t const	*key = key_vb->vb_octets;
 	size_t		key_len = key_vb->vb_length;
 
@@ -355,6 +356,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 	size_t				id_len = id_vb->vb_length;
 
 	fr_value_box_t			*key_vb = fr_dlist_next(in, id_vb);
+	/* coverity[dereference] */
 	uint8_t	const			*key = key_vb->vb_octets;
 	size_t				key_len = key_vb->vb_length;
 

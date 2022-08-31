@@ -101,6 +101,7 @@ static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
+	/* coverity[dereference] */
 	type = fr_type_from_str(type_vb->vb_strvalue);
 	if (fr_type_is_null(type)) {
 		REDEBUG("Invalid data type '%s'", type_vb->vb_strvalue);
