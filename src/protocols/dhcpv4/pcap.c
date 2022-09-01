@@ -90,7 +90,7 @@ int fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, fr_radius_pack
 	memcpy(dhcp, packet->data, packet->data_len);
 
 	/* UDP checksum is done here */
-	udp_hdr->checksum = fr_udp_checksum((uint8_t const *)udp_hdr, ntohs(udp_hdr->len), udp_hdr->checksum,
+	udp_hdr->checksum = fr_udp_checksum((uint8_t const *)udp_hdr, l4_len, udp_hdr->checksum,
 					    packet->socket.inet.src_ipaddr.addr.v4,
 					    packet->socket.inet.dst_ipaddr.addr.v4);
 
