@@ -212,8 +212,6 @@ static int remove_vps(request_t *request, edit_map_t *current)
 	fr_dcursor_t cursor;
 
 	fr_assert(tmpl_is_attr(current->rhs.vpt));
-	fr_assert(current->lhs.vp != NULL);
-	fr_assert(fr_type_is_structural(current->lhs.vp->vp_type));
 
 	RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[T_OP_SUB_EQ], current->rhs.vpt->name);
 
