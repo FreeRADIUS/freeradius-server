@@ -638,18 +638,6 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 	fr_pair_t *vp;
 	edit_map_t *current = uctx;
 
-	/*
-	 *	We only build for `:=` and `=`.
-	 */
-	switch (current->map->op) {
-	case T_OP_SET:
-	case T_OP_EQ:
-		break;
-
-	default:
-		return NULL;
-	}
-
 	vp = fr_pair_afrom_da(parent, da);
 	if (!vp) return NULL;
 
@@ -923,38 +911,47 @@ static int check_lhs_parented(request_t *request, unlang_frame_state_edit_t *sta
 static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	map_t const *map = current->map;
+	tmpl_dcursor_build_t build = NULL;
+	int			err;
+	fr_pair_t		*vp;
+	tmpl_dcursor_ctx_t	cc;
+	fr_dcursor_t		cursor;
 
-	if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
-		int			err;
-		fr_pair_t		*vp;
-		tmpl_dcursor_ctx_t	cc;
-		fr_dcursor_t		cursor;
+	if ((map->op == T_OP_SET) || (map->op == T_OP_EQ)) build = edit_list_pair_build;
 
-		/*
-		 *	Use callback to build missing destination container.
-		 */
-		fr_strerror_clear();
-		vp = tmpl_dcursor_build_init(&err, state, &cc, &cursor, request, current->lhs.vpt, edit_list_pair_build, current);
-		tmpl_dcursor_clear(&cc);
-		if (!vp) {
-			RPDEBUG("Failed finding or creating %s - %d", current->lhs.vpt->name, err);
-			return -1;
-		}
+	current->lhs.vp = NULL;
 
-	} else if (map->op == T_OP_EQ) {
-		/*
-		 *	We're setting the value, but the attribute already exists.  This is a
-		 *	NOOP, where we ignore this assignment.
-		 */
-		return next_map(request, state, current);
-
-	} else {
-		/*
-		 *	Get the parent list of the attribute we're editing.
-		 */
-		current->lhs.vp_parent = fr_pair_parent(current->lhs.vp);
+	/*
+	 *	Use callback to build missing destination container.
+	 */
+	fr_strerror_clear();
+	vp = tmpl_dcursor_build_init(&err, state, &cc, &cursor, request, current->lhs.vpt, build, current);
+	tmpl_dcursor_clear(&cc);
+	if (!vp) {
+		RPDEBUG("Failed finding or creating %s - %d", current->lhs.vpt->name, err);
+		return -1;
 	}
 
+	/*
+	 *	We just built it (= or :=).  Go do the RHS.
+	 */
+	if (current->lhs.vp) {
+		return expand_rhs(request, state, current);
+	}
+
+	/*
+	 *	We found it, but the attribute already exists.  This
+	 *	is a NOOP, where we ignore this assignment.
+	 */
+	if (map->op == T_OP_EQ) {
+		return next_map(request, state, current);
+	}
+
+	/*
+	 *	We found an existing attribute, with a modification operator.
+	 */
+	current->lhs.vp = vp;
+	current->lhs.vp_parent = fr_pair_parent(current->lhs.vp);
 	return expand_rhs(request, state, current);
 }
 
