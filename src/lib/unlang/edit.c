@@ -263,6 +263,8 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current)
 	bool copy_vps = true;
 	int rcode;
 	map_t const *map = current->map;
+	tmpl_dcursor_ctx_t cc;
+	fr_dcursor_t cursor;
 
 	fr_assert(current->lhs.vp != NULL);
 
@@ -354,77 +356,68 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current)
 		return remove_vps(request, current);
 	}
 
-	/*
-	 *	Find the RHS attribute / list.
-	 */
-	if (tmpl_find_vp(&vp, request, current->rhs.vpt) < 0) {
-		REDEBUG("%s[%d] Failed to find %s for %s %s ...", MAP_INFO,
-			current->rhs.vpt->name, map->lhs->name, fr_tokens[map->op]);
-		return -1;
-	}
-
 	fr_assert(current->lhs.vp != NULL);
 
 	/*
-	 *	As a special operation, allow "list OP attr", which
-	 *	treats the RHS as a one-member list.
+	 *	Allow selectors, at least for leaf attributes.
 	 */
-	if (fr_type_is_leaf(vp->vp_type)) {
-		fr_pair_t *vp_copy;
+	vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, current->rhs.vpt);
+	if (!vp) {
+		REDEBUG("%s[%d] Failed to find attribute reference %s", MAP_INFO, current->rhs.vpt->name);
+		return -1;
+	}
 
-		vp_copy = fr_pair_copy(request, vp);
-		if (!vp_copy) return -1;
+	if (fr_type_is_structural(vp->vp_type)) {
+		tmpl_dcursor_clear(&cc);
 
-		fr_assert(fr_pair_list_empty(&current->rhs.pair_list));
-
-		fr_pair_append(&current->rhs.pair_list, vp_copy);
-		children = &current->rhs.pair_list;
-		copy_vps = false;
-
-	} else {
-		/*
-		 *	List to list operations should be compatible.
-		 */
-		fr_assert(fr_type_is_structural(vp->vp_type));
-
-		/*
-		 *	Forbid copying incompatible structs, TLVs, groups,
-		 *	etc.
-		 */
-		if (!fr_dict_attr_compatible(current->lhs.vp->da, vp->da)) {
-			REDEBUG("%s[%d] Attribute data types are not compatible (%s vs %s)", MAP_INFO,
-			       current->lhs.vp->da->name, vp->da->name);
+		if (tmpl_num(current->rhs.vpt) == NUM_ALL) {
+			REDEBUG("%s[%d] Wildcard structural for %s is not yet implemented.", MAP_INFO, current->rhs.vpt->name);
 			return -1;
 		}
 
-		children = &vp->vp_group; /* and copy_vps for any VP we edit */
+		children = &vp->vp_group;
+		copy_vps = true;
+		goto apply_list;
 	}
+
+	fr_pair_list_init(&current->rhs.pair_list);
+	while (vp) {
+		fr_pair_t *copy;
+
+		copy = fr_pair_copy(request, vp);
+		if (!copy) {
+			fr_pair_list_free(&current->rhs.pair_list);
+			tmpl_dcursor_clear(&cc);
+			return -1;
+		}
+		fr_pair_append(&current->rhs.pair_list, copy);
+
+		vp = fr_dcursor_next(&cursor);
+	}
+	tmpl_dcursor_clear(&cc);
+
+	children = &current->rhs.pair_list;
+	copy_vps = false;
 
 	/*
 	 *	Apply structural thingies!
 	 */
 apply_list:
-	if (current->rhs.vpt) {
-		RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[map->op], current->rhs.vpt->name);
+	fr_assert(children != NULL);
 
-	} else {
-		fr_assert(children != NULL);
-
+	/*
+	 *	Print the children before we do the modifications.
+	 */
+	RDEBUG2("%s %s {", current->lhs.vpt->name, fr_tokens[map->op]);
+	if (fr_debug_lvl >= L_DBG_LVL_2) {
+		RINDENT();
 		/*
-		 *	Print the children before we do the modifications.
+		 *	@todo - this logs at INFO level, and doesn't log the operators.
 		 */
-		RDEBUG2("%s %s {", current->lhs.vpt->name, fr_tokens[map->op]);
-		if (fr_debug_lvl >= L_DBG_LVL_2) {
-			RINDENT();
-			/*
-			 *	@todo - this logs at INFO level, and doesn't log the operators.
-			 */
-			xlat_debug_attr_list(request, children);
-			REXDENT();
-		}
-
-		RDEBUG2("}");
+		xlat_debug_attr_list(request, children);
+		REXDENT();
 	}
+	RDEBUG2("}");
 
 	rcode = fr_edit_list_apply_list_assignment(current->el, current->lhs.vp, map->op, children, copy_vps);
 	if (rcode < 0) RPERROR("Failed performing list %s operation", fr_tokens[map->op]);
