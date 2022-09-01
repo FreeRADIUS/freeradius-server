@@ -77,7 +77,6 @@ struct unlang_frame_state_edit_s {
 };
 
 static int templatize_to_attribute(TALLOC_CTX *ctx, edit_result_t *out, request_t *request) CC_HINT(nonnull);
-static int templatize_to_value(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request) CC_HINT(nonnull);
 
 #define MAP_INFO cf_filename(map->ci), cf_lineno(map->ci)
 
@@ -126,9 +125,8 @@ static int templatize_to_attribute(TALLOC_CTX *ctx, edit_result_t *out, request_
  *  the calling code should parse the RHS as a set of VPs, and return
  *  that.
  */
-static int templatize_to_value(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request)
+static int templatize_to_value(TALLOC_CTX *ctx, edit_result_t *out, fr_type_t type, request_t *request)
 {
-	fr_type_t type = lhs->vp_type;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
 
 	if (!box) {
@@ -318,7 +316,6 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current)
 		 *	Loop over matching attributes, and delete them.
 		 */
 		RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[T_OP_SUB_EQ], current->rhs.vpt->name);
-
 
 		while (vp) {
 			fr_pair_list_t *list;
@@ -664,11 +661,7 @@ static int next_map(UNUSED request_t *request, UNUSED unlang_frame_state_edit_t 
 
 static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-#ifdef STATIC_ANALYZER
-	if (!current->lhs.vp) return -1;
-#endif
-
-	if (fr_type_is_leaf(current->lhs.vp->da->type)) {
+	if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
 		if (apply_edits_to_leaf(request, current) < 0) return -1;
 	} else {
 		if (apply_edits_to_list(request, current) < 0) return -1;
@@ -679,18 +672,7 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 
 static int expanded_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-#ifdef STATIC_ANALYZER
-	if (!current->lhs.vp) return -1;
-#endif
-
-	fr_assert(current->map->rhs != NULL);
-
-	/*
-	 *	Get the value of the RHS tmpl.
-	 *
-	 *	@todo - templatize based on LHS da, not LHS vp.
-	 */
-	if (templatize_to_value(state, &current->rhs, current->lhs.vp, request) < 0) return -1;
+	if (templatize_to_value(state, &current->rhs, tmpl_da(current->lhs.vpt)->type, request) < 0) return -1;
 
 	return check_rhs(request, state, current);
 }
@@ -709,7 +691,7 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	 *	Fast path: child is empty, we don't need to do anything.
 	 */
 	if (fr_dlist_empty(&map->child.head)) {
-		if (fr_type_is_leaf(current->lhs.vp->vp_type)) {
+		if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
 			REDEBUG("%s[%d] Cannot assign empty list to a normal data type", MAP_INFO);
 			return -1;
 		}
@@ -723,7 +705,7 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	 *	@todo - when we support value-box groups on the RHS in
 	 *	apply_edits_to_leaf(), this next block can be deleted.
 	 */
-	if (fr_type_is_leaf(current->lhs.vp->vp_type) && (map->op != T_OP_SET)) {
+	if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type) && (map->op != T_OP_SET)) {
 		REDEBUG("%s[%d] Must use ':=' when editing list of normal data types", MAP_INFO);
 		return -1;
 	}
@@ -750,7 +732,7 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	child->map = map_list_head(child->map_head);
 	child->func = expand_lhs;
 
-	if (!fr_type_is_leaf(current->lhs.vp->vp_type)) {
+	if (!fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
 		child->check_lhs = check_lhs_parented;
 		child->expanded_lhs = expanded_lhs;
 	} else {
@@ -939,7 +921,7 @@ static int expanded_lhs_leaf(request_t *request, unlang_frame_state_edit_t *stat
 
 static int expanded_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-	if (templatize_to_value(state, &current->lhs, current->parent->lhs.vp, request) < 0) return -1;
+	if (templatize_to_value(state, &current->lhs, tmpl_da(current->parent->lhs.vpt)->type, request) < 0) return -1;
 
 	return current->check_lhs(request, state, current);
 }
