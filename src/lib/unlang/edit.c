@@ -347,6 +347,10 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current)
 			return -1;
 		}
 
+		/*
+		 *	If the RHS is a list, then the apply_list code below will eventually call
+		 *	fr_edit_list_delete_list(), which will do all of the work.
+		 */
 		return remove_vps(request, current);
 	}
 
