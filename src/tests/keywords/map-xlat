@@ -23,11 +23,11 @@ foreach &Tmp-String-1[*] {
 	}
 }
 
-if (&request.Vendor-Specific.Nokia-SR.MSAP-Interface[0] != 'UNICAST_7360OLT3') {
+if (&Vendor-Specific.Nokia-SR.MSAP-Interface[0] != 'UNICAST_7360OLT3') {
 	test_fail
 }
 
-if (&request.Vendor-Specific.Nokia-SR.MSAP-Interface[1] != 'UNICAST_7360OLT4') {
+if (&Vendor-Specific.Nokia-SR.MSAP-Interface[1] != 'UNICAST_7360OLT4') {
 	test_fail
 }
 

@@ -1,6 +1,6 @@
 # PRE: switch
 #
-&request.Filter-Id := ""
+&Filter-Id := ""
 
 switch &Filter-Id {
 	case "" {

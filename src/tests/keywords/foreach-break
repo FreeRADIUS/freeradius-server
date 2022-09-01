@@ -31,7 +31,7 @@ foreach &Filter-Id {
 	&Filter-Id = "2"
 }
 
-foreach &request.Reply-Message {
+foreach &Reply-Message {
 	if ("%{Foreach-Variable-0}" == "1") {
 		&request += {
 			&Filter-Id = "3"
@@ -51,7 +51,7 @@ foreach &request.Reply-Message {
 	&Filter-Id = "2"
 }
 
-foreach &request.Reply-Message {
+foreach &Reply-Message {
 	if ("%{Foreach-Variable-0}" == "1") {
 		&request += {
 			&Filter-Id = "3"

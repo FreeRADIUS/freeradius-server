@@ -1,7 +1,7 @@
 #
 #  PRE: if redundant
 #
-&request.NAS-IP-Address		:= 127.0.0.1
+&NAS-IP-Address		:= 127.0.0.1
 &Tmp-Integer-0		:= 0x7f000001
 
 &Tmp-String-0			:= &NAS-IP-Address

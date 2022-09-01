@@ -1,7 +1,7 @@
 #
 #  PRE: if
 #
-&request.Class := 0x00000101
+&Class := 0x00000101
 
 if (<integer>&Class[0] == 257) {
 	success

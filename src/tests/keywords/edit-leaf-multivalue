@@ -5,7 +5,7 @@
 	"foo",
 	"bar",
 	"baz",
-	&request.User-Name
+	&User-Name
 }
 
 if (%{request.Tmp-String-0[#]} != 4) {

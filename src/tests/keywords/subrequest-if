@@ -2,7 +2,7 @@
 #  PRE: subrequest
 #
 subrequest Access-Request {
-	&request.User-Name := &parent.request.User-Name
+	&User-Name := &parent.request.User-Name
 
 	if (!&User-Name) {
 		test_fail

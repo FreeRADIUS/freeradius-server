@@ -1,7 +1,7 @@
 #
 #  PRE: if
 #
-&request.Class := 0x0101
+&Class := 0x0101
 
 if (<short>&Class == 257) {
 	success

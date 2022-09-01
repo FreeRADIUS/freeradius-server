@@ -4,7 +4,7 @@
 #
 # Adding attribute during request and immediately returning should still work
 #
-&request.Filter-Id := { "1", "2", "3", "4", "5" }
+&Filter-Id := { "1", "2", "3", "4", "5" }
 
 foreach &Filter-Id {
 	if ("%{Foreach-Variable-0}" == "3") {
