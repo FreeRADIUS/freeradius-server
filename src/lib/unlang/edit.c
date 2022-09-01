@@ -198,44 +198,6 @@ static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_
 	return -1;
 }
 
-/** Remove VPs via a dcursor
- *
- *  Except you can't do:  &reply -= &Reply-Message
- *  Instead, you need	  &reply -= &reply.Reply-Message[*]
- *
- *  Which is a bit annoying.
- */
-static int remove_vps(request_t *request, edit_map_t *current)
-{
-	fr_pair_t *vp, *next;
-	tmpl_dcursor_ctx_t cc;
-	fr_dcursor_t cursor;
-
-	fr_assert(tmpl_is_attr(current->rhs.vpt));
-
-	RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[T_OP_SUB_EQ], current->rhs.vpt->name);
-
-	vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, current->rhs.vpt);
-
-	while (vp) {
-		fr_pair_list_t *list;
-
-		next = fr_dcursor_next(&cursor);
-
-		list = fr_pair_parent_list(vp);
-		fr_assert(list != NULL);
-
-		if (fr_edit_list_pair_delete(current->el, list, vp) < 0) {
-			tmpl_dcursor_clear(&cc);
-			return -1;
-		}
-
-		vp = next;
-	}
-
-	tmpl_dcursor_clear(&cc);
-	return 0;
-}
 
 /** Apply the edits.  Broken out for simplicity
  *
@@ -332,39 +294,50 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current)
 	}
 
 	/*
-	 *	If it's not data, it must be an attribute or a list.
+	 *	If it's not data, it must be an attribute.
 	 */
-	if (!tmpl_is_attr(current->rhs.vpt) && !tmpl_is_list(current->rhs.vpt)) {
+	if (!tmpl_is_attr(current->rhs.vpt)) {
 		REDEBUG("%s[%d] Unknown RHS %s", MAP_INFO, current->rhs.vpt->name);
 		return -1;
 	}
+
+	/*
+	 *	Doing no modifications to a list is a NOOP.
+	 */
+	vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, current->rhs.vpt);
+	if (!vp) return 0;
 
 	/*
 	 *	Remove an attribute from a list.  The tmpl_dcursor and tmpl_parser ensures that the RHS
 	 *	references are done in the context of the LHS attribute.
 	 */
 	if (map->op == T_OP_SUB_EQ) {
-		if (!tmpl_is_attr(current->rhs.vpt)) {
-			REDEBUG("%s[%d] Cannot remove ??? from list", MAP_INFO);
-			return -1;
-		}
+		fr_pair_t *next;
 
 		/*
-		 *	If the RHS is a list, then the apply_list code below will eventually call
-		 *	fr_edit_list_delete_list(), which will do all of the work.
+		 *	Loop over matching attributes, and delete them.
 		 */
-		return remove_vps(request, current);
-	}
+		RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[T_OP_SUB_EQ], current->rhs.vpt->name);
 
-	fr_assert(current->lhs.vp != NULL);
 
-	/*
-	 *	Allow selectors, at least for leaf attributes.
-	 */
-	vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, current->rhs.vpt);
-	if (!vp) {
-		REDEBUG("%s[%d] Failed to find attribute reference %s", MAP_INFO, current->rhs.vpt->name);
-		return -1;
+		while (vp) {
+			fr_pair_list_t *list;
+
+			next = fr_dcursor_next(&cursor);
+
+			list = fr_pair_parent_list(vp);
+			fr_assert(list != NULL);
+
+			if (fr_edit_list_pair_delete(current->el, list, vp) < 0) {
+				tmpl_dcursor_clear(&cc);
+				return -1;
+			}
+
+			vp = next;
+		}
+
+		tmpl_dcursor_clear(&cc);
+		return 0;
 	}
 
 	if (fr_type_is_structural(vp->vp_type)) {
