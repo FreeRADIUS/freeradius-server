@@ -11,15 +11,15 @@ update control {
 # Reset the request list and add the test strings
 # FIXME:
 # Temporary way to add multiple copies of an attribute - this should become
-# &request.Tmp-String-0 += &control.Tmp-String-0 when multi copies of attributes
+# &Tmp-String-0 += &control.Tmp-String-0 when multi copies of attributes
 # are copied again.  Currently the desired syntax won't work due to tmpl_t only holding
 # a single value_box - so when mapt_to_list_mod() builds the list of value for the rhs
 # of the expression only the first one is copied to the tmpl_t.  See around line 780
 # of map_async.c
 update {
-	&request.Tmp-String-0 !* ANY
-	&request.Tmp-String-0 += &control.Tmp-String-0[0]
-	&request.Tmp-String-0 += &control.Tmp-String-0[1]
+	&Tmp-String-0 !* ANY
+	&Tmp-String-0 += &control.Tmp-String-0[0]
+	&Tmp-String-0 += &control.Tmp-String-0[1]
 }
 
 # Prepend a single value
@@ -62,7 +62,7 @@ update control {
 
 # Prepend the list of Tmp-String-0 from request to the new attribute
 #update {
-#	&control.Tmp-String-0 ^= &request.Tmp-String-0
+#	&control.Tmp-String-0 ^= &Tmp-String-0
 #}
 
 # (Temporary method to acheive the same - as per issue noted above)

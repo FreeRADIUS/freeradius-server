@@ -1,6 +1,6 @@
 # PRE: if
 #
-&request.Tmp-Integer-0 := '123456789'
+&Tmp-Integer-0 := '123456789'
 
 # Non matching on attribute ref
 if (&User-Name !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
@@ -91,7 +91,7 @@ if (&Tmp-Integer-0 !~ /%{Tmp-Integer-0}/) {
 	test_fail
 }
 
-&request.Tmp-String-0 := "foo\nbar"
+&Tmp-String-0 := "foo\nbar"
 
 # uncompiled - ref - multiline
 if (&Tmp-String-0 !~ /^foo$%{Tmp-String-8}/m) {

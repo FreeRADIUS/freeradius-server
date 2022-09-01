@@ -7,20 +7,20 @@
 #  them are rolled back.
 #
 group {
-	&request.Tmp-String-0 := "foo"
-	&request.Tmp-String-1 := %{request.Tmp-Integer-0}  # doesn't exist
-	&request.Tmp-String-2 := "bar"
+	&Tmp-String-0 := "foo"
+	&Tmp-String-1 := %{request.Tmp-Integer-0}  # doesn't exist
+	&Tmp-String-2 := "bar"
 }
 
-if (&request.Tmp-String-0) {
+if (&Tmp-String-0) {
 	test_fail
 }
 
-if (&request.Tmp-String-1) {
+if (&Tmp-String-1) {
 	test_fail
 }
 
-if (&request.Tmp-String-2) {
+if (&Tmp-String-2) {
 	test_fail
 }
 
@@ -28,20 +28,20 @@ if (&request.Tmp-String-2) {
 #  All of these succeed individually, so all of them should succeed.
 #
 group {
-	&request.Tmp-String-0 := "foo"
-	&request.Tmp-String-1 := "yup"
-	&request.Tmp-String-2 := "bar"
+	&Tmp-String-0 := "foo"
+	&Tmp-String-1 := "yup"
+	&Tmp-String-2 := "bar"
 }
 
-if (&request.Tmp-String-0 != "foo") {
+if (&Tmp-String-0 != "foo") {
 	test_fail
 }
 
-if (&request.Tmp-String-1 != "yup") {
+if (&Tmp-String-1 != "yup") {
 	test_fail
 }
 
-if (&request.Tmp-String-2 != "bar") {
+if (&Tmp-String-2 != "bar") {
 	test_fail
 }
 

@@ -9,7 +9,7 @@
 }
 
 #  Does exist
-if (!&request.Tmp-String-0) {
+if (!&Tmp-String-0) {
 	test_fail
 }
 
@@ -17,16 +17,16 @@ if (!&request.Tmp-String-0) {
 &request -= &Tmp-String-0
 
 #  Does not exist
-if (&request.Tmp-String-0) {
+if (&Tmp-String-0) {
 	test_fail
 }
 
 # Other things still exist
-if (!&request.Tmp-Octets-0) {
+if (!&Tmp-Octets-0) {
 	test_fail
 }
 
-if (!&request.Tmp-Integer-0) {
+if (!&Tmp-Integer-0) {
 	test_fail
 }
 
@@ -39,34 +39,34 @@ if (!&request.Tmp-Integer-0) {
 	&Tmp-String-0 = "baz"
 }
 
-if (!&request.Tmp-String-0) {
+if (!&Tmp-String-0) {
 	test_fail
 }
 
 &request -= &Tmp-String-0[0]
 
 #  the first one has been removed
-if (&request.Tmp-String-0[0] != "bar") {
+if (&Tmp-String-0[0] != "bar") {
 	test_fail
 }
 
 # Other things still exist
-if (!&request.Tmp-Octets-0) {
+if (!&Tmp-Octets-0) {
 	test_fail
 }
 
-if (!&request.Tmp-Integer-0) {
+if (!&Tmp-Integer-0) {
 	test_fail
 }
 
 &request -= &Tmp-String-0[*]
 
 # Does not exist
-if (&request.Tmp-String-0) {
+if (&Tmp-String-0) {
 	test_fail
 }
 
-&request.Tmp-String-0 := { "foo", "bar", "baz" }
+&Tmp-String-0 := { "foo", "bar", "baz" }
 
 #
 #  Remove one by value.

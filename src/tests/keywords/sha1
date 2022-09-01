@@ -22,29 +22,29 @@
 #  Put "This is a string" into a file and call "sha1sum" on it.
 #  You should get this string.
 #
-if (&request.Tmp-Octets-2 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
+if (&Tmp-Octets-2 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
 	test_fail
 }
 
-if (&request.Tmp-Octets-3 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
+if (&Tmp-Octets-3 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
 	test_fail
 }
 
-if (&request.Tmp-Octets-4 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
+if (&Tmp-Octets-4 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
 	test_fail
 }
 
 #
 # SHA1 of empty string
 #
-if (&request.Tmp-Octets-5 != 0xda39a3ee5e6b4b0d3255bfef95601890afd80709) {
+if (&Tmp-Octets-5 != 0xda39a3ee5e6b4b0d3255bfef95601890afd80709) {
 	test_fail
 }
 
 #
 #  SHA1 HMAC with attribute references
 #
-if (&request.Tmp-Octets-6 != 0xeffcdf6ae5eb2fa2d27416d5f184df9c259a7c79) {
+if (&Tmp-Octets-6 != 0xeffcdf6ae5eb2fa2d27416d5f184df9c259a7c79) {
 	test_fail
 }
 

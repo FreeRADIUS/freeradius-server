@@ -16,7 +16,7 @@ update {					#}'{ Opening block with extra special chars {} '"
 	&control.User-Name := 'whatever'		# do some random stuff
 }						#{'} Closing block with extra special chars {} '"
 
-update { &request.Tmp-String-0 := 'candy' }	# Comment after unicorn block
+update { &Tmp-String-0 := 'candy' }	# Comment after unicorn block
 
 &request += {
 	&Reply-Message = 'I am #literally a comment #'
@@ -25,7 +25,7 @@ update { &request.Tmp-String-0 := 'candy' }	# Comment after unicorn block
 	&Reply-Message = "I am #literally a comment #"
 }
 
-if (&request.Tmp-String-0 != 'candy') {
+if (&Tmp-String-0 != 'candy') {
 	test_fail
 }
 

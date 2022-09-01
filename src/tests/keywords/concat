@@ -23,7 +23,7 @@ ok	# separate updates
 	&Tmp-String-1 = "%(concat:%(ungroup:%{request[*]}) ', ')"
 }
 
-if (&request.Tmp-String-1 != "bob, hello, ab c, de fg, 123") {
+if (&Tmp-String-1 != "bob, hello, ab c, de fg, 123") {
 	test_fail
 }
 
@@ -31,7 +31,7 @@ if (&request.Tmp-String-1 != "bob, hello, ab c, de fg, 123") {
 	&Tmp-String-2 = "%(concat:%{Tmp-String-0[*]} ', ')"
 }
 
-if (&request.Tmp-String-2 != "ab c, de fg") {
+if (&Tmp-String-2 != "ab c, de fg") {
 	test_fail
 }
 
@@ -40,7 +40,7 @@ if (&request.Tmp-String-2 != "ab c, de fg") {
 	&Tmp-String-3 = "%(concat:%{Tmp-String-0[*]})"
 }
 
-if (&request.Tmp-String-3 != "ab cde fg") {
+if (&Tmp-String-3 != "ab cde fg") {
 	test_fail
 }
 
@@ -49,7 +49,7 @@ if (&request.Tmp-String-3 != "ab cde fg") {
 	&Tmp-String-4 = "%(concat:%{Tmp-String-0[*]} ,)"
 }
 
-if (&request.Tmp-String-4 != "ab c,de fg") {
+if (&Tmp-String-4 != "ab c,de fg") {
 	test_fail
 }
 
@@ -58,7 +58,7 @@ if (&request.Tmp-String-4 != "ab c,de fg") {
 	&Tmp-String-5 = "%(concat:%{Tmp-String-0[*]} |-)"
 }
 
-if (&request.Tmp-String-5 !="ab c|-de fg") {
+if (&Tmp-String-5 !="ab c|-de fg") {
 	test_fail
 }
 

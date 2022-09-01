@@ -3,7 +3,7 @@
 #
 #  SHA1 HMAC with missing key should fail
 #
-&request.Tmp-Octets-1 := "%(hmacsha1:%{Tmp-String-1} )" # ERROR
+&Tmp-Octets-1 := "%(hmacsha1:%{Tmp-String-1} )" # ERROR
 
 
 test_fail

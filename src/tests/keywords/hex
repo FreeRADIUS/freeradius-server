@@ -18,7 +18,7 @@
 
 ok  # break up edit sections
 
-&request.Tmp-String-1 := {
+&Tmp-String-1 := {
 	"%{hex:%{Tmp-String-0}}"
 	"%{hex:%{Tmp-Octets-0}}"
 	"%{hex:%{Tmp-IP-Address-0}}"
@@ -69,7 +69,7 @@ if (&Tmp-String-1[7] != '3a') {
 	test_fail
 }
 
-&request.Tmp-String-1 := {
+&Tmp-String-1 := {
 	"%{hex:%{Tmp-Cast-Short}}"
 	"%{hex:%{Tmp-Cast-Ether}}"
 	"%{hex:%{Tmp-Cast-Integer64}}"

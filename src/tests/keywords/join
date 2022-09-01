@@ -30,7 +30,7 @@ if (&control.Tmp-String-1 != "bob. hello. ab c. de fg. 123. 192.168.1.254") {
 }
 
 &Tmp-String-2 := "%(concat:%(join:%{Tmp-String-0[*]} %{Tmp-Integer-0}) ,)"
-if (&request.Tmp-String-2 != "ab c,de fg,123") {
+if (&Tmp-String-2 != "ab c,de fg,123") {
 	test_fail
 }
 
