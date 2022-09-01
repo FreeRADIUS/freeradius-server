@@ -683,6 +683,7 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 DECLARE(expand_lhs);
 DECLARE(check_lhs);
 DECLARE(check_lhs_leaf);
+DECLARE(check_lhs_parented);
 DECLARE(expanded_lhs);
 DECLARE(expanded_lhs_leaf);
 
@@ -798,7 +799,7 @@ static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit
 		child->func = expand_lhs;
 
 		if (!fr_type_is_leaf(current->lhs.vp->vp_type)) {
-			child->check_lhs = check_lhs;
+			child->check_lhs = check_lhs_parented;
 			child->expanded_lhs = expanded_lhs;
 		} else {
 			child->check_lhs = check_lhs_leaf;
@@ -893,31 +894,37 @@ static int check_lhs_leaf(request_t *request, unlang_frame_state_edit_t *state, 
 	return next_map(request, state, current);
 }
 
+static int check_lhs_parented(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+{
+	map_t const *map = current->map;
+
+	/*
+	 *	Child attributes are created in a temporary list.  Any list editing is
+	 *	taken care of by the parent map.
+	 */
+	fr_assert((map->op == T_OP_EQ) || (current->parent->map->op == T_OP_SUB_EQ));
+
+	/*
+	 *	We create this VP in the "current" context, so that it's freed on
+	 *	error.  If we create it in the LHS VP context, then we have to
+	 *	manually free rhs.pair_list on any error.  Creating it in the
+	 *	"current" context means we have to reparent it when we move it to the
+	 *	parent list, but fr_edit_list_apply_list_assignment() does that
+	 *	anyways.
+	 */
+	MEM(current->lhs.vp = fr_pair_afrom_da(current, tmpl_da(current->lhs.vpt)));
+	fr_pair_append(&current->parent->rhs.pair_list, current->lhs.vp);
+	current->lhs.vp->op = map->op;
+	current->in_parent_list = true;
+
+	return expand_rhs(request, state, current);
+}
+
 static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	map_t const *map = current->map;
 
-	if (current->parent) {
-		/*
-		 *	Child attributes are created in a temporary list.  Any list editing is
-		 *	taken care of by the parent map.
-		 */
-		fr_assert((map->op == T_OP_EQ) || (current->parent->map->op == T_OP_SUB_EQ));
-
-		/*
-		 *	We create this VP in the "current" context, so that it's freed on
-		 *	error.  If we create it in the LHS VP context, then we have to
-		 *	manually free rhs.pair_list on any error.  Creating it in the
-		 *	"current" context means we have to reparent it when we move it to the
-		 *	parent list, but fr_edit_list_apply_list_assignment() does that
-		 *	anyways.
-		 */
-		MEM(current->lhs.vp = fr_pair_afrom_da(current, tmpl_da(current->lhs.vpt)));
-		fr_pair_append(&current->parent->rhs.pair_list, current->lhs.vp);
-		current->lhs.vp->op = map->op;
-		current->in_parent_list = true;
-
-	} else if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
+	if (tmpl_find_vp(&current->lhs.vp, request, current->lhs.vpt) < 0) {
 		int			err;
 		fr_pair_t		*vp;
 		tmpl_dcursor_ctx_t	cc;
