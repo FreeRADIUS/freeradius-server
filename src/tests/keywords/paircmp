@@ -21,7 +21,6 @@ else {
 #
 if (&Test-Paircmp == &NAS-Identifier) {
 	success
-
 }
 else {
 	test_fail
