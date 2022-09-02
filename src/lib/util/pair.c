@@ -1114,13 +1114,28 @@ static void *_fr_pair_iter_next_value(fr_dlist_head_t *list, void *current, UNUS
 
 	while ((vp = fr_dlist_next(list, vp))) {
 		PAIR_VERIFY(vp);
-		if (!fr_type_is_leaf(vp->da->type)) break;
-
-		continue;
+		if (fr_type_is_leaf(vp->da->type)) return &vp->data;
 	}
 
-	return vp;
+	return NULL;
 }
+
+/*
+ *	The value dcursor just runs the iterator, and never uses the dlist.  Inserts and deletes are forbidden.
+ *
+ *	However, the underlying dcursor code needs a dlist, so we create a fake one to pass it.  In debug
+ *	builds, the dcursor code will do things like try to check talloc types.  So we need to pass it an
+ *	empty dlist with no talloc types.
+ */
+static fr_dlist_head_t value_dlist = {
+	.offset = offsetof(fr_dlist_head_t, entry),
+	.type = NULL,
+	.num_elements = 0,
+	.entry = {
+		.prev = &value_dlist.entry,
+		.next = &value_dlist.entry,
+	},
+};
 
 /** Initialises a special dcursor over a #fr_pair_list_t, but which returns #fr_value_box_t
  *
@@ -1129,17 +1144,14 @@ static void *_fr_pair_iter_next_value(fr_dlist_head_t *list, void *current, UNUS
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
  *
  * @param[out] cursor	to initialise.
- * @param[in] list	to iterate over.
- * @param[in] is_const	whether the fr_pair_list_t is const.
  * @return
  *	- NULL if src does not point to any items.
  *	- The first pair in the list.
  */
-fr_value_box_t *_fr_pair_dcursor_value_init(fr_dcursor_t *cursor, fr_pair_list_t const *list,
-					    bool is_const)
+fr_value_box_t *fr_pair_dcursor_value_init(fr_dcursor_t *cursor)
 {
-	return _fr_dcursor_init(cursor, fr_pair_order_list_dlist_head(&list->order),
-				_fr_pair_iter_next_value, NULL, NULL, NULL, NULL, NULL, is_const);
+	return _fr_dcursor_init(cursor, &value_dlist,
+				_fr_pair_iter_next_value, NULL, NULL, NULL, NULL, NULL, true);
 }
 
 /** Iterate over pairs
@@ -1158,21 +1170,20 @@ static void *_fr_pair_iter_next_dcursor_value(UNUSED fr_dlist_head_t *list, void
 	fr_dcursor_t *parent = uctx;
 
 	if (!current) {
-		vp = NULL;
-	} else {
-		vp = (fr_pair_t *) ((uint8_t *) current - offsetof(fr_pair_t, data));
+		vp = fr_dcursor_current(parent);
+		if (!vp) return NULL;
+
 		PAIR_VERIFY(vp);
+		return &vp->data;
 	}
 
 	while ((vp = fr_dcursor_next(parent))) {
 		PAIR_VERIFY(vp);
 
-		if (!fr_type_is_leaf(vp->da->type)) break;
-
-		continue;
+		if (fr_type_is_leaf(vp->da->type)) return &vp->data;
 	}
 
-	return vp;
+	return NULL;
 }
 
 /** Initialises a special dcursor over another cursor which returns #fr_pair_t, but we return #fr_value_box_t
@@ -1180,18 +1191,15 @@ static void *_fr_pair_iter_next_dcursor_value(UNUSED fr_dlist_head_t *list, void
  * Filters can be applied later with fr_dcursor_filter_set.
  *
  * @param[out] cursor	to initialise.
- * @param[in] list	to iterate over.
  * @param[in] parent	to iterate over
- * @param[in] is_const	whether the fr_pair_list_t is const.
  * @return
  *	- NULL if src does not point to any items.
  *	- The first pair in the list.
  */
-fr_value_box_t *_fr_pair_dcursor_nested_init(fr_dcursor_t *cursor, fr_pair_list_t const *list, fr_dcursor_t *parent,
-					    bool is_const)
+fr_value_box_t *fr_pair_dcursor_nested_init(fr_dcursor_t *cursor, fr_dcursor_t *parent)
 {
-	return _fr_dcursor_init(cursor, fr_pair_order_list_dlist_head(&list->order),
-				_fr_pair_iter_next_dcursor_value, NULL, NULL, NULL, NULL, parent, is_const);
+	return _fr_dcursor_init(cursor, &value_dlist,
+				_fr_pair_iter_next_dcursor_value, NULL, parent, NULL, NULL, NULL, true);
 }
 
 /** Add a VP to the start of the list.

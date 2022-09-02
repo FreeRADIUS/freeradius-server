@@ -253,7 +253,7 @@ static void test_fr_pair_dcursor_value_init(void)
 	fr_pair_append(&local_pairs, vp);
 
 	TEST_CASE("Searching for fr_dict_attr_test_tlv_string as ascend of fr_dict_attr_test_tlv using fr_pair_dcursor_by_ancestor_init()");
-	for (box = fr_pair_dcursor_value_init(&cursor, &local_pairs);
+	for (box = fr_pair_dcursor_value_init(&cursor);
 	     box;
 	     box = fr_dcursor_next(&cursor), i++) {
 		switch (i) {

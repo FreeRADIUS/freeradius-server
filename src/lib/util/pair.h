@@ -601,22 +601,16 @@ fr_pair_t	*_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
 						   fr_pair_list_t const *list, fr_dict_attr_t const *da,
 						   bool is_const) CC_HINT(nonnull);
 
-/** Initialises a special dcursor which returns only the values of a pair.
+/** Initialises a special dcursor which returns only the values of the pairs
  *
  *  @note - the list cannot be modified, and structural attributes are not returned.
  *
  * @param[out] cursor	to initialise.
- * @param[in] list	to iterate over.
  * @return
  *	- NULL if src does not point to any items.
- *	- The first pair in the list.
+ *	- The value-box from the first pair in the list.
  */
-#define		fr_pair_dcursor_value_init(_cursor, _list) \
-		_fr_pair_dcursor_value_init(_cursor, \
-					    _list,			\
-					    IS_CONST(fr_pair_list_t *, _list))
-fr_value_box_t	*_fr_pair_dcursor_value_init(fr_dcursor_t *cursor, fr_pair_list_t const *list,
-					     bool is_const) CC_HINT(nonnull);
+fr_value_box_t	*fr_pair_dcursor_value_init(fr_dcursor_t *cursor) CC_HINT(nonnull);
 
 
 /** Initialises a special dcursor which returns only the values of a pair from a parent dcursor
@@ -624,19 +618,12 @@ fr_value_box_t	*_fr_pair_dcursor_value_init(fr_dcursor_t *cursor, fr_pair_list_t
  *  @note - the list cannot be modified, and structural attributes are not returned.
  *
  * @param[out] cursor	to initialise.
- * @param[in] list	to iterate over, must be the the same list as was passed to the parent dcursor
  * @param[in] parent	dcursor which returns #fr_pair_t
  * @return
  *	- NULL if src does not point to any items.
- *	- The first value in the list.
+ *	- The value-box from the first pair in the parent dcursor.
  */
-#define		fr_pair_dcursor_nested_init(_cursor, _list, _parent) \
-		_fr_pair_dcursor_nested_init(_cursor, \
-					    _list,    \
-					    _parent,    \
-					    IS_CONST(fr_pair_list_t *, _list))
-fr_value_box_t	*_fr_pair_dcursor_nested_init(fr_dcursor_t *cursor, fr_pair_list_t const *list, fr_dcursor_t *parent,
-					     bool is_const) CC_HINT(nonnull);
+fr_value_box_t	*fr_pair_dcursor_nested_init(fr_dcursor_t *cursor, fr_dcursor_t *parent) CC_HINT(nonnull);
 
 /** Compare two attributes using and operator.
  *
