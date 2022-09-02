@@ -68,6 +68,13 @@ if test x$with_[]modname != xno; then
 	)
 
 	if test x$fail = x; then
+		PY_MAJOR_VER=`${PYTHON_BIN} -x 'import sys ; print(sys.version[[0]])'`
+		if test $PY_MAJOR_VER -ne 2; then
+			fail="not-python2"
+		fi
+	fi
+
+	if test x$fail = x; then
 		PY_PREFIX=`${PYTHON_BIN} -c 'import sys ; print(sys.prefix)'`
 		AC_MSG_NOTICE([Python sys.prefix \"${PY_PREFIX}\"])
 

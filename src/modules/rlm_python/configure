@@ -2935,6 +2935,12 @@ if test "${with_rlm_python_include_dir+set}" = set; then :
 
 fi
 
+  if test x$fail = x; then
+    PY_MAJOR_VERSION=`${PYTHON_BIN} -c 'import sys; print(sys.version_info[0])'`
+    if test ${PY_MAJOR_VERSION} -ne 2; then
+      fail = "not-python2"
+    fi
+  fi
 
 	if test x$fail = x; then
 		PY_PREFIX=`${PYTHON_BIN} -c 'import sys ; print(sys.prefix)'`
