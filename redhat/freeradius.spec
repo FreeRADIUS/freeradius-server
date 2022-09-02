@@ -165,8 +165,14 @@ SQL databases.
 Summary: LDAP support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
+%if 0%{?rhel} <= 8
 Requires: openldap-ltb
 BuildRequires: openldap-ltb
+%endif
+%if 0%{?rhel} >= 9
+Requires: openldap
+BuildRequires: openldap-devel
+%endif
 
 %description ldap
 This plugin provides LDAP support for the FreeRADIUS server project.
