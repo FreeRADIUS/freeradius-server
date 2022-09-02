@@ -18,6 +18,7 @@ jobs:
           - { NAME: "centos-7",  OS: "centos:7" }
           - { NAME: "centos-8",  OS: "centos:8" }
           - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8" }
+          - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -52,8 +53,8 @@ jobs:
       run: |
         yum install -y https://packages.endpointdev.com/rhel/7/os/x86_64/git-core-2.30.1-1.ep7.x86_64.rpm
 
-    - name: Install distro git for Rocky 8 and CentOS 8.
-      if: ${{ matrix.env.NAME == 'rocky-8' || matrix.env.NAME == 'centos-8' }}
+    - name: Install distro git for Rocky and CentOS 8.
+      if: ${{ startsWith(matrix.env.NAME, 'rocky-') || matrix.env.NAME == 'centos-8' }}
       run: |
         yum install -y git-core
 
@@ -69,8 +70,8 @@ jobs:
         mkdir rpms
         ls -la
 
-    - name: Extra repos for CentOS and Rocky Linux
-      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
+    - name: LTB repo for CentOS and Rocky Linux 8
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || matrix.env.NAME == 'rocky-8' }}
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
@@ -79,6 +80,10 @@ jobs:
         echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
         echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
+
+    - name: Enable EPEL for CentOS and Rocky Linux
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
+      run: |
         yum install -y epel-release
 
     - name: Enable PowerTools on Rocky 8 and CentOS 8.
@@ -87,6 +92,12 @@ jobs:
         yum install -y yum-utils
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
+
+    - name: Enable Code Ready Builer on Rocky 9.
+      if: ${{ matrix.env.NAME == 'rocky-9' }}
+      run: |
+        yum install -y yum-utils
+        yum config-manager --enable crb
 
     - name: Install common tools
       run: |
@@ -129,7 +140,7 @@ jobs:
 
     # For pkill and ps
     - name: Enable procps-ng on Centos and Rocky
-      if: ${{ startsWith(matrix.env.NAME, 'centos-8') || startsWith(matrix.env.NAME, 'rocky-8') }}
+      if: ${{ startsWith(matrix.env.NAME, 'centos-8') || startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
         yum install -y procps-ng
 
@@ -189,6 +200,7 @@ jobs:
           - { NAME: "centos-7", OS: "centos:7" }
           - { NAME: "centos-8", OS: "centos:8" }
           - { NAME: "rocky-8", OS: "rockylinux/rockylinux:8" }
+          - { NAME: "rocky-9", OS: "rockylinux/rockylinux:9" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -216,8 +228,8 @@ jobs:
         yum clean all && yum makecache
         yum distro-sync -y --allowerasing
 
-    - name: Extra repos for CentOS and Rocky
-      if: ${{ startsWith(matrix.env.NAME, 'centos-')  || startsWith(matrix.env.NAME, 'rocky-') }}
+    - name: LTB repo for CentOS and Rocky 8
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || matrix.env.NAME == 'rocky-8' }}
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
@@ -226,6 +238,10 @@ jobs:
         echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
         echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
+
+    - name: Enable EPEL for CentOS and Rocky Linux
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
+      run: |
         yum install -y epel-release
 
     - name: Enable PowerTools on Centos 8 and Rocky 8
@@ -234,6 +250,12 @@ jobs:
         yum install -y yum-utils
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
+
+    - name: Enable Code Ready Builer on Rocky 9.
+      if: ${{ matrix.env.NAME == 'rocky-9' }}
+      run: |
+        yum install -y yum-utils
+        yum config-manager --enable crb
 
     # For pkill
     - name: Enable procps-ng on Centos and Rocky
