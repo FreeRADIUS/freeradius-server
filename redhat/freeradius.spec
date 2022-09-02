@@ -683,14 +683,14 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/proxy.conf
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/radiusd.conf
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/trigger.conf
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/users
+%config(noreplace) %{_sysconfdir}/raddb/users
 %dir %attr(770,root,radiusd) %{_sysconfdir}/raddb/certs
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/*
 %attr(750,root,radiusd) %{_sysconfdir}/raddb/certs/bootstrap
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/sites-available
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sites-available/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/sites-enabled
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sites-enabled/*
+%config(noreplace) %{_sysconfdir}/raddb/sites-enabled/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/policy.d
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/policy.d/*
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/templates.conf
@@ -719,7 +719,7 @@ fi
 %attr(-,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/realm/*
 %endif
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-enabled
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-enabled/*
+%config(noreplace) %{_sysconfdir}/raddb/mods-enabled/*
 # ruby
 %if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/ruby
