@@ -210,9 +210,15 @@ Requires: %{name} = %{version}-%{release}
 Requires: python
 BuildRequires: python-devel
 %endif
-%if 0%{?rhel} >= 8
+%if 0%{?rhel} == 8
 Requires: python2
+Requires: python3
 BuildRequires: python2-devel
+BuildRequires: python3-devel
+%endif
+%if 0%{?rhel} >= 9
+Requires: python3
+BuildRequires: python3-devel
 %endif
 
 %description python
@@ -701,8 +707,14 @@ fi
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/preprocess
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/preprocess/*
 %if %{?el6:0}%{!?el6:1}
+%if 0%{?rhel} <= 8
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/python
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/python/*
+%endif
+%if 0%{?rhel} >= 8
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/python3
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/python3/*
+%endif
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/realm
 %attr(-,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/realm/*
 %endif
@@ -855,7 +867,12 @@ fi
 %if %{?el6:0}%{!?el6:1}
 %files python
 %defattr(-,root,root)
+%if 0%{?rhel} <= 8
 %{_libdir}/freeradius/rlm_python.so
+%endif
+%if 0%{?rhel} >= 8
+%{_libdir}/freeradius/rlm_python3.so
+%endif
 %endif
 
 %files mysql
