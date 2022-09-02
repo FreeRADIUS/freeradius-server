@@ -76,14 +76,12 @@ struct unlang_frame_state_edit_s {
 	edit_map_t		first;
 };
 
-static int templatize_to_attribute(TALLOC_CTX *ctx, edit_result_t *out, request_t *request) CC_HINT(nonnull);
-
 #define MAP_INFO cf_filename(map->ci), cf_lineno(map->ci)
 
 /*
  *  Convert a value-box list to a LHS attribute #tmpl_t
  */
-static int templatize_to_attribute(TALLOC_CTX *ctx, edit_result_t *out, request_t *request)
+static int tmpl_attr_from_result(TALLOC_CTX *ctx, edit_result_t *out, request_t *request)
 {
 	ssize_t slen;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
@@ -125,7 +123,7 @@ static int templatize_to_attribute(TALLOC_CTX *ctx, edit_result_t *out, request_
  *  the calling code should parse the RHS as a set of VPs, and return
  *  that.
  */
-static int templatize_to_value(TALLOC_CTX *ctx, edit_result_t *out, fr_type_t type, request_t *request)
+static int tmpl_from_result(TALLOC_CTX *ctx, edit_result_t *out, fr_type_t type, request_t *request)
 {
 	fr_value_box_t *box = fr_dlist_head(&out->result);
 
@@ -168,12 +166,11 @@ make_tmpl:
  *  Which will later be converted by the above functions back to a
  *  "realized" tmpl, which holds a TMPL_TYPE_DATA or TMPL_TYPE_ATTR.
  */
-static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request, tmpl_t const *vpt)
+static int tmpl_to_values(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request, tmpl_t const *vpt)
 {
 	switch (vpt->type) {
 	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
 		return 0;
 
 	case TMPL_TYPE_EXEC:
@@ -204,16 +201,6 @@ static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_
  *  For leaves, merge RHS #fr_value_box_list_t, so that we have only one #fr_value_box_t
  *
  *  Loop over VPs on the LHS, doing the operation with the RHS.
- *
- *  For now, we only support one VP on the LHS, and one value-box on
- *  the RHS.  Fixing this means updating templatize_to_value() to peek at
- *  the RHS list, and if they're all of the same data type, AND the
- *  same data type as the expected output, leave them alone.  This
- *  lets us do things like:
- *
- *	&Foo-Bar += &Baz[*]
- *
- *  which is an implicit sum over all RHS "Baz" attributes.
  */
 static int apply_edits_to_list(request_t *request, edit_map_t *current)
 {
@@ -672,7 +659,7 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 
 static int expanded_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-	if (templatize_to_value(state, &current->rhs, tmpl_da(current->lhs.vpt)->type, request) < 0) return -1;
+	if (tmpl_from_result(state, &current->rhs, tmpl_da(current->lhs.vpt)->type, request) < 0) return -1;
 
 	return check_rhs(request, state, current);
 }
@@ -767,7 +754,7 @@ static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit
 	 *	Turn the RHS into a tmpl_t.  This can involve just referencing an existing
 	 *	tmpl in map->rhs, or expanding an xlat to get an attribute name.
 	 */
-	rcode = template_realize(state, &current->rhs.result, request, map->rhs);
+	rcode = tmpl_to_values(state, &current->rhs.result, request, map->rhs);
 	if (rcode < 0) return -1;
 
 	if (rcode == 1) {
@@ -811,15 +798,21 @@ static int check_lhs_leaf(request_t *request, unlang_frame_state_edit_t *state, 
 		fr_pair_t *ref;
 
 		fr_assert(tmpl_is_attr(current->lhs.vpt));
+
+		/*
+		 *	The reference can be to another attribute, but it has to be only one.
+		 */
+		if (tmpl_num(current->lhs.vpt) == NUM_ALL) {
+			REDEBUG("%s[%d] Wildcards selectors are not yet implemented.", MAP_INFO);
+			return -1;
+		}
+
 		if (tmpl_find_vp(&ref, request, current->lhs.vpt) < 0) {
 			REDEBUG("%s[%d] Failed to find attribute %s", MAP_INFO, current->lhs.vpt->name);
 			return -1;
 		}
 
-		if (ref->da->type == vp->da->type) {
-			if (fr_value_box_copy(vp, &vp->data, &ref->data) < 0) return -1;
-
-		} else if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &ref->data) < 0) {
+		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &ref->data) < 0) {
 			RPEDEBUG("Cannot copy data from source %s (type %s) to destination %s (different type %s)",
 				 ref->da->name, fr_type_to_str(ref->da->type),
 				 vp->da->name, fr_type_to_str(vp->da->type));
@@ -914,14 +907,14 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
  */
 static int expanded_lhs_leaf(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-	if (templatize_to_attribute(state, &current->lhs, request) < 0) return -1;
+	if (tmpl_attr_from_result(state, &current->lhs, request) < 0) return -1;
 
 	return check_lhs_leaf(request, state, current);
 }
 
 static int expanded_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-	if (templatize_to_value(state, &current->lhs, tmpl_da(current->parent->lhs.vpt)->type, request) < 0) return -1;
+	if (tmpl_from_result(state, &current->lhs, tmpl_da(current->parent->lhs.vpt)->type, request) < 0) return -1;
 
 	return current->check_lhs(request, state, current);
 }
@@ -934,7 +927,7 @@ static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit
 	fr_assert(fr_dlist_empty(&current->lhs.result));	/* Should have been consumed */
 	fr_assert(fr_dlist_empty(&current->rhs.result));	/* Should have been consumed */
 
-	rcode = template_realize(state, &current->lhs.result, request, map->lhs);
+	rcode = tmpl_to_values(state, &current->lhs.result, request, map->lhs);
 	if (rcode < 0) return -1;
 
 	if (rcode == 1) {
