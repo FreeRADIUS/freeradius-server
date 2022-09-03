@@ -394,15 +394,10 @@ typedef enum {
 							///< may be resolved later.
 } tmpl_attr_type_t;
 
-#define tmpl_attr_is_normal(_ar)	(_ar->ar_type == TMPL_ATTR_TYPE_NORMAL)
-#define tmpl_attr_is_unknown(_ar)	(_ar->ar_type == TMPL_ATTR_TYPE_UNKNOWN)
-#define tmpl_attr_is_unresolved(_ar)	(_ar->ar_type == TMPL_ATTR_TYPE_UNRESOLVED)
-
-
 #define NUM_UNSPEC			INT16_MIN
-#define NUM_ALL			(INT16_MIN + 1)
-#define NUM_COUNT		(INT16_MIN + 2)
-#define NUM_LAST		(INT16_MIN + 3)
+#define NUM_ALL				(INT16_MIN + 1)
+#define NUM_COUNT			(INT16_MIN + 2)
+#define NUM_LAST			(INT16_MIN + 3)
 
 /** Define entry and head types for attribute reference lists
  *
@@ -487,6 +482,11 @@ FR_DLIST_FUNCS(tmpl_request_list, tmpl_request_t, entry)
 #define ar_unresolved_raw		unresolved.is_raw
 #define ar_unresolved_namespace		unresolved.namespace
 #define ar_num				num
+
+#define ar_is_normal(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_NORMAL)
+#define ar_is_unspecified(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNSPEC)
+#define ar_is_unknown(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNKNOWN)
+#define ar_is_unresolved(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNRESOLVED)
 /** @} */
 
 /** A source or sink of value data.
@@ -628,6 +628,8 @@ static inline tmpl_type_t tmpl_type_from_str(char const *type)
  *
  * @{
  */
+ #define tmpl_attr(_tmpl)	&(_tmpl)->data.attribute.ar
+
 static inline FR_DLIST_HEAD(tmpl_request_list) const *tmpl_request(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
@@ -655,23 +657,38 @@ static inline size_t tmpl_request_ref_count(tmpl_t const *vpt)
  */
 static inline fr_dict_attr_t const *tmpl_da(tmpl_t const *vpt)
 {
+	tmpl_attr_t *ar;
+
 	tmpl_assert_type(tmpl_is_attr(vpt));
 
-	return ((tmpl_attr_t *)tmpl_attr_list_tail(&vpt->data.attribute.ar))->ar_da;
+	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	if (!ar) return NULL;
+
+	return ar->ar_da;
 }
 
 static inline fr_dict_attr_t const *tmpl_unknown(tmpl_t const *vpt)
 {
+	tmpl_attr_t *ar;
+
 	tmpl_assert_type(tmpl_is_attr(vpt));
 
-	return ((tmpl_attr_t *)tmpl_attr_list_tail(&vpt->data.attribute.ar))->ar_unknown;
+	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	if (!ar) return NULL;
+
+	return ar->ar_unknown;
 }
 
 static inline char const *tmpl_attr_unresolved(tmpl_t const *vpt)
 {
-	tmpl_assert_type(vpt->type == TMPL_TYPE_ATTR_UNRESOLVED);
+	tmpl_attr_t *ar;
 
-	return ((tmpl_attr_t *)tmpl_attr_list_tail(&vpt->data.attribute.ar))->ar_unresolved;
+	tmpl_assert_type(tmpl_is_attr_unresolved(vpt));
+
+	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	if (!ar) return NULL;
+
+	return ar->ar_unresolved;
 }
 
 /** The number of attribute references contained within a tmpl
@@ -682,7 +699,7 @@ static inline size_t tmpl_attr_count(tmpl_t const *vpt)
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unresolved(vpt));
 
-	return tmpl_attr_list_num_elements(&vpt->data.attribute.ar);
+	return tmpl_attr_list_num_elements(tmpl_attr(vpt));
 }
 
 static inline int16_t tmpl_num(tmpl_t const *vpt)
@@ -691,9 +708,9 @@ static inline int16_t tmpl_num(tmpl_t const *vpt)
 			 tmpl_is_attr_unresolved(vpt) ||
 			 tmpl_is_list(vpt));
 
-	if (tmpl_is_list(vpt) && (tmpl_attr_list_num_elements(&vpt->data.attribute.ar) == 0)) return NUM_ALL;
+	if (tmpl_is_list(vpt) && (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0)) return NUM_ALL;
 
-	return ((tmpl_attr_t *)tmpl_attr_list_tail(&vpt->data.attribute.ar))->ar_num;
+	return tmpl_attr_list_tail(tmpl_attr(vpt))->ar_num;
 }
 
 static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)

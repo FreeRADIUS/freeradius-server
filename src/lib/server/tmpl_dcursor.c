@@ -161,7 +161,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	{
 		int16_t		i = 0;
 
-		while ((i++ < ar->num) && vp) vp = fr_dcursor_next(&ns->cursor);
+		while ((i++ < ar->ar_num) && vp) vp = fr_dcursor_next(&ns->cursor);
 		pop = true;
 	}
 		break;
