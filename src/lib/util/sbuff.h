@@ -789,6 +789,9 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 
 /** Return a pointer to the 'current' position of an sbuff or one of its markers
  *
+ * @note Should not be derferenced as it may point past the end of the buffer.
+ * Use #fr_sbuff_char to get the current char.
+ *
  * @param[in] _sbuff_or_marker	to return the current position of.
  * @return A pointer to the current position of the buffer or marker.
  */
@@ -825,6 +828,27 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 		  fr_sbuff_marker_t *		: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent->shifted, \
 		  fr_sbuff_marker_t const *	: ((fr_sbuff_marker_t const *)(_sbuff_or_marker))->parent->shifted \
 	))
+
+/** Return the current char pointed to by the sbuff or '\0' if no more chars remain
+ *
+ * @note Should be used in place of #fr_sbuff_current if switching over the current char.
+ *
+ * @param[in] _sbuff_or_marker	to return the current char from.
+ * @param[in] _eob		char used to indicate End of Buffer, usually '\0'.
+ * @return The current char pointed to be the sbuff.
+ */
+#define fr_sbuff_char(_sbuff_or_marker, _eob) \
+	(fr_sbuff_current(_sbuff_or_marker) >= fr_sbuff_end(_sbuff_or_marker) ? _eob : *fr_sbuff_current(_sbuff_or_marker))
+
+/** Start a switch block over the current sbuff char
+ *
+ * @note '\0' is used to indicate EOB.
+ *
+ * @param[in] _sbuff_or_marker	to return the current char from.
+ * @param[in] _eob		char used to indicate End of Buffer, usually '\0'.
+ */
+#define fr_sbuff_switch(_sbuff_or_marker, _eob) \
+	switch (fr_sbuff_char(_sbuff_or_marker, _eob))
 /** @} */
 
 /** @name Length calculations
