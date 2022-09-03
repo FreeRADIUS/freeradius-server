@@ -506,19 +506,19 @@ match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 ==
 #  Invalid array references.
 #
 condition &User-Name[a] == 'bob'
-match ERROR offset 11: Invalid array index
+match ERROR offset 12: Invalid array index
 
 condition &User-Name == &Filter-Id[a]
-match ERROR offset 25: Invalid array index
+match ERROR offset 26: Invalid array index
 
 #
 #  Bounds checks...
 #
 condition &User-Name[1001] == 'bob'
-match ERROR offset 11: Invalid array index '1001' (should be between 0-1000)
+match ERROR offset 12: Invalid array index '1001' (should be between 0-1000)
 
 condition &User-Name[-1] == 'bob'
-match ERROR offset 11: Invalid array index '-1' (should be between 0-1000)
+match ERROR offset 12: Invalid array index '-1' (should be between 0-1000)
 
 #
 #  Sometimes the attribute/condition parser needs to fallback to bare words

@@ -36,7 +36,7 @@ tmpl-rules allow_unresolved=no
 #
 # Malformed filter
 condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor[*.Uplink-QOS-Id[0]
-match ERROR offset 47: No closing ']' for array index
+match ERROR offset 48: No closing ']' for array index
 
 # Too many dots, point to the thing that's wrong
 condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor..Uplink-QOS-Id[0]

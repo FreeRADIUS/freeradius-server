@@ -404,11 +404,24 @@ typedef enum {
  */
 FR_DLIST_TYPES(tmpl_attr_list)
 
+/** Different types of filter that can be applied to an attribute reference
+ *
+ */
+typedef enum {
+	TMPL_ATTR_FILTER_TYPE_NONE = 0,			//!< No filter present.
+	TMPL_ATTR_FILTER_TYPE_INDEX,			//!< Filter is an index type.
+} tmpl_attr_filter_type_t;
+
+typedef struct {
+	tmpl_attr_filter_type_t	_CONST type;		//!< Type of filter this is.
+	int16_t			_CONST num;		//!< For array references.
+} tmpl_attr_filter_t;
+
 /** An element in a list of nested attribute references
  *
  */
 typedef struct {
-	FR_DLIST_ENTRY(tmpl_attr_list)	_CONST entry;		//!< Entry in the doubly linked list
+	FR_DLIST_ENTRY(tmpl_attr_list)	_CONST entry;	//!< Entry in the doubly linked list
 							///< of attribute references.
 
 	fr_dict_attr_t const	* _CONST da;		//!< Resolved dictionary attribute.
@@ -434,10 +447,11 @@ typedef struct {
 	bool			_CONST resolve_only;	//!< This reference and those before it
 							///< in the list can only be used for
 							///< resolution, not building out trees.
-	int16_t			_CONST num;		//!< For array references.
-	tmpl_attr_type_t	_CONST type;		//!< Type of attribute reference.
-} tmpl_attr_t;
 
+	tmpl_attr_type_t	_CONST type;		//!< Type of attribute reference.
+
+	tmpl_attr_filter_t	_CONST filter;		//!< Filter associated with the attribute reference.
+} tmpl_attr_t;
 
 /** Define manipulation functions for the attribute reference list
  *
@@ -481,12 +495,17 @@ FR_DLIST_FUNCS(tmpl_request_list, tmpl_request_t, entry)
 #define ar_unresolved			unresolved.name
 #define ar_unresolved_raw		unresolved.is_raw
 #define ar_unresolved_namespace		unresolved.namespace
-#define ar_num				num
 
 #define ar_is_normal(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_NORMAL)
 #define ar_is_unspecified(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNSPEC)
 #define ar_is_unknown(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNKNOWN)
 #define ar_is_unresolved(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNRESOLVED)
+
+#define ar_num				filter.num
+#define ar_filter_type			filter.type
+
+#define ar_filter_is_none(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_NONE)
+#define ar_filter_is_num(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_INDEX)
 /** @} */
 
 /** A source or sink of value data.

@@ -251,7 +251,7 @@ match ERROR offset 10: Failed parsing string as type 'uint32'
 
 #
 #  @todo - resolution is delayed, so we don't know where in the input
-#  string the RHS is. 
+#  string the RHS is.
 #
 xlat_purify &NAS-Port == X
 match ERROR offset 0: Failed parsing string as type 'uint32'
@@ -557,19 +557,19 @@ match ERROR offset 17: Unknown attributes not allowed here
 #  Invalid array references.
 #
 xlat_purify &User-Name[a] == 'bob'
-match ERROR offset 11: Invalid array index
+match ERROR offset 12: Invalid array index
 
 xlat_purify &User-Name == &Filter-Id[a]
-match ERROR offset 25: Invalid array index
+match ERROR offset 26: Invalid array index
 
 #
 #  Bounds checks...
 #
 xlat_purify &User-Name[1001] == 'bob'
-match ERROR offset 11: Invalid array index '1001' (should be between 0-1000)
+match ERROR offset 12: Invalid array index '1001' (should be between 0-1000)
 
 xlat_purify &User-Name[-1] == 'bob'
-match ERROR offset 11: Invalid array index '-1' (should be between 0-1000)
+match ERROR offset 12: Invalid array index '-1' (should be between 0-1000)
 
 #
 #  attributes MUST be prefixed with '&'.

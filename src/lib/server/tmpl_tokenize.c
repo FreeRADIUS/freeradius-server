@@ -967,7 +967,9 @@ static tmpl_attr_t *tmpl_attr_add(tmpl_t *vpt, tmpl_attr_type_t type)
 	MEM(ar = talloc(ctx, tmpl_attr_t));
 	*ar = (tmpl_attr_t){
 		.type = type,
-		.num = NUM_UNSPEC
+		.filter = {
+			.num = NUM_UNSPEC
+		}
 	};
 	tmpl_attr_list_insert_tail(tmpl_attr(vpt), ar);
 
@@ -1268,15 +1270,6 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 }
 /** @} */
 
-/** Descriptive return values for filter parsing
- *
- */
-typedef enum {
-	TMPL_ATTR_REF_HAS_FILTER = 1,
-	TMPL_ATTR_REF_NO_FILTER = 0,
-	TMPL_ATTR_REF_BAD_FILTER = -1
-} tmpl_attr_filter_t;
-
 /** Insert an attribute reference into a tmpl
  *
  * Not all attribute references can be used to create new attributes,
@@ -1316,52 +1309,61 @@ static inline CC_HINT(always_inline) void tmpl_attr_insert(tmpl_t *vpt, tmpl_att
  * @param[in] name	containing more attribute ref data.
  * @param[in] t_rules	see tmpl_attr_afrom_attr_substr.
  * @return
- *	- TMPL_ATTR_REF_HAS_FILTER on success with filter parsed.
- *	- TMPL_ATTR_REF_NO_FILTER on success with no filter.
- *	- TMPL_ATTR_REF_BAD_FILTER on failure.
+ *	- >0 if a filter was parsed.
+ *	- 0 if no filter was available.
+ *	- <0 on filter parse error.
  */
-static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
-						 fr_sbuff_t *name, tmpl_attr_rules_t const *t_rules)
+static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
+					fr_sbuff_t *name, tmpl_attr_rules_t const *t_rules)
 {
+	fr_sbuff_t our_name = FR_SBUFF(name);
+
 	/*
 	 *	Parse array subscript (and eventually complex filters)
 	 */
-	if (!fr_sbuff_next_if_char(name, '[')) return TMPL_ATTR_REF_NO_FILTER;
+	if (!fr_sbuff_next_if_char(&our_name, '[')) return 0;
 
 	if (t_rules->disallow_filters) {
 		fr_strerror_const("Filters not allowed here");
 		if (err) *err = TMPL_ATTR_ERROR_FILTER_NOT_ALLOWED;
-
-		return TMPL_ATTR_REF_BAD_FILTER;
+		return -1;	/* Error at index 0 */
 	}
 
-	switch (*fr_sbuff_current(name)) {
+	ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_INDEX;
+	fr_sbuff_switch(&our_name, '\0') {
 	case '#':
 		ar->ar_num = NUM_COUNT;
-		fr_sbuff_next(name);
+		fr_sbuff_next(&our_name);
 		break;
 
 	case '*':
 		ar->ar_num = NUM_ALL;
-		fr_sbuff_next(name);
+		fr_sbuff_next(&our_name);
 		break;
 
 	case 'n':
 		ar->ar_num = NUM_LAST;
-		fr_sbuff_next(name);
+		fr_sbuff_next(&our_name);
 		break;
+
+	/* Used as EOB here */
+	missing_closing:
+	case '\0':
+		fr_strerror_const("No closing ']' for array index");
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
+	error:
+		return fr_sbuff_error(&our_name);
 
 	default:
 	{
 		fr_sbuff_parse_error_t	sberr = FR_SBUFF_PARSE_OK;
-		fr_sbuff_t tmp = FR_SBUFF(name);
+		fr_sbuff_t tmp = FR_SBUFF(&our_name);
 
 		if (fr_sbuff_out(&sberr, &ar->ar_num, &tmp) < 0) {
 			if (sberr == FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
 				fr_strerror_const("Invalid array index");
 				if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
-			error:
-				return TMPL_ATTR_REF_BAD_FILTER;
+				goto error;
 			}
 
 			fr_strerror_const("Invalid array index");
@@ -1375,7 +1377,7 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
 			if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 			goto error;
 		}
-		fr_sbuff_set(name, &tmp);	/* Advance name _AFTER_ doing checks */
+		fr_sbuff_set(&our_name, &tmp);	/* Advance name _AFTER_ doing checks */
 	}
 		break;
 	}
@@ -1384,13 +1386,9 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
 	 *	Always advance here, so the error
 	 *	marker points to the bad char.
 	 */
-	if (!fr_sbuff_next_if_char(name, ']')) {
-		fr_strerror_const("No closing ']' for array index");
-		if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
-		goto error;
-	}
+	if (!fr_sbuff_next_if_char(&our_name, ']')) goto missing_closing;
 
-	return TMPL_ATTR_REF_HAS_FILTER;
+	return fr_sbuff_set(name, &our_name);
 }
 
 /** Parse an unresolved attribute, i.e. one which can't be found in the current dictionary
@@ -1422,6 +1420,7 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 	int			ret;
 	char			*unresolved;
 	size_t			len;
+	fr_slen_t 		slen;
 
 	if (depth > FR_DICT_MAX_TLV_STACK) {
 		fr_strerror_const("Attribute nesting too deep");
@@ -1475,8 +1474,11 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 		.ar_parent = parent,
 	};
 
-	if (tmpl_attr_parse_filter(err, ar, name, t_rules) < 0) goto error;
-
+	slen = tmpl_attr_parse_filter(err, ar, name, t_rules);
+	if (slen < 0) {
+		fr_sbuff_advance(name, -slen);
+		goto error;
+	}
 	/*
 	 *	Insert the ar into the list of attribute references
 	 */
@@ -1538,7 +1540,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	tmpl_attr_t		*ar = NULL;
 	fr_dict_attr_t const	*da;
 	fr_sbuff_marker_t	m_s;
-	tmpl_attr_filter_t	filter;
 	fr_dict_attr_err_t	dict_err;
 	fr_dict_attr_t const	*our_parent = parent;
 
@@ -1824,7 +1825,11 @@ do_suffix:
 	 *	- The type of attribute.
 	 *	- If this is the leaf attribute reference.
 	 */
-	if ((filter = tmpl_attr_parse_filter(err, ar, name, t_rules)) == TMPL_ATTR_REF_BAD_FILTER) goto error;
+	slen = tmpl_attr_parse_filter(err, ar, name, t_rules);
+	if (slen < 0) {
+		fr_sbuff_advance(name, -slen);
+		goto error;
+	}
 
 	/*
 	 *	At the end of the attribute reference. If there's a
@@ -1880,7 +1885,7 @@ do_suffix:
 			if (main_config && main_config->tmpl_tokenize_all_nested) {
 				our_parent = da;	/* Only update the parent if we're not stripping */
 
-			} else if ((filter == TMPL_ATTR_REF_NO_FILTER) && (ar->type == TMPL_ATTR_TYPE_NORMAL)) {
+			} else if (ar_filter_is_none(ar) && ar_is_normal(ar)) {
 				TALLOC_FREE(ar);
 			} else {
 				our_parent = da;	/* Only update the parent if we're not stripping */
@@ -2170,21 +2175,18 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 */
 	if (!t_attr_rules->list_as_attr && (tmpl_attr_list_num_elements(&vpt->data.attribute.ar) == 0)) {
 		tmpl_attr_t *ar;
+		fr_slen_t slen;
 
 		MEM(ar = talloc_zero(vpt, tmpl_attr_t));
-		switch (tmpl_attr_parse_filter(err, ar, &our_name, t_attr_rules)) {
-		case 0:						/* No filter */
+		slen = tmpl_attr_parse_filter(err, ar, &our_name, t_attr_rules);
+		if (slen == 0) {				/* No filter */
 			talloc_free(ar);
-			break;
-
-		case 1:						/* Found a filter */
+		} else if (slen > 0) {				/* Found a filter */
 			tmpl_attr_list_insert_tail(&vpt->data.attribute.ar, ar);
-			break;
-
-		default:					/* Parse error */
+		} else if (slen < 0) {				/* Filter error */
+			fr_sbuff_advance(&our_name, -slen);
 			goto error;
 		}
-
 		vpt->type = TMPL_TYPE_LIST;
 	}
 
