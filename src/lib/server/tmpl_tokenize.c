@@ -679,7 +679,7 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 		goto error;	/* Leave marker at the end */
 	}
 
-	return fr_sbuff_set(in, &m);
+	FR_SBUFF_SET_RETURN(in, &m);
 
 }
 
@@ -1389,7 +1389,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	 */
 	if (!fr_sbuff_next_if_char(&our_name, ']')) goto missing_closing;
 
-	return fr_sbuff_set(name, &our_name);
+	FR_SBUFF_SET_RETURN(name, &our_name);
 }
 
 /** Parse an unresolved attribute, i.e. one which can't be found in the current dictionary
@@ -2250,7 +2250,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	TMPL_VERIFY(vpt);	/* Because we want to ensure we produced something sane */
 
 	*out = vpt;
-	return fr_sbuff_set(name, &our_name);
+	FR_SBUFF_SET_RETURN(name, &our_name);
 }
 
 /** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #tmpl_t
@@ -2338,7 +2338,7 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 
 	TMPL_VERIFY(vpt);
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Parse a truth value
@@ -2375,7 +2375,7 @@ static fr_slen_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 
 	*out = vpt;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Parse bareword as an octet string
@@ -2435,7 +2435,7 @@ static fr_slen_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuf
 
 	*out = vpt;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Parse bareword as an IPv4 address or prefix
@@ -2503,7 +2503,7 @@ static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	}
 	*out = vpt;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Parse bareword as an IPv6 address or prefix
@@ -2620,7 +2620,7 @@ static fr_slen_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	}
 	*out = vpt;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 
@@ -2689,7 +2689,7 @@ static ssize_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
 
 	*out = vpt;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Try and parse signed or unsigned integers
@@ -2775,7 +2775,7 @@ static fr_slen_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbu
 
 	*out = vpt;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 static ssize_t tmpl_afrom_float_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
@@ -2803,7 +2803,7 @@ static ssize_t tmpl_afrom_float_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
 
 	*out = vpt;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 static ssize_t tmpl_afrom_time_delta(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
@@ -2826,7 +2826,7 @@ static ssize_t tmpl_afrom_time_delta(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *
 
 	*out = vpt;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Convert an arbitrary string into a #tmpl_t
@@ -2910,7 +2910,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 			TMPL_VERIFY(vpt);
 
-			return fr_sbuff_set(in, &our_in);
+			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
 
 		/*
@@ -2927,7 +2927,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		done_bareword:
 			TMPL_VERIFY(*out);
 
-			return fr_sbuff_set(in, &our_in);
+			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
 		fr_assert(!*out);
 
@@ -3059,7 +3059,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		}
 		*out = vpt;
 
-		return fr_sbuff_set(in, &our_in);
+		FR_SBUFF_SET_RETURN(in, &our_in);
 
 	case T_SINGLE_QUOTED_STRING:
 		/*
@@ -3220,7 +3220,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	TMPL_VERIFY(vpt);
 	*out = vpt;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Copy a tmpl
@@ -3345,7 +3345,7 @@ ssize_t tmpl_cast_from_substr(tmpl_rules_t *rules, fr_sbuff_t *in)
 
 	if (rules) rules->cast = cast;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Set a cast for a tmpl
@@ -4265,7 +4265,7 @@ fr_slen_t tmpl_request_ref_list_print(fr_sbuff_t *out, FR_DLIST_HEAD(tmpl_reques
 		if (rr) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 	}
 
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /** Print an attribute or list #tmpl_t to a string
@@ -4476,7 +4476,7 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 
 		if (tmpl_attr_list_next(&vpt->data.attribute.ar, ar)) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 	}
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /** Print a #tmpl_t to a string
@@ -4559,7 +4559,7 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 		break;
 	}
 
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /** Print a #tmpl_t to a string with quotes
@@ -4599,7 +4599,7 @@ fr_slen_t tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix
 	 */
 	if (vpt->type & TMPL_FLAG_REGEX) FR_SBUFF_RETURN(regex_flags_print, &our_out, tmpl_regex_flags(vpt));
 
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 /** @} */
 

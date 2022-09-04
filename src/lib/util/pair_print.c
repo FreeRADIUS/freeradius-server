@@ -62,7 +62,7 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 		}
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ', '}');
 
-		return fr_sbuff_set(out, &our_out);
+		FR_SBUFF_SET_RETURN(out, &our_out);
 
 	/*
 	 *	For simple types just print the box
@@ -111,7 +111,7 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const 
 	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
 	FR_SBUFF_RETURN(fr_pair_print_value_quoted, &our_out, vp, T_DOUBLE_QUOTED_STRING);
 
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /** Print one attribute and value to FP

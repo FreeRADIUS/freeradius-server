@@ -1130,6 +1130,14 @@ _Generic((_src), \
 	size_t				: (fr_sbuff_start(_dst) + (uintptr_t)(_src)) \
 ))
 
+/** Set an sbuff to a given position, and return how much it was advanced
+ *
+ * @param[in] _dst	to modify.
+ * @param[in] _src	position to set it too.
+ * @return The number of bytes _dst was advanced.
+ */
+#define FR_SBUFF_SET_RETURN(_dst, _src) return fr_sbuff_set(_dst, _src)
+
 /** Advance position in sbuff by N bytes
  *
  * @param[in] _sbuff_or_marker	to advance.

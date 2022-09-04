@@ -97,7 +97,7 @@ ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type
 
 	fr_sbuff_trim(&our_out, (bool[UINT8_MAX + 1]){ [','] = true });
 
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /** Build the da_stack for the specified DA and encode the path by name in OID form
@@ -152,7 +152,7 @@ ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out,
 			FR_SBUFF_IN_STRCPY_RETURN(&our_out, da_stack.da[i]->name);
 		}
 	}
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 typedef struct {

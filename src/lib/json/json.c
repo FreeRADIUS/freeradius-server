@@ -463,7 +463,7 @@ static inline ssize_t attr_name_with_prefix(fr_sbuff_t *out, fr_dict_attr_t cons
 
 	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, NULL, da, false);
 
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 

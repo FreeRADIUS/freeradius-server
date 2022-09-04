@@ -134,7 +134,7 @@ fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in)
 done:
 	*out = (size_t)size;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 typedef struct {

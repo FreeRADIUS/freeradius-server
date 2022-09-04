@@ -455,7 +455,7 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 			if (err) *err = FR_DICT_ATTR_OK;
 		}
 
-		return fr_sbuff_set(in, &our_in);
+		FR_SBUFF_SET_RETURN(in, &our_in);
 
 	/*
 	 *	This is what we want... Everything
@@ -604,7 +604,7 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 
 	*out = n;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Fixup the parent of an unknown attribute using an equivalent known attribute

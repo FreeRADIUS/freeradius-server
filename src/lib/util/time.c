@@ -395,7 +395,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 			*out = fr_time_delta_wrap(tmp);
 		}
 
-		return fr_sbuff_set(in, &our_in);
+		FR_SBUFF_SET_RETURN(in, &our_in);
 	/*
 	 *	It's timestamp format
 	 *
@@ -457,7 +457,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 		if (negative) integer = -(integer);
 
 		*out = fr_time_delta_from_sec(integer);
-		return fr_sbuff_set(in, &our_in);
+		FR_SBUFF_SET_RETURN(in, &our_in);
 	/*
 	 *	Nothing fancy here it's just a time delta as an integer
 	 *
@@ -473,7 +473,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 		*out = fr_time_delta_from_integer(&overflow, integer, res);
 		if (overflow) goto overflow;
 
-		return fr_sbuff_set(in, &our_in);
+		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
 }
 
@@ -559,7 +559,7 @@ fr_slen_t fr_time_delta_to_str(fr_sbuff_t *out, fr_time_delta_t delta, fr_time_r
 		q++;	/* to account for q-- above */
 	}
 
-	return fr_sbuff_set(out, q);
+	FR_SBUFF_SET_RETURN(out, q);
 }
 
 DIAG_OFF(format-nonliteral)
@@ -1211,7 +1211,7 @@ fr_slen_t fr_unix_time_to_str(fr_sbuff_t *out, fr_unix_time_t time, fr_time_res_
 	if (res == FR_TIME_RES_SEC) {
 		len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S UTC", &s_tm);
 		FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, buf, len);
-		return fr_sbuff_set(out, &our_out);
+		FR_SBUFF_SET_RETURN(out, &our_out);
 	}
 
 	len = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &s_tm);
@@ -1266,5 +1266,5 @@ fr_slen_t fr_unix_time_to_str(fr_sbuff_t *out, fr_unix_time_t time, fr_time_res_
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, 'Z');
 	}
 
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }

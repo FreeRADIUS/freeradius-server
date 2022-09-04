@@ -126,7 +126,7 @@ fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alph
 
 	fr_sbuff_terminate(&our_out);	/* Ensure this is terminated, even on zero length input */
 	fr_dbuff_set(in, &our_in);
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /** Decode base16 encoded input

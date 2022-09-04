@@ -131,7 +131,7 @@ ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 	}
 
 	fr_sbuff_terminate(&our_out);
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 
@@ -1054,7 +1054,7 @@ static fr_slen_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 	fr_sbuff_marker(opd_start, in);
 	fr_sbuff_set(opd_start, &m);
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Tokenize a conditional check
@@ -1429,7 +1429,7 @@ done:
 
 	*out = c;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /*
@@ -1496,7 +1496,7 @@ ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const 
 		cond_reparent(*head, NULL);
 	}
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Initialise a cond iterator

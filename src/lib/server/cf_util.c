@@ -1424,7 +1424,7 @@ fr_slen_t cf_pair_values_concat(fr_sbuff_t *out, CONF_SECTION const *cs, char co
 		}
 	}
 
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /** Return the attr of a #CONF_PAIR

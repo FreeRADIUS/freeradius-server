@@ -1965,7 +1965,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 	*out = unary;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Allocate a specific cast node.
@@ -2043,7 +2043,7 @@ static fr_slen_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
 	}
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /*
@@ -2143,7 +2143,7 @@ static fr_slen_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_
 
 	*out = node;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 
@@ -2380,7 +2380,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 done:
 	*out = node;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /*
@@ -2486,7 +2486,7 @@ static fr_slen_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr
 	if (slen == 0) {
 		fr_assert(lhs == NULL);
 		*out = NULL;
-		return fr_sbuff_set(in, &our_in);
+		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
 
 redo:
@@ -2506,7 +2506,7 @@ redo:
 	if (fr_sbuff_extend(&our_in) == 0) {
 	done:
 		*out = lhs;
-		return fr_sbuff_set(in, &our_in);
+		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
 
 	/*

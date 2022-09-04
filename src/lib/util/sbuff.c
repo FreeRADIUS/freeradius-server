@@ -744,7 +744,7 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 		fr_sbuff_advance(&our_in, copied);
 	} while (fr_sbuff_used_total(&our_in) < len);
 
-	return fr_sbuff_set(in, &our_in);	/* in was pinned, so this works */
+	FR_SBUFF_SET_RETURN(in, &our_in);	/* in was pinned, so this works */
 }
 
 /** Copy as many allowed characters as possible from a sbuff to a sbuff
@@ -1075,28 +1075,28 @@ fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
 		case 't':
 			if (fr_sbuff_adv_past_strcase_literal(&our_in, "true")) {
 				*out = true;
-				return fr_sbuff_set(in, &our_in);
+				FR_SBUFF_SET_RETURN(in, &our_in);
 			}
 			break;
 
 		case 'f':
 			if (fr_sbuff_adv_past_strcase_literal(&our_in, "false")) {
 				*out = false;
-				return fr_sbuff_set(in, &our_in);
+				FR_SBUFF_SET_RETURN(in, &our_in);
 			}
 			break;
 
 		case 'y':
 			if (fr_sbuff_adv_past_strcase_literal(&our_in, "yes")) {
 				*out = true;
-				return fr_sbuff_set(in, &our_in);
+				FR_SBUFF_SET_RETURN(in, &our_in);
 			}
 			break;
 
 		case 'n':
 			if (fr_sbuff_adv_past_strcase_literal(&our_in, "no")) {
 				*out = false;
-				return fr_sbuff_set(in, &our_in);
+				FR_SBUFF_SET_RETURN(in, &our_in);
 			}
 			break;
 		}
@@ -1615,7 +1615,7 @@ ssize_t fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_s
 		FR_SBUFF_IN_CHAR_RETURN(&our_sbuff, *p++);
 	}
 
-	return fr_sbuff_set(sbuff, &our_sbuff);
+	FR_SBUFF_SET_RETURN(sbuff, &our_sbuff);
 }
 
 /** Print an escaped string to an sbuff taking a talloced buffer as input

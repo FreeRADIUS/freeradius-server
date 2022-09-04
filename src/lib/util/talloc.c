@@ -798,7 +798,7 @@ fr_slen_t talloc_array_concat(fr_sbuff_t *out, char const * const *array, char c
 		}
 	}
 
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /** Callback to free the autofree ctx on global exit

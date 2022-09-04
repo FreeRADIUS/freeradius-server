@@ -1888,7 +1888,7 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 
 	*out = child;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Resolve an attribute using an OID string
@@ -1941,7 +1941,7 @@ fr_slen_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 		if (!fr_sbuff_next_if_char(&our_in, '.')) break;
 	}
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Resolve an attribute using an OID string
@@ -2051,7 +2051,7 @@ fr_slen_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 
 	*out = dict;
 
-	return fr_sbuff_set(name, &our_name);
+	FR_SBUFF_SET_RETURN(name, &our_name);
 }
 
 /** Look up a protocol name embedded in another string
@@ -2339,7 +2339,7 @@ fr_slen_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 		(void)func(&our_err, out, fr_dict_root(dict_def), &our_in, tt);
 		switch (our_err) {
 		case FR_DICT_ATTR_OK:
-			return fr_sbuff_set(in, &our_in);
+			FR_SBUFF_SET_RETURN(in, &our_in);
 
 		case FR_DICT_ATTR_NOTFOUND:
 			if (!internal && !foreign) goto error;
@@ -2357,7 +2357,7 @@ fr_slen_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 		(void)func(&our_err, out, fr_dict_root(dict_gctx->internal), &our_in, tt);
 		switch (our_err) {
 		case FR_DICT_ATTR_OK:
-			return fr_sbuff_set(in, &our_in);
+			FR_SBUFF_SET_RETURN(in, &our_in);
 
 		case FR_DICT_ATTR_NOTFOUND:
 			if (!foreign) goto error;
@@ -2380,7 +2380,7 @@ fr_slen_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 		(void)func(&our_err, out, fr_dict_root(dict), &our_in, tt);
 		switch (our_err) {
 		case FR_DICT_ATTR_OK:
-			return fr_sbuff_set(in, &our_in);
+			FR_SBUFF_SET_RETURN(in, &our_in);
 
 		case FR_DICT_ATTR_NOTFOUND:
 			continue;
@@ -2498,7 +2498,7 @@ fr_slen_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t con
 	if (dict_attr_search(&our_err, out, initial, &our_in, tt, internal, foreign, func) < 0) goto error;
 	if (err) *err = FR_DICT_ATTR_OK;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
@@ -2731,7 +2731,7 @@ fr_slen_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t co
 	*out = da;
 	if (err) *err = FR_DICT_ATTR_OK;
 
-	return fr_sbuff_set(name, &our_name);
+	FR_SBUFF_SET_RETURN(name, &our_name);
 }
 
 /* Internal version of fr_dict_attr_by_name
@@ -2974,7 +2974,7 @@ fr_slen_t fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t
 
 	if (found) {
 		*out = found;
-		return fr_sbuff_set(in, found_len);
+		FR_SBUFF_SET_RETURN(in, found_len);
 	}
 
 	return 0;
@@ -3062,7 +3062,7 @@ fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t 
 
 	if (err) *err = FR_SBUFF_PARSE_OK;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 int dict_dlopen(fr_dict_t *dict, char const *name)

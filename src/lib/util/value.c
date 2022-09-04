@@ -4602,7 +4602,7 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 */
 		if (fr_value_box_cast(ctx, dst, dst_type, dst_enumv, enumv->value) < 0) return -1;
 
-		return fr_sbuff_set(in, &our_in);
+		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
 
 parse:
@@ -4630,7 +4630,7 @@ parse:
 			fr_value_box_bstrndup(ctx, dst, dst_enumv,
 					      fr_sbuff_start(unescaped), fr_sbuff_used(unescaped), tainted);
 		}
-		return fr_sbuff_set(in, &our_in);
+		FR_SBUFF_SET_RETURN(in, &our_in);
 
 	/* raw octets: 0x01020304... */
 	case FR_TYPE_OCTETS:
@@ -4681,7 +4681,7 @@ parse:
 						    (uint8_t *)fr_sbuff_start(unescaped),
 						    fr_sbuff_used(unescaped), tainted);
 			}
-			return fr_sbuff_set(in, &our_in);
+			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
 
 		fr_sbuff_marker(&hex_start, &our_in);	/* Record where the hexits start */
@@ -4698,7 +4698,7 @@ parse:
 		hex_len = fr_sbuff_adv_past_allowed(&our_in, SIZE_MAX, sbuff_char_class_hex, rules->terminals);
 		if (hex_len == 0) {
 			if (fr_value_box_memdup(ctx, dst, dst_enumv, (uint8_t[]){ 0x00 }, 0, tainted) < 0) return -1;
-			return fr_sbuff_set(in, &our_in);
+			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
 
 		if ((hex_len & 0x01) != 0) {
@@ -4721,7 +4721,7 @@ parse:
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
-		return fr_sbuff_set(in, &our_in);
+		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
 
 	case FR_TYPE_IPV4_ADDR:
@@ -4881,7 +4881,7 @@ parse:
 			fr_dbuff_in_memcpy(&dbuff, ((uint8_t *) &num) + 2, sizeof(dst->vb_ether));
 			fr_value_box_ethernet_addr(dst, dst_enumv, &ether, tainted);
 
-			return fr_sbuff_set(in, &our_in);
+			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
 
 		fr_sbuff_set_to_start(&our_in);
@@ -4925,7 +4925,7 @@ parse:
 		/* coverity[uninit_use_in_call] */
 		fr_value_box_ethernet_addr(dst, dst_enumv, &ether, tainted);
 
-		return fr_sbuff_set(in, &our_in);
+		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
 
 	case FR_TYPE_TIME_DELTA:
@@ -4935,12 +4935,12 @@ parse:
 						 dst_enumv ? dst_enumv->flags.flag_time_res : FR_TIME_RES_SEC,
 						 false, rules->terminals);
 		if (slen < 0) return slen;
-		return fr_sbuff_set(in, &our_in);
+		FR_SBUFF_SET_RETURN(in, &our_in);
 
 	case FR_TYPE_NULL:
 		if (!rules->escapes && fr_sbuff_adv_past_str_literal(in, "NULL")) {
 			fr_value_box_init(dst, dst_type, dst_enumv, tainted);
-			return fr_sbuff_set(in, &our_in);
+			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
 
 		fr_strerror_const("String value was not NULL");
@@ -5044,7 +5044,7 @@ finish:
 	dst->enumv = dst_enumv;
 	fr_dlist_entry_init(&dst->entry);
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 ssize_t fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
@@ -5258,7 +5258,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	}
 
 done:
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /** Print one boxed value to a string with quotes (where needed)
@@ -5286,7 +5286,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
 		return fr_value_box_print(out, data, NULL);
 	}
 
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /** Concatenate a list of value boxes together
@@ -5378,7 +5378,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
 		if (vb_should_free(proc_action)) talloc_free(vb);
 	}}
 
-	return fr_sbuff_set(sbuff, &our_sbuff);
+	FR_SBUFF_SET_RETURN(sbuff, &our_sbuff);
 }
 
 /** Concatenate a list of value boxes together

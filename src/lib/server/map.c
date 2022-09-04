@@ -680,7 +680,7 @@ check_for_child:
 	MAP_VERIFY(map);
 	*out = map;
 
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_SECTION *cs,
@@ -2210,7 +2210,7 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 	 */
 	if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
 		FR_SBUFF_IN_STRCPY_RETURN(&our_out, "ANY");
-		return fr_sbuff_set(out, &our_out);
+		FR_SBUFF_SET_RETURN(out, &our_out);
 	}
 
 	/*
@@ -2232,7 +2232,7 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 	 */
 	FR_SBUFF_RETURN(tmpl_print_quoted, &our_out, map->rhs, TMPL_ATTR_REF_PREFIX_YES);
 
-	return fr_sbuff_set(out, &our_out);
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /*

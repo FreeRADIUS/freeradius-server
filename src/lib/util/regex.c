@@ -1298,7 +1298,7 @@ fr_slen_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
 #undef DO_REGEX_FLAG
 
 		default:
-			if (fr_sbuff_is_terminal(&our_in, terminals)) return fr_sbuff_set(in, &our_in);
+			if (fr_sbuff_is_terminal(&our_in, terminals)) FR_SBUFF_SET_RETURN(in, &our_in);
 
 			fr_strerror_printf("Unsupported regex flag '%c'", *our_in.p);
 			if (err) *err = -1;
@@ -1306,7 +1306,7 @@ fr_slen_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
 		}
 		fr_sbuff_advance(&our_in, 1);
 	}
-	return fr_sbuff_set(in, &our_in);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Print the flags
@@ -1332,6 +1332,6 @@ ssize_t regex_flags_print(fr_sbuff_t *sbuff, fr_regex_flags_t const *flags)
 	DO_REGEX_FLAG(extended, 'x');
 #undef DO_REGEX_FLAG
 
-	return fr_sbuff_set(sbuff, &our_sbuff);
+	FR_SBUFF_SET_RETURN(sbuff, &our_sbuff);
 }
 #endif
