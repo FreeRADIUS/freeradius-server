@@ -1284,7 +1284,7 @@ fr_slen_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
 			if (err_on_dup && out->_f) { \
 				fr_strerror_printf("Duplicate regex flag '%c'", *our_in.p); \
 				if (err) *err = -2; \
-				return fr_sbuff_error(&our_in); \
+				FR_SBUFF_ERROR_RETURN(&our_in); \
 			} \
 			out->_f = 1; \
 			break
@@ -1302,7 +1302,7 @@ fr_slen_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
 
 			fr_strerror_printf("Unsupported regex flag '%c'", *our_in.p);
 			if (err) *err = -1;
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 		fr_sbuff_advance(&our_in, 1);
 	}

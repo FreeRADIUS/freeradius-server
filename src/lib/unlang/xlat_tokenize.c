@@ -656,7 +656,7 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	error:
 		fr_sbuff_marker_release(&m_s);
 		talloc_free(node);
-		return fr_sbuff_error(in);
+		FR_SBUFF_ERROR_RETURN(in);
 	}
 
 	/*
@@ -1445,7 +1445,7 @@ fr_slen_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
 	if (xlat_tokenize_string(head, &our_in,
 				 false, p_rules, &our_t_rules) < 0) {
 		talloc_free(head);
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*
@@ -1549,7 +1549,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 				}
 				talloc_free(head);
 
-				return fr_sbuff_error(&our_in);	/* error */
+				FR_SBUFF_ERROR_RETURN(&our_in);	/* error */
 			}
 			break;
 
@@ -1667,7 +1667,7 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 	if (xlat_tokenize_string(head, &our_in,
 				  false, p_rules, t_rules) < 0) {
 		talloc_free(head);
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*

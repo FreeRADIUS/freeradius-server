@@ -274,7 +274,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 	num_error:
 		fr_strerror_printf("Failed parsing time_delta: %s",
 				   fr_table_str_by_value(sbuff_parse_error_table, sberr, "<INVALID>"));
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 	fr_sbuff_out_by_longest_prefix(&match_len, &res, fr_time_precision_table, &our_in, FR_TIME_RES_INVALID);
 
@@ -328,7 +328,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 		if (f_len > 9) {
 			fr_strerror_const("Too much precision for time_delta");
 			fr_sbuff_set(&our_in, fr_sbuff_current(&m_f) + 10);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		/*
@@ -351,11 +351,11 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 			/* Got a qualifier but there's stuff after */
 			if (res != FR_TIME_RES_INVALID) {
 				fr_strerror_const("Trailing data after time_delta");
-				return fr_sbuff_error(&our_in);
+				FR_SBUFF_ERROR_RETURN(&our_in);
 			}
 
 			fr_strerror_const("Invalid precision qualifier for time_delta");
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		/* Scale defaults to hint */
@@ -376,7 +376,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 		overflow:
 			fr_strerror_printf("time_delta would %s", negative ? "underflow" : "overflow");
 			fr_sbuff_set_to_start(&our_in);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		{
@@ -421,7 +421,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 			if (minutes > UINT16_MAX) {
 				fr_strerror_printf("minutes component of time_delta is too large");
 				fr_sbuff_set_to_start(&our_in);
-				return fr_sbuff_error(&our_in);
+				FR_SBUFF_ERROR_RETURN(&our_in);
 			}
 		/*
 		 *	hours:minutes:seconds
@@ -435,12 +435,12 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 			if (hours > UINT16_MAX) {
 				fr_strerror_printf("hours component of time_delta is too large");
 				fr_sbuff_set_to_start(&our_in);
-				return fr_sbuff_error(&our_in);
+				FR_SBUFF_ERROR_RETURN(&our_in);
 			}
 
 			if (minutes > UINT16_MAX) {
 				fr_strerror_printf("minutes component of time_delta is too large");
-				return fr_sbuff_error(&m1);
+				FR_SBUFF_ERROR_RETURN(&m1);
 			}
 		}
 

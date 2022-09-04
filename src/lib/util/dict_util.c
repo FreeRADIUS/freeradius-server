@@ -3040,13 +3040,13 @@ fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t 
 		if (fr_sbuff_used(&our_in) == 0) {
 			fr_strerror_const("VALUE name is empty");
 			if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND;
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		fr_strerror_const("VALUE name must contain at least one alpha character");
 		if (err) *err = FR_SBUFF_PARSE_ERROR_FORMAT;
 		fr_sbuff_set_to_start(&our_in);	/* Marker should be at the start of the enum */
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*
@@ -3055,7 +3055,7 @@ fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t 
 	if (tt && !fr_sbuff_is_terminal(&our_in, tt)) {
 		fr_strerror_const("VALUE name has trailing text");
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	if (out) return fr_sbuff_out_bstrncpy_exact(out, in, fr_sbuff_used(&our_in));

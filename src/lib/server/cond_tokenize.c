@@ -944,7 +944,7 @@ static fr_slen_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 	/*
 	 *	Parse (optional) cast
 	 */
-	if (tmpl_cast_from_substr(&our_t_rules, &our_in) < 0) return fr_sbuff_error(&our_in);
+	if (tmpl_cast_from_substr(&our_t_rules, &our_in) < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 	fr_sbuff_marker(&m, &our_in);
@@ -984,7 +984,7 @@ static fr_slen_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 	if (slen < 0) {
 	error:
 		talloc_free(vpt);
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	if ((type != T_BARE_WORD) && !fr_sbuff_next_if_char(&our_in, fr_token_quote[type])) { /* Quoting */
@@ -1424,7 +1424,7 @@ done:
 	if (cond_normalise(ctx, lhs ? lhs->quote : T_INVALID, &c) < 0) {
 		talloc_free(c);
 		fr_sbuff_set_to_start(&our_in);
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	*out = c;

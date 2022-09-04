@@ -641,7 +641,7 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 			fr_sbuff_set(&our_in, in);	/* Marker at the start */
 		error:
 			tmpl_request_list_talloc_free_to_tail(out, tail);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		/*
@@ -1327,7 +1327,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		fr_strerror_const("Filters not allowed here");
 		if (err) *err = TMPL_ATTR_ERROR_FILTER_NOT_ALLOWED;
 		fr_sbuff_set_to_start(&our_name);
-		return fr_sbuff_error(&our_name);
+		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
 
 	ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_INDEX;
@@ -1353,7 +1353,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		fr_strerror_const("No closing ']' for array index");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 	error:
-		return fr_sbuff_error(&our_name);
+		FR_SBUFF_ERROR_RETURN(&our_name);
 
 	default:
 	{
@@ -1546,7 +1546,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
 	error:
 		fr_sbuff_marker_release(&m_s);
-		return fr_sbuff_error(name);
+		FR_SBUFF_ERROR_RETURN(name);
 	}
 
 	/*
@@ -2317,7 +2317,7 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 	if (!fr_type_is_leaf(t_rules->cast)) {
 		fr_strerror_printf("%s is not a valid cast type",
 				   fr_type_to_str(t_rules->cast));
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	vpt = tmpl_alloc_null(ctx);
@@ -2325,7 +2325,7 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 				     t_rules->cast, allow_enum ? t_rules->enumv : NULL,
 				     &our_in, p_rules, false) < 0) {
 		talloc_free(vpt);
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	tmpl_init(vpt, TMPL_TYPE_DATA, quote, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
@@ -2365,7 +2365,7 @@ static fr_slen_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 
 	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
 		fr_strerror_const("Unexpected text after bool");
-		return fr_sbuff_error(in);
+		FR_SBUFF_ERROR_RETURN(in);
 	}
 
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
@@ -2412,7 +2412,7 @@ static fr_slen_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuf
 		fr_strerror_const("Hex string not even length");
 	error:
 		talloc_free(vpt);
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 	if (len == 0) {
 		fr_strerror_const("Zero length hex string is invalid");
@@ -2466,7 +2466,7 @@ static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	      fr_sbuff_out(NULL, &octet, &our_in) && fr_sbuff_next_if_char(&our_in, '.') &&
 	      fr_sbuff_out(NULL, &octet, &our_in))) {
 	error:
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*
@@ -2550,7 +2550,7 @@ static fr_slen_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	len = fr_sbuff_adv_past_allowed(&our_in, FR_IPADDR_STRLEN + 1, ipv6_chars, NULL);
 	if ((len < 2) || (len > FR_IPADDR_STRLEN)) {
 	error:
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*
@@ -2722,7 +2722,7 @@ static fr_slen_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbu
 		if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
 			fr_strerror_const("Unexpected text after signed integer");
 		error:
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA,
@@ -2792,7 +2792,7 @@ static ssize_t tmpl_afrom_float_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
 
 	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
 		fr_strerror_const("Unexpected text after float");
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA,
@@ -2899,7 +2899,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 							       p_rules, t_rules);
 			}
 
-			if (slen < 0) return fr_sbuff_error(&our_in);
+			if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 			if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
 
@@ -3027,7 +3027,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			}
 		bareword_error:
 			talloc_free(vpt);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		/*
@@ -3091,7 +3091,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			slen = xlat_tokenize_ephemeral(vpt, &head, t_rules->xlat.runtime_el,
 						       &our_in, p_rules, t_rules);
 		}
-		if (slen < 0) return fr_sbuff_error(&our_in);
+		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		/*
 		 *	If the string doesn't contain an xlat,
@@ -3151,7 +3151,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		slen = xlat_tokenize_argv(vpt, &head, &our_in, p_rules, t_rules);
 		if (slen < 0) {
 			talloc_free(vpt);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
@@ -3182,7 +3182,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 						       p_rules, t_rules);
 		}
 
-		if (slen < 0) return fr_sbuff_error(&our_in);
+		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		/*
 		 *	Check if the string actually contains an xlat
@@ -3214,7 +3214,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 	default:
 		fr_assert(0);
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	TMPL_VERIFY(vpt);

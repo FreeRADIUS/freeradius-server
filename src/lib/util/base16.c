@@ -156,7 +156,7 @@ fr_slen_t fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr
 		if (!a || !b) {
 			if (a && !b && no_trailing) {
 		   		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
-		   		return fr_sbuff_error(&our_in);
+		   		FR_SBUFF_ERROR_RETURN(&our_in);
 		   	}
 		   	break;
 		}

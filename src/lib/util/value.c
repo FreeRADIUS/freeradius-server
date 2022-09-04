@@ -4703,7 +4703,7 @@ parse:
 
 		if ((hex_len & 0x01) != 0) {
 			fr_strerror_printf("Length of hex string is not even, got %zu bytes", hex_len);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		/*
@@ -4718,7 +4718,7 @@ parse:
 
 		if (unlikely(fr_base16_decode(NULL, &FR_DBUFF_TMP(bin_buff, hex_len), &our_in, false) < 0)) {
 			talloc_free(bin_buff);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		return fr_sbuff_set(in, &our_in);
@@ -4890,13 +4890,13 @@ parse:
 		if (err != FR_SBUFF_PARSE_OK) {
 		ether_error:
 			fr_sbuff_parse_error_to_strerror(err);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		if (!fr_sbuff_next_if_char(&our_in, ':')) {
 		ether_sep_error:
 			fr_strerror_const("Missing separator, expected ':'");
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		fr_base16_decode(&err, &dbuff, &our_in, true);

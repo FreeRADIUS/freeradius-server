@@ -427,7 +427,7 @@ fr_slen_t fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr
 
 			if (err) *err = FR_SBUFF_PARSE_ERROR_OUT_OF_SPACE;
 
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		fr_sbuff_advance(&our_in, 4);
@@ -474,7 +474,7 @@ fr_slen_t fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr
 	bad_format:
 		if (err) *err = FR_SBUFF_PARSE_ERROR_FORMAT;
 
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	if (expect_padding) {
@@ -499,7 +499,7 @@ fr_slen_t fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr
 
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
 
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	fr_sbuff_set(in, &our_in);

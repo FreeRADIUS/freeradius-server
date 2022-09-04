@@ -1910,7 +1910,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		fr_sbuff_skip_whitespace(&our_in);
 		if (fr_sbuff_is_char(&our_in, c)) {
 			fr_strerror_const("Double operator is invalid");
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 	}
 
@@ -2034,12 +2034,12 @@ static fr_slen_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
 
 	if (!fr_type_is_leaf(*cast)) {
 		fr_strerror_printf("Invalid data type '%s' in cast", fr_type_to_str(*cast));
-		return fr_sbuff_error(&our_in)
+		FR_SBUFF_ERROR_RETURN(&our_in)
 	}
 
 	if (!fr_sbuff_next_if_char(&our_in, close)) {
 		fr_strerror_const("Unterminated cast");
-		return fr_sbuff_error(&our_in)
+		FR_SBUFF_ERROR_RETURN(&our_in)
 	}
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
@@ -2099,7 +2099,7 @@ static fr_slen_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_
 	if (!vpt) {
 	error:
 		talloc_free(node);
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*
@@ -2120,7 +2120,7 @@ static fr_slen_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_
 	fr_sbuff_marker(&flag, &our_in);
 	if (tmpl_regex_flags_substr(vpt, &our_in, bracket_rules->terminals) < 0) {
 		talloc_free(node);
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	fr_sbuff_skip_whitespace(&our_in);
@@ -2259,7 +2259,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 */
 	if (tmpl_afrom_substr(node, &vpt, &our_in, quote, p_rules, &our_t_rules) < 0) {
 	error:
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	if (quote != T_BARE_WORD) {
@@ -2481,7 +2481,7 @@ static fr_slen_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr
 	 *	Get the LHS of the operation.
 	 */
 	slen = tokenize_unary(head, &lhs, &our_in, p_rules, t_rules, bracket_rules, &c, cond);
-	if (slen < 0) return fr_sbuff_error(&our_in);
+	if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 	if (slen == 0) {
 		fr_assert(lhs == NULL);
@@ -2550,7 +2550,7 @@ redo:
 	if (!binary_ops[op].str) {
 		fr_strerror_printf("Invalid operator");
 		fr_sbuff_set(&our_in, &m_op);
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	fr_assert(precedence[op] != 0);
@@ -2573,7 +2573,7 @@ redo:
 		fr_strerror_printf("Operator '%c' is only applied to the left hand side of the '%s' operation, add (..) to evaluate the operation first", c, fr_tokens[op]);
 	fail_lhs:
 		fr_sbuff_set(&our_in, &m_lhs);
-		return fr_sbuff_error(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	fr_sbuff_skip_whitespace(&our_in);
@@ -2591,7 +2591,7 @@ redo:
 		if ((op != T_OP_CMP_EQ) && (op != T_OP_NE)) {
 			fr_strerror_printf("Invalid operatord '%s' for left hand side structural attribute", fr_tokens[op]);
 			fr_sbuff_set(&our_in, &m_op);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		fr_assert(0);
@@ -2627,7 +2627,7 @@ redo:
 		if (reparse_rcode(head, &rhs, true) < 0) {
 		fail_rhs:
 			fr_sbuff_set(&our_in, &m_rhs);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		if ((lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {

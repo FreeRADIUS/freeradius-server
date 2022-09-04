@@ -95,7 +95,7 @@ static fr_slen_t ldap_filter_parse_logic(ldap_filter_t *node, fr_sbuff_t *sbuff,
 	while (fr_sbuff_is_char(sbuff, '(')) {
 		if (node->logic_op == LDAP_FILTER_LOGIC_NOT) {
 			fr_strerror_const("'!' operator can only apply to one filter");
-			return fr_sbuff_error(sbuff);
+			FR_SBUFF_ERROR_RETURN(sbuff);
 		}
 		MEM(child_node = talloc_zero(node, ldap_filter_t));
 		fr_dlist_insert_tail(&node->children, child_node);
@@ -138,7 +138,7 @@ static fr_slen_t ldap_filter_parse_filter(ldap_filter_t *node, fr_sbuff_t *sbuff
 	len = fr_sbuff_out_bstrncpy_allowed(&attr_sbuff, sbuff, FILTER_ATTR_MAX_LEN - 1, fr_ldap_attr_allowed_chars);
 	if (len == 0) {
 		fr_strerror_const("Missing attribute name");
-		return fr_sbuff_error(sbuff);
+		FR_SBUFF_ERROR_RETURN(sbuff);
 	}
 
 	MEM(node->attr = talloc_zero_array(node, char, len+1));
@@ -165,12 +165,12 @@ static fr_slen_t ldap_filter_parse_filter(ldap_filter_t *node, fr_sbuff_t *sbuff
 		}
 
 		fr_strerror_const("Unsupported extended match rule");
-		return fr_sbuff_error(sbuff);
+		FR_SBUFF_ERROR_RETURN(sbuff);
 
 	found_op:
 		if(!(fr_sbuff_next_if_char(sbuff, ':'))) {
 			fr_strerror_const("Missing ':' after extended match rule");
-			return fr_sbuff_error(sbuff);
+			FR_SBUFF_ERROR_RETURN(sbuff);
 		}
 	}
 
@@ -188,13 +188,13 @@ static fr_slen_t ldap_filter_parse_filter(ldap_filter_t *node, fr_sbuff_t *sbuff
 
 	default:
 		fr_strerror_const("Incorrect operator");
-		return fr_sbuff_error(sbuff);
+		FR_SBUFF_ERROR_RETURN(sbuff);
 	}
 
 	if (((node->op == LDAP_FILTER_OP_BIT_AND) || (node->op == LDAP_FILTER_OP_BIT_OR)) &&
 	    (op != LDAP_FILTER_OP_EQ)) {
 		fr_strerror_const("Extended match rule only valid with '=' operator");
-		return fr_sbuff_error(sbuff);
+		FR_SBUFF_ERROR_RETURN(sbuff);
 	}
 
 	/*
@@ -205,7 +205,7 @@ static fr_slen_t ldap_filter_parse_filter(ldap_filter_t *node, fr_sbuff_t *sbuff
 
 	if (len == 0) {
 		fr_strerror_const("Missing filter value");
-		return fr_sbuff_error(sbuff);
+		FR_SBUFF_ERROR_RETURN(sbuff);
 	}
 
 	/*
@@ -229,7 +229,7 @@ static fr_slen_t ldap_filter_parse_filter(ldap_filter_t *node, fr_sbuff_t *sbuff
 	case LDAP_FILTER_OP_SUBSTR:
 		if (fr_value_box_bstrndup(node, node->value, NULL, val_buffer, len, false) < 0) {
 			fr_strerror_const("Failed parsing value for filter");
-			return fr_sbuff_error(sbuff);
+			FR_SBUFF_ERROR_RETURN(sbuff);
 		}
 		break;
 
@@ -244,7 +244,7 @@ static fr_slen_t ldap_filter_parse_filter(ldap_filter_t *node, fr_sbuff_t *sbuff
 		if (fr_value_box_from_str(node, node->value, FR_TYPE_UINT32, NULL,
 					  val_buffer, len, NULL, false) < 0) {
 			fr_strerror_const("Failed parsing value for filter");
-			return fr_sbuff_error(sbuff);
+			FR_SBUFF_ERROR_RETURN(sbuff);
 		}
 		break;
 
@@ -293,7 +293,7 @@ static fr_slen_t ldap_filter_parse_node(ldap_filter_t *node, fr_sbuff_t *sbuff, 
 
 	if (!fr_sbuff_next_if_char(sbuff, '(')) {
 		fr_strerror_const("Missing '('");
-		return fr_sbuff_error(sbuff);
+		FR_SBUFF_ERROR_RETURN(sbuff);
 	}
 
 	/*
@@ -313,7 +313,7 @@ static fr_slen_t ldap_filter_parse_node(ldap_filter_t *node, fr_sbuff_t *sbuff, 
 
 	if (!fr_sbuff_next_if_char(sbuff, ')')) {
 		fr_strerror_const("Missing ')'");
-		return fr_sbuff_error(sbuff);
+		FR_SBUFF_ERROR_RETURN(sbuff);
 	}
 	parsed ++;
 
@@ -323,7 +323,7 @@ static fr_slen_t ldap_filter_parse_node(ldap_filter_t *node, fr_sbuff_t *sbuff, 
 	 */
 	if ((depth == 0) && (fr_sbuff_extend(sbuff))) {
 		fr_strerror_const("Extra characters at the end of LDAP filter");
-		return fr_sbuff_error(sbuff);
+		FR_SBUFF_ERROR_RETURN(sbuff);
 	}
 
 	return parsed;

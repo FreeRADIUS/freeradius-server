@@ -1156,7 +1156,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		    ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 			*out = (_type)(_max); \
-			return fr_sbuff_error(&our_in); \
+			FR_SBUFF_ERROR_RETURN(&our_in); \
 		} \
 		*out = (_type)(num); \
 	} else { \
@@ -1216,7 +1216,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		    ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 			*out = (_type)(_max); \
-			return fr_sbuff_error(&our_in); \
+			FR_SBUFF_ERROR_RETURN(&our_in); \
 		} \
 		if (err) *err = FR_SBUFF_PARSE_OK; \
 		*out = (_type)(num); \
@@ -1291,7 +1291,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	} \
 	if (no_trailing && (*end != '\0')) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
-		return fr_sbuff_error(&our_in); \
+		FR_SBUFF_ERROR_RETURN(&our_in); \
 	} \
 	*out = res; \
 	return fr_sbuff_advance(in, end - buff); \

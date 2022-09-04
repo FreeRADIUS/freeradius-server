@@ -65,7 +65,7 @@ fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in)
 
 	*out = 0;
 
-	if (fr_sbuff_out(NULL, &size, &our_in) < 0) return fr_sbuff_error(&our_in);
+	if (fr_sbuff_out(NULL, &size, &our_in) < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 	if (!fr_sbuff_extend(&our_in)) goto done;
 
 	c = tolower(fr_sbuff_char(&our_in, '\0'));
@@ -79,7 +79,7 @@ fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in)
 		if (size & 0x01) {
 			fr_strerror_const("Sizes specified in nibbles must be an even number");
 			fr_sbuff_set_to_start(&our_in);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 		size /= 2;
 		break;
@@ -112,14 +112,14 @@ fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in)
 
 		if (((size_t)c >= units_len) || units[(uint8_t)c] == 0) {
 			fr_strerror_printf("Unknown unit '%c'", c);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		if (!fr_multiply(&size, size, units[(uint8_t)c])) {
 		overflow:
 			fr_strerror_printf("Value must be less than %zu", (size_t)SIZE_MAX);
 			fr_sbuff_set_to_start(&our_in);
-			return fr_sbuff_error(&our_in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 	}
 	}
