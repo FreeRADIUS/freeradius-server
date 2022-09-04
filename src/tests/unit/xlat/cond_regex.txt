@@ -32,13 +32,13 @@ xlat_purify &User-Name =~ /bar/im
 match (&User-Name =~ /bar/im)
 
 xlat_purify &User-Name =~ /bar/ima
-match ERROR offset 21: Unsupported regex flag 'a'
+match ERROR offset 22: Unsupported regex flag 'a'
 
 xlat_purify &User-Name =~ /bar/ii
-match ERROR offset 20: Duplicate regex flag 'i'
+match ERROR offset 21: Duplicate regex flag 'i'
 
 xlat_purify &User-Name =~ /bar/iia
-match ERROR offset 20: Duplicate regex flag 'i'
+match ERROR offset 21: Duplicate regex flag 'i'
 
 #
 #  Escape the backslashes correctly

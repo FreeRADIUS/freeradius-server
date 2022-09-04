@@ -37,13 +37,13 @@ condition foo =~ /bar/im
 match 'foo' =~ /bar/im
 
 condition foo =~ /bar/ima
-match ERROR offset 14: Unsupported regex flag 'a'
+match ERROR offset 15: Unsupported regex flag 'a'
 
 condition foo =~ /bar/ii
-match ERROR offset 13: Duplicate regex flag 'i'
+match ERROR offset 14: Duplicate regex flag 'i'
 
 condition foo =~ /bar/iia
-match ERROR offset 13: Duplicate regex flag 'i'
+match ERROR offset 14: Duplicate regex flag 'i'
 
 #
 #  Escape the backslashes correctly

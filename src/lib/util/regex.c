@@ -1270,8 +1270,8 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
  *      - > 0 on success.  The number of flag bytes parsed.
  *	- <= 0 on failure.  Negative offset of first unrecognised flag.
  */
-ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
-			  fr_sbuff_term_t const *terminals, bool err_on_dup)
+fr_slen_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
+			    fr_sbuff_term_t const *terminals, bool err_on_dup)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 
@@ -1284,7 +1284,7 @@ ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
 			if (err_on_dup && out->_f) { \
 				fr_strerror_printf("Duplicate regex flag '%c'", *our_in.p); \
 				if (err) *err = -2; \
-				return -fr_sbuff_used(&our_in); \
+				return fr_sbuff_error(&our_in); \
 			} \
 			out->_f = 1; \
 			break
@@ -1302,7 +1302,7 @@ ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
 
 			fr_strerror_printf("Unsupported regex flag '%c'", *our_in.p);
 			if (err) *err = -1;
-			return -(fr_sbuff_used_total(&our_in));
+			return fr_sbuff_error(&our_in);
 		}
 		fr_sbuff_advance(&our_in, 1);
 	}
