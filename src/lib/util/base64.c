@@ -395,11 +395,11 @@ ssize_t fr_base64_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in,
  *				at the end of the string.
  * @param[in] alphabet		to use for decoding.
  * @return
- *	- <= 0 on failure.  The offset where the decoding error occurred as a negative integer.
+ *	- < 0 on failure.  The offset where the decoding error occurred as a negative integer.
  *	- Length of decoded data.
  */
-ssize_t	fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
-			      bool expect_padding, bool no_trailing, uint8_t const alphabet[static UINT8_MAX])
+fr_slen_t fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
+				bool expect_padding, bool no_trailing, uint8_t const alphabet[static UINT8_MAX])
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_dbuff_t		our_out = FR_DBUFF(out);
@@ -427,7 +427,7 @@ ssize_t	fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_s
 
 			if (err) *err = FR_SBUFF_PARSE_ERROR_OUT_OF_SPACE;
 
-			return -fr_sbuff_used(&our_in);
+			return fr_sbuff_error(&our_in);
 		}
 
 		fr_sbuff_advance(&our_in, 4);
@@ -474,7 +474,7 @@ ssize_t	fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_s
 	bad_format:
 		if (err) *err = FR_SBUFF_PARSE_ERROR_FORMAT;
 
-		return -fr_sbuff_used(&our_in);
+		return fr_sbuff_error(&our_in);
 	}
 
 	if (expect_padding) {
@@ -499,7 +499,7 @@ ssize_t	fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_s
 
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
 
-		return -fr_sbuff_used(&our_in);
+		return fr_sbuff_error(&our_in);
 	}
 
 	fr_sbuff_set(in, &our_in);
