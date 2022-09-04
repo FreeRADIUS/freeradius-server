@@ -61,16 +61,16 @@ xlat %{32}
 match %{32}
 
 xlat %{33}
-match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
+match ERROR offset 3: Invalid regex reference.  Must be in range 0-32
 
 xlat %{3a}
-match ERROR offset 2: Unexpected text after attribute reference
+match ERROR offset 3: Unexpected text after attribute reference
 
 xlat %{-3}
-match ERROR offset 2: Unresolved attributes not allowed in expansions here
+match ERROR offset 3: Unresolved attributes not allowed in expansions here
 
 xlat %{3
-match ERROR offset 3: Missing closing brace
+match ERROR offset 4: Missing closing brace
 
 #
 #  Tests for xlat expansion
@@ -136,10 +136,10 @@ xlat %(length:)
 match %(length:)
 
 xlat %(length:
-match ERROR offset 9: Missing closing brace
+match ERROR offset 10: Missing closing brace
 
 xlat %(length:1 + 2
-match ERROR offset 14: Missing closing brace
+match ERROR offset 15: Missing closing brace
 
 xlat \"%t\tfoo\"
 match \"%t\tfoo\"
@@ -156,10 +156,10 @@ match \"foo %{test:foo}\"
 #  Alternations
 #
 xlat %{%{foo}:-%{bar}}
-match ERROR offset 4: Unresolved attributes not allowed in expansions here
+match ERROR offset 5: Unresolved attributes not allowed in expansions here
 
 xlat %{%{User-Name}:-%{bar}}
-match ERROR offset 18: Unresolved attributes not allowed in expansions here
+match ERROR offset 19: Unresolved attributes not allowed in expansions here
 
 xlat %{%{User-Name}:-bar}
 match %{%{User-Name}:-bar}
@@ -186,57 +186,57 @@ xlat %{%{%{User-Name}:-foo}:-%{%{test:bar}:-%{User-Name}}}
 match %{%{%{User-Name}:-foo}:-%{%{test:bar}:-%{User-Name}}}
 
 xlat %{:-}
-match ERROR offset 2: First item in alternation cannot be empty
+match ERROR offset 3: First item in alternation cannot be empty
 
 xlat %{:-%{User-Name}}
-match ERROR offset 2: First item in alternation cannot be empty
+match ERROR offset 3: First item in alternation cannot be empty
 
 xlat %{%{}:-}
-match ERROR offset 4: Empty expression is invalid
+match ERROR offset 5: Empty expression is invalid
 
 xlat %{%{}:-foo}
-match ERROR offset 4: Empty expression is invalid
+match ERROR offset 5: Empty expression is invalid
 
 xlat %{%{User-Name}:-
-match ERROR offset 16: Missing closing brace
+match ERROR offset 17: Missing closing brace
 
 # Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
 xlat %{%{User-Name}:-foo
-match ERROR offset 19: Missing closing brace
+match ERROR offset 20: Missing closing brace
 
 xlat %{%{User-Name}:}
-match ERROR offset 14: Expected ':-' after first expansion
+match ERROR offset 15: Expected ':-' after first expansion
 
 xlat %{%{User-Name}}
-match ERROR offset 14: Expected ':-' after first expansion
+match ERROR offset 15: Expected ':-' after first expansion
 
 
 #
 #  Empty and malformed expansions
 #
 xlat %{
-match ERROR offset 2: Missing closing brace
+match ERROR offset 3: Missing closing brace
 
 xlat %{}
-match ERROR offset 2: Empty expression is invalid
+match ERROR offset 3: Empty expression is invalid
 
 xlat %{:}
-match ERROR offset 2: Missing expansion function
+match ERROR offset 3: Missing expansion function
 
 xlat %{:bar}
-match ERROR offset 2: Missing expansion function
+match ERROR offset 3: Missing expansion function
 
 xlat %{foo: bar}
-match ERROR offset 2: Unresolved expansion functions are not allowed here
+match ERROR offset 3: Unresolved expansion functions are not allowed here
 
 xlat %{[}
-match ERROR offset 2: Missing attribute name
+match ERROR offset 3: Missing attribute name
 
 xlat %{[baz}
-match ERROR offset 2: Missing attribute name
+match ERROR offset 3: Missing attribute name
 
 xlat %{ }
-match ERROR offset 2: Invalid char ' ' in expression
+match ERROR offset 3: Invalid char ' ' in expression
 
 xlat %{\t}
 match ERROR offset 3: Invalid attribute name
@@ -245,27 +245,27 @@ xlat %{\n}
 match ERROR offset 3: Invalid attribute name
 
 xlat %{foo }
-match ERROR offset 5: Invalid char ' ' in expression
+match ERROR offset 6: Invalid char ' ' in expression
 
 xlat %{foo bar}
-match ERROR offset 5: Invalid char ' ' in expression
+match ERROR offset 6: Invalid char ' ' in expression
 
 xlat %{test:
-match ERROR offset 7: Missing closing brace
+match ERROR offset 8: Missing closing brace
 
 xlat %{test:%{User-Name
-match ERROR offset 18: Missing closing brace
+match ERROR offset 19: Missing closing brace
 
 # Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
 xlat %{test:%{User-Name}
-match ERROR offset 19: Missing closing brace
+match ERROR offset 20: Missing closing brace
 
 xlat %{myfirstxlat
-match ERROR offset 13: Missing closing brace
+match ERROR offset 14: Missing closing brace
 
 # Issue seen in the wild that caused an SEGV during pass2
 xlat %{%{control.IP-Pool.Name}:%{reply.IP-Pool.Range}
-match ERROR offset 25: Expected ':-' after first expansion
+match ERROR offset 26: Expected ':-' after first expansion
 
 #
 #  API to split xlat strings into argv-style arguments.
@@ -294,7 +294,7 @@ match [0]{ /bin/sh }, [1]{ foo bar }, [2]{ %{User-Name} %{Filter-Id} }
 
 # and errors
 xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id"
-match ERROR offset 44: Missing closing brace
+match ERROR offset 45: Missing closing brace
 
 # and text immediately after a variable expansion
 xlat_argv echo hello %{Tmp-String-0}:1234 world
@@ -322,7 +322,7 @@ match %(rpad:&User-Name 5 x)
 #  so the "offset 23" is wrong.  It also doesn't say *which* string is wrong.  We'll fix that later.
 #
 xlat %(rpad:&User-Name foo x)
-match ERROR offset 23: Failed parsing argument 1 as type 'uint64'
+match ERROR offset 24: Failed parsing argument 1 as type 'uint64'
 
 count
 match 187

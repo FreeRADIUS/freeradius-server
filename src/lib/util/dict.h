@@ -384,7 +384,7 @@ fr_dict_attr_t		*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx,
 						      unsigned int vendor, unsigned int attr)
 						      CC_HINT(nonnull(2));
 
-ssize_t			fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
+fr_slen_t		fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 							 fr_dict_attr_err_t *err, fr_dict_attr_t **out,
 							 fr_dict_attr_t const *parent,
 							 fr_sbuff_t *in, fr_sbuff_term_t const *tt)
@@ -449,22 +449,22 @@ fr_dict_attr_t const	*fr_dict_attr_common_parent(fr_dict_attr_t const *a, fr_dic
 
 int			fr_dict_oid_component_legacy(unsigned int *out, char const **oid);
 
-ssize_t			fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict,
+fr_slen_t		fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict,
 						 fr_type_t type, fr_dict_attr_flags_t const *flags);
 
-ssize_t			fr_dict_attr_oid_print(fr_sbuff_t *out,
+fr_slen_t		fr_dict_attr_oid_print(fr_sbuff_t *out,
 					       fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da, bool numeric);
 #define			FR_DICT_ATTR_OID_PRINT_RETURN(...) FR_SBUFF_RETURN(fr_dict_attr_oid_print, ##__VA_ARGS__)
 
-ssize_t			fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const **parent,
+fr_slen_t		fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const **parent,
 					           unsigned int *attr, char const *oid) CC_HINT(nonnull);
 
-ssize_t			fr_dict_oid_component(fr_dict_attr_err_t *err,
+fr_slen_t		fr_dict_oid_component(fr_dict_attr_err_t *err,
 					      fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
 					      fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 					      CC_HINT(nonnull(2,3,4));
 
-ssize_t			fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
+fr_slen_t		fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 						   fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
 						   fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 						   CC_HINT(nonnull(2,3,4));
@@ -489,7 +489,7 @@ bool			fr_dict_is_read_only(fr_dict_t const *dict);
 
 dl_t			*fr_dict_dl(fr_dict_t const *dict);
 
-ssize_t			fr_dict_by_protocol_substr(fr_dict_attr_err_t *err,
+fr_slen_t		fr_dict_by_protocol_substr(fr_dict_attr_err_t *err,
 						   fr_dict_t const **out, fr_sbuff_t *name, fr_dict_t const *dict_def);
 
 fr_dict_t const		*fr_dict_by_protocol_name(char const *name);
@@ -521,19 +521,19 @@ fr_dict_vendor_t const	*fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t ve
 
 fr_dict_attr_t const	*fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen);
 
-ssize_t			fr_dict_attr_search_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+fr_slen_t		fr_dict_attr_search_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 								     fr_dict_t const *dict_def,
 								     fr_sbuff_t *name, fr_sbuff_term_t const *tt,
 								     bool internal, bool foreign)
 								     CC_HINT(nonnull(2, 4));
 
-ssize_t			fr_dict_attr_search_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+fr_slen_t		fr_dict_attr_search_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 					  		   fr_dict_t const *dict_def,
 							   fr_sbuff_t *name, fr_sbuff_term_t const *tt,
 							   bool internal, bool foreign)
 							   CC_HINT(nonnull(2, 4));
 
-ssize_t			fr_dict_attr_search_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+fr_slen_t		fr_dict_attr_search_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 							     	    fr_dict_t const *dict_def,
 								    fr_sbuff_t *in, fr_sbuff_term_t const *tt,
 								    bool internal, bool foreign)
@@ -544,13 +544,13 @@ fr_dict_attr_t const	*fr_dict_attr_search_by_qualified_oid(fr_dict_attr_err_t *e
 						       	      bool internal, bool foreign)
 							      CC_HINT(nonnull(3));
 
-ssize_t			fr_dict_attr_search_by_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+fr_slen_t		fr_dict_attr_search_by_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 							  fr_dict_t const *dict_def,
 							  fr_sbuff_t *in, fr_sbuff_term_t const *tt,
 							  bool internal, bool foreign)
 							  CC_HINT(nonnull(2, 4));
 
-ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+fr_slen_t		fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 						    fr_dict_attr_t const *parent,
 						    fr_sbuff_t *name, fr_sbuff_term_t const *tt)
 						    CC_HINT(nonnull(2,3,4));
@@ -567,7 +567,7 @@ char const		*fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t
 
 fr_dict_enum_value_t		*fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len);
 
-ssize_t			fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t const *da, fr_sbuff_t *in);
+fr_slen_t		fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t const *da, fr_sbuff_t *in);
 
 fr_slen_t		fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t *err,
 						      fr_sbuff_t *in, fr_sbuff_term_t const *tt);

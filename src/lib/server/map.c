@@ -469,7 +469,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 
 	error_adj:
 		talloc_free(map);
-		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*

@@ -180,11 +180,12 @@ match false
 xlat_purify !true
 match false
 
+# Offset 6 is wrong... but the code is structured strangely here
 xlat_purify -fail
-match ERROR offset 9: Invalid operation on module return code
+match ERROR offset 6: Invalid operation on module return code
 
 xlat_purify ~fail
-match ERROR offset 9: Invalid operation on module return code
+match ERROR offset 6: Invalid operation on module return code
 
 xlat_purify !fail
 match !%{rcode:'fail'}

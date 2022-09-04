@@ -20,6 +20,7 @@
  *
  * @copyright 2000,2006,2015 The FreeRADIUS server project
  */
+#include "lib/util/dict.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/util/pair.h>
@@ -133,6 +134,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		if (strncmp(p, "raw.", 4) == 0) goto do_unknown;
 
 		if (*p == '.') {
+			fr_dict_attr_err_t err;
 			p++;
 
 			if (!*relative_vp) {
@@ -140,27 +142,27 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 				goto error;
 			}
 
-			slen = fr_dict_attr_by_oid_substr(NULL, &da, (*relative_vp)->da,
-							  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-			if (slen <= 0) goto error;
+			slen = fr_dict_attr_by_oid_substr(&err, &da, (*relative_vp)->da, &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
+			if (err != FR_DICT_ATTR_OK) goto error;
 
 			my_list = &(*relative_vp)->vp_group;
 			my_ctx = *relative_vp;
 		} else {
+			fr_dict_attr_err_t err;
+
 			/*
 			 *	Parse the name.
 			 */
-			slen = fr_dict_attr_by_oid_substr(NULL, &da, parent,
-							  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-			if ((slen <= 0) && internal) {
-				slen = fr_dict_attr_by_oid_substr(NULL, &da, internal,
-							  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
+			slen = fr_dict_attr_by_oid_substr(&err, &da, parent, &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
+			if ((err != FR_DICT_ATTR_OK) && internal) {
+				slen = fr_dict_attr_by_oid_substr(&err, &da, internal,
+								  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
 			}
-			if (slen <= 0) {
+			if (err != FR_DICT_ATTR_OK) {
 			do_unknown:
 				slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, parent,
 									&FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-				if (slen <= 0) {
+				if (slen < 0) {
 					p += -slen;
 
 				error:

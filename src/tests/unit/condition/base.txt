@@ -28,7 +28,7 @@ condition (|| b)
 match ERROR offset 2: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 condition ((ok || handled) foo)
-match ERROR offset 17: Unexpected text after condition
+match ERROR offset 18: Unexpected text after condition
 
 # escapes in names are illegal
 condition (ok\ foo || handled)
@@ -38,13 +38,13 @@ condition (Service-Type == 000-111)
 match ERROR offset 18: enum values must contain at least one alpha character
 
 condition (ok FOO handled)
-match ERROR offset 4: Invalid operator
+match ERROR offset 5: Invalid operator
 
 condition (ok !x handled)
-match ERROR offset 4: Invalid operator
+match ERROR offset 5: Invalid operator
 
 condition (ok =x handled)
-match ERROR offset 4: Invalid operator
+match ERROR offset 5: Invalid operator
 
 #
 # Re-enable when we have proper bareword xlat tokenization
@@ -71,7 +71,7 @@ condition !(ok)
 match !ok
 
 condition !!ok
-match ERROR offset 1: Double negation is invalid
+match ERROR offset 2: Double negation is invalid
 
 condition !(!ok)
 match ok
@@ -96,7 +96,7 @@ condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 match !(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)
 
 condition ((a == b) || (c == d)))
-match ERROR offset 22: Unexpected closing brace
+match ERROR offset 23: Unexpected closing brace
 
 condition (handled && (&Packet-Type == Access-Challenge))
 match  handled && (&Packet-Type == Access-Challenge)
@@ -110,13 +110,13 @@ condition handled &&&Packet-Type == Access-Challenge
 match handled && &Packet-Type == Access-Challenge
 
 condition &reply == &request
-match ERROR offset 0: Cannot use list references in condition
+match ERROR offset 1: Cannot use list references in condition
 
 condition &reply == "hello"
-match ERROR offset 0: Cannot use list references in condition
+match ERROR offset 1: Cannot use list references in condition
 
 condition "hello" == &reply
-match ERROR offset 11: Cannot use list references in condition
+match ERROR offset 12: Cannot use list references in condition
 
 
 #
@@ -132,7 +132,7 @@ condition !&User-Name != &User-Password
 match &User-Name == &User-Password
 
 condition <ipv6addr>::1
-match ERROR offset 0: Invalid cast from ipv6addr to bool.  Unsupported
+match ERROR offset 1: Invalid cast from ipv6addr to bool.  Unsupported
 
 condition <ipaddr>&Filter-Id == &Framed-IP-Address
 match <ipaddr>&Filter-Id == &Framed-IP-Address
@@ -158,23 +158,23 @@ match &Framed-IP-Address > 127.0.0.1
 
 # =* and !* are only for attrs / lists
 condition "foo" !* bar
-match ERROR offset 6: Invalid operator !*
+match ERROR offset 7: Invalid operator !*
 
 condition "foo" =* bar
-match ERROR offset 6: Invalid operator =*
+match ERROR offset 7: Invalid operator =*
 
 # existence checks don't need the RHS
 condition &User-Name =* bar
-match ERROR offset 11: Invalid operator =*
-
-condition &User-Name !* bar
-match ERROR offset 11: Invalid operator !*
-
-condition !&User-Name =* bar
 match ERROR offset 12: Invalid operator =*
 
-condition !&User-Name !* bar
+condition &User-Name !* bar
 match ERROR offset 12: Invalid operator !*
+
+condition !&User-Name =* bar
+match ERROR offset 13: Invalid operator =*
+
+condition !&User-Name !* bar
+match ERROR offset 13: Invalid operator !*
 
 # redundant casts get squashed
 condition <ipaddr>&Framed-IP-Address == 127.0.0.1
@@ -222,7 +222,7 @@ condition <integer>X == 1
 match ERROR offset 10: Failed parsing string as type 'uint32'
 
 condition &NAS-Port == X
-match ERROR offset 13: Failed parsing string as type 'uint32'
+match ERROR offset 14: Failed parsing string as type 'uint32'
 
 #
 #  The RHS is a static string, so this gets mashed to a literal,
@@ -337,7 +337,7 @@ condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 match true
 
 condition (/foo/)
-match ERROR offset 1: Unexpected regular expression
+match ERROR offset 2: Unexpected regular expression
 
 #
 #  Tests for (FOO).
@@ -370,7 +370,7 @@ condition ('a')
 match true
 
 condition (a)
-match ERROR offset 1: Expected a module return code
+match ERROR offset 2: Expected a module return code
 
 #
 #  Module return codes are OK

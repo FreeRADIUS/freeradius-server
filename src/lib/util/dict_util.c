@@ -22,12 +22,16 @@
  */
 RCSID("$Id$")
 
+#define _DICT_PRIVATE 1
+
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/dict_fixup_priv.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/atexit.h>
 
 #ifdef HAVE_SYS_STAT_H
 #  include <sys/stat.h>
@@ -1801,13 +1805,13 @@ ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const *
  * @param[in] tt		Terminal strings.
  * @return
  *	- >0 the number of bytes consumed.
- *	- <= 0 Parse error occurred here.
+ *	- <0 Parse error occurred here.
  */
-ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
-			      fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
-			      fr_sbuff_t *in, fr_sbuff_term_t const *tt)
+fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
+			        fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
+			        fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 {
-	fr_sbuff_marker_t	start;
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 	uint32_t		num = 0;
 	fr_sbuff_parse_error_t	sberr;
 	fr_dict_attr_t const	*child;
@@ -1815,8 +1819,6 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 	if (err) *err = FR_DICT_ATTR_OK;
 
 	*out = NULL;
-
-	fr_sbuff_marker(&start, in);
 
 	switch (parent->type) {
 	case FR_TYPE_STRUCTURAL:
@@ -1828,20 +1830,20 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 				   "Error at OID \"%.*s\"",
 				   parent->name,
 				   fr_type_to_str(parent->type),
-				   (int)fr_sbuff_remaining(in),
-				   fr_sbuff_current(in));
+				   (int)fr_sbuff_remaining(&our_in),
+				   fr_sbuff_current(&our_in));
 		if (err) *err =FR_DICT_ATTR_NO_CHILDREN;
-		return -fr_sbuff_marker_release_behind(&start);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
-	fr_sbuff_out(&sberr, &num, in);
+	fr_sbuff_out(&sberr, &num, &our_in);
 	switch (sberr) {
 	/*
 	 *	Lookup by number
 	 */
 	case FR_SBUFF_PARSE_OK:
-		if (!fr_sbuff_is_char(in, '.') && !fr_sbuff_is_terminal(in, tt)) {
-			fr_sbuff_set(in, &start);	/* Reset to the start */
+		if (!fr_sbuff_is_char(&our_in, '.') && !fr_sbuff_is_terminal(&our_in, tt)) {
+			fr_sbuff_set_to_start(&our_in);
 			goto oid_str;
 		}
 
@@ -1850,10 +1852,7 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 			fr_strerror_printf("Failed resolving child %u in context %s",
 					   num, parent->name);
 			if (err) *err = FR_DICT_ATTR_NOTFOUND;
-			fr_sbuff_set(in, &start);		/* Reset to start of number */
-			fr_sbuff_marker_release(&start);
-
-			return 0;
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 		break;
 
@@ -1864,17 +1863,14 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 	case FR_SBUFF_PARSE_ERROR_TRAILING:
 	{
 		fr_dict_attr_err_t	our_err;
-		ssize_t			slen;
-
 	oid_str:
-		slen = fr_dict_attr_by_name_substr(&our_err, &child, parent, in, tt);
-		if (our_err != FR_DICT_ATTR_OK) {
+		if (fr_dict_attr_by_name_substr(&our_err, &child, parent, &our_in, tt) < 0) {
 			fr_strerror_printf("Failed resolving \"%.*s\" in context %s",
-					   (int)fr_sbuff_remaining(in),
-					   fr_sbuff_current(in),
+					   (int)fr_sbuff_remaining(&our_in),
+					   fr_sbuff_current(&our_in),
 					   parent->name);
 			if (err) *err = our_err;
-			return slen - fr_sbuff_marker_release_behind(&start);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 	}
 		break;
@@ -1882,77 +1878,70 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 	default:
 		fr_strerror_printf("Invalid OID component (%s) \"%.*s\"",
 				   fr_table_str_by_value(sbuff_parse_error_table, sberr, "<INVALID>"),
-				   (int)fr_sbuff_remaining(in), fr_sbuff_current(in));
+				   (int)fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-		return -fr_sbuff_marker_release_behind(&start);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	child = dict_attr_alias(err, child);
-	if (unlikely(!child)) return 0;
+	if (unlikely(!child)) FR_SBUFF_ERROR_RETURN(&our_in);
 
 	*out = child;
 
-	return fr_sbuff_marker_release_behind(&start);
+	return fr_sbuff_set(in, &our_in);
 }
 
 /** Resolve an attribute using an OID string
  *
  * @note Will leave the sbuff pointing at the component the error occurred at
  *	 so that the caller can attempt to process the component in another way.
+ *	 An err pointer should be provided in order to determine if an error
+ *	 ocurred.
  *
  * @param[out] err		The parsing error that occurred.
  * @param[out] out		The deepest attribute we resolved.
  * @param[in] parent		Where to resolve relative attributes from.
  * @param[in] in		string to parse.
  * @param[in] tt		Terminal strings.
- * @return
- *	- >0 the number of bytes consumed.
- *	- <= 0 Parse error occurred here.
+ * @return The number of bytes of name consumed.
  */
-ssize_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
-				   fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
-				   fr_sbuff_t *in, fr_sbuff_term_t const *tt)
+fr_slen_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
+				     fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
+				     fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 {
-	fr_sbuff_marker_t	start, c_s;
+	fr_sbuff_t		our_in = FR_SBUFF(in);
+	fr_sbuff_marker_t	m_c;
 	fr_dict_attr_t const	*our_parent = parent;
 
-	fr_sbuff_marker(&start, in);
-	fr_sbuff_marker(&c_s, in);
+	fr_sbuff_marker(&m_c, &our_in);
 
 	/*
 	 *	If the OID doesn't begin with '.' we
 	 *	resolve it from the root.
 	 */
-
 #if 0
-	if (!fr_sbuff_next_if_char(in, '.')) our_parent = fr_dict_root(fr_dict_by_da(parent));
+	if (!fr_sbuff_next_if_char(&our_in, '.')) our_parent = fr_dict_root(fr_dict_by_da(parent));
 #else
-	(void) fr_sbuff_next_if_char(in, '.');
+	(void) fr_sbuff_next_if_char(&our_in, '.');
 #endif
 	*out = NULL;
 
 	for (;;) {
-		ssize_t			slen;
 		fr_dict_attr_t const	*child;
 
-		slen = fr_dict_oid_component(err, &child, our_parent, in, tt);
-		if ((slen <= 0) || !child) {
-			ssize_t ret = slen - fr_sbuff_behind(&start);
-
-			fr_sbuff_set(in, &c_s);
-			fr_sbuff_marker_release(&start);
-
-			return ret;
+		if ((fr_dict_oid_component(err, &child, our_parent, &our_in, tt) < 0) || !child) {
+			fr_sbuff_set(&our_in, &m_c);	/* Reset to the start of the last component */
+			break;	/* Resolved as much as we can */
 		}
 
 		our_parent = child;
 		*out = child;
 
-		fr_sbuff_set(&c_s, in);
-		if (!fr_sbuff_next_if_char(in, '.')) break;
+		fr_sbuff_set(&m_c, &our_in);
+		if (!fr_sbuff_next_if_char(&our_in, '.')) break;
 	}
 
-	return fr_sbuff_marker_release_behind(&start);
+	return fr_sbuff_set(in, &our_in);
 }
 
 /** Resolve an attribute using an OID string
@@ -1969,7 +1958,8 @@ fr_dict_attr_t const *fr_dict_attr_by_oid(fr_dict_attr_err_t *err, fr_dict_attr_
 	fr_sbuff_t		sbuff = FR_SBUFF_IN(oid, strlen(oid));
 	fr_dict_attr_t const	*da;
 
-	if (fr_dict_attr_by_oid_substr(err, &da, parent, &sbuff, NULL) <= 0) return NULL;
+	fr_dict_attr_by_oid_substr(err, &da, parent, &sbuff, NULL);
+	if (err != FR_DICT_ATTR_OK) return NULL;
 
 	return da;
 }
@@ -1996,22 +1986,20 @@ dl_t *fr_dict_dl(fr_dict_t const *dict)
 	return dict->dl;
 }
 
-ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
-				fr_dict_t **out, fr_sbuff_t *name, fr_dict_t const *dict_def)
+fr_slen_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
+				  fr_dict_t **out, fr_sbuff_t *name, fr_dict_t const *dict_def)
 {
 	fr_dict_attr_t		root;
 
+	fr_sbuff_t		our_name = FR_SBUFF(name);
 	fr_dict_t		*dict;
-	size_t			len;
+	fr_slen_t		slen;
 	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
-	fr_sbuff_t		our_name;
 
 	if (!dict_gctx || !name || !out) {
 		if (err) *err = FR_DICT_ATTR_EINVAL;
-		return 0;
+		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
-
-	our_name = FR_SBUFF(name);
 
 	memset(&root, 0, sizeof(root));
 
@@ -2019,18 +2007,18 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	 *	Advance p until we get something that's not part of
 	 *	the dictionary attribute name.
 	 */
-	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
-					    &our_name, SIZE_MAX,
-					    fr_dict_attr_allowed_chars);
-	if (len == 0) {
+	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
+					     &our_name, SIZE_MAX,
+					     fr_dict_attr_allowed_chars);
+	if (slen == 0) {
 		fr_strerror_const("Zero length attribute name");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-		return 0;
+		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
-	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
+	if (slen > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_const("Attribute name too long");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-		return -(FR_DICT_ATTR_MAX_NAME_LEN);
+		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
 
 	/*
@@ -2054,7 +2042,8 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 		if (strcasecmp(root.name, "internal") != 0) {
 			fr_strerror_printf("Unknown protocol '%s'", root.name);
 			memcpy(out, &dict_def, sizeof(*out));
-			return 0;
+			fr_sbuff_set_to_start(&our_name);
+			FR_SBUFF_ERROR_RETURN(&our_name);
 		}
 
 		dict = dict_gctx->internal;
@@ -2062,7 +2051,7 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 
 	*out = dict;
 
-	return (size_t)fr_sbuff_set(name, &our_name);
+	return fr_sbuff_set(name, &our_name);
 }
 
 /** Look up a protocol name embedded in another string
@@ -2074,18 +2063,12 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
  * @param[in] dict_def		The dictionary to return if no dictionary qualifier was found.
  * @return
  *	- 0 and *out != NULL.  Couldn't find a dictionary qualifier, so returned dict_def.
- *	- <= 0 on error and (*out == NULL) (offset as negative integer)
+ *	- < 0 on error and (*out == NULL) (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
  */
-ssize_t fr_dict_by_protocol_substr(fr_dict_attr_err_t *err, fr_dict_t const **out, fr_sbuff_t *name, fr_dict_t const *dict_def)
+fr_slen_t fr_dict_by_protocol_substr(fr_dict_attr_err_t *err, fr_dict_t const **out, fr_sbuff_t *name, fr_dict_t const *dict_def)
 {
-	ssize_t		slen;
-	fr_dict_t	*dict = NULL;
-
-	slen = dict_by_protocol_substr(err, &dict, name, dict_def);
-	*out = dict;
-
-	return slen;
+	return dict_by_protocol_substr(err, UNCONST(fr_dict_t **, out), name, dict_def);
 }
 
 /** Internal version of #fr_dict_by_protocol_name
@@ -2305,12 +2288,12 @@ fr_dict_attr_t const *fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root
  * @param[in] tt	Terminal sequences to use to determine the portion
  *			of in to search.
  * @return
- *	- <= 0 on failure.
+ *	- < 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-typedef ssize_t (*dict_attr_resolve_func_t)(fr_dict_attr_err_t *err,
-				   	   fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
-				   	   fr_sbuff_t *in, fr_sbuff_term_t const *tt);
+typedef fr_slen_t (*dict_attr_resolve_func_t)(fr_dict_attr_err_t *err,
+				   	      fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
+				   	      fr_sbuff_t *in, fr_sbuff_term_t const *tt);
 
 /** Internal function for searching for attributes in multiple dictionaries
  *
@@ -2328,17 +2311,15 @@ typedef ssize_t (*dict_attr_resolve_func_t)(fr_dict_attr_err_t *err,
  *	- >0 on success.
  */
 static inline CC_HINT(always_inline)
-ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-		         fr_dict_t const *dict_def,
-		         fr_sbuff_t *in, fr_sbuff_term_t const *tt,
-		         bool internal, bool foreign,
-		         dict_attr_resolve_func_t func)
+fr_slen_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+			   fr_dict_t const *dict_def,
+			   fr_sbuff_t *in, fr_sbuff_term_t const *tt,
+			   bool internal, bool foreign,
+			   dict_attr_resolve_func_t func)
 {
 	fr_dict_attr_err_t	our_err = FR_DICT_ATTR_OK;
 	fr_hash_iter_t  	iter;
 	fr_dict_t		*dict = NULL;
-
-	ssize_t			slen = 0;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 
 	if (internal && !dict_gctx->internal) internal = false;
@@ -2355,7 +2336,7 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 	 *	dict_def search in the specified dictionary
 	 */
 	if (dict_def) {
-		slen = func(&our_err, out, fr_dict_root(dict_def), &our_in, tt);
+		(void)func(&our_err, out, fr_dict_root(dict_def), &our_in, tt);
 		switch (our_err) {
 		case FR_DICT_ATTR_OK:
 			return fr_sbuff_set(in, &our_in);
@@ -2373,7 +2354,7 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 	 *	Next in the internal dictionary
 	 */
 	if (internal) {
-		slen = func(&our_err, out, fr_dict_root(dict_gctx->internal), &our_in, tt);
+		(void)func(&our_err, out, fr_dict_root(dict_gctx->internal), &our_in, tt);
 		switch (our_err) {
 		case FR_DICT_ATTR_OK:
 			return fr_sbuff_set(in, &our_in);
@@ -2468,7 +2449,7 @@ done:
 	if (err) *err = our_err;
 	*out = NULL;
 
-	FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
+	FR_SBUFF_ERROR_RETURN(&our_in);
 }
 
 /** Internal function for searching for attributes in multiple dictionaries
@@ -2477,16 +2458,16 @@ done:
  * the attribute identifier.
  */
 static inline CC_HINT(always_inline)
-ssize_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-				   fr_dict_t const *dict_def,
-				   fr_sbuff_t *in, fr_sbuff_term_t const *tt,
-				   bool internal, bool foreign,
-				   dict_attr_resolve_func_t func)
+fr_slen_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+				     fr_dict_t const *dict_def,
+				     fr_sbuff_t *in, fr_sbuff_term_t const *tt,
+				     bool internal, bool foreign,
+				     dict_attr_resolve_func_t func)
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_dict_attr_err_t	our_err;
 	fr_dict_t 		*initial;
-	ssize_t			slen;
+	fr_slen_t		slen;
 
 	/*
 	 *	Check for dictionary prefix
@@ -2496,8 +2477,7 @@ ssize_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const
 	error:
 		if (err) *err = our_err;
 		*out = NULL;
-
-		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*
@@ -2509,15 +2489,13 @@ ssize_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const
 		 */
 		if (!fr_sbuff_next_if_char(&our_in, '.')) {
 			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-			return 0;
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		internal = foreign = false;
 	}
 
-	slen = dict_attr_search(&our_err, out, initial, &our_in, tt, internal, foreign, func);
-	if (our_err != FR_DICT_ATTR_OK) goto error;
-
+	if (dict_attr_search(&our_err, out, initial, &our_in, tt, internal, foreign, func) < 0) goto error;
 	if (err) *err = FR_DICT_ATTR_OK;
 
 	return fr_sbuff_set(in, &our_in);
@@ -2543,13 +2521,13 @@ ssize_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const
  * @param[in] internal		If true, fallback to the internal dictionary.
  * @param[in] foreign		If true, fallback to foreign dictionaries.
  * @return
- *	- <= 0 on failure.
+ *	- < 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-ssize_t fr_dict_attr_search_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-						     fr_dict_t const *dict_def,
-						     fr_sbuff_t *name, fr_sbuff_term_t const *tt,
-						     bool internal, bool foreign)
+fr_slen_t fr_dict_attr_search_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+						       fr_dict_t const *dict_def,
+						       fr_sbuff_t *name, fr_sbuff_term_t const *tt,
+						       bool internal, bool foreign)
 {
 	return dict_attr_search_qualified(err, out, dict_def, name, tt,
 					  internal, foreign, fr_dict_attr_by_name_substr);
@@ -2572,13 +2550,13 @@ ssize_t fr_dict_attr_search_by_qualified_name_substr(fr_dict_attr_err_t *err, fr
  * @param[in] internal		If true, fallback to the internal dictionary.
  * @param[in] foreign		If true, fallback to foreign dictionaries.
  * @return
- *	- <= 0 on failure.
+ *	- < 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-ssize_t fr_dict_attr_search_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-					   fr_dict_t const *dict_def,
-					   fr_sbuff_t *name, fr_sbuff_term_t const *tt,
-					   bool internal, bool foreign)
+fr_slen_t fr_dict_attr_search_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+					     fr_dict_t const *dict_def,
+					     fr_sbuff_t *name, fr_sbuff_term_t const *tt,
+					     bool internal, bool foreign)
 {
 	return dict_attr_search_qualified(err, out, dict_def, name, tt,
 					  internal, foreign, fr_dict_attr_by_name_substr);
@@ -2592,6 +2570,8 @@ ssize_t fr_dict_attr_search_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr
  * @note If calling this function from the server any list or request qualifiers
  *  should be stripped first.
  *
+ * @note err should be checked to determine if a parse error ocurred.
+ *
  * @param[out] err		Why parsing failed. May be NULL.
  *				@see fr_dict_attr_err_t
  * @param[out] out		Dictionary found attribute.
@@ -2600,14 +2580,12 @@ ssize_t fr_dict_attr_search_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr
  * @param[in] tt		Terminal strings.
  * @param[in] internal		If true, fallback to the internal dictionary.
  * @param[in] foreign		If true, fallback to foreign dictionaries.
- * @return
- *	- <= 0 on failure.
- *	- The number of bytes of name consumed on success.
+ * @return The number of bytes of name consumed.
  */
-ssize_t fr_dict_attr_search_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-						    fr_dict_t const *dict_def,
-						    fr_sbuff_t *in, fr_sbuff_term_t const *tt,
-						    bool internal, bool foreign)
+fr_slen_t fr_dict_attr_search_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+						      fr_dict_t const *dict_def,
+						      fr_sbuff_t *in, fr_sbuff_term_t const *tt,
+						      bool internal, bool foreign)
 {
 	return dict_attr_search_qualified(err, out, dict_def, in, tt,
 					  internal, foreign, fr_dict_attr_by_oid_substr);
@@ -2621,6 +2599,8 @@ ssize_t fr_dict_attr_search_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_
  * @note If calling this function from the server any list or request qualifiers
  *  should be stripped first.
  *
+ * @note err should be checked to determine if a parse error ocurred.
+ *
  * @param[out] err		Why parsing failed. May be NULL.
  *				@see fr_dict_attr_err_t
  * @param[out] out		Dictionary found attribute.
@@ -2629,14 +2609,12 @@ ssize_t fr_dict_attr_search_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_
  * @param[in] tt		Terminal strings.
  * @param[in] internal		If true, fallback to the internal dictionary.
  * @param[in] foreign		If true, fallback to foreign dictionaries.
- * @return
- *	- <= 0 on failure.
- *	- The number of bytes of name consumed on success.
+ * @return The number of bytes of name consumed.
  */
-ssize_t fr_dict_attr_search_by_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-					  fr_dict_t const *dict_def,
-					  fr_sbuff_t *in, fr_sbuff_term_t const *tt,
-					  bool internal, bool foreign)
+fr_slen_t fr_dict_attr_search_by_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+					    fr_dict_t const *dict_def,
+					    fr_sbuff_t *in, fr_sbuff_term_t const *tt,
+					    bool internal, bool foreign)
 {
 	return dict_attr_search_qualified(err, out, dict_def, in, tt,
 					  internal, foreign, fr_dict_attr_by_oid_substr);
@@ -2659,12 +2637,15 @@ fr_dict_attr_t const *fr_dict_attr_search_by_qualified_oid(fr_dict_attr_err_t *e
 	ssize_t			slen;
 	fr_sbuff_t		our_name;
 	fr_dict_attr_t const	*da;
+	fr_dict_attr_err_t	our_err;
 
 	fr_sbuff_init_in(&our_name, name, strlen(name));
 
-	slen = fr_dict_attr_search_by_qualified_oid_substr(err, &da, dict_def, &our_name, NULL, internal, foreign);
-	if (slen <= 0) return NULL;
-
+	slen = fr_dict_attr_search_by_qualified_oid_substr(&our_err, &da, dict_def, &our_name, NULL, internal, foreign);
+	if (our_err != FR_DICT_ATTR_OK) {
+		if (err) *err = our_err;
+		return NULL;
+	}
 	if ((size_t)slen != fr_sbuff_len(&our_name)) {
 		fr_strerror_printf("Trailing garbage after attr string \"%s\"", name);
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
@@ -2700,8 +2681,8 @@ fr_dict_attr_t const *fr_dict_attr_search_by_qualified_oid(fr_dict_attr_err_t *e
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-				    fr_dict_attr_t const *parent, fr_sbuff_t *name, UNUSED fr_sbuff_term_t const *tt)
+fr_slen_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+				      fr_dict_attr_t const *parent, fr_sbuff_t *name, UNUSED fr_sbuff_term_t const *tt)
 {
 	fr_dict_attr_t const	*da;
 	size_t			len;
@@ -2717,12 +2698,12 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 	if (len == 0) {
 		fr_strerror_const("Zero length attribute name");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-		return 0;
+		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_const("Attribute name too long");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-		return -(FR_DICT_ATTR_MAX_NAME_LEN);
+		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
 
 	ref = fr_dict_attr_ref(parent);
@@ -2732,18 +2713,20 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 	if (!namespace) {
 		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
 		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
-		return -1;
+		fr_sbuff_set_to_start(&our_name);
+		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
 
 	da = fr_hash_table_find(namespace, &(fr_dict_attr_t){ .name = buffer });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
 		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", buffer, parent->name);
-		return 0;
+		fr_sbuff_set_to_start(&our_name);
+		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
 
 	da = dict_attr_alias(err, da);
-	if (unlikely(!da)) return 0;
+	if (unlikely(!da)) FR_SBUFF_ERROR_RETURN(&our_name);
 
 	*out = da;
 	if (err) *err = FR_DICT_ATTR_OK;
@@ -2948,7 +2931,7 @@ fr_dict_enum_value_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const 
 /*
  *	Get a value by its name, keyed off of an attribute, from an sbuff
  */
-ssize_t	fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t const *da, fr_sbuff_t *in)
+fr_slen_t fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t const *da, fr_sbuff_t *in)
 {
 	fr_dict_attr_ext_enumv_t	*ext;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
@@ -3057,12 +3040,13 @@ fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t 
 		if (fr_sbuff_used(&our_in) == 0) {
 			fr_strerror_const("VALUE name is empty");
 			if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND;
-			return -1;
+			return fr_sbuff_error(&our_in);
 		}
 
 		fr_strerror_const("VALUE name must contain at least one alpha character");
 		if (err) *err = FR_SBUFF_PARSE_ERROR_FORMAT;
-		return -1;
+		fr_sbuff_set_to_start(&our_in);	/* Marker should be at the start of the enum */
+		return fr_sbuff_error(&our_in);
 	}
 
 	/*

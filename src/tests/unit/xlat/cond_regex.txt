@@ -7,17 +7,17 @@ xlat_purify &User-Name !~ /^foo\nbar$/i
 match (&User-Name !~ /^foo\nbar$/i)
 
 xlat_purify (&User-Name =~ "handled")
-match ERROR offset 15: Expected regular expression
+match ERROR offset 16: Expected regular expression
 
 xlat_purify (&User-Name == /foo/)
-match ERROR offset 15: Unexpected regular expression
+match ERROR offset 16: Unexpected regular expression
 
 # @todo - this should be allowed?
 xlat_purify &User-Name =~ &Filter-Id
-match ERROR offset 14: Expected regular expression
+match ERROR offset 15: Expected regular expression
 
 xlat_expr &User-Name =~ (/foo/)
-match ERROR offset 14: Expected regular expression
+match ERROR offset 15: Expected regular expression
 
 #
 #  Flags
@@ -65,13 +65,13 @@ xlat_purify <integer>&Tmp-String-0 =~ /foo/
 match ((uint32)&Tmp-String-0 =~ /foo/)
 
 xlat_purify &Tmp-String-0 =~ <integer>/foo/
-match ERROR offset 17: Expected regular expression
+match ERROR offset 18: Expected regular expression
 
 xlat_expr %{33}
-match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
+match ERROR offset 3: Invalid regex reference.  Must be in range 0-32
 
 xlat_purify &User-Name == /foo/
-match ERROR offset 14: Unexpected regular expression
+match ERROR offset 15: Unexpected regular expression
 
 #
 #  single-quoted strings in regexes!

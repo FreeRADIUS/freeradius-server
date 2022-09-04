@@ -4,10 +4,10 @@ condition &User-Name !~ /^foo\nbar$/
 match !&User-Name =~ /^foo\nbar$/
 
 condition (ok =~ handled)
-match ERROR offset 7: Expected regular expression
+match ERROR offset 8: Expected regular expression
 
 condition (ok == /foo/)
-match ERROR offset 7: Unexpected regular expression
+match ERROR offset 8: Unexpected regular expression
 
 #
 #  bare words are cast to strings
@@ -69,7 +69,7 @@ match <string>&Tmp-Integer-0 =~ /%{Tmp-Integer-0}/
 #  Cannot add a bad cast
 #
 condition <integer>&Tmp-String-0 =~ /foo/
-match ERROR offset 9: Casts cannot be used with regular expressions
+match ERROR offset 10: Casts cannot be used with regular expressions
 
 condition &Tmp-String-0 =~ <integer>/foo/
 match ERROR offset 28: Casts cannot be used with regular expressions
@@ -79,10 +79,10 @@ xlat %{1}
 match %{1}
 
 xlat %{33}
-match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
+match ERROR offset 3: Invalid regex reference.  Must be in range 0-32
 
 condition &User-Name == /foo/
-match ERROR offset 14: Unexpected regular expression
+match ERROR offset 15: Unexpected regular expression
 
 count
 match 43

@@ -907,12 +907,24 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
  */
 static inline fr_slen_t _fr_sbuff_error(fr_sbuff_t *sbuff, char const *err)
 {
-	fr_sbuff_t *parent = sbuff->parent;
+	fr_sbuff_t	*parent = sbuff->parent;
+	fr_slen_t	slen;
 
 	if (sbuff->err) err = sbuff->err;
 	if (parent) parent->err = err;
 
-	return -((err - fr_sbuff_start(sbuff)) + 1);
+	slen = -((err - fr_sbuff_start(sbuff)) + 1);
+
+#ifdef __clang_analyzer__
+	/*
+	 *	Convince clang that the return value
+	 *	is always negative. It never can be
+	 *	else the sbuff code is very broken.
+	 */
+	if (slen >= 0) return -1;
+#endif
+
+	return slen;
 }
 
 /** Return the current position as an error marker
@@ -970,11 +982,6 @@ static inline fr_slen_t _fr_sbuff_error(fr_sbuff_t *sbuff, char const *err)
  *
  */
 #define FR_SBUFF_ERROR_RETURN(_sbuff_or_marker) return fr_sbuff_error(_sbuff_or_marker)
-
-/** Return the current adjusted position in the sbuff as a negative offset
- *
- */
-#define FR_SBUFF_ERROR_RETURN_ADJ(_sbuff, _slen) return -((fr_sbuff_used(_sbuff) + ((_slen) * -1)))
 
 /** Check if _len bytes are available in the sbuff, and if not return the number of bytes we'd need
  *

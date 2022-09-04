@@ -409,31 +409,28 @@ fr_dict_attr_t	*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
  *	- The number of bytes parsed on success.
  *	- <= 0 on failure.  Negative offset indicates parse error position.
  */
-ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
-					 fr_dict_attr_err_t *err, fr_dict_attr_t **out,
-			      	  	 fr_dict_attr_t const *parent,
-			      	  	 fr_sbuff_t *in, fr_sbuff_term_t const *tt)
+fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
+					   fr_dict_attr_err_t *err, fr_dict_attr_t **out,
+			      		   fr_dict_attr_t const *parent,
+			      		   fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 {
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_dict_attr_t const	*our_parent;
 	fr_dict_attr_t		*n = NULL;
 	fr_dict_attr_err_t	our_err;
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = true
 				};
-	fr_sbuff_marker_t	start;
-	ssize_t			slen;
 	bool			is_raw;
 
 	*out = NULL;
 
-	fr_sbuff_marker(&start, in);
-
-	is_raw = fr_sbuff_adv_past_str_literal(in, "raw");
+	is_raw = fr_sbuff_adv_past_str_literal(&our_in, "raw");
 
 	/*
 	 *	Resolve all the known bits first...
 	 */
-	slen = fr_dict_attr_by_oid_substr(&our_err, &our_parent, parent, in, tt);
+	(void)fr_dict_attr_by_oid_substr(&our_err, &our_parent, parent, &our_in, tt);
 	switch (our_err) {
 	/*
 	 *	Um this is awkward, we were asked to
@@ -458,7 +455,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 			if (err) *err = FR_DICT_ATTR_OK;
 		}
 
-		return fr_sbuff_marker_release_behind(&start);
+		return fr_sbuff_set(in, &our_in);
 
 	/*
 	 *	This is what we want... Everything
@@ -491,8 +488,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	 */
 	default:
 		if (err) *err = our_err;
-		fr_sbuff_marker_release(&start);
-		return slen;
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*
@@ -514,15 +510,15 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	 *	fr_dict_attr_by_oid_substr parsed *something*
 	 *	we expected the next component to be a '.'.
 	 */
-	if (fr_sbuff_behind(&start) > 0) {
-		if (!fr_sbuff_next_if_char(in, '.')) {	/* this is likely a logic bug if the test fails ? */
-			fr_strerror_printf("Missing OID component separator %s", fr_sbuff_current(in));
+	if (fr_sbuff_ahead(&our_in) > 0) {
+		if (!fr_sbuff_next_if_char(&our_in, '.')) {	/* this is likely a logic bug if the test fails ? */
+			fr_strerror_printf("Missing OID component separator %.*s", (int)fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
 		error:
 			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 			talloc_free(n);
-			return -fr_sbuff_marker_release_reset_behind(&start);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
-	} else if (fr_sbuff_next_if_char(in, '.')) {
+	} else if (fr_sbuff_next_if_char(&our_in, '.')) {
 		our_parent = fr_dict_root(fr_dict_by_da(parent));		/* From the root */
 	}
 
@@ -533,7 +529,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 		uint32_t		num;
 		fr_sbuff_parse_error_t	sberr;
 
-		fr_sbuff_out(&sberr, &num, in);
+		fr_sbuff_out(&sberr, &num, &our_in);
 		switch (sberr) {
 		case FR_SBUFF_PARSE_OK:
 			switch (our_parent->type) {
@@ -545,7 +541,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 			{
 				fr_dict_attr_t	*ni;
 
-				if (fr_sbuff_next_if_char(in, '.')) {
+				if (fr_sbuff_next_if_char(&our_in, '.')) {
 					ni = fr_dict_unknown_vendor_afrom_num(n, our_parent, num);
 					if (!ni) goto error;
 					our_parent = ni;
@@ -564,7 +560,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 			{
 				fr_dict_attr_t	*ni;
 
-				if (fr_sbuff_next_if_char(in, '.')) {
+				if (fr_sbuff_next_if_char(&our_in, '.')) {
 					ni = fr_dict_unknown_tlv_afrom_num(n, our_parent, num);
 					if (!ni) goto error;
 					our_parent = ni;
@@ -578,7 +574,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 				 *	Leaf type with more components
 				 *	is an error.
 				 */
-				if (fr_sbuff_is_char(in, '.')) {
+				if (fr_sbuff_is_char(&our_in, '.')) {
 					fr_strerror_printf("Interior OID component cannot proceed a %s type",
 							   fr_type_to_str(our_parent->type));
 					goto error;
@@ -594,8 +590,8 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 		{
 			fr_sbuff_marker_t c_start;
 
-			fr_sbuff_marker(&c_start, in);
-			fr_sbuff_adv_past_allowed(in, FR_DICT_ATTR_MAX_NAME_LEN, fr_dict_attr_allowed_chars, NULL);
+			fr_sbuff_marker(&c_start, &our_in);
+			fr_sbuff_adv_past_allowed(&our_in, FR_DICT_ATTR_MAX_NAME_LEN, fr_dict_attr_allowed_chars, NULL);
 			fr_strerror_printf("Unknown attribute \"%.*s\" for parent \"%s\"",
 					   (int)fr_sbuff_behind(&c_start), fr_sbuff_current(&c_start), our_parent->name);
 			goto error;
@@ -608,7 +604,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 
 	*out = n;
 
-	return fr_sbuff_marker_release_behind(&start);
+	return fr_sbuff_set(in, &our_in);
 }
 
 /** Fixup the parent of an unknown attribute using an equivalent known attribute

@@ -2547,11 +2547,16 @@ static ssize_t command_tmpl_rule_allow_unresolved(UNUSED TALLOC_CTX *ctx, tmpl_r
 
 static ssize_t command_tmpl_rule_attr_parent(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	return fr_dict_attr_by_oid_substr(NULL,
+	fr_dict_attr_err_t	err;
+	fr_slen_t		slen;
+
+	slen = fr_dict_attr_by_oid_substr(&err,
 					  &rules->attr.parent,
 					  rules->attr.dict_def ? fr_dict_root(rules->attr.dict_def) :
 					  			 fr_dict_root(fr_dict_internal()),
 					  value, NULL);
+	if (err != FR_DICT_ATTR_OK) FR_SBUFF_ERROR_RETURN(value);
+	return slen;
 }
 
 static ssize_t command_tmpl_rule_disallow_internal(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)

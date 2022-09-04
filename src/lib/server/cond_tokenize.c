@@ -877,7 +877,7 @@ done:
 	return 0;
 }
 
-static int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs)
+static CC_HINT(nonnull) int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs)
 {
 	if (tmpl_is_list(vpt)) {
 		fr_strerror_const("Cannot use list references in condition");
@@ -901,9 +901,9 @@ static int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_marker_t *m_
 	return 0;
 }
 
-static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
-				     fr_sbuff_marker_t *opd_start, fr_sbuff_t *in,
-				     tmpl_rules_t const *t_rules, bool simple_parse)
+static fr_slen_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
+				       fr_sbuff_marker_t *opd_start, fr_sbuff_t *in,
+				       tmpl_rules_t const *t_rules, bool simple_parse)
 {
 	fr_sbuff_term_t const 		bareword_terminals =
 					FR_SBUFF_TERMS(
@@ -936,7 +936,7 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 	fr_type_t			cast = FR_TYPE_NULL;
 	fr_sbuff_parse_rules_t		tmp_p_rules;
 	fr_sbuff_parse_rules_t const	*p_rules;
-	ssize_t				slen;
+	fr_slen_t			slen;
 	tmpl_rules_t			our_t_rules = *t_rules;
 
 	*out = NULL;
@@ -944,8 +944,7 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 	/*
 	 *	Parse (optional) cast
 	 */
-	slen = tmpl_cast_from_substr(&our_t_rules, &our_in);
-	if (slen < 0) return slen;
+	if (tmpl_cast_from_substr(&our_t_rules, &our_in) < 0) return fr_sbuff_error(&our_in);
 
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 	fr_sbuff_marker(&m, &our_in);
@@ -982,18 +981,15 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 	}
 
 	slen = tmpl_afrom_substr(c, &vpt, &our_in, type, p_rules, &our_t_rules);
-	if (!vpt) {
-		fr_sbuff_advance(&our_in, slen * -1);
-
+	if (slen < 0) {
 	error:
 		talloc_free(vpt);
-		return -(fr_sbuff_used_total(&our_in));
+		return fr_sbuff_error(&our_in);
 	}
 
 	if ((type != T_BARE_WORD) && !fr_sbuff_next_if_char(&our_in, fr_token_quote[type])) { /* Quoting */
 		fr_strerror_const("Unterminated string");
 		fr_sbuff_set(&our_in, &m);
-		fr_sbuff_advance(&our_in, 1);
 		goto error;
 	}
 
@@ -1018,11 +1014,7 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 			goto error;
 		}
 
-		slen = tmpl_regex_flags_substr(vpt, &our_in, &bareword_terminals);
-		if (slen < 0) {
-			fr_sbuff_advance(&our_in, slen * -1);
-			goto error;
-		}
+		if (tmpl_regex_flags_substr(vpt, &our_in, &bareword_terminals) < 0) goto error;
 
 		/*
 		 *	We've now got the expressions and
@@ -1030,10 +1022,8 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 		 *	regex.
 		 */
 		if (!simple_parse && tmpl_is_regex_uncompiled(vpt)) {
-			slen = tmpl_regex_compile(vpt, true);
-			if (slen <= 0) {
+			if (tmpl_regex_compile(vpt, true) < 0) {
 				fr_sbuff_set(&our_in, &m);	/* Reset to start of expression */
-				fr_sbuff_advance(&our_in, slen * -1);
 				goto error;
 			}
 		}
@@ -1080,9 +1070,9 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
  */
-static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
-			     CONF_SECTION *cs, fr_sbuff_t *in, int brace,
-			     tmpl_rules_t const *t_rules, bool simple_parse)
+static fr_slen_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
+			       CONF_SECTION *cs, fr_sbuff_t *in, int brace,
+			       tmpl_rules_t const *t_rules, bool simple_parse)
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	ssize_t			slen;
@@ -1101,7 +1091,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		fr_strerror_const("Empty condition is invalid");
 	error:
 		talloc_free(c);
-		return -(fr_sbuff_used_total(&our_in));
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*
@@ -1133,11 +1123,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		/*
 		 *	Children are allocated from the parent.
 		 */
-		slen = cond_tokenize(c, &c->data.child, cs, &our_in, brace + 1, t_rules, simple_parse);
-		if (slen <= 0) {
-			fr_sbuff_advance(&our_in, slen * -1);
-			goto error;
-		}
+		if (cond_tokenize(c, &c->data.child, cs, &our_in, brace + 1, t_rules, simple_parse) < 0) goto error;
 
 		if (!c->data.child) {
 			fr_strerror_const("Empty condition is invalid");
@@ -1159,11 +1145,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	 *	Grab the LHS
 	 */
 	fr_sbuff_marker(&m_lhs_cast, &our_in);
-	slen = cond_tokenize_operand(c, &lhs, &m_lhs, &our_in, t_rules, simple_parse);
-	if (!lhs) {
-		fr_sbuff_advance(&our_in, slen * -1);
-		goto error;
-	}
+	if (cond_tokenize_operand(c, &lhs, &m_lhs, &our_in, t_rules, simple_parse) < 0) goto error;
 
 #ifdef HAVE_REGEX
 	/*
@@ -1308,11 +1290,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		 *	Grab the RHS
 		 */
 		fr_sbuff_marker(&m_rhs_cast, &our_in);
-		slen = cond_tokenize_operand(c, &rhs, &m_rhs, &our_in, t_rules, simple_parse);
-		if (!rhs) {
-			fr_sbuff_advance(&our_in, slen * -1);
-			goto error;
-		}
+		if (cond_tokenize_operand(c, &rhs, &m_rhs, &our_in, t_rules, simple_parse) < 0) goto error;
 
 		/*
 		 *	Groups can't be on the RHS of a comparison, either
@@ -1429,12 +1407,7 @@ closing_brace:
 		 *	siblings are allocated from their older
 		 *	siblings.
 		 */
-		slen = cond_tokenize(child, &child->next, cs, &our_in, brace, t_rules, simple_parse);
-		if (slen <= 0) {
-			fr_sbuff_advance(&our_in, slen * -1);
-			goto error;
-		}
-
+		if (cond_tokenize(child, &child->next, cs, &our_in, brace, t_rules, simple_parse) < 0) goto error;
 		c->next = child;
 		goto done;
 	}
@@ -1445,16 +1418,13 @@ closing_brace:
 	 *	siblings are allocated from their older
 	 *	siblings.
 	 */
-	slen = cond_tokenize(c, &c->next, cs, &our_in, brace, t_rules, simple_parse);
-	if (slen <= 0) {
-		fr_sbuff_advance(&our_in, slen * -1);
-		goto error;
-	}
+	if (cond_tokenize(c, &c->next, cs, &our_in, brace, t_rules, simple_parse) < 0) goto error;
 
 done:
 	if (cond_normalise(ctx, lhs ? lhs->quote : T_INVALID, &c) < 0) {
 		talloc_free(c);
-		return 0;
+		fr_sbuff_set_to_start(&our_in);
+		return fr_sbuff_error(&our_in);
 	}
 
 	*out = c;

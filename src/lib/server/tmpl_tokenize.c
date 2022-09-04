@@ -1533,7 +1533,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 					      unsigned int depth)
 {
 	uint32_t		oid = 0;
-	ssize_t			slen;
 	tmpl_attr_t		*ar = NULL;
 	fr_dict_attr_t const	*da;
 	fr_sbuff_marker_t	m_s;
@@ -1563,11 +1562,11 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	No parent means we need to go hunting through all the dictionaries
 	 */
 	if (!our_parent) {
-		slen = fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
-								    t_rules->dict_def,
-								    name, p_rules ? p_rules->terminals : NULL,
-								    !t_rules->disallow_internal,
-								    t_rules->allow_foreign);
+		(void)fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
+								   t_rules->dict_def,
+								   name, p_rules ? p_rules->terminals : NULL,
+								   !t_rules->disallow_internal,
+								   t_rules->allow_foreign);
 		/*
 		 *	We can't know which dictionary the
 		 *	attribute will be resolved in, so the
@@ -1580,11 +1579,11 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	or its reference in the case of group attributes.
 	 */
 	} else {
-		slen = fr_dict_attr_by_name_substr(&dict_err,
-						   &da,
-						   namespace,
-						   name,
-						   p_rules ? p_rules->terminals : NULL);
+		(void)fr_dict_attr_by_name_substr(&dict_err,
+						  &da,
+						  namespace,
+						  name,
+						  p_rules ? p_rules->terminals : NULL);
 		/*
 		 *	Allow fallback to internal attributes
 		 *	if the parent was a group, and we're
@@ -1613,11 +1612,9 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	switch (dict_err) {
 	case FR_DICT_ATTR_NO_CHILDREN:
 		if (our_parent && our_parent->flags.is_unknown) break;
-		fr_sbuff_advance(name, slen * -1);
 		goto error;
 
 	case FR_DICT_ATTR_NOT_DESCENDENT:
-		fr_sbuff_advance(name, slen * -1);
 		goto error;
 
 	default:
@@ -1704,7 +1701,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		}
 
 		MEM(ar = talloc(ctx, tmpl_attr_t));
-
 		switch (namespace->type) {
 		case FR_TYPE_VSA:
 			da_unknown = fr_dict_unknown_vendor_afrom_num(ar, namespace, oid);
@@ -2317,21 +2313,19 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	fr_value_box_t	tmp;
 	tmpl_t		*vpt;
-	fr_slen_t	slen;
 
 	if (!fr_type_is_leaf(t_rules->cast)) {
 		fr_strerror_printf("%s is not a valid cast type",
 				   fr_type_to_str(t_rules->cast));
-		return 0;
+		return fr_sbuff_error(&our_in);
 	}
 
 	vpt = tmpl_alloc_null(ctx);
-	slen = fr_value_box_from_substr(vpt, &tmp,
-					t_rules->cast, allow_enum ? t_rules->enumv : NULL,
-					&our_in, p_rules, false);
-	if (slen < 0) {
+	if (fr_value_box_from_substr(vpt, &tmp,
+				     t_rules->cast, allow_enum ? t_rules->enumv : NULL,
+				     &our_in, p_rules, false) < 0) {
 		talloc_free(vpt);
-		return slen;
+		return fr_sbuff_error(&our_in);
 	}
 
 	tmpl_init(vpt, TMPL_TYPE_DATA, quote, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
@@ -2354,11 +2348,11 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
  * @param[in] in	sbuff to parse.
  * @param[in] p_rules	formatting rules.
  * @return
- *	- 0 sbuff does not contain a boolean value.
+ *	- < 0 sbuff does not contain a boolean value.
  *	- > 0 how many bytes were parsed.
  */
-static ssize_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
-				      fr_sbuff_parse_rules_t const *p_rules)
+static fr_slen_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+					fr_sbuff_parse_rules_t const *p_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	bool		a_bool;
@@ -2371,7 +2365,7 @@ static ssize_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 
 	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
 		fr_strerror_const("Unexpected text after bool");
-		return -fr_sbuff_used(in);
+		return fr_sbuff_error(in);
 	}
 
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
@@ -2395,8 +2389,8 @@ static ssize_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
  *	- 0 sbuff does not contain a hex string.
  *	- > 0 how many bytes were parsed.
  */
-static ssize_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
-					fr_sbuff_parse_rules_t const *p_rules)
+static fr_slen_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+					  fr_sbuff_parse_rules_t const *p_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	tmpl_t		*vpt;
@@ -2418,7 +2412,7 @@ static ssize_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 		fr_strerror_const("Hex string not even length");
 	error:
 		talloc_free(vpt);
-		return -fr_sbuff_used(&our_in);
+		return fr_sbuff_error(&our_in);
 	}
 	if (len == 0) {
 		fr_strerror_const("Zero length hex string is invalid");
@@ -2451,11 +2445,11 @@ static ssize_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
  * @param[in] in	sbuff to parse.
  * @param[in] p_rules	formatting rules.
  * @return
- *	- 0 sbuff does not contain an IPv4 address or prefix.
+ *	- < 0 sbuff does not contain an IPv4 address or prefix.
  *	- > 0 how many bytes were parsed.
  */
-static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
-				      fr_sbuff_parse_rules_t const *p_rules)
+static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+					fr_sbuff_parse_rules_t const *p_rules)
 {
 	tmpl_t		*vpt;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
@@ -2472,7 +2466,7 @@ static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	      fr_sbuff_out(NULL, &octet, &our_in) && fr_sbuff_next_if_char(&our_in, '.') &&
 	      fr_sbuff_out(NULL, &octet, &our_in))) {
 	error:
-		return -fr_sbuff_used(&our_in);
+		return fr_sbuff_error(&our_in);
 	}
 
 	/*
@@ -2519,11 +2513,11 @@ static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
  * @param[in] in		sbuff to parse.
  * @param[in] p_rules		formatting rules.
  * @return
- *	- 0 sbuff does not contain an IPv4 address or prefix.
+ *	- < 0 sbuff does not contain an IPv4 address or prefix.
  *	- > 0 how many bytes were parsed.
  */
-static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
-				      fr_sbuff_parse_rules_t const *p_rules)
+static fr_slen_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+					fr_sbuff_parse_rules_t const *p_rules)
 {
 	tmpl_t			*vpt;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
@@ -2556,7 +2550,7 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	len = fr_sbuff_adv_past_allowed(&our_in, FR_IPADDR_STRLEN + 1, ipv6_chars, NULL);
 	if ((len < 2) || (len > FR_IPADDR_STRLEN)) {
 	error:
-		return -fr_sbuff_used(&our_in);
+		return fr_sbuff_error(&our_in);
 	}
 
 	/*
@@ -2637,7 +2631,7 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
  * @param[in] in	sbuff to parse.
  * @param[in] p_rules	formatting rules.
  * @return
- *	- 0 sbuff does not contain a mac address.
+ *	- < 0 sbuff does not contain a mac address.
  *	- > 0 how many bytes were parsed.
  */
 static ssize_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
@@ -2705,11 +2699,11 @@ static ssize_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
  * @param[in] in	sbuff to parse.
  * @param[in] p_rules	formatting rules.
  * @return
- *	- 0 sbuff does not contain an integer.
+ *	- < 0 sbuff does not contain an integer.
  *	- > 0 how many bytes were parsed.
  */
-static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
-					 fr_sbuff_parse_rules_t const *p_rules)
+static fr_slen_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+					   fr_sbuff_parse_rules_t const *p_rules)
 {
 	tmpl_t		*vpt;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
@@ -2728,7 +2722,7 @@ static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 		if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
 			fr_strerror_const("Unexpected text after signed integer");
 		error:
-			return -fr_sbuff_used(&our_in);
+			return fr_sbuff_error(&our_in);
 		}
 
 		MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA,
@@ -2862,10 +2856,10 @@ static ssize_t tmpl_afrom_time_delta(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *
  *
  * @see tmpl_afrom_attr_substr
  */
-ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
-			  fr_sbuff_t *in, fr_token_t quote,
-			  fr_sbuff_parse_rules_t const *p_rules,
-			  tmpl_rules_t const *t_rules)
+fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
+			    fr_sbuff_t *in, fr_token_t quote,
+			    fr_sbuff_parse_rules_t const *p_rules,
+			    tmpl_rules_t const *t_rules)
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 
@@ -2905,7 +2899,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 							       p_rules, t_rules);
 			}
 
-			if (!head) return slen;
+			if (slen < 0) return fr_sbuff_error(&our_in);
 
 			if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
 
@@ -3012,8 +3006,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	of bareword, assume it's an enum
 		 *	value.
 		 */
-		slen = fr_dict_enum_name_afrom_substr(vpt, &str, &sberr, &our_in, p_rules ? p_rules->terminals : NULL);
-		if (slen < 0) {
+		if (fr_dict_enum_name_afrom_substr(vpt, &str, &sberr, &our_in, p_rules ? p_rules->terminals : NULL) < 0) {
 			/*
 			 *	Produce our own errors which make
 			 *	more sense in the context of tmpls
@@ -3034,7 +3027,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			}
 		bareword_error:
 			talloc_free(vpt);
-			return slen;
+			return fr_sbuff_error(&our_in);
 		}
 
 		/*
@@ -3098,7 +3091,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			slen = xlat_tokenize_ephemeral(vpt, &head, t_rules->xlat.runtime_el,
 						       &our_in, p_rules, t_rules);
 		}
-		if (!head) return slen;
+		if (slen < 0) return fr_sbuff_error(&our_in);
 
 		/*
 		 *	If the string doesn't contain an xlat,
@@ -3157,9 +3150,8 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 */
 		slen = xlat_tokenize_argv(vpt, &head, &our_in, p_rules, t_rules);
 		if (slen < 0) {
-			fr_sbuff_advance(&our_in, slen * -1);
 			talloc_free(vpt);
-			return slen;
+			return fr_sbuff_error(&our_in);
 		}
 
 		if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
@@ -3171,13 +3163,13 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 	case T_SOLIDUS_QUOTED_STRING:
 	{
-
 		xlat_exp_head_t		*head = NULL;
 		tmpl_type_t		type = TMPL_TYPE_REGEX_XLAT;
 
 		if (!fr_type_is_null(t_rules->cast)) {
 			fr_strerror_const("Casts cannot be used with regular expressions");
-			return -1;
+			fr_sbuff_set_to_start(&our_in);	/* Point to the cast */
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		vpt = tmpl_alloc_null(ctx);
@@ -3190,7 +3182,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 						       p_rules, t_rules);
 		}
 
-		if (!head) return slen;
+		if (slen < 0) return fr_sbuff_error(&our_in);
 
 		/*
 		 *	Check if the string actually contains an xlat
@@ -3222,7 +3214,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 	default:
 		fr_assert(0);
-		return 0;	/* 0 is an error here too */
+		return fr_sbuff_error(&our_in);
 	}
 
 	TMPL_VERIFY(vpt);
@@ -3456,8 +3448,8 @@ done:
  */
 ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t const *terminals)
 {
-	ssize_t slen;
-	int	err = 0;
+	fr_slen_t	slen;
+	int		err = 0;
 
 	fr_assert(tmpl_is_regex_uncompiled(vpt) || tmpl_is_regex_xlat(vpt) || tmpl_is_regex_xlat_unresolved(vpt));
 

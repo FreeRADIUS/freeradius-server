@@ -43,7 +43,7 @@ xlat_purify (ok !x handled)
 match ERROR offset 5: Invalid operator
 
 xlat_purify (ok =x handled)
-match ERROR offset 4: Invalid operator
+match ERROR offset 5: Invalid operator
 
 #
 # Re-enable when we have proper bareword xlat tokenization
@@ -73,7 +73,7 @@ match ERROR offset 4: Invalid operator
 #match !ok
 
 xlat_purify !!true
-match ERROR offset 1: Double operator is invalid
+match ERROR offset 2: Double operator is invalid
 
 #xlat_purify !(!ok)
 #match ok
@@ -101,13 +101,13 @@ match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 #  '!' is higher precedence that '==', so the '!' applies just to the User-Name
 #
 xlat_purify (!&User-Name == &User-Password || &Filter-Id == &Reply-Message)
-match ERROR offset 1: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
+match ERROR offset 2: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
 
 #
 #  LHS is a boolean, which we then compare to a string
 #
 xlat_purify (!"foo" == "bar")
-match ERROR offset 1: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
+match ERROR offset 2: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
 
 xlat_purify ((!"foo") == "bar")
 match NULL
@@ -139,13 +139,13 @@ xlat_purify 'handled' &&&Packet-Type == Access-Challenge
 match (&Packet-Type == Access-Challenge)
 
 xlat_purify &reply == &request
-match ERROR offset 0: Cannot use list references in condition
+match ERROR offset 1: Cannot use list references in condition
 
 xlat_purify &reply == "hello"
-match ERROR offset 0: Cannot use list references in condition
+match ERROR offset 1: Cannot use list references in condition
 
 xlat_purify "hello" == &reply
-match ERROR offset 11: Cannot use list references in condition
+match ERROR offset 12: Cannot use list references in condition
 
 
 #
@@ -158,7 +158,7 @@ xlat_purify &User-Name != &User-Password
 match (&User-Name != &User-Password)
 
 xlat_purify !&User-Name != &User-Password
-match ERROR offset 0: Operator '!' is only applied to the left hand side of the '!=' operation, add (..) to evaluate the operation first
+match ERROR offset 1: Operator '!' is only applied to the left hand side of the '!=' operation, add (..) to evaluate the operation first
 
 #
 #  We allow a cast for the existence check.  Why not?
@@ -254,7 +254,7 @@ match ERROR offset 10: Failed parsing string as type 'uint32'
 #  string the RHS is.
 #
 xlat_purify &NAS-Port == X
-match ERROR offset 0: Failed parsing string as type 'uint32'
+match ERROR offset 1: Failed parsing string as type 'uint32'
 #match ERROR offset 13: Failed parsing string as type 'uint32'
 
 #
@@ -378,7 +378,7 @@ xlat_purify <ipaddr>127.0.0.1/32 == 127.0.0.1
 match true
 
 xlat_purify (/foo/)
-match ERROR offset 1: Unexpected regular expression
+match ERROR offset 2: Unexpected regular expression
 
 #
 #  Tests for (FOO).
@@ -757,7 +757,7 @@ xlat_purify (&User-Name == "bob") && (&User-Password == "bob") && handled
 match ((&User-Name == "bob") && (&User-Password == "bob") && %{rcode:'handled'})
 
 xlat_purify handledx
-match ERROR offset 0: Unexpected text - attribute names must prefixed with '&'
+match ERROR offset 1: Unexpected text - attribute names must prefixed with '&'
 
 xlat_purify handled
 match %{rcode:'handled'}

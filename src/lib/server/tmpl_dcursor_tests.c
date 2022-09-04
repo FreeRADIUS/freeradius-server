@@ -123,6 +123,8 @@ static request_t *request_fake_alloc(void)
 do { \
 	char const *ref = _attr_str; \
 	tmpl_afrom_attr_substr(autofree, NULL, &vpt, &FR_SBUFF_IN(ref, strlen(ref)), NULL, &(tmpl_rules_t){.attr = {.dict_def = test_dict}}); \
+	TEST_CHECK(vpt != NULL); \
+	TEST_MSG("Failed creating tmpl from %s: %s", ref, fr_strerror()); \
 	*(_out) = tmpl_dcursor_init(&err, NULL, &cc, &cursor, request, vpt); \
 } while (0)
 

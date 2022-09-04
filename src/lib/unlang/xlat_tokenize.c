@@ -615,7 +615,6 @@ static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
 static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 					  fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
-	ssize_t			slen;
 	tmpl_attr_error_t	err;
 	tmpl_t			*vpt = NULL;
 	xlat_exp_t		*node;
@@ -646,10 +645,7 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	fr_sbuff_marker(&m_s, in);
 
 	MEM(node = xlat_exp_alloc_null(head));
-	slen = tmpl_afrom_attr_substr(node, &err, &vpt, in, p_rules, &our_t_rules);
-	if (slen <= 0) {
-		fr_sbuff_advance(in, slen * -1);
-
+	if (tmpl_afrom_attr_substr(node, &err, &vpt, in, p_rules, &our_t_rules) < 0) {
 		/*
 		 *	If the parse error occurred before the ':'
 		 *	then the error is changed to 'Unknown module',
@@ -660,7 +656,7 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	error:
 		fr_sbuff_marker_release(&m_s);
 		talloc_free(node);
-		return -1;
+		return fr_sbuff_error(in);
 	}
 
 	/*
@@ -1428,9 +1424,9 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_head_t const *head, fr_sbuff_escape
  *	- 0 and *head != NULL - Zero length expansion
  *	- <0 the negative offset of the parse failure.
  */
-ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
-				fr_event_list_t *el, fr_sbuff_t *in,
-			        fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+fr_slen_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
+				  fr_event_list_t *el, fr_sbuff_t *in,
+			          fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	tmpl_rules_t	our_t_rules = {};
@@ -1449,7 +1445,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
 	if (xlat_tokenize_string(head, &our_in,
 				 false, p_rules, &our_t_rules) < 0) {
 		talloc_free(head);
-		return -fr_sbuff_used(&our_in);
+		return fr_sbuff_error(&our_in);
 	}
 
 	/*
@@ -1486,11 +1482,11 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
  *				any expansions.
  * @param[in] t_rules		controlling how attribute references are parsed.
  * @return
- *	- <=0 on error.
+ *	- < 0 on error.
  *	- >0  on success which is the number of characters parsed.
  */
-ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
-			   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
+			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	fr_sbuff_t			our_in = FR_SBUFF(in);
 	ssize_t				slen;
@@ -1553,7 +1549,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *i
 				}
 				talloc_free(head);
 
-				return -fr_sbuff_used(&our_in);	/* error */
+				return fr_sbuff_error(&our_in);	/* error */
 			}
 			break;
 
@@ -1657,8 +1653,8 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *i
  *	- 0 and *head != NULL - Zero length expansion
  *	- < 0 the negative offset of the parse failure.
  */
-ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
-		      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
+			fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_head_t	*head;
@@ -1671,7 +1667,7 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 	if (xlat_tokenize_string(head, &our_in,
 				  false, p_rules, t_rules) < 0) {
 		talloc_free(head);
-		return -fr_sbuff_used(&our_in);
+		return fr_sbuff_error(&our_in);
 	}
 
 	/*

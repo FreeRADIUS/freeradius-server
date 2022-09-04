@@ -53,7 +53,7 @@ static inline bool fr_is_base16_nstd(char c, uint8_t const alphabet[static UINT8
 	return alphabet[(uint8_t)c] < 16;
 }
 
-ssize_t		fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static UINT8_MAX + 1]);
+fr_slen_t	fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static UINT8_MAX + 1]);
 #define		fr_base16_encode(_out, _in) \
 		fr_base16_encode_nstd(_out, _in, fr_base16_alphabet_encode_lc)
 
@@ -68,7 +68,7 @@ ssize_t		fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alpha
  *	- >=0 the number of bytes written to out.
  *	- <0 number of bytes we would have needed to print the next hexit.
  */
-static inline ssize_t fr_base16_aencode(TALLOC_CTX *ctx, char **out, fr_dbuff_t *in)
+static inline fr_slen_t fr_base16_aencode(TALLOC_CTX *ctx, char **out, fr_dbuff_t *in)
 {
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_talloc_t	tctx;
@@ -79,10 +79,10 @@ static inline ssize_t fr_base16_aencode(TALLOC_CTX *ctx, char **out, fr_dbuff_t 
 			     SIZE_MAX);
 
 	slen = fr_base16_encode(&sbuff, in);
-	if (slen <= 0) {
+	if (slen < 0) {
 		fr_sbuff_trim_talloc(&sbuff, 0);
 		*out = sbuff.buff;
-		return 0;
+		return slen;
 	}
 
 	*out = sbuff.buff;
@@ -90,7 +90,7 @@ static inline ssize_t fr_base16_aencode(TALLOC_CTX *ctx, char **out, fr_dbuff_t 
 	return (size_t)slen;
 }
 
-ssize_t		fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
+fr_slen_t	fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
 				      bool no_trailing, uint8_t const alphabet[static UINT8_MAX + 1]);
 #define		fr_base16_decode(_err, _out, _in, _no_trailing) \
 		fr_base16_decode_nstd(_err, _out, _in, _no_trailing, fr_base16_alphabet_decode_mc)
