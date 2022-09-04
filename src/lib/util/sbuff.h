@@ -970,12 +970,7 @@ static inline fr_slen_t _fr_sbuff_error(fr_sbuff_t *sbuff, char const *err)
 /** Return the current position in the sbuff as a negative offset
  *
  */
-#define FR_SBUFF_ERROR_RETURN(_sbuff) return -(fr_sbuff_used(_sbuff))
-
-/** Return the current position in the sbuff as a negative offset
- *
- */
-#define FR_SBUFF_MARKER_ERROR_RETURN(_marker) return -(fr_sbuff_used(_marker))
+#define FR_SBUFF_ERROR_RETURN(_sbuff_or_marker) return fr_sbuff_error(_sbuff_or_marker)
 
 /** Return the current adjusted position in the sbuff as a negative offset
  *

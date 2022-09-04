@@ -24,7 +24,7 @@ xlat_purify (|| b)
 match ERROR offset 2: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 xlat_purify ((ok || handled) foo)
-match ERROR offset 17: Invalid operator
+match ERROR offset 18: Invalid operator
 
 # escapes in names are illegal
 xlat_purify (ok\ foo || handled)
@@ -37,10 +37,10 @@ xlat_purify (&Service-Type == 000-111)
 match (&Service-Type == NULL)
 
 xlat_purify (ok FOO handled)
-match ERROR offset 4: Invalid operator
+match ERROR offset 5: Invalid operator
 
 xlat_purify (ok !x handled)
-match ERROR offset 4: Invalid operator
+match ERROR offset 5: Invalid operator
 
 xlat_purify (ok =x handled)
 match ERROR offset 4: Invalid operator
@@ -481,7 +481,7 @@ match (&Tmp-uint64-0 == &reply.Tmp-String-0)
 #  Casting attributes of different size
 #
 xlat_purify <ipaddr>&Tmp-uint64-0 == &Framed-IP-Address
-match ERROR offset 8: Cannot cast type 'uint64' to 'ipaddr'
+match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 
 #
 #  LHS is a prefix, which _might_ be castable to an address
@@ -550,7 +550,7 @@ match (&raw.26.24757.84.9.5.7 == 0x1a99)
 
 #  This one is really unknown
 xlat_purify &26.24757.84.9.5.15 == 0x1a99
-match ERROR offset 17: Unknown attributes not allowed here
+match ERROR offset 18: Unknown attributes not allowed here
 #match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
 
 #
@@ -578,14 +578,14 @@ xlat_purify request.Foo == 'request.Foo'
 match true
 
 xlat_purify &request.Foo == 'request.Foo'
-match ERROR offset 9: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 10: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 xlat_purify &not-a-list.User-Name == &not-a-list.User-Name
-match ERROR offset 1: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 2: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 # . is a valid dictionary name attribute, so we can't error out in pass1
 xlat_purify &not-a-packet.User-Name == &not-a-packet.User-Name
-match ERROR offset 1: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 2: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  The LHS is a string with ASCII 5C 30 30 30 inside of it vs the RHS which should contain ASCII 0.

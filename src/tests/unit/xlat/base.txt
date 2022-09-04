@@ -239,10 +239,10 @@ xlat %{ }
 match ERROR offset 2: Invalid char ' ' in expression
 
 xlat %{\t}
-match ERROR offset 2: Invalid attribute name
+match ERROR offset 3: Invalid attribute name
 
 xlat %{\n}
-match ERROR offset 2: Invalid attribute name
+match ERROR offset 3: Invalid attribute name
 
 xlat %{foo }
 match ERROR offset 5: Invalid char ' ' in expression

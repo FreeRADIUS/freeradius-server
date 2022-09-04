@@ -145,10 +145,10 @@ match <ipaddr>&Filter-Id == &Framed-IP-Address
 #  user forces incompatible types, then that's an error.
 #
 condition <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
-match ERROR offset 23: Unknown data type
+match ERROR offset 24: Unknown data type
 
 condition <blerg>&Filter-Id == "foo"
-match ERROR offset 1: Unknown data type
+match ERROR offset 2: Unknown data type
 
 #
 #  Normalize things
@@ -397,7 +397,7 @@ match &User-Name
 #  Forbidden data types in cast
 #
 condition (<vsa>"foo" == &User-Name)
-match ERROR offset 2: Forbidden data type 'vsa' in cast
+match ERROR offset 3: Forbidden data type 'vsa' in cast
 
 #
 #  If the LHS is a cast to a type, and the RHS is an attribute
@@ -430,7 +430,7 @@ match &Tmp-uint64-0 == &reply.Foo-Stuff-Bar
 #  Casting attributes of different size
 #
 condition <ipaddr>&Tmp-uint64-0 == &Framed-IP-Address
-match ERROR offset 8: Cannot cast type 'uint64' to 'ipaddr'
+match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 
 #
 #  LHS is a prefix, which _might_ be castable to an address
@@ -531,17 +531,17 @@ condition request.Foo+Bar == request.Foo+Bar
 match true
 
 condition &request.Foo+Bar == 'request.Foo+Bar'
-match ERROR offset 12: Unexpected text after attribute reference
+match ERROR offset 13: Unexpected text after attribute reference
 
 condition 'request.Foo+d' == &request.Foo+Bar
-match ERROR offset 31: Unexpected text after attribute reference
+match ERROR offset 32: Unexpected text after attribute reference
 
 #  Attribute tags are not allowed for unknown attributes
 condition &request.FooBar:0 == &request.FooBar
-match ERROR offset 15: Unexpected text after attribute reference
+match ERROR offset 16: Unexpected text after attribute reference
 
 condition &not-a-list:User-Name == &not-a-list:User-Name
-match ERROR offset 11: Unexpected text after attribute reference
+match ERROR offset 12: Unexpected text after attribute reference
 
 # . is a valid dictionary name attribute, so we can't error out in pass1
 condition &not-a-packet.User-Name == &not-a-packet.User-Name

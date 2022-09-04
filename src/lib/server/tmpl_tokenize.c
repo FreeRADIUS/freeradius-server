@@ -1326,7 +1326,8 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	if (t_rules->disallow_filters) {
 		fr_strerror_const("Filters not allowed here");
 		if (err) *err = TMPL_ATTR_ERROR_FILTER_NOT_ALLOWED;
-		return -1;	/* Error at index 0 */
+		fr_sbuff_set_to_start(&our_name);
+		return fr_sbuff_error(&our_name);
 	}
 
 	ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_INDEX;
@@ -1420,7 +1421,6 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 	int			ret;
 	char			*unresolved;
 	size_t			len;
-	fr_slen_t 		slen;
 
 	if (depth > FR_DICT_MAX_TLV_STACK) {
 		fr_strerror_const("Attribute nesting too deep");
@@ -1474,11 +1474,8 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 		.ar_parent = parent,
 	};
 
-	slen = tmpl_attr_parse_filter(err, ar, name, t_rules);
-	if (slen < 0) {
-		fr_sbuff_advance(name, -slen);
-		goto error;
-	}
+	if (tmpl_attr_parse_filter(err, ar, name, t_rules) < 0) goto error;
+
 	/*
 	 *	Insert the ar into the list of attribute references
 	 */
@@ -1550,7 +1547,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
 	error:
 		fr_sbuff_marker_release(&m_s);
-		return -1;
+		return fr_sbuff_error(name);
 	}
 
 	/*
@@ -1825,11 +1822,7 @@ do_suffix:
 	 *	- The type of attribute.
 	 *	- If this is the leaf attribute reference.
 	 */
-	slen = tmpl_attr_parse_filter(err, ar, name, t_rules);
-	if (slen < 0) {
-		fr_sbuff_advance(name, -slen);
-		goto error;
-	}
+	if (tmpl_attr_parse_filter(err, ar, name, t_rules) < 0) goto error;
 
 	/*
 	 *	At the end of the attribute reference. If there's a
@@ -2184,7 +2177,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		} else if (slen > 0) {				/* Found a filter */
 			tmpl_attr_list_insert_tail(&vpt->data.attribute.ar, ar);
 		} else if (slen < 0) {				/* Filter error */
-			fr_sbuff_advance(&our_name, -slen);
 			goto error;
 		}
 		vpt->type = TMPL_TYPE_LIST;
@@ -3350,7 +3342,7 @@ ssize_t tmpl_cast_from_substr(tmpl_rules_t *rules, fr_sbuff_t *in)
 	}
 	if (fr_type_is_non_leaf(cast)) {
 		fr_strerror_printf("Forbidden data type '%s' in cast", fr_type_to_str(cast));
-		FR_SBUFF_MARKER_ERROR_RETURN(&m);
+		FR_SBUFF_ERROR_RETURN(&m);
 	}
 
 	if (!fr_sbuff_next_if_char(&our_in, close)) {
