@@ -438,7 +438,7 @@ ssize_t	fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_s
 	/*
 	 *	Find the first non-base64 char
 	 */
-	while (fr_sbuff_extend(&our_in) && fr_is_base64_nstd(*fr_sbuff_current(&our_in), alphabet)) {
+	while (fr_sbuff_extend(&our_in) && fr_is_base64_nstd(fr_sbuff_char(&our_in, '\0'), alphabet)) {
 		fr_sbuff_advance(&our_in, 1);
 	}
 
@@ -487,7 +487,7 @@ ssize_t	fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_s
 			}
 			if (!fr_sbuff_next_if_char(&our_in, '=')) {
 				fr_strerror_printf("Found non-padding char '%c' at end of base64 string",
-						   *fr_sbuff_current(&our_in));
+						   fr_sbuff_char(&our_in, '\0'));
 				goto bad_format;
 			}
 		}
@@ -495,7 +495,7 @@ ssize_t	fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_s
 
 	if (no_trailing && fr_sbuff_extend(&our_in)) {
 		fr_strerror_printf("Found trailing garbage '%c' at end of base64 string",
-				   *fr_sbuff_current(&our_in));
+				   fr_sbuff_char(&our_in, '\0'));
 
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
 

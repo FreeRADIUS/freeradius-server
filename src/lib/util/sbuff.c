@@ -1068,7 +1068,7 @@ fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
 	};
 
 	if (fr_sbuff_is_in_charset(&our_in, bool_prefix)) {
-		switch (tolower(*fr_sbuff_current(&our_in))) {
+		switch (tolower(fr_sbuff_char(&our_in, '\0'))) {
 		default:
 			break;
 

@@ -3549,7 +3549,7 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 			goto error;
 		}
 
-		switch (*fr_sbuff_current(in)) {
+		fr_sbuff_switch(in, '\0') {
 		/*
 		 *	More ranges...
 		 */
@@ -3847,7 +3847,7 @@ int main(int argc, char *argv[])
 			while (fr_sbuff_extend(&in)) {
 				fr_sbuff_adv_until(&in, SIZE_MAX, &dir_sep, '\0');
 
-				switch (*fr_sbuff_current(&in)) {
+				fr_sbuff_switch(&in, '\0') {
 				case '/':
 					fr_sbuff_set(&dir_end, &in);
 					fr_sbuff_advance(&in, 1);

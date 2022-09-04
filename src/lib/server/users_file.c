@@ -183,7 +183,7 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	 *	Otherwise the $INCLUDE name is an absolute path, use
 	 *	it as -is.
 	 */
-	c = *fr_sbuff_current(&name);
+	c = fr_sbuff_char(&name, '\0');
 	if (c != '/') {
 		p = strrchr(file, '/');
 

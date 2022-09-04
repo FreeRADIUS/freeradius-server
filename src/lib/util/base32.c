@@ -359,7 +359,7 @@ ssize_t fr_base32_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_s
 	/*
 	 *	Find the first non-base32 char
 	 */
-	while (fr_sbuff_extend(&our_in) && fr_is_base32_nstd(*fr_sbuff_current(&our_in), alphabet)) {
+	while (fr_sbuff_extend(&our_in) && fr_is_base32_nstd(fr_sbuff_char(&our_in, '\0'), alphabet)) {
 		fr_sbuff_advance(&our_in, 1);
 	}
 
@@ -439,7 +439,7 @@ ssize_t fr_base32_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_s
 			}
 			if (!fr_sbuff_next_if_char(&our_in, '=')) {
 				fr_strerror_printf("Found non-padding char '%c' at end of base32 string",
-						   *fr_sbuff_current(&our_in));
+						   fr_sbuff_char(&our_in, '\0'));
 
 				if (err) *err = FR_SBUFF_PARSE_ERROR_FORMAT;
 
@@ -450,7 +450,7 @@ ssize_t fr_base32_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_s
 
 	if (no_trailing && fr_sbuff_extend(&our_in)) {
 		fr_strerror_printf("Found trailing garbage '%c' at end of base32 string",
-				   *fr_sbuff_current(&our_in));
+				   fr_sbuff_char(&our_in, '\0'));
 
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
 

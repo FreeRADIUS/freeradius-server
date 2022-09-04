@@ -43,7 +43,6 @@ int fr_uri_escape(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void
 	fr_value_box_t		*uri_vb = NULL;
 	fr_uri_part_t const	*uri_part;
 	fr_sbuff_t		sbuff;
-	char const		*p;
 
 	uri_part = uri_parts;
 
@@ -92,12 +91,11 @@ int fr_uri_escape(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void
 
 		do {
 			fr_sbuff_adv_until(&sbuff, SIZE_MAX, uri_part->terminals, '\0');
-			p = fr_sbuff_current(&sbuff);
 
 			/*
 			 *	We've not found a terminal in the current box
 			 */
-			if (uri_part->part_adv[(uint8_t)*p] == 0) continue;
+			if (uri_part->part_adv[fr_sbuff_char(&sbuff, '\0')] == 0) continue;
 
 			/*
 			 *	This terminator has trailing characters to skip
@@ -107,7 +105,7 @@ int fr_uri_escape(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void
 			/*
 			 *	Move to the next part
 			 */
-			uri_part += uri_part->part_adv[(uint8_t)*p];
+			uri_part += uri_part->part_adv[fr_sbuff_char(&sbuff, '\0')];
 			if (!uri_part->terminals) break;
 		} while (fr_sbuff_advance(&sbuff, 1) > 0);
 	}

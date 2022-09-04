@@ -88,6 +88,8 @@ struct fr_sbuff_s {
 		char *p;					//!< Mutable position pointer.
 	};
 
+	char const *err;				//!< Where the last error occurred.
+
 	uint8_t			is_const:1;		//!< Can't be modified.
 	uint8_t			adv_parent:1;		//!< If true, advance the parent.
 
@@ -895,14 +897,35 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 	((size_t)(fr_sbuff_start(_sbuff_or_marker) > fr_sbuff_current(_sbuff_or_marker) ? \
 		0 : (fr_sbuff_current(_sbuff_or_marker) - fr_sbuff_start(_sbuff_or_marker))))
 
+
+/** Sets an error marker in the parent
+ *
+ * If an error already exists at this level it will be used instead of the provided error.
+ *
+ * @param[in] sbuff	who's parent we'll set the error marker in.
+ * @param[in] err	marker to set.
+ * @return <0 the negative offset of the error.
+ */
+static inline fr_slen_t _fr_sbuff_error(fr_sbuff_t *sbuff, char const *err)
+{
+	fr_sbuff_t *parent = sbuff->parent;
+
+	if (sbuff->err) err = sbuff->err;
+	if (parent) parent->err = err;
+
+	return -((err - fr_sbuff_start(sbuff)) + 1);
+}
+
 /** Return the current position as an error marker
+ *
+ * @param[in] _sbuff_or_marker		Error marker will be set from the current position of this sbuff.
  *
  * +1 is added to the position to disambiguate with 0 meaning "parsed no data".
  *
  * An error at offset 0 will be returned as -1.
  */
 #define fr_sbuff_error(_sbuff_or_marker) \
-	(-(fr_sbuff_used(_sbuff_or_marker) + 1))
+	_fr_sbuff_error(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker));
 
 /** Like fr_sbuff_used, but adjusts for the value returned for the amount shifted
  *
@@ -1045,6 +1068,8 @@ do { \
 static inline void _fr_sbuff_set_recurse(fr_sbuff_t *sbuff, char const *p)
 {
 	sbuff->p_i = p;
+	sbuff->err = NULL;	/* Modifying the position of the sbuff clears the error */
+
 	if (sbuff->adv_parent && sbuff->parent) _fr_sbuff_set_recurse(sbuff->parent, p);
 }
 
@@ -1056,6 +1081,7 @@ static inline ssize_t _fr_sbuff_marker_set(fr_sbuff_marker_t *m, char const *p)
 	if (unlikely(p > sbuff->end)) return -(p - sbuff->end);
 	if (unlikely(p < sbuff->start)) return 0;
 
+	sbuff->err = NULL;	/* Modifying the position of any markers clears the error, unsure if this is correct? */
 	m->p_i = p;
 
 	return p - current;

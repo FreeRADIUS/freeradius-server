@@ -2970,7 +2970,7 @@ ssize_t	fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t c
 		int len = (p - name) + 1;
 		fr_dict_enum_value_t *enumv;
 
-		*p = *fr_sbuff_current(&our_in);
+		*p = fr_sbuff_char(&our_in, '\0');
 		if (!fr_dict_enum_allowed_chars[*p]) {
 			break;
 		}

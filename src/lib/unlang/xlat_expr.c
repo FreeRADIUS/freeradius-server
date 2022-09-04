@@ -1824,7 +1824,7 @@ static const int precedence[T_TOKEN_LAST] = {
 
 #define fr_sbuff_skip_whitespace(_x) \
 	do { \
-		while (isspace((int) *fr_sbuff_current(_x))) fr_sbuff_advance(_x, 1); \
+		while (isspace((int) fr_sbuff_char(_x, '\0'))) fr_sbuff_advance(_x, 1); \
 	} while (0)
 
 static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,

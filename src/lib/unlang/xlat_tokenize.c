@@ -817,13 +817,13 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 *
 	 *	e.g. '%{myfirstxlat'
 	 */
-	if (!fr_sbuff_remaining(in)) {
+	if (!fr_sbuff_extend(in)) {
 		fr_strerror_const("Missing closing brace");
 		fr_sbuff_marker_release(&s_m);
 		return -1;
 	}
 
-	hint = *fr_sbuff_current(in);
+	hint = fr_sbuff_char(in, '\0');
 
 	XLAT_DEBUG("EXPANSION HINT TOKEN '%c'", hint);
 	if (len == 0) {

@@ -60,7 +60,7 @@ static fr_slen_t ldap_filter_parse_logic(ldap_filter_t *node, fr_sbuff_t *sbuff,
 	fr_slen_t	ret = 0;
 	fr_slen_t	parsed = 0;
 
-	switch(*fr_sbuff_current(sbuff)) {
+	fr_sbuff_switch(sbuff, '\0') {
 	case '&':
 		node->logic_op = LDAP_FILTER_LOGIC_AND;
 		node->orig = talloc_typed_strdup(node, "&");

@@ -375,7 +375,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 
 		memset(fr_sbuff_current(&sbuff), ',', conf->list_da_num);
 		fr_sbuff_advance(&sbuff, conf->list_da_num);
-		*fr_sbuff_current(&sbuff) = '\0';
+		fr_sbuff_terminate(&sbuff);
 	}
 
 	fprintf(stdout , "%s\n", buffer);
