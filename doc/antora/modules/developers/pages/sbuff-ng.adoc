@@ -1,9 +1,9 @@
 # Current sbuff failings
 
-The major issues with the current sbuffs are
+# The major issues with the current sbuffs are
 
 - Markers need to be released before the function they're created in returns.  This means we often create temporary `fr_sbuff_t` on the stack which is inefficient.
-- Using pointers often results in abuse, i.e. people storing pointer offsets direct from the sbuff.
+- Using pointers often results in abuse, i.e. people storing pointers pointing into the underlying char buffer.
 - Sbuffs don't support streaming properly.  Large parts of the buffer ends up getting pinned in place and we're unable to shift it out.
 - Shifting data out of sbuffs is expensive because we need to update every nested sbuff, and every marker associated with them.
 - Passing terminals and unescape callbacks into functions leads to massive complexity, and needing to allocate memory to allocate merged tables of token sequences.
@@ -13,11 +13,9 @@ The major issues with the current sbuffs are
 # Fixes
 ## Marker release
 
-Current sbuffs require markers to be tracked because they need to be updated as the underlying marker is released.
+Current sbuffs require markers to be tracked because the marker's pointer needs to be updated is the sbuff is shifted,
 
-Using offsets relative to the start of the current sbuff removes the tracking requirement, and means that the markers no longer need to be updated.
-
-Sbuffs no long record references to the markers.
+Using offsets relative to the start of the current sbuff removes the tracking requirement and means that the markers no longer need to be updated.
 
 [source,c]
 ----
@@ -29,12 +27,11 @@ typedef struct {
 
 ## Pointer abuse
 
-In almost every instance a "legacy" C function that's operating on a standard C buffer takes a buffer and a length.
+In almost every instance a "legacy" C function that's operating on a standard C buffer takes a `buffer` and a `length`.
 
-Direct access into the sbuff should be restricted.
-
-A macro should be provided that provides both the length of the data and a pointer into the sbuff as consective function arguments.
-This prevents assignments to C pointers as they will result in a syntax error.
+Direct access into the sbuff should be restricted, and a macro should be provided that provides both the length of the 
+data and a pointer into the sbuff as consective function arguments.  This prevents assignments to C pointers as this will
+result in a syntax error.
 
 [source,c]
 ----
@@ -48,39 +45,40 @@ Printing sbuffs could also be setup to do standard escaping for \0, making the s
 
 The key to fixing the pinning problem is to allow backtracking.
 
-Not all sources support backtracking, so we'd need a type of sbuff which can grow a temporary buffer and will allow backtracking
-within a given range.  This sbuff can be inserted into the stack of sbuffs to buffer a unidirectional stream.
+Not all source sbuffs support backtracking, so we'd need a type of sbuff which can grow a temporary buffer and will allow 
+backtracking within a given range.  This sbuff can be inserted into the stack of sbuffs to buffer a unidirectional stream
+in parsing functions that require it.
 
 We probably want an initialisation macro that can determine whether the parent sbuff supports backtracking, and if not allocate
-a "backtrack buffer" of a given size.  Only the function that wants to backtrack knows when data can be released from the backtrack
-buffer so it needs to be responsible for doing that.
+a "backtrack buffer" of a given size.  Only the function that wants to backtrack knows when data can be released from the 
+backtrack buffer, so it needs to be responsible for doing that.  
 
-This unfortunately, places responsibility on the developer to add these "backtrack" buffers in functions where processing the
-token stream doesn't move forward monotonically.
+It is up to the developer to add these "backtrack" buffers in functions where processing the token stream doesn't move forward 
+monotonically.
 
-A good example of one of these functions is `tmpl_afrom_substr`, where multiple parsing functions attempt matches against known
-data types, like mac addresses and integers.  In this case `tmpl_afrom_substr` must insert an sbuff into the sbuff chain which
-will guarantee sufficient bytes are retainted that it can always backtrack.
+A good example of one of these non-monotonic functions is `tmpl_afrom_substr`, where multiple parsing functions attempt matches 
+against known data types, like mac addresses and integers.  
 
-Again, if the parent sbuff supports seeking back to its current position, no underlying buffer need be created, and this decision
-can be made transparently.
+In this case `tmpl_afrom_substr` must insert a backtrack sbuff into the sbuff chain which will guarantee sufficient bytes are 
+retainted so that it can always backtrack after calling each of the data parsing functions.
 
 ### Backtrackable child buffers
 
 As with parsing functions today, whenever a parse function is entered, it should allocate a new sbuff.  This sbuff records the
-current offset of its parent and performs the same mapping of pointers as current sbuffs, i.e.
+current offset of its parent and sets the rest of the offsets to zero.
 
 ```
+new->parent = parent;
 new->parent_start = parent->current;
 new->start = 0;         //!< Increases as data is shifted from the start position of the buffer.
 new->current = 0;       //!< Always 0 on init.
 new->end = 0;           //!< Maximum offset readable, zero for functions which perform transofmration, or parent->max
 ```
 
-All markers and positions in the child sbuff start from 0.  If the child sbuff is shifted, then start indicates the number of
-bytes shifted, and is used to calculate positions in the underlying buffer.
+All markers and positions in the child sbuff start from 0.  If the child sbuff is shifted, then `start` indicates the number of
+bytes shifted and is used to calculate positions in the underlying buffer.
 
-It is impossible to seek a child sbuff past its starting point of zero, because we can't map this to an offset in its parent
+It is impossible to seek a child sbuff past its starting point of zero because we can't map this to an offset in its parent
 sbuff.
 
 Consider a chain of sbuffs: `<FILE * sbuff> -> <transform sbuff> -> <parse sbuff>`.  The offsets of `parse sbuff``, will likely
@@ -96,7 +94,6 @@ can request a backtrack in its parent to its `parent_start`.  In this way the en
 an earlier position in the stream being read.
 
 This will likely result in work being redone, to retransform text which had previously been read in from the file.
-This doesn't matter.
 
 One concern is a `parent_start` offset falling in the middle of an atom in the parent, but if this happens, then it means the
 transform function is broken.  i.e. if a transform function provides the `\` from `\t` in its output buffer, then the transform
@@ -104,16 +101,17 @@ function must be rewritten. The output buffer of a transform sbuff must contain 
 
 ## Shifting data out of sbuffs is expensive
 
-The reason why it's expensive is because the entire chain needs to have its pointers updated.  If every sbuff maintains positions
-using offsets, only the start and end pointers need to be changed.  This gives a real advantage to using markers, as they will
-never need to be updated during shifts.  Their offset remains relative to `sbuff->start`, even if `sbuff->start changes` .i.e.
-`char *current = sbuff->buff + (marker->offset - sbuff->start)`.
+The reason why it's expensive is because the entire sbuff chain needs to have its pointers updated.  If every sbuff maintains 
+positions using offsets, only the start and end offsets need to be changed.  This gives a real advantage to using markers, 
+as they will never need to be updated during shifts.  marker's offsets remain relative to `sbuff->start`, even if 
+`sbuff->start` changes .i.e. `char *current_pos = sbuff->buff + (marker->offset - sbuff->start)`.
 
 If `sbuff->offset < sbuff->start`, this event would trigger a backtrack.
 
 ## Pasing terminal sequences and escape rules into functions is awful
 
-Text transformation must be transparent to the parsing function, anything else will not function correctly.
+Text transformation must be transparent to the parsing function, anything else will not function correctly, or will add
+horendous complexity.
 
 A trasnformation sbuff takes data from its parent, transforms it, and places it in and output buffer.  The transform sbuff's
 offsets are valid for its output buffer only.
@@ -160,7 +158,7 @@ One key realisation is that returning negative offsets up the call stack will no
 between parent and child.
 
 As we only use negative offsets for error printing, it makes most sense to duplicate some of the code from the `fr_strerror`
-API.
+API, and create a sbuff error stack in thread local storage.
 
 [source,c]
 ----
@@ -178,15 +176,10 @@ void sbuff_error(void (error_print_t *)(char const *ptr, size_t len, void *uctx)
 #define sbuff_error_foreach(...)
 ----
 
-These functions work similarly to the freeradius strerror functions using Thread Local Storage.
-
-When `sbuff_error` is called, it calls a callback function multiple times to print any errors stored in the thread local
-stack.
-
 Behind the scenes, when `sbuff_error_printf` is called, it copies `ctx_len` bytes from before the current position,
 and `subject_len` bytes after the current position,  records the offset of the error in the string it just copied,
 and creates/stored the error string from `err_fmt`, and `...`.
 
 In this way we still get rich, contextful errors, but without passing an offset back up the stack.
 
-All parse functions can revert to returning `int (0, -1)` instead of `fr_slen_t` as they do now.
+All parse functions can revert to returning `int (0, -1)` instead of `fr_slen_t` (as they do now).
