@@ -1,0 +1,69 @@
+# Parsing with sbuffs
+
+## Introduction
+
+The aim of parsing is to convert a token stream into some internal format we can operate on easily.
+The style of parsing used in FreeRADIUS is almost exclusively recursive descent parsing.
+
+In recursive descent parsing functions are used to encapsulate grammar used for parsing a given token
+(or sequence of tokens).  Each time we navigate to a deeper level in a syntax tree we call a parsing
+function which represents the grammar for that level.  Whenever we find a terminal for that
+grammar (or an obvious syntax error) we return up the call stack to allow the caller to determine
+what to do.
+
+Unfortunately, because we're working in C some conventions must be applied by the developer in order
+to make parsing functions broadly compatible and callable from each other.
+
+This document sets out standard function prototypes and conversions to ensure interoperability.
+
+## Public functions
+
+Unlike private parse functions public functions can be called anywhere from within the FreeRADIUS
+code base.  Public functions **MUST** conform to the set of conventions below.
+
+- On success the number of bytes must be returned.  If consuming no bytes is valid, `0` should
+  be returned.
+- On success the input `fr_sbuff_t` must be advanced by the number of bytes consumed.
+- On error the input `fr_sbuff_t` **MUST NOT** be advanced.
+- On error a negative integer representing the error location must be returned.
+  This negative integer is indexed from 1 (not 0).
+  For example a return value of `-5` with an input string `the lazy brown fox` indicates the error
+  occurred at `l`.
+- On success or error, any sbuff markers added to the input `fr_sbuff_t` must be released.
+- The return type of the function should be `fr_slen_t`, this indicates that the function conforms
+  to the above conventions.
+
+The easiest way to ensure these conventions are met is to initialise a new `fr_sbuff_t` from the
+input `fr_sbuff_t` as soon as the function is entered.
+
+[source,c]
+/** Looks for the sequence `octo`,`puss` in a given string
+ *
+ * If `puss` does not proceed after `octo`, this is a syntax error.
+ * If `octo` isn't found, this is ignored, the caller should verify the return value
+ * is `> 0` if it requires the `octo`,`puss` token sequence is present.
+ */
+fr_slen_t my_parse_function(fr_sbuff_t *in)
+{
+        /* our_in->start = in->p, our_in->p = in->p, our_in->end = in->end */
+        fr_sbuff_t our_in = FR_SBUFF(in);
+
+        /*
+         *      Optional token sequence not found.
+         */
+        if (!fr_sbuff_adv_past_str_literal(&our_in, "octo")) return 0;
+
+        /*
+         *      Can't have an octo without a puss, are you crazy?!
+         *
+         *      Return the parse error as a negative integer and leave
+         *      `in` unchanged.
+         */
+        if (!fr_sbuff_adv_past_str_literal(&our_in, "puss")) FR_SBUFF_RETURN_ERROR(&our_in); /* Returns -5 */
+
+        /*
+         *      Got an `octo` and a `puss`, inform the caller how
+         *      much we consumed, and update `in`.
+         */
+        FR_SBUFF_RETURN_SET(in, &our_in); /* Returns 8 */
+}
