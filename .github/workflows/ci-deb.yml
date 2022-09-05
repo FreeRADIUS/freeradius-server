@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         env:
-          - { NAME: "ubuntu-18.04", OS: "ubuntu:18.04" }
+          - { NAME: "ubuntu-18.04", OS: "ubuntu:bionic-20220801" }
           - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
           - { NAME: "ubuntu-22.04", OS: "ubuntu:22.04" }
           - { NAME: "debian-9",     OS: "debian:stretch" }
@@ -139,7 +139,7 @@ jobs:
     strategy:
       matrix:
         env:
-          - { NAME: "ubuntu-18.04", OS: "ubuntu:18.04" }
+          - { NAME: "ubuntu-18.04", OS: "ubuntu:bionic-20220801" }
           - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
           - { NAME: "ubuntu-22.04", OS: "ubuntu:22.04" }
           - { NAME: "debian-9", OS: "debian:stretch" }
