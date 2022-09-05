@@ -51,11 +51,9 @@ jobs:
 # name    - used in the job name only
 #
 # Self-hosted runner (must set USE_DOCKER=1 above):
-          - { runs_on: "${{ github.repository_owner == 'FreeRADIUS' && 'self-hosted' || 'ubuntu-18.04' }}", code: "ubuntu1804", docker: "ubuntu:18.04", name: "${{ github.repository_owner == 'FreeRADIUS' && 'self' || 'gh' }}-ubuntu18" }
-#          - { runs_on: "self-hosted", code: "ubuntu2004", docker: "ubuntu:20.04", name: "self-ubuntu20" }
+          - { runs_on: "${{ github.repository_owner == 'FreeRADIUS' && 'self-hosted' || 'ubuntu-20.04' }}", code: "ubuntu2004", docker: "ubuntu:20.04", name: "${{ github.repository_owner == 'FreeRADIUS' && 'self' || 'gh' }}-ubuntu20" }
 # GitHub runner (may set USE_DOCKER=0 or 1 above):
-#          - { runs_on: "ubuntu-18.04", code: "ubuntu1804", docker: "ubuntu:18.04", name: "gh18-ubuntu18" }
-#          - { runs_on: "ubuntu-18.04", code: "ubuntu2004", docker: "ubuntu:20.04", name: "gh18-ubuntu20" }
+#          - { runs_on: "ubuntu-20.04", code: "ubuntu2004", docker: "ubuntu:20.04", name: "gh20-ubuntu20" }
 
         env:
           - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_ALT: no,  REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-lean           }
