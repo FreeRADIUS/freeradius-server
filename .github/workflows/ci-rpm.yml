@@ -26,6 +26,10 @@ jobs:
     container:
       image: ${{ matrix.env.OS }}
 
+    env:
+      HOSTAPD_BUILD_DIR: /tmp/eapol_test.ci
+      HOSTAPD_GIT_TAG: hostapd_2_8
+
     name: "RPM build"
 
     steps:
@@ -66,7 +70,6 @@ jobs:
       run: |
         pwd
         ls -la
-        cp -r freeradius freeradius-tests
         mkdir rpms
         ls -la
 
@@ -144,16 +147,6 @@ jobs:
       run: |
         yum install -y procps-ng
 
-    - name: Run tests and build eapol_test
-      run: |
-        yum install -y libnl3-devel which
-        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
-        ./configure
-        make -j `nproc`
-        make test
-        mv scripts/ci/eapol_test/eapol_test ../rpms/
-      working-directory: freeradius-tests
-
     - name: Build RPMs
       run: |
         [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
@@ -164,6 +157,21 @@ jobs:
     - name: Collect RPMs
       run: |
         mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms/
+
+    - name: Restore eapol_test build directory from cache
+      uses: actions/cache@v2
+      id: hostapd-cache
+      with:
+        path: ${{ env.HOSTAPD_BUILD_DIR }}
+        key: hostapd-${{ matrix.env.NAME }}-${{ env.HOSTAPD_GIT_TAG }}-v1
+
+    - name: Build eapol_test
+      run: |
+        yum install -y libnl3-devel which
+        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
+        scripts/ci/eapol_test-build.sh
+        mv scripts/ci/eapol_test/eapol_test ../rpms/
+      working-directory: freeradius
 
     - name: Store RPMs
       uses: actions/upload-artifact@v2
