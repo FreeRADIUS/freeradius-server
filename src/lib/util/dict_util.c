@@ -2329,6 +2329,7 @@ fr_slen_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 	 */
 	if (unlikely(!internal && !foreign && !dict_def)) {
 		if (err) *err = FR_DICT_ATTR_EINVAL;
+		*out = NULL;
 		return 0;
 	}
 
@@ -2489,6 +2490,7 @@ fr_slen_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t con
 		 */
 		if (!fr_sbuff_next_if_char(&our_in, '.')) {
 			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+			*out = NULL;
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
