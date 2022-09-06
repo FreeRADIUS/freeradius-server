@@ -1991,7 +1991,7 @@ fr_slen_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 {
 	fr_dict_attr_t		root;
 
-	fr_sbuff_t		our_name = FR_SBUFF(name);
+	fr_sbuff_t		our_name;
 	fr_dict_t		*dict;
 	fr_slen_t		slen;
 	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
@@ -2001,6 +2001,7 @@ fr_slen_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
 
+	our_name = FR_SBUFF(name);
 	memset(&root, 0, sizeof(root));
 
 	/*
