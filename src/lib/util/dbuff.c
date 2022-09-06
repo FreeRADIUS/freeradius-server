@@ -101,7 +101,7 @@ void fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len)
 	}
 }
 
-/** Shift the contents of the sbuff, returning the number of bytes we managed to shift
+/** Shift the contents of the dbuff, returning the number of bytes we managed to shift
  *
  * @param[in] dbuff	to shift.
  * @param[in] shift	the number of bytes to shift
