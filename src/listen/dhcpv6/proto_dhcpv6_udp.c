@@ -414,6 +414,8 @@ static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_i
 
 	option_len = fr_nbo_to_uint16(option + 2);
 
+	if (option + option_len > packet + packet_len) return NULL;
+
 	t = (proto_dhcpv6_track_t *) talloc_zero_array(track, uint8_t, t_size + option_len);
 	if (!t) return NULL;
 
@@ -421,6 +423,7 @@ static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_i
 
 	memcpy(&t->header, packet, 4); /* packet code + 24-bit transaction ID */
 
+	/* coverity[tainted_data] */
 	memcpy(&t->client_id[0], option + 4, option_len);
 	t->client_id_len = option_len;
 
