@@ -107,6 +107,11 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_csv.la
 #
 #  NOTE: Grepping for $< is not safe cross platform, as on Linux it
 #  expands to the full absolute path, and on macOS it appears to be relative.
+#
+#  To quickly find all failing tests, run:
+#
+#	(make -k test.keywords 2>&1) | grep 'KEYWORD=' | sed 's/KEYWORD=//;s/ .*$//'
+#
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_test.la rlm_csv.la rlm_unpack.la
 	$(eval CMD:=KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(NEW_COND) $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx)
 	@echo "KEYWORD-TEST $(notdir $@)"
