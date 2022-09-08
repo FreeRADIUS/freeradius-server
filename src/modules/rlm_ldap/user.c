@@ -255,7 +255,6 @@ void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_
 			RWDEBUG2("!!! Remove the password map and either:");
 			RWDEBUG2("!!!  - Configure authentication via ntlm_auth (mschapv2 only)");
 			RWDEBUG2("!!!  - Configure authentication via wbclient (mschapv2 only)");
-			RWDEBUG2("!!!    that password attribute");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
 				 mctx->inst->name);
 			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
@@ -270,7 +269,6 @@ void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_
 			RWDEBUG2("!!! Remove the password map and either:");
 			RWDEBUG2("!!!  - Set 'edir = yes' and enable the universal password feature on your");
 			RWDEBUG2("!!!    eDir server (recommended)");
-			RWDEBUG2("!!!    that password attribute");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
 				 mctx->inst->name);
 			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",

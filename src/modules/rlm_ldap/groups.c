@@ -188,7 +188,7 @@ finish:
 	RETURN_MODULE_RCODE(rcode);
 }
 
-/** Convert a single group name into a DN
+/** Convert a single group DN into a name
  *
  * Unlike the inverse conversion of a name to a DN, most LDAP directories don't allow filtering by DN,
  * so we need to search for each DN individually.
