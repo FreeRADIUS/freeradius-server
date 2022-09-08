@@ -250,6 +250,38 @@ static void *_tmpl_cursor_next(UNUSED fr_dlist_head_t *list, void *curr, void *u
 	return NULL;
 }
 
+#ifdef TMPL_DCURSOR_MOD
+static int tmpl_dcursor_insert(UNUSED fr_dlist_head_t *list, void *to_insert, void *uctx)
+{
+	tmpl_dcursor_ctx_t *cc = uctx;
+	tmpl_dcursor_nested_t *ns = fr_dlist_tail(&cc->nested);
+
+	if (!ns) return 0;
+
+	fr_dcursor_insert(&ns->cursor, to_insert);
+	return 0;
+}
+
+static int tmpl_dcursor_remove(UNUSED fr_dlist_head_t *list, void *to_remove, void *uctx)
+{
+	tmpl_dcursor_ctx_t *cc = uctx;
+	tmpl_dcursor_nested_t *ns = fr_dlist_tail(&cc->nested);
+	void *current;
+
+	if (!ns) return 0;
+
+	current = fr_dcursor_current(&ns->cursor);
+	if (current == to_remove) {
+		fr_dcursor_remove(&ns->cursor);
+	} else {
+		fr_dcursor_set_current(&ns->cursor, to_remove);
+		fr_dcursor_remove(&ns->cursor);
+		fr_dcursor_set_current(&ns->cursor, current);
+	}
+	return 0;
+}
+#endif
+
 /** Initialise a #fr_dcursor_t at the specified point in a pair tree
  *
  * This makes iterating over the one or more #fr_pair_t specified by a #tmpl_t
@@ -315,7 +347,11 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 	/*
 	 *	Get the first entry from the tmpl
 	 */
+#ifndef TMPL_DCURSOR_MOD
 	vp = fr_pair_dcursor_iter_init(cursor, cc->list, _tmpl_cursor_next, cc);
+#else
+	vp = fr_dcursor_iter_mod_init(cursor, fr_pair_list_to_dlist(cc->list), _tmpl_cursor_next, NULL, cc, tmpl_dcursor_insert, tmpl_dcursor_remove, cc);
+#endif
 	if (!vp) {
 		if (err) {
 			*err = -1;
