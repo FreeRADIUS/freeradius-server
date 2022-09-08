@@ -1110,7 +1110,7 @@ static unlang_action_t rlm_ldap_map_profile(rlm_rcode_t *p_result, rlm_ldap_t co
 
 	RDEBUG2("Processing profile attributes");
 	RINDENT();
-	if (fr_ldap_map_do(request, query->ldap_conn->handle, inst->valuepair_attr, expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
+	if (fr_ldap_map_do(request, inst->valuepair_attr, expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
 	REXDENT();
 
 	RETURN_MODULE_RCODE(rcode);
@@ -1180,7 +1180,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	Check for access.
 	 */
 	if (inst->userobj_access_attr) {
-		rcode = rlm_ldap_check_access(inst, request, handle, entry);
+		rcode = rlm_ldap_check_access(inst, request, entry);
 		if (rcode != RLM_MODULE_OK) {
 			goto finish;
 		}
@@ -1191,7 +1191,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 */
 	if (inst->cacheable_group_dn || inst->cacheable_group_name) {
 		if (inst->userobj_membership_attr) {
-			rlm_ldap_cacheable_userobj(&rcode, inst, request, ttrunk, entry, handle, inst->userobj_membership_attr);
+			rlm_ldap_cacheable_userobj(&rcode, inst, request, ttrunk, entry, inst->userobj_membership_attr);
 			if (rcode != RLM_MODULE_OK) {
 				goto finish;
 			}
@@ -1321,7 +1321,7 @@ skip_edir:
 	if (!map_list_empty(&inst->user_map) || inst->valuepair_attr) {
 		RDEBUG2("Processing user attributes");
 		RINDENT();
-		if (fr_ldap_map_do(request, handle, inst->valuepair_attr,
+		if (fr_ldap_map_do(request, inst->valuepair_attr,
 				   &expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
 		REXDENT();
 		rlm_ldap_check_reply(mctx, request, ttrunk);

@@ -308,7 +308,6 @@ int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, map_list
  * This is *NOT* atomic, but there's no condition for which we should error out...
  *
  * @param[in] request		Current request.
- * @param[in] handle		associated with entry.
  * @param[in] valuepair_attr	Treat attribute with this name as holding complete AVP definitions.
  * @param[in] expanded		attributes (rhs of map).
  * @param[in] entry		to retrieve attributes from.
@@ -316,7 +315,7 @@ int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, map_list
  *	- Number of maps successfully applied.
  *	- -1 on failure.
  */
-int fr_ldap_map_do(request_t *request, LDAP *handle,
+int fr_ldap_map_do(request_t *request,
 		   char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry)
 {
 	map_t const		*map = NULL;
@@ -325,6 +324,7 @@ int fr_ldap_map_do(request_t *request, LDAP *handle,
 
 	fr_ldap_result_t	result;
 	char const		*name;
+	LDAP			*handle = fr_ldap_handle_thread_local();
 
 	while ((map = map_list_next(expanded->maps, map))) {
 		int ret;
