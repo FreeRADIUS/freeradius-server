@@ -652,7 +652,7 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
 			 _insert, \
 			 _remove, \
 			 _mod_uctx, \
-			 IS_CONST(fr_dlist_head_t *, _head))
+			 IS_CONST(fr_dlist_head_t *, _list))
 
 /** Initialise a cursor with a custom iterator
  *
