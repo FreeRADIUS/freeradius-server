@@ -54,9 +54,9 @@ unit_test_module.ARGS = -h
 $(BUILD_DIR)/tests/bin/%: $(BUILD_DIR)/bin/local/%
 	@echo "BIN-TEST $(notdir $@)"
 	${Q}if ! $(TEST_BIN)/$(notdir $<) $($(notdir $@).ARGS) > $@.log 2>&1; then \
-		echo $(TEST_BIN)/$(notdir $<) $($(notdir $@).ARGS); \
 		echo LOG in $@.log; \
 		cat $@.log; \
+		echo $(TEST_BIN)/$(notdir $<) $($(notdir $@).ARGS); \
 		exit 1; \
 	fi
 	${Q}touch $@
