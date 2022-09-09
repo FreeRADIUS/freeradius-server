@@ -3,7 +3,7 @@
 
 # Check debug level is now 4
 if ("%(debug:4)" != 4) {
-	fail
+	test_fail
 }
 
 # Set debug back to the original level
@@ -11,7 +11,7 @@ if ("%(debug:4)" != 4) {
 
 # Read out the current debug level to verify it changed
 if ("%(debug:%{Tmp-Integer-0})" != "%{Tmp-Integer-0}") {
-	fail
+	test_fail
 }
 
 # Check for 'splosions
