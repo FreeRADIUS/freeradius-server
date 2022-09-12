@@ -727,6 +727,7 @@ static void test_eof_terminal(void)
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt_eof, NULL);
 	TEST_CHECK(slen == 3);
+	/* coverity[uninit_use_in_call] */
 	TEST_CHECK_STRCMP(out, "foo");
 
 	fr_sbuff_advance(&sbuff, 1);	/* Advance past comma */
