@@ -2053,6 +2053,7 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 			pthread_mutex_unlock(&cluster->mutex);
 			return -1;
 		}
+		/* coverity[uninit_use] */
 		spare->pending_addr = find.addr;	/* Set the config to be applied */
 		if (cluster_node_connect(cluster, spare) < 0) {
 			pthread_mutex_unlock(&cluster->mutex);
