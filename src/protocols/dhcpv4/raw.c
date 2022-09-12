@@ -153,7 +153,7 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer,
 
 	/* UDP checksum is done here */
 	udp_hdr->checksum = fr_udp_checksum((uint8_t const *)(dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE),
-					    ntohs(udp_hdr->len), udp_hdr->checksum,
+					    l4_len, udp_hdr->checksum,
 					    packet->socket.inet.src_ipaddr.addr.v4, packet->socket.inet.dst_ipaddr.addr.v4);
 
 	return sendto(sockfd, dhcp_packet, (ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE + packet->data_len),
