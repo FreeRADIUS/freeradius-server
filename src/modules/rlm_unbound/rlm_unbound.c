@@ -380,6 +380,7 @@ static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				xlat_unbound_callback, &ur->async_id); \
 	}
 
+	/* coverity[dereference] */
 	UB_QUERY("A", 1, FR_TYPE_IPV4_ADDR, false)
 	else UB_QUERY("AAAA", 28, FR_TYPE_IPV6_ADDR, false)
 	else UB_QUERY("PTR", 12, FR_TYPE_STRING, false)
