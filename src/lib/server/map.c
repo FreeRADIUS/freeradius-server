@@ -2104,14 +2104,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		if (fr_dlist_num_elements(&leaf) > 1) {
 			while ((extent = fr_dlist_tail(&leaf))) {
-				fr_pair_list_copy(extent->list_ctx, extent->list, &src_list);
+				(void) fr_pair_list_copy(extent->list_ctx, extent->list, &src_list);
 				fr_dlist_talloc_free_tail(&leaf);
 			}
 			/* Free all the src vps */
 			fr_pair_list_free(&src_list);
 		} else {
 			extent = fr_dlist_head(&leaf);
-			fr_pair_list_copy(extent->list_ctx, extent->list, &src_list);
+			(void) fr_pair_list_copy(extent->list_ctx, extent->list, &src_list);
 			fr_dlist_talloc_free_head(&leaf);
 		}
 
