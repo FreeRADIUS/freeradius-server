@@ -3850,6 +3850,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 		snprintf(buffer, sizeof(buffer), "decode.%s", name);
 
 		xlat = xlat_register(NULL, buffer, protocol_decode_xlat, NULL);
+		if (!xlat) return -1;
 		xlat_func_args(xlat, protocol_decode_xlat_args);
 		/* coverity[suspicious_sizeof] */
 		xlat_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
@@ -3865,6 +3866,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 		snprintf(buffer, sizeof(buffer), "encode.%s", name);
 
 		xlat = xlat_register(NULL, buffer, protocol_encode_xlat, NULL);
+		if (!xlat) return -1;
 		xlat_func_args(xlat, protocol_encode_xlat_args);
 		/* coverity[suspicious_sizeof] */
 		xlat_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
