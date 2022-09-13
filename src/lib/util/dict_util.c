@@ -1998,7 +1998,8 @@ fr_slen_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 
 	if (!dict_gctx || !name || !out) {
 		if (err) *err = FR_DICT_ATTR_EINVAL;
-		FR_SBUFF_ERROR_RETURN(&our_name);
+		if (name) FR_SBUFF_ERROR_RETURN(name);
+		return 0;
 	}
 
 	our_name = FR_SBUFF(name);
