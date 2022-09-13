@@ -202,14 +202,15 @@ int ldap_sync_cookie_store(sync_state_t *sync, uint8_t const *cookie, bool refre
 
 	local = talloc_new(NULL);
 	fr_pair_list_init(&pairs);
-	fr_pair_list_copy(local, &pairs, &sync->config->sync_pairs);
-
-	fr_pair_list_append_by_da(local, vp, &pairs, attr_packet_type, (uint32_t)FR_LDAP_SYNC_CODE_COOKIE_STORE, true);
-	if (!vp) {
+	if (fr_pair_list_copy(local, &pairs, &sync->config->sync_pairs) < 0) {
 	error:
 		talloc_free(local);
 		return -1;
 	}
+
+	fr_pair_list_append_by_da(local, vp, &pairs, attr_packet_type, (uint32_t)FR_LDAP_SYNC_CODE_COOKIE_STORE, true);
+	if (!vp) goto error;
+
 	fr_pair_list_append_by_da(local, vp, &pairs, attr_ldap_sync_packet_id, (uint32_t)sync->sync_no, true);
 	if (!vp) goto error;
 
@@ -280,17 +281,17 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 
 	local = talloc_new(NULL);
 	fr_pair_list_init(&pairs);
-	fr_pair_list_copy(local, &pairs, &sync->config->sync_pairs);
-
-	pcode = sync_packet_code_table[op];
-
-	fr_pair_list_append_by_da(local, vp, &pairs, attr_packet_type, (uint32_t)pcode, false);
-	if (!vp) {
+	if (fr_pair_list_copy(local, &pairs, &sync->config->sync_pairs) < 0) {
 	error:
 		if (msg) ldap_msgfree(msg);
 		talloc_free(local);
 		return -1;
 	}
+
+	pcode = sync_packet_code_table[op];
+
+	fr_pair_list_append_by_da(local, vp, &pairs, attr_packet_type, (uint32_t)pcode, false);
+	if (!vp) goto error;
 
 	fr_pair_list_append_by_da(local, vp, &pairs, attr_ldap_sync_packet_id, (uint32_t)sync->sync_no, false);
 	if (!vp) goto error;
