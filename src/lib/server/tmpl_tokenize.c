@@ -5118,7 +5118,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		 *	xlats will be treated as strongly typed values
 		 *	/ lists on their own.
 		 */
-		*type = T_DOUBLE_QUOTED_STRING;
+		if (*type == T_INVALID) *type = T_BARE_WORD;
 		depth = 0;
 		close = (p[1] == '{') ? '}' : ')';
 
