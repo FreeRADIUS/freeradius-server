@@ -91,6 +91,11 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, edit_result_t *out, request_t 
 	ssize_t slen;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
 
+	if (!box) {
+		RWDEBUG("No value found for assignment");
+		return -1;
+	}
+
 	/*
 	 *	Mash all of the results together.
 	 */
@@ -270,7 +275,6 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 		if (fr_type_is_group(da->type)) da = fr_dict_root(request->dict);
 
 		children = &current->rhs.pair_list;
-		copy_vps = false;
 
 		/*
 		 *	For exec, etc., parse the pair list from a string, in the context of the
@@ -1136,8 +1140,6 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 {
 	map_t const *map = current->map;
 
-	fr_assert(current->lhs.vp != NULL);
-
 	/*
 	 *	The LHS isn't an xlat, so just append the expanded value-boxes to the parents result.
 	 */
@@ -1162,7 +1164,7 @@ static int expanded_lhs_attribute(request_t *request, unlang_frame_state_edit_t 
 {
 	if (tmpl_from_result(state, &current->lhs, tmpl_da(current->parent->lhs.vpt)->type, request) < 0) return -1;
 
-	return check_lhs(request, state, current);
+	return current->check_lhs(request, state, current);
 }
 
 static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
@@ -1177,7 +1179,7 @@ static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit
 	if (rcode < 0) return -1;
 
 	if (rcode == 1) {
-		current->func = expanded_lhs_attribute;
+		current->func = current->expanded_lhs;
 		return 1;
 	}
 
@@ -1227,7 +1229,7 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 		}
 
 		/*
-		 *	Stop if there's no parnt to process.
+		 *	Stop if there's no parent to process.
 		 */
 		if (!state->current->parent) break;
 
