@@ -95,7 +95,7 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, edit_result_t *out, request_t 
 	 *	Mash all of the results together.
 	 */
 	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
-		RPEDEBUG("Failed converting result to string");
+		RWDEBUG("Failed converting result to string");
 		return -1;
 	}
 
@@ -148,7 +148,7 @@ static int tmpl_from_result(TALLOC_CTX *ctx, edit_result_t *out, fr_type_t type,
 	 *	string and then cast it to the correct data type.
 	 */
 	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
-		RPEDEBUG("Failed converting result to string");
+		RWDEBUG("Failed converting result to string");
 		return -1;
 	}
 
@@ -261,7 +261,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			 *	Mash all of the results together.
 			 */
 			if (fr_value_box_list_concat_in_place(box, box, &current->rhs.result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
-				RPEDEBUG("Failed converting result to string");
+				RWDEBUG("Failed converting result to string");
 				return -1;
 			}
 		}
@@ -482,7 +482,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 
 			if (fr_value_box_list_concat_in_place(box, box, &current->rhs.result, FR_TYPE_STRING,
 							      FR_VALUE_BOX_LIST_FREE_BOX, true, 8192) < 0) {
-				RPEDEBUG("Failed converting result to string");
+				RWDEBUG("Failed converting result to string");
 				return -1;
 			}
 			box = fr_dlist_head(&current->rhs.result);
