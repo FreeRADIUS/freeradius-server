@@ -5,6 +5,4 @@
 #
 #  Set CHAP-Password
 #
-update request {
-	&CHAP-Password := "%(chap_password:%{request.CHAP-Password})"
-}
+&CHAP-Password := "%(chap_password:%{CHAP-Password})"
