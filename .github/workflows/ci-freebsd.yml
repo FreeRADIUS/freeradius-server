@@ -55,6 +55,7 @@ jobs:
       with:
         usesh: true
         sync: rsync
+        copyback: false
         mem: 4096
         envs: 'HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG'
         prepare: |
