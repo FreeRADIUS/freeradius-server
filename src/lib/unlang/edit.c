@@ -38,6 +38,7 @@ typedef struct {
 	fr_value_box_list_t	result;			//!< result of expansion
 	tmpl_t const		*vpt;			//!< expanded tmpl
 	tmpl_t			*to_free;		//!< tmpl to free.
+	bool			created;		//!< whether we just created this VP
 	fr_pair_t		*vp;			//!< VP referenced by tmpl.
 	fr_pair_t		*vp_parent;		//!< parent of the current VP
 	fr_pair_list_t		pair_list;		//!< for structural attributes
@@ -57,6 +58,8 @@ struct edit_map_s {
 
 	map_list_t const	*map_head;
 	map_t const		*map;			//!< the map to evaluate
+
+	bool			temporary_pair_list;
 
 	edit_result_t		lhs;			//!< LHS child entries
 	edit_result_t		rhs;			//!< RHS child entries
@@ -78,6 +81,8 @@ struct unlang_frame_state_edit_s {
 
 #define MAP_INFO cf_filename(map->ci), cf_lineno(map->ci)
 
+static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, fr_dict_attr_t const *da, void *uctx);
+
 /*
  *  Convert a value-box list to a LHS attribute #tmpl_t
  */
@@ -90,7 +95,7 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, edit_result_t *out, request_t 
 	 *	Mash all of the results together.
 	 */
 	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
-		RPEDEBUG("Left side expansion failed");
+		RPEDEBUG("Failed converting result to string");
 		return -1;
 	}
 
@@ -106,7 +111,7 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, edit_result_t *out, request_t 
 					}
 				   });
 	if (slen <= 0) {
-		RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference", box->vb_strvalue);
+		RPEDEBUG("Expansion result \"%s\" is not an attribute reference", box->vb_strvalue);
 		return -1;
 	}
 
@@ -141,17 +146,15 @@ static int tmpl_from_result(TALLOC_CTX *ctx, edit_result_t *out, fr_type_t type,
 	/*
 	 *	Slow path: mash all of the results together as a
 	 *	string and then cast it to the correct data type.
-	 *
-	 *	@todo - allow groups to be returned for leaf attributes.
 	 */
 	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
-		RPEDEBUG("Right side expansion failed");
+		RPEDEBUG("Failed converting result to string");
 		return -1;
 	}
 
 make_tmpl:
 	if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) {
-			RPEDEBUG("Failed parsing data %pV", box);
+		RPEDEBUG("Failed parsing data %pV", box);
 		return -1;
 	}
 
@@ -166,19 +169,25 @@ make_tmpl:
  *  Which will later be converted by the above functions back to a
  *  "realized" tmpl, which holds a TMPL_TYPE_DATA or TMPL_TYPE_ATTR.
  */
-static int tmpl_to_values(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request, tmpl_t const *vpt)
+static int tmpl_to_values(TALLOC_CTX *ctx, edit_result_t *out, request_t *request, tmpl_t const *vpt)
 {
+	fr_assert(out->vpt == NULL);
+	fr_assert(out->to_free == NULL);
+
 	switch (vpt->type) {
 	case TMPL_TYPE_DATA:
+		return 0;
+
 	case TMPL_TYPE_ATTR:
+		out->vpt = vpt;
 		return 0;
 
 	case TMPL_TYPE_EXEC:
-		if (unlang_tmpl_push(ctx, list, request, vpt, NULL) < 0) return -1;
+		if (unlang_tmpl_push(ctx, &out->result, request, vpt, NULL) < 0) return -1;
 		return 1;
 
 	case TMPL_TYPE_XLAT:
-		if (unlang_xlat_push(ctx, NULL, list, request, tmpl_xlat(vpt), false) < 0) return -1;
+		if (unlang_xlat_push(ctx, NULL, &out->result, request, tmpl_xlat(vpt), false) < 0) return -1;
 		return 1;
 
 	default:
@@ -202,27 +211,20 @@ static int tmpl_to_values(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t 
  *
  *  Loop over VPs on the LHS, doing the operation with the RHS.
  */
-static int apply_edits_to_list(request_t *request, edit_map_t *current)
+static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	fr_pair_t *vp;
 	fr_pair_list_t *children;
-	fr_value_box_t const *rhs_box = NULL;
 	bool copy_vps = true;
 	int rcode;
 	map_t const *map = current->map;
 	tmpl_dcursor_ctx_t cc;
 	fr_dcursor_t cursor;
 
-	fr_assert(current->lhs.vp != NULL);
-
-#ifdef STATIC_ANALYZER
-	if (!current->lhs.vp) return -1;
-#endif
-
 	/*
 	 *	RHS is a sublist, go apply that.
 	 */
-	if (!current->rhs.vpt) {
+	if (!map->rhs) {
 		children = &current->rhs.pair_list;
 		copy_vps = false;
 		goto apply_list;
@@ -231,66 +233,76 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current)
 	/*
 	 *	For RHS of data, it should be a string which contains the pairs to use.
 	 */
-	if (tmpl_is_data(current->rhs.vpt)) {
-		fr_token_t token;
+	if (!current->rhs.vpt) {
+		fr_value_box_t *box;
 		fr_dict_attr_t const *da;
+		fr_token_t token;
 
-		rhs_box = tmpl_value(current->rhs.vpt);
+		if (tmpl_is_data(map->rhs)) {
+			box = tmpl_value(map->rhs);
 
-		da = current->lhs.vp->da;
+			if (box->type != FR_TYPE_STRING) {
+				REDEBUG("Invalid data type for assignment to list");
+				return -1;
+			}
+
+		} else {
+			box = fr_dlist_head(&current->rhs.result);
+
+			/*
+			 *	Can't concatenate empty results.
+			 */
+			if (!box) {
+				RDEBUG2("No value found for assignment");
+				return -1;
+			}
+
+			/*
+			 *	Mash all of the results together.
+			 */
+			if (fr_value_box_list_concat_in_place(box, box, &current->rhs.result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+				RPEDEBUG("Failed converting result to string");
+				return -1;
+			}
+		}
+
+		da = tmpl_da(current->lhs.vpt);
 		if (fr_type_is_group(da->type)) da = fr_dict_root(request->dict);
 
 		children = &current->rhs.pair_list;
 		copy_vps = false;
 
-		switch (rhs_box->type) {
-		case FR_TYPE_STRING:
-			/*
-			 *	For exec, etc., parse the pair list from a string, in the context of the
-			 *	parent VP.  Because we're going to be moving them to the parent VP at some
-			 *	point.  The ones which aren't moved will get deleted in this function.
-			 */
-			token = fr_pair_list_afrom_str(current->lhs.vp, da, rhs_box->vb_strvalue, rhs_box->length, children);
-			if (token == T_INVALID) {
-				RPEDEBUG("Failed parsing string as attribute list");
-				return -1;
-			}
-
-			if (token != T_EOL) {
-				REDEBUG("%s[%d] Failed to parse the entire string.", MAP_INFO);
-				return -1;
-			}
-			break;
-
-		case FR_TYPE_OCTETS:
-			/*
-			 *	@todo - do something like protocol_decode_xlat / xlat_decode_value_box_list(),
-			 *	except all of that requires a decode context :(
-			 */
-
-		default:
-			fr_strerror_printf("Cannot assign '%s' type to structural type '%s'",
-					   fr_type_to_str(rhs_box->type),
-					   fr_type_to_str(current->lhs.vp->vp_type));
+		/*
+		 *	For exec, etc., parse the pair list from a string, in the context of the
+		 *	parent VP.  Because we're going to be moving them to the parent VP at some
+		 *	point.  The ones which aren't moved will get deleted in this function.
+		 */
+		token = fr_pair_list_afrom_str(state, da, box->vb_strvalue, box->length, children);
+		if (token == T_INVALID) {
+			RPEDEBUG("Failed parsing string as attribute list");
 			return -1;
 		}
 
+		if (token != T_EOL) {
+			REDEBUG("%s[%d] Failed to parse the entire string.", MAP_INFO);
+			return -1;
+		}
+
+		copy_vps = false;
 		goto apply_list;
 	}
 
-	/*
-	 *	If it's not data, it must be an attribute.
-	 */
-	if (!tmpl_is_attr(current->rhs.vpt)) {
-		REDEBUG("%s[%d] Unknown RHS %s", MAP_INFO, current->rhs.vpt->name);
-		return -1;
-	}
+	fr_assert(current->rhs.vpt);
+	fr_assert(tmpl_is_attr(current->rhs.vpt));
 
 	/*
 	 *	Doing no modifications to a list is a NOOP.
 	 */
 	vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, current->rhs.vpt);
-	if (!vp) return 0;
+	if (!vp) {
+		tmpl_dcursor_clear(&cc);
+		return 0;
+	}
 
 	/*
 	 *	Remove an attribute from a list.  The tmpl_dcursor and tmpl_parser ensures that the RHS
@@ -324,11 +336,14 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current)
 		return 0;
 	}
 
+	/*
+	 *	Check the RHS thing we're copying.
+	 */
 	if (fr_type_is_structural(vp->vp_type)) {
 		tmpl_dcursor_clear(&cc);
 
 		if (tmpl_num(current->rhs.vpt) == NUM_ALL) {
-			REDEBUG("%s[%d] Wildcard structural for %s is not yet implemented.", MAP_INFO, current->rhs.vpt->name);
+			REDEBUG("%s[%d] Wildcard for structural attribute %s is not yet implemented.", MAP_INFO, current->rhs.vpt->name);
 			return -1;
 		}
 
@@ -337,6 +352,9 @@ static int apply_edits_to_list(request_t *request, edit_map_t *current)
 		goto apply_list;
 	}
 
+	/*
+	 *	Copy the attributes from the cursor to a temporary pair list.
+	 */
 	fr_pair_list_init(&current->rhs.pair_list);
 	while (vp) {
 		fr_pair_t *copy;
@@ -363,6 +381,37 @@ apply_list:
 	fr_assert(children != NULL);
 
 	/*
+	 *	If we have to create the LHS, then do so now.
+	 */
+	if (current->lhs.created) {
+		int err;
+		tmpl_dcursor_ctx_t lhs_cc;
+		fr_dcursor_t lhs_cursor;
+
+		/*
+		 *	Now that we have the RHS values, go create the LHS vp.  We delay creating it until
+		 *	now, because the RHS might just be nothing.  In which case we don't want to create the
+		 *	LHS, and then discover that we need to delete it.
+		 */
+		fr_strerror_clear();
+		vp = tmpl_dcursor_build_init(&err, state, &lhs_cc, &lhs_cursor, request, current->lhs.vpt, edit_list_pair_build, current);
+		tmpl_dcursor_clear(&lhs_cc);
+		if (!vp) {
+			RPDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
+			return -1;
+		}
+
+		current->lhs.vp_parent = fr_pair_parent(vp);
+		current->lhs.vp = vp;
+	}
+
+	fr_assert(current->lhs.vp != NULL);
+
+#ifdef STATIC_ANALYZER
+	if (!current->lhs.vp) return -1;
+#endif
+
+	/*
 	 *	Print the children before we do the modifications.
 	 */
 	RDEBUG2("%s %s {", current->lhs.vpt->name, fr_tokens[map->op]);
@@ -387,19 +436,14 @@ apply_list:
 }
 
 
-static int apply_edits_to_leaf(request_t *request, edit_map_t *current)
+static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-	fr_pair_t *vp;
-	fr_value_box_t const *rhs_box = NULL;
+	fr_value_box_t *box = NULL;
 	tmpl_dcursor_ctx_t cc;
 	fr_dcursor_t cursor;
+	fr_dcursor_t pair_cursor;
+	bool single = false, pair = false;
 	map_t const *map = current->map;
-
-	fr_assert(current->lhs.vp != NULL);
-
-#ifdef STATIC_ANALYZER
-	if (!current->lhs.vp) return -1;
-#endif
 
 	if (!tmpl_is_attr(current->lhs.vpt)) {
 		REDEBUG("%s[%d] The left side of an assignment must be an attribute reference", MAP_INFO);
@@ -408,51 +452,180 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current)
 
 	/*
 	 *	&Foo := { a, b, c }
+	 *
+	 *	There should be values in RHS result, all of value boxes.
 	 */
-	if (!current->rhs.vpt) {
-	apply_list:
-		fr_assert(current->lhs.vp_parent != NULL);
+	if (!map->rhs) {
+		RDEBUG("RHS leaf list");
+		fr_assert(current->rhs.vpt == NULL);
+		goto rhs_list;
 
-		if (fr_edit_list_pair_delete_by_da(current->el, &current->lhs.vp_parent->vp_group,
-						   tmpl_da(current->lhs.vpt)) < 0) {
-			return -1;
+	} else if (!current->rhs.vpt) {
+		/*
+		 *	There's no RHS tmpl, so the result must be in in the parent RHS tmpl as data, OR in the RHS result list.
+		 */
+		if (tmpl_is_data(map->rhs)) {
+			box = tmpl_value(map->rhs);
+			single = true;
+
+		} else if ((map->rhs->quote == T_SINGLE_QUOTED_STRING) || (map->rhs->quote == T_DOUBLE_QUOTED_STRING)) {
+			/*
+			 *	The caller asked for a string, so instead of returning a list, return a string.
+			 *
+			 *	@todo - this should arguably be the responsibility of xlat_push(), or
+			 *	tmpl_push().  If the input xlat/tmpl is quoted, then the output should be a
+			 *	single value-box which is the final string.
+			 */
+			box = fr_dlist_head(&current->rhs.result);
+
+			if (!box) goto no_rhs;
+
+			if (fr_value_box_list_concat_in_place(box, box, &current->rhs.result, FR_TYPE_STRING,
+							      FR_VALUE_BOX_LIST_FREE_BOX, true, 8192) < 0) {
+				RPEDEBUG("Failed converting result to string");
+				return -1;
+			}
+			box = fr_dlist_head(&current->rhs.result);
+			single = true;
+
+		} else {
+		rhs_list:
+			if (fr_dlist_num_elements(&current->rhs.result) == 1) {
+				box = fr_dlist_head(&current->rhs.result);
+				single = true;
+			} else {
+				box = fr_dcursor_init(&cursor, &current->rhs.result);
+			}
+		}
+	} else {
+		fr_pair_t *vp;
+		int err;
+
+		/*
+		 *	We have a temporary tmpl on the RHS.  It MUST be an attribute, because everything else
+		 *	was expanded to a value-box list.
+		 */
+		fr_assert(tmpl_is_attr(current->rhs.vpt));
+
+		/*
+		 *	Get a cursor over the pairs.  If there are no matching pairs, then we do nothing.
+		 */
+		vp = tmpl_dcursor_init(&err, request, &cc, &pair_cursor, request, current->rhs.vpt);
+		if (!vp) {
+			tmpl_dcursor_clear(&cc);
+			return 0;
 		}
 
-		if (fr_pair_list_empty(&current->rhs.pair_list)) return 0;
+		box = fr_pair_dcursor_nested_init(&cursor, &pair_cursor); // the list is unused
+		pair = true;
+	}
 
-		fr_pair_list_foreach(&current->rhs.pair_list, child) {
-			(void) talloc_steal(current->lhs.vp_parent, child);
-
-			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], &child->data);
-		}
-
-		if (fr_edit_list_insert_list_tail(current->el, &current->lhs.vp_parent->vp_group,
-						  &current->rhs.pair_list) < 0) {
-			return -1;
-		}
-
-		return 0;
+	if (!box) {
+	no_rhs:
+		RDEBUG2("No value found for assignment");
+		return -1;
 	}
 
 	/*
-	 *	Any expansions have been turned into data.
-	 *
-	 *	@todo - set of FR_TYPE_GROUP to leaf?
+	 *	The parent is a structural type.  The RHS is a temporary list or attribute, which we can just
+	 *	add to the parents pair list.  The parent will then take care of merging that pair list into
+	 *	the appropriate place.
 	 */
-	if (tmpl_is_data(current->rhs.vpt)) {
-		rhs_box = tmpl_value(current->rhs.vpt);
+	if (current->temporary_pair_list) {
+		fr_dict_attr_t const *da = tmpl_da(current->lhs.vpt);
+		fr_pair_list_t *list = &current->parent->rhs.pair_list;
 
-	apply_pair_assignment:
-		RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], rhs_box);
+		while (box) {
+			fr_pair_t *vp;
+
+			MEM(vp = fr_pair_afrom_da(current->parent->lhs.vp, da));
+			vp->op = map->op;
+			if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, box) < 0) return -1;
+			if (fr_pair_append(list, vp) < 0) return -1;
+
+			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], &vp->data);
+
+			if (single) break;
+
+			box = fr_dcursor_next(&cursor);
+		}
+
+		goto done;
+	}
+
+	/*
+	 *	check_lhs() takes care of deleting existing attributes for ":=", and creating at least one new one for ":=" or "=".
+	 *	It also takes care of skipping the entire map if the attribute already exists for "="
+	 */
+	if (current->lhs.created) {
+		fr_dict_attr_t const *da = tmpl_da(current->lhs.vpt);
+		fr_pair_t *vp;
+		int err;
+		tmpl_dcursor_ctx_t lhs_cc;
+		fr_dcursor_t lhs_cursor;
 
 		/*
-		 *	Don't apply the edit, as the VP is in a temporary list.  The parent will actually apply it.
+		 *	Now that we have the RHS values, go create the LHS vp.  We delay creating it until
+		 *	now, because the RHS might just be nothing.  In which case we don't want to create the
+		 *	LHS, and then discover that we need to delete it.
 		 */
-		if (current->parent) {
-			vp = current->lhs.vp;
-
-			return fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, rhs_box);
+		fr_strerror_clear();
+		vp = tmpl_dcursor_build_init(&err, state, &lhs_cc, &lhs_cursor, request, current->lhs.vpt, edit_list_pair_build, current);
+		tmpl_dcursor_clear(&lhs_cc);
+		if (!vp) {
+			RPDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
+			return -1;
 		}
+
+		fr_assert(current->lhs.vp_parent != NULL);
+		fr_assert(fr_type_is_structural(current->lhs.vp_parent->da->type));
+
+		/*
+		 *	There's always at least one LHS vp created.  So we apply that first.
+		 */
+		RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], box);
+
+		/*
+		 *	The VP has already been inserted into the edit list, so we don't need to edit it's
+		 *	value, we can just mash it in place.
+		 */
+		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, box) < 0) goto fail;
+		vp->op = T_OP_EQ;
+
+		if (single) goto done;
+
+		/*
+		 *	Loop over the remaining items, adding the VPs we've just created.
+		 */
+		while ((box = fr_dcursor_next(&cursor)) != NULL) {
+			MEM(vp = fr_pair_afrom_da(current->lhs.vp_parent, da));
+			if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, box) < 0) goto fail;
+
+			if (fr_edit_list_insert_pair_tail(state->el, &current->lhs.vp_parent->vp_group, vp) < 0) goto fail;
+			vp->op = T_OP_EQ;
+		}
+
+		goto done;
+	}
+
+	/*
+	 *	If we're not creating a temporary list, we must be editing an existing attribute on the LHS.
+	 *
+	 *	We have two remaining cases.  One is the attribute was just created with "=" or ":=", so we
+	 *	can just mash its value.  The second is that the attribute already exists, and we're editing
+	 *	it's value using something like "+=".
+	 */
+	fr_assert(current->lhs.vp != NULL);
+
+#ifdef STATIC_ANALYZER
+	if (!current->lhs.vp) return -1;
+#endif
+
+	/*
+	 *	All other operators are "modify in place", of the existing current->lhs.vp
+	 */
+	while (box) {
+		RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], box);
 
 		/*
 		 *	The apply function also takes care of doing data type upcasting and conversion.  So we don't
@@ -461,107 +634,20 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current)
 		if (fr_edit_list_apply_pair_assignment(current->el,
 						       current->lhs.vp,
 						       map->op,
-						       rhs_box) < 0) {
-			RPERROR("Failed performing %s operation", fr_tokens[map->op]);
+						       box) < 0) {
+		fail:
+			if (pair) tmpl_dcursor_clear(&cc);
 			return -1;
 		}
 
-		return 0;
+		if (single) break;
+
+		box = fr_dcursor_next(&cursor);
 	}
 
-	/*
-	 *	If it's not data, it must be an attribute.
-	 */
-	if (!tmpl_is_attr(current->rhs.vpt)) {
-		REDEBUG("%s[%d] Unknown RHS %s", MAP_INFO, current->rhs.vpt->name);
-		return -1;
-	}
-
-	/*
-	 *	LHS is a leaf.  The RHS must be a leaf.
-	 */
-	if (!fr_type_is_leaf(tmpl_da(current->rhs.vpt)->type)) {
-		REDEBUG("%s[%d] Cannot assign structural %s to leaf %s", MAP_INFO,
-			tmpl_da(current->rhs.vpt)->name, current->lhs.vp->da->name);
-		return -1;
-	}
-
-	/*
-	 *	Find the RHS attribute.
-	 */
-	vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, current->rhs.vpt);
-	if (!vp) {
-		REDEBUG("%s[%d] Failed to find attribute reference %s", MAP_INFO, current->rhs.vpt->name);
-		return -1;
-	}
-
-	/*
-	 *	Set means "delete ALL matching things, and add new ones".
-	 */
-	if (map->op == T_OP_SET) {
-		int num;
-		fr_dict_attr_t const *da = current->lhs.vp->da;
-
-		/*
-		 *	&foo[1] = ...
-		 *
-		 *	Assign only ONE value.
-		 */
-		num = tmpl_num(map->lhs);
-		if ((num != NUM_UNSPEC) && map->rhs) {
-			if (tmpl_num(current->rhs.vpt) == NUM_ALL) {
-				REDEBUG("%s[%d] Cannot assign to multiple attributes", MAP_INFO);
-				return -1;
-			}
-
-			rhs_box = &vp->data;
-			goto apply_pair_assignment;
-		}
-
-		/*
-		 *	Create all of the relevant VPs.
-		 *
-		 *	@todo - this really just be a dcursor, so that
-		 *	the "list of data" case is indistinguishable
-		 *	from the "list of vps".  But in order to do
-		 *	that, we will need a dcursor which walks over
-		 *	VPs, but returns a pointer to the data.  :(
-		 */
-		while (vp != NULL) {
-			fr_pair_t *set;
-
-			MEM(set = fr_pair_afrom_da(current->lhs.vp_parent, da));
-			if (fr_value_box_cast(set, &set->data, da->type, da, &vp->data) < 0) return -1;
-			fr_pair_append(&current->rhs.pair_list, set);
-
-			vp = fr_dcursor_next(&cursor);
-		}
-
-		goto apply_list;
-	}
-
-	/*
-	 *	Save the VP we're doing to edit.
-	 */
-	if (fr_edit_list_save_pair_value(current->el, current->lhs.vp) < 0) {
-	fail:
-			tmpl_dcursor_clear(&cc);
-			return -1;
-	}
-
-	RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[map->op], current->rhs.vpt->name);
-
-	/*
-	 *	Loop over all input VPs, doing the operation.
-	 */
-	while (vp != NULL) {
-		int rcode;
-
-		rcode = fr_value_calc_assignment_op(current->lhs.vp, &current->lhs.vp->data, map->op, &vp->data);
-		if (rcode < 0) goto fail;
-
-		vp = fr_dcursor_next(&cursor);
-	}
+done:
+	if (pair) tmpl_dcursor_clear(&cc);
+	fr_dlist_talloc_free(&current->rhs.result);
 
 	return 0;
 }
@@ -569,9 +655,13 @@ static int apply_edits_to_leaf(request_t *request, edit_map_t *current)
 
 /** Simple pair building callback for use with tmpl_dcursors
  *
- * Which always appends the new pair to the tail of the list
- * since it is only called when no matching pairs were found when
- * walking the list.
+ *  Which always appends the new pair to the tail of the list
+ *  since it is only called when no matching pairs were found when
+ *  walking the list.
+ *
+ *  Note that this function is called for all intermediate nodes which are built!
+ *
+ *
  *
  * @param[in] parent		to allocate new pair within.
  * @param[in,out] cursor	to append new pair to.
@@ -618,10 +708,10 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 
 DECLARE(expand_lhs);
 DECLARE(check_lhs);
-DECLARE(check_lhs_leaf);
-DECLARE(check_lhs_parented);
-DECLARE(expanded_lhs);
-DECLARE(expanded_lhs_leaf);
+DECLARE(check_lhs_value);
+DECLARE(check_lhs_nested);
+DECLARE(expanded_lhs_attribute);
+DECLARE(expanded_lhs_value);
 
 /*
  *	Clean up the current state, and go to the next mapl
@@ -648,10 +738,88 @@ static int next_map(UNUSED request_t *request, UNUSED unlang_frame_state_edit_t 
 
 static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
+	map_t const *map = current->map;
+
+	/*
+	 *	:= is "remove all matching, and then add".  So if even if we don't add anything, we still remove things.
+	 *
+	 *	This means you can't reference an attribute in it's own assignment...
+	 *
+	 *		&foo := %(tolower:foo)
+	 *
+	 *	so we have to delay the deletion until the assignment is there.
+	 *
+	 *	On the other hand, if it's
+	 *
+	 *		&foo[1] := %(tolower:foo[1])
+	 *
+	 *	The we just apply the assignment to the LHS, over-writing it's value.
+	 */
+	if ((map->op == T_OP_SET) && (tmpl_num(current->lhs.vpt) == NUM_UNSPEC)) {
+		tmpl_dcursor_ctx_t cc;
+		fr_dcursor_t cursor;
+		bool first = fr_type_is_structural(tmpl_da(current->lhs.vpt)->type);
+
+		while (true) {
+			int err;
+			fr_pair_t *vp, *parent;
+
+			/*
+			 *	Reinitialize the cursor for every VP.  This is because
+			 *	fr_dcursor_remove() does not work with tmpl_dcursors, as the
+			 *	tmpl_dcursor code does not set the "remove" callback.
+			 *
+			 *	Once that's implemented, we also need to update the edit list API to
+			 *	allow for "please delete children"?
+			 */
+			vp = tmpl_dcursor_init(&err, state, &cc, &cursor, request, current->lhs.vpt);
+			if (!vp) break;
+
+			/*
+			 *	For structural attributes, we leave the first one, and delete the subsequent
+			 *	ones.  That way we leave the main lists alone ("request", "reply", "control", etc.)
+			 *
+			 *	For leaf attributes, we just skip this step, as "first" is always "false".
+			 */
+			if (first) {
+				first = false;
+				if (fr_edit_list_free_pair_children(current->el, vp) < 0) return -1;
+				vp = fr_dcursor_next(&cursor);
+				if (!vp) goto clear;
+				continue;
+
+			} else if (fr_type_is_structural(tmpl_da(current->lhs.vpt)->type)) {
+				/*
+				 *	We skipped the first structural member, so keep skipping it for all of the next vps.
+				 */
+				vp = fr_dcursor_next(&cursor);
+				if (!vp) {
+				clear:
+					tmpl_dcursor_clear(&cc);
+					break;
+				}
+			}
+
+			parent = fr_pair_parent(vp);
+			fr_assert(parent != NULL);
+
+			/*
+			 *	We can't delete these ones.
+			 */
+			fr_assert(vp != request->pair_list.request);
+			fr_assert(vp != request->pair_list.reply);
+			fr_assert(vp != request->pair_list.control);
+			fr_assert(vp != request->pair_list.state);
+
+			if (fr_edit_list_pair_delete(current->el, &parent->vp_group, vp) < 0) return -1;
+			tmpl_dcursor_clear(&cc);
+		}
+	}
+
 	if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
-		if (apply_edits_to_leaf(request, current) < 0) return -1;
+		if (apply_edits_to_leaf(request, state, current) < 0) return -1;
 	} else {
-		if (apply_edits_to_list(request, current) < 0) return -1;
+		if (apply_edits_to_list(request, state, current) < 0) return -1;
 	}
 
 	return next_map(request, state, current);
@@ -659,10 +827,30 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 
 static int expanded_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-	if (tmpl_from_result(state, &current->rhs, tmpl_da(current->lhs.vpt)->type, request) < 0) return -1;
+	map_t const *map = current->map;
+
+	/*
+	 *	The RHS is a list, go handle that.
+	 */
+	if (!map->rhs) {
+		return check_rhs(request, state, current);
+	}
+
+	/*
+	 *	If the expansions is a bare xlat, then it can be
+	 *	interpreted as an attribute reference.
+	 *
+	 *	In all other cases, the RHS value-box list is left alone.
+	 */
+	if (!tmpl_is_xlat(map->rhs) || (map->rhs->quote != T_BARE_WORD)) {
+		return check_rhs(request, state, current);
+	}
+
+	if (tmpl_attr_from_result(state, &current->rhs, request) < 0) return -1;
 
 	return check_rhs(request, state, current);
 }
+
 
 static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
@@ -719,12 +907,13 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	child->map = map_list_head(child->map_head);
 	child->func = expand_lhs;
 
-	if (!fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
-		child->check_lhs = check_lhs_parented;
-		child->expanded_lhs = expanded_lhs;
+	if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
+		child->check_lhs = check_lhs_value;
+		child->expanded_lhs = expanded_lhs_value;
 	} else {
-		child->check_lhs = check_lhs_leaf;
-		child->expanded_lhs = expanded_lhs_leaf;
+		child->check_lhs = check_lhs_nested;
+		child->expanded_lhs = expanded_lhs_attribute;
+		child->temporary_pair_list = true;
 	}
 
 	memset(&child->lhs, 0, sizeof(child->lhs));
@@ -754,7 +943,7 @@ static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit
 	 *	Turn the RHS into a tmpl_t.  This can involve just referencing an existing
 	 *	tmpl in map->rhs, or expanding an xlat to get an attribute name.
 	 */
-	rcode = tmpl_to_values(state, &current->rhs.result, request, map->rhs);
+	rcode = tmpl_to_values(state, &current->rhs, request, map->rhs);
 	if (rcode < 0) return -1;
 
 	if (rcode == 1) {
@@ -762,81 +951,72 @@ static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit
 		return 1;
 	}
 
-	current->rhs.vpt = map->rhs;
 	return check_rhs(request, state, current);
 }
 
 /*
- *	@todo - AND lhs is an XLAT, AND the result is a
- *	value-box group, AND the LHS data type isn't octets/string, THEN apply each
- *	individual member of the group.  This lets us do:
- *
- *		&Tmp-String-0 := { %{sql:...} }
- *
- *	which will assign one value to the result for each column returned by the SQL query.
- *
- *	Also if we have &Tmp-String-0 := &Filter-Id[*], we should handle that, too.
- *
- *	The easiest way is likely to just push the values into a #fr_value_box_list
- *	for the parent, and then don't do anything else.  Once the parent leaf is
- *	capable of handling value-box groups, it can just do everything.
+ *	The LHS is a value, and the parent is a leaf.  There is no RHS.
  */
-static int check_lhs_leaf(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	fr_pair_t *vp;
 	map_t const *map = current->map;
+	fr_value_box_t *box;
+	tmpl_dcursor_ctx_t	cc;
+	fr_dcursor_t		cursor;
 
 	fr_assert(current->parent);
-	fr_assert(current->parent->lhs.vp_parent != NULL);
 
-	MEM(vp = fr_pair_afrom_da(current, current->parent->lhs.vp->da));
+	if (tmpl_is_data(map->lhs)) {
+		MEM(box = fr_value_box_alloc_null(state));
+		if (fr_value_box_copy(state, box, tmpl_value(map->lhs)) < 0) return -1;
 
-	if (tmpl_is_data(current->lhs.vpt)) {
-		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, tmpl_value(current->lhs.vpt)) < 0) return -1;
+		fr_dlist_insert_tail(&current->parent->rhs.result, box);
 
-	} else {
-		fr_pair_t *ref;
-
-		fr_assert(tmpl_is_attr(current->lhs.vpt));
-
-		/*
-		 *	The reference can be to another attribute, but it has to be only one.
-		 */
-		if (tmpl_num(current->lhs.vpt) == NUM_ALL) {
-			REDEBUG("%s[%d] Wildcards selectors are not yet implemented.", MAP_INFO);
-			return -1;
-		}
-
-		if (tmpl_find_vp(&ref, request, current->lhs.vpt) < 0) {
-			REDEBUG("%s[%d] Failed to find attribute %s", MAP_INFO, current->lhs.vpt->name);
-			return -1;
-		}
-
-		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &ref->data) < 0) {
-			RPEDEBUG("Cannot copy data from source %s (type %s) to destination %s (different type %s)",
-				 ref->da->name, fr_type_to_str(ref->da->type),
-				 vp->da->name, fr_type_to_str(vp->da->type));
-			return -1;
-		}
+		return next_map(request, state, current);
 	}
 
+	fr_assert(tmpl_is_attr(map->lhs));
+
 	/*
-	 *	We've already evaluated the RHS, and put the VP where the parent will
-	 *	apply it.  Just go to the next map entry.
+	 *	Loop over the attributes, copying their value-boxes to the parent list.
 	 */
-	fr_pair_append(&current->parent->rhs.pair_list, vp);
+	vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, current->lhs.vpt);
+	while (vp) {
+		MEM(box = fr_value_box_alloc_null(state));
+		if (fr_value_box_copy(state, box, &vp->data) < 0) return -1;
+
+		fr_dlist_insert_tail(&current->parent->rhs.result, box);
+
+		vp = fr_dcursor_next(&cursor);
+	}
+	tmpl_dcursor_clear(&cc);
+
 	return next_map(request, state, current);
 }
 
-static int check_lhs_parented(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+/*
+ *	This function is called when we have a structural parent.  We're a child (i.e. the RHS of a parent
+ *	assignment), and we're creating a temporary RHS list.
+ */
+static int check_lhs_nested(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	map_t const *map = current->map;
 
+	fr_assert(current->parent != NULL);
+
 	/*
-	 *	Child attributes are created in a temporary list.  Any list editing is
-	 *	taken care of by the parent map.
+	 *	Don't create the leaf.  The apply_edits_to_leaf() function will create them after the RHS has
+	 *	been expanded.
 	 */
-	fr_assert((map->op == T_OP_EQ) || (current->parent->map->op == T_OP_SUB_EQ));
+	if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
+		return expand_rhs(request, state, current);
+	}
+
+	/*
+	 *	We have a parent, so we know that attribute exist.  Which means that we don't need to call a
+	 *	cursor function to create this VP.
+	 */
 
 	/*
 	 *	We create this VP in the "current" context, so that it's freed on
@@ -856,40 +1036,89 @@ static int check_lhs_parented(request_t *request, unlang_frame_state_edit_t *sta
 static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	map_t const *map = current->map;
-	tmpl_dcursor_build_t build = NULL;
 	int			err;
 	fr_pair_t		*vp;
 	tmpl_dcursor_ctx_t	cc;
 	fr_dcursor_t		cursor;
 
-	if ((map->op == T_OP_SET) || (map->op == T_OP_EQ)) build = edit_list_pair_build;
+	current->lhs.created = false;
+
+	/*
+	 *	Create the attribute, including any necessary parents.
+	 */
+	if (map->op == T_OP_EQ) {
+		if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) current->lhs.created = true;
+
+	} else if (map->op == T_OP_SET) {
+		/*
+		 *	Leaf types can be deleted on "set", or just referenced, depending on their cardinality.
+		 */
+		if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
+			if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) {
+				current->lhs.vp = NULL;
+				current->lhs.created = true;
+				return expand_rhs(request, state, current);
+			}
+
+			/*
+			 *	&foo[0] := { a, b, c} is an error.  @todo - just grab the first one?
+			 */
+			if (!map->rhs) {
+				RPDEBUG("Can't set one entry to multiple values for %s", current->lhs.vpt->name);
+				return -1;
+			}
+		} else {
+			if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) {
+				current->lhs.vp = NULL;
+				current->lhs.created = true;
+				return expand_rhs(request, state, current);
+			}
+		}
+
+		current->lhs.created = true;
+	}
 
 	current->lhs.vp = NULL;
 
 	/*
-	 *	Use callback to build missing destination container.
+	 *	Find the VP.  If the operation is "=" or ":=", then it's OK for the VP to not exist.
 	 */
 	fr_strerror_clear();
-	vp = tmpl_dcursor_build_init(&err, state, &cc, &cursor, request, current->lhs.vpt, build, current);
+	vp = tmpl_dcursor_init(&err, state, &cc, &cursor, request, current->lhs.vpt);
 	tmpl_dcursor_clear(&cc);
 	if (!vp) {
-		RPDEBUG("Failed finding or creating %s - %d", current->lhs.vpt->name, err);
-		return -1;
-	}
+		if (!current->lhs.created) {
+			RPDEBUG("Failed finding %s", current->lhs.vpt->name);
+			return -1;
+		}
 
-	/*
-	 *	We just built it (= or :=).  Go do the RHS.
-	 */
-	if (current->lhs.vp) {
+		/*
+		 *	Else we need to create it.
+		 */
 		return expand_rhs(request, state, current);
-	}
 
-	/*
-	 *	We found it, but the attribute already exists.  This
-	 *	is a NOOP, where we ignore this assignment.
-	 */
-	if (map->op == T_OP_EQ) {
-		return next_map(request, state, current);
+	} else if (current->lhs.created) {
+		/*
+		 *	&foo[1] := bar
+		 *	&foo = bar
+		 */
+		current->lhs.created = false;
+
+		/*
+		 *	We found it, but the attribute already exists.  This
+		 *	is a NOOP, where we ignore this assignment.
+		 */
+		if (map->op == T_OP_EQ) {
+			return next_map(request, state, current);
+		}
+
+		/*
+		 *	&foo[1] exists, don't bother deleting it.  Just over-write its value.
+		 */
+		fr_assert(map->op == T_OP_SET);
+		fr_assert(tmpl_num(map->lhs) != NUM_UNSPEC);
+
+		// &control := ...
 	}
 
 	/*
@@ -901,22 +1130,39 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 }
 
 /*
- *	In normal situations, the LHS is an attribute name.
- *
- *	For leaf lists, the LHS is a value, so we templatize it as a value.
+ *	We've expanded the LHS value, which could be an attribute reference OR a value.
  */
-static int expanded_lhs_leaf(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
+	map_t const *map = current->map;
+
+	fr_assert(current->lhs.vp != NULL);
+
+	/*
+	 *	The LHS isn't an xlat, so just append the expanded value-boxes to the parents result.
+	 */
+	if (!tmpl_is_xlat(map->lhs) || (map->lhs->quote != T_BARE_WORD)) {
+		fr_dlist_move(&current->parent->rhs.result, &current->lhs.result);
+		return next_map(request, state, current);
+	}
+
+	fr_assert(0);
+
+	/*
+	 *	The RHS is an attribute reference, copy all of the referenced value-boxes to the parents result.
+	 */
 	if (tmpl_attr_from_result(state, &current->lhs, request) < 0) return -1;
 
-	return check_lhs_leaf(request, state, current);
+	fr_assert(tmpl_num(current->lhs.vpt) != NUM_ALL);
+
+	return check_lhs_value(request, state, current);
 }
 
-static int expanded_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+static int expanded_lhs_attribute(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	if (tmpl_from_result(state, &current->lhs, tmpl_da(current->parent->lhs.vpt)->type, request) < 0) return -1;
 
-	return current->check_lhs(request, state, current);
+	return check_lhs(request, state, current);
 }
 
 static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
@@ -927,15 +1173,13 @@ static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit
 	fr_assert(fr_dlist_empty(&current->lhs.result));	/* Should have been consumed */
 	fr_assert(fr_dlist_empty(&current->rhs.result));	/* Should have been consumed */
 
-	rcode = tmpl_to_values(state, &current->lhs.result, request, map->lhs);
+	rcode = tmpl_to_values(state, &current->lhs, request, map->lhs);
 	if (rcode < 0) return -1;
 
 	if (rcode == 1) {
-		current->func = expanded_lhs;
+		current->func = expanded_lhs_attribute;
 		return 1;
 	}
-
-	current->lhs.vpt = map->lhs;
 
 	return current->check_lhs(request, state, current);
 }
@@ -1032,7 +1276,7 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 	fr_pair_list_init(&current->rhs.pair_list);
 	current->func = expand_lhs;
 	current->check_lhs = check_lhs;
-	current->expanded_lhs = expanded_lhs;
+	current->expanded_lhs = expanded_lhs_attribute;
 
 	/*
 	 *	Call process_edit to do all of the work.

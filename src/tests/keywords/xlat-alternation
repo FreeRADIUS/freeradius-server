@@ -26,7 +26,7 @@ if (&Tmp-String-2[0] != 'bar') {
 #  Multiple things in an alternation
 #
 &Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]} foo}"
-if (&Tmp-String-2[0] != 'bar foo') {
+if !(&Tmp-String-2[0] == 'bar foo') {
 	test_fail
 }
 
@@ -34,8 +34,13 @@ if (&Tmp-String-2[0] != 'bar foo') {
 #  Everything null
 #
 &request -= &Tmp-String-1[*]
+&request -= &Tmp-String-2[*]
+
+#
+#  Both sides are failing, so the assignment here fails, too.
+#
 &Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]}}"
-if (!&Tmp-String-2[0] || (&Tmp-String-2[0] != "")) {
+if (&Tmp-String-2[0]) {
 	test_fail
 }
 
