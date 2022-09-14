@@ -1536,6 +1536,15 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	}
 
 	/*
+	 *	Can't assign to [*] or [#]
+	 */
+	num = tmpl_num(map->lhs);
+	if ((num == NUM_ALL) || (num == NUM_COUNT)) {
+		cf_log_err(cs, "Invalid array reference in %s", name);
+		goto fail;
+	}
+
+	/*
 	 *	If the DA isn't structural, then it can't have children.
 	 */
 	parent_da = tmpl_da(map->lhs);
@@ -1551,16 +1560,6 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 			goto fail;
 		}
 	}
-
-	/*
-	 *	Can't assign to [*] or [#]
-	 */
-	num = tmpl_num(map->lhs);
-	if ((num == NUM_ALL) || (num == NUM_COUNT)) {
-		cf_log_err(cs, "Invalid array reference in %s", name);
-		goto fail;
-	}
-
 	/*
 	 *	Do basic sanity checks and resolving.
 	 */
