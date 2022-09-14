@@ -2,9 +2,8 @@ server eap-tls-test {
 	namespace = tls
 
 	load session {
-		update control {
-			&control.Cache-Allow-Insert := no
-		}
+		&control.Cache-Allow-Insert := no
+
 		cache_tls_session
 	}
 
@@ -13,11 +12,10 @@ server eap-tls-test {
 	}
 
 	clear session {
-		update control {
-			&control.Cache-Allow-Insert := no
-			&control.Cache-Allow-Merge := no
-			&control.Cache-TTL := 0
-		}
+		&control.Cache-Allow-Insert := no
+		&control.Cache-Allow-Merge := no
+		&control.Cache-TTL := 0
+
 		cache_tls_session
 	}
 
