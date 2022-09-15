@@ -351,7 +351,7 @@ static char lua_release_cmd[] =
 	"  return { " STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) "}" EOL			/* 9 */
 	"end" EOL									/* 11 */
 	"if found and found ~= ARGV[3] then" EOL					/* 12 */
-	"  return { " STRINGIFY(_IPPOOL_RCODE_DEVICE_MISMATCH) ", found[2] }" EOL	/* 13 */
+	"  return { " STRINGIFY(_IPPOOL_RCODE_DEVICE_MISMATCH) ", found }" EOL		/* 13 */
 	"end" EOL									/* 14 */
 
 	/*
