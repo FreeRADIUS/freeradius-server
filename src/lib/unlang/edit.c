@@ -38,7 +38,7 @@ typedef struct {
 	fr_value_box_list_t	result;			//!< result of expansion
 	tmpl_t const		*vpt;			//!< expanded tmpl
 	tmpl_t			*to_free;		//!< tmpl to free.
-	bool			created;		//!< whether we just created this VP
+	bool			create;			//!< whether we need to create the VP
 	fr_pair_t		*vp;			//!< VP referenced by tmpl.
 	fr_pair_t		*vp_parent;		//!< parent of the current VP
 	fr_pair_list_t		pair_list;		//!< for structural attributes
@@ -208,13 +208,9 @@ static int tmpl_to_values(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 }
 
 
-/** Apply the edits.  Broken out for simplicity
+/*	Apply the edits to a structural attribute..
  *
- *  The edits are applied as:
- *
- *  For leaves, merge RHS #fr_value_box_list_t, so that we have only one #fr_value_box_t
- *
- *  Loop over VPs on the LHS, doing the operation with the RHS.
+ *	Figure out what edits to do, and then do them.
  */
 static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
@@ -387,7 +383,7 @@ apply_list:
 	/*
 	 *	If we have to create the LHS, then do so now.
 	 */
-	if (current->lhs.created) {
+	if (current->lhs.create) {
 		int err;
 		tmpl_dcursor_ctx_t lhs_cc;
 		fr_dcursor_t lhs_cursor;
@@ -439,7 +435,18 @@ apply_list:
 	return rcode;
 }
 
-
+/*
+ *	Apply the edits to a leaf attribute.  First we figure out where the results come from:
+ *
+ *		single value-box (e.g. tmpl_is_data(vpt)
+ *		rhs value-box result list (we create a dcursor)
+ *		RHS attribute reference (we create a nested dcursor to get the values from the pair list)
+ *
+ *	Then we figure out what to do with those values.
+ *
+ *		if it needs to be created, then create it and just mash the results in place
+ *		otherwise apply the edits (+=, etc.) to an existing attribute.
+ */
 static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	fr_value_box_t *box = NULL;
@@ -559,10 +566,9 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 	}
 
 	/*
-	 *	check_lhs() takes care of deleting existing attributes for ":=", and creating at least one new one for ":=" or "=".
-	 *	It also takes care of skipping the entire map if the attribute already exists for "="
+	 *	If we're supposed to create the LHS, then go do that.
 	 */
-	if (current->lhs.created) {
+	if (current->lhs.create) {
 		fr_dict_attr_t const *da = tmpl_da(current->lhs.vpt);
 		fr_pair_t *vp;
 		int err;
@@ -721,7 +727,7 @@ DECLARE(expanded_lhs_attribute);
 DECLARE(expanded_lhs_value);
 
 /*
- *	Clean up the current state, and go to the next mapl
+ *	Clean up the current state, and go to the next map.
  */
 static int next_map(UNUSED request_t *request, UNUSED unlang_frame_state_edit_t *state, edit_map_t *current)
 {
@@ -743,6 +749,9 @@ static int next_map(UNUSED request_t *request, UNUSED unlang_frame_state_edit_t 
 	return 0;
 }
 
+/*
+ *	Validate the RHS of an expansion.
+ */
 static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	map_t const *map = current->map;
@@ -750,13 +759,13 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	/*
 	 *	:= is "remove all matching, and then add".  So if even if we don't add anything, we still remove things.
 	 *
-	 *	This means you can't reference an attribute in it's own assignment...
+	 *	If we deleted the attribute when processing the LHS, then you couldn't reference an attribute
+	 *	in it's own assignment:
 	 *
 	 *		&foo := %(tolower:foo)
 	 *
-	 *	so we have to delay the deletion until the assignment is there.
-	 *
-	 *	On the other hand, if it's
+	 *	so we have to delay the deletion until the RHS has been fully expanded.  But we don't always
+	 *	delete everything. e.g. if the map is:
 	 *
 	 *		&foo[1] := %(tolower:foo[1])
 	 *
@@ -832,6 +841,9 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	return next_map(request, state, current);
 }
 
+/*
+ *	We've expanded the RHS to a value, attribute reference, etc.  Convert it to an attribute reference tmpl if necessary.
+ */
 static int expanded_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	map_t const *map = current->map;
@@ -858,11 +870,14 @@ static int expanded_rhs(request_t *request, unlang_frame_state_edit_t *state, ed
 	return check_rhs(request, state, current);
 }
 
-
+/*
+ *	The RHS map is a sublist.  Go expand that by creating a child expansion context, and returning to the
+ *	main loop.
+ */
 static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	map_t const *map = current->map;
-	edit_map_t *child = current->child;
+	edit_map_t *child;
 
 	/*
 	 *	If there's no RHS tmpl, then the RHS is a child list.
@@ -895,6 +910,7 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	/*
 	 *	Allocate a new child structure if necessary.
 	 */
+	child = current->child;
 	if (!child) {
 		MEM(child = talloc_zero(state, edit_map_t));
 		current->child = child;
@@ -939,6 +955,10 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	return 0;
 }
 
+
+/*
+ *	Expand the RHS of an assignment operation.
+ */
 static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	int rcode;
@@ -963,6 +983,8 @@ static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit
 
 /*
  *	The LHS is a value, and the parent is a leaf.  There is no RHS.
+ *
+ *	Do some validations, and move the value-boxes to the parents result list.
  */
 static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
@@ -1023,8 +1045,26 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 }
 
 /*
- *	This function is called when we have a structural parent.  We're a child (i.e. the RHS of a parent
- *	assignment), and we're creating a temporary RHS list.
+ *	We've expanded the LHS (xlat or exec) into a value-box list.  The result gets moved to the parent
+ *	result list.
+ *
+ *	There's no RHS, so once the LHS has been expanded, we jump immediately to the next entry.
+ */
+static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
+{
+	fr_assert(current->parent);
+	fr_assert(tmpl_contains_xlat(map->lhs));
+
+	fr_dlist_move(&current->parent->rhs.result, &current->lhs.result);
+	return next_map(request, state, current);
+}
+
+/*
+ *	Check the LHS of an assignment, for
+ *
+ *		foo = { bar = baz }	LHS bar
+ *
+ *	There are more limitations here on the attr / op / value format then for the top-level check_lhs().
  */
 static int check_lhs_nested(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
@@ -1060,6 +1100,10 @@ static int check_lhs_nested(request_t *request, unlang_frame_state_edit_t *state
 	return expand_rhs(request, state, current);
 }
 
+/*
+ *	The LHS tmpl is now an attribute reference.  Do some sanity checks on tmpl_num(), operators, etc.
+ *	Once that's done, go expand the RHS.
+ */
 static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	map_t const *map = current->map;
@@ -1068,13 +1112,13 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	tmpl_dcursor_ctx_t	cc;
 	fr_dcursor_t		cursor;
 
-	current->lhs.created = false;
+	current->lhs.create = false;
 
 	/*
 	 *	Create the attribute, including any necessary parents.
 	 */
 	if (map->op == T_OP_EQ) {
-		if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) current->lhs.created = true;
+		if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) current->lhs.create = true;
 
 	} else if (map->op == T_OP_SET) {
 		/*
@@ -1083,7 +1127,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
 			if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) {
 				current->lhs.vp = NULL;
-				current->lhs.created = true;
+				current->lhs.create = true;
 				return expand_rhs(request, state, current);
 			}
 
@@ -1097,12 +1141,12 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		} else {
 			if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) {
 				current->lhs.vp = NULL;
-				current->lhs.created = true;
+				current->lhs.create = true;
 				return expand_rhs(request, state, current);
 			}
 		}
 
-		current->lhs.created = true;
+		current->lhs.create = true;
 	}
 
 	current->lhs.vp = NULL;
@@ -1114,7 +1158,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	vp = tmpl_dcursor_init(&err, state, &cc, &cursor, request, current->lhs.vpt);
 	tmpl_dcursor_clear(&cc);
 	if (!vp) {
-		if (!current->lhs.created) {
+		if (!current->lhs.create) {
 			RPDEBUG("Failed finding %s", current->lhs.vpt->name);
 			return -1;
 		}
@@ -1124,12 +1168,12 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		 */
 		return expand_rhs(request, state, current);
 
-	} else if (current->lhs.created) {
+	} else if (current->lhs.create) {
 		/*
 		 *	&foo[1] := bar
 		 *	&foo = bar
 		 */
-		current->lhs.created = false;
+		current->lhs.create = false;
 
 		/*
 		 *	We found it, but the attribute already exists.  This
@@ -1157,25 +1201,29 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 }
 
 /*
- *	We've expanded the LHS value, which could be an attribute reference OR a value.
+ *	We've expanding the LHS into a string.  Now convert it to an attribute.
+ *
+ *		foo := bar		LHS foo
+ *		foo = { bar = baz }	LHS bar
  */
-static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
-{
-	map_t const *map = current->map;
-
-	fr_assert(tmpl_contains_xlat(map->lhs));
-
-	fr_dlist_move(&current->parent->rhs.result, &current->lhs.result);
-	return next_map(request, state, current);
-}
-
 static int expanded_lhs_attribute(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-	if (tmpl_from_result(state, &current->lhs, tmpl_da(current->parent->lhs.vpt)->type, request) < 0) return -1;
+	if (tmpl_attr_from_result(state, &current->lhs, request) < 0) return -1;
 
 	return current->check_lhs(request, state, current);
 }
 
+/*
+ *	Take the LHS of a map, and figure out what it is.  Data and attributes are immediately processed.
+ *	xlats and execs are expanded, and then their expansion is checked.
+ *
+ *	This function is called for all variants of the LHS:
+ *
+ *		foo := bar		LHS foo
+ *		foo = { bar = baz }	LHS bar
+ *		foo = { 1, 2, 3, 4 }	LHS 1, 2, etc.
+ *		
+ */
 static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	int rcode;
