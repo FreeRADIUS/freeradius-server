@@ -126,48 +126,6 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, edit_result_t *out, request_t 
 	return 0;
 }
 
-/*
- *  Convert a value-box list to a RHS #tmpl_t
- *
- *  This doesn't work for structural types.  If "type" is structural,
- *  the calling code should parse the RHS as a set of VPs, and return
- *  that.
- */
-static int tmpl_from_result(TALLOC_CTX *ctx, edit_result_t *out, fr_type_t type, request_t *request)
-{
-	fr_value_box_t *box = fr_dlist_head(&out->result);
-
-	if (!box) {
-		RWDEBUG("No value found for assignment");
-		return -1;
-	}
-
-	/*
-	 *	There's only one box, and it's the correct type.  Just
-	 *	return that.  This is the fast path.
-	 */
-	if (fr_type_is_leaf(type) && (type == box->type) && !fr_dlist_next(&out->result, box)) goto make_tmpl;
-
-	/*
-	 *	Slow path: mash all of the results together as a
-	 *	string and then cast it to the correct data type.
-	 */
-	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
-		RWDEBUG("Failed converting result to string");
-		return -1;
-	}
-
-make_tmpl:
-	if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) {
-		RPEDEBUG("Failed parsing data %pV", box);
-		return -1;
-	}
-
-	out->vpt = out->to_free;
-	fr_dlist_talloc_free(&out->result);
-
-	return 0;
-}
 
 /** Expand a #tmpl_t to a #fr_value_box_list
  *
@@ -1053,7 +1011,6 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
 	fr_assert(current->parent);
-	fr_assert(tmpl_contains_xlat(map->lhs));
 
 	fr_dlist_move(&current->parent->rhs.result, &current->lhs.result);
 	return next_map(request, state, current);
