@@ -1,0 +1,17 @@
+&Tmp-String-0 := "foo"
+&Tmp-String-1 := &Tmp-String-0
+&Tmp-String-2 := "Tmp-String-0"
+
+# foo, bar, "foo", "foo"
+&Tmp-String-3 := { &Tmp-String-0, "bar", "%{Tmp-String-0}", %{Tmp-String-2} }
+
+
+if (%{Tmp-String-3[#]} != 4) {
+	test_fail
+}
+
+if ("%{Tmp-String-3[*]}" != "foobarfooTmp-String-0") {
+	test_fail
+}
+
+success

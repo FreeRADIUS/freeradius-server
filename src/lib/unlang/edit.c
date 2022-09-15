@@ -460,11 +460,12 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 	 *	There should be values in RHS result, all of value boxes.
 	 */
 	if (!map->rhs) {
-		RDEBUG("RHS leaf list");
 		fr_assert(current->rhs.vpt == NULL);
 		goto rhs_list;
 
-	} else if (!current->rhs.vpt) {
+	}
+
+	if (!current->rhs.vpt) {
 		/*
 		 *	There's no RHS tmpl, so the result must be in in the parent RHS tmpl as data, OR in the RHS result list.
 		 */
@@ -607,6 +608,8 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 
 			if (fr_edit_list_insert_pair_tail(state->el, &current->lhs.vp_parent->vp_group, vp) < 0) goto fail;
 			vp->op = T_OP_EQ;
+
+			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], box);
 		}
 
 		goto done;
@@ -963,40 +966,60 @@ static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit
  */
 static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
-	fr_pair_t *vp;
-	map_t const *map = current->map;
-	fr_value_box_t *box;
+	map_t const		*map = current->map;
+	fr_value_box_t		*box;
+	fr_pair_t		*vp;
+	tmpl_t const		*vpt;
 	tmpl_dcursor_ctx_t	cc;
 	fr_dcursor_t		cursor;
 
 	fr_assert(current->parent);
 
 	if (tmpl_is_data(map->lhs)) {
+		vpt = map->lhs;
+
+	data:
 		MEM(box = fr_value_box_alloc_null(state));
-		if (fr_value_box_copy(state, box, tmpl_value(map->lhs)) < 0) return -1;
+		if (fr_value_box_copy(state, box, tmpl_value(vpt)) < 0) return -1;
 
 		fr_dlist_insert_tail(&current->parent->rhs.result, box);
 
 		return next_map(request, state, current);
 	}
 
-	fr_assert(tmpl_is_attr(map->lhs));
+	if (!current->lhs.vpt) {
+		vpt = map->lhs;
 
-	/*
-	 *	Loop over the attributes, copying their value-boxes to the parent list.
-	 */
-	vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, current->lhs.vpt);
-	while (vp) {
-		MEM(box = fr_value_box_alloc_null(state));
-		if (fr_value_box_copy(state, box, &vp->data) < 0) return -1;
+		/*
+		 *
+		 */
+		if (tmpl_is_xlat(vpt)) return next_map(request,state, current);
 
-		fr_dlist_insert_tail(&current->parent->rhs.result, box);
+	attr:
+		fr_assert(tmpl_is_attr(vpt));
 
-		vp = fr_dcursor_next(&cursor);
+		/*
+		 *	Loop over the attributes, copying their value-boxes to the parent list.
+		 */
+		vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, vpt);
+		while (vp) {
+			MEM(box = fr_value_box_alloc_null(state));
+			if (fr_value_box_copy(state, box, &vp->data) < 0) return -1;
+
+			fr_dlist_insert_tail(&current->parent->rhs.result, box);
+
+			vp = fr_dcursor_next(&cursor);
+		}
+		tmpl_dcursor_clear(&cc);
+
+		return next_map(request, state, current);
 	}
-	tmpl_dcursor_clear(&cc);
 
-	return next_map(request, state, current);
+	vpt = current->lhs.vpt;
+
+	if (tmpl_is_data(vpt)) goto data;
+
+	goto attr;
 }
 
 /*
@@ -1140,24 +1163,10 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 {
 	map_t const *map = current->map;
 
-	/*
-	 *	The LHS isn't an xlat, so just append the expanded value-boxes to the parents result.
-	 */
-	if (!tmpl_is_xlat(map->lhs) || (map->lhs->quote != T_BARE_WORD)) {
-		fr_dlist_move(&current->parent->rhs.result, &current->lhs.result);
-		return next_map(request, state, current);
-	}
+	fr_assert(tmpl_contains_xlat(map->lhs));
 
-	fr_assert(0);
-
-	/*
-	 *	The RHS is an attribute reference, copy all of the referenced value-boxes to the parents result.
-	 */
-	if (tmpl_attr_from_result(state, &current->lhs, request) < 0) return -1;
-
-	fr_assert(tmpl_num(current->lhs.vpt) != NUM_ALL);
-
-	return check_lhs_value(request, state, current);
+	fr_dlist_move(&current->parent->rhs.result, &current->lhs.result);
+	return next_map(request, state, current);
 }
 
 static int expanded_lhs_attribute(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
