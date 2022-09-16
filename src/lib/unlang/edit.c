@@ -1222,8 +1222,6 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 {
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
 
-	RINDENT_SAVE(&state->indent, request);
-
 	/*
 	 *	Keep running the "expand map" function until done.
 	 */
@@ -1233,6 +1231,8 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 
 			rcode = state->current->func(request, state, state->current);
 			if (rcode < 0) {
+				RINDENT_RESTORE(request, &state->indent);
+
 				fr_edit_list_abort(state->el);
 				TALLOC_FREE(frame->state);
 				repeatable_clear(frame);
@@ -1243,7 +1243,6 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 				 *	failures, which simply don't
 				 *	apply the operations.
 				 */
-				RINDENT_RESTORE(request, &state->indent);
 				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
 
@@ -1305,6 +1304,11 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 	current->func = expand_lhs;
 	current->check_lhs = check_lhs;
 	current->expanded_lhs = expanded_lhs_attribute;
+
+	/*
+	 *	Save current indentation for the error path.
+	 */
+	RINDENT_SAVE(&state->indent, request);
 
 	/*
 	 *	Call process_edit to do all of the work.
