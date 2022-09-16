@@ -1,7 +1,7 @@
 TARGET		:= radiusd$(E)
 SOURCES		:= \
-    			radiusd.c \
-    			radmin.c
+			radiusd.c \
+			radmin.c
 
 SRC_CFLAGS	:= $(LIBREADLINE_CFLAGS)
 
@@ -11,6 +11,4 @@ TGT_LDFLAGS	:= $(LDFLAGS) $(SYSTEMD_LDFLAGS) $(LIBREADLINE_LDFLAGS) $(GPERFTOOLS
 TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-io$(L)
 
 # Flags needed when linking main executables that link against LuaJIT
-ifneq (,$(findstring darwin,$(TARGET_SYSTEM)))
-TGT_LDLIBS	+= -pagezero_size 10000 -image_base 100000000
-endif
+TGT_LDLIBS	+= $(LUAJIT_LDLIBS)

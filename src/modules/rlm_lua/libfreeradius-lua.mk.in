@@ -15,6 +15,13 @@ TARGETNAME	:= @targetname@
 
 ifneq "$(TARGETNAME)" ""
 TARGET		:= libfreeradius-lua$(L)
+
+#
+#  OSX requires some extra options. But ARM systems can't use them.
+#
+ifneq (,$(findstring x86_64-apple-darwin,$(TARGET_SYSTEM)))
+LUAJIT_LDLIBS	+= -pagezero_size 10000 -image_base 100000000
+endif
 endif
 
 SOURCES		:= util.c
