@@ -1068,6 +1068,7 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 
 	xlat_inst_remove(node);
 	node->type = XLAT_GROUP;
+	node->fmt = group->fmt;
 	node->group = group;
 	node->flags = group->flags;
 
@@ -2307,7 +2308,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		fr_type_t type;
 
 		talloc_steal(node, xlat);
-		node->fmt = talloc_typed_strdup(node, node->fmt);
+		node->fmt = talloc_typed_strdup(node, vpt->name);
 		talloc_free(vpt);
 
 		xlat_exp_set_type(node, XLAT_GROUP);
