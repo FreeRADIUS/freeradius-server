@@ -177,14 +177,11 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
  * @param[in] node	Being processed.
  * @param[in] args	from previous expansion.
  */
-static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const *node, fr_value_box_list_t const *args)
+static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const *node, fr_value_box_list_t const *args, UNUSED int line)
 {
-	char *str;
+	if (node->flags.constant) return;
 
 	if (!RDEBUG_ENABLED2) return;
-
-	str = xlat_fmt_aprint(NULL, node);
-	RDEBUG2("EXPAND %s", str);
 
 	/*
 	 *	Because it's difficult to keep track of what
@@ -193,12 +190,17 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	 *	well as the original fmt string.
 	 */
 	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->call.args)) {
-		RDEBUG2("      (%%%c%s:%pM%c)",
+		RDEBUG2("(%%%c%s:%pM%c)",
 			(node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
 			node->call.func->name, args,
 			(node->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
+	} else {
+		char *str;
+
+		str = xlat_fmt_aprint(NULL, node);
+		RDEBUG2("%s", str); /* print line number here for debugging */
+		talloc_free(str);
 	}
-	talloc_free(str);
 }
 
 /** Output the list result of an expansion
@@ -206,11 +208,13 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
  * @param[in] request	The current request.
  * @param[in] result	of the expansion.
  */
-static inline void xlat_debug_log_list_result(request_t *request, fr_value_box_list_t const *result)
+static inline void xlat_debug_log_list_result(request_t *request, xlat_exp_t const *node, fr_value_box_list_t const *result)
 {
+	if (node->flags.constant) return;
+
 	if (!RDEBUG_ENABLED2) return;
 
-	RDEBUG2("  --> %pM", result);
+	RDEBUG2("--> %pM", result);
 }
 
 /** Output the result of an expansion
@@ -218,11 +222,13 @@ static inline void xlat_debug_log_list_result(request_t *request, fr_value_box_l
  * @param[in] request	The current request.
  * @param[in] result	of the expansion.
  */
-static inline void xlat_debug_log_result(request_t *request, fr_value_box_t const *result)
+static inline void xlat_debug_log_result(request_t *request, xlat_exp_t const *node, fr_value_box_t const *result)
 {
+	if (node->flags.constant) return;
+
 	if (!RDEBUG_ENABLED2) return;
 
-	RDEBUG2("  --> %pV", result);
+	RDEBUG2("--> %pV", result);
 }
 
 /** Process an individual xlat argument value box group
@@ -737,7 +743,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	xa = resume(ctx, out, XLAT_CTX(exp->call.inst->data, t->data, t->mctx, rctx), request, result);
 	VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
-	RDEBUG2("EXPAND %%%c%s:...%c",
+	RDEBUG2("%%%c%s:...%c",
 		(exp->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
 		exp->call.func->name,
 		(exp->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
@@ -746,12 +752,12 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		break;
 
 	case XLAT_ACTION_YIELD:
-		RDEBUG2("   -- YIELD");
+		RDEBUG2("(YIELD)");
 		break;
 
 	case XLAT_ACTION_DONE:
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
-		RDEBUG2("   --> %pV", fr_dcursor_current(out));
+		RDEBUG2("--> %pV", fr_dcursor_current(out));
 		break;
 
 	case XLAT_ACTION_FAIL:
@@ -829,7 +835,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   request, result);
 		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
-		if (RDEBUG_ENABLED2) xlat_debug_log_expansion(request, *in, &result_copy);
+		if (RDEBUG_ENABLED2) xlat_debug_log_expansion(request, *in, &result_copy, __LINE__);
 		fr_dlist_talloc_free(&result_copy);
 
 		switch (xa) {
@@ -850,7 +856,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		case XLAT_ACTION_DONE:				/* Process the result */
 			fr_dcursor_next(out);
-			xlat_debug_log_result(request, fr_dcursor_current(out));
+			xlat_debug_log_result(request, *in, fr_dcursor_current(out));
 			break;
 		}
 	}
@@ -872,8 +878,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   unlang_interpret_stack_depth(request), __FUNCTION__);
 				*alternate = false;	/* Reset */
 
-				xlat_debug_log_expansion(request, *in, NULL);
-				xlat_debug_log_result(request, NULL);		/* Record the fact it's NULL */
+				xlat_debug_log_expansion(request, *in, NULL, __LINE__);
+				xlat_debug_log_result(request, *in, NULL);		/* Record the fact it's NULL */
 				break;
 			}
 
@@ -887,8 +893,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		*alternate = false;	/* Reset */
 
-		xlat_debug_log_expansion(request, *in, NULL);
-		xlat_debug_log_list_result(request, result);
+		xlat_debug_log_expansion(request, *in, NULL, __LINE__);
+		xlat_debug_log_list_result(request, *in, result);
 
 		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 		fr_dlist_move(out->dlist, result);
@@ -899,6 +905,10 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	{
 		fr_value_box_t	*arg;
 
+		/*
+		 *	We'd like to do indent / exdent for groups, but that also involves fixing all of the
+		 *	error paths.  Which we won't do right now.
+		 */
 		XLAT_DEBUG("** [%i] %s(child) - continuing %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 			   node->fmt);
 
@@ -909,8 +919,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			fr_dlist_move(&arg->vb_group, result);
 		}
 
-		xlat_debug_log_expansion(request, *in, NULL);
-		xlat_debug_log_result(request, arg);
+//		xlat_debug_log_expansion(request, *in, NULL, __LINE__);
+//		xlat_debug_log_result(request, *in, arg);
 
 		VALUE_BOX_VERIFY(arg);
 
@@ -1022,14 +1032,14 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			XLAT_DEBUG("** [%i] %s(one-letter) - %%%s", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
-			xlat_debug_log_expansion(request, node, NULL);
+			xlat_debug_log_expansion(request, node, NULL, __LINE__);
 			if (xlat_eval_one_letter(ctx, &result, request, node->fmt[0]) == XLAT_ACTION_FAIL) {
 			fail:
 				fr_dlist_talloc_free(&result);
 				xa = XLAT_ACTION_FAIL;
 				goto finish;
 			}
-			xlat_debug_log_list_result(request, &result);
+			xlat_debug_log_list_result(request, *in, &result);
 			fr_dlist_move(out->dlist, &result);
 			continue;
 
@@ -1060,7 +1070,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 					XLAT_DEBUG("** [%i] %s(attribute) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
 						   node->fmt);
 				}
-				xlat_debug_log_expansion(request, node, NULL);
+				xlat_debug_log_expansion(request, node, NULL, __LINE__);
 
 				if (tmpl_eval_pair(ctx, &result, request, node->vpt) < 0) goto fail;
 
@@ -1073,7 +1083,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_exec_rctx_t));
 				fr_value_box_list_init(&rctx->list);
 
-				xlat_debug_log_expansion(request, node, NULL);
+				xlat_debug_log_expansion(request, node, NULL, __LINE__);
 
 				if (unlang_xlat_yield(request, xlat_exec_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto fail;
 
@@ -1096,7 +1106,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				fr_assert(0);
 			}
 
-			xlat_debug_log_list_result(request, &result);
+			xlat_debug_log_list_result(request, node, &result);
 			fr_dlist_move(out->dlist, &result);
 			continue;
 
@@ -1105,13 +1115,13 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			XLAT_DEBUG("** [%i] %s(virtual) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
-			xlat_debug_log_expansion(request, node, NULL);
+			xlat_debug_log_expansion(request, node, NULL, __LINE__);
 			xa = node->call.func->func(ctx, out,
 						   XLAT_CTX(node->call.func->uctx, NULL, NULL, NULL),
 						   request, NULL);
 			fr_dcursor_next(out);
 
-			xlat_debug_log_result(request, fr_dcursor_current(out));
+			xlat_debug_log_result(request, node, fr_dcursor_current(out));
 		}
 			continue;
 
@@ -1145,7 +1155,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			XLAT_DEBUG("** [%i] %s(regex) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
-			xlat_debug_log_expansion(request, node, NULL);
+			xlat_debug_log_expansion(request, node, NULL, __LINE__);
 			MEM(value = fr_value_box_alloc_null(ctx));
 			if (regex_request_to_sub(ctx, &str, request, node->regex_index) < 0) {
 				talloc_free(value);
@@ -1153,7 +1163,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			}
 			fr_value_box_bstrdup_buffer_shallow(NULL, value, NULL, str, false);
 
-			xlat_debug_log_result(request, value);
+			xlat_debug_log_result(request, node, value);
 			fr_dcursor_append(out, value);
 		}
 			continue;
