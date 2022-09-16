@@ -299,6 +299,7 @@ static int xlat_expr_resolve_binary(xlat_exp_t *node, UNUSED void *inst, xlat_re
 
 		b->flags.needs_resolving = false;
 		b->flags.pure = tmpl_is_data(b->vpt);
+		b->flags.constant = b->flags.pure;
 		goto flags;
 	}
 
@@ -318,7 +319,8 @@ static int xlat_expr_resolve_binary(xlat_exp_t *node, UNUSED void *inst, xlat_re
 		if (tmpl_resolve(a->vpt, &my_tr_rules) < 0) return -1;
 
 		a->flags.needs_resolving = false;
-		a->flags.pure = tmpl_is_data(b->vpt);
+		a->flags.pure = tmpl_is_data(a->vpt);
+		a->flags.constant = a->flags.pure;
 		goto flags;
 	}
 
@@ -927,7 +929,7 @@ check:
 
 	parent->type = XLAT_BOX;
 	fr_value_box_copy(parent, &parent->data, box);
-	parent->flags = (xlat_flags_t) { .pure = true, };
+	parent->flags = (xlat_flags_t) { .pure = true, .constant = true, };
 
 	talloc_free_children(parent);
 
@@ -1997,6 +1999,7 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 	 */
 	MEM(node = xlat_exp_alloc_null(cast));
 	xlat_exp_set_type(node, XLAT_BOX);
+	node->flags.constant = true;
 	xlat_exp_set_name_buffer_shallow(node,
 					 talloc_strdup(node,
 						       fr_table_str_by_value(fr_type_table,
@@ -2350,6 +2353,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		node->fmt = vpt->name;
 
 		node->flags.pure = tmpl_is_data(node->vpt);
+		node->flags.constant = node->flags.pure;
 		node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 	}
 
@@ -2374,6 +2378,8 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		if ((tmpl_value_type(vpt) == FR_TYPE_BOOL) && !tmpl_value_enumv(vpt)) {
 			tmpl_value_enumv(vpt) = attr_expr_bool_enum;
 		}
+
+		node->flags.constant = true;
 	}
 
 	fr_assert(!tmpl_contains_regex(vpt));

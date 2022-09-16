@@ -108,6 +108,8 @@ typedef struct {
 						///< require asynchronous expansion.
 	bool			pure;		//!< has no external side effects, true for BOX, LITERAL, and some functions
 	bool			can_purify;	//!< if the xlat has a pure function with pure arguments.
+
+	bool			constant;	//!< xlat is just tmpl_data, or XLAT_BOX
 } xlat_flags_t;
 
 /*

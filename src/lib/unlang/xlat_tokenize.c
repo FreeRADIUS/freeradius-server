@@ -957,6 +957,7 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 			xlat_exp_set_type(node, XLAT_BOX);
 			xlat_exp_set_name_buffer_shallow(node, str);
 			fr_value_box_strdup_shallow(&node->data, NULL, str, false);
+			node->flags.constant = true;
 
 			XLAT_DEBUG("VALUE-BOX (%s)<-- %pV",
 				   escapes ? escapes->name : "(none)",
@@ -1571,6 +1572,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 
 			child = xlat_exp_alloc_null(node->group);
 			xlat_exp_set_type(child, XLAT_BOX);
+			node->flags.constant = true;
 
 			slen = fr_sbuff_out_aunescape_until(child, &str, &our_in, SIZE_MAX,
 							    value_parse_rules_single_quoted.terminals,
