@@ -375,6 +375,28 @@ void	log_global_free(void);
 #define RPEDEBUG4(fmt, ...)	log_request_perror(L_DBG_ERR, L_DBG_LVL_MAX, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 /** @} */
 
+typedef struct {
+	uint8_t			unlang_indent;	//!< By how much to indent log messages. uin8_t so it's obvious
+						//!< when a request has been exdented too much.
+	uint8_t			module_indent;	//!< Indentation after the module prefix name.
+} rindent_t;
+
+/** Save indentation for later restoral.
+ *
+ *  This call avoids the need to manually REXDENT on error paths.  We
+ *  can just restore and return.
+ *
+ */
+#define RINDENT_SAVE(_x, _request) do { \
+		(_x)->unlang_indent = request->log.unlang_indent; \
+		(_x)->module_indent = request->log.module_indent; \
+	} while (0)
+
+#define RINDENT_RESTORE(_request, _x) do { \
+		request->log.unlang_indent = (_x)->unlang_indent; \
+		request->log.module_indent = (_x)->module_indent; \
+	} while (0)
+
 #ifdef DEBUG_INDENT
 /** Indent R* messages by one level
  *
