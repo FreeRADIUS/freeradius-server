@@ -74,6 +74,7 @@ struct edit_map_s {
  */
 struct unlang_frame_state_edit_s {
 	fr_edit_list_t		*el;				//!< edit list
+	rindent_t		indent;
 
 	edit_map_t		*current;			//!< what we're currently doing.
 	edit_map_t		first;
@@ -511,7 +512,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, box) < 0) return -1;
 			if (fr_pair_append(list, vp) < 0) return -1;
 
-			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], &vp->data);
+//			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], &vp->data);
 
 			if (single) break;
 
@@ -908,6 +909,7 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	 */
 	current->func = check_rhs;
 	state->current = child;
+	RINDENT();
 	return 0;
 }
 
@@ -1169,6 +1171,8 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
  */
 static int expanded_lhs_attribute(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
+	REXDENT();
+
 	if (tmpl_attr_from_result(state, &current->lhs, request) < 0) return -1;
 
 	return current->check_lhs(request, state, current);
@@ -1218,6 +1222,8 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 {
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
 
+	RINDENT_SAVE(&state->indent, request);
+
 	/*
 	 *	Keep running the "expand map" function until done.
 	 */
@@ -1237,6 +1243,7 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 				 *	failures, which simply don't
 				 *	apply the operations.
 				 */
+				RINDENT_RESTORE(request, &state->indent);
 				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
 
@@ -1252,6 +1259,7 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 		if (!state->current->parent) break;
 
 		state->current = state->current->parent;
+		REXDENT();	/* "push child" has called RINDENT */
 	}
 
 	/*
