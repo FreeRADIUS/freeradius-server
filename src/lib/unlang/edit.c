@@ -127,10 +127,8 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, edit_result_t *out, request_t 
 }
 
 
-/** Expand a #tmpl_t to a #fr_value_box_list
- *
- *  Which will later be converted by the above functions back to a
- *  "realized" tmpl, which holds a TMPL_TYPE_DATA or TMPL_TYPE_ATTR.
+/*
+ *	Expand a tmpl.
  */
 static int tmpl_to_values(TALLOC_CTX *ctx, edit_result_t *out, request_t *request, tmpl_t const *vpt)
 {
@@ -1070,46 +1068,52 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	fr_dcursor_t		cursor;
 
 	current->lhs.create = false;
+	current->lhs.vp = NULL;
 
 	/*
 	 *	Create the attribute, including any necessary parents.
 	 */
 	if (map->op == T_OP_EQ) {
-		if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) current->lhs.create = true;
-
-	} else if (map->op == T_OP_SET) {
-		/*
-		 *	Leaf types can be deleted on "set", or just referenced, depending on their cardinality.
-		 */
-		if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
-			if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) {
-				current->lhs.vp = NULL;
-				current->lhs.create = true;
-				return expand_rhs(request, state, current);
-			}
+		if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) {
+			current->lhs.create = true;
 
 			/*
-			 *	&foo[0] := { a, b, c} is an error.  @todo - just grab the first one?
+			 *	Don't go to expand_rhs(), as we have to see if the attribute exists.
 			 */
-			if (!map->rhs) {
-				RPDEBUG("Can't set one entry to multiple values for %s", current->lhs.vpt->name);
-				return -1;
-			}
-		} else {
-			if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) {
-				current->lhs.vp = NULL;
-				current->lhs.create = true;
-				return expand_rhs(request, state, current);
-			}
 		}
 
-		current->lhs.create = true;
-	}
+	} else if (map->op == T_OP_SET) {
+		if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) {
+			current->lhs.create = true;
+			return expand_rhs(request, state, current);
+		}
 
-	current->lhs.vp = NULL;
+		/*
+		 *	Else we're doing something like:
+		 *
+		 *		&foo[1] := bar
+		 *
+		 *	the attribute has to exist, and we modify its value as a leaf.
+		 *
+		 *	If the RHS is a list, we can set the children for a LHS structural type.
+		 *	But if the LHS is a leaf, then we can't do:
+		 *
+		 *		&foo[3] := { a, b, c}
+		 *
+		 *	because foo[3] is a single leaf value, not a list.
+		 */
+		if (!map->rhs && fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
+			RPDEBUG("Can't set one entry to multiple values for %s", current->lhs.vpt->name);
+			return -1;
+		}
+
+	}
 
 	/*
 	 *	Find the VP.  If the operation is "=" or ":=", then it's OK for the VP to not exist.
+	 *
+	 *	@todo - put the cursor into the LHS, and then set lhs.vp == NULL
+	 *	use the cursor in apply_edits_to_leaf()
 	 */
 	fr_strerror_clear();
 	vp = tmpl_dcursor_init(&err, state, &cc, &cursor, request, current->lhs.vpt);
@@ -1200,7 +1204,7 @@ static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit
 	return current->check_lhs(request, state, current);
 }
 
-/** Create a list of modifications to apply to one or more fr_pair_t lists
+/** Apply a map (recursively) to a request.
  *
  * @param[out] p_result	The rcode indicating what the result
  *      		of the operation was.
