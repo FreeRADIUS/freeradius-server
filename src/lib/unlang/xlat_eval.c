@@ -81,12 +81,15 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 	switch (node->type) {
 	case XLAT_BOX:
 	case XLAT_GROUP:
+		fr_assert(node->fmt != NULL);
 		return talloc_asprintf(ctx, "%s", node->fmt);
 
 	case XLAT_ONE_LETTER:
+		fr_assert(node->fmt != NULL);
 		return talloc_asprintf(ctx, "%%%s", node->fmt);
 
 	case XLAT_TMPL:
+		fr_assert(node->fmt != NULL);
 		return talloc_asprintf(ctx, "%%{%s}", node->fmt);
 
 	case XLAT_VIRTUAL:
