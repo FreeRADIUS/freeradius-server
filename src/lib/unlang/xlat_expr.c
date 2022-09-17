@@ -122,6 +122,10 @@ static xlat_exp_t *xlat_exists_alloc(TALLOC_CTX *ctx, xlat_exp_t *child)
 	fr_assert(node->call.func != NULL);
 	node->flags = node->call.func->flags;
 
+	fr_assert(child->type == XLAT_TMPL);
+	fr_assert(tmpl_contains_attr(child->vpt));
+	node->fmt = child->vpt->name;
+
 	xlat_func_append_arg(node, child, false);
 
 	return node;
