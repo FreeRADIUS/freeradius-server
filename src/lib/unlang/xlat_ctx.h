@@ -32,8 +32,8 @@ extern "C" {
 #endif
 
 /* So we don't need to include xlat.h */
-typedef struct xlat_exp xlat_exp_t;
-typedef struct xlat_exp_head xlat_exp_head_t;
+typedef struct xlat_exp_s xlat_exp_t;
+typedef struct xlat_exp_head_s xlat_exp_head_t;
 
 /** An xlat calling ctx
  *
