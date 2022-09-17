@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 #
 ##############################################################################
@@ -7,8 +7,11 @@
 #	Alcatel-Lucent Service Router dictionary.
 #
 #	$Id$
-# https://infoproducts.alcatel-lucent.com/cgi-bin/dbaccessfilename.cgi/9304720101_V1_7750%20SR-OS%20RADIUS%20ATTRIBUT.pdf
-# https://documentation.nokia.com/html/0_add-h-f/93-0088-HTML/7750_SR_OS_Radius_Attributes_Reference_Guide/SROS_RADIUS_Attrib.html
+#
+# See "7750 Service Router - RADIUS Attributes Reference Guide".
+#
+# Latest edition may be found by searching "7750 RADIUS ATTRIBUTES REFERENCE
+# GUIDE" here: https://documentation.nokia.com/cgi-bin/doc_list.pl
 #
 ##############################################################################
 
@@ -26,17 +29,20 @@ VALUE	Timetra-Access			both			3
 ATTRIBUTE	Timetra-Home-Directory			2	string
 
 ATTRIBUTE	Timetra-Restrict-To-Home		3	integer
-ATTRIBUTE	Timetra-Profile				4	string
-ATTRIBUTE	Timetra-Default-Action			5	integer
 
 VALUE	Timetra-Restrict-To-Home	true			1
 VALUE	Timetra-Restrict-To-Home	false			2
+
+ATTRIBUTE	Timetra-Profile				4	string
+
+ATTRIBUTE	Timetra-Default-Action			5	integer
 
 VALUE	Timetra-Default-Action		permit-all		1
 VALUE	Timetra-Default-Action		deny-all		2
 VALUE	Timetra-Default-Action		none			3
 
 ATTRIBUTE	Timetra-Cmd				6	string
+
 ATTRIBUTE	Timetra-Action				7	integer
 
 VALUE	Timetra-Action			permit			1
@@ -55,7 +61,6 @@ ATTRIBUTE	Alc-Create-Host				15	string	# CoA
 ATTRIBUTE	Alc-ANCP-Str				16	string	# CoA
 ATTRIBUTE	Alc-Retail-Serv-Id			17	integer
 ATTRIBUTE	Alc-Default-Router			18	ipaddr
-ATTRIBUTE	Alc-Client-Hardware-Addr		27	string
 
 # RADIUS subscriber accounting VSAs
 ATTRIBUTE	Alc-Acct-I-Inprof-Octets-64		19	octets
@@ -67,6 +72,7 @@ ATTRIBUTE	Alc-Acct-I-Outprof-Pkts-64		24	octets
 ATTRIBUTE	Alc-Acct-O-Inprof-Pkts-64		25	octets
 ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-64		26	octets
 
+ATTRIBUTE	Alc-Client-Hardware-Addr		27	string
 ATTRIBUTE	Alc-Int-Dest-Id-Str			28	string
 ATTRIBUTE	Alc-Primary-Nbns			29	ipaddr
 ATTRIBUTE	Alc-Secondary-Nbns			30	ipaddr
@@ -96,6 +102,7 @@ ATTRIBUTE	Alc-Acct-OC-O-Outprof-Pkts-64		44	octets
 
 ATTRIBUTE	Alc-App-Prof-Str			45	string
 ATTRIBUTE	Alc-Tunnel-Group			46	string
+
 ATTRIBUTE	Alc-Tunnel-Algorithm			47	integer
 
 VALUE	Alc-Tunnel-Algorithm		weighted-access		1
@@ -107,6 +114,7 @@ ATTRIBUTE	Alc-Tunnel-Hello-Interval		50	integer	has_tag
 ATTRIBUTE	Alc-Tunnel-Destruct-Timeout		51	integer	has_tag
 ATTRIBUTE	Alc-Tunnel-Max-Retries-Estab		52	integer	has_tag
 ATTRIBUTE	Alc-Tunnel-Max-Retries-Not-Estab	53	integer	has_tag
+
 ATTRIBUTE	Alc-Tunnel-AVP-Hiding			54	integer	has_tag
 
 VALUE	Alc-Tunnel-AVP-Hiding		nothing			1
@@ -123,16 +131,17 @@ ATTRIBUTE	Alc-IPsec-Serv-Id			61	integer
 ATTRIBUTE	Alc-IPsec-Interface			62	string
 ATTRIBUTE	Alc-IPsec-Tunnel-Template-Id		63	integer
 ATTRIBUTE	Alc-IPsec-SA-Lifetime			64	integer
-ATTRIBUTE	Alc-IPsec-SA-PFS-Group			65	integer
 
 # Match TC TmnxIkePolicyDHGroup in TIMETRA-IPSEC-MIB
+ATTRIBUTE	Alc-IPsec-SA-PFS-Group			65	integer
+
 VALUE	Alc-IPsec-SA-PFS-Group		group1			1
 VALUE	Alc-IPsec-SA-PFS-Group		group2			2
 VALUE	Alc-IPsec-SA-PFS-Group		group5			5
 
+# Match TC TmnxEncrAlgorithm in TIMETRA-IPSEC-MIB
 ATTRIBUTE	Alc-IPsec-SA-Encr-Algorithm		66	integer
 
-# Match TC TmnxEncrAlgorithm in TIMETRA-IPSEC-MIB
 VALUE	Alc-IPsec-SA-Encr-Algorithm	null			1
 VALUE	Alc-IPsec-SA-Encr-Algorithm	des			2
 VALUE	Alc-IPsec-SA-Encr-Algorithm	des3			3
@@ -140,9 +149,9 @@ VALUE	Alc-IPsec-SA-Encr-Algorithm	aes128			4
 VALUE	Alc-IPsec-SA-Encr-Algorithm	aes192			5
 VALUE	Alc-IPsec-SA-Encr-Algorithm	aes256			6
 
+# Match TC TmnxAuthAlgorithm in TIMETRA-IPSEC-MIB
 ATTRIBUTE	Alc-IPsec-SA-Auth-Algorithm		67	integer
 
-# Match TC TmnxAuthAlgorithm in TIMETRA-IPSEC-MIB
 VALUE	Alc-IPsec-SA-Auth-Algorithm	null			1
 VALUE	Alc-IPsec-SA-Auth-Algorithm	md5			2
 VALUE	Alc-IPsec-SA-Auth-Algorithm	sha1			3
@@ -184,10 +193,11 @@ ATTRIBUTE	Alc-Credit-Control-CategoryMap		95	string
 ATTRIBUTE	Alc-Credit-Control-Quota		96	string
 
 ATTRIBUTE	Alc-Tunnel-Challenge			97	integer	has_tag
-ATTRIBUTE	Alc-Force-Nak				98	string	# CoA
 
 VALUE	Alc-Tunnel-Challenge		never			1
 VALUE	Alc-Tunnel-Challenge		always			2
+
+ATTRIBUTE	Alc-Force-Nak				98	string	# CoA
 
 ATTRIBUTE	Alc-Ipv6-Address			99	ipv6addr
 ATTRIBUTE	Alc-Serv-Id				100	integer
@@ -220,18 +230,16 @@ ATTRIBUTE	Alc-Nat-Port-Range			121	string
 
 # Lawful intercept VSAs
 ATTRIBUTE	Alc-LI-Action				122	integer	encrypt=2
+
+VALUE	Alc-LI-Action			no-action		1
+VALUE	Alc-LI-Action			enable			2
+VALUE	Alc-LI-Action			disable			3
+
 ATTRIBUTE	Alc-LI-Destination			123	string	encrypt=2
 
 # This VSA can occur multiple times (for each FC that must be intercepted)
 # If this VSA is not present, all FCs will be intercepted.
 ATTRIBUTE	Alc-LI-FC				124	integer	encrypt=2
-
-# If this VSA is not present, both directions will be intercepted.
-ATTRIBUTE	Alc-LI-Direction			125	integer	encrypt=2
-
-VALUE	Alc-LI-Action			no-action		1
-VALUE	Alc-LI-Action			enable			2
-VALUE	Alc-LI-Action			disable			3
 
 VALUE	Alc-LI-FC			be			0
 VALUE	Alc-LI-FC			l2			1
@@ -241,6 +249,9 @@ VALUE	Alc-LI-FC			h2			4
 VALUE	Alc-LI-FC			ef			5
 VALUE	Alc-LI-FC			h1			6
 VALUE	Alc-LI-FC			nc			7
+
+# If this VSA is not present, both directions will be intercepted.
+ATTRIBUTE	Alc-LI-Direction			125	integer	encrypt=2
 
 VALUE	Alc-LI-Direction		ingress			1
 VALUE	Alc-LI-Direction		egress			2
@@ -304,7 +315,6 @@ VALUE	Alc-Mgw-Interface-Type		s2a			2
 VALUE	Alc-Mgw-Interface-Type		s2b			3
 
 ATTRIBUTE	Alc-Wlan-APN-Name			146	string
-
 ATTRIBUTE	Alc-MsIsdn				147	string
 
 # WIFI Received Signal Strength Indication
@@ -361,16 +371,29 @@ ATTRIBUTE	Alc-Wlan-Portal-Url			173	string
 # scenarios only.
 ATTRIBUTE	Alc-Lease-Time				174	integer
 
+ATTRIBUTE	Alc-DSL-Line-State			175	integer
+ATTRIBUTE	Alc-DSL-Type				176	integer
+
 # The URL to which traffic matching the host IPv4 filter entry with http-redirect
 # action is redirected to
 ATTRIBUTE	Alc-Portal-Url				177	string
 
+ATTRIBUTE	Alc-Ipv6-Portal-Url			178	string
+ATTRIBUTE	Alc-SAP-Session-Index			180	integer
+
 # names longer than the allowed maximum are treated as host setup failures
 ATTRIBUTE	Alc-SLAAC-IPv6-Pool			181	string
+
+ATTRIBUTE	Alc-WPP-ErrorCode			183	integer
+ATTRIBUTE	Alc-Onetime-Http-Redirect-Reactivate	185	string
 
 # DHCP6 attributes
 ATTRIBUTE	Alc-ToServer-Dhcp6-Options		191	octets
 ATTRIBUTE	Alc-ToClient-Dhcp6-Options		192	octets
+
+#
+#  MUST have renew time <= rebind time <= preferred lifetime <= valid lifetime
+#
 ATTRIBUTE	Alc-v6-Preferred-Lifetime		200	integer
 ATTRIBUTE	Alc-v6-Valid-Lifetime			201	integer
 ATTRIBUTE	Alc-Dhcp6-Renew-Time			202	integer
@@ -379,5 +402,19 @@ ATTRIBUTE	Alc-Dhcp6-Rebind-Time			203	integer
 # The VLAN is transparently taken from the UE’s Ethernet layer and can be reflected
 # in both authentication and accounting
 ATTRIBUTE	Alc-Wlan-SSID-VLAN			206	string
+
+ATTRIBUTE	Alc-UPnP-Sub-Override-Policy		217	string
+
+ATTRIBUTE	Alc-Trigger-Acct-Interim		228	string
+
+ATTRIBUTE	Alc-Acct-Interim-Level			232	integer	has_tag
+
+ATTRIBUTE	Alc-DNAT-Override			234	string
+
+ATTRIBUTE	Alc-Remove-Override			238	string
+
+ATTRIBUTE	Alc-Radius-Py				242	octets
+
+ATTRIBUTE	Alc-Force-DHCP-Relay			244	string
 
 END-VENDOR	Alcatel-Lucent-Service-Router
