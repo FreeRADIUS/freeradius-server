@@ -403,6 +403,10 @@ apply_list:
  *
  *		if it needs to be created, then create it and just mash the results in place
  *		otherwise apply the edits (+=, etc.) to an existing attribute.
+ *
+ *	@todo - move to using dcursors for all of the values.  The dcursor should exist in current->rhs.  It
+ *	should be used even for TMPL_DATA and single value-boxes.  Once that's done, it becomes easier to use
+ *	dcursors for xlats, too.
  */
 static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {

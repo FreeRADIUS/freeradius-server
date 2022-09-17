@@ -190,7 +190,7 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	 *	well as the original fmt string.
 	 */
 	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->call.args)) {
-		RDEBUG2("(%%%c%s:%pM%c)",
+		RDEBUG2("| %%%c%s:%pM%c",
 			(node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
 			node->call.func->name, args,
 			(node->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
@@ -198,7 +198,7 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 		char *str;
 
 		str = xlat_fmt_aprint(NULL, node);
-		RDEBUG2("%s", str); /* print line number here for debugging */
+		RDEBUG2("| %s", str); /* print line number here for debugging */
 		talloc_free(str);
 	}
 }
@@ -214,7 +214,7 @@ static inline void xlat_debug_log_list_result(request_t *request, xlat_exp_t con
 
 	if (!RDEBUG_ENABLED2) return;
 
-	RDEBUG2("--> %pM", result);
+	RDEBUG2("| --> %pM", result);
 }
 
 /** Output the result of an expansion
@@ -228,7 +228,7 @@ static inline void xlat_debug_log_result(request_t *request, xlat_exp_t const *n
 
 	if (!RDEBUG_ENABLED2) return;
 
-	RDEBUG2("--> %pV", result);
+	RDEBUG2("| --> %pV", result);
 }
 
 /** Process an individual xlat argument value box group
@@ -743,7 +743,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	xa = resume(ctx, out, XLAT_CTX(exp->call.inst->data, t->data, t->mctx, rctx), request, result);
 	VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
-	RDEBUG2("%%%c%s:...%c",
+	RDEBUG2("| %%%c%s:...%c",
 		(exp->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
 		exp->call.func->name,
 		(exp->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
@@ -752,12 +752,12 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		break;
 
 	case XLAT_ACTION_YIELD:
-		RDEBUG2("(YIELD)");
+		RDEBUG2("| (YIELD)");
 		break;
 
 	case XLAT_ACTION_DONE:
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
-		RDEBUG2("--> %pV", fr_dcursor_current(out));
+		RDEBUG2("| --> %pV", fr_dcursor_current(out));
 		break;
 
 	case XLAT_ACTION_FAIL:
@@ -843,15 +843,15 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			return xa;
 
 		case XLAT_ACTION_PUSH_CHILD:
-			RDEBUG3("   -- CHILD");
+			RDEBUG3("|   -- CHILD");
 			return xa;
 
 		case XLAT_ACTION_PUSH_UNLANG:
-			RDEBUG3("   -- UNLANG");
+			RDEBUG3("|   -- UNLANG");
 			return xa;
 
 		case XLAT_ACTION_YIELD:
-			RDEBUG3("   -- YIELD");
+			RDEBUG3("|   -- YIELD");
 			return xa;
 
 		case XLAT_ACTION_DONE:				/* Process the result */
