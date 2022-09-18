@@ -8,8 +8,10 @@
 #
 #	$Id$
 #
-# https://infoproducts.alcatel-lucent.com/cgi-bin/dbaccessfilename.cgi/9304720101_V1_7750%20SR-OS%20RADIUS%20ATTRIBUT.pdf
-# https://documentation.nokia.com/html/0_add-h-f/93-0088-HTML/7750_SR_OS_Radius_Attributes_Reference_Guide/SROS_RADIUS_Attrib.html
+# See "7750 Service Router - RADIUS Attributes Reference Guide".
+#
+# Latest edition may be found by searching "7750 RADIUS ATTRIBUTES REFERENCE
+# GUIDE" here: https://documentation.nokia.com/cgi-bin/doc_list.pl
 #
 ##############################################################################
 
@@ -28,17 +30,19 @@ ATTRIBUTE	Timetra-Home-Directory			2	string
 
 ATTRIBUTE	Timetra-Restrict-To-Home		3	integer
 
-ATTRIBUTE	Timetra-Profile				4	string
-ATTRIBUTE	Timetra-Default-Action			5	integer
-
 VALUE	Timetra-Restrict-To-Home	true			1
 VALUE	Timetra-Restrict-To-Home	false			2
+
+ATTRIBUTE	Timetra-Profile				4	string
+
+ATTRIBUTE	Timetra-Default-Action			5	integer
 
 VALUE	Timetra-Default-Action		permit-all		1
 VALUE	Timetra-Default-Action		deny-all		2
 VALUE	Timetra-Default-Action		none			3
 
 ATTRIBUTE	Timetra-Cmd				6	string
+
 ATTRIBUTE	Timetra-Action				7	integer
 
 VALUE	Timetra-Action			permit			1
@@ -100,7 +104,6 @@ MEMBER		Acct-O-Outprof-Pkts-Id			byte
 MEMBER		Acct-O-Outprof-Pkts			integer64
 
 ATTRIBUTE	Client-Hardware-Addr			27	string
-
 ATTRIBUTE	Int-Dest-Id-Str				28	string
 ATTRIBUTE	Primary-Nbns				29	ipaddr
 ATTRIBUTE	Secondary-Nbns				30	ipaddr
@@ -146,6 +149,7 @@ MEMBER		Acct-OC-O-Outprof-Pkts			integer64
 
 ATTRIBUTE	App-Prof-Str				45	string
 ATTRIBUTE	Tunnel-Group				46	string
+
 ATTRIBUTE	Tunnel-Algorithm			47	integer
 
 VALUE	Tunnel-Algorithm		weighted-access		1
@@ -157,6 +161,7 @@ ATTRIBUTE	Tunnel-Hello-Interval			50	integer	has_tag
 ATTRIBUTE	Tunnel-Destruct-Timeout			51	integer	has_tag
 ATTRIBUTE	Tunnel-Max-Retries-Estab		52	integer	has_tag
 ATTRIBUTE	Tunnel-Max-Retries-Not-Estab		53	integer	has_tag
+
 ATTRIBUTE	Tunnel-AVP-Hiding			54	integer	has_tag
 
 VALUE	Tunnel-AVP-Hiding		nothing			1
@@ -173,16 +178,17 @@ ATTRIBUTE	IPsec-Serv-Id				61	integer
 ATTRIBUTE	IPsec-Interface				62	string
 ATTRIBUTE	IPsec-Tunnel-Template-Id		63	integer
 ATTRIBUTE	IPsec-SA-Lifetime			64	integer
-ATTRIBUTE	IPsec-SA-PFS-Group			65	integer
 
 # Match TC TmnxIkePolicyDHGroup in TIMETRA-IPSEC-MIB
+ATTRIBUTE	IPsec-SA-PFS-Group			65	integer
+
 VALUE	IPsec-SA-PFS-Group		group1			1
 VALUE	IPsec-SA-PFS-Group		group2			2
 VALUE	IPsec-SA-PFS-Group		group5			5
 
+# Match TC TmnxEncrAlgorithm in TIMETRA-IPSEC-MIB
 ATTRIBUTE	IPsec-SA-Encr-Algorithm			66	integer
 
-# Match TC TmnxEncrAlgorithm in TIMETRA-IPSEC-MIB
 VALUE	IPsec-SA-Encr-Algorithm		null			1
 VALUE	IPsec-SA-Encr-Algorithm		des			2
 VALUE	IPsec-SA-Encr-Algorithm		des3			3
@@ -190,9 +196,9 @@ VALUE	IPsec-SA-Encr-Algorithm		aes128			4
 VALUE	IPsec-SA-Encr-Algorithm		aes192			5
 VALUE	IPsec-SA-Encr-Algorithm		aes256			6
 
+# Match TC TmnxAuthAlgorithm in TIMETRA-IPSEC-MIB
 ATTRIBUTE	IPsec-SA-Auth-Algorithm			67	integer
 
-# Match TC TmnxAuthAlgorithm in TIMETRA-IPSEC-MIB
 VALUE	IPsec-SA-Auth-Algorithm		null			1
 VALUE	IPsec-SA-Auth-Algorithm		md5			2
 VALUE	IPsec-SA-Auth-Algorithm		sha1			3
@@ -281,10 +287,11 @@ ATTRIBUTE	Credit-Control-CategoryMap		95	string
 ATTRIBUTE	Credit-Control-Quota			96	string
 
 ATTRIBUTE	Tunnel-Challenge			97	integer	has_tag
-ATTRIBUTE	Force-Nak				98	string	# CoA
 
 VALUE	Tunnel-Challenge		never			1
 VALUE	Tunnel-Challenge		always			2
+
+ATTRIBUTE	Force-Nak				98	string	# CoA
 
 ATTRIBUTE	Ipv6-Address				99	ipv6addr
 ATTRIBUTE	Serv-Id					100	integer
@@ -365,18 +372,16 @@ ATTRIBUTE	Nat-Port-Range				121	string
 
 # Lawful intercept VSAs
 ATTRIBUTE	LI-Action				122	integer	encrypt=2
+
+VALUE	LI-Action			no-action		1
+VALUE	LI-Action			enable			2
+VALUE	LI-Action			disable			3
+
 ATTRIBUTE	LI-Destination				123	string	encrypt=2
 
 # This VSA can occur multiple times (for each FC that must be intercepted)
 # If this VSA is not present, all FCs will be intercepted.
 ATTRIBUTE	LI-FC					124	integer	encrypt=2
-
-# If this VSA is not present, both directions will be intercepted.
-ATTRIBUTE	LI-Direction				125	integer	encrypt=2
-
-VALUE	LI-Action			no-action		1
-VALUE	LI-Action			enable			2
-VALUE	LI-Action			disable			3
 
 VALUE	LI-FC				be			0
 VALUE	LI-FC				l2			1
@@ -386,6 +391,9 @@ VALUE	LI-FC				h2			4
 VALUE	LI-FC				ef			5
 VALUE	LI-FC				h1			6
 VALUE	LI-FC				nc			7
+
+# If this VSA is not present, both directions will be intercepted.
+ATTRIBUTE	LI-Direction				125	integer	encrypt=2
 
 VALUE	LI-Direction			ingress			1
 VALUE	LI-Direction			egress			2
@@ -449,7 +457,6 @@ VALUE	Mgw-Interface-Type		s2a			2
 VALUE	Mgw-Interface-Type		s2b			3
 
 ATTRIBUTE	Wlan-APN-Name				146	string
-
 ATTRIBUTE	MsIsdn					147	string
 
 # WIFI Received Signal Strength Indication
@@ -506,13 +513,23 @@ ATTRIBUTE	Wlan-Portal-Url				173	string
 # scenarios only.
 ATTRIBUTE	Lease-Time				174	integer
 
+ATTRIBUTE	DSL-Line-State				175	integer
+ATTRIBUTE	DSL-Type				176	integer
+
 # The URL to which traffic matching the host IPv4 filter entry with http-redirect
 # action is redirected to
 ATTRIBUTE	Portal-Url				177	string
 
+ATTRIBUTE	Ipv6-Portal-Url				178	string
+ATTRIBUTE	SAP-Session-Index			180	integer
+
 # names longer than the allowed maximum are treated as host setup failures
 ATTRIBUTE	SLAAC-IPv6-Pool				181	string
 
+ATTRIBUTE	WPP-ErrorCode				183	integer
+ATTRIBUTE	Onetime-Http-Redirect-Reactivate	185	string
+
+# DHCP6 attributes
 ATTRIBUTE	ToServer-Dhcp6-Options			191	octets
 ATTRIBUTE	ToClient-Dhcp6-Options			192	octets
 
@@ -527,5 +544,19 @@ ATTRIBUTE	Dhcp6-Rebind-Time			203	time_delta
 # The VLAN is transparently taken from the UE's Ethernet layer and can be reflected
 # in both authentication and accounting
 ATTRIBUTE	Wlan-SSID-VLAN				206	string
+
+ATTRIBUTE	UPnP-Sub-Override-Policy		217	string
+
+ATTRIBUTE	Trigger-Acct-Interim			228	string
+
+ATTRIBUTE	Acct-Interim-Level			232	integer	has_tag
+
+ATTRIBUTE	DNAT-Override				234	string
+
+ATTRIBUTE	Remove-Override				238	string
+
+ATTRIBUTE	Radius-Py				242	octets
+
+ATTRIBUTE	Force-DHCP-Relay			244	string
 
 END-VENDOR	Nokia-SR
