@@ -743,6 +743,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	xa = resume(ctx, out, XLAT_CTX(exp->call.inst->data, t->data, t->mctx, rctx), request, result);
 	VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
+	REXDENT();
 	RDEBUG2("| %%%c%s:...%c",
 		(exp->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
 		exp->call.func->name,
@@ -763,6 +764,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	case XLAT_ACTION_FAIL:
 		break;
 	}
+	RINDENT();
 
 	return xa;
 }
@@ -835,8 +837,12 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   request, result);
 		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
-		if (RDEBUG_ENABLED2) xlat_debug_log_expansion(request, *in, &result_copy, __LINE__);
-		fr_dlist_talloc_free(&result_copy);
+		if (RDEBUG_ENABLED2) {
+			REXDENT();
+			xlat_debug_log_expansion(request, *in, &result_copy, __LINE__);
+			RINDENT();
+			fr_dlist_talloc_free(&result_copy);
+		}
 
 		switch (xa) {
 		case XLAT_ACTION_FAIL:
@@ -856,7 +862,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		case XLAT_ACTION_DONE:				/* Process the result */
 			fr_dcursor_next(out);
+			REXDENT();
 			xlat_debug_log_result(request, *in, fr_dcursor_current(out));
+			RINDENT();
 			break;
 		}
 	}

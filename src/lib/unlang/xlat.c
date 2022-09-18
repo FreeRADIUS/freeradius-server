@@ -232,6 +232,21 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, fr_value_
 	state->success = p_success;
 	state->ctx = ctx;
 
+	if (node) switch (node->type) {
+	case XLAT_GROUP:
+	case XLAT_BOX:
+		break;
+
+	case XLAT_TMPL:
+		if (tmpl_is_data(node->vpt)) break;
+		FALL_THROUGH;
+
+	default:
+		RDEBUG("| %s", node->fmt);
+		break;
+	}
+	RINDENT();
+
 	/*
 	 *	Initialise the input and output lists
 	 */
@@ -303,6 +318,7 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 		fr_dlist_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
+			REXDENT();
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -322,12 +338,14 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 	case XLAT_ACTION_DONE:
 		if (state->success) *state->success = true;
 		*p_result = RLM_MODULE_OK;
+		REXDENT();
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
 	fail:
 		if (state->success) *state->success = false;
 		*p_result = RLM_MODULE_FAIL;
+		REXDENT();
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	default:
@@ -381,12 +399,14 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 	case XLAT_ACTION_DONE:
 		if (state->success) *state->success = true;
 		*p_result = RLM_MODULE_OK;
+		REXDENT();
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
 	fail:
 		if (state->success) *state->success = false;
 		*p_result = RLM_MODULE_FAIL;
+		REXDENT();
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	default:
@@ -457,6 +477,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 	case XLAT_ACTION_DONE:
 		if (state->success) *state->success = true;
 		*p_result = RLM_MODULE_OK;
+		REXDENT();
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_PUSH_UNLANG:
@@ -470,6 +491,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 	case XLAT_ACTION_FAIL:
 		if (state->success) *state->success = false;
 		*p_result = RLM_MODULE_FAIL;
+		REXDENT();
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	/* DON'T SET DEFAULT */
 	}
@@ -477,6 +499,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 	fr_assert(0);		/* Garbage xlat action */
 
 	*p_result = RLM_MODULE_FAIL;
+	REXDENT();
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
