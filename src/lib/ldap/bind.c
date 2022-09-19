@@ -324,11 +324,12 @@ static void ldap_async_auth_bind_cancel(UNUSED request_t *request, fr_state_sign
  * @param[in] thread		whose connection the bind should be performed on.
  * @param[in] bind_dn		Identity to bind with.
  * @param[in] password		Password to bind with.
+ * @param[in] fully_async	Is this being called in a fully async context
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char const *bind_dn, char const *password)
+int fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char const *bind_dn, char const *password, bool fully_async)
 {
 	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx;
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(thread->conn->h, fr_ldap_connection_t);
@@ -350,5 +351,5 @@ int fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char c
 	bind_auth_ctx->thread = thread;
 	bind_auth_ctx->ret = LDAP_RESULT_PENDING;
 
-	return unlang_function_push(request, ldap_async_auth_bind_start, ldap_async_auth_bind_results, ldap_async_auth_bind_cancel, UNLANG_TOP_FRAME, bind_auth_ctx);
+	return unlang_function_push(request, ldap_async_auth_bind_start, ldap_async_auth_bind_results, ldap_async_auth_bind_cancel, !fully_async, bind_auth_ctx);
 }

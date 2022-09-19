@@ -849,7 +849,7 @@ int		fr_ldap_bind_async(fr_ldap_connection_t *c,
 				   LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 int		fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread,
-					char const *bind_dn, char const *password);
+					char const *bind_dn, char const *password, bool fully_async);
 
 /*
  *	uti.c - Utility functions
