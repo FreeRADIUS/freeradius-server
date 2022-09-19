@@ -2253,6 +2253,10 @@ static void generate_def_file(command_t *cmd)
 
 
 	if (cmd->output_name) {
+		if (strlen(cmd->output_name) + 4 > sizeof(def_file)) {
+			ERROR("Def file name too long, out of buffer space\n");
+			return;
+		}
 		strcpy(def_file, cmd->output_name);
 		strcat(def_file, ".def");
 		hDef = fopen(def_file, "w");
