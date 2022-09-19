@@ -406,6 +406,7 @@ static int mod_open(fr_listen_t *li)
 	 *	We never read or write to this file, but we need a
 	 *	readable FD in order to bootstrap the process.
 	 */
+	if (inst->filename == NULL) return -1;
 	li->fd = open(inst->filename, O_RDONLY);
 
 	memset(&ipaddr, 0, sizeof(ipaddr));
@@ -414,7 +415,7 @@ static int mod_open(fr_listen_t *li)
 
 	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
 
-	thread->name = talloc_typed_asprintf(thread, "cron_crontab from filename %s", inst->filename ? inst->filename : "none");
+	thread->name = talloc_typed_asprintf(thread, "cron_crontab from filename %s", inst->filename);
 	thread->parent = talloc_parent(li);
 
 	return 0;
