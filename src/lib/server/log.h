@@ -477,7 +477,9 @@ typedef struct {
 #else
 #define RMARKER(_type, _lvl, _str, _marker_idx, _marker, ...) do { \
 		RDEBUG4("== (0) at %s[%u]", __FILE__, __LINE__); \
-		log_request_marker(_type, _lvl, request, __FILE__, __LINE__, _str, _marker_idx, _marker, ## __VA_ARGS__); \
+		log_request_marker(_type, _lvl, request, \
+				   __FILE__, __LINE__, \
+				   _str, SIZE_MAX, _marker_idx, _marker, ## __VA_ARGS__); \
 	} while (0)
 #endif
 
