@@ -1002,16 +1002,15 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		if (tmpl_expand(&sasl.mech, sasl_mech_buff, sizeof(sasl_mech_buff), request,
 				inst->user_sasl.mech, fr_ldap_escape_func, inst) < 0) {
 			RPEDEBUG("Failed expanding user.sasl.mech");
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
+		fail:
+			RETURN_MODULE_RCODE(RLM_MODULE_FAIL);
 		}
 
 		if (inst->user_sasl.proxy) {
 			if (tmpl_expand(&sasl.proxy, sasl_proxy_buff, sizeof(sasl_proxy_buff), request,
 					inst->user_sasl.proxy, fr_ldap_escape_func, inst) < 0) {
 				RPEDEBUG("Failed expanding user.sasl.proxy");
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
+				goto fail;
 			}
 		}
 
@@ -1019,8 +1018,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 			if (tmpl_expand(&sasl.realm, sasl_realm_buff, sizeof(sasl_realm_buff), request,
 					inst->user_sasl.realm, fr_ldap_escape_func, inst) < 0) {
 				RPEDEBUG("Failed expanding user.sasl.realm");
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
+				goto fail;
 			}
 		}
 	}
@@ -1036,13 +1034,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	/*
 	 *	Attempt a bind using the thread specific connection for bind auths
 	 */
-	if (fr_ldap_bind_auth_async(request, thread, dn, password->vp_strvalue) < 0) RETURN_MODULE_FAIL;
+	if (fr_ldap_bind_auth_async(request, thread, dn, password->vp_strvalue, true) < 0) RETURN_MODULE_FAIL;
 
-	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-
-finish:
-
-	RETURN_MODULE_RCODE(rcode);
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Search for and apply an LDAP profile
@@ -1246,7 +1240,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			/*
 			 *	Bind as the user
 			 */
-			if (fr_ldap_bind_auth_async(request, thread, dn, vp->vp_strvalue) < 0) {
+			if (fr_ldap_bind_auth_async(request, thread, dn, vp->vp_strvalue, false) < 0) {
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
