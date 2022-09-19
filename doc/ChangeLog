@@ -1,7 +1,8 @@
 FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	Feature improvements
 	* Add support for OpenSSL3
-	* Add dictionary.mellanox, dictionary.netelastic
+	* Add dictionary.mellanox, dictionary.netelastic,
+	  dictionary.ciena
 	* Update dictionary.aruba, dictionary.roaringpenguin
 	* Removed haproxy support.  It's new and experimental,
 	  and belongs in the v3.2 release, where it will be
@@ -19,6 +20,8 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Add client short name to "dropping packet" message,
 	* Update MS-SQL queries to avoid using column which was
 	  deleted years ago.
+	* Add configure-time FIPS workaround to use internal MD4/MD5
+	  implementations when disabled in OpenSSL.
 
 	Bug fixes
 	* Ensure PBKDF2 always uses at least one iteration
@@ -40,6 +43,8 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	  offers no benefit.
 	* Fix crash in RadSec with expired server certificate. #4447.
 	* PEAP now correctly runs Post-Auth-Type Accept.
+	* Build fixes for OS X
+	* Minor updates and fixes to CI, Dockerfiles and packaging.
 
 FreeRADIUS 3.0.25 Thu 07 Oct 2021 12:00:00 EDT urgency=medium
 	Feature improvements

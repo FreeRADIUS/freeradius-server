@@ -1286,7 +1286,7 @@ dnl #
 dnl #  Interix requires us to set -D_ALL_SOURCE, otherwise
 dnl #  getopt will be #included, but won't link.  <sigh>
 dnl #
-dnl #  On the other hand, it's 20222.  Interix has likely been dead for a decade. :(
+dnl #  On the other hand, it's 2022.  Interix has likely been dead for a decade. :(
 dnl #
 case "$host" in
   *-interix*)
