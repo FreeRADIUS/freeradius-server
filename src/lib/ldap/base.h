@@ -14,6 +14,7 @@
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/trunk.h>
+#include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/util/dlist.h>
 
 #define LDAP_DEPRECATED 0	/* Quiet warnings about LDAP_DEPRECATED not being defined */
