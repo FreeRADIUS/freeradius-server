@@ -176,6 +176,17 @@ global_lib_autoinst_t const *rlm_ldap_lib[] = {
 	GLOBAL_LIB_TERMINATOR
 };
 
+/** Holds state of in progress async authentication
+ *
+ */
+typedef struct {
+	char const		*dn;
+	char const		*password;
+	rlm_ldap_t const	*inst;
+	fr_ldap_thread_t	*thread;
+	fr_ldap_thread_trunk_t	*ttrunk;
+} ldap_auth_ctx;
+
 
 static xlat_arg_parser_t const ldap_escape_xlat_arg = { .required = true, .concat = true, .type = FR_TYPE_STRING };
 
@@ -934,13 +945,54 @@ cleanup:
 	return 1;
 }
 
+/** Perform async lookup of user DN if required for authentication
+ *
+ */
+static unlang_action_t mod_authenticate_start(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	ldap_auth_ctx	*auth_ctx = talloc_get_type_abort(uctx, ldap_auth_ctx);
+
+	if (rlm_ldap_find_user_async(auth_ctx, auth_ctx->inst, request, auth_ctx->ttrunk,
+				     NULL, NULL) == UNLANG_ACTION_FAIL) RETURN_MODULE_FAIL;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+/** Initiate async LDAP bind to authenticate user
+ *
+ */
+static unlang_action_t mod_authenticate_resume(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	ldap_auth_ctx	*auth_ctx = talloc_get_type_abort(uctx, ldap_auth_ctx);
+
+	/*
+	 *	Arriving here from an LDAP search will mean the dn in auth_ctx is NULL.
+	 */
+	if (!auth_ctx->dn) rlm_ldap_find_user_cached(auth_ctx->dn, request);
+
+	/*
+	 *	No DN found - can't authenticate the user.
+	 */
+	if (!auth_ctx->dn) {
+	fail:
+		talloc_free(auth_ctx);
+		RETURN_MODULE_FAIL;
+	}
+
+	/*
+	 *	Attempt a bind using the thread specific connection for bind auths
+	 */
+	if (fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password, true) < 0) goto fail;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
-	rlm_rcode_t		rcode;
-	char const		*dn;
 	fr_ldap_thread_trunk_t	*ttrunk = NULL;
+	ldap_auth_ctx		*auth_ctx;
 
 	char			sasl_mech_buff[LDAP_MAX_DN_STR_LEN];
 	char			sasl_proxy_buff[LDAP_MAX_DN_STR_LEN];
@@ -1025,16 +1077,21 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	RDEBUG2("Login attempt by \"%pV\"", &username->data);
 
-	/*
-	 *	Get the DN by doing a search.
-	 */
-	dn = rlm_ldap_find_user(inst, request, ttrunk, NULL, false, NULL, NULL, &rcode);
-	if (!dn) RETURN_MODULE_RCODE(rcode);
+	auth_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_auth_ctx);
+	*auth_ctx = (ldap_auth_ctx){
+		.password = password->vp_strvalue,
+		.thread = thread,
+		.inst = inst,
+		.ttrunk = ttrunk
+	};
 
 	/*
-	 *	Attempt a bind using the thread specific connection for bind auths
+	 *	Check for a cahed copy of the DN
 	 */
-	if (fr_ldap_bind_auth_async(request, thread, dn, password->vp_strvalue, true) < 0) RETURN_MODULE_FAIL;
+	rlm_ldap_find_user_cached(auth_ctx->dn, request);
+
+	if (unlang_function_push(request, auth_ctx->dn ? NULL : mod_authenticate_start,
+				 mod_authenticate_resume, NULL, UNLANG_SUB_FRAME, auth_ctx) < 0) RETURN_MODULE_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
