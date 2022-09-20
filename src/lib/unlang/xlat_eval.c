@@ -824,7 +824,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	Need to copy the input list in case
 		 *	the async function mucks with it.
 		 */
-		if (RDEBUG_ENABLED2) fr_value_box_list_acopy(NULL, &result_copy, result);
+		if (RDEBUG_ENABLED2) fr_value_box_list_acopy(unlang_interpret_frame_talloc_ctx(request), &result_copy, result);
 		xa = xlat_process_args(ctx, result, request, node->call.func);
 		if (xa == XLAT_ACTION_FAIL) {
 			fr_dlist_talloc_free(&result_copy);
@@ -841,8 +841,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			REXDENT();
 			xlat_debug_log_expansion(request, *in, &result_copy, __LINE__);
 			RINDENT();
-			fr_dlist_talloc_free(&result_copy);
 		}
+		fr_dlist_talloc_free(&result_copy);
 
 		switch (xa) {
 		case XLAT_ACTION_FAIL:
