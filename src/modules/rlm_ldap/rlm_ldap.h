@@ -150,6 +150,18 @@ extern HIDDEN fr_dict_attr_t const *attr_user_name;
 /*
  *	user.c - User lookup functions
  */
+#define rlm_ldap_find_user_cached(_dn, _request) \
+do { \
+	fr_pair_t	*dnvp; \
+	dnvp = fr_pair_find_by_da(&_request->control_pairs, NULL, attr_ldap_userdn); \
+	if (!dnvp) { \
+		_dn = NULL; \
+		break; \
+	} \
+	RDEBUG2("Using user DN from request \"%pV\"", &dnvp->data); \
+	_dn = dnvp->vp_strvalue; \
+} while (0)
+
 char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *tconn,
 			       char const *attrs[], bool force, LDAPMessage **result, LDAP **handle, rlm_rcode_t *rcode);
 
