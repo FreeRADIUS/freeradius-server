@@ -9,12 +9,8 @@ if ("%(aka_sim_id_type:%{User-Name})" != 'permanent') {
 #
 #  Encrypt the permanent ID
 #
-update control {
-	&Tmp-String-0 := '1420032219455258'
-}
-update control {
-	&User-Name := "%(3gpp_temporary_id_encrypt:%{User-Name} %{control.Tmp-String-0} 6)"
-}
+&control.Tmp-String-0 := '1420032219455258'
+&control.User-Name := "%(3gpp_temporary_id_encrypt:%{User-Name} %{control.Tmp-String-0} 6)"
 
 #
 #  0.2 - Can we get the EAP method from the encrypted blob correctly?
@@ -40,9 +36,7 @@ if ("%(3gpp_temporary_id_encrypt:%{control.User-Name} %{control.Tmp-String-0} 6)
 #
 #  0.5 - Get the original IMSI back again
 #
-update control {
-	&Tmp-String-1 := "%(3gpp_temporary_id_decrypt:%{control.User-Name} %{control.Tmp-String-0})"
-}
+&control.Tmp-String-1 := "%(3gpp_temporary_id_decrypt:%{control.User-Name} %{control.Tmp-String-0})"
 
 if (&control.Tmp-String-1 != &User-Name) {
 	test_fail
@@ -52,22 +46,18 @@ if (&control.Tmp-String-1 != &User-Name) {
 #  1.0 Now try with the hint coming from &request.EAP-Type
 #
 if (&User-Name =~ /^[0-9](.*)/) {
-	update request {
-		&User-Name[1] := "%{1}"
-	}
-	update request {
-		&EAP-Type := AKA
+	&request += {
+		&User-Name = "%{1}"
+		&EAP-Type = AKA
 	}
 }
 
 #
 #  1.1 - Encrypt the permanent ID
 #
-update control {
-	&Tmp-String-0 := '1420032219455259'
-}
-update control {
-	&User-Name[1] := "%(3gpp_temporary_id_encrypt:%{User-Name[1]} %{control.Tmp-String-0} 6)"
+&control.Tmp-String-0 := '1420032219455259'
+&control += {
+	&User-Name = "%(3gpp_temporary_id_encrypt:%{User-Name[1]} %{control.Tmp-String-0} 6)"
 }
 
 #
@@ -87,9 +77,7 @@ if ("%(3gpp_temporary_id_encrypt:%{control.User-Name[1]} %{control.Tmp-String-0}
 #
 #  1.4 - Get the original IMSI back again
 #
-update control {
-	&Tmp-String-1 := "%(3gpp_temporary_id_decrypt:%{control.User-Name[1]} %{control.Tmp-String-0})"
-}
+&control.Tmp-String-1 := "%(3gpp_temporary_id_decrypt:%{control.User-Name[1]} %{control.Tmp-String-0})"
 
 if (&control.Tmp-String-1 != "0%{User-Name[1]}") {
 	test_fail
@@ -98,33 +86,29 @@ if (&control.Tmp-String-1 != "0%{User-Name[1]}") {
 #
 #  2.1 - Encrypt the permanent ID for fastauth
 #
-update control {
-	&Tmp-String-0 := '1420032219455259'
-}
-update control {
-	&User-Name[1] := "%(3gpp_temporary_id_encrypt:%{User-Name[1]} %{control.Tmp-String-0} 6 fastauth)"
+&control.Tmp-String-0 := '1420032219455259'
+&control += {
+	&User-Name = "%(3gpp_temporary_id_encrypt:%{User-Name[1]} %{control.Tmp-String-0} 6 fastauth)"
 }
 
 #
 #  2.2 - Can we identify the encrypted blob correctly?
 #
-if ("%(aka_sim_id_type:%{control.User-Name[1]})" != 'fastauth') {
+if ("%(aka_sim_id_type:%{control.User-Name[2]})" != 'fastauth') {
 	test_fail
 }
 
 #
 #  2.3 - We should refuse to re-encrypt an encrypted NAI
 #
-if ("%(3gpp_temporary_id_encrypt:%{control.User-Name[1]} %{control.Tmp-String-0} 6 fastauth)" != '') {
+if ("%(3gpp_temporary_id_encrypt:%{control.User-Name[2]} %{control.Tmp-String-0} 6 fastauth)" != '') {
 	test_fail
 }
 
 #
 #  2.4 - Get the original IMSI back again
 #
-update control {
-	&Tmp-String-1 := "%(3gpp_temporary_id_decrypt:%{control.User-Name[1]} %{control.Tmp-String-0})"
-}
+&control.Tmp-String-1 := "%(3gpp_temporary_id_decrypt:%{control.User-Name[2]} %{control.Tmp-String-0})"
 
 if (&control.Tmp-String-1 != "0%{User-Name[1]}") {
 	test_fail

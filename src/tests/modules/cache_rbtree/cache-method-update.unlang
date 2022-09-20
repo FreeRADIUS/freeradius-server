@@ -1,25 +1,25 @@
 #
 #  PRE: cache-logic
 #
-update {
-	&request.Tmp-String-0 := 'testkey'
+&Tmp-String-0 := 'testkey'
 
-	# Reply attributes
-	&reply.Reply-Message := 'hello'
-	&reply.Reply-Message += 'goodbye'
+# Reply attributes
+&reply.Reply-Message := 'hello'
+&reply += {
+	&Reply-Message = 'goodbye'
+}
 
-	# Request attributes
-	&Tmp-Integer-0 += 10
-	&Tmp-Integer-0 += 20
-	&Tmp-Integer-0 += 30
+# Request attributes
+&request += {
+	&Tmp-Integer-0 = 10
+	&Tmp-Integer-0 = 20
+	&Tmp-Integer-0 = 30
 }
 
 #
 #  Basic store and retrieve
 #
-update control {
-	&control.Tmp-String-1 := 'cache me'
-}
+&control.Tmp-String-1 := 'cache me'
 
 cache_update.store
 if (!updated) {
@@ -76,8 +76,6 @@ if (&Tmp-String-2[2] != 'baz') {
 }
 
 # Clear out the reply list
-update {
-    &reply !* ANY
-}
+&reply := {}
 
 test_pass

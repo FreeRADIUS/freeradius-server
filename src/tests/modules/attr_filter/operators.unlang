@@ -24,10 +24,5 @@ if ((&Calling-Station-Id != "bob") || (&Calling-Station-Id[1] != "jim") || (&Cal
         test_fail
 }
 
-update control {
-	&Password.Cleartext := "goodbye"
-}
-
-update reply {
-        &Reply-Message := &request.Reply-Message
-}
+&control.Password.Cleartext := "goodbye"
+&reply.Reply-Message := &Reply-Message

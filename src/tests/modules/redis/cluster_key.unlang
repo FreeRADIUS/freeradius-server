@@ -10,11 +10,9 @@ $INCLUDE cluster_reset.inc
 #  - 127.0.0.1:30005 - slave
 #  - 127.0.0.1:30003 - master [10923-16383]
 #  - 127.0.0.1:30006 - slave
-update control {
-	&Tmp-String-0 := "1-%{randstr:aaaaaaaa}"
-	&Tmp-String-1 := "2-%{randstr:aaaaaaaa}"
-	&Tmp-String-2 := "3-%{randstr:aaaaaaaa}"
-}
+&control.Tmp-String-0 := "1-%{randstr:aaaaaaaa}"
+&control.Tmp-String-1 := "2-%{randstr:aaaaaaaa}"
+&control.Tmp-String-2 := "3-%{randstr:aaaaaaaa}"
 
 #  Hashes to Redis cluster node master 1 (1)
 if ("%(redis:SET b "%{control.Tmp-String-0}")" == 'OK') {

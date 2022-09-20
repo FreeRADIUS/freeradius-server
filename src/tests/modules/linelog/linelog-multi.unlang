@@ -1,14 +1,10 @@
-update control {
-	&Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
-}
+&control.Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
 
 #
 #  Remove old log files
 #
 group {
-	update request {
-		&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_multi.log"`
-	}
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_multi.log"`
 
 	actions {
 		fail = 1
@@ -19,28 +15,24 @@ if (fail) {
 }
 
 #  Check multiple string type attributes are logged correctly
-update control {
-	&Tmp-String-0 := 'test_multi_str'
-}
+&control.Tmp-String-0 := 'test_multi_str'
 
-update control {
-	&Reply-Message := '0'
-	&Reply-Message += '1'
-	&Reply-Message += '2'
-	&Reply-Message += '3'
-	&Reply-Message += '4'
-	&Reply-Message += '5'
-	&Reply-Message += '6'
-	&Reply-Message += '7'
-	&Reply-Message += '8'
-	&Reply-Message += '9'
-	&Reply-Message += '10'
+&control += {
+	&Reply-Message = '0'
+	&Reply-Message = '1'
+	&Reply-Message = '2'
+	&Reply-Message = '3'
+	&Reply-Message = '4'
+	&Reply-Message = '5'
+	&Reply-Message = '6'
+	&Reply-Message = '7'
+	&Reply-Message = '8'
+	&Reply-Message = '9'
+	&Reply-Message = '10'
 }
 
 linelog_ref_multi
-update request {
-	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_multi.log"`
-}
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_multi.log"`
 
 if (&Tmp-String-0 == '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ') {
 	test_pass
@@ -50,19 +42,17 @@ else {
 }
 
 # Check octet type attributes are logged in raw form
-update control {
-	&Tmp-Octets-0 := 0x686970706f	# Hippo
-	&Tmp-Octets-0 += 0x0a		# new line
-	&Tmp-Octets-0 += 0x626c6970706f	# Blippo
+&control += {
+	&Tmp-Octets-0 = 0x686970706f	# Hippo
+	&Tmp-Octets-0 = 0x0a		# new line
+	&Tmp-Octets-0 = 0x626c6970706f	# Blippo
 }
 
-update control {
-	&Tmp-String-0 := 'test_multi_octets'
-}
+&control.Tmp-String-0 := 'test_multi_octets'
+
 linelog_ref_multi
-update request {
-	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_multi.log"`
-}
+
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_multi.log"`
 
 if (&Tmp-String-0 == ', blippo, ') {
 	test_pass
@@ -72,9 +62,8 @@ else {
 }
 
 #  When no attributes that match are available, linelog should return noop
-update control {
-	&Tmp-String-0 := 'test_empty'
-}
+&control.Tmp-String-0 := 'test_empty'
+
 linelog_ref_multi
 if (noop) {
 	test_pass
@@ -84,6 +73,4 @@ else {
 }
 
 #  Remove the file
-update request {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_multi.log"`
-}
+&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_multi.log"`

@@ -86,9 +86,7 @@ else {
 #
 #  Test paircmp group comparisons with dynamic expansions
 #
-update request {
-	&Tmp-String-0 := 'groups_group_b'
-}
+&Tmp-String-0 := 'groups_group_b'
 
 if (&SQL-Group == "%{Tmp-String-0}") {
 	test_pass

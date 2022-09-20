@@ -1,15 +1,10 @@
 #
 # JSON quoting
 #
-
-update request {
-	&Tmp-String-0 := 'foo/bar'
-	&Tmp-String-1 := 'foo"bar'
-}
-update request {
-	&Tmp-String-2 := "%{jsonquote:%{Tmp-String-0}}"
-	&Tmp-String-3 := "%{jsonquote:%{Tmp-String-1}}"
-}
+&Tmp-String-0 := 'foo/bar'
+&Tmp-String-1 := 'foo"bar'
+&Tmp-String-2 := "%{jsonquote:%{Tmp-String-0}}"
+&Tmp-String-3 := "%{jsonquote:%{Tmp-String-1}}"
 
 # Check for correct escapes
 if (&Tmp-String-2 != 'foo\/bar') {
@@ -24,14 +19,10 @@ if (&Module-Failure-Message) {
 	test_fail
 }
 
-
 # Check for correct handling of null input
+&Tmp-String-4 := "%{jsonquote:}"
 
-update request {
-	&Tmp-String-4 := "%{jsonquote:}"
-}
-
-if (&Tmp-String-4 != '') {
+if (&Tmp-String-4) {
 	test_fail
 }
 

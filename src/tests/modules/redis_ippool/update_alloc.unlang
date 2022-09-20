@@ -3,16 +3,12 @@
 #
 $INCLUDE cluster_reset.inc
 
-update control {
-	&IP-Pool.Name := 'test_update'
-}
+&control.IP-Pool.Name := 'test_update'
 
 #
 #  Add IP addresses
 #
-update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
-}
+&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
 
 # 1. Check allocation
 redis_ippool
@@ -25,11 +21,10 @@ if (updated) {
 #
 #  Attempt to reserve an IP address by performing a renew
 #
-update {
-	&request.Framed-IP-Address := 192.168.0.1
-	&request.NAS-IP-Address := 127.0.0.1
-	&control.IP-Pool.Action := Renew
-}
+&Framed-IP-Address := 192.168.0.1
+&NAS-IP-Address := 127.0.0.1
+&control.IP-Pool.Action := Renew
+
 redis_ippool
 
 # 3. Check the expiry attribute is present and correct
@@ -53,6 +48,4 @@ if (&reply.Framed-IP-Address == 192.168.0.1) {
 	test_fail
 }
 
-update {
-	&reply !* ANY
-}
+&reply := {}

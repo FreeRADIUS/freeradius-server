@@ -1,7 +1,7 @@
 update request {
 	&Vendor-Specific.FreeRADIUS.Proxied-To := 127.0.0.1
-	&Reply-Message := 'foo'
 }
+&Reply-Message := 'foo'
 
 if ("%(attr_by_num:1)" != 'User-Name') {
 	test_fail

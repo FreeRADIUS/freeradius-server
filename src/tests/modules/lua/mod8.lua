@@ -33,10 +33,10 @@ function authorize()
 	fr.log.debug("Powered by Luajit+FFI & fr_log()")
 
 	-- fr.request {}
-	print("# fr.request.{}")
+	print("# fr.{}")
 	print("type(fr.request) = " .. type(fr.request))
-	print("for k,v in fr.request.pairs()")
-	for k,v in fr.request.pairs() do print("\t"..k, v) end
+	print("for k,v in fr.pairs()")
+	for k,v in fr.pairs() do print("\t"..k, v) end
 	print()
 
 	print("#mod8.lua: returning fr.rcode.noop")

@@ -107,6 +107,7 @@ greaterthanreply  Password.Cleartext := "testing123"
 #  Note: Filtering "!*" does not apply to control items as this would overload
 #        the operator syntax since "!*" checks that no such attribute in the
 #        request.
+#        
 
 addcontrol  Password.Cleartext := "testing123", Reply-Message := "success1"
             Fall-Through = yes

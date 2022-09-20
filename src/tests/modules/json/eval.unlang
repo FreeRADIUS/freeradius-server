@@ -2,9 +2,7 @@
 #	Evaluation tests
 #
 
-update request {
-	&Tmp-String-0 := "{\"foo\":\"bar\"}"
-}
+&Tmp-String-0 := "{\"foo\":\"bar\"}"
 
 # 0. Simple field access
 map json &Tmp-String-0 {
@@ -15,25 +13,21 @@ if (&Tmp-String-1 != 'bar') {
 	test_fail
 }
 
-update request {
-	&Tmp-String-0 := "\
-	{\
-		\"my_array\": [0, 1, 2, 3, 4, 5], \
-		\"my_object\": { \
-			\"foo\": \"bar\", \
-			\"num\" : 42 \
-		}, \
-		\"num\": 99, \
-		\"double\": 5.9, \
-		\"null\": null, \
-		\"bool_true\": true, \
-		\"bool_false\": false \
-	}"
-}
+&Tmp-String-0 := "\
+{\
+	\"my_array\": [0, 1, 2, 3, 4, 5], \
+	\"my_object\": { \
+		\"foo\": \"bar\", \
+		\"num\" : 42 \
+	}, \
+	\"num\": 99, \
+	\"double\": 5.9, \
+	\"null\": null, \
+	\"bool_true\": true, \
+	\"bool_false\": false \
+}"
 
-update request {
-	&Tmp-String-1 !* ANY
-}
+&request -= &Tmp-String-1[*]
 
 # Check conversion of all JSON types to strings
 map json &Tmp-String-0 {
@@ -75,9 +69,7 @@ if (&Tmp-String-1[6] != 'no') {
 	test_fail
 }
 
-update request {
-	&Tmp-String-1 !* ANY
-}
+&request -= &Tmp-String-1[*]
 
 #
 # Now check array slicing operates correctly
@@ -90,9 +82,8 @@ map json &Tmp-String-0 {
 if (&Tmp-String-1 != '[ 0, 1, 2, 3, 4, 5 ]') {
 	test_fail
 }
-update request {
-	&Tmp-String-1 !* ANY
-}
+
+&request -= &Tmp-String-1[*]
 
 # 9. Simple index
 map json &Tmp-String-0 {
@@ -101,9 +92,8 @@ map json &Tmp-String-0 {
 if (&Tmp-Integer-0 != 0) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 9a. All of the array
 map json &Tmp-String-0 {
@@ -113,9 +103,8 @@ if ((&Tmp-Integer-0[0] != 0) || (&Tmp-Integer-0[1] != 1) || (&Tmp-Integer-0[2] !
 	test_fail
 }
 
-update request {
-	&Tmp-Integer-0 := 9
-}
+&Tmp-Integer-0 := 9
+
 # 9b. All of the array using prepend, places the array before the existing value
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 ^= '$.my_array.*'
@@ -123,9 +112,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 0) || (&Tmp-Integer-0[1] != 1) || (&Tmp-Integer-0[2] != 2) || (&Tmp-Integer-0[3] != 3) || (&Tmp-Integer-0[4] != 4) || (&Tmp-Integer-0[5] != 5) || (&Tmp-Integer-0[6] != 9)) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 10. End of the array
 map json &Tmp-String-0 {
@@ -134,9 +122,8 @@ map json &Tmp-String-0 {
 if (&Tmp-Integer-0 != 5) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 11. Past end of the array
 map json &Tmp-String-0 {
@@ -145,9 +132,8 @@ map json &Tmp-String-0 {
 if (&Tmp-Integer-0) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 12. Simple slice
 map json &Tmp-String-0 {
@@ -156,9 +142,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 0) || (&Tmp-Integer-0[1] != 1)) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 13. Slice with negative start
 map json &Tmp-String-0 {
@@ -167,9 +152,8 @@ map json &Tmp-String-0 {
 if (&Tmp-Integer-0 != 5) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 14. Slice with negative start and negative end
 map json &Tmp-String-0 {
@@ -186,9 +170,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 1) && (&Tmp-Integer-0[1] != 2)) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 16. Slice with start, end and negative step
 map json &Tmp-String-0 {
@@ -197,9 +180,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 4) || (&Tmp-Integer-0[1] != 3)) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 17. Slice with start, end (inverted) and negative step
 map json &Tmp-String-0 {
@@ -208,9 +190,8 @@ map json &Tmp-String-0 {
 if (&Tmp-Integer-0) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 18. Slice with start, end and positive step
 map json &Tmp-String-0 {
@@ -219,9 +200,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 2) || (&Tmp-Integer-0[1] != 3)) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 19. Slice with start, end and positive step > 1
 map json &Tmp-String-0 {
@@ -230,9 +210,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 1) && (&Tmp-Integer-0[1] != 3)) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 20. Slice with start, end and positive step > end of array
 map json &Tmp-String-0 {
@@ -241,9 +220,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 1) || &Tmp-Integer-0[1]) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 21. Slice with start, end and positive step > end of array
 map json &Tmp-String-0 {
@@ -252,9 +230,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 5) || &Tmp-Integer-0[1]) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 22. No start/end 3 step
 map json &Tmp-String-0 {
@@ -263,9 +240,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 0) || (&Tmp-Integer-0[1] != 3) || &Tmp-Integer-0[2]) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 23. No start/end 3 step
 map json &Tmp-String-0 {
@@ -274,9 +250,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 5) || (&Tmp-Integer-0[1] != 2) || &Tmp-Integer-0[2]) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 24. No end 3 step
 map json &Tmp-String-0 {
@@ -285,9 +260,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 3) || (&Tmp-Integer-0[1] != 0) || &Tmp-Integer-0[2]) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 25. End 0, 3 step
 map json &Tmp-String-0 {
@@ -296,9 +270,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 3) || &Tmp-Integer-0[1]) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 26. End 0, 3 step
 map json &Tmp-String-0 {
@@ -307,9 +280,8 @@ map json &Tmp-String-0 {
 if ((&Tmp-Integer-0[0] != 0) || &Tmp-Integer-0[1]) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 27. Everything two levels deep
 map json &Tmp-String-0 {
@@ -327,9 +299,7 @@ if ((&Tmp-String-1[0] != '0') || \
 	test_fail
 }
 
-update request {
-	&Tmp-String-1 !* ANY
-}
+&request -= &Tmp-String-1[*]
 
 # 28. Everything three levels deep (nothing)
 map json &Tmp-String-0 {
@@ -359,19 +329,17 @@ if (&Tmp-String-1) {
 }
 
 # Some big numbers in nested arrays
-update request {
-	&Tmp-String-0 := "\
-	[\
-		9223372036854775807, \
-		-9223372036854775807, \
-		18446744073709551615, \
-		[ \
-			2147483647, \
-			-2147483647, \
-			4294967295, \
-		] \
-	]"
-}
+&Tmp-String-0 := "\
+[\
+	9223372036854775807, \
+	-9223372036854775807, \
+	18446744073709551615, \
+	[ \
+		2147483647, \
+		-2147483647, \
+		4294967295, \
+	] \
+]"
 
 # 31. Unsigned 32bit integers (are supported)
 # Will get smushed to INT32_MAX with json-c <= 0.10, or might wrap, it's
@@ -395,9 +363,8 @@ map json &Tmp-String-0 {
 if (&Tmp-Integer-0 != 2147483647) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+
+&request -= &Tmp-Integer-0[*]
 
 # 33. Signed 64bit integers
 map json &Tmp-String-0 {
@@ -406,9 +373,8 @@ map json &Tmp-String-0 {
 if (&Tmp-int64-0 != 9223372036854775807) {
 	test_fail
 }
-update request {
-	&Tmp-int64-0 !* ANY
-}
+
+&request -= &Tmp-int64-0[*]
 
 # 34. Signed 64bit integers
 map json &Tmp-String-0 {
@@ -417,9 +383,8 @@ map json &Tmp-String-0 {
 if (&Tmp-int64-0 != -9223372036854775807) {
 	test_fail
 }
-update request {
-	&Tmp-int64-0 !* ANY
-}
+
+&request -= &Tmp-int64-0[*]
 
 # 35. Unsigned 64bit integers (not allowed by json so gets truncated)
 map json &Tmp-String-0 {
@@ -428,9 +393,8 @@ map json &Tmp-String-0 {
 if (&Tmp-uint64-0 != 9223372036854775807) {
 	test_fail
 }
-update request {
-	&Tmp-uint64-0 !* ANY
-}
+
+&request -= &Tmp-uint64-0[*]
 
 # 36. Multiple array indicies
 map json &Tmp-String-0 {
@@ -439,32 +403,27 @@ map json &Tmp-String-0 {
 if ((&Tmp-Signed-0[0] != 2147483647) || (&Tmp-signed-0[1] != -2147483647)) {
 	test_fail
 }
-update request {
-	&Tmp-Signed-0 !* ANY
-}
+
+&request -= &Tmp-Signed-0[*]
 
 # 37. Path containing dynamic expansion
-update request {
-	&Tmp-Integer-2 := 0
-}
+&Tmp-Integer-2 := 0
+
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += "$[3][%{Tmp-Integer-2}]"
 }
 if (&Tmp-Integer-0 != 2147483647) {
 	test_fail
 }
-update request {
-	&Tmp-Integer-0 !* ANY
-}
+&request -= &Tmp-Integer-0[*]
 
 # 38. An expanded field name with bad chars
-update request {
-	&Tmp-String-0 := "\
-	{\
-		\"foo.bar\": \"baz\" \
-	}"
-	&Tmp-String-2 := %{taint:foo.bar}
-}
+&Tmp-String-0 := "\
+{\
+	\"foo.bar\": \"baz\" \
+}"
+&Tmp-String-2 := "%{taint:foo.bar}"
+
 map json &Tmp-String-0 {
 	&Tmp-String-1 := "$.%{Tmp-String-2}"
 }
@@ -472,46 +431,43 @@ map json &Tmp-String-0 {
 if (&Tmp-String-1 != 'baz') {
 	test_fail
 }
-update request {
-	&Tmp-String-1 !* ANY
-}
 
-update request {
-	&Tmp-String-0 := "\
-	{\
-		\"my_array\": [0, 1, 2, 3, 4, 5], \
-		\"my_object\": { \
-			\"foo\": \"bar\", \
-			\"num\" : 42, \
-			\"my_deep_object\": { \
-				\"foo\": \"baz\", \
-				\"num\": 99, \
-				\"bool\": true\
-			}, \
-			\"my_cats\": [\
-				\"fluffy\", \
-				\"scratchy\", \
-				\"flat\" \
-			], \
+&request -= &Tmp-String-1[*]
+
+&Tmp-String-0 := "\
+{\
+	\"my_array\": [0, 1, 2, 3, 4, 5], \
+	\"my_object\": { \
+		\"foo\": \"bar\", \
+		\"num\" : 42, \
+		\"my_deep_object\": { \
+			\"foo\": \"baz\", \
+			\"num\": 99, \
+			\"bool\": true\
 		}, \
 		\"my_cats\": [\
-			\"spikey\", \
-			\"clawy\", \
-			\"woofy\" \
+			\"fluffy\", \
+			\"scratchy\", \
+			\"flat\" \
 		], \
-	}"
-}
+	}, \
+	\"my_cats\": [\
+		\"spikey\", \
+		\"clawy\", \
+		\"woofy\" \
+	], \
+}"
 
 # 39. Recursive descent with field match
 map json &Tmp-String-0 {
 	&Tmp-String-1 += '$..bool'
 }
+
 if (("%{Tmp-String-1[#]}" != 1) || (&Tmp-String-1 != 'yes')) {
 	test_fail
 }
-update request {
-	&Tmp-String-1 !* ANY
-}
+
+&request -= &Tmp-String-1[*]
 
 # 40. Recursive descent with element match (2nd element in each array)
 map json &Tmp-String-0 {
@@ -520,9 +476,7 @@ map json &Tmp-String-0 {
 if (("%{Tmp-String-1[#]}" != 3) || (&Tmp-String-1[0] != '1') || (&Tmp-String-1[1] != 'scratchy') || (&Tmp-String-1[2] != 'clawy')) {
 	test_fail
 }
-update request {
-	&Tmp-String-1 !* ANY
-}
+&request -= &Tmp-String-1[*]
 
 # 41. Recursive descent with field then element match
 map json &Tmp-String-0 {
@@ -531,8 +485,7 @@ map json &Tmp-String-0 {
 if (("%{Tmp-String-1[#]}" != 2) || (&Tmp-String-1[0] != 'flat') || (&Tmp-String-1[1] != 'woofy')) {
 	test_fail
 }
-update request {
-	&Tmp-String-1 !* ANY
-}
+
+&request -= &Tmp-String-1[*]
 
 test_pass

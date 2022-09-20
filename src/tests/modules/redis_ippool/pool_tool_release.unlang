@@ -3,16 +3,12 @@
 #
 $INCLUDE cluster_reset.inc
 
-update control {
-	&IP-Pool.Name := 'test_update'
-}
+&control.IP-Pool.Name := 'test_update'
 
 #
 #  Add IP addresses
 #
-update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
-}
+&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
 
 #
 #  Check allocation
@@ -35,9 +31,7 @@ if (&reply.Framed-IP-Address == 192.168.0.1) {
 #
 #  Release the IP address
 #
-update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -r 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
-}
+&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -r 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
 
 #
 #  Verify the association with the device has been removed
@@ -76,6 +70,4 @@ if ("%(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address})" 
 	test_fail
 }
 
-update {
-	&reply !* ANY
-}
+&reply := {}

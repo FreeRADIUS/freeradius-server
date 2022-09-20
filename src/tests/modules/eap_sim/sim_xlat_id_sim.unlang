@@ -9,12 +9,8 @@ if ("%(aka_sim_id_type:%{User-Name})" != 'permanent') {
 #
 #  Encrypt the permanent ID
 #
-update control {
-	&Tmp-String-0 := '1234567812345678'
-}
-update control {
-	&User-Name := "%(3gpp_temporary_id_encrypt:%{User-Name} %{control.Tmp-String-0} 6)"
-}
+&control.Tmp-String-0 := '1234567812345678'
+&control.User-Name := "%(3gpp_temporary_id_encrypt:%{User-Name} %{control.Tmp-String-0} 6)"
 
 #
 #  Can we get the EAP method from the encrypted blob correctly?
