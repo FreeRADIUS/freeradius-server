@@ -27,7 +27,6 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/unlang/function.h>
 
 /** Error reading from or writing to the file descriptor
  *
