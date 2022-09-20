@@ -35,6 +35,7 @@ FreeRADIUS 3.2.1 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	* PEAP now correctly runs Post-Auth-Type Accept
 	* Create "TLS-Cert-*" for outbound Radsec, instead of TLS-Client-Cert-*
 	  Fixes #4698.  See sites-available/tls, and fix_cert_order.
+	* Minor updates and fixes to CI, Dockerfiles and packaging.
 
 FreeRADIUS 3.2.0 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	Configuration changes
