@@ -1,3 +1,8 @@
+FreeRADIUS 3.0.27 Tue 20 Sep 2022 12:00:00 EDT urgency=low
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.0.26 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	Feature improvements
 	* Add support for OpenSSL3

@@ -10,7 +10,7 @@
 #    make DOCKER_VERSION=3.0.20 DOCKER_BUILD_ARGS="--no-cache" docker-publish
 #
 #  Build and push "freeradius-dev" image to Dockerhub (e.g. CI on every commit):
-#    make DOCKER_VERSION=latest DOCKER_COMMIT=v3.0.x DOCKER_TAG="freeradius-dev" DOCKER_BUILD_ARGS="--no-cache" docker-push
+#    make DOCKER_VERSION=latest-3.0 DOCKER_COMMIT=v3.0.x DOCKER_TAG="freeradius-dev" DOCKER_BUILD_ARGS="--no-cache" docker-push
 #
 #  Push to local repository:
 #    make DOCKER_VERSION=3.0.20 DOCKER_TAG="our-freeradius-build" DOCKER_REGISTRY="docker.somewhere.example" docker-publish
@@ -70,13 +70,13 @@ docker-push: docker
 
 .PHONY: docker-tag-latest
 docker-tag-latest: docker
-	$(Q)docker tag $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION) $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest
-	$(Q)docker tag $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-alpine $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-alpine
+	$(Q)docker tag $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION) $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-3.0
+	$(Q)docker tag $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-alpine $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-3.0-alpine
 
 .PHONY: docker-push-latest
 docker-push-latest: docker-push docker-tag-latest
-	$(Q)docker push $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest
-	$(Q)docker push $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-alpine
+	$(Q)docker push $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-3.0
+	$(Q)docker push $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-3.0-alpine
 
 .PHONY: docker-publish
 docker-publish: docker-push-latest
