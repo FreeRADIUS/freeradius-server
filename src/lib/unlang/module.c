@@ -622,6 +622,9 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 
 	if (!state->signal) return;
 
+	/*
+	 *	Async calls can't push anything onto the unlang stack, so we just use a local "caller" here.
+	 */
 	caller = request->module;
 	request->module = mc->instance->name;
 	safe_lock(mc->instance);
@@ -661,6 +664,7 @@ static unlang_action_t unlang_module_done(rlm_rcode_t *p_result, request_t *requ
 	request->rcode = rcode;
 	if (state->p_result) *state->p_result = rcode;	/* Inform our caller if we have one */
 	*p_result = rcode;
+	request->module = state->previous_module;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -687,7 +691,6 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	unlang_module_t			*mc = unlang_generic_to_module(frame->instruction);
 	unlang_module_resume_t		resume;
-	char const 			*caller;
 	unlang_action_t			ua;
 
 	/*
@@ -705,7 +708,6 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	/*
 	 *	Lock is noop unless instance->mutex is set.
 	 */
-	caller = request->module;
 	request->module = mc->instance->name;
 
 	resume = state->resume;
@@ -721,7 +723,6 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	safe_unlock(mc->instance);
 
 	request->rcode = state->rcode;
-	request->module = caller;
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
 
@@ -731,6 +732,7 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 		if (state->p_result) *state->p_result = state->rcode;
 		state->thread->active_callers--;
 		*p_result = state->rcode;
+		request->module = state->previous_module;
 		return UNLANG_ACTION_STOP_PROCESSING;
 
 	case UNLANG_ACTION_YIELD:
@@ -780,13 +782,16 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 		 *	use the result as the final result.
 		 */
 		if (state->resume) return unlang_module_resume(p_result, request, frame);
+		request->module = state->previous_module;
 		break;
 
 	case UNLANG_ACTION_UNWIND:
+		request->module = state->previous_module;
 		break;
 
 	case UNLANG_ACTION_FAIL:
 		*p_result = RLM_MODULE_FAIL;
+		request->module = state->previous_module;
 		break;
 
 	case UNLANG_ACTION_EXECUTE_NEXT:	/* Not valid */
@@ -796,6 +801,7 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	}
 
 	unlang_module_resume_done(p_result, request, frame);
+	request->module = state->previous_module;
 
 	return ua;
 }
@@ -866,12 +872,12 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 {
 	unlang_module_t			*mc;
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
-	char const 			*caller;
 	unlang_action_t			ua;
 	fr_time_t			now = fr_time_wrap(0);
 
 	*p_result = state->rcode = RLM_MODULE_NOOP;
 	state->set_rcode = true;
+	state->previous_module = request->module;
 
 #ifndef NDEBUG
 	state->unlang_indent = request->log.unlang_indent;
@@ -918,14 +924,12 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 */
 	if (fr_time_delta_ispos(frame->instruction->actions.retry.irt)) now = fr_time();
 
-	caller = request->module;
 	request->module = mc->instance->name;
 	safe_lock(mc->instance);	/* Noop unless instance->mutex set */
 	ua = mc->method(&state->rcode,
 			MODULE_CTX(mc->instance->dl_inst, state->thread->data, NULL),
 			request);
 	safe_unlock(mc->instance);
-	request->module = caller;
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
 
@@ -938,6 +942,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		RWARN("Module %s became unblocked", mc->instance->module->name);
 		if (state->p_result) *state->p_result = state->rcode;
 		*p_result = state->rcode;
+		request->module = state->previous_module;
 		return UNLANG_ACTION_STOP_PROCESSING;
 
 	case UNLANG_ACTION_YIELD:
@@ -1026,6 +1031,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	}
 
 done:
+	request->module = state->previous_module;
 	unlang_module_done(p_result, request, frame);
 	return ua;
 }

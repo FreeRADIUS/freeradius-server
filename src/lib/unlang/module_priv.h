@@ -43,6 +43,7 @@ typedef struct {
  * Represents a single module call on the unlang stack.
  */
 typedef struct {
+	char const			*previous_module;	//!< old request->module
 	module_thread_instance_t	*thread;		//!< thread-local data for this module.
 								///< Caching is necessary in the frame state
 								///< structure because the #unlang_t tree is
