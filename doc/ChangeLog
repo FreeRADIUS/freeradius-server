@@ -3,7 +3,7 @@ FreeRADIUS 3.0.26 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	* Add support for OpenSSL3
 	* Add dictionary.mellanox, dictionary.netelastic,
 	  dictionary.ciena, dictionary.nile
-	* Update dictionary.aruba, dictionary.roaringpenguin
+	* Update dictionary.aruba, dictionary.roaringpenguin, dictionary.alcatel.sr
 	* Removed haproxy support.  It's new and experimental,
 	  and belongs in the v3.2 release, where it will be
 	  fully supported.
