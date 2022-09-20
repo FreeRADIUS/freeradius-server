@@ -162,6 +162,9 @@ do { \
 	_dn = dnvp->vp_strvalue; \
 } while (0)
 
+int rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst, request_t *request,
+			     fr_ldap_thread_trunk_t *ttrunk, char const *attrs[], fr_ldap_query_t **query_out);
+
 char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *tconn,
 			       char const *attrs[], bool force, LDAPMessage **result, LDAP **handle, rlm_rcode_t *rcode);
 
