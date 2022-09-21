@@ -85,8 +85,11 @@ static void add_pairs(fr_pair_list_t *local_pairs)
 
 	fr_pair_list_init(local_pairs);
 
+	/* coverity[dereference] */
 	fr_pair_append(local_pairs, fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32));
+	/* coverity[dereference] */
 	fr_pair_append(local_pairs, fr_pair_afrom_da(autofree, fr_dict_attr_test_octets));
+	/* coverity[dereference] */
 	fr_pair_append(local_pairs, fr_pair_afrom_da(autofree, fr_dict_attr_test_tlv));
 
 	count = fr_pair_list_num_elements(local_pairs);
