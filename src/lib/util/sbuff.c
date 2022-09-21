@@ -1265,7 +1265,7 @@ SBUFF_PARSE_UINT_DEF(size_hex, size_t, SIZE_MAX, 22, 16)
 #define SBUFF_PARSE_FLOAT_DEF(_name, _type, _func, _max_char) \
 fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
-	char		buff[_max_char + 1]; \
+	char		buff[_max_char + 1] = ""; \
 	char		*end; \
 	fr_sbuff_t	our_in = FR_SBUFF(in); \
 	size_t		len; \
@@ -1279,7 +1279,6 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		return -1; \
 	} \
 	errno = 0; /* this is needed as parsing functions don't reset errno */ \
-	/* coverity[uninit_use_in_call] */ \
 	res = _func(buff, &end); \
 	if (errno == ERANGE) { \
 		if (res > 0) { \
