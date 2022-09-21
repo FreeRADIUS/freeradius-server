@@ -188,6 +188,7 @@ fr_radius_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	/*
 	 *	UDP header validation.
 	 */
+	/* coverity[tainted_data] */
 	ret = fr_udp_header_check(p, (header->caplen - (p - data)), ip);
 	if (ret < 0) return NULL;
 
