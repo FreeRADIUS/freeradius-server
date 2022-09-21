@@ -89,6 +89,7 @@ size_t fr_net_af_table_len = NUM_ELEMENTS(fr_net_af_table);
 		return -1;
 	}
 
+	/* coverity[tainted_data] */
 	expected = fr_udp_checksum((uint8_t const *) udp, udp_len, udp->checksum,
 				   ip->ip_src, ip->ip_dst);
 	if (udp->checksum != expected) {
