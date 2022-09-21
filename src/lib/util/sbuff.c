@@ -1109,7 +1109,38 @@ fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
 	return -1;
 }
 
-/** Used to define a number parsing functions for singed integers
+/** Used to avoid a constant expression in an if to placate coverity in SBUFF_PARSE_[U]INT_DEF
+ *
+ * The functions generated use strtoll() (signed) or strtoull() (unsigned). As written, the
+ * macros always include checks against the maximum (and minimum for signed)... but when the
+ * type is long long [unsigned], those tests will always fail. That triggers coverity to
+ * report a "operands don't affect result" defect, though the expression as a whole does
+ * correctly check for {over, under}flow.
+ *
+ * Unfortunately, something about macro expansion and/or preprocessing keeps coverity
+ * annotations placed inside macro definitions from having any effect. Until that changes,
+ * the only way out is to make the expression checked for over/underflow depend on the
+ * type, which means using _Generic.
+ */
+
+#define _erange(_val, _extremum) ((errno == ERANGE) && ((_val) == (_extremum)))
+
+#define _signed_overflow(_val, _dest, _max) _Generic((_dest), \
+	long long:			      _erange(_val, LLONG_MAX), \
+	default:	(((_val) > (_max)) || _erange(_val, LLONG_MAX)) \
+)
+
+#define _signed_underflow(_val, _dest, _min) _Generic((_dest), \
+	long long:	                      _erange(_val, LLONG_MIN), \
+	default:	(((_val) < (_min)) || _erange(_val, LLONG_MIN)) \
+)
+
+#define _unsigned_overflow(_val, _dest, _max) _Generic((_dest), \
+	long long unsigned:	               _erange(_val, ULLONG_MAX), \
+	default:	 (((_val) > (_max)) || _erange(_val, ULLONG_MAX)) \
+)
+
+/** Used to define number parsing functions for signed integers
  *
  * @param[in] _name	Function suffix.
  * @param[in] _type	Output type.
@@ -1140,14 +1171,11 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
-	/* coverity[result_independent_of_operands] */ \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == LLONG_MAX))) { \
+	if (_signed_overflow(num, *out, _max) || ((errno == EINVAL) && (num == 0))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return -1; \
-	} else \
-	/* coverity[result_independent_of_operands] */ \
-	if ((num < (_min)) || ((errno == ERANGE) && (num == LLONG_MIN))) { \
+	} else if (_signed_underflow(num, *out, _min)) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
 		*out = (_type)(_min); \
 		return -1; \
@@ -1206,8 +1234,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
-	/* coverity[result_independent_of_operands] */ \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == ULLONG_MAX))) { \
+	if (_unsigned_overflow(num, *out, _max) || ((errno == EINVAL) && (num == 0))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return -1; \
