@@ -1264,59 +1264,34 @@ static unlang_action_t rlm_ldap_map_profile(rlm_rcode_t *p_result, rlm_ldap_t co
 	RETURN_MODULE_RCODE(rcode);
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+/** Start LDAP authorization with async lookup of user DN
+ *
+ */
+static unlang_action_t mod_authorize_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+					   request_t *request, void *uctx)
 {
-	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
+	ldap_autz_ctx_t	*autz_ctx = talloc_get_type_abort(uctx, ldap_autz_ctx_t);
+	return rlm_ldap_find_user_async(autz_ctx, autz_ctx->inst, request, &autz_ctx->mod_env->user_base,
+					&autz_ctx->mod_env->user_filter, autz_ctx->ttrunk, autz_ctx->expanded.attrs,
+					&autz_ctx->query);
+}
+
+static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	ldap_autz_ctx_t		*autz_ctx = talloc_get_type_abort(uctx, ldap_autz_ctx_t);
+	rlm_ldap_t const	*inst = talloc_get_type_abort_const(autz_ctx->inst, rlm_ldap_t);
+	LDAPMessage		*entry;
+	int			i, ldap_errno;
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	int			ldap_errno;
-	int			i;
 	struct berval		**values;
-	fr_ldap_thread_trunk_t	*ttrunk;
-	LDAP			*handle;
-	LDAPMessage		*result, *entry;
-	char const 		*dn = NULL;
-	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
+	LDAP			*handle = fr_ldap_handle_thread_local();
 
 	/*
-	 *	Don't be tempted to add a check for User-Name or
-	 *	User-Password here.  LDAP authorization can be used
-	 *	for many things besides searching for users.
+	 *	If a user entry has been found the current rcode will be OK
 	 */
+	if (*p_result != RLM_MODULE_OK) return UNLANG_ACTION_CALCULATE_RESULT;
 
-	if (fr_ldap_map_expand(&expanded, request, &inst->user_map) < 0) RETURN_MODULE_FAIL;
-
-	ttrunk =  fr_thread_ldap_trunk_get(thread, inst->handle_config.server, inst->handle_config.admin_identity,
-					   inst->handle_config.admin_password, request, &inst->handle_config);
-	if (!ttrunk) RETURN_MODULE_FAIL;
-
-	/*
-	 *	Add any additional attributes we need for checking access, memberships, and profiles
-	 */
-	if (inst->userobj_access_attr) {
-		expanded.attrs[expanded.count++] = inst->userobj_access_attr;
-	}
-
-	if (inst->userobj_membership_attr && (inst->cacheable_group_dn || inst->cacheable_group_name)) {
-		expanded.attrs[expanded.count++] = inst->userobj_membership_attr;
-	}
-
-	if (inst->profile_attr) {
-		expanded.attrs[expanded.count++] = inst->profile_attr;
-	}
-
-	if (inst->valuepair_attr) {
-		expanded.attrs[expanded.count++] = inst->valuepair_attr;
-	}
-
-	expanded.attrs[expanded.count] = NULL;
-
-	dn = rlm_ldap_find_user(inst, request, ttrunk, expanded.attrs, true, &result, &handle, &rcode);
-	if (!dn) {
-		goto finish;
-	}
-
-	entry = ldap_first_entry(handle, result);
+	entry = ldap_first_entry(handle, autz_ctx->query->result);
 	if (!entry) {
 		ldap_get_option(handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
@@ -1339,13 +1314,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 */
 	if (inst->cacheable_group_dn || inst->cacheable_group_name) {
 		if (inst->userobj_membership_attr) {
-			rlm_ldap_cacheable_userobj(&rcode, inst, request, ttrunk, entry, inst->userobj_membership_attr);
+			rlm_ldap_cacheable_userobj(&rcode, inst, request, autz_ctx->ttrunk, entry, inst->userobj_membership_attr);
 			if (rcode != RLM_MODULE_OK) {
 				goto finish;
 			}
 		}
 
-		rlm_ldap_cacheable_groupobj(&rcode, inst, request, ttrunk);
+		rlm_ldap_cacheable_groupobj(&rcode, inst, request, autz_ctx->ttrunk);
 		if (rcode != RLM_MODULE_OK) {
 			goto finish;
 		}
@@ -1365,6 +1340,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		int		res = 0;
 		char		password[256];
 		size_t		pass_size = sizeof(password);
+		char const	*dn = rlm_find_user_dn_cached(request);;
 
 		/*
 		 *	Retrive universal password
@@ -1390,6 +1366,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		}
 
 		if (inst->edir_autz) {
+			fr_ldap_thread_t *thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data,
+									 fr_ldap_thread_t);
+
 			RDEBUG2("Binding as user for eDirectory authorization checks");
 			/*
 			 *	Bind as the user
@@ -1424,7 +1403,7 @@ skip_edir:
 			goto finish;
 		}
 
-		rlm_ldap_map_profile(&ret, inst, request, ttrunk, profile, &expanded);
+		rlm_ldap_map_profile(&ret, inst, request, autz_ctx->ttrunk, profile, &autz_ctx->expanded);
 		switch (ret) {
 		case RLM_MODULE_INVALID:
 			rcode = RLM_MODULE_INVALID;
@@ -1453,7 +1432,7 @@ skip_edir:
 				char *value;
 
 				value = fr_ldap_berval_to_string(request, values[i]);
-				rlm_ldap_map_profile(&ret, inst, request, ttrunk, value, &expanded);
+				rlm_ldap_map_profile(&ret, inst, request, autz_ctx->ttrunk, value, &autz_ctx->expanded);
 				talloc_free(value);
 				if (ret == RLM_MODULE_FAIL) {
 					ldap_value_free_len(values);
@@ -1470,15 +1449,88 @@ skip_edir:
 		RDEBUG2("Processing user attributes");
 		RINDENT();
 		if (fr_ldap_map_do(request, inst->valuepair_attr,
-				   &expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
+				   &autz_ctx->expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
 		REXDENT();
-		rlm_ldap_check_reply(mctx, request, ttrunk);
+		rlm_ldap_check_reply(&(module_ctx_t){.inst = autz_ctx->dlinst}, request, autz_ctx->ttrunk);
 	}
 
 finish:
-	talloc_free(expanded.ctx);
+	talloc_free(autz_ctx);
 
 	RETURN_MODULE_RCODE(rcode);
+}
+
+/** Clear up when cancelling a mod_authorize call
+ *
+ */
+static void mod_authorize_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+{
+	ldap_autz_ctx_t	*autz_ctx = talloc_get_type_abort(uctx, ldap_autz_ctx_t);
+
+	if (autz_ctx->query && autz_ctx->query->treq) fr_trunk_request_signal_cancel(autz_ctx->query->treq);
+}
+
+/** Ensure authorization context is properly cleared up
+ *
+ */
+static int autz_ctx_free(ldap_autz_ctx_t *autz_ctx)
+{
+	talloc_free(autz_ctx->expanded.ctx);
+	if (autz_ctx->profile_values) ldap_value_free_len(autz_ctx->profile_values);
+	return 0;
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
+	ldap_autz_ctx_t		*autz_ctx;
+	fr_ldap_map_exp_t	*expanded;
+	ldap_autz_mod_env_t	*mod_env = talloc_get_type_abort(mctx->env_data, ldap_autz_mod_env_t);
+
+	MEM(autz_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_autz_ctx_t));
+	talloc_set_destructor(autz_ctx, autz_ctx_free);
+	expanded = &autz_ctx->expanded;
+
+	/*
+	 *	Don't be tempted to add a check for User-Name or
+	 *	User-Password here.  LDAP authorization can be used
+	 *	for many things besides searching for users.
+	 */
+
+	if (fr_ldap_map_expand(expanded, request, &inst->user_map) < 0) {
+	fail:
+		talloc_free(autz_ctx);
+		RETURN_MODULE_FAIL;
+	}
+
+	autz_ctx->ttrunk =  fr_thread_ldap_trunk_get(thread, inst->handle_config.server, inst->handle_config.admin_identity,
+						     inst->handle_config.admin_password, request, &inst->handle_config);
+	if (!autz_ctx->ttrunk) goto fail;
+
+	/*
+	 *	Add any additional attributes we need for checking access, memberships, and profiles
+	 */
+	if (inst->userobj_access_attr) expanded->attrs[expanded->count++] = inst->userobj_access_attr;
+
+	if (inst->userobj_membership_attr && (inst->cacheable_group_dn || inst->cacheable_group_name)) {
+		expanded->attrs[expanded->count++] = inst->userobj_membership_attr;
+	}
+
+	if (inst->profile_attr) expanded->attrs[expanded->count++] = inst->profile_attr;
+
+	if (inst->valuepair_attr) expanded->attrs[expanded->count++] = inst->valuepair_attr;
+
+	expanded->attrs[expanded->count] = NULL;
+
+	autz_ctx->dlinst = mctx->inst;
+	autz_ctx->inst = inst;
+	autz_ctx->mod_env = mod_env;
+
+	if (unlang_function_push(request, mod_authorize_start, mod_authorize_resume, mod_authorize_cancel,
+				 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, autz_ctx) < 0) RETURN_MODULE_FAIL;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Modify user's object in LDAP

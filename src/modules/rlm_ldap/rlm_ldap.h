@@ -152,6 +152,19 @@ typedef struct {
 	fr_value_box_t	profile_filter;			//!< Filter to use when searching for profiles.
 } ldap_autz_mod_env_t;
 
+/** Holds state of in progress async authorization
+ *
+ */
+typedef struct {
+	dl_module_inst_t const	*dlinst;
+	rlm_ldap_t const	*inst;
+	fr_ldap_map_exp_t	expanded;
+	fr_ldap_query_t		*query;
+	fr_ldap_thread_trunk_t	*ttrunk;
+	ldap_autz_mod_env_t	*mod_env;
+	LDAPMessage		*entry;
+} ldap_autz_ctx_t;
+
 extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;
 extern HIDDEN fr_dict_attr_t const *attr_crypt_password;
 extern HIDDEN fr_dict_attr_t const *attr_ldap_userdn;
