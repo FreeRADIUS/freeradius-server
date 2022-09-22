@@ -7,7 +7,7 @@
 #  integers
 #
 calc uint8 255 + uint8 255 -> uint8
-match Value overflows 'uint8' when calculating result.
+match Invalid cast from uint64 to uint8.  510 outside value range 0-255
 
 calc uint8 127 + uint8 127 -> uint8
 match 254

@@ -66,6 +66,11 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	 *	string / octets -> octets
 	 */
 	[FR_TYPE_STRING] = {
+		[FR_TYPE_STRING] = FR_TYPE_STRING,
+		[FR_TYPE_OCTETS] = FR_TYPE_OCTETS,
+	},
+
+	[FR_TYPE_OCTETS] = {
 		[FR_TYPE_OCTETS] = FR_TYPE_OCTETS,
 	},
 
@@ -82,9 +87,18 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 
 	/*
+	 *	IPv6 mod IPv6 -> ????
+	 */
+	[FR_TYPE_IPV6_ADDR] = {
+		[FR_TYPE_IPV6_ADDR] = FR_TYPE_OCTETS,
+	},
+
+	/*
 	 *	Prefix + int --> ipaddr
 	 */
 	[FR_TYPE_IPV4_PREFIX] = {
+		[FR_TYPE_IPV4_PREFIX] = FR_TYPE_IPV4_PREFIX,
+
 		[FR_TYPE_BOOL] =   FR_TYPE_IPV4_ADDR,
 
 		[FR_TYPE_UINT8] =   FR_TYPE_IPV4_ADDR,
@@ -104,6 +118,8 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 
 	[FR_TYPE_IPV6_PREFIX] = {
+		[FR_TYPE_IPV6_PREFIX] = FR_TYPE_IPV6_PREFIX,
+
 		[FR_TYPE_BOOL] =   FR_TYPE_IPV6_ADDR,
 
 		[FR_TYPE_UINT8] =   FR_TYPE_IPV6_ADDR,
@@ -127,6 +143,8 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	 *	the other integer.
 	 */
 	[FR_TYPE_BOOL] = {
+		[FR_TYPE_BOOL] = FR_TYPE_BOOL,
+
 		[FR_TYPE_STRING] = FR_TYPE_BOOL,
 		[FR_TYPE_OCTETS] = FR_TYPE_BOOL,
 
@@ -158,17 +176,18 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_STRING] = FR_TYPE_UINT8,
 		[FR_TYPE_OCTETS] = FR_TYPE_UINT8,
 
-		[FR_TYPE_UINT16] = FR_TYPE_UINT16,
-		[FR_TYPE_UINT32] = FR_TYPE_UINT32,
+		[FR_TYPE_UINT8] = FR_TYPE_UINT64,
+		[FR_TYPE_UINT16] = FR_TYPE_UINT64,
+		[FR_TYPE_UINT32] = FR_TYPE_UINT64,
 		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
 
-		[FR_TYPE_SIZE] =   FR_TYPE_SIZE,
+		[FR_TYPE_SIZE] =   FR_TYPE_UINT64,
 
 		[FR_TYPE_DATE]  = FR_TYPE_DATE,
 
-		[FR_TYPE_INT8]   = FR_TYPE_INT16,
-		[FR_TYPE_INT16]  = FR_TYPE_INT16,
-		[FR_TYPE_INT32]  = FR_TYPE_INT32,
+		[FR_TYPE_INT8]   = FR_TYPE_INT64,
+		[FR_TYPE_INT16]  = FR_TYPE_INT64,
+		[FR_TYPE_INT32]  = FR_TYPE_INT64,
 		[FR_TYPE_INT64]  = FR_TYPE_INT64,
 
 		[FR_TYPE_TIME_DELTA] = FR_TYPE_TIME_DELTA,
@@ -181,16 +200,17 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_STRING] = FR_TYPE_UINT16,
 		[FR_TYPE_OCTETS] = FR_TYPE_UINT16,
 
-		[FR_TYPE_UINT32] = FR_TYPE_UINT32,
+		[FR_TYPE_UINT16] = FR_TYPE_UINT64,
+		[FR_TYPE_UINT32] = FR_TYPE_UINT64,
 		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
 
-		[FR_TYPE_SIZE] =   FR_TYPE_SIZE,
+		[FR_TYPE_SIZE] =   FR_TYPE_UINT64,
 
 		[FR_TYPE_DATE]  = FR_TYPE_DATE,
 
-		[FR_TYPE_INT8]   = FR_TYPE_INT32,
-		[FR_TYPE_INT16]  = FR_TYPE_INT32,
-		[FR_TYPE_INT32]  = FR_TYPE_INT32,
+		[FR_TYPE_INT8]   = FR_TYPE_INT64,
+		[FR_TYPE_INT16]  = FR_TYPE_INT64,
+		[FR_TYPE_INT32]  = FR_TYPE_INT64,
 		[FR_TYPE_INT64]  = FR_TYPE_INT64,
 
 		[FR_TYPE_TIME_DELTA]  = FR_TYPE_TIME_DELTA,
@@ -203,9 +223,10 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_STRING] = FR_TYPE_UINT32,
 		[FR_TYPE_OCTETS] = FR_TYPE_UINT32,
 
+		[FR_TYPE_UINT32] = FR_TYPE_UINT64,
 		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
 
-		[FR_TYPE_SIZE]   = FR_TYPE_SIZE,
+		[FR_TYPE_SIZE]   = FR_TYPE_UINT64,
 
 		[FR_TYPE_DATE]   = FR_TYPE_DATE,
 
@@ -224,7 +245,10 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_STRING] = FR_TYPE_UINT64,
 		[FR_TYPE_OCTETS] = FR_TYPE_UINT64,
 
-		[FR_TYPE_SIZE]  = FR_TYPE_SIZE,
+		[FR_TYPE_UINT64]  = FR_TYPE_UINT64,
+		[FR_TYPE_INT64]  = FR_TYPE_INT64,
+
+		[FR_TYPE_SIZE]  = FR_TYPE_UINT64,
 
 		[FR_TYPE_DATE]  = FR_TYPE_DATE,
 
@@ -242,6 +266,8 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_INT32]   = FR_TYPE_INT64,
 		[FR_TYPE_INT64]   = FR_TYPE_INT64,
 
+		[FR_TYPE_SIZE]   = FR_TYPE_INT64,
+
 		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
 		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
@@ -254,6 +280,7 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_INT32] = FR_TYPE_DATE,
 		[FR_TYPE_INT64] = FR_TYPE_DATE,
 
+		[FR_TYPE_DATE] = FR_TYPE_DATE,
 		[FR_TYPE_TIME_DELTA]  = FR_TYPE_DATE,
 
 		[FR_TYPE_FLOAT32] = FR_TYPE_DATE,
@@ -267,8 +294,9 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_STRING] = FR_TYPE_INT8,
 		[FR_TYPE_OCTETS] = FR_TYPE_INT8,
 
-		[FR_TYPE_INT16] = FR_TYPE_INT32,
-		[FR_TYPE_INT32] = FR_TYPE_INT32,
+		[FR_TYPE_INT8] = FR_TYPE_INT64,
+		[FR_TYPE_INT16] = FR_TYPE_INT64,
+		[FR_TYPE_INT32] = FR_TYPE_INT64,
 		[FR_TYPE_INT64] = FR_TYPE_INT64,
 
 		[FR_TYPE_TIME_DELTA] = FR_TYPE_TIME_DELTA,
@@ -281,6 +309,7 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_STRING] = FR_TYPE_INT16,
 		[FR_TYPE_OCTETS] = FR_TYPE_INT16,
 
+		[FR_TYPE_INT16] = FR_TYPE_INT64,
 		[FR_TYPE_INT32] = FR_TYPE_INT64,
 		[FR_TYPE_INT64] = FR_TYPE_INT64,
 
@@ -302,6 +331,8 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_STRING] = FR_TYPE_INT64,
 		[FR_TYPE_OCTETS] = FR_TYPE_INT64,
 
+		[FR_TYPE_INT64] = FR_TYPE_INT64,
+
 		[FR_TYPE_TIME_DELTA] = FR_TYPE_TIME_DELTA,
 		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
 		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
@@ -310,6 +341,8 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	[FR_TYPE_TIME_DELTA] = {
 		[FR_TYPE_STRING] = FR_TYPE_TIME_DELTA,
 
+		[FR_TYPE_TIME_DELTA] = FR_TYPE_TIME_DELTA,
+
 		[FR_TYPE_FLOAT32] = FR_TYPE_TIME_DELTA,
 		[FR_TYPE_FLOAT64] = FR_TYPE_TIME_DELTA,
 	},
@@ -317,14 +350,15 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	[FR_TYPE_FLOAT32] = {
 		[FR_TYPE_STRING] = FR_TYPE_FLOAT32,
 
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
 		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
 
 	[FR_TYPE_FLOAT64] = {
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 		[FR_TYPE_STRING] = FR_TYPE_FLOAT64,
 	},
 };
-
 
 /** Updates type (a,b) -> c
  *
@@ -775,7 +809,7 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 	case T_LSHIFT:
 		if (b->vb_uint32 >= 64) return ERR_OVERFLOW;
 
-		when = fr_time_delta_unwrap(a->vb_time_delta) << b->vb_uint8;
+		when = fr_time_delta_unwrap(a->vb_time_delta) << b->vb_uint32;
 		dst->vb_time_delta = fr_time_delta_wrap(when);
 		break;
 
@@ -1506,187 +1540,175 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 
 }
 
-#define CALC(_t) static int calc_ ## _t(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *in1, fr_token_t op, fr_value_box_t const *in2) \
-{ \
-	switch (op) { \
-	case T_ADD: \
-		if (!fr_add(&dst->vb_ ## _t, in1->vb_ ## _t, in2->vb_ ## _t)) return ERR_OVERFLOW; \
-		break; \
- \
-	case T_SUB: \
-		if (!fr_sub(&dst->vb_ ## _t, in1->vb_ ## _t, in2->vb_ ## _t)) return ERR_UNDERFLOW; \
-		break; \
- \
-	case T_MUL: \
-		if (!fr_multiply(&dst->vb_ ## _t, in1->vb_ ## _t, in2->vb_ ## _t)) return ERR_OVERFLOW; \
-		break; \
- \
-	case T_DIV: \
-		if (in2->vb_ ## _t == 0) return ERR_ZERO; \
- \
-		dst->vb_ ## _t = in1->vb_ ## _t /  in2->vb_ ## _t; \
-		break; \
- \
-	case T_MOD: \
-		if (in2->vb_ ## _t == 0) return ERR_ZERO; \
- \
-		dst->vb_ ## _t = in1->vb_ ## _t %  in2->vb_ ## _t; \
-		break; \
- \
-	case T_AND: \
-		dst->vb_ ## _t = in1->vb_ ## _t &  in2->vb_ ## _t; \
-		break; \
- \
-	case T_OR: \
-		dst->vb_ ## _t = in1->vb_ ## _t |  in2->vb_ ## _t; \
-		break; \
- \
-	case T_XOR: \
-		dst->vb_ ## _t = in1->vb_ ## _t ^  in2->vb_ ## _t; \
-		break; \
- \
-	case T_RSHIFT: \
-		if (in2->vb_uint32 > (8 * sizeof(in1->vb_ ## _t))) return ERR_UNDERFLOW; \
- \
-		dst->vb_ ## _t = in1->vb_ ## _t >>  in2->vb_uint8; \
-		break; \
- \
-	case T_LSHIFT: \
-		if (in2->vb_uint32 >= (8 * sizeof(in1->vb_ ## _t))) return ERR_OVERFLOW; \
- \
-		dst->vb_ ## _t = in1->vb_ ## _t <<  in2->vb_uint8; \
-		break; \
- \
-	default: \
-		return ERR_INVALID; \
-	} \
- \
-	return 0; \
-}
-
-CALC(uint8)
-CALC(uint16)
-CALC(uint32)
-CALC(uint64)
-
-CALC(size)
-
-CALC(int8)
-CALC(int16)
-CALC(int32)
-CALC(int64)
-
-typedef int (*fr_binary_op_t)(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b);
-
-static const fr_binary_op_t calc_integer_type[FR_TYPE_MAX + 1] = {
-	[FR_TYPE_UINT8] =  calc_uint8,
-	[FR_TYPE_UINT16] = calc_uint16,
-	[FR_TYPE_UINT32] = calc_uint32,
-	[FR_TYPE_UINT64] = calc_uint64,
-
-	[FR_TYPE_SIZE] = calc_size,
-
-	[FR_TYPE_INT8] =  calc_int8,
-	[FR_TYPE_INT16] = calc_int16,
-	[FR_TYPE_INT32] = calc_int32,
-	[FR_TYPE_INT64] = calc_int64,
-};
-
-static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *in1, fr_token_t op, fr_value_box_t const *in2)
+/*
+ *	Do all intermediate operations on 64-bit numbers.
+ */
+static int calc_uint64(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *in1, fr_token_t op, fr_value_box_t const *in2)
 {
-	int rcode;
-	fr_type_t type;
+	fr_value_box_t one, two, result;
 	fr_value_box_t const *a = in1;
 	fr_value_box_t const *b = in2;
-	fr_value_box_t one, two, out;
-	fr_binary_op_t calc = NULL;
 
-	/*
-	 *	We don't do upcasts on shifting.
-	 *
-	 *	@todo - on left shift, if the RHS shift value is
-	 *	larger than the LHS data type, then promote the result
-	 *	data type to the next thing which will fit.
-	 */
+	fr_value_box_init(&result, FR_TYPE_UINT64, NULL, a->tainted | b->tainted);
+
+	COERCE_A(FR_TYPE_UINT64, NULL);
+
 	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
-		type = a->type;
+		/*
+		 *	Don't touch the RHS.
+		 */
 		fr_assert(b->type == FR_TYPE_UINT32);
-		goto calc_it;
+
+	} else {
+		COERCE_B(FR_TYPE_UINT64, dst->enumv);
+	}
+
+	switch (op) {
+	case T_ADD:
+		if (!fr_add(&result.vb_uint64, a->vb_uint64, b->vb_uint64)) return ERR_OVERFLOW;
+		break;
+
+	case T_SUB:
+		if (!fr_sub(&result.vb_uint64, a->vb_uint64, b->vb_uint64)) return ERR_UNDERFLOW;
+		break;
+
+	case T_MUL:
+		if (!fr_multiply(&result.vb_uint64, a->vb_uint64, b->vb_uint64)) return ERR_OVERFLOW;
+		break;
+
+	case T_DIV:
+		if (b->vb_uint64 == 0) return ERR_ZERO;
+
+		result.vb_uint64 = a->vb_uint64 / b->vb_uint64;
+		break;
+
+	case T_MOD:
+		if (b->vb_uint64 == 0) return ERR_ZERO;
+
+		result.vb_uint64 = a->vb_uint64 % in2->vb_uint64;
+		break;
+
+	case T_AND:
+		result.vb_uint64 = a->vb_uint64 & b->vb_uint64;
+		break;
+
+	case T_OR:
+		result.vb_uint64 = a->vb_uint64 | b->vb_uint64;
+		break;
+
+	case T_XOR:
+		result.vb_uint64 = a->vb_uint64 ^ b->vb_uint64;
+		break;
+
+	case T_RSHIFT:
+		if (b->vb_uint32 > (8 * sizeof(a->vb_uint64))) return ERR_UNDERFLOW;
+
+		result.vb_uint64 = a->vb_uint64 >> b->vb_uint32;
+		break;
+
+	case T_LSHIFT:
+		if (b->vb_uint32 >= (8 * sizeof(a->vb_uint64))) return ERR_OVERFLOW;
+
+		result.vb_uint64 = a->vb_uint64 <<  b->vb_uint32;
+		break;
+
+	default:
+		return ERR_INVALID;
 	}
 
 	/*
-	 *	All of the types are the same.  Just do the work.
+	 *	Once we're done, cast the result to the final data type.
 	 */
-	if ((dst->type == in1->type) &&
-	    (dst->type == in2->type)) {
-		if (!calc_integer_type[dst->type]) return invalid_type(dst->type);
+	if (fr_value_box_cast(ctx, dst, dst->type, dst->enumv, &result) < 0) return -1;
 
-		return calc_integer_type[dst->type](ctx, dst, in1, op, in2);
-	}
-
-	/*
-	 *	Upcast to the largest type which will handle the
-	 *	calculations.
-	 *
-	 *	Note that this still won't catch all of the overflow
-	 *	cases, just the majority.
-	 *
-	 *	This will still fail if we do things like
-	 *
-	 *	    uint64 foo - int64 INT64_MIN -> uint64
-	 *
-	 *	the RHS should arguably be converted to uint64.
-	 *	Perhaps we'll do that as a later step.
-	 */
-	type = dst->type;
-	if (upcast_op[type][a->type] != FR_TYPE_NULL) {
-		type = upcast_op[type][a->type];
-
-	} else if (upcast_op[a->type][type] != FR_TYPE_NULL) {
-		type = upcast_op[a->type][type];
-	}
-
-	if (upcast_op[type][b->type] != FR_TYPE_NULL) {
-		type = upcast_op[type][b->type];
-
-	} else if (upcast_op[b->type][type] != FR_TYPE_NULL) {
-		type = upcast_op[b->type][type];
-	}
-
-	if (a->type != type) {
-		if (fr_value_box_cast(NULL, &one, type, NULL, a) < 0) return -1;
-		a = &one;
-	}
-
-	if (b->type != type) {
-		if (fr_value_box_cast(NULL, &two, type, NULL, b) < 0) return -1;
-		b = &two;
-	}
-
-	/*
-	 *	Clang scan is too stupid to notice that
-	 *	calc_integer_type[] is "const", so if we check
-	 *	calc_integer_type[type] for being !NULL, and then call
-	 *	a function from calc_integer_type[type], then the
-	 *	array entry can't be NULL.
-	 *
-	 *	Apparently putting the function pointer into an
-	 *	intermediate variable shuts it up.
-	 */
-calc_it:
-	calc = calc_integer_type[type];
-	if (!calc) return invalid_type(type);
-
-	fr_value_box_init(&out, type, dst->enumv, false);
-	rcode = calc(NULL, &out, a, op, b);
-	if (rcode < 0) return rcode;
-
-	/*
-	 *	Then once we're done, cast the result to the final
-	 *	output type.
-	 */
-	return fr_value_box_cast(NULL, dst, dst->type, dst->enumv, &out);
+	return 0;
 }
+
+/*
+ *	Same as above, except uint64 -> int64.  These functions should be kept in sync!
+ */
+static int calc_int64(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *in1, fr_token_t op, fr_value_box_t const *in2)
+{
+	fr_value_box_t one, two, result;
+	fr_value_box_t const *a = in1;
+	fr_value_box_t const *b = in2;
+
+	fr_value_box_init(&result, FR_TYPE_INT64, NULL, a->tainted | b->tainted);
+
+	COERCE_A(FR_TYPE_INT64, NULL);
+
+	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
+		/*
+		 *	Don't touch the RHS.
+		 */
+		fr_assert(b->type == FR_TYPE_UINT32);
+
+	} else {
+		COERCE_B(FR_TYPE_INT64, dst->enumv);
+	}
+
+	switch (op) {
+	case T_ADD:
+		if (!fr_add(&result.vb_int64, a->vb_int64, b->vb_int64)) return ERR_OVERFLOW;
+		break;
+
+	case T_SUB:
+		if (!fr_sub(&result.vb_int64, a->vb_int64, b->vb_int64)) return ERR_UNDERFLOW;
+		break;
+
+	case T_MUL:
+		if (!fr_multiply(&result.vb_int64, a->vb_int64, b->vb_int64)) return ERR_OVERFLOW;
+		break;
+
+	case T_DIV:
+		if (b->vb_int64 == 0) return ERR_ZERO;
+
+		result.vb_int64 = a->vb_int64 / b->vb_int64;
+		break;
+
+	case T_MOD:
+		if (b->vb_int64 == 0) return ERR_ZERO;
+
+		result.vb_int64 = a->vb_int64 % in2->vb_int64;
+		break;
+
+	case T_AND:
+		result.vb_int64 = a->vb_int64 & b->vb_int64;
+		break;
+
+	case T_OR:
+		result.vb_int64 = a->vb_int64 | b->vb_int64;
+		break;
+
+	case T_XOR:
+		result.vb_int64 = a->vb_int64 ^ b->vb_int64;
+		break;
+
+	case T_RSHIFT:
+		if (b->vb_uint32 > (8 * sizeof(a->vb_int64))) return ERR_UNDERFLOW;
+
+		result.vb_int64 = a->vb_int64 >> b->vb_uint32;
+		break;
+
+	case T_LSHIFT:
+		if (b->vb_uint32 >= (8 * sizeof(a->vb_int64))) return ERR_OVERFLOW;
+
+		result.vb_int64 = a->vb_int64 <<  b->vb_uint32;
+		break;
+
+	default:
+		return ERR_INVALID;
+	}
+
+	/*
+	 *	Once we're done, cast the result to the final data type.
+	 */
+	if (fr_value_box_cast(ctx, dst, dst->type, dst->enumv, &result) < 0) return -1;
+
+	return 0;
+}
+
+typedef int (*fr_binary_op_t)(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b);
 
 static const fr_binary_op_t calc_type[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_BOOL]		= calc_bool,
@@ -1699,17 +1721,17 @@ static const fr_binary_op_t calc_type[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_IPV6_ADDR]	= calc_ipv6_addr,
 	[FR_TYPE_IPV6_PREFIX]	= calc_ipv6_prefix,
 
-	[FR_TYPE_UINT8]		= calc_integer,
-	[FR_TYPE_UINT16]       	= calc_integer,
-	[FR_TYPE_UINT32]       	= calc_integer,
-	[FR_TYPE_UINT64]       	= calc_integer,
+	[FR_TYPE_UINT8]		= calc_uint64,
+	[FR_TYPE_UINT16]       	= calc_uint64,
+	[FR_TYPE_UINT32]       	= calc_uint64,
+	[FR_TYPE_UINT64]       	= calc_uint64,
 
-	[FR_TYPE_SIZE]       	= calc_integer,
+	[FR_TYPE_SIZE]       	= calc_uint64,
 
-	[FR_TYPE_INT8]		= calc_integer,
-	[FR_TYPE_INT16]       	= calc_integer,
-	[FR_TYPE_INT32]       	= calc_integer,
-	[FR_TYPE_INT64]       	= calc_integer,
+	[FR_TYPE_INT8]		= calc_int64,
+	[FR_TYPE_INT16]       	= calc_int64,
+	[FR_TYPE_INT32]       	= calc_int64,
+	[FR_TYPE_INT64]       	= calc_int64,
 
 	[FR_TYPE_DATE]		= calc_date,
 	[FR_TYPE_TIME_DELTA]	= calc_time_delta,
@@ -1796,15 +1818,6 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 		case T_MOD:
 		case T_XOR:
 			/*
-			 *	Nothing else set it.  If the input types are
-			 *	the same, then that must be the output type.
-			 */
-			if (a->type == b->type) {
-				hint = a->type;
-				break;
-			}
-
-			/*
 			 *	Try to "up-cast" the types.  This is
 			 *	so that we can take (for example)
 			 *	uint8 + uint16, and have the output as
@@ -1816,7 +1829,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			hint = upcast_op[a->type][b->type];
 			if (hint == FR_TYPE_NULL) {
 				hint = upcast_op[b->type][a->type];
-			} else {
+			} else if (a->type != b->type) {
 				fr_assert(upcast_op[b->type][a->type] == FR_TYPE_NULL);
 			}
 
@@ -1824,7 +1837,8 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			 *	No idea what to do. :(
 			 */
 			if (hint == FR_TYPE_NULL) {
-				fr_strerror_const("Unable to automatically determine output data type");
+				fr_strerror_printf("Unable to automatically determine output data type for inputs %s and %s",
+						   fr_type_to_str(a->type), fr_type_to_str(b->type));
 				goto done;
 			}
 
@@ -1866,7 +1880,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 		 *	Try to "up-cast" the types.  This is
 		 *	so that we can take (for example)
 		 *	uint8 < uint16, and have it make
-		 *	sense.  uint16.
+		 *	sense.
 		 *
 		 *	There must be only one entry per [a,b]
 		 *	pairing.  That way we're sure that [a,b]==[b,a]
