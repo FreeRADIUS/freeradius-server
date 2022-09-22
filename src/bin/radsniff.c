@@ -494,7 +494,7 @@ static void rs_packet_save_in_output_dir(uint64_t count, UNUSED rs_status_t stat
 	}
 
 	/* ensure to remove existing file */
-	fr_unlink(filename);
+	if (fr_unlink(filename) < 0) usage(64);
 
 	if (fr_log_init_file(&output_file, filename) < 0) {
 		ERROR("Failed opening %s output file.", filename);
