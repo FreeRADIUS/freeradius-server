@@ -1602,16 +1602,6 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 	fr_binary_op_t calc = NULL;
 
 	/*
-	 *	All of the types are the same.  Just do the work.
-	 */
-	if ((dst->type == in1->type) &&
-	    (dst->type == in2->type)) {
-		if (!calc_integer_type[dst->type]) return invalid_type(dst->type);
-
-		return calc_integer_type[dst->type](ctx, dst, in1, op, in2);
-	}
-
-	/*
 	 *	We don't do upcasts on shifting.
 	 *
 	 *	@todo - on left shift, if the RHS shift value is
@@ -1622,6 +1612,16 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 		type = a->type;
 		fr_assert(b->type == FR_TYPE_UINT32);
 		goto calc_it;
+	}
+
+	/*
+	 *	All of the types are the same.  Just do the work.
+	 */
+	if ((dst->type == in1->type) &&
+	    (dst->type == in2->type)) {
+		if (!calc_integer_type[dst->type]) return invalid_type(dst->type);
+
+		return calc_integer_type[dst->type](ctx, dst, in1, op, in2);
 	}
 
 	/*
