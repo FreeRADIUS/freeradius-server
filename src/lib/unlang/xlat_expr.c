@@ -1775,6 +1775,8 @@ static const bool logical_ops[T_TOKEN_LAST] = {
 /*
  *	Allow for BEDMAS ordering.  Gross ordering is first number,
  *	fine ordering is second number.  Unused operators are assigned as zero.
+ *
+ *	Larger numbers are higher precedence.
  */
 #define P(_x, _y) (((_x) << 4) | (_y))
 
@@ -1782,7 +1784,7 @@ static const int precedence[T_TOKEN_LAST] = {
 	[T_INVALID]	= 0,
 
 	/*
-	 *	Assignment operators go here:
+	 *	Assignment operators go here as P(1,n)
 	 *
 	 *	+= -= *= /= %= <<= >>= &= ^= |=
 	 *
@@ -1805,8 +1807,11 @@ static const int precedence[T_TOKEN_LAST] = {
 	[T_XOR]		= P(3,1),
 	[T_AND]		= P(3,2),
 
-	[T_OP_CMP_EQ]	= P(4,0),
-	[T_OP_NE]	= P(4,0),
+	[T_OP_REG_EQ]	= P(4,0),
+	[T_OP_REG_NE]	= P(4,0),
+
+	[T_OP_CMP_EQ]	= P(4,1),
+	[T_OP_NE]	= P(4,1),
 
 	[T_OP_LT]	= P(5,0),
 	[T_OP_LE]	= P(5,0),
@@ -1816,15 +1821,12 @@ static const int precedence[T_TOKEN_LAST] = {
 	[T_RSHIFT]	= P(6,0),
 	[T_LSHIFT]	= P(6,0),
 
-	[T_ADD]		= P(7,0),
-	[T_SUB]		= P(7,1),
+	[T_SUB]		= P(7,0),
+	[T_ADD]		= P(7,1),
 
-	[T_MUL]		= P(8,0),
-	[T_DIV]		= P(8,1),
-	[T_MOD]		= P(8,2),
-
-	[T_OP_REG_EQ]	= P(9,0),
-	[T_OP_REG_NE]	= P(9,0),
+	[T_MOD]		= P(8,0),
+	[T_MUL]		= P(8,1),
+	[T_DIV]		= P(8,2),
 
 	[T_LBRACE]	= P(10,0),
 };

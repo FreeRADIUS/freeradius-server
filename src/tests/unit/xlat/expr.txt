@@ -132,5 +132,8 @@ match &reply
 xlat_expr &reply && (1 < 2)
 match (&reply && (1 < 2))
 
+xlat_expr 5 + 5 - 10
+match ((5 + 5) - 10)
+
 count
-match 63
+match 65
