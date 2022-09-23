@@ -145,7 +145,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_init(fr_time_tracking_t *tt
  * @param[in] tt		the time tracked entity.
  * @param[in] now		the current time.
  */
-static inline CC_HINT(nonnull) void fr_time_tracking_start(fr_time_tracking_t *parent,
+static inline CC_HINT(nonnull(2)) void fr_time_tracking_start(fr_time_tracking_t *parent,
 							   fr_time_tracking_t *tt, fr_time_t now)
 {
 	fr_assert_msg(tt->state == FR_TIME_TRACKING_STOPPED, "Unexpected time tracking state state %i", tt->state);
@@ -173,6 +173,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_push(fr_time_tracking_t *pa
 {
 	fr_time_delta_t		run_time;
 
+	fr_assert(tt->parent);
 	fr_assert(parent->parent == tt->parent);
 
 	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %i", tt->state);
@@ -196,6 +197,8 @@ static inline CC_HINT(nonnull) void fr_time_tracking_pop(fr_time_tracking_t *tt,
 	fr_time_delta_t		run_time;
 
 	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %i", tt->state);
+	fr_assert(tt->parent);
+
 	run_time = fr_time_sub(now, tt->last_changed);
 	tt->last_changed = tt->parent->ended = now;
 
