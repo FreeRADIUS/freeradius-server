@@ -1,0 +1,53 @@
+/*
+ *   This library is free software; you can redistribute it and/or
+ *   modify it under the terms of the GNU Lesser General Public
+ *   License as published by the Free Software Foundation; either
+ *   version 2.1 of the License, or (at your option) any later version.
+ *
+ *   This library is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *   Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ *   License along with this library; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/** Tests for a generic string buffer structure for string printing and parsing
+ *
+ * @file src/lib/util/time_tests.c
+ *
+ * @copyright 2022 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ */
+#include <freeradius-devel/util/acutest.h>
+#include <freeradius-devel/util/acutest_helpers.h>
+#include <freeradius-devel/util/time.h>
+
+static void time_benchmark(void)
+{
+	int		i;
+	fr_time_t	start, stop;
+	uint64_t	rate;
+
+	start = fr_time();
+	for (i = 0; i < 100000; i++) {
+		fr_time_t now;
+
+		(fr_time_t volatile)now = fr_time();
+	}
+	stop = fr_time();
+
+	rate = (uint64_t)((float)NSEC / (fr_time_delta_unwrap(fr_time_sub(stop, start)) / 100000));
+	printf("fr_time rate %" PRIu64 "\n", rate);
+
+	/* shared runners are terrible for performance tests */
+	if (!getenv("NO_PERFORMANCE_TESTS")) TEST_CHECK(rate > 1000000);
+}
+
+
+TEST_LIST = {
+	{ "time_const_benchmark",		time_benchmark },
+
+	{ 0 }
+};
