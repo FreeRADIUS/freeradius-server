@@ -24,6 +24,9 @@
 #include <freeradius-devel/util/acutest_helpers.h>
 #include <freeradius-devel/util/time.h>
 
+#define ROUNDS (100000)
+
+DIAG_OFF(unused-but-set-variable)
 static void time_benchmark(void)
 {
 	int		i;
@@ -31,20 +34,20 @@ static void time_benchmark(void)
 	uint64_t	rate;
 
 	start = fr_time();
-	for (i = 0; i < 100000; i++) {
-		fr_time_t now;
+	for (i = 0; i < ROUNDS; i++) {
+		volatile fr_time_t now;
 
-		(fr_time_t volatile)now = fr_time();
+		now = fr_time();
 	}
 	stop = fr_time();
 
-	rate = (uint64_t)((float)NSEC / (fr_time_delta_unwrap(fr_time_sub(stop, start)) / 100000));
+	rate = (uint64_t)((float)NSEC / (fr_time_delta_unwrap(fr_time_sub(stop, start)) / ROUNDS));
 	printf("fr_time rate %" PRIu64 "\n", rate);
 
 	/* shared runners are terrible for performance tests */
-	if (!getenv("NO_PERFORMANCE_TESTS")) TEST_CHECK(rate > 1000000);
+	if (!getenv("NO_PERFORMANCE_TESTS")) TEST_CHECK(rate > (ROUNDS * 10));
 }
-
+DIAG_ON(unused-but-set-variable)
 
 TEST_LIST = {
 	{ "time_const_benchmark",		time_benchmark },
