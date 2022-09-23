@@ -2250,6 +2250,7 @@ static void generate_def_file(command_t *cmd)
 	int num_export_args = 0;
 	char *cmd_str;
 	int cmd_size = 0;
+	int imp_len;
 
 
 	if (cmd->output_name) {
@@ -2304,13 +2305,24 @@ static void generate_def_file(command_t *cmd)
 			export_args[num_export_args++] = target->def2implib_cmd;
 			export_args[num_export_args++] = "-o";
 
+			imp_len = strlen(cmd->basename) + 7;
+			if (imp_len > sizeof(implib_file)) {
+			imp_too_long:
+				ERROR("imp file name too long, out of buffer space\n");
+				return;
+			}
+
 			strcpy(implib_file, ".libs/");
 			strcat(implib_file, cmd->basename);
-			ext = strrchr(implib_file, '.');
 
+			ext = strrchr(implib_file, '.');
 			if (ext) {
 				*ext = '\0';
+				imp_len = ext - implib_file + 1;
 			}
+
+			imp_len += strlen(target->static_lib_ext) + 1;
+			if (imp_len > sizeof(implib_file)) goto imp_too_long;
 
 			strcat(implib_file, ".");
 			strcat(implib_file, target->static_lib_ext);
