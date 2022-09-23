@@ -1601,7 +1601,7 @@ static int calc_uint64(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		break;
 
 	case T_RSHIFT:
-		if (b->vb_uint32 > (8 * sizeof(a->vb_uint64))) return ERR_UNDERFLOW;
+		if (b->vb_uint32 >= (8 * sizeof(a->vb_uint64))) return ERR_UNDERFLOW;
 
 		result.vb_uint64 = a->vb_uint64 >> b->vb_uint32;
 		break;
@@ -1685,7 +1685,7 @@ static int calc_int64(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const
 		break;
 
 	case T_RSHIFT:
-		if (b->vb_uint32 > (8 * sizeof(a->vb_int64))) return ERR_UNDERFLOW;
+		if (b->vb_uint32 >= (8 * sizeof(a->vb_int64))) return ERR_UNDERFLOW;
 
 		result.vb_int64 = a->vb_int64 >> b->vb_uint32;
 		break;
