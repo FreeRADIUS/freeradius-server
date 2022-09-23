@@ -230,18 +230,18 @@ typedef struct {
 	void			*thread_inst;			//!< thread-specific instance data
 #ifdef WITH_PERF
 	uint64_t		use_count;
-	fr_time_t		enter;
-
-	fr_time_delta_t		cpu_time;
+	fr_time_tracking_t	tracking;			//!< tracking cpu time
 #endif
 } unlang_thread_t;
 
 #ifdef WITH_PERF
 void		unlang_frame_perf_init(unlang_t const *instruction);
-
+void		unlang_frame_perf_yield(unlang_t const *instruction);
+void		unlang_frame_perf_resume(unlang_t const *instruction);
 void		unlang_frame_perf_cleanup(unlang_t const *instruction);
 #else
 #define		unlang_frame_perf_init(_x)
+#define		unlang_frame_perf_resume(_x)
 #define		unlang_frame_perf_cleanup(_x)
 #endif
 

@@ -486,6 +486,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		RDEBUG4("** [%i] %s >> %s", stack->depth, __FUNCTION__,
 			unlang_ops[instruction->type].name);
 
+		unlang_frame_perf_resume(instruction);
 		fr_assert(frame->process != NULL);
 
 		/*
@@ -498,6 +499,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	should be evaluated again.
 		 */
 		repeatable_clear(frame);
+		unlang_frame_perf_resume(frame->instruction);
 		ua = frame->process(result, request, frame);
 
 		/*
@@ -559,6 +561,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	called the interpreter.
 		 */
 		case UNLANG_ACTION_YIELD:
+			unlang_frame_perf_yield(instruction);
 			yielded_set(frame);
 			RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
 				fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),

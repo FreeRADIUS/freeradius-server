@@ -4428,6 +4428,7 @@ int unlang_thread_instantiate(TALLOC_CTX *ctx)
 void unlang_frame_perf_init(unlang_t const *instruction)
 {
 	unlang_thread_t *t;
+	fr_time_t now;
 
 	if (!instruction->number || !unlang_thread_array) return;
 
@@ -4436,8 +4437,36 @@ void unlang_frame_perf_init(unlang_t const *instruction)
 	t = &unlang_thread_array[instruction->number];
 
 	t->use_count++;
+	now = fr_time();
 
-	t->enter = fr_time();
+	fr_time_tracking_start(NULL, &t->tracking, now);
+	fr_time_tracking_yield(&t->tracking, now);
+}
+
+void unlang_frame_perf_yield(unlang_t const *instruction)
+{
+	unlang_thread_t *t;
+
+	if (!instruction->number || !unlang_thread_array) return;
+
+	fr_assert(instruction->number <= unlang_number);
+
+	t = &unlang_thread_array[instruction->number];
+
+	fr_time_tracking_yield(&t->tracking, fr_time());
+}
+
+void unlang_frame_perf_resume(unlang_t const *instruction)
+{
+	unlang_thread_t *t;
+
+	if (!instruction->number || !unlang_thread_array) return;
+
+	fr_assert(instruction->number <= unlang_number);
+
+	t = &unlang_thread_array[instruction->number];
+
+	fr_time_tracking_resume(&t->tracking, fr_time());
 }
 
 void unlang_frame_perf_cleanup(unlang_t const *instruction)
@@ -4450,7 +4479,7 @@ void unlang_frame_perf_cleanup(unlang_t const *instruction)
 
 	t = &unlang_thread_array[instruction->number];
 
-	t->cpu_time = fr_time_add(t->cpu_time, fr_time_sub(fr_time(), t->enter));
+	fr_time_tracking_end(NULL, &t->tracking, fr_time());
 }
 
 
@@ -4490,8 +4519,8 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 
 	t = &unlang_thread_array[instruction->number];
 
-	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRIu64,
-	       t->use_count, fr_time_delta_unwrap(t->cpu_time));
+	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRIu64 " yielded_time=%" PRIu64 ,
+	       t->use_count, fr_time_delta_unwrap(t->tracking.running_total), fr_time_delta_unwrap(t->tracking.waiting_total));
 
 	if (g->children) {
 		unlang_t *child;
