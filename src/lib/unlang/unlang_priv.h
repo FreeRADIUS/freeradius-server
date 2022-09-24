@@ -235,12 +235,13 @@ typedef struct {
 } unlang_thread_t;
 
 #ifdef WITH_PERF
-void		unlang_frame_perf_init(unlang_t const *instruction);
-void		unlang_frame_perf_yield(unlang_t const *instruction);
-void		unlang_frame_perf_resume(unlang_t const *instruction);
-void		unlang_frame_perf_cleanup(unlang_t const *instruction);
+void		unlang_frame_perf_init(unlang_stack_frame_t *frame);
+void		unlang_frame_perf_yield(unlang_stack_frame_t *frame);
+void		unlang_frame_perf_resume(unlang_stack_frame_t *frame);
+void		unlang_frame_perf_cleanup(unlang_stack_frame_t *frame);
 #else
 #define		unlang_frame_perf_init(_x)
+#define		unlang_frame_perf_yield(_x)
 #define		unlang_frame_perf_resume(_x)
 #define		unlang_frame_perf_cleanup(_x)
 #endif
@@ -291,8 +292,10 @@ struct unlang_stack_frame_s {
 								///< this priority will be compared with the one of the
 								///< frame lower in the stack to determine if the
 								///< result stored in the lower stack frame should
-								///< be replaced.
 	uint8_t			uflags;				//!< Unwind markers
+#ifdef WITH_PERF
+	fr_time_tracking_t	tracking;			//!< track this instance of this instruction
+#endif
 };
 
 /** An unlang stack associated with a request
@@ -390,7 +393,7 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 	unlang_op_t	*op;
 	char const	*name;
 
-	unlang_frame_perf_init(instruction);
+	unlang_frame_perf_init(frame);
 
 	op = &unlang_ops[instruction->type];
 	name = op->frame_state_type ? op->frame_state_type : __location__;
@@ -443,7 +446,7 @@ static inline void frame_cleanup(unlang_stack_frame_t *frame)
 		TALLOC_FREE(frame->state);
 	}
 
-	unlang_frame_perf_cleanup(frame->instruction);
+	unlang_frame_perf_cleanup(frame);
 }
 
 /** Advance to the next sibling instruction

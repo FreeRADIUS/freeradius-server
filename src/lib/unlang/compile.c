@@ -4425,10 +4425,11 @@ int unlang_thread_instantiate(TALLOC_CTX *ctx)
 }
 
 #ifdef WITH_PERF
-void unlang_frame_perf_init(unlang_t const *instruction)
+void unlang_frame_perf_init(unlang_stack_frame_t *frame)
 {
 	unlang_thread_t *t;
 	fr_time_t now;
+	unlang_t const *instruction = frame->instruction;
 
 	if (!instruction->number || !unlang_thread_array) return;
 
@@ -4439,39 +4440,32 @@ void unlang_frame_perf_init(unlang_t const *instruction)
 	t->use_count++;
 	now = fr_time();
 
-	fr_time_tracking_start(NULL, &t->tracking, now);
-	fr_time_tracking_yield(&t->tracking, now);
+	fr_time_tracking_start(NULL, &frame->tracking, now);
+	fr_time_tracking_yield(&frame->tracking, now);
 }
 
-void unlang_frame_perf_yield(unlang_t const *instruction)
+void unlang_frame_perf_yield(unlang_stack_frame_t *frame)
 {
-	unlang_thread_t *t;
+	unlang_t const *instruction = frame->instruction;
 
 	if (!instruction->number || !unlang_thread_array) return;
 
-	fr_assert(instruction->number <= unlang_number);
-
-	t = &unlang_thread_array[instruction->number];
-
-	fr_time_tracking_yield(&t->tracking, fr_time());
+	fr_time_tracking_yield(&frame->tracking, fr_time());
 }
 
-void unlang_frame_perf_resume(unlang_t const *instruction)
+void unlang_frame_perf_resume(unlang_stack_frame_t *frame)
 {
-	unlang_thread_t *t;
+	unlang_t const *instruction = frame->instruction;
 
 	if (!instruction->number || !unlang_thread_array) return;
 
-	fr_assert(instruction->number <= unlang_number);
-
-	t = &unlang_thread_array[instruction->number];
-
-	fr_time_tracking_resume(&t->tracking, fr_time());
+	fr_time_tracking_resume(&frame->tracking, fr_time());
 }
 
-void unlang_frame_perf_cleanup(unlang_t const *instruction)
+void unlang_frame_perf_cleanup(unlang_stack_frame_t *frame)
 {
 	unlang_thread_t *t;
+	unlang_t const *instruction = frame->instruction;
 
 	if (!instruction || !instruction->number || !unlang_thread_array) return;
 
@@ -4479,7 +4473,9 @@ void unlang_frame_perf_cleanup(unlang_t const *instruction)
 
 	t = &unlang_thread_array[instruction->number];
 
-	fr_time_tracking_end(NULL, &t->tracking, fr_time());
+	fr_time_tracking_end(NULL, &frame->tracking, fr_time());
+	t->tracking.running_total = fr_time_delta_add(t->tracking.running_total, frame->tracking.running_total);
+	t->tracking.waiting_total = fr_time_delta_add(t->tracking.waiting_total, frame->tracking.waiting_total);
 }
 
 
