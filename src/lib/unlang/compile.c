@@ -4441,7 +4441,7 @@ void unlang_frame_perf_init(unlang_stack_frame_t *frame)
 	now = fr_time();
 
 	fr_time_tracking_start(NULL, &frame->tracking, now);
-	fr_time_tracking_yield(&frame->tracking, now);
+	fr_time_tracking_yield(&frame->tracking, fr_time());
 }
 
 void unlang_frame_perf_yield(unlang_stack_frame_t *frame)
@@ -4459,6 +4459,8 @@ void unlang_frame_perf_resume(unlang_stack_frame_t *frame)
 
 	if (!instruction->number || !unlang_thread_array) return;
 
+	if (frame->tracking.state != FR_TIME_TRACKING_YIELDED) return;
+
 	fr_time_tracking_resume(&frame->tracking, fr_time());
 }
 
@@ -4472,6 +4474,8 @@ void unlang_frame_perf_cleanup(unlang_stack_frame_t *frame)
 	fr_assert(instruction->number <= unlang_number);
 
 	t = &unlang_thread_array[instruction->number];
+
+	if (frame->tracking.state == FR_TIME_TRACKING_YIELDED) fr_time_tracking_resume(&frame->tracking, fr_time());
 
 	fr_time_tracking_end(NULL, &frame->tracking, fr_time());
 	t->tracking.running_total = fr_time_delta_add(t->tracking.running_total, frame->tracking.running_total);

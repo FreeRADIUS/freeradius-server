@@ -346,6 +346,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 		REXDENT();
 
 		talloc_free(frame->state);
+		unlang_frame_perf_cleanup(frame);
 		frame_state_init(stack, frame);
 		return UNLANG_FRAME_ACTION_RETRY;
 	}
@@ -486,7 +487,6 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		RDEBUG4("** [%i] %s >> %s", stack->depth, __FUNCTION__,
 			unlang_ops[instruction->type].name);
 
-		unlang_frame_perf_resume(frame);
 		fr_assert(frame->process != NULL);
 
 		/*
