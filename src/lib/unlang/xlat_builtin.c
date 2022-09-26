@@ -1858,6 +1858,7 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*values = fr_dlist_head(args);
 	fr_value_box_list_t	*list = &values->vb_group;
 	fr_value_box_t		*pad = fr_dlist_next(args, values);
+	/* coverity[dereference] */
 	size_t			pad_len = (size_t)pad->vb_uint64;
 	/* coverity[dereference] */
 	fr_value_box_t		*fill = fr_dlist_next(args, pad);
@@ -2374,8 +2375,10 @@ static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	key = fr_dlist_next(in, data);
 
 	if (type == HMAC_MD5) {
+		/* coverity[dereference] */
 		fr_hmac_md5(digest, data->vb_octets, data->vb_length, key->vb_octets, key->vb_length);
 	} else if (type == HMAC_SHA1) {
+		/* coverity[dereference] */
 		fr_hmac_sha1(digest, data->vb_octets, data->vb_length, key->vb_octets, key->vb_length);
 	}
 
