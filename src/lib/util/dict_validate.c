@@ -489,10 +489,12 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	}
 
 	/*
-	 *	Only numerical types can be counter
+	 *	Counters can be time deltas, or unsigned integers.
+	 *	For other data types, we don't know how to
+	 *	automatically add two counters.
 	 */
 	if (flags->is_counter) {
-		if (fr_type_is_numeric(type) && !fr_type_is_signed(type)) {
+		if ((type == FR_TYPE_TIME_DELTA) || (fr_type_is_integer(type) && !fr_type_is_signed(type))) {
 			ALLOW_FLAG(is_counter);
 		} else {
 			fr_strerror_printf("The 'counter' flag cannot be used with '%s'", fr_type_to_str(type));
