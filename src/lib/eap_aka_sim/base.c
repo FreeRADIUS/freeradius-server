@@ -273,7 +273,10 @@ int fr_aka_sim_init(void)
 		return -1;
 	}
 
-	fr_openssl_init();
+	if (fr_openssl_init() < 0) {
+		PERROR("Failed setting up OpenSSL");
+		return -1;
+	}
 
 	instance_count++;
 
