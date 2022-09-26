@@ -229,7 +229,9 @@ typedef struct {
 	unlang_t const		*instruction;			//!< instruction which we're executing
 	void			*thread_inst;			//!< thread-specific instance data
 #ifdef WITH_PERF
-	uint64_t		use_count;
+	uint64_t		use_count;			//!< how many packets it has processed
+	uint64_t		running;			//!< currently running this instruction
+	uint64_t		yielded;			//!< currently yielded
 	fr_time_tracking_t	tracking;			//!< tracking cpu time
 #endif
 } unlang_thread_t;

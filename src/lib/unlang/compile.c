@@ -4438,6 +4438,7 @@ void unlang_frame_perf_init(unlang_stack_frame_t *frame)
 	t = &unlang_thread_array[instruction->number];
 
 	t->use_count++;
+	t->yielded++;			// everything starts off as yielded
 	now = fr_time();
 
 	fr_time_tracking_start(NULL, &frame->tracking, now);
@@ -4447,8 +4448,13 @@ void unlang_frame_perf_init(unlang_stack_frame_t *frame)
 void unlang_frame_perf_yield(unlang_stack_frame_t *frame)
 {
 	unlang_t const *instruction = frame->instruction;
+	unlang_thread_t *t;
 
 	if (!instruction->number || !unlang_thread_array) return;
+
+	t = &unlang_thread_array[instruction->number];
+	t->yielded++;
+	t->running--;
 
 	fr_time_tracking_yield(&frame->tracking, fr_time());
 }
@@ -4456,18 +4462,23 @@ void unlang_frame_perf_yield(unlang_stack_frame_t *frame)
 void unlang_frame_perf_resume(unlang_stack_frame_t *frame)
 {
 	unlang_t const *instruction = frame->instruction;
+	unlang_thread_t *t;
 
 	if (!instruction->number || !unlang_thread_array) return;
 
 	if (frame->tracking.state != FR_TIME_TRACKING_YIELDED) return;
+
+	t = &unlang_thread_array[instruction->number];
+	t->running++;
+	t->yielded--;
 
 	fr_time_tracking_resume(&frame->tracking, fr_time());
 }
 
 void unlang_frame_perf_cleanup(unlang_stack_frame_t *frame)
 {
-	unlang_thread_t *t;
 	unlang_t const *instruction = frame->instruction;
+	unlang_thread_t *t;
 
 	if (!instruction || !instruction->number || !unlang_thread_array) return;
 
@@ -4475,7 +4486,12 @@ void unlang_frame_perf_cleanup(unlang_stack_frame_t *frame)
 
 	t = &unlang_thread_array[instruction->number];
 
-	if (frame->tracking.state == FR_TIME_TRACKING_YIELDED) fr_time_tracking_resume(&frame->tracking, fr_time());
+	if (frame->tracking.state == FR_TIME_TRACKING_YIELDED) {
+		t->yielded--;
+		fr_time_tracking_resume(&frame->tracking, fr_time());
+	} else {
+		t->running--;
+	}
 
 	fr_time_tracking_end(NULL, &frame->tracking, fr_time());
 	t->tracking.running_total = fr_time_delta_add(t->tracking.running_total, frame->tracking.running_total);
