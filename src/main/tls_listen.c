@@ -947,31 +947,34 @@ int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request)
 }
 #endif
 
-static int try_connect(tls_session_t *ssn)
+static int try_connect(listen_socket_t *sock)
 {
 	int ret;
-	ret = SSL_connect(ssn->ssl);
+
+	ret = SSL_connect(sock->ssn->ssl);
 	if (ret < 0) {
-		switch (SSL_get_error(ssn->ssl, ret)) {
-			default:
-				break;
+		switch (SSL_get_error(sock->ssn->ssl, ret)) {
+		default:
+			break;
 
 
 
 		case SSL_ERROR_WANT_READ:
 		case SSL_ERROR_WANT_WRITE:
-			ssn->connected = false;
 			return 0;
 		}
 	}
 
 	if (ret <= 0) {
-		tls_error_io_log(NULL, ssn, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
-		talloc_free(ssn);
+		SSL_shutdown(sock->ssn->ssl);
+
+		tls_error_io_log(NULL, sock->ssn, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
+		TALLOC_FREE(sock->ssn);
 
 		return -1;
 	}
 
+	sock->ssn->connected = true;
 	return 1;
 }
 
@@ -997,15 +1000,8 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 
 	if (!sock->ssn->connected) {
-		rcode = try_connect(sock->ssn);
-		if (rcode == 0) return 0;
-
-		if (rcode < 0) {
-			SSL_shutdown(sock->ssn->ssl);
-			return -1;
-		}
-
-		sock->ssn->connected = true;
+		rcode = try_connect(sock);
+		if (rcode <= 0) return rcode;
 	}
 
 	/*
@@ -1242,16 +1238,9 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	if (!sock->ssn->connected) {
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
-		rcode = try_connect(sock->ssn);
+		rcode = try_connect(sock);
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-		if (rcode == 0) return 0;
-
-		if (rcode < 0) {
-			SSL_shutdown(sock->ssn->ssl);
-			return -1;
-		}
-
-		sock->ssn->connected = true;
+		if (rcode <= 0) return rcode;
 	}
 
 	DEBUG3("Proxy is writing %u bytes to SSL",
