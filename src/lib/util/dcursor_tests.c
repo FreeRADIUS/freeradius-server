@@ -290,6 +290,53 @@ static void test_dcursor_wrap_after_tail(void)
 	TEST_CHECK(!item_p);
 }
 
+static void test_dcursor_current_set_valid(void)
+{
+	fr_dcursor_t		cursor;
+	test_item_t		item1 = { "item1", { NULL, NULL } };
+	test_item_t		item2 = { "item2", { NULL, NULL } };
+	test_item_t		item3 = { "item3", { NULL, NULL } };
+	test_item_t		*item_p;
+	test_item_list_t	list;
+
+	test_list_init(&list);
+	fr_dlist_insert_tail(&list.head, &item1);
+	fr_dlist_insert_tail(&list.head, &item2);
+	fr_dlist_insert_tail(&list.head, &item3);
+
+	fr_dcursor_init(&cursor, &list.head);
+	fr_dcursor_head(&cursor);
+	TEST_CHECK(fr_dcursor_current(&cursor) == &item1);
+
+	item_p = fr_dcursor_set_current(&cursor, &item2);
+	TEST_CHECK(item_p == &item2);
+	TEST_CHECK(fr_dcursor_current(&cursor) == &item2);
+	TEST_CHECK(fr_dcursor_next_peek(&cursor) == &item3);
+}
+
+static void test_dcursor_current_set_invalid(void)
+{
+	fr_dcursor_t		cursor;
+	test_item_t		item1 = { "item1", { NULL, NULL } };
+	test_item_t		item2 = { "item2", { NULL, NULL } };
+	test_item_t		item3 = { "item3", { NULL, NULL } };
+	test_item_t		*item_p;
+	test_item_list_t	list;
+
+	test_list_init(&list);
+	fr_dlist_insert_tail(&list.head, &item1);
+	fr_dlist_insert_tail(&list.head, &item2);
+
+	fr_dcursor_init(&cursor, &list.head);
+	fr_dcursor_head(&cursor);
+	TEST_CHECK(fr_dcursor_current(&cursor) == &item1);
+
+	item_p = fr_dcursor_set_current(&cursor, &item3);
+	TEST_CHECK(item_p == NULL);
+	TEST_CHECK(fr_dcursor_current(&cursor) == &item1);
+	TEST_CHECK(fr_dcursor_next_peek(&cursor) == &item2);
+}
+
 static void test_dcursor_append_empty(void)
 {
 	fr_dcursor_t		cursor;
@@ -1498,6 +1545,39 @@ static void test_dcursor_free(void)
 	talloc_free(item_p);
 }
 
+static void test_dcursor_free_item(void)
+{
+	test_item_t		*item1, *item2, *item3;
+	test_item_list_t	list;
+	fr_dcursor_t		cursor;
+
+	test_list_init(&list);
+
+	item1 = talloc_zero(NULL, test_item_t);
+	item2 = talloc_zero(NULL, test_item_t);
+	item3 = talloc_zero(NULL, test_item_t);
+
+	fr_dcursor_init(&cursor, &list.head);
+	fr_dcursor_append(&cursor, item1);
+	fr_dcursor_append(&cursor, item2);
+	fr_dcursor_append(&cursor, item3);
+
+	fr_dcursor_head(&cursor);
+	fr_dcursor_free_item(&cursor);
+
+	TEST_CHECK(fr_dcursor_current(&cursor) == item2);
+	TEST_CHECK(fr_dcursor_tail(&cursor) == item3);
+	TEST_CHECK(fr_dcursor_head(&cursor) == item2);
+
+	fr_dcursor_free_item(&cursor);
+	fr_dcursor_free_item(&cursor);
+
+	TEST_CHECK(fr_dcursor_current(&cursor) == NULL);
+	TEST_CHECK(!fr_dcursor_tail(&cursor));
+	TEST_CHECK(!fr_dcursor_head(&cursor));
+}
+
+
 typedef struct {
 	int	pos;
 	char	val;
@@ -1787,6 +1867,12 @@ TEST_LIST = {
 	{ "wrap_after_tail",		test_dcursor_wrap_after_tail },
 
 	/*
+	 *	Set current
+	 */
+	{ "current_valid",		test_dcursor_current_set_valid },
+	{ "current_invalid",		test_dcursor_current_set_invalid },
+
+	/*
 	 *	Insert with empty list
 	 */
 	{ "prepend_empty",		test_dcursor_prepend_empty },
@@ -1858,6 +1944,7 @@ TEST_LIST = {
 	 *	Free
 	 */
 	{ "free", 			test_dcursor_free },
+	{ "free_item",			test_dcursor_free_item },
 	/*
 	 * 	Intersect
 	 */
