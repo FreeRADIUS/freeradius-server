@@ -785,6 +785,195 @@ static inline fr_dcursor_stack_t *fr_dcursor_stack_alloc(TALLOC_CTX *ctx, uint8_
 	return stack;
 }
 
+/** Expands to the type name used for the dcursor wrapper structure
+ *
+ * @param[in] _name	Prefix we add to type-specific structures.
+ * @return <name>_dcursor_t
+ */
+#define FR_DCURSOR(_name) _name ## _dcursor_t
+
+/** Expands to the type name used for the dcursor iterator type
+ *
+ * @param[in] _name	Prefix we add to type-specific structures.
+ * @return <name>_iter_t
+ */
+#define FR_DCURSOR_ITER(_name) _name ## _iter_t
+
+/** Expands to the type name used for the dcursor evaluator type
+ *
+ * @param[in] _name	Prefix we add to type-specific structures.
+ * @return <name>_eval_t
+ */
+#define FR_DCURSOR_EVAL(_name) _name ## _eval_t
+
+/** Expands to the type name used for the dcursor insert function type
+ *
+ * @param[in] _name	Prefix we add to type-specific structures.
+ * @return <name>_insert_t
+ */
+#define FR_DCURSOR_INSERT(_name) _name ## _insert_t
+
+/** Expands to the type name used for the dcursor remove function type
+ *
+ * @param[in] _name	Prefix we add to type-specific structures.
+ * @return <name>_remove_t
+ */
+#define FR_DCURSOR_REMOVE(_name) _name ## _remove_t
+
+/** Expands to the type name used for the dcursor copy function type
+ *
+ * @param[in] _name	Prefix we add to type-specific structures.
+ * @return <name>_copy_t
+ */
+#define FR_DCURSOR_COPY(_name) _name ## _copy_t
+
+/** Define type specific wrapper structs for dcursors
+ *
+ * @param[in] _name		Prefix we add to type-specific structures.
+ * @param[in] _list_name	The identifier used for type qualifying dlists.
+ *				Should be the same as that use for
+ *				- #FR_DLIST_HEAD
+ *				- #FR_DLIST_ENTRY
+ *				- #FR_DLIST_TYPES
+ *				- #FR_DLIST_FUNCS
+ *
+ * @note This macro should be used inside the header for the area of code
+ * which will use type specific functions.
+ */
+#define FR_DCURSOR_DLIST_TYPES(_name, _list_name, _element_type) \
+	typedef struct { fr_dcursor_t dcursor; } FR_DCURSOR(_name); \
+	typedef _element_type *(*FR_DCURSOR_ITER(_name))(FR_DLIST_HEAD(_list_name) *list, _element_type *to_eval, void *uctx); \
+	typedef bool (*FR_DCURSOR_EVAL(_name))(_element_type const *item, void const *uctx); \
+	typedef int (*FR_DCURSOR_INSERT(_name))(FR_DLIST_HEAD(_list_name) *list, FR_DLIST_ENTRY(_list_name) *to_insert, void *uctx); \
+	typedef int (*FR_DCURSOR_REMOVE(_name))(FR_DLIST_HEAD(_list_name) *list, FR_DLIST_ENTRY(_list_name) *to_delete, void *uctx); \
+	typedef void (*FR_DCURSOR_COPY(_name))(FR_DCURSOR(_name) *out, FR_DCURSOR(_name) const *in);
+
+/** Define type specific wrapper functions for dcursors
+ *
+ * @note This macro should be used inside the source file that will use
+ * the type specific functions.
+ *
+ * @param[in] _name		Prefix we add to type-specific dcursor functions.
+ * @param[in] _list_name	Prefix for type-specific dlist used by this dcursor.
+ * @param[in] _element_type	Type of structure that'll be inserted into the dlist and returned by the dcursor.
+ */
+#define FR_DCURSOR_FUNCS(_name, _list_name, _element_type) \
+DIAG_OFF(unused-function) \
+	static inline CC_HINT(nonnull) _element_type *_name ## _init(FR_DCURSOR(_name) *dcursor, \
+								     FR_DLIST_HEAD(_list_name) *head) \
+		{ return (_element_type *)_fr_dcursor_init(&dcursor->dcursor, &head->head, \
+							   NULL, NULL, NULL, NULL, NULL, NULL, \
+							   IS_CONST(FR_DLIST_HEAD(_list_name) *, head)); } \
+\
+	static inline CC_HINT(nonnull(1,2)) _element_type *_name ## _iter_init(FR_DCURSOR(_name) *dcursor, \
+									       FR_DLIST_HEAD(_list_name) *head, \
+									       FR_DCURSOR_ITER(_name) iter, \
+									       FR_DCURSOR_ITER(_name) peek, \
+									       void const *iter_uctx) \
+		{ return (_element_type *)_fr_dcursor_init(&dcursor->dcursor, &head->head, \
+							   (fr_dcursor_iter_t)iter, \
+							   (fr_dcursor_iter_t)peek, \
+							   iter_uctx, \
+							   NULL, NULL, NULL, \
+							   IS_CONST(FR_DLIST_HEAD(_list_name) *, head)); } \
+\
+	static inline CC_HINT(nonnull(1,2)) _element_type *_name ## _iter_mod_init(FR_DCURSOR(_name) *dcursor, \
+										   FR_DLIST_HEAD(_list_name) *head, \
+										   FR_DCURSOR_ITER(_name) iter, \
+										   FR_DCURSOR_ITER(_name) peek, \
+										   void const *iter_uctx, \
+										   FR_DCURSOR_INSERT(_name) insert, \
+										   FR_DCURSOR_REMOVE(_name) remove, \
+										   void const *mod_uctx) \
+		{ return (_element_type *)_fr_dcursor_init(&dcursor->dcursor, &head->head, \
+							   (fr_dcursor_iter_t)iter, \
+							   (fr_dcursor_iter_t)peek, \
+							   iter_uctx, \
+							   (fr_dcursor_insert_t)insert, \
+							   (fr_dcursor_remove_t)remove, \
+							   mod_uctx, \
+							   IS_CONST(FR_DLIST_HEAD(_list_name) *, head)); } \
+\
+	static inline CC_HINT(nonnull) _element_type *_name ## _current(FR_DCURSOR(_name) *dcursor) \
+		{ return (_element_type *)fr_dcursor_current(&dcursor->dcursor); } \
+\
+	static inline CC_HINT(nonnull) _element_type *_name ## _next_peek(FR_DCURSOR(_name) *dcursor) \
+		{ return (_element_type *)fr_dcursor_next_peek(&dcursor->dcursor); } \
+\
+	static inline CC_HINT(nonnull) _element_type *_name ## _list_next_peek(FR_DCURSOR(_name) *dcursor) \
+		{ return (_element_type *)fr_dcursor_list_next_peek(&dcursor->dcursor); } \
+\
+	static inline CC_HINT(nonnull) _element_type *_name ## _next(FR_DCURSOR(_name) *dcursor) \
+		{ return (_element_type *)fr_dcursor_next(&dcursor->dcursor); } \
+\
+	static inline CC_HINT(nonnull) _element_type *_name ## _head(FR_DCURSOR(_name) *dcursor) \
+		{ return (_element_type *)fr_dcursor_head(&dcursor->dcursor); } \
+\
+	static inline CC_HINT(nonnull) _element_type *_name ## _tail(FR_DCURSOR(_name) *dcursor) \
+		{ return (_element_type *)fr_dcursor_tail(&dcursor->dcursor); } \
+\
+	static inline CC_HINT(nonnull) _element_type *_name ## _set_current(FR_DCURSOR(_name) *dcursor, \
+									   _element_type *v) \
+		{ return (_element_type *)fr_dcursor_set_current(&dcursor->dcursor, v); } \
+\
+	static inline CC_HINT(nonnull) int _name ## _prepend(FR_DCURSOR(_name) *dcursor, \
+							     _element_type *v) \
+		{ return fr_dcursor_prepend(&dcursor->dcursor, v); } \
+\
+	static inline CC_HINT(nonnull) int _name ## _append(FR_DCURSOR(_name) *dcursor, \
+							    _element_type *v) \
+		{ return fr_dcursor_append(&dcursor->dcursor, v); } \
+\
+	static inline CC_HINT(nonnull) int _name ## _insert(FR_DCURSOR(_name) *dcursor, \
+							    _element_type *v) \
+		{ return fr_dcursor_insert(&dcursor->dcursor, v); } \
+\
+	static inline CC_HINT(nonnull) _element_type *_name ## _replace(FR_DCURSOR(_name) *dcursor, \
+									_element_type *v) \
+		{ return fr_dcursor_replace(&dcursor->dcursor, v); } \
+\
+	static inline CC_HINT(nonnull) _element_type *_name ## _remove(FR_DCURSOR(_name) *dcursor) \
+		{ return (_element_type *)fr_dcursor_remove(&dcursor->dcursor); } \
+\
+	static inline CC_HINT(nonnull) void _name ## _merge(FR_DCURSOR(_name) *cursor, \
+							    FR_DCURSOR(_name) *to_append) \
+		{ fr_dcursor_merge(&cursor->dcursor, &to_append->dcursor); } \
+\
+	static inline CC_HINT(nonnull) void _name ## _copy(FR_DCURSOR(_name) *out, \
+							   FR_DCURSOR(_name) const *in) \
+		{ fr_dcursor_copy(&out->dcursor, &in->dcursor); } \
+\
+	static inline CC_HINT(nonnull) void _name ## _free_list(FR_DCURSOR(_name) *dcursor) \
+		{ fr_dcursor_free_list(&dcursor->dcursor); } \
+\
+	static inline CC_HINT(nonnull) void _name ## _free_item(FR_DCURSOR(_name) *dcursor) \
+		{ fr_dcursor_free_item(&dcursor->dcursor); } \
+\
+	static inline CC_HINT(nonnull) _element_type *_name ## _intersect_head(FR_DCURSOR(_name) *a, \
+									       FR_DCURSOR(_name) *b) \
+		{ return (_element_type *)fr_dcursor_intersect_head(&a->dcursor, &b->dcursor); } \
+\
+	static inline CC_HINT(nonnull) _element_type *_name ## _intersect_next(FR_DCURSOR(_name) *a, \
+									       FR_DCURSOR(_name) *b) \
+		{ return (_element_type *)fr_dcursor_intersect_next(&a->dcursor, &b->dcursor); } \
+\
+	static inline CC_HINT(nonnull(1,2)) _element_type *_name ## _filter_head(FR_DCURSOR(_name) *dcursor, \
+										 FR_DCURSOR_EVAL(_name) eval, \
+										 void const *uctx) \
+		{ return (_element_type *)fr_dcursor_filter_head(&dcursor->dcursor, (fr_dcursor_eval_t)eval, uctx); } \
+\
+	static inline CC_HINT(nonnull(1,2)) _element_type *_name ## _filter_next(FR_DCURSOR(_name) *dcursor, \
+										 FR_DCURSOR_EVAL(_name) eval, \
+										 void const *uctx) \
+		{ return (_element_type *)fr_dcursor_filter_next(&dcursor->dcursor, (fr_dcursor_eval_t)eval, uctx); } \
+\
+	static inline CC_HINT(nonnull(1,2)) _element_type *_name ## _filter_current(FR_DCURSOR(_name) *dcursor, \
+										    FR_DCURSOR_EVAL(_name) eval, \
+										    void const *uctx) \
+		{ return (_element_type *)fr_dcursor_filter_current(&dcursor->dcursor, (fr_dcursor_eval_t)eval, uctx); }
+
+DIAG_ON(unused-function)
+
 #ifdef __cplusplus
 }
 #endif
