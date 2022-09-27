@@ -1,14 +1,11 @@
 AC_PREREQ([2.59])
 AC_INIT(rlm_sql_firebird.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_sql_firebird])
+FR_INIT_MODULE([rlm_sql_firebird])
 
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
 
 if test x$with_[]modname != xno; then
 	dnl extra argument: --with-firebird-include-dir

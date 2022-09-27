@@ -1,16 +1,7 @@
-#
-# Autoconf input file.
-#
-# Version:	$Id$
-#
-
 AC_PREREQ([2.59])
 AC_INIT(rlm_sqlippool.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_sqlippool])
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
+FR_INIT_MODULE([rlm_sqlippool], [support for IP pools in SQL])
 
 if test x$with_[]modname != xno; then
 

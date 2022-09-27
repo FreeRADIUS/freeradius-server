@@ -1,12 +1,8 @@
 AC_PREREQ([2.53])
 AC_INIT(rlm_json.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_json])
+FR_INIT_MODULE([rlm_json], [JSON support from json-c])
 AC_CONFIG_HEADER(config.h)
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without JSON support from json-c])]
-)
 
 if test x$with_[]modname_useropt != xno; then
 

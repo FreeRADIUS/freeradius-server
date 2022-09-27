@@ -1,15 +1,12 @@
 AC_PREREQ([2.59])
 AC_INIT(rlm_sql_mysql.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_sql_mysql])
+FR_INIT_MODULE([rlm_sql_mysql])
 AC_CONFIG_HEADER(config.h)
 
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
 
 if test x$with_[]modname != xno; then
 	dnl ############################################################

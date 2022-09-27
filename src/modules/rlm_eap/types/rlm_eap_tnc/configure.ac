@@ -1,9 +1,7 @@
+AC_PREREQ([2.53])
 AC_INIT(rlm_eap_tnc.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_eap_tnc])
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
+FR_INIT_MODULE([rlm_eap_tnc])
 
 if test x$with_[]modname != xno; then
 	dnl extra argument: --with-eap-tnc-include-dir=DIR

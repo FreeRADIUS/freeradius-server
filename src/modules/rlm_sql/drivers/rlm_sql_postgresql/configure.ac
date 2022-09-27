@@ -1,13 +1,11 @@
+AC_PREREQ([2.53])
 AC_INIT(rlm_sql_postgresql.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_sql_postgresql])
+FR_INIT_MODULE([rlm_sql_postgresql])
 
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
 
 if test x$with_[]modname != xno; then
 

@@ -1,16 +1,7 @@
-#
-# Autoconf input file.
-#
-# Version:	$Id$
-#
-
 AC_PREREQ([2.59])
 AC_INIT(rlm_sql_map.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_sql_map])
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
+FR_INIT_MODULE([rlm_sql_map])
 
 if test x$with_[]modname != xno; then
 

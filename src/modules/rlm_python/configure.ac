@@ -1,10 +1,7 @@
 AC_PREREQ([2.53])
 AC_INIT(rlm_python.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_python])
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
+FR_INIT_MODULE([rlm_python], [support for embedded Python2])
 
 if test x$with_[]modname != xno; then
 

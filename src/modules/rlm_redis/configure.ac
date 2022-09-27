@@ -1,14 +1,11 @@
 AC_PREREQ([2.61])
 AC_INIT(rlm_redis.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_redis])
+FR_INIT_MODULE([rlm_redis], [Redis database support])
 
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
 
 if test x$with_[]modname != xno; then
 

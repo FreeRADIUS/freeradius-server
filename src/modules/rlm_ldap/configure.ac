@@ -1,15 +1,12 @@
 AC_PREREQ([2.53])
 AC_INIT(rlm_ldap.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_ldap])
+FR_INIT_MODULE([rlm_ldap], [LDAP support])
 
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
 SASL=
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
 
 if test x$with_[]modname != xno; then
 

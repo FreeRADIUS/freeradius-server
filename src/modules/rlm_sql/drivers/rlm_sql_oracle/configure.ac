@@ -1,14 +1,12 @@
+AC_PREREQ([2.53])
 AC_INIT(rlm_sql_oracle.c)
 AC_REVISION($Revision: 1.10 $)
-AC_DEFUN(modname,[rlm_sql_oracle])
+FR_INIT_MODULE([rlm_sql_oracle])
 
 oracle_supported_versions="19 18 12 11 10 9"
 fail=
 mod_ldflags=
 mod_cflags=
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
 
 if test x$with_[]modname != xno; then
 

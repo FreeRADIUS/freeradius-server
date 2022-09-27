@@ -1,9 +1,6 @@
 AC_INIT(rlm_mschap.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_mschap])
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
+FR_INIT_MODULE([rlm_mschap], [MS-CHAP support])
 
 if test x$with_[]modname != xno; then
 

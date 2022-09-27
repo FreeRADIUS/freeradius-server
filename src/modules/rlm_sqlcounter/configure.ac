@@ -1,10 +1,7 @@
 AC_PREREQ([2.53])
 AC_INIT(rlm_sqlcounter.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_sqlcounter])
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
+FR_INIT_MODULE([rlm_sqlcounter])
 
 if test x$with_[]modname != xno; then
 

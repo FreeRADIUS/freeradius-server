@@ -1,13 +1,11 @@
+AC_PREREQ([2.53])
 AC_INIT(rlm_sql_mongo.c)
 AC_REVISION($Revision: 1.10 $)
-AC_DEFUN(modname,[rlm_sql_mongo])
+FR_INIT_MODULE([rlm_sql_mongo])
 
 fail=
 mongoc_ldflags=
 mongoc_cflags=
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
 
 if test x$with_[]modname != xno; then
 

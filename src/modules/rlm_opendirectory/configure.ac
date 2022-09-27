@@ -1,9 +1,6 @@
 AC_INIT(rlm_opendirectory.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_opendirectory])
-
-AC_ARG_WITH([]modname,
-[  --with-[]modname              build []modname. (default=yes)])
+FR_INIT_MODULE([rlm_opendirectory], [OpenDirectory support])
 
 if test x$with_[]modname != xno; then
 
