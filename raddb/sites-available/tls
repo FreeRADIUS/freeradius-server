@@ -677,8 +677,13 @@ home_server tls {
 		# TLS cipher suites.  The format is listed
 		# in "man 1 ciphers".
 		cipher_list = "DEFAULT"
-	}
 
+		#
+		#  Connection timeout for outgoing TLS connections.
+		#  Values are 1..30.
+		#
+		connect_timeout = 30
+	}
 }
 
 home_server_pool tls {

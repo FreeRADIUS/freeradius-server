@@ -950,14 +950,19 @@ int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request)
 static int try_connect(listen_socket_t *sock)
 {
 	int ret;
+	time_t now;
+
+	now = time(NULL);
+	if ((sock->opened + sock->connect_timeout) > now) {
+		tls_error_io_log(NULL, sock->ssn, 0, "Timeout in SSL_connect");
+		goto fail;
+	}
 
 	ret = SSL_connect(sock->ssn->ssl);
 	if (ret < 0) {
 		switch (SSL_get_error(sock->ssn->ssl, ret)) {
 		default:
 			break;
-
-
 
 		case SSL_ERROR_WANT_READ:
 		case SSL_ERROR_WANT_WRITE:
@@ -966,9 +971,10 @@ static int try_connect(listen_socket_t *sock)
 	}
 
 	if (ret <= 0) {
-		SSL_shutdown(sock->ssn->ssl);
-
 		tls_error_io_log(NULL, sock->ssn, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
+
+	fail:
+		SSL_shutdown(sock->ssn->ssl);
 		TALLOC_FREE(sock->ssn);
 
 		return -1;

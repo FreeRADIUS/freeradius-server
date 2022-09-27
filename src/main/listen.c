@@ -3162,6 +3162,8 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			return NULL;
 		}
 
+		sock->connect_timeout = home->connect_timeout;
+
 		this->recv = proxy_tls_recv;
 		this->proxy_send = proxy_tls_send;
 
