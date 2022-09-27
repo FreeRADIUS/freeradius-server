@@ -385,6 +385,8 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
  * @param[in] cursor		to store iterator position.
  * @param[in] request		The current #request_t.
  * @param[in] vpt		specifying the #fr_pair_t type or list to iterate over.
+ * @param[in] build		Callback to build missing pairs.
+ * @param[in] uctx		for building new pairs.
  * @return
  *	- First #fr_pair_t specified by the #tmpl_t.
  *	- NULL if no matching #fr_pair_t found, and NULL on error.
