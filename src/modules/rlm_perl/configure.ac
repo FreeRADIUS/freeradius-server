@@ -3,8 +3,6 @@ AC_INIT(rlm_perl.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_perl])
 
-m4_include([ax_with_prog.m4])
-
 AC_ARG_WITH([]modname,
 [  --with-[]modname              build []modname. (default=yes)])
 
