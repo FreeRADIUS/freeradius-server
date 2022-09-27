@@ -22,5 +22,7 @@ SUBMAKEFILES += $(wildcard ${top_srcdir}/src/modules/proto_*/all.mk)
 ifeq "$(MAKECMDGOALS)" "reconfig"
 src/modules/%/configure: src/modules/%/configure.ac
 	@echo AUTOCONF $(dir $@)
-	cd $(dir $@) && $(AUTOCONF) -I $(top_builddir) -I $(top_builddir)/m4 -I $(top_builddir)/$(dir $@)m4
+	@cd $(dir $@) && \
+		$(ACLOCAL) -I $(top_builddir) -I $(top_builddir)/m4 && \
+		$(AUTOCONF)
 endif

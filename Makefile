@@ -225,11 +225,13 @@ ifeq "$(AUTOCONF_EXISTS)" ""
 $(error You need to install autoconf to re-build the "configure" scripts)
 endif
 
-#  Configure files depend on "in" files, and on the top-level macro files
+#  Configure files depend on ".ac" files, and on the top-level macro files
 #  If there are headers, run auto-header, too.
 src/%configure: src/%configure.ac acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4/*m4) | src/freeradius-devel
 	@echo AUTOCONF $(dir $@)
-	cd $(dir $@) && $(AUTOCONF) -I $(top_builddir) -I $(top_builddir)/m4 -I $(top_builddir)/$(dir $@)m4
+	@cd $(dir $@) && \
+		$(ACLOCAL) -I $(top_builddir) -I $(top_builddir)/m4 && \
+		$(AUTOCONF)
 	@if grep AC_CONFIG_HEADERS $@ >/dev/null; then\
 		echo AUTOHEADER $@ \
 		cd $(dir $@) && $(AUTOHEADER); \
@@ -238,6 +240,7 @@ src/%configure: src/%configure.ac acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4
 #  "%configure" doesn't match "configure"
 configure: configure.ac $(wildcard ac*.m4) $(wildcard m4/*.m4)
 	@echo AUTOCONF $@
+	@$(ACLOCAL)
 	@$(AUTOCONF)
 
 src/include/autoconf.h.in: configure.ac
