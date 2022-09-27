@@ -2,6 +2,7 @@ SUBMAKEFILES := \
 	base_16_32_64_tests.mk \
 	dbuff_tests.mk \
 	dcursor_tests.mk \
+	dcursor_typed_tests.mk \
 	dlist_tests.mk \
 	edit_tests.mk \
 	heap_tests.mk \
