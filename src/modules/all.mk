@@ -23,6 +23,6 @@ ifeq "$(MAKECMDGOALS)" "reconfig"
 src/modules/%/configure: src/modules/%/configure.ac $(wildcard $(top_builddir)/m4/*.m4)
 	@echo AUTOCONF $(dir $@)
 	@cd $(dir $@) && \
-		$(ACLOCAL) -I $(top_builddir) -I $(top_builddir)/m4 && \
-		$(AUTOCONF)
+		$(ACLOCAL) --force -I $(top_builddir) -I $(top_builddir)/m4 && \
+		$(AUTOCONF) --force
 endif
