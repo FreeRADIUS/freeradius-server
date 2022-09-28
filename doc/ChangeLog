@@ -36,6 +36,7 @@ FreeRADIUS 3.2.1 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	* Create "TLS-Cert-*" for outbound Radsec, instead of TLS-Client-Cert-*
 	  Fixes #4698.  See sites-available/tls, and fix_cert_order.
 	* Minor updates and fixes to CI, Dockerfiles and packaging.
+	* Fix rlm_python3 build with python >= 3.10. Fixes #4441
 
 FreeRADIUS 3.2.0 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	Configuration changes
