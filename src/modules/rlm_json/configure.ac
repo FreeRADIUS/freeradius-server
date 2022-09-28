@@ -1,4 +1,4 @@
-AC_PREREQ([2.53])
+AC_PREREQ([2.68])
 AC_INIT(rlm_json.c)
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_json], [JSON support from json-c])

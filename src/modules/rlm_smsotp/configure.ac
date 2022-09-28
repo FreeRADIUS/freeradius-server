@@ -1,4 +1,4 @@
-AC_PREREQ([2.53])
+AC_PREREQ([2.68])
 AC_INIT(rlm_smsotp.c)
 AC_REVISION($Revision: 0.1 $)
 FR_INIT_MODULE([rlm_smsotp])

@@ -1,4 +1,4 @@
-AC_PREREQ([2.53])
+AC_PREREQ([2.68])
 AC_INIT(rlm_idn.c)
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_idn])

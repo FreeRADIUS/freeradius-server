@@ -1,4 +1,4 @@
-AC_PREREQ([2.53])
+AC_PREREQ([2.68])
 AC_INIT(rlm_sql_mongo.c)
 AC_REVISION($Revision: 1.10 $)
 FR_INIT_MODULE([rlm_sql_mongo])

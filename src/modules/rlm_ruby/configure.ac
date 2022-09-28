@@ -1,4 +1,4 @@
-AC_PREREQ([2.53])
+AC_PREREQ([2.68])
 AC_INIT(rlm_ruby.c)
 AC_REVISION($Revision: 1.9 $)
 FR_INIT_MODULE([rlm_ruby], [support for embedded Ruby functions])
