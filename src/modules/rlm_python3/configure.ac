@@ -3,6 +3,10 @@ AC_INIT(rlm_python3.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_python3])
 
+m4_include([ax_compare_version.m4])
+m4_include([runlog.m4])
+m4_include([python.m4])
+
 AC_ARG_WITH([]modname,
 [  --with-[]modname              build []modname. (default=yes)])
 
