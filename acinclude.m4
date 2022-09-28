@@ -37,13 +37,6 @@ AC_DEFUN([FR_CHECK_TYPE_INCLUDE],
   fi
 ])
 
-dnl #
-dnl #  And remember the directory in which we found the file.
-dnl #
-eval "$1=\"\$$1 $DIRS\""
-])
-
-
 dnl #######################################################################
 dnl #
 dnl #  Look for a library in a number of places.
