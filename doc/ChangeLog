@@ -3,6 +3,7 @@ FreeRADIUS 3.0.27 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	* Update dictionary.alcatel.sr
 
 	Bug fixes
+	* Fix rlm_python3 build with python >= 3.10. Fixes #4441
 
 FreeRADIUS 3.0.26 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	Feature improvements
