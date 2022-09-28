@@ -619,6 +619,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -694,6 +695,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -946,6 +948,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1083,7 +1094,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1236,6 +1247,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1262,7 +1274,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-rlm_rest              build rlm_rest. (default=yes)
+  --without-rlm_rest      build without rlm_rest
   --with-libcurl=PREFIX   look for the curl library in PREFIX/lib and headers
                           in PREFIX/include
   --with-jsonc-include-dir=DIR
@@ -1902,45 +1914,6 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-ac_config_headers="$ac_config_headers config.h"
-
-# LIBCURL_CHECK_CONFIG ([DEFAULT-ACTION], [MINIMUM-VERSION],
-#                       [ACTION-IF-YES], [ACTION-IF-NO])
-# ----------------------------------------------------------
-#      David Shaw <dshaw@jabberwocky.com>   May-09-2006
-#
-# Checks for libcurl.  DEFAULT-ACTION is the string yes or no to
-# specify whether to default to --with-libcurl or --without-libcurl.
-# If not supplied, DEFAULT-ACTION is yes.  MINIMUM-VERSION is the
-# minimum version of libcurl to accept.  Pass the version as a regular
-# version number like 7.10.1. If not supplied, any version is
-# accepted.  ACTION-IF-YES is a list of shell commands to run if
-# libcurl was successfully found and passed the various tests.
-# ACTION-IF-NO is a list of shell commands that are run otherwise.
-# Note that using --without-libcurl does run ACTION-IF-NO.
-#
-# This macro #defines HAVE_LIBCURL if a working libcurl setup is
-# found, and sets @LIBCURL@ and @LIBCURL_CPPFLAGS@ to the necessary
-# values.  Other useful defines are LIBCURL_FEATURE_xxx where xxx are
-# the various features supported by libcurl, and LIBCURL_PROTOCOL_yyy
-# where yyy are the various protocols supported by libcurl.  Both xxx
-# and yyy are capitalized.  See the list of AH_TEMPLATEs at the top of
-# the macro for the complete list of possible defines.  Shell
-# variables $libcurl_feature_xxx and $libcurl_protocol_yyy are also
-# defined to 'yes' for those features and protocols that were found.
-# Note that xxx and yyy keep the same capitalization as in the
-# curl-config list (e.g. it's "HTTP" and not "http").
-#
-# Users may override the detected values by doing something like:
-# LIBCURL="-lcurl" LIBCURL_CPPFLAGS="-I/usr/myinclude" ./configure
-#
-# For the sake of sanity, this macro assumes that any libcurl that is
-# found is after version 7.7.2, the first version that included the
-# curl-config script.  Note that it is very important for people
-# packaging binary versions of libcurl to include this script!
-# Without curl-config, we can only guess what protocols are available,
-# or use curl_version_info to figure it out at runtime.
-
 
 
 
@@ -1948,6 +1921,9 @@ ac_config_headers="$ac_config_headers config.h"
 if test "${with_rlm_rest+set}" = set; then :
   withval=$with_rlm_rest;
 fi
+
+
+ac_config_headers="$ac_config_headers config.h"
 
 
 if test x$with_rlm_rest != xno; then
@@ -3470,63 +3446,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-  for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file="${_prefix}/${1}"
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-  done
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=json/json.h
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
   for try in $_smart_include_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json/json.h in $try" >&5
 $as_echo_n "checking for json/json.h in $try... " >&6; }
@@ -3697,63 +3616,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-  for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file="${_prefix}/${1}"
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-  done
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=json-c/json.h
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
   for try in $_smart_include_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json-c/json.h in $try" >&5
 $as_echo_n "checking for json-c/json.h in $try... " >&6; }
@@ -3893,62 +3755,7 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 
 if test "x$smart_lib" = "x"; then
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=libjson-c${libltdl_cv_shlibext}
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=libjson-c.a
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+  for try in /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json_c_version in -ljson-c in $try" >&5
 $as_echo_n "checking for json_c_version in -ljson-c in $try... " >&6; }
     LIBS="-ljson-c $old_LIBS"
@@ -4069,62 +3876,7 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 
 if test "x$smart_lib" = "x"; then
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=libjson${libltdl_cv_shlibext}
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=libjson.a
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+  for try in /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for json_tokener_new in -ljson in $try" >&5
 $as_echo_n "checking for json_tokener_new in -ljson in $try... " >&6; }
     LIBS="-ljson $old_LIBS"
@@ -4225,11 +3977,7 @@ mod_cflags="$LIBCURL_CPPFLAGS $SMART_CPPFLAGS"
 
 
 
-
-  unset ac_cv_env_LIBS_set
-  unset ac_cv_env_LIBS_value
-
-  ac_config_files="$ac_config_files all.mk"
+ac_config_files="$ac_config_files all.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5503,6 +5251,5 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 
 

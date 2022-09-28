@@ -616,6 +616,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -689,6 +690,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -941,6 +943,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1078,7 +1089,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1231,6 +1242,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1257,7 +1269,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-rlm_perl              build rlm_perl. (default=yes)
+  --without-rlm_perl      build without support for embedded Perl functions
   --with-perl=[PATH]    absolute path to perl executable
 
 Some influential environment variables:
@@ -1826,50 +1838,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-# ===========================================================================
-#       http://www.gnu.org/software/autoconf-archive/ax_with_prog.html
-# ===========================================================================
-#
-# SYNOPSIS
-#
-#   AX_WITH_PROG([VARIABLE],[program],[VALUE-IF-NOT-FOUND],[PATH])
-#
-# DESCRIPTION
-#
-#   Locates an installed program binary, placing the result in the precious
-#   variable VARIABLE. Accepts a present VARIABLE, then --with-program, and
-#   failing that searches for program in the given path (which defaults to
-#   the system path). If program is found, VARIABLE is set to the full path
-#   of the binary; if it is not found VARIABLE is set to VALUE-IF-NOT-FOUND
-#   if provided, unchanged otherwise.
-#
-#   A typical example could be the following one:
-#
-#     AX_WITH_PROG(PERL,perl)
-#
-#   NOTE: This macro is based upon the original AX_WITH_PYTHON macro from
-#   Dustin J. Mitchell <dustin@cs.uchicago.edu>.
-#
-# LICENSE
-#
-#   Copyright (c) 2008 Francesco Salvestrini <salvestrini@users.sourceforge.net>
-#   Copyright (c) 2008 Dustin J. Mitchell <dustin@cs.uchicago.edu>
-#
-#   Copying and distribution of this file, with or without modification, are
-#   permitted in any medium without royalty provided the copyright notice
-#   and this notice are preserved. This file is offered as-is, without any
-#   warranty.
-
-#serial 16
-
-
-
 
 
 # Check whether --with-rlm_perl was given.
 if test "${with_rlm_perl+set}" = set; then :
   withval=$with_rlm_perl;
 fi
+
 
 
 if test x$with_rlm_perl != xno; then
@@ -3098,63 +3073,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-  for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file="${_prefix}/${1}"
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-  done
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=EXTERN.h
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
   for try in $_smart_include_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EXTERN.h in $try" >&5
 $as_echo_n "checking for EXTERN.h in $try... " >&6; }
@@ -3329,63 +3247,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-  for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file="${_prefix}/${1}"
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-  done
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=perl.h
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
   for try in $_smart_include_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for perl.h in $try" >&5
 $as_echo_n "checking for perl.h in $try... " >&6; }
@@ -3527,11 +3388,7 @@ ac_config_headers="$ac_config_headers config.h"
 
 
 
-
-  unset ac_cv_env_LIBS_set
-  unset ac_cv_env_LIBS_value
-
-  ac_config_files="$ac_config_files all.mk"
+ac_config_files="$ac_config_files all.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4804,5 +4661,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 

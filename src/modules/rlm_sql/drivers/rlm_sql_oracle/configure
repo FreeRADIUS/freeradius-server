@@ -614,6 +614,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -687,6 +688,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -939,6 +941,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1076,7 +1087,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1229,6 +1240,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1255,7 +1267,8 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-rlm_sql_oracle              build rlm_sql_oracle. (default=yes)
+  --without-rlm_sql_oracle
+                          build without rlm_sql_oracle
   --with-oracle-include-dir=DIR
                           Directory where the oracle includes may be found
   --with-oracle-lib-dir=DIR
@@ -1789,10 +1802,6 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-oracle_supported_versions="19 18 12 11 10 9"
-fail=
-mod_ldflags=
-mod_cflags=
 
 
 # Check whether --with-rlm_sql_oracle was given.
@@ -1800,6 +1809,12 @@ if test "${with_rlm_sql_oracle+set}" = set; then :
   withval=$with_rlm_sql_oracle;
 fi
 
+
+
+oracle_supported_versions="19 18 12 11 10 9"
+fail=
+mod_ldflags=
+mod_cflags=
 
 if test x$with_rlm_sql_oracle != xno; then
 
@@ -2778,63 +2793,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-  for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file="${_prefix}/${1}"
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-  done
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=oci.h
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
   for try in $_smart_include_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for oci.h in $try" >&5
 $as_echo_n "checking for oci.h in $try... " >&6; }
@@ -2990,11 +2948,7 @@ mod_cflags="$SMART_CPPFLAGS"
 
 
 
-
-  unset ac_cv_env_LIBS_set
-  unset ac_cv_env_LIBS_value
-
-  ac_config_files="$ac_config_files all.mk"
+ac_config_files="$ac_config_files all.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4150,5 +4104,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 

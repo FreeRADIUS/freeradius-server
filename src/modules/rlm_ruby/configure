@@ -626,6 +626,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -699,6 +700,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -951,6 +953,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1088,7 +1099,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1241,6 +1252,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1267,7 +1279,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-rlm_ruby              build rlm_ruby. (default=yes)
+  --without-rlm_ruby      build without support for embedded Ruby functions
   --with-ruby=[PATH]    absolute path to ruby executable
 
 Some influential environment variables:
@@ -1836,232 +1848,6 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-# ===========================================================================
-#       http://www.gnu.org/software/autoconf-archive/ax_with_prog.html
-# ===========================================================================
-#
-# SYNOPSIS
-#
-#   AX_WITH_PROG([VARIABLE],[program],[VALUE-IF-NOT-FOUND],[PATH])
-#
-# DESCRIPTION
-#
-#   Locates an installed program binary, placing the result in the precious
-#   variable VARIABLE. Accepts a present VARIABLE, then --with-program, and
-#   failing that searches for program in the given path (which defaults to
-#   the system path). If program is found, VARIABLE is set to the full path
-#   of the binary; if it is not found VARIABLE is set to VALUE-IF-NOT-FOUND
-#   if provided, unchanged otherwise.
-#
-#   A typical example could be the following one:
-#
-#     AX_WITH_PROG(PERL,perl)
-#
-#   NOTE: This macro is based upon the original AX_WITH_PYTHON macro from
-#   Dustin J. Mitchell <dustin@cs.uchicago.edu>.
-#
-# LICENSE
-#
-#   Copyright (c) 2008 Francesco Salvestrini <salvestrini@users.sourceforge.net>
-#   Copyright (c) 2008 Dustin J. Mitchell <dustin@cs.uchicago.edu>
-#
-#   Copying and distribution of this file, with or without modification, are
-#   permitted in any medium without royalty provided the copyright notice
-#   and this notice are preserved. This file is offered as-is, without any
-#   warranty.
-
-#serial 16
-
-
-
-
-
-
-# ===========================================================================
-#    http://www.gnu.org/software/autoconf-archive/ax_compare_version.html
-# ===========================================================================
-#
-# SYNOPSIS
-#
-#   AX_COMPARE_VERSION(VERSION_A, OP, VERSION_B, [ACTION-IF-TRUE], [ACTION-IF-FALSE])
-#
-# DESCRIPTION
-#
-#   This macro compares two version strings. Due to the various number of
-#   minor-version numbers that can exist, and the fact that string
-#   comparisons are not compatible with numeric comparisons, this is not
-#   necessarily trivial to do in a autoconf script. This macro makes doing
-#   these comparisons easy.
-#
-#   The six basic comparisons are available, as well as checking equality
-#   limited to a certain number of minor-version levels.
-#
-#   The operator OP determines what type of comparison to do, and can be one
-#   of:
-#
-#    eq  - equal (test A == B)
-#    ne  - not equal (test A != B)
-#    le  - less than or equal (test A <= B)
-#    ge  - greater than or equal (test A >= B)
-#    lt  - less than (test A < B)
-#    gt  - greater than (test A > B)
-#
-#   Additionally, the eq and ne operator can have a number after it to limit
-#   the test to that number of minor versions.
-#
-#    eq0 - equal up to the length of the shorter version
-#    ne0 - not equal up to the length of the shorter version
-#    eqN - equal up to N sub-version levels
-#    neN - not equal up to N sub-version levels
-#
-#   When the condition is true, shell commands ACTION-IF-TRUE are run,
-#   otherwise shell commands ACTION-IF-FALSE are run. The environment
-#   variable 'ax_compare_version' is always set to either 'true' or 'false'
-#   as well.
-#
-#   Examples:
-#
-#     AX_COMPARE_VERSION([3.15.7],[lt],[3.15.8])
-#     AX_COMPARE_VERSION([3.15],[lt],[3.15.8])
-#
-#   would both be true.
-#
-#     AX_COMPARE_VERSION([3.15.7],[eq],[3.15.8])
-#     AX_COMPARE_VERSION([3.15],[gt],[3.15.8])
-#
-#   would both be false.
-#
-#     AX_COMPARE_VERSION([3.15.7],[eq2],[3.15.8])
-#
-#   would be true because it is only comparing two minor versions.
-#
-#     AX_COMPARE_VERSION([3.15.7],[eq0],[3.15])
-#
-#   would be true because it is only comparing the lesser number of minor
-#   versions of the two values.
-#
-#   Note: The characters that separate the version numbers do not matter. An
-#   empty string is the same as version 0. OP is evaluated by autoconf, not
-#   configure, so must be a string, not a variable.
-#
-#   The author would like to acknowledge Guido Draheim whose advice about
-#   the m4_case and m4_ifvaln functions make this macro only include the
-#   portions necessary to perform the specific comparison specified by the
-#   OP argument in the final configure script.
-#
-# LICENSE
-#
-#   Copyright (c) 2008 Tim Toolan <toolan@ele.uri.edu>
-#
-#   Copying and distribution of this file, with or without modification, are
-#   permitted in any medium without royalty provided the copyright notice
-#   and this notice are preserved. This file is offered as-is, without any
-#   warranty.
-
-#serial 11
-
-
-# ===========================================================================
-#   http://www.gnu.org/software/autoconf-archive/ax_prog_ruby_version.html
-# ===========================================================================
-#
-# SYNOPSIS
-#
-#   AX_PROG_RUBY_VERSION([VERSION],[ACTION-IF-TRUE],[ACTION-IF-FALSE])
-#
-# DESCRIPTION
-#
-#   Makes sure that ruby supports the version indicated. If true the shell
-#   commands in ACTION-IF-TRUE are executed. If not the shell commands in
-#   ACTION-IF-FALSE are run. Note if $RUBY is not set (for example by
-#   running AC_CHECK_PROG or AC_PATH_PROG) the macro will fail.
-#
-#   Example:
-#
-#     AC_PATH_PROG([RUBY],[ruby])
-#     AC_PROG_RUBY_VERSION([1.8.0],[ ... ],[ ... ])
-#
-#   This will check to make sure that the ruby you have supports at least
-#   version 1.6.0.
-#
-#   NOTE: This macro uses the $RUBY variable to perform the check.
-#   AX_WITH_PROG([RUBY],[ruby],[VALUE-IF-NOT-FOUND],[PATH]) can be used to
-#   set that variable prior to running this macro. The $RUBY_VERSION
-#   variable will be valorized with the detected version.
-#
-# LICENSE
-#
-#   Copyright (c) 2009 Francesco Salvestrini <salvestrini@users.sourceforge.net>
-#
-#   Copying and distribution of this file, with or without modification, are
-#   permitted in any medium without royalty provided the copyright notice
-#   and this notice are preserved. This file is offered as-is, without any
-#   warranty.
-
-#serial 11
-
-
-
-# ===========================================================================
-#             http://autoconf-archive.cryp.to/ax_ruby_devel.html
-# ===========================================================================
-#
-# SYNOPSIS
-#
-#   AX_RUBY_DEVEL([version])
-#
-# DESCRIPTION
-#
-#   This macro checks for Ruby and tries to get the include path to
-#   'ruby.h'. It provides the $(RUBY_CFLAGS) and $(RUBY_LDFLAGS) output
-#   variables. It also exports $(RUBY_EXTRA_LIBS) for embedding Ruby in your
-#   code.
-#
-#   You can search for some particular version of Ruby by passing a
-#   parameter to this macro, for example "1.8.6".
-#
-# LICENSE
-#
-#   Copyright (c) 2008 Rafal Rzepecki <divided.mind@gmail.com>
-#   Copyright (c) 2008 Sebastian Huber <sebastian-huber@web.de>
-#   Copyright (c) 2008 Alan W. Irwin <irwin@beluga.phys.uvic.ca>
-#   Copyright (c) 2008 Rafael Laboissiere <rafael@laboissiere.net>
-#   Copyright (c) 2008 Andrew Collier <colliera@ukzn.ac.za>
-#   Copyright (c) 2008 Matteo Settenvini <matteo@member.fsf.org>
-#   Copyright (c) 2008 Horst Knorr <hk_classes@knoda.org>
-#
-#   This program is free software: you can redistribute it and/or modify it
-#   under the terms of the GNU General Public License as published by the
-#   Free Software Foundation, either version 3 of the License, or (at your
-#   option) any later version.
-#
-#   This program is distributed in the hope that it will be useful, but
-#   WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-#   Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License along
-#   with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-#   As a special exception, the respective Autoconf Macro's copyright owner
-#   gives unlimited permission to copy, distribute and modify the configure
-#   scripts that are the output of Autoconf when processing the Macro. You
-#   need not follow the terms of the GNU General Public License when using
-#   or distributing such scripts, even though portions of the text of the
-#   Macro appear in them. The GNU General Public License (GPL) does govern
-#   all other use of the material that constitutes the Autoconf Macro.
-#
-#   This special exception to the GPL applies to versions of the Autoconf
-#   Macro released by the Autoconf Archive. When you make and distribute a
-#   modified version of the Autoconf Macro, you may extend this special
-#   exception to the GPL to apply to your modified version as well.
-
-
-
-
-targetname=rlm_ruby
-mod_cflags=
-mod_ldflags=
 
 
 # Check whether --with-rlm_ruby was given.
@@ -2069,6 +1855,13 @@ if test "${with_rlm_ruby+set}" = set; then :
   withval=$with_rlm_ruby;
 fi
 
+
+
+
+
+targetname=rlm_ruby
+mod_cflags=
+mod_ldflags=
 
 if test x$with_rlm_ruby != xno; then
 	ac_ext=c
@@ -3632,11 +3425,7 @@ fi
 
 
 
-
-  unset ac_cv_env_LIBS_set
-  unset ac_cv_env_LIBS_value
-
-  ac_config_files="$ac_config_files all.mk"
+ac_config_files="$ac_config_files all.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4793,5 +4582,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 
