@@ -7,18 +7,18 @@
  *	type specific dcursors
  */
 
-FR_DLIST_TYPES(test_list);
+FR_DLIST_TYPES(test_list)
 
 typedef struct {
 	char const			*name;
 	FR_DLIST_ENTRY(test_list)	entry;
 } test_item_t;
 
-FR_DLIST_FUNCS(test_list, test_item_t, entry);
+FR_DLIST_FUNCS(test_list, test_item_t, entry)
 
-FR_DCURSOR_DLIST_TYPES(test_dcursor, test_list, test_item_t);
+FR_DCURSOR_DLIST_TYPES(test_dcursor, test_list, test_item_t)
 
-FR_DCURSOR_FUNCS(test_dcursor, test_list, test_item_t);
+FR_DCURSOR_FUNCS(test_dcursor, test_list, test_item_t)
 
 static test_item_t *test_iter(FR_DLIST_HEAD(test_list) *list, test_item_t *current, UNUSED void *uctx)
 {
