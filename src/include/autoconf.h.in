@@ -369,6 +369,9 @@
 /* Define to 1 if you have the <resource.h> header file. */
 #undef HAVE_RESOURCE_H
 
+/* Define to 1 if you have the <sanitizer/lsan_interface.h> header file. */
+#undef HAVE_SANITIZER_LSAN_INTERFACE_H
+
 /* Define to 1 if you have the <semaphore.h> header file. */
 #undef HAVE_SEMAPHORE_H
 
