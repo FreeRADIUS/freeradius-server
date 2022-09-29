@@ -256,14 +256,14 @@ distclean: clean
 #  these rules enabled by default, then they're run too often.
 #
 ifeq "$(MAKECMDGOALS)" "reconfig"
-  CONFIGURE_FILES=1
+  DO_RECONFIGURE=1
 endif
 
 ifneq "$(filter %configure,$(MAKECMDGOALS))" ""
-  CONFIGURE_FILES=1
+  DO_RECONFIGURE=1
 endif
 
-ifeq "$(CONFIGURE_FILES)" "1"
+ifeq "$(DO_RECONFIGURE)" "1"
 
   CONFIGURE_AC_FILES := $(shell find . -name configure.ac -print)
   CONFIGURE_FILES	   := $(patsubst %.ac,%,$(CONFIGURE_AC_FILES))
@@ -322,12 +322,15 @@ ifneq "$(wildcard config.log)" ""
 #  change to a configure file will have it try to re-run the local
 #  configure script, which doesn't always work.
 #
+ifeq "$(DO_RECONFIGURE)" "1"
+src/%all.mk: src/%all.mk.in src/%configure
+	@echo CONFIGURE $(dir $@)
+	@rm -f ./config.cache $(dir $<)/config.cache
+	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS)
+else
 src/%all.mk: src/%all.mk.in src/%configure
 	@echo WARNING: $@ is out of date.  Please re-run 'configure'
-
-#	@echo CONFIGURE $(dir $@)
-#	@rm -f ./config.cache $(dir $<)/config.cache
-#	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS)
+endif
 
 endif
 
