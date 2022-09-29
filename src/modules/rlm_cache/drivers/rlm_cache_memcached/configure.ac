@@ -1,4 +1,4 @@
-AC_PREREQ([2.53])
+AC_PREREQ([2.69])
 AC_INIT(rlm_cache_memcached.c)
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_cache_memcached])

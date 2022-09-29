@@ -1,4 +1,4 @@
-AC_PREREQ([2.59])
+AC_PREREQ([2.69])
 AC_INIT(rlm_sql_firebird.c)
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_sql_firebird])

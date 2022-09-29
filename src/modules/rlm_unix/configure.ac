@@ -1,4 +1,4 @@
-AC_PREREQ([2.53])
+AC_PREREQ([2.69])
 AC_INIT(rlm_unix.c)
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_unix])
