@@ -334,6 +334,11 @@ endif
 
 endif
 
+.PHONY: force-reconfig
+force-reconfig:
+	@find . -name configure.ac | xargs touch
+	@$(MAKE) reconfig
+
 .PHONY: check-includes
 check-includes:
 	scripts/min-includes.pl `find . -name "*.c" -print`
