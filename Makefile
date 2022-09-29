@@ -284,23 +284,23 @@ ifeq "$(DO_RECONFIGURE)" "1"
 src/%configure: src/%configure.ac $(wildcard $(dir $@)m4/*m4) | src/freeradius-devel
 	@echo AUTOCONF $(dir $@)
 	@cd $(dir $@) && \
-		$(ACLOCAL) -I $(top_builddir)/m4 && \
-		$(AUTOCONF)
+		$(ACLOCAL) --force -I $(top_builddir)/m4 && \
+		$(AUTOCONF) --force
 	@if grep AC_CONFIG_HEADERS $@ >/dev/null; then\
 		echo AUTOHEADER $@ \
-		cd $(dir $@) && $(AUTOHEADER); \
+		cd $(dir $@) && $(AUTOHEADER) --force; \
 	 fi
 	@touch $@
 
 # "%configure" doesn't match "configure"
 configure: configure.ac $(wildcard m4/*.m4)
 	@echo AUTOCONF $@
-	@$(ACLOCAL) -I $(top_builddir)/m4
-	@$(AUTOCONF)
+	@$(ACLOCAL) --force -I $(top_builddir)/m4
+	@$(AUTOCONF) --force
 
 src/include/autoconf.h.in: configure.ac
 	@echo AUTOHEADER $@
-	@$(AUTOHEADER)
+	@$(AUTOHEADER) --force
 
 reconfig: $(CONFIGURE_FILES) src/include/autoconf.h.in
 
@@ -326,7 +326,7 @@ ifeq "$(DO_RECONFIGURE)" "1"
 src/%all.mk: src/%all.mk.in src/%configure
 	@echo CONFIGURE $(dir $@)
 	@rm -f ./config.cache $(dir $<)/config.cache
-	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS)
+	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS) && touch $(notdir $@)
 else
 src/%all.mk: src/%all.mk.in src/%configure
 	@echo WARNING: $@ is out of date.  Please re-run 'configure'
