@@ -4,8 +4,6 @@ AC_CONFIG_SRCDIR([base.c])
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[libfreeradius-kafka])
 
-m4_include([m4/ax_smart_try.m4])
-
 AC_ARG_WITH([]modname,
 [AS_HELP_STRING([--without-[]modname],[build without rdkafka support])]
 )

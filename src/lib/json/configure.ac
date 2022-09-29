@@ -6,8 +6,6 @@ AC_DEFUN(modname,[libfreeradius-json])
 AC_DEFUN(modname_useropt,[m4_bpatsubst([]modname,[[-+.]],[_])])
 AC_CONFIG_HEADERS([config.h])
 
-m4_include([m4/ax_smart_try.m4])
-
 AC_ARG_WITH([]modname,
 [AS_HELP_STRING([--without-[]modname],[build without JSON support from json-c])]
 )

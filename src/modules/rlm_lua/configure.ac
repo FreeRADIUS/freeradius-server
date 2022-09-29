@@ -2,7 +2,6 @@ AC_PREREQ([2.53])
 AC_INIT(rlm_lua.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_lua])
-m4_include([m4/ax_lua.m4])
 
 AC_ARG_WITH([]modname,
 [AS_HELP_STRING([--without-[]modname],[build without module])]
