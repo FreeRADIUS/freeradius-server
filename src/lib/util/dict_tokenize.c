@@ -372,7 +372,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			flags->array = 1;
 
 		} else if (strcmp(key, "counter") == 0) {
-			flags->is_counter = 1;
+			flags->counter = 1;
 
 		} else if (strcmp(key, "virtual") == 0) {
 			flags->virtual = 1;

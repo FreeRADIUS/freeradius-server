@@ -45,7 +45,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	uint32_t shift_is_root, shift_internal;
 	uint32_t shift_array, shift_has_value;
 	uint32_t shift_virtual, shift_subtype, shift_extra;
-	uint32_t shift_is_counter;
+	uint32_t shift_counter;
 	fr_dict_attr_t const *v;
 
 	/*
@@ -62,7 +62,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	SET_FLAG(has_value);
 	SET_FLAG(virtual);
 	SET_FLAG(extra);
-	SET_FLAG(is_counter);
+	SET_FLAG(counter);
 	SET_FLAG(subtype);
 
 #define FORBID_OTHER_FLAGS(_flag) do { if (all_flags & ~shift_ ## _flag) { fr_strerror_printf("The '" STRINGIFY(_flag) "' flag cannot be used with any other flag"); return false; } } while (0)
@@ -493,9 +493,9 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	For other data types, we don't know how to
 	 *	automatically add two counters.
 	 */
-	if (flags->is_counter) {
+	if (flags->counter) {
 		if ((type == FR_TYPE_TIME_DELTA) || (fr_type_is_integer(type) && !fr_type_is_signed(type))) {
-			ALLOW_FLAG(is_counter);
+			ALLOW_FLAG(counter);
 		} else {
 			fr_strerror_printf("The 'counter' flag cannot be used with '%s'", fr_type_to_str(type));
 			return false;
