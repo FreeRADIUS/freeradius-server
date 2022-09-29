@@ -1,20 +1,3 @@
-dnl Checks to see if this is SUNPro we're building with
-dnl Usage:
-dnl AC_PROG_CC_SUNPRO
-AC_DEFUN([AC_PROG_CC_SUNPRO],
-[AC_CACHE_CHECK(whether we are using SUNPro C, ac_cv_prog_suncc,
-[dnl The semicolon is to pacify NeXT's syntax-checking cpp.
-cat > conftest.c <<EOF
-#ifdef __SUNPRO_C
-yes;
-#endif
-EOF
-if AC_TRY_COMMAND(${CC-cc} -E conftest.c) | egrep yes >/dev/null 2>&1; then
-ac_cv_prog_suncc=yes
-else
-ac_cv_prog_suncc=no
-fi])])
-
 AC_DEFUN([VL_LIB_READLINE], [
 AC_CACHE_CHECK([for a readline compatible library],
                vl_cv_lib_readline, [
@@ -63,5 +46,3 @@ LIBREADLINE_PREFIX=$(brew --prefix readline 2>/dev/null)
 AC_SUBST(LIBREADLINE)
 AC_SUBST(LIBREADLINE_PREFIX)
 ])dnl
-
-AC_INCLUDE(aclocal.m4)
