@@ -3,7 +3,7 @@ AC_INIT
 AC_CONFIG_SRCDIR([redis.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([libfreeradius-redis], [redis support])
-AC_DEFUN(modname_useropt,[m4_bpatsubst([]modname,[[-+.]],[_])])
+AC_DEFUN([modname_useropt],[m4_bpatsubst([]modname,[[-+.]],[_])])
 
 fail=
 SMART_LIBS=

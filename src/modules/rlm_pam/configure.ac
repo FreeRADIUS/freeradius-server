@@ -2,7 +2,7 @@ AC_PREREQ([2.69])
 AC_INIT(rlm_pam.c)
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_pam])
-AC_DEFUN(modname_useropt,[m4_bpatsubst([]modname,[[-+.]],[_])])
+AC_DEFUN([modname_useropt],[m4_bpatsubst([]modname,[[-+.]],[_])])
 
 if test x$with_[]modname != xno; then
 
