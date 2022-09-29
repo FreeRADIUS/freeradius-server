@@ -236,10 +236,11 @@ endif
 distclean: clean
 	@-find src/modules -regex .\*/config[.][^.]*\$$ -delete
 	@-find src/modules -name autom4te.cache -exec rm -rf '{}' \;
+	@-find src/modules -name aclocal.m4 -exec rm -rf '{}' \;
 	@rm -rf config.cache config.log config.status libtool \
 		src/include/radpaths.h src/include/stamp-h \
 		libltdl/config.log libltdl/config.status \
-		libltdl/libtool autom4te.cache build
+		libltdl/libtool autom4te.cache build aclocal.m4
 	@-find . ! -name configure.ac -name \*.in -print | \
 		sed 's/\.in$$//' | \
 		while read file; do rm -f $$file; done
@@ -280,7 +281,7 @@ ifeq "$(CONFIGURE_FILES)" "1"
 
 # Configure files depend on "in" files, and on the top-level macro files
 # If there are headers, run auto-header, too.
-src/%configure: src/%configure.ac acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4/*m4) | src/freeradius-devel
+src/%configure: src/%configure.ac $(wildcard $(dir $@)m4/*m4) | src/freeradius-devel
 	@echo AUTOCONF $(dir $@)
 	@cd $(dir $@) && \
 		$(ACLOCAL) -I $(top_builddir)/m4 && \
@@ -292,7 +293,7 @@ src/%configure: src/%configure.ac acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4
 	@touch $@
 
 # "%configure" doesn't match "configure"
-configure: configure.ac $(wildcard ac*.m4) $(wildcard m4/*.m4)
+configure: configure.ac $(wildcard m4/*.m4)
 	@echo AUTOCONF $@
 	@$(ACLOCAL) -I $(top_builddir)/m4
 	@$(AUTOCONF)
