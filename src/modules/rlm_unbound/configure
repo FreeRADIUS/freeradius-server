@@ -614,6 +614,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -686,6 +687,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -938,6 +940,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1075,7 +1086,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1228,6 +1239,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1254,8 +1266,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --without-rlm_unbound   build without module
-
+  --without-rlm_unbound   build without rlm_unbound
   --with-rlm-unbound-lib-dir=DIR       directory for libunbound library files
   --with-rlm-unbound-include-dir=DIR   directory for libunbound include files
 
@@ -1787,10 +1798,12 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_unbound was given.
 if test "${with_rlm_unbound+set}" = set; then :
   withval=$with_rlm_unbound;
 fi
+
 
 
 if test x$with_rlm_unbound != xno; then
@@ -2651,11 +2664,11 @@ ub_ctx_create_ub_event()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-lunbound"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lunbound"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -2672,7 +2685,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ub_ctx_create_ub_event in -lunbound" >&5
 $as_echo_n "checking for ub_ctx_create_ub_event in -lunbound... " >&6; }
 LIBS="-lunbound $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char ub_ctx_create_ub_event();
 int
@@ -2685,8 +2698,8 @@ ub_ctx_create_ub_event()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lunbound"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lunbound"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -2772,11 +2785,11 @@ ub_ctx_create_ub_event()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-lunbound"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lunbound"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -2828,26 +2841,32 @@ $as_echo_n "checking for unbound.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <unbound.h>
+
+		                        #include <unbound.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -2864,26 +2883,32 @@ $as_echo_n "checking for ${_prefix}/unbound.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <unbound.h>
+
+		                        #include <unbound.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -2898,26 +2923,32 @@ $as_echo_n "checking for unbound.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <unbound.h>
+
+		                        #include <unbound.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include=" "
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -2990,26 +3021,32 @@ $as_echo_n "checking for unbound.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <unbound.h>
+
+		                        #include <unbound.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3059,26 +3096,32 @@ $as_echo_n "checking for unbound-event.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <unbound-event.h>
+
+		                        #include <unbound-event.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3095,26 +3138,32 @@ $as_echo_n "checking for ${_prefix}/unbound-event.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <unbound-event.h>
+
+		                        #include <unbound-event.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3129,26 +3178,32 @@ $as_echo_n "checking for unbound-event.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <unbound-event.h>
+
+		                        #include <unbound-event.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include=" "
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3221,26 +3276,32 @@ $as_echo_n "checking for unbound-event.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <unbound-event.h>
+
+		                        #include <unbound-event.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3288,10 +3349,6 @@ mod_cflags="${SMART_CFLAGS}"
 ac_config_headers="$ac_config_headers config.h"
 
 
-
-
-unset ac_cv_env_LIBS_set
-unset ac_cv_env_LIBS_value
 
 ac_config_files="$ac_config_files all.mk"
 
@@ -4566,5 +4623,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 

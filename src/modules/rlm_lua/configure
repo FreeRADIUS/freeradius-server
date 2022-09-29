@@ -656,6 +656,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -731,6 +732,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -983,6 +985,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1120,7 +1131,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1273,6 +1284,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1299,8 +1311,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --without-rlm_lua       build without module
-
+  --without-rlm_lua       build without lua support
   --with-lua-include-dir=DIR
                           Directory where the lua includes may be found
   --with-lua-lib-dir=DIR  Directory where the lua libraries may be found
@@ -2031,237 +2042,6 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-# ===========================================================================
-#                               ax_lua.m4
-# ===========================================================================
-#
-# SYNOPSIS
-#
-#   AX_PROG_LUA[([MINIMUM-VERSION], [TOO-BIG-VERSION],
-#                [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])]
-#   AX_LUA_HEADERS[([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])]
-#   AX_LUA_LIBS[([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])]
-#   AX_LUA_READLINE[([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])]
-#
-# DESCRIPTION
-#
-#   Detect a Lua interpreter, optionally specifying a minimum and maximum
-#   version number. Set up important Lua paths, such as the directories in
-#   which to install scripts and modules (shared libraries).
-#
-#   Also detect Lua headers and libraries. The Lua version contained in the
-#   header is checked to match the Lua interpreter version exactly. When
-#   searching for Lua libraries, the version number is used as a suffix. This
-#   is done with the goal of supporting multiple Lua installs (5.1 and 5.2
-#   side-by-side).
-#
-#
-#   *** A note on compatibility with previous versions: This file has been
-#   mostly rewritten for serial 18. Most developers should be able to use
-#   these macros without needing to modify configure.ac. Care has been taken
-#   to preserve each macro's behaviour, but there are some differences:
-#
-#   1) AX_WITH_LUA is deprecated; it now expands to the exact same thing as
-#   AX_PROG_LUA with no arguments.
-#
-#   2) AX_LUA_HEADERS now checks that the version number defined in lua.h
-#   matches the interpreter version. AX_LUA_HEADERS_VERSION is therefore
-#   unnecessary, so it is deprecated and does not expand to anything.
-#
-#   3) The configure flag --with-lua-suffix no longer exists; the user
-#   should instead specify the LUA precious variable on the command line.
-#   See the AX_PROG_LUA description for details.
-#
-#   Please read the macro descriptions for more information. ***
-#
-#
-#
-#   AX_PROG_LUA[([MINIMUM-VERSION], [TOO-BIG-VERSION],
-#                [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])]
-#   -------------------------------------------------------
-#
-#   Search for the Lua interpreter, and set up important Lua paths.
-#   Adds precious variable LUA, which may contain the path of the Lua
-#   interpreter. If LUA is blank, the user's path is searched for an
-#   suitable interpreter.
-#
-#   If MINIMUM-VERSION is supplied, then only Lua interpreters with a version
-#   number greater or equal to MINIMUM-VERSION will be accepted. If TOO-BIG-
-#   VERSION is also supplied, then only Lua interpreters with a version
-#   number greater or equal to MINIMUM-VERSION and less than TOO-BIG-VERSION
-#   will be accepted.
-#
-#   Version comparisions require the AX_COMPARE_VERSION macro, which is
-#   provided by ax_compare_version.m4 from the Autoconf Archive.
-#
-#   The Lua version number, LUA_VERSION, is found from the interpreter, and
-#   substituted. LUA_PLATFORM is also found, but not currently supported (no
-#   standard representation).
-#
-#   Finally, the macro finds four paths:
-#
-#     luadir             Directory to install Lua scripts.
-#     pkgluadir          $luadir/$PACKAGE
-#     luaexecdir         Directory to install Lua modules.
-#     pkgluaexecdir      $luaexecdir/$PACKAGE
-#
-#   These paths a found based on $prefix, $exec_prefix, Lua's package.path,
-#   and package.cpath. The first path of package.path beginning with $prefix
-#   is selected as luadir. The first path of package.cpath beginning with
-#   $exec_prefix is used as luaexecdir. This should work on all reasonable
-#   Lua installations. If a path cannot be determined, a default path is
-#   used. Of course, the user can override these later when invoking make.
-#
-#     luadir             Default: $prefix/share/lua/$LUA_VERSION
-#     luaexecdir         Default: $exec_prefix/lib/lua/$LUA_VERSION
-#
-#   These directories can be used by Automake as install destinations.
-#   The variable name minus 'dir' needs to be used as a prefix to the
-#   appropriate Automake primary, e.g. lua_SCRIPS or luaexec_LIBRARIES.
-#
-#   If an acceptable Lua interpreter is found, then ACTION-IF-FOUND is
-#   performed, otherwise ACTION-IF-NOT-FOUND is preformed. If ACTION-IF-NOT-
-#   FOUND is blank, then it will default to printing an error. To prevent
-#   the default behavior, give ':' as an action.
-#
-#
-#   AX_LUA_HEADERS[([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])]
-#   ----------------------------------------------------------
-#
-#   Search for Lua headers. Requires that AX_PROG_LUA be expanded before this
-#   macro. Adds precious variable LUA_INCLUDE, which may contain Lua specific
-#   include flags, e.g. -I/usr/include/lua5.1. If LUA_INCLUDE is blank, then
-#   this macro will attempt to find suitable flags.
-#
-#   LUA_INCLUDE can be used by Automake to compile Lua modules or executables
-#   with embedded interpreters. The *_CPPFLAGS variables should be used for
-#   this purpose, e.g. myprog_CPPFLAGS = $(LUA_INCLUDE).
-#
-#   This macro searches for the header lua.h (and others). The search is
-#   performed with a combination of CPPFLAGS, CPATH, etc, and LUA_INCLUDE.
-#   If the search is unsuccessful, then some common directories are tried. If
-#   the headers are then found, then LUA_INCLUDE is set accordingly.
-#
-#   The paths automatically searched are:
-#
-#     * /usr/include/luaX.Y
-#     * /usr/include/lua/X.Y
-#     * /usr/include/luaXY
-#     * /usr/local/include/luaX.Y
-#     * /usr/local/include/lua/X.Y
-#     * /usr/local/include/luaXY
-#
-#   (Where X.Y is the Lua version number, e.g. 5.1.)
-#
-#   The Lua version number found in the headers is always checked to match
-#   the Lua interpreter's version number. Lua headers with mismatched
-#   version numbers are not accepted.
-#
-#   If headers are found, then ACTION-IF-FOUND is performed, otherwise
-#   ACTION-IF-NOT-FOUND is performed. If ACTION-IF-NOT-FOUND is blank,
-#   then it will default to printing an error. To prevent the default
-#   behavior, set the action to ':'.
-#
-#
-#   AX_LUA_LIBS[([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])]
-#   -------------------------------------------------------
-#
-#   Search for Lua libraries. Requires that AX_PROG_LUA be expanded before
-#   this macro. Adds precious variable LUA_LIB, which may contain Lua specific
-#   linker flags, e.g. -llua5.1. If LUA_LIB is blank, then this macro will
-#   attempt to find suitable flags.
-#
-#   LUA_LIB can be used by Automake to link Lua modules or executables with
-#   embedded interpreters. The *_LIBADD and *_LDADD variables should be used
-#   for this purpose, e.g. mymod_LIBADD = $(LUA_LIB).
-#
-#   This macro searches for the Lua library. More technically, it searches
-#   for a library containing the function lua_load. The search is performed
-#   with a combination of LIBS, LIBRARY_PATH, and LUA_LIB.
-#
-#   If the search determines that some linker flags are missing, then those
-#   flags will be added to LUA_LIB.
-#
-#   If libraries are found, then ACTION-IF-FOUND is performed, otherwise
-#   ACTION-IF-NOT-FOUND is performed. If ACTION-IF-NOT-FOUND is blank,
-#   then it will default to printing an error. To prevent the default
-#   behavior, set the action to ':'.
-#
-#
-#   AX_LUA_READLINE[([ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])]
-#   -----------------------------------------------------------
-#
-#   Search for readline headers and libraries. Requires the AX_LIB_READLINE
-#   macro, which is provided by ax_lib_readline.m4 from the Autoconf Archive.
-#
-#   If a readline compatible library is found, then ACTION-IF-FOUND is
-#   performed, otherwise ACTION-IF-NOT-FOUND is performed.
-#
-#
-# LICENSE
-#
-#   Copyright (C) 2013 Tim Perkins <tprk77@gmail.com>
-#   Copyright (C) 2013 Reuben Thomas <rrt@sc3d.org>
-#
-#   This program is free software: you can redistribute it and/or modify it
-#   under the terms of the GNU General Public License as published by the
-#   Free Software Foundation, either version 3 of the License, or (at your
-#   option) any later version.
-#
-#   This program is distributed in the hope that it will be useful, but
-#   WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-#   Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License along
-#   with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-#   As a special exception, the respective Autoconf Macro's copyright owner
-#   gives unlimited permission to copy, distribute and modify the configure
-#   scripts that are the output of Autoconf when processing the Macro. You
-#   need not follow the terms of the GNU General Public License when using
-#   or distributing such scripts, even though portions of the text of the
-#   Macro appear in them. The GNU General Public License (GPL) does govern
-#   all other use of the material that constitutes the Autoconf Macro.
-#
-#   This special exception to the GPL applies to versions of the Autoconf
-#   Macro released by the Autoconf Archive. When you make and distribute a
-#   modified version of the Autoconf Macro, you may extend this special
-#   exception to the GPL to apply to your modified version as well.
-#
-# THANKS
-#
-#   This file was inspired by Andrew Dalke's and James Henstridge's python.m4
-#   and Tom Payne's, Matthieu Moy's, and Reuben Thomas's ax_lua.m4 (serial
-#   17). Basically, this file is a mashup of those two files. I like to think
-#   it combines the best of the two!
-
-#serial 18
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -2269,6 +2049,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 if test "${with_rlm_lua+set}" = set; then :
   withval=$with_rlm_lua;
 fi
+
 
 
 if test x$with_rlm_lua != xno; then
@@ -4503,10 +4284,6 @@ fi
   # keep this!  Don't change!
 ac_config_headers="$ac_config_headers config.h"
 
-
-unset ac_cv_env_LIBS_set
-unset ac_cv_env_LIBS_value
-
 ac_config_files="$ac_config_files all.mk rlm_lua.mk libfreeradius-lua.mk"
 
 cat >confcache <<\_ACEOF
@@ -5782,6 +5559,5 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
   # keep this!  Don't change!
 

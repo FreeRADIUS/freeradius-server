@@ -615,6 +615,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -689,6 +690,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -941,6 +943,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1078,7 +1089,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1231,6 +1242,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1258,8 +1270,7 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --without-rlm_cache_memcached
-                          build without module
-
+                          build without rlm_cache_memcached
   --with-libmemcached-include-dir=DIR
                           Directory where the libmemcached includes may be
                           found
@@ -1902,10 +1913,12 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_cache_memcached was given.
 if test "${with_rlm_cache_memcached+set}" = set; then :
   withval=$with_rlm_cache_memcached;
 fi
+
 
 
 if test x$with_rlm_cache_memcached != xno; then
@@ -2923,26 +2936,32 @@ $as_echo_n "checking for libmemcached/memcached.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <libmemcached/memcached.h>
+
+		                        #include <libmemcached/memcached.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -2959,26 +2978,32 @@ $as_echo_n "checking for ${_prefix}/libmemcached/memcached.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <libmemcached/memcached.h>
+
+		                        #include <libmemcached/memcached.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -2993,26 +3018,32 @@ $as_echo_n "checking for libmemcached/memcached.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <libmemcached/memcached.h>
+
+		                        #include <libmemcached/memcached.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include=" "
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3085,26 +3116,32 @@ $as_echo_n "checking for libmemcached/memcached.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <libmemcached/memcached.h>
+
+		                        #include <libmemcached/memcached.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3158,11 +3195,11 @@ pthread_once()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-lpthread"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lpthread"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3179,7 +3216,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_once in -lpthread" >&5
 $as_echo_n "checking for pthread_once in -lpthread... " >&6; }
 LIBS="-lpthread $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char pthread_once();
 int
@@ -3192,8 +3229,8 @@ pthread_once()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lpthread"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lpthread"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3279,11 +3316,11 @@ pthread_once()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-lpthread"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lpthread"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3334,11 +3371,11 @@ memcached()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-lmemcached"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lmemcached"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3355,7 +3392,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for memcached in -lmemcached" >&5
 $as_echo_n "checking for memcached in -lmemcached... " >&6; }
 LIBS="-lmemcached $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char memcached();
 int
@@ -3368,8 +3405,8 @@ memcached()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lmemcached"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lmemcached"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3455,11 +3492,11 @@ memcached()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-lmemcached"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lmemcached"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3531,10 +3568,6 @@ mod_cflags="$SMART_CPPFLAGS"
 
 
 
-
-
-unset ac_cv_env_LIBS_set
-unset ac_cv_env_LIBS_value
 
 ac_config_files="$ac_config_files all.mk"
 
@@ -4692,5 +4725,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 

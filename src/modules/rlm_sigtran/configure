@@ -614,6 +614,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -686,6 +687,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -938,6 +940,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1075,7 +1086,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1228,6 +1239,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1254,8 +1266,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --without-rlm_sigtran   build without module
-
+  --without-rlm_sigtran   build without rlm_sigtran
   --with-sigtran-include-dir=DIR
                           Directory where osmocore and osmosccp may be found
   --with-sigtran-dir=DIR  Base directory where osmocore and osmosccp are
@@ -1789,15 +1800,18 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_sigtran was given.
 if test "${with_rlm_sigtran+set}" = set; then :
   withval=$with_rlm_sigtran;
 fi
 
 
+
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
+
 if test x$with_rlm_sigtran != xno; then
 
         sigtran_include_dir=
@@ -2669,26 +2683,32 @@ $as_echo_n "checking for osmocom/core/msgb.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <osmocom/core/msgb.h>
+
+		                        #include <osmocom/core/msgb.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -2705,26 +2725,32 @@ $as_echo_n "checking for ${_prefix}/osmocom/core/msgb.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <osmocom/core/msgb.h>
+
+		                        #include <osmocom/core/msgb.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -2739,26 +2765,32 @@ $as_echo_n "checking for osmocom/core/msgb.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <osmocom/core/msgb.h>
+
+		                        #include <osmocom/core/msgb.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include=" "
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -2831,26 +2863,32 @@ $as_echo_n "checking for osmocom/core/msgb.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <osmocom/core/msgb.h>
+
+		                        #include <osmocom/core/msgb.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -2917,26 +2955,32 @@ $as_echo_n "checking for osmocom/sccp/sccp.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <osmocom/sccp/sccp.h>
+
+		                        #include <osmocom/sccp/sccp.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -2953,26 +2997,32 @@ $as_echo_n "checking for ${_prefix}/osmocom/sccp/sccp.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <osmocom/sccp/sccp.h>
+
+		                        #include <osmocom/sccp/sccp.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -2987,26 +3037,32 @@ $as_echo_n "checking for osmocom/sccp/sccp.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <osmocom/sccp/sccp.h>
+
+		                        #include <osmocom/sccp/sccp.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include=" "
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3079,26 +3135,32 @@ $as_echo_n "checking for osmocom/sccp/sccp.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <osmocom/sccp/sccp.h>
+
+		                        #include <osmocom/sccp/sccp.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3167,11 +3229,11 @@ msgb_alloc()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-losmocore"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-losmocore"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3188,7 +3250,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for msgb_alloc in -losmocore" >&5
 $as_echo_n "checking for msgb_alloc in -losmocore... " >&6; }
 LIBS="-losmocore $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char msgb_alloc();
 int
@@ -3201,8 +3263,8 @@ msgb_alloc()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-losmocore"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-losmocore"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3288,11 +3350,11 @@ msgb_alloc()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-losmocore"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-losmocore"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3362,11 +3424,11 @@ sccp_connection_connect()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-losmo-sccp"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-losmo-sccp"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3383,7 +3445,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sccp_connection_connect in -losmo-sccp" >&5
 $as_echo_n "checking for sccp_connection_connect in -losmo-sccp... " >&6; }
 LIBS="-losmo-sccp $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char sccp_connection_connect();
 int
@@ -3396,8 +3458,8 @@ sccp_connection_connect()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-losmo-sccp"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-losmo-sccp"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3483,11 +3545,11 @@ sccp_connection_connect()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-losmo-sccp"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-losmo-sccp"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3557,11 +3619,11 @@ xua_msg_alloc()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-losmo-xua"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-losmo-xua"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3578,7 +3640,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for xua_msg_alloc in -losmo-xua" >&5
 $as_echo_n "checking for xua_msg_alloc in -losmo-xua... " >&6; }
 LIBS="-losmo-xua $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char xua_msg_alloc();
 int
@@ -3591,8 +3653,8 @@ xua_msg_alloc()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-losmo-xua"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-losmo-xua"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3678,11 +3740,11 @@ xua_msg_alloc()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-losmo-xua"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-losmo-xua"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3752,11 +3814,11 @@ mtp_pcap_write_header()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-losmo-mtp"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-losmo-mtp"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3773,7 +3835,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mtp_pcap_write_header in -losmo-mtp" >&5
 $as_echo_n "checking for mtp_pcap_write_header in -losmo-mtp... " >&6; }
 LIBS="-losmo-mtp $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char mtp_pcap_write_header();
 int
@@ -3786,8 +3848,8 @@ mtp_pcap_write_header()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-losmo-mtp"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-losmo-mtp"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3873,11 +3935,11 @@ mtp_pcap_write_header()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-losmo-mtp"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-losmo-mtp"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3924,10 +3986,6 @@ mod_ldflags="$SMART_LIBS $(pkg-config --libs-only-other libosmocore) $(pkg-confi
 mod_cflags="$SMART_CPPFLAGS"
 
 
-
-
-unset ac_cv_env_LIBS_set
-unset ac_cv_env_LIBS_value
 
 ac_config_files="$ac_config_files all.mk"
 
@@ -5085,6 +5143,5 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 
 

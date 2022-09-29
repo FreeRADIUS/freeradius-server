@@ -616,6 +616,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -688,6 +689,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -940,6 +942,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1077,7 +1088,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1230,6 +1241,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1256,8 +1268,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --without-rlm_krb5      build without module
-
+  --without-rlm_krb5      build without rlm_krb5
   --with-rlm-krb5-dir=DIR       Directory for krb5 files
 
 Some influential environment variables:
@@ -1935,10 +1946,12 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_krb5 was given.
 if test "${with_rlm_krb5+set}" = set; then :
   withval=$with_rlm_krb5;
 fi
+
 
 
 if test x$with_rlm_krb5 != xno; then
@@ -3003,26 +3016,32 @@ $as_echo_n "checking for krb5.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <krb5.h>
+
+		                        #include <krb5.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3039,26 +3058,32 @@ $as_echo_n "checking for ${_prefix}/krb5.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <krb5.h>
+
+		                        #include <krb5.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3073,26 +3098,32 @@ $as_echo_n "checking for krb5.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <krb5.h>
+
+		                        #include <krb5.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include=" "
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3165,26 +3196,32 @@ $as_echo_n "checking for krb5.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <krb5.h>
+
+		                        #include <krb5.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -3237,11 +3274,11 @@ krb5_encrypt_data()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-lk5crypto"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lk5crypto"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3258,7 +3295,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_encrypt_data in -lk5crypto" >&5
 $as_echo_n "checking for krb5_encrypt_data in -lk5crypto... " >&6; }
 LIBS="-lk5crypto $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_encrypt_data();
 int
@@ -3271,8 +3308,8 @@ krb5_encrypt_data()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lk5crypto"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lk5crypto"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3358,11 +3395,11 @@ krb5_encrypt_data()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-lk5crypto"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lk5crypto"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3416,11 +3453,11 @@ DH_new()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-lcrypto"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lcrypto"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3437,7 +3474,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto" >&5
 $as_echo_n "checking for DH_new in -lcrypto... " >&6; }
 LIBS="-lcrypto $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char DH_new();
 int
@@ -3450,8 +3487,8 @@ DH_new()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lcrypto"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lcrypto"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3537,11 +3574,11 @@ DH_new()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-lcrypto"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lcrypto"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3600,11 +3637,11 @@ set_com_err_hook()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-lcom_err"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lcom_err"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3621,7 +3658,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for set_com_err_hook in -lcom_err" >&5
 $as_echo_n "checking for set_com_err_hook in -lcom_err... " >&6; }
 LIBS="-lcom_err $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char set_com_err_hook();
 int
@@ -3634,8 +3671,8 @@ set_com_err_hook()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lcom_err"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lcom_err"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3721,11 +3758,11 @@ set_com_err_hook()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-lcom_err"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lcom_err"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3779,11 +3816,11 @@ krb5_verify_user_opt()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-lkrb5"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lkrb5"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3800,7 +3837,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_verify_user_opt in -lkrb5" >&5
 $as_echo_n "checking for krb5_verify_user_opt in -lkrb5... " >&6; }
 LIBS="-lkrb5 $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_verify_user_opt();
 int
@@ -3813,8 +3850,8 @@ krb5_verify_user_opt()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lkrb5"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lkrb5"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -3900,11 +3937,11 @@ krb5_verify_user_opt()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-lkrb5"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lkrb5"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3958,11 +3995,11 @@ krb5_get_init_creds_password()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-lkrb5"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lkrb5"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3979,7 +4016,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_get_init_creds_password in -lkrb5" >&5
 $as_echo_n "checking for krb5_get_init_creds_password in -lkrb5... " >&6; }
 LIBS="-lkrb5 $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_get_init_creds_password();
 int
@@ -3992,8 +4029,8 @@ krb5_get_init_creds_password()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lkrb5"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lkrb5"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -4079,11 +4116,11 @@ krb5_get_init_creds_password()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-lkrb5"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lkrb5"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -4167,11 +4204,11 @@ krb5_is_thread_safe()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-lkrb5"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lkrb5"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -4188,7 +4225,7 @@ if test "x$smart_lib" = "x"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_is_thread_safe in -lkrb5" >&5
 $as_echo_n "checking for krb5_is_thread_safe in -lkrb5... " >&6; }
 LIBS="-lkrb5 $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_is_thread_safe();
 int
@@ -4201,8 +4238,8 @@ krb5_is_thread_safe()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lkrb5"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lkrb5"
+	           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
@@ -4288,11 +4325,11 @@ krb5_is_thread_safe()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-lkrb5"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lkrb5"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		  break
+		   break
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -4313,10 +4350,8 @@ fi
 
 		if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" = xyes; then
 			if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: cross compiling: not checking" >&5
+$as_echo "$as_me: WARNING: cross compiling: not checking" >&2;}
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -4373,26 +4408,32 @@ $as_echo_n "checking for com_err.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <com_err.h>
+
+		                        #include <com_err.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -4409,26 +4450,32 @@ $as_echo_n "checking for ${_prefix}/com_err.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <com_err.h>
+
+		                        #include <com_err.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -4443,26 +4490,32 @@ $as_echo_n "checking for com_err.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <com_err.h>
+
+		                        #include <com_err.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include=" "
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -4535,26 +4588,32 @@ $as_echo_n "checking for com_err.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <com_err.h>
+
+		                        #include <com_err.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -4600,26 +4659,32 @@ $as_echo_n "checking for et/com_err.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <et/com_err.h>
+
+		                        #include <et/com_err.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -4636,26 +4701,32 @@ $as_echo_n "checking for ${_prefix}/et/com_err.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <et/com_err.h>
+
+		                        #include <et/com_err.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -4670,26 +4741,32 @@ $as_echo_n "checking for et/com_err.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <et/com_err.h>
+
+		                        #include <et/com_err.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include=" "
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -4762,26 +4839,32 @@ $as_echo_n "checking for et/com_err.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <et/com_err.h>
+
+		                        #include <et/com_err.h>
+
 int
 main ()
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try"
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		     break
+		      break
 
 else
 
-		     smart_include=
-		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 fi
@@ -4830,10 +4913,6 @@ mod_cflags="$krb5mod_cflags $krb5threadsafe $SMART_CPPFLAGS"
 
 
 
-
-
-unset ac_cv_env_LIBS_set
-unset ac_cv_env_LIBS_value
 
 ac_config_files="$ac_config_files all.mk"
 
@@ -5991,5 +6070,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 
