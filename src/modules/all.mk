@@ -25,3 +25,11 @@ ifeq "$(MAKECMDGOALS)" "check.configure"
 src/modules/%/configure: src/modules/%/configure.ac
 	@echo WARNING - may need "'make reconfig'" for AUTOCONF $(dir $@)
 endif
+
+ifeq "$(MAKECMDGOALS)" "reconfig"
+src/modules/%/configure: src/modules/%/configure.ac
+	@echo AUTOCONF $(dir $@)
+	@cd $(dir $@) && \
+		$(ACLOCAL) -I $(top_builddir)/m4 && \
+		$(AUTOCONF)
+endif
