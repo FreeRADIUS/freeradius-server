@@ -77,6 +77,7 @@ SOURCES		:= \
 		   size.c \
 		   snprintf.c \
 		   socket.c \
+		   stats.c \
 		   strerror.c \
 		   strlcat.c \
 		   strlcpy.c \
