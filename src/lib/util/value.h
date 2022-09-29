@@ -601,6 +601,40 @@ int fr_value_box_memcpy_out(void *out, fr_value_box_t const *vb)
 	return 0;
 }
 
+/** Copy a C value value to a value box.
+ *
+ * This is useful when interacting with 3rd party libraries, and doing configuration parsing
+ * as it allows us to use standard parsing and casting functions and then emit the result
+ * as a C value.
+ *
+ * The field pointed to by in must be of the same type as we use to represent the value boxe's
+ * value in its datum union, or at least the same size.
+ *
+ * No checks are done to ensure this is the case, so if you get this wrong it'll lead to silent
+ * memory corruption.
+ *
+ * @param[in] vb	destination value box, MUST already be initialized
+ * @param[out] in	C variable to read from
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static inline CC_HINT(always_inline)
+int fr_value_box_memcpy_in(fr_value_box_t *vb, void const *in)
+{
+	size_t len;
+
+	len = fr_value_box_field_sizes[vb->type];
+	if (len == 0) {
+		fr_strerror_printf("Type %s not supported for conversion to C type", fr_type_to_str(vb->type));
+		return -1;
+	}
+
+	memcpy(((uint8_t *)vb) + fr_value_box_offsets[vb->type], in, len);
+
+	return 0;
+}
+
 
 /** Box an ethernet value (6 bytes, network byte order)
  *
