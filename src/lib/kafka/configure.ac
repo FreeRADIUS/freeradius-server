@@ -2,15 +2,12 @@ AC_PREREQ([2.71])
 AC_INIT
 AC_CONFIG_SRCDIR([base.c])
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[libfreeradius-kafka])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without rdkafka support])]
-)
+FR_INIT_MODULE([libfreeradius-kafka], [rdkafka support])
 
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
+
 if test x$with_[]modname_useropt != xno; then
     dnl ############################################################
     dnl # Check for command line options

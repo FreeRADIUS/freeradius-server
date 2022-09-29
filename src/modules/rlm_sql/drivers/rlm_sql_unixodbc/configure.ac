@@ -1,15 +1,12 @@
 AC_PREREQ([2.59])
 AC_INIT(rlm_sql_unixodbc.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_sql_unixodbc])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without module])]
-)
+FR_INIT_MODULE([rlm_sql_unixodbc])
 
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
+
 if test x$with_[]modname != xno; then
 
 	dnl extra argument: --with-unixodbc-include-dir

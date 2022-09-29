@@ -1,13 +1,7 @@
 AC_PREREQ([2.53])
 AC_INIT(rlm_perl.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_perl])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without module])]
-)
-
-m4_include([m4/ax_with_prog.m4])
+FR_INIT_MODULE([rlm_perl])
 
 if test x$with_[]modname != xno; then
 	AC_PROG_CC

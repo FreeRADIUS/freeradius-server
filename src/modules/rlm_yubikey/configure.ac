@@ -1,11 +1,7 @@
 AC_PREREQ([2.53])
 AC_INIT(rlm_yubikey.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_yubikey])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without module])]
-)
+FR_INIT_MODULE([rlm_yubikey])
 
 if test x$with_[]modname != xno; then
     dnl ############################################################

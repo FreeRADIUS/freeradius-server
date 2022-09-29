@@ -2,11 +2,7 @@ AC_PREREQ([2.71])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_python.c])
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_python])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without module])]
-)
+FR_INIT_MODULE([rlm_python])
 
 if test x$with_[]modname != xno; then
 

@@ -1,12 +1,8 @@
 AC_PREREQ([2.53])
 AC_INIT(rlm_couchbase.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_couchbase])
+FR_INIT_MODULE([rlm_couchbase])
 AC_CONFIG_HEADER(config.h)
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without module])]
-)
 
 if test x$with_[]modname != xno; then
 

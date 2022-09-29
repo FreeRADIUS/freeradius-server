@@ -1,15 +1,12 @@
 AC_PREREQ([2.61])
 AC_INIT(rlm_sigtran.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_sigtran])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without module])]
-)
+FR_INIT_MODULE([rlm_sigtran])
 
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
+
 if test x$with_[]modname != xno; then
     dnl ############################################################
     dnl # Check for command line options

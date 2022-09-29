@@ -2,13 +2,9 @@ AC_PREREQ([2.71])
 AC_INIT
 AC_CONFIG_SRCDIR([json.c])
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[libfreeradius-json])
-AC_DEFUN(modname_useropt,[m4_bpatsubst([]modname,[[-+.]],[_])])
+FR_INIT_MODULE([libfreeradius-json], [JSON support from json-c])
+AC_DEFUN([modname_useropt],[m4_bpatsubst([]modname,[[-+.]],[_])])
 AC_CONFIG_HEADERS([config.h])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without JSON support from json-c])]
-)
 
 if test x$with_[]modname_useropt != xno; then
 

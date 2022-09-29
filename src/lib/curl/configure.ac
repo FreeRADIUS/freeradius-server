@@ -2,14 +2,10 @@ AC_PREREQ([2.71])
 AC_INIT
 AC_CONFIG_SRCDIR([base.c])
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[libfreeradius-curl])
-AC_DEFUN(modname_useropt,[m4_bpatsubst([]modname,[[-+.]],[_])])
+FR_INIT_MODULE([libfreeradius-curl], [libcurl support])
+AC_DEFUN([modname_useropt],[m4_bpatsubst([]modname,[[-+.]],[_])])
 
 AC_CONFIG_HEADERS([config.h])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without libcurl support])]
-)
 
 if test x$with_[]modname_useropt != xno; then
 

@@ -1,10 +1,6 @@
 AC_INIT(rlm_winbind.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_winbind])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without module])]
-)
+FR_INIT_MODULE([rlm_winbind])
 
 if test x$with_[]modname != xno; then
 

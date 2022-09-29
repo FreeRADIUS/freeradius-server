@@ -1,10 +1,6 @@
 AC_INIT(rlm_mruby.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_mruby])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without module])]
-)
+FR_INIT_MODULE([rlm_mruby])
 
 if test x$with_[]modname != xno; then
 	AC_PROG_CC

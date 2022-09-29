@@ -1,14 +1,11 @@
 AC_INIT(rlm_sql_postgresql.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_sql_postgresql])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without module])]
-)
+FR_INIT_MODULE([rlm_sql_postgresql])
 
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
+
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC

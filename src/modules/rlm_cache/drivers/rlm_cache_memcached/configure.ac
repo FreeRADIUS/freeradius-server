@@ -1,11 +1,7 @@
 AC_PREREQ([2.53])
 AC_INIT(rlm_cache_memcached.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_cache_memcached])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without module])]
-)
+FR_INIT_MODULE([rlm_cache_memcached])
 
 if test x$with_[]modname != xno; then
 

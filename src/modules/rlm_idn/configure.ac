@@ -1,10 +1,6 @@
 AC_INIT(rlm_idn.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_idn])
-
-AC_ARG_WITH([]modname,
-[AS_HELP_STRING([--without-[]modname],[build without module])]
-)
+FR_INIT_MODULE([rlm_idn])
 
 if test x$with_[]modname != xno; then
 
