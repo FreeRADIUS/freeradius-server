@@ -6,7 +6,7 @@ dnl #  http://www.gnu.org/software/autoconf/
 dnl #
 dnl #  The recommended order is:
 dnl #
-dnl #  AC_INIT(file)
+dnl #  AC_INIT
 dnl #  0. checks for compiler, libtool, and command line options
 dnl #  1. checks for programs
 dnl #  2. checks for libraries
@@ -16,14 +16,15 @@ dnl #  5. checks for structures and functions
 dnl #  6. checks for compiler characteristics
 dnl #  7. checks for library functions
 dnl #  8. checks for system services
-dnl #  AC_OUTPUT([file...])
+dnl #  AC_CONFIG_FILES([file...])
+dnl #  AC_OUTPUT
 dnl #
 dnl #############################################################
 
 AC_PREREQ([2.69])
 export CFLAGS LIBS LDFLAGS CPPFLAGS
 
-AC_INIT([freeradius],[$]Id[$],[http://bugs.freeradius.org],,[http://www.freeradius.org])
+AC_INIT([freeradius],[$Id$],[http://bugs.freeradius.org],[],[http://www.freeradius.org])
 AC_CONFIG_SRCDIR([src/bin/radiusd.c])
 AC_CONFIG_HEADER([src/include/autoconf.h])
 
@@ -305,7 +306,7 @@ dnl #
 dnl #  check for AIX, to allow us to use some BSD functions
 dnl #  must be before macros that call the compiler.
 dnl #
-AC_AIX
+AC_USE_SYSTEM_EXTENSIONS
 
 AC_PROG_GCC_TRADITIONAL
 AC_PROG_CC_SUNPRO
@@ -1786,8 +1787,6 @@ AC_CHECK_FUNCS( \
   vsnprintf
 )
 
-AC_TYPE_SIGNAL
-
 dnl #
 dnl #  Check if we have utmpx.h
 dnl #  if so, check if struct utmpx has entry ut_xtime
@@ -1851,7 +1850,6 @@ AC_LINK_IFELSE(
     ]]
   )],
   [
-      AC_MSG_RESULT(yes)
       AC_DEFINE(HAVE_HTONLLL, 1, [Define if the function (or macro) htonlll exists.])
   ],
   [
@@ -2153,21 +2151,16 @@ FR_SMART_CHECK_INCLUDE(execinfo.h)
 if test "x$ac_cv_header_execinfo_h" = "xyes"; then
   dnl # Might be provided as part of libc
   AC_MSG_CHECKING([if execinfo provided as part of libc])
-  AC_TRY_LINK(
-    [
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
       #include <execinfo.h>
-    ],
-    [
+    ]], [[
       void *sym[1];
-      backtrace_symbols(&sym, sizeof(sym)) ],
-    [
+      backtrace_symbols(&sym, sizeof(sym)) ]])],[
       AC_MSG_RESULT(yes)
       ac_cv_lib_execinfo_backtrace_symbols="yes"
-    ],
-    [
+    ],[
       AC_MSG_RESULT(no)
-    ]
-  )
+  ])
   if test "x$ac_cv_lib_execinfo_backtrace_symbols" != "xyes"; then
     smart_try_dir=$execinfo_lib_dir
     FR_SMART_CHECK_LIB(execinfo, backtrace_symbols)
@@ -2356,46 +2349,34 @@ case "$target" in
 esac
 
 if test "x$gethostbyaddrrstyle" = "x"; then
-  AC_TRY_LINK(
-    [
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
       #include <stdio.h>
       #include <netdb.h>
-    ],
-    [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) ],
-    [
+    ]], [[ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) ]])],[
       AC_DEFINE(GETHOSTBYADDRRSTYLE, GNUSTYLE, [style of gethostbyaddr_r functions ])
       gethostbyaddrrstyle=GNU
-    ]
-  )
+  ],[])
 fi
 
 if test "x$gethostbyaddrrstyle" = "x"; then
-  AC_TRY_LINK(
-    [
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
       #include <stdio.h>
       #include <netdb.h>
-    ],
-    [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL) ] ,
-    [
+    ]], [[ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL)  ]])],[
       AC_DEFINE(GETHOSTBYADDRRSTYLE, SYSVSTYLE, [style of gethostbyaddr_r functions ])
       gethostbyaddrrstyle=SYSV
-    ]
-  )
+  ],[])
 fi
 
 
 if test "x$gethostbyaddrrstyle" = "x"; then
-  AC_TRY_LINK(
-    [
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
       #include <stdio.h>
       #include <netdb.h>
-    ],
-    [ gethostbyaddr(NULL, 0, 0)  ],
-    [
+    ]], [[ gethostbyaddr(NULL, 0, 0)  ]])],[
       AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE, [style of gethostbyaddr_r functions ])
       gethostbyaddrrstyle=BSD
-    ]
-  )
+  ],[])
 fi
 
 if test "x$gethostbyaddrrstyle" = "x"; then
@@ -2419,44 +2400,32 @@ dnl #  We need #stdio.h to define NULL on FreeBSD (at least)
 dnl #
 gethostbynamerstyle=""
 AC_MSG_CHECKING([gethostbyname_r() syntax])
-AC_TRY_LINK(
-  [
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
     #include <stdio.h>
     #include <netdb.h>
-  ],
-  [ gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL) ],
-  [
+  ]], [[ gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL) ]])],[
     AC_DEFINE(GETHOSTBYNAMERSTYLE, GNUSTYLE, [style of gethostbyname_r functions ])
     gethostbynamerstyle=GNU
-  ]
-)
+],[])
 
 if test "x$gethostbynamerstyle" = "x"; then
-  AC_TRY_LINK(
-    [
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
       #include <stdio.h>
       #include <netdb.h>
-    ],
-    [ gethostbyname_r(NULL, NULL, NULL, 0, NULL) ] ,
-    [
+    ]], [[ gethostbyname_r(NULL, NULL, NULL, 0, NULL)  ]])],[
       AC_DEFINE(GETHOSTBYNAMERSTYLE, SYSVSTYLE, [style of gethostbyname_r functions ])
       gethostbynamerstyle=SYSV
-    ]
-  )
+  ],[])
 fi
 
 if test "x$gethostbynamerstyle" = "x"; then
-  AC_TRY_LINK(
-    [
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
       #include <stdio.h>
       #include <netdb.h>
-    ],
-    [ gethostbyname(NULL) ],
-    [
+    ]], [[ gethostbyname(NULL) ]])],[
       AC_DEFINE(GETHOSTBYNAMERSTYLE, BSDSTYLE, [style of gethostbyname_r functions ])
       gethostbynamerstyle=BSD
-    ]
-  )
+  ],[])
 fi
 
 if test "x$gethostbynamerstyle" = "x"; then
@@ -2474,44 +2443,34 @@ dnl #  Check for thread-safe getpwnam_r and getgrnam_r
 dnl #
 if test "x$ac_cv_header_pwd_h" = "xyes"; then
   AC_MSG_CHECKING([getpwnam_r])
-  AC_TRY_LINK(
-    [
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
       #include <stdlib.h>
       #include <sys/types.h>
       #include <pwd.h>
-    ],
-    [ getpwnam_r(NULL, NULL, NULL, 0, NULL) ],
-    [
+    ]], [[ getpwnam_r(NULL, NULL, NULL, 0, NULL) ]])],[
       AC_MSG_RESULT([yes])
       AC_DEFINE(HAVE_GETPWNAM_R, 1,
                 [Define to 1 if you have the getpwnam_r.]
                 )
-    ],
-    [
+    ],[
         AC_MSG_RESULT(no)
-    ]
-  )
+  ])
 fi
 
 if test "x$ac_cv_header_grp_h" = "xyes"; then
   AC_MSG_CHECKING([getgrnam_r])
-  AC_TRY_LINK(
-    [
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
       #include <stdlib.h>
       #include <sys/types.h>
       #include <grp.h>
-    ],
-    [ getgrnam_r(NULL, NULL, NULL, 0, NULL) ],
-    [
+    ]], [[ getgrnam_r(NULL, NULL, NULL, 0, NULL) ]])],[
       AC_MSG_RESULT([yes])
       AC_DEFINE(HAVE_GETGRNAM_R, 1,
                 [Define to 1 if you have the getgrnam_r.]
                 )
-    ],
-    [
+    ],[
         AC_MSG_RESULT(no)
-    ]
-  )
+  ])
 fi
 
 
@@ -2522,28 +2481,20 @@ AC_DEFINE(POSIXSTYLE, [1], [Posix-Style ctime_r])
 AC_DEFINE(SOLARISSTYLE, [2], [Solaris-Style ctime_r])
 ctimerstyle=""
 AC_MSG_CHECKING([ctime_r() syntax])
-AC_TRY_LINK(
-  [
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
     #include <time.h>
-  ],
-  [ ctime_r(NULL, NULL, 0) ],
-  [
+  ]], [[ ctime_r(NULL, NULL, 0) ]])],[
     AC_DEFINE(CTIMERSTYLE, SOLARISSTYLE, [style of ctime_r function])
     ctimerstyle="SOLARIS"
-  ]
-)
+],[])
 
 if test "x$ctimerstyle" = "x"; then
-  AC_TRY_LINK(
-    [
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
       #include <time.h>
-    ],
-    [ ctime_r(NULL, NULL) ],
-    [
+    ]], [[ ctime_r(NULL, NULL) ]])],[
       AC_DEFINE(CTIMERSTYLE, POSIXSTYLE, [style of ctime_r function])
       ctimerstyle="POSIX"
-    ]
-  )
+  ],[])
 fi
 
 if test "x$ctimerstyle" = "x"; then
@@ -2664,7 +2615,7 @@ dnl #
 AC_SUBST(LIBS)
 AC_SUBST(INSTALLSTRIP)
 
-AC_OUTPUT(\
+AC_CONFIG_FILES([\
   ./Make.inc \
   ./src/include/build-radpaths-h \
   ./src/bin/checkrad \
@@ -2676,4 +2627,5 @@ AC_OUTPUT(\
   ./scripts/util/cryptpasswd \
   ./raddb/radrelay.conf \
   ./raddb/radiusd.conf
-)
+])
+AC_OUTPUT

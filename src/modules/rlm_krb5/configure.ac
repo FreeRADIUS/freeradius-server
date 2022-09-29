@@ -1,5 +1,6 @@
 AC_PREREQ([2.69])
-AC_INIT(rlm_krb5.c)
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_krb5.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_krb5])
 
@@ -182,4 +183,5 @@ mod_cflags="$krb5mod_cflags $krb5threadsafe $SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

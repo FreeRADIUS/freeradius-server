@@ -1,5 +1,6 @@
 AC_PREREQ([2.69])
-AC_INIT(rlm_sql_cassandra.c)
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_sql_cassandra.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_sql_cassandra])
 
@@ -118,4 +119,5 @@ AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

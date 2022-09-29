@@ -1,5 +1,6 @@
 AC_PREREQ([2.69])
-AC_INIT(rlm_perl.c)
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_perl.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_perl])
 
@@ -78,12 +79,10 @@ if test x$with_[]modname != xno; then
 		dnl #  Link test functions
 		dnl ############################################################
 		AC_MSG_CHECKING([we can link to boot_DynaLoader])
-		AC_TRY_LINK([],
-		[
+		AC_LINK_IFELSE([AC_LANG_PROGRAM([[]], [[
 			extern char boot_DynaLoader();
 			boot_DynaLoader();
-		],
-		[LINKS="yes"], [LINKS="no"])
+		]])],[LINKS="yes"],[LINKS="no"])
 
 		AC_MSG_RESULT($LINKS)
 		if test "x$LINKS" = "xno"; then
@@ -92,12 +91,10 @@ if test x$with_[]modname != xno; then
 		fi
 
 		AC_MSG_CHECKING([we can link to Perl_hv_store()])
-		AC_TRY_LINK([],
-		[
+		AC_LINK_IFELSE([AC_LANG_PROGRAM([[]], [[
 			extern char Perl_hv_store();
 			Perl_hv_store();
-		],
-		[LINKS="yes"], [LINKS="no"])
+		]])],[LINKS="yes"],[LINKS="no"])
 
 		AC_MSG_RESULT($LINKS)
 		if test "x$LINKS" = "xno"; then
@@ -134,4 +131,5 @@ AC_SUBST(mod_ldflags)
 AC_CONFIG_HEADER(config.h)
 
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

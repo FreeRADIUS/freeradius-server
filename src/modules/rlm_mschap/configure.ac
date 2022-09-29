@@ -1,4 +1,5 @@
-AC_INIT(rlm_mschap.c)
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_mschap.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_mschap])
 
@@ -129,5 +130,6 @@ AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 
 AC_CONFIG_HEADER(config.h)
-AC_OUTPUT(rlm_mschap.mk)
+AC_CONFIG_FILES([rlm_mschap.mk])
+AC_OUTPUT
 

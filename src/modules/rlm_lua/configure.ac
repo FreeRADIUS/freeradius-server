@@ -1,5 +1,6 @@
 AC_PREREQ([2.69])
-AC_INIT(rlm_lua.c)
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_lua.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_lua], [lua support])
 
@@ -131,5 +132,6 @@ AC_SUBST(lua_ldflags)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_CONFIG_HEADER(config.h)
-AC_OUTPUT([all.mk rlm_lua.mk libfreeradius-lua.mk])  # keep this!  Don't change!
+AC_CONFIG_FILES([all.mk rlm_lua.mk libfreeradius-lua.mk])
+AC_OUTPUT  # keep this!  Don't change!
 

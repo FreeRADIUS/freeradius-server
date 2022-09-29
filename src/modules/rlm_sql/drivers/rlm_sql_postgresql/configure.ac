@@ -1,4 +1,5 @@
-AC_INIT(rlm_sql_postgresql.c)
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_sql_postgresql.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_sql_postgresql])
 
@@ -128,4 +129,5 @@ AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_CONFIG_HEADER(config.h)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

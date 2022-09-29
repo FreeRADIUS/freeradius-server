@@ -1,5 +1,6 @@
 AC_PREREQ([2.69])
-AC_INIT(rlm_cache_memcached.c)
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_cache_memcached.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_cache_memcached])
 
@@ -128,4 +129,5 @@ AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
 
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

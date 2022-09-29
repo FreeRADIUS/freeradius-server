@@ -1,4 +1,5 @@
-AC_INIT(rlm_mruby.c)
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_mruby.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_mruby])
 
@@ -123,4 +124,5 @@ AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
 
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

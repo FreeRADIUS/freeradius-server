@@ -1846,6 +1846,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_couchbase was given.
 if test "${with_rlm_couchbase+set}" = set; then :
   withval=$with_rlm_couchbase;

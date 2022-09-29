@@ -1836,6 +1836,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_opendirectory was given.
 if test "${with_rlm_opendirectory+set}" = set; then :
   withval=$with_rlm_opendirectory;

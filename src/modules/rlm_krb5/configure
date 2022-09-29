@@ -1947,6 +1947,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_krb5 was given.
 if test "${with_rlm_krb5+set}" = set; then :
   withval=$with_rlm_krb5;

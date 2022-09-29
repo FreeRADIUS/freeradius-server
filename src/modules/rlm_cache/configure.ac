@@ -1,5 +1,6 @@
 AC_PREREQ([2.69])
-AC_INIT(rlm_cache.c)
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_cache.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_cache])
 
@@ -44,4 +45,5 @@ else
 fi
 
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

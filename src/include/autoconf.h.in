@@ -602,9 +602,6 @@
 /* Raw version string from VERSION file */
 #undef RADIUSD_VERSION_STRING
 
-/* Define as the return type of signal handlers (`int' or `void'). */
-#undef RETSIGTYPE
-
 /* Define if the compiler supports size_t has the same underlying type as
    uint64 */
 #undef SIZE_SAME_AS_UINT64
