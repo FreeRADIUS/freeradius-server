@@ -15,16 +15,6 @@ else
 ac_cv_prog_suncc=no
 fi])])
 
-dnl Autoconf 2.61 breaks the support for chained configure scripts
-dnl in combination with config.cache
-m4_pushdef([AC_OUTPUT],
-[
-unset ac_cv_env_LIBS_set
-unset ac_cv_env_LIBS_value
-m4_popdef([AC_OUTPUT])
-AC_OUTPUT([$1],[$2],[$3])
-])
-
 AC_DEFUN([VL_LIB_READLINE], [
 AC_CACHE_CHECK([for a readline compatible library],
                vl_cv_lib_readline, [
