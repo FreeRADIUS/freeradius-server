@@ -89,7 +89,7 @@ if test x$with_[]modname != xno; then
     if test "x$ac_cv_lib_sccp_sccp_connection_connect" != "xyes" -a "x$ac_cv_lib_osmo_sccp_sccp_connection_connect" != "xyes"
     then
       AC_MSG_WARN([libsccp libraries not found. Use --with-sigtran-lib-dir=<path>.])
-      fail="$fail lib$NAMESCCP"
+      fail="$fail libsccp"
     fi
 
     FR_SMART_PKGCONFIG_LIB([libosmo-xua], "${sigtran_lib_dir}")
@@ -97,7 +97,7 @@ if test x$with_[]modname != xno; then
     if test "x$ac_cv_lib_xua_xua_msg_alloc" != "xyes" -a "x$ac_cv_lib_osmo_xua_xua_msg_alloc" != "xyes"
     then
       AC_MSG_WARN([libxua libraries not found. Use --with-sigtran-lib-dir=<path>.])
-      fail="$fail lib$NAMEXUA"
+      fail="$fail libxua"
     fi
 
     FR_SMART_PKGCONFIG_LIB([libosmo-mtp], "${sigtran_lib_dir}")
@@ -105,7 +105,7 @@ if test x$with_[]modname != xno; then
     if test "x$ac_cv_lib_mtp_mtp_pcap_write_header" != "xyes" -a "x$ac_cv_lib_osmo_mtp_mtp_pcap_write_header" != "xyes"
     then
       AC_MSG_WARN([libmtp libraries not found. Use --with-sigtran-lib-dir=<path>.])
-      fail="$fail lib$NAMEMTP"
+      fail="$fail libmtp"
     fi
     targetname=modname
 else
