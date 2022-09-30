@@ -4,7 +4,8 @@ AC_CONFIG_SRCDIR([rlm_lua.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_lua], [lua support])
 
-if test x$with_[]modname != xno; then
+FR_MODULE_START_TESTS
+
 	AC_PROG_CC
 	AC_PROG_CPP
 
@@ -109,29 +110,11 @@ if test x$with_[]modname != xno; then
 	fi
 
 
-	targetname=modname     # keep this!  Don't change!
-else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
-fi
-
-dnl  Don't change this section.
-if test x"$fail" != x""; then
-	if test x"${enable_strict_dependencies}" = x"yes"; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
-		targetname=""
-	fi
-fi
+FR_MODULE_END_TESTS
 
 AC_SUBST(lua_cflags)
 AC_SUBST(lua_ldflags)
 
-
-AC_SUBST(targetname)  # keep this!  Don't change!
 AC_CONFIG_HEADER(config.h)
 AC_CONFIG_FILES([all.mk rlm_lua.mk libfreeradius-lua.mk])
 AC_OUTPUT  # keep this!  Don't change!
-

@@ -4,7 +4,8 @@ AC_CONFIG_SRCDIR([rlm_perl.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_perl])
 
-if test x$with_[]modname != xno; then
+FR_MODULE_START_TESTS
+
 	AC_PROG_CC
 	AC_PROG_CPP
 
@@ -66,13 +67,11 @@ if test x$with_[]modname != xno; then
 		FR_SMART_CHECK_INCLUDE(EXTERN.h)
 		if test "x$ac_cv_header_EXTERN_h" != "xyes"; then
 			fail="$fail EXTERN.h"
-			targetname=
 		fi
 
 		FR_SMART_CHECK_INCLUDE(perl.h, [#include <EXTERN.h>])
 		if test "x$ac_cv_header_perl_h" != "xyes"; then
 			fail="$fail EXTERN.h"
-			targetname=
 		fi
 
 		dnl ############################################################
@@ -87,7 +86,6 @@ if test x$with_[]modname != xno; then
 		AC_MSG_RESULT($LINKS)
 		if test "x$LINKS" = "xno"; then
 			fail="$fail libperl.so"
-			targetname=
 		fi
 
 		AC_MSG_CHECKING([we can link to Perl_hv_store()])
@@ -99,37 +97,17 @@ if test x$with_[]modname != xno; then
 		AC_MSG_RESULT($LINKS)
 		if test "x$LINKS" = "xno"; then
 			fail="$fail libperl.so"
-			targetname=
 		fi
 
 		CFLAGS="$old_CFLAGS"
 		LIBS="$old_LIBS"
-
-		targetname=modname
 	fi
-else
-		targetname=
-		echo \*\*\* module modname is disabled.
-fi
 
-dnl  Don't change this section.
-if test x"$fail" != x""; then
-	if test x"${enable_strict_dependencies}" = x"yes"; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
-
-		targetname=
-	fi
-fi
-
+FR_MODULE_END_TESTS
 
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
 
 AC_CONFIG_HEADER(config.h)
-
-AC_SUBST(targetname)
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

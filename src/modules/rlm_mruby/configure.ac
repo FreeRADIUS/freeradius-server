@@ -3,7 +3,8 @@ AC_CONFIG_SRCDIR([rlm_mruby.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_mruby])
 
-if test x$with_[]modname != xno; then
+FR_MODULE_START_TESTS
+
 	AC_PROG_CC
 	AC_PROG_CPP
 
@@ -102,27 +103,12 @@ if test x$with_[]modname != xno; then
 		fail="$fail libm"
 	fi
 
-	targetname=modname
-else
-	targetname=
-	echo \*\*\* module modname is disabled.
-fi
-
-if test x"$fail" != x""; then
-	if test x"${enable_strict_dependencies}" = x"yes"; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
-		targetname=""
-	fi
-fi
+FR_MODULE_END_TESTS
 
 mod_cflags="${SMART_CPPFLAGS}"
 
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
 
-AC_SUBST(targetname)
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

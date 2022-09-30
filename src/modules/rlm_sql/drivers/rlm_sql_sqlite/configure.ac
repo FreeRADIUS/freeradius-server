@@ -4,11 +4,10 @@ AC_CONFIG_SRCDIR([rlm_sql_sqlite.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_sql_sqlite])
 
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 
-if test x$with_[]modname != xno; then
+FR_MODULE_START_TESTS
 
     dnl ############################################################
     dnl # Check for command line options
@@ -105,30 +104,14 @@ if test x$with_[]modname != xno; then
     CFLAGS="$SMART_CPPFLAGS"
     AC_CHECK_TYPES([sqlite3_int64], [], [], [[#include <sqlite3.h>]])
 
-    targetname=modname
-else
-    targetname=
-    echo \*\*\* module modname is disabled.
-fi
-
-dnl Don't change this section.
-if test "x$fail" != x; then
-	if test "x${enable_strict_dependencies}" = xyes; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires:$fail.]);
-		targetname=
-	fi
-fi
+FR_MODULE_END_TESTS
 
 mod_ldflags="$SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"
+
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 
 AC_CONFIG_HEADER(config.h)
-
-AC_SUBST(targetname)
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

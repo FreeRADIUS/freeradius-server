@@ -4,11 +4,10 @@ AC_CONFIG_SRCDIR([rlm_cache.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_cache])
 
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 
-if test x$with_[]modname != xno; then
+FR_MODULE_START_TESTS
 
 	AC_PROG_CC
 
@@ -38,12 +37,7 @@ if test x$with_[]modname != xno; then
 	dnl # Don't bother looking for errors in the child directories
 	dnl #
 
-	targetname=modname
-else
-	targetname=
-	echo \*\*\* module modname is disabled.
-fi
+FR_MODULE_END_TESTS([nostrict])
 
-AC_SUBST(targetname)
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

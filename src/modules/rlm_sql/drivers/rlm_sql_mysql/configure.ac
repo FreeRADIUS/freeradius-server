@@ -3,13 +3,12 @@ AC_INIT
 AC_CONFIG_SRCDIR([rlm_sql_mysql.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_sql_mysql])
-AC_CONFIG_HEADER(config.h)
 
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 
-if test x$with_[]modname != xno; then
+FR_MODULE_START_TESTS
+
 	dnl ############################################################
 	dnl # Check for command line options
 	dnl ############################################################
@@ -201,27 +200,14 @@ if test x$with_[]modname != xno; then
 		fi
     fi
 
-    targetname=modname
-else
-    targetname=
-    echo \*\*\* module modname is disabled.
-fi
-
-dnl Don't change this section.
-if test "x$fail" != x; then
-	if test "x${enable_strict_dependencies}" = xyes; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires:$fail.]);
-		targetname=
-	fi
-fi
+FR_MODULE_END_TESTS
 
 mod_ldflags="$SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"
+
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
-AC_SUBST(targetname)
+
+AC_CONFIG_HEADER(config.h)
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

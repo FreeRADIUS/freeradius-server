@@ -2629,3 +2629,4 @@ AC_CONFIG_FILES([\
   ./raddb/radiusd.conf
 ])
 AC_OUTPUT
+FR_MODULE_REPORT

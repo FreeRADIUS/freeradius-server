@@ -4,11 +4,10 @@ AC_CONFIG_SRCDIR([rlm_sql_db2.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_sql_db2])
 
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 
-if test x$with_[]modname != xno; then
+FR_MODULE_START_TESTS
 
 	dnl extra argument: --with-ibmdb2-include-dir
 	ibmdb2_include_dir=
@@ -72,27 +71,13 @@ if test x$with_[]modname != xno; then
 		fail="$fail sqlcli.h"
 	fi
 
-	targetname=modname
-else
-	targetname=
-	echo \*\*\* module modname is disabled.
-fi
-
-dnl Don't change this section.
-if test "x$fail" != x; then
-	if test "x${enable_strict_dependencies}" = xyes; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires:$fail.]);
-		targetname=
-	fi
-fi
+FR_MODULE_END_TESTS
 
 sql_ibmdb2_ldflags="$SMART_LIBS"
 sql_ibmdb2_cflags="$SMART_CPPFLAGS"
+
 AC_SUBST(sql_ibmdb2_ldflags)
 AC_SUBST(sql_ibmdb2_cflags)
-AC_SUBST(targetname)
+
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT
