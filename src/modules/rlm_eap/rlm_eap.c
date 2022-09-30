@@ -362,14 +362,14 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 		FR_SBUFF_TALLOC_THREAD_LOCAL(&allowed, 256, 1024);
 
 		for (i = 0; i < s_i; i++) {
-			fr_sbuff_in_sprintf(proposed, "%s (%d), ", eap_type2name(sanitised[i]), sanitised[i]);
+			(void) fr_sbuff_in_sprintf(proposed, "%s (%d), ", eap_type2name(sanitised[i]), sanitised[i]);
 		}
 		fr_sbuff_advance(proposed, -2);
 		fr_sbuff_terminate(proposed);
 
 		vp = NULL;
 		while ((vp = fr_pair_find_by_da(&request->control_pairs, vp, attr_eap_type))) {
-			fr_sbuff_in_sprintf(allowed, "%s (%d), ", eap_type2name(vp->vp_uint32), vp->vp_uint32);
+			(void) fr_sbuff_in_sprintf(allowed, "%s (%d), ", eap_type2name(vp->vp_uint32), vp->vp_uint32);
 		}
 		fr_sbuff_advance(allowed, -2);	/* Negative advance past start should be disallowed */
 		fr_sbuff_terminate(allowed);

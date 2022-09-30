@@ -134,8 +134,8 @@ void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
 	PAIR_VERIFY(vp);
 
 	(void) fr_sbuff_in_char(&sbuff, '\t');
-	fr_pair_print(&sbuff, NULL, vp);
-	fr_sbuff_in_char(&sbuff, '\n');
+	(void) fr_pair_print(&sbuff, NULL, vp);
+	(void) fr_sbuff_in_char(&sbuff, '\n');
 
 	fputs(buff, fp);
 }
