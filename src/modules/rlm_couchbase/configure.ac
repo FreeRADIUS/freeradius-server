@@ -65,13 +65,11 @@ dnl ############################################################
 dnl # Check for libcouchbase header files
 dnl ############################################################
 
-have_couchbase="yes"
-
 smart_try_dir="$libcouchbase_include_dir"
 FR_SMART_CHECK_INCLUDE([libcouchbase/couchbase.h])
 if test "x$ac_cv_header_libcouchbase_couchbase_h" != "xyes"; then
-	have_couchbase="no"
 	AC_MSG_WARN([libcouchbase headers not found. Use --with-libcouchbase-include-dir=<path>.])
+        FR_MODULE_FAIL([couchbase.h])
 fi
 
 dnl ############################################################
@@ -81,12 +79,8 @@ dnl ############################################################
 smart_try_dir="$libcouchbase_lib_dir"
 FR_SMART_CHECK_LIB([couchbase], [lcb_get_version])
 if test "x$ac_cv_lib_couchbase_lcb_get_version" != "xyes"; then
-	have_couchbase="no"
 	AC_MSG_WARN([libcouchbase libraries not found. Use --with-libcouchbase-lib-dir=<path>.])
-fi
-
-if test x"$have_couchbase" != x"yes"; then
-	fail="$fail libcouchbase"
+        FR_MODULE_FAIL([libcouchbase])
 fi
 
 FR_MODULE_END_TESTS

@@ -80,7 +80,7 @@ LDFLAGS="$SMART_LIBS"
 if test "x$ac_cv_lib_sqlite3_sqlite3_open" != "xyes"
 then
 	AC_MSG_WARN([Sqlite libraries not found. Use --with-sqlite-lib-dir=<path>.])
-	fail="$fail libsqlite3"
+	FR_MODULE_FAIL([libsqlite3])
 else
 	dnl # Add any v2 variants here
 	AC_CHECK_FUNCS(\
@@ -101,7 +101,7 @@ FR_SMART_CHECK_INCLUDE(sqlite3.h)
 
 if test "x$ac_cv_header_sqlite3_h" != "xyes"; then
 	AC_MSG_WARN([Sqlite headers not found. Use --with-sqlite-include-dir=<path>.])
-	fail="$fail sqlite.h"
+	FR_MODULE_FAIL([sqlite.h])
 fi
 
 CFLAGS="$SMART_CPPFLAGS"

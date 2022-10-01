@@ -22,6 +22,19 @@ fr_status="$1 ($2)"
 
 
 dnl
+dnl FR_MODULE_FAIL
+dnl
+dnl Usage:
+dnl   FR_MODULE_FAIL([reason])
+dnl
+dnl Add a(nother) reason why the module will not be built.
+dnl
+AC_DEFUN([FR_MODULE_FAIL], [
+fail="$fail $1"
+])
+
+
+dnl
 dnl FR_MODULE_START_TESTS
 dnl
 dnl Usage:

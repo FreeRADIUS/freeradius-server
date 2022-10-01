@@ -59,7 +59,7 @@ FR_SMART_PKGCONFIG_INCLUDE([libosmocore], "${sigtran_include_dir}")
 FR_SMART_CHECK_INCLUDE([osmocom/core/msgb.h])
 if test "x$ac_cv_header_osmocom_core_msgb_h" != "xyes"; then
 	AC_MSG_WARN([libosmocomcore headers not found. Use --with-sigtran-include-dir=<path>.])
-	fail="$fail osmocom/core/msgb.h"
+	FR_MODULE_FAIL([osmocom/core/msgb.h])
 fi
 
 FR_SMART_PKGCONFIG_INCLUDE([libosmo-sccp], "${sigtran_include_dir}")
@@ -68,7 +68,7 @@ CFLAGS="${CFLAGS} -include stdint.h -include osmocom/core/linuxlist.h"
 FR_SMART_CHECK_INCLUDE([osmocom/sccp/sccp.h])
 if test "x$ac_cv_header_osmocom_sccp_sccp_h" != "xyes"; then
 	AC_MSG_WARN([libosmocom-sccp headers not found. Use --with-sigtran-include-dir=<path>.])
-	fail="$fail osmocom/sccp/sccp.h"
+	FR_MODULE_FAIL([osmocom/sccp/sccp.h])
 fi
 CFLAGS="$old_cflags"
 
@@ -81,7 +81,7 @@ FR_SMART_CHECK_LIB([osmocore], msgb_alloc)
 if test "x$ac_cv_lib_osmocore_msgb_alloc" != "xyes"
 then
 	AC_MSG_WARN([libosmocore libraries not found. Use --with-sigtran-lib-dir=<path>.])
-	fail="$fail libosmocore"
+	FR_MODULE_FAIL([libosmocore])
 fi
 
 FR_SMART_PKGCONFIG_LIB([libosmo-sccp], "${sigtran_lib_dir}")
@@ -89,7 +89,7 @@ FR_SMART_CHECK_LIB([osmo-sccp], sccp_connection_connect)
 if test "x$ac_cv_lib_sccp_sccp_connection_connect" != "xyes" -a "x$ac_cv_lib_osmo_sccp_sccp_connection_connect" != "xyes"
 then
 	AC_MSG_WARN([libsccp libraries not found. Use --with-sigtran-lib-dir=<path>.])
-	fail="$fail libsccp"
+	FR_MODULE_FAIL([libsccp])
 fi
 
 FR_SMART_PKGCONFIG_LIB([libosmo-xua], "${sigtran_lib_dir}")
@@ -97,7 +97,7 @@ FR_SMART_CHECK_LIB([osmo-xua], xua_msg_alloc)
 if test "x$ac_cv_lib_xua_xua_msg_alloc" != "xyes" -a "x$ac_cv_lib_osmo_xua_xua_msg_alloc" != "xyes"
 then
 	AC_MSG_WARN([libxua libraries not found. Use --with-sigtran-lib-dir=<path>.])
-	fail="$fail libxua"
+	FR_MODULE_FAIL([libxua])
 fi
 
 FR_SMART_PKGCONFIG_LIB([libosmo-mtp], "${sigtran_lib_dir}")
@@ -105,7 +105,7 @@ FR_SMART_CHECK_LIB([osmo-mtp], mtp_pcap_write_header)
 if test "x$ac_cv_lib_mtp_mtp_pcap_write_header" != "xyes" -a "x$ac_cv_lib_osmo_mtp_mtp_pcap_write_header" != "xyes"
 then
 	AC_MSG_WARN([libmtp libraries not found. Use --with-sigtran-lib-dir=<path>.])
-	fail="$fail libmtp"
+	FR_MODULE_FAIL([libmtp])
 fi
 
 FR_MODULE_END_TESTS

@@ -11,12 +11,12 @@ AC_PROG_CPP
 
 FR_SMART_CHECK_LIB(idn, idna_to_ascii_8z)
 if test "x$ac_cv_lib_idn_idna_to_ascii_8z" != "xyes"; then
-	fail="$fail libidn"
+	FR_MODULE_FAIL([libidn])
 fi
 
 FR_SMART_CHECK_INCLUDE(idna.h)
 if test "$ac_cv_header_idna_h" != "yes"; then
-	fail="$fail idna.h"
+	FR_MODULE_FAIL([idna.h])
 fi
 
 FR_MODULE_END_TESTS

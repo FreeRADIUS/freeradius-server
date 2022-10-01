@@ -155,7 +155,7 @@ fi
 
 if test "x$have_a_libmysqlclient" != "xyes"; then
 	AC_MSG_WARN([MySQL libraries not found. Use --with-mysql-lib-dir=<path>.])
-	fail="$fail libmysqlclient || libmysqlclient_r"
+	FR_MODULE_FAIL([libmysqlclient || libmysqlclient_r])
 fi
 
 dnl ############################################################
@@ -196,7 +196,7 @@ if test "x$have_mysql_h" != "xyes"; then
 		AC_DEFINE(HAVE_MYSQL_MYSQL_H, [], [Define if you have <mysql/mysql.h>])
 	else
 		AC_MSG_WARN([MySQL headers not found. Use --with-mysql-include-dir=<path>.])
-		fail="$fail mysql.h"
+		FR_MODULE_FAIL([mysql.h])
 	fi
 fi
 

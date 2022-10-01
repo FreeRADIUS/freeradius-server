@@ -11,7 +11,7 @@ AC_PROG_CPP
 
 AX_WITH_PROG([PERL],[perl],[not-found],[${PATH}:/usr/bin:/usr/local/bin])
 if test "$PERL" = "not-found" -o ! -x "$PERL"; then
-	fail=$fail" perl"
+	FR_MODULE_FAIL([perl])
 else
 	old_CFLAGS="${CFLAGS}"
 	old_LIBS="${LIBS}"
@@ -62,12 +62,12 @@ else
 	smart_try_dir=
 	FR_SMART_CHECK_INCLUDE(EXTERN.h)
 	if test "x$ac_cv_header_EXTERN_h" != "xyes"; then
-		fail="$fail EXTERN.h"
+		FR_MODULE_FAIL([EXTERN.h])
 	fi
 
 	FR_SMART_CHECK_INCLUDE(perl.h, [#include <EXTERN.h>])
 	if test "x$ac_cv_header_perl_h" != "xyes"; then
-		fail="$fail EXTERN.h"
+		FR_MODULE_FAIL([EXTERN.h])
 	fi
 
 	dnl ############################################################
@@ -81,7 +81,7 @@ else
 
 	AC_MSG_RESULT($LINKS)
 	if test "x$LINKS" = "xno"; then
-		fail="$fail libperl.so"
+		FR_MODULE_FAIL([libperl.so])
 	fi
 
 	AC_MSG_CHECKING([we can link to Perl_hv_store()])
@@ -92,7 +92,7 @@ else
 
 	AC_MSG_RESULT($LINKS)
 	if test "x$LINKS" = "xno"; then
-		fail="$fail libperl.so"
+		FR_MODULE_FAIL([libperl.so])
 	fi
 
 	CFLAGS="$old_CFLAGS"

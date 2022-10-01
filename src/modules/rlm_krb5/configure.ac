@@ -66,7 +66,7 @@ else
 	smart_try_dir="$rlm_krb5_dir/include"
 	FR_SMART_CHECK_INCLUDE(krb5.h)
 	if test "$ac_cv_header_krb5_h" != "yes"; then
-		fail="$fail krb5.h"
+		FR_MODULE_FAIL([krb5.h])
 	fi
 
 	krb5libcrypto=
@@ -103,7 +103,7 @@ else
 
 		FR_SMART_CHECK_LIB(krb5, krb5_get_init_creds_password)
 		if test "x$ac_cv_lib_krb5_krb5_get_init_creds_password" != xyes; then
-			fail="$fail krb5"
+			FR_MODULE_FAIL([krb5])
 		fi
 	fi
 
@@ -153,7 +153,7 @@ if test "$krb5_api_type" = "mit"; then
 	if test "$ac_cv_header_com_err_h" != "yes"; then
 		FR_SMART_CHECK_INCLUDE([et/com_err.h])
 		if test "$ac_cv_header_et_com_err_h" != "yes"; then
-			fail="$fail com_err.h"
+			FR_MODULE_FAIL([com_err.h])
 		else
 			krb5mod_cflags="$krb5mod_cflags -DET_COMM_ERR "
 		fi

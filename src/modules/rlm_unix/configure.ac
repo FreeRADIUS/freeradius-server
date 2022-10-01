@@ -14,7 +14,7 @@ if test -f /etc/passwd; then
 	AC_MSG_RESULT(/etc/passwd)
 else
 	AC_MSG_RESULT(no /etc/passwd file.)
-	[ fail=$fail" /etc/passwd" ]
+	FR_MODULE_FAIL([/etc/passwd])
 fi
 
 dnl useless?
@@ -30,12 +30,12 @@ AC_CHECK_FUNCS(getspnam getusershell getpwnam)
 
 if test "$ac_cv_func_getpwnam" != "yes"; then
 	AC_MSG_RESULT(no getpwnam)
-	[ fail=$fail" getpwnam" ]
+	FR_MODULE_FAIL([getpwnam])
 fi
 
 if test "$ac_cv_header_pwd_h" != "yes"; then
 	AC_MSG_RESULT(no pwd.h)
-	[ fail=$fail" pwd.h" ]
+	FR_MODULE_FAIL([pwd.h])
 fi
 
 AC_CHECK_LIB(shadow, getspnam,

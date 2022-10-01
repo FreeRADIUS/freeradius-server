@@ -61,14 +61,14 @@ dnl Check for isc_attach_database in -lfbclient
 smart_try_dir="$firebird_lib_dir /usr/lib/firebird2/lib /usr/local/firebird/lib"
 FR_SMART_CHECK_LIB(fbclient, isc_attach_database)
 if test "x$ac_cv_lib_fbclient_isc_attach_database" != xyes; then
-	fail="$fail libfbclient"
+	FR_MODULE_FAIL([libfbclient])
 fi
 
 dnl Check for ibase.h
 smart_try_dir="$firebird_include_dir /usr/lib/firebird2/include /usr/local/firebird/include"
 FR_SMART_CHECK_INCLUDE(ibase.h)
 if test "x$ac_cv_header_ibase_h" != xyes; then
-	fail="$fail ibase.h"
+	FR_MODULE_FAIL([ibase.h])
 fi
 
 FR_MODULE_END_TESTS

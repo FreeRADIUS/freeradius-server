@@ -72,7 +72,7 @@ FR_SMART_CHECK_INCLUDE(wbclient.h, [#include <stdint.h>
 if test "x$ac_cv_header_wbclient_h" != "xyes"; then
 	AC_MSG_WARN([wbclient.h not found. Use --with-winbind-include-dir=<path>.])
 	AC_MSG_WARN([silently building without support for direct authentication via winbind. requires: libwbclient])
-	fail="$fail wbclient.h"
+	FR_MODULE_FAIL([wbclient.h])
 fi
 
 FR_SMART_CHECK_INCLUDE(core/ntstatus.h, [#include <stdint.h>
@@ -80,7 +80,7 @@ FR_SMART_CHECK_INCLUDE(core/ntstatus.h, [#include <stdint.h>
 if test "x$ac_cv_header_core_ntstatus_h" != "xyes"; then
 	AC_MSG_WARN([core/ntstatus.h not found. Use --with-winbind-include-dir=<path>.])
 	AC_MSG_WARN([silently building without support for direct authentication via winbind. requires: libwbclient])
-	fail="$fail core/ntstatus.h"
+	FR_MODULE_FAIL([core/ntstatus.h])
 fi
 
 dnl ############################################################
@@ -95,7 +95,7 @@ if test "x$ac_cv_header_wbclient_h" = "xyes" && \
 	if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"; then
 		AC_MSG_WARN([winbind libraries not found. Use --with-winbind-lib-dir=<path>.])
 		AC_MSG_WARN([Samba must be version 4.2.1 or higher to use this feature.])
-		fail="$fail libwbclient"
+		FR_MODULE_FAIL([libwbclient])
 	fi
 fi
 

@@ -30,7 +30,7 @@ if test "x$PYTHON_CONFIG_BIN" = x; then
 fi
 
 if test "x$PYTHON_CONFIG_BIN" = "xnot-found"; then
-	fail="python-config"
+	FR_MODULE_FAIL([python-config])
 else
 	dnl #
 	dnl # It is necessary due to a weird behavior with 'python-config'
@@ -119,7 +119,7 @@ else
 
 	AC_MSG_RESULT($LINKS)
 	if test "x$LINKS" = "xno"; then
-		fail="$fail working python libraries"
+		FR_MODULE_FAIL([working python libraries])
 	fi
 
 	CFLAGS=$old_CFLAGS

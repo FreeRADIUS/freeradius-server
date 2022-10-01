@@ -79,7 +79,7 @@ LDFLAGS="$SMART_LIBS"
 if test "x$ac_cv_lib_cassandra_cass_statement_new_n" != "xyes"
 then
 	AC_MSG_WARN([Cassandra libraries not found. Use --with-cassandra-lib-dir=<path>.])
-	fail="$fail libcassandra (>= 2.0)"
+	FR_MODULE_FAIL([libcassandra (>= 2.0)])
 fi
 
 dnl ############################################################
@@ -90,7 +90,7 @@ smart_try_dir="$cassandra_include_dir"
 FR_SMART_CHECK_INCLUDE(cassandra.h)
 if test "x$ac_cv_header_cassandra_h" != "xyes"; then
 	AC_MSG_WARN([Cassandra headers not found. Use --with-cassandra-include-dir=<path>.])
-	fail="$fail cassandra.h"
+	FR_MODULE_FAIL([cassandra.h])
 fi
 CFLAGS="$SMART_CPPFLAGS"
 

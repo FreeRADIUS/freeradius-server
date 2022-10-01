@@ -69,19 +69,19 @@ smart_try_dir="$mruby_include_dir /usr/include"
 FR_SMART_CHECK_INCLUDE(mruby.h, [])
 if test "x$ac_cv_header_mruby_h" != "xyes"; then
 	AC_MSG_WARN([mruby.h not found. Use --with-mruby-include-dir=<path>.])
-	fail="$fail mruby.h"
+	FR_MODULE_FAIL([mruby.h])
 fi
 
 FR_SMART_CHECK_INCLUDE(mruby/compile.h, [#include <mruby.h>])
 if test "x$ac_cv_header_mruby_compile_h" != "xyes"; then
 	AC_MSG_WARN([mruby/compile.h not found. Use --with-mruby-include-dir=<path>.])
-	fail="$fail mruby/compile.h"
+	FR_MODULE_FAIL([mruby/compile.h])
 fi
 
 FR_SMART_CHECK_INCLUDE(mruby/array.h, [#include <mruby.h>])
 if test "x$ac_cv_header_mruby_array_h" != "xyes"; then
 	AC_MSG_WARN([mruby/array.h not found. Use --with-mruby-include-dir=<path>.])
-	fail="$fail mruby/array.h"
+	FR_MODULE_FAIL([mruby/array.h])
 fi
 
 old_LIBS=$LIBS
@@ -93,7 +93,7 @@ if test "x$ac_cv_lib_mruby_mrb_run" = "xyes"; then
 	mod_ldflags="${SMART_LIBS}"
 else
 	AC_MSG_WARN([mruby libraries not found. Use --with-mruby-lib-dir=<path>.])
-	fail="$fail libmruby"
+	FR_MODULE_FAIL([libmruby])
 fi
 
 FR_SMART_CHECK_LIB(m, fmod)
@@ -101,7 +101,7 @@ if test "x$ac_cv_lib_m_fmod" = "xyes"; then
 	mod_ldflags="${mod_ldflags} ${SMART_LIBS}"
 else
 	AC_MSG_WARN([m library not found.])
-	fail="$fail libm"
+	FR_MODULE_FAIL([libm])
 fi
 
 FR_MODULE_END_TESTS

@@ -76,7 +76,7 @@ fi
 FR_SMART_CHECK_INCLUDE(oci.h)
 if test "x$ac_cv_header_oci_h" != "xyes"; then
 	AC_MSG_WARN([oracle headers not found. Use --with-oracle-include-dir=<path> or set ORACLE_HOME.])
-	fail="$fail oci.h"
+	FR_MODULE_FAIL([oci.h])
 fi
 
 dnl ############################################################
@@ -143,7 +143,7 @@ LIBS="$old_LIBS"
 
 if test "x$mod_ldflags" = "x"; then
 	AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path> or set ORACLE_HOME.])
-	fail=["$fail libclntsh libnnz[9-12]"]
+	FR_MODULE_FAIL([[libclntsh libnnz[9-12]]])]
 fi
 
 FR_MODULE_END_TESTS

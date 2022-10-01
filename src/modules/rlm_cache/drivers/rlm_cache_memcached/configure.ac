@@ -70,7 +70,7 @@ smart_try_dir="$libmemcached_include_dir"
 FR_SMART_CHECK_INCLUDE([libmemcached/memcached.h])
 if test "x$ac_cv_header_libmemcached_memcached_h" != "xyes"; then
 	AC_MSG_WARN([libmemcached headers not found. Use --with-libmemcached-include-dir=<path>.])
-	fail='memcached.h'
+	FR_MODULE_FAIL([memcached.h])
 fi
 
 dnl ############################################################
@@ -88,7 +88,7 @@ FR_SMART_CHECK_LIB([memcached], [memcached])
 if test "x$ac_cv_lib_memcached_memcached" != "xyes"
 then
 	AC_MSG_WARN([libmemcached libraries not found. Use --with-libmemcached-lib-dir=<path>.])
-	fail="libmemcached $fail"
+	FR_MODULE_FAIL([libmemcached])
 else
 	AC_CHECK_FUNCS(\
 		memcached \
@@ -97,7 +97,9 @@ else
 		memcached_set \
 		memcached_delete \
 		libmemcached_check_configuration \
-	,, [fail="memcached functions"])
+	,[] , [
+		FR_MODULE_FAIL([memcached functions])
+	])
 fi
 
 FR_MODULE_END_TESTS

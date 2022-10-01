@@ -66,10 +66,10 @@ if test "x$ac_cv_header_lua_h" = "xno"; then
 fi
 
 if test "x$ac_cv_header_lua_h" = "xno"; then
-	fail="lua.h"
+	FR_MODULE_FAIL([lua.h])
 else
 	if test "x$ax_header_version_match" = "xno"; then
-		fail="lua.h version"
+		FR_MODULE_FAIL([correct header version])
 	else
 		AC_CACHE_CHECK([ldflags], [_cv_lua_ldflags],
 		[
@@ -91,7 +91,7 @@ else
 		fi
 
 		if test "x$_ax_found_lua_libs" != 'xyes'; then
-			fail="Lua libs"
+			FR_MODULE_FAIL([lua libraries])
 		fi
 		_cv_lua_ldflags="$LUA_LIB $LDFLAGS"
 		])

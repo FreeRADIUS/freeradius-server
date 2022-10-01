@@ -61,14 +61,14 @@ dnl Check for SQLConnect in -ldb2
 smart_try_dir="$ibmdb2_lib_dir /usr/local/db2/lib /usr/IBMdb2/V7.1/lib"
 FR_SMART_CHECK_LIB(db2, SQLConnect)
 if test "x$ac_cv_lib_db2_SQLConnect" != xyes; then
-	fail="$fail libdb2"
+	FR_MODULE_FAIL([libdb2])
 fi
 
 dnl Check for sqlcli.h
 smart_try_dir="$ibmdb2_include_dir /usr/local/db2/include /usr/IBMdb2/V7.1/include"
 FR_SMART_CHECK_INCLUDE(sqlcli.h)
 if test "x$ac_cv_header_sqlcli_h" != xyes; then
-	fail="$fail sqlcli.h"
+	FR_MODULE_FAIL([sqlcli.h])
 fi
 
 FR_MODULE_END_TESTS

@@ -13,7 +13,7 @@ mod_ldflags="${mod_ldflags} -F /Library/Developer/CommandLineTools/SDKs/MacOSX.s
 
 FR_SMART_CHECK_INCLUDE(membership.h)
 if test "$ac_cv_header_membership_h" != "yes"; then
-	fail="$fail membership.h"
+	FR_MODULE_FAIL([membership.h])
 else
 	AC_CHECK_DECLS(mbr_check_service_membership,
 		[mod_cflags="${mod_cflags} -DHAVE_DECL_MBR_CHECK_SERVICE_MEMBERSHIP"],

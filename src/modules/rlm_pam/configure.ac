@@ -15,7 +15,7 @@ AC_CHECK_LIB(dl, dlopen,
 
 AC_CHECK_LIB(pam, pam_start,
 	[ mod_ldflags="-lpam $mod_ldflags" ],
-	[ fail=$fail" libpam" ],
+	[ FR_MODULE_FAIL([libpam]) ],
 	[ $mod_ldflags ]
 )
 

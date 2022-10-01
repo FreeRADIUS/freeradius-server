@@ -41,19 +41,19 @@ AC_ARG_WITH(rlm-unbound-include-dir,
 smart_try_dir=$rlm_unbound_lib_dir
 FR_SMART_CHECK_LIB(unbound, ub_ctx_create_ub_event)
 if test "x$ac_cv_lib_unbound_ub_ctx_create_ub_event" != "xyes"; then
-	fail="$fail libunbound"
+	FR_MODULE_FAIL([libunbound])
 fi
 
 smart_try_dir=$rlm_unbound_include_dir
 FR_SMART_CHECK_INCLUDE(unbound.h)
 if test "$ac_cv_header_unbound_h" != "yes"; then
-	fail="$fail unbound.h"
+	FR_MODULE_FAIL([unbound.h])
 fi
 
 smart_try_dir=$rlm_unbound_include_dir
 FR_SMART_CHECK_INCLUDE(unbound-event.h)
 if test "$ac_cv_header_unboundmevent_h" != "yes"; then
-	fail="$fail unbound-event.h"
+	FR_MODULE_FAIL([unbound-event.h])
 fi
 
 FR_MODULE_END_TESTS

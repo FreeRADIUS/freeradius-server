@@ -46,7 +46,7 @@ AC_ARG_WITH(rlm-sql-postgresql-include-dir,
 smart_try_dir="$rlm_sql_postgresql_include_dir /usr/include/postgresql /usr/local/pgsql/include /usr/include/pgsql"
 FR_SMART_CHECK_INCLUDE(libpq-fe.h)
 if test "x$ac_cv_header_libpqmfe_h" != "xyes"; then
-	fail="$fail libpq-fe.h"
+	FR_MODULE_FAIL([libpq-fe.h])
 else
 	CPPFLAGS="$SMART_CPPFLAGS"
 	AC_MSG_CHECKING([for PGRES_SINGLE_TUPLE])
@@ -95,7 +95,7 @@ fi
 smart_try_dir="$rlm_sql_postgresql_lib_dir /usr/lib /usr/local/pgsql/lib"
 FR_SMART_CHECK_LIB(pq, PQconnectdb)
 if test "x$ac_cv_lib_pq_PQconnectdb" != "xyes"; then
-	fail="$fail libpq"
+	FR_MODULE_FAIL([libpq])
 fi
 AC_CHECK_FUNCS(\
 	PQinitOpenSSL \

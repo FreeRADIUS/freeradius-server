@@ -69,7 +69,7 @@ smart_try_dir="$freetds_include_dir"
 FR_SMART_CHECK_INCLUDE(ctpublic.h)
 if test "x$ac_cv_header_ctpublic_h" != "xyes"; then
 	AC_MSG_WARN([freetds headers not found. Use --with-freetds-include-dir=<path>.])
-	fail="$fail ctpublic.h"
+	FR_MODULE_FAIL([ctpublic.h])
 fi
 
 dnl ############################################################
@@ -82,7 +82,7 @@ FR_SMART_CHECK_LIB(ct, ct_command)
 if test "x$ac_cv_lib_ct_ct_command" != "xyes"
 then
 	AC_MSG_WARN([freetds libraries not found. Use --with-freetds-lib-dir=<path>.])
-	fail="$fail libct"
+	FR_MODULE_FAIL([libct])
 fi
 
 FR_MODULE_END_TESTS
