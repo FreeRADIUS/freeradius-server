@@ -1,4 +1,11 @@
-AC_DEFUN([FR_STATUS_FILE], [config.info])
+dnl Where module/library report is stored
+AC_DEFUN([FR_REPORT_FILE], [config.report])
+
+dnl Where feature list is built up
+AC_DEFUN([FR_REPORT_TMP], [config.report.tmp])
+
+dnl Space prefix for non-first lines of feature list
+AC_DEFUN([FR_REPORT_PREFIX], [                                 ])
 
 dnl
 dnl Store status about module configure state.
@@ -48,6 +55,9 @@ AC_DEFUN([FR_MODULE_START_TESTS],
 [
 fail=
 fr_status=
+fr_features=
+: > "FR_REPORT_FILE"
+: > "FR_REPORT_TMP"
 
 m4_divert_text([SHELL_FN], [
 echo
@@ -96,6 +106,7 @@ ifelse([$1], [nostrict], [], [
 		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
 		fail="$(echo $fail)"
 		FR_MODULE_STATUS([skipping], [requires $fail])
+		fr_features=
 ifelse([$1], [nostrict], [], [
 	fi
 ])
@@ -103,13 +114,42 @@ else
 	FR_MODULE_STATUS([OK])
 fi
 
-echo "$fr_status" > FR_STATUS_FILE
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "FR_REPORT_FILE"
+else
+	$as_echo_n "$fr_status ... " > "FR_REPORT_FILE"
+	cat "FR_REPORT_TMP" >> "FR_REPORT_FILE"
+fi
+
+rm "FR_REPORT_TMP"
 
 AC_SUBST(targetname)
 ])
 
 AC_DEFUN([FR_LIBRARY_END_TESTS], m4_defn([FR_MODULE_END_TESTS]))
 
+
+dnl
+dnl FR_MODULE_FEATURE
+dnl
+dnl Usage:
+dnl   FR_MODULE_FEATURE([name], [description])
+dnl
+dnl Declare that a module feature is or is not available (but the
+dnl module can still be built).
+dnl
+AC_DEFUN([FR_MODULE_FEATURE], [
+if echo "$fr_features" | grep -q "+$1+"; then :
+dnl feature already declared
+else :
+	fr_report_prefix=""
+	if test x"$fr_features" != x""; then
+		fr_report_prefix="FR_REPORT_PREFIX"
+	fi
+	$as_echo "$fr_report_prefix""$2" >> FR_REPORT_TMP
+	fr_features="$fr_features +$1+"
+fi
+])
 
 dnl
 dnl FR_MODULE_TEST_FAIL_DO
@@ -169,12 +209,12 @@ for module in $module_list; do
   module_status="OK"
 
   if test -r $module/configure.ac; then
-    if test -r $module/FR_STATUS_FILE; then
-      module_status=$(head -1 $module/FR_STATUS_FILE)
+    if test -r $module/FR_REPORT_FILE; then
+      module_status=$(cat $module/FR_REPORT_FILE)
     fi
   fi
 
-  echo "$module_print $module_status"
+  $as_echo "$module_print $module_status"
 done
 ])
 
@@ -200,8 +240,8 @@ for library in $library_list; do
   library_status="OK"
 
   if test -r $library/configure.ac; then
-    if test -r $library/FR_STATUS_FILE; then
-      library_status=$(head -1 $library/FR_STATUS_FILE)
+    if test -r $library/FR_REPORT_FILE; then
+      library_status=$(cat $library/FR_REPORT_FILE)
     fi
   fi
 

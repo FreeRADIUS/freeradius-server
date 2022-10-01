@@ -142,6 +142,7 @@ if test "x$have_yubikey" = "xyes"; then
 	AC_DEFINE([HAVE_YUBIKEY],[1],[Build with yubikey token decryption support support from yubikey])
 else
 	AC_MSG_WARN([silently building without yubikey token decryption support. requires: yubikey])
+	FR_MODULE_FEATURE([yubikey], [without yubikey token decryption support])
 fi
 
 dnl ############################################################
@@ -176,6 +177,7 @@ if test "x$have_ykclient" = "xyes"; then
 	AC_DEFINE([HAVE_YKCLIENT],[1],[Build with yubicloud support from ykclient])
 else
 	AC_MSG_WARN([silently building without yubicloud support. requires: ykclient])
+	FR_MODULE_FEATURE([ykclient], [without yubicloud support])
 fi
 
 FR_MODULE_END_TESTS

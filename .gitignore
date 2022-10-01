@@ -62,7 +62,7 @@ libtool
 autom4te.cache
 aclocal.m4
 config.guess
-config.info
+config.report
 config.sub
 config.h
 src/bin/unit_test_attribute

@@ -72,6 +72,9 @@ if test "x$ac_cv_header_membership_h" = "xyes"; then
 	AC_DEFINE([HAVE_MEMBERSHIP_H],[1],[Build with Apple Open Directory support])
 	mschap_sources="$mschap_sources opendir.c"
 	mod_ldflags="-F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks -framework DirectoryService"
+	FR_MODULE_FEATURE([opendirectory], [with opendirectory support])
+else
+	FR_MODULE_FEATURE([opendirectory], [without opendirectory support])
 fi
 
 smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
@@ -80,6 +83,7 @@ FR_SMART_CHECK_INCLUDE(wbclient.h, [#include <stdint.h>
 if test "x$ac_cv_header_wbclient_h" != "xyes"; then
 	AC_MSG_WARN([wbclient.h not found. Use --with-winbind-include-dir=<path>.])
 	AC_MSG_WARN([silently building without support for direct authentication via winbind. requires: libwbclient])
+	FR_MODULE_FEATURE([wbclient], [without direct winbind support])
 fi
 
 FR_SMART_CHECK_INCLUDE(core/ntstatus.h, [#include <stdint.h>
@@ -87,6 +91,7 @@ FR_SMART_CHECK_INCLUDE(core/ntstatus.h, [#include <stdint.h>
 if test "x$ac_cv_header_core_ntstatus_h" != "xyes"; then
 	AC_MSG_WARN([core/ntstatus.h not found. Use --with-winbind-include-dir=<path>.])
 	AC_MSG_WARN([silently building without support for direct authentication via winbind. requires: libwbclient])
+	FR_MODULE_FEATURE([wbclient], [without direct winbind support])
 fi
 
 dnl ############################################################
@@ -101,9 +106,11 @@ if test "x$ac_cv_header_wbclient_h" = "xyes" && \
 	if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"; then
 		AC_MSG_WARN([winbind libraries not found. Use --with-winbind-lib-dir=<path>.])
 		AC_MSG_WARN([Samba must be version 4.2.1 or higher to use this feature.])
+		FR_MODULE_FEATURE([wbclient], [without direct winbind support])
 	else
 		mschap_sources="$mschap_sources auth_wbclient.c"
 		AC_DEFINE([WITH_AUTH_WINBIND],[1],[Build with direct winbind auth support])
+		FR_MODULE_FEATURE([wbclient], [with direct winbind support])
 	fi
 fi
 
