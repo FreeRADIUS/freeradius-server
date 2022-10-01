@@ -2,11 +2,9 @@ AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([json.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([libfreeradius-json], [JSON support from json-c])
-AC_DEFUN([modname_useropt],[m4_bpatsubst([]modname,[[-+.]],[_])])
-AC_CONFIG_HEADERS([config.h])
+FR_INIT_LIBRARY([libfreeradius-json], [JSON support from json-c])
 
-if test x$with_[]modname_useropt != xno; then
+FR_LIBRARY_START_TESTS
 
 	AC_PROG_CC
 	AC_PROG_CPP
@@ -121,24 +119,11 @@ if test x$with_[]modname_useropt != xno; then
 		fail="$fail json-c >= 0.13"
 	fi
 
-	targetname=modname
-else
-	targetname=
-	echo \*\*\* module modname is disabled.
-fi
+FR_LIBRARY_END_TESTS
 
-dnl  Don't change this section.
-if test x"$fail" != x""; then
-	if test x"${enable_strict_dependencies}" = x"yes"; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
-		targetname=""
-	fi
-else
-    AC_DEFINE([HAVE_JSON],[1],[Build with JSON support from json-c])
-fi
+FR_MODULE_TEST_PASS_DO([
+	AC_DEFINE([HAVE_JSON],[1],[Build with JSON support from json-c])
+])
 
 mod_ldflags="$SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"
@@ -146,8 +131,8 @@ mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
 
-AC_SUBST(targetname)
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([all.mk])
+
 AC_OUTPUT
 AH_BOTTOM([#include <freeradius-devel/automask.h>])
-

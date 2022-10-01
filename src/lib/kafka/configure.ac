@@ -2,13 +2,13 @@ AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([base.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([libfreeradius-kafka], [rdkafka support])
+FR_INIT_LIBRARY([libfreeradius-kafka], [rdkafka support])
 
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 
-if test x$with_[]modname_useropt != xno; then
+FR_LIBRARY_START_TESTS
+
     dnl ############################################################
     dnl # Check for command line options
     dnl ############################################################
@@ -90,27 +90,13 @@ if test x$with_[]modname_useropt != xno; then
       fail="$fail libhirdkafka"
     fi
 
-    targetname=modname
-else
-    targetname=
-    echo \*\*\* module modname is disabled.
-fi
-
-dnl Don't change this section.
-if test "x$fail" != x; then
-	if test "x${enable_strict_dependencies}" = xyes; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires:$fail.]);
-		targetname=
-	fi
-fi
+FR_LIBRARY_END_TESTS
 
 mod_ldflags="$SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"
+
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
-AC_SUBST(targetname)
+
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

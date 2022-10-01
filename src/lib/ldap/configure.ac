@@ -2,15 +2,13 @@ AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([base.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([libfreeradius-ldap], [LDAP support])
-AC_DEFUN([modname_useropt],[m4_bpatsubst([]modname,[[-+.]],[_])])
+FR_INIT_LIBRARY([libfreeradius-ldap], [LDAP support])
 
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 SASL=
 
-if test x$with_[]modname_useropt != xno; then
+FR_LIBRARY_START_TESTS
 
 	dnl ############################################################
 	dnl # Check for compiler
@@ -124,27 +122,7 @@ if test x$with_[]modname_useropt != xno; then
 	  fi
 	fi
 
-	targetname=modname
-else
-	targetname=
-	echo \*\*\* module modname is disabled.
-fi
-
-if test x"$fail" != x""; then
-	if test x"${enable_strict_dependencies}" = x"yes"; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.])
-		if test x"$headersuggestion" != x; then
-			AC_MSG_WARN([$headersuggestion])
-		fi
-		if test x"$libsuggestion" != x; then
-			AC_MSG_WARN([$libsuggestion])
-		fi
-		targetname=""
-	fi
-fi
+FR_LIBRARY_END_TESTS
 
 AC_DEFINE(WITH_EDIR, 1, [Build the server with support for Novell eDir Universal Password])
 
@@ -154,11 +132,7 @@ mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(SASL)
-AC_SUBST(targetname)
-AC_CONFIG_HEADERS([config.h])
 
-dnl # This is needed so that all.mk is not created unless configure is run
-dnl # so that it doesn't attempt to include libfreeradius-redis.mk which
-dnl # is also dependent on configure being run.
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

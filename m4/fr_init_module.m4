@@ -12,3 +12,5 @@ AC_DEFUN([FR_INIT_MODULE],
   AC_ARG_WITH([$1],
     [AS_HELP_STRING([--without-$1],[build without ]ifelse([$2],[],[$1],[$2]))])
 ])
+
+AC_DEFUN([FR_INIT_LIBRARY], m4_defn([FR_INIT_MODULE]))

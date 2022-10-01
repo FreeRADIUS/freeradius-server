@@ -42,8 +42,10 @@ echo Running tests for modname
 echo
 ])
 
-if test x"$with_[]modname" != xno; then
+if test x"$with_[]modname_useropt" != xno; then
 ])
+
+AC_DEFUN([FR_LIBRARY_START_TESTS], m4_defn([FR_MODULE_START_TESTS]))
 
 
 dnl
@@ -93,6 +95,8 @@ echo "$fr_status" > FR_STATUS_FILE
 AC_SUBST(targetname)
 ])
 
+AC_DEFUN([FR_LIBRARY_END_TESTS], m4_defn([FR_MODULE_END_TESTS]))
+
 
 dnl
 dnl FR_MODULE_TEST_FAIL_DO
@@ -109,6 +113,9 @@ if test x"$fail" != x""; then :
 fi
 ])
 
+AC_DEFUN([FR_LIBRARY_TEST_FAIL_DO], m4_defn([FR_MODULE_TEST_FAIL_DO]))
+
+
 dnl
 dnl FR_MODULE_TEST_PASS_DO
 dnl
@@ -123,6 +130,9 @@ if test x"$fail" = x""; then :
 	$1
 fi
 ])
+
+AC_DEFUN([FR_LIBRARY_TEST_PASS_DO], m4_defn([FR_MODULE_TEST_PASS_DO]))
+
 
 
 dnl
@@ -152,5 +162,36 @@ for module in $module_list; do
   fi
 
   echo "$module_print $module_status"
+done
+])
+
+
+dnl
+dnl FR_LIBRARY_REPORT
+dnl
+dnl Usage:
+dnl   FR_LIBRARY_REPORT
+dnl
+dnl Outputs a summary list of all libraries and any configure errors.
+dnl
+AC_DEFUN([FR_LIBRARY_REPORT], [
+library_list=$(find src/lib/ -mindepth 1 -maxdepth 1 -type d -print | sort)
+
+echo
+echo Library configure status report
+echo -------------------------------
+
+for library in $library_list; do
+  library_name="$(basename $library)"
+  library_print="$(echo "$library_name ........................" | cut -c 1-25)"
+  library_status="OK"
+
+  if test -r $library/configure.ac; then
+    if test -r $library/FR_STATUS_FILE; then
+      library_status=$(head -1 $library/FR_STATUS_FILE)
+    fi
+  fi
+
+  echo "$library_print $library_status"
 done
 ])
