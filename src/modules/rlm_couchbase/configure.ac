@@ -6,91 +6,88 @@ FR_INIT_MODULE([rlm_couchbase])
 
 FR_MODULE_START_TESTS
 
-	AC_PROG_CC
-	AC_PROG_CPP
+AC_PROG_CC
+AC_PROG_CPP
 
-	dnl put configuration checks here.
-	dnl set $fail to what's missing, on fatal errors.
-	dnl use AC_MSG_WARN() on important messages.
+dnl ############################################################
+dnl # Check for libcouchbase
+dnl ############################################################
 
-	dnl ############################################################
-	dnl # Check for libcouchbase
-	dnl ############################################################
+dnl extra argument: --with-libcouchbase-include-dir=DIR
+libcouchbase_include_dir=
+AC_ARG_WITH(libcouchbase-include-dir,
+	[AS_HELP_STRING([--with-libcouchbase-include-dir=DIR],
+	[Directory where the libcouchbase includes may be found])],
+	[case "$withval" in
+	no)
+		AC_MSG_ERROR(Need libcouchbase-include-dir)
+		;;
+	yes)
+		;;
+	*)
+		libcouchbase_include_dir="$withval"
+		;;
+	esac])
 
-	dnl extra argument: --with-libcouchbase-include-dir=DIR
-	libcouchbase_include_dir=
-	AC_ARG_WITH(libcouchbase-include-dir,
-		[AS_HELP_STRING([--with-libcouchbase-include-dir=DIR],
-		[Directory where the libcouchbase includes may be found])],
-		[case "$withval" in
-			no)
-				AC_MSG_ERROR(Need libcouchbase-include-dir)
-			;;
-			yes)
-			;;
-			*)
-				libcouchbase_include_dir="$withval"
-			;;
-		esac])
+dnl extra argument: --with-libcouchbase-lib-dir=DIR
+libcouchbase_lib_dir=
+AC_ARG_WITH(libcouchbase-lib-dir,
+[AS_HELP_STRING([--with-libcouchbase-lib-dir=DIR],
+	[Directory where the libcouchbase libraries may be found])],
+	[case "$withval" in
+	no)
+		AC_MSG_ERROR(Need libcouchbase-lib-dir)
+		;;
+	yes)
+		;;
+	*)
+		libcouchbase_lib_dir="$withval"
+		;;
+	esac])
 
-	dnl extra argument: --with-libcouchbase-lib-dir=DIR
-	libcouchbase_lib_dir=
-	AC_ARG_WITH(libcouchbase-lib-dir,
-	[AS_HELP_STRING([--with-libcouchbase-lib-dir=DIR],
-		[Directory where the libcouchbase libraries may be found])],
-		[case "$withval" in
-			no)
-				AC_MSG_ERROR(Need libcouchbase-lib-dir)
-			;;
-			yes)
-			;;
-			*)
-				libcouchbase_lib_dir="$withval"
-			;;
-		esac])
+dnl extra argument: --with-libcouchbase-dir=DIR
+AC_ARG_WITH(libcouchbase-dir,
+[AS_HELP_STRING([--with-libcouchbase-dir=DIR],
+	[Base directory where libcouchbase is installed])],
+	[case "$withval" in
+	no)
+		AC_MSG_ERROR(Need libcouchbase-dir)
+		;;
+	yes)
+		;;
+	*)
+		libcouchbase_lib_dir="$withval/lib"
+		libcouchbase_include_dir="$withval/include"
+		;;
+	esac])
 
-	dnl extra argument: --with-libcouchbase-dir=DIR
-	AC_ARG_WITH(libcouchbase-dir,
-	[AS_HELP_STRING([--with-libcouchbase-dir=DIR],
-		[Base directory where libcouchbase is installed])],
-		[case "$withval" in
-			no)
-				AC_MSG_ERROR(Need libcouchbase-dir)
-			;;
-			yes)
-			;;
-			*)
-				libcouchbase_lib_dir="$withval/lib"
-				libcouchbase_include_dir="$withval/include"
-			;;
-		esac])
+dnl ############################################################
+dnl # Check for libcouchbase header files
+dnl ############################################################
 
-	dnl ############################################################
-	dnl # Check for libcouchbase header files
-	dnl ############################################################
+have_couchbase="yes"
 
-	have_couchbase="yes"
-	smart_try_dir="$libcouchbase_include_dir"
-	FR_SMART_CHECK_INCLUDE([libcouchbase/couchbase.h])
-	if test "x$ac_cv_header_libcouchbase_couchbase_h" != "xyes"; then
-		have_couchbase="no"
-		AC_MSG_WARN([libcouchbase headers not found. Use --with-libcouchbase-include-dir=<path>.])
-	fi
+smart_try_dir="$libcouchbase_include_dir"
+FR_SMART_CHECK_INCLUDE([libcouchbase/couchbase.h])
+if test "x$ac_cv_header_libcouchbase_couchbase_h" != "xyes"; then
+	have_couchbase="no"
+	AC_MSG_WARN([libcouchbase headers not found. Use --with-libcouchbase-include-dir=<path>.])
+fi
 
-	dnl ############################################################
-	dnl # Check for libcouchbase libraries
-	dnl ############################################################
+dnl ############################################################
+dnl # Check for libcouchbase libraries
+dnl ############################################################
 
-	smart_try_dir="$libcouchbase_lib_dir"
-	FR_SMART_CHECK_LIB([couchbase], [lcb_get_version])
-	if test "x$ac_cv_lib_couchbase_lcb_get_version" != "xyes"; then
-		have_couchbase="no"
-		AC_MSG_WARN([libcouchbase libraries not found. Use --with-libcouchbase-lib-dir=<path>.])
-	fi
+smart_try_dir="$libcouchbase_lib_dir"
+FR_SMART_CHECK_LIB([couchbase], [lcb_get_version])
+if test "x$ac_cv_lib_couchbase_lcb_get_version" != "xyes"; then
+	have_couchbase="no"
+	AC_MSG_WARN([libcouchbase libraries not found. Use --with-libcouchbase-lib-dir=<path>.])
+fi
 
-	if test x"$have_couchbase" != x"yes"; then
-		fail="$fail libcouchbase"
-	fi
+if test x"$have_couchbase" != x"yes"; then
+	fail="$fail libcouchbase"
+fi
 
 FR_MODULE_END_TESTS
 

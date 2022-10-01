@@ -10,26 +10,18 @@ eapsubdirs=
 
 FR_MODULE_START_TESTS
 
-	AC_PROG_CC
+AC_PROG_CC
 
-	for foo in `find ./types -name configure -print`; do
-	  bar=`echo $foo | sed 's%/configure$%%g'`
-	  eapsubdirs="$eapsubdirs $bar"
-	done
+for foo in `find ./types -name configure -print`; do
+  bar=`echo $foo | sed 's%/configure$%%g'`
+  eapsubdirs="$eapsubdirs $bar"
+done
 
-	dnl # don't ask... this is done to avoid autoconf stupidities.
-	ln -s ../../../install-sh install-sh
+dnl # don't ask... this is done to avoid autoconf stupidities.
+ln -s ../../../install-sh install-sh
 
-	dnl #
-	dnl #  Don't change the variable name here.  Autoconf goes bonkers
-	dnl #  if you do.
-	dnl #
-	AC_CONFIG_SUBDIRS($eapsubdirs)
-	rm install-sh
-
-	dnl #
-	dnl # Don't bother looking for errors in the child directories
-	dnl #
+AC_CONFIG_SUBDIRS($eapsubdirs)
+rm install-sh
 
 FR_MODULE_END_TESTS
 
@@ -46,4 +38,5 @@ mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(eaptypes)
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
+
 AC_OUTPUT

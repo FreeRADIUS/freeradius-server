@@ -5,98 +5,98 @@ FR_INIT_MODULE([rlm_winbind])
 
 FR_MODULE_START_TESTS
 
-    AC_PROG_CC
-    AC_PROG_CPP
+AC_PROG_CC
+AC_PROG_CPP
 
-    dnl ############################################################
-    dnl # Check for command line options
-    dnl ############################################################
+dnl ############################################################
+dnl # Check for command line options
+dnl ############################################################
 
-    dnl extra argument: --with-winbind-include-dir=DIR
-    winbind_include_dir=
-    AC_ARG_WITH(winbind-include-dir,
+dnl extra argument: --with-winbind-include-dir=DIR
+winbind_include_dir=
+AC_ARG_WITH(winbind-include-dir,
 	[AS_HELP_STRING([--with-winbind-include-dir=DIR],
 		[Directory where the winbind includes may be found])],
 	[case "$withval" in
-	    no)
+	no)
 		AC_MSG_ERROR(Need winbind-include-dir)
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		winbind_include_dir="$withval"
 		;;
 	esac])
 
-    dnl extra argument: --with-winbind-lib-dir=DIR
-    winbind_lib_dir=
-    AC_ARG_WITH(winbind-lib-dir,
+dnl extra argument: --with-winbind-lib-dir=DIR
+winbind_lib_dir=
+AC_ARG_WITH(winbind-lib-dir,
 	[AS_HELP_STRING([--with-winbind-lib-dir=DIR],
 		[Directory where the winbind libraries may be found])],
 	[case "$withval" in
-	    no)
+	no)
 		AC_MSG_ERROR(Need winbind-lib-dir)
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		winbind_lib_dir="$withval"
 		;;
 	esac])
 
-    dnl extra argument: --with-winbind-dir=DIR
-    AC_ARG_WITH(winbind-dir,
+dnl extra argument: --with-winbind-dir=DIR
+AC_ARG_WITH(winbind-dir,
 	[AS_HELP_STRING([--with-winbind-dir=DIR],
 		[Base directory where winbind is installed])],
 	[case "$withval" in
-	    no)
+	no)
 		AC_MSG_ERROR(Need winbind-dir)
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		winbind_lib_dir="$withval/lib"
 		winbind_include_dir="$withval/include"
 		;;
 	esac])
 
 
-    dnl ############################################################
-    dnl # Check for header files
-    dnl ############################################################
+dnl ############################################################
+dnl # Check for header files
+dnl ############################################################
 
-    smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
-    FR_SMART_CHECK_INCLUDE(wbclient.h, [#include <stdint.h>
-					#include <stdbool.h>])
-    if test "x$ac_cv_header_wbclient_h" != "xyes"; then
-        AC_MSG_WARN([wbclient.h not found. Use --with-winbind-include-dir=<path>.])
-        AC_MSG_WARN([silently building without support for direct authentication via winbind. requires: libwbclient])
+smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
+FR_SMART_CHECK_INCLUDE(wbclient.h, [#include <stdint.h>
+				    #include <stdbool.h>])
+if test "x$ac_cv_header_wbclient_h" != "xyes"; then
+	AC_MSG_WARN([wbclient.h not found. Use --with-winbind-include-dir=<path>.])
+	AC_MSG_WARN([silently building without support for direct authentication via winbind. requires: libwbclient])
 	fail="$fail wbclient.h"
-    fi
+fi
 
-    FR_SMART_CHECK_INCLUDE(core/ntstatus.h, [#include <stdint.h>
-					     #include <stdbool.h>])
-    if test "x$ac_cv_header_core_ntstatus_h" != "xyes"; then
-        AC_MSG_WARN([core/ntstatus.h not found. Use --with-winbind-include-dir=<path>.])
-        AC_MSG_WARN([silently building without support for direct authentication via winbind. requires: libwbclient])
+FR_SMART_CHECK_INCLUDE(core/ntstatus.h, [#include <stdint.h>
+					 #include <stdbool.h>])
+if test "x$ac_cv_header_core_ntstatus_h" != "xyes"; then
+	AC_MSG_WARN([core/ntstatus.h not found. Use --with-winbind-include-dir=<path>.])
+	AC_MSG_WARN([silently building without support for direct authentication via winbind. requires: libwbclient])
 	fail="$fail core/ntstatus.h"
-    fi
+fi
 
-    dnl ############################################################
-    dnl # Check for libraries
-    dnl ############################################################
+dnl ############################################################
+dnl # Check for libraries
+dnl ############################################################
 
-    if test "x$ac_cv_header_wbclient_h" = "xyes" && \
-       test "x$ac_cv_header_core_ntstatus_h" = "xyes"; then
+if test "x$ac_cv_header_wbclient_h" = "xyes" && \
+	test "x$ac_cv_header_core_ntstatus_h" = "xyes"; then
 
-      smart_try_dir="$winbind_lib_dir"
-      FR_SMART_CHECK_LIB(wbclient, wbcCtxAuthenticateUserEx)
-      if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"; then
-        AC_MSG_WARN([winbind libraries not found. Use --with-winbind-lib-dir=<path>.])
-        AC_MSG_WARN([Samba must be version 4.2.1 or higher to use this feature.])
-	fail="$fail libwbclient"
-      fi
-    fi
+	smart_try_dir="$winbind_lib_dir"
+	FR_SMART_CHECK_LIB(wbclient, wbcCtxAuthenticateUserEx)
+	if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"; then
+		AC_MSG_WARN([winbind libraries not found. Use --with-winbind-lib-dir=<path>.])
+		AC_MSG_WARN([Samba must be version 4.2.1 or higher to use this feature.])
+		fail="$fail libwbclient"
+	fi
+fi
 
 FR_MODULE_END_TESTS
 
