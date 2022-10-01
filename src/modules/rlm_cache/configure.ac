@@ -2,7 +2,7 @@ AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_cache.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_cache])
+FR_INIT_MODULE([rlm_cache], [module to cache attributes])
 
 SMART_LIBS=
 SMART_CLFAGS=

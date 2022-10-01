@@ -1,7 +1,8 @@
+AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_mschap.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_mschap])
+FR_INIT_MODULE([rlm_mschap], [MS-CHAP and MS-CHAPv2 authentication])
 
 FR_MODULE_START_TESTS
 

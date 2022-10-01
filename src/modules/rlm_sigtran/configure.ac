@@ -2,7 +2,7 @@ AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_sigtran.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_sigtran])
+FR_INIT_MODULE([rlm_sigtran], [Sigtran functionality for EAP-SIM and EAP-AKA])
 
 SMART_LIBS=
 SMART_CLFAGS=

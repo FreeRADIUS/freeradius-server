@@ -1,7 +1,8 @@
+AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_sql_postgresql.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_sql_postgresql])
+FR_INIT_MODULE([rlm_sql_postgresql], [PostgreSQL database support])
 
 SMART_LIBS=
 SMART_CLFAGS=
@@ -13,7 +14,8 @@ AC_PROG_CC
 dnl extra argument: --with-rlm-sql-postgresql-lib-dir
 rlm_sql_postgresql_lib_dir=
 AC_ARG_WITH(rlm-sql-postgresql-lib-dir,
-	[ --with-rlm-sql-postgresql-lib-dir=DIR	 Directory for PostgreSQL library files []],
+	[AS_HELP_STRING([--with-rlm-sql-postgresql-lib-dir=DIR],
+		[Directory for PostgreSQL library files])],
 	[case "$withval" in
 	no)
 		AC_MSG_ERROR(Need rlm-sql-postgresql-lib-dir)
@@ -28,7 +30,8 @@ AC_ARG_WITH(rlm-sql-postgresql-lib-dir,
 dnl extra argument: --with-rlm-sql-postgresql-include-dir
 rlm_sql_postgresql_include_dir=
 AC_ARG_WITH(rlm-sql-postgresql-include-dir,
-	[ --with-rlm-sql-postgresql-include-dir=DIR Directory for PostgreSQL include files []],
+	[AS_HELP_STRING([--with-rlm-sql-postgresql-include-dir=DIR],
+		[Directory for PostgreSQL include files])],
 	[case "$withval" in
 	no)
 		AC_MSG_ERROR(Need rlm-sql-postgresql-include-dir)
@@ -107,6 +110,6 @@ mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 
-AC_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

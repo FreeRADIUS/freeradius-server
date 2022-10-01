@@ -2,7 +2,7 @@ AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_perl.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_perl])
+FR_INIT_MODULE([rlm_perl], [support for embedded Perl functions])
 
 FR_MODULE_START_TESTS
 
@@ -104,6 +104,6 @@ FR_MODULE_END_TESTS
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
 
-AC_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

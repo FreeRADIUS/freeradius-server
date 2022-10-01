@@ -115,6 +115,6 @@ FR_MODULE_END_TESTS
 AC_SUBST(lua_cflags)
 AC_SUBST(lua_ldflags)
 
-AC_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([all.mk rlm_lua.mk libfreeradius-lua.mk])
 AC_OUTPUT

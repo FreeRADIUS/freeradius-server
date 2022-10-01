@@ -1,7 +1,8 @@
+AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_sql_oracle.c])
 AC_REVISION($Revision: 1.10 $)
-FR_INIT_MODULE([rlm_sql_oracle])
+FR_INIT_MODULE([rlm_sql_oracle], [Oracle database support])
 
 oracle_supported_versions="19 18 12 11"
 

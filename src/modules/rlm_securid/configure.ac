@@ -1,7 +1,8 @@
 AC_PREREQ([2.69])
-AC_INIT(rlm_securid.c)
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_securid.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_securid])
+FR_INIT_MODULE([rlm_securid], [support for RSA SecurID token checking])
 
 SMART_LIBS=
 SMART_CLFAGS=
@@ -92,4 +93,5 @@ mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

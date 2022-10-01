@@ -2,7 +2,7 @@ AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_cache_memcached.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_cache_memcached])
+FR_INIT_MODULE([rlm_cache_memcached], [memcached support for rlm_cache])
 
 FR_MODULE_START_TESTS
 
@@ -66,7 +66,6 @@ dnl ############################################################
 dnl # Check for libmemcached header files
 dnl ############################################################
 
-have_json="yes"
 smart_try_dir="$libmemcached_include_dir"
 FR_SMART_CHECK_INCLUDE([libmemcached/memcached.h])
 if test "x$ac_cv_header_libmemcached_memcached_h" != "xyes"; then
@@ -98,7 +97,7 @@ else
 		memcached_set \
 		memcached_delete \
 		libmemcached_check_configuration \
-	,, [fail="memached functions"])
+	,, [fail="memcached functions"])
 fi
 
 FR_MODULE_END_TESTS

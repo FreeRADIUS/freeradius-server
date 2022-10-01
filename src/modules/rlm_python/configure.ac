@@ -2,7 +2,7 @@ AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_python.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_python])
+FR_INIT_MODULE([rlm_python], [support for embedded Python functions])
 
 FR_MODULE_START_TESTS
 
@@ -12,8 +12,9 @@ AC_PROG_CPP
 dnl extra argument: --with-rlm-python-config-bin
 PYHTON_BIN=
 AC_ARG_WITH(rlm-python-config-bin,
-	[ --with-rlm-python-config-bin=PATH   Path to python-config binary []],
-	[ case "$withval" in
+	[AS_HELP_STRING([--with-rlm-python-config-bin=PATH],
+		[path to python-config binary])],
+	[case "$withval" in
 	no)
 		AC_MSG_ERROR(Need rlm-python-config-bin)
 		;;
@@ -22,8 +23,7 @@ AC_ARG_WITH(rlm-python-config-bin,
 	*)
 		PYTHON_CONFIG_BIN="$withval"
 		;;
-	esac ]
-)
+	esac])
 
 if test "x$PYTHON_CONFIG_BIN" = x; then
 	AC_CHECK_PROGS(PYTHON_CONFIG_BIN, [ python3-config ], not-found, [${PATH}:/usr/bin:/usr/local/bin])

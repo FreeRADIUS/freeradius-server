@@ -2,7 +2,7 @@ AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_sql.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_sql])
+FR_INIT_MODULE([rlm_sql], [SQL database functionality])
 
 SMART_LIBS=
 SMART_CLFAGS=

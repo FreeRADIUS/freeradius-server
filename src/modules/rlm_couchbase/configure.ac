@@ -2,7 +2,7 @@ AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_couchbase.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_couchbase])
+FR_INIT_MODULE([rlm_couchbase], [couchbase database support])
 
 FR_MODULE_START_TESTS
 

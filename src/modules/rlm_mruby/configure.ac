@@ -1,7 +1,8 @@
+AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_mruby.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_mruby])
+FR_INIT_MODULE([rlm_mruby], [support for embedded mRuby scripts])
 
 FR_MODULE_START_TESTS
 

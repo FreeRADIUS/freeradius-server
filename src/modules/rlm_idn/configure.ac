@@ -1,7 +1,8 @@
+AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_idn.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_idn])
+FR_INIT_MODULE([rlm_idn], [support for internationalized domain names])
 
 FR_MODULE_START_TESTS
 

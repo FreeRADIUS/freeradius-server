@@ -2,7 +2,7 @@ AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_sql_mysql.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_sql_mysql])
+FR_INIT_MODULE([rlm_sql_mysql], [MySQL and MariaDB database support])
 
 SMART_LIBS=
 SMART_CLFAGS=
@@ -208,6 +208,6 @@ mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 
-AC_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

@@ -2,7 +2,7 @@ AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_krb5.c])
 AC_REVISION($Revision$)
-FR_INIT_MODULE([rlm_krb5])
+FR_INIT_MODULE([rlm_krb5], [Kerberos support])
 
 FR_MODULE_START_TESTS
 
@@ -12,8 +12,9 @@ AC_PROG_CPP
 dnl extra argument: --with-rlm-krb5-dir
 rlm_krb5_dir=
 AC_ARG_WITH(rlm-krb5-dir,
-	[ --with-rlm-krb5-dir=DIR       Directory for krb5 files []],
-	[ case "$withval" in
+	[AS_HELP_STRING([--with-rlm-krb5-dir=DIR],
+		[directory where krb5 files are installed])],
+	[case "$withval" in
 	no)
 		AC_MSG_ERROR(Need rlm-krb5-dir)
 		;;
@@ -22,8 +23,7 @@ AC_ARG_WITH(rlm-krb5-dir,
 	*)
 		rlm_krb5_dir="$withval"
 		;;
-	esac ]
-)
+	esac])
 
 AC_PATH_PROG(krb5_config, krb5-config, not-found, [${rlm_krb5_dir}/bin:${PATH}:/usr/bin:/usr/local/bin])
 dnl #
