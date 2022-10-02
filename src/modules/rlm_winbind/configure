@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_winbind.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 CPP
 OBJEXT
 EXEEXT
@@ -1269,7 +1269,8 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --without-rlm_winbind   build without rlm_winbind
+  --without-rlm_winbind   build without support for password authentication
+                          with winbind
   --with-winbind-include-dir=DIR
                           Directory where the winbind includes may be found
   --with-winbind-lib-dir=DIR
@@ -1365,6 +1366,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_winbind
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -1844,6 +1850,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_winbind was given.
 if test "${with_rlm_winbind+set}" = set; then :
   withval=$with_rlm_winbind;
@@ -1851,9 +1858,19 @@ fi
 
 
 
-if test x$with_rlm_winbind != xno; then
 
-    ac_ext=c
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_rlm_winbind" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2642,7 +2659,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-    ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2781,34 +2798,34 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-        winbind_include_dir=
+winbind_include_dir=
 
 # Check whether --with-winbind-include-dir was given.
 if test "${with_winbind_include_dir+set}" = set; then :
   withval=$with_winbind_include_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need winbind-include-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		winbind_include_dir="$withval"
 		;;
 	esac
 fi
 
 
-        winbind_lib_dir=
+winbind_lib_dir=
 
 # Check whether --with-winbind-lib-dir was given.
 if test "${with_winbind_lib_dir+set}" = set; then :
   withval=$with_winbind_lib_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need winbind-lib-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		winbind_lib_dir="$withval"
 		;;
 	esac
@@ -2819,12 +2836,12 @@ fi
 # Check whether --with-winbind-dir was given.
 if test "${with_winbind_dir+set}" = set; then :
   withval=$with_winbind_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need winbind-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		winbind_lib_dir="$withval/lib"
 		winbind_include_dir="$withval/include"
 		;;
@@ -2834,7 +2851,7 @@ fi
 
 
 
-    smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
+smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
 
 
 
@@ -2865,7 +2882,7 @@ $as_echo_n "checking for wbclient.h in $try... " >&6; }
 /* end confdefs.h.  */
 
   		                        #include <stdint.h>
-					#include <stdbool.h>
+				    #include <stdbool.h>
 		                        #include <wbclient.h>
 
 int
@@ -2908,7 +2925,7 @@ $as_echo_n "checking for ${_prefix}/wbclient.h... " >&6; }
 /* end confdefs.h.  */
 
   		                        #include <stdint.h>
-					#include <stdbool.h>
+				    #include <stdbool.h>
 		                        #include <wbclient.h>
 
 int
@@ -2949,7 +2966,7 @@ $as_echo_n "checking for wbclient.h... " >&6; }
 /* end confdefs.h.  */
 
   		                        #include <stdint.h>
-					#include <stdbool.h>
+				    #include <stdbool.h>
 		                        #include <wbclient.h>
 
 int
@@ -3048,7 +3065,7 @@ $as_echo_n "checking for wbclient.h in $try... " >&6; }
 /* end confdefs.h.  */
 
   		                        #include <stdint.h>
-					#include <stdbool.h>
+				    #include <stdbool.h>
 		                        #include <wbclient.h>
 
 int
@@ -3090,13 +3107,15 @@ fi
 
 smart_prefix=
 
-    if test "x$ac_cv_header_wbclient_h" != "xyes"; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: wbclient.h not found. Use --with-winbind-include-dir=<path>." >&5
+if test "x$ac_cv_header_wbclient_h" != "xyes"; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: wbclient.h not found. Use --with-winbind-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: wbclient.h not found. Use --with-winbind-include-dir=<path>." >&2;}
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&5
 $as_echo "$as_me: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&2;}
-	fail="$fail wbclient.h"
-    fi
+
+fail="$fail wbclient.h"
+
+fi
 
 
 
@@ -3127,7 +3146,7 @@ $as_echo_n "checking for core/ntstatus.h in $try... " >&6; }
 /* end confdefs.h.  */
 
   		                        #include <stdint.h>
-					     #include <stdbool.h>
+					 #include <stdbool.h>
 		                        #include <core/ntstatus.h>
 
 int
@@ -3170,7 +3189,7 @@ $as_echo_n "checking for ${_prefix}/core/ntstatus.h... " >&6; }
 /* end confdefs.h.  */
 
   		                        #include <stdint.h>
-					     #include <stdbool.h>
+					 #include <stdbool.h>
 		                        #include <core/ntstatus.h>
 
 int
@@ -3211,7 +3230,7 @@ $as_echo_n "checking for core/ntstatus.h... " >&6; }
 /* end confdefs.h.  */
 
   		                        #include <stdint.h>
-					     #include <stdbool.h>
+					 #include <stdbool.h>
 		                        #include <core/ntstatus.h>
 
 int
@@ -3310,7 +3329,7 @@ $as_echo_n "checking for core/ntstatus.h in $try... " >&6; }
 /* end confdefs.h.  */
 
   		                        #include <stdint.h>
-					     #include <stdbool.h>
+					 #include <stdbool.h>
 		                        #include <core/ntstatus.h>
 
 int
@@ -3352,19 +3371,21 @@ fi
 
 smart_prefix=
 
-    if test "x$ac_cv_header_core_ntstatus_h" != "xyes"; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: core/ntstatus.h not found. Use --with-winbind-include-dir=<path>." >&5
+if test "x$ac_cv_header_core_ntstatus_h" != "xyes"; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: core/ntstatus.h not found. Use --with-winbind-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: core/ntstatus.h not found. Use --with-winbind-include-dir=<path>." >&2;}
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&5
 $as_echo "$as_me: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&2;}
-	fail="$fail core/ntstatus.h"
-    fi
+
+fail="$fail core/ntstatus.h"
+
+fi
 
 
-    if test "x$ac_cv_header_wbclient_h" = "xyes" && \
-       test "x$ac_cv_header_core_ntstatus_h" = "xyes"; then
+if test "x$ac_cv_header_wbclient_h" = "xyes" && \
+	test "x$ac_cv_header_core_ntstatus_h" = "xyes"; then
 
-      smart_try_dir="$winbind_lib_dir"
+	smart_try_dir="$winbind_lib_dir"
 
 
 sm_lib_safe=`echo "wbclient" | sed 'y%./+-%__p_%'`
@@ -3539,32 +3560,67 @@ LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-      if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: winbind libraries not found. Use --with-winbind-lib-dir=<path>." >&5
+	if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"; then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: winbind libraries not found. Use --with-winbind-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: winbind libraries not found. Use --with-winbind-lib-dir=<path>." >&2;}
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Samba must be version 4.2.1 or higher to use this feature." >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Samba must be version 4.2.1 or higher to use this feature." >&5
 $as_echo "$as_me: WARNING: Samba must be version 4.2.1 or higher to use this feature." >&2;}
-	fail="$fail libwbclient"
-      fi
-    fi
 
-    targetname=rlm_winbind
+fail="$fail libwbclient"
+
+	fi
+fi
+
+
+	targetname=rlm_winbind
 else
-    targetname=
-    echo \*\*\* module rlm_winbind is disabled.
+	targetname=
+	echo \*\*\* module rlm_winbind is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_winbind to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_winbind." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_winbind." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_winbind requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_winbind requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 mod_ldflags="$mod_ldflags $SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"

@@ -585,10 +585,10 @@ PACKAGE_URL=
 ac_unique_file="base.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 SASL
 mod_cflags
 mod_ldflags
+targetname
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -1361,6 +1361,11 @@ fi
 ## Autoconf initialization. ##
 ## ------------------------ ##
 
+echo
+echo Running tests for libfreeradius-ldap
+echo
+
+
 # ac_fn_c_try_compile LINENO
 # --------------------------
 # Try to compile conftest.$ac_ext, and return whether this succeeded.
@@ -1915,6 +1920,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-libfreeradius-ldap was given.
 if test "${with_libfreeradius_ldap+set}" = set; then :
   withval=$with_libfreeradius_ldap;
@@ -1922,13 +1928,21 @@ fi
 
 
 
-
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 SASL=
 
-if test x$with_libfreeradius_ldap != xno; then
+
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_libfreeradius_ldap" != xno; then
+
 
 				ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -3664,31 +3678,56 @@ $as_echo "#define WITH_SASL 1" >>confdefs.h
 	  fi
 	fi
 
+
 	targetname=libfreeradius-ldap
 else
 	targetname=
 	echo \*\*\* module libfreeradius-ldap is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-libfreeradius-ldap to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building libfreeradius-ldap." >&5
 $as_echo "$as_me: WARNING: silently not building libfreeradius-ldap." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: libfreeradius-ldap requires: $fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: libfreeradius-ldap requires: $fail." >&2;}
-		if test x"$headersuggestion" != x; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: $headersuggestion" >&5
-$as_echo "$as_me: WARNING: $headersuggestion" >&2;}
-		fi
-		if test x"$libsuggestion" != x; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: $libsuggestion" >&5
-$as_echo "$as_me: WARNING: $libsuggestion" >&2;}
-		fi
-		targetname=""
+$as_echo "$as_me: WARNING: FAILURE: libfreeradius-ldap requires: $fail." >&2;};
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 
 $as_echo "#define WITH_EDIR 1" >>confdefs.h
@@ -3702,7 +3741,6 @@ mod_cflags="$SMART_CPPFLAGS"
 
 
 ac_config_headers="$ac_config_headers config.h"
-
 
 ac_config_files="$ac_config_files all.mk"
 

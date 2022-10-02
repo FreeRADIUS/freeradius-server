@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_mruby.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_ldflags
 mod_cflags
+targetname
 CPP
 OBJEXT
 EXEEXT
@@ -1269,7 +1269,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --without-rlm_mruby     build without rlm_mruby
+  --without-rlm_mruby     build without support for embedded mRuby scripts
   --with-mruby-include-dir=DIR
                           Directory where the mruby includes may be found
   --with-mruby-lib-dir=DIR
@@ -1365,6 +1365,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_mruby
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -1844,6 +1849,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_mruby was given.
 if test "${with_rlm_mruby+set}" = set; then :
   withval=$with_rlm_mruby;
@@ -1851,8 +1857,19 @@ fi
 
 
 
-if test x$with_rlm_mruby != xno; then
-	ac_ext=c
+
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_rlm_mruby" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2641,7 +2658,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2780,37 +2797,37 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-		mruby_include_dir=
+mruby_include_dir=
 
 # Check whether --with-mruby-incude-dir was given.
 if test "${with_mruby_incude_dir+set}" = set; then :
   withval=$with_mruby_incude_dir; case "$withval" in
-			no)
-				as_fn_error $? "Need mruby-include-dir" "$LINENO" 5
-				;;
-			yes)
-				;;
-			*)
-				mruby_include_dir="$withval"
-				;;
-		esac
+		no)
+			as_fn_error $? "Need mruby-include-dir" "$LINENO" 5
+			;;
+		yes)
+			;;
+		*)
+			mruby_include_dir="$withval"
+			;;
+	esac
 fi
 
 
-		mruby_lib_dir=
+mruby_lib_dir=
 
 # Check whether --with-mruby-lib-dir was given.
 if test "${with_mruby_lib_dir+set}" = set; then :
   withval=$with_mruby_lib_dir; case "$withval" in
-			no)
-				as_fn_error $? "Need mruby-lib-dir" "$LINENO" 5
-				;;
-			yes)
-				;;
-			*)
-				mruby_lib_dir="$withval"
+		no)
+			as_fn_error $? "Need mruby-lib-dir" "$LINENO" 5
 			;;
-		esac
+		yes)
+			;;
+		*)
+			mruby_lib_dir="$withval"
+		;;
+	esac
 fi
 
 
@@ -2818,21 +2835,21 @@ fi
 # Check whether --with-mruby-dir was given.
 if test "${with_mruby_dir+set}" = set; then :
   withval=$with_mruby_dir; case "$withval" in
-			no)
-				as_fn_error $? "Need mruby-dir" "$LINENO" 5
-				;;
-			yes)
-				;;
-			*)
-				mruby_lib_dir="$withval/lib"
-				mruby_include_dir="$withval/include"
-				;;
-		esac
+		no)
+			as_fn_error $? "Need mruby-dir" "$LINENO" 5
+			;;
+		yes)
+			;;
+		*)
+			mruby_lib_dir="$withval/lib"
+			mruby_include_dir="$withval/include"
+			;;
+	esac
 fi
 
 
 
-	smart_try_dir="$mruby_include_dir /usr/include"
+smart_try_dir="$mruby_include_dir /usr/include"
 
 
 
@@ -3084,11 +3101,13 @@ fi
 
 smart_prefix=
 
-	if test "x$ac_cv_header_mruby_h" != "xyes"; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: mruby.h not found. Use --with-mruby-include-dir=<path>." >&5
+if test "x$ac_cv_header_mruby_h" != "xyes"; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: mruby.h not found. Use --with-mruby-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: mruby.h not found. Use --with-mruby-include-dir=<path>." >&2;}
-		fail="$fail mruby.h"
-	fi
+
+fail="$fail mruby.h"
+
+fi
 
 
 
@@ -3340,11 +3359,13 @@ fi
 
 smart_prefix=
 
-	if test "x$ac_cv_header_mruby_compile_h" != "xyes"; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: mruby/compile.h not found. Use --with-mruby-include-dir=<path>." >&5
+if test "x$ac_cv_header_mruby_compile_h" != "xyes"; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: mruby/compile.h not found. Use --with-mruby-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: mruby/compile.h not found. Use --with-mruby-include-dir=<path>." >&2;}
-		fail="$fail mruby/compile.h"
-	fi
+
+fail="$fail mruby/compile.h"
+
+fi
 
 
 
@@ -3596,15 +3617,17 @@ fi
 
 smart_prefix=
 
-	if test "x$ac_cv_header_mruby_array_h" != "xyes"; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: mruby/array.h not found. Use --with-mruby-include-dir=<path>." >&5
+if test "x$ac_cv_header_mruby_array_h" != "xyes"; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: mruby/array.h not found. Use --with-mruby-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: mruby/array.h not found. Use --with-mruby-include-dir=<path>." >&2;}
-		fail="$fail mruby/array.h"
-	fi
 
-	old_LIBS=$LIBS
-	LIBS="$LIBS -lmruby -lm"
-	smart_try_dir="$mruby_lib_dir /usr/lib"
+fail="$fail mruby/array.h"
+
+fi
+
+old_LIBS=$LIBS
+LIBS="$LIBS -lmruby -lm"
+smart_try_dir="$mruby_lib_dir /usr/lib"
 
 
 sm_lib_safe=`echo "mruby" | sed 'y%./+-%__p_%'`
@@ -3779,14 +3802,16 @@ LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-	LIBS=$old_LIBS
-	if test "x$ac_cv_lib_mruby_mrb_run" = "xyes"; then
-		mod_ldflags="${SMART_LIBS}"
-	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: mruby libraries not found. Use --with-mruby-lib-dir=<path>." >&5
+LIBS=$old_LIBS
+if test "x$ac_cv_lib_mruby_mrb_run" = "xyes"; then
+	mod_ldflags="${SMART_LIBS}"
+else
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: mruby libraries not found. Use --with-mruby-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: mruby libraries not found. Use --with-mruby-lib-dir=<path>." >&2;}
-		fail="$fail libmruby"
-	fi
+
+fail="$fail libmruby"
+
+fi
 
 
 
@@ -3962,34 +3987,68 @@ LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_m_fmod" = "xyes"; then
-		mod_ldflags="${mod_ldflags} ${SMART_LIBS}"
-	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: m library not found." >&5
+if test "x$ac_cv_lib_m_fmod" = "xyes"; then
+	mod_ldflags="${mod_ldflags} ${SMART_LIBS}"
+else
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: m library not found." >&5
 $as_echo "$as_me: WARNING: m library not found." >&2;}
-		fail="$fail libm"
-	fi
+
+fail="$fail libm"
+
+fi
+
 
 	targetname=rlm_mruby
 else
 	targetname=
 	echo \*\*\* module rlm_mruby is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_mruby to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_mruby." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_mruby." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_mruby requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_mruby requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
 
-mod_cflags="${SMART_CPPFLAGS}"
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
 
+rm "config.report.tmp"
+
+
+
+
+mod_cflags="${SMART_CPPFLAGS}"
 
 
 

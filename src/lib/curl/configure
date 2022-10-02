@@ -585,10 +585,10 @@ PACKAGE_URL=
 ac_unique_file="base.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 version
 mod_ldflags
 mod_cflags
+targetname
 LIBCURL
 LIBCURL_CPPFLAGS
 _libcurl_config
@@ -1367,6 +1367,11 @@ fi
 ## Autoconf initialization. ##
 ## ------------------------ ##
 
+echo
+echo Running tests for libfreeradius-curl
+echo
+
+
 # ac_fn_c_try_compile LINENO
 # --------------------------
 # Try to compile conftest.$ac_ext, and return whether this succeeded.
@@ -1912,6 +1917,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-libfreeradius-curl was given.
 if test "${with_libfreeradius_curl+set}" = set; then :
   withval=$with_libfreeradius_curl;
@@ -1919,11 +1925,20 @@ fi
 
 
 
-
 ac_config_headers="$ac_config_headers config.h"
 
 
-if test x$with_libfreeradius_curl != xno; then
+
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_libfreeradius_curl" != xno; then
+
 
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -3261,30 +3276,61 @@ $as_echo "$as_me: Sanitized cflags are \"$(echo "${LIBCURL_CPPFLAGS}" | sed 's/-
 		fi
 	fi
 
-	targetname=libfreeradius-curl
 	version="$libcurl_cv_lib_curl_version"
 
+
+	targetname=libfreeradius-curl
 else
 	targetname=
 	echo \*\*\* module libfreeradius-curl is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-libfreeradius-curl to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building libfreeradius-curl." >&5
 $as_echo "$as_me: WARNING: silently not building libfreeradius-curl." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: libfreeradius-curl requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: libfreeradius-curl requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 mod_ldflags="$LIBCURL"
 mod_cflags="$LIBCURL_CPPFLAGS"
-
-
 
 
 
@@ -4564,5 +4610,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 

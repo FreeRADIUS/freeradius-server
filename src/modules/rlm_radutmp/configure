@@ -622,9 +622,9 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 EGREP
 GREP
 CPP
@@ -1305,7 +1305,8 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --without-rlm_radutmp   build without rlm_radutmp
+  --without-rlm_radutmp   build without ability to maintain utmp-style
+                          sessions
 
 Some influential environment variables:
   CC          C compiler command
@@ -1396,6 +1397,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_radutmp
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -1989,6 +1995,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_radutmp was given.
 if test "${with_rlm_radutmp+set}" = set; then :
   withval=$with_rlm_radutmp;
@@ -1996,9 +2003,19 @@ fi
 
 
 
-if test x$with_rlm_radutmp != xno; then
 
-	ac_ext=c
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_rlm_radutmp" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -3198,11 +3215,50 @@ fi
 done
 
 
+
 	targetname=rlm_radutmp
 else
 	targetname=
 	echo \*\*\* module rlm_radutmp is disabled.
+
+
+fr_status="disabled"
+
 fi
+
+if test x"$fail" != x""; then
+	targetname=""
+
+
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_radutmp." >&5
+$as_echo "$as_me: WARNING: silently not building rlm_radutmp." >&2;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_radutmp requires: $fail." >&5
+$as_echo "$as_me: WARNING: FAILURE: rlm_radutmp requires: $fail." >&2;};
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
+else
+
+
+fr_status="OK"
+
+fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 
 

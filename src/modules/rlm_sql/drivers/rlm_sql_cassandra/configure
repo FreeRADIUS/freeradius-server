@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_sql_cassandra.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -1268,7 +1268,7 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --without-rlm_sql_cassandra
-                          build without rlm_sql_cassandra
+                          build without Cassandra database support
   --with-cassandra-include-dir=DIR
                           Directory where the cassandra includes may be found
   --with-cassandra-lib-dir=DIR
@@ -1364,6 +1364,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_sql_cassandra
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -1806,6 +1811,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_sql_cassandra was given.
 if test "${with_rlm_sql_cassandra+set}" = set; then :
   withval=$with_rlm_sql_cassandra;
@@ -1813,41 +1819,50 @@ fi
 
 
 
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 
-if test x$with_rlm_sql_cassandra != xno; then
+
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
 
 
-        cassandra_include_dir=
+
+if test x"$with_rlm_sql_cassandra" != xno; then
+
+
+
+cassandra_include_dir=
 
 # Check whether --with-cassandra-include-dir was given.
 if test "${with_cassandra_include_dir+set}" = set; then :
   withval=$with_cassandra_include_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need cassandra-include-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		cassandra_include_dir="$withval"
 		;;
 	esac
 fi
 
 
-        cassandra_lib_dir=
+cassandra_lib_dir=
 
 # Check whether --with-cassandra-lib-dir was given.
 if test "${with_cassandra_lib_dir+set}" = set; then :
   withval=$with_cassandra_lib_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need cassandra-lib-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		cassandra_lib_dir="$withval"
 		;;
 	esac
@@ -1858,12 +1873,12 @@ fi
 # Check whether --with-cassandra-dir was given.
 if test "${with_cassandra_dir+set}" = set; then :
   withval=$with_cassandra_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need cassandra-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		cassandra_lib_dir="$withval/lib"
 		cassandra_include_dir="$withval/include"
 		;;
@@ -1872,7 +1887,7 @@ fi
 
 
 
-    ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2663,7 +2678,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-        smart_try_dir="$cassandra_lib_dir"
+smart_try_dir="$cassandra_lib_dir"
 
 
 
@@ -2839,16 +2854,18 @@ LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-        LDFLAGS="$SMART_LIBS"
-    if test "x$ac_cv_lib_cassandra_cass_statement_new_n" != "xyes"
-    then
+LDFLAGS="$SMART_LIBS"
+if test "x$ac_cv_lib_cassandra_cass_statement_new_n" != "xyes"
+then
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Cassandra libraries not found. Use --with-cassandra-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: Cassandra libraries not found. Use --with-cassandra-lib-dir=<path>." >&2;}
-	fail="$fail libcassandra (>= 2.0)"
-    fi
+
+fail="$fail libcassandra (>= 2.0)"
+
+fi
 
 
-    smart_try_dir="$cassandra_include_dir"
+smart_try_dir="$cassandra_include_dir"
 
 
 ac_safe=`echo "cassandra.h" | sed 'y%./+-%__pm%'`
@@ -3099,32 +3116,74 @@ fi
 
 smart_prefix=
 
-    if test "x$ac_cv_header_cassandra_h" != "xyes"; then
+if test "x$ac_cv_header_cassandra_h" != "xyes"; then
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Cassandra headers not found. Use --with-cassandra-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: Cassandra headers not found. Use --with-cassandra-include-dir=<path>." >&2;}
-	fail="$fail cassandra.h"
-    fi
-    CFLAGS="$SMART_CPPFLAGS"
 
-    targetname=rlm_sql_cassandra
+fail="$fail cassandra.h"
+
+fi
+CFLAGS="$SMART_CPPFLAGS"
+
+
+	targetname=rlm_sql_cassandra
 else
-    targetname=
-    echo \*\*\* module rlm_sql_cassandra is disabled.
+	targetname=
+	echo \*\*\* module rlm_sql_cassandra is disabled.
+
+
+fr_status="disabled"
+
 fi
 
-if test "x$fail" != x; then
-	if test "x${enable_strict_dependencies}" = xyes; then
+if test x"$fail" != x""; then
+	targetname=""
+
+
+	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_sql_cassandra to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_sql_cassandra." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_sql_cassandra." >&2;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_sql_cassandra requires:$fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_sql_cassandra requires:$fail." >&2;};
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: available from https://github.com/datastax/cpp-driver" >&5
-$as_echo "$as_me: WARNING: available from https://github.com/datastax/cpp-driver" >&2;};
-		targetname=
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_sql_cassandra requires: $fail." >&5
+$as_echo "$as_me: WARNING: FAILURE: rlm_sql_cassandra requires: $fail." >&2;};
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
+
+
+if test x"$fail" != x""; then :
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: available from https://github.com/datastax/cpp-driver" >&5
+$as_echo "$as_me: WARNING: available from https://github.com/datastax/cpp-driver" >&2;};
+
+fi
+
 
 mod_ldflags="$SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"

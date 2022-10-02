@@ -17582,3 +17582,46 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
 
+
+
+library_list=$(find src/lib/ -mindepth 1 -maxdepth 1 -type d -print | sort)
+
+echo
+echo Library configure status report
+echo -------------------------------
+
+for library in $library_list; do
+  library_name="$(basename $library)"
+  library_print="$(echo "$library_name ........................" | cut -c 1-25)"
+  library_status="OK"
+
+  if test -r $library/configure.ac; then
+    if test -r $library/config.report; then
+      library_status=$(cat $library/config.report)
+    fi
+  fi
+
+  echo "$library_print $library_status"
+done
+
+
+module_list=$(find src/modules/ -type d -name 'rlm_*' -print | sort)
+
+echo
+echo Module configure status report
+echo ------------------------------
+
+for module in $module_list; do
+  module_name="$(basename $module)"
+  module_print="$(echo "$module_name ........................" | cut -c 1-25)"
+  module_status="OK"
+
+  if test -r $module/configure.ac; then
+    if test -r $module/config.report; then
+      module_status=$(cat $module/config.report)
+    fi
+  fi
+
+  $as_echo "$module_print $module_status"
+done
+

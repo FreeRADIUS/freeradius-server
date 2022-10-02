@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_perl.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_ldflags
 mod_cflags
+targetname
 PERL
 CPP
 OBJEXT
@@ -1269,7 +1269,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --without-rlm_perl      build without rlm_perl
+  --without-rlm_perl      build without support for embedded Perl functions
   --with-perl=[PATH]    absolute path to perl executable
 
 Some influential environment variables:
@@ -1362,6 +1362,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_perl
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -1841,6 +1846,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_perl was given.
 if test "${with_rlm_perl+set}" = set; then :
   withval=$with_rlm_perl;
@@ -1848,8 +1854,19 @@ fi
 
 
 
-if test x$with_rlm_perl != xno; then
-	ac_ext=c
+
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_rlm_perl" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2638,7 +2655,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2786,7 +2803,6 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-
     if test -z "$PERL"; then :
 
         { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether perl executable path has been provided" >&5
@@ -2912,53 +2928,55 @@ fi
 
 
 
-	if test "$PERL" = "not-found" -o ! -x "$PERL"; then
-		fail=$fail" perl"
-	else
-		old_CFLAGS="${CFLAGS}"
-		old_LIBS="${LIBS}"
+if test "$PERL" = "not-found" -o ! -x "$PERL"; then
 
-								{ $as_echo "$as_me:${as_lineno-$LINENO}: Calling ExtUtils::Embed to get 'ccopts'" >&5
+fail="$fail perl"
+
+else
+	old_CFLAGS="${CFLAGS}"
+	old_LIBS="${LIBS}"
+
+				{ $as_echo "$as_me:${as_lineno-$LINENO}: Calling ExtUtils::Embed to get 'ccopts'" >&5
 $as_echo "$as_me: Calling ExtUtils::Embed to get 'ccopts'" >&6;}
-		perl_cflags=$($PERL -MExtUtils::Embed -e ccopts)
+	perl_cflags=$($PERL -MExtUtils::Embed -e ccopts)
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ccopts were \"${perl_cflags}\"" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ccopts were \"${perl_cflags}\"" >&5
 $as_echo "$as_me: ExtUtil's ccopts were \"${perl_cflags}\"" >&6;}
 
-		mod_cflags=`echo $perl_cflags | sed -e '\
-			s/-I */-isystem /g;\
-			s/-arch ^ *//g;\
-			s/  / /g;\
-			s/^ *//;\
-			s/ *$//;\
-			s/-fstack-clash-protection[[:blank:]]*//g; \
-			'`
+	mod_cflags=`echo $perl_cflags | sed -e '\
+		s/-I */-isystem /g;\
+		s/-arch ^ *//g;\
+		s/  / /g;\
+		s/^ *//;\
+		s/ *$//;\
+		s/-fstack-clash-protection[[:blank:]]*//g; \
+		'`
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ccopts are \"${mod_cflags}\"" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ccopts are \"${mod_cflags}\"" >&5
 $as_echo "$as_me: Sanitized ccopts are \"${mod_cflags}\"" >&6;}
 
-		CFLAGS="${mod_cflags} ${CFLAGS}"
+	CFLAGS="${mod_cflags} ${CFLAGS}"
 
-								{ $as_echo "$as_me:${as_lineno-$LINENO}: Calling ExtUtils::Embed to get 'ldflags'" >&5
+				{ $as_echo "$as_me:${as_lineno-$LINENO}: Calling ExtUtils::Embed to get 'ldflags'" >&5
 $as_echo "$as_me: Calling ExtUtils::Embed to get 'ldflags'" >&6;}
-		perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts)
+	perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts)
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ldopts were \"${perl_ldflags}\"" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ldopts were \"${perl_ldflags}\"" >&5
 $as_echo "$as_me: ExtUtil's ldopts were \"${perl_ldflags}\"" >&6;}
 
-		mod_ldflags=`echo $perl_ldflags | sed -e '\
-			s/-arch ^ *//g;\
-			s/  / /g;\
-			s/^ *//;\
-			s/ *$//;\
-			'`
+	mod_ldflags=`echo $perl_ldflags | sed -e '\
+		s/-arch ^ *//g;\
+		s/  / /g;\
+		s/^ *//;\
+		s/ *$//;\
+		'`
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldopts are \"${mod_ldflags}\"" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldopts are \"${mod_ldflags}\"" >&5
 $as_echo "$as_me: Sanitized ldopts are \"${mod_ldflags}\"" >&6;}
 
-		LIBS="${mod_ldflags} ${LIBS}"
+	LIBS="${mod_ldflags} ${LIBS}"
 
-								smart_try_dir=
+				smart_try_dir=
 
 
 
@@ -3210,10 +3228,11 @@ fi
 
 smart_prefix=
 
-		if test "x$ac_cv_header_EXTERN_h" != "xyes"; then
-			fail="$fail EXTERN.h"
-			targetname=
-		fi
+	if test "x$ac_cv_header_EXTERN_h" != "xyes"; then
+
+fail="$fail EXTERN.h"
+
+	fi
 
 
 
@@ -3465,103 +3484,135 @@ fi
 
 smart_prefix=
 
-		if test "x$ac_cv_header_perl_h" != "xyes"; then
-			fail="$fail EXTERN.h"
-			targetname=
-		fi
+	if test "x$ac_cv_header_perl_h" != "xyes"; then
 
-								{ $as_echo "$as_me:${as_lineno-$LINENO}: checking we can link to boot_DynaLoader" >&5
-$as_echo_n "checking we can link to boot_DynaLoader... " >&6; }
-		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
+fail="$fail EXTERN.h"
 
-int
-main ()
-{
-
-			extern char boot_DynaLoader();
-			boot_DynaLoader();
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  LINKS="yes"
-else
-  LINKS="no"
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $LINKS" >&5
-$as_echo "$LINKS" >&6; }
-		if test "x$LINKS" = "xno"; then
-			fail="$fail libperl.so"
-			targetname=
-		fi
-
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking we can link to Perl_hv_store()" >&5
-$as_echo_n "checking we can link to Perl_hv_store()... " >&6; }
-		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main ()
-{
-
-			extern char Perl_hv_store();
-			Perl_hv_store();
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  LINKS="yes"
-else
-  LINKS="no"
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $LINKS" >&5
-$as_echo "$LINKS" >&6; }
-		if test "x$LINKS" = "xno"; then
-			fail="$fail libperl.so"
-			targetname=
-		fi
-
-		CFLAGS="$old_CFLAGS"
-		LIBS="$old_LIBS"
-
-		targetname=rlm_perl
 	fi
+
+				{ $as_echo "$as_me:${as_lineno-$LINENO}: checking we can link to boot_DynaLoader" >&5
+$as_echo_n "checking we can link to boot_DynaLoader... " >&6; }
+	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+		extern char boot_DynaLoader();
+		boot_DynaLoader();
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  LINKS="yes"
 else
-		targetname=
-		echo \*\*\* module rlm_perl is disabled.
+  LINKS="no"
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $LINKS" >&5
+$as_echo "$LINKS" >&6; }
+	if test "x$LINKS" = "xno"; then
+
+fail="$fail libperl.so"
+
+	fi
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking we can link to Perl_hv_store()" >&5
+$as_echo_n "checking we can link to Perl_hv_store()... " >&6; }
+	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+		extern char Perl_hv_store();
+		Perl_hv_store();
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  LINKS="yes"
+else
+  LINKS="no"
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $LINKS" >&5
+$as_echo "$LINKS" >&6; }
+	if test "x$LINKS" = "xno"; then
+
+fail="$fail libperl.so"
+
+	fi
+
+	CFLAGS="$old_CFLAGS"
+	LIBS="$old_LIBS"
+fi
+
+
+	targetname=rlm_perl
+else
+	targetname=
+	echo \*\*\* module rlm_perl is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_perl to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_perl." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_perl." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_perl requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_perl requires: $fail." >&2;};
+		fail="$(echo $fail)"
 
-		targetname=
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
 
 
 
 
 
 ac_config_headers="$ac_config_headers config.h"
-
-
 
 ac_config_files="$ac_config_files all.mk"
 

@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_sigtran.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -1266,7 +1266,8 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --without-rlm_sigtran   build without rlm_sigtran
+  --without-rlm_sigtran   build without Sigtran functionality for EAP-SIM and
+                          EAP-AKA
   --with-sigtran-include-dir=DIR
                           Directory where osmocore and osmosccp may be found
   --with-sigtran-dir=DIR  Base directory where osmocore and osmosccp are
@@ -1360,6 +1361,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_sigtran
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -1802,6 +1808,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_sigtran was given.
 if test "${with_rlm_sigtran+set}" = set; then :
   withval=$with_rlm_sigtran;
@@ -1809,23 +1816,33 @@ fi
 
 
 
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 
-if test x$with_rlm_sigtran != xno; then
 
-        sigtran_include_dir=
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_rlm_sigtran" != xno; then
+
+
+
+sigtran_include_dir=
 
 # Check whether --with-sigtran-include-dir was given.
 if test "${with_sigtran_include_dir+set}" = set; then :
   withval=$with_sigtran_include_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need sigtran-lib-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		sigtran_lib_dir="$withval"
 		;;
 	esac
@@ -1836,12 +1853,12 @@ fi
 # Check whether --with-sigtran-dir was given.
 if test "${with_sigtran_dir+set}" = set; then :
   withval=$with_sigtran_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need sigtran-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		sigtran_lib_dir="$withval/lib"
 		sigtran_include_dir="$withval/include"
 		;;
@@ -1850,7 +1867,7 @@ fi
 
 
 
-    ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2906,11 +2923,13 @@ fi
 
 smart_prefix=
 
-    if test "x$ac_cv_header_osmocom_core_msgb_h" != "xyes"; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libosmocomcore headers not found. Use --with-sigtran-include-dir=<path>." >&5
+if test "x$ac_cv_header_osmocom_core_msgb_h" != "xyes"; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libosmocomcore headers not found. Use --with-sigtran-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: libosmocomcore headers not found. Use --with-sigtran-include-dir=<path>." >&2;}
-      fail="$fail osmocom/core/msgb.h"
-    fi
+
+fail="$fail osmocom/core/msgb.h"
+
+fi
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pkg-config libosmo-sccp include paths" >&5
@@ -2926,8 +2945,8 @@ else
 $as_echo "no" >&6; }
 fi
 
-    old_cflags="$CFLAGS"
-    CFLAGS="${CFLAGS} -include stdint.h -include osmocom/core/linuxlist.h"
+old_cflags="$CFLAGS"
+CFLAGS="${CFLAGS} -include stdint.h -include osmocom/core/linuxlist.h"
 
 
 ac_safe=`echo "osmocom/sccp/sccp.h" | sed 'y%./+-%__pm%'`
@@ -3178,12 +3197,14 @@ fi
 
 smart_prefix=
 
-    if test "x$ac_cv_header_osmocom_sccp_sccp_h" != "xyes"; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libosmocom-sccp headers not found. Use --with-sigtran-include-dir=<path>." >&5
+if test "x$ac_cv_header_osmocom_sccp_sccp_h" != "xyes"; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libosmocom-sccp headers not found. Use --with-sigtran-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: libosmocom-sccp headers not found. Use --with-sigtran-include-dir=<path>." >&2;}
-      fail="$fail osmocom/sccp/sccp.h"
-    fi
-    CFLAGS="$old_cflags"
+
+fail="$fail osmocom/sccp/sccp.h"
+
+fi
+CFLAGS="$old_cflags"
 
 
 
@@ -3374,12 +3395,14 @@ LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-    if test "x$ac_cv_lib_osmocore_msgb_alloc" != "xyes"
-    then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libosmocore libraries not found. Use --with-sigtran-lib-dir=<path>." >&5
+if test "x$ac_cv_lib_osmocore_msgb_alloc" != "xyes"
+then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libosmocore libraries not found. Use --with-sigtran-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: libosmocore libraries not found. Use --with-sigtran-lib-dir=<path>." >&2;}
-      fail="$fail libosmocore"
-    fi
+
+fail="$fail libosmocore"
+
+fi
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pkg-config libosmo-sccp linker paths" >&5
@@ -3569,12 +3592,14 @@ LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-    if test "x$ac_cv_lib_sccp_sccp_connection_connect" != "xyes" -a "x$ac_cv_lib_osmo_sccp_sccp_connection_connect" != "xyes"
-    then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libsccp libraries not found. Use --with-sigtran-lib-dir=<path>." >&5
+if test "x$ac_cv_lib_sccp_sccp_connection_connect" != "xyes" -a "x$ac_cv_lib_osmo_sccp_sccp_connection_connect" != "xyes"
+then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libsccp libraries not found. Use --with-sigtran-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: libsccp libraries not found. Use --with-sigtran-lib-dir=<path>." >&2;}
-      fail="$fail lib$NAMESCCP"
-    fi
+
+fail="$fail libsccp"
+
+fi
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pkg-config libosmo-xua linker paths" >&5
@@ -3764,12 +3789,14 @@ LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-    if test "x$ac_cv_lib_xua_xua_msg_alloc" != "xyes" -a "x$ac_cv_lib_osmo_xua_xua_msg_alloc" != "xyes"
-    then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libxua libraries not found. Use --with-sigtran-lib-dir=<path>." >&5
+if test "x$ac_cv_lib_xua_xua_msg_alloc" != "xyes" -a "x$ac_cv_lib_osmo_xua_xua_msg_alloc" != "xyes"
+then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libxua libraries not found. Use --with-sigtran-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: libxua libraries not found. Use --with-sigtran-lib-dir=<path>." >&2;}
-      fail="$fail lib$NAMEXUA"
-    fi
+
+fail="$fail libxua"
+
+fi
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pkg-config libosmo-mtp linker paths" >&5
@@ -3959,32 +3986,69 @@ LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-    if test "x$ac_cv_lib_mtp_mtp_pcap_write_header" != "xyes" -a "x$ac_cv_lib_osmo_mtp_mtp_pcap_write_header" != "xyes"
-    then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libmtp libraries not found. Use --with-sigtran-lib-dir=<path>." >&5
+if test "x$ac_cv_lib_mtp_mtp_pcap_write_header" != "xyes" -a "x$ac_cv_lib_osmo_mtp_mtp_pcap_write_header" != "xyes"
+then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libmtp libraries not found. Use --with-sigtran-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: libmtp libraries not found. Use --with-sigtran-lib-dir=<path>." >&2;}
-      fail="$fail lib$NAMEMTP"
-    fi
-    targetname=rlm_sigtran
-else
-    targetname=
-    echo \*\*\* module rlm_sigtran is disabled.
+
+fail="$fail libmtp"
+
 fi
 
-if test "x$fail" != x; then
-	if test "x${enable_strict_dependencies}" = xyes; then
+
+	targetname=rlm_sigtran
+else
+	targetname=
+	echo \*\*\* module rlm_sigtran is disabled.
+
+
+fr_status="disabled"
+
+fi
+
+if test x"$fail" != x""; then
+	targetname=""
+
+
+	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_sigtran to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_sigtran." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_sigtran." >&2;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_sigtran requires:$fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_sigtran requires:$fail." >&2;};
-		targetname=
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_sigtran requires: $fail." >&5
+$as_echo "$as_me: WARNING: FAILURE: rlm_sigtran requires: $fail." >&2;};
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 mod_ldflags="$SMART_LIBS $(pkg-config --libs-only-other libosmocore) $(pkg-config --libs-only-other libosmo-sccp) $(pkg-config --libs-only-other libosmo-xua) $(pkg-config --libs-only-other libosmo-mtp) $(net-snmp-config --agent-libs 2>&-) -lsctp"
 mod_cflags="$SMART_CPPFLAGS"
+
 
 
 
@@ -5144,5 +5208,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 

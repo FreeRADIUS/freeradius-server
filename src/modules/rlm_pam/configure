@@ -622,9 +622,9 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 EGREP
 GREP
 CPP
@@ -1305,7 +1305,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --without-rlm_pam       build without rlm_pam
+  --without-rlm_pam       build without PAM authentication
 
 Some influential environment variables:
   CC          C compiler command
@@ -1396,6 +1396,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_pam
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -2035,6 +2040,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_pam was given.
 if test "${with_rlm_pam+set}" = set; then :
   withval=$with_rlm_pam;
@@ -2043,9 +2049,18 @@ fi
 
 
 
-if test x$with_rlm_pam != xno; then
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
 
-	ac_ext=c
+
+
+if test x"$with_rlm_pam" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2834,7 +2849,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -3015,14 +3030,14 @@ if test "x$ac_cv_lib_dl_dlopen" = xyes; then :
 fi
 
 
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for pam_start in -lpam" >&5
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for pam_start in -lpam" >&5
 $as_echo_n "checking for pam_start in -lpam... " >&6; }
 if ${ac_cv_lib_pam_pam_start+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
 LIBS="-lpam  $mod_ldflags
-	 $LIBS"
+ $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3055,7 +3070,9 @@ $as_echo "$ac_cv_lib_pam_pam_start" >&6; }
 if test "x$ac_cv_lib_pam_pam_start" = xyes; then :
    mod_ldflags="-lpam $mod_ldflags"
 else
-   fail=$fail" libpam"
+
+fail="$fail libpam"
+
 fi
 
 
@@ -3320,8 +3337,8 @@ done
 
 
 for ac_header in \
-			security/pam_appl.h \
-			pam/pam_appl.h \
+	security/pam_appl.h \
+	pam/pam_appl.h \
 
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -3335,25 +3352,58 @@ fi
 
 done
 
-	mod_cflags="-I."
+mod_cflags="-I."
+
 
 	targetname=rlm_pam
 else
 	targetname=
 	echo \*\*\* module rlm_pam is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_pam to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_pam." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_pam." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_pam requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_pam requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 
 

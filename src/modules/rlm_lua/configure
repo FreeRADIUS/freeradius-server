@@ -622,9 +622,9 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 lua_ldflags
 lua_cflags
+targetname
 LUA_LIB
 EGREP
 GREP
@@ -1408,6 +1408,11 @@ fi
 ## Autoconf initialization. ##
 ## ------------------------ ##
 
+echo
+echo Running tests for rlm_lua
+echo
+
+
 # ac_fn_c_try_compile LINENO
 # --------------------------
 # Try to compile conftest.$ac_ext, and return whether this succeeded.
@@ -2046,6 +2051,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_lua was given.
 if test "${with_rlm_lua+set}" = set; then :
   withval=$with_rlm_lua;
@@ -2053,8 +2059,19 @@ fi
 
 
 
-if test x$with_rlm_lua != xno; then
-	ac_ext=c
+
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_rlm_lua" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2843,7 +2860,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2985,45 +3002,45 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 # Check whether --with-lua-include-dir was given.
 if test "${with_lua_include_dir+set}" = set; then :
   withval=$with_lua_include_dir; case "$withval" in
-		    no)
-			as_fn_error $? "Need lua-include-dir" "$LINENO" 5
-		    ;;
-		    yes)
-		    ;;
-		    *)
-		        lua_include_dir="$withval"
-		    ;;
-		esac
+	no)
+		as_fn_error $? "Need lua-include-dir" "$LINENO" 5
+		;;
+	yes)
+		;;
+	*)
+		lua_include_dir="$withval"
+		;;
+	esac
 fi
 
 
-	if test "x$lua_include_dir" != "x"; then
-		LUA_INCLUDE="-I$lua_include_dir"
-	fi
+if test "x$lua_include_dir" != "x"; then
+	LUA_INCLUDE="-I$lua_include_dir"
+fi
 
 
 # Check whether --with-lua-lib-dir was given.
 if test "${with_lua_lib_dir+set}" = set; then :
   withval=$with_lua_lib_dir; case "$withval" in
-		    no)
-			as_fn_error $? "Need lua-lib-dir" "$LINENO" 5
-			;;
-		    yes)
-			;;
-		    *)
-			lua_lib_dir="$withval"
-			;;
-		esac
+	no)
+		as_fn_error $? "Need lua-lib-dir" "$LINENO" 5
+		;;
+	yes)
+		;;
+	*)
+		lua_lib_dir="$withval"
+		;;
+	esac
 fi
 
 
-	if test "x$lua_lib_dir" != "x"; then
-		LDFLAGS="-L$lua_lib_dir"
-	fi
+if test "x$lua_lib_dir" != "x"; then
+	LDFLAGS="-L$lua_lib_dir"
+fi
 
-				LUA_COMPAT_VERSION=5.1
+LUA_COMPAT_VERSION=5.1
 
-				LUA_VERSION=jit-2.0
+LUA_VERSION=jit-2.0
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for grep that handles long lines and -e" >&5
@@ -3452,8 +3469,8 @@ else
 $as_echo "$as_me: WARNING: cannot find Lua includes" >&2;}
 fi
 
-				if test "x$ac_cv_header_lua_h" = "xno"; then
-		LUA_VERSION=5.2
+if test "x$ac_cv_header_lua_h" = "xno"; then
+	LUA_VERSION=5.2
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking if LUA_VERSION is defined" >&5
 $as_echo_n "checking if LUA_VERSION is defined... " >&6; }
@@ -3621,28 +3638,32 @@ else
 $as_echo "$as_me: WARNING: cannot find Lua includes" >&2;}
 fi
 
-	fi
+fi
 
-	if test "x$ac_cv_header_lua_h" = "xno"; then
-		fail="lua.h"
+if test "x$ac_cv_header_lua_h" = "xno"; then
+
+fail="$fail lua.h"
+
+else
+	if test "x$ax_header_version_match" = "xno"; then
+
+fail="$fail correct header version"
+
 	else
-		if test "x$ax_header_version_match" = "xno"; then
-			fail="lua.h version"
-		else
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: checking ldflags" >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking ldflags" >&5
 $as_echo_n "checking ldflags... " >&6; }
 if ${_cv_lua_ldflags+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
-			if test "x$ac_cv_header_luajit_h" = "xno"; then
-				{ $as_echo "$as_me:${as_lineno-$LINENO}: Falling back to Lua 5.2, for optimal performance rebuild with LuaJIT 2.x.x" >&5
+		if test "x$ac_cv_header_luajit_h" = "xno"; then
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: Falling back to Lua 5.2, for optimal performance rebuild with LuaJIT 2.x.x" >&5
 $as_echo "$as_me: Falling back to Lua 5.2, for optimal performance rebuild with LuaJIT 2.x.x" >&6;}
-			else
-				{ $as_echo "$as_me:${as_lineno-$LINENO}: Found LuaJIT headers, module will perform optimally" >&5
+		else
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: Found LuaJIT headers, module will perform optimally" >&5
 $as_echo "$as_me: Found LuaJIT headers, module will perform optimally" >&6;}
-				LUA_VERSION=jit-5.1
-			fi
+			LUA_VERSION=jit-5.1
+		fi
 
 
 
@@ -3934,12 +3955,12 @@ else
 $as_echo "$as_me: WARNING: cannot find Lua libs" >&2;}
 fi
 
-			if test "x$_ax_found_lua_libs" = 'xno' && test "x$lua_lib_dir" = "x"; then
-				{ ac_cv_search_dlopen=; unset ac_cv_search_dlopen;}
-				{ ac_cv_search_exp=; unset ac_cv_search_exp;}
-				{ ac_cv_search_lua_load=; unset ac_cv_search_lua_load;}
+		if test "x$_ax_found_lua_libs" = 'xno' && test "x$lua_lib_dir" = "x"; then
+			{ ac_cv_search_dlopen=; unset ac_cv_search_dlopen;}
+			{ ac_cv_search_exp=; unset ac_cv_search_exp;}
+			{ ac_cv_search_lua_load=; unset ac_cv_search_lua_load;}
 
-				LDFLAGS="-L/usr/local/lib/"
+			LDFLAGS="-L/usr/local/lib/"
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking if LUA_VERSION is defined" >&5
@@ -4230,59 +4251,92 @@ else
 $as_echo "$as_me: WARNING: cannot find Lua libs" >&2;}
 fi
 
-			fi
+		fi
 
-			if test "x$_ax_found_lua_libs" != 'xyes'; then
-				fail="Lua libs"
-			fi
-			_cv_lua_ldflags="$LUA_LIB $LDFLAGS"
+		if test "x$_ax_found_lua_libs" != 'xyes'; then
+
+fail="$fail lua libraries"
+
+		fi
+		_cv_lua_ldflags="$LUA_LIB $LDFLAGS"
 
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $_cv_lua_ldflags" >&5
 $as_echo "$_cv_lua_ldflags" >&6; }
-		fi
 	fi
+fi
 
-	lua_cflags="$LUA_INCLUDE"
-	lua_ldflags="$_cv_lua_ldflags"
+lua_cflags="$LUA_INCLUDE"
+lua_ldflags="$_cv_lua_ldflags"
 
-	if test "x$_ax_found_lua_libs" = 'xyes'; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: Lua Library:" >&5
+if test "x$_ax_found_lua_libs" = 'xyes'; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: Lua Library:" >&5
 $as_echo "$as_me: Lua Library:" >&6;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}:   Using Lua version.......... : $ax_cv_lua_version" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}:   Using Lua version.......... : $ax_cv_lua_version" >&5
 $as_echo "$as_me:   Using Lua version.......... : $ax_cv_lua_version" >&6;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}:   Using Lua header version... : $ax_cv_lua_header_version" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}:   Using Lua header version... : $ax_cv_lua_header_version" >&5
 $as_echo "$as_me:   Using Lua header version... : $ax_cv_lua_header_version" >&6;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}:   Using Lua headers.......... : $lua_cflags" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}:   Using Lua headers.......... : $lua_cflags" >&5
 $as_echo "$as_me:   Using Lua headers.......... : $lua_cflags" >&6;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}:   Using Lua lib.............. : $lua_ldflags" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}:   Using Lua lib.............. : $lua_ldflags" >&5
 $as_echo "$as_me:   Using Lua lib.............. : $lua_ldflags" >&6;}
-	fi
+fi
 
 
-	targetname=rlm_lua     # keep this!  Don't change!
+
+	targetname=rlm_lua
 else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module rlm_lua is disabled.  # keep this!  Don't change!
+	targetname=
+	echo \*\*\* module rlm_lua is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_lua to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_lua." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_lua." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_lua requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_lua requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
 
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
 
 
 
 
-  # keep this!  Don't change!
+
+
+
 ac_config_headers="$ac_config_headers config.h"
 
 ac_config_files="$ac_config_files all.mk rlm_lua.mk libfreeradius-lua.mk"
@@ -5560,5 +5614,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-  # keep this!  Don't change!
 

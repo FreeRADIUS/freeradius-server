@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="redis.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -1364,6 +1364,11 @@ fi
 ## Autoconf initialization. ##
 ## ------------------------ ##
 
+echo
+echo Running tests for libfreeradius-redis
+echo
+
+
 # ac_fn_c_try_compile LINENO
 # --------------------------
 # Try to compile conftest.$ac_ext, and return whether this succeeded.
@@ -1805,6 +1810,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-libfreeradius-redis was given.
 if test "${with_libfreeradius_redis+set}" = set; then :
   withval=$with_libfreeradius_redis;
@@ -1812,12 +1818,21 @@ fi
 
 
 
-
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 
-if test x$with_libfreeradius_redis != xno; then
+
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_libfreeradius_redis" != xno; then
+
+
 
         redis_include_dir=
 
@@ -3103,26 +3118,60 @@ $as_echo "$as_me: WARNING: hiredis libraries not found. Use --with-redis-lib-dir
       fail="$fail libhiredis"
     fi
 
-    targetname=libfreeradius-redis
+
+	targetname=libfreeradius-redis
 else
-    targetname=
-    echo \*\*\* module libfreeradius-redis is disabled.
+	targetname=
+	echo \*\*\* module libfreeradius-redis is disabled.
+
+
+fr_status="disabled"
+
 fi
 
-if test "x$fail" != x; then
-	if test "x${enable_strict_dependencies}" = xyes; then
+if test x"$fail" != x""; then
+	targetname=""
+
+
+	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-libfreeradius-redis to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building libfreeradius-redis." >&5
 $as_echo "$as_me: WARNING: silently not building libfreeradius-redis." >&2;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: libfreeradius-redis requires:$fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: libfreeradius-redis requires:$fail." >&2;};
-		targetname=
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: libfreeradius-redis requires: $fail." >&5
+$as_echo "$as_me: WARNING: FAILURE: libfreeradius-redis requires: $fail." >&2;};
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 mod_ldflags="$SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"
+
 
 
 

@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_sql_mysql.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 MYSQL_CONFIG
 OBJEXT
 EXEEXT
@@ -1269,7 +1269,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --without-rlm_sql_mysql build without rlm_sql_mysql
+  --without-rlm_sql_mysql build without MySQL and MariaDB database support
   --with-mysql-include-dir=DIR
                           Directory where the mysql includes may be found
   --with-mysql-lib-dir=DIR
@@ -1365,6 +1365,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_sql_mysql
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -1807,49 +1812,58 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_sql_mysql was given.
 if test "${with_rlm_sql_mysql+set}" = set; then :
   withval=$with_rlm_sql_mysql;
 fi
 
 
-ac_config_headers="$ac_config_headers config.h"
 
-
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 
-if test x$with_rlm_sql_mysql != xno; then
 
-		mysql_include_dir=
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_rlm_sql_mysql" != xno; then
+
+
+
+mysql_include_dir=
 
 # Check whether --with-mysql-include-dir was given.
 if test "${with_mysql_include_dir+set}" = set; then :
   withval=$with_mysql_include_dir; case "$withval" in
-		no)
+	no)
 		as_fn_error $? "Need mysql-include-dir" "$LINENO" 5
 		;;
-		yes)
+	yes)
 		;;
-		*)
+	*)
 		mysql_include_dir="$withval"
 		;;
 	esac
 fi
 
 
-		mysql_lib_dir=
+mysql_lib_dir=
 
 # Check whether --with-mysql-lib-dir was given.
 if test "${with_mysql_lib_dir+set}" = set; then :
   withval=$with_mysql_lib_dir; case "$withval" in
-		no)
+	no)
 		as_fn_error $? "Need mysql-lib-dir" "$LINENO" 5
 		;;
-		yes)
+	yes)
 		;;
-		*)
+	*)
 		mysql_lib_dir="$withval"
 		;;
 	esac
@@ -1860,12 +1874,12 @@ fi
 # Check whether --with-mysql-dir was given.
 if test "${with_mysql_dir+set}" = set; then :
   withval=$with_mysql_dir; case "$withval" in
-		no)
+	no)
 		as_fn_error $? "Need mysql-dir" "$LINENO" 5
 		;;
-		yes)
+	yes)
 		;;
-		*)
+	*)
 		mysql_lib_dir="$withval/lib"
 		mysql_include_dir="$withval/include"
 		;;
@@ -1873,22 +1887,22 @@ if test "${with_mysql_dir+set}" = set; then :
 fi
 
 
-		mysql_with_threads=yes
+mysql_with_threads=yes
 
 # Check whether --with-threads was given.
 if test "${with_threads+set}" = set; then :
   withval=$with_threads; case "$withval" in
-		no)
+	no)
 		mysql_with_threads=no
 		;;
-		*)
+	*)
 		;;
 	esac
 fi
 
 
 
-	ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2677,7 +2691,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	# Extract the first word of "mysql_config", so it can be a program name with args.
+# Extract the first word of "mysql_config", so it can be a program name with args.
 set dummy mysql_config; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
@@ -2718,12 +2732,12 @@ fi
 
 
 
-			if test "x$MYSQL_CONFIG" = "xyes"; then
-		mysql_libs="$(mysql_config --libs_r)"
-		old_LIBS="$LIBS"
-		LIBS="$mysql_libs $LIBS"
+if test "x$MYSQL_CONFIG" = "xyes"; then
+	mysql_libs="$(mysql_config --libs_r)"
+	old_LIBS="$LIBS"
+	LIBS="$mysql_libs $LIBS"
 
-				{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql_init in -lmysqlclient_r (using mysql_config)" >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql_init in -lmysqlclient_r (using mysql_config)" >&5
 $as_echo_n "checking for mysql_init in -lmysqlclient_r (using mysql_config)... " >&6; }
 
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -2750,26 +2764,26 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
-		LIBS="$old_LIBS"
-		if test "x$have_libmysqlclient_r" = "xyes"; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	LIBS="$old_LIBS"
+	if test "x$have_libmysqlclient_r" = "xyes"; then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
-			have_a_libmysqlclient='yes'
-			SMART_LIBS="$mysql_libs $SMART_LIBS"
-		else
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		have_a_libmysqlclient='yes'
+		SMART_LIBS="$mysql_libs $SMART_LIBS"
+	else
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-		fi
+	fi
 
-				if test "x$have_a_libmysqlclient" != "xyes"; then
-			mysql_libs="$(mysql_config --libs)"
-			old_LIBS="$LIBS"
-			LIBS="$mysql_libs $LIBS"
+		if test "x$have_a_libmysqlclient" != "xyes"; then
+		mysql_libs="$(mysql_config --libs)"
+		old_LIBS="$LIBS"
+		LIBS="$mysql_libs $LIBS"
 
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql_init in -lmysqlclient (using mysql_config)" >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql_init in -lmysqlclient (using mysql_config)" >&5
 $as_echo_n "checking for mysql_init in -lmysqlclient (using mysql_config)... " >&6; }
-			cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 /* Override any GCC internal prototype to avoid an error.
@@ -2793,22 +2807,22 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
-			LIBS="$old_LIBS"
-			if test "x$have_libmysqlclient" = "xyes"; then
-				{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		LIBS="$old_LIBS"
+		if test "x$have_libmysqlclient" = "xyes"; then
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
-				have_a_libmysqlclient=yes
-				SMART_LIBS="$mysql_libs $SMART_LIBS"
-			else
-				{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+			have_a_libmysqlclient=yes
+			SMART_LIBS="$mysql_libs $SMART_LIBS"
+		else
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-			fi
 		fi
 	fi
+fi
 
-		if test "x$have_a_libmysqlclient" != "xyes"; then
-	    smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql"
+if test "x$have_a_libmysqlclient" != "xyes"; then
+	smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql"
 
 
 sm_lib_safe=`echo "mysqlclient_r" | sed 'y%./+-%__p_%'`
@@ -2983,13 +2997,13 @@ LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-	    if test "x$ac_cv_lib_mysqlclient_r_mysql_init" = "xyes"; then
-			have_a_libmysqlclient='yes'
-	    fi
+	if test "x$ac_cv_lib_mysqlclient_r_mysql_init" = "xyes"; then
+		have_a_libmysqlclient='yes'
 	fi
+fi
 
-		if test "x$have_a_libmysqlclient" != "xyes"; then
-	    smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql"
+if test "x$have_a_libmysqlclient" != "xyes"; then
+	smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql"
 
 
 sm_lib_safe=`echo "mysqlclient" | sed 'y%./+-%__p_%'`
@@ -3164,23 +3178,55 @@ LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-	    if test "x$ac_cv_lib_mysqlclient_mysql_init" = "xyes"; then
-			have_a_libmysqlclient='yes'
-	    fi
+	if test "x$ac_cv_lib_mysqlclient_mysql_init" = "xyes"; then
+		have_a_libmysqlclient='yes'
 	fi
+fi
 
-	if test "x$have_a_libmysqlclient" != "xyes"; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: MySQL libraries not found. Use --with-mysql-lib-dir=<path>." >&5
+if test "x$have_a_libmysqlclient" != "xyes"; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: MySQL libraries not found. Use --with-mysql-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: MySQL libraries not found. Use --with-mysql-lib-dir=<path>." >&2;}
-		fail="$fail libmysqlclient || libmysqlclient_r"
-	fi
 
-                if test "x$MYSQL_CONFIG" = "xyes"; then
-		mod_cflags="$(mysql_config --cflags)"
-		old_CFLAGS="$CFLAGS"
-		CFLAGS="$CFLAGS $mod_cflags"
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql.h (using mysql_config --cflags)" >&5
+fail="$fail libmysqlclient || libmysqlclient_r"
+
+fi
+
+if test "x$MYSQL_CONFIG" = "xyes"; then
+	mod_cflags="$(mysql_config --cflags)"
+	old_CFLAGS="$CFLAGS"
+	CFLAGS="$CFLAGS $mod_cflags"
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql.h (using mysql_config --cflags)" >&5
 $as_echo_n "checking for mysql.h (using mysql_config --cflags)... " >&6; }
+	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <mysql.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  have_mysql_h=yes
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+	if test "x$have_mysql_h" = "xyes"; then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+$as_echo "#define HAVE_MYSQL_H /**/" >>confdefs.h
+
+		SMART_CPPFLAGS="$SMART_CPPFLAGS $mod_cflags"
+	else
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+		mod_cflags="$(mysql_config --include)"
+		CFLAGS="$old_CFLAGS $mod_cflags"
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql.h (using mysql_config --include)" >&5
+$as_echo_n "checking for mysql.h (using mysql_config --include)... " >&6; }
 		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <mysql.h>
@@ -3206,43 +3252,13 @@ $as_echo "#define HAVE_MYSQL_H /**/" >>confdefs.h
 		else
 			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-
-			mod_cflags="$(mysql_config --include)"
-			CFLAGS="$old_CFLAGS $mod_cflags"
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql.h (using mysql_config --include)" >&5
-$as_echo_n "checking for mysql.h (using mysql_config --include)... " >&6; }
-			cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <mysql.h>
-int
-main ()
-{
-int a = 1;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  have_mysql_h=yes
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-			if test "x$have_mysql_h" = "xyes"; then
-				{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-
-$as_echo "#define HAVE_MYSQL_H /**/" >>confdefs.h
-
-				SMART_CPPFLAGS="$SMART_CPPFLAGS $mod_cflags"
-			else
-				{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-			fi
 		fi
-		CFLAGS="$old_CFLAGS"
-    fi
+	fi
+	CFLAGS="$old_CFLAGS"
+fi
 
-    if test "x$have_mysql_h" != "xyes"; then
-		smart_try_dir="$mysql_include_dir /usr/local/include /usr/local/mysql/include"
+if test "x$have_mysql_h" != "xyes"; then
+	smart_try_dir="$mysql_include_dir /usr/local/include /usr/local/mysql/include"
 
 
 ac_safe=`echo "mysql/mysql.h" | sed 'y%./+-%__pm%'`
@@ -3493,39 +3509,77 @@ fi
 
 smart_prefix=
 
-		if test "x$ac_cv_header_mysql_mysql_h" = "xyes"; then
+	if test "x$ac_cv_header_mysql_mysql_h" = "xyes"; then
 
 $as_echo "#define HAVE_MYSQL_MYSQL_H /**/" >>confdefs.h
 
-		else
-	    	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: MySQL headers not found. Use --with-mysql-include-dir=<path>." >&5
-$as_echo "$as_me: WARNING: MySQL headers not found. Use --with-mysql-include-dir=<path>." >&2;}
-	    	fail="$fail mysql.h"
-		fi
-    fi
-
-    targetname=rlm_sql_mysql
-else
-    targetname=
-    echo \*\*\* module rlm_sql_mysql is disabled.
-fi
-
-if test "x$fail" != x; then
-	if test "x${enable_strict_dependencies}" = xyes; then
-		as_fn_error $? "set --without-rlm_sql_mysql to disable it explicitly." "$LINENO" 5
 	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_sql_mysql." >&5
-$as_echo "$as_me: WARNING: silently not building rlm_sql_mysql." >&2;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_sql_mysql requires:$fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_sql_mysql requires:$fail." >&2;};
-		targetname=
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: MySQL headers not found. Use --with-mysql-include-dir=<path>." >&5
+$as_echo "$as_me: WARNING: MySQL headers not found. Use --with-mysql-include-dir=<path>." >&2;}
+
+fail="$fail mysql.h"
+
 	fi
 fi
+
+
+	targetname=rlm_sql_mysql
+else
+	targetname=
+	echo \*\*\* module rlm_sql_mysql is disabled.
+
+
+fr_status="disabled"
+
+fi
+
+if test x"$fail" != x""; then
+	targetname=""
+
+
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		as_fn_error $? "set --without-rlm_sql_mysql to disable it explicitly." "$LINENO" 5
+	else
+
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_sql_mysql." >&5
+$as_echo "$as_me: WARNING: silently not building rlm_sql_mysql." >&2;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_sql_mysql requires: $fail." >&5
+$as_echo "$as_me: WARNING: FAILURE: rlm_sql_mysql requires: $fail." >&2;};
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
+	fi
+
+else
+
+
+fr_status="OK"
+
+fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 mod_ldflags="$SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"
 
 
+
+
+ac_config_headers="$ac_config_headers config.h"
 
 ac_config_files="$ac_config_files all.mk"
 
