@@ -1066,7 +1066,7 @@ static void trunk_request_enter_unassigned(fr_trunk_request_t *treq)
 static void trunk_request_enter_backlog(fr_trunk_request_t *treq, bool new)
 {
 	fr_trunk_connection_t	*tconn = treq->pub.tconn;
-	fr_trunk_t		*trunk = treq->pub.trunk;;
+	fr_trunk_t		*trunk = treq->pub.trunk;
 
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_INIT:

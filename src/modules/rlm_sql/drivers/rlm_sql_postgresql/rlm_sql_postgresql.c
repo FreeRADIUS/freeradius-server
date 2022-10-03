@@ -397,7 +397,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		break;
 	}
 
-	return sql_classify_error(inst, status, conn->result);;
+	return sql_classify_error(inst, status, conn->result);
 }
 
 static sql_rcode_t sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t const *config, char const *query)

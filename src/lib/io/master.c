@@ -224,7 +224,7 @@ static int8_t pending_client_cmp(void const *one, void const *two)
 static int8_t address_cmp(void const *one, void const *two)
 {
 	fr_io_address_t const *a = talloc_get_type_abort_const(one, fr_io_address_t);
-	fr_io_address_t const *b = talloc_get_type_abort_const(two, fr_io_address_t);;
+	fr_io_address_t const *b = talloc_get_type_abort_const(two, fr_io_address_t);
 	int8_t ret;
 
 	CMP_RETURN(a, b, socket.inet.src_port);

@@ -4083,7 +4083,7 @@ void tmpl_attr_to_raw(tmpl_t *vpt)
  */
 int tmpl_attr_unknown_add(tmpl_t *vpt)
 {
-	tmpl_attr_t		*ar = NULL, *next = NULL;;
+	tmpl_attr_t		*ar = NULL, *next = NULL;
 
 	if (!vpt) return 1;
 
@@ -5186,17 +5186,17 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		goto skip_string;
 
 	case '\'':
-		quote = *(p++);;
+		quote = *(p++);
 		*type = T_SINGLE_QUOTED_STRING;
 		goto skip_string;
 
 	case '`':
-		quote = *(p++);;
+		quote = *(p++);
 		*type = T_BACK_QUOTED_STRING;
 		goto skip_string;
 
 	case '"':
-		quote = *(p++);;
+		quote = *(p++);
 		*type = T_DOUBLE_QUOTED_STRING;
 
 		/*

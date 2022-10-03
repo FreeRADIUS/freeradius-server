@@ -177,7 +177,7 @@ static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *req
 
 			hash = fr_hash(p, slen);
 
-			start = hash % g->num_children;;
+			start = hash % g->num_children;
 		}
 
 		RDEBUG3("load-balance starting at child %d", (int) start);

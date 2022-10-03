@@ -234,7 +234,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 {
 	rlm_eap_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_eap_t);
 	unsigned int i, s_i = 0;
-	fr_pair_t *vp = NULL;;
+	fr_pair_t *vp = NULL;
 	eap_type_t method = FR_EAP_METHOD_INVALID;
 	eap_type_t sanitised[nak->length];
 

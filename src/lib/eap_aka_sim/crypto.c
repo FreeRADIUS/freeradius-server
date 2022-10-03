@@ -739,7 +739,7 @@ static int ck_ik_prime_derive(fr_aka_sim_keys_t *keys)
 	FR_PROTO_HEX_DUMP(keys->ck_prime, sizeof(keys->ck_prime), "CK'");
 	FR_PROTO_HEX_DUMP(keys->ik_prime, sizeof(keys->ik_prime), "IK'");
 
-	EVP_MD_CTX_destroy(md_ctx);;
+	EVP_MD_CTX_destroy(md_ctx);
 	EVP_PKEY_free(pkey);
 
 	return 0;
@@ -818,7 +818,7 @@ static int aka_prime_prf(uint8_t *out, size_t outlen,
 		p += copy;
 	}
 
-	EVP_MD_CTX_destroy(md_ctx);;
+	EVP_MD_CTX_destroy(md_ctx);
 	EVP_PKEY_free(pkey);
 
 	return 0;
