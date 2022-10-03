@@ -388,7 +388,7 @@ rpm: rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
 #
 .PHONY: warnings
 warnings:
-	@(make clean all 2>&1) | egrep -v '^/|deprecated|^In file included|: In function|   from |^HEADER|^CC|^LN' > warnings.txt
+	@(make clean all 2>&1) | egrep -v '^/|deprecated|^In file included|: In function|   from |^HEADER|^CC|^LN|^LINK' > warnings.txt
 	@wc -l warnings.txt
 
 #
