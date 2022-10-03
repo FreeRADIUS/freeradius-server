@@ -775,7 +775,7 @@ int fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_list_t *vps,
 		ret = vector_umts_from_quintuplets(request, vps, keys);
 		if (ret == 0) {
 			*src = AKA_SIM_VECTOR_SRC_QUINTUPLETS;
-			break;;
+			break;
 		}
 		if (ret < 0) return -1;
 		break;

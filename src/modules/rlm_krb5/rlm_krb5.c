@@ -286,7 +286,7 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, request_t *request
 	fr_assert(ret != 0);
 
 	if (!fr_cond_assert(inst)) return RLM_MODULE_FAIL;
-	if (!fr_cond_assert(conn)) return RLM_MODULE_FAIL;;	/* Silences warnings */
+	if (!fr_cond_assert(conn)) return RLM_MODULE_FAIL;	/* Silences warnings */
 
 	switch (ret) {
 	case KRB5_LIBOS_BADPWDMATCH:

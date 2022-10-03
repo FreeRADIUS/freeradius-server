@@ -256,7 +256,7 @@ static void xlat_unbound_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t no
 	unbound_request_t	*ur = talloc_get_type_abort(uctx, unbound_request_t);
 	request_t		*request = ur->request;
 
-	REDEBUG("Timeout waiting for DNS resolution");;
+	REDEBUG("Timeout waiting for DNS resolution");
 	unlang_interpret_mark_runnable(request);
 
 	ur->timedout = true;

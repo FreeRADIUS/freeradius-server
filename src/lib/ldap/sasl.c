@@ -77,7 +77,7 @@ static void _ldap_sasl_bind_io_error(UNUSED fr_event_list_t *el, UNUSED int fd,
  */
 static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *uctx, void *sasl_callbacks)
 {
-	fr_ldap_sasl_ctx_t		*sasl_ctx = talloc_get_type_abort(uctx, fr_ldap_sasl_ctx_t);;
+	fr_ldap_sasl_ctx_t		*sasl_ctx = talloc_get_type_abort(uctx, fr_ldap_sasl_ctx_t);
 	sasl_interact_t			*cb = sasl_callbacks;
 	sasl_interact_t			*cb_p;
 

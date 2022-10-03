@@ -1145,7 +1145,7 @@ static int8_t request_prioritise(void const *one, void const *two)
 	/*
 	 *	Prioritise status check packets
 	 */
-	ret = (b->status_check - a->status_check);;
+	ret = (b->status_check - a->status_check);
 	if (ret != 0) return ret;
 
 	/*
@@ -2367,7 +2367,7 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 
 static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);;
+	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 
 	DEBUG3("%s - Reading data for connection %s", h->module_name, h->name);
 

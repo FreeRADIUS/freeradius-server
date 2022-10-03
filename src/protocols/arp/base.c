@@ -216,7 +216,7 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_list_t
 		COPY(tpa, spa);		/* answer is sent to the requestor protocol address */
 	}
 
-	return fr_dbuff_set(dbuff, &work_dbuff);;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Decode a raw ARP packet into VPs
