@@ -1,9 +1,7 @@
 #
 #  No domain separator
 #
-update request {
-	&User-Name := '14200322194552581'
-}
+&User-Name := '14200322194552581'
 
 if ("%(aka_sim_id_method:%{User-Name})" != '') {
 	test_fail
@@ -12,9 +10,7 @@ if ("%(aka_sim_id_method:%{User-Name})" != '') {
 #
 #  Zero length ID
 #
-update request {
-	&User-Name := ''
-}
+&User-Name := ''
 
 if ("%(aka_sim_id_method:%{User-Name})" != '') {
 	test_fail

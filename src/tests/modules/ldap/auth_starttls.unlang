@@ -30,9 +30,7 @@ ldaptls.authenticate
 
 ldaptls.post-auth
 
-update {
-        &Tmp-String-0 := "%{ldaptls:ldap:///uid=fred,ou=people,dc=subdept,dc=example,dc=com?description}"
-}
+&Tmp-String-0 := "%{ldaptls:ldap:///uid=fred,ou=people,dc=subdept,dc=example,dc=com?description}"
 
 if (&Tmp-String-0 != "User %{User-Name} authenticated") {
 	test_fail

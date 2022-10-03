@@ -7,15 +7,15 @@ if (!updated) {
 	test_fail
 }
 
-if (&request.Tmp-String-0 != '255.255.255.0') {
+if (&Tmp-String-0 != '255.255.255.0') {
 	test_fail
 }
 
-if (&request.Tmp-String-1[*] != 'cn=radprofile,ou=profiles,dc=example,dc=com') {
+if (&Tmp-String-1[*] != 'cn=radprofile,ou=profiles,dc=example,dc=com') {
 	test_fail
 }
 
-if (&request.Tmp-String-1[*] != 'cn=profile1,ou=profiles,dc=example,dc=com') {
+if (&Tmp-String-1[*] != 'cn=profile1,ou=profiles,dc=example,dc=com') {
 	test_fail
 }
 

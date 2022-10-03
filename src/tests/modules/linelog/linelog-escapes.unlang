@@ -1,15 +1,10 @@
-
-update control {
-	&Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
-}
+&control.Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
 
 #
 #  Remove old log files
 #
 group {
-	update request {
-		&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_escapes.log"`
-	}
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_escapes.log"`
 
 	actions {
 		fail = 1
@@ -21,18 +16,12 @@ if (fail) {
 
 #  Raw attribute value should be written out without further molestation.
 #  Because the value is wrapped in '' the \n is left as \n.
-update control {
-	&Tmp-String-0 := 'test_attr'
-	&Tmp-String-1 := 'foo\nbar'
-}
+&control.Tmp-String-0 := 'test_attr'
+&control.Tmp-String-1 := 'foo\nbar'
 
 linelog_escapes
-update request {
-	&Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
-}
-update request {
-	&Tmp-String-1 := "%{hex:%{Tmp-String-0}}"
-}
+&Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+&Tmp-String-1 := "%{hex:%{Tmp-String-0}}"
 
 #
 #  Note that there's a '5f6e' here, which is "\n"
@@ -45,9 +34,7 @@ else {
 	test_fail
 }
 
-update request {
-	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
-}
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
 
 #
 #  This is left alone, and not "\n" --> 0x0a, too.
@@ -61,18 +48,13 @@ else {
 
 #  Raw attribute value should be written out without further molestation.
 #  Because the value is wrapped in "" the \n is converted to 0x0a (binary).
-update control {
-	&Tmp-String-0 := 'test_attr'
-	&Tmp-String-1 := "foo\nbar"
-}
+&control.Tmp-String-0 := 'test_attr'
+&control.Tmp-String-1 := "foo\nbar"
 
 linelog_escapes
-update request {
-	&Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
-}
-update request {
-	&Tmp-String-1 := "%{hex:%{Tmp-String-0}}"
-}
+&Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+&Tmp-String-1 := "%{hex:%{Tmp-String-0}}"
+
 if (&Tmp-String-1 == '666f6f0a626172') {
 	test_pass
 }
@@ -80,9 +62,8 @@ else {
 	test_fail
 }
 
-update request {
-	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
-}
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+
 if (&Tmp-String-0 == "bar") {
 	test_pass
 }
@@ -93,6 +74,4 @@ else {
 #  Fixme... needs completing. Too many broken escaping things.
 
 #  Remove the file
-update request {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_escapes.log"`
-}
+&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_escapes.log"`

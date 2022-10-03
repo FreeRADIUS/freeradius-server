@@ -1,14 +1,14 @@
-update request {
-	&SMTP-Mail-Body += "sent from the smtp test module\r\n"
-	&SMTP-Mail-Body += "\r\n"
-	&SMTP-Mail-Body += "Some Body\r\n"
-	&SMTP-Mail-Body += ".\r\n"
-	&SMTP-Mail-Body += "More Body\r\n"
-	&SMTP-Mail-Body += "."
-	&SMTP-Mail-Body += "Most Body\r\n"
+&request += {
+	&SMTP-Mail-Body = "sent from the smtp test module\r\n"
+	&SMTP-Mail-Body = "\r\n"
+	&SMTP-Mail-Body = "Some Body\r\n"
+	&SMTP-Mail-Body = ".\r\n"
+	&SMTP-Mail-Body = "More Body\r\n"
+	&SMTP-Mail-Body = "."
+	&SMTP-Mail-Body = "Most Body\r\n"
 
-	&SMTP-Recipients += "crln_test_receiver@localhost"
-	&SMTP-Sender-Address += "smtp_sender@localhost"
+	&SMTP-Recipients = "crln_test_receiver@localhost"
+	&SMTP-Sender-Address = "smtp_sender@localhost"
 }
 smtp.authorize
 
@@ -28,15 +28,13 @@ echo $?"` == "1") {
 
 if (`/bin/sh -c "cat build/ci/exim4/mail/crln_test_receiver | \
 grep -E 'Most Body'"`) {
-	update control {
-		&Auth-Type := Accept
-	}
+	&control.Auth-Type := Accept
 }
 else {
 	reject
 }
 
-if (&request.TLS-Certificate.Issuer =~ /@example\.org/) {
+if (&TLS-Certificate.Issuer =~ /@example\.org/) {
         test_pass
 } else {
 	test_fail

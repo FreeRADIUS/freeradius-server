@@ -10,7 +10,7 @@ function authorize()
 	end
 
 	if not type(fr.request) == "table" then
-		print("error: The 'fr.request.{}' should be table")
+		print("error: The 'fr.{}' should be table")
 		return fr.rcode.fail
 	end
 

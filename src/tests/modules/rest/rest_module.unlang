@@ -1,7 +1,5 @@
 # Pre-set Tmp-String-2 to check correct operator behaviour
-update control {
-	&Tmp-String-2 := "foo"
-}
+&control.Tmp-String-2 := "foo"
 
 # Test "authorize" rest call.  Uses http to a GET end point
 rest
@@ -34,16 +32,12 @@ if ((&control.Tmp-String-2[0] != "Bob") || (&control.Tmp-String-2[1] != "foo")) 
 }
 
 # Reset control attributes
-update control {
-	&Tmp-String-0 !* ANY
-	&Tmp-String-1 !* ANY
-	&User-Name !* ANY
-}
+&control -= &Tmp-String-0[*]
+&control -= &Tmp-String-1[*]
+&control -= &User-Name[*]
 
 # Pre-fill NAS-IP-Address to check operator behaviour
-update control {
-	&NAS-IP-Address := "10.0.0.10"
-}
+&control.NAS-IP-Address := "10.0.0.10"
 
 # Test "accounting" rest call.  Uses https to a POST end point
 rest.accounting

@@ -11,9 +11,7 @@ if ("%(redis:SET b 'boom')" == 'OK') {
 }
 
 #  Leave some time (100ms) for the synchronisation
-update request {
-	&Tmp-String-0 := `/bin/sleep 0.1`
-}
+&Tmp-String-0 := `/bin/sleep 0.1`
 
 #  Cause one of the redis cluster nodes to SEGV
 if ("%(redis:@%(redis_node:b 0) DEBUG SEGFAULT)" != '') {

@@ -10,14 +10,10 @@ if (&reply.Reply-Message != "Denied access by rlm_perl function") {
     test_fail
 }
 
-update reply {
-    &Reply-Message !* ANY
-}
+&reply -= &Reply-Message[*]
 
 #  User will not be rejected - an xlat will be called setting a reply attribute
-update request {
-    &User-Name := 'bob'
-}
+&User-Name := 'bob'
 
 perl.authenticate
 

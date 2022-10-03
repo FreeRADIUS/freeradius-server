@@ -2,14 +2,11 @@
 #  PRE: update if
 #
 
-update request {
-        &Tmp-String-0 := "%{idn:example.com}"
-        &Tmp-String-1 := "%{idn:èxâmpłé.com}"
-        &Tmp-String-2 := "%{idn:пример.com}"
-        &Tmp-String-3 := "%{idn:παράδειγμα.com}"
-        &Tmp-String-4 := "%{idn:ตัวอย่าง.com}"
-}
-
+&Tmp-String-0 := "%{idn:example.com}"
+&Tmp-String-1 := "%{idn:èxâmpłé.com}"
+&Tmp-String-2 := "%{idn:пример.com}"
+&Tmp-String-3 := "%{idn:παράδειγμα.com}"
+&Tmp-String-4 := "%{idn:ตัวอย่าง.com}"
 
 if (&Tmp-String-0 != "example.com") {
         test_fail
@@ -31,11 +28,9 @@ if (&Tmp-String-4 != "xn--72c1a1bt4awk9o.com") {
         test_fail
 }
 
-update request {
-        &Tmp-String-0 := "%{idn:invalid_example.com}"
-}
+&Tmp-String-0 := "%{idn:invalid_example.com}"
 
-if (&Tmp-String-0 != "") {
+if (&Module-Failure-Message != "Non-digit/letter/hyphen in input") {
         test_fail
 }
 
@@ -43,17 +38,9 @@ if (&Module-Failure-Message == "") {
         test_fail
 }
 
-update request {
-        &Module-Failure-Message !* ANY
-}
+&request -= &Module-Failure-Message[*]
 
-update request {
-        &Tmp-String-0 := "%{idn:a.véry.löng.ņàme.whîch.when.expânded.exceedş.ţhe.dns.stanđard.fór.string.łength.of.twø.hündred.ând.fifty.threé.charáctèrs.and.therefore.is.invalid.for.idn.conversion}"
-}
-
-if (&Tmp-String-0 != "") {
-        test_fail
-}
+&Tmp-String-0 := "%{idn:a.véry.löng.ņàme.whîch.when.expânded.exceedş.ţhe.dns.stanđard.fór.string.łength.of.twø.hündred.ând.fifty.threé.charáctèrs.and.therefore.is.invalid.for.idn.conversion}"
 
 if (&Module-Failure-Message != "Conversion was truncated") {
         test_fail

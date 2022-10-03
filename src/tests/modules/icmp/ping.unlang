@@ -1,18 +1,17 @@
-update control {
-	&Tmp-String-0 := "%(ping:127.0.0.1)"
-}
+&control.Tmp-String-0 := "%(ping:127.0.0.1)"
 
 #
 #  @todo - conditions do not yet support YIELD
 #
 if (&control.Tmp-String-0 == "yes") {
-	update {
-		&control.Password.Cleartext := "hello"
-		&reply.Reply-Message += "success"
+	&control.Password.Cleartext := "hello"
+	
+	&reply += {
+		&Reply-Message = "success"
 	}
 }
 else {
-	update reply {
-		&Reply-Message += "failed"
+	&reply += {
+		&Reply-Message = "failed"
 	}
 }

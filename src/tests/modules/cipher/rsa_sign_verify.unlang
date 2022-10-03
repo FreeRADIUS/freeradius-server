@@ -1,10 +1,5 @@
-update request {
-	&Tmp-String-0 := "Hello world!"
-}
-
-update request {
-	&Tmp-Octets-0 := "%{cipher_rsa_sign:%{Tmp-String-0}}"
-}
+&Tmp-String-0 := "Hello world!"
+&Tmp-Octets-0 := "%{cipher_rsa_sign:%{Tmp-String-0}}"
 
 if (!&Tmp-Octets-0) {
 	test_fail
@@ -23,9 +18,7 @@ else {
 #
 #  Pass the signature and the original message to the verification function
 #
-update request {
-	&Tmp-String-0 := "%(cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0})"
-}
+&Tmp-String-0 := "%(cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0})"
 
 if (&Tmp-String-0 != 'yes') {
 	test_fail
@@ -37,12 +30,8 @@ else {
 #
 #  Verification should now fail
 #
-update request {
-	&Tmp-String-0 := "Goodbye world!"
-}
-update request {
-	&Tmp-String-0 := "%(cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0})"
-}
+&Tmp-String-0 := "Goodbye world!"
+&Tmp-String-0 := "%(cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0})"
 
 if (&Tmp-String-0 != 'no') {
 	test_fail
@@ -54,13 +43,8 @@ else {
 #
 #  Repeat tests to ensure there are no issues with EVP_PKEY_CTX reuse
 #
-update request {
-	&Tmp-String-0 := "Hello nurse!"
-}
-
-update request {
-	&Tmp-Octets-0 := "%{cipher_rsa_sign:%{Tmp-String-0}}"
-}
+&Tmp-String-0 := "Hello nurse!"
+&Tmp-Octets-0 := "%{cipher_rsa_sign:%{Tmp-String-0}}"
 
 if (!&Tmp-Octets-0) {
 	test_fail
@@ -79,9 +63,7 @@ else {
 #
 #  Pass the signature and the original message to the verification function
 #
-update request {
-	&Tmp-String-0 := "%(cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0})"
-}
+&Tmp-String-0 := "%(cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0})"
 
 if (&Tmp-String-0 != 'yes') {
 	test_fail
@@ -93,12 +75,8 @@ else {
 #
 #  Verification should now fail
 #
-update request {
-	&Tmp-String-0 := "Goodbye nurse!"
-}
-update request {
-	&Tmp-String-0 := "%(cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0})"
-}
+&Tmp-String-0 := "Goodbye nurse!"
+&Tmp-String-0 := "%(cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0})"
 
 if (&Tmp-String-0 != 'no') {
 	test_fail

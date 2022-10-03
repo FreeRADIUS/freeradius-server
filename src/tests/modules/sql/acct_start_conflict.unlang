@@ -35,9 +35,8 @@ if ("%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000003'}
 #
 #  Change acctsessiontime and verify it's updated
 #
-update request {
-	&Connect-Info = 'updated'
-}
+&Connect-Info = 'updated'
+
 sql.accounting
 if (ok) {
 	test_pass

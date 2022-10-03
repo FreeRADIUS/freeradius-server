@@ -1,17 +1,17 @@
-update request {
-	&SMTP-Mail-Header += "x-test-Subject: smtp test"
-	&SMTP-Mail-Body += "sent from the smtp test module\r\n"
+&request += {
+	&SMTP-Mail-Header = "x-test-Subject: smtp test"
+	&SMTP-Mail-Body = "sent from the smtp test module\r\n"
 
-	&SMTP-Recipients += "smtp_delivery_receiver@localhost"
-	&SMTP-Recipients += "smtp_recipient_request@localhost"
+	&SMTP-Recipients = "smtp_delivery_receiver@localhost"
+	&SMTP-Recipients = "smtp_recipient_request@localhost"
 
-	&SMTP-TO += "smtp_to_request_1@localhost"
-	&SMTP-TO += "smtp_to_request_2@localhost"
+	&SMTP-TO = "smtp_to_request_1@localhost"
+	&SMTP-TO = "smtp_to_request_2@localhost"
 
-	&SMTP-CC += "smtp_cc_request_1@localhost"
-	&SMTP-CC += "smtp_cc_request_2@localhost"
+	&SMTP-CC = "smtp_cc_request_1@localhost"
+	&SMTP-CC = "smtp_cc_request_2@localhost"
 
-	&SMTP-Attachments += "testfile"
+	&SMTP-Attachments = "testfile"
 }
 smtp.authorize
 
@@ -56,9 +56,7 @@ done ;"` == "found")) {
 if (`/bin/sh -c "cat build/ci/exim4/mail/smtp_delivery_receiver | \
 grep -E '^[A-Za-z0-9+/]{4}*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$' | base64 -d | tr -d '\r\n' | \
 grep -f build/ci/exim4/testfile"`){
-	update control {
-		&Auth-Type := Accept
-	}
+	&control.Auth-Type := Accept
 }
 else {
 	reject

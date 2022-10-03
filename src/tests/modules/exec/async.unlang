@@ -2,10 +2,8 @@
 #  Async calls should always return a zero length string
 #  because we don't wait for the response.
 #
-update request {
-	&Tmp-String-0 := "%(exec_async:/bin/sh -c 'echo -n hello')"
-}
-if (&Tmp-String-0 != '') {
+&Tmp-String-0 := "%(exec_async:/bin/sh -c 'echo -n hello')"
+if (&Tmp-String-0) {
 	test_fail
 }
 
@@ -27,9 +25,7 @@ if (&reply.Reply-Message == 'hello') {
 #  Smoke test - Setup an async process that'll keep running after
 #  after the test exits.
 #
-update request {
-	&Tmp-String-0 := "%(exec_async:/bin/sh -c 'sleep 1')"
-}
-if (&Tmp-String-0 != '') {
+&Tmp-String-0 := "%(exec_async:/bin/sh -c 'sleep 1')"
+if (&Tmp-String-0) {
 	test_fail
 }

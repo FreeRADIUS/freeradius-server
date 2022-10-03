@@ -1,8 +1,6 @@
 imap.authenticate
 if (reject) {
-    update control {
-        &Auth-Type := Accept
-    }
+    &control.Auth-Type := Accept
 }
 else {
     reject

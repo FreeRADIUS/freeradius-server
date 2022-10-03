@@ -1,20 +1,12 @@
-
-update request {
-	&Tmp-String-0 := "vvrbuctetdhc"
-}
-
-update request {
-	&Tmp-String-1 := "%{modhextohex:%{Tmp-String-0}}"
-}
+&Tmp-String-0 := "vvrbuctetdhc"
+&Tmp-String-1 := "%{modhextohex:%{Tmp-String-0}}"
 
 if (&Tmp-String-1 != "ffc1e0d3d260") {
 	test_fail
 }
 
 #  Invalid modhex string - not even length
-update request {
-	&Tmp-String-0 := "vvrbuctetdh"
-}
+&Tmp-String-0 := "vvrbuctetdh"
 
 update request {
 	&Tmp-String-1 := "%{modhextohex:%{Tmp-String-0}}"

@@ -1,9 +1,7 @@
 attr_filter
 
-update control {
-	&Password.Cleartext := "goodbye"
-}
+&control.Password.Cleartext := "goodbye"
 
-update reply {
-        &Reply-Message := "success"
+&reply += {
+        &Reply-Message = "success"
 }

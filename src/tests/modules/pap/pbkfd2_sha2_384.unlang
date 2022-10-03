@@ -4,9 +4,8 @@ if ("${feature.tls}" == no) {
 }
 
 if (&User-Name == 'pbkdf2_sha2_384') {
-	update control {
-		&Password.PBKDF2 := 'HMACSHA2+384:AAAnEA:pyHRsYLfNZdjszRcu6eHrA==:ktGfNmZ6PyD8FNEgPzFK1fypKERZ13pgvFl+PQdyKouaMXsXIiWPuTMXHqDUCWsx'
-	}
+	&control.Password.PBKDF2 := 'HMACSHA2+384:AAAnEA:pyHRsYLfNZdjszRcu6eHrA==:ktGfNmZ6PyD8FNEgPzFK1fypKERZ13pgvFl+PQdyKouaMXsXIiWPuTMXHqDUCWsx'
+
 	pap.authorize
 	pap.authenticate
 	if (!ok) {

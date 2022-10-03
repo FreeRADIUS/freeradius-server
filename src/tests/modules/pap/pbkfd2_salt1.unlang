@@ -4,9 +4,8 @@ if ("${feature.tls}" == no) {
 }
 
 if (&User-Name == 'pbkdf2_salt1') {
-	update control {
-		&Password.PBKDF2 := 'HMACSHA2+256:AAAnEA:qg==:KQzCdedgOZYFwx+mQp1TKA8VM4fwf02pqSdJEh2ekwM='
-	}
+	&control.Password.PBKDF2 := 'HMACSHA2+256:AAAnEA:qg==:KQzCdedgOZYFwx+mQp1TKA8VM4fwf02pqSdJEh2ekwM='
+
 	pap.authorize
 	pap.authenticate
 	if (!ok) {

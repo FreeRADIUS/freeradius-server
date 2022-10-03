@@ -74,11 +74,9 @@ else {
 }
 
 # Clear the control list
-update {
-	&control.Tmp-String-0 !* ANY
-	&control.Tmp-String-1 !* ANY
-	&control.Tmp-Integer-0 !* ANY
-}
+&control -= &Tmp-String-0[*]
+&control -= &Tmp-String-1[*]
+&control -= &Tmp-Integer-0[*]
 
 # Insert our second test row
 "%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('oof', 'rab', 0)}"
@@ -119,11 +117,9 @@ else {
 }
 
 # Clear the control list
-update {
-	&control.Tmp-String-0 !* ANY
-	&control.Tmp-String-1 !* ANY
-	&control.Tmp-Integer-0 !* ANY
-}
+&control -= &Tmp-String-0[*]
+&control -= &Tmp-String-1[*]
+&control -= &Tmp-Integer-0[*]
 
 # Retrieve our test row(s) - With = we should get the values from the first row
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
@@ -161,11 +157,9 @@ else {
 }
 
 # Clear the control list
-update {
-	&control.Tmp-String-0 !* ANY
-	&control.Tmp-String-1 !* ANY
-	&control.Tmp-Integer-0 !* ANY
-}
+&control -= &Tmp-String-0[*]
+&control -= &Tmp-String-1[*]
+&control -= &Tmp-Integer-0[*]
 
 # Retrieve our test row(s) - With ^= we should get the values from the second row then the first
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
@@ -193,11 +187,9 @@ if ((&control.Tmp-Integer-0[0] != 0) || (&control.Tmp-Integer-0[1] != 0)) {
 }
 
 # Clear the control list
-update {
-	&control.Tmp-String-0 !* ANY
-	&control.Tmp-String-1 !* ANY
-	&control.Tmp-Integer-0 !* ANY
-}
+&control -= &Tmp-String-0[*]
+&control -= &Tmp-String-1[*]
+&control -= &Tmp-Integer-0[*]
 
 # Retrieve our test row(s) - With += we should get the values from both rows
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
@@ -249,11 +241,9 @@ else {
 }
 
 # Clear the control list
-update {
-	&control.Tmp-String-0 !* ANY
-	&control.Tmp-String-1 !* ANY
-	&control.Tmp-Integer-0 !* ANY
-}
+&control -= &Tmp-String-0[*]
+&control -= &Tmp-String-1[*]
+&control -= &Tmp-Integer-0[*]
 
 # Retrieve the username column only (should result in noop because not in map)
 map sql 'SELECT username FROM radusergroup WHERE priority = 0' {
@@ -303,16 +293,12 @@ else {
 	test_fail
 }
 
-update request {
-	&Tmp-String-0 := "SELECT * FROM radusergroup WHERE priority = 0 AND username = '%{User-Name}'"
-}
+&Tmp-String-0 := "SELECT * FROM radusergroup WHERE priority = 0 AND username = '%{User-Name}'"
 
 # Clear the control list
-update {
-	&control.Tmp-String-0 !* ANY
-	&control.Tmp-String-1 !* ANY
-	&control.Tmp-Integer-0 !* ANY
-}
+&control -= &Tmp-String-0[*]
+&control -= &Tmp-String-1[*]
+&control -= &Tmp-Integer-0[*]
 
 # Retrieve test row with specific username (using ref'd query)
 map sql &Tmp-String-0 {
@@ -350,16 +336,12 @@ else {
 }
 
 # Clear the control list
-update {
-	&control.Tmp-String-0 !* ANY
-	&control.Tmp-String-1 !* ANY
-	&control.Tmp-Integer-0 !* ANY
-}
+&control -= &Tmp-String-0[*]
+&control -= &Tmp-String-1[*]
+&control -= &Tmp-Integer-0[*]
 
-update request {
-	&Tmp-String-0 := 'username'
-	&Tmp-String-1 := 'name'
-}
+&Tmp-String-0 := 'username'
+&Tmp-String-1 := 'name'
 
 # Retrieve our test row(s) - Using different RHS types
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {

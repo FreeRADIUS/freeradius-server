@@ -1,11 +1,9 @@
-update request {
-	&SMTP-Mail-Body += "sent from the smtp test module\r\n"
-
-	&SMTP-Recipients += "stringparse_test_receiver@localhost"
-
-	&SMTP-Sender-Address += "smtp_sender@localhost"
-	&SMTP-Sender-Address += "smtp_sender_2@localhost"
-	&SMTP-Sender-Address += "smtp_sender_3@localhost"
+&request += {
+	&SMTP-Mail-Body = "sent from the smtp test module\r\n"
+	&SMTP-Recipients = "stringparse_test_receiver@localhost"
+	&SMTP-Sender-Address = "smtp_sender@localhost"
+	&SMTP-Sender-Address = "smtp_sender_2@localhost"
+	&SMTP-Sender-Address = "smtp_sender_3@localhost"
 }
 smtp.authorize
 
@@ -25,15 +23,13 @@ echo $?"` == "1") {
 
 if (`/bin/sh -c "cat build/ci/exim4/mail/stringparse_test_receiver | \
 grep -E 'Subject: for Bob'"`) {
-	update control {
-		&Auth-Type := Accept
-	}
+	&control.Auth-Type := Accept
 }
 else {
 	reject
 }
 
-if (&request.TLS-Certificate.Issuer =~ /@example\.org/) {
+if (&TLS-Certificate.Issuer =~ /@example\.org/) {
         test_pass
 } else {
 	test_fail
