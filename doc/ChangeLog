@@ -1,3 +1,8 @@
+FreeRADIUS 3.2.2 Mon 03 Oct 2022 12:00:00 EDT urgency=low
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.2.1 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	Feature improvements
 	* Add dictionary.ciena, dictionary.nile, and DHCPv4 dictionaries,
