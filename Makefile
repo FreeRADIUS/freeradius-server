@@ -361,10 +361,11 @@ endif
 #
 #  Build a Debian package
 #
+DEBBUILDEXTRA = --jobs=auto
 .PHONY: deb
 deb:
 	fakeroot debian/rules debian/control #clean
-	fakeroot dpkg-buildpackage --jobs=auto -b -uc
+	fakeroot dpkg-buildpackage $(DEBBUILDEXTRA) -b -uc
 
 #
 #  Build an RPM package
