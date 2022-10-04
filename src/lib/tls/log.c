@@ -97,62 +97,57 @@ static _Thread_local	fr_tls_log_bio_t	*request_log_bio;
  */
 static _Thread_local	fr_tls_log_bio_t	*global_log_bio;
 
-static void _tls_ctx_print_cert_line(char const *file, int line,
-				     request_t *request, fr_log_type_t log_type, int idx, X509 *cert)
+static void _tls_cert_line_push(char const *file, int line, int idx, X509 *cert)
 {
 	char		subject[1024];
 
 	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
 
-	if (request) {
-		log_request(log_type, fr_debug_lvl, request, file, line,
-			    "[%i] %s %s", idx, fr_tls_utils_x509_pkey_type(cert), subject);
-	} else {
-		fr_log(LOG_DST, log_type, file, line,
-		       "[%i] %s %s", idx, fr_tls_utils_x509_pkey_type(cert), subject);
-	}
+	_fr_strerror_printf_push(file, line, "[%i] %s %s", idx, fr_tls_utils_x509_pkey_type(cert), subject);
 }
 
-static void _tls_ctx_print_cert_line_marker(char const *file, int line,
-					    request_t *request, fr_log_type_t log_type, int idx,
-					    X509 *cert, bool marker)
+static void _tls_cert_line_marker_push(char const *file, int line,
+						int idx, X509 *cert, bool marker)
 {
 	char		subject[1024];
 
 	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
 
-	if (request) {
-		log_request(log_type, fr_debug_lvl, request, file, line,
-			    "%s [%i] %s %s", marker ? ">" : " ",
-			    idx, fr_tls_utils_x509_pkey_type(cert), subject);
-	} else {
-		fr_log(LOG_DST, log_type, file, line,
-		       "%s [%i] %s %s", marker ? ">" : " ",
-		       idx, fr_tls_utils_x509_pkey_type(cert), subject);
-	}
+	_fr_strerror_printf_push(file, line, "%s [%i] %s %s", marker ? ">" : " ",
+				 idx, fr_tls_utils_x509_pkey_type(cert), subject);
 }
 
-static void _tls_ctx_print_cert_line_no_idx(char const *file, int line,
-					    request_t *request, fr_log_type_t log_type, X509 *cert)
+static void _tls_cert_line_marker_no_idx_push(char const *file, int line, X509 *cert)
 {
 	char		subject[1024];
 
 	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
 
-	if (request) {
-		log_request(log_type, fr_debug_lvl, request, file, line,
-			    "%s %s", fr_tls_utils_x509_pkey_type(cert), subject);
-	} else {
-		fr_log(LOG_DST, log_type, file, line,
-		       "%s %s", fr_tls_utils_x509_pkey_type(cert), subject);
-	}
+	_fr_strerror_printf_push(file, line, "%s %s", fr_tls_utils_x509_pkey_type(cert), subject);
 }
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+/** Print out the current stack of certs to the thread local error buffer
+ *
+ * @param[in] file	File where this function is being called.
+ * @param[in] line	Line where this function is being called.
+ * @param[in] chain	The certificate chain.
+ * @param[in] cert	The leaf certificate.
+ */
+void _fr_tls_chain_push(char const *file, int line, STACK_OF(X509) *chain, X509 *cert)
+{
+	int i;
+
+	for (i = sk_X509_num(chain); i > 0 ; i--) {
+		_tls_cert_line_push(file, line, i, sk_X509_value(chain, i - 1));
+	}
+	if (cert) _tls_cert_line_push(file, line, i, cert);
+}
+
 /** Print out the current stack of certs
  *
  * @param[in] file	File where this function is being called.
@@ -162,15 +157,40 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
  * @param[in] chain	The certificate chain.
  * @param[in] cert	The leaf certificate.
  */
-void _fr_tls_log_certificate_chain(char const *file, int line,
-				   request_t *request, fr_log_type_t log_type, STACK_OF(X509) *chain, X509 *cert)
+void _fr_tls_chain_log(char const *file, int line,
+		       request_t *request, fr_log_type_t log_type,
+		       STACK_OF(X509) *chain, X509 *cert)
+{
+	/*
+	 *	Dump to the thread local buffer
+	 */
+	fr_strerror_clear();
+	_fr_tls_chain_push(file, line, chain, cert);
+	if (request) {
+		log_request_perror(log_type, L_DBG_LVL_OFF, request, file, line, NULL);
+	} else {
+		fr_perror(NULL);
+	}
+}
+
+/** Print out the current stack of certs to the thread local error buffer
+ *
+ * @param[in] file	File where this function is being called.
+ * @param[in] line	Line where this function is being called.
+ * @param[in] chain	The certificate chain.
+ * @param[in] cert	The leaf certificate.
+ * @param[in] marker	The certificate we want to mark.
+ */
+void _fr_tls_chain_marker_push(char const *file, int line,
+			       STACK_OF(X509) *chain, X509 *cert, X509 *marker)
 {
 	int i;
 
 	for (i = sk_X509_num(chain); i > 0 ; i--) {
-		_tls_ctx_print_cert_line(file, line, request, log_type, i, sk_X509_value(chain, i - 1));
+		X509 *selected = sk_X509_value(chain, i - 1);
+		_tls_cert_line_marker_push(file, line, i, selected, (selected == marker));
 	}
-	if (cert) _tls_ctx_print_cert_line(file, line, request, log_type, i, cert);
+	if (cert) _tls_cert_line_marker_push(file, line, i, cert, (cert == marker));
 }
 
 /** Print out the current stack of certs
@@ -183,17 +203,51 @@ void _fr_tls_log_certificate_chain(char const *file, int line,
  * @param[in] cert	The leaf certificate.
  * @param[in] marker	The certificate we want to mark.
  */
-void _fr_tls_log_certificate_chain_marker(char const *file, int line,
-					  request_t *request, fr_log_type_t log_type,
-					  STACK_OF(X509) *chain, X509 *cert, X509 *marker)
+void _fr_tls_chain_marker_log(char const *file, int line,
+			      request_t *request, fr_log_type_t log_type,
+			      STACK_OF(X509) *chain, X509 *cert, X509 *marker)
+{
+	/*
+	 *	Dump to the thread local buffer
+	 */
+	fr_strerror_clear();
+	_fr_tls_chain_marker_push(file, line, chain, cert, marker);
+	if (request) {
+		log_request_perror(log_type, L_DBG_LVL_OFF, request, file, line, NULL);
+	} else {
+		fr_perror(NULL);
+	}
+}
+
+/** Print out the current stack of X509 objects (certificates only)
+ *
+ * @param[in] file		File where this function is being called.
+ * @param[in] line		Line where this function is being called.
+ * @param[in] objects		A stack of X509 objects
+ */
+void _fr_tls_x509_objects_push(char const *file, int line,
+			       STACK_OF(X509_OBJECT) *objects)
 {
 	int i;
 
-	for (i = sk_X509_num(chain); i > 0 ; i--) {
-		X509 *selected = sk_X509_value(chain, i - 1);
-		_tls_ctx_print_cert_line_marker(file, line, request, log_type, i, selected, (selected == marker));
+	for (i = sk_X509_OBJECT_num(objects); i > 0 ; i--) {
+		X509_OBJECT *obj = sk_X509_OBJECT_value(objects, i - 1);
+
+		switch (X509_OBJECT_get_type(obj)) {
+		case X509_LU_X509:	/* X509 certificate */
+			/*
+			 *	Dump to the thread local buffer
+			 */
+			_tls_cert_line_marker_no_idx_push(file, line, X509_OBJECT_get0_X509(obj));
+			break;
+
+		case X509_LU_CRL:	/* Certificate revocation list */
+			continue;
+
+		default:
+			continue;
+		}
 	}
-	if (cert) _tls_ctx_print_cert_line_marker(file, line, request, log_type, i, cert, (cert == marker));
 }
 
 /** Print out the current stack of X509 objects (certificates only)
@@ -204,26 +258,17 @@ void _fr_tls_log_certificate_chain_marker(char const *file, int line,
  * @param[in] log_type		The type of log message to produce L_INFO, L_ERR, L_DBG etc...
  * @param[in] objects		A stack of X509 objects
  */
-void _fr_tls_log_x509_objects(char const *file, int line,
+void _fr_tls_x509_objects_log(char const *file, int line,
 			      request_t *request, fr_log_type_t log_type,
 			      STACK_OF(X509_OBJECT) *objects)
 {
-	int i;
 
-	for (i = sk_X509_OBJECT_num(objects); i > 0 ; i--) {
-		X509_OBJECT *obj = sk_X509_OBJECT_value(objects, i - 1);
-
-		switch (X509_OBJECT_get_type(obj)) {
-		case X509_LU_X509:	/* X509 certificate */
-			_tls_ctx_print_cert_line_no_idx(file, line, request, log_type, X509_OBJECT_get0_X509(obj));
-			break;
-
-		case X509_LU_CRL:	/* Certificate revocation list */
-			continue;
-
-		default:
-			continue;
-		}
+	fr_strerror_clear();
+	_fr_tls_x509_objects_push(file, line, objects);
+	if (request) {
+		log_request_perror(log_type, L_DBG_LVL_OFF, request, file, line, NULL);
+	} else {
+		fr_perror(NULL);
 	}
 }
 
@@ -427,7 +472,7 @@ int fr_tls_log_io_error(request_t *request, int err, char const *fmt, ...)
  * @param[in] ...	Arguments for msg.
  * @return the number of errors drained from the stack.
  */
-int fr_tls_log_strerror_printf(char const *msg, ...)
+int fr_tls_strerror_printf(char const *msg, ...)
 {
 	va_list ap;
 	int ret;
@@ -448,7 +493,7 @@ int fr_tls_log_strerror_printf(char const *msg, ...)
  * @param[in] ...	Arguments for msg.
  * @return the number of errors drained from the stack.
  */
-int fr_tls_log_error(request_t *request, char const *msg, ...)
+int fr_tls_log(request_t *request, char const *msg, ...)
 {
 	va_list ap;
 	int ret;
@@ -465,7 +510,7 @@ int fr_tls_log_error(request_t *request, char const *msg, ...)
 /** Clear errors in the TLS thread local error stack
  *
  */
-void tls_log_clear(void)
+void fr_tls_log_clear(void)
 {
 	while (ERR_get_error() != 0);
 }

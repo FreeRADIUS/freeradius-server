@@ -420,7 +420,7 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, void *pa
 	fclose(fp);
 
 	if (!pkey) {
-		fr_tls_log_strerror_printf(NULL);
+		fr_tls_strerror_printf(NULL);
 		cf_log_perr(ci, "Error loading private certificate file \"%s\"", filename);
 
 		return -1;
@@ -483,7 +483,7 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, void *pa
 	fclose(fp);
 
 	if (!cert) {
-		fr_tls_log_strerror_printf(NULL);
+		fr_tls_strerror_printf(NULL);
 		cf_log_perr(ci, "Error loading certificate file \"%s\"", filename);
 
 		return -1;
@@ -503,7 +503,7 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, void *pa
 	 */
 	pkey = X509_get_pubkey(cert);
 	if (!pkey) {
-		fr_tls_log_strerror_printf(NULL);
+		fr_tls_strerror_printf(NULL);
 		cf_log_perr(ci, "Failed extracting public key from certificate");
 
 		return -1;
@@ -604,7 +604,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	RHEXDUMP3((uint8_t const *)plaintext, plaintext_len, "Plaintext (%zu bytes)", plaintext_len);
 	if (EVP_PKEY_encrypt(t->evp_encrypt_ctx, NULL, &ciphertext_len,
 			     (unsigned char const *)plaintext, plaintext_len) <= 0) {
-		fr_tls_log_error(request, "Failed getting length of encrypted plaintext");
+		fr_tls_log(request, "Failed getting length of encrypted plaintext");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -612,7 +612,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(fr_value_box_mem_alloc(vb, &ciphertext, vb, NULL, ciphertext_len, false) == 0);
 	if (EVP_PKEY_encrypt(t->evp_encrypt_ctx, ciphertext, &ciphertext_len,
 			     (unsigned char const *)plaintext, plaintext_len) <= 0) {
-		fr_tls_log_error(request, "Failed encrypting plaintext");
+		fr_tls_log(request, "Failed encrypting plaintext");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
@@ -667,17 +667,17 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	First produce a digest of the message
 	 */
 	if (unlikely(EVP_DigestInit_ex(t->evp_md_ctx, inst->rsa->sig_digest, NULL) <= 0)) {
-		fr_tls_log_error(request, "Failed initialising message digest");
+		fr_tls_log(request, "Failed initialising message digest");
 		return XLAT_ACTION_FAIL;
 	}
 
 	if (EVP_DigestUpdate(t->evp_md_ctx, msg, msg_len) <= 0) {
-		fr_tls_log_error(request, "Failed ingesting message");
+		fr_tls_log(request, "Failed ingesting message");
 		return XLAT_ACTION_FAIL;
 	}
 
 	if (EVP_DigestFinal_ex(t->evp_md_ctx, t->digest_buff, &digest_len) <= 0) {
-		fr_tls_log_error(request, "Failed finalising message digest");
+		fr_tls_log(request, "Failed finalising message digest");
 		return XLAT_ACTION_FAIL;
 	}
 	fr_assert((size_t)digest_len == talloc_array_length(t->digest_buff));
@@ -686,14 +686,14 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Then sign the digest
 	 */
 	if (EVP_PKEY_sign(t->evp_sign_ctx, NULL, &sig_len, t->digest_buff, (size_t)digest_len) <= 0) {
-		fr_tls_log_error(request, "Failed getting length of digest");
+		fr_tls_log(request, "Failed getting length of digest");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	MEM(fr_value_box_mem_alloc(vb, &sig, vb, NULL, sig_len, false) == 0);
 	if (EVP_PKEY_sign(t->evp_sign_ctx, sig, &sig_len, t->digest_buff, (size_t)digest_len) <= 0) {
-		fr_tls_log_error(request, "Failed signing message digest");
+		fr_tls_log(request, "Failed signing message digest");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
@@ -744,7 +744,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	RHEXDUMP3(ciphertext, ciphertext_len, "Ciphertext (%zu bytes)", ciphertext_len);
 	if (EVP_PKEY_decrypt(t->evp_decrypt_ctx, NULL, &plaintext_len, ciphertext, ciphertext_len) <= 0) {
-		fr_tls_log_error(request, "Failed getting length of cleartext");
+		fr_tls_log(request, "Failed getting length of cleartext");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -752,7 +752,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(fr_value_box_bstr_alloc(vb, &plaintext, vb, NULL, plaintext_len, true) == 0);
 	if (EVP_PKEY_decrypt(t->evp_decrypt_ctx, (unsigned char *)plaintext, &plaintext_len,
 			     ciphertext, ciphertext_len) <= 0) {
-		fr_tls_log_error(request, "Failed decrypting ciphertext");
+		fr_tls_log(request, "Failed decrypting ciphertext");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
@@ -841,17 +841,17 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	First produce a digest of the message
 	 */
 	if (unlikely(EVP_DigestInit_ex(t->evp_md_ctx, inst->rsa->sig_digest, NULL) <= 0)) {
-		fr_tls_log_error(request, "Failed initialising message digest");
+		fr_tls_log(request, "Failed initialising message digest");
 		return XLAT_ACTION_FAIL;
 	}
 
 	if (EVP_DigestUpdate(t->evp_md_ctx, msg, msg_len) <= 0) {
-		fr_tls_log_error(request, "Failed ingesting message");
+		fr_tls_log(request, "Failed ingesting message");
 		return XLAT_ACTION_FAIL;
 	}
 
 	if (EVP_DigestFinal_ex(t->evp_md_ctx, t->digest_buff, &digest_len) <= 0) {
-		fr_tls_log_error(request, "Failed finalising message digest");
+		fr_tls_log(request, "Failed finalising message digest");
 		return XLAT_ACTION_FAIL;
 	}
 	fr_assert((size_t)digest_len == talloc_array_length(t->digest_buff));
@@ -873,7 +873,7 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		break;
 
 	default:
-		fr_tls_log_error(request, "Failed validating signature");
+		fr_tls_log(request, "Failed validating signature");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -927,7 +927,7 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(fr_value_box_mem_alloc(vb, &digest, vb, NULL, md_len, false) == 0);
 
 	if (X509_digest(inst->rsa->x509_certificate_file, md, digest, (unsigned int *)&md_len) != 1) {
-		fr_tls_log_error(request, "Failed calculating certificate fingerprint");
+		fr_tls_log(request, "Failed calculating certificate fingerprint");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
@@ -955,7 +955,7 @@ static xlat_action_t cipher_serial_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	serial = X509_get0_serialNumber(inst->rsa->x509_certificate_file);
 	if (!serial) {
-		fr_tls_log_error(request, "Failed retrieving certificate serial");
+		fr_tls_log(request, "Failed retrieving certificate serial");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -1027,7 +1027,7 @@ static int _evp_md_ctx_free(EVP_MD_CTX *evp_md_ctx)
 static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_t const *rsa_inst)
 {
 	if (unlikely(EVP_PKEY_CTX_set_rsa_padding(evp_pkey_ctx, rsa_inst->padding)) <= 0) {
-		fr_tls_log_strerror_printf(NULL);
+		fr_tls_strerror_printf(NULL);
 		PERROR("%s: Failed setting RSA padding type", __FUNCTION__);
 		return -1;
 	}
@@ -1046,13 +1046,13 @@ static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_
 	 */
 	case RSA_PKCS1_OAEP_PADDING:
 		if (unlikely(EVP_PKEY_CTX_set_rsa_oaep_md(evp_pkey_ctx, rsa_inst->oaep->oaep_digest) <= 0)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed setting OAEP digest", __FUNCTION__);
 			return -1;
 		}
 
 		if (unlikely(EVP_PKEY_CTX_set_rsa_mgf1_md(evp_pkey_ctx, rsa_inst->oaep->mgf1_digest) <= 0)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed setting MGF1 digest", __FUNCTION__);
 			return -1;
 		}
@@ -1070,7 +1070,7 @@ static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_
 			 */
 			MEM(label = talloc_bstrndup(evp_pkey_ctx, rsa_inst->oaep->label, label_len));
 		    	if (unlikely(EVP_PKEY_CTX_set0_rsa_oaep_label(evp_pkey_ctx, label, label_len) <= 0)) {
-	   			fr_tls_log_strerror_printf(NULL);
+	   			fr_tls_strerror_printf(NULL);
 				PERROR("%s: Failed setting OAEP padding label", __FUNCTION__);
 				OPENSSL_free(label);
 				return -1;
@@ -1110,7 +1110,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		 */
 		ti->evp_encrypt_ctx = EVP_PKEY_CTX_new(inst->rsa->certificate_file, NULL);
 		if (!ti->evp_encrypt_ctx) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed allocating encrypt EVP_PKEY_CTX", __FUNCTION__);
 			return -1;
 		}
@@ -1122,7 +1122,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		 *	Configure encrypt
 		 */
 		if (unlikely(EVP_PKEY_encrypt_init(ti->evp_encrypt_ctx) <= 0)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising encrypt EVP_PKEY_CTX", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1136,7 +1136,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		 */
 		ti->ePAIR_VERIFY_ctx = EVP_PKEY_CTX_new(inst->rsa->certificate_file, NULL);
 		if (!ti->ePAIR_VERIFY_ctx) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed allocating verify EVP_PKEY_CTX", __FUNCTION__);
 			return -1;
 		}
@@ -1148,7 +1148,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		 *	Configure verify
 		 */
 		if (unlikely(EVP_PKEY_verify_init(ti->ePAIR_VERIFY_ctx) <= 0)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising verify EVP_PKEY_CTX", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1164,7 +1164,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		}
 
 		if (unlikely(EVP_PKEY_CTX_set_signature_md(ti->ePAIR_VERIFY_ctx, inst->rsa->sig_digest)) <= 0) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed setting signature digest type", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1176,7 +1176,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		 */
 		ti->evp_decrypt_ctx = EVP_PKEY_CTX_new(inst->rsa->private_key_file, NULL);
 		if (!ti->evp_decrypt_ctx) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed allocating decrypt EVP_PKEY_CTX", __FUNCTION__);
 			return -1;
 		}
@@ -1188,7 +1188,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		 *	Configure decrypt
 		 */
 		if (unlikely(EVP_PKEY_decrypt_init(ti->evp_decrypt_ctx) <= 0)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising decrypt EVP_PKEY_CTX", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1202,7 +1202,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		 */
 		ti->evp_sign_ctx = EVP_PKEY_CTX_new(inst->rsa->private_key_file, NULL);
 		if (!ti->evp_sign_ctx) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed allocating sign EVP_PKEY_CTX", __FUNCTION__);
 			return -1;
 		}
@@ -1214,7 +1214,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		 *	Configure sign
 		 */
 		if (unlikely(EVP_PKEY_sign_init(ti->evp_sign_ctx) <= 0)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising sign EVP_PKEY_CTX", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1230,7 +1230,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		}
 
 		if (unlikely(EVP_PKEY_CTX_set_signature_md(ti->evp_sign_ctx, inst->rsa->sig_digest)) <= 0) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed setting signature digest type", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1240,7 +1240,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		 */
 		ti->evp_md_ctx = EVP_MD_CTX_create();
 		if (!ti->evp_md_ctx) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed allocating EVP_MD_CTX", __FUNCTION__);
 			return -1;
 		}
@@ -1328,7 +1328,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			if (inst->rsa->private_key_file && inst->rsa->x509_certificate_file) {
 				if (X509_check_private_key(inst->rsa->x509_certificate_file,
 							   inst->rsa->private_key_file) == 0) {
-					fr_tls_log_strerror_printf(NULL);
+					fr_tls_strerror_printf(NULL);
 					cf_log_perr(conf, "Private key does not match the certificate public key");
 					return -1;
 				}

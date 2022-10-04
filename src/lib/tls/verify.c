@@ -91,7 +91,7 @@ static void tls_verify_error_detail(request_t *request, SSL_CTX *ctx, int err)
 		RDEBUG2("Static certificates in verification store are");
 		if (RDEBUG_ENABLED2) {
 			RINDENT();
-			fr_tls_log_x509_objects(request, L_DBG, X509_STORE_get0_objects(store));
+			fr_tls_x509_objects_log(request, L_DBG, X509_STORE_get0_objects(store));
 			REXDENT();
 		}
 		break;

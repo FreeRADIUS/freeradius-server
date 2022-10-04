@@ -1249,7 +1249,7 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 			RDEBUG2("Asking for more data in tunnel");
 
 		} else {
-			fr_tls_log_error(NULL, NULL);
+			fr_tls_log(NULL, NULL);
 			record_init(&tls_session->dirty_in);
 			goto error;
 		}
@@ -1709,7 +1709,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 
 	ssl = SSL_new(ssl_ctx);
 	if (ssl == NULL) {
-		fr_tls_log_error(request, "Error creating new TLS session");
+		fr_tls_log(request, "Error creating new TLS session");
 		return NULL;
 	}
 	fr_pair_list_init(&tls_session->extra_pairs);
@@ -1804,19 +1804,19 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 		RDEBUG2("Loading TLS session certificate \"%pV\"", &vp->data);
 
 		if (SSL_use_certificate_file(tls_session->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
-			fr_tls_log_error(request, "Failed loading TLS session certificate \"%s\"",
+			fr_tls_log(request, "Failed loading TLS session certificate \"%s\"",
 				      vp->vp_strvalue);
 			goto error;
 		}
 
 		if (SSL_use_PrivateKey_file(tls_session->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
-			fr_tls_log_error(request, "Failed loading TLS session certificate \"%s\"",
+			fr_tls_log(request, "Failed loading TLS session certificate \"%s\"",
 				      vp->vp_strvalue);
 			goto error;
 		}
 
 		if (SSL_check_private_key(tls_session->ssl) != 1) {
-			fr_tls_log_error(request, "Failed validating TLS session certificate \"%s\"",
+			fr_tls_log(request, "Failed validating TLS session certificate \"%s\"",
 				      vp->vp_strvalue);
 			goto error;
 		}

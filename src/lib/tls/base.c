@@ -312,7 +312,7 @@ int fr_openssl_thread_init(size_t async_pool_size_init, size_t async_pool_size_m
 		bool *init = talloc_zero(NULL, bool);
 
 		if (ASYNC_init_thread(async_pool_size_max, async_pool_size_init) != 1) {
-			fr_tls_log_error(NULL, "Failed initialising OpenSSL async context pool");
+			fr_tls_log(NULL, "Failed initialising OpenSSL async context pool");
 			return -1;
 		}
 
@@ -344,12 +344,12 @@ void fr_openssl_free(void)
 static void _openssl_provider_free(void)
 {
 	if (openssl_default_provider && !OSSL_PROVIDER_unload(openssl_default_provider)) {
-		fr_tls_log_error(NULL, "Failed unloading default provider");
+		fr_tls_log(NULL, "Failed unloading default provider");
 	}
 	openssl_default_provider = NULL;
 
 	if (openssl_legacy_provider && !OSSL_PROVIDER_unload(openssl_legacy_provider)) {
-		fr_tls_log_error(NULL, "Failed unloading legacy provider");
+		fr_tls_log(NULL, "Failed unloading legacy provider");
 	}
 	openssl_legacy_provider = NULL;
 }
@@ -385,7 +385,7 @@ int fr_openssl_init(void)
 	 *	by OpenSSL.
 	 */
 	if (CRYPTO_set_mem_functions(fr_openssl_talloc, fr_openssl_talloc_realloc, fr_openssl_talloc_free) != 1) {
-		fr_tls_log_error(NULL, "Failed to set OpenSSL memory allocation functions.  fr_openssl_init() called too late");
+		fr_tls_log(NULL, "Failed to set OpenSSL memory allocation functions.  fr_openssl_init() called too late");
 		return -1;
 	}
 
@@ -398,7 +398,7 @@ int fr_openssl_init(void)
 	 *	the contexts have been cleaned up.
 	 */
 	if (OPENSSL_init_ssl(OPENSSL_INIT_NO_ATEXIT | OPENSSL_INIT_LOAD_CONFIG, NULL) != 1) {
-		fr_tls_log_error(NULL, "Failed calling OPENSSL_init_crypto()");
+		fr_tls_log(NULL, "Failed calling OPENSSL_init_crypto()");
 		return -1;
 	}
 
@@ -408,7 +408,7 @@ int fr_openssl_init(void)
 	 */
 	openssl_default_provider = OSSL_PROVIDER_load(NULL, "default");
 	if (!openssl_default_provider) {
-		fr_tls_log_error(NULL, "Failed loading default provider");
+		fr_tls_log(NULL, "Failed loading default provider");
 		return -1;
 	}
 
@@ -419,7 +419,7 @@ int fr_openssl_init(void)
 	 */
 	openssl_legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
 	if (!openssl_legacy_provider) {
-		fr_tls_log_error(NULL, "Failed loading legacy provider");
+		fr_tls_log(NULL, "Failed loading legacy provider");
 		return -1;
 	}
 #endif
@@ -482,12 +482,12 @@ int fr_openssl_fips_mode(bool enabled)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	if (!EVP_set_default_properties(NULL, enabled ? "fips=yes" : "fips=no")) {
-		fr_tls_log_error(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
+		fr_tls_log(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
 		return -1;
 	}
 #else
 	if (!FIPS_mode_set(enabled ? 1 : 0)) {
-		fr_tls_log_error(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
+		fr_tls_log(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
 		return -1;
 	}
 #endif

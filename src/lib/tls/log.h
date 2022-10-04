@@ -36,31 +36,82 @@ RCSIDH(tls_log_h, "$Id$")
 
 #include "base.h"
 
-#define		fr_tls_log_certificate_chain(...) \
-			_fr_tls_log_certificate_chain( __FILE__, __LINE__, ## __VA_ARGS__)
-void		_fr_tls_log_certificate_chain(char const *file, int line,
-					      request_t *request, fr_log_type_t log_type, STACK_OF(X509) *chain, X509 *leaf);
+/** Push a representation of a certificate chain onto the thread local error stack
+ *
+ * @param[in] _chain	A stack of X509 certificates representing the chain.
+ * @param[in] _leaf	The leaf certificate.  May be NULL.
+ * @param[in] _marker	The certificate to emit a marker for.
+ */
+#define		fr_tls_chain_push(_chain, _leaf) \
+			_fr_tls_chain_push( __FILE__, __LINE__, _chain, _leaf)
+void		_fr_tls_chain_push(char const *file, int line, STACK_OF(X509) *chain, X509 *cert);
 
-#define		fr_tls_log_certificate_chain_marker(...) \
-			_fr_tls_log_certificate_chain_marker( __FILE__, __LINE__, ## __VA_ARGS__)
-void		_fr_tls_log_certificate_chain_marker(char const *file, int line,
-						     request_t *request, fr_log_type_t log_type, STACK_OF(X509) *chain,
-						     X509 *leaf, X509 *marker);
+/** Write out a certificate chain to the request or global log
+ *
+ * @param[in] _request	The current request or NULL if you want to write to the global log.
+ * @param[in] _log_type	Type of log message to create.
+ * @param[in] _chain	A stack of X509 certificates representing the chain.
+ * @param[in] _leaf	The leaf certificate.  May be NULL.
+ */
+#define		fr_tls_chain_log(_request, _log_type, _chain, _leaf) \
+			_fr_tls_chain_log( __FILE__, __LINE__, _request, _log_type, _chain, _leaf)
+void		_fr_tls_chain_log(char const *file, int line,
+				  request_t *request, fr_log_type_t log_type, STACK_OF(X509) *chain, X509 *leaf);
 
-#define		fr_tls_log_x509_objects(...) \
-			_fr_tls_log_x509_objects( __FILE__, __LINE__, ## __VA_ARGS__)
-void		_fr_tls_log_x509_objects(char const *file, int line,
+/** Push a representation of a certificate chain with a marker onto the thread local error stack
+ *
+ * @param[in] _chain	A stack of X509 certificates representing the chain.
+ * @param[in] _leaf	The leaf certificate.  May be NULL.
+ * @param[in] _marker	The certificate to emit a marker for.
+ */
+#define		fr_tls_chain_marker_push(_chain, _leaf, _marker) \
+			_fr_tls_chain_push( __FILE__, __LINE__, _chain, _leaf, _marker)
+void		_fr_tls_chain_marker_push(char const *file, int line,
+					  STACK_OF(X509) *chain, X509 *cert, X509 *marker);
+
+/** Write out a certificate chain with a marker to the request or global log
+ *
+ * @param[in] _request	The current request or NULL if you want to write to the global log.
+ * @param[in] _log_type	Type of log message to create.
+ * @param[in] _chain	A stack of X509 certificates representing the chain.
+ * @param[in] _leaf	The leaf certificate.  May be NULL.
+ * @param[in] _marker	Emit a marker for this certificate.
+ */
+#define		fr_tls_chain_marker_log(_request, _log_type, _chain, _leaf, _marker) \
+			_fr_tls_chain_marker_log( __FILE__, __LINE__, _request, _log_type, _chain, _leaf, _marker)
+void		_fr_tls_chain_marker_log(char const *file, int line,
+					 request_t *request, fr_log_type_t log_type, STACK_OF(X509) *chain, X509 *leaf,
+					 X509 *marker);
+
+/** Push a collection of X509 objects into the thread local error stack
+ *
+ * @param[in] _objects	to push onto the thread local error stack
+ */
+#define		fr_tls_x509_objects_push(_objects) \
+			_fr_tls_x509_objects_push( __FILE__, __LINE__,  _objects)
+void		_fr_tls_x509_objects_push(char const *file, int line,
+					  STACK_OF(X509_OBJECT) *objects);
+
+/** Write out a collection of X509 objects to the request or global log
+ *
+ * @param[in] _request	The current request or NULL if you want to write to the global log.
+ * @param[in] _log_type	Type of log message to create.
+ * @param[in] _objects	to print to the log
+ */
+#define		fr_tls_x509_objects_log(_request, _log_type, _objects) \
+			_fr_tls_x509_objects_log( __FILE__, __LINE__, _request, _log_type, _objects)
+void		_fr_tls_x509_objects_log(char const *file, int line,
 					 request_t *request, fr_log_type_t log_type,
 					 STACK_OF(X509_OBJECT) *objects);
 
 int		fr_tls_log_io_error(request_t *request, int err, char const *msg, ...)
 				    CC_HINT(format (printf, 3, 4));
 
-int		fr_tls_log_strerror_printf(char const *msg, ...) CC_HINT(format (printf, 1, 2));
+int		fr_tls_strerror_printf(char const *msg, ...) CC_HINT(format (printf, 1, 2));
 
-int		fr_tls_log_error(request_t *request, char const *msg, ...)  CC_HINT(format (printf, 2, 3));
+int		fr_tls_log(request_t *request, char const *msg, ...)  CC_HINT(format (printf, 2, 3));
 
-void		tls_log_clear(void);
+void		fr_tls_log_clear(void);
 
 /** Return a BIO that writes to the log of the specified request
  *

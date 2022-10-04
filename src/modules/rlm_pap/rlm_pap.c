@@ -651,7 +651,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 			      (int)iterations,
 			      evp_md,
 			      (int)digest_len, (unsigned char *)digest) == 0) {
-		fr_tls_log_error(request, "PBKDF2 digest failure");
+		fr_tls_log(request, "PBKDF2 digest failure");
 		goto finish;
 	}
 

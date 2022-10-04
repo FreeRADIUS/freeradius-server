@@ -306,7 +306,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 			 */
 			if (SSL_export_keying_material(ssl, challenge, vp->vp_length + 1,
 						       label, sizeof(label) - 1, NULL, 0, 0) != 1) {
-				fr_tls_log_strerror_printf("Failed generating phase2 challenge");
+				fr_tls_strerror_printf("Failed generating phase2 challenge");
 				goto error;
 			}
 

@@ -206,12 +206,12 @@ static int _tls_engine_free(tls_engine_t *our_e)
 	 *	so someone will investigate.
 	 */
 	if (unlikely(ENGINE_finish(our_e->e) != 1)) {
-		fr_tls_log_error(NULL, "de-init on engine %s failed", our_e->id);
+		fr_tls_log(NULL, "de-init on engine %s failed", our_e->id);
 		return -1;
 	}
 
 	if (unlikely(ENGINE_free(our_e->e) != 1)) {
-		fr_tls_log_error(NULL, "free on engine %s failed", our_e->id);
+		fr_tls_log(NULL, "free on engine %s failed", our_e->id);
 		return -1;
 	}
 
@@ -334,13 +334,13 @@ int fr_tls_engine_init(ENGINE **e_out,
 		 *	success or 0 on error.
 		 */
 		if (ret != 1) {
-			fr_tls_log_strerror_printf("control %s failed (%i)", ctrl->name, ret);
+			fr_tls_strerror_printf("control %s failed (%i)", ctrl->name, ret);
 			goto error;
 		}
 	}
 
 	if (unlikely(ENGINE_init(e) != 1)) {
-		fr_tls_log_strerror_printf("failed initialising engine %s", id);
+		fr_tls_strerror_printf("failed initialising engine %s", id);
 		goto error;
 	}
 

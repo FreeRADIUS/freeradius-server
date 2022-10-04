@@ -215,7 +215,7 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess)
 	if (ret != 1) {
 		SESSION_ID(sess_id, sess);
 
-		fr_tls_log_error(request, "Session ID %pV - Failed setting application data", &sess_id);
+		fr_tls_log(request, "Session ID %pV - Failed setting application data", &sess_id);
 		return -1;
 	}
 
@@ -235,7 +235,7 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
 	if (SSL_SESSION_get0_ticket_appdata(sess, (void **)&data, &data_len) != 1) {
 		SESSION_ID(sess_id, sess);
 
-		fr_tls_log_error(request, "Session ID %pV - Failed retrieving application data", &sess_id);
+		fr_tls_log(request, "Session ID %pV - Failed retrieving application data", &sess_id);
 		return -1;
 	}
 
@@ -367,7 +367,7 @@ static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSE
 
 	sess = d2i_SSL_SESSION(NULL, p, vp->vp_length);
 	if (!sess) {
-		fr_tls_log_error(request, "Failed loading persisted session");
+		fr_tls_log(request, "Failed loading persisted session");
 		goto error;
 	}
 
@@ -543,7 +543,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
  		fr_tls_cache_id_to_box_shallow(&id, sess);
 
 		/* something went wrong */
-		fr_tls_log_strerror_printf(NULL);	/* Drain the OpenSSL error stack */
+		fr_tls_strerror_printf(NULL);	/* Drain the OpenSSL error stack */
 		RPWDEBUG("Session ID %pV - Serialisation failed, couldn't determine "
 			 "required buffer length", &id);
 	error:
@@ -562,7 +562,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 		fr_value_box_t	id;
  		fr_tls_cache_id_to_box_shallow(&id, sess);
 
-		fr_tls_log_strerror_printf(NULL);	/* Drain the OpenSSL error stack */
+		fr_tls_strerror_printf(NULL);	/* Drain the OpenSSL error stack */
 		RPWDEBUG("Session ID %pV - Serialisation failed", &id);
 		talloc_free(data);
 		goto error;
@@ -1421,33 +1421,33 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 		key_len = SSL_CTX_set_tlsext_ticket_keys(ctx, NULL, 0);
 
 		if (unlikely((pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL)) == NULL)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("Failed initialising KDF");
 		kdf_error:
 			if (pkey_ctx) EVP_PKEY_CTX_free(pkey_ctx);
 			return -1;
 		}
 		if (unlikely(EVP_PKEY_derive_init(pkey_ctx) != 1)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("Failed initialising KDF derivation ctx");
 			goto kdf_error;
 		}
 		if (unlikely(EVP_PKEY_CTX_set_hkdf_md(pkey_ctx, UNCONST(struct evp_md_st *, EVP_sha256())) != 1)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("Failed setting KDF MD");
 			goto kdf_error;
 		}
 		if (unlikely(EVP_PKEY_CTX_set1_hkdf_key(pkey_ctx,
 							UNCONST(unsigned char *, cache_conf->session_ticket_key),
 							talloc_array_length(cache_conf->session_ticket_key)) != 1)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("Failed setting KDF key");
 			goto kdf_error;
 		}
 		if (unlikely(EVP_PKEY_CTX_add1_hkdf_info(pkey_ctx,
 							 UNCONST(unsigned char *, "freeradius-session-ticket"),
 							 sizeof("freeradius-session-ticket") - 1) != 1)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("Failed setting KDF label");
 			goto kdf_error;
 		}
@@ -1458,7 +1458,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 		 */
 		MEM(key_buff = talloc_array(NULL, uint8_t, key_len));
 		if (EVP_PKEY_derive(pkey_ctx, key_buff, &key_len) != 1) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("Failed deriving session ticket key");
 
 			talloc_free(key_buff);
@@ -1472,7 +1472,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 		 */
 		if (SSL_CTX_set_tlsext_ticket_keys(ctx,
 						   key_buff, key_len) != 1) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("Failed setting session ticket keys");
 			return -1;
 		}
@@ -1489,7 +1489,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 							   tls_cache_session_ticket_app_data_set,
 							   tls_cache_session_ticket_app_data_get,
 							   UNCONST(fr_tls_cache_conf_t *, cache_conf)) != 1)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			PERROR("Failed setting session ticket callbacks");
 			return -1;
 		}

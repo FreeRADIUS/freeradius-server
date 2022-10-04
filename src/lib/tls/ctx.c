@@ -155,13 +155,13 @@ static int tls_ctx_verify_chain_member(fr_unix_time_t *expires_first, X509 **sel
 	}
 
 	if (!SSL_CTX_get0_chain_certs(ctx, &chain)) {
-		fr_tls_log_error(NULL, "Failed retrieving chain certificates");
+		fr_tls_log(NULL, "Failed retrieving chain certificates");
 		return -1;
 	}
 
 	switch (fr_tls_cert_is_valid(NULL, &not_after, to_verify)) {
 	case -1:
-		fr_tls_log_certificate_chain_marker(NULL, L_ERR, chain, leaf, to_verify);
+		fr_tls_chain_marker_log(NULL, L_ERR, chain, leaf, to_verify);
 		PERROR("Malformed certificate");
 		return -1;
 
@@ -169,12 +169,12 @@ static int tls_ctx_verify_chain_member(fr_unix_time_t *expires_first, X509 **sel
 	case -3:
 		switch (verify_mode) {
 		case FR_TLS_CHAIN_VERIFY_SOFT:
-			fr_tls_log_certificate_chain_marker(NULL, L_WARN, chain, leaf, to_verify);
+			fr_tls_chain_marker_log(NULL, L_WARN, chain, leaf, to_verify);
 			PWARN("Certificate validation failed");
 			break;
 
 		case FR_TLS_CHAIN_VERIFY_HARD:
-			fr_tls_log_certificate_chain_marker(NULL, L_ERR, chain, leaf, to_verify);
+			fr_tls_chain_marker_log(NULL, L_ERR, chain, leaf, to_verify);
 			PERROR("Certificate validation failed");
 			return -1;
 
@@ -212,22 +212,22 @@ static int tls_ctx_verify_chain_member(fr_unix_time_t *expires_first, X509 **sel
 				case FR_TLS_CHAIN_VERIFY_SOFT:
 					WARN("Found multiple self-signed certificates in chain");
 					WARN("First certificate was:");
-					fr_tls_log_certificate_chain_marker(NULL, L_WARN,
+					fr_tls_chain_marker_log(NULL, L_WARN,
 									    chain, leaf, *self_signed);
 
 					WARN("Second certificate was:");
-					fr_tls_log_certificate_chain_marker(NULL, L_WARN,
+					fr_tls_chain_marker_log(NULL, L_WARN,
 									    chain, leaf, to_verify);
 					break;
 
 				case FR_TLS_CHAIN_VERIFY_HARD:
 					ERROR("Found multiple self-signed certificates in chain");
 					ERROR("First certificate was:");
-					fr_tls_log_certificate_chain_marker(NULL, L_ERR,
+					fr_tls_chain_marker_log(NULL, L_ERR,
 									    chain, leaf, *self_signed);
 
 					ERROR("Second certificate was:");
-					fr_tls_log_certificate_chain_marker(NULL, L_ERR,
+					fr_tls_chain_marker_log(NULL, L_ERR,
 									    chain, leaf, to_verify);
 					return -1;
 
@@ -278,7 +278,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 	switch (chain->file_format) {
 	case SSL_FILETYPE_PEM:
 		if (!(SSL_CTX_use_certificate_chain_file(ctx, chain->certificate_file))) {
-			fr_tls_log_error(NULL, "Failed reading certificate file \"%s\"",
+			fr_tls_log(NULL, "Failed reading certificate file \"%s\"",
 				      chain->certificate_file);
 			return -1;
 		}
@@ -286,7 +286,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 
 	case SSL_FILETYPE_ASN1:
 		if (!(SSL_CTX_use_certificate_file(ctx, chain->certificate_file, chain->file_format))) {
-			fr_tls_log_error(NULL, "Failed reading certificate file \"%s\"",
+			fr_tls_log(NULL, "Failed reading certificate file \"%s\"",
 				      chain->certificate_file);
 			return -1;
 		}
@@ -298,7 +298,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 	}
 
 	if (!(SSL_CTX_use_PrivateKey_file(ctx, chain->private_key_file, chain->file_format))) {
-		fr_tls_log_error(NULL, "Failed reading private key file \"%s\"",
+		fr_tls_log(NULL, "Failed reading private key file \"%s\"",
 			      chain->private_key_file);
 		return -1;
 	}
@@ -343,7 +343,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 			fclose(fp);
 
 			if (!cert) {
-				fr_tls_log_error(NULL, "Failed reading certificate file \"%s\"", filename);
+				fr_tls_log(NULL, "Failed reading certificate file \"%s\"", filename);
 				return -1;
 			}
 			SSL_CTX_add0_chain_cert(ctx, cert);
@@ -381,7 +381,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 						chain->verify_mode) < 0) return -1;
 
 		if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
-			fr_tls_log_error(NULL, "Failed retrieving chain certificates");
+			fr_tls_log(NULL, "Failed retrieving chain certificates");
 			return -1;
 		}
 
@@ -435,14 +435,14 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 		 */
 		case FR_TLS_CHAIN_VERIFY_SOFT:
 			if (!SSL_CTX_build_cert_chain(ctx, mode)) {
-				fr_tls_log_strerror_printf(NULL);
+				fr_tls_strerror_printf(NULL);
 				PWARN("Failed verifying chain");
 			}
 			break;
 
 		case FR_TLS_CHAIN_VERIFY_HARD:
 			if (!SSL_CTX_build_cert_chain(ctx, mode)) {
-				fr_tls_log_strerror_printf(NULL);
+				fr_tls_strerror_printf(NULL);
 				PERROR("Failed verifying chain");
 				return -1;
 			}
@@ -515,7 +515,7 @@ int tls_ctx_version_set(
 		}
 
 		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
-			fr_tls_log_error(NULL, "Failed setting TLS maximum version");
+			fr_tls_log(NULL, "Failed setting TLS maximum version");
 			goto error;
 		}
 	}
@@ -546,7 +546,7 @@ int tls_ctx_version_set(
 		}
 
 		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
-			fr_tls_log_error(NULL, "Failed setting TLS minimum version");
+			fr_tls_log(NULL, "Failed setting TLS minimum version");
 			goto error;
 		}
 	}
@@ -615,7 +615,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 
 	ctx = SSL_CTX_new(SSLv23_method());
 	if (!ctx) {
-		fr_tls_log_error(NULL, "Failed creating TLS context");
+		fr_tls_log(NULL, "Failed creating TLS context");
 		return NULL;
 	}
 
@@ -772,7 +772,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		 *      It's also possible to add extra virtual server lookups
 		 */
 		if (!X509_STORE_load_locations(verify_store, conf->ca_file, conf->ca_path)) {
-			fr_tls_log_error(NULL, "Failed reading Trusted root CA list \"%s\"",
+			fr_tls_log(NULL, "Failed reading Trusted root CA list \"%s\"",
 				      conf->ca_file);
 			goto error;
 		}
@@ -867,11 +867,11 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 				 */
 				DEBUG3("%s chain", fr_tls_utils_x509_pkey_type(our_cert));
 				if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
-					fr_tls_log_error(NULL, "Failed retrieving chain certificates");
+					fr_tls_log(NULL, "Failed retrieving chain certificates");
 					goto error;
 				}
 
-				if (DEBUG_ENABLED3) fr_tls_log_certificate_chain(NULL, L_DBG, our_chain, our_cert);
+				if (DEBUG_ENABLED3) fr_tls_chain_log(NULL, L_DBG, our_chain, our_cert);
 			}
 			(void)SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);	/* Reset */
 		}
@@ -957,7 +957,7 @@ post_ca:
 	if (conf->verify.check_crl) {
 		cert_vpstore = SSL_CTX_get_cert_store(ctx);
 		if (cert_vpstore == NULL) {
-			fr_tls_log_error(NULL, "Error reading Certificate Store");
+			fr_tls_log(NULL, "Error reading Certificate Store");
 	    		goto error;
 		}
 		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
@@ -1002,7 +1002,7 @@ post_ca:
 	 */
 	if (conf->cipher_list) {
 		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
-			fr_tls_log_error(NULL, "Failed setting cipher list");
+			fr_tls_log(NULL, "Failed setting cipher list");
 			goto error;
 		}
 	}
@@ -1017,7 +1017,7 @@ post_ca:
 
 		ssl = SSL_new(ctx);
 		if (!ssl) {
-			fr_tls_log_error(NULL, "Failed creating temporary SSL session");
+			fr_tls_log(NULL, "Failed creating temporary SSL session");
 			goto error;
 		}
 

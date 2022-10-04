@@ -980,20 +980,20 @@ ntlm_auth_err:
 		MEM(evp_ctx = EVP_CIPHER_CTX_new());
 
 		if (unlikely(EVP_CIPHER_CTX_set_key_length(evp_ctx, nt_password->vp_length)) != 1) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			RPERROR("Failed setting key length");
  			return -1;
  		}
 
 		if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_rc4(), NULL, nt_password->vp_octets, NULL) != 1)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			RPERROR("Failed initialising RC4 ctx");
 			return -1;
 		}
 
 
 		if (unlikely(EVP_EncryptUpdate(evp_ctx, nt_pass_decrypted, &ntlen, new_nt_password, ntlen) != 1)) {
-			fr_tls_log_strerror_printf(NULL);
+			fr_tls_strerror_printf(NULL);
 			RPERROR("Failed ingesting new password");
 			return -1;
 		}
