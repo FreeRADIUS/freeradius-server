@@ -622,9 +622,9 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 EGREP
 GREP
 CPP
@@ -1397,6 +1397,11 @@ fi
 ## Autoconf initialization. ##
 ## ------------------------ ##
 
+echo
+echo Running tests for rlm_unix
+echo
+
+
 # ac_fn_c_try_compile LINENO
 # --------------------------
 # Try to compile conftest.$ac_ext, and return whether this succeeded.
@@ -2101,6 +2106,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_unix was given.
 if test "${with_rlm_unix+set}" = set; then :
   withval=$with_rlm_unix;
@@ -2108,9 +2114,19 @@ fi
 
 
 
-if test x$with_rlm_unix != xno; then
 
-	ac_ext=c
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2899,7 +2915,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -3037,26 +3053,28 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for system password file" >&5
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for system password file" >&5
 $as_echo_n "checking for system password file... " >&6; }
-	if test -f /etc/passwd; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: /etc/passwd" >&5
+if test -f /etc/passwd; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: /etc/passwd" >&5
 $as_echo "/etc/passwd" >&6; }
-	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no /etc/passwd file." >&5
-$as_echo "no /etc/passwd file." >&6; }
-		 fail=$fail" /etc/passwd"
-	fi
+else
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no /etc/passwd file" >&5
+$as_echo "no /etc/passwd file" >&6; }
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for system shadow password file" >&5
+fail="$fail /etc/passwd"
+
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for system shadow password file" >&5
 $as_echo_n "checking for system shadow password file... " >&6; }
-	if test -f /etc/shadow; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: /etc/shadow" >&5
+if test -f /etc/shadow; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: /etc/shadow" >&5
 $as_echo "/etc/shadow" >&6; }
-	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no /etc/shadow file." >&5
-$as_echo "no /etc/shadow file." >&6; }
-	fi
+else
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no /etc/shadow file" >&5
+$as_echo "no /etc/shadow file" >&6; }
+fi
 
 
 
@@ -3332,7 +3350,7 @@ fi
 
 done
 
-	for ac_func in getspnam getusershell getpwnam
+for ac_func in getspnam getusershell getpwnam
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
@@ -3345,19 +3363,23 @@ fi
 done
 
 
-	if test "$ac_cv_func_getpwnam" != "yes"; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no getpwnam" >&5
+if test "$ac_cv_func_getpwnam" != "yes"; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no getpwnam" >&5
 $as_echo "no getpwnam" >&6; }
-		 fail=$fail" getpwnam"
-	fi
 
-	if test "$ac_cv_header_pwd_h" != "yes"; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no pwd.h" >&5
+fail="$fail getpwnam"
+
+fi
+
+if test "$ac_cv_header_pwd_h" != "yes"; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no pwd.h" >&5
 $as_echo "no pwd.h" >&6; }
-		 fail=$fail" pwd.h"
-	fi
 
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for getspnam in -lshadow" >&5
+fail="$fail pwd.h"
+
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for getspnam in -lshadow" >&5
 $as_echo_n "checking for getspnam in -lshadow... " >&6; }
 if ${ac_cv_lib_shadow_getspnam+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -3395,32 +3417,63 @@ fi
 $as_echo "$ac_cv_lib_shadow_getspnam" >&6; }
 if test "x$ac_cv_lib_shadow_getspnam" = xyes; then :
 
-			mod_ldflags="${mod_ldflags} -lshadow"
-			$as_echo "#define HAVE_GETSPNAM 1" >>confdefs.h
-
+	mod_ldflags="${mod_ldflags} -lshadow"
+	$as_echo "#define HAVE_GETSPNAM 1" >>confdefs.h
 
 
 fi
+
 
 
 	targetname=rlm_unix
-
 else
 	targetname=
 	echo \*\*\* module rlm_unix is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_unix to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_unix." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_unix." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_unix requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_unix requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 
 

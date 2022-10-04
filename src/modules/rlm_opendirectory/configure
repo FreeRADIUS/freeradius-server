@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_opendirectory.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 CPP
 OBJEXT
 EXEEXT
@@ -1359,6 +1359,11 @@ fi
 ## Autoconf initialization. ##
 ## ------------------------ ##
 
+echo
+echo Running tests for rlm_opendirectory
+echo
+
+
 # ac_fn_c_try_compile LINENO
 # --------------------------
 # Try to compile conftest.$ac_ext, and return whether this succeeded.
@@ -1836,6 +1841,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_opendirectory was given.
 if test "${with_rlm_opendirectory+set}" = set; then :
   withval=$with_rlm_opendirectory;
@@ -1843,9 +1849,19 @@ fi
 
 
 
-if test x$with_rlm_opendirectory != xno; then
 
-	ac_ext=c
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2634,7 +2650,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2772,7 +2788,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-	mod_ldflags="${mod_ldflags} -F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks -framework DirectoryService"
+mod_ldflags="${mod_ldflags} -F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks -framework DirectoryService"
 
 
 
@@ -2944,10 +2960,12 @@ fi
 
 smart_prefix=
 
-	if test "$ac_cv_header_membership_h" != "yes"; then
-	  fail="$fail membership.h"
-	else
-	  ac_fn_c_check_decl "$LINENO" "mbr_check_service_membership" "ac_cv_have_decl_mbr_check_service_membership" "#include <membership.h>
+if test "$ac_cv_header_membership_h" != "yes"; then
+
+fail="$fail membership.h"
+
+else
+	ac_fn_c_check_decl "$LINENO" "mbr_check_service_membership" "ac_cv_have_decl_mbr_check_service_membership" "#include <membership.h>
 "
 if test "x$ac_cv_have_decl_mbr_check_service_membership" = xyes; then :
   ac_have_decl=1
@@ -2962,7 +2980,7 @@ if test $ac_have_decl = 1; then :
   mod_cflags="${mod_cflags} -DHAVE_DECL_MBR_CHECK_SERVICE_MEMBERSHIP"
 fi
 
-	  ac_fn_c_check_decl "$LINENO" "mbr_check_membership_refresh" "ac_cv_have_decl_mbr_check_membership_refresh" "#include <membership.h>
+	ac_fn_c_check_decl "$LINENO" "mbr_check_membership_refresh" "ac_cv_have_decl_mbr_check_membership_refresh" "#include <membership.h>
 "
 if test "x$ac_cv_have_decl_mbr_check_membership_refresh" = xyes; then :
   ac_have_decl=1
@@ -2977,24 +2995,58 @@ if test $ac_have_decl = 1; then :
   mod_cflags="${mod_cflags} -DHAVE_DECL_MBR_CHECK_MEMBERSHIP_REFRESH"
 fi
 
-	fi
+fi
+
+
 	targetname=rlm_opendirectory
 else
 	targetname=
 	echo \*\*\* module rlm_opendirectory is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_opendirectory to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_opendirectory." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_opendirectory." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_opendirectory requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_opendirectory requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 
 
@@ -4155,5 +4207,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 

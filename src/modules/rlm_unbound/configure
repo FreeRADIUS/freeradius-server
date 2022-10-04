@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_unbound.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_ldflags
 mod_cflags
+targetname
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -1267,8 +1267,10 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --without-rlm_unbound   build without rlm_unbound
-  --with-rlm-unbound-lib-dir=DIR       directory for libunbound library files
-  --with-rlm-unbound-include-dir=DIR   directory for libunbound include files
+  --with-rlm-unbound-lib-dir=DIR
+                          directory for libunbound library files
+  --with-rlm-unbound-include-dir=DIR
+                          directory for libunbound include files
 
 Some influential environment variables:
   CC          C compiler command
@@ -1358,6 +1360,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_unbound
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -1799,6 +1806,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_unbound was given.
 if test "${with_rlm_unbound+set}" = set; then :
   withval=$with_rlm_unbound;
@@ -1806,45 +1814,54 @@ fi
 
 
 
-if test x$with_rlm_unbound != xno; then
-		rlm_unbound_lib_dir=
+
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
+
+rlm_unbound_lib_dir=
 
 # Check whether --with-rlm-unbound-lib-dir was given.
 if test "${with_rlm_unbound_lib_dir+set}" = set; then :
-  withval=$with_rlm_unbound_lib_dir;  case "$withval" in
-	    no)
+  withval=$with_rlm_unbound_lib_dir; case "$withval" in
+	no)
 		as_fn_error $? "Need rlm-unbound-lib-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		rlm_unbound_lib_dir="$withval"
 		;;
-	  esac
-
+	esac
 fi
 
 
-		rlm_unbound_include_dir=
+rlm_unbound_include_dir=
 
 # Check whether --with-rlm-unbound-include-dir was given.
 if test "${with_rlm_unbound_include_dir+set}" = set; then :
-  withval=$with_rlm_unbound_include_dir;  case "$withval" in
-	    no)
+  withval=$with_rlm_unbound_include_dir; case "$withval" in
+	no)
 		as_fn_error $? "Need rlm-unbound-include-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		rlm_unbound_include_dir="$withval"
 		;;
-	  esac
-
+	esac
 fi
 
 
-	smart_try_dir=$rlm_unbound_lib_dir
-	ac_ext=c
+smart_try_dir=$rlm_unbound_lib_dir
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2753,11 +2770,13 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_unbound_ub_ctx_create" != "xyes"; then
-		fail="$fail libunbound"
-	fi
+if test "x$ac_cv_lib_unbound_ub_ctx_create" != "xyes"; then
 
-	smart_try_dir=$rlm_unbound_include_dir
+fail="$fail libunbound"
+
+fi
+
+smart_try_dir=$rlm_unbound_include_dir
 
 
 ac_safe=`echo "unbound.h" | sed 'y%./+-%__pm%'`
@@ -2927,27 +2946,62 @@ fi
 
 smart_prefix=
 
-	if test "$ac_cv_header_unbound_h" != "yes"; then
-		fail="$fail unbound.h"
-	fi
+if test "$ac_cv_header_unbound_h" != "yes"; then
+
+fail="$fail unbound.h"
+
+fi
+
 
 	targetname=rlm_unbound
 else
 	targetname=
 	echo \*\*\* module rlm_unbound is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_unbound to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_unbound." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_unbound." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_unbound requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_unbound requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 mod_ldflags="${SMART_LIBS}"
 mod_cflags="${SMART_CFLAGS}"
@@ -2956,8 +3010,6 @@ mod_cflags="${SMART_CFLAGS}"
 
 
 ac_config_headers="$ac_config_headers config.h"
-
-
 
 ac_config_files="$ac_config_files all.mk"
 

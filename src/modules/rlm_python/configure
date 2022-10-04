@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_python.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 PYTHON_BIN
 CPP
 OBJEXT
@@ -1271,9 +1271,12 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --without-rlm_python    build without support for embedded Python2
-  --with-rlm-python-bin=PATH   Path to python binary
-  --with-rlm-python-lib-dir=DIR       Directory for Python library files
-  --with-rlm-python-include-dir=DIR   Directory for Python include files
+  --with-rlm-python-bin=PATH
+                          Path to python binary
+  --with-rlm-python-lib-dir=DIR
+                          Directory for Python library files
+  --with-rlm-python-include-dir=DIR
+                          Directory for Python include files
 
 Some influential environment variables:
   CC          C compiler command
@@ -1364,6 +1367,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_python
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -1909,6 +1917,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_python was given.
 if test "${with_rlm_python+set}" = set; then :
   withval=$with_rlm_python;
@@ -1916,9 +1925,19 @@ fi
 
 
 
-if test x$with_rlm_python != xno; then
 
-	ac_ext=c
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2707,7 +2726,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2845,26 +2864,25 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-		PYTHON_BIN=
+PYTHON_BIN=
 
 # Check whether --with-rlm-python-bin was given.
 if test "${with_rlm_python_bin+set}" = set; then :
-  withval=$with_rlm_python_bin;  case "$withval" in
-	    no)
+  withval=$with_rlm_python_bin; case "$withval" in
+	no)
 		as_fn_error $? "Need rlm-python-bin" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		PYTHON_BIN="$withval"
 		;;
-	  esac
-
+	esac
 fi
 
 
-	if test "x$PYTHON_BIN" = x; then
-		for ac_prog in  python2.7 python2.6 python
+if test "x$PYTHON_BIN" = x; then
+	for ac_prog in  python2.7 python2.6 python
 do
   # Extract the first word of "$ac_prog", so it can be a program name with args.
 set dummy $ac_prog; ac_word=$2
@@ -2908,94 +2926,102 @@ fi
 done
 test -n "$PYTHON_BIN" || PYTHON_BIN="not-found"
 
-	fi
+fi
 
-	if test "x$PYTHON_BIN" = "xnot-found"; then
-		fail="python-binary"
-	fi
+if test "x$PYTHON_BIN" = "xnot-found"; then
 
-		PY_LIB_DIR=
+fail="$fail python-binary"
+
+fi
+
+PY_LIB_DIR=
 
 # Check whether --with-rlm-python-lib-dir was given.
 if test "${with_rlm_python_lib_dir+set}" = set; then :
-  withval=$with_rlm_python_lib_dir;  case "$withval" in
-	    no)
+  withval=$with_rlm_python_lib_dir; case "$withval" in
+	no)
 		as_fn_error $? "Need rlm-python-lib-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		PY_LIB_DIR="$withval"
 		;;
-	  esac
-
+	esac
 fi
 
 
-		PY_INC_DIR=
+PY_INC_DIR=
 
 # Check whether --with-rlm-python-include-dir was given.
 if test "${with_rlm_python_include_dir+set}" = set; then :
-  withval=$with_rlm_python_include_dir;  case "$withval" in
-	    no)
+  withval=$with_rlm_python_include_dir; case "$withval" in
+	no)
 		as_fn_error $? "Need rlm-python-include-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		PY_INC_DIR="$withval"
 		;;
-	  esac
+	esac
+fi
+
+
+
+if test x"$fail" = x""; then :
+
+	PY_MAJOR_VER=`${PYTHON_BIN} -x 'import sys ; print(sys.version[0])'`
+	if test $PY_MAJOR_VER -ne 2; then
+
+fail="$fail not-python2"
+
+	fi
 
 fi
 
 
-	if test x$fail = x; then
-		PY_MAJOR_VER=`${PYTHON_BIN} -x 'import sys ; print(sys.version[0])'`
-		if test $PY_MAJOR_VER -ne 2; then
-			fail="not-python2"
-		fi
-	fi
 
-	if test x$fail = x; then
-		PY_PREFIX=`${PYTHON_BIN} -c 'import sys ; print(sys.prefix)'`
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: Python sys.prefix \"${PY_PREFIX}\"" >&5
+
+if test x"$fail" = x""; then :
+
+	PY_PREFIX=`${PYTHON_BIN} -c 'import sys ; print(sys.prefix)'`
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: Python sys.prefix \"${PY_PREFIX}\"" >&5
 $as_echo "$as_me: Python sys.prefix \"${PY_PREFIX}\"" >&6;}
 
-		PY_EXEC_PREFIX=`${PYTHON_BIN} -c 'import sys ; print(sys.exec_prefix)'`
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: Python sys.exec_prefix \"${PY_EXEC_PREFIX}\"" >&5
+	PY_EXEC_PREFIX=`${PYTHON_BIN} -c 'import sys ; print(sys.exec_prefix)'`
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: Python sys.exec_prefix \"${PY_EXEC_PREFIX}\"" >&5
 $as_echo "$as_me: Python sys.exec_prefix \"${PY_EXEC_PREFIX}\"" >&6;}
 
-		PY_SYS_VERSION=`${PYTHON_BIN} -c 'import sys ; print(sys.version[0:3])'`
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: Python sys.version \"${PY_SYS_VERSION}\"" >&5
+	PY_SYS_VERSION=`${PYTHON_BIN} -c 'import sys ; print(sys.version[0:3])'`
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: Python sys.version \"${PY_SYS_VERSION}\"" >&5
 $as_echo "$as_me: Python sys.version \"${PY_SYS_VERSION}\"" >&6;}
 
-		if test "x$PY_LIB_DIR" = "x"; then
-			PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
-			PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
-		fi
+	if test "x$PY_LIB_DIR" = "x"; then
+		PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
+		PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
+	fi
 
-		PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config/Makefile"
-		if test -f ${PY_MAKEFILE}; then
-			PY_LOCAL_MOD_LIBS=`sed -n -e 's/^LOCALMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[:blank:]]/ /g;s/^ *//;s/ *$//'`
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: Python local_mod_libs \"${PY_LOCAL_MOD_LIBS}\"" >&5
+	PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config/Makefile"
+	if test -f ${PY_MAKEFILE}; then
+		PY_LOCAL_MOD_LIBS=`sed -n -e 's/^LOCALMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[:blank:]]/ /g;s/^ *//;s/ *$//'`
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: Python local_mod_libs \"${PY_LOCAL_MOD_LIBS}\"" >&5
 $as_echo "$as_me: Python local_mod_libs \"${PY_LOCAL_MOD_LIBS}\"" >&6;}
 
-			PY_BASE_MOD_LIBS=`sed -n -e 's/^BASEMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[:blank:]]/ /g;s/^ *//;s/ *$//'`
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: Python base_mod_libs \"${PY_BASE_MOD_LIBS}\"" >&5
+		PY_BASE_MOD_LIBS=`sed -n -e 's/^BASEMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[:blank:]]/ /g;s/^ *//;s/ *$//'`
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: Python base_mod_libs \"${PY_BASE_MOD_LIBS}\"" >&5
 $as_echo "$as_me: Python base_mod_libs \"${PY_BASE_MOD_LIBS}\"" >&6;}
 
-			PY_OTHER_LIBS=`sed -n -e 's/^LIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[:blank:]]/ /g;s/  / /g;s/^ *//;s/ *$//'`
-			PY_OTHER_LDFLAGS=`sed -n -e 's/^LINKFORSHARED=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[:blank:]]/ /g;s/  / /g;s/^ *//;s/ *$//'`
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: Python other_libs \"${PY_OTHER_LDFLAGS} ${PY_OTHER_LIBS}\"" >&5
+		PY_OTHER_LIBS=`sed -n -e 's/^LIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[:blank:]]/ /g;s/  / /g;s/^ *//;s/ *$//'`
+		PY_OTHER_LDFLAGS=`sed -n -e 's/^LINKFORSHARED=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[:blank:]]/ /g;s/  / /g;s/^ *//;s/ *$//'`
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: Python other_libs \"${PY_OTHER_LDFLAGS} ${PY_OTHER_LIBS}\"" >&5
 $as_echo "$as_me: Python other_libs \"${PY_OTHER_LDFLAGS} ${PY_OTHER_LIBS}\"" >&6;}
-		fi
-		PY_EXTRA_LIBS="$PY_LOCALMODLIBS $PY_BASE_MOD_LIBS $PY_OTHER_LIBS"
+	fi
+	PY_EXTRA_LIBS="$PY_LOCALMODLIBS $PY_BASE_MOD_LIBS $PY_OTHER_LIBS"
 
-		old_CFLAGS=$CFLAGS
-		CFLAGS="$CFLAGS $PY_CFLAGS"
-		smart_try_dir="$PY_PREFIX/include/python$PY_SYS_VERSION"
-
+	old_CFLAGS=$CFLAGS
+	CFLAGS="$CFLAGS $PY_CFLAGS"
+	smart_try_dir="$PY_PREFIX/include/python$PY_SYS_VERSION"
 
 
 ac_safe=`echo "Python.h" | sed 'y%./+-%__pm%'`
@@ -3165,18 +3191,19 @@ fi
 
 smart_prefix=
 
-		CFLAGS=$old_CFLAGS
+	CFLAGS=$old_CFLAGS
 
-		if test "x$ac_cv_header_Python_h" = "xyes"; then
-			mod_cflags="$SMART_CPPFLAGS"
-		else
-			fail="$fail Python.h"
-			targetname=
-		fi
+	if test "x$ac_cv_header_Python_h" = "xyes"; then
+		mod_cflags="$SMART_CPPFLAGS"
+	else
 
-		old_LIBS=$LIBS
-		LIBS="$LIBS $PY_LIB_LOC $PY_EXTRA_LIBS -lm"
-		smart_try_dir=$PY_LIB_DIR
+fail="$fail Python.h"
+
+	fi
+
+	old_LIBS=$LIBS
+	LIBS="$LIBS $PY_LIB_LOC $PY_EXTRA_LIBS -lm"
+	smart_try_dir=$PY_LIB_DIR
 
 
 sm_lib_safe=`echo "python${PY_SYS_VERSION}" | sed 'y%./+-%__p_%'`
@@ -3296,13 +3323,12 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-		LIBS=$old_LIBS
+	LIBS=$old_LIBS
 
-		eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
-		if test "x$t" = "xyes"; then
-			mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
-			targetname=rlm_python
-		else
+	eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
+	if test "x$t" = "xyes"; then
+		mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
+	else
 
 
 sm_lib_safe=`echo "python${PY_SYS_VERSION}m" | sed 'y%./+-%__p_%'`
@@ -3422,18 +3448,20 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-			eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
-			if test "x$t" = "xyes"; then
-				mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
-				targetname=rlm_python
-			else
-				targetname=
-				fail="$fail libpython$PY_SYS_VERSION"
-			fi
+		eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
+		if test "x$t" = "xyes"; then
+			mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
+		else
+
+fail="$fail libpython$PY_SYS_VERSION"
+
 		fi
 	fi
 
-	for ac_func in dl_iterate_phdr
+fi
+
+
+for ac_func in dl_iterate_phdr
 do :
   ac_fn_c_check_func "$LINENO" "dl_iterate_phdr" "ac_cv_func_dl_iterate_phdr"
 if test "x$ac_cv_func_dl_iterate_phdr" = xyes; then :
@@ -3444,27 +3472,62 @@ _ACEOF
 fi
 done
 
+
+
+	targetname=rlm_python
 else
 	targetname=
 	echo \*\*\* module rlm_python is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_python to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_python." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_python." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_python requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_python requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
 
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
+
+
+
+
 ac_config_headers="$ac_config_headers config.h"
-
-
-
 
 ac_config_files="$ac_config_files all.mk"
 

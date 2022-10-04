@@ -585,10 +585,10 @@ PACKAGE_URL=
 ac_unique_file="rlm_ldap.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 SASL
 mod_cflags
 mod_ldflags
+targetname
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -1268,8 +1268,10 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --without-rlm_ldap      build without LDAP support
-  --with-rlm-ldap-lib-dir=DIR	   directory for LDAP library files
-  --with-rlm-ldap-include-dir=DIR   directory for LDAP include files
+  --with-rlm-ldap-lib-dir=DIR
+                          directory for LDAP library files
+  --with-rlm-ldap-include-dir=DIR
+                          directory for LDAP include files
 
 Some influential environment variables:
   CC          C compiler command
@@ -1359,6 +1361,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_ldap
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -1867,6 +1874,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_ldap was given.
 if test "${with_rlm_ldap+set}" = set; then :
   withval=$with_rlm_ldap;
@@ -1874,14 +1882,24 @@ fi
 
 
 
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 SASL=
 
-if test x$with_rlm_ldap != xno; then
 
-				ac_ext=c
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2672,44 +2690,42 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-		rlm_ldap_lib_dir=
+rlm_ldap_lib_dir=
 
 # Check whether --with-rlm-ldap-lib-dir was given.
 if test "${with_rlm_ldap_lib_dir+set}" = set; then :
-  withval=$with_rlm_ldap_lib_dir;  case "$withval" in
-		no)
+  withval=$with_rlm_ldap_lib_dir; case "$withval" in
+	no)
 		as_fn_error $? "Need rlm-ldap-lib-dir" "$LINENO" 5
 		;;
-		yes)
+	yes)
 		;;
-		*)
+	*)
 		rlm_ldap_lib_dir="$withval"
 		;;
-	  esac
-
+		esac
 fi
 
 
-		rlm_ldap_include_dir=
+rlm_ldap_include_dir=
 
 # Check whether --with-rlm-ldap-include-dir was given.
 if test "${with_rlm_ldap_include_dir+set}" = set; then :
-  withval=$with_rlm_ldap_include_dir;  case "$withval" in
-		no)
+  withval=$with_rlm_ldap_include_dir; case "$withval" in
+	no)
 		as_fn_error $? "Need rlm-ldap-include-dir" "$LINENO" 5
 		;;
-		yes)
+	yes)
 		;;
-		*)
+	*)
 		rlm_ldap_include_dir="$withval"
 		;;
-	  esac
-
+	esac
 fi
 
 
 
-													smart_try_dir=$rlm_ldap_lib_dir
+smart_try_dir=$rlm_ldap_lib_dir
 
 
 
@@ -2830,12 +2846,14 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
-		fail="$fail libldap"
-	fi
+if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
+
+fail="$fail libldap"
+
+fi
 
 
-	smart_try_dir=$rlm_ldap_include_dir
+smart_try_dir=$rlm_ldap_include_dir
 
 
 ac_safe=`echo "ldap.h" | sed 'y%./+-%__pm%'`
@@ -3005,23 +3023,27 @@ fi
 
 smart_prefix=
 
-	if test "$ac_cv_header_ldap_h" != "yes"; then
-	  fail="$fail ldap.h"
-	fi
+if test "$ac_cv_header_ldap_h" != "yes"; then
+
+fail="$fail ldap.h"
+
+fi
 
 
-	if test "x$fail" = "x"; then
-		for ac_func in ldap_sasl_interactive_bind \
-			ldap_unbind_ext_s \
-			ldap_start_tls_s \
-			ldap_initialize \
-			ldap_set_rebind_proc \
-			ldap_create_sort_control \
-			ldap_create_sort_keylist \
-			ldap_free_sort_keylist \
-			ldap_url_parse \
-			ldap_is_ldap_url \
-			ldap_url_desc2str
+
+if test x"$fail" = x""; then :
+
+	for ac_func in ldap_sasl_interactive_bind \
+		ldap_unbind_ext_s \
+		ldap_start_tls_s \
+		ldap_initialize \
+		ldap_set_rebind_proc \
+		ldap_create_sort_control \
+		ldap_create_sort_keylist \
+		ldap_free_sort_keylist \
+		ldap_url_parse \
+		ldap_is_ldap_url \
+		ldap_url_desc2str
 
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
@@ -3034,17 +3056,17 @@ _ACEOF
 fi
 done
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ldap_set_rebind_proc takes 3 arguments" >&5
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ldap_set_rebind_proc takes 3 arguments" >&5
 $as_echo_n "checking whether ldap_set_rebind_proc takes 3 arguments... " >&6; }
 if ${ac_cv_ldap_set_rebind_proc+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
-			cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-				#include <lber.h>
-				#include <ldap.h>
+			#include <lber.h>
+			#include <ldap.h>
 int
 main ()
 {
@@ -3063,7 +3085,9 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_ldap_set_rebind_proc" >&5
 $as_echo "$ac_cv_ldap_set_rebind_proc" >&6; }
-	fi
+
+fi
+
 
 
 
@@ -3234,40 +3258,88 @@ fi
 
 smart_prefix=
 
-	if test "x$ac_cv_header_sasl_sasl_h" = "xyes"; then
-	  if test x"$ac_cv_func_ldap_sasl_interactive_bind" = "xyes"; then
+if test "x$ac_cv_header_sasl_sasl_h" = "xyes"; then
+	if test x"$ac_cv_func_ldap_sasl_interactive_bind" = "xyes"; then
 
 $as_echo "#define WITH_SASL 1" >>confdefs.h
 
-	    SASL=sasl.c
-	  fi
+		SASL=sasl.c
+
+if echo "$fr_features" | grep -q "+sasl+"; then :
+else :
+	fr_report_prefix=""
+	if test x"$fr_features" != x""; then
+		fr_report_prefix="                                 "
 	fi
+	$as_echo "$fr_report_prefix""with SASL support" >> config.report.tmp
+	fr_features="$fr_features +sasl+"
+fi
+
+	fi
+else
+
+if echo "$fr_features" | grep -q "+sasl+"; then :
+else :
+	fr_report_prefix=""
+	if test x"$fr_features" != x""; then
+		fr_report_prefix="                                 "
+	fi
+	$as_echo "$fr_report_prefix""without SASL support" >> config.report.tmp
+	fr_features="$fr_features +sasl+"
+fi
+
+fi
+
 
 	targetname=rlm_ldap
 else
 	targetname=
 	echo \*\*\* module rlm_ldap is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_ldap to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_ldap." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_ldap." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_ldap requires: $fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_ldap requires: $fail." >&2;}
-		if test x"$headersuggestion" != x; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: $headersuggestion" >&5
-$as_echo "$as_me: WARNING: $headersuggestion" >&2;}
-		fi
-		if test x"$libsuggestion" != x; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: $libsuggestion" >&5
-$as_echo "$as_me: WARNING: $libsuggestion" >&2;}
-		fi
-		targetname=""
+$as_echo "$as_me: WARNING: FAILURE: rlm_ldap requires: $fail." >&2;};
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 
 $as_echo "#define WITH_EDIR 1" >>confdefs.h

@@ -586,9 +586,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_eap_fast.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 EGREP
 GREP
 CPP
@@ -1272,8 +1272,10 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --without-rlm_eap_fast  build without rlm_eap_fast
-  --with-openssl-lib-dir=DIR       directory for LDAP library files
-  --with-openssl-include-dir=DIR   directory for LDAP include files
+  --with-openssl-lib-dir=DIR
+                          directory for LDAP library files
+  -with-openssl-include-dir=DIR
+                          directory for LDAP include files
 
 Some influential environment variables:
   CC          C compiler command
@@ -1364,6 +1366,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_eap_fast
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -1842,6 +1849,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_eap_fast was given.
 if test "${with_rlm_eap_fast+set}" = set; then :
   withval=$with_rlm_eap_fast;
@@ -1852,47 +1860,55 @@ fi
 mod_ldflags=
 mod_cflags=
 
-if test x$with_rlm_eap_fast != xno; then
 
-					openssl_lib_dir=
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
+
+openssl_lib_dir=
 
 # Check whether --with-openssl-lib-dir was given.
 if test "${with_openssl_lib_dir+set}" = set; then :
-  withval=$with_openssl_lib_dir;  case "$withval" in
-	    no)
+  withval=$with_openssl_lib_dir; case "$withval" in
+	no)
 		as_fn_error $? "Need openssl-lib-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		openssl_lib_dir="$withval"
 		;;
-	  esac
-
+	esac
 fi
 
 
-		openssl_include_dir=
+openssl_include_dir=
 
 # Check whether --with-openssl-include-dir was given.
 if test "${with_openssl_include_dir+set}" = set; then :
-  withval=$with_openssl_include_dir;  case "$withval" in
-	    no)
+  withval=$with_openssl_include_dir; case "$withval" in
+	no)
 		as_fn_error $? "Need openssl-include-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		openssl_include_dir="$withval"
 		;;
-	  esac
-
+	esac
 fi
 
 
 
-	smart_try_dir=$openssl_include_dir
-	ac_ext=c
+smart_try_dir=$openssl_include_dir
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2851,11 +2867,13 @@ fi
 
 smart_prefix=
 
-	if test "$ac_cv_header_openssl_ec_h" != "yes"; then
-	  fail="$fail openssl/ec.h"
-	fi
+if test "$ac_cv_header_openssl_ec_h" != "yes"; then
 
-	smart_try_dir=$openssl_lib_dir
+fail="$fail openssl/ec.h"
+
+fi
+
+smart_try_dir=$openssl_lib_dir
 
 
 sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
@@ -2975,11 +2993,13 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-        if test "x$ac_cv_lib_crypto_EVP_CIPHER_CTX_new" != "xyes"; then
-	  fail="libssl"
-	fi
+if test "x$ac_cv_lib_crypto_EVP_CIPHER_CTX_new" != "xyes"; then
 
-    ac_ext=c
+fail="$fail libssl"
+
+fi
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -3250,49 +3270,84 @@ $as_echo "$ac_cv_path_EGREP" >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <openssl/crypto.h>
-       #if (OPENSSL_VERSION_NUMBER >= 0x01000100fL)
-       yes
-       #endif
+		#if (OPENSSL_VERSION_NUMBER >= 0x01000100fL)
+		yes
+		#endif
 
 _ACEOF
 if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
   $EGREP "yes" >/dev/null 2>&1; then :
 
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 1.0.1a" >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 1.0.1a" >&5
 $as_echo_n "checking for OpenSSL version >= 1.0.1a... " >&6; }
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
 
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 1.0.1a" >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 1.0.1a" >&5
 $as_echo_n "checking for OpenSSL version >= 1.0.1a... " >&6; }
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-        fail="openssl>1.0.1"
+
+fail="$fail OpenSSL>1.0.1"
+
 
 
 fi
 rm -f conftest*
 
 
+
 	targetname=rlm_eap_fast
 else
 	targetname=
 	echo \*\*\* module rlm_eap_fast is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_eap_fast to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_eap_fast." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_eap_fast." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_eap_fast requires: $fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_eap_fast requires: $fail." >&2;}
-		targetname=""
+$as_echo "$as_me: WARNING: FAILURE: rlm_eap_fast requires: $fail." >&2;};
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 
 

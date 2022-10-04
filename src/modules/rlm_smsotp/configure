@@ -622,9 +622,9 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_ldflags
 mod_cflags
+targetname
 EGREP
 GREP
 CPP
@@ -1397,6 +1397,11 @@ fi
 ## Autoconf initialization. ##
 ## ------------------------ ##
 
+echo
+echo Running tests for rlm_smsotp
+echo
+
+
 # ac_fn_c_try_compile LINENO
 # --------------------------
 # Try to compile conftest.$ac_ext, and return whether this succeeded.
@@ -1988,6 +1993,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_smsotp was given.
 if test "${with_rlm_smsotp+set}" = set; then :
   withval=$with_rlm_smsotp;
@@ -1995,9 +2001,19 @@ fi
 
 
 
-if test x$with_rlm_smsotp != xno; then
 
-	ac_ext=c
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2786,7 +2802,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -3197,35 +3213,67 @@ fi
 
 done
 
-	if test "$ac_cv_header_sys_un_h" != "yes"; then
-	  fail="$fail sys/un.h"
-	fi
+if test "$ac_cv_header_sys_un_h" != "yes"; then
+
+fail="$fail sys/un.h"
+
+fi
+
 
 	targetname=rlm_smsotp
 else
 	targetname=
 	echo \*\*\* module rlm_smsotp is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_smsotp to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_smsotp." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_smsotp." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_smsotp requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_smsotp requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
 
 
 
 
 
 ac_config_headers="$ac_config_headers config.h"
-
-
 
 ac_config_files="$ac_config_files all.mk"
 

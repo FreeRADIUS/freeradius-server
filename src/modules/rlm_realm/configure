@@ -585,10 +585,10 @@ PACKAGE_URL=
 ac_unique_file="rlm_realm.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 trustrouter
 mod_ldflags
 mod_cflags
+targetname
 CPP
 OBJEXT
 EXEEXT
@@ -1359,6 +1359,11 @@ fi
 ## Autoconf initialization. ##
 ## ------------------------ ##
 
+echo
+echo Running tests for rlm_realm
+echo
+
+
 # ac_fn_c_try_compile LINENO
 # --------------------------
 # Try to compile conftest.$ac_ext, and return whether this succeeded.
@@ -1836,6 +1841,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_realm was given.
 if test "${with_rlm_realm+set}" = set; then :
   withval=$with_rlm_realm;
@@ -1843,8 +1849,19 @@ fi
 
 
 
-if test x$with_rlm_realm != xno; then
-	ac_ext=c
+
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2633,7 +2650,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -3180,37 +3197,82 @@ fi
 smart_prefix=
 
 
-	if test "x$ac_cv_lib_tr_tid_tidc_create" != "x"; then
-		if test "x$ac_cv_header_trust_router_tr_dh_h" != "x"; then
-			SMART_CPPFLAGS="$SMART_CPPFLAGS -DHAVE_TRUST_ROUTER_TR_DH_H"
-			trustrouter=yes
-			if test "x$ac_cv_lib_tr_tid_tid_srvr_get_key_expiration" != "x"; then
-				SMART_CPPFLAGS="$SMART_CPPFLAGS -DHAVE_TRUST_ROUTER_GET_KEY_EXP"
-			fi
+trustrouter=
+
+if test "x$ac_cv_lib_tr_tid_tidc_create" != "x"; then
+	if test "x$ac_cv_header_trust_router_tr_dh_h" != "x"; then
+		SMART_CPPFLAGS="$SMART_CPPFLAGS -DHAVE_TRUST_ROUTER_TR_DH_H"
+		trustrouter=yes
+		if test "x$ac_cv_lib_tr_tid_tid_srvr_get_key_expiration" != "x"; then
+			SMART_CPPFLAGS="$SMART_CPPFLAGS -DHAVE_TRUST_ROUTER_GET_KEY_EXP"
 		fi
+
+if echo "$fr_features" | grep -q "+trustrouter+"; then :
+else :
+	fr_report_prefix=""
+	if test x"$fr_features" != x""; then
+		fr_report_prefix="                                 "
 	fi
+	$as_echo "$fr_report_prefix""with trust router support" >> config.report.tmp
+	fr_features="$fr_features +trustrouter+"
+fi
+
+	fi
+fi
+
 
 	targetname=rlm_realm
 else
 	targetname=
 	echo \*\*\* module rlm_realm is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_realm to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_realm." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_realm." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_realm requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_realm requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 mod_ldflags="${SMART_LIBS}"
 mod_cflags="${SMART_CPPFLAGS}"
-
 
 
 

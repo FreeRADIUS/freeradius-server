@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_sql_iodbc.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -1363,6 +1363,11 @@ fi
 ## Autoconf initialization. ##
 ## ------------------------ ##
 
+echo
+echo Running tests for rlm_sql_iodbc
+echo
+
+
 # ac_fn_c_try_compile LINENO
 # --------------------------
 # Try to compile conftest.$ac_ext, and return whether this succeeded.
@@ -1803,6 +1808,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_sql_iodbc was given.
 if test "${with_rlm_sql_iodbc+set}" = set; then :
   withval=$with_rlm_sql_iodbc;
@@ -1810,43 +1816,52 @@ fi
 
 
 
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 
-if test x$with_rlm_sql_iodbc != xno; then
 
-		iodbc_include_dir=
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
+
+iodbc_include_dir=
 
 # Check whether --with-iodbc-include-dir was given.
 if test "${with_iodbc_include_dir+set}" = set; then :
   withval=$with_iodbc_include_dir; case "$withval" in
-		    no)
-			as_fn_error $? "Need iodbc-include-dir" "$LINENO" 5
-			;;
-		    yes)
-			;;
-		    *)
-			iodbc_include_dir="$withval"
-			;;
-		esac
+	no)
+		as_fn_error $? "Need iodbc-include-dir" "$LINENO" 5
+		;;
+	yes)
+		;;
+	*)
+		iodbc_include_dir="$withval"
+		;;
+	esac
 fi
 
 
-		iodbc_lib_dir=
+iodbc_lib_dir=
 
 # Check whether --with-iodbc-lib-dir was given.
 if test "${with_iodbc_lib_dir+set}" = set; then :
   withval=$with_iodbc_lib_dir; case "$withval" in
-		    no)
-			as_fn_error $? "Need iodbc-lib-dir" "$LINENO" 5
-			;;
-		    yes)
-			;;
-		    *)
-			iodbc_lib_dir="$withval"
-			;;
-		esac
+	no)
+		as_fn_error $? "Need iodbc-lib-dir" "$LINENO" 5
+		;;
+	yes)
+		;;
+	*)
+		iodbc_lib_dir="$withval"
+		;;
+	esac
 fi
 
 
@@ -1854,21 +1869,21 @@ fi
 # Check whether --with-iodbc-dir was given.
 if test "${with_iodbc_dir+set}" = set; then :
   withval=$with_iodbc_dir; case "$withval" in
-		    no)
-			as_fn_error $? "Need iodbc-dir" "$LINENO" 5
-			;;
-		    yes)
-			;;
-		    *)
-			iodbc_lib_dir="$withval/lib"
-			iodbc_include_dir="$withval/include"
-			;;
-		esac
+	no)
+		as_fn_error $? "Need iodbc-dir" "$LINENO" 5
+		;;
+	yes)
+		;;
+	*)
+		iodbc_lib_dir="$withval/lib"
+		iodbc_include_dir="$withval/include"
+		;;
+	esac
 fi
 
 
-		smart_try_dir="$iodbc_lib_dir /usr/lib /usr/lib/iodbc /usr/local/lib/iodbc /usr/local/iodbc/lib/iodbc"
-	ac_ext=c
+smart_try_dir="$iodbc_lib_dir /usr/lib /usr/lib/iodbc /usr/local/lib/iodbc /usr/local/iodbc/lib/iodbc"
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2777,11 +2792,13 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_iodbc_SQLConnect" != xyes; then
-		fail="$fail libiodbc"
-	fi
+if test "x$ac_cv_lib_iodbc_SQLConnect" != xyes; then
 
-		smart_try_dir="$iodbc_include_dir /usr/include /usr/include/iodbc /usr/local/iodbc/include"
+fail="$fail libiodbc"
+
+fi
+
+smart_try_dir="$iodbc_include_dir /usr/include /usr/include/iodbc /usr/local/iodbc/include"
 
 
 ac_safe=`echo "isql.h" | sed 'y%./+-%__pm%'`
@@ -2951,30 +2968,66 @@ fi
 
 smart_prefix=
 
-	if test "x$ac_cv_header_isql_h" != xyes; then
-		fail="$fail isql.h"
-	fi
+if test "x$ac_cv_header_isql_h" != xyes; then
+
+fail="$fail isql.h"
+
+fi
+
 
 	targetname=rlm_sql_iodbc
 else
 	targetname=
 	echo \*\*\* module rlm_sql_iodbc is disabled.
+
+
+fr_status="disabled"
+
 fi
 
-if test "x$fail" != x; then
-	if test "x${enable_strict_dependencies}" = xyes; then
+if test x"$fail" != x""; then
+	targetname=""
+
+
+	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_sql_iodbc to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_sql_iodbc." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_sql_iodbc." >&2;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_sql_iodbc requires:$fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_sql_iodbc requires:$fail." >&2;};
-		targetname=
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_sql_iodbc requires: $fail." >&5
+$as_echo "$as_me: WARNING: FAILURE: rlm_sql_iodbc requires: $fail." >&2;};
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 mod_ldflags="$SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"
+
 
 
 

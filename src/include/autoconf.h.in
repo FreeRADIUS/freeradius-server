@@ -612,9 +612,6 @@
 /* Raw version string from VERSION file */
 #undef RADIUSD_VERSION_STRING
 
-/* Define as the return type of signal handlers (`int' or `void'). */
-#undef RETSIGTYPE
-
 /* Solaris-Style ctime_r */
 #undef SOLARISSTYLE
 

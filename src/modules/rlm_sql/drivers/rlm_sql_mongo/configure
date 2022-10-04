@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_sql_mongo.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mongoc_ldflags
 mongoc_cflags
+targetname
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -1364,6 +1364,11 @@ fi
 ## Autoconf initialization. ##
 ## ------------------------ ##
 
+echo
+echo Running tests for rlm_sql_mongo
+echo
+
+
 # ac_fn_c_try_compile LINENO
 # --------------------------
 # Try to compile conftest.$ac_ext, and return whether this succeeded.
@@ -1835,6 +1840,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_sql_mongo was given.
 if test "${with_rlm_sql_mongo+set}" = set; then :
   withval=$with_rlm_sql_mongo;
@@ -1842,11 +1848,20 @@ fi
 
 
 
-fail=
 mongoc_ldflags=
 mongoc_cflags=
 
-if test x$with_rlm_sql_mongo != xno; then
+
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
 
 
 # Check whether --with-mongoc_lib_dir was given.
@@ -1855,6 +1870,7 @@ if test "${with_mongoc_lib_dir+set}" = set; then :
 else
    mongoc_lib_dir=""
 fi
+
 
 
 # Check whether --with-mongoc_include_dir was given.
@@ -1874,6 +1890,7 @@ else
 fi
 
 
+
 # Check whether --with-bson_include_dir was given.
 if test "${with_bson_include_dir+set}" = set; then :
   withval=$with_bson_include_dir;  bson_include_dir="$withval"
@@ -1882,15 +1899,16 @@ else
 fi
 
 
-        CFLAGS_PRE="$CFLAGS"
-  if test x$bson_include_dir != x ; then
-    bson_cflags="-isystem ${bson_include_dir}"
-  else
-    bson_cflags="-isystem /usr/include/libbson-1.0"
-  fi
-  CFLAGS="$CFLAGS ${bson_cflags}"
 
-  ac_ext=c
+CFLAGS_PRE="$CFLAGS"
+if test x$bson_include_dir != x ; then
+	bson_cflags="-isystem ${bson_include_dir}"
+else
+	bson_cflags="-isystem /usr/include/libbson-1.0"
+fi
+CFLAGS="$CFLAGS ${bson_cflags}"
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2687,22 +2705,24 @@ if test "x$ac_cv_header_bson_bson_h" = xyes; then :
 fi
 
 
-  CFLAGS="$CFLAGS_PRE"
+CFLAGS="$CFLAGS_PRE"
 
-  if test "x$ac_cv_header_bson_bson_h" != "xyes"; then
-    fail="$fail bson/bson.h"
-  fi
+if test "x$ac_cv_header_bson_bson_h" != "xyes"; then
+
+fail="$fail bson/bson.h"
+
+fi
 
 
-  LDFLAGS_PRE="$LDFLAGS"
-  if test x$bson_lib_dir != x ; then
-    bson_ldflags="-L${bson_lib_dir} -lbson-1.0"
-  else
-    bson_ldflags="-L/usr/lib -lbson-1.0"
-  fi
-  LDFLAGS="$LDFLAGS ${bson_ldflags}"
+LDFLAGS_PRE="$LDFLAGS"
+if test x$bson_lib_dir != x ; then
+	bson_ldflags="-L${bson_lib_dir} -lbson-1.0"
+else
+	bson_ldflags="-L/usr/lib -lbson-1.0"
+fi
+LDFLAGS="$LDFLAGS ${bson_ldflags}"
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for  bson_iter_init_find  in -lbson-1.0" >&5
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for  bson_iter_init_find  in -lbson-1.0" >&5
 $as_echo_n "checking for  bson_iter_init_find  in -lbson-1.0... " >&6; }
 if ${ac_cv_lib_bson_1_0__bson_iter_init_find_+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -2747,44 +2767,48 @@ _ACEOF
 
 fi
 
-  LDFLAGS="$LDFLAGS_PRE"
+LDFLAGS="$LDFLAGS_PRE"
 
-  if test "x$ac_cv_lib_bson_1_0__bson_iter_init_find_" != "xyes"; then
-    fail="$fail libbson"
-  fi
+if test "x$ac_cv_lib_bson_1_0__bson_iter_init_find_" != "xyes"; then
+
+fail="$fail libbson"
+
+fi
 
 
-  CFLAGS_PRE="$CFLAGS"
-  if test x$mongoc_include_dir != x ; then
-    mongoc_cflags="-isystem ${mongoc_include_dir} ${bson_cflags}"
-  else
-    mongoc_cflags="-isystem /usr/include/libmongoc-1.0 ${bson_cflags}"
-  fi
-  CFLAGS="$CFLAGS ${mongoc_cflags}"
+CFLAGS_PRE="$CFLAGS"
+if test x$mongoc_include_dir != x ; then
+	mongoc_cflags="-isystem ${mongoc_include_dir} ${bson_cflags}"
+else
+	mongoc_cflags="-isystem /usr/include/libmongoc-1.0 ${bson_cflags}"
+fi
+CFLAGS="$CFLAGS ${mongoc_cflags}"
 
-  ac_fn_c_check_header_compile "$LINENO" "mongoc.h" "ac_cv_header_mongoc_h" "#include <mongoc.h>
+ac_fn_c_check_header_compile "$LINENO" "mongoc.h" "ac_cv_header_mongoc_h" "#include <mongoc.h>
 "
 if test "x$ac_cv_header_mongoc_h" = xyes; then :
 
 fi
 
 
-  CFLAGS="$CFLAGS_PRE"
+CFLAGS="$CFLAGS_PRE"
 
-  if test "x$ac_cv_header_mongoc_h" != "xyes"; then
-    fail="$fail mongoc.h"
-  fi
+if test "x$ac_cv_header_mongoc_h" != "xyes"; then
+
+fail="$fail mongoc.h"
+
+fi
 
 
-  LDFLAGS_PRE="$LDFLAGS"
-  if test x$mongoc_lib_dir != x ; then
-    mongoc_ldflags="-L${mongoc_lib_dir} -lmongoc-1.0 ${bson_ldflags}"
-  else
-    mongoc_ldflags="-L/usr/lib -lmongoc-1.0 ${bson_ldflags}"
-  fi
-  LDFLAGS="$LDFLAGS ${mongoc_ldflags}"
+LDFLAGS_PRE="$LDFLAGS"
+if test x$mongoc_lib_dir != x ; then
+	mongoc_ldflags="-L${mongoc_lib_dir} -lmongoc-1.0 ${bson_ldflags}"
+else
+	mongoc_ldflags="-L/usr/lib -lmongoc-1.0 ${bson_ldflags}"
+fi
+LDFLAGS="$LDFLAGS ${mongoc_ldflags}"
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for  mongoc_init  in -lmongoc-1.0" >&5
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for  mongoc_init  in -lmongoc-1.0" >&5
 $as_echo_n "checking for  mongoc_init  in -lmongoc-1.0... " >&6; }
 if ${ac_cv_lib_mongoc_1_0__mongoc_init_+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -2829,37 +2853,64 @@ _ACEOF
 
 fi
 
-  LDFLAGS="$LDFLAGS_PRE"
+LDFLAGS="$LDFLAGS_PRE"
 
-  if test "x$ac_cv_lib_mongoc_1_0__mongoc_init_" != "xyes"; then
-    fail="$fail libmongoc-1.0"
-  fi
+if test "x$ac_cv_lib_mongoc_1_0__mongoc_init_" != "xyes"; then
 
-  targetname=rlm_sql_mongo
+fail="$fail libmongoc-1.0"
+
+fi
+
+
+	targetname=rlm_sql_mongo
 else
-  targetname=
-  echo \*\*\* module rlm_sql_mongo is disabled.
+	targetname=
+	echo \*\*\* module rlm_sql_mongo is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_sql_mongo to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_sql_mongo." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_sql_mongo." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_sql_mongo requires: $fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_sql_mongo requires: $fail." >&2;}
-		if test x"$headersuggestion" != x; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: $headersuggestion" >&5
-$as_echo "$as_me: WARNING: $headersuggestion" >&2;}
-		fi
-		if test x"$libsuggestion" != x; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: $libsuggestion" >&5
-$as_echo "$as_me: WARNING: $libsuggestion" >&2;}
-		fi
-		targetname=""
+$as_echo "$as_me: WARNING: FAILURE: rlm_sql_mongo requires: $fail." >&2;};
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 
 

@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_eap_sim.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 target_alias
 host_alias
 build_alias
@@ -1330,6 +1330,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_eap_sim
+echo
+
 cat >config.log <<_ACEOF
 This file contains any messages produced by compilers while
 running configure, to aid debugging if configure makes a mistake.
@@ -1687,6 +1692,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_eap_sim was given.
 if test "${with_rlm_eap_sim+set}" = set; then :
   withval=$with_rlm_eap_sim;
@@ -1694,37 +1700,71 @@ fi
 
 
 
-fail=
 mod_ldflags=
 mod_cflags=
 
-if test x$with_rlm_eap_sim != xno; then
+
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
+
 
 	targetname=rlm_eap_sim
 else
 	targetname=
 	echo \*\*\* module rlm_eap_sim is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_eap_sim to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_eap_sim." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_eap_sim." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_eap_sim requires: $fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_eap_sim requires: $fail." >&2;}
-		if test x"$headersuggestion" != x; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: $headersuggestion" >&5
-$as_echo "$as_me: WARNING: $headersuggestion" >&2;}
-		fi
-		if test x"$libsuggestion" != x; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: $libsuggestion" >&5
-$as_echo "$as_me: WARNING: $libsuggestion" >&2;}
-		fi
-		targetname=""
+$as_echo "$as_me: WARNING: FAILURE: rlm_eap_sim requires: $fail." >&2;};
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 
 

@@ -586,9 +586,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_counter.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 EGREP
 GREP
 CPP
@@ -1361,6 +1361,11 @@ fi
 ## Autoconf initialization. ##
 ## ------------------------ ##
 
+echo
+echo Running tests for rlm_counter
+echo
+
+
 # ac_fn_c_try_compile LINENO
 # --------------------------
 # Try to compile conftest.$ac_ext, and return whether this succeeded.
@@ -1905,6 +1910,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_counter was given.
 if test "${with_rlm_counter+set}" = set; then :
   withval=$with_rlm_counter;
@@ -1912,9 +1918,19 @@ fi
 
 
 
-if test x$with_rlm_counter != xno; then
 
-	ac_ext=c
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2703,7 +2719,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -3130,13 +3146,12 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_gdbm_gdbm_open" != "xyes"; then
-		fail="$fail libgdbm"
-	fi
+if test "x$ac_cv_lib_gdbm_gdbm_open" != "xyes"; then
 
-	if test "x$fail" = "x"; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking to see GDBM_SYNC status" >&5
-$as_echo_n "checking to see GDBM_SYNC status... " >&6; }
+fail="$fail libgdbm"
+
+fi
+
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for grep that handles long lines and -e" >&5
 $as_echo_n "checking for grep that handles long lines and -e... " >&6; }
@@ -3268,7 +3283,12 @@ $as_echo "$ac_cv_path_EGREP" >&6; }
  EGREP="$ac_cv_path_EGREP"
 
 
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+
+if test x"$fail" = x""; then :
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking to see GDBM_SYNC status" >&5
+$as_echo_n "checking to see GDBM_SYNC status... " >&6; }
+	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 #include <gdbm.h>
@@ -3285,52 +3305,87 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 
 $as_echo "#define NEED_GDBM_SYNC yes" >>confdefs.h
 
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: needs it." >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: needs it." >&5
 $as_echo "needs it." >&6; }
 
 else
 
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: SYNCs by default." >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: SYNCs by default." >&5
 $as_echo "SYNCs by default." >&6; }
 
 
 fi
 rm -f conftest*
 
-	fi
 
-	old_LIBS=$LIBS
-	LIBS="$LIBS $SMART_LIBS"
-	ac_fn_c_check_func "$LINENO" "gdbm_fdesc" "ac_cv_func_gdbm_fdesc"
+fi
+
+
+old_LIBS=$LIBS
+LIBS="$LIBS $SMART_LIBS"
+ac_fn_c_check_func "$LINENO" "gdbm_fdesc" "ac_cv_func_gdbm_fdesc"
 if test "x$ac_cv_func_gdbm_fdesc" = xyes; then :
 
 fi
 
-	if test "x$ac_cv_func_gdbm_fdesc" = "xyes";
-	then
+if test "x$ac_cv_func_gdbm_fdesc" = "xyes";
+then
 
 $as_echo "#define HAVE_GDBM_FDESC /**/" >>confdefs.h
 
-	fi
-	LIBS=$old_LIBS
+fi
+LIBS=$old_LIBS
+
 
 	targetname=rlm_counter
 else
 	targetname=
 	echo \*\*\* module rlm_counter is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_counter to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_counter." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_counter." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_counter requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_counter requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 mod_ldflags="$SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"

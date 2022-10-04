@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_python3.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_cflags
 mod_ldflags
+targetname
 AWK
 PYTHON3_CONFIG_BIN
 pkgpyexecdir
@@ -1288,7 +1288,8 @@ Optional Packages:
   --with-python_prefix    override the default PYTHON_PREFIX
   --with-python_exec_prefix
                           override the default PYTHON_EXEC_PREFIX
-  --with-rlm-python3-config-bin=PATH   Path to python-config3 binary
+  --with-rlm-python3-config-bin=PATH
+                          Path to python-config3 binary
 
 Some influential environment variables:
   CC          C compiler command
@@ -1380,6 +1381,11 @@ fi
 ## ------------------------ ##
 ## Autoconf initialization. ##
 ## ------------------------ ##
+
+echo
+echo Running tests for rlm_python3
+echo
+
 
 # ac_fn_c_try_compile LINENO
 # --------------------------
@@ -1925,6 +1931,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_python3 was given.
 if test "${with_rlm_python3+set}" = set; then :
   withval=$with_rlm_python3;
@@ -1932,9 +1939,19 @@ fi
 
 
 
-if test x$with_rlm_python3 != xno; then
 
-	ac_ext=c
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
+
+
+
+if test x"$with_modname_useropt" != xno; then
+
+
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2723,7 +2740,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -3253,26 +3270,25 @@ $as_echo "$am_cv_python_pyexecdir" >&6; }
   fi
 
 
-		PYTHON3_CONFIG_BIN=
+PYTHON3_CONFIG_BIN=
 
 # Check whether --with-rlm-python3-config-bin was given.
 if test "${with_rlm_python3_config_bin+set}" = set; then :
-  withval=$with_rlm_python3_config_bin;  case "$withval" in
-	    no)
+  withval=$with_rlm_python3_config_bin; case "$withval" in
+	no)
 		as_fn_error $? "Need rlm-python3-config-bin" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		PYTHON3_CONFIG_BIN="$withval"
 		;;
-	  esac
-
+	esac
 fi
 
 
-	if test "x$PYTHON3_CONFIG_BIN" = x; then
-		for ac_prog in  python3-config
+if test "x$PYTHON3_CONFIG_BIN" = x; then
+	for ac_prog in  python3-config
 do
   # Extract the first word of "$ac_prog", so it can be a program name with args.
 set dummy $ac_prog; ac_word=$2
@@ -3316,35 +3332,37 @@ fi
 done
 test -n "$PYTHON3_CONFIG_BIN" || PYTHON3_CONFIG_BIN="not-found"
 
-	fi
+fi
 
-	if test "x$PYTHON3_CONFIG_BIN" = xnot-found; then
-		fail="$fail python3-config"
-	else
-								old_CFLAGS="$CFLAGS"
-		unset CFLAGS
+if test "x$PYTHON3_CONFIG_BIN" = xnot-found; then
 
-		python3_cflags=`${PYTHON3_CONFIG_BIN} --cflags`
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON3_CONFIG_BIN}'s cflags were \"${python3_cflags}\"" >&5
+fail="$fail python3-config"
+
+else
+				old_CFLAGS="$CFLAGS"
+	unset CFLAGS
+
+	python3_cflags=`${PYTHON3_CONFIG_BIN} --cflags`
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON3_CONFIG_BIN}'s cflags were \"${python3_cflags}\"" >&5
 $as_echo "$as_me: ${PYTHON3_CONFIG_BIN}'s cflags were \"${python3_cflags}\"" >&6;}
 
-																								mod_cflags=`echo " $python3_cflags" | sed -e '\
-			s/ -I/ -isystem/g;\
-			s/ -isysroot[ =]\{0,1\}[^-]*/ /g;\
-			s/ -O[^[[:blank:]]]*/ /g;\
-			s/ -Wp,-D_FORTIFY_SOURCE=[[:digit:]]/ /g;\
-			s/ -g[^ ]*/ /g;\
-			s/ -W[^ ]*/ /g;\
-			s/ -DNDEBUG[[:blank:]]*/ /g;\
-			s/ -frecord-gcc-switches/ /g;\
-			s/ -specs=[^ ]*/ /g; \
-			s/ -ffat-lto-objects/ /g; \
-			s/ -flto=[^ ]*/ /g;
-			'`
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags were \"${mod_cflags}\"" >&5
+												mod_cflags=`echo " $python3_cflags" | sed -e '\
+		s/ -I/ -isystem/g;\
+		s/ -isysroot[ =]\{0,1\}[^-]*/ /g;\
+		s/ -O[^[[:blank:]]]*/ /g;\
+		s/ -Wp,-D_FORTIFY_SOURCE=[[:digit:]]/ /g;\
+		s/ -g[^ ]*/ /g;\
+		s/ -W[^ ]*/ /g;\
+		s/ -DNDEBUG[[:blank:]]*/ /g;\
+		s/ -frecord-gcc-switches/ /g;\
+		s/ -specs=[^ ]*/ /g; \
+		s/ -ffat-lto-objects/ /g; \
+		s/ -flto=[^ ]*/ /g;
+		'`
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags were \"${mod_cflags}\"" >&5
 $as_echo "$as_me: Sanitized cflags were \"${mod_cflags}\"" >&6;}
 
-						for ac_prog in gawk mawk nawk awk
+			for ac_prog in gawk mawk nawk awk
 do
   # Extract the first word of "$ac_prog", so it can be a program name with args.
 set dummy $ac_prog; ac_word=$2
@@ -3422,23 +3440,21 @@ x$ax_compare_version_B" | sed 's/^ *//' | sort -r | sed "s/x${ax_compare_version
       fi
 
 
-		python3_ldflags=`${PYTHON3_CONFIG_BIN} --ldflags $EMBED`
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON3_CONFIG_BIN}'s ldflags were \"$python3_ldflags}\"" >&5
+	python3_ldflags=`${PYTHON3_CONFIG_BIN} --ldflags $EMBED`
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON3_CONFIG_BIN}'s ldflags were \"$python3_ldflags}\"" >&5
 $as_echo "$as_me: ${PYTHON3_CONFIG_BIN}'s ldflags were \"$python3_ldflags}\"" >&6;}
 
-										mod_ldflags=`echo $python3_ldflags | sed -e '\
-			s/-Wl,-O[[:digit:]][[:blank:]]*//g;\
-			s/-Wl,-Bsymbolic-functions[[:blank:]]*//g;\
-			s/-Xlinker -export-dynamic//g;\
-			s/-Wl,-stack_size,[[:digit:]]*[[:blank:]]//g;
-			'`
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldflags were \"${mod_ldflags}\"" >&5
+					mod_ldflags=`echo $python3_ldflags | sed -e '\
+		s/-Wl,-O[[:digit:]][[:blank:]]*//g;\
+		s/-Wl,-Bsymbolic-functions[[:blank:]]*//g;\
+		s/-Xlinker -export-dynamic//g;\
+		s/-Wl,-stack_size,[[:digit:]]*[[:blank:]]//g;
+		'`
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldflags were \"${mod_ldflags}\"" >&5
 $as_echo "$as_me: Sanitized ldflags were \"${mod_ldflags}\"" >&6;}
 
-		CFLAGS=$old_CFLAGS
-
-		targetname="rlm_python3"
-	fi
+	CFLAGS=$old_CFLAGS
+fi
 
 for ac_func in dl_iterate_phdr
 do :
@@ -3451,27 +3467,62 @@ _ACEOF
 fi
 done
 
+
+
+	targetname=rlm_python3
 else
 	targetname=
 	echo \*\*\* module rlm_python3 is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
+	targetname=""
+
+
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		as_fn_error $? "set --without-rlm_python3 to disable it explicitly." "$LINENO" 5
 	else
+
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_python3." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_python3." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_python3 requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_python3 requires: $fail." >&2;};
-		targetname=""
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
 	fi
+
+else
+
+
+fr_status="OK"
+
 fi
 
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
+
+
+
+
 ac_config_headers="$ac_config_headers config.h"
-
-
-
 
 ac_config_files="$ac_config_files all.mk"
 

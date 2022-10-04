@@ -585,9 +585,9 @@ PACKAGE_URL=
 ac_unique_file="rlm_yubikey.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-targetname
 mod_ldflags
 mod_cflags
+targetname
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -1371,6 +1371,11 @@ fi
 ## Autoconf initialization. ##
 ## ------------------------ ##
 
+echo
+echo Running tests for rlm_yubikey
+echo
+
+
 # ac_fn_c_try_compile LINENO
 # --------------------------
 # Try to compile conftest.$ac_ext, and return whether this succeeded.
@@ -1811,6 +1816,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_yubikey was given.
 if test "${with_rlm_yubikey+set}" = set; then :
   withval=$with_rlm_yubikey;
@@ -1818,37 +1824,48 @@ fi
 
 
 
-if test x$with_rlm_yubikey != xno; then
+
+fail=
+fr_status=
+fr_features=
+: > "config.report"
+: > "config.report.tmp"
 
 
-        yubikey_include_dir=
+
+if test x"$with_modname_useropt" != xno; then
+
+
+
+
+yubikey_include_dir=
 
 # Check whether --with-yubikey-include-dir was given.
 if test "${with_yubikey_include_dir+set}" = set; then :
   withval=$with_yubikey_include_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need yubikey-include-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		yubikey_include_dir="$withval"
 		;;
 	esac
 fi
 
 
-        yubikey_lib_dir=
+yubikey_lib_dir=
 
 # Check whether --with-yubikey-lib-dir was given.
 if test "${with_yubikey_lib_dir+set}" = set; then :
   withval=$with_yubikey_lib_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need yubikey-lib-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		yubikey_lib_dir="$withval"
 		;;
 	esac
@@ -1859,12 +1876,12 @@ fi
 # Check whether --with-yubikey-dir was given.
 if test "${with_yubikey_dir+set}" = set; then :
   withval=$with_yubikey_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need yubikey-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		yubikey_lib_dir="$withval/lib"
 		yubikey_include_dir="$withval/include"
 		;;
@@ -1873,34 +1890,34 @@ fi
 
 
 
-        ykclient_include_dir=
+ykclient_include_dir=
 
 # Check whether --with-ykclient-include-dir was given.
 if test "${with_ykclient_include_dir+set}" = set; then :
   withval=$with_ykclient_include_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need ykclient-include-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		ykclient_include_dir="$withval"
 		;;
 	esac
 fi
 
 
-        ykclient_lib_dir=
+ykclient_lib_dir=
 
 # Check whether --with-ykclient-lib-dir was given.
 if test "${with_ykclient_lib_dir+set}" = set; then :
   withval=$with_ykclient_lib_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need ykclient-lib-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		ykclient_lib_dir="$withval"
 		;;
 	esac
@@ -1911,12 +1928,12 @@ fi
 # Check whether --with-ykclient-dir was given.
 if test "${with_ykclient_dir+set}" = set; then :
   withval=$with_ykclient_dir; case "$withval" in
-	    no)
+	no)
 		as_fn_error $? "Need ykclient-dir" "$LINENO" 5
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		ykclient_lib_dir="$withval/lib"
 		ykclient_include_dir="$withval/include"
 		;;
@@ -1925,9 +1942,9 @@ fi
 
 
 
-    have_yubikey="yes"
-    smart_try_dir="$yubikey_include_dir"
-    ac_ext=c
+have_yubikey="yes"
+smart_try_dir="$yubikey_include_dir"
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2886,14 +2903,14 @@ fi
 
 smart_prefix=
 
-    if test "x$ac_cv_header_yubikey_h" != "xyes"; then
+if test "x$ac_cv_header_yubikey_h" != "xyes"; then
 	have_ykclient="no"
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: yubikey headers not found. Use --with-yubikey-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: yubikey headers not found. Use --with-yubikey-include-dir=<path>." >&2;}
-    fi
+fi
 
 
-        smart_try_dir="$yubikey_lib_dir"
+smart_try_dir="$yubikey_lib_dir"
 
 
 sm_lib_safe=`echo "yubikey" | sed 'y%./+-%__p_%'`
@@ -3013,24 +3030,46 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-    if test "x$ac_cv_lib_yubikey_yubikey_aes_decrypt" != "xyes"; then
+if test "x$ac_cv_lib_yubikey_yubikey_aes_decrypt" != "xyes"; then
 	have_yubikey="no"
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: yubikey libraries not found. Use --with-yubikey-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: yubikey libraries not found. Use --with-yubikey-lib-dir=<path>." >&2;}
-    fi
+fi
 
-    if test "x$have_yubikey" = "xyes"; then
+if test "x$have_yubikey" = "xyes"; then
 
 $as_echo "#define HAVE_YUBIKEY 1" >>confdefs.h
 
-    else
+
+if echo "$fr_features" | grep -q "+yubikey+"; then :
+else :
+	fr_report_prefix=""
+	if test x"$fr_features" != x""; then
+		fr_report_prefix="                                 "
+	fi
+	$as_echo "$fr_report_prefix""with yubikey token decryption support" >> config.report.tmp
+	fr_features="$fr_features +yubikey+"
+fi
+
+else
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without yubikey token decryption support. requires: yubikey" >&5
 $as_echo "$as_me: WARNING: silently building without yubikey token decryption support. requires: yubikey" >&2;}
-    fi
+
+if echo "$fr_features" | grep -q "+yubikey+"; then :
+else :
+	fr_report_prefix=""
+	if test x"$fr_features" != x""; then
+		fr_report_prefix="                                 "
+	fi
+	$as_echo "$fr_report_prefix""without yubikey token decryption support" >> config.report.tmp
+	fr_features="$fr_features +yubikey+"
+fi
+
+fi
 
 
-    have_ykclient="yes"
-    smart_try_dir="$ykclient_include_dir"
+have_ykclient="yes"
+smart_try_dir="$ykclient_include_dir"
 
 
 ac_safe=`echo "ykclient.h" | sed 'y%./+-%__pm%'`
@@ -3200,14 +3239,14 @@ fi
 
 smart_prefix=
 
-    if test "x$ac_cv_header_ykclient_h" != "xyes"; then
+if test "x$ac_cv_header_ykclient_h" != "xyes"; then
 	have_ykclient="no"
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient headers not found. Use --with-ykclient-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: ykclient headers not found. Use --with-ykclient-include-dir=<path>." >&2;}
-    fi
+fi
 
 
-    smart_try_dir="$ykclient_lib_dir"
+smart_try_dir="$ykclient_lib_dir"
 
 
 sm_lib_safe=`echo "ykclient" | sed 'y%./+-%__p_%'`
@@ -3327,7 +3366,7 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-    if test "x$ac_cv_lib_ykclient_ykclient_request_process" != "xyes"; then
+if test "x$ac_cv_lib_ykclient_ykclient_request_process" != "xyes"; then
 	have_ykclient="no"
 
 
@@ -3449,40 +3488,96 @@ if test "x$smart_lib" != "x"; then
 fi
 
 	if test "x$ac_cv_lib_ykclient_ykclient_request" = "xyes"; then
-	    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libykclient missing ykclient_request_process. A later version of libykclient is required." >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libykclient missing ykclient_request_process. A later version of libykclient is required." >&5
 $as_echo "$as_me: WARNING: libykclient missing ykclient_request_process. A later version of libykclient is required." >&2;}
 	else
-	    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient libraries not found. Use --with-ykclient-lib-dir=<path>." >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient libraries not found. Use --with-ykclient-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: ykclient libraries not found. Use --with-ykclient-lib-dir=<path>." >&2;}
 	fi
-    fi
+fi
 
-    if test "x$have_ykclient" = "xyes"; then
+if test "x$have_ykclient" = "xyes"; then
 
 $as_echo "#define HAVE_YKCLIENT 1" >>confdefs.h
 
-    else
+
+if echo "$fr_features" | grep -q "+ykclient+"; then :
+else :
+	fr_report_prefix=""
+	if test x"$fr_features" != x""; then
+		fr_report_prefix="                                 "
+	fi
+	$as_echo "$fr_report_prefix""with yubicloud support" >> config.report.tmp
+	fr_features="$fr_features +ykclient+"
+fi
+
+
+else
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without yubicloud support. requires: ykclient" >&5
 $as_echo "$as_me: WARNING: silently building without yubicloud support. requires: ykclient" >&2;}
-    fi
 
-    targetname=rlm_yubikey
+if echo "$fr_features" | grep -q "+ykclient+"; then :
+else :
+	fr_report_prefix=""
+	if test x"$fr_features" != x""; then
+		fr_report_prefix="                                 "
+	fi
+	$as_echo "$fr_report_prefix""without yubicloud support" >> config.report.tmp
+	fr_features="$fr_features +ykclient+"
+fi
+
+fi
+
+
+	targetname=rlm_yubikey
 else
-    targetname=
-    echo \*\*\* module rlm_yubikey is disabled.
+	targetname=
+	echo \*\*\* module rlm_yubikey is disabled.
+
+
+fr_status="disabled"
+
 fi
 
 if test x"$fail" != x""; then
-    if test x"${enable_strict_dependencies}" = x"yes"; then
-	as_fn_error $? "set --without-rlm_yubikey to disable it explicitly." "$LINENO" 5
-    else
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_yubikey." >&5
-$as_echo "$as_me: WARNING: silently not building rlm_yubikey." >&2;}
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_yubikey requires: $fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_yubikey requires: $fail." >&2;};
 	targetname=""
-    fi
+
+
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		as_fn_error $? "set --without-rlm_yubikey to disable it explicitly." "$LINENO" 5
+	else
+
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_yubikey." >&5
+$as_echo "$as_me: WARNING: silently not building rlm_yubikey." >&2;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_yubikey requires: $fail." >&5
+$as_echo "$as_me: WARNING: FAILURE: rlm_yubikey requires: $fail." >&2;};
+		fail="$(echo $fail)"
+
+
+fr_status="skipping (requires $fail)"
+
+		fr_features=
+
+	fi
+
+else
+
+
+fr_status="OK"
+
 fi
+
+if test x"$fr_features" = x""; then
+	$as_echo "$fr_status" > "config.report"
+else
+	$as_echo_n "$fr_status ... " > "config.report"
+	cat "config.report.tmp" >> "config.report"
+fi
+
+rm "config.report.tmp"
+
+
+
 
 mod_ldflags="$SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"
