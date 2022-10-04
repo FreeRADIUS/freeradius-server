@@ -1,5 +1,6 @@
-AC_PREREQ([2.68])
-AC_INIT(rlm_ippool.c)
+AC_PREREQ([2.69])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_ippool.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_ippool])
 
@@ -70,4 +71,5 @@ AC_SUBST(targetname)
 AC_SUBST(ippool_utils)
 AC_SUBST(ippool_install)
 AC_CONFIG_HEADER(config.h)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

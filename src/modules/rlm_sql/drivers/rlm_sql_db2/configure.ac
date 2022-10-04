@@ -1,5 +1,6 @@
-AC_PREREQ([2.59])
-AC_INIT(rlm_sql_db2.c)
+AC_PREREQ([2.69])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_sql_db2.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_sql_db2])
 
@@ -93,4 +94,5 @@ sql_ibmdb2_cflags="$SMART_CPPFLAGS"
 AC_SUBST(sql_ibmdb2_ldflags)
 AC_SUBST(sql_ibmdb2_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

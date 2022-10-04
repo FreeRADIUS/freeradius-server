@@ -1,5 +1,6 @@
-AC_PREREQ([2.68])
-AC_INIT(rlm_ldap.c)
+AC_PREREQ([2.69])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_ldap.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_ldap], [LDAP support])
 
@@ -102,11 +103,9 @@ if test x$with_[]modname != xno; then
 			ldap_url_desc2str
 		)
 		AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
-			AC_TRY_COMPILE([
+			AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 				#include <lber.h>
-				#include <ldap.h>], [ldap_set_rebind_proc(0, 0, 0);],
-				[ac_cv_ldap_set_rebind_proc=3],
-				[ac_cv_ldap_set_rebind_proc=2])
+				#include <ldap.h>]], [[ldap_set_rebind_proc(0, 0, 0);]])],[ac_cv_ldap_set_rebind_proc=3],[ac_cv_ldap_set_rebind_proc=2])
 		])
 	fi
 
@@ -154,4 +153,5 @@ AC_SUBST(mod_cflags)
 AC_SUBST(SASL)
 AC_SUBST(targetname)
 AC_CONFIG_HEADER(config.h)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

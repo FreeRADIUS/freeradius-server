@@ -1,5 +1,6 @@
-AC_PREREQ([2.68])
-AC_INIT(rlm_eap_ikev2.c)
+AC_PREREQ([2.69])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_eap_ikev2.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_eap_ikev2])
 
@@ -108,4 +109,5 @@ AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
-AC_OUTPUT(all.mk)  # keep this!  Don't change!
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT  # keep this!  Don't change!

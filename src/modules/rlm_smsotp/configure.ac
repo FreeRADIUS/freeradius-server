@@ -1,5 +1,6 @@
-AC_PREREQ([2.68])
-AC_INIT(rlm_smsotp.c)
+AC_PREREQ([2.69])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_smsotp.c])
 AC_REVISION($Revision: 0.1 $)
 FR_INIT_MODULE([rlm_smsotp])
 
@@ -37,4 +38,5 @@ AC_SUBST(mod_ldflags)
 AC_CONFIG_HEADER(config.h)
 
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

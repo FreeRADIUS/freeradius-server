@@ -1,5 +1,6 @@
-AC_PREREQ([2.68])
-AC_INIT(rlm_sql_mongo.c)
+AC_PREREQ([2.69])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_sql_mongo.c])
 AC_REVISION($Revision: 1.10 $)
 FR_INIT_MODULE([rlm_sql_mongo])
 
@@ -9,18 +10,14 @@ mongoc_cflags=
 
 if test x$with_[]modname != xno; then
 
-  AC_ARG_WITH(mongoc_lib_dir, [AC_HELP_STRING([--with-mongoc-lib-dir],
-              [Path of libmongoc libraries])],
+  AC_ARG_WITH(mongoc_lib_dir, [AS_HELP_STRING([--with-mongoc-lib-dir],[Path of libmongoc libraries])],
               [ mongoc_lib_dir="$withval" ], [ mongoc_lib_dir="" ])
-  AC_ARG_WITH(mongoc_include_dir, [AC_HELP_STRING([--with-mongoc-include-dir],
-              [Path of libmongoc includes])],
+  AC_ARG_WITH(mongoc_include_dir, [AS_HELP_STRING([--with-mongoc-include-dir],[Path of libmongoc includes])],
               [ mongoc_include_dir="$withval" ], [ mongoc_include_dir="" ])
 
-  AC_ARG_WITH(bson_lib_dir, [AC_HELP_STRING([--with-bson-lib-dir],
-              [Path of libbson libraries])],
+  AC_ARG_WITH(bson_lib_dir, [AS_HELP_STRING([--with-bson-lib-dir],[Path of libbson libraries])],
               [ bson_lib_dir="$withval" ], [ bson_lib_dir="" ])
-  AC_ARG_WITH(bson_include_dir, [AC_HELP_STRING([--with-bson-include-dir],
-              [Path of libbson includes])],
+  AC_ARG_WITH(bson_include_dir, [AS_HELP_STRING([--with-bson-include-dir],[Path of libbson includes])],
               [ bson_include_dir="$withval" ], [ bson_include_dir="" ])
 
   dnl ######################################################
@@ -123,4 +120,5 @@ fi
 AC_SUBST(mongoc_cflags)
 AC_SUBST(mongoc_ldflags)
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

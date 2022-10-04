@@ -1,5 +1,6 @@
-AC_PREREQ([2.68])
-AC_INIT(rlm_ruby.c)
+AC_PREREQ([2.69])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_ruby.c])
 AC_REVISION($Revision: 1.9 $)
 FR_INIT_MODULE([rlm_ruby], [support for embedded Ruby functions])
 
@@ -51,4 +52,5 @@ AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(ruby_headers)
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

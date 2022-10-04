@@ -1,5 +1,6 @@
-AC_PREREQ([2.68])
-AC_INIT(rlm_realm.c)
+AC_PREREQ([2.69])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_realm.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_realm])
 
@@ -45,4 +46,5 @@ AC_SUBST(mod_ldflags)
 AC_SUBST(trustrouter)
 
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

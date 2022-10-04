@@ -1,5 +1,6 @@
-AC_PREREQ([2.68])
-AC_INIT(rlm_eap_sim.c)
+AC_PREREQ([2.69])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_eap_sim.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_eap_sim])
 
@@ -34,4 +35,5 @@ fi
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

@@ -1,5 +1,6 @@
-AC_PREREQ([2.59])
-AC_INIT(rlm_sql_mysql.c)
+AC_PREREQ([2.69])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_sql_mysql.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_sql_mysql])
 AC_CONFIG_HEADER(config.h)
@@ -187,7 +188,7 @@ if test x$with_[]modname != xno; then
 		old_CFLAGS="$CFLAGS"
 		CFLAGS="$CFLAGS $mod_cflags"
 		AC_MSG_CHECKING([for mysql.h (using mysql_config --cflags)])
-		AC_TRY_COMPILE([#include <mysql.h>], [int a = 1;], have_mysql_h=yes)
+		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <mysql.h>]], [[int a = 1;]])],[have_mysql_h=yes],[])
 		if test "x$have_mysql_h" = "xyes"; then
 			AC_MSG_RESULT(yes)
 			AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
@@ -198,7 +199,7 @@ if test x$with_[]modname != xno; then
 			mod_cflags="$(mysql_config --include)"
 			CFLAGS="$old_CFLAGS $mod_cflags"
 			AC_MSG_CHECKING([for mysql.h (using mysql_config --include)])
-			AC_TRY_COMPILE([#include <mysql.h>], [int a = 1;], have_mysql_h=yes)
+			AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <mysql.h>]], [[int a = 1;]])],[have_mysql_h=yes],[])
 			if test "x$have_mysql_h" = "xyes"; then
 				AC_MSG_RESULT(yes)
 				AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
@@ -216,7 +217,7 @@ if test x$with_[]modname != xno; then
 		old_CFLAGS="$CFLAGS"
 		CFLAGS="$CFLAGS $mod_cflags"
 		AC_MSG_CHECKING([for mysql.h (using mariadb_config --cflags)])
-		AC_TRY_COMPILE([#include <mysql.h>], [int a = 1;], have_mysql_h=yes)
+		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <mysql.h>]], [[int a = 1;]])],[have_mysql_h=yes],[])
 		if test "x$have_mysql_h" = "xyes"; then
 			AC_MSG_RESULT(yes)
 			AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
@@ -227,7 +228,7 @@ if test x$with_[]modname != xno; then
 			mod_cflags="$(mariadb_config --include)"
 			CFLAGS="$old_CFLAGS $mod_cflags"
 			AC_MSG_CHECKING([for mysql.h (using mariadb_config --include)])
-			AC_TRY_COMPILE([#include <mysql.h>], [int a = 1;], have_mysql_h=yes)
+			AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <mysql.h>]], [[int a = 1;]])],[have_mysql_h=yes],[])
 			if test "x$have_mysql_h" = "xyes"; then
 				AC_MSG_RESULT(yes)
 				AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
@@ -272,4 +273,5 @@ mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

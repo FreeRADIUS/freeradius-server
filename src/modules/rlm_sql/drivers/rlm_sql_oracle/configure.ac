@@ -1,5 +1,6 @@
-AC_PREREQ([2.68])
-AC_INIT(rlm_sql_oracle.c)
+AC_PREREQ([2.69])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_sql_oracle.c])
 AC_REVISION($Revision: 1.10 $)
 FR_INIT_MODULE([rlm_sql_oracle])
 
@@ -103,7 +104,7 @@ if test x$with_[]modname != xno; then
 
 	    LIBS="$old_LIBS -L$path -Wl,-rpath,$path -lclntsh -lnnz${oracle_version}"
 
-	    AC_TRY_LINK([#include <oci.h>
+	    AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <oci.h>
 
 		static OCIEnv           *p_env;
 		static OCIError         *p_err;
@@ -111,8 +112,7 @@ if test x$with_[]modname != xno; then
 		static OCIStmt          *p_sql;
 		static OCIDefine        *p_dfn    = (OCIDefine *) 0;
 		static OCIBind          *p_bnd    = (OCIBind *) 0;
-		],
-		[
+		]], [[
 		int             p_bvi;
 		char            p_sli[20];
 		int             rc;
@@ -124,9 +124,7 @@ if test x$with_[]modname != xno; then
 				   (dvoid * (*)(dvoid *, dvoid *, size_t))0,
 				   (void (*)(dvoid *, dvoid *)) 0 );
 
-		],
-		[mod_ldflags="$LIBS"],
-	    )
+		]])],[mod_ldflags="$LIBS"],[])
 	    if test "x$mod_ldflags" != "x"; then
 		    AC_MSG_RESULT(yes)
 		    break
@@ -167,4 +165,5 @@ mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

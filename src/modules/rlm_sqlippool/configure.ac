@@ -1,5 +1,6 @@
-AC_PREREQ([2.59])
-AC_INIT(rlm_sqlippool.c)
+AC_PREREQ([2.69])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_sqlippool.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_sqlippool], [support for IP pools in SQL])
 
@@ -19,4 +20,5 @@ mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT
