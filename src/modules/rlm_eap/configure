@@ -1758,6 +1758,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_eap was given.
 if test "${with_rlm_eap+set}" = set; then :
   withval=$with_rlm_eap;
@@ -1777,7 +1778,7 @@ fr_features=
 
 
 
-if test x"$with_modname_useropt" != xno; then
+if test x"$with_rlm_eap" != xno; then
 
 
 ac_ext=c

@@ -1916,6 +1916,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_json was given.
 if test "${with_rlm_json+set}" = set; then :
   withval=$with_rlm_json;
@@ -1934,7 +1935,7 @@ fr_features=
 
 
 
-if test x"$with_modname_useropt" != xno; then
+if test x"$with_rlm_json" != xno; then
 
 
 ac_ext=c

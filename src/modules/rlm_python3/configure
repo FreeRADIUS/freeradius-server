@@ -1932,6 +1932,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 # Check whether --with-rlm_python3 was given.
 if test "${with_rlm_python3+set}" = set; then :
   withval=$with_rlm_python3;
@@ -1948,7 +1949,7 @@ fr_features=
 
 
 
-if test x"$with_modname_useropt" != xno; then
+if test x"$with_rlm_python3" != xno; then
 
 
 ac_ext=c
