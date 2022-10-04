@@ -31,6 +31,7 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <string.h>
+#include <stdarg.h>
 
 /** @name Add an error string to the thread local error stack
  *
@@ -40,14 +41,68 @@ extern "C" {
  *
  * @{
  */
-/** @hidecallergraph */
-void		fr_strerror_printf(char const *fmt, ...) CC_HINT(nonnull) CC_HINT(format (printf, 1, 2));
 
 /** @hidecallergraph */
-void		fr_strerror_printf_push(char const *fmt, ...) CC_HINT(nonnull) CC_HINT(format (printf, 1, 2));
+void		fr_strerror_vprintf(char const *fmt, va_list ap);
 
 /** @hidecallergraph */
-void		fr_strerror_printf_push_head(char const *fmt, ...) CC_HINT(nonnull) CC_HINT(format (printf, 1, 2));
+void		fr_strerror_vprintf_push(char const *fmt, va_list ap);
+
+/** @hidecallergraph */
+void		fr_strerror_vprintf_push_head(char const *fmt, va_list ap);
+
+/** Log to thread local error buffer
+ *
+ * @param[in] fmt	printf style format string.
+ *			If NULL clears any existing messages.
+ * @param[in] ...	Arguments for the format string.
+ *
+ * @hidecallergraph
+ */
+static inline CC_HINT(nonnull) CC_HINT(format (printf, 1, 2))
+void		fr_strerror_printf(char const *fmt, ...)
+{
+	va_list		ap;
+
+	va_start(ap, fmt);
+	fr_strerror_vprintf(fmt, ap);
+	va_end(ap);
+}
+
+/** Add a message to an existing stack of messages at the tail
+ *
+ * @param[in] fmt	printf style format string.
+ * @param[in] ...	Arguments for the format string.
+ *
+ * @hidecallergraph
+ */
+
+static inline CC_HINT(nonnull) CC_HINT(format (printf, 1, 2))
+void		fr_strerror_printf_push(char const *fmt, ...)
+{
+	va_list		ap;
+
+	va_start(ap, fmt);
+	fr_strerror_vprintf_push(fmt, ap);
+	va_end(ap);
+}
+
+/** Add a message to an existing stack of messages at the head
+ *
+ * @param[in] fmt	printf style format string.
+ * @param[in] ...	Arguments for the format string.
+ *
+ * @hidecallergraph
+ */
+static inline CC_HINT(nonnull) CC_HINT(format (printf, 1, 2))
+void 		fr_strerror_printf_push_head(char const *fmt, ...)
+{
+	va_list		ap;
+
+	va_start(ap, fmt);
+	fr_strerror_vprintf_push_head(fmt, ap);
+	va_end(ap);
+}
 /** @} */
 
 /** @name Add an error string with marker to the thread local error stack
@@ -59,13 +114,73 @@ void		fr_strerror_printf_push_head(char const *fmt, ...) CC_HINT(nonnull) CC_HIN
  * @{
  */
 /** @hidecallergraph */
-void		fr_strerror_marker_printf(char const *subject, size_t offset, char const *fmt, ...) CC_HINT(nonnull) CC_HINT(format (printf, 3, 4));
+void		fr_strerror_marker_vprintf(char const *subject, size_t offset, char const *fmt, va_list ap);
 
 /** @hidecallergraph */
-void		fr_strerror_marker_printf_push(char const *subject, size_t offset, char const *fmt, ...) CC_HINT(nonnull) CC_HINT(format (printf, 3, 4));
+void		fr_strerror_marker_vprintf_push(char const *subject, size_t offset, char const *fmt, va_list ap);
 
 /** @hidecallergraph */
-void		fr_strerror_marker_printf_push_head(char const *subject, size_t offset, char const *fmt, ...) CC_HINT(nonnull) CC_HINT(format (printf, 3, 4));
+void		fr_strerror_marker_vprintf_push_head(char const *subject, size_t offset, char const *fmt, va_list ap);
+
+/** Add an error marker to an existing stack of messages
+ *
+ * @param[in] subject	to mark up.
+ * @param[in] offset	Positive offset to show where the error
+ *			should be positioned.
+ * @param[in] fmt	Error string.
+ * @param[in] ...	Arguments for the error string.
+ *
+ * @hidecallergraph
+ */
+static inline CC_HINT(nonnull) CC_HINT(format (printf, 3, 4))
+void		fr_strerror_marker_printf(char const *subject, size_t offset, char const *fmt, ...)
+{
+	va_list		ap;
+
+	va_start(ap, fmt);
+	fr_strerror_marker_vprintf(subject, offset, fmt, ap);
+	va_end(ap);
+}
+
+/** Add an error marker to an existing stack of messages at the tail
+ *
+ * @param[in] subject	to mark up.
+ * @param[in] offset	Positive offset to show where the error
+ *			should be positioned.
+ * @param[in] fmt	Error string.
+ * @param[in] ...	Arguments for the error string.
+ *
+ * @hidecallergraph
+ */
+static inline CC_HINT(nonnull) CC_HINT(format (printf, 3, 4))
+void		fr_strerror_marker_printf_push(char const *subject, size_t offset, char const *fmt, ...)
+{
+	va_list		ap;
+
+	va_start(ap, fmt);
+	fr_strerror_marker_vprintf_push(subject, offset, fmt, ap);
+	va_end(ap);
+}
+
+/** Add an error marker to an existing stack of messages at the head
+ *
+ * @param[in] subject	to mark up.
+ * @param[in] offset	Positive offset to show where the error
+ *			should be positioned.
+ * @param[in] fmt	Error string.
+ * @param[in] ...	Arguments for the error string.
+ *
+ * @hidecallergraph
+ */
+static inline CC_HINT(nonnull) CC_HINT(format (printf, 3, 4))
+void		fr_strerror_marker_printf_push_head(char const *subject, size_t offset, char const *fmt, ...)
+{
+	va_list		ap;
+
+	va_start(ap, fmt);
+	fr_strerror_marker_vprintf_push_head(subject, offset, fmt, ap);
+	va_end(ap);
+}
 /** @} */
 
 /** @name Add a const error string to the thread local error stack

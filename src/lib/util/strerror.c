@@ -225,39 +225,38 @@ static fr_log_entry_t *strerror_vprintf_push(fr_log_buffer_t *buffer, char const
  *
  * @param[in] fmt	printf style format string.
  *			If NULL clears any existing messages.
- * @param[in] ...	Arguments for the format string.
+ * @param[in] ap	Arguments for the format string.
  *
  * @hidecallergraph
  */
-void fr_strerror_printf(char const *fmt, ...)
+void fr_strerror_vprintf(char const *fmt, va_list ap)
 {
-	va_list		ap;
+	va_list		our_ap;
 
-	va_start(ap, fmt);
-	strerror_vprintf(fmt, ap);
-	va_end(ap);
+	va_copy(our_ap, ap);
+	strerror_vprintf(fmt, our_ap);
+	va_end(our_ap);
 }
 
 /** Add a message to an existing stack of messages at the tail
  *
  * @param[in] fmt	printf style format string.
- *			If NULL clears any existing messages.
- * @param[in] ...	Arguments for the format string.
+ * @param[in] ap	Arguments for the format string.
  *
  * @hidecallergraph
  */
-void fr_strerror_printf_push(char const *fmt, ...)
+void fr_strerror_vprintf_push(char const *fmt, va_list ap)
 {
-	va_list			ap;
+	va_list			our_ap;
 	fr_log_buffer_t		*buffer;
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_init();
 	if (unlikely(!buffer)) return;
 
-	va_start(ap, fmt);
-	entry = strerror_vprintf_push(buffer, fmt, ap);
-	va_end(ap);
+	va_copy(our_ap, ap);
+	entry = strerror_vprintf_push(buffer, fmt, our_ap);
+	va_end(our_ap);
 
 	if (unlikely(!entry)) return;
 
@@ -267,23 +266,22 @@ void fr_strerror_printf_push(char const *fmt, ...)
 /** Add a message to an existing stack of messages at the head
  *
  * @param[in] fmt	printf style format string.
- *			If NULL clears any existing messages.
- * @param[in] ...	Arguments for the format string.
+ * @param[in] ap	Arguments for the format string.
  *
  * @hidecallergraph
  */
-void fr_strerror_printf_push_head(char const *fmt, ...)
+void fr_strerror_vprintf_push_head(char const *fmt, va_list ap)
 {
-	va_list			ap;
+	va_list			our_ap;
 	fr_log_buffer_t		*buffer;
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_init();
 	if (unlikely(!buffer)) return;
 
-	va_start(ap, fmt);
-	entry = strerror_vprintf_push(buffer, fmt, ap);
-	va_end(ap);
+	va_copy(our_ap, ap);
+	entry = strerror_vprintf_push(buffer, fmt, our_ap);
+	va_end(our_ap);
 
 	if (unlikely(!entry)) return;
 
@@ -296,18 +294,18 @@ void fr_strerror_printf_push_head(char const *fmt, ...)
  * @param[in] offset	Positive offset to show where the error
  *			should be positioned.
  * @param[in] fmt	Error string.
- * @param[in] ...	Arguments for the error string.
+ * @param[in] ap	Arguments for the error string.
  *
  * @hidecallergraph
  */
-void fr_strerror_marker_printf(char const *subject, size_t offset, char const *fmt, ...)
+void fr_strerror_marker_vprintf(char const *subject, size_t offset, char const *fmt, va_list ap)
 {
-	va_list		ap;
+	va_list		our_ap;
 	fr_log_entry_t	*entry;
 
-	va_start(ap, fmt);
-	entry = strerror_vprintf(fmt, ap);
-	va_end(ap);
+	va_copy(our_ap, ap);
+	entry = strerror_vprintf(fmt, our_ap);
+	va_end(our_ap);
 
 	if (unlikely(!entry)) return;
 
@@ -321,22 +319,22 @@ void fr_strerror_marker_printf(char const *subject, size_t offset, char const *f
  * @param[in] offset	Positive offset to show where the error
  *			should be positioned.
  * @param[in] fmt	Error string.
- * @param[in] ...	Arguments for the error string.
+ * @param[in] ap	Arguments for the error string.
  *
  * @hidecallergraph
  */
-void fr_strerror_marker_printf_push(char const *subject, size_t offset, char const *fmt, ...)
+void fr_strerror_marker_vprintf_push(char const *subject, size_t offset, char const *fmt, va_list ap)
 {
-	va_list			ap;
+	va_list			our_ap;
 	fr_log_entry_t		*entry;
 	fr_log_buffer_t		*buffer;
 
 	buffer = fr_strerror_init();
 	if (unlikely(!buffer)) return;
 
-	va_start(ap, fmt);
-	entry = strerror_vprintf_push(buffer, fmt, ap);
-	va_end(ap);
+	va_copy(our_ap, ap);
+	entry = strerror_vprintf_push(buffer, fmt, our_ap);
+	va_end(our_ap);
 
 	if (unlikely(!entry)) return;
 
@@ -352,22 +350,22 @@ void fr_strerror_marker_printf_push(char const *subject, size_t offset, char con
  * @param[in] offset	Positive offset to show where the error
  *			should be positioned.
  * @param[in] fmt	Error string.
- * @param[in] ...	Arguments for the error string.
+ * @param[in] ap	Arguments for the error string.
  *
  * @hidecallergraph
  */
-void fr_strerror_marker_printf_push_head(char const *subject, size_t offset, char const *fmt, ...)
+void fr_strerror_marker_vprintf_push_head(char const *subject, size_t offset, char const *fmt, va_list ap)
 {
-	va_list			ap;
+	va_list			our_ap;
 	fr_log_entry_t		*entry;
 	fr_log_buffer_t		*buffer;
 
 	buffer = fr_strerror_init();
 	if (unlikely(!buffer)) return;
 
-	va_start(ap, fmt);
-	entry = strerror_vprintf_push(buffer, fmt, ap);
-	va_end(ap);
+	va_copy(our_ap, ap);
+	entry = strerror_vprintf_push(buffer, fmt, our_ap);
+	va_end(our_ap);
 
 	if (unlikely(!entry)) return;
 
