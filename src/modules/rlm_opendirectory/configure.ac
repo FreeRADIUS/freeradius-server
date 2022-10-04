@@ -1,45 +1,32 @@
+AC_PREREQ([2.69])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_opendirectory.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_opendirectory], [OpenDirectory support])
 
-if test x$with_[]modname != xno; then
+FR_MODULE_START_TESTS
 
-	AC_PROG_CC
-	AC_PROG_CPP
+AC_PROG_CC
+AC_PROG_CPP
 
-	mod_ldflags="${mod_ldflags} -F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks -framework DirectoryService"
-	
-	FR_SMART_CHECK_INCLUDE(membership.h)
-	if test "$ac_cv_header_membership_h" != "yes"; then
-	  fail="$fail membership.h"
-	else
-	  AC_CHECK_DECLS(mbr_check_service_membership,
-			 [mod_cflags="${mod_cflags} -DHAVE_DECL_MBR_CHECK_SERVICE_MEMBERSHIP"],
-			 [],[#include <membership.h>])
-	  AC_CHECK_DECLS(mbr_check_membership_refresh,
-			 [mod_cflags="${mod_cflags} -DHAVE_DECL_MBR_CHECK_MEMBERSHIP_REFRESH"],
-			 [],[#include <membership.h>])
-	fi
-	targetname=modname
+mod_ldflags="${mod_ldflags} -F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks -framework DirectoryService"
+
+FR_SMART_CHECK_INCLUDE(membership.h)
+if test "$ac_cv_header_membership_h" != "yes"; then
+	FR_MODULE_FAIL([membership.h])
 else
-	targetname=
-	echo \*\*\* module modname is disabled.
+	AC_CHECK_DECLS(mbr_check_service_membership,
+		[mod_cflags="${mod_cflags} -DHAVE_DECL_MBR_CHECK_SERVICE_MEMBERSHIP"],
+		[],[#include <membership.h>])
+	AC_CHECK_DECLS(mbr_check_membership_refresh,
+		[mod_cflags="${mod_cflags} -DHAVE_DECL_MBR_CHECK_MEMBERSHIP_REFRESH"],
+		[],[#include <membership.h>])
 fi
 
-if test x"$fail" != x""; then
-	if test x"${enable_strict_dependencies}" = x"yes"; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
-		targetname=""
-	fi
-fi
+FR_MODULE_END_TESTS
 
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
-AC_SUBST(targetname)
+
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT
-

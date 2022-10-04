@@ -4,66 +4,53 @@ AC_CONFIG_SRCDIR([rlm_unbound.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_unbound])
 
-if test x$with_[]modname != xno; then
-	dnl extra argument: --with-rlm-unbound-lib-dir
-	rlm_unbound_lib_dir=
-	AC_ARG_WITH(rlm-unbound-lib-dir,
-	[  --with-rlm-unbound-lib-dir=DIR       directory for libunbound library files []],
-	[ case "$withval" in
-	    no)
+FR_MODULE_START_TESTS
+
+dnl extra argument: --with-rlm-unbound-lib-dir
+rlm_unbound_lib_dir=
+AC_ARG_WITH(rlm-unbound-lib-dir,
+	[AS_HELP_STRING([--with-rlm-unbound-lib-dir=DIR],
+		[directory for libunbound library files])],
+	[case "$withval" in
+	no)
 		AC_MSG_ERROR(Need rlm-unbound-lib-dir)
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		rlm_unbound_lib_dir="$withval"
 		;;
-	  esac ]
-	)
+	esac])
 
-	dnl extra argument: --with-rlm-unbound-include-dir
-	rlm_unbound_include_dir=
-	AC_ARG_WITH(rlm-unbound-include-dir,
-	[  --with-rlm-unbound-include-dir=DIR   directory for libunbound include files []],
-	[ case "$withval" in
-	    no)
+dnl extra argument: --with-rlm-unbound-include-dir
+rlm_unbound_include_dir=
+AC_ARG_WITH(rlm-unbound-include-dir,
+	[AS_HELP_STRING([--with-rlm-unbound-include-dir=DIR],
+		[directory for libunbound include files])],
+	[case "$withval" in
+	no)
 		AC_MSG_ERROR(Need rlm-unbound-include-dir)
 		;;
-	    yes)
+	yes)
 		;;
-	    *)
+	*)
 		rlm_unbound_include_dir="$withval"
 		;;
-	  esac ]
-	)
+	esac])
 
-	smart_try_dir=$rlm_unbound_lib_dir
-	FR_SMART_CHECK_LIB(unbound, ub_ctx_create)
-	if test "x$ac_cv_lib_unbound_ub_ctx_create" != "xyes"; then
-		fail="$fail libunbound"
-	fi
-
-	smart_try_dir=$rlm_unbound_include_dir
-	FR_SMART_CHECK_INCLUDE(unbound.h)
-	if test "$ac_cv_header_unbound_h" != "yes"; then
-		fail="$fail unbound.h"
-	fi
-
-	targetname=modname
-else
-	targetname=
-	echo \*\*\* module modname is disabled.
+smart_try_dir=$rlm_unbound_lib_dir
+FR_SMART_CHECK_LIB(unbound, ub_ctx_create)
+if test "x$ac_cv_lib_unbound_ub_ctx_create" != "xyes"; then
+	FR_MODULE_FAIL([libunbound])
 fi
 
-if test x"$fail" != x""; then
-	if test x"${enable_strict_dependencies}" = x"yes"; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
-		targetname=""
-	fi
+smart_try_dir=$rlm_unbound_include_dir
+FR_SMART_CHECK_INCLUDE(unbound.h)
+if test "$ac_cv_header_unbound_h" != "yes"; then
+	FR_MODULE_FAIL([unbound.h])
 fi
+
+FR_MODULE_END_TESTS
 
 mod_ldflags="${SMART_LIBS}"
 mod_cflags="${SMART_CFLAGS}"
@@ -71,8 +58,6 @@ mod_cflags="${SMART_CFLAGS}"
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
 
-AC_CONFIG_HEADER(config.h)
-
-AC_SUBST(targetname)
+AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

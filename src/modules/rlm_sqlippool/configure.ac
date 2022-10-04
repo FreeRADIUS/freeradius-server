@@ -4,21 +4,18 @@ AC_CONFIG_SRCDIR([rlm_sqlippool.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_sqlippool], [support for IP pools in SQL])
 
-if test x$with_[]modname != xno; then
+FR_MODULE_START_TESTS
 
-	dnl  This module doesn't need any autoconf test which is not already
-	dnl  in top-level configure.
+dnl  This module doesn't need any autoconf test which is not already
+dnl  in top-level configure.
 
-	targetname=modname
-else
-	targetname=
-	echo \*\*\* module modname is disabled.
-fi
+FR_MODULE_END_TESTS([nostrict])
 
 mod_ldflags="$SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"
+
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
-AC_SUBST(targetname)
+
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

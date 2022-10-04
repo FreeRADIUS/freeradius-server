@@ -4,56 +4,28 @@ AC_CONFIG_SRCDIR([rlm_eap.c])
 AC_REVISION($Revision$)
 FR_INIT_MODULE([rlm_eap])
 
-fail=
 SMART_LIBS=
 SMART_CLFAGS=
 
-if test x$with_[]modname != xno; then
+FR_MODULE_START_TESTS
 
-	AC_PROG_CC
+AC_PROG_CC
 
-	eapsubdirs=
-	for foo in `find ./types -name configure -print`; do
-	  bar=`echo $foo | sed 's%/configure$%%g'`
-	  eapsubdirs="$eapsubdirs $bar"
-	done
+eapsubdirs=
+for foo in `find ./types -name configure -print`; do
+	bar=`echo $foo | sed 's%/configure$%%g'`
+	eapsubdirs="$eapsubdirs $bar"
+done
 
-	dnl # don't ask... this is done to avoid autoconf stupidities.
-	ln -s ../../../install-sh install-sh
+dnl # don't ask... this is done to avoid autoconf stupidities.
+ln -s ../../../install-sh install-sh
 
-	dnl #
-	dnl #  Don't change the variable name here.  Autoconf goes bonkers
-	dnl #  if you do.
-	dnl #
-	AC_CONFIG_SUBDIRS($eapsubdirs)
-	rm install-sh
+AC_CONFIG_SUBDIRS($eapsubdirs)
+rm install-sh
 
-	dnl #
-	dnl # Don't bother looking for errors in the child directories
-	dnl #
+FR_MODULE_END_TESTS
 
-	targetname=modname
-else
-	targetname=
-	echo \*\*\* module modname is disabled.
-fi
-
-if test x"$fail" != x""; then
-	if test x"${enable_strict_dependencies}" = x"yes"; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.])
-		if test x"$headersuggestion" != x; then
-			AC_MSG_WARN([$headersuggestion])
-		fi
-		if test x"$libsuggestion" != x; then
-			AC_MSG_WARN([$libsuggestion])
-		fi
-		targetname=""
-	    eapsubdirs=""
-	fi
-fi
+FR_MODULE_TEST_FAIL_DO([eapsubdirs=""])
 
 eaptypes=types
 if test x"$eapsubdirs" = x""; then
@@ -63,8 +35,8 @@ fi
 mod_ldflags="$SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"
 
-AC_SUBST(eaptypes)
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
-AC_SUBST(targetname)
+AC_SUBST(eaptypes)
+
 AC_OUTPUT

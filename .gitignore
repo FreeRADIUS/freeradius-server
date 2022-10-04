@@ -60,6 +60,7 @@ libtool
 autom4te.cache
 aclocal.m4
 config.guess
+config.report
 config.sub
 config.h
 src/main/radattr
