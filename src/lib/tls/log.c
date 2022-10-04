@@ -235,10 +235,9 @@ DIAG_OFF(format-nonliteral)
  *
  * @param[in] msg	Error message describing the operation being attempted.
  * @param[in] ap	Arguments for msg.
- * @parma[in] debug	If true, line numbers for errors will also be printed.
  * @return the number of errors drained from the stack.
  */
-static int tls_strerror_vasprintf(char const *msg, va_list ap, bool debug)
+static int tls_strerror_vasprintf(char const *msg, va_list ap)
 {
 	unsigned long	error;
 	char		*p = NULL;
@@ -267,13 +266,7 @@ static int tls_strerror_vasprintf(char const *msg, va_list ap, bool debug)
 		p = talloc_vasprintf(NULL, msg, ap);
 		if (error) {
 			ERR_error_string_n(error, buffer, sizeof(buffer));
-
-			if (debug) {
-				fr_strerror_printf("%s: %s[%i]:%s%c%s",
-						   p, file, line, buffer, data ? ':' : '\0', data ? data : "");
-			} else {
-				fr_strerror_printf("%s: %s%c%s", p, buffer, data ? ':' : '\0', data ? data : "");
-			}
+			_fr_strerror_printf(file, line, "%s: %s%c%s", p, buffer, data ? ':' : '\0', data ? data : "");
 			talloc_free(p);
 			drained++;
 		/*
@@ -286,12 +279,7 @@ static int tls_strerror_vasprintf(char const *msg, va_list ap, bool debug)
 		}
 	} else if (error) {
 		ERR_error_string_n(error, buffer, sizeof(buffer));
-
-		if (debug) {
-			fr_strerror_printf("%s[%i]:%s%c%s", file, line, buffer, data ? ':' : '\0', data ? data : "");
-		} else {
-			fr_strerror_printf("%s%c%s", buffer, data ? ':' : '\0', data ? data : "");
-		}
+		_fr_strerror_printf(file, line, "%s%c%s", buffer, data ? ':' : '\0', data ? data : "");
 		drained++;
 	} else {
 		return 0;
@@ -302,12 +290,7 @@ static int tls_strerror_vasprintf(char const *msg, va_list ap, bool debug)
 
 		ERR_error_string_n(error, buffer, sizeof(buffer));
 
-		if (debug) {
-			fr_strerror_printf_push("%s[%i]:%s%c%s",
-						file, line, buffer, data ? ':' : '\0', data ? data : "");
-		} else {
-			fr_strerror_printf_push("%s%c%s", buffer, data ? ':' : '\0', data ? data : "");
-		}
+		_fr_strerror_printf_push(file, line, "%s%c%s", buffer, data ? ':' : '\0', data ? data : "");
 		drained++;
 	}
 
@@ -408,7 +391,7 @@ int fr_tls_log_io_error(request_t *request, int err, char const *fmt, ...)
 	 */
 	case SSL_ERROR_SSL:
 		va_start(ap, fmt);
-		(void)tls_strerror_vasprintf(fmt, ap, RDEBUG_ENABLED3);
+		(void)tls_strerror_vasprintf(fmt, ap);
 		va_end(ap);
 
 		ROPTIONAL(RPERROR, PERROR, "");
@@ -450,7 +433,7 @@ int fr_tls_log_strerror_printf(char const *msg, ...)
 	int ret;
 
 	va_start(ap, msg);
-	ret = tls_strerror_vasprintf(msg, ap, false);
+	ret = tls_strerror_vasprintf(msg, ap);
 	va_end(ap);
 
 	return ret;
@@ -471,7 +454,7 @@ int fr_tls_log_error(request_t *request, char const *msg, ...)
 	int ret;
 
 	va_start(ap, msg);
-	ret = tls_strerror_vasprintf(msg, ap, RDEBUG_ENABLED3);
+	ret = tls_strerror_vasprintf(msg, ap);
 	va_end(ap);
 
 	ROPTIONAL(RPERROR, PERROR, "");
