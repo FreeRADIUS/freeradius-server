@@ -97,7 +97,7 @@ extern size_t log_destination_table_len;
 
 #define debug_enabled(_type, _lvl) (((_type & L_DBG) != 0) && (_lvl <= fr_debug_lvl))
 
-bool	log_rdebug_enabled(fr_log_lvl_t lvl, request_t const *request);
+bool	log_rdebug_enabled(fr_log_lvl_t lvl, request_t const *request) CC_HINT(nonnull);
 
 void	vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		     char const *file, int line,

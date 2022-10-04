@@ -233,7 +233,7 @@ void log_always(fr_log_t const *log, fr_log_type_t type,
  */
 inline bool log_rdebug_enabled(fr_log_lvl_t lvl, request_t const *request)
 {
-	if (!request || !request->log.dst) return false;
+	if (!request->log.dst) return false;
 
 	if (lvl <= request->log.lvl) return true;
 
