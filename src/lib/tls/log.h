@@ -56,9 +56,9 @@ void		_fr_tls_log_x509_objects(char const *file, int line,
 int		fr_tls_log_io_error(request_t *request, int err, char const *msg, ...)
 				    CC_HINT(format (printf, 3, 4));
 
-int		fr_tls_log_error(request_t *request, char const *msg, ...) CC_HINT(format (printf, 2, 3));
-
 int		fr_tls_log_strerror_printf(char const *msg, ...) CC_HINT(format (printf, 1, 2));
+
+int		fr_tls_log_error(request_t *request, char const *msg, ...)  CC_HINT(format (printf, 2, 3));
 
 void		tls_log_clear(void);
 

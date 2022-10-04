@@ -226,24 +226,23 @@ void _fr_tls_log_x509_objects(char const *file, int line,
 		}
 	}
 }
-DIAG_ON(used-but-marked-unused)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 DIAG_OFF(format-nonliteral)
 /** Print errors in the TLS thread local error stack
  *
- * Drains the thread local OpenSSL error queue, and prints out errors.
+ * Drains the thread local OpenSSL error queue, and prints out the first error
+ * storing it in libfreeradius's error buffer.
  *
- * @param[in] request	The current request (may be NULL).
  * @param[in] msg	Error message describing the operation being attempted.
  * @param[in] ap	Arguments for msg.
+ * @parma[in] debug	If true, line numbers for errors will also be printed.
  * @return the number of errors drained from the stack.
  */
-static int fr_tls_log_error_va(request_t *request, char const *msg, va_list ap)
+static int tls_strerror_vasprintf(char const *msg, va_list ap, bool debug)
 {
 	unsigned long	error;
-	char		*p;
-	int		in_stack = 0;
+	char		*p = NULL;
+	int		drained = 0;
 	char		buffer[256];
 
 	int		line;
@@ -261,56 +260,58 @@ static int fr_tls_log_error_va(request_t *request, char const *msg, va_list ap)
 	if (!(flags & ERR_TXT_STRING)) data = NULL;
 
 	if (msg) {
-		p = talloc_vasprintf(request, msg, ap);
-
 		/*
-		 *	Single line mode (there's only one error)
+		 *	Print the error we were passed, and
+		 *	OpenSSL's error.
 		 */
-		if (error && !ERR_peek_error()) {
+		p = talloc_vasprintf(NULL, msg, ap);
+		if (error) {
 			ERR_error_string_n(error, buffer, sizeof(buffer));
 
-			/* Extra verbose */
-			if ((request && RDEBUG_ENABLED3) || DEBUG_ENABLED3) {
-				ROPTIONAL(REDEBUG, ERROR, "%s: %s[%i]:%s%c%s", p, file, line, buffer,
-					  data ? ':' : '\0', data ? data : "");
+			if (debug) {
+				fr_strerror_printf("%s: %s[%i]:%s%c%s",
+						   p, file, line, buffer, data ? ':' : '\0', data ? data : "");
 			} else {
-				ROPTIONAL(REDEBUG, ERROR, "%s: %s%c%s", p, buffer,
-					  data ? ':' : '\0', data ? data : "");
+				fr_strerror_printf("%s: %s%c%s", p, buffer, data ? ':' : '\0', data ? data : "");
 			}
-
 			talloc_free(p);
-
-			return 1;
-		}
-
+			drained++;
 		/*
 		 *	Print the error we were given, irrespective
 		 *	of whether there were any OpenSSL errors.
 		 */
-		ROPTIONAL(RERROR, ERROR, "%s", p);
-		talloc_free(p);
+		} else {
+			fr_strerror_printf("%s", p);
+			talloc_free(p);
+		}
+	} else if (error) {
+		ERR_error_string_n(error, buffer, sizeof(buffer));
+
+		if (debug) {
+			fr_strerror_printf("%s[%i]:%s%c%s", file, line, buffer, data ? ':' : '\0', data ? data : "");
+		} else {
+			fr_strerror_printf("%s%c%s", buffer, data ? ':' : '\0', data ? data : "");
+		}
+		drained++;
+	} else {
+		return 0;
 	}
 
-	/*
-	 *	Stack mode (there are multiple errors)
-	 */
-	if (!error) return 0;
-	do {
+	while ((error = ERR_get_error_all(&file, &line, &func, &data, &flags))) {
 		if (!(flags & ERR_TXT_STRING)) data = NULL;
 
 		ERR_error_string_n(error, buffer, sizeof(buffer));
-		/* Extra verbose */
-		if ((request && RDEBUG_ENABLED3) || DEBUG_ENABLED3) {
-			ROPTIONAL(REDEBUG, ERROR, "%s[%i]:%s%c%s", file, line, buffer,
-				  data ? ':' : '\0', data ? data : "");
-		} else {
-			ROPTIONAL(REDEBUG, ERROR, "%s%c%s", buffer,
-				  data ? ':' : '\0', data ? data : "");
-		}
-		in_stack++;
-	} while ((error = ERR_get_error_all(&file, &line, &func, &data, &flags)));
 
-	return in_stack;
+		if (debug) {
+			fr_strerror_printf_push("%s[%i]:%s%c%s",
+						file, line, buffer, data ? ':' : '\0', data ? data : "");
+		} else {
+			fr_strerror_printf_push("%s%c%s", buffer, data ? ':' : '\0', data ? data : "");
+		}
+		drained++;
+	}
+
+	return drained;
 }
 DIAG_ON(format-nonliteral)
 
@@ -407,8 +408,10 @@ int fr_tls_log_io_error(request_t *request, int err, char const *fmt, ...)
 	 */
 	case SSL_ERROR_SSL:
 		va_start(ap, fmt);
-		fr_tls_log_error_va(request, fmt, ap);
+		(void)tls_strerror_vasprintf(fmt, ap, RDEBUG_ENABLED3);
 		va_end(ap);
+
+		ROPTIONAL(RPERROR, PERROR, "");
 		return -1;
 
 	/*
@@ -433,6 +436,26 @@ int fr_tls_log_io_error(request_t *request, int err, char const *fmt, ...)
 	return 0;
 }
 
+/** Wrapper around fr_strerror_printf to log error messages for library functions calling libssl
+ *
+ * @note Will only drain the first error.
+ *
+ * @param[in] msg	Error message describing the operation being attempted.
+ * @param[in] ...	Arguments for msg.
+ * @return the number of errors drained from the stack.
+ */
+int fr_tls_log_strerror_printf(char const *msg, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, msg);
+	ret = tls_strerror_vasprintf(msg, ap, false);
+	va_end(ap);
+
+	return ret;
+}
+
 /** Print errors in the TLS thread local error stack
  *
  * Drains the thread local OpenSSL error queue, and prints out errors.
@@ -448,98 +471,10 @@ int fr_tls_log_error(request_t *request, char const *msg, ...)
 	int ret;
 
 	va_start(ap, msg);
-	ret = fr_tls_log_error_va(request, msg, ap);
+	ret = tls_strerror_vasprintf(msg, ap, RDEBUG_ENABLED3);
 	va_end(ap);
 
-	return ret;
-}
-
-DIAG_OFF(format-nonliteral)
-/** Print errors in the TLS thread local error stack
- *
- * Drains the thread local OpenSSL error queue, and prints out the first error
- * storing it in libfreeradius's error buffer.
- *
- * @param[in] msg	Error message describing the operation being attempted.
- * @param[in] ap	Arguments for msg.
- * @return the number of errors drained from the stack.
- */
-static int tls_strerror_vasprintf(char const *msg, va_list ap)
-{
-	unsigned long	error;
-	char		*p = NULL;
-	int		drained = 0;
-	char		buffer[256];
-
-	int		line;
-	char const	*file;
-	char const	*func;
-	char const	*data;
-	int		flags = 0;
-
-	/*
-	 *	Pop the first error, so ERR_peek_error()
-	 *	can be used to determine if there are
-	 *	multiple errors.
-	 */
-	error = ERR_get_error_all(&file, &line, &func, &data, &flags);
-	if (!(flags & ERR_TXT_STRING)) data = NULL;
-
-	if (msg) {
-		/*
-		 *	Print the error we were passed, and
-		 *	OpenSSL's error.
-		 */
-		p = talloc_vasprintf(NULL, msg, ap);
-		if (error) {
-			ERR_error_string_n(error, buffer, sizeof(buffer));
-			fr_strerror_printf("%s: %s%c%s", p, buffer, data ? ':' : '\0', data ? data : "");
-			talloc_free(p);
-			drained++;
-		/*
-		 *	Print the error we were given, irrespective
-		 *	of whether there were any OpenSSL errors.
-		 */
-		} else {
-			fr_strerror_printf("%s", p);
-			talloc_free(p);
-		}
-	} else if (error) {
-		ERR_error_string_n(error, buffer, sizeof(buffer));
-		fr_strerror_printf("%s%c%s", buffer, data ? ':' : '\0', data ? data : "");
-		drained++;
-	} else {
-		return 0;
-	}
-
-	while ((error = ERR_get_error_all(&file, &line, &func, &data, &flags))) {
-		if (!(flags & ERR_TXT_STRING)) data = NULL;
-
-		ERR_error_string_n(error, buffer, sizeof(buffer));
-		fr_strerror_printf_push("%s%c%s", buffer, data ? ':' : '\0', data ? data : "");
-		drained++;
-	}
-
-	return drained;
-}
-DIAG_ON(format-nonliteral)
-
-/** Wrapper around fr_strerror_printf to log error messages for library functions calling libssl
- *
- * @note Will only drain the first error.
- *
- * @param[in] msg	Error message describing the operation being attempted.
- * @param[in] ...	Arguments for msg.
- * @return the number of errors drained from the stack.
- */
-int fr_tls_log_strerror_printf(char const *msg, ...)
-{
-	va_list ap;
-	int ret;
-
-	va_start(ap, msg);
-	ret = tls_strerror_vasprintf(msg, ap);
-	va_end(ap);
+	ROPTIONAL(RPERROR, PERROR, "");
 
 	return ret;
 }
