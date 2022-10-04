@@ -45,7 +45,7 @@ typedef int(*fr_atexit_t)(void *uctx);
 
 int fr_atexit_global_setup(void);
 
-int _atexit_global(NDEBUG_LOCATION_ARGS fr_atexit_t func, void const *uctx);
+int _atexit_global(char const *file, int line, fr_atexit_t func, void const *uctx);
 
 /** Add a free function to the global free list
  *
@@ -123,7 +123,7 @@ do { \
 	_name = _our_uctx; \
 } while (0);
 
-int		_fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
+int		_fr_atexit_thread_local(char const *file, int line,
 					fr_atexit_t func, void const *uctx);
 
 unsigned int	fr_atexit_thread_local_disarm(bool uctx_scope, fr_atexit_t func, void const *uctx);

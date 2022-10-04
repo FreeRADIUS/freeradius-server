@@ -52,10 +52,8 @@ typedef struct {
 	fr_atexit_t			func;		//!< Function to call.
 	void				*uctx;		//!< uctx to pass.
 
-#ifndef NDEBUG
 	char const			*file;		//!< File where this exit handler was added.
 	int				line;		//!< Line where this exit handler was added.
-#endif
 } fr_atexit_entry_t;
 
 /** Head of a list of exit handlers
@@ -100,7 +98,7 @@ static int _atexit_entry_free(fr_atexit_entry_t *e)
 /** Allocate a new exit handler entry
  *
  */
-static fr_atexit_entry_t *atexit_entry_alloc(NDEBUG_LOCATION_ARGS
+static fr_atexit_entry_t *atexit_entry_alloc(char const *file, int line,
 					     fr_atexit_list_t *list,
 					     fr_atexit_t func, void const *uctx)
 {
@@ -112,11 +110,8 @@ static fr_atexit_entry_t *atexit_entry_alloc(NDEBUG_LOCATION_ARGS
 	e->list = list;
 	e->func = func;
 	e->uctx = UNCONST(void *, uctx);
-
-#ifndef NDEBUG
 	e->file = file;
 	e->line = line;
-#endif
 
 	ATEXIT_DEBUG("%s - Thread %u arming %p/%p func=%p, uctx=%p (alloced %s:%u)",
 		     __FUNCTION__, (unsigned int)pthread_self(),
@@ -211,12 +206,11 @@ do { \
 /** Add a free function to be called when the process exits
  *
  */
-int _atexit_global(NDEBUG_LOCATION_ARGS
-		  fr_atexit_t func, void const *uctx)
+int _atexit_global(char const *file, int line, fr_atexit_t func, void const *uctx)
 {
 	CHECK_GLOBAL_SETUP();
 
-	if (unlikely(atexit_entry_alloc(NDEBUG_LOCATION_VALS fr_atexit_global, func, uctx) == NULL)) return -1;
+	if (unlikely(atexit_entry_alloc(file, line, fr_atexit_global, func, uctx) == NULL)) return -1;
 
 	return 0;
 }
@@ -308,16 +302,10 @@ int fr_atexit_global_trigger_all(void)
 		e = fr_dlist_remove(&fr_atexit_global->head, e);
 		if (talloc_free(to_free) < 0) {
 			fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
-#ifndef NDEBUG
-						" (alloced %s:%u)"
-#endif
-						,
+						" (alloced %s:%u)",
 						fr_atexit_global, to_free,
-						to_free->func, to_free->uctx
-#ifndef NDEBUG
-						, to_free->file, to_free->line
-#endif
-						);
+						to_free->func, to_free->uctx,
+						to_free->file, to_free->line);
 			return -1;
 		}
 	}
@@ -365,16 +353,10 @@ int fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx)
 		e = fr_dlist_remove(&fr_atexit_global->head, e);
 		if (talloc_free(to_free) < 0) {
 			fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
-#ifndef NDEBUG
-						" (alloced %s:%u)"
-#endif
-						,
+						" (alloced %s:%u)",
 						fr_atexit_global, to_free,
-						to_free->func, to_free->uctx
-#ifndef NDEBUG
-						, to_free->file, to_free->line
-#endif
-						);
+						to_free->func, to_free->uctx,
+						to_free->file, to_free->line);
 			return -1;
 		}
 	}
@@ -407,16 +389,10 @@ do_threads:
 			ee = fr_dlist_remove(&list->head, ee);
 			if (talloc_free(to_free) < 0) {
 				fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
-#ifndef NDEBUG
-							" (alloced %s:%u)"
-#endif
-							,
+							" (alloced %s:%u)",
 							list, to_free,
-							to_free->func, to_free->uctx
-#ifndef NDEBUG
-							, to_free->file, to_free->line
-#endif
-							);
+							to_free->func, to_free->uctx,
+							to_free->file, to_free->line);
 				return -1;
 			}
 		}
@@ -474,7 +450,7 @@ static int _thread_local_free(void *list)
  *	- 0 on success.
  *      - -1 on memory allocation failure;
  */
-int _fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
+int _fr_atexit_thread_local(char const *file, int line,
 			    fr_atexit_t func, void const *uctx)
 {
 	CHECK_GLOBAL_SETUP();
@@ -518,7 +494,7 @@ int _fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
 		 *	*always* freed one way or another.
 		 */
 		pthread_mutex_lock(&fr_atexit_global_mutex);
-		list->e = atexit_entry_alloc(NDEBUG_LOCATION_VALS
+		list->e = atexit_entry_alloc(file, line,
 					     fr_atexit_threads,
 					     _thread_local_free,
 					     list);
@@ -531,7 +507,7 @@ int _fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
 	/*
 	 *	Now allocate the actual atexit handler entry
 	 */
-	if (atexit_entry_alloc(NDEBUG_LOCATION_VALS fr_atexit_thread_local, func, uctx) == NULL) return -1;
+	if (atexit_entry_alloc(file, line, fr_atexit_thread_local, func, uctx) == NULL) return -1;
 
 	return 0;
 }
@@ -634,15 +610,10 @@ int fr_atexit_thread_trigger_all(void)
 			ee = fr_dlist_remove(&list->head, ee);
 			if (talloc_free(to_free) < 0) {
 				fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
-#ifndef NDEBUG
-							" (alloced %s:%u)"
-#endif
-							,
+							" (alloced %s:%u)",
 							list, to_free,
-							to_free->func, to_free->uctx
-#ifndef NDEBUG
-							, to_free->file, to_free->line
-#endif
+							to_free->func, to_free->uctx,
+							to_free->file, to_free->line
 							);
 				return -1;
 			}

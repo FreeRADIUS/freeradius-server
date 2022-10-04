@@ -38,6 +38,9 @@ struct fr_log_entry_s {
 
 	char const	*subject;	//!< Subject for error markers.
 	size_t		offset;		//!< Where to place the msg marker relative to the subject.
+
+	char const	*file;		//!< File where the error was created.
+	int		line;		//!< Line where the error occurred.
 };
 
 /** Holds data used by the logging stack
@@ -143,7 +146,7 @@ static inline CC_HINT(always_inline) void pool_alt_free_children(fr_log_buffer_t
  *
  * @hidecallergraph
  */
-static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
+static fr_log_entry_t *strerror_vprintf(char const *file, int line, char const *fmt, va_list ap)
 {
 	va_list		ap_p;
 	fr_log_entry_t	*entry;
@@ -173,6 +176,8 @@ static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
 	if (unlikely(!entry->msg)) goto oom;
 	entry->subject = NULL;
 	entry->offset = 0;
+	entry->file = file;
+	entry->line = line;
 
 	pool_alt_free_children(buffer);
 	fr_dlist_clear(&buffer->entries);
@@ -183,6 +188,8 @@ static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
 
 /** Add a message to an existing stack of messages
  *
+ * @param[in] file	the error occurred in.
+ * @parma[in] line	the error occurred on.
  * @param[in] fmt	printf style format string.
  * @param[in] ap	Arguments for the error string.
  *
@@ -190,7 +197,8 @@ static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
  *
  * @hidecallergraph
  */
-static fr_log_entry_t *strerror_vprintf_push(fr_log_buffer_t *buffer, char const *fmt, va_list ap)
+static fr_log_entry_t *strerror_vprintf_push(char const *file, int line,
+					     fr_log_buffer_t *buffer, char const *fmt, va_list ap)
 {
 	va_list		ap_p;
 	fr_log_entry_t	*entry;
@@ -217,35 +225,41 @@ static fr_log_entry_t *strerror_vprintf_push(fr_log_buffer_t *buffer, char const
 	if (unlikely(!entry->msg)) goto oom;
 	entry->subject = NULL;
 	entry->offset = 0;
+	entry->file = file;
+	entry->line = line;
 
 	return entry;
 }
 
 /** Log to thread local error buffer
  *
+ * @param[in] file	the error occurred in.
+ * @parma[in] line	the error occurred on.
  * @param[in] fmt	printf style format string.
  *			If NULL clears any existing messages.
  * @param[in] ap	Arguments for the format string.
  *
  * @hidecallergraph
  */
-void fr_strerror_vprintf(char const *fmt, va_list ap)
+void _fr_strerror_vprintf(char const *file, int line, char const *fmt, va_list ap)
 {
 	va_list		our_ap;
 
 	va_copy(our_ap, ap);
-	strerror_vprintf(fmt, our_ap);
+	strerror_vprintf(file, line, fmt, our_ap);
 	va_end(our_ap);
 }
 
 /** Add a message to an existing stack of messages at the tail
  *
+ * @param[in] file	the error occurred in.
+ * @parma[in] line	the error occurred on.
  * @param[in] fmt	printf style format string.
  * @param[in] ap	Arguments for the format string.
  *
  * @hidecallergraph
  */
-void fr_strerror_vprintf_push(char const *fmt, va_list ap)
+void _fr_strerror_vprintf_push(char const *file, int line, char const *fmt, va_list ap)
 {
 	va_list			our_ap;
 	fr_log_buffer_t		*buffer;
@@ -255,7 +269,7 @@ void fr_strerror_vprintf_push(char const *fmt, va_list ap)
 	if (unlikely(!buffer)) return;
 
 	va_copy(our_ap, ap);
-	entry = strerror_vprintf_push(buffer, fmt, our_ap);
+	entry = strerror_vprintf_push(file, line, buffer, fmt, our_ap);
 	va_end(our_ap);
 
 	if (unlikely(!entry)) return;
@@ -265,12 +279,14 @@ void fr_strerror_vprintf_push(char const *fmt, va_list ap)
 
 /** Add a message to an existing stack of messages at the head
  *
+ * @param[in] file	the error occurred in.
+ * @parma[in] line	the error occurred on.
  * @param[in] fmt	printf style format string.
  * @param[in] ap	Arguments for the format string.
  *
  * @hidecallergraph
  */
-void fr_strerror_vprintf_push_head(char const *fmt, va_list ap)
+void _fr_strerror_vprintf_push_head(char const *file, int line, char const *fmt, va_list ap)
 {
 	va_list			our_ap;
 	fr_log_buffer_t		*buffer;
@@ -280,7 +296,7 @@ void fr_strerror_vprintf_push_head(char const *fmt, va_list ap)
 	if (unlikely(!buffer)) return;
 
 	va_copy(our_ap, ap);
-	entry = strerror_vprintf_push(buffer, fmt, our_ap);
+	entry = strerror_vprintf_push(file, line, buffer, fmt, our_ap);
 	va_end(our_ap);
 
 	if (unlikely(!entry)) return;
@@ -290,6 +306,8 @@ void fr_strerror_vprintf_push_head(char const *fmt, va_list ap)
 
 /** Add an error marker to an existing stack of messages
  *
+ * @param[in] file	the error occurred in.
+ * @parma[in] line	the error occurred on.
  * @param[in] subject	to mark up.
  * @param[in] offset	Positive offset to show where the error
  *			should be positioned.
@@ -298,13 +316,14 @@ void fr_strerror_vprintf_push_head(char const *fmt, va_list ap)
  *
  * @hidecallergraph
  */
-void fr_strerror_marker_vprintf(char const *subject, size_t offset, char const *fmt, va_list ap)
+void _fr_strerror_marker_vprintf(char const *file, int line,
+				 char const *subject, size_t offset, char const *fmt, va_list ap)
 {
 	va_list		our_ap;
 	fr_log_entry_t	*entry;
 
 	va_copy(our_ap, ap);
-	entry = strerror_vprintf(fmt, our_ap);
+	entry = strerror_vprintf(file, line, fmt, our_ap);
 	va_end(our_ap);
 
 	if (unlikely(!entry)) return;
@@ -315,6 +334,8 @@ void fr_strerror_marker_vprintf(char const *subject, size_t offset, char const *
 
 /** Add an error marker to an existing stack of messages at the tail
  *
+ * @param[in] file	the error occurred in.
+ * @parma[in] line	the error occurred on.
  * @param[in] subject	to mark up.
  * @param[in] offset	Positive offset to show where the error
  *			should be positioned.
@@ -323,7 +344,8 @@ void fr_strerror_marker_vprintf(char const *subject, size_t offset, char const *
  *
  * @hidecallergraph
  */
-void fr_strerror_marker_vprintf_push(char const *subject, size_t offset, char const *fmt, va_list ap)
+void _fr_strerror_marker_vprintf_push(char const *file, int line,
+				      char const *subject, size_t offset, char const *fmt, va_list ap)
 {
 	va_list			our_ap;
 	fr_log_entry_t		*entry;
@@ -333,7 +355,7 @@ void fr_strerror_marker_vprintf_push(char const *subject, size_t offset, char co
 	if (unlikely(!buffer)) return;
 
 	va_copy(our_ap, ap);
-	entry = strerror_vprintf_push(buffer, fmt, our_ap);
+	entry = strerror_vprintf_push(file, line, buffer, fmt, our_ap);
 	va_end(our_ap);
 
 	if (unlikely(!entry)) return;
@@ -346,6 +368,8 @@ void fr_strerror_marker_vprintf_push(char const *subject, size_t offset, char co
 
 /** Add an error marker to an existing stack of messages at the head
  *
+ * @param[in] file	the error occurred in.
+ * @parma[in] line	the error occurred on.
  * @param[in] subject	to mark up.
  * @param[in] offset	Positive offset to show where the error
  *			should be positioned.
@@ -354,7 +378,8 @@ void fr_strerror_marker_vprintf_push(char const *subject, size_t offset, char co
  *
  * @hidecallergraph
  */
-void fr_strerror_marker_vprintf_push_head(char const *subject, size_t offset, char const *fmt, va_list ap)
+void _fr_strerror_marker_vprintf_push_head(char const *file, int line,
+					   char const *subject, size_t offset, char const *fmt, va_list ap)
 {
 	va_list			our_ap;
 	fr_log_entry_t		*entry;
@@ -364,7 +389,7 @@ void fr_strerror_marker_vprintf_push_head(char const *subject, size_t offset, ch
 	if (unlikely(!buffer)) return;
 
 	va_copy(our_ap, ap);
-	entry = strerror_vprintf_push(buffer, fmt, our_ap);
+	entry = strerror_vprintf_push(file, line, buffer, fmt, our_ap);
 	va_end(our_ap);
 
 	if (unlikely(!entry)) return;
@@ -379,7 +404,7 @@ void fr_strerror_marker_vprintf_push_head(char const *subject, size_t offset, ch
  *
  * @hidecallergraph
  */
-static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const(char const *msg)
+static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const(char const *file, int line, char const *msg)
 {
 	fr_log_entry_t	*entry;
 	fr_log_buffer_t	*buffer;
@@ -400,6 +425,8 @@ static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const(char const *
 	 *	assignments result in the same byte
 	 *	code.
 	 */
+	entry->file = file;
+	entry->line = line;
 	entry->msg = msg;
 	entry->subject = NULL;
 	entry->offset = 0;
@@ -413,23 +440,29 @@ static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const(char const *
 
 /** Log to thread local error buffer
  *
+ * @param[in] file	the error occurred in.
+ * @parma[in] line	the error occurred on.
  * @param[in] msg	To add to error stack. Must have a
  *			lifetime equal to that of the program.
  * @hidecallergraph
  */
-void fr_strerror_const(char const *msg)
+void _fr_strerror_const(char const *file, int line, char const *msg)
 {
-	(void)strerror_const(msg);
+	(void)strerror_const(file, line, msg);
 }
 
 /** Add a message to an existing stack of messages
  *
+ * @param[in] file	the error occurred in.
+ * @parma[in] line	the error occurred on.
+ * @param[in] buffer	to add the message to.
  * @param[in] msg	To add to error stack. Must have a
  *			lifetime equal to that of the program.
  *
  * @hidecallergraph
  */
-static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const_push(fr_log_buffer_t *buffer, char const *msg)
+static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const_push(char const *file, int line,
+									 fr_log_buffer_t *buffer, char const *msg)
 {
 	fr_log_entry_t	*entry;
 
@@ -456,18 +489,22 @@ static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const_push(fr_log_
 	entry->msg = msg;
 	entry->subject = NULL;
 	entry->offset = 0;
+	entry->file = file;
+	entry->line = line;
 
 	return entry;
 }
 
 /** Add a message to an existing stack of messages at the tail
  *
+ * @param[in] file	the error occurred in.
+ * @parma[in] line	the error occurred on.
  * @param[in] msg	To add to error stack. Must have a
  *			lifetime equal to that of the program.
  *
  * @hidecallergraph
  */
-void fr_strerror_const_push(char const *msg)
+void _fr_strerror_const_push(char const *file, int line, char const *msg)
 {
 	fr_log_buffer_t		*buffer;
 	fr_log_entry_t		*entry;
@@ -475,7 +512,7 @@ void fr_strerror_const_push(char const *msg)
 	buffer = fr_strerror_init();
 	if (!buffer) return;
 
-	entry = strerror_const_push(buffer, msg);
+	entry = strerror_const_push(file, line, buffer, msg);
 	if (unlikely(!entry)) return;
 
 	fr_dlist_insert_tail(&buffer->entries, entry);
@@ -483,12 +520,14 @@ void fr_strerror_const_push(char const *msg)
 
 /** Add a message to an existing stack of messages at the head
  *
+ * @param[in] file	the error occurred in.
+ * @parma[in] line	the error occurred on.
  * @param[in] msg	To add to error stack. Must have a
  *			lifetime equal to that of the program.
  *
  * @hidecallergraph
  */
-void fr_strerror_const_push_head(char const *msg)
+void _fr_strerror_const_push_head(char const *file, int line, char const *msg)
 {
 	fr_log_buffer_t		*buffer;
 	fr_log_entry_t		*entry;
@@ -496,7 +535,7 @@ void fr_strerror_const_push_head(char const *msg)
 	buffer = fr_strerror_init();
 	if (!buffer) return;
 
-	entry = strerror_const_push(buffer, msg);
+	entry = strerror_const_push(file, line, buffer, msg);
 	if (unlikely(!entry)) return;
 
 	fr_dlist_insert_head(&buffer->entries, entry);
