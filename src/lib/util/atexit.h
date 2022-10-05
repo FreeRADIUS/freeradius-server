@@ -55,7 +55,7 @@ int _atexit_global(char const *file, int line, fr_atexit_t func, void const *uct
  *	- 0 on success.
  *      - -1 on failure.
  */
-#define fr_atexit_global(_func, _uctx) _atexit_global(NDEBUG_LOCATION_EXP _func, _uctx)
+#define fr_atexit_global(_func, _uctx) _atexit_global(__FILE__, __LINE__, _func, _uctx)
 
 unsigned int	fr_atexit_global_disarm(bool uctx_scope, fr_atexit_t func, void const *uctx);
 
@@ -119,7 +119,7 @@ bool		fr_atexit_is_exiting(void);
 #  define fr_atexit_thread_local(_name, _free, _uctx) \
 do { \
 	void *_our_uctx = _uctx; /* stop _uctx being evaluated multiple times, it may be a call to malloc() */ \
-	_fr_atexit_thread_local(NDEBUG_LOCATION_EXP _free, _our_uctx); \
+	_fr_atexit_thread_local(__FILE__, __LINE__, _free, _our_uctx); \
 	_name = _our_uctx; \
 } while (0);
 
