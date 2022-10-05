@@ -89,7 +89,7 @@ static fr_log_buffer_t *fr_strerror_init(void)
 {
 	fr_log_buffer_t *buffer;
 
-	if (logging_stop) return NULL;	/* No more logging */
+	if (unlikely(logging_stop)) return NULL;	/* No more logging */
 
 	buffer = fr_strerror_buffer;
 	if (!buffer) {
@@ -153,7 +153,7 @@ static fr_log_entry_t *strerror_vprintf(char const *file, int line, char const *
 	fr_log_buffer_t	*buffer;
 
 	buffer = fr_strerror_init();
-	if (!buffer) return NULL;
+	if (unlikely(buffer == NULL)) return NULL;
 
 	/*
 	 *	Clear any existing log messages
@@ -266,7 +266,7 @@ void _fr_strerror_vprintf_push(char const *file, int line, char const *fmt, va_l
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_init();
-	if (unlikely(!buffer)) return;
+	if (unlikely(buffer == NULL)) return;
 
 	va_copy(our_ap, ap);
 	entry = strerror_vprintf_push(file, line, buffer, fmt, our_ap);
@@ -293,7 +293,7 @@ void _fr_strerror_vprintf_push_head(char const *file, int line, char const *fmt,
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_init();
-	if (unlikely(!buffer)) return;
+	if (unlikely(buffer == NULL)) return;
 
 	va_copy(our_ap, ap);
 	entry = strerror_vprintf_push(file, line, buffer, fmt, our_ap);
@@ -352,7 +352,7 @@ void _fr_strerror_marker_vprintf_push(char const *file, int line,
 	fr_log_buffer_t		*buffer;
 
 	buffer = fr_strerror_init();
-	if (unlikely(!buffer)) return;
+	if (unlikely(buffer == NULL)) return;
 
 	va_copy(our_ap, ap);
 	entry = strerror_vprintf_push(file, line, buffer, fmt, our_ap);
@@ -386,7 +386,7 @@ void _fr_strerror_marker_vprintf_push_head(char const *file, int line,
 	fr_log_buffer_t		*buffer;
 
 	buffer = fr_strerror_init();
-	if (unlikely(!buffer)) return;
+	if (unlikely(buffer == NULL)) return;
 
 	va_copy(our_ap, ap);
 	entry = strerror_vprintf_push(file, line, buffer, fmt, our_ap);
@@ -410,7 +410,7 @@ static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const(char const *
 	fr_log_buffer_t	*buffer;
 
 	buffer = fr_strerror_init();
-	if (unlikely(!buffer)) return NULL;
+	if (unlikely(buffer == NULL)) return NULL;
 
 	entry = talloc(pool_alt(buffer), fr_log_entry_t);
 	if (unlikely(!entry)) {
@@ -510,7 +510,7 @@ void _fr_strerror_const_push(char const *file, int line, char const *msg)
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_init();
-	if (!buffer) return;
+	if (unlikely(buffer == NULL)) return;
 
 	entry = strerror_const_push(file, line, buffer, msg);
 	if (unlikely(!entry)) return;
@@ -533,7 +533,7 @@ void _fr_strerror_const_push_head(char const *file, int line, char const *msg)
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_init();
-	if (!buffer) return;
+	if (unlikely(buffer == NULL)) return;
 
 	entry = strerror_const_push(file, line, buffer, msg);
 	if (unlikely(!entry)) return;
@@ -556,7 +556,7 @@ char const *fr_strerror(void)
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_buffer;
-	if (!buffer) return "";
+	if (unlikely(buffer == NULL)) return "";
 
 	entry = fr_dlist_tail(&buffer->entries);
 	if (!entry) return "";
@@ -577,7 +577,7 @@ void fr_strerror_clear(void)
 {
 	fr_log_buffer_t		*buffer = fr_strerror_buffer;
 
-	if (unlikely(!buffer)) return;
+	if (unlikely(buffer == NULL)) return;
 
 	fr_dlist_clear(&buffer->entries);
 	talloc_free_children(buffer->pool_a);
@@ -600,7 +600,7 @@ char const *fr_strerror_marker(char const **subject, size_t *offset)
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_buffer;
-	if (!buffer) return "";
+	if (unlikely(buffer == NULL)) return "";
 
 	entry = fr_dlist_head(&buffer->entries);
 	if (!entry) return "";
@@ -629,7 +629,7 @@ char const *fr_strerror_peek(void)
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_buffer;
-	if (!buffer) return "";
+	if (unlikely(buffer == NULL)) return "";
 
 	entry = fr_dlist_tail(&buffer->entries);
 	if (!entry) return "";
@@ -653,7 +653,7 @@ char const *fr_strerror_marker_peek(char const **subject, size_t *offset)
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_buffer;
-	if (!buffer) return "";
+	if (unlikely(buffer == NULL)) return "";
 
 	entry = fr_dlist_head(&buffer->entries);
 	if (!entry) return "";
@@ -683,7 +683,7 @@ char const *fr_strerror_pop(void)
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_buffer;
-	if (!buffer) return NULL;
+	if (unlikely(buffer == NULL)) return NULL;
 
 	entry = fr_dlist_head(&buffer->entries);
 	if (!entry) return NULL;
@@ -710,7 +710,7 @@ char const *fr_strerror_marker_pop(char const **subject, size_t *offset)
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_buffer;
-	if (!buffer) return NULL;
+	if (unlikely(buffer == NULL)) return NULL;
 
 	entry = fr_dlist_head(&buffer->entries);
 	if (!entry) return NULL;
@@ -734,28 +734,34 @@ void fr_perror(char const *fmt, ...)
 	char const	*error;
 	char const	*subject;
 	size_t		offset;
-	char		*prefix;
+	char		*prefix = NULL;
 	va_list		ap;
 
-	va_start(ap, fmt);
-	prefix = talloc_vasprintf(NULL, fmt, ap);
-	va_end(ap);
-
 	error = fr_strerror_marker_pop(&subject, &offset);
-	if (error) {
-		fprintf(stderr, "%s: %s\n", prefix, error);
-	} else {
-		fprintf(stderr, "%s\n", prefix);
+	if (fmt) {
+		va_start(ap, fmt);
+		prefix = talloc_vasprintf(NULL, fmt, ap);
+		va_end(ap);
+
+		if (error) {
+			fprintf(stderr, "%s: %s\n", prefix, error);
+		} else {
+			fprintf(stderr, "%s\n", prefix);
+			talloc_free(prefix);
+			return;
+		}
 		talloc_free(prefix);
-		return;
+	} else {
+		if (!error) return;
+		fprintf(stderr, "%s\n", prefix);
 	}
 
 	while ((error = fr_strerror_marker_pop(&subject, &offset))) {
 		if (error && (error[0] != '\0')) {
-			fprintf(stderr, "%s: %s\n", prefix, error);
+			fprintf(stderr, "%s\n", error);
 		}
 	}
-	talloc_free(prefix);
+
 }
 
 /** Print the stack of string buffers to a thread local buffer

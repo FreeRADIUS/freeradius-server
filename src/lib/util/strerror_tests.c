@@ -43,6 +43,18 @@ static void strerror_pop_uninit(void)
 	TEST_CHECK(error == NULL);
 }
 
+static void strerror_perror_null(void)
+{
+	/*
+	 *	Just a smoke test, can't check output
+	 */
+	fr_perror(NULL);
+	fr_perror("Foo");
+
+	fr_strerror_const("Test");
+	fr_perror("Bar");
+}
+
 static void strerror_printf(void)
 {
 	char const *error;
@@ -228,6 +240,7 @@ static void strerror_const_benchmark(void)
 TEST_LIST = {
 	{ "strerror_uninit",			strerror_uninit },
 	{ "strerror_pop_uninit",		strerror_pop_uninit },
+	{ "strerror_perror_null",		strerror_perror_null },
 
 	{ "strerror_printf",			strerror_printf },
 	{ "strerror_printf_push_pop", 		strerror_printf_push_pop },
