@@ -41,6 +41,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "base.h"
 #include "cache.h"
 #include "log.h"
+#include "strerror.h"
 #include "verify.h"
 
 #include <openssl/ssl.h>

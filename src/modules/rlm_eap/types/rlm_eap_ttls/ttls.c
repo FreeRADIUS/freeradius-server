@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/eap/chbind.h>
 #include <freeradius-devel/tls/log.h>
+#include <freeradius-devel/tls/strerror.h>
 #include "eap_ttls.h"
 
 #define FR_DIAMETER_AVP_FLAG_VENDOR	0x80

@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/password.h>
-#include <freeradius-devel/tls/log.h>
+#include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/radius/defs.h>
 

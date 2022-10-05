@@ -15,6 +15,7 @@ SOURCES	:= \
 	log.c \
 	pairs.c \
 	session.c \
+	strerror.c \
 	utils.c \
 	verify.c \
 	version.c \

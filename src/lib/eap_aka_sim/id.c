@@ -20,7 +20,7 @@
  *
  * @copyright 2017 The FreeRADIUS server project
  */
-#include <freeradius-devel/tls/log.h>
+#include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/rand.h>
 #include <openssl/evp.h>

@@ -39,7 +39,7 @@ RCSID("$Id$")
 #include <freeradius-devel/sim/common.h>
 #include <freeradius-devel/sim/milenage.h>
 #include <freeradius-devel/tls/base.h>
-#include <freeradius-devel/tls/log.h>
+#include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
