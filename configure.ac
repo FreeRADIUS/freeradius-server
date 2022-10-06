@@ -25,8 +25,10 @@ AC_PREREQ([2.69])
 export CFLAGS LIBS LDFLAGS CPPFLAGS
 
 AC_INIT([freeradius],[$Id$],[http://bugs.freeradius.org],[],[http://www.freeradius.org])
+AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([src/bin/radiusd.c])
-AC_CONFIG_HEADER([src/include/autoconf.h])
+AC_CONFIG_HEADERS([src/include/autoconf.h])
+
 
 dnl #############################################################
 dnl #
@@ -210,7 +212,7 @@ dnl #############################################################
 dnl #
 dnl #  Get system information
 dnl #
-dnl #  AC_CANONICAL_SYSTEM is obsolete, AC_CANONICAL_TARGET figures
+dnl #  AC_CANONICAL_TARGET is obsolete, AC_CANONICAL_TARGET figures
 dnl #  out build and host as well.
 dnl #
 AC_CANONICAL_TARGET
@@ -309,7 +311,6 @@ dnl #
 AC_USE_SYSTEM_EXTENSIONS
 
 AC_PROG_GCC_TRADITIONAL
-AC_PROG_CC_SUNPRO
 AC_PROG_RANLIB
 
 if test "x$BUILD_RANLIB" = "x"; then
@@ -1008,8 +1009,6 @@ dnl #
 dnl #############################################################
 
 AC_HEADER_DIRENT
-AC_HEADER_STDC
-AC_HEADER_TIME
 AC_HEADER_SYS_WAIT
 
 AC_CHECK_HEADERS( \
@@ -1660,6 +1659,8 @@ AC_CHECK_TYPE(uint128_t, AC_DEFINE(HAVE_UINT128_T, 1, [128 bit unsigned integer]
     #endif
   ]
 )
+
+AX_COMPILE_CHECK_SIZEOF(time_t)
 
 AC_CHECK_TYPE(struct in6_addr, AC_DEFINE(HAVE_STRUCT_IN6_ADDR, 1, [IPv6 address structure]), [],
   [
