@@ -303,8 +303,9 @@ static void eap_peap_inner_to_pairs(TALLOC_CTX *ctx, fr_pair_list_t *pairs,
  */
 static int eap_peap_inner_from_pairs(request_t *request, fr_tls_session_t *tls_session, fr_pair_list_t *vps)
 {
-	fr_assert(!fr_pair_list_empty(vps));
 	fr_pair_t *this;
+
+	fr_assert(!fr_pair_list_empty(vps));
 
 	/*
 	 *	Send the EAP data in the first attribute, WITHOUT the

@@ -2454,10 +2454,9 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						fr_value_box_t const *src)
 {
-	fr_assert(dst_type == FR_TYPE_IPV6_ADDR);
-
 	static_assert((sizeof(v4_v6_map) + sizeof(src->vb_ip.addr.v4)) <=
 		      sizeof(src->vb_ip.addr.v6), "IPv6 storage too small");
+	fr_assert(dst_type == FR_TYPE_IPV6_ADDR);
 
 	switch (src->type) {
 	case FR_TYPE_STRING:
@@ -5430,20 +5429,22 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_
 
 		default:
 		cast:
-			if (!tmp_ctx) tmp_ctx = talloc_pool(NULL, 1024);
-			fr_value_box_t tmp_vb;
+			{
+				fr_value_box_t tmp_vb;
 
-			/*
-			 *	Not equivalent to fr_value_box_to_network
-			 */
-			if (fr_value_box_cast_to_octets(tmp_ctx, &tmp_vb, FR_TYPE_OCTETS, NULL, vb) < 0) {
-				slen = -1;
-				goto error;
+				if (!tmp_ctx) tmp_ctx = talloc_pool(NULL, 1024);
+				/*
+				 *	Not equivalent to fr_value_box_to_network
+				 */
+				if (fr_value_box_cast_to_octets(tmp_ctx, &tmp_vb, FR_TYPE_OCTETS, NULL, vb) < 0) {
+					slen = -1;
+					goto error;
+				}
+
+				slen = fr_dbuff_in_memcpy(&our_dbuff, tmp_vb.vb_octets, tmp_vb.vb_length);
+				fr_value_box_clear_value(&tmp_vb);
+				break;
 			}
-
-	 		slen = fr_dbuff_in_memcpy(&our_dbuff, tmp_vb.vb_octets, tmp_vb.vb_length);
-	 		fr_value_box_clear_value(&tmp_vb);
-	 		break;
 		}
 
 		if (slen < 0) {

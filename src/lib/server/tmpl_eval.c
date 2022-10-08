@@ -899,10 +899,9 @@ int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, tm
 	fr_pair_t		*vp;
 	fr_dcursor_t		from;
 	tmpl_dcursor_ctx_t	cc;
+	int err;
 
 	TMPL_VERIFY(vpt);
-
-	int err;
 
 	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
@@ -944,10 +943,9 @@ int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 	fr_pair_t		*vp;
 	fr_dcursor_t		from;
 	tmpl_dcursor_ctx_t	cc;
+	int err;
 
 	TMPL_VERIFY(vpt);
-
-	int err;
 
 	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 

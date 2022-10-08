@@ -297,8 +297,9 @@ static int split_alternation(char **input, char **output)
 
 	if ((*str == '[') || (*str == '(')) {
 		char end;
-		quote = *(str++);
 		int count = 0;
+
+		quote = *(str++);
 
 		if (quote == '[') {
 			end = ']';
@@ -469,8 +470,9 @@ static int split(char **input, char **output, bool syntax_string)
 
 	} else if (syntax_string && ((*str == '[') || (*str == '('))) {
 		char end;
-		quote = *(str++);
 		int count = 0;
+
+		quote = *(str++);
 
 		if (quote == '[') {
 			end = ']';

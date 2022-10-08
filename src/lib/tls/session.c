@@ -1772,10 +1772,9 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 		EVP_MD_CTX	*md_ctx;
 		uint8_t		digest[SHA256_DIGEST_LENGTH];
 
-		fr_assert(conf->cache.id_name);
-
 		static_assert(sizeof(digest) <= SSL_MAX_SSL_SESSION_ID_LENGTH,
 			      "SSL_MAX_SSL_SESSION_ID_LENGTH must be >= SHA256_DIGEST_LENGTH");
+		fr_assert(conf->cache.id_name);
 
 		if (tmpl_aexpand(tls_session, &context_id, request, conf->cache.id_name, NULL, NULL) < 0) {
 			RPEDEBUG("Failed expanding session ID");

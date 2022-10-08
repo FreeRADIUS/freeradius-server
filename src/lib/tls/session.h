@@ -196,11 +196,13 @@ static inline CC_HINT(nonnull) void _fr_tls_session_request_bind(char const *fil
 	RDEBUG3("%s[%u] - Binding SSL * (%p) to request (%p)", file, line, ssl, request);
 
 #ifndef NDEBUG
-	request_t *old;
-	old = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
-	if (old) {
-		(void)talloc_get_type_abort(ssl, request_t);
-		fr_assert(0);
+	{
+		request_t *old;
+		old = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+		if (old) {
+			(void)talloc_get_type_abort(ssl, request_t);
+			fr_assert(0);
+		}
 	}
 #endif
 	ret = SSL_set_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST, request);

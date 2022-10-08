@@ -2360,13 +2360,14 @@ int main(int argc, char *argv[])
 		{
 			pcap_if_t *all_devices = NULL;
 			pcap_if_t *dev_p;
+			int i;
 
 			if (pcap_findalldevs(&all_devices, errbuf) < 0) {
 				ERROR("Error getting available capture devices: %s", errbuf);
 				goto finish;
 			}
 
-			int i = 1;
+			i = 1;
 			for (dev_p = all_devices;
 			     dev_p;
 			     dev_p = dev_p->next) {

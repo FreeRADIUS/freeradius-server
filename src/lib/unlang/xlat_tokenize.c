@@ -620,6 +620,7 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	xlat_exp_t		*node;
 
 	fr_sbuff_marker_t	m_s;
+	tmpl_rules_t		 our_t_rules;
 
 	XLAT_DEBUG("ATTRIBUTE <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
@@ -630,8 +631,6 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 *	and instead are "virtual" attributes like
 	 *	Foreach-Variable-N.
 	 */
-	tmpl_rules_t		 our_t_rules;
-
 	if (t_rules) {
 		memset(&our_t_rules, 0, sizeof(our_t_rules));
 		our_t_rules = *t_rules;

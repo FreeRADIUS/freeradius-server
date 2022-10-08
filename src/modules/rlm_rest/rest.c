@@ -1004,170 +1004,173 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 	/*
 	 *	Process VP container
 	 */
-	json_object_object_foreach(object, name, value) {
-		int		i = 0, elements;
-		struct		json_object *element, *tmp;
-		TALLOC_CTX	*ctx;
+	{
+		json_object_object_foreach(object, name, value) {
+			int		i = 0, elements;
+			struct		json_object *element, *tmp;
+			TALLOC_CTX	*ctx;
 
-		json_flags_t flags = {
-			.op = T_OP_SET,
-			.do_xlat = 1,
-			.is_json = 0
-		};
+			json_flags_t flags = {
+				.op = T_OP_SET,
+				.do_xlat = 1,
+				.is_json = 0
+			};
 
-		request_t		*current = request;
-		fr_pair_list_t		*vps;
-		fr_pair_t		*vp = NULL;
+			request_t		*current = request;
+			fr_pair_list_t		*vps;
+			fr_pair_t		*vp = NULL;
 
-		TALLOC_FREE(dst);
+			TALLOC_FREE(dst);
 
-		/*
-		 *  Resolve attribute name to a dictionary entry and pairlist.
-		 */
-		RDEBUG2("Parsing attribute \"%s\"", name);
-
-		if (tmpl_afrom_attr_str(request, NULL, &dst, name,
-					&(tmpl_rules_t){
-						.attr = {
-							.prefix = TMPL_ATTR_REF_PREFIX_NO,
-							.dict_def = request->dict,
-							.list_def = PAIR_LIST_REPLY
-						}
-					}) <= 0) {
-			RPWDEBUG("Failed parsing attribute (skipping)");
-			continue;
-		}
-
-		if (tmpl_request_ptr(&current, tmpl_request(dst)) < 0) {
-			RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
-			continue;
-		}
-
-		vps = tmpl_list_head(current, tmpl_list(dst));
-		if (!vps) {
-			RWDEBUG("List not valid in this context (skipping)");
-			continue;
-		}
-		ctx = tmpl_list_ctx(current, tmpl_list(dst));
-
-		/*
-		 *  Alternative JSON structure which allows operator,
-		 *  and other flags to be specified.
-		 *
-		 *	"<name>":{
-		 *		"do_xlat":<bool>,
-		 *		"is_json":<bool>,
-		 *		"op":"<op>",
-		 *		"value":<value>
-		 *	}
-		 *
-		 *	Where value is a:
-		 *	  - []	Multivalued array
-		 *	  - {}	Nested Valuepair
-		 *	  - *	Integer or string value
-		 */
-		if (json_object_is_type(value, json_type_object)) {
 			/*
-			 *  Process operator if present.
+			 *  Resolve attribute name to a dictionary entry and pairlist.
 			 */
-			if (json_object_object_get_ex(value, "op", &tmp)) {
-				flags.op = fr_table_value_by_str(fr_tokens_table, json_object_get_string(tmp), 0);
-				if (!flags.op) {
-					RWDEBUG("Invalid operator value \"%s\" (skipping)",
-						json_object_get_string(tmp));
-					continue;
+			RDEBUG2("Parsing attribute \"%s\"", name);
+
+			if (tmpl_afrom_attr_str(request, NULL, &dst, name,
+						&(tmpl_rules_t){
+							.attr = {
+								.prefix = TMPL_ATTR_REF_PREFIX_NO,
+								.dict_def = request->dict,
+								.list_def = PAIR_LIST_REPLY
+							}
+						}) <= 0) {
+				RPWDEBUG("Failed parsing attribute (skipping)");
+				continue;
+			}
+
+			if (tmpl_request_ptr(&current, tmpl_request(dst)) < 0) {
+				RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
+				continue;
+			}
+
+			vps = tmpl_list_head(current, tmpl_list(dst));
+			if (!vps) {
+				RWDEBUG("List not valid in this context (skipping)");
+				continue;
+			}
+			ctx = tmpl_list_ctx(current, tmpl_list(dst));
+
+			/*
+			 *  Alternative JSON structure which allows operator,
+			 *  and other flags to be specified.
+			 *
+			 *	"<name>":{
+			 *		"do_xlat":<bool>,
+			 *		"is_json":<bool>,
+			 *		"op":"<op>",
+			 *		"value":<value>
+			 *	}
+			 *
+			 *	Where value is a:
+			 *	  - []	Multivalued array
+			 *	  - {}	Nested Valuepair
+			 *	  - *	Integer or string value
+			 */
+			if (json_object_is_type(value, json_type_object)) {
+				/*
+				 *  Process operator if present.
+				 */
+				if (json_object_object_get_ex(value, "op", &tmp)) {
+					flags.op = fr_table_value_by_str(fr_tokens_table, json_object_get_string(tmp), 0);
+					if (!flags.op) {
+						RWDEBUG("Invalid operator value \"%s\" (skipping)",
+							json_object_get_string(tmp));
+						continue;
+					}
 				}
-			}
-
-			/*
-			 *  Process optional do_xlat bool.
-			 */
-			if (json_object_object_get_ex(value, "do_xlat", &tmp)) {
-				flags.do_xlat = json_object_get_boolean(tmp);
-			}
-
-			/*
-			 *  Process optional is_json bool.
-			 */
-			if (json_object_object_get_ex(value, "is_json", &tmp)) {
-				flags.is_json = json_object_get_boolean(tmp);
-			}
-
-			/*
-			 *  Value key must be present if were using the expanded syntax.
-			 */
-			if (!json_object_object_get_ex(value, "value", &tmp)) {
-				RWDEBUG("Value key missing (skipping)");
-				continue;
-			}
-
-			/*
-			 *  The value field now becomes the key we're operating on
-			 */
-			value = tmp;
-		}
-
-		/*
-		 *  Setup fr_pair_afrom_da / recursion loop.
-		 */
-		if (!flags.is_json && json_object_is_type(value, json_type_array)) {
-			elements = json_object_array_length(value);
-			if (!elements) {
-				RWDEBUG("Zero length value array (skipping)");
-				continue;
-			}
-			element = json_object_array_get_idx(value, 0);
-		} else {
-			elements = 1;
-			element = value;
-		}
-
-		/*
-		 *  A JSON 'value' key, may have multiple elements, iterate
-		 *  over each of them, creating a new fr_pair_t.
-		 */
-		do {
-			if (max_attrs-- <= 0) {
-				RWDEBUG("At maximum attribute limit");
-				talloc_free(dst);
-				return max;
-			}
-
-			/*
-			 *  Automagically switch the op for multivalued attributes.
-			 */
-			if (((flags.op == T_OP_SET) || (flags.op == T_OP_EQ)) && (i >= 1)) {
-				flags.op = T_OP_ADD_EQ;
-			}
-
-			if (json_object_is_type(element, json_type_object) && !flags.is_json) {
-				/* TODO: Insert nested VP into VP structure...*/
-				RWDEBUG("Found nested VP, these are not yet supported (skipping)");
-
-				continue;
 
 				/*
-				vp = json_pair_alloc(instance, section,
-						   request, value,
-						   level + 1, max_attrs);*/
-			} else {
-				vp = json_pair_alloc_leaf(instance, section, ctx, request,
-							  tmpl_da(dst), &flags, element);
-				if (!vp) continue;
-			}
-			RINDENT();
-			RDEBUG2("&%s:%pP", fr_table_str_by_value(pair_list_table, tmpl_list(dst), ""), vp);
-			REXDENT();
+				 *  Process optional do_xlat bool.
+				 */
+				if (json_object_object_get_ex(value, "do_xlat", &tmp)) {
+					flags.do_xlat = json_object_get_boolean(tmp);
+				}
 
-			fr_pair_list_t tmp_list;
-			fr_pair_list_init(&tmp_list);
-			fr_pair_append(&tmp_list, vp);
-			radius_pairmove(current, vps, &tmp_list);
-		/*
-		 *  If we call json_object_array_get_idx on something that's not an array
-		 *  the behaviour appears to be to occasionally segfault.
-		 */
-		} while ((++i < elements) && (element = json_object_array_get_idx(value, i)));
+				/*
+				 *  Process optional is_json bool.
+				 */
+				if (json_object_object_get_ex(value, "is_json", &tmp)) {
+					flags.is_json = json_object_get_boolean(tmp);
+				}
+
+				/*
+				 *  Value key must be present if were using the expanded syntax.
+				 */
+				if (!json_object_object_get_ex(value, "value", &tmp)) {
+					RWDEBUG("Value key missing (skipping)");
+					continue;
+				}
+
+				/*
+				 *  The value field now becomes the key we're operating on
+				 */
+				value = tmp;
+			}
+
+			/*
+			 *  Setup fr_pair_afrom_da / recursion loop.
+			 */
+			if (!flags.is_json && json_object_is_type(value, json_type_array)) {
+				elements = json_object_array_length(value);
+				if (!elements) {
+					RWDEBUG("Zero length value array (skipping)");
+					continue;
+				}
+				element = json_object_array_get_idx(value, 0);
+			} else {
+				elements = 1;
+				element = value;
+			}
+
+			/*
+			 *  A JSON 'value' key, may have multiple elements, iterate
+			 *  over each of them, creating a new fr_pair_t.
+			 */
+			do {
+				fr_pair_list_t tmp_list;
+
+				if (max_attrs-- <= 0) {
+					RWDEBUG("At maximum attribute limit");
+					talloc_free(dst);
+					return max;
+				}
+
+				/*
+				 *  Automagically switch the op for multivalued attributes.
+				 */
+				if (((flags.op == T_OP_SET) || (flags.op == T_OP_EQ)) && (i >= 1)) {
+					flags.op = T_OP_ADD_EQ;
+				}
+
+				if (json_object_is_type(element, json_type_object) && !flags.is_json) {
+					/* TODO: Insert nested VP into VP structure...*/
+					RWDEBUG("Found nested VP, these are not yet supported (skipping)");
+
+					continue;
+
+					/*
+					vp = json_pair_alloc(instance, section,
+							request, value,
+							level + 1, max_attrs);*/
+				} else {
+					vp = json_pair_alloc_leaf(instance, section, ctx, request,
+								  tmpl_da(dst), &flags, element);
+					if (!vp) continue;
+				}
+				RINDENT();
+				RDEBUG2("&%s:%pP", fr_table_str_by_value(pair_list_table, tmpl_list(dst), ""), vp);
+				REXDENT();
+
+				fr_pair_list_init(&tmp_list);
+				fr_pair_append(&tmp_list, vp);
+				radius_pairmove(current, vps, &tmp_list);
+			/*
+			 *  If we call json_object_array_get_idx on something that's not an array
+			 *  the behaviour appears to be to occasionally segfault.
+			 */
+			} while ((++i < elements) && (element = json_object_array_get_idx(value, i)));
+		}
 	}
 
 	talloc_free(dst);
