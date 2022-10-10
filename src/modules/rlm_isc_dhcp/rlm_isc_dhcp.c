@@ -256,8 +256,9 @@ redo:
 
 static int skip_spaces(rlm_isc_dhcp_tokenizer_t *state, char *p)
 {
-	state->ptr = p;
 	char *start = p;
+
+	state->ptr = p;
 
 	fr_skip_whitespace(state->ptr);
 

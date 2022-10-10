@@ -132,6 +132,7 @@ int fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body
 	uint8_t pad[MD5_DIGEST_LENGTH];
 	uint8_t *buf;
 	int pad_offset;
+	size_t pos;
 
 	if (!secret) {
 		if (pkt->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG)
@@ -160,7 +161,7 @@ int fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body
 
 	fr_md5_calc(pad, buf, pad_offset);
 
-	size_t pos = 0;
+	pos = 0;
 	do {
 		for (size_t i = 0; i < MD5_DIGEST_LENGTH && pos < body_len; i++, pos++)
 			body[pos] ^= pad[i];

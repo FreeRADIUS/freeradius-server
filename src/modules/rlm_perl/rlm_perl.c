@@ -546,16 +546,14 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 {
-	if (!cs || !rad_hv) return;
-
 	int indent_section = (lvl + 1) * 4;
 	int indent_item = (lvl + 2) * 4;
 
+	if (!cs || !rad_hv) return;
+
 	DEBUG("%*s%s {", indent_section, " ", cf_section_name1(cs));
 
-	CONF_ITEM *ci = NULL;
-
-	while ((ci = cf_item_next(cs, ci))) {
+	for (CONF_ITEM *ci = NULL; (ci = cf_item_next(cs, ci)); ) {
 		/*
 		 *  This is a section.
 		 *  Create a new HV, store it as a reference in current HV,
@@ -665,10 +663,9 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, request_t *request, fr_pair_l
 			   const char *hash_name, const char *list_name)
 {
 	fr_pair_t *vp;
+	fr_dcursor_t cursor;
 
 	hv_undef(rad_hv);
-
-	fr_dcursor_t cursor;
 
 	RINDENT();
 	fr_pair_list_sort(vps, fr_pair_cmp_by_da);

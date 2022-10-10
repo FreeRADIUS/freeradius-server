@@ -516,14 +516,16 @@ int fb_affected_rows(rlm_sql_firebird_conn_t *conn) {
 	p = info_buffer + 3;
 	while (*p != isc_info_end) {
 		p++;
-		short len = (short)isc_vax_integer(p, 2);
-		p += 2;
+		{
+			short len = (short)isc_vax_integer(p, 2);
+			p += 2;
 
-		affected_rows = isc_vax_integer(p, len);
-		if (affected_rows > 0) {
-			break;
+			affected_rows = isc_vax_integer(p, len);
+			if (affected_rows > 0) {
+				break;
+			}
+			p += len;
 		}
-		p += len;
 	}
 	return affected_rows;
 }

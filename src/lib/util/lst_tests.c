@@ -510,8 +510,10 @@ static void queue_cmp(unsigned int count)
 	 */
 	{
 		lst_thing	**array;
+		fr_time_t	start_alloc, end_alloc, start_insert, end_insert, start_pop, end_pop, end_pop_first;
+
 		populate_values(values, count);
-		fr_time_t	start_alloc, end_alloc, start_insert, end_insert, start_pop, end_pop, end_pop_first = fr_time_wrap(0);
+		end_pop_first = fr_time_wrap(0);
 
 		start_alloc = fr_time();
 		array = talloc_array(NULL, lst_thing *, count);

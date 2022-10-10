@@ -184,6 +184,7 @@ fr_radius_packet_t *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *lin
 	uint16_t		udp_dst_port;
 	size_t			dhcp_data_len;
 	socklen_t		sock_len;
+	uint8_t			data_offset;
 
 	packet = fr_radius_packet_alloc(NULL, false);
 	if (!packet) {
@@ -204,7 +205,7 @@ fr_radius_packet_t *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *lin
 	sock_len = sizeof(struct sockaddr_ll);
 	data_len = recvfrom(sockfd, raw_packet, MAX_PACKET_SIZE, 0, (struct sockaddr *)link_layer, &sock_len);
 
-	uint8_t data_offset = ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE; /* DHCP data datas after Ethernet, IP, UDP */
+	data_offset = ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE; /* DHCP data datas after Ethernet, IP, UDP */
 
 	if (data_len <= data_offset) DISCARD_RP("Payload (%d) smaller than required for layers 2+3+4", (int)data_len);
 

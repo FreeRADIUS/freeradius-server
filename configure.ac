@@ -1885,6 +1885,18 @@ if test "x$developer" = "xyes"; then
   AC_MSG_NOTICE([Setting additional developer CFLAGS])
 
   dnl #
+  dnl # -Wdeclaration-after-statement is used where possible to insist
+  dnl # on the FreeRADIUS convention of putting declarations at the start
+  dnl # of the block they occur in.
+  dnl #
+  AX_CC_WDECLARATION_AFTER_STATEMENT_FLAG
+  if test "x$ax_cv_cc_wdeclaration_after_statement_flag" = "xyes"; then
+    devcflags="$devcflags \
+  	-Wdeclaration-after-statement"
+  fi
+
+
+  dnl #
   dnl #  If we have -Weverything, it really means *everything* unlike -Wall
   dnl #  It's so verbose we need to turn off warnings which aren't useful.
   dnl #

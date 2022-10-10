@@ -69,11 +69,11 @@ size_t fr_net_af_table_len = NUM_ELEMENTS(fr_net_af_table);
 	/*
 	 *	UDP header validation.
 	 */
-	udp = (udp_header_t const *)data;
 	uint16_t udp_len;
 	ssize_t diff;
 	uint16_t expected;
 
+	udp = (udp_header_t const *)data;
 	udp_len = ntohs(udp->len);
 	diff = udp_len - remaining;
 	/* Truncated data */

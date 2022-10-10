@@ -917,70 +917,72 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 		 */
 
 #else
-		struct ifaddrs *list = NULL;
-		bool bound = false;
+		{
+			struct ifaddrs *list = NULL;
+			bool bound = false;
 
-		/*
-		 *	Troll through all interfaces to see if there's
-		 */
-		if (getifaddrs(&list) == 0) {
-			struct ifaddrs *i;
+			/*
+			 *	Troll through all interfaces to see if there's
+			 */
+			if (getifaddrs(&list) == 0) {
+				struct ifaddrs *i;
 
-			for (i = list; i != NULL; i = i->ifa_next) {
-				if (i->ifa_addr && i->ifa_name && (strcmp(i->ifa_name, interface) == 0)) {
-					/*
-					 *	IPv4, and there's either no src_ip, OR src_ip is INADDR_ANY,
-					 *	it's a match.
-					 *
-					 *	We also update my_ipaddr to point to this particular IP,
-					 *	so that we can later bind() to it.  This gets us the same
-					 *	effect as SO_BINDTODEVICE.
-					 */
-					if ((i->ifa_addr->sa_family == AF_INET) &&
-					    (!src_ipaddr || fr_ipaddr_is_inaddr_any(src_ipaddr))) {
-						(void) fr_ipaddr_from_sockaddr(&my_ipaddr, NULL,
-									       (struct sockaddr_storage *) i->ifa_addr,
-									       sizeof(struct sockaddr_in));
-						my_ipaddr.scope_id = scope_id;
-						bound = true;
-						break;
-					}
+				for (i = list; i != NULL; i = i->ifa_next) {
+					if (i->ifa_addr && i->ifa_name && (strcmp(i->ifa_name, interface) == 0)) {
+						/*
+						 *	IPv4, and there's either no src_ip, OR src_ip is INADDR_ANY,
+						 *	it's a match.
+						 *
+						 *	We also update my_ipaddr to point to this particular IP,
+						 *	so that we can later bind() to it.  This gets us the same
+						 *	effect as SO_BINDTODEVICE.
+						 */
+						if ((i->ifa_addr->sa_family == AF_INET) &&
+						    (!src_ipaddr || fr_ipaddr_is_inaddr_any(src_ipaddr))) {
+							(void) fr_ipaddr_from_sockaddr(&my_ipaddr, NULL,
+										       (struct sockaddr_storage *) i->ifa_addr,
+										       sizeof(struct sockaddr_in));
+							my_ipaddr.scope_id = scope_id;
+							bound = true;
+							break;
+						}
 
-					/*
-					 *	The caller specified a source IP, and we find a matching
-					 *	address family.  Allow it.
-					 *
-					 *	Note that we do NOT check for matching IPs here.  If we did,
-					 *	then binding to an interface and the *wrong* IP would get us
-					 *	a "bind to device is unsupported" message.
-					 *
-					 *	Instead we say "yes, we found a matching interface", and then
-					 *	allow the bind() call below to run.  If that fails, we get a
-					 *	"Can't assign requested address" error, which is more informative.
-					 */
-					if (src_ipaddr && (src_ipaddr->af == i->ifa_addr->sa_family)) {
-						my_ipaddr.scope_id = scope_id;
-						bound = true;
-						break;
+						/*
+						 *	The caller specified a source IP, and we find a matching
+						 *	address family.  Allow it.
+						 *
+						 *	Note that we do NOT check for matching IPs here.  If we did,
+						 *	then binding to an interface and the *wrong* IP would get us
+						 *	a "bind to device is unsupported" message.
+						 *
+						 *	Instead we say "yes, we found a matching interface", and then
+						 *	allow the bind() call below to run.  If that fails, we get a
+						 *	"Can't assign requested address" error, which is more informative.
+						 */
+						if (src_ipaddr && (src_ipaddr->af == i->ifa_addr->sa_family)) {
+							my_ipaddr.scope_id = scope_id;
+							bound = true;
+							break;
+						}
 					}
 				}
-			}
 
-			freeifaddrs(list);
+				freeifaddrs(list);
 
-			if (!bound) {
-				/*
-				 *	IPv4: no link local addresses,
-				 *	and no bind to device.
-				 */
-				fr_strerror_printf_push("Bind to interface %s failed: Unable to match interface with the given IP address.",
-							interface);
+				if (!bound) {
+					/*
+					 *	IPv4: no link local addresses,
+					 *	and no bind to device.
+					 */
+					fr_strerror_printf_push("Bind to interface %s failed: Unable to match "
+							        "interface with the given IP address.", interface);
+					return -1;
+				}
+			} else {
+				fr_strerror_printf_push("Bind to interface %s failed, unable to get list of interfaces: %s",
+							interface, fr_syserror(errno));
 				return -1;
 			}
-		} else {
-			fr_strerror_printf_push("Bind to interface %s failed, unable to get list of interfaces: %s",
-						interface, fr_syserror(errno));
-			return -1;
 		}
 #endif
 	} /* else no interface was passed in */

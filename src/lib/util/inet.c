@@ -1570,20 +1570,23 @@ int fr_interface_to_ethernet(char const *interface, fr_ethernet_t *ethernet)
 		if (strcmp(i->ifa_name, interface) != 0) continue;
 
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
-		struct sockaddr_ll *ll;
+		{
+			struct sockaddr_ll *ll;
 
-		ll = (struct sockaddr_ll *) i->ifa_addr;
-		if ((ll->sll_hatype != 1) || (ll->sll_halen != 6)) continue;
+			ll = (struct sockaddr_ll *) i->ifa_addr;
+			if ((ll->sll_hatype != 1) || (ll->sll_halen != 6)) continue;
 
-		memcpy(ethernet->addr, ll->sll_addr, 6);
-
+			memcpy(ethernet->addr, ll->sll_addr, 6);
+		}
 #else
-		struct sockaddr_dl *ll;
+		{
+			struct sockaddr_dl *ll;
 
-		ll = (struct sockaddr_dl *) i->ifa_addr;
-		if (ll->sdl_alen != 6) continue;
+			ll = (struct sockaddr_dl *) i->ifa_addr;
+			if (ll->sdl_alen != 6) continue;
 
-		memcpy(ethernet->addr, LLADDR(ll), 6);
+			memcpy(ethernet->addr, LLADDR(ll), 6);
+		}
 #endif
 		ret = 0;
 		break;
