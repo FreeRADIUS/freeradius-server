@@ -267,6 +267,7 @@ jobs:
               build_paths="--with-openssl-lib-dir=/opt/openssl/lib64 --with-openssl-include-dir=/opt/openssl/include"
           fi
           CFLAGS="${BUILD_CFLAGS}" ./configure -C \
+              --enable-developer \
               --enable-werror \
               $enable_sanitizers \
               $build_paths \
