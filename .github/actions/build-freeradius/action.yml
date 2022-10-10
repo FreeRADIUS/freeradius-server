@@ -4,6 +4,12 @@ inputs:
   use_docker:
     desription: True if running in a Docker container
     default: false
+  llvm_ver:
+    desription: Version of LLVM to use
+    default: 12
+  gcc_ver:
+    desription: Version of GCC to use
+    default: 11
 
 
 runs:
@@ -124,20 +130,20 @@ runs:
       run: |
         pip3 install tacacs_plus
 
-    - name: Install LLVM 12
+    - name: Install LLVM ${{ inputs.llvm_ver }}
       if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' }}
       shell: bash
       run: |
-        sudo apt-get install -y --no-install-recommends clang-12 llvm-12 gdb lldb
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 60 && sudo update-alternatives --set clang /usr/bin/clang-12
-        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-12 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-12
+        sudo apt-get install -y --no-install-recommends clang-${{ inputs.llvm_ver }} llvm-${{ inputs.llvm_ver }} gdb lldb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ inputs.llvm_ver }} 60 && sudo update-alternatives --set clang /usr/bin/clang-${{ inputs.llvm_ver }}
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-${{ inputs.llvm_ver }} 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-${{ inputs.llvm_ver }}
 
-    - name: Set compiler to GCC 11
+    - name: Set compiler to GCC ${{ inputs.gcc_ver }}
       if: ${{ matrix.env.CC == 'gcc' }}
       shell: bash
       run: |
-        sudo apt-get install -y --no-install-recommends gcc-11 gdb lldb
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60 && sudo update-alternatives --set gcc /usr/bin/gcc-11
+        sudo apt-get install -y --no-install-recommends gcc-${{ inputs.gcc_ver }} gdb lldb
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ inputs.gcc_ver }} 60 && sudo update-alternatives --set gcc /usr/bin/gcc-${{ inputs.gcc_ver }}
 
     #
     #  Ensure the homebrew version of clang is run rather than the Apple compiler.
