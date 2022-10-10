@@ -257,7 +257,7 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 {
 	fr_sbuff_t		*sbuff_i;
-	size_t			read, available, total_read;
+	size_t			read, available, total_read, shift;
 	fr_sbuff_uctx_file_t	*fctx;
 
 	CHECK_SBUFF_INIT(sbuff);
@@ -273,14 +273,15 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 		return 0;	/* There's no way we could satisfy the extension request */
 	}
 
-	if (fr_sbuff_used(sbuff)) {
+	shift = fr_sbuff_current(sbuff) - fr_sbuff_buff(sbuff);
+	if (shift) {
 		/*
 		 *	Try and shift as much as we can out
 		 *	of the buffer to make space.
 		 *
 		 *	Note: p and markers are constraints here.
 		 */
-		fctx->shifted += fr_sbuff_shift(sbuff, fr_sbuff_used(sbuff));
+		fctx->shifted += fr_sbuff_shift(sbuff, shift);
 	}
 
 	available = fctx->buff_end - sbuff->end;
