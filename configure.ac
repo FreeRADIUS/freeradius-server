@@ -886,7 +886,7 @@ dnl #
 dnl #  If using pthreads, check for -lpthread (posix) or -lc_r (*BSD)
 dnl #
 old_CFLAGS=$CFLAGS
-if test $ac_cv_prog_suncc = "yes"; then
+if test "$ac_cv_prog_suncc" = "yes"; then
   CFLAGS="$CFLAGS -mt"
 fi
 
