@@ -21,11 +21,9 @@ VALUE	Calix-CMS-Alarm-Filter		Enabled			1
 ATTRIBUTE	Calix-CMS-Event-Filter			222	integer
 
 VALUE	Calix-CMS-Event-Filter		Disabled		0
-
 VALUE	Calix-CMS-Event-Filter		Enabled			1
 
 ATTRIBUTE	Calix-CMS-Threshold-Event-Filter	223	integer
 
 VALUE	Calix-CMS-Threshold-Event-Filter Disabled		0
-
 VALUE	Calix-CMS-Threshold-Event-Filter Enabled		1
