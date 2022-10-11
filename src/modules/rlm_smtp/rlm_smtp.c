@@ -674,7 +674,7 @@ static int body_init(fr_mail_ctx_t *uctx, curl_mime *mime)
 	int 		body_elements = 0;
 
 	/* Initialize a second mime to apply special conditions to the body elements */
-	mime_body = curl_mime_init(uctx->randle->candle);
+	MEM(mime_body = curl_mime_init(uctx->randle->candle));
 
 	/* initialize the cursor used by the body_source function*/
 	vp = fr_pair_dcursor_by_da_init(&uctx->body_cursor, &uctx->request->request_pairs, attr_smtp_body);
@@ -683,7 +683,7 @@ static int body_init(fr_mail_ctx_t *uctx, curl_mime *mime)
 	/* Add a mime part to mime_body for every body element */
 	while (vp) {
 		body_elements++;
-		part = curl_mime_addpart(mime_body);
+		MEM(part = curl_mime_addpart(mime_body));
 
 		curl_mime_encoder(part, "8bit");
 		curl_mime_data_cb(part, vp->vp_length, body_source, NULL, NULL, uctx);
@@ -698,9 +698,9 @@ static int body_init(fr_mail_ctx_t *uctx, curl_mime *mime)
 	/*
 	 *	Add body_mime as a subpart of the mime request with a local content-disposition
 	 */
-	part = curl_mime_addpart(mime);
+	MEM(part = curl_mime_addpart(mime));
 	curl_mime_subparts(part, mime_body);
-	curl_mime_type(part, "multipart/mixed" );
+	MEM(curl_mime_type(part, "multipart/mixed" ) == CURLE_OK);
 	uctx->body_header = curl_slist_append(NULL, "Content-Disposition: inline"); /* Initialize the body_header curl_slist */
 	curl_mime_headers(part, uctx->body_header, 1);
 
