@@ -481,9 +481,8 @@ eap {
 		#  compatibility, as clients get upgraded, and people
 		#  don't upgrade their copies of FreeRADIUS.
 		#
-		#  Also note that we only support TLS 1.3 for EAP-TLS.
-		#  Other versions of EAP (PEAP, TTLS, FAST) DO NOT
-		#  SUPPORT TLS 1.3.
+		#  Also note that we only support TLS 1.3 for EAP-TLS,
+		#  TTLS, and PEAP.  It is not supported for EAP-FAST.
 		#
 		tls_min_version = "1.2"
 		tls_max_version = "1.2"
