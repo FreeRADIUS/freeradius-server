@@ -7339,7 +7339,7 @@ fi
 
 
 old_CFLAGS=$CFLAGS
-if test $ac_cv_prog_suncc = "yes"; then
+if test "$ac_cv_prog_suncc" = "yes"; then
   CFLAGS="$CFLAGS -mt"
 fi
 
