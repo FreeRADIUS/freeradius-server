@@ -44,6 +44,16 @@ jobs:
 
     runs-on: ${{ matrix.os.runs_on }}
 
+    container:
+      image: ${{ matrix.os.docker }}
+      #  "privileged" is needed for Samba install
+      #  "memory-swap -1" enables full use of host swap and may help
+      #    with containers randomly quitting with "The operation was
+      #    canceled"
+      options: >-
+        --privileged
+        --memory-swap -1
+
     strategy:
       fail-fast: false
       matrix:
@@ -75,6 +85,57 @@ jobs:
     #  names are updated if new matrix entries are added or the name format
     #  changes.
     name: "master-${{ matrix.os.name }}-${{ matrix.env.NAME}}"
+
+    #  The standard GitHub environment contains PostgreSQL and
+    #  MySQL already. However when running on hosted GitHub runners
+    #  we need to run separate database containers to provide these.
+    services:
+      mariadb:
+        image: mariadb
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      threeds:
+        image: 389ds/dirsrv
+        ports:
+          - 3389
+          - 3636
+        options: >-
+          -e DS_SUFFIX_NAME=dc=example,dc=com
+          -e DS_DM_PASSWORD=secret123
+          --health-cmd "dsctl localhost healthcheck --check backends:localhost:search"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
 

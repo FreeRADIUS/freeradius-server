@@ -1,20 +1,22 @@
 #!/bin/sh
 
-# Remove previous samba config and stop all services
-sudo systemctl stop smbd
-sudo systemctl disable smbd
-sudo systemctl mask smbd
+if [ "$USE_DOCKER" != "true" ]; then
+	# Remove previous samba config and stop all services
+	sudo systemctl stop smbd
+	sudo systemctl disable smbd
+	sudo systemctl mask smbd
 
-sudo systemctl stop nmbd
-sudo systemctl disable nmbd
-sudo systemctl mask nmbd
+	sudo systemctl stop nmbd
+	sudo systemctl disable nmbd
+	sudo systemctl mask nmbd
+
+	# Enable the AD-DC samba service
+	sudo systemctl unmask samba-ad-dc
+	sudo systemctl enable samba-ad-dc
+	sudo systemctl stop samba-ad-dc
+fi
 
 sudo rm /etc/samba/smb.conf
-
-# Enable the AD-DC samba service
-sudo systemctl unmask samba-ad-dc
-sudo systemctl enable samba-ad-dc
-sudo systemctl stop samba-ad-dc
 
 # Remove other samba data
 for DIR in $(/usr/sbin/smbd -b | awk '/LOCKDIR|STATEDIR|CACHEDIR|PRIVATE_DIR/{print $2}'); do
@@ -46,4 +48,8 @@ fi
 sudo sed -i 's/\[global\]/\[global\]\n\tldap server require strong auth = no/' /etc/samba/smb.conf
 
 # Start the domain controller
-sudo systemctl start samba-ad-dc
+if [ "$USE_DOCKER" != "true" ]; then
+	sudo systemctl start samba-ad-dc
+else
+	/usr/sbin/samba
+fi
