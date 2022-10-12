@@ -143,7 +143,7 @@ LIBS="$old_LIBS"
 
 if test "x$mod_ldflags" = "x"; then
 	AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path> or set ORACLE_HOME.])
-	FR_MODULE_FAIL([[libclntsh libnnz[9-12]]])]
+	FR_MODULE_FAIL([[libclntsh libnnz[9-12]]])
 fi
 
 FR_MODULE_END_TESTS
