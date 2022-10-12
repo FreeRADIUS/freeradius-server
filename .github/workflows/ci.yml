@@ -42,29 +42,39 @@ jobs:
     needs: pre-ci
     if: ${{ needs.pre-ci.outputs.should_skip != 'true' }}
 
-    runs-on: ${{ matrix.env.OS }}
+    runs-on: ${{ matrix.os.runs_on }}
 
     strategy:
       fail-fast: false
       matrix:
+
+        #  runs_on - where GitHub will spin up the runner, either
+        #            "self-hosted", or the name of a GitHub VM image.
+        #  code    - the name/version of the OS (for step evaluations below)
+        #  docker  - the docker image name, if containers are being used
+        #  name    - used in the job name only
+        os:
+          - { runs_on: "self-hosted",  code: "ubuntu2004", docker: "ubuntu:20.04", name: "self-ubuntu20", imageos: "ubuntu20" }
+#          - { runs_on: "ubuntu-20.04", code: "ubuntu2004", docker: "ubuntu:20.04", name: "gh20-ubuntu20", imageos: "ubuntu20" }
+
         env:
-          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-gcc-lean      }
-          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-gcc           }
-          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-gcc-O2-g3     }
-          - { CC: gcc,   BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-gcc-ndebug    }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-lean    }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang         }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-O2-g3   }
-          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-ndebug  }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-altlibs }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  OS: ubuntu-20.04, NAME: linux-fuzzer        }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-gcc-lean      }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-gcc           }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-gcc-O2-g3     }
+          - { CC: gcc,   BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-gcc-ndebug    }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-lean    }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-O2-g3   }
+          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-ndebug  }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, NAME: linux-clang-altlibs }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  NAME: linux-fuzzer        }
 
     env: ${{ matrix.env }}
 
     #  If branch protection is in place with status checks enabled, ensure
     #  names are updated if new matrix entries are added or the name format
     #  changes.
-    name: "master-${{ matrix.env.NAME }}"
+    name: "master-${{ matrix.os.name }}-${{ matrix.env.NAME}}"
 
     steps:
 
@@ -137,6 +147,8 @@ jobs:
         if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
         with:
           ruby-version: 2.7
+        env:
+          ImageOS: ${{ matrix.os.imageos }}
 
       - name: Install cassandra driver (not yet available on 20.04)
         if: ${{ matrix.env.OS == 'ubuntu-18.04' }}
