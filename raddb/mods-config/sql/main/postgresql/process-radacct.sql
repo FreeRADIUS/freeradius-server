@@ -21,7 +21,7 @@
 --  given user could be obtained by queriing this table with:
 --
 --      SELECT
---          TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-Month') AS month,
+--          TO_CHAR(period_start, 'YYYY-Month') AS month,
 --          TRUNC(SUM(acctinputoctets)/1000/1000/1000,9) AS gb_in,
 --          TRUNC(SUM(acctoutputoctets)/1000/1000/1000,9) AS gb_out
 --      FROM
