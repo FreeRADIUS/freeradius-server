@@ -533,6 +533,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 		my_file.cs = cs;
 		my_file.filename = filename;
 
+		/* coverity[fs_check_call] */
 		if (stat(filename, &my_file.buf) < 0) goto error;
 
 		file = fr_rb_find(tree, &my_file);

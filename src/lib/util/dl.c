@@ -551,6 +551,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 			 *	Check if the dlopen() failed
 			 *	because of access permissions.
 			 */
+			/* coverity[fs_check_call] */
 			if (access(path, access_mode) < 0) {
 				/*
 				 *	It doesn't exist,

@@ -696,6 +696,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 							   main_config->raddb_dir, config->sql_db));
 	}
 
+	/* coverity[fs_check_call] */
 	if (stat(inst->filename, &buf) == 0) {
 		exists = true;
 	} else if (errno == ENOENT) {
