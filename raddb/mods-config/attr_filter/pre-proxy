@@ -61,5 +61,7 @@ DEFAULT
 	NAS-Identifier =* ANY,
 	Operator-Name =* ANY,
 	Calling-Station-Id =* ANY,
+	Called-Station-Id =* ANY,
+	Operator-Name =* ANY,
 	Chargeable-User-Identity =* ANY,
 	Proxy-State =* ANY
