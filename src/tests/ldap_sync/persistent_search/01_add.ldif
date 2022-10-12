@@ -1,5 +1,5 @@
 #
-# ARGV: -x -H ${PERSISTENT_SEARCH_TEST_SERVER} -D "cn=manager" -w "secret123"
+# ARGV: -x -H ${PERSISTENT_SEARCH_TEST_SERVER} -D "cn=Directory Manager" -w "secret123"
 #
 dn: uid=fred,ou=people,dc=example,dc=com
 changeType: add
