@@ -96,11 +96,21 @@ BEGIN
             v_end,
             SUM(acctinputoctets) AS acctinputoctets,
             SUM(acctoutputoctets) AS acctoutputoctets
-        FROM
-            radacct
-        WHERE
-            acctstoptime > v_start OR
-            acctstoptime IS NULL
+        FROM ((
+            SELECT
+                username, acctinputoctets, acctoutputoctets
+            FROM
+                radacct
+            WHERE
+                acctstoptime > v_start
+        ) UNION ALL (
+            SELECT
+                username, acctinputoctets, acctoutputoctets
+            FROM
+                radacct
+            WHERE
+                acctstoptime IS NULL
+        )) AS a
         GROUP BY
             username
     ) AS s
