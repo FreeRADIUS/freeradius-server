@@ -116,4 +116,6 @@ DEFAULT
 	Idle-Timeout <= 600,
 	Calling-Station-Id =* ANY,
 	Operator-Name =* ANY,
+	User-Name =* ANY,
+	Chargeable-User-Identity =* ANY,
 	Port-Limit <= 2
