@@ -1,0 +1,43 @@
+name: docker-prep
+
+runs:
+  using: composite
+
+  steps:
+
+    - name: Self-hosted runner Docker container fixes
+      shell: bash
+      run: ln -fs /usr/bin/env /usr/local/bin/sudo
+
+    - name: Install extra build dependencies needed in Docker
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          ca-certificates \
+          curl \
+          gawk \
+          git \
+          git-lfs \
+          gnupg \
+          lsb-release \
+          software-properties-common \
+          wget
+
+    - name: Set up Toolchain repository
+      shell: bash
+      run: sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+
+    - name: Update repositories
+      shell: bash
+      run: sudo apt-get update
+
+    #
+    #  git doesn't like the fact we're running as root but some
+    #  directories are owned by the docker user ID. We could try
+    #  and add the correct directories individually, but it really
+    #  doesn't matter inside an ephemeral container.
+    #
+    - name: Fix git dubious ownership issue
+      shell: bash
+      run: git config --global --add safe.directory "*"
