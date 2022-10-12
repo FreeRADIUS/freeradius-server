@@ -1,0 +1,264 @@
+name: build-freeradius
+
+inputs:
+  use_docker:
+    desription: True if running in a Docker container
+    default: false
+
+
+runs:
+  using: composite
+
+  steps:
+
+    - name: Create LFS file list as cache key
+      shell: bash
+      run: |
+        git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+    - name: Restore LFS cache
+      uses: actions/cache@v2
+      id: lfs-cache
+      with:
+        path: .git/lfs
+        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}-v1
+
+    # Now the LFS pull will be local if we hit the cache, or remote otherwise
+    - name: Git LFS pull
+      shell: bash
+      run: |
+        git lfs pull
+
+    - name: Restore eapol_test build directory from cache
+      uses: actions/cache@v2
+      id: hostapd-cache
+      with:
+        path: ${{ env.HOSTAPD_BUILD_DIR }}
+        key: hostapd-${{ runner.os }}-${{ env.HOSTAPD_GIT_TAG }}-v4
+      if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
+
+    - name: Package manager performance improvements
+      if: ${{ runner.os != 'macOS' && inputs.use_docker == false}}
+      shell: bash
+      run: |
+        sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
+        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+        sudo dpkg-reconfigure man-db
+        sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
+
+    #
+    #  NetworkRADIUS repo is needed for up-to-date versions
+    #  of libkqueue.  Although libkqueue is available via
+    #  debian, it's too old and the EVFILT_PROC filter is
+    #  disabled.
+    #
+    #  We don't need this on macOS as it has a native kqueue
+    #  implementation.
+    #
+    - name: NetworkRADIUS signing key
+      if: ${{ runner.os != 'macOS' }}
+      shell: bash
+      run: sudo /bin/sh -c "curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -"
+
+    - name: Set up NetworkRADIUS extras repository
+      if: ${{ runner.os != 'macOS' }}
+      shell: bash
+      run: |
+        DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+        RELEASE=$(lsb_release -cs)
+        sudo /bin/sh -c "echo \"deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
+          > /etc/apt/sources.list.d/networkradius-extras.list"
+
+    - name: Install build dependencies based on Debian packages plus extra CI packages
+      if: ${{ runner.os != 'macOS' }}
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
+        debian/rules debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
+
+    - uses: ruby/setup-ruby@v1
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+      with:
+        ruby-version: 2.7
+      env:
+        ImageOS: ${{ matrix.os.imageos }}
+
+    - name: Install cassandra driver (not yet available on 20.04)
+      if: ${{ matrix.os.code == 'ubuntu1804' }}
+      shell: bash
+      run: sudo ./scripts/ci/cassandra-install.sh
+
+    - name: Install dependencies (macOS)
+      if: ${{ runner.os == 'macOS' }}
+      shell: bash
+      run: |
+        brew install \
+          cassandra-cpp-driver \
+          gperftools \
+          hiredis \
+          json-c \
+          libidn \
+          libmemcached \
+          llvm@14 \
+          luajit \
+          mariadb \
+          make \
+          mruby \
+          openssl@1.1 \
+          openssl \
+          talloc
+        ln -s `brew --prefix`/opt/make/bin/gmake /usr/local/bin/make
+        echo "#! /bin/sh"               >> /usr/local/bin/nproc
+        echo "sysctl -n hw.physicalcpu" >> /usr/local/bin/nproc
+        chmod +x /usr/local/bin/nproc
+      env:
+        HOMEBREW_NO_AUTO_UPDATE: 1
+        HOMEBREW_NO_INSTALL_CLEANUP: 1
+        HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS: 3650
+
+    - name: Install tacacs_plus
+      shell: bash
+      run: |
+        pip3 install tacacs_plus
+
+    - name: Install LLVM 12
+      if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' }}
+      shell: bash
+      run: |
+        sudo apt-get install -y --no-install-recommends clang-12 llvm-12 gdb lldb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 60 && sudo update-alternatives --set clang /usr/bin/clang-12
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-12 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-12
+
+    - name: Set compiler to GCC 11
+      if: ${{ matrix.env.CC == 'gcc' }}
+      shell: bash
+      run: |
+        sudo apt-get install -y --no-install-recommends gcc-11 gdb lldb
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60 && sudo update-alternatives --set gcc /usr/bin/gcc-11
+
+    #
+    #  Ensure the homebrew version of clang is run rather than the Apple compiler.
+    #
+    - name: Set path for clang
+      if: ${{ runner.os == 'macOS' }}
+      shell: bash
+      run: |
+        echo "PATH=`brew --prefix`/opt/llvm@14/bin/:$PATH" >> $GITHUB_ENV
+
+    #
+    #  Build using some alternative libraries
+    #
+    #    PCRE 2       -> PCRE 1
+    #    MIT Kerberos -> HEIMDAL Kerberos
+    #    OpenSSL 1.0  -> OpenSSL 3.0
+    #
+    - name: 'Fetch OpenSSL 3.0 SHA'
+      id: opensslshasum
+      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+      shell: bash
+      run: |
+        wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/::set-output name=shasum::/p'
+
+    - name: 'Restore OpenSSL 3.0 from the cache'
+      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+      uses: actions/cache@v2
+      id: openssl-cache
+      with:
+        path: /opt/openssl/
+        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
+
+    - name: 'Build OpenSSL 3.0 (if cache stale)'
+      if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
+      shell: bash
+      run: |
+        cd ~
+        wget https://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz
+        tar xzf openssl-$ALT_OPENSSL.tar.gz
+        cd openssl-$ALT_OPENSSL
+        ./Configure --prefix=/opt/openssl --openssldir=. --debug
+        make -j `nproc`
+        make install_sw
+
+    - name: Use alternative libraries
+      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+      shell: bash
+      run: |
+        echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
+        sudo ldconfig
+        sudo apt-get install -y --no-install-recommends libpcre3-dev  # "PCRE 1"
+        sudo apt-get purge -y libpcre2-dev  # Remove default PCRE 2, leaving only PCRE 1
+        sudo apt-get install -y --no-install-recommends heimdal-dev
+
+
+    - name: Show versions
+      shell: bash
+      run: |
+        $CC --version
+        make --version
+        krb5-config --all || :
+        pcre-config --libs-posix --version 2>/dev/null || :
+        pcre2-config --libs-posix --version 2>/dev/null || :
+        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
+        openssl version
+
+    - name: Configure
+      shell: bash
+      run: |
+        if $CC -v 2>&1 | grep clang > /dev/null; then
+            echo "Enabling sanitizers"
+            enable_sanitizers="--enable-address-sanitizer --enable-undefined-behaviour-sanitizer"
+            if [ "`uname`" != "Darwin" ]; then
+                enable_sanitizers="$enable_sanitizers --enable-leak-sanitizer"
+            fi
+            if [ "$TEST_TYPE" = "fuzzing" ]; then
+                enable_sanitizers="$enable_sanitizers --enable-fuzzer"
+            fi
+        else
+            enable_sanitizers=""
+        fi
+        build_paths=""
+        if [ "`uname`" = "Darwin" ]; then
+            build_paths="--with-libfreeradius-ldap-lib-dir=`brew --prefix`/opt/openldap/lib --with-libfreeradius-ldap-include-dir=`brew --prefix`/opt/openldap/include --with-openssl-lib-dir=`brew --prefix`/opt/openssl/lib --with-openssl-include-dir=`brew --prefix`/opt/openssl/include --with-unixodbc-lib-dir=`brew --prefix`/opt/unixodbc/lib --with-unixodbc-include-dir=`brew --prefix`/opt/unixodbc/include"
+        elif [ -d /opt/openssl ]; then
+            export PATH=/opt/openssl/bin:$PATH
+            build_paths="--with-openssl-lib-dir=/opt/openssl/lib64 --with-openssl-include-dir=/opt/openssl/include"
+        fi
+        CFLAGS="${BUILD_CFLAGS}" ./configure -C \
+            --enable-developer \
+            --enable-werror \
+            $enable_sanitizers \
+            $build_paths \
+            --prefix=$HOME/freeradius \
+            --with-threads=$LIBS_OPTIONAL \
+            --with-udpfromto=$LIBS_OPTIONAL \
+            --with-openssl=$LIBS_OPTIONAL \
+            --with-pcre=$LIBS_OPTIONAL
+        echo "config.log"
+        cat config.log
+        echo "Contents of src/include/autoconf.h"
+        cat "./src/include/autoconf.h"
+
+    - name: Make
+      shell: bash
+      run: |
+        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
+        make -j `nproc`
+      if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
+
+    # Disabled on MacOS and when fuzzing to reduce the runtime
+    - name: Clang Static Analyzer
+      if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' && matrix.env.TEST_TYPE != 'fuzzing' }}
+      shell: bash
+      run: |
+        make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ];
+
+    - name: "Clang Static Analyzer: Store assets on failure"
+      uses: actions/upload-artifact@v2
+      with:
+        name: clang-scan.tgz
+        path: build/plist/**/*.html
+        retention-days: 30
+      if: ${{ matrix.env.CC == 'clang' && failure() }}
