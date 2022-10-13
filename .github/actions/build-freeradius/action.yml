@@ -85,12 +85,20 @@ runs:
         sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
         sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
 
+    #  Has issues in Docker container when running on GitHub...
     - uses: ruby/setup-ruby@v1
-      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' && matrix.os.runs_on == 'self-hosted' }}
       with:
         ruby-version: 2.7
       env:
         ImageOS: ${{ matrix.os.imageos }}
+
+    #  ...so install from packages on GitHub
+    - name: Install ruby
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' && matrix.os.runs_on != 'self-hosted' }}
+      shell: bash
+      run: |
+        apt-get install -y --no-install-recommends ruby-dev
 
     - name: Install cassandra driver (not yet available on 20.04)
       if: ${{ matrix.os.code == 'ubuntu1804' }}
