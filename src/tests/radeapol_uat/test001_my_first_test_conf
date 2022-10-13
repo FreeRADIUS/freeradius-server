@@ -1,0 +1,7 @@
+#
+# The config should be same as expected by the eapol_test without the 'network={}'
+#
+key_mgmt=WPA-EAP
+eap=MSCHAPV2
+identity="bob@example.org"
+password="bob"

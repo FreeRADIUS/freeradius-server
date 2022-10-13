@@ -1,0 +1,12 @@
+#
+# All the attributes = values
+#
+NAS-Port = 1234
+NAS-Identifier = "sample of identifier"
+Filter-Id = "filter id hare"
+EAP-Key-Name = 0x11223344
+EAP-Key-Name = 0x11223344
+Vendor-Specific.3041.60 = "alcatel sample filter" 
+Vendor-Specific.Alcatel.Primary-Home-Agent = "Exemplo de home agent alcatel"
+Vendor-Specific.3041.16 = "1234"
+Vendor-Specific.3041.19 = "Alcatel Profile"
