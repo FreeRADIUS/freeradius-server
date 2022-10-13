@@ -177,24 +177,8 @@ jobs:
           rest_test_port: 8080
           rest_test_ssl_port: 8443
 
-      # Fuzz in parallel, aiming to keep to overall runtime of this job in line
-      # with other jobs in the CI workflow
-      - name: Run fuzzer tests
-        if: ${{ matrix.env.TEST_TYPE == 'fuzzing' }}
-        run: |
-          # For fuzzing we won't be needing eapol_test
-          mkdir -p build/tests/eapol_test
-          : > build/tests/eapol_test/eapol_test.mk
-          make -j `nproc` test.fuzzer FUZZER_TIMEOUT=720
-          find build/fuzzer -type f ! -path 'build/fuzzer/*.log' | grep . && exit 1 || :
-
-      - name: "Clang libFuzzer: Store assets on failure"
-        uses: actions/upload-artifact@v2
-        with:
-          name: clang-fuzzer
-          path: build/fuzzer
-          retention-days: 30
-        if: ${{ matrix.env.TEST_TYPE == 'fuzzing' && failure() }}
+      - name: Run fuzzer
+        uses: ./.github/actions/fuzzer
 
       #
       #  If the CI has failed and the branch is ci-debug then we start a tmate
