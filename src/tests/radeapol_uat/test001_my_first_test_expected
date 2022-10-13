@@ -1,0 +1,39 @@
+{
+    "Packet-Type": [
+        "Access-Accept"
+    ],
+    "EAP-Message": [
+        "0x03c50004"
+    ],
+    "Message-Authenticator": [
+        "0x4700a09b5b3fcf9e080ab2ad471b4ef2"
+    ],
+    "NAS-Port": [
+        "12345"
+    ],
+    "Reply-Message": [
+        "Powered by FreeRADIUS"
+    ],
+    "Vendor-Specific.1234.56": [
+        "0xdeadbeef"
+    ],
+    "Vendor-Specific.20.30": [
+        "0xcafecafe",
+        "0xcadecade"
+    ],
+    "Vendor-Specific.3041.16": [
+        "4130"
+    ],
+    "Vendor-Specific.3041.19": [
+        "Alcatel Profile"
+    ],
+    "Vendor-Specific.311.17": [
+        "0x8ea70a99b79c151c89625c38d447bafe63b0a972311a5632123ff404fb6827b3e481"
+    ],
+    "Vendor-Specific.311.7": [
+        "Encryption-Allowed"
+    ],
+    "Vendor-Specific.Microsoft.MPPE-Send-Key": [
+        "0x9bf7a4b1b020fdcde6021f34cbe774d8e31b5c8c7b08f1a78ec07e938c2e"
+    ]
+}
