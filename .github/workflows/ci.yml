@@ -134,8 +134,10 @@ jobs:
           sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
           sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
 
-      - uses: actions/setup-ruby@v1
+      - uses: ruby/setup-ruby@v1
         if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+        with:
+          ruby-version: 2.7
 
       - name: Install cassandra driver (not yet available on 20.04)
         if: ${{ matrix.env.OS == 'ubuntu-18.04' }}
