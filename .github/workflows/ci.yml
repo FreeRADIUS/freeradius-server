@@ -69,368 +69,368 @@ jobs:
 
     steps:
 
-    # Checkout, but defer pulling LFS objects until we've restored the cache
-    - uses: actions/checkout@v2
-      with:
-        lfs: false
+      # Checkout, but defer pulling LFS objects until we've restored the cache
+      - uses: actions/checkout@v2
+        with:
+          lfs: false
 
-    - name: Create LFS file list as cache key
-      run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+      - name: Create LFS file list as cache key
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
 
-    - name: Restore LFS cache
-      uses: actions/cache@v2
-      id: lfs-cache
-      with:
-        path: .git/lfs
-        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}-v1
+      - name: Restore LFS cache
+        uses: actions/cache@v2
+        id: lfs-cache
+        with:
+          path: .git/lfs
+          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}-v1
 
-    # Now the LFS pull will be local if we hit the cache, or remote otherwise
-    - name: Git LFS pull
-      run: git lfs pull
+      # Now the LFS pull will be local if we hit the cache, or remote otherwise
+      - name: Git LFS pull
+        run: git lfs pull
 
-    - name: Restore eapol_test build directory from cache
-      uses: actions/cache@v2
-      id: hostapd-cache
-      with:
-        path: ${{ env.HOSTAPD_BUILD_DIR }}
-        key: hostapd-${{ runner.os }}-${{ env.HOSTAPD_GIT_TAG }}-v4
-      if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
+      - name: Restore eapol_test build directory from cache
+        uses: actions/cache@v2
+        id: hostapd-cache
+        with:
+          path: ${{ env.HOSTAPD_BUILD_DIR }}
+          key: hostapd-${{ runner.os }}-${{ env.HOSTAPD_GIT_TAG }}-v4
+        if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
 
-    - name: Package manager performance improvements
-      if: ${{ runner.os != 'macOS' }}
-      run: |
-        sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
-        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
-        sudo dpkg-reconfigure man-db
-        sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
+      - name: Package manager performance improvements
+        if: ${{ runner.os != 'macOS' }}
+        run: |
+          sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
+          echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+          sudo dpkg-reconfigure man-db
+          sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
 
-    #
-    #  NetworkRADIUS repo is needed for up-to-date versions
-    #  of libkqueue.  Although libkqueue is available via
-    #  debian, it's too old and the EVFILT_PROC filter is
-    #  disabled.
-    #
-    #  We don't need this on macOS as it has a native kqueue
-    #  implementation.
-    #
-    - name: NetworkRADIUS signing key
-      if: ${{ runner.os != 'macOS' }}
-      run: sudo /bin/sh -c "curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -"
+      #
+      #  NetworkRADIUS repo is needed for up-to-date versions
+      #  of libkqueue.  Although libkqueue is available via
+      #  debian, it's too old and the EVFILT_PROC filter is
+      #  disabled.
+      #
+      #  We don't need this on macOS as it has a native kqueue
+      #  implementation.
+      #
+      - name: NetworkRADIUS signing key
+        if: ${{ runner.os != 'macOS' }}
+        run: sudo /bin/sh -c "curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -"
 
-    - name: Set up NetworkRADIUS extras repository
-      if: ${{ runner.os != 'macOS' }}
-      run: |
-        DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
-        RELEASE=$(lsb_release -cs)
-        sudo /bin/sh -c "echo \"deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
-          > /etc/apt/sources.list.d/networkradius-extras.list"
+      - name: Set up NetworkRADIUS extras repository
+        if: ${{ runner.os != 'macOS' }}
+        run: |
+          DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+          RELEASE=$(lsb_release -cs)
+          sudo /bin/sh -c "echo \"deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
+            > /etc/apt/sources.list.d/networkradius-extras.list"
 
-    - name: Install build dependencies based on Debian packages plus extra CI packages
-      if: ${{ runner.os != 'macOS' }}
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
-        debian/rules debian/control
-        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
-        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
+      - name: Install build dependencies based on Debian packages plus extra CI packages
+        if: ${{ runner.os != 'macOS' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
+          debian/rules debian/control
+          sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
+          sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
 
-    - uses: actions/setup-ruby@v1
-      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+      - uses: actions/setup-ruby@v1
+        if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
 
-    - name: Install cassandra driver (not yet available on 20.04)
-      if: ${{ matrix.env.OS == 'ubuntu-18.04' }}
-      run: sudo ./scripts/ci/cassandra-install.sh
+      - name: Install cassandra driver (not yet available on 20.04)
+        if: ${{ matrix.env.OS == 'ubuntu-18.04' }}
+        run: sudo ./scripts/ci/cassandra-install.sh
 
-    - name: Install dependencies (macOS)
-      if: ${{ runner.os == 'macOS' }}
-      run: |
-        brew install \
-          cassandra-cpp-driver \
-          gperftools \
-          hiredis \
-          json-c \
-          libidn \
-          libmemcached \
-          llvm@14 \
-          luajit \
-          mariadb \
-          make \
-          mruby \
-          openssl@1.1 \
-          openssl \
-          talloc
-        ln -s `brew --prefix`/opt/make/bin/gmake /usr/local/bin/make
-        echo "#! /bin/sh"               >> /usr/local/bin/nproc
-        echo "sysctl -n hw.physicalcpu" >> /usr/local/bin/nproc
-        chmod +x /usr/local/bin/nproc
-      env:
-        HOMEBREW_NO_AUTO_UPDATE: 1
-        HOMEBREW_NO_INSTALL_CLEANUP: 1
-        HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS: 3650
+      - name: Install dependencies (macOS)
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          brew install \
+            cassandra-cpp-driver \
+            gperftools \
+            hiredis \
+            json-c \
+            libidn \
+            libmemcached \
+            llvm@14 \
+            luajit \
+            mariadb \
+            make \
+            mruby \
+            openssl@1.1 \
+            openssl \
+            talloc
+          ln -s `brew --prefix`/opt/make/bin/gmake /usr/local/bin/make
+          echo "#! /bin/sh"               >> /usr/local/bin/nproc
+          echo "sysctl -n hw.physicalcpu" >> /usr/local/bin/nproc
+          chmod +x /usr/local/bin/nproc
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+          HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS: 3650
 
-    - name: Install tacacs_plus
-      run: |
-        pip3 install tacacs_plus
+      - name: Install tacacs_plus
+        run: |
+          pip3 install tacacs_plus
 
-    - name: Install LLVM 12
-      if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' }}
-      run: |
-        sudo apt-get install -y --no-install-recommends clang-12 llvm-12 gdb lldb
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 60 && sudo update-alternatives --set clang /usr/bin/clang-12
-        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-12 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-12
+      - name: Install LLVM 12
+        if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' }}
+        run: |
+          sudo apt-get install -y --no-install-recommends clang-12 llvm-12 gdb lldb
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 60 && sudo update-alternatives --set clang /usr/bin/clang-12
+          sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-12 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-12
 
-    - name: Set compiler to GCC 11
-      if: ${{ matrix.env.CC == 'gcc' }}
-      run: |
-        sudo apt-get install -y --no-install-recommends gcc-11 gdb lldb
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60 && sudo update-alternatives --set gcc /usr/bin/gcc-11
+      - name: Set compiler to GCC 11
+        if: ${{ matrix.env.CC == 'gcc' }}
+        run: |
+          sudo apt-get install -y --no-install-recommends gcc-11 gdb lldb
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60 && sudo update-alternatives --set gcc /usr/bin/gcc-11
 
-    #
-    #  Ensure the homebrew version of clang is run rather than the Apple compiler.
-    #
-    - name: Set path for clang
-      if: ${{ runner.os == 'macOS' }}
-      run: |
-        echo "PATH=`brew --prefix`/opt/llvm@14/bin/:$PATH" >> $GITHUB_ENV
+      #
+      #  Ensure the homebrew version of clang is run rather than the Apple compiler.
+      #
+      - name: Set path for clang
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          echo "PATH=`brew --prefix`/opt/llvm@14/bin/:$PATH" >> $GITHUB_ENV
 
-    #
-    #  Build using some alternative libraries
-    #
-    #    PCRE 2       -> PCRE 1
-    #    MIT Kerberos -> HEIMDAL Kerberos
-    #    OpenSSL 1.0  -> OpenSSL 3.0
-    #
-    - name: 'Fetch OpenSSL 3.0 SHA'
-      id: opensslshasum
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      run: |
-        wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/::set-output name=shasum::/p'
+      #
+      #  Build using some alternative libraries
+      #
+      #    PCRE 2       -> PCRE 1
+      #    MIT Kerberos -> HEIMDAL Kerberos
+      #    OpenSSL 1.0  -> OpenSSL 3.0
+      #
+      - name: 'Fetch OpenSSL 3.0 SHA'
+        id: opensslshasum
+        if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+        run: |
+          wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/::set-output name=shasum::/p'
 
-    - name: 'Restore OpenSSL 3.0 from the cache'
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      uses: actions/cache@v2
-      id: openssl-cache
-      with:
-        path: /opt/openssl/
-        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
+      - name: 'Restore OpenSSL 3.0 from the cache'
+        if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+        uses: actions/cache@v2
+        id: openssl-cache
+        with:
+          path: /opt/openssl/
+          key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
 
-    - name: 'Build OpenSSL 3.0 (if cache stale)'
-      if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
-      run: |
-        cd ~
-        wget https://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz
-        tar xzf openssl-$ALT_OPENSSL.tar.gz
-        cd openssl-$ALT_OPENSSL
-        ./Configure --prefix=/opt/openssl --openssldir=. --debug
-        make -j `nproc`
-        make install_sw
+      - name: 'Build OpenSSL 3.0 (if cache stale)'
+        if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
+        run: |
+          cd ~
+          wget https://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz
+          tar xzf openssl-$ALT_OPENSSL.tar.gz
+          cd openssl-$ALT_OPENSSL
+          ./Configure --prefix=/opt/openssl --openssldir=. --debug
+          make -j `nproc`
+          make install_sw
 
-    - name: Use alternative libraries
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      run: |
-        echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
-        sudo ldconfig
-        sudo apt-get install -y --no-install-recommends libpcre3-dev  # "PCRE 1"
-        sudo apt-get purge -y libpcre2-dev  # Remove default PCRE 2, leaving only PCRE 1
-        sudo apt-get install -y --no-install-recommends heimdal-dev
+      - name: Use alternative libraries
+        if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+        run: |
+          echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
+          sudo ldconfig
+          sudo apt-get install -y --no-install-recommends libpcre3-dev  # "PCRE 1"
+          sudo apt-get purge -y libpcre2-dev  # Remove default PCRE 2, leaving only PCRE 1
+          sudo apt-get install -y --no-install-recommends heimdal-dev
 
 
-    - name: Show versions
-      run: |
-        $CC --version
-        make --version
-        krb5-config --all || :
-        pcre-config --libs-posix --version 2>/dev/null || :
-        pcre2-config --libs-posix --version 2>/dev/null || :
-        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
-        openssl version
+      - name: Show versions
+        run: |
+          $CC --version
+          make --version
+          krb5-config --all || :
+          pcre-config --libs-posix --version 2>/dev/null || :
+          pcre2-config --libs-posix --version 2>/dev/null || :
+          [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
+          openssl version
 
-    - name: Configure
-      run: |
-        if $CC -v 2>&1 | grep clang > /dev/null; then
-            echo "Enabling sanitizers"
-            enable_sanitizers="--enable-address-sanitizer --enable-undefined-behaviour-sanitizer"
-            if [ "`uname`" != "Darwin" ]; then
-                enable_sanitizers="$enable_sanitizers --enable-leak-sanitizer"
-            fi
-            if [ "$TEST_TYPE" = "fuzzing" ]; then
-                enable_sanitizers="$enable_sanitizers --enable-fuzzer"
-            fi
-        else
-            enable_sanitizers=""
-        fi
-        build_paths=""
-        if [ "`uname`" = "Darwin" ]; then
-            build_paths="--with-libfreeradius-ldap-lib-dir=`brew --prefix`/opt/openldap/lib --with-libfreeradius-ldap-include-dir=`brew --prefix`/opt/openldap/include --with-openssl-lib-dir=`brew --prefix`/opt/openssl/lib --with-openssl-include-dir=`brew --prefix`/opt/openssl/include --with-unixodbc-lib-dir=`brew --prefix`/opt/unixodbc/lib --with-unixodbc-include-dir=`brew --prefix`/opt/unixodbc/include"
-        elif [ -d /opt/openssl ]; then
-            export PATH=/opt/openssl/bin:$PATH
-            build_paths="--with-openssl-lib-dir=/opt/openssl/lib64 --with-openssl-include-dir=/opt/openssl/include"
-        fi
-        CFLAGS="${BUILD_CFLAGS}" ./configure -C \
-            --enable-werror \
-            $enable_sanitizers \
-            $build_paths \
-            --prefix=$HOME/freeradius \
-            --with-threads=$LIBS_OPTIONAL \
-            --with-udpfromto=$LIBS_OPTIONAL \
-            --with-openssl=$LIBS_OPTIONAL \
-            --with-pcre=$LIBS_OPTIONAL
-        echo "config.log"
-        cat config.log
-        echo "Contents of src/include/autoconf.h"
-        cat "./src/include/autoconf.h"
+      - name: Configure
+        run: |
+          if $CC -v 2>&1 | grep clang > /dev/null; then
+              echo "Enabling sanitizers"
+              enable_sanitizers="--enable-address-sanitizer --enable-undefined-behaviour-sanitizer"
+              if [ "`uname`" != "Darwin" ]; then
+                  enable_sanitizers="$enable_sanitizers --enable-leak-sanitizer"
+              fi
+              if [ "$TEST_TYPE" = "fuzzing" ]; then
+                  enable_sanitizers="$enable_sanitizers --enable-fuzzer"
+              fi
+          else
+              enable_sanitizers=""
+          fi
+          build_paths=""
+          if [ "`uname`" = "Darwin" ]; then
+              build_paths="--with-libfreeradius-ldap-lib-dir=`brew --prefix`/opt/openldap/lib --with-libfreeradius-ldap-include-dir=`brew --prefix`/opt/openldap/include --with-openssl-lib-dir=`brew --prefix`/opt/openssl/lib --with-openssl-include-dir=`brew --prefix`/opt/openssl/include --with-unixodbc-lib-dir=`brew --prefix`/opt/unixodbc/lib --with-unixodbc-include-dir=`brew --prefix`/opt/unixodbc/include"
+          elif [ -d /opt/openssl ]; then
+              export PATH=/opt/openssl/bin:$PATH
+              build_paths="--with-openssl-lib-dir=/opt/openssl/lib64 --with-openssl-include-dir=/opt/openssl/include"
+          fi
+          CFLAGS="${BUILD_CFLAGS}" ./configure -C \
+              --enable-werror \
+              $enable_sanitizers \
+              $build_paths \
+              --prefix=$HOME/freeradius \
+              --with-threads=$LIBS_OPTIONAL \
+              --with-udpfromto=$LIBS_OPTIONAL \
+              --with-openssl=$LIBS_OPTIONAL \
+              --with-pcre=$LIBS_OPTIONAL
+          echo "config.log"
+          cat config.log
+          echo "Contents of src/include/autoconf.h"
+          cat "./src/include/autoconf.h"
 
-    - name: Make
-      run: |
-        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
-        make -j `nproc`
-      if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
+      - name: Make
+        run: |
+          [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
+          make -j `nproc`
+        if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
 
-    # Disabled on MacOS and when fuzzing to reduce the runtime
-    - name: Clang Static Analyzer
-      if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' && matrix.env.TEST_TYPE != 'fuzzing' }}
-      run: |
-        make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ];
+      # Disabled on MacOS and when fuzzing to reduce the runtime
+      - name: Clang Static Analyzer
+        if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' && matrix.env.TEST_TYPE != 'fuzzing' }}
+        run: |
+          make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ];
 
-    - name: "Clang Static Analyzer: Store assets on failure"
-      uses: actions/upload-artifact@v2
-      with:
-        name: clang-scan.tgz
-        path: build/plist/**/*.html
-        retention-days: 30
-      if: ${{ matrix.env.CC == 'clang' && failure() }}
+      - name: "Clang Static Analyzer: Store assets on failure"
+        uses: actions/upload-artifact@v2
+        with:
+          name: clang-scan.tgz
+          path: build/plist/**/*.html
+          retention-days: 30
+        if: ${{ matrix.env.CC == 'clang' && failure() }}
 
-    - name: Install and setup fixtures then run full CI tests
-      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
-      run: |
-        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
+      - name: Install and setup fixtures then run full CI tests
+        if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+        run: |
+          [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
 
-        # Temporarily replace ucf (for config merge) with cp since it's
-        # terribly slow!
-        sudo mv /usr/bin/ucf /usr/bin/ucf.disabled
-        sudo sh -c 'echo "#!/bin/sh"          >  /usr/bin/ucf'
-        sudo sh -c 'echo "shift && cp -v \$@" >> /usr/bin/ucf'
-        sudo chmod +x /usr/bin/ucf
-        wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
-        echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
-          389-ds \
-          apparmor-utils \
-          dovecot-imapd \
-          exim4 \
-          openresty \
-          redis-server redis-tools \
-          slapd ldap-utils
-        sudo mv -f /usr/bin/ucf.disabled /usr/bin/ucf
-        sudo systemctl stop dovecot exim4 slapd openresty
-        sudo aa-complain /usr/sbin/slapd
+          # Temporarily replace ucf (for config merge) with cp since it's
+          # terribly slow!
+          sudo mv /usr/bin/ucf /usr/bin/ucf.disabled
+          sudo sh -c 'echo "#!/bin/sh"          >  /usr/bin/ucf'
+          sudo sh -c 'echo "shift && cp -v \$@" >> /usr/bin/ucf'
+          sudo chmod +x /usr/bin/ucf
+          wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
+          echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            389-ds \
+            apparmor-utils \
+            dovecot-imapd \
+            exim4 \
+            openresty \
+            redis-server redis-tools \
+            slapd ldap-utils
+          sudo mv -f /usr/bin/ucf.disabled /usr/bin/ucf
+          sudo systemctl stop dovecot exim4 slapd openresty
+          sudo aa-complain /usr/sbin/slapd
 
-        echo "samba-common samba-common/workgroup string WORKGROUP" | sudo debconf-set-selections
-        echo "samba-common samba-common/dhcp boolean false" | sudo debconf-set-selections
-        echo "samba-common samba-common/do_debconf boolean true" | sudo debconf-set-selections
-        sudo apt-get install -y samba winbind krb5-user
+          echo "samba-common samba-common/workgroup string WORKGROUP" | sudo debconf-set-selections
+          echo "samba-common samba-common/dhcp boolean false" | sudo debconf-set-selections
+          echo "samba-common samba-common/do_debconf boolean true" | sudo debconf-set-selections
+          sudo apt-get install -y samba winbind krb5-user
 
-        export PG_VER=14
-        sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
-        sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
+          export PG_VER=14
+          sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
+          sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
 
-        sudo systemctl start mysql postgresql redis-server
+          sudo systemctl start mysql postgresql redis-server
 
-        mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';";
+          mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';";
 
-        for i in \
-            postgresql-setup.sh \
-            imap-setup.sh \
-            exim-setup.sh \
-            mysql-setup.sh \
-            openresty-setup.sh \
-            ldap-setup.sh \
-            ldap2-setup.sh \
-            389ds-setup.sh \
-            samba-setup.sh \
-            redis-setup.sh; do
+          for i in \
+              postgresql-setup.sh \
+              imap-setup.sh \
+              exim-setup.sh \
+              mysql-setup.sh \
+              openresty-setup.sh \
+              ldap-setup.sh \
+              ldap2-setup.sh \
+              389ds-setup.sh \
+              samba-setup.sh \
+              redis-setup.sh; do
 
-            script="./scripts/ci/$i"
-            echo "Calling $i"
-            $script
-        done
+              script="./scripts/ci/$i"
+              echo "Calling $i"
+              $script
+          done
 
-        make ci-test
+          make ci-test
 
-      env:
-        SQL_MYSQL_TEST_SERVER: 127.0.0.1
-        SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
-        LDAP_TEST_SERVER: 127.0.0.1
-        LDAP_TEST_SERVER_PORT: 3890
-        LDAP_TEST_SERVER_SSL_PORT: 6360
-        RFC4533_TEST_SERVER: ldap://127.0.0.1:3890/
-        PERSISTENT_SEARCH_TEST_SERVER: ldap://127.0.0.1:3892/
-        ACTIVE_DIRECTORY_TEST_SERVER: 127.0.0.1
-        REST_TEST_SERVER: 127.0.0.1
-        REST_TEST_SERVER_PORT: 8080
-        REST_TEST_SERVER_SSL_PORT: 8443
-#       SMTP_TEST_SERVER: 127.0.0.1
-#       SMTP_TEST_SERVER_PORT: 2525
-        REDIS_TEST_SERVER: 127.0.0.1
-        REDIS_IPPOOL_TEST_SERVER: 127.0.0.1
-        CACHE_REDIS_TEST_SERVER: 127.0.0.1
-#       IMAP_TEST_SERVER: 127.0.0.1
-#       IMAP_TEST_SERVER_PORT: 1430
-#       IMAP_TEST_SERVER_SSL_PORT: 1431
+        env:
+          SQL_MYSQL_TEST_SERVER: 127.0.0.1
+          SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
+          LDAP_TEST_SERVER: 127.0.0.1
+          LDAP_TEST_SERVER_PORT: 3890
+          LDAP_TEST_SERVER_SSL_PORT: 6360
+          RFC4533_TEST_SERVER: ldap://127.0.0.1:3890/
+          PERSISTENT_SEARCH_TEST_SERVER: ldap://127.0.0.1:3892/
+          ACTIVE_DIRECTORY_TEST_SERVER: 127.0.0.1
+          REST_TEST_SERVER: 127.0.0.1
+          REST_TEST_SERVER_PORT: 8080
+          REST_TEST_SERVER_SSL_PORT: 8443
+#          SMTP_TEST_SERVER: 127.0.0.1
+#          SMTP_TEST_SERVER_PORT: 2525
+          REDIS_TEST_SERVER: 127.0.0.1
+          REDIS_IPPOOL_TEST_SERVER: 127.0.0.1
+          CACHE_REDIS_TEST_SERVER: 127.0.0.1
+#          IMAP_TEST_SERVER: 127.0.0.1
+#          IMAP_TEST_SERVER_PORT: 1430
+#          IMAP_TEST_SERVER_SSL_PORT: 1431
 
-    # No detect_leaks support for ASAN on MacOS
-    - name: Run basic tests (MacOS)
-      if: ${{ matrix.env.TEST_TYPE == 'macos' }}
-      run: |
-        make test
-      env:
-        ASAN_OPTIONS: symbolize=1 detect_stack_use_after_return=1
+      # No detect_leaks support for ASAN on MacOS
+      - name: Run basic tests (MacOS)
+        if: ${{ matrix.env.TEST_TYPE == 'macos' }}
+        run: |
+          make test
+        env:
+          ASAN_OPTIONS: symbolize=1 detect_stack_use_after_return=1
 
-    # Fuzz in parallel, aiming to keep to overall runtime of this job in line
-    # with other jobs in the CI workflow
-    - name: Run fuzzer tests
-      if: ${{ matrix.env.TEST_TYPE == 'fuzzing' }}
-      run: |
-        # For fuzzing we won't be needing eapol_test
-        mkdir -p build/tests/eapol_test
-        : > build/tests/eapol_test/eapol_test.mk
-        make -j `nproc` test.fuzzer FUZZER_TIMEOUT=720
-        find build/fuzzer -type f ! -path 'build/fuzzer/*.log' | grep . && exit 1 || :
+      # Fuzz in parallel, aiming to keep to overall runtime of this job in line
+      # with other jobs in the CI workflow
+      - name: Run fuzzer tests
+        if: ${{ matrix.env.TEST_TYPE == 'fuzzing' }}
+        run: |
+          # For fuzzing we won't be needing eapol_test
+          mkdir -p build/tests/eapol_test
+          : > build/tests/eapol_test/eapol_test.mk
+          make -j `nproc` test.fuzzer FUZZER_TIMEOUT=720
+          find build/fuzzer -type f ! -path 'build/fuzzer/*.log' | grep . && exit 1 || :
 
-    - name: "Clang libFuzzer: Store assets on failure"
-      uses: actions/upload-artifact@v2
-      with:
-        name: clang-fuzzer
-        path: build/fuzzer
-        retention-days: 30
-      if: ${{ matrix.env.TEST_TYPE == 'fuzzing' && failure() }}
+      - name: "Clang libFuzzer: Store assets on failure"
+        uses: actions/upload-artifact@v2
+        with:
+          name: clang-fuzzer
+          path: build/fuzzer
+          retention-days: 30
+        if: ${{ matrix.env.TEST_TYPE == 'fuzzing' && failure() }}
 
-    #
-    #  If the CI has failed and the branch is ci-debug then we start a tmate
-    #  session to provide interactive shell access to the session.
-    #
-    #  The SSH rendezvous point will be emited continuously in the job output,
-    #  which will look something like:
-    #
-    #      SSH: ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
-    #
-    #  For example:
-    #
-    #      git push origin ci-debug --force
-    #
-    #  Look at the job output in: https://github.com/FreeRADIUS/freeradius-server/actions
-    #
-    #      ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
-    #
-    #  Access requires that you have the private key corresponding to the
-    #  public key of the GitHub user that initiated the job.
-    #
-    - name: "Debug: Start tmate"
-      uses: mxschmitt/action-tmate@v3
-      with:
-        limit-access-to-actor: true
-      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+      #
+      #  If the CI has failed and the branch is ci-debug then we start a tmate
+      #  session to provide interactive shell access to the session.
+      #
+      #  The SSH rendezvous point will be emited continuously in the job output,
+      #  which will look something like:
+      #
+      #      SSH: ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+      #
+      #  For example:
+      #
+      #      git push origin ci-debug --force
+      #
+      #  Look at the job output in: https://github.com/FreeRADIUS/freeradius-server/actions
+      #
+      #      ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+      #
+      #  Access requires that you have the private key corresponding to the
+      #  public key of the GitHub user that initiated the job.
+      #
+      - name: "Debug: Start tmate"
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+        if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
 
 ##########################################################################################
 #                            FREERADIUS CORE DEVELOPERS ONLY
@@ -514,31 +514,31 @@ jobs:
     runs-on: ubuntu-latest
     name: "Merge into upstream"
     steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
-        lfs: false
-        persist-credentials: false
-    #  Note: This also opportunistically updates the developer's branch with commits from
-    #  the main repository.
-    #  This update may fail if the developer has pushed additional commits since the
-    #  workflow started.  This is normal, and we ignore the failure.
-    #
-    #  We fixup the origin URL as the default remote fails on push with:
-    #    fatal: could not read Username for 'https://github.com': No such device or address
-    - name: "Merge into upstream dev branch and update local branch"
-      run: |
-        BRANCH=${GITHUB_REF#refs/heads/}
-        git config --local user.name "github-actions[bot]"
-        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git remote add upstream https://$USERNAME:$REPO_KEY@github.com/FreeRADIUS/freeradius-server.git
-        git remote set-url origin https://$USERNAME:$REPO_KEY@github.com/$REPO_NAME
-        git fetch --no-recurse-submodules upstream +refs/heads/*:refs/remotes/upstream/* +refs/tags/*:refs/tags/upstream/*
-        git checkout --progress --force -B upstream-branch "refs/remotes/upstream/$BRANCH"
-        git merge "$BRANCH" --ff-only
-        git push upstream "upstream-branch:$BRANCH"
-        git push origin "upstream-branch:$BRANCH" || true
-      env:
-        USERNAME: ${{ github.repository_owner }}
-        REPO_NAME: ${{ github.repository }}
-        REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+      #  Note: This also opportunistically updates the developer's branch with commits from
+      #  the main repository.
+      #  This update may fail if the developer has pushed additional commits since the
+      #  workflow started.  This is normal, and we ignore the failure.
+      #
+      #  We fixup the origin URL as the default remote fails on push with:
+      #    fatal: could not read Username for 'https://github.com': No such device or address
+      - name: "Merge into upstream dev branch and update local branch"
+        run: |
+          BRANCH=${GITHUB_REF#refs/heads/}
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://$USERNAME:$REPO_KEY@github.com/FreeRADIUS/freeradius-server.git
+          git remote set-url origin https://$USERNAME:$REPO_KEY@github.com/$REPO_NAME
+          git fetch --no-recurse-submodules upstream +refs/heads/*:refs/remotes/upstream/* +refs/tags/*:refs/tags/upstream/*
+          git checkout --progress --force -B upstream-branch "refs/remotes/upstream/$BRANCH"
+          git merge "$BRANCH" --ff-only
+          git push upstream "upstream-branch:$BRANCH"
+          git push origin "upstream-branch:$BRANCH" || true
+        env:
+          USERNAME: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.repository }}
+          REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
