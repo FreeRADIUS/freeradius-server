@@ -2,8 +2,6 @@
 
 ROOTDN="cn=Directory Manager"
 
-set
-
 if [ "x$USE_DOCKER" = "xtrue" ]; then
 	dsconf -D "${ROOTDN}" -w "secret123" "${PERSISTENT_SEARCH_TEST_SERVER}" backend create --suffix 'dc=example,dc=com' --be-name localhost
 	dsidm -D "${ROOTDN}" -w "secret123" "${PERSISTENT_SEARCH_TEST_SERVER}" -b 'dc=example,dc=com' initialise
