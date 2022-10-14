@@ -5,6 +5,10 @@ runs:
 
   steps:
 
+    - name: Tidy home directory
+      shell: bash
+      run: rm -rf "$HOME"/*
+
     - name: Self-hosted runner Docker container fixes
       shell: bash
       run: ln -fs /usr/bin/env /usr/local/bin/sudo
