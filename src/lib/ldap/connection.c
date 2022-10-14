@@ -461,8 +461,8 @@ static void _ldap_trunk_idle_timeout(fr_event_list_t *el, UNUSED fr_time_t now, 
 		/*
 		 *	There are still pending queries - insert a new event
 		 */
-		fr_event_timer_in(ttrunk, el, &ttrunk->ev, ttrunk->t->config->idle_timeout,
-				  _ldap_trunk_idle_timeout, ttrunk);
+		(void) fr_event_timer_in(ttrunk, el, &ttrunk->ev, ttrunk->t->config->idle_timeout,
+					 _ldap_trunk_idle_timeout, ttrunk);
 	}
 }
 
