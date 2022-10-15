@@ -2935,7 +2935,7 @@ static fr_command_table_t command_table_stats[] = {
 #endif
 
 	{ "pool", FR_READ,
-	  "pool <name> "
+	  "stats pool <name> "
 	  "- show pool statistics for given module",
 	  command_stats_pool, NULL },
 
