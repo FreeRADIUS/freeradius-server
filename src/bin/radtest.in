@@ -100,7 +100,7 @@ if [ "$7" ]
 then
 	nas=$7
 else
-	nas=`hostname`
+	nas=`(hostname || uname -n) 2>/dev/null | sed 1q`
 fi
 
 (
