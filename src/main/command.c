@@ -2440,6 +2440,19 @@ static int command_stats_queue(rad_listen_t *listener, UNUSED int argc, UNUSED c
 
 	return CMD_OK;
 }
+
+static int command_stats_threads(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	int stats[3];
+
+	thread_pool_thread_stats(stats);
+
+	cprintf(listener, "threads_active\t%d\n", stats[0]);
+	cprintf(listener, "threads_total\t\t%d\n", stats[1]);
+	cprintf(listener, "threads_max\t\t%d\n", stats[2]);
+
+	return CMD_OK;
+}
 #endif
 
 #ifndef NDEBUG
@@ -2943,6 +2956,9 @@ static fr_command_table_t command_table_stats[] = {
 	{ "queue", FR_READ,
 	  "stats queue - show statistics for packet queues",
 	  command_stats_queue, NULL },
+	{ "threads", FR_READ,
+	  "stats threads - show statistics for the worker threads",
+	  command_stats_threads, NULL },
 #endif
 
 	{ "socket", FR_READ,
