@@ -433,7 +433,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 
 			if (i == el->max_readers) el->max_readers = i + 1;
 
-			FD_SET(&el->read_fds, fd);
+			FD_SET(fd, &el->read_fds);
 			if (el->max_fd <= fd) el->max_fd = fd;
 			break;
 		}
@@ -492,7 +492,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 			el->num_readers--;
 
 			if ((i + 1) == el->max_readers) el->max_readers = i;
-			FD_CLR(&el->read_fds, fd);
+			FD_CLR(fd, &el->read_fds);
 
 			/*
 			 *	@todo - update el->max_fd, too.
