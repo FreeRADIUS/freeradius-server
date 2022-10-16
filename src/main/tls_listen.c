@@ -95,28 +95,39 @@ static void tls_socket_close(rad_listen_t *listener)
 
 static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener, REQUEST *request)
 {
-	uint8_t *p;
 	ssize_t rcode;
 	listen_socket_t *sock = listener->data;
 
-	p = sock->ssn->dirty_out.data;
+	/*
+	 *	Write as much as possible.
+	 */
+	RDEBUG3("(TLS) Writing to socket %d", listener->fd);
+	rcode = write(listener->fd, sock->ssn->dirty_out.data, sock->ssn->dirty_out.used);
+	if (rcode <= 0) {
+		RDEBUG("(TLS) Error writing to socket: %s", fr_syserror(errno));
 
-	while (p < (sock->ssn->dirty_out.data + sock->ssn->dirty_out.used)) {
-		RDEBUG3("(TLS) Writing to socket %d", listener->fd);
-		rcode = write(listener->fd, p,
-			      (sock->ssn->dirty_out.data + sock->ssn->dirty_out.used) - p);
-		if (rcode <= 0) {
-			RDEBUG("(TLS) Error writing to socket: %s", fr_syserror(errno));
-
-			tls_socket_close(listener);
-			return 0;
-		}
-		p += rcode;
+		tls_socket_close(listener);
+		return -1;
 	}
 
-	sock->ssn->dirty_out.used = 0;
+	/*
+	 *	All of the data was written.  It's fine.
+	 */
+	if ((size_t) rcode == sock->ssn->dirty_out.used) {
+		sock->ssn->dirty_out.used = 0;
+		return 0;
+	}
 
-	return 1;
+	/*
+	 *	Move the data to the start of the buffer.
+	 *
+	 *	Yes, this is horrible.  But doing this means that we
+	 *	don't have to modify the rest of the code which mangles dirty_out, and assumes that the write offset is always &data[used].
+	 */
+	memmove(&sock->ssn->dirty_out.data[0], &sock->ssn->dirty_out.data[rcode], sock->ssn->dirty_out.used - rcode);
+	sock->ssn->dirty_out.used -= rcode;
+
+	return 0;
 }
 
 /*
