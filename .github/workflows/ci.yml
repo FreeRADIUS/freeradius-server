@@ -102,6 +102,7 @@ jobs:
       if: ${{ env.USE_DOCKER == 1 }}
       run: |
         ln -fs /usr/bin/env /usr/local/bin/sudo
+        rm -rf "$HOME"/*
 
     - name: Package manager performance improvements
       run: |
