@@ -1529,12 +1529,12 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 }
 
 /*
- *	Send an authentication response packet
+ *	Send a response packet
  */
-static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
+static int common_socket_send(rad_listen_t *listener, REQUEST *request)
 {
 	rad_assert(request->listener == listener);
-	rad_assert(listener->send == auth_socket_send);
+	rad_assert(listener->send == common_socket_send);
 
 	if (request->reply->code == 0) return 0;
 
@@ -1559,46 +1559,6 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 	return 0;
 }
 
-
-#ifdef WITH_ACCOUNTING
-/*
- *	Send an accounting response packet (or not)
- */
-static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
-{
-	rad_assert(request->listener == listener);
-	rad_assert(listener->send == acct_socket_send);
-
-	/*
-	 *	Accounting reject's are silently dropped.
-	 *
-	 *	We do it here to avoid polluting the rest of the
-	 *	code with this knowledge
-	 */
-	if (request->reply->code == 0) return 0;
-
-#ifdef WITH_UDPFROMTO
-	/*
-	 *	Overwrite the src ip address on the outbound packet
-	 *	with the one specified by the client.
-	 *	This is useful to work around broken DSR implementations
-	 *	and other routing issues.
-	 */
-	if (request->client->src_ipaddr.af != AF_UNSPEC) {
-		request->reply->src_ipaddr = request->client->src_ipaddr;
-	}
-#endif
-
-	if (rad_send(request->reply, request->packet,
-		     request->client->secret) < 0) {
-		RERROR("Failed sending reply: %s",
-			       fr_strerror());
-		return -1;
-	}
-
-	return 0;
-}
-#endif
 
 #ifdef WITH_PROXY
 /*
@@ -2479,7 +2439,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 #ifdef WITH_STATS
 	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
-	  stats_socket_recv, auth_socket_send,
+	  stats_socket_recv, common_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode },
 #else
 	/*
@@ -2502,14 +2462,14 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	/* authentication */
 	{ RLM_MODULE_INIT, "auth", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, common_socket_free,
-	  auth_socket_recv, auth_socket_send,
+	  auth_socket_recv, common_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode },
 
 #ifdef WITH_ACCOUNTING
 	/* accounting */
 	{ RLM_MODULE_INIT, "acct", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, common_socket_free,
-	  acct_socket_recv, acct_socket_send,
+	  acct_socket_recv, common_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode},
 #else
 	{ 0, "acct", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
@@ -2543,7 +2503,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	/* Change of Authorization */
 	{ RLM_MODULE_INIT, "coa", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
-	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
+	  coa_socket_recv, common_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode },
 #else
 	{ 0, "coa", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
