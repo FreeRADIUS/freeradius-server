@@ -85,6 +85,7 @@ struct rad_listen {
 #ifdef WITH_TLS
 	fr_tls_server_conf_t *tls;
 	bool		check_client_connections;
+	bool		nonblock;
 
 #ifdef WITH_COA_TUNNEL
 	char const	*key;		/* Originating-Realm-Key */

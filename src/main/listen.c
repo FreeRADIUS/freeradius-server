@@ -1248,6 +1248,12 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			if (rcode < 0) return -1;
 
 			/*
+			 *	Allow non-blocking for TLS sockets
+			 */
+			rcode = cf_item_parse(cs, "nonblock", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->nonblock), NULL);
+			if (rcode < 0) return -1;
+
+			/*
 			 *	If unset, set to default.
 			 */
 			if (listen_port == 0) listen_port = PW_RADIUS_TLS_PORT;
@@ -3109,6 +3115,18 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		 */
 		if (home->tls->client_hostname) {
 			(void) SSL_set_tlsext_host_name(sock->ssn->ssl, (void *) (uintptr_t) "home->tls->client_hostname");
+		}
+
+		/*
+		 *	Set non-blocking if it's configured.
+		 */
+		if (this->nonblock) {
+			if (fr_nonblock(this->fd < 0)) {
+				ERROR("(TLS) Failed setting nonblocking for proxy socket '%s'", buffer);
+				home->last_failed_open = now;
+				listen_free(&this);
+				return NULL;
+			}
 		}
 
 		/*
