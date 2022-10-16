@@ -38,7 +38,7 @@ jobs:
         uses: fkirc/skip-duplicate-actions@master
 
   ci:
-    timeout-minutes: 90
+    timeout-minutes: 150
     needs: pre-ci
     if: ${{ needs.pre-ci.outputs.should_skip != 'true' }}
 
