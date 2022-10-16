@@ -551,6 +551,17 @@ check_for_setup:
 	 *	Try to get application data.
 	 */
 get_application_data:
+	/*
+	 *	More data to send.  Do so.
+	 */
+	if (sock->ssn->dirty_out.used > 0) {
+		rcode = tls_socket_write(listener, request);
+		if (rcode < 0) {
+			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+			return rcode;
+		}
+	}
+
 	status = tls_application_data(sock->ssn, request);
 	RDEBUG3("(TLS) Application data status %d", status);
 
