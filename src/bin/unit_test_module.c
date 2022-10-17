@@ -534,7 +534,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, U
 	return RLM_MODULE_FAIL;
 }
 
-static request_t *request_clone(request_t *old)
+static request_t *request_clone(request_t *old, int number, CONF_SECTION *server_cs)
 {
 	request_t *request;
 
@@ -547,7 +547,13 @@ static request_t *request_clone(request_t *old)
 	memcpy(request->packet, old->packet, sizeof(*request->packet));
 	(void) fr_pair_list_copy(request->request_ctx, &request->request_pairs, &old->request_pairs);
 	request->packet->timestamp = fr_time();
-	request->number = old->number++;
+	request->number = number;
+	request->name = talloc_typed_asprintf(request, "%" PRIu64, request->number);
+
+	unlang_call_push(request, server_cs, UNLANG_TOP_FRAME);
+
+	request->master_state = REQUEST_ACTIVE;
+	request->dict = old->dict;
 
 	return request;
 }
@@ -966,16 +972,31 @@ int main(int argc, char *argv[])
 
 	if (count == 1) {
 		unlang_interpret_synchronous(el, request);
+
 	} else {
 		int i;
-		request_t *old = request_clone(request);
-		talloc_free(request);
+		request_t *cached = request;
 
 		for (i = 0; i < count; i++) {
-			request = request_clone(old);
+			request = request_clone(cached, i, server_cs);
+
+			/*
+			 *	Artificially limit the number of instructions which are run.
+			 */
+			if (config->ins_max) {
+				if (config->ins_countup) {
+					request->ins_max = i + 1;
+				} else {
+					request->ins_max = config->ins_max;
+				}
+				request->ins_count = 0;
+			}
+
 			unlang_interpret_synchronous(el, request);
 			talloc_free(request);
 		}
+
+		request = cached;
 	}
 
 	if (!output_file || (strcmp(output_file, "-") == 0)) {
