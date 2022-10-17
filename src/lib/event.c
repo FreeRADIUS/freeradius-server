@@ -623,8 +623,6 @@ int fr_event_loop(fr_event_list_t *el)
 			if (!FD_ISSET(ef->fd, &read_fds)) continue;
 
 			ef->handler(el, ef->fd, ef->ctx);
-
-			if (el->changed) break;
 		}
 
 #else  /* HAVE_KQUEUE */
