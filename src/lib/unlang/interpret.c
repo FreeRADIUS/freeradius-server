@@ -457,6 +457,20 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			yielded_clear(frame);
 		}
 
+#ifndef NDEBUG
+		/*
+		 *	Failure testing!
+		 */
+		if (request->ins_max && (request->master_state != REQUEST_STOP_PROCESSING)) {
+			request->ins_count++;
+
+			if (request->ins_count >= request->ins_max) {
+				request->master_state = REQUEST_STOP_PROCESSING;
+				RERROR("Failing request due to maximum instruction count %" PRIu64, request->ins_max);
+			}
+		}
+#endif
+
 		/*
 		 *	unlang_interpret_signal() takes care of
 		 *	marking the requests as STOP on a CANCEL

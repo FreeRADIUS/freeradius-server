@@ -156,6 +156,10 @@ struct request_s {
 #ifndef NDEBUG
 	uint32_t		magic; 		//!< Magic number used to detect memory corruption,
 						//!< or request structs that have not been properly initialised.
+
+	uint64_t		ins_count;	//!< count of instructions we've ran
+	uint64_t		ins_max;	//!< max instruction to bail out at
+
 #endif
 	void			*stack;		//!< unlang interpreter stack.
 
