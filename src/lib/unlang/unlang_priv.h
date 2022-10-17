@@ -439,6 +439,8 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
  */
 static inline void frame_cleanup(unlang_stack_frame_t *frame)
 {
+	unlang_frame_perf_cleanup(frame);
+
 	/*
 	 *	Don't clear top_frame flag, bad things happen...
 	 */
@@ -447,8 +449,6 @@ static inline void frame_cleanup(unlang_stack_frame_t *frame)
 		talloc_free_children(frame->state); /* *(ev->parent) = NULL in event.c */
 		TALLOC_FREE(frame->state);
 	}
-
-	unlang_frame_perf_cleanup(frame);
 }
 
 /** Advance to the next sibling instruction
