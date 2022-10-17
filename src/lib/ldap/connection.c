@@ -734,8 +734,8 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t 
 	/*
 	 *  Reset the idle timeout event
 	 */
-	fr_event_timer_in(ttrunk, el, &ttrunk->ev,
-			  ttrunk->t->config->idle_timeout, _ldap_trunk_idle_timeout, ttrunk);
+	(void) fr_event_timer_in(ttrunk, el, &ttrunk->ev,
+				 ttrunk->t->config->idle_timeout, _ldap_trunk_idle_timeout, ttrunk);
 
 	do {
 		/*
