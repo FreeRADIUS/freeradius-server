@@ -187,6 +187,17 @@ static const CONF_PARSER migrate_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+#ifndef NDEBUG
+/*
+ *	Migration configuration.
+ */
+static const CONF_PARSER interpret_config[] = {
+	{ FR_CONF_OFFSET("countup_instructions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, ins_countup) },
+	{ FR_CONF_OFFSET("max_instructions", FR_TYPE_UINT32 | FR_TYPE_HIDDEN, main_config_t, ins_max) },
+	CONF_PARSER_TERMINATOR
+};
+#endif
+
 static const CONF_PARSER server_config[] = {
 	/*
 	 *	FIXME: 'prefix' is the ONLY one which should be
@@ -217,6 +228,10 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_POINTER("thread", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) thread_config, .ident2 = CF_IDENT_ANY },
 
 	{ FR_CONF_POINTER("migrate", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) migrate_config, .ident2 = CF_IDENT_ANY },
+
+#ifndef NDEBUG
+	{ FR_CONF_POINTER("interpret", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) interpret_config, .ident2 = CF_IDENT_ANY },
+#endif
 
 	CONF_PARSER_TERMINATOR
 };

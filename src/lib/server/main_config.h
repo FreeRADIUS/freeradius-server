@@ -150,6 +150,11 @@ struct main_config_s {
 	uint32_t	max_workers;			//!< for the scheduler
 	fr_time_delta_t	stats_interval;			//!< for the scheduler
 
+#ifndef NDEBUG
+	uint32_t	ins_max;			//!< max instruction count
+	bool		ins_countup;			//!< count up to "max"
+#endif
+
 	/*
 	 *	Migration tools
 	 */
