@@ -309,7 +309,15 @@ static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **env
 	 *	want to leave dangling FD's for the child process
 	 *	to play funky games with, so we close them.
 	 */
-	closefrom(STDERR_FILENO + 1);
+	do {
+		/*
+		 *	Solaris' closefrom returns void.
+		 *	OpenBSD's closefrom returns int and can be EINTR'd.
+		 *	Calling it like this is compatible with both APIs.
+		 */
+		errno = 0;
+		closefrom(STDERR_FILENO + 1);
+	} while (errno == EINTR);
 
 	/*
 	 *	Disarm the thread local destructors
