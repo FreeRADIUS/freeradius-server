@@ -93,18 +93,37 @@ static void tls_socket_close(rad_listen_t *listener)
 	 */
 }
 
-static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener, REQUEST *request)
+static void tls_write_available(fr_event_list_t *el, int sock, void *ctx);
+
+static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener)
 {
 	ssize_t rcode;
 	listen_socket_t *sock = listener->data;
 
 	/*
+	 *	It's not writable, so we don't bother writing to it.
+	 */
+	if (listener->blocked) return 0;
+
+	/*
 	 *	Write as much as possible.
 	 */
-	RDEBUG3("(TLS) Writing to socket %d", listener->fd);
 	rcode = write(listener->fd, sock->ssn->dirty_out.data, sock->ssn->dirty_out.used);
 	if (rcode <= 0) {
-		RDEBUG("(TLS) Error writing to socket: %s", fr_syserror(errno));
+#ifdef EWOULDBLOCK
+		/*
+		 *	Writing to the socket would cause it to block.
+		 *	As a result, we just mark it as "don't use"
+		 *	until such time as it becomes writable.
+		 */
+		if (errno == EWOULDBLOCK) {
+			proxy_listener_freeze(listener, tls_write_available);
+			return 0;
+		}
+#endif
+
+
+		ERROR("(TLS) Error writing to socket: %s", fr_syserror(errno));
 
 		tls_socket_close(listener);
 		return -1;
@@ -129,6 +148,15 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener, REQUEST *re
 
 	return 0;
 }
+
+static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int sock, void *ctx)
+{
+	rad_listen_t *listener = ctx;
+
+	proxy_listener_thaw(listener);
+	(void) tls_socket_write(listener);
+}
+
 
 /*
  *	Check for PROXY protocol.  Once that's done, clear
@@ -501,7 +529,8 @@ check_for_setup:
 		 *	More ACK data to send.  Do so.
 		 */
 		if (sock->ssn->dirty_out.used > 0) {
-			tls_socket_write(listener, request);
+			RDEBUG3("(TLS) Writing to socket %d", listener->fd);
+			tls_socket_write(listener);
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return 0;
 		}
@@ -566,7 +595,8 @@ get_application_data:
 	 *	More data to send.  Do so.
 	 */
 	if (sock->ssn->dirty_out.used > 0) {
-		rcode = tls_socket_write(listener, request);
+		RDEBUG3("(TLS) Writing to socket %d", listener->fd);
+		rcode = tls_socket_write(listener);
 		if (rcode < 0) {
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return rcode;
@@ -910,7 +940,8 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	if (sock->ssn->dirty_out.used > 0) {
 		dump_hex("WRITE TO SSL", sock->ssn->dirty_out.data, sock->ssn->dirty_out.used);
 
-		tls_socket_write(listener, request);
+		RDEBUG3("(TLS) Writing to socket %d", listener->fd);
+		tls_socket_write(listener);
 	}
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
@@ -961,7 +992,8 @@ int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request)
 	if (sock->ssn->dirty_out.used > 0) {
 		dump_hex("WRITE TO SSL", sock->ssn->dirty_out.data, sock->ssn->dirty_out.used);
 
-		tls_socket_write(listener, request);
+		RDEBUG3("(TLS) Writing to socket %d", listener->fd);
+		tls_socket_write(listener);
 	}
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
