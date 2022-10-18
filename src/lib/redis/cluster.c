@@ -1472,8 +1472,17 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delt
 	}
 
 	if (node->cluster->conf->password) {
-		DEBUG3("%s - [%i] Executing: AUTH %s", log_prefix, node->id, node->cluster->conf->password);
-		reply = redisCommand(handle, "AUTH %s", node->cluster->conf->password);
+		if (node->cluster->conf->username) {
+			DEBUG3("%s - [%i] Executing: AUTH %s %s", log_prefix, node->id,
+			       node->cluster->conf->username,
+			       node->cluster->conf->password);
+			reply = redisCommand(handle, "AUTH %s %s",
+					     node->cluster->conf->username,
+					     node->cluster->conf->password);
+		} else {
+			DEBUG3("%s - [%i] Executing: AUTH %s", log_prefix, node->id, node->cluster->conf->password);
+			reply = redisCommand(handle, "AUTH %s", node->cluster->conf->password);
+		}
 		if (!reply) {
 			ERROR("%s - [%i] Failed authenticating: %s", log_prefix, node->id, handle->errstr);
 		error:

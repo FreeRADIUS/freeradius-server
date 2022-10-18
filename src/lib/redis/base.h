@@ -106,6 +106,7 @@ typedef struct {
 	uint16_t		port;		//!< of Redis daemon.
 	uint32_t		database;	//!< number on Redis server.
 
+	char const		*username;	//!< for acls.
 	char const		*password;	//!< to authenticate to Redis.
 
 	uint8_t			max_nodes;	//!< Maximum number of cluster nodes to connect to.
@@ -126,6 +127,7 @@ typedef struct {
 	{ FR_CONF_OFFSET("server", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_MULTI, fr_redis_conf_t, hostname) }, \
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, fr_redis_conf_t, port), .dflt = "6379" }, \
 	{ FR_CONF_OFFSET("database", FR_TYPE_UINT32, fr_redis_conf_t, database), .dflt = "0" }, \
+	{ FR_CONF_OFFSET("username", FR_TYPE_STRING, fr_redis_conf_t, username) }, \
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_redis_conf_t, password) }, \
 	{ FR_CONF_OFFSET("max_nodes", FR_TYPE_UINT8, fr_redis_conf_t, max_nodes), .dflt = "20" }, \
 	{ FR_CONF_OFFSET("max_alt", FR_TYPE_UINT32, fr_redis_conf_t, max_alt), .dflt = "3" }, \
