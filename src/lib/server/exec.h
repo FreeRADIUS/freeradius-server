@@ -18,8 +18,8 @@
 /**
  * $Id$
  *
- * @file lib/server/exfile.h
- * @brief API for managing concurrent file access.
+ * @file lib/server/exec.h
+ * @brief Asynchronous exec
  *
  * @copyright 2014 The FreeRADIUS server project
  */
@@ -28,8 +28,6 @@ RCSIDH(exec_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <unistd.h>
 
 #define EXEC_TIMEOUT		10	//!< Default wait time for exec calls (in seconds).
 

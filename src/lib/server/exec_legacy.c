@@ -24,36 +24,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/exec.h>
-#include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/util.h>
-#include <freeradius-devel/unlang/interpret.h>
-
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/pair_legacy.h>
-#include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/atexit.h>
-
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-
-#include <sys/file.h>
-
-#include <fcntl.h>
-#include <ctype.h>
-#include <signal.h>
-
-#ifdef HAVE_SYS_WAIT_H
-#  include <sys/wait.h>
-#endif
-#ifndef WEXITSTATUS
-#  define WEXITSTATUS(stat_val) ((unsigned)(stat_val) >> 8)
-#endif
-#ifndef WIFEXITED
-#  define WIFEXITED(stat_val) (((stat_val) & 0x7f) == 0)
-#endif
+#include <freeradius-devel/server/exec_legacy.h>
+#include <freeradius-devel/server/exec_priv.h>
 
 #define MAX_ARGV (256)
 
@@ -196,7 +171,7 @@ static NEVER_RETURNS void exec_child_legacy(request_t *request, char **argv, cha
 	 *	want to leave dangling FD's for the child process
 	 *	to play funky games with, so we close them.
 	 */
-	closefrom(STDERR_FILENO + 1);
+	os_closefrom(STDERR_FILENO + 1);
 
 	/*
 	 *	Disarm the thread local destructors

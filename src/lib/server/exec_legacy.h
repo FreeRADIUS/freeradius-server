@@ -29,8 +29,6 @@ RCSIDH(exec_legacy_h, "$Id$")
 extern "C" {
 #endif
 
-#include <unistd.h>
-
 #ifdef __cplusplus
 }
 #endif

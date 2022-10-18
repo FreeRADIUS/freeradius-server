@@ -24,41 +24,10 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/util.h>
-#include <freeradius-devel/unlang/interpret.h>
-
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/pair_legacy.h>
-#include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/atexit.h>
-
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-
-#include <sys/file.h>
-
-#include <fcntl.h>
-#include <ctype.h>
-#include <signal.h>
-
-#if defined(__APPLE__) || defined(__FreeBSD__)
-extern char **environ;
-#else
-#  include <unistd.h>
-#endif
-
-#ifdef HAVE_SYS_WAIT_H
-#  include <sys/wait.h>
-#endif
-#ifndef WEXITSTATUS
-#  define WEXITSTATUS(stat_val) ((unsigned)(stat_val) >> 8)
-#endif
-#ifndef WIFEXITED
-#  define WIFEXITED(stat_val) (((stat_val) & 0x7f) == 0)
-#endif
+#include <freeradius-devel/server/exec_priv.h>
 
 #define MAX_ENVP 1024
 
@@ -309,7 +278,7 @@ static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **env
 	 *	want to leave dangling FD's for the child process
 	 *	to play funky games with, so we close them.
 	 */
-	closefrom(STDERR_FILENO + 1);
+	fr_closefrom(STDERR_FILENO + 1);
 
 	/*
 	 *	Disarm the thread local destructors
