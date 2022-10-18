@@ -980,6 +980,7 @@ int main(int argc, char *argv[])
 		for (i = 0; i < count; i++) {
 			request = request_clone(cached, i, server_cs);
 
+#ifndef NDEBUG
 			/*
 			 *	Artificially limit the number of instructions which are run.
 			 */
@@ -991,6 +992,7 @@ int main(int argc, char *argv[])
 				}
 				request->ins_count = 0;
 			}
+#endif
 
 			unlang_interpret_synchronous(el, request);
 			talloc_free(request);
