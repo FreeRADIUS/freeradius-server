@@ -414,6 +414,7 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 	/*
 	 *	Check the path.
 	 */
+	/* coverity[fs_check_call] */
 	if (stat(path, &buf) < 0) {
 		if (errno != ENOENT) {
 			fr_strerror_printf("Failed to stat %s: %s", path, fr_syserror(errno));
