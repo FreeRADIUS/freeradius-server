@@ -171,7 +171,7 @@ static NEVER_RETURNS void exec_child_legacy(request_t *request, char **argv, cha
 	 *	want to leave dangling FD's for the child process
 	 *	to play funky games with, so we close them.
 	 */
-	os_closefrom(STDERR_FILENO + 1);
+	fr_closefrom(STDERR_FILENO + 1);
 
 	/*
 	 *	Disarm the thread local destructors
