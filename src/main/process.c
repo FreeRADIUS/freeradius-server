@@ -610,6 +610,44 @@ static void request_free(REQUEST *request)
 
 
 #ifdef WITH_PROXY
+void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler)
+{
+	PTHREAD_MUTEX_LOCK(&proxy_mutex);
+	if (!fr_packet_list_socket_freeze(proxy_list,
+					  listener->fd)) {
+		ERROR("Fatal error freezing socket: %s", fr_strerror());
+		fr_exit(1);
+	}
+
+	listener->blocked = true;
+
+	if (fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener) < 0) {
+		ERROR("Fatal error freezing socket: %s", fr_strerror());
+		fr_exit(1);
+	}
+
+	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+}
+
+void proxy_listener_thaw(rad_listen_t *listener)
+{
+	PTHREAD_MUTEX_LOCK(&proxy_mutex);
+	if (!fr_packet_list_socket_thaw(proxy_list,
+					  listener->fd)) {
+		ERROR("Fatal error freezing socket: %s", fr_strerror());
+		fr_exit(1);
+	}
+
+	listener->blocked = false;
+
+	if (fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener) < 0) {
+		ERROR("Fatal error freezing socket: %s", fr_strerror());
+		fr_exit(1);
+	}
+
+	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+}
+
 static void proxy_reply_too_late(REQUEST *request)
 {
 	char buffer[128];
