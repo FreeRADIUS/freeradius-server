@@ -610,6 +610,7 @@ static void request_free(REQUEST *request)
 
 
 #ifdef WITH_PROXY
+#ifdef WITH_TLS
 void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler)
 {
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
@@ -647,6 +648,7 @@ void proxy_listener_thaw(rad_listen_t *listener)
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 }
+#endif	/* WITH_TLS */
 
 static void proxy_reply_too_late(REQUEST *request)
 {
