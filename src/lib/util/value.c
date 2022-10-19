@@ -1654,7 +1654,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	 *	For array entries, we only decode one value at a time.
 	 */
 	if (len > max) {
-		if (!enumv->flags.array) {
+		if (enumv && !enumv->flags.array) {
 			fr_strerror_printf("Found trailing garbage parsing type \"%s\". "
 					   "Expected length <= %zu bytes, got %zu bytes",
 					   fr_type_to_str(type),

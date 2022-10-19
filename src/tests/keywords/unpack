@@ -23,6 +23,13 @@ if (&Tmp-Integer-0 != 772) {
 	test_fail
 }
 
+# truncation
+&Tmp-String-0 := "0x0011223344556677"
+&Tmp-String-1 := "%(unpack:%{Tmp-String-0} 0 ether)"
+if (&Tmp-String-1 != "00:11:22:33:44:55") {
+	test_fail
+}
+
 &Tmp-String-0 := "0x48656C6C6F"
 &Tmp-String-1 := "%(unpack:%{Tmp-String-0} 0 string)"
 if (&Tmp-String-1 != "Hello") {
