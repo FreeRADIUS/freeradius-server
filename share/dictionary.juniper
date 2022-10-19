@@ -52,6 +52,13 @@ ATTRIBUTE	Juniper-CWA-Redirect			50	string
 
 ATTRIBUTE	Juniper-AV-Pair				52	string
 
+ATTRIBUTE	Juniper-DHCPv4-Options			55	octets
+ATTRIBUTE	Juniper-DHCPv6-Options			207	octets
+ATTRIBUTE	Juniper-DHCPv4-Packet-Header		208	octets
+ATTRIBUTE	Juniper-DHCPv6-Packet-Header		209	octets
+ATTRIBUTE	Juniper-Acct-Request-Reason		210	uint32
+
+
 VALUE	Juniper-CTPView-APP-Group	Net_View		1
 VALUE	Juniper-CTPView-APP-Group	Net_Admin		2
 VALUE	Juniper-CTPView-APP-Group	Global_Admin		3
@@ -64,5 +71,9 @@ VALUE	Juniper-CTP-Group		Auditor			4
 VALUE	Juniper-CTPView-OS-Group	Web_Manager		1
 VALUE	Juniper-CTPView-OS-Group	System_Admin		2
 VALUE	Juniper-CTPView-OS-Group	Auditor			3
+
+VALUE	Juniper-Acct-Request-Reason	IPv4-Active		0x0004
+VALUE	Juniper-Acct-Request-Reason	IPv6-Active		0x0010
+VALUE	Juniper-Acct-Request-Reason	Session-Active		0x0040
 
 END-VENDOR	Juniper
