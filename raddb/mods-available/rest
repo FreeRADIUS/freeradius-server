@@ -201,6 +201,7 @@ rest {
 	#		      variables set like http_proxy.
 	#  | `method`       | HTTP method to use, one of 'get', 'post', 'put', 'patch',
 	#                     'delete' or any custom HTTP method.
+	#  | `header`       | A custom header in the format '<header>: <value>'.
 	#  | `body`         | The format of the HTTP body sent to the remote server.
 	#                     May be 'none', 'post' or 'json', defaults to 'none'.
 	#  | `data`         | Send custom freeform data in the HTTP body. `Content-type`

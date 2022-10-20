@@ -74,7 +74,7 @@ talloc_foreach(vpt_m, vpt) {
  */
 #define talloc_foreach(_array, _iter) \
 	for (__typeof__(_array[0]) _iter, *_p = (void *)(_array), *_end = (void *)((_array) + talloc_array_length(_array)); \
-	     (_p < _end) && (_iter = *((void **)(_p))); \
+	     (_p < _end) && (_iter = *((void **)(uintptr_t)(_p))); \
 	     _p = (__typeof__(_p))((__typeof__(_array))_p) + 1)
 
 typedef int(* fr_talloc_free_func_t)(void *fire_ctx, void *uctx);

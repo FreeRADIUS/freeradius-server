@@ -1734,9 +1734,6 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	char const		*option = "unknown";
 	char const		*content_type;
 
-	fr_pair_t 		*header;
-	fr_dcursor_t		headers;
-
 	char			buffer[512];
 
 	fr_assert(candle);
@@ -1805,22 +1802,43 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	for (header =  fr_pair_dcursor_by_da_init(&headers, &request->control_pairs, attr_rest_http_header);
-	     header;
-	     header = fr_dcursor_next(&headers)) {
-		header = fr_dcursor_remove(&headers);
-		if (!strchr(header->vp_strvalue, ':')) {
-			RWDEBUG("Invalid HTTP header \"%s\" must be in format '<attribute>: <value>'.  Skipping...",
-				header->vp_strvalue);
-			talloc_free(header);
-			continue;
-		}
-		RINDENT();
-		RDEBUG3("%pV", &header->data);
-		REXDENT();
+	/*
+	 *	Add in the section headers
+	 */
+	if (section->headers) {
+		talloc_foreach(section->headers, header) {
+			RINDENT();
+			RDEBUG3("%pV", fr_box_strvalue_buffer(header));
+			REXDENT();
 
-		ctx->headers = curl_slist_append(ctx->headers, header->vp_strvalue);
-		talloc_free(header);
+			ctx->headers = curl_slist_append(ctx->headers, header);
+		}
+	}
+
+	/*
+	 *	Add in dynamic headers from the request
+	 */
+	{
+		fr_pair_t 	*header;
+		fr_dcursor_t	headers;
+
+		for (header =  fr_pair_dcursor_by_da_init(&headers, &request->control_pairs, attr_rest_http_header);
+		     header;
+		     header = fr_dcursor_next(&headers)) {
+			header = fr_dcursor_remove(&headers);
+			if (!strchr(header->vp_strvalue, ':')) {
+				RWDEBUG("Invalid HTTP header \"%s\" must be in format '<attribute>: <value>'.  Skipping...",
+					header->vp_strvalue);
+				talloc_free(header);
+				continue;
+			}
+			RINDENT();
+			RDEBUG3("%pV", &header->data);
+			REXDENT();
+
+			ctx->headers = curl_slist_append(ctx->headers, header->vp_strvalue);
+			talloc_free(header);
+		}
 	}
 
 	/*

@@ -125,6 +125,7 @@ typedef struct {
 	http_body_type_t	force_to;	//!< Override the Content-Type header in the response
 						//!< to force decoding as a particular type.
 
+	char const		**headers;	//!< Custom headers to set (optional).
 	char const		*data;		//!< Custom body data (optional).
 
 	bool			auth_is_set;	//!< Whether a value was provided for auth_str.
