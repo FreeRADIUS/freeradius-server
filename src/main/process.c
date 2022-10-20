@@ -4133,6 +4133,33 @@ void revive_home_server(void *ctx)
 	       home->port);
 }
 
+#ifdef WITH_TLS
+static int eol_home_listener(void *ctx, UNUSED void *data)
+{
+	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
+
+	/*
+	 *	The socket isn't blocked, we can still use it.
+	 *
+	 *	i.e. the home server is dead for a reason OTHER than
+	 *	"all available sockets are blocked".
+	 *
+	 *	We can still ping the home server via sockets which
+	 *	are writable.
+	 */
+	if (!this->blocked) return 0;
+
+	this->status = RAD_LISTEN_STATUS_EOL;
+
+	FD_MUTEX_LOCK(&fd_mutex);
+	this->next = new_listeners;
+	new_listeners = this;
+	FD_MUTEX_UNLOCK(&fd_mutex);
+
+	return 1;		/* alway delete from this tree */
+}
+#endif
+
 void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 {
 	int previous_state = home->state;
@@ -4145,6 +4172,25 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 
 	home->state = HOME_STATE_IS_DEAD;
 	home_trigger(home, "home_server.dead");
+
+#ifdef WITH_TLS
+	/*
+	 *	If the home server is dead, then close all of the sockets associated with it.
+	 *
+	 *	Note that the "EOL listener" code expects to _also_
+	 *	delete the listeners.  At which point we end up with a
+	 *	mutex locked twice, and bad things happen.  The
+	 *	solution is to move the listeners to the global
+	 *	"waiting for update" list, and then notify ourselves
+	 *	that there are listeners waiting to be updated.
+	 */
+	if (home->listeners) {
+		ASSERT_MASTER;
+
+		rbtree_walk(home->listeners, RBTREE_DELETE_ORDER, eol_home_listener, NULL);
+		radius_signal_self(RADIUS_SIGNAL_SELF_NEW_FD);
+	}
+#endif
 
 	/*
 	 *	Administratively down - don't do anything to bring it
@@ -5713,6 +5759,18 @@ static void event_new_fd(rad_listen_t *this)
 				      buffer, fr_strerror());
 				fr_exit(1);
 			}
+
+#ifdef WITH_TLS
+			/*
+			 *	Remove this socket from the list of sockets assocated with this home server.
+			 *
+			 *	This MUST be done with the proxy mutex locked!
+			 */
+			if (home->tls) {
+				(void) rbtree_deletebydata(sock->home->listeners, this);
+			}
+#endif
+
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 #ifdef WITH_COA_TUNNEL

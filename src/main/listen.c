@@ -2985,6 +2985,8 @@ static int _listener_free(rad_listen_t *this)
 #ifdef HAVE_PTHREAD_H
 			pthread_mutex_destroy(&(sock->mutex));
 #endif
+
+			(void) rbtree_deletebydata(sock->home->listeners, this);
 		}
 #endif	/* WITH_TLS */
 	}
@@ -3127,6 +3129,12 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 				listen_free(&this);
 				return NULL;
 			}
+
+			if (!rbtree_insert(home->listeners, this)) {
+				ERROR("(TLS) Failed adding tracking informtion for proxy socket '%s'", buffer);
+				listen_free(&this);
+				return NULL;
+			}
 		}
 
 		/*
@@ -3144,6 +3152,12 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 
 		this->recv = proxy_tls_recv;
 		this->proxy_send = proxy_tls_send;
+
+		/*
+		 *	Make sure that this listener is associated with the home server.
+		 *
+		 *	Since it's TCP+TLS, this socket can only be associated with one home server.
+		 */
 
 #ifdef WITH_COA_TUNNEL
 		if (home->recv_coa) {
@@ -4063,6 +4077,8 @@ int listen_coa_find(REQUEST *request, char const *key)
 	for (this = fr_hash_table_iter_init(coa_key->ht, &iter);
 	     this != NULL;
 	     this = fr_hash_table_iter_next(coa_key->ht, &iter)) {
+		if (this->blocked) continue;
+
 		if (this->dead) continue;
 
 		if (!found) {
