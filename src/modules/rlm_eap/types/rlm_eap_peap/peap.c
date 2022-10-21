@@ -408,7 +408,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		 *	Access-Challenge is ignored.
 		 */
 		fr_pair_list_init(&vps);
-		fr_pair_list_copy_by_da(t, &vps, reply_list, attr_eap_message, 0);
+		MEM(fr_pair_list_copy_by_da(t, &vps, reply_list, attr_eap_message, 0) >= 0);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
