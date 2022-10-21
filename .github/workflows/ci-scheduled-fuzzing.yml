@@ -87,7 +87,7 @@ jobs:
       run: |
         echo starttimestamp=`date +%s` >> $GITHUB_OUTPUT
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         lfs: false
 
@@ -153,7 +153,7 @@ jobs:
     #  last updated and because we will walk the tree until we find a commit
     #  that builds.
     #
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         lfs: false
         fetch-depth: 500
@@ -177,7 +177,7 @@ jobs:
         echo "corpusage=$CORPUSAGE" >> $GITHUB_OUTPUT
 
     - name: Restore the fuzzer corpus tar file from cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: corpus-cache
       with:
         path: src/tests/fuzzer-corpus/${{ matrix.env.PROTOCOL }}.tar
@@ -262,7 +262,7 @@ jobs:
       if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') }}
 
     - name: "Clang libFuzzer: Store assets on failure"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: clang-fuzzer-${{ matrix.env.PROTOCOL }}-${{ steps.pick_commit.outputs.commit_id }}
         path: build/fuzzer

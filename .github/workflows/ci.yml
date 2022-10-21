@@ -144,7 +144,7 @@ jobs:
         run: apt-get update && apt-get install -y --no-install-recommends git git-lfs ca-certificates
 
       # Checkout, but defer pulling LFS objects until we've restored the cache
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           lfs: false
 
@@ -288,7 +288,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "Merge into upstream"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
           lfs: false

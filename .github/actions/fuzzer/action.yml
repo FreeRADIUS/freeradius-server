@@ -18,7 +18,7 @@ runs:
         find build/fuzzer -type f ! -path 'build/fuzzer/*.log' | grep . && exit 1 || :
 
     - name: "Clang libFuzzer: Store assets on failure"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: clang-fuzzer
         path: build/fuzzer

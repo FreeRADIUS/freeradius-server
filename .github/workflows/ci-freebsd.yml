@@ -22,7 +22,7 @@ jobs:
     steps:
 
     # Checkout, but defer pulling LFS objects until we've restored the cache
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         lfs: false
         path: freeradius
@@ -32,7 +32,7 @@ jobs:
       working-directory: freeradius
 
     - name: Restore LFS cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: lfs-cache
       with:
         path: .git/lfs
@@ -44,7 +44,7 @@ jobs:
       working-directory: freeradius
 
     - name: Restore eapol_test build directory from cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: hostapd-cache
       with:
         path: ${{ env.HOSTAPD_BUILD_DIR }}

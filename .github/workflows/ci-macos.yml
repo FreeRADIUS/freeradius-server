@@ -60,7 +60,7 @@ jobs:
     steps:
 
     # Checkout, but defer pulling LFS objects until we've restored the cache
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         lfs: false
 
@@ -68,7 +68,7 @@ jobs:
       run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
 
     - name: Restore LFS cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: lfs-cache
       with:
         path: .git/lfs
@@ -79,7 +79,7 @@ jobs:
       run: git lfs pull
 
     - name: Restore eapol_test build directory from cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: hostapd-cache
       with:
         path: ${{ env.HOSTAPD_BUILD_DIR }}
@@ -137,7 +137,7 @@ jobs:
 
     - name: 'Restore OpenSSL 3.0 from the cache'
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: openssl-cache
       with:
         path: /opt/openssl/
@@ -213,7 +213,7 @@ jobs:
         make -j `nproc`
 
     - name: "Clang Static Analyzer: Store assets on failure"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: clang-scan.tgz
         path: build/plist/**/*.html
