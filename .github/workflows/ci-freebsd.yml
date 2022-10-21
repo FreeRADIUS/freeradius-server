@@ -84,6 +84,9 @@ jobs:
             talloc               \
             unixODBC
           pip install tacacs_plus
+          echo "#! /bin/sh"               > /usr/local/bin/nproc
+          echo "sysctl -n hw.ncpu"        >> /usr/local/bin/nproc
+          chmod +x /usr/local/bin/nproc
         run: |
           freebsd-version
           cd freeradius
