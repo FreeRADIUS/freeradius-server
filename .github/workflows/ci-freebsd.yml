@@ -89,7 +89,7 @@ jobs:
           cd freeradius
           ./configure
           gmake -j `sysctl -n hw.ncpu`
-          gmake -j `nproc` test.keywords test.unit test.modules test.auth test.digest
+          gmake -j `sysctl -n hw.ncpu` test.keywords test.unit test.modules test.auth test.digest
           gmake test
           # Minimise rsync pushback as it often fails with "ssh_dispatch_run_fatal: Connection to A.B.C.D: message authentication code incorrect"
           git config --global --add safe.directory $(pwd)
