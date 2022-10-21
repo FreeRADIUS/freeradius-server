@@ -85,7 +85,7 @@ jobs:
     - id: starttimestamp
       name: Record run start time
       run: |
-        echo ::set-output name=starttimestamp::`date +%s`
+        echo starttimestamp=`date +%s` >> $GITHUB_OUTPUT
 
     - uses: actions/checkout@v2
       with:
@@ -127,7 +127,7 @@ jobs:
           )
         echo "Matrix:"
         echo "$M"
-        echo ::set-output name=matrix::$M
+        echo matrix=$M >> $GITHUB_OUTPUT
 
 
   fuzzer:
@@ -173,8 +173,8 @@ jobs:
         CORPUSAGE="$((`date +%s` - "$CORPUSCT"))"
         CORPUSDAYS="$(($CORPUSAGE / 86400))"
         echo "$PROTOCOL corpus age is $CORPUSAGE secs ($CORPUSDAYS days)"
-        echo "::set-output name=corpusct::$CORPUSCT"
-        echo "::set-output name=corpusage::$CORPUSAGE"
+        echo "corpusct=$CORPUSCT" >> $GITHUB_OUTPUT
+        echo "corpusage=$CORPUSAGE" >> $GITHUB_OUTPUT
 
     - name: Restore the fuzzer corpus tar file from cache
       uses: actions/cache@v2
@@ -245,7 +245,7 @@ jobs:
           git reset --hard HEAD^
           git clean -fxd
         done
-        echo "::set-output name=commit_id::$(git rev-parse --short HEAD)"
+        echo "commit_id=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         make -j `nproc`
         make test.unit
 

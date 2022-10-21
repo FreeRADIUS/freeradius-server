@@ -50,7 +50,7 @@ jobs:
         EOF
           )
         fi
-        echo ::set-output name=matrix::$M
+        echo matrix=$M >> $GITHUB_OUTPUT
 
 
   rpm-build:
