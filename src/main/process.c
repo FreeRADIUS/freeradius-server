@@ -5751,6 +5751,8 @@ static void event_new_fd(rad_listen_t *this)
 			 *	This MUST be done with the proxy mutex locked!
 			 */
 			if (home->tls) {
+				fr_assert(socket->home->listeners);
+
 				(void) rbtree_deletebydata(sock->home->listeners, this);
 			}
 #endif

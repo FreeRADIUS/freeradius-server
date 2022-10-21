@@ -2986,7 +2986,7 @@ static int _listener_free(rad_listen_t *this)
 			pthread_mutex_destroy(&(sock->mutex));
 #endif
 
-			(void) rbtree_deletebydata(sock->home->listeners, this);
+			if (sock->home->listeners) (void) rbtree_deletebydata(sock->home->listeners, this);
 		}
 #endif	/* WITH_TLS */
 	}
@@ -3134,6 +3134,8 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 				listen_free(&this);
 				return NULL;
 			}
+
+			fr_assert(home->listeners != NULL);
 
 			if (!rbtree_insert(home->listeners, this)) {
 				ERROR("(TLS) Failed adding tracking informtion for proxy socket '%s'", buffer);
