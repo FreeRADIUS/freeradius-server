@@ -967,11 +967,8 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 	/*
 	 *  Insert event to close trunk if it becomes idle
 	 */
-	if (fr_event_timer_in(found, thread->el, &found->ev, thread->config->idle_timeout,
-			      _ldap_trunk_idle_timeout, found) < 0)
-	{
-		fr_assert("cannot insert trunk idle event" != NULL);
-	}
+	if (!fr_cond_assert_msg(fr_event_timer_in(found, thread->el, &found->ev, thread->config->idle_timeout,
+						  _ldap_trunk_idle_timeout, found) == 0, "cannot insert trunk idle event")) goto error;
 
 	/*
 	 *	Attempt to discover what type directory we are talking to
