@@ -700,7 +700,7 @@ static int body_init(fr_mail_ctx_t *uctx, curl_mime *mime)
 	 */
 	MEM(part = curl_mime_addpart(mime));
 	curl_mime_subparts(part, mime_body);
-	MEM(curl_mime_type(part, "multipart/mixed" ) == CURLE_OK);
+	MEM(curl_mime_type(part, "multipart/mixed") == CURLE_OK);
 	uctx->body_header = curl_slist_append(NULL, "Content-Disposition: inline"); /* Initialize the body_header curl_slist */
 	curl_mime_headers(part, uctx->body_header, 1);
 
