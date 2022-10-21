@@ -223,6 +223,7 @@ jobs:
     # No detect_leaks support for ASAN on macOS
     - name: Run basic tests (macOS)
       run: |
+        make -j `nproc` test.keywords test.unit test.modules test.auth test.digest
         make test
       env:
         ASAN_OPTIONS: symbolize=1 detect_stack_use_after_return=1

@@ -193,6 +193,7 @@ runs:
       run: |
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
 
+        make -j `nproc` test.keywords test.unit test.modules test.auth test.digest
         make ci-test
 
       env:
