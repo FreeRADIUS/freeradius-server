@@ -59,6 +59,7 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 	fi
 	$(Q)if [ -e "$(EXPECTED)" ]; then                                                                     \
 		grep -v "^#" $(EXPECTED) > $(FOUND).result || true;                                           \
+		sed -i.bak -e '$${/Executing: /d;}' $(FOUND);                                                 \
 		if ! cmp $(FOUND) $(FOUND).result; then                                                       \
 			echo "RADSNIFF FAILED $@";                                                                \
 			echo "RADSNIFF: $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary -xx";        \

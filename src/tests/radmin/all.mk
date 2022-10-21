@@ -69,6 +69,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 		$(MAKE) --no-print-directory test.radmin.radiusd_kill; \
 		exit 1; \
 	fi; \
+	sed -i.bak -e '$${/Executing: /d;}' $(FOUND); \
 	if ! cmp -s $(FOUND) $(EXPECTED); then \
 		echo "RADMIN FAILED $@"; \
 		echo "RADIUSD: $(RADIUSD_RUN)"; \

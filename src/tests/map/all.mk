@@ -44,6 +44,7 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_map
 			touch "$@"; \
 		fi \
 	else \
+		sed -i.bak -e '$${/Executing: /d;}' "$@.log"; \
 		if ! diff "$<.log" "$@.log"; then \
 			echo "FAILED: diff \"$<.log\" \"$@.log\""; \
 			echo "FAILED: $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r \"$@\" \"$<\""; \

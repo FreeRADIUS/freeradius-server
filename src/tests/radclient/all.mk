@@ -58,14 +58,17 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 #
 #	Lets normalize the loopback interface on OSX and FreeBSD
 #
-	$(Q)if [ "$$(uname -s)" = "Darwin" ]; then sed -i .bak 's/via lo0/via lo/g' $(FOUND); fi
-	$(Q)if [ "$$(uname -s)" = "FreeBSD" ]; then sed -i .bak 's/via (null)/via lo/g' $(FOUND); fi
+	$(Q)if [ "$$(uname -s)" = "Darwin" ]; then sed -i.bak 's/via lo0/via lo/g' $(FOUND); fi
+	$(Q)if [ "$$(uname -s)" = "FreeBSD" ]; then sed -i.bak 's/via (null)/via lo/g' $(FOUND); fi
 #
 #	Remove all entries with "^_EXIT.*CALLED .*/"
 #	It is necessary to match all builds with/without -DNDEBUG
 #
-	$(Q)mv -f $(FOUND) $(FOUND).bak
-	$(Q)sed '/^_EXIT.*CALLED .*/d' $(FOUND).bak > $(FOUND)
+	$(Q)sed -i.bak '/^_EXIT.*CALLED .*/d' $(FOUND)
+#
+#	Ignore spurious output from jlibtool when VERBOSE=1
+#
+	$(Q)sed -i.bak '$${/Executing: /d;}' $(FOUND)
 #
 #	Checking.
 #
