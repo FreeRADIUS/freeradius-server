@@ -1,5 +1,6 @@
 #
 # ARGV: -x -H ${RFC4533_TEST_SERVER} -D "cn=admin,dc=example,dc=com" -w "secret"
+# OUT:groupDelete
 #
 dn: cn=baz,ou=groups,dc=example,dc=com
 changetype: delete

@@ -22,14 +22,15 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval FOUND    := $(patsubst %.ldif,%.out,$@))
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
 	$(eval OUT_DIR  := $(BUILD_DIR)/tests/ldap_sync/rfc4533)
+	$(eval OUT      := $(shell grep "#.*OUT:" $< | cut -f2 -d ':'))
 
 	$(Q)echo "LDAPSYNC-TEST rfc4533 $(TARGET)"
 	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(Q)rm -f $(OUT_DIR)/linelog.out
 	$(Q)rm -f $(OUT_DIR)/cookielog.out > /dev/null 2>&1
 	$(Q)ldapmodify $(ARGV) -f $< > /dev/null
-	$(Q)i=0; while [ $$i -lt 300 ] ; \
-		do if [ -e $(OUT_DIR)/linelog.out ] ;	\
+	$(Q)i=0; while [ $$i -lt 600 ] ; \
+		do if [ -e $(OUT_DIR)/$(OUT).out ] ;	\
 		then					\
 		break;					\
 		fi;					\
@@ -37,7 +38,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 		i=$$((i+1));				\
 	done ;
 	$(Q)sleep .1
-	$(Q)mv $(OUT_DIR)/linelog.out $(FOUND)
+	$(Q)mv $(OUT_DIR)/$(OUT).out $(FOUND)
 
 #
 #	Cookies are not guaranteed for every update, according to the RFC,

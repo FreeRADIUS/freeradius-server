@@ -1,5 +1,6 @@
 #
 # ARGV: -x -H ${RFC4533_TEST_SERVER} -D "cn=admin,dc=example,dc=com" -w "secret"
+# OUT:peopleModifyjane
 #
 dn: uid=jane,ou=people,dc=example,dc=com
 changeType: modify
