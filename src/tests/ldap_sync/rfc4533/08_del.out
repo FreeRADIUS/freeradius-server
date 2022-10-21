@@ -1,1 +1,1 @@
-Delete ou=groups,dc=example,dc=com cn=bosses,ou=groups,dc=example,dc=com 
+Delete ou=groups,dc=example,dc=com cn=baz,ou=groups,dc=example,dc=com 

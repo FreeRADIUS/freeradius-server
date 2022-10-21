@@ -1,1 +1,1 @@
-Modify ou=people,dc=example,dc=com uid=fred,ou=people,dc=example,dc=com fred
+Modify ou=people,dc=example,dc=com uid=jane,ou=people,dc=example,dc=com jane

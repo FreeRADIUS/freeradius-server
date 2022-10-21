@@ -1,8 +1,8 @@
 #
 # ARGV: -x -H ${RFC4533_TEST_SERVER} -D "cn=admin,dc=example,dc=com" -w "secret"
 #
-dn: uid=fred,ou=people,dc=example,dc=com
+dn: uid=jane,ou=people,dc=example,dc=com
 changeType: modify
 replace: displayName
-displayName: Frederic Smith
+displayName: Jane Williams (supervisor)
 

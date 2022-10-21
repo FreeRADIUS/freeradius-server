@@ -1,2 +1,2 @@
-Modify ou=groups,dc=example,dc=com cn=foo,ou=groups,dc=example,dc=com 
-Group member uid=john,ou=people,dc=example,dc=com
+Modify ou=groups,dc=example,dc=com cn=bar,ou=groups,dc=example,dc=com 
+Group member uid=jane,ou=people,dc=example,dc=com
