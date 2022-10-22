@@ -124,8 +124,25 @@ static ssize_t _fr_mkdir(int *fd_out, char *start, char *path, mode_t mode, fr_m
 	 *	Dir may already exist if we're racing
 	 *	other processes as we do in CI.
 	 */
-	if ((mkdirat(*fd_out, p + 1, 0700) < 0) && (errno != EEXIST)) {
+	if (mkdirat(*fd_out, p + 1, 0700) < 0) {
+		/*
+		 *	This is usually because of a race with
+		 *	other processes trying to create the
+		 *	same directory.
+		 */
+		if (errno == EEXIST) {
+			fd = openat(*fd_out, p + 1, O_DIRECTORY);
+			if (fd < 0) {
+				fr_strerror_printf_push("Failed opening existing directory path component: %s",
+							fr_syserror(errno));
+				goto mkdirat_error;
+			}
+			*p = FR_DIR_SEP;
+			goto done;
+		}
+
 		fr_strerror_printf_push("Failed creating directory path component: %s", fr_syserror(errno));
+
 	mkdirat_error:
 		close(*fd_out);
 		*fd_out = -1;
@@ -144,6 +161,7 @@ static ssize_t _fr_mkdir(int *fd_out, char *start, char *path, mode_t mode, fr_m
 					"directory we created: %s", fr_syserror(errno));
 		goto mkdirat_error;
 	}
+
 	*p = FR_DIR_SEP;
 
 	/*
@@ -158,6 +176,7 @@ static ssize_t _fr_mkdir(int *fd_out, char *start, char *path, mode_t mode, fr_m
 	 *	Swap active *fd_out to point to the dir
 	 *      we just created.
 	 */
+done:
 	close(*fd_out);
 	*fd_out = fd;
 
