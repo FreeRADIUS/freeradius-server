@@ -109,7 +109,7 @@ static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_fu
 	 *	other processes as we do in CI.
 	 */
 	if ((mkdirat(*fd_out, p + 1, 0700) < 0) && (errno != EEXIST)) {
-		fr_strerror_printf("Failed creating directory: %s", fr_syserror(errno));
+		fr_strerror_printf_push("Failed creating directory: %s", fr_syserror(errno));
 	mkdirat_error:
 		close(*fd_out);
 		*fd_out = -1;
@@ -118,14 +118,14 @@ static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_fu
 
 	fd = openat(*fd_out, p + 1, O_DIRECTORY);
 	if (fd < 0) {
-		fr_strerror_printf("Failed opening directory we "
-				   "created: %s", fr_syserror(errno));
+		fr_strerror_printf_push("Failed opening directory we "
+					"created: %s", fr_syserror(errno));
 		goto mkdirat_error;
 	}
 
 	if (fchmod(fd, mode) < 0) {
-		fr_strerror_printf("Failed setting permissions on "
-				   "directory we created: %s", fr_syserror(errno));
+		fr_strerror_printf_push("Failed setting permissions on "
+					"directory we created: %s", fr_syserror(errno));
 		goto mkdirat_error;
 	}
 	*p = FR_DIR_SEP;
@@ -189,6 +189,8 @@ ssize_t fr_mkdir(int *fd_out, char const *path, ssize_t len, mode_t mode, fr_mkd
 		fr_strerror_const("Out of memory");
 		return -1;
 	}
+
+	fr_strerror_clear();	/* We make liberal use of push */
 
 	/*
 	 *	Call the recursive function to
