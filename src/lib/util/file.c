@@ -36,7 +36,7 @@ RCSID("$Id$")
 static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t func, void *uctx)
 {
 	int		ret, fd;
-	char		*p = path;
+	char		*p;
 
 	/*
 	 *	Try to make the path.  If it exists, chmod it.
@@ -59,7 +59,7 @@ static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t f
 			p = strrchr(path, FR_DIR_SEP);
 			if (!p) return 0;
 
-			return -(p - path);
+			return path - p;
 		}
 
 		if (fchmod(fd, mode) < 0) {
@@ -95,10 +95,12 @@ static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t f
 	 *	error occured.
 	 */
 	p = strrchr(path, FR_DIR_SEP);
-	if (!p || (p == path)) return -(p - path);
+	if (!p || (p == path)) return path - p;
 
 	*p = '\0';
-	if (_fr_mkdir(fd_out, path, mode, func, uctx) <= 0) return -(p - path);
+	if (_fr_mkdir(fd_out, path, mode, func, uctx) <= 0) return path - p;
+
+	fr_assert_msg((*fd_out) >= 0, "Logic error - Bad FD %i", *fd_out);
 
 	/*
 	 *	At this point *fd_out, should be an FD
@@ -112,7 +114,7 @@ static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t f
 	mkdirat_error:
 		close(*fd_out);
 		*fd_out = -1;
-		return -(p - path);
+		return path - p;
 	}
 
 	fd = openat(*fd_out, p + 1, O_DIRECTORY);
