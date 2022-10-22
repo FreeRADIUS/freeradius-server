@@ -36,7 +36,7 @@ RCSID("$Id$")
 static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_func_t func, void *uctx)
 {
 	int	ret, fd;
-	char	*p;
+	char	*p = path;
 
 	/*
 	 *	Try to make the path.  If it exists, chmod it.
@@ -82,9 +82,8 @@ static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_fu
 	 *	process created this directory in between our check
 	 *	and our creation.
 	 */
-	if ((errno != ENOENT) && (errno != EEXIST)) {
-		fr_strerror_printf("Unexpected error creating directory: %s",
-				   fr_syserror(errno));
+	if (errno != EEXIST) {
+		fr_strerror_printf("Failed creating directory path: %s", fr_syserror(errno));
 		goto mkdir_error;
 	}
 
@@ -99,7 +98,7 @@ static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_fu
 	if (!p || (p == path)) return -(p - path);
 
 	*p = '\0';
-	if (_fr_mkdir(fd_out, path, mode, func, uctx) < 0) return -(p - path);
+	if (_fr_mkdir(fd_out, path, mode, func, uctx) <= 0) return -(p - path);
 
 	/*
 	 *	At this point *fd_out, should be an FD
@@ -109,7 +108,7 @@ static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_fu
 	 *	other processes as we do in CI.
 	 */
 	if ((mkdirat(*fd_out, p + 1, 0700) < 0) && (errno != EEXIST)) {
-		fr_strerror_printf_push("Failed creating directory: %s", fr_syserror(errno));
+		fr_strerror_printf_push("Failed creating directory path component: %s", fr_syserror(errno));
 	mkdirat_error:
 		close(*fd_out);
 		*fd_out = -1;
