@@ -95,7 +95,7 @@ static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t f
 	 *	error occured.
 	 */
 	p = strrchr(path, FR_DIR_SEP);
-	if (!p || (p == path)) return path - p;
+	if (!p || (p == path)) return 0;	/* Error at index 0 */
 
 	*p = '\0';
 	if (_fr_mkdir(fd_out, path, mode, func, uctx) <= 0) return path - p;
