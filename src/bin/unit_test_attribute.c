@@ -981,7 +981,7 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	 *	Decrease ref count if we're loading in a new dictionary
 	 */
 	if (cc->tmpl_rules.attr.dict_def) {
-		if (fr_dict_const_free(&cc->tmpl_rules.attr.dict_def, __FILE__) < 0) return -1;
+		if (fr_dict_const_free(&cc->tmpl_rules.attr.dict_def, __FILE__) < 0) RETURN_COMMAND_ERROR();
 	}
 
 	q = strchr(in, ' ');
@@ -3497,13 +3497,20 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 		case RESULT_MISMATCH:
 		{
 			ret = EXIT_FAILURE;
-
 			goto finish;
 		}
 
 		case RESULT_EXIT:
 			ret = result.ret;
 			*exit_now = true;
+			goto finish;
+
+		default:
+			/*
+			 *	If this happens, fix the damn command.
+			 */
+			fr_assert_msg(false, "Command exited with invalid return code (%i)", result.rcode);
+			ret = -1;
 			goto finish;
 		}
 	}
