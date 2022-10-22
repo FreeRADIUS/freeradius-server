@@ -734,7 +734,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		ret = fr_mkdir(NULL, buff, -1, 0700, NULL, NULL);
 		talloc_free(buff);
 		if (ret < 0) {
-			ERROR("Failed creating directory for SQLite database: %s", fr_syserror(errno));
+			PERROR("Failed creating directory for SQLite database");
 
 			return -1;
 		};
