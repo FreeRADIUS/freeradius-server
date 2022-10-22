@@ -104,8 +104,11 @@ static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_fu
 	/*
 	 *	At this point *fd_out, should be an FD
 	 *	for the containing directory.
+	 *
+	 *	Dir may already exist if we're racing
+	 *	other processes as we do in CI.
 	 */
-	if (mkdirat(*fd_out, p + 1, 0700) < 0) {
+	if ((mkdirat(*fd_out, p + 1, 0700) < 0) && (errno != EEXIST)) {
 		fr_strerror_printf("Failed creating directory: %s", fr_syserror(errno));
 	mkdirat_error:
 		close(*fd_out);
