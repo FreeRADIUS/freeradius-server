@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/value.h>
 
-static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t func, void *uctx)
+static ssize_t _fr_mkdir(int *fd_out, char *start, char *path, mode_t mode, fr_mkdir_func_t func, void *uctx)
 {
 	int		ret, fd;
 	char		*p;
@@ -57,9 +57,9 @@ static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t f
 					   fr_syserror(errno));
 		mkdir_error:
 			p = strrchr(path, FR_DIR_SEP);
-			if (!p) return 0;
+			if (!p) return start - path;
 
-			return path - p;
+			return start - p;
 		}
 
 		if (fchmod(fd, mode) < 0) {
@@ -69,7 +69,7 @@ static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t f
 			goto mkdir_error;
 		}
 		*fd_out = fd;
-		return PATH_MAX;
+		return strlen(start);
 	}
 
 	/*
@@ -82,23 +82,30 @@ static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t f
 	 *	process created this directory in between our check
 	 *	and our creation.
 	 */
-	if ((errno != ENOENT) && (errno != EEXIST)) {
+	if (errno == EEXIST) return strlen(start);
+
+	/*
+	 *	ENOENT means we're trying to create too much path
+	 *	at once.  Recurse to discover the deepest path
+	 *	component that already exists.
+	 */
+	if (errno != ENOENT) {
 		fr_strerror_printf("Failed creating directory path: %s", fr_syserror(errno));
 		goto mkdir_error;
 	}
 
 	/*
-	 *	A component in the path path doesn't
+	 *	A component in the path doesn't
 	 *	exist.  Look for the LAST path name.  Try
 	 *	to create that.  If there's an error, we leave
 	 *	the path path as the one at which the
 	 *	error occured.
 	 */
 	p = strrchr(path, FR_DIR_SEP);
-	if (!p || (p == path)) return 0;	/* Error at index 0 */
+	if (!p || (p == path)) return start - path;	/* last path component and we've previously failed */
 
 	*p = '\0';
-	if (_fr_mkdir(fd_out, path, mode, func, uctx) <= 0) return path - p;
+	if (_fr_mkdir(fd_out, start, path, mode, func, uctx) <= 0) return start - p;
 
 	fr_assert_msg((*fd_out) >= 0, "Logic error - Bad FD %i", *fd_out);
 
@@ -114,7 +121,7 @@ static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t f
 	mkdirat_error:
 		close(*fd_out);
 		*fd_out = -1;
-		return path - p;
+		return start - p;
 	}
 
 	fd = openat(*fd_out, p + 1, O_DIRECTORY);
@@ -146,7 +153,7 @@ static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t f
 	close(*fd_out);
 	*fd_out = fd;
 
-	return PATH_MAX;
+	return strlen(start);
 }
 
 /** Create directories that are missing in the specified path
@@ -198,7 +205,7 @@ ssize_t fr_mkdir(int *fd_out, char const *path, ssize_t len, mode_t mode, fr_mkd
 	 *	create any missing dirs in the
 	 *	specified path.
 	 */
-	slen = _fr_mkdir(&fd, our_path, mode, func, uctx);
+	slen = _fr_mkdir(&fd, our_path, our_path, mode, func, uctx);
 	talloc_free(our_path);
 	if (slen <= 0) return slen;
 
