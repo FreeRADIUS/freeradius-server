@@ -26,7 +26,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 
 	$(Q)echo "LDAPSYNC-TEST rfc4533 $(TARGET)"
 	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
-	$(Q)rm -f $(OUT_DIR)/linelog.out
+	$(Q)rm -f $(OUT_DIR)/$(OUT).out
 	$(Q)rm -f $(OUT_DIR)/cookielog.out > /dev/null 2>&1
 	$(Q)ldapmodify $(ARGV) -f $< > /dev/null
 	$(Q)i=0; while [ $$i -lt 600 ] ; \
