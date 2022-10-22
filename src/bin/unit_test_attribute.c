@@ -67,6 +67,7 @@ typedef struct request_s request_t;
 #include <fcntl.h>
 #include <libgen.h>
 #include <limits.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
