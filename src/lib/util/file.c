@@ -82,7 +82,15 @@ static ssize_t _fr_mkdir(int *fd_out, char *start, char *path, mode_t mode, fr_m
 	 *	process created this directory in between our check
 	 *	and our creation.
 	 */
-	if (errno == EEXIST) return strlen(start);
+	if (errno == EEXIST) {
+		fd = open(path, O_DIRECTORY);
+		if (fd < 0) {
+			fr_strerror_printf("Failed opening existing directory: %s", fr_syserror(errno));
+			goto mkdir_error;
+		}
+		*fd_out = fd;
+		return strlen(start);
+	}
 
 	/*
 	 *	ENOENT means we're trying to create too much path
