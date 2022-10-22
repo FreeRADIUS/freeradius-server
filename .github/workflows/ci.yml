@@ -15,6 +15,8 @@ env:
   KQUEUE_DEBUG: yes
   M_PERTURB: "0x42"
   PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
+# Stops the utilities forking on every call to check if they're running under GDB/LLDB
+  DEBUGGER_ATTACHED: no
   ANALYZE_C_DUMP: 1
   FR_GLOBAL_POOL: 4M
   TEST_CERTS: yes
