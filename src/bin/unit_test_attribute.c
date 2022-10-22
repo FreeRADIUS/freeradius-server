@@ -2779,7 +2779,7 @@ static size_t command_write(command_result_t *result, command_file_ctx_t *cc,
 
 	path = talloc_bstrndup(cc->tmp_ctx, in, inlen);
 
-	fd = open(path, O_CREAT | O_WRONLY);
+	fd = open(path, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if (fd < 0) {
 		fr_strerror_printf("Failed opening \"%s\": %s", path, fr_syserror(errno));
 	error:
