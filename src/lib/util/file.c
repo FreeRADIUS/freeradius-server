@@ -82,7 +82,7 @@ static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t f
 	 *	process created this directory in between our check
 	 *	and our creation.
 	 */
-	if (errno != EEXIST) {
+	if ((errno != ENOENT) && (errno != EEXIST)) {
 		fr_strerror_printf("Failed creating directory path: %s", fr_syserror(errno));
 		goto mkdir_error;
 	}
