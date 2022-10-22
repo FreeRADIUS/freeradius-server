@@ -33,10 +33,10 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/value.h>
 
-static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_func_t func, void *uctx)
+static ssize_t _fr_mkdir(int *fd_out, char *path, mode_t mode, fr_mkdir_func_t func, void *uctx)
 {
 	int		ret, fd;
-	char const	*p = path;
+	char		*p = path;
 
 	/*
 	 *	Try to make the path.  If it exists, chmod it.
