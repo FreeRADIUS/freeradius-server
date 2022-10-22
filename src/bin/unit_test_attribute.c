@@ -429,12 +429,33 @@ static inline CC_HINT(nonnull) int dump_fuzzer_data(int fd_dir, char const *text
 
 	file_fd = openat(fd_dir, digest_str, O_RDWR | O_CREAT | O_TRUNC,
 			 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-
-	if (write(file_fd, data, data_len) != (ssize_t)data_len) {
-		fr_strerror_printf("Failed writing to corpus seed file \"%s\": %s", digest_str, fr_syserror(errno));
-		unlinkat(fd_dir, digest_str, 0);
+	if (file_fd < 0) {
+		fr_strerror_printf("Failed opening or creating corpus seed file \"%s\": %s",
+				   digest_str, fr_syserror(errno));
 		return -1;
 	}
+
+	if (flock(file_fd, LOCK_EX) < 0) {
+		fr_strerror_printf("Failed locking corpus seed file \"%s\": %s",
+				   digest_str, fr_syserror(errno));
+		return -1;
+	}
+
+	while (data_len) {
+		ssize_t ret;
+
+		ret = write(file_fd, data, data_len);
+		if (ret < 0) {
+			fr_strerror_printf("Failed writing to corpus seed file \"%s\": %s",
+					   digest_str, fr_syserror(errno));
+			(void)flock(file_fd, LOCK_UN);
+			unlinkat(fd_dir, digest_str, 0);
+			return -1;
+		}
+		data_len -= ret;
+		data += ret;
+	}
+	(void)flock(file_fd, LOCK_UN);
 
 	return 0;
 }
@@ -2190,6 +2211,7 @@ static size_t command_fuzzer_out(command_result_t *result, command_file_ctx_t *c
 	int	fd;
 	struct	stat sdir;
 	char	*fuzzer_dir;
+	bool	retry_dir = true;
 
 	/*
 	 *	Close any open fuzzer output dirs
@@ -2206,13 +2228,23 @@ static size_t command_fuzzer_out(command_result_t *result, command_file_ctx_t *c
 
 	fuzzer_dir = talloc_asprintf(cc->tmp_ctx, "%s/%s",
 				     cc->config->fuzzer_dir ? cc->config->fuzzer_dir : cc->path, in);
+
+again:
 	fd = open(fuzzer_dir, O_RDONLY);
 	if (fd < 0) {
 		if (mkdir(fuzzer_dir, 0777) == 0) {
 			fd = open(fuzzer_dir, O_RDONLY);
 			if (fd >= 0) goto stat;
+		/*
+		 *	Prevent race if multiple unit_test_attribute instances
+		 *	attempt to create the same output dir.
+		 */
+		} else if ((errno == EEXIST) && retry_dir) {
+			retry_dir = false;	/* Only allow this once */
+			goto again;
 		}
-		fr_strerror_printf("fuzzer-out \"%s\" doesn't exit: %s", fuzzer_dir, fr_syserror(errno));
+
+		fr_strerror_printf("fuzzer-out \"%s\" doesn't exist: %s", fuzzer_dir, fr_syserror(errno));
 		RETURN_PARSE_ERROR(0);
 	}
 
@@ -2740,26 +2772,43 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 static size_t command_write(command_result_t *result, command_file_ctx_t *cc,
 			    char *data, size_t data_used, char *in, size_t inlen)
 {
-	FILE	*fp;
+	int	fd;
 	char	*path;
+	bool	locked = false;
 
 	path = talloc_bstrndup(cc->tmp_ctx, in, inlen);
-	fp = fopen(path, "w");
-	if (!fp) {
+
+	fd = open(path, O_CREAT | O_WRONLY);
+	if (fd < 0) {
 		fr_strerror_printf("Failed opening \"%s\": %s", path, fr_syserror(errno));
 	error:
 		talloc_free(path);
-		if (fp) fclose(fp);
+		if (fd >= 0) {
+			if (locked) (void)flock(fd, LOCK_UN);
+			close(fd);
+		}
 		RETURN_COMMAND_ERROR();
 	}
 
-	if (fwrite(data, data_used, 1, fp) != 1) {
-		fr_strerror_printf("Failed writing to \"%s\": %s", path, fr_syserror(errno));
+	if (flock(fd, LOCK_EX) < 0) {
+		fr_strerror_printf("Failed locking \"%s\": %s", path, fr_syserror(errno));
 		goto error;
 	}
+	locked = true;
 
+	while (data_used) {
+		ssize_t	ret;
+		ret = write(fd, data, data_used);
+		if (ret < 0) {
+			fr_strerror_printf("Failed writing to \"%s\": %s", path, fr_syserror(errno));
+			goto error;
+		}
+		data_used -= ret;
+		data += ret;
+	}
+	(void)flock(fd, LOCK_UN);
 	talloc_free(path);
-	fclose(fp);
+	close(fd);
 
 	RETURN_OK(data_used);
 }
