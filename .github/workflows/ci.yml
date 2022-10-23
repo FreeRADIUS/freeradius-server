@@ -318,3 +318,21 @@ jobs:
           USERNAME: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.repository }}
           REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+  post-ci:
+    runs-on: self-hosted
+    name: "Post-job cleanup"
+    needs:
+      - ci
+    steps:
+      - id: cleanup_containers
+        name: "Cleanup docker containers"
+        run: /usr/bin/docker container prune -f || true
+
+      - id: cleanup_volumes
+        name: "Cleanup docker volumes"
+        run: /usr/bin/docker volume prune -f || true
+
+      - id: cleanup_images
+        name: "Cleanup docker images"
+        run: /usr/bin/docker image prune -f || true
