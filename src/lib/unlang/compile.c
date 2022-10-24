@@ -2962,6 +2962,11 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 	return c;
 }
 
+static const fr_sbuff_term_t if_terminals = FR_SBUFF_TERMS(
+	L(""),
+	L("{"),
+);
+
 static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				       unlang_ext_t const *ext)
 {
@@ -2988,8 +2993,35 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	 *	Migration support.
 	 */
 	if (main_config->parse_new_conditions) {
-		head = cf_data_value(cf_data_find(cs, xlat_exp_head_t, NULL));
-		fr_assert(head != NULL);
+		char const *name2 = cf_section_name2(cs);
+		ssize_t slen;
+
+		tmpl_rules_t t_rules = (tmpl_rules_t) {
+			.attr = {
+				.dict_def = xr_rules.tr_rules->dict_def,
+				.allow_unresolved = true,
+				.allow_unknown = true
+			}
+		};
+
+		fr_sbuff_parse_rules_t p_rules = { };
+
+		p_rules.terminals = &if_terminals;
+
+		slen = xlat_tokenize_condition(cs, &head, &FR_SBUFF_IN(name2, strlen(name2)), &p_rules, &t_rules);
+		if (slen <= 0) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(cs, &spaces, &text, slen, name2);
+
+			cf_log_err(cs, "Parse error in condition!!!!");
+			cf_log_err(cs, "%s", text);
+			cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
+
+			talloc_free(spaces);
+			talloc_free(text);
+			return NULL;
+		}
 
 		/*
 		 *	Resolve the xlat first.

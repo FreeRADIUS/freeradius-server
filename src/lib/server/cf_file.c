@@ -1251,11 +1251,11 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	CONF_SECTION	*cs;
 	uint8_t const   *p;
 	char const	*ptr = stack->ptr;
+	char		*name2;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
 	tmpl_rules_t	t_rules;
-	xlat_exp_head_t *head = NULL;
 	fr_sbuff_parse_rules_t p_rules = { };
 
 	p_rules.terminals = &if_terminals;
@@ -1443,6 +1443,8 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 */
 	memcpy(buff[2], stack->ptr, slen);
 	buff[2][slen] = '\0';
+	name2 = buff[2];
+
 	while (slen > 0) {
 		if (!isspace((int) buff[2][slen])) break;
 
@@ -1475,7 +1477,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 				ptr = buff[3];
 				slen = my_slen;
 
-			parse_error:
 				fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
 
 				cf_log_err(cs, "Parse error in condition");
@@ -1490,16 +1491,11 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		}
 
 		if (main_config->parse_new_conditions) {
-			my_slen = xlat_tokenize_condition(cs, &head, &FR_SBUFF_IN(buff[3], strlen(buff[3])), &p_rules, &t_rules);
-			if (my_slen <= 0) {
-				ptr = buff[3];
-				slen = my_slen;
-				goto parse_error;
-			}
+			name2 = buff[3];
 		}
 	}
 
-	MEM(cs->name2 = talloc_typed_strdup(cs, buff[2]));
+	MEM(cs->name2 = talloc_typed_strdup(cs, name2));
 	cs->name2_quote = T_BARE_WORD;
 
 	ptr += slen;
@@ -1520,9 +1516,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		cf_data_add(cs, cond, NULL, true);
 	}
 
-	if (main_config->parse_new_conditions) {
-		cf_data_add(cs, head, NULL, true);
-	}
 	stack->ptr = ptr;
 
 	cs->allow_unlang = true;
