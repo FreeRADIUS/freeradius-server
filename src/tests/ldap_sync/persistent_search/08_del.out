@@ -1,3 +1,2 @@
-Delete ou=groups,dc=example,dc=com cn=bosses,ou=groups,dc=example,dc=com  
-Group member uid=bob,ou=people,dc=example,dc=com
-Group member uid=john,ou=people,dc=example,dc=com
+Delete ou=groups,dc=example,dc=com cn=baz,ou=groups,dc=example,dc=com  
+Group member uid=bill,ou=people,dc=example,dc=com

@@ -1,6 +1,6 @@
 #
 # ARGV: -x -H ${PERSISTENT_SEARCH_TEST_SERVER} -D "cn=Directory Manager" -w "secret123"
 #
-dn: cn=bosses,ou=groups,dc=example,dc=com
+dn: cn=baz,ou=groups,dc=example,dc=com
 changetype: delete
 

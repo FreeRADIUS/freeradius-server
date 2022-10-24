@@ -1,1 +1,1 @@
-Delete ou=people,dc=example,dc=com uid=frederic,ou=people,dc=example,dc=com  frederic
+Delete ou=people,dc=example,dc=com uid=bill,ou=people,dc=example,dc=com  bill
