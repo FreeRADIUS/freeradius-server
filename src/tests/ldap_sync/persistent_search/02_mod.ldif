@@ -1,5 +1,6 @@
 #
 # ARGV: -x -H ${PERSISTENT_SEARCH_TEST_SERVER} -D "cn=Directory Manager" -w "secret123"
+# OUT:peopleModifyjane
 #
 dn: uid=jane,ou=people,dc=example,dc=com
 changeType: modify
