@@ -2986,7 +2986,7 @@ static int _listener_free(rad_listen_t *this)
 			pthread_mutex_destroy(&(sock->mutex));
 #endif
 
-			if (sock->home->listeners) (void) rbtree_deletebydata(sock->home->listeners, this);
+			if (sock->home && sock->home->listeners) (void) rbtree_deletebydata(sock->home->listeners, this);
 		}
 #endif	/* WITH_TLS */
 	}
