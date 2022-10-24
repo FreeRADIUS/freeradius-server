@@ -255,7 +255,7 @@ int persistent_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, LDAPContr
 		 */
 		if (sync->cookie) talloc_free(sync->cookie);
 		sync->cookie = (uint8_t *)talloc_asprintf(sync, "%d", change_no);
-		if (ldap_sync_cookie_store(sync, sync->cookie, false) < 0) goto error;
+		if (ldap_sync_cookie_store(sync, false) < 0) goto error;
 	}
 
 	if (ber_scanf(ber, "}") == LBER_ERROR) {

@@ -394,7 +394,7 @@ int rfc4533_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
 	 *	We have a new cookie - store it
 	 */
 	if ((ret == 0) && new_cookie) {
-		ret = ldap_sync_cookie_store(sync, sync->cookie, false);
+		ret = ldap_sync_cookie_store(sync, false);
 	}
 	ber_free(ber, 1);
 
@@ -674,7 +674,7 @@ int rfc4533_sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPC
 	}
 
 	if (new_cookie) {
-		ret = ldap_sync_cookie_store(sync, sync->cookie, false);
+		ret = ldap_sync_cookie_store(sync, false);
 	}
 
 	if (ber) ber_free(ber, 1);
@@ -762,5 +762,5 @@ int rfc4533_sync_refresh_required(sync_state_t *sync, LDAPMessage *msg, LDAPCont
 		new_cookie = true;
 	}
 
-	return ldap_sync_cookie_store(sync, sync->cookie, true);
+	return ldap_sync_cookie_store(sync, true);
 }

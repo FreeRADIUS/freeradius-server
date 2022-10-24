@@ -121,7 +121,7 @@ int8_t sync_state_cmp(void const *one, void const *two);
 
 sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, size_t sync_no, sync_config_t const *config);
 
-int ldap_sync_cookie_store(sync_state_t *sync, uint8_t const *cookie, bool refresh);
+int ldap_sync_cookie_store(sync_state_t *sync, bool refresh);
 
 int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH], struct berval *orig_dn,
 			LDAPMessage *msg, sync_op_t op);

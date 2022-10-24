@@ -183,13 +183,12 @@ sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, size
  * load Cookie.
  *
  * @param[in] sync	the cookie was received for.
- * @param[in] cookie	received from the LDAP server. Can be NULL to indicate the stored cookie should be cleared.
  * @param[in] refresh	the sync after storing this cookie.
  * @return
  *	- 0 on success.
  *	- -1 on failure
  */
-int ldap_sync_cookie_store(sync_state_t *sync, uint8_t const *cookie, bool refresh)
+int ldap_sync_cookie_store(sync_state_t *sync, bool refresh)
 {
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(sync->config->user_ctx, proto_ldap_sync_ldap_thread_t);
 	fr_dbuff_t			*dbuff;
@@ -197,6 +196,7 @@ int ldap_sync_cookie_store(sync_state_t *sync, uint8_t const *cookie, bool refre
 	fr_pair_list_t			pairs;
 	fr_pair_t			*vp;
 	TALLOC_CTX			*local = NULL;
+	uint8_t				*cookie = sync->cookie;
 
 	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
 
