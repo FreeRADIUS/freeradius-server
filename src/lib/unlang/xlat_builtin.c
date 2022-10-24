@@ -826,8 +826,9 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	xlat_redundant_type_t	xr_type;
 	xlat_redundant_t	*xr;
 	xlat_flags_t		flags = {};
+	xlat_arg_parser_t const *args = NULL;
 
-	xlat_t const		*xlat;
+	xlat_t			*xlat;
 	CONF_ITEM		*ci = NULL;
 
 	name1 = cf_section_name1(cs);
@@ -893,6 +894,12 @@ int xlat_register_redundant(CONF_SECTION *cs)
 			return 1;
 		}
 
+		if (!args) {
+			args = mod_func->args;
+		} else {
+			fr_assert(args = mod_func->args);
+		}
+
 		MEM(xrf = talloc_zero(xr, xlat_redundant_func_t));
 		xrf->func = mod_func;
 		fr_dlist_insert_tail(&xr->funcs, xrf);
@@ -922,6 +929,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		return -1;
 	}
 	xlat_async_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_inst_t, NULL, xr);
+	if (args) xlat_func_args(xlat, args);
 
 	return 0;
 }
