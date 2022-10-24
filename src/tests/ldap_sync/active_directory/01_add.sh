@@ -1,4 +1,5 @@
 #!/bin/sh
+# OUT:Modifyfred
 
 if [ -z $ACTIVE_DIRECTORY_TEST_SERVER ]; then
   echo ACTIVE_DIRECTORY_TEST_SERVER not defined

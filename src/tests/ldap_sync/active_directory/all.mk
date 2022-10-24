@@ -25,15 +25,16 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<))
 	$(eval EXPECTED := $(patsubst %.sh,%.out,$<))
 	$(eval FOUND    := $(patsubst %.sh,%.out,$@))
-	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2))
+	$(eval OUT      := $(shell grep "#.*OUT:" $< | cut -f2 -d ':'))
 	$(eval OUT_DIR  := $(BUILD_DIR)/tests/ldap_sync/active_directory)
 
 	$(Q)echo "LDAPSYNC-TEST active_directory $(TARGET)"
 	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
-	$(Q)rm -f $(OUT_DIR)/linelog.out
+	$(Q)rm -f $(OUT_DIR)/$(OUT).out
+	$(Q)sleep 1
 	$(Q)$<
-	$(Q)i=0; while [ $$i -lt 300 ] ; \
-		do if [ -e $(OUT_DIR)/linelog.out ] ;	\
+	$(Q)i=0; while [ $$i -lt 600 ] ; \
+		do if [ -e $(OUT_DIR)/$(OUT).out ] ;	\
 		then					\
 		break;					\
 		fi;					\
@@ -41,7 +42,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 		i=$$((i+1));				\
 	done ;
 	$(Q)sleep .5
-	$(Q)mv $(OUT_DIR)/linelog.out $(FOUND)
+	$(Q)mv $(OUT_DIR)/$(OUT).out $(FOUND)
 
 	$(Q)if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then	\
 		echo "LDAP_SYNC FAILED $@";					\
