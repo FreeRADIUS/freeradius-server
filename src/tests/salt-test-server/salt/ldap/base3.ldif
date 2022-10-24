@@ -5,6 +5,19 @@ objectClass: groupOfNames
 objectClass: top
 member: uid=john,ou=people,dc=example,dc=com
 
+dn: cn=bar,ou=groups,dc=example,dc=com
+cn: bar
+objectClass: groupOfNames
+objectClass: top
+member: uid=jane,ou=people,dc=example,dc=com
+member: uid=ann,ou=people,dc=example,dc=com
+
+dn: cn=baz,ou=groups,dc=example,dc=com
+cn: baz
+objectClass: groupOfNames
+objectClass: top
+member: uid=bill,ou=people,dc=example,dc=com
+
 dn: uid=john,ou=people,dc=example,dc=com
 objectClass: inetOrgPerson
 objectClass: posixAccount
@@ -33,4 +46,42 @@ uidNumber: 101
 gidNumber: 101
 homeDirectory: /home/bob
 
+dn: uid=jane,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: jane
+sn: Davis
+givenName: Jane
+cn: Jane Davis
+displayName: Jane Davis
+userPassword: secret
+uidNumber: 103
+gidNumber: 103
+homeDirectory: /home/jane
 
+dn: uid=ann,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: ann
+sn: Williams
+cn: Ann Williams
+displayName: Ann Williams
+userPassword: topsecret
+uidNumber: 104
+gidNumber: 104
+homeDirectory: /home/ann
+
+dn: uid=bill,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: bill
+sn: Brown
+cn: Bill Brown
+displayName: Bill Brown
+userPassword: NotTelling
+uidNumber: 105
+gidNumber: 105
+homeDirectory: /home/bill
