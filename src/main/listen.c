@@ -2982,11 +2982,13 @@ static int _listener_free(rad_listen_t *this)
 
 			rad_assert(!sock->ssn || (talloc_parent(sock->ssn) == sock));
 			rad_assert(!sock->request || (talloc_parent(sock->request) == sock));
+
+			if (sock->home && sock->home->listeners) (void) rbtree_deletebydata(sock->home->listeners, this);
+
 #ifdef HAVE_PTHREAD_H
 			pthread_mutex_destroy(&(sock->mutex));
 #endif
 
-			if (sock->home && sock->home->listeners) (void) rbtree_deletebydata(sock->home->listeners, this);
 		}
 #endif	/* WITH_TLS */
 	}
