@@ -222,12 +222,13 @@ runs:
       shell: bash
       run: |
         if $CC -v 2>&1 | grep clang > /dev/null; then
-            echo "Enabling sanitizers"
-            enable_sanitizers="--enable-address-sanitizer --enable-undefined-behaviour-sanitizer"
-            if [ "`uname`" != "Darwin" ]; then
-                enable_sanitizers="$enable_sanitizers --enable-leak-sanitizer"
-            fi
+            #echo "Enabling sanitizers"
+            #enable_sanitizers="--enable-address-sanitizer --enable-undefined-behaviour-sanitizer"
+            #if [ "`uname`" != "Darwin" ]; then
+            #    enable_sanitizers="$enable_sanitizers --enable-leak-sanitizer"
+            #fi
             if [ "$TEST_TYPE" = "fuzzing" ]; then
+                echo "Enabling fuzzer"
                 enable_sanitizers="$enable_sanitizers --enable-fuzzer"
             fi
         else
