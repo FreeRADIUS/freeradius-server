@@ -897,7 +897,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		if (!args) {
 			args = mod_func->args;
 		} else {
-			fr_assert(args = mod_func->args);
+			fr_assert(args == mod_func->args);
 		}
 
 		MEM(xrf = talloc_zero(xr, xlat_redundant_func_t));
