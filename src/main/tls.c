@@ -3525,6 +3525,11 @@ X509_STORE *fr_init_x509_store(fr_tls_server_conf_t *conf)
 	if (conf->check_all_crl)
 		X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK_ALL);
 #endif
+
+#if defined(X509_V_FLAG_PARTIAL_CHAIN)
+	X509_STORE_set_flags(store, X509_V_FLAG_PARTIAL_CHAIN);
+#endif
+
 	return store;
 }
 
@@ -3990,11 +3995,11 @@ load_ca:
 	if (conf->ca_file || conf->ca_path) {
 		if ((certstore = fr_init_x509_store(conf)) == NULL ) return NULL;
 		SSL_CTX_set_cert_store(ctx, certstore);
-	}
-
+	} else {
 #if defined(X509_V_FLAG_PARTIAL_CHAIN)
-	X509_STORE_set_flags(SSL_CTX_get_cert_store(ctx), X509_V_FLAG_PARTIAL_CHAIN);
+		X509_STORE_set_flags(SSL_CTX_get_cert_store(ctx), X509_V_FLAG_PARTIAL_CHAIN);
 #endif
+	}
 
 	if (conf->ca_file && *conf->ca_file) SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
 
