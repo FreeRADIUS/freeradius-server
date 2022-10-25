@@ -57,17 +57,18 @@ runs:
       shell: bash
       run: |
         sudo mv /usr/bin/ucf /usr/bin/ucf.disabled
-        sudo sh -c 'echo "#!/bin/sh"          >  /usr/bin/ucf'
-        sudo sh -c 'echo "shift && cp -v \$@" >> /usr/bin/ucf'
+        sudo sh -c 'echo "#!/bin/sh"                                                   >  /usr/bin/ucf'
+        sudo sh -c 'echo "while case \$1 in -*) true;; *) false;; esac do shift; done" >> /usr/bin/ucf'
+        sudo sh -c 'echo "cp -v \$@"                                                   >> /usr/bin/ucf'
         sudo chmod +x /usr/bin/ucf
 
     - name: Do not start daemons on package install
       shell: bash
       run: |
-        echo "#! /bin/sh" > /usr/sbin/policy-rc.d
-        echo "echo Skipping daemon startup" >> /usr/sbin/policy-rc.d
-        echo "exit 101" >> /usr/sbin/policy-rc.d
-        chmod 755 /usr/sbin/policy-rc.d
+        echo "#! /bin/sh" | sudo tee /usr/sbin/policy-rc.d
+        echo "echo Skipping daemon startup" | sudo tee -a /usr/sbin/policy-rc.d
+        echo "exit 101" | sudo tee -a /usr/sbin/policy-rc.d
+        sudo chmod 755 /usr/sbin/policy-rc.d
 
     - name: Set up repositories
       shell: bash
@@ -90,6 +91,7 @@ runs:
           redis-server \
           slapd
 
+        test x"$USE_DOCKER" = "xtrue" || sudo apt-get install -y --no-install-recommends apparmor-utils
         test x"$USE_DOCKER" = "xtrue" || sudo systemctl stop dovecot exim4 slapd openresty
         test x"$USE_DOCKER" = "xtrue" || sudo aa-complain /usr/sbin/slapd
 

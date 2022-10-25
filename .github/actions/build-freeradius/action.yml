@@ -98,7 +98,7 @@ runs:
       if: ${{ matrix.env.TEST_TYPE == 'fixtures' && matrix.os.runs_on != 'self-hosted' }}
       shell: bash
       run: |
-        apt-get install -y --no-install-recommends ruby-dev
+        sudo apt-get install -y --no-install-recommends ruby-dev
 
     - name: Install cassandra driver (not yet available on 20.04)
       if: ${{ matrix.os.code == 'ubuntu1804' }}
