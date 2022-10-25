@@ -107,12 +107,14 @@ void fr_sha1_update(fr_sha1_ctx *context, uint8_t const *in, size_t len)
 	unsigned int i, j;
 
 	/*
-	 *	Needed so we can calculate the zero
-	 *	length sha1 hash correctly.
-	 *	ubsan doesn't like arithmetic on
-	 *	NULL pointers.
+	 *	If len == 0, there's nothing to do:
+	 *	First, len == 0 impolies len * 8 == 0, so the contents of
+	 *	context->count wouldn't change.
+	 *	j by construction is <= 63, so if len == 0, j + len == j <= 63, and
+	 *	i would be set to 0 and the final memcpy() would "copy" 0
+	 *	bytes, so the contents of context->buffer wouldn't change either.
 	 */
-	if (!in) in = (uint8_t[]){ 0x00 };
+	if (len == 0) return;
 
 	j = (context->count[0] >> 3) & 63;
 	if ((context->count[0] += len << 3) < (len << 3)) {
