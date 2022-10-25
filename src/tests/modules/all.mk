@@ -80,6 +80,7 @@ $(foreach x, $(filter sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst 
 #  conditions, so we don't run them under the new conditions.
 #
 $(foreach x, $(filter ldap%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: NEW_COND=-S parse_new_conditions=no -S use_new_conditions=no))
+$(foreach x, $(filter sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: NEW_COND=-S parse_new_conditions=no -S use_new_conditions=no))
 
 #
 #  Files in the output dir depend on the unit tests
