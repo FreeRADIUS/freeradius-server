@@ -4008,13 +4008,14 @@ load_ca:
 	/*
 	 *	Load the CAs we trust and configure CRL checks if needed
 	 */
-#if defined(X509_V_FLAG_PARTIAL_CHAIN)
-	X509_STORE_set_flags(SSL_CTX_get_cert_store(ctx), X509_V_FLAG_PARTIAL_CHAIN);
-#endif
 	if (conf->ca_file || conf->ca_path) {
 		if ((certstore = fr_init_x509_store(conf)) == NULL ) return NULL;
 		SSL_CTX_set_cert_store(ctx, certstore);
 	}
+
+#if defined(X509_V_FLAG_PARTIAL_CHAIN)
+	X509_STORE_set_flags(SSL_CTX_get_cert_store(ctx), X509_V_FLAG_PARTIAL_CHAIN);
+#endif
 
 	if (conf->ca_file && *conf->ca_file) SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
 
