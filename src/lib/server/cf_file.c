@@ -1149,11 +1149,6 @@ static int process_template(cf_stack_t *stack)
 
 static int cf_file_fill(cf_stack_t *stack);
 
-static const fr_sbuff_term_t if_terminals = FR_SBUFF_TERMS(
-	L(""),
-	L("{"),
-);
-
 static uint8_t const *skip_string(uint8_t const *p, char c)
 {
 	while (*p >= ' ') {
@@ -1256,9 +1251,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
 	tmpl_rules_t	t_rules;
-	fr_sbuff_parse_rules_t p_rules = { };
-
-	p_rules.terminals = &if_terminals;
 
 	/*
 	 *	Short names are nicer.
