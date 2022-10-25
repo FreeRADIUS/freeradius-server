@@ -161,6 +161,7 @@ jobs:
         uses: ./.github/actions/build-freeradius
         with:
           use_docker: true
+          use_sanitizers: false
 
       - name: Run main CI tests
         uses: ./.github/actions/ci-tests

@@ -4,6 +4,9 @@ inputs:
   use_docker:
     desription: True if running in a Docker container
     default: false
+  use_sanitizers:
+    desription: Enable sanitizers if true
+    default: false
   llvm_ver:
     desription: Version of LLVM to use
     default: 12
@@ -220,19 +223,24 @@ runs:
 
     - name: Configure
       shell: bash
+      env:
+        USE_SANITIZERS: ${{ inputs.use_sanitizers }}
       run: |
+        enable_sanitizers=""
         if $CC -v 2>&1 | grep clang > /dev/null; then
-            #echo "Enabling sanitizers"
-            #enable_sanitizers="--enable-address-sanitizer --enable-undefined-behaviour-sanitizer"
-            #if [ "`uname`" != "Darwin" ]; then
-            #    enable_sanitizers="$enable_sanitizers --enable-leak-sanitizer"
-            #fi
+            if "$USE_SANITIZERS" = "true"; then
+                echo "Enabling sanitizers"
+                enable_sanitizers="--enable-address-sanitizer --enable-undefined-behaviour-sanitizer"
+                if [ "`uname`" != "Darwin" ]; then
+                    enable_sanitizers="$enable_sanitizers --enable-leak-sanitizer"
+                fi
+            else
+                echo "Sanitizers are disabled"
+            fi
             if [ "$TEST_TYPE" = "fuzzing" ]; then
                 echo "Enabling fuzzer"
                 enable_sanitizers="$enable_sanitizers --enable-fuzzer"
             fi
-        else
-            enable_sanitizers=""
         fi
         build_paths=""
         if [ "`uname`" = "Darwin" ]; then

@@ -1,0 +1,133 @@
+name: CI-Sanitizers
+
+on:
+  push:
+    branches-ignore:
+      - coverity_scan
+      - run-fuzzer**
+      - debug-fuzzer-**
+  pull_request:
+
+env:
+  ASAN_OPTIONS: symbolize=1 detect_leaks=1 detect_stack_use_after_return=1
+  LSAN_OPTIONS: fast_unwind_on_malloc=0:malloc_context_size=50
+  UBSAN_OPTIONS: print_stacktrace=1
+  KQUEUE_DEBUG: yes
+  M_PERTURB: "0x42"
+  PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
+# Stops the utilities forking on every call to check if they're running under GDB/LLDB
+  DEBUGGER_ATTACHED: no
+  ANALYZE_C_DUMP: 1
+  FR_GLOBAL_POOL: 4M
+  TEST_CERTS: yes
+  NO_PERFORMANCE_TESTS: yes
+  DO_BUILD: yes
+  HOSTAPD_BUILD_DIR: eapol_test.ci
+  HOSTAPD_GIT_TAG: hostap_2_9
+  ALT_OPENSSL: "3.0.2"
+  DEBIAN_FRONTEND: noninteractive
+  CI: 1
+  GH_ACTIONS: 1
+
+jobs:
+  pre-ci:
+    runs-on: ubuntu-latest
+    # Map a step output to a job output
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@master
+
+  ci-sanitizers:
+    timeout-minutes: 150
+    needs: pre-ci
+    if: ${{ needs.pre-ci.outputs.should_skip != 'true' }}
+
+    runs-on: ${{ matrix.os.runs_on }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+
+        #  runs_on - where GitHub will spin up the runner, either
+        #            "self-hosted", or the name of a GitHub VM image
+        #            e.g. ubuntu-20.04 or ubuntu-latest
+        #            see: https://github.com/actions/runner-images
+        #  code    - the name/version of the OS (for step evaluations below)
+        #  docker  - the docker image name, if containers are being used
+        #  name    - used in the job name only
+        os:
+          - { runs_on: "ubuntu-20.04",  code: "ubuntu2004", docker: "ubuntu:20.04", name: "gh-ubuntu20", imageos: "ubuntu20" }
+
+        env:
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-lean    }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-O2-g3   }
+          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-ndebug  }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, NAME: linux-clang-altlibs }
+
+    env: ${{ matrix.env }}
+
+    #  If branch protection is in place with status checks enabled, ensure
+    #  names are updated if new matrix entries are added or the name format
+    #  changes.
+    name: "master-${{ matrix.os.name }}-${{ matrix.env.NAME}}"
+
+    steps:
+
+      # Checkout, but defer pulling LFS objects until we've restored the cache
+      - uses: actions/checkout@v3
+        with:
+          lfs: false
+
+      - name: Build FreeRADIUS
+        uses: ./.github/actions/build-freeradius
+        with:
+          use_docker: true
+          use_sanitizers: true
+
+      - name: Run main CI tests
+        uses: ./.github/actions/ci-tests
+        if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+        with:
+          use_docker: false
+          sql_mysql_test_server: 127.0.0.1
+          sql_postgresql_test_server: 127.0.0.1
+          redis_test_server: 127.0.0.1
+          ldap_test_server: 127.0.0.1
+          ldap_test_server_port: 3890
+          ldaps_test_server_port: 6360
+          ldap389_test_server: 127.0.0.1
+          ldap389_test_server_port: 3892
+          active_directory_test_server: 127.0.0.1
+          rest_test_server: 127.0.0.1
+          rest_test_port: 8080
+          rest_test_ssl_port: 8443
+
+      #
+      #  If the CI has failed and the branch is ci-debug then we start a tmate
+      #  session to provide interactive shell access to the session.
+      #
+      #  The SSH rendezvous point will be emited continuously in the job output,
+      #  which will look something like:
+      #
+      #      SSH: ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+      #
+      #  For example:
+      #
+      #      git push origin ci-debug --force
+      #
+      #  Look at the job output in: https://github.com/FreeRADIUS/freeradius-server/actions
+      #
+      #      ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+      #
+      #  Access requires that you have the private key corresponding to the
+      #  public key of the GitHub user that initiated the job.
+      #
+      - name: "Debug: Start tmate"
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+        if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
