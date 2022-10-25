@@ -62,7 +62,8 @@ jobs:
 
         #  runs_on - where GitHub will spin up the runner, either
         #            "self-hosted", or the name of a GitHub VM image
-        #            e.g. gh20-ubuntu20 or self-ubuntu20.
+        #            e.g. ubuntu-20.04 or ubuntu-latest
+        #            see: https://github.com/actions/runner-images
         #  code    - the name/version of the OS (for step evaluations below)
         #  docker  - the docker image name, if containers are being used
         #  name    - used in the job name only
