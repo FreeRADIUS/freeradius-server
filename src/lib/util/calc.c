@@ -1850,13 +1850,26 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			 *	@todo - the output type could be larger than the input type, if the shift is
 			 *	more than the input type can handle.  e.g. uint8 << 4 could result in uint16
 			 */
-		case T_RSHIFT:
 		case T_LSHIFT:
+			if (!fr_type_is_integer(a->type)) {
+				return handle_result(a->type, T_LSHIFT, ERR_INVALID);
+			}
+
+			if (hint != FR_TYPE_NULL) break;
+
+			if (fr_type_is_signed(a->type)) {
+				hint = FR_TYPE_INT64;
+				break;
+			}
+			hint = FR_TYPE_UINT64;
+			break;
+
+		case T_RSHIFT:
 			hint = a->type;
 			break;
 
 		default:
-			return ERR_INVALID;
+			return handle_result(a->type, T_LSHIFT, ERR_INVALID);
 		}
 	} while (0);
 

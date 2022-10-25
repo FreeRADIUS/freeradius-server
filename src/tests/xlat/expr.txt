@@ -45,17 +45,22 @@ match false
 xlat_expr &Packet-Src-IP-Address =~ /%{Packet-Dst-IP-Address}/
 match true
 
-# @todo - failure?
+# Auto upcast
 xlat_expr (uint32) 1 << 32
-match NULL
-#match ERROR expanding xlat: Value overflows 'uint32' when calculating result.
+match 4294967296
+
+#
+#  The error message is currently "eaten" by a call to RPEDEBUG
+#  in xlat_eval.c.  Oh well.
+#
+xlat_expr (uint32)((uint32) 1 << 32)
+match ERROR expanding xlat: 
 
 #
 #  This shifts it 8, and then tries to cast it to uint8?
 #
 xlat_expr (uint8) 1 << 8
-match NULL
-#match ERROR expanding xlat: Value overflows 'uint8' when calculating result.
+match 256
 
 # Cannot perform any operations for destination type ether
 xlat_expr 00:01:02:03:04:05 ^ 11:22:33:44:55:66
