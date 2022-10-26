@@ -2170,9 +2170,11 @@ static void tcp_socket_timer(void *ctx)
 			/*
 			 *	If it's blocked, then push all of the requests to other sockets.
 			 */
+#ifdef WITH_TLS
 			if (listener->blocked) {
 				listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 			}
+#endif
 
 			event_new_fd(listener);
 			return;
