@@ -1,7 +1,26 @@
 FreeRADIUS 3.2.2 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	Feature improvements
+	* The "configure" process now gives a much clearer repot
+	  when it's finished.  Patches by Matthew Newton.
+	* Fallback to "uname -n" on missing "hostname".  Fixes #4771
+	* Export thread details in radmin "stats threads".  Fixes #4770
+	* Allow Operator-Name and Called-Station-Id in attr_filter when
+	  proxying.  Helps with less work in Eduroam configurations.
+	* Improve queries for processing radacct into periodic usage data.
+	  Fix from Nick Porter.
+	* update dictionary.juniper
+	* add dictionary.calix
+	* Fix dictionary.rfc6519 DS-Lite-Tunnel-Name to be "octets"
+	* Add "connect_timeout" for outgoing TLS sockets.  Helps with #3501.
 
 	Bug fixes
+	* Support for non-blocking TLS sockets.
+	  Fixes #3501.
+	* Fix support for partial certificate chains
+	  after adding reload support.  Fixes #4753
+	* Correct certificate order when creating TLS-* attributes.
+	  Fixes #4785
+	* Support Apple Homebrew on the M1.  Fixes #4754
 
 FreeRADIUS 3.2.1 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	Feature improvements
