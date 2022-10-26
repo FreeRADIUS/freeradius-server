@@ -43,10 +43,10 @@ test.keywords.help: TEST_KEYWORDS_HELP += test.keywords.${1}
 #  Migration support.  Some of the tests don't run under the new
 #  conditions, so we don't run them under the new conditions.
 #
-ifeq "$(findstring ${1}, paircmp)" ""
-$(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=yes -S use_new_conditions=yes
-else
+ifneq "$(findstring ${1}, paircmp)" ""
 $(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=no -S use_new_conditions=no
+else
+$(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=yes -S use_new_conditions=yes
 endif
 
 endef
