@@ -2166,6 +2166,14 @@ static void tcp_socket_timer(void *ctx)
 			 *	Mark the socket as "don't use if at all possible".
 			 */
 			listener->status = RAD_LISTEN_STATUS_FROZEN;
+
+			/*
+			 *	If it's blocked, then push all of the requests to other sockets.
+			 */
+			if (listener->blocked) {
+				listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+			}
+
 			event_new_fd(listener);
 			return;
 		}
