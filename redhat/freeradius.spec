@@ -165,7 +165,9 @@ SQL databases.
 Summary: LDAP support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
+Requires: cyrus-sasl
 Requires: openldap-ltb
+BuildRequires: cyrus-sasl-devel
 BuildRequires: openldap-ltb
 
 %description ldap
