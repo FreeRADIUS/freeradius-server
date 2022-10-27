@@ -481,7 +481,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 		i = talloc_zero(el, fr_edit_ignore_t);
 		if (!i) return 0;
 
-		i->list = list;
+		i->list = &vp->vp_group;
 		fr_dlist_insert_tail(&el->ignore, i);
 	}
 
