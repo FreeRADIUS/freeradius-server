@@ -236,29 +236,60 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 
 	/*
 	 *	When we insert a structural type, we also want to
-	 *	ignore edits to it's children.  The "ignore list"
-	 *	allows us to track that.
+	 *	not track edits to it's children.  The "ignore list"
+	 *	allows us to see which lists don't have edits recorded.
+	 *
+	 *	Perform the operation.  We're not recording
+	 *	it, but we still need to do the work.
 	 */
 	fr_dlist_foreach(&el->ignore, fr_edit_ignore_t, i) {
-		if (i->list == list) {
+		if (i->list != list) continue;
+
+		switch (op) {
 			/*
-			 *	We only need to check inserts for
-			 *	lists which are marked "ignore"
+			 *	No need to save the value.
 			 */
-			if (op != FR_EDIT_INSERT) return 0;
+		case FR_EDIT_VALUE:
+			return 0;
 
 			/*
-			 *	And then only if it's a structural type.
+			 *	No need to save the value.
+			 */
+		case FR_EDIT_DELETE:
+			fr_pair_remove(list, vp);
+			return 0;
+
+			/*
+			 *	Delete all of the children.
+			 */
+		case FR_EDIT_CLEAR:
+			if (!fr_type_is_structural(vp->da->type)) return 0;
+
+			fr_pair_list_free(&vp->vp_group);
+			return 0;
+
+			/*
+			 *	Insert it, and perhaps save the list
+			 *	for a structural VP saying "don't
+			 *	record edits to this, either".
+			 */
+		case FR_EDIT_INSERT:
+			if (fr_pair_insert_after(list, ref, vp) < 0) return -1;
+
+			/*
+			 *	Non-structural types don't have any other work to do.
 			 */
 			if (!fr_type_is_structural(vp->da->type)) return 0;
 
 			/*
-			 *	Otherwise we're inserting a VP which
-			 *	has a child list.  Remember that we
-			 *	need to ignore edits to this list,
-			 *	too.
+			 *	Otherwise we're inserting a VP which has a
+			 *	child list.  Remember that we need to ignore
+			 *	edits to the children of this VP, too.
 			 */
 			goto insert_ignore;
+
+		default:
+			return -1;
 		}
 	}
 
@@ -481,7 +512,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 		i = talloc_zero(el, fr_edit_ignore_t);
 		if (!i) return 0;
 
-		i->list = list;
+		i->list = &vp->vp_group;
 		fr_dlist_insert_tail(&el->ignore, i);
 	}
 
