@@ -3,10 +3,10 @@
 #
 
 # MS CHAPv1
-update request {
-	&User-Name := 'EXAMPLE\bob'
-	&Vendor-Specific.Microsoft.CHAP-Challenge := 0xe96e4fff2955c4f1
-	&Vendor-Specific.Microsoft.CHAP-Response := 0x00010000000000000000000000000000000000000000000000008860bbaac0cd3960b4ce5dc6f0f7a462b897ef530484e80f
+&request += {
+	&User-Name = 'EXAMPLE\bob'
+	&Vendor-Specific.Microsoft.CHAP-Challenge = 0xe96e4fff2955c4f1
+	&Vendor-Specific.Microsoft.CHAP-Response = 0x00010000000000000000000000000000000000000000000000008860bbaac0cd3960b4ce5dc6f0f7a462b897ef530484e80f
 }
 
 &request += {
@@ -32,23 +32,17 @@ if (&Tmp-String-1 != 'bob') {
 	test_fail
 }
 
-update request {
-	&Vendor-Specific.Microsoft.CHAP-Response := 0x00006937d7935bb28a4c1dafe6a193bdea7a853a74d8bcf6db158860bbaac0cd3960b4ce5dc6f0f7a462b897ef530484e80f
-}
+&request.Vendor-Specific.Microsoft.CHAP-Response := 0x00006937d7935bb28a4c1dafe6a193bdea7a853a74d8bcf6db158860bbaac0cd3960b4ce5dc6f0f7a462b897ef530484e80f
 
-update request {
-	&Tmp-Octets-0 := "%(mschap:LM-Response)"
-}
+&Tmp-Octets-0 := "%(mschap:LM-Response)"
 
 if (&Tmp-Octets-0 != 0x6937d7935bb28a4c1dafe6a193bdea7a853a74d8bcf6db15) {
 	test_fail
 }
 
 # Hashing
-update request {
-	&Tmp-Octets-0 := "%(mschap:NT-Hash testing_123)"
-	&Tmp-Octets-1 := "%(mschap:LM-Hash testing_123)"
-}
+&Tmp-Octets-0 := "%(mschap:NT-Hash testing_123)"
+&Tmp-Octets-1 := "%(mschap:LM-Hash testing_123)"
 
 if (&Tmp-Octets-0 != 0xfa782604f85eb3564f555648341b53e4) {
 	test_fail
@@ -59,16 +53,13 @@ if (&Tmp-Octets-1 != 0x2d5545077d7b7d2ae4343f96ab15c596) {
 }
 
 # MS CHAPv2
-update request {
-	&Vendor-Specific.Microsoft.CHAP-Response !* ANY
-	&Vendor-Specific.Microsoft.CHAP-Challenge := 0x04408dc2a98dae1ce351dfc53f57d08e
-	&Vendor-Specific.Microsoft.CHAP2-Response := 0x00010e93cfbfcef8d5b6af42d2b2ca5b43180000000000000000bc068d1e8c54de5e9db78e6736d686eb88a999dd7fa239b200
-}
+&request -= &Vendor-Specific.Microsoft.CHAP-Response[*]
 
-update request {
-	&Tmp-Octets-0 := "%(mschap:Challenge)"
-	&Tmp-Octets-1 := "%(mschap:NT-Response)"
-}
+&Vendor-Specific.Microsoft.CHAP-Challenge := 0x04408dc2a98dae1ce351dfc53f57d08e
+&Vendor-Specific.Microsoft.CHAP2-Response := 0x00010e93cfbfcef8d5b6af42d2b2ca5b43180000000000000000bc068d1e8c54de5e9db78e6736d686eb88a999dd7fa239b200
+
+&Tmp-Octets-0 := "%(mschap:Challenge)"
+&Tmp-Octets-1 := "%(mschap:NT-Response)"
 
 if (&Tmp-Octets-0 != 0xad18b6b8e1478b4c) {
 	test_fail
@@ -79,13 +70,8 @@ if (&Tmp-Octets-1 != 0xbc068d1e8c54de5e9db78e6736d686eb88a999dd7fa239b2) {
 }
 
 # Invalid
-update request {
-	&Vendor-Specific.Microsoft.CHAP-Challenge := 0xf0eac4151d5346662ba8c5e428
-}
-
-update request {
-	&Tmp-String-0 := "%(mschap:Challenge)"
-}
+&Vendor-Specific.Microsoft.CHAP-Challenge := 0xf0eac4151d5346662ba8c5e428
+&Tmp-String-0 := "%(mschap:Challenge)"
 
 if (&Tmp-String-0 != "") {
 	test_fail
