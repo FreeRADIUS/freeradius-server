@@ -1855,8 +1855,6 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 				return handle_result(a->type, T_LSHIFT, ERR_INVALID);
 			}
 
-			if (hint != FR_TYPE_NULL) break;
-
 			if (fr_type_is_signed(a->type)) {
 				hint = FR_TYPE_INT64;
 				break;
