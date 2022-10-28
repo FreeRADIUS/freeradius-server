@@ -1414,7 +1414,7 @@ if test "x$WITH_OPENSSL" = xyes; then
         ]],
         [[
           printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
-          if (SSLeay() == OPENSSL_VERSION_NUMBER) {
+          if ((OpenSSL_version_num() & 0xfff00000) == (OPENSSL_VERSION_NUMBER & 0xfff00000)) {
             return 0;
           } else {
             return 1;
