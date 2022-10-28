@@ -61,6 +61,8 @@ struct sync_state_s {
 							//!< of filtering in persistent searches.
 
 	proto_ldap_sync_t const		*inst;		//!< Module instance for this sync.
+
+	fr_dlist_head_t			pending;	//!< List of pending changes in progress.
 };
 
 typedef struct sync_state_s sync_state_t;

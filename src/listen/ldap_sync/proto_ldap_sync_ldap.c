@@ -170,6 +170,8 @@ sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, prot
 	sync->sync_no = sync_no;
 	sync->phase = SYNC_PHASE_INIT;
 
+	fr_dlist_talloc_init(&sync->pending, sync_packet_ctx_t, entry);
+
 	/*
 	 *	If the connection is freed, all the sync state is also freed
 	 */
