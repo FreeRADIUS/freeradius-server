@@ -71,7 +71,7 @@ static size_t const sync_phase_table_len = NUM_ELEMENTS(sync_phase_table);
  *
  * The Sync Request Control is only applicable to the SearchRequest Message.
  */
-int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, sync_config_t const *config, uint8_t const *cookie)
+int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, proto_ldap_sync_t const *inst, uint8_t const *cookie)
 {
 	LDAPControl		ctrl = {0}, *ctrls[2] = { &ctrl, NULL };
 	BerElement		*ber = NULL;
@@ -79,6 +79,7 @@ int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, sync_config_t 
 	int			ret;
 	fr_rb_tree_t		*tree;
 	sync_state_t		*sync;
+	sync_config_t const 	*config = inst->sync_config[sync_no];
 
 	fr_assert(conn);
 	fr_assert(config);
@@ -96,7 +97,7 @@ int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, sync_config_t 
 		return -1;
 	}
 
-	sync = sync_state_alloc(tree, conn, sync_no, config);
+	sync = sync_state_alloc(tree, conn, inst, sync_no, config);
 
 	/*
 	 *	Might not necessarily have a cookie

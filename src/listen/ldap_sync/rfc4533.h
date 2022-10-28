@@ -26,7 +26,8 @@
 #include <freeradius-devel/ldap/base.h>
 #include "proto_ldap_sync_ldap.h"
 
-int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, sync_config_t const *config, uint8_t const *cookie);
+int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no,
+		      proto_ldap_sync_t const *inst, uint8_t const *cookie);
 
 int rfc4533_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, LDAPControl **ctrls);
 

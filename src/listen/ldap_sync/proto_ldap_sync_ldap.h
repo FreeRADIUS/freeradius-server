@@ -59,6 +59,8 @@ struct sync_state_s {
 							//!< before passing packets to the worker.
 							//!< Predominantly to overcome Active Directory's lack
 							//!< of filtering in persistent searches.
+
+	proto_ldap_sync_t const		*inst;		//!< Module instance for this sync.
 };
 
 typedef struct sync_state_s sync_state_t;
@@ -119,7 +121,8 @@ extern size_t sync_op_table_len;
 
 int8_t sync_state_cmp(void const *one, void const *two);
 
-sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, size_t sync_no, sync_config_t const *config);
+sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, proto_ldap_sync_t const *inst,
+			       size_t sync_no, sync_config_t const *config);
 
 int ldap_sync_cookie_store(sync_state_t *sync, bool refresh);
 

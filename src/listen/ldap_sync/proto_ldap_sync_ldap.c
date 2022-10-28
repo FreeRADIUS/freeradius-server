@@ -158,12 +158,14 @@ static int sync_state_free(sync_state_t *sync)
  * @param[in] config	for the sync.
  * @return new sync state.
  */
-sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, size_t sync_no, sync_config_t const *config)
+sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, proto_ldap_sync_t const *inst,
+			       size_t sync_no, sync_config_t const *config)
 {
 	sync_state_t	*sync;
 
 	MEM(sync = talloc_zero(ctx, sync_state_t));
 	sync->conn = conn;
+	sync->inst = inst;
 	sync->config = config;
 	sync->sync_no = sync_no;
 	sync->phase = SYNC_PHASE_INIT;
@@ -654,7 +656,7 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 		vp = fr_pair_find_by_da_nested(&tmp, NULL, attr_ldap_sync_cookie);
 		if (vp) cookie = talloc_memdup(inst, vp->vp_octets, vp->vp_length);
 
-		inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, inst->parent->sync_config[packet_id], cookie);
+		inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, inst->parent, cookie);
 	}
 		break;
 
@@ -680,7 +682,7 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 		sync_config = refresh_packet->sync->config;
 		DEBUG3("Restarting sync with base %s", sync_config->base_dn);
 		talloc_free(refresh_packet->sync);
-		inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, sync_config, refresh_packet->refresh_cookie);
+		inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, inst->parent, refresh_packet->refresh_cookie);
 
 		talloc_free(refresh_packet);
 	}

@@ -46,10 +46,11 @@
  * an ldap_abandon message to the server to tell it to cancel the search.
  *
  * @param[in] conn 		Connection to issue the search request on.
- * @param[in] config		containing callbacks and search parameters.
+ * @param[in] sync_no		number of the sync in the array of configs.
+ * @param[in] inst		instance of ldap_sync this query relates to.
  * @param[in] cookie		not applicable to persistent search LDAP servers.
  */
-int persistent_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no, sync_config_t const *config, UNUSED uint8_t const *cookie)
+int persistent_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no, proto_ldap_sync_t const *inst, UNUSED uint8_t const *cookie)
 {
 	static char const	*notify_oid = LDAP_CONTROL_PERSIST_REQUEST;
 	LDAPControl		ctrl = {0}, *ctrls[2] = { &ctrl, NULL };
@@ -57,6 +58,7 @@ int persistent_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no, sync_
 	int			ret;
 	sync_state_t		*sync;
 	fr_rb_tree_t		*tree;
+	sync_config_t		*config = inst->sync_config[sync_no];
 
 	fr_assert(conn);
 	fr_assert(config);
@@ -81,7 +83,7 @@ int persistent_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no, sync_
 		return -1;
 	}
 
-	sync = sync_state_alloc(tree, conn, sync_no, config);
+	sync = sync_state_alloc(tree, conn, inst, sync_no, config);
 
 	memcpy(&ctrl.ldctl_oid, &notify_oid, sizeof(ctrl.ldctl_oid));
 
