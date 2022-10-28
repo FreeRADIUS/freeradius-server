@@ -326,6 +326,7 @@ jobs:
           REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
   post-ci:
+    if: github.repository_owner == 'FreeRADIUS'
     runs-on: self-hosted
     name: "Post-job cleanup"
     needs:
