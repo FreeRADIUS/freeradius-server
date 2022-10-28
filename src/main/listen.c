@@ -3061,6 +3061,8 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 
 	this = listen_alloc(ctx, RAD_LISTEN_PROXY);
 
+	this->nonblock = home->nonblock;
+
 	sock = this->data;
 	sock->other_ipaddr = home->ipaddr;
 	sock->other_port = home->port;
