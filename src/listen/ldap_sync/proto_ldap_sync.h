@@ -54,6 +54,10 @@ typedef struct {
 	uint32_t		num_messages;			//!< for message ring buffer
 	uint32_t		priority;			//!< for packet processing.
 
+	fr_time_delta_t		cookie_interval;		//!< Interval between storing cookies.
+	uint32_t		cookie_changes;			//!< Number of LDAP changes to process between
+								//!< each cookie store operation.
+
 	fr_schedule_t		*sc;
 
 	fr_listen_t		*listen;			//!< The listener structure which describes
