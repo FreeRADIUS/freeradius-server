@@ -106,6 +106,33 @@ typedef struct {
 	fr_connection_t			*conn;			//!< Our connection to the LDAP directory.
 } proto_ldap_sync_ldap_thread_t;
 
+typedef enum {
+	SYNC_PACKET_PENDING = 0,				//!< Packet not yet sent.
+	SYNC_PACKET_PREPARING,					//!< Packet being prepared.
+	SYNC_PACKET_PROCESSING,					//!< Packet sent to worker.
+	SYNC_PACKET_COMPLETE,					//!< Packet response received from worker.
+} sync_packet_status_t;
+
+typedef enum {
+	SYNC_PACKET_TYPE_CHANGE = 0,				//!< Packet is an entry change.
+	SYNC_PACKET_TYPE_COOKIE
+} sync_packet_type_t;
+
+/** Tracking structure for ldap sync packets
+ */
+struct sync_packet_ctx_s {
+	sync_packet_type_t		type;			//!< Type of packet.
+	sync_packet_status_t		status;			//!< Status of this packet.
+	sync_state_t			*sync;			//!< Sync packet relates to.
+
+	uint8_t				*cookie;		//!< Cookie to store - can be NULL.
+	bool				refresh;		//!< Does the sync require a refresh.
+
+	fr_dlist_t			entry;			//!< Entry in list of pending packets.
+};
+
+typedef struct sync_packet_ctx_s sync_packet_ctx_t;
+
 /** Tracking structure for connections requiring refresh
  */
 struct sync_refresh_packet_s {
