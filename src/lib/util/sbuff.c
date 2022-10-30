@@ -273,6 +273,20 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 		return 0;	/* There's no way we could satisfy the extension request */
 	}
 
+	/*
+	 *	Shift out the maximum number of bytes we can
+	 *	irrespective of the amount that was requested
+	 *	as the extension.  It's more efficient to do
+	 *	this than lots of small shifts, and just 
+	 *	looking and the number of bytes used in the
+	 *	deepest sbuff, and using that as the shift
+	 *	amount, might mean we don't shift anything at
+	 *	all!
+	 *
+	 *	fr_sbuff_shift will cap the max shift amount,
+	 *	so markers and positions will remain valid for 
+	 *	all sbuffs in the chain.
+	 */
 	shift = fr_sbuff_current(sbuff) - fr_sbuff_buff(sbuff);
 	if (shift) {
 		/*
