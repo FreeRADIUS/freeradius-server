@@ -1030,9 +1030,9 @@ static void test_file_extend(void)
 	char		*post_ws;
 	ssize_t		slen;
 
-	static_assert(sizeof(buff) >= PATTERN_LEN);
-	static_assert((sizeof(fbuff) % sizeof(buff)) > 0);
-	static_assert((sizeof(fbuff) % sizeof(buff)) < PATTERN_LEN);
+	static_assert(sizeof(buff) >= PATTERN_LEN, "Buffer must be sufficiently large to hold the pattern");
+	static_assert((sizeof(fbuff) % sizeof(buff)) > 0, "sizeof buff must not be a multiple of fbuff");
+	static_assert((sizeof(fbuff) % sizeof(buff)) < PATTERN_LEN), "remainder of sizeof(fbuff)/sizeof(buff) must be less than sizeof pattern");
 
 	TEST_CASE("Initialization");
 	memset(fbuff, ' ', sizeof(fbuff));
