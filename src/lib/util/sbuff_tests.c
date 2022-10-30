@@ -1019,26 +1019,39 @@ static void test_talloc_extend_with_marker(void)
 static void test_file_extend(void)
 {
 	fr_sbuff_t	sbuff;
-	fr_sbuff_t	our_sbuff;
+	fr_sbuff_t	our_sbuff, child_sbuff;
 	fr_sbuff_uctx_file_t	fctx;
 	FILE		*fp;
-	char		buff[16];
+	char		buff[5];
 	char		out[16 + 1];
-	char		fbuff[] = "                        xyzzy";
+	char		fbuff[24];
+	const char	PATTERN[] = "xyzzy";
+#define PATTERN_LEN (sizeof(PATTERN) - 1)
 	char		*post_ws;
 	ssize_t		slen;
 
+	static_assert(sizeof(buff) >= PATTERN_LEN, "Buffer must be sufficiently large to hold the pattern");
+	static_assert((sizeof(fbuff) % sizeof(buff)) > 0, "sizeof buff must not be a multiple of fbuff");
+	static_assert((sizeof(fbuff) % sizeof(buff)) < PATTERN_LEN, "remainder of sizeof(fbuff)/sizeof(buff) must be less than sizeof pattern");
+
 	TEST_CASE("Initialization");
-	fp = fmemopen(fbuff, sizeof(fbuff) - 1, "r");
+	memset(fbuff, ' ', sizeof(fbuff));
+	memcpy(fbuff + sizeof(fbuff) - PATTERN_LEN, PATTERN, PATTERN_LEN);
+
+	fp = fmemopen(fbuff, sizeof(fbuff), "r");
 	TEST_CHECK(fp != NULL);
 	TEST_CHECK(fr_sbuff_init_file(&sbuff, &fctx, buff, sizeof(buff), fp, 128) == &sbuff);
 	our_sbuff = FR_SBUFF_BIND_CURRENT(&sbuff);
 
 	TEST_CASE("Advance past whitespace, which will require shift/extend");
-	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&our_sbuff, SIZE_MAX, NULL), sizeof(fbuff) - 6);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&our_sbuff, SIZE_MAX, NULL), sizeof(fbuff) - PATTERN_LEN);
+	TEST_CASE("Verify extend on unused child buffer");
+	child_sbuff = FR_SBUFF(&our_sbuff);
+	slen = fr_sbuff_extend_file(&child_sbuff, 0);
+	TEST_CHECK_SLEN(slen, sizeof(fbuff) % PATTERN_LEN);
 	TEST_CASE("Verify that we passed all and only whitespace");
 	(void) fr_sbuff_out_abstrncpy(NULL, &post_ws, &our_sbuff, 24);
-	TEST_CHECK_STRCMP(post_ws, "xyzzy");
+	TEST_CHECK_STRCMP(post_ws, PATTERN);
 	talloc_free(post_ws);
 	TEST_CASE("Verify parent buffer end");
 	TEST_CHECK(sbuff.end == our_sbuff.end);
