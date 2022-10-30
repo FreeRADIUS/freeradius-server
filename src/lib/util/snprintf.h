@@ -171,7 +171,7 @@ struct DATA {
 #define isflag(c) ((c) == '#' || (c) == ' ' || \
 		   (c) == '*' || (c) == '+' || \
 		   (c) == '-' || (c) == '.' || \
-		   isdigit(c))
+		   isdigit((u_char)c))
 
 /* round off to the precision */
 #define ROUND(d, p) \

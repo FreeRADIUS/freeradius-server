@@ -125,7 +125,7 @@ static CC_HINT(nonnull(1,3,4,5)) int exec_pair_to_env(char **env_p, size_t env_l
 		p = fr_sbuff_current(&env_m[i]);
 		if (isdigit((int)*p)) *p++ = '_';
 		for (; p < fr_sbuff_current(&sbuff); p++) {
-			if (isalpha((int)*p)) *p = toupper(*p);
+			if (isalpha((u_char)*p)) *p = toupper((u_char)*p);
 			else if (*p == '-') *p = '_';
 			else if (isdigit((int)*p)) continue;
 			else *p = '_';

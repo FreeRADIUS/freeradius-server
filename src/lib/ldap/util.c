@@ -148,8 +148,8 @@ size_t fr_ldap_unescape_func(UNUSED request_t *request, char *out, size_t outlen
 		}
 
 		/* Is a hex sequence */
-		if (!(c1 = memchr(hextab, tolower(p[0]), 16)) ||
-		    !(c2 = memchr(hextab, tolower(p[1]), 16))) goto next;
+		if (!(c1 = memchr(hextab, tolower((u_char)p[0]), 16)) ||
+		    !(c2 = memchr(hextab, tolower((u_char)p[1]), 16))) goto next;
 		c3 = ((c1 - hextab) << 4) + (c2 - hextab);
 
 		*out++ = c3;

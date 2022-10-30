@@ -564,14 +564,14 @@ static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 
 		if (!*p) break;
 
-		c1 = memchr(hextab, tolower((int) *p++), sizeof(hextab));
+		c1 = memchr(hextab, tolower((u_char) *p++), sizeof(hextab));
 		if (!c1) {
 		bad_input:
 			fr_strerror_printf("Invalid hex data starting at \"%s\"", p);
 			return -(p - in);
 		}
 
-		c2 = memchr(hextab, tolower((int)*p++), sizeof(hextab));
+		c2 = memchr(hextab, tolower((u_char)*p++), sizeof(hextab));
 		if (!c2) goto bad_input;
 
 		*out_p++ = ((c1 - hextab) << 4) + (c2 - hextab);

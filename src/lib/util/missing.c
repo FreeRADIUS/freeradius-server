@@ -49,8 +49,8 @@ int strncasecmp(char *s1, char *s2, int n)
 		c1 = *p1;
 		c2 = *p2;
 
-		if (islower(c1)) c1 = toupper(c1);
-		if (islower(c2)) c2 = toupper(c2);
+		if (islower((u_char)c1)) c1 = toupper((u_char)c1);
+		if (islower((u_char)c2)) c2 = toupper((u_char)c2);
 
 		if ((dif = c1 - c2) != 0)
 			break;

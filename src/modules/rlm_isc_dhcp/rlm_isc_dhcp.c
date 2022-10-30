@@ -622,7 +622,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	p = type_name;
 	while (*q && !isspace((int) *q) && (*q != ',')) {
 		if ((p - type_name) >= (int) sizeof(type_name)) return -1; /* internal error */
-		*(p++) = tolower((int) *(q++));
+		*(p++) = tolower((u_char) *(q++));
 	}
 	*p = '\0';
 
@@ -1199,7 +1199,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 			/*
 			 *	The token exactly matches the command.
 			 */
-			if (!c || isspace((int) c)) {
+			if (!c || isspace((u_char) c)) {
 				q = &(tokens[half].name[state->token_len]);
 				break;
 			}

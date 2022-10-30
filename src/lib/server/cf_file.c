@@ -1046,8 +1046,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			 *	Check for valid characters
 			 */
 			for (p = dp->d_name; *p != '\0'; p++) {
-				if (isalpha((int)*p) ||
-				    isdigit((int)*p) ||
+				if (isalpha((u_char)*p) ||
+				    isdigit((u_char)*p) ||
 				    (*p == '-') ||
 				    (*p == '_') ||
 				    (*p == '.')) continue;
@@ -2016,7 +2016,7 @@ static int parse_input(cf_stack_t *stack)
 	 *	it, so oh well.
 	 */
 	if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || ((*ptr == '&') && (ptr[1] != '=')) ||
-	    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((int) *ptr)) {
+	    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((u_char) *ptr)) {
 		if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			return -1;

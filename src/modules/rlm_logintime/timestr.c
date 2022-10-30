@@ -181,7 +181,7 @@ static int week_fill(char *bitmap, char const *tm)
 
 	strlcpy(tmp, tm, sizeof(tmp));
 	for (s = tmp; *s; s++)
-		if (isupper(*s)) *s = tolower(*s);
+		if (isupper((u_char)*s)) *s = tolower((u_char)*s);
 
 	s = strtok(tmp, ",|");
 	while (s) {

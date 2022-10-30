@@ -1062,7 +1062,7 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 		/*
 		 *	Smash the target to lower case
 		 */
-		for (i = 0; i < len; i++) value[i] = tolower(value[i]);
+		for (i = 0; i < len; i++) value[i] = tolower((u_char)value[i]);
 
 		for (p = target_map, end = target_map + (sizeof(target_map) / sizeof(*target_map));
 		     p < end;

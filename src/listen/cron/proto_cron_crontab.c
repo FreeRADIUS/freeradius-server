@@ -226,7 +226,7 @@ static int parse_field(CONF_ITEM *ci, char const **start, char const *name,
 		/*
 		 *	EOS or space is end of field.
 		 */
-		if (!(!*end || isspace((int) *end))) {
+		if (!(!*end || isspace((u_char) *end))) {
 			cf_log_err(ci, "Unexpected text for %s at %s", name, end);
 			return -1;
 		}

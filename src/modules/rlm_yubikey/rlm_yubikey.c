@@ -84,7 +84,7 @@ fr_dict_attr_autoload_t rlm_yubikey_dict_attr[] = {
 static char const modhextab[] = "cbdefghijklnrtuv";
 static char const hextab[] = "0123456789abcdef";
 
-#define is_modhex(x) (memchr(modhextab, tolower(x), 16))
+#define is_modhex(x) (memchr(modhextab, tolower((u_char)x), 16))
 
 /** Convert yubikey modhex to normal hex
  *
@@ -115,8 +115,8 @@ static ssize_t modhex2hex(char const *modhex, char *hex, size_t len)
 		if (modhex[i + 1] == '\0')
 			return -1;
 
-		if (!(c1 = memchr(modhextab, tolower((int) modhex[i]), 16)) ||
-		    !(c2 = memchr(modhextab, tolower((int) modhex[i + 1]), 16)))
+		if (!(c1 = memchr(modhextab, tolower((u_char) modhex[i]), 16)) ||
+		    !(c2 = memchr(modhextab, tolower((u_char) modhex[i + 1]), 16)))
 			return -1;
 
 		hex[i] = hextab[c1 - modhextab];

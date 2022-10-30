@@ -1359,7 +1359,7 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 				p++; \
 				q++; \
 			} } while (0)
-#define MATCHED_NAME	((!*p || isspace((int) *p)) && !*q)
+#define MATCHED_NAME	((!*p || isspace((u_char) *p)) && !*q)
 #define TOO_FAR		(*p && (*q > *p))
 #define MATCHED_START	((text + start) >= word) && ((text + start) <= p)
 
@@ -2173,7 +2173,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 
 		fr_skip_whitespace(word);
 
-		if ((word[0] == '*') && isspace(word[1]) && cmd->added_name) {
+		if ((word[0] == '*') && isspace((u_char)word[1]) && cmd->added_name) {
 			p = word + 1;
 			goto skip_matched;
 		}
@@ -2242,7 +2242,7 @@ skip_matched:
 		 *	Allow wildcards as a primitive "for" loop in
 		 *	some special circumstances.
 		 */
-		if ((word[0] == '*') && isspace(word[1]) && cmd->added_name) {
+		if ((word[0] == '*') && isspace((u_char)word[1]) && cmd->added_name) {
 			fr_assert(cmd->intermediate);
 			fr_assert(cmd->child != NULL);
 
@@ -2622,7 +2622,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 		 *	matching all of the name.  The input is a
 		 *	PARTIAL match.  Go fill it in.
 		 */
-		if (!*p || isspace((int) *p)) {
+		if (!*p || isspace((u_char) *p)) {
 			goto expand_name;
 		}
 
@@ -2697,7 +2697,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 				 *	Matched all of the input to
 				 *	part of cmd->name.
 				 */
-				if (!*p || isspace((int) *p)) {
+				if (!*p || isspace((u_char) *p)) {
 					expansions[count] = strdup(cmd->name);
 					count++;
 				}

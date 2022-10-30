@@ -479,7 +479,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	memset(out, 0, sizeof(*out));
 
 	end = value + inlen;
-	while ((value < end) && isspace((int) *value)) value++;
+	while ((value < end) && isspace((u_char) *value)) value++;
 	if (value == end) {
 		fr_strerror_const("Empty IPv4 address string is invalid");
 		return -1;
@@ -630,7 +630,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	if (inlen < 0) inlen = strlen(value);
 
 	end = value + inlen;
-	while ((value < end) && isspace((int) *value)) value++;
+	while ((value < end) && isspace((u_char) *value)) value++;
 	if (value == end) {
 		fr_strerror_const("Empty IPv6 address string is invalid");
 		return -1;
@@ -770,7 +770,7 @@ int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 	char const *end;
 
 	end = value + inlen;
-	while ((value < end) && isspace((int) *value)) value++;
+	while ((value < end) && isspace((u_char) *value)) value++;
 	if (value == end) {
 		fr_strerror_const("Empty IPv4 address string is invalid");
 		return -1;
@@ -1125,7 +1125,7 @@ uint8_t *fr_inet_ifid_pton(uint8_t out[static 8], char const *ifid_str)
 			num_id = 0;
 			if ((idx += 2) > 6)
 				return NULL;
-		} else if ((pch = strchr(xdigits, tolower(*p))) != NULL) {
+		} else if ((pch = strchr(xdigits, tolower((u_char)*p))) != NULL) {
 			if (++num_id > 4)
 				return NULL;
 			/*

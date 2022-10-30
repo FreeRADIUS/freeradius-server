@@ -744,7 +744,7 @@ unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t
 				int j;
 
 				for (j = 0; j < (int)values[i]->bv_len; j++) {
-					if (tolower(values[i]->bv_val[j]) != tolower(check->vp_strvalue[j])) break;
+					if (tolower((u_char)values[i]->bv_val[j]) != tolower((u_char)check->vp_strvalue[j])) break;
 				}
 				if (j == (int)values[i]->bv_len) {
 					RDEBUG2("User found in group DN \"%s\". "

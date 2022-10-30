@@ -1734,42 +1734,42 @@ static inline bool _fr_sbuff_is_char(fr_sbuff_t *sbuff, char *p, char c)
 static inline bool _fr_sbuff_is_digit(fr_sbuff_t *sbuff, char *p)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return isdigit(*p);
+	return isdigit((u_char)*p);
 }
 #define fr_sbuff_is_digit(_sbuff_or_marker) _fr_sbuff_is_digit(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
 
 static inline bool _fr_sbuff_is_upper(fr_sbuff_t *sbuff, char const *p)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return isupper(*p);
+	return isupper((u_char)*p);
 }
 #define fr_sbuff_is_upper(_sbuff_or_marker) _fr_sbuff_is_upper(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
 
 static inline bool _fr_sbuff_is_lower(fr_sbuff_t *sbuff, char const *p)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return islower(*p);
+	return islower((u_char)*p);
 }
 #define fr_sbuff_is_lower(_sbuff_or_marker) _fr_sbuff_is_lower(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
 
 static inline bool _fr_sbuff_is_alpha(fr_sbuff_t *sbuff, char const *p)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return isalpha(*p);
+	return isalpha((u_char)*p);
 }
 #define fr_sbuff_is_alpha(_sbuff_or_marker) _fr_sbuff_is_alpha(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
 
 static inline bool _fr_sbuff_is_space(fr_sbuff_t *sbuff, char const *p)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return isspace(*p);
+	return isspace((u_char)*p);
 }
 #define fr_sbuff_is_space(_sbuff_or_marker) _fr_sbuff_is_space(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
 
 static inline bool _fr_sbuff_is_hex(fr_sbuff_t *sbuff, char const *p)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return isxdigit(*p);
+	return isxdigit((u_char)*p);
 }
 #define fr_sbuff_is_hex(_sbuff_or_marker) _fr_sbuff_is_hex(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
 

@@ -292,7 +292,7 @@ static bool session_psk_identity_is_safe(const char *identity)
 	if (!identity) return true;
 
 	while ((c = *(identity++)) != '\0') {
-		if (isalpha((int) c) || isdigit((int) c) || isspace((int) c) ||
+		if (isalpha((u_char) c) || isdigit((u_char) c) || isspace((u_char) c) ||
 		    (c == '@') || (c == '-') || (c == '_') || (c == '.')) {
 			continue;
 		}

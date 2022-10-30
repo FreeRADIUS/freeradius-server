@@ -3468,7 +3468,7 @@ static xlat_action_t xlat_change_case(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	end = p + vb->vb_length;
 
 	while (p < end) {
-		*(p) = upper ? toupper ((int) *(p)) : tolower((int) *(p));
+		*(p) = upper ? toupper ((u_char) *(p)) : tolower((u_char) *(p));
 		p++;
 	}
 
@@ -3659,8 +3659,8 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		/* Is a % char */
 
 		/* Don't need \0 check, as it won't be in the hextab */
-		if (!(c1 = memchr(hextab, tolower(*++p), 16)) ||
-		    !(c2 = memchr(hextab, tolower(*++p), 16))) {
+		if (!(c1 = memchr(hextab, tolower((u_char)*++p), 16)) ||
+		    !(c2 = memchr(hextab, tolower((u_char)*++p), 16))) {
 			REMARKER(in_head->vb_strvalue, p - in_head->vb_strvalue, "Non-hex char in %% sequence");
 			talloc_free(vb);
 
@@ -3853,7 +3853,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 
 	strlcpy(name, fr_dict_root(dict)->name, sizeof(name));
 	for (p = name; *p != '\0'; p++) {
-		*p = tolower((int) *p);
+		*p = tolower((u_char) *p);
 	}
 
 	/*

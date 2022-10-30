@@ -63,7 +63,7 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
  * @param[in,out] _p	string to skip over.
  * @param[in] _e	pointer to end of string.
  */
-#define fr_bskip_whitespace(_p, _e) while((_p < _e) && isspace((int)*(_p))) _p++
+#define fr_bskip_whitespace(_p, _e) while((_p < _e) && isspace((u_char)*(_p))) _p++
 
 /** Skip everything that's not whitespace ('\\t', '\\n', '\\v', '\\f', '\\r', ' ')
  *

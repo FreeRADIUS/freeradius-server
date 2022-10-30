@@ -125,7 +125,7 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 
 		if (*str == '.') break;
 
-		c = memchr(tab, tolower((int)*str), base);
+		c = memchr(tab, tolower((u_char)*str), base);
 		if (!c) return 0;
 
 		ret *= base;

@@ -68,7 +68,7 @@ fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in)
 	if (fr_sbuff_out(NULL, &size, &our_in) < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 	if (!fr_sbuff_extend(&our_in)) goto done;
 
-	c = tolower(fr_sbuff_char(&our_in, '\0'));
+	c = tolower((u_char)fr_sbuff_char(&our_in, '\0'));
 
 	/*
 	 *	Special cases first...

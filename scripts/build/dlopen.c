@@ -597,7 +597,7 @@ static void ad_have_feature(char const *symbol)
 
 	for (p = def->name + 5; *p != '\0'; p++) {
 		if (islower((int) *p)) {
-			*p = toupper((int) *p);
+			*p = toupper((u_char) *p);
 
 		} else if ((*p == '/') || (*p == '.')) {
 			*p = '_';
@@ -667,7 +667,7 @@ static void ad_update_variable(char const *name, char *value)
 
 	p = strstr(old, value);
 	if (p) {
-		if (!p[value_len] || isspace((int) p[value_len])) {
+		if (!p[value_len] || isspace((u_char) p[value_len])) {
 			gmk_free(old);
 			return;
 		}
@@ -1007,7 +1007,7 @@ static char *make_ad_dump_defines(__attribute__((unused)) char const *nm, unsign
 	FILE *fp;
 	unsigned int i;
 
-	if ((argc == 0) || !*argv[0] || isspace((int) *argv[0])) {
+	if ((argc == 0) || !*argv[0] || isspace((u_char) *argv[0])) {
 		/*
 		 *	Print Makefile rules to redefine the variables we've created.
 		 */

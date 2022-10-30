@@ -491,9 +491,9 @@ static bool ldap_filter_node_eval(ldap_filter_t *node, fr_ldap_connection_t *con
 						continue;
 					}
 					if (skip) {
-						while ((tolower(*t) != tolower(*v)) && (v <= v_end)) v++;
+						while ((tolower((u_char)*t) != tolower((u_char)*v)) && (v <= v_end)) v++;
 					}
-					if (tolower(*t) != tolower(*v)) break;
+					if (tolower((u_char)*t) != tolower((u_char)*v)) break;
 					skip = false;
 					t++;
 					v++;

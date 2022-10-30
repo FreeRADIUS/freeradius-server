@@ -389,7 +389,7 @@ void comp128v23(uint8_t sres[static 4], uint8_t kc[static 8],
 #include <ctype.h>
 static int hextoint(char x)
 {
-	x = toupper(x);
+	x = toupper((u_char)x);
 	if (x >= 'A' && x <= 'F') {
 		return x-'A' + 10;
 	} else if (x >= '0' && x <= '9') {

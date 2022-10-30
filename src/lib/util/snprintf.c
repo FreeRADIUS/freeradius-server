@@ -210,7 +210,7 @@ char ** fract;
 			fp = integral(number, &ip);
 			ch = (int)((fp + PRECISION)*base); /* force to round */
 			integral_part[i] = (ch <= 9) ? ch + '0' : ch + 'a' - 10;
-			if (! isxdigit(integral_part[i])) /* bail out overflow !! */
+			if (! isxdigit((u_char)integral_part[i])) /* bail out overflow !! */
 	break;
 			number = ip;
 		 }
@@ -234,7 +234,7 @@ char ** fract;
 /* the fractionnal part */
 	for (i=0, fp=fraction; precision > 0 && i < MAX_FRACT ; i++, precision--	) {
 		fraction_part[i] = (int)((fp + PRECISION)*10. + '0');
-		if (! isdigit(fraction_part[i])) /* underflow ? */
+		if (! isdigit((u_char)fraction_part[i])) /* underflow ? */
 			break;
 		fp = (fp*10.0) - (double)(long)((fp + PRECISION)*10.);
 	}
@@ -316,7 +316,7 @@ double d;
 		PUT_CHAR('0', p); PUT_CHAR(*p->pf, p);
 	}
 	while (*tmp) { /* hexa */
-		PUT_CHAR((*p->pf == 'X' ? toupper(*tmp) : *tmp), p);
+		PUT_CHAR((*p->pf == 'X' ? toupper((u_char)*tmp) : *tmp), p);
 		tmp++;
 	}
 	PAD_LEFT(p);
@@ -485,7 +485,7 @@ struct DATA * p;
 			case '1': case '2': case '3':
 			case '4': case '5': case '6':
 			case '7': case '8': case '9':		 /* gob all the digits */
-	for (i = 0; isdigit(*s); i++, s++)
+	for (i = 0; isdigit((u_char)*s); i++, s++)
 		if (i < MAX_FIELD/2 - 1)
 			number[i] = *s;
 	number[i] = '\0';
