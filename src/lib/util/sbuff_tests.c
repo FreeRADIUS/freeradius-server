@@ -1030,12 +1030,14 @@ static void test_file_extend(void)
 	char		*post_ws;
 	ssize_t		slen;
 
+	static_assert(sizeof(buff) >= PATTERN_LEN);
+	static_assert((sizeof(fbuff) % sizeof(buff)) > 0);
+	static_assert((sizeof(fbuff) % sizeof(buff)) < PATTERN_LEN);
+
 	TEST_CASE("Initialization");
 	memset(fbuff, ' ', sizeof(fbuff));
 	memcpy(fbuff + sizeof(fbuff) - PATTERN_LEN, PATTERN, PATTERN_LEN);
-	TEST_CHECK(sizeof(buff) >= PATTERN_LEN);
-	TEST_CHECK(sizeof(fbuff) % sizeof(buff) > 0);
-	TEST_CHECK(sizeof(fbuff) % sizeof(buff) < PATTERN_LEN);
+
 	fp = fmemopen(fbuff, sizeof(fbuff), "r");
 	TEST_CHECK(fp != NULL);
 	TEST_CHECK(fr_sbuff_init_file(&sbuff, &fctx, buff, sizeof(buff), fp, 128) == &sbuff);
