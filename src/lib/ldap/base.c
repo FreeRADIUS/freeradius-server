@@ -632,8 +632,9 @@ static void ldap_trunk_query_cancel(UNUSED request_t *request, fr_state_signal_t
 
 #define SET_LDAP_CTRLS(_dest, _src) \
 do { \
+	int i; \
 	if (!_src) break; \
-	for (int i = 0; i < LDAP_MAX_CONTROLS; i++) { \
+	for (i = 0; i < LDAP_MAX_CONTROLS; i++) { \
 		if (!(_src[i])) break; \
 		_dest[i].control = _src[i]; \
 	} \
