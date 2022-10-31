@@ -593,7 +593,11 @@ void fr_exec_cleanup(fr_exec_state_t *exec, int signal)
 	request_t	*request = exec->request;
 	fr_event_list_t	*el = unlang_interpret_event_list(request);
 
-	if (exec->pid) RDEBUG3("Cleaning up exec state for pid %u", exec->pid);
+	if (exec->pid >= 0) {
+		RDEBUG3("Cleaning up exec state for pid %u", exec->pid);
+	} else {
+		RDEBUG3("Cleaning up failed exec", exec->pid);
+	}
 
 	/*
 	 *	There's still an EV_PROC event installed
