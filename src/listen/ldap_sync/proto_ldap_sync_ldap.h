@@ -59,6 +59,16 @@ struct sync_state_s {
 							//!< before passing packets to the worker.
 							//!< Predominantly to overcome Active Directory's lack
 							//!< of filtering in persistent searches.
+
+	proto_ldap_sync_t const		*inst;		//!< Module instance for this sync.
+
+	fr_dlist_head_t			pending;	//!< List of pending changes in progress.
+
+	uint32_t			pending_cookies;	//!< How many cookies are in the pending heap
+	uint32_t			changes_since_cookie;	//!< How many changes have been added since
+								//!< the last cookie was stored.
+
+	fr_event_timer_t const		*cookie_ev;	//!< Timer event for sending cookies.
 };
 
 typedef struct sync_state_s sync_state_t;
@@ -104,24 +114,46 @@ typedef struct {
 	fr_connection_t			*conn;			//!< Our connection to the LDAP directory.
 } proto_ldap_sync_ldap_thread_t;
 
-/** Tracking structure for connections requiring refresh
- */
-struct sync_refresh_packet_s {
-	sync_state_t			*sync;			//!< Sync requiring refresh
+typedef enum {
+	SYNC_PACKET_PENDING = 0,				//!< Packet not yet sent.
+	SYNC_PACKET_PREPARING,					//!< Packet being prepared.
+	SYNC_PACKET_PROCESSING,					//!< Packet sent to worker.
+	SYNC_PACKET_COMPLETE,					//!< Packet response received from worker.
+} sync_packet_status_t;
 
-	uint8_t				*refresh_cookie;	//!< Cookie provided by the server for the refresh.
+typedef enum {
+	SYNC_PACKET_TYPE_CHANGE = 0,				//!< Packet is an entry change.
+	SYNC_PACKET_TYPE_COOKIE
+} sync_packet_type_t;
+
+/** Tracking structure for ldap sync packets
+ */
+struct sync_packet_ctx_s {
+	sync_packet_type_t		type;			//!< Type of packet.
+	sync_packet_status_t		status;			//!< Status of this packet.
+	sync_state_t			*sync;			//!< Sync packet relates to.
+
+	uint8_t				*cookie;		//!< Cookie to store - can be NULL.
+	bool				refresh;		//!< Does the sync require a refresh.
+
+	fr_dlist_t			entry;			//!< Entry in list of pending packets.
 };
 
-typedef struct sync_refresh_packet_s sync_refresh_packet_t;
+typedef struct sync_packet_ctx_s sync_packet_ctx_t;
 
 extern fr_table_num_sorted_t const sync_op_table[];
 extern size_t sync_op_table_len;
 
 int8_t sync_state_cmp(void const *one, void const *two);
 
-sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, size_t sync_no, sync_config_t const *config);
+sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, proto_ldap_sync_t const *inst,
+			       size_t sync_no, sync_config_t const *config);
 
-int ldap_sync_cookie_store(sync_state_t *sync, uint8_t const *cookie, bool refresh);
+int ldap_sync_cookie_store(sync_state_t *sync, bool refresh);
+
+void ldap_sync_cookie_event(fr_event_list_t *el, fr_time_t now, void *uctx);
+
+int ldap_sync_cookie_send(sync_packet_ctx_t *sync_packet_ctx);
 
 int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH], struct berval *orig_dn,
 			LDAPMessage *msg, sync_op_t op);

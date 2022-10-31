@@ -26,7 +26,7 @@
 #include <freeradius-devel/ldap/base.h>
 #include "proto_ldap_sync_ldap.h"
 
-int persistent_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no, sync_config_t const *config,
+int persistent_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no, proto_ldap_sync_t const *inst,
 			       UNUSED uint8_t const *cookie);
 
 int persistent_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, LDAPControl **ctrls);

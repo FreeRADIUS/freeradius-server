@@ -54,6 +54,10 @@ typedef struct {
 	uint32_t		num_messages;			//!< for message ring buffer
 	uint32_t		priority;			//!< for packet processing.
 
+	fr_time_delta_t		cookie_interval;		//!< Interval between storing cookies.
+	uint32_t		cookie_changes;			//!< Number of LDAP changes to process between
+								//!< each cookie store operation.
+
 	fr_schedule_t		*sc;
 
 	fr_listen_t		*listen;			//!< The listener structure which describes
@@ -80,13 +84,14 @@ typedef struct sync_state_s sync_state_t;
  * controls for type of directory in use.
  *
  * @param[in] conn		to initialise the sync on
- * @param[in] config		for the sync
+ * @param[in] sync_no		number of the sync in the array of configs.
+ * @param[in] inst		instance of ldap_sync this query relates to
  * @param[in] cookie		to send with the query (RFC 4533 only)
  * @return
  *	- 0 on success.
  *	- -1 on error.
  */
- typedef int (*sync_init_t)(fr_ldap_connection_t *conn, size_t sync_no, sync_config_t const *config,
+ typedef int (*sync_init_t)(fr_ldap_connection_t *conn, size_t sync_no, proto_ldap_sync_t const *inst,
  			    uint8_t const *cookie);
 
 /** Received an LDAP message related to a sync

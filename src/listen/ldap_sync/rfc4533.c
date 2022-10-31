@@ -71,7 +71,7 @@ static size_t const sync_phase_table_len = NUM_ELEMENTS(sync_phase_table);
  *
  * The Sync Request Control is only applicable to the SearchRequest Message.
  */
-int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, sync_config_t const *config, uint8_t const *cookie)
+int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, proto_ldap_sync_t const *inst, uint8_t const *cookie)
 {
 	LDAPControl		ctrl = {0}, *ctrls[2] = { &ctrl, NULL };
 	BerElement		*ber = NULL;
@@ -79,6 +79,7 @@ int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, sync_config_t 
 	int			ret;
 	fr_rb_tree_t		*tree;
 	sync_state_t		*sync;
+	sync_config_t const 	*config = inst->sync_config[sync_no];
 
 	fr_assert(conn);
 	fr_assert(config);
@@ -96,7 +97,7 @@ int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, sync_config_t 
 		return -1;
 	}
 
-	sync = sync_state_alloc(tree, conn, sync_no, config);
+	sync = sync_state_alloc(tree, conn, inst, sync_no, config);
 
 	/*
 	 *	Might not necessarily have a cookie
@@ -143,6 +144,11 @@ int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, sync_config_t 
 	}
 
 	DEBUG3("Sync created with msgid %i", sync->msgid);
+
+	/*
+	 *	Register event to store cookies at a regular interval
+	 */
+	fr_event_timer_in(sync, conn->conn->el, &sync->cookie_ev, inst->cookie_interval, ldap_sync_cookie_event, sync);
 
 	return 0;
 }
@@ -394,7 +400,7 @@ int rfc4533_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
 	 *	We have a new cookie - store it
 	 */
 	if ((ret == 0) && new_cookie) {
-		ret = ldap_sync_cookie_store(sync, sync->cookie, false);
+		ret = ldap_sync_cookie_store(sync, false);
 	}
 	ber_free(ber, 1);
 
@@ -674,7 +680,7 @@ int rfc4533_sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPC
 	}
 
 	if (new_cookie) {
-		ret = ldap_sync_cookie_store(sync, sync->cookie, false);
+		ret = ldap_sync_cookie_store(sync, false);
 	}
 
 	if (ber) ber_free(ber, 1);
@@ -762,5 +768,5 @@ int rfc4533_sync_refresh_required(sync_state_t *sync, LDAPMessage *msg, LDAPCont
 		new_cookie = true;
 	}
 
-	return ldap_sync_cookie_store(sync, sync->cookie, true);
+	return ldap_sync_cookie_store(sync, true);
 }

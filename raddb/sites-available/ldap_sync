@@ -152,6 +152,29 @@ server ldap_sync {
 		}
 
 		#
+		#  When directories provide cookies to track progress through
+		#  the list of changes, these can be provided on every update,
+		#  which can be an excessive rate.
+		#
+		#  FreeRADIUS keeps track of pending change and will only call
+		#  store Cookie once the preceding changes have been processed.
+		#
+		#  These options rate limit how often cookies will be stored.
+		#  Provided all preceding changes have been processed, cookie Store
+		#  will be called on a timed interval or after a number of changes
+		#  have been completed, whichever occurs first.
+		#
+		#  How often to store cookies.
+		#
+		cookie_interval = 10
+
+		#
+		#  Number of completed changes which will prompt the storing
+		#  of a cookie
+		#
+		cookie_changes = 100
+
+		#
 		#  Persistent searches.
 		#
 		#  You can configure an unlimited (within reason, and any limitations
