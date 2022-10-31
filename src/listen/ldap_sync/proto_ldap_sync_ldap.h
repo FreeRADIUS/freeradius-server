@@ -67,6 +67,8 @@ struct sync_state_s {
 	uint32_t			pending_cookies;	//!< How many cookies are in the pending heap
 	uint32_t			changes_since_cookie;	//!< How many changes have been added since
 								//!< the last cookie was stored.
+
+	fr_event_timer_t const		*cookie_ev;	//!< Timer event for sending cookies.
 };
 
 typedef struct sync_state_s sync_state_t;
@@ -148,6 +150,8 @@ sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, prot
 			       size_t sync_no, sync_config_t const *config);
 
 int ldap_sync_cookie_store(sync_state_t *sync, bool refresh);
+
+void ldap_sync_cookie_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 
 int ldap_sync_cookie_send(sync_packet_ctx_t *sync_packet_ctx);
 

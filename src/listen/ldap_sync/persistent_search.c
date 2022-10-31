@@ -129,6 +129,13 @@ int persistent_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no, proto
 
 	DEBUG3("Sync created with msgid %i", sync->msgid);
 
+	/*
+	 *	Register event to store cookies at a regular interval
+	 *	Whilst persistent search LDAP servers don't provide cookies as such
+	 *	we treat change numbers, if provided, as cookies.
+	 */
+	fr_event_timer_in(sync, conn->conn->el, &sync->cookie_ev, inst->cookie_interval, ldap_sync_cookie_event, sync);
+
 	return 0;
 }
 

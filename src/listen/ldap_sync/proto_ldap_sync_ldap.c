@@ -211,6 +211,32 @@ int ldap_sync_cookie_store(sync_state_t *sync, bool refresh)
 	return 0;
 }
 
+/** Event to handle storing of cookies on a timed basis
+ *
+ * Looks at the head of the list of pending sync packets for a cookie.
+ * A cookie at the head says that all the previous changes have been
+ * completed, so the cookie can be sent.
+ */
+void ldap_sync_cookie_event(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	sync_state_t		*sync = talloc_get_type_abort(uctx, sync_state_t);
+	sync_packet_ctx_t	*sync_packet_ctx;
+
+	if (sync->pending_cookies == 0) goto finish;
+
+	/*
+	 *	Check the head entry in the list - is it a pending cookie
+	 */
+	sync_packet_ctx = fr_dlist_head(&sync->pending);
+	if ((sync_packet_ctx->type != SYNC_PACKET_TYPE_COOKIE) ||
+	    (sync_packet_ctx->status != SYNC_PACKET_PENDING)) goto finish;
+
+	ldap_sync_cookie_send(sync_packet_ctx);
+
+finish:
+	fr_event_timer_in(sync, el, &sync->cookie_ev, sync->inst->cookie_interval, ldap_sync_cookie_event, sync);
+}
+
 /** Enque a new cookie store packet
  *
  * Create a new internal packet containing the cookie we received from the LDAP server.
