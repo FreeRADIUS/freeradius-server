@@ -231,8 +231,9 @@ jobs:
         DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
         RELEASE=$(lsb_release -cs)
         if [ "$RELEASE" = "n/a" ]; then
-        RELEASE=$(cat /etc/debian_version | awk -F \/ '{ print $(NF) }')
+            RELEASE=$(cat /etc/debian_version | awk -F \/ '{ print $(NF) }')
         fi
+        [ "$RELEASE" != "bookworm" ] || RELEASE=sid
         echo "deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main" \
           > /etc/apt/sources.list.d/networkradius-extras.list
 
