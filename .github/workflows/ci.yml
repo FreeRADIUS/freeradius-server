@@ -129,6 +129,7 @@ jobs:
         freetds-dev \
         gawk \
         git \
+        git-lfs \
         gnupg \
         libcap-dev \
         libcollectdclient-dev \
