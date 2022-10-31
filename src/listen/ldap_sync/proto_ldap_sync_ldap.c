@@ -332,7 +332,7 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 
 	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
 
-	local = talloc_new(NULL);
+	MEM(local = talloc_new(NULL));
 	fr_pair_list_init(&pairs);
 	if (fr_pair_list_copy(local, &pairs, &sync->config->sync_pairs) < 0) {
 	error:

@@ -148,7 +148,11 @@ int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, proto_ldap_syn
 	/*
 	 *	Register event to store cookies at a regular interval
 	 */
-	fr_event_timer_in(sync, conn->conn->el, &sync->cookie_ev, inst->cookie_interval, ldap_sync_cookie_event, sync);
+	if (fr_event_timer_in(sync, conn->conn->el, &sync->cookie_ev,
+			      inst->cookie_interval, ldap_sync_cookie_event, sync) < 0) {
+		PERROR("Inserting LDAP cookie timer failed");
+		goto error;
+	}
 
 	return 0;
 }
