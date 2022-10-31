@@ -207,7 +207,7 @@ jobs:
 
     - name: 'Restore OpenSSL 3.0 from the cache'
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: openssl-cache
       with:
         path: /opt/openssl/
@@ -239,7 +239,7 @@ jobs:
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
         openssl version
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Build eapol_test
       run: |
@@ -267,7 +267,7 @@ jobs:
       if: ${{ matrix.env.CC == 'clang' }}
 
     - name: "Clang Static Analyzer: Store assets on failure"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: clang-scan.tgz
         path: build/plist/**/*.html
@@ -434,7 +434,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "Merge into upstream"
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
         lfs: false

@@ -62,7 +62,7 @@ jobs:
       run: |
         yum install -y git-core
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: freeradius
 
@@ -159,7 +159,7 @@ jobs:
         mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms/
 
     - name: Restore eapol_test build directory from cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: hostapd-cache
       with:
         path: ${{ env.HOSTAPD_BUILD_DIR }}
@@ -174,7 +174,7 @@ jobs:
       working-directory: freeradius
 
     - name: Store RPMs
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: rpms-${{ matrix.env.NAME }}
         path: rpms
@@ -272,7 +272,7 @@ jobs:
         yum install -y procps-ng
 
     - name: Load RPMs
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: rpms-${{ matrix.env.NAME }}
 
@@ -294,7 +294,7 @@ jobs:
         mv eapol_test /usr/local/bin
         chmod +x /usr/local/bin/eapol_test
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: freeradius
 
@@ -307,7 +307,7 @@ jobs:
 
     - name: Upload radius logs on failure
       if: ${{ failure() }}
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: radius-logs-${{ matrix.env.NAME }}.tgz
         path: |
