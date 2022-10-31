@@ -139,16 +139,6 @@ struct sync_packet_ctx_s {
 
 typedef struct sync_packet_ctx_s sync_packet_ctx_t;
 
-/** Tracking structure for connections requiring refresh
- */
-struct sync_refresh_packet_s {
-	sync_state_t			*sync;			//!< Sync requiring refresh
-
-	uint8_t				*refresh_cookie;	//!< Cookie provided by the server for the refresh.
-};
-
-typedef struct sync_refresh_packet_s sync_refresh_packet_t;
-
 extern fr_table_num_sorted_t const sync_op_table[];
 extern size_t sync_op_table_len;
 
@@ -158,6 +148,8 @@ sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, prot
 			       size_t sync_no, sync_config_t const *config);
 
 int ldap_sync_cookie_store(sync_state_t *sync, bool refresh);
+
+int ldap_sync_cookie_send(sync_packet_ctx_t *sync_packet_ctx);
 
 int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH], struct berval *orig_dn,
 			LDAPMessage *msg, sync_op_t op);

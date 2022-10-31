@@ -180,11 +180,9 @@ sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, prot
 	return sync;
 }
 
-/** Enque a new cookie store packet
+/** Add a new cookie packet ctx to the pending list
  *
- * Create a new internal packet containing the cookie we received from the LDAP server.
- * This allows the administrator to store the cookie and provide it on a future call to
- * load Cookie.
+ * Does not actually send the packet.
  *
  * @param[in] sync	the cookie was received for.
  * @param[in] refresh	the sync after storing this cookie.
@@ -194,13 +192,48 @@ sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, prot
  */
 int ldap_sync_cookie_store(sync_state_t *sync, bool refresh)
 {
+	sync_packet_ctx_t		*sync_packet_ctx = NULL;
+	uint8_t				*cookie = sync->cookie;
+
+	MEM(sync_packet_ctx = talloc_zero(sync, sync_packet_ctx_t));
+	sync_packet_ctx->sync = sync;
+
+	sync_packet_ctx->type = SYNC_PACKET_TYPE_COOKIE;
+	if (cookie) sync_packet_ctx->cookie = talloc_memdup(sync_packet_ctx, cookie, talloc_array_length(cookie));
+	sync_packet_ctx->refresh = refresh;
+
+	if (fr_dlist_insert_tail(&sync->pending, sync_packet_ctx) < 0) {
+		talloc_free(sync_packet_ctx);
+		return -1;
+	}
+	sync->pending_cookies++;
+
+	return 0;
+}
+
+/** Enque a new cookie store packet
+ *
+ * Create a new internal packet containing the cookie we received from the LDAP server.
+ * This allows the administrator to store the cookie and provide it on a future call to
+ * load Cookie.
+ *
+ * @param[in] sync_packet_ctx	packet context containing the cookie to store.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+*/
+int ldap_sync_cookie_send(sync_packet_ctx_t *sync_packet_ctx)
+{
+	sync_state_t			*sync = sync_packet_ctx->sync;
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(sync->config->user_ctx, proto_ldap_sync_ldap_thread_t);
 	fr_dbuff_t			*dbuff;
-	sync_refresh_packet_t		*refresh_packet = NULL;
 	fr_pair_list_t			pairs;
 	fr_pair_t			*vp;
 	TALLOC_CTX			*local = NULL;
 	uint8_t				*cookie = sync->cookie;
+
+	if (sync_packet_ctx->status != SYNC_PACKET_PENDING) return 0;
+	sync_packet_ctx->status = SYNC_PACKET_PREPARING;
 
 	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
 
@@ -230,23 +263,12 @@ int ldap_sync_cookie_store(sync_state_t *sync, bool refresh)
 		if (!vp) goto error;
 	}
 
-	/*
-	 *	The LDAP server has indicated that the sync needs a refresh.
-	 *	Create a tracking structure to trigger the refresh once the cookie is stored.
-	 */
-	if (refresh) {
-		MEM(refresh_packet = talloc_zero(thread, sync_refresh_packet_t));
-		if (cookie) {
-			refresh_packet->refresh_cookie = talloc_memdup(refresh_packet, cookie, talloc_array_length(cookie));
-		}
-		refresh_packet->sync = sync;
-	}
-
 	if (fr_internal_encode_list(dbuff, &pairs, NULL) < 0) goto error;
 	talloc_free(local);
 
 	fr_network_listen_send_packet(thread->nr, thread->li, thread->li, fr_dbuff_buff(dbuff),
-				      fr_dbuff_used(dbuff), fr_time(), refresh_packet);
+				      fr_dbuff_used(dbuff), fr_time(), sync_packet_ctx);
+	sync_packet_ctx->status = SYNC_PACKET_PROCESSING;
 
 	return 0;
 }
@@ -678,26 +700,17 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 
 	case FR_LDAP_SYNC_CODE_COOKIE_STORE_RESPONSE:
 	{
-		sync_refresh_packet_t	*refresh_packet;
 		sync_config_t const	*sync_config;
 
-		if (!packet_ctx) break;
-
-		/*
-		 *	If there is a packet_ctx, it will be the tracking structure
-		 *	indicating that we need to refresh the sync.
-		 */
-		refresh_packet = talloc_get_type_abort(packet_ctx, sync_refresh_packet_t);
+		if (!sync_packet_ctx || !sync_packet_ctx->refresh) break;
 
 		/*
 		 *	Abandon the old sync and start a new one with the relevant cookie.
 		 */
-		sync_config = refresh_packet->sync->config;
+		sync_config = sync_packet_ctx->sync->config;
 		DEBUG3("Restarting sync with base %s", sync_config->base_dn);
-		talloc_free(refresh_packet->sync);
-		inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, inst->parent, refresh_packet->refresh_cookie);
-
-		talloc_free(refresh_packet);
+		talloc_free(sync_packet_ctx->sync);
+		inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, inst->parent, sync_packet_ctx->cookie);
 	}
 		break;
 
