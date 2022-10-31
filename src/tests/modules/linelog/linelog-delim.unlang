@@ -4,7 +4,7 @@
 #  Remove old log files
 #
 group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_delim.log"`
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_delim.log"`
 
 	#
 	#  We can only over-ride actions in an "actions" subsection,
@@ -19,7 +19,7 @@ if (fail) {
 }
 
 linelog_fmt_delim
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_delim.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_delim.log"`
 
 if (&Tmp-String-0 == 'bob, ') {
 	test_pass
@@ -30,7 +30,7 @@ else {
 
 #  Check strings are appended
 linelog_fmt_delim
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_delim.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_delim.log"`
 
 if (&Tmp-String-0 == 'bob, bob, ') {
 	test_pass
@@ -40,4 +40,4 @@ else {
 }
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_delim.log"`
+&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_delim.log"`

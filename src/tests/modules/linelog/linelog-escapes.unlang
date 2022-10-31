@@ -4,7 +4,7 @@
 #  Remove old log files
 #
 group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_escapes.log"`
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_escapes.log"`
 
 	actions {
 		fail = 1
@@ -20,7 +20,7 @@ if (fail) {
 &control.Tmp-String-1 := 'foo\nbar'
 
 linelog_escapes
-&Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_escapes.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
 &Tmp-String-1 := "%{hex:%{Tmp-String-0}}"
 
 #
@@ -34,7 +34,7 @@ else {
 	test_fail
 }
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_escapes.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
 
 #
 #  This is left alone, and not "\n" --> 0x0a, too.
@@ -52,7 +52,7 @@ else {
 &control.Tmp-String-1 := "foo\nbar"
 
 linelog_escapes
-&Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_escapes.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
 &Tmp-String-1 := "%{hex:%{Tmp-String-0}}"
 
 if (&Tmp-String-1 == '666f6f0a626172') {
@@ -62,7 +62,7 @@ else {
 	test_fail
 }
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_escapes.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
 
 if (&Tmp-String-0 == "bar") {
 	test_pass
@@ -74,4 +74,4 @@ else {
 #  Fixme... needs completing. Too many broken escaping things.
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_escapes.log"`
+&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_escapes.log"`

@@ -4,7 +4,7 @@
 #  Remove old log files
 #
 group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_multi.log"`
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_multi.log"`
 
 	actions {
 		fail = 1
@@ -32,7 +32,7 @@ if (fail) {
 }
 
 linelog_ref_multi
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_multi.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_multi.log"`
 
 if (&Tmp-String-0 == '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ') {
 	test_pass
@@ -52,7 +52,7 @@ else {
 
 linelog_ref_multi
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_multi.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_multi.log"`
 
 if (&Tmp-String-0 == ', blippo, ') {
 	test_pass
@@ -73,4 +73,4 @@ else {
 }
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_multi.log"`
+&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_multi.log"`

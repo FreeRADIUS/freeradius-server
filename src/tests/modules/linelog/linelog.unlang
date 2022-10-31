@@ -4,7 +4,7 @@
 #  Remove old log files
 #
 group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_a.log"`
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_a.log"`
 
 	actions {
 		fail = 1
@@ -18,7 +18,7 @@ if (fail) {
 &control.Tmp-String-0 := 'test_default'
 
 linelog_fmt_and_ref
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_a.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 
 if (&Tmp-String-0 == 'bob default') {
 	test_pass
@@ -32,7 +32,7 @@ else {
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_a.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 
 if (&Tmp-String-0 == 'bob exec') {
 	test_pass
@@ -42,7 +42,7 @@ else {
 }
 
 #  Check it's not overwriting the same line repeatedly
-&Tmp-String-0 := `/bin/sh -c "head -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_a.log"`
+&Tmp-String-0 := `/bin/sh -c "head -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 
 if (&Tmp-String-0 == 'bob default') {
 	test_pass
@@ -56,7 +56,7 @@ else {
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_a.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 
 if (&Tmp-String-0 == 'bob') {
 	test_pass
@@ -70,7 +70,7 @@ else {
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_a.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 
 if (&Tmp-String-0 == 'bob xlat') {
 	test_pass
@@ -84,7 +84,7 @@ else {
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_a.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 
 if (&Tmp-String-0 == '%{User-Name} literal') {
 	test_pass
@@ -98,7 +98,7 @@ else {
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_a.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 
 if (&Tmp-String-0 == '') {
 	test_pass
@@ -108,11 +108,11 @@ else {
 }
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_a.log"`
+&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_a.log"`
 
 #  Remove old log files
 group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_b.log"`
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_b.log"`
 
 	actions {
 		fail = 1
@@ -134,7 +134,7 @@ else {
 }
 
 group {
-	&Tmp-String-0 := `/bin/sh -c "test ! -e $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_b.log"`
+	&Tmp-String-0 := `/bin/sh -c "test ! -e $ENV{MODULE_TEST_DIR}/test_b.log"`
 
 	actions {
 		fail = 1
@@ -152,7 +152,7 @@ else {
 
 linelog_ref
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_b.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_b.log"`
 
 if (&Tmp-String-0 == 'bob exec') {
 	test_pass
@@ -162,11 +162,11 @@ else {
 }
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_b.log"`
+&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_b.log"`
 
 #  Remove old log files
 group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_c.log"`
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_c.log"`
 
 	actions {
 		fail = 1
@@ -180,7 +180,7 @@ if (fail) {
 &control.Tmp-String-0 := '.messages.test_xlat'
 
 linelog_fmt_and_ref_attr
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_c.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
 
 if (&Tmp-String-0 == 'bob xlat') {
 	test_pass
@@ -193,7 +193,7 @@ else {
 &control.Tmp-String-0 := 'test_xlat'
 
 linelog_fmt_and_ref_attr
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_c.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
 
 if (&Tmp-String-0 == 'bob') {
 	test_pass
@@ -206,7 +206,7 @@ else {
 &control.Tmp-String-0 := 'messages.test_xlat'
 
 linelog_fmt_and_ref_attr
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_c.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
 
 if (&Tmp-String-0 == 'bob xlat') {
 	test_pass
@@ -228,7 +228,7 @@ else {
 	test_fail
 }
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_c.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
 
 if (&Tmp-String-0 == 'bob xlat') {
 	test_pass
@@ -251,11 +251,11 @@ else {
 }
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_c.log"`
+&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_c.log"`
 
 #  Remove old log files
 group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_d.log"`
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_d.log"`
 
 	actions {
 		fail = 1
@@ -266,7 +266,7 @@ if (fail) {
 }
 linelog_fmt
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_d.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_d.log"`
 
 if (&Tmp-String-0 == 'bob') {
 	test_pass
@@ -276,4 +276,4 @@ else {
 }
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/$ENV{MODULE_TEST_UNLANG}/test_d.log"`
+&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_d.log"`
