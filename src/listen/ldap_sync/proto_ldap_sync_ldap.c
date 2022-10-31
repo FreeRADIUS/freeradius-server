@@ -280,6 +280,7 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 	fr_pair_list_t			pairs;
 	fr_pair_t			*vp;
 	TALLOC_CTX			*local = NULL;
+	sync_packet_ctx_t		*sync_packet_ctx = NULL;
 
 	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
 
@@ -289,6 +290,7 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 	error:
 		if (msg) ldap_msgfree(msg);
 		talloc_free(local);
+		if (sync_packet_ctx) talloc_free(sync_packet_ctx);
 		return -1;
 	};
 
@@ -364,8 +366,14 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 
 	if (fr_internal_encode_list(dbuff, &pairs, NULL) < 0) goto error;
 
+	MEM(sync_packet_ctx = talloc_zero(sync, sync_packet_ctx_t));
+	sync_packet_ctx->sync = sync;
+
+	if (fr_dlist_insert_tail(&sync->pending, sync_packet_ctx) < 0) goto error;
+
 	fr_network_listen_send_packet(thread->nr, thread->li, thread->li,
-				      fr_dbuff_buff(dbuff), fr_dbuff_used(dbuff), fr_time(), NULL);
+				      fr_dbuff_buff(dbuff), fr_dbuff_used(dbuff), fr_time(), sync_packet_ctx);
+	sync_packet_ctx->status = SYNC_PACKET_PROCESSING;
 
 	talloc_free(local);
 
@@ -614,9 +622,12 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 	fr_pair_t			*vp = NULL;
 	ssize_t				ret;
 	TALLOC_CTX			*local;
+	sync_packet_ctx_t		*sync_packet_ctx = NULL;
 
 	local = talloc_new(NULL);
 	fr_dbuff_init(&dbuff, buffer, buffer_len);
+
+	if (packet_ctx) sync_packet_ctx = talloc_get_type_abort(packet_ctx, sync_packet_ctx_t);
 
 	/*
 	 *	Extract returned attributes into a temporary list
@@ -693,6 +704,23 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 	default:
 		ERROR("Invalid packet type returned %d", pcode);
 		break;
+	}
+
+	if (sync_packet_ctx) {
+		sync_state_t		*sync = sync_packet_ctx->sync;
+		sync_packet_ctx_t	*pc;
+
+		sync_packet_ctx->status = SYNC_PACKET_COMPLETE;
+
+		/*
+		 *	Pop any processed updates from the head of the list
+		 */
+		while ((pc = fr_dlist_head(&sync->pending))) {
+			if (pc->status != SYNC_PACKET_COMPLETE) break;
+
+			pc = fr_dlist_pop_head(&sync->pending);
+			talloc_free(pc);
+		}
 	}
 
 	fr_pair_list_free(&tmp);
