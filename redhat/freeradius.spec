@@ -166,12 +166,12 @@ Summary: LDAP support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
 %if 0%{?rhel} <= 8
-Requires: openldap-ltb
-BuildRequires: openldap-ltb
+Requires: openldap-ltb, cyrus-sasl
+BuildRequires: openldap-ltb, cyrus-sasl-devel
 %endif
 %if 0%{?rhel} >= 9
-Requires: openldap
-BuildRequires: openldap-devel
+Requires: openldap, cyrus-sasl
+BuildRequires: openldap-devel, cyrus-sasl-devel
 %endif
 
 %description ldap
