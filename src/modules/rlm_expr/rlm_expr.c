@@ -201,7 +201,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 	/*
 	 *	Look for a number.
 	 */
-	while (isspace((int) *p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 
 	/*
 	 *	~1 == 0xff...ffe
@@ -296,7 +296,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		goto done;
 	}
 
-	while (isspace((int) *p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 
 	if ((*p < '0') || (*p > '9')) {
 		RDEBUG2("Not a number at \"%s\"", p);
@@ -446,7 +446,7 @@ static bool get_expression(REQUEST *request, char const **string, int64_t *answe
 	if (!get_number(request, &p, &lhs)) return false;
 
 redo:
-	while (isspace((int) *p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 
 	/*
 	 *	A number by itself is OK.
@@ -572,7 +572,7 @@ static ssize_t randstr_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		 *	But we limit it to 100, because we don't want
 		 *	utter stupidity.
 		 */
-		while (isdigit((int) *p)) {
+		while (isdigit((uint8_t) *p)) {
 			if (number >= 100) {
 				p++;
 				continue;
@@ -763,8 +763,8 @@ static ssize_t urlunquote_xlat(UNUSED void *instance, REQUEST *request,
 		/* Is a % char */
 
 		/* Don't need \0 check, as it won't be in the hextab */
-		if (!(c1 = memchr(hextab, tolower(*++p), 16)) ||
-		    !(c2 = memchr(hextab, tolower(*++p), 16))) {
+		if (!(c1 = memchr(hextab, tolower((uint8_t) *++p), 16)) ||
+		    !(c2 = memchr(hextab, tolower((uint8_t) *++p), 16))) {
 		   	REMARKER(fmt, p - fmt, "None hex char in % sequence");
 		   	return -1;
 		}
@@ -866,8 +866,8 @@ static ssize_t unescape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 
 		/* Is a = char */
 
-		if (!(c1 = memchr(hextab, tolower(*(p + 1)), 16)) ||
-		    !(c2 = memchr(hextab, tolower(*(p + 2)), 16))) goto next;
+		if (!(c1 = memchr(hextab, tolower((uint8_t) *(p + 1)), 16)) ||
+		    !(c2 = memchr(hextab, tolower((uint8_t) *(p + 2)), 16))) goto next;
 		c3 = ((c1 - hextab) << 4) + (c2 - hextab);
 
 		*out++ = c3;
@@ -895,7 +895,7 @@ static ssize_t tolower_xlat(UNUSED void *instance, UNUSED REQUEST *request, char
 	for (p = fmt, q = out; *p != '\0'; p++, outlen--) {
 		if (outlen <= 1) break;
 
-		*(q++) = tolower((int) *p);
+		*(q++) = tolower((uint8_t) *p);
 	}
 
 	*q = '\0';
@@ -919,7 +919,7 @@ static ssize_t toupper_xlat(UNUSED void *instance, UNUSED REQUEST *request, char
 	for (p = fmt, q = out; *p != '\0'; p++, outlen--) {
 		if (outlen <= 1) break;
 
-		*(q++) = toupper((int) *p);
+		*(q++) = toupper((uint8_t) *p);
 	}
 
 	*q = '\0';
@@ -1149,7 +1149,7 @@ static ssize_t hmac_md5_xlat(UNUSED void *instance, REQUEST *request,
 	data_len = xlat_fmt_to_ref(&data, request, data_ref);
 	if (data_len < 0) return -1;
 
-	while (isspace(*p) && p++);
+	while (isspace((uint8_t) *p) && p++);
 
 	key_len = xlat_fmt_to_ref(&key, request, p);
 	if (key_len < 0) return -1;
@@ -1195,7 +1195,7 @@ static ssize_t hmac_sha1_xlat(UNUSED void *instance, REQUEST *request,
 	data_len = xlat_fmt_to_ref(&data, request, data_ref);
 	if (data_len < 0) return -1;
 
-	while (isspace(*p) && p++);
+	while (isspace((uint8_t) *p) && p++);
 
 	key_len = xlat_fmt_to_ref(&key, request, p);
 	if (key_len < 0) return -1;
@@ -1425,7 +1425,7 @@ static ssize_t explode_xlat(UNUSED void *instance, REQUEST *request,
 	/*
 	 *  Trim whitespace
 	 */
-	while (isspace(*p) && p++);
+	while (isspace((uint8_t) *p) && p++);
 
 	slen = tmpl_from_attr_substr(&vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
@@ -1700,7 +1700,7 @@ static bool parse_pad(REQUEST *request, char const *fmt,
 	*fill = ' ';		/* the default */
 
 	p = fmt;
-	while (isspace((int) *p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 
 	if (*p != '&') {
 		RDEBUG("First argument must be an attribute reference");
@@ -1719,7 +1719,7 @@ static bool parse_pad(REQUEST *request, char const *fmt,
 
 	p = fmt + slen;
 
-	while (isspace((int) *p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 
 	length = strtoul(p, &end, 10);
 	if ((length == ULONG_MAX) || (length > 8192)) {
@@ -1737,13 +1737,13 @@ static bool parse_pad(REQUEST *request, char const *fmt,
 	 *	and we must have only ONE fill character.
 	 */
 	if (*p) {
-		if (!isspace(*p)) {
+		if (!isspace((uint8_t) *p)) {
 			talloc_free(vpt);
 			RDEBUG("Invalid text found at: %s", p);
 			return false;
 		}
 
-		while (isspace((int) *p)) p++;
+		while (isspace((uint8_t) *p)) p++;
 
 		if (p[1] != '\0') {
 			talloc_free(vpt);

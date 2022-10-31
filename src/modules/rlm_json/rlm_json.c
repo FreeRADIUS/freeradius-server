@@ -102,11 +102,11 @@ static ssize_t json_encode_xlat(UNUSED void * instance, REQUEST *request, char c
 
 	p = fmt;
 
-	while (isspace((int) *p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 	if (*p == '\0') return -1;
 
 	while (*p) {
-		while (isspace((int) *p)) p++;
+		while (isspace((uint8_t) *p)) p++;
 
 		if (*p == '\0') break;
 
@@ -164,7 +164,7 @@ static ssize_t json_encode_xlat(UNUSED void * instance, REQUEST *request, char c
 		/* Jump forward to next attr */
 		p += slen;
 
-		if (*p != '\0' && !isspace((int)*p)) {
+		if (*p != '\0' && !isspace((uint8_t)*p)) {
 			REMARKER(fmt, (p - fmt), "Missing whitespace");
 			goto error;
 		}

@@ -1795,7 +1795,7 @@ FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 		 *	=
 		 *	value
 		 */
-		if ((*p == ':') && (!isdigit((int) p[1]))) {
+		if ((*p == ':') && (!isdigit((uint8_t) p[1]))) {
 			break;
 		}
 
@@ -1814,13 +1814,13 @@ FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 	 *	Look for tag (:#).  This is different from :=, which
 	 *	is an operator.
 	 */
-	if ((*p == ':') && (isdigit((int) p[1]))) {
+	if ((*p == ':') && (isdigit((uint8_t) p[1]))) {
 		if (q >= (raw->l_opand + sizeof(raw->l_opand))) {
 			goto too_long;
 		}
 		*(q++) = *(p++);
 
-		while (isdigit((int) *p)) {
+		while (isdigit((uint8_t) *p)) {
 			if (q >= (raw->l_opand + sizeof(raw->l_opand))) {
 				goto too_long;
 			}

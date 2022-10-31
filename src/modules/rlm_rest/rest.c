@@ -1099,7 +1099,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 	/*
 	 *	Empty response?
 	 */
-	while (isspace(*p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 	if (*p == '\0') return 0;
 
 	while (((q = strchr(p, '=')) != NULL) && (count < REST_BODY_MAX_ATTRS)) {
@@ -1563,7 +1563,7 @@ static int rest_decode_json(rlm_rest_t *instance, rlm_rest_section_t *section,
 	/*
 	 *  Empty response?
 	 */
-	while (isspace(*p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 	if (*p == '\0') return 0;
 
 	json = json_tokener_parse(p);

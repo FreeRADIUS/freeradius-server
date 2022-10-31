@@ -271,12 +271,12 @@ static int find_next_reset(rlm_counter_t *inst, time_t timeval)
 
 	if (!inst->reset)
 		return -1;
-	if (isdigit((int) inst->reset[0])) {
+	if (isdigit((uint8_t) inst->reset[0])) {
 		len = strlen(inst->reset);
 		if (len == 0)
 			return -1;
 		last = inst->reset[len - 1];
-		if (!isalpha((int) last))
+		if (!isalpha((uint8_t) last))
 			last = 'd';
 		num = atoi(inst->reset);
 		DEBUG("rlm_counter: num=%d, last=%c",num,last);

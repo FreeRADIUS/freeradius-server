@@ -187,7 +187,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 	/* Skip whitespace */
 	p = *ptr;
 
-	while (*p && isspace((int) *p)) p++;
+	while (*p && isspace((uint8_t) *p)) p++;
 
 	if (!*p) {
 		*ptr = p;
@@ -241,7 +241,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 		 *	comma.
 		 */
 		if (!quote) {
-			if (isspace((int) *p)) {
+			if (isspace((uint8_t) *p)) {
 				break;
 			}
 
@@ -340,7 +340,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 
 done:
 	/* Skip whitespace again. */
-	while (*p && isspace((int) *p)) p++;
+	while (*p && isspace((uint8_t) *p)) p++;
 
 	*ptr = p;
 
@@ -392,7 +392,7 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
 
 	p = *ptr;
 
-	while (*p && (isspace((int)*p))) p++;
+	while (*p && (isspace((uint8_t)*p))) p++;
 
 	*ptr = p;
 

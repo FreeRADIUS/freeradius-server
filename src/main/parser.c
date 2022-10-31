@@ -303,7 +303,7 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char 
 		/*
 		 *	Spaces or special characters delineate the word
 		 */
-		if (isspace((int) *p) || (*p == '&') || (*p == '|') ||
+		if (isspace((uint8_t) *p) || (*p == '&') || (*p == '|') ||
 		    (*p == '!') || (*p == '=') || (*p == '<') || (*p == '>')) {
 			break;
 		}
@@ -335,7 +335,7 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
 	char const *q;
 	PW_TYPE cast;
 
-	while (isspace((int) *p)) p++; /* skip spaces before condition */
+	while (isspace((uint8_t) *p)) p++; /* skip spaces before condition */
 
 	if (*p != '<') return 0;
 	p++;
@@ -378,7 +378,7 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
 
 	q++;
 
-	while (isspace((int) *q)) q++; /* skip spaces after cast */
+	while (isspace((uint8_t) *q)) q++; /* skip spaces after cast */
 
 	return q - start;
 }
@@ -503,7 +503,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 	lhs = rhs = NULL;
 	lhs_type = rhs_type = T_INVALID;
 
-	while (isspace((int) *p)) p++; /* skip spaces before condition */
+	while (isspace((uint8_t) *p)) p++; /* skip spaces before condition */
 
 	if (!*p) {
 		return_P("Empty condition is invalid");
@@ -515,7 +515,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 	if (*p == '!') {
 		p++;
 		c->negate = true;
-		while (isspace((int) *p)) p++; /* skip spaces after negation */
+		while (isspace((uint8_t) *p)) p++; /* skip spaces after negation */
 
 		/*
 		 *  Just for stupidity
@@ -547,7 +547,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 		}
 
 		p += slen;
-		while (isspace((int) *p)) p++; /* skip spaces after (COND)*/
+		while (isspace((uint8_t) *p)) p++; /* skip spaces after (COND)*/
 
 	} else { /* it's a bare FOO==BAR */
 		/*
@@ -597,7 +597,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			c->cast = dict_attrbyvalue(PW_CAST_BASE + PW_TYPE_OCTETS, 0);
 		}
 
-		while (isspace((int)*p)) p++; /* skip spaces after LHS */
+		while (isspace((uint8_t)*p)) p++; /* skip spaces after LHS */
 
 		/*
 		 *	We may (or not) have an operator
@@ -745,7 +745,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				break;
 			}
 
-			while (isspace((int) *p)) p++; /* skip spaces after operator */
+			while (isspace((uint8_t) *p)) p++; /* skip spaces after operator */
 
 			if (!*p) {
 				return_P("Expected text after operator");
@@ -1255,7 +1255,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 		keep_going:
 			p += slen;
 
-			while (isspace((int) *p)) p++; /* skip spaces after RHS */
+			while (isspace((uint8_t) *p)) p++; /* skip spaces after RHS */
 		} /* parse OP RHS */
 	} /* parse a condition (COND) or FOO OP BAR*/
 
@@ -1268,7 +1268,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 		}
 
 		p++;
-		while (isspace((int) *p)) p++; /* skip spaces after closing brace */
+		while (isspace((uint8_t) *p)) p++; /* skip spaces after closing brace */
 		goto done;
 	}
 
@@ -1622,7 +1622,7 @@ done:
 				for (q = c->data.vpt->name;
 				     *q != '\0';
 				     q++) {
-					if (!isdigit((int) *q)) {
+					if (!isdigit((uint8_t) *q)) {
 						break;
 					}
 					if (*q != '0') zeros = false;

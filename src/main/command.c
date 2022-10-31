@@ -1661,7 +1661,7 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 		return NULL;
 	}
 
-	if (isdigit(*argv[1])) {
+	if (isdigit((uint8_t) *argv[1])) {
 		if (ip_hton(&ipaddr, AF_UNSPEC, argv[0], false) < 0) {
 			cprintf_error(listener, "Failed parsing IP address; %s\n",
 				      fr_strerror());

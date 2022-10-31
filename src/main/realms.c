@@ -375,7 +375,7 @@ static ssize_t xlat_home_server_dynamic(UNUSED void *instance, REQUEST *request,
 	}
 
 	p = fmt;
-	while (isspace((int) *p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 
 	/*
 	 *	Allow for dynamic strings as arguments.
@@ -2522,8 +2522,8 @@ int realms_init(CONF_SECTION *config)
 			 *	Check for valid characters
 			 */
 			for (p = dp->d_name; *p != '\0'; p++) {
-				if (isalpha((int)*p) ||
-				    isdigit((int)*p) ||
+				if (isalpha((uint8_t)*p) ||
+				    isdigit((uint8_t)*p) ||
 				    (*p == '-') ||
 				    (*p == '_') ||
 				    (*p == '.')) continue;

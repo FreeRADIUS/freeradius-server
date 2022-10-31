@@ -323,7 +323,7 @@ void smbdes_lmpwdhash(char const *password, uint8_t *lmhash)
 
 	memset(p14, 0, sizeof(p14));
 	for (i = 0; i < 14 && password[i]; i++) {
-		p14[i] = toupper((int) password[i]);
+		p14[i] = toupper((uint8_t) password[i]);
 	}
 
 	smbhash(lmhash, sp8, p14);

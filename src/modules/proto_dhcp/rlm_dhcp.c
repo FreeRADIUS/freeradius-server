@@ -57,7 +57,7 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 	int		decoded = 0;
 	ssize_t		slen;
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	slen = tmpl_from_attr_str(&src, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
@@ -116,7 +116,7 @@ static ssize_t dhcp_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 	uint8_t *p = binbuf, *end = p + sizeof(binbuf);
 	ssize_t slen;
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if ((radius_copy_vp(request, &head, request, fmt) < 0) || !head) {
 		 *out = '\0';

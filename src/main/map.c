@@ -87,7 +87,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	 *	string, go parse it as that.
 	 */
 	if (rhs_type != T_BARE_WORD) return false;
-	if ((rhs[0] != '0') || (tolower((int)rhs[1]) != 'x')) return false;
+	if ((rhs[0] != '0') || (tolower((uint8_t)rhs[1]) != 'x')) return false;
 	if (!rhs[2]) return false;
 
 	len = strlen(rhs + 2);

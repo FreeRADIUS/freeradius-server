@@ -552,7 +552,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 		 *	Ignore blank lines and comments
 		 */
 		p = input;
-		while (isspace((int) *p)) p++;
+		while (isspace((uint8_t) *p)) p++;
 
 		if (*p < ' ') continue;
 		if (*p == '#') continue;

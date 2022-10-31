@@ -61,7 +61,7 @@ static bool all_digits(char const *string)
 
 	if (*p == '-') p++;
 
-	while (isdigit((int) *p)) p++;
+	while (isdigit((uint8_t) *p)) p++;
 
 	return (*p == '\0');
 }

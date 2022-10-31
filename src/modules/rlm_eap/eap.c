@@ -118,7 +118,7 @@ int eap_module_instantiate(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t nu
 	 */
 	p = mod_name;
 	while (*p) {
-		*p = tolower(*p);
+		*p = tolower((uint8_t) *p);
 		p++;
 	}
 

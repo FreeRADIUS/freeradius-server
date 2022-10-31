@@ -918,11 +918,11 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		while (*cp) {
 			if (cp[1] == ':') {
 				c1 = hextab;
-				c2 = memchr(hextab, tolower((int) cp[0]), 16);
+				c2 = memchr(hextab, tolower((uint8_t) cp[0]), 16);
 				cp += 2;
 			} else if ((cp[1] != '\0') && ((cp[2] == ':') || (cp[2] == '\0'))) {
-				c1 = memchr(hextab, tolower((int) cp[0]), 16);
-				c2 = memchr(hextab, tolower((int) cp[1]), 16);
+				c1 = memchr(hextab, tolower((uint8_t) cp[0]), 16);
+				c2 = memchr(hextab, tolower((uint8_t) cp[1]), 16);
 				cp += 2;
 				if (*cp == ':') cp++;
 			} else {

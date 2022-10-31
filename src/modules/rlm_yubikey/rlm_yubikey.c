@@ -88,8 +88,8 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
 		if (modhex[(i << 1) + 1] == '\0')
 			return -1;
 
-		if (!(c1 = memchr(modhextab, tolower((int) modhex[i << 1]), 16)) ||
-		    !(c2 = memchr(modhextab, tolower((int) modhex[(i << 1) + 1]), 16)))
+		if (!(c1 = memchr(modhextab, tolower((uint8_t) modhex[i << 1]), 16)) ||
+		    !(c2 = memchr(modhextab, tolower((uint8_t) modhex[(i << 1) + 1]), 16)))
 			return -1;
 
 		hex[i] = hextab[c1 - modhextab];

@@ -489,7 +489,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		if ((*p == '\0') || (outlen <= 32))
 			return 0;
 
-		while (isspace(*p)) p++;
+		while (isspace((uint8_t) *p)) p++;
 
 		if (mschap_ntpwdhash(buffer, p) < 0) {
 			REDEBUG("Failed generating NT-Password");
@@ -512,7 +512,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		if ((*p == '\0') || (outlen <= 32))
 			return 0;
 
-		while (isspace(*p)) p++;
+		while (isspace((uint8_t) *p)) p++;
 
 		smbdes_lmpwdhash(p, buffer);
 		fr_bin2hex(out, buffer, LM_DIGEST_LENGTH);
