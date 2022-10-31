@@ -1399,7 +1399,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 		return -1;
 	}
 
-	if ((argc > 0) && (strchr(argv[0], FR_DIR_SEP) != NULL)) {
+	if ((argc > 0) && (strchr(argv[0], FR_DIR_SEP) == argv[0])) {
 		cprintf_error(listener, "Cannot direct debug logs to absolute path.\n");
 	}
 
