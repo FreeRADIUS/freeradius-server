@@ -63,6 +63,10 @@ struct sync_state_s {
 	proto_ldap_sync_t const		*inst;		//!< Module instance for this sync.
 
 	fr_dlist_head_t			pending;	//!< List of pending changes in progress.
+
+	uint32_t			pending_cookies;	//!< How many cookies are in the pending heap
+	uint32_t			changes_since_cookie;	//!< How many changes have been added since
+								//!< the last cookie was stored.
 };
 
 typedef struct sync_state_s sync_state_t;
