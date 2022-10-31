@@ -921,9 +921,10 @@ fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_
 	if (!eap_fast_verify(request, tls_session, data, data_len)) return FR_RADIUS_CODE_ACCESS_REJECT;
 
 	if (t->stage == EAP_FAST_TLS_SESSION_HANDSHAKE) {
+		char buf[256];
+
 		fr_assert(t->mode == EAP_FAST_UNKNOWN);
 
-		char buf[256];
 		if (strstr(SSL_CIPHER_description(SSL_get_current_cipher(tls_session->ssl),
 						  buf, sizeof(buf)), "Au=None")) {
 			/* FIXME enforce MSCHAPv2 - RFC 5422 section 3.2.2 */

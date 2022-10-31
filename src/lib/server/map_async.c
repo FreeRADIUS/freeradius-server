@@ -475,9 +475,10 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	switch (mutated->rhs->type) {
 	case TMPL_TYPE_XLAT:
 	{
-		fr_assert(tmpl_xlat(mutated->rhs) != NULL);
 		fr_dcursor_t	from;
 		fr_value_box_t	*vb, *n_vb;
+
+		fr_assert(tmpl_xlat(mutated->rhs) != NULL);
 
 	assign_values:
 		fr_assert(tmpl_is_attr(mutated->lhs));

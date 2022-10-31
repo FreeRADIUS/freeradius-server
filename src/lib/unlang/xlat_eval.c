@@ -996,10 +996,9 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 	xlat_action_t		xa = XLAT_ACTION_DONE;
 	xlat_exp_t const       	*node;
 	fr_value_box_list_t	result;		/* tmp list so debug works correctly */
+	fr_value_box_t		*value;
 
 	fr_value_box_list_init(&result);
-
-	fr_value_box_t		*value;
 
 	*child = NULL;
 

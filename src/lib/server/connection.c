@@ -393,9 +393,11 @@ static inline void connection_watch_call(fr_connection_t *conn, fr_dlist_head_t 
 #define WATCH_PRE(_conn) \
 do { \
 	if (fr_dlist_empty(&(_conn)->watch_pre[(_conn)->pub.state])) break; \
-	HANDLER_BEGIN(conn, &(_conn)->watch_pre[(_conn)->pub.state]); \
-	connection_watch_call((_conn), &(_conn)->watch_pre[(_conn)->pub.state]); \
-	HANDLER_END(conn); \
+	{ \
+		HANDLER_BEGIN(conn, &(_conn)->watch_pre[(_conn)->pub.state]); \
+		connection_watch_call((_conn), &(_conn)->watch_pre[(_conn)->pub.state]); \
+		HANDLER_END(conn); \
+	} \
 } while(0)
 
 /** Call the post handler watch functions
@@ -404,9 +406,11 @@ do { \
 #define WATCH_POST(_conn) \
 do { \
 	if (fr_dlist_empty(&(_conn)->watch_post[(_conn)->pub.state])) break; \
-	HANDLER_BEGIN(conn, &(_conn)->watch_post[(_conn)->pub.state]); \
-	connection_watch_call((_conn), &(_conn)->watch_post[(_conn)->pub.state]); \
-	HANDLER_END(conn); \
+	{ \
+		HANDLER_BEGIN(conn, &(_conn)->watch_post[(_conn)->pub.state]); \
+		connection_watch_call((_conn), &(_conn)->watch_post[(_conn)->pub.state]); \
+		HANDLER_END(conn); \
+	} \
 } while(0)
 
 /** Remove a watch function from a pre/post[state] list

@@ -803,45 +803,48 @@ int fr_set_dumpable(bool allow_core_dumps)
 	dump_core = allow_core_dumps;
 
 #ifdef HAVE_SYS_RESOURCE_H
-	struct rlimit current;
+	{
+		struct rlimit current;
 
-	/*
-	 *	Reset the core limits (or disable them)
-	 */
-	if (getrlimit(RLIMIT_CORE, &current) < 0) {
-		fr_strerror_printf("Failed to get current core limit:  %s", fr_syserror(errno));
-		return -1;
-	}
+		/*
+		 *	Reset the core limits (or disable them)
+		 */
+		if (getrlimit(RLIMIT_CORE, &current) < 0) {
+			fr_strerror_printf("Failed to get current core limit:  %s", fr_syserror(errno));
+			return -1;
+		}
 
-	if (allow_core_dumps) {
-		if ((current.rlim_cur != init_core_limit.rlim_cur) || (current.rlim_max != init_core_limit.rlim_max)) {
-			if (setrlimit(RLIMIT_CORE, &init_core_limit) < 0) {
-				fr_strerror_printf("Cannot update core dump limit: %s", fr_syserror(errno));
+		if (allow_core_dumps) {
+			if ((current.rlim_cur != init_core_limit.rlim_cur) ||
+			    (current.rlim_max != init_core_limit.rlim_max)) {
+				if (setrlimit(RLIMIT_CORE, &init_core_limit) < 0) {
+					fr_strerror_printf("Cannot update core dump limit: %s", fr_syserror(errno));
+
+					return -1;
+				}
+			}
+		/*
+		 *	We've been told to disable core dumping,
+		 *	rlim_cur is not set to zero.
+		 *
+		 *	Set rlim_cur to zero, but leave rlim_max
+		 *	set to whatever the current value is.
+		 *
+		 *	This is because, later, we may need to
+		 *	re-enable core dumps to allow the debugger
+		 *	to attach *sigh*.
+		 */
+		} else if (current.rlim_cur != 0) {
+			struct rlimit no_core;
+
+			no_core.rlim_cur = 0;
+			no_core.rlim_max = current.rlim_max;
+
+			if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
+				fr_strerror_printf("Failed disabling core dumps: %s", fr_syserror(errno));
 
 				return -1;
 			}
-		}
-	/*
-	 *	We've been told to disable core dumping,
-	 *	rlim_cur is not set to zero.
-	 *
-	 *	Set rlim_cur to zero, but leave rlim_max
-	 *	set to whatever the current value is.
-	 *
-	 *	This is because, later, we may need to
-	 *	re-enable core dumps to allow the debugger
-	 *	to attach *sigh*.
-	 */
-	} else if (current.rlim_cur != 0) {
-		struct rlimit no_core;
-
-		no_core.rlim_cur = 0;
-		no_core.rlim_max = current.rlim_max;
-
-		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
-			fr_strerror_printf("Failed disabling core dumps: %s", fr_syserror(errno));
-
-			return -1;
 		}
 	}
 #endif

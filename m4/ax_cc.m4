@@ -152,7 +152,23 @@ AC_DEFUN([AX_CC_NO_UNKNOWN_WARNING_OPTION_FLAG],[
   ])
 ])
 
+AC_DEFUN([AX_CC_WDECLARATION_AFTER_STATEMENT_FLAG],[
+  AC_CACHE_CHECK([for the compiler flag "-Wdeclaration-after-statement"],  [ax_cv_cc_wdeclaration_after_statement_flag],[
 
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -Wdeclaration-after-statement"
+
+    AC_LANG_PUSH(C)
+    AC_TRY_COMPILE(
+      [],
+      [return 0;],
+      [ax_cv_cc_wdeclaration_after_statement_flag="yes"],
+      [ax_cv_cc_wdeclaration_after_statement_flag="no"])
+    AC_LANG_POP
+
+    CFLAGS="$CFLAGS_SAVED"
+  ])
+])
 
 AC_DEFUN([AX_CC_WEVERYTHING_FLAG],[
   AC_CACHE_CHECK([for the compiler flag "-Weverything"], [ax_cv_cc_weverything_flag],[

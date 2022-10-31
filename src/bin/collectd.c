@@ -240,11 +240,9 @@ error:
 rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t **out, rs_t *conf,
 						char const *type, rs_latency_t *stats, fr_radius_packet_code_t code)
 {
-	rs_stats_tmpl_t **tmpl, *last;
+	rs_stats_tmpl_t **tmpl = out, *last;
 	char *p;
 	char buffer[LCC_NAME_LEN];
-	tmpl = out;
-
 	rs_stats_value_tmpl_t rtx[(RS_RETRANSMIT_MAX + 1) + 1 + 1];	// RTX bins + 0 bin + lost + NULL
 	int i;
 
@@ -375,9 +373,9 @@ int rs_stats_collectd_open(rs_t *conf)
  */
 int rs_stats_collectd_close(rs_t *conf)
 {
-	assert(conf->stats.collectd);
-
 	int ret = 0;
+
+	assert(conf->stats.collectd);
 
 	if (conf->stats.handle) {
 		ret = lcc_disconnect(conf->stats.handle);

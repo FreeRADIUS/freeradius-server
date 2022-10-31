@@ -534,6 +534,8 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 	LDAPControl			*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl			*our_clientctrls[LDAP_MAX_CONTROLS];
 
+	char **search_attrs;
+
 	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
 			      NUM_ELEMENTS(our_serverctrls),
 			      NUM_ELEMENTS(our_clientctrls),
@@ -549,7 +551,6 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 	 *	OpenLDAP library doesn't declare attrs array as const, but
 	 *	it really should be *sigh*.
 	 */
-	char **search_attrs;
 	memcpy(&search_attrs, &attrs, sizeof(attrs));
 
 	if (filter) {
@@ -631,8 +632,8 @@ static void ldap_trunk_query_cancel(UNUSED request_t *request, fr_state_signal_t
 
 #define SET_LDAP_CTRLS(_dest, _src) \
 do { \
+	int i; \
 	if (!_src) break; \
-	int	i; \
 	for (i = 0; i < LDAP_MAX_CONTROLS; i++) { \
 		if (!(_src[i])) break; \
 		_dest[i].control = _src[i]; \

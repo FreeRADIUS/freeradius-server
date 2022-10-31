@@ -226,16 +226,18 @@ static int _ldap_connection_free(fr_ldap_connection_t *c)
 
 	if (!c->handle) return 0;	/* Don't need to do anything else if we don't yet have a handle */
 
-	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
-	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
+	{
+		LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
+		LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
 
-	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
-			      NUM_ELEMENTS(our_serverctrls),
-			      NUM_ELEMENTS(our_clientctrls),
-			      c, NULL, NULL);
+		fr_ldap_control_merge(our_serverctrls, our_clientctrls,
+				      NUM_ELEMENTS(our_serverctrls),
+				      NUM_ELEMENTS(our_clientctrls),
+				      c, NULL, NULL);
 
-	DEBUG3("Closing connection %p libldap handle %p", c->handle, c);
-	ldap_unbind_ext(c->handle, our_serverctrls, our_clientctrls);	/* Same code as ldap_unbind_ext_s */
+		DEBUG3("Closing connection %p libldap handle %p", c->handle, c);
+		ldap_unbind_ext(c->handle, our_serverctrls, our_clientctrls);	/* Same code as ldap_unbind_ext_s */
+	}
 
 	c->handle = NULL;
 

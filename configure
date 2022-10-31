@@ -13119,6 +13119,61 @@ if test "x$developer" = "xyes"; then
 printf "%s\n" "$as_me: Setting additional developer CFLAGS" >&6;}
 
 
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Wdeclaration-after-statement\"" >&5
+printf %s "checking for the compiler flag \"-Wdeclaration-after-statement\"... " >&6; }
+if test ${ax_cv_cc_wdeclaration_after_statement_flag+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -Wdeclaration-after-statement"
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main (void)
+{
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  ax_cv_cc_wdeclaration_after_statement_flag="yes"
+else $as_nop
+  ax_cv_cc_wdeclaration_after_statement_flag="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+    CFLAGS="$CFLAGS_SAVED"
+
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_wdeclaration_after_statement_flag" >&5
+printf "%s\n" "$ax_cv_cc_wdeclaration_after_statement_flag" >&6; }
+
+  if test "x$ax_cv_cc_wdeclaration_after_statement_flag" = "xyes"; then
+    devcflags="$devcflags \
+  	-Wdeclaration-after-statement"
+  fi
+
+
+
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Weverything\"" >&5
 printf %s "checking for the compiler flag \"-Weverything\"... " >&6; }
 if test ${ax_cv_cc_weverything_flag+y}

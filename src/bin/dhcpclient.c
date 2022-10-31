@@ -322,8 +322,9 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 
 	/* display offer(s) received */
 	if (nb_offer > 0 ) {
-		DEBUG("Received %d DHCP Offer(s):", nb_offer);
 		int i;
+		
+		DEBUG("Received %d DHCP Offer(s):", nb_offer);
 		for (i = 0; i < nb_reply; i++) {
 			char server_addr_buf[INET6_ADDRSTRLEN];
 			char offered_addr_buf[INET6_ADDRSTRLEN];

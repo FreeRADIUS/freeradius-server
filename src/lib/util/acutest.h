@@ -1829,6 +1829,7 @@ int
 main(int argc, char** argv)
 {
     int i;
+    int index;
 
     acutest_argv0_ = argv[0];
 
@@ -1911,7 +1912,7 @@ main(int argc, char** argv)
             printf("1..%d\n", (int) acutest_count_);
     }
 
-    int index = acutest_worker_index_;
+    index = acutest_worker_index_;
     for(i = 0; acutest_list_[i].func != NULL; i++) {
         int run = (acutest_test_data_[i].flags & ACUTEST_FLAG_RUN_);
         if (acutest_skip_mode_) /* Run all tests except those listed. */
