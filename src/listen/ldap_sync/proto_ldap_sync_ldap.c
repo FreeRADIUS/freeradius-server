@@ -722,18 +722,49 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 	if (sync_packet_ctx) {
 		sync_state_t		*sync = sync_packet_ctx->sync;
 		sync_packet_ctx_t	*pc;
+		proto_ldap_sync_t	*ldap_sync = inst->parent;
 
 		sync_packet_ctx->status = SYNC_PACKET_COMPLETE;
+
+		/*
+		 *	A cookie has been stored, reset the counter of changes
+		 */
+		if (sync_packet_ctx->type == SYNC_PACKET_TYPE_COOKIE) sync->changes_since_cookie = 0;
 
 		/*
 		 *	Pop any processed updates from the head of the list
 		 */
 		while ((pc = fr_dlist_head(&sync->pending))) {
+			/*
+			 *	If the head entry in the list is a pending cookie but we have
+			 *	not processed enough entries and there are more pending
+			 *	cookies, mark this one as processed.
+			 */
+			if ((pc->type == SYNC_PACKET_TYPE_COOKIE) && (pc->status == SYNC_PACKET_PENDING) &&
+			    (sync->changes_since_cookie < ldap_sync->cookie_changes) &&
+			     (sync->pending_cookies > 1)) pc->status = SYNC_PACKET_COMPLETE;
+
 			if (pc->status != SYNC_PACKET_COMPLETE) break;
 
+			/*
+			 *	Update counters depending on entry type
+			 */
+			if (pc->type == SYNC_PACKET_TYPE_COOKIE) {
+				sync->pending_cookies--;
+			} else {
+				sync->changes_since_cookie++;
+			}
 			pc = fr_dlist_pop_head(&sync->pending);
 			talloc_free(pc);
 		}
+
+		/*
+		 *	If the head of the list is a cookie which has not yet
+		 *	been processed and sufficient changes have been recorded
+		 *	send the cookie.
+		 */
+		if (pc && (pc->type == SYNC_PACKET_TYPE_COOKIE) && (pc->status == SYNC_PACKET_PENDING) &&
+		    (sync->changes_since_cookie >= ldap_sync->cookie_changes)) ldap_sync_cookie_send(pc);
 	}
 
 	fr_pair_list_free(&tmp);
