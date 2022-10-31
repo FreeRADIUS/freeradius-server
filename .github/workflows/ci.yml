@@ -204,7 +204,7 @@ jobs:
       id: opensslshasum
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
       run: |
-        wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/::set-output name=shasum::/p'
+        wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
 
     - name: 'Restore OpenSSL 3.0 from the cache'
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
