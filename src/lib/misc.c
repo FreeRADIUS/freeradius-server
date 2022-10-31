@@ -864,7 +864,7 @@ uint8_t *ifid_aton(char const *ifid_str, uint8_t *ifid)
 			num_id = 0;
 			if ((idx += 2) > 6)
 				return NULL;
-		} else if ((pch = strchr(xdigits, tolower(*p))) != NULL) {
+		} else if ((pch = strchr(xdigits, tolower((uint8_t) *p))) != NULL) {
 			if (++num_id > 4)
 				return NULL;
 			/*
@@ -1325,8 +1325,8 @@ size_t fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen)
 	if (len > outlen) len = outlen;
 
 	for (i = 0; i < len; i++) {
-		if(!(c1 = memchr(hextab, tolower((int) hex[i << 1]), sizeof(hextab))) ||
-		   !(c2 = memchr(hextab, tolower((int) hex[(i << 1) + 1]), sizeof(hextab))))
+		if(!(c1 = memchr(hextab, tolower((uint8_t) hex[i << 1]), sizeof(hextab))) ||
+		   !(c2 = memchr(hextab, tolower((uint8_t) hex[(i << 1) + 1]), sizeof(hextab))))
 			break;
 		bin[i] = ((c1-hextab)<<4) + (c2-hextab);
 	}
@@ -1403,7 +1403,7 @@ uint32_t fr_strtoul(char const *value, char **end)
 bool is_whitespace(char const *value)
 {
 	do {
-		if (!isspace(*value)) return false;
+		if (!isspace((uint8_t) *value)) return false;
 		value++;
 	} while (*value);
 
@@ -1442,7 +1442,7 @@ bool is_integer(char const *value)
 {
 #ifndef __clang_analyzer__
 	do {
-		if (!isdigit(*value)) return false;
+		if (!isdigit((uint8_t) *value)) return false;
 		value++;
 	} while (*value);
 
@@ -1453,7 +1453,7 @@ bool is_integer(char const *value)
 	 *	other functions doing similar things.
 	 */
 #else
-	if (!isdigit(*value)) return false;
+	if (!isdigit((uint8_t) *value)) return false;
 #endif
 
 	return true;

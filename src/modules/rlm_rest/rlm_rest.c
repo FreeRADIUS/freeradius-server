@@ -254,7 +254,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	/*
 	 *  Trim whitespace
 	 */
-	while (isspace(*p) && p++);
+	while (isspace((uint8_t) *p) && p++);
 
 	/*
 	 *  Unescape parts of xlat'd URI, this allows REST servers to be specified by

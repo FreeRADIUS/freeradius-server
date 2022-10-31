@@ -315,7 +315,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	while (isspace((int) *p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 
 	if ((strncasecmp(p, "insert", 6) == 0) ||
 	    (strncasecmp(p, "update", 6) == 0) ||

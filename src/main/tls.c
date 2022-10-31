@@ -365,7 +365,7 @@ static bool identity_is_safe(const char *identity)
 	if (!identity) return true;
 
 	while ((c = *(identity++)) != '\0') {
-		if (isalpha((int) c) || isdigit((int) c) || isspace((int) c) ||
+		if (isalpha((uint8_t) c) || isdigit((uint8_t) c) || isspace((uint8_t) c) ||
 		    (c == '@') || (c == '-') || (c == '_') || (c == '.')) {
 			continue;
 		}

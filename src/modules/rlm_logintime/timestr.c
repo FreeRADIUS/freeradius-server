@@ -85,7 +85,7 @@ static int hour_fill(char *bitmap, char const *tm)
 	end = -1;
 	if ((p = strchr(tm, '-')) != NULL) {
 		p++;
-		if (p - tm != 5 || strlen(p) < 4 || !isdigit((int) *p))
+		if (p - tm != 5 || strlen(p) < 4 || !isdigit((uint8_t) *p))
 			return 0;
 		end = 600 * val(p[0]) + 60 * val(p[1]) + atoi(p + 2);
 	}
@@ -93,7 +93,7 @@ static int hour_fill(char *bitmap, char const *tm)
 		start = 0;
 		end = DAYMIN - 1;
 	} else {
-		if (strlen(tm) < 4 || !isdigit((int) *tm))
+		if (strlen(tm) < 4 || !isdigit((uint8_t) *tm))
 			return 0;
 		start = 600 * val(tm[0]) + 60 * val(tm[1]) + atoi(tm + 2);
 		if (end < 0) end = start;
@@ -132,7 +132,7 @@ static int day_fill(char *bitmap, char const *tm)
 	int start, end;
 
 	for (hr = tm; *hr; hr++)
-		if (isdigit((int) *hr))
+		if (isdigit((uint8_t) *hr))
 			break;
 	if (hr == tm)
 		tm = "Al";
@@ -181,7 +181,7 @@ static int week_fill(char *bitmap, char const *tm)
 
 	strlcpy(tmp, tm, sizeof(tmp));
 	for (s = tmp; *s; s++)
-		if (isupper(*s)) *s = tolower(*s);
+		if (isupper((uint8_t) *s)) *s = tolower((uint8_t) *s);
 
 	s = strtok(tmp, ",|");
 	while (s) {

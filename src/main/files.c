@@ -130,7 +130,7 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 		 *	ignore it.
 		 */
 		ptr = buffer;
-		while (isspace((int) *ptr)) ptr++;
+		while (isspace((uint8_t) *ptr)) ptr++;
 
 		if (*ptr == '#' || *ptr == '\n' || !*ptr) continue;
 
@@ -139,7 +139,7 @@ parse_again:
 			/*
 			 *	The user's name MUST be the first text on the line.
 			 */
-			if (isspace((int) buffer[0]))  {
+			if (isspace((uint8_t) buffer[0]))  {
 				ERROR("%s[%d]: Entry does not begin with a user name",
 				      file, lineno);
 				fclose(fp);
@@ -158,7 +158,7 @@ parse_again:
 			 *	$INCLUDE filename
 			 */
 			if (strcasecmp(entry, "$INCLUDE") == 0) {
-				while (isspace((int) *ptr)) ptr++;
+				while (isspace((uint8_t) *ptr)) ptr++;
 
 				/*
 				 *	If it's an absolute pathname,
@@ -261,7 +261,7 @@ parse_again:
 		 *	We COULD have a reply, OR we could have a new entry.
 		 */
 		if (mode == FIND_MODE_WANT_REPLY) {
-			if (!isspace((int) buffer[0])) goto create_entry;
+			if (!isspace((uint8_t) buffer[0])) goto create_entry;
 
 			mode = FIND_MODE_HAVE_REPLY;
 		}
@@ -274,7 +274,7 @@ parse_again:
 		 *	The previous line ended with a comma, and then
 		 *	we have the start of a new entry!
 		 */
-		if (!isspace((int) buffer[0])) {
+		if (!isspace((uint8_t) buffer[0])) {
 		trailing_comma:
 			pairlist_free(&pl);
 			talloc_free(check_tmp);
@@ -335,7 +335,7 @@ parse_again:
 		 */
 		mode = FIND_MODE_NAME;
 		if (feof(fp)) break;
-		if (!isspace((int) buffer[0])) goto parse_again;
+		if (!isspace((uint8_t) buffer[0])) goto parse_again;
 	}
 
 	/*

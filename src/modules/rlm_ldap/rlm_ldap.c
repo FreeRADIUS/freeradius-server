@@ -827,7 +827,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			case ',':
 			case ';':
 			case ' ':
-				while (isspace((int) *p)) p++;
+				while (isspace((uint8_t) *p)) p++;
 				if (p == q) continue;
 
 				buff = talloc_array(inst, char, (q - p) + 1);

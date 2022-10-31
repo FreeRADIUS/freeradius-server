@@ -102,7 +102,7 @@ static ssize_t xlat_concat(UNUSED void *instance, REQUEST *request,
 	char const *concat;
 	char buffer[2];
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	slen = tmpl_from_attr_substr(&vpt, fmt,  REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
@@ -111,7 +111,7 @@ static ssize_t xlat_concat(UNUSED void *instance, REQUEST *request,
 	}
 
 	fmt += slen;
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if (!*fmt) {
 		concat = ",";
@@ -148,7 +148,7 @@ static ssize_t xlat_length(UNUSED void *instance, REQUEST *request,
 			   char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR *vp;
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
@@ -170,7 +170,7 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	uint64_t 	int64 = 0;	/* Needs to be initialised to zero */
 	uint32_t	int32 = 0;	/* Needs to be initialised to zero */
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
@@ -259,7 +259,7 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	value_data_t dst;
 	uint8_t const *buff = NULL;
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 	error:
@@ -314,7 +314,7 @@ static ssize_t xlat_tag(UNUSED void *instance, REQUEST *request,
 {
 	VALUE_PAIR *vp;
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
@@ -338,7 +338,7 @@ static ssize_t xlat_vendor(UNUSED void *instance, REQUEST *request,
 	VALUE_PAIR *vp;
 	DICT_VENDOR *vendor;
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
@@ -363,7 +363,7 @@ static ssize_t xlat_vendor_num(UNUSED void *instance, REQUEST *request,
 {
 	VALUE_PAIR *vp;
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
@@ -381,7 +381,7 @@ static ssize_t xlat_attr(UNUSED void *instance, REQUEST *request,
 {
 	VALUE_PAIR *vp;
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
@@ -400,7 +400,7 @@ static ssize_t xlat_attr_num(UNUSED void *instance, REQUEST *request,
 {
 	VALUE_PAIR *vp;
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
@@ -433,7 +433,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		return -1;
 	}
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
 		RDEBUG("%s", fr_strerror());
@@ -644,7 +644,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 	VALUE_PAIR *vp;
 	uint8_t const *p;
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if (outlen < 3) {
 	nothing:
@@ -688,7 +688,7 @@ static ssize_t xlat_xlat(UNUSED void *instance, REQUEST *request,
 {
 	VALUE_PAIR *vp;
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if (outlen < 3) {
 	nothing:
@@ -1147,7 +1147,7 @@ ssize_t xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
 
-	while (isspace((int) *fmt)) fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	if (fmt[0] == '&') {
 		if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
@@ -1317,7 +1317,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	for (q = p; *q != '\0'; q++) {
 		if (*q == ':') break;
 
-		if (isspace((int) *q)) break;
+		if (isspace((uint8_t) *q)) break;
 
 		if (*q == '[') continue;
 

@@ -172,7 +172,7 @@ static int encode_data_tlv(char *buffer, char **endptr,
 	*p = '\0';
 
 	p = buffer + 1;
-	while (isspace((int) *p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 
 	length = encode_tlv(p, output, outlen);
 	if (length == 0) return 0;
@@ -186,12 +186,12 @@ static int encode_hex(char *p, uint8_t *output, size_t outlen)
 	while (*p) {
 		char *c1, *c2;
 
-		while (isspace((int) *p)) p++;
+		while (isspace((uint8_t) *p)) p++;
 
 		if (!*p) break;
 
-		if(!(c1 = memchr(hextab, tolower((int) p[0]), 16)) ||
-		   !(c2 = memchr(hextab, tolower((int)  p[1]), 16))) {
+		if(!(c1 = memchr(hextab, tolower((uint8_t) p[0]), 16)) ||
+		   !(c2 = memchr(hextab, tolower((uint8_t)  p[1]), 16))) {
 			fprintf(stderr, "Invalid data starting at "
 				"\"%s\"\n", p);
 			return 0;
@@ -217,13 +217,13 @@ static int encode_data(char *p, uint8_t *output, size_t outlen)
 {
 	int length;
 
-	if (!isspace((int) *p)) {
+	if (!isspace((uint8_t) *p)) {
 		fprintf(stderr, "Invalid character following attribute "
 			"definition\n");
 		return 0;
 	}
 
-	while (isspace((int) *p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 
 	if (*p == '{') {
 		int sublen;
@@ -232,7 +232,7 @@ static int encode_data(char *p, uint8_t *output, size_t outlen)
 		length = 0;
 
 		do {
-			while (isspace((int) *p)) p++;
+			while (isspace((uint8_t) *p)) p++;
 			if (!*p) {
 				if (length == 0) {
 					fprintf(stderr, "No data\n");
@@ -642,7 +642,7 @@ static void process_file(const char *root_dir, char const *filename)
 			  ((p > buffer) && (p[-1] != '[')))) *p = '\0';
 
 		p = buffer;
-		while (isspace((int) *p)) p++;
+		while (isspace((uint8_t) *p)) p++;
 		if (!*p) continue;
 
 		DEBUG2("%s[%d]: %s\n", filename, lineno, buffer);
@@ -922,7 +922,7 @@ static void process_file(const char *root_dir, char const *filename)
 			char *q;
 
 			p += 9;
-			while (isspace((int) *p)) p++;
+			while (isspace((uint8_t) *p)) p++;
 
 			q = strrchr(directory, '/');
 			if (q) {

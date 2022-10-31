@@ -1959,7 +1959,7 @@ int main(int argc, char **argv)
 		  break;
 
 		case 'r':
-			if (!isdigit((int) *optarg))
+			if (!isdigit((uint8_t) *optarg))
 				usage();
 			retries = atoi(optarg);
 			break;
@@ -1967,7 +1967,7 @@ int main(int argc, char **argv)
 			do_summary = 1;
 			break;
 		case 't':
-			if (!isdigit((int) *optarg))
+			if (!isdigit((uint8_t) *optarg))
 				usage();
 			timeout = atof(optarg);
 			break;
@@ -2059,7 +2059,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Get the request type
 	 */
-	if (!isdigit((int) argv[2][0])) {
+	if (!isdigit((uint8_t) argv[2][0])) {
 		packet_code = fr_str2int(rc_request_types, argv[2], -2);
 		if (packet_code == -2) {
 			ERROR("Unrecognised request type \"%s\"\n", argv[2]);

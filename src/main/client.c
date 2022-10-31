@@ -656,8 +656,8 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 				 *	Check for valid characters
 				 */
 				for (p = dp->d_name; *p != '\0'; p++) {
-					if (isalpha((int)*p) ||
-					    isdigit((int)*p) ||
+					if (isalpha((uint8_t)*p) ||
+					    isdigit((uint8_t)*p) ||
 					    (*p == ':') ||
 					    (*p == '.')) continue;
 					break;

@@ -153,8 +153,8 @@ size_t radius_list_name(pair_lists_t *out, char const *name, pair_lists_t def)
 	{
 		char const *d = q + 1;
 
-		if (isdigit((int) *d)) {
-			while (isdigit((int) *d)) d++;
+		if (isdigit((uint8_t) *d)) {
+			while (isdigit((uint8_t) *d)) d++;
 
 			/*
 			 *	Char after the number string
