@@ -1686,17 +1686,31 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		 *	other than the process already having exited.
 		 */
 		if (waitid(P_PID, pid, &info, WEXITED | WNOHANG | WNOWAIT) > 0) {
+			static fr_table_num_sorted_t const si_codes[] = {
+				{ L("exited"),	CLD_EXITED },
+				{ L("killed"),	CLD_KILLED },
+				{ L("dumped"),	CLD_DUMPED },
+				{ L("trapped"), CLD_TRAPPED },
+				{ L("stopped"), CLD_STOPPED },
+				{ L("continued"), CLD_CONTINUED }
+			};
+			static size_t si_codes_len = NUM_ELEMENTS(si_codes);
+
 			switch (info.si_code) {
 			case CLD_EXITED:
 			case CLD_KILLED:
 			case CLD_DUMPED:
-				EVENT_DEBUG("%p - PID %u early exit %i", el, (unsigned int)pid, info.si_code);
+				EVENT_DEBUG("%p - PID %ld early exit code %i, status %i",
+					    el, (long)pid, info.si_code, info.si_status);
 
 				if (callback) callback(el, pid, info.si_status, uctx);
 				return 0;
 
 			default:
-				break;
+				fr_strerror_printf("Unexpected si_code \"%s\" (%u) whilst waiting on PID %ld",
+						   fr_table_str_by_value(si_codes, info.si_code, "<UNKOWN>"),
+						   info.si_code, (long) pid);
+				return -1;
 			}
 		}
 
@@ -1704,7 +1718,8 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		 *	Print this error here, so that the caller gets
 		 *	the error from kevent(), and not waitpid().
 		 */
-		fr_strerror_printf("Failed adding waiter for PID %ld - %s", (long) pid, fr_syserror(errno));
+		fr_strerror_printf("Failed adding waiter for PID %ld - kevent %s, waitid %s",
+				   (long) pid, fr_syserror(evset.flags), fr_syserror(errno));
 
 		return -1;
 	}
