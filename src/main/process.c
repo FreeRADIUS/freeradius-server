@@ -1341,7 +1341,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 			/*
 			 *	Ignore parse errors.
 			 */
-			if (radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition)) {
+			if (radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition) == 1) {
 				request->log.lvl = L_DBG_LVL_2;
 				request->log.func = vradlog_request;
 			}
