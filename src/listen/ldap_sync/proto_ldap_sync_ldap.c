@@ -256,7 +256,7 @@ int ldap_sync_cookie_send(sync_packet_ctx_t *sync_packet_ctx)
 	fr_pair_list_t			pairs;
 	fr_pair_t			*vp;
 	TALLOC_CTX			*local = NULL;
-	uint8_t				*cookie = sync->cookie;
+	uint8_t				*cookie = sync_packet_ctx->cookie;
 
 	if (sync_packet_ctx->status != SYNC_PACKET_PENDING) return 0;
 	sync_packet_ctx->status = SYNC_PACKET_PREPARING;
