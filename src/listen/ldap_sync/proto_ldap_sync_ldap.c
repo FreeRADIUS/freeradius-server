@@ -234,7 +234,7 @@ void ldap_sync_cookie_event(fr_event_list_t *el, UNUSED fr_time_t now, void *uct
 	ldap_sync_cookie_send(sync_packet_ctx);
 
 finish:
-	fr_event_timer_in(sync, el, &sync->cookie_ev, sync->inst->cookie_interval, ldap_sync_cookie_event, sync);
+	(void) fr_event_timer_in(sync, el, &sync->cookie_ev, sync->inst->cookie_interval, ldap_sync_cookie_event, sync);
 }
 
 /** Enque a new cookie store packet
