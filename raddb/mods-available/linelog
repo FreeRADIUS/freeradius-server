@@ -84,6 +84,12 @@ linelog {
 
 	#  If logging via syslog, the severity can be set here.
 	#  Defaults to info.
+
+	#
+	#  Optional header format string.
+	#  Written to the first line of any newly created log file
+#	header = "This is a header line"
+
 	#
 	#  The default format string.
 	format = "This is a log message for %{User-Name}"
