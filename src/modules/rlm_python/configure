@@ -2863,9 +2863,11 @@ fail="$fail python-config"
 else
 				old_CFLAGS="$CFLAGS"
 	old_LDFLAGS="$LDFLAGS"
+	old_LIBS="$LIBS"
 
 	unset CFLAGS
 	unset LDFLAGS
+	unset LIBS
 
 						if ${PYTHON_CONFIG_BIN} --help 2>&1 | grep '\-\-embed'; then
 		PYTHON_CONFIG_EMBED="--embed"
@@ -2906,6 +2908,10 @@ $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s ldflags were \"${python_ldflags}\"" >&6
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldflags were \"${mod_ldflags}\"" >&5
 $as_echo "$as_me: Sanitized ldflags were \"${mod_ldflags}\"" >&6;}
 
+		mod_lib=`echo "${mod_ldflags}" | grep -o -E ' \-l\S+' | tr '\n' ' '`
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized libs were \"${mod_lib}\"" >&5
+$as_echo "$as_me: Sanitized libs were \"${mod_lib}\"" >&6;}
+
 	python_lib=`echo "${mod_ldflags}" | grep -o -E '\-lpython[0-9.]+' | sed -e 's/-l//'`
 
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: Python library is \"${python_lib}\"" >&5
@@ -2916,6 +2922,7 @@ $as_echo_n "checking we can link to python libraries... " >&6; }
 
 	CFLAGS=${mod_cflags}
 	LDFLAGS=${mod_ldflags}
+	LIBS=${mod_lib}
 
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -2951,6 +2958,7 @@ fail="$fail working python libraries"
 
 	CFLAGS=$old_CFLAGS
 	LDFLAGS=$old_LDFLAGS
+	LIBS=$old_LIBS
 fi
 
 

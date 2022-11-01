@@ -37,9 +37,11 @@ else
 	dnl #
 	old_CFLAGS="$CFLAGS"
 	old_LDFLAGS="$LDFLAGS"
+	old_LIBS="$LIBS"
 
 	unset CFLAGS
 	unset LDFLAGS
+	unset LIBS
 
 	dnl #
 	dnl # Not all python3-config versions have --embed.  If doesn't
@@ -98,6 +100,10 @@ else
 		'`
 	AC_MSG_NOTICE([Sanitized ldflags were "${mod_ldflags}"])
 
+	dnl # Extract -l options - they should be in LIBS not LDFLAGS for gcc
+	mod_lib=`echo "${mod_ldflags}" | grep -o -E ' \-l\S+' | tr '\n' ' '`
+	AC_MSG_NOTICE([Sanitized libs were "${mod_lib}"])
+
 	python_lib=`echo "${mod_ldflags}" | grep -o -E '\-lpython[[0-9.]]+' | sed -e 's/-l//'`
 
 	AC_MSG_NOTICE([Python library is "${python_lib}"])
@@ -106,6 +112,7 @@ else
 
 	CFLAGS=${mod_cflags}
 	LDFLAGS=${mod_ldflags}
+	LIBS=${mod_lib}
 	AC_LINK_IFELSE(
 		[AC_LANG_PROGRAM([[
 			#include <Python.h>
@@ -124,6 +131,7 @@ else
 
 	CFLAGS=$old_CFLAGS
 	LDFLAGS=$old_LDFLAGS
+	LIBS=$old_LIBS
 fi
 
 FR_MODULE_END_TESTS
