@@ -378,3 +378,34 @@ char const *fr_cwd_strip(char const *filename)
 
 	return filename;
 }
+
+/** From a pathname, return fd and filename needed for *at() functions
+ *
+ * @param[in] dirfd	points to place to store the dirfd
+ * @param[in] filename	points to placd to store a pointer into pathname
+ *			that points to the filename
+ * @param[in] pathname	the full pathname of the file
+ *
+ * @return
+ *	- -1 on error
+ *	-  0 on success
+ */
+int fr_dirfd(int *dirfd, char const **filename, char const *pathname)
+{
+	char const *last_slash = strrchr(pathname, '/');
+
+	if (last_slash == NULL) {
+		*filename = pathname;
+		*dirfd = AT_FDCWD;
+		return 0;
+	}
+	{
+		char dirpath[(last_slash - pathname) + 1];
+
+		memcpy(dirpath, pathname, last_slash - pathname);
+		dirpath[last_slash - pathname] = '\0';
+		*filename = last_slash + 1;
+		*dirfd = open(dirpath, O_DIRECTORY);
+		return (*dirfd < 0) ? -1 : 0;
+	}
+}

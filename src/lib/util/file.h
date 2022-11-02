@@ -55,6 +55,8 @@ int 		fr_unlink(char const *filename);
 
 char const	*fr_cwd_strip(char const *filename);
 
+int 		fr_dirfd(int *dirfd, char const **filename, char const *pathname) CC_HINT(nonnull);
+
 #ifdef __cplusplus
 }
 #endif
