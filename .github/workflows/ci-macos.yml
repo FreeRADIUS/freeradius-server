@@ -101,6 +101,7 @@ jobs:
           mruby \
           openssl@1.1 \
           openssl \
+          python@3.10 \
           talloc
         ln -s `brew --prefix`/opt/make/bin/gmake /usr/local/bin/make
         echo "#! /bin/sh"               >> /usr/local/bin/nproc
@@ -121,6 +122,13 @@ jobs:
     - name: Set path for clang
       run: |
         echo "PATH=`brew --prefix`/opt/llvm@14/bin/:$PATH" >> $GITHUB_ENV
+
+    #
+    #  Ensure Python 3.10 is used
+    #
+    - name: Set path for Python 3.10
+      run: |
+        echo "PATH=`brew --prefix python@3.10`/bin/:$PATH" >> $GITHUB_ENV
 
     #
     #  Build using some alternative libraries
