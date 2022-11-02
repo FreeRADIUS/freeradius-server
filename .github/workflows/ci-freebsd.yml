@@ -51,7 +51,7 @@ jobs:
         key: hostapd-freebsd-${{ env.HOSTAPD_GIT_TAG }}-v4
 
     - name: Test using a FreeBSD VirtualBox VM
-      uses: vmactions/freebsd-vm@v0.2.6
+      uses: vmactions/freebsd-vm@v0.3.0
       with:
         usesh: true
         sync: rsync
