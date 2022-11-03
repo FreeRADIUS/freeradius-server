@@ -131,7 +131,7 @@ typedef struct {
 	EVP_PKEY_CTX		*evp_encrypt_ctx;		//!< Pre-allocated evp_pkey_ctx.
 	EVP_PKEY_CTX		*evp_sign_ctx;			//!< Pre-allocated evp_pkey_ctx.
 	EVP_PKEY_CTX		*evp_decrypt_ctx;		//!< Pre-allocated evp_pkey_ctx.
-	EVP_PKEY_CTX		*ePAIR_VERIFY_ctx;		//!< Pre-allocated evp_pkey_ctx.
+	EVP_PKEY_CTX		*evp_verify_ctx;		//!< Pre-allocated evp_pkey_ctx.
 
 	EVP_MD_CTX		*evp_md_ctx;			//!< Pre-allocated evp_md_ctx for sign and verify.
 	uint8_t			*digest_buff;			//!< Pre-allocated digest buffer.
@@ -860,7 +860,7 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Now check the signature matches what we expected
 	 */
-	switch (EVP_PKEY_verify(t->ePAIR_VERIFY_ctx, sig, sig_len, t->digest_buff, (size_t)digest_len)) {
+	switch (EVP_PKEY_verify(t->evp_verify_ctx, sig, sig_len, t->digest_buff, (size_t)digest_len)) {
 	case 1:		/* success (signature valid) */
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
 		vb->vb_bool = true;
@@ -1135,20 +1135,20 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		/*
 		 *	Alloc verify
 		 */
-		ti->ePAIR_VERIFY_ctx = EVP_PKEY_CTX_new(inst->rsa->certificate_file, NULL);
-		if (!ti->ePAIR_VERIFY_ctx) {
+		ti->evp_verify_ctx = EVP_PKEY_CTX_new(inst->rsa->certificate_file, NULL);
+		if (!ti->evp_verify_ctx) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed allocating verify EVP_PKEY_CTX", __FUNCTION__);
 			return -1;
 		}
-		talloc_set_type(ti->ePAIR_VERIFY_ctx, EVP_PKEY_CTX);
-		ti->ePAIR_VERIFY_ctx = talloc_steal(ti, ti->ePAIR_VERIFY_ctx);	/* Bind lifetime to instance */
-		talloc_set_destructor(ti->ePAIR_VERIFY_ctx, _evp_pkey_ctx_free);	/* Free ctx correctly on chunk free */
+		talloc_set_type(ti->evp_verify_ctx, EVP_PKEY_CTX);
+		ti->evp_verify_ctx = talloc_steal(ti, ti->evp_verify_ctx);	/* Bind lifetime to instance */
+		talloc_set_destructor(ti->evp_verify_ctx, _evp_pkey_ctx_free);	/* Free ctx correctly on chunk free */
 
 		/*
 		 *	Configure verify
 		 */
-		if (unlikely(EVP_PKEY_verify_init(ti->ePAIR_VERIFY_ctx) <= 0)) {
+		if (unlikely(EVP_PKEY_verify_init(ti->evp_verify_ctx) <= 0)) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising verify EVP_PKEY_CTX", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
@@ -1158,13 +1158,13 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		 *	OAEP not valid for signing or verification
 		 */
 		if (inst->rsa->padding != RSA_PKCS1_OAEP_PADDING) {
-			if (unlikely(cipher_rsa_padding_params_set(ti->ePAIR_VERIFY_ctx, inst->rsa) < 0)) {
+			if (unlikely(cipher_rsa_padding_params_set(ti->evp_verify_ctx, inst->rsa) < 0)) {
 				ERROR("%s: Failed setting padding for verify EVP_PKEY_CTX", __FUNCTION__);
 				return -1;
 			}
 		}
 
-		if (unlikely(EVP_PKEY_CTX_set_signature_md(ti->ePAIR_VERIFY_ctx, inst->rsa->sig_digest)) <= 0) {
+		if (unlikely(EVP_PKEY_CTX_set_signature_md(ti->evp_verify_ctx, inst->rsa->sig_digest)) <= 0) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed setting signature digest type", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
