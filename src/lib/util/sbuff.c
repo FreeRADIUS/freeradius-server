@@ -277,14 +277,14 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 	 *	Shift out the maximum number of bytes we can
 	 *	irrespective of the amount that was requested
 	 *	as the extension.  It's more efficient to do
-	 *	this than lots of small shifts, and just 
+	 *	this than lots of small shifts, and just
 	 *	looking and the number of bytes used in the
 	 *	deepest sbuff, and using that as the shift
 	 *	amount, might mean we don't shift anything at
 	 *	all!
 	 *
 	 *	fr_sbuff_shift will cap the max shift amount,
-	 *	so markers and positions will remain valid for 
+	 *	so markers and positions will remain valid for
 	 *	all sbuffs in the chain.
 	 */
 	shift = fr_sbuff_current(sbuff) - fr_sbuff_buff(sbuff);
@@ -1142,6 +1142,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	char		*end, *a_end; \
 	size_t		len; \
 	long long	num; \
+	_type		cast_num; \
 	fr_sbuff_t	our_in = FR_SBUFF(in); \
 	buff[0] = '\0'; /* clang scan */ \
 	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
@@ -1151,32 +1152,36 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	} \
 	errno = 0; /* this is needed as strtoll doesn't reset errno */ \
 	num = strtoll(buff, &end, _base); \
+	cast_num = (_type)(num); \
 	if (end == buff) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
-	/* coverity[result_independent_of_operands] */ \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == LLONG_MAX))) { \
+	if (num > cast_num) { \
+	overflow: \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return -1; \
-	} else \
-	/* coverity[result_independent_of_operands] */ \
-	if ((num < (_min)) || ((errno == ERANGE) && (num == LLONG_MIN))) { \
+	} \
+	if (((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == LLONG_MAX))) goto overflow; \
+	if (num < cast_num) { \
+	underflow: \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
 		*out = (_type)(_min); \
 		return -1; \
-	} else if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
+	} \
+	if ((errno == ERANGE) && (num == LLONG_MIN)) goto underflow; \
+	if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
 		if (isdigit(*a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
 		    ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 			*out = (_type)(_max); \
 			FR_SBUFF_ERROR_RETURN(&our_in); \
 		} \
-		*out = (_type)(num); \
+		*out = cast_num; \
 	} else { \
 		if (err) *err = FR_SBUFF_PARSE_OK; \
-		*out = (_type)(num); \
+		*out = cast_num; \
 	} \
 	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoll gives us */ \
 }
@@ -1204,6 +1209,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	char			*end, *a_end; \
 	size_t			len; \
 	unsigned long long	num; \
+	_type			cast_num; \
 	fr_sbuff_t		our_in = FR_SBUFF(in); \
 	buff[0] = '\0'; /* clang scan */ \
 	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
@@ -1217,16 +1223,19 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	} \
 	errno = 0; /* this is needed as strtoull doesn't reset errno */ \
 	num = strtoull(buff, &end, _base); \
+	cast_num = (_type)(num); \
 	if (end == buff) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
-	/* coverity[result_independent_of_operands] */ \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == ULLONG_MAX))) { \
+	if (num > cast_num) { \
+	overflow: \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return -1; \
-	} else if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
+	} \
+	if (((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == ULLONG_MAX))) goto overflow; \
+	if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
 		if (isdigit(*a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
 		    ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
@@ -1234,10 +1243,10 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 			FR_SBUFF_ERROR_RETURN(&our_in); \
 		} \
 		if (err) *err = FR_SBUFF_PARSE_OK; \
-		*out = (_type)(num); \
+		*out = cast_num; \
 	} else { \
 		if (err) *err = FR_SBUFF_PARSE_OK; \
-		*out = (_type)(num); \
+		*out = cast_num; \
 	} \
 	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoull gives us */ \
 }
