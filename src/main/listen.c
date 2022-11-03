@@ -3133,7 +3133,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		 */
 		if (this->nonblock) {
 			if (fr_nonblock(this->fd < 0)) {
-				ERROR("(TLS) Failed setting nonblocking for proxy socket '%s'", buffer);
+				ERROR("(TLS) Failed setting nonblocking for proxy socket '%s' - %s", buffer, fr_strerror());
 				home->last_failed_open = now;
 				listen_free(&this);
 				return NULL;
