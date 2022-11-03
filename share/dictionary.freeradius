@@ -107,6 +107,8 @@ VALUE	FreeRADIUS-Stats-Server-State	Alive			0
 VALUE	FreeRADIUS-Stats-Server-State	Zombie			1
 VALUE	FreeRADIUS-Stats-Server-State	Dead			2
 VALUE	FreeRADIUS-Stats-Server-State	Idle			3
+VALUE	FreeRADIUS-Stats-Server-State	Admin-Down		4
+VALUE	FreeRADIUS-Stats-Server-State	Connection-Fail		5
 
 #
 #  When a home server is marked "dead" or "alive"
