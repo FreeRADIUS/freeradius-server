@@ -1707,7 +1707,9 @@ static void request_running(REQUEST *request, int action)
 				if (request->home_server && request->home_server->virtual_server) goto req_finished;
 
 				if (request->home_pool && request->home_server &&
-				    (request->home_server->state >= HOME_STATE_IS_DEAD)) {
+				    ((request->home_server->state == HOME_STATE_IS_DEAD) ||
+				     (request->home_server->state == HOME_STATE_ADMIN_DOWN) ||
+				     (request->home_server->state == HOME_STATE_CONNECTION_FAIL))) {
 					VALUE_PAIR *vp;
 					REALM *realm = NULL;
 					home_server_t *home = NULL;
