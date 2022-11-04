@@ -538,9 +538,16 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_c
 	ret = ldap_result(conn->handle, LDAP_RES_ANY, LDAP_MSG_ONE, &poll, &msg);
 
 	switch (ret) {
-	case 0:	/* timeout - shouldn't happen */
-		fr_assert(0);
-		return -2;
+	case 0:	/*
+		 *	Timeout - this has been observed if changes are being
+		 *	processed slowly, the TCP receive buffer fills and
+		 *	the LDAP directory pauses sending data for a period.
+		 *	Then all pending changes are processed and the receive buffer
+		 *	is emptied.
+		 *	The situation resolves when the directory starts sending
+		 *	data again.
+		 */
+		return 0;
 
 	case -1:
 		rcode = fr_ldap_error_check(NULL, conn, NULL, NULL);
