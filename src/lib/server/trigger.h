@@ -45,7 +45,7 @@ xlat_action_t	trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 int		trigger_exec_init(CONF_SECTION const *cs);
 
 int		trigger_exec(unlang_interpret_t *intp,
-			     CONF_SECTION const *cs, char const *name, bool quench, fr_pair_list_t *args)
+			     CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
 			     CC_HINT(nonnull(3));
 
 void		trigger_exec_free(void);
