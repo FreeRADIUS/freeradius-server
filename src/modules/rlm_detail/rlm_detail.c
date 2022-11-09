@@ -372,7 +372,7 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 
 	RDEBUG2("%s expands to %s", inst->filename, buffer);
 
-	outfd = exfile_open(inst->ef, buffer, inst->perm);
+	outfd = exfile_open(inst->ef, buffer, inst->perm, NULL);
 	if (outfd < 0) {
 		RPERROR("Couldn't open file %s", buffer);
 		RETURN_MODULE_FAIL;

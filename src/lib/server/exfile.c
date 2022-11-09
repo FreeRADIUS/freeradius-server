@@ -273,17 +273,19 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
  * @param ef The logfile context returned from exfile_init().
  * @param filename the file to open.
  * @param permissions to use.
+ * @param offset Optional pointer to store offset in when seeking the end of file.
  * @return
  *	- FD used to write to the file.
  *	- -1 on failure.
  */
-int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
+int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, off_t *offset)
 {
 	int i, tries, unused = -1, found = -1, oldest = -1;
 	bool do_cleanup = false;
 	uint32_t hash;
 	fr_time_t now;
 	struct stat st;
+	off_t real_offset;
 
 	if (!ef || !filename) return -1;
 
@@ -294,7 +296,8 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 		found = exfile_open_mkdir(ef, filename, permissions);
 		if (found < 0) return -1;
 
-		(void) lseek(found, 0, SEEK_END);
+		real_offset = lseek(found, 0, SEEK_END);
+		if (offset) *offset = real_offset;
 		return found;
 	}
 
@@ -499,7 +502,8 @@ try_lock:
 	 *	Seek to the end of the file before returning the FD to
 	 *	the caller.
 	 */
-	(void) lseek(ef->entries[i].fd, 0, SEEK_END);
+	real_offset = lseek(ef->entries[i].fd, 0, SEEK_END);
+	if (offset) *offset = real_offset;
 
 	/*
 	 *	Return holding the mutex for the entry.
