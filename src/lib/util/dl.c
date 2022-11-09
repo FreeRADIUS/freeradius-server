@@ -528,7 +528,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 
 		ctx = paths = talloc_typed_strdup(NULL, search_path);
 		while ((path = strsep(&paths, ":")) != NULL) {
-			int access_mode = R_OK | X_OK;
+			char *dlerror_txt;
 
 			/*
 			 *	Trim the trailing slash
@@ -538,40 +538,48 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 
 			path = talloc_typed_asprintf(ctx, "%s/%s%s", path, name, DL_EXTENSION);
 			handle = dlopen(path, flags);
-			if (handle) {
-				talloc_free(path);
-				break;
-			}
-
-#ifdef AT_ACCESS
-			access_mode |= AT_ACCESS;
-#endif
+			talloc_free(path);
+			if (handle) break;
 
 			/*
-			 *	Check if the dlopen() failed
-			 *	because of access permissions.
+			 *	There's no dlopenat(), so one can't use it and later
+			 *	check acessatat() to avoid toctou.
+			 *
+			 *	The only indication of why dlopen() failed is thus the
+			 *	contents of the string dlerror() returns, but all the
+			 *	man page says about that is that it's "human readable",
+			 *	NUL-terminated, and doesn't end with a newline.
+			 *
+			 *	The following attempts to use the dlerror() output to
+			 *	determine whether dlopen() failed because path doesn't
+			 *	exist. This goes beyond what the API specifies (Hyrum's
+			 *	Law strikes again!), but the alternatives are
+			 *
+			 *	1. looking into the data structure dlerror() uses
+			 *	2. let the toctou remain
+			 *
+			 *	both of which seem worse.
 			 */
-			/* coverity[fs_check_call] */
-			if (access(path, access_mode) < 0) {
-				/*
-				 *	It doesn't exist,
-				 *	continue with the next
-				 *	element of "path".
-				 */
-				if (errno == ENOENT) continue;
 
-				/*
-				 *	Stop looking for more
-				 *	libraries, and instead
-				 *	complain about access
-				 *	permissions.
-				 */
-				fr_strerror_printf("Access check failed for %s - %s", path, fr_syserror(errno));
-				talloc_free(path);
+			/*
+			 *	If the file doesn't exist, continue with the next element
+			 *	of  "path". Otherwise, stop looking for more libraries
+			 *	and instead complain about access permissions.
+			 */
+
+			dlerror_txt = dlerror();
+			if (!strstr(dlerror_txt, fr_syserror(ENOENT))) {
+#ifndef __linux__
+				int access_mode = R_OK | X_OK;
+
+#ifdef AT_ACCESS
+				access_mode |= AT_ACCESS;
+#endif
+				if (access(path, access_mode) < 0 && errno == ENOENT) continue;
+#endif
+				fr_strerror_printf("Access check failed: %s", dlerror_txt);
 				break;
 			}
-
-			talloc_free(path);
 		}
 
 		/*
