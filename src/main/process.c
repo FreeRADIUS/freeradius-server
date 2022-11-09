@@ -1665,7 +1665,7 @@ static void request_running(REQUEST *request, int action)
 				if (request->home_server && request->home_server->virtual_server) goto req_finished;
 
 				if (request->home_pool && request->home_server &&
-				    (request->home_server->state >= HOME_STATE_IS_DEAD)) {
+				    HOME_SERVER_IS_DEAD(request->home_server)) {
 					VALUE_PAIR *vp;
 					REALM *realm = NULL;
 					home_server_t *home = NULL;
@@ -3121,7 +3121,7 @@ static int request_will_proxy(REQUEST *request)
 		 *	The home server is alive (or may be alive).
 		 *	Send the packet to the IP.
 		 */
-		if (home->state < HOME_STATE_IS_DEAD) goto do_home;
+		if (!HOME_SERVER_IS_DEAD(home)) goto do_home;
 
 		/*
 		 *	The home server is dead.  If you wanted
@@ -3169,7 +3169,7 @@ static int request_will_proxy(REQUEST *request)
 		 *	The home server is alive (or may be alive).
 		 *	Send the packet to the IP.
 		 */
-		if (home->state < HOME_STATE_IS_DEAD) goto do_home;
+		if (!HOME_SERVER_IS_DEAD(home)) goto do_home;
 
 		/*
 		 *	The home server is dead.  If you wanted
@@ -3656,7 +3656,7 @@ static void request_ping(REQUEST *request, int action)
 		 *
 		 *	If it's zombie, we mark it alive immediately.
 		 */
-		if ((home->state >= HOME_STATE_IS_DEAD) &&
+		if (HOME_SERVER_IS_DEAD(home) &&
 		    (home->num_received_pings < home->num_pings_to_alive)) {
 			return;
 		}
@@ -4077,7 +4077,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	If the listener is known or frozen, use it for
 		 *	retransmits.
 		 */
-		if ((home->state >= HOME_STATE_IS_DEAD) ||
+		if (HOME_SERVER_IS_DEAD(home) ||
 		    !request->proxy_listener ||
 		    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
 			request_proxy_anew(request);
@@ -4557,7 +4557,7 @@ static void coa_retransmit(REQUEST *request)
 	 *	Don't do fail-over.  This is a 3.1 feature.
 	 */
 	if (!request->home_server ||
-	    (request->home_server->state >= HOME_STATE_IS_DEAD) ||
+	    HOME_SERVER_IS_DEAD(request->home_server) ||
 	    request->proxy_reply ||
 	    !request->proxy_listener ||
 	    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {

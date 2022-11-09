@@ -2647,7 +2647,7 @@ home_server_t *home_server_ldb(char const *realmname,
 		 *	Home servers that are unknown, alive, or zombie
 		 *	are used for proxying.
 		 */
-		if (home->state >= HOME_STATE_IS_DEAD) {
+		if (HOME_SERVER_IS_DEAD(home)) {
 			continue;
 		}
 
@@ -2812,7 +2812,7 @@ home_server_t *home_server_ldb(char const *realmname,
 
 			if (!home) continue;
 
-			if ((home->state >= HOME_STATE_IS_DEAD) &&
+			if (HOME_SERVER_IS_DEAD(home) &&
 			    (home->ping_check == HOME_PING_CHECK_NONE)) {
 				home->state = HOME_STATE_ALIVE;
 				home->response_timeouts = 0;
