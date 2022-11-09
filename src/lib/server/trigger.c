@@ -368,7 +368,11 @@ int trigger_exec(unlang_interpret_t *intp,
 		if (!found) {
 			MEM(found = talloc(NULL, trigger_last_fired_t));
 			found->ci = ci;
-			found->last_fired = fr_time_wrap(0);
+			/*
+			 *	Initialise last_fired to 2 seconds ago so
+			 *	the trigger fires on the first occurrence
+			 */
+			found->last_fired = fr_time_wrap(NSEC * -2);
 
 			fr_rb_insert(trigger_last_fired_tree, found);
 		}
