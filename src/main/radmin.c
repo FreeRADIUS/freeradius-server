@@ -445,7 +445,6 @@ int main(int argc, char **argv)
 		case 'v':
 			printf("%s\n", radmin_version);
 			exit(EXIT_SUCCESS);
-			break;
 		}
 	}
 
