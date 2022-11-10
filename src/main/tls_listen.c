@@ -1175,6 +1175,8 @@ int proxy_tls_recv(rad_listen_t *listener)
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
+	fr_assert(sock->ssn != NULL);
+
 	DEBUG3("Proxy SSL socket has data to read");
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
 	data_len = proxy_tls_read(listener);
@@ -1295,6 +1297,8 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 						      request);
 	}
 
+	fr_assert(sock->ssn != NULL);
+
 	if (!sock->ssn->connected) {
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
 		rcode = try_connect(sock);
@@ -1318,7 +1322,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 			break;	/* let someone else retry */
 
 		default:
-			tls_error_log(NULL, "Failed in proxy send");
+			tls_error_log(NULL, "Failed in proxy send with OpenSSL error %d", err);
 			DEBUG("Closing TLS socket to home server");
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
@@ -1366,6 +1370,8 @@ int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request)
 		return 0;
 	}
 
+	fr_assert(sock->ssn != NULL);
+
 	DEBUG3("Proxy is writing %u bytes to SSL",
 	       (unsigned int) request->reply->data_len);
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
@@ -1382,7 +1388,7 @@ int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request)
 			break;	/* let someone else retry */
 
 		default:
-			tls_error_log(NULL, "Failed in proxy send");
+			tls_error_log(NULL, "Failed in proxy send with OpenSSL error %d", err);
 			DEBUG("Closing TLS socket to home server");
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
