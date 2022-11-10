@@ -73,7 +73,7 @@ static void tls_socket_close(rad_listen_t *listener)
 {
 	listen_socket_t *sock = listener->data;
 
-	SSL_shutdown(sock->ssn->ssl);
+	if (sock->ssn && sock->ssn->ssl) SSL_shutdown(sock->ssn->ssl);
 
 	listener->status = RAD_LISTEN_STATUS_EOL;
 	listener->tls = NULL; /* parent owns this! */
@@ -1058,6 +1058,11 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	size_t length;
 	uint8_t *data;
 	listen_socket_t *sock = listener->data;
+
+	if (!sock->ssn) {
+		tls_error_log(NULL, "Failed in proxy receive, no data received");
+		return -1;
+	}
 
 	if (!sock->ssn->connected) {
 		rcode = try_connect(sock);
