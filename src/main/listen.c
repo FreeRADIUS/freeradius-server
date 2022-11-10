@@ -3064,7 +3064,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		 *	here through various C magic.
 		 */
 		if (home->tls->client_hostname) {
-			(void) SSL_set_tlsext_host_name(sock->ssn->ssl, (void *) (uintptr_t) "home->tls->client_hostname");
+			(void) SSL_set_tlsext_host_name(sock->ssn->ssl, (void *) (uintptr_t) home->tls->client_hostname);
 		}
 
 		/*
