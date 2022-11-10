@@ -1097,8 +1097,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 				return -1;
 
 			default:
-				tls_error_log(NULL, "Failed in proxy receive");
-
+				tls_error_log(NULL, "Failed in proxy receive with OpenSSL error %d", err);
 				goto do_close;
 			}
 		}
