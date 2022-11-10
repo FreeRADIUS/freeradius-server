@@ -3073,6 +3073,8 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		sock->ssn = tls_new_client_session(sock, home->tls, this->fd, &sock->certs);
 		if (!sock->ssn) {
 			ERROR("(TLS) Failed opening connection on proxy socket '%s'", buffer);
+error:
+			close(this->fd);
 			home->last_failed_open = now;
 			listen_free(&this);
 			return NULL;
@@ -3095,17 +3097,13 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 				&sizeof_src) < 0) {
 			ERROR("Failed getting socket name for '%s': %s",
 			      buffer, fr_syserror(errno));
-			home->last_failed_open = now;
-			listen_free(&this);
-			return NULL;
+			goto error;
 		}
 
 		if (!fr_sockaddr2ipaddr(&src, sizeof_src,
 					&sock->my_ipaddr, &sock->my_port)) {
 			ERROR("Socket has unsupported address family for '%s'", buffer);
-			home->last_failed_open = now;
-			listen_free(&this);
-			return NULL;
+			goto error;
 		}
 
 		this->print(this, buffer, sizeof(buffer));
