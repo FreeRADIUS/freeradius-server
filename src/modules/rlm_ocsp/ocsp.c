@@ -564,10 +564,13 @@ int fr_tls_ocsp_check(request_t *request, SSL *ssl,
 		REDEBUG("Response has wrong nonce value");
 		goto finish;
 	}
-	if (OCSP_basic_verify(bresp, NULL, store, 0) != 1){
-		REDEBUG("Couldn't verify OCSP basic response");
-		goto finish;
-	}
+       
+	if (conf->verifycert) {
+		if (OCSP_basic_verify(bresp, NULL, store, 0) != 1){
+			REDEBUG("Couldn't verify OCSP basic response");
+			goto finish;
+		}
+        }
 
 	/*	Verify OCSP cert status */
 	if (!OCSP_resp_find_status(bresp, certid, (int *)&status, &reason, &rev, &this_update, &next_update)) {

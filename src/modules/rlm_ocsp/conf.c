@@ -9,6 +9,7 @@ static CONF_PARSER ocsp_config[] = {
 	{ FR_CONF_OFFSET("use_nonce", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, use_nonce), .dflt = "yes" },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, fr_tls_ocsp_conf_t, timeout), .dflt = "yes" },
 	{ FR_CONF_OFFSET("softfail", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, softfail), .dflt = "no" },
+	{ FR_CONF_OFFSET("verifycert", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, vertifycert), .dflt = "yes" },
 
 	CONF_PARSER_TERMINATOR
 };
