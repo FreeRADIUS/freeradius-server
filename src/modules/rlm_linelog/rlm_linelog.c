@@ -89,6 +89,8 @@ typedef struct {
 	tmpl_t			*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
 							///< log messages).
 
+	tmpl_t			*log_head;		//!< Header to add to each new log file.
+
 	linefr_log_dst_t	log_dst;		//!< Logging destination.
 	char const		*log_dst_str;		//!< Logging destination string.
 
@@ -163,6 +165,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING, rlm_linelog_t, delimiter), .dflt = "\n" },
 	{ FR_CONF_OFFSET("format", FR_TYPE_TMPL, rlm_linelog_t, log_src) },
 	{ FR_CONF_OFFSET("reference", FR_TYPE_TMPL, rlm_linelog_t, log_ref) },
+	{ FR_CONF_OFFSET("header", FR_TYPE_TMPL, rlm_linelog_t, log_head) },
 
 	/*
 	 *	Log destinations
@@ -646,6 +649,7 @@ build_vector:
 	{
 		int fd = -1;
 		char path[2048];
+		off_t offset;
 
 		if (xlat_eval(path, sizeof(path), request, inst->file.name, inst->file.escape_func, NULL) < 0) {
 			RETURN_MODULE_FAIL;
@@ -663,7 +667,7 @@ build_vector:
 			*p = '/';
 		}
 
-		fd = exfile_open(inst->file.ef, path, inst->file.permissions, NULL);
+		fd = exfile_open(inst->file.ef, path, inst->file.permissions, &offset);
 		if (fd < 0) {
 			RERROR("Failed to open %s: %s", path, fr_syserror(errno));
 			rcode = RLM_MODULE_FAIL;
@@ -672,6 +676,47 @@ build_vector:
 
 		if (inst->file.group_str && (chown(path, -1, inst->file.group) == -1)) {
 			RPWARN("Unable to change system group of \"%s\": %s", path, fr_strerror());
+		}
+
+		/*
+		 *	If a header format is defined and we are at the beginning
+		 *	of the file then expand the format and write it out before
+		 *	writing the actual log entries.
+		 */
+		if (inst->log_head && (offset == 0)) {
+			char 		head[4096];
+			char		*head_value;
+			struct iovec	head_vector_s[2];
+			size_t		head_vector_len;
+
+			slen = tmpl_expand(&head_value, head, sizeof(head), request, inst->log_head,
+					  linelog_escape_func, NULL);
+			if (slen < 0) {
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
+
+			memcpy(&head_vector_s[0].iov_base, &head_value, sizeof(head_vector_s[0].iov_base));
+			head_vector_s[0].iov_len = slen;
+
+			if (!with_delim) {
+				head_vector_len = 1;
+			} else {
+				memcpy(&head_vector_s[1].iov_base, &(inst->delimiter),
+				       sizeof(head_vector_s[1].iov_base));
+				head_vector_s[1].iov_len = inst->delimiter_len;
+				head_vector_len = 2;
+			}
+
+			if (writev(fd, &head_vector_s[0], head_vector_len) < 0) {
+				RERROR("Failed writing to \"%s\": %s", path, fr_syserror(errno));
+				exfile_close(inst->file.ef, fd);
+
+				/* Assert on the extra fatal errors */
+				fr_assert((errno != EINVAL) && (errno != EFAULT));
+
+				RETURN_MODULE_FAIL;
+			}
 		}
 
 		if (writev(fd, vector_p, vector_len) < 0) {

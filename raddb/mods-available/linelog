@@ -85,6 +85,15 @@ linelog {
 	}
 
 	#
+	#  header:: Optional header line format for file output
+	#
+	#  If the destination is "file" and header is set, then this
+	#  is expanded and output as the first line when a new file
+	#  is created.
+	#
+#	header = ""
+
+	#
 	#  destination:: What should be done with log messages.
 	#
 	#  May be one of:
