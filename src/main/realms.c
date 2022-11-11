@@ -1384,8 +1384,17 @@ void realm_pool_free(home_pool_t *pool)
 }
 #endif	/* HAVE_PTHREAD_H */
 
-int realm_pool_add(home_pool_t *pool, UNUSED CONF_SECTION *cs)
+int realm_pool_add(home_pool_t *pool, CONF_SECTION *cs)
 {
+	home_pool_t *old;
+
+	old = rbtree_finddata(home_pools_byname, pool);
+	if (old) {
+		cf_log_err_cs(cs, "Cannot add duplicate home server %s, original is at %s[%d]", pool->name,
+			      cf_section_filename(old->cs), cf_section_lineno(old->cs));
+		return 0;
+	}
+
 	/*
 	 *	The structs aren't mutex protected.  Refuse to destroy
 	 *	the server.
