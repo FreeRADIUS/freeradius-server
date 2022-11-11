@@ -1175,7 +1175,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
-	fr_assert(sock->ssn != NULL);
+	rad_assert(sock->ssn != NULL);
 
 	DEBUG3("Proxy SSL socket has data to read");
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
@@ -1297,7 +1297,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 						      request);
 	}
 
-	fr_assert(sock->ssn != NULL);
+	rad_assert(sock->ssn != NULL);
 
 	if (!sock->ssn->connected) {
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
