@@ -1377,7 +1377,7 @@ int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request)
 		return 0;
 	}
 
-	fr_assert(sock->ssn != NULL);
+	rad_assert(sock->ssn != NULL);
 
 	DEBUG3("Proxy is writing %u bytes to SSL",
 	       (unsigned int) request->reply->data_len);

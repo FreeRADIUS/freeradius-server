@@ -3137,7 +3137,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 				goto error;
 			}
 
-			fr_assert(home->listeners != NULL);
+			rad_assert(home->listeners != NULL);
 
 			if (!rbtree_insert(home->listeners, this)) {
 				ERROR("(TLS) Failed adding tracking informtion for proxy socket '%s'", buffer);
