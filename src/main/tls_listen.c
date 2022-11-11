@@ -1007,7 +1007,7 @@ static int try_connect(listen_socket_t *sock)
 	time_t now;
 
 	now = time(NULL);
-	if ((sock->opened + sock->connect_timeout) > now) {
+	if ((sock->opened + sock->connect_timeout) < now) {
 		tls_error_io_log(NULL, sock->ssn, 0, "Timeout in SSL_connect");
 		goto fail;
 	}
