@@ -3134,11 +3134,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		if (this->nonblock) {
 			if (fr_nonblock(this->fd) < 0) {
 				ERROR("(TLS) Failed setting nonblocking for proxy socket '%s' - %s", buffer, fr_strerror());
-			error:
-				close(this->fd);
-				home->last_failed_open = now;
-				listen_free(&this);
-				return NULL;
+				goto error;
 			}
 
 			fr_assert(home->listeners != NULL);
@@ -3221,7 +3217,11 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 				&sizeof_src) < 0) {
 			ERROR("Failed getting socket name for '%s': %s",
 			      buffer, fr_syserror(errno));
-			goto error;
+		error:
+			close(this->fd);
+			home->last_failed_open = now;
+			listen_free(&this);
+			return NULL;
 		}
 
 		if (!fr_sockaddr2ipaddr(&src, sizeof_src,
