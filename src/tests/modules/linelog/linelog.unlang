@@ -277,3 +277,61 @@ else {
 
 #  Remove the file
 &Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_d.log"`
+
+#  Remove old log files
+group {
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_e.log"`
+
+	actions {
+		fail = 1
+	}
+}
+if (fail) {
+	ok
+}
+
+# Set attribute used in header line
+&control.Tmp-String-1 := "%t"
+
+linelog_header
+
+&Tmp-String-0 := `/bin/sh -c "head -n1 $ENV{MODULE_TEST_DIR}/test_e.log"`
+
+if (&Tmp-String-0 == "Log started %{control.Tmp-String-1}") {
+	test_pass
+}
+else {
+	test_fail
+}
+
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_e.log"`
+
+if (&Tmp-String-0 == 'bob,olobobob') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+linelog_header
+
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_e.log"`
+
+if (&Tmp-String-0 == 'bob,olobobob') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+&Tmp-Integer-0 := `/bin/sh -c "cat $ENV{MODULE_TEST_DIR}/test_e.log | wc -l"`
+
+if (&Tmp-Integer-0 == 3) {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Remove the file
+&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_e.log"`
