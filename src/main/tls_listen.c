@@ -1016,6 +1016,7 @@ static int try_connect(listen_socket_t *sock)
 	if (ret < 0) {
 		switch (SSL_get_error(sock->ssn->ssl, ret)) {
 		default:
+			tls_error_io_log(NULL, sock->ssn, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
 			break;
 
 		case SSL_ERROR_WANT_READ:
@@ -1025,8 +1026,6 @@ static int try_connect(listen_socket_t *sock)
 	}
 
 	if (ret <= 0) {
-		tls_error_io_log(NULL, sock->ssn, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
-
 	fail:
 		SSL_shutdown(sock->ssn->ssl);
 		TALLOC_FREE(sock->ssn);
