@@ -1060,7 +1060,11 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 
 	if (!sock->ssn->connected) {
 		rcode = try_connect(sock);
-		if (rcode <= 0) return rcode;
+		if (rcode <= 0) {
+			listener->status = RAD_LISTEN_STATUS_EOL;
+			radius_update_listener(listener);
+			return rcode;
+		}
 	}
 
 	/*
@@ -1302,7 +1306,11 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
 		rcode = try_connect(sock);
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-		if (rcode <= 0) return rcode;
+		if (rcode <= 0) {
+			listener->status = RAD_LISTEN_STATUS_EOL;
+			radius_update_listener(listener);
+			return rcode;
+		}
 	}
 
 	DEBUG3("Proxy is writing %u bytes to SSL",
