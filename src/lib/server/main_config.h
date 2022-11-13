@@ -164,6 +164,7 @@ struct main_config_s {
 	bool		tmpl_tokenize_all_nested;      	//!< tmpl_tokenize will create nested tmpls instead of flat ones
 	bool		parse_new_conditions;		//!< the new xlat expressions will be parsed, but not used.
 	bool		use_new_conditions;		//!< the new xlat expressions will be used for conditions, instead of the old code
+	bool		rewrite_update;			//!< rewrite "update" to be new edit sections
 };
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);
