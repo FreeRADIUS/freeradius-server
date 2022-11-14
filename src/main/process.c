@@ -4128,9 +4128,9 @@ void revive_home_server(void *ctx)
 }
 
 #ifdef WITH_TLS
-static int eol_home_listener(void *ctx, UNUSED void *data)
+static int eol_home_listener(UNUSED void *ctx, void *data)
 {
-	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
+	rad_listen_t *this = talloc_get_type_abort(data, rad_listen_t);
 
 	/*
 	 *	The socket isn't blocked, we can still use it.
