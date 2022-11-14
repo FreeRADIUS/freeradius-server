@@ -8,6 +8,18 @@
 redundant {
 	timeout 0.01s {
 		&Tmp-Float-0 := "%(delay_10s:0.1)"
+		test_fail
+	}
+
+	group {
+		success
+	}
+}
+
+redundant {
+	timeout "0.01" {
+		&Tmp-Float-0 := "%(delay_10s:0.1)"
+		test_fail
 	}
 
 	group {

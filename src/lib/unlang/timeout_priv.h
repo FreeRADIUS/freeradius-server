@@ -30,6 +30,7 @@ extern "C" {
 
 typedef struct {
 	unlang_group_t	group;
+	tmpl_t		*vpt;
 	fr_time_delta_t	timeout;
 } unlang_timeout_t;
 

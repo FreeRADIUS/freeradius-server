@@ -2741,6 +2741,8 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	unlang_group_t		*g;
 	unlang_timeout_t	*gext;
 	fr_time_delta_t		timeout;
+	tmpl_t			*vpt = NULL;
+	fr_token_t		token;
 
 	static unlang_ext_t const timeout_ext = {
 		.type = UNLANG_TYPE_TIMEOUT,
@@ -2764,11 +2766,74 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	gext = unlang_group_to_timeout(g);
 
-	if (fr_time_delta_from_str(&timeout, name2, strlen(name2), FR_TIME_RES_SEC) < 0) {
-		cf_log_err(cs, "Failed parsing time delta %s - %s",
-			   name2, fr_strerror());
-		return NULL;
+	token = cf_section_name2_quote(cs);
+
+	if ((token == T_BARE_WORD) && isdigit((int) *name2)) {
+		if (fr_time_delta_from_str(&timeout, name2, strlen(name2), FR_TIME_RES_SEC) < 0) {
+			cf_log_err(cs, "Failed parsing time delta %s - %s",
+				   name2, fr_strerror());
+			return NULL;
+		}
+	} else {
+		ssize_t		slen;
+		tmpl_rules_t	t_rules;
+
+		/*
+		 *	We don't allow unknown attributes here.
+		 */
+		t_rules = *(unlang_ctx->rules);
+		t_rules.attr.allow_unknown = false;
+		RULES_VERIFY(&t_rules);
+
+		slen = tmpl_afrom_substr(gext, &vpt,
+					 &FR_SBUFF_IN(name2, strlen(name2)),
+					 token,
+					 NULL,
+					 &t_rules);
+		if (!vpt) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+
+			cf_log_err(cs, "Syntax error");
+			cf_log_err(cs, "%s", name2);
+			cf_log_err(cs, "%s^ %s", spaces, text);
+
+			talloc_free(g);
+			talloc_free(spaces);
+			talloc_free(text);
+
+			return NULL;
+		}
+
+		/*
+		 *	Fixup the tmpl so that we know it's somewhat sane.
+		 */
+		if (!pass2_fixup_tmpl(gext, &vpt, cf_section_to_item(cs), unlang_ctx->rules->attr.dict_def)) {
+		error:
+			talloc_free(g);
+			return NULL;
+		}
+
+		if (tmpl_is_list(vpt)) {
+			cf_log_err(cs, "Cannot use list as argument for 'timeout' statement");
+			goto error;
+		}
+
+		if (tmpl_contains_regex(vpt)) {
+			cf_log_err(cs, "Cannot use regular expression as argument for 'timeout' statement");
+			goto error;
+		}
+
+		/*
+		 *	Attribute or data MUST be cast to TIME_DELTA.
+		 */
+		if (tmpl_cast_set(vpt, FR_TYPE_TIME_DELTA) < 0) {
+			cf_log_perr(cs, "Failed setting cast type");
+			goto error;
+		}
 	}
+
 	/*
 	 *	Compile the contents of a "timeout".
 	 */
@@ -2778,6 +2843,7 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	g = unlang_generic_to_group(c);
 	gext = unlang_group_to_timeout(g);
 	gext->timeout = timeout;
+	gext->vpt = vpt;
 
 	return c;
 }

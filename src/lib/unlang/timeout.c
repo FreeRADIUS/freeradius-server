@@ -30,9 +30,12 @@ RCSID("$Id$")
 typedef struct {
 	bool			success;
 	int			depth;
+	fr_time_delta_t		timeout;
 	request_t		*request;
 	rindent_t		indent;
 	fr_event_timer_t const	*ev;
+
+	fr_value_box_list_t	result;
 } unlang_frame_state_timeout_t;
 
 static void unlang_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
@@ -69,33 +72,26 @@ static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-
-static unlang_action_t unlang_timeout(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_group_t			*g;
-	unlang_timeout_t		*gext;
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
-	fr_time_t			timeout;
-	unlang_stack_t			*stack = request->stack;
-
-	g = unlang_generic_to_group(frame->instruction);
-	gext = unlang_group_to_timeout(g);
-
-	state->depth = stack->depth;
-	state->request = request;
+	unlang_group_t			*g;
+	fr_time_t timeout;
 
 	/*
 	 *	Save current indentation for the error path.
 	 */
 	RINDENT_SAVE(&state->indent, request);
 
-	timeout = fr_time_add(fr_time(), gext->timeout);
+	timeout = fr_time_add(fr_time(), state->timeout);
 
 	if (fr_event_timer_at(state, unlang_interpret_event_list(request), &state->ev, timeout,
 			      unlang_timeout_handler, state) < 0) {
 		RPEDEBUG("Failed inserting event");
 		goto fail;
 	}
+
+	g = unlang_generic_to_group(frame->instruction);
 
 	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
 	fail:
@@ -105,6 +101,46 @@ static unlang_action_t unlang_timeout(rlm_rcode_t *p_result, request_t *request,
 
 	frame_repeat(frame, unlang_timeout_resume_done);
 	state->success = true;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+static unlang_action_t unlang_timeout_xlat_done(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
+	fr_value_box_t			*box = fr_dlist_head(&state->result);
+
+	/*
+	 *	compile_timeout() ensures that the tmpl is cast to time_delta, so we don't have to do any more work here.
+	 */
+	state->timeout = box->vb_time_delta;
+
+	return unlang_timeout_set(p_result, request, frame);
+}
+
+static unlang_action_t unlang_timeout(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_group_t			*g;
+	unlang_timeout_t		*gext;
+	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
+	unlang_stack_t			*stack = request->stack;
+
+	g = unlang_generic_to_group(frame->instruction);
+	gext = unlang_group_to_timeout(g);
+
+	state->depth = stack->depth;
+	state->request = request;
+
+	if (!gext->vpt) {
+		state->timeout = gext->timeout;
+		return unlang_timeout_set(p_result, request, frame);
+	}
+
+	fr_value_box_list_init(&state->result);
+
+	if (unlang_tmpl_push(state, &state->result, request, gext->vpt, NULL) < 0) return UNLANG_ACTION_FAIL;
+
+	frame_repeat(frame, unlang_timeout_xlat_done);
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
