@@ -53,6 +53,11 @@ static unsigned int unlang_number = 1;
  */
 static _Thread_local unlang_thread_t *unlang_thread_array;
 
+/*
+ *	Until we know how many instructions there are, we can't
+ *	allocate an array.  So we have to put the instructions into an
+ *	RB tree.
+ */
 static fr_rb_tree_t *unlang_instruction_tree = NULL;
 
 /* Here's where we recognize all of our keywords: first the rcodes, then the
@@ -4265,6 +4270,12 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			if (c == UNLANG_IGNORE) return UNLANG_IGNORE;
 
 			c->number = unlang_number++;
+			if (!fr_rb_insert(unlang_instruction_tree, c)) {
+				talloc_free(c);
+				cf_log_err(ci, "Internal sanity check failed");
+				return NULL;
+			}
+
 			return c;
 		}
 
@@ -4522,6 +4533,9 @@ bool unlang_compile_is_keyword(const char *name)
 	return (fr_table_value_by_str(unlang_pair_keywords, name, NULL) != NULL);
 }
 
+/*
+ *	These are really unlang_foo_t, but that's fine...
+ */
 static int8_t instruction_cmp(void const *one, void const *two)
 {
 	unlang_t const *a = one;
@@ -4533,7 +4547,7 @@ static int8_t instruction_cmp(void const *one, void const *two)
 
 void unlang_compile_init(void)
 {
-	unlang_instruction_tree = fr_rb_talloc_alloc(NULL, unlang_t, instruction_cmp, NULL);
+	unlang_instruction_tree = fr_rb_alloc(NULL, instruction_cmp, NULL);
 }
 
 void unlang_compile_free(void)
