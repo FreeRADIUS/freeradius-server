@@ -41,6 +41,7 @@ RCSID("$Id$")
 #include "switch_priv.h"
 #include "edit_priv.h"
 #include "timeout_priv.h"
+#include "limit_priv.h"
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
@@ -734,6 +735,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
 		case UNLANG_TYPE_SUBREQUEST:
 		case UNLANG_TYPE_SWITCH:
 		case UNLANG_TYPE_TIMEOUT:
+		case UNLANG_TYPE_LIMIT:
 			g = unlang_generic_to_group(c);
 			DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
 			unlang_dump(g->children, depth + 1);
@@ -2853,6 +2855,121 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	return c;
 }
 
+static unlang_t *compile_limit(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+{
+	char const		*name2;
+	unlang_t		*c;
+	unlang_group_t		*g;
+	unlang_limit_t	*gext;
+	tmpl_t			*vpt = NULL;
+	uint32_t		limit;
+	fr_token_t		token;
+	ssize_t			slen;
+	tmpl_rules_t		t_rules;
+
+	static unlang_ext_t const limit_ext = {
+		.type = UNLANG_TYPE_LIMIT,
+		.len = sizeof(unlang_limit_t),
+		.type_name = "unlang_limit_t",
+	};
+
+	/*
+	 *	limit <number>
+	 */
+	name2 = cf_section_name2(cs);
+	if (!name2) {
+		cf_log_err(cs, "You must specify a value for 'limit'");
+		return NULL;
+	}
+
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
+
+	g = group_allocate(parent, cs, &limit_ext);
+	if (!g) return NULL;
+
+	gext = unlang_group_to_limit(g);
+
+	token = cf_section_name2_quote(cs);
+
+	/*
+	 *	We don't allow unknown attributes here.
+	 */
+	t_rules = *(unlang_ctx->rules);
+	t_rules.attr.allow_unknown = false;
+	RULES_VERIFY(&t_rules);
+
+	slen = tmpl_afrom_substr(gext, &vpt,
+				 &FR_SBUFF_IN(name2, strlen(name2)),
+				 token,
+				 NULL,
+				 &t_rules);
+	if (!vpt) {
+		char *spaces, *text;
+
+	syntax_error:
+		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+
+		cf_log_err(cs, "Syntax error");
+		cf_log_err(cs, "%s", name2);
+		cf_log_err(cs, "%s^ %s", spaces, text);
+
+		talloc_free(g);
+		talloc_free(spaces);
+		talloc_free(text);
+
+		return NULL;
+	}
+
+	/*
+	 *	Fixup the tmpl so that we know it's somewhat sane.
+	 */
+	if (!pass2_fixup_tmpl(gext, &vpt, cf_section_to_item(cs), unlang_ctx->rules->attr.dict_def)) {
+	error:
+		talloc_free(g);
+		return NULL;
+	}
+
+	if (tmpl_is_list(vpt)) {
+		cf_log_err(cs, "Cannot use list as argument for 'limit' statement");
+		goto error;
+	}
+
+	if (tmpl_contains_regex(vpt)) {
+		cf_log_err(cs, "Cannot use regular expression as argument for 'limit' statement");
+		goto error;
+	}
+
+	if (tmpl_is_data(vpt) && (token == T_BARE_WORD)) {
+		fr_value_box_t box;
+
+		if (fr_value_box_cast(NULL, &box, FR_TYPE_UINT32, NULL, tmpl_value(vpt)) < 0) goto syntax_error;
+
+		limit = box.vb_uint32;
+
+	} else {
+		/*
+		 *	Attribute or data MUST be cast to a 32-bit unsigned number.
+		 */
+		if (tmpl_cast_set(vpt, FR_TYPE_UINT32) < 0) {
+			cf_log_perr(cs, "Failed setting cast type");
+			goto error;
+		}
+	}
+
+	/*
+	 *	Compile the contents of a "limit".
+	 */
+	c = compile_section(parent, unlang_ctx, cs, &limit_ext);
+	if (!c) return NULL;
+
+	g = unlang_generic_to_group(c);
+	gext = unlang_group_to_limit(g);
+	gext->limit = limit;
+	gext->vpt = vpt;
+
+	return c;
+}
+
 static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	fr_token_t		type;
@@ -4222,6 +4339,7 @@ static fr_table_ptr_sorted_t unlang_section_keywords[] = {
 	{ L("foreach"),		(void *) compile_foreach },
 	{ L("group"),		(void *) compile_group },
 	{ L("if"),		(void *) compile_if },
+	{ L("limit"),		(void *) compile_limit },
 	{ L("load-balance"),	(void *) compile_load_balance },
 	{ L("map"),		(void *) compile_map },
 	{ L("parallel"),	(void *) compile_parallel },

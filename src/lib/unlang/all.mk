@@ -13,6 +13,7 @@ SOURCES	:=	base.c \
 		interpret.c \
 		interpret_synchronous.c \
 		io.c \
+		limit.c \
 		load_balance.c \
 		map.c \
 		module.c \

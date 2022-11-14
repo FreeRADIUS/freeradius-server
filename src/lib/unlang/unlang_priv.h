@@ -77,6 +77,7 @@ typedef enum {
 	UNLANG_TYPE_CALL,			//!< call another virtual server
 	UNLANG_TYPE_CALLER,			//!< conditionally check parent dictionary type
 	UNLANG_TYPE_TIMEOUT,			//!< time-based timeouts.
+	UNLANG_TYPE_LIMIT,			//!< limit number of requests in a section
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
 	UNLANG_TYPE_TMPL,			//!< asynchronously expand a tmpl_t
@@ -619,6 +620,8 @@ void		unlang_tmpl_init(void);
 void		unlang_edit_init(void);
 
 void		unlang_timeout_init(void);
+
+void		unlang_limit_init(void);
  /** @} */
 
 #ifdef __cplusplus

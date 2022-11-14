@@ -1,0 +1,6 @@
+#
+#  @todo - actually test limits
+#
+limit 4 {
+	success
+}
