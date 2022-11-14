@@ -419,6 +419,7 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 	 * 	functions to avoid time of check/time of use insecurities.
 	 */
 	if (fr_dirfd(&dirfd, &r, path) < 0) {
+		close(sockfd);
 		fr_strerror_printf("Failed to open directory containing %s", path);
 		return -1;
 	}
