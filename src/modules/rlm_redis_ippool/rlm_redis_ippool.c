@@ -1297,7 +1297,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	RETURN_MODULE_NOOP;
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_redis_ippool_t);
 	fr_pair_t			*vp;
@@ -1341,7 +1341,7 @@ run:
 	return mod_action(p_result, inst, request, action);
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_request(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_redis_ippool_t);
 	fr_pair_t			*vp;
@@ -1441,18 +1441,24 @@ module_rlm_t rlm_redis_ippool = {
 		/*
 		 *	RADIUS specific
 		 */
-		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_authorize },
+		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_alloc },
 		{ .name1 = "accounting",	.name2 = "stop",		.method = mod_release },
 
 		/*
 		 *	DHCPv4
 		 */
+		{ .name1 = "recv",		.name2 = "discover",		.method = mod_alloc },
 		{ .name1 = "recv",		.name2 = "release",		.method = mod_release },
+
+		/*
+		 *	DHCPv6
+		 */
+		{ .name1 = "recv",		.name2 = "solicit",		.method = mod_alloc },
 
 		/*
 		 *	Generic
 		 */
-		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_request },
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_update },
 		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting },
 		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth },
 		MODULE_NAME_TERMINATOR
