@@ -71,6 +71,8 @@ struct sync_state_s {
 
 	fr_event_timer_t const		*cookie_ev;	//!< Timer event for sending cookies.
 	fr_event_timer_t const		*retry_ev;	//!< Timer event for retrying failed changes.
+
+	fr_pair_list_t			trigger_args;	//!< Arguments to make available in triggers.
 };
 
 typedef struct sync_state_s sync_state_t;

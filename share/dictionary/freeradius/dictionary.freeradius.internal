@@ -546,6 +546,7 @@ ATTRIBUTE	Request-Authenticator			2201	octets
 ATTRIBUTE	Connection-Pool-Server			2220	string
 ATTRIBUTE	Connection-Pool-Port			2221	short
 ATTRIBUTE	Exfile-Name				2223	string
+ATTRIBUTE	LDAP-Sync-Base-DN			2224	string
 
 #
 #	Range:	2261-2299

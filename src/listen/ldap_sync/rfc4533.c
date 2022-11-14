@@ -146,6 +146,8 @@ int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, proto_ldap_syn
 	DEBUG3("Sync created with base dn \"%s\", filter \"%s\", msgid %i",
 		sync->config->base_dn, sync->config->filter, sync->msgid);
 
+	trigger_exec(unlang_interpret_get_thread_default(), config->cs, "ldap_sync.start", true, &sync->trigger_args);
+
 	/*
 	 *	Register event to store cookies at a regular interval
 	 */

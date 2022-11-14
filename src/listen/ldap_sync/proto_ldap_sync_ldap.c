@@ -25,6 +25,7 @@ USES_APPLE_DEPRECATED_API
 
 #define LOG_PREFIX "proto_ldap_sync_ldap"
 
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/internal/internal.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/request.h>
@@ -148,6 +149,8 @@ static int sync_state_free(sync_state_t *sync)
 
 	DEBUG3("Abandoning sync base dn \"%s\", filter \"%s\"", sync->config->base_dn, sync->config->filter);
 
+	trigger_exec(NULL, sync->config->cs, "ldap_sync.stop", true, &sync->trigger_args);
+
 	if (!sync->conn->handle) return 0;	/* Handled already closed? */
 
 	/*
@@ -169,7 +172,9 @@ static int sync_state_free(sync_state_t *sync)
 sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, proto_ldap_sync_t const *inst,
 			       size_t sync_no, sync_config_t const *config)
 {
-	sync_state_t	*sync;
+	sync_state_t		*sync;
+	fr_dict_attr_t const	*da;
+	fr_pair_t		*vp;
 
 	MEM(sync = talloc_zero(ctx, sync_state_t));
 	sync->conn = conn;
@@ -179,6 +184,16 @@ sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, prot
 	sync->phase = SYNC_PHASE_INIT;
 
 	fr_dlist_talloc_init(&sync->pending, sync_packet_ctx_t, entry);
+
+	/*
+	 *	Create arguments to pass to triggers
+	 */
+	fr_pair_list_init(&sync->trigger_args);
+	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_LDAP_SYNC_BASE_DN);
+	fr_assert_msg(da, "Incomplete internal dictionary: Missing definition for \"LDAP-Sync-Base-DN\"");
+
+	fr_pair_list_append_by_da_len(sync, vp, &sync->trigger_args, da, config->base_dn,
+				      talloc_array_length(config->base_dn) - 1, false);
 
 	/*
 	 *	If the connection is freed, all the sync state is also freed
