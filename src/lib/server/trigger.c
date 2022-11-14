@@ -328,7 +328,7 @@ int trigger_exec(unlang_interpret_t *intp,
 
 	ci = cf_reference_item(subcs, trigger_exec_main, attr);
 	if (!ci) {
-		DEBUG2("No trigger configured for: %s", attr);
+		DEBUG3("No trigger configured for: %s", attr);
 		return -1;
 	}
 
