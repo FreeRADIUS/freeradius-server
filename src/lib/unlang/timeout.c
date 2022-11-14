@@ -68,7 +68,6 @@ static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, 
 		return UNLANG_ACTION_FAIL;
 	}
 
-	RWDEBUG("Timeout did not fire");
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
