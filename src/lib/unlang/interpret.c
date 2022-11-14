@@ -1025,7 +1025,7 @@ void unlang_interpret_request_detach(request_t *request)
  * @param[in] action		to signal.
  * @param[in] limit		the frame at which to stop signaling.
  */
-static inline CC_HINT(always_inline) void frame_signal(request_t *request, fr_state_signal_t action, int limit)
+void unlang_frame_signal(request_t *request, fr_state_signal_t action, int limit)
 {
 	unlang_stack_frame_t	*frame;
 	unlang_stack_t		*stack = request->stack;
@@ -1101,7 +1101,7 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 	 *	yet should have a stack depth of zero, so we don't
 	 *	need to do anything.
 	 */
-	if (stack && (stack->depth > 0)) frame_signal(request, action, 0);
+	if (stack && (stack->depth > 0)) unlang_frame_signal(request, action, 0);
 
 	switch (action) {
 	case FR_SIGNAL_CANCEL:
@@ -1129,7 +1129,7 @@ static void instruction_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_ti
 	/*
 	 *	Signal all lower frames to exit.
 	 */
-	frame_signal(request, FR_SIGNAL_CANCEL, retry->depth);
+	unlang_frame_signal(request, FR_SIGNAL_CANCEL, retry->depth);
 
 	retry->state = FR_RETRY_MRD;
 	unlang_interpret_mark_runnable(request);
