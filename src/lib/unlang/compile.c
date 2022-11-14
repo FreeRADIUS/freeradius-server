@@ -4586,6 +4586,20 @@ int unlang_thread_instantiate(TALLOC_CTX *ctx)
 	return 0;
 }
 
+/** Get the thread-instance data for an instruction.
+ *
+ * @param[in] instruction	the instruction to use
+ * @return			a pointer to thread-local data
+ */
+void *unlang_thread_instance(unlang_t const *instruction)
+{
+	if (!instruction->number || !unlang_thread_array) return NULL;
+
+	fr_assert(instruction->number <= unlang_number);
+
+	return unlang_thread_array[instruction->number].thread_inst;
+}
+
 #ifdef WITH_PERF
 void unlang_frame_perf_init(unlang_stack_frame_t *frame)
 {

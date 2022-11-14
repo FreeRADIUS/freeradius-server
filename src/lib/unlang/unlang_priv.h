@@ -237,6 +237,8 @@ typedef struct {
 #endif
 } unlang_thread_t;
 
+void	*unlang_thread_instance(unlang_t const *instruction);
+
 #ifdef WITH_PERF
 void		unlang_frame_perf_init(unlang_stack_frame_t *frame);
 void		unlang_frame_perf_yield(unlang_stack_frame_t *frame);
