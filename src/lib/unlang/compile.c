@@ -1773,6 +1773,12 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 		} else if (strcmp(name, "max_rtx_time") == 0) {
 			if (fr_time_delta_from_str(&actions->retry.mrt, value, strlen(value), FR_TIME_RES_SEC) < 0) goto error;
 
+			if (!fr_time_delta_ispos(actions->retry.mrt)) {
+				cf_log_err(csi, "Invalid value for 'max_rtx_time = %s' - value must be positive",
+					   value);
+				return false;
+			}
+
 		} else if (strcmp(name, "max_rtx_count") == 0) {
 			unsigned long v = strtoul(value, 0, 0);
 
@@ -1786,6 +1792,13 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 
 		} else if (strcmp(name, "max_rtx_duration") == 0) {
 			if (fr_time_delta_from_str(&actions->retry.mrd, value, strlen(value), FR_TIME_RES_SEC) < 0) goto error;
+
+			if (!fr_time_delta_ispos(actions->retry.mrd)) {
+				cf_log_err(csi, "Invalid value for 'max_rtx_duration = %s' - value must be positive",
+					   value);
+				return false;
+			}
+
 		} else {
 			cf_log_err(csi, "Invalid item '%s' in 'retry' configuration.", name);
 			return false;
