@@ -418,10 +418,10 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
 
 /** Execute a program assuming that the caller waits for it to finish.
  *
- *  The caller takes responsibility for calling waitpid() on the returned PID.
+ * The caller takes responsibility for calling waitpid() on the returned PID.
  *
- *  The caller takes responsibility for reading from the returned FD,
- *  and closing it.
+ * The caller takes responsibility for reading from the returned FD,
+ * and closing it.
  *
  * @param[out] pid_p		The PID of the child
  * @param[out] stdin_fd		The stdin FD of the child.
@@ -547,6 +547,7 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 		close(stdout_pipe[1]);
 		close(stderr_pipe[0]);
 		close(stderr_pipe[1]);
+		*pid_p = -1;	/* Ensure the PID is set even if the caller didn't check the return code */
 		talloc_free(argv);
 		return -1;
 	}
