@@ -25,12 +25,13 @@
  */
 RCSIDH(exec_legacy_h, "$Id$")
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <freeradius-devel/server/request.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/talloc.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
-}
+extern "C" {
 #endif
 
 pid_t	radius_start_program_legacy(int *stdin_fd, int *stdout_fd, int *stderr_fd,
