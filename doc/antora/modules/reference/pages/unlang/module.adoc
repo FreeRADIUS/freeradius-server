@@ -55,6 +55,8 @@ if (notfound) {
 == Module Return Code priority overrides
 
 In the case of modules, rcodes can be modified on a per-call basis.
+These over-rides use the same syntax as the
+xref:unlang/actions.adoc[actions] subsection.
 
 Module priority overrides are specified in a block inline with the module call.
 The format of an override is `<rcode> = (0+|<rcode>|return)` - That is,
@@ -80,6 +82,9 @@ ldap { <1>
     exit.
 <4> Sets the priority of `reject` to be `return`.  If the module returns
     `reject`, the current section will immediately exit.
+
+See the xref:unlang/actions.adoc[actions] page for more information on
+the syntax of the `actions` section.
 
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
