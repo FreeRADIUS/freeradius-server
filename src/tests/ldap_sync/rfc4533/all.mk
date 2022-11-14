@@ -17,7 +17,10 @@ $(eval $(call TEST_BOOTSTRAP))
 include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 
-$(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
+$(TEST).trigger_clear:
+	$(Q)rm -f $(BUILD_DIR)/tests/ldap_sync/rfc4533/sync_started
+
+$(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<))
 	$(eval EXPECTED := $(patsubst %.ldif,%.out,$<))
 	$(eval FOUND    := $(patsubst %.ldif,%.out,$@))
@@ -28,7 +31,17 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(Q)echo "LDAPSYNC-TEST rfc4533 $(TARGET)"
 	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(Q)rm -f $(OUT_DIR)/$(OUT).out
-	$(Q)sleep 1
+
+#	Wait for the sync to start before applying changes
+	$(Q)i=0; while [ $$i -lt 100 ] ; \
+		do if [ -e $(OUT_DIR)/sync_started ];	\
+		then					\
+		break;					\
+		fi;					\
+		sleep .1;				\
+		i=$$((i+1));				\
+	done ;
+
 	$(Q)ldapmodify $(ARGV) -f $< > /dev/null
 	$(Q)i=0; while [ $$i -lt 600 ] ; \
 		do if [ -e $(OUT_DIR)/$(OUT).out ] ;	\

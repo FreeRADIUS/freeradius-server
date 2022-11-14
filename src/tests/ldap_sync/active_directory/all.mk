@@ -16,12 +16,15 @@ $(eval $(call TEST_BOOTSTRAP))
 include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 
+$(TEST).trigger_clear:
+	$(Q)rm -f $(BUILD_DIR)/tests/ldap_sync/active_directory/sync_started
+
 #
 #	There is a delay of up to 30 seconds looking for the output file
 #	as samba only sends results of persistent LDAP searches on a polled
 #	basis.  Real Active Directory sends the results immediately.
 #
-$(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
+$(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<))
 	$(eval EXPECTED := $(patsubst %.sh,%.out,$<))
 	$(eval FOUND    := $(patsubst %.sh,%.out,$@))
@@ -31,7 +34,17 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(Q)echo "LDAPSYNC-TEST active_directory $(TARGET)"
 	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(Q)rm -f $(OUT_DIR)/$(OUT).out
-	$(Q)sleep 1
+
+#	Wait for the sync to start before applying changes
+	$(Q)i=0; while [ $$i -lt 100 ] ; \
+		do if [ -e $(OUT_DIR)/sync_started ];	\
+		then					\
+		break;					\
+		fi;					\
+		sleep .1;				\
+		i=$$((i+1));				\
+	done;
+
 	$(Q)$<
 	$(Q)i=0; while [ $$i -lt 600 ] ; \
 		do if [ -e $(OUT_DIR)/$(OUT).out ] ;	\
