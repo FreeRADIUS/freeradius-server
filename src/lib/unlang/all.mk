@@ -21,6 +21,7 @@ SOURCES	:=	base.c \
 		subrequest.c \
 		subrequest_child.c \
 		switch.c \
+		timeout.c \
 		tmpl.c \
 		xlat.c \
 		xlat_builtin.c \

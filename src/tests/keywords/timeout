@@ -1,0 +1,16 @@
+#
+# PRE: xlat-delay
+#
+
+#
+#  Set a timeout which will fire, and cause the block to fail.
+#
+redundant {
+	timeout 0.01s {
+		&Tmp-Float-0 := "%(delay_10s:0.1)"
+	}
+
+	group {
+		success
+	}
+}

@@ -40,6 +40,7 @@ RCSID("$Id$")
 #include "subrequest_priv.h"
 #include "switch_priv.h"
 #include "edit_priv.h"
+#include "timeout_priv.h"
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
@@ -723,10 +724,11 @@ static void unlang_dump(unlang_t *instruction, int depth)
 		case UNLANG_TYPE_LOAD_BALANCE:
 		case UNLANG_TYPE_PARALLEL:
 		case UNLANG_TYPE_POLICY:
-		case UNLANG_TYPE_SUBREQUEST:
-		case UNLANG_TYPE_SWITCH:
 		case UNLANG_TYPE_REDUNDANT:
 		case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
+		case UNLANG_TYPE_SUBREQUEST:
+		case UNLANG_TYPE_SWITCH:
+		case UNLANG_TYPE_TIMEOUT:
 			g = unlang_generic_to_group(c);
 			DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
 			unlang_dump(g->children, depth + 1);
@@ -1992,6 +1994,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 	case UNLANG_TYPE_ELSE:
 	case UNLANG_TYPE_ELSIF:
 	case UNLANG_TYPE_GROUP:
+	case UNLANG_TYPE_TIMEOUT:
 		break;
 
 	default:
@@ -2727,6 +2730,54 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	fall through to processing the next one.
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) c->actions.actions[i] = MOD_ACTION_RETURN;
+
+	return c;
+}
+
+static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+{
+	char const		*name2;
+	unlang_t		*c;
+	unlang_group_t		*g;
+	unlang_timeout_t	*gext;
+	fr_time_delta_t		timeout;
+
+	static unlang_ext_t const timeout_ext = {
+		.type = UNLANG_TYPE_TIMEOUT,
+		.len = sizeof(unlang_timeout_t),
+		.type_name = "unlang_timeout_t",
+	};
+
+	/*
+	 *	Timeout <time ref>
+	 */
+	name2 = cf_section_name2(cs);
+	if (!name2) {
+		cf_log_err(cs, "You must specify a time value for 'timeout'");
+		return NULL;
+	}
+
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
+
+	g = group_allocate(parent, cs, &timeout_ext);
+	if (!g) return NULL;
+
+	gext = unlang_group_to_timeout(g);
+
+	if (fr_time_delta_from_str(&timeout, name2, strlen(name2), FR_TIME_RES_SEC) < 0) {
+		cf_log_err(cs, "Failed parsing time delta %s - %s",
+			   name2, fr_strerror());
+		return NULL;
+	}
+	/*
+	 *	Compile the contents of a "timeout".
+	 */
+	c = compile_section(parent, unlang_ctx, cs, &timeout_ext);
+	if (!c) return NULL;
+
+	g = unlang_generic_to_group(c);
+	gext = unlang_group_to_timeout(g);
+	gext->timeout = timeout;
 
 	return c;
 }
@@ -4107,6 +4158,7 @@ static fr_table_ptr_sorted_t unlang_section_keywords[] = {
 	{ L("redundant-load-balance"), (void *) compile_redundant_load_balance },
 	{ L("subrequest"),	(void *) compile_subrequest },
 	{ L("switch"),		(void *) compile_switch },
+	{ L("timeout"),		(void *) compile_timeout },
 	{ L("update"),		(void *) compile_update },
 };
 static int unlang_section_keywords_len = NUM_ELEMENTS(unlang_section_keywords);
