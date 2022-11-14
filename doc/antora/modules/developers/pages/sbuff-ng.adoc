@@ -29,7 +29,7 @@ typedef struct {
 
 In almost every instance a "legacy" C function that's operating on a standard C buffer takes a `buffer` and a `length`.
 
-Direct access into the sbuff should be restricted, and a macro should be provided that provides both the length of the 
+Direct access into the sbuff should be restricted, and a macro should be provided that provides both the length of the
 data and a pointer into the sbuff as consective function arguments.  This prevents assignments to C pointers as this will
 result in a syntax error.
 
@@ -45,38 +45,99 @@ Printing sbuffs could also be setup to do standard escaping for \0, making the s
 
 The key to fixing the pinning problem is to allow backtracking.
 
-Not all source sbuffs support backtracking, so we'd need a type of sbuff which can grow a temporary buffer and will allow 
+Not all source sbuffs support backtracking, so we'd need a type of sbuff which can grow a temporary buffer and will allow
 backtracking within a given range.  This sbuff can be inserted into the stack of sbuffs to buffer a unidirectional stream
 in parsing functions that require it.
 
 We probably want an initialisation macro that can determine whether the parent sbuff supports backtracking, and if not allocate
-a "backtrack buffer" of a given size.  Only the function that wants to backtrack knows when data can be released from the 
-backtrack buffer, so it needs to be responsible for doing that.  
+a "backtrack buffer" of a given size.  Only the function that wants to backtrack knows when data can be released from the
+backtrack buffer, so it needs to be responsible for doing that.
 
-It is up to the developer to add these "backtrack" buffers in functions where processing the token stream doesn't move forward 
+It is up to the developer to add these "backtrack" buffers in functions where processing the token stream doesn't move forward
 monotonically.
 
-A good example of one of these non-monotonic functions is `tmpl_afrom_substr`, where multiple parsing functions attempt matches 
-against known data types, like mac addresses and integers.  
+A good example of one of these non-monotonic functions is `tmpl_afrom_substr`, where multiple parsing functions attempt matches
+against known data types, like mac addresses and integers.
 
-In this case `tmpl_afrom_substr` must insert a backtrack sbuff into the sbuff chain which will guarantee sufficient bytes are 
+In this case `tmpl_afrom_substr` must insert a backtrack sbuff into the sbuff chain which will guarantee sufficient bytes are
 retainted so that it can always backtrack after calling each of the data parsing functions.
 
 ### Backtrackable child buffers
 
 As with parsing functions today, whenever a parse function is entered, it should allocate a new sbuff.  This sbuff records the
-current offset of its parent and sets the rest of the offsets to zero.
+current offset of its parent and sets its current offset to the same value.
 
-```
-new->parent = parent;
-new->parent_start = parent->current;
-new->start = 0;         //!< Increases as data is shifted from the start position of the buffer.
-new->current = 0;       //!< Always 0 on init.
-new->end = 0;           //!< Maximum offset readable, zero for functions which perform transofmration, or parent->max
-```
+[source,c]
+----
+typedef struct {
+        char                    *p;                             //!< Cached pointer into stream->buff, used to avoid performing arithmetic
+                                                                ///< on each call.
+        char                    *end;                           //!< Cached pointer to the end of valid data.
+} sbuff_cache_t;
 
-All markers and positions in the child sbuff start from 0.  If the child sbuff is shifted, then `start` indicates the number of
-bytes shifted and is used to calculate positions in the underlying buffer.
+typedef struct {
+        sbuff_stream_t          *stream;                        //!< Where we acquire data.
+
+        size_t                  offset_at_creation;             //!< sbuff's offset when we were created.  Lets us seek back
+                                                                ///< to the same position as our start, so we can seek forward to a given
+                                                                ///< offset.
+
+        sbuff_t                 *parent;                        //!< Our direct parent.
+
+        size_t                  current;                        //!< Our current offset.
+
+        sbuff_cache_t           cache;                          //!< Cached pointers.
+} sbuff_t;
+
+typedef struct {
+        sbuff_t                 sbuff;                          //!< Our sbuff.
+
+        sbuff_seek_func_t       forward;                        //!< Function used to shift data leftwards.
+        sbuff_seek_func_t       back;                           //!< Function used to shift data rightwards.
+
+        size_t                  window_start;                   //!< Offset representing the start of valid data in the buffer.
+        size_t                  window_end;                     //!< Offset representing the end of valid data in the buffer.
+
+        uint8_t                 is_const:1;                     //!< Buffer may not be written to (if true).
+} sbuff_stream_t
+
+/** Stream variants which read/write to different sources
+ *
+ */
+typedef struct {
+        sbuff_stream_t          stream;                         //! common stream fields.
+
+        char                    *buff;                          //!< A normal buffer on the stack.
+} sbuff_buff_t;
+
+typedef struct {
+        sbuff_stream_t          stream;                         //!< stream manipulation functions.
+
+        FILE                    *file;                          //!< File to read from.
+
+        size_t                  size;                           //!< How big the buff is.
+        char                    buff[];                         //!< Temporary buffer for storing data.
+} sbuff_file_t;
+
+typedef struct {
+        sbuff_stream_t          stream;                         //!< stream manipulation functions.
+
+        TALLOC_CTX              *ctx;                           //!< ctx to alloc/realloc the buffer in.
+        char                    *buff;                          //!< the talloced print buffer.
+} sbuff_talloc_t;
+
+typedef struct {
+        sbuff_t                 *sbuff;
+
+        size_t                  offset;
+} sbuff_marker_t;
+
+/* Call fr_sbuff_done or fr_sbuff_error to restore the pointer cache in the parent */
+/* FR_SBUFF() should invalidate the cache so one of these functions is required */
+----
+
+All markers and positions in the child sbuff start from the parent's offset.  If the underlying buffer has data shifted
+through it, `window_start` and `window_end` reflect the range of offsets the data in the buffer represents.
 
 It is impossible to seek a child sbuff past its starting point of zero because we can't map this to an offset in its parent
 sbuff.
@@ -101,9 +162,9 @@ function must be rewritten. The output buffer of a transform sbuff must contain 
 
 ## Shifting data out of sbuffs is expensive
 
-The reason why it's expensive is because the entire sbuff chain needs to have its pointers updated.  If every sbuff maintains 
-positions using offsets, only the start and end offsets need to be changed.  This gives a real advantage to using markers, 
-as they will never need to be updated during shifts.  marker's offsets remain relative to `sbuff->start`, even if 
+The reason why it's expensive is because the entire sbuff chain needs to have its pointers updated.  If every sbuff maintains
+positions using offsets, only the start and end offsets need to be changed.  This gives a real advantage to using markers,
+as they will never need to be updated during shifts.  marker's offsets remain relative to `sbuff->start`, even if
 `sbuff->start` changes .i.e. `char *current_pos = sbuff->buff + (marker->offset - sbuff->start)`.
 
 If `sbuff->offset < sbuff->start`, this event would trigger a backtrack.

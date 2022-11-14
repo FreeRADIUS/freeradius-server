@@ -37,6 +37,7 @@ The easiest way to ensure these conventions are met is to initialise a new `fr_s
 input `fr_sbuff_t` as soon as the function is entered.
 
 [source,c]
+----
 /** Looks for the sequence `octo`,`puss` in a given string
  *
  * If `puss` does not proceed after `octo`, this is a syntax error.
@@ -67,3 +68,10 @@ fr_slen_t my_parse_function(fr_sbuff_t *in)
          */
         FR_SBUFF_RETURN_SET(in, &our_in); /* Returns 8 */
 }
+----
+
+## Private functions
+
+Private functions (static functions in the same source file) don't have the same requirements.
+There's no reason for these functions to return the number of parsed bytes, and they can return `0`
+for success, or `-1` for failure like other functions in the server.
