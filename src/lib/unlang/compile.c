@@ -4569,7 +4569,6 @@ int unlang_thread_instantiate(TALLOC_CTX *ctx)
 		unlang_thread_array[instruction->number].instruction = instruction;
 
 		op = &unlang_ops[instruction->type];
-		if (!op->thread_instantiate) continue;
 
 		/*
 		 *	Allocate any thread-specific instance data.
@@ -4579,7 +4578,7 @@ int unlang_thread_instantiate(TALLOC_CTX *ctx)
 			talloc_set_name_const(unlang_thread_array[instruction->number].thread_inst, op->thread_inst_type);
 		}
 
-		if (op->thread_instantiate(instruction, unlang_thread_array[instruction->number].thread_inst) < 0) {
+		if (op->thread_instantiate && (op->thread_instantiate(instruction, unlang_thread_array[instruction->number].thread_inst) < 0)) {
 			return -1;
 		}
 	}
