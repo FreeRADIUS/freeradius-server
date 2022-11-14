@@ -594,9 +594,9 @@ void fr_exec_cleanup(fr_exec_state_t *exec, int signal)
 	fr_event_list_t	*el = unlang_interpret_event_list(request);
 
 	if (exec->pid >= 0) {
-		RDEBUG3("Cleaning up exec state for pid %u", exec->pid);
+		RDEBUG3("Cleaning up exec state for PID %u", exec->pid);
 	} else {
-		RDEBUG3("Cleaning up failed exec", exec->pid);
+		RDEBUG3("Cleaning up failed exec for PID %u", exec->pid);
 	}
 
 	/*
