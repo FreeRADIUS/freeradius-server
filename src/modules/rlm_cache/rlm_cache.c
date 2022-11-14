@@ -817,7 +817,7 @@ static xlat_arg_parser_t const cache_xlat_args[] = {
 static CC_HINT(nonnull)
 xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			 xlat_ctx_t const *xctx,
-			 request_t *request, fr_value_box_list_t *in)
+			 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_cache_entry_t 		*c = NULL;
 	rlm_cache_t			*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_cache_t);
@@ -825,7 +825,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	ssize_t				slen;
 
-	fr_value_box_t			*attr = fr_dlist_head(in);
+	fr_value_box_t			*attr = fr_value_box_list_head(in);
 	uint8_t				buffer[1024];
 	uint8_t const			*key;
 	ssize_t				key_len;

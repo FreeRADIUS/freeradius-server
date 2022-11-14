@@ -85,7 +85,7 @@ static unlang_action_t unlang_tmpl_resume(rlm_rcode_t *p_result, request_t *requ
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	if (state->out) fr_dlist_move(state->out, &state->list);
+	if (state->out) fr_value_box_list_move(state->out, &state->list);
 
 	if (state->resume) return state->resume(p_result, request, state->rctx);
 
@@ -108,14 +108,14 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 	 *	care about output, and we don't care about the programs exit status.
 	 */
 	if (state->exec.failed) {
-		fr_dlist_talloc_free(&state->list);
+		fr_value_box_list_talloc_free(&state->list);
 		goto resume;
 	}
 
 	fr_assert(state->exec.pid < 0);	/* Assert this has been cleaned up */
 
 	if (!state->args.exec.stdout_on_error && (state->exec.status != 0)) {
-		fr_assert(fr_dlist_empty(&state->list));
+		fr_assert(fr_value_box_list_empty(&state->list));
 		goto resume;
 	}
 
@@ -148,7 +148,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
-		fr_dlist_insert_head(&state->list, box);
+		fr_value_box_list_insert_head(&state->list, box);
 	}
 
 resume:
@@ -183,7 +183,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	fr_dlist_talloc_free(&state->list); /* this is the xlat expansion, and not the output string we want */
+	fr_value_box_list_talloc_free(&state->list); /* this is the xlat expansion, and not the output string we want */
 	frame_repeat(frame, unlang_tmpl_exec_wait_final);
 
 	return UNLANG_ACTION_YIELD;
@@ -255,8 +255,8 @@ push:
  * @param[in] args		where the status of exited programs will be stored.
  *				Used only for #TMPL_TYPE_EXEC.
  */
-int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request,
-		     tmpl_t const *tmpl, unlang_tmpl_args_t *args)
+unlang_action_t unlang_tmpl_push(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, request_t *request,
+				 tmpl_t const *tmpl, unlang_tmpl_args_t *args)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;

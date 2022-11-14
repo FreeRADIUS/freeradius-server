@@ -185,9 +185,9 @@ static xlat_arg_parser_t const ldap_escape_xlat_arg = { .required = true, .conca
  */
 static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      UNUSED xlat_ctx_t const *xctx,
-				      request_t *request, fr_value_box_list_t *in)
+				      request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
-	fr_value_box_t		*vb, *in_vb = fr_dlist_head(in);
+	fr_value_box_t		*vb, *in_vb = fr_value_box_list_head(in);
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_talloc_t	sbuff_ctx;
 	size_t			len;
@@ -223,9 +223,9 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t ldap_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					UNUSED xlat_ctx_t const *xctx,
-					request_t *request, fr_value_box_list_t *in)
+					request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
-	fr_value_box_t		*vb, *in_vb = fr_dlist_head(in);
+	fr_value_box_t		*vb, *in_vb = fr_value_box_list_head(in);
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_talloc_t	sbuff_ctx;
 	size_t			len;
@@ -308,7 +308,7 @@ static void ldap_query_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now,
  */
 static xlat_action_t ldap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-	 			      request_t *request, UNUSED fr_value_box_list_t *in)
+	 			      request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(xctx->rctx, fr_ldap_query_t);
 	fr_ldap_connection_t	*ldap_conn = query->ldap_conn;
@@ -392,7 +392,7 @@ static xlat_arg_parser_t const ldap_xlat_arg = { .required = true, .type = FR_TY
  */
 static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       xlat_ctx_t const *xctx,
-	 		       request_t *request, fr_value_box_list_t *in)
+	 		       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_ldap_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
 	fr_value_box_t		*in_vb = NULL;
@@ -405,7 +405,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	if (fr_uri_escape(in, ldap_uri_parts, NULL) < 0) return XLAT_ACTION_FAIL;
 
-	in_vb = fr_dlist_head(in);
+	in_vb = fr_value_box_list_head(in);
 	if (fr_value_box_list_concat_in_place(in_vb, in_vb, in, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE,
 					     true, SIZE_MAX) < 0) {
 		REDEBUG("Failed concattenating input");
@@ -635,7 +635,7 @@ static void _ldap_async_bind_auth_watch(fr_connection_t *conn, UNUSED fr_connect
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_list_t *url, map_list_t const *maps)
+				FR_DLIST_HEAD(fr_value_box_list) *url, map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
@@ -652,7 +652,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 	fr_ldap_thread_trunk_t	*ttrunk;
 
 	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
-	fr_value_box_t		*url_head = fr_dlist_head(url);
+	fr_value_box_t		*url_head = fr_value_box_list_head(url);
 
 	/*
 	 *	FIXME - Maybe it can be NULL?

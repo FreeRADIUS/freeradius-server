@@ -98,14 +98,14 @@ static xlat_arg_parser_t const xlat_idna_arg = { .required = true, .concat = tru
  */
 static xlat_action_t xlat_idna(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			       xlat_ctx_t const *xctx,
-			       request_t *request, fr_value_box_list_t *in)
+			       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_idn_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_idn_t);
 	char		*idna = NULL;
 	int		res;
 	size_t		len;
 	int		flags = 0;
-	fr_value_box_t	*arg = fr_dlist_head(in);
+	fr_value_box_t	*arg = fr_value_box_list_head(in);
 	fr_value_box_t	*vb;
 
 	if (inst->use_std3_ascii_rules) {

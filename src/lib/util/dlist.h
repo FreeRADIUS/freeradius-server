@@ -697,15 +697,13 @@ static inline void *fr_dlist_replace(fr_dlist_head_t *list_head, void *item, voi
  * Does nothing if the list was not initialised with #fr_dlist_talloc_init.
  */
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-static inline CC_HINT(nonnull) void fr_dlist_verify(NDEBUG_UNUSED char const *file, NDEBUG_UNUSED int line,
-						    fr_dlist_head_t const *list_head)
+static inline CC_HINT(nonnull) void _fr_dlist_verify(char const *file, int line, fr_dlist_head_t const *list_head)
 {
 	void *item;
 
 	if (!list_head->type) return;
 
-	fr_assert_msg(fr_dlist_initialised(list_head), "CONSISTENCY CHECK FAILED %s[%i]: dlist not initialised",
-		      file, line);
+	fr_assert_msg(fr_dlist_initialised(list_head), "CONSISTENCY CHECK FAILED %s[%i]: dlist not initialised", file, line);
 
 	for (item = fr_dlist_head(list_head);
 	     item;
@@ -713,12 +711,13 @@ static inline CC_HINT(nonnull) void fr_dlist_verify(NDEBUG_UNUSED char const *fi
 	     item = _talloc_get_type_abort(item, list_head->type, __location__);
 	}
 }
-#  define FR_DLIST_VERIFY(_head) fr_dlist_verify(__FILE__, __LINE__, _head)
-#elif !defined(NDEBUG)
-#  define FR_DLIST_VERIFY(_head) fr_assert(_head)
 #else
-#  define FR_DLIST_VERIFY(_head)
+static inline void _fr_dlist_verify(UNUSED char const *file, UNUSED int line, fr_dlist_head_t const *list_head)
+{
+	if (!fr_cond_assert(list_head != NULL)) return;
+}
 #endif
+#define fr_dlist_verify(_head) _fr_dlist_verify(__FILE__, __LINE__, _head)
 
 /** Merge two lists, inserting the source at the tail of the destination
  *
@@ -1108,8 +1107,11 @@ static inline void fr_dlist_noop(void)
 #define FR_DLIST_FUNCS(_name, _element_type, _element_entry) \
 DIAG_OFF(unused-function) \
 	_Static_assert(IS_FIELD_COMPATIBLE(_element_type, _element_entry, FR_DLIST_ENTRY(_name)) == 1, "Bad dlist entry field type");\
-	static inline	fr_dlist_head_t *_name ## _list_head(FR_DLIST_HEAD(_name) const *list) \
+	static inline	fr_dlist_head_t *_name ## _dlist_head(FR_DLIST_HEAD(_name) const *list) \
 		{ return	UNCONST(fr_dlist_head_t *, &list->head); } \
+\
+	static inline	fr_dlist_t *_name ## _dlist_entry(FR_DLIST_ENTRY(_name) const *entry) \
+		{ return	UNCONST(fr_dlist_t *, &entry->entry ); } \
 \
 	static inline	void _name ## _entry_init(_element_type *entry) \
 		{ \
@@ -1173,6 +1175,9 @@ DIAG_OFF(unused-function) \
 	static inline	_element_type *_name ## _replace(FR_DLIST_HEAD(_name) *list, _element_type *item, _element_type *ptr) \
 		{ return	fr_dlist_replace(&list->head, item, ptr); } \
 \
+	static inline	void _##_name ## _verify(char const *file, int line, FR_DLIST_HEAD(_name) const *list_head) \
+		{		_fr_dlist_verify(file, line, UNCONST(fr_dlist_head_t *, &list_head->head)); } \
+\
 	static inline	int _name ## _move(FR_DLIST_HEAD(_name) *dst, FR_DLIST_HEAD(_name) *src) \
 		{ return	fr_dlist_move(&dst->head, &src->head); } \
 \
@@ -1203,6 +1208,16 @@ DIAG_OFF(unused-function) \
 	static inline	void _name ## _sort(FR_DLIST_HEAD(_name) *list, fr_cmp_t cmp) \
 		{		fr_dlist_sort(&list->head, cmp); } \
 DIAG_ON(unused-function)
+
+/*
+ *  In addition to the above call to FR_DLIST_FUNCS two additional macros should be defined
+ *
+ *  Unfortunately as there's no way to dynamically define macro names these need to be done manually.
+ *
+ *  #define <name>_foreach(_list_head, _iter) fr_dlist_foreach(<name>_dlist_head(_list_head), <element_type>, _iter)
+ *  #define <name>_foreach_safe(_list_head, _iter) fr_dlist_foreach_safe(<name>_dlist_head(_list_head), <element_type>, _iter)
+ *  #define <name>_verify(_list_head) _<name>_verify(__FILE__, __LINE__, _list_head)
+ */
 
 #ifdef __cplusplus
 }

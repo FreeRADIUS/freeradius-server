@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include "group_priv.h"
 
 typedef struct {
-	fr_value_box_list_t	out;				//!< Head of the result of a nested
+	FR_DLIST_HEAD(fr_value_box_list)	out;				//!< Head of the result of a nested
 								///< expansion.
 	bool			success;			//!< If set, where to record the result
 								///< of the execution.
@@ -37,13 +37,13 @@ typedef struct {
 static unlang_action_t unlang_if_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_cond_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_cond_t);
-	fr_value_box_t			*box = fr_dlist_head(&state->out);
+	fr_value_box_t			*box = fr_value_box_list_head(&state->out);
 	bool				value;
 
 	if (!box) {
 		value = false;
 
-	} else if (fr_dlist_next(&state->out, box) != NULL) {
+	} else if (fr_value_box_list_next(&state->out, box) != NULL) {
 		value = true;
 
 	} else {

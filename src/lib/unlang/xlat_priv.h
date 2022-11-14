@@ -327,12 +327,12 @@ void		xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 
 xlat_action_t	xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_func_t resume, xlat_exp_t const *exp,
-				       request_t *request, fr_value_box_list_t *result, void *rctx);
+				       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *result, void *rctx);
 
 xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_exp_head_t const **child, bool *alternate,
 				       request_t *request, xlat_exp_head_t const *head, xlat_exp_t const **in,
-				       fr_value_box_list_t *result) CC_HINT(nonnull(1,2,3,5));
+				       FR_DLIST_HEAD(fr_value_box_list) *result) CC_HINT(nonnull(1,2,3,5));
 
 xlat_action_t	xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_t const **child,
 				request_t *request, xlat_exp_head_t const *head, xlat_exp_t const **in);
@@ -345,12 +345,12 @@ void		xlat_eval_free(void);
 
 void		unlang_xlat_init(void);
 
-int		unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+int		unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_box_list) *out,
 				      request_t *request, xlat_exp_t *node);
 
 int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			       request_t *request, void *decode_ctx, fr_pair_decode_t decode,
-			       fr_value_box_list_t *in);
+			       FR_DLIST_HEAD(fr_value_box_list) *in);
 /*
  *	xlat_expr.c
  */

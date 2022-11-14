@@ -47,12 +47,12 @@ static xlat_arg_parser_t const aka_sim_xlat_id_method_xlat_args[] = {
 static xlat_action_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						 UNUSED xlat_ctx_t const *xctx,
 						 request_t *request,
-						 fr_value_box_list_t *in)
+						 FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	char const			*method;
 	fr_aka_sim_id_type_t		type_hint;
 	fr_aka_sim_method_hint_t	method_hint;
-	fr_value_box_t			*id = fr_dlist_head(in);
+	fr_value_box_t			*id = fr_value_box_list_head(in);
 	fr_value_box_t			*vb;
 
 	if (fr_aka_sim_id_type(&type_hint, &method_hint, id->vb_strvalue, id->vb_length) < 0) {
@@ -103,12 +103,12 @@ static xlat_arg_parser_t const aka_sim_xlat_id_type_xlat_args[] = {
  */
 static xlat_action_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					       UNUSED xlat_ctx_t const *xctx,
-					       request_t *request, fr_value_box_list_t *in)
+					       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	char const			*type;
 	fr_aka_sim_id_type_t		type_hint;
 	fr_aka_sim_method_hint_t	method_hint;
-	fr_value_box_t			*id = fr_dlist_head(in);
+	fr_value_box_t			*id = fr_value_box_list_head(in);
 	fr_value_box_t			*vb;
 
 	if (fr_aka_sim_id_type(&type_hint, &method_hint, id->vb_strvalue, id->vb_length) < 0) {
@@ -159,9 +159,9 @@ static xlat_arg_parser_t const aka_sim_id_3gpp_temporary_id_key_index_xlat_args[
  */
 static xlat_action_t aka_sim_id_3gpp_temporary_id_key_index_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						 		 UNUSED xlat_ctx_t const *xctx,
-								 request_t *request, fr_value_box_list_t *in)
+								 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
-	fr_value_box_t	*id = fr_dlist_head(in);
+	fr_value_box_t	*id = fr_value_box_list_head(in);
 	fr_value_box_t	*vb;
 
 	if (id->vb_length != AKA_SIM_3GPP_PSEUDONYM_LEN) {
@@ -224,23 +224,23 @@ xlat_arg_parser_t aka_sim_3gpp_temporary_id_decrypt_xlat_args[] = {
  */
 static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						 	    UNUSED xlat_ctx_t const *xctx,
-							    request_t *request, fr_value_box_list_t *in)
+							    request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	uint8_t		tag;
 	char		out_tag = '\0', *buff;
 
 	char		decrypted[AKA_SIM_IMSI_MAX_LEN + 1];
 
-	fr_value_box_t	*id_vb = fr_dlist_head(in);
+	fr_value_box_t	*id_vb = fr_value_box_list_head(in);
 	char const	*id = id_vb->vb_strvalue;
 	size_t		id_len = id_vb->vb_length;
 
-	fr_value_box_t	*key_vb = fr_dlist_next(in, id_vb);
+	fr_value_box_t	*key_vb = fr_value_box_list_next(in, id_vb);
 	/* coverity[dereference] */
 	uint8_t const	*key = key_vb->vb_octets;
 	size_t		key_len = key_vb->vb_length;
 
-	fr_value_box_t	*tag_vb = fr_dlist_next(in, key_vb);
+	fr_value_box_t	*tag_vb = fr_value_box_list_next(in, key_vb);
 	bool		include_tag = true;
 
 	fr_value_box_t	*vb;
@@ -342,7 +342,7 @@ xlat_arg_parser_t aka_sim_3gpp_temporary_id_encrypt_xlat_args[] = {
  */
 static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 							    UNUSED xlat_ctx_t const *xctx,
-							    request_t *request, fr_value_box_list_t *in)
+							    request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	char				encrypted[AKA_SIM_3GPP_PSEUDONYM_LEN + 1];
 	uint8_t				tag = 0;
@@ -351,19 +351,19 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 	fr_aka_sim_id_type_t		type_hint;
 	fr_aka_sim_method_hint_t	method_hint;
 
-	fr_value_box_t			*id_vb = fr_dlist_head(in);
+	fr_value_box_t			*id_vb = fr_value_box_list_head(in);
 	char const			*id = id_vb->vb_strvalue;
 	size_t				id_len = id_vb->vb_length;
 
-	fr_value_box_t			*key_vb = fr_dlist_next(in, id_vb);
+	fr_value_box_t			*key_vb = fr_value_box_list_next(in, id_vb);
 	/* coverity[dereference] */
 	uint8_t	const			*key = key_vb->vb_octets;
 	size_t				key_len = key_vb->vb_length;
 
-	fr_value_box_t			*index_vb = fr_dlist_next(in, key_vb);
+	fr_value_box_t			*index_vb = fr_value_box_list_next(in, key_vb);
 	uint8_t				key_index = index_vb->vb_uint8;
 
-	fr_value_box_t			*type_vb = fr_dlist_next(in, index_vb);
+	fr_value_box_t			*type_vb = fr_value_box_list_next(in, index_vb);
 
 	bool				fastauth = false;
 

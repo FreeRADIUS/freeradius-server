@@ -583,7 +583,7 @@ static xlat_arg_parser_t const cipher_rsa_encrypt_xlat_arg = {
  */
 static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     xlat_ctx_t const *xctx,
-					     request_t *request, fr_value_box_list_t *in)
+					     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_cipher_rsa_thread_inst_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_cipher_rsa_thread_inst_t);
 
@@ -594,7 +594,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	size_t				ciphertext_len;
 
 	fr_value_box_t			*vb;
-	fr_value_box_t			*in_head = fr_dlist_head(in);
+	fr_value_box_t			*in_head = fr_value_box_list_head(in);
 
 	plaintext = in_head->vb_strvalue;
 	plaintext_len = in_head->vb_length;
@@ -645,7 +645,7 @@ static xlat_arg_parser_t const cipher_rsa_sign_xlat_arg = {
  */
 static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *in)
+					  request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_cipher_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_cipher_t);
 	rlm_cipher_rsa_thread_inst_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_cipher_rsa_thread_inst_t);
@@ -659,7 +659,7 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	unsigned int			digest_len = 0;
 
 	fr_value_box_t			*vb;
-	fr_value_box_t			*in_head = fr_dlist_head(in);
+	fr_value_box_t			*in_head = fr_value_box_list_head(in);
 
 	msg = in_head->vb_strvalue;
 	msg_len = in_head->vb_length;
@@ -724,7 +724,7 @@ static xlat_arg_parser_t const cipher_rsa_decrypt_xlat_arg = {
  */
 static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     xlat_ctx_t const *xctx,
-					     request_t *request, fr_value_box_list_t *in)
+					     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_cipher_rsa_thread_inst_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_cipher_rsa_thread_inst_t);
 
@@ -735,7 +735,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	size_t				plaintext_len;
 
 	fr_value_box_t			*vb;
-	fr_value_box_t			*in_head = fr_dlist_head(in);
+	fr_value_box_t			*in_head = fr_value_box_list_head(in);
 
 	ciphertext = in_head->vb_octets;
 	ciphertext_len = in_head->vb_length;
@@ -787,7 +787,7 @@ static xlat_arg_parser_t const cipher_rsa_verify_xlat_arg[] = {
  */
 static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 	    xlat_ctx_t const *xctx,
-					    request_t *request, fr_value_box_list_t *in)
+					    request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_cipher_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_cipher_t);
 	rlm_cipher_rsa_thread_inst_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_cipher_rsa_thread_inst_t);
@@ -801,7 +801,7 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	unsigned int			digest_len = 0;
 
 	fr_value_box_t			*vb;
-	fr_value_box_t			*in_head = fr_dlist_pop_head(in);
+	fr_value_box_t			*in_head = fr_value_box_list_pop_head(in);
 	fr_value_box_t			*args;
 
 	/*
@@ -822,7 +822,7 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Concat (...) args to get message data
 	 */
-	args = fr_dlist_head(in);
+	args = fr_value_box_list_head(in);
 	if (fr_value_box_list_concat_in_place(ctx,
 					      args, in, FR_TYPE_STRING,
 					      FR_VALUE_BOX_LIST_FREE, true,
@@ -899,7 +899,7 @@ static xlat_arg_parser_t const cipher_certificate_xlat_args[] = {
  */
 static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 	     xlat_ctx_t const *xctx,
-					     request_t *request, fr_value_box_list_t *in)
+					     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_cipher_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_cipher_t);
 	char const			*md_name;
@@ -908,7 +908,7 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t			*vb;
 	uint8_t				*digest;
 
-	if (!fr_dlist_next(in, fr_dlist_head(in))) {
+	if (!fr_value_box_list_next(in, fr_value_box_list_head(in))) {
 		REDEBUG("Missing digest argument");
 		return XLAT_ACTION_FAIL;
 	}
@@ -916,7 +916,7 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Second arg...
 	 */
-	md_name = ((fr_value_box_t *)fr_dlist_next(in, fr_dlist_head(in)))->vb_strvalue;
+	md_name = ((fr_value_box_t *)fr_value_box_list_next(in, fr_value_box_list_head(in)))->vb_strvalue;
 	md = EVP_get_digestbyname(md_name);
 	if (!md) {
 		REDEBUG("Specified digest \"%s\" is not a valid digest type", md_name);
@@ -948,7 +948,7 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t cipher_serial_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 	xlat_ctx_t const *xctx,
-					request_t *request, UNUSED fr_value_box_list_t *in)
+					request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_cipher_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_cipher_t);
 	ASN1_INTEGER const	*serial;
@@ -970,10 +970,10 @@ static xlat_action_t cipher_serial_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static xlat_action_t cipher_certificate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 	     xlat_ctx_t const *xctx,
-					     request_t *request, fr_value_box_list_t *in)
+					     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_cipher_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_cipher_t);
-	char const		*attribute = ((fr_value_box_t *)fr_dlist_head(in))->vb_strvalue;
+	char const		*attribute = fr_value_box_list_head(in)->vb_strvalue;
     	fr_value_box_t		*vb;
 
 	switch (fr_table_value_by_str(cert_attributes, attribute, CIPHER_CERT_ATTR_UNKNOWN)) {

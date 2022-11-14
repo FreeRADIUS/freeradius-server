@@ -603,7 +603,7 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	dst->type = src->type;
 	dst->tainted = src->tainted;
 	dst->safe = src->safe;
-	fr_dlist_entry_init(&dst->entry);
+	fr_value_box_list_entry_init(dst);
 }
 
 /** Compare two values
@@ -2097,7 +2097,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_GROUP:
 		return fr_value_box_list_concat_in_place(ctx,
-							 dst, UNCONST(fr_value_box_list_t *, &src->vb_group),
+							 dst, UNCONST(FR_DLIST_HEAD(fr_value_box_list) *, &src->vb_group),
 							 FR_TYPE_STRING,
 							 FR_VALUE_BOX_LIST_NONE, false,
 							 SIZE_MAX);
@@ -2146,7 +2146,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 
 	case FR_TYPE_GROUP:
 		return fr_value_box_list_concat_in_place(ctx,
-							 dst, UNCONST(fr_value_box_list_t *, &src->vb_group),
+							 dst, UNCONST(FR_DLIST_HEAD(fr_value_box_list) *, &src->vb_group),
 							 FR_TYPE_OCTETS,
 							 FR_VALUE_BOX_LIST_NONE, false,
 							 SIZE_MAX);
@@ -3356,7 +3356,7 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 	/*
 	 *	Store list poiters to restore later - fr_value_box_cast clears them
 	 */
-	fr_dlist_t entry = vb->entry;
+	FR_DLIST_ENTRY(fr_value_box_list) entry = vb->entry;
 
 	/*
 	 *	Simple case, destination type and current
@@ -3381,8 +3381,7 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 		 *	box is left in a consistent state.
 		 */
 		fr_value_box_copy_shallow(NULL, vb, &tmp);
-		vb->entry.next = entry.next;
-		vb->entry.prev = entry.prev;
+		vb->entry = entry;
 		return -1;
 	}
 	fr_value_box_clear(&tmp);	/* Clear out any old buffers */
@@ -3390,8 +3389,7 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 	/*
 	 *	Restore list pointers
 	 */
-	vb->entry.next = entry.next;
-	vb->entry.prev = entry.prev;
+	vb->entry = entry;
 
 	return 0;
 }
@@ -3478,7 +3476,7 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 		{
 			fr_value_box_t	*vb = NULL;
 
-			while ((vb = fr_dlist_next(&data->vb_group, vb))) {
+			while ((vb = fr_value_box_list_next(&data->vb_group, vb))) {
 				fr_value_box_clear_value(vb);
 				talloc_free(vb);
 			}
@@ -3572,7 +3570,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 
 		fr_value_box_copy_meta(dst, src);	/* Initialises group child dlist */
 
-		while ((child = fr_dlist_next(&src->vb_group, child))) {
+		while ((child = fr_value_box_list_next(&src->vb_group, child))) {
 			fr_value_box_t *new;
 
 			/*
@@ -3582,7 +3580,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 			if (unlikely(!new)) {
 			group_error:
 				fr_strerror_const("Failed duplicating group child");
-				fr_dlist_talloc_free(&dst->vb_group);
+				fr_value_box_list_talloc_free(&dst->vb_group);
 				return -1;
 			}
 
@@ -3592,7 +3590,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 			 *	child.
 			 */
 			if (unlikely(fr_value_box_copy(new, new, child) < 0)) goto group_error;
-			fr_dlist_insert_tail(&dst->vb_group, new);
+			fr_value_box_list_insert_tail(&dst->vb_group, new);
 		}
 	}
 		break;
@@ -3681,13 +3679,13 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src
 	{
 		fr_value_box_t *child;
 
-		while ((child = fr_dlist_pop_head(&src->vb_group))) {
+		while ((child = fr_value_box_list_pop_head(&src->vb_group))) {
 			child = talloc_steal(ctx, child);
 			if (unlikely(!child)) {
 				fr_strerror_const("Failed stealing child");
 				return -1;
 			}
-			fr_dlist_insert_tail(&dst->vb_group, child);
+			fr_value_box_list_insert_tail(&dst->vb_group, child);
 		}
 	}
 		return 0;
@@ -5041,7 +5039,7 @@ finish:
 	 *	Fixup enumvs
 	 */
 	dst->enumv = dst_enumv;
-	fr_dlist_entry_init(&dst->entry);
+	fr_value_box_list_entry_init(dst);
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
@@ -5233,7 +5231,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		 */
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{');
 		FR_SBUFF_RETURN(fr_value_box_list_concat_as_string,
-				NULL, &our_out, UNCONST(fr_value_box_list_t *, &data->vb_group),
+				NULL, &our_out, UNCONST(FR_DLIST_HEAD(fr_value_box_list) *, &data->vb_group),
 				", ", (sizeof(", ") - 1), e_rules,
 				0, false, true);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
@@ -5311,16 +5309,16 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  *	- <0 how many additional bytes we would have needed to
  *	  concat the next box.
  */
-ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
+ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, FR_DLIST_HEAD(fr_value_box_list) *list,
 					   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
 					   fr_value_box_list_action_t proc_action, bool flatten, bool printable)
 {
 	fr_sbuff_t our_sbuff = FR_SBUFF(sbuff);
 	ssize_t slen;
 
-	if (fr_dlist_empty(list)) return 0;
+	if (fr_value_box_list_empty(list)) return 0;
 
-	fr_dlist_foreach(list, fr_value_box_t, vb) {
+	fr_value_box_list_foreach(list, vb) {
 		switch (vb->type) {
 		case FR_TYPE_GROUP:
 			if (!flatten) goto print;
@@ -5358,7 +5356,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
 			return slen;
 		}
 
-		if (sep && fr_dlist_next(list, vb)) {
+		if (sep && fr_value_box_list_next(list, vb)) {
 			slen = fr_sbuff_in_bstrncpy(&our_sbuff, sep, sep_len);
 			if (slen < 0) goto error;
 		}
@@ -5369,10 +5367,10 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
 	 *	an issue concating them, everything
 	 *	is still in a known state.
 	 */
-	fr_dlist_foreach_safe(list, fr_value_box_t, vb) {
+	fr_value_box_list_foreach_safe(list, vb) {
 		if (tainted && vb->tainted) *tainted = true;
 
-		if (vb_should_remove(proc_action)) fr_dlist_remove(list, vb);
+		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
 		if (vb_should_free_value(proc_action)) fr_value_box_clear(vb);
 		if (vb_should_free(proc_action)) talloc_free(vb);
 	}}
@@ -5400,7 +5398,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
  *	- <0 how many additional bytes we would have needed to
  *	  concat the next box.
  */
-ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
+ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, FR_DLIST_HEAD(fr_value_box_list) *list,
 					   uint8_t const *sep, size_t sep_len,
 					   fr_value_box_list_action_t proc_action, bool flatten)
 {
@@ -5408,9 +5406,9 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_
 	TALLOC_CTX	*tmp_ctx = NULL;
 	ssize_t		slen;
 
-	if (fr_dlist_empty(list)) return 0;
+	if (fr_value_box_list_empty(list)) return 0;
 
-	fr_dlist_foreach(list, fr_value_box_t, vb) {
+	fr_value_box_list_foreach(list, vb) {
 		switch (vb->type) {
 		case FR_TYPE_GROUP:
 			if (!flatten) goto cast;
@@ -5453,7 +5451,7 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_
 			return slen;
 		}
 
-		if (sep && fr_dlist_next(list, vb)) {
+		if (sep && fr_value_box_list_next(list, vb)) {
 			slen = fr_dbuff_in_memcpy(&our_dbuff, sep, sep_len);
 			if (slen < 0) goto error;
 		}
@@ -5466,10 +5464,10 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_
 	 *	an issue concating them, everything
 	 *	is still in a known state.
 	 */
-	fr_dlist_foreach_safe(list, fr_value_box_t, vb) {
+	fr_value_box_list_foreach_safe(list, vb) {
 		if (tainted && vb->tainted) *tainted = true;
 
-		if (vb_should_remove(proc_action)) fr_dlist_remove(list, vb);
+		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
 		if (vb_should_free_value(proc_action)) fr_value_box_clear(vb);
 		if (vb_should_free(proc_action)) talloc_free(vb);
 	}}
@@ -5497,22 +5495,22 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_
  *	- -1 on failure.
  */
 int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
-				      fr_value_box_t *out, fr_value_box_list_t *list, fr_type_t type,
+				      fr_value_box_t *out, FR_DLIST_HEAD(fr_value_box_list) *list, fr_type_t type,
 				      fr_value_box_list_action_t proc_action, bool flatten,
 				      size_t max_size)
 {
-	fr_dbuff_t		dbuff;		/* FR_TYPE_OCTETS */
-	fr_dbuff_uctx_talloc_t	dbuff_tctx;
+	fr_dbuff_t			dbuff;		/* FR_TYPE_OCTETS */
+	fr_dbuff_uctx_talloc_t		dbuff_tctx;
 
-	fr_sbuff_t		sbuff;		/* FR_TYPE_STRING */
-	fr_sbuff_uctx_talloc_t	sbuff_tctx;
+	fr_sbuff_t			sbuff;		/* FR_TYPE_STRING */
+	fr_sbuff_uctx_talloc_t		sbuff_tctx;
 
-	fr_value_box_t		*head_vb = fr_dlist_head(list);
-	bool			tainted = false;
+	fr_value_box_t			*head_vb = fr_value_box_list_head(list);
+	bool				tainted = false;
 
-	fr_dlist_t		entry;
+	FR_DLIST_ENTRY(fr_value_box_list)	entry;
 
-	if (fr_dlist_empty(list)) {
+	if (fr_value_box_list_empty(list)) {
 		fr_strerror_const("Invalid arguments.  List contains no elements");
 		return -1;
 	}
@@ -5580,7 +5578,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			if (fr_value_box_list_concat_as_string(&tainted, &sbuff, list,
 							       NULL, 0, NULL,
 							       proc_action, flatten, true) < 0) {
-				fr_dlist_insert_head(list, head_vb);
+				fr_value_box_list_insert_head(list, head_vb);
 				goto error;
 			}
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
@@ -5596,7 +5594,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			if (fr_value_box_list_concat_as_octets(&tainted, &dbuff, list,
 							       NULL, 0,
 							       proc_action, flatten) < 0) {
-				fr_dlist_insert_head(list, head_vb);
+				fr_value_box_list_insert_head(list, head_vb);
 				goto error;
 			}
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
@@ -5607,7 +5605,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 		default:
 			break;
 		}
-		fr_dlist_insert_head(list, out);
+		fr_value_box_list_insert_head(list, out);
 	/*
 	 *	Merge all the boxes in the list into
 	 *	a single contiguous buffer.
@@ -5658,10 +5656,10 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
  *	- NULL on error.
  *	- The concatenation of the string values of the value box list on success.
  */
-char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
+char *fr_value_box_list_aprint(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) const *list, char const *delim,
 			       fr_sbuff_escape_rules_t const *e_rules)
 {
-	fr_value_box_t const	*vb = fr_dlist_head(list);
+	fr_value_box_t const	*vb = fr_value_box_list_head(list);
 	char			*aggr, *td = NULL;
 	TALLOC_CTX		*pool = NULL;
 
@@ -5669,7 +5667,7 @@ char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list,
 
 	fr_value_box_aprint(ctx, &aggr, vb, e_rules);
 	if (!aggr) return NULL;
-	if (!fr_dlist_next(list, vb)) return aggr;
+	if (!fr_value_box_list_next(list, vb)) return aggr;
 
 	/*
 	 *	If we're aggregating more values,
@@ -5678,7 +5676,7 @@ char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list,
 	pool = talloc_pool(NULL, 255);
 	if (delim) td = talloc_typed_strdup(pool, delim);
 
-	while ((vb = fr_dlist_next(list, vb))) {
+	while ((vb = fr_value_box_list_next(list, vb))) {
 		char *str, *new_aggr;
 
 		fr_value_box_aprint(pool, &str, vb, e_rules);
@@ -5730,22 +5728,22 @@ uint32_t fr_value_box_hash(fr_value_box_t const *vb)
  *	- A duplicate list of value boxes, allocated in the context of 'ctx'
  *	- NULL on error, or empty input list.
  */
-int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in)
+int fr_value_box_list_acopy(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, FR_DLIST_HEAD(fr_value_box_list) const *in)
 {
 	fr_value_box_t const *in_p = NULL;
 
-	while ((in_p = fr_dlist_next(in, in_p))) {
+	while ((in_p = fr_value_box_list_next(in, in_p))) {
 	     	fr_value_box_t *n = NULL;
 
 		n = fr_value_box_alloc_null(ctx);
 		if (!n) {
 		error:
-			fr_dlist_talloc_free(out);
+			fr_value_box_list_talloc_free(out);
 			return -1;
 		}
 
 		if (fr_value_box_copy(n, n, in_p) < 0) goto error;
-		fr_dlist_insert_tail(out, n);
+		fr_dlist_insert_tail(fr_value_box_list_dlist_head(out), n);
 	}
 
 	return 0;
@@ -5758,11 +5756,11 @@ int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_
  *	- true if a list member is tainted.
  *	- false if no list members are tainted.
  */
-bool fr_value_box_list_tainted(fr_value_box_list_t const *head)
+bool fr_value_box_list_tainted(FR_DLIST_HEAD(fr_value_box_list) const *head)
 {
 	fr_value_box_t *vb = NULL;
 
-	while ((vb = fr_dlist_next(head, vb))) {
+	while ((vb = fr_value_box_list_next(head, vb))) {
 		if (fr_type_is_group(vb->type) && fr_value_box_list_tainted(&vb->vb_group)) return true;
 		if (vb->tainted) return true;
 	}
@@ -5774,11 +5772,11 @@ bool fr_value_box_list_tainted(fr_value_box_list_t const *head)
  *
  * @param[in] head	of list.
  */
-void fr_value_box_list_taint(fr_value_box_list_t *head)
+void fr_value_box_list_taint(FR_DLIST_HEAD(fr_value_box_list) *head)
 {
 	fr_value_box_t *vb = NULL;
 
-	while ((vb = fr_dlist_next(head, vb))) {
+	while ((vb = fr_value_box_list_next(head, vb))) {
 		if (fr_type_is_group(vb->type)) fr_value_box_list_taint(&vb->vb_group);
 		vb->tainted = true;
 	}
@@ -5788,11 +5786,11 @@ void fr_value_box_list_taint(fr_value_box_list_t *head)
  *
  * @param[in] head	of list.
  */
-void fr_value_box_list_untaint(fr_value_box_list_t *head)
+void fr_value_box_list_untaint(FR_DLIST_HEAD(fr_value_box_list) *head)
 {
 	fr_value_box_t *vb = NULL;
 
-	while ((vb = fr_dlist_next(head, vb))) {
+	while ((vb = fr_value_box_list_next(head, vb))) {
 		if (fr_type_is_group(vb->type)) fr_value_box_list_untaint(&vb->vb_group);
 		vb->tainted = false;
 	}
@@ -5842,11 +5840,11 @@ DIAG_ON(nonnull-compare)
 	}
 }
 
-void value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list, bool talloced)
+void value_box_list_verify(char const *file, int line, FR_DLIST_HEAD(fr_value_box_list) const *list, bool talloced)
 {
 	fr_value_box_t const *vb = NULL;
 
-	while ((vb = fr_dlist_next(list, vb))) value_box_verify(file, line, vb, talloced);
+	while ((vb = fr_value_box_list_next(list, vb))) value_box_verify(file, line, vb, talloced);
 }
 
 
@@ -5899,7 +5897,7 @@ bool fr_value_box_is_truthy(fr_value_box_t const *in)
 		return false;
 
 	case FR_TYPE_STRUCTURAL:
-		if (in->type == FR_TYPE_GROUP) return (fr_value_box_list_len(&in->vb_group) > 0);
+		if (in->type == FR_TYPE_GROUP) return (fr_value_box_list_num_elements(&in->vb_group) > 0);
 		return false;
 
 	case FR_TYPE_BOOL:

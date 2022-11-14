@@ -24,10 +24,11 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+#include <freeradius-devel/util/time.h>
 
 #include "call_priv.h"
 #include "caller_priv.h"
@@ -2747,7 +2748,7 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	unlang_t		*c;
 	unlang_group_t		*g;
 	unlang_timeout_t	*gext;
-	fr_time_delta_t		timeout;
+	fr_time_delta_t		timeout = fr_time_delta_from_sec(0);
 	tmpl_t			*vpt = NULL;
 	fr_token_t		token;
 
@@ -2860,9 +2861,9 @@ static unlang_t *compile_limit(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	char const		*name2;
 	unlang_t		*c;
 	unlang_group_t		*g;
-	unlang_limit_t	*gext;
+	unlang_limit_t		*gext;
 	tmpl_t			*vpt = NULL;
-	uint32_t		limit;
+	uint32_t		limit = 0;
 	fr_token_t		token;
 	ssize_t			slen;
 	tmpl_rules_t		t_rules;

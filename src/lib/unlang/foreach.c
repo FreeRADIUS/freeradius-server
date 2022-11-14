@@ -60,7 +60,7 @@ typedef struct {
 
 static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 xlat_ctx_t const *xctx,
-					 request_t *request, UNUSED fr_value_box_list_t *in);
+					 request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in);
 
 #define FOREACH_REQUEST_DATA (void *)unlang_foreach_xlat
 
@@ -206,7 +206,7 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, u
  */
 static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 xlat_ctx_t const *xctx,
-					 request_t *request, UNUSED fr_value_box_list_t *in)
+					 request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_pair_t			*vp;
 	int const			*inst = xctx->inst;

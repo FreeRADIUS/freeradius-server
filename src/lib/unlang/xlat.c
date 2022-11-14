@@ -46,7 +46,7 @@ typedef struct {
 	/*
 	 *	For func and alternate
 	 */
-	fr_value_box_list_t	out;				//!< Head of the result of a nested
+	FR_DLIST_HEAD(fr_value_box_list)	out;				//!< Head of the result of a nested
 								///< expansion.
 	bool			alternate;			//!< record which alternate branch we
 								///< previously took.
@@ -186,7 +186,7 @@ int unlang_xlat_timeout_add(request_t *request,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_box_list) *out,
 				     request_t *request, xlat_exp_head_t const *xlat, xlat_exp_t *node, bool top_frame)
 {
 	/** Static instruction for performing xlat evaluations
@@ -250,7 +250,7 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, fr_value_
 	/*
 	 *	Initialise the input and output lists
 	 */
-	fr_dcursor_init(&state->values, out);
+	fr_dcursor_init(&state->values, fr_value_box_list_dlist_head(out));
 	fr_value_box_list_init(&state->out);
 
 	return 0;
@@ -270,7 +270,7 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, fr_value_
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_box_list) *out,
 		     request_t *request, xlat_exp_head_t const *xlat, bool top_frame)
 {
 	(void) talloc_get_type_abort_const(xlat, xlat_exp_head_t);
@@ -290,7 +290,7 @@ int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+int unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_box_list) *out,
 			  request_t *request, xlat_exp_t *node)
 {
 	return unlang_xlat_push_internal(ctx, p_success, out, request, NULL, node, UNLANG_TOP_FRAME);
@@ -315,7 +315,7 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 		 *	at this level.  A frame may be used to evaluate
 		 *	multiple sibling nodes.
 		 */
-		fr_dlist_talloc_free(&state->out);
+		fr_value_box_list_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			REXDENT();
@@ -377,7 +377,7 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 		 *	at this level.  A frame may be used to evaluate
 		 *	multiple sibling nodes.
 		 */
-		fr_dlist_talloc_free(&state->out);
+		fr_value_box_list_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;

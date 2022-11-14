@@ -177,7 +177,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
  * @param[in] node	Being processed.
  * @param[in] args	from previous expansion.
  */
-static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const *node, fr_value_box_list_t const *args, UNUSED int line)
+static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const *node, FR_DLIST_HEAD(fr_value_box_list) const *args, UNUSED int line)
 {
 	if (node->flags.constant) return;
 
@@ -208,7 +208,7 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
  * @param[in] request	The current request.
  * @param[in] result	of the expansion.
  */
-static inline void xlat_debug_log_list_result(request_t *request, xlat_exp_t const *node, fr_value_box_list_t const *result)
+static inline void xlat_debug_log_list_result(request_t *request, xlat_exp_t const *node, FR_DLIST_HEAD(fr_value_box_list) const *result)
 {
 	if (node->flags.constant) return;
 
@@ -243,7 +243,7 @@ static inline void xlat_debug_log_result(request_t *request, xlat_exp_t const *n
  *	- XLAT_ACTION_DONE on success.
  *	- XLAT_ACTION_FAIL on failure.
  */
-static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
+static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, request_t *request,
 					   char const *name, xlat_arg_parser_t const *arg, unsigned int arg_num)
 {
 	fr_value_box_t *vb;
@@ -257,7 +257,7 @@ do { \
 	} \
 } while (0)
 
-	if (fr_dlist_empty(list)) {
+	if (fr_value_box_list_empty(list)) {
 		if (arg->required) {
 			RWDEBUG("Function %s is missing required argument %u", name, arg_num);
 			return XLAT_ACTION_FAIL;
@@ -265,7 +265,7 @@ do { \
 		return XLAT_ACTION_DONE;
 	}
 
-	vb = fr_dlist_head(list);
+	vb = fr_value_box_list_head(list);
 
 	/*
 	 *	Concatenate child boxes, casting to desired type,
@@ -273,9 +273,9 @@ do { \
 	 */
 	if (arg->concat) {
 		if (arg->func) {
-			do ESCAPE(arg, vb, arg_num); while ((vb = fr_dlist_next(list, vb)));
+			do ESCAPE(arg, vb, arg_num); while ((vb = fr_value_box_list_next(list, vb)));
 
-			vb = fr_dlist_head(list);	/* Reset */
+			vb = fr_value_box_list_head(list);	/* Reset */
 		}
 
 		if (fr_value_box_list_concat_in_place(ctx,
@@ -285,7 +285,7 @@ do { \
 			RPEDEBUG("Function %s failed concatenating arguments to type %s", name, fr_type_to_str(arg->type));
 			return XLAT_ACTION_FAIL;
 		}
-		fr_assert(fr_dlist_num_elements(list) <= 1);
+		fr_assert(fr_value_box_list_num_elements(list) <= 1);
 
 		return XLAT_ACTION_DONE;
 	}
@@ -295,12 +295,12 @@ do { \
 	 *	just one, cast to the correct type
 	 */
 	if (arg->single) {
-		if (fr_dlist_num_elements(list) > 1) {
+		if (fr_value_box_list_num_elements(list) > 1) {
 			RPEDEBUG("Function %s was provided an incorrect number of values at argument %u, "
 				 "expected %s got %u",
 				 name, arg_num,
 				 arg->required ? "0-1" : "1",
-				 fr_dlist_num_elements(list));
+				 fr_value_box_list_num_elements(list));
 			return XLAT_ACTION_FAIL;
 		}
 
@@ -328,13 +328,13 @@ do { \
 			if (vb->type == arg->type) continue;
 			if (fr_value_box_cast_in_place(ctx, vb,
 						       arg->type, NULL) < 0) goto cast_error;
-		} while ((vb = fr_dlist_next(list, vb)));
+		} while ((vb = fr_value_box_list_next(list, vb)));
 
 	/*
 	 *	If it's not a void type we still need to escape the values
 	 */
 	} else if (arg->func) {
-		do ESCAPE(arg, vb, arg_num); while ((vb = fr_dlist_next(list, vb)));
+		do ESCAPE(arg, vb, arg_num); while ((vb = fr_value_box_list_next(list, vb)));
 	}
 
 #undef ESCAPE
@@ -356,7 +356,7 @@ do { \
  * @param[in] func		to call
  */
 static inline CC_HINT(always_inline)
-xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request, xlat_t const *func)
+xlat_action_t xlat_process_args(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, request_t *request, xlat_t const *func)
 {
 	xlat_arg_parser_t const	*arg_p = func->args;
 	xlat_action_t		xa;
@@ -384,7 +384,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 	 *	xlat consumes a sequence of arguments.
 	 */
 	case XLAT_INPUT_ARGS:
-		vb = fr_dlist_head(list);
+		vb = fr_value_box_list_head(list);
 		while (arg_p->type != FR_TYPE_NULL) {
 			/*
 			 *	Separate check to see if the group
@@ -416,7 +416,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 			 *	pre-advance, in case the vb is replaced
 			 *	during processing.
 			 */
-			next = fr_dlist_next(list, vb);
+			next = fr_value_box_list_next(list, vb);
 			xa = xlat_process_arg_list(ctx, &vb->vb_group, request, func->name, arg_p,
 						   (unsigned int)((arg_p - func->args) + 1));
 			if (xa != XLAT_ACTION_DONE) return xa;
@@ -424,7 +424,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 			/*
 			 *	This argument doesn't exist.  That might be OK, or it may be a fatal error.
 			 */
-			if (fr_dlist_empty(&vb->vb_group)) {
+			if (fr_value_box_list_empty(&vb->vb_group)) {
 				/*
 				 *	Empty groups for optional arguments are OK, we can just stop processing the list.
 				 */
@@ -450,7 +450,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 					 *	accessing the box as vb_uint8, hoping that it's being passed
 					 *	the right thing.
 					 */
-					fr_dlist_remove(list, vb);
+					fr_value_box_list_remove(list, vb);
 					talloc_free(vb);
 					break;
 				}
@@ -471,7 +471,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 			 *	xlat_process_arg_list() has already done concatenations for us.
 			 */
 			if (arg_p->single || arg_p->concat) {
-				fr_dlist_replace(list, vb, fr_dlist_pop_head(&vb->vb_group));
+				fr_value_box_list_replace(list, vb, fr_value_box_list_pop_head(&vb->vb_group));
 				talloc_free(vb);
 			}
 
@@ -501,7 +501,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
  *
  */
 static inline CC_HINT(always_inline)
-xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, char letter)
+xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, request_t *request, char letter)
 {
 
 	char		buffer[64];
@@ -667,19 +667,19 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out, re
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_dlist_insert_tail(out, value);
+	fr_value_box_list_insert_tail(out, value);
 
 	return XLAT_ACTION_DONE;
 }
 
 typedef struct {
 	int			status;
-	fr_value_box_list_t	list;
+	FR_DLIST_HEAD(fr_value_box_list)	list;
 } xlat_exec_rctx_t;
 
 static xlat_action_t xlat_exec_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-				      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+				      UNUSED request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	xlat_exec_rctx_t *rctx = talloc_get_type_abort(xctx->rctx, xlat_exec_rctx_t);
 
@@ -688,7 +688,7 @@ static xlat_action_t xlat_exec_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_dlist_move(out->dlist, &rctx->list);
+	fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, &rctx->list);
 
 	return XLAT_ACTION_DONE;
 }
@@ -723,7 +723,7 @@ void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
  */
 xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_func_t resume, xlat_exp_t const *exp,
-				     request_t *request, fr_value_box_list_t *result, void *rctx)
+				     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *result, void *rctx)
 {
 	xlat_thread_inst_t	*t;
 	xlat_action_t		xa;
@@ -789,7 +789,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_exp_head_t const **child, bool *alternate,
 				     request_t *request, xlat_exp_head_t const *head, xlat_exp_t const **in,
-				     fr_value_box_list_t *result)
+				     FR_DLIST_HEAD(fr_value_box_list) *result)
 {
 	xlat_exp_t const	*node = *in;
 
@@ -800,7 +800,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	{
 		xlat_action_t		xa;
 		xlat_thread_inst_t	*t;
-		fr_value_box_list_t	result_copy;
+		FR_DLIST_HEAD(fr_value_box_list)	result_copy;
 
 		t = xlat_thread_instance_find(node);
 		fr_assert(t);
@@ -827,7 +827,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (RDEBUG_ENABLED2) fr_value_box_list_acopy(unlang_interpret_frame_talloc_ctx(request), &result_copy, result);
 		xa = xlat_process_args(ctx, result, request, node->call.func);
 		if (xa == XLAT_ACTION_FAIL) {
-			fr_dlist_talloc_free(&result_copy);
+			fr_value_box_list_talloc_free(&result_copy);
 			return xa;
 		}
 
@@ -842,7 +842,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			xlat_debug_log_expansion(request, *in, &result_copy, __LINE__);
 			RINDENT();
 		}
-		fr_dlist_talloc_free(&result_copy);
+		fr_value_box_list_talloc_free(&result_copy);
 
 		switch (xa) {
 		case XLAT_ACTION_FAIL:
@@ -877,7 +877,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		/*
 		 *	No result from the first child, try the alternate
 		 */
-		if (fr_dlist_empty(result)) {
+		if (fr_value_box_list_empty(result)) {
 			/*
 			 *	Already tried the alternate
 			 */
@@ -905,7 +905,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		xlat_debug_log_list_result(request, *in, result);
 
 		VALUE_BOX_TALLOC_LIST_VERIFY(result);
-		fr_dlist_move(out->dlist, result);
+		fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, result);
 	}
 		break;
 
@@ -922,9 +922,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		MEM(arg = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false));
 
-		if (!fr_dlist_empty(result)) {
+		if (!fr_value_box_list_empty(result)) {
 			VALUE_BOX_TALLOC_LIST_VERIFY(result);
-			fr_dlist_move(&arg->vb_group, result);
+			fr_value_box_list_move(&arg->vb_group, result);
 		}
 
 //		xlat_debug_log_expansion(request, *in, NULL, __LINE__);
@@ -940,7 +940,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_assert(tmpl_is_exec(node->vpt));
 
 		if (tmpl_eval_cast(ctx, result, node->vpt) < 0) {
-			fr_dlist_talloc_free(result);
+			fr_value_box_list_talloc_free(result);
 			return XLAT_ACTION_FAIL;
 		}
 
@@ -948,7 +948,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	First entry is the command to run.  Subsequent entries are the options to pass to the
 		 *	command.
 		 */
-		fr_dlist_move(out->dlist, result);
+		fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, result);
 		break;
 
 	default:
@@ -995,7 +995,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 {
 	xlat_action_t		xa = XLAT_ACTION_DONE;
 	xlat_exp_t const       	*node;
-	fr_value_box_list_t	result;		/* tmp list so debug works correctly */
+	FR_DLIST_HEAD(fr_value_box_list)	result;		/* tmp list so debug works correctly */
 	fr_value_box_t		*value;
 
 	fr_value_box_list_init(&result);
@@ -1009,9 +1009,9 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 	for (node = *in; node; node = xlat_exp_next(head, node)) {
 	     	*in = node;		/* Update node in our caller */
 		fr_dcursor_tail(out);	/* Needed for debugging */
-		VALUE_BOX_TALLOC_LIST_VERIFY(out->dlist);
+		VALUE_BOX_TALLOC_LIST_VERIFY((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist);
 
-		fr_assert(fr_dlist_num_elements(&result) == 0);	/* Should all have been moved */
+		fr_assert(fr_value_box_list_num_elements(&result) == 0);	/* Should all have been moved */
 
 		switch (node->type) {
 		case XLAT_BOX:
@@ -1042,12 +1042,12 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			xlat_debug_log_expansion(request, node, NULL, __LINE__);
 			if (xlat_eval_one_letter(ctx, &result, request, node->fmt[0]) == XLAT_ACTION_FAIL) {
 			fail:
-				fr_dlist_talloc_free(&result);
+				fr_value_box_list_talloc_free(&result);
 				xa = XLAT_ACTION_FAIL;
 				goto finish;
 			}
 			xlat_debug_log_list_result(request, *in, &result);
-			fr_dlist_move(out->dlist, &result);
+			fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, &result);
 			continue;
 
 		case XLAT_TMPL:
@@ -1059,14 +1059,14 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 							       tmpl_value(node->vpt)->tainted));
 
 				fr_value_box_copy(value, value, tmpl_value(node->vpt));	/* Also dups taint */
-				fr_dlist_insert_tail(&result, value);
+				fr_value_box_list_insert_tail(&result, value);
 
 				/*
 				 *	Cast the results if necessary.
 				 */
 				if (tmpl_eval_cast(ctx, &result, node->vpt) < 0) goto fail;
 
-				fr_dlist_move(out->dlist, &result);
+				fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, &result);
 				continue;
 
 			} else if (tmpl_is_attr(node->vpt) ||  tmpl_is_list(node->vpt)) {
@@ -1114,7 +1114,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			}
 
 			xlat_debug_log_list_result(request, node, &result);
-			fr_dlist_move(out->dlist, &result);
+			fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, &result);
 			continue;
 
 		case XLAT_VIRTUAL:
@@ -1211,7 +1211,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 	}
 
 finish:
-	VALUE_BOX_TALLOC_LIST_VERIFY(out->dlist);
+	VALUE_BOX_TALLOC_LIST_VERIFY((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist);
 	XLAT_DEBUG("** [%i] %s << %s", unlang_interpret_stack_depth(request),
 		   __FUNCTION__, fr_table_str_by_value(xlat_action_table, xa, "<INVALID>"));
 
@@ -1221,7 +1221,7 @@ finish:
 static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_head_t const * const head,
 			      xlat_escape_legacy_t escape, void const *escape_ctx)
 {
-	fr_value_box_list_t	result;
+	FR_DLIST_HEAD(fr_value_box_list)	result;
 	bool			success = false;
 	TALLOC_CTX		*pool = talloc_new(NULL);
 	rlm_rcode_t		rcode;
@@ -1255,15 +1255,15 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 	}
 	if (!success) goto eval_failed;
 
-	if (!fr_dlist_empty(&result)) {
+	if (!fr_value_box_list_empty(&result)) {
 		if (escape) {
 			fr_value_box_t *vb = NULL;
 
 			/*
 			 *	For tainted boxes perform the requested escaping
 			 */
-			while ((vb = fr_dlist_next(&result, vb))) {
-				fr_dlist_t entry;
+			while ((vb = fr_value_box_list_next(&result, vb))) {
+				FR_DLIST_ENTRY(fr_value_box_list) entry;
 				size_t len, real_len;
 				char *escaped;
 
@@ -1513,7 +1513,7 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_ex
 		my_argv[i++] = talloc_steal(my_argv, node->group);
 	}
 
-	fr_dlist_talloc_free(&head->dlist);
+	fr_value_box_list_talloc_free((FR_DLIST_HEAD(fr_value_box_list) *)&head->dlist);
 
 	return count;
 }

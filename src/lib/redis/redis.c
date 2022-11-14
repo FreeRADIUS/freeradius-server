@@ -297,7 +297,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 			return -1;
 		}
 		if (fr_value_box_bstrndup(ctx, verb, NULL, reply->str, reply->len, true) < 0) return -1;
-		fr_dlist_insert_head(&out->vb_group, verb);
+		fr_value_box_list_insert_head(&out->vb_group, verb);
 
 		vtype = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, true);
 		if (unlikely(!vtype)) {
@@ -306,7 +306,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 			return -1;
 		}
 		if (fr_value_box_strdup(ctx, vtype, NULL, reply->vtype, true) < 0) return -1;
-		fr_dlist_insert_head(&out->vb_group, vtype);
+		fr_value_box_list_insert_head(&out->vb_group, vtype);
 
 	}
 		break;
@@ -328,10 +328,10 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 			vb = fr_value_box_alloc_null(ctx);
 			if (unlikely(!vb)) {
 			array_error:
-				fr_dlist_talloc_free(&out->vb_group);
+				fr_value_box_list_talloc_free(&out->vb_group);
 				return -1;
 			}
-			fr_dlist_insert_tail(&out->vb_group, vb);
+			fr_value_box_list_insert_tail(&out->vb_group, vb);
 
 			if (fr_redis_reply_to_value_box(vb, vb, reply->element[i],
 							FR_TYPE_VOID, NULL, box_error, shallow) < 0) goto array_error;

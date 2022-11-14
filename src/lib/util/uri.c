@@ -38,9 +38,8 @@ RCSID("$Id$")
  * 	- 0 on success
  * 	- -1 on failure
  */
-int fr_uri_escape(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void *uctx)
+int fr_uri_escape(FR_DLIST_HEAD(fr_value_box_list) *uri, fr_uri_part_t const *uri_parts, void *uctx)
 {
-	fr_value_box_t		*uri_vb = NULL;
 	fr_uri_part_t const	*uri_part;
 	fr_sbuff_t		sbuff;
 
@@ -48,7 +47,7 @@ int fr_uri_escape(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void
 
 	fr_strerror_clear();
 
-	while ((uri_vb = fr_dlist_next(uri, uri_vb))){
+	fr_value_box_list_foreach_safe(uri, uri_vb) {
 		if (uri_vb->tainted && !uri_part->tainted_allowed) {
 			fr_strerror_printf_push("Tainted value not allowed for %s", uri_part->name);
 			return -1;
@@ -64,12 +63,12 @@ int fr_uri_escape(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void
 				 *	so remove it from the list and re-insert after the escaping
 				 *	has been done
 				 */
-				fr_value_box_t	*prev = fr_dlist_remove(uri, uri_vb);
+				fr_value_box_t	*prev = fr_value_box_list_remove(uri, uri_vb);
 				if (uri_part->func(uri_vb, uctx) < 0) {
 					fr_strerror_printf_push("Unable to escape tainted input %pV", uri_vb);
 					return -1;
 				}
-				fr_dlist_insert_after(uri, prev, uri_vb);
+				fr_value_box_list_insert_after(uri, prev, uri_vb);
 			}
 			continue;
 		}
@@ -108,7 +107,7 @@ int fr_uri_escape(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void
 			uri_part += uri_part->part_adv[fr_sbuff_char(&sbuff, '\0')];
 			if (!uri_part->terminals) break;
 		} while (fr_sbuff_advance(&sbuff, 1) > 0);
-	}
+	}}
 
 	return 0;
 }

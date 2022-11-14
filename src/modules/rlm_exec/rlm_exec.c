@@ -63,7 +63,7 @@ static const CONF_PARSER module_config[] = {
 
 static xlat_action_t exec_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-				      request_t *request, UNUSED fr_value_box_list_t *in)
+				      request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_exec_state_t	*exec = talloc_get_type_abort(xctx->rctx, fr_exec_state_t);
 	fr_value_box_t	*vb;
@@ -112,7 +112,7 @@ static xlat_arg_parser_t const exec_xlat_args[] = {
  */
 static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       xlat_ctx_t const *xctx,
-			       request_t *request, fr_value_box_list_t *in)
+			       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_exec_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_exec_t);
 	fr_pair_list_t		*env_pairs = NULL;
@@ -272,7 +272,7 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 					      request_t *request)
 {
 	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_exec_t);
-	fr_value_box_list_t	*box = talloc_get_type_abort(mctx->rctx, fr_value_box_list_t);
+	FR_DLIST_HEAD(fr_value_box_list)	*box = talloc_get_type_abort(mctx->rctx, FR_DLIST_HEAD(fr_value_box_list));
 	fr_pair_list_t		*env_pairs = NULL;
 
 	/*
@@ -294,7 +294,7 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 }
 
 typedef struct {
-	fr_value_box_list_t	box;
+	FR_DLIST_HEAD(fr_value_box_list)	box;
 	int			status;
 } rlm_exec_ctx_t;
 
@@ -366,14 +366,14 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 	/*
 	 *	Also prints stdout as an error if there was any...
 	 */
-	rcode = rlm_exec_status2rcode(request, fr_dlist_head(&m->box), m->status);
+	rcode = rlm_exec_status2rcode(request, fr_value_box_list_head(&m->box), m->status);
 	switch (rcode) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		if (inst->output && !fr_dlist_empty(&m->box)) {
+		if (inst->output && !fr_value_box_list_empty(&m->box)) {
 			TALLOC_CTX *ctx;
 			fr_pair_list_t vps, *output_pairs;
-			fr_value_box_t *box = fr_dlist_head(&m->box);
+			fr_value_box_t *box = fr_value_box_list_head(&m->box);
 
 			fr_pair_list_init(&vps);
 			output_pairs = tmpl_list_head(request, inst->output_list);
@@ -384,7 +384,7 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 			fr_pair_list_afrom_box(ctx, &vps, request->dict, box);
 			if (!fr_pair_list_empty(&vps)) fr_pair_list_move_op(output_pairs, &vps, T_OP_ADD_EQ);
 
-			fr_dlist_talloc_free(&m->box);	/* has been consumed */
+			fr_value_box_list_talloc_free(&m->box);	/* has been consumed */
 		}
 		break;
 
@@ -430,7 +430,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	 *	Do the asynchronous xlat expansion.
 	 */
 	if (!inst->wait) {
-		fr_value_box_list_t *box = talloc_zero(ctx, fr_value_box_list_t);
+		FR_DLIST_HEAD(fr_value_box_list) *box = talloc_zero(ctx, FR_DLIST_HEAD(fr_value_box_list));
 
 		fr_value_box_list_init(box);
 		return unlang_module_yield_to_xlat(request, NULL, box, request, tmpl_xlat(inst->tmpl),

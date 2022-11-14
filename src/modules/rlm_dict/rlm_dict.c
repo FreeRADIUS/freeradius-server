@@ -38,10 +38,10 @@ static xlat_arg_parser_t const xlat_dict_attr_by_num_args[] = {
  */
 static xlat_action_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
-					   request_t *request, fr_value_box_list_t *in)
+					   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_dict_attr_t const	*da;
-	fr_value_box_t		*attr = fr_dlist_head(in);
+	fr_value_box_t		*attr = fr_value_box_list_head(in);
 	fr_value_box_t		*vb;
 
 	da = fr_dict_attr_child_by_num(fr_dict_root(request->dict), attr->vb_uint32);
@@ -72,13 +72,13 @@ static xlat_arg_parser_t const xlat_dict_attr_by_oid_args[] = {
  */
 static xlat_action_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
-					   request_t *request, fr_value_box_list_t *in)
+					   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	unsigned int		attr = 0;
 	fr_dict_attr_t const	*parent = fr_dict_root(request->dict);
 	fr_dict_attr_t const	*da;
 	ssize_t			ret;
-	fr_value_box_t		*attr_vb = fr_dlist_head(in);
+	fr_value_box_t		*attr_vb = fr_value_box_list_head(in);
 	fr_value_box_t		*vb;
 
 	ret = fr_dict_attr_by_oid_legacy(fr_dict_internal(), &parent, &attr, attr_vb->vb_strvalue);
@@ -111,11 +111,11 @@ static xlat_arg_parser_t const xlat_vendor_args[] = {
  */
 static xlat_action_t xlat_vendor(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 UNUSED xlat_ctx_t const *xctx,
-				 request_t *request, fr_value_box_list_t *in)
+				 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_pair_t		*vp;
 	fr_dict_vendor_t const	*vendor;
-	fr_value_box_t		*attr = fr_dlist_head(in);
+	fr_value_box_t		*attr = fr_value_box_list_head(in);
 	fr_value_box_t		*vb;
 
 	if ((xlat_fmt_get_vp(&vp, request, attr->vb_strvalue) < 0) || !vp) return XLAT_ACTION_FAIL;
@@ -145,10 +145,10 @@ static xlat_arg_parser_t const xlat_vendor_num_args[] = {
  */
 static xlat_action_t xlat_vendor_num(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     UNUSED xlat_ctx_t const *xctx,
-				     request_t *request, fr_value_box_list_t *in)
+				     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_pair_t	*vp;
-	fr_value_box_t	*attr = fr_dlist_head(in);
+	fr_value_box_t	*attr = fr_value_box_list_head(in);
 	fr_value_box_t	*vb;
 
 	if ((xlat_fmt_get_vp(&vp, request, attr->vb_strvalue) < 0) || !vp) return XLAT_ACTION_FAIL;
@@ -170,10 +170,10 @@ static xlat_arg_parser_t const xlat_attr_args[] = {
  */
 static xlat_action_t xlat_attr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			       UNUSED xlat_ctx_t const *xctx,
-			       request_t *request, fr_value_box_list_t *in)
+			       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_pair_t	*vp;
-	fr_value_box_t	*attr = fr_dlist_head(in);
+	fr_value_box_t	*attr = fr_value_box_list_head(in);
 	fr_value_box_t	*vb;
 
 	if ((xlat_fmt_get_vp(&vp, request, attr->vb_strvalue) < 0) || !vp) return XLAT_ACTION_FAIL;
@@ -200,10 +200,10 @@ static xlat_arg_parser_t const xlat_attr_num_args[] = {
  */
 static xlat_action_t xlat_attr_num(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   UNUSED xlat_ctx_t const *xctx,
-				   request_t *request, fr_value_box_list_t *in)
+				   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_pair_t	*vp;
-	fr_value_box_t	*attr = fr_dlist_head(in);
+	fr_value_box_t	*attr = fr_value_box_list_head(in);
 	fr_value_box_t	*vb;
 
 	if ((xlat_fmt_get_vp(&vp, request, attr->vb_strvalue) < 0) || !vp) return XLAT_ACTION_FAIL;

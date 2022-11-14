@@ -278,11 +278,11 @@ static void xs_init(pTHX)
  * 	- 0 on success
  * 	- -1 on failure
  */
-static int perl_vblist_to_av(AV *av, fr_value_box_list_t *head) {
+static int perl_vblist_to_av(AV *av, FR_DLIST_HEAD(fr_value_box_list) *head) {
 	fr_value_box_t	*vb = NULL;
 	SV		*sv;
 
-	while ((vb = fr_dlist_next(head, vb))) {
+	while ((vb = fr_value_box_list_next(head, vb))) {
 		switch (vb->type) {
 		case FR_TYPE_STRING:
 			sv = newSVpvn(vb->vb_strvalue, vb->length);
@@ -332,7 +332,7 @@ static int perl_vblist_to_av(AV *av, fr_value_box_list_t *head) {
  * 	- 0 on success
  * 	- -1 on failure
  */
-static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request, SV *sv) {
+static int perl_sv_to_vblist(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, request_t *request, SV *sv) {
 	fr_value_box_t	*vb = NULL;
 	char		*tmp;
 	STRLEN		len;
@@ -408,7 +408,7 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 				RPEDEBUG("Failed to allocate %d for output", sv_len);
 				return -1;
 			}
-			fr_dlist_insert_tail(list, vb);
+			fr_value_box_list_insert_tail(list, vb);
 
 			/*
 			 *	Now process value
@@ -431,7 +431,7 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 
 	}
 
-	if (vb) fr_dlist_insert_tail(list, vb);
+	if (vb) fr_value_box_list_insert_tail(list, vb);
 
 	return 0;
 }
@@ -448,17 +448,17 @@ static xlat_arg_parser_t const perl_xlat_args[] = {
  */
 static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			       xlat_ctx_t const *xctx,
-			       request_t *request, fr_value_box_list_t *in)
+			       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_perl_thread_t const		*t = talloc_get_type_abort_const(xctx->mctx->thread, rlm_perl_thread_t);
 	int				count, i;
 	xlat_action_t			ret = XLAT_ACTION_FAIL;
 	STRLEN				n_a;
-	fr_value_box_t			*func = fr_dlist_pop_head(in);
+	fr_value_box_t			*func = fr_value_box_list_pop_head(in);
 	fr_value_box_t			*arg = NULL, *child;
 	SV				*sv;
 	AV				*av;
-	fr_value_box_list_t		list, sub_list;
+	FR_DLIST_HEAD(fr_value_box_list)		list, sub_list;
 	fr_value_box_t			*vb = NULL;
 
 	fr_value_box_list_init(&list);
@@ -475,12 +475,12 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		PUSHMARK(SP);
 
-		while ((arg = fr_dlist_next(in, arg))) {
+		while ((arg = fr_value_box_list_next(in, arg))) {
 			fr_assert(arg->type == FR_TYPE_GROUP);
-			if (fr_dlist_empty(&arg->vb_group)) continue;
+			if (fr_value_box_list_empty(&arg->vb_group)) continue;
 
-			if (fr_dlist_num_elements(&arg->vb_group) == 1) {
-				child = fr_dlist_head(&arg->vb_group);
+			if (fr_value_box_list_num_elements(&arg->vb_group) == 1) {
+				child = fr_value_box_list_head(&arg->vb_group);
 				/*
 				 *	Single child value - add as scalar
 				 */
@@ -521,14 +521,14 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		for (i = 0; i < count; i++) {
 			sv = POPs;
 			if (perl_sv_to_vblist(ctx, &sub_list, request, sv) < 0) goto cleanup;
-			fr_dlist_move_head(&list, &sub_list);
+			fr_value_box_list_move_head(&list, &sub_list);
 		}
 		ret = XLAT_ACTION_DONE;
 
 		/*
 		 *	Move the assembled list of boxes to the output
 		 */
-		while ((vb = fr_dlist_pop_head(&list))) fr_dcursor_append(out, vb);
+		while ((vb = fr_value_box_list_pop_head(&list))) fr_dcursor_append(out, vb);
 
 	cleanup:
 		PUTBACK;

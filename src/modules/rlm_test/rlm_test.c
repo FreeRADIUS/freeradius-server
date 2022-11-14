@@ -358,9 +358,9 @@ static xlat_arg_parser_t const trigger_test_xlat_args[] = {
  */
 static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       UNUSED xlat_ctx_t const *xctx, request_t *request,
-				       fr_value_box_list_t *in)
+				       FR_DLIST_HEAD(fr_value_box_list) *in)
 {
-	fr_value_box_t	*in_head = fr_dlist_head(in);
+	fr_value_box_t	*in_head = fr_value_box_list_head(in);
 	fr_value_box_t	*vb;
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
@@ -390,12 +390,12 @@ static xlat_arg_parser_t const test_xlat_args[] = {
  */
 static xlat_action_t test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			       UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
-			       fr_value_box_list_t *in)
+			       FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_value_box_t	*vb_p = NULL;
 	fr_value_box_t	*vb;
 
-	while ((vb_p = fr_dlist_next(in, vb_p))) {
+	while ((vb_p = fr_value_box_list_next(in, vb_p))) {
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
 
 		if (fr_value_box_copy(ctx, vb, vb_p) < 0) {

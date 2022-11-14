@@ -58,10 +58,10 @@ static xlat_arg_parser_t const escape_xlat_arg = { .required = true, .concat = t
  */
 static xlat_action_t escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 xlat_ctx_t const *xctx,
-				 request_t *request, fr_value_box_list_t *in)
+				 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_escape_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_escape_t);
-	fr_value_box_t		*arg = fr_dlist_head(in);
+	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	char const		*p = arg->vb_strvalue;
 	size_t			len;
 	fr_value_box_t		*vb;
@@ -129,9 +129,9 @@ static xlat_arg_parser_t const unescape_xlat_arg = { .required = true, .concat =
  */
 static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   UNUSED xlat_ctx_t const *xctx,
-				   request_t *request, fr_value_box_list_t *in)
+				   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
-	fr_value_box_t	*arg = fr_dlist_head(in);
+	fr_value_box_t	*arg = fr_value_box_list_head(in);
 	char const	*p, *end;
 	char		*out_p;
 	char		*c1, *c2, c3;

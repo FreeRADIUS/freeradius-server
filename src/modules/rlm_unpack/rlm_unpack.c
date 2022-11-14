@@ -50,15 +50,15 @@ static xlat_arg_parser_t const unpack_xlat_args[] = {
  */
 static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 UNUSED xlat_ctx_t const *xctx, request_t *request,
-				 fr_value_box_list_t *in)
+				 FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	size_t		len, input_len, offset;
 	fr_type_t	type;
 	uint8_t const	*input;
 	uint8_t		blob[256];
-	fr_value_box_t	*data_vb = fr_dlist_head(in);
-	fr_value_box_t	*offset_vb = fr_dlist_next(in, data_vb);
-	fr_value_box_t	*type_vb = fr_dlist_next(in, offset_vb);
+	fr_value_box_t	*data_vb = fr_value_box_list_head(in);
+	fr_value_box_t	*offset_vb = fr_value_box_list_next(in, data_vb);
+	fr_value_box_t	*type_vb = fr_value_box_list_next(in, offset_vb);
 	fr_value_box_t	*vb;
 
 	if ((data_vb->type != FR_TYPE_OCTETS) && (data_vb->type != FR_TYPE_STRING)) {

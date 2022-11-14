@@ -161,13 +161,13 @@ static size_t sql_escape_func(request_t *, char *out, size_t outlen, char const 
  */
 static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
 {
-	fr_sbuff_t		sbuff;
-	fr_sbuff_uctx_talloc_t	sbuff_ctx;
+	fr_sbuff_t				sbuff;
+	fr_sbuff_uctx_talloc_t			sbuff_ctx;
 
-	size_t			len;
-	rlm_sql_handle_t	*handle;
-	rlm_sql_t		*inst = talloc_get_type_abort(uctx, rlm_sql_t);
-	fr_dlist_t		entry;
+	size_t					len;
+	rlm_sql_handle_t			*handle;
+	rlm_sql_t				*inst = talloc_get_type_abort(uctx, rlm_sql_t);
+	FR_DLIST_ENTRY(fr_value_box_list)	entry;
 
 	handle = fr_pool_connection_get(inst->pool, request);
 	if (!handle) {
@@ -212,7 +212,7 @@ static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
  */
 static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			      xlat_ctx_t const *xctx,
-			      request_t *request, fr_value_box_list_t *in)
+			      request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_sql_handle_t	*handle = NULL;
 	rlm_sql_row_t		row;
@@ -220,7 +220,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	sql_rcode_t		rcode;
 	xlat_action_t		ret = XLAT_ACTION_DONE;
 	char const		*p;
-	fr_value_box_t		*arg = fr_dlist_head(in);
+	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	fr_value_box_t		*vb = NULL;
 	bool			fetched = false;
 
@@ -380,7 +380,7 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_list_t *query, map_list_t const *maps)
+				FR_DLIST_HEAD(fr_value_box_list) *query, map_list_t const *maps)
 {
 	rlm_sql_t		*inst = talloc_get_type_abort(mod_inst, rlm_sql_t);
 	rlm_sql_handle_t	*handle = NULL;
@@ -400,7 +400,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 	char			map_rhs_buff[128];
 
 	char const		*query_str = NULL;
-	fr_value_box_t		*query_head = fr_dlist_head(query);
+	fr_value_box_t		*query_head = fr_value_box_list_head(query);
 
 #define MAX_SQL_FIELD_INDEX (64)
 

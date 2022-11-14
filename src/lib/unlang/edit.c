@@ -35,7 +35,7 @@ RCSID("$Id$")
 #include "edit_priv.h"
 
 typedef struct {
-	fr_value_box_list_t	result;			//!< result of expansion
+	FR_DLIST_HEAD(fr_value_box_list)	result;			//!< result of expansion
 	tmpl_t const		*vpt;			//!< expanded tmpl
 	tmpl_t			*to_free;		//!< tmpl to free.
 	bool			create;			//!< whether we need to create the VP
@@ -90,7 +90,7 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 static int tmpl_attr_from_result(TALLOC_CTX *ctx, edit_result_t *out, request_t *request)
 {
 	ssize_t slen;
-	fr_value_box_t *box = fr_dlist_head(&out->result);
+	fr_value_box_t *box = fr_value_box_list_head(&out->result);
 
 	if (!box) {
 		RWDEBUG("No value found for assignment");
@@ -122,7 +122,7 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, edit_result_t *out, request_t 
 	}
 
 	out->vpt = out->to_free;
-	fr_dlist_talloc_free(&out->result);
+	fr_value_box_list_talloc_free(&out->result);
 
 	return 0;
 }
@@ -205,7 +205,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			}
 
 		} else {
-			box = fr_dlist_head(&current->rhs.result);
+			box = fr_value_box_list_head(&current->rhs.result);
 
 			/*
 			 *	Can't concatenate empty results.
@@ -449,7 +449,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			 *	tmpl_push().  If the input xlat/tmpl is quoted, then the output should be a
 			 *	single value-box which is the final string.
 			 */
-			box = fr_dlist_head(&current->rhs.result);
+			box = fr_value_box_list_head(&current->rhs.result);
 
 			if (!box) goto no_rhs;
 
@@ -458,16 +458,16 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 				RWDEBUG("Failed converting result to string");
 				return -1;
 			}
-			box = fr_dlist_head(&current->rhs.result);
+			box = fr_value_box_list_head(&current->rhs.result);
 			single = true;
 
 		} else {
 		rhs_list:
-			if (fr_dlist_num_elements(&current->rhs.result) == 1) {
-				box = fr_dlist_head(&current->rhs.result);
+			if (fr_value_box_list_num_elements(&current->rhs.result) == 1) {
+				box = fr_value_box_list_head(&current->rhs.result);
 				single = true;
 			} else {
-				box = fr_dcursor_init(&cursor, &current->rhs.result);
+				box = fr_dcursor_init(&cursor, fr_value_box_list_dlist_head(&current->rhs.result));
 			}
 		}
 	} else {
@@ -621,7 +621,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 
 done:
 	if (pair) tmpl_dcursor_clear(&cc);
-	fr_dlist_talloc_free(&current->rhs.result);
+	fr_value_box_list_talloc_free(&current->rhs.result);
 
 	return 0;
 }
@@ -966,7 +966,7 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 		MEM(box = fr_value_box_alloc_null(state));
 		if (fr_value_box_copy(state, box, tmpl_value(vpt)) < 0) return -1;
 
-		fr_dlist_insert_tail(&current->parent->rhs.result, box);
+		fr_value_box_list_insert_tail(&current->parent->rhs.result, box);
 
 		return next_map(request, state, current);
 	}
@@ -990,7 +990,7 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 			MEM(box = fr_value_box_alloc_null(state));
 			if (fr_value_box_copy(state, box, &vp->data) < 0) return -1;
 
-			fr_dlist_insert_tail(&current->parent->rhs.result, box);
+			fr_value_box_list_insert_tail(&current->parent->rhs.result, box);
 
 			vp = fr_dcursor_next(&cursor);
 		}
@@ -1016,7 +1016,7 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 {
 	fr_assert(current->parent);
 
-	fr_dlist_move(&current->parent->rhs.result, &current->lhs.result);
+	fr_value_box_list_move(&current->parent->rhs.result, &current->lhs.result);
 	return next_map(request, state, current);
 }
 
@@ -1198,8 +1198,8 @@ static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit
 	int rcode;
 	map_t const *map = current->map;
 
-	fr_assert(fr_dlist_empty(&current->lhs.result));	/* Should have been consumed */
-	fr_assert(fr_dlist_empty(&current->rhs.result));	/* Should have been consumed */
+	fr_assert(fr_value_box_list_empty(&current->lhs.result));	/* Should have been consumed */
+	fr_assert(fr_value_box_list_empty(&current->rhs.result));	/* Should have been consumed */
 
 	rcode = tmpl_to_values(state, &current->lhs, request, map->lhs);
 	if (rcode < 0) return -1;

@@ -48,8 +48,8 @@ typedef struct {
 
 	fr_dlist_head_t		vlm_head;			//!< Head of list of VP List Mod.
 
-	fr_value_box_list_t	lhs_result;			//!< Result of expanding the LHS
-	fr_value_box_list_t	rhs_result;			//!< Result of expanding the RHS.
+	FR_DLIST_HEAD(fr_value_box_list)	lhs_result;			//!< Result of expanding the LHS
+	FR_DLIST_HEAD(fr_value_box_list)	rhs_result;			//!< Result of expanding the RHS.
 
 	unlang_update_state_t	state;				//!< What we're currently doing.
 } unlang_frame_state_update_t;
@@ -58,7 +58,7 @@ typedef struct {
  *
  */
 typedef struct {
-	fr_value_box_list_t	src_result;			//!< Result of expanding the map source.
+	FR_DLIST_HEAD(fr_value_box_list)	src_result;			//!< Result of expanding the map source.
 } unlang_frame_state_map_proc_t;
 
 /** Apply a list of modifications on one or more fr_pair_t lists.
@@ -133,8 +133,8 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 		case UNLANG_UPDATE_MAP_INIT:
 			update_state->state = UNLANG_UPDATE_MAP_EXPANDED_LHS;
 
-			fr_assert(fr_dlist_empty(&update_state->lhs_result));	/* Should have been consumed */
-			fr_assert(fr_dlist_empty(&update_state->rhs_result));	/* Should have been consumed */
+			fr_assert(fr_value_box_list_empty(&update_state->lhs_result));	/* Should have been consumed */
+			fr_assert(fr_value_box_list_empty(&update_state->rhs_result));	/* Should have been consumed */
 
 			switch (map->lhs->type) {
 			default:
@@ -216,9 +216,9 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 			/*
 			 *	Concat the top level results together
 			 */
-			if (!fr_dlist_empty(&update_state->rhs_result) &&
+			if (!fr_value_box_list_empty(&update_state->rhs_result) &&
 			    (fr_value_box_list_concat_in_place(update_state,
-			    				       fr_dlist_head(&update_state->rhs_result), &update_state->rhs_result, FR_TYPE_STRING,
+			    				       fr_value_box_list_head(&update_state->rhs_result), &update_state->rhs_result, FR_TYPE_STRING,
 			    				       FR_VALUE_BOX_LIST_FREE, true,
 			    				       SIZE_MAX) < 0)) {
 				RPEDEBUG("Failed concatenating RHS expansion results");
@@ -230,12 +230,12 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 					    &update_state->lhs_result, &update_state->rhs_result) < 0) goto error;
 			if (new_mod) fr_dlist_insert_tail(&update_state->vlm_head, new_mod);
 
-			fr_dlist_talloc_free(&update_state->rhs_result);
+			fr_value_box_list_talloc_free(&update_state->rhs_result);
 		}
 
 		next:
 			update_state->state = UNLANG_UPDATE_MAP_INIT;
-			fr_dlist_talloc_free(&update_state->lhs_result);
+			fr_value_box_list_talloc_free(&update_state->lhs_result);
 
 			break;
 		}
@@ -297,9 +297,9 @@ static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request,
 	/*
 	 *	FIXME - We don't yet support async LHS/RHS expansions for map procs
 	 */
-	FR_DLIST_VERIFY(&map_proc_state->src_result);
+	fr_value_box_list_verify(&map_proc_state->src_result);
 	*p_result = map_proc(request, gext->proc_inst, &map_proc_state->src_result);
-	FR_DLIST_VERIFY(&map_proc_state->src_result);
+	fr_value_box_list_verify(&map_proc_state->src_result);
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -337,7 +337,7 @@ static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *r
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
-		fr_dlist_insert_head(&map_proc_state->src_result, src_result);
+		fr_value_box_list_insert_head(&map_proc_state->src_result, src_result);
 		break;
 	}
 	case TMPL_TYPE_EXEC:

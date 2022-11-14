@@ -63,12 +63,12 @@ xlat_arg_parser_t const trigger_xlat_args[] = {
  */
 xlat_action_t trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			   UNUSED xlat_ctx_t const *xctx,
-			   request_t *request, fr_value_box_list_t *in)
+			   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_pair_list_t		*head = NULL;
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp;
-	fr_value_box_t		*in_head = fr_dlist_head(in);
+	fr_value_box_t		*in_head = fr_value_box_list_head(in);
 	fr_value_box_t		*vb;
 
 	if (!triggers_init) {
@@ -186,7 +186,7 @@ bool trigger_enabled(void)
 typedef struct {
 	char			*command;	//!< Name of the trigger.
 	xlat_exp_head_t		*xlat;		//!< xlat representation of the trigger args.
-	fr_value_box_list_t	args;		//!< Arguments to pass to the trigger exec.
+	FR_DLIST_HEAD(fr_value_box_list)	args;		//!< Arguments to pass to the trigger exec.
 
 	fr_exec_state_t		exec;		//!< Used for asynchronous execution.
 	fr_time_delta_t		timeout;	//!< How long the trigger has to run.
@@ -212,7 +212,7 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 {
 	fr_trigger_t	*trigger = talloc_get_type_abort(rctx, fr_trigger_t);
 
-	if (fr_dlist_empty(&trigger->args)) {
+	if (fr_value_box_list_empty(&trigger->args)) {
 		RERROR("Failed trigger \"%s\" - did not expand to anything", trigger->command);
 		RETURN_MODULE_FAIL;
 	}

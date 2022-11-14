@@ -123,7 +123,7 @@ static void _request_runnable(request_t *request, void *uctx)
 /** Interpreter yielded request
  *
  */
-static void _request_yield(request_t *request, UNUSED void *uctx)
+static void _request_yield(request_t *request, void *uctx)
 {
 	unlang_interpret_synchronous_t	*intps = uctx;
 

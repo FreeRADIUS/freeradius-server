@@ -141,10 +141,10 @@ static xlat_arg_parser_t const modhex_to_hex_xlat_arg = {
  */
 static xlat_action_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t * out,
 					UNUSED xlat_ctx_t const *xctx, request_t *request,
-					fr_value_box_list_t *in)
+					FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	ssize_t 	len;
-	fr_value_box_t	*arg = fr_dlist_pop_head(in);
+	fr_value_box_t	*arg = fr_value_box_list_pop_head(in);
 	char		*p = UNCONST(char *, arg->vb_strvalue);
 
 	/*

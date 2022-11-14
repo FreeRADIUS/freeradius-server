@@ -1134,17 +1134,17 @@ int pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t 
  *	- <0 for "cast failed"
  *	- 0 for success
  */
-int tmpl_value_list_insert_tail(fr_value_box_list_t *list, fr_value_box_t *box, tmpl_t const *vpt)
+int tmpl_value_list_insert_tail(FR_DLIST_HEAD(fr_value_box_list) *list, fr_value_box_t *box, tmpl_t const *vpt)
 {
 	if (fr_type_is_null(tmpl_rules_cast(vpt)) ||
 	    (box->type == tmpl_rules_cast(vpt))) {
-		fr_dlist_insert_tail(list, box);
+		fr_value_box_list_insert_tail(list, box);
 		return 0;
 	}
 
 	if (fr_value_box_cast_in_place(box, box, tmpl_rules_cast(vpt), tmpl_rules_enumv(vpt)) < 0) return -1;
 
-	fr_dlist_insert_tail(list, box);
+	fr_value_box_list_insert_tail(list, box);
 	return 0;
 }
 
@@ -1162,12 +1162,12 @@ int tmpl_value_list_insert_tail(fr_value_box_list_t *list, fr_value_box_t *box, 
  *	- <0	on memory allocation errors.
  *	- 0	success.
  */
-static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
+static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out,
 				  request_t *request, tmpl_t const *vpt)
 {
 	fr_radius_packet_t *packet = NULL;
 	fr_value_box_t	*value;
-	fr_value_box_list_t list;
+	FR_DLIST_HEAD(fr_value_box_list) list;
 
 	/*
 	 *	Virtual attributes always have a count of 1
@@ -1299,14 +1299,14 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 
 done:
 	fr_value_box_list_init(&list);
-	fr_dlist_insert_tail(&list, value);
+	fr_value_box_list_insert_tail(&list, value);
 
 	if (tmpl_eval_cast(ctx, &list, vpt) < 0) {
-		fr_dlist_talloc_free(&list);
+		fr_value_box_list_talloc_free(&list);
 		return -1;
 	};
 
-	fr_dlist_move(out, &list);
+	fr_value_box_list_move(out, &list);
 	return 0;
 }
 
@@ -1321,7 +1321,7 @@ done:
  *	- <0		we failed getting a value for the attribute.
  *	- 0		we successfully evaluated the tmpl
  */
-int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt)
+int tmpl_eval_pair(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp = NULL;
 	fr_value_box_t		*value;
@@ -1330,7 +1330,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 	tmpl_dcursor_ctx_t	cc;
 
 	int			ret = 0;
-	fr_value_box_list_t	list;
+	FR_DLIST_HEAD(fr_value_box_list)	list;
 
 	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
@@ -1368,7 +1368,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 				goto fail;
 			}
 			value->datum.int32 = 0;
-			fr_dlist_insert_tail(&list, value);
+			fr_value_box_list_insert_tail(&list, value);
 		} /* Fall through to being done */
 
 		goto done;
@@ -1390,7 +1390,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
 		if (!value) goto oom;
 		value->datum.uint32 = count;
-		fr_dlist_insert_tail(&list, value);
+		fr_value_box_list_insert_tail(&list, value);
 		break;
 	}
 
@@ -1418,7 +1418,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 				fr_value_box_copy(value, value, &vp->data);
 			}
 
-			fr_dlist_insert_tail(&list, value);
+			fr_value_box_list_insert_tail(&list, value);
 			vp = fr_dcursor_next(&cursor);
 		}
 		break;
@@ -1429,7 +1429,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 
 		fr_assert(fr_type_is_leaf(vp->da->type));
 		fr_value_box_copy(value, value, &vp->data);	/* Also dups taint */
-		fr_dlist_insert_tail(&list, value);
+		fr_value_box_list_insert_tail(&list, value);
 		break;
 	}
 
@@ -1439,12 +1439,12 @@ done:
 	 */
 	if (ret == 0) {
 		if (tmpl_eval_cast(ctx, &list, vpt) < 0) {
-			fr_dlist_talloc_free(&list);
+			fr_value_box_list_talloc_free(&list);
 			ret = -1;
 			goto fail;
 		}
 
-		fr_dlist_move(out, &list);
+		fr_value_box_list_move(out, &list);
 	}
 
 fail:
@@ -1465,11 +1465,11 @@ fail:
  *	- <0		we failed getting a value for the tmpl
  *	- 0		we successfully evaluated the tmpl
  */
-int tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt)
+int tmpl_eval(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, request_t *request, tmpl_t const *vpt)
 {
 	char *p;
 	fr_value_box_t		*value;
-	fr_value_box_list_t	list;
+	FR_DLIST_HEAD(fr_value_box_list)	list;
 
 	if (tmpl_needs_resolving(vpt)) {
 		fr_strerror_const("Cannot evaluate unresolved tmpl");
@@ -1524,14 +1524,14 @@ int tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmp
 	 */
 done:
 	fr_value_box_list_init(&list);
-	fr_dlist_insert_tail(&list, value);
+	fr_value_box_list_insert_tail(&list, value);
 
 	if (tmpl_eval_cast(ctx, &list, vpt) < 0) {
-		fr_dlist_talloc_free(&list);
+		fr_value_box_list_talloc_free(&list);
 		return -1;
 	};
 
-	fr_dlist_move(out, &list);
+	fr_value_box_list_move(out, &list);
 	return 0;
 }
 
@@ -1546,7 +1546,7 @@ done:
  *	- <0		the cast failed
  *	- 0		we successfully evaluated the tmpl
  */
-int tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *list, tmpl_t const *vpt)
+int tmpl_eval_cast(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, tmpl_t const *vpt)
 {
 	fr_type_t cast = tmpl_rules_cast(vpt);
 	fr_value_box_t *vb;
@@ -1559,7 +1559,7 @@ int tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *list, tmpl_t const *vpt
 	/*
 	 *	Apply a cast to the results if required.
 	 */
-	vb = fr_dlist_head(list);
+	vb = fr_value_box_list_head(list);
 	if (!vb) return 0;
 
 	switch (cast) {
@@ -1570,7 +1570,7 @@ int tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *list, tmpl_t const *vpt
 		 *	Many boxes, turn them into strings, and try to parse it as the
 		 *	output type.
 		 */
-		if (!fr_dlist_next(list, vb)) {
+		if (!fr_value_box_list_next(list, vb)) {
 			return fr_value_box_cast_in_place(vb, vb, cast, NULL);
 		}
 		FALL_THROUGH;
@@ -1592,7 +1592,7 @@ int tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *list, tmpl_t const *vpt
 					     NULL, tainted);
 		if ((vlen < 0) || (slen != vlen)) return -1;
 
-		fr_dlist_insert_tail(list, vb);
+		fr_value_box_list_insert_tail(list, vb);
 		break;
 
 	case FR_TYPE_OCTETS:

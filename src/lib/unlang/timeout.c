@@ -28,14 +28,14 @@ RCSID("$Id$")
 #include "timeout_priv.h"
 
 typedef struct {
-	bool			success;
-	int			depth;
-	fr_time_delta_t		timeout;
-	request_t		*request;
-	rindent_t		indent;
-	fr_event_timer_t const	*ev;
+	bool					success;
+	int					depth;
+	fr_time_delta_t				timeout;
+	request_t				*request;
+	rindent_t				indent;
+	fr_event_timer_t const			*ev;
 
-	fr_value_box_list_t	result;
+	FR_DLIST_HEAD(fr_value_box_list)	result;
 } unlang_frame_state_timeout_t;
 
 static void unlang_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
@@ -57,7 +57,7 @@ static void unlang_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_time_t 
 	state->success = false;
 }
 
-static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
 
@@ -104,10 +104,10 @@ static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *requ
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_timeout_xlat_done(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_timeout_xlat_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
-	fr_value_box_t			*box = fr_dlist_head(&state->result);
+	fr_value_box_t			*box = fr_value_box_list_head(&state->result);
 
 	/*
 	 *	compile_timeout() ensures that the tmpl is cast to time_delta, so we don't have to do any more work here.

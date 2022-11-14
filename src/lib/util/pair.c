@@ -2042,14 +2042,14 @@ int fr_pair_list_copy_to_box(fr_value_box_t *dst, fr_pair_list_t *from)
 			value = fr_value_box_alloc(dst, vp->data.type, vp->da, vp->data.tainted);
 			if (!value) {
 			fail:
-				fr_dlist_talloc_free_to_tail(&dst->vb_group, first_added);
+				fr_value_box_list_talloc_free_to_tail(&dst->vb_group, first_added);
 				return -1;
 			}
 			fr_value_box_copy(value, value, &vp->data);
 		}
 
 		if (!first_added) first_added = value;
-		fr_dlist_insert_tail(&dst->vb_group, value);
+		fr_value_box_list_insert_tail(&dst->vb_group, value);
 	}
 
 	return cnt;

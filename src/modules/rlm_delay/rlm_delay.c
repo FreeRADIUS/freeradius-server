@@ -176,7 +176,7 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 
 static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_ctx_t const *xctx,
-				       request_t *request, UNUSED fr_value_box_list_t *in)
+				       request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_time_t	*yielded_at = talloc_get_type_abort(xctx->rctx, fr_time_t);
 	fr_time_delta_t	delayed;
@@ -218,11 +218,11 @@ static xlat_arg_parser_t const xlat_delay_args[] = {
  */
 static xlat_action_t xlat_delay(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 				xlat_ctx_t const *xctx,
-				request_t *request, fr_value_box_list_t *in)
+				request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_delay_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_delay_t);
 	fr_time_t		resume_at, *yielded_at;
-	fr_value_box_t		*delay = fr_dlist_head(in);
+	fr_value_box_t		*delay = fr_value_box_list_head(in);
 
 	/*
 	 *	Record the time that we yielded the request

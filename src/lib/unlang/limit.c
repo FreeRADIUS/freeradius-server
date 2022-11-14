@@ -28,15 +28,15 @@ RCSID("$Id$")
 #include "limit_priv.h"
 
 typedef struct {
-	uint32_t		active_callers;
+	uint32_t				active_callers;
 } unlang_thread_limit_t;
 
 typedef struct {
-	unlang_thread_limit_t	*thread;
-	uint32_t		limit;
-	request_t		*request;
+	unlang_thread_limit_t			*thread;
+	uint32_t				limit;
+	request_t				*request;
 
-	fr_value_box_list_t	result;
+	FR_DLIST_HEAD(fr_value_box_list)	result;
 } unlang_frame_state_limit_t;
 
 /** Send a signal (usually stop) to a request
@@ -87,10 +87,10 @@ static unlang_action_t unlang_limit_enforce(rlm_rcode_t *p_result, request_t *re
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_limit_xlat_done(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_limit_xlat_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_limit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_limit_t);
-	fr_value_box_t			*box = fr_dlist_head(&state->result);
+	fr_value_box_t			*box = fr_value_box_list_head(&state->result);
 
 	/*
 	 *	compile_limit() ensures that the tmpl is cast to uint32, so we don't have to do any more work here.

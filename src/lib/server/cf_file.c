@@ -516,7 +516,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	cf_file_t *file;
 	CONF_SECTION *top;
 	fr_rb_tree_t *tree;
-	int fd;
+	int fd = -1;
 	FILE *fp;
 
 	top = cf_root(cs);

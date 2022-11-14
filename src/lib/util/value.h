@@ -85,11 +85,7 @@ extern fr_sbuff_escape_rules_t *fr_value_escape_by_char[UINT8_MAX + 1];
 
 extern fr_sbuff_escape_rules_t fr_value_escape_unprintables;
 
-/** Lists of value boxes
- *
- * Specifically define a type for lists of value_box_t to aid type checking
- */
-typedef fr_dlist_head_t	fr_value_box_list_t;
+FR_DLIST_TYPES(fr_value_box_list)
 
 /** Union containing all data types supported by the server
  *
@@ -99,60 +95,66 @@ typedef fr_dlist_head_t	fr_value_box_list_t;
  * fr_type_t should be an enumeration of the values in this union.
  */
 struct value_box_s {
-	fr_type_t		_CONST type;			//!< Type of this value-box, at the start, see pair.h
+	fr_type_t		_CONST		type;			//!< Type of this value-box, at the start, see pair.h
 
 	union {
 		/*
 		 *	Variable length values
 		 */
-		char const 	* _CONST strvalue;	//!< Pointer to UTF-8 string.
-		uint8_t const 	* _CONST octets;	//!< Pointer to binary string.
-		void 		* _CONST ptr;		//!< generic pointer.
+		char const 	* _CONST		strvalue;	//!< Pointer to UTF-8 string.
+		uint8_t const 	* _CONST 		octets;	//!< Pointer to binary string.
+		void 		* _CONST 		ptr;		//!< generic pointer.
 
 		/*
 		 *	Fixed length values
 		 */
-		fr_ipaddr_t		ip;			//!< IPv4/6 address/prefix.
+		fr_ipaddr_t				ip;			//!< IPv4/6 address/prefix.
 
-		fr_ifid_t		ifid;			//!< IPv6 interface ID.
-		fr_ethernet_t		ether;			//!< Ethernet (MAC) address.
+		fr_ifid_t				ifid;			//!< IPv6 interface ID.
+		fr_ethernet_t				ether;			//!< Ethernet (MAC) address.
 
-		bool			boolean;		//!< A truth value.
+		bool					boolean;		//!< A truth value.
 
-		uint8_t			uint8;			//!< 8bit unsigned integer.
-		uint16_t		uint16;			//!< 16bit unsigned integer.
-		uint32_t		uint32;			//!< 32bit unsigned integer.
-		uint64_t		uint64;			//!< 64bit unsigned integer.
-		uint128_t		uint128;		//!< 128bit unsigned integer.
+		uint8_t					uint8;			//!< 8bit unsigned integer.
+		uint16_t				uint16;			//!< 16bit unsigned integer.
+		uint32_t				uint32;			//!< 32bit unsigned integer.
+		uint64_t				uint64;			//!< 64bit unsigned integer.
+		uint128_t				uint128;		//!< 128bit unsigned integer.
 
-		int8_t			int8;			//!< 8bit signed integer.
-		int16_t			int16;			//!< 16bit signed integer.
-		int32_t			int32;			//!< 32bit signed integer.
-		int64_t			int64;			//!< 64bit signed integer;
+		int8_t					int8;			//!< 8bit signed integer.
+		int16_t					int16;			//!< 16bit signed integer.
+		int32_t					int32;			//!< 32bit signed integer.
+		int64_t					int64;			//!< 64bit signed integer;
 
-		float			float32;		//!< Single precision float.
-		double			float64;		//!< Double precision float.
+		float					float32;		//!< Single precision float.
+		double					float64;		//!< Double precision float.
 
-		fr_unix_time_t		date;			//!< Date internal format in nanoseconds
+		fr_unix_time_t				date;			//!< Date internal format in nanoseconds
 
 		/*
 		 *	System specific - Used for runtime configuration only.
 		 */
-		size_t			size;			//!< System specific file/memory size.
-		fr_time_delta_t		time_delta;		//!< a delta time in nanoseconds
+		size_t					size;			//!< System specific file/memory size.
+		fr_time_delta_t				time_delta;		//!< a delta time in nanoseconds
 
-		fr_value_box_list_t	children;		//!< for groups
+		FR_DLIST_HEAD(fr_value_box_list)	children;		//!< for groups
 	} datum;
 
-	size_t				length;
+	size_t					length;
 
-	bool				tainted;		//!< i.e. did it come from an untrusted source
-	uint16_t		 _CONST safe;			//!< more detailed safety
+	bool					tainted;		//!< i.e. did it come from an untrusted source
+	uint16_t		 	_CONST	safe;			//!< more detailed safety
 
-	fr_dict_attr_t const		*enumv;			//!< Enumeration values.
+	fr_dict_attr_t const			*enumv;			//!< Enumeration values.
 
-	fr_dlist_t			entry;			//!< Doubly linked list entry.
+	FR_DLIST_ENTRY(fr_value_box_list)	entry;			//!< Doubly linked list entry.
 };
+
+FR_DLIST_FUNCS(fr_value_box_list, fr_value_box_t, entry)
+
+#define fr_value_box_list_foreach(_list_head, _iter)		fr_dlist_foreach(fr_value_box_list_dlist_head(_list_head), fr_value_box_t, _iter)
+#define fr_value_box_list_foreach_safe(_list_head, _iter)	fr_dlist_foreach_safe(fr_value_box_list_dlist_head(_list_head), fr_value_box_t, _iter)
+#define fr_value_box_list_verify(_list_head)			_fr_value_box_list_verify(__FILE__, __LINE__, _list_head)
 
 /** Actions to perform when we process a box in a list
  *
@@ -376,17 +378,6 @@ extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
  */
 #define fr_value_box_foreach(_v, _iv) for (fr_value_box_t *_iv = fr_dlist_head(_v); _iv; _iv = fr_dlist_next(_v, _iv))
 
-/** Returns the number of boxes in a list of value boxes
- *
- * @param[in] list	of value boxes.
- * @return Number of boxes in the list.
- */
-static inline CC_HINT(nonnull)
-size_t fr_value_box_list_len(fr_value_box_list_t const *list)
-{
-	return fr_dlist_num_elements(list);
-}
-
 /** Determines whether a list contains the number of boxes required
  *
  * @param[in] list	of value boxes.
@@ -396,23 +387,12 @@ size_t fr_value_box_list_len(fr_value_box_list_t const *list)
  *	- false if the list has fewer than min boxes.
  */
 static inline CC_HINT(nonnull)
-bool fr_value_box_list_len_min(fr_value_box_list_t const *list, unsigned int min)
+bool fr_value_box_list_len_min(FR_DLIST_HEAD(fr_value_box_list) const *list, unsigned int min)
 {
-	unsigned int i = fr_dlist_num_elements(list);
+	unsigned int i = fr_value_box_list_num_elements(list);
 
 	return (i >= min);
 }
-
-/** Initialise a list of fr_value_box_t
- *
- * @param[in,out] list 	to initialise
- */
-static inline CC_HINT(nonnull)
-void fr_value_box_list_init(fr_value_box_list_t *list)
-{
-	fr_dlist_init(list, fr_value_box_t, entry);	/* Not always talloced */
-}
-/** @} */
 
 /** @name Box to box copying
  *
@@ -471,7 +451,7 @@ void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const 
 		.enumv = enumv,
 		.tainted = tainted
 	});
-	fr_dlist_entry_init(&vb->entry);
+	fr_value_box_list_entry_init(vb);
 
 	/*
 	 *	The majority of types are fine to initialise to
@@ -1020,36 +1000,36 @@ ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  *
  * @{
  */
-ssize_t		fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
-						   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
-						   fr_value_box_list_action_t proc_action, bool flatten, bool printable)
+ssize_t 	fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, FR_DLIST_HEAD(fr_value_box_list) *list,
+					   	  char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
+					   	  fr_value_box_list_action_t proc_action, bool flatten, bool printable)
 		CC_HINT(nonnull(2,3));
 
-ssize_t		fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
+ssize_t		fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, FR_DLIST_HEAD(fr_value_box_list) *list,
 						   uint8_t const *sep, size_t sep_len,
 						   fr_value_box_list_action_t proc_action, bool flatten)
 		CC_HINT(nonnull(2,3));
 
 int		fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
-						  fr_value_box_t *out, fr_value_box_list_t *list, fr_type_t type,
+						  fr_value_box_t *out, FR_DLIST_HEAD(fr_value_box_list) *list, fr_type_t type,
 						  fr_value_box_list_action_t proc_action, bool flatten,
 						  size_t max_size)
 		CC_HINT(nonnull(2,3));
 
-char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
+char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) const *list, char const *delim,
 					  fr_sbuff_escape_rules_t const *e_rules)
 		CC_HINT(nonnull(2));
 
-int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in)
+int		fr_value_box_list_acopy(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, FR_DLIST_HEAD(fr_value_box_list) const *in)
 		CC_HINT(nonnull(2,3));
 
-bool		fr_value_box_list_tainted(fr_value_box_list_t const *head)
+bool		fr_value_box_list_tainted(FR_DLIST_HEAD(fr_value_box_list) const *head)
 		CC_HINT(nonnull(1));
 
-void		fr_value_box_list_taint(fr_value_box_list_t *head)
+void		fr_value_box_list_taint(FR_DLIST_HEAD(fr_value_box_list) *head)
 		CC_HINT(nonnull(1));
 
-void		fr_value_box_list_untaint(fr_value_box_list_t *head)
+void		fr_value_box_list_untaint(FR_DLIST_HEAD(fr_value_box_list) *head)
 		CC_HINT(nonnull(1));
 /** @} */
 
@@ -1084,7 +1064,7 @@ uint32_t	fr_value_box_hash(fr_value_box_t const *vb);
 
 void		value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
 		CC_HINT(nonnull(3));
-void		value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list, bool talloced)
+void		value_box_list_verify(char const *file, int line, FR_DLIST_HEAD(fr_value_box_list) const *list, bool talloced)
 		CC_HINT(nonnull(3));
 
 #ifdef WITH_VERIFY_PTR

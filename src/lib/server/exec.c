@@ -44,17 +44,16 @@ static _Thread_local fr_sbuff_marker_t env_m[NUM_ELEMENTS(env_arr)];
  *	- >= 0 number of array elements in argv
  *	- <0 on error
  */
-static int exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_list_t const *in)
+static int exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, FR_DLIST_HEAD(fr_value_box_list) const *in)
 {
 	char		**argv;
-	fr_value_box_t	*vb = NULL;
 	unsigned int	i = 0;
-	size_t		argc = fr_value_box_list_len(in);
+	size_t		argc = fr_value_box_list_num_elements(in);
 
 	argv = talloc_zero_array(ctx, char *, argc + 1);
 	if (!argv) return -1;
 
-	while ((vb = fr_dlist_next(in, vb))) {
+	fr_value_box_list_foreach(in, vb) {
 		/*
 		 *	Print the children of each group into the argv array.
 		 */
@@ -324,7 +323,7 @@ static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **env
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
+int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args,
 			fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit)
 {
 
@@ -337,8 +336,8 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
 	/*
 	 *	Ensure that we don't do anything stupid.
 	 */
-	first =  fr_dlist_head(args);
-	if (first->type == FR_TYPE_GROUP) first = fr_dlist_head(&first->vb_group);
+	first =  fr_value_box_list_head(args);
+	if (first->type == FR_TYPE_GROUP) first = fr_value_box_list_head(&first->vb_group);
 	if (first->tainted) {
 		REDEBUG("Program to run comes from tainted source - %pV", first);
 		return -1;
@@ -443,7 +442,7 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
  *  the environment.
  */
 int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_fd,
-		      request_t *request, fr_value_box_list_t *args,
+		      request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args,
 		      fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit)
 {
 	int		argc;
@@ -458,8 +457,8 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 	/*
 	 *	Ensure that we don't do anything stupid.
 	 */
-	first =  fr_dlist_head(args);
-	if (first->type == FR_TYPE_GROUP) first = fr_dlist_head(&first->vb_group);
+	first =  fr_value_box_list_head(args);
+	if (first->type == FR_TYPE_GROUP) first = fr_value_box_list_head(&first->vb_group);
 	if (first->tainted) {
 		fr_strerror_printf("Program to run comes from tainted source - %pV", first);
 		return -1;
@@ -899,7 +898,7 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
  *	- -1 on failure
  */
 int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
-		  fr_value_box_list_t *args,
+		  FR_DLIST_HEAD(fr_value_box_list) *args,
 		  fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit,
 		  bool need_stdin,
 		  bool store_stdout, TALLOC_CTX *stdout_ctx,

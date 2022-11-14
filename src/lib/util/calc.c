@@ -2056,7 +2056,7 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 		 */
 		rcode = 0;	/* in case group is empty */
 
-		while ((vb = fr_dlist_next(&src->vb_group, vb)) != NULL) {
+		while ((vb = fr_value_box_list_next(&src->vb_group, vb)) != NULL) {
 			rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, op, vb);
 			if (rcode < 0) break;
 		}
@@ -2194,7 +2194,7 @@ int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, 
 /** Apply a set of operations in order to create an output box.
  *
  */
-int fr_value_calc_list_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op, fr_value_box_list_t const *list)
+int fr_value_calc_list_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op, FR_DLIST_HEAD(fr_value_box_list) const *list)
 {
 	/*
 	 *	For octets and string and prepend / append, figure out
@@ -2209,7 +2209,7 @@ int fr_value_calc_list_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op, f
 		uint8_t *str, *p;
 		fr_value_box_t src;
 
-		fr_dlist_foreach(list,fr_value_box_t const, a) {
+		fr_value_box_list_foreach(list, a) {
 			if (a->type != box->type) {
 				len = 0;
 				break;
@@ -2231,7 +2231,7 @@ int fr_value_calc_list_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op, f
 		}
 
 		p = str;
-		fr_dlist_foreach(list,fr_value_box_t const, a) {
+		fr_value_box_list_foreach(list, a) {
 			memcpy(p, a->vb_octets, a->vb_length);
 			p += a->vb_length;
 			tainted |= a->tainted;
@@ -2249,7 +2249,7 @@ int fr_value_calc_list_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op, f
 	}
 
 brute_force:
-	fr_dlist_foreach(list,fr_value_box_t const, a) {
+	fr_value_box_list_foreach(list, a) {
 		if (fr_value_calc_binary_op(ctx, box, box->type, box, op, a) < 0) return -1;
 	}
 
@@ -2263,7 +2263,7 @@ brute_force:
  *	This implementation is arguably wrong... it should be checking individual entries in list1 against individual entries in list2.
  *	Instead, it checks if ANY entry in list1 matches ANY entry in list2.
  */
-int fr_value_calc_list_cmp(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_list_t const *list1, fr_token_t op, fr_value_box_list_t const *list2)
+int fr_value_calc_list_cmp(TALLOC_CTX *ctx, fr_value_box_t *dst, FR_DLIST_HEAD(fr_value_box_list) const *list1, fr_token_t op, FR_DLIST_HEAD(fr_value_box_list) const *list2)
 {
 	int rcode;
 	bool invert = false;
@@ -2279,8 +2279,8 @@ int fr_value_calc_list_cmp(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_li
 	/*
 	 *	Emulate v3.  :(
 	 */
-	fr_dlist_foreach(list1, fr_value_box_t, a) {
-		fr_dlist_foreach(list2, fr_value_box_t, b) {
+	fr_value_box_list_foreach(list1, a) {
+		fr_value_box_list_foreach(list2, b) {
 			rcode = fr_value_calc_binary_op(ctx, dst, FR_TYPE_BOOL, a, op, b);
 			if (rcode < 0) return rcode;
 

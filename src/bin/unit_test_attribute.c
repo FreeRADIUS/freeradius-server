@@ -253,7 +253,7 @@ typedef struct {
 
 static xlat_action_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
-			       UNUSED fr_value_box_list_t *in)
+			       UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	return XLAT_ACTION_DONE;
 }

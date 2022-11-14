@@ -59,7 +59,7 @@ typedef struct {
 	fr_type_t		return_type;	//!< Data type to parse results into
 	bool			has_priority;	//!< Does the returned data start with a priority field
 	uint16_t		count;		//!< Number of results to return
-	fr_value_box_list_t	list;		//!< Where to put the parsed results
+	FR_DLIST_HEAD(fr_value_box_list)	list;		//!< Where to put the parsed results
 	TALLOC_CTX		*out_ctx;	//!< CTX to allocate parsed results in
 	fr_event_timer_t const	*ev;		//!< Event for timeout
 } unbound_request_t;
@@ -200,7 +200,7 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 						      &dbuff, rdlength, true) < 0) {
 			error:
 				talloc_free(vb);
-				fr_dlist_talloc_free(&ur->list);
+				fr_value_box_list_talloc_free(&ur->list);
 				ur->done = -32;
 				goto resume;
 			}
@@ -223,7 +223,7 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 					talloc_free(priority_vb);
 					goto error;
 				}
-				fr_dlist_insert_tail(&ur->list, priority_vb);
+				fr_value_box_list_insert_tail(&ur->list, priority_vb);
 			}
 
 			/*	String types require decoding of dns format labels */
@@ -238,7 +238,7 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 			goto error;
 		}
 
-		fr_dlist_insert_tail(&ur->list, vb);
+		fr_value_box_list_insert_tail(&ur->list, vb);
 
 	}
 
@@ -282,7 +282,7 @@ static void xlat_unbound_signal(xlat_ctx_t const *xctx, request_t *request, fr_s
  */
 static xlat_action_t xlat_unbound_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 xlat_ctx_t const *xctx,
-					 request_t *request, UNUSED fr_value_box_list_t *in)
+					 request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_value_box_t		*vb;
 	unbound_request_t	*ur = talloc_get_type_abort(xctx->rctx, unbound_request_t);
@@ -320,7 +320,7 @@ static xlat_action_t xlat_unbound_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *o
 	/*
 	 *	Move parsed results into xlat cursor
 	 */
-	while ((vb = fr_dlist_pop_head(&ur->list))) {
+	while ((vb = fr_value_box_list_pop_head(&ur->list))) {
 		fr_dcursor_append(out, vb);
 	}
 
@@ -342,13 +342,13 @@ static xlat_arg_parser_t const xlat_unbound_args[] = {
  */
 static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				  xlat_ctx_t const *xctx,
-				  request_t *request, fr_value_box_list_t *in)
+				  request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_unbound_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_unbound_t);
 	rlm_unbound_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, rlm_unbound_thread_t);
-	fr_value_box_t			*host_vb = fr_dlist_head(in);
-	fr_value_box_t			*query_vb = fr_dlist_next(in, host_vb);
-	fr_value_box_t			*count_vb = fr_dlist_next(in, query_vb);
+	fr_value_box_t			*host_vb = fr_value_box_list_head(in);
+	fr_value_box_t			*query_vb = fr_value_box_list_next(in, host_vb);
+	fr_value_box_t			*count_vb = fr_value_box_list_next(in, query_vb);
 	unbound_request_t		*ur;
 
 	if (host_vb->length == 0) {

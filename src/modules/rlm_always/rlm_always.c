@@ -65,14 +65,14 @@ static xlat_arg_parser_t const always_xlat_args[] = {
  */
 static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 xlat_ctx_t const *xctx,
-				 request_t *request, fr_value_box_list_t *in)
+				 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_always_t		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_always_t);
 	module_instance_t	*mi = inst->mi;
 	char const		*status;
 	char const		*p;
 	fr_value_box_t		*vb;
-	fr_value_box_t		*in_head = fr_dlist_head(in);
+	fr_value_box_t		*in_head = fr_value_box_list_head(in);
 
 	/*
 	 *      Expand to the existing status

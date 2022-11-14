@@ -441,7 +441,7 @@ int unlang_module_set_resume(request_t *request, unlang_module_resume_t resume)
  * @return
  *	- UNLANG_ACTION_YIELD
  */
-unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_box_list) *out,
 					    request_t *request, xlat_exp_head_t const *exp,
 					    unlang_module_resume_t resume,
 					    unlang_module_signal_t signal, void *rctx)
@@ -487,7 +487,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr
  * @return
  *	- UNLANG_ACTION_YIELD
  */
-unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t *out,
+unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out,
 					    request_t *request, tmpl_t const *vpt,
 					    unlang_tmpl_args_t *args,
 					    unlang_module_resume_t resume,

@@ -259,7 +259,7 @@ static int rlm_rest_perform(module_ctx_t const *mctx,
 
 static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-				      request_t *request, UNUSED fr_value_box_list_t *in)
+				      request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, rlm_rest_thread_t);
@@ -393,7 +393,7 @@ static xlat_arg_parser_t const rest_xlat_args[] = {
  */
 static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       xlat_ctx_t const *xctx, request_t *request,
-			       fr_value_box_list_t *in)
+			       FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, rlm_rest_thread_t);
@@ -401,7 +401,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	fr_curl_io_request_t		*randle = NULL;
 	int				ret;
 	http_method_t			method;
-	fr_value_box_t			*in_vb = fr_dlist_pop_head(in), *uri_vb = NULL;
+	fr_value_box_t			*in_vb = fr_value_box_list_pop_head(in), *uri_vb = NULL;
 
 	/* There are no configurable parameters other than the URI */
 	rlm_rest_xlat_rctx_t		*rctx;
@@ -420,8 +420,8 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	/*
 	 *	If we have more than 1 argument, then the first is the method
 	 */
-	if  ((fr_dlist_head(in))) {
-		uri_vb = fr_dlist_head(&in_vb->vb_group);
+	if  ((fr_value_box_list_head(in))) {
+		uri_vb = fr_value_box_list_head(&in_vb->vb_group);
 		if (fr_value_box_list_concat_in_place(uri_vb,
 						      uri_vb, &in_vb->vb_group, FR_TYPE_STRING,
 						      FR_VALUE_BOX_LIST_FREE, true,
@@ -443,7 +443,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		/*
 		 *	Move to next argument
 		 */
-		in_vb = fr_dlist_pop_head(in);
+		in_vb = fr_value_box_list_pop_head(in);
 		uri_vb = NULL;
 	} else {
 		section->method = REST_HTTP_METHOD_GET;
@@ -477,7 +477,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	uri_vb = fr_dlist_head(&in_vb->vb_group);
+	uri_vb = fr_value_box_list_head(&in_vb->vb_group);
 	if (fr_value_box_list_concat_in_place(uri_vb,
 					      uri_vb, &in_vb->vb_group, FR_TYPE_STRING,
 					      FR_VALUE_BOX_LIST_FREE, true,
@@ -489,7 +489,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	/*
 	 *	Any additional arguments are freeform data
 	 */
-	if ((in_vb = fr_dlist_head(in))) {
+	if ((in_vb = fr_value_box_list_head(in))) {
 		if (fr_value_box_list_concat_in_place(in_vb,
 						      in_vb, in, FR_TYPE_STRING,
 						      FR_VALUE_BOX_LIST_FREE, true,

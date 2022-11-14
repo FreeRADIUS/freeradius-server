@@ -115,17 +115,17 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				   fr_value_box_list_t *client_override, map_list_t const *maps)
+				   FR_DLIST_HEAD(fr_value_box_list) *client_override, map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	map_t const		*map = NULL;
 	RADCLIENT		*client;
 	client_get_vp_ctx_t	uctx;
 
-	if (!fr_dlist_empty(client_override)) {
+	if (!fr_value_box_list_empty(client_override)) {
 		fr_ipaddr_t	ip;
 		char const	*client_str;
-		fr_value_box_t	*client_override_head = fr_dlist_head(client_override);
+		fr_value_box_t	*client_override_head = fr_value_box_list_head(client_override);
 
 		/*
 		 *	Concat don't asprint, as this becomes a noop
@@ -231,14 +231,14 @@ static xlat_arg_parser_t const xlat_client_args[] = {
  */
 static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 UNUSED xlat_ctx_t const *xctx,
-				 request_t *request, fr_value_box_list_t *in)
+				 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	char const	*value = NULL;
 	fr_ipaddr_t	ip;
 	CONF_PAIR	*cp;
 	RADCLIENT	*client = NULL;
-	fr_value_box_t	*field = fr_dlist_head(in);
-	fr_value_box_t	*client_ip = fr_dlist_next(in, field);
+	fr_value_box_t	*field = fr_value_box_list_head(in);
+	fr_value_box_t	*client_ip = fr_value_box_list_next(in, field);
 	fr_value_box_t	*vb;
 
 	if (client_ip) {

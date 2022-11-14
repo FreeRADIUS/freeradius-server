@@ -154,7 +154,7 @@ static xlat_arg_parser_t const redis_remap_xlat_args[] = {
  */
 static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-				      request_t *request, fr_value_box_list_t *in)
+				      request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_redis_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_redis_t);
 
@@ -163,7 +163,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_redis_conn_t			*conn;
 	fr_redis_cluster_rcode_t	rcode;
 	fr_value_box_t			*vb;
-	fr_value_box_t			*in_head = fr_dlist_head(in);
+	fr_value_box_t			*in_head = fr_value_box_list_head(in);
 
 	if (fr_inet_pton_port(&node_addr.inet.dst_ipaddr, &node_addr.inet.dst_port, in_head->vb_strvalue, in_head->vb_length,
 			      AF_UNSPEC, true, true) < 0) {
@@ -208,7 +208,7 @@ static xlat_arg_parser_t const redis_node_xlat_args[] = {
  */
 static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_ctx_t const *xctx,
-				     request_t *request, fr_value_box_list_t *in)
+				     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_redis_t const			*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_redis_t);
 
@@ -219,8 +219,8 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	unsigned long				idx = 0;
 	fr_value_box_t				*vb;
-	fr_value_box_t				*key = fr_dlist_head(in);
-	fr_value_box_t				*idx_vb = fr_dlist_next(in, key);
+	fr_value_box_t				*key = fr_value_box_list_head(in);
+	fr_value_box_t				*idx_vb = fr_value_box_list_next(in, key);
 
 	if (idx_vb) idx = idx_vb->vb_uint32;
 
@@ -264,7 +264,7 @@ static xlat_arg_parser_t const redis_args[] = {
  */
 static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				xlat_ctx_t const *xctx,
-				request_t *request, fr_value_box_list_t *in)
+				request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_redis_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_redis_t);
 	xlat_action_t		action = XLAT_ACTION_DONE;
@@ -280,7 +280,7 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	redisReply		*reply = NULL;
 	int			s_ret;
 
-	fr_value_box_t		*first = fr_dlist_head(in);
+	fr_value_box_t		*first = fr_value_box_list_head(in);
 	fr_sbuff_t		sbuff = FR_SBUFF_IN(first->vb_strvalue, first->vb_length);
 
 	int			argc = 0;
@@ -318,9 +318,9 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		fr_dlist_talloc_free_head(in);	/* Remove and free server arg */
+		fr_value_box_list_talloc_free_head(in);	/* Remove and free server arg */
 
-		fr_dlist_foreach(in, fr_value_box_t, vb) {
+		fr_value_box_list_foreach(in, vb) {
 			if (argc == NUM_ELEMENTS(argv)) {
 				REDEBUG("Too many arguments (%i)", argc);
 				REXDENT();
@@ -332,7 +332,7 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			argc++;
 		}
 
-		RDEBUG2("Executing command: %pV", fr_dlist_head(in));
+		RDEBUG2("Executing command: %pV", fr_value_box_list_head(in));
 		if (argc > 1) {
 			RDEBUG2("With arguments");
 			RINDENT();
@@ -379,7 +379,7 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	RDEBUG2("REDIS command arguments");
 	RINDENT();
-	fr_dlist_foreach(in, fr_value_box_t, vb) {
+	fr_value_box_list_foreach(in, vb) {
 		if (argc == NUM_ELEMENTS(argv)) {
 			REDEBUG("Too many arguments (%i)", argc);
 			REXDENT();
@@ -407,7 +407,7 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	for (s_ret = fr_redis_cluster_state_init(&state, &conn, inst->cluster, request, key, key_len, read_only);
 	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
 	     s_ret = fr_redis_cluster_state_next(&state, &conn, inst->cluster, request, status, &reply)) {
-		RDEBUG2("Executing command: %pV", fr_dlist_head(in));
+		RDEBUG2("Executing command: %pV", fr_value_box_list_head(in));
 		if (argc > 1) {
 			RDEBUG2("With arguments");
 			RINDENT();

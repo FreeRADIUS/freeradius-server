@@ -88,10 +88,10 @@ static xlat_arg_parser_t const json_quote_xlat_arg = {
  */
 static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     UNUSED xlat_ctx_t const *xctx,
-				     request_t *request, fr_value_box_list_t *in)
+				     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_value_box_t *vb;
-	fr_value_box_t *in_head = fr_dlist_head(in);
+	fr_value_box_t *in_head = fr_value_box_list_head(in);
 	char *tmp;
 
 	if (!in_head) return XLAT_ACTION_DONE;	/* Empty input is allowed */
@@ -122,9 +122,9 @@ static xlat_arg_parser_t const jpath_validate_xlat_arg = {
  */
 static xlat_action_t jpath_validate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 UNUSED xlat_ctx_t const *xctx,
-					 request_t *request, fr_value_box_list_t *in)
+					 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
-	fr_value_box_t	*path = fr_dlist_head(in);
+	fr_value_box_t	*path = fr_value_box_list_head(in);
 	fr_jpath_node_t *head;
 	ssize_t 	slen;
 	char 		*jpath_str;
@@ -163,7 +163,7 @@ static xlat_arg_parser_t const json_encode_xlat_arg = {
  */
 static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-				      request_t *request, fr_value_box_list_t *in)
+				      request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_json_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_json_t);
 	fr_json_format_t const	*format = inst->format;
@@ -175,7 +175,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char			*json_str = NULL;
 	fr_value_box_t		*vb;
 	fr_sbuff_t		sbuff;
-	fr_value_box_t		*in_head = fr_dlist_head(in);
+	fr_value_box_t		*in_head = fr_value_box_list_head(in);
 
 	fr_pair_list_init(&json_vps);
 	fr_pair_list_init(&vps);
@@ -373,7 +373,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 	fr_pair_t			*vp;
 	rlm_json_jpath_to_eval_t	*to_eval = uctx;
 	fr_value_box_t			*value;
-	fr_value_box_list_t		head;
+	FR_DLIST_HEAD(fr_value_box_list)		head;
 	int				ret;
 
 	fr_pair_list_free(out);
@@ -386,11 +386,11 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 		return -1;
 	}
 	if (ret == 0) return 0;
-	fr_assert(!fr_dlist_empty(&head));
+	fr_assert(!fr_value_box_list_empty(&head));
 
-	for (value = fr_dlist_head(&head);
+	for (value = fr_value_box_list_head(&head);
 	     value;
-	     fr_pair_append(out, vp), value = fr_dlist_next(&head, value)) {
+	     fr_pair_append(out, vp), value = fr_value_box_list_next(&head, value)) {
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 
 		if (fr_value_box_steal(vp, &vp->data, value) < 0) {
@@ -417,7 +417,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_t *request,
-			      	fr_value_box_list_t *json, map_list_t const *maps)
+			      	FR_DLIST_HEAD(fr_value_box_list) *json, map_list_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
 	struct json_tokener		*tok;
@@ -428,7 +428,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_
 	rlm_json_jpath_to_eval_t	to_eval;
 
 	char const			*json_str = NULL;
-	fr_value_box_t			*json_head = fr_dlist_head(json);
+	fr_value_box_t			*json_head = fr_value_box_list_head(json);
 
 	if (!json_head) {
 		REDEBUG("JSON map input cannot be (null)");

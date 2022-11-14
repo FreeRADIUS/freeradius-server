@@ -167,11 +167,11 @@ update request {
  */
 static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_ctx_t const *xctx,
-				       request_t *request, fr_value_box_list_t *in)
+				       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_date_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_date_t);
 	struct tm 		tminfo;
-	fr_value_box_t		*arg = fr_dlist_head(in);
+	fr_value_box_t		*arg = fr_value_box_list_head(in);
 
 	memset(&tminfo, 0, sizeof(tminfo));
 

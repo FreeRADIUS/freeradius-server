@@ -4814,7 +4814,7 @@ void fr_trunk_verify(char const *file, int line, fr_trunk_t *trunk)
 	(void) talloc_get_type_abort(trunk, fr_trunk_t);
 
 	for (size_t i = 0; i < NUM_ELEMENTS(trunk->watch); i++) {
-		fr_dlist_verify(file, line, &trunk->watch[i]);
+		_fr_dlist_verify(file, line, &trunk->watch[i]);
 	}
 
 #define IO_FUNC_VERIFY(_func) \
@@ -4837,7 +4837,7 @@ do { \
 
 #define TCONN_DLIST_VERIFY(_dlist, _state) \
 do { \
-	fr_dlist_verify(file, line, &(trunk->_dlist)); \
+	_fr_dlist_verify(file, line, &(trunk->_dlist)); \
 	fr_dlist_foreach(&(trunk->_dlist), fr_trunk_connection_t, tconn)  { \
 		fr_trunk_connection_verify(file, line, tconn); \
 		TRUNK_TCONN_CHECKS(tconn, _state); \
@@ -4853,7 +4853,7 @@ do {\
 	}} \
 } while (0)
 
-	FR_DLIST_VERIFY(&(trunk->free_requests));
+	fr_dlist_verify(&(trunk->free_requests));
 	FR_HEAP_VERIFY(trunk->backlog);
 
 	TCONN_DLIST_VERIFY(init, FR_TRUNK_CONN_INIT);
@@ -4893,7 +4893,7 @@ do { \
 
 #define TREQ_DLIST_VERIFY(_dlist, _state) \
 do { \
-	fr_dlist_verify(file, line, &(tconn->_dlist)); \
+	_fr_dlist_verify(file, line, &(tconn->_dlist)); \
 	fr_dlist_foreach(&(tconn->_dlist), fr_trunk_request_t, treq)  { \
 		fr_trunk_request_verify(file, line, treq); \
 		TCONN_TREQ_CHECKS(treq, _state); \
