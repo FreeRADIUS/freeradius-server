@@ -420,6 +420,7 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 	 */
 	if (fr_dirfd(&dirfd, &r, path) < 0) {
 		fr_strerror_printf("Failed to open directory containing %s", path);
+		close(sockfd);
 		return -1;
 	}
 
