@@ -143,7 +143,8 @@ int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, proto_ldap_syn
 		goto error;
 	}
 
-	DEBUG3("Sync created with msgid %i", sync->msgid);
+	DEBUG3("Sync created with base dn \"%s\", filter \"%s\", msgid %i",
+		sync->config->base_dn, sync->config->filter, sync->msgid);
 
 	/*
 	 *	Register event to store cookies at a regular interval

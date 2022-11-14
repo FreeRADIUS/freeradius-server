@@ -146,7 +146,7 @@ static int sync_state_free(sync_state_t *sync)
 	fr_ldap_connection_t	*conn = talloc_get_type_abort(sync->conn, fr_ldap_connection_t);
 	fr_rb_tree_t		*tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
 
-	DEBUG3("Abandoning sync");
+	DEBUG3("Abandoning sync base dn \"%s\", filter \"%s\"", sync->config->base_dn, sync->config->filter);
 
 	if (!sync->conn->handle) return 0;	/* Handled already closed? */
 
