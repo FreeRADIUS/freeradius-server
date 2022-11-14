@@ -23,6 +23,7 @@
  *
  * @copyright 2022 Network RADIUS SARL (legal@networkradius.com)
  */
+USES_APPLE_DEPRECATED_API
 
 #include "proto_ldap_sync.h"
 #include <lber.h>

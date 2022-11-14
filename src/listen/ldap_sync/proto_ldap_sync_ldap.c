@@ -21,6 +21,8 @@
  *
  * @copyright 2022 Network RADIUS SARL (legal@networkradius.com)
  */
+USES_APPLE_DEPRECATED_API
+
 #define LOG_PREFIX "proto_ldap_sync_ldap"
 
 #include <freeradius-devel/internal/internal.h>
