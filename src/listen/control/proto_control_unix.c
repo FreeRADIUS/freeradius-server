@@ -28,6 +28,7 @@
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/trie.h>
+#include <freeradius-devel/util/file.h>
 #include <netdb.h>
 
 #include "proto_control.h"
@@ -384,6 +385,8 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 #endif
 {
 	int sockfd;
+	int dirfd;
+	char const *r;
 	size_t len;
 	socklen_t socklen;
 	struct sockaddr_un salocal;
@@ -412,13 +415,22 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 	socklen = SUN_LEN(&salocal);
 
 	/*
+	 *	Find and open the directory containing path so we can use the "at"
+	 * 	functions to avoid time of check/time of use insecurities.
+	 */
+	if (fr_dirfd(&dirfd, &r, path) < 0) {
+		fr_strerror_printf("Failed to open directory containing %s", path);
+		return -1;
+	}
+
+	/*
 	 *	Check the path.
 	 */
-	/* coverity[fs_check_call] */
-	if (stat(path, &buf) < 0) {
+	if (fstatat(dirfd, r, &buf, 0) < 0) {
 		if (errno != ENOENT) {
 			fr_strerror_printf("Failed to stat %s: %s", path, fr_syserror(errno));
 			close(sockfd);
+			if (dirfd != AT_FDCWD) close(dirfd);
 			return -1;
 		}
 
@@ -435,6 +447,7 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 			) {
 			fr_strerror_printf("Cannot turn %s into socket", path);
 			close(sockfd);
+			if (dirfd != AT_FDCWD) close(dirfd);
 			return -1;
 		}
 
@@ -444,6 +457,7 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 		if (buf.st_uid != geteuid()) {
 			fr_strerror_printf("We do not own %s", path);
 			close(sockfd);
+			if (dirfd != AT_FDCWD) close(dirfd);
 			return -1;
 		}
 
@@ -456,12 +470,14 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 			fr_strerror_printf("Control socket '%s' is already in use", path);
 			close(client_fd);
 			close(sockfd);
+			if (dirfd != AT_FDCWD) close(dirfd);
 			return -1;
 		}
 
-		if (unlink(path) < 0) {
+		if (unlinkat(dirfd, r, 0) < 0) {
 		       fr_strerror_printf("Failed to delete %s: %s", path, fr_syserror(errno));
 		       close(sockfd);
+		       if (dirfd != AT_FDCWD) close(dirfd);
 		       return -1;
 		}
 	}
@@ -469,6 +485,7 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 	if (bind(sockfd, (struct sockaddr *)&salocal, socklen) < 0) {
 		fr_strerror_printf("Failed binding to %s: %s", path, fr_syserror(errno));
 		close(sockfd);
+		if (dirfd != AT_FDCWD) close(dirfd);
 		return -1;
 	}
 
@@ -476,11 +493,14 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 	 *	FIXME: There's a race condition here.  But Linux
 	 *	doesn't seem to permit fchmod on domain sockets.
 	 */
-	if (chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0) {
+	if (fchmodat(dirfd, r, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, 0) < 0) {
 		fr_strerror_printf("Failed setting permissions on %s: %s", path, fr_syserror(errno));
 		close(sockfd);
+		if (dirfd != AT_FDCWD) close(dirfd);
 		return -1;
 	}
+
+	if (dirfd != AT_FDCWD) close(dirfd);
 
 	if (listen(sockfd, 8) < 0) {
 		fr_strerror_printf("Failed listening to %s: %s", path, fr_syserror(errno));

@@ -40,6 +40,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/file.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -529,12 +530,22 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	 */
 	if (from_dir) {
 		cf_file_t my_file;
+		char const *r;
+		int dirfd;
 
 		my_file.cs = cs;
 		my_file.filename = filename;
 
-		/* coverity[fs_check_call] */
-		if (stat(filename, &my_file.buf) < 0) goto error;
+		/*
+		 *	Find and open the directory containing filename so we can use
+		 * 	 the "at"functions to avoid time of check/time of use insecurities.
+		 */
+		if (fr_dirfd(&dirfd, &r, filename) < 0) {
+			ERROR("Failed to open directory containing %s", filename);
+			return -1;
+		}
+
+		if (fstatat(dirfd, r, &my_file.buf, 0) < 0) goto error;
 
 		file = fr_rb_find(tree, &my_file);
 
@@ -547,19 +558,25 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 		 *	However, if the file WAS read from a wildcard
 		 *	$INCLUDE directory, then we read it again.
 		 */
-		if (file && !file->from_dir) return 1;
+		if (file && !file->from_dir) {
+			if (dirfd != AT_FDCWD) close(dirfd);
+			return 1;
+		}
+		fd = openat(dirfd, r, O_RDONLY, 0);
+		fp = (fd < 0) ? NULL : fdopen(fd, "r");
+		if (dirfd != AT_FDCWD) close(dirfd);
+	} else {
+		fp = fopen(filename, "r");
+		if (fp) fd = fileno(fp);
 	}
 
 	DEBUG2("including configuration file %s", filename);
 
-	fp = fopen(filename, "r");
 	if (!fp) {
 	error:
 		ERROR("Unable to open file \"%s\": %s", filename, fr_syserror(errno));
 		return -1;
 	}
-
-	fd = fileno(fp);
 
 	MEM(file = talloc(tree, cf_file_t));
 
