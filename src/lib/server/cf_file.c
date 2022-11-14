@@ -2016,7 +2016,7 @@ static int parse_input(cf_stack_t *stack)
 	 *	it, so oh well.
 	 */
 	if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || ((*ptr == '&') && (ptr[1] != '=')) ||
-	    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((int) *ptr)) {
+	    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((int) *ptr) || isdigit((int) *ptr)) {
 		if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			return -1;
