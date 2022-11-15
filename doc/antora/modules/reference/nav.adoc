@@ -15,6 +15,7 @@
 **** xref:unlang/group.adoc[group]
 **** xref:unlang/if.adoc[if]
 **** xref:unlang/load-balance.adoc[load-balance]
+**** xref:unlang/limit.adoc[limit]
 **** xref:unlang/map.adoc[map]
 **** xref:unlang/parallel.adoc[parallel]
 **** xref:unlang/redundant-load-balance.adoc[redundant-load-balance]
@@ -22,6 +23,7 @@
 **** xref:unlang/return.adoc[return]
 **** xref:unlang/subrequest.adoc[subrequest]
 **** xref:unlang/switch.adoc[switch]
+**** xref:unlang/timeout.adoc[timeout]
 **** xref:unlang/update.adoc[update]
 
 *** xref:unlang/interpreter.adoc[Interpreter]

@@ -19,6 +19,8 @@ looping, etc.
 | xref:unlang/elsif.adoc[elsif]     | Check for condition when a previous `if` does not match.
 | xref:unlang/foreach.adoc[foreach] | Loop over a list of attributes.
 | xref:unlang/if.adoc[if]           | Check for a condition, and execute a sub-policy if it matches.
+| xref:unlang/limit.adoc[limit]     | Limit the number of requests in a section
+| xref:unlang/timeout.adoc[timeout] | Enforce a timeout for processing a section
 | xref:unlang/return.adoc[return]   | Immediately stop processing a section.
 | xref:unlang/switch.adoc[switch]   | Check for multiple values.
 |=====

@@ -1,0 +1,48 @@
+= The limit Statement
+
+.Syntax
+[source,unlang]
+----
+limit <value> {
+    [ statements ]
+}
+----
+
+.Description
+The `limit` statement limits the number of requests which are actively
+being processed through a section.  If too many requests are being
+processed through the `limit` section, it immediately returns `fail`.
+
+The _<value>_ text can be a number, or a dynamic expansion, or an
+attribute reference.  The contents of _<value>_ are interpreted as an
+integer `uint32` data type.
+
+.Example
+[source,unlang]
+----
+limit 4 {
+    foo
+    bar
+}
+----
+
+In general, the best way to use `limit` is in conjunction with a
+`redundant` block.  In the following example, the configuration allows
+`4` packets to be outstanding in the `proxy` module.  If more than `4`
+packets are outstanding, _or_ if the `proxy` module fails, the
+`detail` module is called.
+
+.Example using redundant
+[source,unlang]
+----
+redundant
+    limit 4 {
+        proxy
+    }
+
+    detail
+}
+----
+
+// Copyright (C) 2022 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

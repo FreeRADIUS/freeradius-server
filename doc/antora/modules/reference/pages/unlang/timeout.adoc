@@ -1,0 +1,51 @@
+= The timeout Statement
+
+.Syntax
+[source,unlang]
+----
+timeout <value> {
+    [ statements ]
+}
+----
+
+.Description
+The `timeout` statement limits the total time which a section can use
+to process a particular request.  If the request takes more than the
+given time, it returns `fail`.
+
+The _<value>_ text can be a number, or a dynamic expansion, or an
+attribute reference.  The contents of _<value>_ are interpreted as a
+`time_delta`, with default scale in seconds.
+
+The time scale can be changed by appending `s`, `us`, `ms`, `ns`, etc. as
+with all uses of `time_delta` values.
+
+.Example
+[source,unlang]
+----
+timeout 1ms {
+    foo
+    bar
+}
+----
+
+In general, the best way to use `timeout` is in conjunction with a
+`redundant` block.  In the following example, the configuration allows
+the `proxy` module to run for `4` seconds.  If the `proxy` module
+takes more than `4` seconds to return, _or_ if the `proxy` module
+fails, the `detail` module is called.
+
+.Example using redundant
+[source,unlang]
+----
+redundant
+    timeout 4s {
+        proxy
+    }
+
+    detail
+}
+----
+
+// Copyright (C) 2022 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
