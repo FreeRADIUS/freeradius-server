@@ -374,6 +374,38 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
  	fr_dlist_insert_tail(&parent->children, child);	/* Append to the list of children */
 }
 
+/** Insert a child after a given one
+ *
+ * @param[in] parent	to add child to.
+ * @param[in] prev	previous
+ * @param[in] child	to add.
+ */
+void _cf_item_insert_after(CONF_ITEM *parent, CONF_ITEM *prev, CONF_ITEM *child)
+{
+	fr_assert(parent != child);
+	fr_assert(prev != child);
+
+	/*
+	 *	Must be given something.  Can't insert at HEAD.
+	 */
+	if (!parent || !child) return;
+
+	if (!prev) {
+		cf_item_add(parent, child);
+		return;
+	}
+
+	/*
+	 *	If there's a prev, then the ident trees must be there.
+	 */
+	fr_assert(parent->ident1 != NULL);
+	fr_assert(parent->ident2 != NULL);
+
+	fr_rb_insert(parent->ident1, child);
+	fr_rb_insert(parent->ident2, child);			/* NULL ident2 is still a value */
+	fr_dlist_insert_after(&parent->children, prev, child);	/* insert in the list of children */
+}
+
 /** Remove item from parent and fixup trees
  *
  * @param[in] parent	to remove child from.
