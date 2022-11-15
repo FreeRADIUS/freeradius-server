@@ -267,6 +267,98 @@ typedef int (*xlat_thread_detach_t)(xlat_thread_inst_ctx_t const *xctx);
 
 typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t outlen, char const *in, void *arg);
 
+/** Set the next argument to the next item in the input list or NULL
+ *
+ * @param[in] _list	we're extracting arguments from.
+ * @param[in] _prev	argument.
+ * @param[in] _curr	argument we're populating.
+ */
+#define XLAT_ARGS_NEXT(_list, _prev, _curr) *(_curr) = likely(*(_prev) != NULL) ? fr_value_box_list_next(_list, *(_prev)) : NULL
+
+#define XLAT_ARGS_1(_list, _a) \
+	*(_a) = fr_value_box_list_head(_list)
+
+#define XLAT_ARGS_2(_list, _a, _b) \
+	do { \
+		*(_a) = fr_value_box_list_head(_list); \
+		XLAT_ARGS_NEXT(_list, _a, _b); \
+	} while (0);
+
+#define XLAT_ARGS_3(_list, _a, _b, _c) \
+	do { \
+		*(_a) = fr_value_box_list_head(_list); \
+		XLAT_ARGS_NEXT(_list, _a, _b); \
+		XLAT_ARGS_NEXT(_list, _b, _c); \
+	} while (0);
+
+#define XLAT_ARGS_4(_list, _a, _b, _c, _d) \
+	do { \
+		*(_a) = fr_value_box_list_head(_list); \
+		XLAT_ARGS_NEXT(_list, _a, _b); \
+		XLAT_ARGS_NEXT(_list, _b, _c); \
+		XLAT_ARGS_NEXT(_list, _c, _d); \
+	} while (0);
+
+#define XLAT_ARGS_5(_list, _a, _b, _c, _d, _e) \
+	do { \
+		*(_a) = fr_value_box_list_head(_list); \
+		XLAT_ARGS_NEXT(_list, _a, _b); \
+		XLAT_ARGS_NEXT(_list, _b, _c); \
+		XLAT_ARGS_NEXT(_list, _c, _d); \
+		XLAT_ARGS_NEXT(_list, _d, _e); \
+	} while (0);
+
+#define XLAT_ARGS_6(_list, _a, _b, _c, _d, _e, _f) \
+	do { \
+		*(_a) = fr_value_box_list_head(_list); \
+		XLAT_ARGS_NEXT(_list, _a, _b); \
+		XLAT_ARGS_NEXT(_list, _b, _c); \
+		XLAT_ARGS_NEXT(_list, _c, _d); \
+		XLAT_ARGS_NEXT(_list, _d, _e); \
+		XLAT_ARGS_NEXT(_list, _e, _f); \
+	} while (0);
+
+#define XLAT_ARGS_7(_list, _a, _b, _c, _d, _e, _f, _g) \
+	do { \
+		*(_a) = fr_value_box_list_head(_list); \
+		XLAT_ARGS_NEXT(_list, _a, _b); \
+		XLAT_ARGS_NEXT(_list, _b, _c); \
+		XLAT_ARGS_NEXT(_list, _c, _d); \
+		XLAT_ARGS_NEXT(_list, _d, _e); \
+		XLAT_ARGS_NEXT(_list, _e, _f); \
+		XLAT_ARGS_NEXT(_list, _f, _g); \
+	} while (0);
+
+#define XLAT_ARGS_8(_list, _a, _b, _c, _d, _e, _f, _g, _h) \
+	do { \
+		*(_a) = fr_value_box_list_head(_list); \
+		XLAT_ARGS_NEXT(_list, _a, _b); \
+		XLAT_ARGS_NEXT(_list, _b, _c); \
+		XLAT_ARGS_NEXT(_list, _c, _d); \
+		XLAT_ARGS_NEXT(_list, _d, _e); \
+		XLAT_ARGS_NEXT(_list, _e, _f); \
+		XLAT_ARGS_NEXT(_list, _f, _g); \
+		XLAT_ARGS_NEXT(_list, _g, _h); \
+	} while (0);
+
+/** Trampoline macro for selecting which XLAT_ARGS_<num> macro to expand
+ *
+ *
+ * @param[in] XLAT_ARGS_N	the name of the macro to expand.
+ *				Created by concating XLAT_ARGS_ + <number of variadic arguments>.
+ * @param[in] _in		The input list of value boxes.
+ * @param[in] ...		The variadic arguments themselves.
+ */
+#define _XLAT_ARGS_X(XLAT_ARGS_N, _list, ...) XLAT_ARGS_N(_list, __VA_ARGS__)
+
+/** Populate local variables with value boxes from the input list
+ *
+ * @param[in] _list		input list to pull arguments from.
+ * @param[in] ...		1-8 output boxes pointers `fr_value_box_t **`
+ *				e.g. `XLAT_ARGS(in, &arg0, &arg1, &argN)``.
+ */
+#define XLAT_ARGS(_list, ...) _XLAT_ARGS_X(JOIN(XLAT_ARGS_, VA_NARG(__VA_ARGS__)), _list, __VA_ARGS__)
+
 int		xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name);
 
 ssize_t		xlat_eval(char *out, size_t outlen, request_t *request, char const *fmt, xlat_escape_legacy_t escape,

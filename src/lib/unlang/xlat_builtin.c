@@ -1863,17 +1863,25 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED xlat_ctx_t const *xctx,
 				    request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args)
 {
-	fr_value_box_t		*values = fr_value_box_list_head(args);
-	FR_DLIST_HEAD(fr_value_box_list)	*list = &values->vb_group;
-	fr_value_box_t		*pad = fr_value_box_list_next(args, values);
-	/* coverity[dereference] */
-	size_t			pad_len = (size_t)pad->vb_uint64;
-	/* coverity[dereference] */
-	fr_value_box_t		*fill = fr_value_box_list_next(args, pad);
-	char const		*fill_str = NULL;
-	size_t			fill_len = 0;
+	fr_value_box_t				*values;
+	fr_value_box_t				*pad;
+	fr_value_box_t				*fill;
 
-	fr_value_box_t		*in = NULL;
+	FR_DLIST_HEAD(fr_value_box_list)	*list;
+
+	size_t					pad_len;
+
+	char const				*fill_str = NULL;
+	size_t					fill_len = 0;
+
+	fr_value_box_t				*in = NULL;
+
+	XLAT_ARGS(args, &values, &pad, &fill);
+
+	/* coverity[dereference] */
+	list =  &values->vb_group;
+	/* coverity[dereference] */
+	pad_len = (size_t)pad->vb_uint64;
 
 	/*
 	 *	Fill is optional
