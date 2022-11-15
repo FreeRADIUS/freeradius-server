@@ -4381,12 +4381,21 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 		compile = (unlang_op_compile_t) fr_table_value_by_str(unlang_section_keywords, name, NULL);
 		if (compile) {
+			unlang_op_t *op;
+
 			c = compile(parent, unlang_ctx, ci);
 		allocate_number:
 			if (!c) return NULL;
 			if (c == UNLANG_IGNORE) return UNLANG_IGNORE;
 
 			c->number = unlang_number++;
+
+			/*
+			 *	Only insert the per-thread allocation && instantiation if it's used.
+			 */
+			op = &unlang_ops[c->type];
+			if (!op->thread_inst_size) return c;
+
 			if (!fr_rb_insert(unlang_instruction_tree, c)) {
 				unlang_t *ex = fr_rb_find(unlang_instruction_tree, c);
 				cf_log_err(ci, "Instruction \"%s\" number %i conflicts with \"%s\" number %i",
@@ -4701,13 +4710,13 @@ int unlang_thread_instantiate(TALLOC_CTX *ctx)
 
 		op = &unlang_ops[instruction->type];
 
+		fr_assert(op->thread_inst_size);
+
 		/*
 		 *	Allocate any thread-specific instance data.
 		 */
-		if (op->thread_inst_size) {
-			MEM(unlang_thread_array[instruction->number].thread_inst = talloc_zero_array(unlang_thread_array, uint8_t, op->thread_inst_size));
-			talloc_set_name_const(unlang_thread_array[instruction->number].thread_inst, op->thread_inst_type);
-		}
+		MEM(unlang_thread_array[instruction->number].thread_inst = talloc_zero_array(unlang_thread_array, uint8_t, op->thread_inst_size));
+		talloc_set_name_const(unlang_thread_array[instruction->number].thread_inst, op->thread_inst_type);
 
 		if (op->thread_instantiate && (op->thread_instantiate(instruction, unlang_thread_array[instruction->number].thread_inst) < 0)) {
 			return -1;
