@@ -2099,7 +2099,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 		/*
 		 *	Not done yet!
 		 */
-		fr_strerror_const("Internal sanity check failed");
+		fr_strerror_printf("%s: Internal sanity check failed", __FUNCTION__);
 		return -1;
 
 	next:

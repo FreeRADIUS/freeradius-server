@@ -312,7 +312,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 			break;
 
 		default:
-			fr_strerror_const("Internal sanity check failed 1");
+			fr_strerror_printf("%s: Internal sanity check failed", __FUNCTION__);
 			return -1;
 		}
 	}
@@ -751,7 +751,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 			break;
 
 		default:
-			fr_assert_fail("Internal sanity check failed 2");
+			fr_assert_fail("%s: Internal sanity check failed", __FUNCTION__);
 			return -1;
 		}
 

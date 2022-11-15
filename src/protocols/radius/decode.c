@@ -309,7 +309,7 @@ int fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, 
 			break;
 
 		default:
-			fr_strerror_const("Internal sanity check failed");
+			fr_strerror_printf("%s: Internal sanity check failed", __FUNCTION__);
 			return -1;
 		}
 
@@ -329,7 +329,7 @@ int fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, 
 
 
 		default:
-			fr_strerror_const("Internal sanity check failed");
+			fr_strerror_printf("%s: Internal sanity check failed", __FUNCTION__);
 			return -1;
 		}
 

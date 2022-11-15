@@ -2127,9 +2127,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			}
 
 			goto add_child;
-		}
-
-		if (cf_item_is_pair(ci)) {
+		} else if (cf_item_is_pair(ci)) {
 			char const *attr;
 			CONF_PAIR *cp = cf_item_to_pair(ci);
 
@@ -2172,11 +2170,11 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			}
 
 			goto add_child;
-		} /* was CONF_PAIR */
-
-		cf_log_err(ci, "Internal sanity check failed in unlang compile.");
-		talloc_free(c);
-		return NULL;
+		} else {
+			cf_log_err(ci, "Asked to compile unknown conf type");
+			talloc_free(c);
+			return NULL;
+		}
 
 	add_child:
 		if (single == UNLANG_IGNORE) continue;
@@ -4390,8 +4388,10 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 			c->number = unlang_number++;
 			if (!fr_rb_insert(unlang_instruction_tree, c)) {
+				unlang_t *ex = fr_rb_find(unlang_instruction_tree, c);
+				cf_log_err(ci, "Instruction \"%s\" number %i conflicts with \"%s\" number %i",
+					   c->debug_name, c->number, ex->debug_name, ex->number);
 				talloc_free(c);
-				cf_log_err(ci, "Internal sanity check failed");
 				return NULL;
 			}
 
@@ -4409,9 +4409,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		/* else it's something like sql { fail = 1 ...} */
 		goto check_for_module;
 
-	}
-
-	if (cf_item_is_pair(ci)) {
+	} else if (cf_item_is_pair(ci)) {
 		/*
 		 *	Else it's a module reference such as "sql", OR
 		 *	one of the few bare keywords that we allow.
@@ -4454,10 +4452,10 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 
 		goto check_for_module;
+	} else {
+		cf_log_err(ci, "Asked to compile unknown conf type");
+		return NULL;	/* who knows what it is... */
 	}
-
-	cf_log_err(ci, "Internal sanity check failed in compile_item()");
-	return NULL;	/* who knows what it is... */
 
 check_for_module:
 	/*

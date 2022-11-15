@@ -2461,7 +2461,7 @@ do_frame:
 	 *	One last sanity check.
 	 */
 	if (frame->type != CF_STACK_FILE) {
-		cf_log_err(frame->current, "Internal sanity check failed");
+		cf_log_err(frame->current, "%s: Internal sanity check failed", __FUNCTION__);
 		goto pop_stack;
 	}
 #endif

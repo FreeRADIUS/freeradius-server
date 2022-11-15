@@ -435,7 +435,7 @@ static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 			break;
 
 		default:
-			fr_strerror_printf("Internal sanity check failed");
+			fr_strerror_printf("%s: Internal sanity check failed", __FUNCTION__);
 			return -1;
 		}
 	}

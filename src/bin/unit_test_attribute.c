@@ -1580,7 +1580,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 			RETURN_OK_WITH_ERROR();
 		}
 		if ((size_t)slen > (size_t)(to_dec_end - to_dec)) {
-			fr_perror("Internal sanity check failed at %d", __LINE__);
+			fr_perror("%s: Internal sanity check failed at %d", __FUNCTION__, __LINE__);
 			ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 			CLEAR_TEST_POINT(cc);
 			RETURN_COMMAND_ERROR();

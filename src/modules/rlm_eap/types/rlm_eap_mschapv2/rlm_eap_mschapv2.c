@@ -256,7 +256,7 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 		 */
 		memcpy((eap_round->request->type.data + 4), reply->vp_strvalue + 1, reply->vp_length - 1);
 	} else {
-		RERROR("Internal sanity check failed");
+		RERROR("%s: Internal sanity check failed", __FUNCTION__);
 		return -1;
 	}
 
