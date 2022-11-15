@@ -4397,9 +4397,8 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			if (!op->thread_inst_size) return c;
 
 			if (!fr_rb_insert(unlang_instruction_tree, c)) {
-				unlang_t *ex = fr_rb_find(unlang_instruction_tree, c);
-				cf_log_err(ci, "Instruction \"%s\" number %i conflicts with \"%s\" number %i",
-					   c->debug_name, c->number, ex->debug_name, ex->number);
+				cf_log_err(ci, "Instruction \"%s\" number %i has conflict with previous one.",
+					   c->debug_name, c->number);
 				talloc_free(c);
 				return NULL;
 			}
