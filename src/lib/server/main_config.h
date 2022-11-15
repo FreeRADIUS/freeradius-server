@@ -173,6 +173,8 @@ void			main_config_dict_dir_set(main_config_t *config, char const *path);
 
 int			main_config_parse_option(char const *value); /* flat / nested migration */
 
+bool			main_config_migrate_option_get(char const *name);
+
 void			main_config_exclusive_proc_done(main_config_t  const *config);
 int			main_config_exclusive_proc_child(main_config_t const *config);
 int			main_config_exclusive_proc(main_config_t *config);

@@ -1444,7 +1444,7 @@ static fr_table_num_ordered_t config_arg_table[] = {
 	{ L("parse_new_conditions"),	 offsetof(main_config_t, parse_new_conditions) },
 	{ L("use_new_conditions"),	 offsetof(main_config_t, use_new_conditions) },
 	{ L("tmpl_tokenize_all_nested"), offsetof(main_config_t, tmpl_tokenize_all_nested) },
-	{ L("rewrite_update"),		offsetof(main_config_t, rewrite_update) },
+	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
 };
 static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
 
@@ -1479,4 +1479,17 @@ int main_config_parse_option(char const *value)
        *(bool *) (((uintptr_t) main_config) + offset) = box.vb_bool;
 
 	return 0;
+}
+
+/*
+ *	Allow other pieces of the code to examine the migration options.
+ */
+bool main_config_migrate_option_get(char const *name)
+{
+	size_t offset;
+
+	offset = fr_table_value_by_substr(config_arg_table, name, strlen(name), 0);
+	if (!offset) return false;
+
+	return *(bool *) (((uintptr_t) main_config) + offset);
 }
