@@ -452,6 +452,8 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	}
 
 	MEM(m = talloc_zero(ctx, rlm_exec_ctx_t));
+	m->status = 2;	/* Fail if we couldn't exec */
+
 	fr_value_box_list_init(&m->box);
 	return unlang_module_yield_to_tmpl(m, &m->box,
 					   request, inst->tmpl,
