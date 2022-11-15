@@ -31,8 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/pair.h>
 
-static void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b);
-
 /** Return the first item matching the iterator in cursor a and cursor b
  *
  * If a and b are not currently set to the same item, b will be reset,
@@ -46,7 +44,7 @@ static void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b);
  *
  * @hidecallergraph
  */
-static void *fr_dcursor_intersect_head(fr_dcursor_t *a, fr_dcursor_t *b)
+void *fr_dcursor_intersect_head(fr_dcursor_t *a, fr_dcursor_t *b)
 {
 	void *a_item, *b_item;
 
@@ -75,7 +73,7 @@ static void *fr_dcursor_intersect_head(fr_dcursor_t *a, fr_dcursor_t *b)
  *
  * @hidecallergraph
  */
-static void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b)
+void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b)
 {
 	void *a_next, *b_next;
 

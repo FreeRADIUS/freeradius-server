@@ -34,6 +34,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 
+DIAG_OFF(unused-function)
 typedef struct fr_dcursor_s fr_dcursor_t;
 
 /** Callback for implementing custom iterators
@@ -184,6 +185,7 @@ static inline void *dcursor_next(fr_dcursor_t *cursor, fr_dcursor_iter_t iter, v
  *
  * @hidecallergraph
  */
+CC_HINT(nonnull)
 static inline void fr_dcursor_copy(fr_dcursor_t *out, fr_dcursor_t const *in)
 {
 	memcpy(out, in, sizeof(*out));
@@ -785,6 +787,12 @@ static inline fr_dcursor_stack_t *fr_dcursor_stack_alloc(TALLOC_CTX *ctx, uint8_
 	return stack;
 }
 
+void *fr_dcursor_intersect_head(fr_dcursor_t *a, fr_dcursor_t *b);
+
+void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b);
+
+DIAG_OFF(unused-function)
+
 /** Expands to the type name used for the dcursor wrapper structure
  *
  * @param[in] _name	Prefix we add to type-specific structures.
@@ -906,6 +914,10 @@ DIAG_OFF(unused-function) \
 	static inline CC_HINT(nonnull) _element_type *_name ## _next(FR_DCURSOR(_name) *dcursor) \
 		{ return (_element_type *)fr_dcursor_next(&dcursor->dcursor); } \
 \
+	static inline CC_HINT(nonnull) void _name ## _copy(FR_DCURSOR(_name) *out, \
+							   FR_DCURSOR(_name) const *in) \
+		{ fr_dcursor_copy(&out->dcursor, &in->dcursor); } \
+\
 	static inline CC_HINT(nonnull) _element_type *_name ## _head(FR_DCURSOR(_name) *dcursor) \
 		{ return (_element_type *)fr_dcursor_head(&dcursor->dcursor); } \
 \
@@ -938,10 +950,6 @@ DIAG_OFF(unused-function) \
 	static inline CC_HINT(nonnull) void _name ## _merge(FR_DCURSOR(_name) *cursor, \
 							    FR_DCURSOR(_name) *to_append) \
 		{ fr_dcursor_merge(&cursor->dcursor, &to_append->dcursor); } \
-\
-	static inline CC_HINT(nonnull) void _name ## _copy(FR_DCURSOR(_name) *out, \
-							   FR_DCURSOR(_name) const *in) \
-		{ fr_dcursor_copy(&out->dcursor, &in->dcursor); } \
 \
 	static inline CC_HINT(nonnull) void _name ## _free_list(FR_DCURSOR(_name) *dcursor) \
 		{ fr_dcursor_free_list(&dcursor->dcursor); } \

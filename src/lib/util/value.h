@@ -36,6 +36,7 @@ typedef struct value_box_s fr_value_box_t;
 #endif
 
 #include <freeradius-devel/build.h>
+#include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/debug.h>
@@ -45,9 +46,9 @@ typedef struct value_box_s fr_value_box_t;
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/types.h>
-#include <freeradius-devel/util/time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -85,7 +86,11 @@ extern fr_sbuff_escape_rules_t *fr_value_escape_by_char[UINT8_MAX + 1];
 
 extern fr_sbuff_escape_rules_t fr_value_escape_unprintables;
 
+/** @name List and cursor type definitions
+ */
 FR_DLIST_TYPES(fr_value_box_list)
+FR_DCURSOR_DLIST_TYPES(fr_value_box_dcursor, fr_value_box_list, fr_value_box_t)
+/** @} */
 
 /** Union containing all data types supported by the server
  *
@@ -150,11 +155,16 @@ struct value_box_s {
 	FR_DLIST_ENTRY(fr_value_box_list)	entry;			//!< Doubly linked list entry.
 };
 
+/** @name List and cursor function definitions
+ */
 FR_DLIST_FUNCS(fr_value_box_list, fr_value_box_t, entry)
 
 #define fr_value_box_list_foreach(_list_head, _iter)		fr_dlist_foreach(fr_value_box_list_dlist_head(_list_head), fr_value_box_t, _iter)
 #define fr_value_box_list_foreach_safe(_list_head, _iter)	fr_dlist_foreach_safe(fr_value_box_list_dlist_head(_list_head), fr_value_box_t, _iter)
 #define fr_value_box_list_verify(_list_head)			_fr_value_box_list_verify(__FILE__, __LINE__, _list_head)
+
+FR_DCURSOR_FUNCS(fr_value_box_dcursor, fr_value_box_list, fr_value_box_t)
+/** @} */
 
 /** Actions to perform when we process a box in a list
  *
@@ -376,8 +386,6 @@ extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
  *
  * @{
  */
-#define fr_value_box_foreach(_v, _iv) for (fr_value_box_t *_iv = fr_dlist_head(_v); _iv; _iv = fr_dlist_next(_v, _iv))
-
 /** Determines whether a list contains the number of boxes required
  *
  * @param[in] list	of value boxes.
