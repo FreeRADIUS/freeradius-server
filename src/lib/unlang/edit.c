@@ -236,7 +236,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 		 */
 		token = fr_pair_list_afrom_str(state, da, box->vb_strvalue, box->length, children);
 		if (token == T_INVALID) {
-			RPEDEBUG("Failed parsing string as attribute list");
+			RPEDEBUG("Failed parsing string '%pV' as attribute list", box);
 			return -1;
 		}
 
