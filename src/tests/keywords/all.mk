@@ -40,17 +40,24 @@ test.keywords.${1}: $(addprefix $(OUTPUT)/,${1})
 test.keywords.help: TEST_KEYWORDS_HELP += test.keywords.${1}
 
 #
+#  All of the "update" tests which should also be run with "-S rewrite_update=yes"
+#
+KEYWORD_UPDATE_TESTS := update-attr-ref-null update-error-3 update-group-error update-filter update-list-error update-list-null-rhs update-null-value-assign update-remove-index update-exec
+
+KEYWORD_UPDATE_REWRITE_TESTS := update-all update-array update-delete update-remove-any update-group update-hex update-remove-value update-index update-remove-list update-prepend unknown-update  update-error update-error-2 update-exec-error
+
+#
 #  Migration support.  Some of the tests don't run under the new
 #  conditions, so we don't run them under the new conditions.
 #
 ifneq "$(findstring ${1}, paircmp)" ""
 $(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=no -S use_new_conditions=no
-else
-ifneq "$(findstring ${1}, comments update-to-edit if-regex-multivalue smash wimax unknown unknown-update update-all update-array update-attr-ref-null update-delete update-error-2 update-error-3 update-remove-any update-exec update-exec-error update-filter update-group update-group-error update-hex update-remove-value update-remove-index update-index update-list-error update-list-null-rhs update-null-value-assign update-prepend update-remove-list vendor_specific vendor_specific.raw xlat-unknown)" ""
+else ifneq "$(findstring ${1}, comments update-to-edit if-regex-multivalue smash wimax unknown $(KEYWORD_UPDATE_TESTS) vendor_specific vendor_specific.raw xlat-unknown)" ""
 $(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=yes -S use_new_conditions=yes
+else ifneq "$(findstring ${1}, $(KEYWORD_UPDATE_REWRITE_TESTS))" ""
+$(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=yes -S use_new_conditions=yes -S rewrite_update=yes
 else
 $(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=yes -S use_new_conditions=yes -S forbid_update=yes
-endif
 endif
 
 endef

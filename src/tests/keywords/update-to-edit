@@ -1,0 +1,52 @@
+&Tmp-String-0 := "foo"
+
+update request {
+	&Tmp-String-0 !* ANY
+}
+
+if (&Tmp-String-0) {
+	test_fail
+}
+
+&Tmp-String-0 := "foo"
+&reply.Tmp-String-0 := "bar"
+
+update {
+	&request.Tmp-String-0 !* ANY
+	&reply !* ANY
+}
+
+if (&Tmp-String-0) {
+	test_fail
+}
+
+if (&reply.Tmp-String-0) {
+	test_fail
+}
+
+update reply {
+	&Tmp-Integer-0 := 12
+}
+
+if (!&reply.Tmp-Integer-0) {
+	test_fail
+}
+
+update reply {
+	&Tmp-Integer-0 += 13
+}
+
+if (&reply.Tmp-Integer-0[0] != 12) {
+	test_fail
+}
+
+if (&reply.Tmp-Integer-0[1] != 13) {
+	test_fail
+}
+
+#
+#  Clear out reply as we don't care about the attributes in it.
+#
+&reply := {}
+
+success
