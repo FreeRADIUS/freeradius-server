@@ -476,8 +476,12 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL);
 
-	fr_event_timer_in(query, unlang_interpret_event_list(request), &query->ev, handle_config->res_timeout,
-			  ldap_query_timeout, query->treq);
+	if (fr_event_timer_in(query, unlang_interpret_event_list(request), &query->ev, handle_config->res_timeout,
+			      ldap_query_timeout, query->treq) < 0) {
+		REDEBUG("Unable to set timeout for LDAP query");
+		fr_trunk_request_signal_cancel(query->treq);
+		goto error;
+	}
 
 	return unlang_xlat_yield(request, ldap_xlat_resume, ldap_xlat_signal, query);
 }
