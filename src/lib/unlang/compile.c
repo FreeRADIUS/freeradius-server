@@ -1820,8 +1820,22 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	 */
 	parent_da = tmpl_da(map->lhs);
 	if (fr_type_is_structural(parent_da->type)) {
+		map_t *child;
+
 		if (map_afrom_cs(map, &map->child, cs, &t_rules, &t_rules, unlang_fixup_edit, map, 256) < 0) {
 			goto fail;
+		}
+
+		/*
+		 *	As a set of fixups... we can't do array references in -=
+		 */
+		for (child = map_list_head(&map->child); child != NULL; child = map_list_next(&map->child, child)) {
+			if (!tmpl_is_attr(child->lhs)) continue;
+
+			if (tmpl_num(child->lhs) != NUM_UNSPEC) {
+				cf_log_err(child->ci, "Cannot use array references and values when deleting from a list");
+				goto fail;
+			}
 		}
 	} else {
 		/*
