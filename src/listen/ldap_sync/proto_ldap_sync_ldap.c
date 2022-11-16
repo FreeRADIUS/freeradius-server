@@ -54,6 +54,11 @@ static CONF_PARSER const proto_ldap_sync_ldap_config[] = {
 	 */
 	FR_LDAP_COMMON_CONF(proto_ldap_sync_ldap_t),
 
+	/*
+	 *	Network tunable parameters
+	 */
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_ldap_sync_ldap_t, recv_buff) },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1050,6 +1055,17 @@ static void _proto_ldap_socket_open_connected(fr_connection_t *conn, UNUSED fr_c
 	dir_ctx->conn = conn;
 	dir_ctx->child_listen = thread->li;
 
+#ifdef SO_RCVBUF
+	if (inst->recv_buff_is_set) {
+		int opt;
+
+		opt = inst->recv_buff;
+		if (setsockopt(ldap_conn->fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
+			WARN("Failed setting 'recv_buff': %s", fr_syserror(errno));
+		}
+	}
+#endif
+
 	/*
 	 *	Set the callback which will handle the results of this query
 	 */
@@ -1146,6 +1162,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_ldap_sync_t);
 	inst->cs = conf;
+
+	if (inst->recv_buff_is_set) {
+		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);
+		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, INT_MAX);
+	}
 
 	return 0;
 }

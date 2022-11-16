@@ -149,6 +149,11 @@ server ldap_sync {
 				#  SASL realm. Used for kerberos.
 #				realm = 'example.org'
 			}
+
+			#
+			#  How big the kernel's receive buffer should be.
+			#
+#			recv_buff = 1048576
 		}
 
 		#
