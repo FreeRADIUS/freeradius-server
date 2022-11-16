@@ -1429,8 +1429,6 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 				}
 
 				p = q + 1;
-				q = strchr(p, '.');
-				if (!q) q = p + strlen(p);
 			}
 
 			/*
