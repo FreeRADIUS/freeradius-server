@@ -1480,7 +1480,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 
 	name = cf_section_name2(cs);
 	if (name) {
-		cf_log_err(cs, "Unexpected text for editing list %s.", cf_section_name1(cs));
+		cf_log_err(cs, "Unexpected name2 '%s' for editing list %s ", name, cf_section_name1(cs));
 		return NULL;
 	}
 	op = cf_section_name2_quote(cs);
