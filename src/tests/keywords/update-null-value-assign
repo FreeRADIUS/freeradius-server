@@ -10,7 +10,7 @@ update request {
 	&Tmp-Octets-0 := "%{Tmp-Octets-1}"
 }
 if (&Tmp-Integer-0) {
-	fail
+	test_fail
 }
 
 #
@@ -20,10 +20,10 @@ update request {
 	&Tmp-String-0 := "%{Reply-Message}"
 }
 if (!&Tmp-String-0) {
-	fail
+	test_fail
 }
 if (&Tmp-String-0 != '') {
-	fail
+	test_fail
 }
 
 #
@@ -33,7 +33,7 @@ update request {
 	&Tmp-Octets-0 := "%{Reply-Message}"
 }
 if (&Tmp-Octets-0 != "") {
-	fail
+	test_fail
 }
 
 success

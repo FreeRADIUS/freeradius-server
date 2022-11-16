@@ -15,7 +15,7 @@ if ("%{Tmp-String-0[#]}" != 2) {
 }
 
 if (&Tmp-String-0[0] != 'foo') {
-	fail
+	test_fail
 }
 
 # Delete an attribute by assigning a non-existent attribute to it
@@ -25,16 +25,16 @@ update {
 
 # Should only remove 'bar'
 if (&Tmp-String-0[0] != 'foo') {
-	fail
+	test_fail
 }
 
 # Nothing should exist for this attribute.
 if (&Tmp-String-0[1]) {
-	fail
+	test_fail
 }
 
 if (&Tmp-String-0[2]) {
-	fail
+	test_fail
 }
 
 update {
@@ -43,7 +43,7 @@ update {
 
 # All instances should be removed
 if (&Tmp-String-0) {
-	fail
+	test_fail
 }
 
 success
