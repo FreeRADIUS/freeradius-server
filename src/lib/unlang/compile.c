@@ -1328,7 +1328,7 @@ static int edit_pair_alloc(CONF_SECTION *cs, CONF_PAIR *original, char const *at
 /*
  *	Convert "update" to "edit" using evil spells and sorcery.
  */
-static unlang_t *compile_update_to_edit(unlang_t *parent, UNUSED unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	char const		*name2 = cf_section_name2(cs);
 	CONF_ITEM		*ci;
@@ -1422,16 +1422,23 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, UNUSED unlang_compile_
 			/*
 			 *	Move the list to a separate buffer.
 			 */
-			snprintf(list, sizeof(list), "%.*s", (int) (p - attr) - 1, attr);
+			if (p > (attr + 1)) {
+				snprintf(list, sizeof(list), "%.*s", (int) (p - attr) - 1, attr);
 
-			/*
-			 *	Move the attribute name to a separate buffer.
-			 */
-			if (*p) {
-				snprintf(lhs, sizeof(lhs), "&%s", p);
-				attr = lhs;
+				/*
+				 *	Move the attribute name to a separate buffer.
+				 */
+				if (*p) {
+					snprintf(lhs, sizeof(lhs), "&%s", p);
+					attr = lhs;
+				} else {
+					attr = NULL;
+				}
 			} else {
-				attr = NULL;
+				/*
+				 *	Don't change what "attr" points to, and print out the default list.
+				 */
+				snprintf(list, sizeof(list), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "???"));
 			}
 		}
 
