@@ -1295,6 +1295,247 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	return c;
 }
 
+static int edit_section_alloc(CONF_SECTION *parent, CONF_SECTION **child, char const *name1, fr_token_t op)
+{
+	CONF_SECTION *cs;
+
+	cs = cf_section_alloc(parent, parent, name1, NULL);
+	if (!cs) return -1;
+
+	cf_section_add_name2_quote(cs, op);
+
+	if (child) *child = cs;
+
+	return 0;
+}
+
+static int edit_pair_alloc(CONF_SECTION *cs, CONF_PAIR *original, char const *attr, fr_token_t op, char const *value)
+{
+	CONF_PAIR *cp;
+	fr_token_t rhs_quote;
+
+	if (original) {
+		rhs_quote = cf_pair_value_quote(original);
+	} else {
+		rhs_quote = T_BARE_WORD;
+	}
+
+	cp = cf_pair_alloc(cs, attr, value, op, T_BARE_WORD, rhs_quote);
+
+	return (cp != NULL) - 1;
+}
+
+/*
+ *	Convert "update" to "edit" using evil spells and sorcery.
+ */
+static unlang_t *compile_update_to_edit(unlang_t *parent, UNUSED unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+{
+	char const		*name2 = cf_section_name2(cs);
+	CONF_ITEM		*ci;
+	CONF_SECTION		*group;
+	unlang_group_t		*g;
+	char			list[32], lhs[1024], rhs[1024];
+	char			buffer[2048];
+
+	g = unlang_generic_to_group(parent);
+
+	/*
+	 *	Wrap it all in a group, no matter what.  Because of
+	 *	limitations in the cf_pair_alloc() API.
+	 */
+	group = cf_section_alloc(g->cs, g->cs, "group", NULL);
+	if (!group) return NULL;
+
+	(void) cf_item_remove(g->cs, group); /* was added at the end */
+	cf_item_insert_after(g->cs, cs, group);
+
+	/*
+	 *	Hoist this out of the loop, and make sure it always has a '&' prefix.
+	 */
+	if (name2) {
+		snprintf(list, sizeof(list), "&%s", name2);
+	}
+
+	/*
+	 *	Loop over the entries, rewriting them.
+	 */
+	for (ci = cf_item_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_next(cs, ci)) {
+		CONF_PAIR	*cp;
+		CONF_SECTION	*child;
+		int		rcode;
+		fr_token_t	op;
+		char const	*attr, *value;
+
+		if (!cf_item_is_pair(ci)) continue;
+
+		cp = cf_item_to_pair(ci);
+
+		attr = cf_pair_attr(cp);
+		value = cf_pair_value(cp);
+		op = cf_pair_operator(cp);
+
+		fr_assert(attr);
+		fr_assert(value);
+
+		/*
+		 *	Parse the LHS attribute reference for request ref and pair list ref.
+		 *
+		 *	All of the other tmpl functions do full parsing into tmpls, which we don't want.  We
+		 *	just want to know how long the prefix is.
+		 */
+		if (!name2) {
+			char const *p, *q;
+
+			p = attr;
+			if (*p != '&') {
+				cf_log_err(cp, "Attribute reference is missing leading '&'");
+				return NULL;
+			}
+			p++;
+
+			q = strchr(p, '.');
+			if (!q) q = p + strlen(p);
+
+			while (fr_table_value_by_substr(tmpl_request_ref_table, p, q - p, REQUEST_UNKNOWN) != REQUEST_UNKNOWN) {
+				if (!*p) {
+					cf_log_err(cp, "Missing list reference");
+					return NULL;
+				}
+
+				p = q + 1;
+				q = strchr(p, '.');
+				if (!q) q = p + strlen(p);
+			}
+
+			while (fr_table_value_by_substr(pair_list_table, p, q - p, PAIR_LIST_UNKNOWN) != PAIR_LIST_UNKNOWN) {
+				if (!*p) {
+					break;
+				}
+
+				p = q + 1;
+				q = strchr(p, '.');
+				if (!q) q = p + strlen(p);
+			}
+
+			/*
+			 *	Move the list to a separate buffer.
+			 */
+			snprintf(list, sizeof(list), "%.*s", (int) (p - attr) - 1, attr);
+
+			/*
+			 *	Move the attribute name to a separate buffer.
+			 */
+			if (*p) {
+				snprintf(lhs, sizeof(lhs), "&%s", p);
+				attr = lhs;
+			} else {
+				attr = NULL;
+			}
+		}
+
+		switch (op) {
+			/*
+			 *	FOO !* ANY
+			 *
+			 *	The RHS doesn't matter, so we ignore it.
+			 */
+		case T_OP_CMP_FALSE:
+			if (!attr) {
+				rcode = edit_section_alloc(group, NULL, list, T_OP_SET);
+
+			} else {
+				if (strchr(attr, '[') == NULL) {
+					snprintf(rhs, sizeof(rhs), "%s[*]", attr);
+					value = rhs;
+				} else {
+					value = attr;
+				}
+
+				rcode = edit_pair_alloc(group, NULL, list, T_OP_SUB_EQ, value);
+			}
+			break;
+
+			/*
+			 *	Foo.bar := baz
+			 *	Foo.bar = baz
+			 */
+		case T_OP_EQ:
+		case T_OP_SET:
+			if (!attr) {
+			fail_attr:
+				cf_log_err(cp, "Invalid operator for list assignment");
+				return NULL;
+			}
+
+			snprintf(buffer, sizeof(buffer), "%s.%s", list, attr + 1);
+
+			rcode = edit_pair_alloc(group, cp, buffer, op, value);
+			break;
+
+		case T_OP_ADD_EQ:
+		case T_OP_PREPEND:
+			if (!attr) goto fail_attr;
+
+			rcode = edit_section_alloc(group, &child, list, op);
+			if (rcode < 0) break;
+
+			rcode = edit_pair_alloc(child, cp, attr, T_OP_EQ, value);
+			break;
+
+			/*
+			 *	Remove matching attributes
+			 */
+		case T_OP_SUB_EQ:
+			op = T_OP_CMP_EQ;
+
+		filter:
+			if (!attr) goto fail_attr;
+
+			rcode = edit_section_alloc(group, &child, list, T_OP_SUB_EQ);
+			if (rcode < 0) break;
+
+			rcode = edit_pair_alloc(child, cp, attr, op, value);
+			break;
+
+			/*
+			 *	Keep matching attributes, i.e. remove non-matching ones.
+			 */
+		case T_OP_CMP_EQ:
+			op = T_OP_NE;
+			goto filter;
+
+		case T_OP_LT:
+			op = T_OP_GE;
+			goto filter;
+
+		case T_OP_LE:
+			op = T_OP_GT;
+			goto filter;
+
+		case T_OP_GT:
+			op = T_OP_LE;
+			goto filter;
+
+		case T_OP_GE:
+			op = T_OP_LT;
+			goto filter;
+
+		default:
+			cf_log_err(cp, "Unsupported operator - cannot auto-convert to edit section");
+			return NULL;
+		}
+
+		if (rcode < 0) {
+			cf_log_err(cp, "Failed converting entry");
+			return NULL;
+		}
+	}
+
+	return UNLANG_IGNORE;
+}
+
 static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	int			rcode;
@@ -1312,6 +1553,14 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		.len = sizeof(unlang_map_t),
 		.type_name = "unlang_map_t"
 	};
+
+	/*
+	 *	If we're migrating "update" sections to edit, then go
+	 *	do that now.
+	 */
+	if (main_config_migrate_option_get("rewrite_update")) {
+		return compile_update_to_edit(parent, unlang_ctx, cs);
+	}
 
 	/*
 	 *	We allow unknown attributes here.
