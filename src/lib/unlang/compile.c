@@ -1321,8 +1321,14 @@ static int edit_pair_alloc(CONF_SECTION *cs, CONF_PAIR *original, char const *at
 	}
 
 	cp = cf_pair_alloc(cs, attr, value, op, T_BARE_WORD, rhs_quote);
+	if (!cp) return -1;
 
-	return (cp != NULL) - 1;
+	if (!original) return 0;
+
+	cf_filename_set(cp, cf_filename(original));
+	cf_lineno_set(cp, cf_lineno(original));
+
+	return 0;
 }
 
 /*
@@ -1398,6 +1404,9 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			q = strchr(p, '.');
 			if (!q) q = p + strlen(p);
 
+			/*
+			 *	Can refer to multiple request parent, etc.
+			 */
 			while (fr_table_value_by_substr(tmpl_request_ref_table, p, q - p, REQUEST_UNKNOWN) != REQUEST_UNKNOWN) {
 				if (!*p) {
 					cf_log_err(cp, "Missing list reference");
@@ -1409,7 +1418,12 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 				if (!q) q = p + strlen(p);
 			}
 
-			while (fr_table_value_by_substr(pair_list_table, p, q - p, PAIR_LIST_UNKNOWN) != PAIR_LIST_UNKNOWN) {
+			/*
+			 *	Can only refer to one list.
+			 *
+			 *	@todo - add support for &config?
+			 */
+			if (fr_table_value_by_substr(pair_list_table, p, q - p, PAIR_LIST_UNKNOWN) != PAIR_LIST_UNKNOWN) {
 				if (!*p) {
 					break;
 				}
@@ -1464,18 +1478,25 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			}
 			break;
 
-			/*
-			 *	Foo.bar := baz
-			 *	Foo.bar = baz
-			 */
-		case T_OP_EQ:
 		case T_OP_SET:
+			/*
+			 *	Must be a list-to-list operation
+			 */
+			if (!attr) {
+			list_op:
+				rcode = edit_pair_alloc(group, cp, list, op, value);
+				break;
+			}
+			goto pair_op;
+
+		case T_OP_EQ:
 			if (!attr) {
 			fail_attr:
 				cf_log_err(cp, "Invalid operator for list assignment");
 				return NULL;
 			}
 
+		pair_op:
 			snprintf(buffer, sizeof(buffer), "%s.%s", list, attr + 1);
 
 			rcode = edit_pair_alloc(group, cp, buffer, op, value);
@@ -1483,7 +1504,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 
 		case T_OP_ADD_EQ:
 		case T_OP_PREPEND:
-			if (!attr) goto fail_attr;
+			if (!attr) goto list_op;
 
 			rcode = edit_section_alloc(group, &child, list, op);
 			if (rcode < 0) break;
@@ -1511,6 +1532,10 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			 */
 		case T_OP_CMP_EQ:
 			op = T_OP_NE;
+			goto filter;
+
+		case T_OP_NE:
+			op = T_OP_CMP_EQ;
 			goto filter;
 
 		case T_OP_LT:
