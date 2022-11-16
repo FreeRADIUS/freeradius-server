@@ -1,2 +1,3 @@
+usr/lib/freeradius/libfreeradius-ldap*.so
 usr/lib/freeradius/rlm_ldap*.so
 usr/lib/freeradius/proto_ldap*.so
