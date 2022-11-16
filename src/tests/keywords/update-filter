@@ -14,8 +14,17 @@ update control {
 # Reset the request list
 update {
 	&request !* ANY
+
+	#
+	#  @fixme - EDIT - &control[*] isn't supported, and is ignored.  It should likely
+	#  be a compile-time error?
+	#
 	&request += &control[*]
 }
+
+#
+#  @fixme - EDIT - all kinds of other things are broken, and no time currently to debug them.
+#
 
 debug_request
 

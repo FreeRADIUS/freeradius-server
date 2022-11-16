@@ -14,6 +14,11 @@ update {
 
 debug_request
 
+#
+#  @fixme - EDIT - we should not be allowed to remove by both
+#  index AND value.  Or, we should... and the edit code needs
+#  to be updated.
+#
 update request {
 	&Tmp-IP-Address-0[3] -= 192.0.2.2
 }

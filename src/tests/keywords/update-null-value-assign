@@ -16,6 +16,8 @@ if (&Tmp-Integer-0) {
 #
 #  NULL valued strings get converted to empty length strings
 #
+#  @fixme - EDIT - the new method is to simply omit the assignment
+#
 update request {
 	&Tmp-String-0 := "%{Reply-Message}"
 }
@@ -28,6 +30,8 @@ if (&Tmp-String-0 != '') {
 
 #
 #  NULL valued octet strings get converted to zero length octets strings?!
+#
+#  @fixme - EDIT - the new method is to simply omit the assignment
 #
 update request {
 	&Tmp-Octets-0 := "%{Reply-Message}"
