@@ -21,10 +21,10 @@ update request {
 debug_request
 
 # Only the 1st, 2nd, 3rd and 5th Tmp-IP-Address attributes should still be in the list
-if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.1') || \
-	("%{Tmp-IP-Address-0[1]}" != '192.0.2.2') || \
-	("%{Tmp-IP-Address-0[2]}" != '192.0.2.3') || \
-	("%{Tmp-IP-Address-0[3]}" != '192.0.2.4') || \
+if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.1') ||
+	("%{Tmp-IP-Address-0[1]}" != '192.0.2.2') ||
+	("%{Tmp-IP-Address-0[2]}" != '192.0.2.3') ||
+	("%{Tmp-IP-Address-0[3]}" != '192.0.2.4') ||
 	("%{Tmp-IP-Address-0[4]}" != '')) {
 	test_fail
 }
@@ -35,10 +35,10 @@ update request {
 }
 
 # Should be the same as the previous result
-if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.1') || \
-	("%{Tmp-IP-Address-0[1]}" != '192.0.2.2') || \
-	("%{Tmp-IP-Address-0[2]}" != '192.0.2.3') || \
-	("%{Tmp-IP-Address-0[3]}" != '192.0.2.4') || \
+if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.1') ||
+	("%{Tmp-IP-Address-0[1]}" != '192.0.2.2') ||
+	("%{Tmp-IP-Address-0[2]}" != '192.0.2.3') ||
+	("%{Tmp-IP-Address-0[3]}" != '192.0.2.4') ||
 	("%{Tmp-IP-Address-0[4]}" != '')) {
 	test_fail
 }
@@ -49,9 +49,9 @@ update request {
 }
 
 # IP address at index 0 should be removed
-if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
-	("%{Tmp-IP-Address-0[1]}" != '192.0.2.3') || \
-	("%{Tmp-IP-Address-0[2]}" != '192.0.2.4') || \
+if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.2') ||
+	("%{Tmp-IP-Address-0[1]}" != '192.0.2.3') ||
+	("%{Tmp-IP-Address-0[2]}" != '192.0.2.4') ||
 	("%{Tmp-IP-Address-0[3]}" != '')) {
 	test_fail
 }
@@ -62,9 +62,9 @@ update request {
 }
 
 # Should be the same as the previous result
-if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
-	("%{Tmp-IP-Address-0[1]}" != '192.0.2.3') || \
-	("%{Tmp-IP-Address-0[2]}" != '192.0.2.4') || \
+if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.2') ||
+	("%{Tmp-IP-Address-0[1]}" != '192.0.2.3') ||
+	("%{Tmp-IP-Address-0[2]}" != '192.0.2.4') ||
 	("%{Tmp-IP-Address-0[3]}" != '')) {
 	test_fail
 }
