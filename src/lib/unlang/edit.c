@@ -164,6 +164,48 @@ static int tmpl_to_values(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 	return -1;
 }
 
+static void edit_debug_attr_list(request_t *request, fr_pair_list_t const *list);
+
+static void edit_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
+{
+	switch (vp->da->type) {
+	case FR_TYPE_STRUCTURAL:
+		if (vpt) {
+			RDEBUG2("&%s.%s = {",
+				 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
+				 vp->da->name);
+		} else {
+			RDEBUG2("%s = {", vp->da->name);
+		}
+		RINDENT();
+		edit_debug_attr_list(request, &vp->vp_group);
+		REXDENT();
+		RDEBUG2("}");
+		break;
+
+	default:
+		if (vpt) {
+			RDEBUG2("&%s.%s %s %pV",
+				fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
+				vp->da->name, fr_tokens[vp->op],
+				&vp->data);
+		} else {
+			RDEBUG2("&%s %s %pV", vp->da->name, fr_tokens[vp->op], &vp->data);
+		}
+	}
+}
+
+static void edit_debug_attr_list(request_t *request, fr_pair_list_t const *list)
+{
+	fr_pair_t *vp;
+
+	for (vp = fr_pair_list_next(list, NULL);
+	     vp != NULL;
+	     vp = fr_pair_list_next(list, vp)) {
+		edit_debug_attr_vp(request, vp, NULL);
+	}
+}
+
 
 /*	Apply the edits to a structural attribute..
  *
@@ -374,10 +416,7 @@ apply_list:
 	RDEBUG2("%s %s {", current->lhs.vpt->name, fr_tokens[map->op]);
 	if (fr_debug_lvl >= L_DBG_LVL_2) {
 		RINDENT();
-		/*
-		 *	@todo - this logs at INFO level, and doesn't log the operators.
-		 */
-		xlat_debug_attr_list(request, children);
+		edit_debug_attr_list(request, children);
 		REXDENT();
 	}
 	RDEBUG2("}");
