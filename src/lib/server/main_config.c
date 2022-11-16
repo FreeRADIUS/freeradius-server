@@ -185,6 +185,7 @@ static const CONF_PARSER migrate_config[] = {
 	{ FR_CONF_OFFSET("parse_new_conditions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, parse_new_conditions) },
 	{ FR_CONF_OFFSET("use_new_conditions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, use_new_conditions) },
 	{ FR_CONF_OFFSET("rewrite_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, rewrite_update) },
+	{ FR_CONF_OFFSET("forbid_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, forbid_update) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1445,6 +1446,7 @@ static fr_table_num_ordered_t config_arg_table[] = {
 	{ L("use_new_conditions"),	 offsetof(main_config_t, use_new_conditions) },
 	{ L("tmpl_tokenize_all_nested"), offsetof(main_config_t, tmpl_tokenize_all_nested) },
 	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
+	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
 };
 static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
 

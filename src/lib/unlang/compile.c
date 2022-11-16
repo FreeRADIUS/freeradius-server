@@ -1554,6 +1554,11 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		.type_name = "unlang_map_t"
 	};
 
+	if (main_config_migrate_option_get("forbid_update")) {
+		cf_log_err(cs, "The use of 'update' sections is forbidden by the server configuration");
+		return NULL;
+	}
+
 	/*
 	 *	If we're migrating "update" sections to edit, then go
 	 *	do that now.

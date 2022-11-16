@@ -165,6 +165,7 @@ struct main_config_s {
 	bool		parse_new_conditions;		//!< the new xlat expressions will be parsed, but not used.
 	bool		use_new_conditions;		//!< the new xlat expressions will be used for conditions, instead of the old code
 	bool		rewrite_update;			//!< rewrite "update" to be new edit sections
+	bool		forbid_update;			//!< forbid "update" sections
 };
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);
