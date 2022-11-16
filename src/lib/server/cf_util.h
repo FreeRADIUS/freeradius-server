@@ -173,6 +173,9 @@ char const	*cf_section_argv(CONF_SECTION const *cs, int argc);
 fr_token_t	cf_section_name2_quote(CONF_SECTION const *cs);
 fr_token_t	cf_section_argv_quote(CONF_SECTION const *cs, int argc);
 
+// only for rewrite_update
+void		cf_section_add_name2_quote(CONF_SECTION *cs, fr_token_t token);
+
 #define cf_section_free_children(_x) cf_item_free_children(cf_section_to_item(_x))
 
 

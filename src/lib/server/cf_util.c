@@ -1165,6 +1165,18 @@ fr_token_t cf_section_name2_quote(CONF_SECTION const *cs)
 	return cs->name2_quote;
 }
 
+/** Set the quoting of the name2 identifier
+ *
+ * @param[in] cs	containing name2.
+ * @param[in] token	the quote token
+ */
+void cf_section_add_name2_quote(CONF_SECTION *cs, fr_token_t token)
+{
+	if (!cs) return;
+
+	cs->name2_quote = token;
+}
+
 /** Return the quoting for one of the variadic arguments
  *
  * @param[in] cs	containing the arguments.
