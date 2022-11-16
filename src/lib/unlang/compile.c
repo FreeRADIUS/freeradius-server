@@ -1340,7 +1340,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	CONF_ITEM		*ci;
 	CONF_SECTION		*group;
 	unlang_group_t		*g;
-	char			list[32], lhs[1024], rhs[1024];
+	char			list[32], lhs[1024], rhs[2048];
 	char			buffer[2048];
 
 	g = unlang_generic_to_group(parent);
