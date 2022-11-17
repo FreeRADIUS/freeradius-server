@@ -87,21 +87,37 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *uctx
 
 		switch (cb_p->id) {
 		case SASL_CB_AUTHNAME:
+			/*
+			 *	For mechs like -Y EXTERNAL we don't have
+			 *	any information to provide to SASL.
+			 */
+			if (!sasl_ctx->identity) {
+			null_result:
+				cb_p->result = NULL;
+				cb_p->len;
+				break;
+			}
 			cb_p->result = sasl_ctx->identity;
 			cb_p->len = strlen(sasl_ctx->identity);
 			break;
 
 		case SASL_CB_PASS:
+			if (!sasl_ctx->password) goto null_result;
+
 			cb_p->result = sasl_ctx->password;
 			cb_p->len = strlen(sasl_ctx->password);
 			break;
 
 		case SASL_CB_USER:
+			if (!sasl_ctx->proxy && !sasl_ctx->identity) goto null_result;
+
 			cb_p->result = sasl_ctx->proxy ? sasl_ctx->proxy : sasl_ctx->identity;
 			cb_p->len = sasl_ctx->proxy ? strlen(sasl_ctx->proxy) : strlen(sasl_ctx->identity);
 			break;
 
 		case SASL_CB_GETREALM:
+			if (!sasl_ctx->realm) goto null_result;
+
 			cb_p->result = sasl_ctx->realm;
 			cb_p->len = strlen(sasl_ctx->realm);
 			break;
