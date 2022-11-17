@@ -94,7 +94,7 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *uctx
 			if (!sasl_ctx->identity) {
 			null_result:
 				cb_p->result = NULL;
-				cb_p->len;
+				cb_p->len = 0;
 				break;
 			}
 			cb_p->result = sasl_ctx->identity;
