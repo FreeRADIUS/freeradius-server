@@ -501,7 +501,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list
  *	- true - If return values were correct.
  *	- false - If the return values were incorrect.
  */
-static inline CC_HINT(nonnull)
+static inline CC_HINT(nonnull(1,2,3))
 bool xlat_process_return(request_t *request, xlat_t const *func, FR_DLIST_HEAD(fr_value_box_list) const *returned, fr_value_box_t *pos)
 {
 	unsigned int count = 0;
@@ -510,7 +510,7 @@ bool xlat_process_return(request_t *request, xlat_t const *func, FR_DLIST_HEAD(f
 	 *  Nothing to validate.  We don't yet enforce that functions
 	 *  must return at least one instance of their type.
 	 */
-	if (!fr_value_box_list_num_elements(returned) || fr_type_is_void(func->return_type)) return true;
+	if (!pos | fr_type_is_void(func->return_type)) return true;
 
 	if (fr_type_is_null(func->return_type)) {
 		/* Dynamic expansion to get the right name */
