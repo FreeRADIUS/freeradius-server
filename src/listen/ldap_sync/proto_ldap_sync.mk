@@ -8,4 +8,4 @@ endif
 
 SOURCES		:= proto_ldap_sync.c
 
-TGT_PREREQS	:= libfreeradius-io.a libfreeradius-ldap.a libfreeradius-internal.a
+TGT_PREREQS	:= libfreeradius-io$(L) libfreeradius-ldap$(L) libfreeradius-internal$(L)
