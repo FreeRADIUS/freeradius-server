@@ -764,6 +764,25 @@ int fr_network_listen_send_packet(fr_network_t *nr, fr_listen_t *parent, fr_list
 	return 0;
 }
 
+/** Get the number of outstanding packets
+ *
+ * @param nr the network
+ * @param li the listener that the packet was "read" from
+ * @return
+ *	- <0 on error
+ *	- the number of outstanding packets
+*/
+size_t fr_network_listen_outstanding(fr_network_t *nr, fr_listen_t *li) {
+	fr_network_socket_t *s;
+
+	(void) talloc_get_type_abort(nr, fr_network_t);
+	(void) talloc_get_type_abort_const(li, fr_listen_t);
+
+	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	if (!s) return -1;
+
+	return s->outstanding;
+}
 
 /*
  *	Mark it as dead, but DON'T free it until all of the replies
