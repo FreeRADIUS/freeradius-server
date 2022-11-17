@@ -1340,8 +1340,9 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	CONF_ITEM		*ci;
 	CONF_SECTION		*group;
 	unlang_group_t		*g;
-	char			list[32];
+	char			list_buffer[32], ref_buffer[1024];
 	char			buffer[2048];
+	char const		*list;
 
 	g = unlang_generic_to_group(parent);
 
@@ -1359,7 +1360,8 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	 *	Hoist this out of the loop, and make sure it always has a '&' prefix.
 	 */
 	if (name2) {
-		snprintf(list, sizeof(list), "&%s", name2);
+		snprintf(list_buffer, sizeof(list_buffer), "&%s", name2);
+		list = list_buffer;
 	}
 
 	/*
@@ -1435,7 +1437,8 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			 *	Move the list to a separate buffer.
 			 */
 			if (p > (attr + 1)) {
-				snprintf(list, sizeof(list), "&%.*s", (int) (p - attr) - 1, attr);
+				snprintf(ref_buffer, sizeof(ref_buffer), "&%.*s", (int) (p - attr) - 1, attr);
+				list = ref_buffer;
 
 				/*
 				 *	Move the attribute name to a separate buffer.
@@ -1451,10 +1454,12 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 				/*
 				 *	There is no list reference, so print out the default one.
 				 */
-				snprintf(list, sizeof(list), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "???"));
+				snprintf(ref_buffer, sizeof(ref_buffer), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "???"));
+				list = ref_buffer;
 
 			} else {
-				snprintf(list, sizeof(list), "&%s", attr);
+				snprintf(ref_buffer, sizeof(ref_buffer), "&%s", attr);
+				list = ref_buffer;
 				attr = NULL;
 			}
 		}
