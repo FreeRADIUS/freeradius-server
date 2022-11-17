@@ -1340,7 +1340,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	CONF_ITEM		*ci;
 	CONF_SECTION		*group;
 	unlang_group_t		*g;
-	char			list[32], lhs[1024], rhs[2048], new_attr[1024];
+	char			list[32];
 	char			buffer[2048];
 
 	g = unlang_generic_to_group(parent);
@@ -1386,18 +1386,9 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 		fr_assert(value);
 
 		/*
-		 *	Always have a "&" prefix.
+		 *	Canonicalize to no leading '&'
 		 */
-		if (*attr != '&') {
-			snprintf(new_attr, sizeof(new_attr), "&%s", attr);
-			attr = new_attr;
-		}
-
-#ifndef NDEBUG
-		memset(lhs, 0, sizeof(lhs));
-		memset(rhs, 0, sizeof(rhs));
-		memset(buffer, 0, sizeof(buffer));
-#endif
+		if (*attr == '&') attr++;
 
 		/*
 		 *	Parse the LHS attribute reference for request ref and pair list ref.
@@ -1409,7 +1400,6 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			char const *p, *q;
 
 			p = attr;
-			if (*p == '&') p++;
 
 			q = strchr(p, '.');
 			if (!q) q = p + strlen(p);
@@ -1445,14 +1435,13 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			 *	Move the list to a separate buffer.
 			 */
 			if (p > (attr + 1)) {
-				snprintf(list, sizeof(list), "%.*s", (int) (p - attr) - 1, attr);
+				snprintf(list, sizeof(list), "&%.*s", (int) (p - attr) - 1, attr);
 
 				/*
 				 *	Move the attribute name to a separate buffer.
 				 */
 				if (*p) {
-					snprintf(lhs, sizeof(lhs), "&%s", p);
-					attr = lhs;
+					attr = p;
 
 				} else {
 					attr = NULL;
@@ -1465,7 +1454,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 				snprintf(list, sizeof(list), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "???"));
 
 			} else {
-				strlcpy(list, attr, sizeof(list));
+				snprintf(list, sizeof(list), "&%s", attr);
 				attr = NULL;
 			}
 		}
@@ -1485,8 +1474,8 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 
 			} else {
 				if (strchr(attr, '[') == NULL) {
-					snprintf(rhs, sizeof(rhs), "%s[*]", attr);
-					value = rhs;
+					snprintf(buffer, sizeof(buffer), "&%s[*]", attr);
+					value = buffer;
 				} else {
 					value = attr;
 				}
@@ -1514,7 +1503,8 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			}
 
 		pair_op:
-			snprintf(buffer, sizeof(buffer), "%s.%s", list, attr + 1);
+			fr_assert(*attr != '&');
+			snprintf(buffer, sizeof(buffer), "%s.%s", list, attr);
 
 			rcode = edit_pair_alloc(group, cp, buffer, op, value);
 			break;
@@ -1526,7 +1516,8 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			rcode = edit_section_alloc(group, &child, list, op);
 			if (rcode < 0) break;
 
-			rcode = edit_pair_alloc(child, cp, attr, T_OP_EQ, value);
+			snprintf(buffer, sizeof(buffer), "&%s", attr);
+			rcode = edit_pair_alloc(child, cp, buffer, T_OP_EQ, value);
 			break;
 
 			/*
@@ -1541,7 +1532,8 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			rcode = edit_section_alloc(group, &child, list, T_OP_SUB_EQ);
 			if (rcode < 0) break;
 
-			rcode = edit_pair_alloc(child, cp, attr, op, value);
+			snprintf(buffer, sizeof(buffer), "&%s", attr);
+			rcode = edit_pair_alloc(child, cp, buffer, op, value);
 			break;
 
 			/*
