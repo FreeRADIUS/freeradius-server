@@ -308,6 +308,17 @@ static int mod_open(fr_listen_t *li)
 		}
 	}
 
+#ifdef SO_RCVBUF
+	if (inst->recv_buff_is_set) {
+		int opt;
+
+		opt = inst->recv_buff;
+		if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
+			WARN("Failed setting 'recv_buf': %s", fr_syserror(errno));
+		}
+	}
+#endif
+
 	/*
 	 *	SUID up is really only needed if interface is set, OR port <1024.
 	 */
