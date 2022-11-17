@@ -306,6 +306,34 @@ int ldap_sync_cookie_send(sync_packet_ctx_t *sync_packet_ctx)
 	return 0;
 }
 
+/** Send a change packet to the workers
+ *
+ * Called each time a change packet is received and also from a
+ * timer event retrying packets which previously failed to send.
+ *
+ * @param sync_packet_ctx Packet to send
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int ldap_sync_entry_send_network(sync_packet_ctx_t *sync_packet_ctx)
+{
+	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(sync_packet_ctx->sync->config->user_ctx,
+									proto_ldap_sync_ldap_thread_t);
+	fr_dbuff_t			*dbuff;
+
+	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
+
+	if (fr_internal_encode_list(dbuff, &sync_packet_ctx->pairs, NULL) < 0) return -1;
+	if (fr_network_listen_send_packet(thread->nr, thread->li, thread->li, fr_dbuff_buff(dbuff),
+					  fr_dbuff_used(dbuff), fr_time(), sync_packet_ctx) < 0) return -1;
+
+	sync_packet_ctx->status = SYNC_PACKET_PROCESSING;
+	fr_pair_list_free(&sync_packet_ctx->pairs);
+
+	return 0;
+}
+
 static fr_ldap_sync_packet_code_t const sync_packet_code_table[4] = {
 	FR_LDAP_SYNC_CODE_PRESENT,
 	FR_LDAP_SYNC_CODE_ADD,
@@ -329,14 +357,11 @@ static fr_ldap_sync_packet_code_t const sync_packet_code_table[4] = {
 int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH], struct berval *orig_dn,
 			LDAPMessage *msg, sync_op_t op)
 {
-	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(sync->config->user_ctx, proto_ldap_sync_ldap_thread_t);
-	fr_dbuff_t			*dbuff;
 	fr_ldap_sync_packet_code_t	pcode;
 	fr_pair_list_t			*pairs;
 	fr_pair_t			*vp;
 	sync_packet_ctx_t		*sync_packet_ctx = NULL;
 
-	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
 	MEM(sync_packet_ctx = talloc_zero(sync, sync_packet_ctx_t));
 	sync_packet_ctx->sync = sync;
 
@@ -420,15 +445,8 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 
 	ldap_msgfree(msg);
 
-	if (fr_internal_encode_list(dbuff, &pairs, NULL) < 0) goto error;
-
 	if (fr_dlist_insert_tail(&sync->pending, sync_packet_ctx) < 0) goto error;
-
-	fr_network_listen_send_packet(thread->nr, thread->li, thread->li,
-				      fr_dbuff_buff(dbuff), fr_dbuff_used(dbuff), fr_time(), sync_packet_ctx);
-	sync_packet_ctx->status = SYNC_PACKET_PROCESSING;
-
-	return 0;
+	return ldap_sync_entry_send_network(sync_packet_ctx);
 }
 
 static void _proto_ldap_socket_init(fr_connection_t *conn, UNUSED fr_connection_state_t prev,
