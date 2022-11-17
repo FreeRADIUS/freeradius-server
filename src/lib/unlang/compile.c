@@ -1434,7 +1434,11 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			 *	@todo - add support for &config?
 			 */
 			if (fr_table_value_by_substr(pair_list_table, p, q - p, PAIR_LIST_UNKNOWN) != PAIR_LIST_UNKNOWN) {
-				p = q + 1;
+				if (*q) {
+					p = q + 1;
+				} else {
+					p = NULL;
+				}
 			}
 
 			/*
@@ -1449,14 +1453,20 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 				if (*p) {
 					snprintf(lhs, sizeof(lhs), "&%s", p);
 					attr = lhs;
+
 				} else {
 					attr = NULL;
 				}
-			} else {
+
+			} else if (p) {
 				/*
 				 *	There is no list reference, so print out the default one.
 				 */
 				snprintf(list, sizeof(list), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "???"));
+
+			} else {
+				strlcpy(list, attr, sizeof(list));
+				attr = NULL;
 			}
 		}
 
