@@ -59,7 +59,7 @@ do { \
 static bool filedone = false;
 static int my_debug_lvl = 0;
 
-char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unit_test_module");
+char const *radiusd_version = RADIUSD_VERSION_BUILD("unit_test_module");
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_protocol;

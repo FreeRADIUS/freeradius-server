@@ -39,12 +39,6 @@ extern "C" {
 #  define RADIUSD_VERSION_DEVELOPER ""
 #endif
 
-#ifdef RADIUSD_VERSION_RELEASE
-#  define RADIUSD_VERSION_RELEASE_STRING "-" STRINGIFY(RADIUSD_VERSION_RELEASE)
-#else
-#  define RADIUSD_VERSION_RELEASE_STRING ""
-#endif
-
 #ifdef RADIUSD_VERSION_COMMIT
 #  define RADIUSD_VERSION_COMMIT_STRING " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #else
@@ -61,11 +55,10 @@ extern "C" {
  *
  * @param _x utility name
  */
-#define RADIUSD_VERSION_STRING_BUILD(_x) \
+#define RADIUSD_VERSION_BUILD(_x) \
 	RADIUSD_VERSION_DEVELOPER \
 	_x " version " \
-	RADIUSD_VERSION_STRING \
-	RADIUSD_VERSION_RELEASE_STRING \
+	STRINGIFY(RADIUSD_VERSION_MAJOR) "." STRINGIFY(RADIUSD_VERSION_MINOR) "." STRINGIFY(RADIUSD_VERSION_INCRM) \
 	RADIUSD_VERSION_COMMIT_STRING \
 	", for host " HOSTINFO \
 	RADIUSD_VERSION_BUILD_TIMESTAMP
@@ -74,7 +67,6 @@ extern "C" {
 #  define RADIUSD_MAGIC_NUMBER	((uint64_t) (0xf4ee4ad3f4ee4ad3))
 #  define MAGIC_PREFIX(_x)	((uint8_t) 0x00)
 #  define MAGIC_VERSION(_x)	((uint32_t) 0x00000000)
-#  define MAGIC_COMMIT(_x)	((uint32_t) 0x00000000)
 #else
 /*
  *	Mismatch between debug builds between
@@ -86,11 +78,7 @@ extern "C" {
 #  else
 #    define MAGIC_PREFIX_DEBUG  00
 #  endif
-#  ifdef RADIUSD_VERSION_COMMIT
-#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(MAGIC_PREFIX_DEBUG, RADIUSD_VERSION, RADIUSD_VERSION_COMMIT))
-#  else
-#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(MAGIC_PREFIX_DEBUG, RADIUSD_VERSION, 00000000))
-#  endif
+#  define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY2(MAGIC_PREFIX_DEBUG, RADIUSD_VERSION))
 #  define MAGIC_PREFIX(_x)	((uint8_t) ((0xff00000000000000 & (_x)) >> 56))
 #  define MAGIC_VERSION(_x)	((uint32_t)((0x00ffffff00000000 & (_x)) >> 32))
 #  define MAGIC_COMMIT(_x)	((uint32_t)((0x00000000ffffffff & (_x))))

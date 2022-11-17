@@ -30,7 +30,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 static uint64_t	libmagic = RADIUSD_MAGIC_NUMBER;
-char const	*radiusd_version_short = RADIUSD_VERSION_STRING;
+char const	*radiusd_version_short = STRINGIFY(RADIUSD_VERSION_MAJOR) "." STRINGIFY(RADIUSD_VERSION_MINOR) "." STRINGIFY(RADIUSD_VERSION_INCRM);
 
 static CONF_SECTION *default_feature_cs;		//!< Default configuration section to add features to.
 static CONF_SECTION *default_version_cs;		//!< Default configuration section to add features to.
@@ -456,7 +456,7 @@ void dependency_version_print(void)
 #endif
 		DEBUG2("  ");
 	}
-	INFO("FreeRADIUS Version " RADIUSD_VERSION_STRING);
+	INFO(RADIUSD_VERSION_BUILD("FreeRADIUS"));
 	INFO("Copyright 1999-2022 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	INFO("PARTICULAR PURPOSE");

@@ -79,7 +79,7 @@ RCSID("$Id$")
 #  include <freeradius-devel/tls/version.h>
 #endif
 
-char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("FreeRADIUS");
+char const *radiusd_version = RADIUSD_VERSION_BUILD("FreeRADIUS");
 static pid_t radius_pid;
 
 /*

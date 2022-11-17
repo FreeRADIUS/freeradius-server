@@ -44,7 +44,7 @@ RCSID("$Id$")
 
 #include <assert.h>
 
-static char const *radsnmp_version = RADIUSD_VERSION_STRING_BUILD("radsnmp");
+static char const *radsnmp_version = RADIUSD_VERSION_BUILD("radsnmp");
 
 static bool stop;
 

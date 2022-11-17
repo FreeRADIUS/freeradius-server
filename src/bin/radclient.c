@@ -81,7 +81,7 @@ static fr_packet_list_t *packet_list = NULL;
 static rc_request_t *request_head = NULL;
 static rc_request_t *rc_request_tail = NULL;
 
-static char const *radclient_version = RADIUSD_VERSION_STRING_BUILD("radclient");
+static char const *radclient_version = RADIUSD_VERSION_BUILD("radclient");
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;

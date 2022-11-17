@@ -33,7 +33,7 @@ ifneq "${LIBTOOL}" ""
 
 ifeq "${LIBTOOL}" "JLIBTOOL"
     JLIBTOOL := ${BUILD_DIR}/make/jlibtool
-    JLIBTOOL_DEFS := -DPROGRAM_VERSION=$(RADIUSD_VERSION_STRING)
+    JLIBTOOL_DEFS := -DPROGRAM_VERSION=$(RADIUSD_VERSION)
 
     # Pass compiler and ranlib paths through to jlibtool if they're
     # defined in the environment.  This lets us define a separate

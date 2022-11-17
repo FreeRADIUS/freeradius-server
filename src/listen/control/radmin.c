@@ -89,7 +89,7 @@ DIAG_ON(strict-prototypes)
  *	For configuration file stuff.
  */
 static char const *progname = "radmin";
-static char const *radmin_version = RADIUSD_VERSION_STRING_BUILD("radmin");
+static char const *radmin_version = RADIUSD_VERSION_BUILD("radmin");
 
 typedef enum {
 	RADMIN_CONN_NONE = 0,				//!< Don't know, never connected.

@@ -593,17 +593,20 @@
 /* Posix-Style ctime_r */
 #undef POSIXSTYLE
 
-/* Version integer in format <ma><ma><mi><mi><in><in> */
+/* Version integer in format <ma><mi><in> */
 #undef RADIUSD_VERSION
 
 /* Commit HEAD at time of configuring */
 #undef RADIUSD_VERSION_COMMIT
 
-/* Version release number at time of configuring */
-#undef RADIUSD_VERSION_RELEASE
+/* Version integer in format <in> */
+#undef RADIUSD_VERSION_INCRM
 
-/* Raw version string from VERSION file */
-#undef RADIUSD_VERSION_STRING
+/* Version integer in format <ma> */
+#undef RADIUSD_VERSION_MAJOR
+
+/* Version integer in format <mi> */
+#undef RADIUSD_VERSION_MINOR
 
 /* The number of bytes in type time_t */
 #undef SIZEOF_TIME_T

@@ -36,6 +36,8 @@ extern char const	*radiusd_version_short;
 
 #include <stddef.h>
 
+#define RADIUSD_VERSION_STRING STRINGIFY(RADIUSD_VERSION_MAJOR) "." STRINGIFY(RADIUSD_VERSION_MINOR) "." STRINGIFY(RADIUSD_VERSION_INCRM)
+
 int		rad_check_lib_magic(uint64_t magic);
 int		dependency_feature_add(CONF_SECTION *cs, char const *name, bool enabled);
 int		dependency_version_number_add(CONF_SECTION *cs, char const *name, char const *version);

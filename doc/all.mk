@@ -258,7 +258,7 @@ endif
 #	file:// links and http:// links.
 #
 DOC_BASEDIR = $(subst $() $(),,$(foreach x,$(subst /, ,$1),../))
-DOC_UPDATED_LABEL = "FreeRADIUS ${RADIUSD_VERSION_STRING} - \#$(shell git rev-parse --short HEAD) - Last updated"
+DOC_UPDATED_LABEL = "FreeRADIUS ${RADIUSD_VERSION} - \#$(shell git rev-parse --short HEAD) - Last updated"
 
 doc/%.html: doc/%.adoc
 	@echo HTML $^

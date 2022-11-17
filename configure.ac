@@ -38,30 +38,20 @@ dnl #############################################################
 
 RADIUSD_VERSION_MAJOR=`cat VERSION | cut -f1 -d.`
 RADIUSD_VERSION_MINOR=`cat VERSION | cut -f2 -d.`
-RADIUSD_VERSION_INCRM=`cat VERSION | cut -f3 -d. | sed 's/[[\.-]].*$//'`
+RADIUSD_VERSION_INCRM=`(git status > /dev/null 2>&1 || (echo '0' && false)) && git describe | cut -d '-' -f 2`
 
 AC_MSG_CHECKING([build version])
 RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_VERSION_MAJOR $RADIUSD_VERSION_MINOR $RADIUSD_VERSION_INCRM`
 AC_MSG_RESULT($RADIUSD_VERSION)
 
 dnl #
-dnl #  Still useful for custom builds
-dnl #
-AC_MSG_CHECKING([build version string])
-RADIUSD_VERSION_STRING=`cat VERSION`
-AC_MSG_RESULT($RADIUSD_VERSION_STRING)
-
-dnl #
-dnl #  Add definitions to Make.inc as it's used by various build targets
-dnl #
-AC_SUBST([RADIUSD_VERSION_STRING])
-
-dnl #
 dnl #  Add definitions to autoconf.h, so that the headers that we install
 dnl #  contain the version number of the server.
 dnl #
-AC_DEFINE_UNQUOTED([RADIUSD_VERSION], [${RADIUSD_VERSION}], [Version integer in format <ma><ma><mi><mi><in><in>])
-AC_DEFINE_UNQUOTED([RADIUSD_VERSION_STRING], ["${RADIUSD_VERSION_STRING}"], [Raw version string from VERSION file])
+AC_DEFINE_UNQUOTED([RADIUSD_VERSION], [${RADIUSD_VERSION}], [Version integer in format <ma><mi><in>])
+AC_DEFINE_UNQUOTED([RADIUSD_VERSION_MAJOR], [${RADIUSD_VERSION_MAJOR}], [Version integer in format <ma>])
+AC_DEFINE_UNQUOTED([RADIUSD_VERSION_MINOR], [${RADIUSD_VERSION_MINOR}], [Version integer in format <mi>])
+AC_DEFINE_UNQUOTED([RADIUSD_VERSION_INCRM], [${RADIUSD_VERSION_INCRM}], [Version integer in format <in>])
 
 dnl #############################################################
 dnl #
@@ -151,12 +141,6 @@ dnl #
 dnl #  Turn on the developer flag when taken from a git checkout (not a release)
 dnl #
 if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
-  if test "x$RADIUSD_VERSION_RELEASE" = "x"; then
-    AC_MSG_CHECKING([build release])
-    RADIUSD_VERSION_RELEASE=`git describe | cut -d '-' -f 2`
-    AC_MSG_RESULT($RADIUSD_VERSION_RELEASE)
-  fi
-
   if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
     AC_MSG_CHECKING([build commit])
     RADIUSD_VERSION_COMMIT=`git rev-parse --short=8 HEAD`
@@ -167,10 +151,6 @@ if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
     AC_MSG_NOTICE([in git repository, enabling developer build implicitly, disable with --disable-developer])
     developer="yes"
   fi
-fi
-
-if test "x$RADIUSD_VERSION_RELEASE" != "x"; then
-  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_RELEASE],[${RADIUSD_VERSION_RELEASE}],[Version release number at time of configuring])
 fi
 
 if test "x$RADIUSD_VERSION_COMMIT" != "x"; then

@@ -62,7 +62,7 @@ static int packets_count = 1; // Used in '$PATH/${packet}.txt.${count}'
 
 static int self_pipe[2] = {-1, -1};		//!< Signals from sig handlers
 
-static char const *radsniff_version = RADIUSD_VERSION_STRING_BUILD("radsniff");
+static char const *radsniff_version = RADIUSD_VERSION_BUILD("radsniff");
 
 static int rs_useful_codes[] = {
 	FR_RADIUS_CODE_ACCESS_REQUEST,			//!< RFC2865 - Authentication request

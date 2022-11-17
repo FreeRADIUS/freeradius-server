@@ -144,7 +144,7 @@ endif
 #
 #  Version to use for packaging and other Make related things
 #
-RADIUSD_VERSION_STRING = @RADIUSD_VERSION_STRING@
+RADIUSD_VERSION = @RADIUSD_VERSION@
 
 #
 #  This allows dlopen to do runtime checks for version mismatches

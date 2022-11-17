@@ -733,7 +733,6 @@ PANDOC_ENGINE
 PANDOC
 ASCIIDOCTOR
 GIT
-RADIUSD_VERSION_STRING
 target_alias
 host_alias
 build_alias
@@ -2819,7 +2818,7 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 RADIUSD_VERSION_MAJOR=`cat VERSION | cut -f1 -d.`
 RADIUSD_VERSION_MINOR=`cat VERSION | cut -f2 -d.`
-RADIUSD_VERSION_INCRM=`cat VERSION | cut -f3 -d. | sed 's/[\.-].*$//'`
+RADIUSD_VERSION_INCRM=`(git status > /dev/null 2>&1 || (echo '0' && false)) && git describe | cut -d '-' -f 2`
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking build version" >&5
 printf %s "checking build version... " >&6; }
@@ -2827,19 +2826,17 @@ RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_VERSION_MAJOR $RADIUSD_VERSION_M
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION" >&5
 printf "%s\n" "$RADIUSD_VERSION" >&6; }
 
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking build version string" >&5
-printf %s "checking build version string... " >&6; }
-RADIUSD_VERSION_STRING=`cat VERSION`
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION_STRING" >&5
-printf "%s\n" "$RADIUSD_VERSION_STRING" >&6; }
-
-
-
 
 printf "%s\n" "#define RADIUSD_VERSION ${RADIUSD_VERSION}" >>confdefs.h
 
 
-printf "%s\n" "#define RADIUSD_VERSION_STRING \"${RADIUSD_VERSION_STRING}\"" >>confdefs.h
+printf "%s\n" "#define RADIUSD_VERSION_MAJOR ${RADIUSD_VERSION_MAJOR}" >>confdefs.h
+
+
+printf "%s\n" "#define RADIUSD_VERSION_MINOR ${RADIUSD_VERSION_MINOR}" >>confdefs.h
+
+
+printf "%s\n" "#define RADIUSD_VERSION_INCRM ${RADIUSD_VERSION_INCRM}" >>confdefs.h
 
 
 
@@ -3252,14 +3249,6 @@ fi
 
 
 if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
-  if test "x$RADIUSD_VERSION_RELEASE" = "x"; then
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking build release" >&5
-printf %s "checking build release... " >&6; }
-    RADIUSD_VERSION_RELEASE=`git describe | sed -e 's/^.*-\([0-9]*\)-g[0-9a-f]*/\1/'`
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION_RELEASE" >&5
-printf "%s\n" "$RADIUSD_VERSION_RELEASE" >&6; }
-  fi
-
   if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking build commit" >&5
 printf %s "checking build commit... " >&6; }
@@ -3273,12 +3262,6 @@ printf "%s\n" "$RADIUSD_VERSION_COMMIT" >&6; }
 printf "%s\n" "$as_me: in git repository, enabling developer build implicitly, disable with --disable-developer" >&6;}
     developer="yes"
   fi
-fi
-
-if test "x$RADIUSD_VERSION_RELEASE" != "x"; then
-
-printf "%s\n" "#define RADIUSD_VERSION_RELEASE ${RADIUSD_VERSION_RELEASE}" >>confdefs.h
-
 fi
 
 if test "x$RADIUSD_VERSION_COMMIT" != "x"; then

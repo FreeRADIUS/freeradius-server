@@ -67,7 +67,7 @@ static struct sockaddr_ll ll;	/* Socket address structure */
 static bool raw_mode = false;
 static bool reply_expected = true;
 
-static char const *dhcpclient_version = RADIUSD_VERSION_STRING_BUILD("dhcpclient");
+static char const *dhcpclient_version = RADIUSD_VERSION_BUILD("dhcpclient");
 
 /* structure to keep track of offered IP addresses */
 typedef struct {
