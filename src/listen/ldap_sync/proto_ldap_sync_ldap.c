@@ -332,36 +332,37 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(sync->config->user_ctx, proto_ldap_sync_ldap_thread_t);
 	fr_dbuff_t			*dbuff;
 	fr_ldap_sync_packet_code_t	pcode;
-	fr_pair_list_t			pairs;
+	fr_pair_list_t			*pairs;
 	fr_pair_t			*vp;
-	TALLOC_CTX			*local = NULL;
 	sync_packet_ctx_t		*sync_packet_ctx = NULL;
 
 	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
+	MEM(sync_packet_ctx = talloc_zero(sync, sync_packet_ctx_t));
+	sync_packet_ctx->sync = sync;
 
-	MEM(local = talloc_new(NULL));
-	fr_pair_list_init(&pairs);
-	if (fr_pair_list_copy(local, &pairs, &sync->config->sync_pairs) < 0) {
+	fr_pair_list_init(&sync_packet_ctx->pairs);
+	pairs = &sync_packet_ctx->pairs;
+
+	if (fr_pair_list_copy(sync_packet_ctx, pairs, &sync->config->sync_pairs) < 0) {
 	error:
 		if (msg) ldap_msgfree(msg);
-		talloc_free(local);
-		if (sync_packet_ctx) talloc_free(sync_packet_ctx);
+		talloc_free(sync_packet_ctx);
 		return -1;
 	};
 
 	pcode = sync_packet_code_table[op];
 
-	fr_pair_list_append_by_da(local, vp, &pairs, attr_packet_type, (uint32_t)pcode, false);
+	fr_pair_list_append_by_da(sync_packet_ctx, vp, pairs, attr_packet_type, (uint32_t)pcode, false);
 	if (!vp) goto error;
 
-	fr_pair_list_append_by_da(local, vp, &pairs, attr_ldap_sync_packet_id, (uint32_t)sync->sync_no, false);
+	fr_pair_list_append_by_da(sync_packet_ctx, vp, pairs, attr_ldap_sync_packet_id, (uint32_t)sync->sync_no, false);
 	if (!vp) goto error;
 
 	/*
 	 *	Add the UUID if provided
 	 */
 	if (uuid) {
-		fr_pair_list_append_by_da_parent_len(local, vp, &pairs, attr_ldap_sync_entry_uuid,
+		fr_pair_list_append_by_da_parent_len(sync_packet_ctx, vp, pairs, attr_ldap_sync_entry_uuid,
 						     uuid, SYNC_UUID_LENGTH, true);
 		if (!vp) goto error;
 	}
@@ -370,8 +371,8 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 	 *	Add the original DN if provided
 	 */
 	if (orig_dn && (orig_dn->bv_len > 0)) {
-		fr_pair_list_append_by_da_parent_len(local, vp, &pairs, attr_ldap_sync_orig_dn,
-		    				     orig_dn->bv_val, orig_dn->bv_len, true);
+		fr_pair_list_append_by_da_parent_len(sync_packet_ctx, vp, pairs, attr_ldap_sync_orig_dn,
+						     orig_dn->bv_val, orig_dn->bv_len, true);
 		if (!vp) goto error;
 	}
 
@@ -384,7 +385,7 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 		struct berval 		**values;
 		int			count, i;
 
-		fr_pair_list_append_by_da_parent_len(local, vp, &pairs, attr_ldap_sync_entry_dn,
+		fr_pair_list_append_by_da_parent_len(sync_packet_ctx, vp, pairs, attr_ldap_sync_entry_dn,
 						     entry_dn, strlen(entry_dn), true);
 		if (!vp) goto error;
 
@@ -402,10 +403,10 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 			for (i = 0; i < count; i++) {
 				if (values[i]->bv_len == 0) continue;
 
-				if (pair_append_by_tmpl_parent(local, &vp, &pairs, map->lhs) < 0) break;
+				if (pair_append_by_tmpl_parent(sync_packet_ctx, &vp, pairs, map->lhs) < 0) break;
 				if (fr_value_box_from_str(vp, &vp->data, vp->da->type, NULL, values[i]->bv_val,
 							  values[i]->bv_len, NULL, true) < 0) {
-					fr_pair_remove(&pairs, vp);
+					fr_pair_remove(pairs, vp);
 					talloc_free(vp);
 				};
 
@@ -421,16 +422,11 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 
 	if (fr_internal_encode_list(dbuff, &pairs, NULL) < 0) goto error;
 
-	MEM(sync_packet_ctx = talloc_zero(sync, sync_packet_ctx_t));
-	sync_packet_ctx->sync = sync;
-
 	if (fr_dlist_insert_tail(&sync->pending, sync_packet_ctx) < 0) goto error;
 
 	fr_network_listen_send_packet(thread->nr, thread->li, thread->li,
 				      fr_dbuff_buff(dbuff), fr_dbuff_used(dbuff), fr_time(), sync_packet_ctx);
 	sync_packet_ctx->status = SYNC_PACKET_PROCESSING;
-
-	talloc_free(local);
 
 	return 0;
 }

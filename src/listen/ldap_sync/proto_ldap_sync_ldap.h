@@ -137,6 +137,8 @@ struct sync_packet_ctx_s {
 	sync_packet_status_t		status;			//!< Status of this packet.
 	sync_state_t			*sync;			//!< Sync packet relates to.
 
+	fr_pair_list_t			pairs;			//!< Pairs to send with change packets.
+
 	uint8_t				*cookie;		//!< Cookie to store - can be NULL.
 	bool				refresh;		//!< Does the sync require a refresh.
 
