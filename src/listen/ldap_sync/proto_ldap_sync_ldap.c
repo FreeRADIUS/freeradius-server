@@ -755,11 +755,7 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 	fr_pair_list_init(&tmp);
 
 	ret = fr_internal_decode_list_dbuff(local, &tmp, fr_dict_root(dict_ldap_sync), &dbuff, NULL);
-	if (ret < 0) {
-		fr_pair_list_free(&tmp);
-		talloc_free(local);
-		return ret;
-	}
+	if (ret < 0) goto finish;
 
 	/*
 	 *	There should always be a packet ID and code
@@ -789,7 +785,10 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 		vp = fr_pair_find_by_da_nested(&tmp, NULL, attr_ldap_sync_cookie);
 		if (vp) cookie = talloc_memdup(inst, vp->vp_octets, vp->vp_length);
 
-		inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, inst->parent, cookie);
+		if (inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, inst->parent, cookie) < 0) {
+			ret = -1;
+			goto finish;
+		}
 	}
 		break;
 
@@ -808,7 +807,11 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 		sync_config = sync_packet_ctx->sync->config;
 		DEBUG3("Restarting sync with base %s", sync_config->base_dn);
 		talloc_free(sync_packet_ctx->sync);
-		inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, inst->parent, sync_packet_ctx->cookie);
+		if (inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, inst->parent,
+								  sync_packet_ctx->cookie) < 0) {
+			ret = -1;
+			goto finish;
+		}
 	}
 		break;
 
@@ -865,10 +868,11 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 		    (sync->changes_since_cookie >= ldap_sync->cookie_changes)) ldap_sync_cookie_send(pc);
 	}
 
+finish:
 	fr_pair_list_free(&tmp);
 	talloc_free(local);
 
-	return buffer_len;
+	return ret;
 }
 
 /** Callback for socket errors when running initial root query
