@@ -8,4 +8,4 @@ endif
 
 SOURCES		:= proto_ldap_sync_ldap.c rfc4533.c persistent_search.c active_directory.c
 
-TGT_PREREQS	:= libfreeradius-ldap$(L) libfreeradius-internal$(L)
+TGT_PREREQS	:= proto_ldap_sync$(L) libfreeradius-ldap$(L) libfreeradius-internal$(L)
