@@ -849,8 +849,8 @@ static void _proto_ldap_socket_open_read(fr_event_list_t *el, int fd, UNUSED int
 	 *	res_timeout from the configuration.
 	 */
 	status = fr_ldap_result(&result, NULL, ldap_conn, dir_ctx->msgid, LDAP_MSG_ALL, NULL, fr_time_delta_from_msec(0));
-
 	if (status != LDAP_PROC_SUCCESS) {
+		PERROR("Failed querying for directory type");
 		if (result) ldap_msgfree(result);
 	error:
 		talloc_free(dir_ctx);
