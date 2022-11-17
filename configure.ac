@@ -153,7 +153,7 @@ dnl #
 if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
   if test "x$RADIUSD_VERSION_RELEASE" = "x"; then
     AC_MSG_CHECKING([build release])
-    RADIUSD_VERSION_RELEASE=`git describe | sed -e 's/^.*-\([[0-9]]*\)-g[[0-9a-f]]*/\1/'`
+    RADIUSD_VERSION_RELEASE=`git describe | cut -d '-' -f 2`
     AC_MSG_RESULT($RADIUSD_VERSION_RELEASE)
   fi
 

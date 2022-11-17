@@ -59,8 +59,8 @@ ifeq "$(RADIUS_VERSION_STRING)" ""
 endif
 
 ifeq "$(RADIUS_VERSION_RELEASE)" ""
-  RADIUSD_VERSION_RELEASE := $(shell git status > /dev/null 2>&1 && git describe | sed -e 's/^.*-\([[0-9]]*\)-g[[0-9a-f]]*/\1/')
-  RADIUSD_PACKAGE_VERSION := $(RADIUSD_VERSION_STRING)-$(RADIUSD_VERSION_RELEASE)
+  RADIUSD_VERSION_RELEASE := $(shell git status > /dev/null 2>&1 && git describe | cut -d '-' -f 2)
+  RADIUSD_PACKAGE_VERSION := $(RADIUSD_VERSION_STRING)+git$(RADIUSD_VERSION_RELEASE)
 else
   RADIUSD_PACKAGE_VERSION := $(RADIUSD_VERSION_STRING)
 endif
