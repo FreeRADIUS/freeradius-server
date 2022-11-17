@@ -55,7 +55,13 @@ endif
 #  'configure' was not run?  Get the version number from the file.
 #
 ifeq "$(RADIUS_VERSION)" ""
-  RADIUSD_VERSION := $(shell cat VERSION | cut -d '.' -f 1,2).$(shell (git status > /dev/null 2>&1 || (echo '0' && false)) && git describe | cut -d '-' -f 2)
+  # Default to an incremental version of 0 if we're not building from git
+  RADIUSD_VERSION_INCRM := $(shell git status > /dev/null 2>&1 && git describe | cut -d '-' -f 2)
+  ifeq "$(RADIUSD_VERSION_INCRM)" ""
+  	RADIUSD_VERSION_INCRM := "0"
+  endif
+
+  RADIUSD_VERSION := $(shell cat VERSION | cut -d '.' -f 1,2).$(RADIUSD_VERSION_INCRM)
 endif
 
 MFLAGS += --no-print-directory
