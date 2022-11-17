@@ -1773,10 +1773,14 @@ static void add_minus_l(count_chars *cc, char const *arg)
 	char *name = strrchr(arg, '/');
 	char *file = strrchr(arg, '.');
 
+	/*
+	 * Most linkers require the -l argument value
+	 * to be stripped of its 'lib' prefix.
+	 */
 	if ((name != NULL) && (file != NULL) &&
 		(strstr(name, "lib") == (name + 1))) {
-		*name = '\0';
-		*file = '\0';
+		*name = '\0';	/* trim path */
+		*file = '\0';	/* trim extension */
 		file = name;
 		file = file+4;
 		push_count_chars(cc, "-L");
@@ -1787,10 +1791,12 @@ static void add_minus_l(count_chars *cc, char const *arg)
 		strcat(newarg, file);
 		push_count_chars(cc, newarg);
 	}
-	/* special case for FreeRADIUS loadable modules */
-	else if ((name != NULL) && (file != NULL) &&
-		(strstr(name, "rlm_") == (name + 1))) {
-		*name = '\0';
+	/*
+	 * For things which aren't libs, don't strip
+	 * anything.
+	 */
+	else if ((name != NULL) && (file != NULL)) {
+		*name = '\0';  	/* trim path */
 		file = name+1;
 		push_count_chars(cc, "-L");
 		push_count_chars(cc, arg);
