@@ -501,7 +501,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list
  *	- true - If return values were correct.
  *	- false - If the return values were incorrect.
  */
-static inline CC_HINT(nonnull) 
+static inline CC_HINT(nonnull)
 bool xlat_process_return(request_t *request, xlat_t const *func, FR_DLIST_HEAD(fr_value_box_list) const *returned, fr_value_box_t *pos)
 {
 	unsigned int count = 0;
@@ -807,7 +807,8 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	case XLAT_ACTION_DONE:
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
 		RDEBUG2("| --> %pV", fr_dcursor_current(out));
-		if (!xlat_process_return(request, exp->call.func, (FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, fr_dcursor_current(out))) xa = XLAT_ACTION_FAIL;
+		if (!xlat_process_return(request, exp->call.func, (FR_DLIST_HEAD(fr_value_box_list) *)out->dlist,
+					 fr_dcursor_current(out))) xa = XLAT_ACTION_FAIL;
 		break;
 
 	case XLAT_ACTION_FAIL:
@@ -913,7 +914,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			fr_dcursor_next(out);
 			REXDENT();
 			xlat_debug_log_result(request, *in, fr_dcursor_current(out));
-			if (!xlat_process_return(request, node->call.func, (FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, fr_dcursor_current(out))) xa = XLAT_ACTION_FAIL;
+			if (!xlat_process_return(request, node->call.func,
+						 (FR_DLIST_HEAD(fr_value_box_list) *)out->dlist,
+						 fr_dcursor_current(out))) return XLAT_ACTION_FAIL;
 			RINDENT();
 			break;
 		}
