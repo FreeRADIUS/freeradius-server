@@ -444,7 +444,7 @@ deb:
 		echo "Please run 'apt-get install build-essentials' "; \
 		exit 1; \
 	fi
-	fakeroot dch -v$(RADIUSD_VERSION) "" # Update the changelog to list the current version
+	EMAIL="packages@freeradius.org" fakeroot dch -v$(RADIUSD_VERSION) ""
 	fakeroot debian/rules debian/control # Clean
 	fakeroot dpkg-buildpackage -b -uc
 
