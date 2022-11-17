@@ -58,10 +58,14 @@ ifeq "$(RADIUS_VERSION)" ""
   # Default to an incremental version of 0 if we're not building from git
   RADIUSD_VERSION_INCRM := $(shell git status > /dev/null 2>&1 && git describe | cut -d '-' -f 2)
   ifeq "$(RADIUSD_VERSION_INCRM)" ""
-  	RADIUSD_VERSION_INCRM := "0"
+    RADIUSD_VERSION_INCRM := 0
+    RADIUSD_VERSION_GIT :=
+  else
+    RADIUSD_VERSION_GIT := +git
   endif
-
-  RADIUSD_VERSION := $(shell cat VERSION | cut -d '.' -f 1,2).$(RADIUSD_VERSION_INCRM)
+  RADIUSD_VERSION := $(shell cat VERSION | cut -d '.' -f 1,2).$(RADIUSD_VERSION_INCRM)$(RADIUSD_VERSION_GIT)
+else
+  RADIUSD_VERSION_STRING := $(RADIUSD_VERSION)
 endif
 
 MFLAGS += --no-print-directory
