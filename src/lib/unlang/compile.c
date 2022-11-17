@@ -1340,7 +1340,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	CONF_ITEM		*ci;
 	CONF_SECTION		*group;
 	unlang_group_t		*g;
-	char			list[32], lhs[1024], rhs[2048];
+	char			list[32], lhs[1024], rhs[2048], new_attr[1024];
 	char			buffer[2048];
 
 	g = unlang_generic_to_group(parent);
@@ -1386,6 +1386,20 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 		fr_assert(value);
 
 		/*
+		 *	Always have a "&" prefix.
+		 */
+		if (*attr != '&') {
+			snprintf(new_attr, sizeof(new_attr), "&%s", attr);
+			attr = new_attr;
+		}
+
+#ifndef NDEBUG
+		memset(lhs, 0, sizeof(lhs));
+		memset(rhs, 0, sizeof(rhs));
+		memset(buffer, 0, sizeof(buffer));
+#endif
+
+		/*
 		 *	Parse the LHS attribute reference for request ref and pair list ref.
 		 *
 		 *	All of the other tmpl functions do full parsing into tmpls, which we don't want.  We
@@ -1395,11 +1409,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			char const *p, *q;
 
 			p = attr;
-			if (*p != '&') {
-				cf_log_err(cp, "Attribute reference is missing leading '&'");
-				return NULL;
-			}
-			p++;
+			if (*p == '&') p++;
 
 			q = strchr(p, '.');
 			if (!q) q = p + strlen(p);
@@ -1424,10 +1434,6 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			 *	@todo - add support for &config?
 			 */
 			if (fr_table_value_by_substr(pair_list_table, p, q - p, PAIR_LIST_UNKNOWN) != PAIR_LIST_UNKNOWN) {
-				if (!*p) {
-					break;
-				}
-
 				p = q + 1;
 			}
 
@@ -1448,7 +1454,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 				}
 			} else {
 				/*
-				 *	Don't change what "attr" points to, and print out the default list.
+				 *	There is no list reference, so print out the default one.
 				 */
 				snprintf(list, sizeof(list), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "???"));
 			}
@@ -1462,6 +1468,9 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			 */
 		case T_OP_CMP_FALSE:
 			if (!attr) {
+				/*
+				 *	Set list to empty value.
+				 */
 				rcode = edit_section_alloc(group, NULL, list, T_OP_SET);
 
 			} else {
