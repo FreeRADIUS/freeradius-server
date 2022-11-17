@@ -55,6 +55,7 @@ static CONF_PARSER const proto_ldap_sync_config[] = {
 	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_ldap_sync_t, num_messages) },
 	{ FR_CONF_OFFSET("cookie_interval", FR_TYPE_TIME_DELTA, proto_ldap_sync_t, cookie_interval), .dflt = "10" },
 	{ FR_CONF_OFFSET("cookie_changes", FR_TYPE_UINT32, proto_ldap_sync_t, cookie_changes), .dflt = "100" },
+	{ FR_CONF_OFFSET("retry_interval", FR_TYPE_TIME_DELTA, proto_ldap_sync_t, retry_interval), .dflt = "1" },
 
 	/*
 	 *	Areas of the DIT to listen on

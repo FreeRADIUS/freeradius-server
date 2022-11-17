@@ -334,6 +334,36 @@ static int ldap_sync_entry_send_network(sync_packet_ctx_t *sync_packet_ctx)
 	return 0;
 }
 
+/** Event to handle sending of any change packets which failed to send.
+ *
+ * Looks at the head of the list of pending sync packets for unsent
+ * change packets and sends any up to the first cookie.
+ */
+static void ldap_sync_retry_event(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	sync_state_t		*sync = talloc_get_type_abort(uctx, sync_state_t);
+	sync_packet_ctx_t	*sync_packet_ctx = NULL;
+
+	while ((sync_packet_ctx = fr_dlist_next(&sync->pending, sync_packet_ctx))) {
+		if (sync_packet_ctx->type != SYNC_PACKET_TYPE_CHANGE) break;
+		if (sync_packet_ctx->status != SYNC_PACKET_PENDING) continue;
+
+		/*
+		 *	Retry sending packet.  Don't try any more if it fails.
+		 */
+		if (ldap_sync_entry_send_network(sync_packet_ctx) < 0) break;
+	}
+
+	/*
+	 *	We didn't run through the whole list, so there may be other pending
+	 *	packets - reschedule a retry event.
+	 */
+	if (sync_packet_ctx) {
+		(void) fr_event_timer_in(sync, el, &sync->retry_ev, sync->inst->retry_interval,
+					 ldap_sync_retry_event, sync);
+	}
+}
+
 static fr_ldap_sync_packet_code_t const sync_packet_code_table[4] = {
 	FR_LDAP_SYNC_CODE_PRESENT,
 	FR_LDAP_SYNC_CODE_ADD,
@@ -446,7 +476,17 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 	ldap_msgfree(msg);
 
 	if (fr_dlist_insert_tail(&sync->pending, sync_packet_ctx) < 0) goto error;
-	return ldap_sync_entry_send_network(sync_packet_ctx);
+
+	/*
+	 *	Send the packet and if it fails to send add a retry event
+	 */
+	if ((ldap_sync_entry_send_network(sync_packet_ctx) < 0) &&
+	    (fr_event_timer_in(sync, sync->conn->conn->el, &sync->retry_ev,
+			       sync->inst->retry_interval, ldap_sync_retry_event, sync) < 0)) {
+		PERROR("Inserting LDAP sync retry timer failed");
+	}
+
+	return 0;
 }
 
 static void _proto_ldap_socket_init(fr_connection_t *conn, UNUSED fr_connection_state_t prev,

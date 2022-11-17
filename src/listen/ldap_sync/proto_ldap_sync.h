@@ -57,6 +57,7 @@ typedef struct {
 	fr_time_delta_t		cookie_interval;		//!< Interval between storing cookies.
 	uint32_t		cookie_changes;			//!< Number of LDAP changes to process between
 								//!< each cookie store operation.
+	fr_time_delta_t		retry_interval;			//!< Interval between retrying failed change packets.
 
 	fr_schedule_t		*sc;
 
