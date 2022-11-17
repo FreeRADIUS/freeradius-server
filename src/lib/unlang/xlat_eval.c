@@ -510,7 +510,7 @@ bool xlat_process_return(request_t *request, xlat_t const *func, FR_DLIST_HEAD(f
 	 *  Nothing to validate.  We don't yet enforce that functions
 	 *  must return at least one instance of their type.
 	 */
-	if (!pos | fr_type_is_void(func->return_type)) return true;
+	if (!pos || fr_type_is_void(func->return_type)) return true;
 
 	if (fr_type_is_null(func->return_type)) {
 		/* Dynamic expansion to get the right name */
