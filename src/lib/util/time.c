@@ -681,7 +681,7 @@ void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char con
 
 		if (!elapsed->array[i]) continue;
 
-		len = prefix_len + strlen(names[i]);
+		len = prefix_len + 1 + strlen(names[i]);
 
 		if (len >= (size_t) (tab_offset * 8)) {
 			fprintf(fp, "%s.%s %" PRIu64 "\n",
