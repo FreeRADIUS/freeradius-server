@@ -58,6 +58,13 @@ ifeq "$(RADIUS_VERSION_STRING)" ""
   RADIUSD_VERSION_STRING := $(shell cat VERSION)
 endif
 
+ifeq "$(RADIUS_VERSION_RELEASE)" ""
+  RADIUSD_VERSION_RELEASE := $(shell git status > /dev/null 2>&1 && git describe | sed -e 's/^.*-\([[0-9]]*\)-g[[0-9a-f]]*/\1/')
+  RADIUSD_PACKAGE_VERSION := $(RADIUSD_VERSION_STRING)-$(RADIUSD_VERSION_RELEASE)
+else
+  RADIUSD_PACKAGE_VERSION := $(RADIUSD_VERSION_STRING)
+endif
+
 MFLAGS += --no-print-directory
 
 export DESTDIR := $(R)
@@ -445,7 +452,7 @@ deb:
 		exit 1; \
 	fi
 	fakeroot debian/rules debian/control #clean
-	fakeroot dpkg-buildpackage -b -uc
+	fakeroot dpkg-buildpackage -b -uc -v$(RADIUSD_PACKAGE_VERSION)
 
 .PHONY: rpm
 rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
