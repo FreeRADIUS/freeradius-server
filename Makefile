@@ -444,8 +444,9 @@ deb:
 		echo "Please run 'apt-get install build-essentials' "; \
 		exit 1; \
 	fi
-	fakeroot debian/rules debian/control #clean
-	fakeroot dpkg-buildpackage -b -uc -v$(RADIUSD_VERSION)
+	fakeroot dch -v$(RADIUSD_VERSION) "" # Update the changelog to list the current version
+	fakeroot debian/rules debian/control # Clean
+	fakeroot dpkg-buildpackage -b -uc
 
 .PHONY: rpm
 rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION).tar.bz2: freeradius-server-$(RADIUSD_VERSION).tar.bz2
