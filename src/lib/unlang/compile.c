@@ -1360,9 +1360,11 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	 *	Hoist this out of the loop, and make sure it always has a '&' prefix.
 	 */
 	if (name2) {
-		snprintf(list_buffer, sizeof(list_buffer), "&%s", name2);
-		list = list_buffer;
+		snprintf(list_buffer, sizeof(list_buffer), "&%s", name2);		
+	} else {
+		snprintf(list_buffer, sizeof(list_buffer), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "???"));
 	}
+	list = list_buffer;
 
 	/*
 	 *	Loop over the entries, rewriting them.
@@ -1392,13 +1394,14 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 		 */
 		if (*attr == '&') attr++;
 
+		list = list_buffer;
+
 		/*
-		 *	Parse the LHS attribute reference for request ref and pair list ref.
-		 *
-		 *	All of the other tmpl functions do full parsing into tmpls, which we don't want.  We
-		 *	just want to know how long the prefix is.
+		 *	Separate out the various possibilities for the
+		 *	"name", which could be a list, an attribute
+		 *	name, or a list followed by an attribute name.
 		 */
-		if (!name2) {
+		{
 			char const *p, *q;
 
 			p = attr;
@@ -1434,15 +1437,12 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			}
 
 			/*
-			 *	Move the list to a separate buffer.
+			 *	Separate the list reference from the attribute reference.
 			 */
 			if (p > (attr + 1)) {
 				snprintf(ref_buffer, sizeof(ref_buffer), "&%.*s", (int) (p - attr) - 1, attr);
 				list = ref_buffer;
 
-				/*
-				 *	Move the attribute name to a separate buffer.
-				 */
 				if (*p) {
 					attr = p;
 
@@ -1450,16 +1450,13 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 					attr = NULL;
 				}
 
-			} else if (p) {
+			} else if (!p) {
 				/*
-				 *	There is no list reference, so print out the default one.
+				 *	No trailing attribute name, the entire thing is a list
+				 *
+				 *	@todo - handle &control[*]
 				 */
-				snprintf(ref_buffer, sizeof(ref_buffer), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "???"));
-				list = ref_buffer;
-
-			} else {
-				snprintf(ref_buffer, sizeof(ref_buffer), "&%s", attr);
-				list = ref_buffer;
+				list = cf_pair_attr(cp);
 				attr = NULL;
 			}
 		}

@@ -7,11 +7,6 @@ update request {
 	&Tmp-String-0 += 'foo'
 	&Tmp-String-0 += 'bar'
 	&Tmp-String-1 += 'baz'
-
-	#
-	#  @fixme - EDIT - There's already a list!  WTF is going on here?
-	#  this should be forbidden!
-	#
 	&control !* ANY
 }
 
