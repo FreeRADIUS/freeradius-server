@@ -99,6 +99,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	fi
 	$(Q)touch $@
 
+.NO_PARALLEL: $(TEST)
 $(TEST):
 	$(Q)$(MAKE) --no-print-directory $@.radiusd_stop
 	@touch $(BUILD_DIR)/tests/$@
