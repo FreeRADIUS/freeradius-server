@@ -3,7 +3,7 @@ TARGETNAME=
 
 ifneq "${TARGETNAME}" ""
   TARGETNAME	:= proto_ldap_sync
-  TARGET	:= $(TARGETNAME).a
+  TARGET	:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= proto_ldap_sync.c
