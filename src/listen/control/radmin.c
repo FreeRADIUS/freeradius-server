@@ -821,7 +821,7 @@ static int local_command(char *line)
 }
 
 
-#define MAX_COMMANDS (4)
+#define MAX_COMMANDS (1024)
 
 int main(int argc, char **argv)
 {
@@ -847,6 +847,7 @@ int main(int argc, char **argv)
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
 
+	main_config_t		*config;
 	int exit_status = EXIT_SUCCESS;
 
 	char const *prompt = "radmin> ";
@@ -867,6 +868,16 @@ int main(int argc, char **argv)
 #endif
 
 	talloc_set_log_stderr();
+
+	/*
+	 *	Allocate the main config structure.
+	 *	It's allocating so we can hang talloced buffers off it.
+	 */
+	config = main_config_alloc(autofree);
+	if (!config) {
+		fr_perror("Failed allocating main config");
+		fr_exit_now(EXIT_FAILURE);
+	}
 
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL) {
 		progname = argv[0];
