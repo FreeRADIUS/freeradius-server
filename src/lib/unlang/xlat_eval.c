@@ -28,8 +28,10 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/types.h>
 
 #include <freeradius-devel/unlang/unlang_priv.h>	/* Remove when everything uses new xlat API */
 
@@ -489,6 +491,52 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list
 	return XLAT_ACTION_DONE;
 }
 
+/** Validate that the return values from an xlat function match what it registered
+ *
+ * @param[in] request	The current request.
+ * @param[in] func	that was called.
+ * @param[in] returned	the output list of the function.
+ * @param[in] pos	current position in the output list.
+ * @return
+ *	- true - If return values were correct.
+ *	- false - If the return values were incorrect.
+ */
+static inline CC_HINT(nonnull) 
+bool xlat_process_return(request_t *request, xlat_t const *func, FR_DLIST_HEAD(fr_value_box_list) const *returned, fr_value_box_t *pos)
+{
+	unsigned int count = 0;
+
+	/*
+	 *  Nothing to validate.  We don't yet enforce that functions
+	 *  must return at least one instance of their type.
+	 */
+	if (!fr_value_box_list_num_elements(returned) || fr_type_is_void(func->return_type)) return true;
+
+	if (fr_type_is_null(func->return_type)) {
+		/* Dynamic expansion to get the right name */
+		REDEBUG("%s return type registered as %s, but %s expansion produced data",
+			func->name, func->name, fr_type_to_str(func->return_type));
+
+		/* We are not forgiving for debug builds */
+		fr_assert_fail("Treating invalid return type as fatal");
+
+		return false;
+	}
+
+	do {
+		if (pos->type != func->return_type) {
+			REDEBUG("%s returned invalid result type at index %u.  Expected type %s, got type %s",
+				func->name, count, fr_type_to_str(func->return_type), fr_type_to_str(pos->type));
+
+			/* We are not forgiving for debug builds */
+			fr_assert_fail("Treating invalid return type as fatal");
+		}
+		count++;
+	} while ((pos = fr_value_box_list_next(returned, pos)));
+
+	return true;
+}
+
 /** One letter expansions
  *
  * @param[in] ctx	to allocate boxed value, and buffers in.
@@ -759,6 +807,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	case XLAT_ACTION_DONE:
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
 		RDEBUG2("| --> %pV", fr_dcursor_current(out));
+		if (!xlat_process_return(request, exp->call.func, (FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, fr_dcursor_current(out))) xa = XLAT_ACTION_FAIL;
 		break;
 
 	case XLAT_ACTION_FAIL:
@@ -864,6 +913,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			fr_dcursor_next(out);
 			REXDENT();
 			xlat_debug_log_result(request, *in, fr_dcursor_current(out));
+			if (!xlat_process_return(request, node->call.func, (FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, fr_dcursor_current(out))) xa = XLAT_ACTION_FAIL;
 			RINDENT();
 			break;
 		}

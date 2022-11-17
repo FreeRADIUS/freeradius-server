@@ -427,8 +427,8 @@ bool		xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_head_t **head);
 int		xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules);
 
 xlat_t		*xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
-				      char const *name, xlat_func_t func, xlat_flags_t const *flags);
-xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_flags_t const *flags) CC_HINT(nonnull(2));
+				      char const *name, xlat_func_t func, fr_type_t return_type, xlat_flags_t const *flags);
+xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, fr_type_t return_type, xlat_flags_t const *flags) CC_HINT(nonnull(2));
 
 int		xlat_func_args(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(nonnull);
 

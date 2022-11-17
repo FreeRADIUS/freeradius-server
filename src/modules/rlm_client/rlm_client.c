@@ -352,7 +352,7 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	xlat = xlat_register(NULL, "client", xlat_client, NULL);
+	xlat = xlat_register(NULL, "client", xlat_client, FR_TYPE_STRING, NULL);
 	if (!xlat) return -1;
 	xlat_func_args(xlat, xlat_client_args);
 

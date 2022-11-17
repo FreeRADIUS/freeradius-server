@@ -490,7 +490,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if(!(xlat = xlat_register_module(NULL, mctx, mctx->inst->name, xlat_unbound, XLAT_FLAG_NEEDS_ASYNC))) return -1;
+	if(!(xlat = xlat_register_module(NULL, mctx, mctx->inst->name, xlat_unbound, FR_TYPE_VOID, XLAT_FLAG_NEEDS_ASYNC))) return -1;
 	xlat_func_args(xlat, xlat_unbound_args);
 
 	return 0;

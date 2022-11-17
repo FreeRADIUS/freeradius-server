@@ -149,7 +149,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_idn_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_idn_t);
 	xlat_t		*xlat;
 
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, xlat_idna, XLAT_FLAG_PURE);
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, xlat_idna, FR_TYPE_STRING, XLAT_FLAG_PURE);
 	xlat_func_mono(xlat, &xlat_idna_arg);
 
 	return 0;

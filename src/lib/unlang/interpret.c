@@ -1489,6 +1489,10 @@ unlang_interpret_t *unlang_interpret_get_thread_default(void)
 void unlang_interpret_init_global(void)
 {
 	xlat_t	*xlat;
-	xlat = xlat_register(NULL, "interpreter", unlang_interpret_xlat, NULL);
+	/*
+	 *  Should be void, but someone decided not to register multiple xlats
+	 *  breaking the convention we use everywhere else in the server...
+	 */
+	xlat = xlat_register(NULL, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID, NULL);
 	xlat_func_args(xlat, unlang_interpret_xlat_args);
 }

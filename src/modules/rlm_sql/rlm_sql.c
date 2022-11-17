@@ -1058,7 +1058,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Register the SQL xlat function
 	 */
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, sql_xlat, NULL);
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, sql_xlat, FR_TYPE_VOID, NULL);	/* Returns an integer sometimes */
 
 	/*
 	 *	The xlat escape function needs access to inst - so

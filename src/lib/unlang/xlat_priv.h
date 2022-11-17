@@ -74,6 +74,10 @@ typedef struct xlat_s {
 
 	xlat_input_type_t	input_type;		//!< Type of input used.
 	xlat_arg_parser_t const	*args;			//!< Definition of args consumed.
+
+	fr_type_t		return_type;		//!< Function is guaranteed to return one or more boxes
+							///< of this type.  If the return type is FR_TYPE_VOID
+							///< then the xlat function can return any type of output.
 } xlat_t;
 
 typedef enum {

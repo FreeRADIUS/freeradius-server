@@ -452,19 +452,19 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	char		*name;
 	xlat_t		*xlat;
 
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, redis_xlat, NULL);
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, redis_xlat, FR_TYPE_VOID, NULL);
 	xlat_func_args(xlat, redis_args);
 
 	/*
 	 *	%(redis_node:<key>[ idx])
 	 */
 	name = talloc_asprintf(NULL, "%s_node", mctx->inst->name);
-	xlat = xlat_register_module(inst, mctx, name, redis_node_xlat, NULL);
+	xlat = xlat_register_module(inst, mctx, name, redis_node_xlat, FR_TYPE_STRING, NULL);
 	xlat_func_args(xlat, redis_node_xlat_args);
 	talloc_free(name);
 
 	name = talloc_asprintf(NULL, "%s_remap", mctx->inst->name);
-	xlat = xlat_register_module(inst, mctx, name, redis_remap_xlat, NULL);
+	xlat = xlat_register_module(inst, mctx, name, redis_remap_xlat, FR_TYPE_STRING, NULL);
 	xlat_func_args(xlat, redis_remap_xlat_args);
 	talloc_free(name);
 
