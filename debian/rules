@@ -184,6 +184,7 @@ install-arch: build-arch-stamp
 	  dh_install --sourcedir=$(freeradius_dir) -p freeradius-$$mod ; \
 	  rm -f $(freeradius_dir)/usr/lib/freeradius/rlm_$$mod*.so ; \
 	  rm -f $(freeradius_dir)/usr/lib/freeradius/proto_$$mod*.so ; \
+	  rm -f $(freeradius_dir)/usr/lib/freeradius/process_$$mod*.so ; \
 	done
 
 	for driver in ${sqldriverlist}; do \
