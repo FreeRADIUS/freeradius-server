@@ -173,15 +173,23 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 			return;
 		}
 
-		DEBUG3("SASL response  : %pV", fr_box_strvalue_len(srv_cred->bv_val, srv_cred->bv_len));
+		/*
+		 *	Observed as NULL when doing EXTERNAL
+		 *	authentication.
+		 */
+		if (srv_cred->bv_val) DEBUG3("SASL response  : %pV",
+					     fr_box_strvalue_len(srv_cred->bv_val, srv_cred->bv_len));
 		ber_bvfree(srv_cred);
 
 		/*
 		 *	If we need to continue, wait until the
 		 *	socket is writable, and then call
 		 *	ldap_sasl_interactive_bind again.
+		 *
+		 *	sasl_ctx->rmech may be NULL if there's
+		 *	nothing else to do.
 		 */
-		DEBUG3("Continuing SASL mech %s...", sasl_ctx->rmech);
+		if (sasl_ctx->rmech) DEBUG3("Continuing SASL mech %s...", sasl_ctx->rmech);
 
 		ret = fr_event_fd_insert(sasl_ctx, el, fd,
 					 NULL,
