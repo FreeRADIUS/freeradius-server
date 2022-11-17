@@ -58,6 +58,7 @@ static CONF_PARSER const proto_ldap_sync_ldap_config[] = {
 	 *	Network tunable parameters
 	 */
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_ldap_sync_ldap_t, recv_buff) },
+	{ FR_CONF_OFFSET("max_outstanding", FR_TYPE_UINT32, proto_ldap_sync_ldap_t, max_outstanding), .dflt = "65536" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -591,6 +592,13 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_c
 	sync_msg_t			callback = NULL;
 
 	fr_assert(conn);
+
+	/*
+	 *	If there are already too many outstanding requests just return.
+	 *	This will (potentially) cause the TCP buffer to fill and push the
+	 *	backpressure back to the LDAP server.
+	 */
+	if (fr_network_listen_outstanding(thread->nr, li) >= thread->inst->max_outstanding) return 0;
 
 	tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
 

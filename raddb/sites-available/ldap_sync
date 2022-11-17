@@ -154,6 +154,14 @@ server ldap_sync {
 			#  How big the kernel's receive buffer should be.
 			#
 #			recv_buff = 1048576
+
+			#
+			#  Maximum number of updates to have outstanding
+			#  When this number is reached, no more are read, potentially
+			#  causing the receive buffer to fill which will cause the
+			#  change notifications to queue up on the LDAP server
+			#
+#			max_outstanding = 65536
 		}
 
 		#
