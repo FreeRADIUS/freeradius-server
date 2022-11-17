@@ -177,9 +177,11 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 		 *	Observed as NULL when doing EXTERNAL
 		 *	authentication.
 		 */
-		if (srv_cred->bv_val) DEBUG3("SASL response  : %pV",
-					     fr_box_strvalue_len(srv_cred->bv_val, srv_cred->bv_len));
-		ber_bvfree(srv_cred);
+		if (srv_cred) {
+			DEBUG3("SASL response  : %pV",
+			       fr_box_strvalue_len(srv_cred->bv_val, srv_cred->bv_len));
+			ber_bvfree(srv_cred);
+		}
 
 		/*
 		 *	If we need to continue, wait until the
