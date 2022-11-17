@@ -1364,7 +1364,6 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	} else {
 		snprintf(list_buffer, sizeof(list_buffer), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "???"));
 	}
-	list = list_buffer;
 
 	/*
 	 *	Loop over the entries, rewriting them.
