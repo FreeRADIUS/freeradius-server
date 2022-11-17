@@ -29,7 +29,8 @@ logdir          = /var/log/$(package)
 pkgdocdir       = /usr/share/doc/$(package)
 raddbdir        = /etc/$(package)
 
-modulelist=krb5 ldap sql_freetds sql_mysql sql_unixodbc sql_postgresql dhcp redis rest yubikey
+modulelist=krb5 ldap dhcp redis rest yubikey
+sqldriverlist=freetds mysql unixodbc postgresql
 pkgs=$(shell dh_listpackages)
 
 # This has to be exported to make some magic below work.
@@ -183,6 +184,11 @@ install-arch: build-arch-stamp
 	  dh_install --sourcedir=$(freeradius_dir) -p freeradius-$$mod ; \
 	  rm -f $(freeradius_dir)/usr/lib/freeradius/rlm_$$mod*.so ; \
 	  rm -f $(freeradius_dir)/usr/lib/freeradius/proto_$$mod*.so ; \
+	done
+
+	for driver in ${sqldriverlist}; do \
+	  dh_install --sourcedir=$(freeradius_dir) -p freeradius-$$driver ; \
+	  rm -f $(freeradius_dir)/usr/lib/freeradius/rlm_sql_$$driver*.so ; \
 	done
 
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius-memcached
