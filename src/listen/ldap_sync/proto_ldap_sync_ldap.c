@@ -299,8 +299,12 @@ int ldap_sync_cookie_send(sync_packet_ctx_t *sync_packet_ctx)
 	if (fr_internal_encode_list(dbuff, &pairs, NULL) < 0) goto error;
 	talloc_free(local);
 
-	fr_network_listen_send_packet(thread->nr, thread->li, thread->li, fr_dbuff_buff(dbuff),
-				      fr_dbuff_used(dbuff), fr_time(), sync_packet_ctx);
+	if (fr_network_listen_send_packet(thread->nr, thread->li, thread->li, fr_dbuff_buff(dbuff),
+					  fr_dbuff_used(dbuff), fr_time(), sync_packet_ctx) < 0) {
+		sync_packet_ctx->status = SYNC_PACKET_PENDING;
+		return -1;
+	}
+
 	sync_packet_ctx->status = SYNC_PACKET_PROCESSING;
 
 	return 0;
