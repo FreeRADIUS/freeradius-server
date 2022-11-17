@@ -54,10 +54,8 @@ endif
 #
 #  'configure' was not run?  Get the version number from the file.
 #
-ifeq "$(RADIUS_VERSION_STRING)" ""
+ifeq "$(RADIUS_VERSION)" ""
   RADIUSD_VERSION := $(shell cat VERSION | cut -d '.' -f 1,2).$(shell (git status > /dev/null 2>&1 || (echo '0' && false)) && git describe | cut -d '-' -f 2)
-else
-  RADIUSD_VERSION := $(shell cat VERSION)
 endif
 
 MFLAGS += --no-print-directory
