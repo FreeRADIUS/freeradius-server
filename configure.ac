@@ -53,6 +53,11 @@ AC_DEFINE_UNQUOTED([RADIUSD_VERSION_MAJOR], [${RADIUSD_VERSION_MAJOR}], [Version
 AC_DEFINE_UNQUOTED([RADIUSD_VERSION_MINOR], [${RADIUSD_VERSION_MINOR}], [Version integer in format <mi>])
 AC_DEFINE_UNQUOTED([RADIUSD_VERSION_INCRM], [${RADIUSD_VERSION_INCRM}], [Version integer in format <in>])
 
+AC_SUBST(RADIUSD_VERSION)
+AC_SUBST(RADIUSD_VERSION_MAJOR)
+AC_SUBST(RADIUSD_VERSION_MINOR)
+AC_SUBST(RADIUSD_VERSION_INCRM)
+
 dnl #############################################################
 dnl #
 dnl #  Override some of the default autoconf variables such as

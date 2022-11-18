@@ -146,6 +146,10 @@ endif
 #
 RADIUSD_VERSION = @RADIUSD_VERSION@
 
+RADIUSD_VERSION_MAJOR = @RADIUSD_VERSION_MAJOR@
+RADIUSD_VERSION_MINOR = @RADIUSD_VERSION_MINOR@
+RADIUSD_VERSION_INCROM = @RADIUSD_VERSION_INCRM@
+
 #
 #  This allows dlopen to do runtime checks for version mismatches
 #  between what it was originally linked with, and the library it's
