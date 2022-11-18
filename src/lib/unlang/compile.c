@@ -1543,6 +1543,11 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			rcode = edit_section_alloc(group, &child, list, T_OP_SUB_EQ);
 			if (rcode < 0) break;
 
+			if (strchr(attr, '[') != 0) {
+				cf_log_err(cp, "Cannot do filtering with array indexes");
+				return NULL;
+			}
+
 			snprintf(buffer, sizeof(buffer), "&%s", attr);
 			rcode = edit_pair_alloc(child, cp, buffer, op, value);
 			break;
