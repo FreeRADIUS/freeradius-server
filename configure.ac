@@ -38,10 +38,19 @@ dnl #############################################################
 
 RADIUSD_VERSION_MAJOR=`cat VERSION | cut -f1 -d.`
 RADIUSD_VERSION_MINOR=`cat VERSION | cut -f2 -d.`
-RADIUSD_VERSION_INCRM=`(git status > /dev/null 2>&1 || (echo '0' && false)) && git describe | cut -d '-' -f 2`
+RADIUSD_VERSION_INCRM=`git status > /dev/null 2>&1 && git describe --tags --match 'branch_*' --match 'release_*' | cut -d '-' -f 2`
+
+dnl #  To handle tarballs and GitHub downloads, we can also put the incremental
+dnl #  patch number in VERSION, or it gets set to FFFF.
+if test "x$RADIUSD_VERSION_INCRM" = "x"; then
+	RADIUSD_VERSION_INCRM=`cat VERSION | cut -f3 -d.`
+fi
+if test "x$RADIUSD_VERSION_INCRM" = "x"; then
+	RADIUSD_VERSION_INCRM=65535
+fi
 
 AC_MSG_CHECKING([build version])
-RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_VERSION_MAJOR $RADIUSD_VERSION_MINOR $RADIUSD_VERSION_INCRM`
+RADIUSD_VERSION=`printf "%02x%02x%04x" $RADIUSD_VERSION_MAJOR $RADIUSD_VERSION_MINOR $RADIUSD_VERSION_INCRM`
 AC_MSG_RESULT($RADIUSD_VERSION)
 
 dnl #

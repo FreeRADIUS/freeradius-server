@@ -54,20 +54,28 @@ endif
 #
 #  'configure' was not run?  Get the version number from the file.
 #
-ifeq "$(RADIUS_VERSION)" ""
+ifeq "$(RADIUSD_VERSION)" ""
+  RADIUSD_VERSION_MAJOR := $(shell cat VERSION | cut -f1 -d.)
+  RADIUSD_VERSION_MINOR := $(shell cat VERSION | cut -f2 -d.)
+
   # Default to an incremental version of 0 if we're not building from git
-  RADIUSD_VERSION_INCRM := $(shell git status > /dev/null 2>&1 && git describe | cut -d '-' -f 2)
+  RADIUSD_VERSION_INCRM := $(shell git status > /dev/null 2>&1 && git describe --tags --match 'branch_*' --match 'release_*' | cut -d '-' -f 2)
+
   ifeq "$(RADIUSD_VERSION_INCRM)" ""
-    RADIUSD_VERSION_INCRM := 0
-    RADIUSD_VERSION_GIT :=
+    RADIUSD_VERSION_INCRM := $(shell cat VERSION | cut -d '.' -f 3)
+    PKG_VERSION_SUFFIX :=
+    ifeq "$(RADIUSD_VERSION_INCRM)" ""
+      RADIUSD_VERSION_SEP :=
+    else
+      RADIUSD_VERSION_SEP := .
+    endif
   else
-    RADIUSD_VERSION_GIT := +git
+    PKG_VERSION_SUFFIX := +git
+    RADIUSD_VERSION_SEP := ~
   endif
-  RADIUSD_VERSION := $(shell cat VERSION | cut -d '.' -f 1,2).$(RADIUSD_VERSION_INCRM)
-  RADIUSD_VERSION_STRING := $(RADIUSD_VERSION).$(RADIUSD_VERSION_GIT)
-else
-  RADIUSD_VERSION_STRING := $(RADIUSD_VERSION)
 endif
+
+PKG_VERSION := $(RADIUSD_VERSION_MAJOR).$(RADIUSD_VERSION_MINOR)$(RADIUSD_VERSION_SEP)$(RADIUSD_VERSION_INCRM)$(PKG_VERSION_SUFFIX)
 
 MFLAGS += --no-print-directory
 
@@ -381,27 +389,27 @@ certs:
 ######################################################################
 BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 
-.PHONY: freeradius-server-$(RADIUSD_VERSION).tar
+.PHONY: freeradius-server-$(PKG_VERSION).tar
 
 # This can't depend on .git/ (dirs don't work) or .git/HEAD (not present in submodules)
 # so it's just left as a phony target.
-freeradius-server-$(RADIUSD_VERSION).tar:
-	rm -rf $(top_srcdir)/$(BUILD_DIR)/freeradius-server-$(RADIUSD_VERSION)
+freeradius-server-$(PKG_VERSION).tar:
+	rm -rf $(top_srcdir)/$(BUILD_DIR)/freeradius-server-$(PKG_VERSION)
 	mkdir -p $(top_srcdir)/$(BUILD_DIR)
-	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ $(BRANCH) | tar -C $(top_srcdir)/$(BUILD_DIR) -xf -
-	git submodule foreach --recursive 'git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/$$sm_path/ $$sha1 | tar -C $(top_srcdir)/$(BUILD_DIR) -xf -'
+	git archive --format=tar --prefix=freeradius-server-$(PKG_VERSION)/ $(BRANCH) | tar -C $(top_srcdir)/$(BUILD_DIR) -xf -
+	git submodule foreach --recursive 'git archive --format=tar --prefix=freeradius-server-$(PKG_VERSION)/$$sm_path/ $$sha1 | tar -C $(top_srcdir)/$(BUILD_DIR) -xf -'
 ifneq "$(EXT_MODULES)" ""
 	for x in $(subst _ext,,$(EXT_MODULES)); do \
 		cd $(top_srcdir)/$${x}_ext && \
-		git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/$$x/ $(BRANCH) | tar -C $(top_srcdir)/$(BUILD_DIR) -xf -; \
+		git archive --format=tar --prefix=freeradius-server-$(PKG_VERSION)/$$x/ $(BRANCH) | tar -C $(top_srcdir)/$(BUILD_DIR) -xf -; \
 	done
 endif
-	tar -cf $@ -C $(top_srcdir)/$(BUILD_DIR) freeradius-server-$(RADIUSD_VERSION)
+	tar -cf $@ -C $(top_srcdir)/$(BUILD_DIR) freeradius-server-$(PKG_VERSION)
 
-freeradius-server-$(RADIUSD_VERSION).tar.gz: freeradius-server-$(RADIUSD_VERSION).tar
+freeradius-server-$(PKG_VERSION).tar.gz: freeradius-server-$(PKG_VERSION).tar
 	gzip < $^ > $@
 
-freeradius-server-$(RADIUSD_VERSION).tar.bz2: freeradius-server-$(RADIUSD_VERSION).tar
+freeradius-server-$(PKG_VERSION).tar.bz2: freeradius-server-$(PKG_VERSION).tar
 	bzip2 < $^ > $@
 
 %.sig: %
@@ -410,28 +418,28 @@ freeradius-server-$(RADIUSD_VERSION).tar.bz2: freeradius-server-$(RADIUSD_VERSIO
 # high-level targets
 .PHONY: dist-check
 dist-check: redhat/freeradius.spec suse/freeradius.spec debian/changelog
-	@if [ `grep ^Version: redhat/freeradius.spec | sed 's/.*://;s/ //'` != "$(RADIUSD_VERSION)" ]; then \
-		cat redhat/freeradius.spec | sed 's/^Version: .*/Version: $(RADIUSD_VERSION)/' > redhat/.foo; \
+	@if [ `grep ^Version: redhat/freeradius.spec | sed 's/.*://;s/ //'` != "$(PKG_VERSION)" ]; then \
+		cat redhat/freeradius.spec | sed 's/^Version: .*/Version: $(PKG_VERSION)/' > redhat/.foo; \
 		mv redhat/.foo redhat/freeradius.spec; \
 		echo redhat/freeradius.spec 'Version' needs to be updated; \
 		exit 1; \
 	fi
-	@if [ `grep ^Version: suse/freeradius.spec | sed 's/.*://;s/ //'` != "$(RADIUSD_VERSION)" ]; then \
-		cat suse/freeradius.spec | sed 's/^Version: .*/Version: $(RADIUSD_VERSION)/' > suse/.foo; \
+	@if [ `grep ^Version: suse/freeradius.spec | sed 's/.*://;s/ //'` != "$(PKG_VERSION)" ]; then \
+		cat suse/freeradius.spec | sed 's/^Version: .*/Version: $(PKG_VERSION)/' > suse/.foo; \
 		mv suse/.foo suse/freeradius.spec; \
 		echo suse/freeradius.spec 'Version' needs to be updated; \
 		exit 1; \
 	fi
-	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/-0).*//;s/-1).*//;s/\+.*//'`  != "$(RADIUSD_VERSION)" ]; then \
+	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/-0).*//;s/-1).*//;s/\+.*//'`  != "$(PKG_VERSION)" ]; then \
 		echo debian/changelog needs to be updated; \
 		exit 1; \
 	fi
 
-dist: dist-check freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.bz2
+dist: dist-check freeradius-server-$(PKG_VERSION).tar.gz freeradius-server-$(PKG_VERSION).tar.bz2
 
-dist-sign: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
+dist-sign: freeradius-server-$(PKG_VERSION).tar.gz.sig freeradius-server-$(PKG_VERSION).tar.bz2.sig
 
-dist-publish: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2 freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
+dist-publish: freeradius-server-$(PKG_VERSION).tar.gz.sig freeradius-server-$(PKG_VERSION).tar.gz freeradius-server-$(PKG_VERSION).tar.gz.sig freeradius-server-$(PKG_VERSION).tar.bz2 freeradius-server-$(PKG_VERSION).tar.gz.sig freeradius-server-$(PKG_VERSION).tar.bz2.sig
 	scp $^ freeradius.org@ns5.freeradius.org:public_ftp
 	scp $^ freeradius.org@www.tr.freeradius.org:public_ftp
 
@@ -439,8 +447,8 @@ dist-publish: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-
 #  Note that we do NOT do the tagging here!  We just print out what
 #  to do!
 #
-dist-tag: freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.bz2
-	@echo "git tag release_`echo $(RADIUSD_VERSION) | tr .- __`"
+dist-tag: freeradius-server-$(PKG_VERSION).tar.gz freeradius-server-$(PKG_VERSION).tar.bz2
+	@echo "git tag release_`echo $(PKG_VERSION) | tr .- __`"
 
 #
 #	Build a debian package
@@ -455,17 +463,17 @@ deb:
 		echo "Please run 'apt-get install build-essentials' "; \
 		exit 1; \
 	fi
-	EMAIL="packages@freeradius.org" fakeroot dch -v$(RADIUSD_VERSION) ""
+	EMAIL="packages@freeradius.org" fakeroot dch -b -v$(PKG_VERSION) ""
 	fakeroot debian/rules debian/control # Clean
 	fakeroot dpkg-buildpackage -b -uc
 
 .PHONY: rpm
-rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION).tar.bz2: freeradius-server-$(RADIUSD_VERSION).tar.bz2
+rpmbuild/SOURCES/freeradius-server-$(PKG_VERSION).tar.bz2: freeradius-server-$(PKG_VERSION).tar.bz2
 	@mkdir -p $(addprefix rpmbuild/,SOURCES SPECS BUILD RPMS SRPMS BUILDROOT)
 	@for file in `awk '/^Source...:/ {print $$2}' redhat/freeradius.spec` ; do cp redhat/$$file rpmbuild/SOURCES/$$file ; done
 	@cp $< $@
 
-rpm: rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION).tar.bz2
+rpm: rpmbuild/SOURCES/freeradius-server-$(PKG_VERSION).tar.bz2
 	@if ! $(SUDO) yum-builddep -q -C --assumeno redhat/freeradius.spec 1> rpmbuild/builddep.log 2>&1; then \
 		echo "ERROR: Required dependencies not found, install them with: yum-builddep redhat/freeradius.spec"; \
 		cat rpmbuild/builddep.log; \
