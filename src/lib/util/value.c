@@ -3218,7 +3218,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	/*
 	 *	Initialise dst
 	 */
-	memset(dst, 0, sizeof(*dst));
+	fr_value_box_init(dst, dst_type, NULL, src->tainted);
 
 	/*
 	 *	Dispatch to specialised cast functions
@@ -3311,7 +3311,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			return -1;
 		}
 
-		memset(&tmp, 0, sizeof(tmp));
+		fr_value_box_init(&tmp, dst_type, NULL, false);
 
 		/*
 		 *	Copy the raw octets into the datum of a value_box
