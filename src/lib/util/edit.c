@@ -851,7 +851,7 @@ static int fr_edit_list_delete_list(fr_edit_list_t *el, fr_pair_list_t *list, fr
 			/*
 			 *	It doesn't match, keep it.  If it matches, delete it.
 			 */
-			rcode = fr_value_box_cmp_op(vp->op, &vp->data, &found->data);
+			rcode = fr_value_box_cmp_op(vp->op, &found->data, &vp->data);
 			if (rcode < 0) return -1;
 
 			if (!rcode) continue;
