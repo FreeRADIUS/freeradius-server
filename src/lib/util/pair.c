@@ -3570,7 +3570,7 @@ void fr_fprintf_pair(FILE *fp, char const *msg, fr_pair_t const *vp)
 {
 	if (msg) fputs(msg, fp);
 
-	fr_fprintf(fp, "%s = %pV\n", vp->da->name, &vp->data);
+	fr_fprintf(fp, "%s %s %pV\n", vp->da->name, fr_tokens[vp->op], &vp->data);
 }
 
 static const char spaces[] = "                                                                                                                                ";
@@ -3581,7 +3581,7 @@ static void fprintf_pair_list(FILE *fp, fr_pair_list_t const *list, int depth)
 		fprintf(fp, "%.*s", depth, spaces);
 
 		if (fr_type_is_leaf(vp->da->type)) {
-			fr_fprintf(fp, "%s = %pV\n", vp->da->name, &vp->data);
+			fr_fprintf(fp, "%s %s %pV\n", vp->da->name, fr_tokens[vp->op], &vp->data);
 			continue;
 		}
 
