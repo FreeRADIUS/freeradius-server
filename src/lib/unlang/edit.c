@@ -832,6 +832,38 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		}
 	}
 
+	/*
+	 *	@todo - Realize the RHS box value.  By moving the code in apply_edits_to_leaf() to a common function,
+	 *	and getting the box dcursor here.
+	 *
+	 *	Then, get a cursor for the LHS vp, and loop over it, applying the edits in the operator, using
+	 *	the comparisons in the RHS box.
+	 *
+	 *	This lets us use array indexes (or more complex things) on the LHS, and means that we don't
+	 *	have to realize the VPs and use horrible hacks.
+	 */
+	if (current->parent && (current->parent->map->op == T_OP_SUB_EQ)) {
+		fr_assert(current->temporary_pair_list);
+		fr_assert(tmpl_is_attr(current->lhs.vpt)); /* can only apply edits to real attributes */
+		fr_assert(map->rhs);			   /* can only filter on leaf attributes */
+
+#if 0
+		{
+			// dcursor_init over current->lhs.vpt, using children of current->parent.lhs_vp
+			//
+			// and then use the dcursor from the apply_edits_to_leaf() to get value-boxes
+			rcode = fr_value_box_cmp_op(map->op, &vp->data, box);
+			if (rcode < 0) return -1;
+
+			if (!rcode) continue;
+
+			if (fr_edit_list_pair_delete(el, list, vp) < 0) return -1;
+		}
+
+		return next_map(request, state, current);
+#endif
+	}
+
 	if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
 		if (apply_edits_to_leaf(request, state, current) < 0) return -1;
 	} else {
