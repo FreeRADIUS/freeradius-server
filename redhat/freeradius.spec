@@ -314,8 +314,15 @@ This plugin provides Kerberos 5 support for the FreeRADIUS server project.
 Summary: LDAP support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
-Requires: openldap-ltb, cyrus-sasl
-BuildRequires: openldap-ltb, cyrus-sasl-devel
+Requires: cyrus-sasl
+BuildRequires: cyrus-sasl-devel
+%if 0%{?rhel}%{?fedora} < 9
+Requires: openldap-ltb
+BuildRequires: openldap-ltb
+%else
+Requires: openldap
+BuildRequires: openldap-devel
+%endif
 
 %description ldap
 This plugin provides LDAP support for the FreeRADIUS server project.
