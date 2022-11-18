@@ -826,6 +826,10 @@ int fr_edit_list_insert_list_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_
  */
 static int fr_edit_list_delete_list(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_list_t *to_remove)
 {
+	/*
+	 *	We have a list of VPs with operators and values.  Those contain the list of things we want to
+	 *	be removed from the main "list".
+	 */
 	fr_pair_list_foreach(to_remove, vp) {
 		fr_pair_t *found, *next;
 
@@ -834,6 +838,9 @@ static int fr_edit_list_delete_list(fr_edit_list_t *el, fr_pair_list_t *list, fr
 		 */
 		if (fr_type_is_structural(vp->da->type)) continue;
 
+		/*
+		 *	Search the list to edit for VPs which match the ones we're trying to delete.
+		 */
 		for (found = fr_pair_find_by_da(list, NULL, vp->da);
 		     found != NULL;
 		     found = next) {
@@ -841,6 +848,9 @@ static int fr_edit_list_delete_list(fr_edit_list_t *el, fr_pair_list_t *list, fr
 
 			next = fr_pair_find_by_da(list, found, vp->da);
 
+			/*
+			 *	It doesn't match, keep it.  If it matches, delete it.
+			 */
 			rcode = fr_value_box_cmp_op(vp->op, &vp->data, &found->data);
 			if (rcode < 0) return -1;
 
