@@ -1268,6 +1268,8 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
 	tmpl_rules_t	t_rules;
+	bool		use_new_conditions = main_config_migrate_option_get("use_new_conditions");
+	bool		parse_new_conditions = main_config_migrate_option_get("parse_new_conditions");
 
 	/*
 	 *	Short names are nicer.
@@ -1478,7 +1480,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			return NULL;
 		}
 
-		if (!main_config->use_new_conditions) {
+		if (!use_new_conditions) {
 			my_slen = fr_cond_tokenize(cs, &cond, &t_rules, &FR_SBUFF_IN(buff[3], strlen(buff[3])), false);
 			if (my_slen <= 0) {
 				char *spaces, *text;
@@ -1499,7 +1501,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			}
 		}
 
-		if (main_config->parse_new_conditions) {
+		if (parse_new_conditions) {
 			name2 = buff[3];
 		}
 	}
@@ -1521,7 +1523,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	Now that the CONF_SECTION and condition are OK, add
 	 *	the condition to the CONF_SECTION.
 	 */
-	if (!main_config->use_new_conditions) {
+	if (!use_new_conditions) {
 		cf_data_add(cs, cond, NULL, true);
 	}
 

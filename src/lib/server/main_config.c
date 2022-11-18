@@ -1490,6 +1490,8 @@ bool main_config_migrate_option_get(char const *name)
 {
 	size_t offset;
 
+	if (!main_config) return false;
+
 	offset = fr_table_value_by_substr(config_arg_table, name, strlen(name), 0);
 	if (!offset) return false;
 
