@@ -256,7 +256,7 @@ static inline bool vp_da_data_type_check(fr_pair_t *vp)
  *				Will be declared in the scope of the loop.
  */
 #define fr_pair_list_foreach(_list_head, _iter) \
-	for (fr_pair_t *_next, *_iter = fr_pair_list_head(_list_head); _next = fr_pair_list_next(_list_head, _iter), _iter != NULL; _iter = _next)
+	for (fr_pair_t *JOIN(_next,_iter), *_iter = fr_pair_list_head(_list_head); JOIN(_next,_iter) = fr_pair_list_next(_list_head, _iter), _iter != NULL; _iter = JOIN(_next,_iter))
 
 /** Append a pair to a list, assigning its value.
  *
