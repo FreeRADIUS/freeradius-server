@@ -1497,10 +1497,17 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			goto pair_op;
 
 		case T_OP_EQ:
+			/*
+			 *	Allow &list = "foo"
+			 */
 			if (!attr) {
-			fail_attr:
-				cf_log_err(cp, "Invalid operator for list assignment");
-				return NULL;
+				if (!value) {
+					cf_log_err(cp, "Missing value");
+					return NULL;
+				}
+
+				rcode = edit_pair_alloc(group, cp, list, op, value);
+				break;
 			}
 
 		pair_op:
@@ -1528,7 +1535,10 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			op = T_OP_CMP_EQ;
 
 		filter:
-			if (!attr) goto fail_attr;
+			if (!attr) {
+				cf_log_err(cp, "Invalid operator for list assignment");
+				return NULL;
+			}
 
 			rcode = edit_section_alloc(group, &child, list, T_OP_SUB_EQ);
 			if (rcode < 0) break;
