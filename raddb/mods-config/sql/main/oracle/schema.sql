@@ -20,6 +20,7 @@ CREATE TABLE radacct (
 	nasportid		VARCHAR(32),
 	nasporttype		VARCHAR(32),
 	acctstarttime		TIMESTAMP WITH TIME ZONE,
+	acctupdatetime		TIMESTAMP WITH TIME ZONE,
 	acctstoptime		TIMESTAMP WITH TIME ZONE,
 	acctsessiontime		NUMERIC(19),
 	acctauthentic		VARCHAR(32),
