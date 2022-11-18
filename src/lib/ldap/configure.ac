@@ -104,9 +104,9 @@ FR_LIBRARY_START_TESTS
 	dnl ############################################################
 
 	if test "x$fail" = "x"; then
-		AC_CHECK_FUNCS(
-			ldap_create_session_tracking_control
-			ldap_sasl_interactive_bind
+		AC_CHECK_FUNCS( \
+			ldap_create_session_tracking_control \
+			ldap_sasl_interactive_bind \
 		)
 
 		AC_CHECK_DECLS([ldap_create_session_tracking_control], [], [], [[#include <ldap.h>]])
