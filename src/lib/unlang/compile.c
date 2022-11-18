@@ -1460,6 +1460,20 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			}
 		}
 
+		/*
+		 *	Catch one more case where the behavior is different.
+		 *
+		 *	&request += &config[*]
+		 */
+		if (!attr && (cf_pair_value_quote(cp) == T_BARE_WORD) && (*value == '&') &&
+		    (strchr(value, '.') == NULL) && (strchr(value, '[') != NULL)) {
+			char const *p = strchr(value, '[');
+
+			cf_log_err(cp, "Cannot do array assignments for lists.  Just use '%s %s %.*s'",
+				   list, fr_tokens[op], (int) (p - value), value);
+			return NULL;
+		}
+
 		switch (op) {
 			/*
 			 *	FOO !* ANY
