@@ -1424,10 +1424,11 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, reque
 		break;
 
 	default:
+		fr_assert(fr_type_is_leaf(vp->da->type));
+
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
 		if (!value) goto oom;
 
-		fr_assert(fr_type_is_leaf(vp->da->type));
 		fr_value_box_copy(value, value, &vp->data);	/* Also dups taint */
 		fr_value_box_list_insert_tail(&list, value);
 		break;
