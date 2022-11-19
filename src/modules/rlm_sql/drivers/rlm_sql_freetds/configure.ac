@@ -1,4 +1,4 @@
-AC_PREREQ([2.69])
+AC_PREREQ([2.71])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_sql_freetds.c])
 AC_REVISION($Revision$)

@@ -21,7 +21,7 @@ dnl #  AC_OUTPUT
 dnl #
 dnl #############################################################
 
-AC_PREREQ([2.69])
+AC_PREREQ([2.71])
 export CFLAGS LIBS LDFLAGS CPPFLAGS
 
 AC_INIT([freeradius],[$Id$],[http://bugs.freeradius.org],[],[http://www.freeradius.org])
@@ -1080,9 +1080,7 @@ dnl # Check for talloc_set_memlimit
 dnl # This was only included in version 2.0.8
 dnl # Needs to be done here with the talloc linker flags set
 dnl #
-AC_CHECK_FUNCS(
-  _talloc_pooled_object
-)
+AC_CHECK_FUNCS(_talloc_pooled_object)
 
 TALLOC_LIBS="${smart_lib}"
 TALLOC_LDFLAGS="${smart_ldflags}"
@@ -2286,7 +2284,7 @@ if test "x$REGEX" = "x"; then
     dnl #
     AC_CHECK_FUNCS(\
       regncomp \
-      regnexec
+      regnexec \
     )
     if test x"$ac_cv_func_regncomp" = x"yes" && test  x"$ac_cv_func_regnexec" = x"yes"; then
       AC_DEFINE(HAVE_BINSAFE_REGEX, 1, [Define if we have a binary safe regular expression library])

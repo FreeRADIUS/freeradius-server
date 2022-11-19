@@ -1,4 +1,4 @@
-AC_PREREQ([2.69])
+AC_PREREQ([2.71])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_unix.c])
 AC_REVISION($Revision$)
@@ -26,7 +26,11 @@ else
 fi
 
 AC_CHECK_HEADERS(shadow.h pwd.h grp.h)
-AC_CHECK_FUNCS(getspnam getusershell getpwnam)
+AC_CHECK_FUNCS(
+	getspnam \
+	getusershell \
+	getpwnam \
+)
 
 if test "$ac_cv_func_getpwnam" != "yes"; then
 	AC_MSG_RESULT(no getpwnam)

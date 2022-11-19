@@ -1,4 +1,4 @@
-AC_PREREQ([2.69])
+AC_PREREQ([2.71])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_cache_memcached.c])
 AC_REVISION($Revision$)

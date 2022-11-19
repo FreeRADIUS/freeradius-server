@@ -1,4 +1,4 @@
-AC_PREREQ([2.69])
+AC_PREREQ([2.71])
 AC_INIT
 AC_CONFIG_SRCDIR([rlm_krb5.c])
 AC_REVISION($Revision$)
@@ -118,7 +118,11 @@ CFLAGS="${CFLAGS} ${SMART_CPPFLAGS}"
 dnl #
 dnl # Check how to free things returned by krb5_get_error_message
 dnl #
-AC_CHECK_FUNCS([krb5_get_error_message krb5_free_error_string krb5_free_error_message])
+AC_CHECK_FUNCS(\
+	krb5_get_error_message \
+	krb5_free_error_string \
+	krb5_free_error_message \
+)
 if test "x$ac_cv_func_krb5_get_error_message" = xyes; then
 	krb5mod_cflags="${krb5mod_cflags} -DHAVE_KRB5_GET_ERROR_MESSAGE"
 fi

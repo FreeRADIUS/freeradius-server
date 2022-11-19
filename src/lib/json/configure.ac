@@ -1,4 +1,4 @@
-AC_PREREQ([2.69])
+AC_PREREQ([2.71])
 AC_INIT
 AC_CONFIG_SRCDIR([json.c])
 AC_REVISION($Revision$)
@@ -112,7 +112,7 @@ FR_LIBRARY_START_TESTS
 			json_object_new_int64 \
 			json_object_get_int64 \
 			json_tokener_error_desc \
-			json_tokener_get_error
+			json_tokener_get_error \
 		)
 	else
 		AC_MSG_WARN([json-c libraries not found. Use --with-jsonc-lib-dir=<path>.])
