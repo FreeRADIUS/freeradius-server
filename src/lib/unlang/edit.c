@@ -87,7 +87,7 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 /*
  *  Convert a value-box list to a LHS attribute #tmpl_t
  */
-static int tmpl_attr_from_result(TALLOC_CTX *ctx, edit_result_t *out, request_t *request)
+static int tmpl_attr_from_result(TALLOC_CTX *ctx, map_t const *map, edit_result_t *out, request_t *request)
 {
 	ssize_t slen;
 	fr_value_box_t *box = fr_value_box_list_head(&out->result);
@@ -95,6 +95,36 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, edit_result_t *out, request_t 
 	if (!box) {
 		RWDEBUG("No value found for assignment");
 		return -1;
+	}
+
+	/*
+	 *	String outputs can be interpreted as attribute references.
+	 *
+	 *	LHS of an assignment MUST be an attribute.  The RHS
+	 *	MAY be an attribute, if the stars align.
+	 */
+	if (map && map->rhs) {
+		/*
+		 *	&foo := "bar"
+		 *
+		 *	RHS can't be an attribute.
+		 */
+		if (map->rhs->quote != T_BARE_WORD) return 0;
+
+		/*
+		 *	&foo := %{bin:0102030005060708}
+		 *
+		 *	RHS is octets (or other non-string), and can't be an attribute references.
+		 */
+		if (box->type != FR_TYPE_STRING) return 0;
+
+		/*
+		 *	@todo - arguably the assignment should be something like:
+		 *
+		 *	&foo := &%{expansion}
+		 *
+		 *	To say "yes, we really want the RHS to be an attribute reference".
+		 */
 	}
 
 	/*
@@ -897,7 +927,7 @@ static int expanded_rhs(request_t *request, unlang_frame_state_edit_t *state, ed
 		return check_rhs(request, state, current);
 	}
 
-	if (tmpl_attr_from_result(state, &current->rhs, request) < 0) return -1;
+	if (tmpl_attr_from_result(state, map, &current->rhs, request) < 0) return -1;
 
 	return check_rhs(request, state, current);
 }
@@ -1248,7 +1278,7 @@ static int expanded_lhs_attribute(request_t *request, unlang_frame_state_edit_t 
 {
 	REXDENT();
 
-	if (tmpl_attr_from_result(state, &current->lhs, request) < 0) return -1;
+	if (tmpl_attr_from_result(state, NULL, &current->lhs, request) < 0) return -1;
 
 	return current->check_lhs(request, state, current);
 }
