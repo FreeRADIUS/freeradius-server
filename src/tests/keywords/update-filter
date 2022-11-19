@@ -12,15 +12,7 @@ update control {
 }
 
 # Reset the request list
-update {
-	&request !* ANY
-
-	#
-	#  @fixme - EDIT - &control[*] isn't supported, and is ignored.  It should likely
-	#  be a compile-time error?
-	#
-	&request += &control[*]
-}
+&request := &control
 
 #
 #  @fixme - EDIT - all kinds of other things are broken, and no time currently to debug them.
@@ -50,10 +42,7 @@ if ("%{Tmp-String-0[#]}" != 3) {
 debug_request
 
 # Reset the request list
-update {
-	&request !* ANY
-	&request += &control[*]
-}
+&request := &control
 
 #
 #  String ==
@@ -73,10 +62,7 @@ if ("%{Tmp-String-0[#]}" != 1) {
 debug_request
 
 # Reset the request list
-update {
-	&request !* ANY
-	&request += &control[*]
-}
+&request := &control
 
 #
 #  Integer <
@@ -98,10 +84,7 @@ if ("%{Tmp-String-0[#]}" != 3) {
 }
 
 # Reset the request list
-update {
-	&request !* ANY
-	&request += &control[*]
-}
+&request := &control
 
 #
 #  Integer >
@@ -128,10 +111,8 @@ if ("%{Tmp-String-0[#]}" != 3) {
 }
 
 # Reset the request list
-update {
-	&request !* ANY
-	&request += &control[*]
-}
+&request := &control
+
 
 #
 #  Integer <=
@@ -157,10 +138,7 @@ if ("%{Tmp-String-0[#]}" != 3) {
 }
 
 # Reset the request list
-update {
-	&request !* ANY
-	&request += &control[*]
-}
+&request := &control
 
 #
 #  Integer >=
@@ -190,10 +168,7 @@ if ("%{Tmp-String-0[#]}" != 3) {
 }
 
 # Reset the request list
-update {
-	&request !* ANY
-	&request += &control[*]
-}
+&request := &control
 
 #
 #  Integer !=
@@ -223,10 +198,7 @@ if ("%{Tmp-String-0[#]}" != 3) {
 }
 
 # Reset the request list
-update {
-	&request !* ANY
-	&request += &control[*]
-}
+&request := &control
 
 update request {
 	&Tmp-String-1 := 'baz'
