@@ -29,8 +29,6 @@ ok
 	&Tmp-String-9		= "%{base64:%{Tmp-Cast-Byte}}"
 }
 
-%(debug_attr:request[*])
-
 # String - bin 0x39383730
 if (&Tmp-String-0[0] != 'OTg3MA==') {
 	test_fail

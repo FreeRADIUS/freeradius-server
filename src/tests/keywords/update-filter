@@ -18,8 +18,6 @@ update control {
 #  @fixme - EDIT - all kinds of other things are broken, and no time currently to debug them.
 #
 
-debug_request
-
 #
 #  Integer ==
 #
@@ -39,8 +37,6 @@ if ("%{Tmp-String-0[#]}" != 3) {
 	test_fail
 }
 
-debug_request
-
 # Reset the request list
 &request := &control
 
@@ -58,8 +54,6 @@ if (&Tmp-String-0[0] != 'baz') {
 if ("%{Tmp-String-0[#]}" != 1) {
 	test_fail
 }
-
-debug_request
 
 # Reset the request list
 &request := &control
@@ -219,8 +213,6 @@ if (&Tmp-String-0[0] != &Tmp-String-1[0]) {
 if ("%{Tmp-String-0[#]}" != 1) {
 	test_fail
 }
-
-debug_request
 
 update control {
 	&Auth-Type := Accept

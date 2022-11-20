@@ -20,13 +20,11 @@ if (!&Tmp-String-0) {
 
 # The original value should be unchanged
 if (!(&Tmp-String-0 == "foo")) {
-	%(debug_attr:request[*])
 	test_fail
 }
 
 #  and the new value should not be there
 if (&Tmp-String-0 == "bar") {
-	%(debug_attr:request[*])
 	test_fail
 }
 

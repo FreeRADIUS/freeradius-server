@@ -7,8 +7,6 @@
 #
 &raw.4 = 0x010203
 
-debug_request
-
 if (!&raw.4) {
 	test_fail
 }

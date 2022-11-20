@@ -20,13 +20,11 @@ if (!&Tmp-String-0) {
 
 # we want the *control* version
 if (!(&Tmp-String-0 == "bar")) {
-	%(debug_attr:request[*])
 	test_fail
 }
 
 #  and the original value should not be there
 if (&Tmp-String-0 == "foo") {
-	%(debug_attr:request[*])
 	test_fail
 }
 

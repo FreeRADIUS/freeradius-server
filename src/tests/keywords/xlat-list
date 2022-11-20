@@ -7,8 +7,6 @@ if ("%{control[#]}" != 2) {
 	test_fail
 }
 
-debug_control
-
 if ("%{control[0]}" != 192.0.2.1) {
 	test_fail
 }

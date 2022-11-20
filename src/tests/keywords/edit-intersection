@@ -9,13 +9,11 @@
 
 #  must exist
 if (!&reply.Tmp-String-0) {
-	%(debug_attr:reply[*])
 	test_fail
 }
 
 # and have the correct value
 if (&reply.Tmp-String-0 != "foo") {
-	%(debug_attr:reply[*])
 	test_fail
 }
 
@@ -31,7 +29,6 @@ if (&reply.Tmp-String-0 != "foo") {
 
 #  must NOT exist
 if (&reply.Tmp-String-0) {
-	%(debug_attr:reply[*])
 	test_fail
 }
 
