@@ -21,5 +21,7 @@ ATTRIBUTE	AVPairs4				5	string
 ATTRIBUTE	Passwd-ExpiryDate			6	string # Format: MM/DD/YYYY
 ATTRIBUTE	Passwd-WarnPeriod			7	string # Format: integer in days
 
+ATTRIBUTE	Cmd					8	string
+
 END-VENDOR      Brocade
 
