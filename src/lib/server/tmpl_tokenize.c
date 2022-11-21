@@ -2114,7 +2114,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		if (t_attr_rules->list_as_attr) {
 			tmpl_attr_t *ar;
 
-			ar = tmpl_attr_list_head(&vpt->data.attribute.ar);
+			ar = tmpl_attr_list_head(tmpl_attr(vpt));
 			fr_assert(ar != NULL);
 
 			if ((ar->ar_type != TMPL_ATTR_TYPE_NORMAL) ||
@@ -2151,7 +2151,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 				 *	Prepend the list ref so it gets evaluated
 				 *	first.
 				 */
-				tmpl_attr_list_insert_head(&vpt->data.attribute.ar, ar);
+				tmpl_attr_list_insert_head(tmpl_attr(vpt), ar);
 			}
 		}
 	}
@@ -2162,13 +2162,13 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *
 	 *	Eventually we'll remove TMPL_TYPE_LIST
 	 */
-	if (!t_attr_rules->list_as_attr && (tmpl_attr_list_num_elements(&vpt->data.attribute.ar) == 0)) {
-		tmpl_attr_t *ar;
-		fr_slen_t slen;
+	if (!t_attr_rules->list_as_attr && (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0)) {
+		tmpl_attr_t	*ar;
+		fr_slen_t	slen;
 
 		MEM(ar = talloc_zero(vpt, tmpl_attr_t));
 		slen = tmpl_attr_parse_filter(err, ar, &our_name, t_attr_rules);
-		if (slen == 0) {				/* No filter */
+		if (slen == 0) {			/* No filter */
 			talloc_free(ar);
 		} else if (slen > 0) {				/* Found a filter */
 			tmpl_attr_list_insert_tail(&vpt->data.attribute.ar, ar);
@@ -4474,7 +4474,7 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 			break;
 		}
 
-		if (tmpl_attr_list_next(&vpt->data.attribute.ar, ar)) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+		if (tmpl_attr_list_next(tmpl_attr(vpt), ar)) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 	}
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
