@@ -32,6 +32,8 @@ RCSIDH(session_h, "$Id$")
 
 typedef struct fr_tls_session_s fr_tls_session_t;
 
+#include <freeradius-devel/server/request.h>
+
 #include "cache.h"
 #include "conf.h"
 #include "index.h"
