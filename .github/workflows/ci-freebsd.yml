@@ -62,7 +62,6 @@ jobs:
           pkg install -y         \
             curl                 \
             cyrus-sasl           \
-            firebird25-client    \
             freetds              \
             git                  \
             git-lfs              \
