@@ -2312,7 +2312,7 @@ static void generate_def_file(command_t *cmd)
 			export_args[num_export_args++] = "-o";
 
 			imp_len = strlen(cmd->basename) + 7;
-			if (imp_len > sizeof(implib_file)) {
+			if ((size_t)imp_len > sizeof(implib_file)) {
 			imp_too_long:
 				ERROR("imp file name too long, out of buffer space\n");
 				return;
@@ -2328,7 +2328,7 @@ static void generate_def_file(command_t *cmd)
 			}
 
 			imp_len += strlen(target->static_lib_ext) + 1;
-			if (imp_len > sizeof(implib_file)) goto imp_too_long;
+			if ((size_t) imp_len > sizeof(implib_file)) goto imp_too_long;
 
 			strcat(implib_file, ".");
 			strcat(implib_file, target->static_lib_ext);
