@@ -93,7 +93,7 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, map_t const *map, edit_result_
 	fr_value_box_t *box = fr_value_box_list_head(&out->result);
 
 	if (!box) {
-		RWDEBUG("No value found for assignment");
+		RWDEBUG("%s %s ... - Assignment failed to having no value on right-hand side", map->lhs->name, fr_tokens[map->op]);
 		return -1;
 	}
 
@@ -283,7 +283,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			 *	Can't concatenate empty results.
 			 */
 			if (!box) {
-				RDEBUG2("No value found for assignment");
+				RWDEBUG("%s %s ... - Assignment failed to having no value on right-hand side", map->lhs->name, fr_tokens[map->op]);
 				return -1;
 			}
 
@@ -564,7 +564,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 
 	if (!box) {
 	no_rhs:
-		RDEBUG2("No value found for assignment");
+		RWDEBUG("%s %s ... - Assignment failed to having no value on right-hand side", map->lhs->name, fr_tokens[map->op]);
 		return -1;
 	}
 
