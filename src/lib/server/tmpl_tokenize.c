@@ -1405,28 +1405,20 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
  * @param[in] parent		Last known parent.
  * @param[in] name		to parse.
  * @param[in] t_rules		see tmpl_attr_afrom_attr_substr.
- * @param[in] depth		How deep we are.  Used to check for maximum nesting level.
  * @return
  *	- <0 on error.
  *	- 0 on success.
  */
 static inline CC_HINT(nonnull(3,6))
-int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-					   tmpl_t *vpt,
-					   fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
-					   fr_sbuff_t *name, tmpl_attr_rules_t const *t_rules,
-					   unsigned int depth)
+fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+						tmpl_t *vpt,
+						fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
+						fr_sbuff_t *name, tmpl_attr_rules_t const *t_rules)
 {
 	tmpl_attr_t		*ar = NULL;
 	int			ret;
 	char			*unresolved;
 	size_t			len;
-
-	if (depth > FR_DICT_MAX_TLV_STACK) {
-		fr_strerror_const("Attribute nesting too deep");
-		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
-		return -1;
-	}
 
 	/*
 	 *	Input too short
@@ -1486,7 +1478,7 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 	 *	future OID components are also unresolved.
 	 */
 	if (fr_sbuff_next_if_char(name, '.')) {
-		ret = tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, NULL, NULL, name, t_rules, depth + 1);
+		ret = tmpl_attr_ref_afrom_unresolved_substr(ctx, err, vpt, NULL, NULL, name, t_rules);
 		if (ret < 0) {
 			tmpl_attr_list_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
 			return -1;
@@ -1752,7 +1744,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	Once we hit one unresolved attribute we have to treat
 	 *	the rest of the components are unresolved as well.
 	 */
-	return tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, our_parent, namespace, name, t_rules, depth);
+	return tmpl_attr_ref_afrom_unresolved_substr(ctx, err, vpt, our_parent, namespace, name, t_rules);
 
 check_attr:
 	/*
