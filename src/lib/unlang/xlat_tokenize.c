@@ -592,9 +592,9 @@ static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
 	xlat_t	*func;
 
 	if (tmpl_is_attr(vpt)) {
-		func = xlat_func_find(tmpl_da(vpt)->name, -1);
+		func = xlat_func_find(tmpl_attr_tail_da(vpt)->name, -1);
 	} else {
-		func = xlat_func_find(tmpl_attr_unresolved(vpt), -1);
+		func = xlat_func_find(tmpl_attr_tail_unresolved(vpt), -1);
 	}
 	if (!func) return -1;
 
@@ -661,7 +661,7 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	/*
 	 *	Deal with virtual attributes.
 	 */
-	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
+	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
 		if (tmpl_attr_count(vpt) > 1) {
 			fr_strerror_const("Virtual attributes cannot be nested.");
 			goto error;
@@ -1113,8 +1113,8 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 		{
 			if (tmpl_is_attr(node->vpt)) {
 				fr_assert(!node->flags.pure);
-				INFO_INDENT("attribute (%s)", tmpl_da(node->vpt)->name);
-				if (tmpl_num(node->vpt) != NUM_UNSPEC) {
+				INFO_INDENT("attribute (%s)", tmpl_attr_tail_da(node->vpt)->name);
+				if (tmpl_attr_tail_num(node->vpt) != NUM_UNSPEC) {
 					FR_DLIST_HEAD(tmpl_request_list) const *list;
 					tmpl_request_t *rr = NULL;
 
@@ -1128,13 +1128,13 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 						INFO_INDENT("ref  %d", rr->request);
 					}
 					INFO_INDENT("list %d", tmpl_list(node->vpt));
-					if (tmpl_num(node->vpt) != NUM_UNSPEC) {
-						if (tmpl_num(node->vpt) == NUM_COUNT) {
+					if (tmpl_attr_tail_num(node->vpt) != NUM_UNSPEC) {
+						if (tmpl_attr_tail_num(node->vpt) == NUM_COUNT) {
 							INFO_INDENT("[#]");
-						} else if (tmpl_num(node->vpt) == NUM_ALL) {
+						} else if (tmpl_attr_tail_num(node->vpt) == NUM_ALL) {
 							INFO_INDENT("[*]");
 						} else {
-							INFO_INDENT("[%d]", tmpl_num(node->vpt));
+							INFO_INDENT("[%d]", tmpl_attr_tail_num(node->vpt));
 						}
 					}
 					INFO_INDENT("}");
@@ -1972,7 +1972,7 @@ tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *head)
 	 *   Concat means something completely different as an attribute reference
 	 *   Count isn't implemented.
 	 */
-	if ((tmpl_num(node->vpt) == NUM_COUNT) || (tmpl_num(node->vpt) == NUM_ALL)) return NULL;
+	if ((tmpl_attr_tail_num(node->vpt) == NUM_COUNT) || (tmpl_attr_tail_num(node->vpt) == NUM_ALL)) return NULL;
 
 	vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, T_BARE_WORD, node->fmt, talloc_array_length(node->fmt) - 1);
 	if (!vpt) return NULL;
@@ -2010,8 +2010,8 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, tmpl_t **vpt_p)
 	 *	see if it's actually a virtual attribute.
 	 */
 	if (tmpl_attr_count(vpt) == 1) {
-		if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
-			func = xlat_func_find(tmpl_da(vpt)->name, -1);
+		if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
+			func = xlat_func_find(tmpl_attr_tail_da(vpt)->name, -1);
 			if (!func) {
 			unresolved:
 				node = xlat_exp_alloc(head, XLAT_VIRTUAL_UNRESOLVED, vpt->name, vpt->len);
@@ -2034,7 +2034,7 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, tmpl_t **vpt_p)
 			goto done;
 
 		} else if (tmpl_is_attr_unresolved(vpt)) {
-			func = xlat_func_find(tmpl_attr_unresolved(vpt), -1);
+			func = xlat_func_find(tmpl_attr_tail_unresolved(vpt), -1);
 			if (!func) goto unresolved;
 			goto virtual;
 		}

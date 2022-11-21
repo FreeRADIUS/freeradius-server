@@ -215,7 +215,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache created date
 	 */
-	if (tmpl_da(map_list_head(&head)->lhs) == attr_cache_created) {
+	if (tmpl_attr_tail_da(map_list_head(&head)->lhs) == attr_cache_created) {
 		map_t *map;
 
 		c->created = tmpl_value(map_list_head(&head)->rhs)->vb_date;
@@ -227,7 +227,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache expires date
 	 */
-	if (tmpl_da(map_list_head(&head)->lhs) == attr_cache_expires) {
+	if (tmpl_attr_tail_da(map_list_head(&head)->lhs) == attr_cache_expires) {
 		map_t *map;
 
 		c->expires = tmpl_value(map_list_head(&head)->rhs)->vb_date;

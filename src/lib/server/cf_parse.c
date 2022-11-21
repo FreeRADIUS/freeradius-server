@@ -1071,7 +1071,7 @@ static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR 
 	 *	All attributes should have been defined by this point.
 	 */
 	case TMPL_TYPE_ATTR_UNRESOLVED:
-		cf_log_err(cp, "Unknown attribute '%s'", tmpl_attr_unresolved(vpt));
+		cf_log_err(cp, "Unknown attribute '%s'", tmpl_attr_tail_unresolved(vpt));
 		return -1;
 
 	case TMPL_TYPE_UNRESOLVED:

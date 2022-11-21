@@ -314,7 +314,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *re
 			continue;
 		}
 
-		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(dst)));
+		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(dst)));
 		talloc_free(dst);
 
 		if (fr_pair_value_from_str(vp, s2, strlen(s2), NULL, false) < 0) {

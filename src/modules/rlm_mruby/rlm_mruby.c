@@ -375,7 +375,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vp
 			continue;
 		}
 
-		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(dst)));
+		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(dst)));
 		talloc_free(dst);
 
 		if (fr_pair_value_from_str(vp, cval, strlen(cval), NULL, false) < 0) {

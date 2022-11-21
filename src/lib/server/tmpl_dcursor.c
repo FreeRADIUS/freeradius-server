@@ -358,7 +358,7 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 			if (tmpl_is_list(vpt)) {
 				fr_strerror_printf("List \"%s\" is empty", vpt->name);
 			} else {
-				fr_strerror_printf("No matching \"%s\" pairs found", tmpl_da(vpt)->name);
+				fr_strerror_printf("No matching \"%s\" pairs found", tmpl_attr_tail_da(vpt)->name);
 			}
 		}
 		return NULL;

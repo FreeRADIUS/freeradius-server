@@ -165,13 +165,13 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 		for (i = 0; i < self->count; i++) {
 			if (!self->values[i]->bv_len) continue;
 
-			MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
+			MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 
 			if (fr_pair_value_from_str(vp, self->values[i]->bv_val,
 						   self->values[i]->bv_len, NULL, true) < 0) {
 				RPWDEBUG("Failed parsing value \"%pV\" for attribute %s",
 					 fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
-					 tmpl_da(map->lhs)->name);
+					 tmpl_attr_tail_da(map->lhs)->name);
 
 				talloc_free(vp); /* also frees escaped */
 				continue;
@@ -207,7 +207,7 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 		break;
 
 	case TMPL_TYPE_ATTR_UNRESOLVED:
-		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_unresolved(map->lhs));
+		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_tail_unresolved(map->lhs));
 		return -1;
 
 	default:
@@ -228,7 +228,7 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 		break;
 
 	case TMPL_TYPE_ATTR_UNRESOLVED:
-		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_unresolved(map->rhs));
+		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_tail_unresolved(map->rhs));
 		return -1;
 
 	default:

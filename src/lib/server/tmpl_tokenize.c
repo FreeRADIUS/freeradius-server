@@ -1243,7 +1243,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	tmpl_attr_copy(vpt, list);
 	tmpl_attr_set_list(vpt, tmpl_list(list));	/* Remove when lists are attributes */
 	tmpl_attr_set_leaf_da(vpt, da);			/* This should add a new da when lists are attributes */
-	tmpl_attr_set_leaf_num(vpt, tmpl_num(list));
+	tmpl_attr_set_leaf_num(vpt, tmpl_attr_tail_num(list));
 
 	/*
 	 *	We need to rebuild the attribute name, to be the
@@ -1903,7 +1903,7 @@ do_suffix:
 		tmpl_attr_insert(vpt, ar);
 	}
 
-	if (tmpl_is_attr(vpt) && (tmpl_rules_cast(vpt) == tmpl_da(vpt)->type)) vpt->rules.cast = FR_TYPE_NULL;
+	if (tmpl_is_attr(vpt) && (tmpl_rules_cast(vpt) == tmpl_attr_tail_da(vpt)->type)) vpt->rules.cast = FR_TYPE_NULL;
 
 	fr_sbuff_marker_release(&m_s);
 	return 0;
@@ -2188,7 +2188,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		/*
 		 *	Suppress useless casts.
 		 */
-		if (tmpl_da(vpt)->type == tmpl_rules_cast(vpt)) {
+		if (tmpl_attr_tail_da(vpt)->type == tmpl_rules_cast(vpt)) {
 			vpt->rules.cast = FR_TYPE_NULL;
 		}
 
@@ -2231,9 +2231,9 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *	we now need to check the cast type.
 	 */
 	if (!tmpl_needs_resolving(vpt) && !fr_type_is_null(t_rules->cast) &&
-	    !fr_type_cast(t_rules->cast, tmpl_da(vpt)->type)) {
+	    !fr_type_cast(t_rules->cast, tmpl_attr_tail_da(vpt)->type)) {
 		fr_strerror_printf("Cannot cast type '%s' to '%s'",
-				   fr_type_to_str(tmpl_da(vpt)->type), fr_type_to_str(t_rules->cast));
+				   fr_type_to_str(tmpl_attr_tail_da(vpt)->type), fr_type_to_str(t_rules->cast));
 		if (err) *err = TMPL_ATTR_ERROR_BAD_CAST;
 		fr_sbuff_set_to_start(&our_name);
 		goto error;
@@ -3401,7 +3401,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 		goto check_types;
 
 	case TMPL_TYPE_ATTR:
-		src_type = tmpl_da(vpt)->type;
+		src_type = tmpl_attr_tail_da(vpt)->type;
 
 
 		/*
@@ -3467,7 +3467,7 @@ ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t con
  *
  * #tmpl_attr_unknown_add converts a #TMPL_TYPE_ATTR with an unknown #fr_dict_attr_t to a
  * #TMPL_TYPE_ATTR with a known #fr_dict_attr_t, by adding the unknown #fr_dict_attr_t to the main
- * dictionary, and updating the ``tmpl_da`` pointer.
+ * dictionary, and updating the ``tmpl_attr_tail_da`` pointer.
  * @{
  */
 
@@ -3598,7 +3598,7 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 		/*
 		 *	Suppress casts to the same type.
 		 */
-		if (tmpl_da(vpt)->type == type) {
+		if (tmpl_attr_tail_da(vpt)->type == type) {
 			vpt->rules.cast = FR_TYPE_NULL;
 			break;
 		}
@@ -3869,7 +3869,7 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 		ret = tmpl_attr_resolve(vpt, tr_rules);
 		if (ret < 0) return ret;
 
-		if (dst_type == tmpl_da(vpt)->type) {
+		if (dst_type == tmpl_attr_tail_da(vpt)->type) {
 			vpt->rules.cast = FR_TYPE_NULL;
 		}
 
@@ -4066,7 +4066,7 @@ void tmpl_attr_to_raw(tmpl_t *vpt)
 
 /** Add an unknown #fr_dict_attr_t specified by a #tmpl_t to the main dictionary
  *
- * @param vpt to add. ``tmpl_da`` pointer will be updated to point to the
+ * @param vpt to add. ``tmpl_attr_tail_da`` pointer will be updated to point to the
  *	#fr_dict_attr_t inserted into the dictionary.
  * @return
  *	- 1 noop (did nothing) - Not possible to convert tmpl.
@@ -4088,7 +4088,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 
 	TMPL_VERIFY(vpt);
 
-	if (!tmpl_da(vpt)->flags.is_unknown) return 1;	/* Ensure at least the leaf is unknown */
+	if (!tmpl_attr_tail_da(vpt)->flags.is_unknown) return 1;	/* Ensure at least the leaf is unknown */
 
 	while ((ar = tmpl_attr_list_next(tmpl_attr(vpt), ar))) {
 		fr_dict_attr_t const	*unknown, *known;
@@ -4161,9 +4161,9 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
  *	are identical.
  *
  * @param[in] dict_def	Default dictionary to use if none is
- *			specified by the tmpl_attr_unresolved.
+ *			specified by the tmpl_attr_tail_unresolved.
  * @param[in] vpt	specifying unresolved attribute to add.
- *			``tmpl_da`` pointer will be updated to
+ *			``tmpl_attr_tail_da`` pointer will be updated to
  *			point to the #fr_dict_attr_t inserted
  *			into the dictionary. Lists and requests
  *			will be preserved.
@@ -4174,7 +4174,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int tmpl_attr_unresolved_add(fr_dict_t *dict_def, tmpl_t *vpt,
+int tmpl_attr_tail_unresolved_add(fr_dict_t *dict_def, tmpl_t *vpt,
 			     fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t const *da;
@@ -4186,10 +4186,10 @@ int tmpl_attr_unresolved_add(fr_dict_t *dict_def, tmpl_t *vpt,
 	if (!tmpl_is_attr_unresolved(vpt)) return 1;
 
 	if (fr_dict_attr_add(dict_def,
-			     fr_dict_root(fr_dict_internal()), tmpl_attr_unresolved(vpt), -1, type, flags) < 0) {
+			     fr_dict_root(fr_dict_internal()), tmpl_attr_tail_unresolved(vpt), -1, type, flags) < 0) {
 		return -1;
 	}
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_def), tmpl_attr_unresolved(vpt));
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_def), tmpl_attr_tail_unresolved(vpt));
 	if (!da) return -1;
 
 	if (type != da->type) {
@@ -4853,8 +4853,8 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 					     file, line);
 		}
 
-		if (tmpl_da(vpt)->flags.is_unknown) {
-			if (tmpl_da(vpt) != tmpl_unknown(vpt)) {
+		if (tmpl_attr_tail_da(vpt)->flags.is_unknown) {
+			if (tmpl_attr_tail_da(vpt) != tmpl_attr_tail_unknown(vpt)) {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "da is marked as unknown, but address is not equal to the template's "
 						     "unknown da pointer", file, line);
@@ -4869,22 +4869,22 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 			/*
 			 *	Attribute may be present with multiple names
 			 */
-			dict = fr_dict_by_da(tmpl_da(vpt));
+			dict = fr_dict_by_da(tmpl_attr_tail_da(vpt));
 			if (!dict) {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" (%s) not rooted in a dictionary",
-						     file, line, tmpl_da(vpt)->name,
-						     fr_type_to_str(tmpl_da(vpt)->type));
+						     file, line, tmpl_attr_tail_da(vpt)->name,
+						     fr_type_to_str(tmpl_attr_tail_da(vpt)->type));
 			}
 
-			da = tmpl_da(vpt);
-			if (!tmpl_da(vpt)->flags.is_unknown && !tmpl_da(vpt)->flags.is_raw && (da != tmpl_da(vpt))) {
+			da = tmpl_attr_tail_da(vpt);
+			if (!tmpl_attr_tail_da(vpt)->flags.is_unknown && !tmpl_attr_tail_da(vpt)->flags.is_raw && (da != tmpl_attr_tail_da(vpt))) {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "dictionary pointer %p \"%s\" (%s) "
 						     "and global dictionary pointer %p \"%s\" (%s) differ",
 						     file, line,
-						     tmpl_da(vpt), tmpl_da(vpt)->name,
-						     fr_type_to_str(tmpl_da(vpt)->type),
+						     tmpl_attr_tail_da(vpt), tmpl_attr_tail_da(vpt)->name,
+						     fr_type_to_str(tmpl_attr_tail_da(vpt)->type),
 						     da, da->name,
 						     fr_type_to_str(da->type));
 			}
@@ -4892,7 +4892,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 			if (!vpt->rules.attr.list_as_attr && (tmpl_list(vpt) >= PAIR_LIST_UNKNOWN)) {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" has invalid list (%i)",
-						     file, line, tmpl_da(vpt)->name, tmpl_list(vpt));
+						     file, line, tmpl_attr_tail_da(vpt)->name, tmpl_list(vpt));
 			}
 
 			tmpl_attr_verify(file, line, vpt);
@@ -5459,7 +5459,7 @@ void tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t cons
 
 	if (!tmpl_is_attr(vpt)) return;
 
-	da = tmpl_da(vpt);
+	da = tmpl_attr_tail_da(vpt);
 
 	/*
 	 *	The input tmpl is a leaf.  We must parse the child as

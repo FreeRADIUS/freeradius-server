@@ -323,7 +323,7 @@ fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
 
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
-		return tmpl_da(vpt)->type;
+		return tmpl_attr_tail_da(vpt)->type;
 
 	case TMPL_TYPE_DATA:
 		return tmpl_value_type(vpt);
@@ -1044,7 +1044,7 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 		tmpl_pair_list_and_ctx(ctx, head, request, tmpl_request(vpt), tmpl_list(vpt));
 		if (!head) return -1;
 
-		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(vpt)));
+		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(vpt)));
 
 		fr_pair_append(head, vp);
 
@@ -1172,7 +1172,7 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_li
 	/*
 	 *	Virtual attributes always have a count of 1
 	 */
-	if (tmpl_num(vpt) == NUM_COUNT) {
+	if (tmpl_attr_tail_num(vpt) == NUM_COUNT) {
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
 		value->datum.uint32 = 1;
 		goto done;
@@ -1181,12 +1181,12 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_li
 	/*
 	 *	Some non-packet expansions
 	 */
-	if (tmpl_da(vpt) == attr_client_shortname) {
+	if (tmpl_attr_tail_da(vpt) == attr_client_shortname) {
 		RADCLIENT *client = client_from_request(request);
 		if (!client || !client->shortname) return 0;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_da(vpt), client->shortname, false) < 0) {
+		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_attr_tail_da(vpt), client->shortname, false) < 0) {
 		error:
 			talloc_free(value);
 			return -1;
@@ -1194,25 +1194,25 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_li
 		goto done;
 	}
 
-	if (tmpl_da(vpt) == attr_request_processing_stage) {
+	if (tmpl_attr_tail_da(vpt) == attr_request_processing_stage) {
 		if (!request->component) return 0;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(ctx, value, tmpl_da(vpt), request->component, false) < 0) goto error;
+		if (fr_value_box_strdup(ctx, value, tmpl_attr_tail_da(vpt), request->component, false) < 0) goto error;
 		goto done;
 	}
 
-	if (tmpl_da(vpt) == attr_virtual_server) {
+	if (tmpl_attr_tail_da(vpt) == attr_virtual_server) {
 		if (!unlang_call_current(request)) return 0;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_da(vpt),
+		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_attr_tail_da(vpt),
 					       cf_section_name2(unlang_call_current(request)), false) < 0) goto error;
 		goto done;
 	}
 
-	if (tmpl_da(vpt) == attr_module_return_code) {
-		MEM(value = fr_value_box_alloc(ctx, tmpl_da(vpt)->type, tmpl_da(vpt), false));
+	if (tmpl_attr_tail_da(vpt) == attr_module_return_code) {
+		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, tmpl_attr_tail_da(vpt), false));
 		value->datum.int32 = request->rcode;
 		goto done;
 	}
@@ -1225,11 +1225,11 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_li
 	packet = tmpl_packet_ptr(request, tmpl_list(vpt));
 	if (!packet) return 0;
 
-	if (tmpl_da(vpt) == attr_packet_type) {
+	if (tmpl_attr_tail_da(vpt) == attr_packet_type) {
 		if (!packet || !packet->code) return 0;
 
-		MEM(value = fr_value_box_alloc(ctx, tmpl_da(vpt)->type, NULL, false));
-		value->enumv = tmpl_da(vpt);
+		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL, false));
+		value->enumv = tmpl_attr_tail_da(vpt);
 		value->datum.int32 = packet->code;
 
 	/*
@@ -1238,11 +1238,11 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_li
 	 *	because of the talloc checks sprinkled throughout the
 	 *	various VP functions.
 	 */
-	} else if (tmpl_da(vpt) == attr_packet_authentication_vector) {
+	} else if (tmpl_attr_tail_da(vpt) == attr_packet_authentication_vector) {
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_memdup(ctx, value, tmpl_da(vpt), packet->vector, sizeof(packet->vector), true);
+		fr_value_box_memdup(ctx, value, tmpl_attr_tail_da(vpt), packet->vector, sizeof(packet->vector), true);
 
-	} else if (tmpl_da(vpt) == attr_client_ip_address) {
+	} else if (tmpl_attr_tail_da(vpt) == attr_client_ip_address) {
 		RADCLIENT *client = client_from_request(request);
 		if (client) {
 			MEM(value = fr_value_box_alloc_null(ctx));
@@ -1251,49 +1251,49 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_li
 		}
 		goto src_ip_address;
 
-	} else if (tmpl_da(vpt) == attr_packet_src_ip_address) {
+	} else if (tmpl_attr_tail_da(vpt) == attr_packet_src_ip_address) {
 	src_ip_address:
 		if (!fr_socket_is_inet(packet->socket.proto) ||
 		    (packet->socket.inet.src_ipaddr.af != AF_INET)) return 0;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->socket.inet.src_ipaddr, true);
+		fr_value_box_ipaddr(value, tmpl_attr_tail_da(vpt), &packet->socket.inet.src_ipaddr, true);
 
-	} else if (tmpl_da(vpt) == attr_packet_dst_ip_address) {
+	} else if (tmpl_attr_tail_da(vpt) == attr_packet_dst_ip_address) {
 		if (!fr_socket_is_inet(packet->socket.proto) ||
 		    (packet->socket.inet.dst_ipaddr.af != AF_INET)) return 0;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->socket.inet.dst_ipaddr, true);
+		fr_value_box_ipaddr(value, tmpl_attr_tail_da(vpt), &packet->socket.inet.dst_ipaddr, true);
 
-	} else if (tmpl_da(vpt) == attr_packet_src_ipv6_address) {
+	} else if (tmpl_attr_tail_da(vpt) == attr_packet_src_ipv6_address) {
 		if (!fr_socket_is_inet(packet->socket.proto) ||
 		    (packet->socket.inet.src_ipaddr.af != AF_INET6)) return 0;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->socket.inet.src_ipaddr, true);
+		fr_value_box_ipaddr(value, tmpl_attr_tail_da(vpt), &packet->socket.inet.src_ipaddr, true);
 
-	} else if (tmpl_da(vpt) == attr_packet_dst_ipv6_address) {
+	} else if (tmpl_attr_tail_da(vpt) == attr_packet_dst_ipv6_address) {
 		if (!fr_socket_is_inet(packet->socket.proto) ||
 		    (packet->socket.inet.dst_ipaddr.af != AF_INET6)) return 0;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_da(vpt), &packet->socket.inet.dst_ipaddr, true);
+		fr_value_box_ipaddr(value, tmpl_attr_tail_da(vpt), &packet->socket.inet.dst_ipaddr, true);
 
-	} else if (tmpl_da(vpt) == attr_packet_src_port) {
+	} else if (tmpl_attr_tail_da(vpt) == attr_packet_src_port) {
 		if (!fr_socket_is_inet(packet->socket.proto)) return 0;
 
-		MEM(value = fr_value_box_alloc(ctx, tmpl_da(vpt)->type, NULL, true));
+		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL, true));
 		value->datum.uint16 = packet->socket.inet.src_port;
 
-	} else if (tmpl_da(vpt) == attr_packet_dst_port) {
+	} else if (tmpl_attr_tail_da(vpt) == attr_packet_dst_port) {
 		if (!fr_socket_is_inet(packet->socket.proto)) return 0;
 
-		MEM(value = fr_value_box_alloc(ctx, tmpl_da(vpt)->type, NULL, true));
+		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL, true));
 		value->datum.uint16 = packet->socket.inet.dst_port;
 
 	} else {
-		RERROR("Attribute \"%s\" incorrectly marked as virtual", tmpl_da(vpt)->name);
+		RERROR("Attribute \"%s\" incorrectly marked as virtual", tmpl_attr_tail_da(vpt)->name);
 		return -1;
 	}
 
@@ -1351,7 +1351,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, reque
 	 *	the virtual one.
 	 */
 	if (!vp) {
-		if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
+		if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
 			ret = tmpl_eval_pair_virtual(ctx, &list, request, vpt);
 			goto done;
 		}
@@ -1359,7 +1359,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, reque
 		/*
 		 *	Zero count.
 		 */
-		if (tmpl_num(vpt) == NUM_COUNT) {
+		if (tmpl_attr_tail_num(vpt) == NUM_COUNT) {
 			value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
 			if (!value) {
 			oom:
@@ -1374,7 +1374,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, reque
 		goto done;
 	}
 
-	switch (tmpl_num(vpt)) {
+	switch (tmpl_attr_tail_num(vpt)) {
 	/*
 	 *	Return a count of the VPs.
 	 */

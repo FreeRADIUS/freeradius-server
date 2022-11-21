@@ -301,7 +301,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 		char const	*p;
 
 #ifndef HAVE_JSON_OBJECT_GET_INT64
-		if (tmpl_is_attr(map->lhs) && (tmpl_da(map->lhs)->type == FR_TYPE_UINT64)) {
+		if (tmpl_is_attr(map->lhs) && (tmpl_attr_tail_da(map->lhs)->type == FR_TYPE_UINT64)) {
 			cf_log_err(cp, "64bit integers are not supported by linked json-c.  "
 				      "Upgrade to json-c >= 0.10 to use this feature");
 			return -1;
@@ -379,7 +379,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 	fr_pair_list_free(out);
 	fr_value_box_list_init(&head);
 
-	ret = fr_jpath_evaluate_leaf(request, &head, tmpl_da(map->lhs)->type, tmpl_da(map->lhs),
+	ret = fr_jpath_evaluate_leaf(request, &head, tmpl_attr_tail_da(map->lhs)->type, tmpl_attr_tail_da(map->lhs),
 			     	     to_eval->root, to_eval->jpath);
 	if (ret < 0) {
 		RPEDEBUG("Failed evaluating jpath");
@@ -391,7 +391,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 	for (value = fr_value_box_list_head(&head);
 	     value;
 	     fr_pair_append(out, vp), value = fr_value_box_list_next(&head, value)) {
-		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
+		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 
 		if (fr_value_box_steal(vp, &vp->data, value) < 0) {
 			RPEDEBUG("Copying data to attribute failed");

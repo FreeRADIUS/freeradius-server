@@ -296,7 +296,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			}
 		}
 
-		da = tmpl_da(current->lhs.vpt);
+		da = tmpl_attr_tail_da(current->lhs.vpt);
 		if (fr_type_is_group(da->type)) da = fr_dict_root(request->dict);
 
 		children = &current->rhs.pair_list;
@@ -371,7 +371,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 	if (fr_type_is_structural(vp->vp_type)) {
 		tmpl_dcursor_clear(&cc);
 
-		if (tmpl_num(current->rhs.vpt) == NUM_ALL) {
+		if (tmpl_attr_tail_num(current->rhs.vpt) == NUM_ALL) {
 			REDEBUG("%s[%d] Wildcard for structural attribute %s is not yet implemented.", MAP_INFO, current->rhs.vpt->name);
 			return -1;
 		}
@@ -574,7 +574,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 	 *	the appropriate place.
 	 */
 	if (current->temporary_pair_list) {
-		fr_dict_attr_t const *da = tmpl_da(current->lhs.vpt);
+		fr_dict_attr_t const *da = tmpl_attr_tail_da(current->lhs.vpt);
 		fr_pair_list_t *list = &current->parent->rhs.pair_list;
 
 		while (box) {
@@ -599,7 +599,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 	 *	If we're supposed to create the LHS, then go do that.
 	 */
 	if (current->lhs.create) {
-		fr_dict_attr_t const *da = tmpl_da(current->lhs.vpt);
+		fr_dict_attr_t const *da = tmpl_attr_tail_da(current->lhs.vpt);
 		fr_pair_t *vp;
 		int err;
 		tmpl_dcursor_ctx_t lhs_cc;
@@ -801,10 +801,10 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	 *
 	 *	The we just apply the assignment to the LHS, over-writing it's value.
 	 */
-	if ((map->op == T_OP_SET) && (tmpl_num(current->lhs.vpt) == NUM_UNSPEC)) {
+	if ((map->op == T_OP_SET) && (tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC)) {
 		tmpl_dcursor_ctx_t cc;
 		fr_dcursor_t cursor;
-		bool first = fr_type_is_structural(tmpl_da(current->lhs.vpt)->type);
+		bool first = fr_type_is_structural(tmpl_attr_tail_da(current->lhs.vpt)->type);
 
 		while (true) {
 			int err;
@@ -834,7 +834,7 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 				if (!vp) goto clear;
 				continue;
 
-			} else if (fr_type_is_structural(tmpl_da(current->lhs.vpt)->type)) {
+			} else if (fr_type_is_structural(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
 				/*
 				 *	We skipped the first structural member, so keep skipping it for all of the next vps.
 				 */
@@ -894,7 +894,7 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 #endif
 	}
 
-	if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
+	if (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
 		if (apply_edits_to_leaf(request, state, current) < 0) return -1;
 	} else {
 		if (apply_edits_to_list(request, state, current) < 0) return -1;
@@ -950,7 +950,7 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	 *	Fast path: child is empty, we don't need to do anything.
 	 */
 	if (fr_dlist_empty(&map->child.head)) {
-		if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
+		if (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
 			REDEBUG("%s[%d] Cannot assign empty list to a normal data type", MAP_INFO);
 			return -1;
 		}
@@ -964,7 +964,7 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	 *	@todo - when we support value-box groups on the RHS in
 	 *	apply_edits_to_leaf(), this next block can be deleted.
 	 */
-	if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type) && (map->op != T_OP_SET)) {
+	if (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type) && (map->op != T_OP_SET)) {
 		REDEBUG("%s[%d] Must use ':=' when editing list of normal data types", MAP_INFO);
 		return -1;
 	}
@@ -992,7 +992,7 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	child->map = map_list_head(child->map_head);
 	child->func = expand_lhs;
 
-	if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
+	if (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
 		child->check_lhs = check_lhs_value;
 		child->expanded_lhs = expanded_lhs_value;
 	} else {
@@ -1138,7 +1138,7 @@ static int check_lhs_nested(request_t *request, unlang_frame_state_edit_t *state
 	 *	Don't create the leaf.  The apply_edits_to_leaf() function will create them after the RHS has
 	 *	been expanded.
 	 */
-	if (fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
+	if (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
 		return expand_rhs(request, state, current);
 	}
 
@@ -1155,7 +1155,7 @@ static int check_lhs_nested(request_t *request, unlang_frame_state_edit_t *state
 	 *	parent list, but fr_edit_list_apply_list_assignment() does that
 	 *	anyways.
 	 */
-	MEM(current->lhs.vp = fr_pair_afrom_da(current, tmpl_da(current->lhs.vpt)));
+	MEM(current->lhs.vp = fr_pair_afrom_da(current, tmpl_attr_tail_da(current->lhs.vpt)));
 	fr_pair_append(&current->parent->rhs.pair_list, current->lhs.vp);
 	current->lhs.vp->op = map->op;
 
@@ -1163,7 +1163,7 @@ static int check_lhs_nested(request_t *request, unlang_frame_state_edit_t *state
 }
 
 /*
- *	The LHS tmpl is now an attribute reference.  Do some sanity checks on tmpl_num(), operators, etc.
+ *	The LHS tmpl is now an attribute reference.  Do some sanity checks on tmpl_attr_tail_num(), operators, etc.
  *	Once that's done, go expand the RHS.
  */
 static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
@@ -1181,7 +1181,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	 *	Create the attribute, including any necessary parents.
 	 */
 	if (map->op == T_OP_EQ) {
-		if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) {
+		if (tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC) {
 			current->lhs.create = true;
 
 			/*
@@ -1190,7 +1190,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		}
 
 	} else if (map->op == T_OP_SET) {
-		if (tmpl_num(current->lhs.vpt) == NUM_UNSPEC) {
+		if (tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC) {
 			current->lhs.create = true;
 			return expand_rhs(request, state, current);
 		}
@@ -1209,7 +1209,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		 *
 		 *	because foo[3] is a single leaf value, not a list.
 		 */
-		if (!map->rhs && fr_type_is_leaf(tmpl_da(current->lhs.vpt)->type)) {
+		if (!map->rhs && fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
 			RPDEBUG("Can't set one entry to multiple values for %s", current->lhs.vpt->name);
 			return -1;
 		}
@@ -1255,7 +1255,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		 *	&foo[1] exists, don't bother deleting it.  Just over-write its value.
 		 */
 		fr_assert(map->op == T_OP_SET);
-		fr_assert(tmpl_num(map->lhs) != NUM_UNSPEC);
+		fr_assert(tmpl_attr_tail_num(map->lhs) != NUM_UNSPEC);
 
 		// &control := ...
 	}

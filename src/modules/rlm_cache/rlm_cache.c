@@ -872,7 +872,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	while ((map = map_list_next(&c->maps, map))) {
-		if ((tmpl_da(map->lhs) != tmpl_da(target)) ||
+		if ((tmpl_attr_tail_da(map->lhs) != tmpl_attr_tail_da(target)) ||
 		    (tmpl_list(map->lhs) != tmpl_list(target))) continue;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));

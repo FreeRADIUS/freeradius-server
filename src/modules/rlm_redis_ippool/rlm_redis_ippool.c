@@ -694,7 +694,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 		 */
 		case REDIS_REPLY_INTEGER:
 		{
-			if (tmpl_da(ip_map.lhs)->type != FR_TYPE_IPV4_ADDR) {
+			if (tmpl_attr_tail_da(ip_map.lhs)->type != FR_TYPE_IPV4_ADDR) {
 				fr_value_box_t tmp;
 
 				fr_value_box(&tmp, (uint32_t)ntohl((uint32_t)reply->element[1]->integer), true);

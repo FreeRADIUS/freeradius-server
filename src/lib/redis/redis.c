@@ -409,7 +409,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out, request_t *request,
 
 		/* Logs own errors */
 		if (fr_redis_reply_to_value_box(map, &vpt, value,
-						tmpl_da(map->lhs)->type, tmpl_da(map->lhs), false, false) < 0) {
+						tmpl_attr_tail_da(map->lhs)->type, tmpl_attr_tail_da(map->lhs), false, false) < 0) {
 			RPEDEBUG("Failed converting Redis data");
 			goto error;
 		}

@@ -167,7 +167,7 @@ static unlang_action_t unlang_subrequest_parent_init(rlm_rcode_t *p_result, requ
 			goto fail;
 		}
 
-		if (tmpl_da(gext->vpt)->type == FR_TYPE_STRING) {
+		if (tmpl_attr_tail_da(gext->vpt)->type == FR_TYPE_STRING) {
 			type_enum = fr_dict_enum_by_name(gext->attr_packet_type, attr->vp_strvalue, attr->vp_length);
 			if (!type_enum) {
 				RDEBUG("Unknown Packet-Type %pV", &attr->data);

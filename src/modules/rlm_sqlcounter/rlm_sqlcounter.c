@@ -467,7 +467,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		 *	limit, so that the user will not need to login
 		 *	again.  Do this only for Session-Timeout.
 		 */
-		if ((tmpl_da(inst->reply_attr) == attr_session_timeout) &&
+		if ((tmpl_attr_tail_da(inst->reply_attr) == attr_session_timeout) &&
 		    fr_time_gt(inst->reset_time, fr_time_wrap(0)) &&
 		    ((int64_t)res >= fr_time_delta_to_sec(fr_time_sub(inst->reset_time, request->packet->timestamp)))) {
 			fr_time_delta_t to_reset = fr_time_sub(inst->reset_time, request->packet->timestamp);
@@ -592,29 +592,29 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	fr_assert(inst->limit_attr);
 
 	memset(&flags, 0, sizeof(flags));
-	if (tmpl_attr_unresolved_add(fr_dict_unconst(dict_freeradius), inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
+	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining counter attribute");
 		return -1;
 	}
 
-	if (tmpl_attr_unresolved_add(fr_dict_unconst(dict_freeradius), inst->limit_attr, FR_TYPE_UINT64, &flags) < 0) {
+	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->limit_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining check attribute");
 		return -1;
 	}
 
-	if (tmpl_da(inst->paircmp_attr)->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Counter attribute %s MUST be uint64", tmpl_da(inst->paircmp_attr)->name);
+	if (tmpl_attr_tail_da(inst->paircmp_attr)->type != FR_TYPE_UINT64) {
+		cf_log_err(conf, "Counter attribute %s MUST be uint64", tmpl_attr_tail_da(inst->paircmp_attr)->name);
 		return -1;
 	}
-	if (paircmp_register_by_name(tmpl_da(inst->paircmp_attr)->name, NULL, true,
+	if (paircmp_register_by_name(tmpl_attr_tail_da(inst->paircmp_attr)->name, NULL, true,
 					counter_cmp, inst) < 0) {
 		cf_log_perr(conf, "Failed registering comparison function for counter attribute %s",
-			    tmpl_da(inst->paircmp_attr)->name);
+			    tmpl_attr_tail_da(inst->paircmp_attr)->name);
 		return -1;
 	}
 
-	if (tmpl_da(inst->limit_attr)->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Check attribute %s MUST be uint64", tmpl_da(inst->limit_attr)->name);
+	if (tmpl_attr_tail_da(inst->limit_attr)->type != FR_TYPE_UINT64) {
+		cf_log_err(conf, "Check attribute %s MUST be uint64", tmpl_attr_tail_da(inst->limit_attr)->name);
 		return -1;
 	}
 

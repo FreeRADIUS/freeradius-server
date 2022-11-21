@@ -371,7 +371,7 @@ static int cond_realize_tmpl(request_t *request,
 	case TMPL_TYPE_ATTR:
 		/*
 		 *	fast path?  If there's only one attribute, AND
-		 *	tmpl_num is a simple number, then just find
+		 *	tmpl_attr_tail_num is a simple number, then just find
 		 *	that attribute.  This fast path should ideally
 		 *	avoid all of the cost of setting up the
 		 *	cursors?
@@ -420,7 +420,7 @@ static int cond_realize_tmpl(request_t *request,
 			cast_type = tmpl_rules_cast(other);
 
 		} else if (tmpl_is_attr(other)) {
-			da = tmpl_da(other);
+			da = tmpl_attr_tail_da(other);
 			cast_type = da->type;
 
 		} else if (tmpl_is_data(other)) {
@@ -525,7 +525,7 @@ static bool cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t co
 	fr_value_box_t		*rhs, rhs_cast;
 	fr_dict_attr_t const	*da = NULL;
 
-	if (tmpl_is_attr(map->lhs) && fr_type_is_null(tmpl_rules_cast(map->lhs))) da = tmpl_da(map->lhs);
+	if (tmpl_is_attr(map->lhs) && fr_type_is_null(tmpl_rules_cast(map->lhs))) da = tmpl_attr_tail_da(map->lhs);
 
 	fr_assert(lhs != NULL);
 	rhs = NULL;		/* shut up clang scan */
@@ -577,7 +577,7 @@ static bool cond_compare_virtual(request_t *request, map_t const *map)
 			break;
 		}
 
-		rcode = paircmp_virtual(request, tmpl_da(map->lhs), map->op, rhs);
+		rcode = paircmp_virtual(request, tmpl_attr_tail_da(map->lhs), map->op, rhs);
 		rcode = (rcode == 0) ? 1 : 0;
 		if (rhs == &rhs_cast) fr_value_box_clear(&rhs_cast);
 		if (rcode != 0) break;
@@ -725,7 +725,7 @@ static bool cond_eval_map(request_t *request, fr_cond_t const *c,
 		 *	Do JUST the virtual attribute comparison.
 		 *	Skip all of the rest of the complexity of paircmp().
 		 */
-		rcode = paircmp_virtual(request, tmpl_da(map->lhs), c->data.map->op, rhs);
+		rcode = paircmp_virtual(request, tmpl_attr_tail_da(map->lhs), c->data.map->op, rhs);
 		rcode = (rcode == 0) ? 1 : 0;
 		goto done;
 	}

@@ -57,7 +57,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request
 	 *	FIXME: allow multiple entries.
 	 */
 	if (tmpl_is_attr(map->lhs)) {
-		da = tmpl_da(map->lhs);
+		da = tmpl_attr_tail_da(map->lhs);
 	} else {
 		char *attr;
 
@@ -86,7 +86,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request
 		MEM(vp = fr_pair_afrom_da(ctx, da));
 		if (fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1, NULL, false) < 0) {
 			RWDEBUG("Failed parsing value \"%pV\" for attribute %s: %s", fr_box_strvalue(value),
-				tmpl_da(map->lhs)->name, fr_strerror());
+				tmpl_attr_tail_da(map->lhs)->name, fr_strerror());
 			talloc_free(vp);
 			goto error;
 		}

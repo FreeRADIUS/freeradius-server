@@ -145,13 +145,13 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 		/*
 		 *	Convert literal to a type appropriate for the VP.
 		 */
-		if (tmpl_cast_in_place(map->rhs, tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) goto error;
+		if (tmpl_cast_in_place(map->rhs, tmpl_attr_tail_da(map->lhs)->type, tmpl_attr_tail_da(map->lhs)) < 0) goto error;
 
 		/*
 		 *	Pull out the special attributes, and set the
 		 *	relevant cache entry fields.
 		 */
-		if (fr_dict_attr_is_top_level(tmpl_da(map->lhs))) switch (tmpl_da(map->lhs)->attr) {
+		if (fr_dict_attr_is_top_level(tmpl_attr_tail_da(map->lhs))) switch (tmpl_attr_tail_da(map->lhs)->attr) {
 		case FR_CACHE_CREATED:
 			c->created = tmpl_value(map->rhs)->vb_date;
 			talloc_free(map);

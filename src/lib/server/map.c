@@ -229,7 +229,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	 *	be done in an xlat.
 	 */
 	if (tmpl_is_attr(map->rhs) &&
-	    (tmpl_num(map->rhs) == NUM_COUNT)) {
+	    (tmpl_attr_tail_num(map->rhs) == NUM_COUNT)) {
 		cf_log_err(cp, "Cannot assign from a count");
 		goto error;
 	}
@@ -238,7 +238,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	 *	If we know that the assignment is forbidden, then fail early.
 	 */
 	if (tmpl_is_attr(map->lhs) && tmpl_is_data(map->rhs)) {
-		da = tmpl_da(map->lhs);
+		da = tmpl_attr_tail_da(map->lhs);
 
 		if (tmpl_cast_in_place(map->rhs, da->type, da) < 0) {
 			cf_log_err(cp, "Invalid assignment - %s", fr_strerror());
@@ -442,7 +442,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 */
 			if (is_child) {
 				fr_assert(tmpl_is_attr(parent->lhs));
-				our_lhs_rules.attr.parent = tmpl_da(parent->lhs);
+				our_lhs_rules.attr.parent = tmpl_attr_tail_da(parent->lhs);
 
 				slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
 							      &map_parse_rules_bareword_quoted, &our_lhs_rules);
@@ -523,7 +523,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	 *	only be an attribute, etc.  Not trivial, so we'll just
 	 *	skip all that for now.
 	 */
-	if (tmpl_is_attr(map->lhs)) switch (tmpl_da(map->lhs)->type) {
+	if (tmpl_is_attr(map->lhs)) switch (tmpl_attr_tail_da(map->lhs)->type) {
 		case FR_TYPE_STRUCTURAL:
 			if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
 				fr_sbuff_set(&our_in, &m_op);
@@ -632,7 +632,7 @@ parse_rhs:
 		 *	about it.
 		 */
 		if ((map->op != T_OP_CMP_TRUE) && (map->op != T_OP_CMP_FALSE)) {
-			fr_dict_attr_t const *da = tmpl_da(map->lhs);
+			fr_dict_attr_t const *da = tmpl_attr_tail_da(map->lhs);
 
 			if (tmpl_cast_in_place(map->rhs, da->type, da) < 0) {
 				fr_sbuff_set(&our_in, &m_rhs);	/* Marker points to RHS */
@@ -806,7 +806,7 @@ do_children:
 				goto error; /* re-do "goto marker" stuff to print out spaces ? */
 			}
 
-			if (tmpl_da(map->lhs)->flags.is_unknown) {
+			if (tmpl_attr_tail_da(map->lhs)->flags.is_unknown) {
 				cf_log_err(ci, "Unknown attribute '%s'", map->lhs->name);
 				talloc_free(map);
 				goto error; /* re-do "goto marker" stuff to print out spaces ? */
@@ -826,7 +826,7 @@ do_children:
 			 *	inner section.
 			 */
 			our_lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_NO;
-			our_lhs_rules.attr.parent = tmpl_da(map->lhs);
+			our_lhs_rules.attr.parent = tmpl_attr_tail_da(map->lhs);
 
 			/*
 			 *	Groups MAY change dictionaries.  If so, then swap the dictionary and the parent.
@@ -1343,7 +1343,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	{
 		fr_pair_t *vp;
 
-		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
+		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 		vp->op = map->op;
 		if (fr_pair_value_from_str(vp, answer, strlen(answer), &fr_value_unescape_single, false) < 0) {
 			RPEDEBUG("Failed parsing exec output");
@@ -1398,7 +1398,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	 *	Hoist this early, too.
 	 */
 	if (map->op == T_OP_CMP_TRUE) {
-		MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
+		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 		n->op = map->op;
 		fr_pair_append(out, n);
 		return 0;
@@ -1413,7 +1413,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 
 		if (!tmpl_is_attr(map->lhs)) return -1;
 
-		switch (tmpl_da(map->lhs)->type) {
+		switch (tmpl_attr_tail_da(map->lhs)->type) {
 		case FR_TYPE_STRUCTURAL:
 			break;
 
@@ -1426,7 +1426,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		 *	recurse to generate the children into
 		 *	vp->vp_group
 		 */
-		MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
+		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 		n->op = map->op;
 
 		for (child = map_list_next(&map->child, NULL);
@@ -1487,10 +1487,10 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	switch (map->rhs->type) {
 	case TMPL_TYPE_XLAT:
 		fr_assert(tmpl_is_attr(map->lhs));
-		fr_assert(tmpl_da(map->lhs));	/* We need to know which attribute to create */
+		fr_assert(tmpl_attr_tail_da(map->lhs));	/* We need to know which attribute to create */
 		fr_assert(tmpl_xlat(map->rhs) != NULL);
 
-		MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
+		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 
 		/*
 		 *	We do the debug printing because xlat_aeval_compiled
@@ -1523,9 +1523,9 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 
 	case TMPL_TYPE_UNRESOLVED:
 		fr_assert(tmpl_is_attr(map->lhs));
-		fr_assert(tmpl_da(map->lhs));	/* We need to know which attribute to create */
+		fr_assert(tmpl_attr_tail_da(map->lhs));	/* We need to know which attribute to create */
 
-		MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
+		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 
 		if (fr_pair_value_from_str(n, map->rhs->name, strlen(map->rhs->name), NULL, false) < 0) {
 			rcode = 0;
@@ -1540,8 +1540,8 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		fr_pair_t *vp;
 		fr_dcursor_t from;
 
-		fr_assert((tmpl_is_attr(map->lhs) && tmpl_da(map->lhs)) ||
-			   (tmpl_is_list(map->lhs) && !tmpl_da(map->lhs)));
+		fr_assert((tmpl_is_attr(map->lhs) && tmpl_attr_tail_da(map->lhs)) ||
+			   (tmpl_is_list(map->lhs) && !tmpl_attr_tail_da(map->lhs)));
 
 		/*
 		 * @todo should log error, and return -1 for v3.1 (causes update to fail)
@@ -1555,12 +1555,12 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		 *  to match dst.
 		 */
 		if (tmpl_is_attr(map->lhs) &&
-		    (tmpl_da(map->rhs)->type != tmpl_da(map->lhs)->type)) {
+		    (tmpl_attr_tail_da(map->rhs)->type != tmpl_attr_tail_da(map->lhs)->type)) {
 			for (; vp; vp = fr_dcursor_current(&from)) {
-				MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
+				MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 
 				if (fr_value_box_cast(n, &n->data,
-						      tmpl_da(map->lhs)->type, tmpl_da(map->lhs), &vp->data) < 0) {
+						      tmpl_attr_tail_da(map->lhs)->type, tmpl_attr_tail_da(map->lhs), &vp->data) < 0) {
 					RPEDEBUG("Attribute conversion failed");
 					fr_pair_list_free(&found);
 					talloc_free(n);
@@ -1583,7 +1583,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		 *   and operators
 		 */
 		for (; vp; vp = fr_dcursor_next(&from)) {
-			fr_pair_reinit_from_da(&found, vp, tmpl_da(map->lhs));
+			fr_pair_reinit_from_da(&found, vp, tmpl_attr_tail_da(map->lhs));
 			vp->op = map->op;
 		}
 		fr_pair_list_append(out, &found);
@@ -1591,12 +1591,12 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		break;
 
 	case TMPL_TYPE_DATA:
-		fr_assert(tmpl_da(map->lhs));
+		fr_assert(tmpl_attr_tail_da(map->lhs));
 		fr_assert(tmpl_is_attr(map->lhs));
 
-		MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
+		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 
-		if (tmpl_da(map->lhs)->type == tmpl_value_type(map->rhs)) {
+		if (tmpl_attr_tail_da(map->lhs)->type == tmpl_value_type(map->rhs)) {
 			if (fr_value_box_copy(n, &n->data, tmpl_value(map->rhs)) < 0) {
 				rcode = -1;
 				goto error;
@@ -1883,8 +1883,8 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		/*
 		 *	Wildcard: delete all of the matching ones
 		 */
-		if (tmpl_num(map->lhs) == NUM_UNSPEC) {
-			fr_pair_delete_by_child_num(list, tmpl_da(map->lhs)->parent, tmpl_da(map->lhs)->attr);
+		if (tmpl_attr_tail_num(map->lhs) == NUM_UNSPEC) {
+			fr_pair_delete_by_child_num(list, tmpl_attr_tail_da(map->lhs)->parent, tmpl_attr_tail_da(map->lhs)->attr);
 			dst = NULL;
 		/*
 		 *	We've found the Nth one.  Delete it, and only it.
@@ -1905,9 +1905,9 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	src_list attributes.
 	 *
 	 *	This operation has two modes:
-	 *	- If tmpl_num(map->lhs) > 0, we check each of the src_list attributes against
+	 *	- If tmpl_attr_tail_num(map->lhs) > 0, we check each of the src_list attributes against
 	 *	  the dst attribute, to see if any of their values match.
-	 *	- If tmpl_num(map->lhs) == NUM_UNSPEC, we compare all instances of the dst attribute
+	 *	- If tmpl_attr_tail_num(map->lhs) == NUM_UNSPEC, we compare all instances of the dst attribute
 	 *	  against each of the src_list attributes.
 	 */
 	case T_OP_SUB_EQ:
@@ -1920,7 +1920,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		/*
 		 *	Instance specific[n] delete
 		 */
-		if (tmpl_num(map->lhs) != NUM_UNSPEC) {
+		if (tmpl_attr_tail_num(map->lhs) != NUM_UNSPEC) {
 			fr_pair_list_foreach(&src_list, vp) {
 				vp->op = T_OP_CMP_EQ;
 				rcode = paircmp_pairs(request, vp, dst);
@@ -1941,7 +1941,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		 */
 		for (dst = fr_dcursor_current(&dst_list);
 		     dst;
-		     dst = fr_dcursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_da(map->lhs))) {
+		     dst = fr_dcursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_attr_tail_da(map->lhs))) {
 			fr_pair_list_foreach(&src_list, vp) {
 				vp->op = T_OP_CMP_EQ;
 				rcode = paircmp_pairs(request, vp, dst);

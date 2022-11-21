@@ -159,7 +159,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 				return -1;
 
 			}
-			da = tmpl_da(map->lhs);
+			da = tmpl_attr_tail_da(map->lhs);
 
 			/*
 			 *	Ignore attributes which are set
@@ -199,7 +199,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 				      entry->filename, entry->lineno, map->lhs->name);
 				return -1;
 			}
-			da = tmpl_da(map->lhs);
+			da = tmpl_attr_tail_da(map->lhs);
 
 			if ((htype != FR_HTRIE_TRIE) && (da == attr_next_shortest_prefix)) {
 				ERROR("%s[%d] Cannot use %s when key is not an IP / IP prefix",

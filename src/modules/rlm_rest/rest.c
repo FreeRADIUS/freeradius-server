@@ -762,7 +762,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			goto skip;
 		}
 		ctx = tmpl_list_ctx(current, tmpl_list(dst));
-		da = tmpl_da(dst);
+		da = tmpl_attr_tail_da(dst);
 
 		fr_assert(vps);
 
@@ -1155,7 +1155,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 							level + 1, max_attrs);*/
 				} else {
 					vp = json_pair_alloc_leaf(instance, section, ctx, request,
-								  tmpl_da(dst), &flags, element);
+								  tmpl_attr_tail_da(dst), &flags, element);
 					if (!vp) continue;
 				}
 				RINDENT();

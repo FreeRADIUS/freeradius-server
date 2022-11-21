@@ -132,7 +132,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx, c
 				      filename, entry->lineno, map->lhs->name);
 				return -1;
 			}
-			da = tmpl_da(map->lhs);
+			da = tmpl_attr_tail_da(map->lhs);
 
 			/*
 			 * If it's NOT a vendor attribute,

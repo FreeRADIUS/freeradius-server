@@ -296,7 +296,7 @@ static int xlat_expr_resolve_binary(xlat_exp_t *node, UNUSED void *inst, xlat_re
 			a->flags.needs_resolving = false;
 		}
 
-		my_tr_rules.enumv = tmpl_da(a->vpt);
+		my_tr_rules.enumv = tmpl_attr_tail_da(a->vpt);
 
 		XLAT_DEBUG("\tresolve other b\n");
 		if (tmpl_resolve(b->vpt, &my_tr_rules) < 0) return -1;
@@ -317,7 +317,7 @@ static int xlat_expr_resolve_binary(xlat_exp_t *node, UNUSED void *inst, xlat_re
 			b->flags.needs_resolving = false;
 		}
 
-		my_tr_rules.enumv = tmpl_da(b->vpt);
+		my_tr_rules.enumv = tmpl_attr_tail_da(b->vpt);
 
 		XLAT_DEBUG("\tresolve other a\n");
 		if (tmpl_resolve(a->vpt, &my_tr_rules) < 0) return -1;
@@ -1508,7 +1508,7 @@ static xlat_action_t xlat_attr_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	if (!vp) {
-		dst->vb_bool = tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual;
+		dst->vb_bool = tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual;
 	} else {
 		dst->vb_bool = true;
 	}
@@ -2369,7 +2369,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	if (tmpl_is_attr(vpt)) {
 		fr_assert(!node->flags.pure);
 		if (tmpl_attr_unknown_add(vpt) < 0) {
-			fr_strerror_printf("Failed defining attribute %s", tmpl_da(vpt)->name);
+			fr_strerror_printf("Failed defining attribute %s", tmpl_attr_tail_da(vpt)->name);
 			fr_sbuff_set(&our_in, &opand_m);
 			goto error;
 		}
@@ -2447,7 +2447,7 @@ static bool valid_type(xlat_exp_t *node)
 
 	if (!tmpl_is_attr(node->vpt)) return true;
 
-	da = tmpl_da(node->vpt);
+	da = tmpl_attr_tail_da(node->vpt);
 	if (fr_type_is_structural(da->type)) {
 		if (da->dict == fr_dict_internal()) goto list;
 
@@ -2598,7 +2598,7 @@ redo:
 	 *
 	 *	@todo - check lists for equality?
 	 */
-	if ((lhs->type == XLAT_TMPL) && tmpl_is_attr(lhs->vpt) && fr_type_is_structural(tmpl_da(lhs->vpt)->type)) {
+	if ((lhs->type == XLAT_TMPL) && tmpl_is_attr(lhs->vpt) && fr_type_is_structural(tmpl_attr_tail_da(lhs->vpt)->type)) {
 		if ((op != T_OP_CMP_EQ) && (op != T_OP_NE)) {
 			fr_strerror_printf("Invalid operatord '%s' for left hand side structural attribute", fr_tokens[op]);
 			fr_sbuff_set(&our_in, &m_op);

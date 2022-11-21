@@ -183,7 +183,7 @@ static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t type, tmpl_t *other)
 	 *	Framed-Protocol, which is an integer data type.
 	 */
 	if (tmpl_is_attr(other)) {
-		da = tmpl_da(other);
+		da = tmpl_attr_tail_da(other);
 	} else {
 		da = NULL;
 	}
@@ -351,7 +351,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		/*
 		 *	Choose the attribute type which was parsed.
 		 */
-		lhs_type = tmpl_da(c->data.map->lhs)->type;
+		lhs_type = tmpl_attr_tail_da(c->data.map->lhs)->type;
 
 	} else if (tmpl_is_exec(c->data.map->lhs)) {
 		lhs_type = FR_TYPE_STRING;
@@ -389,7 +389,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		if (fr_type_is_numeric(lhs_type) && tmpl_is_attr(c->data.map->lhs)) rhs_type = lhs_type;
 
 	} else if (tmpl_is_attr(c->data.map->rhs)) {
-		rhs_type = tmpl_da(c->data.map->rhs)->type;
+		rhs_type = tmpl_attr_tail_da(c->data.map->rhs)->type;
 
 	} else if (tmpl_is_exec(c->data.map->rhs)) {
 		rhs_type = FR_TYPE_STRING;
@@ -887,7 +887,7 @@ static CC_HINT(nonnull) int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_s
 
 	if (!tmpl_is_attr(vpt)) return 0;
 
-	switch (tmpl_da(vpt)->type) {
+	switch (tmpl_attr_tail_da(vpt)->type) {
 	case FR_TYPE_LEAF:
 		break;
 
@@ -1034,7 +1034,7 @@ static fr_slen_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 	 *	Sanity check for nested types
 	 */
 	if (tmpl_is_attr(vpt) && (tmpl_attr_unknown_add(vpt) < 0)) {
-		fr_strerror_printf("Failed defining attribute %s", tmpl_da(vpt)->name);
+		fr_strerror_printf("Failed defining attribute %s", tmpl_attr_tail_da(vpt)->name);
 		fr_sbuff_set(&our_in, &m);
 		goto error;
 	}

@@ -361,9 +361,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 */
 		map = NULL;
 		while ((map = map_list_next(&sync_conf->entry_map, map))) {
-			if (fr_type_is_structural(tmpl_da(map->lhs)->type)) {
+			if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type)) {
 				cf_log_err(map->ci, "Structural attribute \"%s\" invalid for LDAP sync update",
-					    tmpl_da(map->lhs)->name);
+					    tmpl_attr_tail_da(map->lhs)->name);
 				return -1;
 			}
 

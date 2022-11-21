@@ -244,7 +244,7 @@ static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *c
 	/*
 	 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
 	 */
-	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
+	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
 		if (tmpl_attr_to_xlat(ctx, vpt_p) < 0) {
 			return false;
 		}
@@ -279,9 +279,9 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 	 *	Where "foo" is dynamically defined.
 	 */
 	if (c->pass2_fixup == PASS2_FIXUP_TYPE) {
-		if (!fr_dict_enum_by_name(tmpl_da(map->lhs), map->rhs->name, -1)) {
+		if (!fr_dict_enum_by_name(tmpl_attr_tail_da(map->lhs), map->rhs->name, -1)) {
 			cf_log_err(map->ci, "Invalid reference to non-existent %s %s { ... }",
-				   tmpl_da(map->lhs)->name,
+				   tmpl_attr_tail_da(map->lhs)->name,
 				   map->rhs->name);
 			return false;
 		}
@@ -357,12 +357,12 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 			if (tmpl_is_attr(map->lhs)) {
 				if ((map->rhs->len > 0) ||
 				    (map->op != T_OP_CMP_EQ) ||
-				    (tmpl_da(map->lhs)->type == FR_TYPE_STRING) ||
-				    (tmpl_da(map->lhs)->type == FR_TYPE_OCTETS)) {
+				    (tmpl_attr_tail_da(map->lhs)->type == FR_TYPE_STRING) ||
+				    (tmpl_attr_tail_da(map->lhs)->type == FR_TYPE_OCTETS)) {
 
-					if (tmpl_cast_in_place(map->rhs, tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) {
+					if (tmpl_cast_in_place(map->rhs, tmpl_attr_tail_da(map->lhs)->type, tmpl_attr_tail_da(map->lhs)) < 0) {
 						cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
-							   fr_type_to_str(tmpl_da(map->lhs)->type),
+							   fr_type_to_str(tmpl_attr_tail_da(map->lhs)->type),
 							   fr_box_strvalue_len(map->rhs->name, map->rhs->len));
 						return false;
 					} /* else the cast was successful */
@@ -477,7 +477,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 	 *	xlat code does.
 	 */
 	vpt = c->data.map->lhs;
-	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
+	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
 		if (tmpl_attr_to_xlat(c, &vpt) < 0) return false;
 
 		fr_assert(!tmpl_is_xlat_unresolved(map->lhs));
@@ -498,7 +498,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 		return true;
 	}
 
-	if (!paircmp_find(tmpl_da(map->lhs))) return true;
+	if (!paircmp_find(tmpl_attr_tail_da(map->lhs))) return true;
 
 	/*
 	 *	It's a pair comparison.  Do additional checks.
@@ -517,7 +517,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 	/*
 	 *	Force the RHS to be cast to whatever the LHS da is.
 	 */
-	if (tmpl_cast_set(map->rhs, tmpl_da(map->lhs)->type) < 0) {
+	if (tmpl_cast_set(map->rhs, tmpl_attr_tail_da(map->lhs)->type) < 0) {
 		cf_log_perr(map->ci, "Failed setting rhs type");
 	};
 
@@ -584,7 +584,7 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 			return false;
 		}
 
-		da = tmpl_da(map->lhs);
+		da = tmpl_attr_tail_da(map->lhs);
 
 		/*
 		 *	Resolve all children.
@@ -1001,7 +1001,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 *	ignore map->rhs.
 	 */
 	if (tmpl_is_attr(map->lhs) && tmpl_is_unresolved(map->rhs)) {
-		fr_type_t type = tmpl_da(map->lhs)->type;
+		fr_type_t type = tmpl_attr_tail_da(map->lhs)->type;
 
 		/*
 		 *	@todo - allow passing octets to
@@ -1014,10 +1014,10 @@ int unlang_fixup_update(map_t *map, void *ctx)
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
 		 */
-		if (tmpl_cast_in_place(map->rhs, type, tmpl_da(map->lhs)) < 0) {
+		if (tmpl_cast_in_place(map->rhs, type, tmpl_attr_tail_da(map->lhs)) < 0) {
 			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
 				    fr_type_to_str(FR_TYPE_STRING),
-				    fr_type_to_str(tmpl_da(map->lhs)->type));
+				    fr_type_to_str(tmpl_attr_tail_da(map->lhs)->type));
 			return -1;
 		}
 
@@ -1727,7 +1727,7 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 		return -1;
 	}
 
-	parent = tmpl_da(parent_map->lhs);
+	parent = tmpl_attr_tail_da(parent_map->lhs);
 
 	/*
 	 *	Anal-retentive checks.
@@ -1746,7 +1746,7 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
-		da = tmpl_da(map->lhs);
+		da = tmpl_attr_tail_da(map->lhs);
 		if (!da->flags.internal && parent && (parent->type != FR_TYPE_GROUP) &&
 		    (da->parent != parent)) {
 			cf_log_err(cp, "Invalid location for %s - it is not a child of %s",
@@ -1873,7 +1873,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	/*
 	 *	Can't assign to [*] or [#]
 	 */
-	num = tmpl_num(map->lhs);
+	num = tmpl_attr_tail_num(map->lhs);
 	if ((num == NUM_ALL) || (num == NUM_COUNT)) {
 		cf_log_err(cs, "Invalid array reference in %s", name);
 		goto fail;
@@ -1882,7 +1882,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	/*
 	 *	If the DA isn't structural, then it can't have children.
 	 */
-	parent_da = tmpl_da(map->lhs);
+	parent_da = tmpl_attr_tail_da(map->lhs);
 	if (fr_type_is_structural(parent_da->type)) {
 		map_t *child;
 
@@ -1896,7 +1896,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 		for (child = map_list_head(&map->child); child != NULL; child = map_list_next(&map->child, child)) {
 			if (!tmpl_is_attr(child->lhs)) continue;
 
-			if (tmpl_num(child->lhs) != NUM_UNSPEC) {
+			if (tmpl_attr_tail_num(child->lhs) != NUM_UNSPEC) {
 				cf_log_err(child->ci, "Cannot use array references and values when deleting from a list");
 				goto fail;
 			}
@@ -1995,7 +1995,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	/*
 	 *	Can't assign to [*] or [#]
 	 */
-	num = tmpl_num(map->lhs);
+	num = tmpl_attr_tail_num(map->lhs);
 	if ((num == NUM_ALL) || (num == NUM_COUNT)) {
 		cf_log_err(cp, "Invalid array reference in %s", map->lhs->name);
 		goto fail;
@@ -2856,7 +2856,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		type = tmpl_rules_cast(gext->vpt);
 
 	} else if (tmpl_is_attr(gext->vpt)) {
-		type = tmpl_da(gext->vpt)->type;
+		type = tmpl_attr_tail_da(gext->vpt)->type;
 	}
 
 	htype = fr_htrie_hint(type);
@@ -3035,7 +3035,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			fr_type_t cast_type = tmpl_rules_cast(switch_gext->vpt);
 			fr_dict_attr_t const *da = NULL;
 
- 			if (tmpl_is_attr(switch_gext->vpt)) da = tmpl_da(switch_gext->vpt);
+ 			if (tmpl_is_attr(switch_gext->vpt)) da = tmpl_attr_tail_da(switch_gext->vpt);
 
 			if (fr_type_is_null(cast_type) && da) cast_type = da->type;
 
@@ -3389,7 +3389,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		return NULL;
 	}
 
-	if ((tmpl_num(vpt) != NUM_ALL) && (tmpl_num(vpt) != NUM_UNSPEC)) {
+	if ((tmpl_attr_tail_num(vpt) != NUM_ALL) && (tmpl_attr_tail_num(vpt) != NUM_UNSPEC)) {
 		cf_log_err(cs, "MUST NOT use instance selectors in 'foreach'");
 		talloc_free(vpt);
 		return NULL;
@@ -4076,7 +4076,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 		 *	Anything resembling an integer or string is
 		 *	OK.  Nothing else makes sense.
 		 */
-		switch (tmpl_da(vpt)->type) {
+		switch (tmpl_attr_tail_da(vpt)->type) {
 		case FR_TYPE_INTEGER_EXCEPT_BOOL:
 		case FR_TYPE_STRING:
 			break;
