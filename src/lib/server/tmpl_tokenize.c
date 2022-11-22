@@ -1397,6 +1397,8 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	FR_SBUFF_SET_RETURN(name, &our_name);
 }
 
+extern fr_dict_attr_t const *tmpl_attr_unspec;
+
 static inline CC_HINT(nonnull(3,4))
 fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error_t *err,
 						tmpl_t *vpt,
@@ -1407,6 +1409,7 @@ fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error
 	*ar = (tmpl_attr_t){
 		.ar_num = NUM_UNSPEC,	/* May be changed by tmpl_attr_parse_filter */
 		.ar_type = TMPL_ATTR_TYPE_UNSPEC,
+		.ar_da = tmpl_attr_unspec,
 	};
 
 	slen = tmpl_attr_parse_filter(err, ar, name, t_rules);
@@ -4913,6 +4916,11 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "has non-zero bytes after the data.attribute struct in the union",
 					     file, line);
+		}
+
+		if (tmpl_attr_tail_da(vpt) == tmpl_attr_unspec) {
+			fr_assert(vpt->rules.cast == FR_TYPE_NULL);
+			break;
 		}
 
 		if (tmpl_attr_tail_da(vpt)->flags.is_unknown) {

@@ -62,6 +62,7 @@ static fr_dict_attr_t const *attr_packet_authentication_vector;
 static fr_dict_attr_t const *attr_request_processing_stage;
 static fr_dict_attr_t const *attr_virtual_server;
 static fr_dict_attr_t const *attr_module_return_code;
+fr_dict_attr_t const *tmpl_attr_unspec;
 
 static fr_dict_attr_autoload_t tmpl_dict_attr[] = {
 	{ .out = &attr_client_ip_address, .name = "Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
@@ -1612,6 +1613,8 @@ int tmpl_eval_cast(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, tmpl
 
 int tmpl_global_init(void)
 {
+	fr_dict_attr_t *da;
+
 	if (fr_dict_autoload(tmpl_dict) < 0) {
 		PERROR("%s", __FUNCTION__);
 		return -1;
@@ -1622,10 +1625,18 @@ int tmpl_global_init(void)
 		return -1;
 	}
 
+	da = fr_dict_unknown_attr_afrom_num(NULL, fr_dict_root(dict_freeradius), 0);
+	fr_assert(da != NULL);
+
+	da->type = FR_TYPE_NULL;
+	tmpl_attr_unspec = da;
+
 	return 0;
 }
 
 void tmpl_global_free(void)
 {
 	fr_dict_autofree(tmpl_dict);
+
+	fr_dict_unknown_free(&tmpl_attr_unspec);
 }
