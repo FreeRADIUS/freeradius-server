@@ -13,14 +13,8 @@
 
 ok	# separate updates
 
-#
-#  We need "ungroup" here, because request[*] is "all attributes with
-#  da of request", not "all attributes contained by the request VP."
-#
-#  We don't (yet) have syntax like "request.[*]", so we need this hack.
-#
 &request += {
-	&Tmp-String-1 = "%(concat:%(ungroup:%{request[*]}) ', ')"
+	&Tmp-String-1 = "%(concat:%{request.[*]} ', ')"
 }
 
 if (&Tmp-String-1 != "bob, hello, ab c, de fg, 123") {

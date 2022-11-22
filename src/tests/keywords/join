@@ -23,7 +23,7 @@
 #
 #  @todo - fix this...
 #
-&control.Tmp-String-1 := "%(concat:%(join:%(ungroup:%{request[*]}) %{control.Tmp-IP-Address-0}) '. ')"
+&control.Tmp-String-1 := "%(concat:%(join:%{request.[*]} %{control.Tmp-IP-Address-0}) '. ')"
 
 if (&control.Tmp-String-1 != "bob. hello. ab c. de fg. 123. 192.168.1.254") {
 	test_fail
