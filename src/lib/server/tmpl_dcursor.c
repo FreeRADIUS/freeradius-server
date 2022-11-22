@@ -100,8 +100,20 @@ void _tmpl_cursor_pair_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 		.ar = ar,
 		.list_ctx = list_ctx
 	};
-	fr_pair_dcursor_iter_init(&ns->cursor, list, _tmpl_cursor_child_next, ns);
 
+	/*
+	 *	Iterates over attributes of a specific type
+	 */
+	if (tmpl_is_list(cc->vpt) || ar_is_normal(ar)) {
+		fr_pair_dcursor_iter_init(&ns->cursor, list, _tmpl_cursor_child_next, ns);
+	/*
+	 *	Iterates over all attributes at this level
+	 */
+	} else if (ar_is_unspecified(ar)) {
+		fr_dcursor_init(&ns->cursor, fr_pair_list_to_dlist(list));
+	} else {
+		fr_assert_msg(0, "Invalid attr reference type");
+	}
 	tmpl_cursor_nested_push(cc, ns);
 }
 

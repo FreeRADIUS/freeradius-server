@@ -131,6 +131,7 @@ size_t tmpl_type_table_len = NUM_ELEMENTS(tmpl_type_table);
  */
 static fr_table_num_ordered_t const attr_table[] = {
 	{ L("normal"),		TMPL_ATTR_TYPE_NORMAL		},
+	{ L("unspecified"),	TMPL_ATTR_TYPE_UNSPEC	},
 	{ L("unknown"),		TMPL_ATTR_TYPE_UNKNOWN		},
 	{ L("unresolved"),	TMPL_ATTR_TYPE_UNRESOLVED	}
 };
@@ -208,6 +209,7 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 
 	switch (ar->type) {
 	case TMPL_ATTR_TYPE_NORMAL:
+	case TMPL_ATTR_TYPE_UNSPEC:
 	case TMPL_ATTR_TYPE_UNKNOWN:
 		if (!ar->da) {
 			FR_FAULT_LOG("\t[%u] %s null%s%s%s",
@@ -1034,6 +1036,9 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 	 		dst_ar->ar_da = src_ar->ar_da;
 	 		break;
 
+		case TMPL_ATTR_TYPE_UNSPEC:	/* Nothing to copy */
+			break;
+
 	 	case TMPL_ATTR_TYPE_UNKNOWN:
 	 		dst_ar->ar_unknown = fr_dict_unknown_afrom_da(dst_ar, src_ar->ar_unknown);
 	 		break;
@@ -1392,6 +1397,40 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	FR_SBUFF_SET_RETURN(name, &our_name);
 }
 
+static inline CC_HINT(nonnull(3,4))
+fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error_t *err,
+						tmpl_t *vpt,
+						fr_sbuff_t *name, tmpl_attr_rules_t const *t_rules)
+{
+	fr_slen_t	slen;
+
+	*ar = (tmpl_attr_t){
+		.ar_num = NUM_UNSPEC,	/* May be changed by tmpl_attr_parse_filter */
+		.ar_type = TMPL_ATTR_TYPE_UNSPEC,
+	};
+
+	slen = tmpl_attr_parse_filter(err, ar, name, t_rules);
+	if (slen < 0) {
+		talloc_free(ar);
+		return slen;
+	/*
+	 * No filters and no previous elements is the equivalent of '&'
+	 * which is not allowed.
+	 *
+	 * &[<filter>] is allowed as this lets us perform filtering operations
+	 * at the root.
+	 */
+	} else if ((slen == 0) && (tmpl_attr_num_elements(vpt) == 0)) {
+		fr_strerror_const("Invalid attribute name");
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
+		return -1;
+	}
+
+	tmpl_attr_insert(vpt,  ar);
+
+	return slen;
+}
+
 /** Parse an unresolved attribute, i.e. one which can't be found in the current dictionary
  *
  * This function calls itself recursively to process additional OID
@@ -1415,18 +1454,62 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
 						fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
 						fr_sbuff_t *name, tmpl_attr_rules_t const *t_rules)
 {
-	tmpl_attr_t		*ar = NULL;
-	int			ret;
+	tmpl_attr_t		*ar = NULL, *ar_curr;
+	fr_sbuff_t		our_name = FR_SBUFF(name);
+	fr_slen_t		slen;
 	char			*unresolved;
-	size_t			len;
 
 	/*
-	 *	Input too short
+	 *	Point we free from if something goes wrong.
 	 */
-	if (!fr_sbuff_extend(name)) {
-		fr_strerror_const("Missing attribute reference");
-		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
-		return -1;
+	ar_curr = tmpl_attr_list_tail(tmpl_attr(vpt));
+	for (;;) {
+		MEM(ar = talloc(ctx, tmpl_attr_t));
+		/*
+		*	Copy out a string of allowed dictionary chars to form
+		*	the unresolved attribute name.
+		*
+		*	This will be resolved later (outside of this function).
+		*/
+		slen = fr_sbuff_out_abstrncpy_allowed(ar, &unresolved,
+						      &our_name, FR_DICT_ATTR_MAX_NAME_LEN + 1,
+						      fr_dict_attr_allowed_chars);
+		if (slen == 0) {
+			slen = tmpl_attr_ref_from_unspecified_substr(ar, err, vpt, &our_name, t_rules);
+			if (slen < 0) {
+				fr_sbuff_advance(&our_name, +slen);
+			error:
+				talloc_free(ar);
+				tmpl_attr_list_talloc_free_to_tail(tmpl_attr(vpt), ar_curr);
+				return -1;
+			}
+			return fr_sbuff_set(name, &our_name);
+		} else if (slen > FR_DICT_ATTR_MAX_NAME_LEN) {
+			fr_strerror_const("Attribute name is too long");
+			if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
+			goto error;
+		}
+
+		*ar = (tmpl_attr_t){
+			.ar_num = NUM_UNSPEC,
+			.ar_type = TMPL_ATTR_TYPE_UNRESOLVED,
+			.ar_unresolved = unresolved,
+			.ar_unresolved_namespace = namespace,
+			.ar_parent = parent
+		};
+
+		if (tmpl_attr_parse_filter(err, ar, &our_name, t_rules) < 0) goto error;
+
+		/*
+		*	Insert the ar into the list of attribute references
+		*/
+		tmpl_attr_insert(vpt, ar);
+
+		/*
+		*	Once one OID component is created as unresolved all
+		*	future OID components are also unresolved.
+		*/
+		if (!fr_sbuff_next_if_char(&our_name, '.')) break;
 	}
 
 	/*
@@ -1435,57 +1518,7 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
 	 */
 	vpt->type = TMPL_TYPE_ATTR_UNRESOLVED;
 
-	MEM(ar = talloc(ctx, tmpl_attr_t));
-	/*
-	 *	Copy out a string of allowed dictionary chars to form
-	 *	the unresolved attribute name.
-	 *
-	 *	This will be resolved later (outside of this function).
-	 */
-	len = fr_sbuff_out_abstrncpy_allowed(ar, &unresolved,
-					     name, FR_DICT_ATTR_MAX_NAME_LEN + 1,
-					     fr_dict_attr_allowed_chars);
-	if (len == 0) {
-		fr_strerror_const("Invalid attribute name");
-		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
-	error:
-		talloc_free(ar);
-		return -1;
-	}
-	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_const("Attribute name is too long");
-		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
-		goto error;
-	}
-
-	*ar = (tmpl_attr_t){
-		.ar_num = NUM_UNSPEC,
-		.ar_type = TMPL_ATTR_TYPE_UNRESOLVED,
-		.ar_unresolved = unresolved,
-		.ar_unresolved_namespace = namespace,
-		.ar_parent = parent,
-	};
-
-	if (tmpl_attr_parse_filter(err, ar, name, t_rules) < 0) goto error;
-
-	/*
-	 *	Insert the ar into the list of attribute references
-	 */
-	tmpl_attr_insert(vpt, ar);
-
-	/*
-	 *	Once one OID component is created as unresolved all
-	 *	future OID components are also unresolved.
-	 */
-	if (fr_sbuff_next_if_char(name, '.')) {
-		ret = tmpl_attr_ref_afrom_unresolved_substr(ctx, err, vpt, NULL, NULL, name, t_rules);
-		if (ret < 0) {
-			tmpl_attr_list_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
-			return -1;
-		}
-	}
-
-	return 0;
+	return fr_sbuff_set(name, &our_name);
 }
 
 /** Parse an attribute reference, either an OID or attribute name
@@ -2188,10 +2221,10 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		/*
 		 *	Suppress useless casts.
 		 */
-		if (tmpl_attr_tail_da(vpt)->type == tmpl_rules_cast(vpt)) {
+		if (tmpl_attr_tail_is_normal(vpt) && (tmpl_attr_tail_da(vpt)->type == tmpl_rules_cast(vpt))) {
 			vpt->rules.cast = FR_TYPE_NULL;
 		}
-
+		
 		/*
 		 *	Ensure that the list is set correctly, so that
 		 *	the returned vpt just doesn't just match the
@@ -3689,6 +3722,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 	while ((ar = tmpl_attr_list_next(tmpl_attr(vpt), ar))) {
 		switch (ar->type) {
 		case TMPL_ATTR_TYPE_NORMAL:
+		case TMPL_ATTR_TYPE_UNSPEC:
 			continue;	/* Don't need to resolve */
 
 		case TMPL_ATTR_TYPE_UNKNOWN:
@@ -4042,6 +4076,8 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
 	}
 		break;
+	case TMPL_ATTR_TYPE_UNSPEC:	/* noop */
+		break;
 
 	case TMPL_ATTR_TYPE_UNKNOWN:
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
@@ -4095,6 +4131,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 
 		switch (ar->type) {
 		case TMPL_ATTR_TYPE_NORMAL:		/* Skip */
+		case TMPL_ATTR_TYPE_UNSPEC:
 			continue;
 
 		case TMPL_ATTR_TYPE_UNRESOLVED:		/* Shouldn't have been called */
@@ -4344,6 +4381,7 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	if (!tmpl_is_list(vpt) && (ar = tmpl_attr_list_tail(tmpl_attr(vpt)))) {
 		switch (ar->type) {
 		case TMPL_ATTR_TYPE_NORMAL:
+		case TMPL_ATTR_TYPE_UNSPEC:
 		case TMPL_ATTR_TYPE_UNKNOWN:
 			if (ar->ar_da->flags.is_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 			break;
@@ -4360,6 +4398,9 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	ar = NULL;
 	while ((ar = tmpl_attr_list_next(tmpl_attr(vpt), ar))) {
 		if (!tmpl_is_list(vpt)) switch(ar->type) {
+		case TMPL_ATTR_TYPE_UNSPEC:
+			break;
+
 		case TMPL_ATTR_TYPE_NORMAL:
 		case TMPL_ATTR_TYPE_UNKNOWN:
 		{
@@ -4706,6 +4747,27 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 			fr_fatal_assert_msg(ar->ar_parent,
 					    "CONSISTENCY CHECK FAILED %s[%u]: attr ref missing parent",
 					    file, line);
+			break;
+
+		case TMPL_ATTR_TYPE_UNSPEC:
+			if (seen_unknown) {
+				tmpl_attr_debug(vpt);
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
+						     "TMPL_TYPE_ATTR unspecified attribute "
+						     "occurred after unknown attribute %s "
+						     "in attr ref list",
+						     file, line,
+						     ar->unknown.da->name);
+			}
+			if (seen_unresolved) {
+				tmpl_attr_debug(vpt);
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
+						     "TMPL_TYPE_ATTR unspecified attribute "
+						     "occurred after unresolved attribute \"%s\""
+						     "in attr ref list",
+						     file, line,
+						     ar->ar_unresolved);
+			}
 			break;
 
 		case TMPL_ATTR_TYPE_UNRESOLVED:

@@ -384,6 +384,8 @@ struct tmpl_res_rules_s {
 
 typedef enum {
 	TMPL_ATTR_TYPE_NORMAL = 0,			//!< Normal, resolved, attribute ref.
+	TMPL_ATTR_TYPE_UNSPEC,				//!< No attribute was specified as this level
+							///< only a filter.
 	TMPL_ATTR_TYPE_UNKNOWN,				//!< We have an attribute number but
 							///< it doesn't match anything in the
 							///< dictionary, or isn't a child of
