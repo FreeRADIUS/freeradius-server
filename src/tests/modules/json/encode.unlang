@@ -35,7 +35,7 @@ if (&control.Tmp-String-5 != '{"User-Name":{"type":"string","value":"john"},"NAS
 	test_fail
 }
 
-if (&control.Tmp-String-6) {
+if !(&control.Tmp-String-6 == "") {
 	test_fail
 }
 
