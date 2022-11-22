@@ -731,7 +731,7 @@ static inline int16_t tmpl_attr_tail_num(tmpl_t const *vpt)
 /** The number of attribute references contained within a tmpl
  *
  */
-static inline size_t tmpl_attr_count(tmpl_t const *vpt)
+static inline size_t tmpl_attr_num_elements(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unresolved(vpt));

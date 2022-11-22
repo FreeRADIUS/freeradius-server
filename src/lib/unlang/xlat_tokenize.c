@@ -662,7 +662,7 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 *	Deal with virtual attributes.
 	 */
 	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
-		if (tmpl_attr_count(vpt) > 1) {
+		if (tmpl_attr_num_elements(vpt) > 1) {
 			fr_strerror_const("Virtual attributes cannot be nested.");
 			goto error;
 		}
@@ -688,7 +688,7 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 		/*
 		 *	Could it be a virtual attribute?
 		 */
-		if ((tmpl_attr_count(vpt) == (size_t) (1 + vpt->rules.attr.list_as_attr)) && (xlat_resolve_virtual_attribute(node, vpt) == 0)) goto done;
+		if ((tmpl_attr_num_elements(vpt) == (size_t) (1 + vpt->rules.attr.list_as_attr)) && (xlat_resolve_virtual_attribute(node, vpt) == 0)) goto done;
 
 		if (!t_rules || !t_rules->attr.allow_unresolved) {
 			talloc_free(vpt);
@@ -2009,7 +2009,7 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, tmpl_t **vpt_p)
 	 *	If it's a single attribute reference
 	 *	see if it's actually a virtual attribute.
 	 */
-	if (tmpl_attr_count(vpt) == 1) {
+	if (tmpl_attr_num_elements(vpt) == 1) {
 		if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
 			func = xlat_func_find(tmpl_attr_tail_da(vpt)->name, -1);
 			if (!func) {
