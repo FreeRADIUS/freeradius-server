@@ -98,36 +98,6 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, map_t const *map, edit_result_
 	}
 
 	/*
-	 *	String outputs can be interpreted as attribute references.
-	 *
-	 *	LHS of an assignment MUST be an attribute.  The RHS
-	 *	MAY be an attribute, if the stars align.
-	 */
-	if (map && map->rhs) {
-		/*
-		 *	&foo := "bar"
-		 *
-		 *	RHS can't be an attribute.
-		 */
-		if (map->rhs->quote != T_BARE_WORD) return 0;
-
-		/*
-		 *	&foo := %{bin:0102030005060708}
-		 *
-		 *	RHS is octets (or other non-string), and can't be an attribute references.
-		 */
-		if (box->type != FR_TYPE_STRING) return 0;
-
-		/*
-		 *	@todo - arguably the assignment should be something like:
-		 *
-		 *	&foo := &%{expansion}
-		 *
-		 *	To say "yes, we really want the RHS to be an attribute reference".
-		 */
-	}
-
-	/*
 	 *	Mash all of the results together.
 	 */
 	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
@@ -904,35 +874,6 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 }
 
 /*
- *	We've expanded the RHS to a value, attribute reference, etc.  Convert it to an attribute reference tmpl if necessary.
- */
-static int expanded_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
-{
-	map_t const *map = current->map;
-
-	/*
-	 *	The RHS is a list, go handle that.
-	 */
-	if (!map->rhs) {
-		return check_rhs(request, state, current);
-	}
-
-	/*
-	 *	If the expansions is a bare xlat, then it can be
-	 *	interpreted as an attribute reference.
-	 *
-	 *	In all other cases, the RHS value-box list is left alone.
-	 */
-	if (!tmpl_is_xlat(map->rhs) || (map->rhs->quote != T_BARE_WORD)) {
-		return check_rhs(request, state, current);
-	}
-
-	if (tmpl_attr_from_result(state, map, &current->rhs, request) < 0) return -1;
-
-	return check_rhs(request, state, current);
-}
-
-/*
  *	The RHS map is a sublist.  Go expand that by creating a child expansion context, and returning to the
  *	main loop.
  */
@@ -1037,7 +978,7 @@ static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit
 	if (rcode < 0) return -1;
 
 	if (rcode == 1) {
-		current->func = expanded_rhs;
+		current->func = check_rhs;
 		return 1;
 	}
 
