@@ -670,6 +670,74 @@ static inline size_t tmpl_request_ref_count(tmpl_t const *vpt)
 	return tmpl_request_list_num_elements(&vpt->data.attribute.rr);
 }
 
+/** Return true if the last attribute reference is "normal"
+ *
+ * @hidecallergraph
+ */
+static inline bool tmpl_attr_tail_is_normal(tmpl_t const *vpt)
+{
+	tmpl_attr_t *ar;
+
+	tmpl_assert_type(tmpl_is_attr(vpt));
+
+	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	if (unlikely(!ar)) return false;
+
+	return ar_is_normal(ar);
+}
+
+/** Return true if the last attribute reference is "unspecified"
+ *
+ * @hidecallergraph
+ */
+static inline bool tmpl_attr_tail_is_unspecified(tmpl_t const *vpt)
+{
+	tmpl_attr_t *ar;
+
+	tmpl_assert_type(tmpl_is_attr(vpt));
+
+	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	if (unlikely(!ar)) return false;
+
+	return ar_is_unspecified(ar);
+}
+
+/** Return true if the last attribute reference is "unknown"
+ *
+ * @hidecallergraph
+ */
+static inline bool tmpl_attr_tail_is_unknown(tmpl_t const *vpt)
+{
+	tmpl_attr_t *ar;
+
+	tmpl_assert_type(tmpl_is_attr(vpt));
+
+	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	if (unlikely(!ar)) return false;
+
+	return ar_is_unknown(ar);
+}
+
+/** Return true if the last attribute reference is "unresolved"
+ *
+ * @hidecallergraph
+ */
+static inline bool tmpl_attr_tail_is_unresolved(tmpl_t const *vpt)
+{
+	tmpl_attr_t *ar;
+
+	tmpl_assert_type(tmpl_is_attr_unresolved(vpt));
+
+	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	if (unlikely(!ar)) return false;
+
+	return ar_is_normal(ar);
+}
+
+/** Return the last attribute reference
+ *
+ * @hidecallergraph
+ */
 static inline tmpl_attr_t const *tmpl_attr_tail(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt));
@@ -677,7 +745,7 @@ static inline tmpl_attr_t const *tmpl_attr_tail(tmpl_t const *vpt)
 	return tmpl_attr_list_tail(tmpl_attr(vpt));
 }
 
-/**
+/** Return the last attribute reference da
  *
  * @hidecallergraph
  */
@@ -693,6 +761,10 @@ static inline fr_dict_attr_t const *tmpl_attr_tail_da(tmpl_t const *vpt)
 	return ar->ar_da;
 }
 
+/** Return the last attribute reference unknown da
+ *
+ * @hidecallergraph
+ */
 static inline fr_dict_attr_t const *tmpl_attr_tail_unknown(tmpl_t const *vpt)
 {
 	tmpl_attr_t *ar;
@@ -705,6 +777,10 @@ static inline fr_dict_attr_t const *tmpl_attr_tail_unknown(tmpl_t const *vpt)
 	return ar->ar_unknown;
 }
 
+/** Return the last attribute reference unresolved da
+ *
+ * @hidecallergraph
+ */
 static inline char const *tmpl_attr_tail_unresolved(tmpl_t const *vpt)
 {
 	tmpl_attr_t *ar;
@@ -717,6 +793,10 @@ static inline char const *tmpl_attr_tail_unresolved(tmpl_t const *vpt)
 	return ar->ar_unresolved;
 }
 
+/** Return the last attribute reference's attribute number
+ *
+ * @hidecallergraph
+ */
 static inline int16_t tmpl_attr_tail_num(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
