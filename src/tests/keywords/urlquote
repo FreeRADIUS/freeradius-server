@@ -49,7 +49,7 @@ if (&Tmp-String-1 != &Tmp-String-0) {
 }
 
 # Test decoding invalid encoded string
-if (&Tmp-String-2) {
+if !(&Tmp-String-2 == "") {
 	test_fail
 }
 

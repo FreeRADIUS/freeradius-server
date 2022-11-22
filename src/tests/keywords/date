@@ -47,7 +47,7 @@ if (&Tmp-String-2 != '2022-08-08 19:04:19') {
 
 # Invalid format
 &Tmp-String-3 := '201-32-22 17:25:00'
-&Tmp-String-4 := "%(sqldate:%{Tmp-String-3})"
+&Tmp-String-4 := %(sqldate:%{Tmp-String-3})
 
 # This shouldn't exist, as the RHS above is NULL, and therefore the assignment will fail
 if (&Tmp-String-4) {

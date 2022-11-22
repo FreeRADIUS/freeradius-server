@@ -16,14 +16,14 @@ if (&Module-Failure-Message[*] != "Timeout running program - killing it and fail
 	test_fail
 }
 
-if (&Tmp-String-0) {
+if !(&Tmp-String-0 == "") {
 	test_fail
 }
 
 &request -= &Tmp-String-0
 &Tmp-String-0 := "%(exec_sync:/bin/sh $ENV{MODULE_TEST_DIR}/fail.sh)"
 
-if (&Tmp-String-0) {
+if !(&Tmp-String-0 == "") {
 	test_fail
 }
 

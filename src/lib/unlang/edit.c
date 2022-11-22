@@ -484,15 +484,18 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			/*
 			 *	The caller asked for a string, so instead of returning a list, return a string.
 			 *
-			 *	@todo - this should arguably be the responsibility of xlat_push(), or
-			 *	tmpl_push().  If the input xlat/tmpl is quoted, then the output should be a
-			 *	single value-box which is the final string.
+			 *	If there's no output, then it's an empty string.
+			 *
+			 *	We have to check this here, because the quote is part of the tmpl, and we call
+			 *	xlat_push(), which doesn't know about the quote.
 			 */
 			box = fr_value_box_list_head(&current->rhs.result);
 
-			if (!box) goto no_rhs;
+			if (!box) {
+				MEM(box = fr_value_box_alloc(state, FR_TYPE_STRING, NULL, false));
+				fr_value_box_list_insert_tail(&current->rhs.result, box);
 
-			if (fr_value_box_list_concat_in_place(box, box, &current->rhs.result, FR_TYPE_STRING,
+			} else if (fr_value_box_list_concat_in_place(box, box, &current->rhs.result, FR_TYPE_STRING,
 							      FR_VALUE_BOX_LIST_FREE_BOX, true, 8192) < 0) {
 				RWDEBUG("Failed converting result to string");
 				return -1;
@@ -533,7 +536,6 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 	}
 
 	if (!box) {
-	no_rhs:
 		RWDEBUG("%s %s ... - Assignment failed to having no value on right-hand side", map->lhs->name, fr_tokens[map->op]);
 		return -1;
 	}

@@ -3,7 +3,7 @@
 #
 #  Negative limit should have failed assignment
 #
-if (&Tmp-String-0) {
+if !(&Tmp-String-0 == "") {
 	test_fail
 }
 
@@ -12,11 +12,15 @@ if (&Tmp-String-0) {
 #
 #  Invalid limit should have failed assignment
 #
-if (&Tmp-String-0) {
+if !(&Tmp-String-0 == "") {
 	test_fail
 }
 
-&Tmp-Integer-0 := "%{rand:123}"
+&Tmp-Integer-0 := %{rand:123}
+
+if (!&Tmp-Integer-0) {
+	test_fail
+}
 
 #
 #  Make sure random number is within limit

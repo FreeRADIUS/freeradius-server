@@ -20,54 +20,50 @@ subrequest Access-Request {
 				&Tmp-String-4 = &outer.User-Name
 				&Tmp-String-5 = &current.outer.User-Name
 				&Tmp-String-6 = &parent.current.outer.User-Name
+				&Tmp-String-7 = "%{parent.parent.parent.parent.User-Name}"
+				&Tmp-String-8 = "%{outer.parent.User-Name}"
 			}
-
-			#
-			#  These fail, so they belong on their own.
-			#
-			&outer.request.Tmp-String-7 := "%{parent.parent.parent.parent.User-Name}"
-			&outer.request.Tmp-String-8 := "%{outer.parent.User-Name}"
 		}
 	}
 }
 
-if (&Outer-Realm-Name != 'testing123') {
+if !(&Outer-Realm-Name == 'testing123') {
 	test_fail
 }
 
-if (&Tmp-String-0 != 'joe') {
+if !(&Tmp-String-0 == 'joe') {
 	test_fail
 }
 
-if (&Tmp-String-1 != 'jim') {
+if !(&Tmp-String-1 == 'jim') {
 	test_fail
 }
 
-if (&tmp-String-2 != 'obo') {
+if !(&Tmp-String-2 == 'obo') {
 	test_fail
 }
 
-if (&Tmp-String-3 != 'bob') {
+if !(&Tmp-String-3 == 'bob') {
 	test_fail
 }
 
-if (&Tmp-String-4 != 'bob') {
+if !(&Tmp-String-4 == 'bob') {
 	test_fail
 }
 
-if (&Tmp-String-5 != 'bob') {
+if !(&Tmp-String-5 == 'bob') {
 	test_fail
 }
 
-if (&Tmp-String-6 != 'bob') {
+if !(&Tmp-String-6 == 'bob') {
 	test_fail
 }
 
-if (&Tmp-String-7) {
+if !(&Tmp-String-7 == "") {
 	test_fail
 }
 
-if (&Tmp-String-8) {
+if !(&Tmp-String-8 == "") {
 	test_fail
 }
 
