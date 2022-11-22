@@ -1219,7 +1219,7 @@ static int expanded_lhs_attribute(request_t *request, unlang_frame_state_edit_t 
 {
 	REXDENT();
 
-	if (tmpl_attr_from_result(state, NULL, &current->lhs, request) < 0) return -1;
+	if (tmpl_attr_from_result(state, current->map, &current->lhs, request) < 0) return -1;
 
 	return current->check_lhs(request, state, current);
 }
