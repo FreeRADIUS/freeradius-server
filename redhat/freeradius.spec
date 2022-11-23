@@ -38,7 +38,7 @@
 
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
-Version: 4.0.0
+Version: %{?version}%{!?version:4.0.0}
 Release: %{?_release}%{!?_release:1}%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Daemons

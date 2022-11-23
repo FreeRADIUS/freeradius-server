@@ -479,7 +479,7 @@ rpm: rpmbuild/SOURCES/freeradius-server-$(PKG_VERSION).tar.bz2
 		cat rpmbuild/builddep.log; \
 		exit 1; \
 	fi
-	@cwd=`pwd` && cd redhat && QA_RPATHS=0x0003 rpmbuild --define "_topdir $$cwd/rpmbuild" -bb $(RPMBUILD_FLAGS) freeradius.spec
+	@cwd=`pwd` && cd redhat && QA_RPATHS=0x0003 rpmbuild --define "_topdir $$cwd/rpmbuild" --define "version $(PKG_VERSION)" -bb $(RPMBUILD_FLAGS) freeradius.spec
 
 # Developer checks
 .PHONY: warnings
