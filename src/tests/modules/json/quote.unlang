@@ -20,7 +20,7 @@ if (&Module-Failure-Message) {
 }
 
 # Check for correct handling of null input
-&Tmp-String-4 := "%{jsonquote:}"
+&Tmp-String-4 := %{jsonquote:}
 
 if (&Tmp-String-4) {
 	test_fail
