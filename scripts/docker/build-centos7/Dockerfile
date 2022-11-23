@@ -8,7 +8,7 @@ ARG branch=master
 ARG dh_key_size=2048
 
 WORKDIR /usr/local/src/repositories/freeradius-server
-RUN git checkout ${branch}
+RUN git fetch --prune --unshallow && git checkout ${branch}
 RUN CC=${cc} scl enable devtoolset-8 './configure --prefix=/opt/freeradius --with-jsonc-lib-dir=/opt/nwkrad/lib64 --with-jsonc-include-dir=/opt/nwkrad/include --with-openssl-lib-dir=/opt/nwkrad/lib64 --with-openssl-include-dir=/opt/nwkrad/include'
 RUN scl enable devtoolset-8 'make -j$(($(getconf _NPROCESSORS_ONLN) + 1))'
 RUN scl enable devtoolset-8 'make install'

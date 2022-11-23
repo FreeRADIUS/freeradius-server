@@ -8,7 +8,7 @@ ARG branch=master
 ARG dh_key_size=2048
 
 WORKDIR /usr/local/src/repositories/freeradius-server
-RUN git checkout ${branch}
+RUN git fetch --prune --unshallow && git checkout ${branch}
 RUN CC=${cc} ./configure --prefix=/opt/freeradius
 RUN make -j$(($(getconf _NPROCESSORS_ONLN) + 1))
 RUN make install
