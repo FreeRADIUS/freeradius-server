@@ -417,17 +417,11 @@ freeradius-server-$(PKG_VERSION).tar.bz2: freeradius-server-$(PKG_VERSION).tar
 
 # high-level targets
 .PHONY: dist-check
-dist-check: redhat/freeradius.spec suse/freeradius.spec debian/changelog
+dist-check: redhat/freeradius.spec debian/changelog
 	@if [ `grep ^Version: redhat/freeradius.spec | sed 's/.*://;s/ //'` != "$(PKG_VERSION)" ]; then \
 		cat redhat/freeradius.spec | sed 's/^Version: .*/Version: $(PKG_VERSION)/' > redhat/.foo; \
 		mv redhat/.foo redhat/freeradius.spec; \
 		echo redhat/freeradius.spec 'Version' needs to be updated; \
-		exit 1; \
-	fi
-	@if [ `grep ^Version: suse/freeradius.spec | sed 's/.*://;s/ //'` != "$(PKG_VERSION)" ]; then \
-		cat suse/freeradius.spec | sed 's/^Version: .*/Version: $(PKG_VERSION)/' > suse/.foo; \
-		mv suse/.foo suse/freeradius.spec; \
-		echo suse/freeradius.spec 'Version' needs to be updated; \
 		exit 1; \
 	fi
 	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/-0).*//;s/-1).*//;s/\+.*//'`  != "$(PKG_VERSION)" ]; then \
