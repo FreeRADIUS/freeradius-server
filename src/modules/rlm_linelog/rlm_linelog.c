@@ -710,6 +710,7 @@ build_vector:
 			}
 
 			if (writev(fd, &head_vector_s[0], head_vector_len) < 0) {
+			write_fail:
 				RERROR("Failed writing to \"%s\": %s", path, fr_syserror(errno));
 				exfile_close(inst->file.ef, fd);
 
@@ -720,15 +721,7 @@ build_vector:
 			}
 		}
 
-		if (writev(fd, vector_p, vector_len) < 0) {
-			RERROR("Failed writing to \"%s\": %s", path, fr_syserror(errno));
-			exfile_close(inst->file.ef, fd);
-
-			/* Assert on the extra fatal errors */
-			fr_assert((errno != EINVAL) && (errno != EFAULT));
-
-			RETURN_MODULE_FAIL;
-		}
+		if (writev(fd, vector_p, vector_len) < 0) goto write_fail;
 
 		exfile_close(inst->file.ef, fd);
 	}
