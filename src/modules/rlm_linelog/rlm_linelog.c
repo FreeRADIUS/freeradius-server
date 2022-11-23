@@ -693,6 +693,7 @@ build_vector:
 					  linelog_escape_func, NULL);
 			if (slen < 0) {
 				rcode = RLM_MODULE_FAIL;
+				exfile_close(inst->file.ef, fd);
 				goto finish;
 			}
 
