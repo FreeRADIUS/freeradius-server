@@ -60,19 +60,19 @@ ifeq "$(RADIUSD_VERSION)" ""
 
   # Default to an incremental version of 0 if we're not building from git
   RADIUSD_VERSION_INCRM := $(shell git status > /dev/null 2>&1 && git describe --tags --match 'branch_*' --match 'release_*' | cut -d '-' -f 2)
+endif
 
+ifeq "$(RADIUSD_VERSION_INCRM)" ""
+  RADIUSD_VERSION_INCRM := $(shell cat VERSION | cut -d '.' -f 3)
+  PKG_VERSION_SUFFIX :=
   ifeq "$(RADIUSD_VERSION_INCRM)" ""
-    RADIUSD_VERSION_INCRM := $(shell cat VERSION | cut -d '.' -f 3)
-    PKG_VERSION_SUFFIX :=
-    ifeq "$(RADIUSD_VERSION_INCRM)" ""
-      RADIUSD_VERSION_SEP :=
-    else
-      RADIUSD_VERSION_SEP := .
-    endif
+    RADIUSD_VERSION_SEP :=
   else
-    PKG_VERSION_SUFFIX := +git
-    RADIUSD_VERSION_SEP := ~
+    RADIUSD_VERSION_SEP := .
   endif
+else
+  PKG_VERSION_SUFFIX := +git
+  RADIUSD_VERSION_SEP := ~
 endif
 
 PKG_VERSION := $(RADIUSD_VERSION_MAJOR).$(RADIUSD_VERSION_MINOR)$(RADIUSD_VERSION_SEP)$(RADIUSD_VERSION_INCRM)$(PKG_VERSION_SUFFIX)
@@ -418,13 +418,12 @@ freeradius-server-$(PKG_VERSION).tar.bz2: freeradius-server-$(PKG_VERSION).tar
 # high-level targets
 .PHONY: dist-check
 dist-check: redhat/freeradius.spec debian/changelog
-	@if [ `grep ^Version: redhat/freeradius.spec | sed 's/.*://;s/ //'` != "$(PKG_VERSION)" ]; then \
-		cat redhat/freeradius.spec | sed 's/^Version: .*/Version: $(PKG_VERSION)/' > redhat/.foo; \
+	@if [ `grep '^%global _version' redhat/freeradius.spec | cut -d' ' -f3` != "$(PKG_VERSION)" ]; then \
+		sed 's/^%global _version .*/%global _version $(PKG_VERSION)/' redhat/freeradius.spec > redhat/.foo; \
 		mv redhat/.foo redhat/freeradius.spec; \
-		echo redhat/freeradius.spec 'Version' needs to be updated; \
-		exit 1; \
+		echo Updated redhat/freeradius.spec '_version' to $(PKG_VERSION); \
 	fi
-	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/-0).*//;s/-1).*//;s/\+.*//'`  != "$(PKG_VERSION)" ]; then \
+	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/).*//'` != "$(PKG_VERSION)" ]; then \
 		echo debian/changelog needs to be updated; \
 		exit 1; \
 	fi
@@ -473,7 +472,7 @@ rpm: rpmbuild/SOURCES/freeradius-server-$(PKG_VERSION).tar.bz2
 		cat rpmbuild/builddep.log; \
 		exit 1; \
 	fi
-	@cwd=`pwd` && cd redhat && QA_RPATHS=0x0003 rpmbuild --define "_topdir $$cwd/rpmbuild" -bb $(RPMBUILD_FLAGS) freeradius.spec
+	@cwd=`pwd` && cd redhat && QA_RPATHS=0x0003 rpmbuild --define "_topdir $$cwd/rpmbuild" --define "version $(PKG_VERSION)" -bb $(RPMBUILD_FLAGS) freeradius.spec
 
 # Developer checks
 .PHONY: warnings

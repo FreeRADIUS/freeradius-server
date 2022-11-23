@@ -4,6 +4,8 @@
 %bcond_with wbclient
 %bcond_without ldap
 
+%global _version 4.0
+
 # Many distributions have extremely old versions of OpenSSL
 # if you'd like to build with the FreeRADIUS openssl packages
 # which are installed in /opt/openssl you should pass
@@ -38,7 +40,7 @@
 
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
-Version: 4.0.0
+Version: %{?version}%{!?version:%{_version}}
 Release: %{?_release}%{!?_release:1}%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Daemons
