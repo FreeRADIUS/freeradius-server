@@ -450,6 +450,13 @@ int trigger_exec(unlang_interpret_t *intp,
 		}
 	}
 
+	if (xlat_instantiate_ephemeral(trigger->xlat,
+				       (intp ? unlang_interpret_event_list(request) : main_loop_event_list())) < 0) {
+		fr_strerror_const("Failed performing ephemeral instantiation for xlat");
+		talloc_free(request);
+		return -1;
+	}
+
 	if (unlang_function_push(request, trigger_run, trigger_resume,
 				 NULL, UNLANG_TOP_FRAME, trigger) < 0) goto error;
 
