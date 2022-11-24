@@ -96,7 +96,15 @@ ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type
 					  fr_table_str_by_value(fr_time_precision_table, flags->flag_time_res, "?"));
 	}
 
+	/*
+	 *	Remove trailing commas.
+	 */
 	fr_sbuff_trim(&our_out, (bool[UINT8_MAX + 1]){ [','] = true });
+
+	/*
+	 *	Ensure that the buffer is initialized.
+	 */
+	if (fr_sbuff_used(&our_out) == 0) FR_SBUFF_IN_CHAR_RETURN(&our_out, '\0');
 
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
