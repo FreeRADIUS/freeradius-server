@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file unlang/map_priv.h
+ * @file unlang/edit_priv.h
  *
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
