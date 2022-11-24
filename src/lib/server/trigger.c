@@ -83,7 +83,8 @@ xlat_action_t trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	head = request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
 
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), in_head->vb_strvalue);
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict ? request->dict : fr_dict_internal()),
+				  in_head->vb_strvalue);
 	if (!da) {
 		ERROR("Unknown attribute \"%pV\"", in_head);
 		return XLAT_ACTION_FAIL;
