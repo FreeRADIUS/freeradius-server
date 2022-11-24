@@ -40,8 +40,15 @@ RCSID("$Id$")
 #endif
 #include <assert.h>
 
+typedef enum {
+	RADICT_OUT_FANCY = 1,
+	RADICT_OUT_CSV
+} radict_out_t;
+
 static fr_dict_t *dicts[255];
 static bool print_values = false;
+static bool print_headers = false;
+static radict_out_t output_format = RADICT_OUT_FANCY;
 static fr_dict_t **dict_end = dicts;
 
 DIAG_OFF(unused-macros)
@@ -58,6 +65,8 @@ static void usage(void)
 	fprintf(stderr, "  -D <dictdir>     Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -p <protocol>    Set protocol by name\n");
 	fprintf(stderr, "  -x               Debugging mode.\n");
+	fprintf(stderr, "  -c               Print out in CSV format.\n");
+	fprintf(stderr, "  -H               Show the headers of each field.\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Very simple interface to extract attribute definitions from FreeRADIUS dictionaries\n");
 }
@@ -157,12 +166,28 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 
 	/* Protocol Name Type */
 	/* coverity[uninit_use_in_call] */
-	printf("%s\t%s\t%s\t%s\t%s\n",
-	       fr_dict_root(dict)->name,
-	       oid_str,
-	       da->name,
-	       fr_type_to_str(da->type),
-	       flags);
+
+	switch(output_format) {
+		case RADICT_OUT_CSV:
+			printf("%s,%s,%s,%d,%s,%s\n",
+			       fr_dict_root(dict)->name,
+			       oid_str,
+			       da->name,
+			       da->attr,
+			       fr_type_to_str(da->type),
+			       flags);
+			break;
+
+		case RADICT_OUT_FANCY:
+		default:
+			printf("%s\t%s\t%s\t%d\t%s\t%s\n",
+			       fr_dict_root(dict)->name,
+			       oid_str,
+			       da->name,
+			       da->attr,
+			       fr_type_to_str(da->type),
+			       flags);
+	}
 
 	if (print_values) {
 		fr_dict_attr_ext_enumv_t	*ext;
@@ -175,14 +200,33 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 		     enumv = fr_hash_table_iter_next(ext->value_by_name, &iter)) {
 		     	char *str;
 
-			str = fr_asprintf(NULL, "%s\t%s\t%s\t%s\t%s\t%s\t%pV",
-					 fr_dict_root(dict)->name,
-					 oid_str,
-					 da->name,
-	       			    	 fr_type_to_str(da->type),
-	       			    	 flags,
-	       			    	 enumv->name,
-	       			    	 enumv->value);
+
+			switch(output_format) {
+				case RADICT_OUT_CSV:
+					str = fr_asprintf(NULL, "%s,%s,%s,%d,%s,%s,%s,%pV",
+								fr_dict_root(dict)->name,
+								oid_str,
+								da->name,
+								da->attr,
+								fr_type_to_str(da->type),
+								flags,
+								enumv->name,
+								enumv->value);
+					break;
+
+				case RADICT_OUT_FANCY:
+				default:
+					str = fr_asprintf(NULL, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%pV",
+								fr_dict_root(dict)->name,
+								oid_str,
+								da->name,
+								da->attr,
+								fr_type_to_str(da->type),
+								flags,
+								enumv->name,
+								enumv->value);
+			}
+
 			printf("%s\n", str);
 			talloc_free(str);
 		}
@@ -272,7 +316,15 @@ int main(int argc, char *argv[])
 
 	fr_debug_lvl = 1;
 
-	while ((c = getopt(argc, argv, "fED:p:Vxh")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "cfED:p:VxhH")) != -1) switch (c) {
+		case 'c':
+			output_format = RADICT_OUT_CSV;
+			break;
+
+		case 'H':
+			print_headers = true;
+			break;
+
 		case 'f':
 			file_export = true;
 			break;
@@ -340,6 +392,16 @@ int main(int argc, char *argv[])
 		fr_perror("radict: No dictionaries loaded");
 		ret = 1;
 		goto finish;
+	}
+
+	if (print_headers) switch(output_format) {
+		case RADICT_OUT_CSV:
+			printf("Dictionary,OID,Attribute,ID,Type,Flags\n");
+			break;
+
+		case RADICT_OUT_FANCY:
+		default:
+			printf("Dictionary\tOID\tAttribute\tID\tType\tFlags\n");
 	}
 
 	if (file_export) {
