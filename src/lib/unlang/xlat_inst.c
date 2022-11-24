@@ -253,7 +253,7 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
  * @note Epehemeral xlats must not be shared between requests.
  *
  * @param[in] node	to create "ephemeral" instance data for.
- * @param[in] uctx	UNUSED.
+ * @param[in] uctx	event list passed to xlat thread instantiation functions.
  * @return
  *	- 0 if instantiation functions were successful.
  *	- -1 if either instantiation function failed.
