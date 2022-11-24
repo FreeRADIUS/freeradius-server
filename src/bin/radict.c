@@ -157,10 +157,11 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 
 	/* Protocol Name Type */
 	/* coverity[uninit_use_in_call] */
-	printf("%s\t%s\t%s\t%s\t%s\n",
+	printf("%s\t%s\t%s\t%d\t%s\t%s\n",
 	       fr_dict_root(dict)->name,
 	       oid_str,
 	       da->name,
+	       da->attr,
 	       fr_type_to_str(da->type),
 	       flags);
 
