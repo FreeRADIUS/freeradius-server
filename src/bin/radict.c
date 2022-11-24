@@ -148,6 +148,8 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 	fr_hash_iter_t		iter;
 	fr_dict_enum_value_t		*enumv;
 
+	memset(flags, '\0', sizeof(flags));
+
 	if (fr_dict_attr_oid_print(&FR_SBUFF_OUT(oid_str, sizeof(oid_str)), NULL, da, false) <= 0) {
 		fr_strerror_printf("OID string too long");
 		fr_exit(EXIT_FAILURE);
