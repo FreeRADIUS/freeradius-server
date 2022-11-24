@@ -82,6 +82,7 @@ typedef enum {
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
 	UNLANG_TYPE_TMPL,			//!< asynchronously expand a tmpl_t
 	UNLANG_TYPE_EDIT,			//!< edit VPs in place.  After 20 years!
+	UNLANG_TYPE_VARIABLE,			//!< local variables
 	UNLANG_TYPE_MAX
 } unlang_type_t;
 

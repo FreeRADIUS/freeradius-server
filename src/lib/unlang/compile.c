@@ -43,6 +43,7 @@ RCSID("$Id$")
 #include "edit_priv.h"
 #include "timeout_priv.h"
 #include "limit_priv.h"
+#include "variable_priv.h"
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
@@ -748,6 +749,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
 		case UNLANG_TYPE_RETURN:
 		case UNLANG_TYPE_TMPL:
 		case UNLANG_TYPE_XLAT:
+		case UNLANG_TYPE_VARIABLE:
 			DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
 			break;
 		}
@@ -2023,9 +2025,104 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
  *  Definitions which are adjacent to one another are automatically merged
  *  into one larger variable definition.
  */
-static unlang_t *compile_variable(UNUSED unlang_t *parent, UNUSED unlang_compile_t *unlang_ctx, UNUSED unlang_t **prev, UNUSED CONF_PAIR *cp)
+static unlang_t *compile_variable(unlang_t *parent, UNUSED unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_PAIR *cp, UNUSED tmpl_rules_t *t_rules)
 {
-	return UNLANG_IGNORE;
+	unlang_variable_t *var, *var_free;
+	unlang_t	*c = NULL, *out = UNLANG_IGNORE;
+	fr_type_t	type;
+	char const	*attr, *value;
+	fr_dict_attr_t const *da;
+
+	fr_dict_attr_flags_t flags = {
+		.internal = true,
+	};
+
+	c = *prev;
+	var = var_free = NULL;
+
+	if (c && (c->type == UNLANG_TYPE_EDIT)) {
+		var = unlang_generic_to_variable(c);
+
+	} else {
+		var = talloc_zero(parent, unlang_variable_t);
+		if (!var) return NULL;
+
+		c = out = unlang_variable_to_generic(var);
+		c->parent = parent;
+		c->next = NULL;
+		c->name = cf_pair_value(cp);
+		c->debug_name = c->name;
+		c->type = UNLANG_TYPE_VARIABLE;
+		c->ci = CF_TO_ITEM(cp);
+
+		var_free = var;
+
+		var->dict = fr_dict_protocol_alloc(c);
+		if (!var->dict) {
+			talloc_free(var);
+			return NULL;
+		}
+		var->root = fr_dict_root(var->dict);
+
+		var->max_attr = 1;
+
+		/*
+		 *	Initialize the new rules, and point them to the parent rules.
+		 *
+		 *	Then replace the parse rules with our rules, and our dictionary.
+		 */
+		*t_rules = *unlang_ctx->rules;
+		t_rules->parent = unlang_ctx->rules;
+
+		t_rules->attr.dict_def = var->dict;
+		t_rules->attr.parent = NULL;
+
+#if 0
+		unlang_ctx->rules = t_rules;
+#endif
+	}
+
+	attr = cf_pair_attr(cp);	/* data type */
+	value = cf_pair_value(cp);	/* variable name */
+
+	type = fr_table_value_by_str(fr_type_table, attr, FR_TYPE_NULL);
+	if (type == FR_TYPE_NULL) {
+		talloc_free(var_free);
+		cf_log_err(cp, "Invalid data type '%s'", attr);
+		return NULL;
+	}
+
+	/*
+	 *	No local dups
+	 */
+	da = fr_dict_attr_by_name(NULL, var->root, value);
+	if (da) {
+		talloc_free(var_free);
+		cf_log_err(cp, "Duplicate variable name '%s'.", value);
+		return NULL;
+	}
+
+	/*
+	 *	No overlap
+	 */
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(t_rules->parent->attr.dict_def), value);
+	if (da) {
+		talloc_free(var_free);
+		cf_log_err(cp, "Local variable '%s' duplicates a dictionary attribute.", value);
+		return NULL;
+	}
+
+	if (fr_dict_attr_add(var->dict, var->root, value, var->max_attr, type, &flags) < 0) {
+		talloc_free(var_free);
+		cf_log_err(cp, "Failed adding variable '%s'", value);
+		return NULL;
+	}
+
+	var->max_attr++;
+
+	*prev = c;
+
+	return out;
 }
 
 /*
@@ -2363,7 +2460,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 }
 
 
-static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ctx)
+static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ctx_in)
 {
 	CONF_ITEM	*ci = NULL;
 	unlang_t	*c, *single;
@@ -2371,8 +2468,18 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	char const	*skip_else = NULL;
 	unlang_t	*edit = NULL;
 	unlang_t	*var = NULL;
+	unlang_compile_t *unlang_ctx;
+	unlang_compile_t unlang_ctx2;
+	tmpl_rules_t	t_rules;
 
 	c = unlang_group_to_generic(g);
+
+	/*
+	 *	Create our own compilation context which can be edited
+	 *	by a variable definition.
+	 */
+	compile_copy_context(&unlang_ctx2, unlang_ctx_in, unlang_ctx_in->component);
+	unlang_ctx = &unlang_ctx2;
 
 	/*
 	 *	Loop over the children of this group.
@@ -2387,8 +2494,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		if (cf_item_is_section(ci)) {
 			char const *name = NULL;
 			CONF_SECTION *subcs = cf_item_to_section(ci);
-
-			var = NULL;
 
 			/*
 			 *	Skip precompiled blocks.  This is
@@ -2505,8 +2610,12 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			 *	Variable definition.
 			 */
 			if (cf_pair_operator(cp) == T_OP_CMP_TRUE) {
-				single = compile_variable(c, unlang_ctx, &var, cp);
-				goto check_single;
+				single = compile_variable(c, unlang_ctx, &var, cp, &t_rules);
+				if (!single) {
+					talloc_free(c);
+					return NULL;
+				}
+				goto add_child;
 			}
 
 			var = NULL;
@@ -2526,7 +2635,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			 *	etc."
 			 */
 			single = compile_item(c, unlang_ctx, ci);
-		check_single:
 			if (!single) {
 				cf_log_err(ci, "Invalid keyword \"%s\".", attr);
 				talloc_free(c);
