@@ -102,6 +102,7 @@ struct cf_section {
 	int			depth;
 	int			allow_unlang;	//!< depth at which we allow unlang
 	bool			attr;		//!< is this thing an attribute definition?
+	bool			allow_locals;	//!< allow local variables
 
 	CONF_SECTION		*template;
 };

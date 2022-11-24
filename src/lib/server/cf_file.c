@@ -1529,7 +1529,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 
 	stack->ptr = ptr;
 
-	cs->allow_unlang = true;
+	cs->allow_unlang = cs->allow_locals = true;
 	return cf_section_to_item(cs);
 }
 
@@ -1743,7 +1743,7 @@ alloc_section:
 	stack->ptr = ptr;
 	frame->special = css;
 
-	css->allow_unlang = true;
+	css->allow_unlang = css->allow_locals = true;
 	return cf_section_to_item(css);
 }
 
@@ -1979,7 +1979,10 @@ static int parse_input(cf_stack_t *stack)
 			      frame->filename, frame->lineno, buff[1]);
 			return -1;
 		}
-	} else {
+
+	} else if (name1_token == T_BARE_WORD) {
+		fr_type_t type;
+
 		process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
 		if (process) {
 			CONF_ITEM *ci;
@@ -1989,6 +1992,7 @@ static int parse_input(cf_stack_t *stack)
 			ptr = stack->ptr;
 			if (!ci) return -1;
 			if (cf_item_is_section(ci)) {
+				parent->allow_locals = false;
 				css = cf_item_to_section(ci);
 				goto add_section;
 			}
@@ -1998,16 +2002,43 @@ static int parse_input(cf_stack_t *stack)
 			 */
 			goto added_pair;
 		}
+
+		/*
+		 *	The next token is an assignment operator, so we ignore it.
+		 */
+		if (!isalnum((int) *ptr)) goto check_for_eol;
+
+		/*
+		 *	Else check for a typedef.
+		 */
+		type = fr_table_value_by_str(fr_type_table, buff[1], FR_TYPE_NULL);
+		if (type == FR_TYPE_NULL) {
+			parent->allow_locals = false;
+			goto check_for_eol;
+		}
+
+		if (!parent->allow_locals) {
+			ERROR("%s[%d]: Parse error: Invalid location for variable definition",
+			      frame->filename, frame->lineno);
+			return -1;
+		}
+
+		/*
+		 *	We don't have an operastor, so set it to a magic value.
+		 */
+		op_token = T_OP_CMP_TRUE;
+		goto parse_name;
 	}
 
 	/*
 	 *	parent single word is done.  Create a CONF_PAIR.
 	 */
+check_for_eol:
 	if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';') || (*ptr == '}')) {
 		value_token = T_INVALID;
 		op_token = T_OP_EQ;
 		value = NULL;
-		goto do_set;
+		goto alloc_pair;
 	}
 
 	/*
@@ -2082,8 +2113,15 @@ static int parse_input(cf_stack_t *stack)
 			if (strcmp(css->name1, "server") == 0) css->allow_unlang = 2;
 			if (strcmp(css->name1, "policy") == 0) css->allow_unlang = 2;
 
-		} else if (parent->allow_unlang) {
-			css->allow_unlang = 1;
+		} else if ((parent->allow_unlang == 2) && (strcmp(css->name1, "listen") == 0)) { /* hacks for listeners */
+			css->allow_unlang = css->allow_locals = false;
+
+		} else {
+			/*
+			 *	Allow unlang if the parent allows it, but don't allow
+			 *	unlang in list assignment sections.
+			 */
+			css->allow_unlang = css->allow_locals = parent->allow_unlang && !fr_list_assignment_op[name2_token];
 		}
 
 	add_section:
@@ -2207,6 +2245,7 @@ static int parse_input(cf_stack_t *stack)
 		goto alloc_section;
 	}
 
+parse_name:
 	/*
 	 *	Parse the value for a CONF_PAIR.
 	 */
@@ -2219,11 +2258,12 @@ static int parse_input(cf_stack_t *stack)
 	/*
 	 *	Add parent CONF_PAIR to our CONF_SECTION
 	 */
-do_set:
+alloc_pair:
 	if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff[3], frame->filename, frame->lineno) < 0) return -1;
 
 added_pair:
 	fr_skip_whitespace(ptr);
+	parent->allow_locals = false;
 
 	/*
 	 *	Skip semicolon if we see it after a

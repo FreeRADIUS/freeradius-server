@@ -2018,6 +2018,16 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	return out;
 }
 
+/** Compile a variable definition.
+ *
+ *  Definitions which are adjacent to one another are automatically merged
+ *  into one larger variable definition.
+ */
+static unlang_t *compile_variable(UNUSED unlang_t *parent, UNUSED unlang_compile_t *unlang_ctx, UNUSED unlang_t **prev, UNUSED CONF_PAIR *cp)
+{
+	return UNLANG_IGNORE;
+}
+
 /*
  *	Compile action && rcode for later use.
  */
@@ -2360,6 +2370,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	bool		was_if = false;
 	char const	*skip_else = NULL;
 	unlang_t	*edit = NULL;
+	unlang_t	*var = NULL;
 
 	c = unlang_group_to_generic(g);
 
@@ -2376,6 +2387,8 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		if (cf_item_is_section(ci)) {
 			char const *name = NULL;
 			CONF_SECTION *subcs = cf_item_to_section(ci);
+
+			var = NULL;
 
 			/*
 			 *	Skip precompiled blocks.  This is
@@ -2466,6 +2479,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			}
 
 			goto add_child;
+
 		} else if (cf_item_is_pair(ci)) {
 			char const *attr;
 			CONF_PAIR *cp = cf_item_to_pair(ci);
@@ -2488,6 +2502,16 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			edit = NULL; /* no longer doing implicit merging of edits */
 
 			/*
+			 *	Variable definition.
+			 */
+			if (cf_pair_operator(cp) == T_OP_CMP_TRUE) {
+				single = compile_variable(c, unlang_ctx, &var, cp);
+				goto check_single;
+			}
+
+			var = NULL;
+
+			/*
 			 *	Bare "foo = bar" is disallowed.
 			 */
 			if (cf_pair_value(cp) != NULL) {
@@ -2502,6 +2526,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			 *	etc."
 			 */
 			single = compile_item(c, unlang_ctx, ci);
+		check_single:
 			if (!single) {
 				cf_log_err(ci, "Invalid keyword \"%s\".", attr);
 				talloc_free(c);
