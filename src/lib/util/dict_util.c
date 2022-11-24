@@ -3374,6 +3374,57 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	return dict;
 }
 
+/** Allocate a new local dictionary
+ *
+ * @param[in] ctx to allocate dictionary in.
+ * @return
+ *	- NULL on memory allocation error.
+ *
+ *  This dictionary cannot define vendors, or inter-dictionary
+ *  dependencies.  However, we initialize the relevant fields just in
+ *  case.  We should arguably just skip initializing those fields, and
+ *  just allow the server to crash if programmers do something stupid with it.
+ */
+fr_dict_t *fr_dict_protocol_alloc(TALLOC_CTX *ctx)
+{
+	fr_dict_t *dict;
+	fr_dict_attr_t *da;
+
+	fr_dict_attr_flags_t flags = {
+		.is_root = 1,
+		.type_size = 2,
+		.length = 2
+	};
+
+
+	dict = dict_alloc(ctx);
+	if (!dict) return NULL;
+
+	/*
+	 *	Allow for 64k local attributes.
+	 */
+	dict->default_type_size = 2;
+	dict->default_type_length = 2;
+	dict->self_allocated = (1 << 24);
+
+	/*
+	 *	Allocate the root attribute.  This dictionary is
+	 *	always protocol "local", and number "0".
+	 */
+	da = dict_attr_alloc(dict->pool, NULL, "local", 0, FR_TYPE_TLV,
+			     &(dict_attr_args_t){ .flags = &flags });
+	if (unlikely(!da)) {
+		talloc_free(dict);
+		return NULL;
+	}
+
+	dict->root = da;
+	dict->root->dict = dict;
+	DA_VERIFY(dict->root);
+
+	return dict;
+}
+
 /** Decrement the reference count on a previously loaded dictionary
  *
  * @param[in] dict	to free.

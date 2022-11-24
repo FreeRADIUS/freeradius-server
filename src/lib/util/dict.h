@@ -587,6 +587,8 @@ int			fr_dict_internal_afrom_file(fr_dict_t **out, char const *internal_name,
 int			fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char const *proto_dir,
 						    char const *dependent);
 
+fr_dict_t		*fr_dict_protocol_alloc(TALLOC_CTX *ctx);
+
 int			fr_dict_read(fr_dict_t *dict, char const *dict_dir, char const *filename);
 /** @} */
 
