@@ -1312,14 +1312,14 @@ static inline CC_HINT(always_inline) void tmpl_attr_insert(tmpl_t *vpt, tmpl_att
  * @param[out] err	Parse error code.
  * @param[in] ar	to populate filter for.
  * @param[in] name	containing more attribute ref data.
- * @param[in] t_rules	see tmpl_attr_afrom_attr_substr.
+ * @param[in] at_rules	see tmpl_attr_afrom_attr_substr.
  * @return
  *	- >0 if a filter was parsed.
  *	- 0 if no filter was available.
  *	- <0 on filter parse error.
  */
 static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
-					fr_sbuff_t *name, tmpl_attr_rules_t const *t_rules)
+					fr_sbuff_t *name, tmpl_attr_rules_t const *at_rules)
 {
 	fr_sbuff_t our_name = FR_SBUFF(name);
 
@@ -1328,7 +1328,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	 */
 	if (!fr_sbuff_next_if_char(&our_name, '[')) return 0;
 
-	if (t_rules->disallow_filters) {
+	if (at_rules->disallow_filters) {
 		fr_strerror_const("Filters not allowed here");
 		if (err) *err = TMPL_ATTR_ERROR_FILTER_NOT_ALLOWED;
 		fr_sbuff_set_to_start(&our_name);
@@ -1402,7 +1402,7 @@ extern fr_dict_attr_t const *tmpl_attr_unspec;
 static inline CC_HINT(nonnull(3,4))
 fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error_t *err,
 						tmpl_t *vpt,
-						fr_sbuff_t *name, tmpl_attr_rules_t const *t_rules)
+						fr_sbuff_t *name, tmpl_attr_rules_t const *at_rules)
 {
 	fr_slen_t	slen;
 
@@ -1412,7 +1412,7 @@ fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error
 		.ar_da = tmpl_attr_unspec,
 	};
 
-	slen = tmpl_attr_parse_filter(err, ar, name, t_rules);
+	slen = tmpl_attr_parse_filter(err, ar, name, at_rules);
 	if (slen < 0) {
 		talloc_free(ar);
 		return slen;
@@ -1446,7 +1446,7 @@ fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error
  * @param[in,out] vpt		to append this reference to.
  * @param[in] parent		Last known parent.
  * @param[in] name		to parse.
- * @param[in] t_rules		see tmpl_attr_afrom_attr_substr.
+ * @param[in] at_rules		see tmpl_attr_afrom_attr_substr.
  * @return
  *	- <0 on error.
  *	- 0 on success.
@@ -1455,7 +1455,7 @@ static inline CC_HINT(nonnull(3,6))
 fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 						tmpl_t *vpt,
 						fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
-						fr_sbuff_t *name, tmpl_attr_rules_t const *t_rules)
+						fr_sbuff_t *name, tmpl_attr_rules_t const *at_rules)
 {
 	tmpl_attr_t		*ar = NULL, *ar_curr;
 	fr_sbuff_t		our_name = FR_SBUFF(name);
@@ -1478,7 +1478,7 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
 						      &our_name, FR_DICT_ATTR_MAX_NAME_LEN + 1,
 						      fr_dict_attr_allowed_chars);
 		if (slen == 0) {
-			slen = tmpl_attr_ref_from_unspecified_substr(ar, err, vpt, &our_name, t_rules);
+			slen = tmpl_attr_ref_from_unspecified_substr(ar, err, vpt, &our_name, at_rules);
 			if (slen < 0) {
 				fr_sbuff_advance(&our_name, +slen);
 			error:
@@ -1501,7 +1501,7 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
 			.ar_parent = parent
 		};
 
-		if (tmpl_attr_parse_filter(err, ar, &our_name, t_rules) < 0) goto error;
+		if (tmpl_attr_parse_filter(err, ar, &our_name, at_rules) < 0) goto error;
 
 		/*
 		*	Insert the ar into the list of attribute references
@@ -1535,7 +1535,7 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
  * @param[in] namespace		Where to search to resolve the next reference.
  * @param[in] name		to parse.
  * @param[in] p_rules		Formatting rules used to check for trailing garbage.
- * @param[in] t_rules		which places constraints on attribute reference parsing.
+ * @param[in] at_rules		which places constraints on attribute reference parsing.
  *				Rules interpreted by this function is:
  *				- allow_unknown - If false unknown OID components
  *				  result in a parse error.
@@ -1557,7 +1557,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 					      tmpl_t *vpt,
 					      fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
 					      fr_sbuff_t *name,
-					      fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules,
+					      fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *at_rules,
 					      unsigned int depth)
 {
 	uint32_t		oid = 0;
@@ -1591,10 +1591,10 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 */
 	if (!our_parent) {
 		(void)fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
-								   t_rules->dict_def,
+								   at_rules->dict_def,
 								   name, p_rules ? p_rules->terminals : NULL,
-								   !t_rules->disallow_internal,
-								   t_rules->allow_foreign);
+								   !at_rules->disallow_internal,
+								   at_rules->allow_foreign);
 		/*
 		 *	We can't know which dictionary the
 		 *	attribute will be resolved in, so the
@@ -1677,8 +1677,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	first, and then run the rest of the logic in this
 	 *	function.
 	 */
-	if (!namespace && t_rules->dict_def) our_parent = namespace = fr_dict_root(t_rules->dict_def);
-	if (!namespace && !t_rules->disallow_internal) our_parent = namespace = fr_dict_root(fr_dict_internal());
+	if (!namespace && at_rules->dict_def) our_parent = namespace = fr_dict_root(at_rules->dict_def);
+	if (!namespace && !at_rules->disallow_internal) our_parent = namespace = fr_dict_root(fr_dict_internal());
 	if (!namespace) {
 		fr_strerror_const("Attribute references must be qualified with a protocol when used here");
 		if (err) *err = TMPL_ATTR_ERROR_UNQUALIFIED_NOT_ALLOWED;
@@ -1721,7 +1721,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 			goto check_attr;
 		}
 
-		if (!t_rules->allow_unknown) {
+		if (!at_rules->allow_unknown) {
 			fr_strerror_const("Unknown attributes not allowed here");
 			if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
@@ -1767,7 +1767,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	Don't alter the fr_strerror buffer, may contain useful
 	 *	errors from the dictionary code.
 	 */
-	if (!t_rules->allow_unresolved) {
+	if (!at_rules->allow_unresolved) {
 		fr_strerror_const_push("Unresolved attributes are not allowed here");
 		if (err) *err = TMPL_ATTR_ERROR_UNRESOLVED_NOT_ALLOWED;
 		fr_sbuff_set(name, &m_s);
@@ -1780,15 +1780,15 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	Once we hit one unresolved attribute we have to treat
 	 *	the rest of the components are unresolved as well.
 	 */
-	return tmpl_attr_ref_afrom_unresolved_substr(ctx, err, vpt, our_parent, namespace, name, t_rules);
+	return tmpl_attr_ref_afrom_unresolved_substr(ctx, err, vpt, our_parent, namespace, name, at_rules);
 
 check_attr:
 	/*
 	 *	Attribute location (dictionary) checks
 	 */
-	if (!t_rules->allow_foreign || t_rules->disallow_internal) {
+	if (!at_rules->allow_foreign || at_rules->disallow_internal) {
 		fr_dict_t const *found_in = fr_dict_by_da(da);
-		fr_dict_t const *dict_def = t_rules->dict_def ? t_rules->dict_def : fr_dict_internal();
+		fr_dict_t const *dict_def = at_rules->dict_def ? at_rules->dict_def : fr_dict_internal();
 
 		/*
 		 *	Parent is the dict root if this is the first ref in the
@@ -1800,7 +1800,7 @@ check_attr:
 		 *	Even if allow_foreign is false, if disallow_internal is not
 		 *	true, we still allow the resolution.
 		 */
-		if (t_rules->disallow_internal && (found_in == fr_dict_internal())) {
+		if (at_rules->disallow_internal && (found_in == fr_dict_internal())) {
 			fr_strerror_const("Internal attributes not allowed here");
 			if (err) *err = TMPL_ATTR_ERROR_INTERNAL_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
@@ -1824,7 +1824,7 @@ check_attr:
 		 *	|_ RADIUS attribute
 		 */
 		if (found_in != fr_dict_internal() &&
-		    !t_rules->allow_foreign && (found_in != fr_dict_by_da(our_parent))) {
+		    !at_rules->allow_foreign && (found_in != fr_dict_by_da(our_parent))) {
 			fr_strerror_printf("Foreign %s attribute found.  Only %s attributes are allowed here",
 					   fr_dict_root(found_in)->name,
 					   fr_dict_root(dict_def)->name);
@@ -1846,7 +1846,7 @@ do_suffix:
 	 *	- The type of attribute.
 	 *	- If this is the leaf attribute reference.
 	 */
-	if (tmpl_attr_parse_filter(err, ar, name, t_rules) < 0) goto error;
+	if (tmpl_attr_parse_filter(err, ar, name, at_rules) < 0) goto error;
 
 	/*
 	 *	At the end of the attribute reference. If there's a
@@ -1875,8 +1875,8 @@ do_suffix:
 			 *	if there's a real dictionary, and this reference is to group which is in fact
 			 *	the internal dict, then just keep using our dict_def.
 			 */
-			if (t_rules->dict_def && (namespace == fr_dict_root(fr_dict_internal()))) {
-				our_parent = namespace = fr_dict_root(t_rules->dict_def);
+			if (at_rules->dict_def && (namespace == fr_dict_root(fr_dict_internal()))) {
+				our_parent = namespace = fr_dict_root(at_rules->dict_def);
 			}
 			break;
 
@@ -1922,7 +1922,7 @@ do_suffix:
 		}
 
 		if (ar) tmpl_attr_insert(vpt, ar);
-		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, our_parent, namespace, name, p_rules, t_rules, depth + 1) < 0) {
+		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, our_parent, namespace, name, p_rules, at_rules, depth + 1) < 0) {
 			if (ar) tmpl_attr_list_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
 			goto error;
 		}
@@ -2001,11 +2001,11 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	fr_sbuff_t			our_name = FR_SBUFF(name);	/* Take a local copy in case we need to back track */
 	bool				ref_prefix = false;
 	bool				is_raw = false;
-	tmpl_attr_rules_t const		*t_attr_rules;
+	tmpl_attr_rules_t const		*at_rules;
 	fr_sbuff_marker_t		m_l;
 
 	if (!t_rules) t_rules = &default_rules;
-	t_attr_rules = &t_rules->attr;
+	at_rules = &t_rules->attr;
 
 	if (err) *err = TMPL_ATTR_ERROR_NONE;
 
@@ -2018,7 +2018,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	/*
 	 *	Check to see if we expect a reference prefix
 	 */
-	switch (t_attr_rules->prefix) {
+	switch (at_rules->prefix) {
 	case TMPL_ATTR_REF_PREFIX_YES:
 		if (!fr_sbuff_next_if_char(&our_name, '&')) {
 			fr_strerror_const("Invalid attribute reference, missing '&' prefix");
@@ -2062,7 +2062,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					      &vpt->data.attribute.rr,
 					      &our_name,
 					      p_rules,
-				              t_attr_rules);
+				              at_rules);
 	if (ret < 0) {
 	error:
 		*out = NULL;
@@ -2072,7 +2072,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 
 	fr_sbuff_marker(&m_l, &our_name);
 
-	if (!t_attr_rules->list_as_attr) {
+	if (!at_rules->list_as_attr) {
 		/*
 		 *	Parse the list reference
 		 *
@@ -2080,7 +2080,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		 *	are integrated into attribute references.
 		 */
 		fr_sbuff_out_by_longest_prefix(&list_len, &vpt->data.attribute.list, pair_list_table,
-					       &our_name, t_attr_rules->list_def);
+					       &our_name, at_rules->list_def);
 
 		/*
 		 *	Check if we need to backtrack
@@ -2096,10 +2096,10 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		    !fr_sbuff_is_char(&our_name, '[') && !tmpl_substr_terminal_check(&our_name, p_rules)) {
 			fr_sbuff_set(&our_name, &m_l);
 			list_len = 0;
-			vpt->data.attribute.list = t_attr_rules->list_def;
+			vpt->data.attribute.list = at_rules->list_def;
 		}
 
-		if ((t_attr_rules->parent || t_attr_rules->disallow_qualifiers) && (list_len > 0)) {
+		if ((at_rules->parent || at_rules->disallow_qualifiers) && (list_len > 0)) {
 			fr_strerror_const("It is not permitted to specify a pair list here");
 			if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 			talloc_free(vpt);
@@ -2118,8 +2118,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	    (fr_sbuff_next_if_char(&our_name, '.') && fr_sbuff_is_in_charset(&our_name, fr_dict_attr_allowed_chars))) {
 		ret = tmpl_attr_afrom_attr_substr(vpt, err,
 						  vpt,
-						  t_attr_rules->parent, t_attr_rules->parent,
-						  &our_name, p_rules, t_attr_rules, 0);
+						  at_rules->parent, at_rules->parent,
+						  &our_name, p_rules, at_rules, 0);
 		if (ret < 0) goto error;
 
 		/*
@@ -2139,7 +2139,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		 *	and we're parsing in list_as_attr mode, then
 		 *	we need to add in a default list.
 		 */
-		if (t_attr_rules->list_as_attr) {
+		if (at_rules->list_as_attr) {
 			tmpl_attr_t *ar;
 
 			ar = tmpl_attr_list_head(tmpl_attr(vpt));
@@ -2156,7 +2156,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					.ar_parent = fr_dict_root(fr_dict_internal())
 				};
 
-				switch (t_attr_rules->list_def) {
+				switch (at_rules->list_def) {
 				default:
 				case PAIR_LIST_REQUEST:
 					ar->ar_da = request_attr_request;
@@ -2190,12 +2190,12 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *
 	 *	Eventually we'll remove TMPL_TYPE_LIST
 	 */
-	if (!t_attr_rules->list_as_attr && (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0)) {
+	if (!at_rules->list_as_attr && (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0)) {
 		tmpl_attr_t	*ar;
 		fr_slen_t	slen;
 
 		MEM(ar = talloc_zero(vpt, tmpl_attr_t));
-		slen = tmpl_attr_parse_filter(err, ar, &our_name, t_attr_rules);
+		slen = tmpl_attr_parse_filter(err, ar, &our_name, at_rules);
 		if (slen == 0) {			/* No filter */
 			talloc_free(ar);
 		} else if (slen > 0) {				/* Found a filter */
@@ -2233,7 +2233,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		 *	the returned vpt just doesn't just match the
 		 *	input rules, it is also internally consistent.
 		 */
-		if (t_attr_rules->list_as_attr) {
+		if (at_rules->list_as_attr) {
 			tmpl_attr_t *ar;
 
 			ar = tmpl_attr_list_head(tmpl_attr(vpt));
