@@ -439,7 +439,7 @@ int unlang_module_set_resume(request_t *request, unlang_module_resume_t resume)
  * @param[in] signal		function to call if a signal is received.
  * @param[in] rctx		to pass to the resume() and signal() callbacks.
  * @return
- *	- UNLANG_ACTION_YIELD
+ *	- UNLANG_ACTION_PUSHED_CHILD
  */
 unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_box_list) *out,
 					    request_t *request, xlat_exp_head_t const *exp,
@@ -485,7 +485,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, FR
  * @param[in] signal		function to call if a signal is received.
  * @param[in] rctx		to pass to the resume() and signal() callbacks.
  * @return
- *	- UNLANG_ACTION_YIELD
+ *	- UNLANG_ACTION_PUSHED_CHILD
  */
 unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out,
 					    request_t *request, tmpl_t const *vpt,
