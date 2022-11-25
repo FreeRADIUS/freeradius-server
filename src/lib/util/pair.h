@@ -296,7 +296,7 @@ do { \
 do { \
 	_vp = NULL; \
 	if (fr_pair_append_by_da(_ctx, &_vp, _list, _attr) < 0) break; \
-	fr_value_box_len(_ctx, &_vp->data, _val, _len, _tainted); \
+	fr_value_box_len(_vp, &_vp->data, _val, _len, _tainted); \
 	if (!vp_da_data_type_check(_vp)) { \
 		fr_pair_delete(_list, _vp); \
 		_vp = NULL; \
@@ -363,7 +363,7 @@ do { \
 do { \
 	_vp = NULL; \
 	if (fr_pair_prepend_by_da(_ctx, &_vp, _list, _attr) < 0) break; \
-	fr_value_box_len(_ctx, &_vp->data, _val, _len, _tainted); \
+	fr_value_box_len(_vp, &_vp->data, _val, _len, _tainted); \
 	if (!vp_da_data_type_check(_vp)) { \
 		fr_pair_delete(_list, _vp); \
 		_vp = NULL; \
