@@ -72,7 +72,6 @@ static inline void exfile_trigger_exec(exfile_t *ef, exfile_entry_t *entry, char
 	fr_pair_t		*vp;
 	fr_pair_list_t		args;
 	fr_dict_attr_t const	*da;
-	fr_dcursor_t		cursor;
 
 	fr_pair_list_init(&args);
 	fr_assert(ef != NULL);
@@ -87,12 +86,9 @@ static inline void exfile_trigger_exec(exfile_t *ef, exfile_entry_t *entry, char
 	}
 
 	(void) fr_pair_list_copy(NULL, &args, &ef->trigger_args);
-	fr_pair_dcursor_init(&cursor, &args);
 
-	MEM(vp = fr_pair_afrom_da(NULL, da));
-	fr_pair_value_strdup(vp, entry->filename, false);
-
-	fr_dcursor_prepend(&cursor, vp);
+	fr_pair_list_prepend_by_da_len(NULL, vp, &args, da, entry->filename,
+				       talloc_array_length(entry->filename) - 1, false);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
 	trigger_exec(unlang_interpret_get_thread_default(), ef->conf, name, false, &args);
