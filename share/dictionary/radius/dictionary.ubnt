@@ -1,0 +1,58 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#	From UI Community and reverse engineering
+#
+#	$Id$
+#
+##############################################################################
+
+VENDOR		UBNT				41112
+
+BEGIN-VENDOR	UBNT
+
+#
+# Data rate limiting attributes
+#
+
+# for UAP series running 4.0.59+
+# source: https://community.ui.com/questions/RADIUS-Dictionary/c2fbeeac-3b86-493c-88cb-0dc4b3e47912#answer/c6cce5df-d6e2-42b4-8069-2e3f636cd6a9
+
+ATTRIBUTE	Data-Rate-DL				1	integer64
+ATTRIBUTE	Data-Rate-DL-Burst			2	integer64
+ATTRIBUTE	Data-Rate-UL				3	integer64
+ATTRIBUTE	Data-Rate-UL-Burst			4	integer64
+
+#
+# PSK RADIUS attributes
+#
+
+# source: reverse engineering wpad from UAP-AC-Pro 6.2.44 firmware
+
+# Vanilla hostapd wpa_psk_file allows an optional keyid field, to help identify
+# which psk was used by a client. While wpa_psk_radius only retrieves Tunnel-
+# Password from RADIUS server and does not support specifying a keyid along
+# with the password. UBNT introduced new attributes to make that possible.
+
+ATTRIBUTE	Tunnel-Password-Entry			5	tlv
+# Only the first password and first keyid in this tlv will be used.
+# If you want to provide multiple passwords, you have to send them in separate VSAs.
+
+ATTRIBUTE	Tunnel-Password				.2	string	encrypt=2
+# treat as passphrase if 8~63 characters
+# treat as psk if 64 characters hex
+
+ATTRIBUTE	Tunnel-Password-Keyid			.3	string	encrypt=2
+# maximum length 31 characters
+# keyid is consumed by hostapd control interface (AP_STA_CONNECTED event, STA MIB)
+# keyid may be attached to RADIUS accounting message, see UBNT-Station-Keyid below
+# keyid is not available on ubus interface
+
+ATTRIBUTE	Station-Keyid				6	string	encrypt=2
+# require radius_acct_send_keyid=1 in hostapd configuration
+# aka. aaa.%d.radius_acct_send_keyid.status=enabled in UniFi configuration
+
+END-VENDOR	UBNT
