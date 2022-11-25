@@ -2182,6 +2182,23 @@ fr_dict_t const *fr_dict_by_da(fr_dict_attr_t const *da)
 	return dict_by_da(da);
 }
 
+/** See if two dictionaries have the same end parent
+ *
+ * @param[in] dict1 one dictionary
+ * @param[in] dict2 two dictionary
+ * @return
+ *	- true the dictionaries have the same end parent
+ *	- false the dictionaries do not have the same end parent.
+ */
+bool fr_dict_compatible(fr_dict_t const *dict1, fr_dict_t const *dict2)
+{
+	while (dict1->next) dict1 = dict1->next;
+
+	while (dict2->next) dict2 = dict2->next;
+
+	return (dict1 == dict2);
+}
+
 /** Look up a vendor by one of its child attributes
  *
  * @param[in] da	The vendor attribute.

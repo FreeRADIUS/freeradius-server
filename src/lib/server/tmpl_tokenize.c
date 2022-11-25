@@ -1824,7 +1824,7 @@ check_attr:
 		 *	|_ RADIUS attribute
 		 */
 		if (found_in != fr_dict_internal() &&
-		    !at_rules->allow_foreign && (found_in != fr_dict_by_da(our_parent))) {
+		    !at_rules->allow_foreign && !fr_dict_compatible(found_in, fr_dict_by_da(our_parent))) {
 			fr_strerror_printf("Foreign %s attribute found.  Only %s attributes are allowed here",
 					   fr_dict_root(found_in)->name,
 					   fr_dict_root(dict_def)->name);

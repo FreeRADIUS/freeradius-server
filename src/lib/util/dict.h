@@ -500,6 +500,8 @@ fr_dict_t const		*fr_dict_by_da(fr_dict_attr_t const *da) CC_HINT(nonnull);
 
 fr_dict_t const		*fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name);
 
+bool			fr_dict_compatible(fr_dict_t const *dict1, fr_dict_t const *dict2) CC_HINT(nonnull);
+
 /** Return true if this attribute is parented directly off the dictionary root
  *
  * @param[in] da		to check.

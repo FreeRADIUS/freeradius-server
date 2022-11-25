@@ -4731,8 +4731,8 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	if (mrlm->dict && *mrlm->dict && unlang_ctx->rules && unlang_ctx->rules->attr.dict_def &&
 	    (unlang_ctx->rules->attr.dict_def != fr_dict_internal()) &&
-	    (*(mrlm->dict) != unlang_ctx->rules->attr.dict_def)) {
-		cf_log_err(ci, "The \"%s\" module can only used with 'namespace = %s'.  It cannot be used with 'namespace = %s'.",
+	    !fr_dict_compatible(*(mrlm->dict), unlang_ctx->rules->attr.dict_def)) {
+		cf_log_err(ci, "The \"%s\" module can only be used with 'namespace = %s'.  It cannot be used with 'namespace = %s'.",
 			   inst->module->name,
 			   fr_dict_root(*mrlm->dict)->name,
 			   fr_dict_root(unlang_ctx->rules->attr.dict_def)->name);

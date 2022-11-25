@@ -91,6 +91,8 @@ struct fr_dict {
 
 	fr_hash_table_t		*autoref;		//!< other dictionaries that we loaded via references
 
+	fr_dict_t const		*next;			//!< for attribute overloading
+
 	fr_table_num_ordered_t const *subtype_table;	//!< table of subtypes for this protocol
 	size_t			subtype_table_len;	//!< length of table of subtypes for this protocol
 
