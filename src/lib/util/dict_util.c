@@ -2730,6 +2730,7 @@ fr_slen_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t co
 	ref = fr_dict_attr_ref(parent);
 	if (ref) parent = ref;
 
+redo:
 	namespace = dict_attr_namespace(parent);
 	if (!namespace) {
 		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
@@ -2740,6 +2741,16 @@ fr_slen_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t co
 
 	da = fr_hash_table_find(namespace, &(fr_dict_attr_t){ .name = buffer });
 	if (!da) {
+		if (parent->flags.is_root) {
+			fr_dict_t const *dict = fr_dict_by_da(parent);
+
+			if (dict->next) {
+				parent = dict->next->root;
+				goto redo;
+			}
+
+		}
+
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
 		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", buffer, parent->name);
 		fr_sbuff_set_to_start(&our_name);
@@ -3393,7 +3404,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 
 /** Allocate a new local dictionary
  *
- * @param[in] ctx to allocate dictionary in.
+ * @param[in] parent parent dictionary and talloc ctx
  * @return
  *	- NULL on memory allocation error.
  *
@@ -3402,7 +3413,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
  *  case.  We should arguably just skip initializing those fields, and
  *  just allow the server to crash if programmers do something stupid with it.
  */
-fr_dict_t *fr_dict_protocol_alloc(TALLOC_CTX *ctx)
+fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 {
 	fr_dict_t *dict;
 	fr_dict_attr_t *da;
@@ -3414,7 +3425,7 @@ fr_dict_t *fr_dict_protocol_alloc(TALLOC_CTX *ctx)
 	};
 
 
-	dict = dict_alloc(ctx);
+	dict = dict_alloc(UNCONST(fr_dict_t *, parent));
 	if (!dict) return NULL;
 
 	/*
@@ -3437,6 +3448,8 @@ fr_dict_t *fr_dict_protocol_alloc(TALLOC_CTX *ctx)
 
 	dict->root = da;
 	dict->root->dict = dict;
+	dict->next = parent;
+
 	DA_VERIFY(dict->root);
 
 	return dict;

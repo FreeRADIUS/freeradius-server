@@ -2025,7 +2025,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
  *  Definitions which are adjacent to one another are automatically merged
  *  into one larger variable definition.
  */
-static unlang_t *compile_variable(unlang_t *parent, UNUSED unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_PAIR *cp, UNUSED tmpl_rules_t *t_rules)
+static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_PAIR *cp, UNUSED tmpl_rules_t *t_rules)
 {
 	unlang_variable_t *var, *var_free;
 	unlang_t	*c = NULL, *out = UNLANG_IGNORE;
@@ -2057,7 +2057,7 @@ static unlang_t *compile_variable(unlang_t *parent, UNUSED unlang_compile_t *unl
 
 		var_free = var;
 
-		var->dict = fr_dict_protocol_alloc(c);
+		var->dict = fr_dict_protocol_alloc(unlang_ctx->rules->attr.dict_def);
 		if (!var->dict) {
 			talloc_free(var);
 			return NULL;
@@ -2077,9 +2077,7 @@ static unlang_t *compile_variable(unlang_t *parent, UNUSED unlang_compile_t *unl
 		t_rules->attr.dict_def = var->dict;
 		t_rules->attr.parent = NULL;
 
-#if 0
 		unlang_ctx->rules = t_rules;
-#endif
 	}
 
 	attr = cf_pair_attr(cp);	/* data type */
@@ -2087,8 +2085,26 @@ static unlang_t *compile_variable(unlang_t *parent, UNUSED unlang_compile_t *unl
 
 	type = fr_table_value_by_str(fr_type_table, attr, FR_TYPE_NULL);
 	if (type == FR_TYPE_NULL) {
+invalid_type:
 		talloc_free(var_free);
 		cf_log_err(cp, "Invalid data type '%s'", attr);
+		return NULL;
+	}
+
+	/*
+	 *	Leaf and group are OK.  TLV, Vendor, Struct, VSA, etc. are not.
+	 */
+	if (!(fr_type_is_leaf(type) || (type == FR_TYPE_GROUP))) goto invalid_type;
+
+	/*
+	 *	No overlap with the protocol dictionary.  The lookup
+	 *	in var->root will also check the protocol dictionary,
+	 *	so the check here is really only for better error messages.
+	 */
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(t_rules->parent->attr.dict_def), value);
+	if (da) {
+		talloc_free(var_free);
+		cf_log_err(cp, "Local variable '%s' duplicates a dictionary attribute.", value);
 		return NULL;
 	}
 
@@ -2099,16 +2115,6 @@ static unlang_t *compile_variable(unlang_t *parent, UNUSED unlang_compile_t *unl
 	if (da) {
 		talloc_free(var_free);
 		cf_log_err(cp, "Duplicate variable name '%s'.", value);
-		return NULL;
-	}
-
-	/*
-	 *	No overlap
-	 */
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(t_rules->parent->attr.dict_def), value);
-	if (da) {
-		talloc_free(var_free);
-		cf_log_err(cp, "Local variable '%s' duplicates a dictionary attribute.", value);
 		return NULL;
 	}
 
