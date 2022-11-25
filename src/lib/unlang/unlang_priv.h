@@ -623,6 +623,8 @@ void		unlang_edit_init(void);
 void		unlang_timeout_init(void);
 
 void		unlang_limit_init(void);
+
+void		unlang_variable_init(void);
  /** @} */
 
 #ifdef __cplusplus
