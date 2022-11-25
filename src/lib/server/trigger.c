@@ -396,10 +396,18 @@ int trigger_exec(unlang_interpret_t *intp,
 	 *	Add the args to the request data, so they can be picked up by the
 	 *	trigger_xlat function.
 	 */
-	if (args && (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, args,
-				      false, false, false) < 0)) {
-		talloc_free(request);
-		return -1;
+	if (args) {
+		fr_pair_list_t *local_args;
+
+		MEM(local_args = talloc_zero(request, fr_pair_list_t));
+		fr_pair_list_init(local_args);
+		fr_pair_list_copy(local_args, local_args, args);
+
+		if (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, local_args,
+				      false, false, false) < 0) {
+			talloc_free(request);
+			return -1;
+		}
 	}
 
 	{
