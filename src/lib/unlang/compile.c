@@ -2040,7 +2040,7 @@ static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx
 	c = *prev;
 	var = var_free = NULL;
 
-	if (c && (c->type == UNLANG_TYPE_EDIT)) {
+	if (c && (c->type == UNLANG_TYPE_VARIABLE)) {
 		var = unlang_generic_to_variable(c);
 
 	} else {
