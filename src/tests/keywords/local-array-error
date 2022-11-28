@@ -1,0 +1,6 @@
+group {
+	uint32 foo
+
+	#  There's only one local variable
+	&foo[1] := 1	# ERROR
+}

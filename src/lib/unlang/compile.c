@@ -1712,6 +1712,7 @@ static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx
 
 	fr_dict_attr_flags_t flags = {
 		.internal = true,
+		.local = true,
 	};
 
 	c = *prev;

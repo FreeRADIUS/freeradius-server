@@ -1863,6 +1863,18 @@ do_suffix:
 	if (tmpl_attr_parse_filter(err, ar, name, at_rules) < 0) goto error;
 
 	/*
+	 *	Local variables are always unitary.
+	 *
+	 *	[0] is allowed, as is [n], [*], and [#].  But [1], etc. aren't allowed.
+	 */
+	if (da->flags.local && (ar->ar_num > 0)) {
+		fr_strerror_printf("Invalid array reference for local variable");
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
+		fr_sbuff_set(name, &m_s);
+		goto error;
+	}
+
+	/*
 	 *	At the end of the attribute reference. If there's a
 	 *	trailing '.' then there's another attribute reference
 	 *	we need to parse, otherwise we're done.
@@ -2115,10 +2127,16 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	if (tmpl_is_attr(vpt) && is_raw) tmpl_attr_to_raw(vpt);
 
 	/*
-	 *	Check to see what the first attribute reference
-	 *	was.  If it wasn't a known list group attribute,
-	 *	then we need to add in a default list.
+	 *	Local variables cannot be given an explicit parent or list modifier.
+	 *
+	 *	@todo - maybe allow parent references for local variables?  But that's just weird.
 	 */
+	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt) && tmpl_attr_tail_da(vpt)->flags.local && (tmpl_attr_list_num_elements(tmpl_attr(vpt)) > 1)) {
+		fr_strerror_printf("Local attributes cannot be used in any list");
+		if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
+		fr_sbuff_set(&our_name, &m_l);
+		goto error;
+	}
 
 	/*
 	 *	Check whether the tmpl has a list qualifier.
