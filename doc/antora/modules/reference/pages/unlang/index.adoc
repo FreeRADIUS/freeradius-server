@@ -69,10 +69,13 @@ if ((&User-Name == "bob") && (&Calling-Station-Id == "00:01:03:04:05")) {
 
 == Editing Attributes and lists.
 
-xref:unlang/edit.adoc[attribute editing] statements are used to edit
+xref:unlang/edit.adoc[Attribute editing] statements are used to edit
 attributes and lists of attributes.  The old-style
 xref:unlang/update.adoc[update] sections are deprecated, and no longer
 supported.
+
+xref:unlang/local.adoc[Local variables] can be defined, so that the
+local `dictionary` file no longer needs to be modified.
 
 Most request packets will result in reply packets that contain
 additional information for the requestor.  Attribute editing allows

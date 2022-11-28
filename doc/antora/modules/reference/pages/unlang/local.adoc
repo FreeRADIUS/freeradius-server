@@ -1,0 +1,70 @@
+= Local Variables
+
+Local variables can be defined and used inside of any `unlang`
+processing section.  A local variable is used any time a "temporary"
+variable is needed.  Local variables exist only within a particular
+section (i.e. scope), and cannot be sent in a packet over the network.
+
+.Syntax
+[source,unlang]
+----
+<keyword> {
+    <data-type> <name>
+    ...
+
+    [ statements ]
+}
+----
+
+<keyword>:: One of xref:unlang/case.adoc[case], xref:unlang/else.adoc[else], xref:unlang/elsif.adoc[elsif], xref:unlang/foreach.adoc[foreach], xref:unlang/group.adoc[group], xref:unlang/if.adoc[if] ,xref:unlang/limit.adoc[limit], or xref:unlang/timeout.adoc[timeout].  Local variables are forbidden in all other locations.
+
+<data-type>:: A "leaf" xref:type/all_types.adoc[data type].  Structural types such as `group`, `struct`, `tlv`, etc. are not allowed.
+
+<name>:: A unique name for the local variable.  This name cannot be the same as any previously-defined local variable in the same scope, and it cannot be the same as any attribute defined in the current protocol dictionary.
+
+Multiple local variables may be defined.  All definitions must be at the top of a section.
+
+[ statements ]:: The `unlang` commands which will be executed.  The local variable can be used, edited, modified, etc. within these statements.
+
+Local variables cannot be deleted.  Multiple local variables of the same name cannot be used.  The local variables exist in their own list, and cannot be added to the normal lists `request`, `reply`, `control`, etc.
+
+Local variables are _not_ automatically created.
+
+When the current scope exits, the local variable is deleted and is no longer accessible.
+
+.Example
+[source,unlang]
+----
+if (&User-Name == "bob") {
+    uint32 len
+
+    &len := %(length:%{User-Name})
+
+    &Reply-Message := "Length of %{User-Name} is %{len}"
+}
+----
+
+In v3 the default dictionaries included a series of `Tmp-*`
+attributes.  These are no longer necessary, and should not be used.
+
+.Local variables exist on only if they have been created
+[source,unlang]
+----
+if (&User-Name == "bob") {
+    # declare "len" as ALLOWED to be used
+    uint32 len
+
+    # this test ALWAYS fails
+    if (&len) {
+       ...
+    }
+
+    #  "len" is created, and can now be used
+    &len := %(length:%{User-Name})
+
+    &Reply-Message := "Length of %{User-Name} is %{len}"
+}
+----
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

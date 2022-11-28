@@ -74,6 +74,8 @@ processing as normal.
 In short, failed edit operations are effectively a "noop" operation,
 and do not result in any changes.
 
+=== Grouping Edits
+
 Multiple attributes may be grouped into a set by using the `group`
 keyword.  When changes are done in a `group`, then either all of the
 changes are applied, or none of them are applied.  This functionality

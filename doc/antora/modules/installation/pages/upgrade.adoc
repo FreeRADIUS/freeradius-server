@@ -70,15 +70,15 @@ and are nested by definition.
 
 For v4, the `Cisco-AVPair` attribute is called `AVPair`, and it lives
 inside of the `Cisco` namespace, which in turn lives inside of the
-`Vendor-Specific` namespace.  So the new name for `Cisco-AVPair` is
-`Vendor-Specific.Cisco.AVPair`.
+`Vendor-Specific` namespace.  So the old `Cisco-AVPair` attribute is
+now named `Vendor-Specific.Cisco.AVPair`.
 
-This process continues for many thousands of vendor-specific
+This renaming process continues for many thousands of vendor-specific
 attributes.
 
 Happily, it is possible to (mostly) use the old names with v4.
 There are limitations, but it will mostly work.  The main reason
-for enabling the old names is to try out v4 with a database that is
+for enabling the old names is to try out v4 with a database which is
 also used by v3.  This lets you test that v4 works, without going
 through a complex "upgrade everything" process.
 
@@ -101,11 +101,11 @@ there are situations where the aliases do not behave correctly.
 We recognize that this process is a bit of work.  However, we wish to
 encourage everyone using v4 to upgrade to using the new v4 features.
 Our experience shows that if we automatically enable "compatibility
-functions", then those compatiblity functions will be used for a
-decade.  So we need to find a balance between upgrades and ongoing
-support.  Easy upgrades will mean complex ongoing support.  Complex
-upgrades make ongoing support easier, but also make it less likely
-that people will upgrade.
+features", then those compatiblity features will be used for a decade,
+and no one will upgrade to use the new features.  So we need to find a
+balance between upgrades and ongoing support.  Easy upgrades will mean
+complex ongoing support.  Complex upgrades make ongoing support
+easier, but also make it less likely that people will upgrade.
 
 == radiusd.conf
 

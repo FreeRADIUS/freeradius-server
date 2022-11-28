@@ -1,8 +1,23 @@
-#  -*- text -*-
+>#  -*- text -*-
 #
 #
 #  $Id$
 
+#######################################################################
+#
+#  We recommend using local variables inside of "unlang" sections
+#  instead of defining attributes in this fine.  See the reference documentation
+#  for more information on local variables.
+#
+#  This file exists for two purposes:
+#
+#  1) defining local attributes in order to simplify the process of migrating
+#     from version 3 to version 4.  We recommend removing these attributes,
+#     and using local variables instead.
+#
+#  2) Including alias dictionaries  in order to simplify the process of migrating
+#     from version 3 to version 4.  We recommend using the new names where possible.
+#
 #######################################################################
 #
 #  = Local dictionary definitions

@@ -31,14 +31,6 @@ Expansions are used inside of
 xref:type/string/double.adoc[double-quoted strings] and for the
 xref:type/string/backticks.adoc[back-tick quoted strings]
 
-== Caveats
-
-Unlike other languages, there is no way to define new variables.  All
-of the expansions must refer to attributes that already exist, or to
-pre-defined functions which take arguments, and return values.
-
-New variables are defined in the xref:raddb:dictionary.adoc[site-local dictionaries].
-
 == Character Escaping
 
 Some characters need to be escaped within a dynamically expanded
@@ -54,7 +46,10 @@ information.
 
 .Example
 
-`Reply-Message := "%{User-Name} with a literal %%`
+[source,unlang]
+----
+Reply-Message := "%{User-Name} with a literal %%"
+----
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
