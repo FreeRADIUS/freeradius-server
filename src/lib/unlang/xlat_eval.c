@@ -92,7 +92,11 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 
 	case XLAT_TMPL:
 		fr_assert(node->fmt != NULL);
-		return talloc_asprintf(ctx, "%%{%s}", node->fmt);
+		if (tmpl_is_attr(node->vpt) && (node->fmt[0] == '&')) {
+			return talloc_strdup(ctx, node->fmt);
+		} else {
+			return talloc_asprintf(ctx, "%%{%s}", node->fmt);
+		}
 
 	case XLAT_VIRTUAL:
 		return talloc_asprintf(ctx, "%%{%s}", node->call.func->name);
