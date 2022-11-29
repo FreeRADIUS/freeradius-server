@@ -20,13 +20,13 @@
 
 # String - network order representation of a 4 char string
 &Tmp-Integer-1 := "%(integer:%{Tmp-String-0})"
-if (((integer)&Tmp-String-0 != &Tmp-Integer-1) || (&Tmp-Integer-1 != 9870)) {
+if (!(((integer)&Tmp-String-0 == &Tmp-Integer-1)) || (!(&Tmp-Integer-1 == 9870))) {
 	test_fail
 }
 
 # String - network order representation of a 8 char string
 &Tmp-uint64-0 := "%(integer:%{Tmp-String-1})"
-if (((integer64) &Tmp-String-1 != &Tmp-uint64-0) || (&Tmp-uint64-0 != 98709870)) {
+if (((integer64) &Tmp-String-1 != &Tmp-uint64-0) || (!(&Tmp-uint64-0 == 98709870))) {
 	test_fail
 }
 
@@ -38,11 +38,11 @@ if ("%(integer:%{Tmp-String-2})") {
 # Octets - network order representation of a 4 byte octet string
 &Tmp-Integer-1 := "%(integer:%{Tmp-Octets-0})"
 
-if (&Tmp-Octets-0 != "%{hex:Tmp-Integer-1}") {
+if (!("%{Tmp-Octets-0}" == "0x%{hex:%{Tmp-Integer-1}}")) {
 	test_fail
 }
 
-if (&Tmp-Integer-1 != 959985457) {
+if (!(&Tmp-Integer-1 == 959985457)) {
 	test_fail
 }
 
@@ -52,11 +52,11 @@ if (&Tmp-Integer-1 != 959985457) {
 #
 #  Disabled until xlats can return binary data
 #
-if (&Tmp-Octets-1 != "%{hex:Tmp-uint64-0}") {
+if (!("%{Tmp-Octets-1}" == "0x%{hex:%{Tmp-uint64-0}}")) {
 	test_fail
 }
 
-if (&Tmp-uint64-0 != 4123106143410599729) {
+if (!(&Tmp-uint64-0 == 4123106143410599729)) {
 	test_fail
 }
 
@@ -73,36 +73,36 @@ if ("%(integer:%{Tmp-Octets-2})") {
 &Tmp-String-8	:= "%(integer:%{Tmp-Cast-IPv6Prefix})"
 
 # IP Address
-if (&Tmp-String-2 != '959985458') {
+if (!(&Tmp-String-2 == '959985458')) {
 	test_fail
 }
 
-if ((ipaddr)&Tmp-String-2 != &Tmp-IP-Address-0) {
+if (!((ipaddr)&Tmp-String-2 == &Tmp-IP-Address-0)) {
 	test_fail
 }
 
 # Date
-if (&Tmp-String-3 != '959985459') {
+if (!(&Tmp-String-3 == '959985459')) {
 	test_fail
 }
 
 # Integer
-if (&Tmp-String-4 != '959985460') {
+if (!(&Tmp-String-4 == '959985460')) {
 	test_fail
 }
 
 # ifid - Can't convert interface ID to an integer
-if (&Tmp-String-6 != '') {
+if (!(&Tmp-String-6 == '')) {
 	test_fail
 }
 
 # ipv6addr - Can't convert IPv6 to integer
-if (&Tmp-String-7 != '959985464') {
+if (!(&Tmp-String-7 == '959985464')) {
 	test_fail
 }
 
 # ipv6addrprefix
-if (&Tmp-String-8 != '959985465') {
+if (!(&Tmp-String-8 == '959985465')) {
 	test_fail
 }
 
@@ -113,17 +113,17 @@ if (&Tmp-String-8 != '959985465') {
 &Tmp-String-4	:= "%(integer:%{Tmp-Cast-IPv4Prefix})"
 
 # byte
-if (&Tmp-String-0 != '58') {
+if (!(&Tmp-String-0 == '58')) {
 	test_fail
 }
 
 # short
-if (&Tmp-String-1 != '14139') {
+if (!(&Tmp-String-1 == '14139')) {
 	test_fail
 }
 
 # ethernet
-if (&Tmp-uint64-2 != 959985468) {
+if (!(&Tmp-uint64-2 == 959985468)) {
 	test_fail
 }
 
@@ -132,23 +132,23 @@ if (&Tmp-uint64-2 != 959985468) {
 #  with the lowest octet of the integer mapping to the right-most
 #  ethernet octet (in network order)
 #
-if ((ether)&Tmp-uint64-2 != &Tmp-Cast-Ether) {
+if (!((ether)&Tmp-uint64-2 == &Tmp-Cast-Ether)) {
 	test_fail
 }
 
 # integer64
-if (&Tmp-String-3 != '1152921505566832445') {
+if (!(&Tmp-String-3 == '1152921505566832445')) {
 	test_fail
 }
 
 # ipv4prefix
-if (&Tmp-String-4 != '959985470') {
+if (!(&Tmp-String-4 == '959985470')) {
 	test_fail
 }
 
 &Service-Type := Login-User
 &Tmp-Integer-2 := "%(integer:%{Service-Type})"
-if (&Tmp-Integer-2 != 1) {
+if (!(&Tmp-Integer-2 == 1)) {
 	test_fail
 }
 
