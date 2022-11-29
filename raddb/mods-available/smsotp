@@ -2,9 +2,9 @@
 #
 #  $Id$
 
-#  SMS One-time Password system.
+#  SMS One-Time Password system
 #
-#  This module will extend FreeRadius with a socks interface to create and
+#  This module extends FreeRADIUS with a socket interface to create and
 #  validate One-Time-Passwords. The program for that creates the socket
 #  and interacts with this module is not included here.
 #

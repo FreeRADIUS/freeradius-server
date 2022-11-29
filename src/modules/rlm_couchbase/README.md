@@ -1,15 +1,21 @@
-rlm_couchbase
-=============
+# rlm_couchbase
+## Metadata
+<dl>
+  <dt>category</dt><dd>datastore</dd>
+</dl>
 
-General
--------
+## Summary
+
+Couchbase database driver for authentication and accounting.
+
+## General
 
 This module supports accounting, authorization, dynamic clients and simultaneous use checking.  Accounting data is written directly to Couchbase as JSON documents and user authorization information is read from JSON documents stored within Couchbase.    You should list the ```couchbase``` module in both the ```accounting``` and ```authorization``` sections of your site configuration if you are planning to use it for both purposes.  You should also have ```pap``` enabled for authenticating users based on cleartext or hashed password attributes.  To enable simultanous use checking you will need to list the ```couchbase``` module in the ```session``` and ```accounting``` sections of your site configuration.
 
 It was tested to handle thousands of RADIUS requests per second from several thousand Aerohive access points using a FreeRADIUS installation with this module for accounting and authorization.
 
-Accounting
-----------
+
+## Accounting
 
 You can use any RADIUS attribute available in the accounting request to build the key for storing the accounting documents. The default configuration will try to use 'Acct-Unique-Session-Id' and fallback to 'Acct-Session-Id' if 'Acct-Unique-Session-Id' is not present.  You will need to have the ```acct_unique``` policy in the ```preacct``` section of your configuration to generate the unique id attribute.   Different status types (start/stop/update) are merged into a single document to facilitate querying and reporting via views.  When everything is configured correctly you will see accounting requests recorded as JSON documents in your Couchbase cluster.  You have full control over what attributes are recorded and how those attributes are mapped to JSON element names via the module configuration.
 
@@ -78,8 +84,8 @@ strip_user_domain {
 
 You can then reference this policy in both the ```preacct``` and ```authorization``` sections of your configuration before calling this module.
 
-Authorization
--------------
+
+## Authorization
 
 The authorization functionality relies on the user documents being stored with deterministic keys based on information available in the authorization request.  The format of those keys may be specified in unlang like the example below:
 
@@ -112,8 +118,8 @@ The document structure is straight forward and flexible:
 
 You may specify any valid combination of attributes and operators in the JSON document ```config``` and ```reply``` sections.  All other elements present in the user document will not be parsed and are ignored by the module.
 
-Clients
--------
+
+## Clients
 
 The client functionality depends on a combination of client documents and a simple view that returns those document keys.  Client documents are only loaded ONCE on server startup so there should be no performance penalty using a view for this purpose.
 
@@ -145,8 +151,8 @@ This is the simplest possible view that would return all documents in the specif
 
 To have the module load only a subset of the client documents contained within the bucket you could add additional elements to the client documents and then filter based on those elements within your view.
 
-Simultaneous Use
-----------------
+
+## Simultaneous Use
 
 The simultaneous use function relies on data stored in the accounting documents.  When a user attempts to authenticate a view request is made to return all accounting type documents for the current user that do not contain a populated ```stopTimestamp``` value.
 
@@ -168,8 +174,9 @@ The key (first emitted field) will need to match *EXACTLY* what you set for ```s
 
 When the total number of keys (sessions) returned is greater than or equal to the ```Simultaneous-Use``` config section value of the current user, the user will be denied access.  When verification is also enabled, each returned key will be fetched and the appropriate information will be passed on to the ```checkrad``` utillity to verify the session status.  If ```checkrad``` determines the session is no longer valid (stale) the session will be updated and closed in Couchbase (if configured) and that session will not be counted against the users login limit.  Further information is available in the module configuration.
 
-To Use
-------
+
+## To Use
+
 Until this module is added to the stable list you will need to explicitly add it to ```src/modules/stable``` before building the server.
 
 ```
@@ -183,7 +190,7 @@ You will also need the following libraries installed where they may be found by 
 
 Once the above steps are complete, simply configure and install as usual.
 
-Module Configuration
---------------------
+
+## Module Configuration
 
 Please see [/raddb/mods-available/couchbase](/raddb/mods-available/couchbase) for all available configuration options.
