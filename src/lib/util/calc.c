@@ -379,6 +379,10 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
  *  @todo - check this table against fr_type_promote()
  */
 static const fr_type_t upcast_cmp[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
+	[FR_TYPE_STRING] = {
+		[FR_TYPE_OCTETS] = FR_TYPE_OCTETS,
+	},
+
 	[FR_TYPE_IPV4_ADDR] = {
 		[FR_TYPE_STRING] = FR_TYPE_IPV4_ADDR,
 		[FR_TYPE_OCTETS] = FR_TYPE_IPV4_ADDR,
