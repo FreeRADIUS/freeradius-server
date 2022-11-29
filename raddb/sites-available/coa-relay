@@ -151,10 +151,10 @@ server coa {
 				#
 				if ("%{Foreach-Variable-0}" =~ /([^#]*)#(.*)/) {
 					#  NAS-IP-Address
-					&control.Tmp-IP-Address-0 := "%{1}"
+					&control.NAS-IP-Address := "%{1}"
 
 					#  Acct-Session-Id
-					&control.Tmp-String-1 := "%{2}"
+					&control.Acct-Session-Id := "%{2}"
 
 					subrequest CoA-Request {
 						#
@@ -166,7 +166,7 @@ server coa {
 						#
 						#  Add/override the session identification attributes looked up
 						#
-						&request.Acct-Session-Id := &parent.control.Tmp-String-1
+						&request.Acct-Session-Id := &parent.control.Acct-Session-Id
 
 						#
 						#  Some NASs want these, others don't
@@ -201,9 +201,9 @@ server coa {
 						#
 						#  Call the radius client module instance for the NAS-IP-Address
 						#
-						switch &parent.control.Tmp-IP-Address-0 {
+						switch &parent.control.NAS-IP-Address {
 							#
-							#  Repeat this for each NAS
+							#  Repeat this block for each NAS
 							#
 							case "192.0.2.1" {
 
@@ -217,11 +217,11 @@ server coa {
 							}
 
 							#
-							#  Likely a missing "case" if we can't map NAS-IP-Address to a module
+							#  Likely a missing "case" block if we can't map NAS-IP-Address to a module
 							#
-							case {
+							default {
 								&parent.control += {
-									&Reply-Message = "Missing map for NAS: %{parent.control.Tmp-IP-Address-0}"
+									&Reply-Message = "Missing map for NAS: %{parent.control.NAS-IP-Address}"
 								}
 							}
 
