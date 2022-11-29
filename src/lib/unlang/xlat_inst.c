@@ -362,11 +362,11 @@ xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node)
 	xlat_call_t const *call = &node->call;
 	xlat_thread_inst_t *xt;
 
+	if (call->ephemeral) return call->thread_inst;
+
 	fr_assert(xlat_thread_inst_tree);
 	fr_assert(node->type == XLAT_FUNC);
 	fr_assert(fr_heap_num_elements(xlat_thread_inst_tree) == fr_heap_num_elements(xlat_inst_tree));
-
-	if (call->ephemeral) return call->thread_inst;
 
 	/*
 	 *	This works because the comparator for
