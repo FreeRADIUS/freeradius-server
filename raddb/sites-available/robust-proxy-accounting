@@ -141,7 +141,13 @@ server home.example.com {
 	listen {
 		type = detail
 		filename = "${radacctdir}/detail.example.com/detail-*:*"
-		load_factor = 10
+
+		#
+		#  See sites-available/buffered-sql for documentation
+		#  on the configuration items for a detail listener.
+		#
+		load_factor = 90
+		track = yes
 	}
 
 	#  All packets read from the detail file are proxied back to
