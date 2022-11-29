@@ -9,19 +9,19 @@
 	&Class = 0x090a0b0c,
 }
 
-if (%{Class[#]} != 3) {
+if (!(%{Class[#]} == 3)) {
 	test_fail
 }
 
-if (&Class[0] != 0x01020304) {
+if (!(&Class[0] == 0x01020304)) {
 	test_fail
 }
 
-if (&Class[1] != 0x05060708) {
+if (!(&Class[1] == 0x05060708)) {
 	test_fail
 }
 
-if (&Class[2] != 0x090a0b0c) {
+if (!(&Class[2] == 0x090a0b0c)) {
 	test_fail
 }
 
@@ -31,7 +31,7 @@ if (&Class[3]) {
 }
 
 # Last element of the array
-if (&Class[n] != 0x090a0b0c) {
+if (!(&Class[n] == 0x090a0b0c)) {
 	test_fail
 }
 

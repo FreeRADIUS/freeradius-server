@@ -5,7 +5,7 @@
 #
 &Tmp-String-0 := "request.Tmp-Group-0.Tmp-String-1 = 'testing123'"
 
-if ("%{map:%{Tmp-String-0}}" != 1) {
+if (!("%{map:%{Tmp-String-0}}" == 1)) {
 	test_fail
 }
 

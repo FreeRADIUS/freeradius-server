@@ -10,7 +10,7 @@
 #
 &control += "Tmp-Integer-0 = 9"
 
-if (&control.Tmp-Integer-0 != 9) {
+if (!(&control.Tmp-Integer-0 == 9)) {
 	test_fail
 }
 

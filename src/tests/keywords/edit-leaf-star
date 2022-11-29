@@ -9,7 +9,7 @@
 #  Do operations on sets of inputs.
 #
 &Tmp-Integer-1 += &Tmp-Integer-0[*]
-if (&Tmp-Integer-1 != 27) {
+if (!(&Tmp-Integer-1 == 27)) {
 	test_fail
 }
 
@@ -24,7 +24,7 @@ if (&Tmp-Integer-1 != 27) {
 #  Do operations on sets of inputs.
 #
 &Tmp-Integer-1 += &Tmp-Integer-2[*]
-if (&Tmp-Integer-1 != 27) {
+if (!(&Tmp-Integer-1 == 27)) {
 	test_fail
 }
 

@@ -15,7 +15,7 @@ group {
 	}
 }
 
-if (&Tmp-Integer-0 != 3) {
+if (!(&Tmp-Integer-0 == 3)) {
 	test_fail
 }
 

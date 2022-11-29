@@ -20,7 +20,7 @@ update {
 	&request = `/bin/sh -c "echo Tmp-String-0 := foo"`
 }
 
-if (!&Tmp-String-0 || (&Tmp-String-0 != 'foo')) {
+if (!&Tmp-String-0 || (!(&Tmp-String-0 == 'foo'))) {
 	test_fail
 }
 
@@ -31,7 +31,7 @@ update {
 	&request = `/bin/sh -c 'echo Tmp-String-0 := foo, Tmp-String-1 := bar'`
 }
 
-if (!&Tmp-String-0 || !&Tmp-String-1 || (&Tmp-String-0 != 'foo') || (&Tmp-String-1 != 'bar')) {
+if (!&Tmp-String-0 || !&Tmp-String-1 || (!(&Tmp-String-0 == 'foo')) || (!(&Tmp-String-1 == 'bar'))) {
 	test_fail
 }
 

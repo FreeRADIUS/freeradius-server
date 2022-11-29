@@ -33,15 +33,15 @@ group {
 	&Tmp-String-2 := "bar"
 }
 
-if (&Tmp-String-0 != "foo") {
+if (!(&Tmp-String-0 == "foo")) {
 	test_fail
 }
 
-if (&Tmp-String-1 != "yup") {
+if (!(&Tmp-String-1 == "yup")) {
 	test_fail
 }
 
-if (&Tmp-String-2 != "bar") {
+if (!(&Tmp-String-2 == "bar")) {
 	test_fail
 }
 

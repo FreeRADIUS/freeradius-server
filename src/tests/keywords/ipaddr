@@ -16,23 +16,23 @@
 	&Tmp-IP-Address-3 = 2130706436
 }
 
-if (&NAS-IP-Address != 127.0.0.1) {
+if (!(&NAS-IP-Address == 127.0.0.1)) {
 	test_fail
 }
 
-if (&Tmp-IP-Address-0 != 127.0.0.1) {
+if (!(&Tmp-IP-Address-0 == 127.0.0.1)) {
 	test_fail
 }
 
-if (&Tmp-IP-Address-1 != 127.0.0.2) {
+if (!(&Tmp-IP-Address-1 == 127.0.0.2)) {
 	test_fail
 }
 
-if (&Tmp-IP-Address-2 != 127.0.0.3) {
+if (!(&Tmp-IP-Address-2 == 127.0.0.3)) {
 	test_fail
 }
 
-if (&Tmp-IP-Address-3 != 127.0.0.4) {
+if (!(&Tmp-IP-Address-3 == 127.0.0.4)) {
 	test_fail
 }
 

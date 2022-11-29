@@ -11,11 +11,11 @@
 &Tmp-String-2	:= "%{tolower:%{Tmp-String-9}}"
 
 
-if (&Tmp-String-0 != "abcde") {
+if (!(&Tmp-String-0 == "abcde")) {
 	test_fail
 }
 
-if (&Tmp-String-1 != "aabbccdd") {
+if (!(&Tmp-String-1 == "aabbccdd")) {
 	test_fail
 }
 

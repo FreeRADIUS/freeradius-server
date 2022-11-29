@@ -24,7 +24,7 @@ update request {
 if (!&Tmp-String-0) {
 	test_fail
 }
-if (&Tmp-String-0 != '') {
+if (!(&Tmp-String-0 == '')) {
 	test_fail
 }
 
@@ -36,7 +36,7 @@ if (&Tmp-String-0 != '') {
 update request {
 	&Tmp-Octets-0 := "%{Reply-Message}"
 }
-if (&Tmp-Octets-0 != "") {
+if (!(&Tmp-Octets-0 == "")) {
 	test_fail
 }
 

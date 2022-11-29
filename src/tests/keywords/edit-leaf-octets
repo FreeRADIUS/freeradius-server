@@ -8,7 +8,7 @@ if (!&Framed-IP-Address) {
 	test_fail
 }
 
-if (&Framed-IP-Address != 127.0.0.1) {
+if (!(&Framed-IP-Address == 127.0.0.1)) {
 	test_fail
 }
 

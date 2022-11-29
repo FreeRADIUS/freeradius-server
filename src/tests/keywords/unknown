@@ -10,7 +10,7 @@ update request {
 #
 &26.24757.84.9.5.7 := 0xab
 
-if (&26.24757.84.9.5.7 != 0xab) {
+if (!(&26.24757.84.9.5.7 == 0xab)) {
 	test_fail
 }
 
@@ -19,7 +19,7 @@ if (&26.24757.84.9.5.7 != 0xab) {
 #
 &26.24757.84.9.5.15 := 0xabcdef
 
-if (&26.24757.84.9.5.15 != 0xabcdef) {
+if (!(&26.24757.84.9.5.15 == 0xabcdef)) {
 	test_fail
 }
 
@@ -31,7 +31,7 @@ if (&26.11344.1 == 127.0.0.1) {
 	test_fail
 }
 
-if (&26.11344.1 != 127.0.0.2) {
+if (!(&26.11344.1 == 127.0.0.2)) {
 	test_fail
 }
 
@@ -41,7 +41,7 @@ if (&Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.2) {
 	test_fail
 }
 
-if (&Vendor-Specific.FreeRADIUS.Proxied-To != 127.0.0.1) {
+if (!(&Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.1)) {
 	test_fail
 }
 
@@ -49,13 +49,13 @@ if (&26.11344.1 == 127.0.0.2) {
 	test_fail
 }
 
-if (&26.11344.1 != 127.0.0.1) {
+if (!(&26.11344.1 == 127.0.0.1)) {
 	test_fail
 }
 
 &26.66.1 = 0x01020304
 
-if (&26.66.1 != 0x01020304) {
+if (!(&26.66.1 == 0x01020304)) {
 	test_fail
 }
 

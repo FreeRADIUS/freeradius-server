@@ -9,7 +9,7 @@
 #  First choice
 #
 &Tmp-String-2 := "%{%{Tmp-String-0}:-%{Tmp-String-1}}"
-if (&Tmp-String-2 != 'foo') {
+if (!(&Tmp-String-2 == 'foo')) {
 	test_fail
 }
 
@@ -18,7 +18,7 @@ if (&Tmp-String-2 != 'foo') {
 #
 &request -= &Tmp-String-0[*]
 &Tmp-String-2 := "%{%{Tmp-String-0}:-%{Tmp-String-1}}"
-if (&Tmp-String-2 != 'bar') {
+if (!(&Tmp-String-2 == 'bar')) {
 	test_fail
 }
 

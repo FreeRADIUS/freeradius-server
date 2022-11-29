@@ -2,7 +2,7 @@
 &Tmp-Integer-0 := "%(debug:4)"
 
 # Check debug level is now 4
-if ("%(debug:4)" != 4) {
+if (!("%(debug:4)" == 4)) {
 	test_fail
 }
 
@@ -10,7 +10,7 @@ if ("%(debug:4)" != 4) {
 "%(debug:%{Tmp-Integer-0})"
 
 # Read out the current debug level to verify it changed
-if ("%(debug:%{Tmp-Integer-0})" != "%{Tmp-Integer-0}") {
+if (!("%(debug:%{Tmp-Integer-0})" == "%{Tmp-Integer-0}")) {
 	test_fail
 }
 

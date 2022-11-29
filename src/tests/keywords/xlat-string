@@ -22,7 +22,7 @@
 #  like every other data type.  If we want to *convert* the octets to
 #  a string, we have to use "%{string:...}"
 #
-if ((string)&Tmp-Octets-0 != "0x5c5c") {
+if (!((string)&Tmp-Octets-0 == "0x5c5c")) {
 	test_fail
 }
 
@@ -33,7 +33,7 @@ if ((string)&Tmp-Octets-0 == 0x5c5c) {
 	test_fail
 }
 
-if (&Tmp-String-0 != "\\\\") {
+if (!(&Tmp-String-0 == "\\\\")) {
 	test_fail
 }
 
@@ -47,15 +47,15 @@ if ((string)&Tmp-Octets-0 == "%{string:%{Tmp-Octets-0}}") {
 #
 #  Test interpolation between string expansions and strings
 #
-if ("%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}" != "test1test2") {
+if (!("%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}" == "test1test2")) {
 	test_fail
 }
 
-if ("test0%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}" != "test0test1test2") {
+if (!("test0%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}" == "test0test1test2")) {
 	test_fail
 }
 
-if ("%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}test3" != "test1test2test3") {
+if (!("%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}test3" == "test1test2test3")) {
 	test_fail
 }
 
@@ -63,11 +63,11 @@ if (&Tmp-String-1 != 'I like chicken I like liver') {
 	test_fail
 }
 
-if (&Tmp-String-2 != "I\000I") {
+if (!(&Tmp-String-2 == "I\000I")) {
 	test_fail
 }
 
-if (&Tmp-String-3 != "\000") {
+if (!(&Tmp-String-3 == "\000")) {
 	test_fail
 }
 

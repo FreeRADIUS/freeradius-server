@@ -6,6 +6,6 @@ if (&User-Name == "bob") {
 	success
 }
 
-if (&User-Name != "bob") {
+if (!(&User-Name == "bob")) {
 	test_fail
 }

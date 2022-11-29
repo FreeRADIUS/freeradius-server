@@ -16,7 +16,7 @@ if (&Tmp-String-0 != "Fri 22 Sep 17:25:00 GMT 2017") && (&Tmp-String-0 != "Fri 2
 # Convert string to integer
 &Tmp-Integer-1 := %(integer:%(date:%{Tmp-String-0}))
 
-if (&Tmp-Integer-1 != &Tmp-Integer-0) {
+if (!(&Tmp-Integer-1 == &Tmp-Integer-0)) {
 	test_fail
 }
 
@@ -24,7 +24,7 @@ if (&Tmp-Integer-1 != &Tmp-Integer-0) {
 &Tmp-String-0 := %(localdate:request)
 &Tmp-String-1 := "%S"
 
-if (&Tmp-String-0 != &Tmp-String-1) {
+if (!(&Tmp-String-0 == &Tmp-String-1)) {
 	test_fail
 }
 
@@ -33,7 +33,7 @@ if (&Tmp-String-0 != &Tmp-String-1) {
 
 &Tmp-Integer-2 := %(integer:%(sqldate:%{Tmp-String-2}))
 
-if (&Tmp-Integer-2 != &Tmp-Integer-0) {
+if (!(&Tmp-Integer-2 == &Tmp-Integer-0)) {
 	test_fail
 }
 

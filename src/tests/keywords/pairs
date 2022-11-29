@@ -34,7 +34,7 @@ if (&Tmp-String-4 != "Password.Cleartext = \"hello\"") {
 	test_fail
 }
 
-if (&Tmp-String-5 != '') {
+if (!(&Tmp-String-5 == '')) {
 	test_fail
 }
 

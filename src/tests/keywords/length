@@ -20,7 +20,7 @@ abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz'
 	&Tmp-Cast-IPv4Prefix = 57.56.55.62/32
 }
 
-if (%(length:%{Tmp-String-0}) != 260) {
+if (!(%(length:%{Tmp-String-0}) == 260)) {
 	test_fail
 }
 
@@ -37,47 +37,47 @@ if (%(length:%{Tmp-String-0}) != 260) {
 }
 
 # String - bin 0x39383730
-if (&Tmp-uint64-0 != 4) {
+if (!(&Tmp-uint64-0 == 4)) {
 	test_fail
 }
 
 # Octets - bin 0x39383731
-if (&Tmp-Integer-1 != 4) {
+if (!(&Tmp-Integer-1 == 4)) {
 	test_fail
 }
 
 # IP Address - bin 0x39383732
-if (&Tmp-Integer-2 != 4) {
+if (!(&Tmp-Integer-2 == 4)) {
 	test_fail
 }
 
 # String - "hello, world"
-if (&Tmp-Integer-3 != 12) {
+if (!(&Tmp-Integer-3 == 12)) {
 	test_fail
 }
 
 # Integer - bin 0x39383734
-if (&Tmp-Integer-4 != 4) {
+if (!(&Tmp-Integer-4 == 4)) {
 	test_fail
 }
 
 # ifid - bin 0x0000000039383737
-if (&Tmp-Integer-6 != 8) {
+if (!(&Tmp-Integer-6 == 8)) {
 	test_fail
 }
 
 # ipv6addr - bin 0x00000000000000000000000039383738
-if (&Tmp-Integer-7 != 16) {
+if (!(&Tmp-Integer-7 == 16)) {
 	test_fail
 }
 
 # ipv6addrprefix - bin 0x8000000000000000000000000039383739
-if (&Tmp-Integer-8 != 17) {
+if (!(&Tmp-Integer-8 == 17)) {
 	test_fail
 }
 
 # byte - bin 0x3a
-if (&Tmp-Integer-9 != 1) {
+if (!(&Tmp-Integer-9 == 1)) {
 	test_fail
 }
 
@@ -87,22 +87,22 @@ if (&Tmp-Integer-9 != 1) {
 &Tmp-Integer-3	:= "%(length:%{Tmp-Cast-IPv4Prefix})"
 
 # short - bin 0x373b
-if (&Tmp-Integer-0 != 2) {
+if (!(&Tmp-Integer-0 == 2)) {
 	test_fail
 }
 
 # ethernet - bin 0x00003938373c
-if (&Tmp-Integer-1 != 6) {
+if (!(&Tmp-Integer-1 == 6)) {
 	test_fail
 }
 
 # integer64 - bin 0x100000003938373d
-if (&Tmp-Integer-2 != 8) {
+if (!(&Tmp-Integer-2 == 8)) {
 	test_fail
 }
 
 # ipv4prefix - bin 0x203938373e
-if (&Tmp-Integer-3 != 5) {
+if (!(&Tmp-Integer-3 == 5)) {
 	test_fail
 }
 

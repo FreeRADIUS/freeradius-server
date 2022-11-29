@@ -8,6 +8,6 @@ if (!&control.User-Name) {
 	test_fail
 }
 
-if (&control.User-Name != 'bob') {
+if (!(&control.User-Name == 'bob')) {
 	test_fail
 }

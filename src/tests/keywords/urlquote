@@ -19,23 +19,23 @@
 }
 
 
-if (&Tmp-String-1 != &Tmp-String-0) {
+if (!(&Tmp-String-1 == &Tmp-String-0)) {
 	test_fail
 }
 
-if (&Tmp-String-3 != &Tmp-String-6) {
+if (!(&Tmp-String-3 == &Tmp-String-6)) {
 	test_fail
 }
 
-if (&Tmp-String-5 != &Tmp-String-8) {
+if (!(&Tmp-String-5 == &Tmp-String-8)) {
 	test_fail
 }
 
-if (&Tmp-String-7 != &Tmp-String-2) {
+if (!(&Tmp-String-7 == &Tmp-String-2)) {
 	test_fail
 }
 
-if (&Tmp-String-9 != &Tmp-String-4) {
+if (!(&Tmp-String-9 == &Tmp-String-4)) {
 	test_fail
 }
 
@@ -44,7 +44,7 @@ if (&Tmp-String-9 != &Tmp-String-4) {
 &request -= &Tmp-String-2[*]
 &Tmp-String-2 := "%{urlunquote:%%E,123}"
 
-if (&Tmp-String-1 != &Tmp-String-0) {
+if (!(&Tmp-String-1 == &Tmp-String-0)) {
 	test_fail
 }
 

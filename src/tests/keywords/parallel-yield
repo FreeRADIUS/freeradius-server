@@ -10,7 +10,7 @@ parallel {
 	}
 }
 
-if (&Tmp-String-0 != 'foo') {
+if (!(&Tmp-String-0 == 'foo')) {
 	test_fail
 }
 

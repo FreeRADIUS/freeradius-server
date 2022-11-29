@@ -12,7 +12,7 @@ if (&Tmp-String-1 != "hello foo:1234 world") {
 
 # User-Password contains characters that need escaping
 &Tmp-String-2 := `/bin/echo %{User-Password}`
-if (&Tmp-String-2 != &User-Password) {
+if (!(&Tmp-String-2 == &User-Password)) {
 	test_fail
 } else {
 	&User-Password := "hello"

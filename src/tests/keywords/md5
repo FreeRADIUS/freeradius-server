@@ -24,43 +24,43 @@
 #  Put "This is a string" into a file and call "md5sum" on it.
 #  You should get this string.
 #
-if (&Tmp-Octets-1 != 0x9ac4dbbc3c0ad2429e61d0df5dc28add) {
+if (!(&Tmp-Octets-1 == 0x9ac4dbbc3c0ad2429e61d0df5dc28add)) {
 	test_fail
 }
 
-if (&Tmp-Octets-2 != 0x9ac4dbbc3c0ad2429e61d0df5dc28add) {
+if (!(&Tmp-Octets-2 == 0x9ac4dbbc3c0ad2429e61d0df5dc28add)) {
 	test_fail
 }
 
-if (&Tmp-Octets-3 != 0x9ac4dbbc3c0ad2429e61d0df5dc28add) {
+if (!(&Tmp-Octets-3 == 0x9ac4dbbc3c0ad2429e61d0df5dc28add)) {
 	test_fail
 }
 
 #
 #  MD5 should also be able to cope with references to octet attributes
 #
-if (&Tmp-Octets-4 != 0xc1e7fa505b2fc1fd0da6cac3db6f6f44) {
+if (!(&Tmp-Octets-4 == 0xc1e7fa505b2fc1fd0da6cac3db6f6f44)) {
 	test_fail
 }
 
 #
 #  MD5 of null string is d41d8cd98f00b204e9800998ecf8427e
 #
-if (&Tmp-Octets-5 != 0xd41d8cd98f00b204e9800998ecf8427e) {
+if (!(&Tmp-Octets-5 == 0xd41d8cd98f00b204e9800998ecf8427e)) {
 	test_fail
 }
 
 #
 #  MD5 HMAC with attribute references
 #
-if (&Tmp-Octets-6 != 0x750c783e6ab0b503eaa86e310a5db738) {
+if (!(&Tmp-Octets-6 == 0x750c783e6ab0b503eaa86e310a5db738)) {
 	test_fail
 }
 
 #
 #  MD5 HMAC with empty key and data
 #
-if (&Tmp-Octets-7 != 0x74e6f7298a9c2d168935f58c001bad88) {
+if (!(&Tmp-Octets-7 == 0x74e6f7298a9c2d168935f58c001bad88)) {
 	test_fail
 }
 

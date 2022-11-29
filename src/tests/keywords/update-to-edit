@@ -36,11 +36,11 @@ update reply {
 	&Tmp-Integer-0 += 13
 }
 
-if (&reply.Tmp-Integer-0[0] != 12) {
+if (!(&reply.Tmp-Integer-0[0] == 12)) {
 	test_fail
 }
 
-if (&reply.Tmp-Integer-0[1] != 13) {
+if (!(&reply.Tmp-Integer-0[1] == 13)) {
 	test_fail
 }
 

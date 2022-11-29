@@ -10,19 +10,19 @@
 &Tmp-String-1 := "%(interpreter:.name)"
 &Tmp-String-2 := "%(interpreter:.type)"
 
-if (&Tmp-String-0 != "src/tests/keywords/xlat-interpreter") {
+if (!(&Tmp-String-0 == "src/tests/keywords/xlat-interpreter")) {
 	test_fail
 }
 
-if (&Tmp-String-1 != "&Tmp-String-1") {
+if (!(&Tmp-String-1 == "&Tmp-String-1")) {
 	test_fail
 }
 
-if (&Tmp-String-2 != "edit") {
+if (!(&Tmp-String-2 == "edit")) {
 	test_fail
 }
 
-if (&Tmp-Integer-0 != 9) {
+if (!(&Tmp-Integer-0 == 9)) {
 	test_fail
 }
 

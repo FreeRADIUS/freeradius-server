@@ -7,11 +7,11 @@
 &Tmp-String-1	:= "%{toupper:AAbbCCdd}"
 &Tmp-String-2	:= "%{toupper:%{Tmp-String-9}}"
 
-if (&Tmp-String-0 != "ABCDE") {
+if (!(&Tmp-String-0 == "ABCDE")) {
 	test_fail
 }
 
-if (&Tmp-String-1 != "AABBCCDD") {
+if (!(&Tmp-String-1 == "AABBCCDD")) {
 	test_fail
 }
 

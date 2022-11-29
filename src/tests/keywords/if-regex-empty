@@ -42,7 +42,7 @@ if (!&control.Tmp-String-1) {
 	test_fail
 }
 
-if (&control.Tmp-String-1 != "") {
+if (!(&control.Tmp-String-1 == "")) {
 	test_fail
 }
 

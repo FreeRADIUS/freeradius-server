@@ -14,7 +14,7 @@ update request {
 	&control !* ANY
 }
 
-if (&Tmp-String-0[0] != 'foo') {
+if (!(&Tmp-String-0[0] == 'foo')) {
 	test_fail
 }
 

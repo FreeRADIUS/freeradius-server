@@ -22,7 +22,7 @@ else {
 
 # Checking capture groups are cleared out correctly
 if (&User-Name =~ /^([0-9])_/) {
-	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" != '1_1') {
+	if (!("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" == '1_1')) {
 		test_fail
 	}
 }
@@ -32,7 +32,7 @@ else {
 
 # Checking capture groups are cleared out correctly when there are no matches
 if (&User-Name =~ /^./) {
-	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" != '1') {
+	if (!("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" == '1')) {
 		test_fail
 	}
 }

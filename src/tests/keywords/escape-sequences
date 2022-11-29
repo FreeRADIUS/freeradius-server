@@ -19,11 +19,11 @@
 }
 
 
-if ("%(length:%{Tmp-String-0})" != 39) {
+if (!("%(length:%{Tmp-String-0})" == 39)) {
 	test_fail
 }
 
-if ("%(length:%{Tmp-String-1})" != 42) {
+if (!("%(length:%{Tmp-String-1})" == 42)) {
 	test_fail
 }
 
@@ -37,7 +37,7 @@ if (&Tmp-String-0 != "i have scary embedded things\000 inside me") {
 }
 
 &Tmp-String-8 := "%{string:%{Tmp-Octets-1}}"
-if (&Tmp-String-8 != "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°") {
+if (!(&Tmp-String-8 == "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°")) {
 	test_fail
 }
 
@@ -45,7 +45,7 @@ if ("%{Tmp-String-0[0]}" != "i have scary embedded things\000 inside me") {
 	test_fail
 }
 
-if ("%{Tmp-String-0[1]}" != "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°") {
+if (!("%{Tmp-String-0[1]}" == "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°")) {
 	test_fail
 }
 
@@ -54,7 +54,7 @@ if ("%{Tmp-String-0[*]}" != "i have scary embedded things\000 inside me0x01\0010
 	test_fail
 }
 
-if (&Tmp-String-0[0] != &Tmp-String-0[0]) {
+if (!(&Tmp-String-0[0] == &Tmp-String-0[0])) {
 	test_fail
 }
 
@@ -62,14 +62,14 @@ if (&Tmp-String-0[0] != &Tmp-String-0[0]) {
 #  This seems weird... double escapes for most things, but single escapes
 #  for the quotation marks.
 #
-if ("%{Tmp-String-2[1]}" != "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°") {
+if (!("%{Tmp-String-2[1]}" == "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°")) {
 	test_fail
 }
 
 #
 # And again as an attribute reference
 #
-if (&Tmp-String-2[1] != "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°") {
+if (!(&Tmp-String-2[1] == "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°")) {
 	test_fail
 }
 
@@ -77,7 +77,7 @@ if (&Tmp-String-2[1] != "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°") {
 #  Other data types
 #
 &Tmp-String-0 := "%{string:&Tmp-IP-Address-0}"
-if ("%(length:%{Tmp-String-0})" != 17) {
+if (!("%(length:%{Tmp-String-0})" == 17)) {
 	test_fail
 }
 

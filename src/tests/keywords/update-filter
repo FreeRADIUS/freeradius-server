@@ -25,15 +25,15 @@ update request {
 	&Tmp-Integer-0 == 10
 }
 
-if (&Tmp-Integer-0[0] != 10) {
+if (!(&Tmp-Integer-0[0] == 10)) {
 	test_fail
 }
 
-if ("%{Tmp-Integer-0[#]}" != 1) {
+if (!("%{Tmp-Integer-0[#]}" == 1)) {
 	test_fail
 }
 
-if ("%{Tmp-String-0[#]}" != 3) {
+if (!("%{Tmp-String-0[#]}" == 3)) {
 	test_fail
 }
 
@@ -47,11 +47,11 @@ update request {
 	&Tmp-String-0 == 'baz'
 }
 
-if (&Tmp-String-0[0] != 'baz') {
+if (!(&Tmp-String-0[0] == 'baz')) {
 	test_fail
 }
 
-if ("%{Tmp-String-0[#]}" != 1) {
+if (!("%{Tmp-String-0[#]}" == 1)) {
 	test_fail
 }
 
@@ -65,15 +65,15 @@ update request {
 	&Tmp-Integer-0 < 10
 }
 
-if (&Tmp-Integer-0[0] != 5) {
+if (!(&Tmp-Integer-0[0] == 5)) {
 	test_fail
 }
 
-if ("%{Tmp-Integer-0[#]}" != 1) {
+if (!("%{Tmp-Integer-0[#]}" == 1)) {
 	test_fail
 }
 
-if ("%{Tmp-String-0[#]}" != 3) {
+if (!("%{Tmp-String-0[#]}" == 3)) {
 	test_fail
 }
 
@@ -87,20 +87,20 @@ update request {
 	&Tmp-Integer-0 > 10
 }
 
-if (&Tmp-Integer-0[0] != 15) {
+if (!(&Tmp-Integer-0[0] == 15)) {
 	test_fail
 }
 
-if (&Tmp-Integer-0[1] != 20) {
+if (!(&Tmp-Integer-0[1] == 20)) {
 	test_fail
 }
 
 
-if ("%{Tmp-Integer-0[#]}" != 2) {
+if (!("%{Tmp-Integer-0[#]}" == 2)) {
 	test_fail
 }
 
-if ("%{Tmp-String-0[#]}" != 3) {
+if (!("%{Tmp-String-0[#]}" == 3)) {
 	test_fail
 }
 
@@ -115,19 +115,19 @@ update request {
 	&Tmp-Integer-0 <= 10
 }
 
-if (&Tmp-Integer-0[0] != 5) {
+if (!(&Tmp-Integer-0[0] == 5)) {
 	test_fail
 }
 
-if (&Tmp-Integer-0[1] != 10) {
+if (!(&Tmp-Integer-0[1] == 10)) {
 	test_fail
 }
 
-if ("%{Tmp-Integer-0[#]}" != 2) {
+if (!("%{Tmp-Integer-0[#]}" == 2)) {
 	test_fail
 }
 
-if ("%{Tmp-String-0[#]}" != 3) {
+if (!("%{Tmp-String-0[#]}" == 3)) {
 	test_fail
 }
 
@@ -141,23 +141,23 @@ update request {
 	&Tmp-Integer-0 >= 10
 }
 
-if (&Tmp-Integer-0[0] != 10) {
+if (!(&Tmp-Integer-0[0] == 10)) {
 	test_fail
 }
 
-if (&Tmp-Integer-0[1] != 15) {
+if (!(&Tmp-Integer-0[1] == 15)) {
 	test_fail
 }
 
-if (&Tmp-Integer-0[2] != 20) {
+if (!(&Tmp-Integer-0[2] == 20)) {
 	test_fail
 }
 
-if ("%{Tmp-Integer-0[#]}" != 3) {
+if (!("%{Tmp-Integer-0[#]}" == 3)) {
 	test_fail
 }
 
-if ("%{Tmp-String-0[#]}" != 3) {
+if (!("%{Tmp-String-0[#]}" == 3)) {
 	test_fail
 }
 
@@ -171,23 +171,23 @@ update request {
 	&Tmp-Integer-0 != 10
 }
 
-if (&Tmp-Integer-0[0] != 5) {
+if (!(&Tmp-Integer-0[0] == 5)) {
 	test_fail
 }
 
-if (&Tmp-Integer-0[1] != 15) {
+if (!(&Tmp-Integer-0[1] == 15)) {
 	test_fail
 }
 
-if (&Tmp-Integer-0[2] != 20) {
+if (!(&Tmp-Integer-0[2] == 20)) {
 	test_fail
 }
 
-if ("%{Tmp-Integer-0[#]}" != 3) {
+if (!("%{Tmp-Integer-0[#]}" == 3)) {
 	test_fail
 }
 
-if ("%{Tmp-String-0[#]}" != 3) {
+if (!("%{Tmp-String-0[#]}" == 3)) {
 	test_fail
 }
 
@@ -206,11 +206,11 @@ update request {
 	&Tmp-String-0 == &Tmp-String-1[0]
 }
 
-if (&Tmp-String-0[0] != &Tmp-String-1[0]) {
+if (!(&Tmp-String-0[0] == &Tmp-String-1[0])) {
 	test_fail
 }
 
-if ("%{Tmp-String-0[#]}" != 1) {
+if (!("%{Tmp-String-0[#]}" == 1)) {
 	test_fail
 }
 

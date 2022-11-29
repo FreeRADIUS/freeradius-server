@@ -8,23 +8,23 @@
 	&User-Name
 }
 
-if (%{request.Tmp-String-0[#]} != 4) {
+if (!(%{request.Tmp-String-0[#]} == 4)) {
 	test_fail
 }
 
-if (&Tmp-String-0[0] != "foo") {
+if (!(&Tmp-String-0[0] == "foo")) {
 	test_fail
 }
 
-if (&Tmp-String-0[1] != "bar") {
+if (!(&Tmp-String-0[1] == "bar")) {
 	test_fail
 }
 
-if (&Tmp-String-0[2] != "baz") {
+if (!(&Tmp-String-0[2] == "baz")) {
 	test_fail
 }
 
-if (&Tmp-String-0[3] != "bob") {
+if (!(&Tmp-String-0[3] == "bob")) {
 	test_fail
 }
 

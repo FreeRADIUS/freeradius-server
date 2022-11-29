@@ -17,7 +17,7 @@ if (!&control.Tmp-Group-0.Tmp-Integer-0) {
 	test_fail
 }
 
-if (&control.Tmp-Group-0.Tmp-Integer-0 != 1) {
+if (!(&control.Tmp-Group-0.Tmp-Integer-0 == 1)) {
 	test_fail
 }
 
@@ -26,7 +26,7 @@ if (&control.Tmp-Group-0.Tmp-Integer-0 != 1) {
 #
 &control.Tmp-Group-0.Tmp-Integer-0 += 5
 
-if (&control.Tmp-Group-0.Tmp-Integer-0 != 6) {
+if (!(&control.Tmp-Group-0.Tmp-Integer-0 == 6)) {
 	test_fail
 }
 
@@ -52,7 +52,7 @@ if (&control.Tmp-Group-0.Tmp-Integer-0) {
 	&Tmp-IP-Address-0 = 127.0.0.1
 }
 
-if (&control.Tmp-Group-0.Tmp-IP-Address-0 != 127.0.0.1) {
+if (!(&control.Tmp-Group-0.Tmp-IP-Address-0 == 127.0.0.1)) {
 	test_fail
 }
 
@@ -63,11 +63,11 @@ if (&control.Tmp-Group-0.Tmp-IP-Address-0 != 127.0.0.1) {
 	&Tmp-Octets-0 = 0xabcdef
 }
 
-if (&control.Tmp-Group-0.Tmp-IP-Address-0 != 127.0.0.1) {
+if (!(&control.Tmp-Group-0.Tmp-IP-Address-0 == 127.0.0.1)) {
 	test_fail
 }
 
-if (&control.Tmp-Group-0.Tmp-Octets-0 != 0xabcdef) {
+if (!(&control.Tmp-Group-0.Tmp-Octets-0 == 0xabcdef)) {
 	test_fail
 }
 

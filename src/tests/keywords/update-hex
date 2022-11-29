@@ -8,7 +8,7 @@ update {
 	&Tmp-String-0 := 0x626f62
 }
 
-if (&Tmp-String-0 != 'bob') {
+if (!(&Tmp-String-0 == 'bob')) {
 	test_fail
 }
 
@@ -16,7 +16,7 @@ update {
 	&Tmp-String-0 := '0x626f62'
 }
 
-if (&Tmp-String-0 != '0x626f62') {
+if (!(&Tmp-String-0 == '0x626f62')) {
 	test_fail
 }
 

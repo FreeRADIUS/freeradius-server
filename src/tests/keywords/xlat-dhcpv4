@@ -3,15 +3,15 @@
 #
 
 &Tmp-Octets-0 := 0x520d0103abcdef0206010203040506
-if ("%(decode.dhcpv4:%{Tmp-Octets-0})" != 2) {
+if (!("%(decode.dhcpv4:%{Tmp-Octets-0})" == 2)) {
 	test_fail
 }
 
-if (&Relay-Agent-Information.Circuit-Id != 0xabcdef) {
+if (!(&Relay-Agent-Information.Circuit-Id == 0xabcdef)) {
 	test_fail
 }
 
-if (&Relay-Agent-Information.Remote-Id != 0x010203040506) {
+if (!(&Relay-Agent-Information.Remote-Id == 0x010203040506)) {
 	test_fail
 }
 

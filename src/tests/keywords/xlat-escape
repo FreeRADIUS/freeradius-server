@@ -12,7 +12,7 @@ if ("%{tolower:\%{ FOO}" != '%{ foo') {
 	test_fail
 }
 
-if ("\%D" != '%D') {
+if (!("\%D" == '%D')) {
 	test_fail
 }
 

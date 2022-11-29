@@ -41,21 +41,21 @@ if (!ok) {
 	return
 }
 
-if (&Tmp-Integer-2 != 1) {
+if (!(&Tmp-Integer-2 == 1)) {
 	test_fail
 }
 
-if (&Tmp-Integer-3 != 1) {
-	test_fail
-	return
-}
-
-if (&Tmp-Integer-4 != 1) {
+if (!(&Tmp-Integer-3 == 1)) {
 	test_fail
 	return
 }
 
-if (&Tmp-Integer-5 != 1) {
+if (!(&Tmp-Integer-4 == 1)) {
+	test_fail
+	return
+}
+
+if (!(&Tmp-Integer-5 == 1)) {
 	test_fail
 	return
 }

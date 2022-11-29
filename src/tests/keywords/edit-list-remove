@@ -46,7 +46,7 @@ if (!&Tmp-String-0) {
 &request -= &Tmp-String-0[0]
 
 #  the first one has been removed
-if (&Tmp-String-0[0] != "bar") {
+if (!(&Tmp-String-0[0] == "bar")) {
 	test_fail
 }
 
@@ -78,11 +78,11 @@ if (&Tmp-String-0) {
 	&Tmp-String-0 == "bar"
 }
 
-if (&Tmp-String-0[0] != "foo") {
+if (!(&Tmp-String-0[0] == "foo")) {
 	test_fail
 }
 
-if (&Tmp-String-0[1] != "baz") {
+if (!(&Tmp-String-0[1] == "baz")) {
 	test_fail
 }
 
@@ -94,7 +94,7 @@ if (&Tmp-String-0[2]) {
 #  Remove via in-place list, too.
 #
 &request -= "Tmp-String-0 == 'foo'"
-if (&Tmp-String-0[0] != "baz") {
+if (!(&Tmp-String-0[0] == "baz")) {
 	test_fail
 }
 

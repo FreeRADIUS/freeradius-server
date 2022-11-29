@@ -73,7 +73,7 @@ a02f4a3ab98d75992d68a15d393387fe9ef01041569570ad6fe884764e55567311bcacfcffae7655
 3ae4bcef324b9a3f47ba5c835b54a010ca42f3b9cc5368278c148c9b02ea8c4c9f244fd49f
 
 # Actual length of octet string is 4083 bytes
-if (%(length:%{Tmp-Octets-0}) != 4083) {
+if (!(%(length:%{Tmp-Octets-0}) == 4083)) {
 	test_fail
 }
 
@@ -84,7 +84,7 @@ if ("%{Tmp-Octets-0}" !~ /^0x([0-9a-f]+)$/) {
 
 &Tmp-String-0 := "%{1}"
 
-if ("%(length:%{Tmp-String-0})" != 8166) {
+if (!("%(length:%{Tmp-String-0})" == 8166)) {
 	test_fail
 }
 

@@ -13,7 +13,7 @@ if (!&reply.Tmp-String-0) {
 }
 
 # and have the correct value
-if (&reply.Tmp-String-0 != "foo") {
+if (!(&reply.Tmp-String-0 == "foo")) {
 	test_fail
 }
 

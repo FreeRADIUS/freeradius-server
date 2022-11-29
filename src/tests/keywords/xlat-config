@@ -3,13 +3,13 @@
 #
 
 &Tmp-String-0 := "%(config:modules.test.boolean)"
-if (&Tmp-String-0 != "no") {
+if (!(&Tmp-String-0 == "no")) {
 	test_fail
 }
 
 &Tmp-String-0 := "test"
 &Tmp-Integer-0 := "%(config:modules.%{Tmp-String-0}.integer)"
-if (&Tmp-Integer-0 != 1) {
+if (!(&Tmp-Integer-0 == 1)) {
 	test_fail
 }
 

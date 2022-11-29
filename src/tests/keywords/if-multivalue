@@ -47,7 +47,7 @@
 #
 #  Mmmm O(N^2)
 #
-if (&Tmp-String-0[*] != &control.Tmp-String-0[*]) {
+if (!(&Tmp-String-0[*] == &control.Tmp-String-0[*])) {
 	test_fail
 }
 
@@ -62,7 +62,7 @@ if (&Tmp-String-1[*] == &control.Tmp-String-0[*]) {
 #
 #  Integer comparison and normalisation
 #
-if (&Tmp-Integer-0 != &control.Tmp-Integer-0) {
+if (!(&Tmp-Integer-0 == &control.Tmp-Integer-0)) {
 	test_fail
 }
 
@@ -111,14 +111,14 @@ if (&Tmp-String-1 =~ /%{Tmp-String-2[#]}$/) {
 #
 #  XLAT virtual comparisons
 #
-if (&control.Tmp-Integer-0[*] != "%{control.Tmp-Integer-0[#]}") {
+if (!(&control.Tmp-Integer-0[*] == "%{control.Tmp-Integer-0[#]}")) {
 	test_fail
 }
 
 #
 #  Literal comparisons
 #
-if (&control.Tmp-String-1[*] != 'boink') {
+if (!(&control.Tmp-String-1[*] == 'boink')) {
 	test_fail
 }
 

@@ -1,6 +1,6 @@
 # Regression test for double consecutive alternations
 &Tmp-uint64-0 := "%{%{Acct-Input-Octets}:-2}%{%{Acct-Input-Gigawords}:-1}"
-if (&Tmp-uint64-0 != 21) {
+if (!(&Tmp-uint64-0 == 21)) {
 	test_fail
 }
 
