@@ -1,0 +1,14 @@
+Packet-Type = Access-Request
+User-Name = "bob"
+User-Password = "hello"
+Acct-Status-Type = Stop
+Acct-Session-Id = "u"
+User-Name = "test"
+NAS-IP-Address = 192.0.2.1
+NAS-Identifier = "foobar-is00c"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Result-Status == "success"
