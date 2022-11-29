@@ -11,15 +11,19 @@
 #	consisting of a random number 0..9.  The user has to respond
 #	with that number.
 #
-
-listen {
-	type = auth
-	ipaddr = *
-	port = 2000
-	virtual_server = challenge
-}
-
 server challenge {
+	namespace = radius
+
+	listen {
+		type = Access-Request
+		transport = udp
+
+		udp {
+			ipaddr = *
+			port = 2000
+		}
+	}
+
 recv Access-Request {
 
 	#
