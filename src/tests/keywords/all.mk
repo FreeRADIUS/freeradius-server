@@ -58,7 +58,7 @@ KEYWORD_UPDATE_REWRITE_TESTS := update-all update-array update-delete update-rem
 #  Migration support.  Some of the tests don't run under the new
 #  conditions, so we don't run them under the new conditions.
 #
-ifneq "$(findstring ${1}, paircmp)" ""
+ifneq "$(findstring ${1}, paircmp if-paircmp)" ""
 $(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=no -S use_new_conditions=no
 else ifneq "$(findstring ${1}, comments update-to-edit if-regex-multivalue smash wimax unknown $(KEYWORD_UPDATE_TESTS) vendor_specific vendor_specific.raw xlat-unknown)" ""
 $(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=yes -S use_new_conditions=yes
