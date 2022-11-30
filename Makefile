@@ -412,6 +412,13 @@ freeradius-server-$(PKG_VERSION).tar.gz: freeradius-server-$(PKG_VERSION).tar
 freeradius-server-$(PKG_VERSION).tar.bz2: freeradius-server-$(PKG_VERSION).tar
 	bzip2 < $^ > $@
 
+# Backwards compatibility with RPM build scripts
+freeradius-server-$(RADIUSD_VERSION_MAJOR).$(RADIUSD_VERSION_MINOR).tar.gz: freeradius-server-$(PKG_VERSION).tar
+	gzip < $^ > $@
+
+freeradius-server-$(RADIUSD_VERSION_MAJOR).$(RADIUSD_VERSION_MINOR).tar.bz2: freeradius-server-$(PKG_VERSION).tar
+	bzip2 < $^ > $@
+
 %.sig: %
 	gpg --default-key packages@freeradius.org -b $<
 
