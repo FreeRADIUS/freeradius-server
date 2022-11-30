@@ -77,6 +77,10 @@ endif
 
 PKG_VERSION := $(RADIUSD_VERSION_MAJOR).$(RADIUSD_VERSION_MINOR)$(RADIUSD_VERSION_SEP)$(RADIUSD_VERSION_INCRM)$(PKG_VERSION_SUFFIX)
 
+.PHONY: pkg_version
+pkg_version:
+	@echo $(PKG_VERSION)
+
 MFLAGS += --no-print-directory
 
 export DESTDIR := $(R)
@@ -410,13 +414,6 @@ freeradius-server-$(PKG_VERSION).tar.gz: freeradius-server-$(PKG_VERSION).tar
 	gzip < $^ > $@
 
 freeradius-server-$(PKG_VERSION).tar.bz2: freeradius-server-$(PKG_VERSION).tar
-	bzip2 < $^ > $@
-
-# Backwards compatibility with RPM build scripts
-freeradius-server-$(RADIUSD_VERSION_MAJOR).$(RADIUSD_VERSION_MINOR).tar.gz: freeradius-server-$(PKG_VERSION).tar
-	gzip < $^ > $@
-
-freeradius-server-$(RADIUSD_VERSION_MAJOR).$(RADIUSD_VERSION_MINOR).tar.bz2: freeradius-server-$(PKG_VERSION).tar
 	bzip2 < $^ > $@
 
 %.sig: %
