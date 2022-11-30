@@ -98,10 +98,23 @@ listen {
 	#  On Linux if you're running the server as non-root, you
 	#  will need to do:
 	#
-	#	sudo setcap cap_net_admin=ei /path/to/radiusd
+	#	setcap cap_net_admin,cap_net_bind_service=eip /path/to/radiusd 
 	#
 	#  This will allow the server to set ARP table entries
-	#  for newly allocated IPs
+	#  for newly allocated IPs, when run as the "radius" user.
+	#
+	#  The above "setcap" command adds the capability to the program,
+	#  usually so long as it is run by the "radius" user.  Which means
+	#  (oddly enough) that it no longer works when run as root!
+	#
+	#  When running the server as root in debug mode, you can use:
+	#
+	#  capsh --caps="cap_setpcap,cap_setuid,cap_setgid,cap_net_admin,cap_net_bind_service+eip"
+--keep=1 --user=radius --addamb=cap_net_admin,cap_net_bind_service --
+-c "/path/to/radiusd -X"
+	#
+	#  Or, simply "sudo" or "su" to the "radius" user, and then run
+	#  the server in debug mode.
 
 	#  De-duplicate DHCP packets.  If clients don't receive
 	#  a reply within their timeout, most will re-transmit.
