@@ -843,7 +843,6 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 
 static int dhcp_socket_encode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
 {
-	DEBUG2("NO ENCODE!");
 	return 0;
 }
 
