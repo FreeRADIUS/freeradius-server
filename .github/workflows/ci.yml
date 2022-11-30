@@ -134,8 +134,8 @@ jobs:
       threeds:
         image: 389ds/dirsrv
         ports:
-          - 3389
-          - 3636
+          - 3389:3389
+          - 3636:3636
         options: >-
           -e DS_SUFFIX_NAME=dc=example,dc=com
           -e DS_DM_PASSWORD=secret123
