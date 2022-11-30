@@ -401,13 +401,15 @@ int trigger_exec(unlang_interpret_t *intp,
 
 		MEM(local_args = talloc_zero(request, fr_pair_list_t));
 		fr_pair_list_init(local_args);
-		fr_pair_list_copy(local_args, local_args, args);
-
-		if (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, local_args,
-				      false, false, false) < 0) {
+		if (fr_pair_list_copy(local_args, local_args, args) < 0) {
+			PERROR("Failed copying trigger arguments");
+		args_error:
 			talloc_free(request);
 			return -1;
-		}
+		};
+
+		if (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, local_args,
+				      false, false, false) < 0) goto args_error;
 	}
 
 	{
