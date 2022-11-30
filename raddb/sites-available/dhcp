@@ -85,28 +85,28 @@ listen {
 	#  Interface name we are listening on. See comments above.
 #	interface = lo0
 
-	# The DHCP server defaults to allowing broadcast packets.
-	# Set this to "no" only when the server receives *all* packets
-	# from a relay agent.  i.e. when *no* clients are on the same
-	# LAN as the DHCP server.
+	#  The DHCP server defaults to allowing broadcast packets.
+	#  Set this to "no" only when the server receives *all* packets
+	#  from a relay agent.  i.e. when *no* clients are on the same
+	#  LAN as the DHCP server.
 	#
-	# It's set to "no" here for testing. It will usually want to
-	# be "yes" in production, unless you are only dealing with
-	# relayed packets.
+	#  It's set to "no" here for testing. It will usually want to
+	#  be "yes" in production, unless you are only dealing with
+	#  relayed packets.
 	broadcast = no
 
-	# On Linux if you're running the server as non-root, you
-	# will need to do:
+	#  On Linux if you're running the server as non-root, you
+	#  will need to do:
 	#
 	#	sudo setcap cap_net_admin=ei /path/to/radiusd
 	#
-	# This will allow the server to set ARP table entries
-	# for newly allocated IPs
+	#  This will allow the server to set ARP table entries
+	#  for newly allocated IPs
 
-	# De-duplicate DHCP packets.  If clients don't receive
-	# a reply within their timeout, most will re-transmit.
-	# A reply to either packet will satisfy, so de-duplicating
-	# helps manage load on a busy server
+	#  De-duplicate DHCP packets.  If clients don't receive
+	#  a reply within their timeout, most will re-transmit.
+	#  A reply to either packet will satisfy, so de-duplicating
+	#  helps manage load on a busy server
 	performance {
 		skip_duplicate_checks = no
 	}
