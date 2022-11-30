@@ -612,6 +612,7 @@ void rlm_sql_query_log(rlm_sql_t const *inst, request_t *request, sql_acct_secti
 		ERROR("Couldn't open logfile '%s': %s", expanded, fr_syserror(errno));
 
 		talloc_free(expanded);
+		/* coverity[missing_unlock] */
 		return;
 	}
 
