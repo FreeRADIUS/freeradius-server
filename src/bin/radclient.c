@@ -78,8 +78,7 @@ static int ipproto = IPPROTO_UDP;
 
 static fr_packet_list_t *packet_list = NULL;
 
-static rc_request_t *request_head = NULL;
-static rc_request_t *rc_request_tail = NULL;
+static fr_dlist_head_t rc_request_list;
 
 static char const *radclient_version = RADIUSD_VERSION_BUILD("radclient");
 
@@ -172,26 +171,7 @@ static NEVER_RETURNS void usage(void)
  */
 static int _rc_request_free(rc_request_t *request)
 {
-	rc_request_t *prev, *next;
-
-	prev = request->prev;
-	next = request->next;
-
-	if (prev) {
-		assert(request_head != request);
-		prev->next = next;
-	} else if (request_head) {
-		assert(request_head == request);
-		request_head = next;
-	}
-
-	if (next) {
-		assert(rc_request_tail != request);
-		next->prev = prev;
-	} else if (rc_request_tail) {
-		assert(rc_request_tail == request);
-		rc_request_tail = prev;
-	}
+	fr_dlist_remove(&rc_request_list, request);
 
 	return 0;
 }
@@ -631,17 +611,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Add it to the tail of the list.
 		 */
-		if (!request_head) {
-			assert(rc_request_tail == NULL);
-			request_head = request;
-			request->prev = NULL;
-		} else {
-			assert(rc_request_tail->next == NULL);
-			rc_request_tail->next = request;
-			request->prev = rc_request_tail;
-		}
-		rc_request_tail = request;
-		request->next = NULL;
+		fr_dlist_insert_tail(&rc_request_list, request);
 
 		/*
 		 *	Set the destructor so it removes itself from the
@@ -1107,12 +1077,12 @@ int main(int argc, char **argv)
 	int		do_summary = false;
 	int		persec = 0;
 	int		parallel = 1;
-	rc_request_t	*this;
 	int		force_af = AF_UNSPEC;
 #ifndef NDEBUG
 	TALLOC_CTX	*autofree;
 #endif
 	fr_rb_tree_t	*filename_tree = NULL;
+	rc_request_t	*request;
 
 	/*
 	 *	It's easier having two sets of flags to set the
@@ -1137,6 +1107,8 @@ int main(int argc, char **argv)
 #endif
 
 	talloc_set_log_stderr();
+
+	fr_dlist_talloc_init(&rc_request_list, rc_request_t, entry);
 
 	filename_tree = fr_rb_inline_talloc_alloc(NULL, rc_file_pair_t, node, filename_cmp, NULL);
 	if (!filename_tree) {
@@ -1417,7 +1389,7 @@ int main(int argc, char **argv)
 	/*
 	 *	No packets read.  Die.
 	 */
-	if (!request_head) {
+	if (!fr_dlist_num_elements(&rc_request_list)) {
 		ERROR("Nothing to send");
 		fr_exit_now(1);
 	}
@@ -1426,14 +1398,15 @@ int main(int argc, char **argv)
 	 *	Bind to the first specified IP address and port.
 	 *	This means we ignore later ones.
 	 */
-	if (request_head->packet->socket.inet.src_ipaddr.af == AF_UNSPEC) {
+	request = fr_dlist_head(&rc_request_list);
+	if (request->packet->socket.inet.src_ipaddr.af == AF_UNSPEC) {
 		memset(&client_ipaddr, 0, sizeof(client_ipaddr));
 		client_ipaddr.af = server_ipaddr.af;
 	} else {
-		client_ipaddr = request_head->packet->socket.inet.src_ipaddr;
+		client_ipaddr = request->packet->socket.inet.src_ipaddr;
 	}
 
-	if (client_port == 0) client_port = request_head->packet->socket.inet.src_port;
+	if (client_port == 0) client_port = request->packet->socket.inet.src_port;
 
 	if (ipproto == IPPROTO_TCP) {
 		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
@@ -1471,7 +1444,7 @@ int main(int argc, char **argv)
 	 *	Walk over the list of packets, sanity checking
 	 *	everything.
 	 */
-	for (this = request_head; this != NULL; this = this->next) {
+	fr_dlist_foreach(&rc_request_list, rc_request_t, this) {
 		this->packet->socket.inet.src_ipaddr = client_ipaddr;
 		this->packet->socket.inet.src_port = client_port;
 		if (radclient_sane(this) != 0) {
@@ -1490,7 +1463,7 @@ int main(int argc, char **argv)
 	 */
 	do {
 		int n = parallel;
-		rc_request_t *next;
+		rc_request_t *this, *next;
 		char const *filename = NULL;
 
 		done = true;
@@ -1500,8 +1473,10 @@ int main(int argc, char **argv)
 		 *	Walk over the packets, sending them.
 		 */
 
-		for (this = request_head; this != NULL; this = next) {
-			next = this->next;
+		for (this = fr_dlist_head(&rc_request_list);
+		     this != NULL;
+		     this = next) {
+			next = fr_dlist_next(&rc_request_list, this);
 
 			/*
 			 *	If there's a packet to receive,
@@ -1616,7 +1591,7 @@ int main(int argc, char **argv)
 
 	fr_packet_list_free(packet_list);
 
-	while (request_head) TALLOC_FREE(request_head);
+	fr_dlist_talloc_free(&rc_request_list);
 
 	talloc_free(secret);
 

@@ -68,8 +68,7 @@ typedef struct rc_request rc_request_t;
 struct rc_request {
 	uint64_t		num;		//!< The number (within the file) of the request were reading.
 
-	rc_request_t		*prev;
-	rc_request_t		*next;
+	fr_dlist_t		entry;
 
 	rc_file_pair_t		*files;		//!< Request and response file names.
 
