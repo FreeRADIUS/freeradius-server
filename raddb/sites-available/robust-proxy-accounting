@@ -116,6 +116,10 @@ server home.example.com {
 		#
 		Post-Proxy-Type Fail-Accounting {
 			detail.example.com
+
+			#  Now that the packet has been stored
+			#  mark that we can respond to the NAS
+			acct_response
 		}
 
 		#

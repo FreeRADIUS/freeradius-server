@@ -1147,7 +1147,13 @@ post-proxy {
 	#  accounting packets to disk if the home server is down.
 	#
 #	Post-Proxy-Type Fail-Accounting {
-#			detail.example.com
+#		detail.example.com
+
+		#
+		#  Ensure a response is sent to the NAS now that the
+		#  packet has been written to a detail file.
+		#
+#		acct_response
 #	}
 }
 }
