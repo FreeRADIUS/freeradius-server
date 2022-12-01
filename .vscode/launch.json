@@ -39,7 +39,13 @@
                                 { "name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
                                 { "name": "DEBUGGER_ATTACHED", "value": "yes" }
                         ],
-                        "MIMode": "gdb"
+                        "MIMode": "gdb",
+                        "setupCommands": [
+                                {
+                                        "description": "Set solib",
+                                        "text": "set solib-search-path ${workspaceFolder}"
+                                }
+                        ]
                 },
                 {
                         "type": "cppdbg",
@@ -66,7 +72,13 @@
                                 { "name": "KEYWORD", "value": "${input:keyword}" },
                                 { "name": "DEBUGGER_ATTACHED", "value": "yes"}
                         ],
-                        "MIMode": "gdb"
+                        "MIMode": "gdb",
+                        "setupCommands": [
+                                {
+                                        "description": "Set solib",
+                                        "text": "set solib-search-path ${workspaceFolder}"
+                                }
+                        ]
                 },
                 {
                         "type": "cppdbg",
@@ -77,6 +89,13 @@
                         "environment": [
                                 {"name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
                                 {"name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" }
+                        ],
+                        "MIMode": "gdb",
+                        "setupCommands": [
+                                {
+                                        "description": "Set solib",
+                                        "text": "set solib-search-path ${workspaceFolder}"
+                                }
                         ]
                 },
                 {
@@ -102,6 +121,13 @@
                                 { "name": "MODULE_TEST_DIR", "value": "src/tests/modules/${input:module}/"},
                                 { "name": "MODULE_TEST_UNLANG", "value": "src/tests/modules/${input:module}/${input:moduletest}.unlang" }
                         ],
+                        "MIMode": "gdb",
+                        "setupCommands": [
+                                {
+                                        "description": "Set solib",
+                                        "text": "set solib-search-path ${workspaceFolder}"
+                                }
+                        ]
                 }
         ],
         "inputs": [
