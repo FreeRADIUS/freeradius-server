@@ -1,0 +1,52 @@
+{
+        // Use IntelliSense to learn about possible attributes.
+        // Hover to view descriptions of existing attributes.
+        // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+        "version": "0.2.0",
+        "configurations": [
+                {
+                        "type": "lldb",
+                        "request": "launch",
+                        "name": "Debug (lldb)",
+                        "program": "${workspaceFolder}/build/bin/local/radiusd",
+                        "args": [
+                                "-X",
+                                "-D",
+                                "${workspaceFolder}/share",
+                                "-d",
+                                "${workspaceFolder}/raddb"
+                        ],
+                        "cwd": "${workspaceFolder}",
+                        "env": {
+                                "FR_LIBRARY_PATH": "${workspaceFolder}/build/lib/local/.libs",
+                                "DEBUGGER_ATTACHED": "yes"
+                        }
+                },
+                {
+                        "type": "cppdbg",
+                        "request": "launch",
+                        "name": "Debug (gdb)",
+                        "program": "${workspaceFolder}/build/bin/local/radiusd",
+                        "args": [
+                                "-X",
+                                "-D",
+                                "${workspaceFolder}/share",
+                                "-d",
+                                "${workspaceFolder}/raddb"
+                        ],
+                        "cwd": "${workspaceFolder}",
+                        "environment": [
+                                { "name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                { "name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                { "name": "DEBUGGER_ATTACHED", "value": "yes" }
+                        ],
+                        "MIMode": "gdb",
+                        "setupCommands": [
+                                {
+                                        "description": "Set solib",
+                                        "text": "set solib-search-path ${workspaceFolder}"
+                                }
+                        ]
+                }
+        ]
+}
