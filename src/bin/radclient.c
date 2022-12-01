@@ -425,22 +425,10 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				goto error;
 			}
 
-			/*
-			 *	xlat expansions aren't supported here
-			 */
-			for (vp = fr_pair_list_head(&request->filter);
-			     vp;
-			     vp = fr_pair_list_next(&request->filter, vp)) {
-			     again:
-				if (vp->da == attr_packet_type) {
-					fr_pair_t *next;
-					next = fr_pair_list_next(&request->filter, vp);	/* so we don't break the filter */
-					request->filter_code = vp->vp_uint32;
-					fr_pair_delete(&request->filter, vp);
-					vp = next;
-					if (!vp) break;
-					goto again;
-				}
+			vp = fr_pair_find_by_da(&request->filter, NULL, attr_packet_type);
+			if (vp) {
+				request->filter_code = vp->vp_uint32;
+				fr_pair_delete(&request->filter, vp);
 			}
 
 			/*
