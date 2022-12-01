@@ -495,6 +495,8 @@ XLAT_CMP_FUNC(cmp_lt,  T_OP_LT)
 XLAT_CMP_FUNC(cmp_le,  T_OP_LE)
 XLAT_CMP_FUNC(cmp_gt,  T_OP_GT)
 XLAT_CMP_FUNC(cmp_ge,  T_OP_GE)
+XLAT_CMP_FUNC(cmp_eq_type,  T_OP_CMP_EQ_TYPE)
+XLAT_CMP_FUNC(cmp_ne_type,  T_OP_CMP_NE_TYPE)
 
 typedef struct {
 	fr_token_t	op;
@@ -1696,6 +1698,8 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_BINARY_CMP(T_OP_LE, le);
 	XLAT_REGISTER_BINARY_CMP(T_OP_GT, gt);
 	XLAT_REGISTER_BINARY_CMP(T_OP_GE, ge);
+	XLAT_REGISTER_BINARY_CMP(T_OP_CMP_EQ_TYPE, eq_type);
+	XLAT_REGISTER_BINARY_CMP(T_OP_CMP_NE_TYPE, ne_type);
 
 	XLAT_REGISTER_REGEX_OP(T_OP_REG_EQ, reg_eq);
 	XLAT_REGISTER_REGEX_OP(T_OP_REG_NE, reg_ne);
@@ -1758,6 +1762,9 @@ static const fr_sbuff_term_elem_t binary_ops[T_TOKEN_LAST] = {
 	[ T_OP_GT ]		= L("cmp_gt"),
 	[ T_OP_GE ]		= L("cmp_ge"),
 
+	[ T_OP_CMP_EQ_TYPE ]	= L("cmp_eq_type"),
+	[ T_OP_CMP_NE_TYPE ]	= L("cmp_ne_type"),
+
 	[ T_OP_REG_EQ ]		= L("reg_eq"),
 	[ T_OP_REG_NE ]		= L("reg_ne"),
 };
@@ -1810,6 +1817,9 @@ static const int precedence[T_TOKEN_LAST] = {
 
 	[T_OP_CMP_EQ]	= P(4,1),
 	[T_OP_NE]	= P(4,1),
+
+	[T_OP_CMP_EQ_TYPE] = P(4,1),
+	[T_OP_CMP_NE_TYPE] = P(4,1),
 
 	[T_OP_LT]	= P(5,0),
 	[T_OP_LE]	= P(5,0),
@@ -2399,6 +2409,7 @@ done:
  */
 static fr_table_num_ordered_t const expr_assignment_op_table[] = {
 	{ L("!="),	T_OP_NE			},
+	{ L("!=="),	T_OP_CMP_NE_TYPE	},
 
 	{ L("&"),	T_AND			},
 	{ L("&&"),	T_LAND			},
@@ -2418,6 +2429,7 @@ static fr_table_num_ordered_t const expr_assignment_op_table[] = {
 
 	{ L("="),	T_OP_EQ			},
 	{ L("=="),	T_OP_CMP_EQ		},
+	{ L("==="),	T_OP_CMP_EQ_TYPE	},
 
 	{ L("=~"),	T_OP_REG_EQ		},
 	{ L("!~"),	T_OP_REG_NE		},

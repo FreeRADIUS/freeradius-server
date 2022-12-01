@@ -45,11 +45,13 @@ fr_table_num_ordered_t const fr_tokens_table[] = {
 	{ L("=*"), 	T_OP_CMP_TRUE	},
 	{ L("!*"), 	T_OP_CMP_FALSE	},
 	{ L("=="),	T_OP_CMP_EQ	},
+	{ L("==="),	T_OP_CMP_EQ_TYPE },
 	{ L("^="),	T_OP_PREPEND	},
 	{ L("|="),	T_OP_OR_EQ	},
 	{ L("&="),	T_OP_AND_EQ	},
 	{ L("="),	T_OP_EQ		},
 	{ L("!="),	T_OP_NE		},
+	{ L("!=="),	T_OP_CMP_NE_TYPE },
 	{ L(">="),	T_OP_GE		},
 	{ L(">"),	T_OP_GT		},
 	{ L("<="),	T_OP_LE		},
@@ -123,6 +125,9 @@ char const *fr_tokens[T_TOKEN_LAST] = {
 	[T_OP_CMP_FALSE] = "!*",
 
 	[T_OP_CMP_EQ] = "==",
+
+	[T_OP_CMP_EQ_TYPE] = "===",
+	[T_OP_CMP_NE_TYPE] = "!==",
 
 	[T_OP_PREPEND] = "^=",
 
@@ -199,6 +204,8 @@ const bool fr_equality_op[T_TOKEN_LAST] = {
 	T(CMP_TRUE),
 	T(CMP_FALSE),
 	T(CMP_EQ),
+	T(CMP_EQ_TYPE),
+	T(CMP_NE_TYPE),
 };
 
 #undef T

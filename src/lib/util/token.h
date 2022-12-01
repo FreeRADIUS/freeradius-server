@@ -104,6 +104,8 @@ typedef enum fr_token {
 	T_OP_CMP_TRUE,			/* =* */
 	T_OP_CMP_FALSE,			/* !* */
 	T_OP_CMP_EQ,			/* == */
+	T_OP_CMP_EQ_TYPE,      		/* === */
+	T_OP_CMP_NE_TYPE,      		/* !== */
 
 	/*
 	 *	Only used by LDAP ???

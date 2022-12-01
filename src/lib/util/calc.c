@@ -1777,6 +1777,32 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	if (!fr_type_is_leaf(a->type)) return invalid_type(a->type);
 	if (!fr_type_is_leaf(b->type)) return invalid_type(b->type);
 
+	/*
+	 *	=== and !== also check types.  If the types are
+	 *	different, it's a failure.  Otherwise they revert to == and !=.
+	 */
+	switch (op) {
+	case T_OP_CMP_EQ_TYPE:
+		if (a->type != b->type) {
+		mismatch_type:
+			fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false); /* @todo - enum */
+			dst->vb_bool = false;
+			return 0;
+		}
+		op = T_OP_CMP_EQ;
+		break;
+
+	case T_OP_CMP_NE_TYPE:
+		if (a->type != b->type) goto mismatch_type;
+
+		op = T_OP_NE;
+		break;
+
+	default:
+		break;
+	}
+
+
 	fr_value_box_init_null(&one);
 	fr_value_box_init_null(&two);
 

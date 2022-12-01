@@ -762,6 +762,38 @@ match ERROR offset 1: Unexpected text - attribute names must prefixed with '&'
 xlat_purify handled
 match %{rcode:'handled'}
 
+#
+#  Automatic casting
+#
+xlat_purify (192.168.0.1 == "192.168.0.1")
+match true
+
+xlat_purify (192.168.0.1 != "192.168.0.1")
+match false
+
+xlat_purify (192.168.0.1 != "192.168.0.2")
+match true
+
+#
+#  Types are different, so they don't match.
+#
+xlat_purify (192.168.0.1 === "192.168.0.1")
+match false
+
+xlat_purify (192.168.0.1 !== "192.168.0.1")
+match false
+
+xlat_purify (192.168.0.1 !== "192.168.0.2")
+match false
+
+xlat_purify (192.168.0.1 === 192.168.0.1)
+match true
+
+xlat_purify (192.168.0.1 !== 192.168.0.1)
+match false
+
+xlat_purify (192.168.0.1 !== 192.168.0.2)
+match true
 
 count
-match 316
+match 334

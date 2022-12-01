@@ -21,8 +21,10 @@ The comparison operators are given below.
 | Operator | Description
 | < | less than
 | \<= | less than or equals
-| == | equals
-| != | not equals
+| == | equals, with automatic type casting
+| != | not equals, with automatic type casting
+| === | equals, but both operands have to be of the same type
+| !== | not equals, or they are not of the same type
 | >= | greater than or equals
 | >  | greater than
 | xref:condition/regex.adoc[=~] | regular expression matches
