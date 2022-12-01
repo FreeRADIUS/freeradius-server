@@ -136,7 +136,7 @@ static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_
 	if (row[4] != NULL && row[4][0] != '\0') {
 		ptr = row[4];
 		op = gettoken(&ptr, buf, sizeof(buf), false);
-		if (!fr_assignment_op[op] && !fr_equality_op[op]) {
+		if (!fr_assignment_op[op] && !fr_comparison_op[op]) {
 			REDEBUG("Invalid op \"%s\" for attribute %s", row[4], row[2]);
 			return -1;
 		}

@@ -445,7 +445,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *reques
 			}
 
 			op = fr_table_value_by_str(fr_tokens_table, op_str, T_INVALID);
-			if (!fr_assignment_op[op] && !fr_equality_op[op]) goto bad_op;
+			if (!fr_assignment_op[op] && !fr_comparison_op[op]) goto bad_op;
 		} else {
 			op = T_OP_SET;	/* The default */
 		}

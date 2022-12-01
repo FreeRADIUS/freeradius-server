@@ -807,7 +807,7 @@ static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
 		return -1;
 	}
 
-	if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
+	if (!fr_assignment_op[map->op] && !fr_comparison_op[map->op]) {
 		cf_log_err(map->ci, "Invalid operator \"%s\" in map section.  "
 			   "Only assignment or filter operators are allowed",
 			   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
@@ -906,14 +906,14 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 *	Depending on the attribute type, some operators are disallowed.
 	 */
 	if (tmpl_is_attr(map->lhs)) {
-		if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
+		if (!fr_assignment_op[map->op] && !fr_comparison_op[map->op]) {
 			cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
 				   "Only assignment or filter operators are allowed",
 				   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
 			return -1;
 		}
 
-		if (fr_equality_op[map->op] && (map->op != T_OP_CMP_FALSE)) {
+		if (fr_comparison_op[map->op] && (map->op != T_OP_CMP_FALSE)) {
 			cf_log_warn(cp, "Please use the 'filter' keyword for attribute filtering");
 		}
 	}
@@ -1362,7 +1362,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	 *	Hoist this out of the loop, and make sure it always has a '&' prefix.
 	 */
 	if (name2) {
-		snprintf(list_buffer, sizeof(list_buffer), "&%s", name2);		
+		snprintf(list_buffer, sizeof(list_buffer), "&%s", name2);
 	} else {
 		snprintf(list_buffer, sizeof(list_buffer), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "???"));
 	}
