@@ -819,22 +819,6 @@ static int radclient_sane(rc_request_t *request)
 }
 
 
-/*
- *	For request handling.
- */
-static int8_t filename_cmp(void const *one, void const *two)
-{
-	rc_file_pair_t const *a = one, *b = two;
-	int ret;
-
-	ret = strcmp(a->packets, b->packets);
-	ret = CMP(ret, 0);
-	if (ret != 0) return ret;
-
-	ret = strcmp(a->filters, b->filters);
-	return CMP(ret, 0);
-}
-
 static int8_t request_cmp(void const *one, void const *two)
 {
 	rc_request_t const *a = one, *b = two;
@@ -1379,7 +1363,7 @@ int main(int argc, char **argv)
 #ifndef NDEBUG
 	TALLOC_CTX	*autofree;
 #endif
-	fr_rb_tree_t	*filename_tree = NULL;
+	fr_dlist_head_t	filenames;
 	rc_request_t	*request;
 
 	/*
@@ -1408,12 +1392,7 @@ int main(int argc, char **argv)
 
 	fr_dlist_talloc_init(&rc_request_list, rc_request_t, entry);
 
-	filename_tree = fr_rb_inline_talloc_alloc(NULL, rc_file_pair_t, node, filename_cmp, NULL);
-	if (!filename_tree) {
-	oom:
-		ERROR("Out of memory");
-		fr_exit_now(EXIT_FAILURE);
-	}
+	fr_dlist_talloc_init(&filenames, rc_file_pair_t, entry);
 
 	/*
 	 *	Always log to stdout
@@ -1472,7 +1451,11 @@ int main(int argc, char **argv)
 			rc_file_pair_t *files;
 
 			files = talloc(talloc_autofree_context(), rc_file_pair_t);
-			if (!files) goto oom;
+			if (!files) {
+			oom:
+				ERROR("Out of memory");
+				fr_exit_now(EXIT_FAILURE);
+			}
 
 			p = strchr(optarg, ':');
 			if (p) {
@@ -1483,7 +1466,7 @@ int main(int argc, char **argv)
 				files->packets = optarg;
 				files->filters = NULL;
 			}
-			fr_rb_insert(filename_tree, (void *) files);
+			fr_dlist_insert_tail(&filenames, files);
 		}
 			break;
 
@@ -1667,7 +1650,7 @@ int main(int argc, char **argv)
 	/*
 	 *	If no '-f' is specified, we're reading from stdin.
 	 */
-	if (fr_rb_num_elements(filename_tree) == 0) {
+	if (fr_dlist_num_elements(&filenames) == 0) {
 		rc_file_pair_t *files;
 
 		files = talloc_zero(talloc_autofree_context(), rc_file_pair_t);
@@ -1678,17 +1661,10 @@ int main(int argc, char **argv)
 	/*
 	 *	Walk over the list of filenames, creating the requests.
 	 */
-	{
-		fr_rb_iter_inorder_t	iter;
-		rc_file_pair_t			*files;
-
-		for (files = fr_rb_iter_init_inorder(&iter, filename_tree);
-		     files;
-		     files = fr_rb_iter_next_inorder(&iter)) {
-			if (radclient_init(files, files)) {
-				ERROR("Failed parsing input files");
-				fr_exit_now(1);
-			}
+	fr_dlist_foreach(&filenames, rc_file_pair_t, files) {
+		if (radclient_init(files, files)) {
+			ERROR("Failed parsing input files");
+			fr_exit_now(1);
 		}
 	}
 
@@ -1930,8 +1906,6 @@ int main(int argc, char **argv)
 			recv_one_packet(sleep_time);
 		}
 	} while (!done);
-
-	talloc_free(filename_tree);
 
 	fr_packet_list_free(packet_list);
 
