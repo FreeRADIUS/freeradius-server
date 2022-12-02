@@ -72,6 +72,9 @@ struct rc_request {
 
 	rc_file_pair_t		*files;		//!< Request and response file names.
 
+	rc_request_t		*coa;		//!< CoA filter and reply
+	fr_rb_node_t		node;		//!< rbtree node data for CoA
+
 	fr_pair_t		*password;	//!< Password.Cleartext
 	fr_time_t		timestamp;
 

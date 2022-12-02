@@ -538,6 +538,8 @@ ATTRIBUTE	SoH-MS-Health-Other			2129	string
 #
 ATTRIBUTE	Radclient-Test-Name			2200	string
 ATTRIBUTE	Request-Authenticator			2201	octets
+ATTRIBUTE	Radclient-CoA-Filename			2202	string
+ATTRIBUTE	Radclient-CoA-Filter			2203	string
 
 #
 #	Range:  2220-2259
