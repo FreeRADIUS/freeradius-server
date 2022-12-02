@@ -122,6 +122,8 @@ static fr_dict_attr_t const *attr_user_password;
 static fr_dict_attr_t const *attr_radclient_coa_filename;
 static fr_dict_attr_t const *attr_radclient_coa_filter;
 
+static fr_dict_attr_t const *attr_coa_filter = NULL;
+
 extern fr_dict_attr_autoload_t radclient_dict_attr[];
 fr_dict_attr_autoload_t radclient_dict_attr[] = {
 	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
@@ -157,6 +159,7 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "  <command>              One of auth, acct, status, coa, disconnect or auto.\n");
 	fprintf(stderr, "  -4                     Use IPv4 address of server\n");
 	fprintf(stderr, "  -6                     Use IPv6 address of server.\n");
+	fprintf(stderr, "  -A <attribute>         Use named 'attribute' to match CoA requests to packets.  Default is User-Name\n");
 	fprintf(stderr, "  -C <client_port>       Assigning port number to client socket. Values may be 1..65535\n");
 	fprintf(stderr, "  -c <count>             Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
@@ -837,8 +840,8 @@ static int8_t request_cmp(void const *one, void const *two)
 	rc_request_t const *a = one, *b = two;
 	fr_pair_t *vp1, *vp2;
 
-	vp1 = fr_pair_find_by_da(&a->request_list, NULL, attr_user_name);
-	vp2 = fr_pair_find_by_da(&b->request_list, NULL, attr_user_name);
+	vp1 = fr_pair_find_by_da(&a->request_list, NULL, attr_coa_filter);
+	vp2 = fr_pair_find_by_da(&b->request_list, NULL, attr_coa_filter);
 
 	if (!vp1) return -1;
 	if (!vp2) return +1;
@@ -1419,13 +1422,21 @@ int main(int argc, char **argv)
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "46c:C:d:D:f:Fhi:n:p:P:r:sS:t:vx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "46c:A:C:d:D:f:Fhi:n:p:P:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
 
 		case '6':
 			force_af = AF_INET6;
+			break;
+
+		case 'A':
+			attr_coa_filter = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), optarg);
+			if (!attr_coa_filter) {
+				ERROR("Unknown or invalid attribute %s", optarg);
+				fr_exit_now(1);
+			}
 			break;
 
 		case 'c':
@@ -1735,6 +1746,10 @@ int main(int argc, char **argv)
 			return -1;
 		}
 
+		/*
+		 *	If there's no attribute given to match CoA to requests, use User-Name
+		 */
+		if (!attr_coa_filter) attr_coa_filter = attr_user_name;
 
 		coa_tree = fr_rb_inline_talloc_alloc(NULL, rc_request_t, node, request_cmp, NULL);
 		if (!coa_tree) goto oom;
