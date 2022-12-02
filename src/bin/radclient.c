@@ -865,6 +865,10 @@ static int send_one_packet(rc_request_t *request)
 {
 	assert(request->done == false);
 
+#ifdef STATIC_ANALYZER
+	if (!secret) fr_exit_now(1);
+#endif
+
 	/*
 	 *	Remember when we have to wake up, to re-send the
 	 *	request, of we didn't receive a reply.
@@ -1056,6 +1060,10 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 	rc_request_t		*request, *parent;
 	fr_radius_packet_t	*packet;
 
+#ifdef STATIC_ANALYZER
+	if (!secret) fr_exit_now(1);
+#endif
+
 	/* And wait for reply, timing out as necessary */
 	FD_ZERO(&set);
 	FD_SET(coafd, &set);
@@ -1190,6 +1198,10 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	rc_request_t		*request;
 	fr_radius_packet_t	*reply, *packet;
 	volatile int		max_fd;
+
+#ifdef STATIC_ANALYZER
+	if (!secret) fr_exit_now(1);
+#endif
 
 	/* And wait for reply, timing out as necessary */
 	FD_ZERO(&set);
