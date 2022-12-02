@@ -1365,6 +1365,7 @@ int main(int argc, char **argv)
 #endif
 	fr_dlist_head_t	filenames;
 	rc_request_t	*request;
+	rc_file_pair_t	*coa_files = NULL;
 
 	/*
 	 *	It's easier having two sets of flags to set the
@@ -1401,7 +1402,7 @@ int main(int argc, char **argv)
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "46c:A:C:d:D:f:Fhi:n:p:P:r:sS:t:vx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "46c:A:C:d:D:f:Fhi:n:o:p:P:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
@@ -1486,6 +1487,33 @@ int main(int argc, char **argv)
 		case 'n':
 			persec = atoi(optarg);
 			if (persec <= 0) usage();
+			break;
+
+		case 'o':
+			if (!coa_files) {
+				coa_files = fr_dlist_head(&filenames);
+			} else {
+				coa_files = fr_dlist_next(&filenames, coa_files);
+			}
+
+			if (!coa_files) {
+				ERROR("There are fewer client filenames than CoA filenames");
+				fr_exit_now(1);
+			}
+
+			{
+				char const *p;
+
+				p = strchr(optarg, ':');
+				if (p) {
+					coa_files->coa_reply = talloc_strndup(coa_files, optarg, p - optarg);
+					if (!coa_files->coa_reply) goto oom;
+					coa_files->coa_filter = p + 1;
+				} else {
+					coa_files->coa_reply = optarg;
+					coa_files->coa_filter = NULL;
+				}
+			}
 			break;
 
 			/*

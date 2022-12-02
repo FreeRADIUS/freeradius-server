@@ -61,6 +61,8 @@ typedef struct {
 	char const		*packets;	//!< The file containing the request packet
 	char const		*filters;	//!< The file containing the definition of the
 						//!< packet we want to match.
+	char const		*coa_filter;	//!< file containing the CoA filter we want to match
+	char const		*coa_reply;	//!< file containing the CoA filter we want to match
 } rc_file_pair_t;
 
 typedef struct rc_request rc_request_t;
