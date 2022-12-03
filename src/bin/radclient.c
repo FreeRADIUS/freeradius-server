@@ -1501,7 +1501,7 @@ int main(int argc, char **argv)
 			char const *p;
 			rc_file_pair_t *files;
 
-			files = talloc(talloc_autofree_context(), rc_file_pair_t);
+			files = talloc_zero(talloc_autofree_context(), rc_file_pair_t);
 			if (!files) {
 			oom:
 				ERROR("Out of memory");
