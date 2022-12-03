@@ -81,7 +81,7 @@ if !(&Tmp-String-0 == "") {
 	test_fail
 }
 
-if (&Module-Failure-Message != "Invalid MS-CHAP challenge length") {
+if (!(&Module-Failure-Message == "Invalid MS-CHAP challenge length")) {
 	test_fail
 }
 

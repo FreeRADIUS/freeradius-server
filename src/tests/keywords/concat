@@ -17,7 +17,7 @@ ok	# separate updates
 	&Tmp-String-1 = "%(concat:%{request.[*]} ', ')"
 }
 
-if (&Tmp-String-1 != "bob, hello, ab c, de fg, 123") {
+if (!(&Tmp-String-1 == "bob, hello, ab c, de fg, 123")) {
 	test_fail
 }
 
@@ -25,7 +25,7 @@ if (&Tmp-String-1 != "bob, hello, ab c, de fg, 123") {
 	&Tmp-String-2 = "%(concat:%{Tmp-String-0[*]} ', ')"
 }
 
-if (&Tmp-String-2 != "ab c, de fg") {
+if (!(&Tmp-String-2 == "ab c, de fg")) {
 	test_fail
 }
 
@@ -34,7 +34,7 @@ if (&Tmp-String-2 != "ab c, de fg") {
 	&Tmp-String-3 = "%(concat:%{Tmp-String-0[*]})"
 }
 
-if (&Tmp-String-3 != "ab cde fg") {
+if (!(&Tmp-String-3 == "ab cde fg")) {
 	test_fail
 }
 
@@ -43,7 +43,7 @@ if (&Tmp-String-3 != "ab cde fg") {
 	&Tmp-String-4 = "%(concat:%{Tmp-String-0[*]} ,)"
 }
 
-if (&Tmp-String-4 != "ab c,de fg") {
+if (!(&Tmp-String-4 == "ab c,de fg")) {
 	test_fail
 }
 

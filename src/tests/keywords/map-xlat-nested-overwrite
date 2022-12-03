@@ -13,7 +13,7 @@ if (!("%{map:%{Tmp-String-0}}" == 1)) {
 	test_fail
 }
 
-if ("%{map:request.Tmp-Group-0.Tmp-String-1 := 'testing000'}" != 1) {
+if (!(%{map:request.Tmp-Group-0.Tmp-String-1 := 'testing000'} == 1)) {
 	test_fail
 }
 

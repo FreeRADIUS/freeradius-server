@@ -9,7 +9,7 @@
 &Tmp-String-0 := %(date:%{Tmp-Integer-0})
 
 # Some systems report GMT some UTC...
-if (&Tmp-String-0 != "Fri 22 Sep 17:25:00 GMT 2017") && (&Tmp-String-0 != "Fri 22 Sep 17:25:00 UTC 2017") {
+if (!(&Tmp-String-0 == "Fri 22 Sep 17:25:00 GMT 2017")) && (&Tmp-String-0 != "Fri 22 Sep 17:25:00 UTC 2017") {
 	test_fail
 }
 
@@ -66,7 +66,7 @@ if (&Tmp-String-5) {
 	test_fail
 }
 
-if (&Module-Failure-Message != "Can't convert type ipaddr into date") {
+if (!(&Module-Failure-Message == "Can't convert type ipaddr into date")) {
 	test_fail
 }
 

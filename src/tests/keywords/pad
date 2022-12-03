@@ -7,38 +7,38 @@
 #
 #	rpad tests
 #
-if ("%(rpad:%{Tmp-String-0} 7)" != "test   ") {
+if (!(%(rpad:%{Tmp-String-0} 7) == "test   ")) {
 	test_fail
 }
 
-if ("%(rpad:%{Tmp-String-0} 2)" != "test") {
+if (!(%(rpad:%{Tmp-String-0} 2) == "test")) {
 	test_fail
 }
 
-if ("%(rpad:%{Tmp-String-0} 7 x)" != "testxxx") {
+if (!(%(rpad:%{Tmp-String-0} 7 x) == "testxxx")) {
 	test_fail
 }
 
-if ("%(rpad:%{Tmp-String-0} 7 xy)" != "testxyx") {
+if (!(%(rpad:%{Tmp-String-0} 7 xy) == "testxyx")) {
 	test_fail
 }
 
 #
 #	lpad tests
 #
-if ("%(lpad:%{Tmp-String-0} 7)" != "   test") {
+if (!(%(lpad:%{Tmp-String-0} 7) == "   test")) {
 	test_fail
 }
 
-if ("%(lpad:%{Tmp-String-0} 2)" != "test") {
+if (!(%(lpad:%{Tmp-String-0} 2) == "test")) {
 	test_fail
 }
 
-if ("%(lpad:%{Tmp-String-0} 7 x)" != "xxxtest") {
+if (!(%(lpad:%{Tmp-String-0} 7 x) == "xxxtest")) {
 	test_fail
 }
 
-if ("%(lpad:%{Tmp-String-0} 7 xy)" != "xyxtest") {
+if (!(%(lpad:%{Tmp-String-0} 7 xy) == "xyxtest")) {
 	test_fail
 }
 

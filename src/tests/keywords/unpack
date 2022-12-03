@@ -44,7 +44,7 @@ if !(&Tmp-String-1 == "") {
 	test_fail
 }
 
-if (&Module-Failure-Message != "unpack offset 10 is larger than input data length 5") {
+if (!(&Module-Failure-Message == "unpack offset 10 is larger than input data length 5")) {
 	test_fail
 }
 &request -= &Module-Failure-Message[*]
@@ -55,7 +55,7 @@ if !(&Tmp-String-1 == "") {
 	test_fail
 }
 
-if (&Module-Failure-Message != "Invalid data type 'thing'") {
+if (!(&Module-Failure-Message == "Invalid data type 'thing'")) {
 	test_fail
 }
 
@@ -65,7 +65,7 @@ if !(&Tmp-String-1 == "") {
 	test_fail
 }
 
-if (&Module-Failure-Message != "unpack requires the input attribute to be 'string' or 'octets'") {
+if (!(&Module-Failure-Message == "unpack requires the input attribute to be 'string' or 'octets'")) {
 	test_fail
 }
 &request -= &Module-Failure-Message[*]
@@ -78,7 +78,7 @@ if !(&Tmp-String-1 == "") {
 	test_fail
 }
 
-if (&Module-Failure-Message != "Invalid hex string in '0x014sdgw'") {
+if (!(&Module-Failure-Message == "Invalid hex string in '0x014sdgw'")) {
 	test_fail
 }
 &request -= &Module-Failure-Message[*]
@@ -91,7 +91,7 @@ if !(&Tmp-String-1 == "") {
 	test_fail
 }
 
-if (&Module-Failure-Message != "Zero length hex string in '0x'") {
+if (!(&Module-Failure-Message == "Zero length hex string in '0x'")) {
 	test_fail
 }
 

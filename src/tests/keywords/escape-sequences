@@ -28,11 +28,11 @@ if (!("%(length:%{Tmp-String-1})" == 42)) {
 }
 
 &Tmp-String-8 := "%{string:%{Tmp-Octets-0}}"
-if (&Tmp-String-8 != "i have scary embedded things\000 inside me") {
+if (!(&Tmp-String-8 == "i have scary embedded things\000 inside me")) {
 	test_fail
 }
 
-if (&Tmp-String-0 != "i have scary embedded things\000 inside me") {
+if (!(&Tmp-String-0 == "i have scary embedded things\000 inside me")) {
 	test_fail
 }
 
@@ -41,7 +41,7 @@ if (!(&Tmp-String-8 == "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°")) {
 	test_fail
 }
 
-if ("%{Tmp-String-0[0]}" != "i have scary embedded things\000 inside me") {
+if (!("%{Tmp-String-0[0]}" == "i have scary embedded things\000 inside me")) {
 	test_fail
 }
 

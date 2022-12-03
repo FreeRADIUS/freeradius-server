@@ -1,12 +1,12 @@
 &Tmp-String-0 = "foo"
 &Tmp-String-1 := `/bin/echo hello 1234:%{Tmp-String-0} world`
 
-if (&Tmp-String-1 != "hello 1234:foo world") {
+if (!(&Tmp-String-1 == "hello 1234:foo world")) {
 	test_fail
 }
 
 &Tmp-String-1 := `/bin/echo hello %{Tmp-String-0}:1234 world`
-if (&Tmp-String-1 != "hello foo:1234 world") {
+if (!(&Tmp-String-1 == "hello foo:1234 world")) {
 	test_fail
 }
 

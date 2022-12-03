@@ -9,7 +9,7 @@ update request {
 	&Tmp-String-0 = `/bin/sh -c "echo 'foo bar baz'"`
 }
 
-if (!&Tmp-String-0 || (&Tmp-String-0 != "foo bar baz")) {
+if (!&Tmp-String-0 || (!(&Tmp-String-0 == "foo bar baz"))) {
 	test_fail
 }
 
