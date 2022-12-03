@@ -321,31 +321,12 @@ static bool already_hex(fr_pair_t *vp)
 }
 
 /*
- *	Read one CoA filter and reply from the given files.
+ *	Read one CoA reply amd possibly filter
  */
-static int coa_init(rc_request_t *parent, char const *filename_filter, char const *filename_reply)
+static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_filename, bool *coa_reply_done, FILE *coa_filter, char const *filter_filename, bool *coa_filter_done)
 {
-	FILE		*packets, *filters = NULL;
-
 	rc_request_t	*request;
-	bool		packets_done = false;
 	fr_pair_t	*vp;
-
-	packets = fopen(filename_reply, "r");
-	if (!packets) {
-		ERROR("Error opening %s: %s", filename_reply, fr_syserror(errno));
-		return -1;
-	}
-
-	/*
-	 *	Read in the pairs representing the expected response.
-	 */
-	filters = fopen(filename_filter, "r");
-	if (!filters) {
-		ERROR("Error opening %s: %s", filename_filter, fr_syserror(errno));
-		fclose(packets);
-		return -1;
-	}
 
 	/*
 	 *	Allocate it.
@@ -353,8 +334,6 @@ static int coa_init(rc_request_t *parent, char const *filename_filter, char cons
 	request = talloc_zero(parent, rc_request_t);
 	if (!request) {
 		ERROR("Out of memory");
-		fclose(filters);
-		fclose(packets);
 		return -1;
 	}
 
@@ -363,8 +342,6 @@ static int coa_init(rc_request_t *parent, char const *filename_filter, char cons
 
 		ERROR("Out of memory");
 	error:
-		fclose(filters);
-		fclose(packets);
 		talloc_free(request);
 		return -1;
 	}
@@ -380,8 +357,8 @@ static int coa_init(rc_request_t *parent, char const *filename_filter, char cons
 	 *	Read the reply VP's.
 	 */
 	if (fr_pair_list_afrom_file(request, dict_radius,
-				    &request->reply_pairs, packets, &packets_done) < 0) {
-		REDEBUG("Error parsing \"%s\"", filename_reply);
+				    &request->reply_pairs, coa_reply, coa_reply_done) < 0) {
+		REDEBUG("Error parsing \"%s\"", reply_filename);
 		goto error;
 	}
 
@@ -394,24 +371,22 @@ static int coa_init(rc_request_t *parent, char const *filename_filter, char cons
 	/*
 	 *	Read in filter VP's.
 	 */
-	if (filters) {
-		bool filters_done;
-
+	if (coa_filter) {
 		if (fr_pair_list_afrom_file(request, dict_radius,
-					    &request->filter, filters, &filters_done) < 0) {
-			REDEBUG("Error parsing \"%s\"", filename_filter);
+					    &request->filter, coa_filter, coa_filter_done) < 0) {
+			REDEBUG("Error parsing \"%s\"", filter_filename);
 			goto error;
 		}
 
-		if (filters_done && !packets_done) {
+		if (*coa_filter_done && !*coa_reply_done) {
 			REDEBUG("Differing number of replies/filters in %s:%s "
-				"(too many replies))", filename_reply, filename_filter);
+				"(too many replies))", reply_filename, filter_filename);
 			goto error;
 		}
 
-		if (!filters_done && packets_done) {
+		if (!*coa_filter_done && *coa_reply_done) {
 			REDEBUG("Differing number of replies/filters in %s:%s "
-				"(too many filters))", filename_reply, filename_filter);
+				"(too many filters))", reply_filename, filter_filename);
 			goto error;
 		}
 
@@ -421,10 +396,7 @@ static int coa_init(rc_request_t *parent, char const *filename_filter, char cons
 		fr_pair_list_sort(&request->filter, fr_pair_cmp_by_da);
 	}
 
-	/*
-	 *	Default to the filename
-	 */
-	request->name = filename_reply;
+	request->name = parent->name;
 
 	/*
 	 *	Automatically set the response code from the request code
@@ -434,7 +406,6 @@ static int coa_init(rc_request_t *parent, char const *filename_filter, char cons
 		request->filter_code = FR_RADIUS_CODE_COA_REQUEST;
 	}
 
-	do_coa = true;
 	parent->coa = request;
 
 	return 0;
@@ -449,9 +420,14 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	FILE		*packets, *filters = NULL;
 
 	fr_pair_t	*vp;
-	rc_request_t	*request;
+	rc_request_t	*request = NULL;
 	bool		packets_done = false;
 	uint64_t	num = 0;
+
+	FILE		*coa_reply = NULL;
+	FILE		*coa_filter = NULL;
+	bool		coa_reply_done = false;
+	bool		coa_filter_done = false;
 
 	assert(files->packets != NULL);
 
@@ -472,8 +448,23 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			filters = fopen(files->filters, "r");
 			if (!filters) {
 				ERROR("Error opening %s: %s", files->filters, fr_syserror(errno));
-				fclose(packets);
-				return -1;
+				goto error;
+			}
+		}
+
+		if (files->coa_reply) {
+			coa_reply = fopen(files->coa_reply, "r");
+			if (!coa_reply) {
+				ERROR("Error opening %s: %s", files->coa_reply, fr_syserror(errno));
+				goto error;
+			}
+		}
+
+		if (files->coa_filter) {
+			coa_filter = fopen(files->coa_filter, "r");
+			if (!coa_filter) {
+				ERROR("Error opening %s: %s", files->coa_filter, fr_syserror(errno));
+				goto error;
 			}
 		}
 	} else {
@@ -484,8 +475,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	 *	Loop until the file is done.
 	 */
 	do {
-		char const *coa_filename = NULL;
-		char const *coa_filter = NULL;
+		char const *coa_reply_filename = NULL;
+		char const *coa_filter_filename = NULL;
 
 		/*
 		 *	Allocate it.
@@ -637,10 +628,10 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				request->name = vp->vp_strvalue;
 
 			} else if (vp->da == attr_radclient_coa_filename) {
-				coa_filename = vp->vp_strvalue;
+				coa_reply_filename = vp->vp_strvalue;
 
 			} else if (vp->da == attr_radclient_coa_filter) {
-				coa_filter = vp->vp_strvalue;
+				coa_filter_filename = vp->vp_strvalue;
 			}
 		} /* loop over the VP's we read in */
 
@@ -745,16 +736,56 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			}
 		}
 
-		if ((coa_filename == NULL) != (coa_filter == NULL)) {
-			RDEBUG("Both Radclient-CoA-Filename and Radclient-CoA-Filter must be defined (or not)");
-			goto error;
-		}
-
 		/*
 		 *	Read in the CoA filename and filter.
 		 */
-		if (coa_filename && coa_filter && (coa_init(request, coa_filename, coa_filter) < 0)) {
-			goto error;
+		if (coa_reply_filename) {
+			if (coa_reply) {
+				RDEBUG("Cannot specify CoA file on both the command line and via Radclient-CoA-Filename");
+				goto error;
+			}
+
+			coa_reply = fopen(coa_reply_filename, "r");
+			if (!coa_reply) {
+				ERROR("Error opening %s: %s", coa_reply_filename, fr_syserror(errno));
+				goto error;
+			}
+
+			if (coa_filter_filename) {
+				coa_filter = fopen(coa_filter_filename, "r");
+				if (!coa_filter) {
+					ERROR("Error opening %s: %s", coa_filter_filename, fr_syserror(errno));
+					goto error;
+				}
+			} else {
+				coa_filter = NULL;
+			}
+
+			if (coa_init(request, coa_reply, coa_reply_filename, &coa_reply_done,
+				     coa_filter, coa_filter_filename, &coa_filter_done) < 0) {
+				goto error;
+			}
+
+			fclose(coa_reply);
+			coa_reply = NULL;
+			if (coa_filter) {
+				fclose(coa_filter);
+				coa_filter = NULL;
+			}
+			do_coa = true;
+
+		} else if (coa_reply) {
+			if (coa_init(request, coa_reply, coa_reply_filename, &coa_reply_done,
+				     coa_filter, coa_filter_filename, &coa_filter_done) < 0) {
+				goto error;
+			}
+
+			if (coa_reply_done != packets_done) {
+				REDEBUG("Differing number of packets in input file and coa_reply in %s:%s ",
+				        files->packets, files->coa_reply);
+				goto error;
+
+			}
 		}
 
 		/*
@@ -773,6 +804,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 	if (packets != stdin) fclose(packets);
 	if (filters) fclose(filters);
+	if (coa_reply) fclose(coa_reply);
+	if (coa_filter) fclose(coa_filter);
 
 	/*
 	 *	And we're done.
@@ -784,6 +817,8 @@ error:
 
 	if (packets != stdin) fclose(packets);
 	if (filters) fclose(filters);
+	if (coa_reply) fclose(coa_reply);
+	if (coa_filter) fclose(coa_filter);
 
 	return -1;
 }
@@ -1498,6 +1533,8 @@ int main(int argc, char **argv)
 				 */
 				q = strchr(files->filters, c);
 				if (q) {
+					do_coa = true;
+
 					*(q++) = '\0';
 					files->coa_reply = q;
 
@@ -1546,6 +1583,8 @@ int main(int argc, char **argv)
 				ERROR("coa_reply was already set");
 				fr_exit_now(1);
 			}
+
+			do_coa = true;
 
 			{
 				char const *p;
