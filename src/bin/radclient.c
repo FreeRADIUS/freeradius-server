@@ -1458,6 +1458,9 @@ int main(int argc, char **argv)
 			raddb_dir = optarg;
 			break;
 
+			/*
+			 *	packet,filter,coa_reply,coa_filter
+			 */
 		case 'f':
 		{
 			char const *p;
@@ -1470,14 +1473,40 @@ int main(int argc, char **argv)
 				fr_exit_now(EXIT_FAILURE);
 			}
 
-			p = strchr(optarg, ':');
-			if (p) {
+			/*
+			 *	Commas are nicer than colons.
+			 */
+			c = ':';
+
+			p = strchr(optarg, c);
+			if (!p) {
+				c = ',';
+				p = strchr(optarg, c);
+			}
+			if (!p) {
+				files->packets = optarg;
+				files->filters = NULL;
+			} else {
+				char *q;
+
 				files->packets = talloc_strndup(files, optarg, p - optarg);
 				if (!files->packets) goto oom;
 				files->filters = p + 1;
-			} else {
-				files->packets = optarg;
-				files->filters = NULL;
+
+				/*
+				 *	Look for CoA filename
+				 */
+				q = strchr(files->filters, c);
+				if (q) {
+					*(q++) = '\0';
+					files->coa_reply = q;
+
+					q = strchr(files->coa_reply, c);
+					if (q) {
+						*(q++) = '\0';
+						files->coa_filter = q;
+					}
+				}
 			}
 			fr_dlist_insert_tail(&filenames, files);
 		}
@@ -1513,10 +1542,16 @@ int main(int argc, char **argv)
 				fr_exit_now(1);
 			}
 
+			if (coa_files->coa_reply) {
+				ERROR("coa_reply was already set");
+				fr_exit_now(1);
+			}
+
 			{
 				char const *p;
 
 				p = strchr(optarg, ':');
+				if (!p) p = strchr(optarg, ',');
 				if (p) {
 					coa_files->coa_reply = talloc_strndup(coa_files, optarg, p - optarg);
 					if (!coa_files->coa_reply) goto oom;
