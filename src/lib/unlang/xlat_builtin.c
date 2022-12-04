@@ -801,7 +801,7 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 	 *	a copy of the original arguments with each
 	 *	function that's called.
 	 */
-	fr_dlist_talloc_free(&xctx->ex->call.args->dlist);
+//	fr_dlist_talloc_free(&xctx->ex->call.args->dlist);
 
 	return 0;
 }

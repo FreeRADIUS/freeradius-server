@@ -2,7 +2,18 @@
 #
 #  PRE: if
 #
-if ("%(concat:%(redundant_test:foo bar) '|')" != "foo|bar") {
+if (!(%(concat:%(test1:foo bar) '|') == "foo|bar")) {
+	test_fail
+}
+
+if (!(%(concat:%(test2:foo bar) '|') == "foo|bar")) {
+	test_fail
+}
+
+#
+#  The config has a "redundant" block for test1 and test2.
+#
+if (!(%(concat:%(redundant_test:foo bar) '|') == "foo|bar")) {
 	test_fail
 }
 
