@@ -34,6 +34,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 .PRECIOUS: $(OUTPUT)/%.pcap
 $(OUTPUT)/%.pcap: $(DIR)/%.pcap.gz
+	$(Q)mkdir -p $(@D)
 	$(Q)gunzip -c $< > $@
 
 #
