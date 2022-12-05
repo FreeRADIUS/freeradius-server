@@ -437,6 +437,9 @@ static int coa_init(rc_request_t *parent, char const *filename_filter, char cons
 	do_coa = true;
 	parent->coa = request;
 
+	fclose(filters);
+	fclose(packets);
+
 	return 0;
 }
 
