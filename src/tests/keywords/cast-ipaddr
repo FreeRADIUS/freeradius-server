@@ -135,7 +135,7 @@ redundant {
 		fail
 	}
 	group {
-		if (&Module-Failure-Message != 'Assigning value to "Tmp-Cast-ipv6addr" failed: Invalid cast from ipv6prefix to ipv6addr.  Only /128 (not /32) prefixes may be cast to IP address types') {
+		if !(&Module-Failure-Message == 'Assigning value to &control.Tmp-Cast-IPv6Addr failed: Invalid cast from ipv6prefix to ipv6addr.  Only /128 (not /32) prefixes may be cast to IP address types') {
 			test_fail
 		}
 		&request -= &Module-Failure-Message[*]
@@ -152,7 +152,7 @@ redundant {
 		fail
 	}
 	group {
-		if (&Module-Failure-Message != 'Assigning value to "Tmp-Cast-ipaddr" failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /64) prefixes may be cast to IP address types') {
+		if !(&Module-Failure-Message == 'Assigning value to &control.Tmp-Cast-Ipaddr failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /64) prefixes may be cast to IP address types') {
 			test_fail
 		}
 		&request -= &Module-Failure-Message[*]
@@ -165,11 +165,11 @@ redundant {
 #
 redundant {
 	group {
-		&control.Tmp-Cast-Ipv4Prefix := &Tmp-Cast-IPv6Prefix[2]
+		&control.Tmp-Cast-Ipv4prefix := &Tmp-Cast-IPv6Prefix[2]
 		fail
 	}
 	group {
-		if (&Module-Failure-Message != 'Assigning value to "Tmp-Cast-ipv4prefix" failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
+		if !(&Module-Failure-Message == 'Assigning value to &control.Tmp-Cast-Ipv4prefix failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
 			test_fail
 		}
 		&request -= &Module-Failure-Message[*]
@@ -186,7 +186,7 @@ redundant {
 		fail
 	}
 	group {
-		if (&Module-Failure-Message != 'Assigning value to "Tmp-Cast-ipv6addr" failed: Invalid cast from ipv4prefix to ipv6addr.  Only /32 (not /24) prefixes may be cast to IP address types') {
+		if !(&Module-Failure-Message == 'Assigning value to &control.Tmp-Cast-IPv6Addr failed: Invalid cast from ipv4prefix to ipv6addr.  Only /32 (not /24) prefixes may be cast to IP address types') {
 			test_fail
 		}
 		&request -= &Module-Failure-Message[*]
@@ -203,7 +203,7 @@ redundant {
 		fail
 	}
 	group {
-		if (&Module-Failure-Message != 'Assigning value to "Tmp-Cast-ipaddr" failed: Invalid cast from ipv4prefix to ipaddr.  Only /32 (not 24/) prefixes may be cast to IP address types') {
+		if !(&Module-Failure-Message == 'Assigning value to &control.Tmp-Cast-Ipaddr failed: Invalid cast from ipv4prefix to ipaddr.  Only /32 (not 24/) prefixes may be cast to IP address types') {
 			test_fail
 		}
 		&request -= &Module-Failure-Message[*]
@@ -220,7 +220,7 @@ redundant {
 		fail
 	}
 	group {
-		if (&Module-Failure-Message != 'Assigning value to "Tmp-Cast-ipaddr" failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /32) prefixes may be cast to IP address types') {
+		if !(&Module-Failure-Message == 'Assigning value to &control.Tmp-Cast-Ipaddr failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /32) prefixes may be cast to IP address types') {
 			test_fail
 		}
 		&request -= &Module-Failure-Message[*]
@@ -233,11 +233,11 @@ redundant {
 #
 redundant {
 	group {
-		&control.Tmp-Cast-IPv4Prefix := &Tmp-Cast-IPv6Prefix[0]
+		&control.Tmp-Cast-IPv4prefix := &Tmp-Cast-IPv6Prefix[0]
 		fail
 	}
 	group {
-		if (&Module-Failure-Message != 'Assigning value to "Tmp-Cast-ipv4prefix" failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
+		if !(&Module-Failure-Message == 'Assigning value to &control.Tmp-Cast-IPv4prefix failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
 			test_fail
 		}
 		&request -= &Module-Failure-Message[*]
@@ -254,7 +254,7 @@ redundant {
 		fail
 	}
 	group {
-		if (&Module-Failure-Message != 'Assigning value to "Tmp-Cast-ipaddr" failed: Invalid cast from ipv6addr to ipaddr.  No IPv4-IPv6 mapping prefix') {
+		if !(&Module-Failure-Message == 'Assigning value to &control.Tmp-Cast-Ipaddr failed: Invalid cast from ipv6addr to ipaddr.  No IPv4-IPv6 mapping prefix') {
 			test_fail
 		}
 		&request -= &Module-Failure-Message[*]
@@ -267,11 +267,11 @@ redundant {
 #
 redundant {
 	group {
-		&control.Tmp-Cast-IPv4Prefix := &Tmp-Cast-IPv6Addr[0]
+		&control.Tmp-Cast-IPv4prefix := &Tmp-Cast-IPv6Addr[0]
 		fail
 	}
 	group {
-		if (&Module-Failure-Message != 'Assigning value to "Tmp-Cast-ipv4prefix" failed: Invalid cast from ipv6addr to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
+		if !(&Module-Failure-Message == 'Assigning value to &control.Tmp-Cast-IPv4prefix failed: Invalid cast from ipv6addr to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
 			test_fail
 		}
 		&request -= &Module-Failure-Message[*]

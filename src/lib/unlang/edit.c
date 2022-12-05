@@ -651,6 +651,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 						       map->op,
 						       box) < 0) {
 		fail:
+			RPEDEBUG("Assigning value to %s failed", map->lhs->name);
 			if (pair) tmpl_dcursor_clear(&cc);
 			return -1;
 		}
