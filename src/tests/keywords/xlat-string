@@ -59,7 +59,7 @@ if (!("%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}test3" == "test1test2te
 	test_fail
 }
 
-if (&Tmp-String-1 != 'I like chicken I like liver') {
+if !(&Tmp-String-1 == 'I like chicken I like liver') {
 	test_fail
 }
 

@@ -25,23 +25,23 @@
 
 debug_all
 
-if (!("%{Tmp-String-1}" == "1=1,my_attr=2,my_attr=hello")) {
+if (!(&Tmp-String-1 == "1=1,my_attr=2,my_attr=hello")) {
 	test_fail
 }
 
-if (!("%{Tmp-String-2}" == "")) {
+if (!(&Tmp-String-2 == "")) {
 	test_fail
 }
 
-if (!("%{Tmp-String-3}" == "hello,goodbye,morning,night,1")) {
+if (!(&Tmp-String-3 == "hello,goodbye,morning,night,1")) {
 	test_fail
 }
 
-if ("%{Tmp-String-4}" != 'Can\'t touch this') {
+if !(&Tmp-String-4 == 'Can\'t touch this') {
 	test_fail
 }
 
-if ("%{Tmp-String-5}" != 'here, are ,some, words') {
+if !(&Tmp-String-5 == 'here, are ,some, words') {
 	test_fail
 }
 

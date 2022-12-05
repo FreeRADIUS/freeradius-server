@@ -18,19 +18,19 @@
 	&Tmp-String-5 = "%(pairs:control.User-Name)"
 }
 
-if (&Tmp-String-1 != "User-Name = \"bob\", User-Password = \"hello\", Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331") {
+if !(&Tmp-String-1 == "User-Name = \"bob\", User-Password = \"hello\", Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331") {
 	test_fail
 }
 
-if (&Tmp-String-2 != "Tmp-String-0 = \"This is a string\"") {
+if !(&Tmp-String-2 == "Tmp-String-0 = \"This is a string\"") {
 	test_fail
 }
 
-if (&Tmp-String-3 != "Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\"") {
+if !(&Tmp-String-3 == "Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\"") {
 	test_fail
 }
 
-if (&Tmp-String-4 != "Password.Cleartext = \"hello\"") {
+if !(&Tmp-String-4 == "Password.Cleartext = \"hello\"") {
 	test_fail
 }
 

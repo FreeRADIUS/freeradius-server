@@ -29,7 +29,7 @@ if (!(&Tmp-String-0 == 'candy')) {
 	test_fail
 }
 
-if (&request.Reply-Message[0] != 'I am #literally a comment #') {
+if !(&request.Reply-Message[0] == 'I am #literally a comment #') {
 	test_fail
 }
 

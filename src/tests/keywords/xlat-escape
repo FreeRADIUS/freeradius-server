@@ -4,11 +4,11 @@
 #
 #  Verify escaping of %
 #
-if ("\%{ FOO}" != '%{ FOO}') {
+if !("\%{ FOO}" == '%{ FOO}') {
 	test_fail
 }
 
-if ("%{tolower:\%{ FOO}" != '%{ foo') {
+if !("%{tolower:\%{ FOO}" == '%{ foo') {
 	test_fail
 }
 

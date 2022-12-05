@@ -26,7 +26,7 @@ if (!(((integer)&Tmp-String-0 == &Tmp-Integer-1)) || (!(&Tmp-Integer-1 == 9870))
 
 # String - network order representation of a 8 char string
 &Tmp-uint64-0 := "%(integer:%{Tmp-String-1})"
-if (((integer64) &Tmp-String-1 != &Tmp-uint64-0) || (!(&Tmp-uint64-0 == 98709870))) {
+if (!((integer64) &Tmp-String-1 == &Tmp-uint64-0) || (!(&Tmp-uint64-0 == 98709870))) {
 	test_fail
 }
 

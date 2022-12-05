@@ -23,7 +23,7 @@ if (!&reply.Tmp-Group-0.Tmp-Group-0.Tmp-String-0) {
 	test_fail
 }
 
-if (&reply.Tmp-Group-0.Tmp-Group-0.Tmp-String-0 != 'hello from subrequest') {
+if !(&reply.Tmp-Group-0.Tmp-Group-0.Tmp-String-0 == 'hello from subrequest') {
 	test_fail
 }
 

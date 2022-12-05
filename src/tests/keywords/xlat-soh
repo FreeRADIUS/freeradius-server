@@ -39,7 +39,7 @@ if (!("%{Tmp-String-0}" == "Windows unknown")) {
 &Tmp-String-0 := %(soh:OS)
 
 # Complete set of data should match a real version of Windows
-if ("%{Tmp-String-0}" != "Windows Vista / Server 2008 6.0.6001 sp 1.0" ) {
+if !(&Tmp-String-0 == "Windows Vista / Server 2008 6.0.6001 sp 1.0" ) {
 	test_fail
 }
 

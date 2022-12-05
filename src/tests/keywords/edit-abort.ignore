@@ -16,11 +16,11 @@ update request {
 #
 #  The various edits above should have been reverted.
 #
-if (&Tmp-Integer-0 != 4) {
+if !(&Tmp-Integer-0 == 4) {
 	test_fail
 }
 
-if (&Tmp-Integer-1 != 5) {
+if !(&Tmp-Integer-1 == 5) {
 	test_fail
 }
 success

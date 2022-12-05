@@ -41,7 +41,7 @@ if (!(&Tmp-Integer-2 == &Tmp-Integer-0)) {
 &Tmp-Date-0 := 1659985459
 &Tmp-String-2 := "%(sqldate:%{Tmp-Date-0})"
 
-if (&Tmp-String-2 != '2022-08-08 19:04:19') {
+if !(&Tmp-String-2 == '2022-08-08 19:04:19') {
 	test_fail
 }
 
@@ -54,7 +54,7 @@ if (&Tmp-String-4) {
 	test_fail
 }
 
-if (&Module-Failure-Message != "Failed to parse time string \"201-32-22 17:25:00\" as format '\%Y-\%m-\%d \%H:\%M:\%S'") {
+if (!(&Module-Failure-Message == "Failed to parse time string \"201-32-22 17:25:00\" as format '\%Y-\%m-\%d \%H:\%M:\%S'")) {
 	test_fail
 }
 
