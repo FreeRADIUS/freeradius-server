@@ -1,6 +1,6 @@
 = Expressions
 
-Expressions can be used inside of xref:xlat/index.adoc[dynamic expansions], or inside of xref:condition/index.adoc[conditions].
+Expressions can be used inside of xref:xlat/index.adoc[dynamic expansions], or inside of xref:unlang/condition/index.adoc[conditions].
 
 The following operators are supported (in order of precedence).
 
@@ -33,9 +33,11 @@ The following unary operators are also supported:
 Operator precedence follows the normal rules.
 Division by zero means that the entire expression is invalid.
 
+See the xref:unlang/edit.adoc[edit] documentation for a list of attribute editing operators.
+
 == Conditions
 
-xref:condition/index.adoc[Conditions] in expressions are also
+xref:unlang/condition/index.adoc[Conditions] in expressions are also
 supported.  For example:
 
 [source,unlang]

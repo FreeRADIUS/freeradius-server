@@ -11,6 +11,7 @@
 **** xref:unlang/edit.adoc[editing]
 **** xref:unlang/else.adoc[else]
 **** xref:unlang/elsif.adoc[elsif]
+**** xref:unlang/expression.adoc[expressions]
 **** xref:unlang/foreach.adoc[foreach]
 **** xref:unlang/group.adoc[group]
 **** xref:unlang/if.adoc[if]
@@ -34,7 +35,7 @@
 
 *** xref:unlang/condition/index.adoc[Conditional Expressions]
 **** xref:unlang/condition/cmp.adoc[Comparisons]
-**** xref:unlang/expression.adoc[expressions]
+**** xref:unlang/condition/expression.adoc[mathematical expressions]
 **** xref:unlang/condition/operands.adoc[Operands]
 **** xref:unlang/condition/return_code.adoc[The Return Code Operator]
 **** xref:unlang/condition/eq.adoc[The '==' Operator]

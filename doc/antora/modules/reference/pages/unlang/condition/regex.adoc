@@ -15,7 +15,7 @@
 == Matching
 The regular expression operators perform regular expression matching
 on the data. The `<subject>` field can be an attribute reference or data,
-as with the other xref:condition/cmp.adoc[comparison] operators.  The `/<pattern>/`
+as with the other xref:unlang/condition/cmp.adoc[comparison] operators.  The `/<pattern>/`
 field must be a valid regular expression.
 
 The `=~` operator evaluates to `true` when `data` matches the

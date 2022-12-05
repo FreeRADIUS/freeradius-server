@@ -3,15 +3,15 @@
 .Syntax
 [source,unlang]
 ----
-if (condition) {
+if <condition> {
     [ statements ]
 }
 ----
 
 .Description
-The `if` statement evaluates a xref:condition/index.adoc[condition].  When the
-_condition_ evaluates to `true`, the statements within the subsection
-are executed.  When the _condition_ evaluates to `false`, those
+The `if` statement evaluates a xref:unlang/condition/index.adoc[condition].  When the
+_<condition>_ evaluates to `true`, the statements within the subsection
+are executed.  When the _<condition>_ evaluates to `false`, those
 statements are skipped.
 
 An `if` statement can optionally be followed by an xref:unlang/else.adoc[else] or
@@ -24,6 +24,51 @@ if (&User-Name == "bob") {
     reject
 }
 ----
+
+== Practical Suggestions
+
+There are a number of practical suggestions which make it easier to work with conditions.
+
+=== Brackets are usually optional.
+
+There is no need to put brackets around a _<condition>_.  The following two examples work identically:
+
+.Example With Brackets
+[source,unlang]
+----
+if (&User-Name == "bob") {
+    reject
+}
+----
+
+And without:
+
+.Example Without Brackes
+[source,unlang]
+----
+if &User-Name == "bob" {
+    reject
+}
+----
+
+The same behavior applies to conditions with complex statements using
+`&&` and `||`.  So long as the text between the `if` and the `{` is a
+valid condition, it will be parsed correctly.
+
+=== Multi-line conditions
+
+A _<condition>_ can span multiple lines.  There is no need to use `\\` at the end of a line.  The following condition is valid:
+
+.Example With Brackets
+[source,unlang]
+----
+if (&User-Name ==
+     "bob") {
+    reject
+}
+----
+
+=== Actions
 
 The last entry in an `if` section can also be an xref:unlang/actions.adoc[actions] subsection.
 

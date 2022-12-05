@@ -18,7 +18,7 @@ switch <expansion> {
 
 A `switch` statement causes the server to evaluate _<expansion>_,
 which can be an xref:unlang/attr.adoc[&Attribute-Name] or
-xref:condition/operands.adoc[data].  The result is compared against
+xref:unlang/condition/operands.adoc[data].  The result is compared against
 _<match-1>_ and _<match-2>_, etc. in order to find a match. If no
 match is found, then the server looks for the `default`
 xref:unlang/case.adoc[case] statement.

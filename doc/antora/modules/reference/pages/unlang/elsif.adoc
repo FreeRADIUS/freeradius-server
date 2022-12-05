@@ -3,10 +3,10 @@
 .Syntax
 [source,unlang]
 ----
-if (condition-1) {
+if <condition-1> {
     [ statements-1 ]
 }
-elsif (condition-2) {
+elsif <condition-2> {
     [ statements-2 ]
 }
 else {
@@ -15,11 +15,11 @@ else {
 ----
 
 An `elsif` statement is used to evaluate a subsequent
-xref:condition/index.adoc[condition] after a preceding xref:unlang/if.adoc[if] statement
-evaluates to `false`.  In the example above, when _condition-1_
-evaluates to false, then _statements-1_ are skipped and _condition-2_
+xref:unlang/condition/index.adoc[condition] after a preceding xref:unlang/if.adoc[if] statement
+evaluates to `false`.  In the example above, when _<condition-1>_
+evaluates to false, then _statements-1_ are skipped and _<condition-2>_
 is checked.  When _condition-2_ evaluates true, then _statements-2_
-are executed.  When _condition-2_ evaluates false, then
+are executed.  When _<condition-2>_ evaluates false, then
 _statements-2_ are skipped and _statements-3_ are executed.
 
 As with xref:unlang/if.adoc[if], an `elsif` clause does not need to be followed by

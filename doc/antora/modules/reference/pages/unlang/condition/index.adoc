@@ -1,7 +1,7 @@
 = Conditional Expressions
 
-Conditions are evaluated when parsing xref:if.adoc[if] and
-xref:elsif.adoc[elsif] statements.  These conditions allow the server to
+Conditions are evaluated when parsing xref:unlang/if.adoc[if] and
+xref:unlang/elsif.adoc[elsif] statements.  These conditions allow the server to
 make complex decisions based on one of a number of possible criteria.
 
 .Syntax
@@ -17,14 +17,15 @@ Conditions are expressed using the following syntax:
 [options="header"]
 |=====
 | Syntax | Description
-| xref:attr.adoc[&Attribute-Name] | Check for attribute existence.
-| xref:condition/return_code.adoc[rcode] | Check return code of a previous module.
-| xref:condition/operands.adoc[data] | Check value of data.
-| xref:condition/cmp.adoc[lhs OP rhs] | Compare two kinds of data.
-| xref:condition/para.adoc[( condition )] | Check sub-condition
-| xref:condition/not.adoc[! condition] | Negate a conditional check
-| xref:condition/and.adoc[( condition ) && ...] | Check a condition AND the next one
-| xref:condition/or.adoc[( condition ) \|\| ...] | Check a condition OR the next one
+| xref:unlang/attr.adoc[&Attribute-Name] | Check for attribute existence.
+| xref:unlang/return_codes.adoc[rcode] | Check return code of a previous module.
+| xref:unlang/condition/operands.adoc[data] | Check value of data.
+| xref:unlang/condition/cmp.adoc[lhs OP rhs] | Compare two kinds of data.
+| xref:unlang/condition/expression.adoc[1 + 2 ...] | Mathematical expressions.
+| xref:unlang/condition/para.adoc[( condition )] | Check sub-condition
+| xref:unlang/condition/not.adoc[! condition] | Negate a conditional check
+| xref:unlang/condition/and.adoc[( condition ) && ...] | Check a condition AND the next one
+| xref:unlang/condition/or.adoc[( condition ) \|\| ...] | Check a condition OR the next one
 |=====
 
 
@@ -66,12 +67,12 @@ evaluated and replaced with the result of the conditional comparison.
 .Example
 [source,unlang]
 ----
-if ( 0 == 1 ) {
+if (0) {
     ...
 }
 ----
 
-The condition `0 == 1` is static and will evaluate to `false`.  Since
+The condition `0` is static and will evaluate to `false`.  Since
 it evaluates to `false`, the configuration inside of the `if`
 statement is ignored.  Any modules referenced inside of the `if`
 statement will not be loaded.
@@ -80,6 +81,42 @@ This optimization is most useful for creating configurations that
 selectively load (or not) certain policies.  If the condition above
 was used in version 2, then the configuration inside of the `if` statement
 would be loaded, even though it would never be used.
+
+== Practical Suggestions
+
+We have seen many configurations where conditions are written using
+dynamic expansions and double-quoted strings for almost everything.
+For example, the following condition is unnecessarily complex:
+
+.Example with over-use of quotation
+[source,unlang]
+----
+if ("%{Framed-IP-Address}" == "192.0.2.1") {
+    ...
+}
+----
+
+This kind of condition is unnecessarily complex, and over-uses quotes.
+It should instead be written as:
+
+.Simplified Example
+[source,unlang]
+----
+if (&Framed-IP-Address == 192.0.2.1) {
+    ...
+}
+----
+
+In general, the following rules apply:
+
+* There is no need to quote attributes.  `&User-Name` is almost always preferable to `%{User-Name}`.
+
+* There is no need to quote values, unless the value is a string.  `192.0.2.1` is always preferable to `"192.0.2.1"`
+
+* There is no longer a need to use `%{expr:..}` to do math in conditions.  `if (1 + 2 == 3)` will work.  See xref:unlang/condition/expression.adoc[expressions].
+
+* If you want to check that an attribute exists _and_ has a particular value, use `if !(&Attr == value)`, instead of `if (&Attr != value)`.
+
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
