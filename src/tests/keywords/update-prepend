@@ -47,7 +47,7 @@ update {
 }
 
 # The attributes should now be "wibble", "foo", "baz", "boink", "foo", "baz"
-if (!(("%{Tmp-String-0[0]}" == 'wibble')) || (!("%{Tmp-String-0[1]}" == 'foo')) || (!(%{Tmp-String-0[2]} == 'baz')) || ("%{Tmp-String-0[3]}" != 'boink') || ("%{Tmp-String-0[4]}" != 'foo') || ("%{Tmp-String-0[5]}" != 'baz')) {
+if (!(("%{Tmp-String-0[0]}" == 'wibble')) || (!("%{Tmp-String-0[1]}" == 'foo')) || (!(%{Tmp-String-0[2]} == 'baz')) || (!("%{Tmp-String-0[3]}" == 'boink')) || (!("%{Tmp-String-0[4]}" == 'foo')) || (!("%{Tmp-String-0[5]}" == 'baz'))) {
 	test_fail
 }
 
@@ -71,7 +71,7 @@ update {
 }
 
 # The control attributes should now be "wibble", "foo", "baz", "boink", "foo", "baz", "initial"
-if (!(("%{control.Tmp-String-0[0]}" == 'wibble')) || (!("%{control.Tmp-String-0[1]}" == 'foo')) || (!(%{control.Tmp-String-0[2]} == 'baz')) || ("%{control.Tmp-String-0[3]}" != 'boink') || ("%{control.Tmp-String-0[4]}" != 'foo') || ("%{control.Tmp-String-0[5]}" != 'baz') || ("%{control.Tmp-String-0[6]}" != 'initial')) {
+if (!(("%{control.Tmp-String-0[0]}" == 'wibble')) || (!("%{control.Tmp-String-0[1]}" == 'foo')) || (!(%{control.Tmp-String-0[2]} == 'baz')) || (!("%{control.Tmp-String-0[3]}" == 'boink')) || (!("%{control.Tmp-String-0[4]}" == 'foo')) || (!("%{control.Tmp-String-0[5]}" == 'baz')) || (!("%{control.Tmp-String-0[6]}" == 'initial'))) {
 	test_fail
 }
 

@@ -17,7 +17,7 @@ if (!&Tmp-String-0[0] || !&Tmp-String-0[1] || !&Tmp-String-0[2] || !&Tmp-String-
 	test_fail
 }
 
-if (!((&Tmp-String-0[0] == '0')) || (!(&Tmp-String-0[1] == '1')) || (&Tmp-String-0[2] != '2') || (&Tmp-String-0[3] != '3')) {
+if (!((&Tmp-String-0[0] == '0')) || (!(&Tmp-String-0[1] == '1')) || (!(&Tmp-String-0[2] == '2')) || (!(&Tmp-String-0[3] == '3'))) {
 	test_fail
 }
 
