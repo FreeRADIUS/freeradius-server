@@ -353,6 +353,13 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 	PAIR_LIST	my_pl;
 	char		buffer[256];
 
+	/*
+	 *	Certain post-proxy fail situations can cause there not to be
+	 *	a valid request_packet to lookup check pairs in.
+	 *	Test here in case there are other situations where this happens.
+	 */
+	if (!request_packet) return RLM_MODULE_NOOP;
+
 	if (!inst->key) {
 		VALUE_PAIR	*namepair;
 
