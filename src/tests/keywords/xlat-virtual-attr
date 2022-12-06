@@ -71,7 +71,7 @@ if (!("%{Virtual-Server[*]}" == 'default')) {
 	test_fail
 }
 
-if (!("%{Virtual-Server[#]}" == 1)) {
+if (!(%{Virtual-Server[#]} == 1)) {
 	test_fail
 }
 
