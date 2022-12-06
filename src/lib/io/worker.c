@@ -1235,7 +1235,6 @@ nomem:
        } while (0)
 
 #define CHECK_CONFIG_TIME_DELTA(_x, _min, _max) do { \
-		if (fr_time_delta_ispos(worker->config._x)) worker->config._x = _min; \
 		if (fr_time_delta_lt(worker->config._x, _min)) worker->config._x = _min; \
 		if (fr_time_delta_gt(worker->config._x, _max)) worker->config._x = _max; \
        } while (0)
