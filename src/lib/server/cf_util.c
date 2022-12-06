@@ -1212,7 +1212,7 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 {
 	CONF_PAIR *cp;
 
-	fr_assert(fr_equality_op[op] || fr_assignment_op[op]);
+	fr_assert(fr_comparison_op[op] || fr_assignment_op[op]);
 	if (!attr) return NULL;
 
 	cp = talloc_zero(parent, CONF_PAIR);

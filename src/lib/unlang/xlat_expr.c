@@ -383,7 +383,9 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(a->type == FR_TYPE_GROUP);
 	fr_assert(b->type == FR_TYPE_GROUP);
 
-	if (!fr_equality_op[op]) {
+	if (fr_comparison_op[op]) {
+		rcode = fr_value_calc_list_cmp(dst, dst, &a->vb_group, op, &b->vb_group);
+	} else {
 		if (fr_value_box_list_num_elements(&a->vb_group) != 1) {
 			REDEBUG("Expected one value as the first argument, got %d",
 				fr_value_box_list_num_elements(&a->vb_group));
@@ -400,8 +402,6 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						fr_value_box_list_head(&a->vb_group),
 						op,
 						fr_value_box_list_head(&b->vb_group));
-	} else {
-		rcode = fr_value_calc_list_cmp(dst, dst, &a->vb_group, op, &b->vb_group);
 	}
 	if (rcode < 0) {
 		RPEDEBUG("Failed calculating result, returning NULL");
@@ -2675,7 +2675,7 @@ redo:
 	 *
 	 *	as special cases, so we can check lists for emptiness.
 	 */
-	if (fr_equality_op[op]) {
+	if (fr_comparison_op[op]) {
 		if (!valid_type(lhs)) goto fail_lhs;
 		if (!valid_type(rhs)) goto fail_rhs;
 

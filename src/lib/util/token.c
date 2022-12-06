@@ -193,7 +193,7 @@ const bool fr_list_assignment_op[T_TOKEN_LAST] = {
 	T(PREPEND),		/* prepend */
 };
 
-const bool fr_equality_op[T_TOKEN_LAST] = {
+const bool fr_comparison_op[T_TOKEN_LAST] = {
 	T(NE),
 	T(GE),
 	T(GT),
@@ -456,7 +456,7 @@ fr_token_t getop(char const **ptr)
 	fr_token_t token;
 
 	token = getthing(ptr, op, sizeof(op), true, fr_tokens_table, fr_tokens_table_len, false);
-	if (!fr_assignment_op[token] && !fr_equality_op[token]) {
+	if (!fr_assignment_op[token] && !fr_comparison_op[token]) {
 		fr_strerror_const("Expected operator");
 		return T_INVALID;
 	}

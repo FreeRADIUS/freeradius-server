@@ -143,7 +143,7 @@ extern size_t fr_token_quotes_table_len;
 extern const char *fr_tokens[T_TOKEN_LAST];
 extern const char fr_token_quote[T_TOKEN_LAST];
 extern const bool fr_assignment_op[T_TOKEN_LAST];
-extern const bool fr_equality_op[T_TOKEN_LAST];
+extern const bool fr_comparison_op[T_TOKEN_LAST];
 extern const bool fr_binary_op[T_TOKEN_LAST];
 extern const bool fr_str_tok[T_TOKEN_LAST];
 extern const bool fr_list_assignment_op[T_TOKEN_LAST];
