@@ -2,12 +2,12 @@
 #
 
 # Non matching on attribute ref
-if (&User-Name !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
+if !(&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
 	test_fail
 }
 
 # Matching on xlat expanded value
-if ("%{User-Name}" !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
+if !("%{User-Name}" =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
 	test_fail
 }
 
@@ -41,22 +41,22 @@ else {
 }
 
 # compiled - ref - insensitive
-if (&Calling-Station-Id !~ /:roamyroam$/i) {
+if !(&Calling-Station-Id =~ /:roamyroam$/i) {
 	test_fail
 }
 
 # compiled - expansion - insensitive
-if (&Calling-Station-Id !~ /:roamyroam$/i) {
+if !(&Calling-Station-Id =~ /:roamyroam$/i) {
 	test_fail
 }
 
 # compiled - enum - ref - insensitive
-if (&Service-Type !~ /^framed-user$/i) {
+if !(&Service-Type =~ /^framed-user$/i) {
 	test_fail
 }
 
 # compiled - enum - expansion - insensitive
-if ("%{Service-Type}" !~ /^framed-user$/i) {
+if !("%{Service-Type}" =~ /^framed-user$/i) {
 	test_fail
 }
 
@@ -68,7 +68,7 @@ if (&Service-Type =~ /^framed-user$/) {
 &Tmp-String-0 := "foo\nbar"
 
 # compiled - ref - multiline
-if (&Tmp-String-0 !~ /^foo$/m) {
+if !(&Tmp-String-0 =~ /^foo$/m) {
 	test_fail
 }
 
@@ -80,12 +80,12 @@ if (&Tmp-String-0 =~ /^foo$/) {
 # compiled - ref - non-multiline
 # Not all POSIX implementations support the \n character classes
 # so only run this test if the server was built with libpcre.
-if ((('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) && (&Tmp-String-0 !~ /^foo\nbar$/)) {
+if ((('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) && !(&Tmp-String-0 =~ /^foo\nbar$/)) {
 	test_fail
 }
 
 # compiled - ref - multiline
-if (&Tmp-String-0 !~ /^bar$/m) {
+if !(&Tmp-String-0 =~ /^bar$/m) {
 	test_fail
 }
 
@@ -95,12 +95,12 @@ if (&Tmp-String-0 =~ /^BAR$/m) {
 }
 
 # compiled - ref - multiline - insensitive
-if (&Tmp-String-0 !~ /^BAR$/mi) {
+if !(&Tmp-String-0 =~ /^BAR$/mi) {
 	test_fail
 }
 
 # compiled - ref - multiline - insensitive (flag order reversed)
-if (&Tmp-String-0 !~ /^BAR$/im) {
+if !(&Tmp-String-0 =~ /^BAR$/im) {
 	test_fail
 }
 

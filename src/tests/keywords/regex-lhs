@@ -11,10 +11,10 @@
 	&Tmp-String-1 = "^foo$bar"
 }
 
-if (&Tmp-String-0 !~ /example\.com$/) {
+if !(&Tmp-String-0 =~ /example\.com$/) {
 	test_fail
 }
-elsif (&Tmp-String-1 !~ /\^foo\$bar/) {
+elsif !(&Tmp-String-1 =~ /\^foo\$bar/) {
 	test_fail
 }
 

@@ -3,12 +3,12 @@
 &Tmp-Integer-0 := '123456789'
 
 # Non matching on attribute ref
-if (&User-Name !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
+if !(&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
 	test_fail
 }
 
 # Matching on xlat expanded value
-if ("%{User-Name}" !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
+if !("%{User-Name}" =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
 	test_fail
 }
 
@@ -62,22 +62,22 @@ else {
 }
 
 # uncompiled - ref - insensitive
-if (&Calling-Station-Id !~ /:roamyroam%{Tmp-String-0}$/i) {
+if !(&Calling-Station-Id =~ /:roamyroam%{Tmp-String-0}$/i) {
 	test_fail
 }
 
 # uncompiled - expansion - insensitive
-if (&Calling-Station-Id !~ /:roamyroam%{Tmp-String-0}$/i) {
+if !(&Calling-Station-Id =~ /:roamyroam%{Tmp-String-0}$/i) {
 	test_fail
 }
 
 # uncompiled - enum - ref - insensitive
-if (&Service-Type !~ /^framed-user%{Tmp-String-0}$/i) {
+if !(&Service-Type =~ /^framed-user%{Tmp-String-0}$/i) {
 	test_fail
 }
 
 # uncompiled - enum - expansion - insensitive
-if ("%{Service-Type}" !~ /^framed-user%{Tmp-String-0}$/i) {
+if !("%{Service-Type}" =~ /^framed-user%{Tmp-String-0}$/i) {
 	test_fail
 }
 
@@ -87,14 +87,14 @@ if (&Service-Type =~ /^framed-user%{Tmp-String-0}$/) {
 }
 
 # uncompiled - integer - ref
-if (&Tmp-Integer-0 !~ /%{Tmp-Integer-0}/) {
+if !(&Tmp-Integer-0 =~ /%{Tmp-Integer-0}/) {
 	test_fail
 }
 
 &Tmp-String-0 := "foo\nbar"
 
 # uncompiled - ref - multiline
-if (&Tmp-String-0 !~ /^foo$%{Tmp-String-8}/m) {
+if !(&Tmp-String-0 =~ /^foo$%{Tmp-String-8}/m) {
 	test_fail
 }
 
@@ -104,12 +104,12 @@ if (&Tmp-String-0 =~ /^foo$%{Tmp-String-8}/) {
 }
 
 # uncompiled - ref - non-multiline
-if (&Tmp-String-0 !~ /^foo\nbar%{Tmp-String-8}$/) {
+if !(&Tmp-String-0 =~ /^foo\nbar%{Tmp-String-8}$/) {
 	test_fail
 }
 
 # uncompiled - ref - multiline
-if (&Tmp-String-0 !~ /^bar%{Tmp-String-8}$/m) {
+if !(&Tmp-String-0 =~ /^bar%{Tmp-String-8}$/m) {
 	test_fail
 }
 
@@ -119,11 +119,11 @@ if (&Tmp-String-0 =~ /^BAR%{Tmp-String-8}$/m) {
 }
 
 # uncompiled - ref - multiline - insensitive
-if (&Tmp-String-0 !~ /^BAR%{Tmp-String-8}$/mi) {
+if !(&Tmp-String-0 =~ /^BAR%{Tmp-String-8}$/mi) {
 	test_fail
 }
 
 # uncompiled - ref - multiline - insensitive (flag order reversed)
-if (&Tmp-String-0 !~ /^BAR%{Tmp-String-8}$/im) {
+if !(&Tmp-String-0 =~ /^BAR%{Tmp-String-8}$/im) {
 	test_fail
 }
