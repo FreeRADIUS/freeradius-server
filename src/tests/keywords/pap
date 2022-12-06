@@ -8,7 +8,7 @@
 #  Unencoded Password.Cleartext in password with header
 #
 &control := {
-	&Password.With-Header = "%{User-Password}"
+	&Password.With-Header = &User-Password
 }
 
 pap.authorize

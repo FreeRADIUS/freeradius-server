@@ -10,7 +10,7 @@ update reply {
 #  reference here should be to an unknown attribute,
 #  and the dereference should fail.
 #
-if ("%{reply.WiMAX.Capability.Release}" == "foo") { # ERROR
+if (&reply.WiMAX.Capability.Release == "foo") { # ERROR
 	test_fail
 }
 else {

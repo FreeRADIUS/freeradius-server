@@ -31,7 +31,7 @@ if (&Tmp-String-0) {
 &Tmp-String-0 := %(soh:OS)
 
 # OS version not set
-if (!("%{Tmp-String-0}" == "Windows unknown")) {
+if (!(&Tmp-String-0 == "Windows unknown")) {
 	test_fail
 }
 
@@ -47,7 +47,7 @@ if !(&Tmp-String-0 == "Windows Vista / Server 2008 6.0.6001 sp 1.0" ) {
 &Tmp-String-0 := %(soh:OS)
 
 # Version and Release combination that does not exist
-if (!("%{Tmp-String-0}" == "Windows Other 6.5.6001 sp 1.0")) {
+if (!(&Tmp-String-0 == "Windows Other 6.5.6001 sp 1.0")) {
 	test_fail
 }
 
@@ -56,7 +56,7 @@ if (!("%{Tmp-String-0}" == "Windows Other 6.5.6001 sp 1.0")) {
 &Tmp-String-0 := %(soh:OS)
 
 # Version that does not exist
-if (!("%{Tmp-String-0}" == "Windows Other 8.0.6001 sp 1.0")) {
+if (!(&Tmp-String-0 == "Windows Other 8.0.6001 sp 1.0")) {
 	test_fail
 }
 

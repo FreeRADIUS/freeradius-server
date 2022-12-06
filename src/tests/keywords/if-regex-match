@@ -67,7 +67,7 @@ if (&Calling-Station-Id !~ /:roamyroam%{Tmp-String-0}$/i) {
 }
 
 # uncompiled - expansion - insensitive
-if ("%{Calling-Station-Id}" !~ /:roamyroam%{Tmp-String-0}$/i) {
+if (&Calling-Station-Id !~ /:roamyroam%{Tmp-String-0}$/i) {
 	test_fail
 }
 

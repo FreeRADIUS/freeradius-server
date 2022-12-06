@@ -7,16 +7,15 @@
 #  Tmp-Octets-1 doesn't exist, so Tmp-Octets-0 shouldn't be created
 #
 update request {
-	&Tmp-Octets-0 := "%{Tmp-Octets-1}"
+	&Tmp-Octets-0 := &Tmp-Octets-1
 }
-if (&Tmp-Integer-0) {
+if (&Tmp-Octets-0) {
 	test_fail
 }
 
 #
-#  NULL valued strings get converted to empty length strings
+#  Strings which quote NULL expansions still result in zero-length strings.
 #
-#  @fixme - EDIT - the new method is to simply omit the assignment
 #
 update request {
 	&Tmp-String-0 := "%{Reply-Message}"

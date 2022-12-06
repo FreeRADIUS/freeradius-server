@@ -46,7 +46,7 @@ if (&Calling-Station-Id !~ /:roamyroam$/i) {
 }
 
 # compiled - expansion - insensitive
-if ("%{Calling-Station-Id}" !~ /:roamyroam$/i) {
+if (&Calling-Station-Id !~ /:roamyroam$/i) {
 	test_fail
 }
 

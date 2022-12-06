@@ -50,7 +50,7 @@ if (!(&Tmp-Integer-1 == 959985457)) {
 &Tmp-uint64-0 := "%(integer:%{Tmp-Octets-1})"
 
 #
-#  Disabled until xlats can return binary data
+#  Handle octets as strings for now.
 #
 if (!("%{Tmp-Octets-1}" == "0x%{hex:%{Tmp-uint64-0}}")) {
 	test_fail
