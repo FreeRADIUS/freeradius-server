@@ -165,6 +165,10 @@ static inline void _fr_curl_io_service(fr_curl_handle_t *mhandle, int fd, int ev
 			event_str = "socket-readable";
 			break;
 
+		case 0:
+			event_str = "closed"; /* Not really closed, more do your own eval! */
+			break;
+
 		default:
 			event_str = "<INVALID>";
 			break;
@@ -187,11 +191,25 @@ static inline void _fr_curl_io_service(fr_curl_handle_t *mhandle, int fd, int ev
  * @param[in] fd_errno	from kevent.
  * @param[in] uctx	The rlm_fr_curl_thread_t specific to this thread.
  */
-static void _fr_curl_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, int fd_errno, void *uctx)
+static void _fr_curl_io_service_errored(UNUSED fr_event_list_t *el, int fd, int flags, int fd_errno, void *uctx)
 {
 	fr_curl_handle_t	*mhandle = talloc_get_type_abort(uctx, fr_curl_handle_t);
 
 	DEBUG4("multi-handle %p - fd %i errored: %s", mhandle->mandle, fd, fr_syserror(fd_errno));
+
+	/*
+	 *	The remote server closed the socket
+	 *
+	 *	Instead of signalling curl with CURL_CSELECT_ERR
+	 *	which always results in spurious errors being
+	 *	printed, pass in '0', which causes libcurl to do
+	 *	its own evaluation on the socket state, and hopefully
+	 *	run the right code for socket closure.
+	 */
+	if (flags & EV_EOF) {
+		_fr_curl_io_service(mhandle, fd, 0);
+		return;
+	}
 
 	_fr_curl_io_service(mhandle, fd, CURL_CSELECT_ERR);
 }
