@@ -1,6 +1,16 @@
 # Should apply only to header files
 If:
   PathMatch: .*\.h
+CompileFlags:
+  # macos: non-system clangd doesn't seem to include /usr/local/include in the default path
+  Add: [
+      "-I/usr/local/include"
+  ]
+  # macos: flags that come from xcrun that brewd clangd doesn't understand
+  Remove: [
+      "-clang-vendor-feature*",
+      "-fno-odr-hash-protocols"
+  ]
 Diagnostics:
   Suppress: [
       # Clangd doesn't register that functions or macros are used in source files which
@@ -10,6 +20,16 @@ Diagnostics:
   ]
 ---
 # Applies to all files
+CompileFlags:
+  # macos: non-system clangd doesn't seem to include /usr/local/include in the default path
+  Add: [
+      "-I/usr/local/include"
+  ]
+  # macos: flags that come from xcrun that brewd clangd doesn't understand
+  Remove: [
+      "-clang-vendor-feature*",
+      "-fno-odr-hash-protocols*"
+  ]
 Diagnostics:
   ClangTidy:
     Remove: [
