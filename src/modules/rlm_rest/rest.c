@@ -159,7 +159,7 @@ fr_table_num_sorted_t const http_auth_table[] = {
 	{ L("any"),				REST_HTTP_AUTH_ANY		},
 	{ L("basic"),				REST_HTTP_AUTH_BASIC		},
 	{ L("digest"),				REST_HTTP_AUTH_DIGEST		},
-	{ L("digest-ie"),				REST_HTTP_AUTH_DIGEST_IE	},
+	{ L("digest-ie"),			REST_HTTP_AUTH_DIGEST_IE	},
 	{ L("gss-negotiate"),			REST_HTTP_AUTH_GSSNEGOTIATE	},
 	{ L("none"),				REST_HTTP_AUTH_NONE		},
 	{ L("ntlm"),				REST_HTTP_AUTH_NTLM		},
