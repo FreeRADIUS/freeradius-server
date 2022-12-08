@@ -1917,6 +1917,7 @@ if test "x$developer" = "xyes"; then
     	-Wno-shorten-64-to-32 \
     	-Wno-sign-conversion \
     	-Wno-switch-enum \
+	-Wno-unreachable-code-generic-assoc \
     	-Wno-vla \
         $verify_ptr"
   else
