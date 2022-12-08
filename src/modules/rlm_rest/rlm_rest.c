@@ -790,7 +790,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_authenticate_result, NULL, handle);
+	return unlang_module_yield(request, mod_authenticate_result, rest_io_module_signal, handle);
 }
 
 static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -869,7 +869,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_accounting_result, NULL, handle);
+	return unlang_module_yield(request, mod_accounting_result, rest_io_module_signal, handle);
 }
 
 static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -949,7 +949,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_post_auth_result, NULL, handle);
+	return unlang_module_yield(request, mod_post_auth_result, rest_io_module_signal, handle);
 }
 
 static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER const *config_items,
