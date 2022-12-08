@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pairmove.h>
@@ -1102,7 +1103,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_rest_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	CONF_SECTION		*conf = mctx->inst->conf;
 	fr_curl_handle_t	*mhandle;
-	CONF_SECTION		*my_conf;
+	CONF_SECTION		*my_conf = NULL, *pool;
 
 	t->inst = inst;
 
@@ -1110,7 +1111,11 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	 *	Temporary hack to make config parsing
 	 *	thread safe.
 	 */
-	my_conf = cf_section_dup(NULL, NULL, conf, cf_section_name1(conf), cf_section_name2(conf), true);
+	if ((pool = cf_section_find(conf, "pool", NULL))) {
+		my_conf = cf_section_dup(NULL, NULL, conf, cf_section_name1(pool), cf_section_name2(pool), true);
+	} else {
+		my_conf = cf_section_alloc(NULL, NULL, "pool", NULL);
+	}
 	t->pool = fr_pool_init(NULL, my_conf, inst, rest_mod_conn_create, NULL, mctx->inst->name);
 	talloc_free(my_conf);
 
