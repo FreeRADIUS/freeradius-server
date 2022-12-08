@@ -49,19 +49,19 @@ const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
 	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_UNSUPPORTED
 	REST_HTTP_BODY_UNSUPPORTED,  	// REST_HTTP_BODY_UNAVAILABLE
 	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_INVALID
-	REST_HTTP_BODY_NONE,			// REST_HTTP_BODY_NONE
+	REST_HTTP_BODY_NONE,		// REST_HTTP_BODY_NONE
 	REST_HTTP_BODY_CUSTOM_XLAT,		// REST_HTTP_BODY_CUSTOM_XLAT
 	REST_HTTP_BODY_CUSTOM_LITERAL,	// REST_HTTP_BODY_CUSTOM_LITERAL
-	REST_HTTP_BODY_POST,			// REST_HTTP_BODY_POST
+	REST_HTTP_BODY_POST,		// REST_HTTP_BODY_POST
 #ifdef HAVE_JSON
-	REST_HTTP_BODY_JSON,			// REST_HTTP_BODY_JSON
+	REST_HTTP_BODY_JSON,		// REST_HTTP_BODY_JSON
 #else
 	REST_HTTP_BODY_UNAVAILABLE,
 #endif
 	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_XML
-	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_YAML
+	REST_HTTP_BODY_UNSUPPORTED,	// REST_HTTP_BODY_YAML
 	REST_HTTP_BODY_INVALID,		// REST_HTTP_BODY_HTML
-	REST_HTTP_BODY_PLAIN			// REST_HTTP_BODY_PLAIN
+	REST_HTTP_BODY_PLAIN		// REST_HTTP_BODY_PLAIN
 };
 
 /*
@@ -184,14 +184,14 @@ size_t http_auth_table_len = NUM_ELEMENTS(http_auth_table);
  * @see fr_table_str_by_value
  */
 fr_table_num_sorted_t const http_content_type_table[] = {
-	{ L("application/json"),			REST_HTTP_BODY_JSON		},
+	{ L("application/json"),				REST_HTTP_BODY_JSON		},
 	{ L("application/x-www-form-urlencoded"),	REST_HTTP_BODY_POST		},
 	{ L("application/x-yaml"),			REST_HTTP_BODY_YAML		},
-	{ L("application/yaml"),			REST_HTTP_BODY_YAML		},
+	{ L("application/yaml"),				REST_HTTP_BODY_YAML		},
 	{ L("text/html"),				REST_HTTP_BODY_HTML		},
 	{ L("text/plain"),				REST_HTTP_BODY_PLAIN		},
 	{ L("text/x-yaml"),				REST_HTTP_BODY_YAML		},
-	{ L("text/xml"),				REST_HTTP_BODY_XML		},
+	{ L("text/xml"),					REST_HTTP_BODY_XML		},
 	{ L("text/yaml"),				REST_HTTP_BODY_YAML		}
 };
 size_t http_content_type_table_len = NUM_ELEMENTS(http_content_type_table);

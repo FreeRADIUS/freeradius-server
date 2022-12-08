@@ -1,0 +1,16 @@
+#
+#  PRE: if
+#
+
+&reply.Reply-Message = 'foo'
+&reply.User-Name = 'bar'
+
+if (&reply.[0] != 'foo') {
+	test_fail
+}
+
+if (&reply.[1] != 'bar') {
+	test_fail
+}
+
+success
