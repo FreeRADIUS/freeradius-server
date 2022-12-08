@@ -306,6 +306,35 @@ static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **env
 	exit(2);
 }
 
+#ifdef __APPLE__
+static inline CC_HINT(always_inline)
+void exec_child_pid_visible(request_t *request, pid_t pid)
+{
+	siginfo_t	info;
+
+	fr_assert(pid > 0);
+
+	/*
+	 *	Apparently in macOS >= 10.11 there's a race between 
+	 *	the kernel handing back the PID to userland and it 
+	 *	becoming visible to waitid.
+	 *
+	 *	Better to hang indefinitely spewing log messages
+	 *	than to create obscure resource leaks.
+	 */
+	while (true) {
+		if ((waitid(P_PID, pid, &info, WNOHANG | WNOWAIT) < 0)) {
+			if (errno != ECHILD) {
+				RWDEBUG("PID %u not visible to parent - %s", (unsigned int) pid, fr_syserror(errno));
+				break;
+			}
+			RWDEBUG("PID %u not visible to parent, retrying...", (unsigned int) pid);
+			usleep(10000);
+		}
+	}
+}
+#endif
+
 /** Execute a program without waiting for the program to finish.
  *
  * @param[in] request		the request
@@ -380,23 +409,11 @@ int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
 	}
 
 	pid = fork();
-#ifdef __APPLE__
-	for (unsigned int i = 0; i < 10; i++) {
-    		siginfo_t	info;
-
-		if ((waitid(P_PID, pid, &info, WNOHANG | WNOWAIT) < 0)) {
-			REDEBUG("WAITID ERRORED %s", fr_syserror(errno));
-			usleep(10000);
-		}
-	}
-#endif
-
 	/*
 	 *	The child never returns from calling exec_child();
 	 */
 	if (pid == 0) {
 		int unused[2] = { -1, -1 };
-
 		exec_child(request, argv, env, false, unused, unused, unused);
 	}
 
@@ -404,6 +421,10 @@ int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
 		RPEDEBUG("Couldn't fork %s", argv[0]);
 		return -1;
 	}
+
+#ifdef __APPLE__
+	exec_child_pid_visible(request, pid);
+#endif
 
 	/*
 	 *	Ensure that we can clean up any child processes.  We
@@ -560,6 +581,10 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 		talloc_free(argv);
 		return -1;
 	}
+
+#ifdef __APPLE__
+	exec_child_pid_visible(request, pid);
+#endif
 
 	/*
 	 *	Tell the caller the childs PID, and the FD to read
