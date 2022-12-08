@@ -2025,7 +2025,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
  *  Definitions which are adjacent to one another are automatically merged
  *  into one larger variable definition.
  */
-static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_PAIR *cp, UNUSED tmpl_rules_t *t_rules)
+static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_PAIR *cp, tmpl_rules_t *t_rules)
 {
 	unlang_variable_t *var, *var_free;
 	unlang_t	*c = NULL, *out = UNLANG_IGNORE;
