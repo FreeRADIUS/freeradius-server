@@ -41,6 +41,7 @@ size_t fr_json_format_table_len = NUM_ELEMENTS(fr_json_format_table);
 static fr_json_format_t const default_json_format = {
 	.attr = { .prefix = NULL },
 	.value = { .value_as_array = true },
+	.output_mode = JSON_MODE_OBJECT
 };
 
 static CONF_PARSER const json_format_attr_config[] = {
