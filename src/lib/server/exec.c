@@ -380,6 +380,16 @@ int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
 	}
 
 	pid = fork();
+#ifdef __APPLE__
+	for (unsigned int i = 0; i < 10; i++) {
+    		siginfo_t	info;
+
+		if ((waitid(P_PID, pid, &info, WNOHANG | WNOWAIT) < 0)) {
+			REDEBUG("WAITID ERRORED %s", fr_syserror(errno));
+			usleep(10000);
+		}
+	}
+#endif
 
 	/*
 	 *	The child never returns from calling exec_child();
