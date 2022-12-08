@@ -346,7 +346,8 @@ static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent,
 
 	memcpy(&value, out, sizeof(value));
 
-	FR_INTEGER_COND_CHECK("max_request_time", value, (value != 0), 100);
+	FR_INTEGER_BOUND_CHECK("max_request_time", value, >=, 5);
+	FR_INTEGER_BOUND_CHECK("max_request_time", value, <=, 120);
 
 	memcpy(out, &value, sizeof(value));
 
