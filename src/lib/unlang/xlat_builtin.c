@@ -801,10 +801,15 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 	 *	a copy of the original arguments with each
 	 *	function that's called.
 	 */
-//	fr_dlist_talloc_free(&xctx->ex->call.args->dlist);
+	fr_dlist_talloc_free(&xctx->ex->call.args->dlist);
 
 	return 0;
 }
+
+static xlat_arg_parser_t const xlat_redundant_args[] = {
+	{ .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Registers a redundant xlat
  *
@@ -947,7 +952,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		return -1;
 	}
 	xlat_async_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_inst_t, NULL, xr);
-	if (args) xlat_func_args(xlat, args);
+	if (args) xlat_func_args(xlat, xlat_redundant_args);
 
 	return 0;
 }
