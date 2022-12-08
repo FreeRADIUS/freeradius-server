@@ -73,6 +73,25 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static void imap_io_module_signal(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
+{
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
+	rlm_imap_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
+	CURLMcode		ret;
+
+	if (action != FR_SIGNAL_CANCEL) return;
+
+	RDEBUG2("Forcefully cancelling pending IMAP request");
+
+	ret = curl_multi_remove_handle(t->mhandle->mandle, randle->candle);	/* Gracefully terminate the request */
+	if (ret != CURLM_OK) {
+		RERROR("Failed removing curl handle from multi-handle: %s (%i)", curl_multi_strerror(ret), ret);
+		/* Not much we can do */
+	}
+	t->mhandle->transfers--;
+	talloc_free(randle);
+}
+
 /*
  *	Called when the IMAP server responds
  *	It checks if the response was CURLE_OK
@@ -168,7 +187,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
-	return unlang_module_yield(request, mod_authenticate_resume, NULL, randle);
+	return unlang_module_yield(request, mod_authenticate_resume, imap_io_module_signal, randle);
 }
 
 /*

@@ -755,6 +755,25 @@ static int _free_mail_ctx(fr_mail_ctx_t *uctx)
 	return 0;
 }
 
+static void smtp_io_module_signal(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
+{
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
+	rlm_smtp_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
+	CURLMcode		ret;
+
+	if (action != FR_SIGNAL_CANCEL) return;
+
+	RDEBUG2("Forcefully cancelling pending SMTP request");
+
+	ret = curl_multi_remove_handle(t->mhandle->mandle, randle->candle);	/* Gracefully terminate the request */
+	if (ret != CURLM_OK) {
+		RERROR("Failed removing curl handle from multi-handle: %s (%i)", curl_multi_strerror(ret), ret);
+		/* Not much we can do */
+	}
+	t->mhandle->transfers--;
+	talloc_free(randle);
+}
+
 /*
  * 	Check if the email was successfully sent, and if the certificate information was extracted
  */
@@ -919,7 +938,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
-	return unlang_module_yield(request, mod_authorize_result, NULL, mail_ctx);
+	return unlang_module_yield(request, mod_authorize_result, smtp_io_module_signal, mail_ctx);
 }
 
 /*
@@ -1012,7 +1031,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
-	return unlang_module_yield(request, mod_authenticate_resume, NULL, randle);
+	return unlang_module_yield(request, mod_authenticate_resume, smtp_io_module_signal, randle);
 }
 
 /** Verify that a map in the header section makes sense
