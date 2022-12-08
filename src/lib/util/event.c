@@ -2294,6 +2294,16 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	return num_fd_events + timer_event_ready;
 }
 
+static inline CC_HINT(always_inline)
+void event_callback(fr_event_list_t *el, fr_event_fd_t *ef, int *filter, int flags, int *fflags)
+{
+	fr_event_fd_cb_t	fd_cb;
+
+	while ((fd_cb = event_fd_func(ef, filter, fflags))) {
+		fd_cb(el, ef->fd, flags, ef->uctx);
+	}
+}
+
 /** Service any outstanding timer or file descriptor events
  *
  * @param[in] el containing events to service.
@@ -2385,7 +2395,7 @@ void fr_event_service(fr_event_list_t *el)
 		{
 			fr_event_fd_t		*ef = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
 			int			fd_errno = 0;
-			fr_event_fd_cb_t	fd_cb;
+
 			int			fflags = el->events[i].fflags;	/* mutable */
 			int			filter = el->events[i].filter;
 			int			flags = el->events[i].flags;
@@ -2431,6 +2441,18 @@ void fr_event_service(fr_event_list_t *el)
 				 */
 				if ((ef->sock_type == SOCK_RAW) && (ef->type == FR_EVENT_FD_PCAP)) goto service;
 #endif
+
+				/*
+				 *	If we see an EV_EOF flag that means the
+				 *	read side of the socket has been closed
+				 *	but there may still be pending data.
+				 *
+				 *	Dispatch the read event and then error.
+				 */
+				if ((el->events[i].filter == EVFILT_READ) && (el->events[i].data > 0)) {
+					event_callback(el, ef, &filter, flags, &fflags);
+				}
+
 				fd_errno = el->events[i].fflags;
 
 				goto ev_error;
@@ -2444,9 +2466,7 @@ void fr_event_service(fr_event_list_t *el)
 			/*
 			 *	Service the event_fd events
 			 */
-			while ((fd_cb = event_fd_func(ef, &filter, &fflags))) {
-				fd_cb(el, ef->fd, flags, ef->uctx);
-			}
+			event_callback(el, ef, &filter, flags, &fflags);
 		}
 		}
 	}
