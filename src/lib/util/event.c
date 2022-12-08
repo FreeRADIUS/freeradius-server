@@ -1673,7 +1673,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		/*
 		 *	If the child exited before kevent() was
 		 *	called, we need to get its status via
-		 *	waitpid().
+		 *	waitid().
 		 *
 		 *	We don't reap the process here to emulate
 		 *	what kqueue does (notify but not reap).
