@@ -1668,6 +1668,12 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
     		siginfo_t	info;
 
+		/*
+		 *	Ensure we don't accidentally pick up the error
+		 *	from kevent.
+		 */
+		fr_strerror_clear();
+
 		talloc_free(ev);
 
 		/*
@@ -1684,8 +1690,16 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		 *	If we get a 0, then that's extremely strange
 		 *	as adding the kevent failed for a reason
 		 *	other than the process already having exited.
+		 *
+		 *	On Linux waitid will always return 1 to
+		 *	indicate the process exited.
+		 *
+		 *	On macOS we seem to get a mix of 1 or 0,
+		 *	even if the si_code is one of the values
+		 *	we'd consider to indicate that the process
+		 *	had completed.
 		 */
-		if (waitid(P_PID, pid, &info, WEXITED | WNOHANG | WNOWAIT) > 0) {
+		if (waitid(P_PID, pid, &info, WEXITED | WNOHANG | WNOWAIT) >= 0) {
 			static fr_table_num_sorted_t const si_codes[] = {
 				{ L("exited"),	CLD_EXITED },
 				{ L("killed"),	CLD_KILLED },
