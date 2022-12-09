@@ -2080,8 +2080,12 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, instance->connect_timeout);
 	SET_OPTION(CURLOPT_TIMEOUT_MS, section->timeout);
 
-#ifdef CURLOPT_PROTOCOLS
+#if CURL_AT_LEAST_VERSION(7,85,0)
+	SET_OPTION(CURLOPT_PROTOCOLS_STR, "http,https");
+#else
+#  ifdef CURLOPT_PROTOCOLS
 	SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
+#  endif
 #endif
 
 	/*
@@ -2237,9 +2241,11 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 		SET_OPTION(CURLOPT_CAPATH, section->tls_ca_path);
 	}
 
+#if !CURL_AT_LEAST_VERSION(7,84,0)
 	if (section->tls_random_file) {
 		SET_OPTION(CURLOPT_RANDOM_FILE, section->tls_random_file);
 	}
+#endif
 
 	SET_OPTION(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1 : 0);
 	SET_OPTION(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2 : 0);
