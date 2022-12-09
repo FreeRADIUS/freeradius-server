@@ -1112,7 +1112,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	 *	thread safe.
 	 */
 	if ((pool = cf_section_find(conf, "pool", NULL))) {
-		my_conf = cf_section_dup(NULL, NULL, conf, cf_section_name1(pool), cf_section_name2(pool), true);
+		my_conf = cf_section_dup(NULL, NULL, pool, cf_section_name1(pool), cf_section_name2(pool), true);
 	} else {
 		my_conf = cf_section_alloc(NULL, NULL, "pool", NULL);
 	}
