@@ -1655,7 +1655,7 @@ static int rest_request_config_body(module_ctx_t const *mctx, rlm_rest_section_t
 	 *  no body should be sent.
 	 */
 	if (!func) {
-		FR_CURL_SET_OPTION(CURLOPT_POSTFIELDSIZE, 0);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_POSTFIELDSIZE, 0);
 		return 0;
 	}
 
@@ -1664,8 +1664,8 @@ static int rest_request_config_body(module_ctx_t const *mctx, rlm_rest_section_t
 	 *  multiple parts.
 	 */
 	if (section->chunk > 0) {
-		FR_CURL_SET_OPTION(CURLOPT_READDATA, &uctx->request);
-		FR_CURL_SET_OPTION(CURLOPT_READFUNCTION, func);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_READDATA, &uctx->request);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_READFUNCTION, func);
 
 		return 0;
 	}
@@ -1682,8 +1682,8 @@ static int rest_request_config_body(module_ctx_t const *mctx, rlm_rest_section_t
 	RDEBUG2("Content-Length will be %zu bytes", len);
 
 	fr_assert((len == 0) || (talloc_array_length(uctx->body) >= (size_t)len));
-	FR_CURL_SET_OPTION(CURLOPT_POSTFIELDS, uctx->body);
-	FR_CURL_SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_POSTFIELDS, uctx->body);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
 
 	return 0;
 
@@ -1746,22 +1746,22 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	/*
 	 *	Control which HTTP version we're going to use
 	 */
-	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) FR_CURL_SET_OPTION(CURLOPT_HTTP_VERSION, inst->http_negotiation);
+	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) FR_CURL_REQUEST_SET_OPTION(CURLOPT_HTTP_VERSION, inst->http_negotiation);
 
 	/*
 	 *	Setup any header options and generic headers.
 	 */
-	FR_CURL_SET_OPTION(CURLOPT_URL, uri);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_URL, uri);
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
 	if (section->proxy) {
 		if (section->proxy == rest_no_proxy) {
-			FR_CURL_SET_OPTION(CURLOPT_NOPROXY, "*");
+			FR_CURL_REQUEST_SET_OPTION(CURLOPT_NOPROXY, "*");
 		} else {
-			FR_CURL_SET_OPTION(CURLOPT_PROXY, section->proxy);
+			FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROXY, section->proxy);
 		}
 	}
-	FR_CURL_SET_OPTION(CURLOPT_NOSIGNAL, 1L);
-	FR_CURL_SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_NOSIGNAL, 1L);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
 
 	/*
 	 *	HTTP/1.1 doesn't require a content type, so only set it
@@ -1781,8 +1781,8 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	timeout = fr_pool_timeout(t->pool);
 	RDEBUG3("Connect timeout is %pVs, request timeout is %pVs",
 	        fr_box_time_delta(timeout), fr_box_time_delta(section->timeout));
-	FR_CURL_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(timeout));
-	FR_CURL_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(section->timeout));
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(timeout));
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(section->timeout));
 
 	/*
 	 *	FreeRADIUS custom headers
@@ -1847,11 +1847,11 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	 */
 	switch (method) {
 	case REST_HTTP_METHOD_GET:
-		FR_CURL_SET_OPTION(CURLOPT_HTTPGET, 1L);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_HTTPGET, 1L);
 		break;
 
 	case REST_HTTP_METHOD_POST:
-		FR_CURL_SET_OPTION(CURLOPT_POST, 1L);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_POST, 1L);
 		break;
 
 	case REST_HTTP_METHOD_PUT:
@@ -1864,19 +1864,19 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 		 *	This is many cases will cause the server to block,
 		 *	indefinitely.
 		 */
-		FR_CURL_SET_OPTION(CURLOPT_CUSTOMREQUEST, "PUT");
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_CUSTOMREQUEST, "PUT");
 		break;
 
 	case REST_HTTP_METHOD_PATCH:
-		FR_CURL_SET_OPTION(CURLOPT_CUSTOMREQUEST, "PATCH");
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_CUSTOMREQUEST, "PATCH");
 		break;
 
 	case REST_HTTP_METHOD_DELETE:
-		FR_CURL_SET_OPTION(CURLOPT_CUSTOMREQUEST, "DELETE");
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_CUSTOMREQUEST, "DELETE");
 		break;
 
 	case REST_HTTP_METHOD_CUSTOM:
-		FR_CURL_SET_OPTION(CURLOPT_CUSTOMREQUEST, section->method_str);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_CUSTOMREQUEST, section->method_str);
 		break;
 
 	default:
@@ -1948,10 +1948,10 @@ do {\
 	 */
 	rest_response_init(section, request, &ctx->response, type);
 
-	FR_CURL_SET_OPTION(CURLOPT_HEADERFUNCTION, rest_response_header);
-	FR_CURL_SET_OPTION(CURLOPT_HEADERDATA, &ctx->response);
-	FR_CURL_SET_OPTION(CURLOPT_WRITEFUNCTION, rest_response_body);
-	FR_CURL_SET_OPTION(CURLOPT_WRITEDATA, &ctx->response);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_HEADERFUNCTION, rest_response_header);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_HEADERDATA, &ctx->response);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_WRITEFUNCTION, rest_response_body);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_WRITEDATA, &ctx->response);
 
 	/*
 	 *  Force parsing the body text as a particular encoding.
@@ -2065,7 +2065,7 @@ do {\
 
 
 finish:
-	FR_CURL_SET_OPTION(CURLOPT_HTTPHEADER, ctx->headers);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_HTTPHEADER, ctx->headers);
 
 	return 0;
 
