@@ -487,7 +487,7 @@ int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_fork_wait(pid_t *pid_p, 
+int fr_exec_fork_wait(pid_t *pid_p,
 #ifdef EXEC_SYNC_WITH_CHILD
 		      int *signal_fd,
 #endif
@@ -618,20 +618,15 @@ int fr_exec_fork_wait(pid_t *pid_p,
 		exec_child(request, argv, env, true, stdin_pipe, stdout_pipe, stderr_pipe);
 	}
 
+	talloc_free(argv);
+
 	if (pid < 0) {
 		PERROR("Couldn't fork %s", argv[0]);
-		close(stdin_pipe[0]);
-		close(stdin_pipe[1]);
-		close(stdout_pipe[0]);
-		close(stdout_pipe[1]);
-		close(stderr_pipe[0]);
-		close(stderr_pipe[1]);
 #ifdef EXEC_SYNC_WITH_CHILD
 		exec_proc_error(signal_pipe);
 #endif
 		*pid_p = -1;	/* Ensure the PID is set even if the caller didn't check the return code */
-		talloc_free(argv);
-		return -1;
+		goto error4;
 	}
 
 	/*
@@ -1011,7 +1006,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 		.stdout_ctx = stdout_ctx
 	};
 
-	if (fr_exec_fork_wait(&exec->pid, 
+	if (fr_exec_fork_wait(&exec->pid,
 #ifdef EXEC_SYNC_WITH_CHILD
 			      &signal_fd,
 #endif
@@ -1065,7 +1060,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 #ifdef EXEC_SYNC_WITH_CHILD
 	/*
 	 *	Have the child paused by fr_exec_fork_wait
-	 *	continue now we've installed the appropriate 
+	 *	continue now we've installed the appropriate
 	 *	monitoring.
 	 */
 	exec_proc_signal_ready(&signal_fd);
