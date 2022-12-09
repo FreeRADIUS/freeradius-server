@@ -81,7 +81,6 @@ typedef enum {
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
 	UNLANG_TYPE_TMPL,			//!< asynchronously expand a tmpl_t
 	UNLANG_TYPE_EDIT,			//!< edit VPs in place.  After 20 years!
-	UNLANG_TYPE_VARIABLE,			//!< local variables
 	UNLANG_TYPE_MAX
 } unlang_type_t;
 
@@ -140,6 +139,12 @@ typedef struct {
 	char const		*type_name;	//!< Talloc type name.
 } unlang_ext_t;
 
+typedef struct {
+	fr_dict_t		*dict;		//!< our dictionary
+	fr_dict_attr_t const	*root;		//!< the root of our dictionary
+	int			max_attr;	//!< 1..N local attributes have been defined
+} unlang_variable_t;
+
 /** Generic representation of a grouping
  *
  * Can represent IF statements, maps, update sections etc...
@@ -151,6 +156,8 @@ typedef struct {
 	unlang_t		**tail;		//!< pointer to the tail which gets updated
 	CONF_SECTION		*cs;
 	int			num_children;
+
+	unlang_variable_t	*variables;	//!< rarely used, so we don't usually need it
 } unlang_group_t;
 
 /** A naked xlat
@@ -621,7 +628,6 @@ void		unlang_timeout_init(void);
 
 void		unlang_limit_init(void);
 
-void		unlang_variable_init(void);
  /** @} */
 
 #ifdef __cplusplus

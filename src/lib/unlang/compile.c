@@ -43,7 +43,6 @@ RCSID("$Id$")
 #include "edit_priv.h"
 #include "timeout_priv.h"
 #include "limit_priv.h"
-#include "variable_priv.h"
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
@@ -466,7 +465,6 @@ static void unlang_dump(unlang_t *instruction, int depth)
 		case UNLANG_TYPE_RETURN:
 		case UNLANG_TYPE_TMPL:
 		case UNLANG_TYPE_XLAT:
-		case UNLANG_TYPE_VARIABLE:
 			DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
 			break;
 		}
@@ -1702,38 +1700,29 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
  *  Definitions which are adjacent to one another are automatically merged
  *  into one larger variable definition.
  */
-static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_PAIR *cp, tmpl_rules_t *t_rules)
+static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_PAIR *cp, tmpl_rules_t *t_rules)
 {
-	unlang_variable_t *var, *var_free;
-	unlang_t	*c = NULL, *out = UNLANG_IGNORE;
+	unlang_variable_t *var;
 	fr_type_t	type;
 	char const	*attr, *value;
 	fr_dict_attr_t const *da;
+	unlang_group_t	*group;
 
 	fr_dict_attr_flags_t flags = {
 		.internal = true,
 		.local = true,
 	};
 
-	c = *prev;
-	var = var_free = NULL;
-
-	if (c && (c->type == UNLANG_TYPE_VARIABLE)) {
-		var = unlang_generic_to_variable(c);
+	/*
+	 *	The variables exist in the parent block.
+	 */
+	group = unlang_generic_to_group(parent);
+	if (group->variables) {
+		var = group->variables;
 
 	} else {
-		var = talloc_zero(parent, unlang_variable_t);
+		group->variables = var = talloc_zero(parent, unlang_variable_t);
 		if (!var) return NULL;
-
-		c = out = unlang_variable_to_generic(var);
-		c->parent = parent;
-		c->next = NULL;
-		c->name = cf_pair_value(cp);
-		c->debug_name = c->name;
-		c->type = UNLANG_TYPE_VARIABLE;
-		c->ci = CF_TO_ITEM(cp);
-
-		var_free = var;
 
 		var->dict = fr_dict_protocol_alloc(unlang_ctx->rules->attr.dict_def);
 		if (!var->dict) {
@@ -1764,7 +1753,6 @@ static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx
 	type = fr_table_value_by_str(fr_type_table, attr, FR_TYPE_NULL);
 	if (type == FR_TYPE_NULL) {
 invalid_type:
-		talloc_free(var_free);
 		cf_log_err(cp, "Invalid data type '%s'", attr);
 		return NULL;
 	}
@@ -1781,7 +1769,6 @@ invalid_type:
 	 */
 	da = fr_dict_attr_by_name(NULL, fr_dict_root(t_rules->parent->attr.dict_def), value);
 	if (da) {
-		talloc_free(var_free);
 		cf_log_err(cp, "Local variable '%s' duplicates a dictionary attribute.", value);
 		return NULL;
 	}
@@ -1791,22 +1778,18 @@ invalid_type:
 	 */
 	da = fr_dict_attr_by_name(NULL, var->root, value);
 	if (da) {
-		talloc_free(var_free);
 		cf_log_err(cp, "Duplicate variable name '%s'.", value);
 		return NULL;
 	}
 
 	if (fr_dict_attr_add(var->dict, var->root, value, var->max_attr, type, &flags) < 0) {
-		talloc_free(var_free);
 		cf_log_err(cp, "Failed adding variable '%s'", value);
 		return NULL;
 	}
 
 	var->max_attr++;
 
-	*prev = c;
-
-	return out;
+	return UNLANG_IGNORE;
 }
 
 /*
@@ -2151,7 +2134,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	bool		was_if = false;
 	char const	*skip_else = NULL;
 	unlang_t	*edit = NULL;
-	unlang_t	*var = NULL;
 	unlang_compile_t *unlang_ctx;
 	unlang_compile_t unlang_ctx2;
 	tmpl_rules_t	t_rules;
@@ -2292,15 +2274,13 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			 *	Variable definition.
 			 */
 			if (cf_pair_operator(cp) == T_OP_CMP_TRUE) {
-				single = compile_variable(c, unlang_ctx, &var, cp, &t_rules);
+				single = compile_variable(c, unlang_ctx, cp, &t_rules);
 				if (!single) {
 					talloc_free(c);
 					return NULL;
 				}
 				goto add_child;
 			}
-
-			var = NULL;
 
 			/*
 			 *	Bare "foo = bar" is disallowed.
