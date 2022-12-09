@@ -86,17 +86,17 @@ char const *fr_openssl_version_str_from_num(uint32_t v)
 {
 	/* 2 (%s) + 1 (.) + 2 (%i) + 1 (.) + 2 (%i) + 1 (c) + 8 (%s) + \0 */
 	static char buffer[18];
-	char *p = buffer;
+	char *p = buffer, *end = buffer + sizeof(buffer);
 
 	/*
 	 *	If OpenSSL major version is less than three
 	 *	use the old version number layout.
 	 */
 	if (((v & 0xf0000000) >> 28) < 3) {
-		p += sprintf(p, "%u.%u.%u",
-			     (0xf0000000 & v) >> 28,
-			     (0x0ff00000 & v) >> 20,
-			     (0x000ff000 & v) >> 12);
+		p += snprintf(p, end - p, "%u.%u.%u",
+			      (0xf0000000 & v) >> 28,
+			      (0x0ff00000 & v) >> 20,
+			      (0x000ff000 & v) >> 12);
 
 		if ((0x00000ff0 & v) >> 4) {
 			*p++ =  (char) (0x60 + ((0x00000ff0 & v) >> 4));
@@ -108,14 +108,14 @@ char const *fr_openssl_version_str_from_num(uint32_t v)
 		 *	Development (0)
 		 */
 		if ((0x0000000f & v) == 0) {
-			strcpy(p, "dev");
+			strlcpy(p, "dev", end - p);
 		/*
 		 *	Beta (1-14)
 		 */
 		} else if ((0x0000000f & v) <= 14) {
-			sprintf(p, "beta %u", 0x0000000f & v);
+			snprintf(p, end - p, "beta %u", 0x0000000f & v);
 		} else {
-			strcpy(p, "release");
+			strlcpy(p, "release", end - p);
 		}
 
 		return buffer;
@@ -132,10 +132,10 @@ char const *fr_openssl_version_str_from_num(uint32_t v)
 	 *	NN is the number from OPENSSL_VERSION_MINOR, in hexadecimal notation.
 	 *	PP is the number from OPENSSL_VERSION_PATCH, in hexadecimal notation.
 	 */
-	sprintf(buffer, "%u.%u.%u",
-		(0xf0000000 & v) >> 28,
-		(0x0ff00000 & v) >> 20,
-		(0x00000ff0 & v) >> 4);
+	snprintf(buffer, sizeof(buffer), "%u.%u.%u",
+		 (0xf0000000 & v) >> 28,
+		 (0x0ff00000 & v) >> 20,
+		 (0x00000ff0 & v) >> 4);
 
 	return buffer;
 }

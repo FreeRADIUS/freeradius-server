@@ -909,14 +909,14 @@ void log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		     uint8_t const *data, size_t data_len)
 {
 	size_t i, j, len;
-	char *p;
 	char buffer[(0x10 * 3) + 1];
+	char *p, *end = buffer + sizeof(buffer);
 
 	for (i = 0; i < data_len; i += 0x10) {
 		len = 0x10;
 		if ((i + len) > data_len) len = data_len - i;
 
-		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
+		for (p = buffer, j = 0; j < len; j++, p += 3) snprintf(p, end - p, "%02x ", data[i + j]);
 		log_request(type, lvl, request, file, line, "%04x: %s", (int)i, buffer);
 	}
 }

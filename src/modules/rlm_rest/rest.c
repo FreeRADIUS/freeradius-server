@@ -355,13 +355,13 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 	request_t			*request = ctx->request; /* Used by RDEBUG */
 	fr_pair_t		*vp;
 
-	char			*p = out;	/* Position in buffer */
-	char			*encoded = p;	/* Position in buffer of last fully encoded attribute or value */
-	char			*escaped;	/* Pointer to current URL escaped data */
-
 	size_t			len = 0;
 	ssize_t			slen;
 	size_t			freespace = (size * nmemb) - 1;
+
+	char			*p = out;	/* Position in buffer */
+	char			*encoded = p;	/* Position in buffer of last fully encoded attribute or value */
+	char			*escaped;	/* Pointer to current URL escaped data */
 
 	/* Allow manual chunking */
 	if ((ctx->chunk) && (ctx->chunk <= freespace)) freespace = (ctx->chunk - 1);
@@ -415,7 +415,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 				return len;
 			}
 
-			len = sprintf(p, "%s=", escaped);
+			len = snprintf(p, freespace, "%s=", escaped);
 			curl_free(escaped);
 			p += len;
 			freespace -= len;

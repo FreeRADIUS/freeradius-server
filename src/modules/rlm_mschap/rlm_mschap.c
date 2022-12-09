@@ -857,7 +857,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		}
 
 		/* now the password blobs */
-		len = sprintf(buf, "new-nt-password-blob: ");
+		len = snprintf(buf, sizeof(buf), "new-nt-password-blob: ");
 		fr_base16_encode(&FR_SBUFF_OUT(buf + len, sizeof(buf) - len), &FR_DBUFF_TMP(new_nt_password, 516));
 		buf[len+1032] = '\n';
 		buf[len+1033] = '\0';
@@ -867,7 +867,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 			goto ntlm_auth_err;
 		}
 
-		len = sprintf(buf, "old-nt-hash-blob: ");
+		len = snprintf(buf, sizeof(buf), "old-nt-hash-blob: ");
 		fr_base16_encode(&FR_SBUFF_OUT(buf + len, sizeof(buf) - len), &FR_DBUFF_TMP(old_nt_hash, NT_DIGEST_LENGTH));
 		buf[len+32] = '\n';
 		buf[len+33] = '\0';
@@ -881,12 +881,12 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		 *  In current samba versions, failure to supply empty LM password/hash
 		 *  blobs causes the change to fail.
 		 */
-		len = sprintf(buf, "new-lm-password-blob: %01032i\n", 0);
+		len = snprintf(buf, sizeof(buf), "new-lm-password-blob: %01032i\n", 0);
 		if (write_all(to_child, buf, len) != len) {
 			REDEBUG("Failed to write dummy LM password to child");
 			goto ntlm_auth_err;
 		}
-		len = sprintf(buf, "old-lm-hash-blob: %032i\n", 0);
+		len = snprintf(buf, sizeof(buf), "old-lm-hash-blob: %032i\n", 0);
 		if (write_all(to_child, buf, len) != len) {
 			REDEBUG("Failed to write dummy LM hash to child");
 			goto ntlm_auth_err;

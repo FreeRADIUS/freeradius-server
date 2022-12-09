@@ -873,8 +873,10 @@ acutest_dump_(bool always, const char* title, const void* addr, size_t size)
     static const size_t BYTES_PER_LINE = 16;
     size_t line_beg;
     size_t truncate = 0;
+    size_t buflen = (size * 3) + strlen(title) + 2;
     char* buffer;
     char* p;
+    char* end;
 
     if(acutest_verbose_level_ < 2)
         return;
@@ -890,7 +892,8 @@ acutest_dump_(bool always, const char* title, const void* addr, size_t size)
     }
 
     /* Allocate space for log copy of dump */
-    buffer = (char *)calloc((size * 3) + strlen(title) + 2, sizeof(char));
+    buffer = (char *)calloc(buflen, sizeof(char));
+    end = buffer + buflen;
 
     acutest_line_indent_(acutest_case_name_[0] ? 3 : 2);
     printf((title[strlen(title)-1] == ':') ? "%s\n" : "%s:\n", title);
@@ -911,7 +914,7 @@ acutest_dump_(bool always, const char* title, const void* addr, size_t size)
         for(off = line_beg; off < line_end; off++) {
             if(off < size) {
                 printf(" %02x", ((const unsigned char*)addr)[off]);
-                sprintf(p, " %02x", ((const unsigned char*)addr)[off]);
+                snprintf(p, end - p, " %02x", ((const unsigned char*)addr)[off]);
                 p += 3;
             } else
                 printf("   ");
@@ -1271,7 +1274,7 @@ acutest_run_(const struct acutest_test_* test, int index, int master_index)
                     case SIGSEGV: signame = "SIGSEGV"; break;
                     case SIGILL:  signame = "SIGILL"; break;
                     case SIGTERM: signame = "SIGTERM"; break;
-                    default:      sprintf(tmp, "signal %d", WTERMSIG(exit_code)); signame = tmp; break;
+                    default:      snprintf(tmp, sizeof(tmp), "signal %d", WTERMSIG(exit_code)); signame = tmp; break;
                 }
                 acutest_error_("Test interrupted by %s.", signame);
             } else {
@@ -1506,7 +1509,7 @@ acutest_cmdline_read_(const ACUTEST_CMDLINE_OPTION_* options, int argc, char** a
                             if(opt->flags & (ACUTEST_CMDLINE_OPTFLAG_OPTIONALARG_ | ACUTEST_CMDLINE_OPTFLAG_REQUIREDARG_)) {
                                 ret = callback(opt->id, argv[i]+2+len+1);
                             } else {
-                                sprintf(auxbuf, "--%s", opt->longname);
+                                snprintf(auxbuf, sizeof(auxbuf), "--%s", opt->longname);
                                 ret = callback(ACUTEST_CMDLINE_OPTID_BOGUSARG_, auxbuf);
                             }
                             break;

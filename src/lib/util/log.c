@@ -814,8 +814,8 @@ void fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int l
 		uint8_t const *data, size_t data_len, char const *line_prefix_fmt, ...)
 {
 	size_t		i, j, len;
-	char		*p;
 	char		buffer[(0x10 * 3) + 1];
+	char		*p, *end = buffer + sizeof(buffer);
 	TALLOC_CTX	*thread_log_pool = fr_log_pool_init();
 	char		*line_prefix = NULL;
 
@@ -831,7 +831,7 @@ void fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int l
 		len = 0x10;
 		if ((i + len) > data_len) len = data_len - i;
 
-		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
+		for (p = buffer, j = 0; j < len; j++, p += 3) snprintf(p, end - p, "%02x ", data[i + j]);
 
 		if (line_prefix_fmt) {
 			fr_log(log, type, file, line, "%s%04x: %s",
@@ -862,8 +862,8 @@ void fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file
 		       ssize_t marker_idx, char const *marker, char const *line_prefix_fmt, ...)
 {
 	size_t		i, j, len;
-	char		*p;
 	char		buffer[(0x10 * 3) + 1];
+	char		*p, *end = buffer + sizeof(buffer);
 	TALLOC_CTX	*thread_log_pool = fr_log_pool_init();
 
 	char		*line_prefix = NULL;
@@ -884,7 +884,7 @@ void fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file
 		len = 0x10;
 		if ((i + len) > data_len) len = data_len - i;
 
-		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
+		for (p = buffer, j = 0; j < len; j++, p += 3) snprintf(p, end - p, "%02x ", data[i + j]);
 
 		if (line_prefix_fmt) {
 			fr_log(log, type, file, line, "%s%04x: %s",

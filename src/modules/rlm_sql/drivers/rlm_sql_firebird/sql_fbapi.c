@@ -219,8 +219,6 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 			ISC_INT64 value = 0;
 			short field_width = 0;
 			short dscale = 0;
-			char *p;
-			p = conn->row[i];
 
 			switch (dtype) {
 			case SQL_SHORT:
@@ -250,26 +248,26 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 				}
 
 				if (value >= 0) {
-					sprintf(p, "%*lld.%0*lld",
-						field_width - 1 + dscale,
-						(ISC_INT64) value / tens,
-						-dscale,
-						(ISC_INT64) value % tens);
+					snprintf(conn->row[i], conn->row_sizes[i], "%*lld.%0*lld",
+						 field_width - 1 + dscale,
+						 (ISC_INT64) value / tens,
+						 -dscale,
+						 (ISC_INT64) value % tens);
 				} else if ((value / tens) != 0) {
-					sprintf (p, "%*lld.%0*lld",
-						field_width - 1 + dscale,
-						(ISC_INT64) (value / tens),
-						-dscale,
-						(ISC_INT64) -(value % tens));
+					snprintf(conn->row[i], conn->row_sizes[i], "%*lld.%0*lld",
+						 field_width - 1 + dscale,
+						 (ISC_INT64) (value / tens),
+						 -dscale,
+						 (ISC_INT64) -(value % tens));
 				} else {
-					sprintf(p, "%*s.%0*lld", field_width - 1 + dscale,
-						"-0", -dscale, (ISC_INT64) - (value % tens));
+					snprintf(conn->row[i], conn->row_sizes[i], "%*s.%0*lld", field_width - 1 + dscale,
+						 "-0", -dscale, (ISC_INT64) - (value % tens));
 				}
 			} else if (dscale) {
-				sprintf(p, "%*lld%0*d", field_width,
+				snprintf(conn->row[i], conn->row_sizes[i], "%*lld%0*d", field_width,
 					(ISC_INT64) value, dscale, 0);
 			} else {
-				sprintf(p, "%*lld", field_width,
+				snprintf(conn->row[i], conn->row_sizes[i], "%*lld", field_width,
 					(ISC_INT64) value);
 			}
 		}

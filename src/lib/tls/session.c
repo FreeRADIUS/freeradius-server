@@ -619,7 +619,7 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 
 	if (((size_t)tls_session->info.version >= NUM_ELEMENTS(tls_version_str)) ||
 	    !tls_version_str[tls_session->info.version]) {
-		sprintf(unknown_version, "unknown_tls_version_0x%04x", tls_session->info.version);
+		snprintf(unknown_version, sizeof(unknown_version), "unknown_tls_version_0x%04x", tls_session->info.version);
 		version = unknown_version;
 	} else {
 		version = tls_version_str[tls_session->info.version];
@@ -630,7 +630,8 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 	 */
 	if (((size_t)tls_session->info.content_type >= NUM_ELEMENTS(tls_content_type_str)) ||
 	    !tls_content_type_str[tls_session->info.content_type]) {
-		sprintf(unknown_content_type, "unknown_content_type_0x%04x", tls_session->info.content_type);
+		snprintf(unknown_content_type, sizeof(unknown_content_type),
+			 "unknown_content_type_0x%04x", tls_session->info.content_type);
 		content_type = unknown_content_type;
 	} else {
 		content_type = tls_content_type_str[tls_session->info.content_type];
@@ -647,16 +648,16 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 				break;
 
 			default:
-				sprintf(unknown_alert_level,
-					"unknown_alert_level_0x%04x", tls_session->info.alert_level);
+				snprintf(unknown_alert_level, sizeof(unknown_alert_level),
+					 "unknown_alert_level_0x%04x", tls_session->info.alert_level);
 				str_details1 = unknown_alert_level;
 				break;
 			}
 
 			if (((size_t)tls_session->info.alert_description >= NUM_ELEMENTS(tls_alert_description_str)) ||
 			    !tls_alert_description_str[tls_session->info.alert_description]) {
-				sprintf(unknown_alert_description,
-					"unknown_alert_0x%04x", tls_session->info.alert_description);
+				snprintf(unknown_alert_description, sizeof(unknown_alert_description),
+					 "unknown_alert_0x%04x", tls_session->info.alert_description);
 				str_details2 = unknown_alert_description;
 			} else {
 				str_details2 = tls_alert_description_str[tls_session->info.alert_description];
@@ -674,8 +675,8 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 			 *	and underlying type.
 			 */
 			if (!tls_handshake_type_str[tls_session->info.handshake_type]) {
-				sprintf(unknown_handshake_type,
-					"unknown_handshake_type_0x%02x", tls_session->info.handshake_type);
+				snprintf(unknown_handshake_type, sizeof(unknown_handshake_type),
+					 "unknown_handshake_type_0x%02x", tls_session->info.handshake_type);
 				str_details1 = unknown_handshake_type;
 			} else {
 				str_details1 = tls_handshake_type_str[tls_session->info.handshake_type];

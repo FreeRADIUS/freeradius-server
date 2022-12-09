@@ -679,7 +679,7 @@ static void ad_update_variable(char const *name, char *value)
 	if (!expand) return;
 
 	/*
-	 *	Because sprintf() is for weenies :)
+	 *	Because snprintf() is for weenies :)
 	 */
 	p = expand;
 	memcpy(p, name, name_len);
@@ -1083,6 +1083,7 @@ static char *run_cmd(char const *cmd, char *filename)
 {
 	size_t len1, len2;
 	char *str, *result;
+	size_t buflen = 8 + len1 + 1 + len2 + 2 + len2 + 7 + len2 + 15;
 
 	len1 = strlen(cmd);
 	len2 = strlen(filename);
@@ -1091,10 +1092,10 @@ static char *run_cmd(char const *cmd, char *filename)
 	 *	This is a lot more CPU time than running fork / exec /
 	 *	waitpid ourselves.  But it's less work for the programmer. :)
 	 */
-	str = malloc(8 + len1 + 1 + len2 + 2 + len2 + 7 + len2 + 15);
+	str = malloc(buflen);
 	if (!str) return NULL;
 
-	sprintf(str, "$(shell %s %s >%s.out 2>%s.err;echo $$?)", cmd, filename, filename, filename);
+	snprintf(str, buflen, "$(shell %s %s >%s.out 2>%s.err;echo $$?)", cmd, filename, filename, filename);
 
 	/*
 	 *	Expand it, running the shell.

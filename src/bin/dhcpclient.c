@@ -323,7 +323,7 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 	/* display offer(s) received */
 	if (nb_offer > 0 ) {
 		int i;
-		
+
 		DEBUG("Received %d DHCP Offer(s):", nb_offer);
 		for (i = 0; i < nb_reply; i++) {
 			char server_addr_buf[INET6_ADDRSTRLEN];
@@ -445,7 +445,7 @@ static int send_with_pcap(fr_radius_packet_t **reply, fr_radius_packet_t *reques
 	}
 
 	fr_inet_ntoh(&request->socket.inet.src_ipaddr, ip, sizeof(ip));
-	sprintf(pcap_filter, "udp and dst port %d", request->socket.inet.src_port);
+	snprintf(pcap_filter, sizeof(pcap_filter), "udp and dst port %d", request->socket.inet.src_port);
 
 	if (fr_pcap_apply_filter(pcap, pcap_filter) < 0) {
 		ERROR("Failing setting filter");

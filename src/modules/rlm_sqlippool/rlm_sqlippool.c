@@ -245,7 +245,7 @@ static int sqlippool_expand(char * out, int outlen, char const * fmt,
 				}
 				break;
 			case 'J': /* lease duration */
-				sprintf(tmp, "%u", data->lease_duration);
+				snprintf(tmp, sizeof(tmp), "%u", data->lease_duration);
 				strlcpy(q, tmp, freespace);
 				q += strlen(q);
 				break;
