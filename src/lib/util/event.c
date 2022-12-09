@@ -1719,7 +1719,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 					    info.si_code, info.si_status);
 
 				if (callback) callback(el, pid, info.si_status, uctx);
-				return 0;
+				return 1;
 
 			default:
 				fr_strerror_printf("Unexpected code %s (%u) whilst waiting on PID %ld",
