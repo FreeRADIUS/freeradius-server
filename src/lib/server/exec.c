@@ -24,10 +24,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/server/exec.h>
+#include <freeradius-devel/server/exec_priv.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/util.h>
-#include <freeradius-devel/server/exec_priv.h>
+#include <freeradius-devel/util/debug.h>
 
 #define MAX_ENVP 1024
 
@@ -306,32 +307,23 @@ static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **env
 	exit(2);
 }
 
-#ifdef __APPLE__
-static inline CC_HINT(always_inline)
-void exec_child_pid_visible(request_t *request, pid_t pid)
+#ifdef EXEC_SYNC_WITH_CHILD
+
+#define exec_proc_error(_signal_pipe) \
+do { \
+	close(_signal_pipe[0]); \
+	close(_signal_pipe[1]); \
+} while(0)
+
+void exec_proc_signal_ready(int *signal_fd)
 {
-	siginfo_t	info;
+	uint8_t val = 0x00;
 
-	fr_assert(pid > 0);
+	write(*signal_fd, &val, sizeof(val));
+	read(*signal_fd, &val, sizeof(val));
 
-	/*
-	 *	Apparently in macOS >= 10.11 there's a race between 
-	 *	the kernel handing back the PID to userland and it 
-	 *	becoming visible to waitid.
-	 *
-	 *	Better to hang indefinitely spewing log messages
-	 *	than to create obscure resource leaks.
-	 */
-	while (true) {
-		if ((waitid(P_PID, pid, &info, WNOHANG | WNOWAIT) < 0)) {
-			if (errno != ECHILD) {
-				RWDEBUG("PID %u not visible to parent - %s", (unsigned int) pid, fr_syserror(errno));
-				break;
-			}
-			RWDEBUG("PID %u not visible to parent, retrying...", (unsigned int) pid);
-			usleep(10000);
-		}
-	}
+	close(*signal_fd);
+	*signal_fd = -1;
 }
 #endif
 
@@ -361,7 +353,9 @@ int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
 	char			**argv;
 	pid_t			pid;
 	fr_value_box_t		*first;
-
+#ifdef EXEC_SYNC_WITH_CHILD
+	int			signal_pipe[2] = {-1, -1};
+#endif
 	/*
 	 *	Ensure that we don't do anything stupid.
 	 */
@@ -414,17 +408,31 @@ int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
 	 */
 	if (pid == 0) {
 		int unused[2] = { -1, -1 };
+
+#ifdef EXEC_SYNC_WITH_CHILD
+		close(signal_pipe[0]);
+
+		/*
+		 *	There appears to be a race on macOS 10.11
+		 *	where waitid will fail non-deterministically
+		 *	with ECHILD.
+		 *
+		 *	Ensure the child can only exit once we've
+		 *	signalled it to continue.
+		 */
+		exec_proc_signal_ready(&signal_pipe[1]);
+#endif
 		exec_child(request, argv, env, false, unused, unused, unused);
 	}
 
 	if (pid < 0) {
 		RPEDEBUG("Couldn't fork %s", argv[0]);
+	error:
+#ifdef EXEC_SYNC_WITH_CHILD
+		exec_proc_error(signal_pipe);
+#endif
 		return -1;
 	}
-
-#ifdef __APPLE__
-	exec_child_pid_visible(request, pid);
-#endif
 
 	/*
 	 *	Ensure that we can clean up any child processes.  We
@@ -439,9 +447,13 @@ int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
 		 */
 		kill(pid, SIGKILL);
 		waitpid(pid, &status, WNOHANG);
-
-		return -1;
+		goto error;
 	}
+
+#ifdef EXEC_SYNC_WITH_CHILD
+	close(signal_pipe[1]);
+	exec_proc_signal_ready(&signal_pipe[0]);
+#endif
 
 	return 0;
 }
@@ -452,6 +464,9 @@ int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
  *
  * The caller takes responsibility for reading from the returned FD,
  * and closing it.
+ *
+ * @note Child will be paused on macOS until it is signalled to continue
+ *	 with SIGUSR1.
  *
  * @param[out] pid_p		The PID of the child
  * @param[out] stdin_fd		The stdin FD of the child.
@@ -472,7 +487,11 @@ int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_fd,
+int fr_exec_fork_wait(pid_t *pid_p, 
+#ifdef EXEC_SYNC_WITH_CHILD
+		      int *signal_fd,
+#endif
+		      int *stdin_fd, int *stdout_fd, int *stderr_fd,
 		      request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args,
 		      fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit)
 {
@@ -484,7 +503,9 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 	int		stdin_pipe[2] = {-1, -1};
 	int		stderr_pipe[2] = {-1, -1};
 	int		stdout_pipe[2] = {-1, -1};
-
+#ifdef EXEC_SYNC_WITH_CHILD
+	int		signal_pipe[2] = {-1, -1};
+#endif
 	/*
 	 *	Ensure that we don't do anything stupid.
 	 */
@@ -535,8 +556,10 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 
 	if (stdin_fd) {
 		if (pipe(stdin_pipe) < 0) {
+			fr_strerror_const_push("Failed opening pipe to write to child");
+
 		error2:
-			fr_strerror_const_push("Failed opening pipe to read to child");
+
 			talloc_free(argv);
 			goto error;
 		}
@@ -545,6 +568,8 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 
 	if (stdout_fd) {
 		if (pipe(stdout_pipe) < 0) {
+			fr_strerror_const_push("Failed opening pipe to read from child");
+
 		error3:
 			close(stdin_pipe[0]);
 			close(stdin_pipe[1]);
@@ -555,6 +580,9 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 
 	if (stderr_fd) {
 		if (pipe(stderr_pipe) < 0) {
+			fr_strerror_const_push("Failed opening pipe to read from child");
+
+		error4:
 			close(stdout_pipe[0]);
 			close(stdout_pipe[1]);
 			goto error3;
@@ -562,12 +590,33 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 		if (fr_nonblock(stderr_pipe[0]) < 0) PERROR("Error setting stderr to nonblock");
 	}
 
+#ifdef EXEC_SYNC_WITH_CHILD
+	if (pipe(signal_pipe) < 0) {
+		fr_strerror_printf_push("Failed creating signal pipe for child");
+		goto error4;
+	}
+#endif
 	pid = fork();
 
 	/*
 	 *	The child never returns from calling exec_child();
 	 */
-	if (pid == 0) exec_child(request, argv, env, true, stdin_pipe, stdout_pipe, stderr_pipe);
+	if (pid == 0) {
+#ifdef EXEC_SYNC_WITH_CHILD
+		close(signal_pipe[0]);
+
+		/*
+		 *	There appears to be a race on macOS 10.11
+		 *	where waitid will fail non-deterministically
+		 *	with ECHILD.
+		 *
+		 *	Ensure the child can only exit once we've
+		 *	signalled it to continue.
+		 */
+		exec_proc_signal_ready(&signal_pipe[1]);
+#endif
+		exec_child(request, argv, env, true, stdin_pipe, stdout_pipe, stderr_pipe);
+	}
 
 	if (pid < 0) {
 		PERROR("Couldn't fork %s", argv[0]);
@@ -577,20 +626,24 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 		close(stdout_pipe[1]);
 		close(stderr_pipe[0]);
 		close(stderr_pipe[1]);
+#ifdef EXEC_SYNC_WITH_CHILD
+		exec_proc_error(signal_pipe);
+#endif
 		*pid_p = -1;	/* Ensure the PID is set even if the caller didn't check the return code */
 		talloc_free(argv);
 		return -1;
 	}
-
-#ifdef __APPLE__
-	exec_child_pid_visible(request, pid);
-#endif
 
 	/*
 	 *	Tell the caller the childs PID, and the FD to read
 	 *	from.
 	 */
 	*pid_p = pid;
+
+#ifdef EXEC_SYNC_WITH_CHILD
+	close(signal_pipe[1]);
+	*signal_fd = signal_pipe[0];
+#endif
 
 	if (stdin_fd) {
 		*stdin_fd = stdin_pipe[1];
@@ -942,6 +995,9 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 	int		*stdout_fd = (store_stdout || RDEBUG_ENABLED2) ? &exec->stdout_fd : NULL;
 	fr_event_list_t	*el = unlang_interpret_event_list(request);
 
+#ifdef EXEC_SYNC_WITH_CHILD
+	int signal_fd = -1;
+#endif
 	*exec = (fr_exec_state_t){
 		.request = request,
 		.env_pairs = env_pairs,
@@ -955,7 +1011,11 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 		.stdout_ctx = stdout_ctx
 	};
 
-	if (fr_exec_fork_wait(&exec->pid, exec->stdin_used ? &exec->stdin_fd : NULL,
+	if (fr_exec_fork_wait(&exec->pid, 
+#ifdef EXEC_SYNC_WITH_CHILD
+			      &signal_fd,
+#endif
+			      exec->stdin_used ? &exec->stdin_fd : NULL,
 			      stdout_fd, &exec->stderr_fd, request, args,
 			      exec->env_pairs, env_escape, env_inherit) < 0) {
 		RPEDEBUG("Failed executing program");
@@ -995,9 +1055,21 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 			exec->stderr_fd = -1;
 		}
 
+#ifdef EXEC_SYNC_WITH_CHILD
+		close(signal_fd);
+#endif
+
 		goto fail;
 	}
 
+#ifdef EXEC_SYNC_WITH_CHILD
+	/*
+	 *	Have the child paused by fr_exec_fork_wait
+	 *	continue now we've installed the appropriate 
+	 *	monitoring.
+	 */
+	exec_proc_signal_ready(&signal_fd);
+#endif
 	/*
 	 *	Setup event to kill the child process after a period of time.
 	 */
