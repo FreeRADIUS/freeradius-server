@@ -315,7 +315,7 @@ do { \
 	close(_signal_pipe[1]); \
 } while(0)
 
-void exec_proc_signal_ready(int *signal_fd)
+static void exec_child_signal_ready(int *signal_fd)
 {
 	uint8_t val = 0x00;
 
@@ -325,6 +325,24 @@ void exec_proc_signal_ready(int *signal_fd)
 	close(*signal_fd);
 	*signal_fd = -1;
 }
+
+static void exec_parent_wait(int signal_fd)
+{
+	uint8_t val = 0x00;
+
+	read(signal_fd, &val, sizeof(val));
+}
+
+static void exec_parent_ready(int *signal_fd)
+{
+	uint8_t val = 0x00;
+
+	write(signal_fd, &val, sizeof(val));
+
+	close(*signal_fd);
+	*signal_fd = -1;
+}
+
 #endif
 
 /** Execute a program without waiting for the program to finish.
@@ -420,7 +438,7 @@ int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
 		 *	Ensure the child can only exit once we've
 		 *	signalled it to continue.
 		 */
-		exec_proc_signal_ready(&signal_pipe[1]);
+		exec_child_signal_ready(&signal_pipe[1]);
 #endif
 		exec_child(request, argv, env, false, unused, unused, unused);
 	}
@@ -452,7 +470,8 @@ int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
 
 #ifdef EXEC_SYNC_WITH_CHILD
 	close(signal_pipe[1]);
-	exec_proc_signal_ready(&signal_pipe[0]);
+	exec_parent_wait(signal_pipe[0]);
+	exec_parent_ready(&signal_pipe[0]);
 #endif
 
 	return 0;
@@ -589,7 +608,7 @@ int fr_exec_fork_wait(pid_t *pid_p,
 		}
 		if (fr_nonblock(stderr_pipe[0]) < 0) PERROR("Error setting stderr to nonblock");
 	}
-
+	
 #ifdef EXEC_SYNC_WITH_CHILD
 	if (pipe(signal_pipe) < 0) {
 		fr_strerror_printf_push("Failed creating signal pipe for child");
@@ -613,7 +632,7 @@ int fr_exec_fork_wait(pid_t *pid_p,
 		 *	Ensure the child can only exit once we've
 		 *	signalled it to continue.
 		 */
-		exec_proc_signal_ready(&signal_pipe[1]);
+		exec_child_signal_ready(&signal_pipe[1]);
 #endif
 		exec_child(request, argv, env, true, stdin_pipe, stdout_pipe, stderr_pipe);
 	}
@@ -638,6 +657,7 @@ int fr_exec_fork_wait(pid_t *pid_p,
 #ifdef EXEC_SYNC_WITH_CHILD
 	close(signal_pipe[1]);
 	*signal_fd = signal_pipe[0];
+	exec_parent_wait(signal_pipe[0]);
 #endif
 
 	if (stdin_fd) {
@@ -1063,7 +1083,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 	 *	continue now we've installed the appropriate
 	 *	monitoring.
 	 */
-	exec_proc_signal_ready(&signal_fd);
+	exec_parent_ready(&signal_fd);
 #endif
 	/*
 	 *	Setup event to kill the child process after a period of time.
