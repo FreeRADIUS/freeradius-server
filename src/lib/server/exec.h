@@ -44,10 +44,6 @@ extern "C" {
 extern "C" {
 #endif
 
-#ifdef __APPLE__
-#  define EXEC_SYNC_WITH_CHILD 1
-#endif
-
 typedef struct {
 	fr_sbuff_t			stdout_buff;	//!< Expandable buffer to store process output.
 	fr_sbuff_uctx_talloc_t		stdout_tctx;	//!< sbuff talloc ctx data.
@@ -87,16 +83,9 @@ int	fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
 			    fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit);
 
 int 	fr_exec_fork_wait(pid_t *pid_p, 
-#ifdef EXEC_SYNC_WITH_CHILD
-			   int *signal_fd,
-#endif
 			   int *stdin_fd, int *stdout_fd, int *stderr_fd,
 			   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args,
 			   fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit);
-
-#ifdef EXEC_SYNC_WITH_CHILD
-void	exec_proc_signal_ready(int *signal_fd);
-#endif
 
 int	fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 		      FR_DLIST_HEAD(fr_value_box_list) *args,
