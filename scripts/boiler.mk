@@ -113,7 +113,6 @@ define FILTER_DEPENDS
 	  -e 's/$$$$/ :/' \
 	  < $${BUILD_DIR}/objs/$$*.d | sed -e '$$$$!N; /^\(.*\)\n\1$$$$/!P; D' \
 	 >> $${BUILD_DIR}/make/src/$$*.mk
-	 @rm -f $${BUILD_DIR}/objs/$$*.d
 endef
 
 # ADD_OBJECT_RULE - Parameterized "function" that adds a pattern rule, using
