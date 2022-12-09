@@ -337,7 +337,7 @@ static void exec_parent_ready(int *signal_fd)
 {
 	uint8_t val = 0x00;
 
-	write(signal_fd, &val, sizeof(val));
+	write(*signal_fd, &val, sizeof(val));
 
 	close(*signal_fd);
 	*signal_fd = -1;
