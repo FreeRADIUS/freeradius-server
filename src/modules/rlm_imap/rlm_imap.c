@@ -177,7 +177,11 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "imap");
 #endif
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_URL, inst->uri);
+#if CURL_AT_LEAST_VERSION(7,85,0)
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS_STR, "imap,imaps");
+#else
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_IMAP | CURLPROTO_IMAPS);
+#endif
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 

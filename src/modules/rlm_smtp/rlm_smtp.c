@@ -875,7 +875,11 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 #endif
 	/* Set the generic curl request conditions */
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_URL, inst->uri);
+#if CURL_AT_LEAST_VERSION(7,85,0)
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS_STR, "smtp,smtps");
+#else
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_SMTP | CURLPROTO_SMTPS);
+#endif
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_UPLOAD, 1L);

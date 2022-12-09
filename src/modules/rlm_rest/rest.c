@@ -1752,7 +1752,11 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	 *	Setup any header options and generic headers.
 	 */
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_URL, uri);
+#if CURL_AT_LEAST_VERSION(7,85,0)
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS_STR, "http,https");
+#else
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+#endif
 	if (section->proxy) {
 		if (section->proxy == rest_no_proxy) {
 			FR_CURL_REQUEST_SET_OPTION(CURLOPT_NOPROXY, "*");
