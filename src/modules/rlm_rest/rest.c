@@ -1783,7 +1783,6 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	        fr_box_time_delta(timeout), fr_box_time_delta(section->timeout));
 	FR_CURL_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(timeout));
 	FR_CURL_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(section->timeout));
-	FR_CURL_SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
 
 	/*
 	 *	FreeRADIUS custom headers
