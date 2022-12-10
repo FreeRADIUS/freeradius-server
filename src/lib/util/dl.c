@@ -523,13 +523,12 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	if (search_path) {
 		char *ctx, *paths, *path;
 		char *p;
+		char *dlerror_txt = NULL;
 
 		fr_strerror_clear();
 
 		ctx = paths = talloc_typed_strdup(NULL, search_path);
 		while ((path = strsep(&paths, ":")) != NULL) {
-			char *dlerror_txt;
-
 			/*
 			 *	Trim the trailing slash
 			 */
@@ -592,7 +591,12 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 		 */
 		if (!handle) {
 			talloc_free(ctx);
-			fr_strerror_printf("%s", dlerror());
+			/*
+			 *	We're reliant on dlerror_txt from the loop,
+			 *	because once dlerror() is called the error
+			 *	is cleared.
+			 */
+			fr_strerror_printf("%s", dlerror_txt ? dlerror_txt : "unknown dlopen error");
 			return NULL;
 		}
 
