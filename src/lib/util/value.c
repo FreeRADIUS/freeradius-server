@@ -1332,11 +1332,11 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 				 */
 				if (value->enumv->flags.subtype == FLAG_LENGTH_UINT8) {
 					if (max > 255) max = 255;
-					fr_dbuff_in(&work_dbuff, (uint8_t) max);
+					FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) max);
 
 				} else if (value->enumv->flags.subtype == FLAG_LENGTH_UINT16) {
 					if (max > 65536) max = 65535;
-					fr_dbuff_in(&work_dbuff, (uint16_t) max);
+					FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) max);
 
 				} else {
 					return -1;
