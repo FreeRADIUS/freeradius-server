@@ -11,6 +11,7 @@ typedef struct {
 	X509_STORE	*store;
 	uint32_t	timeout;
 	bool		softfail;
+	bool		verifycert;
 
 
 	fr_tls_cache_t	cache;				//!< Cached cache section pointers.  Means we don't have
