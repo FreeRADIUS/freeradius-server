@@ -1293,6 +1293,14 @@ int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
 #ifdef SIGSEGV
 			if (fr_set_signal(SIGSEGV, fr_fault) < 0) return -1;
 #endif
+#ifdef SIGALRM
+			/*
+			 *  This is used be jlibtool to terminate
+			 *  processes which have been running too
+			 *  long.
+			 */
+			if (fr_set_signal(SIGALRM, fr_fault) < 0) return -1;
+#endif
 			break;
 
 		case DEBUGGER_STATE_ATTACHED:

@@ -958,11 +958,10 @@ static int external_spawn(command_t *cmd, __attribute__((unused)) char const *fi
 			 */
 			if (timeout) {
 				NOTICE("exec timeout\n");
-				kill(spawn_pid, SIGKILL);
+				kill(spawn_pid, SIGALRM);
 
 				waitpid(spawn_pid, &status, 0); /* Cleanup child state */
 				timeout = false;		/* Reset */
-				return 128 + SIGALRM;		/* Allow the caller to figure out what happened */
 			}
 
 			/*

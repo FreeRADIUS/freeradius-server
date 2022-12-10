@@ -64,7 +64,7 @@ $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL): $(BUILD_DIR)/lib/local/libfreeradius-$(PROTO
 #  increase the size of the corpus by several times.
 #
 fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
-	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) \
+	${Q}$(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
 		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-D share/dictionary \
@@ -76,7 +76,7 @@ fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus
 ifeq "$(CI)" ""
 test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	@echo TEST-FUZZER $(PROTOCOL) for $(FUZZER_TIMEOUT)s
-	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) \
+	${Q}$(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
 		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-max_total_time=$(FUZZER_TIMEOUT) \
@@ -86,7 +86,7 @@ else
 test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	@echo TEST-FUZZER $(PROTOCOL) for $(FUZZER_TIMEOUT)s
 	@mkdir -p $(BUILD_DIR)/fuzzer
-	${Q}if ! $(TEST_BIN)/fuzzer_$(PROTOCOL) \
+	${Q}if ! $(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
 		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-max_total_time=$(FUZZER_TIMEOUT) \
@@ -101,7 +101,7 @@ endif
 test.fuzzer.$(PROTOCOL).merge: | src/tests/fuzzer-corpus/$(PROTOCOL)
 	@echo MERGE-FUZZER-CORPUS $(PROTOCOL)
 	${Q}[ -e "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new" ] || mkdir "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new"
-	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) \
+	${Q}$(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
 		-D share/dictionary \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-merge=1 \
@@ -113,7 +113,7 @@ test.fuzzer.$(PROTOCOL).merge: | src/tests/fuzzer-corpus/$(PROTOCOL)
 	${Q}rm -rf "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new"
 
 test.fuzzer.$(PROTOCOL).crash: $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/crash-*) $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/timeout-*) $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/slow-unit-*) $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
-	$(TEST_BIN)/fuzzer_$(PROTOCOL) \
+	$(TEST_BIN_NO_TIMEOUT)/fuzzer_$(PROTOCOL) \
 		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-max_total_time=$(FUZZER_TIMEOUT) \
