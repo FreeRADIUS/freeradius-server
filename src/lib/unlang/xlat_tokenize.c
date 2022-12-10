@@ -661,7 +661,7 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 *	Deal with virtual attributes.
 	 */
 	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
-		if (tmpl_attr_num_elements(vpt) > 1) {
+		if (tmpl_attr_num_elements(vpt) > (size_t) (1 + vpt->rules.attr.list_as_attr)) {
 			fr_strerror_const("Virtual attributes cannot be nested.");
 			goto error;
 		}
