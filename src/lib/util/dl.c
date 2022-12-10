@@ -567,11 +567,11 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 			 *	and instead complain about access permissions.
 			 */
 			dlerror_txt = dlerror();
-			
+
 			/*
 			 *	Yes, this really is the only way of getting the errno
 			 *	from the dlopen API.
-			 *
+			 */
 			if (!strstr(dlerror_txt, fr_syserror(ENOENT))) {
 #ifndef __linux__
 				int access_mode = R_OK | X_OK;
