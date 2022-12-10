@@ -272,9 +272,8 @@ unsigned int	fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 int		fr_event_timer_run(fr_event_list_t *el, fr_time_t *when);
 
 int 		_fr_event_user_insert(NDEBUG_LOCATION_ARGS
-				      TALLOC_CTX *ctx, fr_event_user_t **ev_p,
-				      fr_event_list_t *el,
-				      bool trigger, fr_event_user_cb_t callback, void *uctx) CC_HINT(nonnull(NDEBUG_LOCATION_NONNULL(2)));
+				      TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_user_t **ev_p,
+				      bool trigger, fr_event_user_cb_t callback, void *uctx);
 #define		fr_event_user_insert(_ctx, _ev_p, _el, _trigger, _callback, _uctx) \
 			_fr_event_user_insert(NDEBUG_LOCATION_EXP _ctx, _ev_p, _el, _trigger, _callback, _uctx)
 
