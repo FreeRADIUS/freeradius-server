@@ -1007,28 +1007,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 	/*
 	 *	Tell the event loop that it needs to wait for this PID
 	 */
-	switch (fr_event_pid_wait(ctx, el, &exec->ev_pid, exec->pid, exec_reap, exec)) {
-	/*
-	 *	We're actually waiting for the process using the event loop
-	 */
-	case 0:
-		/*
-		 *	Setup event to kill the child process after a period of time.
-		 */
-		if (fr_time_delta_ispos(timeout) &&
-		    (fr_event_timer_in(ctx, el, &exec->ev, timeout, exec_timeout, exec) < 0)) goto fail_and_close;
-		break;
-
-	/*
-	 *	The Process has already exited, so no need to setup timers
-	 */
-	case 1:
-		break;
-
-	/*
-	 *	An actual error...
-	 */
-	default:
+	if (fr_event_pid_wait(ctx, el, &exec->ev_pid, exec->pid, exec_reap, exec) < 0) {
 		exec->pid = -1;
 		RPEDEBUG("Failed adding watcher for child process");
 
@@ -1050,6 +1029,12 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 
 		goto fail;
 	}
+
+	/*
+	 *	Setup event to kill the child process after a period of time.
+	 */
+	if (fr_time_delta_ispos(timeout) &&
+		(fr_event_timer_in(ctx, el, &exec->ev, timeout, exec_timeout, exec) < 0)) goto fail_and_close;
 
 	return 0;
 }

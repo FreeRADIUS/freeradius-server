@@ -291,7 +291,7 @@ struct fr_event_fd {
 							///< this should really go away and we should pass around
 							///< handles directly.
 
-	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
+	fr_event_list_t		*el;			//!< Event list this event belongs to.
 	fr_event_filter_t	filter;
 	int			fd;			//!< File descriptor we're listening for events on.
 
@@ -325,13 +325,24 @@ struct fr_event_fd {
 };
 
 struct fr_event_pid {
-	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
+	fr_event_list_t		*el;			//!< Event list this event belongs to.
+
+	bool			is_registered;		//!< Whether this user event has been registered
+							///< with the event loop.
+
 	pid_t			pid;			//!< child to wait for
 	fr_event_pid_t const	**parent;
 
 	fr_event_pid_cb_t	callback;		//!< callback to run when the child exits
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 
+	/** Fields that are only used if we're being triggered by a user event
+	 */
+	struct {
+		fr_event_user_t		*ev;		//!< Fallback user event we use to raise a PID event when
+							///< a race occurs with kevent.
+		int			status;		//!< Status we got from waitid.
+	} early_exit;
 #ifndef NDEBUG
 	char const		*file;			//!< Source file this event was last updated in.
 	int			line;			//!< Line this event was last updated on.
@@ -341,7 +352,7 @@ struct fr_event_pid {
 /** Hold additional information for automatically reaped PIDs
  */
 typedef struct {
-	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
+	fr_event_list_t		*el;			//!< Event list this event belongs to.
 	fr_event_pid_t const	*pid_ev;		//!< pid_ev this reaper is bound to.
 
 	fr_dlist_t		entry;		        //!< If the fr_event_pid is in the detached, reap state,
@@ -352,6 +363,24 @@ typedef struct {
 	fr_event_pid_cb_t	callback;		//!< callback to run when the child exits
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 } fr_event_pid_reap_t;
+
+/** Callbacks for kevent() user events
+ *
+ */
+struct fr_event_user_s {
+	fr_event_list_t		*el;			//!< Event list this event belongs to.
+
+	bool			is_registered;		//!< Whether this user event has been registered
+							///< with the event loop.
+
+	fr_event_user_cb_t 	callback;		//!< The callback to call.
+	void			*uctx;			//!< Context for the callback.
+
+#ifndef NDEBUG
+	char const		*file;			//!< Source file this event was last updated in.
+	int			line;			//!< Line this event was last updated on.
+#endif
+};
 
 /** Callbacks to perform when the event handler is about to check the events
  *
@@ -370,17 +399,6 @@ typedef struct {
 	fr_event_timer_cb_t	callback;		//!< The callback to call.
 	void			*uctx;			//!< Context for the callback.
 } fr_event_post_t;
-
-/** Callbacks for kevent() user events
- *
- */
-typedef struct {
-	fr_dlist_t		entry;			//!< Linked list of callback.
-	uintptr_t		ident;			//!< The identifier of this event.
-	fr_event_user_handler_t callback;		//!< The callback to call.
-	void			*uctx;			//!< Context for the callback.
-} fr_event_user_t;
-
 
 /** Stores all information relating to an event list
  *
@@ -403,7 +421,6 @@ struct fr_event_list {
 	int			kq;			//!< instance associated with this event list.
 
 	fr_dlist_head_t		pre_callbacks;		//!< callbacks when we may be idle...
-	fr_dlist_head_t		user_callbacks;		//!< EVFILT_USER callbacks
 	fr_dlist_head_t		post_callbacks;		//!< post-processing callbacks
 
 	fr_dlist_head_t		pid_to_reap;		//!< A list of all orphaned child processes we're
@@ -1591,7 +1608,7 @@ static int _event_pid_free(fr_event_pid_t *ev)
 	struct kevent evset;
 
 	if (ev->parent) *ev->parent = NULL;
-	if (ev->pid < 0) return 0; /* already deleted from kevent */
+	if (!ev->is_registered || (ev->pid < 0)) return 0; /* already deleted from kevent */
 
 	EVENT_DEBUG("%p - Disabling event for PID %u - %p was freed", ev->el, (unsigned int)ev->pid, ev);
 
@@ -1600,6 +1617,70 @@ static int _event_pid_free(fr_event_pid_t *ev)
 	(void) kevent(ev->el->kq, &evset, 1, NULL, 0, NULL);
 
 	return 0;
+}
+
+/** Evaluate a EVFILT_PROC event
+ *
+ */
+static inline CC_HINT(always_inline)
+void event_pid_eval(fr_event_list_t *el, struct kevent *kev)
+{
+	pid_t			pid;
+	fr_event_pid_t		*ev;
+	fr_event_pid_cb_t	callback;
+	void			*uctx;
+
+	EVENT_DEBUG("%p - PID %u exited with status %i",
+		    el, (unsigned int)kev->ident, (unsigned int)kev->data);
+
+	ev = talloc_get_type_abort((void *)kev->udata, fr_event_pid_t);
+
+	fr_assert(ev->pid == (pid_t) kev->ident);
+	fr_assert((kev->fflags & NOTE_EXIT) != 0);
+
+	pid = ev->pid;
+	callback = ev->callback;
+	uctx = ev->uctx;
+
+	ev->is_registered = false;	/* so we won't hit kevent again when it's freed */
+
+	/*
+	 *	Delete the event before calling it.
+	 *
+	 *	This also sets the parent pointer
+	 *	to NULL, so the thing that started
+	 *	monitoring the process knows the
+	 *	handle is no longer valid.
+	 *
+	 *	EVFILT_PROC NOTE_EXIT events are always
+	 *	oneshot no matter what flags we pass,
+	 *	so we're just reflecting the state of
+	 *	the kqueue.
+	 */
+	talloc_free(ev);
+
+	if (callback) callback(el, pid, (int) kev->data, uctx);
+}
+
+/** Called on the next loop through the event loop when inserting an EVFILT_PROC event fails
+ *
+ * This is just a trampoleen function which takes the user event and simulates
+ * an EVFILT_PROC event from it.
+ *
+ * @param[in] el	That received the event.
+ * @param[in] uctx	An fr_event_pid_t to process.
+ */
+static void _fr_event_pid_early_exit(fr_event_list_t *el, void *uctx)
+{
+	fr_event_pid_t *ev = talloc_get_type_abort(uctx, fr_event_pid_t);
+
+	EVENT_DEBUG("%p - PID %ld exited early, triggered through user event", el, (long)ev->pid);
+
+	/*
+	 *	Simulate a real struct kevent with the values we
+	 *	recorded in fr_event_pid_wait.
+	 */
+	event_pid_eval(el, &(struct kevent){ .ident = ev->pid, .data = ev->early_exit.status, .udata = ev });
 }
 
 /** Insert a PID event into an event list
@@ -1643,6 +1724,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		.line = line,
 #endif
 	};
+	talloc_set_destructor(ev, _event_pid_free);
 
 	/*
 	 *	macOS only, on FreeBSD NOTE_EXIT always provides
@@ -1655,6 +1737,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	EVENT_DEBUG("%p - Adding exit waiter for PID %u", el, (unsigned int)pid);
 
 	EV_SET(&evset, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT | NOTE_EXITSTATUS, 0, ev);
+	ev->is_registered = true;
 
 	/*
 	 *	This deals with the race where the process exited
@@ -1674,8 +1757,8 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		 */
 		fr_strerror_clear();
 
-		talloc_free(ev);
-
+		ev->is_registered = false;
+		
 		/*
 		 *	If the child exited before kevent() was
 		 *	called, we need to get its status via
@@ -1718,28 +1801,53 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 					    el, (long)pid, fr_table_str_by_value(si_codes, info.si_code, "<UNKOWN>"),
 					    info.si_code, info.si_status);
 
-				if (callback) callback(el, pid, info.si_status, uctx);
-				return 1;
+				/*
+				 *	Record the status for later
+				 */
+				ev->early_exit.status = info.si_status;
+
+				/*
+				 *	The user event acts as a surrogate for
+				 *	an EVFILT_PROC event, and will be evaluated 
+				 *	during the next loop through the event loop.
+				 *
+				 *	It will be automatically deleted when the
+				 *	fr_event_pid_t is freed.
+				 *
+				 *	Previously we tried to evaluate the proc
+				 *	callback here directly, but this lead to
+				 *	multiple problems, the biggest being that
+				 *	setting requests back to resumable failed
+				 *	because they were not yet yielded, 
+				 *	leading to hangs.
+				 */
+				if (fr_event_user_insert(ev, &ev->early_exit.ev, el, true, _fr_event_pid_early_exit, ev) < 0) {
+					fr_strerror_printf_push("Failed adding wait for PID %ld, and failed adding "
+								"backup user event", (long) pid);
+				error:
+					talloc_free(ev);
+					return -1;
+				}
+				break;
 
 			default:
 				fr_strerror_printf("Unexpected code %s (%u) whilst waiting on PID %ld",
 						   fr_table_str_by_value(si_codes, info.si_code, "<UNKOWN>"),
 						   info.si_code, (long) pid);
-				return -1;
+
+				goto error;
 			}
+		} else {
+			/*
+			*	Print this error here, so that the caller gets
+			*	the error from kevent(), and not waitpid().
+			*/
+			fr_strerror_printf("Failed adding waiter for PID %ld - kevent %s, waitid %s",
+					   (long) pid, fr_syserror(evset.flags), fr_syserror(errno));
+
+			goto error;
 		}
-
-		/*
-		 *	Print this error here, so that the caller gets
-		 *	the error from kevent(), and not waitpid().
-		 */
-		fr_strerror_printf("Failed adding waiter for PID %ld - kevent %s, waitid %s",
-				   (long) pid, fr_syserror(evset.flags), fr_syserror(errno));
-
-		return -1;
 	}
-
-	talloc_set_destructor(ev, _event_pid_free);
 
 	/*
 	 *	Sometimes the caller doesn't care about getting the
@@ -1968,56 +2076,120 @@ force:
 	return processed;
 }
 
-/** Add a user callback to the event list.
+/** Memory will not be freed if we fail to remove the event from the kqueue
  *
- * @param[in] el	Containing the timer events.
- * @param[in] callback	for EVFILT_USER.
- * @param[in] uctx	for the callback.
- * @return
- *	- 0 on error
- *	- uintptr_t ident for EVFILT_USER signaling
- */
-uintptr_t fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t callback, void *uctx)
-{
-	fr_event_user_t *user;
-
-	user = talloc(el, fr_event_user_t);
-	user->callback = callback;
-	user->uctx = uctx;
-	user->ident = (uintptr_t) user;
-
-	fr_dlist_insert_tail(&el->user_callbacks, user);
-
-	return user->ident;
-}
-
-/** Delete a user callback to the event list.
+ * It's easier to debug memory leaks with modern tooling than it is
+ * to determine why we get random failures and event leaks inside of kqueue.
  *
- * @param[in] el	Containing the timer events.
- * @param[in] callback	for EVFILT_USER.
- * @param[in] uctx	for the callback.
  * @return
- *	- < 0 on error
- *	- 0 on success
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t callback, void *uctx)
+static int _event_user_delete(fr_event_user_t *ev)
 {
-	fr_event_user_t *user, *next;
+	if (ev->is_registered) {
+		struct kevent evset;
 
-	for (user = fr_dlist_head(&el->user_callbacks);
-	     user != NULL;
-	     user = next) {
-		next = fr_dlist_next(&el->user_callbacks, user);
+		EV_SET(&evset, (uintptr_t)ev, EVFILT_USER, EV_DELETE, 0, 0, 0);
 
-		if ((user->callback == callback) &&
-		    (user->uctx == uctx)) {
-			fr_dlist_remove(&el->user_callbacks, user);
-			talloc_free(user);
-			return 0;
+		if (unlikely(kevent(ev->el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
+			fr_strerror_printf("Failed removing user event - kevent %s", fr_syserror(evset.flags));
+			return -1;
 		}
+		ev->is_registered = false;
 	}
 
-	return -1;
+	return 0;
+}
+
+static inline CC_HINT(always_inline)
+void event_user_eval(fr_event_list_t *el, struct kevent *kev)
+{
+	fr_event_user_t *ev;
+
+	/*
+	 *	This is just a "wakeup" event, which
+	 *	is always ignored.
+	 */
+	if (kev->ident == 0) return;
+
+	ev = talloc_get_type_abort((void *)kev->ident, fr_event_user_t);
+	fr_assert((uintptr_t)ev == kev->ident);
+
+	ev->callback(el, ev->uctx);
+}
+
+/** Add a user callback to the event list.
+ *
+ * @param[in] ctx	to allocate the event in.
+ * @param[out] ev_p	Where to write a pointer.
+ * @param[in] el	Containing the timer events.
+ * @param[in] trigger	Whether the user event is triggered initially.
+ * @param[in] callback	for EVFILT_USER.
+ * @param[in] uctx	for the callback.
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
+ */
+int _fr_event_user_insert(NDEBUG_LOCATION_ARGS 
+			  TALLOC_CTX *ctx, fr_event_user_t **ev_p,
+			  fr_event_list_t *el,
+			  bool trigger, fr_event_user_cb_t callback, void *uctx)
+{
+	fr_event_user_t *ev;
+	struct kevent evset;
+
+	ev = talloc(ctx, fr_event_user_t);
+	if (unlikely(ev == NULL)) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+	*ev = (fr_event_user_t) {
+		.el = el,
+		.callback = callback,
+		.uctx = uctx,
+#ifndef NDEBUG
+		.file = file,
+		.line = line,
+#endif
+	};
+
+	EV_SET(&evset, (uintptr_t)ev,
+	       EVFILT_USER, EV_ADD | EV_DISPATCH, (trigger * NOTE_TRIGGER), 0, ev);
+
+	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
+		fr_strerror_printf("Failed adding user event - kevent %s", fr_syserror(evset.flags));
+		talloc_free(ev);
+		return -1;
+	}
+	ev->is_registered = true;
+	talloc_set_destructor(ev, _event_user_delete);
+
+	*ev_p = ev;
+
+	return 0;
+}
+
+/** Trigger a user event
+ *
+ * @param[in] el	containing the user event.
+ * @param[in] ev	Handle for the user event.
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
+ */
+int fr_event_user_trigger(fr_event_list_t *el, fr_event_user_t *ev)
+{
+	struct kevent evset;
+
+	EV_SET(&evset, (uintptr_t)ev, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, 0, NULL);
+
+	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
+		fr_strerror_printf("Failed triggering user event - kevent %s", fr_syserror(evset.flags));
+		return -1;
+	}
+
+	return 0;
 }
 
 /** Add a pre-event callback to the event list.
@@ -2343,63 +2515,14 @@ void fr_event_service(fr_event_list_t *el)
 		 */
 		switch (el->events[i].filter) {
 		case EVFILT_USER:
-		{
-			fr_event_user_t *user;
-
-			/*
-			 *	This is just a "wakeup" event, which
-			 *	is always ignored.
-			 */
-			if (el->events[i].ident == 0) continue;
-
-			user = talloc_get_type_abort((void *)el->events[i].ident, fr_event_user_t);
-			fr_assert(user->ident == el->events[i].ident);
-
-			user->callback(el->kq, &el->events[i], user->uctx);
-		}
+			event_user_eval(el, &el->events[i]);
 			continue;
 
 		/*
 		 *	Process proc events
 		 */
 		case EVFILT_PROC:
-		{
-			pid_t pid;
-			fr_event_pid_t *pev;
-			fr_event_pid_cb_t callback;
-			void *uctx;
-
-			EVENT_DEBUG("%p - PID %u exited with status %i",
-				    el, (unsigned int)el->events[i].ident, (unsigned int)el->events[i].data);
-
-			pev = talloc_get_type_abort((void *)el->events[i].udata, fr_event_pid_t);
-
-			fr_assert(pev->pid == (pid_t) el->events[i].ident);
-			fr_assert((el->events[i].fflags & NOTE_EXIT) != 0);
-
-			pid = pev->pid;
-			callback = pev->callback;
-			uctx = pev->uctx;
-
-			pev->pid = -1;	/* so we won't hit kevent again when it's freed */
-
-			/*
-			 *	Delete the event before calling it.
-			 *
-			 *	This also sets the parent pointer
-			 *	to NULL, so the thing that started
-			 *	monitoring the process knows the
-			 *	handle is no longer valid.
-			 *
-			 *	EVFILT_PROC NOTE_EXIT events are always
-			 *	oneshot no matter what flags we pass,
-			 *	so we're just reflecting the state of
-			 *	the kqueue.
-			 */
-			talloc_free(pev);
-
-			if (callback) callback(el, pid, (int) el->events[i].data, uctx);
-		}
+			event_pid_eval(el, &el->events[i]);
 			continue;
 
 		/*
@@ -2699,7 +2822,6 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 
 	fr_dlist_talloc_init(&el->pre_callbacks, fr_event_pre_t, entry);
 	fr_dlist_talloc_init(&el->post_callbacks, fr_event_post_t, entry);
-	fr_dlist_talloc_init(&el->user_callbacks, fr_event_user_t, entry);
 	fr_dlist_talloc_init(&el->ev_to_add, fr_event_timer_t, entry);
 	fr_dlist_talloc_init(&el->pid_to_reap, fr_event_pid_reap_t, entry);
 	fr_dlist_talloc_init(&el->fd_to_free, fr_event_fd_t, entry);

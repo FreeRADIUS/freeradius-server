@@ -52,6 +52,10 @@ typedef struct fr_event_timer fr_event_timer_t;
  */
 typedef struct fr_event_pid fr_event_pid_t;
 
+/** An opaquer user event handle
+ */
+typedef struct fr_event_user_s fr_event_user_t;
+
 /** The type of filter to install for an FD
  */
 typedef enum {
@@ -152,11 +156,10 @@ typedef void (*fr_event_pid_cb_t)(fr_event_list_t *el, pid_t pid, int status, vo
 
 /** Called when a user kevent occurs
  *
- * @param[in] kq	that received the user kevent.
- * @param[in] kev	The kevent.
+ * @param[in] el	Event list
  * @param[in] uctx	User ctx passed to #fr_event_user_insert.
  */
-typedef void (*fr_event_user_handler_t)(int kq, struct kevent const *kev, void *uctx);
+typedef void (*fr_event_user_cb_t)(fr_event_list_t *el, void *uctx);
 
 /** Alternative time source, useful for testing
  *
@@ -268,8 +271,16 @@ unsigned int	fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 
 int		fr_event_timer_run(fr_event_list_t *el, fr_time_t *when);
 
-uintptr_t      	fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *uctx) CC_HINT(nonnull(1,2));
-int		fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t user, void *uctx) CC_HINT(nonnull(1,2));
+int 		_fr_event_user_insert(NDEBUG_LOCATION_ARGS
+				      TALLOC_CTX *ctx, fr_event_user_t **ev_p,
+				      fr_event_list_t *el,
+				      bool trigger, fr_event_user_cb_t callback, void *uctx) CC_HINT(nonnull(NDEBUG_LOCATION_NONNULL(2)));
+#define		fr_event_user_insert(_ctx, _ev_p, _el, _trigger, _callback, _uctx) \
+			_fr_event_user_insert(NDEBUG_LOCATION_EXP _ctx, _ev_p, _el, _trigger, _callback, _uctx)
+
+int		fr_event_user_trigger(fr_event_list_t *el, fr_event_user_t *ev);
+
+int		fr_event_user_delete(fr_event_list_t *el, fr_event_user_cb_t user, void *uctx) CC_HINT(nonnull(1,2));
 
 int		fr_event_pre_insert(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
 int		fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
