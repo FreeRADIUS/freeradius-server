@@ -821,7 +821,7 @@ static int local_command(char *line)
 }
 
 
-#define MAX_COMMANDS (4)
+#define MAX_COMMANDS (256)
 
 int main(int argc, char **argv)
 {
