@@ -1680,7 +1680,7 @@ static void _fr_event_pid_early_exit(fr_event_list_t *el, void *uctx)
 	 *	Simulate a real struct kevent with the values we
 	 *	recorded in fr_event_pid_wait.
 	 */
-	event_pid_eval(el, &(struct kevent){ .ident = ev->pid, .data = ev->early_exit.status, .udata = ev });
+	event_pid_eval(el, &(struct kevent){ .ident = ev->pid, .data = ev->early_exit.status, .fflags = NOTE_EXIT, .udata = ev });
 }
 
 /** Insert a PID event into an event list
