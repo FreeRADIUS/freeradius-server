@@ -961,7 +961,8 @@ static int external_spawn(command_t *cmd, __attribute__((unused)) char const *fi
 				kill(spawn_pid, SIGKILL);
 
 				waitpid(spawn_pid, &status, 0); /* Cleanup child state */
-				timeout = false; /* reset */
+				timeout = false;		/* Reset */
+				return 128 + SIGALRM;		/* Allow the caller to figure out what happened */
 			}
 
 			/*
