@@ -1821,7 +1821,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 				 *	because they were not yet yielded, 
 				 *	leading to hangs.
 				 */
-				if (fr_event_user_insert(ev, &ev->early_exit.ev, el, true, _fr_event_pid_early_exit, ev) < 0) {
+				if (fr_event_user_insert(ev, el, &ev->early_exit.ev, true, _fr_event_pid_early_exit, ev) < 0) {
 					fr_strerror_printf_push("Failed adding wait for PID %ld, and failed adding "
 								"backup user event", (long) pid);
 				error:
@@ -2123,8 +2123,8 @@ void event_user_eval(fr_event_list_t *el, struct kevent *kev)
 /** Add a user callback to the event list.
  *
  * @param[in] ctx	to allocate the event in.
- * @param[out] ev_p	Where to write a pointer.
  * @param[in] el	Containing the timer events.
+ * @param[out] ev_p	Where to write a pointer.
  * @param[in] trigger	Whether the user event is triggered initially.
  * @param[in] callback	for EVFILT_USER.
  * @param[in] uctx	for the callback.
@@ -2133,8 +2133,7 @@ void event_user_eval(fr_event_list_t *el, struct kevent *kev)
  *	- -1 on error.
  */
 int _fr_event_user_insert(NDEBUG_LOCATION_ARGS 
-			  TALLOC_CTX *ctx, fr_event_user_t **ev_p,
-			  fr_event_list_t *el,
+			  TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_user_t **ev_p,
 			  bool trigger, fr_event_user_cb_t callback, void *uctx)
 {
 	fr_event_user_t *ev;
