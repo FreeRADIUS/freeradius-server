@@ -102,6 +102,11 @@ typedef struct {
 #  define TARGET_RANLIB		        "ranlib"
 #endif
 
+/*
+ *	Set to true when an exec times out
+ */
+static bool timeout = false;
+
 static const toolset_t toolset_host = {
 	.cc				= BUILD_CC,
 	.cxx				= HOST_CXX,
@@ -587,6 +592,8 @@ typedef struct {
 
 	char const *version_info;
 	char const *undefined_flag;
+
+	unsigned int timeout;
 } command_t;
 
 static void add_rpath(count_chars *cc, char const *path);
@@ -854,6 +861,11 @@ static void external_spawn_sig_handler(int signo)
 	kill(spawn_pid, signo);	/* Forward the signal to the process we're executing */
 }
 
+void external_spawn_timeout(int pid)
+{
+	timeout = true;
+}
+
 static int external_spawn(command_t *cmd, __attribute__((unused)) char const *file, char const **argv)
 {
 	if (!cmd->options.silent) {
@@ -905,7 +917,29 @@ static int external_spawn(command_t *cmd, __attribute__((unused)) char const *fi
 			SIGNAL_FORWARD(SIGUSR1);
 			SIGNAL_FORWARD(SIGUSR2);
 
+			/*
+			 *	Deliver's SIGALRM after N seconds
+			 */
+			if (cmd->timeout > 0) {
+				/*
+				 *	Seems like SA_RESTART is set
+				 *	implicitly when signal() is
+				 *	used, which is NOT what we want.
+				 */
+				sigaction(SIGALRM,
+					  &(struct sigaction){
+					  	.sa_handler = external_spawn_timeout,
+					  	.sa_flags = SA_RESETHAND
+					  }, NULL);
+				alarm(cmd->timeout);
+			}
+
 			waitpid(spawn_pid, &status, 0);
+
+			if (cmd->timeout > 0) {
+				signal(SIGALRM, NULL);
+				alarm(0);
+			}
 
 			SIGNAL_RESET(SIGHUP);
 			SIGNAL_RESET(SIGINT);
@@ -915,6 +949,20 @@ static int external_spawn(command_t *cmd, __attribute__((unused)) char const *fi
 			SIGNAL_RESET(SIGTERM);
 			SIGNAL_RESET(SIGUSR1);
 			SIGNAL_RESET(SIGUSR2);
+
+			/*
+			 *	We're assuming waitpid was delivered
+			 *	because of the alarm we set.
+			 *
+			 *	Kill the child and clean it up.
+			 */
+			if (timeout) {
+				NOTICE("exec timeout\n");
+				kill(spawn_pid, SIGKILL);
+
+				waitpid(spawn_pid, &status, 0); /* Cleanup child state */
+				timeout = false; /* reset */
+			}
 
 			/*
 			 *	Exited via exit(status)
@@ -1175,6 +1223,10 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 		exit(0);
 	} else if (strcmp(var, "tag") == 0) {
 		DEBUG("discard --tag=%s\n", value);
+
+	} else if (strcmp(var, "timeout") == 0) {
+		cmd->timeout = strtoul(value, NULL, 10);
+		NOTICE("Timeout %u\n", cmd->timeout);
 	} else {
 		return 0;
 	}
@@ -2993,6 +3045,7 @@ static void parse_args(int argc, char *argv[], command_t *cmd)
 				} else if (!strcmp(arg + 1, "undefined")) {
 					cmd->undefined_flag = argv[++a];
 					arg_used = 1;
+
 				/*
 				 *	Add dir to runtime library search path.
 				 */
