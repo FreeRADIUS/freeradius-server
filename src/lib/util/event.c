@@ -1861,7 +1861,8 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 /** Saves some boilerplate...
  *
  */
-static inline CC_HINT(always_inline) void event_list_reap_run_callback(fr_event_pid_reap_t *reap, pid_t pid, int status)
+static inline CC_HINT(always_inline)
+void event_list_reap_run_callback(fr_event_pid_reap_t *reap, pid_t pid, int status)
 {
 	if (reap->callback) reap->callback(reap->el, pid, status, reap->uctx);
 }
@@ -2165,7 +2166,7 @@ int _fr_event_user_insert(NDEBUG_LOCATION_ARGS
 	ev->is_registered = true;
 	talloc_set_destructor(ev, _event_user_delete);
 
-	*ev_p = ev;
+	if (ev_p) *ev_p = ev;
 
 	return 0;
 }
