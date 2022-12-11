@@ -419,17 +419,6 @@ void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,
 					  const fr_value_box_t *src)
 		CC_HINT(nonnull(2,3));
 
-/*
- *	fr_value_box_copy_unsafe() copies the raw bytes from one value box
- *	to another. Its uses are rare.
- */
-static inline CC_HINT(nonnull, always_inline)
-void		fr_value_box_copy_unsafe(fr_value_box_t *dst, const fr_value_box_t *src)
-{
-	/* coverity[store_writes_const_field] */
-	memcpy(dst, src, sizeof(*dst));
-}
-
 int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src)
 		CC_HINT(nonnull(2,3));
 /** @} */
@@ -454,11 +443,11 @@ int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *sr
 static inline CC_HINT(nonnull(1), always_inline)
 void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
 {
-	fr_value_box_copy_unsafe(vb, &(fr_value_box_t){
-		.type = type,
-		.enumv = enumv,
-		.tainted = tainted
-	});
+	memcpy(vb, &(fr_value_box_t){
+	       		.type = type,
+			.enumv = enumv,
+			.tainted = tainted
+	       }, sizeof(*vb));
 	fr_value_box_list_entry_init(vb);
 
 	/*

@@ -23,6 +23,7 @@
  * @copyright 2012-2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 
+
 RCSID("$Id$")
 
 #define LOG_PREFIX mctx->inst->name
@@ -34,6 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/pool.h>
 #include <freeradius-devel/unlang/call.h>
+#include <freeradius-devel/unlang/value.h>
 
 #include "rest.h"
 
@@ -869,7 +871,7 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 		return NULL;
 	}
 
-	fr_value_box_copy_unsafe(&src, &(fr_value_box_t){});
+	fr_value_box_init_null(&src);
 
 	switch (json_object_get_type(leaf)) {
 	case json_type_int:

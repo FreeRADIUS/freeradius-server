@@ -25,6 +25,7 @@
  */
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/value.h>
 
 fr_table_num_sorted_t const redis_reply_types[] = {
 	{ L("array"),		REDIS_REPLY_ARRAY	},
@@ -210,7 +211,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 	fr_value_box_t	*to_cast;
 
 	if (dst_type != FR_TYPE_VOID) {
-		fr_value_box_copy_unsafe(&in, &(fr_value_box_t){});
+		fr_value_box_init_null(&in);
 		to_cast = &in;
 	} else {
 		to_cast = out;
