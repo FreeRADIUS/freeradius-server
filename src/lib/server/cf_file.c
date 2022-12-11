@@ -1166,54 +1166,123 @@ static int process_template(cf_stack_t *stack)
 
 static int cf_file_fill(cf_stack_t *stack);
 
-/*
- *	Expansions can contain other expansions, but can't contain regexes.
- */
-static uint8_t const *skip_expanse(uint8_t const *p)
-{
-	int depth = 1;		/* caller skips '{' */
 
-	while (*p >= ' ') {
-		if (*p == '{') {
+/**  Skip an xlat expression.
+ *
+ *  This is a simple "peek ahead" parser which tries to not be wrong.  It may accept
+ *  some things which will later parse as invalid (e.g. unknown attributes, etc.)
+ *  But it also rejects all malformed expressions.
+ *
+ *  It's used as a quick hack because the full parser isn't always available.
+ *
+ *  @param[in] start	start of the expression, MUST point to the "%{" or "%("
+ *  @param[in] end	end of the string (or NULL for zero-terminated strings)
+ *  @return
+ *	>0 length of the string which was parsed
+ *	<=0 on error
+ */
+static ssize_t fr_skip_xlat(char const *start, char const *end)
+{
+	int	depth = 1;		/* caller skips '{' */
+	ssize_t slen;
+	char	quote, end_quote;
+	char const *p = start;
+
+	/*
+	 *	At least %{1}
+	 */
+	if (end && ((start + 4) < end)) {
+		fr_strerror_const("Invalid expansion");
+		return 0;
+	}
+
+	if ((*p != '%') && (*p != '$')) {
+	fail:
+		fr_strerror_const("Unexpected character in xlat");
+		return -(p - start);
+	}
+
+	p++;
+	if ((*p != '{') && (*p != '(')) goto fail;
+
+	quote = *(p++);
+	if (quote == '{') {
+		end_quote = '}';
+	} else {
+		end_quote = ')';
+	}
+
+	while ((end && (p < end)) || (*p >= ' ')) {
+		if (*p == quote) {
 			p++;
 			depth++;
 			continue;
 		}
-		if (*p == '}') {
+
+		if (*p == end_quote) {
 			p++;
 			depth--;
-			if (!depth) return p;
+			if (!depth) return p - start;
 
 			continue;
 		}
 
-		if (*p == '\\') {
-			if (p[1] < ' ') return NULL;
-			p += 2;
+		/*
+		 *	Nested expansion.
+		 */
+		if ((p[0] == '$') || (p[0] == '%')) {
+			if (end && (p + 2) >= end) break;
+
+			if ((p[1] == '{') || ((p[0] == '$') && (p[1] == '('))) {
+				slen = fr_skip_xlat(p, end);
+
+			check:
+				if (slen <= 0) return -(p - start) + slen;
+
+				p += slen;
+				continue;
+			}
+
+			/*
+			 *	Bare $ or %, just leave it alone.
+			 */
+			p++;
 			continue;
 		}
 
-		if (((p[0] == '$') || (p[0] == '%')) && (p[1] == '{')) {
-			p = skip_expanse(p + 2);
-			if (!p) return NULL;
-			continue;
-		}
-
+		/*
+		 *	A quoted string.
+		 */
 		if ((*p == '"') || (*p == '\'') || (*p == '`')) {
-			ssize_t slen;
+			slen = fr_skip_string(p, end);
+			goto check;
+		}
 
-			slen = fr_skip_string((char const *) p, NULL);
-			if (slen <= 0) return NULL;
+		/*
+		 *	@todo - bare '(' is a condition or nested
+		 *	expression.  The brackets need to balance
+		 *	here, too.
+		 */
 
-			p += slen;
+		if (*p != '\\') {
+			p++;
 			continue;
 		}
 
-		p++;
+		if (end && ((p + 2) >= end)) break;
+
+		/*
+		 *	Escapes here are only one-character escapes.
+		 */
+		if (p[1] < ' ') break;
+		p += 2;
 	}
 
-
-	return NULL;
+	/*
+	 *	Unexpected end of xlat
+	 */
+	fr_strerror_const("Unexpected end of xlat");
+	return -(p - start);
 }
 
 static CONF_ITEM *process_if(cf_stack_t *stack)
@@ -1323,13 +1392,16 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			 *	Bare words of ${..} or %{...}
 			 */
 			if (((p[0] == '$') || (p[0] == '%')) && (p[1] == '{')) {
-				p = skip_expanse(p + 2);
-				if (!p) {
-					cf_log_err(cs, "Unexpected end of expansion");
+				ssize_t my_slen;
+
+				my_slen = fr_skip_xlat((char const *) p, NULL);
+				if (my_slen <= 0) {
+					cf_log_err(cs, "Failed parsing xlat in condition - %s", fr_strerror());
 					talloc_free(cs);
 					return NULL;
 				}
 
+				p += my_slen;
 				continue;
 			}
 
@@ -1343,7 +1415,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 
 				my_slen = fr_skip_string((char const *) p, NULL);
 				if (my_slen <= 0) {
-					cf_log_err(cs, "Unexpected end of string");
+					cf_log_err(cs, "Failed parsing string in condition - %s", fr_strerror());
 					talloc_free(cs);
 					return NULL;
 				}
