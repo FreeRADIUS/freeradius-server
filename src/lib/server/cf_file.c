@@ -1166,47 +1166,6 @@ static int process_template(cf_stack_t *stack)
 
 static int cf_file_fill(cf_stack_t *stack);
 
-static uint8_t const *skip_string(uint8_t const *p, char c)
-{
-	while (*p >= ' ') {
-		if (*p == c) {
-			p++;
-			return p;
-		}
-
-		if (*p != '\\') {
-			p++;
-			continue;
-		}
-
-		if (p[1] < ' ') {
-			return NULL;
-		}
-
-		if (!isdigit((int) p[1])) {
-			p += 2;
-			continue;
-		}
-
-		/*
-		 *	Double-quoted strings use \000
-		 *	Regexes use \0
-		 */
-		if (c == '/') {
-			p++;
-			continue;
-		}
-
-		if (!isdigit((int) p[2]) || !isdigit((int) p[3])) {
-			return NULL;
-		}
-
-		p += 4;
-	}
-
-	return NULL;
-}
-
 /*
  *	Expansions can contain other expansions, but can't contain regexes.
  */
@@ -1241,10 +1200,12 @@ static uint8_t const *skip_expanse(uint8_t const *p)
 		}
 
 		if ((*p == '"') || (*p == '\'') || (*p == '`')) {
-			char c = *p++;
+			ssize_t slen;
 
-			p = skip_string(p, c);
-			if (!p) return NULL;
+			slen = fr_skip_string((char const *) p, NULL);
+			if (slen <= 0) return NULL;
+
+			p += slen;
 			continue;
 		}
 
@@ -1309,7 +1270,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *
 	 */
 	while (true) {
-		char c;
 		bool found = false;
 		bool was_regex = false;
 		int depth = 0;
@@ -1377,15 +1337,18 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			 *	We have a quoted string, ignore '(' and ')' within it.
 			 */
 			if ((*p == '"') || (*p == '\'') || (*p == '`') || (was_regex && (*p == '/'))) {
+				ssize_t my_slen;
+
 				was_regex = false;
-				c = *p++;
-				p = skip_string(p, c);
-				if (!p) {
+
+				my_slen = fr_skip_string((char const *) p, NULL);
+				if (my_slen <= 0) {
 					cf_log_err(cs, "Unexpected end of string");
 					talloc_free(cs);
 					return NULL;
 				}
 
+				p += my_slen;
 				continue;
 			}
 

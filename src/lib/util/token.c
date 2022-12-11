@@ -491,6 +491,14 @@ char const *fr_token_name(int token)
 }
 
 
+/**  Skip a quoted string.
+ *
+ *  @param[in] start	start of the string, pointing to the quotation character
+ *  @param[in] end	end of the string (or NULL for zero-terminated strings)
+ *  @return
+ *	>0 length of the string which was parsed
+ *	<=0 on error
+ */
 ssize_t fr_skip_string(char const *start, char const *end)
 {
 	char const *p = start;
@@ -498,22 +506,59 @@ ssize_t fr_skip_string(char const *start, char const *end)
 
 	quote = *(p++);
 
-	while (p < end) {
+	while ((end && (p < end)) || *p) {
+		/*
+		 *	Stop at the quotation character
+		 */
 		if (*p == quote) {
 			p++;
 			return p - start;
 		}
 
-		if (*p == '\\') {
-			if (((p + 1) >= end) || !p[1]) {
-				break;
-			}
+		/*
+		 *	Not an escape character: it's OK.
+		 */
+		if (*p != '\\') {
+			p++;
+			continue;
+		}
 
+		if (end && ((p + 2) >= end)) {
+		fail:
+			fr_strerror_const("Unexpected escape at end of string");
+			return -(p - start);
+		}
+
+		/*
+		 *	Escape at EOL is not allowed.
+		 */
+		if (p[1] < ' ') goto fail;
+
+		/*
+		 *	\r or \n, etc.
+		 */
+		if (!isdigit((int) p[1])) {
 			p += 2;
 			continue;
 		}
 
-		p++;
+		/*
+		 *	Double-quoted strings use \000
+		 *	Regexes use \0
+		 */
+		if (quote == '/') {
+			p++;
+			continue;
+		}
+
+		if (end && ((p + 4) >= end)) goto fail;
+
+		if (!isdigit((int) p[2]) || !isdigit((int) p[3])) {
+			fr_strerror_const("Invalid octal escape");
+			return -(p - start);
+		}
+
+		p += 4;
 	}
 
 	/*
@@ -522,3 +567,4 @@ ssize_t fr_skip_string(char const *start, char const *end)
 	fr_strerror_const("Unexpected end of string");
 	return -(p - start);
 }
+
