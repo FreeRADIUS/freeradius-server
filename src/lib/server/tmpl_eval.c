@@ -62,6 +62,10 @@ static fr_dict_attr_t const *attr_packet_authentication_vector;
 static fr_dict_attr_t const *attr_request_processing_stage;
 static fr_dict_attr_t const *attr_virtual_server;
 static fr_dict_attr_t const *attr_module_return_code;
+
+/** Placeholder attribute for uses of unspecified attribute references
+ */
+extern fr_dict_attr_t const *tmpl_attr_unspec;
 fr_dict_attr_t const *tmpl_attr_unspec;
 
 static fr_dict_attr_autoload_t tmpl_dict_attr[] = {
