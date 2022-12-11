@@ -1434,6 +1434,7 @@ static char const *darwin_dynamic_link_function(char const *version_info)
 static void add_dotlibs(char *buffer)
 {
 	char *name = strrchr(buffer, '/');
+	size_t len;
 
 	if (!name) {
 		if (!buffer[0]) {
@@ -1444,8 +1445,12 @@ static void add_dotlibs(char *buffer)
 	} else {
 		name++;
 	}
-	memmove(name + 6, name, strlen(name) + 1);
+
+	len = strlen(name);
+	memmove(name + 6, name, len);
+	len += 6;
 	memcpy(name, ".libs/", 6);
+	buffer[len] = '\0';
 }
 
 static char *gen_library_name(char const *name, enum lib_type genlib)
@@ -2038,7 +2043,6 @@ static int parse_input_file_name(char const *arg, command_t *cmd)
 			 */
 			if (target->add_minus_l) {
 				if (libtype == TYPE_DYNAMIC_LIB) {
-					/* coverity[string_null] */
 					add_minus_l(cmd->shared_opts.dependencies, newarg);
 				} else if ((cmd->output == OUT_LIB) && (libtype == TYPE_STATIC_LIB)) {
 					explode_static_lib(cmd, newarg);
