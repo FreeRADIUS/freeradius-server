@@ -471,7 +471,6 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 		return -1;
 	}
 	key_len = (size_t)slen;
-	/* coverity[uninit_use_in_call] */
 	key = talloc_bstrndup(pool, key_buf, key_len);
 	if (!key) return -1;
 
