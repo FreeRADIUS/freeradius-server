@@ -54,7 +54,7 @@ jobs:
       uses: vmactions/freebsd-vm@v0.3.0
       with:
         usesh: true
-        sync: rsync
+        sync: sshfs
         copyback: false
         mem: 4096
         envs: 'HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG'
