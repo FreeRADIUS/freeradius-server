@@ -27,14 +27,19 @@ RCSIDH(lsan_h, "$Id$")
 extern "C" {
 #endif
 
-#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
-#  include <sanitizer/lsan_interface.h>
-#endif
+/*
+ *  clangd doesn't inherit all the implicit includes of clang
+ */
+#ifndef __clangd__
+#  ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+#    include <sanitizer/lsan_interface.h>
+#  endif
 
-#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
-#  define LSAN_DISABLE(_x) __lsan_disable(); _x; __lsan_enable()
-#else
-#  define LSAN_DISABLE(_x) _x
+#  ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+#    define LSAN_DISABLE(_x) __lsan_disable(); _x; __lsan_enable()
+#  else
+#    define LSAN_DISABLE(_x) _x
+#  endif
 #endif
 
 #ifdef __cplusplus

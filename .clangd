@@ -23,7 +23,8 @@ Diagnostics:
 CompileFlags:
   # macos: non-system clangd doesn't seem to include /usr/local/include in the default path
   Add: [
-      "-I/usr/local/include"
+      "-I/usr/local/include",
+      "-D__clangd__"
   ]
   # macos: flags that come from xcrun that brewd clangd doesn't understand
   Remove: [
