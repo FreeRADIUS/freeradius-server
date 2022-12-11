@@ -112,13 +112,10 @@ static void test_fr_pair_list_afrom_str(void)
 	fr_pair_list_free(&list);
 }
 
-FILE *open_buffer_as_file(char const *buffer, size_t buffer_len);
-FILE *open_buffer_as_file(char const *buffer, size_t buffer_len)
+static FILE *open_buffer_as_file(uint8_t const *buffer, size_t buffer_len)
 {
 	FILE *fp;
-	char *our_buffer;
-
-	memcpy(&our_buffer, &buffer, sizeof(buffer));
+	uint8_t *our_buffer = UNCONST(uint8_t *, buffer);
 
 	TEST_CHECK((fp = fmemopen(our_buffer, buffer_len, "r")) != NULL);
 
@@ -132,8 +129,7 @@ static void test_fr_pair_list_afrom_file(void)
 	fr_pair_t      *vp;
 	fr_pair_list_t list;
 	char const     *buffer = "Test-Uint32-0 = 123\nTest-String-0 = \"Testing123\"\n";
-	/* coverity[alloc_strlen] */
-	FILE           *fp = open_buffer_as_file(buffer, strlen(buffer));
+	FILE           *fp = open_buffer_as_file((uint8_t const *)buffer, strlen(buffer));
 	bool           pfiledone;
 
 	fr_pair_list_init(&list);
@@ -171,7 +167,7 @@ static void test_fr_pair_list_move_op(void)
 	bool           pfiledone;
 	char const     *fake_file = "Test-Uint32-0 = 123\nTest-String-0 = \"Testing123\"\n";
 	/* coverity[alloc_strlen] */
-	FILE           *fp = open_buffer_as_file(fake_file, strlen(fake_file));
+	FILE           *fp = open_buffer_as_file((uint8_t const *)fake_file, strlen(fake_file));
 
 	fr_pair_list_init(&old_list);
 	fr_pair_list_init(&new_list);
