@@ -51,10 +51,10 @@ jobs:
         key: hostapd-freebsd-${{ env.HOSTAPD_GIT_TAG }}-v4
 
     - name: Test using a FreeBSD VirtualBox VM
-      uses: vmactions/freebsd-vm@v0.3.0
+      uses: vmactions/freebsd-vm@0e75f75eeeb07540cb785035b0a307b487ee3aaf
       with:
         usesh: true
-        sync: sshfs
+        sync: rsync
         copyback: false
         mem: 4096
         envs: 'HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG'
