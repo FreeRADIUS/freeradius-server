@@ -591,9 +591,15 @@ static void ad_have_feature(char const *symbol)
 	def = malloc(5 + sizeof(ad_define_t) + len + 2 + 1);
 	if (!def) return;
 
-	memcpy(def->name, "HAVE_", 5);
-	memcpy(def->name + 5, symbol, len);
-	memcpy(def->name + 5 + len, "=1", 3);
+	p = def->name;
+	memcpy(p, "HAVE_", 5);
+	p += 5;
+	memcpy(p, symbol, len);
+	p += len;
+	memcpy(p, "=1", 2);
+	p += 2;
+
+	*p = '\0';	/* gets strcmp'd later */
 
 	for (p = def->name + 5; *p != '\0'; p++) {
 		if (islower((int) *p)) {
@@ -615,7 +621,6 @@ static void ad_have_feature(char const *symbol)
 	for (last = &ad_define_head; *last != NULL; last = &(*last)->next) {
 		if (def->name[5] > (*last)->name[5]) continue; /* avoid strcmp() for the common case */
 
-		/* coverity[string_null] */
 		if (strcmp(def->name + 5, (*last)->name + 5) > 0) continue;
 		break;
 	}
