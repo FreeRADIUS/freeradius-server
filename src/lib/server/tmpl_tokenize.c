@@ -4570,7 +4570,7 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 	case TMPL_TYPE_UNINITIALISED:
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_MAX:
-		fr_sbuff_terminate(&out);
+		fr_sbuff_terminate(out);
 		break;
 
 	/*
@@ -4596,7 +4596,7 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 		/*
 		 *	Ensure we do something sane for non-debug builds
 		 */
-		fr_sbuff_terminate(&out);
+		fr_sbuff_terminate(out);
 		return 0;
 	}
 
