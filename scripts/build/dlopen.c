@@ -1083,10 +1083,12 @@ static char *run_cmd(char const *cmd, char *filename)
 {
 	size_t len1, len2;
 	char *str, *result;
-	size_t buflen = 8 + len1 + 1 + len2 + 2 + len2 + 7 + len2 + 15;
+	size_t buflen;
 
 	len1 = strlen(cmd);
 	len2 = strlen(filename);
+
+	buflen = 8 + len1 + 1 + len2 + 2 + len2 + 7 + len2 + 15;
 
 	/*
 	 *	This is a lot more CPU time than running fork / exec /
