@@ -1450,7 +1450,7 @@ static void add_dotlibs(char *buffer)
 	memmove(name + 6, name, len);
 	len += 6;
 	memcpy(name, ".libs/", 6);
-	buffer[len] = '\0';
+	name[len] = '\0';
 }
 
 static char *gen_library_name(char const *name, enum lib_type genlib)
