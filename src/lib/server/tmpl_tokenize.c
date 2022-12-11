@@ -2227,7 +2227,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		if (tmpl_attr_tail_is_normal(vpt) && (tmpl_attr_tail_da(vpt)->type == tmpl_rules_cast(vpt))) {
 			vpt->rules.cast = FR_TYPE_NULL;
 		}
-		
+
 		/*
 		 *	Ensure that the list is set correctly, so that
 		 *	the returned vpt just doesn't just match the
@@ -4570,6 +4570,7 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 	case TMPL_TYPE_UNINITIALISED:
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_MAX:
+		fr_sbuff_terminate(&out);
 		break;
 
 	/*
@@ -4590,9 +4591,13 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 			break;
 		}
 
-		fr_assert_fail("Can't print invalid tmpl type %s",
-			       tmpl_type_to_str(vpt->type));
-		break;
+		fr_assert_fail("Can't print invalid tmpl type %s", tmpl_type_to_str(vpt->type));
+
+		/*
+		 *	Ensure we do something sane for non-debug builds
+		 */
+		fr_sbuff_terminate(&out);
+		return 0;
 	}
 
 	FR_SBUFF_SET_RETURN(out, &our_out);
