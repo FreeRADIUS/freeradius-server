@@ -2709,7 +2709,8 @@ static int run_mode(command_t *cmd)
 		break;
 	case MODE_EXECUTE:
 	{
-		char *l, libpath[PATH_MAX];
+		char libpath[PATH_MAX];
+		char *p = libpath, *end = p + (sizeof(libpath) - 1);
 
 		if (!cmd->arglist->num) {
 			ERROR("No command to execute.\n");
@@ -2721,15 +2722,18 @@ static int run_mode(command_t *cmd)
 		/*
 		 *	jlibtool is in $(BUILD_DIR)/make/jlibtool
 		 */
-		/* coverity[fixed_size_dest] */
-		strcpy(libpath, program);
+		strncpy(p, program, end - p);
+		*end = '\0';
 
 		/*
 		 *	Libraries are relative to jlibtool, in
 		 *	$(BUILD_DIR)/lib/local/.libs/
 		 */
-		l = strstr(libpath, "/make");
-		if (l) strcpy(l, "/lib/local/.libs");
+		p = strstr(libpath, "/make");
+		if (p) {
+			strncpy(p, "/lib/local/.libs", end - p);
+			*end = '\0';
+		}
 
 		setenv(target->ld_library_path, libpath, 1);
 		setenv(target->ld_library_path_local, libpath, 1);
