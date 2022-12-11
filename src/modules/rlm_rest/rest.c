@@ -384,8 +384,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		RDEBUG2("Encoding attribute \"%s\"", vp->da->name);
 
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
-			/* coverity[alloc_strlen] */
-			escaped = curl_escape(vp->da->name, strlen(vp->da->name));
+			escaped = curl_escape(vp->da->name, 0);
 			if (!escaped) {
 				REDEBUG("Failed escaping string \"%s\"", vp->da->name);
 				return 0;
