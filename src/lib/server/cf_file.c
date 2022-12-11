@@ -1285,6 +1285,169 @@ static ssize_t fr_skip_xlat(char const *start, char const *end)
 	return -(p - start);
 }
 
+/**  Skip a conditional expression.
+ *
+ *  This is a simple "peek ahead" parser which tries to not be wrong.  It may accept
+ *  some things which will later parse as invalid (e.g. unknown attributes, etc.)
+ *  But it also rejects all malformed expressions.
+ *
+ *  It's used as a quick hack because the full parser isn't always available.
+ *
+ *  @param[in] start	start of the condition.
+ *  @param[in] end	end of the string (or NULL for zero-terminated strings)
+ *  @param[in] expect_section only for configuration file reader
+ *  @param[out] eol	did the parse error happen at eol?
+ *  @return
+ *	>0 length of the string which was parsed.  *eol is false.
+ *	<=0 on error, *eol may be set.
+ */
+static ssize_t fr_skip_condition(char const *start, char const *end, bool expect_section, bool *eol)
+{
+	char const *p = start;
+	bool was_regex = false;
+	int depth = 0;
+	ssize_t slen;
+
+	if (eol) *eol = false;
+
+	/*
+	 *	Keep parsing the condition until we hit EOS or EOL.
+	 */
+	while ((end && (p < end)) || *p) {
+		if (isspace((int) *p)) {
+			p++;
+			continue;
+		}
+
+		/*
+		 *	In the configuration files, conditions end with ") {" or just "{"
+		 */
+		if (expect_section && (depth == 0) && (*p == '{')) {
+			return p - start;
+		}
+
+		/*
+		 *	"recurse" to get more conditions.
+		 */
+		if (*p == '(') {
+			p++;
+			depth++;
+			was_regex = false;
+			continue;
+		}
+		
+		if (*p == ')') {
+			if (!depth) {
+				fr_strerror_const("Too many ')'");
+				return -(p - start);
+			}
+
+			p++;
+			depth--;
+			was_regex = false;
+			continue;
+		}
+
+		/*
+		 *	Parse xlats.  They cannot span EOL.
+		 */
+		if ((*p == '$') || (*p == '%')) {
+			if (end && ((p + 2) >= end)) goto fail;
+			
+			if ((p[1] == '{') || ((p[0] == '$') && (p[1] == '('))) {
+				slen = fr_skip_xlat(p, end);
+
+			check:
+				if (slen <= 0) return -(p - start) + slen;
+
+				p += slen;
+				continue;
+			}
+
+			/*
+			 *	Bare $ or %, just leave it alone.
+			 */
+			p++;
+			was_regex = false;
+			continue;
+		}
+
+		/*
+		 *	Parse quoted strings.  They cannot span EOL.
+		 */
+		if ((*p == '"') || (*p == '\'') || (*p == '`') || (was_regex && (*p == '/'))) {
+			was_regex = false;
+
+			slen = fr_skip_string((char const *) p, end);
+			goto check;
+		}
+
+		/*
+		 *	192.168/16 is a netmask.  So we only
+		 *	allow regex after a regex operator.
+		 *
+		 *	This isn't perfect, but is good enough
+		 *	for most purposes.
+		 */
+		if ((p[0] == '=') || (p[0] == '!')) {
+			if (end && ((p + 2) >= end)) goto fail;
+
+			if (p[1] == '~') {
+				was_regex = true;
+				p += 2;
+				continue;
+			}
+
+			/*
+			 *	Some other '==' or '!=', just leave it alone.
+			 */
+			p++;
+			was_regex = false;
+			continue;
+		}
+
+		/*
+		 *	Any control characters (other than \t) cause an error.
+		 */
+		if (*p < ' ') break;
+
+		was_regex = false;
+
+		/*
+		 *	Normal characters just get skipped.
+		 */
+		if (*p != '\\') {
+			p++;
+			continue;
+		}
+
+		/*
+		 *	Backslashes at EOL are ignored.
+		 */
+		if (end && ((p + 2) >= end)) break;
+
+		/*
+		 *	Escapes here are only one-character escapes.
+		 */
+		if (p[1] < ' ') break;
+		p += 2;
+	}
+
+	/*
+	 *	We're not expecting a '{' section header, the
+	 *	condition is done when it reaches end of string, or CR LF.
+	 */
+	if (!expect_section && (depth == 0) && ((end && (p == end)) || (*p < ' '))) return p - start;
+		
+	/*
+	 *	Unexpected end of condition.
+	 */
+	if (eol) *eol = true;
+fail:
+	fr_strerror_const("Unexpected end of condition");
+	return -(p - start);
+}
+
 static CONF_ITEM *process_if(cf_stack_t *stack)
 {
 	ssize_t		slen = 0;
@@ -1339,146 +1502,65 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *
 	 */
 	while (true) {
-		bool found = false;
-		bool was_regex = false;
-		int depth = 0;
+		int rcode;
+		bool eol;
 
-		p = (uint8_t const *) ptr;
+		/*
+		 *	Try to parse the condition.  We can have a parse success, or a parse failure.
+		 */
+		slen = fr_skip_condition(ptr, NULL, true, &eol);
 
-		while (*p >= ' ') {
-			while (isspace((int) *p)) p++;
+		/*
+		 *	Parse success means we stop reading more data.
+		 */
+		if (slen > 0) break;
 
-			/*
-			 *	Conditions end with ") {"
-			 */
-			if (depth == 0) {
-				if (*p == '{') {
-					found = true;
-					break;
-				}
-			}
+		/*
+		 *	Parse failures not at EOL are real errors.
+		 */
+		if (!eol) goto error;
 
-			if (*p == '(') {
-				depth++;
+		/*
+		 *	Parse failures at EOL means that we read more data.
+		 */
+		p = (uint8_t const *) ptr + (-slen);
+
+		/*
+		 *	Auto-continue across CR LF until we reach the
+		 *	end of the string.  We mash
+		 */
+		if (*p && (*p < ' ')) {
+			while ((*p == '\r') || (*p == '\n')) {
+				char *q;
+
+				q = UNCONST(char *, p);
+				*q = ' ';
 				p++;
 				continue;
 			}
 
-			if (*p == ')') {
-				p++;
-				if (!depth) {
-					cf_log_err(cs, "Unexpected ')'");
-					talloc_free(cs);
-					return NULL;
-				}
-				depth--;
-				continue;
-			}
-
-			if (*p == '\\') {
-				if (!p[1]) {
-					cf_log_err(cs, "Unexpected escape at end of line");
-					talloc_free(cs);
-					return NULL;
-				}
-
-				if (p[1] < ' ') goto crlf;
-
-				p += 2;
-				continue;
-			}
-
 			/*
-			 *	Bare words of ${..} or %{...}
+			 *	Hopefully the next line is already in
+			 *	the buffer, and we don't have to read
+			 *	more data.
 			 */
-			if (((p[0] == '$') || (p[0] == '%')) && (p[1] == '{')) {
-				ssize_t my_slen;
-
-				my_slen = fr_skip_xlat((char const *) p, NULL);
-				if (my_slen <= 0) {
-					cf_log_err(cs, "Failed parsing xlat in condition - %s", fr_strerror());
-					talloc_free(cs);
-					return NULL;
-				}
-
-				p += my_slen;
-				continue;
-			}
-
-			/*
-			 *	We have a quoted string, ignore '(' and ')' within it.
-			 */
-			if ((*p == '"') || (*p == '\'') || (*p == '`') || (was_regex && (*p == '/'))) {
-				ssize_t my_slen;
-
-				was_regex = false;
-
-				my_slen = fr_skip_string((char const *) p, NULL);
-				if (my_slen <= 0) {
-					cf_log_err(cs, "Failed parsing string in condition - %s", fr_strerror());
-					talloc_free(cs);
-					return NULL;
-				}
-
-				p += my_slen;
-				continue;
-			}
-
-			/*
-			 *	192.168/16 is a netmask.  So we only
-			 *	allow regex after a regex operator.
-			 *
-			 *	This isn't perfect, but is good enough
-			 *	for most purposes.
-			 */
-			if (((p[0] == '=') || (p[0] == '!')) && (p[1] == '~')) {
-				was_regex = true;
-				p += 2;
-				continue;
-			}
-
-			if (isspace((int) *p)) {
-				p++;
-				continue;
-			}
-
-			was_regex = false;
-			p++;
-		} /* loop over string */
-
-		if (found) {
-			slen = p - (uint8_t const *) ptr;
-			break;
+			continue;
 		}
 
 		/*
-		 *	Auto-continue across CR LF
+		 *	Anything other than EOL is a problem at this point.
 		 */
-		if (*p && (*p < ' ')) {
-			char *q;
-
-		crlf:
-			q = UNCONST(char *, p);
-			*q = ' ';
-			p++;
-			continue;
+		if (*p) {
+			fr_strerror_const("Unexpected text");
+			goto error;
 		}
 
 		/*
 		 *	We hit EOL, so the parse error is really "read more data".
 		 */
-		if (!*p) {
-			int rcode;
-
-			stack->fill = UNCONST(char *, p);
-			rcode = cf_file_fill(stack);
-			if (rcode < 0) return NULL;
-			continue;
-		}
-
-		cf_log_err(cs, "Unknown error parsing condition at %s", p);
-		talloc_free(cs);
-		return NULL;
+		stack->fill = UNCONST(char *, p);
+		rcode = cf_file_fill(stack);
+		if (rcode < 0) return NULL;
 	}
 
 	fr_assert((size_t) slen < (stack->bufsize - 1));
@@ -1523,6 +1605,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 				ptr = buff[3];
 				slen = my_slen;
 
+			error:
 				fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
 
 				cf_log_err(cs, "Parse error in condition");
