@@ -28,6 +28,7 @@
 extern "C" {
 #endif
 
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/unlang/action.h>
 

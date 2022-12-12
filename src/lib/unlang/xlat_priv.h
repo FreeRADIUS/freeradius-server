@@ -30,6 +30,8 @@
 extern "C" {
 #endif
 
+#include <freeradius-devel/unlang/xlat_ctx.h>
+#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/io/pair.h>
 
 #ifdef DEBUG_XLAT

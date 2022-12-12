@@ -23,15 +23,18 @@
  * @copyright 2021 Network RADIUS SARL (legal@networkradius.com)
  */
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+
 #include <freeradius-devel/radius/radius.h>
 
+#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/state.h>
+
+#include <freeradius-devel/unlang/module.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/server/state.h>
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;

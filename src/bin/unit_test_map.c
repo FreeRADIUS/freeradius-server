@@ -22,12 +22,12 @@
 
 RCSID("$Id$")
 
-
 #include <freeradius-devel/server/cf_file.h>
-#include <freeradius-devel/util/atexit.h>
-#include <freeradius-devel/util/file.h>
+#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/util/atexit.h>
+#include <freeradius-devel/util/file.h>
 
 #include <freeradius-devel/util/conf.h>
 

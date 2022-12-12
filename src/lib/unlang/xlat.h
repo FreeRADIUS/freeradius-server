@@ -51,9 +51,13 @@ typedef enum {
 typedef struct xlat_inst xlat_inst_t;
 typedef struct xlat_thread_inst xlat_thread_inst_t;
 
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/request.h>
+
+typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t outlen, char const *in, void *arg);
+
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/signal.h>
+#include <freeradius-devel/server/tmpl.h>
 
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/pair.h>
@@ -264,8 +268,6 @@ typedef int (*xlat_detach_t)(xlat_inst_ctx_t const *xctx);
  *	- -1 if detach failed.
  */
 typedef int (*xlat_thread_detach_t)(xlat_thread_inst_ctx_t const *xctx);
-
-typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t outlen, char const *in, void *arg);
 
 /** Set the next argument to the next item in the input list or NULL
  *

@@ -239,7 +239,7 @@ match (&Session-Timeout == '10')
 #  @todo - yuck.  Suppress full path?
 #
 xlat_purify &Event-Timestamp == "January 1, 2012 %{User-Name}"
-match (&Event-Timestamp == %(cast:string "January 1, 2012 %{Request[0].User-Name}"))
+match (&Event-Timestamp == %(cast:string "January 1, 2012 %{request[0].User-Name}"))
 
 # This one is NOT an expansion, so it's parsed into normal form
 xlat_purify &Event-Timestamp == 'January 1 2012'
@@ -278,7 +278,7 @@ match NULL
 
 # @todo - yuck, don't print full path?
 xlat_purify <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
-match (127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{Request[0].User-Name}'})
+match (127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{request[0].User-Name}'})
 
 xlat_purify <ether> 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
@@ -522,7 +522,7 @@ match (&User-Name[n] == "bob")
 #match &Foo-Bar
 
 xlat_purify &Acct-Input-Octets > "%{Session-Timeout}"
-match (&Acct-Input-Octets > %(cast:string "%{Request[0].Session-Timeout}"))
+match (&Acct-Input-Octets > %(cast:string "%{request[0].Session-Timeout}"))
 
 xlat_purify &Acct-Input-Octets > &Session-Timeout
 match (&Acct-Input-Octets > &Session-Timeout)

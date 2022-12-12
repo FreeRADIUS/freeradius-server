@@ -24,14 +24,15 @@
  * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 
+
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/master.h>
+#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
+#include <freeradius-devel/tacacs/tacacs.h>
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/util/debug.h>
-
-#include <freeradius-devel/tacacs/tacacs.h>
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_tacacs;

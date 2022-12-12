@@ -255,6 +255,7 @@ typedef struct tmpl_res_rules_s tmpl_res_rules_t;
 typedef struct tmpl_s tmpl_t;
 
 #include <freeradius-devel/unlang/xlat.h>
+#include <freeradius-devel/unlang/xlat_ctx.h>
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>

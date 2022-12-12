@@ -30,9 +30,10 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/paircmp.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/unlang/xlat.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>

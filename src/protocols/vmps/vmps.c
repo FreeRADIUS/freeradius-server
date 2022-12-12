@@ -25,10 +25,11 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/util/dbuff.h>
-#include <freeradius-devel/util/udp.h>
-#include <freeradius-devel/protocol/vmps/vmps.h>
 #include <freeradius-devel/io/test_point.h>
+#include <freeradius-devel/protocol/vmps/vmps.h>
+#include <freeradius-devel/util/dbuff.h>
+#include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/udp.h>
 
 #include "vmps.h"
 #include "attrs.h"

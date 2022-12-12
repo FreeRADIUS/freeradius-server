@@ -43,7 +43,6 @@ typedef struct rad_client RADCLIENT;
 #endif
 
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/signal.h>
 #include <freeradius-devel/util/event.h>

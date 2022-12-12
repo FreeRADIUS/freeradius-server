@@ -1236,7 +1236,7 @@ static int expanded_lhs_attribute(request_t *request, unlang_frame_state_edit_t 
  *		foo := bar		LHS foo
  *		foo = { bar = baz }	LHS bar
  *		foo = { 1, 2, 3, 4 }	LHS 1, 2, etc.
- *		
+ *
  */
 static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {

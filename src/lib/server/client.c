@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/client.h>
+#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/unlang/call.h>
