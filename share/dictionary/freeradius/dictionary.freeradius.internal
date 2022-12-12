@@ -46,10 +46,10 @@ ATTRIBUTE	Next-Shortest-Prefix			502	bool
 #		Attribute lists
 #
 ATTRIBUTE	Root					1	group
-ATTRIBUTE	Request					2	group
-ATTRIBUTE	Reply					3	group
-ATTRIBUTE	Control					4	group
-ATTRIBUTE	Session-State				5	group
+ATTRIBUTE	request					2	group
+ATTRIBUTE	reply					3	group
+ATTRIBUTE	control					4	group
+ATTRIBUTE	session-State				5	group
 
 #
 #	Range:	11 - 19
