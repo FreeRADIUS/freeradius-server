@@ -307,7 +307,7 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 
 		if (!original && (vp->da == attr_sequence_number)) {
 			fr_dbuff_set(&m, fr_dbuff_current(&hdr) + 4);
-			fr_dbuff_in(&m, vp->vp_uint32);
+			FR_DBUFF_IN_RETURN(&m, vp->vp_uint32);
 			fr_dcursor_next(cursor);
 			continue;
 		}
@@ -333,7 +333,7 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		slen = fr_value_box_to_network(&work_dbuff, &vp->data);
 		if (slen < 0) return slen;
 
-		fr_dbuff_in(&m, (uint16_t) slen);
+		FR_DBUFF_IN_RETURN(&m, (uint16_t) slen);
 
 		data_count++;
 
@@ -344,7 +344,7 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 	 *	Update the Data Count
 	 */
 	fr_dbuff_set(&m, fr_dbuff_current(&hdr) + 3);
-	fr_dbuff_in(&m, data_count);
+	FR_DBUFF_IN_RETURN(&m, data_count);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
