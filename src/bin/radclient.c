@@ -78,7 +78,7 @@ static int ipproto = IPPROTO_UDP;
 
 static bool do_coa = false;
 static int coafd;
-static uint16_t coa_port = 3799;
+static uint16_t coa_port = FR_COA_UDP_PORT;
 static fr_rb_tree_t *coa_tree = NULL;
 
 static fr_packet_list_t *packet_list = NULL;
@@ -170,6 +170,7 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "  -h                     Print usage help information.\n");
 	fprintf(stderr, "  -i <id>                Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, "  -n <num>               Send N requests/s\n");
+	fprintf(stderr, "  -o <port>              Set CoA port (defaults to 3799)\n");
 	fprintf(stderr, "  -p <num>               Send 'num' packets from a file in parallel.\n");
 	fprintf(stderr, "  -P <proto>             Use proto (tcp or udp) for transport.\n");
 	fprintf(stderr, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");
@@ -1412,7 +1413,6 @@ int main(int argc, char **argv)
 #endif
 	fr_dlist_head_t	filenames;
 	rc_request_t	*request;
-	rc_file_pair_t	*coa_files = NULL;
 
 	/*
 	 *	It's easier having two sets of flags to set the
@@ -1568,38 +1568,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'o':
-			if (!coa_files) {
-				coa_files = fr_dlist_head(&filenames);
-			} else {
-				coa_files = fr_dlist_next(&filenames, coa_files);
-			}
-
-			if (!coa_files) {
-				ERROR("There are fewer client filenames than CoA filenames");
-				fr_exit_now(1);
-			}
-
-			if (coa_files->coa_reply) {
-				ERROR("coa_reply was already set");
-				fr_exit_now(1);
-			}
-
-			do_coa = true;
-
-			{
-				char const *p;
-
-				p = strchr(optarg, ':');
-				if (!p) p = strchr(optarg, ',');
-				if (p) {
-					coa_files->coa_reply = talloc_strndup(coa_files, optarg, p - optarg);
-					if (!coa_files->coa_reply) goto oom;
-					coa_files->coa_filter = p + 1;
-				} else {
-					coa_files->coa_reply = optarg;
-					coa_files->coa_filter = NULL;
-				}
-			}
+			coa_port = atoi(optarg);
 			break;
 
 			/*
