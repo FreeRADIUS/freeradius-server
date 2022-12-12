@@ -41,6 +41,11 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+/** Placeholder attribute for unspecified attribute refs
+ *
+ */
+extern fr_dict_attr_t const *tmpl_attr_unspec;
+
 /** Define a global variable for specifying a default request reference
  *
  * @param[in] _name	what the global variable should be called.

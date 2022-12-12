@@ -524,6 +524,7 @@ static inline bool ar_is_raw(tmpl_attr_t const *ar)
 	}
 
 	fr_assert_fail("ar type (%i) is invalid", (int)ar->ar_type);
+	return false;
 }
 
 bool ar_is_list_attr(tmpl_attr_t const *ar);
@@ -1100,11 +1101,6 @@ extern FR_DLIST_HEAD(tmpl_request_list) tmpl_request_def_outer;
  * Passed as request_def in tmpl_attr_rules_t.
  */
 extern FR_DLIST_HEAD(tmpl_request_list) tmpl_request_def_parent;
-
-/** Placeholder attribute for unspecified attribute refs
- *
- */
-extern fr_dict_attr_t const *tmpl_attr_unspec;
 
 int			tmpl_request_ptr(request_t **request, FR_DLIST_HEAD(tmpl_request_list) const *rql) CC_HINT(nonnull);
 
