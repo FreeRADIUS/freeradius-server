@@ -3833,11 +3833,13 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (allow_purify) {
-		if (request_global_init() < 0) {
-			fr_perror("unit_test_attribute");
-			EXIT_WITH_FAILURE;
-		}
+	/*
+	 *	Always needed so we can load the list attributes
+	 *	otherwise the tmpl_tokenize code fails.
+	 */
+	if (request_global_init() < 0) {
+		fr_perror("unit_test_attribute");
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -3975,7 +3977,7 @@ cleanup:
 
 	unlang_free_global();
 
-	if (allow_purify) request_global_free();
+	request_global_free();
 
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_attribute");
