@@ -578,7 +578,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, request_t *request, fr_r
 	case 2:	/* EVALSHA with wait */
 		if (ippool_wait_check(request, wait_num, replies[1]) < 0) goto error;
 		fr_redis_reply_free(&replies[1]);	/* Free the wait response */
-		break;
+		FALL_THROUGH;
 
 	case 1:	/* EVALSHA */
 		*out = replies[0];
