@@ -538,7 +538,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 	/*
 	 *	Encode it, if required.
 	 */
-	if (size) {
+	if (send_reply) {
 		ssize_t slen = 0;
 		fr_listen_t const *listen = request->async->listen;
 
