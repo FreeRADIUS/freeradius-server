@@ -381,6 +381,12 @@ static void worker_stop_request(request_t **request_p)
 	 *	the internal/external callbacs.
 	 */
 	unlang_interpret_signal(*request_p, FR_SIGNAL_CANCEL);
+
+	/*
+	 *	Cancel just signals each frame.  We need to tell
+	 *	everything else that this request is dead.
+	 */
+	(*request_p)->master_state == REQUEST_STOP_PROCESSING'
 	*request_p = NULL;
 }
 
