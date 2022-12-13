@@ -121,7 +121,7 @@ struct fr_worker_s {
 };
 
 static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now);
-static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t size, fr_time_t now);
+static void worker_send_reply(fr_worker_t *worker, request_t *request, bool do_not_respond, fr_time_t now);
 static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx);
 static void worker_max_request_timer(fr_worker_t *worker);
 
@@ -490,14 +490,15 @@ static void worker_request_time_tracking_end(fr_worker_t *worker, request_t *req
  *
  * @param[in] worker		This worker.
  * @param[in] request		we're sending a reply for.
- * @param[in] size		The maximum size of the reply data
+ * @param[in] send_reply	whether the network side sends a reply
  * @param[in] now		The current time
  */
-static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t size, fr_time_t now)
+static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send_reply, fr_time_t now)
 {
 	fr_channel_data_t *reply;
 	fr_channel_t *ch;
 	fr_message_set_t *ms;
+	size_t size = 1;
 
 	REQUEST_VERIFY(request);
 
@@ -506,7 +507,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t si
 	 */
 	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
 
-	if (!size) {
+	if (send_reply) {
 		size = request->async->listen->app_io->default_reply_size;
 		if (!size) size = request->async->listen->app_io->default_message_size;
 	}
@@ -1001,7 +1002,7 @@ static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t
 		return;
 	}
 
-	worker_send_reply(worker, request, request->master_state == REQUEST_STOP_PROCESSING ? 1 : 0, now);
+	worker_send_reply(worker, request, request->master_state != REQUEST_STOP_PROCESSING, now);
 	talloc_free(request);
 }
 
