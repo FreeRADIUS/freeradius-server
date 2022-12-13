@@ -1652,6 +1652,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *	reference.
 		 */
 		if (da) {
+			fr_assert(our_parent != NULL);
+
 			MEM(ar = talloc(ctx, tmpl_attr_t));
 			*ar = (tmpl_attr_t){
 				.ar_num = NUM_UNSPEC,
@@ -1685,6 +1687,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		fr_sbuff_set(name, &m_s);
 		goto error;
 	}
+
+	fr_assert(our_parent != NULL);
 
 	/*
 	 *	See if the ref begins with an unsigned integer
@@ -1750,7 +1754,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		/*
 		 *	Inherit the internal flag from our parent.
 		 */
-		da_unknown->flags.internal = (parent == NULL) || parent->flags.internal;
+		da_unknown->flags.internal = our_parent->flags.internal;
 
 		*ar = (tmpl_attr_t){
 			.ar_num = NUM_UNSPEC,
