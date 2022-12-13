@@ -1750,7 +1750,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		/*
 		 *	Inherit the internal flag from our parent.
 		 */
-		da_unknown->flags.internal = (parent == NULL) | parent->flags.internal;
+		da_unknown->flags.internal = (parent == NULL) || parent->flags.internal;
 
 		*ar = (tmpl_attr_t){
 			.ar_num = NUM_UNSPEC,
