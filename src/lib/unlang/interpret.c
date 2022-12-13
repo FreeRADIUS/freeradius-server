@@ -996,6 +996,7 @@ void unlang_interpret_request_stop(request_t *request)
 	intp = stack->intp;
 	intp->funcs.stop(request, intp->uctx);
 	request->log.unlang_indent = 0;			/* nothing unwinds the indentation stack */
+	request->master_state = REQUEST_STOP_PROCESSING;
 }
 
 static inline CC_HINT(always_inline)

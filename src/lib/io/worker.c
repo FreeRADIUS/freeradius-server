@@ -381,12 +381,6 @@ static void worker_stop_request(request_t **request_p)
 	 *	the internal/external callbacs.
 	 */
 	unlang_interpret_signal(*request_p, FR_SIGNAL_CANCEL);
-
-	/*
-	 *	Cancel just signals each frame.  We need to tell
-	 *	everything else that this request is dead.
-	 */
-	(*request_p)->master_state == REQUEST_STOP_PROCESSING'
 	*request_p = NULL;
 }
 
@@ -1101,24 +1095,11 @@ static void _worker_request_stop(request_t *request, void *uctx)
 	}
 
 	/*
-	 *	Let everyone know the request is being
-	 *	stopped.
-	 */
-	request->master_state = REQUEST_STOP_PROCESSING;
-
-	/*
 	 *	If the request is in the runnable queue
 	 *	yank it back out, so it's not "runnable"
 	 *	when we call request done.
 	 */
 	if (fr_heap_entry_inserted(request->runnable_id)) fr_heap_extract(&worker->runnable, request);
-
-	/*
-	 *	The interpreter doesn't currently fix
-	 *	this for us, so we set the indent to 0
-	 *	to avoid nasty asserts later.
-	 */
-	request->log.unlang_indent = 0;
 }
 
 /** Request is now runnable
