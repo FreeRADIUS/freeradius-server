@@ -164,45 +164,55 @@ static int tmpl_to_values(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 	return -1;
 }
 
-static void edit_debug_attr_list(request_t *request, fr_pair_list_t const *list);
+static void edit_debug_attr_list(request_t *request, fr_pair_list_t const *list, map_t const *map);
 
-static void edit_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
+static void edit_debug_attr_vp(request_t *request, fr_pair_t *vp, map_t const *map)
 {
-	switch (vp->da->type) {
-	case FR_TYPE_STRUCTURAL:
-		if (vpt) {
-			RDEBUG2("&%s.%s = {",
-				 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
-				 vp->da->name);
-		} else {
-			RDEBUG2("%s = {", vp->da->name);
-		}
-		RINDENT();
-		edit_debug_attr_list(request, &vp->vp_group);
-		REXDENT();
-		RDEBUG2("}");
-		break;
+	fr_assert(vp != NULL);
 
-	default:
-		if (vpt) {
-			RDEBUG2("&%s.%s %s %pV",
-				fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
-				vp->da->name, fr_tokens[vp->op],
-				&vp->data);
-		} else {
+	if (map) {
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+			RDEBUG2("%s = {", map->lhs->name);
+			RINDENT();
+			edit_debug_attr_list(request, &vp->vp_group, map_list_head(&map->child));
+			REXDENT();
+			RDEBUG2("}");
+			break;
+
+		default:
+			RDEBUG2("%s %s %pV", map->lhs->name, fr_tokens[vp->op], &vp->data);
+			break;
+		}
+	} else {
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+                        RDEBUG2("%s = {", vp->da->name);
+			RINDENT();
+			edit_debug_attr_list(request, &vp->vp_group, NULL);
+			REXDENT();
+			RDEBUG2("}");
+			break;
+
+		default:
 			RDEBUG2("&%s %s %pV", vp->da->name, fr_tokens[vp->op], &vp->data);
+			break;
 		}
 	}
 }
 
-static void edit_debug_attr_list(request_t *request, fr_pair_list_t const *list)
+static void edit_debug_attr_list(request_t *request, fr_pair_list_t const *list, map_t const *map)
 {
 	fr_pair_t *vp;
+	map_t const *child = NULL;
+
+	if (map) child = map_list_head(&map->child);
 
 	for (vp = fr_pair_list_next(list, NULL);
 	     vp != NULL;
 	     vp = fr_pair_list_next(list, vp)) {
-		edit_debug_attr_vp(request, vp, NULL);
+		edit_debug_attr_vp(request, vp, child);
+		if (map) child = map_list_next(&map->child, child);
 	}
 }
 
@@ -416,7 +426,7 @@ apply_list:
 	RDEBUG2("%s %s {", current->lhs.vpt->name, fr_tokens[map->op]);
 	if (fr_debug_lvl >= L_DBG_LVL_2) {
 		RINDENT();
-		edit_debug_attr_list(request, children);
+		edit_debug_attr_list(request, children, map);
 		REXDENT();
 	}
 	RDEBUG2("}");
