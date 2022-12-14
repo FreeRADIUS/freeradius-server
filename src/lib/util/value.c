@@ -1233,8 +1233,7 @@ size_t fr_value_box_network_length(fr_value_box_t const *value)
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
 		if (value->enumv) return value->enumv->flags.length;
-
-		return value->vb_length;
+		FALL_THROUGH;
 
 	default:
 		return network_min_size(value->type);
@@ -1975,7 +1974,7 @@ int fr_value_box_to_key(uint8_t **out, size_t *outlen, fr_value_box_t const *val
 		break;
 
 	case FR_TYPE_INTEGER_EXCEPT_BOOL:
-		if (*outlen < (value->vb_length * 8)) return -1;
+		if (*outlen < (fr_value_box_network_sizes[value->type][1] * 8)) return -1;
 
 		/*
 		 *	Integers are put into network byte order.
@@ -4551,18 +4550,12 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	static fr_sbuff_parse_rules_t	default_rules;
 	fr_sbuff_t			*unescaped = NULL;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
-	ssize_t				ret;
 	char				buffer[256];
 	fr_slen_t			slen;
 
 	if (!rules) rules = &default_rules;
 
 	fr_strerror_clear();
-
-	/*
-	 *	Set size for all fixed length attributes.
-	 */
-	ret = network_max_size(dst_type);
 
 	/*
 	 *	Lookup any names before continuing
@@ -4993,36 +4986,10 @@ parse:
 	 */
 	case FR_TYPE_COMBO_IP_ADDR:
 		if (fr_inet_pton(&dst->vb_ip, buffer, strlen(buffer), AF_UNSPEC, fr_hostname_lookups, true) < 0) return -1;
-		switch (dst->vb_ip.af) {
-		case AF_INET:
-			ret = network_max_size(FR_TYPE_IPV4_ADDR);
-			break;
-
-		case AF_INET6:
-			ret = network_max_size(FR_TYPE_IPV6_ADDR);
-			break;
-
-		default:
-			fr_strerror_printf("Bad address family %i", dst->vb_ip.af);
-			return -1;
-		}
 		break;
 
 	case FR_TYPE_COMBO_IP_PREFIX:
 		if (fr_inet_pton(&dst->vb_ip, buffer, strlen(buffer), AF_UNSPEC, fr_hostname_lookups, true) < 0) return -1;
-		switch (dst->vb_ip.af) {
-		case AF_INET:
-			ret = network_max_size(FR_TYPE_IPV4_PREFIX);
-			break;
-
-		case AF_INET6:
-			ret = network_max_size(FR_TYPE_IPV6_PREFIX);
-			break;
-
-		default:
-			fr_strerror_printf("Bad address family %i", dst->vb_ip.af);
-			return -1;
-		}
 		break;
 
 	default:
@@ -5031,7 +4998,6 @@ parse:
 	}
 
 finish:
-	dst->vb_length = ret;
 	dst->type = dst_type;
 	dst->tainted = tainted;
 
