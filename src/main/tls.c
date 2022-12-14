@@ -396,7 +396,8 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 					     FR_TLS_EX_INDEX_REQUEST);
 	if (request && conf->psk_query) {
 		size_t hex_len;
-		VALUE_PAIR *vp;
+		VALUE_PAIR *vp, **certs;
+		TALLOC_CTX *talloc_ctx;
 		char buffer[2 * PSK_MAX_PSK_LEN + 4]; /* allow for too-long keys */
 
 		/*
@@ -409,6 +410,13 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 
 		vp = pair_make_request("TLS-PSK-Identity", identity, T_OP_SET);
 		if (!vp) return 0;
+
+		certs = (VALUE_PAIR **)SSL_get_ex_data(ssl, fr_tls_ex_index_certs);
+		talloc_ctx = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TALLOC);
+		fr_assert(certs != NULL); /* pointer to sock->certs */
+		fr_assert(talloc_ctx != NULL); /* sock */
+
+		fr_pair_add(certs, fr_pair_copy(talloc_ctx, vp));
 
 		hex_len = radius_xlat(buffer, sizeof(buffer), request, conf->psk_query,
 				      NULL, NULL);
