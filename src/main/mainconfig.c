@@ -501,11 +501,27 @@ static ssize_t xlat_listen_common(REQUEST *request, rad_listen_t *listen,
 		VALUE_PAIR *vp;
 		listen_socket_t *sock = listen->data;
 
+		if (!listen->tls) {
+			RDEBUG("Listener is not using TLS.  TLS attributes are not available");
+			*out = '\0';
+			return 0;
+		}
+
 		for (vp = sock->certs; vp != NULL; vp = vp->next) {
 			if (strcmp(fmt, vp->da->name) == 0) {
 				return vp_prints_value(out, outlen, vp, 0);
 			}
 		}
+
+		RDEBUG("Unknown TLS attribute \"%s\"", fmt);
+		*out = '\0';
+		return 0;
+	}
+#else
+	if (strncmp(fmt, "TLS-", 4) == 0) {
+		RDEBUG("Server is not built with TLS support");
+		*out = '\0';
+		return 0;
 	}
 #endif
 
