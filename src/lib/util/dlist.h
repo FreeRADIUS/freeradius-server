@@ -49,11 +49,17 @@ struct fr_dlist_s {
  * like at which offset the next/prev pointers can be found.
  */
 typedef struct {
-	size_t		offset;		//!< Positive offset from start of structure to #fr_dlist_t.
+	fr_dlist_t	entry;		//!< Struct holding the head and tail of the list.
+					///< First for efficient traversal.
+
+	unsigned int	offset;		//!< Positive offset from start of structure to #fr_dlist_t.
+					///< Yes, this should really be size_t, but we shave 8 bytes
+					///< off each head structure by making it unsigned int.
+
+	unsigned int	num_elements;	//!< Number of elements contained within the dlist.
+
 	char const	*type;		//!< of items contained within the list.  Used for talloc
 					///< validation.
-	fr_dlist_t	entry;		//!< Struct holding the head and tail of the list.
-	unsigned int	num_elements;	//!< Number of elements contained within the dlist.
 } fr_dlist_head_t;
 
 static_assert(sizeof(unsigned int) >= 4, "Unsigned integer too small on this platform");
