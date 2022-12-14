@@ -845,7 +845,7 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		COERCE_B(FR_TYPE_OCTETS, dst->enumv);
 	}
 
-	len = a->length + b->length;
+	len = a->vb_length + b->vb_length;
 
 	switch (op) {
 	case T_ADD:	/* dst = a . b */
@@ -985,7 +985,7 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		COERCE_B(FR_TYPE_STRING, dst->enumv);
 	}
 
-	len = a->length + b->length;
+	len = a->vb_length + b->vb_length;
 
 	switch (op) {
 	case T_ADD:

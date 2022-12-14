@@ -197,7 +197,7 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Maximum space needed for output would be 3 times the input if every
 	 *	char needed escaping
 	 */
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->length * 3, in_vb->length * 3)) {
+	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length * 3, in_vb->vb_length * 3)) {
 		REDEBUG("Failed to allocate buffer for escaped string");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
@@ -206,7 +206,7 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Call the escape function, including the space for the trailing NULL
 	 */
-	len = fr_ldap_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->length * 3 + 1, in_vb->vb_strvalue, NULL);
+	len = fr_ldap_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length * 3 + 1, in_vb->vb_strvalue, NULL);
 
 	/*
 	 *	Trim buffer to fit used space and assign to box
@@ -234,7 +234,7 @@ static xlat_action_t ldap_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Maximum space needed for output will be the same as the input
 	 */
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->length, in_vb->length)) {
+	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length, in_vb->vb_length)) {
 		REDEBUG("Failed to allocate buffer for unescaped string");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
@@ -243,7 +243,7 @@ static xlat_action_t ldap_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Call the unescape function, including the space for the trailing NULL
 	 */
-	len = fr_ldap_unescape_func(request, fr_sbuff_buff(&sbuff), in_vb->length + 1, in_vb->vb_strvalue, NULL);
+	len = fr_ldap_unescape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length + 1, in_vb->vb_strvalue, NULL);
 
 	/*
 	 *	Trim buffer to fit used space and assign to box
@@ -268,7 +268,7 @@ static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	 *	Maximum space needed for output would be 3 times the input if every
 	 *	char needed escaping
 	 */
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->length * 3, vb->length * 3)) {
+	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->vb_length * 3, vb->vb_length * 3)) {
 		fr_strerror_printf_push("Failed to allocate buffer for escaped argument");
 		return -1;
 	}
@@ -276,7 +276,7 @@ static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	/*
 	 *	Call the escape function, including the space for the trailing NULL
 	 */
-	len = fr_ldap_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->length * 3 + 1, vb->vb_strvalue, NULL);
+	len = fr_ldap_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, NULL);
 
 	fr_sbuff_trim_talloc(&sbuff, len);
 	fr_value_box_clear_value(vb);

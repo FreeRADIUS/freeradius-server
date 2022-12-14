@@ -78,7 +78,7 @@ static xlat_action_t escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	as a starting point.  The maximum length would be 12
 	 *	times the original if every character is 4 byte UTF8.
 	 */
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, arg->length * 2, arg->length * 12)) {
+	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, arg->vb_length * 2, arg->vb_length * 12)) {
 	error:
 		RPEDEBUG("Failed to allocated buffer for escaped string");
 		talloc_free(vb);
@@ -139,15 +139,15 @@ static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*vb;
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	if (fr_value_box_bstr_alloc(ctx, &out_p, vb, NULL, arg->length, arg->tainted) < 0) {
+	if (fr_value_box_bstr_alloc(ctx, &out_p, vb, NULL, arg->vb_length, arg->tainted) < 0) {
 		talloc_free(vb);
 		RPEDEBUG("Failed allocating space for unescaped string");
 		return XLAT_ACTION_FAIL;
 	}
-	sbuff = FR_SBUFF_IN(out_p, arg->length);
+	sbuff = FR_SBUFF_IN(out_p, arg->vb_length);
 
 	p = arg->vb_strvalue;
-	end = p + arg->length;
+	end = p + arg->vb_length;
 	while (*p) {
 		if (*p != '=') {
 		next:

@@ -343,13 +343,13 @@ static int uri_part_escape(fr_value_box_t *vb, void *uctx)
 	fr_curl_io_request_t	*randle = talloc_get_type_abort(uctx, fr_curl_io_request_t);
 	request_t		*request = randle->request;
 
-	escaped = curl_easy_escape(randle->candle, vb->vb_strvalue, vb->length);
+	escaped = curl_easy_escape(randle->candle, vb->vb_strvalue, vb->vb_length);
 	if (!escaped) return -1;
 
 	/*
 	 *	Returned string the same length - nothing changed
 	 */
-	if (strlen(escaped) == vb->length) {
+	if (strlen(escaped) == vb->vb_length) {
 		RDEBUG4("Tainted value %pV needed no escaping", vb);
 		curl_free(escaped);
 		return 0;

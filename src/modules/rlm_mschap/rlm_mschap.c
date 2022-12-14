@@ -647,7 +647,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	} else if (strncasecmp(arg->vb_strvalue, "NT-Hash", 7) == 0) {
 		arg = fr_value_box_list_next(in, arg);
-		if ((!arg) || (arg->length == 0))
+		if ((!arg) || (arg->vb_length == 0))
 			return XLAT_ACTION_FAIL;
 
 		if (mschap_nt_password_hash(buffer, arg->vb_strvalue) < 0) {
@@ -667,7 +667,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	} else if (strncasecmp(arg->vb_strvalue, "LM-Hash", 7) == 0) {
 		arg = fr_value_box_list_next(in, arg);
-		if ((!arg) || (arg->length == 0))
+		if ((!arg) || (arg->vb_length == 0))
 			return XLAT_ACTION_FAIL;
 
 		smbdes_lmpwdhash(arg->vb_strvalue, buffer);

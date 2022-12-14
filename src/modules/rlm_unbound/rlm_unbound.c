@@ -351,7 +351,7 @@ static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t			*count_vb = fr_value_box_list_next(in, query_vb);
 	unbound_request_t		*ur;
 
-	if (host_vb->length == 0) {
+	if (host_vb->vb_length == 0) {
 		REDEBUG("Can't resolve zero length host");
 		return XLAT_ACTION_FAIL;
 	}

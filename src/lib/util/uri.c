@@ -81,12 +81,12 @@ int fr_uri_escape(FR_DLIST_HEAD(fr_value_box_list) *uri, fr_uri_part_t const *ur
 		/*
 		 *	Zero length box - no terminators here
 		 */
-		if (uri_vb->length == 0) continue;
+		if (uri_vb->vb_length == 0) continue;
 
 		/*
 		 *	Look for URI part terminator
 		 */
-		fr_sbuff_init_in(&sbuff, uri_vb->vb_strvalue, uri_vb->length);
+		fr_sbuff_init_in(&sbuff, uri_vb->vb_strvalue, uri_vb->vb_length);
 
 		do {
 			fr_sbuff_adv_until(&sbuff, SIZE_MAX, uri_part->terminals, '\0');

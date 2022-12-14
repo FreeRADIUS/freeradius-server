@@ -286,7 +286,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 		 *	parent VP.  Because we're going to be moving them to the parent VP at some
 		 *	point.  The ones which aren't moved will get deleted in this function.
 		 */
-		token = fr_pair_list_afrom_str(state, da, box->vb_strvalue, box->length, children);
+		token = fr_pair_list_afrom_str(state, da, box->vb_strvalue, box->vb_length, children);
 		if (token == T_INVALID) {
 			RPEDEBUG("Failed parsing string '%pV' as attribute list", box);
 			return -1;

@@ -158,13 +158,7 @@ static inline vp_list_mod_t *list_mod_empty_string_afrom_map(TALLOC_CTX *ctx,
 {
 	vp_list_mod_t		*n;
 	map_t			*mod;
-	fr_value_box_t		empty_string = {
-					.type = FR_TYPE_STRING,
-					.datum = {
-						.strvalue = "",
-					},
-					.length = 0,
-				};
+	fr_value_box_t		empty_string = *fr_box_strvalue_len("", 0);
 
 	n = list_mod_alloc(ctx);
 	if (!n) return NULL;

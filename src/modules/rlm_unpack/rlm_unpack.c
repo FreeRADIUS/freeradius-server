@@ -88,10 +88,10 @@ static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 	} else if (data_vb->type == FR_TYPE_STRING) {
 		input = (uint8_t const *)data_vb->vb_strvalue;
-		input_len = data_vb->length;
+		input_len = data_vb->vb_length;
 	} else {
 		input = data_vb->vb_octets;
-		input_len = data_vb->length;
+		input_len = data_vb->vb_length;
 	}
 
 	offset = offset_vb->vb_uint32;

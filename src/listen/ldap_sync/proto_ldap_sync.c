@@ -222,7 +222,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	if ((request->rcode != RLM_MODULE_OK) && (request->rcode != RLM_MODULE_UPDATED)) goto send;
 
 	vp = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_ldap_sync_cookie);
-	if ((vp) && (vp->data.length > 0)) {
+	if ((vp) && (vp->data.vb_length > 0)) {
 		fr_pair_remove(&request->reply_pairs, vp);
 		fr_pair_steal_append(local, &pairs, vp);
 	}

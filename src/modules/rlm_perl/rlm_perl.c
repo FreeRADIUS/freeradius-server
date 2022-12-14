@@ -285,7 +285,7 @@ static int perl_vblist_to_av(AV *av, FR_DLIST_HEAD(fr_value_box_list) *head) {
 	while ((vb = fr_value_box_list_next(head, vb))) {
 		switch (vb->type) {
 		case FR_TYPE_STRING:
-			sv = newSVpvn(vb->vb_strvalue, vb->length);
+			sv = newSVpvn(vb->vb_strvalue, vb->vb_length);
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -484,9 +484,9 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				/*
 				 *	Single child value - add as scalar
 				 */
-				if (child->length == 0) continue;
+				if (child->vb_length == 0) continue;
 				DEBUG3("Passing single value %pV", child);
-				sv = newSVpvn(child->vb_strvalue, child->length);
+				sv = newSVpvn(child->vb_strvalue, child->vb_length);
 				if (child->tainted) SvTAINT(sv);
 				XPUSHs(sv_2mortal(sv));
 				continue;

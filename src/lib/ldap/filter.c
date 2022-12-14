@@ -445,7 +445,7 @@ static bool ldap_filter_node_eval(ldap_filter_t *node, fr_ldap_connection_t *con
 		case LDAP_FILTER_OP_EQ:
 			for (i = 0; i < count; i++) {
 				DEBUG_LDAP_ATTR_VAL
-				if ((node->value->length == values[i]->bv_len) &&
+				if ((node->value->vb_length == values[i]->bv_len) &&
 				    (strncasecmp(values[i]->bv_val, node->value->vb_strvalue, values[i]->bv_len) == 0)) {
 					filter_state = true;
 					break;
@@ -466,7 +466,7 @@ static bool ldap_filter_node_eval(ldap_filter_t *node, fr_ldap_connection_t *con
 			 *	Point t_end at the final character of the filter value
 			 *	- not the NULL - so we can check for trailing '*'
 			 */
-			t_end = node->value->vb_strvalue + node->value->length - 1;
+			t_end = node->value->vb_strvalue + node->value->vb_length - 1;
 
 			for (i = 0; i < count; i++) {
 				DEBUG_LDAP_ATTR_VAL

@@ -178,12 +178,12 @@ static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
 	/*
 	 *	Maximum escaped length is 3 * original - if every character needs escaping
 	 */
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->length * 3, vb->length * 3)) {
+	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->vb_length * 3, vb->vb_length * 3)) {
 		fr_strerror_printf_push("Failed to allocate buffer for escaped sql argument");
 		return -1;
 	}
 
-	len = inst->sql_escape_func(request, fr_sbuff_buff(&sbuff), vb->length * 3 + 1, vb->vb_strvalue, handle);
+	len = inst->sql_escape_func(request, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, handle);
 
 	/*
 	 *	fr_value_box_strdup_shallow resets the dlist entries - take a copy
