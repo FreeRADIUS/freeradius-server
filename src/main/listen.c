@@ -2280,8 +2280,13 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 #endif
 #endif
 
+#ifdef WITH_TLS
+#define TLS_UNUSED
+#else
+#define TLS_UNUSED UNUSED
+#endif
 
-static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
+static int client_socket_encode(TLS_UNUSED rad_listen_t *listener, REQUEST *request)
 {
 #ifdef WITH_TLS
 	/*
@@ -3317,7 +3322,6 @@ static void *recv_thread(void *arg)
 
 	while (1) {
 		this->recv(this);
-		DEBUG("%p", &this);
 	}
 
 	return NULL;
