@@ -287,7 +287,7 @@ static ssize_t encode_tlv_children(fr_dbuff_t *dbuff,
 			 *	Call ourselves recursively to encode children.
 			 */
 			slen = encode_tlv_children(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
-			if (slen <= 0) {
+			if (slen < 0) {
 				if (slen == PAIR_ENCODE_SKIPPED) continue;
 				return slen;
 			}
@@ -298,7 +298,7 @@ static ssize_t encode_tlv_children(fr_dbuff_t *dbuff,
 		} else {
 			slen = encode_attribute(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
-		if (slen <= 0) {
+		if (slen < 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
 			return slen;
 		}
@@ -393,7 +393,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
 		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value,
 					    encode_tlv_children);
-		if (slen <= 0) return slen;
+		if (slen < 0) return slen;
 
 		vp = fr_dcursor_current(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
@@ -509,7 +509,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	default:
 	encode:
 		slen = fr_value_box_to_network(&value_dbuff, &vp->data);
-		if (slen <= 0) return slen;
+		if (slen < 0) return slen;
 		break;
 	}
 
@@ -1153,7 +1153,7 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 		} else {
 			slen = encode_vendor_attr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 		}
-		if (slen <= 0) {
+		if (slen < 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
 			return slen;
 		}
@@ -1213,7 +1213,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 		fr_assert(da_stack->da[depth + 1]->type == FR_TYPE_VENDOR);
 
 		slen = encode_vendor(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx);
-		if (slen <= 0) {
+		if (slen < 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
 			return slen;
 		}
