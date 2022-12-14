@@ -55,6 +55,9 @@ typedef struct request_s request_t;
 
 #include <ctype.h>
 
+#ifdef __clangd__
+#  undef HAVE_SANITIZER_LSAN_INTERFACE_H
+#endif
 #ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
 #  include <sanitizer/asan_interface.h>
 #endif
@@ -2622,7 +2625,7 @@ static ssize_t command_tmpl_rule_list_def(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *
 		fr_strerror_printf("Invalid list specifier \"%pV\"",
 				   fr_box_strvalue_len(fr_sbuff_current(value), fr_sbuff_remaining(value)));
 	}
-
+	
 	return slen;
 }
 
