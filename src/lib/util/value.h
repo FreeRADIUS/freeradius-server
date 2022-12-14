@@ -92,67 +92,76 @@ FR_DLIST_TYPES(fr_value_box_list)
 FR_DCURSOR_DLIST_TYPES(fr_value_box_dcursor, fr_value_box_list, fr_value_box_t)
 /** @} */
 
+typedef union {
+	/*
+	*	Variable length values
+	*/
+	struct {
+		union {
+			char const 	* _CONST		strvalue;	//!< Pointer to UTF-8 string.
+			uint8_t const 	* _CONST 		octets;		//!< Pointer to binary string.
+			void 		* _CONST 		ptr;		//!< generic pointer.
+		};
+		size_t		length;						//!< Only these types are variable length.
+	};
+
+	/*
+	*	Fixed length values
+	*/
+	fr_ipaddr_t				ip;			//!< IPv4/6 address/prefix.
+
+	fr_ifid_t				ifid;			//!< IPv6 interface ID.
+	fr_ethernet_t				ether;			//!< Ethernet (MAC) address.
+
+	bool					boolean;		//!< A truth value.
+
+	uint8_t					uint8;			//!< 8bit unsigned integer.
+	uint16_t				uint16;			//!< 16bit unsigned integer.
+	uint32_t				uint32;			//!< 32bit unsigned integer.
+	uint64_t				uint64;			//!< 64bit unsigned integer.
+	uint128_t				uint128;		//!< 128bit unsigned integer.
+
+	int8_t					int8;			//!< 8bit signed integer.
+	int16_t					int16;			//!< 16bit signed integer.
+	int32_t					int32;			//!< 32bit signed integer.
+	int64_t					int64;			//!< 64bit signed integer;
+
+	float					float32;		//!< Single precision float.
+	double					float64;		//!< Double precision float.
+
+	fr_unix_time_t				date;			//!< Date internal format in nanoseconds
+
+	/*
+	*	System specific - Used for runtime configuration only.
+	*/
+	size_t					size;			//!< System specific file/memory size.
+	fr_time_delta_t				time_delta;		//!< a delta time in nanoseconds
+
+	FR_DLIST_HEAD(fr_value_box_list)	children;		//!< for groups
+} fr_value_box_datum_t;
+
 /** Union containing all data types supported by the server
  *
  * This union contains all data types that can be represented by fr_pair_ts. It may also be used in other parts
  * of the server where values of different types need to be stored.
  *
  * fr_type_t should be an enumeration of the values in this union.
+ *
+ * Don't change the order of the fields below without checing that the output of radsize doesn't change.
  */
 struct value_box_s {
+	FR_DLIST_ENTRY(fr_value_box_list)	entry;			//!< Doubly linked list entry.  Should be first for efficiently
+									///< traversing linked items.
+
+	fr_value_box_datum_t			datum;			//!< The value held by the value box.
+
+	/** Type and flags should appear together for packing efficiency
+	 */
 	fr_type_t		_CONST		type;			//!< Type of this value-box, at the start, see pair.h
-
-	union {
-		/*
-		 *	Variable length values
-		 */
-		char const 	* _CONST		strvalue;	//!< Pointer to UTF-8 string.
-		uint8_t const 	* _CONST 		octets;	//!< Pointer to binary string.
-		void 		* _CONST 		ptr;		//!< generic pointer.
-
-		/*
-		 *	Fixed length values
-		 */
-		fr_ipaddr_t				ip;			//!< IPv4/6 address/prefix.
-
-		fr_ifid_t				ifid;			//!< IPv6 interface ID.
-		fr_ethernet_t				ether;			//!< Ethernet (MAC) address.
-
-		bool					boolean;		//!< A truth value.
-
-		uint8_t					uint8;			//!< 8bit unsigned integer.
-		uint16_t				uint16;			//!< 16bit unsigned integer.
-		uint32_t				uint32;			//!< 32bit unsigned integer.
-		uint64_t				uint64;			//!< 64bit unsigned integer.
-		uint128_t				uint128;		//!< 128bit unsigned integer.
-
-		int8_t					int8;			//!< 8bit signed integer.
-		int16_t					int16;			//!< 16bit signed integer.
-		int32_t					int32;			//!< 32bit signed integer.
-		int64_t					int64;			//!< 64bit signed integer;
-
-		float					float32;		//!< Single precision float.
-		double					float64;		//!< Double precision float.
-
-		fr_unix_time_t				date;			//!< Date internal format in nanoseconds
-
-		/*
-		 *	System specific - Used for runtime configuration only.
-		 */
-		size_t					size;			//!< System specific file/memory size.
-		fr_time_delta_t				time_delta;		//!< a delta time in nanoseconds
-
-		FR_DLIST_HEAD(fr_value_box_list)	children;		//!< for groups
-	} datum;
-
-	size_t					length;
-
 	bool					tainted;		//!< i.e. did it come from an untrusted source
-	uint16_t		 	_CONST	safe;			//!< more detailed safety
+	uint16_t		_CONST		safe;			//!< more detailed safety
 
 	fr_dict_attr_t const			*enumv;			//!< Enumeration values.
-
-	FR_DLIST_ENTRY(fr_value_box_list)	entry;			//!< Doubly linked list entry.
 };
 
 /** @name List and cursor function definitions
@@ -220,7 +229,7 @@ typedef enum {
 #define vb_timeval				datum.timeval
 #define vb_time_delta				datum.time_delta
 
-#define vb_length				length
+#define vb_length				datum.length
 /** @} */
 
 /** @name Argument boxing macros

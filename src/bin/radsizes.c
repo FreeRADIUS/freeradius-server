@@ -24,7 +24,10 @@ int main(UNUSED int argc, UNUSED char **argv)
 	SIZEOF(fr_tlist_t);
 	SIZEOF(fr_tlist_head_t);
 
+	SIZEOF(fr_type_t);
 	SIZEOF(fr_value_box_t);
+	SIZEOF(fr_value_box_datum_t);
+	SIZEOF(fr_ipaddr_t);
 
 	SIZEOF(tmpl_t);
 	SIZEOF(tmpl_attr_rules_t);
