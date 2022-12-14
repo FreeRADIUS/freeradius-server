@@ -11,16 +11,36 @@ FreeRADIUS 3.2.2 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	* update dictionary.juniper
 	* add dictionary.calix
 	* Fix dictionary.rfc6519 DS-Lite-Tunnel-Name to be "octets"
+	* The linelog module now has a "header" configuration item,
+	  which places a header in any new file it creates.
+	* Ensure that the AcctUpdateTime field in SQL is always updated.
+	  This is so that we can track when the last packet arrived.
+	* Update documentation for robust-proxy-accounting, and be more
+	  aggressive about sending packets.
+	* Add per-module README.md files in the source.
+	* Add default Visual Studio configuration for developers.
+	* Update the default configuration to reply to NAS when accounting
+	  proxying fails, but we still write to the detail file.
 	* Add "connect_timeout" for outgoing TLS sockets.  Helps with #3501.
+	* Postgres can now automatically use alternate queries for errors
+	  other than duplicate keys.
+	* %{listen:TLS-PSK-Identity} is now set when using PSK and psk_query
 
 	Bug fixes
 	* Support for non-blocking TLS sockets.
 	  Fixes #3501.
 	* Fix support for partial certificate chains
 	  after adding reload support.  Fixes #4753
+	* Fix handling of debug_condition.
+	* Clean up home server states, and re-sync with the dictionaries.
 	* Correct certificate order when creating TLS-* attributes.
 	  Fixes #4785
+	* update use of isalpha() etc. so broken configurations have less
+	  impact on the server.
+	* Outgoing TLS sockets now set SNI correctly from the "hostname"
+	  configuration item.
 	* Support Apple Homebrew on the M1.  Fixes #4754
+	* Better error messages when %{listen:TLS-...} is used.
 
 FreeRADIUS 3.2.1 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	Feature improvements
