@@ -850,12 +850,6 @@ static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)
 
 #define tmpl_rules_cast(_tmpl)			(_tmpl)->rules.cast
 #define tmpl_rules_enumv(_tmpl)			(_tmpl)->rules.enumv
-
-/*
- *	Temporary macros to track where we do assignments
- */
-#define tmpl_value_length_set(_tmpl, _len)	(_tmpl)->data.literal.vb_length = (_len)
-#define tmpl_value_type_set(_tmpl, _type) 	(_tmpl)->data.literal.type = (_type)
 /** @} */
 
 /** @name Field accessors for #TMPL_TYPE_REGEX and #TMPL_TYPE_REGEX_XLAT_UNRESOLVED
