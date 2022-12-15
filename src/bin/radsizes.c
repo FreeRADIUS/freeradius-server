@@ -19,6 +19,8 @@ int main(UNUSED int argc, UNUSED char **argv)
 
 	SIZEOF(fr_pair_t);
 	SIZEOF(fr_pair_list_t);
+
+	SIZEOF(fr_rb_tree_t);
 	SIZEOF(fr_rb_node_t);
 
 	SIZEOF(fr_tlist_t);
