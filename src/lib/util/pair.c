@@ -183,7 +183,10 @@ static inline CC_HINT(always_inline) void pair_init_from_da(fr_pair_t *vp, fr_di
 	if (likely(fr_type_is_leaf(da->type))) {
 		fr_value_box_init(&vp->data, da->type, da, false);
 	} else {
-		vp->type = da->type; /* overlaps with vp->vp_type, and everyone needs it! */
+		/*
+		 *	Hack around const issues...
+		 */
+		memcpy(UNCONST(fr_type_t *, &vp->vp_type), &da->type, sizeof(vp->vp_type));
 		fr_pair_list_init(&vp->vp_group);
 		vp->vp_group.is_child = true;
 		fr_pair_order_list_talloc_init_children(vp, &vp->vp_group.order);
@@ -2847,11 +2850,13 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 				    file, line, vp->da->name);
 	}
 
-	if (vp->vp_ptr) switch (vp->vp_type) {
+	switch (vp->vp_type) {
 	case FR_TYPE_OCTETS:
 	{
 		size_t len;
 		TALLOC_CTX *parent;
+
+		if (!vp->vp_octets) break;	/* We might be in the middle of initialisation */
 
 		if (!talloc_get_type(vp->vp_ptr, uint8_t)) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" data buffer type should be "
@@ -2878,6 +2883,8 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 	{
 		size_t len;
 		TALLOC_CTX *parent;
+
+		if (!vp->vp_octets) break;	/* We might be in the middle of initialisation */
 
 		if (!talloc_get_type(vp->vp_ptr, char)) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" data buffer type should be "

@@ -80,8 +80,17 @@ struct value_pair_s {
 		fr_value_box_t		data;			//!< The value of this pair.
 
 		struct {
-			fr_type_t	 _CONST type;			//!< Type of this value-box, see value.h
-			fr_pair_list_t		children;		//!< Nested attributes of this pair.
+			/** Force children field to come _after_ the type field in the fr_value_box_t
+			 *
+			 * This works no matter where type appears in fr_value_box_t, whereas just
+			 * listing another fr_type_t field here does not.
+			 *
+			 * This hack allows the majority of the fr_pair_list_t to overlap with the
+			 * fr_value_box_t which gives us much greater packing efficiency.
+			 */
+			uint8_t		pad[offsetof(fr_value_box_t, type) + sizeof(fr_type_t)];
+	
+			fr_pair_list_t	children;		//!< Nested attributes of this pair.
 		};
 	};
 

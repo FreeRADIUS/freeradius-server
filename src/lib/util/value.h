@@ -150,18 +150,18 @@ typedef union {
  * Don't change the order of the fields below without checing that the output of radsize doesn't change.
  */
 struct value_box_s {
-	FR_DLIST_ENTRY(fr_value_box_list)	entry;			//!< Doubly linked list entry.  Should be first for efficiently
-									///< traversing linked items.
-
-	fr_value_box_datum_t			datum;			//!< The value held by the value box.
-
 	/** Type and flags should appear together for packing efficiency
 	 */
 	fr_type_t		_CONST		type;			//!< Type of this value-box, at the start, see pair.h
 	bool					tainted;		//!< i.e. did it come from an untrusted source
 	uint16_t		_CONST		safe;			//!< more detailed safety
 
+	FR_DLIST_ENTRY(fr_value_box_list)	entry;			//!< Doubly linked list entry.
+
 	fr_dict_attr_t const			*enumv;			//!< Enumeration values.
+
+	fr_value_box_datum_t			datum;			//!< The value held by the value box.  Should appear
+									///< last for packing efficiency.
 };
 
 /** @name List and cursor function definitions
