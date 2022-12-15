@@ -34,13 +34,14 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_priv.h>
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/log.h>
+#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/util.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/file.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>

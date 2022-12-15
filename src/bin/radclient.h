@@ -29,6 +29,11 @@ RCSIDH(radclient_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/rb.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/packet.h>
+#include <freeradius-devel/radius/defs.h>
 /*
  *	Logging macros
  */
