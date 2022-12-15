@@ -1938,6 +1938,11 @@ static int explode_static_lib(command_t *cmd, char const *lib)
 
 	chdir(savewd);
 	dir = opendir(tmpdir);
+	if (!dir) {
+		NOTICE("Warning: could not explode %s\n", lib);
+
+		return 1;
+	}
 
 	while ((entry = readdir(dir)) != NULL) {
 		if (IS_TARGET(macos) && toolset->ranlib) {
