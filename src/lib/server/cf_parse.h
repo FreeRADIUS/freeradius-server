@@ -330,7 +330,6 @@ _Generic((_ct), \
 									//!< left as the default to is_set_offset
 									//!< or is_set_ptr.
 #define FR_TYPE_OK_MISSING     		(1 << 22) 			//!< OK if it's missing
-#define FR_TYPE_NON_BLOCKING  		(1 << 23) 			//!< require a non-blocking xlat expansion
 
 #define FR_BASE_TYPE(_t)		(0xff & (_t))
 /** @} */
@@ -357,8 +356,6 @@ _Generic((_ct), \
 #define fr_rule_is_set(_rule)		((_rule)->type & FR_TYPE_IS_SET)
 
 #define fr_rule_ok_missing(_rule)	((_rule)->type & FR_TYPE_OK_MISSING)
-
-#define fr_rule_non_blocking(_rule)	((_rule)->type & FR_TYPE_NON_BLOCKING)
 
 #define fr_rule_file_exists(_rule)	(((_rule)->type & FR_TYPE_FILE_EXISTS) == FR_TYPE_FILE_EXISTS)
 

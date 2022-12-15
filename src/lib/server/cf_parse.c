@@ -174,7 +174,7 @@ int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, CO
 int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		ret = 0;
-	bool		cant_be_empty, tmpl, nonblock;
+	bool		cant_be_empty, tmpl;
 
 	ssize_t		slen;
 
@@ -183,7 +183,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 	cant_be_empty = fr_rule_not_empty(rule);
 	tmpl = fr_rule_is_tmpl(rule);
-	nonblock = fr_rule_non_blocking(rule);
 
 	fr_assert(cp);
 	fr_assert(!fr_rule_is_attribute(rule) || tmpl);		/* Attribute flag only valid for templates */
@@ -263,22 +262,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			cf_log_err(cp, "Expected attr got %s",
 				   tmpl_type_to_str(vpt->type));
 			return -1;
-		}
-
-		/*
-		 *	Non-blocking xlat's
-		 */
-		if (nonblock) {
-			if (vpt->type == TMPL_TYPE_EXEC) {
-				cf_log_err(cp, "The '%s' configuration item MUST NOT be used with a blocking operation.", cp->attr);
-				return -1;
-			}
-
-			if ((vpt->type == TMPL_TYPE_XLAT) &&
-			    xlat_async_required(tmpl_xlat(vpt))) {
-				cf_log_err(cp, "The '%s' configuration item MUST NOT be used with a blocking expansion.", cp->attr);
-				return -1;
-			}
 		}
 
 		*(tmpl_t **)out = vpt;
