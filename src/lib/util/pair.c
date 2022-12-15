@@ -183,6 +183,14 @@ static inline CC_HINT(always_inline) void pair_init_from_da(fr_pair_t *vp, fr_di
 	if (likely(fr_type_is_leaf(da->type))) {
 		fr_value_box_init(&vp->data, da->type, da, false);
 	} else {
+#ifndef NDEBUG
+		/*
+		 *	Make it very obvious if we failed
+		 *	to initialise something.
+		 */
+		memset(&vp->data, 0xff, sizeof(vp->data));
+#endif
+
 		/*
 		 *	Hack around const issues...
 		 */
