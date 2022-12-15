@@ -2841,13 +2841,18 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 	}
 
 	fr_dict_attr_verify(file, line, vp->da);
-	if (vp->data.enumv) fr_dict_attr_verify(file, line, vp->data.enumv);
-
 	if (list) {
 		fr_fatal_assert_msg(fr_pair_order_list_parent(vp) == &list->order,
 				    "CONSISTENCY CHECK FAILED %s[%u]:  pair does not have the correct parentage "
 				    "at \"%s\"",
 				    file, line, vp->da->name);
+	}
+
+	/*
+	 *	This field is only valid for non-structural pairs
+	 */
+	if (!fr_type_is_structural(vp->vp_type)) {
+		if (vp->data.enumv) fr_dict_attr_verify(file, line, vp->data.enumv);
 	}
 
 	switch (vp->vp_type) {
