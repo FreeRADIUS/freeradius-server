@@ -1506,11 +1506,6 @@ int tmpl_eval(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, request_t 
 
 	fr_assert(tmpl_is_xlat(vpt));
 
-	if (xlat_async_required(tmpl_xlat(vpt))) {
-		fr_strerror_const("Cannot evaluate async xlat");
-		return -1;
-	}
-
 	/*
 	 *	@todo - respect escaping functions.  But the sync
 	 *	escaping uses a different method than the async ones.
