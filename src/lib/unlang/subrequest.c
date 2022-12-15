@@ -204,16 +204,9 @@ static unlang_action_t unlang_subrequest_parent_init(rlm_rcode_t *p_result, requ
 	fr_pair_append(&child->request_pairs, vp);
 
 	if (gext->src) {
-		if (tmpl_is_list(gext->src)) {
-			if (tmpl_copy_pairs(child->request_ctx, &child->request_pairs, request, gext->src) < -1) {
-				RPEDEBUG("Failed copying source attributes into subrequest");
-				goto fail;
-			}
-		} else {
-			if (tmpl_copy_pair_children(child->request_ctx, &child->request_pairs, request, gext->src) < -1) {
-				RPEDEBUG("Failed copying source attributes into subrequest");
-				goto fail;
-			}
+		if (tmpl_copy_pair_children(child->request_ctx, &child->request_pairs, request, gext->src) < -1) {
+			RPEDEBUG("Failed copying source attributes into subrequest");
+			goto fail;
 		}
 	}
 

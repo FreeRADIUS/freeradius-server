@@ -795,6 +795,8 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+	request_global_init();
+
 	if (log_global_init(&default_log, false) < 0) {
 		EXIT_WITH_FAILURE;
 	}
@@ -802,7 +804,7 @@ int main(int argc, char *argv[])
 	if (map_proc_register(NULL, "test-fail", mod_map_proc, map_proc_verify, 0) < 0) {
 		EXIT_WITH_FAILURE;
 	}
-
+	
 	/*
 	 *	Initialise the interpreter, registering operations.
 	 *      This initialises
@@ -1078,6 +1080,8 @@ cleanup:
 	 *	Free request specific logging infrastructure
 	 */
 	log_global_free();
+
+	request_global_free();
 
 	server_free();
 

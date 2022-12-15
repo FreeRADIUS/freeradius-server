@@ -1556,7 +1556,6 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_XLAT:
 		break;
 
@@ -1570,7 +1569,6 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_DATA:
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
 	case TMPL_TYPE_UNRESOLVED:
 	case TMPL_TYPE_XLAT:

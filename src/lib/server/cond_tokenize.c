@@ -222,7 +222,6 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	 */
 	if (tmpl_contains_regex(c->data.map->rhs)) {
 		fr_assert((c->data.map->op == T_OP_REG_EQ) || (c->data.map->op == T_OP_REG_NE));
-		fr_assert(!tmpl_is_list(c->data.map->lhs));
 		fr_assert(fr_type_is_null(tmpl_rules_cast(c->data.map->rhs)));
 
 		/*
@@ -653,7 +652,6 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		case TMPL_TYPE_XLAT_UNRESOLVED:
 		case TMPL_TYPE_ATTR:
 		case TMPL_TYPE_ATTR_UNRESOLVED:
-		case TMPL_TYPE_LIST:
 		case TMPL_TYPE_EXEC:
 			break;
 
@@ -879,21 +877,14 @@ done:
 
 static CC_HINT(nonnull) int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs)
 {
-	if (tmpl_is_list(vpt)) {
-		fr_strerror_const("Cannot use list references in condition");
-		fr_sbuff_set(in, m_lhs);
-		return -1;
-	}
-
-	if (!tmpl_is_attr(vpt)) return 0;
+	if (!tmpl_is_attr(vpt) || tmpl_attr_tail_is_unspecified(vpt)) return 0;
 
 	switch (tmpl_attr_tail_da(vpt)->type) {
 	case FR_TYPE_LEAF:
 		break;
 
 	default:
-		fr_strerror_printf("Nesting types such as groups or TLVs cannot "
-				   "be used in condition comparisons");
+		fr_strerror_printf("Nesting types such as groups or TLVs cannot be compared");
 		fr_sbuff_set(in, m_lhs);
 		return -1;
 	}

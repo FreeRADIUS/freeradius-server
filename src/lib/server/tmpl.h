@@ -26,7 +26,7 @@
  * #tmpl_t (VPTs) specify either a data source, or a data sink.
  *
  * Examples of sources are #TMPL_TYPE_XLAT_UNRESOLVED, #TMPL_TYPE_EXEC and #TMPL_TYPE_ATTR.
- * Examples of sinks are #TMPL_TYPE_ATTR, #TMPL_TYPE_LIST.
+ * Examples of sinks are #TMPL_TYPE_ATTR.
  *
  * VPTs are used to gather values or attributes for evaluation, or copying, and to specify
  * where values or #fr_pair_t should be copied to.
@@ -41,7 +41,7 @@
  * @see tmpl_afrom_substr
  * @see tmpl_afrom_attr_str
  *
- * In the case of #TMPL_TYPE_ATTR and #TMPL_TYPE_LIST, there are special cursor overlay
+ * In the case of #TMPL_TYPE_ATTR there are special cursor overlay
  * functions which can be used to iterate over only the #fr_pair_t that match a
  * tmpl_t in a given list.
  *
@@ -67,6 +67,7 @@
  *
  * @copyright 2014-2015 The FreeRADIUS server project
  */
+#include "lib/server/tmpl.h"
 RCSIDH(tmpl_h, "$Id$")
 
 #ifdef __cplusplus
@@ -152,10 +153,6 @@ typedef enum tmpl_type_e {
 	 */
 	TMPL_TYPE_DATA			= 0x0002,
 
-	/** Reference to an attribute list
-	 */
-	TMPL_TYPE_LIST			= 0x0004 | TMPL_FLAG_ATTR,
-
 	/** Reference to one or more attributes
 	 */
 	TMPL_TYPE_ATTR			= 0x0008 | TMPL_FLAG_ATTR,
@@ -225,7 +222,6 @@ typedef enum tmpl_type_e {
 #define tmpl_is_data(vpt) 			(vpt->type == TMPL_TYPE_DATA)
 
 #define tmpl_is_attr(vpt) 			(vpt->type == TMPL_TYPE_ATTR)
-#define tmpl_is_list(vpt) 			(vpt->type == TMPL_TYPE_LIST)
 
 #define tmpl_is_xlat(vpt) 			(vpt->type == TMPL_TYPE_XLAT)
 #define tmpl_is_exec(vpt) 			(vpt->type == TMPL_TYPE_EXEC)
@@ -259,7 +255,7 @@ typedef struct tmpl_s tmpl_t;
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>
-
+#include <freeradius-devel/server/request.h>
 /*
  *	Allow public and private versions of the same structures
  */
@@ -330,8 +326,6 @@ struct tmpl_attr_rules_s {
 	uint8_t			disallow_qualifiers:1;	//!< disallow request / list qualifiers
 
 	uint8_t			disallow_filters:1;	//!< disallow filters.
-
-	uint8_t			list_as_attr:1;		//!< return #TMPL_TYPE_ATTR for lists, and not #TMPL_TYPE_LIST
 };
 
 struct tmpl_xlat_rules_s {
@@ -504,6 +498,36 @@ FR_DLIST_FUNCS(tmpl_request_list, tmpl_request_t, entry)
 #define ar_is_unknown(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNKNOWN)
 #define ar_is_unresolved(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNRESOLVED)
 
+/** Indicate whether an attribute reference is raw
+ *
+ * Determining whether an attribute reference is raw, is slightly more complex
+ * given the raw flag is either coming from the attribute or an internal
+ * "is_raw" flag in the unresolved entry.
+ *
+ * @param[in] ar	to check for rawness.
+ * @return
+ *	- true if the attribute reference is raw.
+ *	- false if the attribute reference is not raw.
+ */
+static inline bool ar_is_raw(tmpl_attr_t const *ar)
+{
+	switch (ar->ar_type) {
+	case TMPL_ATTR_TYPE_NORMAL:
+	case TMPL_ATTR_TYPE_UNKNOWN:
+		return ar->ar_da->flags.is_raw;
+
+	case TMPL_ATTR_TYPE_UNRESOLVED:
+		return ar->ar_unresolved_raw;
+
+	case TMPL_ATTR_TYPE_UNSPEC:
+		return false;
+	}
+
+	fr_assert_fail("ar type (%i) is invalid", (int)ar->ar_type);
+}
+
+bool ar_is_list_attr(tmpl_attr_t const *ar);
+
 #define ar_num				filter.num
 #define ar_filter_type			filter.type
 
@@ -518,14 +542,12 @@ FR_DLIST_FUNCS(tmpl_request_list, tmpl_request_t, entry)
  * @section update_maps Use in update map_t
  * When used on the LHS it describes an attribute to create and should be one of these types:
  * - #TMPL_TYPE_ATTR
- * - #TMPL_TYPE_LIST
  *
  * When used on the RHS it describes the value to assign to the attribute being created and
  * should be one of these types:
  * - #TMPL_TYPE_UNRESOLVED
  * - #TMPL_TYPE_XLAT_UNRESOLVED
  * - #TMPL_TYPE_ATTR
- * - #TMPL_TYPE_LIST
  * - #TMPL_TYPE_EXEC
  * - #TMPL_TYPE_DATA
  * - #TMPL_TYPE_XLAT (pre-parsed xlat)
@@ -646,7 +668,7 @@ static inline tmpl_type_t tmpl_type_from_str(char const *type)
 }
 /** @} */
 
-/** @name Field accessors for #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNRESOLVED, #TMPL_TYPE_LIST
+/** @name Field accessors for #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNRESOLVED
  *
  * @{
  */
@@ -654,9 +676,7 @@ static inline tmpl_type_t tmpl_type_from_str(char const *type)
 
 static inline FR_DLIST_HEAD(tmpl_request_list) const *tmpl_request(tmpl_t const *vpt)
 {
-	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unresolved(vpt) ||
-			 tmpl_is_list(vpt));
+	tmpl_assert_type(tmpl_contains_attr(vpt));
 
 	return &vpt->data.attribute.rr;
 }
@@ -666,11 +686,25 @@ static inline FR_DLIST_HEAD(tmpl_request_list) const *tmpl_request(tmpl_t const 
  */
 static inline size_t tmpl_request_ref_count(tmpl_t const *vpt)
 {
-	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unresolved(vpt) ||
-			 tmpl_is_list(vpt));
+	tmpl_assert_type(tmpl_contains_attr(vpt));
 
 	return tmpl_request_list_num_elements(&vpt->data.attribute.rr);
+}
+
+/** Return true if the last attribute reference is "normal"
+ *
+ * @hidecallergraph
+ */
+static inline bool tmpl_attr_head_is_list(tmpl_t const *vpt)
+{
+	tmpl_attr_t *ar;
+
+	tmpl_assert_type(tmpl_contains_attr(vpt));
+
+	ar = tmpl_attr_list_head(tmpl_attr(vpt));
+	if (unlikely(!ar)) return false;
+
+	return ar_is_list_attr(ar);
 }
 
 /** Return true if the last attribute reference is "normal"
@@ -681,7 +715,7 @@ static inline bool tmpl_attr_tail_is_normal(tmpl_t const *vpt)
 {
 	tmpl_attr_t *ar;
 
-	tmpl_assert_type(tmpl_is_attr(vpt));
+	tmpl_assert_type(tmpl_contains_attr(vpt));
 
 	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
 	if (unlikely(!ar)) return false;
@@ -697,7 +731,7 @@ static inline bool tmpl_attr_tail_is_unspecified(tmpl_t const *vpt)
 {
 	tmpl_attr_t *ar;
 
-	tmpl_assert_type(tmpl_is_attr(vpt));
+	tmpl_assert_type(tmpl_contains_attr(vpt));
 
 	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
 	if (unlikely(!ar)) return false;
@@ -713,7 +747,7 @@ static inline bool tmpl_attr_tail_is_unknown(tmpl_t const *vpt)
 {
 	tmpl_attr_t *ar;
 
-	tmpl_assert_type(tmpl_is_attr(vpt));
+	tmpl_assert_type(tmpl_contains_attr(vpt));
 
 	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
 	if (unlikely(!ar)) return false;
@@ -729,7 +763,7 @@ static inline bool tmpl_attr_tail_is_unresolved(tmpl_t const *vpt)
 {
 	tmpl_attr_t *ar;
 
-	tmpl_assert_type(tmpl_is_attr_unresolved(vpt));
+	tmpl_assert_type(tmpl_contains_attr(vpt));
 
 	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
 	if (unlikely(!ar)) return false;
@@ -737,13 +771,30 @@ static inline bool tmpl_attr_tail_is_unresolved(tmpl_t const *vpt)
 	return ar_is_normal(ar);
 }
 
+/** Return true if the last attribute reference is "raw"
+ *
+ * @hidecallergraph
+ */
+static inline bool tmpl_attr_tail_is_raw(tmpl_t const *vpt)
+{
+	tmpl_attr_t *ar;
+
+	tmpl_assert_type(tmpl_contains_attr(vpt));
+
+	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	if (unlikely(!ar)) return false;
+
+	return ar_is_raw(ar);
+}
+
+
 /** Return the last attribute reference
  *
  * @hidecallergraph
  */
 static inline tmpl_attr_t const *tmpl_attr_tail(tmpl_t const *vpt)
 {
-	tmpl_assert_type(tmpl_is_attr(vpt));
+	tmpl_assert_type(tmpl_contains_attr(vpt));
 
 	return tmpl_attr_list_tail(tmpl_attr(vpt));
 }
@@ -756,12 +807,48 @@ static inline fr_dict_attr_t const *tmpl_attr_tail_da(tmpl_t const *vpt)
 {
 	tmpl_attr_t *ar;
 
-	tmpl_assert_type(tmpl_is_attr(vpt));
+	tmpl_assert_type(tmpl_contains_attr(vpt));
 
 	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
 	if (!ar) return NULL;
 
 	return ar->ar_da;
+}
+
+/** Return true if the the last attribute reference is a leaf attribute
+ *
+ * @hidecallergraph
+ */
+static inline bool tmpl_attr_tail_da_is_leaf(tmpl_t const *vpt)
+{
+	tmpl_attr_t *ar;
+
+	tmpl_assert_type(tmpl_contains_attr(vpt));
+
+	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	if (!ar) return false;
+
+	fr_assert(ar_is_normal(ar) || ar_is_unknown(ar));
+
+	return fr_type_is_leaf(ar->ar_da->type);
+}
+
+/** Return true if the the last attribute reference is a structural attribute
+ *
+ * @hidecallergraph
+ */
+static inline bool tmpl_attr_tail_da_is_structural(tmpl_t const *vpt)
+{
+	tmpl_attr_t *ar;
+
+	tmpl_assert_type(tmpl_contains_attr(vpt));
+
+	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	if (!ar) return false;
+
+	fr_assert(ar_is_normal(ar) || ar_is_unknown(ar));
+
+	return fr_type_is_structural(ar->ar_da->type);
 }
 
 /** Return the last attribute reference unknown da
@@ -772,7 +859,7 @@ static inline fr_dict_attr_t const *tmpl_attr_tail_unknown(tmpl_t const *vpt)
 {
 	tmpl_attr_t *ar;
 
-	tmpl_assert_type(tmpl_is_attr(vpt));
+	tmpl_assert_type(tmpl_contains_attr(vpt));
 
 	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
 	if (!ar) return NULL;
@@ -802,11 +889,7 @@ static inline char const *tmpl_attr_tail_unresolved(tmpl_t const *vpt)
  */
 static inline int16_t tmpl_attr_tail_num(tmpl_t const *vpt)
 {
-	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unresolved(vpt) ||
-			 tmpl_is_list(vpt));
-
-	if (tmpl_is_list(vpt) && (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0)) return NUM_ALL;
+	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt));
 
 	return tmpl_attr_list_tail(tmpl_attr(vpt))->ar_num;
 }
@@ -825,8 +908,7 @@ static inline size_t tmpl_attr_num_elements(tmpl_t const *vpt)
 static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unresolved(vpt) ||			/* Remove once list is part of ar dlist */
-			 tmpl_is_list(vpt));
+			 tmpl_is_attr_unresolved(vpt));
 
 	return vpt->data.attribute.list;
 }
@@ -871,43 +953,6 @@ static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)
 void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt);
 void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
 #endif
-
-/** Produces an initialiser for static #TMPL_TYPE_LIST type #tmpl_t
- *
- * Example:
- @code{.c}
-   static tmpl_t     list = tmpl_init_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
-   fr_dcursor_t      cursor;
-   tmpl_dcursor_ctx_t cc,
-   fr_pair_t        *vp;
-
-   // Iterate over all pairs in the request list
-   for (vp = tmpl_dcursor_init(NULL, &cursor, request, &list);
-   	vp;
-   	vp = tmpl_cursor_next(&cursor, &list)) {
-   	// Do something
-   }
-   tmpl_dcursor_clear(&cc);
- @endcode
- *
- * @param _request to locate the list in.
- * @param _list to set as the target for the template.
- * @see tmpl_dcursor_init
- * @see tmpl_cursor_next
- */
-#define	tmpl_init_initialiser_list(_request, _list)\
-{ \
-	.name = "static", \
-	.len = sizeof("static") - 1, \
-	.type = TMPL_TYPE_LIST, \
-	.quote = T_SINGLE_QUOTED_STRING, \
-	.data = { \
-		.attribute = { \
-			.request = _request, \
-			.list = _list \
-		} \
-	} \
-}
 
 /** Determine the correct context and list head
  *
@@ -1055,6 +1100,11 @@ extern FR_DLIST_HEAD(tmpl_request_list) tmpl_request_def_outer;
  * Passed as request_def in tmpl_attr_rules_t.
  */
 extern FR_DLIST_HEAD(tmpl_request_list) tmpl_request_def_parent;
+
+/** Placeholder attribute for unspecified attribute refs
+ *
+ */
+extern fr_dict_attr_t const *tmpl_attr_unspec;
 
 int			tmpl_request_ptr(request_t **request, FR_DLIST_HEAD(tmpl_request_list) const *rql) CC_HINT(nonnull);
 

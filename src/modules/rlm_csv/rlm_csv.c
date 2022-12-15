@@ -403,9 +403,6 @@ static int csv_map_verify(map_t *map, void *instance)
 		type = tmpl_attr_tail_da(map->lhs)->type;
 		break;
 
-	case TMPL_TYPE_LIST:
-		break;
-
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_tail_unresolved(map->lhs));
 		return -1;

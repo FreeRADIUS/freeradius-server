@@ -133,7 +133,13 @@ typedef struct {
 static inline CC_HINT(always_inline)
 int _tmpl_setup_and_cursor_init(fr_pair_t **vp_out, tmpl_dcursor_vars_t *vars, request_t *request, char const *ref)
 {
-	tmpl_afrom_attr_substr(autofree, NULL, &vars->vpt, &FR_SBUFF_IN(ref, strlen(ref)), NULL, &(tmpl_rules_t){.attr = {.dict_def = test_dict}}); 
+	tmpl_afrom_attr_substr(autofree, NULL, &vars->vpt, &FR_SBUFF_IN(ref, strlen(ref)), NULL,
+			       &(tmpl_rules_t){
+					.attr = {
+						.dict_def = test_dict,
+						.list_def = PAIR_LIST_REQUEST
+					}
+				}); 
 	TEST_CHECK(vars->vpt!= NULL); 
 	TEST_MSG("Failed creating tmpl from %s: %s", ref, fr_strerror()); 
 	if (!vars->vpt) { 
@@ -157,8 +163,14 @@ int _tmpl_setup_and_cursor_init(fr_pair_t **vp_out, tmpl_dcursor_vars_t *vars, r
 static inline CC_HINT(always_inline)
 int _tmpl_setup_and_cursor_build_init(fr_pair_t **vp_out, tmpl_dcursor_vars_t *vars, request_t *request, char const *ref)
 {
-	tmpl_afrom_attr_substr(autofree, NULL, &vars->vpt, &FR_SBUFF_IN(ref, strlen(ref)), NULL, &(tmpl_rules_t){.attr = {.dict_def = test_dict}}); 
-	TEST_CHECK(vars->vpt!= NULL); 
+	tmpl_afrom_attr_substr(autofree, NULL, &vars->vpt, &FR_SBUFF_IN(ref, strlen(ref)), NULL,
+			       &(tmpl_rules_t){
+					.attr = {
+						.dict_def = test_dict,
+						.list_def = PAIR_LIST_REQUEST
+					}
+				}); 
+	TEST_CHECK(vars->vpt != NULL); 
 	TEST_MSG("Failed creating tmpl from %s: %s", ref, fr_strerror()); 
 	if (!vars->vpt) { 
 		*vp_out = NULL; 

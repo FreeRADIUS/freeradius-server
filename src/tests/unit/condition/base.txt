@@ -8,7 +8,7 @@ proto-dictionary radius
 tmpl-rules allow_unresolved=yes allow_unknown=yes
 
 condition &request.User-Name == &reply.User-Name
-match &User-Name == &reply.User-Name
+match &request.User-Name == &reply.User-Name
 
 # All IP address literals should be parsed as prefixes
 condition ("foo\
@@ -61,8 +61,8 @@ match ok
 #
 #  Extra braces get squashed
 #
-condition (&User-Name == &User-Password)
-match &User-Name == &User-Password
+condition (&request.User-Name == &request.User-Password)
+match &request.User-Name == &request.User-Password
 
 condition (!ok)
 match !ok
@@ -79,82 +79,82 @@ match ok
 #
 #  These next two are identical after normalization
 #
-condition (&User-Name == &User-Password || &Filter-Id == &Reply-Message)
-match &User-Name == &User-Password || &Filter-Id == &Reply-Message
+condition (&request.User-Name == &request.User-Password || &request.Filter-Id == &request.Reply-Message)
+match &request.User-Name == &request.User-Password || &request.Filter-Id == &request.Reply-Message
 
-condition ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match (&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)
+condition ((&request.User-Name == &request.User-Password) || (&request.Filter-Id == &request.Reply-Message))
+match (&request.User-Name == &request.User-Password) || (&request.Filter-Id == &request.Reply-Message)
 
-condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match !(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)
+condition (!(&request.User-Name == &request.User-Password) || (&request.Filter-Id == &request.Reply-Message))
+match !(&request.User-Name == &request.User-Password) || (&request.Filter-Id == &request.Reply-Message)
 
 #  different from the previous ones.
-condition (!((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)))
-match !((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+condition (!((&request.User-Name == &request.User-Password) || (&request.Filter-Id == &request.Reply-Message)))
+match !((&request.User-Name == &request.User-Password) || (&request.Filter-Id == &request.Reply-Message))
 
-condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match !(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)
+condition (!(&request.User-Name == &request.User-Password) || (&request.Filter-Id == &request.Reply-Message))
+match !(&request.User-Name == &request.User-Password) || (&request.Filter-Id == &request.Reply-Message)
 
 condition ((a == b) || (c == d)))
 match ERROR offset 23: Unexpected closing brace
 
-condition (handled && (&Packet-Type == Access-Challenge))
-match  handled && (&Packet-Type == Access-Challenge)
+condition (handled && (&request.Packet-Type == Access-Challenge))
+match  handled && (&request.Packet-Type == Access-Challenge)
 
 # This is OK, without the braces
-condition handled && &Packet-Type == Access-Challenge
-match handled && &Packet-Type == Access-Challenge
+condition handled && &request.Packet-Type == Access-Challenge
+match handled && &request.Packet-Type == Access-Challenge
 
 # and this, though it's not a good idea.
-condition handled &&&Packet-Type == Access-Challenge
-match handled && &Packet-Type == Access-Challenge
+condition handled &&&request.Packet-Type == Access-Challenge
+match handled && &request.Packet-Type == Access-Challenge
 
 condition &reply == &request
-match ERROR offset 1: Cannot use list references in condition
+match ERROR offset 1: Nesting types such as groups or TLVs cannot be compared
 
 condition &reply == "hello"
-match ERROR offset 1: Cannot use list references in condition
+match ERROR offset 1: Nesting types such as groups or TLVs cannot be compared
 
 condition "hello" == &reply
-match ERROR offset 12: Cannot use list references in condition
+match ERROR offset 12: Nesting types such as groups or TLVs cannot be compared
 
 
 #
 #  Convert != to !(COND) for normal checks
 #
-condition &User-Name == &User-Password
-match &User-Name == &User-Password
+condition &request.User-Name == &request.User-Password
+match &request.User-Name == &request.User-Password
 
-condition &User-Name != &User-Password
-match !&User-Name == &User-Password
+condition &request.User-Name != &request.User-Password
+match !&request.User-Name == &request.User-Password
 
-condition !&User-Name != &User-Password
-match &User-Name == &User-Password
+condition !&request.User-Name != &request.User-Password
+match &request.User-Name == &request.User-Password
 
 condition <ipv6addr>::1
 match ERROR offset 1: Invalid cast from ipv6addr to bool.  Unsupported
 
-condition <ipaddr>&Filter-Id == &Framed-IP-Address
-match <ipaddr>&Filter-Id == &Framed-IP-Address
+condition <ipaddr>&request.Filter-Id == &request.Framed-IP-Address
+match <ipaddr>&request.Filter-Id == &request.Framed-IP-Address
 
-condition <ipaddr>&Filter-Id == &Framed-IP-Address
-match <ipaddr>&Filter-Id == &Framed-IP-Address
+condition <ipaddr>&request.Filter-Id == &request.Framed-IP-Address
+match <ipaddr>&request.Filter-Id == &request.Framed-IP-Address
 
 #
 #  We can automatically promote things as needed.  But if the
 #  user forces incompatible types, then that's an error.
 #
-condition <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
-match ERROR offset 24: Unknown data type
+condition <ipaddr>&request.Filter-Id == <blerg>&request.Framed-IP-Address
+match ERROR offset 32: Unknown data type
 
-condition <blerg>&Filter-Id == "foo"
+condition <blerg>&request.Filter-Id == "foo"
 match ERROR offset 2: Unknown data type
 
 #
 #  Normalize things
 #
-condition <ipaddr>127.0.0.1 < &Framed-IP-Address
-match &Framed-IP-Address > 127.0.0.1
+condition <ipaddr>127.0.0.1 < &request.Framed-IP-Address
+match &request.Framed-IP-Address > 127.0.0.1
 
 # =* and !* are only for attrs / lists
 condition "foo" !* bar
@@ -164,58 +164,58 @@ condition "foo" =* bar
 match ERROR offset 7: Invalid operator =*
 
 # existence checks don't need the RHS
-condition &User-Name =* bar
-match ERROR offset 12: Invalid operator =*
+condition &request.User-Name =* bar
+match ERROR offset 20: Invalid operator =*
 
-condition &User-Name !* bar
-match ERROR offset 12: Invalid operator !*
+condition &request.User-Name !* bar
+match ERROR offset 20: Invalid operator !*
 
-condition !&User-Name =* bar
-match ERROR offset 13: Invalid operator =*
+condition !&request.User-Name =* bar
+match ERROR offset 21: Invalid operator =*
 
-condition !&User-Name !* bar
-match ERROR offset 13: Invalid operator !*
+condition !&request.User-Name !* bar
+match ERROR offset 21: Invalid operator !*
 
 # redundant casts get squashed
-condition <ipaddr>&Framed-IP-Address == 127.0.0.1
-match &Framed-IP-Address == 127.0.0.1
+condition <ipaddr>&request.Framed-IP-Address == 127.0.0.1
+match &request.Framed-IP-Address == 127.0.0.1
 
-condition <cidr>&Framed-IP-Address <= 192.168.0.0/16
-match <ipv4prefix>&Framed-IP-Address <= 192.168.0.0/16
+condition <cidr>&request.Framed-IP-Address <= 192.168.0.0/16
+match <ipv4prefix>&request.Framed-IP-Address <= 192.168.0.0/16
 
 # All IP address literals should be parsed as prefixes
-condition &Framed-IP-Address <= 192.168.0.0/16
-match <ipv4prefix>&Framed-IP-Address <= 192.168.0.0/16
+condition &request.Framed-IP-Address <= 192.168.0.0/16
+match <ipv4prefix>&request.Framed-IP-Address <= 192.168.0.0/16
 
 # string attributes must be string
-condition &User-Name == "bob"
-match &User-Name == "bob"
+condition &request.User-Name == "bob"
+match &request.User-Name == "bob"
 
-condition &User-Name == `bob`
-match &User-Name == `bob`
+condition &request.User-Name == `bob`
+match &request.User-Name == `bob`
 
-condition &User-Name == 'bob'
-match &User-Name == 'bob'
+condition &request.User-Name == 'bob'
+match &request.User-Name == 'bob'
 
-condition &User-Name == bob
-match &User-Name == 'bob'
+condition &request.User-Name == bob
+match &request.User-Name == 'bob'
 
 # Integer (etc.) types must be "bare"
 condition &Session-Timeout == 10
-match &Session-Timeout == 10
+match &request.Session-Timeout == 10
 
 # Automatic type inference means this is fine
 condition &Session-Timeout == '10'
-match &Session-Timeout == 10
+match &request.Session-Timeout == 10
 
 # Except for dates, which can be humanly readable!
 # This one is be an expansion, so it's left as-is.
-condition &Event-Timestamp == "January 1, 2012 %{blah}"
-match &Event-Timestamp == "January 1, 2012 %{blah}"
+condition &request.Event-Timestamp == "January 1, 2012 %{blah}"
+match &request.Event-Timestamp == "January 1, 2012 %{blah}"
 
 # This one is NOT an expansion, so it's parsed into normal form
-condition &Event-Timestamp == 'January 1, 2012'
-#data &Event-Timestamp == 'Jan  1 2012 00:00:00 EST'
+condition &request.Event-Timestamp == 'January 1, 2012'
+#data &request.Event-Timestamp == 'Jan  1 2012 00:00:00 EST'
 
 # literals are parsed when the conditions are parsed
 condition <integer>X == 1
@@ -240,8 +240,8 @@ match 127.0.0.1 == "%{md4: 127.0.0.1}"
 condition <ipaddr>127.0.0.1 == %{md4:127.0.0.1}
 match 127.0.0.1 == %{md4:127.0.0.1}
 
-condition <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
-match 127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
+condition <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{request.User-Name}'}
+match 127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{request.User-Name}'}
 
 condition <ether> 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
@@ -267,16 +267,16 @@ match false
 condition 0
 match false
 
-condition true && (&User-Name == "bob")
-match &User-Name == "bob"
+condition true && (&request.User-Name == "bob")
+match &request.User-Name == "bob"
 
-condition false && (&User-Name == "bob")
+condition false && (&request.User-Name == "bob")
 match false
 
-condition false || (&User-Name == "bob")
-match &User-Name == "bob"
+condition false || (&request.User-Name == "bob")
+match &request.User-Name == "bob"
 
-condition true || (&User-Name == "bob")
+condition true || (&request.User-Name == "bob")
 match true
 
 #
@@ -317,11 +317,11 @@ match false
 #  a double-quoted string.  Except that there's no '%'
 #  in it, so it reverts back to a literal.
 #
-condition (&User-Name == "bob")
-match &User-Name == "bob"
+condition (&request.User-Name == "bob")
+match &request.User-Name == "bob"
 
-condition (&User-Name == "%{md4: blah}")
-match &User-Name == "%{md4: blah}"
+condition (&request.User-Name == "%{md4: blah}")
+match &request.User-Name == "%{md4: blah}"
 
 condition <ipaddr>127.0.0.1 == 2130706433
 match true
@@ -391,12 +391,12 @@ condition (`a`)
 match `a`
 
 condition (&User-name)
-match &User-Name
+match &request.User-Name
 
 #
 #  Forbidden data types in cast
 #
-condition (<vsa>"foo" == &User-Name)
+condition (<vsa>"foo" == &request.User-Name)
 match ERROR offset 3: Forbidden data type 'vsa' in cast
 
 #
@@ -404,32 +404,32 @@ match ERROR offset 3: Forbidden data type 'vsa' in cast
 #  of the same type, then re-write it so that the attribute
 #  is on the LHS of the condition.
 #
-condition <string>"foo" == &User-Name
-match &User-Name == "foo"
+condition <string>"foo" == &request.User-Name
+match &request.User-Name == "foo"
 
 # This used to be expr, but expr isn't a builtin, so it failed...
-condition <integer>"%{md4: 1 + 1}" < &NAS-Port
-match &NAS-Port > <uint32>"%{md4: 1 + 1}"
+condition <integer>"%{md4: 1 + 1}" < &request.NAS-Port
+match &request.NAS-Port > <uint32>"%{md4: 1 + 1}"
 
 #
 #  The string gets parsed as an IP address.
 #
-condition &Filter-Id == &Framed-IP-Address
-match <ipaddr>&Filter-Id == &Framed-IP-Address
+condition &request.Filter-Id == &request.Framed-IP-Address
+match <ipaddr>&request.Filter-Id == &request.Framed-IP-Address
 
-condition <ipaddr>127.0.0.1 == &Filter-Id
-match <ipaddr>&Filter-Id == 127.0.0.1
+condition <ipaddr>127.0.0.1 == &request.Filter-Id
+match <ipaddr>&request.Filter-Id == 127.0.0.1
 
-condition &Tmp-uint64-0 == &request.Foo-Stuff-Bar
-match &Tmp-uint64-0 == &Foo-Stuff-Bar
+condition &request.Tmp-uint64-0 == &request.Foo-Stuff-Bar
+match &request.Tmp-uint64-0 == &request.Foo-Stuff-Bar
 
-condition &Tmp-uint64-0 == &reply.Foo-Stuff-Bar
-match &Tmp-uint64-0 == &reply.Foo-Stuff-Bar
+condition &request.Tmp-uint64-0 == &reply.Foo-Stuff-Bar
+match &request.Tmp-uint64-0 == &reply.Foo-Stuff-Bar
 
 #
 #  Casting attributes of different size
 #
-condition <ipaddr>&Tmp-uint64-0 == &Framed-IP-Address
+condition <ipaddr>&request.Tmp-uint64-0 == &request.Framed-IP-Address
 match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 
 #
@@ -437,88 +437,88 @@ match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 #  if the prefix is /32.  We don't know enough at compile time,
 #  so this may be a run-time failure.
 #
-condition <ipaddr>&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
-match <ipaddr>&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
+condition <ipaddr>&request.PMIP6-Home-IPv4-HoA == &request.Framed-IP-Address
+match <ipaddr>&request.PMIP6-Home-IPv4-HoA == &request.Framed-IP-Address
 
 # but these are allowed
-condition <ether>&Tmp-uint64-0 == "%{module: foo}"
-match <ether>&Tmp-uint64-0 == "%{module: foo}"
+condition <ether>&request.Tmp-uint64-0 == "%{module: foo}"
+match <ether>&request.Tmp-uint64-0 == "%{module: foo}"
 
-condition <ipaddr>&Filter-Id == &Framed-IP-Address
-match <ipaddr>&Filter-Id == &Framed-IP-Address
+condition <ipaddr>&request.Filter-Id == &request.Framed-IP-Address
+match <ipaddr>&request.Filter-Id == &request.Framed-IP-Address
 
-condition <ipaddr>&Class == &Framed-IP-Address
-match <ipaddr>&Class == &Framed-IP-Address
+condition <ipaddr>&request.Class == &request.Framed-IP-Address
+match <ipaddr>&request.Class == &request.Framed-IP-Address
 
 #
 #  zero offset into arrays get parsed and ignored
 #
-condition &User-Name[0] == "bob"
-match &User-Name[0] == "bob"
+condition &request.User-Name[0] == "bob"
+match &request.User-Name[0] == "bob"
 
-condition &User-Name[1] == "bob"
-match &User-Name[1] == "bob"
+condition &request.User-Name[1] == "bob"
+match &request.User-Name[1] == "bob"
 
-condition &User-Name[n] == "bob"
-match &User-Name[n] == "bob"
+condition &request.User-Name[n] == "bob"
+match &request.User-Name[n] == "bob"
 
 #
 #  This is allowed for pass2-fixups.  Foo-Bar MAY be an attribute.
 #  If so allow it so that pass2 can fix it up.  Until then,
 #  it's an unknown attribute
 #
-condition &Foo-Bar
-match &Foo-Bar
+condition &request.Foo-Bar
+match &request.Foo-Bar
 
 #  Same types are optimized
 #
 #  FIXME: the tests don't currently run the "pass2" checks.
 #  This test should really be:
 #
-#	data &Acct-Input-Octets > &Session-Timeout
+#	data &request.Acct-Input-Octets > &request.Session-Timeout
 #
-condition &Acct-Input-Octets > "%{Session-Timeout}"
-match &Acct-Input-Octets > "%{Session-Timeout}"
+condition &request.Acct-Input-Octets > "%{request.Session-Timeout}"
+match &request.Acct-Input-Octets > "%{request.Session-Timeout}"
 
 #  Separate types aren't optimized
-condition &Acct-Input-Octets-64 > "%{Session-Timeout}"
-match &Acct-Input-Octets-64 > "%{Session-Timeout}"
+condition &request.Acct-Input-Octets-64 > "%{request.Session-Timeout}"
+match &request.Acct-Input-Octets-64 > "%{request.Session-Timeout}"
 
 #
 #  Parse OIDs into known attributes, where possible.
 #
 condition &26.24757.84.9.5.4 == 0x1a99
-match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
+match &request.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
 
 #
 #  This OID is known, but the data is malformed.
 #  Allow it so that we can look for malformed attributes
 #  in packets.
 #
-condition &raw.26.24757.84.9.5.7 == 0x1a99
-match &raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned == 0x1a99
+condition &raw.request.26.24757.84.9.5.7 == 0x1a99
+match &raw.request.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned == 0x1a99
 
 #  This one is really unknown
-condition &26.24757.84.9.5.15 == 0x1a99
-match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
+condition &request.26.24757.84.9.5.15 == 0x1a99
+match &request.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
 
 #
 #  Invalid array references.
 #
-condition &User-Name[a] == 'bob'
-match ERROR offset 12: Invalid array index
+condition &request.User-Name[a] == 'bob'
+match ERROR offset 20: Invalid array index
 
-condition &User-Name == &Filter-Id[a]
-match ERROR offset 26: Invalid array index
+condition &request.User-Name == &request.Filter-Id[a]
+match ERROR offset 42: Invalid array index
 
 #
 #  Bounds checks...
 #
-condition &User-Name[1001] == 'bob'
-match ERROR offset 12: Invalid array index '1001' (should be between 0-1000)
+condition &request.User-Name[1001] == 'bob'
+match ERROR offset 20: Invalid array index '1001' (should be between 0-1000)
 
-condition &User-Name[-1] == 'bob'
-match ERROR offset 12: Invalid array index '-1' (should be between 0-1000)
+condition &request.User-Name[-1] == 'bob'
+match ERROR offset 20: Invalid array index '-1' (should be between 0-1000)
 
 #
 #  Sometimes the attribute/condition parser needs to fallback to bare words
@@ -544,8 +544,8 @@ condition &not-a-list:User-Name == &not-a-list:User-Name
 match ERROR offset 12: Unexpected text after attribute reference
 
 # . is a valid dictionary name attribute, so we can't error out in pass1
-condition &not-a-packet.User-Name == &not-a-packet.User-Name
-match &not-a-packet.User-Name == &not-a-packet.User-Name
+condition &request.not-a-packet.User-Name == &request.not-a-packet.User-Name
+match &request.not-a-packet.User-Name == &request.not-a-packet.User-Name
 
 #
 #  The LHS is a string with ASCII 5C 30 30 30 inside of it vs the RHS which should contain ASCII 0.
@@ -556,24 +556,24 @@ match false
 #
 #  'Unknown' attributes which are defined in the main dictionary
 #  should be resolved to their real names.
-condition &1 == 0x616263
-match &User-Name == 'abc'
+condition &request.1 == 0x616263
+match &request.User-Name == 'abc'
 
-condition &26.11344.1 == 0x7f000001
-match &Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.1
+condition &request.26.11344.1 == 0x7f000001
+match &request.Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.1
 
 #
 #  Escape the backslashes correctly
 #  And print them correctly
 #
-condition &User-Name == '\\'
-match &User-Name == '\\'
+condition &request.User-Name == '\\'
+match &request.User-Name == '\\'
 
-condition &User-Name == "@|\\"
-match &User-Name == "@|\\"
+condition &request.User-Name == "@|\\"
+match &request.User-Name == "@|\\"
 
-condition &User-Name != "foo\nbar"
-match !&User-Name == "foo\nbar"
+condition &request.User-Name != "foo\nbar"
+match !&request.User-Name == "foo\nbar"
 
 #
 #  We infer that the LHS is a prefix and the RHS is
@@ -585,22 +585,22 @@ match true
 condition <ipv4prefix>192.168.0.0/16 > 192.168.1.2
 match true
 
-condition <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
-match <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
+condition <ipv4prefix>&request.NAS-IP-Address == 192.168.0.0/24
+match <ipv4prefix>&request.NAS-IP-Address == 192.168.0.0/24
 
 #
 #  rewrite so that the attribute is on the LHS
 #  and, move the cast to the attribute, as the RHS
 #  is parsed as ipv4prefix
 #
-condition <ipv4prefix>192.168.0.0/24 > &NAS-IP-Address
-match <ipv4prefix>&NAS-IP-Address < 192.168.0.0/24
+condition <ipv4prefix>192.168.0.0/24 > &request.NAS-IP-Address
+match <ipv4prefix>&request.NAS-IP-Address < 192.168.0.0/24
 
 #
 #  This is allowed and means "the list is not empty"
 #
 condition (&reply.)
-match &reply
+match &reply.
 
 #
 #  Expansions of environment variables
@@ -618,7 +618,7 @@ match &reply
 #  Attributes with a protocol namespace
 #
 condition &radius.User-Name == 'bob'
-match &User-Name == 'bob'
+match &request.User-Name == 'bob'
 
 condition !(!(0))
 match false
@@ -629,10 +629,10 @@ match false
 #
 #  More short-circuit evaluations
 #
-condition (&User-Name == "bob") && (false)
+condition (&request.User-Name == "bob") && (false)
 match false
 
-condition (&User-Name == "bob") || (true)
+condition (&request.User-Name == "bob") || (true)
 match true
 
 #
@@ -641,8 +641,8 @@ match true
 #	0 && (1 || 1) = 0 && 1 == 0
 #	(0 && 1) || 1 = 0 || 1 == 1
 #
-condition (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
-match (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
+condition (&request.User-Name == "bob") && ((&request.User-Password == "bob") || &request.EAP-Message)
+match (&request.User-Name == "bob") && ((&request.User-Password == "bob") || &request.EAP-Message)
 
 count
 match 307

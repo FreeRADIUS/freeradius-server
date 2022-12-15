@@ -159,11 +159,6 @@ static int cf_table_parse_tmpl(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 		goto finish;
 	}
 
-	if(tmpl_is_list(vpt)) {
-		ret = -1;
-		goto finish;
-	}
-
 	/* Only string values should be used for SMTP components */
 	if(tmpl_expanded_type(vpt) != FR_TYPE_STRING) {
 		cf_log_err(cp, "Attribute reference must be a string");

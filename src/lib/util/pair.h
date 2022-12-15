@@ -200,7 +200,6 @@ DIAG_ON(nonnull-compare)
 #  define PAIR_LIST_VERIFY(_x)	fr_pair_list_nonnull_assert(_x)
 #endif
 
-
 #ifdef TEST_CHECK
 /** Macro for use in acutest tests
  */

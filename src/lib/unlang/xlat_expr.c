@@ -1564,7 +1564,6 @@ static xlat_action_t xlat_exists_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						   .prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 						   .allow_unknown = false,
 						   .allow_unresolved = false,
-						   .list_as_attr = true,
 					   },
 				   });
 	if (slen <= 0) goto fail;
@@ -1964,7 +1963,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	/*
 	 *	Convert raw rcodes to xlat's.
 	 *
-	 *	@todo - if it's '!', and the node is tmpl_is_list, or tmpl_contains_attr
+	 *	@todo - if it's '!', and the node is tmpl_contains_attr
 	 *	re-write it to an existence check function, with node->fmt the node->vpt->name.
 	 *
 	 */
@@ -2451,19 +2450,11 @@ static bool valid_type(xlat_exp_t *node)
 
 	if (node->type != XLAT_TMPL) return true;
 
-	if (tmpl_is_list(node->vpt)) {
-	list:
-		fr_strerror_const("Cannot use list references in condition");
-		return false;
-	}
-
 	if (!tmpl_is_attr(node->vpt)) return true;
 
 	da = tmpl_attr_tail_da(node->vpt);
 	if (fr_type_is_structural(da->type)) {
-		if (da->dict == fr_dict_internal()) goto list;
-
-		fr_strerror_const("Cannot use structural types in condition");
+		fr_strerror_const("Cannot compare structural types");
 		return false;
 	}
 

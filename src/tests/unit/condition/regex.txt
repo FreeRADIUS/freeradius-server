@@ -1,7 +1,7 @@
 proto-dictionary radius
 
-condition &User-Name !~ /^foo\nbar$/
-match !&User-Name =~ /^foo\nbar$/
+condition &request.User-Name !~ /^foo\nbar$/
+match !&request.User-Name =~ /^foo\nbar$/
 
 condition (ok =~ handled)
 match ERROR offset 8: Expected regular expression
@@ -50,29 +50,29 @@ match ERROR offset 14: Duplicate regex flag 'i'
 #  And print them correctly
 #
 
-condition &User-Name =~ /@|./
-match &User-Name =~ /@|./
+condition &request.User-Name =~ /@|./
+match &request.User-Name =~ /@|./
 
-condition &User-Name =~ /@|\\/
-match &User-Name =~ /@|\\/
+condition &request.User-Name =~ /@|\\/
+match &request.User-Name =~ /@|\\/
 
-condition &User-Name =~ /^([^\\]*)\\(.*)$/
-match &User-Name =~ /^([^\\]*)\\(.*)$/
+condition &request.User-Name =~ /^([^\\]*)\\(.*)$/
+match &request.User-Name =~ /^([^\\]*)\\(.*)$/
 
 #
 #  Non-integer types get cast to string.
 #
-condition &Tmp-Integer-0 =~ /%{Tmp-Integer-0}/
-match <string>&Tmp-Integer-0 =~ /%{Tmp-Integer-0}/
+condition &request.Tmp-Integer-0 =~ /%{request.Tmp-Integer-0}/
+match <string>&request.Tmp-Integer-0 =~ /%{request.Tmp-Integer-0}/
 
 #
 #  Cannot add a bad cast
 #
-condition <integer>&Tmp-String-0 =~ /foo/
+condition <integer>&request.Tmp-String-0 =~ /foo/
 match ERROR offset 10: Casts cannot be used with regular expressions
 
-condition &Tmp-String-0 =~ <integer>/foo/
-match ERROR offset 28: Casts cannot be used with regular expressions
+condition &request.Tmp-String-0 =~ <integer>/foo/
+match ERROR offset 36: Casts cannot be used with regular expressions
 
 
 xlat %{1}
@@ -81,8 +81,8 @@ match %{1}
 xlat %{33}
 match ERROR offset 3: Invalid regex reference.  Must be in range 0-32
 
-condition &User-Name == /foo/
-match ERROR offset 15: Unexpected regular expression
+condition &request.User-Name == /foo/
+match ERROR offset 23: Unexpected regular expression
 
 count
 match 43

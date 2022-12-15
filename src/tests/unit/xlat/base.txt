@@ -25,32 +25,32 @@ match \\
 #
 #  Literals mixed with attributes
 #
-xlat literal%{User-Password}
-match literal%{User-Password}
+xlat literal%{request.User-Password}
+match literal%{request.User-Password}
 
-xlat {literal}%{User-Password}
-match {literal}%{User-Password}
+xlat {literal}%{request.User-Password}
+match {literal}%{request.User-Password}
 
-xlat literal%{User-Password}{literal}
-match literal%{User-Password}{literal}
+xlat literal%{request.User-Password}{literal}
+match literal%{request.User-Password}{literal}
 
-xlat {literal%{User-Password}literal}
-match {literal%{User-Password}literal}
+xlat {literal%{request.User-Password}literal}
+match {literal%{request.User-Password}literal}
 
-xlat \%{literal%{User-Password}literal}
-match \%{literal%{User-Password}literal}
+xlat \%{literal%{request.User-Password}literal}
+match \%{literal%{request.User-Password}literal}
 
-xlat literal%{%{User-Password}:-literal}
-match literal%{%{User-Password}:-literal}
+xlat literal%{%{request.User-Password}:-literal}
+match literal%{%{request.User-Password}:-literal}
 
-xlat literal%{%{User-Password}:-\%{lit}eral}
-match literal%{%{User-Password}:-\%{lit}eral}
+xlat literal%{%{request.User-Password}:-\%{lit}eral}
+match literal%{%{request.User-Password}:-\%{lit}eral}
 
-xlat literal%{%{User-Password}:-%{User-Name}\%literal}
-match literal%{%{User-Password}:-%{User-Name}\%literal}
+xlat literal%{%{request.User-Password}:-%{request.User-Name}\%literal}
+match literal%{%{request.User-Password}:-%{request.User-Name}\%literal}
 
-xlat literal%{%{User-Password}:-\%literal}
-match literal%{%{User-Password}:-\%literal}
+xlat literal%{%{request.User-Password}:-\%literal}
+match literal%{%{request.User-Password}:-\%literal}
 #
 #  Regex capture groups
 #
@@ -75,41 +75,41 @@ match ERROR offset 4: Missing closing brace
 #
 #  Tests for xlat expansion
 #
-xlat %{Tunnel-Password}
-match %{Tunnel-Password}
+xlat %{request.Tunnel-Password}
+match %{request.Tunnel-Password}
 
 xlat %{test:bar}
 match %{test:bar}
 
-xlat %{Tunnel-Password}
-match %{Tunnel-Password}
+xlat %{request.Tunnel-Password}
+match %{request.Tunnel-Password}
 
-xlat %{reply.Tunnel-Password}
-match %{reply.Tunnel-Password}
-
-xlat %{User-Name[3]}
-match %{User-Name[3]}
-
-xlat %{User-Name[*]}
-match %{User-Name[*]}
-
-xlat %{User-Name[#]}
-match %{User-Name[#]}
-
-xlat %{User-Name[n]}
-match %{User-Name[n]}
+xlat %{reply.request.Tunnel-Password}
+match %{reply.request.Tunnel-Password}
 
 xlat %{request.User-Name[3]}
-match %{User-Name[3]}
+match %{request.User-Name[3]}
 
 xlat %{request.User-Name[*]}
-match %{User-Name[*]}
+match %{request.User-Name[*]}
 
 xlat %{request.User-Name[#]}
-match %{User-Name[#]}
+match %{request.User-Name[#]}
 
-xlat %{Vendor-Specific.3GPP.SGSN-Address}
-match %{Vendor-Specific.3GPP.SGSN-Address}
+xlat %{request.User-Name[n]}
+match %{request.User-Name[n]}
+
+xlat %{request.User-Name[3]}
+match %{request.User-Name[3]}
+
+xlat %{request.User-Name[*]}
+match %{request.User-Name[*]}
+
+xlat %{request.User-Name[#]}
+match %{request.User-Name[#]}
+
+xlat %{request.Vendor-Specific.3GPP.SGSN-Address}
+match %{request.Vendor-Specific.3GPP.SGSN-Address}
 
 xlat \"Hello %S goo\"
 match \"Hello %S goo\"
@@ -121,7 +121,7 @@ match \"%{Foreach-Variable-0}\"
 #  3GPP stuff
 #
 xlat \"%{request.Vendor-Specific.3GPP.IMSI}\"
-match \"%{Vendor-Specific.3GPP.IMSI}\"
+match \"%{request.Vendor-Specific.3GPP.IMSI}\"
 
 xlat \"%{reply.Vendor-Specific.3GPP.IMSI}\"
 match \"%{reply.Vendor-Specific.3GPP.IMSI}\"
@@ -129,8 +129,8 @@ match \"%{reply.Vendor-Specific.3GPP.IMSI}\"
 xlat \"%{reply.Vendor-Specific.3GPP.IMSI[2]}\"
 match \"%{reply.Vendor-Specific.3GPP.IMSI[2]}\"
 
-xlat /([A-Z0-9\\-]*)_%{Calling-Station-Id}/
-match /([A-Z0-9\\-]*)_%{Calling-Station-Id}/
+xlat /([A-Z0-9\\-]*)_%{request.Calling-Station-Id}/
+match /([A-Z0-9\\-]*)_%{request.Calling-Station-Id}/
 
 xlat %(length:)
 match %(length:)
@@ -145,8 +145,8 @@ xlat \"%t\tfoo\"
 match \"%t\tfoo\"
 
 allow-unresolved yes
-xlat \"%t\t%{Client-IP-Address}\"
-match \"%t\t%{Client-IP-Address}\"
+xlat \"%t\t%{request.Client-IP-Address}\"
+match \"%t\t%{request.Client-IP-Address}\"
 allow-unresolved no
 
 xlat \"foo %{test:foo}\"
@@ -158,37 +158,37 @@ match \"foo %{test:foo}\"
 xlat %{%{foo}:-%{bar}}
 match ERROR offset 5: Unresolved attributes not allowed in expansions here
 
-xlat %{%{User-Name}:-%{bar}}
-match ERROR offset 19: Unresolved attributes not allowed in expansions here
+xlat %{%{request.User-Name}:-%{bar}}
+match ERROR offset 27: Unresolved attributes not allowed in expansions here
 
-xlat %{%{User-Name}:-bar}
-match %{%{User-Name}:-bar}
+xlat %{%{request.User-Name}:-bar}
+match %{%{request.User-Name}:-bar}
 
-xlat foo %{%{User-Name}:-bar} baz
-match foo %{%{User-Name}:-bar} baz
+xlat foo %{%{request.User-Name}:-bar} baz
+match foo %{%{request.User-Name}:-bar} baz
 
-xlat %{%{test:bar}:-%{User-Name}}
-match %{%{test:bar}:-%{User-Name}}
+xlat %{%{test:bar}:-%{request.User-Name}}
+match %{%{test:bar}:-%{request.User-Name}}
 
-xlat %{%{test:bar}:-%{%{User-Name}:-bar}}
-match %{%{test:bar}:-%{%{User-Name}:-bar}}
+xlat %{%{test:bar}:-%{%{request.User-Name}:-bar}}
+match %{%{test:bar}:-%{%{request.User-Name}:-bar}}
 
-xlat %{%{User-Name}:-}
-match %{%{User-Name}:-}
+xlat %{%{request.User-Name}:-}
+match %{%{request.User-Name}:-}
 
-xlat %{%{Operator-Name}:-}
-match %{%{Operator-Name}:-}
+xlat %{%{request.Operator-Name}:-}
+match %{%{request.Operator-Name}:-}
 
-xlat %{%{%{User-Name}:-foo}:-bar}
-match %{%{%{User-Name}:-foo}:-bar}
+xlat %{%{%{request.User-Name}:-foo}:-bar}
+match %{%{%{request.User-Name}:-foo}:-bar}
 
-xlat %{%{%{User-Name}:-foo}:-%{%{test:bar}:-%{User-Name}}}
-match %{%{%{User-Name}:-foo}:-%{%{test:bar}:-%{User-Name}}}
+xlat %{%{%{request.User-Name}:-foo}:-%{%{test:bar}:-%{request.User-Name}}}
+match %{%{%{request.User-Name}:-foo}:-%{%{test:bar}:-%{request.User-Name}}}
 
 xlat %{:-}
 match ERROR offset 3: First item in alternation cannot be empty
 
-xlat %{:-%{User-Name}}
+xlat %{:-%{request.User-Name}}
 match ERROR offset 3: First item in alternation cannot be empty
 
 xlat %{%{}:-}
@@ -197,18 +197,18 @@ match ERROR offset 5: Empty expression is invalid
 xlat %{%{}:-foo}
 match ERROR offset 5: Empty expression is invalid
 
-xlat %{%{User-Name}:-
-match ERROR offset 17: Missing closing brace
+xlat %{%{request.User-Name}:-
+match ERROR offset 25: Missing closing brace
 
 # Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
-xlat %{%{User-Name}:-foo
-match ERROR offset 20: Missing closing brace
+xlat %{%{request.User-Name}:-foo
+match ERROR offset 28: Missing closing brace
 
-xlat %{%{User-Name}:}
-match ERROR offset 15: Expected ':-' after first expansion
+xlat %{%{request.User-Name}:}
+match ERROR offset 23: Expected ':-' after first expansion
 
-xlat %{%{User-Name}}
-match ERROR offset 15: Expected ':-' after first expansion
+xlat %{%{request.User-Name}}
+match ERROR offset 23: Expected ':-' after first expansion
 
 
 #
@@ -253,12 +253,12 @@ match ERROR offset 6: Invalid char ' ' in expression
 xlat %{test:
 match ERROR offset 8: Missing closing brace
 
-xlat %{test:%{User-Name
-match ERROR offset 19: Missing closing brace
+xlat %{test:%{request.User-Name
+match ERROR offset 27: Missing closing brace
 
 # Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
-xlat %{test:%{User-Name}
-match ERROR offset 20: Missing closing brace
+xlat %{test:%{request.User-Name}
+match ERROR offset 28: Missing closing brace
 
 xlat %{myfirstxlat
 match ERROR offset 14: Missing closing brace
@@ -270,35 +270,35 @@ match ERROR offset 26: Expected ':-' after first expansion
 #
 #  API to split xlat strings into argv-style arguments.
 #
-xlat_argv /bin/sh %{User-Name}
-match [0]{ /bin/sh }, [1]{ %{User-Name} }
+xlat_argv /bin/sh %{request.User-Name}
+match [0]{ /bin/sh }, [1]{ %{request.User-Name} }
 
-xlat_argv /bin/sh "%{User-Name}"
-match [0]{ /bin/sh }, [1]{ %{User-Name} }
+xlat_argv /bin/sh "%{request.User-Name}"
+match [0]{ /bin/sh }, [1]{ %{request.User-Name} }
 
 # with quotes
-xlat_argv /bin/sh "foo" "%{User-Name}"
-match [0]{ /bin/sh }, [1]{ foo }, [2]{ %{User-Name} }
+xlat_argv /bin/sh "foo" "%{request.User-Name}"
+match [0]{ /bin/sh }, [1]{ foo }, [2]{ %{request.User-Name} }
 
 # many spaces between arguments
-xlat_argv /bin/sh         "foo"       "%{User-Name}"
-match [0]{ /bin/sh }, [1]{ foo }, [2]{ %{User-Name} }
+xlat_argv /bin/sh         "foo"       "%{request.User-Name}"
+match [0]{ /bin/sh }, [1]{ foo }, [2]{ %{request.User-Name} }
 
 # and spaces in quotes
-xlat_argv /bin/sh "foo bar" "%{User-Name}"
-match [0]{ /bin/sh }, [1]{ foo bar }, [2]{ %{User-Name} }
+xlat_argv /bin/sh "foo bar" "%{request.User-Name}"
+match [0]{ /bin/sh }, [1]{ foo bar }, [2]{ %{request.User-Name} }
 
 # and multiple xlats inside of quotes
-xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id}"
-match [0]{ /bin/sh }, [1]{ foo bar }, [2]{ %{User-Name} %{Filter-Id} }
+xlat_argv /bin/sh "foo bar" "%{request.User-Name} %{Filter-Id}"
+match [0]{ /bin/sh }, [1]{ foo bar }, [2]{ %{request.User-Name} %{request.Filter-Id} }
 
 # and errors
-xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id"
-match ERROR offset 45: Missing closing brace
+xlat_argv /bin/sh "foo bar" "%{request.User-Name} %{Filter-Id"
+match ERROR offset 53: Missing closing brace
 
 # and text immediately after a variable expansion
 xlat_argv echo hello %{Tmp-String-0}:1234 world
-match [0]{ echo }, [1]{ hello }, [2]{ %{Tmp-String-0}:1234 }, [3]{ world }
+match [0]{ echo }, [1]{ hello }, [2]{ %{request.Tmp-String-0}:1234 }, [3]{ world }
 
 xlat %(debug: 5)
 match %(debug: 5)
@@ -312,8 +312,8 @@ match %(debug: "foo")
 #
 #  This is correct.
 #
-xlat %(rpad:&User-Name 5 x)
-match %(rpad:&User-Name 5 x)
+xlat %(rpad:&request.User-Name 5 x)
+match %(rpad:&request.User-Name 5 x)
 
 #
 #  The second argument should be an integer.
@@ -321,8 +321,8 @@ match %(rpad:&User-Name 5 x)
 #  @todo - we don't currently track string offsets for intermediate nodes,
 #  so the "offset 23" is wrong.  It also doesn't say *which* string is wrong.  We'll fix that later.
 #
-xlat %(rpad:&User-Name foo x)
-match ERROR offset 24: Failed parsing argument 1 as type 'uint64'
+xlat %(rpad:&request.User-Name foo x)
+match ERROR offset 32: Failed parsing argument 1 as type 'uint64'
 
 count
 match 187

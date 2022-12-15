@@ -140,7 +140,6 @@ static bool cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t 
 
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
 		/*
 		 *	No cast means that it's an existence check.
 		 */
@@ -361,7 +360,6 @@ static int cond_realize_tmpl(request_t *request,
 	/*
 	 *	These are handled elsewhere.
 	 */
-	case TMPL_TYPE_LIST:
 #ifdef HAVE_REGEX
 	case TMPL_TYPE_REGEX:
 #endif
@@ -735,7 +733,6 @@ check_attrs:
 	/*
 	 *	LHS is an attribute or list
 	 */
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR:
 	{
 		fr_pair_t		*vp;

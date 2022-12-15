@@ -661,8 +661,8 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 *	Deal with virtual attributes.
 	 */
 	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
-		if (tmpl_attr_num_elements(vpt) > (size_t) (1 + vpt->rules.attr.list_as_attr)) {
-			fr_strerror_const("Virtual attributes cannot be nested.");
+		if (tmpl_attr_num_elements(vpt) > (size_t)(tmpl_attr_head_is_list(vpt) ? 2 : 1)) {
+			fr_strerror_const("Virtual attributes cannot be nested");
 			goto error;
 		}
 
@@ -687,7 +687,7 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 		/*
 		 *	Could it be a virtual attribute?
 		 */
-		if ((tmpl_attr_num_elements(vpt) == (size_t) (1 + vpt->rules.attr.list_as_attr)) && (xlat_resolve_virtual_attribute(node, vpt) == 0)) goto done;
+		if ((tmpl_attr_num_elements(vpt) == (size_t)2) && (xlat_resolve_virtual_attribute(node, vpt) == 0)) goto done;
 
 		if (!t_rules || !t_rules->attr.allow_unresolved) {
 			talloc_free(vpt);
@@ -1276,8 +1276,8 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		 */
 		fr_assert(!tmpl_contains_regex(node->vpt));
 
-		// attr or list
-		fr_assert(tmpl_is_list(node->vpt) || tmpl_is_attr(node->vpt));
+		// attr
+		fr_assert(tmpl_is_attr(node->vpt));
 		fr_assert(talloc_parent(node->vpt) == node);
 		fr_assert(!node->flags.pure);
 

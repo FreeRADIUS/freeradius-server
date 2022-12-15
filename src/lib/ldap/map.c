@@ -49,114 +49,6 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 
 	switch (map->lhs->type) {
 	/*
-	 *	This is a mapping in the form of:
-	 *		<list>. += <ldap attr>
-	 *
-	 *	Where <ldap attr> is:
-	 *		<list>.<attr> <op> <value>
-	 *
-	 *	It is to allow for legacy installations which stored
-	 *	RADIUS control and reply attributes in separate LDAP
-	 *	attributes.
-	 */
-	case TMPL_TYPE_LIST:
-		for (i = 0; i < self->count; i++) {
-			map_t	*attr = NULL;
-			char		*attr_str;
-
-			tmpl_rules_t	lhs_rules = {
-				.attr = {
-					.dict_def = request->dict,
-					.request_def = tmpl_request(map->lhs),
-					.list_def = tmpl_list(map->lhs),
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
-				},
-				.at_runtime = true,
-			};
-
-			tmpl_rules_t rhs_rules = {
-				.attr = {
-					.dict_def = request->dict
-				},
-				.at_runtime = true,
-			};
-
-			RDEBUG3("Parsing valuepair string \"%pV\"",
-				fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
-
-			/*
-			 *	bv_val is NOT \0 terminated, so we need to make it
-			 *	safe (\0 terminate it) before passing it to any
-			 *	functions which take C strings and no lengths.
-			 */
-			attr_str = talloc_bstrndup(NULL, self->values[i]->bv_val, self->values[i]->bv_len);
-			if (!attr_str) {
-				RWDEBUG("Failed making attribute string safe");
-				continue;
-			}
-
-			if (map_afrom_attr_str(ctx, &attr,
-					       attr_str,
-					       &lhs_rules, &rhs_rules) < 0) {
-				RPWDEBUG("Failed parsing \"%pV\" as valuepair, skipping...",
-					 fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
-				talloc_free(attr_str);
-				continue;
-			}
-
-			talloc_free(attr_str);
-
-			if (tmpl_is_unresolved(attr->lhs)) {
-			    RWDEBUG("Failed parsing left side of \"%pV\", skipping...",
-					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
-				talloc_free(attr);
-				continue;
-			}
-
-			if (tmpl_request_ref_list_cmp(tmpl_request(attr->lhs), tmpl_request(map->lhs)) != 0) {
-				char *attr_request;
-				char *map_request;
-
-				tmpl_request_ref_list_aprint(NULL, &attr_request, tmpl_request(attr->lhs));
-				tmpl_request_ref_list_aprint(NULL, &map_request, tmpl_request(map->lhs));
-
-				RWDEBUG("valuepair \"%pV\" has conflicting request qualifier (%s vs %s), skipping...",
-					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
-					attr_request, map_request);
-
-				talloc_free(attr_request);
-				talloc_free(map_request);
-
-			next_pair:
-				talloc_free(attr);
-				continue;
-			}
-
-			if ((tmpl_list(attr->lhs) != tmpl_list(map->lhs))) {
-				RWDEBUG("valuepair \"%pV\" has conflicting list qualifier (%s vs %s), skipping...",
-					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
-					fr_table_str_by_value(pair_list_table, tmpl_list(attr->lhs), "<INVALID>"),
-					fr_table_str_by_value(pair_list_table, tmpl_list(map->lhs), "<INVALID>"));
-				goto next_pair;
-			}
-
-			if (map_to_vp(ctx, &tmp_list, request, attr, NULL) < 0) {
-				RWDEBUG("Failed creating attribute for valuepair \"%pV\", skipping...",
-					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
-				goto next_pair;
-			}
-
-			fr_pair_list_append(&head, &tmp_list);
-			talloc_free(attr);
-
-			/*
-			 *	Only process the first value, unless the operator is +=
-			 */
-			if (map->op != T_OP_ADD_EQ) break;
-		}
-		break;
-
-	/*
 	 *	Iterate over all the retrieved values,
 	 *	don't try and be clever about changing operators
 	 *	just use whatever was set in the attribute map.
@@ -202,7 +94,6 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 	 *	create using LDAP values.
 	 */
 	switch (map->lhs->type) {
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR:
 		break;
 

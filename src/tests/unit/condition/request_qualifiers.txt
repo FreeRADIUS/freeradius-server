@@ -1,0 +1,43 @@
+proto-dictionary radius
+tmpl-rules allow_unresolved=no allow_unknown=yes
+
+# Our parent is fine
+condition &parent.request.User-Name == &parent.reply.User-Name
+match &parent.request.User-Name == &parent.reply.User-Name
+
+# The parent of our parent is fine
+condition &parent.parent.request.User-Name == &parent.parent.reply.User-Name
+match &parent.parent.request.User-Name == &parent.parent.reply.User-Name
+
+# Current request is fine
+condition &current.request.User-Name == &current.reply.User-Name
+match &current.request.User-Name == &current.reply.User-Name
+
+# Current is pretty much meaningless
+condition &parent.current.parent.request.User-Name == &parent.current.parent.reply.User-Name
+match &parent.current.parent.request.User-Name == &parent.current.parent.reply.User-Name
+
+# Outer lists are fine...
+condition &outer.request.User-Name == &outer.reply.User-Name
+match &outer.request.User-Name == &outer.reply.User-Name
+
+# We _can_ navigate to the parent and _then_ the outer request
+condition &parent.outer.request.User-Name == &parent.outer.reply.User-Name
+match &parent.outer.request.User-Name == &parent.outer.reply.User-Name
+
+# We _can_ navigate to the parent and _then the outer request and then the current request
+condition &parent.outer.current.request.User-Name == &parent.outer.current.reply.User-Name
+match &parent.outer.current.request.User-Name == &parent.outer.current.reply.User-Name
+
+# But we can't go above the outer request
+condition &outer.parent.User-Name == &outer.parent.reply.User-Name
+match ERROR offset 14: "parent" qualifiers not allowed after "outer" qualifier
+
+# ...and we can't have multiple outers
+condition &outer.outer.request.User-Name == &outer.outer.request.User-Name
+match ERROR offset 13: Duplicate "outer" request qualifiers not allowed
+
+# If we don't have a default list, for now, we should default to request, this may change later
+# when we fully implement local variables.
+condition &outer.User-Name == &outer.User-Name
+match &outer.request.User-Name == &outer.request.User-Name

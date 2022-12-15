@@ -851,7 +851,6 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	if (!ctx) {
 		switch (map->lhs->type) {
 		case TMPL_TYPE_ATTR:
-		case TMPL_TYPE_LIST:
 			tmpl_attr_rewrite_leaf_num(map->lhs, NUM_UNSPEC, NUM_ALL);
 			break;
 
@@ -864,7 +863,6 @@ int unlang_fixup_update(map_t *map, void *ctx)
 		 */
 		switch (map->rhs->type) {
 		case TMPL_TYPE_ATTR:
-		case TMPL_TYPE_LIST:
 			tmpl_attr_rewrite_leaf_num(map->rhs, NUM_UNSPEC, NUM_ALL);
 			break;
 
@@ -894,15 +892,6 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 */
 
 	/*
-	 *	What exactly where you expecting to happen here?
-	 */
-	if (tmpl_is_attr(map->lhs) &&
-	    tmpl_is_list(map->rhs)) {
-		cf_log_err(map->ci, "Can't copy list into an attribute");
-		return -1;
-	}
-
-	/*
 	 *	Depending on the attribute type, some operators are disallowed.
 	 */
 	if (tmpl_is_attr(map->lhs)) {
@@ -915,75 +904,6 @@ int unlang_fixup_update(map_t *map, void *ctx)
 
 		if (fr_comparison_op[map->op] && (map->op != T_OP_CMP_FALSE)) {
 			cf_log_warn(cp, "Please use the 'filter' keyword for attribute filtering");
-		}
-	}
-
-	if (tmpl_is_list(map->lhs)) {
-		/*
-		 *	Can't copy an xlat expansion or literal into a list,
-		 *	we don't know what type of attribute we'd need
-		 *	to create.
-		 *
-		 *	The only exception is where were using a unary
-		 *	operator like !*.
-		 */
-		if (map->op != T_OP_CMP_FALSE) switch (map->rhs->type) {
-		case TMPL_TYPE_XLAT_UNRESOLVED:
-		case TMPL_TYPE_UNRESOLVED:
-			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
-			return -1;
-
-		default:
-			break;
-		}
-
-		/*
-		 *	Only += and :=, and !*, and ^= operators are supported
-		 *	for lists.
-		 */
-		switch (map->op) {
-		case T_OP_CMP_FALSE:
-			break;
-
-		case T_OP_ADD_EQ:
-			if (!tmpl_is_list(map->rhs) &&
-			    !tmpl_is_exec(map->rhs)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s += ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		case T_OP_SET:
-			if (tmpl_is_exec(map->rhs)) {
-				WARN("%s[%d]: Please change ':=' to '=' for list assignment",
-				     cf_filename(cp), cf_lineno(cp));
-			}
-
-			if (!tmpl_is_list(map->rhs)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s := ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		case T_OP_EQ:
-			if (!tmpl_is_exec(map->rhs)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s = ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		case T_OP_PREPEND:
-			if (!tmpl_is_list(map->rhs) &&
-			    !tmpl_is_exec(map->rhs)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s ^= ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		default:
-			cf_log_err(map->ci, "Operator \"%s\" not allowed for list assignment",
-				   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
-			return -1;
 		}
 	}
 
@@ -1034,7 +954,6 @@ int unlang_fixup_update(map_t *map, void *ctx)
 
 	return 0;
 }
-
 
 static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang_ext_t const *ext)
 {
@@ -1827,7 +1746,6 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	 */
 	t_rules = *(unlang_ctx->rules);
 	t_rules.attr.allow_unknown = true;
-	t_rules.attr.list_as_attr = true;
 	RULES_VERIFY(&t_rules);
 
 	c = *prev;
@@ -1948,7 +1866,6 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	 */
 	t_rules = *(unlang_ctx->rules);
 	t_rules.attr.allow_unknown = true;
-	t_rules.attr.list_as_attr = true;
 	RULES_VERIFY(&t_rules);
 
 	/*
@@ -2968,11 +2885,6 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
-	if (tmpl_is_list(gext->vpt)) {
-		cf_log_err(cs, "Cannot use list for 'switch' statement");
-		goto error;
-	}
-
 	if (tmpl_contains_regex(gext->vpt)) {
 		cf_log_err(cs, "Cannot use regular expression for 'switch' statement");
 		goto error;
@@ -3299,11 +3211,6 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 			return NULL;
 		}
 
-		if (tmpl_is_list(vpt)) {
-			cf_log_err(cs, "Cannot use list as argument for 'timeout' statement");
-			goto error;
-		}
-
 		if (tmpl_contains_regex(vpt)) {
 			cf_log_err(cs, "Cannot use regular expression as argument for 'timeout' statement");
 			goto error;
@@ -3404,11 +3311,6 @@ static unlang_t *compile_limit(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	error:
 		talloc_free(g);
 		return NULL;
-	}
-
-	if (tmpl_is_list(vpt)) {
-		cf_log_err(cs, "Cannot use list as argument for 'limit' statement");
-		goto error;
 	}
 
 	if (tmpl_contains_regex(vpt)) {
@@ -3521,8 +3423,8 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	fr_assert(vpt);
 
-	if (!tmpl_is_attr(vpt) && !tmpl_is_list(vpt)) {
-		cf_log_err(cs, "MUST use attribute or list reference (not %s) in 'foreach'",
+	if (!tmpl_is_attr(vpt)) {
+		cf_log_err(cs, "MUST use attribute reference (not %s) in 'foreach'",
 			   tmpl_type_to_str(vpt->type));
 		talloc_free(vpt);
 		return NULL;
@@ -3743,7 +3645,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 
 			fr_canonicalize_error(cs, &spaces, &text, slen, name2);
 
-			cf_log_err(cs, "Parse error in condition!!!!");
+			cf_log_err(cs, "Parse error in condition");
 			cf_log_err(cs, "%s", text);
 			cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
 

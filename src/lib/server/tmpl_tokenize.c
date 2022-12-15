@@ -24,6 +24,7 @@
  *
  * @copyright 2014-2020 The FreeRADIUS server project
  */
+#include "lib/util/strerror.h"
 RCSID("$Id$")
 
 #define _TMPL_PRIVATE 1
@@ -110,7 +111,6 @@ fr_table_num_ordered_t const tmpl_type_table[] = {
 	{ L("data"),			TMPL_TYPE_DATA			},
 
 	{ L("attr"),			TMPL_TYPE_ATTR			},
-	{ L("list"),			TMPL_TYPE_LIST			},
 
 	{ L("exec"),			TMPL_TYPE_EXEC			},
 	{ L("xlat"),			TMPL_TYPE_XLAT			},
@@ -284,7 +284,6 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
-	case TMPL_TYPE_LIST:
 		break;
 
 	default:
@@ -320,7 +319,6 @@ void tmpl_debug(tmpl_t const *vpt)
 {
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 		tmpl_attr_debug(vpt);
 		return;
@@ -383,6 +381,22 @@ void tmpl_debug(tmpl_t const *vpt)
 		}
 		break;
 	}
+}
+
+/** Indicate whether this attribute reference represents one of packets or legacy lists
+ *
+ * @note This cannot be converted to static inline in tmpl.h because the visibility of
+ *	 the dictionary attributes are set to hidden so they can't be accessed by code
+ *	 including tmpl.h.
+ */
+bool ar_is_list_attr(tmpl_attr_t const *ar)
+{
+	if (!ar_is_normal(ar)) return false;
+
+	return (ar->ar_da == request_attr_request) ||
+	       (ar->ar_da == request_attr_reply) ||
+	       (ar->ar_da == request_attr_control) ||
+	       (ar->ar_da == request_attr_state);
 }
 
 /** @name Parse list and request qualifiers to #pair_list_t and #tmpl_request_ref_t values
@@ -591,6 +605,7 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	tmpl_request_t		*tail = tmpl_request_list_tail(out);
 	unsigned int		depth = 0;
 	fr_sbuff_marker_t	m;
+	bool			seen_outer = false;
 
 	if (!at_rules) at_rules = &default_rules.attr;
 
@@ -628,6 +643,36 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 			break;
 		}
 
+		switch (ref) {
+		case REQUEST_PARENT:
+		{
+			if (seen_outer) {
+				fr_strerror_const("\"parent\" qualifiers not allowed after \"outer\" qualifier");
+				goto error;
+			}
+		}
+			break;
+
+		case REQUEST_OUTER:
+		{
+			if (seen_outer) {
+				fr_strerror_const("Duplicate \"outer\" request qualifiers not allowed");
+			error:
+				tmpl_request_list_talloc_free_to_tail(out, tail);
+				FR_SBUFF_ERROR_RETURN(&our_in);				
+			}
+			seen_outer = true;
+		}
+			break;
+			
+		case REQUEST_CURRENT:
+			break;
+			
+		case REQUEST_UNKNOWN:
+			fr_assert(0);
+			goto error;
+		}
+
 		/*
 		 *	We don't want to misidentify the list
 		 *	as being part of an attribute.
@@ -641,9 +686,7 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 			if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 
 			fr_sbuff_set(&our_in, in);	/* Marker at the start */
-		error:
-			tmpl_request_list_talloc_free_to_tail(out, tail);
-			FR_SBUFF_ERROR_RETURN(&our_in);
+			goto error;
 		}
 
 		/*
@@ -748,7 +791,6 @@ static inline CC_HINT(always_inline) void tmpl_type_init(tmpl_t *vpt, tmpl_type_
 
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
-	case TMPL_TYPE_LIST:
 		tmpl_attr_list_talloc_init(tmpl_attr(vpt));
 		tmpl_request_list_talloc_init(&vpt->data.attribute.rr);
 		break;
@@ -1162,7 +1204,7 @@ void tmpl_attr_set_leaf_num(tmpl_t *vpt, int16_t num)
 {
 	tmpl_attr_t *ar;
 
-	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_list(vpt) || tmpl_is_attr_unresolved(vpt));
+	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt));
 
 	if (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0) {
 		ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
@@ -1182,7 +1224,7 @@ void tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t from, int16_t to)
 {
 	tmpl_attr_t *ref = NULL;
 
-	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_list(vpt) || tmpl_is_attr_unresolved(vpt));
+	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt));
 
 	if (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0) return;
 
@@ -1199,7 +1241,7 @@ void tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to)
 {
 	tmpl_attr_t *ref = NULL;
 
-	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_list(vpt) || tmpl_is_attr_unresolved(vpt));
+	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt));
 
 	while ((ref = tmpl_attr_list_next(tmpl_attr(vpt), ref))) if (ref->ar_num == from) ref->ar_num = to;
 
@@ -1305,6 +1347,7 @@ static inline CC_HINT(always_inline) void tmpl_attr_insert(tmpl_t *vpt, tmpl_att
 		while ((ar = tmpl_attr_list_prev(tmpl_attr(vpt), ar))) ar->resolve_only = true;
 		break;
 	}
+	TMPL_ATTR_VERIFY(vpt);
 }
 
 /** Parse array subscript and in future other filters
@@ -1396,8 +1439,6 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 
 	FR_SBUFF_SET_RETURN(name, &our_name);
 }
-
-extern fr_dict_attr_t const *tmpl_attr_unspec;
 
 static inline CC_HINT(nonnull(3,4))
 fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error_t *err,
@@ -1949,21 +1990,20 @@ do_suffix:
 		tmpl_attr_insert(vpt, ar);
 	}
 
-	if (tmpl_is_attr(vpt) && (tmpl_rules_cast(vpt) == tmpl_attr_tail_da(vpt)->type)) vpt->rules.cast = FR_TYPE_NULL;
+	if (tmpl_is_attr(vpt) && tmpl_attr_tail_is_normal(vpt) &&
+	    (tmpl_rules_cast(vpt) == tmpl_attr_tail_da(vpt)->type)) vpt->rules.cast = FR_TYPE_NULL;
 
 	fr_sbuff_marker_release(&m_s);
 	return 0;
 }
 
-/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #tmpl_t
+/** Parse a string into a TMPL_TYPE_ATTR_* of type #tmpl_t
  *
  * @param[in,out] ctx		to allocate #tmpl_t in.
  * @param[out] err		May be NULL.  Provides the exact error that the parser hit
  *				when processing the attribute ref.
  * @param[out] out		Where to write pointer to new #tmpl_t.
  * @param[in] name		of attribute including #tmpl_request_ref_t and #pair_list_t qualifiers.
- *				If only #tmpl_request_ref_t #pair_list_t qualifiers are found,
- *				a #TMPL_TYPE_LIST #tmpl_t will be produced.
  * @param[in] p_rules		Formatting rules used to check for trailing garbage.
  * @param[in] t_rules		Rules which control parsing:
  *				- dict_def		The default dictionary to use if attributes
@@ -2006,13 +2046,18 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			       tmpl_rules_t const *t_rules)
 {
 	int				ret;
-	size_t				list_len = 0;
 	tmpl_t				*vpt;
 	fr_sbuff_t			our_name = FR_SBUFF(name);	/* Take a local copy in case we need to back track */
 	bool				ref_prefix = false;
 	bool				is_raw = false;
 	tmpl_attr_rules_t const		*at_rules;
 	fr_sbuff_marker_t		m_l;
+	tmpl_attr_t			*ar;
+
+	fr_assert_msg((request_attr_request != NULL) &&
+		      (request_attr_reply != NULL) &&
+		      (request_attr_control != NULL) &&
+		      (request_attr_state != NULL), "missing list attr. request_global_init not called");
 
 	if (!t_rules) t_rules = &default_rules;
 	at_rules = &t_rules->attr;
@@ -2069,10 +2114,10 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *	Parse one or more request references
 	 */
 	ret = tmpl_request_ref_list_from_substr(vpt, NULL,
-					      &vpt->data.attribute.rr,
-					      &our_name,
-					      p_rules,
-				              at_rules);
+						&vpt->data.attribute.rr,
+						&our_name,
+						p_rules,
+				        	at_rules);
 	if (ret < 0) {
 	error:
 		*out = NULL;
@@ -2082,138 +2127,69 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 
 	fr_sbuff_marker(&m_l, &our_name);
 
-	if (!at_rules->list_as_attr) {
-		/*
-		 *	Parse the list reference
-		 *
-		 *      This code should be removed when lists
-		 *	are integrated into attribute references.
-		 */
-		fr_sbuff_out_by_longest_prefix(&list_len, &vpt->data.attribute.list, pair_list_table,
-					       &our_name, at_rules->list_def);
-
-		/*
-		 *	Check if we need to backtrack
-		 *
-		 *	Lists can be followed by a '.', '[', or the end of the attribute reference
-		 *
-		 *	If we don't find any of those things it wasn't an actual list match
-		 *	but one of the list identifiers matched part of an attribute reference.
-		 *
-		 *	i.e. reply with reply-message.
-		 */
-		if ((list_len > 0) && !fr_sbuff_is_char(&our_name, '.') &&
-		    !fr_sbuff_is_char(&our_name, '[') && !tmpl_substr_terminal_check(&our_name, p_rules)) {
-			fr_sbuff_set(&our_name, &m_l);
-			list_len = 0;
-			vpt->data.attribute.list = at_rules->list_def;
-		}
-
-		if ((at_rules->parent || at_rules->disallow_qualifiers) && (list_len > 0)) {
-			fr_strerror_const("It is not permitted to specify a pair list here");
-			if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
-			talloc_free(vpt);
-			FR_SBUFF_ERROR_RETURN(&our_name);
-		}
-	}
+	/*
+	 *	Start parsing attribute references
+	 *
+	 *	This includes lists, like request,
+	 *	reply, control etc...
+	 */
+	ret = tmpl_attr_afrom_attr_substr(vpt, err,
+					  vpt,
+					  at_rules->parent, at_rules->parent,
+					  &our_name, p_rules, at_rules, 0);
+	if (ret < 0) goto error;
 
 	/*
-	 *	Parse the attribute reference
+	 *	Check to see if the user wants the leaf
+	 *	attribute to be raw.
 	 *
-	 *      This will either be after:
-	 *	- A zero length list, i.e. just after the prefix '&', in which case we require an attribue
-	 *	- '.' and then an allowed char, so we're sure it's not just a bare list ref.
+	 *	We can only do the conversion now _if_
+	 *	the complete hierarchy has been resolved
+	 *	otherwise we'll need to do the conversion
+	 *	later.
 	 */
-	if ((list_len == 0) ||
-	    (fr_sbuff_next_if_char(&our_name, '.') && fr_sbuff_is_in_charset(&our_name, fr_dict_attr_allowed_chars))) {
-		ret = tmpl_attr_afrom_attr_substr(vpt, err,
-						  vpt,
-						  at_rules->parent, at_rules->parent,
-						  &our_name, p_rules, at_rules, 0);
-		if (ret < 0) goto error;
-
-		/*
-		 *	Check to see if the user wants the leaf
-		 *	attribute to be raw.
-		 *
-		 *	We can only do the conversion now _if_
-		 *	the complete hierarchy has been resolved
-		 *	otherwise we'll need to do the conversion
-		 *	later.
-		 */
-		if (tmpl_is_attr(vpt) && is_raw) tmpl_attr_to_raw(vpt);
-
-		/*
-		 *	Check to see what the first attribute reference
-		 *	was.  If it wasn't a known list group attribute
-		 *	and we're parsing in list_as_attr mode, then
-		 *	we need to add in a default list.
-		 */
-		if (at_rules->list_as_attr) {
-			tmpl_attr_t *ar;
-
-			ar = tmpl_attr_list_head(tmpl_attr(vpt));
-			fr_assert(ar != NULL);
-
-			if ((ar->ar_type != TMPL_ATTR_TYPE_NORMAL) ||
-			    ((ar->ar_da != request_attr_request) &&
-			     (ar->ar_da != request_attr_reply) &&
-			     (ar->ar_da != request_attr_control) &&
-			     (ar->ar_da != request_attr_state))) {
-				MEM(ar = talloc(vpt, tmpl_attr_t));
-				*ar = (tmpl_attr_t){
-					.ar_type = TMPL_ATTR_TYPE_NORMAL,
-					.ar_parent = fr_dict_root(fr_dict_internal())
-				};
-
-				switch (at_rules->list_def) {
-				default:
-				case PAIR_LIST_REQUEST:
-					ar->ar_da = request_attr_request;
-					break;
-
-				case PAIR_LIST_REPLY:
-					ar->ar_da = request_attr_reply;
-					break;
-
-				case PAIR_LIST_CONTROL:
-					ar->ar_da = request_attr_control;
-					break;
-
-				case PAIR_LIST_STATE:
-					ar->ar_da = request_attr_state;
-					break;
-				}
-
-				/*
-				 *	Prepend the list ref so it gets evaluated
-				 *	first.
-				 */
-				tmpl_attr_list_insert_head(tmpl_attr(vpt), ar);
-			}
-		}
-	}
+	if (tmpl_is_attr(vpt) && is_raw) tmpl_attr_to_raw(vpt);
 
 	/*
-	 *	If there's no attribute references
-	 *	treat this as a list reference.
+	 *	Add the default list qualifier if a list
+	 *	wasn't specified.
 	 *
-	 *	Eventually we'll remove TMPL_TYPE_LIST
+	 *	This will likely go away when we have
+	 *	local attributes/variables.
 	 */
-	if (!at_rules->list_as_attr && (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0)) {
-		tmpl_attr_t	*ar;
-		fr_slen_t	slen;
+	if (!tmpl_attr_head_is_list(vpt)) {
+		MEM(ar = talloc(vpt, tmpl_attr_t));
+		*ar = (tmpl_attr_t){
+			.ar_type = TMPL_ATTR_TYPE_NORMAL,
+			.ar_num = NUM_UNSPEC,
+			.ar_parent = fr_dict_root(fr_dict_internal())
+		};
 
-		MEM(ar = talloc_zero(vpt, tmpl_attr_t));
-		slen = tmpl_attr_parse_filter(err, ar, &our_name, at_rules);
-		if (slen == 0) {			/* No filter */
-			talloc_free(ar);
-		} else if (slen > 0) {				/* Found a filter */
-			tmpl_attr_list_insert_tail(&vpt->data.attribute.ar, ar);
-		} else if (slen < 0) {				/* Filter error */
-			goto error;
+		switch (at_rules->list_def) {
+		default:
+		case PAIR_LIST_REQUEST:
+			ar->ar_da = request_attr_request;
+			break;
+
+		case PAIR_LIST_REPLY:
+			ar->ar_da = request_attr_reply;
+			break;
+
+		case PAIR_LIST_CONTROL:
+			ar->ar_da = request_attr_control;
+			break;
+
+		case PAIR_LIST_STATE:
+			ar->ar_da = request_attr_state;
+			break;
 		}
-		vpt->type = TMPL_TYPE_LIST;
+
+		/*
+		 *	Prepend the list ref so it gets evaluated
+		 *	first.
+		 */
+		tmpl_attr_list_insert_head(&vpt->data.attribute.ar, ar);
+		TMPL_ATTR_VERIFY(vpt);
 	}
 
 	tmpl_set_name(vpt, T_BARE_WORD, fr_sbuff_start(&our_name), fr_sbuff_used(&our_name));
@@ -2236,33 +2212,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		 */
 		if (tmpl_attr_tail_is_normal(vpt) && (tmpl_attr_tail_da(vpt)->type == tmpl_rules_cast(vpt))) {
 			vpt->rules.cast = FR_TYPE_NULL;
-		}
-
-		/*
-		 *	Ensure that the list is set correctly, so that
-		 *	the returned vpt just doesn't just match the
-		 *	input rules, it is also internally consistent.
-		 */
-		if (at_rules->list_as_attr) {
-			tmpl_attr_t *ar;
-
-			ar = tmpl_attr_list_head(tmpl_attr(vpt));
-			fr_assert(ar != NULL);
-
-			if (ar->ar_da == request_attr_request) {
-				vpt->rules.attr.list_def = PAIR_LIST_REQUEST;
-
-			} else if (ar->ar_da == request_attr_reply) {
-				vpt->rules.attr.list_def = PAIR_LIST_REPLY;
-
-			} else if (ar->ar_da == request_attr_control) {
-				vpt->rules.attr.list_def = PAIR_LIST_CONTROL;
-
-			} else if (ar->ar_da == request_attr_state) {
-				vpt->rules.attr.list_def = PAIR_LIST_STATE;
-			}
-
-			vpt->data.attribute.list = vpt->rules.attr.list_def;
 		}
 	}
 
@@ -2291,15 +2240,13 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	FR_SBUFF_SET_RETURN(name, &our_name);
 }
 
-/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #tmpl_t
+/** Parse a string into a TMPL_TYPE_ATTR_* #tmpl_t
  *
  * @param[in,out] ctx		to allocate #tmpl_t in.
  * @param[out] err		May be NULL.  Provides the exact error that the parser hit
  *				when processing the attribute ref.
  * @param[out] out		Where to write pointer to new #tmpl_t.
- * @param[in] name		of attribute including #tmpl_request_ref_t and #pair_list_t qualifiers.
- *				If only #tmpl_request_ref_t #pair_list_t qualifiers are found,
- *				a #TMPL_TYPE_LIST #tmpl_t will be produced.
+ * @param[in] name		of attribute including #tmpl_request_ref_t qualifiers.
  * @param[in] t_rules		Rules which control parsing.  See tmpl_afrom_attr_substr() for details.
  *
  * @note Unlike #tmpl_afrom_attr_substr this function will error out if the entire
@@ -4010,7 +3957,6 @@ void tmpl_unresolve(tmpl_t *vpt)
 	 *	These types contain dynamically allocated
 	 *	attribute and request references.
 	 */
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 		tmpl_attr_list_talloc_free(tmpl_attr(vpt));
@@ -4137,7 +4083,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 
 	TMPL_VERIFY(vpt);
 
-	if (!tmpl_attr_tail_da(vpt)->flags.is_unknown) return 1;	/* Ensure at least the leaf is unknown */
+	if (!tmpl_attr_tail_is_unknown(vpt)) return 1;	/* Ensure at least the leaf is unknown */
 
 	while ((ar = tmpl_attr_list_next(tmpl_attr(vpt), ar))) {
 		fr_dict_attr_t const	*unknown, *known;
@@ -4329,7 +4275,7 @@ fr_slen_t tmpl_request_ref_list_print(fr_sbuff_t *out, FR_DLIST_HEAD(tmpl_reques
  */
 fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
 {
-	tmpl_attr_t		*ar = NULL;
+	tmpl_attr_t const	*ar = NULL;
 	fr_da_stack_t		stack;
 	char			printed_rr = false;
 	fr_sbuff_t		our_out = FR_SBUFF(out);
@@ -4341,7 +4287,6 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	 *	Only print things we can print...
 	 */
 	switch (vpt->type) {
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_ATTR:
 		break;
@@ -4391,26 +4336,14 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	 *	we add the .unknown prefix.
 	 *
 	 */
-	if (!tmpl_is_list(vpt) && (ar = tmpl_attr_list_tail(tmpl_attr(vpt)))) {
-		switch (ar->type) {
-		case TMPL_ATTR_TYPE_NORMAL:
-		case TMPL_ATTR_TYPE_UNSPEC:
-		case TMPL_ATTR_TYPE_UNKNOWN:
-			if (ar->ar_da->flags.is_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
-			break;
-
-		case TMPL_ATTR_TYPE_UNRESOLVED:
-			if (ar->ar_unresolved_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
-			break;
-		}
-	}
+	if (tmpl_attr_tail_is_raw(vpt)) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 
 	/*
 	 *	Print attribute identifiers
 	 */
 	ar = NULL;
 	while ((ar = tmpl_attr_list_next(tmpl_attr(vpt), ar))) {
-		if (!tmpl_is_list(vpt)) switch(ar->type) {
+		switch(ar->type) {
 		case TMPL_ATTR_TYPE_UNSPEC:
 			break;
 
@@ -4559,7 +4492,6 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 	TMPL_VERIFY(vpt);
 
 	switch (vpt->type) {
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_ATTR:
 		FR_SBUFF_RETURN(tmpl_attr_print, &our_out, vpt, ar_prefix);
@@ -4713,7 +4645,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 	tmpl_attr_t	*seen_unknown = NULL;
 	tmpl_attr_t	*seen_unresolved = NULL;
 
-	fr_assert(tmpl_is_attr_unresolved(vpt) || tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+	fr_assert(tmpl_is_attr_unresolved(vpt) || tmpl_is_attr(vpt));
 
 	/*
 	 *	Loop detection
@@ -4739,7 +4671,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 	 *	Known attribute cannot come after unresolved or unknown attributes
 	 *	Unknown attributes cannot come after unresolved attributes
 	 */
-	if (!tmpl_is_list(vpt)) while ((ar = tmpl_attr_list_next(tmpl_attr(vpt), ar))) {
+	while ((ar = tmpl_attr_list_next(tmpl_attr(vpt), ar))) {
 		switch (ar->type) {
 		case TMPL_ATTR_TYPE_NORMAL:
 			if (seen_unknown) {
@@ -4765,6 +4697,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 			fr_fatal_assert_msg(ar->ar_parent,
 					    "CONSISTENCY CHECK FAILED %s[%u]: attr ref missing parent",
 					    file, line);
+			DA_VERIFY(ar->ar_da);
 			break;
 
 		case TMPL_ATTR_TYPE_UNSPEC:
@@ -4973,32 +4906,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 						     da, da->name,
 						     fr_type_to_str(da->type));
 			}
-
-			if (!vpt->rules.attr.list_as_attr && (tmpl_list(vpt) >= PAIR_LIST_UNKNOWN)) {
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
-						     "attribute \"%s\" has invalid list (%i)",
-						     file, line, tmpl_attr_tail_da(vpt)->name, tmpl_list(vpt));
-			}
-
 			tmpl_attr_verify(file, line, vpt);
-		}
-		break;
-
-	case TMPL_TYPE_LIST:
-		if ((nz = CHECK_ZEROED(vpt, attribute))) {
-			PRINT_NON_ZEROED(vpt, attribute, nz);
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST"
-					     "has non-zero bytes after the data.attribute struct in the union",
-					     file, line);
-		}
-
-		if ((tmpl_attr_list_num_elements(tmpl_attr(vpt)) > 0) &&
-		    ((tmpl_attr_t *)tmpl_attr_list_tail(tmpl_attr(vpt)))->da) {
-#ifndef NDEBUG
-			tmpl_attr_debug(vpt);
-#endif
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST contains %u "
-					     "references", file, line, tmpl_attr_list_num_elements(tmpl_attr(vpt)));
 		}
 		break;
 
