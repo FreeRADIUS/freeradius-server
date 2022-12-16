@@ -179,16 +179,11 @@ typedef struct {
  *
  * For pass2, if either the parent or child is marked up for pass2, then the parent
  * is marked up for pass2.
- *
- * For needs_async, if both the parent and the child are needs_async, the parent is
- * needs_async.
  */
 static inline CC_HINT(nonnull) void xlat_flags_merge(xlat_flags_t *parent, xlat_flags_t const *child)
 {
-	parent->needs_async |= child->needs_async;
 	parent->needs_resolving |= child->needs_resolving;
 	parent->pure &= child->pure; /* purity can only be removed, never added */
-	parent->pure &= !parent->needs_async; /* things needing async cannot be pure */
 	parent->can_purify |= child->can_purify;
 	parent->constant &= child->constant;
 }

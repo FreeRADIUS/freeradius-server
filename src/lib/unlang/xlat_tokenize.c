@@ -253,7 +253,6 @@ static inline int xlat_tokenize_regex(xlat_exp_head_t *head, fr_sbuff_t *in)
 
 	node = xlat_exp_alloc(head, XLAT_REGEX, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
 	node->regex_index = num;
-	node->flags.needs_async = false;
 
 	fr_sbuff_marker_release(&m_s);
 	fr_sbuff_next(in);	/* Skip '}' */
@@ -1016,7 +1015,6 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 			 *	%% is pure.  Everything else is not.
 			 */
 			node->flags.pure = (node->fmt[0] == '%');
-			node->flags.needs_async = false;
 
 			xlat_exp_insert_tail(head, node);
 			continue;
@@ -1069,16 +1067,14 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 
 	fr_assert(head != NULL);
 
-	INFO_INDENT("head flags = { %s %s %s %s }",
+	INFO_INDENT("head flags = { %s %s %s }",
 		    head->flags.needs_resolving ? "need_resolving" : "",
-		    head->flags.needs_async ? "need_async" : "",
 		    head->flags.pure ? "pure" : "",
 		    head->flags.can_purify ? "can_purify" : "");
 
 	xlat_exp_foreach(head, node) {
-		INFO_INDENT("[%d] flags = { %s %s %s %s }", i++,
+		INFO_INDENT("[%d] flags = { %s %s %s }", i++,
 			    node->flags.needs_resolving ? "need_resolving" : "",
-			    node->flags.needs_async ? "need_async" : "",
 			    node->flags.pure ? "pure" : "",
 			    node->flags.can_purify ? "can_purify" : "");
 

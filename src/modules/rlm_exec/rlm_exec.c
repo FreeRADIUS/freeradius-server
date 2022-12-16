@@ -166,7 +166,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_t		*xlat;
 	char const	*p;
 
-	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, exec_xlat, FR_TYPE_STRING, XLAT_FLAG_NEEDS_ASYNC);
+	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, exec_xlat, FR_TYPE_STRING, 0);
 	xlat_func_args(xlat, exec_xlat_args);
 
 	if (inst->input) {

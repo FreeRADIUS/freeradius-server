@@ -197,11 +197,6 @@ xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 			return NULL;
 		}
 
-		if (c->flags.needs_async != flags->needs_async) {
-			ERROR("%s: Cannot change async capability of %s", __FUNCTION__, name);
-			return NULL;
-		}
-
 		if (c->func != func) {
 			ERROR("%s: Cannot change callback function for %s", __FUNCTION__, name);
 			return NULL;
@@ -239,7 +234,6 @@ xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 	 *	If the function is async, it can't be pure.  But
 	 *	non-pure functions don't need to be async.
 	 */
-	fr_assert(!flags->needs_async || !flags->pure);
 	fr_assert(!flags->needs_resolving);
 
 	return c;
@@ -420,8 +414,6 @@ int xlat_func_mono(xlat_t *x, xlat_arg_parser_t const *arg)
 
 /** Set global instantiation/detach callbacks
  *
- * All functions registered must be needs_async.
- *
  * @param[in] xlat		to set instantiation callbacks for.
  * @param[in] instantiate	Instantiation function. Called whenever a xlat is
  *				compiled.
@@ -449,7 +441,7 @@ void _xlat_async_instantiate_set(xlat_t const *xlat,
 
 /** Register an async xlat
  *
- * All functions registered must be needs_async.
+ * All functions registered must be !pure
  *
  * @param[in] xlat			to set instantiation callbacks for.
  * @param[in] thread_instantiate	Instantiation function. Called for every compiled xlat

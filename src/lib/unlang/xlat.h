@@ -108,8 +108,6 @@ typedef struct xlat_s xlat_t;
  */
 typedef struct {
 	bool			needs_resolving;//!< Needs pass2 resolution.
-	bool			needs_async;	//!< Node and all child nodes are guaranteed to not
-						///< require asynchronous expansion.
 	bool			pure;		//!< has no external side effects, true for BOX, LITERAL, and some functions
 	bool			can_purify;	//!< if the xlat has a pure function with pure arguments.
 
@@ -121,7 +119,6 @@ typedef struct {
  *
  *	We can't set "needs_resolving" here, and async functions can't be pure.
  */
-#define XLAT_FLAG_NEEDS_ASYNC &(xlat_flags_t) { .needs_async = true, }
 #define XLAT_FLAG_PURE &(xlat_flags_t) { .pure = true, }
 
 extern fr_table_num_sorted_t const xlat_action_table[];
