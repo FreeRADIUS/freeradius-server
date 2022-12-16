@@ -384,9 +384,6 @@ int		xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
 
 int		xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t *head);
 
-bool		xlat_async_required(xlat_exp_head_t const *xlat);
-
-
 fr_slen_t	xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
 					 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 

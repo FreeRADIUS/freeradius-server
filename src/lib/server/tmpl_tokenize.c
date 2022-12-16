@@ -5531,9 +5531,7 @@ bool tmpl_async_required(tmpl_t const *vpt)
 #ifndef HAVE_REGEX
 	case TMPL_TYPE_REGEX_XLAT:
 #endif
-	case TMPL_TYPE_XLAT:
-		return xlat_async_required(tmpl_xlat(vpt));
-
+	case TMPL_TYPE_XLAT:	/* synchronous xlats use unlang_interpret_synchronous() */
 	default:
 		return false;
 	}

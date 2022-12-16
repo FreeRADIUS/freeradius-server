@@ -1694,17 +1694,3 @@ void xlat_eval_free(void)
 
 	done_init = false;
 }
-
-/** Return whether or not async is required for this xlat.
- *
- *	If the xlat is needs_async, then it MAY yield
- *	If the xlat is not needs_async, then it will NOT yield
- *
- *	If the xlat yields, then async is required.
- */
-bool xlat_async_required(xlat_exp_head_t const *head)
-{
-	if (!head) return false;
-
-	return head->flags.needs_async;
-}
