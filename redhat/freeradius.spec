@@ -661,6 +661,8 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 %if %{with developer}
         --enable-developer=yes \
         --with-gperftools \
+%else
+	--disable-developer \
 %endif
 %if %{with address_sanitizer}
         --enable-address-sanitizer \
