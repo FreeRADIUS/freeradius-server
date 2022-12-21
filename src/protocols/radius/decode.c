@@ -1688,9 +1688,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			child = fr_dict_attr_child_by_num(vendor_child, p[4]);
 			if (!child) {
 				/*
-				 *	Vendor exists but child didn't, again
-				 *	fr_dict_unknown_afrom_fields will do the right thing
-				 *	and only create the unknown attr.
+				 *	Vendor exists but child didn't, create an unknown child.
 				 */
 				child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, p[4]);
 				if (!child) {
