@@ -150,12 +150,13 @@ void eap_packet_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *list, eap_packet_raw_t co
 
 /** Basic EAP packet verifications & validations
  *
+ * @param[in] ctx		talloc ctx for the eap packet.
  * @param[in] eap_packet_p	to validate.
  * @return
  *	- true the packet is valid.
  *	- false the packet is invalid.
  */
-static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
+static bool eap_is_valid(TALLOC_CTX *ctx, eap_packet_raw_t **eap_packet_p)
 {
 	uint16_t		len;
 	size_t			packet_len;
@@ -240,7 +241,7 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
 			q = (uint8_t *) eap_packet;
 			memmove(q + EAP_HEADER_LEN, q + EAP_HEADER_LEN + 7, len - 7 - EAP_HEADER_LEN);
 
-			p = talloc_realloc(talloc_parent(eap_packet), eap_packet, uint8_t, len - 7);
+			p = talloc_realloc(ctx, eap_packet, uint8_t, len - 7);
 			if (!p) {
 				fr_strerror_printf("Unsupported EAP type %s (%u): ignoring the packet",
 						   eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
@@ -362,7 +363,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 		ptr += vp->vp_length;
 	}
 
-	if (!eap_is_valid(&eap_packet)) {
+	if (!eap_is_valid(ctx, &eap_packet)) {
 		talloc_free(eap_packet);
 		return NULL;
 	}
