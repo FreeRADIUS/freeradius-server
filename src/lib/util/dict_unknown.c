@@ -360,34 +360,6 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t co
 	return dict_unknown_alloc(ctx, da, FR_TYPE_OCTETS);
 }
 
-/** Initialise two #fr_dict_attr_t from numbers
- *
- * @param[in] ctx		to allocate the unknown attributes in.
- * @param[in] parent		of the unknown attribute (may also be unknown).
- * @param[in] vendor		of the unknown attribute.
- * @param[in] attr		of the unknown attribute.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-fr_dict_attr_t	*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
-					      unsigned int vendor, unsigned int attr)
-{
-	fr_dict_attr_t *unknown_vendor, *unknown;
-
-	unknown_vendor = fr_dict_unknown_vendor_afrom_num(ctx, parent, vendor);
-	if (unlikely(!unknown_vendor)) return NULL;
-
-	unknown = fr_dict_unknown_attr_afrom_num(ctx, unknown_vendor, attr);
-	if (unlikely(!unknown)) {
-		talloc_free(unknown_vendor);
-		return NULL;
-	}
-	talloc_steal(unknown, unknown_vendor);
-
-	return unknown;
-}
-
 /** Create a fr_dict_attr_t from an ASCII attribute and value
  *
  * Where the attribute name is in the form:
