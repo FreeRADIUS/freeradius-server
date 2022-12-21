@@ -1663,26 +1663,13 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			vendor_child = fr_dict_attr_child_by_num(parent, vendor);
 			if (!vendor_child) {
 				/*
-				 *	If there's no child, it means the vendor is unknown
-				 *	which means the child attribute is unknown too.
-				 *
-				 *	fr_dict_unknown_afrom_fields will do the right thing
-				 *	and create both an unknown vendor and an unknown
-				 *	attr.
-				 *
-				 *	This can be used later by the encoder to rebuild
-				 *	the attribute header.
+				 *	If there's no child, it means the vendor is unknown.  Create a
+				 *	temporary vendor in the packet_ctx.  This will be cleaned up when the
+				 *	decoder exists, which is fine.  Because any unknown attributes which
+				 *	depend on it will copy the entire hierarchy.
 				 */
-				vendor_child = fr_dict_unknown_afrom_fields(packet_ctx->tmp_ctx, parent, vendor, p[4]);
-				if (!vendor_child) {
-					fr_strerror_printf_push("decoder failed creating unknown attribute in %s",
-								parent->name);
-					return -1;
-				}
-				parent = vendor_child;
-				p += 5;
-				data_len -= 5;
-				break;
+				vendor_child = fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, vendor);
+				if (!vendor_child) return PAIR_DECODE_OOM;
 			}
 
 			child = fr_dict_attr_child_by_num(vendor_child, p[4]);
@@ -1690,7 +1677,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				/*
 				 *	Vendor exists but child didn't, create an unknown child.
 				 */
-				child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, p[4]);
+				child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, vendor_child, p[4]);
 				if (!child) {
 					fr_strerror_printf_push("decoder failed creating unknown attribute in %s",
 								parent->name);

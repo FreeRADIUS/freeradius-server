@@ -153,6 +153,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 	fr_dict_t const		*dict_radius;
 	fr_dict_attr_t const   	*attr_radius;
 	fr_dict_attr_t const	*da;
+	TALLOC_CTX		*tmp_ctx = NULL;
 
 	dict_radius = fr_dict_by_protocol_name("radius");
 	fr_assert(dict_radius != NULL);
@@ -169,6 +170,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 			fr_strerror_printf("Malformed diameter attribute at offset %zu.  Needed at least 8 bytes, got %zu bytes",
 					   p - data, end - p);
 		error:
+			talloc_free(tmp_ctx);
 			fr_dcursor_free_list(cursor);
 			return -1;
 		}
@@ -220,8 +222,14 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 					goto error;
 				}
 
-				MEM(da = fr_dict_unknown_afrom_fields(vp, attr_vendor_specific, vendor, attr));
-				goto reinit;
+				if (!tmp_ctx) {
+					fr_dict_attr_t *n;
+
+					MEM(our_parent = n = fr_dict_unknown_vendor_afrom_num(ctx, parent, vendor));
+					tmp_ctx = n;
+				} else {
+					MEM(our_parent = fr_dict_unknown_vendor_afrom_num(tmp_ctx, parent, vendor));
+				}
 			}
 		} else {
 			our_parent = attr_radius;
@@ -241,7 +249,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 				goto error;
 			}
 
-			MEM(da = fr_dict_unknown_attr_afrom_num(vp, parent, attr));
+			MEM(da = fr_dict_unknown_attr_afrom_num(vp, our_parent, attr));
 
 		reinit:
 			if (fr_pair_reinit_from_da(NULL, vp, da) < 0) {
@@ -326,6 +334,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 	/*
 	 *	We got this far.  It looks OK.
 	 */
+	talloc_free(tmp_ctx);
 	return p - data;
 }
 
