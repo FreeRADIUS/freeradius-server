@@ -339,13 +339,14 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (!child) {
 		unknown_child:
 			/*
-			 *	Encode the unknown child as attribute
-			 *	number 0.  This choice means we don't
-			 *	have to look up, or keep track of, the
-			 *	number of children of the key field.
+			 *	Always encode the unknown child as
+			 *	attribute number 0.  Since the unknown
+			 *	children have no "real" number, and
+			 *	are all unique da's, they are
+			 *	incomparable.  And thus can all be
+			 *	given the same number.
 			 */
-			child = fr_dict_unknown_afrom_fields(child_ctx, key_vp->da,
-							     fr_dict_vendor_num_by_da(key_vp->da), 0);
+			child = fr_dict_unknown_attr_afrom_num(child_ctx, key_vp->da, 0);
 			if (!child) {
 				FR_PROTO_TRACE("failed allocating unknown child?");
 				goto unknown;
