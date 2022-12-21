@@ -352,7 +352,6 @@ void _fr_dbuff_init(fr_dbuff_t *out, uint8_t const *start, uint8_t const *end, b
  *				of the buffer we're deconding.
  */
 #define fr_dbuff_init(_out, _start, _len_or_end) \
-/* coverity[overrun-local] */ \
 _fr_dbuff_init(_out, \
 	       (uint8_t const *)(_start), \
 	       _Generic((_len_or_end), \
