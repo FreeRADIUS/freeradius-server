@@ -16,6 +16,7 @@ SUBMAKEFILES := \
 	rb_tests.mk \
 	sbuff_tests.mk \
 	size_tests.mk \
+	slab_tests.mk \
 	strerror_tests.mk \
 	time_tests.mk
 
