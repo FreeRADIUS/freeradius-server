@@ -180,7 +180,12 @@ static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const 
 	flags.is_unknown = 1;
 	flags.array = 0;
 	flags.has_value = 0;
-	flags.length = 0;	/* not fixed length */
+	if (type != FR_TYPE_VENDOR) {
+		flags.length = 0;	/* not fixed length */
+	} else {
+		flags.type_size = da->flags.type_size;
+		flags.length = da->flags.length;
+	}
 	flags.extra = 0;
 
 	/*
