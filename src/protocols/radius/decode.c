@@ -683,13 +683,25 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			FR_PROTO_TRACE("Failed to find child %u of TLV %s", p[0], parent->name);
 
 			/*
-			 *	Build an unknown attr
+			 *	Child is unknown and not a TLV: build an unknown attr
 			 */
-			child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, p[0]);
-			if (!child) {
-			error:
-				talloc_free(vp);
-				return -1;
+			if (fr_radius_decode_tlv_ok(p + 2, p[1] - 2, 1, 1) < 0) {
+				child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, p[0]);
+				if (!child) {
+				error:
+					talloc_free(vp);
+					return -1;
+				}
+			} else {
+				/*
+				 *	Child is formed as a TLV, decode it as such
+				 */
+				child = fr_dict_unknown_tlv_afrom_num(packet_ctx->tmp_ctx, parent, p[0]);
+				if (!child) goto error;
+
+				FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
+				tlv_len = fr_radius_decode_tlv(vp, &tlv_tmp, child, p + 2, p[1] - 2, packet_ctx);
+				goto check;
 			}
 		}
 		FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
@@ -697,6 +709,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		tlv_len = fr_radius_decode_pair_value(vp, &tlv_tmp,
 						      child, p + 2, p[1] - 2,
 						      packet_ctx);
+	check:
 		if (tlv_len < 0) goto error;
 		p += p[1];
 	}
@@ -786,15 +799,36 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	See if the VSA is known.
 	 */
 	da = fr_dict_attr_child_by_num(parent, attribute);
-	if (!da) da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, attribute);
-	if (!da) return -1;
-	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
+	if (da) {
+	decode:
+		FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
-	my_len = fr_radius_decode_pair_value(ctx, out,
-					     da, data + dv->type + dv->length,
-					     attrlen - (dv->type + dv->length),
-					     packet_ctx);
-	if (my_len < 0) return my_len;
+		my_len = fr_radius_decode_pair_value(ctx, out,
+						     da, data + dv->type + dv->length,
+						     attrlen - (dv->type + dv->length),
+						     packet_ctx);
+		if (my_len < 0) return my_len;
+
+		/*
+		 *	It's unknown.  Let's see if we can decode it as a TLV.  While this check can sometimes
+		 *	(rarely) decode non-TLVs as TLVs, that situation will be rare.  And it's very useful
+		 *	to be able to decode nested unknown TLVs.
+		 *
+		 *	Note that if the TLV length is zero, then we have no real way to tell if the TLV is
+		 *	well formed, so we just go create a raw VP.
+		 */
+	} else if ((dv->length == 0) || (fr_radius_decode_tlv_ok(data + dv->type + dv->length, attrlen - (dv->type + dv->length), dv->type, dv->length) < 0)) {
+		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, attribute);
+		if (!da) return -1;
+
+		goto decode;
+
+	} else {
+		da = fr_dict_unknown_tlv_afrom_num(packet_ctx->tmp_ctx, parent, attribute);
+		if (!da) return -1;
+
+		goto decode;
+	}
 
 	return attrlen;
 }

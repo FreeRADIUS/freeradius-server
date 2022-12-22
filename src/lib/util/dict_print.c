@@ -136,6 +136,16 @@ ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out,
 
 	fr_proto_da_stack_build(&da_stack, da);
 
+	/*
+	 *	We may have swapped from a known to an unknown
+	 *	attribute.  We still print out the unknown one.
+	 */
+	if (ancestor && da->flags.is_unknown) {
+		fr_assert(da->depth > ancestor->depth);
+
+		ancestor = da_stack.da[ancestor->depth - 1];
+	}
+
 	if (ancestor) {
 		if (da_stack.da[ancestor->depth - 1] != ancestor) {
 			fr_strerror_printf("Attribute '%s' is not a descendent of \"%s\"", da->name, ancestor->name);

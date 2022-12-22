@@ -2980,6 +2980,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 
 	if (vp->da->flags.is_unknown || vp->da->flags.is_raw) {
 		(void) talloc_get_type_abort_const(vp->da, fr_dict_attr_t);
+
 	} else {
 		fr_dict_attr_t const *da;
 
@@ -2996,7 +2997,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 	}
 
 	if (vp->da->flags.is_raw || vp->da->flags.is_unknown) {
-		if ((vp->da->parent->type != FR_TYPE_VSA) && (vp->data.type != FR_TYPE_VSA) && (vp->data.type != FR_TYPE_OCTETS)) {
+		if ((vp->da->parent->type != FR_TYPE_VSA) && (vp->data.type != FR_TYPE_VSA) && (vp->data.type != FR_TYPE_OCTETS) && (vp->da->type != FR_TYPE_TLV)) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t (raw/unknown) attribute %p \"%s\" "
 					     "data type incorrect.  Expected %s, got %s",
 					     file, line, vp->da, vp->da->name,
