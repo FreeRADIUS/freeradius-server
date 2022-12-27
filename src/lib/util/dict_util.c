@@ -1961,6 +1961,15 @@ fr_dict_attr_t const *fr_dict_attr_by_oid(fr_dict_attr_err_t *err, fr_dict_attr_
 	fr_dict_attr_by_oid_substr(err, &da, parent, &sbuff, NULL);
 	if (err != FR_DICT_ATTR_OK) return NULL;
 
+	/*
+	 *	If we didn't parse the entire string, then the parsing stopped at an unknown child.
+	 *	e.g. Vendor-Specific.Cisco.Foo.  In that case, the full attribute wasn't found.
+	 */
+	if (fr_sbuff_remaining(&sbuff) > 0) {
+		*err = FR_DICT_ATTR_NOTFOUND;
+		return NULL;
+	}
+
 	return da;
 }
 
