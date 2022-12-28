@@ -21,7 +21,7 @@
  *
  * @copyright 2020 Arran Cudbard-Bell
  */
-RCSIDH(ascend_h, "$Id$")
+RCSIDH(acutest_helpers_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
