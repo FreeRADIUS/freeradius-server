@@ -133,17 +133,22 @@ server coa {
 			foreach &control:Tmp-String-0 {
 				if ("%{Foreach-Variable-0}" =~ /([^#]*)#(.*)/) {
 					update request {
-						COA-Packet-Type := "%{Packet-Type}"
+						CoA-Packet-Type := "%{Packet-Type}"
 
-						COA-Packet-DST-IP-Address := "%{1}"
-						COA-Acct-Session-Id := "%{2}"
+						#
+						#  Or use CoA-Packet-DST-IPv6-Address
+						#  for IPv6 address.
+						#
+						CoA-Packet-DST-IP-Address := "%{1}"
+
+						CoA-Acct-Session-Id := "%{2}"
 
 						#
 						#  Add any other attributes here.
 						#
 
 						# Set the CoA/Disconnect port
-						COA-Packet-DST-Port := 1700
+						CoA-Packet-DST-Port := 1700
 
 						# SQL-User-Name was left over
 						# from the xlat
@@ -158,8 +163,8 @@ server coa {
 					#
 					#  If we're sending a CoA packet, send it out.
 					#
-					if (COA-Packet-DST-IP-Address && \
-					    COA-Acct-Session-Id != "") {
+					if ((CoA-Packet-DST-IP-Address && CoA-Packet-DST-IPv6-Address) && \
+					    CoA-Acct-Session-Id != "") {
 						detail_coa.accounting
 					}
 				}
@@ -192,26 +197,45 @@ server coa-buffered-reader {
 	#  processed through the "accounting" section.
 	#
 	accounting {
-		switch &COA-Packet-Type {
+		switch &CoA-Packet-Type {
 			case "Disconnect-Request" {
 				update {
 					#  Include given attributes
 					disconnect: += request:[*]
 
-					disconnect:Packet-DST-IP-Address := \
-						&COA-Packet-DST-IP-Address
 					disconnect:Packet-DST-Port := \
-						&COA-Packet-DST-Port
+						&CoA-Packet-DST-Port
+
 					disconnect:Acct-Session-Id := \
-						&COA-Acct-Session-Id
+						&CoA-Acct-Session-Id
 
 					#  Some NASs want these, others don't
 					disconnect:Event-Timestamp := "%l"
 					disconnect:Message-Authenticator := 0x00
 
-					#  Remove this. We're not accounting
-					disconnect:Acct-Delay-Time !* ANY
+					#
+					#  Remove attributes which will confuse the NAS
+					#
+					#  The NAS will "helpfully" NAK the packet
+					#  if it contains attributes which are NOT
+					#  "session identification" attributes.
+					#
+					#  Those attributes should be listed here.
+					#
+					coa:Acct-Delay-Time !* ANY
+					coa:Proxy-State !* ANY
+				}
 
+				if (CoA-Packet-DST-IP-Address) {
+					update {
+						disconnect:Packet-DST-IP-Address := \
+							&CoA-Packet-DST-IP-Address
+					}
+				} else {
+					update {
+						disconnect:Packet-DST-IPv6-Address := \
+							&CoA-Packet-DST-IP-Address
+					}
 				}
 			}
 
@@ -220,12 +244,11 @@ server coa-buffered-reader {
 					#  Include given attributes
 					coa: += request:[*]
 
-					coa:Packet-DST-IP-Address := \
-						&COA-Packet-DST-IP-Address
 					coa:Packet-DST-Port := \
-						&COA-Packet-DST-Port
+						&CoA-Packet-DST-Port
+
 					coa:Acct-Session-Id := \
-						&COA-Acct-Session-Id
+						&CoA-Acct-Session-Id
 
 					#  Some NASs want these, others don't
 					coa:Event-Timestamp := "%l"
@@ -243,8 +266,20 @@ server coa-buffered-reader {
 					coa:Acct-Delay-Time !* ANY
 					coa:Proxy-State !* ANY
 				}
-			}
 
+				if (CoA-Packet-DST-IP-Address) {
+					update {
+						coa:Packet-DST-IP-Address := \
+							&CoA-Packet-DST-IP-Address
+					}
+				} else {
+					update {
+						coa:Packet-DST-IPv6-Address := \
+							&CoA-Packet-DST-IP-Address
+					}
+				}
+
+			}
 		}
 
 		#
