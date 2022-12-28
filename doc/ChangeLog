@@ -1,6 +1,6 @@
 FreeRADIUS 3.2.2 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	Feature improvements
-	* The "configure" process now gives a much clearer repot
+	* The "configure" process now gives a much clearer report
 	  when it's finished.  Patches by Matthew Newton.
 	* Fallback to "uname -n" on missing "hostname".  Fixes #4771
 	* Export thread details in radmin "stats threads".  Fixes #4770
@@ -25,6 +25,8 @@ FreeRADIUS 3.2.2 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	* Postgres can now automatically use alternate queries for errors
 	  other than duplicate keys.
 	* %{listen:TLS-PSK-Identity} is now set when using PSK and psk_query
+	  This helps the server track the identity of the client which is
+	  connecting.
 
 	Bug fixes
 	* Support for non-blocking TLS sockets.
