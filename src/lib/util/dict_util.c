@@ -1371,10 +1371,14 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 		return -1;
 	}
 
+	if (fr_type_is_structural(da->type) || (da->type == FR_TYPE_STRING)) {
+		fr_strerror_printf("Enumeration names cannot be added for data type '%s'", fr_type_to_str(da->type));
+		return -1;
+	}
+
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 	if (!ext) {
-		fr_strerror_printf("VALUE cannot be defined for %s attributes",
-				   fr_type_to_str(da->type));
+		fr_strerror_printf("VALUE cannot be defined for %s", da->name);
 		return -1;
 	}
 
