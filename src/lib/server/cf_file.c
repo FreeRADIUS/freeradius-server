@@ -2102,6 +2102,9 @@ static int parse_input(cf_stack_t *stack)
 	} else if (name1_token == T_BARE_WORD) {
 		fr_type_t type;
 
+		/*
+		 *	Check if we have a local variable definition.
+		 */
 		process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
 		if (process) {
 			CONF_ITEM *ci;
@@ -2143,10 +2146,20 @@ static int parse_input(cf_stack_t *stack)
 		}
 
 		/*
-		 *	We don't have an operastor, so set it to a magic value.
+		 *	We don't have an operator, so set it to a magic value.
 		 */
 		op_token = T_OP_CMP_TRUE;
-		goto parse_name;
+
+		/*
+		 *	Parse the name of the local variable, and use it as the "value" for the CONF_PAIR.
+		 */
+		if (cf_get_token(parent, &ptr, &value_token, buff[2], stack->bufsize,
+				 frame->filename, frame->lineno) < 0) {
+			return -1;
+		}
+		value = buff[2];
+
+		goto alloc_pair;
 	}
 
 	/*
@@ -2364,15 +2377,29 @@ check_for_eol:
 		goto alloc_section;
 	}
 
-parse_name:
 	/*
 	 *	Parse the value for a CONF_PAIR.
 	 */
-	if (cf_get_token(parent, &ptr, &value_token, buff[2], stack->bufsize,
-			 frame->filename, frame->lineno) < 0) {
-		return -1;
+//	if ((parent->allow_unlang != 1) || (*buff[1] != '&')) {
+		if (cf_get_token(parent, &ptr, &value_token, buff[2], stack->bufsize,
+				 frame->filename, frame->lineno) < 0) {
+			return -1;
+		}
+		value = buff[2];
+
+#if 0
+	} else {
+		/*
+		 *	Allow expressions, but only for attribute editing.  We also have to parse module
+		 *	return codes, like "handled = 1", and those aren't attributes.  :(
+		 */
+		if (cf_get_token(parent, &ptr, &value_token, buff[2], stack->bufsize,
+				 frame->filename, frame->lineno) < 0) {
+			return -1;
+		}
+		value = buff[2];
 	}
-	value = buff[2];
+#endif
 
 	/*
 	 *	Add parent CONF_PAIR to our CONF_SECTION
