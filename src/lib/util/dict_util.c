@@ -1359,7 +1359,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 
 	len = strlen(name);
 	if (len >= FR_DICT_ENUM_MAX_NAME_LEN) {
-		fr_strerror_printf("%s: Value name too long", __FUNCTION__);
+		fr_strerror_printf("VALUE name is too long");
 		return -1;
 	}
 
@@ -1422,16 +1422,14 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 
 	if (da->type != value->type) {
 		if (!coerce) {
-			fr_strerror_printf("%s: Type mismatch between attribute (%s) and enum (%s)",
-					   __FUNCTION__,
+			fr_strerror_printf("Type mismatch between attribute (%s) and enum (%s)",
 					   fr_type_to_str(da->type),
 					   fr_type_to_str(value->type));
 			return -1;
 		}
 
 		if (fr_value_box_cast(enumv, enum_value, da->type, NULL, value) < 0) {
-			fr_strerror_printf_push("%s: Failed coercing enum type (%s) to attribute type (%s)",
-						__FUNCTION__,
+			fr_strerror_printf_push("Failed coercing enum type (%s) to attribute type (%s)",
 					   	fr_type_to_str(value->type),
 					   	fr_type_to_str(da->type));
 
