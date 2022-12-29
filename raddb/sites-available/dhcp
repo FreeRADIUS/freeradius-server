@@ -109,9 +109,7 @@ listen {
 	#
 	#  When running the server as root in debug mode, you can use:
 	#
-	#  capsh --caps="cap_setpcap,cap_setuid,cap_setgid,cap_net_admin,cap_net_bind_service+eip"
---keep=1 --user=radius --addamb=cap_net_admin,cap_net_bind_service --
--c "/path/to/radiusd -X"
+	#  capsh --caps="cap_setpcap,cap_setuid,cap_setgid,cap_net_admin,cap_net_bind_service+eip" --keep=1 --user=radius --addamb=cap_net_admin,cap_net_bind_service -- -c "/path/to/radiusd -X"
 	#
 	#  Or, simply "sudo" or "su" to the "radius" user, and then run
 	#  the server in debug mode.
