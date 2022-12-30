@@ -479,8 +479,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			 *	Auth-Type := Accept
 			 *	Auth-Type := Reject
 			 */
-			if ((vp->vp_integer == 254) ||
-			    (vp->vp_integer == 4)) {
+			if ((vp->vp_integer == PW_AUTH_TYPE_ACCEPT) ||
+			    (vp->vp_integer == PW_AUTH_TYPE_REJECT)) {
 			    found_pw = true;
 			}
 			break;
