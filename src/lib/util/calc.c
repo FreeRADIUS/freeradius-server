@@ -1918,28 +1918,47 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 		}
 
 		/*
-		 *	Try to "up-cast" the types.  This is
-		 *	so that we can take (for example)
-		 *	uint8 < uint16, and have it make
-		 *	sense.
-		 *
-		 *	There must be only one entry per [a,b]
-		 *	pairing.  That way we're sure that [a,b]==[b,a]
+		 *	Convert the types to ones which are comparable.
 		 */
 		if (a->type != b->type) {
-			hint = upcast_cmp[a->type][b->type];
-			if (hint == FR_TYPE_NULL) {
-				hint = upcast_cmp[b->type][a->type];
-			} else {
-				fr_assert(upcast_cmp[b->type][a->type] == FR_TYPE_NULL);
-			}
+			fr_dict_attr_t const *enumv = NULL;
 
-			if (hint == FR_TYPE_NULL) {
-				fr_strerror_printf("Cannot compare incompatible types (%s)... %s (%s)...",
-						   fr_type_to_str(a->type),
-						   fr_tokens[op],
-						   fr_type_to_str(b->type));
-				goto done;
+			/*
+			 *	If we're doing comparisons and one of them has an enum, and the other is an
+			 *	enum name, then use the enum name to convert the string to the other type.
+			 *
+			 *	We can then do type-specific comparisons.
+			 */
+			if ((a->type == FR_TYPE_STRING) && b->enumv) {
+				enumv = b->enumv;
+				hint = b->type;
+
+			} else if ((b->type == FR_TYPE_STRING) && a->enumv) {
+				enumv = a->enumv;
+				hint = a->type;
+
+			} else {
+				/*
+				 *	Try to "up-cast" the types.  This is so that we can take (for example)
+				 *	uint8 < uint16, and have it make sense.
+				 *
+				 *	There must be only one entry per [a,b] pairing.  That way we're sure
+				 *	that [a,b]==[b,a]
+				 */
+				hint = upcast_cmp[a->type][b->type];
+				if (hint == FR_TYPE_NULL) {
+					hint = upcast_cmp[b->type][a->type];
+				} else {
+					fr_assert(upcast_cmp[b->type][a->type] == FR_TYPE_NULL);
+				}
+
+				if (hint == FR_TYPE_NULL) {
+					fr_strerror_printf("Cannot compare incompatible types (%s)... %s (%s)...",
+							   fr_type_to_str(a->type),
+							   fr_tokens[op],
+							   fr_type_to_str(b->type));
+					goto done;
+				}
 			}
 
 			/*
@@ -1947,12 +1966,12 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			 *	inputs.
 			 */
 			if (a->type != hint) {
-				if (fr_value_box_cast(NULL, &one, hint, NULL, a) < 0) goto done;
+				if (fr_value_box_cast(NULL, &one, hint, enumv, a) < 0) goto done;
 				a = &one;
 			}
 
 			if (b->type != hint) {
-				if (fr_value_box_cast(NULL, &two, hint, NULL, b) < 0) goto done;
+				if (fr_value_box_cast(NULL, &two, hint, enumv, b) < 0) goto done;
 				b = &two;
 			}
 		}
