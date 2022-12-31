@@ -3040,9 +3040,10 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		vpt = tmpl_alloc_null(ctx);
 
 		/*
-		 *	If it doesn't match any other type
-		 *	of bareword, assume it's an enum
-		 *	value.
+		 *	If it doesn't match any other type of bareword, parse it as an enum name.
+		 *
+		 *	Note that we don't actually try to resolve the enum name.  The caller is responsible
+		 *	for doing that.
 		 */
 		if (fr_dict_enum_name_afrom_substr(vpt, &str, &sberr, &our_in, p_rules ? p_rules->terminals : NULL) < 0) {
 			/*
@@ -3063,38 +3064,14 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 				fr_strerror_const("Unexpected text after enum value.  Expected operator");
 				break;
 			}
-		bareword_error:
+
 			talloc_free(vpt);
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
-		/*
-		 *	If we have an enumv in the rules then
-		 *	do the lookup now and fail early.
-		 */
-		if (t_rules->enumv) {
-			fr_dict_enum_value_t *dv;
-
-			dv = fr_dict_enum_by_name(t_rules->enumv, str, slen);
-			if (!dv) {
-				fr_strerror_printf("enum value '%s' is not an enumeration of attribute '%s'",
-						   vpt->data.unescaped, t_rules->enumv->name);
-				goto bareword_error;
-			}
-
-			if (unlikely(fr_value_box_copy(vpt, tmpl_value(vpt), dv->value) < 0)) {
-				fr_strerror_const("Failed copying enum");
-				goto bareword_error;
-			}
-			tmpl_init(vpt, TMPL_TYPE_DATA, quote,
-				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
-
-			talloc_free(str);
-		} else {
-			tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote,
-				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
-			vpt->data.unescaped = str;
-		}
+		tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote,
+			  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
+		vpt->data.unescaped = str;
 		*out = vpt;
 
 		FR_SBUFF_SET_RETURN(in, &our_in);
