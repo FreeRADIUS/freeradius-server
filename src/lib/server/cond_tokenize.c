@@ -1145,6 +1145,29 @@ static fr_slen_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	 *	Grab the LHS
 	 */
 	fr_sbuff_marker(&m_lhs_cast, &our_in);
+
+	/*
+	 *	Check to see if this is an rcode operand.  These are
+	 *      common enough and specific enough to conditions that
+	 *      we handle them in the condition code specifically.
+	 *
+	 *	Unary barewords can only be rcodes, so anything that's
+	 *	not a rcode an rcode is an error.
+	 */
+	{
+		rlm_rcode_t rcode;
+		size_t match_len;
+
+		fr_sbuff_out_by_longest_prefix(&match_len, &rcode, rcode_table, &our_in, RLM_MODULE_NOT_SET);
+		if (rcode != RLM_MODULE_NOT_SET) {
+			c->type = COND_TYPE_RCODE;
+			c->data.rcode = rcode;
+
+			fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+			goto closing_brace;
+		}
+	}
+
 	if (cond_tokenize_operand(c, &lhs, &m_lhs, &our_in, t_rules, simple_parse) < 0) goto error;
 
 #ifdef HAVE_REGEX
@@ -1206,33 +1229,6 @@ static fr_slen_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 			fr_strerror_const("Cannot do cast for existence check");
 			fr_sbuff_set(&our_in, &m_lhs_cast);
 			goto error;
-		}
-
-		/*
-		 *	Check to see if this is an rcode operand.
-		 *      These are common enough and specific enough
-		 *	to conditions that we handle them in the
-		 *	condition code specifically.
-		 *
-		 *	Unary barewords can only be rcodes, so
-		 *	anything that's not a rcode an rcode
-		 *	is an error.
-		 */
-		if (tmpl_is_unresolved(lhs) && (lhs->quote == T_BARE_WORD)) {
-			rlm_rcode_t rcode;
-
-			rcode = fr_table_value_by_str(rcode_table, lhs->data.unescaped, RLM_MODULE_NOT_SET);
-			if (rcode == RLM_MODULE_NOT_SET) {
-				fr_strerror_const("Expected a module return code");
-				fr_sbuff_set(&our_in, &m_lhs);
-				goto error;
-			}
-			TALLOC_FREE(lhs);
-
-			c->type = COND_TYPE_RCODE;
-			c->data.rcode = rcode;
-
-			goto closing_brace;
 		}
 
 		c->type = COND_TYPE_TMPL;
@@ -1386,7 +1382,18 @@ closing_brace:
 	fr_sbuff_out_by_longest_prefix(&slen, &cond_op, cond_logical_op_table,
 				       &our_in, COND_TYPE_INVALID);
 	if (slen == 0) {
-		fr_strerror_const("Unexpected text after condition");
+		/*
+		 *	Peek ahead to give slightly better error messages.
+		 */
+		if (fr_sbuff_is_char(&our_in, '=')) {
+			fr_strerror_const("Invalid location for operator");
+
+		} else if (fr_sbuff_is_char(&our_in, '!')) {
+			fr_strerror_const("Invalid location for negation");
+
+		} else {
+			fr_strerror_const("Expected closing brace or logical operator");
+		}
 		goto error;
 	}
 

@@ -4,10 +4,10 @@ condition &User-Name !~ /^foo\nbar$/
 match !&User-Name =~ /^foo\nbar$/
 
 condition (ok =~ handled)
-match ERROR offset 8: Expected regular expression
+match ERROR offset 5: Invalid location for operator
 
 condition (ok == /foo/)
-match ERROR offset 8: Unexpected regular expression
+match ERROR offset 5: Invalid location for operator
 
 #
 #  bare words are cast to strings

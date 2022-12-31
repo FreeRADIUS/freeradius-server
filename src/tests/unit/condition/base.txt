@@ -28,29 +28,29 @@ condition (|| b)
 match ERROR offset 2: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 condition ((ok || handled) foo)
-match ERROR offset 18: Unexpected text after condition
+match ERROR offset 18: Expected closing brace or logical operator
 
 # escapes in names are illegal
 condition (ok\ foo || handled)
-match ERROR offset 4: Unexpected text after enum value.  Expected operator
+match ERROR offset 4: Expected closing brace or logical operator
 
 condition (Service-Type == 000-111)
 match ERROR offset 18: enum values must contain at least one alpha character
 
 condition (ok FOO handled)
-match ERROR offset 5: Invalid operator
+match ERROR offset 5: Expected closing brace or logical operator
 
 condition (ok !x handled)
-match ERROR offset 5: Invalid operator
+match ERROR offset 5: Invalid location for negation
 
 condition (ok =x handled)
-match ERROR offset 5: Invalid operator
+match ERROR offset 5: Invalid location for operator
 
 #
 # Re-enable when we have proper bareword xlat tokenization
 #
 #condition (ok == handled"foo")
-#match ERROR offset 14 Unexpected text after condition
+#match ERROR offset 14 Expected closing brace or logical operator
 
 # And now we have a bunch of VALID conditions we want to parse.
 
