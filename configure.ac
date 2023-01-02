@@ -160,6 +160,22 @@ if test "x$developer" = "xyes"; then
 fi
 
 dnl #
+dnl #  Enable languages binding availables in src/language/
+dnl #
+available_languages=`for _i in src/language/*; do test -d $_i && echo "${_i/*\//},"; done | tr -d '\n' | sed 's@,$@@'`
+AC_ARG_ENABLE(language,
+[  --enable-language       enables languages binding availables in src/language/. e.g: ${available_languages}],
+[ case "$enableval" in
+  no)
+    enabled_languages=
+    ;;
+  *)
+    enabled_languages=${enableval}
+  esac ]
+)
+AC_SUBST(ENABLED_LANGUAGES, "${enabled_languages}")
+
+dnl #
 dnl #  Write the current commit into Make.inc
 dnl #
 AC_MSG_CHECKING([build commit])

@@ -16,3 +16,17 @@ SUBMAKEFILES := include/all.mk \
 ifneq "$(findstring test,$(MAKECMDGOALS))$(findstring clean,$(MAKECMDGOALS))" ""
 SUBMAKEFILES +=	tests/all.mk
 endif
+
+#
+#  Define a function to do all of the same thing.
+#
+ifneq "$(ENABLED_LANGUAGES)" ""
+define ENABLE_LANGUAGE
+language/${1}/all.mk:
+	$${Q}echo "ENABLE LANGUAGE ${1}"
+
+SUBMAKEFILES += language/${1}/all.mk
+endef
+
+$(foreach L,${ENABLED_LANGUAGES_LIST},$(eval $(call ENABLE_LANGUAGE,${L})))
+endif

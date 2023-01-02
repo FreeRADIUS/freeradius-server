@@ -726,6 +726,7 @@ build_vendor
 build_cpu
 build
 RADIUSD_VERSION_COMMIT
+ENABLED_LANGUAGES
 ANTORA
 GRAPHVIZ_DOT
 DOXYGEN
@@ -781,6 +782,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_developer
+enable_language
 enable_verify_ptr
 enable_largefile
 enable_strict_dependencies
@@ -1470,6 +1472,7 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-developer      enables features of interest to developers.
+  --enable-language       enables languages binding availables in src/language/. e.g: ${available_languages}
   --disable-verify-ptr    disables WITH_VERIFY_PTR developer build option.
   --disable-largefile     omit support for large files
   --enable-strict-dependencies  fail configure on lack of module dependancy.
@@ -3274,6 +3277,23 @@ if test "x$developer" = "xyes"; then
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Enabling developer build implicitly, disable with --disable-developer" >&5
 printf "%s\n" "$as_me: Enabling developer build implicitly, disable with --disable-developer" >&6;}
 fi
+
+available_languages=`for _i in src/language/*; do test -d $_i && echo "${_i/*\//},"; done | tr -d '\n' | sed 's@,$@@'`
+# Check whether --enable-language was given.
+if test ${enable_language+y}
+then :
+  enableval=$enable_language;  case "$enableval" in
+  no)
+    enabled_languages=
+    ;;
+  *)
+    enabled_languages=${enableval}
+  esac
+
+fi
+
+ENABLED_LANGUAGES="${enabled_languages}"
+
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking build commit" >&5
 printf %s "checking build commit... " >&6; }

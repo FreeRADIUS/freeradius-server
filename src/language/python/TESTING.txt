@@ -1,0 +1,26 @@
+Brief about how to build and test it!
+
+1. The "eapol_test" should support the _Ctrl_ command 'GET_RADIUS_REPLY'. In this case, we must use the below repo/tag.
+
+e.g:
+
+```
+$ export HOSTAPD_REPO="https://github.com/NetworkRADIUS/hostap" 
+$ export HOSTAPD_GIT_TAG="feature/get_radius_reply"
+$ ./scripts/ci/eapol_test-build.sh
+```
+
+2. Assuming the branch 'v4/pyfr' is properly merged in 'master' branch.
+
+```
+$ cd src/language/python
+$ make clean install
+```
+
+3. The below test script should work!
+
+```
+$ ./tests/test.py
+$ ./examples/radict.py User-Name
+```
+

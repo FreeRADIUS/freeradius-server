@@ -1,0 +1,60 @@
+Metadata-Version: 1.0
+Name: pyfr
+Version: 0.0.1
+Summary: PyFR -- A Python Interface To The libfreeradius-* libraries
+Home-page: https://github.com/FreeRADIUS/freeradius-server/tree/master/src/languages/python/
+Author: Jorge Pereira <jpereira@freeradius.org>
+Author-email: freeradius-devel@lists.freeradius.org
+Maintainer: FreeRADIUS Project
+Maintainer-email: freeradius-devel@lists.freeradius.org
+License: GPL
+Description: PyFR -- A Python Interface To The libfreeradius-* libraries
+        ================================================
+        
+        PyFR is a Python interface to `libfreeradius`_, the multiprotocol base
+        library.
+        PyFR can be used to RADIUS, TACACS, TFTP and DNS protocols.
+        
+        Requirements
+        ------------
+        
+        - Python 3.10.
+        - FreeRADIUS 4.0.0 or better.
+        
+        Installation
+        ------------
+        
+        Download the source distribution from `PyPI`_.
+        
+        Please see `the installation documentation`_ for installation instructions.
+        
+        Support
+        -------
+        
+        For support questions please use `freeradius-devel mailing list`_.
+        `Mailing list archives`_ are available for your perusal as well.
+        
+        Bugs can be reported `via GitHub`_. Please use GitHub only for bug
+        reports and direct questions to our mailing list instead.
+        
+        .. _freeradius-devel mailing list: https://lists.freeradius.org/mailman/listinfo/freeradius-devel
+        .. _Mailing list archives: https://lists.freeradius.org/pipermail/freeradius-devel/
+        .. _via GitHub: https://github.com/FreeRADIUS/freeradius-server/issues
+        
+        
+        License
+        -------
+        
+        PyFR is licensed under the GPL license. The complete text of the licenses is available
+        in COPYING-GPL_ files in the source distribution.
+        
+        .. _COPYING-LGPL: https://github.com/FreeRADIUS/freeradius-server/blob/master/LICENSE
+        
+Keywords: freeradius,libfreeradius,pyfr,radius,aaa
+Platform: All
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: GNU Library or General Public License (GPL)
+Classifier: Operating System :: POSIX
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Internet :: RADIUS
+Requires-Python: >=3.10
