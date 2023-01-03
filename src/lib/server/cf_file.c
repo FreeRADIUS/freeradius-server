@@ -1286,6 +1286,17 @@ static ssize_t fr_skip_xlat(char const *start, char const *end)
 	return -(p - start);
 }
 
+static const bool terminal_end_section[UINT8_MAX + 1] = {
+	['{'] = true,
+};
+
+#if 0
+static const bool terminal_end_line[UINT8_MAX + 1] = {
+	[';'] = true,
+	['}'] = true,
+};
+#endif
+
 /**  Skip a conditional expression.
  *
  *  This is a simple "peek ahead" parser which tries to not be wrong.  It may accept
@@ -1296,13 +1307,13 @@ static ssize_t fr_skip_xlat(char const *start, char const *end)
  *
  *  @param[in] start	start of the condition.
  *  @param[in] end	end of the string (or NULL for zero-terminated strings)
- *  @param[in] expect_section only for configuration file reader
+ *  @param[in] terminal	terminal character(s)
  *  @param[out] eol	did the parse error happen at eol?
  *  @return
  *	>0 length of the string which was parsed.  *eol is false.
  *	<=0 on error, *eol may be set.
  */
-static ssize_t fr_skip_condition(char const *start, char const *end, bool expect_section, bool *eol)
+static ssize_t fr_skip_condition(char const *start, char const *end, bool const terminal[static UINT8_MAX + 1], bool *eol)
 {
 	char const *p = start;
 	bool was_regex = false;
@@ -1323,7 +1334,7 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool expect
 		/*
 		 *	In the configuration files, conditions end with ") {" or just "{"
 		 */
-		if (expect_section && (depth == 0) && (*p == '{')) {
+		if ((depth == 0) && terminal && terminal[(uint8_t) *p]) {
 			return p - start;
 		}
 
@@ -1435,12 +1446,6 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool expect
 	}
 
 	/*
-	 *	We're not expecting a '{' section header, the
-	 *	condition is done when it reaches end of string, or CR LF.
-	 */
-	if (!expect_section && (depth == 0) && ((end && (p == end)) || (*p < ' '))) return p - start;
-		
-	/*
 	 *	Unexpected end of condition.
 	 */
 	if (eol) *eol = true;
@@ -1509,7 +1514,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		/*
 		 *	Try to parse the condition.  We can have a parse success, or a parse failure.
 		 */
-		slen = fr_skip_condition(ptr, NULL, true, &eol);
+		slen = fr_skip_condition(ptr, NULL, terminal_end_section, &eol);
 
 		/*
 		 *	Parse success means we stop reading more data.
