@@ -112,7 +112,7 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 		map_t	*map = NULL;
 		tmpl_rules_t parse_rules = {
 			.attr = {
-				.dict_def = dict,
+				.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, dict),
 				.prefix = TMPL_ATTR_REF_PREFIX_NO
 			}
 		};

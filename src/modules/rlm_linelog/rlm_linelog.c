@@ -528,7 +528,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 					 NULL,
 					 &(tmpl_rules_t){
 					 	.attr = {
-					 		.dict_def = request->dict,
+					 		.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 					 		.allow_unknown = true,
 					 		.allow_unresolved = false,
 					 	},

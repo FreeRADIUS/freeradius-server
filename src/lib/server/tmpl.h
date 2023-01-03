@@ -82,23 +82,6 @@ extern "C" {
  */
 #define TMPL_MAX_REQUEST_REF_NESTING	10
 
-/*
- *	Forward declarations
- */
-typedef enum pair_list_e {
-	PAIR_LIST_REQUEST = 0,		//!< Attributes in incoming or internally proxied
-					///< request (default).
-	PAIR_LIST_REPLY,		//!< Attributes to send in the response.
-	PAIR_LIST_CONTROL,		//!< Attributes that change the behaviour of
-					///< modules.
-	PAIR_LIST_STATE,		//!< Attributes to store multiple rounds of
-					///< challenges/responses.
-	PAIR_LIST_UNKNOWN		//!< Unknown list.
-} tmpl_pair_list_t;
-
-extern fr_table_num_ordered_t const pair_list_table[];
-extern size_t pair_list_table_len;
-
 typedef enum requests_ref_e {
 	REQUEST_CURRENT = 0,		//!< The current request (default).
 	REQUEST_OUTER,			//!< #request_t containing the outer layer of the EAP
@@ -245,10 +228,12 @@ extern fr_table_num_ordered_t const tmpl_type_table[];
 extern size_t tmpl_type_table_len;
 
 typedef struct tmpl_rules_s tmpl_rules_t;
+typedef struct tmpl_attr_ctx_rules_s tmpl_attr_ctx_rules_t;
 typedef struct tmpl_attr_rules_s tmpl_attr_rules_t;
 typedef struct tmpl_xlat_rules_s tmpl_xlat_rules_t;
 typedef struct tmpl_res_rules_s tmpl_res_rules_t;
 typedef struct tmpl_s tmpl_t;
+typedef struct tmpl_attr_s tmpl_attr_t;
 
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_ctx.h>
@@ -268,6 +253,77 @@ typedef struct tmpl_s tmpl_t;
 #  define _CONST
 #endif
 
+/** Define entry and head types for tmpl request references
+ */
+FR_DLIST_TYPES(tmpl_request_list)
+#define tmpl_request_list_foreach(_list_head, _iter) fr_dlist_foreach(tmpl_request_list_dlist_head(_list_head), tmpl_request_t, _iter)
+#define tmpl_request_list_foreach_safe(_list_head, _iter) fr_dlist_foreach_safe(tmpl_request_list_dlist_head(_list_head), tmpl_request_t, _iter)
+#define tmpl_request_list_verify(_list_head) _tmpl_request_list_verify(__FILE__, __LINE__, _list_head)
+
+/** Define entry and head types for attribute reference lists
+ */
+FR_DLIST_TYPES(tmpl_attr_list)
+#define tmpl_attr_list_foreach(_list_head, _iter) fr_dlist_foreach(tmpl_attr_list_dlist_head(_list_head), tmpl_attr_t, _iter)
+#define tmpl_attr_list_foreach_safe(_list_head, _iter) fr_dlist_foreach_safe(tmpl_attr_list_dlist_head(_list_head), tmpl_attr_t, _iter)
+#define tmpl_attr_list_verify(_list_head) _tmpl_attr_list_verify(__FILE__, __LINE__, _list_head)
+
+/** Different ctx types in which attribute references can be resolved
+ */
+typedef enum {
+	TMPL_ATTR_RULES_CTX_DEFAULTS = 0,		//!< Start resolving references with a default dictionary
+							///< a default list, and a default request.
+	TMPL_ATTR_RULES_CTX_INHERIT,			//!< Copy request refs and attr refs from another tmpl.
+	TMPL_ATTR_RULES_CTX_NESTED			//!< Resove references within the context of another attribute.
+} tmpl_attr_ctx_rules_type_t;
+
+/** Context in which to evaluate other attribute references
+ */
+struct tmpl_attr_ctx_rules_s {
+	union {
+		/** Outer, un-nested references
+		 */
+		struct {
+
+			FR_DLIST_HEAD(tmpl_request_list) _CONST *request;	//!< Default request to use with
+										///< unqualified attribute references.
+										///< If NULL the request is assumed to
+										///< but the current request.
+										///< Usually this will be one of
+										///< - tmpl_request_def_current
+										///< - tmpl_request_def_outer
+										///< - tmpl_request_def_parent
+										///< If a custom list needs to be
+										///< used it should be allocated on
+										///< the stack and a pointer to it
+										///< placed here.
+
+			fr_dict_attr_t	const			*list;		//!< A default list prefix, used if no context
+										///< has been specified, and no list qualifiers
+										///< were found.
+
+			fr_dict_t const				*dict;		//!< Default dictionary to use
+										///< with unqualified attribute references.
+		} defaults;
+
+		/** Context is derived from another tmpl
+		 *
+		 * Usually when a LHS attribute is used as the context for a RHS attribute
+		 */
+		struct {
+			FR_DLIST_HEAD(tmpl_request_list) _CONST  *request;	//!< Request qualifiers to copy
+
+			FR_DLIST_HEAD(tmpl_attr_list) _CONST	*attr;		//!< Attr qualifiers to copy into the attribute
+										///< list. We 
+		} inherit;
+
+		/** Context is derived from nesting i.e. one tmpl inside another
+		 */
+		fr_dict_attr_t const	*nested;	//!< Resume parsing using this 
+	};
+
+	tmpl_attr_ctx_rules_type_t type;		//!< What type of context was specified.
+};
+
 /** Specify whether attribute references require a prefix
  *
  */
@@ -277,36 +333,8 @@ typedef enum {
 	TMPL_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
 } tmpl_attr_prefix_t;
 
-/** Define entry and head types for tmpl request references
- *
- */
-FR_DLIST_TYPES(tmpl_request_list)
-
 struct tmpl_attr_rules_s {
-	fr_dict_t const		*dict_def;		//!< Default dictionary to use
-							///< with unqualified attribute references.
-
-	fr_dict_attr_t const	*parent;		//!< Point in dictionary tree to resume parsing
-							///< from.  If this is provided then dict_def
-							///< request_def and list_def will be ignored
-							///< and the presence of any of those qualifiers
-							///< will be treated as an error.
-
-	FR_DLIST_HEAD(tmpl_request_list) _CONST *request_def;	//!< Default request to use with
-							///< unqualified attribute references.
-							///< If NULL the request is assumed to
-							///< but the current request.
-							///< Usually this will be one of
-							///< - tmpl_request_def_current
-							///< - tmpl_request_def_outer
-							///< - tmpl_request_def_parent
-							///< If a custom list needs to be
-							///< used it should be allocated on
-							///< the stack and a pointer to it
-							///< placed here.
-
-	tmpl_pair_list_t	list_def;		//!< Default list to use with unqualified
-							///< attribute reference.
+	tmpl_attr_ctx_rules_t	ctx;			//!< Parsing context for attribute tmpls.
 
 	tmpl_attr_prefix_t	prefix;			//!< Whether the attribute reference requires
 							///< a prefix.
@@ -319,7 +347,7 @@ struct tmpl_attr_rules_s {
 							///< This should be used as part of a multi-pass
 							///< approach to parsing.
 
-	uint8_t			allow_foreign:1;		//!< Allow arguments not found in dict_def.
+	uint8_t			allow_foreign:1;	//!< Allow arguments not found in dict_def.
 
 	uint8_t			disallow_internal:1;	//!< Allow/fallback to internal attributes.
 
@@ -327,6 +355,130 @@ struct tmpl_attr_rules_s {
 
 	uint8_t			disallow_filters:1;	//!< disallow filters.
 };
+
+/** Initialise a defaults ctx with request/list/dict qualifiers
+ *
+ * @param[in] _request		May be NULL or one of the following static request qualifier lists:
+ *				- tmpl_request_def_current
+ *				- tmpl_request_def_outer
+ *				- tmpl_request_def_parent
+ * @param[in] _list		May be NULL or one of the following static attr ref lists:
+ *				- request_attr_request
+ *				- request_attr_reply
+ *				- request_attr_control
+ *				- request_attr_state
+ * @param[in] _dict		May be NULL or any valid dictionary 
+ */
+#define tmpl_attr_ctx_rules_default(_request, _list, _dict) \
+	(tmpl_attr_ctx_rules_t){ \
+		.defaults = {  \
+			.request = _request, \
+			.list = _list, \
+			.dict = _dict \
+		}, \
+		.type = TMPL_ATTR_RULES_CTX_DEFAULTS \
+	}
+
+/** Initialise an inehrit ctx from a tmpl
+ *
+ * @param[in] _tmpl 		To copy request qualifiers and attr references from
+ */
+#define tmpl_attr_ctx_rules_inherit(_tmpl) \
+	(tmpl_attr_ctx_rules_t){ \
+		.copy = {  \
+			.request = tmpl_request(_tmpl), \
+			.attr = tmpl_attr(_tmpl) \
+		}, \
+		.type = TMPL_ATTR_RULES_CTX_COPY \
+	}
+
+/** Initialise a nested ctx from a da
+ *
+ * @param[in] _da		to use for namespacing.
+ */
+#define tmpl_attr_ctx_rules_nested(_da) \
+	(tmpl_attr_ctx_rules_t){ \
+		.nested = _da, \
+		.type = TMPL_ATTR_RULES_CTX_NESTED \
+	}
+
+/** Does this attr_rules structure contain a "default" ctx?
+ */
+#define tmpl_attr_ctx_rules_is_default(_attr_rules)	((_attr_rules)->ctx.type == TMPL_ATTR_RULES_CTX_DEFAULTS)
+
+/** Does this attr_rules structure contain an "inherit" ctx
+ */
+#define tmpl_attr_ctx_rules_is_inherit(_attr_rules)	((_attr_rules)->ctx.type == TMPL_ATTR_RULES_CTX_INHERIT)
+
+/** Does this attr_rules structure contain a "nested" ctx
+ */
+#define tmpl_attr_ctx_rules_is_nested(_attr_rules)	((_attr_rules)->ctx.type == TMPL_ATTR_RULES_CTX_NESTED)
+
+/** Return the list of request qualifiers from a "default" ctx
+ *
+ * @param[in] a_rules	An attribute rules structure
+ */
+static inline FR_DLIST_HEAD(tmpl_request_list) const *tmpl_attr_ctx_rules_default_request(tmpl_attr_rules_t const *a_rules)
+{
+	if (unlikely(!fr_cond_assert_msg(tmpl_attr_ctx_rules_is_default(a_rules), "Attempted to access default.request, but not a default ctx"))) return NULL;
+
+	return a_rules->ctx.defaults.request;
+}
+
+/** Return the attribute list from a "default" ctx
+ *
+ * @param[in] a_rules	An attribute rules structure
+ */
+static inline fr_dict_attr_t const *tmpl_attr_ctx_rules_default_list(tmpl_attr_rules_t const *a_rules)
+{
+	if (unlikely(!fr_cond_assert_msg(tmpl_attr_ctx_rules_is_default(a_rules), "Attempted to access default.list, but not a default ctx"))) return NULL;
+
+	return a_rules->ctx.defaults.list;
+}
+
+/** Return the dictionary from a "default" ctx
+ *
+ * @param[in] a_rules	An attribute rules structure
+ */
+static inline fr_dict_t const *tmpl_attr_ctx_rules_default_dict(tmpl_attr_rules_t const *a_rules)
+{
+	if (unlikely(!fr_cond_assert_msg(tmpl_attr_ctx_rules_is_default(a_rules), "Attempted to access default.dict, but not a default ctx"))) return NULL;
+
+	return a_rules->ctx.defaults.dict;
+}
+
+/** Return the list of request qualifiers from an "inherit" ctx
+ *
+ * @param[in] a_rules	An attribute rules structure
+ */
+static inline FR_DLIST_HEAD(tmpl_request_list) const *tmpl_attr_ctx_rules_inherit_request(tmpl_attr_rules_t const *a_rules)
+{
+	if (unlikely(!fr_cond_assert_msg(tmpl_attr_ctx_rules_is_inherit(a_rules), "Attempted to access inherit.request, but not an inherit ctx"))) return NULL;
+
+	return a_rules->ctx.inherit.request;
+}
+
+/** Return the attribute reference list qualifiers from an "inherit" ctx
+ *
+ * @param[in] a_rules	An attribute rules structure
+ */
+static inline FR_DLIST_HEAD(tmpl_attr_list) const *tmpl_attr_ctx_rules_inherit_attr(tmpl_attr_rules_t const *a_rules)
+{
+	fr_assert_msg(tmpl_attr_ctx_rules_is_inherit(a_rules), "Attempted to access inherit.attr, but not an inherit ctx");
+
+	return a_rules->ctx.inherit.attr;
+}
+
+/** Return the attribute reference list qualifiers from a "nested" ctx
+ *
+ * @param[in] a_rules	An attribute rules structure
+ */
+static inline fr_dict_attr_t const *tmpl_attr_ctx_rules_nested_da(tmpl_attr_rules_t const *a_rules)
+{
+	fr_assert_msg(tmpl_attr_ctx_rules_is_nested(a_rules), "Attempted to access nested, but not a nested ctx");
+
+	return a_rules->ctx.nested;
+}
 
 struct tmpl_xlat_rules_s {
 	fr_event_list_t		*runtime_el;		//!< The eventlist to use for runtime instantiation
@@ -396,11 +548,6 @@ typedef enum {
 #define NUM_COUNT			(INT16_MIN + 2)
 #define NUM_LAST			(INT16_MIN + 3)
 
-/** Define entry and head types for attribute reference lists
- *
- */
-FR_DLIST_TYPES(tmpl_attr_list)
-
 /** Different types of filter that can be applied to an attribute reference
  *
  */
@@ -417,7 +564,7 @@ typedef struct {
 /** An element in a list of nested attribute references
  *
  */
-typedef struct {
+struct tmpl_attr_s {
 	FR_DLIST_ENTRY(tmpl_attr_list)	_CONST entry;	//!< Entry in the doubly linked list
 							///< of attribute references.
 
@@ -448,7 +595,7 @@ typedef struct {
 	tmpl_attr_type_t	_CONST type;		//!< Type of attribute reference.
 
 	tmpl_attr_filter_t	_CONST filter;		//!< Filter associated with the attribute reference.
-} tmpl_attr_t;
+};
 
 /** Define manipulation functions for the attribute reference list
  *
@@ -527,7 +674,7 @@ static inline bool ar_is_raw(tmpl_attr_t const *ar)
 	return false;
 }
 
-bool ar_is_list_attr(tmpl_attr_t const *ar);
+bool tmpl_attr_is_list_attr(tmpl_attr_t const *ar);
 
 #define ar_num				filter.num
 #define ar_filter_type			filter.type
@@ -571,13 +718,10 @@ struct tmpl_s {
 		char *unescaped;		//!< Unescaped form of the name, used for TMPL_TYPE_UNRESOLVED
 						///< and TMPL_TYPE_REGEX_UNCOMPILED.
 
-		_CONST struct {
+		struct {
 			bool			ref_prefix;	//!< true if the reference was prefixed
 								///< with a '&'.
 			bool			was_oid;	//!< Was originally a numeric OID.
-
-			tmpl_pair_list_t	list;		//!< List to search or insert in.
-								///< deprecated.
 
 			FR_DLIST_HEAD(tmpl_request_list)	rr;	//!< Request to search or insert in.
 			FR_DLIST_HEAD(tmpl_attr_list)		ar;	//!< Head of the attribute reference list.
@@ -675,11 +819,11 @@ static inline tmpl_type_t tmpl_type_from_str(char const *type)
  */
  #define tmpl_attr(_tmpl)	&(_tmpl)->data.attribute.ar
 
-static inline FR_DLIST_HEAD(tmpl_request_list) const *tmpl_request(tmpl_t const *vpt)
+static inline FR_DLIST_HEAD(tmpl_request_list) _CONST *tmpl_request(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_contains_attr(vpt));
 
-	return &vpt->data.attribute.rr;
+	return &UNCONST(tmpl_t *, vpt)->data.attribute.rr;
 }
 
 /** The number of request references contained within a tmpl
@@ -705,7 +849,7 @@ static inline bool tmpl_attr_head_is_list(tmpl_t const *vpt)
 	ar = tmpl_attr_list_head(tmpl_attr(vpt));
 	if (unlikely(!ar)) return false;
 
-	return ar_is_list_attr(ar);
+	return tmpl_attr_is_list_attr(ar);
 }
 
 /** Return true if the last attribute reference is "normal"
@@ -905,14 +1049,6 @@ static inline size_t tmpl_attr_num_elements(tmpl_t const *vpt)
 
 	return tmpl_attr_list_num_elements(tmpl_attr(vpt));
 }
-
-static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)
-{
-	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unresolved(vpt));
-
-	return vpt->data.attribute.list;
-}
 /** @} */
 
 /** @name Field accessors for #TMPL_TYPE_XLAT
@@ -1060,13 +1196,18 @@ typedef enum {
 
 void			tmpl_debug(tmpl_t const *vpt) CC_HINT(nonnull);
 
-fr_pair_list_t		*tmpl_list_head(request_t *request, tmpl_pair_list_t list);
+static inline CC_HINT(nonnull) fr_dict_attr_t const *tmpl_list(tmpl_t const *vpt)
+{
+	if (!tmpl_attr_head_is_list(vpt)) return NULL;
 
-fr_radius_packet_t	*tmpl_packet_ptr(request_t *request, tmpl_pair_list_t list_name) CC_HINT(nonnull);
+	return tmpl_attr_list_head(tmpl_attr(vpt))->ar_da;
+}
 
-TALLOC_CTX		*tmpl_list_ctx(request_t *request, tmpl_pair_list_t list_name);
+TALLOC_CTX		*tmpl_list_ctx(request_t *request, tmpl_t const *vpt) CC_HINT(nonnull);
 
-size_t			tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_list_t default_list) CC_HINT(nonnull);
+fr_pair_list_t		*tmpl_list_head(request_t *request, tmpl_t const *vpt) CC_HINT(nonnull);
+
+fr_radius_packet_t	*tmpl_packet_ptr(request_t *request, tmpl_t const *vpt) CC_HINT(nonnull);
 
 tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,4));
 
@@ -1084,6 +1225,10 @@ tmpl_t			*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, fr_token_t quote, char c
  *
  * @{
  */
+bool			tmpl_attr_is_list_attr(tmpl_attr_t const *ar);
+
+fr_slen_t		tmpl_attr_list_from_substr(fr_dict_attr_t const **da_p, fr_sbuff_t *in);
+
 /** Static default request ref list for the current request
  *
  * Passed as request_def in tmpl_attr_rules_t.
@@ -1103,6 +1248,8 @@ extern FR_DLIST_HEAD(tmpl_request_list) tmpl_request_def_outer;
 extern FR_DLIST_HEAD(tmpl_request_list) tmpl_request_def_parent;
 
 int			tmpl_request_ptr(request_t **request, FR_DLIST_HEAD(tmpl_request_list) const *rql) CC_HINT(nonnull);
+
+void			tmpl_request_ref_replace(tmpl_t *dst, FR_DLIST_HEAD(tmpl_request_list) const *src);
 
 void			tmpl_request_ref_list_debug(FR_DLIST_HEAD(tmpl_request_list) const *rql);
 
@@ -1160,7 +1307,7 @@ void			tmpl_attr_ref_list_debug(FR_DLIST_HEAD(tmpl_attr_list) const *ar_head) CC
 
 void			tmpl_attr_debug(tmpl_t const *vpt) CC_HINT(nonnull);
 
-int			tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src) CC_HINT(nonnull);
+void			tmpl_attr_replace(tmpl_t *dst, FR_DLIST_HEAD(tmpl_attr_list) const *src) CC_HINT(nonnull);
 
 int			tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
@@ -1174,7 +1321,7 @@ void			tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonn
 
 void			tmpl_attr_set_request_ref(tmpl_t *vpt, FR_DLIST_HEAD(tmpl_request_list) const *request_def) CC_HINT(nonnull);
 
-void			tmpl_attr_set_list(tmpl_t *vpt, tmpl_pair_list_t list) CC_HINT(nonnull);
+void			tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list_da) CC_HINT(nonnull);
 
 int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list,
 					     fr_dict_attr_t const *da) CC_HINT(nonnull);
@@ -1316,8 +1463,6 @@ ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t
 				      bool allow_xlat) CC_HINT(nonnull(1,2,3,5));
 
 bool			tmpl_async_required(tmpl_t const *vpt) CC_HINT(nonnull);
-
-fr_pair_t		*tmpl_get_list(request_t *request, tmpl_t const *vpt) CC_HINT(nonnull(2)); /* temporary hack */
 
 int			tmpl_value_list_insert_tail(FR_DLIST_HEAD(fr_value_box_list) *list, fr_value_box_t *vb, tmpl_t const *vpt) CC_HINT(nonnull);
 

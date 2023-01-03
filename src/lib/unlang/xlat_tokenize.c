@@ -1126,7 +1126,7 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 					while ((rr = tmpl_request_list_next(list, rr))) {
 						INFO_INDENT("ref  %d", rr->request);
 					}
-					INFO_INDENT("list %d", tmpl_list(node->vpt));
+					INFO_INDENT("list %s", tmpl_list(node->vpt)->name);
 					if (tmpl_attr_tail_num(node->vpt) != NUM_UNSPEC) {
 						if (tmpl_attr_tail_num(node->vpt) == NUM_COUNT) {
 							INFO_INDENT("[#]");
@@ -1434,7 +1434,7 @@ fr_slen_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
 	MEM(head = xlat_exp_head_alloc(ctx));
 
 	if (t_rules) {
-		head->dict = t_rules->attr.dict_def;
+		head->dict = tmpl_attr_ctx_rules_default_dict(&t_rules->attr);
 		our_t_rules = *t_rules;
 	}
 
@@ -1495,7 +1495,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	xlat_exp_head_t			*head;
 
 	MEM(head = xlat_exp_head_alloc(ctx));
-	if (t_rules) head->dict = t_rules->attr.dict_def;
+	if (t_rules) head->dict = tmpl_attr_ctx_rules_default_dict(&t_rules->attr);
 
 	if (p_rules && p_rules->terminals) {
 		tmp_p_rules = (fr_sbuff_parse_rules_t){	/* Stack allocated due to CL scope */
@@ -1660,7 +1660,7 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 	xlat_exp_head_t	*head;
 
 	MEM(head = xlat_exp_head_alloc(ctx));
-	if (t_rules) head->dict = t_rules->attr.dict_def;
+	if (t_rules) head->dict = tmpl_attr_ctx_rules_default_dict(&t_rules->attr);
 
 	fr_strerror_clear();	/* Clear error buffer */
 
@@ -1976,7 +1976,8 @@ tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *head)
 	vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, T_BARE_WORD, node->fmt, talloc_array_length(node->fmt) - 1);
 	if (!vpt) return NULL;
 
-	tmpl_attr_copy(vpt, node->vpt);
+	tmpl_attr_replace(vpt, tmpl_attr(node->vpt));
+	tmpl_request_ref_replace(vpt, tmpl_request(node->vpt));
 
 	TMPL_VERIFY(vpt);
 

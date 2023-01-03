@@ -2694,7 +2694,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (app_process->compile_list) {
 			tmpl_rules_t	parse_rules = {
 				.attr = {
-					.dict_def = virtual_server_dict_by_name(cf_section_name2(inst->server_cs))
+					.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, virtual_server_dict_by_name(cf_section_name2(inst->server_cs)))
 				}
 			};
 

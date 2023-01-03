@@ -1558,9 +1558,7 @@ static xlat_action_t xlat_exists_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	slen = tmpl_afrom_attr_str(ctx, NULL, &vpt, vb->vb_strvalue,
 				   &(tmpl_rules_t) {
 					   .attr = {
-						   .dict_def = request->dict,
-						   .request_def = &tmpl_request_def_current,
-						   .list_def = PAIR_LIST_REQUEST,
+						   .ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 						   .prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 						   .allow_unknown = false,
 						   .allow_unresolved = false,
@@ -2783,7 +2781,7 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 	if (t_rules) {
-		head->dict = t_rules->attr.dict_def;
+		head->dict = tmpl_attr_ctx_rules_default_dict(&t_rules->attr);
 	} else {
 		t_rules = &my_rules;
 	}
@@ -2902,7 +2900,7 @@ fr_slen_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **
 
 	if (t_rules) {
 		my_rules = *t_rules;
-		head->dict = t_rules->attr.dict_def;
+		head->dict = tmpl_attr_ctx_rules_default_dict(&t_rules->attr);
 	}
 
 	my_rules.xlat.runtime_el = el;

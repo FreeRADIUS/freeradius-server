@@ -41,8 +41,8 @@ typedef struct {
 	char const		*program;
 	char const		*input;
 	char const		*output;
-	tmpl_pair_list_t	input_list;
-	tmpl_pair_list_t	output_list;
+	tmpl_t			*input_list;
+	tmpl_t			*output_list;
 	bool			shell_escape;
 	bool			env_inherit;
 	fr_time_delta_t		timeout;
@@ -164,25 +164,20 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_exec_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_exec_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
 	xlat_t		*xlat;
-	char const	*p;
 
 	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, exec_xlat, FR_TYPE_STRING, XLAT_FLAG_NEEDS_ASYNC);
 	xlat_func_args(xlat, exec_xlat_args);
 
 	if (inst->input) {
-		p = inst->input;
-		p += tmpl_pair_list_name(&inst->input_list, p, PAIR_LIST_UNKNOWN);
-		if ((inst->input_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
-			cf_log_err(conf, "Invalid input list '%s'", inst->input);
+		if (tmpl_afrom_attr_substr(inst, NULL, &inst->input_list, &FR_SBUFF_IN(inst->input, strlen(inst->input)), NULL, NULL) < 0) {
+			cf_log_perr(conf, "Invalid input list '%s'", inst->input);
 			return -1;
 		}
 	}
 
 	if (inst->output) {
-		p = inst->output;
-		p += tmpl_pair_list_name(&inst->output_list, p, PAIR_LIST_UNKNOWN);
-		if ((inst->output_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
-			cf_log_err(conf, "Invalid output list '%s'", inst->output);
+		if (tmpl_afrom_attr_substr(inst, NULL, &inst->output_list, &FR_SBUFF_IN(inst->input, strlen(inst->output)), NULL, NULL) < 0) {
+			cf_log_perr(conf, "Invalid output list '%s'", inst->input);
 			return -1;
 		}
 	}

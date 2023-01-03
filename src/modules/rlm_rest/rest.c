@@ -742,8 +742,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 					&(tmpl_rules_t){
 						.attr = {
 							.prefix = TMPL_ATTR_REF_PREFIX_NO,
-							.dict_def = request->dict,
-							.list_def = PAIR_LIST_REPLY
+							.ctx = tmpl_attr_ctx_rules_default(NULL, request_attr_reply, request->dict)
 						}
 					}) <= 0) {
 			RPWDEBUG("Failed parsing attribute (skipping)");
@@ -757,13 +756,13 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			goto skip;
 		}
 
-		vps = tmpl_list_head(current, tmpl_list(dst));
+		vps = tmpl_list_head(current, dst);
 		if (!vps) {
 			RWDEBUG("List not valid in this context (skipping)");
 			talloc_free(dst);
 			goto skip;
 		}
-		ctx = tmpl_list_ctx(current, tmpl_list(dst));
+		ctx = tmpl_list_ctx(current, dst);
 		da = tmpl_attr_tail_da(dst);
 
 		fr_assert(vps);
@@ -1033,8 +1032,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 						&(tmpl_rules_t){
 							.attr = {
 								.prefix = TMPL_ATTR_REF_PREFIX_NO,
-								.dict_def = request->dict,
-								.list_def = PAIR_LIST_REPLY
+								.ctx = tmpl_attr_ctx_rules_default(NULL, request_attr_reply, request->dict)
 							}
 						}) <= 0) {
 				RPWDEBUG("Failed parsing attribute (skipping)");
@@ -1046,12 +1044,12 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 				continue;
 			}
 
-			vps = tmpl_list_head(current, tmpl_list(dst));
+			vps = tmpl_list_head(current, dst);
 			if (!vps) {
 				RWDEBUG("List not valid in this context (skipping)");
 				continue;
 			}
-			ctx = tmpl_list_ctx(current, tmpl_list(dst));
+			ctx = tmpl_list_ctx(current, dst);
 
 			/*
 			 *  Alternative JSON structure which allows operator,

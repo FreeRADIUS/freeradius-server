@@ -1219,8 +1219,9 @@ int virtual_servers_instantiate(void)
 			tmpl_rules_t		parse_rules;
 
 			memset(&parse_rules, 0, sizeof(parse_rules));
- 			parse_rules.attr.dict_def = *(process->dict);
-			fr_assert(parse_rules.attr.dict_def != NULL);
+		
+			fr_assert(*(process->dict) != NULL);
+ 			parse_rules.attr.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, *(process->dict));
 
 			if (virtual_server_compile_sections(server_cs, process->compile_list, &parse_rules,
 							    vs->process_mi->dl_inst->data) < 0) {

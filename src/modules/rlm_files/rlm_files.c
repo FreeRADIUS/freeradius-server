@@ -229,7 +229,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			 *	assertion that they do not get out of
 			 *	sync.
 			 */
-			fr_assert(tmpl_list(map->lhs) == PAIR_LIST_REPLY);
+			fr_assert(tmpl_list(map->lhs) == request_attr_reply);
 		}
 	}
 

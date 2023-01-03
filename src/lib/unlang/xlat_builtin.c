@@ -78,7 +78,7 @@ int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name)
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, name,
 				&(tmpl_rules_t){
 					.attr = {
-						.dict_def = request->dict,
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) return -4;
@@ -1153,7 +1153,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
 				&(tmpl_rules_t){
 					.attr = {
-						.dict_def = request->dict,
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
@@ -1201,7 +1201,7 @@ static xlat_action_t xlat_func_flatten(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
 				&(tmpl_rules_t){
 					.attr = {
-						.dict_def = request->dict,
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
@@ -1247,7 +1247,7 @@ static xlat_action_t xlat_func_unflatten(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurs
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
 				&(tmpl_rules_t){
 					.attr = {
-						.dict_def = request->dict,
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
@@ -1540,7 +1540,7 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	tmpl_rules_t	attr_rules = {
 		.attr = {
-			.dict_def = request->dict,
+			.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 			.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 		}
 	};
@@ -1754,7 +1754,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						.allow_unknown = false,
 						.allow_unresolved = false,
 						.allow_foreign = false,
-						.dict_def = request->dict
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict)
 					},
 					.at_runtime = true
 				    }) < 0) {
@@ -1830,7 +1830,7 @@ static xlat_action_t xlat_func_expr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						.allow_unknown = false,
 						.allow_unresolved = false,
 						.allow_foreign = false,
-						.dict_def = request->dict
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict)
 					},
 					.at_runtime = true
 				    }) < 0) {
@@ -2743,7 +2743,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
 				&(tmpl_rules_t){
 					.attr = {
-						.dict_def = request->dict,
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
@@ -3802,7 +3802,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
 				&(tmpl_rules_t){
 					.attr = {
-						.dict_def = request->dict,
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {

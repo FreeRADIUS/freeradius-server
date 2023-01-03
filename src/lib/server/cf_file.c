@@ -144,14 +144,22 @@ typedef struct {
 
 static inline CC_HINT(always_inline) int cf_tmpl_rules_verify(CONF_SECTION *cs, tmpl_rules_t const *rules)
 {
+	fr_dict_t const *dict;
+
+	/*
+	 *	Only validate if we're parsing with defaults
+	 */
+	if (!tmpl_attr_ctx_rules_is_default(&rules->attr)) return 0;
+
+	dict = tmpl_attr_ctx_rules_default_dict(&rules->attr);
 	if (cf_section_has_parent(cs, "policy", NULL)) {
-		if (!fr_cond_assert_msg(!rules->attr.dict_def || (rules->attr.dict_def == fr_dict_internal()),
+		if (!fr_cond_assert_msg(!dict || (dict == fr_dict_internal()),
 					"Protocol dictionary must be NULL not %s",
-					fr_dict_root(rules->attr.dict_def)->name)) return -1;
+					fr_dict_root(dict)->name)) return -1;
 
 	} else {
-		if (!fr_cond_assert_msg(rules->attr.dict_def, "No protocol dictionary set")) return -1;
-		if (!fr_cond_assert_msg(rules->attr.dict_def != fr_dict_internal(), "rules->attr.dict_def must not be the internal dictionary")) return -1;
+		if (!fr_cond_assert_msg(dict, "No protocol dictionary set")) return -1;
+		if (!fr_cond_assert_msg(dict != fr_dict_internal(), "rules->attr.dict_def must not be the internal dictionary")) return -1;
 	}
 
 	if (!fr_cond_assert_msg(!rules->attr.allow_foreign, "rules->allow_foreign must be false")) return -1;
@@ -1336,7 +1344,7 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool expect
 			was_regex = false;
 			continue;
 		}
-		
+
 		if (*p == ')') {
 			if (!depth) {
 				fr_strerror_const("Too many ')'");
@@ -1354,7 +1362,7 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool expect
 		 */
 		if ((*p == '$') || (*p == '%')) {
 			if (end && ((p + 2) >= end)) goto fail;
-			
+
 			if ((p[1] == '{') || ((p[0] == '$') && (p[1] == '('))) {
 				slen = fr_skip_xlat(p, end);
 
@@ -1439,7 +1447,7 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool expect
 	 *	condition is done when it reaches end of string, or CR LF.
 	 */
 	if (!expect_section && (depth == 0) && ((end && (p == end)) || (*p < ' '))) return p - start;
-		
+
 	/*
 	 *	Unexpected end of condition.
 	 */
@@ -1476,7 +1484,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 
 	t_rules = (tmpl_rules_t) {
 		.attr = {
-			.dict_def = dict,
+			.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, dict),
 			.allow_unresolved = true,
 			.allow_unknown = true
 		}

@@ -24,7 +24,10 @@
  *
  * @copyright 2014-2020 The FreeRADIUS server project
  */
+#include "lib/server/request.h"
+#include "lib/util/sbuff.h"
 #include "lib/util/strerror.h"
+#include "talloc.h"
 RCSID("$Id$")
 
 #define _TMPL_PRIVATE 1
@@ -88,12 +91,6 @@ TMPL_REQUEST_REF_DEF(tmpl_request_def_current, REQUEST_CURRENT);
  */
 TMPL_REQUEST_REF_DEF(tmpl_request_def_outer, REQUEST_OUTER);
 
-/** Use the parent request as the default
- *
- * Used as .attr.request_def = &tmpl_request_def_parent;
- */
-TMPL_REQUEST_REF_DEF(tmpl_request_def_parent, REQUEST_PARENT);
-
 /** Default parser rules
  *
  * Because this is getting to be a ridiculous number of parsing rules
@@ -141,17 +138,6 @@ static fr_table_num_ordered_t const attr_table[] = {
 	{ L("unresolved"),	TMPL_ATTR_TYPE_UNRESOLVED	}
 };
 static size_t attr_table_len = NUM_ELEMENTS(attr_table);
-
-/** Map keywords to #pair_list_t values
- */
-fr_table_num_ordered_t const pair_list_table[] = {
-	{ L("request"),		PAIR_LIST_REQUEST		},
-	{ L("reply"),		PAIR_LIST_REPLY			},
-	{ L("control"),		PAIR_LIST_CONTROL		},		/* New name should have priority */
-	{ L("config"),		PAIR_LIST_CONTROL		},
-	{ L("session-state"),	PAIR_LIST_STATE			},
-};
-size_t pair_list_table_len = NUM_ELEMENTS(pair_list_table);
 
 /** Map keywords to #tmpl_request_ref_t values
  */
@@ -316,7 +302,6 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 		i++;
 	}
 
-	FR_FAULT_LOG("list: %s", fr_table_str_by_value(pair_list_table, vpt->data.attribute.list, "<INVALID>"));
 	tmpl_attr_ref_list_debug(tmpl_attr(vpt));
 }
 
@@ -388,22 +373,6 @@ void tmpl_debug(tmpl_t const *vpt)
 	}
 }
 
-/** Indicate whether this attribute reference represents one of packets or legacy lists
- *
- * @note This cannot be converted to static inline in tmpl.h because the visibility of
- *	 the dictionary attributes are set to hidden so they can't be accessed by code
- *	 including tmpl.h.
- */
-bool ar_is_list_attr(tmpl_attr_t const *ar)
-{
-	if (!ar_is_normal(ar)) return false;
-
-	return (ar->ar_da == request_attr_request) ||
-	       (ar->ar_da == request_attr_reply) ||
-	       (ar->ar_da == request_attr_control) ||
-	       (ar->ar_da == request_attr_state);
-}
-
 /** @name Parse list and request qualifiers to #pair_list_t and #tmpl_request_ref_t values
  *
  * These functions also resolve #pair_list_t and #tmpl_request_ref_t values to #request_t
@@ -417,81 +386,46 @@ bool ar_is_list_attr(tmpl_attr_t const *ar)
  * @{
  */
 
-/** Resolve attribute name to a #pair_list_t value.
+
+/** Indicate whether this attribute reference represents one of packets or legacy lists
  *
- * Check the name string for #pair_list_t qualifiers and write a #pair_list_t value
- * for that list to out. This value may be passed to #tmpl_pair_list, along with the current
- * #request_t, to get a pointer to the actual list in the #request_t.
- *
- * If we're sure we've definitely found a list qualifier token delimiter (``:``) but the
- * string doesn't match a #tmpl_pair_list qualifier, return 0 and write #PAIR_LIST_UNKNOWN
- * to out.
- *
- * If we can't find a string that looks like a request qualifier, set out to def, and
- * return 0.
- *
- * @note #tmpl_pair_list_name should be called before passing a name string that may
- *	contain qualifiers to #fr_dict_attr_by_name.
- *
- * @param[out] out Where to write the list qualifier.
- * @param[in] name String containing list qualifiers to parse.
- * @param[in] def the list to return if no qualifiers were found.
- * @return 0 if no valid list qualifier could be found, else the number of bytes consumed.
- *	The caller may then advanced the name pointer by the value returned, to get the
- *	start of the attribute name (if any).
- *
- * @see pair_list
- * @see tmpl_pair_list
+ * @note This cannot be converted to static inline in tmpl.h because the visibility of
+ *	 the dictionary attributes are set to hidden so they can't be accessed by code
+ *	 including tmpl.h.
  */
-size_t tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_list_t def)
+bool tmpl_attr_is_list_attr(tmpl_attr_t const *ar)
 {
-	char const *p = name;
-	char const *q;
+	if (!ar_is_normal(ar)) return false;
 
-	/*
-	 *	Try and determine the end of the token
-	 */
-	for (q = p; fr_dict_attr_allowed_chars[(uint8_t) *q]; q++);
+	return (ar->ar_da == request_attr_request) ||
+	       (ar->ar_da == request_attr_reply) ||
+	       (ar->ar_da == request_attr_control) ||
+	       (ar->ar_da == request_attr_state);
+}
 
-	switch (*q) {
-	/*
-	 *	It's a bareword made up entirely of dictionary chars
-	 *	check and see if it's a list qualifier, and if it's
-	 *	not, return the def and say we couldn't parse
-	 *	anything.
-	 */
-	case '\0':
-		*out = fr_table_value_by_substr(pair_list_table, p, (q - p), PAIR_LIST_UNKNOWN);
-		if (*out != PAIR_LIST_UNKNOWN) return q - p;
-		*out = def;
-		return 0;
 
-	/*
-	 *	It may be a list qualifier delimiter
-	 */
-	case ':':
-	{
-		char const *d = q + 1;
+/** Parse one a single list reference
+ *
+ * @param[out] da_p	attribute representing a list.
+ * @param[in] in	Sbuff to read request references from.
+ * @return
+ *	- > 0 the number of bytes parsed.
+ *      - 0 no list qualifier found.
+ */
+fr_slen_t tmpl_attr_list_from_substr(fr_dict_attr_t const **da_p, fr_sbuff_t *in)
+{
+	fr_dict_attr_t const *da;
+	fr_sbuff_t our_in = FR_SBUFF(in);
 
-		if (isdigit((int) *d)) {
-			while (isdigit((int) *d)) d++;
-
-			if (!fr_dict_attr_allowed_chars[(uint8_t) *d]) {
-				*out = def;
-				return 0;
-			}
-		}
-
-		*out = fr_table_value_by_substr(pair_list_table, p, (q - p), PAIR_LIST_UNKNOWN);
-		if (*out == PAIR_LIST_UNKNOWN) return 0;
-
-		return (q + 1) - name; /* Consume the list and delimiter */
+	if ((da = fr_sbuff_adv_past_strcase(&our_in, request_attr_request->name, request_attr_request->name_len)) ||
+	    (da = fr_sbuff_adv_past_strcase(&our_in, request_attr_reply->name, request_attr_reply->name_len)) ||
+	    (da = fr_sbuff_adv_past_strcase(&our_in, request_attr_control->name, request_attr_control->name_len)) ||
+	    (da = fr_sbuff_adv_past_strcase(&our_in, request_attr_state->name, request_attr_state->name_len))) {
+		*da_p = da;
+		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
 
-	default:
-		*out = def;
-		return 0;
-	}
+	return 0;
 }
 
  /** Allocate a new request reference and add it to the end of the attribute reference list
@@ -532,6 +466,15 @@ void tmpl_request_ref_list_acopy(TALLOC_CTX *ctx,
 	tmpl_request_ref_list_copy(rql, rql, in);
 
 	*out = rql;
+}
+
+/** Replace all existing request references
+ *
+ */
+void tmpl_request_ref_replace(tmpl_t *dst, FR_DLIST_HEAD(tmpl_request_list) const *src)
+{
+	tmpl_request_list_talloc_reverse_free(&dst->data.attribute.rr);
+	tmpl_request_ref_list_copy(dst, &dst->data.attribute.rr, src);
 }
 
 /** Dump a request list to stderr
@@ -612,7 +555,11 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	fr_sbuff_marker_t	m;
 	bool			seen_outer = false;
 
-	if (!at_rules) at_rules = &default_rules.attr;
+	if (!at_rules) {
+		at_rules = &default_rules.attr;
+	} else {
+		fr_assert_msg(tmpl_attr_ctx_rules_is_default(at_rules), "attr rules ctx must be of type \"defaults\" to parse request qualifiers");
+	}
 
 	/*
 	 *	We could make the caller do this but as this
@@ -624,7 +571,6 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	fr_sbuff_marker(&m, &our_in);
 	for (depth = 0; depth < TMPL_MAX_REQUEST_REF_NESTING; depth++) {
 		bool end;
-
 
 		/*
 		 *	Search for a known request reference like
@@ -642,8 +588,8 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 			 *	reference.
 			 */
 		default_ref:
-			if ((depth == 0) && at_rules->request_def) {
-				tmpl_request_ref_list_copy(ctx, out, at_rules->request_def);
+			if ((depth == 0) && at_rules->ctx.defaults.request) {
+				tmpl_request_ref_list_copy(ctx, out, at_rules->ctx.defaults.request);
 			}
 			break;
 		}
@@ -686,7 +632,7 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 			goto default_ref;
 		}
 
-		if (at_rules->parent || at_rules->disallow_qualifiers) {
+		if (at_rules->disallow_qualifiers) {
 			fr_strerror_const("It is not permitted to specify a request reference here");
 			if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 
@@ -730,7 +676,6 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	}
 
 	FR_SBUFF_SET_RETURN(in, &m);
-
 }
 
 /** Parse one or more request references, allocing a new list and adding the references to it
@@ -872,7 +817,8 @@ void tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len)
  */
 void tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict)
 {
-	vpt->rules.attr.dict_def = dict;
+	fr_assert_msg(tmpl_attr_ctx_rules_is_default(&vpt->rules.attr), "can only set default dictionary on \"defaults\" ctx");
+	vpt->rules.attr.ctx.defaults.dict = dict;
 }
 
 /** Initialise a tmpl using a format string to create the name
@@ -998,11 +944,24 @@ tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, fr_token_t quote, char con
  *
  * @{
  */
+static inline CC_HINT(always_inline)
+tmpl_attr_t *tmpl_attr_alloc(TALLOC_CTX *ctx, tmpl_attr_type_t type)
+{
+	tmpl_attr_t	*ar;
+	MEM(ar = talloc(ctx, tmpl_attr_t));
+	*ar = (tmpl_attr_t){
+		.type = type,
+		.filter = {
+			.num = NUM_UNSPEC
+		}
+	};
+	return ar;
+}
 
 /** Allocate a new attribute reference and add it to the end of the attribute reference list
  *
  */
-static tmpl_attr_t *tmpl_attr_add(tmpl_t *vpt, tmpl_attr_type_t type)
+static tmpl_attr_t *tmpl_attr_ainsert_tail(tmpl_t *vpt, tmpl_attr_type_t type)
 {
 	tmpl_attr_t	*ar;
 	TALLOC_CTX	*ctx;
@@ -1013,15 +972,8 @@ static tmpl_attr_t *tmpl_attr_add(tmpl_t *vpt, tmpl_attr_type_t type)
 		ctx = tmpl_attr_list_tail(tmpl_attr(vpt));
 	}
 
-	MEM(ar = talloc(ctx, tmpl_attr_t));
-	*ar = (tmpl_attr_t){
-		.type = type,
-		.filter = {
-			.num = NUM_UNSPEC
-		}
-	};
+	ar = tmpl_attr_alloc(ctx, type);
 	tmpl_attr_list_insert_tail(tmpl_attr(vpt), ar);
-
 	return ar;
 }
 
@@ -1063,58 +1015,62 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bo
 	return 0;
 }
 
-/** Copy a list of attribute and request references from one tmpl to another
+/** Copy an attribute reference
+ */
+static tmpl_attr_t *tmpl_attr_acopy(TALLOC_CTX *ctx, tmpl_attr_t const *src_ar)
+{
+	tmpl_attr_t *dst_ar;
+
+	dst_ar = tmpl_attr_alloc(ctx, src_ar->ar_type);
+	switch (src_ar->type) {
+	case TMPL_ATTR_TYPE_NORMAL:
+		dst_ar->ar_da = src_ar->ar_da;
+		break;
+
+	case TMPL_ATTR_TYPE_UNSPEC:	/* Nothing to copy */
+		break;
+
+	case TMPL_ATTR_TYPE_UNKNOWN:
+		dst_ar->ar_unknown = fr_dict_unknown_afrom_da(dst_ar, src_ar->ar_unknown);
+		break;
+
+	case TMPL_ATTR_TYPE_UNRESOLVED:
+		dst_ar->ar_unresolved = talloc_bstrdup(dst_ar, src_ar->ar_unresolved);
+		break;
+
+	default:
+		if (!fr_cond_assert(0)) return -1;
+	}
+	dst_ar->ar_num = src_ar->ar_num;
+
+	return dst_ar;
+}
+
+static void tmpl_attr_list_copy(TALLOC_CTX *ctx, FR_DLIST_HEAD(tmpl_attr_list) *dst, FR_DLIST_HEAD(tmpl_attr_list) const *src)
+{
+	tmpl_attr_t *tail = tmpl_attr_list_tail(dst);
+	TALLOC_CTX *ar_ctx = tail ? tail : ctx;
+
+	tmpl_attr_list_foreach(src, src_ar) {
+		tmpl_attr_t *dst_ar;
+		
+		ar_ctx = dst_ar = tmpl_attr_acopy(ar_ctx, src_ar);
+		tmpl_attr_list_insert_tail(dst, dst_ar);
+	}
+}
+
+/** Replace the list of attribute references in one tmpl with the attribute refereces from another
  *
  */
-int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
+void tmpl_attr_replace(tmpl_t *dst, FR_DLIST_HEAD(tmpl_attr_list) const *src)
 {
-	tmpl_attr_t *src_ar = NULL, *dst_ar;
-
 	/*
 	 *	Clear any existing attribute references
 	 */
 	if (tmpl_attr_list_num_elements(tmpl_attr(dst)) > 0) tmpl_attr_list_talloc_reverse_free(tmpl_attr(dst));
-
-	while ((src_ar = tmpl_attr_list_next(tmpl_attr(src), src_ar))) {
-		dst_ar = tmpl_attr_add(dst, src_ar->type);
-
-		switch (src_ar->type) {
-	 	case TMPL_ATTR_TYPE_NORMAL:
-	 		dst_ar->ar_da = src_ar->ar_da;
-	 		break;
-
-		case TMPL_ATTR_TYPE_UNSPEC:	/* Nothing to copy */
-			break;
-
-	 	case TMPL_ATTR_TYPE_UNKNOWN:
-	 		dst_ar->ar_unknown = fr_dict_unknown_afrom_da(dst_ar, src_ar->ar_unknown);
-	 		break;
-
-	 	case TMPL_ATTR_TYPE_UNRESOLVED:
-	 		dst_ar->ar_unresolved = talloc_bstrdup(dst_ar, src_ar->ar_unresolved);
-	 		break;
-
-	 	default:
-	 		if (!fr_cond_assert(0)) return -1;
-	 	}
-	 	dst_ar->ar_num = src_ar->ar_num;
-	}
-
-	/*
-	 *	Clear any existing request references
-	 *	and copy the ones from the source.
-	 */
-	tmpl_request_list_talloc_reverse_free(&dst->data.attribute.rr);
-	tmpl_request_ref_list_copy(dst, &dst->data.attribute.rr, &src->data.attribute.rr);
-
-	/*
-	 *	Remove me...
-	 */
-	dst->data.attribute.list = src->data.attribute.list;
+	tmpl_attr_list_copy(dst, tmpl_attr(dst), src);
 
 	TMPL_ATTR_VERIFY(dst);
-
-	return 0;
 }
 
 /** Replace the current attribute reference
@@ -1137,10 +1093,10 @@ int tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 *	Unknown attributes get copied
 	 */
 	if (da->flags.is_unknown) {
-		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
+		ref = tmpl_attr_ainsert_tail(vpt, TMPL_ATTR_TYPE_UNKNOWN);
 		ref->da = ref->ar_unknown = fr_dict_unknown_afrom_da(vpt, da);
 	} else {
-		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
+		ref = tmpl_attr_ainsert_tail(vpt, TMPL_ATTR_TYPE_NORMAL);
 		ref->da = da;
 	}
 	ref->ar_parent = fr_dict_root(fr_dict_by_da(da));	/* Parent is the root of the dictionary */
@@ -1181,7 +1137,7 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 		 */
 		talloc_free_children(ref);
 	} else {
-		ref = tmpl_attr_add(vpt, da->flags.is_unknown ? TMPL_ATTR_TYPE_UNKNOWN : TMPL_ATTR_TYPE_NORMAL);
+		ref = tmpl_attr_ainsert_tail(vpt, da->flags.is_unknown ? TMPL_ATTR_TYPE_UNKNOWN : TMPL_ATTR_TYPE_NORMAL);
 	}
 
 
@@ -1212,7 +1168,7 @@ void tmpl_attr_set_leaf_num(tmpl_t *vpt, int16_t num)
 	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt));
 
 	if (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0) {
-		ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
+		ar = tmpl_attr_ainsert_tail(vpt, TMPL_ATTR_TYPE_UNKNOWN);
 	} else {
 		ar = tmpl_attr_list_tail(tmpl_attr(vpt));
 	}
@@ -1270,9 +1226,24 @@ void tmpl_attr_set_request_ref(tmpl_t *vpt, FR_DLIST_HEAD(tmpl_request_list) con
 	TMPL_ATTR_VERIFY(vpt);
 }
 
-void tmpl_attr_set_list(tmpl_t *vpt, tmpl_pair_list_t list)
+void tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list_da)
 {
-	vpt->data.attribute.list = list;
+	if (tmpl_attr_head_is_list(vpt)) {
+		tmpl_attr_t	*ar, *next;
+
+		tmpl_attr_list_pop_head(tmpl_attr(vpt));
+
+		ar = tmpl_attr_alloc(vpt, TMPL_ATTR_TYPE_NORMAL);
+		ar->ar_da = list_da;
+
+		tmpl_attr_list_insert_head(tmpl_attr(vpt), ar);
+
+		/*
+		 *	Fixup the attribute hierarchy
+		 */
+		next = tmpl_attr_list_next(tmpl_attr(vpt), ar);
+		if (next) talloc_steal(ar, next);
+	}
 
 	TMPL_ATTR_VERIFY(vpt);
 }
@@ -1288,12 +1259,13 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	ssize_t slen;
 
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, T_BARE_WORD, NULL, 0));
-
+	
 	/*
 	 *	Copies request refs and the list ref
 	 */
-	tmpl_attr_copy(vpt, list);
-	tmpl_attr_set_list(vpt, tmpl_list(list));	/* Remove when lists are attributes */
+	tmpl_attr_replace(vpt, tmpl_attr(list));
+	tmpl_request_ref_replace(vpt, tmpl_request(list));
+	
 	tmpl_attr_set_leaf_da(vpt, da);			/* This should add a new da when lists are attributes */
 	tmpl_attr_set_leaf_num(vpt, tmpl_attr_tail_num(list));
 
@@ -1321,6 +1293,26 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	return 0;
 }
 /** @} */
+
+/** Safely duplicate a set of attribute rules
+ */
+static void tmpl_attr_rules_copy(TALLOC_CTX *ctx, tmpl_attr_rules_t *dst, tmpl_attr_rules_t const *src)
+{
+	memcpy(dst, src, sizeof(*dst));
+
+	if (tmpl_attr_ctx_rules_is_default(src)) {
+		/*
+		*	If there are actual requests, duplicate them
+		*	and move them into the list.
+		*
+		*	A NULL request_def pointer is equivalent to the
+		*	current request.
+		*/
+		if (tmpl_attr_ctx_rules_default_request(src)) {
+			tmpl_request_ref_list_acopy(ctx, &dst->ctx.defaults.request, src->ctx.defaults.request);
+		}
+	}
+}
 
 /** Insert an attribute reference into a tmpl
  *
@@ -1612,6 +1604,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	fr_sbuff_marker_t	m_s;
 	fr_dict_attr_err_t	dict_err;
 	fr_dict_attr_t const	*our_parent = parent;
+	fr_dict_t const		*dict_def = NULL;
 
 	fr_sbuff_marker(&m_s, name);
 
@@ -1632,12 +1625,14 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		goto error;
 	}
 
+	if (tmpl_attr_ctx_rules_is_default(at_rules)) dict_def = tmpl_attr_ctx_rules_default_dict(at_rules);
+
 	/*
 	 *	No parent means we need to go hunting through all the dictionaries
 	 */
 	if (!our_parent) {
 		(void)fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
-								   at_rules->dict_def,
+								   dict_def,
 								   name, p_rules ? p_rules->terminals : NULL,
 								   !at_rules->disallow_internal,
 								   at_rules->allow_foreign);
@@ -1729,7 +1724,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	first, and then run the rest of the logic in this
 	 *	function.
 	 */
-	if (!namespace && at_rules->dict_def) our_parent = namespace = fr_dict_root(at_rules->dict_def);
+	if (!namespace && dict_def) our_parent = namespace = fr_dict_root(dict_def);
 	if (!namespace && !at_rules->disallow_internal) our_parent = namespace = fr_dict_root(fr_dict_internal());
 	if (!namespace) {
 		fr_strerror_const("Attribute references must be qualified with a protocol when used here");
@@ -1844,13 +1839,13 @@ check_attr:
 	 */
 	if (!at_rules->allow_foreign || at_rules->disallow_internal) {
 		fr_dict_t const *found_in = fr_dict_by_da(da);
-		fr_dict_t const *dict_def = at_rules->dict_def ? at_rules->dict_def : fr_dict_internal();
+		fr_dict_t const *our_dict_def = dict_def ? dict_def : fr_dict_internal();
 
 		/*
 		 *	Parent is the dict root if this is the first ref in the
 		 *	chain.
 		 */
-		if (!our_parent) our_parent = fr_dict_root(dict_def);
+		if (!our_parent) our_parent = fr_dict_root(our_dict_def);
 
 		/*
 		 *	Even if allow_foreign is false, if disallow_internal is not
@@ -1883,7 +1878,7 @@ check_attr:
 		    !at_rules->allow_foreign && !fr_dict_compatible(found_in, fr_dict_by_da(our_parent))) {
 			fr_strerror_printf("Foreign %s attribute found.  Only %s attributes are allowed here",
 					   fr_dict_root(found_in)->name,
-					   fr_dict_root(dict_def)->name);
+					   fr_dict_root(our_dict_def)->name);
 			if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
 			goto error;
@@ -1931,8 +1926,8 @@ do_suffix:
 			 *	if there's a real dictionary, and this reference is to group which is in fact
 			 *	the internal dict, then just keep using our dict_def.
 			 */
-			if (at_rules->dict_def && (namespace == fr_dict_root(fr_dict_internal()))) {
-				our_parent = namespace = fr_dict_root(at_rules->dict_def);
+			if (dict_def && (namespace == fr_dict_root(fr_dict_internal()))) {
+				our_parent = namespace = fr_dict_root(dict_def);
 			}
 			break;
 
@@ -2015,7 +2010,7 @@ do_suffix:
  *							are unqualified.
  *				- request_def		The default #request_t to set if no
  *							#tmpl_request_ref_t qualifiers are found in name.
- *				- list_def		The default list to set if no #pair_list_t
+ *				- context		The default list to set if no #pair_list_t
  *							qualifiers are found in the name.
  *				- allow_unknown		If true attributes in the format accepted by
  *							#fr_dict_unknown_afrom_oid_substr will be allowed,
@@ -2056,7 +2051,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	bool				ref_prefix = false;
 	bool				is_raw = false;
 	tmpl_attr_rules_t const		*at_rules;
-	fr_sbuff_marker_t		m_l;
 	tmpl_attr_t			*ar;
 
 	fr_assert_msg((request_attr_request != NULL) &&
@@ -2077,6 +2071,9 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 
 	/*
 	 *	Check to see if we expect a reference prefix
+	 *
+	 *	FIXME - These should probably only be allowed
+	 *	in the defaults context.
 	 */
 	switch (at_rules->prefix) {
 	case TMPL_ATTR_REF_PREFIX_YES:
@@ -2116,33 +2113,103 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	if (fr_sbuff_adv_past_strcase_literal(&our_name, "raw.")) is_raw = true;
 
 	/*
-	 *	Parse one or more request references
-	 */
-	ret = tmpl_request_ref_list_from_substr(vpt, NULL,
-						&vpt->data.attribute.rr,
-						&our_name,
-						p_rules,
-				        	at_rules);
-	if (ret < 0) {
-	error:
-		*out = NULL;
-		talloc_free(vpt);
-		FR_SBUFF_ERROR_RETURN(&our_name);
-	}
-
-	fr_sbuff_marker(&m_l, &our_name);
-
-	/*
-	 *	Start parsing attribute references
+	 *	Defaults ctx allow request and list
+	 *	qualifiers.
 	 *
-	 *	This includes lists, like request,
-	 *	reply, control etc...
+	 *	First parse any request references,
+	 *	then start on attribute references.
+	 *
+	 *	Finally if no list was added, prepend that.
 	 */
-	ret = tmpl_attr_afrom_attr_substr(vpt, err,
-					  vpt,
-					  at_rules->parent, at_rules->parent,
-					  &our_name, p_rules, at_rules, 0);
-	if (ret < 0) goto error;
+	if (tmpl_attr_ctx_rules_is_default(at_rules)) {
+		ret = tmpl_request_ref_list_from_substr(vpt, NULL,
+							&vpt->data.attribute.rr,
+							&our_name,
+							p_rules,
+							at_rules);
+		if (ret < 0) {
+		error:
+			*out = NULL;
+			talloc_free(vpt);
+			FR_SBUFF_ERROR_RETURN(&our_name);
+		}
+
+		ret = tmpl_attr_afrom_attr_substr(vpt, err,
+						  vpt,
+						  NULL, NULL,
+						  &our_name, p_rules, at_rules, 0);
+		if (ret < 0) goto error;
+
+		/*
+		*	Add the default list qualifier if a list
+		*	wasn't specified.
+		*
+		*	This will likely go away when we have
+		*	local attributes/variables.
+		*/
+		if (tmpl_attr_ctx_rules_is_default(at_rules) && !tmpl_attr_head_is_list(vpt)) {
+			fr_dict_attr_t const *list_da;
+
+			MEM(ar = talloc(vpt, tmpl_attr_t));
+			*ar = (tmpl_attr_t){
+				.ar_type = TMPL_ATTR_TYPE_NORMAL,
+				.ar_num = NUM_UNSPEC,
+				.ar_parent = fr_dict_root(fr_dict_internal())
+			};
+
+			/*
+			*	If there's no default list, then we default
+			*	to the request list.
+			*/
+			list_da = tmpl_attr_ctx_rules_default_list(at_rules);
+			if (list_da) {
+				ar->ar_da = list_da;
+			} else {
+				ar->ar_da = request_attr_request;
+			}
+
+			/*
+			*	Prepend the list ref so it gets evaluated
+			*	first.
+			*/
+			tmpl_attr_list_insert_head(&vpt->data.attribute.ar, ar);
+		}
+	/*
+	 *	Inherited ctx copy all the attribute
+	 *	and request references from another
+	 *	tmpl, and resume parsing in the context
+	 *	of the final attr.
+	 */
+	} else if (tmpl_attr_ctx_rules_is_inherit(at_rules)) {
+		FR_DLIST_HEAD(tmpl_request_list) const	*src_rq_list = tmpl_attr_ctx_rules_inherit_request(at_rules);
+		FR_DLIST_HEAD(tmpl_attr_list) const	*src_ar_list = tmpl_attr_ctx_rules_inherit_attr(at_rules);
+		FR_DLIST_HEAD(tmpl_request_list)	*dst_rq_list = tmpl_request(vpt);
+		FR_DLIST_HEAD(tmpl_attr_list)		*dst_ar_list = tmpl_attr(vpt);
+		fr_dict_attr_t const			*parent;
+
+		if (src_rq_list) tmpl_request_ref_list_copy(vpt, dst_rq_list, src_rq_list);
+		if (src_ar_list) tmpl_attr_list_copy(vpt, dst_ar_list, src_ar_list);
+	
+		if (!tmpl_attr_list_empty(dst_ar_list)) parent = tmpl_attr_list_tail(dst_ar_list)->ar_da;
+
+		ret = tmpl_attr_afrom_attr_substr(vpt, err,
+						  vpt,
+						  parent, parent,
+						  &our_name, p_rules, at_rules, 0);
+		if (ret < 0) goto error;
+	/*
+	 *	Nested ctx resume parsing in the
+	 *	context of the DA passed in.
+	 */
+	} else if (tmpl_attr_ctx_rules_is_nested(at_rules)) {
+		fr_dict_attr_t const		*parent = tmpl_attr_ctx_rules_nested_da(at_rules);
+
+		ret = tmpl_attr_afrom_attr_substr(vpt, err,
+						  vpt,
+						  parent, parent,
+						  &our_name, p_rules, at_rules, 0);
+		if (ret < 0) goto error;	
+	}
 
 	/*
 	 *	Check to see if the user wants the leaf
@@ -2155,61 +2222,10 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 */
 	if (tmpl_is_attr(vpt) && is_raw) tmpl_attr_to_raw(vpt);
 
-	/*
-	 *	Add the default list qualifier if a list
-	 *	wasn't specified.
-	 *
-	 *	This will likely go away when we have
-	 *	local attributes/variables.
-	 */
-	if (!tmpl_attr_head_is_list(vpt)) {
-		MEM(ar = talloc(vpt, tmpl_attr_t));
-		*ar = (tmpl_attr_t){
-			.ar_type = TMPL_ATTR_TYPE_NORMAL,
-			.ar_num = NUM_UNSPEC,
-			.ar_parent = fr_dict_root(fr_dict_internal())
-		};
-
-		switch (at_rules->list_def) {
-		default:
-		case PAIR_LIST_REQUEST:
-			ar->ar_da = request_attr_request;
-			break;
-
-		case PAIR_LIST_REPLY:
-			ar->ar_da = request_attr_reply;
-			break;
-
-		case PAIR_LIST_CONTROL:
-			ar->ar_da = request_attr_control;
-			break;
-
-		case PAIR_LIST_STATE:
-			ar->ar_da = request_attr_state;
-			break;
-		}
-
-		/*
-		 *	Prepend the list ref so it gets evaluated
-		 *	first.
-		 */
-		tmpl_attr_list_insert_head(&vpt->data.attribute.ar, ar);
-		TMPL_ATTR_VERIFY(vpt);
-	}
-
 	tmpl_set_name(vpt, T_BARE_WORD, fr_sbuff_start(&our_name), fr_sbuff_used(&our_name));
-	vpt->rules = *t_rules;	/* Record the rules */
-
-	/*
-	 *	If there are actual requests, duplicate them
-	 *	and move them into the list.
-	 *
-	 *	A NULL request_def pointer is equivalent to the
-	 *	current request.
-	 */
-	if (t_rules->attr.request_def) {
-		tmpl_request_ref_list_acopy(vpt, &vpt->rules.attr.request_def, t_rules->attr.request_def);
-	}
+	
+	vpt->rules = *t_rules;
+	tmpl_attr_rules_copy(vpt, &vpt->rules.attr, &t_rules->attr);
 
 	if (tmpl_is_attr(vpt)) {
 		/*
@@ -3245,7 +3261,7 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 	/*
 	 *	Copy attribute references
 	 */
-	if (tmpl_contains_attr(vpt) && unlikely(tmpl_attr_copy(vpt, in) < 0)) goto error;
+	if (tmpl_contains_attr(vpt)) tmpl_attr_replace(vpt, tmpl_attr(in));
 
 	/*
 	 *	Copy flags for all regex flavours (and possibly recompile the regex)
@@ -3631,53 +3647,55 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 {
 	tmpl_attr_t		*ar = NULL, *next, *prev;
 	fr_dict_attr_t const	*da;
-	fr_dict_t const		*dict_def;
+	fr_dict_t const		*dict_def = NULL;
 
 	fr_assert(tmpl_is_attr_unresolved(vpt));
 
 	TMPL_VERIFY(vpt);
 
-	dict_def = vpt->rules.attr.dict_def;
-	if (!dict_def || tr_rules->force_dict_def) dict_def = tr_rules->dict_def;
-
-	/*
-	 *	First component is special becase we may need
-	 *	to search for it in multiple dictionaries.
-	 *
-	 *	This emulates what's done in the initial
-	 *	tokenizer function.
-	 */
-	ar = tmpl_attr_list_head(tmpl_attr(vpt));
-	if (ar->type == TMPL_ATTR_TYPE_UNRESOLVED) {
-		(void)fr_dict_attr_search_by_name_substr(NULL,
-							 &da,
-							 dict_def,
-							 &FR_SBUFF_IN(ar->ar_unresolved,
-							 	      talloc_array_length(ar->ar_unresolved) - 1),
-							 NULL,
-							 !vpt->rules.attr.disallow_internal,
-							 vpt->rules.attr.allow_foreign);
-		if (!da) return -2;	/* Can't resolve, maybe the caller can resolve later */
-
-		ar->ar_type = TMPL_ATTR_TYPE_NORMAL;
-		ar->ar_da = da;
-		ar->ar_parent = fr_dict_root(fr_dict_by_da(da));
+	if (tmpl_attr_ctx_rules_is_default(&vpt->rules.attr)) {
+		dict_def = tmpl_attr_ctx_rules_default_dict(&vpt->rules.attr);
+		if (!dict_def || tr_rules->force_dict_def) dict_def = tr_rules->dict_def;
 
 		/*
-		 *	Record the dictionary that was
-		 *	successfully used for resolution.
-		 */
-		vpt->rules.attr.dict_def = tr_rules->dict_def;
+		*	First component is special becase we may need
+		*	to search for it in multiple dictionaries.
+		*
+		*	This emulates what's done in the initial
+		*	tokenizer function.
+		*/
+		ar = tmpl_attr_list_head(tmpl_attr(vpt));
+		if (ar->type == TMPL_ATTR_TYPE_UNRESOLVED) {
+			(void)fr_dict_attr_search_by_name_substr(NULL,
+								&da,
+								dict_def,
+								&FR_SBUFF_IN(ar->ar_unresolved,
+									talloc_array_length(ar->ar_unresolved) - 1),
+								NULL,
+								!vpt->rules.attr.disallow_internal,
+								vpt->rules.attr.allow_foreign);
+			if (!da) return -2;	/* Can't resolve, maybe the caller can resolve later */
 
-		/*
-		 *	Reach into the next reference
-		 *	and correct its parent and
-		 *	namespace.
-		 */
-		next = tmpl_attr_list_next(tmpl_attr(vpt), ar);
-		if (next) {
-			next->ar_parent = da;
-			next->ar_unresolved_namespace = da;
+			ar->ar_type = TMPL_ATTR_TYPE_NORMAL;
+			ar->ar_da = da;
+			ar->ar_parent = fr_dict_root(fr_dict_by_da(da));
+
+			/*
+			*	Record the dictionary that was
+			*	successfully used for resolution.
+			*/
+			vpt->rules.attr.ctx.defaults.dict = tr_rules->dict_def;
+
+			/*
+			*	Reach into the next reference
+			*	and correct its parent and
+			*	namespace.
+			*/
+			next = tmpl_attr_list_next(tmpl_attr(vpt), ar);
+			if (next) {
+				next->ar_parent = da;
+				next->ar_unresolved_namespace = da;
+			}
 		}
 	}
 
@@ -3710,14 +3728,14 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 		 *
 		 *	If it was, then we may be able to
 		 *	fall back to resolving the attribute
-		 *	in the internal dictionary.
+		 *	in the group attribute's dictionary.
 		 */
 		if (!da) {
 			prev = tmpl_attr_list_prev(tmpl_attr(vpt), ar);
 			if (!vpt->rules.attr.disallow_internal && prev && (prev->ar_da->type == FR_TYPE_GROUP)) {
 				(void)fr_dict_attr_by_name_substr(NULL,
 								  &da,
-								  fr_dict_root(fr_dict_internal()),
+								  fr_dict_root(fr_dict_by_da(prev->ar_da)),
 								  &FR_SBUFF_IN(ar->ar_unresolved,
 									       talloc_array_length(ar->ar_unresolved) - 1),
 								  NULL);
@@ -4247,15 +4265,13 @@ ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures)
 fr_slen_t tmpl_request_ref_list_print(fr_sbuff_t *out, FR_DLIST_HEAD(tmpl_request_list) const *rql)
 {
 	fr_sbuff_t		our_out = FR_SBUFF(out);
-	tmpl_request_t		*rr = tmpl_request_list_head(rql);
 
 	/*
 	 *	Print request references
 	 */
-	while (rr) {
+	tmpl_request_list_foreach(rql, rr) {
 		FR_SBUFF_IN_TABLE_STR_RETURN(&our_out, tmpl_request_ref_table, rr->request, "<INVALID>");
-		rr = tmpl_request_list_next(rql, rr);
-		if (rr) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+		if (tmpl_request_list_next(rql, rr)) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 	}
 
 	FR_SBUFF_SET_RETURN(out, &our_out);
@@ -4282,7 +4298,6 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 {
 	tmpl_attr_t const	*ar = NULL;
 	fr_da_stack_t		stack;
-	char			printed_rr = false;
 	fr_sbuff_t		our_out = FR_SBUFF(out);
 	fr_slen_t		slen;
 
@@ -4310,29 +4325,6 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	}
 
 	/*
-	 *	Print request references
-	 */
-	slen = tmpl_request_ref_list_print(&our_out, &vpt->data.attribute.rr);
-	if (slen > 0) printed_rr = true;
-	if (slen < 0) return slen;
-
-	/*
-	 *	Print list
-	 */
-	if (tmpl_list(vpt) != PAIR_LIST_REQUEST) {	/* Don't print the default list */
-		if (printed_rr) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
-
-		FR_SBUFF_IN_TABLE_STR_RETURN(&our_out, pair_list_table, tmpl_list(vpt), "<INVALID>");
-		if (tmpl_attr_list_num_elements(tmpl_attr(vpt))) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
-
-	/*
-	 *	Request qualifier with no list qualifier
-	 */
-	} else if (printed_rr) {
-		if (tmpl_attr_list_num_elements(tmpl_attr(vpt))) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
-	}
-
-	/*
 	 *
 	 *	If the leaf attribute is unknown and raw we
 	 *	add the .raw prefix.
@@ -4342,6 +4334,13 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	 *
 	 */
 	if (tmpl_attr_tail_is_raw(vpt)) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
+
+	/*
+	 *	Print request references
+	 */
+	slen = tmpl_request_ref_list_print(&our_out, &vpt->data.attribute.rr);
+	if ((slen > 0) && tmpl_attr_list_num_elements(tmpl_attr(vpt))) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+	if (slen < 0) return slen;
 
 	/*
 	 *	Print attribute identifiers
@@ -5458,8 +5457,6 @@ bool tmpl_async_required(tmpl_t const *vpt)
 void tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t const *parent, tmpl_t *vpt)
 {
 	fr_dict_attr_t const *da;
-	fr_dict_attr_t const *ref;
-	fr_dict_t const *dict, *internal;
 
 	*out = *parent;
 	out->parent = parent;
@@ -5472,41 +5469,19 @@ void tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t cons
 	 *	The input tmpl is a leaf.  We must parse the child as
 	 *	a normal attribute reference (as with the parent tmpl).
 	 */
-	if (!fr_type_structural[da->type]) {
-		return;
-	}
+	if (!fr_type_structural[da->type]) return;
 
-	if (vpt->rules.attr.request_def) {
-		tmpl_request_ref_list_acopy(ctx, &out->attr.request_def, vpt->rules.attr.request_def);
-	}
-	out->attr.list_def = tmpl_list(vpt);
+	/*
+	 *	Copy the base rules...
+	 */
+	tmpl_attr_rules_copy(ctx, &out->attr, &parent->attr);
 
 	/*
 	 *	Parse the child attributes in the context of the parent struct / tlv / whatever.
 	 */
-	if (da->type != FR_TYPE_GROUP) {
-		out->attr.dict_def = fr_dict_by_da(da);
-		out->attr.parent = da;
-		return;
+	if (tmpl_attr_ctx_rules_is_default(&out->attr)) {
+		FR_DLIST_HEAD(tmpl_request_list) *rql = out->attr.ctx.defaults.request;
+		if (rql) tmpl_request_list_talloc_reverse_free(rql);	/* Will have been copied*/
+		out->attr.ctx = tmpl_attr_ctx_rules_nested(da);
 	}
-
-	ref = fr_dict_attr_ref(da);
-	dict = fr_dict_by_da(ref);
-	internal = fr_dict_internal();
-
-	/*
-	 *	Groups MAY change dictionaries.  If so, then swap the dictionary and the parent.
-	 */
-	if ((dict != internal) && (dict != out->attr.dict_def)) {
-		out->attr.dict_def = dict;
-		out->attr.parent = ref;
-	}
-
-	/*
-	 *	Otherwise the reference is swapping FROM a protocol
-	 *	dictionary TO the internal dictionary, and TO an
-	 *	internal group.  We fall back to leaving well enough
-	 *	alone, and leave things as-is.  This allows internal
-	 *	grouping attributes to appear anywhere.
-	 */
 }

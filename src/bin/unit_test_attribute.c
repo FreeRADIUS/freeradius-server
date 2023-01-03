@@ -160,6 +160,8 @@ do { \
  */
 #define DEFAULT_BUFFER_SIZE	1024
 
+#define CURRENT_DICT(_cc) (tmpl_attr_ctx_rules_default_dict(&(_cc)->tmpl_rules.attr) ? tmpl_attr_ctx_rules_default_dict(&(_cc)->tmpl_rules.attr) : (_cc)->config->dict)
+
 typedef enum {
 	RESULT_OK = 0,				//!< Not an error - Result as expected.
 	RESULT_NOOP,				//!< Not an error - Did nothing...
@@ -984,8 +986,9 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	/*
 	 *	Decrease ref count if we're loading in a new dictionary
 	 */
-	if (cc->tmpl_rules.attr.dict_def) {
-		if (fr_dict_const_free(&cc->tmpl_rules.attr.dict_def, __FILE__) < 0) RETURN_COMMAND_ERROR();
+	if (tmpl_attr_ctx_rules_default_dict(&cc->tmpl_rules.attr)) {
+		fr_dict_t const *attr_dict = tmpl_attr_ctx_rules_default_dict(&cc->tmpl_rules.attr);
+		if (fr_dict_const_free(&attr_dict, __FILE__) < 0) RETURN_COMMAND_ERROR();
 	}
 
 	q = strchr(in, ' ');
@@ -1002,12 +1005,15 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	talloc_free(tmp);
 	if (ret < 0) RETURN_COMMAND_ERROR();
 
-	cc->tmpl_rules.attr.dict_def = dict;
+
+	cc->tmpl_rules.attr.ctx = tmpl_attr_ctx_rules_default(tmpl_attr_ctx_rules_default_request(&cc->tmpl_rules.attr),
+							      tmpl_attr_ctx_rules_default_list(&cc->tmpl_rules.attr),
+							      dict);
 
 	/*
 	 *	Dump the dictionary if we're in super debug mode
 	 */
-	if (fr_debug_lvl > 5) fr_dict_debug(cc->tmpl_rules.attr.dict_def);
+	if (fr_debug_lvl > 5) fr_dict_debug(dict);
 
 	RETURN_OK(0);
 }
@@ -1181,7 +1187,7 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 	ssize_t		slen;
 	char		*p, *end;
 	fr_pair_t	*vp;
-	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
+	fr_dict_t const	*dict = CURRENT_DICT(cc);
 
 	fr_pair_list_init(&head);
 
@@ -1465,7 +1471,7 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 	ssize_t			dec_len;
 	fr_cond_t		*cond;
 	CONF_SECTION		*cs;
-	size_t			len;
+	ssize_t			slen;
 
 	cs = cf_section_alloc(NULL, NULL, "if", "condition");
 	if (!cs) {
@@ -1497,10 +1503,14 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 		goto return_error;
 	}
 
-	len = cond_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), cond);
+	slen = cond_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), cond);
 	talloc_free(cs);
 
-	RETURN_OK(len);
+	if (slen < 0) {
+		fr_strerror_printf_push_head("ERROR OOB offset %d", (int) -slen);
+		RETURN_COMMAND_ERROR();
+	}
+	RETURN_OK((size_t)slen);
 }
 
 static size_t command_count(command_result_t *result, command_file_ctx_t *cc,
@@ -1574,7 +1584,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	point to produce fr_pair_ts.
 	 */
 	while (to_dec < to_dec_end) {
-		slen = tp->func(cc->tmp_ctx, &head, fr_dict_root(cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict),
+		slen = tp->func(cc->tmp_ctx, &head, fr_dict_root(CURRENT_DICT(cc)),
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
 		cc->last_ret = slen;
 		if (slen <= 0) {
@@ -1751,7 +1761,7 @@ static size_t command_dictionary_attribute_parse(command_result_t *result, comma
 static size_t command_dictionary_dump(command_result_t *result, command_file_ctx_t *cc,
 				      UNUSED char *data, size_t data_used, UNUSED char *in, UNUSED size_t inlen)
 {
-	fr_dict_debug(cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict);
+	fr_dict_debug(CURRENT_DICT(cc));
 
 	/*
 	 *	Don't modify the contents of the data buffer
@@ -1909,7 +1919,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		RETURN_COMMAND_ERROR();
 	}
 
-	dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
+	dict = CURRENT_DICT(cc);
 	if (fr_pair_list_afrom_str(cc->tmp_ctx, fr_dict_root(dict),
 				   p, in + inlen - p, &head) != T_EOL) {
 		CLEAR_TEST_POINT(cc);
@@ -1942,7 +1952,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 
 		for (vp = fr_pair_dcursor_iter_init(&cursor, &head,
 						    tp->next_encodable ? tp->next_encodable : fr_proto_next_encodable,
-						    cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict);
+						    CURRENT_DICT(cc));
 		     vp;
 		     vp = fr_dcursor_current(&cursor)) {
 			slen = tp->func(&FR_DBUFF_TMP(enc_p, enc_end), &cursor, encode_ctx);
@@ -2094,7 +2104,7 @@ static size_t command_flatten(command_result_t *result, command_file_ctx_t *cc,
 {
 	fr_dict_attr_t	const *da;
 	fr_pair_t	*head;
-	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
+	fr_dict_t const	*dict = CURRENT_DICT(cc);
 
 	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), "request");
 	fr_assert(da != NULL);
@@ -2118,7 +2128,7 @@ static size_t command_unflatten(command_result_t *result, command_file_ctx_t *cc
 {
 	fr_dict_attr_t	const *da;
 	fr_pair_t	*head;
-	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
+	fr_dict_t const	*dict = CURRENT_DICT(cc);
 
 	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), "request");
 	fr_assert(da != NULL);
@@ -2163,7 +2173,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 		RETURN_COMMAND_ERROR();
 	}
 
-	dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
+	dict = CURRENT_DICT(cc);
 	if (fr_pair_list_afrom_str(cc->tmp_ctx, fr_dict_root(dict),
 				   p, in + inlen - p, &head) != T_EOL) {
 		CLEAR_TEST_POINT(cc);
@@ -2307,7 +2317,7 @@ static size_t command_load_dictionary(command_result_t *result, command_file_ctx
 		dir = cc->path;
 	}
 
-	ret = fr_dict_read(UNCONST(fr_dict_t *, cc->tmpl_rules.attr.dict_def), dir, name);
+	ret = fr_dict_read(UNCONST(fr_dict_t *, tmpl_attr_ctx_rules_default_dict(&cc->tmpl_rules.attr)), dir, name);
 	talloc_free(tmp);
 	if (ret < 0) RETURN_COMMAND_ERROR();
 
@@ -2461,7 +2471,7 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 
 	fr_pair_list_init(&head);
 	ctx.ctx = cc->tmp_ctx;
-	ctx.parent = fr_dict_root(cc->tmpl_rules.attr.dict_def);
+	ctx.parent = fr_dict_root(tmpl_attr_ctx_rules_default_dict(&cc->tmpl_rules.attr));
 	ctx.list = &head;
 
 	p = in;
@@ -2586,13 +2596,17 @@ static ssize_t command_tmpl_rule_attr_parent(UNUSED TALLOC_CTX *ctx, tmpl_rules_
 {
 	fr_dict_attr_err_t	err;
 	fr_slen_t		slen;
+	fr_dict_attr_t const	*da;
 
-	slen = fr_dict_attr_by_oid_substr(&err,
-					  &rules->attr.parent,
-					  rules->attr.dict_def ? fr_dict_root(rules->attr.dict_def) :
-					  			 fr_dict_root(fr_dict_internal()),
+	slen = fr_dict_attr_by_oid_substr(&err, &da,
+					  tmpl_attr_ctx_rules_default_dict(&rules->attr) ?
+						fr_dict_root(tmpl_attr_ctx_rules_default_dict(&rules->attr)) : 
+					  	fr_dict_root(fr_dict_internal()),
 					  value, NULL);
 	if (err != FR_DICT_ATTR_OK) FR_SBUFF_ERROR_RETURN(value);
+
+	rules->attr.ctx = tmpl_attr_ctx_rules_nested(da);
+
 	return slen;
 }
 
@@ -2618,24 +2632,29 @@ static ssize_t command_tmpl_rule_disallow_qualifiers(UNUSED TALLOC_CTX *ctx, tmp
 
 static ssize_t command_tmpl_rule_list_def(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	ssize_t slen;
+	ssize_t			slen;
+	fr_dict_attr_t const	*list;
 
-	fr_sbuff_out_by_longest_prefix(&slen, &rules->attr.list_def, pair_list_table, value, PAIR_LIST_UNKNOWN);
-
-	if (rules->attr.list_def == PAIR_LIST_UNKNOWN) {
+	slen = tmpl_attr_list_from_substr(&list, value);
+	if (slen == 0) {
 		fr_strerror_printf("Invalid list specifier \"%pV\"",
 				   fr_box_strvalue_len(fr_sbuff_current(value), fr_sbuff_remaining(value)));
 	}
+
+	rules->attr.ctx = tmpl_attr_ctx_rules_default(tmpl_attr_ctx_rules_default_request(&rules->attr),
+						      list,
+						      tmpl_attr_ctx_rules_default_dict(&rules->attr));
 
 	return slen;
 }
 
 static ssize_t command_tmpl_rule_request_def(TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	fr_slen_t			 slen;
+	fr_slen_t			 	slen;
+	FR_DLIST_HEAD(tmpl_request_list) const	*request_def;
 
 	slen = tmpl_request_ref_list_afrom_substr(ctx, NULL,
-						  &rules->attr.request_def,
+						  &request_def,
 						  value,
 						  NULL,
 						  NULL);
@@ -2643,6 +2662,10 @@ static ssize_t command_tmpl_rule_request_def(TALLOC_CTX *ctx, tmpl_rules_t *rule
 		fr_strerror_printf("Invalid request specifier \"%pV\"",
 				   fr_box_strvalue_len(fr_sbuff_current(value), fr_sbuff_remaining(value)));
 	}
+
+	rules->attr.ctx = tmpl_attr_ctx_rules_default(request_def,
+						      tmpl_attr_ctx_rules_default_list(&rules->attr),
+						      tmpl_attr_ctx_rules_default_dict(&rules->attr));
 
 	return slen;
 }
@@ -2832,8 +2855,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	dec_len = xlat_tokenize(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), &p_rules,
 				&(tmpl_rules_t) {
 					.attr = {
-						.dict_def = cc->tmpl_rules.attr.dict_def ?
-						cc->tmpl_rules.attr.dict_def : cc->config->dict,
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, CURRENT_DICT(cc)),
 						.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					},
 				});
@@ -2867,8 +2889,7 @@ static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc
 	dec_len = xlat_tokenize_expression(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), NULL,
 					   &(tmpl_rules_t) {
 					   	.attr = {
-							.dict_def = cc->tmpl_rules.attr.dict_def ?
-							   cc->tmpl_rules.attr.dict_def : cc->config->dict,
+							.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, CURRENT_DICT(cc)),
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
 						}
 					   });
@@ -2906,8 +2927,7 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 	dec_len = xlat_tokenize_ephemeral_expression(cc->tmp_ctx, &head, el, &FR_SBUFF_IN(in, input_len), NULL,
 					   &(tmpl_rules_t) {
 						   .attr = {
-							.dict_def = cc->tmpl_rules.attr.dict_def ?
-							   cc->tmpl_rules.attr.dict_def : cc->config->dict,
+							.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, CURRENT_DICT(cc)),
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
 						   },
 					   });
@@ -2959,8 +2979,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 				  NULL,
 				  &(tmpl_rules_t) {
 					  .attr = {
-						  .dict_def = cc->tmpl_rules.attr.dict_def ?
-						  cc->tmpl_rules.attr.dict_def : cc->config->dict,
+						  .ctx = tmpl_attr_ctx_rules_default(NULL, NULL, CURRENT_DICT(cc)),
 						  .allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					  },
 				  });
@@ -3220,6 +3239,11 @@ size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data
 	size_t			match_len;
 	char			*p;
 
+	/*
+	 *	Don't accidentally print irrelevant errors
+	 */
+	fr_strerror_clear();
+
 	p = in;
 	fr_skip_whitespace(p);
 	if (*p == '\0') RETURN_NOOP(data_used);
@@ -3262,7 +3286,8 @@ size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data
 	 */
 	if (result->error_to_data) data_used = strerror_concat(data, COMMAND_OUTPUT_MAX);
 
-	fr_assert((size_t)data_used < COMMAND_OUTPUT_MAX);
+	fr_assert_msg((size_t)data_used < COMMAND_OUTPUT_MAX,
+		      "Command printed %zu bytes, buffer max was %zu bytes", data_used, (size_t)COMMAND_OUTPUT_MAX);
 	data[data_used] = '\0';			/* Ensure the data buffer is \0 terminated */
 
 	if (data_used) {
@@ -3520,12 +3545,16 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 finish:
 	if (fp && (fp != stdin)) fclose(fp);
 
-	/*
-	 *	Free any residual resources we loaded.
-	 */
-	if (cc && (fr_dict_const_free(&cc->tmpl_rules.attr.dict_def, __FILE__) < 0)) {
-		fr_perror("unit_test_attribute");
-		ret = -1;
+	{
+		fr_dict_t const *dict = tmpl_attr_ctx_rules_default_dict(&cc->tmpl_rules.attr);
+
+		/*
+		*	Free any residual resources we loaded.
+		*/
+		if (cc && (fr_dict_const_free(&dict, __FILE__) < 0)) {
+			fr_perror("unit_test_attribute");
+			ret = -1;
+		}
 	}
 
 	fr_dict_global_ctx_set(config->dict_gctx);	/* Switch back to the main dict ctx */

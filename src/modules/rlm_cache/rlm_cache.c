@@ -831,7 +831,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      NULL,
 				      &(tmpl_rules_t){
 				      	.attr = {
-				      		.dict_def = request->dict,
+				      		.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      	}
 				      });

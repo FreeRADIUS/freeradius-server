@@ -454,11 +454,11 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 								  &FR_SBUFF_IN(fmt, talloc_array_length(fmt) - 1),
 								  NULL,
 								  &(tmpl_rules_t) {
-									  .attr = {
-										  .dict_def = dict_protocol,
-										  .allow_unresolved = true,
-									  }
-										  }
+									.attr = {
+										.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, dict_protocol),
+										.allow_unresolved = true,
+									}
+								  }
 								);
 			if (slen <= 0) {
 				talloc_free(xlat_ctx);

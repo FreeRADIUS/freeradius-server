@@ -26,7 +26,10 @@
  * @copyright 2013 Alan DeKok (aland@freeradius.org)
  */
 
+
+#include "tmpl.h"
 RCSID("$Id$")
+
 
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/exec.h>
@@ -34,12 +37,13 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
-#include <freeradius-devel/util/pair_legacy.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/pair_legacy.h>
+#include <freeradius-devel/util/sbuff.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
@@ -442,7 +446,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 */
 			if (is_child) {
 				fr_assert(tmpl_is_attr(parent->lhs));
-				our_lhs_rules.attr.parent = tmpl_attr_tail_da(parent->lhs);
+				our_lhs_rules.attr.ctx = tmpl_attr_ctx_rules_nested(tmpl_attr_tail_da(parent->lhs));
 
 				slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
 							      &map_parse_rules_bareword_quoted, &our_lhs_rules);
@@ -711,28 +715,32 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 	 */
 	if (update) {
 		fr_slen_t slen;
-		char const *p;
+		char const *name2;
+		FR_DLIST_HEAD(tmpl_request_list) const *rql;
+		fr_dict_attr_t const *list = NULL;
+		fr_sbuff_t qual;
 
-		p = cf_section_name2(cs);
-		if (!p) goto do_children;
+		name2 = cf_section_name2(cs);
+		if (!name2) goto do_children;
+		
+		qual = FR_SBUFF_IN(name2, strlen(name2));
 
 		MEM(tmp_ctx = talloc_init_const("tmp"));
 
-		slen = tmpl_request_ref_list_afrom_substr(ctx, NULL, &our_lhs_rules.attr.request_def,
-							  &FR_SBUFF_IN(p, strlen(p)), NULL, NULL);
+		slen = tmpl_request_ref_list_afrom_substr(ctx, NULL, &rql, &qual, NULL, NULL);
 		if (slen < 0) {
 			cf_log_err(ci, "Default request specified in mapping section is invalid");
 			talloc_free(tmp_ctx);
 			return -1;
 		}
-		p += slen;
-
-		our_lhs_rules.attr.list_def = fr_table_value_by_str(pair_list_table, p, PAIR_LIST_UNKNOWN);
-		if (our_lhs_rules.attr.list_def == PAIR_LIST_UNKNOWN) {
-			cf_log_err(ci, "Default list \"%s\" specified in mapping section is invalid", p);
+		slen = tmpl_attr_list_from_substr(&list, &qual);
+		if (slen == 0) {
+			cf_log_err(ci, "Default list \"%.*s\" specified in mapping section is invalid", (unsigned int)fr_sbuff_remaining(&qual), fr_sbuff_current(&qual));
 			talloc_free(tmp_ctx);
 			return -1;
 		}
+
+		our_lhs_rules.attr.ctx = tmpl_attr_ctx_rules_default(rql, list, NULL);
 	}
 
 do_children:
@@ -826,24 +834,7 @@ do_children:
 			 *	inner section.
 			 */
 			our_lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_NO;
-			our_lhs_rules.attr.parent = tmpl_attr_tail_da(map->lhs);
-
-			/*
-			 *	Groups MAY change dictionaries.  If so, then swap the dictionary and the parent.
-			 */
-			if (our_lhs_rules.attr.parent->type == FR_TYPE_GROUP) {
-				fr_dict_attr_t const *ref;
-				fr_dict_t const *dict, *internal;
-
-				ref = fr_dict_attr_ref(our_lhs_rules.attr.parent);
-				dict = fr_dict_by_da(ref);
-				internal = fr_dict_internal();
-
-				if ((dict != internal) && (dict != our_lhs_rules.attr.dict_def)) {
-					our_lhs_rules.attr.dict_def = dict;
-					our_lhs_rules.attr.parent = ref;
-				}
-			}
+			our_lhs_rules.attr.ctx = tmpl_attr_ctx_rules_nested(tmpl_attr_tail_da(map->lhs));
 
 			/*
 			 *	This prints out any relevant error
@@ -1247,9 +1238,9 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	tmpl_attr_set_leaf_da(map->lhs, vp->da);
 	tmpl_attr_set_leaf_num(map->lhs, NUM_UNSPEC);
 
-	tmpl_attr_set_request_ref(map->lhs, rules->attr.request_def);
-	tmpl_attr_set_list(map->lhs, rules->attr.list_def);
-
+	tmpl_attr_set_request_ref(map->lhs, tmpl_attr_ctx_rules_default_request(&rules->attr));
+	tmpl_attr_set_list(map->lhs, tmpl_attr_ctx_rules_default_list(&rules->attr));
+	
 	tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->lhs, TMPL_ATTR_REF_PREFIX_YES, NULL);
 	tmpl_set_name(map->lhs, T_BARE_WORD, buffer, -1);
 
@@ -1310,7 +1301,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	/*
 	 *	We always put the request pairs into the environment
 	 */
-	input_pairs = tmpl_list_head(request, PAIR_LIST_REQUEST);
+	input_pairs = &request->pair_list.request->vp_group;
 
 	/*
 	 *	Automagically switch output type depending on our destination
@@ -1452,7 +1443,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		fr_pair_list_t *from = NULL;
 
 		if (tmpl_request_ptr(&context, tmpl_request(map->rhs)) == 0) {
-			from = tmpl_list_head(context, tmpl_list(map->rhs));
+			from = tmpl_list_head(context, map->rhs);
 		}
 		if (!from) return 0;
 
@@ -1669,7 +1660,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 	map_t			exp_map;
 	tmpl_t			*exp_lhs;
-	tmpl_pair_list_t	list_ref;
 
 	tmpl_dcursor_ctx_t	cc = {};
 
@@ -1713,7 +1703,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &exp_lhs, attr_str,
 					   &(tmpl_rules_t){
 					   	.attr = {
-					   		.dict_def = request->dict,
+					   		.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 				   			.prefix = TMPL_ATTR_REF_PREFIX_NO
 				   		}
 					   });
@@ -1757,17 +1747,15 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		goto finish;
 	}
 
-	list_ref = tmpl_list(map->lhs);
-	list = tmpl_list_head(context, list_ref);
+	list = tmpl_list_head(context, map->lhs);
 	if (!list) {
-		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to to invalid list qualifier \"%s\" in left side of map",
-			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
-			fr_table_str_by_value(pair_list_table, list_ref, "<INVALID>"));
+		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to to invalid list qualifier in left side of map",
+			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
 		rcode = -2;
 		goto finish;
 	}
 
-	parent = tmpl_list_ctx(context, tmpl_list(map->lhs));
+	parent = tmpl_list_ctx(context, map->lhs);
 	fr_assert(parent);
 
 	/*

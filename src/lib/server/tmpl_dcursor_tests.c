@@ -7,12 +7,17 @@ static void test_init(void);
 #define TEST_INIT test_init()
 #endif
 
+/*
+ *	Must come first
+ */
 #include <freeradius-devel/util/acutest.h>
 #include <freeradius-devel/util/acutest_helpers.h>
-#include <freeradius-devel/util/dict_test.h>
-#include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/server/pair.h>
 
+#include <freeradius-devel/server/pair.h>
+#include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/util/dict_test.h>
+#include <freeradius-devel/util/pair.h>
 
 static TALLOC_CTX       *autofree;
 static fr_dict_t	*test_dict;
@@ -76,7 +81,7 @@ static request_t *request_fake_alloc(void)
 	fr_pair_t	*leaf_int32_vp ## _x
 
 #define pair_populate(_x) \
-	pair_append_request(&int32_vp ## _x, fr_dict_attr_test_int32); \
+	pair_append_## request(&int32_vp ## _x, fr_dict_attr_test_int32); \
 	pair_append_request(&string_vp ## _x, fr_dict_attr_test_string); \
 	pair_append_request(&group_vp ## _x, fr_dict_attr_test_group); \
 	fr_pair_append_by_da(group_vp ## _x, &child_vp ## _x, &group_vp ## _x->children, fr_dict_attr_test_int16); \
@@ -136,8 +141,7 @@ int _tmpl_setup_and_cursor_init(fr_pair_t **vp_out, tmpl_dcursor_vars_t *vars, r
 	tmpl_afrom_attr_substr(autofree, NULL, &vars->vpt, &FR_SBUFF_IN(ref, strlen(ref)), NULL,
 			       &(tmpl_rules_t){
 					.attr = {
-						.dict_def = test_dict,
-						.list_def = PAIR_LIST_REQUEST
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, test_dict)
 					}
 				}); 
 	TEST_CHECK(vars->vpt!= NULL); 
@@ -166,8 +170,7 @@ int _tmpl_setup_and_cursor_build_init(fr_pair_t **vp_out, tmpl_dcursor_vars_t *v
 	tmpl_afrom_attr_substr(autofree, NULL, &vars->vpt, &FR_SBUFF_IN(ref, strlen(ref)), NULL,
 			       &(tmpl_rules_t){
 					.attr = {
-						.dict_def = test_dict,
-						.list_def = PAIR_LIST_REQUEST
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, test_dict)
 					}
 				}); 
 	TEST_CHECK(vars->vpt != NULL); 

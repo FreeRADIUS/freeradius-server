@@ -364,13 +364,13 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
  * @param[in] out	Cursor to append maps to.
  * @param[in] request	The request to which the generated pairs should be added.
  * @param[in] json	The JSON object representation of the user document.
- * @param[in] list	The pair list PAIR_LIST_CONTROL or PAIR_LIST_REPLY.
+ * @param[in] context	Prepended to all references in this map.
  * @return
  *	- 1 if no section found.
  *	- 0 on success.
  *	- <0 on error.
  */
-int mod_json_object_to_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request, json_object *json, tmpl_pair_list_t list)
+int mod_json_object_to_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request, json_object *json, FR_DLIST_HEAD(tmpl_attr_list) *context)
 {
 	json_object	*list_obj;
 	char const	*list_name = fr_table_str_by_value(pair_list_table, list, "<INVALID>");
@@ -483,7 +483,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *reques
 						&(tmpl_rules_t){
 							.attr = {
 								.dict_def = request->dict,
-								.list_def = list
+								.context = list
 							}
 						},
 						op,

@@ -22,6 +22,7 @@
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
 
+#include "lib/server/tmpl.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/server/log.h>
@@ -270,7 +271,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 
 	lhs_rules = (tmpl_rules_t) {
 		.attr = {
-			.dict_def = dict,
+			.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, dict),
 			.prefix = TMPL_ATTR_REF_PREFIX_NO,
 			.disallow_qualifiers = true, /* for now, until more tests are made */
 
@@ -286,7 +287,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	};
 	rhs_rules = (tmpl_rules_t) {
 		.attr = {
-			.dict_def = dict,
+			.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, dict),
 			.prefix = TMPL_ATTR_REF_PREFIX_YES,
 			.disallow_qualifiers = true, /* for now, until rlm_files supports it */
 		}
@@ -383,7 +384,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		}
 		t->name = q;
 
-		lhs_rules.attr.list_def = PAIR_LIST_CONTROL;
+		lhs_rules.attr.ctx = tmpl_attr_ctx_rules_default(NULL, request_attr_control, dict);
 		comma = false;
 
 check_item:
@@ -426,7 +427,7 @@ check_item:
 			 *	for regexes we want to look at the
 			 *	request list.
 			 */
-			tmpl_attr_set_list(new_map->lhs, PAIR_LIST_REQUEST);
+			tmpl_attr_set_list(new_map->lhs, request_attr_request);
 
 			if (tmpl_is_regex_uncompiled(new_map->rhs) &&
 			    (tmpl_regex_compile(new_map->rhs, false) < 0)) {
@@ -514,7 +515,7 @@ setup_reply:
 		/*
 		 *	Setup the reply items.
 		 */
-		lhs_rules.attr.list_def = PAIR_LIST_REPLY;
+		lhs_rules.attr.ctx = tmpl_attr_ctx_rules_default(NULL, request_attr_reply, dict);
 		comma = false;
 
 reply_item:
@@ -596,7 +597,7 @@ next_reply_item:
 			}
 		}
 
-		fr_assert(tmpl_list(new_map->lhs) == PAIR_LIST_REPLY);
+		fr_assert(tmpl_list(new_map->lhs) == request_attr_reply);
 
 		if (!new_map->parent) map_list_insert_tail(&t->reply, new_map);
 

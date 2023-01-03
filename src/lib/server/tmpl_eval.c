@@ -86,71 +86,29 @@ static fr_dict_attr_autoload_t tmpl_dict_attr[] = {
 	{ NULL }
 };
 
-/** Resolve a #tmpl_t into an #fr_pair_t
+/** Resolve a #tmpl_t into the head of a pair list
  *
  * @param[in] request containing the target lists.
  * @param[in] vpt tmpl to resolve
  * @return a pointer to the list in the #request_t.
- *
- * @This is just a temporary hack.
  */
-fr_pair_t *tmpl_get_list(request_t *request, tmpl_t const *vpt)
+fr_pair_list_t *tmpl_list_head(request_t *request, tmpl_t const *vpt)
 {
 	fr_dict_attr_t const *da;
+	fr_pair_t *vp = NULL;
 
-	if (!request) return NULL;
+	if (!request || !tmpl_attr_head_is_list(vpt)) return NULL;
 
 	da = ((tmpl_attr_t *)tmpl_attr_list_head(&vpt->data.attribute.ar))->ar_da;
 
-	if (da == request_attr_request) return request->pair_list.request;
-	if (da == request_attr_reply) return request->pair_list.reply;
-	if (da == request_attr_control) return request->pair_list.control;
-	if (da == request_attr_state) return request->pair_list.state;
+	if (da == request_attr_request) vp = request->pair_list.request;
+	if (da == request_attr_reply) vp = request->pair_list.reply;
+	if (da == request_attr_control) vp = request->pair_list.control;
+	if (da == request_attr_state) vp = request->pair_list.state;
 
-	return NULL;
-}
+	if (!vp) RWDEBUG2("List \"%s\" is not available", da->name);
 
-
-/** Resolve attribute #pair_list_t value to an attribute list.
- *
- * The value returned is a pointer to the pointer of the HEAD of a #fr_pair_t list in the
- * #request_t. If the head of the list changes, the pointer will still be valid.
- *
- * @param[in] request containing the target lists.
- * @param[in] list #pair_list_t value to resolve to #fr_pair_t list. Will be NULL if list
- *	name couldn't be resolved.
- * @return a pointer to the HEAD of a list in the #request_t.
- *
- * @see tmpl_dcursor_init
- */
-fr_pair_list_t *tmpl_list_head(request_t *request, tmpl_pair_list_t list)
-{
-	if (!request) return NULL;
-
-	switch (list) {
-	/* Don't add default */
-	case PAIR_LIST_UNKNOWN:
-		break;
-
-	case PAIR_LIST_REQUEST:
-		if (!request->packet) return NULL;
-		return &request->request_pairs;
-
-	case PAIR_LIST_REPLY:
-		if (!request->reply) return NULL;
-		return &request->reply_pairs;
-
-	case PAIR_LIST_CONTROL:
-		return &request->control_pairs;
-
-	case PAIR_LIST_STATE:
-		return &request->session_state_pairs;
-	}
-
-	RWDEBUG2("List \"%s\" is not available",
-		fr_table_str_by_value(pair_list_table, list, "<INVALID>"));
-
-	return NULL;
+	return &vp->vp_group;
 }
 
 /** Return the correct TALLOC_CTX to alloc #fr_pair_t in, for a list
@@ -161,35 +119,26 @@ fr_pair_list_t *tmpl_list_head(request_t *request, tmpl_pair_list_t list)
  * freed too.
  *
  * @param[in] request containing the target lists.
- * @param[in] list #pair_list_t value to resolve to TALLOC_CTX.
+ * @param[in] vpt to resolve to a TALLOC_CTX.
  * @return
  *	- TALLOC_CTX on success.
  *	- NULL on failure.
  *
  * @see tmpl_pair_list
  */
-TALLOC_CTX *tmpl_list_ctx(request_t *request, tmpl_pair_list_t list)
+TALLOC_CTX *tmpl_list_ctx(request_t *request, tmpl_t const *vpt)
 {
-	if (!request) return NULL;
+	fr_dict_attr_t const *da;
+	
+	if (!request || !tmpl_attr_head_is_list(vpt)) return NULL;
 
-	switch (list) {
-	case PAIR_LIST_REQUEST:
-		return request->request_ctx;
+	da = ((tmpl_attr_t *)tmpl_attr_list_head(&vpt->data.attribute.ar))->ar_da;
 
-	case PAIR_LIST_REPLY:
-		return request->reply_ctx;
-
-	case PAIR_LIST_CONTROL:
-		return request->control_ctx;
-
-	case PAIR_LIST_STATE:
-		return request->session_state_ctx;
-
-	/* Don't add default */
-	case PAIR_LIST_UNKNOWN:
-		break;
-	}
-
+	if (da == request_attr_request) return request->request_ctx;
+	if (da == request_attr_reply) return request->reply_ctx;;
+	if (da == request_attr_control) return request->control_ctx;
+	if (da == request_attr_state) return request->session_state_ctx;
+		
 	return NULL;
 }
 
@@ -199,28 +148,23 @@ TALLOC_CTX *tmpl_list_ctx(request_t *request, tmpl_pair_list_t list)
  * for the current #request_t.
  *
  * @param[in] request To resolve list in.
- * @param[in] list #pair_list_t value to resolve to #fr_radius_packet_t.
+ * @param[in] vpt #pair_list_t value to resolve to #fr_radius_packet_t.
  * @return
  *	- #fr_radius_packet_t on success.
  *	- NULL on failure.
  *
  * @see tmpl_pair_list
  */
-fr_radius_packet_t *tmpl_packet_ptr(request_t *request, tmpl_pair_list_t list)
+fr_radius_packet_t *tmpl_packet_ptr(request_t *request, tmpl_t const *vpt)
 {
-	switch (list) {
-	/* Don't add default */
-	case PAIR_LIST_STATE:
-	case PAIR_LIST_CONTROL:
-	case PAIR_LIST_UNKNOWN:
-		return NULL;
+		fr_dict_attr_t const *da;
+	
+	if (!request || !tmpl_attr_head_is_list(vpt)) return NULL;
 
-	case PAIR_LIST_REQUEST:
-		return request->packet;
+	da = ((tmpl_attr_t *)tmpl_attr_list_head(&vpt->data.attribute.ar))->ar_da;
 
-	case PAIR_LIST_REPLY:
-		return request->reply;
-	}
+	if (da == request_attr_request) return request->packet;
+	if (da == request_attr_reply) return request->reply;
 
 	return NULL;
 }
@@ -1012,7 +956,7 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 		TALLOC_CTX	*ctx;
 		fr_pair_list_t	*head;
 
-		tmpl_pair_list_and_ctx(ctx, head, request, tmpl_request(vpt), tmpl_list(vpt));
+		tmpl_pair_list_and_ctx(ctx, head, request, tmpl_request(vpt), vpt);
 		if (!head) return -1;
 
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(vpt)));
@@ -1193,7 +1137,7 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_li
 	 *	If there's no packet, we can't print any attribute
 	 *	referencing it.
 	 */
-	packet = tmpl_packet_ptr(request, tmpl_list(vpt));
+	packet = tmpl_packet_ptr(request, vpt);
 	if (!packet) return 0;
 
 	if (tmpl_attr_tail_da(vpt) == attr_packet_type) {

@@ -29,7 +29,12 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/fring.h>
 
-#ifdef NO_ASSERT
+/*
+ *	Setting this causes clangd to throw lots of errors, because it doesn't
+ *	seem to re-evaluate headers in the contexts of the files which include
+ *	them.
+ */
+#if defined(NO_ASSERT) && !defined(__clangd__)
 # define MEM(x) error "Use of MEM() not allowed in this source file.  Deal with memory allocation failure gracefully"
 #else
 # define MEM(x) do { if (!(x)) { fr_cond_assert_msg((x), "OUT OF MEMORY"); _fr_exit(__FILE__, __LINE__, EXIT_FAILURE, true); } } while (0)

@@ -285,7 +285,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	tmpl_rules_t		parse_rules = {
 	 	/* Strict rules for the update map as it's processed with limited functionality */
 		.attr = {
-			.dict_def = dict_ldap_sync,
+			.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, dict_ldap_sync),
 			.allow_foreign = false,
 			.allow_unknown = false,
 			.allow_unresolved = false,

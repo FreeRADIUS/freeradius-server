@@ -23,6 +23,7 @@
  * @copyright 2000,2006,2015 The FreeRADIUS server project
  * @copyright 2011 TekSavvy Solutions (gabe@teksavvy.com)
  */
+#include "lib/server/tmpl.h"
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/value.h>
@@ -388,7 +389,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out, request_t *request,
 				   &(tmpl_rules_t){
 				   	.attr = {
 					   	.prefix = TMPL_ATTR_REF_PREFIX_NO,
-					   	.dict_def = request->dict
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict)
 				   	}
 				   });
 	if (slen <= 0) {

@@ -27,12 +27,16 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#undef NO_ASSERT
+
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/edit.h>
 #include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/unlang_priv.h>
 #include "edit_priv.h"
+
+
 
 typedef struct {
 	FR_DLIST_HEAD(fr_value_box_list)	result;			//!< result of expansion
@@ -112,7 +116,7 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, map_t const *map, edit_result_
 	slen = tmpl_afrom_attr_str(ctx, NULL, &out->to_free, box->vb_strvalue,
 				   &(tmpl_rules_t){
 				   	.attr = {
-						.dict_def = request->dict,
+						.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 						.prefix = TMPL_ATTR_REF_PREFIX_NO
 					}
 				   });

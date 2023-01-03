@@ -273,7 +273,7 @@ int fr_ldap_map_do(request_t *request,
 
 			tmpl_rules_t parse_rules = {
 				.attr = {
-					.dict_def = request->dict,
+					.ctx = tmpl_attr_ctx_rules_default(NULL, NULL, request->dict),
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}
 			};
