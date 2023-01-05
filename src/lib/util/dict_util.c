@@ -3930,20 +3930,6 @@ char const *fr_dict_global_ctx_dir(void)
 	return dict_gctx->dict_dir_default;
 }
 
-/** Add a new libdir for searching libraries.
- *
- * @param[in] lib_dir	Library directory to add
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_dict_global_ctx_libdir_append(char const *lib_dir)
-{
-	if (!dict_gctx) return -1;
-
-	return dl_search_path_append(dict_gctx->dict_loader, lib_dir);
-}
-
 /** Mark all dictionaries and the global dictionary ctx as read only
  *
  * Any attempts to add new attributes will now fail.
