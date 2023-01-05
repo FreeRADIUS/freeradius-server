@@ -639,6 +639,8 @@ int			fr_dict_global_ctx_free(fr_dict_gctx_t const *gctx);
 
 int			fr_dict_global_ctx_dir_set(char const *dict_dir);
 
+int			fr_dict_global_ctx_libdir_append(char const *lib_dir);
+
 void			fr_dict_global_ctx_read_only(void);
 
 void			fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx);
