@@ -340,14 +340,14 @@ static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent,
 				  CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		ret;
-	uint32_t	value;
+	fr_time_delta_t	value;
 
 	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
 
 	memcpy(&value, out, sizeof(value));
 
-	FR_INTEGER_BOUND_CHECK("max_request_time", value, >=, 5);
-	FR_INTEGER_BOUND_CHECK("max_request_time", value, <=, 120);
+	FR_TIME_DELTA_BOUND_CHECK("max_request_time", value, >=, fr_time_delta_from_sec(5));
+	FR_TIME_DELTA_BOUND_CHECK("max_request_time", value, <=, fr_time_delta_from_sec(120));
 
 	memcpy(out, &value, sizeof(value));
 
