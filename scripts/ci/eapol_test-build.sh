@@ -35,6 +35,7 @@
 TMP_BUILD_DIR="${BUILD_DIR}"
 : ${TMP_BUILD_DIR:="$(mktemp -d -t eapol_test.XXXXX)"}
 : ${HOSTAPD_DIR:="${TMP_BUILD_DIR}/hostapd"}
+: ${HOSTAPD_REPO:="http://w1.fi/hostap.git"}
 : ${HOSTAPD_GIT_TAG:="hostap_2_8"}
 : ${WPA_SUPPLICANT_DIR:="${HOSTAPD_DIR}/wpa_supplicant"}
 
@@ -83,10 +84,13 @@ if [ ! -e "${BUILD_CONF_FILE}" ]; then
 fi
 
 # Shallow clone so we don't use all Jouni's bandwidth
-if ! [ -e "${HOSTAPD_DIR}/.git" ] && ! git clone --branch "${HOSTAPD_GIT_TAG}" --depth 1 http://w1.fi/hostap.git 1>&2 "${TMP_BUILD_DIR}/hostapd"; then
-    echo "Failed cloning hostapd" 1>&2
-    if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
-    exit 1
+if ! [ -e "${HOSTAPD_DIR}/.git" ]; then
+    echo "GIT CLONING ${HOSTAPD_GIT_TAG} FROM ${HOSTAPD_REPO}"
+    if ! git clone --branch "${HOSTAPD_GIT_TAG}" --depth 1 "${HOSTAPD_REPO}" 1>&2 "${TMP_BUILD_DIR}/hostapd"; then
+        echo "Failed cloning hostapd" 1>&2
+        if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
+        exit 1
+    fi
 fi
 
 cp -n "$BUILD_CONF_FILE" "$WPA_SUPPLICANT_DIR/.config"
