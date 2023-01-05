@@ -159,7 +159,7 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 	 *	Setup the delay for this request
 	 */
 	if (delay_add(request, &resume_at, *yielded_at, delay,
-		      inst->force_reschedule, inst->delay) != 0) {
+		      inst->force_reschedule, inst->relative) != 0) {
 		RETURN_MODULE_NOOP;
 	}
 
