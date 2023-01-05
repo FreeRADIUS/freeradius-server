@@ -1232,7 +1232,7 @@ nomem:
 	CHECK_CONFIG(talloc_pool_size, 4096, 65536);
 	CHECK_CONFIG(message_set_size, 1024, 8192);
 	CHECK_CONFIG(ring_buffer_size, (1 << 17), (1 << 20));
-	CHECK_CONFIG_TIME_DELTA(max_request_time, fr_time_delta_from_sec(30), fr_time_delta_from_sec(60));
+	CHECK_CONFIG_TIME_DELTA(max_request_time, fr_time_delta_from_sec(5), fr_time_delta_from_sec(120));
 
 	worker->channel = talloc_zero_array(worker, fr_channel_t *, worker->config.max_channels);
 	if (!worker->channel) {
