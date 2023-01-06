@@ -296,7 +296,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 	if (fr_sbuff_next_if_char(&our_in, '.')) {
 		fr_sbuff_marker_t	m_f;
 		size_t			f_len;
-		uint64_t		f;	/* Fractional units */
+		uint64_t		f = 0;	/* Fractional units */
 
 		/*
 		 *	Normalise as a positive integer
@@ -321,7 +321,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 			 *	up the fractional parsing when the
 			 *	fraction is all zeros...
 			 */
-			if ((sberr != FR_SBUFF_PARSE_ERROR_NOT_FOUND) || fr_sbuff_is_char(&m_f, '0')) goto num_error;
+			if ((sberr != FR_SBUFF_PARSE_ERROR_NOT_FOUND) || !fr_sbuff_is_char(&m_f, '0')) goto num_error;
 		}
 
 		f_len = fr_sbuff_behind(&m_f);
