@@ -122,6 +122,8 @@ typedef struct {
 	CONF_SECTION	*current;		//!< sub-section we're reading
 	CONF_SECTION	*special;		//!< map / update section
 
+	bool		require_edits;		//!< are we required to do edits?
+
 	int		braces;
 	bool		from_dir;		//!< this file was read from $include foo/
 } cf_stack_frame_t;
@@ -1290,12 +1292,17 @@ static const bool terminal_end_section[UINT8_MAX + 1] = {
 	['{'] = true,
 };
 
-#if 0
 static const bool terminal_end_line[UINT8_MAX + 1] = {
+	[0] = true,
+
+	['\r'] = true,
+	['\n'] = true,
+
+	['#'] = true,
+	[','] = true,
 	[';'] = true,
 	['}'] = true,
 };
-#endif
 
 /**  Skip a conditional expression.
  *
@@ -1364,7 +1371,10 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool const 
 		 *	Parse xlats.  They cannot span EOL.
 		 */
 		if ((*p == '$') || (*p == '%')) {
-			if (end && ((p + 2) >= end)) goto fail;
+			if (end && ((p + 2) >= end)) {
+				fr_strerror_const("Expansions cannot extend across end of line");
+				return -(p - start);
+			}
 			
 			if ((p[1] == '{') || ((p[0] == '$') && (p[1] == '('))) {
 				slen = fr_skip_xlat(p, end);
@@ -1402,7 +1412,10 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool const 
 		 *	for most purposes.
 		 */
 		if ((p[0] == '=') || (p[0] == '!')) {
-			if (end && ((p + 2) >= end)) goto fail;
+			if (end && ((p + 2) >= end)) {
+				fr_strerror_const("Operators cannot extend across end of line");
+				return -(p - start);
+			}
 
 			if (p[1] == '~') {
 				was_regex = true;
@@ -1446,10 +1459,12 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool const 
 	}
 
 	/*
-	 *	Unexpected end of condition.
+	 *	We've fallen off of the end of a string.  It may be OK?
 	 */
 	if (eol) *eol = true;
-fail:
+
+	if (terminal && terminal[(uint8_t) *p]) return p - start;
+
 	fr_strerror_const("Unexpected end of condition");
 	return -(p - start);
 }
@@ -1533,7 +1548,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 
 		/*
 		 *	Auto-continue across CR LF until we reach the
-		 *	end of the string.  We mash
+		 *	end of the string.  We mash everything into one line.
 		 */
 		if (*p && (*p < ' ')) {
 			while ((*p == '\r') || (*p == '\n')) {
@@ -2104,11 +2119,11 @@ static int parse_input(cf_stack_t *stack)
 			return -1;
 		}
 
-	} else if (name1_token == T_BARE_WORD) {
+	} else if ((name1_token == T_BARE_WORD) && isalpha((int) *buff[1])) {
 		fr_type_t type;
 
 		/*
-		 *	Check if we have a local variable definition.
+		 *	The next thing should be a keyword.
 		 */
 		process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
 		if (process) {
@@ -2136,7 +2151,8 @@ static int parse_input(cf_stack_t *stack)
 		if (!isalnum((int) *ptr)) goto check_for_eol;
 
 		/*
-		 *	Else check for a typedef.
+		 *	It's not a keyword, check for a data type, which means we have a local variable
+		 *	definition.
 		 */
 		type = fr_table_value_by_str(fr_type_table, buff[1], FR_TYPE_NULL);
 		if (type == FR_TYPE_NULL) {
@@ -2378,32 +2394,87 @@ check_for_eol:
 		 *	situation later.
 		 */
 		value = NULL;
+		frame->require_edits = true;
 		goto alloc_section;
 	}
 
+	fr_skip_whitespace(ptr);
+
 	/*
 	 *	Parse the value for a CONF_PAIR.
+	 *
+	 *	If it's not an "update" section, and it's an "edit" thing, then try to parse an expression.
 	 */
-//	if ((parent->allow_unlang != 1) || (*buff[1] != '&')) {
-		if (cf_get_token(parent, &ptr, &value_token, buff[2], stack->bufsize,
+	if (!frame->special && (frame->require_edits || (*buff[1] == '&'))) {
+		bool eol;
+		ssize_t slen;
+		char const *ptr2 = ptr;
+
+		/*
+		 *	In most cases, this is just one word.  In some cases it's not.  So we peek ahead to see.
+		 */
+		if (cf_get_token(parent, &ptr2, &value_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			return -1;
 		}
 		value = buff[2];
 
-#if 0
-	} else {
 		/*
-		 *	Allow expressions, but only for attribute editing.  We also have to parse module
-		 *	return codes, like "handled = 1", and those aren't attributes.  :(
+		 *	The thing after the token is "end of line" in some format, so it's fine.
 		 */
+		fr_skip_whitespace(ptr2);
+		if (terminal_end_line[(uint8_t) *ptr2]) {
+			ptr = ptr2;
+			goto alloc_pair;
+		}
+
+		/*
+		 *	Otherwise we reparse the thing as an expression.
+		 */
+		slen = fr_skip_condition(ptr, NULL, terminal_end_line, &eol);
+		if (slen < 0) {
+			/*
+			 *	@todo - if !eol, then it's an expression which is over multiple lines.  Read
+			 *	more data.
+			 */
+			ERROR("%s[%d]: Parse error in expression: %s",
+			      frame->filename, frame->lineno, fr_strerror());
+			return -1;
+		}
+
+		/*
+		 *	If don't hit EOL, then maybe we hit an end character?
+		 */
+		if (!eol && !terminal_end_line[(uint8_t) ptr[slen]]) {
+			ERROR("%s[%d]: FIXME: EOL continuation not implemented",
+			      frame->filename, frame->lineno);
+			return -1;
+		}
+
+		/*
+		 *	Keep a copy of the entire RHS.
+		 *
+		 *	@todo - mark up the RHS as somehow an expression?
+		 */
+		memcpy(buff[2], ptr, slen);
+		buff[2][slen] = '\0';
+
+		value = buff[2];
+		value_token = T_BARE_WORD;
+
+		/*
+		 *	Skip terminal characters
+		 */
+		ptr += slen;
+		if ((*ptr == ',') || (*ptr == ';')) ptr++;
+
+	} else {
 		if (cf_get_token(parent, &ptr, &value_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			return -1;
 		}
 		value = buff[2];
 	}
-#endif
 
 	/*
 	 *	Add parent CONF_PAIR to our CONF_SECTION
@@ -2486,6 +2557,7 @@ static int frame_readdir(cf_stack_t *stack)
 	frame->lineno = 0;
 	frame->from_dir = true;
 	frame->special = NULL; /* can't do includes inside of update / map */
+	frame->require_edits = stack->frame[stack->depth - 1].require_edits;
 	return 1;
 }
 
