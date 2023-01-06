@@ -42,7 +42,7 @@
 
 #define ARG_COUNT_CHECK(_msg, _arg_cnt) do { \
 	if ((p + _arg_cnt) > end) { \
-		fr_strerror_printf("Argument count %u overflows the remaining data in the packet", _arg_cnt); \
+		fr_strerror_printf("Argument count %u for %s overflows the remaining data in the packet", _msg, _arg_cnt); \
 		goto fail; \
 	} \
 	p += _arg_cnt; \
@@ -631,7 +631,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 
 			p = BODY(author_res);
 			PACKET_HEADER_CHECK("Authorization RESPONSE");
-			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author_res.arg_cnt);
+			ARG_COUNT_CHECK("Authorization RESPONSE", pkt->author_res.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_RESPONSE);
 
 			/*
