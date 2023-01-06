@@ -144,7 +144,10 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 
 	if (inst->delay) {
 		if (tmpl_aexpand_type(request, &delay, FR_TYPE_TIME_DELTA,
-				      request, inst->delay, NULL, NULL) < 0) RETURN_MODULE_FAIL;
+				      request, inst->delay, NULL, NULL) < 0) {
+			RPEDEBUG("Failed parsing %s as delay time", inst->delay->name);
+			RETURN_MODULE_FAIL;
+		}
 	} else {
 		delay = fr_time_delta_wrap(0);
 	}
