@@ -1832,7 +1832,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 
 		for (header =  fr_pair_dcursor_by_da_init(&headers, &request->control_pairs, attr_rest_http_header);
 		     header;
-		     header = fr_dcursor_next(&headers)) {
+		     header = fr_dcursor_current(&headers)) {
 			header = fr_dcursor_remove(&headers);
 			if (!strchr(header->vp_strvalue, ':')) {
 				RWDEBUG("Invalid HTTP header \"%s\" must be in format '<attribute>: <value>'.  Skipping...",
