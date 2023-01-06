@@ -29,7 +29,7 @@ delay {
 	#
 	#  delay:: How long to delay request processing for.
 	#
-	delay = 1.0
+	delay = 1.0s
 
 	#
 	#  force_reschedule:: Whether the request should be rescheduled even if no
