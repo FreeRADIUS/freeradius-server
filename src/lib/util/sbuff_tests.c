@@ -72,6 +72,35 @@ static void test_parse_init(void)
 	TEST_CHECK(sbuff.end == in + strlen(in));
 }
 
+static void test_is_char(void)
+{
+	char const		in[] = "i am a test string";
+	fr_sbuff_t		sbuff;
+	fr_sbuff_marker_t	marker;
+
+	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
+	TEST_CHECK(fr_sbuff_is_char(&sbuff, 'i'));
+	TEST_CHECK(!fr_sbuff_is_char(&sbuff, 'z'));
+
+	fr_sbuff_advance(&sbuff, 2);
+	TEST_CHECK(!fr_sbuff_is_char(&sbuff, 'i'));
+	TEST_CHECK(fr_sbuff_is_char(&sbuff, 'a'));
+
+	fr_sbuff_advance(&sbuff, 15);
+	TEST_CHECK(fr_sbuff_is_char(&sbuff, 'g'));
+	fr_sbuff_marker(&marker, &sbuff);
+	TEST_CHECK(fr_sbuff_is_char(&marker, 'g'));
+
+	/*
+	 *	Ensure that after advancing the buffer past
+	 *	the end, the marker can still be correctly
+	 *	tested
+	 */
+	fr_sbuff_advance(&sbuff, 1);
+	TEST_CHECK(!fr_sbuff_is_char(&sbuff, 'g'));
+	TEST_CHECK(fr_sbuff_is_char(&marker, 'g'));
+}
+
 static void test_bstrncpy_exact(void)
 {
 	char const	in[] = "i am a test string";
@@ -1541,6 +1570,7 @@ TEST_LIST = {
 	 *	Basic tests
 	 */
 	{ "fr_sbuff_init",			test_parse_init },
+	{ "fr_sbuff_is_char",			test_is_char },
 	{ "fr_sbuff_out_bstrncpy_exact",	test_bstrncpy_exact },
 	{ "fr_sbuff_out_bstrncpy",		test_bstrncpy },
 	{ "fr_sbuff_out_bstrncpy_allowed",	test_bstrncpy_allowed },
