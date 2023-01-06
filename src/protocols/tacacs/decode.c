@@ -70,11 +70,11 @@
 /**
  *	Decode a TACACS+ 'arg_N' fields.
  */
-static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-			      uint8_t arg_cnt, uint8_t const *arg_list, uint8_t const *data, uint8_t const *end)
+static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			      uint8_t arg_cnt, uint8_t const *arg_list, uint8_t const *end)
 {
 	uint8_t i;
-	uint8_t const *p = data;
+	uint8_t const *p;
 	fr_pair_t *vp;
 
 	/*
@@ -82,24 +82,26 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 	 */
 	if (!arg_cnt) return 0;
 
-	if ((p + arg_cnt) > end) {
+	if ((arg_list + arg_cnt) > end) {
 		fr_strerror_printf("Argument count %u overflows the remaining data in the packet", arg_cnt);
 		return -1;
 	}
+
+	p = arg_list + arg_cnt;
 
 	/*
 	 *	Check for malformed packets before anything else.
 	 */
 	for (i = 0; i < arg_cnt; i++) {
 		if ((p + arg_list[i]) > end) {
-			fr_strerror_printf("'%s' argument %u length %u overflows the remaining data (%zu) in the packet",
-					   parent->name, i, arg_list[i], end - p);
+			fr_strerror_printf("TACACS+ argument %u length %u overflows the remaining data (%zu) in the packet",
+					   i, arg_list[i], end - p);
 			return -1;
 		}
 
 		p += arg_list[i];
 	}
-	p = data;
+	p = arg_list + arg_cnt;
 
 	/*
 	 *	Then, do the dirty job of creating attributes.
@@ -144,7 +146,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 			 *
 			 *	Argument-List += "name=value"
 			 */
-			da = parent;
+			da = attr_tacacs_argument_list;
 			value = p;
 			arg_end = p + arg_list[i];
 		}
@@ -190,7 +192,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 			if (fr_pair_value_from_str(vp, (char const *) value, arg_end - value, NULL, true) < 0) {
 			fail:
 				talloc_free(vp);
-				if (da != parent) goto raw;
+				if (da != attr_tacacs_argument_list) goto raw;
 
 				goto next;
 			}
@@ -596,8 +598,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					       pkt->author_req.arg_cnt, BODY(author_req), p, end) < 0) goto fail;
+			if (tacacs_decode_args(ctx, out, pkt->author_req.arg_cnt, p, end) < 0) goto fail;
 
 		} else if (packet_is_author_response(pkt)) {
 			/*
@@ -647,8 +648,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					pkt->author_res.arg_cnt, BODY(author_res), p, end) < 0) goto fail;
+			if (tacacs_decode_args(ctx, out, pkt->author_res.arg_cnt, p, end) < 0) goto fail;
 
 		} else {
 			goto unknown_packet;
@@ -710,8 +710,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					pkt->acct_req.arg_cnt, BODY(acct_req), p, end) < 0) goto fail;
+			if (tacacs_decode_args(ctx, out, pkt->acct_req.arg_cnt, p, end) < 0) goto fail;
 
 		} else if (packet_is_acct_reply(pkt)) {
 			/**
