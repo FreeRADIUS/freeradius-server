@@ -42,7 +42,7 @@
 
 #define ARG_COUNT_CHECK(_msg, _arg_cnt) do { \
 	if ((p + _arg_cnt) > end) { \
-		fr_strerror_printf("Argument count %u overflows the remaining data in the packet", _arg_cnt); \
+		fr_strerror_printf("Argument count %u overflows the remaining data in the %s packet", _arg_cnt, _msg); \
 		goto fail; \
 	} \
 	p += _arg_cnt; \
