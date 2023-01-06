@@ -71,10 +71,10 @@
  *	Decode a TACACS+ 'arg_N' fields.
  */
 static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-			      uint8_t arg_cnt, uint8_t const *arg_list, uint8_t const **data, uint8_t const *end)
+			      uint8_t arg_cnt, uint8_t const *arg_list, uint8_t const *data, uint8_t const *end)
 {
 	uint8_t i;
-	uint8_t const *p = *data;
+	uint8_t const *p = data;
 	fr_pair_t *vp;
 
 	/*
@@ -99,7 +99,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 
 		p += arg_list[i];
 	}
-	p = *data;
+	p = data;
 
 	/*
 	 *	Then, do the dirty job of creating attributes.
@@ -200,7 +200,6 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 
 	next:
 		p += arg_list[i];
-		*data  = p;
 	}
 
 	return 0;
@@ -598,7 +597,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					       pkt->author_req.arg_cnt, BODY(author_req), &p, end) < 0) goto fail;
+					       pkt->author_req.arg_cnt, BODY(author_req), p, end) < 0) goto fail;
 
 		} else if (packet_is_author_response(pkt)) {
 			/*
@@ -649,7 +648,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					pkt->author_res.arg_cnt, BODY(author_res), &p, end) < 0) goto fail;
+					pkt->author_res.arg_cnt, BODY(author_res), p, end) < 0) goto fail;
 
 		} else {
 			goto unknown_packet;
@@ -712,7 +711,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					pkt->acct_req.arg_cnt, BODY(acct_req), &p, end) < 0) goto fail;
+					pkt->acct_req.arg_cnt, BODY(acct_req), p, end) < 0) goto fail;
 
 		} else if (packet_is_acct_reply(pkt)) {
 			/**

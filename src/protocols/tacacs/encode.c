@@ -733,6 +733,11 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	}
 
 	/*
+	 *	Packets which have no secret cannot be encrypted.
+	 */
+	if (!secret) packet->hdr.flags = packet->hdr.flags & ~FR_TAC_PLUS_UNENCRYPTED_FLAG;
+
+	/*
 	 *	3.6. Encryption
 	 *
 	 *	Packets are encrypted if the unencrypted flag is clear.
