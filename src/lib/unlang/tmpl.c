@@ -55,7 +55,7 @@ static void unlang_tmpl_signal(request_t *request, unlang_stack_frame_t *frame, 
 	/*
 	 *	If we're cancelled, then kill any child processes
 	 */
-	if (action == FR_SIGNAL_CANCEL) fr_exec_cleanup(&state->exec, SIGKILL);
+	if ((action == FR_SIGNAL_CANCEL) && state->exec.request) fr_exec_cleanup(&state->exec, SIGKILL);
 
 	if (!state->signal) return;
 
