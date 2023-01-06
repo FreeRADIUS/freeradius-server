@@ -1729,49 +1729,58 @@ static inline bool _fr_sbuff_is_char(fr_sbuff_t *sbuff, char *p, char c)
 	if (!fr_sbuff_extend(sbuff)) return false;
 	return *p == c;
 }
-#define fr_sbuff_is_char(_sbuff_or_marker, _c) _fr_sbuff_is_char(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker), _c)
-
-static inline bool _fr_sbuff_is_digit(fr_sbuff_t *sbuff, char *p)
+static inline bool _fr_marker_is_char(fr_sbuff_marker_t *marker, char *p, char c)
 {
-	if (!fr_sbuff_extend(sbuff)) return false;
-	return isdigit(*p);
+	if (!fr_sbuff_extend(marker)) return false;
+	return *p == c;
 }
-#define fr_sbuff_is_digit(_sbuff_or_marker) _fr_sbuff_is_digit(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
+#define fr_sbuff_is_char(_sbuff_or_marker, _c) \
+	_Generic((_sbuff_or_marker), \
+		 fr_sbuff_t *		: _fr_sbuff_is_char((fr_sbuff_t *)(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker), _c), \
+		 fr_sbuff_marker_t *	: _fr_marker_is_char((fr_sbuff_marker_t *)(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker), _c) \
+	)
 
-static inline bool _fr_sbuff_is_upper(fr_sbuff_t *sbuff, char const *p)
-{
-	if (!fr_sbuff_extend(sbuff)) return false;
-	return isupper(*p);
-}
-#define fr_sbuff_is_upper(_sbuff_or_marker) _fr_sbuff_is_upper(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
+#define SBUFF_IS_FUNC(_name, _test) \
+	static inline bool _fr_sbuff_is_ ## _name(fr_sbuff_t *sbuff, char *p) \
+	{ \
+		if (!fr_sbuff_extend(sbuff)) return false; \
+		return _test; \
+	}\
+	static inline bool _fr_marker_is_ ## _name(fr_sbuff_marker_t *marker, char *p) \
+	{ \
+		if (!fr_sbuff_extend(marker)) return false; \
+		return _test; \
+	}
 
-static inline bool _fr_sbuff_is_lower(fr_sbuff_t *sbuff, char const *p)
-{
-	if (!fr_sbuff_extend(sbuff)) return false;
-	return islower(*p);
-}
-#define fr_sbuff_is_lower(_sbuff_or_marker) _fr_sbuff_is_lower(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
+#define SBUFF_IS_GENERIC(_sbuff_or_marker, _name) \
+	_Generic((_sbuff_or_marker), \
+		 fr_sbuff_t *		: _fr_sbuff_is_ ## _name((fr_sbuff_t *)(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker)), \
+		 fr_sbuff_marker_t *	: _fr_marker_is_ ## _name((fr_sbuff_marker_t *)(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker)) \
+	)
 
-static inline bool _fr_sbuff_is_alpha(fr_sbuff_t *sbuff, char const *p)
-{
-	if (!fr_sbuff_extend(sbuff)) return false;
-	return isalpha(*p);
-}
-#define fr_sbuff_is_alpha(_sbuff_or_marker) _fr_sbuff_is_alpha(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
+SBUFF_IS_FUNC(digit, isdigit(*p))
+#define fr_sbuff_is_digit(_sbuff_or_marker) \
+	SBUFF_IS_GENERIC(_sbuff_or_marker, digit)
 
-static inline bool _fr_sbuff_is_space(fr_sbuff_t *sbuff, char const *p)
-{
-	if (!fr_sbuff_extend(sbuff)) return false;
-	return isspace(*p);
-}
-#define fr_sbuff_is_space(_sbuff_or_marker) _fr_sbuff_is_space(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
+SBUFF_IS_FUNC(upper, isupper(*p))
+#define fr_sbuff_is_upper(_sbuff_or_marker) \
+	SBUFF_IS_GENERIC(_sbuff_or_marker, upper)
 
-static inline bool _fr_sbuff_is_hex(fr_sbuff_t *sbuff, char const *p)
-{
-	if (!fr_sbuff_extend(sbuff)) return false;
-	return isxdigit(*p);
-}
-#define fr_sbuff_is_hex(_sbuff_or_marker) _fr_sbuff_is_hex(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
+SBUFF_IS_FUNC(lower, islower(*p))
+#define fr_sbuff_is_lower(_sbuff_or_marker) \
+	SBUFF_IS_GENERIC(_sbuff_or_marker, lower)
+
+SBUFF_IS_FUNC(alpha, isalpha(*p))
+#define fr_sbuff_is_alpha(_sbuff_or_marker) \
+	SBUFF_IS_GENERIC(_sbuff_or_marker, alpha)
+
+SBUFF_IS_FUNC(space, isspace(*p))
+#define fr_sbuff_is_space(_sbuff_or_marker) \
+	SBUFF_IS_GENERIC(_sbuff_or_marker, space)
+
+SBUFF_IS_FUNC(hex, isxdigit(*p))
+#define fr_sbuff_is_hex(_sbuff_or_marker) \
+	SBUFF_IS_GENERIC(_sbuff_or_marker, hex)
 
 /** @} */
 
