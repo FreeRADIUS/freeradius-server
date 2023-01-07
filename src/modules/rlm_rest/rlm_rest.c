@@ -120,6 +120,7 @@ static const CONF_PARSER xlat_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, rlm_rest_section_t, auth),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" },
 
+	{ FR_CONF_OFFSET("custom_data_content_type", FR_TYPE_STRING, rlm_rest_section_t, custom_data_content_type), .dflt = "application/x-www-form-urlencoded" },
 	{ FR_CONF_OFFSET("header", FR_TYPE_STRING | FR_TYPE_MULTI, rlm_rest_section_t, headers) },
 
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, username) },
@@ -499,6 +500,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			goto error;
 		}
 		section->body = REST_HTTP_BODY_CUSTOM_LITERAL;
+		section->body_str = section->custom_data_content_type;
 		section->data = in_vb->vb_strvalue;
 	}
 

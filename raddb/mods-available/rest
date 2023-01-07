@@ -311,6 +311,12 @@ rest {
 	#
 	xlat {
 		tls = ${..tls}
+
+		#
+		#  custom_data_content_type:: Content-Type header for custom
+		#  data provided in the xlat, defaults to 'application/x-www-form-urlencoded'
+		#
+#		custom_data_content_type = 'application/json'
 	}
 
 	#

@@ -128,6 +128,8 @@ typedef struct {
 	char const		**headers;	//!< Custom headers to set (optional).
 	char const		*data;		//!< Custom body data (optional).
 
+	char const		*custom_data_content_type;	//!< Content-Type for custom body data given in an xlat (optional).
+
 	bool			auth_is_set;	//!< Whether a value was provided for auth_str.
 
 	http_auth_type_t	auth;		//!< HTTP auth type.
