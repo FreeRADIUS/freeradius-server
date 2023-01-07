@@ -3872,6 +3872,41 @@ void fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_conne
 	fr_connection_signal_reconnect(tconn->pub.conn, reason);
 }
 
+/** Standard I/O read function
+ *
+ * Underlying FD in now readable, so call the trunk to read any pending requests
+ * from this connection.
+ *
+ * @param[in] el	The event list signalling.
+ * @param[in] fd	that's now readable.
+ * @param[in] flags	describing the read event.
+ * @param[in] uctx	The trunk connection handle (tconn).
+ */
+void fr_trunk_connection_callback_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+
+	fr_trunk_connection_signal_readable(tconn);
+}
+
+/** Standard I/O write function
+ *
+ * Underlying FD is now writable, so call the trunk to write any pending requests
+ * to this connection.
+ *
+ * @param[in] el	The event list signalling.
+ * @param[in] fd	that's now writable.
+ * @param[in] flags	describing the write event.
+ * @param[in] uctx	The trunk connection handle (tcon).
+ */
+void fr_trunk_connection_callback_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+
+	fr_trunk_connection_signal_writable(tconn);
+}
+
+
 /** Returns true if the trunk connection is in one of the specified states
  *
  * @param[in] tconn	To check state for.

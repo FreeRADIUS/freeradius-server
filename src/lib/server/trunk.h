@@ -846,6 +846,14 @@ void		fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_conn
 bool		fr_trunk_connection_in_state(fr_trunk_connection_t *tconn, int state);
 /** @} */
 
+/** @name Connection Callbacks
+ * @{
+ */
+void		fr_trunk_connection_callback_writable(fr_event_list_t *el, int fd, int flags, void *uctx);
+
+void		fr_trunk_connection_callback_readable(fr_event_list_t *el, int fd, int flags, void *uctx);
+/** @} */
+
 /** @name Connection management
  * @{
  */

@@ -981,40 +981,6 @@ static void conn_discard(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, v
 	}
 }
 
-/** Standard I/O read function
- *
- * Underlying FD in now readable, so call the trunk to read any pending requests
- * from this connection.
- *
- * @param[in] el	The event list signalling.
- * @param[in] fd	that's now readable.
- * @param[in] flags	describing the read event.
- * @param[in] uctx	The trunk connection handle (tconn).
- */
-static void conn_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
-{
-	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-
-	fr_trunk_connection_signal_readable(tconn);
-}
-
-/** Standard I/O write function
- *
- * Underlying FD is now writable, so call the trunk to write any pending requests
- * to this connection.
- *
- * @param[in] el	The event list signalling.
- * @param[in] fd	that's now writable.
- * @param[in] flags	describing the write event.
- * @param[in] uctx	The trunk connection handle (tcon).
- */
-static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
-{
-	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-
-	fr_trunk_connection_signal_writable(tconn);
-}
-
 /** Connection errored
  *
  * We were signalled by the event loop that a fatal error occurred on this connection.
@@ -1057,16 +1023,16 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 		break;
 
 	case FR_TRUNK_CONN_EVENT_READ:
-		read_fn = conn_readable;
+		read_fn = fr_trunk_connection_callback_readable;
 		break;
 
 	case FR_TRUNK_CONN_EVENT_WRITE:
-		write_fn = conn_writable;
+		write_fn = fr_trunk_connection_callback_writable;
 		break;
 
 	case FR_TRUNK_CONN_EVENT_BOTH:
-		read_fn = conn_readable;
-		write_fn = conn_writable;
+		read_fn = fr_trunk_connection_callback_readable;
+		write_fn = fr_trunk_connection_callback_writable;
 		break;
 
 	}
@@ -1109,7 +1075,7 @@ static void thread_conn_notify_replicate(fr_trunk_connection_t *tconn, fr_connec
 	case FR_TRUNK_CONN_EVENT_BOTH:
 	case FR_TRUNK_CONN_EVENT_WRITE:
 		read_fn = conn_discard;
-		write_fn = conn_writable;
+		write_fn = fr_trunk_connection_callback_writable;
 		break;
 	}
 
