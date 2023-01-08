@@ -2985,7 +2985,6 @@ static int request_will_proxy(REQUEST *request)
 	VERIFY_REQUEST(request);
 
 	if (!request->root->proxy_requests) {
-		REDEBUG3("Cannot proxy packets unless 'proxy_requests = yes'");
 		return 0;
 	}
 	if (request->packet->dst_port == 0) return 0;
