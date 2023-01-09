@@ -85,7 +85,7 @@ fi
 
 # Shallow clone so we don't use all Jouni's bandwidth
 if ! [ -e "${HOSTAPD_DIR}/.git" ]; then
-    echo "GIT CLONING ${HOSTAPD_GIT_TAG} FROM ${HOSTAPD_REPO}"
+    echo "GIT CLONING ${HOSTAPD_GIT_TAG} FROM ${HOSTAPD_REPO}" 1>&2
     if ! git clone --branch "${HOSTAPD_GIT_TAG}" --depth 1 "${HOSTAPD_REPO}" 1>&2 "${TMP_BUILD_DIR}/hostapd"; then
         echo "Failed cloning hostapd" 1>&2
         if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
