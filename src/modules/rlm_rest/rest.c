@@ -1737,9 +1737,9 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 
 	CURLcode		ret = CURLE_OK;
 	char const		*option = "unknown";
-	char const		*content_type;
 
 	char			buffer[512];
+	bool			content_type_set = false;
 
 	fr_assert(candle);
 	fr_assert((!username && !password) || (username && password));
@@ -1769,21 +1769,6 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	}
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_NOSIGNAL, 1L);
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
-
-	/*
-	 *	HTTP/1.1 doesn't require a content type, so only set it
-	 *	if we were provided with one explicitly.
-	 */
-	if (type != REST_HTTP_BODY_NONE) {
-		content_type = fr_table_str_by_value(http_content_type_table, type, section->body_str);
-		snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
-		ctx->headers = curl_slist_append(ctx->headers, buffer);
-		if (!ctx->headers) {
-		error_header:
-			REDEBUG("Failed creating header");
-			return -1;
-		}
-	}
 
 	timeout = fr_pool_timeout(t->pool);
 	RDEBUG3("Connect timeout is %pVs, request timeout is %pVs",
@@ -1845,7 +1830,41 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 			REXDENT();
 
 			ctx->headers = curl_slist_append(ctx->headers, header->vp_strvalue);
+
+			/*
+			 *  Set content-type based on a corresponding REST-HTTP-Header attribute, if provided.
+			 */
+			if (!content_type_set && (strncasecmp(header->vp_strvalue, "content-type:", sizeof("content-type:") - 1) == 0)) {
+				char const *content_type = header->vp_strvalue + (sizeof("content-type:") - 1);
+				
+				while (isspace((int)*content_type)) content_type++;
+				
+				RDEBUG3("Request body content-type provided as \"%s\"", content_type);
+				
+				content_type_set = true;
+			}
+
 			talloc_free(header);
+		}
+	}
+
+	if (!content_type_set) {
+		/*
+		 *  HTTP/1.1 doesn't require a content type so only set it
+		 *  if where body type requires it, and we haven't set one
+		 *  already from attributes.
+		 */
+		if (type != REST_HTTP_BODY_NONE) {
+			char const *content_type = fr_table_str_by_value(http_content_type_table, type, section->body_str);
+			snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
+			ctx->headers = curl_slist_append(ctx->headers, buffer);
+			if (!ctx->headers) {
+			error_header:
+				REDEBUG("Failed creating header");
+				return -1;
+			}
+			
+			RDEBUG3("Request body content-type will be \"%s\"", content_type);
 		}
 	}
 
@@ -1985,8 +2004,6 @@ do {\
 			if (!ctx->headers) goto error_header;
 		}
 
-		RDEBUG3("Request body content-type will be \"%s\"",
-			fr_table_str_by_value(http_content_type_table, type, section->body_str));
 		break;
 
 	default:
