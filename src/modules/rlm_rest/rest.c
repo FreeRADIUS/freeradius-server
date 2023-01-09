@@ -1834,10 +1834,10 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 			/*
 			 *  Set content-type based on a corresponding REST-HTTP-Header attribute, if provided.
 			 */
-			if (!content_type && strncasecmp(header->vp_strvalue, "content-type:", 13) == 0 &&
-			    (content_type = (header->vp_strvalue + 13))) {
-				while (*content_type == ' ')
-				    content_type++;
+			if (!content_type && (strncasecmp(header->vp_strvalue, "content-type:", sizeof("content-type:") - 1) == 0)) {
+				content_type = header->vp_strvalue + (sizeof("content-type:") - 1);
+				while (isspace((int)*content_type)) content_type++;
+				
 				RDEBUG3("Request body content-type provided as \"%s\"", content_type);
 			}
 
