@@ -20,7 +20,7 @@ debug_request {
 #  Outputs the contents of the coa list in debugging (-X) mode
 #
 debug_coa {
-	if ("%(debug_attr:coa:[*])" == '') {
+	if ("%(debug_attr:coa[*])" == '') {
 		noop
 	}
 }
