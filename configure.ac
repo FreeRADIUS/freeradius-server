@@ -1405,8 +1405,8 @@ if test "x$WITH_OPENSSL" = xyes; then
           #include <openssl/crypto.h>
         ]],
         [[
-          printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
-          if ((OpenSSL_version_num() & 0xfff00000) == (OPENSSL_VERSION_NUMBER & 0xfff00000)) {
+          printf("library: %s, header: %s... ", OpenSSL_version(OPENSSL_VERSION), OPENSSL_VERSION_TEXT);
+          if ((OpenSSL_version_num() & 0xfff00000L) == (OPENSSL_VERSION_NUMBER & 0xfff00000L)) {
             return 0;
           } else {
             return 1;
