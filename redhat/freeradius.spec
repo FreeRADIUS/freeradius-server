@@ -664,6 +664,10 @@ install -D -m 644 %{SOURCE102} $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d/radius
 install -D -m 644 %{SOURCE103} $RPM_BUILD_ROOT/%{_sysconfdir}/pam.d/radiusd
 
 # remove unneeded stuff
+
+# unknown which errant sed command produces this, but it needs to be removed
+rm -f $RADDB/radiusd.confe
+
 rm -rf doc/00-OLD
 rm -f $RPM_BUILD_ROOT/usr/bin/radsizes
 rm -f $RPM_BUILD_ROOT/usr/sbin/rc.radiusd
