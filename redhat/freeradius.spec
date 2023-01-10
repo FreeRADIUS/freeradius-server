@@ -645,8 +645,8 @@ mkdir -p $RPM_BUILD_ROOT/%{docdir}
 make install R=$RPM_BUILD_ROOT
 # modify default configuration
 RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/raddb
-perl -i -pe 's/^#user =.*$/user = radiusd/'   $RADDB/radiusd.conf
-perl -i -pe 's/^#group =.*$/group = radiusd/' $RADDB/radiusd.conf
+sed -i -e 's/^#user =.*$/user = radiusd/'   $RADDB/radiusd.conf
+sed -i -e 's/^#group =.*$/group = radiusd/' $RADDB/radiusd.conf
 # logs
 mkdir -p $RPM_BUILD_ROOT/var/log/radius/radacct
 touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
