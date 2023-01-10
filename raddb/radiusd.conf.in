@@ -518,7 +518,7 @@ security {
 	#
 	#  If you are worried about security issues related to this
 	#  use of chdir, then simply ensure that the "raddb" directory
-	#  is inside of the chroot, end be sure to do "cd raddb"
+	#  is inside of the chroot, and be sure to do "cd raddb"
 	#  BEFORE starting the server.
 	#
 	#  If the server is statically linked, then the only files
