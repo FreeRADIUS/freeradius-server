@@ -79,6 +79,7 @@ appendonly*.aof
 
 # Local scripts
 run.sh
+rpmbuild.sh
 
 # rpm packages
 rpmbuild/
