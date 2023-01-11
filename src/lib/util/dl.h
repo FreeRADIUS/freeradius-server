@@ -115,6 +115,8 @@ int			dl_free(dl_t const *dl);
 
 char const		*dl_search_path(dl_loader_t *dl_loader) CC_HINT(nonnull);
 
+int                     dl_search_global_path_set(char const *lib_dir) CC_HINT(nonnull);
+
 int			dl_search_path_set(dl_loader_t *dl_loader, char const *lib_dir) CC_HINT(nonnull);
 
 int			dl_search_path_prepend(dl_loader_t *dl_loader, char const *lib_dir) CC_HINT(nonnull);

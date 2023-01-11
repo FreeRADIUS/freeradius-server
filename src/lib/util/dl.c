@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/log.h>
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/paths.h>
@@ -110,6 +111,12 @@ struct dl_loader_s {
 
 	bool			defer_symbol_init;	//!< Do not call dl_symbol_init in dl_loader_init.
 };
+
+/**
+ *
+ * Global library directory set.
+ */
+static char *dl_global_libdir = NULL;
 
 static int8_t dl_symbol_init_cmp(void const *one, void const *two)
 {
@@ -713,19 +720,55 @@ finish:
 char const *dl_search_path(dl_loader_t *dl_loader)
 {
 	char		*env;
-	char const	*search_path;
+	fr_sbuff_t	*search_path = NULL;
 
 	/*
-	 *	Apple removed support for DYLD_LIBRARY_PATH in rootless mode.
+	 * The search path in this order [env:][global:]dl_loader->lib_dir
+	 */
+
+	/*
+	 *	Create a thread-local extensible buffer to
+	 *	store library search_path data.
+	 *
+	 *	This is created once per-thread (the first time
+	 *	this function is called), and freed when the
+	 *	thread exits.
+	 */
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&search_path, 16, PATH_MAX);
+
+	/*
+	 * Apple removed support for DYLD_LIBRARY_PATH in rootless mode.
 	 */
 	env = getenv("FR_LIBRARY_PATH");
-	if (env) {
-		search_path = env;
-	} else {
-		search_path = dl_loader->lib_dir;
+	if (env && fr_sbuff_in_sprintf(search_path, "%s:", env) < 0) return NULL;
+
+	if (dl_global_libdir && fr_sbuff_in_sprintf(search_path, "%s:", dl_global_libdir) < 0) return NULL;
+
+	if (fr_sbuff_in_strcpy(search_path, dl_loader->lib_dir) < 0) return NULL;
+
+	return fr_sbuff_start(search_path);
+}
+
+/** Set the global library path
+ *
+ * @param[in] lib_dir		":" separated list of paths to search for libraries in.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int dl_search_global_path_set(char const *lib_dir)
+{
+	if (dl_global_libdir) TALLOC_FREE(dl_global_libdir);
+
+	dl_global_libdir = talloc_typed_strdup(NULL, lib_dir);
+	if (!dl_global_libdir) {
+		fr_strerror_const("Failed allocating memory for global dl search path");
+		return -1;
 	}
 
-	return search_path;
+	fr_atexit_global_once(NULL, fr_atexit_talloc_free, dl_global_libdir);
+
+	return 0;
 }
 
 /** Set the current library path
