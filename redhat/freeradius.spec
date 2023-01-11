@@ -548,6 +548,12 @@ export CFLAGS="$CFLAGS -ffile-prefix-map=src/=%{_usrsrc}/debug/%{name}-%{version
 # which ships with RHEL 6 has basic C11 support, gcc doesn't.
 export LDFLAGS="-Wl,--build-id"
 
+# Set the PATH to be something known and consistent.  Different RHEL based distributions may mess with the
+# default path resulting in binaries in /bin being picked up, which are really just symlinks to /usr/bin.
+# These binaries aren't provided by any packages, so the resulting dependencies make the produced RPMs
+# uninstallable.
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH"
+
 # Pass in the release number, which was passed to us by whatever called rpmbuild
 %if %{?_release:1}%{!?_release:0}
 export RADIUSD_VERSION_RELEASE="%{release}"
