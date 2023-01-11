@@ -284,7 +284,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 			return RLM_MODULE_FAIL;
 		}
 		strcat(header, "\n");
-		if (write(fd, header, strlen(line)) < 0) {
+		if (write(fd, header, strlen(header)) < 0) {
 			exfile_close(inst->ef, fd);
 			ERROR("rlm_linelog: Failed writing: %s", fr_syserror(errno));
 			return RLM_MODULE_FAIL;
