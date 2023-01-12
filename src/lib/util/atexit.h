@@ -29,6 +29,7 @@ RCSIDH(atexit_h, "$Id$")
 #include <stdbool.h>
 #include <stdatomic.h>
 #include <pthread.h>
+#include <freeradius-devel/util/talloc.h>
 
 #ifdef __cplusplus
 extern "C" {

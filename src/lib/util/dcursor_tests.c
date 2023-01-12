@@ -1,10 +1,6 @@
 #include <freeradius-devel/util/acutest.h>
 
 #include "dcursor.c"
-//#include <talloc.h>
-//nclude <string.h>
-//#include <stdint.h>
-
 
 typedef struct {
 	char const *name;
