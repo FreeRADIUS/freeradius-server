@@ -90,8 +90,15 @@ static inline int _fr_atexit_global_once_funcs(fr_atexit_t init_func, fr_atexit_
 	return 0;
 }
 
-static inline void fr_atexit_noop(void) {}
-static inline void fr_atexit_result(int *ret, int val) { *ret = val; }
+/** A generic function to free talloc chunks compatible with the fr_atexit_t type
+ *
+ * @param[in] to_free	talloc chunk to free.
+ * @return the return code returned by talloc_free.
+ */
+static inline int fr_atexit_talloc_free(void *to_free)
+{
+	return talloc_free(to_free);
+}
 
 /** Setup pair of global init/free functions, returning errors from the specified init function
  *
@@ -111,6 +118,9 @@ static inline void fr_atexit_result(int *ret, int val) { *ret = val; }
  * @param[in] _free		function to call. Will be called once
  *				at exit.
  *				May be NULL.
+ *				Pass fr_atexit_talloc_free if _uctx is
+ *				just a talloc chunk and no special logic
+ *				is needed.
  * @param[in] _uctx		data to be passed to free function.
  */
 #define fr_atexit_global_once_ret(_ret, _init, _free, _uctx) \
@@ -148,6 +158,9 @@ static inline void fr_atexit_result(int *ret, int val) { *ret = val; }
  * @param[in] _free		function to call. Will be called once
  *				at exit.
  *				May be NULL.
+ *				Pass fr_atexit_talloc_free if _uctx is
+ *				just a talloc chunk and no special logic
+ *				is needed.
  * @param[in] _uctx		data to be passed to free function.
  */
 #define fr_atexit_global_once(_init, _free, _uctx) \
@@ -161,6 +174,9 @@ static inline void fr_atexit_result(int *ret, int val) { *ret = val; }
  *
  * @param[in] _name		Name of variable e.g. 'my_tls'.
  * @param[in] _free		Destructor, called when the thread exits to clean up any data.
+ *				Pass fr_atexit_talloc_free if _uctx is
+ *				just a talloc chunk and no special logic
+ *				is needed.
  * @param[in] _uctx		Memory to free.
  */
 #  define fr_atexit_thread_local(_name, _free, _uctx) \
