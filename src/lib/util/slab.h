@@ -49,8 +49,8 @@ extern "C" {
  * @param[in] _type	of structure which will be held in the slab elements.
  */
 #define FR_SLAB_TYPES(_name, _type) \
-	FR_DLIST_TYPES(fr_ ## _name ## _slab); \
-	FR_DLIST_TYPES(fr_ ## _name ## _slab_element); \
+	FR_DLIST_TYPES(fr_ ## _name ## _slab) \
+	FR_DLIST_TYPES(fr_ ## _name ## _slab_element) \
 \
 	typedef int (*fr_ ## _type ## _slab_free_t)(_type *elem, void *uctx); \
 	typedef int (*fr_ ## _type ## _slab_alloc_t)(_type *elem, void *uctx); \
@@ -102,8 +102,8 @@ extern "C" {
  * @param[in] _interval	between cleanup events.
  */
 #define FR_SLAB_FUNCS(_name, _type, _interval) \
-	FR_DLIST_FUNCS(fr_ ## _name ## _slab, fr_ ## _name ## _slab_t, entry); \
-	FR_DLIST_FUNCS(fr_ ## _name ## _slab_element, fr_ ## _name ## _slab_element_t, entry); \
+	FR_DLIST_FUNCS(fr_ ## _name ## _slab, fr_ ## _name ## _slab_t, entry) \
+	FR_DLIST_FUNCS(fr_ ## _name ## _slab_element, fr_ ## _name ## _slab_element_t, entry) \
 \
 	/** Timer event for freeing unused slabs \
 	 * \
