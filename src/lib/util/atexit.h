@@ -87,8 +87,10 @@ bool		fr_atexit_is_exiting(void);
  *
  * @param[in] _init		function to call. Will be called once
  *				during the process lifetime.
+ *				May be NULL.
  * @param[in] _free		function to call. Will be called once
  *				at exit.
+ *				May be NULL.
  * @param[in] _uctx		data to be passed to free function.
  */
 #define fr_atexit_global_once(_init, _free, _uctx) \
@@ -99,8 +101,8 @@ bool		fr_atexit_is_exiting(void);
 	if (unlikely(!atomic_load(&_init_done))) { \
 		pthread_mutex_lock(&_init_mutex); \
 		if (!atomic_load(&_init_done)) { \
-			_init(_our_uctx); \
-			fr_atexit_global(_free, _our_uctx); \
+			if (_init) _init(_our_uctx); \
+			if (_free) fr_atexit_global(_free, _our_uctx); \
 			atomic_store(&_init_done, true); \
 		} \
 		pthread_mutex_unlock(&_init_mutex); \
