@@ -788,7 +788,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	int		ret;
 	regex_t		*preg;
 
-	fr_atexit_global_once(ret, _pcre_globals_configure, _pcre_globals_reset, NULL);
+	fr_atexit_global_once_ret(&ret, _pcre_globals_configure, _pcre_globals_reset, NULL);
 	if (unlikely(ret < 0)) return -1;
 
 

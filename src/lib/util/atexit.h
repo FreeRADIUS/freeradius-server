@@ -93,6 +93,45 @@ static inline int _fr_atexit_global_once_funcs(fr_atexit_t init_func, fr_atexit_
 static inline void fr_atexit_noop(void) {}
 static inline void fr_atexit_result(int *ret, int val) { *ret = val; }
 
+/** Setup pair of global init/free functions, returning errors from the specified init function
+ *
+ * Simplifies setting up data structures the first time a given function
+ * is called.
+ *
+ * Should be used in the body of the function before any initialisation
+ * dependent code.
+ *
+ * Will not share init status outside of the function.
+ *
+ * @param[out] _ret		A pointer to where to write the result
+ *				of the init function if called.
+ * @param[in] _init		function to call. Will be called once
+ *				during the process lifetime.
+ *				May be NULL.
+ * @param[in] _free		function to call. Will be called once
+ *				at exit.
+ *				May be NULL.
+ * @param[in] _uctx		data to be passed to free function.
+ */
+#define fr_atexit_global_once_ret(_ret, _init, _free, _uctx) \
+{ \
+	static atomic_bool	_init_done = false; \
+	static pthread_mutex_t	_init_mutex = PTHREAD_MUTEX_INITIALIZER; \
+	void *_our_uctx = _uctx; /* stop _uctx being evaluated multiple times, it may be a call to malloc() */ \
+	if (unlikely(!atomic_load(&_init_done))) { \
+		pthread_mutex_lock(&_init_mutex); \
+		if (!atomic_load(&_init_done)) { \
+			if (_fr_atexit_global_once_funcs(_init, _free, _our_uctx) < 0) { \
+				*(_ret) = -1; \
+				pthread_mutex_unlock(&_init_mutex); \
+			} \
+			atomic_store(&_init_done, true); \
+		} \
+		pthread_mutex_unlock(&_init_mutex); \
+	} \
+	*(_ret) = 0; \
+}
+
 /** Setup pair of global init/free functions
  *
  * Simplifies setting up data structures the first time a given function
@@ -103,9 +142,6 @@ static inline void fr_atexit_result(int *ret, int val) { *ret = val; }
  *
  * Will not share init status outside of the function.
  *
- * @param[out] _res		Where to write the result of the init
- *				function if called.
- *				May be NULL.
  * @param[in] _init		function to call. Will be called once
  *				during the process lifetime.
  *				May be NULL.
@@ -114,24 +150,9 @@ static inline void fr_atexit_result(int *ret, int val) { *ret = val; }
  *				May be NULL.
  * @param[in] _uctx		data to be passed to free function.
  */
-#define fr_atexit_global_once(_res, _init, _free, _uctx) \
-{ \
-	static atomic_bool	_init_done = false; \
-	static pthread_mutex_t	_init_mutex = PTHREAD_MUTEX_INITIALIZER; \
-	void *_our_uctx = _uctx; /* stop _uctx being evaluated multiple times, it may be a call to malloc() */ \
-	if (unlikely(!atomic_load(&_init_done))) { \
-		pthread_mutex_lock(&_init_mutex); \
-		if (!atomic_load(&_init_done)) { \
-			if (_fr_atexit_global_once_funcs(_init, _free, _our_uctx) < 0) { \
-				_Generic((_res), int : fr_atexit_result((int *)&(_res), -1), default: fr_atexit_noop()); \
-				pthread_mutex_unlock(&_init_mutex); \
-			} \
-			atomic_store(&_init_done, true); \
-		} \
-		pthread_mutex_unlock(&_init_mutex); \
-	} \
-	_Generic((_res), int : fr_atexit_result((int *)&(_res), 0), default: fr_atexit_noop()); \
-}
+#define fr_atexit_global_once(_init, _free, _uctx) \
+	fr_atexit_global_once_ret(&(int){ 0 }, _init, _free, _uctx)
+
 /** Set a destructor for thread local storage to free the memory on thread exit
  *
  * @note Pointers to thread local storage seem to become unusable as threads are
