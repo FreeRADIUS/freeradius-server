@@ -35,9 +35,9 @@ static fr_time_t test_time(void)
 	return test_time_base;
 }
 
-FR_SLAB_TYPES(test, test_element_t);
+FR_SLAB_TYPES(test, test_element_t)
 
-FR_SLAB_FUNCS(test, test_element_t, fr_time_delta_from_sec(1));
+FR_SLAB_FUNCS(test, test_element_t, fr_time_delta_from_sec(1))
 
 /** Test basic allocation and reservation of elements
  *
