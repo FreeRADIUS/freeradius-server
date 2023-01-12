@@ -2833,6 +2833,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 					.attr = {
 						.dict_def = cc->tmpl_rules.attr.dict_def ?
 						cc->tmpl_rules.attr.dict_def : cc->config->dict,
+						.list_def = PAIR_LIST_REQUEST,
 						.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					},
 				});
@@ -2869,6 +2870,7 @@ static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc
 							.dict_def = cc->tmpl_rules.attr.dict_def ?
 							   cc->tmpl_rules.attr.dict_def : cc->config->dict,
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
+							.list_def = PAIR_LIST_REQUEST,
 							.list_as_attr = true,
 						}
 					   });
@@ -2909,6 +2911,7 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 							.dict_def = cc->tmpl_rules.attr.dict_def ?
 							   cc->tmpl_rules.attr.dict_def : cc->config->dict,
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
+							.list_def = PAIR_LIST_REQUEST,
 							.list_as_attr = true,
 						   },
 					   });
@@ -2962,6 +2965,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 					  .attr = {
 						  .dict_def = cc->tmpl_rules.attr.dict_def ?
 						  cc->tmpl_rules.attr.dict_def : cc->config->dict,
+						  .list_def = PAIR_LIST_REQUEST,
 						  .allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					  },
 				  });
@@ -3343,6 +3347,8 @@ static command_file_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
 	fr_dict_global_ctx_set(cc->config->dict_gctx);
 
 	cc->fuzzer_dir = -1;
+
+	cc->tmpl_rules.attr.list_def = PAIR_LIST_REQUEST;
 
 	return cc;
 }

@@ -323,6 +323,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 					   &(tmpl_rules_t){
 					   	.attr = {
 					   		.dict_def = request->dict,
+							.list_def = PAIR_LIST_REQUEST,
 				   			.prefix = TMPL_ATTR_REF_PREFIX_NO
 				   		}
 					   });

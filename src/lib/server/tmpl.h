@@ -85,14 +85,15 @@ extern "C" {
  *	Forward declarations
  */
 typedef enum pair_list_e {
-	PAIR_LIST_REQUEST = 0,		//!< Attributes in incoming or internally proxied
+	PAIR_LIST_UNKNOWN = 0,		//!< Unknown list.
+
+	PAIR_LIST_REQUEST,		//!< Attributes in incoming or internally proxied
 					///< request (default).
 	PAIR_LIST_REPLY,		//!< Attributes to send in the response.
 	PAIR_LIST_CONTROL,		//!< Attributes that change the behaviour of
 					///< modules.
 	PAIR_LIST_STATE,		//!< Attributes to store multiple rounds of
 					///< challenges/responses.
-	PAIR_LIST_UNKNOWN		//!< Unknown list.
 } tmpl_pair_list_t;
 
 extern fr_table_num_ordered_t const pair_list_table[];

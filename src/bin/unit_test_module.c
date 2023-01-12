@@ -440,9 +440,10 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 								  &(tmpl_rules_t) {
 									  .attr = {
 										  .dict_def = dict_protocol,
+										  .list_def = PAIR_LIST_REQUEST,
 										  .allow_unresolved = true,
 									  }
-										  }
+								  }
 								);
 			if (slen <= 0) {
 				talloc_free(xlat_ctx);

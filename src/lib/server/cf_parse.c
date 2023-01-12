@@ -222,6 +222,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		tmpl_t			*vpt;
 		static tmpl_rules_t	rules = {
 						.attr = {
+							.list_def = PAIR_LIST_REQUEST,
 							.allow_unknown = true,
 							.allow_unresolved = true,
 							.allow_foreign = true
@@ -1221,6 +1222,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 					     &(tmpl_rules_t) {
 						     .attr = {
 							     .dict_def = dict,
+							     .list_def = PAIR_LIST_REQUEST,
 							     .allow_unknown = false,
 							     .allow_unresolved = false,
 							     .allow_foreign = (dict == NULL)

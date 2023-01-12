@@ -845,6 +845,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      &(tmpl_rules_t){
 				      	.attr = {
 				      		.dict_def = request->dict,
+						.list_def = PAIR_LIST_REQUEST,
 				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      	}
 				      });
@@ -1013,6 +1014,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	{
 		tmpl_rules_t	parse_rules = {
 			.attr = {
+				.list_def = PAIR_LIST_REQUEST,
 				.allow_foreign = true	/* Because we don't know where we'll be called */
 			}
 		};

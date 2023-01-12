@@ -1781,6 +1781,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 					   &(tmpl_rules_t){
 					   	.attr = {
 					   		.dict_def = request->dict,
+							.list_def = PAIR_LIST_REQUEST,
 				   			.prefix = TMPL_ATTR_REF_PREFIX_NO
 				   		}
 					   });

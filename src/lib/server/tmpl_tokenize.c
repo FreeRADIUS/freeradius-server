@@ -96,7 +96,9 @@ TMPL_REQUEST_REF_DEF(tmpl_request_def_parent, REQUEST_PARENT);
  * Defaults are used if a NULL rules pointer is passed to the parsing function.
  */
 static tmpl_rules_t const default_rules = {
-
+	.attr = {
+		.list_def = PAIR_LIST_REQUEST,
+	},
 };
 
 
@@ -4964,7 +4966,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 						     fr_type_to_str(da->type));
 			}
 
-			if (!vpt->rules.attr.list_as_attr && (tmpl_list(vpt) >= PAIR_LIST_UNKNOWN)) {
+			if (!vpt->rules.attr.list_as_attr && ((tmpl_list(vpt) == PAIR_LIST_UNKNOWN) || tmpl_list(vpt) > PAIR_LIST_STATE)) {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" has invalid list (%i)",
 						     file, line, tmpl_attr_tail_da(vpt)->name, tmpl_list(vpt));

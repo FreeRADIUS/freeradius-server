@@ -84,6 +84,7 @@ static int process_file(char const *filename)
 	tmpl_rules_t	parse_rules = {
 		.attr = {
 			.dict_def = dict_radius,
+			.list_def = PAIR_LIST_REQUEST,
 			.allow_foreign = false, /* tests are in the RADIUS dictionary */
 		}
 	};
