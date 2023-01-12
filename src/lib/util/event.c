@@ -1758,7 +1758,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		fr_strerror_clear();
 
 		ev->is_registered = false;
-		
+
 		/*
 		 *	If the child exited before kevent() was
 		 *	called, we need to get its status via
@@ -1808,7 +1808,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 
 				/*
 				 *	The user event acts as a surrogate for
-				 *	an EVFILT_PROC event, and will be evaluated 
+				 *	an EVFILT_PROC event, and will be evaluated
 				 *	during the next loop through the event loop.
 				 *
 				 *	It will be automatically deleted when the
@@ -1818,7 +1818,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 				 *	callback here directly, but this lead to
 				 *	multiple problems, the biggest being that
 				 *	setting requests back to resumable failed
-				 *	because they were not yet yielded, 
+				 *	because they were not yet yielded,
 				 *	leading to hangs.
 				 */
 				if (fr_event_user_insert(ev, el, &ev->early_exit.ev, true, _fr_event_pid_early_exit, ev) < 0) {
@@ -2132,7 +2132,7 @@ void event_user_eval(fr_event_list_t *el, struct kevent *kev)
  *	- 0 on success.
  *	- -1 on error.
  */
-int _fr_event_user_insert(NDEBUG_LOCATION_ARGS 
+int _fr_event_user_insert(NDEBUG_LOCATION_ARGS
 			  TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_user_t **ev_p,
 			  bool trigger, fr_event_user_cb_t callback, void *uctx)
 {
@@ -2764,11 +2764,12 @@ static int _event_free_indexes(UNUSED void *uctx)
 	return 0;
 }
 
-static void _event_build_indexes(UNUSED void *uctx)
+static int _event_build_indexes(UNUSED void *uctx)
 {
 	unsigned int i;
 
 	for (i = 0; i < NUM_ELEMENTS(filter_maps); i++) event_fd_func_index_build(&filter_maps[i]);
+	return 0;
 }
 
 /** Initialise a new event list
@@ -2784,12 +2785,14 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 {
 	fr_event_list_t		*el;
 	struct kevent		kev;
+	int			ret;
 
 	/*
 	 *	Build the map indexes the first time this
 	 *	function is called.
 	 */
-	fr_atexit_global_once(_event_build_indexes, _event_free_indexes, NULL);
+	fr_atexit_global_once(ret, _event_build_indexes, _event_free_indexes, NULL);
+	if (unlikely(ret < 0)) return NULL;
 
 	el = talloc_zero(ctx, fr_event_list_t);
 	if (!fr_cond_assert(el)) {

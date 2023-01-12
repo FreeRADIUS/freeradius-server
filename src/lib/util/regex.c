@@ -674,7 +674,7 @@ static int _pcre_globals_reset(UNUSED void *uctx)
 	return 0;
 }
 
-static void _pcre_globals_configure(UNUSED void *uctx)
+static int _pcre_globals_configure(UNUSED void *uctx)
 {
 #ifdef PCRE_CONFIG_JIT
 	int *do_jit = 0;
@@ -691,6 +691,8 @@ static void _pcre_globals_configure(UNUSED void *uctx)
 #endif
 	pcre_malloc = _pcre_talloc;		/* pcre_malloc is a global provided by libpcre */
 	pcre_free = _pcre_talloc_free;		/* pcre_free is a global provided by libpcre */
+
+	return 0;
 }
 
 /** Free thread local data
@@ -783,9 +785,12 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	char const	*error;
 	int		offset;
 	int		cflags = 0;
+	int		ret;
 	regex_t		*preg;
 
-	fr_atexit_global_once(_pcre_globals_configure, _pcre_globals_reset, NULL);
+	fr_atexit_global_once(ret, _pcre_globals_configure, _pcre_globals_reset, NULL);
+	if (unlikely(ret < 0)) return -1;
+
 
 	if (unlikely(pcre_tls_init() < 0)) return -1;
 

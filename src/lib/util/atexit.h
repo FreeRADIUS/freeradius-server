@@ -82,11 +82,15 @@ bool		fr_atexit_is_exiting(void);
  *
  *  ...when functions are tested directly in the fr_atexit_global_once macro
  */
-static inline void _fr_atexit_global_once_funcs(fr_atexit_t init_func, fr_atexit_t free_func, void *uctx)
+static inline int _fr_atexit_global_once_funcs(fr_atexit_t init_func, fr_atexit_t free_func, void *uctx)
 {
-	if (init_func) init_func(uctx);
-	if (free_func) free_func(uctx);
+	if (init_func) if (init_func(uctx) < 0) return -1;
+	if (free_func) fr_atexit_global(free_func, uctx);
+
+	return 0;
 }
+
+static inline void fr_atexit_noop(void) {}
 
 /** Setup pair of global init/free functions
  *
@@ -98,6 +102,9 @@ static inline void _fr_atexit_global_once_funcs(fr_atexit_t init_func, fr_atexit
  *
  * Will not share init status outside of the function.
  *
+ * @param[out] _res		Where to write the result of the init
+ *				function if called.
+ *				May be NULL.
  * @param[in] _init		function to call. Will be called once
  *				during the process lifetime.
  *				May be NULL.
@@ -106,7 +113,7 @@ static inline void _fr_atexit_global_once_funcs(fr_atexit_t init_func, fr_atexit
  *				May be NULL.
  * @param[in] _uctx		data to be passed to free function.
  */
-#define fr_atexit_global_once(_init, _free, _uctx) \
+#define fr_atexit_global_once(_res, _init, _free, _uctx) \
 { \
 	static atomic_bool	_init_done = false; \
 	static pthread_mutex_t	_init_mutex = PTHREAD_MUTEX_INITIALIZER; \
@@ -114,11 +121,15 @@ static inline void _fr_atexit_global_once_funcs(fr_atexit_t init_func, fr_atexit
 	if (unlikely(!atomic_load(&_init_done))) { \
 		pthread_mutex_lock(&_init_mutex); \
 		if (!atomic_load(&_init_done)) { \
-			_fr_atexit_global_once_funcs(_init, _free, _our_uctx); \
+			if (_fr_atexit_global_once_funcs(_init, _free, _our_uctx) < 0) { \
+				_Generic((_res), int : _res = -1, default: fr_atexit_noop()); \
+				pthread_mutex_unlock(&_init_mutex); \
+			} \
 			atomic_store(&_init_done, true); \
 		} \
 		pthread_mutex_unlock(&_init_mutex); \
 	} \
+	_Generic((_res), int : _res = 0, default: fr_atexit_noop()); \
 }
 /** Set a destructor for thread local storage to free the memory on thread exit
  *

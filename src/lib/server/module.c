@@ -1102,7 +1102,7 @@ module_list_t *module_list_alloc(TALLOC_CTX *ctx, char const *name)
 	return ml;
 }
 
-static void _module_global_list_init(void *uctx)
+static int _module_global_list_init(void *uctx)
 {
 	dl_modules = dl_module_loader_init(uctx);
 	MEM(module_global_inst_list = fr_heap_alloc(NULL, _module_instance_global_cmp, module_instance_t, inst_idx, 256));
@@ -1112,6 +1112,8 @@ static void _module_global_list_init(void *uctx)
 	 *	tree is in place...
 	 */
 	global_lib_init();
+
+	return 0;
 }
 
 static int _module_global_list_free(UNUSED void *uctx)
@@ -1133,10 +1135,11 @@ static int _module_global_list_free(UNUSED void *uctx)
  */
 void modules_init(char const *lib_dir)
 {
+	int ret;
 	/*
 	 *	Create the global module heap we use for
 	 *	common indexes in the thread-specific
 	 *	heaps.
 	 */
-	fr_atexit_global_once(_module_global_list_init, _module_global_list_free, UNCONST(char *, lib_dir));
+	fr_atexit_global_once(NULL, _module_global_list_init, _module_global_list_free, UNCONST(char *, lib_dir));
 }
