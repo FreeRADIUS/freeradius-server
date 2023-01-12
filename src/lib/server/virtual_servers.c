@@ -1224,10 +1224,13 @@ int virtual_servers_instantiate(void)
 		 *      the process module.
 		 */
 		if (process->compile_list) {
-			tmpl_rules_t		parse_rules;
+			tmpl_rules_t		parse_rules = {
+				.attr = {
+					.dict_def = *(process->dict),
+					.list_def = PAIR_LIST_REQUEST,
+				},
+			};
 
-			memset(&parse_rules, 0, sizeof(parse_rules));
- 			parse_rules.attr.dict_def = *(process->dict);
 			fr_assert(parse_rules.attr.dict_def != NULL);
 
 			if (virtual_server_compile_sections(server_cs, process->compile_list, &parse_rules,

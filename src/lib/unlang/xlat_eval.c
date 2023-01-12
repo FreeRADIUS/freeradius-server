@@ -1459,7 +1459,8 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 				      NULL,
 				      &(tmpl_rules_t){
 				      	.attr = {
-				      		.dict_def = request->dict
+				      		.dict_def = request->dict,
+						.list_def = PAIR_LIST_REQUEST,
 				      	}
 				      });
 	if (len == 0) {

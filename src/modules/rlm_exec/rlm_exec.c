@@ -246,6 +246,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				 T_BACK_QUOTED_STRING, NULL,
 				 &(tmpl_rules_t) {
 				 	.attr = {
+						.list_def = PAIR_LIST_REQUEST,
 				 		.allow_foreign = true,
 				 		.allow_unresolved = false,
 				 		.allow_unknown = false

@@ -286,6 +286,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 	/* Strict rules for the update map as it's processed with limited functionality */
 		.attr = {
 			.dict_def = dict_ldap_sync,
+			.list_def = PAIR_LIST_REQUEST,
 			.allow_foreign = false,
 			.allow_unknown = false,
 			.allow_unresolved = false,

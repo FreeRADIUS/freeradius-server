@@ -272,6 +272,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		.attr = {
 			.dict_def = dict,
 			.prefix = TMPL_ATTR_REF_PREFIX_NO,
+			.list_def = PAIR_LIST_REQUEST,
 			.disallow_qualifiers = true, /* for now, until more tests are made */
 
 			/*
@@ -288,6 +289,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		.attr = {
 			.dict_def = dict,
 			.prefix = TMPL_ATTR_REF_PREFIX_YES,
+			.list_def = PAIR_LIST_REQUEST,
 			.disallow_qualifiers = true, /* for now, until rlm_files supports it */
 		}
 	};
