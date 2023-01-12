@@ -91,6 +91,7 @@ static inline int _fr_atexit_global_once_funcs(fr_atexit_t init_func, fr_atexit_
 }
 
 static inline void fr_atexit_noop(void) {}
+static inline void fr_atexit_result(int *ret, int val) { *ret = val; }
 
 /** Setup pair of global init/free functions
  *
@@ -122,14 +123,14 @@ static inline void fr_atexit_noop(void) {}
 		pthread_mutex_lock(&_init_mutex); \
 		if (!atomic_load(&_init_done)) { \
 			if (_fr_atexit_global_once_funcs(_init, _free, _our_uctx) < 0) { \
-				_Generic((_res), int : _res = -1, default: fr_atexit_noop()); \
+				_Generic((_res), int : fr_atexit_result((int *)&(_res), -1), default: fr_atexit_noop()); \
 				pthread_mutex_unlock(&_init_mutex); \
 			} \
 			atomic_store(&_init_done, true); \
 		} \
 		pthread_mutex_unlock(&_init_mutex); \
 	} \
-	_Generic((_res), int : _res = 0, default: fr_atexit_noop()); \
+	_Generic((_res), int : fr_atexit_result((int *)&(_res), 0), default: fr_atexit_noop()); \
 }
 /** Set a destructor for thread local storage to free the memory on thread exit
  *
