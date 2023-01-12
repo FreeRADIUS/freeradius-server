@@ -75,6 +75,19 @@ bool		fr_atexit_is_exiting(void);
 #  define _Thread_local TLS_STORAGE_CLASS
 #endif
 
+/*
+ *  Stop complaints of...:
+ *
+ *    error: the address of 'x' will always evaluate as 'true' [-Werror=address]
+ *
+ *  ...when functions are tested directly in the fr_atexit_global_once macro
+ */
+static inline void _fr_atexit_global_once_funcs(fr_atexit_t init_func, fr_atexit_t free_func, void *uctx)
+{
+	if (init_func) init_func(uctx);
+	if (free_func) free_func(uctx);
+}
+
 /** Setup pair of global init/free functions
  *
  * Simplifies setting up data structures the first time a given function
@@ -101,8 +114,7 @@ bool		fr_atexit_is_exiting(void);
 	if (unlikely(!atomic_load(&_init_done))) { \
 		pthread_mutex_lock(&_init_mutex); \
 		if (!atomic_load(&_init_done)) { \
-			if (_init) _init(_our_uctx); \
-			if (_free) fr_atexit_global(_free, _our_uctx); \
+			_fr_atexit_global_once_funcs(_init, _free, _our_uctx); \
 			atomic_store(&_init_done, true); \
 		} \
 		pthread_mutex_unlock(&_init_mutex); \
