@@ -90,7 +90,7 @@ extern "C" {
 		fr_ ## _name ## _slab_t 			*slab; \
 		fr_ ## _type ## _slab_free_t 			free; \
 		void						*uctx; \
-	} fr_ ## _name ## _slab_element_t;
+	} fr_ ## _name ## _slab_element_t
 
 /** Define type specific wrapper functions for slabs and slab elements
  *
