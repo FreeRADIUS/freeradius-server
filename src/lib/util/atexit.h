@@ -90,7 +90,7 @@ static inline int _fr_atexit_global_once_funcs(fr_atexit_t init_func, fr_atexit_
 	return 0;
 }
 
-/** A generic function to free talloc chunks compatible with the fr_atexit_t type
+/** A generic function to free talloc chunks.  Compatible with the fr_atexit_t type
  *
  * @param[in] to_free	talloc chunk to free.
  * @return the return code returned by talloc_free.
