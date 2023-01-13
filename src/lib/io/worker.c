@@ -1165,7 +1165,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 	 *	event loop fewer times per second, instead of after
 	 *	every request.
 	 */
-	while (fr_time_delta_lt(fr_time_sub(now, start), fr_time_delta_wrap(NSEC / 100000)) &&
+	while (fr_time_delta_lt(fr_time_sub(now, start), fr_time_delta_wrap(NSEC / 10000)) &&
 	       ((request = fr_heap_pop(&worker->runnable)) != NULL)) {
 
 		REQUEST_VERIFY(request);
