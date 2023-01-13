@@ -1160,12 +1160,13 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 	now = start;
 
 	/*
-	 *	Busy-loop running requests for 0.1ms.  another
-	 *	request.  This change means that the worker checks the
-	 *	event loop fewer times per second, instead of after
-	 *	every request.
+	 *	Busy-loop running requests for 1ms.  We still poll the
+	 *	event loop 1000 times a second, OR when there's no
+	 *	more work to do.  This allows us to make progress with
+	 *	ongoing requests, at the expense of sometimes ignoring
+	 *	new ones.
 	 */
-	while (fr_time_delta_lt(fr_time_sub(now, start), fr_time_delta_wrap(NSEC / 100000)) &&
+	while (fr_time_delta_lt(fr_time_sub(now, start), fr_time_delta_from_msec(1)) &&
 	       ((request = fr_heap_pop(&worker->runnable)) != NULL)) {
 
 		REQUEST_VERIFY(request);
