@@ -466,7 +466,7 @@ size_t tmpl_pair_list_name(fr_dict_attr_t const **out, char const *name, fr_dict
 	/*
 	 *	It may be a list qualifier delimiter
 	 */
-	case ':':
+	case '.':
 	{
 		char const *d = q + 1;
 
