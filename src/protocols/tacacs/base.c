@@ -286,3 +286,378 @@ ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
 
 	return length;
 }
+
+static void print_hex(fr_log_t const *log, char const *file, int line, char const *prefix, uint8_t const *data, size_t datalen, uint8_t const *end)
+{
+	size_t i, j, left;
+	char buffer[16*3+1];
+
+	if ((data + datalen) > end) {
+		fr_assert(data <= end);
+
+		if (data > end) return;
+
+		fr_log(log, L_DBG, file, line, "%s TRUNCATED field says %zu, but only %zu left in the packet",
+		       prefix, datalen, end - data);
+
+		datalen = end - data;
+	}
+
+	if (!datalen) return;
+
+	for (i = 0; i < datalen; i += 16) {
+		char *q = buffer;
+
+		left = 16;
+		if ((i + left) > datalen) left = datalen - i;
+
+		for (j = 0; j < left; j++) {
+			sprintf(q, "%02x ", data[i + j]);
+			q += 3;
+		}
+
+		q--;
+		*q = '\0';
+
+		fr_log(log, L_DBG, file, line, "%s %s", prefix, buffer);
+	}
+}
+
+static void print_ascii(fr_log_t const *log, char const *file, int line, char const *prefix, uint8_t const *data, size_t datalen, uint8_t const *end)
+{
+	uint8_t const *p;
+
+	fr_assert((data + datalen) <= end);
+
+	if (!datalen) return;
+
+	if (datalen > 80) {
+	hex:
+		print_hex(log, file, line, prefix, data, datalen, end);
+		return;
+	}
+
+	for (p = data; p < (data + datalen); p++) {
+		if ((*p < 0x20) || (*p > 0x80)) goto hex;
+	}
+
+	fr_log(log, L_DBG, file, line, "%s %.*s", prefix, (int) datalen, (char const *) data);
+}
+
+static void print_args(fr_log_t const *log, char const *file, int line, uint8_t const *start, size_t arg_cnt, uint8_t const *end)
+{
+	size_t i;
+	uint8_t const *p;
+	char prefix[64];
+
+	if (start + arg_cnt > end) {
+		fr_log(log, L_DBG, file, line, "      ARG cnt overflows packet");
+		return;
+	}
+
+	p = start + arg_cnt;
+	for (i = 0; i < arg_cnt; i++) {
+		if (p == end) {
+			fr_log(log, L_DBG, file, line, "      ARG[%zu] is at EOF", i);
+			return;
+		}
+
+		if ((p + start[i]) > end) {
+			fr_log(log, L_DBG, file, line, "      ARG[%zu] overflows packet", i);
+			print_hex(log, file, line, "                     ", p, end - p, end);
+			return;
+		}
+
+		snprintf(prefix, sizeof(prefix), "      arg[%zu]            ", i);
+		prefix[21] = '\0';
+
+		print_ascii(log, file, line, prefix, p, start[i], end);
+
+		p += start[i];
+	}
+}
+
+void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *packet, char const *file, int line)
+{
+	size_t length;
+	uint8_t const *p = (uint8_t const *) packet;
+	uint8_t const *hdr, *end;
+
+	/*
+	 *	It has to be at least 12 bytes long.
+	 */
+	fr_log(log, L_DBG, file, line, "  major  %u", (p[0] & 0xf0) >> 4);
+	fr_log(log, L_DBG, file, line, "  minor  %u", (p[0] & 0x0f));
+
+	fr_log(log, L_DBG, file, line, "  type   %02x", p[1]);
+	fr_log(log, L_DBG, file, line, "  seq_no %02x", p[2]);
+	fr_log(log, L_DBG, file, line, "  flags  %02x", p[3]);
+
+	fr_log(log, L_DBG, file, line, "  sessid %08x", fr_nbo_to_uint32(p + 4));
+	fr_log(log, L_DBG, file, line, "  length %08x", fr_nbo_to_uint32(p + 8));
+
+	fr_log(log, L_DBG, file, line, "  body");
+	length = fr_nbo_to_uint32(p + 8);
+
+	if ((p[3] & 0x01) == 0) {
+		fr_log(log, L_DBG, file, line, "  ... encrypted ...");
+		return;
+	}
+
+	if (length > 65535) {
+		fr_log(log, L_DBG, file, line, "      TOO LARGE");
+		return;
+	}
+
+	p += 12;
+	hdr = p;
+	end = hdr + length;
+
+#define OVERFLOW8(_field, _name) do { \
+	if ((p + _field) > end) { \
+		fr_log(log, L_DBG, file, line, "      " STRINGIFY(_name) " overflows packet!"); \
+		return; \
+	} \
+	p += _field; \
+    } while (0)
+
+#define OVERFLOW16(_field, _name) do { \
+	if ((p + fr_nbo_to_uint16(_field)) > end) { \
+		fr_log(log, L_DBG, file, line, "      " STRINGIFY(_name) " overflows packet!"); \
+		return; \
+	} \
+	p += fr_nbo_to_uint16(_field); \
+    } while (0)
+
+#define REQUIRE(_length) do { \
+	if ((end - hdr) < _length) { \
+		fr_log(log, L_DBG, file, line, "      TRUNCATED     ", hdr, end - hdr, end); \
+		return; \
+	} \
+    } while (0)
+
+	switch (packet->hdr.type) {
+		default:
+			print_hex(log, file, line, "      data   ", p, length, end);
+			return;
+
+	case FR_TAC_PLUS_AUTHEN:
+		if (packet_is_authen_start_request(packet)) {
+			fr_log(log, L_DBG, file, line, "      authentication-start");
+
+			REQUIRE(8);
+
+			fr_log(log, L_DBG, file, line, "      action          %02x", hdr[0]);
+			fr_log(log, L_DBG, file, line, "      priv_lvl        %02x", hdr[1]);
+			fr_log(log, L_DBG, file, line, "      authen_type     %02x", hdr[2]);
+			fr_log(log, L_DBG, file, line, "      authen_service  %02x", hdr[3]);
+			fr_log(log, L_DBG, file, line, "      user_len        %02x", hdr[4]);
+			fr_log(log, L_DBG, file, line, "      port_len        %02x", hdr[5]);
+			fr_log(log, L_DBG, file, line, "      rem_addr_len    %02x", hdr[6]);
+			fr_log(log, L_DBG, file, line, "      data_len        %02x", hdr[7]);
+			p = hdr + 8;
+
+			/*
+			 *	Do some sanity checks on the lengths.
+			 */
+			OVERFLOW8(hdr[4], user_len);
+			OVERFLOW8(hdr[5], port_len);
+			OVERFLOW8(hdr[6], rem_addr_len);
+			OVERFLOW8(hdr[7], data_len);
+
+			p = hdr + 8;
+			if (p >= end) return;
+
+			print_ascii(log, file, line, "      user           ", p, hdr[4], end);
+			p += hdr[4];
+
+			print_ascii(log, file, line, "      port           ", p, hdr[5], end);
+			p += hdr[5];
+
+			print_ascii(log, file, line, "      rem_addr       ", p, hdr[6], end);
+			p += hdr[6];
+
+			print_hex(log, file, line, "      data           ", p, hdr[7], end); /* common auth flows */
+
+		} else if (packet_is_authen_continue(packet)) {
+			fr_log(log, L_DBG, file, line, "      authentication-continue");
+
+			REQUIRE(5);
+
+			fr_log(log, L_DBG, file, line, "      user_msg_len    %04x", fr_nbo_to_uint16(hdr));
+			fr_log(log, L_DBG, file, line, "      data_len        %04x", fr_nbo_to_uint16(hdr + 2));
+			fr_log(log, L_DBG, file, line, "      flags           %02x", hdr[4]);
+			p = hdr + 5;
+
+			/*
+			 *	Do some sanity checks on the lengths.
+			 */
+			OVERFLOW16(hdr, user_msg_len);
+			OVERFLOW16(hdr + 2, data_len);
+
+			p = hdr + 5;
+			if (p >= end) return;
+
+			print_ascii(log, file, line, "      user_msg       ", p, fr_nbo_to_uint16(hdr), end);
+			p += fr_nbo_to_uint16(hdr + 2);
+
+			print_hex(log, file, line, "      data           ", p, fr_nbo_to_uint16(hdr + 2), end);
+
+		} else {
+			fr_assert(packet_is_authen_reply(packet));
+
+			fr_log(log, L_DBG, file, line, "      authentication-reply");
+
+			REQUIRE(6);
+
+			fr_log(log, L_DBG, file, line, "      status          %02x", hdr[0]);
+			fr_log(log, L_DBG, file, line, "      flags           %02x", hdr[1]);
+			fr_log(log, L_DBG, file, line, "      server_msg_len  %04x", fr_nbo_to_uint16(hdr + 2));
+			fr_log(log, L_DBG, file, line, "      data_len        %04x", fr_nbo_to_uint16(hdr + 4));
+			p = hdr + 6;
+
+			/*
+			 *	Do some sanity checks on the lengths.
+			 */
+			OVERFLOW16(hdr + 2, server_msg_len);
+			OVERFLOW16(hdr + 4, data_len);
+
+			p = hdr + 6;
+			if (p >= end) return;
+
+			print_ascii(log, file, line, "      server_msg     ", p, fr_nbo_to_uint16(hdr + 2), end);
+			p += fr_nbo_to_uint16(hdr + 2);
+
+			print_hex(log, file, line, "      data           ", p, fr_nbo_to_uint16(hdr + 4), end);
+		}
+		break;
+
+	case FR_TAC_PLUS_AUTHOR:
+		if (packet_is_author_request(packet)) {
+			fr_log(log, L_DBG, file, line, "      authorization-request");
+			REQUIRE(8);
+
+			fr_log(log, L_DBG, file, line, "      auth_method     %02x", hdr[0]);
+			fr_log(log, L_DBG, file, line, "      priv_lvl        %02x", hdr[1]);
+			fr_log(log, L_DBG, file, line, "      authen_type     %02x", hdr[2]);
+			fr_log(log, L_DBG, file, line, "      authen_service  %02x", hdr[3]);
+			fr_log(log, L_DBG, file, line, "      user_len        %02x", hdr[4]);
+			fr_log(log, L_DBG, file, line, "      port_len        %02x", hdr[5]);
+			fr_log(log, L_DBG, file, line, "      rem_addr_len    %02x", hdr[6]);
+			fr_log(log, L_DBG, file, line, "      arg_cnt         %02x", hdr[7]);
+			p = hdr + 8;
+
+			OVERFLOW8(hdr[4], user_len);
+			OVERFLOW8(hdr[5], port_len);
+			OVERFLOW8(hdr[6], rem_addr_len);
+			OVERFLOW8(hdr[7], arg_cnt);
+
+			print_hex(log, file, line, "      argc           ", p, hdr[7], end);
+
+			p = hdr + 8 + hdr[7];
+			print_ascii(log, file, line, "      user           ", p, hdr[4], end);
+			p += hdr[4];
+
+			print_ascii(log, file, line, "      port           ", p, hdr[5], end);
+			p += hdr[5];
+
+			print_ascii(log, file, line, "      rem_addr       ", p, hdr[6], end);
+			p += hdr[6];
+
+			print_args(log, file, line, p, hdr[7], end);
+
+		} else {
+			fr_log(log, L_DBG, file, line, "      authorization-response");
+
+			fr_assert(packet_is_author_response(packet));
+
+			REQUIRE(6);
+
+			fr_log(log, L_DBG, file, line, "      status          %02x", hdr[0]);
+			fr_log(log, L_DBG, file, line, "      arg_cnt         %02x", hdr[1]);
+			fr_log(log, L_DBG, file, line, "      server_msg_len  %04x", fr_nbo_to_uint16(hdr + 2));
+			fr_log(log, L_DBG, file, line, "      data_len        %04x", fr_nbo_to_uint16(hdr + 4));
+			p = hdr + 6;
+
+			OVERFLOW8(hdr[1], arg_cnt);
+			OVERFLOW16(hdr + 2, server_msg_len);
+			OVERFLOW16(hdr + 4, data_len);
+
+			print_hex(log, file, line, "      argc           ", p, hdr[1], end);
+
+			p = hdr + 6 + hdr[7];
+			print_ascii(log, file, line, "      server_msg     ", p, fr_nbo_to_uint16(hdr + 2), end);
+			p += fr_nbo_to_uint16(hdr + 2);
+
+			print_ascii(log, file, line, "      data           ", p, fr_nbo_to_uint16(hdr + 4), end);
+			p += fr_nbo_to_uint16(hdr + 4);
+
+			print_args(log, file, line, p, hdr[1], end);
+		}
+		break;
+
+	case FR_TAC_PLUS_ACCT:
+		if (packet_is_acct_request(packet)) {
+			fr_log(log, L_DBG, file, line, "      accounting-response");
+
+			REQUIRE(9);
+
+			fr_log(log, L_DBG, file, line, "      flags           %02x", hdr[0]);
+			fr_log(log, L_DBG, file, line, "      auth_method     %02x", hdr[1]);
+			fr_log(log, L_DBG, file, line, "      priv_lvl        %02x", hdr[2]);
+			fr_log(log, L_DBG, file, line, "      authen_type     %02x", hdr[3]);
+			fr_log(log, L_DBG, file, line, "      authen_service  %02x", hdr[4]);
+			fr_log(log, L_DBG, file, line, "      user_len        %02x", hdr[5]);
+			fr_log(log, L_DBG, file, line, "      port_len        %02x", hdr[6]);
+			fr_log(log, L_DBG, file, line, "      rem_addr_len    %02x", hdr[7]);
+			fr_log(log, L_DBG, file, line, "      arg_cnt         %02x", hdr[8]);
+			p = hdr + 8;
+
+			OVERFLOW8(hdr[8], arg_cnt);
+			OVERFLOW8(hdr[5], user_len);
+			OVERFLOW8(hdr[6], port_len);
+			OVERFLOW8(hdr[7], rem_addr_len);
+
+			print_hex(log, file, line, "      argc           ", p, hdr[8], end);
+
+			p = hdr + 8 + hdr[7];
+			print_ascii(log, file, line, "      user           ", p, hdr[4], end);
+			p += hdr[5];
+
+			print_ascii(log, file, line, "      port           ", p, hdr[5], end);
+			p += hdr[6];
+
+			print_ascii(log, file, line, "      rem_addr       ", p, hdr[6], end);
+			p += hdr[7];
+
+			print_args(log, file, line, p, hdr[8], end);
+		} else {
+			fr_log(log, L_DBG, file, line, "      accounting-reply");
+			fr_assert(packet_is_acct_reply(packet));
+
+			fr_log(log, L_DBG, file, line, "      authentication-reply");
+
+			REQUIRE(5);
+
+			fr_log(log, L_DBG, file, line, "      server_msg_len  %04x", fr_nbo_to_uint16(hdr));
+			fr_log(log, L_DBG, file, line, "      data_len        %04x", fr_nbo_to_uint16(hdr + 2));
+			fr_log(log, L_DBG, file, line, "      status          %02x", hdr[0]);
+			p = hdr + 5;
+
+			/*
+			 *	Do some sanity checks on the lengths.
+			 */
+			OVERFLOW16(hdr, server_msg_len);
+			OVERFLOW16(hdr + 2, data_len);
+
+			p = hdr + 5;
+			if (p >= end) return;
+
+			print_ascii(log, file, line, "      server_msg     ", p, fr_nbo_to_uint16(hdr), end);
+			p += fr_nbo_to_uint16(hdr);
+
+			print_hex(log, file, line, "      data           ", p, fr_nbo_to_uint16(hdr + 2), end);
+		}
+		break;
+	}
+}

@@ -737,6 +737,16 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	 */
 	if (!secret) packet->hdr.flags = packet->hdr.flags & ~FR_TAC_PLUS_UNENCRYPTED_FLAG;
 
+#ifndef NDEBUG
+	if (fr_debug_lvl >= L_DBG_LVL_4) {
+		uint8_t flags = packet->hdr.flags;
+
+		packet->hdr.flags |= FR_TAC_PLUS_UNENCRYPTED_FLAG;
+		fr_tacacs_packet_log_hex(&default_log, packet);
+		packet->hdr.flags = flags;
+	}
+#endif
+
 	/*
 	 *	3.6. Encryption
 	 *

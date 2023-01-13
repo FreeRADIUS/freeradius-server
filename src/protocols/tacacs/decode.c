@@ -361,8 +361,14 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			return -1;
 		}
 
+		decrypted[3] |= 0x01; /* say it's decrypted */
+
 		FR_PROTO_HEX_DUMP(decrypted, buffer_len, "fr_tacacs_packet_t (unencrypted)");
 	}
+
+#ifndef NDEBUG
+	if (fr_debug_lvl >= L_DBG_LVL_4) fr_tacacs_packet_log_hex(&default_log, pkt);
+#endif
 
 	switch (pkt->hdr.type) {
 	case FR_TAC_PLUS_AUTHEN:
