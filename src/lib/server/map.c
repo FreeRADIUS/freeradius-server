@@ -1735,7 +1735,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 	map_t			exp_map;
 	tmpl_t			*exp_lhs;
-	tmpl_pair_list_t	list_ref;
+	fr_dict_attr_t const	*list_ref;
 
 	tmpl_dcursor_ctx_t	cc = {};
 

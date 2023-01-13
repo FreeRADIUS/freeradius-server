@@ -41,8 +41,8 @@ typedef struct {
 	char const		*program;
 	char const		*input;
 	char const		*output;
-	tmpl_pair_list_t	input_list;
-	tmpl_pair_list_t	output_list;
+	fr_dict_attr_t const	*input_list;
+	fr_dict_attr_t const	*output_list;
 	bool			shell_escape;
 	bool			env_inherit;
 	fr_time_delta_t		timeout;
