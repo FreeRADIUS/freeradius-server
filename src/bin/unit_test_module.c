@@ -787,6 +787,11 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+	if (request_global_init() < 0) {
+		fr_perror("unit_test_module");
+		EXIT_WITH_FAILURE;
+	}
+
 	if (log_global_init(&default_log, false) < 0) {
 		EXIT_WITH_FAILURE;
 	}

@@ -45,12 +45,6 @@ int server_init(CONF_SECTION *cs)
 	if (tmpl_global_init() < 0) return -1;
 
 	/*
-	 *	Load dictionary attributes used
-	 *	for requests.
-	 */
-	if (request_global_init() < 0) return -1;
-
-	/*
 	 *	Initialise the trigger rate limiting tree
 	 */
 	if (trigger_exec_init(cs) < 0) return -1;

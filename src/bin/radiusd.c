@@ -583,6 +583,15 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Load dictionary attributes used
+	 *	for requests.
+	 */
+	if (request_global_init() < 0) {
+		fr_perror("%s", program);
+		EXIT_WITH_FAILURE;
+	}
+
+	/*
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
 	if (main_config_init(config) < 0) EXIT_WITH_FAILURE;
