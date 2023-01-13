@@ -824,6 +824,14 @@ static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)
 }
 /** @} */
 
+/** Return the name of a tmpl list or def if list not provided
+ *
+*/
+static inline char const *tmpl_list_name(fr_dict_attr_t const *list, char const *def)
+{
+	return (list ? list->name : def);
+}
+
 /** @name Field accessors for #TMPL_TYPE_XLAT
  *
  * @{

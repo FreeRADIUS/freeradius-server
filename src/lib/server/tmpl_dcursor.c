@@ -432,7 +432,7 @@ fr_pair_t *_tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 		list = tmpl_get_list(request, vpt);
 		if (!list) {
 			fr_strerror_printf("List \"%s\" not available in this context",
-					   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
+					   tmpl_list_name(tmpl_list(vpt), "<INVALID>"));
 			if (err) *err = -2;
 			goto error;
 		}
@@ -550,7 +550,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		list_head = tmpl_list_head(request, tmpl_list(vpt));
 		if (!list_head) {
 			fr_strerror_printf("List \"%s\" not available in this context",
-					   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
+					   tmpl_list_name(tmpl_list(vpt), "<INVALID>"));
 			return -2;
 		}
 		list_ctx = tmpl_list_ctx(request, tmpl_list(vpt));

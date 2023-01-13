@@ -222,7 +222,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		tmpl_t			*vpt;
 		static tmpl_rules_t	rules = {
 						.attr = {
-							.list_def = PAIR_LIST_REQUEST,
 							.allow_unknown = true,
 							.allow_unresolved = true,
 							.allow_foreign = true
@@ -230,6 +229,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 					};
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
+		rules.attr.list_def = PAIR_LIST_REQUEST;
 		/*
 		 *	Parse the cast operator for barewords
 		 */

@@ -135,8 +135,8 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 			if ((tmpl_list(attr->lhs) != tmpl_list(map->lhs))) {
 				RWDEBUG("valuepair \"%pV\" has conflicting list qualifier (%s vs %s), skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
-					fr_table_str_by_value(pair_list_table, tmpl_list(attr->lhs), "<INVALID>"),
-					fr_table_str_by_value(pair_list_table, tmpl_list(map->lhs), "<INVALID>"));
+					tmpl_list_name(tmpl_list(attr->lhs), "<INVALID>"),
+					tmpl_list_name(tmpl_list(map->lhs), "<INVALID>"));
 				goto next_pair;
 			}
 

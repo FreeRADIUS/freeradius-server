@@ -1161,7 +1161,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 					if (!vp) continue;
 				}
 				RINDENT();
-				RDEBUG2("&%s:%pP", fr_table_str_by_value(pair_list_table, tmpl_list(dst), ""), vp);
+				RDEBUG2("&%s:%pP", tmpl_list_name(tmpl_list(dst), ""), vp);
 				REXDENT();
 
 				fr_pair_list_init(&tmp_list);

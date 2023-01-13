@@ -133,7 +133,7 @@ fr_pair_t *tmpl_get_list(request_t *request, tmpl_t const *vpt)
 	}
 
 	RWDEBUG2("List \"%s\" is not available",
-		fr_table_str_by_value(pair_list_table, list, "<INVALID>"));
+		tmpl_list_name(list, "<INVALID>"));
 
 	return NULL;
 }
