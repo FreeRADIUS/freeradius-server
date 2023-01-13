@@ -112,9 +112,7 @@ struct dl_loader_s {
 	bool			defer_symbol_init;	//!< Do not call dl_symbol_init in dl_loader_init.
 };
 
-/**
- *
- * Global library directory set.
+/** Global search path, prepended all dlopen paths
  */
 static char *dl_global_libdir = NULL;
 
