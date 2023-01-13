@@ -82,7 +82,6 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 		      CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
 	fr_dict_enum_value_t const	*type_enum;
 	uint32_t		code;
 
