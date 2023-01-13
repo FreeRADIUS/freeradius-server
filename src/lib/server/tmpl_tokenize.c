@@ -454,6 +454,7 @@ size_t tmpl_pair_list_name(fr_dict_attr_t const **out, char const *name, fr_dict
 {
 	char const *p = name;
 	char const *q;
+	size_t ret = 0;
 
 	/*
 	 *	Try and determine the end of the token
@@ -468,8 +469,8 @@ size_t tmpl_pair_list_name(fr_dict_attr_t const **out, char const *name, fr_dict
 	 *	anything.
 	 */
 	case '\0':
-		*out = fr_table_value_by_substr(pair_list_table, p, (q - p), PAIR_LIST_UNKNOWN);
-		if (*out != PAIR_LIST_UNKNOWN) return q - p;
+		ret = tmpl_attr_list_from_substr(out, &FR_SBUFF_IN(p, (q - p)));
+		if (ret > 0) return ret;
 		*out = def;
 		return 0;
 
@@ -489,8 +490,8 @@ size_t tmpl_pair_list_name(fr_dict_attr_t const **out, char const *name, fr_dict
 			}
 		}
 
-		*out = fr_table_value_by_substr(pair_list_table, p, (q - p), PAIR_LIST_UNKNOWN);
-		if (*out == PAIR_LIST_UNKNOWN) return 0;
+		ret = tmpl_attr_list_from_substr(out, &FR_SBUFF_IN(p, (q - p)));
+		if (ret == 0) return 0;
 
 		return (q + 1) - name; /* Consume the list and delimiter */
 	}
@@ -2130,8 +2131,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		 *      This code should be removed when lists
 		 *	are integrated into attribute references.
 		 */
-		fr_sbuff_out_by_longest_prefix(&list_len, &vpt->data.attribute.list, pair_list_table,
-					       &our_name, at_rules->list_def);
+		list_len = tmpl_attr_list_from_substr(&vpt->data.attribute.list, &our_name);
+		if (list_len == 0) vpt->data.attribute.list = at_rules->list_def;
 
 		/*
 		 *	Check if we need to backtrack

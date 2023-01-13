@@ -1405,6 +1405,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 		 */
 		{
 			char const *p, *q;
+			fr_dict_attr_t const *tmpl_list;
 
 			p = attr;
 
@@ -1430,7 +1431,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			 *
 			 *	@todo - add support for &config?
 			 */
-			if (fr_table_value_by_substr(pair_list_table, p, q - p, PAIR_LIST_UNKNOWN) != PAIR_LIST_UNKNOWN) {
+			if (tmpl_attr_list_from_substr(&tmpl_list, &FR_SBUFF_IN(p, (q - p))) > 0) {
 				if (*q) {
 					p = q + 1;
 				} else {
