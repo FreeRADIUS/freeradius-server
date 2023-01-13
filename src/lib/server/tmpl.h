@@ -81,20 +81,11 @@ extern "C" {
  */
 #define TMPL_MAX_REQUEST_REF_NESTING	10
 
-/*
- *	Forward declarations
- */
-typedef enum pair_list_e {
-	PAIR_LIST_UNKNOWN = 0,		//!< Unknown list.
-
-	PAIR_LIST_REQUEST,		//!< Attributes in incoming or internally proxied
-					///< request (default).
-	PAIR_LIST_REPLY,		//!< Attributes to send in the response.
-	PAIR_LIST_CONTROL,		//!< Attributes that change the behaviour of
-					///< modules.
-	PAIR_LIST_STATE,		//!< Attributes to store multiple rounds of
-					///< challenges/responses.
-} tmpl_pair_list_t;
+#define PAIR_LIST_UNKNOWN NULL
+#define PAIR_LIST_REQUEST request_attr_request
+#define PAIR_LIST_REPLY request_attr_reply
+#define PAIR_LIST_CONTROL request_attr_control
+#define PAIR_LIST_STATE request_attr_state
 
 extern fr_table_num_ordered_t const pair_list_table[];
 extern size_t pair_list_table_len;
