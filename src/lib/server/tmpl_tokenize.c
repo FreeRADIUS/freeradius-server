@@ -396,6 +396,34 @@ void tmpl_debug(tmpl_t const *vpt)
  * @{
  */
 
+/** Parse one a single list reference
+ *
+ * @param[out] da_p	attribute representing a list.
+ * @param[in] in	Sbuff to read request references from.
+ * @return
+ *	- > 0 the number of bytes parsed.
+ *      - 0 no list qualifier found.
+ */
+fr_slen_t tmpl_attr_list_from_substr(fr_dict_attr_t const **da_p, fr_sbuff_t *in)
+{
+	fr_dict_attr_t const *da;
+	fr_sbuff_t our_in = FR_SBUFF(in);
+
+	if (((fr_sbuff_adv_past_strcase(&our_in, request_attr_request->name, request_attr_request->name_len)) &&
+	     (da = request_attr_request)) ||
+	    ((fr_sbuff_adv_past_strcase(&our_in, request_attr_reply->name, request_attr_reply->name_len)) &&
+	     (da = request_attr_reply)) ||
+	    ((fr_sbuff_adv_past_strcase(&our_in, request_attr_control->name, request_attr_control->name_len)) &&
+	     (da = request_attr_control)) ||
+	    ((fr_sbuff_adv_past_strcase(&our_in, request_attr_state->name, request_attr_state->name_len)) &&
+	     (da = request_attr_state))) {
+		*da_p = da;
+		FR_SBUFF_SET_RETURN(in, &our_in);
+	}
+
+	return 0;
+}
+
 /** Resolve attribute name to a #pair_list_t value.
  *
  * Check the name string for #pair_list_t qualifiers and write a #pair_list_t value
