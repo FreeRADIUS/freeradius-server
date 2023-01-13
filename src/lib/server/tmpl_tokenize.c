@@ -2196,24 +2196,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					.ar_parent = fr_dict_root(fr_dict_internal())
 				};
 
-				switch (at_rules->list_def) {
-				default:
-				case PAIR_LIST_REQUEST:
-					ar->ar_da = request_attr_request;
-					break;
-
-				case PAIR_LIST_REPLY:
-					ar->ar_da = request_attr_reply;
-					break;
-
-				case PAIR_LIST_CONTROL:
-					ar->ar_da = request_attr_control;
-					break;
-
-				case PAIR_LIST_STATE:
-					ar->ar_da = request_attr_state;
-					break;
-				}
+				fr_assert(at_rules->list_def != PAIR_LIST_UNKNOWN);
+				ar->ar_da = at_rules->list_def;
 
 				/*
 				 *	Prepend the list ref so it gets evaluated

@@ -114,23 +114,10 @@ fr_pair_t *tmpl_get_list(request_t *request, tmpl_t const *vpt)
 
 	list = tmpl_list(vpt);
 
-	switch (list) {
-	/* Don't add default */
-	case PAIR_LIST_UNKNOWN:
-		break;
-
-	case PAIR_LIST_REQUEST:
-		return request->pair_list.request;
-
-	case PAIR_LIST_REPLY:
-		return request->pair_list.reply;
-
-	case PAIR_LIST_CONTROL:
-		return request->pair_list.control;
-
-	case PAIR_LIST_STATE:
-		return request->pair_list.state;
-	}
+	if (list == request_attr_request) return request->pair_list.request;
+	if (list == request_attr_reply) return request->pair_list.reply;
+	if (list == request_attr_control) return request->pair_list.control;
+	if (list == request_attr_state) return request->pair_list.state;
 
 	RWDEBUG2("List \"%s\" is not available",
 		tmpl_list_name(list, "<INVALID>"));
@@ -155,28 +142,21 @@ fr_pair_list_t *tmpl_list_head(request_t *request, tmpl_pair_list_t list)
 {
 	if (!request) return NULL;
 
-	switch (list) {
-	/* Don't add default */
-	case PAIR_LIST_UNKNOWN:
-		break;
-
-	case PAIR_LIST_REQUEST:
+	if (list == PAIR_LIST_REQUEST) {
 		if (!request->packet) return NULL;
 		return &request->request_pairs;
-
-	case PAIR_LIST_REPLY:
-		if (!request->reply) return NULL;
-		return &request->reply_pairs;
-
-	case PAIR_LIST_CONTROL:
-		return &request->control_pairs;
-
-	case PAIR_LIST_STATE:
-		return &request->session_state_pairs;
 	}
 
-	RWDEBUG2("List \"%s\" is not available",
-		fr_table_str_by_value(pair_list_table, list, "<INVALID>"));
+	if (list == PAIR_LIST_REPLY) {
+		if (!request->reply) return NULL;
+		return &request->reply_pairs;
+	}
+
+	if (list == PAIR_LIST_CONTROL) return &request->control_pairs;
+
+	if (list == PAIR_LIST_STATE) return &request->session_state_pairs;
+
+	RWDEBUG2("List \"%s\" is not available", tmpl_list_name(list, "<INVALID>"));
 
 	return NULL;
 }
@@ -200,23 +180,13 @@ TALLOC_CTX *tmpl_list_ctx(request_t *request, tmpl_pair_list_t list)
 {
 	if (!request) return NULL;
 
-	switch (list) {
-	case PAIR_LIST_REQUEST:
-		return request->request_ctx;
+	if (list == PAIR_LIST_REQUEST) return request->request_ctx;
 
-	case PAIR_LIST_REPLY:
-		return request->reply_ctx;
+	if (list == PAIR_LIST_REPLY) return request->reply_ctx;
 
-	case PAIR_LIST_CONTROL:
-		return request->control_ctx;
+	if (list == PAIR_LIST_CONTROL) return request->control_ctx;
 
-	case PAIR_LIST_STATE:
-		return request->session_state_ctx;
-
-	/* Don't add default */
-	case PAIR_LIST_UNKNOWN:
-		break;
-	}
+	if (list == PAIR_LIST_STATE) return request->session_state_ctx;
 
 	return NULL;
 }
@@ -236,19 +206,9 @@ TALLOC_CTX *tmpl_list_ctx(request_t *request, tmpl_pair_list_t list)
  */
 fr_radius_packet_t *tmpl_packet_ptr(request_t *request, tmpl_pair_list_t list)
 {
-	switch (list) {
-	/* Don't add default */
-	case PAIR_LIST_STATE:
-	case PAIR_LIST_CONTROL:
-	case PAIR_LIST_UNKNOWN:
-		return NULL;
+	if (list == PAIR_LIST_REQUEST) return request->packet;
 
-	case PAIR_LIST_REQUEST:
-		return request->packet;
-
-	case PAIR_LIST_REPLY:
-		return request->reply;
-	}
+	if (list == PAIR_LIST_REPLY) return request->reply;
 
 	return NULL;
 }
