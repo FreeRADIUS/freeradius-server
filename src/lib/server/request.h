@@ -80,10 +80,10 @@ typedef	void (*fr_request_process_t)(request_t *, fr_state_signal_t);	//!< Funct
 typedef	rlm_rcode_t (*RAD_REQUEST_FUNP)(request_t *);
 
 extern HIDDEN fr_dict_attr_t const *request_attr_root;
-extern HIDDEN fr_dict_attr_t const *request_attr_request;
-extern HIDDEN fr_dict_attr_t const *request_attr_reply;
-extern HIDDEN fr_dict_attr_t const *request_attr_control;
-extern HIDDEN fr_dict_attr_t const *request_attr_state;
+extern fr_dict_attr_t const *request_attr_request;
+extern fr_dict_attr_t const *request_attr_reply;
+extern fr_dict_attr_t const *request_attr_control;
+extern fr_dict_attr_t const *request_attr_state;
 
 /** Convenience macro for accessing the request list
  *
