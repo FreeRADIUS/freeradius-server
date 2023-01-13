@@ -85,6 +85,10 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	fr_dict_enum_value_t const	*type_enum;
 	uint32_t		code;
 
+#ifndef NDEBUG
+	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
+#endif
+
 	/*
 	 *	Must be the TACACS+ module
 	 */
