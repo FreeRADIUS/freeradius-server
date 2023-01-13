@@ -95,11 +95,7 @@ TMPL_REQUEST_REF_DEF(tmpl_request_def_parent, REQUEST_PARENT);
  *
  * Defaults are used if a NULL rules pointer is passed to the parsing function.
  */
-static tmpl_rules_t const default_rules = {
-	.attr = {
-		.list_def = PAIR_LIST_REQUEST,
-	},
-};
+#define DEFAULT_RULES tmpl_rules_t const default_rules = { .attr = { .list_def = PAIR_LIST_REQUEST }}
 
 
 /* clang-format off */
@@ -314,7 +310,7 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 		i++;
 	}
 
-	FR_FAULT_LOG("list: %s", fr_table_str_by_value(pair_list_table, vpt->data.attribute.list, "<INVALID>"));
+	FR_FAULT_LOG("list: %s", tmpl_list_name(vpt->data.attribute.list, "<INVALID>"));
 	tmpl_attr_ref_list_debug(tmpl_attr(vpt));
 }
 
@@ -593,6 +589,7 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	tmpl_request_t		*tail = tmpl_request_list_tail(out);
 	unsigned int		depth = 0;
 	fr_sbuff_marker_t	m;
+	DEFAULT_RULES;
 
 	if (!at_rules) at_rules = &default_rules.attr;
 
@@ -2028,6 +2025,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	bool				is_raw = false;
 	tmpl_attr_rules_t const		*at_rules;
 	fr_sbuff_marker_t		m_l;
+	DEFAULT_RULES;
 
 	if (!t_rules) t_rules = &default_rules;
 	at_rules = &t_rules->attr;
@@ -2324,6 +2322,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			    tmpl_t **out, char const *name, tmpl_rules_t const *t_rules)
 {
 	ssize_t slen, name_len;
+	DEFAULT_RULES;
 
 	if (!t_rules) t_rules = &default_rules;	/* Use the defaults */
 
@@ -2921,6 +2920,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	char			*str;
 
 	tmpl_t			*vpt = NULL;
+	DEFAULT_RULES;
 
 	if (!t_rules) t_rules = &default_rules;	/* Use the defaults */
 
@@ -4364,7 +4364,8 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	if (tmpl_list(vpt) != PAIR_LIST_REQUEST) {	/* Don't print the default list */
 		if (printed_rr) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 
-		FR_SBUFF_IN_TABLE_STR_RETURN(&our_out, pair_list_table, tmpl_list(vpt), "<INVALID>");
+		slen = fr_sbuff_in_strcpy(&our_out, tmpl_list_name(tmpl_list(vpt), "<INVALID>"));
+		if (slen < 0) return slen;
 		if (tmpl_attr_list_num_elements(tmpl_attr(vpt))) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 
 	/*
@@ -4968,8 +4969,9 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 
 			if (!vpt->rules.attr.list_as_attr && ((tmpl_list(vpt) == PAIR_LIST_UNKNOWN) || tmpl_list(vpt) > PAIR_LIST_STATE)) {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
-						     "attribute \"%s\" has invalid list (%i)",
-						     file, line, tmpl_attr_tail_da(vpt)->name, tmpl_list(vpt));
+						     "attribute \"%s\" has invalid list (%s)",
+						     file, line, tmpl_attr_tail_da(vpt)->name,
+						     tmpl_list_name(tmpl_list(vpt), "<INVALID>"));
 			}
 
 			tmpl_attr_verify(file, line, vpt);

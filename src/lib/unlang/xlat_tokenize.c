@@ -1122,7 +1122,7 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 					while ((rr = tmpl_request_list_next(list, rr))) {
 						INFO_INDENT("ref  %d", rr->request);
 					}
-					INFO_INDENT("list %d", tmpl_list(node->vpt));
+					INFO_INDENT("list %s", tmpl_list_name(tmpl_list(node->vpt), "<INVALID>"));
 					if (tmpl_attr_tail_num(node->vpt) != NUM_UNSPEC) {
 						if (tmpl_attr_tail_num(node->vpt) == NUM_COUNT) {
 							INFO_INDENT("[#]");

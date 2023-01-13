@@ -1365,7 +1365,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	if (name2) {
 		snprintf(list_buffer, sizeof(list_buffer), "&%s", name2);
 	} else {
-		snprintf(list_buffer, sizeof(list_buffer), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "<INVALID>"));
+		snprintf(list_buffer, sizeof(list_buffer), "&%s", tmpl_list_name(unlang_ctx->rules->attr.list_def, "<INVALID>"));
 	}
 
 	/*

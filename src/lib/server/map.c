@@ -1831,7 +1831,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	if (!list) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to to invalid list qualifier \"%s\" in left side of map",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
-			fr_table_str_by_value(pair_list_table, list_ref, "<INVALID>"));
+			tmpl_list_name(list_ref, "<INVALID>"));
 		rcode = -2;
 		goto finish;
 	}

@@ -219,7 +219,7 @@ static inline fr_pair_list_t *map_check_src_or_dst(request_t *request, map_t con
 	if (!list) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to to invalid list qualifier \"%s\"",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
-			fr_table_str_by_value(pair_list_table, list_ref, "<INVALID>"));
+			tmpl_list_name(list_ref, "<INVALID>"));
 		return NULL;
 	}
 
