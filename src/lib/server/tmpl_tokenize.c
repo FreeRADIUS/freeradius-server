@@ -135,17 +135,6 @@ static fr_table_num_ordered_t const attr_table[] = {
 };
 static size_t attr_table_len = NUM_ELEMENTS(attr_table);
 
-/** Map keywords to #pair_list_t values
- */
-fr_table_num_ordered_t const pair_list_table[] = {
-	{ L("request"),		PAIR_LIST_REQUEST		},
-	{ L("reply"),		PAIR_LIST_REPLY			},
-	{ L("control"),		PAIR_LIST_CONTROL		},		/* New name should have priority */
-	{ L("config"),		PAIR_LIST_CONTROL		},
-	{ L("session-state"),	PAIR_LIST_STATE			},
-};
-size_t pair_list_table_len = NUM_ELEMENTS(pair_list_table);
-
 /** Map keywords to #tmpl_request_ref_t values
  */
 fr_table_num_sorted_t const tmpl_request_ref_table[] = {
