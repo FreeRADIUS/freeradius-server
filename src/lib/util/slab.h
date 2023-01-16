@@ -245,7 +245,6 @@ extern "C" {
 				talloc_set_destructor(new_element, _ ## _type ## _element_free); \
 				fr_ ## _name ## _slab_element_insert_tail(&slab->avail, new_element); \
 				new_element->slab = slab; \
-				new_element += sizeof(new_element); \
 			} \
 			/* Initialisation of new elements done after allocation to ensure \
 			 * are all allocated from the pool.  Without this, any talloc done \
