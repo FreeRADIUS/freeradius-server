@@ -822,8 +822,7 @@ static void request_mux(fr_event_list_t *el,
 		/*
 		 *	Start retransmissions from when the socket is writable.
 		 */
-		// @todo - initialize the retry
-//		(void) fr_retry_init(&u->retry, fr_time(), &h->inst->parent->retry[u->code]);
+		(void) fr_retry_init(&u->retry, fr_time(), &h->inst->parent->retry);
 		fr_assert(fr_time_delta_ispos(u->retry.rt));
 		fr_assert(fr_time_gt(u->retry.next, fr_time_wrap(0)));
 

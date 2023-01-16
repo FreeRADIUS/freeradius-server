@@ -31,6 +31,18 @@ RCSID("$Id$")
 #include "rlm_tacacs.h"
 
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+/*
+ *	Retransmission intervals for the packets we support.
+ */
+static CONF_PARSER retry_config[] = {
+	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, fr_retry_config_t, irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, fr_retry_config_t, mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, fr_retry_config_t, mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_TIME_DELTA, fr_retry_config_t, mrd), .dflt = STRINGIFY(30) },
+	CONF_PARSER_TERMINATOR
+};
+
 /*
  *	A mapping of configuration file names to internal variables.
  */
@@ -47,6 +59,8 @@ static CONF_PARSER const module_config[] = {
 	{ FR_CONF_OFFSET("revive_interval", FR_TYPE_TIME_DELTA, rlm_tacacs_t, revive_interval) },
 
 	{ FR_CONF_OFFSET("pool", FR_TYPE_SUBSECTION, rlm_tacacs_t, trunk_conf), .subcs = (void const *) fr_trunk_config, },
+
+	{ FR_CONF_OFFSET("retry", FR_TYPE_SUBSECTION, rlm_tacacs_t, retry), .subcs = (void const *) retry_config },
 
 	CONF_PARSER_TERMINATOR
 };

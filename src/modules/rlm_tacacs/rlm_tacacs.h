@@ -52,6 +52,8 @@ struct rlm_tacacs_s {
 
 	uint32_t		*types;			//!< array of allowed packet types
 
+	fr_retry_config_t	retry;			//!< retries shared by all packet types
+
 	bool			allowed[FR_TAC_PLUS_MAX];
 
 	fr_trunk_conf_t		trunk_conf;		//!< trunk configuration
