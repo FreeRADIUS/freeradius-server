@@ -704,20 +704,46 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	return true;
 }
 
-/** Handle timeouts when a request is being sent synchronously
+/** Handle retries.
  *
+ *  Note that with TCP we don't actually retry on this particular connection, but the retry timer allows us to
+ *  fail over from one connection to another when a connection fails.
  */
-static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void request_retry(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
+	request_t		*request = treq->request;
 	fr_trunk_connection_t	*tconn = treq->tconn;
 
 	fr_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
 	fr_assert(treq->preq);						/* Must still have a protocol request */
-	// @todo - assert the request is outstanding
 	fr_assert(tconn);
+
+	switch (fr_retry_next(&u->retry, now)) {
+	/*
+	 *	Queue the request for retransmission.
+	 *
+	 *	@todo - set up "next" timer here, instead of in
+	 *	request_mux() ?  That way we can catch the case of
+	 *	packets sitting in the queue for extended periods of
+	 *	time, and still run the timers.
+	 */
+	case FR_RETRY_CONTINUE:
+		fr_trunk_request_requeue(treq);
+		return;
+
+	case FR_RETRY_MRD:
+		REDEBUG("Reached maximum_retransmit_duration (%pVs > %pVs), failing request",
+			fr_box_time_delta(fr_time_sub(now, u->retry.start)), fr_box_time_delta(u->retry.config->mrd));
+		break;
+
+	case FR_RETRY_MRC:
+		REDEBUG("Reached maximum_retransmit_count (%u > %u), failing request",
+		        u->retry.count, u->retry.config->mrc);
+		break;
+	}
 
 	r->rcode = RLM_MODULE_FAIL;
 	fr_trunk_request_signal_complete(treq);
@@ -945,10 +971,9 @@ static void request_mux(fr_event_list_t *el,
 		h->last_sent = u->retry.start;
 		if (fr_time_lteq(h->first_sent, h->last_idle)) h->first_sent = h->last_sent;
 
-		if (fr_event_timer_at(u, el, &u->ev,
-				      fr_time_add(u->retry.start, h->inst->parent->response_window),
-				      request_timeout, treq) < 0) {
-			RERROR("Failed inserting timeout for connection");
+
+		if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_retry, treq) < 0) {
+			RERROR("Failed inserting retransmit timeout for connection");
 			fr_trunk_request_signal_fail(treq);
 			continue;
 		}
