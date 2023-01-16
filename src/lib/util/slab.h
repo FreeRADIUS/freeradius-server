@@ -229,7 +229,7 @@ extern "C" {
 			size_t elem_size; \
 			elems = slab_list->elements_per_slab * (1 + slab_list->num_children); \
 			elem_size = slab_list->elements_per_slab * (sizeof(fr_ ## _name ## _slab_element_t) + slab_list->child_pool_size); \
-			slab = talloc_zero_pooled_object(slab_list, fr_ ## _name ## _slab_t, elems, elem_size); \
+			MEM(slab = talloc_zero_pooled_object(slab_list, fr_ ## _name ## _slab_t, elems, elem_size)); \
 			fr_ ## _name ## _slab_element_init(&slab->avail); \
 			fr_ ## _name ## _slab_element_init(&slab->reserved); \
 			fr_ ## _name ## _slab_insert_head(&slab_list->avail, slab); \
