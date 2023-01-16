@@ -886,10 +886,6 @@ static void request_mux(fr_event_list_t *el,
 
 	/*
 	 *	Send the packets as one system call.
-	 *
-	 *	@todo - just dump all of the packets into h->send, as "under the hood",
-	 *	writev() calls malloc(), copies all of the data there, then write(),
-	 *	and finally free().
 	 */
 	sent = write(h->fd, h->send->read, h->send->write - h->send->read);
 	if (sent < 0) {		/* Error means no messages were sent */
@@ -926,8 +922,6 @@ static void request_mux(fr_event_list_t *el,
 	/*
 	 *	For all messages that were actually sent by writev()
 	 *	start the request timer.
-	 *
-	 *	@todo - count over _bytes_ sent, not _number of packets_ sent!
 	 */
 	for (i = 0, p = h->send->read; (i < queued) && (written < h->send->write); i++) {
 		fr_trunk_request_t	*treq = h->coalesced[i];
@@ -970,7 +964,6 @@ static void request_mux(fr_event_list_t *el,
 		h->last_sent = u->retry.start;
 		if (fr_time_lteq(h->first_sent, h->last_idle)) h->first_sent = h->last_sent;
 
-
 		if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_retry, treq) < 0) {
 			RERROR("Failed inserting retransmit timeout for connection");
 			fr_trunk_request_signal_fail(treq);
@@ -978,12 +971,11 @@ static void request_mux(fr_event_list_t *el,
 		}
 
 		/*
-		 *	If the packet doesn't get a response,
-		 *	then udp_request_free() will notice, and run conn_zombie()
+		 *	If the packet doesn't get a response, then the timer will hit
+		 *	and will retransmit.
 		 */
-		RDEBUG("Sent request.  Relying on NAS to perform more retransmissions");
-
 	}
+
 	/*
 	 *	Requests that weren't sent get re-enqueued.  Which means that they get re-encoded, but oh well.
 	 *
@@ -1193,7 +1185,6 @@ static void request_fail(request_t *request, void *preq, void *rctx,
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
 
-	// @todo - assert the request is not outstanding
 	fr_assert(u->packet && !u->ev);	/* Dealt with by request_conn_release */
 
 	fr_assert(state != FR_TRUNK_REQUEST_STATE_INIT);
@@ -1212,7 +1203,6 @@ static void request_complete(request_t *request, void *preq, void *rctx, UNUSED 
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
 
-	// @todo - assert the request is not outstanding
 	fr_assert(!u->packet && !u->ev);	/* Dealt with by request_conn_release */
 
 	r->treq = NULL;
@@ -1227,7 +1217,6 @@ static void request_free(UNUSED request_t *request, void *preq_to_free, UNUSED v
 {
 	udp_request_t		*u = talloc_get_type_abort(preq_to_free, udp_request_t);
 
-	// @todo - assert the request is not outstanding
 	fr_assert(!u->packet && !u->ev);	/* Dealt with by request_conn_release */
 
 	talloc_free(u);
@@ -1319,17 +1308,6 @@ static int _udp_result_free(udp_result_t *r)
 }
 #endif
 
-/** Free a udp_request_t
- */
-static int _udp_request_free(udp_request_t *u)
-{
-	if (u->ev) (void) fr_event_timer_delete(&u->ev);
-
-	// @todo - assert the request is not outstanding
-
-	return 0;
-}
-
 static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, UNUSED void *instance, void *thread, request_t *request)
 {
 	udp_thread_t			*t = talloc_get_type_abort(thread, udp_thread_t);
@@ -1359,7 +1337,6 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, UNUSE
 	r->rcode = RLM_MODULE_FAIL;
 
 	if (fr_trunk_request_enqueue(&treq, t->trunk, request, u, r) < 0) {
-		// @todo - assert the request is not outstanding
 		fr_assert(!u->packet);	/* Should not have been fed to the muxer */
 		fr_trunk_request_free(&treq);		/* Return to the free list */
 		talloc_free(r);
@@ -1367,8 +1344,6 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, UNUSE
 	}
 
 	r->treq = treq;	/* Remember for signalling purposes */
-
-	talloc_set_destructor(u, _udp_request_free);
 
 	*rctx_out = r;
 
