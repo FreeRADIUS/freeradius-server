@@ -1183,7 +1183,9 @@ static void request_fail(request_t *request, void *preq, void *rctx,
 			 NDEBUG_UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
 {
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
+#ifndef NDEBUG
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
+#endif
 
 	fr_assert(u->packet && !u->ev);	/* Dealt with by request_conn_release */
 
@@ -1201,7 +1203,9 @@ static void request_fail(request_t *request, void *preq, void *rctx,
 static void request_complete(request_t *request, void *preq, void *rctx, UNUSED void *uctx)
 {
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
+#ifndef NDEBUG
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
+#endif
 
 	fr_assert(!u->packet && !u->ev);	/* Dealt with by request_conn_release */
 
