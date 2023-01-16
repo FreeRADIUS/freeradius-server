@@ -431,7 +431,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 
 #define REQUIRE(_length) do { \
 	if ((end - hdr) < _length) { \
-		fr_log(log, L_DBG, file, line, "      TRUNCATED     ", hdr, end - hdr, end); \
+		print_hex(log, file, line, "      TRUNCATED     ", hdr, end - hdr, end); \
 		return; \
 	} \
     } while (0)
