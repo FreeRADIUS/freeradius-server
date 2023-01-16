@@ -201,6 +201,8 @@ static void udp_request_reset(udp_handle_t *h, udp_request_t *u)
 	h->tracking[u->id] = NULL;
 	h->active--;
 
+	if (u->ev) (void)fr_event_timer_delete(&u->ev);
+
 	/*
 	 *	We've sent 255 packets, and received all replies.  Shut the connection down.
 	 *
@@ -814,7 +816,6 @@ static void request_mux(fr_event_list_t *el,
 			 *	may not be called.
 			 */
 			udp_request_reset(h, u);
-			if (u->ev) (void) fr_event_timer_delete(&u->ev);
 			fr_trunk_request_signal_fail(treq);
 			continue;
 		}
@@ -1130,15 +1131,6 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 	if (reason == FR_TRUNK_CANCEL_REASON_REQUEUE) {
 		udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 
-		/*
-		 *	Delete the request_timeout
-		 *
-		 *	Note: There might not be a request timeout
-		 *	set in the case where the request was
-		 *	queued for sendmmsg but never actually
-		 *	sent.
-		 */
-		if (u->ev) (void) fr_event_timer_delete(&u->ev);
 		udp_request_reset(h, u);
 	}
 
@@ -1157,7 +1149,6 @@ static void request_conn_release(fr_connection_t *conn, void *preq_to_reset, UNU
 	udp_request_t		*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 
-	if (u->ev) (void)fr_event_timer_delete(&u->ev);
 	if (u->packet) udp_request_reset(h, u);
 
 	/*
