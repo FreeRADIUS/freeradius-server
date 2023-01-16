@@ -1179,7 +1179,7 @@ static void request_conn_release(fr_connection_t *conn, void *preq_to_reset, UNU
 /** Write out a canned failure
  *
  */
-static void request_fail(request_t *request, void *preq, void *rctx,
+static void request_fail(request_t *request, NDEBUG_UNUSED void *preq, void *rctx,
 			 NDEBUG_UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
 {
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
@@ -1200,7 +1200,7 @@ static void request_fail(request_t *request, void *preq, void *rctx,
 /** Response has already been written to the rctx at this point
  *
  */
-static void request_complete(request_t *request, void *preq, void *rctx, UNUSED void *uctx)
+static void request_complete(request_t *request, NDEBUG_UNUSED void *preq, void *rctx, UNUSED void *uctx)
 {
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 #ifndef NDEBUG
