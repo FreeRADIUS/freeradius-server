@@ -281,7 +281,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 	if (inst->header && (offset == 0)) {
 		char header[4096];
 		if (radius_xlat(header, sizeof(header) - 1, request, inst->header, linelog_escape_func, NULL) < 0) {
-			error:
+		error:
 			exfile_close(inst->ef, fd);
 			return RLM_MODULE_FAIL;
 		}
