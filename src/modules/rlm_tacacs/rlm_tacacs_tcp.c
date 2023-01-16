@@ -1003,8 +1003,6 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 		uint8_t			code = 0;
 		fr_pair_list_t		reply;
 
-		fr_time_t		now;
-
 		/*
 		 *	Ensure that we can read at least one max-sized packet.
 		 *
@@ -1118,7 +1116,7 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 		/*
 		 *	Only valid packets are processed.
 		 */
-		h->last_reply = now = fr_time();
+		h->last_reply = fr_time();
 
 		treq->request->reply->code = code;
 
