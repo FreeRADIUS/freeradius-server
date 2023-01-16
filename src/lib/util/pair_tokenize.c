@@ -201,7 +201,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 		return -(in - start);
 	}
 
-	while ((isspace((int) *p)) && (p < end)) p++;
+	while ((isspace((uint8_t) *p)) && (p < end)) p++;
 
 	if (p >= end) {
 		fr_strerror_const("No operator found in the input buffer");
@@ -218,7 +218,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	}
 	p += slen;
 
-	while ((isspace((int) *p)) && (p < end)) p++;
+	while ((isspace((uint8_t) *p)) && (p < end)) p++;
 
 	if (p >= end) {
 		fr_strerror_const("No value found in the input buffer");
@@ -246,7 +246,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 		/*
 		 *	Skip bare words, but end at comma or end-of-buffer.
 		 */
-		while (!isspace((int) *p) && (*p != ',') && (p < end)) p++;
+		while (!isspace((uint8_t) *p) && (*p != ',') && (p < end)) p++;
 
 		value_len = p - value;
 	}
@@ -379,7 +379,7 @@ ssize_t fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t in
 	ssize_t slen;
 	fr_dict_attr_t const *da;
 
-	while (isspace((int) *p) && (p < end)) p++;
+	while (isspace((uint8_t) *p) && (p < end)) p++;
 	if (p >= end) return end - in;
 
 	/*

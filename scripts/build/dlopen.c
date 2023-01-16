@@ -173,7 +173,7 @@ static void *check_path(char *filename, char const *name, size_t namelen,
 	void *handle;
 
 	p = path;
-	while (isspace((int) *p)) p++; /* GNU make is fanatical about spaces */
+	while (isspace((uint8_t) *p)) p++; /* GNU make is fanatical about spaces */
 
 	len = strlen(p);
 	if ((len + 1 + namelen + 1) > PATH_MAX) return NULL;
@@ -525,7 +525,7 @@ static char *make_dlsym(__attribute__((unused)) char const *nm, __attribute__((u
 	if (!lib) return NULL;
 
 	p = argv[1];
-	while (isspace((int) *p)) p++;
+	while (isspace((uint8_t) *p)) p++;
 
 	symbol = dlsym(lib->handle, p);
 	if (!symbol) return NULL;
@@ -602,8 +602,8 @@ static void ad_have_feature(char const *symbol)
 	*p = '\0';	/* gets strcmp'd later */
 
 	for (p = def->name + 5; *p != '\0'; p++) {
-		if (islower((int) *p)) {
-			*p = toupper((int) *p);
+		if (islower((uint8_t) *p)) {
+			*p = toupper((uint8_t) *p);
 
 		} else if ((*p == '/') || (*p == '.')) {
 			*p = '_';
@@ -672,7 +672,7 @@ static void ad_update_variable(char const *name, char *value)
 
 	p = strstr(old, value);
 	if (p) {
-		if (!p[value_len] || isspace((int) p[value_len])) {
+		if (!p[value_len] || isspace((uint8_t) p[value_len])) {
 			gmk_free(old);
 			return;
 		}
@@ -800,7 +800,7 @@ static char *make_ad_search_libs(__attribute__((unused)) char const *nm, unsigne
 	 *	Get the symbol name
 	 */
 	name = argv[0];
-	while (isspace((int) *name)) name++;
+	while (isspace((uint8_t) *name)) name++;
 
 	DEBUG("Searching for symbol %s", name);
 
@@ -831,7 +831,7 @@ static char *make_ad_search_libs(__attribute__((unused)) char const *nm, unsigne
 			 */
 			p = argv[i];
 			while (p < r) {
-				while (isspace((int) *p)) p++;
+				while (isspace((uint8_t) *p)) p++;
 
 				if ((p[0] == '-') && (p[1] == 'L')) {
 					has_dash_l = true;
@@ -840,14 +840,14 @@ static char *make_ad_search_libs(__attribute__((unused)) char const *nm, unsigne
 					 *	-L  /path/to/foo is OK
 					 */
 					q = p + 2;
-					while (isspace((int) *q)) q++;
+					while (isspace((uint8_t) *q)) q++;
 
 					/*
 					 *	@todo - deal with
 					 *	quotes and backslashes
 					 *	in file names.
 					 */
-					while (*q && !isspace((int) *q)) q++;
+					while (*q && !isspace((uint8_t) *q)) q++;
 
 					*q = '\0';
 
@@ -867,7 +867,7 @@ static char *make_ad_search_libs(__attribute__((unused)) char const *nm, unsigne
 				/*
 				 *	The argument isn't -L foo, skip it.
 				 */
-				while (*p && !isspace((int) *p)) p++;
+				while (*p && !isspace((uint8_t) *p)) p++;
 			}
 
 			/*
@@ -1012,7 +1012,7 @@ static char *make_ad_dump_defines(__attribute__((unused)) char const *nm, unsign
 	FILE *fp;
 	unsigned int i;
 
-	if ((argc == 0) || !*argv[0] || isspace((int) *argv[0])) {
+	if ((argc == 0) || !*argv[0] || isspace((uint8_t) *argv[0])) {
 		/*
 		 *	Print Makefile rules to redefine the variables we've created.
 		 */
@@ -1262,7 +1262,7 @@ static char *next_word(char **in)
 
 	p = *in;
 
-	while (*p && !isspace((int) *p)) p++;
+	while (*p && !isspace((uint8_t) *p)) p++;
 	if (!*p) {
 		*in = NULL;
 	} else {

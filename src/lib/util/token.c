@@ -324,7 +324,7 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 		 *	comma.
 		 */
 		if (!quote) {
-			if (isspace((int) *p)) break;
+			if (isspace((uint8_t) *p)) break;
 
 
 			if (tok) {
@@ -537,7 +537,7 @@ ssize_t fr_skip_string(char const *start, char const *end)
 		/*
 		 *	\r or \n, etc.
 		 */
-		if (!isdigit((int) p[1])) {
+		if (!isdigit((uint8_t) p[1])) {
 			p += 2;
 			continue;
 		}
@@ -553,7 +553,7 @@ ssize_t fr_skip_string(char const *start, char const *end)
 
 		if (end && ((p + 4) >= end)) goto fail;
 
-		if (!isdigit((int) p[2]) || !isdigit((int) p[3])) {
+		if (!isdigit((uint8_t) p[2]) || !isdigit((uint8_t) p[3])) {
 			fr_strerror_const("Invalid octal escape");
 			return -(p - start);
 		}

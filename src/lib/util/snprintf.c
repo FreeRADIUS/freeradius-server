@@ -316,7 +316,7 @@ double d;
 		PUT_CHAR('0', p); PUT_CHAR(*p->pf, p);
 	}
 	while (*tmp) { /* hexa */
-		PUT_CHAR((*p->pf == 'X' ? toupper(*tmp) : *tmp), p);
+		PUT_CHAR((*p->pf == 'X' ? toupper((uint8_t) *tmp) : *tmp), p);
 		tmp++;
 	}
 	PAD_LEFT(p);
@@ -485,7 +485,7 @@ struct DATA * p;
 			case '1': case '2': case '3':
 			case '4': case '5': case '6':
 			case '7': case '8': case '9':		 /* gob all the digits */
-	for (i = 0; isdigit(*s); i++, s++)
+	for (i = 0; isdigit((uint8_t) *s); i++, s++)
 		if (i < MAX_FIELD/2 - 1)
 			number[i] = *s;
 	number[i] = '\0';

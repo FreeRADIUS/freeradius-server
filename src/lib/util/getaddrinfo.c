@@ -289,7 +289,7 @@ int getaddrinfo(char const *hostname, char const *servname, struct addrinfo cons
 	}
 
 	if (servname) {
-		if (isdigit((int)*servname)) {
+		if (isdigit((uint8_t)*servname)) {
 			port = htons(atoi(servname));
 		} else {
 			struct		servent *se;

@@ -3116,7 +3116,7 @@ int dict_dlopen(fr_dict_t *dict, char const *name)
 	if (!name) return 0;
 
 	module_name = talloc_typed_asprintf(NULL, "libfreeradius-%s", name);
-	for (p = module_name, q = p + talloc_array_length(p) - 1; p < q; p++) *p = tolower(*p);
+	for (p = module_name, q = p + talloc_array_length(p) - 1; p < q; p++) *p = tolower((uint8_t) *p);
 
 	/*
 	 *	Pass in dict as the uctx so that we can get at it in

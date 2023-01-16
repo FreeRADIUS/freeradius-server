@@ -159,8 +159,8 @@ static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		/* Is a = char */
 
 		if (((end - p) < 2) ||
-		    !(c1 = memchr(hextab, tolower(*(p + 1)), 16)) ||
-		    !(c2 = memchr(hextab, tolower(*(p + 2)), 16))) goto next;
+		    !(c1 = memchr(hextab, tolower((uint8_t) *(p + 1)), 16)) ||
+		    !(c2 = memchr(hextab, tolower((uint8_t) *(p + 2)), 16))) goto next;
 		c3 = ((c1 - hextab) << 4) + (c2 - hextab);
 
 		(void) fr_sbuff_in_char(&sbuff, c3);

@@ -345,7 +345,7 @@ redo:
 		/*
 		 *	Skip attribute name
 		 */
-		while ((p < end) && !isspace(*p)) p++;
+		while ((p < end) && !isspace((uint8_t) *p)) p++;
 
 		/*
 		 *	Not enough room for " = ", skip this sanity

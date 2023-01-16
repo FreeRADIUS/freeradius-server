@@ -494,7 +494,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 		/*
 		 *	Check for parameter field
 		 */
-		for (q = p; isdigit(*q); q++);
+		for (q = p; isdigit((uint8_t) *q); q++);
 		if ((q != p) && (*q == '$')) {
 			p = q + 1;
 		}
@@ -536,7 +536,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			(void) va_arg(ap_q, int);
 			p++;
 		} else {
-			for (q = p; isdigit(*q); q++);
+			for (q = p; isdigit((uint8_t) *q); q++);
 			p = q;
 		}
 

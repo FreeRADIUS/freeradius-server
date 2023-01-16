@@ -670,7 +670,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 				break;
 			}
 
-			if (isspace((int) *q)) {
+			if (isspace((uint8_t) *q)) {
 				cf_log_err(conf, "Field %d name cannot have spaces.",
 					   i + 1);
 				return -1;

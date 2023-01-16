@@ -217,7 +217,7 @@ char *fr_trim(char const *str, size_t size)
 	if (!str || !size) return NULL;
 
 	memcpy(&q, &str, sizeof(q));
-	for (q = q + size; q > str && isspace(*q); q--);
+	for (q = q + size; q > str && isspace((uint8_t) *q); q--);
 
 	return q;
 }

@@ -454,8 +454,8 @@ size_t tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_li
 	{
 		char const *d = q + 1;
 
-		if (isdigit((int) *d)) {
-			while (isdigit((int) *d)) d++;
+		if (isdigit((uint8_t) *d)) {
+			while (isdigit((uint8_t) *d)) d++;
 
 			if (!fr_dict_attr_allowed_chars[(uint8_t) *d]) {
 				*out = def;
@@ -5083,7 +5083,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 	*type = T_INVALID;
 	if (castda) *castda = NULL;
 
-	while (isspace((int) *p) && (p < end)) p++;
+	while (isspace((uint8_t) *p) && (p < end)) p++;
 	if (p >= end) return p - in;
 
 	if (*p == '<') {
@@ -5099,7 +5099,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		p++;
 		fr_skip_whitespace(p);
 
-		for (q = p; *q && !isspace((int) *q) && (*q != '>'); q++) {
+		for (q = p; *q && !isspace((uint8_t) *q) && (*q != '>'); q++) {
 			/* nothing */
 		}
 
@@ -5320,7 +5320,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		 *	Allow *most* things.  But stop on spaces and special characters.
 		 */
 		while (*p) {
-			if (isspace((int) *p)) {
+			if (isspace((uint8_t) *p)) {
 				break;
 			}
 

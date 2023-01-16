@@ -976,7 +976,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'r':
-			if (!isdigit((int) *optarg)) usage();
+			if (!isdigit((uint8_t) *optarg)) usage();
 			conf->retries = atoi(optarg);
 			if ((conf->retries == 0) || (conf->retries > 1000)) usage();
 			break;
@@ -1065,7 +1065,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Get the request type
 	 */
-	if (!isdigit((int) argv[2][0])) {
+	if (!isdigit((uint8_t) argv[2][0])) {
 		int code;
 
 		code = fr_table_value_by_str(fr_request_types, argv[2], -1);

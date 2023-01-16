@@ -125,12 +125,12 @@ static int find_next_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 
 	fr_assert(inst->reset != NULL);
 
-	if (isdigit((int) inst->reset[0])){
+	if (isdigit((uint8_t) inst->reset[0])){
 		len = strlen(inst->reset);
 		if (len == 0)
 			return -1;
 		last = inst->reset[len - 1];
-		if (!isalpha((int) last))
+		if (!isalpha((uint8_t) last))
 			last = 'd';
 		num = atoi(inst->reset);
 		DEBUG("num=%d, last=%c",num,last);
@@ -189,12 +189,12 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 
 	fr_assert(inst->reset != NULL);
 
-	if (isdigit((int) inst->reset[0])){
+	if (isdigit((uint8_t) inst->reset[0])){
 		len = strlen(inst->reset);
 		if (len == 0)
 			return -1;
 		last = inst->reset[len - 1];
-		if (!isalpha((int) last))
+		if (!isalpha((uint8_t) last))
 			last = 'd';
 		num = atoi(inst->reset);
 		DEBUG("num=%d, last=%c", num, last);

@@ -537,7 +537,7 @@ static ssize_t cmd_copy(char const *cmd)
 	for (p += len;
 	     p > cmd_buffer;
 	     p--) {
-		if (!isspace((int) p[-1])) break;
+		if (!isspace((uint8_t) p[-1])) break;
 		p[-1] = '\0';
 	}
 
@@ -1224,7 +1224,7 @@ int main(int argc, char **argv)
 		 *	modifies it's behavior.  These commands MUST
 		 */
 		if (!stack_depth && (strncmp(line, "local", 5) == 0)) {
-			if (!isspace((int) line[5])) {
+			if (!isspace((uint8_t) line[5])) {
 				fprintf(stderr, "'local' commands MUST be specified all on one line");
 				goto next;
 			}

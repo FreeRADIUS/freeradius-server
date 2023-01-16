@@ -1758,27 +1758,27 @@ static inline bool _fr_marker_is_char(fr_sbuff_marker_t *marker, char *p, char c
 		 fr_sbuff_marker_t *	: _fr_marker_is_ ## _name((fr_sbuff_marker_t *)(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker)) \
 	)
 
-SBUFF_IS_FUNC(digit, isdigit(*p))
+SBUFF_IS_FUNC(digit, isdigit((uint8_t) *p))
 #define fr_sbuff_is_digit(_sbuff_or_marker) \
 	SBUFF_IS_GENERIC(_sbuff_or_marker, digit)
 
-SBUFF_IS_FUNC(upper, isupper(*p))
+SBUFF_IS_FUNC(upper, isupper((uint8_t) *p))
 #define fr_sbuff_is_upper(_sbuff_or_marker) \
 	SBUFF_IS_GENERIC(_sbuff_or_marker, upper)
 
-SBUFF_IS_FUNC(lower, islower(*p))
+SBUFF_IS_FUNC(lower, islower((uint8_t) *p))
 #define fr_sbuff_is_lower(_sbuff_or_marker) \
 	SBUFF_IS_GENERIC(_sbuff_or_marker, lower)
 
-SBUFF_IS_FUNC(alpha, isalpha(*p))
+SBUFF_IS_FUNC(alpha, isalpha((uint8_t) *p))
 #define fr_sbuff_is_alpha(_sbuff_or_marker) \
 	SBUFF_IS_GENERIC(_sbuff_or_marker, alpha)
 
-SBUFF_IS_FUNC(space, isspace(*p))
+SBUFF_IS_FUNC(space, isspace((uint8_t) *p))
 #define fr_sbuff_is_space(_sbuff_or_marker) \
 	SBUFF_IS_GENERIC(_sbuff_or_marker, space)
 
-SBUFF_IS_FUNC(hex, isxdigit(*p))
+SBUFF_IS_FUNC(hex, isxdigit((uint8_t) *p))
 #define fr_sbuff_is_hex(_sbuff_or_marker) \
 	SBUFF_IS_GENERIC(_sbuff_or_marker, hex)
 

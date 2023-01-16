@@ -306,7 +306,7 @@ static int read_string(rlm_isc_dhcp_tokenizer_t *state)
 
 		if (*p == '"') {
 			p++;
-			if (isspace((int) *p)) {
+			if (isspace((uint8_t) *p)) {
 				if (skip_spaces(state, p) < 0) return -1;
 				break;
 			}
@@ -368,7 +368,7 @@ redo:
 	 *	or semi-colon.  We skip those characters
 	 *	before looking for the next token.
 	 */
-	while (isspace((int) *state->ptr) || (*state->ptr == ';') || (*state->ptr == ',')) state->ptr++;
+	while (isspace((uint8_t) *state->ptr) || (*state->ptr == ';') || (*state->ptr == ',')) state->ptr++;
 
 	if (!*state->ptr) goto redo;
 
@@ -446,7 +446,7 @@ redo:
 		/*
 		 *	Whitespace, we're done.
 		 */
-		if (isspace((int) *p)) {
+		if (isspace((uint8_t) *p)) {
 			if (skip_spaces(state, p) < 0) return -1;
 			break;
 		}
@@ -548,13 +548,13 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	 *	Remember the next command.
 	 */
 	next = q = cmd;
-	while (*next && !isspace((int) *next) && (*next != ',')) next++;
+	while (*next && !isspace((uint8_t) *next) && (*next != ',')) next++;
 	if (!*next) semicolon = YES_SEMICOLON;
 
 	/*
 	 *	Matching an in-line word.
 	 */
-	if (islower((int) *q)) {
+	if (islower((uint8_t) *q)) {
 		ret = read_token(state, T_BARE_WORD, semicolon, false);
 		if (ret <= 0) return -1;
 
@@ -583,7 +583,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 		 *	Matched all of this word in 'q', but there are
 		 *	more words after this one..  Recurse.
 		 */
-		if (isspace((int) *q)) {
+		if (isspace((uint8_t) *q)) {
 			return match_subword(state, next, info);
 		}
 
@@ -621,9 +621,9 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	 *	multiple fields.
 	 */
 	p = type_name;
-	while (*q && !isspace((int) *q) && (*q != ',')) {
+	while (*q && !isspace((uint8_t) *q) && (*q != ',')) {
 		if ((p - type_name) >= (int) sizeof(type_name)) return -1; /* internal error */
-		*(p++) = tolower((int) *(q++));
+		*(p++) = tolower((uint8_t) *(q++));
 	}
 	*p = '\0';
 
@@ -1200,7 +1200,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 			/*
 			 *	The token exactly matches the command.
 			 */
-			if (!c || isspace((int) c)) {
+			if (!c || isspace((uint8_t) c)) {
 				q = &(tokens[half].name[state->token_len]);
 				break;
 			}
@@ -1293,7 +1293,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	 *	There's more to this command,
 	 *	go parse that, too.
 	 */
-	if (isspace((int) *q)) {
+	if (isspace((uint8_t) *q)) {
 		if (state->saw_semicolon) goto unexpected;
 
 		ret = match_subword(state, q, info);

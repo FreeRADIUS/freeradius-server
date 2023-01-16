@@ -1172,8 +1172,8 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	} \
 	if ((errno == ERANGE) && (num == LLONG_MIN)) goto underflow; \
 	if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
-		if (isdigit(*a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
-		    ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
+		if (isdigit((uint8_t) *a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
+		    ((tolower((uint8_t) *a_end) >= 'a') && (tolower((uint8_t) *a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 			*out = (_type)(_max); \
 			FR_SBUFF_ERROR_RETURN(&our_in); \
@@ -1236,8 +1236,8 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	} \
 	if (((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == ULLONG_MAX))) goto overflow; \
 	if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
-		if (isdigit(*a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
-		    ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
+		if (isdigit((uint8_t) *a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
+		    ((tolower((uint8_t) *a_end) >= 'a') && (tolower((uint8_t) *a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 			*out = (_type)(_max); \
 			FR_SBUFF_ERROR_RETURN(&our_in); \
@@ -1719,7 +1719,7 @@ size_t fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t n
 	end = p + needle_len;
 
 	for (p = sbuff->p, n_p = needle; p < end; p++, n_p++) {
-		if (tolower(*p) != tolower(*n_p)) return 0;
+		if (tolower((uint8_t) *p) != tolower((uint8_t) *n_p)) return 0;
 	}
 
 	return fr_sbuff_advance(sbuff, needle_len);
@@ -2023,7 +2023,7 @@ char *fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, size_t len, char const *needle,
 		if (fr_sbuff_extend_lowat(NULL, &our_sbuff, needle_len) < needle_len) break;
 
 		for (p = our_sbuff.p, n_p = needle, end = our_sbuff.p + needle_len;
-		     (p < end) && (tolower(*p) == tolower(*n_p));
+		     (p < end) && (tolower((uint8_t) *p) == tolower((uint8_t) *n_p));
 		     p++, n_p++);
 		if (p == end) {
 			(void)fr_sbuff_set(sbuff, our_sbuff.p);

@@ -214,8 +214,8 @@ static bool fr_command_valid_syntax(fr_cmd_argv_t *argv)
 	}
 
 	for (p = argv->name; *p != '\0'; p++) {
-		if (isupper((int) *p)) uppercase = true;
-		if (islower((int) *p)) lowercase = true;
+		if (isupper((uint8_t) *p)) uppercase = true;
+		if (islower((uint8_t) *p)) lowercase = true;
 	}
 
 	/*
@@ -1361,7 +1361,7 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 				p++; \
 				q++; \
 			} } while (0)
-#define MATCHED_NAME	((!*p || isspace((int) *p)) && !*q)
+#define MATCHED_NAME	((!*p || isspace((uint8_t) *p)) && !*q)
 #define TOO_FAR		(*p && (*q > *p))
 #define MATCHED_START	((text + start) >= word) && ((text + start) <= p)
 
@@ -2546,7 +2546,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 					 *	Tell the caller the
 					 *	full name.
 					 */
-					if (!*p || (isspace((int) *p))) {
+					if (!*p || (isspace((uint8_t) *p))) {
 					expand_name:
 						expansions[count] = strdup(argv->name);
 						count++;
@@ -2624,7 +2624,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 		 *	matching all of the name.  The input is a
 		 *	PARTIAL match.  Go fill it in.
 		 */
-		if (!*p || isspace((int) *p)) {
+		if (!*p || isspace((uint8_t) *p)) {
 			goto expand_name;
 		}
 
@@ -2699,7 +2699,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 				 *	Matched all of the input to
 				 *	part of cmd->name.
 				 */
-				if (!*p || isspace((int) *p)) {
+				if (!*p || isspace((uint8_t) *p)) {
 					expansions[count] = strdup(cmd->name);
 					count++;
 				}

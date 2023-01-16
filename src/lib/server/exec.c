@@ -123,11 +123,11 @@ static CC_HINT(nonnull(1,3,4,5)) int exec_pair_to_env(char **env_p, size_t env_l
 		 *	for the first char.
 		 */
 		p = fr_sbuff_current(&env_m[i]);
-		if (isdigit((int)*p)) *p++ = '_';
+		if (isdigit((uint8_t)*p)) *p++ = '_';
 		for (; p < fr_sbuff_current(&sbuff); p++) {
-			if (isalpha((int)*p)) *p = toupper(*p);
+			if (isalpha((uint8_t)*p)) *p = toupper((uint8_t) *p);
 			else if (*p == '-') *p = '_';
-			else if (isdigit((int)*p)) continue;
+			else if (isdigit((uint8_t)*p)) continue;
 			else *p = '_';
 		}
 

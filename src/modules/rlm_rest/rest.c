@@ -1837,7 +1837,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 			if (!content_type_set && (strncasecmp(header->vp_strvalue, "content-type:", sizeof("content-type:") - 1) == 0)) {
 				char const *content_type = header->vp_strvalue + (sizeof("content-type:") - 1);
 				
-				while (isspace((int)*content_type)) content_type++;
+				while (isspace((uint8_t)*content_type)) content_type++;
 				
 				RDEBUG3("Request body content-type provided as \"%s\"", content_type);
 				

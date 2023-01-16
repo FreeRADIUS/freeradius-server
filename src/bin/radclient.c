@@ -1467,7 +1467,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'c':
-			if (!isdigit((int) *optarg)) usage();
+			if (!isdigit((uint8_t) *optarg)) usage();
 
 			resend_count = atoi(optarg);
 
@@ -1554,7 +1554,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'i':
-			if (!isdigit((int) *optarg))
+			if (!isdigit((uint8_t) *optarg))
 				usage();
 			last_used_id = atoi(optarg);
 			if ((last_used_id < 0) || (last_used_id > 255)) {
@@ -1594,7 +1594,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'r':
-			if (!isdigit((int) *optarg)) usage();
+			if (!isdigit((uint8_t) *optarg)) usage();
 			retries = atoi(optarg);
 			if ((retries == 0) || (retries > 1000)) usage();
 			break;
@@ -1699,7 +1699,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Get the request type
 	 */
-	if (!isdigit((int) argv[2][0])) {
+	if (!isdigit((uint8_t) argv[2][0])) {
 		packet_code = fr_table_value_by_str(fr_request_types, argv[2], -2);
 		if (packet_code == -2) {
 			ERROR("Unrecognised request type \"%s\"", argv[2]);

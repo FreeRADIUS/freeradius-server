@@ -63,8 +63,8 @@ static void exec_pair_to_env_legacy(request_t *request, fr_pair_list_t *input_pa
 			for (p = buffer; *p != '='; p++) {
 				if (*p == '-') {
 					*p = '_';
-				} else if (isalpha((int) *p)) {
-					*p = toupper(*p);
+				} else if (isalpha((uint8_t) *p)) {
+					*p = toupper((uint8_t) *p);
 				}
 			}
 		}

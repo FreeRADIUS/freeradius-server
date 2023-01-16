@@ -3252,7 +3252,7 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	token = cf_section_name2_quote(cs);
 
-	if ((token == T_BARE_WORD) && isdigit((int) *name2)) {
+	if ((token == T_BARE_WORD) && isdigit((uint8_t) *name2)) {
 		if (fr_time_delta_from_str(&timeout, name2, strlen(name2), FR_TIME_RES_SEC) < 0) {
 			cf_log_err(cs, "Failed parsing time delta %s - %s",
 				   name2, fr_strerror());

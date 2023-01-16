@@ -56,26 +56,26 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
  *
  * @param[in,out] _p	string to skip over.
  */
-#define fr_skip_whitespace(_p) while(isspace((int)*(_p))) _p++
+#define fr_skip_whitespace(_p) while(isspace((uint8_t)*(_p))) _p++
 
 /** Skip whitespace, stopping at end ('\\t', '\\n', '\\v', '\\f', '\\r', ' ')
  *
  * @param[in,out] _p	string to skip over.
  * @param[in] _e	pointer to end of string.
  */
-#define fr_bskip_whitespace(_p, _e) while((_p < _e) && isspace((int)*(_p))) _p++
+#define fr_bskip_whitespace(_p, _e) while((_p < _e) && isspace((uint8_t)*(_p))) _p++
 
 /** Skip everything that's not whitespace ('\\t', '\\n', '\\v', '\\f', '\\r', ' ')
  *
  * @param[in,out] _p	string to skip over.
  */
-#define fr_skip_not_whitespace(_p) while(*_p && !isspace((int)*(_p))) _p++
+#define fr_skip_not_whitespace(_p) while(*_p && !isspace((uint8_t)*(_p))) _p++
 
 /** Zero out any whitespace with nul bytes
  *
  * @param[in,out] _p	string to process
  */
-#define fr_zero_whitespace(_p) 	while (isspace((int) *_p)) *(_p++) = '\0'
+#define fr_zero_whitespace(_p) 	while (isspace((uint8_t) *_p)) *(_p++) = '\0'
 
 /** Check whether the string is all whitespace
  *
@@ -89,7 +89,7 @@ static inline bool is_whitespace(char const *value)
 	if (*value == '\0') return false;	/* clang analyzer doesn't seem to know what isspace does */
 #endif
 	do {
-		if (!isspace(*value)) return false;
+		if (!isspace((uint8_t) *value)) return false;
 	} while (*++value);
 
 	return true;
@@ -131,7 +131,7 @@ static inline bool is_integer(char const *value)
 	if (*value == '\0') return false;	/* clang analyzer doesn't seem to know what isdigit does */
 #endif
 	do {
-		if (!isdigit(*value)) return false;
+		if (!isdigit((uint8_t) *value)) return false;
 	} while (*++value);
 
 	return true;

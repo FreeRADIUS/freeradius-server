@@ -825,7 +825,7 @@ static int get_part(char **str, int *date, int min, int max, char term, char con
 {
 	char *p = *str;
 
-	if (!isdigit((int) *p) || !isdigit((int) p[1])) return -1;
+	if (!isdigit((uint8_t) *p) || !isdigit((uint8_t) p[1])) return -1;
 	*date = (p[0] - '0') * 10  + (p[1] - '0');
 
 	if (*date < min) {
@@ -1083,7 +1083,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 	 */
 	tm->tm_mon = 12;
 	for (i = 0; i < 3; i++) {
-		if (isalpha((int) *f[i])) {
+		if (isalpha((uint8_t) *f[i])) {
 			int j;
 
 			/*

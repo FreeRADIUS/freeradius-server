@@ -696,7 +696,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 				for (q = c->data.vpt->name;
 				     *q != '\0';
 				     q++) {
-					if (!isdigit((int) *q)) {
+					if (!isdigit((uint8_t) *q)) {
 						break;
 					}
 					if (*q != '0') zeros = false;

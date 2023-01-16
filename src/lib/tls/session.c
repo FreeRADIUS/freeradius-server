@@ -292,7 +292,7 @@ static bool session_psk_identity_is_safe(const char *identity)
 	if (!identity) return true;
 
 	while ((c = *(identity++)) != '\0') {
-		if (isalpha((int) c) || isdigit((int) c) || isspace((int) c) ||
+		if (isalpha((uint8_t) c) || isdigit((uint8_t) c) || isspace((uint8_t) c) ||
 		    (c == '@') || (c == '-') || (c == '_') || (c == '.')) {
 			continue;
 		}
@@ -1163,7 +1163,7 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 		 *	Seems to print info in a tabular format.
 		 */
 		while (*p != '\0') {
-			if (isspace(*p)) {
+			if (isspace((uint8_t) *p)) {
 				*q++ = *p;
 				fr_skip_whitespace(p);
 				continue;

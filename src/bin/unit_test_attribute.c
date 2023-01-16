@@ -567,14 +567,14 @@ static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 
 		if (!*p) break;
 
-		c1 = memchr(hextab, tolower((int) *p++), sizeof(hextab));
+		c1 = memchr(hextab, tolower((uint8_t) *p++), sizeof(hextab));
 		if (!c1) {
 		bad_input:
 			fr_strerror_printf("Invalid hex data starting at \"%s\"", p);
 			return -(p - in);
 		}
 
-		c2 = memchr(hextab, tolower((int)*p++), sizeof(hextab));
+		c2 = memchr(hextab, tolower((uint8_t)*p++), sizeof(hextab));
 		if (!c2) goto bad_input;
 
 		*out_p++ = ((c1 - hextab) << 4) + (c2 - hextab);
@@ -588,7 +588,7 @@ static ssize_t encode_data(char *p, uint8_t *output, size_t outlen)
 {
 	ssize_t slen;
 
-	if (!isspace((int) *p)) {
+	if (!isspace((uint8_t) *p)) {
 		ERROR("Invalid character following attribute definition");
 		return 0;
 	}
@@ -1376,7 +1376,7 @@ static size_t command_radmin_add(command_result_t *result, command_file_ctx_t *c
 	name = p;
 	fr_skip_whitespace(p);
 
-	if (isspace(*p)) {
+	if (isspace((uint8_t) *p)) {
 		*p = '\0';
 		p++;
 	}

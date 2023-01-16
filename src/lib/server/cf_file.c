@@ -869,7 +869,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	 *	Grab all of the non-whitespace text.
 	 */
 	value = ptr;
-	while (*ptr && !isspace((int) *ptr)) ptr++;
+	while (*ptr && !isspace((uint8_t) *ptr)) ptr++;
 
 	/*
 	 *	We're OK with whitespace after the filename.
@@ -1066,8 +1066,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			 *	Check for valid characters
 			 */
 			for (p = dp->d_name; *p != '\0'; p++) {
-				if (isalpha((int)*p) ||
-				    isdigit((int)*p) ||
+				if (isalpha((uint8_t)*p) ||
+				    isdigit((uint8_t)*p) ||
 				    (*p == '-') ||
 				    (*p == '_') ||
 				    (*p == '.')) continue;
@@ -1333,7 +1333,7 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool const 
 	 *	Keep parsing the condition until we hit EOS or EOL.
 	 */
 	while ((end && (p < end)) || *p) {
-		if (isspace((int) *p)) {
+		if (isspace((uint8_t) *p)) {
 			p++;
 			continue;
 		}
@@ -1595,7 +1595,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	name2 = buff[2];
 
 	while (slen > 0) {
-		if (!isspace((int) buff[2][slen])) break;
+		if (!isspace((uint8_t) buff[2][slen])) break;
 
 		buff[2][slen] = '\0';
 		slen--;
@@ -2119,7 +2119,7 @@ static int parse_input(cf_stack_t *stack)
 			return -1;
 		}
 
-	} else if ((name1_token == T_BARE_WORD) && isalpha((int) *buff[1])) {
+	} else if ((name1_token == T_BARE_WORD) && isalpha((uint8_t) *buff[1])) {
 		fr_type_t type;
 
 		/*
@@ -2219,7 +2219,7 @@ check_for_eol:
 	 *	it, so oh well.
 	 */
 	if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || ((*ptr == '&') && (ptr[1] != '=')) ||
-	    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((int) *ptr) || isdigit((int) *ptr)) {
+	    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((uint8_t) *ptr) || isdigit((uint8_t) *ptr)) {
 		if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			return -1;

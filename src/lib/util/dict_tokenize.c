@@ -125,7 +125,7 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 
 		if (*str == '.') break;
 
-		c = memchr(tab, tolower((int)*str), base);
+		c = memchr(tab, tolower((uint8_t)*str), base);
 		if (!c) return 0;
 
 		ret *= base;
@@ -1562,9 +1562,9 @@ static int dict_read_parse_format(char const *format, int *ptype, int *plength, 
 
 	p = format + 7;
 	if ((strlen(p) < 3) ||
-	    !isdigit((int)p[0]) ||
+	    !isdigit((uint8_t)p[0]) ||
 	    (p[1] != ',') ||
-	    !isdigit((int)p[2]) ||
+	    !isdigit((uint8_t)p[2]) ||
 	    (p[3] && (p[3] != ','))) {
 		fr_strerror_printf("Invalid format for VENDOR.  Expected text like '1,1', got '%s'",
 				   p);

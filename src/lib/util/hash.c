@@ -877,7 +877,7 @@ uint32_t fr_hash_case_string(char const *p)
 
 	while (*p) {
 		hash *= FNV_MAGIC_PRIME;
-		hash ^= (uint32_t) (tolower(*p++));
+		hash ^= (uint32_t) (tolower((uint8_t) *p++));
 	}
 
 	return hash;
