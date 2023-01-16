@@ -36,7 +36,7 @@ TMP_BUILD_DIR="${BUILD_DIR}"
 : ${TMP_BUILD_DIR:="$(mktemp -d -t eapol_test.XXXXX)"}
 : ${HOSTAPD_DIR:="${TMP_BUILD_DIR}/hostapd"}
 : ${HOSTAPD_REPO:="http://w1.fi/hostap.git"}
-: ${HOSTAPD_GIT_TAG:="hostap_2_8"}
+: ${HOSTAPD_GIT_TAG:="hostap_2_10"}
 : ${WPA_SUPPLICANT_DIR:="${HOSTAPD_DIR}/wpa_supplicant"}
 
 : ${MAKE:=make}

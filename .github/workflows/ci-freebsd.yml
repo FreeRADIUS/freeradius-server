@@ -10,7 +10,7 @@ on:
 
 env:
   HOSTAPD_BUILD_DIR: eapol_test.ci
-  HOSTAPD_GIT_TAG: hostap_2_9
+  HOSTAPD_GIT_TAG: hostap_2_10
 
 jobs:
   freebsd-build:

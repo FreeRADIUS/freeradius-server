@@ -69,7 +69,7 @@ jobs:
 
     env:
       HOSTAPD_BUILD_DIR: /tmp/eapol_test.ci
-      HOSTAPD_GIT_TAG: hostap_2_8
+      HOSTAPD_GIT_TAG: hostap_2_10
 
     name: "RPM build"
 
