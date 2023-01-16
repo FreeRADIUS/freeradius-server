@@ -183,7 +183,7 @@ extern "C" {
 		(*out)->reserve_init = reserve_init; \
 		fr_ ## _name ## _slab_init(&(*out)->reserved); \
 		fr_ ## _name ## _slab_init(&(*out)->avail); \
-		if (el) fr_event_timer_in(*out, el, &(*out)->ev, _interval, _ ## _name ## _slab_cleanup, *out); \
+		if (el) (void) fr_event_timer_in(*out, el, &(*out)->ev, _interval, _ ## _name ## _slab_cleanup, *out); \
 		return 0; \
 	} \
 \
