@@ -758,7 +758,7 @@ static void request_mux(fr_event_list_t *el,
 	rlm_tacacs_tcp_t const	*inst = h->inst;
 	ssize_t			sent;
 	uint16_t		i, queued;
-	uint8_t const		*p, *written;
+	uint8_t const		*written;
 
 	/*
 	 *	If the connection is zombie, then don't try to enqueue
@@ -923,7 +923,7 @@ static void request_mux(fr_event_list_t *el,
 	 *	For all messages that were actually sent by writev()
 	 *	start the request timer.
 	 */
-	for (i = 0, p = h->send->read; (i < queued) && (written < h->send->write); i++) {
+	for (i = 0; (i < queued) && (written < h->send->write); i++) {
 		fr_trunk_request_t	*treq = h->coalesced[i];
 		udp_request_t		*u;
 		request_t		*request;
