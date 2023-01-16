@@ -95,6 +95,12 @@ fi
 
 cp -n "$BUILD_CONF_FILE" "$WPA_SUPPLICANT_DIR/.config"
 
+# There is currently a code path incorrectly identified as a use-after-free by GCC on sid
+# Make that just a warning rather than a compilation failure
+if ! [ -z `lsb_release -d | grep sid` ]; then
+    export CFLAGS="-MMD -O2 -Wall -Wno-error=use-after-free -g"
+fi
+
 if ! ${MAKE} -C "${WPA_SUPPLICANT_DIR}" -j8 eapol_test 1>&2 || [ ! -e "${WPA_SUPPLICANT_DIR}/eapol_test" ]; then
     echo "Build error" 1>&2
     if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
