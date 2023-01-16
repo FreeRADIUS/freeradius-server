@@ -281,23 +281,20 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 	if (inst->header && (offset == 0)) {
 		char header[4096];
 		if (radius_xlat(header, sizeof(header) - 1, request, inst->header, linelog_escape_func, NULL) < 0) {
+		error:
+			exfile_close(inst->ef, fd);
 			return RLM_MODULE_FAIL;
 		}
 		strcat(header, "\n");
 		if (write(fd, header, strlen(header)) < 0) {
-			exfile_close(inst->ef, fd);
 			ERROR("rlm_linelog: Failed writing: %s", fr_syserror(errno));
-			return RLM_MODULE_FAIL;
+			goto error;
 		}
 	}
 
 	strcat(line, "\n");
 
-	if (write(fd, line, strlen(line)) < 0) {
-		exfile_close(inst->ef, fd);
-		ERROR("rlm_linelog: Failed writing: %s", fr_syserror(errno));
-		return RLM_MODULE_FAIL;
-	}
+	if (write(fd, line, strlen(line)) < 0) goto error;
 
 	exfile_close(inst->ef, fd);
 	return RLM_MODULE_OK;
