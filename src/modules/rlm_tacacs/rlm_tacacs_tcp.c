@@ -48,6 +48,7 @@ typedef struct {
 	fr_ipaddr_t		src_ipaddr;		//!< IP we open our socket on.
 	uint16_t		dst_port;		//!< Port of the home server.
 	char const		*secret;		//!< Shared secret.
+	size_t			secretlen;		//!< length of secret
 
 	char const		*interface;		//!< Interface to bind to.
 
@@ -544,7 +545,7 @@ static ssize_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_
 	 *	This only fails if the packet is strangely malformed,
 	 *	or if we run out of memory.
 	 */
-	packet_len = fr_tacacs_decode(ctx, reply, data, data_len, NULL, inst->secret, talloc_array_length(inst->secret) - 1);
+	packet_len = fr_tacacs_decode(ctx, reply, data, data_len, NULL, inst->secret, inst->secretlen);
 	if (packet_len < 0) {
 		REDEBUG("Failed decoding attributes for packet");
 		fr_pair_list_free(reply);
@@ -584,8 +585,7 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 	 *	Encode the packet.
 	 */
 	packet_len = fr_tacacs_encode(&FR_DBUFF_TMP(u->packet, (size_t) inst->max_packet_size), NULL,
-				      inst->secret, talloc_array_length(inst->secret) - 1,
-				      &request->request_pairs);
+				      inst->secret, inst->secretlen, &request->request_pairs);
 	if (packet_len < 0) {
 		RPERROR("Failed encoding packet");
 		TALLOC_FREE(u->packet);
@@ -1383,6 +1383,16 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	thread->trunk = fr_trunk_alloc(thread, mctx->el, &io_funcs,
 				       inst->trunk_conf, inst->parent->name, thread, false);
 	if (!thread->trunk) return -1;
+
+	/*
+	 *	Empty secrets don't exist
+	 */
+	if (inst->secret && !*inst->secret) {
+		talloc_const_free(inst->secret);
+		inst->secret = NULL;
+	}
+
+	if (inst->secret) inst->secretlen = talloc_array_length(inst->secret) - 1;
 
 	return 0;
 }
