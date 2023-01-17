@@ -47,6 +47,9 @@ static CONF_PARSER retry_config[] = {
  *	A mapping of configuration file names to internal variables.
  */
 static CONF_PARSER const module_config[] = {
+	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, rlm_tacacs_t, io_submodule),
+	  .func = module_rlm_submodule_parse },
+
 	{ FR_CONF_OFFSET("type", FR_TYPE_UINT32 | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, rlm_tacacs_t, types),
 	  .func = type_parse },
 
@@ -222,7 +225,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 		code = inst->types[i];
 		fr_assert(code > 0);
-		fr_assert(code < FR_TAC_PLUS_MAX);
+		fr_assert(code < FR_TACACS_PACKET_TYPE_MAX);
 
 		inst->allowed[code] = true;
 	}

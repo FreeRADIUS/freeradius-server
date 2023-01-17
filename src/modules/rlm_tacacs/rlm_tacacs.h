@@ -36,6 +36,8 @@
 typedef struct rlm_tacacs_s rlm_tacacs_t;
 typedef struct rlm_tacacs_io_s rlm_tacacs_io_t;
 
+#define FR_TACACS_PACKET_TYPE_MAX (10)
+
 /*
  *	Define a structure for our module configuration.
  */
@@ -54,7 +56,7 @@ struct rlm_tacacs_s {
 
 	fr_retry_config_t	retry;			//!< retries shared by all packet types
 
-	bool			allowed[FR_TAC_PLUS_MAX];
+	bool			allowed[FR_TACACS_PACKET_TYPE_MAX];
 
 	fr_trunk_conf_t		trunk_conf;		//!< trunk configuration
 };
