@@ -4,6 +4,8 @@
 #	As of version 4.0.0, the server also supports the TACACS+
 #	protocol.
 #
+#	https://www.rfc-editor.org/rfc/rfc8907
+#
 #	$Id$
 #
 ######################################################################
@@ -21,8 +23,7 @@ server tacacs {
 		#  Multiple types can be accepted by using multiple
 		#  lines of `type = ...`.
 		#
-		#  As described in RFC https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.5,
-		#  the packet types are:
+		#  As described in RFC 8907, the packet types are:
 		#
 		type = Authentication-Start
 		type = Authentication-Continue
@@ -175,7 +176,7 @@ server tacacs {
 		"%{User-Name}"
 		"%{Client-Port}"
 		"%{Remote-Address}"
-		"%{ArgumentList}"
+		"%{Argument-List}"
 	}
 
 	#
@@ -185,7 +186,7 @@ server tacacs {
 		&reply.Authorization-Status := Pass-Add
 		&reply.Server-Message := "authorization-response-server"
 		&reply.Data := "authorization-response-data"
-		&reply.ArgumentList := "key1=var1"
+		&reply.Argument-List := "key1=var1"
 	}
 
 	#
