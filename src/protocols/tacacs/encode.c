@@ -735,7 +735,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	/*
 	 *	Packets which have no secret cannot be encrypted.
 	 */
-	if (!secret) packet->hdr.flags = packet->hdr.flags |= FR_TAC_PLUS_UNENCRYPTED_FLAG;
+	if (!secret) packet->hdr.flags |= FR_TAC_PLUS_UNENCRYPTED_FLAG;
 
 #ifndef NDEBUG
 	if (fr_debug_lvl >= L_DBG_LVL_4) {
