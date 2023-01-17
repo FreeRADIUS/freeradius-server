@@ -695,7 +695,7 @@ static virtual_server_compile_t compile_list[] = {
 
 	{
 		.name = "send",
-		.name2 = "Do-Not-Response",
+		.name2 = "Do-Not-Respond",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
