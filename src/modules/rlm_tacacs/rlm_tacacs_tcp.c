@@ -460,7 +460,7 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 
 	switch (notify_on) {
 	case FR_TRUNK_CONN_EVENT_NONE:
-		break;		/* no reading or writing is available */
+		return;
 
 	case FR_TRUNK_CONN_EVENT_READ:
 		read_fn = fr_trunk_connection_callback_readable;
@@ -588,7 +588,6 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 				      inst->secret, inst->secretlen, &request->request_pairs);
 	if (packet_len < 0) {
 		RPERROR("Failed encoding packet");
-		TALLOC_FREE(u->packet);
 		return -1;
 	}
 
@@ -834,6 +833,10 @@ static void request_mux(fr_event_list_t *el,
 		u->id = h->id;
 		h->tconn = tconn;
 
+		h->tracking[u->id] = treq;
+		h->id++;
+		h->active++;
+
 		RDEBUG("Sending %s ID %d length %ld over connection %s",
 		       fr_tacacs_packet_codes[u->code], u->id, u->packet_len, h->name);
 
@@ -853,9 +856,6 @@ static void request_mux(fr_event_list_t *el,
 		/*
 		 *	Remember that we've encoded this packet.
 		 */
-		h->tracking[u->id] = treq;
-		h->id++;
-		h->active++;
 		h->coalesced[queued] = treq;
 
 		/*
@@ -1187,7 +1187,7 @@ static void request_fail(request_t *request, NDEBUG_UNUSED void *preq, void *rct
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
 #endif
 
-	fr_assert(u->packet && !u->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!u->ev);	/* Dealt with by request_conn_release */
 
 	fr_assert(state != FR_TRUNK_REQUEST_STATE_INIT);
 
