@@ -758,6 +758,7 @@ static void request_mux(fr_event_list_t *el,
 	ssize_t			sent;
 	uint16_t		i, queued;
 	uint8_t const		*written;
+	uint8_t			*partial;
 
 	/*
 	 *	If the connection is zombie, then don't try to enqueue
@@ -811,6 +812,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	The retransmission timers are really there to move the packet to a new connection if
 		 *	the current connection is dead.
 		 */
+		fr_assert(!u->packet); /* @todo - got to fix this for retransmissions */
 		if (u->packet) continue;
 
 		/*
@@ -857,6 +859,9 @@ static void request_mux(fr_event_list_t *el,
 		 *	Remember that we've encoded this packet.
 		 */
 		h->coalesced[queued] = treq;
+		h->send.write += u->packet_len;
+
+		fr_assert(h->send.write <= h->send.end);
 
 		/*
 		 *	If we just hit this limit, stop using the connection.
@@ -920,12 +925,13 @@ static void request_mux(fr_event_list_t *el,
 	}
 
 	written = h->send.read + sent;
+	partial = h->send.read;
 
 	/*
 	 *	For all messages that were actually sent by writev()
 	 *	start the request timer.
 	 */
-	for (i = 0; (i < queued) && (written < h->send.write); i++) {
+	for (i = 0; i < queued; i++) {
 		fr_trunk_request_t	*treq = h->coalesced[i];
 		udp_request_t		*u;
 		request_t		*request;
@@ -939,52 +945,67 @@ static void request_mux(fr_event_list_t *el,
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
 
 		/*
-		 *	If we only wrote part of this packet, remember the partial packet we wrote.  Note that
+		 *	This packet ends before the piece we've
+		 *	written, so we've written all of it.
+		 */
+		if (u->packet + u->packet_len <= written) {
+			h->last_sent = u->retry.start;
+			if (fr_time_lteq(h->first_sent, h->last_idle)) h->first_sent = h->last_sent;
+
+			if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_retry, treq) < 0) {
+				RERROR("Failed inserting retransmit timeout for connection");
+				fr_trunk_request_signal_fail(treq);
+			}
+
+			/*
+			 *	If the packet doesn't get a response, then the timer will hit
+			 *	and will retransmit.
+			 */
+			continue;
+		}
+
+		/*
+		 *	The packet starts before the piece we've written, BUT ends after the written piece.
+		 *
+		 *	We only wrote part of this packet, remember the partial packet we wrote.  Note that
 		 *	we only track the packet data, and not the udp_request_t.  The underlying request (and
 		 *	u) may disappear at any time, even if there's still data in the buffer.
 		 *
 		 *	Then, signal that isn't a partial packet, and stop processing the queue, as we know
 		 *	that the next packet wasn't written.
 		 */
-		if (written < u->packet + u->packet_len) {
+		if (u->packet < written) {
 			size_t skip = written - u->packet;
 			size_t left = u->packet_len - skip;
+
+			fr_assert(u->packet + u->packet_len > written);
 
 			memmove(h->send.data, u->packet, left);
 
 			fr_assert(h->send.read == h->send.data);
-			h->send.write = h->send.data + left;
+			partial = h->send.data + left;
 
 			fr_trunk_request_signal_partial(h->coalesced[i]);
-			i++;
-			break;
-		}
-
-		/*
-		 *	Tell the admin what's going on
-		 */
-		h->last_sent = u->retry.start;
-		if (fr_time_lteq(h->first_sent, h->last_idle)) h->first_sent = h->last_sent;
-
-		if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_retry, treq) < 0) {
-			RERROR("Failed inserting retransmit timeout for connection");
-			fr_trunk_request_signal_fail(treq);
 			continue;
 		}
 
 		/*
-		 *	If the packet doesn't get a response, then the timer will hit
-		 *	and will retransmit.
+		 *	The packet starts after the piece we've written, so we haven't written any of it.
+		 *
+		 *	Requests that weren't sent get re-enqueued.  Which means that they get re-encoded, but
+		 *	oh well.
+		 *
+		 *	The cancel logic runs as per-normal and cleans up
+		 *	the request ready for sending again...
 		 */
+		fr_trunk_request_requeue(h->coalesced[i]);
 	}
 
 	/*
-	 *	Requests that weren't sent get re-enqueued.  Which means that they get re-encoded, but oh well.
-	 *
-	 *	The cancel logic runs as per-normal and cleans up
-	 *	the request ready for sending again...
+	 *	Remember where to write the next packet.  Either at the start of the buffer, or after the one
+	 *	which was partially written.
 	 */
-	for (/* nothing */; i < queued; i++) fr_trunk_request_requeue(h->coalesced[i]);
+	h->send.write = partial;
 }
 
 static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
