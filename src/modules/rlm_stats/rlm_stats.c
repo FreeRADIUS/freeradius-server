@@ -320,6 +320,10 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		}
 	}
 
+	/*
+	 *	@todo - do this only for RADIUS
+	 *	key off of packet ID, and Stats4-Packet-Counters TLV.
+	 */
 	strcpy(buffer, "FreeRADIUS-Stats4-");
 
 	for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
