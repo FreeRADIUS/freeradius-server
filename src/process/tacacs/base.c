@@ -192,11 +192,15 @@ RECV(tacacs)
 	UPDATE_STATE_CS(packet);
 	request->reply->code = state->default_reply; /* TCP, so we always reply */
 
-	if (!request->parent) {
+	/*
+	 *	Track state across multiple packets.
+	 *
+	 *	@todo - for fake packets, too?
+	 */
+	if (!request->parent && request->async->listen) {
 		fr_pair_t *vp;
 		uint8_t buffer[sizeof(request->async->listen) + sizeof(pkt->session_id)];
 
-		fr_assert(request->async->listen);
 		memcpy(buffer, &request->async->listen, sizeof(request->async->listen));
 		memcpy(buffer + sizeof(request->async->listen), &pkt->session_id, sizeof(pkt->session_id));
 
