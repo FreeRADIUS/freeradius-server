@@ -141,6 +141,8 @@ struct udp_request_s {
 
 	uint8_t			code;			//!< Packet code.
 	uint8_t			id;			//!< Last ID assigned to this packet.
+	bool			outstanding;		//!< are we waiting for a reply?
+
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
 	
@@ -200,6 +202,7 @@ static void udp_request_reset(udp_handle_t *h, udp_request_t *u)
 	fr_assert(h->tracking[u->id]->preq == u);
 
 	h->tracking[u->id] = NULL;
+	u->outstanding = false;
 	h->active--;
 
 	if (u->ev) (void)fr_event_timer_delete(&u->ev);
@@ -575,6 +578,7 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 
 	fr_assert(inst->parent->allowed[u->code]);
 	fr_assert(!u->packet);
+	fr_assert(!u->outstanding);
 
 	/*
 	 *	Encode the packet in the outbound buffer.
@@ -596,6 +600,7 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 	 */
 	u->packet[1] = u->id;
 	u->packet_len = packet_len;
+	u->outstanding = true;
 
 	return 0;
 }
@@ -812,8 +817,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	The retransmission timers are really there to move the packet to a new connection if
 		 *	the current connection is dead.
 		 */
-		fr_assert(!u->packet); /* @todo - got to fix this for retransmissions */
-		if (u->packet) continue;
+		if (u->outstanding) continue;
 
 		/*
 		 *	Not enough room for a full-sized packet, stop encoding packets
@@ -961,6 +965,7 @@ static void request_mux(fr_event_list_t *el,
 			 *	If the packet doesn't get a response, then the timer will hit
 			 *	and will retransmit.
 			 */
+			u->outstanding = true;
 			continue;
 		}
 
@@ -984,6 +989,7 @@ static void request_mux(fr_event_list_t *el,
 
 			fr_assert(h->send.read == h->send.data);
 			partial = h->send.data + left;
+			u->outstanding = true;
 
 			fr_trunk_request_signal_partial(h->coalesced[i]);
 			continue;
@@ -999,6 +1005,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	the request ready for sending again...
 		 */
 		fr_trunk_request_requeue(h->coalesced[i]);
+		fr_assert(!u->outstanding); /* must have called udp_request_requeue() */
 	}
 
 	/*
