@@ -114,14 +114,11 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	 */
 	type_enum = fr_dict_enum_by_name(attr_packet_type, type_str, -1);
 	if (!type_enum) {
-	invalid_code:
-		cf_log_err(ci, "Unknown or invalid TACACS+ packet type '%s'", type_str);
+		cf_log_err(ci, "Unknown TACACS+ packet type '%s'", type_str);
 		return -1;
 	}
 
 	code = type_enum->value->vb_uint32;
-
-	if (!code || (code >= FR_TAC_PLUS_MAX)) goto invalid_code;
 
 	memcpy(out, &code, sizeof(code));
 
@@ -162,7 +159,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		RETURN_MODULE_FAIL;
 	}
 
-	if (request->packet->code >= FR_TAC_PLUS_MAX) {
+	if (request->packet->code > FR_TACACS_PACKET_TYPE_MAX) {
 		REDEBUG("Invalid packet code %d", request->packet->code);
 		RETURN_MODULE_FAIL;
 	}

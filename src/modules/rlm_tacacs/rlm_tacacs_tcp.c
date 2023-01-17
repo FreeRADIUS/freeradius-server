@@ -1318,7 +1318,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, UNUSE
 	fr_trunk_request_t		*treq;
 
 	fr_assert(request->packet->code > 0);
-	fr_assert(request->packet->code < FR_TAC_PLUS_MAX);
+	fr_assert(request->packet->code < FR_TACACS_PACKET_TYPE_MAX);
 
 	treq = fr_trunk_request_alloc(t->trunk, request);
 	if (!treq) RETURN_MODULE_FAIL;
