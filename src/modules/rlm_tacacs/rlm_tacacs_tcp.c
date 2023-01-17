@@ -265,6 +265,8 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	h->max_packet_size = h->inst->max_packet_size;
 	h->last_idle = fr_time();
 
+	h->id = 1;		/* clients send odd sequence numbers */
+
 	/*
 	 *	Initialize the buffer of coalesced packets we're doing to write.
 	 */
@@ -840,7 +842,7 @@ static void request_mux(fr_event_list_t *el,
 		h->tconn = tconn;
 
 		h->tracking[u->id] = treq;
-		h->id++;
+		h->id += 2;
 		h->active++;
 
 		RDEBUG("Sending %s ID %d length %ld over connection %s",
