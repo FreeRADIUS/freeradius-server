@@ -83,7 +83,7 @@ typedef struct {
 	uint8_t			*read;			//!< where we read data from
 	uint8_t			*write;			//!< where we write data to
 	uint8_t			*end;			//!< end of the buffer
-	uint8_t			data[];			//!< actual data
+	uint8_t			*data;			//!< actual data
 } tcp_buffer_t;
 
 /** Track the handle, which is tightly correlated with the FD
@@ -113,8 +113,8 @@ typedef struct {
 	uint16_t		src_port;		//!< Source port specific to this connection.
 							//!< @todo - not set by socket_client_tcp()
 
-	tcp_buffer_t		*recv;			//!< receive buffer
-	tcp_buffer_t		*send;			//!< send buffer
+	tcp_buffer_t		recv;			//!< receive buffer
+	tcp_buffer_t		send;			//!< send buffer
 
 	int			id;			//!< starts at 1.
 	int			active;			//!< active packets
@@ -268,21 +268,6 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	h->coalesced = talloc_zero_array(h, fr_trunk_request_t *, h->inst->max_send_coalesce);
 
 	/*
-	 *	Allow receiving of 2 max-sized packets.  In practice, most packets will be less than this.
-	 */
-	MEM(h->recv = (tcp_buffer_t *) talloc_array(h, uint8_t, sizeof(h->recv) + h->max_packet_size * 2));
-	h->recv->read = h->recv->write = h->recv->data;
-	h->recv->end = h->recv->data + h->max_packet_size * 2;
-
-	/*
-	 *	Use the system SO_SNDBUF for how many packets to send at once.  In most circumstances the
-	 *	packets are small, and widely separated in time, and we really only need a very small buffer.
-	 */
-	MEM(h->send = (tcp_buffer_t *) talloc_array(h, uint8_t, sizeof(h->send) + h->send_buff_actual));
-	h->send->read = h->send->write = h->send->data;
-	h->send->end = h->send->data + h->send_buff_actual;
-
-	/*
 	 *	Open the outgoing socket.
 	 */
 	fd = fr_socket_client_tcp(&h->src_ipaddr, &h->inst->dst_ipaddr, h->inst->dst_port, true);
@@ -368,6 +353,21 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	     "write performance may be sub-optimal", h->module_name);
 	WARN("%s - Max coalesced outbound data will be %zu bytes", h->module_name, h->inst->send_buff_actual);
 #endif
+
+	/*
+	 *	Allow receiving of 2 max-sized packets.  In practice, most packets will be less than this.
+	 */
+	MEM(h->recv.data = talloc_array(h, uint8_t, h->max_packet_size * 2));
+	h->recv.read = h->recv.write = h->recv.data;
+	h->recv.end = h->recv.data + h->max_packet_size * 2;
+
+	/*
+	 *	Use the system SO_SNDBUF for how many packets to send at once.  In most circumstances the
+	 *	packets are small, and widely separated in time, and we really only need a very small buffer.
+	 */
+	MEM(h->send.data = talloc_array(h, uint8_t, h->send_buff_actual));
+	h->send.read = h->send.write = h->send.data;
+	h->send.end = h->send.data + h->send_buff_actual;
 
 	h->fd = fd;
 
@@ -579,7 +579,7 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 	/*
 	 *	Encode the packet in the outbound buffer.
 	 */
-	u->packet = h->send->write;
+	u->packet = h->send.write;
 
 	/*
 	 *	Encode the packet.
@@ -789,8 +789,8 @@ static void request_mux(fr_event_list_t *el,
 		 *	data.  As a result, we ignore the udp_request_t, and just keep writing the data.
 		 */
 		if (treq->state == FR_TRUNK_REQUEST_STATE_PARTIAL) {
-			fr_assert(h->send->read == h->send->data);
-			fr_assert(h->send->write > h->send->read);
+			fr_assert(h->send.read == h->send.data);
+			fr_assert(h->send.write > h->send.read);
 
 			fr_assert(i == 0);
 
@@ -817,7 +817,9 @@ static void request_mux(fr_event_list_t *el,
 		/*
 		 *	Not enough room for a full-sized packet, stop encoding packets
 		 */
-		if ((h->send->end - h->send->write) < inst->max_packet_size) break;
+		if ((h->send.end - h->send.write) < inst->max_packet_size) {
+			break;
+		}
 
 		/*
 		 *	Start retransmissions from when the socket is writable.
@@ -887,7 +889,7 @@ static void request_mux(fr_event_list_t *el,
 	/*
 	 *	Send the packets as one system call.
 	 */
-	sent = write(h->fd, h->send->read, h->send->write - h->send->read);
+	sent = write(h->fd, h->send.read, h->send.write - h->send.read);
 	if (sent < 0) {		/* Error means no messages were sent */
 		/*
 		 *	Temporary conditions
@@ -917,13 +919,13 @@ static void request_mux(fr_event_list_t *el,
 		}
 	}
 
-	written = h->send->read + sent;
+	written = h->send.read + sent;
 
 	/*
 	 *	For all messages that were actually sent by writev()
 	 *	start the request timer.
 	 */
-	for (i = 0; (i < queued) && (written < h->send->write); i++) {
+	for (i = 0; (i < queued) && (written < h->send.write); i++) {
 		fr_trunk_request_t	*treq = h->coalesced[i];
 		udp_request_t		*u;
 		request_t		*request;
@@ -948,10 +950,10 @@ static void request_mux(fr_event_list_t *el,
 			size_t skip = written - u->packet;
 			size_t left = u->packet_len - skip;
 
-			memmove(h->send->data, u->packet, left);
+			memmove(h->send.data, u->packet, left);
 
-			fr_assert(h->send->read == h->send->data);
-			h->send->write = h->send->data + left;
+			fr_assert(h->send.read == h->send.data);
+			h->send.write = h->send.data + left;
 
 			fr_trunk_request_signal_partial(h->coalesced[i]);
 			i++;
@@ -1010,15 +1012,15 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 		 *	pointers to the start of the buffer.  Note that the read buffer has to be at least 2x
 		 *	max_packet_size.
 		 */
-		available = h->recv->end - h->recv->read;
+		available = h->recv.end - h->recv.read;
 		if (available < h->inst->max_packet_size) {
-			fr_assert(h->recv->data + h->inst->max_packet_size < h->recv->read);
+			fr_assert(h->recv.data + h->inst->max_packet_size < h->recv.read);
 
-			used = h->recv->write - h->recv->read;
+			used = h->recv.write - h->recv.read;
 
-			memcpy(h->recv->data, h->recv->read, used);
-			h->recv->read = h->recv->data;
-			h->recv->write = h->recv->read + used;
+			memcpy(h->recv.data, h->recv.read, used);
+			h->recv.read = h->recv.data;
+			h->recv.write = h->recv.read + used;
 		}
 
 		/*
@@ -1032,7 +1034,7 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 		 *	packets without calling read() too many times.
 		 */
 		if (do_read) {
-			slen = read(h->fd, h->recv->write, h->recv->end - h->recv->write);
+			slen = read(h->fd, h->recv.write, h->recv.end - h->recv.write);
 			if (slen < 0) {
 				if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) return;
 
@@ -1042,11 +1044,11 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 				return;
 			}
 
-			h->recv->write += slen;
-			do_read = (h->recv->write == h->recv->end);
+			h->recv.write += slen;
+			do_read = (h->recv.write == h->recv.end);
 		}
 
-		used = h->recv->write - h->recv->read;
+		used = h->recv.write - h->recv.read;
 
 		/*
 		 *	We haven't received a full header, read more or return.
@@ -1059,7 +1061,7 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 		/*
 		 *	The packet contains a 4 octet length in the header.
 		 */
-		packet_len = fr_nbo_to_uint32(h->recv->read + 8);
+		packet_len = fr_nbo_to_uint32(h->recv.read + 8);
 
 		/*
 		 *	The packet is too large, reject it.
@@ -1079,18 +1081,18 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 			return;
 		}
 
-		fr_assert(h->recv->read + packet_len <= h->recv->end);
+		fr_assert(h->recv.read + packet_len <= h->recv.end);
 
 		/*
 		 *	TACACS+ doesn't care about packet codes.  All packet of the codes share the same ID
 		 *	space.
 		 */
-		treq = h->tracking[h->recv->read[1]];
+		treq = h->tracking[h->recv.read[1]];
 		if (!treq) {
 			WARN("%s - Ignoring reply with ID %i that arrived too late",
-			     h->module_name, h->recv->data[1]);
+			     h->module_name, h->recv.data[1]);
 
-			h->recv->read += packet_len;
+			h->recv.read += packet_len;
 			continue;
 		}
 
@@ -1105,13 +1107,13 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 		/*
 		 *	Validate and decode the incoming packet
 		 */
-		slen = decode(request->reply_ctx, &reply, &code, h, request, u, h->recv->read, packet_len);
+		slen = decode(request->reply_ctx, &reply, &code, h, request, u, h->recv.read, packet_len);
 		if (slen < 0) {
 			// @todo - give real decode error?
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 			return;
 		}
-		h->recv->read += packet_len;
+		h->recv.read += packet_len;
 
 		/*
 		 *	Only valid packets are processed.
