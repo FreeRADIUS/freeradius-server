@@ -1089,9 +1089,11 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 		}
 
 		/*
-		 *	The packet contains a 4 octet length in the header.
+		 *	The packet contains a 4 octet length in the
+		 *	header, but the header bytes aren't included
+		 *	in the 4 octet length field.
 		 */
-		packet_len = fr_nbo_to_uint32(h->recv.read + 8);
+		packet_len = fr_nbo_to_uint32(h->recv.read + 8) + FR_HEADER_LENGTH;
 
 		/*
 		 *	The packet is too large, reject it.
