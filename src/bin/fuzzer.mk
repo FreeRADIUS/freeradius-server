@@ -28,6 +28,10 @@ TGT_LDLIBS		:= $(LIBS)
 
 FUZZER_CORPUS_DIR	:= src/tests/fuzzer-corpus
 
+ifdef LIB_FUZZING_ENGINE
+SRC_CFLAGS		+= -DLIB_FUZZING_ENGINE
+endif
+
 #
 #  Ensure that the large data file is copied from git-lfs,
 #  and then the files are extracted.

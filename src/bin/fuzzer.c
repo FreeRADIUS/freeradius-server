@@ -71,6 +71,11 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	char const		*proto    	= getenv("FR_LIBRARY_FUZZ_PROTOCOL");
 	char const		*dict_dir	= getenv("FR_DICTIONARY_DIR");
 	char const		*debug_lvl_str	= getenv("FR_DEBUG_LVL");
+	char const		*p;
+#ifdef LIB_FUZZING_ENGINE
+	char			*dict_dir_to_free = NULL;
+	char			*lib_dir_to_free = NULL;
+#endif
 	char			buffer[1024];
 
 	if (!argc || !argv || !*argv) return -1; /* shut up clang scan */
@@ -122,7 +127,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		int i, j;
 
 		for (i = 0; i < *argc - 1; i++) {
-			char *p = (*argv)[i];
+			p = (*argv)[i];
 
 			if ((p[0] == '-') && (p[1] == 'D')) {
 				dict_dir = (*argv)[i + 1];
@@ -137,7 +142,28 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		}
 	}
 
+#ifdef LIB_FUZZING_ENGINE
+	/*
+	 *	oss-fuzz puts the dictionaries, etc. into subdirectories named after the location of the
+	 *	binary.  So we find the directory of the binary, and append "/dict" or "/lib" to find
+	 *	dictionaries and libraries.
+	 */
+	p = strrchr((*argv)[0], '/');
+	if (p) {
+		if (!dict_dir) {
+			dict_dir = dict_dir_to_free = talloc_asprintf(NULL, "%.*s/dict", (int) (p - (*argv)[0]), (*argv)[0]);
+			if (!dict_dir_to_free) fr_exit_now(EXIT_FAILURE);
+		}
+
+		if (!lib_dir) {
+			lib_dir = lib_dir_to_free = talloc_asprintf(NULL, "%.*s/lib", (int) (p - (*argv)[0]), (*argv)[0]);
+			if (!lib_dir_to_free) fr_exit_now(EXIT_FAILURE);
+		}
+	}
+#endif
+
 	if (!dict_dir) dict_dir = DICTDIR;
+	if (!lib_dir) lib_dir = LIBDIR;
 
 	/*
 	 *	When jobs=N is specified the fuzzer spawns worker processes via
@@ -194,6 +220,11 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	}
 
 	init = true;
+
+#ifdef LIB_FUZZING_ENGINE
+	talloc_free(dict_dir_to_free);
+	talloc_free(lib_dir_to_free);
+#endif
 
 	return 1;
 }
