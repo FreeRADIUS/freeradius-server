@@ -247,7 +247,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_att
  *	Decode a TACACS+ packet
  */
 ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *buffer, size_t buffer_len,
-			 UNUSED const uint8_t *original, char const * const secret, size_t secret_len)
+			 const uint8_t *original, char const * const secret, size_t secret_len)
 {
 	fr_tacacs_packet_t const *pkt;
 	fr_pair_t		*vp;
@@ -317,6 +317,15 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 	      (pkt->hdr.type == FR_TAC_PLUS_AUTHOR) ||
 	      (pkt->hdr.type == FR_TAC_PLUS_ACCT))) {
 		fr_strerror_printf("Unknown packet type %u", pkt->hdr.type);
+		return -1;
+	}
+
+	/*
+	 *	Check that the session IDs are correct.
+	 */
+	if (original && (memcmp(original + 4, buffer + 4, 4) != 0)) {
+		fr_strerror_printf("Session ID %08x does not match expected number %08x",
+				   fr_nbo_to_uint32(buffer + 4), fr_nbo_to_uint32(original + 4));
 		return -1;
 	}
 

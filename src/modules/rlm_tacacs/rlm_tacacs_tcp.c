@@ -553,6 +553,14 @@ static ssize_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_
 	*response_code = 0;	/* Initialise to keep the rest of the code happy */
 
 	/*
+	 *	Check the session ID here, because we've lost the original packet.
+	 */
+	if (h->session_id != fr_nbo_to_uint32(data + 4)) {
+		REDEBUG("Session ID %08x does not match expected number %08x",
+			fr_nbo_to_uint32(data + 4), h->session_id);
+	}
+
+	/*
 	 *	Decode the attributes, in the context of the reply.
 	 *	This only fails if the packet is strangely malformed,
 	 *	or if we run out of memory.
