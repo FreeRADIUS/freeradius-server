@@ -162,7 +162,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		RETURN_MODULE_FAIL;
 	}
 
-	if (request->packet->code > FR_TACACS_PACKET_TYPE_MAX) {
+	if (request->packet->code >= FR_TACACS_PACKET_TYPE_MAX) {
 		REDEBUG("Invalid packet code %d", request->packet->code);
 		RETURN_MODULE_FAIL;
 	}
