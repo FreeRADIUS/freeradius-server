@@ -22,7 +22,7 @@ dnl #
 dnl #############################################################
 
 AC_PREREQ([2.71])
-export CFLAGS LIBS LDFLAGS CPPFLAGS
+#export CFLAGS LIBS LDFLAGS CPPFLAGS
 
 AC_INIT([freeradius],[$Id$],[http://bugs.freeradius.org],[],[http://www.freeradius.org])
 AC_CONFIG_MACRO_DIR([m4])
@@ -178,7 +178,7 @@ dnl #  -g3 so nice things like macro values are included. Other arguments are
 dnl #  added later when we know what compiler were using.
 dnl #
 if test "x$developer" = "xyes"; then
-  : ${CFLAGS=-g3}
+  : ${CFLAGS="$CFLAGS -g3"}
 fi
 
 dnl #

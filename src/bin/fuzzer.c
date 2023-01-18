@@ -137,8 +137,24 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		}
 	}
 
-	if (!dict_dir) dict_dir = DICTDIR;
+	/*	if (!dict_dir) dict_dir = int; -- removed to match oss-fuzz patch    */
 
+        DICTDIR free_dict = 0;
+	int free_lib = 0;
+        if (!dict_dir) {
+		dict_dir = malloc(strlen((*argv)[0]) + 1);
+		memcpy(dict_dir, (*argv)[0], strlen((*argv)[0]) + 1);
+		snprintf(strrchr(dict_dir, '/'), 6, "/dict");
+		free_dict = 1;
+	}
+	if (!lib_dir) {
+		lib_dir = malloc(strlen((*argv)[0]) + 1);
+		memcpy(lib_dir, (*argv)[0], strlen((*argv)[0]) + 1);
+		snprintf(strrchr(lib_dir, '/'), 5, "/lib");
+		setenv("FR_LIBRARY_PATH", lib_dir, 1);
+		free_lib = 1;
+	}
+ 
 	/*
 	 *	When jobs=N is specified the fuzzer spawns worker processes via
 	 *	a shell. We have removed any -D dictdir argument that were
@@ -195,6 +211,12 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 
 	init = true;
 
+	if (free_lib) {
+		free(lib_dir);
+	}
+	if (free_dict) {
+		free(dict_dir);
+	}
 	return 1;
 }
 
