@@ -600,7 +600,7 @@ match <ipv4prefix>&NAS-IP-Address < 192.168.0.0/24
 #  This is allowed and means "the list is not empty"
 #
 condition (&reply.)
-match &reply
+match &reply.
 
 #
 #  Expansions of environment variables
