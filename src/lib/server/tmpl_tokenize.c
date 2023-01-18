@@ -4132,7 +4132,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 
 	TMPL_VERIFY(vpt);
 
-	if (!tmpl_attr_tail_da(vpt)->flags.is_unknown) return 1;	/* Ensure at least the leaf is unknown */
+	if (!tmpl_attr_tail_is_unknown(vpt)) return 1;	/* Ensure at least the leaf is unknown */
 
 	while ((ar = tmpl_attr_list_next(tmpl_attr(vpt), ar))) {
 		fr_dict_attr_t const	*unknown, *known;
