@@ -2206,6 +2206,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 				 *	first.
 				 */
 				tmpl_attr_list_insert_head(tmpl_attr(vpt), ar);
+				vpt->data.attribute.list = ar->ar_da;
 			}
 		}
 	}
