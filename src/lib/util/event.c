@@ -2543,9 +2543,10 @@ void fr_event_service(fr_event_list_t *el)
 				fd_errno = el->events[i].data;
 			ev_error:
 				/*
-				 *      Call the error handler
+				 *      Call the error handler, but only if the socket hasn't been deleted at EOF
+				 *	below.
 				 */
-				if (ef->error) ef->error(el, ef->fd, flags, fd_errno, ef->uctx);
+				if (ef->is_registered && ef->error) ef->error(el, ef->fd, flags, fd_errno, ef->uctx);
 				TALLOC_FREE(ef);
 				continue;
 			}
