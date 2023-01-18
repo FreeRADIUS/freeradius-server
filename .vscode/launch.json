@@ -128,6 +128,32 @@
                                         "text": "set solib-search-path ${workspaceFolder}"
                                 }
                         ]
+                },
+                {
+                        "type": "cppdbg",
+                        "request": "launch",
+                        "name": "Unit Test (gdb)",
+                        "program": "${workspaceFolder}/build/bin/local/unit_test_attribute",
+                        "cwd": "${workspaceFolder}",
+                        "args": [
+                                "-D",
+                                "share/dictionary",
+                                "-d",
+                                "src/tests/unit",
+                                "src/tests/unit/${input:unittest}.txt",
+                                "-xx"
+                        ],
+                        "environment": [
+                                { "name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                { "name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                        ],
+                        "MIMode": "gdb",
+                        "setupCommands": [
+                                {
+                                        "description": "Set solib",
+                                        "text": "set solib-search-path ${workspaceFolder}"
+                                }
+                        ]
                 }
         ],
         "inputs": [
@@ -148,6 +174,11 @@
                 },
                 {
                         "id": "moduletest",
+                        "type": "promptString",
+                        "description": "Test to run"
+                },
+                {
+                        "id": "unittest",
                         "type": "promptString",
                         "description": "Test to run"
                 }
