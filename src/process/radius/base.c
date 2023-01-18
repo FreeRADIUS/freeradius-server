@@ -377,7 +377,7 @@ RESUME(auth_type);
 
 RESUME(access_request)
 {
-	rlm_rcode_t			rcode = request->rcode;
+	rlm_rcode_t			rcode = *p_result;
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const		*dv;
@@ -456,7 +456,7 @@ RESUME(auth_type)
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT,
 	};
 
-	rlm_rcode_t			rcode = request->rcode;
+	rlm_rcode_t			rcode = *p_result;
 	fr_pair_t			*vp;
 	fr_process_state_t const	*state;
 
@@ -625,7 +625,7 @@ RESUME(acct_type)
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DO_NOT_RESPOND,
 	};
 
-	rlm_rcode_t			rcode = request->rcode;
+	rlm_rcode_t			rcode = *p_result;
 	fr_process_state_t const	*state;
 
 	PROCESS_TRACE;
@@ -655,7 +655,7 @@ RESUME(acct_type)
 
 RESUME(accounting_request)
 {
-	rlm_rcode_t			rcode = request->rcode;
+	rlm_rcode_t			rcode = *p_result;
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const		*dv;
