@@ -879,21 +879,21 @@ done:
 
 static CC_HINT(nonnull) int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs)
 {
-	if (tmpl_is_list(vpt)) {
+	if (!tmpl_is_attr(vpt) || tmpl_attr_tail_is_unresolved(vpt)) return 0;
+
+	if (tmpl_is_list(vpt) || tmpl_attr_is_list_attr(tmpl_attr_tail(vpt))) {
 		fr_strerror_const("Cannot use list references in condition");
 		fr_sbuff_set(in, m_lhs);
 		return -1;
 	}
-
-	if (!tmpl_is_attr(vpt)) return 0;
 
 	switch (tmpl_attr_tail_da(vpt)->type) {
 	case FR_TYPE_LEAF:
 		break;
 
 	default:
-		fr_strerror_printf("Nesting types such as groups or TLVs cannot "
-				   "be used in condition comparisons");
+		fr_strerror_const("Nesting types such as groups or TLVs cannot "
+				  "be used in condition comparisons");
 		fr_sbuff_set(in, m_lhs);
 		return -1;
 	}
