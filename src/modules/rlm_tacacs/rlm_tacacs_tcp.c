@@ -104,6 +104,8 @@ typedef struct {
 	rlm_tacacs_tcp_t const	*inst;			//!< Our module instance.
 	udp_thread_t		*thread;
 
+	uint32_t		session_id;		//!< for TACACS+ "security".
+
 	uint32_t		max_packet_size;	//!< Our max packet size. may be different from the parent.
 
 	fr_ipaddr_t		src_ipaddr;		//!< Source IP address.  May be altered on bind
@@ -183,10 +185,14 @@ fr_dict_autoload_t rlm_tacacs_tcp_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_packet_hdr;
+static fr_dict_attr_t const *attr_session_id;
 
 extern fr_dict_attr_autoload_t rlm_tacacs_tcp_dict_attr[];
 fr_dict_attr_autoload_t rlm_tacacs_tcp_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
+	{ .out = &attr_packet_hdr, .name = "Packet", .type = FR_TYPE_STRUCT, .dict = &dict_tacacs },
+	{ .out = &attr_session_id, .name = "Packet.Session-ID", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
 	{ NULL }
 };
 
@@ -266,6 +272,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	h->last_idle = fr_time();
 
 	h->id = 1;		/* clients send odd sequence numbers */
+	h->session_id = fr_rand();
 
 	/*
 	 *	Initialize the buffer of coalesced packets we're doing to write.
@@ -577,6 +584,7 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 {
 	ssize_t			packet_len;
 	rlm_tacacs_tcp_t const *inst = h->inst;
+	fr_pair_t		*hdr, *vp;
 
 	fr_assert(inst->parent->allowed[u->code]);
 	fr_assert(!u->packet);
@@ -586,6 +594,21 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 	 *	Encode the packet in the outbound buffer.
 	 */
 	u->packet = h->send.write;
+
+	/*
+	 *	Set the session ID, if it hasn't already been set.
+	 */
+	hdr = fr_pair_find_by_da(&request->request_pairs, NULL, attr_packet_hdr);
+	if (!hdr) hdr = request->request_ctx;
+
+	vp = fr_pair_find_by_da_nested(&hdr->vp_group, NULL, attr_session_id);
+	if (!vp) {
+		MEM(vp = fr_pair_afrom_da(hdr, attr_session_id));
+
+		vp->vp_uint32 = h->session_id;
+		fr_pair_append(&hdr->vp_group, vp);
+		fr_pair_list_sort(&hdr->vp_group, fr_pair_cmp_by_parent_num);
+	}
 
 	/*
 	 *	Encode the packet.
