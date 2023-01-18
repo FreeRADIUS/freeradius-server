@@ -4364,7 +4364,7 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	/*
 	 *	Print list
 	 */
-	if (tmpl_list(vpt) != PAIR_LIST_REQUEST) {	/* Don't print the default list */
+	if (!vpt->rules.attr.list_as_attr && tmpl_list(vpt) != PAIR_LIST_REQUEST) {	/* Don't print the default list */
 		if (printed_rr) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 
 		slen = fr_sbuff_in_strcpy(&our_out, tmpl_list_name(tmpl_list(vpt), "<INVALID>"));
@@ -4381,25 +4381,13 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	/*
 	 *
 	 *	If the leaf attribute is unknown and raw we
-	 *	add the .raw prefix.
+	 *	add the raw. prefix.
 	 *
 	 *	If the leaf attribute is unknown and not raw
 	 *	we add the .unknown prefix.
 	 *
 	 */
-	if (!tmpl_is_list(vpt) && (ar = tmpl_attr_list_tail(tmpl_attr(vpt)))) {
-		switch (ar->type) {
-		case TMPL_ATTR_TYPE_NORMAL:
-		case TMPL_ATTR_TYPE_UNSPEC:
-		case TMPL_ATTR_TYPE_UNKNOWN:
-			if (ar->ar_da->flags.is_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
-			break;
-
-		case TMPL_ATTR_TYPE_UNRESOLVED:
-			if (ar->ar_unresolved_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
-			break;
-		}
-	}
+	if (tmpl_attr_tail_is_raw(vpt)) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 
 	/*
 	 *	Print attribute identifiers
@@ -4443,7 +4431,12 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 			 *
 			 *	For refs we skip the attribute pointed to be the ref
 			 *	and just print its children.
+			 *
+			 * 	In addtion skip printing "request." in most cases.
 			 */
+			if ((stack.da[depth] == request_attr_request) && tmpl_attr_list_next(tmpl_attr(vpt), ar) &&
+			    (ar->filter.type == TMPL_ATTR_FILTER_TYPE_NONE)) continue;
+
 			for (i = depth; (unsigned int)i < ar->ar_da->depth; i++) {
 				FR_SBUFF_IN_STRCPY_RETURN(&our_out, stack.da[i]->name);
 
