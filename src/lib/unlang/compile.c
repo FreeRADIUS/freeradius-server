@@ -1759,7 +1759,6 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	 */
 	t_rules = *(unlang_ctx->rules);
 	t_rules.attr.allow_unknown = true;
-	t_rules.attr.list_as_attr = true;
 	RULES_VERIFY(&t_rules);
 
 	c = *prev;
@@ -1880,7 +1879,6 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	 */
 	t_rules = *(unlang_ctx->rules);
 	t_rules.attr.allow_unknown = true;
-	t_rules.attr.list_as_attr = true;
 	RULES_VERIFY(&t_rules);
 
 	/*

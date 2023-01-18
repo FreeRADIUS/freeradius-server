@@ -320,8 +320,6 @@ struct tmpl_attr_rules_s {
 	uint8_t			disallow_qualifiers:1;	//!< disallow request / list qualifiers
 
 	uint8_t			disallow_filters:1;	//!< disallow filters.
-
-	uint8_t			list_as_attr:1;		//!< return #TMPL_TYPE_ATTR for lists
 };
 
 struct tmpl_xlat_rules_s {
