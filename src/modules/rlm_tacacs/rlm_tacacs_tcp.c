@@ -552,7 +552,7 @@ static ssize_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_
 	 */
 	packet_len = fr_tacacs_decode(ctx, reply, data, data_len, NULL, inst->secret, inst->secretlen);
 	if (packet_len < 0) {
-		REDEBUG("Failed decoding attributes for packet");
+		RPEDEBUG("Failed decoding TACACS+ reply packet");
 		fr_pair_list_free(reply);
 		return -1;
 	}
