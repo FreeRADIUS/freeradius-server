@@ -604,6 +604,8 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 	u->packet_len = packet_len;
 	u->outstanding = true;
 
+//	fr_tacacs_packet_log_hex(&default_log, u->packet);
+
 	return 0;
 }
 
@@ -1173,8 +1175,7 @@ static void request_cancel(fr_connection_t *conn, void *preq_to_reset,
 
 	/*
 	 *	Request has been requeued on the same
-	 *	connection due to timeout or DUP signal.  We
-	 *	keep the same packet to avoid re-encoding it.
+	 *	connection due to timeout or DUP signal.
 	 */
 	if (reason == FR_TRUNK_CANCEL_REASON_REQUEUE) {
 		udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
