@@ -764,12 +764,12 @@ static inline bool tmpl_attr_tail_is_unresolved(tmpl_t const *vpt)
 {
 	tmpl_attr_t *ar;
 
-	tmpl_assert_type(tmpl_is_attr_unresolved(vpt));
+	tmpl_assert_type(tmpl_contains_attr(vpt));
 
 	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
 	if (unlikely(!ar)) return false;
 
-	return ar_is_normal(ar);
+	return ar_is_unresolved(ar);
 }
 
 /** Return true if the last attribute reference is "raw"
