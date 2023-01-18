@@ -190,6 +190,14 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	client = address->radclient;
 
 	/*
+	 *	Clients start at ID 1, and go up by 2.
+	 */
+	if ((data[2] & 0x01) != 0x01) {
+		REDEBUG("Invalid sequence number %02x", data[2]);
+		return -1;
+	}
+
+	/*
 	 *	Decode the header, etc.
 	 *
 	 *	The "type = ..." loader ensures that we only get request packets
@@ -212,7 +220,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		break;
 
 	default:
-		fr_assert(0);
 		return -1;
 	}
 
