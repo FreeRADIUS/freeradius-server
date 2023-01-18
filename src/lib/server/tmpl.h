@@ -694,6 +694,20 @@ static inline size_t tmpl_request_ref_count(tmpl_t const *vpt)
 	return tmpl_request_list_num_elements(&vpt->data.attribute.rr);
 }
 
+/** Return true if the tmpl_attr is one of the list types
+ *
+ * @hidecallergraph
+*/
+static inline bool tmpl_attr_is_list_attr(tmpl_attr_t const *ar)
+{
+	if (!ar || !ar_is_normal(ar)) return false;
+
+	return (ar->ar_da == request_attr_request) ||
+	       (ar->ar_da == request_attr_reply) ||
+	       (ar->ar_da == request_attr_control) ||
+	       (ar->ar_da == request_attr_state);
+}
+
 /** Return true if the last attribute reference is "normal"
  *
  * @hidecallergraph
