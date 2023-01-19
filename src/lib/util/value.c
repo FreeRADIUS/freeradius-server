@@ -3268,8 +3268,6 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		dst->vb_date = fr_unix_time_wrap(fr_time_delta_unwrap(src->vb_time_delta));
 		return 0;
 
-		break;
-
 	case FR_TYPE_TIME_DELTA:
 		/*
 		 *	Unix time cast to time_delta is just nanoseconds since the epoch.
