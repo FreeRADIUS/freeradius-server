@@ -178,7 +178,7 @@ dnl #  -g3 so nice things like macro values are included. Other arguments are
 dnl #  added later when we know what compiler were using.
 dnl #
 if test "x$developer" = "xyes"; then
-  : ${CFLAGS="$CFLAGS -g3"}
+  CFLAGS="$CFLAGS -g3"
 fi
 
 dnl #
