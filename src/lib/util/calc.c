@@ -1813,10 +1813,28 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	if (hint == FR_TYPE_NULL) do {
 		/*
 		 *	All kinds of special cases :(
+		 *
+		 *	date1 - date2 --> time_delta
+		 *
+		 *	time_delta * FOO --> float64, because time_delta is _printed_ as a floating point
+		 *	number.  And this is the least surprising thing to do.
 		 */
 		if ((op == T_SUB) && (a->type == b->type) && (a->type == FR_TYPE_DATE)) {
 			hint = FR_TYPE_TIME_DELTA;
 			break;
+		}
+
+		if (op == T_MUL) {
+			if (a->type == FR_TYPE_TIME_DELTA) {
+				hint = upcast_op[FR_TYPE_FLOAT64][b->type];
+				if (hint == FR_TYPE_NULL) hint = upcast_op[b->type][FR_TYPE_FLOAT64];
+
+			} else if (b->type == FR_TYPE_TIME_DELTA) {
+				hint = upcast_op[a->type][FR_TYPE_FLOAT64];
+				if (hint == FR_TYPE_NULL) hint = upcast_op[FR_TYPE_FLOAT64][a->type];
+			}
+
+			if (hint != FR_TYPE_NULL) break;
 		}
 
 		switch (op) {
