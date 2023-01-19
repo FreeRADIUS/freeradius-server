@@ -168,7 +168,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	/*
 	 *	Set the global search path for all dynamic libraries we load.
 	 */
-	if (dl_search_global_path_set(libdir) < 0) {
+	if (dl_search_global_path_set(lib_dir) < 0) {
 		fr_perror("fuzzer: Failed setting library path);
 		fr_exit_now(EXIT_FAILURE);
 	}
