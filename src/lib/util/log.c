@@ -1080,6 +1080,27 @@ int fr_log_init_std(fr_log_t *log, fr_log_dst_t dst_type)
 	return 0;
 }
 
+/** Initialise a file logging destination to a FILE*
+ *
+ * @param[out] log	Destination to initialise.
+ * @param[in] fp	pre-existing handle
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_log_init_fp(fr_log_t *log, FILE *fp)
+{
+	memset(log, 0, sizeof(*log));
+
+	log->dst = L_DST_FILES;
+	log->handle = fp;
+
+	setlinebuf(log->handle);
+	log->fd = fileno(log->handle);
+
+	return 0;
+}
+
 /** Initialise a file logging destination
  *
  * @param[out] log	Destination to initialise.
@@ -1090,19 +1111,14 @@ int fr_log_init_std(fr_log_t *log, fr_log_dst_t dst_type)
  */
 int fr_log_init_file(fr_log_t *log, char const *file)
 {
-	memset(log, 0, sizeof(*log));
+	FILE *fp;
 
-	log->dst = L_DST_FILES;
-
-	if (unlikely((log->handle = fopen(file, "a")) == NULL)) {
+	if (unlikely((fp = fopen(file, "a")) == NULL)) {
 		fr_strerror_printf("Failed opening log file \"%s\": %s", file, fr_syserror(errno));
 		return -1;
 	}
 
-	setlinebuf(log->handle);
-	log->fd = fileno(log->handle);
-
-	return 0;
+	return fr_log_init_fp(log, fp);
 }
 
 /** Write complete lines to syslog

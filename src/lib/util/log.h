@@ -182,6 +182,8 @@ int	fr_log_init_std(fr_log_t *log, fr_log_dst_t dst_type) CC_HINT(nonnull);
 
 int	fr_log_init_file(fr_log_t *log, char const *file) CC_HINT(nonnull);
 
+int	fr_log_init_fp(fr_log_t *log, FILE *fp) CC_HINT(nonnull);
+
 int	fr_log_init_syslog(fr_log_t *log) CC_HINT(nonnull);
 
 int	fr_log_init_func(fr_log_t *log, cookie_write_function_t write, cookie_close_function_t close, void *uctx)
