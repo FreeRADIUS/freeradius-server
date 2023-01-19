@@ -22,7 +22,7 @@ SOURCES			:= fuzzer.c
 
 TGT_PREREQS		:= libfreeradius-$(PROTOCOL)$(L)
 
-TGT_CFLAGS		:= -fsanitize=fuzzer
+SRC_CFLAGS		:= -fsanitize=fuzzer
 TGT_LDFLAGS		:= -fsanitize=fuzzer
 TGT_LDLIBS		:= $(LIBS)
 
