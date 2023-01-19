@@ -585,7 +585,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 
 			print_hex(log, file, line, "      argc           ", p, hdr[1], end);
 
-			p = hdr + 6 + hdr[7];
+			p = hdr + 6 + hdr[1];
 			print_ascii(log, file, line, "      server_msg     ", p, fr_nbo_to_uint16(hdr + 2), end);
 			p += fr_nbo_to_uint16(hdr + 2);
 
