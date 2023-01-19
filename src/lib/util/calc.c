@@ -1811,6 +1811,14 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	 *	guess based on a variety of factors.
 	 */
 	if (hint == FR_TYPE_NULL) do {
+		/*
+		 *	All kinds of special cases :(
+		 */
+		if ((op == T_SUB) && (a->type == b->type) && (a->type == FR_TYPE_DATE)) {
+			hint = FR_TYPE_TIME_DELTA;
+			break;
+		}
+
 		switch (op) {
 		case T_OP_CMP_EQ:
 		case T_OP_NE:
