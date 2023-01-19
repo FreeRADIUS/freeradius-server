@@ -38,12 +38,12 @@ RCSID("$Id$")
  *	./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer_radius -D share/dictionary /path/to/corpus/directory/
  */
 
-static bool			init = false;
-static fr_test_point_proto_decode_t *tp	= NULL;
-static dl_t			*dl = NULL;
-static dl_loader_t		*dl_loader;
+static bool				init	= false;
+static fr_test_point_proto_decode_t	*tp	= NULL;
+static dl_t				*dl	= NULL;
+static dl_loader_t			*dl_loader;
 
-static fr_dict_t		*dict = NULL;
+static fr_dict_t			*dict	= NULL;
 
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
@@ -65,15 +65,17 @@ static void exitHandler(void)
 	fr_atexit_global_trigger_all();
 }
 
-int LLVMFuzzerInitialize(int *argc, char ***argv)
+int LLVMFuzzerInitialize(int *argc, char ***argv) CC_HINT(nonnull)
 {
 	char const		*lib_dir  	= getenv("FR_LIBRARY_PATH");
 	char const		*proto    	= getenv("FR_LIBRARY_FUZZ_PROTOCOL");
 	char const		*dict_dir	= getenv("FR_DICTIONARY_DIR");
 	char const		*debug_lvl_str	= getenv("FR_DEBUG_LVL");
 	char			buffer[1024];
+	bool			free_dict	= FALSE;
+	bool			free_lib	= FALSE;
 
-	if (!argc || !argv || !*argv) return -1; /* shut up clang scan */
+	if (!*argv) return -1;
 
 	if (debug_lvl_str) fr_debug_lvl = atoi(debug_lvl_str);
 
@@ -139,8 +141,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 
 	/*	if (!dict_dir) dict_dir = int; -- removed to match oss-fuzz patch    */
 
-        DICTDIR free_dict = 0;
-	int free_lib = 0;
+
         if (!dict_dir) {
 		dict_dir = malloc(strlen((*argv)[0]) + 1);
 		memcpy(dict_dir, (*argv)[0], strlen((*argv)[0]) + 1);
@@ -154,7 +155,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		setenv("FR_LIBRARY_PATH", lib_dir, 1);
 		free_lib = 1;
 	}
- 
+
 	/*
 	 *	When jobs=N is specified the fuzzer spawns worker processes via
 	 *	a shell. We have removed any -D dictdir argument that were
@@ -211,10 +212,10 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 
 	init = true;
 
-	if (free_lib) {
+	if (TRUE == free_lib) {
 		free(lib_dir);
 	}
-	if (free_dict) {
+	if (TRUE == free_dict) {
 		free(dict_dir);
 	}
 	return 1;
