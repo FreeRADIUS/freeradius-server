@@ -154,6 +154,37 @@
                                         "text": "set solib-search-path ${workspaceFolder}"
                                 }
                         ]
+                },
+                {
+                        "type": "cppdbg",
+                        "request": "launch",
+                        "name": "Debug EAP (gdb)",
+                        "program": "${workspaceFolder}/build/bin/local/radiusd",
+                        "args": [
+                                "-X",
+                                "-D",
+                                "${workspaceFolder}/share/dictionary",
+                                "-d",
+                                "${workspaceFolder}/src/tests/eapol_test/config",
+                                "-n",
+                                "servers"
+                        ],
+                        "cwd": "${workspaceFolder}",
+                        "environment": [
+                                { "name": "TEST", "value": "${input:eapmethod}" },
+                                { "name": "TESTDIR", "value": "${workspaceFolder}/src/tests/eapol_test"},
+                                { "name": "TEST_PORT", "value": "12340" },
+                                { "name": "OUTPUT", "value": "${workspaceFolder}/build/tests/eapol_test/test.${input:eapmethod}"},
+                                { "name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                { "name": "DEBUGGER_ATTACHED", "value": "yes" }
+                        ],
+                        "MIMode": "gdb",
+                        "setupCommands": [
+                                {
+                                        "description": "Set solib",
+                                        "text": "set solib-search-path ${workspaceFolder}"
+                                }
+                        ]
                 }
         ],
         "inputs": [
@@ -181,6 +212,11 @@
                         "id": "unittest",
                         "type": "promptString",
                         "description": "Test to run"
+                },
+                {
+                        "id": "eapmethod",
+                        "type": "promptString",
+                        "description": "EAP method to test"
                 }
         ]
 }
