@@ -166,6 +166,14 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	if (!lib_dir) lib_dir = LIBDIR;
 
 	/*
+	 *	Set the global search path for all dynamic libraries we load.
+	 */
+	if (dl_search_global_path_set(libdir) < 0) {
+		fr_perror("fuzzer: Failed setting library path);
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	/*
 	 *	When jobs=N is specified the fuzzer spawns worker processes via
 	 *	a shell. We have removed any -D dictdir argument that were
 	 *	supplied, so we pass it to our children via the environment.
@@ -202,7 +210,6 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		fr_perror("fuzzer: Failed initializing library loader");
 		fr_exit_now(EXIT_FAILURE);
 	}
-	dl_search_path_prepend(dl_loader, lib_dir);
 
 	snprintf(buffer, sizeof(buffer), "libfreeradius-%s", proto);
 	dl = dl_by_name(dl_loader, buffer, NULL, false);
