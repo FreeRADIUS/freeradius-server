@@ -2004,7 +2004,8 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, tmpl_t **vpt_p)
 	 *	If it's a single attribute reference
 	 *	see if it's actually a virtual attribute.
 	 */
-	if (tmpl_attr_num_elements(vpt) == 1) {
+	if ((tmpl_attr_num_elements(vpt) == 1) ||
+	    (((tmpl_attr_list_head(tmpl_attr(vpt))->da) == PAIR_LIST_REQUEST) && tmpl_attr_num_elements(vpt) == 2)){
 		if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
 			func = xlat_func_find(tmpl_attr_tail_da(vpt)->name, -1);
 			if (!func) {
