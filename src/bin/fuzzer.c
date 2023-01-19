@@ -72,7 +72,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	char const		*dict_dir	= getenv("FR_DICTIONARY_DIR");
 	char const		*debug_lvl_str	= getenv("FR_DEBUG_LVL");
 	char const		*p;
-#ifdef LIB_FUZZING_ENGINE
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	char			*dict_dir_to_free = NULL;
 	char			*lib_dir_to_free = NULL;
 #endif
@@ -142,7 +142,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		}
 	}
 
-#ifdef LIB_FUZZING_ENGINE
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	/*
 	 *	oss-fuzz puts the dictionaries, etc. into subdirectories named after the location of the
 	 *	binary.  So we find the directory of the binary, and append "/dict" or "/lib" to find
@@ -221,7 +221,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 
 	init = true;
 
-#ifdef LIB_FUZZING_ENGINE
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	talloc_free(dict_dir_to_free);
 	talloc_free(lib_dir_to_free);
 #endif
