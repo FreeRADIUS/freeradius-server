@@ -661,7 +661,6 @@ static unlang_action_t unlang_module_done(rlm_rcode_t *p_result, request_t *requ
 	RDEBUG("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
 	       fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
 
-	request->rcode = rcode;
 	if (state->p_result) *state->p_result = rcode;	/* Inform our caller if we have one */
 	*p_result = rcode;
 	request->module = state->previous_module;
@@ -721,8 +720,6 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	safe_lock(mc->instance);
 	ua = resume(&state->rcode, MODULE_CTX(mc->instance->dl_inst, state->thread->data, state->rctx), request);
 	safe_unlock(mc->instance);
-
-	request->rcode = state->rcode;
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
 
