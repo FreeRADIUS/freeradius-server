@@ -3287,7 +3287,7 @@ printf "%s\n" "#define RADIUSD_VERSION_COMMIT ${RADIUSD_VERSION_COMMIT}" >>confd
 fi
 
 if test "x$developer" = "xyes"; then
-  : ${CFLAGS="$CFLAGS -g3"}
+  : CFLAGS="$CFLAGS -g3"
 fi
 
 # Check whether --enable-verify-ptr was given.
