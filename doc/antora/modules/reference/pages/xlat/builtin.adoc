@@ -1131,5 +1131,29 @@ update reply {
 Caipirinha,is,a,light,and,refreshing,drink!
 ```
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+### %(time:)
+
+Return the current time.
+
+.Return: _date_.
+
+If no argument is passed, it returns the current time.  Otherwise if the argument is:
+
+* `now` - returns the current time
+* `request` - returns the time at which the request packet was received (always less than `now`!)
+* any other string is parsed as type `date`, using the normal date parsing routines.
+
+[NOTE]
+====
+This expansion should be used in preference to the xref:xlat/character.adoc[single letter expansions] `%l`.  That expansion returns integer seconds, and is not suitable for millisecond or microsecond resolution.
+====
+
+.Example
+
+[source,unlang]
+----
+&Acct-Start-Time := %(time:now)
+----
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

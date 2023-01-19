@@ -3476,6 +3476,53 @@ static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
+static xlat_arg_parser_t const xlat_func_time_args[] = {
+	{ .required = false, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Return the time as a #FR_TYPE_DATE
+ *
+@verbatim
+%(time:)
+@endverbatim
+ *
+ * Example:
+@verbatim
+update reply {
+	&Reply-Message := "%{expr:%{time:now} - %{time:request}}
+}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED xlat_ctx_t const *xctx,
+				    request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+{
+	fr_value_box_t		*arg = fr_value_box_list_head(in);
+	fr_value_box_t		*vb;
+	fr_unix_time_t		value;
+
+	if (!arg || (strcmp(arg->vb_strvalue, "now") == 0)) {
+		value = fr_time_to_unix_time(fr_time());
+
+	} else if (strcmp(arg->vb_strvalue, "request") == 0) {
+		value = fr_time_to_unix_time(request->packet->timestamp);
+
+	} else if (fr_unix_time_from_str(&value, arg->vb_strvalue, FR_TIME_RES_SEC) < 0) {
+		REDEBUG("Invalid time specification '%s'", arg->vb_strvalue);
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, false));
+	vb->vb_date = value;
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+
 /** Change case of a string
  *
  * If upper is true, change to uppercase, otherwise, change to lowercase
@@ -4010,6 +4057,7 @@ do { \
 	XLAT_REGISTER_ARGS("nexttime", xlat_func_next_time, FR_TYPE_UINT64, xlat_func_next_time_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, FR_TYPE_STRING, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("subst", xlat_func_subst, FR_TYPE_STRING, xlat_func_subst_args);
+	XLAT_REGISTER_ARGS("time", xlat_func_time, FR_TYPE_DATE, xlat_func_time_args);
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, FR_TYPE_STRING, trigger_xlat_args);
 
 	/*
