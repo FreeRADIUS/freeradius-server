@@ -1979,7 +1979,8 @@ do_suffix:
 		tmpl_attr_insert(vpt, ar);
 	}
 
-	if (tmpl_is_attr(vpt) && (tmpl_rules_cast(vpt) == tmpl_attr_tail_da(vpt)->type)) vpt->rules.cast = FR_TYPE_NULL;
+	if (tmpl_is_attr(vpt) && tmpl_attr_tail_is_normal(vpt) &&
+	    (tmpl_rules_cast(vpt) == tmpl_attr_tail_da(vpt)->type)) vpt->rules.cast = FR_TYPE_NULL;
 
 	fr_sbuff_marker_release(&m_s);
 	return 0;
