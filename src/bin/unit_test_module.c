@@ -294,34 +294,19 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 
 static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *list)
 {
-	fr_pair_t *vp;
-	fr_dcursor_t cursor;
 	fr_dict_enum_value_t *dv;
+	fr_log_t log;
 
-	if (fr_pair_list_empty(list)) {
-		fprintf(fp, "\n");
-		return;
-	}
+	(void) fr_log_init_fp(&log, fp);
 
 	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(packet->code));
-	if (dv) fprintf(fp, "%s\n", dv->name);
-
-	for (vp = fr_pair_dcursor_init(&cursor, list);
-	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
-		/*
-		 *	Take this opportunity to verify all the fr_pair_ts are still valid.
-		 */
-		if (!talloc_get_type(vp, fr_pair_t)) {
-			ERROR("Expected fr_pair_t pointer got \"%s\"", talloc_get_name(vp));
-
-			fr_log_talloc_report(vp);
-			fr_assert(0);
-		}
-
-		fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
+	if (dv) {
+		fr_log(&default_log, L_DBG, __FILE__, __LINE__, "Packet-Type = %s", dv->name);
+	} else {
+		fr_log(&default_log, L_DBG, __FILE__, __LINE__, "Packet-Type = %u", packet->code);
 	}
-	fflush(fp);
+
+	fr_pair_list_log(&default_log, 2, list);
 }
 
 
