@@ -3674,7 +3674,7 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 {
 	tmpl_attr_t		*ar = NULL, *next, *prev;
-	fr_dict_attr_t const	*da;
+	fr_dict_attr_t const	*da, *namespace;
 	fr_dict_t const		*dict_def;
 
 	fr_assert(tmpl_is_attr_unresolved(vpt));
@@ -3741,9 +3741,16 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 			break;
 		}
 
+		prev = tmpl_attr_list_prev(tmpl_attr(vpt), ar);
+
+		/*
+		 *	If the parent is a list AR, then use the default dictionary for the namespace
+		 */
+		namespace = (prev && dict_def && tmpl_attr_is_list_attr(prev)) ? fr_dict_root(dict_def) : ar->ar_unresolved_namespace;
+
 		(void)fr_dict_attr_by_name_substr(NULL,
 						  &da,
-						  ar->ar_unresolved_namespace,
+						  namespace,
 						  &FR_SBUFF_IN(ar->ar_unresolved,
 						  	       talloc_array_length(ar->ar_unresolved) - 1),
 						  NULL);
@@ -3757,7 +3764,6 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 		 *	in the internal dictionary.
 		 */
 		if (!da) {
-			prev = tmpl_attr_list_prev(tmpl_attr(vpt), ar);
 			if (!vpt->rules.attr.disallow_internal && prev && (prev->ar_da->type == FR_TYPE_GROUP)) {
 				(void)fr_dict_attr_by_name_substr(NULL,
 								  &da,
