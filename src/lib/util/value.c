@@ -3126,6 +3126,8 @@ static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_bo
 		num = fr_time_delta_unwrap(src->vb_time_delta);
 		if (src->enumv) {
 			num /= fr_time_multiplier_by_res[src->enumv->flags.flag_time_res];
+		} else {
+			num /= NSEC;
 		}
 		goto good_cast;
 
