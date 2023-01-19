@@ -3255,7 +3255,54 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_BOOL:
 		return fr_value_box_cast_to_bool(ctx, dst, dst_type, dst_enumv, src);
 
-	case FR_TYPE_INTEGER_EXCEPT_BOOL:
+	case FR_TYPE_DATE:
+		if (src->type != FR_TYPE_TIME_DELTA) return fr_value_box_cast_to_integer(ctx, dst, dst_type, dst_enumv, src);
+
+		if (fr_time_delta_isneg(src->vb_time_delta)) {
+			fr_strerror_const("Input to data type would underflow");
+			return -1;
+		}
+
+		dst->type = dst_type;
+		dst->enumv = dst_enumv;
+		dst->vb_date = fr_unix_time_wrap(fr_time_delta_unwrap(src->vb_time_delta));
+		return 0;
+
+		break;
+
+	case FR_TYPE_TIME_DELTA:
+		/*
+		 *	Unix time cast to time_delta is just nanoseconds since the epoch.
+		 *
+		 *	Note that we do NOT change time resolution, but we DO change enumv.  Both unix time
+		 *	and time_delta are tracked internally as nanoseconds, and the only use of precision is
+		 *	for printing / parsing.
+		 */
+		if (src->type == FR_TYPE_DATE) {
+			uint64_t when;
+
+			when = fr_unix_time_unwrap(src->vb_date);
+			if (when > INT64_MAX) {
+				fr_strerror_const("Input to data type would overflow");
+				return -1;
+			}
+
+			dst->type = dst_type;
+			dst->enumv = dst_enumv;
+			dst->vb_time_delta = fr_time_delta_wrap((int64_t) when);
+			return 0;
+		}
+		FALL_THROUGH;
+
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_INT8:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_SIZE:
 		return fr_value_box_cast_to_integer(ctx, dst, dst_type, dst_enumv, src);
 
 	case FR_TYPE_FLOAT32:
