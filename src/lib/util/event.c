@@ -2793,7 +2793,6 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	 *	function is called.
 	 */
 	fr_atexit_global_once_ret(&ret, _event_build_indexes, _event_free_indexes, NULL);
-	if (unlikely(ret < 0)) return NULL;
 
 	el = talloc_zero(ctx, fr_event_list_t);
 	if (!fr_cond_assert(el)) {
