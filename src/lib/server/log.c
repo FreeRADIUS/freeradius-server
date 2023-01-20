@@ -201,6 +201,29 @@ fr_dict_attr_autoload_t log_dict_attr[] = {
 	{ NULL }
 };
 
+typedef struct {
+	char const	*name;		//!< name of this logging destination
+	fr_log_t	*log;		//!< pointer to the log structure
+	CONF_SECTION	*cs;		//!< where this log configuration came from
+
+	fr_rb_node_t	name_node;     	//!< tree by name
+	fr_rb_node_t	filename_node; 	//!< tree by name
+} fr_log_track_t;
+
+typedef struct {
+	char const	*name;		//!< name of this logging source
+	uint32_t	id;		//!< LOG_ID of this source
+	fr_log_t	*original;	//!< the original fr_log_t
+	fr_log_t	**log;		//!< where the logs should go
+
+	fr_rb_node_t	name_node;	//!< tree by name only
+	fr_rb_node_t	id_node;	//!< tree by ID
+} fr_log_src_t;
+
+static fr_rb_tree_t	*dst_tree = NULL;
+static fr_rb_tree_t	*filename_tree = NULL;
+static fr_rb_tree_t	*src_tree = NULL;
+
 /** Send a server log message to its destination without evaluating its debug level
  *
  * @param[in] log	destination.
@@ -1026,6 +1049,185 @@ void log_fatal(fr_log_t const *log, char const *file, int line, char const *fmt,
 	fr_exit_now(EXIT_FAILURE);
 }
 
+/** Register a logging destination.
+ *
+ */
+static void log_register_dst(char const *name, fr_log_t *log, CONF_SECTION *cs)
+{
+	fr_log_track_t *dst;
+
+	MEM(dst = talloc_zero(dst_tree, fr_log_track_t));
+	dst->name = name;
+	dst->log = log;
+	dst->cs = cs;
+
+	fr_rb_insert(dst_tree, dst);
+
+	if (log->dst != L_DST_FILES) return;
+
+	fr_rb_insert(filename_tree, dst);
+}
+
+static int _log_free(fr_log_t *log)
+{
+	fr_assert(log->dst == L_DST_FILES);
+
+	fclose(log->handle);
+	return 0;
+}
+
+static char const *log_destination = NULL;
+static bool log_timestamp;
+static bool log_timestamp_is_set;
+
+/*
+ *	Parse an fr_log_t configuration.
+ */
+static const CONF_PARSER log_config[] = {
+	{ FR_CONF_POINTER("destination", FR_TYPE_STRING, &log_destination), .dflt = "files" },
+#if 0
+	/*
+	 *	@todo - once we allow this, also check that there's only _one_ destination
+	 *	which uses syslog_facility.
+	 */
+	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_VOID, main_config_t, syslog_facility), .dflt = "daemon",
+		.func = cf_table_parse_int,
+		.uctx = &(cf_table_parse_ctx_t){
+			.table = syslog_facility_table,
+			.len = &syslog_facility_table_len
+		}
+	},
+#endif
+	{ FR_CONF_POINTER_IS_SET("timestamp", FR_TYPE_BOOL, &log_timestamp) },
+	{ FR_CONF_OFFSET("file", FR_TYPE_STRING, fr_log_t, file), },
+	{ FR_CONF_OFFSET("colourise", FR_TYPE_BOOL, fr_log_t, colourise) },
+	{ FR_CONF_OFFSET("line_number", FR_TYPE_BOOL, fr_log_t, line_number) },
+	{ FR_CONF_OFFSET("use_utc", FR_TYPE_BOOL, fr_log_t, dates_utc) },
+	{ FR_CONF_OFFSET("print_level", FR_TYPE_BOOL, fr_log_t, print_level) },
+	CONF_PARSER_TERMINATOR
+};
+
+/** Parse a named logging section.
+ *
+ *  @todo - we should probably allow for TCP sockets, too.  But then
+ *  those can block.  So we then also need a way to buffer outbound
+ *  log messages, and discard log messages if the buffer is full.
+ *
+ *  This should probably be done with a FILE*, and L_DST_FUNC.
+ */
+int log_parse_section(CONF_SECTION *cs)
+{
+	fr_log_track_t *dst, find;
+	fr_log_t *log;
+	char const *name;
+
+	name = cf_section_name2(cs);
+	if (!name) name = cf_section_name1(cs);
+
+	memset(&find, 0, sizeof(find));
+	find.name = name;
+
+	dst = fr_rb_find(dst_tree, &find);
+	if (!dst) {
+		fr_strerror_printf("Cannot add duplicate log destination '%s'", name);
+		return -1;
+	}
+
+	MEM(log = talloc_zero(dst_tree, fr_log_t));
+
+	if (cf_section_rule_push(cs, log_config) < 0) {
+	error:
+		talloc_free(log);
+		return -1;
+	}
+
+	if (cf_section_parse(log, log, cs) < 0) goto error;
+
+	log->dst = fr_table_value_by_str(log_destination_table, log_destination, L_DST_NUM_DEST);
+	switch (log->dst) {
+	case L_DST_NUM_DEST:
+		fr_strerror_printf("Unknown log_destination '%s'", log_destination);
+		talloc_const_free(log_destination);
+		log_destination = NULL;
+		goto error;
+
+#ifdef HAVE_SYSLOG_H
+	case L_DST_SYSLOG:
+		talloc_const_free(log_destination);
+		log_destination = NULL;
+
+		/*
+		 *	Call openlog only once, when the
+		 *	program starts.
+		 */
+		fr_assert(0);
+//		openlog(config->name, LOG_PID, config->syslog_facility);
+		break;
+#endif
+
+	case L_DST_FILES:
+		talloc_const_free(log_destination);
+		log_destination = NULL;
+
+		if (!log->file) {
+			fr_strerror_const("Specified \"files\" as a log destination, but no log filename was given!");
+			goto error;
+		}
+
+		find.log = log;
+		dst = fr_rb_find(filename_tree, &find);
+		if (dst) {
+			fr_strerror_printf("The log destination '%s' is already logging to file %s",
+					   dst->name, log->file);
+			goto error;
+		}
+
+		if (fr_log_init_file(log, log->file) < 0) goto error;
+
+		talloc_set_destructor(log, _log_free);
+		break;
+
+	default:		/* look for stdout / stderr? */
+		talloc_const_free(log_destination);
+		log_destination = NULL;
+
+		fr_assert(0);
+		break;
+	}
+
+	if (log_timestamp_is_set) {
+		log->timestamp = log->timestamp ? L_TIMESTAMP_ON : L_TIMESTAMP_OFF;
+	} else {
+		log->timestamp = L_TIMESTAMP_AUTO;
+	}
+
+	log_register_dst(name, log, cs);
+
+	return 0;
+}
+
+static int8_t _log_track_name_cmp(void const *two, void const *one)
+{
+	fr_log_track_t const *a = one;
+	fr_log_track_t const *b = two;
+
+	return CMP(strcmp(a->name, b->name), 0);
+}
+
+static int8_t _log_track_filename_cmp(void const *two, void const *one)
+{
+	fr_log_track_t const *a = one;
+	fr_log_track_t const *b = two;
+
+	fr_assert(a->log);
+	fr_assert(a->log->dst == L_DST_FILES);
+
+	fr_assert(b->log);
+	fr_assert(b->log->dst == L_DST_FILES);
+
+	return CMP(strcmp(a->log->file, b->log->file), 0);
+}
+
 /** Initialises the server logging functionality, and the underlying libfreeradius log
  *
  * @note Call log free when the server is done to fix any spurious memory leaks.
@@ -1053,10 +1255,29 @@ int log_global_init(fr_log_t *log, bool daemonize)
 		return -1;
 	}
 
+	dst_tree = fr_rb_inline_alloc(NULL, fr_log_track_t, name_node,
+				      _log_track_name_cmp, NULL);
+	if (!dst_tree) {
+		fr_perror("log_init");
+		return -1;
+	}
+
+	filename_tree = fr_rb_inline_alloc(NULL, fr_log_track_t, filename_node,
+					   _log_track_filename_cmp, NULL);
+	if (!filename_tree) {
+		fr_perror("log_init");
+		return -1;
+	}
+
+	log_register_dst("", log, NULL);
+
 	return ret;
 }
 
 void log_global_free(void)
 {
 	fr_dict_autofree(log_dict);
+	TALLOC_FREE(src_tree);
+	TALLOC_FREE(dst_tree);
+	TALLOC_FREE(filename_tree);
 }

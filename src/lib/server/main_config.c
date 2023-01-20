@@ -1344,6 +1344,20 @@ do {\
 	 */
 	fr_assert(config->root_cs == NULL);
 
+	/*
+	 *	Load different logging destinations.
+	 */
+	for (subcs = cf_section_find_next(cs, NULL, "log", CF_IDENT_ANY);
+	     subcs != NULL;
+	     subcs = cf_section_find_next(cs, subcs, "log", CF_IDENT_ANY)) {
+		if (!cf_section_name2(subcs)) continue;
+
+		if (log_parse_section(subcs) < 0) {
+			cf_log_err(subcs, "Failed parsing log section: %s", fr_strerror());
+			goto failure;
+		}
+	}
+
 	DEBUG2("%s: #### Loading Clients ####", config->name);
 	if (!client_list_parse_section(cs, 0, false)) goto failure;
 

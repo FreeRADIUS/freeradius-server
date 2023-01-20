@@ -149,6 +149,9 @@ void	log_request_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, 
 void	log_fatal(fr_log_t const *log, char const *file, int line, char const *fmt, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(noreturn);
 
+typedef struct cf_section CONF_SECTION;
+int	log_parse_section(CONF_SECTION *cs);
+
 int	log_global_init(fr_log_t *log, bool daemonize);
 
 void	log_global_free(void);
