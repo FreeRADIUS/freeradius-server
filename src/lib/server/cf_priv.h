@@ -50,15 +50,15 @@ struct cf_item {
 	fr_rb_node_t		ident1_node;	//!< Entry in the ident1 tree.
 	fr_rb_node_t		ident2_node;	//!< Entry in the ident2 tree.
 
-	CONF_ITEM_TYPE		type;		//!< Whether the config item is a config_pair, conf_section or cf_data.
-
 	fr_dlist_t		entry;		//!< Entry in dlist
-	CONF_ITEM		*parent;	//!< Parent.
-
 	fr_dlist_head_t		children;	//!< The head of the ordered list of children.
+
+	CONF_ITEM		*parent;	//!< Parent
 
 	fr_rb_tree_t		*ident1;	//!< Tree to store the first identifier (name1 || type || attr).
 	fr_rb_tree_t		*ident2;	//!< Tree to store the second identifier (name2 || name).
+
+	CONF_ITEM_TYPE		type;		//!< Whether the config item is a config_pair, conf_section or cf_data.
 
 	int			lineno;		//!< The line number the config item began on.
 	char const		*filename;	//!< The file the config item was parsed from.
