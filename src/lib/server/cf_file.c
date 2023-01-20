@@ -1461,7 +1461,7 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool const 
 	/*
 	 *	We've fallen off of the end of a string.  It may be OK?
 	 */
-	if (eol) *eol = true;
+	if (eol) *eol = (depth > 0);
 
 	if (terminal && terminal[(uint8_t) *p]) return p - start;
 
@@ -2447,9 +2447,9 @@ check_for_eol:
 		}
 
 		/*
-		 *	If don't hit EOL, then maybe we hit an end character?
+		 *	We parsed until the end of the string, but the condition still needs more data.
 		 */
-		if (!eol && !terminal_end_line[(uint8_t) ptr[slen]]) {
+		if (eol) {
 			ERROR("%s[%d]: FIXME: EOL continuation not implemented",
 			      frame->filename, frame->lineno);
 			return -1;
@@ -2457,8 +2457,6 @@ check_for_eol:
 
 		/*
 		 *	Keep a copy of the entire RHS.
-		 *
-		 *	@todo - mark up the RHS as somehow an expression?
 		 */
 		memcpy(buff[2], ptr, slen);
 		buff[2][slen] = '\0';
