@@ -93,7 +93,7 @@ static int name_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, C
 /*
  *	Log destinations
  */
-static const CONF_PARSER initial_log_subsection_config[] = {
+static const CONF_PARSER initial_log_config[] = {
 	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING, main_config_t, log_dest), .dflt = "files" },
 	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_VOID, main_config_t, syslog_facility), .dflt = "daemon",
 		.func = cf_table_parse_int,
@@ -111,8 +111,8 @@ static const CONF_PARSER initial_log_subsection_config[] = {
 /*
  *	Basic configuration for the server.
  */
-static const CONF_PARSER initial_logging_config[] = {
-	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) initial_log_subsection_config },
+static const CONF_PARSER initial_server_config[] = {
+	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) initial_log_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -1233,7 +1233,7 @@ do {\
 	 *	set it now.
 	 */
 	if (default_log.dst == L_DST_NULL) {
-		if (cf_section_rules_push(cs, initial_logging_config) < 0) {
+		if (cf_section_rules_push(cs, initial_server_config) < 0) {
 			fprintf(stderr, "%s: Error: Failed pushing rules for log {} section.\n",
 				config->name);
 			goto failure;
