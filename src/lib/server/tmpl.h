@@ -1106,6 +1106,8 @@ void			tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t le
 
 void			tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict) CC_HINT(nonnull);
 
+void			tmpl_set_xlat(tmpl_t *vpt, xlat_exp_head_t *xlat) CC_HINT(nonnull);
+
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bool steal) CC_HINT(nonnull);
 
 void			tmpl_attr_ref_debug(const tmpl_attr_t *ar, int idx) CC_HINT(nonnull);

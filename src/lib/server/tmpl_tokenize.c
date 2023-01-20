@@ -828,6 +828,19 @@ void tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict)
 	vpt->rules.attr.dict_def = dict;
 }
 
+/** Change the default dictionary in the tmpl's resolution rules
+ *
+ * @param[in] vpt	to alter.
+ * @param[in] xlat	to set.
+ */
+void tmpl_set_xlat(tmpl_t *vpt, xlat_exp_head_t *xlat)
+{
+	fr_assert(vpt->type == TMPL_TYPE_XLAT);
+
+	tmpl_xlat(vpt) = xlat;
+}
+
+
 /** Initialise a tmpl using a format string to create the name
  *
  * @param[in] vpt	to initialise.
