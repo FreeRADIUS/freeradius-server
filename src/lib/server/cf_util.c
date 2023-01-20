@@ -132,6 +132,11 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	if (IS_WILDCARD(ident2)) return fr_rb_find(parent->ident1, find);
 
 	/*
+	 *	Only sections have an ident2 tree.
+	 */
+	if (parent->type != CONF_ITEM_SECTION) return NULL;
+
+	/*
 	 *	Both ident1 and ident2 use the ident2 tree.
 	 */
 	return fr_rb_find(parent->ident2, find);
@@ -366,12 +371,14 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 	 */
 	if (!parent->ident1) parent->ident1 = fr_rb_inline_alloc(parent, CONF_ITEM, ident1_node,
 								 _cf_ident1_cmp, NULL);
+	fr_rb_insert(parent->ident1, child);
+	fr_dlist_insert_tail(&parent->children, child);	/* Append to the list of children */
+
+	if (parent->type != CONF_ITEM_SECTION) return;	/* Only sections can have ident2 trees */
+
 	if (!parent->ident2) parent->ident2 = fr_rb_inline_alloc(parent, CONF_ITEM, ident2_node,
 								 _cf_ident2_cmp, NULL);
-
-	fr_rb_insert(parent->ident1, child);
 	fr_rb_insert(parent->ident2, child);		/* NULL ident2 is still a value */
- 	fr_dlist_insert_tail(&parent->children, child);	/* Append to the list of children */
 }
 
 /** Insert a child after a given one
@@ -399,12 +406,16 @@ void _cf_item_insert_after(CONF_ITEM *parent, CONF_ITEM *prev, CONF_ITEM *child)
 	 *	If there's a prev, then the ident trees must be there.
 	 */
 	fr_assert(parent->ident1 != NULL);
-	fr_assert(parent->ident2 != NULL);
 
 	fr_rb_insert(parent->ident1, child);
-	fr_rb_insert(parent->ident2, child);			/* NULL ident2 is still a value */
 	fr_dlist_insert_after(&parent->children, prev, child);	/* insert in the list of children */
+
+	if (parent->type != CONF_ITEM_SECTION) return;		/* only sections can have ident2 trees */
+
+	fr_assert(parent->ident2 != NULL);
+	fr_rb_insert(parent->ident2, child);			/* NULL ident2 is still a value */
 }
+
 
 /** Remove item from parent and fixup trees
  *
@@ -437,8 +448,15 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	fr_dlist_remove(&parent->children, child);
 
 	in_ident1 = (fr_rb_remove_by_inline_node(parent->ident1, &child->ident1_node) != NULL);
-	in_ident2 = (fr_rb_remove_by_inline_node(parent->ident2, &child->ident2_node) != NULL);
 
+	/*
+	 *	Only sections can have ident2 trees.
+	 */
+	if (parent->type != CONF_ITEM_SECTION) {
+		in_ident2 = false;
+	} else {
+		in_ident2 = (fr_rb_remove_by_inline_node(parent->ident2, &child->ident2_node) != NULL);
+	}
 
 	/*
 	 *	Look for twins.  They weren't in the tree initially,
@@ -2200,7 +2218,12 @@ void _cf_debug(CONF_ITEM const *ci)
 	     	char const *in_ident1, *in_ident2;
 
 		in_ident1 = fr_rb_find(ci->ident1, child) == child? "in ident1 " : "";
-		in_ident2 = fr_rb_find(ci->ident2, child) == child? "in ident2 " : "";
+
+		if (ci->type != CONF_ITEM_SECTION) {
+			in_ident2 = false;
+		} else {
+			in_ident2 = fr_rb_find(ci->ident2, child) == child? "in ident2 " : "";
+		}
 
 		switch (child->type) {
 		case CONF_ITEM_SECTION:
