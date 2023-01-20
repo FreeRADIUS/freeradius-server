@@ -1539,7 +1539,11 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		/*
 		 *	Parse failures not at EOL are real errors.
 		 */
-		if (!eol) goto error;
+		if (!eol) {
+			slen = 0;
+			fr_strerror_const("Unexpected EOF");
+			goto error;
+		}
 
 		/*
 		 *	Parse failures at EOL means that we read more data.
