@@ -621,13 +621,13 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		 *	Loop over the remaining items, adding the VPs we've just created.
 		 */
 		while ((box = fr_dcursor_next(&cursor)) != NULL) {
+			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], box);
+
 			MEM(vp = fr_pair_afrom_da(current->lhs.vp_parent, da));
 			if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, box) < 0) goto fail;
 
 			if (fr_edit_list_insert_pair_tail(state->el, &current->lhs.vp_parent->vp_group, vp) < 0) goto fail;
 			vp->op = T_OP_EQ;
-
-			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], box);
 		}
 
 		goto done;
