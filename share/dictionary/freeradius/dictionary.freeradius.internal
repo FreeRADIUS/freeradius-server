@@ -390,6 +390,21 @@ ATTRIBUTE	Tmp-Ethernet-7				1797	ether
 ATTRIBUTE	Tmp-Ethernet-8				1798	ether
 ATTRIBUTE	Tmp-Ethernet-9				1799	ether
 
+ATTRIBUTE	Tmp-Time-Delta-0			1800	time_delta
+ATTRIBUTE	Tmp-Time-Delta-1			1801	time_delta
+ATTRIBUTE	Tmp-Time-Delta-2			1802	time_delta
+ATTRIBUTE	Tmp-Time-Delta-3			1803	time_delta
+ATTRIBUTE	Tmp-Time-Delta-4			1804	time_delta
+ATTRIBUTE	Tmp-Time-Delta-5			1805	time_delta
+ATTRIBUTE	Tmp-Time-Delta-6			1806	time_delta
+ATTRIBUTE	Tmp-Time-Delta-7			1807	time_delta
+ATTRIBUTE	Tmp-Time-Delta-8			1808	time_delta
+ATTRIBUTE	Tmp-Time-Delta-9			1809	time_delta
+
+#
+#  1810 - 1879 - unused
+#
+
 ATTRIBUTE	Tmp-Float-0				1880	float32
 ATTRIBUTE	Tmp-Float-1				1881	float32
 ATTRIBUTE	Tmp-Float-2				1882	float32
