@@ -91,12 +91,13 @@ static inline map_t *map_alloc(TALLOC_CTX *ctx, map_t *parent)
  * @param[in] cp		to convert to map.
  * @param[in] lhs_rules		rules for parsing LHS attribute references.
  * @param[in] input_rhs_rules	rules for parsing RHS attribute references.
+ * @param[in] edit		treat the map as an edit
  * @return
  *	- #map_t if successful.
  *	- NULL on error.
  */
 int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
-		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *input_rhs_rules)
+		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *input_rhs_rules, bool edit)
 {
 	map_t		*map;
 	char const	*attr, *value, *marker_subject;
@@ -201,6 +202,47 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		}
 		value = unescaped_value;
 		p_rules = NULL;
+
+	} else if (edit && (type == T_BARE_WORD)) {
+		fr_slen_t slent;
+		xlat_exp_head_t *head;
+
+		/*
+		 *	Try to parse it as a bare word first.  If that
+		 *	works, then we leave it as a stand-alone tmpl.
+		 */
+		slen = talloc_array_length(value) - 1;
+
+		slen = tmpl_afrom_substr(map, &map->rhs,
+					 &FR_SBUFF_IN(value, slen),
+					 type,
+					 p_rules,
+					 rhs_rules);
+		if (slen > 0) {
+			fr_assert(map->rhs);
+			goto check_rhs;
+		}
+
+		/*
+		 *	Not a bare word, it must be a complex expression.
+		 */
+		slen = talloc_array_length(value) - 1;
+
+		MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_XLAT, T_BARE_WORD, value, slen));
+
+		/*
+		 *	@todo - if there's only one thing in the expression, just hoist it to the tmpl?  Or do we even need to do that?
+		 */
+		slent = xlat_tokenize_expression(map->rhs, &head, &FR_SBUFF_IN(value, slen), p_rules, rhs_rules);
+		if (slent <= 0) {
+			slen = slent + 1;
+			marker_subject = value;
+			goto marker;
+		}
+
+		tmpl_set_xlat(map->rhs, head);
+		goto verify;
+
 	} else {
 		slen = talloc_array_length(value) - 1;
 	}
@@ -220,6 +262,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		goto error;
 	}
 
+check_rhs:
 	if (tmpl_is_attr(map->rhs) && (tmpl_attr_unknown_add(map->rhs) < 0)) {
 		cf_log_perr(cp, "Failed creating attribute %s", map->rhs->name);
 		goto error;
@@ -247,6 +290,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		}
 	}
 
+verify:
 	MAP_VERIFY(map);
 	TALLOC_FREE(child_ctx);
 
@@ -687,7 +731,7 @@ check_for_child:
 static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_SECTION *cs,
 			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			 map_validate_t validate, void *uctx,
-			 unsigned int max, bool update)
+			 unsigned int max, bool update, bool edit)
 {
 	CONF_ITEM 	*ci;
 	CONF_PAIR 	*cp;
@@ -857,7 +901,7 @@ do_children:
 			 *	correct parent map.
 			 */
 			if (_map_afrom_cs(map, &child_list, map, cf_item_to_section(ci),
-					 &our_lhs_rules, rhs_rules, validate, uctx, max, false) < 0) {
+					 &our_lhs_rules, rhs_rules, validate, uctx, max, false, edit) < 0) {
 				map_list_talloc_free(&child_list);
 				talloc_free(map);
 				goto error;
@@ -877,7 +921,7 @@ do_children:
 		cp = cf_item_to_pair(ci);
 		fr_assert(cp != NULL);
 
-		if (map_afrom_cp(parent_ctx, &map, parent, cp, &our_lhs_rules, rhs_rules) < 0) {
+		if (map_afrom_cp(parent_ctx, &map, parent, cp, &our_lhs_rules, rhs_rules, edit) < 0) {
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;
@@ -930,7 +974,33 @@ int map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
 
 	if (ctx) parent = talloc_get_type(ctx, map_t);
 
-	return _map_afrom_cs(ctx, out, parent, cs, lhs_rules, rhs_rules, validate, uctx, max, update);
+	return _map_afrom_cs(ctx, out, parent, cs, lhs_rules, rhs_rules, validate, uctx, max, update, false);
+}
+
+/** Convert a config section into an attribute map for editing
+ *
+ * @param[in] ctx		for talloc.
+ * @param[out] out		Where to store the allocated map.
+ * @param[in] cs		the update section
+ * @param[in] lhs_rules		rules for parsing LHS attribute references.
+ * @param[in] rhs_rules		rules for parsing RHS attribute references.
+ * @param[in] validate		map using this callback (may be NULL).
+ * @param[in] uctx		to pass to callback.
+ * @param[in] max		number of mappings to process.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int map_afrom_cs_edit(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
+		      tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
+		      map_validate_t validate, void *uctx,
+		      unsigned int max)
+{
+	map_t *parent = NULL;
+
+	if (ctx) parent = talloc_get_type(ctx, map_t);
+
+	return _map_afrom_cs(ctx, out, parent, cs, lhs_rules, rhs_rules, validate, uctx, max, false, true);
 }
 
 /** Convert CONFIG_PAIR (which may contain refs) to map_t.

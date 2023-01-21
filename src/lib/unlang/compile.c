@@ -1888,7 +1888,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	if (fr_type_is_structural(parent_da->type)) {
 		map_t *child;
 
-		if (map_afrom_cs(map, &map->child, cs, &t_rules, &t_rules, unlang_fixup_edit, map, 256) < 0) {
+		if (map_afrom_cs_edit(map, &map->child, cs, &t_rules, &t_rules, unlang_fixup_edit, map, 256) < 0) {
 			goto fail;
 		}
 
@@ -1988,7 +1988,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	/*
 	 *	Convert this particular map.
 	 */
-	if (map_afrom_cp(edit, &map, map_list_tail(&edit->maps), cp, &t_rules, NULL) < 0) {
+	if (map_afrom_cp(edit, &map, map_list_tail(&edit->maps), cp, &t_rules, NULL, true) < 0) {
 	fail:
 		talloc_free(edit_free);
 		return NULL;

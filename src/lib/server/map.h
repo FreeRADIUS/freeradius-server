@@ -118,11 +118,15 @@ typedef int (*radius_map_getvalue_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, reque
 				     map_t const *map, void *uctx);
 
 int		map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
-			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules);
+			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules, bool edit);
 
 int		map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
 			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			     map_validate_t validate, void *uctx, unsigned int max) CC_HINT(nonnull(2, 3));
+
+int		map_afrom_cs_edit(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
+				  tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
+				  map_validate_t validate, void *uctx, unsigned int max) CC_HINT(nonnull(2, 3));
 
 int		map_list_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
 				  tmpl_rules_t const *t_rules,
