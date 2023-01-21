@@ -2418,19 +2418,17 @@ check_for_eol:
 		 *	In most cases, this is just one word.  In some cases it's not.  So we peek ahead to see.
 		 */
 		if (cf_get_token(parent, &ptr2, &value_token, buff[2], stack->bufsize,
-				 frame->filename, frame->lineno) < 0) {
-			return -1;
-		}
-		value = buff[2];
-
-		/*
-		 *	The thing after the token is "end of line" in some format, so it's fine.
-		 */
-		fr_skip_whitespace(ptr2);
-		if (terminal_end_line[(uint8_t) *ptr2]) {
-			ptr = ptr2;
-			goto alloc_pair;
-		}
+				 frame->filename, frame->lineno) == 0) {
+			/*
+			 *	The thing after the token is "end of line" in some format, so it's fine.
+			 */
+			fr_skip_whitespace(ptr2);
+			if (terminal_end_line[(uint8_t) *ptr2]) {
+				ptr = ptr2;
+				value = buff[2];
+				goto alloc_pair;
+			}
+		} /* else it looks like an expression */
 
 		/*
 		 *	Otherwise we reparse the thing as an expression.
