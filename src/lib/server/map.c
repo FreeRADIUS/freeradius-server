@@ -203,35 +203,22 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		value = unescaped_value;
 		p_rules = NULL;
 
-	} else if (edit && (type == T_BARE_WORD)) {
+	} else if (edit && (type == T_HASH)) {
 		fr_slen_t slent;
 		xlat_exp_head_t *head;
 
 		/*
-		 *	Try to parse it as a bare word first.  If that
-		 *	works, then we leave it as a stand-alone tmpl.
-		 */
-		slen = talloc_array_length(value) - 1;
-
-		slen = tmpl_afrom_substr(map, &map->rhs,
-					 &FR_SBUFF_IN(value, slen),
-					 type,
-					 p_rules,
-					 rhs_rules);
-		if (slen > 0) {
-			fr_assert(map->rhs);
-			goto check_rhs;
-		}
-
-		/*
-		 *	Not a bare word, it must be a complex expression.
+		 *	Not a bare word, it's marked up as a complex expression.
+		 *
+		 *	See cf_file.c, parse_input() and the use of T_HASH when doing alloc_pair,
+		 *	in order to see what magic is going on here.
 		 */
 		slen = talloc_array_length(value) - 1;
 
 		MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_XLAT, T_BARE_WORD, value, slen));
 
 		/*
-		 *	@todo - if there's only one thing in the expression, just hoist it to the tmpl?  Or do we even need to do that?
+		 *	Tokenize the expression.
 		 */
 		slent = xlat_tokenize_expression(map->rhs, &head, &FR_SBUFF_IN(value, slen), p_rules, rhs_rules);
 		if (slent <= 0) {
@@ -262,7 +249,6 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		goto error;
 	}
 
-check_rhs:
 	if (tmpl_is_attr(map->rhs) && (tmpl_attr_unknown_add(map->rhs) < 0)) {
 		cf_log_perr(cp, "Failed creating attribute %s", map->rhs->name);
 		goto error;

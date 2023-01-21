@@ -2460,7 +2460,14 @@ check_for_eol:
 		buff[2][slen] = '\0';
 
 		value = buff[2];
-		value_token = T_BARE_WORD;
+
+		/*
+		 *	Mark it up as an expression
+		 *
+		 *	@todo - we should really just call cf_data_add() to add a flag, but this is good for
+		 *	now.  See map_afrom_cp()
+		 */
+		value_token = T_HASH;
 
 		/*
 		 *	Skip terminal characters
