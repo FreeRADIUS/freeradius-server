@@ -1068,6 +1068,19 @@ static void log_register_dst(char const *name, fr_log_t *log, CONF_SECTION *cs)
 	fr_rb_insert(filename_tree, dst);
 }
 
+/** Get a logging destination by name.
+ *
+ */
+fr_log_t *log_dst_by_name(char const *name)
+{
+	fr_log_track_t find;
+
+	memset(&find, 0, sizeof(find));
+	find.name = name;
+
+	return fr_rb_find(dst_tree, &find);
+}
+
 static int _log_free(fr_log_t *log)
 {
 	fr_assert(log->dst == L_DST_FILES);
@@ -1269,7 +1282,7 @@ int log_global_init(fr_log_t *log, bool daemonize)
 		return -1;
 	}
 
-	log_register_dst("", log, NULL);
+	log_register_dst("default", log, NULL);
 
 	return ret;
 }
