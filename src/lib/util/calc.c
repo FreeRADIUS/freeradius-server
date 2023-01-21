@@ -775,6 +775,22 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 	}
 
 	/*
+	 *	date % (time_delta) 1d --> time_delta
+	 */
+	if (op == T_MOD) {
+		/*
+		 *	We MUST specify date ranges as a time delta, not as an integer.  And it must be a
+		 *	positive time delta.
+		 */
+		if ((b->type != FR_TYPE_TIME_DELTA) || !fr_time_delta_ispos(b->vb_time_delta)) {
+			return ERR_INVALID;
+		}
+
+		dst->vb_time_delta = fr_time_delta_wrap(fr_unix_time_unwrap(a->vb_date) % fr_time_delta_unwrap(b->vb_time_delta));
+		return 0;
+	}
+
+	/*
 	 *	Unix times are always converted 1-1 to our internal
 	 *	TIME_DELTA.
 	 *
@@ -1835,6 +1851,14 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			}
 
 			if (hint != FR_TYPE_NULL) break;
+		}
+
+		/*
+		 *	date % time_delta --> time_delta
+		 */
+		if ((op == T_MOD) && (a->type == FR_TYPE_DATE)) {
+			hint = FR_TYPE_TIME_DELTA;
+			break;
 		}
 
 		switch (op) {
