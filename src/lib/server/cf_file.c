@@ -2417,8 +2417,8 @@ check_for_eol:
 		/*
 		 *	In most cases, this is just one word.  In some cases it's not.  So we peek ahead to see.
 		 */
-		if (cf_get_token(parent, &ptr2, &value_token, buff[2], stack->bufsize,
-				 frame->filename, frame->lineno) == 0) {
+		if ((*ptr != '(') && (cf_get_token(parent, &ptr2, &value_token, buff[2], stack->bufsize,
+						   frame->filename, frame->lineno) == 0)) {
 			/*
 			 *	The thing after the token is "end of line" in some format, so it's fine.
 			 */
@@ -2431,14 +2431,23 @@ check_for_eol:
 		} /* else it looks like an expression */
 
 		/*
-		 *	Otherwise we reparse the thing as an expression.
+		 *	Parse the text as an expression.
+		 *
+		 *	Note that unlike conditions, expressions MUST use \ at the EOL for continuation.
+		 *	If we automatically read past EOL, as with:
+		 *
+		 *		&foo := (bar -
+		 *			 baz)
+		 *
+		 *	That works, mostly.  Until the user forgets to put the trailing ')', and then
+		 *	the parse is bad enough that it tries to read to EOF, or to some other random
+		 *	parse error.
+		 *
+		 *	So the simplest way to avoid utter craziness is to simply require a signal which
+		 *	says "yes, I intended to put this over multiple lines".
 		 */
 		slen = fr_skip_condition(ptr, NULL, terminal_end_line, &eol);
 		if (slen < 0) {
-			/*
-			 *	@todo - if !eol, then it's an expression which is over multiple lines.  Read
-			 *	more data.
-			 */
 			ERROR("%s[%d]: Parse error in expression: %s",
 			      frame->filename, frame->lineno, fr_strerror());
 			return -1;
@@ -2448,7 +2457,7 @@ check_for_eol:
 		 *	We parsed until the end of the string, but the condition still needs more data.
 		 */
 		if (eol) {
-			ERROR("%s[%d]: FIXME: EOL continuation not implemented",
+			ERROR("%s[%d]: Expression is unfinished at end of line",
 			      frame->filename, frame->lineno);
 			return -1;
 		}
