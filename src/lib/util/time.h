@@ -1013,6 +1013,10 @@ int		fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_r
 fr_slen_t	fr_unix_time_to_str(fr_sbuff_t *out, fr_unix_time_t time, fr_time_res_t res)
 		CC_HINT(nonnull);
 
+fr_time_delta_t	fr_time_gmtoff(void);
+
+bool		fr_time_is_dst(void);
+
 #ifdef __cplusplus
 }
 #endif

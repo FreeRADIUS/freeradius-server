@@ -3510,6 +3510,16 @@ static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	} else if (strcmp(arg->vb_strvalue, "request") == 0) {
 		value = fr_time_to_unix_time(request->packet->timestamp);
 
+	} else if (strcmp(arg->vb_strvalue, "offset") == 0) {
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
+		vb->vb_time_delta = fr_time_gmtoff();
+		goto append;
+
+	} else if (strcmp(arg->vb_strvalue, "dst") == 0) {
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+		vb->vb_bool = fr_time_is_dst();
+		goto append;
+
 	} else if (fr_unix_time_from_str(&value, arg->vb_strvalue, FR_TIME_RES_SEC) < 0) {
 		REDEBUG("Invalid time specification '%s'", arg->vb_strvalue);
 		return XLAT_ACTION_FAIL;
@@ -3517,6 +3527,8 @@ static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, false));
 	vb->vb_date = value;
+
+append:
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -4057,7 +4069,7 @@ do { \
 	XLAT_REGISTER_ARGS("nexttime", xlat_func_next_time, FR_TYPE_UINT64, xlat_func_next_time_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, FR_TYPE_STRING, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("subst", xlat_func_subst, FR_TYPE_STRING, xlat_func_subst_args);
-	XLAT_REGISTER_ARGS("time", xlat_func_time, FR_TYPE_DATE, xlat_func_time_args);
+	XLAT_REGISTER_ARGS("time", xlat_func_time, FR_TYPE_VOID, xlat_func_time_args);
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, FR_TYPE_STRING, trigger_xlat_args);
 
 	/*

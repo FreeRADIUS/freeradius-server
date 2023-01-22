@@ -105,7 +105,7 @@ size_t fr_time_precision_table_len = NUM_ELEMENTS(fr_time_precision_table);
 _Atomic int64_t			our_realtime;	//!< realtime at the start of the epoch in nanoseconds.
 static char const		*tz_names[2] = { NULL, NULL };	//!< normal, DST, from localtime_r(), tm_zone
 static long			gmtoff[2] = {0, 0};	       	//!< from localtime_r(), tm_gmtoff
-static int			isdst = 0;			//!< from localtime_r(), tm_is_dst
+static bool			isdst = false;			//!< from localtime_r(), tm_is_dst
 
 #ifdef HAVE_CLOCK_GETTIME
 int64_t				our_epoch;
@@ -1281,4 +1281,20 @@ fr_slen_t fr_unix_time_to_str(fr_sbuff_t *out, fr_unix_time_t time, fr_time_res_
 	}
 
 	FR_SBUFF_SET_RETURN(out, &our_out);
+}
+
+/** Get the offset to gmt.
+ *
+ */
+fr_time_delta_t fr_time_gmtoff(void)
+{
+	return fr_time_delta_wrap(gmtoff[isdst]);
+}
+
+/** Whether or not we're daylight savings.
+ *
+ */
+bool fr_time_is_dst(void)
+{
+	return isdst;
 }
