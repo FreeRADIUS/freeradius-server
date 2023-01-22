@@ -137,8 +137,9 @@ static inline int fr_atexit_talloc_free(void *to_free)
 				pthread_mutex_unlock(&_init_mutex); \
 			} \
 			atomic_store(&_init_done, true); \
+		} else { \
+		    pthread_mutex_unlock(&_init_mutex); \
 		} \
-		pthread_mutex_unlock(&_init_mutex); \
 	} \
 	*(_ret) = 0; \
 }
