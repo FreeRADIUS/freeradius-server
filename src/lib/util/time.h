@@ -44,6 +44,9 @@ typedef enum {
 	FR_TIME_RES_MIN,
 	FR_TIME_RES_HOUR,
 	FR_TIME_RES_DAY,
+	FR_TIME_RES_WEEK,
+	FR_TIME_RES_MONTH,
+	FR_TIME_RES_YEAR,
 	FR_TIME_RES_CSEC,
 	FR_TIME_RES_MSEC,
 	FR_TIME_RES_USEC,
@@ -367,6 +370,18 @@ typedef struct {
 #define USEC	(1000000)
 #define MSEC	(1000)
 #define CSEC	(100)
+
+/*
+ *	Pre-defined "magic" values for time in a month and year.  The number of seconds in a year is:
+ *
+ *	1 year is 365.2425 days. times 86400 seconds in a day.
+ *
+ *	The average month is simply one twelfth of that.  Note that the exact value for both year and month
+ *	duration are really magic values, which people will never stumble upon themselves. As such, they can
+ *	be used (somewhat, in some cases) as magic tokens meaning "year" or "month".
+ */
+#define FR_TIME_DUR_YEAR  ((int64_t)NSEC * 31556952)
+#define FR_TIME_DUR_MONTH (FR_TIME_DUR_YEAR/12)
 
 extern _Atomic int64_t			our_realtime;
 

@@ -56,7 +56,10 @@ int64_t const fr_time_multiplier_by_res[] = {
 	[FR_TIME_RES_SEC]	= NSEC,
 	[FR_TIME_RES_MIN]	= (int64_t)NSEC * 60,
 	[FR_TIME_RES_HOUR]	= (int64_t)NSEC * 3600,
-	[FR_TIME_RES_DAY]	= (int64_t)NSEC * 86400
+	[FR_TIME_RES_DAY]	= (int64_t)NSEC * 86400,
+	[FR_TIME_RES_WEEK]	= (int64_t)NSEC * 86400 * 7,
+	[FR_TIME_RES_MONTH]	= FR_TIME_DUR_MONTH,
+	[FR_TIME_RES_YEAR]	= FR_TIME_DUR_YEAR,
 };
 
 fr_table_num_ordered_t const fr_time_precision_table[] = {
@@ -82,12 +85,20 @@ fr_table_num_ordered_t const fr_time_precision_table[] = {
 	{ L("h"),		FR_TIME_RES_HOUR },
 
 	{ L("days"),		FR_TIME_RES_DAY },
-	{ L("d"),		FR_TIME_RES_DAY }
+	{ L("d"),		FR_TIME_RES_DAY },
+
+	{ L("weeks"),		FR_TIME_RES_WEEK },
+	{ L("w"),		FR_TIME_RES_WEEK },
 
 	/*
-	 *	Note that there is no TIME_RES_MONTH or TIME_RES_YEAR, because months and years have variable
-	 *	lengths.
+	 *	These use special values FR_TIME_DUR_MONTH and FR_TIME_DUR_YEAR
 	 */
+	{ L("months"),		FR_TIME_RES_MONTH },
+	{ L("M"),		FR_TIME_RES_MONTH },
+
+	{ L("years"),		FR_TIME_RES_YEAR },
+	{ L("y"),		FR_TIME_RES_YEAR },
+
 };
 size_t fr_time_precision_table_len = NUM_ELEMENTS(fr_time_precision_table);
 
@@ -1226,6 +1237,9 @@ fr_slen_t fr_unix_time_to_str(fr_sbuff_t *out, fr_unix_time_t time, fr_time_res_
 	 */
 	switch (res) {
 	case FR_TIME_RES_INVALID:
+	case FR_TIME_RES_YEAR:
+	case FR_TIME_RES_MONTH:
+	case FR_TIME_RES_WEEK:
 	case FR_TIME_RES_DAY:
 	case FR_TIME_RES_HOUR:
 	case FR_TIME_RES_MIN:
