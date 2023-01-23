@@ -14,7 +14,7 @@
                                 "-D",
                                 "${workspaceFolder}/share/dictionary",
                                 "-d",
-                                "${workspaceFolder}/raddb"
+                                "${input:raddb}"
                         ],
                         "cwd": "${workspaceFolder}",
                         "env": {
@@ -32,7 +32,7 @@
                                 "-D",
                                 "${workspaceFolder}/share/dictionary",
                                 "-d",
-                                "${workspaceFolder}/raddb"
+                                "${input:raddb}"
                         ],
                         "cwd": "${workspaceFolder}",
                         "environment": [
@@ -188,6 +188,12 @@
                 }
         ],
         "inputs": [
+                {
+                        "id": "raddb",
+                        "type": "promptString",
+                        "description": "raddb path",
+                        "default": "${workspaceFolder}/raddb"
+                },
                 {
                         "id": "keyword",
                         "type": "promptString",
