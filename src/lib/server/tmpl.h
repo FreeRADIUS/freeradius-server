@@ -315,7 +315,10 @@ struct tmpl_attr_rules_s {
 							///< This should be used as part of a multi-pass
 							///< approach to parsing.
 
-	uint8_t			allow_foreign:1;		//!< Allow arguments not found in dict_def.
+	uint8_t			allow_wildcard:1;	//!< Allow the special case of .[*] representing
+							///< all children of a structural attribute.
+
+	uint8_t			allow_foreign:1;	//!< Allow arguments not found in dict_def.
 
 	uint8_t			disallow_internal:1;	//!< Allow/fallback to internal attributes.
 

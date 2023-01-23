@@ -1807,7 +1807,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	Don't alter the fr_strerror buffer, may contain useful
 	 *	errors from the dictionary code.
 	 */
-	if (!at_rules->allow_unresolved) {
+	if (!at_rules->allow_unresolved && !(at_rules->allow_wildcard && fr_sbuff_is_char(name, '['))) {
 		fr_strerror_const_push("Unresolved attributes are not allowed here");
 		if (err) *err = TMPL_ATTR_ERROR_UNRESOLVED_NOT_ALLOWED;
 		fr_sbuff_set(name, &m_s);
