@@ -1647,6 +1647,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 */
 	t_rules = *(unlang_ctx->rules);
 	t_rules.attr.allow_unknown = true;
+	t_rules.attr.allow_wildcard = true;
 	RULES_VERIFY(&t_rules);
 
 	g = group_allocate(parent, cs, &update_ext);
@@ -3478,6 +3479,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	t_rules = *(unlang_ctx->rules);
 	t_rules.attr.allow_unknown = true;
+	t_rules.attr.allow_wildcard = true;
 	RULES_VERIFY(&t_rules);
 
 	name2 = cf_section_name2(cs);
