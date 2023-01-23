@@ -694,7 +694,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 	intp->funcs.resume(request, intp->uctx);
 
 	for (;;) {
-		fr_assert(request->master_state != REQUEST_STOP_PROCESSING)l
+		fr_assert(request->master_state != REQUEST_STOP_PROCESSING);
 
 		RDEBUG4("** [%i] %s - frame action %s", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_frame_action_table, fa, "<INVALID>"));
