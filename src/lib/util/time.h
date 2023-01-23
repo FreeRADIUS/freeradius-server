@@ -950,6 +950,10 @@ static inline int8_t fr_unix_time_cmp(fr_unix_time_t a, fr_unix_time_t b)
 	return CMP(fr_unix_time_unwrap(a), fr_unix_time_unwrap(b));
 }
 
+#ifndef CLOCK_MONOTONIC_RAW
+#define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC
+#endif
+
 /** Return a relative time since the server our_epoch
  *
  *  This time is useful for doing time comparisons, deltas, etc.
@@ -962,7 +966,7 @@ static inline int8_t fr_unix_time_cmp(fr_unix_time_t a, fr_unix_time_t b)
 static inline fr_time_t fr_time(void)
 {
 	struct timespec ts;
-	(void) clock_gettime(CLOCK_MONOTONIC, &ts);
+	(void) clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
 	return fr_time_wrap(fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts)) - our_epoch);
 }
 

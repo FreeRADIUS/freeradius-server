@@ -115,7 +115,7 @@ int fr_time_sync(void)
 	 *	Call these consecutively to minimise drift...
 	 */
 	if (clock_gettime(CLOCK_REALTIME, &ts_realtime) < 0) return -1;
-	if (clock_gettime(CLOCK_MONOTONIC, &ts_monotime) < 0) return -1;
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts_monotime) < 0) return -1;
 
 	atomic_store_explicit(&our_realtime,
 			      fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts_realtime)) -
@@ -151,7 +151,7 @@ int fr_time_start(void)
 	tzset();	/* Populate timezone, daylight and tzname globals */
 	struct timespec ts;
 
-	if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) return -1;
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) < 0) return -1;
 	our_epoch = fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts));
 
 	return fr_time_sync();
