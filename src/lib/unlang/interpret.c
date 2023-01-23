@@ -694,6 +694,8 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 	intp->funcs.resume(request, intp->uctx);
 
 	for (;;) {
+		fr_assert(request->master_state != REQUEST_STOP_PROCESSING)l
+
 		RDEBUG4("** [%i] %s - frame action %s", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_frame_action_table, fa, "<INVALID>"));
 		switch (fa) {
@@ -703,6 +705,13 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 
 			frame = &stack->frame[stack->depth];
 			fa = frame_eval(request, frame, &stack->result, &stack->priority);
+
+			if (fa != UNLANG_FRAME_ACTION_POP) continue;
+
+			/*
+			 *	We're supposed to stop processing.  Don't pop anything, just stop.
+			 */
+			if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_FAIL;
 
 			/*
 			 *	We were executing a frame, frame_eval()
@@ -718,7 +727,8 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 			 *	instruction.  And we don't return all
 			 *	of the way up the stack.
 			 */
-			if ((fa == UNLANG_FRAME_ACTION_POP) && is_top_frame(frame)) break;	/* stop */
+			if (is_top_frame(frame)) break;
+
 			continue;
 
 		case UNLANG_FRAME_ACTION_POP:		/* Pop this frame and check the one beneath it */
