@@ -29,25 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/misc.h>
 
-/*
- *	Avoid too many ifdef's later in the code.
- */
-#if !defined(HAVE_CLOCK_GETTIME) && !defined(__MACH__)
-#error clock_gettime is required
-#endif
-
-#if !defined(HAVE_CLOCK_GETTIME) && defined(__MACH__)
-/*
- *	AbsoluteToNanoseconds() has been deprecated,
- *	but absolutetime_to_nanoseconds() doesn't
- *	seem to be available, either.
- */
-USES_APPLE_DEPRECATED_API
-#  include <CoreServices/CoreServices.h>
-#  include <mach/mach.h>
-#  include <mach/mach_time.h>
-#endif
-
 int64_t const fr_time_multiplier_by_res[] = {
 	[FR_TIME_RES_NSEC]	= 1,
 	[FR_TIME_RES_USEC]	= NSEC / USEC,
@@ -107,12 +88,7 @@ static char const		*tz_names[2] = { NULL, NULL };	//!< normal, DST, from localti
 static long			gmtoff[2] = {0, 0};	       	//!< from localtime_r(), tm_gmtoff
 static bool			isdst = false;			//!< from localtime_r(), tm_is_dst
 
-#ifdef HAVE_CLOCK_GETTIME
 int64_t				our_epoch;
-#else  /* __MACH__ */
-mach_timebase_info_data_t	timebase;
-uint64_t			our_mach_epoch;
-#endif
 
 /** Get a new our_realtime value
  *
@@ -128,51 +104,25 @@ int fr_time_sync(void)
 	time_t now;
 
 	/*
-	 *	our_realtime represents system time
-	 *	at the start of our epoch.
+	 *	our_realtime represents system time at the start of our epoch.
 	 *
-	 *	So to convert a realtime timeval
-	 *	to fr_time we just subtract
-	 *	our_realtime from the timeval,
-	 *      which leaves the number of nanoseconds
-	 *	elapsed since our epoch.
+	 *	So to convert a realtime timeval to fr_time we just subtract our_realtime from the timeval,
+	 *	which leaves the number of nanoseconds elapsed since our epoch.
 	 */
-#ifdef HAVE_CLOCK_GETTIME
-	{
-		struct timespec ts_realtime, ts_monotime;
+	struct timespec ts_realtime, ts_monotime;
 
-		/*
-		 *	Call these consecutively to minimise drift...
-		 */
-		if (clock_gettime(CLOCK_REALTIME, &ts_realtime) < 0) return -1;
-		if (clock_gettime(CLOCK_MONOTONIC, &ts_monotime) < 0) return -1;
+	/*
+	 *	Call these consecutively to minimise drift...
+	 */
+	if (clock_gettime(CLOCK_REALTIME, &ts_realtime) < 0) return -1;
+	if (clock_gettime(CLOCK_MONOTONIC, &ts_monotime) < 0) return -1;
 
-		atomic_store_explicit(&our_realtime,
-				      fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts_realtime)) -
-				      (fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts_monotime)) - our_epoch),
-				      memory_order_release);
+	atomic_store_explicit(&our_realtime,
+			      fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts_realtime)) -
+			      (fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts_monotime)) - our_epoch),
+			      memory_order_release);
 
-		now = ts_realtime.tv_sec;
-	}
-#else
-	{
-		struct timeval	tv_realtime;
-		uint64_t	monotime;
-
-		/*
-		 *	Call these consecutively to minimise drift...
-		 */
-		(void) gettimeofday(&tv_realtime, NULL);
-		monotime = mach_absolute_time();
-
-		atomic_store_explicit(&our_realtime,
-				      fr_time_delta_unwrap(fr_time_delta_from_timeval(&tv_realtime)) -
-				      (monotime - our_mach_epoch) * (timebase.numer / timebase.denom,
-				      memory_order_release));
-
-		now = tv_realtime.tv_sec;
-	}
-#endif
+	now = ts_realtime.tv_sec;
 
 	/*
 	 *	Get local time zone name, daylight savings, and GMT
@@ -199,18 +149,10 @@ int fr_time_sync(void)
 int fr_time_start(void)
 {
 	tzset();	/* Populate timezone, daylight and tzname globals */
+	struct timespec ts;
 
-#ifdef HAVE_CLOCK_GETTIME
-	{
-		struct timespec ts;
-
-		if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) return -1;
-		our_epoch = fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts));
-	}
-#else  /* __MACH__ is defined */
-	mach_timebase_info(&timebase);
-	our_mach_epoch = mach_absolute_time();
-#endif
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) return -1;
+	our_epoch = fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts));
 
 	return fr_time_sync();
 }

@@ -32,6 +32,13 @@ RCSIDH(time_h, "$Id$")
 #include <stdio.h>
 #include <sys/time.h>
 
+/*
+ *	Avoid too many ifdef's later in the code.
+ */
+#if !defined(HAVE_CLOCK_GETTIME)
+#error clock_gettime is required
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -384,13 +391,7 @@ typedef struct {
 #define FR_TIME_DUR_MONTH (FR_TIME_DUR_YEAR/12)
 
 extern _Atomic int64_t			our_realtime;
-
-#ifdef HAVE_CLOCK_GETTIME
 extern int64_t				our_epoch;
-#else  /* __MACH__ */
-extern mach_timebase_info_data_t	timebase;
-extern uint64_t				our_mach_epoch;
-#endif
 
 /** @name fr_unix_time_t scale conversion macros/functions
  *
@@ -960,18 +961,9 @@ static inline int8_t fr_unix_time_cmp(fr_unix_time_t a, fr_unix_time_t b)
  */
 static inline fr_time_t fr_time(void)
 {
-#ifdef HAVE_CLOCK_GETTIME
 	struct timespec ts;
 	(void) clock_gettime(CLOCK_MONOTONIC, &ts);
 	return fr_time_wrap(fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts)) - our_epoch);
-#else  /* __MACH__ is defined */
-	uint64_t when;
-
-	when = mach_absolute_time();
-	when -= our_mach_epoch;
-
-	return when * (timebase.numer / timebase.denom);
-#endif
 }
 
 int		fr_time_start(void);
