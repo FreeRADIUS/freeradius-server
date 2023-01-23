@@ -3483,6 +3483,8 @@ static xlat_arg_parser_t const xlat_func_time_args[] = {
 
 /** Return the time as a #FR_TYPE_DATE
  *
+ *  Note that all operations are UTC.
+ *
 @verbatim
 %(time:)
 @endverbatim
@@ -3518,6 +3520,43 @@ static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	} else if (strcmp(arg->vb_strvalue, "dst") == 0) {
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
 		vb->vb_bool = fr_time_is_dst();
+		goto append;
+
+	} else if (strcmp(arg->vb_strvalue, "mday_offset") == 0) {
+		struct tm tm;
+		fr_unix_time_t unix_time = fr_time_to_unix_time(request->packet->timestamp);
+		time_t when = fr_unix_time_to_sec(unix_time);
+		int64_t nsec;
+
+		gmtime_r(&when, &tm);
+
+		nsec = 86400 * (tm.tm_mday - 1);
+		nsec += when % 86400;
+		nsec *= NSEC;
+		nsec += fr_unix_time_unwrap(unix_time) % NSEC;
+
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
+		vb->vb_time_delta = fr_time_delta_wrap(nsec);
+		goto append;
+
+	} else if (strcmp(arg->vb_strvalue, "wday_offset") == 0) {
+		struct tm tm;
+		fr_unix_time_t unix_time = fr_time_to_unix_time(request->packet->timestamp);
+		time_t when = fr_unix_time_to_sec(unix_time);
+		int64_t nsec;
+
+		gmtime_r(&when, &tm);
+
+		nsec = 86400 * tm.tm_wday;
+		nsec += when % 86400;
+		nsec *= NSEC;
+		nsec += fr_unix_time_unwrap(unix_time) % NSEC;
+
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
+		vb->vb_time_delta = fr_time_delta_wrap(nsec);
+
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
+		vb->vb_time_delta = fr_time_delta_wrap(nsec);
 		goto append;
 
 	} else if (fr_unix_time_from_str(&value, arg->vb_strvalue, FR_TIME_RES_SEC) < 0) {

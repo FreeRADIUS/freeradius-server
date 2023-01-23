@@ -1139,10 +1139,12 @@ Return the current time.
 
 If no argument is passed, it returns the current time.  Otherwise if the argument is:
 
-* `now` - returns the current time
-* `request` - returns the time at which the request packet was received (always less than `now`!)
-* `offset` - returns a `time_delta` of the current time zone offset.  This value may be negative.
 * `dst` - returns a `bool` indicating whether or not the system is running in daylight savings time.
+* `mday_offset` - returns the `time_delta` offset since the start of the month.  Use `%d` to get an integer representing the day of the month.
+* `now` - returns the current time
+* `offset` - returns a `time_delta` of the current time zone offset.  This value may be negative.
+* `request` - returns the time at which the request packet was received (always less than `now`!)
+* `wday_offset` - returns the `time_delta` offset since the start of the week.
 * any other string is parsed as type `date`, using the normal date parsing routines.
 
 .Example
