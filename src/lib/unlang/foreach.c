@@ -83,6 +83,21 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 	if (is_stack_unwinding_to_break(request->stack)) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	vp = fr_dcursor_next(&state->cursor);
+
+	/*
+	 *	Skip any non-leaf attributes - adds sanity to foreach &request.[*]
+	 */
+	while (vp) {
+		switch (vp->da->type) {
+		case FR_TYPE_LEAF:
+			break;
+		default:
+			vp = fr_dcursor_next(&state->cursor);
+			continue;
+		}
+		break;
+	}
+
 	if (!vp) {
 		*p_result = frame->result;
 #ifndef NDEBUG
@@ -118,6 +133,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 
 	int				i, depth = 0;
 	fr_pair_list_t			vps;
+	fr_pair_t			*vp;
 
 	fr_pair_list_init(&vps);
 
@@ -157,10 +173,36 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 
 	fr_assert(!fr_pair_list_empty(&vps));
 
-	state->request = request;
-	state->depth = depth;
 	fr_pair_list_append(&state->vps, &vps);
 	fr_pair_dcursor_init(&state->cursor, &state->vps);
+
+	/*
+	 *	Skip any non-leaf attributes at the start of the cursor
+	 *	Adds sanity to foreach &request.[*]
+	 */
+	vp = fr_dcursor_current(&state->cursor);
+	while (vp) {
+		switch (vp->da->type) {
+		case FR_TYPE_LEAF:
+			break;
+		default:
+			vp = fr_dcursor_next(&state->cursor);
+			continue;
+		}
+		break;
+	}
+
+	/*
+	 *	If no non-leaf attributes found clean up
+	 */
+	if (!vp) {
+		fr_dcursor_free_list(&state->cursor);
+		*p_result = RLM_MODULE_NOOP;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	state->request = request;
+	state->depth = depth;
 #ifndef NDEBUG
 	state->indent = request->log.unlang_indent;
 #endif
