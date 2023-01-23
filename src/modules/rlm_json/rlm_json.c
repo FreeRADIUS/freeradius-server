@@ -201,6 +201,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					      &(tmpl_rules_t){
 					      	.attr = {
 							.list_def = PAIR_LIST_REQUEST,
+							.allow_wildcard = true,
 					      		.dict_def = request->dict
 					      	}
 					      });

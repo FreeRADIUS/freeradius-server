@@ -1154,6 +1154,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 					.attr = {
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REQUEST,
+						.allow_wildcard = true,
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
@@ -2752,6 +2753,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					.attr = {
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REQUEST,
+						.allow_wildcard = true,
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
@@ -3910,6 +3912,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					.attr = {
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REQUEST,
+						.allow_wildcard = true,
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
