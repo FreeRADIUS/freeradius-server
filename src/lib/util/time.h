@@ -390,8 +390,16 @@ typedef struct {
 #define FR_TIME_DUR_YEAR  ((int64_t)NSEC * 31556952)
 #define FR_TIME_DUR_MONTH (FR_TIME_DUR_YEAR/12)
 
-extern _Atomic int64_t			our_realtime;
-extern int64_t				our_epoch;
+
+/*
+ *	The value of clock_gettime(CLOCK_MONOTONIC_RAW) when we started.  i.e. our epoch.
+ */
+extern int64_t				fr_time_epoch;
+
+/*
+ *	The offset from CLOCK_MONOTONIC_RAW to CLOCK_REALTIME.
+ */
+extern _Atomic int64_t			fr_time_monotonic_to_realtime;
 
 /** @name fr_unix_time_t scale conversion macros/functions
  *
@@ -662,28 +670,12 @@ static inline int64_t fr_time_delta_to_sec(fr_time_delta_t delta)
  *
  * @{
  */
-/** Nanoseconds since the Unix Epoch the last time we synced internal time with wallclock time
+/** Return the current value of fr_time_monotonic_to_realtime.
  *
  */
-static inline int64_t fr_time_wallclock_at_last_sync(void)
+static inline int64_t fr_time_offset_to_realtime(void)
 {
-	return atomic_load_explicit(&our_realtime, memory_order_consume);
-}
-
-/** Convert an fr_time_t (internal time) to arbitrary unit as wallclock time
- *
- */
-static inline int64_t fr_time_to_integer(bool *overflow, fr_time_t when, fr_time_res_t res)
-{
-	int64_t out;
-
-	if (!fr_add(&out, fr_time_unwrap(when) / fr_time_multiplier_by_res[res],
-		    atomic_load_explicit(&our_realtime, memory_order_consume) / fr_time_multiplier_by_res[res])) {
-		if (overflow) *overflow = true;
-		return fr_time_unwrap(when) > 0 ? INT64_MAX : INT64_MIN;
-	}
-	if (overflow) *overflow = false;
-	return out;
+	return atomic_load_explicit(&fr_time_monotonic_to_realtime, memory_order_consume);
 }
 
 /** Convert an fr_time_t (internal time) to our version of unix time (wallclock time)
@@ -693,7 +685,7 @@ static inline fr_unix_time_t fr_time_to_unix_time(fr_time_t when)
 {
 	int64_t out;
 
-	if (!fr_add(&out, fr_time_unwrap(when), atomic_load_explicit(&our_realtime, memory_order_consume))) {
+	if (!fr_add(&out, fr_time_unwrap(when), fr_time_offset_to_realtime())) {
 		return fr_time_unwrap(when) ? fr_unix_time_max() : fr_unix_time_min();
 	}
 	return fr_unix_time_wrap(out);
@@ -706,7 +698,7 @@ static inline int64_t fr_time_to_usec(fr_time_t when)
 {
 	/* Divide each operand separately to avoid overflow on addition */
 	return (((fr_time_unwrap(when) / (NSEC / USEC)) +
-		(atomic_load_explicit(&our_realtime, memory_order_consume) / (NSEC / USEC))));
+		(fr_time_offset_to_realtime() / (NSEC / USEC))));
 }
 
 /** Convert an fr_time_t (internal time) to number of msec since the unix epoch (wallclock time)
@@ -716,7 +708,7 @@ static inline int64_t fr_time_to_msec(fr_time_t when)
 {
 	/* Divide each operand separately to avoid overflow on addition */
 	return (((fr_time_unwrap(when) / (NSEC / MSEC)) +
-		(atomic_load_explicit(&our_realtime, memory_order_consume) / (NSEC / MSEC))));
+		(fr_time_offset_to_realtime() / (NSEC / MSEC))));
 }
 
 /** Convert an fr_time_t (internal time) to number of csec since the unix epoch (wallclock time)
@@ -726,7 +718,7 @@ static inline int64_t fr_time_to_csec(fr_time_t when)
 {
 	/* Divide each operand separately to avoid overflow on addition */
 	return (((fr_time_unwrap(when) / (NSEC / CSEC)) +
-		(atomic_load_explicit(&our_realtime, memory_order_consume) / (NSEC / CSEC))));
+		(fr_time_offset_to_realtime() / (NSEC / CSEC))));
 }
 
 /** Convert an fr_time_t (internal time) to number of sec since the unix epoch (wallclock time)
@@ -736,20 +728,20 @@ static inline int64_t fr_time_to_sec(fr_time_t when)
 {
 	/* Divide each operand separately to avoid overflow on addition */
 	return (((fr_time_unwrap(when) / NSEC) +
-		(atomic_load_explicit(&our_realtime, memory_order_consume) / NSEC)));
+		(fr_time_offset_to_realtime() / NSEC)));
 }
 
 /** Convert server epoch time to unix epoch time
  *
  * @param[in] _when	The server epoch time to convert.
  */
-#define fr_time_to_timeval(_when) fr_time_delta_to_timeval(fr_time_delta_wrap(fr_time_wallclock_at_last_sync() + fr_time_unwrap(_when)))
+#define fr_time_to_timeval(_when) fr_time_delta_to_timeval(fr_time_delta_wrap(fr_time_offset_to_realtime() + fr_time_unwrap(_when)))
 
 /** Convert server epoch time to unix epoch time
  *
  * @param[in] _when	The server epoch time to convert.
  */
-#define fr_time_to_timespec(_when) fr_time_delta_to_timespec(fr_time_delta_wrap(fr_time_wallclock_at_last_sync() + fr_time_unwrap(_when)))
+#define fr_time_to_timespec(_when) fr_time_delta_to_timespec(fr_time_delta_wrap(fr_time_offset_to_realtime() + fr_time_unwrap(_when)))
 
 /** Convert wallclock time to a fr_time_t (internal time)
  *
@@ -770,7 +762,7 @@ static inline fr_time_t fr_time_from_integer(bool *overflow, int64_t when, fr_ti
 		return when > 0 ? fr_time_max() : fr_time_min();
 	}
 
-	if (!fr_sub(&out, out, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+	if (!fr_sub(&out, out, fr_time_offset_to_realtime())) {
 		if (overflow) *overflow = true;
 		return when < 0 ? fr_time_max() : fr_time_min();
 	}
@@ -791,7 +783,7 @@ static inline fr_time_t fr_time_from_nsec(int64_t when)
 {
 	typeof_field(fr_time_t, value) out = fr_time_delta_unwrap(fr_time_delta_from_nsec(when));
 
-	if (!fr_sub(&out, out, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+	if (!fr_sub(&out, out, fr_time_offset_to_realtime())) {
 		return when > 0 ? fr_time_min() : fr_time_max();
 	}
 	return fr_time_wrap(out);
@@ -809,7 +801,7 @@ static inline fr_time_t fr_time_from_usec(int64_t when)
 {
 	typeof_field(fr_time_t, value) out = fr_time_delta_unwrap(fr_time_delta_from_usec(when));
 
-	if (!fr_sub(&out, out, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+	if (!fr_sub(&out, out, fr_time_offset_to_realtime())) {
 		return when > 0 ? fr_time_min() : fr_time_max();
 	}
 	return fr_time_wrap(out);
@@ -827,7 +819,7 @@ static inline fr_time_t fr_time_from_msec(int64_t when)
 {
 	typeof_field(fr_time_t, value) out = fr_time_delta_unwrap(fr_time_delta_from_msec(when));
 
-	if (!fr_sub(&out, out, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+	if (!fr_sub(&out, out, fr_time_offset_to_realtime())) {
 		return when > 0 ? fr_time_min() : fr_time_max();
 	}
 	return fr_time_wrap(out);
@@ -845,7 +837,7 @@ static inline fr_time_t fr_time_from_csec(int64_t when)
 {
 	typeof_field(fr_time_t, value) out = fr_time_delta_unwrap(fr_time_delta_from_csec(when));
 
-	if (!fr_sub(&out, out, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+	if (!fr_sub(&out, out, fr_time_offset_to_realtime())) {
 		return when > 0 ? fr_time_min() : fr_time_max();
 	}
 	return fr_time_wrap(out);
@@ -863,7 +855,7 @@ static inline fr_time_t fr_time_from_sec(time_t when)
 {
 	typeof_field(fr_time_t, value) out = fr_time_delta_unwrap(fr_time_delta_from_sec(when));
 
-	if (!fr_sub(&out, out, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+	if (!fr_sub(&out, out, fr_time_offset_to_realtime())) {
 		return when > 0 ? fr_time_min() : fr_time_max();
 	}
 	return fr_time_wrap(out);
@@ -883,7 +875,7 @@ static inline CC_HINT(nonnull) fr_time_t fr_time_from_timespec(struct timespec c
 {
 	typeof_field(fr_time_t, value) tmp = fr_time_delta_unwrap(fr_time_delta_from_timespec(when_ts)), out;
 
-	if (!fr_sub(&out, tmp, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+	if (!fr_sub(&out, tmp, fr_time_offset_to_realtime())) {
 		return tmp > 0 ? fr_time_min() : fr_time_max();
 	}
 	return fr_time_wrap(out);
@@ -901,7 +893,7 @@ static inline CC_HINT(nonnull) fr_time_t fr_time_from_timeval(struct timeval con
 {
 	typeof_field(fr_time_t, value) tmp = fr_time_delta_unwrap(fr_time_delta_from_timeval(when_tv)), out;
 
-	if (!fr_sub(&out, tmp, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+	if (!fr_sub(&out, tmp, fr_time_offset_to_realtime())) {
 		return tmp > 0 ? fr_time_min() : fr_time_max();
 	}
 	return fr_time_wrap(out);
@@ -954,12 +946,12 @@ static inline int8_t fr_unix_time_cmp(fr_unix_time_t a, fr_unix_time_t b)
 #define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC
 #endif
 
-/** Return a relative time since the server our_epoch
+/** Return a relative time since the server fr_time_epoch
  *
  *  This time is useful for doing time comparisons, deltas, etc.
  *  Human (i.e. printable) time is something else.
  *
- * @returns fr_time_t time in nanoseconds since the server our_epoch.
+ * @returns fr_time_t time in nanoseconds since the server fr_time_epoch.
  *
  * @hidecallergraph
  */
@@ -967,7 +959,7 @@ static inline fr_time_t fr_time(void)
 {
 	struct timespec ts;
 	(void) clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-	return fr_time_wrap(fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts)) - our_epoch);
+	return fr_time_wrap(fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts)) - fr_time_epoch);
 }
 
 int		fr_time_start(void);

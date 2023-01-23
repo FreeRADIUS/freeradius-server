@@ -83,14 +83,15 @@ fr_table_num_ordered_t const fr_time_precision_table[] = {
 };
 size_t fr_time_precision_table_len = NUM_ELEMENTS(fr_time_precision_table);
 
-_Atomic int64_t			our_realtime;	//!< realtime at the start of the epoch in nanoseconds.
+int64_t				fr_time_epoch;					//!< monotonic clock at boot, i.e. our epoch
+_Atomic int64_t			fr_time_monotonic_to_realtime;			//!< difference between the two clocks
+
 static char const		*tz_names[2] = { NULL, NULL };	//!< normal, DST, from localtime_r(), tm_zone
 static long			gmtoff[2] = {0, 0};	       	//!< from localtime_r(), tm_gmtoff
 static bool			isdst = false;			//!< from localtime_r(), tm_is_dst
 
-int64_t				our_epoch;
 
-/** Get a new our_realtime value
+/** Get a new fr_time_monotonic_to_realtime value
  *
  * Should be done regularly to adjust for changes in system time.
  *
@@ -104,9 +105,9 @@ int fr_time_sync(void)
 	time_t now;
 
 	/*
-	 *	our_realtime represents system time at the start of our epoch.
+	 *	fr_time_monotonic_to_realtime is the difference in nano
 	 *
-	 *	So to convert a realtime timeval to fr_time we just subtract our_realtime from the timeval,
+	 *	So to convert a realtime timeval to fr_time we just subtract fr_time_monotonic_to_realtime from the timeval,
 	 *	which leaves the number of nanoseconds elapsed since our epoch.
 	 */
 	struct timespec ts_realtime, ts_monotime;
@@ -117,9 +118,9 @@ int fr_time_sync(void)
 	if (clock_gettime(CLOCK_REALTIME, &ts_realtime) < 0) return -1;
 	if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts_monotime) < 0) return -1;
 
-	atomic_store_explicit(&our_realtime,
+	atomic_store_explicit(&fr_time_monotonic_to_realtime,
 			      fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts_realtime)) -
-			      (fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts_monotime)) - our_epoch),
+			      (fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts_monotime)) - fr_time_epoch),
 			      memory_order_release);
 
 	now = ts_realtime.tv_sec;
@@ -152,7 +153,7 @@ int fr_time_start(void)
 	struct timespec ts;
 
 	if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) < 0) return -1;
-	our_epoch = fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts));
+	fr_time_epoch = fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts));
 
 	return fr_time_sync();
 }
