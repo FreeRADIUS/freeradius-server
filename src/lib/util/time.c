@@ -149,8 +149,9 @@ int fr_time_sync(void)
  */
 int fr_time_start(void)
 {
-	tzset();	/* Populate timezone, daylight and tzname globals */
 	struct timespec ts;
+
+	tzset();	/* Populate timezone, daylight and tzname globals */
 
 	if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) < 0) return -1;
 	fr_time_epoch = fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts));
