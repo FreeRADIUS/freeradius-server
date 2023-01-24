@@ -31,8 +31,8 @@ mkdir -p libkqueue
 cd libkqueue
 
 wget https://github.com/mheily/libkqueue/archive/v${LIBKQUEUE_VERSION}.tar.gz
-tar -xvzf v${VERSION}.tar.gz
-cd ./libkqueue-${VERSION}
+tar -xvzf v${LIBKQUEUE_VERSION}.tar.gz
+cd ./libkqueue-${LIBKQUEUE_VERSION}
 cmake3 -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib .
 make
 
@@ -46,7 +46,7 @@ cd $BASE_DIR
 #
 # Install libtalloc-devel
 #
-LIBTALLOC_VERSION=${LIBTALLOC_VERSION:-2.6.1}
+LIBTALLOC_VERSION=${LIBTALLOC_VERSION:-2.4.0}
 
 cd build
 mkdir -p libtalloc
@@ -57,6 +57,28 @@ curl -LOk https://www.samba.org/ftp/talloc/talloc-${LIBTALLOC_VERSION}.tar.gz
 tar zxvf talloc-${LIBTALLOC_VERSION}.tar.gz
 
 cd talloc-${LIBTALLOC_VERSION}
+
+./configure
+
+make
+
+#
+# Install libpcap-devel
+#
+LIBPCAP_VERSION=${LIBPCAP_VERSION:-1.10.3}
+
+# libpcap specific deps
+sudo yum install -y flex bison
+
+cd build
+mkdir -p libpcap
+cd libpcap
+
+wget https://www.tcpdump.org/release/libpcap-${LIBPCAP_VERSION}.tar.gz
+
+tar zxvf libpcap-${LIBPCAP_VERSION}.tar.gz
+
+cd libpcap-${LIBPCAP_VERSION}
 
 ./configure
 
