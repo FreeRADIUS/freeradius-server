@@ -169,7 +169,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 
 	if (!inst->allowed[request->packet->code]) {
 		REDEBUG("Packet code %s is disallowed by the configuration",
-		       fr_tacacs_packet_codes[request->packet->code]);
+		       fr_tacacs_packet_names[request->packet->code]);
 		RETURN_MODULE_FAIL;
 	}
 

@@ -575,7 +575,7 @@ static ssize_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_
 	code = data[1];
 
 	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
-	       fr_tacacs_packet_codes[code], code, packet_len, h->name);
+	       fr_tacacs_packet_names[code], code, packet_len, h->name);
 	log_request_pair_list(L_DBG_LVL_2, request, NULL, reply, NULL);
 
 	*response_code = code;
@@ -879,7 +879,7 @@ static void request_mux(fr_event_list_t *el,
 		h->active++;
 
 		RDEBUG("Sending %s ID %d length %ld over connection %s",
-		       fr_tacacs_packet_codes[u->code], u->id, u->packet_len, h->name);
+		       fr_tacacs_packet_names[u->code], u->id, u->packet_len, h->name);
 
 		if (encode(h, request, u) < 0) {
 			/*

@@ -99,7 +99,7 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 	{ NULL }
 };
 
-char const *fr_tacacs_packet_codes[FR_TACACS_CODE_MAX] = {
+char const *fr_tacacs_packet_names[FR_TACACS_CODE_MAX] = {
 	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START] = "Authentication-Start",
 	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START_REPLY] = "Authentication-Start-Reply",
 

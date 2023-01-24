@@ -286,7 +286,7 @@ typedef enum {
 
 #define FR_TACACS_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_TACACS_CODE_MAX))
 
-extern char const *fr_tacacs_packet_codes[FR_TACACS_CODE_MAX];
+extern char const *fr_tacacs_packet_names[FR_TACACS_CODE_MAX];
 
 /** Used as the decoder ctx
  *
