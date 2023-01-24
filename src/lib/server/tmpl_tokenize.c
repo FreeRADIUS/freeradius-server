@@ -1256,7 +1256,9 @@ void tmpl_attr_set_request_ref(tmpl_t *vpt, FR_DLIST_HEAD(tmpl_request_list) con
 
 void tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list)
 {
+	tmpl_attr_t *ref = tmpl_attr_list_head(tmpl_attr(vpt));
 	vpt->data.attribute.list = list;
+	if (tmpl_attr_is_list_attr(ref)) ref->da = list;
 
 	TMPL_ATTR_VERIFY(vpt);
 }
