@@ -18,7 +18,7 @@
  *
  * @file src/lib/util/retry.c
  *
- * @copyright 2020 Network RADIUS SARL
+ * @copyright 2020 Network RADIUS SAS
  */
 
 RCSID("$Id$")

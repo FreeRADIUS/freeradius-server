@@ -21,7 +21,7 @@
  * @file active_directory.h
  * @brief Callback routines for persistent search on Active Directory
  *
- * @copyright 2022 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2022 Network RADIUS SAS (legal@networkradius.com)
  */
 #include <freeradius-devel/ldap/base.h>
 #include "proto_ldap_sync_ldap.h"

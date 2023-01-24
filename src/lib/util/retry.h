@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/retry.h
  *
- * @copyright 2020 Network RADIUS SARL
+ * @copyright 2020 Network RADIUS SAS
  */
 RCSIDH(retry_h, "$Id$")
 

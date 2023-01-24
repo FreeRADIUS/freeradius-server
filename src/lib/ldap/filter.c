@@ -19,7 +19,7 @@
  * @file lib/ldap/filter.c
  * @brief Functions to handle basic LDAP filter parsing and filtering
  *
- * @copyright 2022 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2022 Network RADIUS SAS (legal@networkradius.com)
  */
 
 #include <freeradius-devel/ldap/base.h>

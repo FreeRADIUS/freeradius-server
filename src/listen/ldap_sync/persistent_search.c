@@ -19,7 +19,7 @@
  * @file persistent_search.c
  * @brief LDAP sync callback functions for servers implementing persistent search.
  *
- * @copyright 2022 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2022 Network RADIUS SAS (legal@networkradius.com)
  */
 
 #define LOG_PREFIX "ldap_sync_persistent"

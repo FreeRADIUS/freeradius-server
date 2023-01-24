@@ -20,7 +20,7 @@
  * @file protocols/arp/base.c
  * @brief Functions to send/receive ARP packets.
  *
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com?
+ * @copyright 2020 Network RADIUS SAS <legal@networkradius.com?
  */
 
 RCSID("$Id$")

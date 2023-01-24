@@ -23,7 +23,7 @@
  *
  * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2019 The FreeRADIUS server project
- * @copyright 2019 Network RADIUS SARL <sales@networkradius.com>
+ * @copyright 2019 Network RADIUS SAS <legal.com>
  */
 RCSID("$Id$")
 

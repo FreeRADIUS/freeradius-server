@@ -18,7 +18,7 @@
  *
  * @file src/lib/util/slab.h
  *
- * @copyright 2023 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */
 RCSIDH(slab_h, "$Id$")
 

@@ -19,7 +19,7 @@
  * @file rlm_radius_udp.c
  * @brief RADIUS UDP transport
  *
- * @copyright 2017 Network RADIUS SARL
+ * @copyright 2017 Network RADIUS SAS
  * @copyright 2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")

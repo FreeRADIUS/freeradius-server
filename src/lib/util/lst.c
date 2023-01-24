@@ -18,7 +18,7 @@
  *
  * @file src/lib/util/lst.c
  *
- * @copyright 2021 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
 RCSID("$Id$")
 

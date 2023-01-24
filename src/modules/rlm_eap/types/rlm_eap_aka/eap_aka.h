@@ -22,7 +22,7 @@
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
  * @copyright 2016 The FreeRADIUS server project
- * @copyright 2016 Network RADIUS SARL (sales@networkradius.com)
+ * @copyright 2016 Network RADIUS SAS (legal.com)
  */
 RCSIDH(rlm_eap_aka_eap_aka_h, "$Id$")
 

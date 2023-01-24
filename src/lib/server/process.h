@@ -39,7 +39,7 @@
  * - PROCESS_STATE_EXTRA_FIELDS		extra fields to add to the fr_process_state_t structure.
  *
  * @copyright 2021 The FreeRADIUS server project
- * @copyright 2021 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
 
 #ifdef __cplusplus

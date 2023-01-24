@@ -21,7 +21,7 @@
  * @author Jorge Pereira <jpereira@freeradius.org>
  *
  * @copyright 2021 The FreeRADIUS server project.
- * @copyright 2021 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
 
 RCSID("$Id$")

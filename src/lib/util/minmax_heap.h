@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/minmax_heap.h
  *
- * @copyright 2021 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
 RCSIDH(minmax_heap_h, "$Id$")
 

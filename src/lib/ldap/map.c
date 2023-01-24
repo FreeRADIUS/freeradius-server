@@ -20,7 +20,7 @@
  * @brief Functions for mapping between LDAP and FreeRADIUS attributes.
  *
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
- * @copyright 2013 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2013 Network RADIUS SAS (legal@networkradius.com)
  * @copyright 2013 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")

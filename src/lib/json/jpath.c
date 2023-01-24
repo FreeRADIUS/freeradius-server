@@ -22,7 +22,7 @@
  * @author Arran Cudbard-Bell
  *
  * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
- * @copyright 2015 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2015 Network RADIUS SAS (legal@networkradius.com)
  * @copyright 2015 The FreeRADIUS Server Project
  */
 #include <freeradius-devel/util/debug.h>

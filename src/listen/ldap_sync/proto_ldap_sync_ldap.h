@@ -21,7 +21,7 @@
  * @file proto_ldap_sync_ldap.h
  * @brief Callback routines for the LDAP Sync protocol
  *
- * @copyright 2022 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2022 Network RADIUS SAS (legal@networkradius.com)
  */
 USES_APPLE_DEPRECATED_API
 

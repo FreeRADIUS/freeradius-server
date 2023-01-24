@@ -21,7 +21,7 @@
  * @file proto_dns.h
  * @brief Structures for the DNS protocol
  *
- * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/dns/dns.h>

@@ -23,7 +23,7 @@
  * @author Matthew Newton
  *
  * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
- * @copyright 2015,2020 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2015,2020 Network RADIUS SAS (legal@networkradius.com)
  * @copyright 2015 The FreeRADIUS Server Project
  */
 RCSID("$Id$")

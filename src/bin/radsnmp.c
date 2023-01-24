@@ -21,7 +21,7 @@
  * @file src/bin/radsnmp.c
  *
  * @copyright 2015-2016 The FreeRADIUS server project
- * @copyright 2015-2016 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2015-2016 Network RADIUS SAS (legal@networkradius.com)
  *
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */

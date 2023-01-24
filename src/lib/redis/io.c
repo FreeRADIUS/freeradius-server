@@ -20,7 +20,7 @@
  * @brief Common functions for interacting with Redis via hiredis
  *
  * @copyright 2019 The FreeRADIUS server project
- * @copyright 2019 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2019 Network RADIUS SAS (legal@networkradius.com)
  *
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */

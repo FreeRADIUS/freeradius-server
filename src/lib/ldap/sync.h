@@ -21,7 +21,7 @@
  *
  * @brief Common definitions required by both network and worker for LDAP sync
  *
- * @copyright 2022 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2022 Network RADIUS SAS (legal@networkradius.com)
  */
 
 #include <freeradius-devel/protocol/ldap/freeradius.internal.h>

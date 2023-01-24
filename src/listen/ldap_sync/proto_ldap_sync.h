@@ -21,7 +21,7 @@
  * @file proto_ldap_sync.h
  * @brief Structures for the LDAP Sync protocol
  *
- * @copyright 2022 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2022 Network RADIUS SAS (legal@networkradius.com)
  */
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/ldap/base.h>

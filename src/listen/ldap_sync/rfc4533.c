@@ -19,7 +19,7 @@
  * @file rfc4533.c
  * @brief LDAP sync callback functions for RFC 4533 servers.
  *
- * @copyright 2022 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2022 Network RADIUS SAS (legal@networkradius.com)
  */
 
 #define LOG_PREFIX "ldap_sync_rfc4533"

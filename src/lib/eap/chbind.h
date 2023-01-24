@@ -20,7 +20,7 @@
  * @file lib/eap/chbind.h
  * @brief Channel binding
  *
- * @copyright 2014 Network RADIUS SARL
+ * @copyright 2014 Network RADIUS SAS
  * @copyright 2014 The FreeRADIUS server project
  */
 

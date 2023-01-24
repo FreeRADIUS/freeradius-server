@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/lst.h
  *
- * @copyright 2021  Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2021  Network RADIUS SAS (legal@networkradius.com)
  */
 RCSIDH(lst_h, "$Id$")
 

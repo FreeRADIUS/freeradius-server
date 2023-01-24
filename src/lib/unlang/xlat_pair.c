@@ -20,7 +20,7 @@
  * @brief Protocol agnostic encode/decoders
  * @file unlang/xlat_pair.c
  *
- * @copyright 2021 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
 RCSID("$Id$")
 

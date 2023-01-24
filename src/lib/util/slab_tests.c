@@ -2,7 +2,7 @@
  *
  * @file src/lib/util/slab_tests.c
  *
- * @copyright 2023 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2023 Network RADIUS SAS <legal@networkradius.com>
  */
 #include <freeradius-devel/util/acutest.h>
 #include <freeradius-devel/util/acutest_helpers.h>

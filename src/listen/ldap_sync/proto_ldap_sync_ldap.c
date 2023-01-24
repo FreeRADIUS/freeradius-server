@@ -19,7 +19,7 @@
  * @file proto_ldap_sync_ldap.c
  * @brief LDAP sync handler.
  *
- * @copyright 2022 Network RADIUS SARL (legal@networkradius.com)
+ * @copyright 2022 Network RADIUS SAS (legal@networkradius.com)
  */
 USES_APPLE_DEPRECATED_API
 
