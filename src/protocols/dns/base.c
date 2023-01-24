@@ -65,7 +65,7 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 	{ NULL }
 };
 
- char const *fr_dns_packet_codes[FR_DNS_CODE_MAX] = {
+ char const *fr_dns_packet_names[FR_DNS_CODE_MAX] = {
 	[FR_DNS_QUERY] = "query",
 	[FR_DNS_IQUERY] = "iquery",
 	[FR_DNS_STATUS] = "status",

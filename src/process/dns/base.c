@@ -136,7 +136,7 @@ static void dns_packet_debug(request_t *request, fr_radius_packet_t const *packe
 
 	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s",
 		    received ? "Received" : "Sending",
-		    fr_dns_packet_codes[packet->code & 0x0f]);
+		    fr_dns_packet_names[packet->code & 0x0f]);
 
 	if (received || request->parent) {
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);

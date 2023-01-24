@@ -139,7 +139,7 @@ typedef enum {
 
 #define DNS_HDR_LEN (12)
 
-extern char const *fr_dns_packet_codes[FR_DNS_CODE_MAX];
+extern char const *fr_dns_packet_names[FR_DNS_CODE_MAX];
 
 bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_dns_decode_fail_t *reason);
 

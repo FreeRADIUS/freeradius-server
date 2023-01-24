@@ -177,7 +177,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("Received %s ID %04x length %d %s", fr_dns_packet_codes[packet->opcode], xid,
+	DEBUG2("Received %s ID %04x length %d %s", fr_dns_packet_names[packet->opcode], xid,
 	       (int) packet_len, thread->name);
 
 	return packet_len;
