@@ -24,6 +24,6 @@ VALUE	Packet-Type			Authorization-Request	5
 VALUE	Packet-Type			Authorization-Reply	6
 VALUE	Packet-Type			Accounting-Request	7
 VALUE	Packet-Type			Accounting-Reply	8
-VALUE	Packet-Type			Do-Not-Respond		9
+VALUE	Packet-Type			Do-Not-Respond		256
 
 ATTRIBUTE	State					65537	octets

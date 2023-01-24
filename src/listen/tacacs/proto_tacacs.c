@@ -104,7 +104,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	value = cf_pair_value(cp);
 
 	dv = fr_dict_enum_by_name(attr_packet_type, value, -1);
-	if (!dv || (dv->value->vb_uint32 >= FR_TACACS_CODE_MAX)) {
+	if (!dv || FR_TACACS_PACKET_CODE_VALID(dv->value->vb_uint32)) {
 		cf_log_err(ci, "Unknown TACACS+ packet type '%s'", value);
 		return -1;
 	}
@@ -341,7 +341,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	 */
 	if ((buffer_len == 1) ||
 	    (request->reply->code == FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_TACACS_CODE_MAX)) {
+	    !FR_TACACS_PACKET_CODE_VALID(request->reply->code)) {
 		track->do_not_respond = true;
 		return 1;
 	}
@@ -418,8 +418,7 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
 {
 	proto_tacacs_t const *inst = talloc_get_type_abort_const(instance, proto_tacacs_t);
 
-	fr_assert(buffer[1] != FR_TAC_PLUS_INVALID);
-	fr_assert(buffer[1] < FR_TAC_PLUS_MAX);
+	fr_assert(FR_TACACS_PACKET_CODE_VALID(buffer[1]));
 
 	/*
 	 *	Disallowed packet
