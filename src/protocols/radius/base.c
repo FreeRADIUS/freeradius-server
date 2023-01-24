@@ -80,7 +80,7 @@ fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
  */
 #define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
 
-fr_table_num_sorted_t const fr_request_types[] = {
+fr_table_num_sorted_t const fr_radius_request_name_table[] = {
 	{ L("acct"),	FR_RADIUS_CODE_ACCOUNTING_REQUEST	},
 	{ L("auth"),	FR_RADIUS_CODE_ACCESS_REQUEST		},
 	{ L("auto"),	FR_RADIUS_CODE_UNDEFINED		},
@@ -89,7 +89,7 @@ fr_table_num_sorted_t const fr_request_types[] = {
 	{ L("disconnect"),	FR_RADIUS_CODE_DISCONNECT_REQUEST	},
 	{ L("status"),	FR_RADIUS_CODE_STATUS_SERVER		}
 };
-size_t fr_request_types_len = NUM_ELEMENTS(fr_request_types);
+size_t fr_radius_request_name_table_len = NUM_ELEMENTS(fr_radius_request_name_table);
 
 char const *fr_radius_packet_names[FR_RADIUS_CODE_MAX] = {
 	"",					//!< 0
@@ -145,14 +145,6 @@ char const *fr_radius_packet_names[FR_RADIUS_CODE_MAX] = {
 	"IP-Address-Allocate",			//!< 50
 	"IP-Address-Release",
 	"Protocol-Error",
-};
-
-bool const fr_request_packets[FR_RADIUS_CODE_MAX + 1] = {
-	[FR_RADIUS_CODE_ACCESS_REQUEST] = true,
-	[FR_RADIUS_CODE_ACCOUNTING_REQUEST] = true,
-	[FR_RADIUS_CODE_STATUS_SERVER] = true,
-	[FR_RADIUS_CODE_COA_REQUEST] = true,
-	[FR_RADIUS_CODE_DISCONNECT_REQUEST] = true,
 };
 
 

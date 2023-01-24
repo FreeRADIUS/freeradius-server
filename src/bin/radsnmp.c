@@ -1068,7 +1068,7 @@ int main(int argc, char **argv)
 	if (!isdigit((uint8_t) argv[2][0])) {
 		int code;
 
-		code = fr_table_value_by_str(fr_request_types, argv[2], -1);
+		code = fr_table_value_by_str(fr_radius_request_name_table, argv[2], -1);
 		if (code < 0) {
 			ERROR("Unrecognised request type \"%s\"", argv[2]);
 			usage();

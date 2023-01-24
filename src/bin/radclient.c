@@ -1700,7 +1700,7 @@ int main(int argc, char **argv)
 	 *	Get the request type
 	 */
 	if (!isdigit((uint8_t) argv[2][0])) {
-		packet_code = fr_table_value_by_str(fr_request_types, argv[2], -2);
+		packet_code = fr_table_value_by_str(fr_radius_request_name_table, argv[2], -2);
 		if (packet_code == -2) {
 			ERROR("Unrecognised request type \"%s\"", argv[2]);
 			usage();
