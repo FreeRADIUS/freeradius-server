@@ -211,9 +211,9 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		}
 		break;
 
-		case FR_TAC_PLUS_AUTHOR:
-			request->packet->code = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
-			break;
+	case FR_TAC_PLUS_AUTHOR:
+		request->packet->code = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
+		break;
 
 	case FR_TAC_PLUS_ACCT:
 		request->packet->code = FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST;
@@ -225,7 +225,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 	request->packet->id   = data[2]; // seq_no
 	request->reply->id    = data[2]; // seq_no
-	memcpy(request->packet->vector, &pkt->hdr.session_id, sizeof(pkt->hdr.session_id));
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
