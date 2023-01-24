@@ -1,0 +1,63 @@
+#!/bin/sh
+#
+#  Script to (mostly) automatically install "hard to build" prerequisites for v4.
+#
+#  $ git clone https://github.com/FreeRADIUS/freeradius-server.git
+#  $ cd freeradius-server
+#  $ ./scripts/build/redhat
+#  $ ./configure ... args ...
+#  $ make
+#
+
+#  Base directory where things will be built
+BASE_DIR=$(pwd)
+[ -d build ] || mkdir build
+
+#
+#  Install prerequisites.
+#
+sudo yum install -y cmake3 gcc git openssl-devel python-devel wget rpm-build
+
+#
+#  Install a development version of libkqueue.
+#
+#  The release versions of libkqueue are missing a large number of bug fixes.
+#
+#
+LIBKQUEUE_VERSION=${LIBKQUEUE_VERSION:-2.6.1}
+
+cd build
+mkdir -p libkqueue
+cd libkqueue
+
+wget https://github.com/mheily/libkqueue/archive/v${LIBKQUEUE_VERSION}.tar.gz
+tar -xvzf v${VERSION}.tar.gz
+cd ./libkqueue-${VERSION}
+cmake3 -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib .
+make
+
+# Only these two commands need sudo
+sudo cpack3 -G RPM
+sudo yum install *.rpm
+
+# Back to base dir
+cd $BASE_DIR
+
+#
+# Install libtalloc-devel
+#
+LIBTALLOC_VERSION=${LIBTALLOC_VERSION:-2.6.1}
+
+cd build
+mkdir -p libtalloc
+cd libtalloc
+
+curl -LOk https://www.samba.org/ftp/talloc/talloc-${LIBTALLOC_VERSION}.tar.gz
+
+tar zxvf talloc-${LIBTALLOC_VERSION}.tar.gz
+
+cd talloc-${LIBTALLOC_VERSION}
+
+./configure
+
+make
