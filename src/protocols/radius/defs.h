@@ -54,8 +54,6 @@ typedef enum {
 	FR_RADIUS_CODE_DO_NOT_RESPOND		= 256	//!< Special rcode to indicate we will not respond.
 } fr_radius_packet_code_t;
 
-#define FR_RADIUS_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_RADIUS_CODE_MAX))
-
 #define FR_AUTH_UDP_PORT		1812
 #define FR_AUTH_UDP_PORT_ALT		1645
 #define FR_ACCT_UDP_PORT		1813

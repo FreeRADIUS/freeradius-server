@@ -1159,7 +1159,7 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 	 *	packet matched that.
 	 */
 	if (request->reply->code != request->filter_code) {
-		if (is_radius_code(request->reply->code)) {
+		if (FR_RADIUS_PACKET_CODE_VALID(request->reply->code)) {
 			REDEBUG("%s: Expected %s got %s", request->name, fr_radius_packet_names[request->filter_code],
 				fr_radius_packet_names[request->reply->code]);
 		} else {
@@ -1354,7 +1354,7 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	 *	packet matched that.
 	 */
 	if ((request->filter_code != FR_RADIUS_CODE_UNDEFINED) && (request->reply->code != request->filter_code)) {
-		if (is_radius_code(request->reply->code)) {
+		if (FR_RADIUS_PACKET_CODE_VALID(request->reply->code)) {
 			REDEBUG("%s: Expected %s got %s", request->name, fr_radius_packet_names[request->filter_code],
 				fr_radius_packet_names[request->reply->code]);
 		} else {

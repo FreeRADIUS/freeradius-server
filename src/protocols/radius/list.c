@@ -741,7 +741,7 @@ void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool 
 	 *
 	 *	This really belongs in a utility library
 	 */
-	if (is_radius_code(packet->code)) {
+	if (FR_RADIUS_PACKET_CODE_VALID(packet->code)) {
 		fr_log(log, L_DBG, __FILE__, __LINE__,
 		       "%s %s Id %i from %s%s%s:%i to %s%s%s:%i "
 #ifdef WITH_IFINDEX_NAME_RESOLUTION

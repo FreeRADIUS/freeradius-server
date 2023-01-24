@@ -336,7 +336,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	}
 
 	/* Status, Type, Interface, Src, Src port, Dst, Dst port, ID */
-	if (is_radius_code(packet->code)) {
+	if (FR_RADIUS_PACKET_CODE_VALID(packet->code)) {
 		if (fr_sbuff_in_sprintf(&sbuff, "%s,%s,%s,%i,%s,%i,%i,",
 					fr_radius_packet_names[packet->code], handle->name,
 					src, packet->socket.inet.src_port, dst, packet->socket.inet.dst_port, packet->id) < 0) return;
@@ -409,7 +409,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		if (s <= 0) return;
 	}
 
-	if (is_radius_code(packet->code)) {
+	if (FR_RADIUS_PACKET_CODE_VALID(packet->code)) {
 		len = snprintf(p, s, "%s Id %i %s:%s:%d %s %s:%i ",
 			       fr_radius_packet_names[packet->code],
 			       packet->id,
