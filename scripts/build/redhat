@@ -61,6 +61,7 @@ cd talloc-${LIBTALLOC_VERSION}
 ./configure
 
 make
+sudo make install
 
 #
 # Install libpcap-devel
@@ -83,3 +84,4 @@ cd libpcap-${LIBPCAP_VERSION}
 ./configure
 
 make
+sudo make install
