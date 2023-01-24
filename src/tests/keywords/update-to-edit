@@ -13,7 +13,7 @@ if (&Tmp-String-0) {
 
 update {
 	&request.Tmp-String-0 !* ANY
-	&reply !* ANY
+	&reply.[*] !* ANY
 }
 
 if (&Tmp-String-0) {
