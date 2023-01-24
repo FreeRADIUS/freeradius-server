@@ -13,9 +13,9 @@ update {
 	&reply += `/path/to/foo bar baz`
 }
 
-#
-#  @fixme - EDIT - this is now a run-time error :(
-#
 update {
 	&request := nope		# ERROR
 }
+
+&request += { &User-Password = 'hello' }
+success
