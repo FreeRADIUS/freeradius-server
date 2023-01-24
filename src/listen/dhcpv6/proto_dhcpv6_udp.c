@@ -186,7 +186,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		if ((packet->code == FR_DHCPV6_SOLICIT) ||
 		    (packet->code == FR_DHCPV6_REBIND) ||
 		    (packet->code == FR_DHCPV6_CONFIRM)) {
-			RATE_LIMIT_GLOBAL(WARN, "Unicast packet %s - ignoring", fr_dhcpv6_packet_types[packet->code]);
+			RATE_LIMIT_GLOBAL(WARN, "Unicast packet %s - ignoring", fr_dhcpv6_packet_names[packet->code]);
 			return 0;
 		}
 	} /* else it was multicast... remember that */
@@ -200,7 +200,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("Received %s XID %08x length %d %s", fr_dhcpv6_packet_types[packet->code], xid,
+	DEBUG2("Received %s XID %08x length %d %s", fr_dhcpv6_packet_names[packet->code], xid,
 	       (int) packet_len, thread->name);
 
 	return packet_len;

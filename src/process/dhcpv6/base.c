@@ -299,7 +299,7 @@ static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t const *pa
 #endif
 		    "",
 		    received ? "Received" : "Sending",
-		    fr_dhcpv6_packet_types[packet->code],
+		    fr_dhcpv6_packet_names[packet->code],
 		    packet->id,
 		    packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
 		    fr_box_ipaddr(packet->socket.inet.src_ipaddr),

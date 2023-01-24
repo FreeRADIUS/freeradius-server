@@ -104,7 +104,7 @@ typedef enum {
 
 #define FR_DHCPV6_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_DHCPV6_CODE_MAX))
 
-extern char const		*fr_dhcpv6_packet_types[FR_DHCPV6_CODE_MAX];
+extern char const		*fr_dhcpv6_packet_names[FR_DHCPV6_CODE_MAX];
 
 /** subtype values for DHCPv4 and DHCPv6
  *
