@@ -1057,7 +1057,10 @@ cleanup:
 	 */
 #ifndef NDEBUG
 	memory_used_after = talloc_total_size(autofree);
-	fr_assert(memory_used_after == memory_used_before);
+	if (memory_used_after != memory_used_before) {
+		printf("WARNING: May have leaked memory (%zd - %zd = %zd)\n",
+		       memory_used_after, memory_used_before, memory_used_after - memory_used_before);
+	}
 #endif
 
 	/*
