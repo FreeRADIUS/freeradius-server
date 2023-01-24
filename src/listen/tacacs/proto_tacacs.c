@@ -104,7 +104,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	value = cf_pair_value(cp);
 
 	dv = fr_dict_enum_by_name(attr_packet_type, value, -1);
-	if (!dv || FR_TACACS_PACKET_CODE_VALID(dv->value->vb_uint32)) {
+	if (!dv || !FR_TACACS_PACKET_CODE_VALID(dv->value->vb_uint32)) {
 		cf_log_err(ci, "Unknown TACACS+ packet type '%s'", value);
 		return -1;
 	}
