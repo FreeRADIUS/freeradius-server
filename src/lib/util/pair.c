@@ -989,7 +989,7 @@ static int _pair_list_dcursor_insert(fr_dlist_head_t *list, void *to_insert, UNU
 	return 0;
 }
 
-/** Keep attr tree and sublists synced on cursor insert
+/** Keep attr tree and sublists synced on cursor removal
  *
  * @param[in] list	Underlying order list from the fr_pair_list_t.
  * @param[in] to_remove	fr_pair_t being removed.
@@ -1000,13 +1000,20 @@ static int _pair_list_dcursor_insert(fr_dlist_head_t *list, void *to_insert, UNU
 static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dlist_head_t *list, void *to_remove, UNUSED void *uctx)
 {
 	fr_pair_t *vp = to_remove;
+	fr_pair_list_t *parent = fr_pair_parent_list(vp);
 
 #ifndef NDEBUG
 	fr_tlist_head_t *tlist;
 
 	tlist = fr_tlist_head_from_dlist(list);
 
+	while (parent && (tlist != vp->order_entry.entry.list_head)) {
+		tlist = &parent->order.head;
+		parent = fr_pair_parent_list(fr_pair_list_parent(parent));
+	}
+
 	fr_assert(vp->order_entry.entry.list_head == tlist);
+	parent = fr_pair_parent_list(vp);
 #endif
 
 	/*
@@ -1016,7 +1023,10 @@ static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dlist_head_t *list, void *
 
 	PAIR_VERIFY(vp);
 
-	return 0;
+	if (&parent->order.head.dlist_head == list) return 0;
+
+	fr_pair_remove(parent, vp);
+	return 1;
 }
 
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
