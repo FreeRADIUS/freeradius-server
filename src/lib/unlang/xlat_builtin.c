@@ -3530,7 +3530,7 @@ static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		gmtime_r(&when, &tm);
 
-		nsec = 86400 * (tm.tm_mday - 1);
+		nsec = (int64_t) 86400 * (tm.tm_mday - 1);
 		nsec += when % 86400;
 		nsec *= NSEC;
 		nsec += fr_unix_time_unwrap(unix_time) % NSEC;
@@ -3547,7 +3547,7 @@ static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		gmtime_r(&when, &tm);
 
-		nsec = 86400 * tm.tm_wday;
+		nsec = (int64_t) 86400 * tm.tm_wday;
 		nsec += when % 86400;
 		nsec *= NSEC;
 		nsec += fr_unix_time_unwrap(unix_time) % NSEC;
