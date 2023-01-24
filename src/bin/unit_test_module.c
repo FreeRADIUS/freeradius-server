@@ -99,7 +99,6 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
  */
 static void usage(main_config_t const *config, int status);
 
-
 static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name)
 {
 	CONF_SECTION *cs;
@@ -574,7 +573,14 @@ int main(int argc, char *argv[])
 
 	CONF_SECTION		*server_cs;
 
+#ifndef NDEBUG
+	size_t			memory_used_before = 0;
+	size_t			memory_used_after = 0;
+#endif
+
+
 	fr_pair_list_init(&filter_vps);
+
 	/*
 	 *	Must be called first, so the handler is called last
 	 */
@@ -879,6 +885,10 @@ int main(int argc, char *argv[])
 
 	setlinebuf(stdout); /* unbuffered output */
 
+#ifndef NDEBUG
+	memory_used_before = talloc_total_size(autofree);
+#endif
+
 	if (!input_file || (strcmp(input_file, "-") == 0)) {
 		fp = stdin;
 	} else {
@@ -963,9 +973,15 @@ int main(int argc, char *argv[])
 		request_t *cached = request;
 
 		for (i = 0; i < count; i++) {
+#ifndef NDEBUG
+			size_t request_used_before, request_used_after;
+#endif
+
 			request = request_clone(cached, i, server_cs);
 
 #ifndef NDEBUG
+			request_used_before = talloc_total_size(autofree);
+
 			/*
 			 *	Artificially limit the number of instructions which are run.
 			 */
@@ -975,12 +991,20 @@ int main(int argc, char *argv[])
 				} else {
 					request->ins_max = config->ins_max;
 				}
+
+				if (request->ins_max < 10) request->ins_max = 10;
+
 				request->ins_count = 0;
 			}
 #endif
 
 			unlang_interpret_synchronous(el, request);
 			talloc_free(request);
+
+#ifndef NDEBUG
+			request_used_after = talloc_total_size(autofree);
+			fr_assert(request_used_after == request_used_before);
+#endif
 		}
 
 		request = cached;
@@ -1027,6 +1051,14 @@ int main(int argc, char *argv[])
 
 cleanup:
 	talloc_free(request);
+
+	/*
+	 *	No leaks.
+	 */
+#ifndef NDEBUG
+	memory_used_after = talloc_total_size(autofree);
+	fr_assert(memory_used_after == memory_used_before);
+#endif
 
 	/*
 	 *	Free thread data
