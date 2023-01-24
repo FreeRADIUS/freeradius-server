@@ -264,7 +264,7 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 	};
 
 #define INIT_STATS(_ti, _v) do {\
-		strlcpy(buffer, fr_packet_codes[code], sizeof(buffer)); \
+		strlcpy(buffer, fr_radius_packet_names[code], sizeof(buffer)); \
 		for (p = buffer; *p; ++p) *p = tolower((uint8_t) *p);\
 		last = *tmpl = rs_stats_collectd_init(ctx, conf, type, _ti, buffer, stats, _v);\
 		if (!*tmpl) {\

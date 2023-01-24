@@ -423,7 +423,7 @@ static void CC_HINT(nonnull) status_check_alloc(udp_handle_t *h)
 	u->code = inst->parent->status_check;
 	request->packet->code = u->code;
 
-	DEBUG3("%s - Status check packet type will be %s", h->module_name, fr_packet_codes[u->code]);
+	DEBUG3("%s - Status check packet type will be %s", h->module_name, fr_radius_packet_names[u->code]);
 	log_request_pair_list(L_DBG_LVL_3, request, NULL, &request->request_pairs, NULL);
 
 	MEM(h->status_r = talloc_zero(request, udp_result_t));
@@ -648,7 +648,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	}
 
 	DEBUG("%s - Sending %s ID %d length %ld over connection %s",
-	      h->module_name, fr_packet_codes[u->code], u->id, u->packet_len, h->name);
+	      h->module_name, fr_radius_packet_names[u->code], u->id, u->packet_len, h->name);
 
 	if (encode(h->inst, h->status_request, u, u->id) < 0) {
 	fail:
@@ -661,7 +661,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	slen = write(h->fd, u->packet, u->packet_len);
 	if (slen < 0) {
 		ERROR("%s - Failed sending %s ID %d length %ld over connection %s: %s",
-		      h->module_name, fr_packet_codes[u->code], u->id, u->packet_len, h->name, fr_syserror(errno));
+		      h->module_name, fr_radius_packet_names[u->code], u->id, u->packet_len, h->name, fr_syserror(errno));
 		goto fail;
 	}
 	fr_assert((size_t)slen == u->packet_len);
@@ -1182,7 +1182,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 
 	if (!allowed_replies[code]) {
 		REDEBUG("%s packet received invalid reply code %s",
-			fr_packet_codes[u->code], fr_packet_codes[code]);
+			fr_radius_packet_names[u->code], fr_radius_packet_names[code]);
 		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
 	}
 
@@ -1195,7 +1195,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	if (!u->status_check && (code != FR_RADIUS_CODE_PROTOCOL_ERROR)) {
 		if (allowed_replies[code] != (fr_radius_packet_code_t) u->code) {
 			REDEBUG("%s packet received invalid reply code %s",
-				fr_packet_codes[u->code], fr_packet_codes[code]);
+				fr_radius_packet_names[u->code], fr_radius_packet_names[code]);
 			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		}
 	}
@@ -1213,7 +1213,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	}
 
 	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
-	       fr_packet_codes[code], code, packet_len, h->name);
+	       fr_radius_packet_names[code], code, packet_len, h->name);
 	log_request_pair_list(L_DBG_LVL_2, request, NULL, reply, NULL);
 
 	*response_code = code;
@@ -1823,7 +1823,7 @@ static void request_mux(fr_event_list_t *el,
 			u->id = u->rr->id;
 
 			RDEBUG("Sending %s ID %d length %ld over connection %s",
-			       fr_packet_codes[u->code], u->id, u->packet_len, h->name);
+			       fr_radius_packet_names[u->code], u->id, u->packet_len, h->name);
 
 			if (encode(h->inst, request, u, u->id) < 0) {
 				/*
@@ -1844,7 +1844,7 @@ static void request_mux(fr_event_list_t *el,
 			(void) radius_track_entry_update(u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
 		} else {
 			RDEBUG("Retransmitting %s ID %d length %ld over connection %s",
-			       fr_packet_codes[u->code], u->id, u->packet_len, h->name);
+			       fr_radius_packet_names[u->code], u->id, u->packet_len, h->name);
 		}
 
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
@@ -2052,7 +2052,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		}
 
 		RDEBUG("Sending %s ID %d length %ld over connection %s",
-		       fr_packet_codes[u->code], u->id, u->packet_len, h->name);
+		       fr_radius_packet_names[u->code], u->id, u->packet_len, h->name);
 		RHEXDUMP3(u->packet, u->packet_len, "Encoded packet");
 
 		h->coalesced[queued].treq = treq;

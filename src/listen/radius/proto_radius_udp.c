@@ -197,7 +197,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	Print out what we received.
 	 */
 	DEBUG2("proto_radius_udp - Received %s ID %d length %d %s",
-	       fr_packet_codes[buffer[0]], buffer[1],
+	       fr_radius_packet_names[buffer[0]], buffer[1],
 	       (int) packet_len, thread->name);
 
 	return packet_len;

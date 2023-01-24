@@ -210,7 +210,7 @@ static void radius_packet_debug(request_t *request, fr_radius_packet_t *packet, 
 #endif
 		       "",
 		       received ? "Received" : "Sending",
-		       fr_packet_codes[packet->code],
+		       fr_radius_packet_names[packet->code],
 		       packet->id,
 		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
 		       fr_box_ipaddr(packet->socket.inet.src_ipaddr),

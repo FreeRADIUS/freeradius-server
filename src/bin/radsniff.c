@@ -338,7 +338,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	/* Status, Type, Interface, Src, Src port, Dst, Dst port, ID */
 	if (is_radius_code(packet->code)) {
 		if (fr_sbuff_in_sprintf(&sbuff, "%s,%s,%s,%i,%s,%i,%i,",
-					fr_packet_codes[packet->code], handle->name,
+					fr_radius_packet_names[packet->code], handle->name,
 					src, packet->socket.inet.src_port, dst, packet->socket.inet.dst_port, packet->id) < 0) return;
 	} else {
 		if (fr_sbuff_in_sprintf(&sbuff, "%u,%s,%s,%i,%s,%i,%i,", packet->code, handle->name,
@@ -411,7 +411,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 
 	if (is_radius_code(packet->code)) {
 		len = snprintf(p, s, "%s Id %i %s:%s:%d %s %s:%i ",
-			       fr_packet_codes[packet->code],
+			       fr_radius_packet_names[packet->code],
 			       packet->id,
 			       handle->name,
 			       response ? dst : src,
@@ -643,7 +643,7 @@ static void rs_stats_print_code_fancy(rs_latency_t *stats, fr_radius_packet_code
 	if (!stats->interval.received && !have_rt && !stats->interval.reused) return;
 
 	if (stats->interval.received || stats->interval.linked) {
-		INFO("%s counters:", fr_packet_codes[code]);
+		INFO("%s counters:", fr_radius_packet_names[code]);
 		if (stats->interval.received > 0) {
 			INFO("\tTotal     : %.3lf/s" , stats->interval.received);
 		}
@@ -652,7 +652,7 @@ static void rs_stats_print_code_fancy(rs_latency_t *stats, fr_radius_packet_code
 	if (stats->interval.linked > 0) {
 		INFO("\tLinked    : %.3lf/s", stats->interval.linked);
 		INFO("\tUnlinked  : %.3lf/s", stats->interval.unlinked);
-		INFO("%s latency:", fr_packet_codes[code]);
+		INFO("%s latency:", fr_radius_packet_names[code]);
 		INFO("\tHigh      : %.3lfms", stats->interval.latency_high);
 		INFO("\tLow       : %.3lfms", stats->interval.latency_low);
 		INFO("\tAverage   : %.3lfms", stats->interval.latency_average);
@@ -660,7 +660,7 @@ static void rs_stats_print_code_fancy(rs_latency_t *stats, fr_radius_packet_code
 	}
 
 	if (have_rt || stats->interval.lost || stats->interval.reused) {
-		INFO("%s retransmits & loss:", fr_packet_codes[code]);
+		INFO("%s retransmits & loss:", fr_radius_packet_names[code]);
 
 		if (stats->interval.lost)	INFO("\tLost      : %.3lf/s", stats->interval.lost);
 		if (stats->interval.reused)	INFO("\tID Reused : %.3lf/s", stats->interval.reused);
@@ -738,7 +738,7 @@ static void rs_stats_print_csv_header(rs_update_t *this)
 	}
 
 	for (i = 0; i < rs_codes_len; i++) {
-		char const *name = fr_packet_codes[rs_useful_codes[i]];
+		char const *name = fr_radius_packet_names[rs_useful_codes[i]];
 
 		fprintf(stdout,
 			",\"%s received/s\""
@@ -2860,7 +2860,7 @@ int main(int argc, char *argv[])
 			DEBUG2("  RADIUS secret           : [%s]", conf->radius_secret);
 
 		if (conf->filter_request_code) {
-			DEBUG2("  RADIUS request code     : [%s]", fr_packet_codes[conf->filter_request_code]);
+			DEBUG2("  RADIUS request code     : [%s]", fr_radius_packet_names[conf->filter_request_code]);
 		}
 
 		if (!fr_pair_list_empty(&conf->filter_request_vps)){
@@ -2869,7 +2869,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (conf->filter_response_code) {
-			DEBUG2("  RADIUS response code    : [%s]", fr_packet_codes[conf->filter_response_code]);
+			DEBUG2("  RADIUS response code    : [%s]", fr_radius_packet_names[conf->filter_response_code]);
 		}
 
 		if (conf->to_output_dir) {

@@ -418,7 +418,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 
 	if (!inst->allowed[request->packet->code]) {
 		REDEBUG("Packet code %s is disallowed by the configuration",
-		       fr_packet_codes[request->packet->code]);
+		       fr_radius_packet_names[request->packet->code]);
 		RETURN_MODULE_FAIL;
 	}
 
@@ -503,7 +503,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	if (inst->replicate && inst->status_check) {
 		cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'replicate = true'",
-			    fr_packet_codes[inst->status_check]);
+			    fr_radius_packet_names[inst->status_check]);
 		inst->status_check = 0;
 	}
 
@@ -520,7 +520,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 		} else if (!inst->allowed[inst->status_check]) {
 			cf_log_err(conf, "Using 'status_check = %s' requires also 'type = %s'",
-				   fr_packet_codes[inst->status_check], fr_packet_codes[inst->status_check]);
+				   fr_radius_packet_names[inst->status_check], fr_radius_packet_names[inst->status_check]);
 			return -1;
 		}
 

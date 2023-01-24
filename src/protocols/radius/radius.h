@@ -48,7 +48,7 @@
  *	protocols/radius/base.c
  */
 
-extern char const *fr_packet_codes[FR_RADIUS_CODE_MAX];
+extern char const *fr_radius_packet_names[FR_RADIUS_CODE_MAX];
 #define is_radius_code(_x) ((_x > 0) && (_x < FR_RADIUS_CODE_MAX))
 
 #define AUTH_PASS_LEN (RADIUS_AUTH_VECTOR_LENGTH)

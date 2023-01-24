@@ -1160,8 +1160,8 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 	 */
 	if (request->reply->code != request->filter_code) {
 		if (is_radius_code(request->reply->code)) {
-			REDEBUG("%s: Expected %s got %s", request->name, fr_packet_codes[request->filter_code],
-				fr_packet_codes[request->reply->code]);
+			REDEBUG("%s: Expected %s got %s", request->name, fr_radius_packet_names[request->filter_code],
+				fr_radius_packet_names[request->reply->code]);
 		} else {
 			REDEBUG("%s: Expected %u got %i", request->name, request->filter_code,
 				request->reply->code);
@@ -1355,8 +1355,8 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	 */
 	if ((request->filter_code != FR_RADIUS_CODE_UNDEFINED) && (request->reply->code != request->filter_code)) {
 		if (is_radius_code(request->reply->code)) {
-			REDEBUG("%s: Expected %s got %s", request->name, fr_packet_codes[request->filter_code],
-				fr_packet_codes[request->reply->code]);
+			REDEBUG("%s: Expected %s got %s", request->name, fr_radius_packet_names[request->filter_code],
+				fr_radius_packet_names[request->reply->code]);
 		} else {
 			REDEBUG("%s: Expected %u got %i", request->name, request->filter_code,
 				request->reply->code);

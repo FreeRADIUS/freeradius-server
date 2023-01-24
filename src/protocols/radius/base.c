@@ -91,7 +91,7 @@ fr_table_num_sorted_t const fr_request_types[] = {
 };
 size_t fr_request_types_len = NUM_ELEMENTS(fr_request_types);
 
-char const *fr_packet_codes[FR_RADIUS_CODE_MAX] = {
+char const *fr_radius_packet_names[FR_RADIUS_CODE_MAX] = {
 	"",					//!< 0
 	"Access-Request",
 	"Access-Accept",
