@@ -67,7 +67,8 @@ typedef int (*fr_dcursor_insert_t)(fr_dlist_head_t *list, void *to_insert, void 
  * @param[in] to_delete	The item being removed from the cursor.
  * @param[in] uctx	passed to #fr_dcursor_init.
  * @return
- *	- 0 on success.
+ *	- 0 on success if the caller should do the list removal.
+ *	- 1 on success if the callback has done the list removal.
  *	- -1 on failure.
  */
 typedef int (*fr_dcursor_remove_t)(fr_dlist_head_t *list, void *to_delete, void *uctx);
@@ -450,6 +451,7 @@ static inline int fr_dcursor_insert(fr_dcursor_t *cursor, void *v)
 static inline void *fr_dcursor_remove(fr_dcursor_t *cursor)
 {
 	void *v;
+	int i = 0;
 
 	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return NULL;
 
@@ -458,9 +460,14 @@ static inline void *fr_dcursor_remove(fr_dcursor_t *cursor)
 	v = cursor->current;
 	VALIDATE(v);
 
-	if (cursor->remove && (cursor->remove(cursor->dlist, v, cursor->mod_uctx) < 0)) return NULL;
+	if (cursor->remove) {
+		i = cursor->remove(cursor->dlist, v, cursor->mod_uctx);
+		if (i < 0) return NULL;
+	}
 
 	dcursor_current_set(cursor, dcursor_next(cursor, cursor->iter, v));
+
+	if (i > 0) return v;
 
 	fr_dlist_remove(cursor->dlist, v);
 
