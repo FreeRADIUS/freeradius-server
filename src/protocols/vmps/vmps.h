@@ -57,7 +57,7 @@ typedef enum {
 
 #define FR_VMPS_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_VMPS_CODE_MAX))
 
-extern char const	*fr_vmps_codes[FR_VMPS_CODE_MAX];
+extern char const	*fr_vmps_packet_names[FR_VMPS_CODE_MAX];
 
 int fr_vmps_init(void);
 
