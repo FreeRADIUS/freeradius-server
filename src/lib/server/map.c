@@ -1513,7 +1513,8 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	 *	to allocate any attributes, just finding the current list, and change
 	 *	the op.
 	 */
-	if (tmpl_is_list(map->lhs) && tmpl_is_list(map->rhs)) {
+	if ((tmpl_is_list(map->lhs) || (tmpl_contains_attr(map->lhs) && tmpl_attr_tail_da_is_structural(map->lhs))) &&
+	    (tmpl_is_list(map->rhs) || (tmpl_contains_attr(map->rhs) && tmpl_attr_tail_da_is_structural(map->rhs)))) {
 		fr_pair_list_t *from = NULL;
 
 		if (tmpl_request_ptr(&context, tmpl_request(map->rhs)) == 0) {
