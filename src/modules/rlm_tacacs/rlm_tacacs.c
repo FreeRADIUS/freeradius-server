@@ -157,12 +157,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 
 	void			*rctx = NULL;
 
-	if (!request->packet->code) {
-		REDEBUG("You MUST specify a packet code");
-		RETURN_MODULE_FAIL;
-	}
-
-	if (request->packet->code >= FR_TACACS_PACKET_TYPE_MAX) {
+	if (!FR_TACACS_PACKET_CODE_VALID(request->packet->code)) {
 		REDEBUG("Invalid packet code %d", request->packet->code);
 		RETURN_MODULE_FAIL;
 	}
