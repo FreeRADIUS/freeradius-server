@@ -1053,10 +1053,16 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 	if (vendor) RIDEBUG2("vendor     : %i (%s)", vendor->pen, vendor->name);
 	RIDEBUG3("type       : %s", fr_type_to_str(vp->vp_type));
 
-	if (fr_box_is_variable_size(&vp->data)) {
-		RIDEBUG3("length     : %zu", vp->vp_length);
+	switch (vp->da->type) {
+	case FR_TYPE_LEAF:
+		if (fr_box_is_variable_size(&vp->data)) {
+			RIDEBUG3("length     : %zu", vp->vp_length);
+		}
+		RIDEBUG3("tainted    : %pV", fr_box_bool(vp->data.tainted));
+		break;
+	default:
+		break;
 	}
-	RIDEBUG3("tainted    : %pV", fr_box_bool(vp->data.tainted));
 
 	if (!RDEBUG_ENABLED4) {
 		REXDENT();
