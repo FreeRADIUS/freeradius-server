@@ -390,7 +390,16 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 			case TMPL_TYPE_ATTR:
 			{
 				fr_token_t	quote;
-				c_map->lhs = map->lhs;	/* lhs shouldn't be touched, so this is ok */
+				/*
+				 *	If the LHS is structural, we need a new template
+				 *	which is the combination of the existing LHS and
+				 *	the attribute.
+				 */
+				if (tmpl_attr_tail_da_is_structural(map->lhs)) {
+					tmpl_attr_afrom_list(c_map, &c_map->lhs, map->lhs, vp->da);
+				} else {
+					c_map->lhs = map->lhs;	/* lhs shouldn't be touched, so this is ok */
+				}
 			do_rhs:
 				if (vp->vp_type == FR_TYPE_STRING) {
 					quote = is_printable(vp->vp_strvalue, vp->vp_length) ?
