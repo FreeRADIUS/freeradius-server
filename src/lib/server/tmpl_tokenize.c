@@ -1081,6 +1081,7 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 	 		if (!fr_cond_assert(0)) return -1;
 	 	}
 	 	dst_ar->ar_num = src_ar->ar_num;
+		dst_ar->parent = src_ar->parent;
 	}
 
 	/*
