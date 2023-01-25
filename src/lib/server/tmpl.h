@@ -818,6 +818,42 @@ static inline fr_dict_attr_t const *tmpl_attr_tail_da(tmpl_t const *vpt)
 	return ar->ar_da;
 }
 
+/** Return true if the the last attribute reference is a leaf attribute
+ *
+ * @hidecallergraph
+ */
+static inline bool tmpl_attr_tail_da_is_leaf(tmpl_t const *vpt)
+{
+	tmpl_attr_t *ar;
+
+	tmpl_assert_type(tmpl_contains_attr(vpt));
+
+	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	if (!ar) return false;
+
+	fr_assert(ar_is_normal(ar) || ar_is_unknown(ar) || ar_is_unspecified(ar));
+
+	return fr_type_is_leaf(ar->ar_da->type);
+}
+
+/** Return true if the the last attribute reference is a structural attribute
+ *
+ * @hidecallergraph
+ */
+static inline bool tmpl_attr_tail_da_is_structural(tmpl_t const *vpt)
+{
+	tmpl_attr_t *ar;
+
+	tmpl_assert_type(tmpl_contains_attr(vpt));
+
+	ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	if (!ar) return false;
+
+	fr_assert(ar_is_normal(ar) || ar_is_unknown(ar) || ar_is_unspecified(ar));
+
+	return fr_type_is_structural(ar->ar_da->type);
+}
+
 /** Return the last attribute reference unknown da
  *
  * @hidecallergraph
