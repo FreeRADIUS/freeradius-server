@@ -132,14 +132,10 @@ static inline int fr_atexit_talloc_free(void *to_free)
 	if (unlikely(!atomic_load(&_init_done))) { \
 		pthread_mutex_lock(&_init_mutex); \
 		if (!atomic_load(&_init_done)) { \
-			if (_fr_atexit_global_once_funcs(_init, _free, _our_uctx) < 0) { \
-				*(_ret) = -1; \
-				pthread_mutex_unlock(&_init_mutex); \
-			} \
+			if (_fr_atexit_global_once_funcs(_init, _free, _our_uctx) < 0) *(_ret) = -1; \
 			atomic_store(&_init_done, true); \
-		} else { \
-		    pthread_mutex_unlock(&_init_mutex); \
 		} \
+		pthread_mutex_unlock(&_init_mutex); \
 	} \
 	*(_ret) = 0; \
 }
