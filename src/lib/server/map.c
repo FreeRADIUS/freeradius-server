@@ -1611,7 +1611,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		 *  Src/Dst attributes don't match, convert src attributes
 		 *  to match dst.
 		 */
-		if (tmpl_is_attr(map->lhs) &&
+		if (tmpl_is_attr(map->lhs) && tmpl_attr_tail_da_is_leaf(map->lhs) &&
 		    (tmpl_attr_tail_da(map->rhs)->type != tmpl_attr_tail_da(map->lhs)->type)) {
 			for (; vp; vp = fr_dcursor_current(&from)) {
 				MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
