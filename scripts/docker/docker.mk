@@ -53,7 +53,7 @@ endif
 .PHONY: docker-ubuntu
 docker-ubuntu:
 	@echo Building ubuntu $(DOCKER_COMMIT)
-	$(Q)docker build $(DOCKER_BUILD_ARGS) scripts/docker/ubuntu20 --build-arg=release=$(DOCKER_COMMIT) -t $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)
+	$(Q)docker build $(DOCKER_BUILD_ARGS) scripts/docker/ubuntu22 --build-arg=release=$(DOCKER_COMMIT) -t $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)
 
 .PHONY: docker-alpine
 docker-alpine:
