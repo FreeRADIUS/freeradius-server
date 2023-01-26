@@ -1194,19 +1194,21 @@ static ssize_t fr_skip_xlat(char const *start, char const *end)
 	/*
 	 *	At least %{1}
 	 */
-	if (end && ((start + 4) < end)) {
+	if (end && ((start + 4) > end)) {
 		fr_strerror_const("Invalid expansion");
 		return 0;
 	}
 
 	if ((*p != '%') && (*p != '$')) {
-	fail:
 		fr_strerror_const("Unexpected character in xlat");
 		return -(p - start);
 	}
 
 	p++;
-	if ((*p != '{') && (*p != '(')) goto fail;
+	if ((*p != '{') && (*p != '(')) {
+		fr_strerror_const("Invalid character after '%'");
+		return -(p - start);
+	}
 
 	quote = *(p++);
 	if (quote == '{') {
