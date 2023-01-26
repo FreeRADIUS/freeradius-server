@@ -2,6 +2,14 @@
 #
 #  Script to (mostly) automatically install "hard to build" prerequisites for v4.
 #
+#  This is mainly useful for RH9 which doesn't have the necessary binary or
+#  -devel packages.  It's a temporary hack which should be removed when those
+#  packages are available.  The "builddep" tool should be used instead.
+#
+#  This script also is "top to bottom", and doesn't check if the files already
+#  exist, etc.  So don't run it twice.  Or if you do, just run the commands
+#  manually.
+#
 #  $ git clone https://github.com/FreeRADIUS/freeradius-server.git
 #  $ cd freeradius-server
 #  $ ./scripts/build/redhat
