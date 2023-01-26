@@ -388,39 +388,70 @@ RESUME(access_request)
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
+	/*
+	 *	See if the return code from "recv Access-Request" says we reject, or continue.
+	 */
 	UPDATE_STATE(packet);
 
 	request->reply->code = state->packet_type[rcode];
 	if (!request->reply->code) request->reply->code = state->default_reply;
-	if (!request->reply->code) request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
-	UPDATE_STATE_CS(reply);
 
-	if (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) {
-		RDEBUG("The 'recv Access-Request' section returned %s - not sending a response",
+	/*
+	 *	Something set reject, we're done.
+	 */
+	if (request->reply->code == FR_RADIUS_CODE_ACCESS_REJECT) {
+		RDEBUG("The 'recv Access-Request' section returned %s - rejecting the request",
 		       fr_table_str_by_value(rcode_table, rcode, "???"));
 
 	send_reply:
+		UPDATE_STATE(reply);
+
 		fr_assert(state->send != NULL);
 		return CALL_SEND_STATE(state);
 	}
 
+	if (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) {
+		RDEBUG("The 'recv Access-Request' section returned %s - not sending a response",
+		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		goto send_reply;
+	}
+
 	/*
 	 *	Run authenticate foo { ... }
+	 *
+	 *	If we can't find Auth-Type, OR if we can't find
+	 *	Auth-Type = foo, then it's a reject.
 	 */
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_auth_type);
-	if (!vp) goto send_reply;
+	if (!vp) {
+		RDEBUG("No 'Auth-Type' attribute found, cannot authenticate the user - rejecting the request",
+		       fr_table_str_by_value(rcode_table, rcode, "???"));
+
+	reject:
+		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
+		goto send_reply;
+	}
 
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
-	if (!dv) goto send_reply;
+	if (!dv) {
+		RDEBUG("Invalid value for 'Auth-Type' attribute, cannot authenticate the user - rejecting the request",
+		       fr_table_str_by_value(rcode_table, rcode, "???"));
+
+		goto reject;
+	}
 
 	/*
-	 *	The magic Auth-Type accept value
+	 *	The magic Auth-Type Accept value
 	 *	which means skip the authenticate
-	 *	section...
+	 *	section.
+	 *
+	 *	And Reject means always reject.  Tho the admin should
+	 *	just return "reject" from the section.
 	 */
 	if (fr_value_box_cmp(enum_auth_type_accept, dv->value) == 0) {
 		request->reply->code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 		goto send_reply;
+
 	} else if (fr_value_box_cmp(enum_auth_type_reject, dv->value) == 0) {
 		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
 		goto send_reply;
@@ -428,8 +459,8 @@ RESUME(access_request)
 
 	cs = cf_section_find(inst->server_cs, "authenticate", dv->name);
 	if (!cs) {
-		RDEBUG2("No 'authenticate %s { ... }' section found - skipping...", dv->name);
-		goto send_reply;
+		RDEBUG2("No 'authenticate %s { ... }' section found - rejecting the request", dv->name);
+		goto reject;
 	}
 
 	/*
@@ -807,10 +838,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 static fr_process_state_t const process_state[] = {
 	[ FR_RADIUS_CODE_ACCESS_REQUEST ] = {
 		.packet_type = {
-			[RLM_MODULE_NOOP]	= FR_RADIUS_CODE_ACCESS_REJECT,
-			[RLM_MODULE_OK]		= FR_RADIUS_CODE_ACCESS_ACCEPT,
-			[RLM_MODULE_UPDATED]	= FR_RADIUS_CODE_ACCESS_ACCEPT,
-
 			[RLM_MODULE_FAIL]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_INVALID]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_REJECT]	= FR_RADIUS_CODE_ACCESS_REJECT,
