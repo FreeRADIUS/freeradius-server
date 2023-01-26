@@ -519,8 +519,7 @@ static int cache_verify(map_t *map, void *ctx)
 {
 	if (unlang_fixup_update(map, ctx) < 0) return -1;
 
-	if (!tmpl_is_attr(map->lhs) &&
-	    !tmpl_is_list(map->lhs)) {
+	if (!tmpl_is_attr(map->lhs)) {
 		cf_log_err(map->ci, "Destination must be an attribute ref or a list");
 		return -1;
 	}

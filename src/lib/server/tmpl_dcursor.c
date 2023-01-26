@@ -99,7 +99,7 @@ void _tmpl_cursor_pair_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 	/*
 	 *	Iterates over attributes of a specific type
 	 */
-	if (tmpl_is_list(cc->vpt) || ar_is_normal(ar)) {
+	if (ar_is_normal(ar)) {
 		fr_pair_dcursor_iter_init(&ns->cursor, list, _tmpl_cursor_child_next, ns);
 	/*
 	 *	Iterates over all attributes at this level
@@ -172,7 +172,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 		pop = true;
 	}
 		break;
-	} else goto all_inst;	/* Used for TMPL_TYPE_LIST */
+	} else goto all_inst;
 
 	/*
 	 *	If no pair was found and there is a fill
@@ -392,7 +392,7 @@ fr_pair_t *_tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 {
 	fr_pair_t		*list;
 
-	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+	fr_assert(tmpl_is_attr(vpt));
 
 	if (err) *err = 0;
 
@@ -517,7 +517,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 
 	TMPL_VERIFY(vpt);
 
-	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+	fr_assert(tmpl_is_attr(vpt));
 
 	/*
 	 *	Navigate to the correct request context

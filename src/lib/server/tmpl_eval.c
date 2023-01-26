@@ -362,7 +362,6 @@ ssize_t _tmpl_to_type(void *out,
 
 	TMPL_VERIFY(vpt);
 
-	fr_assert(!tmpl_is_list(vpt));
 	fr_assert(!buff || (bufflen >= 2));
 
 	switch (vpt->type) {
@@ -865,7 +864,7 @@ int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, tm
 
 	TMPL_VERIFY(vpt);
 
-	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+	fr_assert(tmpl_is_attr(vpt));
 
 	for (vp = tmpl_dcursor_init(&err, NULL, &cc, &from, request, vpt);
 	     vp;
@@ -908,7 +907,7 @@ int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 
 	TMPL_VERIFY(vpt);
 
-	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+	fr_assert(tmpl_is_attr(vpt));
 
 	fr_pair_list_free(out);
 
@@ -1292,7 +1291,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, reque
 	int			ret = 0;
 	FR_DLIST_HEAD(fr_value_box_list)	list;
 
-	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+	fr_assert(tmpl_is_attr(vpt));
 
 	fr_value_box_list_init(&list);
 
@@ -1447,7 +1446,7 @@ int tmpl_eval(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, request_t 
 		return -1;
 	}
 
-	if (tmpl_is_attr(vpt) || tmpl_is_list(vpt)) {
+	if (tmpl_is_attr(vpt)) {
 		return tmpl_eval_pair(ctx, out, request, vpt);
 	}
 

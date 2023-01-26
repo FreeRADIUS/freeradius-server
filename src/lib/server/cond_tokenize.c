@@ -222,7 +222,6 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	 */
 	if (tmpl_contains_regex(c->data.map->rhs)) {
 		fr_assert((c->data.map->op == T_OP_REG_EQ) || (c->data.map->op == T_OP_REG_NE));
-		fr_assert(!tmpl_is_list(c->data.map->lhs));
 		fr_assert(fr_type_is_null(tmpl_rules_cast(c->data.map->rhs)));
 
 		/*

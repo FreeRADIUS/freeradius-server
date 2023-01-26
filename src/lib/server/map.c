@@ -1362,7 +1362,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 
 	fr_assert(map->rhs);		/* Quite clang scan */
 	fr_assert(tmpl_is_exec(map->rhs));
-	fr_assert(tmpl_is_attr(map->lhs) || tmpl_is_list(map->lhs));
+	fr_assert(tmpl_is_attr(map->lhs));
 
 	/*
 	 *	We always put the request pairs into the environment
@@ -1375,8 +1375,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	 *	if dst is an attribute, then we create an attribute of that type and then
 	 *	call fr_pair_value_from_str on the output of the script.
 	 */
-	result = radius_exec_program_legacy(ctx, answer, sizeof(answer),
-				     tmpl_is_list(map->lhs) ? &output_pairs : NULL,
+	result = radius_exec_program_legacy(ctx, answer, sizeof(answer), NULL,
 				     request, map->rhs->name, input_pairs ? input_pairs : NULL,
 				     true, true, fr_time_delta_from_sec(EXEC_TIMEOUT));
 	talloc_free(expanded);
@@ -1435,7 +1434,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	MAP_VERIFY(map);
 	if (!fr_cond_assert(map->lhs != NULL)) return -1;
 
-	fr_assert(tmpl_is_list(map->lhs) || tmpl_is_attr(map->lhs));
+	fr_assert(tmpl_is_attr(map->lhs));
 
 	/*
 	 *	Special case for !*, we don't need to parse RHS as this is a unary operator.
@@ -1505,8 +1504,8 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	 *	to allocate any attributes, just finding the current list, and change
 	 *	the op.
 	 */
-	if ((tmpl_is_list(map->lhs) || (tmpl_contains_attr(map->lhs) && tmpl_attr_tail_da_is_structural(map->lhs))) &&
-	    (tmpl_is_list(map->rhs) || (tmpl_contains_attr(map->rhs) && tmpl_attr_tail_da_is_structural(map->rhs)))) {
+	if ((tmpl_contains_attr(map->lhs) && tmpl_attr_tail_da_is_structural(map->lhs)) &&
+	    (tmpl_contains_attr(map->rhs) && tmpl_attr_tail_da_is_structural(map->rhs))) {
 		fr_pair_list_t *from = NULL;
 
 		if (tmpl_request_ptr(&context, tmpl_request(map->rhs)) == 0) {
@@ -1589,8 +1588,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		fr_pair_t *vp;
 		fr_dcursor_t from;
 
-		fr_assert((tmpl_is_attr(map->lhs) && tmpl_attr_tail_da(map->lhs)) ||
-			   (tmpl_is_list(map->lhs) && !tmpl_attr_tail_da(map->lhs)));
+		fr_assert(tmpl_is_attr(map->lhs) && tmpl_attr_tail_da(map->lhs));
 
 		/*
 		 * @todo should log error, and return -1 for v3.1 (causes update to fail)
@@ -1783,7 +1781,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 			rcode = -1;
 			goto finish;
 		}
-		fr_assert(tmpl_is_attr(exp_lhs) || tmpl_is_list(exp_lhs));
+		fr_assert(tmpl_is_attr(exp_lhs));
 
 		memcpy(&exp_map, map, sizeof(exp_map));
 		exp_map.lhs = exp_lhs;
@@ -1801,8 +1799,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	Sanity check inputs.  We can have a list or attribute
 	 *	as a destination.
 	 */
-	if (!tmpl_is_list(map->lhs) &&
-	    !tmpl_is_attr(map->lhs)) {
+	if (!tmpl_is_attr(map->lhs)) {
 		REDEBUG("Left side \"%.*s\" of map should be an attr or list but is an %s",
 			(int)map->lhs->len, map->lhs->name,
 			tmpl_type_to_str(map->lhs->type));
