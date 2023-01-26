@@ -359,9 +359,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	for (vp = fr_cursor_init(&cursor, &request->config);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-	     	VERIFY_VP(vp);
+
 	next:
-		switch (vp->da->attr) {
+
+		VERIFY_VP(vp);
+
+		if (!vp->da->vendor) switch (vp->da->attr) {
 		case PW_USER_PASSWORD: /* deprecated */
 			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			RWDEBUG("!!! Ignoring control:User-Password.  Update your        !!!");
