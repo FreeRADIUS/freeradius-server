@@ -897,7 +897,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	/*
 	 *	What exactly where you expecting to happen here?
 	 */
-	if (tmpl_is_attr(map->lhs) &&
+	if (tmpl_attr_tail_da_is_leaf(map->lhs) &&
 	    tmpl_is_list(map->rhs)) {
 		cf_log_err(map->ci, "Can't copy list into an attribute");
 		return -1;
