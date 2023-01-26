@@ -403,6 +403,15 @@ int rad_status_server(REQUEST *request)
 	}
 #endif
 
+#ifdef WITH_STATS
+	/*
+	 *	Full statistics are available only on a statistics
+	 *	socket.
+	 */
+	if (request->listener->type == RAD_LISTEN_NONE) {
+		request_stats_reply(request);
+	}
+#endif
 
 	switch (request->listener->type) {
 #ifdef WITH_STATS
@@ -494,16 +503,6 @@ int rad_status_server(REQUEST *request)
 	default:
 		return 0;
 	}
-
-#ifdef WITH_STATS
-	/*
-	 *	Full statistics are available only on a statistics
-	 *	socket.
-	 */
-	if (request->listener->type == RAD_LISTEN_NONE) {
-		request_stats_reply(request);
-	}
-#endif
 
 	return 0;
 }
