@@ -879,7 +879,7 @@ static CC_HINT(nonnull) int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_s
 {
 	if (!tmpl_is_attr(vpt) || tmpl_attr_tail_is_unresolved(vpt)) return 0;
 
-	if (tmpl_is_list(vpt) || tmpl_attr_is_list_attr(tmpl_attr_tail(vpt))) {
+	if (tmpl_is_list(vpt)) {
 		fr_strerror_const("Cannot use list references in condition");
 		fr_sbuff_set(in, m_lhs);
 		return -1;
