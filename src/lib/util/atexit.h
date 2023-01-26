@@ -129,19 +129,17 @@ static inline int fr_atexit_talloc_free(void *to_free)
 	static atomic_bool	_init_done = false; \
 	static pthread_mutex_t	_init_mutex = PTHREAD_MUTEX_INITIALIZER; \
 	void *_our_uctx = _uctx; /* stop _uctx being evaluated multiple times, it may be a call to malloc() */ \
+	*(_ret) = 0; \
 	if (unlikely(!atomic_load(&_init_done))) { \
 		pthread_mutex_lock(&_init_mutex); \
 		if (!atomic_load(&_init_done)) { \
 			if (_fr_atexit_global_once_funcs(_init, _free, _our_uctx) < 0) { \
 				*(_ret) = -1; \
-				pthread_mutex_unlock(&_init_mutex); \
 			} \
 			atomic_store(&_init_done, true); \
-		} else { \
-		    pthread_mutex_unlock(&_init_mutex); \
 		} \
+		pthread_mutex_unlock(&_init_mutex); \
 	} \
-	*(_ret) = 0; \
 }
 
 /** Setup pair of global init/free functions
