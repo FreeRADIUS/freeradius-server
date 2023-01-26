@@ -400,7 +400,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 				} else {
 					c_map->lhs = map->lhs;	/* lhs shouldn't be touched, so this is ok */
 				}
-			do_rhs:
+
 				if (vp->vp_type == FR_TYPE_STRING) {
 					quote = is_printable(vp->vp_strvalue, vp->vp_length) ?
 							     T_SINGLE_QUOTED_STRING : T_DOUBLE_QUOTED_STRING;
@@ -412,24 +412,12 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 							    TMPL_TYPE_DATA, quote, map->rhs->name, map->rhs->len));
 				if (fr_value_box_copy(c_map->rhs, tmpl_value(c_map->rhs), &vp->data) < 0) {
 					REDEBUG("Failed copying attribute value");
-				error:
 					talloc_free(pool);
 					talloc_free(c);
 					RETURN_MODULE_FAIL;
 				}
 			}
 				break;
-
-			/*
-			 *	Lists are weird... We need to fudge a new LHS template,
-			 *	which is a combination of the LHS list and the attribute.
-			 */
-			case TMPL_TYPE_LIST:
-				if (tmpl_attr_afrom_list(c_map, &c_map->lhs, map->lhs, vp->da) < 0) {
-					RPERROR("Failed attribute -> list copy");
-					goto error;
-				}
-				goto do_rhs;
 
 			default:
 				fr_assert(0);

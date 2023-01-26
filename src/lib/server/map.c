@@ -1341,7 +1341,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
  * @param[in,out] ctx to allocate new #fr_pair_t (s) in.
  * @param[out] out Where to write the #fr_pair_t (s).
  * @param[in] request structure (used only for talloc).
- * @param[in] map the map. The LHS (dst) must be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
+ * @param[in] map the map. The LHS (dst) must be #TMPL_TYPE_ATTR.
  *	The RHS (src) must be #TMPL_TYPE_EXEC.
  * @return
  *	- 0 on success.
@@ -1387,14 +1387,6 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	}
 
 	switch (map->lhs->type) {
-	case TMPL_TYPE_LIST:
-		if (fr_pair_list_empty(&output_pairs)) {
-			REDEBUG("No valid attributes received from program");
-			return -2;
-		}
-		fr_pair_list_append(out, &output_pairs);
-		return 0;
-
 	case TMPL_TYPE_ATTR:
 	{
 		fr_pair_t *vp;
@@ -1422,7 +1414,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
  * @param[in,out] ctx to allocate #fr_pair_t (s) in.
  * @param[out] out Where to write the #fr_pair_t (s), which may be NULL if not found
  * @param[in] request The current request.
- * @param[in] map the map. The LHS (dst) has to be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
+ * @param[in] map the map. The LHS (dst) has to be #TMPL_TYPE_ATTR.
  * @param[in] uctx unused.
  * @return
  *	- 0 on success.
@@ -1754,7 +1746,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	/*
 	 *	Already in the correct form.
 	 */
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR:
 		break;
 
@@ -2324,49 +2315,6 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 		fr_pair_aprint_value_quoted(request, &rhs, vp, map->rhs->quote);
 		break;
 
-	/*
-	 *	For the lists, we can't use the original name, and have to
-	 *	rebuild it using tmpl_print, for each attribute we're
-	 *	copying.
-	 */
-	case TMPL_TYPE_LIST:
-	{
-		tmpl_t		*vpt;
-		fr_token_t	quote;
-
-		switch (vp->vp_type) {
-		case FR_TYPE_QUOTED:
-			quote = T_DOUBLE_QUOTED_STRING;
-			break;
-		default:
-			quote = T_BARE_WORD;
-			break;
-		}
-
-		vpt = tmpl_alloc(request, TMPL_TYPE_ATTR, quote, map->rhs->name, strlen(map->rhs->name));
-
-		/*
-		 *	Fudge a temporary tmpl that describes the attribute we're copying
-		 *	this is a combination of the original list tmpl, and values from
-		 *	the fr_pair_t.
-		 */
-		tmpl_attr_copy(vpt, map->rhs);
-		tmpl_attr_set_leaf_da(vpt, vp->da);
-		tmpl_attr_set_leaf_num(vpt, NUM_UNSPEC);
-
-		/*
-		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
-		 *	around the list ref. The attribute value has no quoting, so we choose
-		 *	the quoting based on the data type.
-		 */
-		fr_pair_aprint_value_quoted(request, &value, vp, quote);
-		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vpt, TMPL_ATTR_REF_PREFIX_YES, NULL);
-		rhs = talloc_typed_asprintf(request, "%s -> %s", buffer, value);
-
-		talloc_free(vpt);
-	}
-		break;
-
 	case TMPL_TYPE_ATTR:
 	{
 		fr_token_t	quote;
@@ -2397,19 +2345,6 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 	}
 
 	switch (map->lhs->type) {
-	case TMPL_TYPE_LIST:
-		/*
-		 *	The MAP may have said "list", but if there's a
-		 *	VP, it has it's own name, which isn't in the
-		 *	map name.
-		 */
-		if (vp) {
-			tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->lhs, TMPL_ATTR_REF_PREFIX_YES, NULL);	/* Fixme - bad escaping */
-			RDEBUG2("%s%s %s %s", buffer, vp->da->name, fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"), rhs);
-			break;
-		}
-		FALL_THROUGH;
-
 	case TMPL_TYPE_ATTR:
 		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->lhs, TMPL_ATTR_REF_PREFIX_YES, NULL);
 		RDEBUG2("%s %s %s", buffer, fr_table_str_by_value(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), rhs);

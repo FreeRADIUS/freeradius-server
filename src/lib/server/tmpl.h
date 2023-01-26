@@ -26,7 +26,7 @@
  * #tmpl_t (VPTs) specify either a data source, or a data sink.
  *
  * Examples of sources are #TMPL_TYPE_XLAT_UNRESOLVED, #TMPL_TYPE_EXEC and #TMPL_TYPE_ATTR.
- * Examples of sinks are #TMPL_TYPE_ATTR, #TMPL_TYPE_LIST.
+ * Examples of sinks are #TMPL_TYPE_ATTR.
  *
  * VPTs are used to gather values or attributes for evaluation, or copying, and to specify
  * where values or #fr_pair_t should be copied to.
@@ -41,7 +41,7 @@
  * @see tmpl_afrom_substr
  * @see tmpl_afrom_attr_str
  *
- * In the case of #TMPL_TYPE_ATTR and #TMPL_TYPE_LIST, there are special cursor overlay
+ * In the case of #TMPL_TYPE_ATTR, there are special cursor overlay
  * functions which can be used to iterate over only the #fr_pair_t that match a
  * tmpl_t in a given list.
  *
@@ -143,10 +143,6 @@ typedef enum tmpl_type_e {
 	/** Value in native boxed format
 	 */
 	TMPL_TYPE_DATA			= 0x0002,
-
-	/** Reference to an attribute list
-	 */
-	TMPL_TYPE_LIST			= 0x0004 | TMPL_FLAG_ATTR,
 
 	/** Reference to one or more attributes
 	 */
@@ -325,7 +321,7 @@ struct tmpl_attr_rules_s {
 
 	uint8_t			disallow_filters:1;	//!< disallow filters.
 
-	uint8_t			list_as_attr:1;		//!< return #TMPL_TYPE_ATTR for lists, and not #TMPL_TYPE_LIST
+	uint8_t			list_as_attr:1;		//!< return #TMPL_TYPE_ATTR for lists
 };
 
 struct tmpl_xlat_rules_s {
@@ -541,14 +537,12 @@ static inline bool ar_is_raw(tmpl_attr_t const *ar)
  * @section update_maps Use in update map_t
  * When used on the LHS it describes an attribute to create and should be one of these types:
  * - #TMPL_TYPE_ATTR
- * - #TMPL_TYPE_LIST
  *
  * When used on the RHS it describes the value to assign to the attribute being created and
  * should be one of these types:
  * - #TMPL_TYPE_UNRESOLVED
  * - #TMPL_TYPE_XLAT_UNRESOLVED
  * - #TMPL_TYPE_ATTR
- * - #TMPL_TYPE_LIST
  * - #TMPL_TYPE_EXEC
  * - #TMPL_TYPE_DATA
  * - #TMPL_TYPE_XLAT (pre-parsed xlat)
@@ -669,7 +663,7 @@ static inline tmpl_type_t tmpl_type_from_str(char const *type)
 }
 /** @} */
 
-/** @name Field accessors for #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNRESOLVED, #TMPL_TYPE_LIST
+/** @name Field accessors for #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNRESOLVED
  *
  * @{
  */
@@ -974,43 +968,6 @@ static inline bool tmpl_is_list(tmpl_t const *vpt)
 void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt);
 void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
 #endif
-
-/** Produces an initialiser for static #TMPL_TYPE_LIST type #tmpl_t
- *
- * Example:
- @code{.c}
-   static tmpl_t     list = tmpl_init_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
-   fr_dcursor_t      cursor;
-   tmpl_dcursor_ctx_t cc,
-   fr_pair_t        *vp;
-
-   // Iterate over all pairs in the request list
-   for (vp = tmpl_dcursor_init(NULL, &cursor, request, &list);
-   	vp;
-   	vp = tmpl_cursor_next(&cursor, &list)) {
-   	// Do something
-   }
-   tmpl_dcursor_clear(&cc);
- @endcode
- *
- * @param _request to locate the list in.
- * @param _list to set as the target for the template.
- * @see tmpl_dcursor_init
- * @see tmpl_cursor_next
- */
-#define	tmpl_init_initialiser_list(_request, _list)\
-{ \
-	.name = "static", \
-	.len = sizeof("static") - 1, \
-	.type = TMPL_TYPE_LIST, \
-	.quote = T_SINGLE_QUOTED_STRING, \
-	.data = { \
-		.attribute = { \
-			.request = _request, \
-			.list = _list \
-		} \
-	} \
-}
 
 /** Determine the correct context and list head
  *

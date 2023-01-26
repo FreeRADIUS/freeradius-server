@@ -57,11 +57,6 @@ static void *_tmpl_cursor_child_next(fr_dlist_head_t *list, void *curr, void *uc
 	tmpl_dcursor_nested_t	*ns = uctx;
 	fr_pair_t		*vp = curr;
 
-	/*
-	 *	Only applies to TMPL_TYPE_LIST - remove when that is gone.
-	 */
-	if ((!ns->ar) || (!ns->ar->ar_da)) return fr_dlist_next(list, curr);
-
 	while ((vp = fr_dlist_next(list, vp))) {
 		if (fr_dict_attr_cmp(ns->ar->ar_da, vp->da) == 0) break;
 	}
@@ -239,21 +234,8 @@ static void *_tmpl_cursor_next(UNUSED fr_dlist_head_t *list, void *curr, void *u
 			return vp;
 		}
 
-	null_result:
 		return NULL;
 	}
-
-	/*
-	 *	Hacks for evaluating lists
-	 *	Hopefully this tmpl type goes away soon...
-	 */
-	case TMPL_TYPE_LIST:
-		if (!fr_dlist_tail(&cc->nested)) goto null_result;	/* end of list */
-
-		vp = _tmpl_cursor_eval(curr, cc);
-		if (!vp) goto null_result;
-
-		return vp;
 
 	default:
 		fr_assert(0);
@@ -347,7 +329,6 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 	 */
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
 		_tmpl_cursor_pair_init(list, cc->list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
 		break;
 
@@ -560,15 +541,6 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	}
 
 	/*
-	 *	If it's a list, just return the list head
-	 */
-	if (vpt->type == TMPL_TYPE_LIST) {
-	do_list:
-		if (existing) EXTENT_ADD(existing, NULL, list_ctx, list_head);
-		return 0;
-	}
-
-	/*
 	 *	If it's a leaf skip all the expensive
 	 *      initialisation and just return the list
 	 *	it's part of.
@@ -583,7 +555,8 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		break;
 
 	default:
-		goto do_list;
+		if (existing) EXTENT_ADD(existing, NULL, list_ctx, list_head);
+		return 0;
 	}
 
 	/*

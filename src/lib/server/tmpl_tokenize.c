@@ -108,7 +108,6 @@ fr_table_num_ordered_t const tmpl_type_table[] = {
 	{ L("data"),			TMPL_TYPE_DATA			},
 
 	{ L("attr"),			TMPL_TYPE_ATTR			},
-	{ L("list"),			TMPL_TYPE_LIST			},
 
 	{ L("exec"),			TMPL_TYPE_EXEC			},
 	{ L("xlat"),			TMPL_TYPE_XLAT			},
@@ -271,7 +270,6 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
-	case TMPL_TYPE_LIST:
 		break;
 
 	default:
@@ -307,7 +305,6 @@ void tmpl_debug(tmpl_t const *vpt)
 {
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 		tmpl_attr_debug(vpt);
 		return;
@@ -765,7 +762,6 @@ static inline CC_HINT(always_inline) void tmpl_type_init(tmpl_t *vpt, tmpl_type_
 
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
-	case TMPL_TYPE_LIST:
 		tmpl_attr_list_talloc_init(tmpl_attr(vpt));
 		tmpl_request_list_talloc_init(&vpt->data.attribute.rr);
 		break;
@@ -1997,15 +1993,13 @@ do_suffix:
 	return 0;
 }
 
-/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #tmpl_t
+/** Parse a string into a TMPL_TYPE_ATTR_* type #tmpl_t
  *
  * @param[in,out] ctx		to allocate #tmpl_t in.
  * @param[out] err		May be NULL.  Provides the exact error that the parser hit
  *				when processing the attribute ref.
  * @param[out] out		Where to write pointer to new #tmpl_t.
  * @param[in] name		of attribute including #tmpl_request_ref_t and #pair_list_t qualifiers.
- *				If only #tmpl_request_ref_t #pair_list_t qualifiers are found,
- *				a #TMPL_TYPE_LIST #tmpl_t will be produced.
  * @param[in] p_rules		Formatting rules used to check for trailing garbage.
  * @param[in] t_rules		Rules which control parsing:
  *				- dict_def		The default dictionary to use if attributes
@@ -2222,28 +2216,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		}
 	}
 
-	/*
-	 *	If there's no attribute references
-	 *	treat this as a list reference.
-	 *
-	 *	Eventually we'll remove TMPL_TYPE_LIST
-	 */
-	if (!at_rules->list_as_attr && (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0)) {
-		tmpl_attr_t	*ar;
-		fr_slen_t	slen;
-
-		MEM(ar = talloc_zero(vpt, tmpl_attr_t));
-		slen = tmpl_attr_parse_filter(err, ar, &our_name, at_rules);
-		if (slen == 0) {			/* No filter */
-			talloc_free(ar);
-		} else if (slen > 0) {				/* Found a filter */
-			tmpl_attr_list_insert_tail(&vpt->data.attribute.ar, ar);
-		} else if (slen < 0) {				/* Filter error */
-			goto error;
-		}
-		vpt->type = TMPL_TYPE_LIST;
-	}
-
 	tmpl_set_name(vpt, T_BARE_WORD, fr_sbuff_start(&our_name), fr_sbuff_used(&our_name));
 	vpt->rules = *t_rules;	/* Record the rules */
 
@@ -2319,15 +2291,13 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	FR_SBUFF_SET_RETURN(name, &our_name);
 }
 
-/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #tmpl_t
+/** Parse a string into a TMPL_TYPE_ATTR_* type #tmpl_t
  *
  * @param[in,out] ctx		to allocate #tmpl_t in.
  * @param[out] err		May be NULL.  Provides the exact error that the parser hit
  *				when processing the attribute ref.
  * @param[out] out		Where to write pointer to new #tmpl_t.
  * @param[in] name		of attribute including #tmpl_request_ref_t and #pair_list_t qualifiers.
- *				If only #tmpl_request_ref_t #pair_list_t qualifiers are found,
- *				a #TMPL_TYPE_LIST #tmpl_t will be produced.
  * @param[in] t_rules		Rules which control parsing.  See tmpl_afrom_attr_substr() for details.
  *
  * @note Unlike #tmpl_afrom_attr_substr this function will error out if the entire
@@ -4023,7 +3993,6 @@ void tmpl_unresolve(tmpl_t *vpt)
 	 *	These types contain dynamically allocated
 	 *	attribute and request references.
 	 */
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 		tmpl_attr_list_talloc_free(tmpl_attr(vpt));
@@ -4354,7 +4323,6 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	 *	Only print things we can print...
 	 */
 	switch (vpt->type) {
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_ATTR:
 		break;
@@ -4566,7 +4534,6 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 	TMPL_VERIFY(vpt);
 
 	switch (vpt->type) {
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_ATTR:
 		FR_SBUFF_RETURN(tmpl_attr_print, &our_out, vpt, ar_prefix);
@@ -4989,24 +4956,6 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 			}
 
 			tmpl_attr_verify(file, line, vpt);
-		}
-		break;
-
-	case TMPL_TYPE_LIST:
-		if ((nz = CHECK_ZEROED(vpt, attribute))) {
-			PRINT_NON_ZEROED(vpt, attribute, nz);
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST"
-					     "has non-zero bytes after the data.attribute struct in the union",
-					     file, line);
-		}
-
-		if ((tmpl_attr_list_num_elements(tmpl_attr(vpt)) > 0) &&
-		    ((tmpl_attr_t *)tmpl_attr_list_tail(tmpl_attr(vpt)))->da) {
-#ifndef NDEBUG
-			tmpl_attr_debug(vpt);
-#endif
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST contains %u "
-					     "references", file, line, tmpl_attr_list_num_elements(tmpl_attr(vpt)));
 		}
 		break;
 
