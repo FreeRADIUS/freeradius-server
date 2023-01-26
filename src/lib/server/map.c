@@ -128,10 +128,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	/*
 	 *	Allow for the RHS rules to be taken from the LHS rules.
 	 */
-	if (!rhs_rules) {
-		rhs_rules = lhs_rules;
-		fr_assert(lhs_rules->attr.list_as_attr); /* so we don't worry about list_def? */
-	}
+	if (!rhs_rules) rhs_rules = lhs_rules;
 
 	MEM(child_ctx = talloc(map, uint8_t));
 
@@ -181,7 +178,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		 *	parsed in the context of the LHS, but only if
 		 *	the LHS attribute was a group / structural attribute.
 		 */
-		if (!input_rhs_rules && lhs_rules->attr.list_as_attr) {
+		if (!input_rhs_rules) {
 			tmpl_rules_child_init(child_ctx, &my_rhs_rules, lhs_rules, map->lhs);
 			rhs_rules = &my_rhs_rules;
 		}
@@ -1772,6 +1769,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 					   	.attr = {
 					   		.dict_def = request->dict,
 							.list_def = PAIR_LIST_REQUEST,
+							.list_as_attr = true,
 				   			.prefix = TMPL_ATTR_REF_PREFIX_NO
 				   		}
 					   });
