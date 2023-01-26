@@ -919,75 +919,6 @@ int unlang_fixup_update(map_t *map, void *ctx)
 		}
 	}
 
-	if (tmpl_is_list(map->lhs)) {
-		/*
-		 *	Can't copy an xlat expansion or literal into a list,
-		 *	we don't know what type of attribute we'd need
-		 *	to create.
-		 *
-		 *	The only exception is where were using a unary
-		 *	operator like !*.
-		 */
-		if (map->op != T_OP_CMP_FALSE) switch (map->rhs->type) {
-		case TMPL_TYPE_XLAT_UNRESOLVED:
-		case TMPL_TYPE_UNRESOLVED:
-			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
-			return -1;
-
-		default:
-			break;
-		}
-
-		/*
-		 *	Only += and :=, and !*, and ^= operators are supported
-		 *	for lists.
-		 */
-		switch (map->op) {
-		case T_OP_CMP_FALSE:
-			break;
-
-		case T_OP_ADD_EQ:
-			if (!tmpl_is_list(map->rhs) &&
-			    !tmpl_is_exec(map->rhs)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s += ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		case T_OP_SET:
-			if (tmpl_is_exec(map->rhs)) {
-				WARN("%s[%d]: Please change ':=' to '=' for list assignment",
-				     cf_filename(cp), cf_lineno(cp));
-			}
-
-			if (!tmpl_is_list(map->rhs)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s := ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		case T_OP_EQ:
-			if (!tmpl_is_exec(map->rhs)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s = ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		case T_OP_PREPEND:
-			if (!tmpl_is_list(map->rhs) &&
-			    !tmpl_is_exec(map->rhs)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s ^= ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		default:
-			cf_log_err(map->ci, "Operator \"%s\" not allowed for list assignment",
-				   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
-			return -1;
-		}
-	}
-
 	/*
 	 *	If the map has a unary operator there's no further
 	 *	processing we need to, as RHS is unused.
@@ -3527,7 +3458,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	fr_assert(vpt);
 
-	if (!tmpl_is_attr(vpt) && !tmpl_is_list(vpt)) {
+	if (!tmpl_is_attr(vpt)) {
 		cf_log_err(cs, "MUST use attribute or list reference (not %s) in 'foreach'",
 			   tmpl_type_to_str(vpt->type));
 		talloc_free(vpt);

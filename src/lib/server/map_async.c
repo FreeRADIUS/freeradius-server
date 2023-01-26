@@ -265,9 +265,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	if (!fr_cond_assert(original->lhs != NULL)) return -1;
 	if (!fr_cond_assert(original->rhs != NULL)) return -1;
 
-	fr_assert(tmpl_is_list(original->lhs) ||
-		   tmpl_is_attr(original->lhs) ||
-		   tmpl_is_xlat(original->lhs));
+	fr_assert(tmpl_is_attr(original->lhs) ||
+		  tmpl_is_xlat(original->lhs));
 
 	*out = NULL;
 	fr_value_box_list_init(&head);
@@ -333,7 +332,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			fr_value_box_list_talloc_free(lhs_result);
 			goto error;
 		}
-		fr_assert(tmpl_is_attr(mutated->lhs) || tmpl_is_list(mutated->lhs));
+		fr_assert(tmpl_is_attr(mutated->lhs));
 	}
 		break;
 
@@ -541,8 +540,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		int			err;
 
 		fr_assert(fr_value_box_list_empty(rhs_result));
-		fr_assert((tmpl_is_attr(mutated->lhs) && tmpl_attr_tail_da(mutated->lhs)) ||
-			   (tmpl_is_list(mutated->lhs) && !tmpl_attr_tail_da(mutated->lhs)));
+		fr_assert(tmpl_is_attr(mutated->lhs) && tmpl_attr_tail_da(mutated->lhs));
 
 		/*
 		 *	Check source list
@@ -966,7 +964,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		fr_assert(mod->lhs != NULL);
 		fr_assert(mod->rhs != NULL);
 
-		fr_assert(tmpl_is_attr(mod->lhs) || tmpl_is_list(mod->lhs));
+		fr_assert(tmpl_is_attr(mod->lhs));
 		fr_assert(((mod->op == T_OP_CMP_FALSE) && tmpl_is_null(mod->rhs)) ||
 			   tmpl_is_data(mod->rhs));
 

@@ -1273,7 +1273,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		fr_assert(!tmpl_contains_regex(node->vpt));
 
 		// attr or list
-		fr_assert(tmpl_is_list(node->vpt) || tmpl_is_attr(node->vpt));
+		fr_assert(tmpl_is_attr(node->vpt));
 		fr_assert(talloc_parent(node->vpt) == node);
 		fr_assert(!node->flags.pure);
 

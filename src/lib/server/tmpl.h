@@ -678,8 +678,7 @@ static inline tmpl_type_t tmpl_type_from_str(char const *type)
 static inline FR_DLIST_HEAD(tmpl_request_list) const *tmpl_request(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unresolved(vpt) ||
-			 tmpl_is_list(vpt));
+			 tmpl_is_attr_unresolved(vpt));
 
 	return &vpt->data.attribute.rr;
 }
@@ -690,8 +689,7 @@ static inline FR_DLIST_HEAD(tmpl_request_list) const *tmpl_request(tmpl_t const 
 static inline size_t tmpl_request_ref_count(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unresolved(vpt) ||
-			 tmpl_is_list(vpt));
+			 tmpl_is_attr_unresolved(vpt));
 
 	return tmpl_request_list_num_elements(&vpt->data.attribute.rr);
 }
@@ -892,10 +890,7 @@ static inline char const *tmpl_attr_tail_unresolved(tmpl_t const *vpt)
 static inline int16_t tmpl_attr_tail_num(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unresolved(vpt) ||
-			 tmpl_is_list(vpt));
-
-	if (tmpl_is_list(vpt) && (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0)) return NUM_ALL;
+			 tmpl_is_attr_unresolved(vpt));
 
 	return tmpl_attr_list_tail(tmpl_attr(vpt))->ar_num;
 }
@@ -914,8 +909,7 @@ static inline size_t tmpl_attr_num_elements(tmpl_t const *vpt)
 static inline fr_dict_attr_t const *tmpl_list(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unresolved(vpt) ||			/* Remove once list is part of ar dlist */
-			 tmpl_is_list(vpt));
+			 tmpl_is_attr_unresolved(vpt));
 
 	return vpt->data.attribute.list;
 }

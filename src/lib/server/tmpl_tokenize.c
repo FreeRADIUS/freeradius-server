@@ -1193,7 +1193,7 @@ void tmpl_attr_set_leaf_num(tmpl_t *vpt, int16_t num)
 {
 	tmpl_attr_t *ar;
 
-	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_list(vpt) || tmpl_is_attr_unresolved(vpt));
+	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt));
 
 	if (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0) {
 		ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
@@ -1213,7 +1213,7 @@ void tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t from, int16_t to)
 {
 	tmpl_attr_t *ref = NULL;
 
-	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_list(vpt) || tmpl_is_attr_unresolved(vpt));
+	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt));
 
 	if (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0) return;
 
@@ -1230,7 +1230,7 @@ void tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to)
 {
 	tmpl_attr_t *ref = NULL;
 
-	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_list(vpt) || tmpl_is_attr_unresolved(vpt));
+	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt));
 
 	while ((ref = tmpl_attr_list_next(tmpl_attr(vpt), ref))) if (ref->ar_num == from) ref->ar_num = to;
 
@@ -4412,7 +4412,7 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	 */
 	ar = NULL;
 	while ((ar = tmpl_attr_list_next(tmpl_attr(vpt), ar))) {
-		if (!tmpl_is_list(vpt)) switch(ar->type) {
+		switch(ar->type) {
 		case TMPL_ATTR_TYPE_UNSPEC:
 			break;
 
@@ -4720,7 +4720,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 	tmpl_attr_t	*seen_unknown = NULL;
 	tmpl_attr_t	*seen_unresolved = NULL;
 
-	fr_assert(tmpl_is_attr_unresolved(vpt) || tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+	fr_assert(tmpl_is_attr_unresolved(vpt) || tmpl_is_attr(vpt));
 
 	/*
 	 *	Loop detection

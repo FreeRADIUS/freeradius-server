@@ -1149,7 +1149,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, &result);
 				continue;
 
-			} else if (tmpl_is_attr(node->vpt) ||  tmpl_is_list(node->vpt)) {
+			} else if (tmpl_is_attr(node->vpt)) {
 				if (node->fmt[0] == '&') {
 					XLAT_DEBUG("** [%i] %s(attribute) - %s", unlang_interpret_stack_depth(request), __FUNCTION__,
 						   node->fmt);
