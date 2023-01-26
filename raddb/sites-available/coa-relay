@@ -163,7 +163,7 @@ server coa {
 					#
 					#  If we're sending a CoA packet, send it out.
 					#
-					if ((CoA-Packet-DST-IP-Address && CoA-Packet-DST-IPv6-Address) && \
+					if ((CoA-Packet-DST-IP-Address || CoA-Packet-DST-IPv6-Address) && \
 					    CoA-Acct-Session-Id != "") {
 						detail_coa.accounting
 					}
@@ -222,8 +222,8 @@ server coa-buffered-reader {
 					#
 					#  Those attributes should be listed here.
 					#
-					coa:Acct-Delay-Time !* ANY
-					coa:Proxy-State !* ANY
+					disconnect:Acct-Delay-Time !* ANY
+					disconnect:Proxy-State !* ANY
 				}
 
 				if (CoA-Packet-DST-IP-Address) {
@@ -234,7 +234,7 @@ server coa-buffered-reader {
 				} else {
 					update {
 						disconnect:Packet-DST-IPv6-Address := \
-							&CoA-Packet-DST-IP-Address
+							&CoA-Packet-DST-IPv6-Address
 					}
 				}
 			}
@@ -275,7 +275,7 @@ server coa-buffered-reader {
 				} else {
 					update {
 						coa:Packet-DST-IPv6-Address := \
-							&CoA-Packet-DST-IP-Address
+							&CoA-Packet-DST-IPv6-Address
 					}
 				}
 
