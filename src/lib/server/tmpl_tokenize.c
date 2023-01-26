@@ -1265,6 +1265,7 @@ void tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list)
 int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_dict_attr_t const *da)
 {
 	tmpl_t *vpt;
+	tmpl_attr_t *ar;
 
 	char attr[256];
 	ssize_t slen;
@@ -1276,7 +1277,9 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	 */
 	tmpl_attr_copy(vpt, list);
 	tmpl_attr_set_list(vpt, tmpl_list(list));	/* Remove when lists are attributes */
-	tmpl_attr_set_leaf_da(vpt, da);			/* This should add a new da when lists are attributes */
+	ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
+	ar->ar_da = da;
+	ar->ar_parent = fr_dict_root(fr_dict_by_da(da));
 	tmpl_attr_set_leaf_num(vpt, tmpl_attr_tail_num(list));
 
 	/*
