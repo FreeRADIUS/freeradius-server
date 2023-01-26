@@ -39,7 +39,7 @@ if (!updated) {
 }
 
 # session-state should now contain all the reply attributes
-if ("%{session-state[#]}" != 2) {
+if ("%{session-state.[#]}" != 2) {
 	test_fail
 }
 
