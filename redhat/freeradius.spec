@@ -548,11 +548,9 @@ export CFLAGS="$CFLAGS -ffile-prefix-map=src/=%{_usrsrc}/debug/%{name}-%{version
 # which ships with RHEL 6 has basic C11 support, gcc doesn't.
 export LDFLAGS="-Wl,--build-id"
 
-# Set the PATH to be something known and consistent.  Different RHEL based distributions may mess with the
-# default path resulting in binaries in /bin being picked up, which are really just symlinks to /usr/bin.
-# These binaries aren't provided by any packages, so the resulting dependencies make the produced RPMs
-# uninstallable.
-export PATH="/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH"
+# Note: It's a bad idea to set PATH here as this may interfere with the modified path passed in by
+# code-ready-builder.  If the path needs to be modified, _install_script_path should be set in
+# /etc/rpm/macros.  e.g. echo "%_install_script_path   /usr/sbin:/usr/bin:/usr/X11R6/bin" > /etc/rpm/macros
 
 # Pass in the release number, which was passed to us by whatever called rpmbuild
 %if %{?_release:1}%{!?_release:0}
