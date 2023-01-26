@@ -852,7 +852,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	if (!ctx) {
 		switch (map->lhs->type) {
 		case TMPL_TYPE_ATTR:
-			tmpl_attr_rewrite_leaf_num(map->lhs, NUM_UNSPEC, NUM_ALL);
+			if (!tmpl_is_list(map->lhs)) tmpl_attr_rewrite_leaf_num(map->lhs, NUM_UNSPEC, NUM_ALL);
 			break;
 
 		default:
@@ -864,7 +864,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 		 */
 		switch (map->rhs->type) {
 		case TMPL_TYPE_ATTR:
-			tmpl_attr_rewrite_leaf_num(map->rhs, NUM_UNSPEC, NUM_ALL);
+			if (!tmpl_is_list(map->rhs)) tmpl_attr_rewrite_leaf_num(map->rhs, NUM_UNSPEC, NUM_ALL);
 			break;
 
 		default:
