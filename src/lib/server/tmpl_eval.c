@@ -86,45 +86,6 @@ static fr_dict_attr_autoload_t tmpl_dict_attr[] = {
 	{ NULL }
 };
 
-/** Resolve a #tmpl_t into an #fr_pair_t
- *
- * @param[in] request containing the target lists.
- * @param[in] vpt tmpl to resolve
- * @return a pointer to the list in the #request_t.
- *
- * @This is just a temporary hack.
- */
-fr_pair_t *tmpl_get_list(request_t *request, tmpl_t const *vpt)
-{
-	fr_dict_attr_t const *list;
-
-	if (!request) return NULL;
-
-	if (vpt->rules.attr.list_as_attr) {
-		fr_dict_attr_t const *da;
-		da = ((tmpl_attr_t *)tmpl_attr_list_head(&vpt->data.attribute.ar))->ar_da;
-
-		if (da == request_attr_request) return request->pair_list.request;
-		if (da == request_attr_reply) return request->pair_list.reply;
-		if (da == request_attr_control) return request->pair_list.control;
-		if (da == request_attr_state) return request->pair_list.state;
-
-		return NULL;
-	}
-
-	list = tmpl_list(vpt);
-
-	if (list == request_attr_request) return request->pair_list.request;
-	if (list == request_attr_reply) return request->pair_list.reply;
-	if (list == request_attr_control) return request->pair_list.control;
-	if (list == request_attr_state) return request->pair_list.state;
-
-	RWDEBUG2("List \"%s\" is not available",
-		tmpl_list_name(list, "<INVALID>"));
-
-	return NULL;
-}
-
 
 /** Resolve attribute #pair_list_t value to an attribute list.
  *
