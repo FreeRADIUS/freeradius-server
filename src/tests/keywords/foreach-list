@@ -1,6 +1,6 @@
 &request -= &Packet-Type[*]
 
-foreach &request {
+foreach &request.[*] {
 	&reply += {
 		&Called-Station-Id = "%{Foreach-Variable-0}"
 	}

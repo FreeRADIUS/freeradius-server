@@ -14,7 +14,7 @@
 	&Tmp-String-1 = "%(concat:%(pairs:request.[*]) ', ')"
 	&Tmp-String-2 = "%(pairs:Tmp-String-0)"
 	&Tmp-String-3 = "%(concat:%(pairs:Tmp-String-0[*]) ', ')"
-	&Tmp-String-4 = "%(concat:%(pairs:control.) ', ')"
+	&Tmp-String-4 = "%(concat:%(pairs:control.[*]) ', ')"
 	&Tmp-String-5 = "%(pairs:control.User-Name)"
 }
 
