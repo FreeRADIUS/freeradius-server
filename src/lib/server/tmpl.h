@@ -700,6 +700,22 @@ static inline bool tmpl_attr_is_list_attr(tmpl_attr_t const *ar)
 	       (ar->ar_da == request_attr_state);
 }
 
+/** Return true if the head attribute reference is a list reference
+ *
+ * @hidecallergraph
+ */
+static inline bool tmpl_attr_head_is_list(tmpl_t const *vpt)
+{
+	tmpl_attr_t *ar;
+
+	tmpl_assert_type(tmpl_contains_attr(vpt));
+
+	ar = tmpl_attr_list_head(tmpl_attr(vpt));
+	if (unlikely(!ar)) return false;
+
+	return tmpl_attr_is_list_attr(ar);
+}
+
 /** Return true if the last attribute reference is "normal"
  *
  * @hidecallergraph
