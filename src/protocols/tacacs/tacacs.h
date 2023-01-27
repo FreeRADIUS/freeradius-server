@@ -46,17 +46,17 @@
  * The sequence number must never wrap i.e. if the sequence number 2^8-1 is ever reached,
  * that session must terminate and be restarted with a sequence number of 1.
  */
-#define packet_is_authen_start_request(p)     (p->hdr.seq_no == 1)
-#define packet_is_authen_continue(p)          ((p->hdr.seq_no % 2) == 1)
-#define packet_is_authen_reply(p)             ((p->hdr.seq_no % 2) == 0)
+#define packet_is_authen_start_request(p)	((p->hdr.type == FR_TAC_PLUS_AUTHEN) && (p->hdr.seq_no == 1))
+#define packet_is_authen_continue(p)		((p->hdr.type == FR_TAC_PLUS_AUTHEN) && (p->hdr.seq_no > 1) && ((p->hdr.seq_no % 2) == 1))
+#define packet_is_authen_reply(p)		((p->hdr.type == FR_TAC_PLUS_AUTHEN) && ((p->hdr.seq_no % 2) == 0))
 
-#define packet_is_author_request(p)           packet_is_authen_continue(p)
-#define packet_is_author_response(p)          packet_is_authen_reply(p)
+#define packet_is_author_request(p)		((p->hdr.type == FR_TAC_PLUS_AUTHOR) && ((p->hdr.seq_no % 2) == 1))
+#define packet_is_author_response(p)		((p->hdr.type == FR_TAC_PLUS_AUTHOR) && ((p->hdr.seq_no % 2) == 0))
 
-#define packet_is_acct_request(p)             packet_is_authen_continue(p)
-#define packet_is_acct_reply(p)               packet_is_authen_reply(p)
+#define packet_is_acct_request(p)		((p->hdr.type == FR_TAC_PLUS_ACCT) && ((p->hdr.seq_no % 2) == 1))
+#define packet_is_acct_reply(p)			((p->hdr.type == FR_TAC_PLUS_ACCT) && ((p->hdr.seq_no % 2) == 1))
 
-#define packet_has_valid_seq_no(p)            (p->hdr.seq_no >= 1 && p->hdr.seq_no <= 255)
+#define packet_has_valid_seq_no(p)		(p->hdr.seq_no != 0)
 
 typedef enum {
 	FR_TAC_PLUS_INVALID		= 0x00,
