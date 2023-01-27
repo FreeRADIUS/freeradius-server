@@ -1499,7 +1499,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	t_rules = (tmpl_rules_t) {
 		.attr = {
 			.dict_def = dict,
-			.list_def = PAIR_LIST_REQUEST,
+			.list_def = request_attr_request,
 			.allow_unresolved = true,
 			.allow_unknown = true
 		}

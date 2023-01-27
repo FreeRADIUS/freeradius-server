@@ -440,7 +440,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 					 NULL,
 					 &(tmpl_rules_t){
 					 	.attr = {
-							.list_def = PAIR_LIST_REQUEST,
+							.list_def = request_attr_request,
 					 		.allow_unknown = true
 					 	}
 					 });
@@ -496,7 +496,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 	 */
 	if (!tmpl_is_attr(map->lhs) ||
 	    !tmpl_request_ref_is_current(tmpl_request(map->lhs)) ||
-	    (tmpl_list(map->lhs) != PAIR_LIST_REQUEST)) {
+	    (tmpl_list(map->lhs) != request_attr_request)) {
 		return true;
 	}
 
@@ -2698,7 +2698,7 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	char const	*name1, *name2;
 
 	fr_assert(unlang_ctx->rules != NULL);
-	fr_assert(unlang_ctx->rules->attr.list_def != PAIR_LIST_UNKNOWN);
+	fr_assert(unlang_ctx->rules->attr.list_def);
 	/*
 	 *	We always create a group, even if the section is empty.
 	 */
@@ -3661,7 +3661,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		tmpl_rules_t t_rules = (tmpl_rules_t) {
 			.attr = {
 				.dict_def = xr_rules.tr_rules->dict_def,
-				.list_def = PAIR_LIST_REQUEST,
+				.list_def = request_attr_request,
 				.allow_unresolved = true,
 				.allow_unknown = true
 			}

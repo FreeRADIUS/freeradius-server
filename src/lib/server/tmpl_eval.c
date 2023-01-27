@@ -103,19 +103,19 @@ fr_pair_list_t *tmpl_list_head(request_t *request, fr_dict_attr_t const *list)
 {
 	if (!request) return NULL;
 
-	if (list == PAIR_LIST_REQUEST) {
+	if (list == request_attr_request) {
 		if (!request->packet) return NULL;
 		return &request->request_pairs;
 	}
 
-	if (list == PAIR_LIST_REPLY) {
+	if (list == request_attr_reply) {
 		if (!request->reply) return NULL;
 		return &request->reply_pairs;
 	}
 
-	if (list == PAIR_LIST_CONTROL) return &request->control_pairs;
+	if (list == request_attr_control) return &request->control_pairs;
 
-	if (list == PAIR_LIST_STATE) return &request->session_state_pairs;
+	if (list == request_attr_state) return &request->session_state_pairs;
 
 	RWDEBUG2("List \"%s\" is not available", tmpl_list_name(list, "<INVALID>"));
 
@@ -141,13 +141,13 @@ TALLOC_CTX *tmpl_list_ctx(request_t *request, fr_dict_attr_t const *list)
 {
 	if (!request) return NULL;
 
-	if (list == PAIR_LIST_REQUEST) return request->request_ctx;
+	if (list == request_attr_request) return request->request_ctx;
 
-	if (list == PAIR_LIST_REPLY) return request->reply_ctx;
+	if (list == request_attr_reply) return request->reply_ctx;
 
-	if (list == PAIR_LIST_CONTROL) return request->control_ctx;
+	if (list == request_attr_control) return request->control_ctx;
 
-	if (list == PAIR_LIST_STATE) return request->session_state_ctx;
+	if (list == request_attr_state) return request->session_state_ctx;
 
 	return NULL;
 }
@@ -167,9 +167,9 @@ TALLOC_CTX *tmpl_list_ctx(request_t *request, fr_dict_attr_t const *list)
  */
 fr_radius_packet_t *tmpl_packet_ptr(request_t *request, fr_dict_attr_t const *list)
 {
-	if (list == PAIR_LIST_REQUEST) return request->packet;
+	if (list == request_attr_request) return request->packet;
 
-	if (list == PAIR_LIST_REPLY) return request->reply;
+	if (list == request_attr_reply) return request->reply;
 
 	return NULL;
 }

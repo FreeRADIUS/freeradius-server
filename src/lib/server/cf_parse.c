@@ -229,7 +229,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 					};
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
-		rules.attr.list_def = PAIR_LIST_REQUEST;
+		rules.attr.list_def = request_attr_request;
 		/*
 		 *	Parse the cast operator for barewords
 		 */
@@ -1221,7 +1221,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 					     &(tmpl_rules_t) {
 						     .attr = {
 							     .dict_def = dict,
-							     .list_def = PAIR_LIST_REQUEST,
+							     .list_def = request_attr_request,
 							     .allow_unknown = false,
 							     .allow_unresolved = false,
 							     .allow_foreign = (dict == NULL)
