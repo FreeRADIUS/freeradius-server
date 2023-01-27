@@ -494,7 +494,6 @@ RESUME(auth_type)
 	PROCESS_TRACE;
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
-	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->reply->code));
 
 	if (auth_type_rcode[rcode] == FR_RADIUS_CODE_DO_NOT_RESPOND) {
 		request->reply->code = auth_type_rcode[rcode];
