@@ -188,12 +188,14 @@ static inline CC_HINT(always_inline) void pair_init_from_da(fr_pair_t *vp, fr_di
 		 *	Make it very obvious if we failed
 		 *	to initialise something.
 		 */
+		/* coverity[store_writes_const_field] */
 		memset(&vp->data, 0xff, sizeof(vp->data));
 #endif
 
 		/*
 		 *	Hack around const issues...
 		 */
+		/* coverity[store_writes_const_field] */
 		memcpy(UNCONST(fr_type_t *, &vp->vp_type), &da->type, sizeof(vp->vp_type));
 		fr_pair_list_init(&vp->vp_group);
 		vp->vp_group.is_child = true;
