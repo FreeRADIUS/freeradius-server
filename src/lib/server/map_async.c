@@ -362,7 +362,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	/*
 	 *	List to list copy.
 	 */
-	if (tmpl_is_list(mutated->lhs) && tmpl_is_list(mutated->rhs)) {
+	if (tmpl_is_attr(mutated->lhs) && tmpl_is_attr(mutated->rhs) &&
+	    tmpl_attr_tail_da_is_structural(mutated->lhs) && tmpl_attr_tail_da_is_structural(mutated->rhs)) {
 		fr_pair_list_t	*list = NULL;
 		fr_pair_t	*vp = NULL;
 
