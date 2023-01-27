@@ -568,9 +568,6 @@ struct tmpl_s {
 								///< with a '&'.
 			bool			was_oid;	//!< Was originally a numeric OID.
 
-			fr_dict_attr_t const	*list;		//!< List to search or insert in.
-								///< deprecated.
-
 			FR_DLIST_HEAD(tmpl_request_list)	rr;	//!< Request to search or insert in.
 			FR_DLIST_HEAD(tmpl_attr_list)		ar;	//!< Head of the attribute reference list.
 		} attribute;
@@ -916,10 +913,9 @@ static inline size_t tmpl_attr_num_elements(tmpl_t const *vpt)
 
 static inline fr_dict_attr_t const *tmpl_list(tmpl_t const *vpt)
 {
-	tmpl_assert_type(tmpl_is_attr(vpt) ||
-			 tmpl_is_attr_unresolved(vpt));
+	if (!tmpl_attr_head_is_list(vpt)) return NULL;
 
-	return vpt->data.attribute.list;
+	return tmpl_attr_list_head(tmpl_attr(vpt))->ar_da;
 }
 /** @} */
 

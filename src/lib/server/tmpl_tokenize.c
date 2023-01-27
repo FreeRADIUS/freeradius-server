@@ -297,7 +297,7 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 		i++;
 	}
 
-	FR_FAULT_LOG("list: %s", tmpl_list_name(vpt->data.attribute.list, "<INVALID>"));
+	FR_FAULT_LOG("list: %s", tmpl_list_name(tmpl_list(vpt), "<INVALID>"));
 	tmpl_attr_ref_list_debug(tmpl_attr(vpt));
 }
 
@@ -1088,11 +1088,6 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 	tmpl_request_list_talloc_reverse_free(&dst->data.attribute.rr);
 	tmpl_request_ref_list_copy(dst, &dst->data.attribute.rr, &src->data.attribute.rr);
 
-	/*
-	 *	Remove me...
-	 */
-	dst->data.attribute.list = src->data.attribute.list;
-
 	TMPL_ATTR_VERIFY(dst);
 
 	return 0;
@@ -1254,7 +1249,6 @@ void tmpl_attr_set_request_ref(tmpl_t *vpt, FR_DLIST_HEAD(tmpl_request_list) con
 void tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list)
 {
 	tmpl_attr_t *ref = tmpl_attr_list_head(tmpl_attr(vpt));
-	vpt->data.attribute.list = list;
 	if (tmpl_attr_is_list_attr(ref)) ref->da = list;
 
 	TMPL_ATTR_VERIFY(vpt);
@@ -2167,7 +2161,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		 *	first.
 		 */
 		tmpl_attr_list_insert_head(tmpl_attr(vpt), ar);
-		vpt->data.attribute.list = ar->ar_da;
 	}
 
 	tmpl_set_name(vpt, T_BARE_WORD, fr_sbuff_start(&our_name), fr_sbuff_used(&our_name));
@@ -2203,8 +2196,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		fr_assert(ar != NULL);
 
 		if (tmpl_attr_is_list_attr(ar)) vpt->rules.attr.list_def = ar->ar_da;
-
-		vpt->data.attribute.list = vpt->rules.attr.list_def;
 	}
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
