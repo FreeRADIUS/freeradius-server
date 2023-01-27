@@ -493,9 +493,9 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 		}
 	}
 
-	ldap_msgfree(msg);
-
 	if (fr_dlist_insert_tail(&sync->pending, sync_packet_ctx) < 0) goto error;
+
+	ldap_msgfree(msg);
 
 	/*
 	 *	Send the packet and if it fails to send add a retry event
