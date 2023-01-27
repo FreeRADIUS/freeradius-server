@@ -59,7 +59,7 @@ authorize {
 #			&Auth-Type := Reject
 #		}
 #		update reply {
-#			&Reply-Message := "Your certificate is not valid."
+#			&outer.Reply-Message := "Your certificate is not valid."
 #		}
 #	}
 
