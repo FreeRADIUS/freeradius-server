@@ -271,6 +271,7 @@ int rfc4533_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
 	if (!ctrls) {
 	missing_control:
 		ERROR("searchResEntry missing syncStateValue control");
+		ldap_msgfree(msg);
 		return -1;
 	}
 
@@ -296,7 +297,7 @@ int rfc4533_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
 
 	error:
 		if (ber) ber_free(ber, 1);
-
+		ldap_msgfree(msg);
 		return -1;
 	}
 
