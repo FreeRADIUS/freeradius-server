@@ -192,4 +192,11 @@ ATTRIBUTE	FreeRADIUS-Stats-Server-IPv6-Address	189	ipv6addr
 ATTRIBUTE	FreeRADIUS-Total-Auth-Conflicts		191	integer
 ATTRIBUTE	FreeRADIUS-Total-Acct-Conflicts		192	integer
 
+#
+#  Worker thread activity
+#
+ATTRIBUTE	FreeRADIUS-Stats-Threads-Active		193	integer
+ATTRIBUTE	FreeRADIUS-Stats-Threads-Total		194	integer
+ATTRIBUTE	FreeRADIUS-Stats-Threads-Max		195	integer
+
 END-VENDOR FreeRADIUS
