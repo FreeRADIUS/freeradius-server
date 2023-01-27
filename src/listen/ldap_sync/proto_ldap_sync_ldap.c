@@ -478,7 +478,7 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 			for (i = 0; i < count; i++) {
 				if (values[i]->bv_len == 0) continue;
 
-				if (pair_append_by_tmpl_parent(sync_packet_ctx, &vp, pairs, map->lhs) < 0) break;
+				if (pair_append_by_tmpl_parent(sync_packet_ctx, &vp, pairs, map->lhs, true) < 0) break;
 				if (fr_value_box_from_str(vp, &vp->data, vp->da->type, NULL, values[i]->bv_val,
 							  values[i]->bv_len, NULL, true) < 0) {
 					fr_pair_remove(pairs, vp);

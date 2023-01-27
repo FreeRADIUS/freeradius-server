@@ -1028,11 +1028,12 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
  * @param[out] out	Leaf pair we allocated.
  * @param[in] list	to insert into.
  * @param[in] vpt	tmpl representing the attribute to add.
+ * @param[in] skip_list	skip list attr ref at the head of the tmpl.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, tmpl_t const *vpt)
+int pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, tmpl_t const *vpt, bool skip_list)
 {
 	fr_pair_t			*vp = NULL;
 	TALLOC_CTX			*pair_ctx = ctx;
@@ -1047,6 +1048,8 @@ int pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t 
 
 	leaf = tmpl_attr_list_tail(ar_list);
 	ar = tmpl_attr_list_head(ar_list);
+	if (!ar) goto error;
+	if (skip_list && tmpl_attr_is_list_attr(ar)) ar = tmpl_attr_list_next(ar_list, ar);
 
 	/*
 	 *	Walk down the tmpl ar stack looking for candidate parent
