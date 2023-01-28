@@ -176,6 +176,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
 	RADCLIENT const		*client;
+	int			code;
 	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *)data;
 
 	RHEXDUMP3(data, data_len, "proto_tacacs decode packet");
@@ -198,31 +199,22 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	}
 
 	/*
-	 *	Decode the header, etc.
+	 *	RFC 8907 Section 3.6 says:
 	 *
-	 *	The "type = ..." loader ensures that we only get request packets
+	 *	  If an error occurs but the type of the incoming packet cannot be determined, a packet with the
+	 *	  identical cleartext header but with a sequence number incremented by one and the length set to
+	 *	  zero MUST be returned to indicate an error.
+	 *
+	 *	This is substantially retarded.  It should instead just close the connection.
 	 */
-	switch (pkt->hdr.type) {
-	case FR_TAC_PLUS_AUTHEN:
-		if (packet_is_authen_start_request(pkt)) {
-			request->packet->code = FR_PACKET_TYPE_VALUE_AUTHENTICATION_START;
-		} else {
-			request->packet->code = FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE;
-		}
-		break;
 
-	case FR_TAC_PLUS_AUTHOR:
-		request->packet->code = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
-		break;
-
-	case FR_TAC_PLUS_ACCT:
-		request->packet->code = FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST;
-		break;
-
-	default:
+	code = fr_tacacs_packet_to_code(pkt);
+	if (code < 0) {
+		RPEDEBUG("Invalid packet");
 		return -1;
 	}
 
+	request->packet->code = code;
 	request->packet->id   = data[2]; // seq_no
 	request->reply->id    = data[2]; // seq_no
 
@@ -336,10 +328,28 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	RADCLIENT const		*client;
 
 	/*
+	 *	@todo - RFC 8907 Section 4.4. says:
+	 *
+	 *	  When the session is complete, the TCP connection should be handled as follows, according to
+	 *	  whether Single Connection Mode was negotiated:
+	 *
+	 *	  * If Single Connection Mode was not negotiated, then the connection should be closed.
+	 *
+	 *	  * If Single Connection Mode was enabled, then the connection SHOULD be left open (see
+	 *	    "Single Connection Mode" (Section 4.3)) but may still be closed after a timeout period to
+	 *	    preserve deployment resources.
+	 *
+	 *	  * If Single Connection Mode was enabled, but an ERROR occurred due to connection issues
+	 *	   (such as an incorrect secret (see Section 4.5)), then any further new sessions MUST NOT be
+	 *	   accepted on the connection. If there are any sessions that have already been established,
+	 *	   then they MAY be completed. Once all active sessions are completed, then the connection
+	 *	   MUST be closed.
+	 */
+
+	/*
 	 *	Process layer NAK, or "Do not respond".
 	 */
 	if ((buffer_len == 1) ||
-	    (request->reply->code == FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND) ||
 	    !FR_TACACS_PACKET_CODE_VALID(request->reply->code)) {
 		track->do_not_respond = true;
 		return 1;
@@ -388,7 +398,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 
 	data_len = fr_tacacs_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data,
 				    client->secret, talloc_array_length(client->secret) - 1,
-				    &request->reply_pairs);
+				    request->reply->code, &request->reply_pairs);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding TACACS+ reply");
 		return -1;

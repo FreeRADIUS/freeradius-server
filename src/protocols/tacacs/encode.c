@@ -33,6 +33,100 @@
 #include "tacacs.h"
 #include "attrs.h"
 
+int fr_tacacs_code_to_packet(fr_tacacs_packet_t *pkt, uint32_t code)
+{
+	switch (code) {
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_START:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
+		pkt->hdr.seq_no = 1;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_PASS:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
+		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_PASS;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_FAIL:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
+		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_FAIL;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETDATA:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
+		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_GETDATA;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETUSER:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
+		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_GETUSER;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETPASS:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
+		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_GETPASS;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_RESTART:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
+		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_RESTART;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_ERROR:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
+		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_ERROR;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
+		pkt->authen_cont.flags = FR_TAC_PLUS_CONTINUE_FLAG_UNSET;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE_ABORT:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
+		pkt->authen_cont.flags = FR_TAC_PLUS_CONTINUE_FLAG_ABORT;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHOR;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_PASS_ADD:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHOR;
+		pkt->author_reply.status = FR_TAC_PLUS_AUTHOR_STATUS_PASS_ADD;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_PASS_REPLACE:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHOR;
+		pkt->author_reply.status = FR_TAC_PLUS_AUTHOR_STATUS_PASS_REPL;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_FAIL:
+		pkt->hdr.type = FR_TAC_PLUS_AUTHOR;
+		pkt->author_reply.status = FR_TAC_PLUS_AUTHOR_STATUS_FAIL;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST:
+		pkt->hdr.type = FR_TAC_PLUS_ACCT;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY_SUCCESS:
+		pkt->hdr.type = FR_TAC_PLUS_ACCT;
+		pkt->acct_reply.status = FR_TAC_PLUS_ACCT_STATUS_SUCCESS;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY_ERROR:
+		pkt->hdr.type = FR_TAC_PLUS_ACCT;
+		pkt->acct_reply.status = FR_TAC_PLUS_ACCT_STATUS_ERROR;
+		break;
+
+	default:
+		fr_strerror_const("Invalid TACACS+ packet type");
+		return -1;
+	}
+
+	return 0;
+}
+
 /**
  *	Encode a TACACS+ 'arg_N' fields.
  */
@@ -175,7 +269,8 @@ static ssize_t tacacs_encode_field(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_di
 /**
  *	Encode VPS into a raw TACACS packet.
  */
-ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char const *secret, size_t secret_len, fr_pair_list_t *vps)
+ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char const *secret, size_t secret_len,
+			 unsigned int code, fr_pair_list_t *vps)
 {
 	fr_pair_t		*vp;
 	fr_tacacs_packet_t 	*packet;
@@ -474,7 +569,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			}
 
 			goto check_request;
-		} else if (packet_is_author_response(packet)) {
+		} else if (packet_is_author_reply(packet)) {
 			/*
 			 * 5.2. The Authorization RESPONSE Packet Body
 			 *
@@ -501,12 +596,12 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	Make room for such body request.
 			 */
-			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->author_res));
+			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->author_reply));
 
 			/*
 			 * 	Encode 1 mandatory field.
 			 */
-			ENCODE_FIELD_UINT8(packet->author_res.status, attr_tacacs_authorization_status);
+			ENCODE_FIELD_UINT8(packet->author_reply.status, attr_tacacs_authorization_status);
 
 			/*
 			 *	Encode 'arg_N' arguments (horrible format)
@@ -523,25 +618,25 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	   When the status equals TAC_PLUS_AUTHOR_STATUS_FOLLOW, then the
 			 *	   arg_cnt MUST be 0.
 			 */
-			if (!((packet->author_res.status == FR_AUTHORIZATION_STATUS_VALUE_ERROR) ||
-			      (packet->author_res.status == FR_AUTHORIZATION_STATUS_VALUE_FOLLOW))) {
-				packet->author_res.arg_cnt = tacacs_encode_body_arg_cnt(vps, attr_tacacs_argument_list);
-				if (packet->author_res.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->author_res.arg_cnt);
+			if (!((packet->author_reply.status == FR_AUTHORIZATION_STATUS_VALUE_ERROR) ||
+			      (packet->author_reply.status == FR_AUTHORIZATION_STATUS_VALUE_FOLLOW))) {
+				packet->author_reply.arg_cnt = tacacs_encode_body_arg_cnt(vps, attr_tacacs_argument_list);
+				if (packet->author_reply.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->author_reply.arg_cnt);
 			} else {
-				packet->author_res.arg_cnt = 0;
+				packet->author_reply.arg_cnt = 0;
 			}
 
 			/*
 			 *	Encode 2 mandatory fields.
 			 */
-			ENCODE_FIELD_STRING16(packet->author_res.server_msg_len, attr_tacacs_server_message);
-			ENCODE_FIELD_STRING16(packet->author_res.data_len, attr_tacacs_data);
+			ENCODE_FIELD_STRING16(packet->author_reply.server_msg_len, attr_tacacs_server_message);
+			ENCODE_FIELD_STRING16(packet->author_reply.data_len, attr_tacacs_data);
 
 			/*
 			 *	Append 'args_body' to the end of buffer
 			 */
-			if (packet->author_res.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author_res.arg_cnt, &packet->author_res.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
+			if (packet->author_reply.arg_cnt > 0) {
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author_reply.arg_cnt, &packet->author_reply.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
 			}
 
 			goto check_reply;
@@ -710,6 +805,16 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	}
 
 	/*
+	 *	Force the correct header type, and randomly-placed
+	 *	status fields.  But only if there's no code field.
+	 *	Only the unit tests pass a zero code field, as that's
+	 *	normally invalid.  The unit tests ensure that all of
+	 *	the VPs are passed to encode a packet, and they all
+	 *	must be correct
+	 */
+	if (code && (fr_tacacs_code_to_packet(packet, code) < 0)) return -1;
+
+	/*
 	 *	The packet length we store in the header doesn't
 	 *	include the size of the header.  But we tell the
 	 *	caller about the total length of the packet.
@@ -776,7 +881,7 @@ static ssize_t fr_tacacs_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
 
-	return fr_tacacs_encode(&FR_DBUFF_TMP(data, data_len), NULL, test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), vps);
+	return fr_tacacs_encode(&FR_DBUFF_TMP(data, data_len), NULL, test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), 0, vps);
 }
 
 static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)

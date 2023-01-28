@@ -622,7 +622,7 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 	 *	Encode the packet.
 	 */
 	packet_len = fr_tacacs_encode(&FR_DBUFF_TMP(u->packet, (size_t) inst->max_packet_size), NULL,
-				      inst->secret, inst->secretlen, &request->request_pairs);
+				      inst->secret, inst->secretlen, request->reply->code, &request->request_pairs);
 	if (packet_len < 0) {
 		RPERROR("Failed encoding packet");
 		return -1;

@@ -100,17 +100,26 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 };
 
 char const *fr_tacacs_packet_names[FR_TACACS_CODE_MAX] = {
-	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START] = "Authentication-Start",
-	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START_REPLY] = "Authentication-Start-Reply",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START]		= "Authentication-Start",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_PASS]	= "Authentication-Reply-Pass",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_FAIL]	= "Authentication-Reply-Fail",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETDATA]	= "Authentication-Reply-GetData",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETUSER]	= "Authentication-Reply-GetUser",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETPASS]	= "Authentication-Reply-GetPass",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_RESTART]	= "Authentication-Reply-Restart",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_ERROR]	= "Authentication-Reply-Error",
 
-	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE] = "Authentication-Continue",
-	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE_REPLY] = "Authentication-Continue-Reply",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE]		= "Authentication-Continue",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE_ABORT]	= "Authentication-Continue-Abort",
 
-	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST] = "Authorization-Request",
-	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY] = "Authorization-Reply",
+	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST]		= "Authorization-Request",
+	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_PASS_ADD]	= "Authorization-Reply-Pass-Add",
+	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_PASS_REPLACE]	= "Authorization-Reply-Pass-Replace",
+	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_FAIL]		= "Authorization-Reply-Fail",
 
-	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST] = "Accounting-Request",
-	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY] = "Accounting-Reply",
+	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST]		= "Accounting-Request",
+	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY_SUCCESS]		= "Accounting-Reply-Success",
+	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY_ERROR]		= "Accounting-Reply-Error",
 };
 
 
@@ -264,8 +273,8 @@ ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
 		if (packet_is_author_request(pkt)) {
 			want = sizeof(pkt->hdr) + sizeof(pkt->author_req);
 		} else {
-			fr_assert(packet_is_author_response(pkt));
-			want = sizeof(pkt->hdr) + sizeof(pkt->author_res);
+			fr_assert(packet_is_author_reply(pkt));
+			want = sizeof(pkt->hdr) + sizeof(pkt->author_reply);
 		}
 		break;
 
@@ -569,7 +578,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 		} else {
 			fr_log(log, L_DBG, file, line, "      authorization-response");
 
-			fr_assert(packet_is_author_response(packet));
+			fr_assert(packet_is_author_reply(packet));
 
 			REQUIRE(6);
 

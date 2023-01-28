@@ -15,15 +15,31 @@
 #
 FLAGS	internal
 
+#
+#  Due to TACACS+ insanities, the unlang packet types are a combination
+#  of the TACACS+ type field, and of the status field.
+#
 ATTRIBUTE	Packet-Type				65536	uint32
-VALUE	Packet-Type			Authentication-Start	1
-VALUE	Packet-Type			Authentication-Start-Reply 2
-VALUE	Packet-Type			Authentication-Continue	3
-VALUE	Packet-Type			Authentication-Continue-Reply 4
-VALUE	Packet-Type			Authorization-Request	5
-VALUE	Packet-Type			Authorization-Reply	6
-VALUE	Packet-Type			Accounting-Request	7
-VALUE	Packet-Type			Accounting-Reply	8
-VALUE	Packet-Type			Do-Not-Respond		256
+VALUE	Packet-Type			Authentication-Start		1
+VALUE	Packet-Type			Authentication-Reply-Pass	2
+VALUE	Packet-Type			Authentication-Reply-Fail	3
+VALUE	Packet-Type			Authentication-Reply-GetData	4
+VALUE	Packet-Type			Authentication-Reply-GetUser	5
+VALUE	Packet-Type			Authentication-Reply-GetPass	6
+VALUE	Packet-Type			Authentication-Reply-Restart	7
+VALUE	Packet-Type			Authentication-Reply-Error	8
+
+VALUE	Packet-Type			Authentication-Continue		9
+VALUE	Packet-Type			Authentication-Continue-Abort	10
+
+VALUE	Packet-Type			Authorization-Request		11
+VALUE	Packet-Type			Authorization-Reply-Pass-Add	12
+VALUE	Packet-Type			Authorization-Reply-Pass-Replace 13
+VALUE	Packet-Type			Authorization-Reply-Fail	14
+VALUE	Packet-Type			Authorization-Reply-Error	15
+
+VALUE	Packet-Type			Accounting-Request		16
+VALUE	Packet-Type			Accounting-Reply-Success	17
+VALUE	Packet-Type			Accounting-Reply-Error		18
 
 ATTRIBUTE	State					65537	octets

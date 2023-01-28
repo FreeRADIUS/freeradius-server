@@ -33,6 +33,97 @@
 #include "tacacs.h"
 #include "attrs.h"
 
+int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
+{
+	switch (pkt->hdr.type) {
+	case FR_TAC_PLUS_AUTHEN:
+		if (pkt->hdr.seq_no == 1) return FR_PACKET_TYPE_VALUE_AUTHENTICATION_START;
+
+		if ((pkt->hdr.seq_no & 0x01) == 1) {
+			if (pkt->authen_cont.flags == FR_TAC_PLUS_CONTINUE_FLAG_UNSET) return FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE;
+
+			if (pkt->authen_cont.flags == FR_TAC_PLUS_CONTINUE_FLAG_ABORT) return FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE_ABORT;
+
+			fr_strerror_const("Invalid TACACS+ value for authentication continue flag");
+			return -1;
+		}
+
+		switch (pkt->authen_reply.status) {
+		case FR_TAC_PLUS_AUTHEN_STATUS_PASS:
+			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_PASS;
+
+		case FR_TAC_PLUS_AUTHEN_STATUS_FAIL:
+			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_FAIL;
+
+		case FR_TAC_PLUS_AUTHEN_STATUS_GETDATA:
+			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETDATA;
+
+		case FR_TAC_PLUS_AUTHEN_STATUS_GETUSER:
+			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETUSER;
+
+		case FR_TAC_PLUS_AUTHEN_STATUS_GETPASS:
+			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETPASS;
+
+		case FR_TAC_PLUS_AUTHEN_STATUS_RESTART:
+			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_RESTART;
+
+		case FR_TAC_PLUS_AUTHEN_STATUS_ERROR:
+			return FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_ERROR;
+
+		default:
+			break;
+		}
+
+		fr_strerror_printf("Invalid value %u for authentication reply status", pkt->authen_reply.status);
+		return -1;
+
+	case FR_TAC_PLUS_AUTHOR:
+		if ((pkt->hdr.seq_no & 0x01) == 1) {
+			return FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
+		}
+
+		switch (pkt->author_reply.status) {
+		case FR_TAC_PLUS_AUTHOR_STATUS_PASS_ADD:
+			return FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_PASS_ADD;
+
+		case FR_TAC_PLUS_AUTHOR_STATUS_PASS_REPL:
+			return FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_PASS_REPLACE;
+
+		case FR_TAC_PLUS_AUTHOR_STATUS_FAIL:
+			return FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_FAIL;
+
+		default:
+			break;
+		}
+
+		fr_strerror_printf("Invalid value %u for authorization reply status", pkt->author_reply.status);
+		return -1;
+
+	case FR_TAC_PLUS_ACCT:
+		if ((pkt->hdr.seq_no & 0x01) == 1) {
+			return FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST;
+		}
+
+		switch (pkt->acct_reply.status) {
+		case FR_TAC_PLUS_ACCT_STATUS_SUCCESS:
+			return FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY_SUCCESS;
+
+		case FR_TAC_PLUS_ACCT_STATUS_ERROR:
+			return FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY_ERROR;
+
+		default:
+			break;
+		}
+
+		fr_strerror_printf("Invalid value %u for accounting reply status", pkt->acct_reply.status);
+		return -1;
+
+	default:
+		fr_strerror_const("Invalid TACACS+ header type");
+		return -1;
+	}
+}
+
 #define PACKET_HEADER_CHECK(_msg) do { \
 	if (p > end) { \
 		fr_strerror_printf("Header for %s is too small (%zu < %zu)", _msg, end - (uint8_t const *) pkt, p - (uint8_t const *) pkt); \
@@ -551,7 +642,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->authen_reply.data_len);
 
 		} else {
-		unknown_packet:
 			fr_strerror_const("Unknown authentication packet");
 			goto fail;
 		}
@@ -614,7 +704,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
 					       pkt->author_req.arg_cnt, BODY(author_req), p, end) < 0) goto fail;
 
-		} else if (packet_is_author_response(pkt)) {
+		} else if (packet_is_author_reply(pkt)) {
 			/*
 			 * 5.2. The Authorization RESPONSE Packet Body
 			 *
@@ -643,30 +733,31 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	We just echo whatever was sent in the request.
 			 */
 
-			p = BODY(author_res);
+			p = BODY(author_reply);
 			PACKET_HEADER_CHECK("Authorization RESPONSE");
-			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author_res.arg_cnt);
+			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author_reply.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_RESPONSE);
 
 			/*
 			 *	Decode 1 octets
 			 */
-			DECODE_FIELD_UINT8(attr_tacacs_authorization_status, pkt->author_res.status);
+			DECODE_FIELD_UINT8(attr_tacacs_authorization_status, pkt->author_reply.status);
 
 			/*
 			 *	Decode 2 fields, based on their "length"
 			 */
-			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->author_res.server_msg_len);
-			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->author_res.data_len);
+			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->author_reply.server_msg_len);
+			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->author_reply.data_len);
 
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					pkt->author_res.arg_cnt, BODY(author_res), p, end) < 0) goto fail;
+					pkt->author_reply.arg_cnt, BODY(author_reply), p, end) < 0) goto fail;
 
 		} else {
-			goto unknown_packet;
+			fr_strerror_const("Unknown authorization packet");
+			goto fail;
 		}
 		break;
 
@@ -760,7 +851,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/* Decode 1 octet */
 			DECODE_FIELD_UINT8(attr_tacacs_accounting_status, pkt->acct_reply.status);
 		} else {
-			goto unknown_packet;
+			fr_strerror_const("Unknown accounting packet");
+			goto fail;
 		}
 		break;
 	default:
