@@ -3352,7 +3352,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	if (!dict) {
 		fr_strerror_const("Failed allocating memory for dictionary");
 	error:
-		talloc_free(dict);
+		if (dict) talloc_free(dict);
 		return NULL;
 	}
 	dict->gctx = dict_gctx;	/* Record which global context this was allocated in */
