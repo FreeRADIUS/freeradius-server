@@ -196,7 +196,7 @@ RESUME(recv_generic)
 	if (!request->reply->code) request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
 
 #endif
-	fr_assert(request->reply->code != 0);
+	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code));
 
 	UPDATE_STATE_CS(reply);
 
