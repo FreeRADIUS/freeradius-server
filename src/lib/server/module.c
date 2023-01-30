@@ -1064,12 +1064,12 @@ static int _module_list_free(module_list_t *ml)
 	module_instance_t	*mi;
 
 	/*
-	 *	We explicitly free modules so that
-	 *	they're done in a stable order.
+	 *	Re-initialize the iterator after freeing each module.
+	 *	The module may have children which are also in the
+	 *	tree.  It can cause problems when we delete children
+	 *	without the iterator knowing about it.
 	 */
-	for (mi = fr_rb_iter_init_inorder(&iter, ml->name_tree);
-	     mi;
-	     mi = fr_rb_iter_next_inorder(&iter)) {
+	while ((mi = fr_rb_iter_init_inorder(&iter, ml->name_tree)) != NULL) {
 		fr_rb_iter_delete_inorder(&iter);	/* Keeps the iterator sane */
 		talloc_free(mi);
 	}
