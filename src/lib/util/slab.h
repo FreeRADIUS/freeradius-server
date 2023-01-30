@@ -58,6 +58,7 @@ extern "C" {
 	typedef struct { \
 		FR_DLIST_HEAD(fr_ ## _name ## _slab)	reserved; \
 		FR_DLIST_HEAD(fr_ ## _name ## _slab)	avail; \
+		fr_time_delta_t				interval; \
 		fr_event_list_t				*el; \
 		fr_event_timer_t const			*ev; \
 		unsigned int				elements_per_slab; \
@@ -99,9 +100,8 @@ extern "C" {
  *
  * @param[in] _name	used in type specific structures.
  * @param[in] _type	of structure returned by the reserve function.
- * @param[in] _interval	between cleanup events.
  */
-#define FR_SLAB_FUNCS(_name, _type, _interval) \
+#define FR_SLAB_FUNCS(_name, _type) \
 	FR_DLIST_FUNCS(fr_ ## _name ## _slab, fr_ ## _name ## _slab_t, entry) \
 	FR_DLIST_FUNCS(fr_ ## _name ## _slab_element, fr_ ## _name ## _slab_element_t, entry) \
 \
@@ -136,7 +136,7 @@ extern "C" {
 		} \
 		slab_list->high_water_mark -= cleared; \
 	finish: \
-		(void) fr_event_timer_in(slab_list, el, &slab_list->ev, _interval, _ ## _name ## _slab_cleanup, slab_list); \
+		(void) fr_event_timer_in(slab_list, el, &slab_list->ev, slab_list->interval, _ ## _name ## _slab_cleanup, slab_list); \
 	 } \
 \
 	/** Allocate a slab list to manage slabs of allocated memory \
@@ -144,6 +144,7 @@ extern "C" {
 	 * @param[in] ctx		in which to allocate the slab list. \
 	 * @param[out] out		slab_list that has been allocated. \
 	 * @param[in] el		Event list in which to run clean up function. \
+	 * @param[in] interval		Interval between cleanup events. \
 	 * @param[in] elements_per_slab	How many elements should be allocated in each slab. \
 	 * @param[in] min_elements	Minimum number of elements to leave allocated. \
 	 * @param[in] max_elements	Maximun number of elements to allocate in slabs. \
@@ -158,6 +159,7 @@ extern "C" {
 	static inline CC_HINT(nonnull(2)) int fr_ ## _name ## _slab_list_alloc(TALLOC_CTX *ctx, \
 									       fr_ ## _name ## _slab_list_t **out, \
 									       fr_event_list_t *el, \
+									       fr_time_delta_t interval, \
 									       unsigned int elements_per_slab, \
 									       unsigned int min_elements, \
 									       unsigned int max_elements, \
@@ -171,6 +173,7 @@ extern "C" {
 	{ \
 		MEM(*out = talloc_zero(ctx, fr_ ## _name ## _slab_list_t)); \
 		(*out)->el = el; \
+		(*out)->interval = interval; \
 		(*out)->elements_per_slab = elements_per_slab; \
 		(*out)->min_elements = min_elements; \
 		(*out)->max_elements = max_elements; \
@@ -183,7 +186,7 @@ extern "C" {
 		(*out)->reserve_init = reserve_init; \
 		fr_ ## _name ## _slab_init(&(*out)->reserved); \
 		fr_ ## _name ## _slab_init(&(*out)->avail); \
-		if (el) (void) fr_event_timer_in(*out, el, &(*out)->ev, _interval, _ ## _name ## _slab_cleanup, *out); \
+		if (el) (void) fr_event_timer_in(*out, el, &(*out)->ev, interval, _ ## _name ## _slab_cleanup, *out); \
 		return 0; \
 	} \
 \
