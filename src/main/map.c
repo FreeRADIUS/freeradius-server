@@ -1059,7 +1059,6 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		slen = tmpl_aexpand(request, &attr, request, map->lhs, NULL, NULL);
 		if (slen <= 0) {
 			REDEBUG("Left side \"%.*s\" of map failed expansion", (int)map->lhs->len, map->lhs->name);
-			rad_assert(!attr);
 			return -1;
 		}
 
