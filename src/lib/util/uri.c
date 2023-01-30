@@ -42,6 +42,7 @@ int fr_uri_escape(FR_DLIST_HEAD(fr_value_box_list) *uri, fr_uri_part_t const *ur
 {
 	fr_uri_part_t const	*uri_part;
 	fr_sbuff_t		sbuff;
+	uint8_t			adv;
 
 	uri_part = uri_parts;
 
@@ -94,7 +95,8 @@ int fr_uri_escape(FR_DLIST_HEAD(fr_value_box_list) *uri, fr_uri_part_t const *ur
 			/*
 			 *	We've not found a terminal in the current box
 			 */
-			if (uri_part->part_adv[fr_sbuff_char(&sbuff, '\0')] == 0) continue;
+			adv = uri_part->part_adv[fr_sbuff_char(&sbuff, '\0')];
+			if (adv == 0) continue;
 
 			/*
 			 *	This terminator has trailing characters to skip
@@ -104,7 +106,7 @@ int fr_uri_escape(FR_DLIST_HEAD(fr_value_box_list) *uri, fr_uri_part_t const *ur
 			/*
 			 *	Move to the next part
 			 */
-			uri_part += uri_part->part_adv[fr_sbuff_char(&sbuff, '\0')];
+			uri_part += adv;
 			if (!uri_part->terminals) break;
 		} while (fr_sbuff_advance(&sbuff, 1) > 0);
 	}}
