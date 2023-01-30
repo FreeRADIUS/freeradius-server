@@ -2719,6 +2719,7 @@ static int run_mode(command_t *cmd)
 	{
 		char libpath[PATH_MAX];
 		char *p = libpath, *end = p + (sizeof(libpath) - 1);
+		char const *q;
 
 		if (!cmd->arglist->num) {
 			ERROR("No command to execute.\n");
@@ -2746,6 +2747,18 @@ static int run_mode(command_t *cmd)
 		setenv(target->ld_library_path, libpath, 1);
 		setenv(target->ld_library_path_local, libpath, 1);
 		setenv("FR_LIBRARY_PATH", libpath, 1);
+
+		/*
+		 *	Work around stupid crap on Linux, where the
+		 *	debug code can't detect that a debugger is
+		 *	attached.
+		 */
+		q = strrchr(cmd->arglist->vals[0], '/');
+		if (!q) q = cmd->arglist->vals[0];
+
+		if ((strcmp(q, "gdb") == 0) || (strcmp(q, "lldb") == 0)) {
+			setenv("DEBUGGER_ATTACHED", "yes", 1);
+		}
 
 		rv = run_command(cmd, cmd->arglist);
 		if (rv) goto finish;
