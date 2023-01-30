@@ -34,6 +34,8 @@
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/util/debug.h>
 
+#include <freeradius-devel/protocol/tacacs/tacacs.h>
+
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_tacacs;
 
@@ -51,6 +53,7 @@ static fr_dict_attr_t const *attr_stripped_user_name;
 static fr_dict_attr_t const *attr_packet_type;
 
 static fr_dict_attr_t const *attr_tacacs_action;
+static fr_dict_attr_t const *attr_tacacs_authentication_action;
 static fr_dict_attr_t const *attr_tacacs_authentication_flags;
 static fr_dict_attr_t const *attr_tacacs_authentication_type;
 static fr_dict_attr_t const *attr_tacacs_authentication_service;
@@ -94,6 +97,7 @@ fr_dict_attr_autoload_t process_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_data, .name = "Data", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_privilege_level, .name = "Privilege-Level", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_remote_address, .name = "Remote-Address", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authentication_action, .name = "Action", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_session_id, .name = "Packet.Session-Id", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_sequence_number, .name = "Packet.Sequence-Number", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_server_message, .name = "Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
@@ -379,7 +383,27 @@ static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request
 
 RECV(auth_start)
 {
-//	process_tacacs_t		*inst = talloc_get_type_abort(mctx->inst->data, process_tacacs_t);
+	fr_process_state_t const	*state;
+	fr_pair_t			*vp;
+
+	/*
+	 *	Only "Login" is supported.  The others are "change password" and "sendauth", which aren't
+	 *	used.
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_action);
+	if (!vp) {
+	fail:
+		request->reply->code = FR_TACACS_CODE_AUTH_REPLY_ERROR;
+		UPDATE_STATE(reply);
+
+		fr_assert(state->send != NULL);
+		return CALL_SEND_STATE(state);
+	}
+
+	if (vp->vp_uint8 != FR_ACTION_VALUE_LOGIN) {
+		RDEBUG("Invalid authentication action %u", vp->vp_uint8);
+		goto fail;
+	}
 
 	/*
 	 *	There is no state to restore, so we just run the section as normal.
@@ -511,6 +535,7 @@ RESUME(auth_type)
 
 	rlm_rcode_t			rcode = *p_result;
 	fr_process_state_t const	*state;
+	fr_pair_t			*vp;
 
 	PROCESS_TRACE;
 
@@ -524,6 +549,7 @@ RESUME(auth_type)
 	switch (request->reply->code) {
 	case 0:
 		RDEBUG("No reply code was set.  Forcing to Authentication-Reply-Fail");
+	fail:
 		request->reply->code = FR_TACACS_CODE_AUTH_REPLY_FAIL;
 		FALL_THROUGH;
 
@@ -532,6 +558,16 @@ RESUME(auth_type)
 	 */
 	case FR_TACACS_CODE_AUTH_REPLY_FAIL:
 		RDEBUG2("Failed to authenticate the user");
+		break;
+
+	case FR_TACACS_CODE_AUTH_REPLY_GETDATA:
+	case FR_TACACS_CODE_AUTH_REPLY_GETUSER:
+	case FR_TACACS_CODE_AUTH_REPLY_GETPASS:
+		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_authentication_type);
+		if (vp && (vp->vp_uint32 != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
+			RDEBUG2("Cannot send challenges for %pP", vp);
+			goto fail;
+		}
 		break;
 
 	default:
@@ -578,6 +614,9 @@ RESUME_NO_RCTX(auth_reply_fail)
 		auth_message(&inst->auth, request, false, "Login incorrect");
 	}
 
+	// @todo - insert server message saying "failed"
+	// and also for FAIL
+
 	fr_state_discard(inst->auth.state_tree, request);
 	RETURN_MODULE_OK;
 }
@@ -602,10 +641,22 @@ RESUME(auth_reply_get)
 RECV(auth_cont)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
+	fr_pair_t *vp;
 
 	if ((state_create(request->request_ctx, &request->request_pairs, request, false) < 0) ||
 	    (fr_state_to_request(inst->auth.state_tree, request) < 0)) {
 		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_REPLY_ERROR);
+	}
+
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_sequence_number);\
+	fr_assert(vp != NULL);
+
+	/*
+	 *	Can't allow too many sequences.
+	 */
+	if ((vp->vp_uint8 >> 1) > 3) {
+		RDEBUG("Too many rounds of challenge / response");
+		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_REPLY_FAIL);
 	}
 
 	return CALL_RECV(generic);
