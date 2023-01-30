@@ -245,6 +245,7 @@ extern "C" {
 				} else { \
 					MEM(new_element = talloc_zero(slab, fr_ ## _name ## _slab_element_t)); \
 				} \
+				talloc_set_type(new_element, _type); \
 				talloc_set_destructor(new_element, _ ## _type ## _element_free); \
 				fr_ ## _name ## _slab_element_insert_tail(&slab->avail, new_element); \
 				new_element->slab = slab; \
