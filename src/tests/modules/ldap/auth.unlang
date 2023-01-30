@@ -40,7 +40,7 @@ if ("%(pairs:reply.)" == "") {
 # Attempt a bind authentication
 ldap.authenticate
 
-ldap.post-auth
+ldap.send
 
 &Tmp-String-0 := "%{ldap:ldap://$ENV{TEST_SERVER}/uid=john,ou=people,dc=example,dc=com?description}"
 

@@ -27,7 +27,7 @@ if ("%(pairs:reply.)" == "") {
 # Attempt a bind authentication
 ldapssl.authenticate
 
-ldapssl.post-auth
+ldapssl.send
 
 &Tmp-String-0 := "%{ldapssl:ldaps:///uid=fred,ou=people,dc=subdept,dc=example,dc=com?description}"
 
