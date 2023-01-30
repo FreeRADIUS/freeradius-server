@@ -1537,6 +1537,12 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	}
 #  endif
 
+#  ifdef LDAP_OPT_X_TLS_CIPHER_SUITE
+	if (inst->tls_cipher_list) {
+		do_ldap_option(LDAP_OPT_X_TLS_CIPHER_SUITE, "cipher_list", inst->tls_cipher_list);
+	}
+#  endif
+
 	/*
 	 *	And finally start the TLS code.
 	 */

@@ -622,6 +622,12 @@ ldap {
 		#  setting this to "1.2"
 		#
 #		tls_min_version = "1.2"
+
+		#  Set this option to specify the allowed
+		#  TLS cipher suites.  The format is listed
+		#  in "man 1 ciphers".
+		#
+		cipher_list = "DEFAULT"
 	}
 
 	#  As of v3, the 'pool' section has replaced the

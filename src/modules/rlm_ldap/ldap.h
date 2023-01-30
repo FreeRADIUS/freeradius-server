@@ -269,6 +269,8 @@ typedef struct ldap_instance {
 	char const	*tls_min_version_str;		//!< Minimum TLS version
 	int		tls_min_version;
 
+	char const	*tls_cipher_list;	       	//!< cipher suites
+
 	/*
 	 *	Options
 	 */
