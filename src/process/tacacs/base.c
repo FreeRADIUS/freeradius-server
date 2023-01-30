@@ -187,7 +187,7 @@ typedef struct {
 #include <freeradius-devel/server/process.h>
 
 static const CONF_PARSER session_config[] = {
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, process_tacacs_t, auth.session_timeout), .dflt = "15" },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, process_tacacs_auth_t, session_timeout), .dflt = "15" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, process_tacacs_auth_t, max_session), .dflt = "4096" },
 	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, process_tacacs_auth_t, state_server_id) },
 
