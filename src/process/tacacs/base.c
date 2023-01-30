@@ -332,6 +332,9 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_tacacs_auth_t co
 	talloc_free(msg);
 }
 
+/*
+ *	Synthesize a State attribute from connection && session information.
+ */
 static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, bool reply)
 {
 	uint8_t		buffer[12];
@@ -366,6 +369,8 @@ static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request
 
 	vp = fr_pair_afrom_da(ctx, attr_tacacs_state);
 	if (!vp) return -1;
+
+	(void) fr_pair_value_memdup(vp, buffer, 12, false);
 
 	fr_pair_append(out, vp);
 
