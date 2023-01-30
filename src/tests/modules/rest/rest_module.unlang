@@ -6,28 +6,28 @@ rest
 
 debug_control
 
-if (&REST-HTTP-Status-Code != 200) {
+if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
-if (&control.Tmp-String-0 != "authorize") {
+if (!(&control.Tmp-String-0 == "authorize")) {
 	test_fail
 }
 
-if (&control.Tmp-String-1 != "GET") {
+if (!(&control.Tmp-String-1 == "GET")) {
 	test_fail
 }
 
-if (&control.Tmp-String-1[*] != "/user/<username>/mac/<client>") {
+if (!(&control.Tmp-String-1[*] == "/user/<username>/mac/<client>")) {
 	test_fail
 }
 
-if (&control.User-Name != "Bob") {
+if (!(&control.User-Name == "Bob")) {
 	test_fail
 }
 
 # The "op" for setting Tmp-String-2 is ^=
-if ((&control.Tmp-String-2[0] != "Bob") || (&control.Tmp-String-2[1] != "foo")) {
+if (!(&control.Tmp-String-2[0] == "Bob") || !(&control.Tmp-String-2[1] == "foo")) {
 	test_fail
 }
 
@@ -42,32 +42,32 @@ if ((&control.Tmp-String-2[0] != "Bob") || (&control.Tmp-String-2[1] != "foo")) 
 # Test "accounting" rest call.  Uses https to a POST end point
 rest.accounting
 
-if (&REST-HTTP-Status-Code != 200) {
+if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
-if (&control.Tmp-String-0 != "accounting") {
+if (!(&control.Tmp-String-0 == "accounting")) {
 	test_fail
 }
 
-if (&control.Tmp-String-1 != "POST") {
+if (!(&control.Tmp-String-1 == "POST")) {
 	test_fail
 }
 
-if (&control.Tmp-String-1[*] != "/user/<username>/mac/<client>") {
+if (!(&control.Tmp-String-1[*] == "/user/<username>/mac/<client>")) {
 	test_fail
 }
 
-if (&control.User-Name != "Bob") {
+if (!(&control.User-Name == "Bob")) {
 	test_fail
 }
 
-if ((&control.Tmp-String-2[0] != "Bob") || (&control.Tmp-String-2[1] != "Bob") || (&control.Tmp-String-2[2] != "foo")) {
+if (!(&control.Tmp-String-2[0] == "Bob") || !(&control.Tmp-String-2[1] == "Bob") || !(&control.Tmp-String-2[2] == "foo")) {
 	test_fail
 }
 
 # NAS IP Address is passed in body data
-if ((&control.NAS-IP-Address[0] != "10.0.0.10") || (&control.NAS-IP-Address[1] != "192.168.1.1")) {
+if (!(&control.NAS-IP-Address[0] == "10.0.0.10") || !(&control.NAS-IP-Address[1] == "192.168.1.1")) {
 	test_fail
 }
 
@@ -76,11 +76,11 @@ debug_control
 # Test "authenticate" rest call.  Uses http basic authentication
 rest.authenticate
 
-if (&REST-HTTP-Status-Code != 200) {
+if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
-if (&REST-HTTP-Body != "Section: authenticate, User: Bob, Authenticated: true\n") {
+if (!(&REST-HTTP-Body == "Section: authenticate, User: Bob, Authenticated: true\n")) {
 	test_fail
 }
 

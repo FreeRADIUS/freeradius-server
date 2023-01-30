@@ -10,39 +10,39 @@
 # Retrieve a plain text file
 &control.Tmp-String-1 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/test.txt)"
 
-if (&REST-HTTP-Status-Code != 200) {
+if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
-if (&control.Tmp-String-1 != "Sample text response\n") {
+if (!(&control.Tmp-String-1 == "Sample text response\n")) {
 	test_fail
 }
 
 # Take host from incomming packet
 &control.Tmp-String-1 := "%(rest:http://%{Login-IP-Host}:%{Tmp-Integer-0}/test.txt)"
 
-if ((&REST-HTTP-Status-Code != 200) || (&control.Tmp-String-1 != "Sample text response\n")) {
+if (!(&REST-HTTP-Status-Code == 200) || !(&control.Tmp-String-1 == "Sample text response\n")) {
 	test_fail
 }
 
 # Port is not allowed from incomming packet
 &control.Tmp-String-1 := "%(rest:http://%{Tmp-String-0}:%{NAS-Port}/test.txt)"
 
-if ((&Module-Failure-Message != "Failed escaping URI: Tainted value not allowed for port") || (&control.Tmp-String-1 != "")) {
+if (!(&Module-Failure-Message == "Failed escaping URI: Tainted value not allowed for port") || !(&control.Tmp-String-1 == "")) {
 	test_fail
 }
 
 # Check a "not found" gives a 404 status code
 &control.Tmp-String-1 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/%{Tmp-String-1})"
 
-if (&REST-HTTP-Status-Code != 404) {
+if (!(&REST-HTTP-Status-Code == 404)) {
 	test_fail
 }
 
 # GET with URL parameters
 &Tmp-String-2 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/mac/%{Called-Station-Id})"
 
-if (&REST-HTTP-Status-Code != 200) {
+if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
@@ -51,11 +51,11 @@ map json &Tmp-String-2 {
 	&control.User-Name := '$.control\.User-Name.value'
 }
 
-if (&control.Tmp-String-1 != "[ \"GET\", \"\\/user\\/<username>\\/mac\\/<client>\" ]") {
+if (!(&control.Tmp-String-1 == "[ \"GET\", \"\\/user\\/<username>\\/mac\\/<client>\" ]")) {
 	test_fail
 }
 
-if (&control.User-Name != "Bob") {
+if (!(&control.User-Name == "Bob")) {
 	test_fail
 }
 
@@ -66,7 +66,7 @@ map json "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/m
 	&control.Tmp-String-3 ^= '$.control\.User-Name.value'
 }
 
-if ((&control.Tmp-String-3[0] != 'Bob') || (&control.Tmp-String-3[1] != 'dummy')) {
+if (!(&control.Tmp-String-3[0] == 'Bob') || !(&control.Tmp-String-3[1] == 'dummy')) {
 	test_fail
 }
 
@@ -75,7 +75,7 @@ if ((&control.Tmp-String-3[0] != 'Bob') || (&control.Tmp-String-3[1] != 'dummy')
 # POST to https with JSON body data
 &Tmp-String-2 := "%(rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting %{control.Tmp-String-2})"
 
-if (&REST-HTTP-Status-Code != 200) {
+if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
@@ -85,15 +85,15 @@ map json &Tmp-String-2 {
 	&control.NAS-IP-Address := '$.control\.NAS-IP-Address.value'
 }
 
-if (&control.Tmp-String-1 != "[ \"POST\", \"\\/user\\/<username>\\/mac\\/<client>\" ]") {
+if (!(&control.Tmp-String-1 == "[ \"POST\", \"\\/user\\/<username>\\/mac\\/<client>\" ]")) {
 	test_fail
 }
 
-if (&control.User-Name != "Bob") {
+if (!(&control.User-Name == "Bob")) {
 	test_fail
 }
 
-if (&control.NAS-IP-Address != "192.168.1.1") {
+if (!(&control.NAS-IP-Address == "192.168.1.1")) {
 	test_fail
 }
 
@@ -102,11 +102,11 @@ if (&control.NAS-IP-Address != "192.168.1.1") {
 # POST to https with POST body data
 &Tmp-String-2 := "%(rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/post/test?section=dummy %{control.Tmp-String-2})"
 
-if (&REST-HTTP-Status-Code != 200) {
+if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
-if (&Tmp-String-2 != "Section: dummy, User: Bob\n") {
+if (!(&Tmp-String-2 == "Section: dummy, User: Bob\n")) {
 	test_fail
 }
 
@@ -114,7 +114,7 @@ if (&Tmp-String-2 != "Section: dummy, User: Bob\n") {
 # separator - make sure this doesn't end up generating extra arguments, but gets escaped.
 &Tmp-String-2 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/reflect/?station=%{Calling-Station-Id})"
 
-if (&Tmp-String-2 != "{\"station\":\"dummy&unsafe=escaped\"}\n" ) {
+if (!(&Tmp-String-2 == "{\"station\":\"dummy&unsafe=escaped\"}\n" )) {
 	test_fail
 }
 
@@ -122,14 +122,14 @@ if (&Tmp-String-2 != "{\"station\":\"dummy&unsafe=escaped\"}\n" ) {
 &Tmp-String-8 := ""
 &Tmp-String-2 := "%(rest:http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/reflect/%{Tmp-String-8}?station=%{User-Name})"
 
-if (&Tmp-String-2 != "{\"station\":\"Bob\"}\n" ) {
+if (!(&Tmp-String-2 == "{\"station\":\"Bob\"}\n" )) {
 	test_fail
 }
 
 # Zero length tainted value - check escaping doesn't break on zero length string
 &Tmp-String-2 := "%(rest:http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/reflect/%{Tmp-String-9}?station=%{Called-Station-Id})"
 
-if (&Tmp-String-2 != "{\"station\":\"aa:bb:cc:dd:ee:ff\"}\n" ) {
+if (!(&Tmp-String-2 == "{\"station\":\"aa:bb:cc:dd:ee:ff\"}\n" )) {
 	test_fail
 }
 
