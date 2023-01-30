@@ -2754,7 +2754,11 @@ static int run_mode(command_t *cmd)
 		 *	attached.
 		 */
 		q = strrchr(cmd->arglist->vals[0], '/');
-		if (!q) q = cmd->arglist->vals[0];
+		if (q) {
+			q++;
+		} else {
+			q = cmd->arglist->vals[0];
+		}
 
 		if ((strcmp(q, "gdb") == 0) || (strcmp(q, "lldb") == 0)) {
 			setenv("DEBUGGER_ATTACHED", "yes", 1);
