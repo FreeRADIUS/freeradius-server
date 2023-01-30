@@ -219,8 +219,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		uint32_t code;
 
 		code = inst->types[i];
-		fr_assert(code > 0);
-		fr_assert(code < FR_TACACS_PACKET_TYPE_MAX);
+		fr_assert(FR_TACACS_PACKET_CODE_VALID(code));
 
 		inst->allowed[code] = true;
 	}
