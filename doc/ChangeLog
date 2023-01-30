@@ -27,6 +27,8 @@ FreeRADIUS 3.2.2 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	* %{listen:TLS-PSK-Identity} is now set when using PSK and psk_query
 	  This helps the server track the identity of the client which is
 	  connecting.
+	* The ldap module now supports setting "cipher_list".  See
+	  mods-available/ldap.
 
 	Bug fixes
 	* Support for non-blocking TLS sockets.
@@ -43,6 +45,8 @@ FreeRADIUS 3.2.2 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	  configuration item.
 	* Support Apple Homebrew on the M1.  Fixes #4754
 	* Better error messages when %{listen:TLS-...} is used.
+	* Getting statistics via Status-Server can now be done within a
+	  virtual server.  Fixes #4868
 
 FreeRADIUS 3.2.1 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	Feature improvements
