@@ -31,6 +31,11 @@ fi
 sed -ie "s#\$BIN_PATH/redis-cli#echo 'yes' | redis-cli#" "${TMP_REDIS_DIR}/create-cluster"
 sed -ie "s#\$BIN_PATH/redis-server#redis-server#" "${TMP_REDIS_DIR}/create-cluster"
 
+# Remove option not applicable to redis version on Ubuntu 20.04
+sed -ie "s# --appenddirname appendonlydir-\${PORT}##" "${TMP_REDIS_DIR}/create-cluster"
+# Fix cleanup to match option change above
+sed -ie "s#appendonlydir-\*#appendonly\*.aof#" "${TMP_REDIS_DIR}/create-cluster"
+
 # Again, not needed for CI, but useful for local testing
 if [ -z "$1" ]; then
     create-cluster start
