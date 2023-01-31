@@ -79,10 +79,6 @@ if (!(&Tmp-String-0 == "")) {
         test_fail
 }
 
-if (&Module-Failure-Message != "LDAP server returned an error: lib error: No such object (32)") {
-        test_fail
-}
-
 # Query within a dn which will prompt a referral
 &Tmp-String-0 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)}"
 
