@@ -16,15 +16,11 @@ $INCLUDE cluster_reset.inc
 redis_ippool {
 	invalid = 1
 }
-if (updated) {
-	test_pass
-} else {
+if (!(updated)) {
 	test_fail
 }
 
-if (&reply.Framed-IP-Address == 192.168.0.1) {
-	test_pass
-} else {
+if (!(&reply.Framed-IP-Address == 192.168.0.1)) {
 	test_fail
 }
 
@@ -37,54 +33,40 @@ if (&reply.Framed-IP-Address == 192.168.0.1) {
 redis_ippool {
 	invalid = 1
 }
-if (updated) {
-	test_pass
-} else {
+if (!(updated)) {
 	test_fail
 }
 
 #
 #  Verify the association with the device has been removed
 #
-if ("%(redis:EXISTS {%{control.IP-Pool.Name}}:device:%{Calling-Station-ID})" == '0') {
-	test_pass
-} else {
+if (!("%(redis:EXISTS {%{control.IP-Pool.Name}}:device:%{Calling-Station-ID})" == '0')) {
 	test_fail
 }
 
 #
 #  Verify the hash information is retained
 #
-if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} device)" == '00:11:22:33:44:55') {
-	test_pass
-} else {
+if (!("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} device)" == '00:11:22:33:44:55')) {
 	test_fail
 }
 
-if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} gateway)" == '127.0.0.1') {
-	test_pass
-} else {
+if (!("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} gateway)" == '127.0.0.1')) {
 	test_fail
 }
 
-if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} range)" == '192.168.0.0') {
-	test_pass
-} else {
+if (!("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} range)" == '192.168.0.0')) {
 	test_fail
 }
 
-# Check the ZSCORE
-&Tmp-Date-0 := "%l"
+# Check the ZSCORE - releasing an address sets the ZSCORE to now - 1
+&Tmp-Date-0 := "%c"
 
-if ("%{expr:%(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address}) - %(integer:%{Tmp-Date-0})}" > 0) {
-	test_pass
-} else {
+if (%(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address}) > %(integer:%{Tmp-Date-0})) {
 	test_fail
 }
 
-if ("%{expr:%(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address}) - %(integer:%{Tmp-Date-0})}" < 10) {
-	test_pass
-} else {
+if (%(integer:%{Tmp-Date-0}) - %(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address}) > 10) {
 	test_fail
 }
 
