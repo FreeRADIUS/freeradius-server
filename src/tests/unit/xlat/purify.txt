@@ -190,5 +190,35 @@ match ERROR offset 6: Invalid operation on module return code
 xlat_purify !fail
 match !%{rcode:'fail'}
 
+#
+#  Casts and such
+#
+xlat_purify (string)(%{expr:1})
+match "1"
+
+#
+#  This is a different code path than the above.
+#
+xlat_purify (string)%{expr:1}
+match "1"
+
+xlat_purify "hello"
+match "hello"
+
+#
+#  String concatenation
+#
+xlat_purify "hello " + (string)%{expr:1}
+match "hello 1"
+
+xlat_purify "hello " + (string)%{expr:1} + " bob"
+match "hello 1 bob"
+
+#
+#  This should be the same as above, but it isn't!
+#
+#xlat_purify "hello %{expr:1} bob"
+#match "hello 1 bob"
+
 count
-match 85
+match 95

@@ -355,7 +355,7 @@ xlat_purify (&User-Name == %{md4: blah})
 match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
 
 xlat_purify (&User-Name == (string) %{md4: blah})
-match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
+match (&User-Name == "0x544924d05ec4481925ba3749a096a0a7")
 
 xlat_purify (&User-Name == "%{md4: blah}")
 match (&User-Name == "0x544924d05ec4481925ba3749a096a0a7")

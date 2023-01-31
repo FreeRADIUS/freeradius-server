@@ -2322,11 +2322,10 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	if (tmpl_is_xlat(vpt) || tmpl_is_xlat_unresolved(vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(vpt);
 		xlat_exp_t *cast;
-		fr_type_t type;
+		fr_type_t type = FR_TYPE_NULL;
 
 		talloc_steal(node, xlat);
 		node->fmt = talloc_typed_strdup(node, vpt->name);
-		talloc_free(vpt);
 
 		xlat_exp_set_type(node, XLAT_GROUP);
 		node->quote = quote;
@@ -2334,29 +2333,34 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 		node->flags = xlat->flags;
 
-		if (quote != T_BARE_WORD) {
-			if (tmpl_rules_cast(vpt) != FR_TYPE_NULL) {
-				type = tmpl_rules_cast(vpt);
+		/*
+		 *	Enforce a cast type.
+		 */
+		if (tmpl_rules_cast(vpt) != FR_TYPE_NULL) {
+			type = tmpl_rules_cast(vpt);
 
-			} else {
-				type = FR_TYPE_STRING;
+		} else if (quote != T_BARE_WORD) {
+			type = FR_TYPE_STRING;
 
-				/*
-				 *	The string is T_DOUBLE_QUOTED_STRING, or T_BACK_QUOTED_STRING,
-				 *	both of which have double-quoting rules.
-				 *
-				 *	'foo' can't contain an xlat.
-				 *	/foo/ is forbidden, as we don't expect a regex here.
-				 *
-				 *	We rely on xlat_func_cast() to see the `string` cast, and then to
-				 *	_print_ the result to a string.
-				 */
-			}
+			/*
+			 *	The string is T_DOUBLE_QUOTED_STRING, or T_BACK_QUOTED_STRING,
+			 *	both of which have double-quoting rules.
+			 *
+			 *	'foo' can't contain an xlat.
+			 *	/foo/ is forbidden, as we don't expect a regex here.
+			 *
+			 *	We rely on xlat_func_cast() to see the `string` cast, and then to
+			 *	_print_ the result to a string.
+			 */
+		}
 
+		if (type != FR_TYPE_NULL) {
 			MEM(cast = expr_cast_alloc(head, type));
 			xlat_func_append_arg(cast, node, false);
 			node = cast;
 		}
+
+		talloc_free(vpt);
 
 	} else {
 		/*
