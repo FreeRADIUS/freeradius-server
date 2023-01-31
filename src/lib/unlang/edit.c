@@ -593,6 +593,13 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		 *	LHS, and then discover that we need to delete it.
 		 */
 		fr_strerror_clear();
+
+		/*
+		 *	Something went wrong creating the value, it's a failure.  Note that we fail _all_
+		 *	subsequent assignments, too.
+		 */
+		if (fr_type_is_null(box->type)) goto fail;
+
 		vp = tmpl_dcursor_build_init(&err, state, &lhs_cc, &lhs_cursor, request, current->lhs.vpt, edit_list_pair_build, current);
 		tmpl_dcursor_clear(&lhs_cc);
 		if (!vp) {
