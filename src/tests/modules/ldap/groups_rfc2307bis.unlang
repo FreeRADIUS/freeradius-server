@@ -6,11 +6,11 @@ ldap
 #
 #  Resolve using group name attribute
 #
-if (&LDAP-Group != 'foo') {
+if (!(&LDAP-Group == 'foo')) {
         test_fail
 }
 
-if (&LDAP-Group != 'foo') {
+if (!(&LDAP-Group == 'foo')) {
         test_fail
 }
 
@@ -18,25 +18,25 @@ if (&LDAP-Group != 'foo') {
 #  Using paircmp xlat expansion.  This is only for internal use,
 #  and will be removed before v4 alpha.
 #
-if (!%{paircmp:&LDAP-Group foo}) {
+if (!%(paircmp:&LDAP-Group foo)) {
         test_fail
 }
 
 #
 #  Resolve using group DN
 #
-if (&LDAP-Group != 'cn=foo,ou=groups,dc=example,dc=com') {
+if (!(&LDAP-Group == 'cn=foo,ou=groups,dc=example,dc=com')) {
         test_fail
 }
 
 #
 #  Check we have these values cached
 #
-if (&control.LDAP-Cached-Membership[*] != 'foo') {
+if (!(&control.LDAP-Cached-Membership[*] == 'foo')) {
 	test_fail
 }
 
-if (&control.LDAP-Cached-Membership[*] != 'cn=foo,ou=groups,dc=example,dc=com') {
+if (!(&control.LDAP-Cached-Membership[*] == 'cn=foo,ou=groups,dc=example,dc=com')) {
 	test_fail
 }
 

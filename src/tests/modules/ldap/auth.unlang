@@ -3,11 +3,11 @@
 #
 ldap
 
-if (&control.NAS-IP-Address != 1.2.3.4) {
+if (!(&control.NAS-IP-Address == 1.2.3.4)) {
         test_fail
 }
 
-if (&control.Reply-Message != "Hello world") {
+if (!(&control.Reply-Message == "Hello world")) {
         test_fail
 }
 
@@ -17,19 +17,19 @@ if (&control.Framed-IP-Address) {
 }
 
 # IP netmask defined in profile1 should overwrite radprofile value.
-if (&reply.Framed-IP-Netmask != 255.255.0.0) {
+if (!(&reply.Framed-IP-Netmask == 255.255.0.0)) {
         test_fail
 }
 
-if (&reply.Acct-Interim-Interval != 1800) {
+if (!(&reply.Acct-Interim-Interval == 1800)) {
         test_fail
 }
 
-if (&reply.Idle-Timeout != 3600) {
+if (!(&reply.Idle-Timeout == 3600)) {
         test_fail
 }
 
-if (&reply.Session-Timeout != 7200) {
+if (!(&reply.Session-Timeout == 7200)) {
         test_fail
 }
 
@@ -44,7 +44,7 @@ ldap.send
 
 &Tmp-String-0 := "%{ldap:ldap://$ENV{TEST_SERVER}/uid=john,ou=people,dc=example,dc=com?description}"
 
-if (&Tmp-String-0 != "User %{User-Name} authenticated") {
+if (!(&Tmp-String-0 == "User %{User-Name} authenticated")) {
 	test_fail
 }
 
