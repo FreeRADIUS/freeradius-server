@@ -436,17 +436,6 @@ RESUME(auth_start)
 	if (!request->reply->code) request->reply->code = state->default_reply;
 
 	/*
-	 *	If we're forcing a reply type (e.g. "getpass"), then skip "authenticate foo",
-	 *	and just send the reply.
-	 */
-	if (!request->reply->code) {
-		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
-		if (vp && FR_TACACS_PACKET_CODE_VALID(vp->vp_uint32)) {
-			request->reply->code = vp->vp_uint32;
-		}
-	}
-
-	/*
 	 *	Something set reject, we're done.
 	 */
 	if (request->reply->code == FR_TACACS_CODE_AUTH_REPLY_FAIL) {
@@ -458,6 +447,21 @@ RESUME(auth_start)
 
 		fr_assert(state->send != NULL);
 		return CALL_SEND_STATE(state);
+	}
+
+	/*
+	 *	A policy _or_ a module can hard-code the reply.
+	 */
+	if (!request->reply->code) {
+		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
+		if (vp && FR_TACACS_PACKET_CODE_VALID(vp->vp_uint32)) {
+			request->reply->code = vp->vp_uint32;
+		}
+	}
+
+	if (request->reply->code) {
+		RDEBUG("Reply packet type was set to %s", fr_tacacs_packet_names[request->reply->code]);
+		goto send_reply;
 	}
 
 	/*
