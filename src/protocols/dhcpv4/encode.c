@@ -121,7 +121,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
 						  (uint8_t const *)&vp->vp_ipv4addr,
 						  sizeof(vp->vp_ipv4addr));
-			fr_dbuff_in(&work_dbuff, mask);
+			FR_DBUFF_IN_RETURN(&work_dbuff, mask);
 			break;
 		}
 
@@ -637,6 +637,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	 *	And leave room for data-len1
 	 */
 	fr_dbuff_in_bytes(&work_dbuff, (uint8_t) da->attr, 0x00);
+	/* coverity[check_return] */
 	fr_dbuff_in(&work_dbuff, dv->attr);
 	fr_dbuff_in_bytes(&work_dbuff, (uint8_t) 0x00);
 
