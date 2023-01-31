@@ -553,6 +553,14 @@ ssize_t fr_skip_string(char const *start, char const *end)
 
 		if (end && ((p + 4) >= end)) goto fail;
 
+		/*
+		 *	Allow for \1f in single quoted strings
+		 */
+		if ((quote == '\'') && isxdigit((uint8_t) p[1]) && isxdigit((uint8_t) p[2])) {
+			p += 3;
+			continue;
+		}
+
 		if (!isdigit((uint8_t) p[2]) || !isdigit((uint8_t) p[3])) {
 			fr_strerror_const("Invalid octal escape");
 			return -(p - start);
