@@ -76,9 +76,9 @@ objectClass: radiusprofile
 cn: profile1
 radiusReplyAttribute: Framed-IP-Netmask := 255.255.0.0
 radiusReplyAttribute: Acct-Interim-Interval := 1800
-radiusRequestAttribute: Service-Type := Framed-User
+radiusRequestAttribute: Service-Type := 'Framed-User'
 radiusControlAttribute: Framed-IP-Address == 1.2.3.4
-radiusControlAttribute: Reply-Message == "Hello world"
+radiusControlAttribute: Reply-Message := "Hello world"
 
 dn: uid=john,ou=people,dc=example,dc=com
 objectClass: inetOrgPerson
