@@ -816,10 +816,8 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			node->call.func->name,
 			(node->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
 	}
-			switch (xa) {
-	default:
-		break;
 
+	switch (xa) {
 	case XLAT_ACTION_YIELD:
 		RDEBUG2("| (YIELD)");
 		return xa;
@@ -829,17 +827,20 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		RDEBUG2("| --> %pV", fr_dcursor_current(out));
 		if (!xlat_process_return(request, node->call.func, (FR_DLIST_HEAD(fr_value_box_list) *)out->dlist,
 					 fr_dcursor_current(out))) xa = XLAT_ACTION_FAIL;
-		break;
 
+		/*
+		 *	It's easier if we get xlat_frame_eval to continue evaluating the frame.
+		 */
+		*in = xlat_exp_next(head, *in);	/* advance */
+		return xlat_frame_eval(ctx, out, child, request, head, in);
+
+	case XLAT_ACTION_PUSH_CHILD:
+	case XLAT_ACTION_PUSH_UNLANG:
 	case XLAT_ACTION_FAIL:
-		return xa;
+		break;
 	}
 
-	/*
-	 *	It's easier if we get xlat_frame_eval to continue evaluating the frame.
-	 */
-	*in = xlat_exp_next(head, *in);	/* advance */
-	return xlat_frame_eval(ctx, out, child, request, head, in);
+	return xa;
 }
 /** Process the result of a previous nested expansion
  *
