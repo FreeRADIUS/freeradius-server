@@ -406,7 +406,7 @@ apply_list:
 		vp = tmpl_dcursor_build_init(&err, state, &lhs_cc, &lhs_cursor, request, current->lhs.vpt, edit_list_pair_build, current);
 		tmpl_dcursor_clear(&lhs_cc);
 		if (!vp) {
-			RPDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
+			RWDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
 			return -1;
 		}
 
@@ -603,7 +603,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		vp = tmpl_dcursor_build_init(&err, state, &lhs_cc, &lhs_cursor, request, current->lhs.vpt, edit_list_pair_build, current);
 		tmpl_dcursor_clear(&lhs_cc);
 		if (!vp) {
-			RPDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
+			RWDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
 			return -1;
 		}
 
@@ -1171,7 +1171,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		 *	because foo[3] is a single leaf value, not a list.
 		 */
 		if (!map->rhs && fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
-			RPDEBUG("Can't set one entry to multiple values for %s", current->lhs.vpt->name);
+			RWDEBUG("Cannot set one entry to multiple values for %s", current->lhs.vpt->name);
 			return -1;
 		}
 
@@ -1188,7 +1188,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	tmpl_dcursor_clear(&cc);
 	if (!vp) {
 		if (!current->lhs.create) {
-			RPDEBUG("Failed finding %s", current->lhs.vpt->name);
+			RWDEBUG("Failed finding %s", current->lhs.vpt->name);
 			return -1;
 		}
 
