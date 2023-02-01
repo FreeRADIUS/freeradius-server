@@ -11,6 +11,9 @@ if (!("%(redis:SET b 'boom')" == 'OK')) {
 #  Leave some time (100ms) for the synchronisation
 &Tmp-String-0 := `/bin/sleep 0.1`
 
+#  Note the current master
+&Tmp-Integer-0 := %(redis_node:b 0)
+
 #  Cause one of the redis cluster nodes to SEGV
 if ("%(redis:@%(redis_node:b 0) DEBUG SEGFAULT)" != '') {
 	test_fail
@@ -19,6 +22,14 @@ if ("%(redis:@%(redis_node:b 0) DEBUG SEGFAULT)" != '') {
 #  Forcefully failover the slave for that node
 if (!("%(redis:@%(redis_node:b 1) CLUSTER FAILOVER TAKEOVER)" == 'OK')) {
 	test_fail
+}
+
+#  Allow time for the takeover to propagate to other nodes
+foreach &control.Tmp-Integer-0 {
+	if (%(redis_node:b 0) != &Tmp-Integer-0) {
+		break
+	}
+	&Tmp-String-0 := `/bin/sleep 0.5`
 }
 
 if (!("%(redis:GET b)" == 'boom')) {
