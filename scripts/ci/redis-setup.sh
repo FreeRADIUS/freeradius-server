@@ -36,6 +36,18 @@ sed -ie "s# --appenddirname appendonlydir-\${PORT}##" "${TMP_REDIS_DIR}/create-c
 # Fix cleanup to match option change above
 sed -ie "s#appendonlydir-\*#appendonly\*.aof#" "${TMP_REDIS_DIR}/create-cluster"
 
+# Ensure all nodes are accessible before creating cluster
+if [ "$1" == "create" ]; then
+        waits=0
+        for node in 30001 30002 30003 30004 30005 30006; do
+                while [ $waits -lt 10 ]; do
+                        redis-cli -p $node quit > /dev/null && break
+                        sleep 0.5
+                        waits=$((waits + 1))
+                done
+        done
+fi
+
 # Again, not needed for CI, but useful for local testing
 if [ -z "$1" ]; then
     create-cluster start
