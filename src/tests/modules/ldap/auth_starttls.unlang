@@ -1,5 +1,6 @@
 #
 #  Run the "ldapssl" module - an instance of ldap using an ssl conneciton
+#  PRE: auth_ssl
 #
 
 ldaptls
