@@ -788,11 +788,12 @@ void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
  *				when it yielded.
  */
 xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     xlat_func_t resume, xlat_exp_t const *exp,
-				     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *result, void *rctx)
+				       xlat_exp_head_t const **child,
+				       request_t *request,  xlat_exp_head_t const *head, xlat_exp_t const **in,
+				       FR_DLIST_HEAD(fr_value_box_list) *result, xlat_func_t resume, void *rctx)
 {
-	xlat_thread_inst_t	*t;
 	xlat_action_t		xa;
+	xlat_exp_t const	*node = *in;
 
 	/*
 	 *	It's important that callbacks leave the result list
@@ -802,39 +803,43 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
+	if (node->type != XLAT_FUNC) {
+		xa = resume(ctx, out, XLAT_CTX(NULL, NULL, NULL, rctx), request, result);
+	} else {
+		xlat_thread_inst_t *t;
+		t = xlat_thread_instance_find(node);
+		xa = resume(ctx, out, XLAT_CTX(node->call.inst->data, t->data, t->mctx, rctx), request, result);
+		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
-	if (exp->type != XLAT_FUNC) return resume(ctx, out, XLAT_CTX(NULL, NULL, NULL, rctx), request, result);
-
-	t = xlat_thread_instance_find(exp);
-	xa = resume(ctx, out, XLAT_CTX(exp->call.inst->data, t->data, t->mctx, rctx), request, result);
-	VALUE_BOX_TALLOC_LIST_VERIFY(result);
-
-	REXDENT();
-	RDEBUG2("| %%%c%s:...%c",
-		(exp->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
-		exp->call.func->name,
-		(exp->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
-	switch (xa) {
+		RDEBUG2("| %%%c%s:...%c",
+			(node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
+			node->call.func->name,
+			(node->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
+	}
+			switch (xa) {
 	default:
 		break;
 
 	case XLAT_ACTION_YIELD:
 		RDEBUG2("| (YIELD)");
-		break;
+		return xa;
 
 	case XLAT_ACTION_DONE:
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
 		RDEBUG2("| --> %pV", fr_dcursor_current(out));
-		if (!xlat_process_return(request, exp->call.func, (FR_DLIST_HEAD(fr_value_box_list) *)out->dlist,
+		if (!xlat_process_return(request, node->call.func, (FR_DLIST_HEAD(fr_value_box_list) *)out->dlist,
 					 fr_dcursor_current(out))) xa = XLAT_ACTION_FAIL;
 		break;
 
 	case XLAT_ACTION_FAIL:
-		break;
+		return xa;
 	}
-	RINDENT();
 
-	return xa;
+	/*
+	 *	It's easier if we get xlat_frame_eval to continue evaluating the frame.
+	 */
+	*in = xlat_exp_next(head, *in);	/* advance */
+	return xlat_frame_eval(ctx, out, child, request, head, in);
 }
 /** Process the result of a previous nested expansion
  *

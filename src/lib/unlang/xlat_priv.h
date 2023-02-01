@@ -327,8 +327,9 @@ void		xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 			    request_t *request, void *rctx, fr_state_signal_t action);
 
 xlat_action_t	xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       xlat_func_t resume, xlat_exp_t const *exp,
-				       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *result, void *rctx);
+				       xlat_exp_head_t const **child,
+				       request_t *request,  xlat_exp_head_t const *head, xlat_exp_t const **in,
+				       FR_DLIST_HEAD(fr_value_box_list) *result, xlat_func_t resume, void *rctx);
 
 xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_exp_head_t const **child, bool *alternate,

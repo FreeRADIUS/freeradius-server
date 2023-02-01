@@ -43,6 +43,8 @@ typedef struct {
 	xlat_exp_t const	*exp;				//!< current one we're evaluating
 	fr_dcursor_t		values;				//!< Values aggregated so far.
 
+	rindent_t		indent;				//!< indentation
+
 	/*
 	 *	For func and alternate
 	 */
@@ -245,7 +247,6 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_
 		RDEBUG("| %s", node->fmt);
 		break;
 	}
-	RINDENT();
 
 	/*
 	 *	Initialise the input and output lists
@@ -365,6 +366,9 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 	xlat_action_t			xa;
 	xlat_exp_head_t const		*child = NULL;
 
+	RINDENT_SAVE(&state->indent, request);
+	RINDENT();
+
 	xa = xlat_frame_eval(state->ctx, &state->values, &child, request, state->head, &state->exp);
 	switch (xa) {
 	case XLAT_ACTION_PUSH_CHILD:
@@ -380,6 +384,7 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 		fr_value_box_list_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
+			RINDENT_RESTORE(request, &state->indent);
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -399,14 +404,14 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 	case XLAT_ACTION_DONE:
 		if (state->success) *state->success = true;
 		*p_result = RLM_MODULE_OK;
-		REXDENT();
+		RINDENT_RESTORE(request, &state->indent);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
 	fail:
 		if (state->success) *state->success = false;
 		*p_result = RLM_MODULE_FAIL;
-		REXDENT();
+		RINDENT_RESTORE(request, &state->indent);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	default:
@@ -458,6 +463,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 {
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
+	xlat_exp_head_t const		*child = NULL;
 
 	fr_assert(state->resume != NULL);
 
@@ -466,9 +472,8 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 	 */
 	TALLOC_FREE(state->event_ctx);
 
-	xa = xlat_frame_eval_resume(state->ctx, &state->values,
-				    state->resume, state->exp,
-				    request, &state->out, state->rctx);
+	xa = xlat_frame_eval_resume(state->ctx, &state->values, &child, request, state->head, &state->exp,
+				    &state->out, state->resume, state->rctx);
 	switch (xa) {
 	case XLAT_ACTION_YIELD:
 		repeatable_set(frame);
@@ -477,7 +482,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 	case XLAT_ACTION_DONE:
 		if (state->success) *state->success = true;
 		*p_result = RLM_MODULE_OK;
-		REXDENT();
+		RINDENT_RESTORE(request, &state->indent);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_PUSH_UNLANG:
@@ -485,13 +490,27 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_PUSH_CHILD:
-		fr_assert(0);
-		FALL_THROUGH;
+		fr_assert(child);
+
+		repeatable_set(frame);	/* Was cleared by the interpreter */
+
+		/*
+		 *	Clear out the results of any previous expansions
+		 *	at this level.  A frame may be used to evaluate
+		 *	multiple sibling nodes.
+		 */
+		fr_value_box_list_talloc_free(&state->out);
+		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
+			*p_result = RLM_MODULE_FAIL;
+			RINDENT_RESTORE(request, &state->indent);
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
+		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_FAIL:
 		if (state->success) *state->success = false;
 		*p_result = RLM_MODULE_FAIL;
-		REXDENT();
+		RINDENT_RESTORE(request, &state->indent);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	/* DON'T SET DEFAULT */
 	}
@@ -499,7 +518,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 	fr_assert(0);		/* Garbage xlat action */
 
 	*p_result = RLM_MODULE_FAIL;
-	REXDENT();
+	RINDENT_RESTORE(request, &state->indent);
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
