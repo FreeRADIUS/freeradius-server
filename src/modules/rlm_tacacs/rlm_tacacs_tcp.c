@@ -36,7 +36,7 @@ RCSID("$Id$")
 #include <sys/uio.h>
 
 #include "rlm_tacacs.h"
-	
+
 /** Static configuration for the module.
  *
  */
@@ -147,7 +147,7 @@ struct udp_request_s {
 
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
-	
+
 	fr_event_timer_t const	*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
 };
@@ -837,7 +837,7 @@ static void request_mux(fr_event_list_t *el,
 			h->coalesced[0] = treq;
 			goto next;
 		}
-		
+
 		/*
 		 *	The request must still be pending.
 		 */
@@ -1058,7 +1058,7 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 	DEBUG3("%s - Reading data for connection %s", h->module_name, h->name);
 
 	while (true) {
-		ssize_t slen;		
+		ssize_t slen;
 		size_t			available, used, packet_len;
 
 		fr_trunk_request_t	*treq;
@@ -1152,6 +1152,7 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 		 *	TACACS+ doesn't care about packet codes.  All packet of the codes share the same ID
 		 *	space.
 		 */
+		/* coverity[tainted_data] */
 		treq = h->tracking[h->recv.read[1]];
 		if (!treq) {
 			WARN("%s - Ignoring reply with ID %i that arrived too late",
