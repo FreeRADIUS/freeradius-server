@@ -826,7 +826,9 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
 		RDEBUG2("| --> %pV", fr_dcursor_current(out));
 		if (!xlat_process_return(request, node->call.func, (FR_DLIST_HEAD(fr_value_box_list) *)out->dlist,
-					 fr_dcursor_current(out))) xa = XLAT_ACTION_FAIL;
+					 fr_dcursor_current(out))) {
+			return XLAT_ACTION_FAIL;
+		}
 
 		/*
 		 *	It's easier if we get xlat_frame_eval to continue evaluating the frame.
