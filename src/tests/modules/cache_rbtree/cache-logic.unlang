@@ -104,7 +104,7 @@ if (!notfound) {
 }
 
 # 14. This should still allow the creation of a new entry
-&control.Cache-TTL := -1
+&control.Cache-TTL := -2
 
 cache
 if (!ok) {
@@ -143,7 +143,7 @@ if (&Tmp-String-1 == &control.Tmp-String-1) {
 }
 
 # 20. Check that a new entry is created
-&control.Cache-TTL := -1
+&control.Cache-TTL := -2
 
 cache
 if (!updated) {
@@ -168,7 +168,7 @@ if (&Tmp-String-1 != &control.Tmp-String-1) {
 
 # 24. Check Cache-Merge = yes works as expected (should update current request)
 &control.Tmp-String-1 := 'cache me3'
-&control.Cache-TTL := -1
+&control.Cache-TTL := -2
 &control.Cache-Merge-New := yes
 
 cache
