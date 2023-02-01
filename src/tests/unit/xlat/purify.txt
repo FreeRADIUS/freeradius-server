@@ -217,8 +217,8 @@ match "hello 1 bob"
 #
 #  This should be the same as above, but it isn't!
 #
-#xlat_purify "hello %{expr:1} bob"
-#match "hello 1 bob"
+xlat_purify "hello %{expr:1} bob"
+match "hello 1 bob"
 
 count
-match 95
+match 97
