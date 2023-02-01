@@ -883,13 +883,13 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	talloc_free(target);
 
+	cache_free(inst, &c);
+	cache_release(inst, request, &handle);
+
 	/*
 	 *	Check if we found a matching map
 	 */
 	if (!map) return XLAT_ACTION_FAIL;
-
-	cache_free(inst, &c);
-	cache_release(inst, request, &handle);
 
 	return XLAT_ACTION_DONE;
 }
