@@ -1,7 +1,7 @@
 #
 #  PRE: cache-logic
 #
-&Tmp-String-0 := 'testkey'
+&Tmp-String-0 := 'testkey3'
 
 # Reply attributes
 &reply.Reply-Message := 'hello'

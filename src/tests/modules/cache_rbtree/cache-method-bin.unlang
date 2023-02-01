@@ -6,7 +6,7 @@
 #  Series of tests to check for binary safe operation of the cache module
 #  both keys and values should be binary safe.
 #
-&Tmp-Octets-0 := 0xaa00bb00cc00dd00
+&Tmp-Octets-0 := 0xaa11bb00cc00dd00
 &Tmp-String-1 := "foo\000bar\000baz"
 
 # 0. Sanity check
@@ -21,7 +21,7 @@ if (!updated) {
 }
 
 # Now add a second entry, with the value diverging after the first null byte
-&Tmp-Octets-0 := 0xaa00bb00cc00ee00
+&Tmp-Octets-0 := 0xaa11bb00cc00ee00
 &Tmp-String-1 := "bar\000baz"
 
 # 2. Should create a *new* entry and not update the existing one
@@ -34,7 +34,7 @@ if (!updated) {
 
 # If the key is binary safe, we should now be able to retrieve the first entry
 # if it's not, the above test will likely fail, or we'll get the second entry.
-&Tmp-Octets-0 := 0xaa00bb00cc00dd00
+&Tmp-Octets-0 := 0xaa11bb00cc00dd00
 
 cache_bin_key_octets.load
 if (!updated) {
@@ -52,7 +52,7 @@ if (&Tmp-String-1 != "foo\000bar\000baz") {
 &request -= &Tmp-String-1[*]
 
 # Now try and get the second entry
-&Tmp-Octets-0 := 0xaa00bb00cc00ee00
+&Tmp-Octets-0 := 0xaa11bb00cc00ee00
 
 cache_bin_key_octets.load
 if (!updated) {
@@ -73,7 +73,7 @@ if (&Tmp-String-1 != "bar\000baz") {
 #  We should also be able to use any fixed length data type as a key
 #  though there are no guarantees this will be portable.
 #
-&Tmp-IP-Address-0 := 192.168.0.1
+&Tmp-IP-Address-0 := 192.168.1.1
 &Tmp-String-1 := "foo\000bar\000baz"
 
 cache_bin_key_ipaddr.store
@@ -82,7 +82,7 @@ if (!updated) {
 }
 
 # Now add a second entry
-&Tmp-IP-Address-0:= 192.168.0.2
+&Tmp-IP-Address-0:= 192.168.1.2
 &Tmp-String-1 := "bar\000baz"
 
 cache_bin_key_ipaddr.store
@@ -93,7 +93,7 @@ if (!updated) {
 &request -= &Tmp-String-1[*]
 
 # Now retrieve the first entry
-&Tmp-IP-Address-0 := 192.168.0.1
+&Tmp-IP-Address-0 := 192.168.1.1
 
 cache_bin_key_ipaddr.load
 if (!updated) {
@@ -111,7 +111,7 @@ if (&Tmp-String-1 != "foo\000bar\000baz") {
 &request -= &Tmp-String-1[*]
 
 # Now try and get the second entry
-&Tmp-IP-Address-0 := 192.168.0.2
+&Tmp-IP-Address-0 := 192.168.1.2
 
 cache_bin_key_ipaddr.load
 if (!updated) {
