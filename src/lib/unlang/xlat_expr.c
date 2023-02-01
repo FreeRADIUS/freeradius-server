@@ -2361,18 +2361,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		}
 
 		talloc_free(vpt);
-
-	} else {
-		/*
-		 *	Else we're not hoisting, set the node to the VPT
-		 */
-		node->vpt = vpt;
-		node->quote = quote;
-		node->fmt = vpt->name;
-
-		node->flags.pure = tmpl_is_data(node->vpt);
-		node->flags.constant = node->flags.pure;
-		node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
+		goto done;
 	}
 
 	/*
@@ -2381,13 +2370,23 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 *	to the same da.
 	 */
 	if (tmpl_is_attr(vpt)) {
-		fr_assert(!node->flags.pure);
 		if (tmpl_attr_unknown_add(vpt) < 0) {
 			fr_strerror_printf("Failed defining attribute %s", tmpl_attr_tail_da(vpt)->name);
 			fr_sbuff_set(&our_in, &opand_m);
 			goto error;
 		}
 	}
+
+	/*
+	 *	Else we're not hoisting, set the node to the VPT
+	 */
+	node->vpt = vpt;
+	node->quote = quote;
+	node->fmt = vpt->name;
+
+	node->flags.pure = tmpl_is_data(node->vpt);
+	node->flags.constant = node->flags.pure;
+	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 
 	if (tmpl_is_data(vpt)) {
 		/*
