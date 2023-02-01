@@ -5338,7 +5338,13 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		return FR_TLS_FAIL;
 
 	case handshake:
-		if ((ssn->is_init_finished) && (ssn->dirty_out.used == 0)) {
+		if (ssn->dirty_out.used > 0) {
+			RDEBUG2("(TLS) Peer ACKed our handshake fragment");
+			/* Fragmentation handler, send next fragment */
+			return FR_TLS_REQUEST;
+		}
+
+		if (ssn->is_init_finished || SSL_is_init_finished(ssn->ssl)) {
 			RDEBUG2("(TLS) Peer ACKed our handshake fragment.  handshake is finished");
 
 			/*
@@ -5350,9 +5356,8 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 			return FR_TLS_SUCCESS;
 		} /* else more data to send */
 
-		RDEBUG2("(TLS) Peer ACKed our handshake fragment");
-		/* Fragmentation handler, send next fragment */
-		return FR_TLS_REQUEST;
+		REDEBUG("(TLS) Cannot continue, as the peer is misbehaving.");
+		return FR_TLS_FAIL;
 
 	case application_data:
 		RDEBUG2("(TLS) Peer ACKed our application data fragment");
