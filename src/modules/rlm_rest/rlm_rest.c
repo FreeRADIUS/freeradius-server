@@ -265,7 +265,6 @@ static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_rest_t);
-	rlm_rest_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, rlm_rest_thread_t);
 	rlm_rest_xlat_rctx_t		*rctx = talloc_get_type_abort(xctx->rctx, rlm_rest_xlat_rctx_t);
 	int				hcode;
 	ssize_t				len;
@@ -332,7 +331,7 @@ finish:
 
 	rest_request_cleanup(inst, handle);
 
-	fr_pool_connection_release(t->pool, request, handle);
+	fr_rest_slab_release(handle);
 
 	talloc_free(rctx);
 
@@ -464,7 +463,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	We get a connection from the pool here as the CURL object
 	 *	is needed to use curl_easy_escape() for escaping
 	 */
-	randle = rctx->handle = fr_pool_connection_get(t->pool, request);
+	randle = rctx->handle = fr_rest_slab_reserve(t->slab);
 	if (!randle) return XLAT_ACTION_FAIL;
 
 	/*
@@ -482,7 +481,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	error:
 		rest_request_cleanup(inst, randle);
-		fr_pool_connection_release(t->pool, request, randle);
+		fr_rest_slab_release(randle);
 		talloc_free(section);
 
 		return XLAT_ACTION_FAIL;
@@ -543,7 +542,6 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
-	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
@@ -618,7 +616,7 @@ static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t 
 finish:
 	rest_request_cleanup(inst, handle);
 
-	fr_pool_connection_release(t->pool, request, handle);
+	fr_rest_slab_release(handle);
 
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -640,13 +638,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!section->name) RETURN_MODULE_NOOP;
 
-	handle = fr_pool_connection_get(t->pool, request);
+	handle = fr_rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rest_request_cleanup(inst, handle);
-		fr_pool_connection_release(t->pool, request, handle);
+		fr_rest_slab_release(handle);
 
 		RETURN_MODULE_FAIL;
 	}
@@ -658,7 +656,6 @@ static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
 					       module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
-	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
@@ -733,7 +730,7 @@ static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
 finish:
 	rest_request_cleanup(inst, handle);
 
-	fr_pool_connection_release(t->pool, request, handle);
+	fr_rest_slab_release(handle);
 
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -789,14 +786,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		RDEBUG2("Login attempt with password");
 	}
 
-	handle = fr_pool_connection_get(t->pool, request);
+	handle = fr_rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
 
 	ret = rlm_rest_perform(mctx, section,
 			       handle, request, username->vp_strvalue, password->vp_strvalue);
 	if (ret < 0) {
 		rest_request_cleanup(inst, handle);
-		fr_pool_connection_release(t->pool, request, handle);
+		fr_rest_slab_release(handle);
 
 		RETURN_MODULE_FAIL;
 	}
@@ -807,7 +804,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
-	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
@@ -850,7 +846,7 @@ static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result, module_ctx_t
 finish:
 	rest_request_cleanup(inst, handle);
 
-	fr_pool_connection_release(t->pool, request, handle);
+	fr_rest_slab_release(handle);
 
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -869,13 +865,13 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 
 	if (!section->name) RETURN_MODULE_NOOP;
 
-	handle = fr_pool_connection_get(t->pool, request);
+	handle = fr_rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rest_request_cleanup(inst, handle);
-		fr_pool_connection_release(t->pool, request, handle);
+		fr_rest_slab_release(handle);
 
 		RETURN_MODULE_FAIL;
 	}
@@ -886,7 +882,6 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
-	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
@@ -929,7 +924,7 @@ static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t 
 finish:
 	rest_request_cleanup(inst, handle);
 
-	fr_pool_connection_release(t->pool, request, handle);
+	fr_rest_slab_release(handle);
 
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -948,14 +943,14 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 
 	if (!section->name) RETURN_MODULE_NOOP;
 
-	handle = fr_pool_connection_get(t->pool, request);
+	handle = fr_rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rest_request_cleanup(inst, handle);
 
-		fr_pool_connection_release(t->pool, request, handle);
+		fr_rest_slab_release(handle);
 
 		RETURN_MODULE_FAIL;
 	}
