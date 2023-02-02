@@ -1167,6 +1167,12 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		return -1;
 	}
 
+	if (fr_rest_slab_list_alloc(t, &t->slab, mctx->el, &inst->conn_config.reusable,
+				    rest_conn_alloc, NULL, inst, false) < 0) {
+		ERROR("Connection handle pool instantiation failed");
+		return -1;
+	}
+
 	mhandle = fr_curl_io_init(t, mctx->el, inst->multiplex);
 	if (!mhandle) return -1;
 
@@ -1189,6 +1195,7 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 
 	talloc_free(t->mhandle);	/* Ensure this is shutdown before the pool */
 	fr_pool_free(t->pool);
+	talloc_free(t->slab);
 
 	return 0;
 }
@@ -1229,6 +1236,9 @@ static int instantiate(module_inst_ctx_t const *mctx)
 	{
 		return -1;
 	}
+
+	inst->conn_config.reusable.num_children = 1;
+	inst->conn_config.reusable.child_pool_size = sizeof(rlm_rest_curl_context_t);
 
 	return 0;
 }
