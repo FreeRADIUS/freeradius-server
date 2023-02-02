@@ -72,6 +72,19 @@ CONF_PARSER fr_curl_tls_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static CONF_PARSER reuse_curl_conn_config[] = {
+	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, fr_slab_config_t, min_elements), .dflt = "10" },
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, fr_slab_config_t, max_elements), .dflt = "100" },
+	{ FR_CONF_OFFSET("cleanup_interval", FR_TYPE_TIME_DELTA, fr_slab_config_t, interval), .dflt = "30s" },
+	CONF_PARSER_TERMINATOR
+};
+
+CONF_PARSER fr_curl_conn_config[] = {
+	{ FR_CONF_OFFSET("reuse", FR_TYPE_SUBSECTION, fr_curl_conn_config_t, reuse), .subcs = (void const *) reuse_curl_conn_config },
+	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, fr_curl_conn_config_t, connect_timeout), .dflt = "3.0" },
+	CONF_PARSER_TERMINATOR
+};
+
 int fr_curl_easy_tls_init(fr_curl_io_request_t *randle, fr_curl_tls_t const *conf)
 {
 	request_t *request = randle->request;
