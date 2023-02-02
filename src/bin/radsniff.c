@@ -760,7 +760,7 @@ static void rs_stats_print_csv_header(rs_update_t *this)
 			name,
 			name);
 
-		for (j = 0; j <= RS_RETRANSMIT_MAX; j++) {
+		for (j = 1; j <= RS_RETRANSMIT_MAX; j++) {
 			if (j != RS_RETRANSMIT_MAX) {
 				fprintf(stdout, ",\"%s rtx (%i)\"", name, j);
 			} else {
