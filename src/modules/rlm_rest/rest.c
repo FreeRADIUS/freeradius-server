@@ -1729,7 +1729,6 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 			char const *uri, char const *username, char const *password)
 {
 	rlm_rest_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
-	rlm_rest_thread_t const	*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 	CURL			*candle = randle->candle;
 	fr_time_delta_t		timeout;
@@ -1771,7 +1770,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_NOSIGNAL, 1L);
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
 
-	timeout = fr_pool_timeout(t->pool);
+	timeout = inst->conn_config.connect_timeout;
 	RDEBUG3("Connect timeout is %pVs, request timeout is %pVs",
 	        fr_box_time_delta(timeout), fr_box_time_delta(section->timeout));
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(timeout));
