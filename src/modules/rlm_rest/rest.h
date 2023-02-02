@@ -29,6 +29,7 @@ RCSIDH(rest_h, "$Id$")
 #include <freeradius-devel/curl/config.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/pool.h>
+#include <freeradius-devel/util/slab.h>
 
 /*
  *	The common JSON library (also tells us if we have json-c)
@@ -171,12 +172,16 @@ typedef struct {
 #endif
 } rlm_rest_t;
 
+FR_SLAB_TYPES(rest, fr_curl_io_request_t)
+FR_SLAB_FUNCS(rest, fr_curl_io_request_t)
+
 /** Thread specific rlm_rest instance data
  *
  */
 typedef struct {
 	rlm_rest_t const	*inst;		//!< Instance of rlm_rest.
 	fr_pool_t		*pool;		//!< Thread specific connection pool.
+	fr_rest_slab_list_t	*slab;		//!< Slab list for connection handles.
 	fr_curl_handle_t	*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch
 						//!< and coralling structure for REST requests.
 } rlm_rest_thread_t;
