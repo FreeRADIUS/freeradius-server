@@ -1134,33 +1134,9 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_rest_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
 	rlm_rest_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
 	fr_curl_handle_t	*mhandle;
-	CONF_SECTION		*my_conf = NULL, *pool;
 
 	t->inst = inst;
-
-	/*
-	 *	Temporary hack to make config parsing
-	 *	thread safe.
-	 */
-	if ((pool = cf_section_find(conf, "pool", NULL))) {
-		my_conf = cf_section_dup(NULL, NULL, pool, cf_section_name1(pool), cf_section_name2(pool), true);
-	} else {
-		my_conf = cf_section_alloc(NULL, NULL, "pool", NULL);
-	}
-	t->pool = fr_pool_init(NULL, my_conf, inst, rest_mod_conn_create, NULL, mctx->inst->name);
-	talloc_free(my_conf);
-
-	if (!t->pool) {
-		ERROR("Pool instantiation failed");
-		return -1;
-	}
-
-	if (fr_pool_start(t->pool) < 0) {
-		ERROR("Starting initial connections failed");
-		return -1;
-	}
 
 	if (fr_rest_slab_list_alloc(t, &t->slab, mctx->el, &inst->conn_config.reuse,
 				    rest_conn_alloc, NULL, inst, false) < 0) {
@@ -1189,7 +1165,6 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	rlm_rest_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 
 	talloc_free(t->mhandle);	/* Ensure this is shutdown before the pool */
-	fr_pool_free(t->pool);
 	talloc_free(t->slab);
 
 	return 0;

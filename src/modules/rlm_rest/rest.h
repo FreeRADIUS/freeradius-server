@@ -28,7 +28,6 @@ RCSIDH(rest_h, "$Id$")
 #include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/curl/config.h>
 #include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/pool.h>
 #include <freeradius-devel/util/slab.h>
 
 /*
@@ -156,8 +155,6 @@ typedef struct {
 	bool			multiplex;	//!< Whether to perform multiple requests using a single
 						///< connection.
 
-	fr_pool_t		*pool;		//!< Pointer to the connection pool.
-
 	fr_curl_conn_config_t	conn_config;	//!< Configuration of slab allocated connection handles.
 
 	rlm_rest_section_t	xlat;		//!< Configuration specific to xlat.
@@ -180,7 +177,6 @@ FR_SLAB_FUNCS(rest, fr_curl_io_request_t)
  */
 typedef struct {
 	rlm_rest_t const	*inst;		//!< Instance of rlm_rest.
-	fr_pool_t		*pool;		//!< Thread specific connection pool.
 	fr_rest_slab_list_t	*slab;		//!< Slab list for connection handles.
 	fr_curl_handle_t	*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch
 						//!< and coralling structure for REST requests.
