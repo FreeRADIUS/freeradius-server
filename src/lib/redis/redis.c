@@ -388,7 +388,8 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out, request_t *request,
 				   &(tmpl_rules_t){
 				   	.attr = {
 					   	.prefix = TMPL_ATTR_REF_PREFIX_NO,
-					   	.dict_def = request->dict
+					   	.dict_def = request->dict,
+						.list_def = request_attr_request
 				   	}
 				   });
 	if (slen <= 0) {
