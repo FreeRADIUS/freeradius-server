@@ -1097,6 +1097,34 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	return 0;
 }
 
+static int _mod_conn_free(fr_curl_io_request_t *randle)
+{
+	curl_easy_cleanup(randle->candle);
+	return 0;
+}
+
+static int rest_conn_alloc(fr_curl_io_request_t *randle, void *uctx)
+{
+	rlm_rest_t const	*inst = talloc_get_type_abort(uctx, rlm_rest_t);
+	rlm_rest_curl_context_t	*curl_ctx = NULL;
+
+	randle->candle = curl_easy_init();
+	if (unlikely(!randle->candle)) {
+		fr_strerror_printf("Unable to initialise CURL handle");
+		return -1;
+	}
+
+	MEM(curl_ctx = talloc_zero(randle, rlm_rest_curl_context_t));
+	curl_ctx->headers = NULL;
+	curl_ctx->request.instance = inst;
+	curl_ctx->response.instance = inst;
+
+	randle->uctx = curl_ctx;
+	talloc_set_destructor(randle, _mod_conn_free);
+
+	return 0;
+}
+
 /** Create a thread specific multihandle
  *
  * Easy handles representing requests are added to the curl multihandle
