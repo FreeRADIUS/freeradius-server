@@ -16,25 +16,35 @@
 	&Tmp-String-3 = "%(concat:%(pairs:Tmp-String-0[*]) ', ')"
 	&Tmp-String-4 = "%(concat:%(pairs:control.[*]) ', ')"
 	&Tmp-String-5 = "%(pairs:control.User-Name)"
+	&Tmp-String-6 = "%(pairs:request)"
+	&Tmp-String-7 = "%(pairs:request.[*])"
 }
 
-if !(&Tmp-String-1 == "User-Name = \"bob\", User-Password = \"hello\", Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331") {
+if !(&Tmp-String-1 == 'User-Name = "bob", User-Password = "hello", Tmp-String-0 = "This is a string", Tmp-String-0 = "This is another one", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331') {
 	test_fail
 }
 
-if !(&Tmp-String-2 == "Tmp-String-0 = \"This is a string\"") {
+if !(&Tmp-String-2 == 'Tmp-String-0 = "This is a string"') {
 	test_fail
 }
 
-if !(&Tmp-String-3 == "Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\"") {
+if !(&Tmp-String-3 == 'Tmp-String-0 = "This is a string", Tmp-String-0 = "This is another one"') {
 	test_fail
 }
 
-if !(&Tmp-String-4 == "Password.Cleartext = \"hello\"") {
+if !(&Tmp-String-4 == 'Password.Cleartext = "hello"') {
 	test_fail
 }
 
 if (!(&Tmp-String-5 == '')) {
+	test_fail
+}
+
+if !(&Tmp-String-6 == 'request = { User-Name = "bob", User-Password = "hello", Tmp-String-0 = "This is a string", Tmp-String-0 = "This is another one", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331 }') {
+	test_fail
+}
+
+if !(&Tmp-String-7 == 'User-Name = "bob"User-Password = "hello"Tmp-String-0 = "This is a string"Tmp-String-0 = "This is another one"Tmp-Octets-0 = 0x000504030201Tmp-Integer-0 = 7331') {
 	test_fail
 }
 
