@@ -501,7 +501,7 @@ update reply {
 Maximum should be 12300000000
 ```
 
-=== %(pairs:<&list:[*]>)
+=== %(pairs:<list>.[*])
 
 Serialize attributes as comma-delimited string.
 
@@ -517,7 +517,7 @@ update {
 }
 
 update reply {
-    &Reply-Message := "Serialize output: %(pairs:&control[*])"
+    &Reply-Message := "Serialize output: %(pairs:&control.[*])"
 }
 ----
 
