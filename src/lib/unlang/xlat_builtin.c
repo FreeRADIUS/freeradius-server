@@ -2323,7 +2323,7 @@ static xlat_arg_parser_t const xlat_func_concat_args[] = {
  *
  * Example:
 @verbatim
-"%(concat:%{request[*]} ,)" == "<attr1value>,<attr2value>,<attr3value>,..."
+"%(concat:%{request.[*]} ,)" == "<attr1value>,<attr2value>,<attr3value>,..."
 "%(concat:%{Tmp-String-0[*]} '. ')" == "<str1value>. <str2value>. <str3value>. ..."
 "%(concat:%(join:%{User-Name} %{Calling-Station-Id}) ', ')" == "bob, aa:bb:cc:dd:ee:ff"
 @endverbatim
@@ -2726,8 +2726,8 @@ static xlat_arg_parser_t const xlat_func_pairs_args[] = {
  *
  * Example:
 @verbatim
-"%(pairs:request[*])" == "User-Name = 'foo'User-Password = 'bar'"
-"%{concat:, %(pairs:request[*])}" == "User-Name = 'foo', User-Password = 'bar'"
+"%(pairs:request.[*])" == 'User-Name = "foo"User-Password = "bar"'
+"%(concat:%(pairs:request.[*]) ', ')" == 'User-Name = "foo", User-Password = "bar"'
 @endverbatim
  *
  * @see #xlat_func_concat
