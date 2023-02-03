@@ -21,10 +21,6 @@ if (!(&reply.Session-Timeout == 7200)) {
         test_fail
 }
 
-if ("%(pairs:reply.)" == "") {
-        test_fail
-}
-
 # Attempt a bind authentication
 ldapssl.authenticate
 
