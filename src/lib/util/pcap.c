@@ -404,8 +404,9 @@ int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 	}
 
 	if (pcap_setfilter(pcap->handle, &fp) < 0) {
-		fr_strerror_printf("%s", pcap_geterr(pcap->handle));
+		pcap_freecode(&fp);
 
+		fr_strerror_printf("%s", pcap_geterr(pcap->handle));
 		return -1;
 	}
 
