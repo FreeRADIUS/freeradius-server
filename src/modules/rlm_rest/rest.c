@@ -2153,46 +2153,6 @@ int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *s
 	return ret;
 }
 
-/** Cleans up after a REST request.
- *
- * Resets all options associated with a CURL handle, and frees any headers
- * associated with it.
- *
- * Calls rest_read_ctx_free and rest_response_free to free any memory used by
- * context data.
- *
- * @param[in] instance configuration data.
- * @param[in] randle to cleanup.
- */
-void rest_request_cleanup(UNUSED rlm_rest_t const *instance, fr_curl_io_request_t *randle)
-{
-	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
-	CURL			*candle = randle->candle;
-
-	/*
-	 *  Clear any previously configured options
-	 */
-	curl_easy_reset(candle);
-
-	/*
-	 *  Free header list
-	 */
-	if (ctx->headers != NULL) {
-		curl_slist_free_all(ctx->headers);
-		ctx->headers = NULL;
-	}
-
-	/*
-	 *  Free response data
-	 */
-	TALLOC_FREE(ctx->body);
-	TALLOC_FREE(ctx->response.buffer);
-	TALLOC_FREE(ctx->request.encoder);
-	TALLOC_FREE(ctx->response.decoder);
-
-	randle->request = NULL;
-}
-
 /** URL encodes a string.
  *
  * Encode special chars as per RFC 3986 section 4.
