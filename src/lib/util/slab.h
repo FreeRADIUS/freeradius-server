@@ -54,6 +54,7 @@ extern "C" {
 \
 	typedef int (*fr_ ## _type ## _slab_free_t)(_type *elem, void *uctx); \
 	typedef int (*fr_ ## _type ## _slab_alloc_t)(_type *elem, void *uctx); \
+	typedef int (*fr_ ## _type ## _slab_reserve_t)(_type *elem, void *uctx); \
 \
 	typedef struct { \
 		FR_DLIST_HEAD(fr_ ## _name ## _slab)	reserved; \
@@ -70,9 +71,9 @@ extern "C" {
 		unsigned int				num_children; \
 		size_t					child_pool_size; \
 		fr_ ## _type ## _slab_alloc_t		alloc; \
+		fr_ ## _type ## _slab_reserve_t		reserve; \
 		void					*uctx; \
 		bool					release_reset; \
-		bool					reserve_init; \
 	} fr_ ## _name ## _slab_list_t; \
 \
 	typedef struct { \
@@ -87,7 +88,6 @@ extern "C" {
 		_type						elem; \
 		FR_DLIST_ENTRY(fr_ ## _name ## _slab_element)	entry; \
 		bool						in_use; \
-		bool						initialised; \
 		fr_ ## _name ## _slab_t 			*slab; \
 		fr_ ## _type ## _slab_free_t 			free; \
 		void						*uctx; \
@@ -152,9 +152,9 @@ extern "C" {
 	 * @param[in] num_children	Number of children expected to be allocated from each element. \
 	 * @param[in] child_pool_size	Additional memory to allocate to each element for child allocations. \
 	 * @param[in] alloc		Optional callback to use when allocating new elements. \
-	 * @param[in] uctx		to pass to allocation callback. \
+	 * @param[in] reserve		Optional callback run on element reserving. \
+	 * @param[in] uctx		to pass to callbacks. \
 	 * @param[in] release_reset	Should elements be reset and children freed when the element is released.\
-	 * @param[in] reserve_init	Should elements be initialised with the alloc function each time they are reserved.\
 	 */ \
 	static inline CC_HINT(nonnull(2)) int fr_ ## _name ## _slab_list_alloc(TALLOC_CTX *ctx, \
 									       fr_ ## _name ## _slab_list_t **out, \
@@ -167,9 +167,9 @@ extern "C" {
 									       size_t num_children, \
 									       size_t child_pool_size, \
 									       fr_ ## _type ## _slab_alloc_t alloc, \
+									       fr_ ## _type ## _slab_reserve_t reserve, \
 									       void *uctx, \
-									       bool release_reset, \
-									       bool reserve_init) \
+									       bool release_reset) \
 	{ \
 		MEM(*out = talloc_zero(ctx, fr_ ## _name ## _slab_list_t)); \
 		(*out)->el = el; \
@@ -179,11 +179,11 @@ extern "C" {
 		(*out)->max_elements = max_elements; \
 		(*out)->at_max_fail = at_max_fail; \
 		(*out)->alloc = alloc; \
-		(*out)->num_children = num_children, \
-		(*out)->child_pool_size = child_pool_size, \
+		(*out)->num_children = num_children; \
+		(*out)->child_pool_size = child_pool_size; \
+		(*out)->reserve = reserve; \
 		(*out)->uctx = uctx; \
 		(*out)->release_reset = release_reset; \
-		(*out)->reserve_init = reserve_init; \
 		fr_ ## _name ## _slab_init(&(*out)->reserved); \
 		fr_ ## _name ## _slab_init(&(*out)->avail); \
 		if (el) (void) fr_event_timer_in(*out, el, &(*out)->ev, interval, _ ## _name ## _slab_cleanup, *out); \
@@ -192,7 +192,7 @@ extern "C" {
 \
 	/** Callback for talloc freeing a slab element \
 	 * \
-	 * Ensure that the custom destructor is called even if \
+	 * Ensure that the element reset and custom destructor is called even if \
 	 * the element is not released before being freed. \
 	 * Also ensure the element is removed from the relevant list. \
 	 */ \
@@ -264,7 +264,6 @@ extern "C" {
 						new_element = prev; \
 						continue; \
 					} \
-					new_element->initialised = true; \
 				} \
 			} \
 			slab_list->high_water_mark += fr_ ## _name ## _slab_element_num_elements(&slab->avail); \
@@ -277,10 +276,6 @@ extern "C" {
 				fr_ ## _name ## _slab_remove(&slab_list->avail, slab); \
 				fr_ ## _name ## _slab_insert_tail(&slab_list->reserved, slab); \
 			} \
-			if (slab_list->reserve_init && slab_list->alloc && !element->initialised) { \
-				slab_list->alloc((_type *)element, slab_list->uctx); \
-				element->initialised = true; \
-			} \
 			element->in_use = true; \
 			slab_list->in_use++; \
 		} else { \
@@ -288,6 +283,7 @@ extern "C" {
 			talloc_set_destructor(element, _ ## _type ## _element_free); \
 			if (slab_list->alloc) slab_list->alloc((_type *)element, slab_list->uctx); \
 		} \
+		if (slab_list->reserve) slab_list->reserve((_type *)element, slab_list->uctx); \
 		return (_type *)element; \
 	} \
 \
@@ -332,7 +328,6 @@ extern "C" {
 				fr_ ## _name ## _slab_insert_tail(&slab_list->avail, slab); \
 			} \
 			slab_list->in_use--; \
-			element->initialised = false; \
 			return; \
 		} \
 		element->in_use = false; \

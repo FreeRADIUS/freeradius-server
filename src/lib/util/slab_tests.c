@@ -52,7 +52,7 @@ static void test_alloc(void)
 	/*
 	 *	Each slab will contain 2 elements, maximum of 4 elements allocated from slabs.
 	 */
-	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, false, 0, 0, NULL, NULL, true, false);
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
 
@@ -123,7 +123,7 @@ static void test_alloc_fail(void)
 	/*
 	 *	Each slab will contain 2 elements, maximum of 4 elements allocated from slabs.
 	 */
-	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, true, 0, 0, NULL, NULL, true, false);
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, true, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
 
@@ -158,7 +158,7 @@ static void test_reuse_reset(void)
 	test_uctx_t		test_uctx;
 	int			ret = -1;
 
-	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, false, 0, 0, NULL, NULL, true, false);
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
 
@@ -219,7 +219,7 @@ static void test_reuse_noreset(void)
 	test_uctx_t		test_uctx;
 	int			ret = -1;
 
-	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, false, 0, 0, NULL, NULL, false, false);
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, false, 0, 0, NULL, NULL, NULL, false);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
 
@@ -272,7 +272,7 @@ static void test_free(void)
 	test_uctx_t		test_uctx;
 	int			ret = -1;
 
-	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, false, 0, 0, NULL, NULL, true, false);
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
 
@@ -300,14 +300,14 @@ static int test_element_alloc(test_element_t *elem, void *uctx)
 /** Test that a callback correctly initialises slab elements on first use
  *
  */
-static void test_init_1(void)
+static void test_init(void)
 {
 	fr_test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[2];
 	test_conf_t		test_conf = { .initial = 10 };
 	int			ret = -1;
 
-	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 1, 1, 4, false, 0, 0, test_element_alloc, &test_conf, false, false);
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 1, 1, 4, false, 0, 0, test_element_alloc, NULL, &test_conf, false);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
 
@@ -324,7 +324,6 @@ static void test_init_1(void)
 	}
 
 	/*
-	 *	Slab set not to reset elements, nor re-init
 	 *	Re-reserve and check element is unchanged.
 	 */
 	test_elements[1] = fr_test_slab_reserve(test_slab_list);
@@ -335,17 +334,17 @@ static void test_init_1(void)
 	talloc_free(test_slab_list);
 }
 
-/** Test that a callback correctly re-initialises slab elements on use
+/** Test that a reserve callback correctly initialises slab elements
  *
  */
-static void test_init_2(void)
+static void test_reserve(void)
 {
 	fr_test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[2];
 	test_conf_t		test_conf = { .initial = 10 };
 	int			ret = -1;
 
-	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 1, 1, 4, false, 0, 0, test_element_alloc, &test_conf, false, true);
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 1, 1, 4, false, 0, 0, NULL, test_element_alloc, &test_conf, false);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
 
@@ -362,13 +361,56 @@ static void test_init_2(void)
 	}
 
 	/*
-	 *	Slab set re-init
-	 *	Re-reserve and check element is reinitialised.
+	 *	Re-reserve and check element is re-initialised.
 	 */
 	test_elements[1] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[1] != NULL);
 	TEST_CHECK(test_elements[1] == test_elements[0]);
 	if (test_elements[1]) TEST_CHECK(test_elements[1]->num == 10);
+
+	talloc_free(test_slab_list);
+}
+
+static int test_element_reserve(test_element_t *elem, void *uctx)
+{
+	test_conf_t	*test_conf = uctx;
+	elem->num = test_conf->initial * 2;
+	return 0;
+}
+
+/** Test that reserve callback runs after init callback
+ *
+ */
+static void test_init_reserve(void)
+{
+	fr_test_slab_list_t	*test_slab_list;
+	test_element_t		*test_elements[2];
+	test_conf_t		test_conf = { .initial = 10 };
+	int			ret = -1;
+
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 1, 1, 4, false, 0, 0, test_element_alloc, test_element_reserve, &test_conf, false);
+	TEST_CHECK(ret == 0);
+	TEST_CHECK(test_slab_list != NULL);
+
+	test_elements[0] = fr_test_slab_reserve(test_slab_list);
+	TEST_CHECK(test_elements[0] != NULL);
+	TEST_CHECK(test_elements[0] && (test_elements[0]->num == 20));
+
+	/*
+	 *	Change element data and release
+	 */
+	if (test_elements[0]) {
+		test_elements[0]->num = 5;
+		fr_test_slab_release(test_elements[0]);
+	}
+
+	/*
+	 *	Re-reserve and check reset callback is run.
+	 */
+	test_elements[1] = fr_test_slab_reserve(test_slab_list);
+	TEST_CHECK(test_elements[1] != NULL);
+	TEST_CHECK(test_elements[1] == test_elements[0]);
+	if (test_elements[1]) TEST_CHECK(test_elements[1]->num == 20);
 
 	talloc_free(test_slab_list);
 }
@@ -387,7 +429,7 @@ static void test_clearup_1(void)
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	fr_event_list_set_time_func(el, test_time);
 
-	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, el, fr_time_delta_from_sec(1), 2, 1, 6, false, 0, 0, NULL, NULL, true, false);
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, el, fr_time_delta_from_sec(1), 2, 1, 6, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
 
 	/*
@@ -438,7 +480,7 @@ static void test_clearup_2(void)
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	fr_event_list_set_time_func(el, test_time);
 
-	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, el, fr_time_delta_from_sec(1), 2, 16, 20, false, 0, 0, NULL, NULL, true, false);
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, el, fr_time_delta_from_sec(1), 2, 16, 20, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
 
 	/*
@@ -499,7 +541,7 @@ static void test_clearup_3(void)
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	fr_event_list_set_time_func(el, test_time);
 
-	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, el, fr_time_delta_from_sec(1), 2, 0, 20, false, 0, 0, NULL, NULL, true, false);
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, el, fr_time_delta_from_sec(1), 2, 0, 20, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
 
 	/*
@@ -589,7 +631,7 @@ static void test_realloc(void)
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	fr_event_list_set_time_func(el, test_time);
 
-	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, el, fr_time_delta_from_sec(1), 2, 0, 20, false, 0, 0, NULL, NULL, true, false);
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, el, fr_time_delta_from_sec(1), 2, 0, 20, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
 
 	/*
@@ -642,7 +684,7 @@ static void test_child_alloc(void)
 	test_element_t		*test_elements[2];
 	int			ret = -1;
 
-	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 2, true, 1, 128, NULL, NULL, false, false);
+	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 2, true, 1, 128, NULL, NULL, NULL, false);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
 
@@ -677,8 +719,9 @@ TEST_LIST = {
 	{ "test_reuse_reset",	test_reuse_reset },
 	{ "test_reuse_noreset", test_reuse_noreset },
 	{ "test_free",		test_free },
-	{ "test_init_1",	test_init_1 },
-	{ "test_init_2",	test_init_2 },
+	{ "test_init",		test_init },
+	{ "test_reserve",	test_reserve },
+	{ "test_init_reserve",	test_init_reserve },
 	{ "test_clearup_1",	test_clearup_1 },
 	{ "test_clearup_2",	test_clearup_2 },
 	{ "test_clearup_3",	test_clearup_3 },
