@@ -295,8 +295,6 @@ int rest_response_decode(rlm_rest_t const *instance,
 void rest_response_error(request_t *request, fr_curl_io_request_t *handle);
 void rest_response_debug(request_t *request, fr_curl_io_request_t *handle);
 
-void rest_request_cleanup(rlm_rest_t const *instance, fr_curl_io_request_t *randle);
-
 #define rest_get_handle_code(_handle)(((rlm_rest_curl_context_t*)((fr_curl_io_request_t*)(_handle))->uctx)->response.code)
 
 #define rest_get_handle_type(_handle)(((rlm_rest_curl_context_t*)((fr_curl_io_request_t*)(_handle))->uctx)->response.type)

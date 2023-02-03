@@ -264,7 +264,6 @@ static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
 				      request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_rest_t);
 	rlm_rest_xlat_rctx_t		*rctx = talloc_get_type_abort(xctx->rctx, rlm_rest_xlat_rctx_t);
 	int				hcode;
 	ssize_t				len;
@@ -328,8 +327,6 @@ finish:
 		fr_value_box_bstrndup(vb, vb, NULL, body, len, true);
 		fr_dcursor_insert(out, vb);
 	}
-
-	rest_request_cleanup(inst, handle);
 
 	fr_rest_slab_release(handle);
 
@@ -480,7 +477,6 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		RPEDEBUG("Failed escaping URI");
 
 	error:
-		rest_request_cleanup(inst, randle);
 		fr_rest_slab_release(randle);
 		talloc_free(section);
 
@@ -614,8 +610,6 @@ static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t 
 	}
 
 finish:
-	rest_request_cleanup(inst, handle);
-
 	fr_rest_slab_release(handle);
 
 	RETURN_MODULE_RCODE(rcode);
@@ -643,7 +637,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		rest_request_cleanup(inst, handle);
 		fr_rest_slab_release(handle);
 
 		RETURN_MODULE_FAIL;
@@ -728,8 +721,6 @@ static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
 	}
 
 finish:
-	rest_request_cleanup(inst, handle);
-
 	fr_rest_slab_release(handle);
 
 	RETURN_MODULE_RCODE(rcode);
@@ -792,7 +783,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	ret = rlm_rest_perform(mctx, section,
 			       handle, request, username->vp_strvalue, password->vp_strvalue);
 	if (ret < 0) {
-		rest_request_cleanup(inst, handle);
 		fr_rest_slab_release(handle);
 
 		RETURN_MODULE_FAIL;
@@ -844,8 +834,6 @@ static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result, module_ctx_t
 	}
 
 finish:
-	rest_request_cleanup(inst, handle);
-
 	fr_rest_slab_release(handle);
 
 	RETURN_MODULE_RCODE(rcode);
@@ -870,7 +858,6 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 
 	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		rest_request_cleanup(inst, handle);
 		fr_rest_slab_release(handle);
 
 		RETURN_MODULE_FAIL;
@@ -922,8 +909,6 @@ static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t 
 	}
 
 finish:
-	rest_request_cleanup(inst, handle);
-
 	fr_rest_slab_release(handle);
 
 	RETURN_MODULE_RCODE(rcode);
@@ -948,8 +933,6 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 
 	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		rest_request_cleanup(inst, handle);
-
 		fr_rest_slab_release(handle);
 
 		RETURN_MODULE_FAIL;
@@ -1098,6 +1081,47 @@ static int _mod_conn_free(fr_curl_io_request_t *randle)
 	return 0;
 }
 
+/** Cleans up after a REST request.
+ *
+ * Resets all options associated with a CURL handle, and frees any headers
+ * associated with it.
+ *
+ * Calls rest_read_ctx_free and rest_response_free to free any memory used by
+ * context data.
+ *
+ * @param[in] randle to cleanup.
+ * @param[in] uctx unused.
+ */
+static int rest_request_cleanup(fr_curl_io_request_t *randle, UNUSED void *uctx)
+{
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
+	CURL			*candle = randle->candle;
+
+	/*
+	 *  Clear any previously configured options
+	 */
+	curl_easy_reset(candle);
+
+	/*
+	 *  Free header list
+	 */
+	if (ctx->headers != NULL) {
+		curl_slist_free_all(ctx->headers);
+		ctx->headers = NULL;
+	}
+
+	/*
+	 *  Free response data
+	 */
+	TALLOC_FREE(ctx->body);
+	TALLOC_FREE(ctx->response.buffer);
+	TALLOC_FREE(ctx->request.encoder);
+	TALLOC_FREE(ctx->response.decoder);
+
+	randle->request = NULL;
+	return 0;
+}
+
 static int rest_conn_alloc(fr_curl_io_request_t *randle, void *uctx)
 {
 	rlm_rest_t const	*inst = talloc_get_type_abort(uctx, rlm_rest_t);
@@ -1116,6 +1140,8 @@ static int rest_conn_alloc(fr_curl_io_request_t *randle, void *uctx)
 
 	randle->uctx = curl_ctx;
 	talloc_set_destructor(randle, _mod_conn_free);
+
+	fr_rest_slab_element_set_destructor(randle, rest_request_cleanup, NULL);
 
 	return 0;
 }
