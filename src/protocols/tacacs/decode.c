@@ -591,11 +591,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			p = BODY(authen_cont);
 			PACKET_HEADER_CHECK("Authentication Continue");
 
-			if (pkt->authen_start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII) {
-				fr_strerror_const("Authentication-Continue packets MUST NOT be used for PAP, CHAP, MS-CHAP");
-				goto fail;
-			}
-
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_CONTINUE);
 
 			/*
