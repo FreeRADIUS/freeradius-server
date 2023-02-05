@@ -608,7 +608,7 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
         --with-rlm-sql-postgresql-lib-dir=%{_libdir} \
         --with-rlm-sql_mysql-include-dir=/usr/include/mysql \
-%if %{without rlm_sql_oracle} \
+%if %{without rlm_sql_oracle}
         --without-rlm_sql_oracle \
 %else
         --with-oracle-include-dir=%{oracle_include_dir} \
