@@ -11,31 +11,31 @@
 # which are installed in /opt/openssl you should pass
 # _with_freeradius_openssl
 
-%{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
+%{!?with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
 
-%{!?_with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
-%{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
-%{!?_with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
-%{!?_with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
-%{!?_with_rlm_sigtran: %global _without_rlm_sigtran --without-rlm_sigtran}
-%{?_without_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
+%{!?with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
+%{!?with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
+%{!?with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
+%{!?with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
+%{!?with_rlm_sigtran: %global _without_rlm_sigtran --without-rlm_sigtran}
+%{!?with_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
 
 # experimental modules
 %bcond_with rlm_idn
 %bcond_with rlm_mruby
 %bcond_with rlm_sql_oracle
-%{?_with_rlm_idn: %global _with_experimental_modules --with-experimental-modules}
-%{?_with_rlm_opendirectory: %global _with_experimental_modules --with-experimental-modules}
-%{?_with_rlm_mruby: %global _with_experimental_modules --with-experimental-modules}
-%{?_with_rlm_securid: %global _with_experimental_modules --with-experimental-modules}
-%{?_with_rlm_sql_oracle: %global _with_experimental_modules --with-experimental-modules}
+%{?with_rlm_idn: %global _with_experimental_modules --with-experimental-modules}
+%{?with_rlm_opendirectory: %global _with_experimental_modules --with-experimental-modules}
+%{?with_rlm_mruby: %global _with_experimental_modules --with-experimental-modules}
+%{?with_rlm_securid: %global _with_experimental_modules --with-experimental-modules}
+%{?with_rlm_sql_oracle: %global _with_experimental_modules --with-experimental-modules}
 
-%if %{?_with_experimental_modules:1}%{!?_with_experimental_modules:0}
-%{!?_with_rlm_idn: %global _without_rlm_idn --without-rlm_idn}
-%{!?_with_rlm_opendirectory: %global _without_rlm_opendirectory --without-rlm_opendirectory}
-%{!?_with_rlm_mruby: %global _without_rlm_mruby --without-rlm_mruby}
-%{!?_with_rlm_securid: %global _without_rlm_securid --without-rlm_securid}
-%{!?_with_rlm_sql_oracle: %global _without_rlm_sql_oracle --without-rlm_sql_oracle}
+%if %{with experimental_modules}
+%{!?with_rlm_idn: %global _without_rlm_idn --without-rlm_idn}
+%{!?with_rlm_opendirectory: %global _without_rlm_opendirectory --without-rlm_opendirectory}
+%{!?with_rlm_mruby: %global _without_rlm_mruby --without-rlm_mruby}
+%{!?with_rlm_securid: %global _without_rlm_securid --without-rlm_securid}
+%{!?with_rlm_sql_oracle: %global _without_rlm_sql_oracle --without-rlm_sql_oracle}
 %endif
 
 Summary: High-performance and highly configurable free RADIUS server
@@ -69,7 +69,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires: autoconf
 BuildRequires: gdbm-devel
-%if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
+%if %{with freeradius_openssl}
 BuildRequires: freeradius-openssl, freeradius-openssl-devel
 %else
 %if 0%{?rhel}%{?fedora} < 8
@@ -85,7 +85,7 @@ BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
-%if %{?_with_wbclient:1}%{!?_with_wbclient:0}
+%if %{with wbclient}
 %{?el7:BuildRequires: libwbclient-devel}
 %{?el7:BuildRequires: samba-devel}
 %endif
@@ -101,7 +101,7 @@ Requires(pre): shadow-utils glibc-common
 Requires(post): /sbin/chkconfig /usr/sbin/setsebool
 Requires(preun): /sbin/chkconfig
 Requires: freeradius-config = %{version}-%{release}
-%if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
+%if %{with freeradius_openssl}
 Requires: freeradius-openssl
 %else
 %if 0%{?rhel}%{?fedora} < 8
@@ -119,13 +119,13 @@ Requires: libpcap
 Requires: libtalloc
 Requires: net-snmp
 Requires: readline
-%if %{?_with_wbclient:1}%{!?_with_wbclient:0}
+%if %{with wbclient}
 %{?el7:Requires: libwbclient}
 %endif
 Requires: zlib
 Requires: pam
 
-%if %{?_with_rlm_idn:1}%{?!_with_rlm_idn:0}
+%if %{with rlm_idn}
 Requires: libidn
 BuildRequires: libidn-devel
 %endif
@@ -281,7 +281,7 @@ Provides common functions used by other FreeRADIUS libraries and modules.
 # END 3rd party utility library packages
 #
 
-%if %{?_with_rlm_cache_memcached:1}%{?!_with_rlm_cache_memcached:0}
+%if %{with rlm_cache_memcached}
 %package memcached
 Summary: Memcached support for freeRADIUS
 Group: System Environment/Daemons
@@ -311,7 +311,7 @@ BuildRequires: krb5-devel
 %description krb5
 This plugin provides Kerberos 5 support for the FreeRADIUS server project.
 
-%if %{!?_without_ldap:1}%{?_without_ldap:0}
+%if %{with ldap}
 %package ldap
 Summary: LDAP support for FreeRADIUS
 Group: System Environment/Daemons
@@ -412,7 +412,7 @@ BuildRequires: freetds-devel
 %description freetds
 This plugin provides FreeTDS support for the FreeRADIUS server project.
 
-%if %{?_with_rlm_sql_oracle:1}%{!?_with_rlm_sql_oracle:0}
+%if %{with rlm_sql_oracle}
 %package oracle
 Summary: Oracle support for FreeRADIUS
 Group: System Environment/Daemons
@@ -452,7 +452,7 @@ Requires: freeradius-libfreeradius-curl = %{version}
 %description rest
 This plugin provides the ability to interact with REST APIs for the FreeRADIUS server project.
 
-%if %{?_with_rlm_mruby:1}%{!?_with_rlm_mruby:0}
+%if %{with rlm_mruby}
 %package ruby
 Summary: Ruby support for FreeRADIUS
 Group: System Environment/Daemons
@@ -464,7 +464,7 @@ BuildRequires: ruby ruby-devel
 This plugin provides Ruby support for the FreeRADIUS server project.
 %endif
 
-%if %{?_with_rlm_sigtran:1}%{!?_with_rlm_sigtran:0}
+%if %{with rlm_sigtran}
 %package sigtran
 Summary: Sigtran support for FreeRADIUS
 Group: System Environment/Daemons
@@ -476,7 +476,7 @@ BuildRequires: libosmo-sccp-devel, libosmo-xua-devel, libosmo-mtp-devel, libosmo
 This plugin provides an experimental M3UA/SCCP/TCAP/MAP stack for the FreeRADIUS server project.
 %endif
 
-%if %{?_with_rlm_yubikey:1}%{!?_with_rlm_yubikey:0}
+%if %{with rlm_yubikey}
 %package yubikey
 Summary: YubiCloud support for FreeRADIUS
 Group: System Environment/Daemons
@@ -515,7 +515,7 @@ find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \
 
 %build
 # Retain CFLAGS from the environment...
-%if %{?_with_developer:1}%{!?_with_developer:0}
+%if %{with developer}
 export CFLAGS="$CFLAGS -g3 -fpic"
 export CXXFLAGS="$CFLAGS"
 %endif
@@ -565,7 +565,7 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
-%if %{!?_without_ldap:1}%{?_without_ldap:0}
+%if %{with ldap}
         --with-libfreeradius-ldap-include-dir=/usr/local/openldap/include \
         --with-libfreeradius-ldap-lib-dir=/usr/local/openldap/lib64 \
 %endif
@@ -588,7 +588,7 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 %endif
         --with-winbind-include-dir=/usr/include/samba-4.0 \
         --with-winbind-lib-dir=/usr/lib64/samba \
-%if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
+%if %{with freeradius_openssl}
         --with-openssl-lib-dir=/opt/openssl/lib \
         --with-openssl-include-dir=/opt/openssl/include \
 %else
@@ -597,20 +597,20 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --with-openssl-include-dir=/opt/nwkrad/include \
 %endif
 %endif
-%if %{?_with_developer:1}%{!?_with_developer:0}
+%if %{with developer}
         --enable-developer=yes \
         --with-gperftools \
 %endif
-%if %{?_with_address_sanitizer:1}%{!?_with_address_sanitizer:0}
+%if %{with address_sanitizer}
         --enable-address-sanitizer \
 %endif
-%if %{?_with_leak_sanitizer:1}%{!?_with_leak_sanitizer:0}
+%if %{with leak_sanitizer}
         --enable-leak-sanitizer \
 %endif
-%if %{?_with_thread_sanitizer:1}%{!?_with_thread_sanitizer:0}
+%if %{with thread_sanitizer}
         --enable-thread-sanitizer \
 %endif
-%if %{?_with_undefined_behaviour_sanitizer:1}%{!?_with_undefined_behaviour_sanitizer:0}
+%if %{with undefined_behaviour_sanitizer}
         --enable-undefined-behaviour-sanitizer \
 %endif
         %{?_with_rlm_yubikey} \
@@ -677,18 +677,18 @@ rm -f $RPM_BUILD_ROOT/usr/bin/radsizes
 rm -f $RPM_BUILD_ROOT/usr/sbin/rc.radiusd
 rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.a
 rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.la
-%if %{?_with_rlm_idn:0}%{!?_with_rlm_idn:1}
+%if %{without rlm_idn}
 rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-available/idn
 %endif
-%if %{?_with_rlm_mruby:0}%{!?_with_rlm_mruby:1}
+%if %{without rlm_ruby}
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/ruby
 %endif
-%if %{?_with_rlm_sql_oracle:0}%{!?_with_rlm_sql_oracle:1}
+%if %{without rlm_sql_oracle}
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/driver/oracle
 %endif
-%if %{?_with_rlm_unbound:0}%{!?_with_rlm_unbound:1}
+%if %{without rlm_unbound}
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/unbound
 %endif
 rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/rlm_test.so
@@ -812,15 +812,17 @@ fi
 %dir %attr(700,radiusd,radiusd) /var/log/radius/radacct/
 %ghost %attr(644,radiusd,radiusd) /var/log/radius/radutmp
 %ghost %attr(600,radiusd,radiusd) /var/log/radius/radius.log
+
 # RADIUS shared libs
 %attr(755,root,root) %{_libdir}/freeradius/lib*.so*
+
 # RADIUS Loadable Modules
 %dir %attr(755,root,root) %{_libdir}/freeradius
 %{_libdir}/freeradius/*.so
 
 
-%{?_with_rlm_idn: %{_libdir}/freeradius/rlm_idn.so}
-%if %{?_with_experimental_modules:1}%{!?_with_experimental_modules:0}
+%{?with_rlm_idn: %{_libdir}/freeradius/rlm_idn.so}
+%if %{with experimental_modules}
 %endif
 
 %files config
@@ -865,7 +867,7 @@ fi
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-enabled
 %config(noreplace) %{_sysconfdir}/raddb/mods-enabled/*
 # ruby
-%if %{?_with_rlm_mruby:1}%{!?_with_rlm_mruby:0}
+%if %{with rlm_mruby}
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/ruby
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/ruby/*
 %endif
@@ -952,7 +954,7 @@ fi
 #
 #  Oracle
 #
-%if %{?_with_rlm_sql_oracle:1}%{!?_with_rlm_sql_oracle:0}
+%if %{with rlm_sql_oracle}
 %dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/main/oracle
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/oracle/*
 
@@ -1023,7 +1025,7 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/libfreeradius-util.so
 
-%if %{?_with_rlm_cache_memcached:1}%{!?_with_rlm_cache_memcached:0}
+%if %{with rlm_cache_memcached}
 %files memcached
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_cache_memcached.so
@@ -1053,7 +1055,7 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sql_sqlite.so
 
-%if %{!?_without_ldap:1}%{?_without_ldap:0}
+%if %{with ldap}
 %files ldap
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_ldap.so
@@ -1076,13 +1078,13 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_rest.so
 
-%if %{?_with_rlm_sigtran:1}%{!?_with_rlm_sigtran:0}
+%if %{with rlm_sigtran}
 %files sigtran
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sigtran.so
 %endif
 
-%if %{?_with_rlm_mruby:1}%{!?_with_rlm_mruby:0}
+%if %{with rlm_mruby}
 %files ruby
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_mruby.so
@@ -1092,13 +1094,13 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sql_freetds.so
 
-%if %{?_with_rlm_sql_oracle:1}%{!?_with_rlm_sql_oracle:0}
+%if %{with rlm_sql_oracle}
 %files oracle
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sql_oracle.so
 %endif
 
-%if %{?_with_rlm_yubikey:1}%{!?_with_rlm_yubikey:0}
+%if %{with rlm_yubikey}
 %files yubikey
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_yubikey.so
