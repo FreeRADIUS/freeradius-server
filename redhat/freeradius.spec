@@ -991,11 +991,6 @@ fi
 %config(noreplace) %{_sysconfdir}/raddb/mods-enabled
 %config(noreplace) %{_sysconfdir}/raddb/mods-available
 
-%if %{with rlm_mruby}
-%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/ruby
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/ruby/*
-%endif
-
 #
 #  SQL Databases - generic
 #
@@ -1190,7 +1185,8 @@ fi
 
 %if %{with rlm_mruby}
 %files ruby
-%defattr(-,root,root)
+%defattr(-,root,root,750)
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/ruby
 %{_libdir}/freeradius/rlm_mruby.so
 %endif
 
