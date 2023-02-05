@@ -12,28 +12,26 @@
 # which are installed in /opt/openssl you should pass
 # _with_freeradius_openssl
 
-%{!?with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
-
+%{!?with_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
 %{!?with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
 %{!?with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
-%{!?with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
 %{!?with_rlm_sigtran: %global _without_rlm_sigtran --without-rlm_sigtran}
-%{!?with_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
+%{!?with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
 
 # experimental modules
 %bcond_with rlm_idn
 %bcond_with rlm_mruby
 %bcond_with rlm_sql_oracle
 %{?with_rlm_idn: %global _with_experimental_modules --with-experimental-modules}
-%{?with_rlm_opendirectory: %global _with_experimental_modules --with-experimental-modules}
 %{?with_rlm_mruby: %global _with_experimental_modules --with-experimental-modules}
+%{?with_rlm_opendirectory: %global _with_experimental_modules --with-experimental-modules}
 %{?with_rlm_securid: %global _with_experimental_modules --with-experimental-modules}
 %{?with_rlm_sql_oracle: %global _with_experimental_modules --with-experimental-modules}
 
 %if %{with experimental_modules}
 %{!?with_rlm_idn: %global _without_rlm_idn --without-rlm_idn}
-%{!?with_rlm_opendirectory: %global _without_rlm_opendirectory --without-rlm_opendirectory}
 %{!?with_rlm_mruby: %global _without_rlm_mruby --without-rlm_mruby}
+%{!?with_rlm_opendirectory: %global _without_rlm_opendirectory --without-rlm_opendirectory}
 %{!?with_rlm_securid: %global _without_rlm_securid --without-rlm_securid}
 %{!?with_rlm_sql_oracle: %global _without_rlm_sql_oracle --without-rlm_sql_oracle}
 %endif
