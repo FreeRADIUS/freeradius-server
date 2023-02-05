@@ -2,6 +2,7 @@
 %bcond_with experimental_modules
 %bcond_with rlm_sigtran
 %bcond_with wbclient
+%bcond_with symas_openldap
 %bcond_without ldap
 
 %global _version 4.0
@@ -318,12 +319,17 @@ Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: cyrus-sasl
 BuildRequires: cyrus-sasl-devel
+%if %{with symas_openldap}
+Requires: symas-openldap-clients
+BuildRequires: symas-openldap-devel
+%else
 %if 0%{?rhel}%{?fedora} < 9
 Requires: openldap-ltb
 BuildRequires: openldap-ltb
 %else
 Requires: openldap
 BuildRequires: openldap-devel
+%endif
 %endif
 
 %description ldap
@@ -565,9 +571,14 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
+%if %{with symas_openldap}
+        --with-libfreeradius-ldap-include-dir=/opt/symas/include \
+        --with-libfreeradius-ldap-lib-dir=/opt/symas/lib \
+%else
 %if %{with ldap}
         --with-libfreeradius-ldap-include-dir=/usr/local/openldap/include \
         --with-libfreeradius-ldap-lib-dir=/usr/local/openldap/lib64 \
+%endif
 %endif
         --with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
         --with-rlm-sql-postgresql-lib-dir=%{_libdir} \
