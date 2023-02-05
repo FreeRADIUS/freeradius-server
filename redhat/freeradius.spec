@@ -798,11 +798,6 @@ fi
 %dir %attr(755,radiusd,radiusd) /var/run/radiusd/
 # binaries
 %defattr(-,root,root)
-/usr/sbin/checkrad
-/usr/sbin/raddebug
-/usr/sbin/radiusd
-/usr/sbin/radlock
-/usr/sbin/radmin
 # man-pages
 %doc %{_mandir}/man1/smbencrypt.1.gz
 %doc %{_mandir}/man5/checkrad.5.gz
@@ -824,13 +819,143 @@ fi
 %ghost %attr(644,radiusd,radiusd) /var/log/radius/radutmp
 %ghost %attr(600,radiusd,radiusd) /var/log/radius/radius.log
 
-# RADIUS shared libs
-%attr(755,root,root) %{_libdir}/freeradius/lib*.so*
+#
+#  rpmbuild isn't smart enough to prevent globbed
+#  matches from appearing in multiple packages
+#  so we have to list each .so file individually here
+#  otherwise it gets included in both the main FreeRADIUS
+#  package and any module specific packages
+#
+%defattr(755,root,root,755)
+/usr/sbin/checkrad
+/usr/sbin/raddebug
+/usr/sbin/radiusd
+/usr/sbin/radlock
+/usr/sbin/radmin
 
-# RADIUS Loadable Modules
-%dir %attr(755,root,root) %{_libdir}/freeradius
-%{_libdir}/freeradius/*.so
+# Needed to set directory permissions correctly
+%dir %{_libdir}/freeradius
 
+# Protocol state machines without external deps
+%{_libdir}/freeradius/process_arp.so
+%{_libdir}/freeradius/process_control.so
+%{_libdir}/freeradius/process_dhcpv4.so
+%{_libdir}/freeradius/process_dhcpv6.so
+%{_libdir}/freeradius/process_dns.so
+%{_libdir}/freeradius/process_eap_aka.so
+%{_libdir}/freeradius/process_eap_aka_prime.so
+%{_libdir}/freeradius/process_eap_sim.so
+%{_libdir}/freeradius/process_radius.so
+%{_libdir}/freeradius/process_tacacs.so
+%{_libdir}/freeradius/process_tls.so
+%{_libdir}/freeradius/process_ttls.so
+%{_libdir}/freeradius/process_vmps.so
+
+# Proto modules without external deps
+%{_libdir}/freeradius/proto_arp.so
+%{_libdir}/freeradius/proto_arp_ethernet.so
+%{_libdir}/freeradius/proto_bfd.so
+%{_libdir}/freeradius/proto_control.so
+%{_libdir}/freeradius/proto_control_unix.so
+%{_libdir}/freeradius/proto_cron.so
+%{_libdir}/freeradius/proto_cron_crontab.so
+%{_libdir}/freeradius/proto_detail.so
+%{_libdir}/freeradius/proto_detail_file.so
+%{_libdir}/freeradius/proto_detail_work.so
+%{_libdir}/freeradius/proto_dhcpv4.so
+%{_libdir}/freeradius/proto_dhcpv4_udp.so
+%{_libdir}/freeradius/proto_dhcpv6.so
+%{_libdir}/freeradius/proto_dhcpv6_udp.so
+%{_libdir}/freeradius/proto_dns.so
+%{_libdir}/freeradius/proto_dns_udp.so
+%{_libdir}/freeradius/proto_load.so
+%{_libdir}/freeradius/proto_load_step.so
+%{_libdir}/freeradius/proto_radius.so
+%{_libdir}/freeradius/proto_radius_tcp.so
+%{_libdir}/freeradius/proto_radius_udp.so
+%{_libdir}/freeradius/proto_tacacs.so
+%{_libdir}/freeradius/proto_tacacs_tcp.so
+%{_libdir}/freeradius/proto_vmps.so
+%{_libdir}/freeradius/proto_vmps_udp.so
+
+# Support libraries without external deps
+%{_libdir}/freeradius/libfreeradius-arp.so
+%{_libdir}/freeradius/libfreeradius-control.so
+%{_libdir}/freeradius/libfreeradius-dhcpv4.so
+%{_libdir}/freeradius/libfreeradius-dhcpv6.so
+%{_libdir}/freeradius/libfreeradius-dns.so
+%{_libdir}/freeradius/libfreeradius-eap-aka-sim.so
+%{_libdir}/freeradius/libfreeradius-eap.so
+%{_libdir}/freeradius/libfreeradius-ethernet.so
+%{_libdir}/freeradius/libfreeradius-internal.so
+%{_libdir}/freeradius/libfreeradius-io.so
+%{_libdir}/freeradius/libfreeradius-server.so
+%{_libdir}/freeradius/libfreeradius-sim.so
+%{_libdir}/freeradius/libfreeradius-soh.so
+%{_libdir}/freeradius/libfreeradius-tacacs.so
+%{_libdir}/freeradius/libfreeradius-tftp.so
+%{_libdir}/freeradius/libfreeradius-tls.so
+%{_libdir}/freeradius/libfreeradius-unlang.so
+%{_libdir}/freeradius/libfreeradius-vmps.so
+
+# Backend modules without external deps
+%{_libdir}/freeradius/rlm_always.so
+%{_libdir}/freeradius/rlm_attr_filter.so
+%{_libdir}/freeradius/rlm_cache.so
+%{_libdir}/freeradius/rlm_cache_rbtree.so
+%{_libdir}/freeradius/rlm_chap.so
+%{_libdir}/freeradius/rlm_cipher.so
+%{_libdir}/freeradius/rlm_client.so
+%{_libdir}/freeradius/rlm_csv.so
+%{_libdir}/freeradius/rlm_date.so
+%{_libdir}/freeradius/rlm_delay.so
+%{_libdir}/freeradius/rlm_detail.so
+%{_libdir}/freeradius/rlm_dhcpv4.so
+%{_libdir}/freeradius/rlm_dict.so
+%{_libdir}/freeradius/rlm_digest.so
+%{_libdir}/freeradius/rlm_eap.so
+%{_libdir}/freeradius/rlm_eap_aka.so
+%{_libdir}/freeradius/rlm_eap_aka_prime.so
+%{_libdir}/freeradius/rlm_eap_fast.so
+%{_libdir}/freeradius/rlm_eap_gtc.so
+%{_libdir}/freeradius/rlm_eap_md5.so
+%{_libdir}/freeradius/rlm_eap_mschapv2.so
+%{_libdir}/freeradius/rlm_eap_peap.so
+%{_libdir}/freeradius/rlm_eap_pwd.so
+%{_libdir}/freeradius/rlm_eap_sim.so
+%{_libdir}/freeradius/rlm_eap_tls.so
+%{_libdir}/freeradius/rlm_eap_ttls.so
+%{_libdir}/freeradius/rlm_escape.so
+%{_libdir}/freeradius/rlm_exec.so
+%{_libdir}/freeradius/rlm_files.so
+%{_libdir}/freeradius/rlm_icmp.so
+%{_libdir}/freeradius/rlm_imap.so
+%{_libdir}/freeradius/rlm_isc_dhcp.so
+%{_libdir}/freeradius/rlm_linelog.so
+%{_libdir}/freeradius/rlm_logintime.so
+%{_libdir}/freeradius/rlm_logtee.so
+%{_libdir}/freeradius/rlm_mschap.so
+%{_libdir}/freeradius/rlm_pam.so
+%{_libdir}/freeradius/rlm_pap.so
+%{_libdir}/freeradius/rlm_passwd.so
+%{_libdir}/freeradius/rlm_radius.so
+%{_libdir}/freeradius/rlm_radius_udp.so
+%{_libdir}/freeradius/rlm_radutmp.so
+%{_libdir}/freeradius/rlm_smtp.so
+%{_libdir}/freeradius/rlm_soh.so
+%{_libdir}/freeradius/rlm_sometimes.so
+%{_libdir}/freeradius/rlm_sql.so
+%{_libdir}/freeradius/rlm_sql_null.so
+%{_libdir}/freeradius/rlm_sqlcounter.so
+%{_libdir}/freeradius/rlm_sqlippool.so
+%{_libdir}/freeradius/rlm_stats.so
+%{_libdir}/freeradius/rlm_tacacs.so
+%{_libdir}/freeradius/rlm_tacacs_tcp.so
+%{_libdir}/freeradius/rlm_totp.so
+%{_libdir}/freeradius/rlm_unix.so
+%{_libdir}/freeradius/rlm_unpack.so
+%{_libdir}/freeradius/rlm_utf8.so
+%{_libdir}/freeradius/rlm_wimax.so
 
 %{?with_rlm_idn: %{_libdir}/freeradius/rlm_idn.so}
 %if %{with experimental_modules}
@@ -1036,6 +1161,10 @@ fi
 %files ldap
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_ldap.so
+%{_libdir}/freeradius/process_ldap_sync.so
+%{_libdir}/freeradius/proto_ldap_sync.so
+%{_libdir}/freeradius/proto_ldap_sync_ldap.so
+%{_libdir}/freeradius/libfreeradius-ldap.so
 %endif
 
 %files unixODBC
