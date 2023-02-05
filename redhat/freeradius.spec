@@ -574,7 +574,7 @@ export LDFLAGS="-Wl,--build-id"
 export RADIUSD_VERSION_RELEASE="%{release}"
 %endif
 
-%autoconf_with()         %{expand:%%{?with_%{1}:--with-%{1}}%%{!?with_%{1}:--without-%{1}}}
+%define autoconf_with() %{expand:%%{?with_%{1}:--with-%{1}}%%{!?with_%{1}:--without-%{1}}}
 
 %configure \
         --libdir=%{_libdir}/freeradius \
