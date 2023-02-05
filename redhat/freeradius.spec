@@ -705,6 +705,11 @@ touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
 %if %{without rlm_idn}
 %__rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-available/idn
 %endif
+
+%if %{without rlm_lua}
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/lua
+%endif
+
 %if %{without rlm_ruby}
 %__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/ruby
 %endif
