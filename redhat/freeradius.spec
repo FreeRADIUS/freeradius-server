@@ -1,42 +1,42 @@
-%bcond_with experimental_modules
+# Optional modules and libraries
+%bcond_with rlm_cache_memcached
+%bcond_with rlm_idn
+%bcond_with rlm_lua
+%bcond_with rlm_mruby
+%bcond_with rlm_opendirectory
+%bcond_with rlm_securid
 %bcond_with rlm_sigtran
+%bcond_with rlm_sql_oracle
 %bcond_with rlm_yubikey
-%bcond_with symas_openldap
-%bcond_with wbclient
-%bcond_without ldap
 
-%global _version 4.0
+# Build all experimental modules
+%bcond_with experimental-modules
+
+# Build without OpenLDAP (no rlm_ldap, proto_ldap_sync)
+%bcond_without ldap
 
 # Many distributions have extremely old versions of OpenSSL
 # if you'd like to build with the FreeRADIUS openssl packages
 # which are installed in /opt/openssl you should pass
-# _with_freeradius_openssl
+# --with freeradius_openssl
+%bcond_with freeradius_openssl
 
-%{!?with_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
-%{!?with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
-%{!?with_rlm_sigtran: %global _without_rlm_sigtran --without-rlm_sigtran}
-%{!?with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
+# Build against Symas openldap's packaging
+%bcond_with symas_openldap
 
-# experimental modules
-%bcond_with rlm_idn
-%bcond_with rlm_lua
-%bcond_with rlm_mruby
-%bcond_with rlm_sql_oracle
-%{?with_rlm_idn: %global _with_experimental_modules --with-experimental-modules}
-%{?with_rlm_lua: %global _with_experimental_modules --with-experimental-modules}
-%{?with_rlm_mruby: %global _with_experimental_modules --with-experimental-modules}
-%{?with_rlm_opendirectory: %global _with_experimental_modules --with-experimental-modules}
-%{?with_rlm_securid: %global _with_experimental_modules --with-experimental-modules}
-%{?with_rlm_sql_oracle: %global _with_experimental_modules --with-experimental-modules}
+# Build with the samba project's winbind client
+%bcond_with wbclient
 
-%if %{with experimental_modules}
-%{!?with_rlm_idn: %global _without_rlm_idn --without-rlm_idn}
-%{!?with_rlm_lua: %global _without_rlm_lua --without-rlm_lua}
-%{!?with_rlm_mruby: %global _without_rlm_mruby --without-rlm_mruby}
-%{!?with_rlm_opendirectory: %global _without_rlm_opendirectory --without-rlm_opendirectory}
-%{!?with_rlm_securid: %global _without_rlm_securid --without-rlm_securid}
-%{!?with_rlm_sql_oracle: %global _without_rlm_sql_oracle --without-rlm_sql_oracle}
-%endif
+# Enable asserts and additional debugging
+%bcond_with developer
+
+# Enable various clang/gcc debugging tool sypport
+%bcond_with address_sanitizer
+%bcond_with leak_sanitizer
+%bcond_with thread_sanitizer
+%bcond_with undefined_behaviour_sanitizer
+
+%global _version 4.0
 
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
@@ -574,6 +574,8 @@ export LDFLAGS="-Wl,--build-id"
 export RADIUSD_VERSION_RELEASE="%{release}"
 %endif
 
+%autoconf_with()         %{expand:%%{?with_%{1}:--with-%{1}}%%{!?with_%{1}:--without-%{1}}}
+
 %configure \
         --libdir=%{_libdir}/freeradius \
         --sysconfdir=%{_sysconfdir} \
@@ -582,11 +584,23 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
+        %{autoconf_with experimental-modules} \
+        %{autoconf_with rlm_cache_memcached} \
+        %{autoconf_with rlm_idn} \
+        %{autoconf_with rlm_lua} \
+        %{autoconf_with rlm_mruby} \
+        %{autoconf_with rlm_opendirectory} \
+        %{autoconf_with rlm_securid} \
+        %{autoconf_with rlm_sigtran} \
+        %{autoconf_with rlm_sql_oracle} \
+        %{autoconf_with rlm_yubikey} \
+%if %{without ldap}
+        --without-libfreeradius-ldap \
+%else
 %if %{with symas_openldap}
         --with-libfreeradius-ldap-include-dir=/opt/symas/include \
         --with-libfreeradius-ldap-lib-dir=/opt/symas/lib \
 %else
-%if %{with ldap}
         --with-libfreeradius-ldap-include-dir=/usr/local/openldap/include \
         --with-libfreeradius-ldap-lib-dir=/usr/local/openldap/lib64 \
 %endif
@@ -594,11 +608,16 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
         --with-rlm-sql-postgresql-lib-dir=%{_libdir} \
         --with-rlm-sql_mysql-include-dir=/usr/include/mysql \
+%if %{without rlm_sql_oracle} \
+        --without-rlm_sql_oracle \
+%else
+        --with-oracle-include-dir=%{oracle_include_dir} \
+        --with-oracle-lib-dir=%{oracle_lib_dir} \
+%endif
         --with-mysql-lib-dir=%{_libdir}/mysql \
         --with-unixodbc-lib-dir=%{_libdir} \
         --with-rlm-dbm-lib-dir=%{_libdir} \
         --with-rlm-krb5-include-dir=/usr/kerberos/include \
-        --without-rlm_eap_ikev2 \
         --without-rlm_sql_firebird \
         --without-rlm_sql_db2 \
 %if 0%{?rhel}%{?fedora} < 8
@@ -635,30 +654,6 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 %if %{with undefined_behaviour_sanitizer}
         --enable-undefined-behaviour-sanitizer \
 %endif
-        %{?_with_rlm_yubikey} \
-        %{?_without_rlm_yubikey} \
-        %{?_with_rlm_sql_oracle} \
-        %{?_with_rlm_sql_oracle: --with-oracle-include-dir=%{oracle_include_dir}} \
-        %{?_with_rlm_sql_oracle: --with-oracle-lib-dir=%{oracle_lib_dir}} \
-        %{?_without_rlm_sql_oracle} \
-        %{?_with_experimental_modules} \
-        %{?_without_experimental_modules} \
-        %{?_with_rlm_idn} \
-        %{?_without_rlm_idn} \
-        %{?_with_rlm_lua} \
-        %{?_without_rlm_lua} \
-        %{?_with_rlm_opendirectory} \
-        %{?_without_rlm_opendirectory} \
-        %{?_with_rlm_securid} \
-        %{?_without_rlm_securid} \
-        %{?_with_rlm_sigtran} \
-        %{?_without_rlm_sigtran} \
-        %{?_with_rlm_mruby} \
-        %{?_without_rlm_mruby} \
-        %{?_with_rlm_cache_memcached} \
-        %{?_without_rlm_cache_memcached} \
-        %{?_without_libfreeradius_ldap} \
-#        --with-modules="rlm_wimax" \
 
 # Do not use %__make here, as we may be using the non-system make
 make %{?_smp_mflags}
