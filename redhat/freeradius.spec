@@ -660,77 +660,80 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         %{?_without_libfreeradius_ldap} \
 #        --with-modules="rlm_wimax" \
 
+# Do not use %__make here, as we may be using the non-system make
 make %{?_smp_mflags}
 
 %install
-rm -rf $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT/var/run/radiusd
-mkdir -p $RPM_BUILD_ROOT/var/lib/radiusd
-mkdir -p $RPM_BUILD_ROOT/var/lib/radiusd/snmp
-mkdir -p $RPM_BUILD_ROOT/%{docdir}
+%__rm -rf $RPM_BUILD_ROOT
+%__mkdir_p $RPM_BUILD_ROOT/var/run/radiusd
+%__mkdir_p $RPM_BUILD_ROOT/var/lib/radiusd
+%__mkdir_p $RPM_BUILD_ROOT/var/lib/radiusd/snmp
+%__mkdir_p $RPM_BUILD_ROOT/%{docdir}
 make install R=$RPM_BUILD_ROOT
+
 # modify default configuration
 RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/raddb
-sed -ie 's/^#user =.*$/user = radiusd/'   $RADDB/radiusd.conf
-sed -ie 's/^#group =.*$/group = radiusd/' $RADDB/radiusd.conf
+%__sed -ie 's/^#user =.*$/user = radiusd/'   $RADDB/radiusd.conf
+%__sed -ie 's/^#group =.*$/group = radiusd/' $RADDB/radiusd.conf
+
 # logs
-mkdir -p $RPM_BUILD_ROOT/var/log/radius/radacct
+%__mkdir_p $RPM_BUILD_ROOT/var/log/radius/radacct
 touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
+
+%__install -D -m 644 %{SOURCE102} $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d/radiusd
+%__install -D -m 644 %{SOURCE103} $RPM_BUILD_ROOT/%{_sysconfdir}/pam.d/radiusd
 
 # For systemd based systems, that define _unitdir, install the radiusd unit
 %if %{?_unitdir:1}%{!?_unitdir:0}
-install -D -m 644 %{SOURCE100} $RPM_BUILD_ROOT/%{_unitdir}/radiusd.service
-install -D -m 644 %{SOURCE104} $RPM_BUILD_ROOT/%{_prefix}/lib/tmpfiles.d/radiusd.conf
+%__install -D -m 644 %{SOURCE100} $RPM_BUILD_ROOT/%{_unitdir}/radiusd.service
+%__install -D -m 644 %{SOURCE104} $RPM_BUILD_ROOT/%{_prefix}/lib/tmpfiles.d/radiusd.conf
 # For SystemV install the init script
 %else
-install -D -m 755 %{SOURCE100} $RPM_BUILD_ROOT/%{initddir}/radiusd
+%__install -D -m 755 %{SOURCE100} $RPM_BUILD_ROOT/%{initddir}/radiusd
 %endif
-
-install -D -m 644 %{SOURCE102} $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d/radiusd
-install -D -m 644 %{SOURCE103} $RPM_BUILD_ROOT/%{_sysconfdir}/pam.d/radiusd
 
 # remove unneeded stuff
-
 # unknown which errant sed command produces this, but it needs to be removed
-rm -f $RADDB/radiusd.confe
+%__rm -f $RADDB/radiusd.confe
 
-rm -rf doc/00-OLD
-rm -f $RPM_BUILD_ROOT/usr/bin/radsizes
-rm -f $RPM_BUILD_ROOT/usr/sbin/rc.radiusd
-rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.a
-rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.la
+%__rm -rf doc/00-OLD
+%__rm -f $RPM_BUILD_ROOT/usr/bin/radsizes
+%__rm -f $RPM_BUILD_ROOT/usr/sbin/rc.radiusd
+%__rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.a
+%__rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.la
+
 %if %{without rlm_idn}
-rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-available/idn
+%__rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-available/idn
 %endif
 %if %{without rlm_ruby}
-rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/ruby
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/ruby
 %endif
 %if %{without rlm_sql_oracle}
-rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
-rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/oracle
-rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/driver/oracle
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/oracle
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/driver/oracle
 %endif
 %if %{without rlm_unbound}
-rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/unbound
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/unbound
 %endif
-rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/rlm_test.so
+%__rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/rlm_test.so
 
 # remove header files, we don't ship a devel package and the
 # headers have multilib conflicts
-rm -rf $RPM_BUILD_ROOT/%{_includedir}
+%__rm -rf $RPM_BUILD_ROOT/%{_includedir}
 
 # remove unsupported config files
-rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/experimental.conf
+%__rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/experimental.conf
 
 # install doc files omitted by standard install
 for f in COPYRIGHT CREDITS; do
-    cp $f $RPM_BUILD_ROOT/%{docdir}
+    %__cp $f $RPM_BUILD_ROOT/%{docdir}
 done
-cp LICENSE $RPM_BUILD_ROOT/%{docdir}/LICENSE.gpl
-cp src/LICENSE.openssl $RPM_BUILD_ROOT/%{docdir}/LICENSE.openssl
+%__cp LICENSE $RPM_BUILD_ROOT/%{docdir}/LICENSE.gpl
+%__cp src/LICENSE.openssl $RPM_BUILD_ROOT/%{docdir}/LICENSE.openssl
 
 # add Red Hat specific documentation
-cat >> $RPM_BUILD_ROOT/%{docdir}/REDHAT << EOF
+%__cat >> $RPM_BUILD_ROOT/%{docdir}/REDHAT << EOF
 
 Red Hat, RHEL, Fedora, and CentOS specific information can be found on the
 FreeRADIUS Wiki in the Red Hat FAQ.
@@ -742,8 +745,7 @@ Please reference that document.
 EOF
 
 %clean
-rm -rf $RPM_BUILD_ROOT
-
+%__rm -rf $RPM_BUILD_ROOT
 
 # Make sure our user/group is present prior to any package or subpackage installation
 %pre
@@ -775,7 +777,6 @@ if [ $1 = 1 ]; then
   fi
 fi
 
-
 %preun
 if [ $1 = 0 ]; then
 %if %{?_unitdir:1}%{!?_unitdir:0}
@@ -785,12 +786,10 @@ if [ $1 = 0 ]; then
 %endif
 fi
 
-
 %postun
 if [ $1 -ge 1 ]; then
   /sbin/service radiusd condrestart >/dev/null 2>&1 || :
 fi
-
 
 %files
 %defattr(-,root,root)
