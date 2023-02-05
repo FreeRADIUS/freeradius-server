@@ -16,7 +16,6 @@
 
 %{!?with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
 %{!?with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
-%{!?with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
 %{!?with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
 %{!?with_rlm_sigtran: %global _without_rlm_sigtran --without-rlm_sigtran}
 %{!?with_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
@@ -633,7 +632,6 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         %{?_with_experimental_modules} \
         %{?_without_experimental_modules} \
         %{?_without_rlm_eap_pwd} \
-        %{?_without_rlm_eap_tnc} \
         %{?_with_rlm_idn} \
         %{?_without_rlm_idn} \
         %{?_with_rlm_opendirectory} \
