@@ -1,8 +1,8 @@
-%bcond_with rlm_yubikey
 %bcond_with experimental_modules
 %bcond_with rlm_sigtran
-%bcond_with wbclient
+%bcond_with rlm_yubikey
 %bcond_with symas_openldap
+%bcond_with wbclient
 %bcond_without ldap
 
 %global _version 4.0
