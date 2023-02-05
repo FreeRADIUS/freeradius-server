@@ -280,6 +280,14 @@ Provides common functions used by other FreeRADIUS libraries and modules.
 #
 # END 3rd party utility library packages
 #
+%package imap
+Summary: IMAP support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: freeradius-libfreeradius-curl = %{version}
+
+%description imap
+This plugin provides the ability to authenticate users against an IMAP server.
 
 %if %{with rlm_cache_memcached}
 %package memcached
@@ -491,6 +499,18 @@ BuildRequires: libosmo-sccp-devel, libosmo-xua-devel, libosmo-mtp-devel, libosmo
 
 %description sigtran
 This plugin provides an experimental M3UA/SCCP/TCAP/MAP stack for the FreeRADIUS server project.
+%endif
+
+# libcurl version is too old in Centos/EL 7
+%if 0%{?rhel}%{?fedora} > 7
+%package smtp
+Summary: SMTP support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: freeradius-libfreeradius-curl = %{version}
+
+%description smtp
+This plugin provides the ability to authenticate users against SMTP servers and send email.
 %endif
 
 %if %{with rlm_yubikey}
@@ -939,7 +959,6 @@ fi
 %{_libdir}/freeradius/rlm_exec.so
 %{_libdir}/freeradius/rlm_files.so
 %{_libdir}/freeradius/rlm_icmp.so
-%{_libdir}/freeradius/rlm_imap.so
 %{_libdir}/freeradius/rlm_isc_dhcp.so
 %{_libdir}/freeradius/rlm_linelog.so
 %{_libdir}/freeradius/rlm_logintime.so
@@ -951,7 +970,6 @@ fi
 %{_libdir}/freeradius/rlm_radius.so
 %{_libdir}/freeradius/rlm_radius_udp.so
 %{_libdir}/freeradius/rlm_radutmp.so
-%{_libdir}/freeradius/rlm_smtp.so
 %{_libdir}/freeradius/rlm_soh.so
 %{_libdir}/freeradius/rlm_sometimes.so
 %{_libdir}/freeradius/rlm_sql.so
@@ -1135,6 +1153,10 @@ fi
 %{_libdir}/freeradius/rlm_cache_memcached.so
 %endif
 
+%files imap
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_imap.so
+
 %files krb5
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_krb5.so
@@ -1206,6 +1228,13 @@ fi
 %defattr(-,root,root,750)
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/ruby
 %{_libdir}/freeradius/rlm_mruby.so
+%endif
+
+# libcurl version is too old in Centos/EL 7
+%if 0%{?rhel}%{?fedora} > 7
+%files smtp
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_smtp.so
 %endif
 
 %files freetds
