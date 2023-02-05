@@ -19,9 +19,11 @@
 
 # experimental modules
 %bcond_with rlm_idn
+%bcond_with rlm_lua
 %bcond_with rlm_mruby
 %bcond_with rlm_sql_oracle
 %{?with_rlm_idn: %global _with_experimental_modules --with-experimental-modules}
+%{?with_rlm_lua: %global _with_experimental_modules --with-experimental-modules}
 %{?with_rlm_mruby: %global _with_experimental_modules --with-experimental-modules}
 %{?with_rlm_opendirectory: %global _with_experimental_modules --with-experimental-modules}
 %{?with_rlm_securid: %global _with_experimental_modules --with-experimental-modules}
@@ -29,6 +31,7 @@
 
 %if %{with experimental_modules}
 %{!?with_rlm_idn: %global _without_rlm_idn --without-rlm_idn}
+%{!?with_rlm_lua: %global _without_rlm_lua --without-rlm_lua}
 %{!?with_rlm_mruby: %global _without_rlm_mruby --without-rlm_mruby}
 %{!?with_rlm_opendirectory: %global _without_rlm_opendirectory --without-rlm_opendirectory}
 %{!?with_rlm_securid: %global _without_rlm_securid --without-rlm_securid}
@@ -454,6 +457,18 @@ Requires: freeradius-libfreeradius-curl = %{version}
 %description rest
 This plugin provides the ability to interact with REST APIs for the FreeRADIUS server project.
 
+%if %{with rlm_lua}
+%package lua
+Summary: Lua support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: ( lua or luajit )
+BuildRequires: ( lua-devel or luajit-devel )
+
+%description lua
+This plugin provides Lua support for the FreeRADIUS server project.
+%endif
+
 %if %{with rlm_mruby}
 %package ruby
 Summary: Ruby support for FreeRADIUS
@@ -630,6 +645,8 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         %{?_without_experimental_modules} \
         %{?_with_rlm_idn} \
         %{?_without_rlm_idn} \
+        %{?_with_rlm_lua} \
+        %{?_without_rlm_lua} \
         %{?_with_rlm_opendirectory} \
         %{?_without_rlm_opendirectory} \
         %{?_with_rlm_securid} \
@@ -983,7 +1000,6 @@ fi
 %config(noreplace) %{_sysconfdir}/raddb/mods-config/files
 %config(noreplace) %{_sysconfdir}/raddb/mods-config/isc_dhcp
 
-%config(noreplace) %{_sysconfdir}/raddb/mods-config/lua
 %config(noreplace) %{_sysconfdir}/raddb/mods-enabled
 %config(noreplace) %{_sysconfdir}/raddb/mods-available
 
@@ -1177,6 +1193,13 @@ fi
 %files sigtran
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sigtran.so
+%endif
+
+%if %{with rlm_lua}
+%files ruby
+%defattr(-,root,root,750)
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/lua
+%{_libdir}/freeradius/rlm_lua.so
 %endif
 
 %if %{with rlm_mruby}
