@@ -133,7 +133,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 
 #define ARG_COUNT_CHECK(_msg, _arg_cnt) do { \
 	if ((p + _arg_cnt) > end) { \
-		fr_strerror_printf("Argument count %u overflows the remaining data in the %s packet", _arg_cnt, _msg); \
+		fr_strerror_printf("Argument count %u overflows the remaining data (%zu) in the %s packet", _arg_cnt, end - p, _msg); \
 		goto fail; \
 	} \
 	p += _arg_cnt; \
@@ -174,7 +174,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 	if (!arg_cnt) return 0;
 
 	if ((p + arg_cnt) > end) {
-		fr_strerror_printf("Argument count %u overflows the remaining data in the packet", arg_cnt);
+		fr_strerror_printf("Argument count %u overflows the remaining data (%zu) in the packet", arg_cnt, p - end);
 		return -1;
 	}
 
@@ -307,7 +307,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_att
 
 	if ((p + field_len) > end) {
 		fr_strerror_printf("'%s' length %u overflows the remaining data (%zu) in the packet",
-				   da->name, field_len, p - end);
+				   da->name, field_len, end - p);
 		return -1;
 	}
 
