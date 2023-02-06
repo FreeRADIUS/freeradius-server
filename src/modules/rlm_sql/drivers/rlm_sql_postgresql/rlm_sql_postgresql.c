@@ -544,7 +544,7 @@ static size_t sql_escape_func(request_t *request, char *out, size_t outlen, char
 	return ret;
 }
 
-static int mod_instantiate(module_inst_ctx_t const *mctx)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->inst->parent->data, rlm_sql_t);
 	rlm_sql_config_t const	*config = &parent->config;
@@ -675,7 +675,7 @@ rlm_sql_driver_t rlm_sql_postgresql = {
 		.inst_size			= sizeof(rlm_sql_postgresql_t),
 		.onload				= mod_load,
 		.config				= driver_config,
-		.instantiate			= mod_instantiate
+		.bootstrap			= mod_bootstrap
 	},
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
 	.sql_socket_init		= sql_socket_init,

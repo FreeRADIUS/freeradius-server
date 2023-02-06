@@ -1150,14 +1150,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	/*
-	 *	Ensure the driver is instantiated before attempting connections
-	 */
-	if (module_instantiate(inst->driver_submodule) < 0) {
-		cf_log_err(conf, "Failed instantiating SQL driver");
-		return -1;
-	}
-
-	/*
 	 *	Initialise the connection pool for this instance
 	 */
 	INFO("Attempting to connect to database \"%s\"", inst->config.sql_db);

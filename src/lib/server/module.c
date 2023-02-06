@@ -342,16 +342,10 @@ int module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 
 	if (unlikely(module_conf_parse(mi, submodule_cs) < 0)) {
 		cf_log_err(submodule_cs, "Failed parsing submodule config");
-	error:
 		talloc_free(mi);
 		return -1;
 	}
 
-	if (unlikely(module_bootstrap(mi) < 0)) {
-		cf_log_err(submodule_cs, "Failed bootstrapping submodule");
-		goto error;
-
-	}
 	*((module_instance_t **)out) = mi;
 
 	return 0;
