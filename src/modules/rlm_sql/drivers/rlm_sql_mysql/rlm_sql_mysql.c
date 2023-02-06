@@ -167,7 +167,7 @@ static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 	return 0;
 }
 
-static int mod_instantiate(module_inst_ctx_t const *mctx)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_sql_mysql_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_mysql_t);
 	int			warnings;
@@ -851,7 +851,7 @@ rlm_sql_driver_t rlm_sql_mysql = {
 		.onload				= mod_load,
 		.unload				= mod_unload,
 		.config				= driver_config,
-		.instantiate			= mod_instantiate
+		.bootstrap			= mod_bootstrap
 	},
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
 	.sql_socket_init		= sql_socket_init,
