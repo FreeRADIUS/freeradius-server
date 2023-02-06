@@ -44,7 +44,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 
 			if (pkt->authen_cont.flags == FR_TAC_PLUS_CONTINUE_FLAG_ABORT) return FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE_ABORT;
 
-			fr_strerror_print("Invalid value %u for authentication continue flag", pkt->authen_cont.flags);
+			fr_strerror_printf("Invalid value %u for authentication continue flag", pkt->authen_cont.flags);
 			return -1;
 		}
 

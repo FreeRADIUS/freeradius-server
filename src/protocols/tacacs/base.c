@@ -143,7 +143,7 @@ int fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body
 	int pad_offset;
 	size_t pos;
 
-	if (!secret || !secretlen) {
+	if (!secret || !secret_len) {
 		if (pkt->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG)
 			return 0;
 		else {
