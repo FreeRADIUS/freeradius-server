@@ -44,7 +44,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 
 			if (pkt->authen_cont.flags == FR_TAC_PLUS_CONTINUE_FLAG_ABORT) return FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE_ABORT;
 
-			fr_strerror_const("Invalid TACACS+ value for authentication continue flag");
+			fr_strerror_print("Invalid value %u for authentication continue flag", pkt->authen_cont.flags);
 			return -1;
 		}
 
@@ -119,7 +119,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 		return -1;
 
 	default:
-		fr_strerror_const("Invalid TACACS+ header type");
+		fr_strerror_const("Invalid header type");
 		return -1;
 	}
 }
@@ -853,7 +853,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 		}
 		break;
 	default:
-		fr_strerror_printf("decode: Unsupported TACACS+ type %u", pkt->hdr.type);
+		fr_strerror_printf("decode: Unsupported packet type %u", pkt->hdr.type);
 		goto fail;
 	}
 
