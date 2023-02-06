@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -75,6 +75,12 @@ ATTRIBUTE	AP-MAC-Address				60	string
 ATTRIBUTE	Device-MAC-Address			61	string
 ATTRIBUTE	Device-Traffic-Class			63	integer
 
+ATTRIBUTE	PVLAN-Port-Type				64	integer
+ATTRIBUTE	Network-Test				65	integer
+ATTRIBUTE	MPSK-Lookup-Info			66	string
+ATTRIBUTE	AVPair					67	string
+ATTRIBUTE	DPP-Service-Type			68	integer
+
 VALUE	AirGroup-Device-Type		Personal-Device		1
 VALUE	AirGroup-Device-Type		Shared-Device		2
 VALUE	AirGroup-Device-Type		Deleted-Device		3
@@ -96,5 +102,13 @@ VALUE	QoS-Trust-Mode			None			2
 
 VALUE	STP-Admin-Edge-Port		Disable			0
 VALUE	STP-Admin-Edge-Port		Enable			1
+
+VALUE	PVLAN-Port-Type			None			0
+VALUE	PVLAN-Port-Type			Promiscuous		1
+VALUE	PVLAN-Port-Type			Secondary		2
+
+VALUE	DPP-Service-Type		DDP-Boostrap-Authorization 1
+VALUE	DPP-Service-Type		DDP-Identity-Update	2
+VALUE	DPP-Service-Type		DDP-Net-Access		3
 
 END-VENDOR Aruba
