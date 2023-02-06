@@ -496,11 +496,13 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			p = BODY(authen_start);
 			PACKET_HEADER_CHECK("Authentication Start");
 
+#if 0
 			if ((pkt->hdr.ver.minor == 0) &&
 			    (pkt->authen_start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
 				fr_strerror_const("TACACS+ minor version 1 MUST be used for non-ASCII authentication methods");
 				goto fail;
 			}
+#endif
 
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_START);
 
