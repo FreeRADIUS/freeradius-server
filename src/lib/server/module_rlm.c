@@ -1051,11 +1051,6 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 			return -1;
 		}
 
-		if (module_bootstrap(mi) < 0) {
-			cf_log_perr(subcs, "Failed bootstrapping module");
-			goto error;
-		}
-
 		/*
 		 *	Compile the default "actions" subsection, which includes retries.
 		 */
@@ -1065,6 +1060,13 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 			goto error;
 		}
 	}
+
+	/*
+	 *	Having parsed all the modules, bootstrap them.
+	 *	This needs to be after parsing so that submodules can access
+	 *	their parent's fully parsed data.
+	 */
+	modules_bootstrap(rlm_modules);
 
 	cf_log_debug(modules, " } # modules");
 
