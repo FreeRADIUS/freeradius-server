@@ -2,7 +2,7 @@
 #  Input packet
 #
 Packet-Type = Access-Request
-User-Name = 'john'
+User-Name = 'bob'
 NAS-Port = 17826193
 NAS-IP-Address = 192.0.2.10
 Framed-IP-Address = 198.51.100.59

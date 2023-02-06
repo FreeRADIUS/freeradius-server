@@ -8,9 +8,9 @@ if (!ok) {
         test_fail
 }
 
-&Tmp-String-0 := "%{ldap:ldap://$ENV{TEST_SERVER}/uid=john,ou=people,dc=example,dc=com?description}"
+&Tmp-String-0 := "%{ldap:ldap://$ENV{TEST_SERVER}/uid=bob,ou=people,dc=example,dc=com?description}"
 
-if (&Tmp-String-0 != "User john is online") {
+if (&Tmp-String-0 != "User bob is online") {
         test_fail
 }
 

@@ -68,6 +68,25 @@ radiusAttribute: reply.Session-Timeout := 7200
 radiusAttribute: control.NAS-IP-Address := 1.2.3.4
 radiusProfileDN: cn=radprofile,ou=profiles,ou=subdept,dc=example,dc=com
 
+dn: uid=joe,ou=people,dc=subdept,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: radiusprofile
+uid: joe
+sn: Smith
+givenName: Joe
+cn: Joe Smith
+displayName: Joe Smith
+userPassword: secret
+uidNumber: 101
+gidNumber: 101
+homeDirectory: /home/joe
+radiusIdleTimeout: 3600
+radiusAttribute: reply.Session-Timeout := 7200
+radiusAttribute: control.NAS-IP-Address := 1.2.3.4
+radiusProfileDN: cn=radprofile,ou=profiles,ou=subdept,dc=example,dc=com
+
 dn: ou=offsite,dc=subdept,dc=example,dc=com
 objectClass: referral
 objectClass: extensibleObject
