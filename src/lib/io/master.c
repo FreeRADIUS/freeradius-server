@@ -1950,9 +1950,11 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		if (connection) {
 			fr_io_client_t *parent = connection->parent;
 
-			pthread_mutex_lock(&parent->mutex);
-			(void) fr_hash_table_delete(parent->ht, connection);
-			pthread_mutex_unlock(&parent->mutex);
+			if (parent->ht) {
+				pthread_mutex_lock(&parent->mutex);
+				(void) fr_hash_table_delete(parent->ht, connection);
+				pthread_mutex_unlock(&parent->mutex);
+			}
 
 			/*
 			 *	Mark the connection as dead, and tell

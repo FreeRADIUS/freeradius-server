@@ -558,6 +558,11 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, int proto, TLS_
 			return NULL;
 		}
 
+		/*
+		 *	TCP sockets are always connected.
+		 */
+		c->use_connected |= (c->proto == IPPROTO_TCP);
+
 #ifdef WITH_TLS
 		/*
 		 *	TLS clients CANNOT use non-TLS listeners.
