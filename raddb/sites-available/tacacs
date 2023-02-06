@@ -243,7 +243,7 @@ server tacacs {
 	#
 	#  ### Send
 	#
-	send Authentication-Reply-Success {
+	send Authentication-Reply-Pass {
 		&reply.Server-Message := "Hello %{User-Name}"
 	}
 
@@ -290,7 +290,7 @@ server tacacs {
 	#
 	#	### Send
 	#
-	send Authorization-Reply {
+	send Authorization-Reply-Pass-Add {
 		&reply.Authorization-Status := Pass-Add
 		&reply.Server-Message := "authorization-response-server"
 		&reply.Data := "authorization-response-data"
