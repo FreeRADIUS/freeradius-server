@@ -178,6 +178,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	RADCLIENT const		*client;
 	int			code;
 	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *)data;
+	char const		*secret;
+	size_t			secretlen = 0;
 
 	RHEXDUMP3(data, data_len, "proto_tacacs decode packet");
 
@@ -221,6 +223,9 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
 
+	secret = client->secret;
+	if (secret) secretlen = talloc_array_length(client->secret) - 1;
+
 	/*
 	 *	Note that we don't set a limit on max_attributes here.
 	 *	That MUST be set and checked in the underlying
@@ -228,7 +233,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 */
 	if (fr_tacacs_decode(request->request_ctx, &request->request_pairs,
 			     request->packet->data, request->packet->data_len,
-			     NULL, client->secret, talloc_array_length(client->secret) - 1) < 0) {
+			     NULL, secret, secretlen) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
@@ -326,6 +331,8 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	fr_io_address_t const  	*address = track->address;
 	ssize_t			data_len;
 	RADCLIENT const		*client;
+	char const		*secret;
+	size_t			secretlen = 0;
 
 	/*
 	 *	@todo - RFC 8907 Section 4.4. says:
@@ -396,8 +403,11 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		if (data_len > 0) return data_len;
 	}
 
+	secret = client->secret;
+	if (secret) secretlen = talloc_array_length(client->secret) - 1;
+
 	data_len = fr_tacacs_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data,
-				    client->secret, talloc_array_length(client->secret) - 1,
+				    secret, secretlen,
 				    request->reply->code, &request->reply_pairs);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding TACACS+ reply");

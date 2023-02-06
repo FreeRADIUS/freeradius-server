@@ -470,6 +470,18 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 static RADCLIENT *mod_client_find(UNUSED fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
+	proto_tacacs_tcp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_tacacs_tcp_t);
+
+	/*
+	 *	Prefer local clients.
+	 */
+	if (inst->clients) {
+		RADCLIENT *client;
+
+		client = client_find(inst->clients, ipaddr, ipproto);
+		if (client) return client;
+	}
+
 	return client_find(NULL, ipaddr, ipproto);
 }
 

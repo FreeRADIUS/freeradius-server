@@ -62,6 +62,8 @@ typedef struct {
 	bool				dynamic_clients;	//!< whether we have dynamic clients
 	bool				dedup_authenticator;	//!< dedup using the request authenticator
 
+	RADCLIENT_LIST			*clients;		//!< local clients
+
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
 	fr_ipaddr_t			*deny;			//!< denied networks for dynamic clients
@@ -387,6 +389,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	proto_radius_tcp_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_radius_tcp_t);
 	CONF_SECTION		*conf = mctx->inst->conf;
 	size_t			i, num;
+	CONF_ITEM		*ci;
+	CONF_SECTION		*server_cs;
 
 	inst->cs = conf;
 
@@ -571,11 +575,41 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		}
 	}
 
+	ci = cf_parent(inst->cs); /* listen { ... } */
+	fr_assert(ci != NULL);
+	ci = cf_parent(ci);
+	fr_assert(ci != NULL);
+
+	server_cs = cf_item_to_section(ci);
+
+	/*
+	 *	Look up local clients, if they exist.
+	 */
+	if (cf_section_find_next(server_cs, NULL, "client", CF_IDENT_ANY)) {
+		inst->clients = client_list_parse_section(server_cs, IPPROTO_TCP, false);
+		if (!inst->clients) {
+			cf_log_err(conf, "Failed creating local clients");
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(UNUSED fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
+static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
+	proto_radius_tcp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_tcp_t);
+
+	/*
+	 *	Prefer local clients.
+	 */
+	if (inst->clients) {
+		RADCLIENT *client;
+
+		client = client_find(inst->clients, ipaddr, ipproto);
+		if (client) return client;
+	}
+
 	return client_find(NULL, ipaddr, ipproto);
 }
 
