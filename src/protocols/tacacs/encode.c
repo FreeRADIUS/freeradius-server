@@ -335,13 +335,13 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	 */
 	if (original) {
 		/*
-		 *	Make room and fill up the original header. Ah! we shouldn't just copy the original packet,
+		 *	Make room and fill up the original header. We shouldn't just copy the original packet,
 		 *	because the fields 'seq_no' and 'length' are not the same.
 		 */
 		FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(fr_tacacs_packet_hdr_t));
 		packet->hdr.version = original->version;
 		packet->hdr.type = original->type;
-		packet->hdr.flags = original->flags;
+		packet->hdr.flags = original->flags; /* encrypted && single connection */
 		packet->hdr.session_id = original->session_id;
 	}
 

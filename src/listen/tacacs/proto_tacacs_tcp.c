@@ -40,9 +40,6 @@ typedef struct {
 	char const			*name;			//!< socket name
 	int				sockfd;
 
-	bool				seen_first_packet;
-	bool				single_connection;
-
 	fr_io_address_t			*connection;		//!< for connected sockets.
 
 	fr_stats_t			stats;			//!< statistics for this socket
@@ -162,17 +159,6 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	thread->stats.total_requests++;
 
 	/*
-	 *	See if we negotiated multiple sessions on a single
-	 *	connection.
-	 */
-	if (!thread->seen_first_packet) {
-		fr_tacacs_packet_t *pkt = (fr_tacacs_packet_t *) buffer;
-
-		thread->seen_first_packet = true;
-		thread->single_connection = ((pkt->hdr.flags & FR_FLAGS_VALUE_SINGLE_CONNECT) != 0);
-	}
-
-	/*
 	 *	proto_tacacs sets the priority
 	 */
 
@@ -193,7 +179,6 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 {
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 	ssize_t				data_size;
-	fr_tacacs_packet_t		*pkt;
 
 	/*
 	 *	We only write TACACS packets.
@@ -209,17 +194,8 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	 *	put the stats in the listener, so that proto_tacacs
 	 *	can update them, too.. <sigh>
 	 */
-	pkt = (fr_tacacs_packet_t *) buffer;
 	if (written == 0) {
 		thread->stats.total_responses++;
-
-		/*
-		 *	If this is the first reply, then ACK the single connection flag.
-		 */
-		if (thread->single_connection) {
-			thread->single_connection = false;
-			pkt->hdr.flags |= FR_FLAGS_VALUE_SINGLE_CONNECT;
-		}
 	}
 
 	/*
