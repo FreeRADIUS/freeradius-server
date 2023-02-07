@@ -299,9 +299,6 @@ ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
 
 static void print_hex(fr_log_t const *log, char const *file, int line, char const *prefix, uint8_t const *data, size_t datalen, uint8_t const *end)
 {
-	size_t i, j, left;
-	char buffer[16*3+1];
-
 	if ((data + datalen) > end) {
 		fr_assert(data <= end);
 
@@ -315,22 +312,7 @@ static void print_hex(fr_log_t const *log, char const *file, int line, char cons
 
 	if (!datalen) return;
 
-	for (i = 0; i < datalen; i += 16) {
-		char *q = buffer;
-
-		left = 16;
-		if ((i + left) > datalen) left = datalen - i;
-
-		for (j = 0; j < left; j++) {
-			sprintf(q, "%02x ", data[i + j]);
-			q += 3;
-		}
-
-		q--;
-		*q = '\0';
-
-		fr_log(log, L_DBG, file, line, "%s %s", prefix, buffer);
-	}
+	fr_log_hex(log, L_DBG, file, line, data, datalen, "%s", prefix);
 }
 
 static void print_ascii(fr_log_t const *log, char const *file, int line, char const *prefix, uint8_t const *data, size_t datalen, uint8_t const *end)
