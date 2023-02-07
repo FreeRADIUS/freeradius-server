@@ -55,6 +55,7 @@ static void test_alloc(void)
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	test_elements[0] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -126,6 +127,7 @@ static void test_alloc_fail(void)
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, true, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	test_elements[0] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -161,6 +163,7 @@ static void test_reuse_reset(void)
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	test_elements[0] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -222,6 +225,7 @@ static void test_reuse_noreset(void)
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, false, 0, 0, NULL, NULL, NULL, false);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	test_elements[0] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -275,6 +279,7 @@ static void test_free(void)
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 4, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	test_element = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_element != NULL);
@@ -310,6 +315,7 @@ static void test_init(void)
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 1, 1, 4, false, 0, 0, test_element_alloc, NULL, &test_conf, false);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	test_elements[0] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -347,6 +353,7 @@ static void test_reserve(void)
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 1, 1, 4, false, 0, 0, NULL, test_element_alloc, &test_conf, false);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	test_elements[0] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -391,6 +398,7 @@ static void test_init_reserve(void)
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 1, 1, 4, false, 0, 0, test_element_alloc, test_element_reserve, &test_conf, false);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	test_elements[0] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -431,6 +439,8 @@ static void test_clearup_1(void)
 
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, el, fr_time_delta_from_sec(1), 2, 1, 6, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
+	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	/*
 	 *	Allocate all the slab elements
@@ -482,6 +492,8 @@ static void test_clearup_2(void)
 
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, el, fr_time_delta_from_sec(1), 2, 16, 20, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
+	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	/*
 	 *	Allocate all the slab elements
@@ -543,6 +555,8 @@ static void test_clearup_3(void)
 
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, el, fr_time_delta_from_sec(1), 2, 0, 20, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
+	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	/*
 	 *	Allocate all the slab elements
@@ -633,6 +647,8 @@ static void test_realloc(void)
 
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, el, fr_time_delta_from_sec(1), 2, 0, 20, false, 0, 0, NULL, NULL, NULL, true);
 	TEST_CHECK(ret == 0);
+	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	/*
 	 *	Allocate all the slab elements
@@ -687,6 +703,7 @@ static void test_child_alloc(void)
 	ret = fr_test_slab_list_alloc(NULL, &test_slab_list, NULL, fr_time_delta_from_sec(1), 2, 1, 2, true, 1, 128, NULL, NULL, NULL, false);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(test_slab_list != NULL);
+	if (!test_slab_list) return;
 
 	test_elements[0] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
