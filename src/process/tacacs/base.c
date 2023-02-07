@@ -440,7 +440,7 @@ RESUME(auth_start)
 	 */
 	if (request->reply->code == FR_TACACS_CODE_AUTH_REPLY_FAIL) {
 		RDEBUG("The 'recv Authentication-Start' section returned %s - rejecting the request",
-		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
 	send_reply:
 		UPDATE_STATE(reply);
@@ -476,7 +476,7 @@ RESUME(auth_start)
 	if (!vp) vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_authentication_type);
 	if (!vp) {
 		RDEBUG("No 'Auth-Type' attribute found, cannot authenticate the user - rejecting the request",
-		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
 	reject:
 		request->reply->code = FR_TACACS_CODE_AUTH_REPLY_FAIL;
@@ -486,7 +486,7 @@ RESUME(auth_start)
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
 	if (!dv) {
 		RDEBUG("Invalid value for '%s' attribute, cannot authenticate the user - rejecting the request",
-		       vp->da->name, fr_table_str_by_value(rcode_table, rcode, "???"));
+		       vp->da->name, fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
 		goto reject;
 	}
@@ -719,7 +719,7 @@ RESUME(acct_type)
 		UPDATE_STATE(reply);
 
 		RDEBUG("The 'accounting' section returned %s - not sending a response",
-		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
 		fr_assert(state->send != NULL);
 		return state->send(p_result, mctx, request);

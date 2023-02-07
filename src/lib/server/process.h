@@ -356,7 +356,7 @@ RESUME(send_generic)
 		if (cs) {
 			RDEBUG("The 'send %s' section returned %s - not sending a response",
 			       cf_section_name2(cs),
-			       fr_table_str_by_value(rcode_table, rcode, "???"));
+			       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 		}
 		request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
 		break;

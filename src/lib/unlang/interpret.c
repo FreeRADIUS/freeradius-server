@@ -1367,7 +1367,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	All of the remaining things need a CONF_ITEM.
 	 */
 	if (!instruction->ci) {
-		if (fr_value_box_bstrndup(ctx, vb, NULL, "???", 3, false) < 0) goto error;
+		if (fr_value_box_bstrndup(ctx, vb, NULL, "<INVALID>", 3, false) < 0) goto error;
 			goto finish;
 	}
 

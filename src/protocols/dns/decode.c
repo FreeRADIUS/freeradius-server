@@ -436,7 +436,7 @@ static ssize_t decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const 
 		if (!fr_dns_packet_ok(data, data_len, false, &reason)) {
 		fail:
 			fr_strerror_printf("DNS packet malformed - %s",
-					   fr_table_str_by_value(reason_fail_table, reason, "???"));
+					   fr_table_str_by_value(reason_fail_table, reason, "<INVALID>"));
 			return -1;
 		}
 	}

@@ -1364,7 +1364,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	if (name2) {
 		snprintf(list_buffer, sizeof(list_buffer), "&%s", name2);
 	} else {
-		snprintf(list_buffer, sizeof(list_buffer), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "???"));
+		snprintf(list_buffer, sizeof(list_buffer), "&%s", fr_table_str_by_value(pair_list_table, unlang_ctx->rules->attr.list_def, "<INVALID>"));
 	}
 
 	/*
@@ -2318,7 +2318,7 @@ bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs, 
 
 			subci = cf_reference_item(cs, cf_root(cf_section_to_item(action_cs)), value);
 			if (!subci) {
-				cf_log_err(csi, "Unknown reference '%s'", value ? value : "???");
+				cf_log_err(csi, "Unknown reference '%s'", value ? value : "<INVALID>");
 				return false;
 			}
 
@@ -2356,13 +2356,13 @@ bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs, 
 
 		if (module_retry) {
 			cf_log_err(csi, "Cannot use a '%s = retry' action for a module which has its own retries",
-				   fr_table_str_by_value(mod_rcode_table, i, "???"));
+				   fr_table_str_by_value(mod_rcode_table, i, "<INVALID>"));
 			return false;
 		}
 
 		if (disallow_retry_action) {
 			cf_log_err(csi, "max_rtx_count and max_rtx_duration cannot both be zero when using '%s = retry'",
-				   fr_table_str_by_value(mod_rcode_table, i, "???"));
+				   fr_table_str_by_value(mod_rcode_table, i, "<INVALID>"));
 			return false;
 		}
 
@@ -2370,7 +2370,7 @@ bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs, 
 		    !actions->retry.mrc &&
 		    !fr_time_delta_ispos(actions->retry.mrd)) {
 			cf_log_err(csi, "Cannot use a '%s = retry' action without a 'retry { ... }' section.",
-				   fr_table_str_by_value(mod_rcode_table, i, "???"));
+				   fr_table_str_by_value(mod_rcode_table, i, "<INVALID>"));
 			return false;
 		}
 	}

@@ -484,14 +484,14 @@ char const *fr_machine_state_name(fr_machine_t *m, int state)
 {
 	fr_assert(!m->dead);
 
-	if ((state < 0) || (state > m->def->max_state)) return "???";
+	if ((state < 0) || (state > m->def->max_state)) return "<INVALID>";
 
 	if (!state) {
 		if (m->current) {
 			state = m->current->def->number;
 
 		} else {
-			return "???";
+			return "<INVALID>";
 		}
 	}
 

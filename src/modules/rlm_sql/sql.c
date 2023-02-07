@@ -158,7 +158,7 @@ static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_
 		return -1;
 	}
 
-	RDEBUG3("Found row: %s %s %s", row[0], fr_table_str_by_value(fr_tokens_table, op, "???"), row[3]);
+	RDEBUG3("Found row: %s %s %s", row[0], fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"), row[3]);
 
 	value = row[3];
 

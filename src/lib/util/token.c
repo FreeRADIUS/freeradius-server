@@ -487,7 +487,7 @@ fr_token_t getstring(char const **ptr, char *buf, int buflen, bool unescape)
 
 char const *fr_token_name(int token)
 {
-	return fr_table_str_by_value(fr_tokens_table, token, "???");
+	return fr_table_str_by_value(fr_tokens_table, token, "<INVALID>");
 }
 
 

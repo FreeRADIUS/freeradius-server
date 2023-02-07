@@ -379,7 +379,7 @@ RESUME(access_request)
 
 	if (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) {
 		RDEBUG("The 'recv Access-Request' section returned %s - not sending a response",
-		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
 	send_reply:
 		fr_assert(state->send != NULL);
@@ -452,7 +452,7 @@ RESUME(auth_type)
 		UPDATE_STATE(reply);
 
 		RDEBUG("The 'authenticate' section returned %s - not sending a response",
-		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
 		fr_assert(state->send != NULL);
 		return state->send(p_result, mctx, request);

@@ -401,7 +401,7 @@ RESUME(access_request)
 	 */
 	if (request->reply->code == FR_RADIUS_CODE_ACCESS_REJECT) {
 		RDEBUG("The 'recv Access-Request' section returned %s - rejecting the request",
-		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
 	send_reply:
 		UPDATE_STATE(reply);
@@ -412,7 +412,7 @@ RESUME(access_request)
 
 	if (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) {
 		RDEBUG("The 'recv Access-Request' section returned %s - not sending a response",
-		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 		goto send_reply;
 	}
 
@@ -440,7 +440,7 @@ RESUME(access_request)
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_auth_type);
 	if (!vp) {
 		RDEBUG("No 'Auth-Type' attribute found, cannot authenticate the user - rejecting the request",
-		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
 	reject:
 		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
@@ -450,7 +450,7 @@ RESUME(access_request)
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
 	if (!dv) {
 		RDEBUG("Invalid value for 'Auth-Type' attribute, cannot authenticate the user - rejecting the request",
-		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
 		goto reject;
 	}
@@ -515,7 +515,7 @@ RESUME(auth_type)
 		UPDATE_STATE(reply);
 
 		RDEBUG("The 'authenticate' section returned %s - not sending a response",
-		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
 		fr_assert(state->send != NULL);
 		return state->send(p_result, mctx, request);
@@ -685,7 +685,7 @@ RESUME(acct_type)
 		UPDATE_STATE(reply);
 
 		RDEBUG("The 'accounting' section returned %s - not sending a response",
-		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
 		fr_assert(state->send != NULL);
 		return state->send(p_result, mctx, request);
@@ -719,7 +719,7 @@ RESUME(accounting_request)
 
 	if (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) {
 		RDEBUG("The 'recv Accounting-Request' section returned %s - not sending a response",
-		       fr_table_str_by_value(rcode_table, rcode, "???"));
+		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
 	send_reply:
 		fr_assert(state->send != NULL);
