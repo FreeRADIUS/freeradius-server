@@ -199,6 +199,40 @@ server tacacs {
 			#
 #			src_ipaddr = ""
 		}
+
+		#
+		#  limit:: limits for this socket.
+		#
+		#  The `limit` section contains configuration items
+		#  which enforce various limits on the socket.  These
+		#  limits are usually transport-specific.
+		#
+		#  Limits are used to prevent "run-away" problems.
+		#
+		limit {
+			#
+			#  max_connections:: The maximum number of
+			#  connected sockets which will be accepted
+			#  for this listener.
+			#
+			#  Each connection opens a new socket, so be
+			#  aware of system file descriptor
+			#  limitations.
+			#
+			#  If the listeners do not use connected
+			#  sockets (e.g. TCP), then this configuration
+			#  item is ignored.
+			#
+			max_connections = 256
+
+			#
+			#  idle_timeout:: Time after which idle
+			#  connections are deleted.
+			#
+			#  Useful range of values: 5 to 600
+			#
+			idle_timeout = 60.0
+		}
 	}
 
 	#
