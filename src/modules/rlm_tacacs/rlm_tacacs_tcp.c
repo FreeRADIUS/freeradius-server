@@ -543,12 +543,12 @@ static int8_t request_prioritise(void const *one, void const *two)
  *	- >0 for how many bytes were decoded
  */
 static ssize_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
-			    udp_handle_t *h, request_t *request, udp_request_t *u,
-			    uint8_t *data, size_t data_len)
+		      udp_handle_t *h, request_t *request, udp_request_t *u,
+		      uint8_t *data, size_t data_len)
 {
 	rlm_tacacs_tcp_t const *inst = h->thread->inst;
 	ssize_t			packet_len;
-	uint8_t			code;
+	int			code;
 
 	*response_code = 0;	/* Initialise to keep the rest of the code happy */
 
@@ -565,14 +565,12 @@ static ssize_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_
 	 *	This only fails if the packet is strangely malformed,
 	 *	or if we run out of memory.
 	 */
-	packet_len = fr_tacacs_decode(ctx, reply, data, data_len, NULL, inst->secret, inst->secretlen);
+	packet_len = fr_tacacs_decode(ctx, reply, data, data_len, NULL, inst->secret, inst->secretlen, &code);
 	if (packet_len < 0) {
 		RPEDEBUG("Failed decoding TACACS+ reply packet");
 		fr_pair_list_free(reply);
 		return -1;
 	}
-
-	code = data[1];
 
 	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
 	       fr_tacacs_packet_names[code], code, packet_len, h->name);

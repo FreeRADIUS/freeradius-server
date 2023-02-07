@@ -338,7 +338,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_att
  *	Decode a TACACS+ packet
  */
 ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *buffer, size_t buffer_len,
-			 const uint8_t *original, char const * const secret, size_t secret_len)
+			 const uint8_t *original, char const * const secret, size_t secret_len, int *code)
 {
 	fr_tacacs_packet_t const *pkt;
 	fr_pair_t		*vp;
@@ -474,6 +474,11 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 		decrypted[3] |= FR_TAC_PLUS_UNENCRYPTED_FLAG;
 
 		FR_PROTO_HEX_DUMP(decrypted, buffer_len, "fr_tacacs_packet_t (unencrypted)");
+
+		if (code) {
+			*code = fr_tacacs_packet_to_code((fr_tacacs_packet_t const *) decrypted);
+			if (*code < 0) return -1;
+		}
 	}
 
 #ifndef NDEBUG
@@ -879,7 +884,7 @@ static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
 
 	return fr_tacacs_decode(ctx, out, data, data_len, NULL,
-				test_ctx->secret, (talloc_array_length(test_ctx->secret)-1));
+				test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), false);
 }
 
 static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)

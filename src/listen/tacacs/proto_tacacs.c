@@ -176,7 +176,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
 	RADCLIENT const		*client;
-	int			code;
+	int			code = -1;
 	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *)data;
 	char const		*secret;
 	size_t			secretlen = 0;
@@ -200,23 +200,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		return -1;
 	}
 
-	/*
-	 *	RFC 8907 Section 3.6 says:
-	 *
-	 *	  If an error occurs but the type of the incoming packet cannot be determined, a packet with the
-	 *	  identical cleartext header but with a sequence number incremented by one and the length set to
-	 *	  zero MUST be returned to indicate an error.
-	 *
-	 *	This is substantially retarded.  It should instead just close the connection.
-	 */
-
-	code = fr_tacacs_packet_to_code(pkt);
-	if (code < 0) {
-		RPEDEBUG("Invalid packet");
-		return -1;
-	}
-
-	request->packet->code = code;
 	request->packet->id   = data[2]; // seq_no
 	request->reply->id    = data[2]; // seq_no
 
@@ -233,10 +216,23 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 */
 	if (fr_tacacs_decode(request->request_ctx, &request->request_pairs,
 			     request->packet->data, request->packet->data_len,
-			     NULL, secret, secretlen) < 0) {
+			     NULL, secret, secretlen, &code) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
+
+	request->packet->code = code;
+
+	/*
+	 *	RFC 8907 Section 3.6 says:
+	 *
+	 *	  If an error occurs but the type of the incoming packet cannot be determined, a packet with the
+	 *	  identical cleartext header but with a sequence number incremented by one and the length set to
+	 *	  zero MUST be returned to indicate an error.
+	 *
+	 *	This is substantially retarded.  It should instead just close the connection.
+	 */
+
 
 	/*
 	 *	Set the rest of the fields.
