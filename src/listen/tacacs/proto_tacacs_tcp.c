@@ -223,18 +223,9 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	if (data_size <= 0) return data_size;
 
 	/*
-	 *	If the "use single connection" flag is clear, then we
-	 *	are only doing a single session.  In which case,
-	 *	return 0, which tells the caller to close the socket.
+	 *	Return the packet we wrote, plus any bytes previously
+	 *	left over from previous packets.
 	 */
-	if (((pkt->hdr.flags & FR_FLAGS_VALUE_SINGLE_CONNECT) == 0) &&
-	    (data_size + written) >= buffer_len) {
-		// @todo - check status for pass / fail / error, which
-		// cause the connection to be closed.  Everything else
-		// leaves it open.
-		return 0;
-	}
-
 	return data_size + written;
 }
 
