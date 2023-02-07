@@ -662,7 +662,7 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
 int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 {
 	fr_state_entry_t	*entry;
-	TALLOC_CTX		*old_ctx = NULL;
+	TALLOC_CTX		*old_ctx;
 	fr_pair_t		*vp;
 
 	/*
@@ -689,7 +689,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 		RERROR("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
 		return -2;
 	}
-	if (request->session_state_ctx) old_ctx = request->session_state_ctx;	/* Store for later freeing */
+	old_ctx = request->session_state_ctx;	/* Store for later freeing */
 
 	fr_assert(entry->ctx);
 
@@ -719,7 +719,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	/*
 	 *	Free this outside of the mutex for less contention.
 	 */
-	if (old_ctx) talloc_free(old_ctx);
+	talloc_free(old_ctx);
 
 	RDEBUG3("%s - restored", state->da->name);
 
