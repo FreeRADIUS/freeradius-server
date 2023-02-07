@@ -61,11 +61,11 @@
 #define packet_is_encrypted(p)			(((p)->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0)
 
 typedef enum {
-	FR_TAC_PLUS_INVALID		= 0x00,
-	FR_TAC_PLUS_AUTHEN		= 0x01,
-	FR_TAC_PLUS_AUTHOR		= 0x02,
-	FR_TAC_PLUS_ACCT		= 0x03,
-	FR_TAC_PLUS_MAX			= 0x04
+	FR_TAC_PLUS_INVALID			= 0x00,
+	FR_TAC_PLUS_AUTHEN			= 0x01,
+	FR_TAC_PLUS_AUTHOR			= 0x02,
+	FR_TAC_PLUS_ACCT			= 0x03,
+	FR_TAC_PLUS_MAX				= 0x04
 } fr_tacacs_type_t;
 
 typedef enum {
