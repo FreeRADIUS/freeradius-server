@@ -738,6 +738,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 {
 	fr_state_entry_t	*entry, *old;
 	fr_dlist_head_t		data;
+	fr_pair_t		*vp;
 
 	old = request_data_get(request, state, 0);
 	request_data_list_init(&data);
@@ -750,6 +751,8 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
 	}
 
+	MEM(vp = request_state_replace(request, NULL));
+
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
 	/*
@@ -759,6 +762,8 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		RERROR("Creating state entry failed");
+
+		talloc_free(request_state_replace(request, vp));
 		request_data_restore(request, &data);	/* Put it back again */
 		return -1;
 	}
@@ -767,7 +772,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 	fr_assert(request->session_state_ctx);
 
 	entry->seq_start = request->seq_start;
-	entry->ctx = request_state_replace(request, NULL);
+	entry->ctx = vp;
 	fr_dlist_move(&entry->data, &data);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
