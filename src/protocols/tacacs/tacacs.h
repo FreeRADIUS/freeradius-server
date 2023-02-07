@@ -68,7 +68,7 @@ typedef enum {
 	FR_TAC_PLUS_MAX				= 0x04
 } fr_tacacs_type_t;
 
-typedef enum {
+typedef enum CC_HINT(flag_enum) {
 	FR_TAC_PLUS_FLAGS_NONE			= 0x00,
 	FR_TAC_PLUS_UNENCRYPTED_FLAG		= 0x01,
 	FR_TAC_PLUS_SINGLE_CONNECT_FLAG		= 0x04
