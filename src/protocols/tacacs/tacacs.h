@@ -68,11 +68,18 @@ typedef enum {
 	FR_TAC_PLUS_MAX				= 0x04
 } fr_tacacs_type_t;
 
+/*
+ * GCC doesn't support flag_enum (yet)
+ *
+ * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81665
+ */
+DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
 	FR_TAC_PLUS_FLAGS_NONE			= 0x00,
 	FR_TAC_PLUS_UNENCRYPTED_FLAG		= 0x01,
 	FR_TAC_PLUS_SINGLE_CONNECT_FLAG		= 0x04
 } fr_tacacs_flags_t;
+DIAG_ON(attributes)
 
 typedef struct CC_HINT(__packed__) {
 	union {
@@ -263,7 +270,9 @@ typedef struct CC_HINT(__packed__) {
  * If this ever becomes an issue the code will need to be
  * refactored.
  */
+#ifdef __clang__
 DIAG_OFF(flexible-array-extensions)
+#endif
 typedef struct CC_HINT(__packed__) {
 	fr_tacacs_packet_hdr_t					hdr;
 	union {
@@ -276,7 +285,9 @@ typedef struct CC_HINT(__packed__) {
 		fr_tacacs_packet_acct_reply_hdr_t	acct_reply;
 	};
 } fr_tacacs_packet_t;
+#ifdef __clang__
 DIAG_ON(flexible-array-extensions)
+#endif
 
 typedef enum {
 	FR_TACACS_CODE_INVALID = 0,
