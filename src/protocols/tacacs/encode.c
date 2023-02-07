@@ -834,13 +834,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	 */
 	if (original &&
 	    ((original->flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0)) {
-		packet->hdr.flags = packet->hdr.flags & ~FR_TAC_PLUS_UNENCRYPTED_FLAG;
+		packet->hdr.flags &= ~FR_TAC_PLUS_UNENCRYPTED_FLAG;
 	}
-
-	/*
-	 *	Packets which have no secret cannot be encrypted.
-	 */
-	if (!secret) packet->hdr.flags |= FR_TAC_PLUS_UNENCRYPTED_FLAG;
 
 #ifndef NDEBUG
 	if (fr_debug_lvl >= L_DBG_LVL_4) {
@@ -857,15 +852,23 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	 *
 	 *	Packets are encrypted if the unencrypted flag is clear.
 	 */
-	if ((packet->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0) {
-		if (!secret || secret_len < 1) {
-			fr_strerror_const("decode: Packet is supposed to be encrypted, but no secret is set.");
+	if (secret) {
+		if (!secret_len) {
+			fr_strerror_const("Packet should be decrypted, but the secret has zero length");
 			return -1;
 		}
 
 		FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), packet_len, "fr_tacacs_packet_t (unencrypted)");
 
 		if (fr_tacacs_body_xor(packet, fr_dbuff_current(&body), body_len, secret, secret_len) != 0) return -1;
+
+		packet->hdr.flags &= ~FR_TAC_PLUS_UNENCRYPTED_FLAG;
+	} else {
+		/*
+		 *	Packets which have no secret cannot be encrypted.
+		 */
+		packet->hdr.flags |= FR_TAC_PLUS_UNENCRYPTED_FLAG;
+
 	}
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), packet_len, "fr_tacacs_packet_t (encoded)");

@@ -136,24 +136,21 @@ void fr_tacacs_free(void)
 	fr_dict_autofree(libfreeradius_tacacs_dict);
 }
 
+/** XOR the body based on the secret key.
+ *
+ *  This function encrypts (or decrypts) TACACS+ packets, and sets the "encrypted" flag.
+ */
 int fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body_len, char const *secret, size_t secret_len)
 {
 	uint8_t pad[MD5_DIGEST_LENGTH];
-	uint8_t *buf;
+	uint8_t *buf, *end;
 	int pad_offset;
-	size_t pos;
 
-	if (!secret || !secret_len) {
-		if (pkt->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG)
-			return 0;
-		else {
-			fr_strerror_const("Packet is encrypted but no secret for the client is set");
-			return -1;
-		}
-	}
-
-	if (pkt->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) {
-		fr_strerror_const("Packet is unencrypted but a secret has been set for the client");
+	/*
+	 *	Do some basic sanity checks.
+	 */
+	if (!secret_len) {
+		fr_strerror_const("Failed to encrypt/decrept the packet, as the secret has zero length.");
 		return -1;
 	}
 
@@ -162,6 +159,7 @@ int fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body
 	/* MD5_1 = MD5{session_id, key, version, seq_no} */
 	/* MD5_n = MD5{session_id, key, version, seq_no, MD5_n-1} */
 	buf = talloc_array(NULL, uint8_t, pad_offset + MD5_DIGEST_LENGTH);
+	if (!buf) return -1;
 
 	memcpy(&buf[0], &pkt->hdr.session_id, sizeof(pkt->hdr.session_id));
 	memcpy(&buf[sizeof(pkt->hdr.session_id)], secret, secret_len);
@@ -170,18 +168,21 @@ int fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body
 
 	fr_md5_calc(pad, buf, pad_offset);
 
-	pos = 0;
-	do {
-		for (size_t i = 0; i < MD5_DIGEST_LENGTH && pos < body_len; i++, pos++)
-			body[pos] ^= pad[i];
+	end = body + body_len;
+	while (body < end) {
+		size_t i;
 
-		if (pos == body_len)
-			break;
+		for (i = 0; i < MD5_DIGEST_LENGTH; i++) {
+			*body ^= pad[i];
+
+			if (++body == end) goto done;
+		}
 
 		memcpy(&buf[pad_offset], pad, MD5_DIGEST_LENGTH);
 		fr_md5_calc(pad, buf, pad_offset + MD5_DIGEST_LENGTH);
-	} while (1);
+	}
 
+done:
 	talloc_free(buf);
 
 	return 0;

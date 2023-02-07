@@ -420,6 +420,16 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 		return -1;
 	}
 
+	if (!secret && packet_is_encrypted(pkt)) {
+		fr_strerror_const("Packet is encrypted, but there is no secret to decrypt it");
+		return -1;
+	}
+
+	if (secret && !packet_is_encrypted(pkt)) {
+		fr_strerror_const("Packet is clear-text but we expected it to be encrypted");
+		return -1;
+	}
+
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
@@ -431,13 +441,13 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 	/*
 	 *	3.6. Encryption
 	 *
-	 *	Packets are encrypted if the unencrypted flag is clear.
+	 *	If there's a secret, we alway decrypt the packets.
 	 */
-	if ((pkt->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0) {
+	if (secret) {
 		size_t length;
 
-		if (!secret || secret_len < 1) {
-			fr_strerror_const("Packet is encrypted, but no secret is set.");
+		if (!secret_len) {
+			fr_strerror_const("Packet should be encrypted, but the secret has zero length");
 			return -1;
 		}
 
@@ -461,7 +471,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			return -1;
 		}
 
-		decrypted[3] |= 0x01; /* say it's decrypted */
+		decrypted[3] |= FR_TAC_PLUS_UNENCRYPTED_FLAG;
 
 		FR_PROTO_HEX_DUMP(decrypted, buffer_len, "fr_tacacs_packet_t (unencrypted)");
 	}
