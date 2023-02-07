@@ -538,6 +538,35 @@ request_t *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx,
 	return request;
 }
 
+/** Replace the session_state_ctx with a new one.
+ *
+ *  NOTHING should rewrite request->session_state_ctx.
+ *
+ *  It's now a pair, and is stored in request->pair_root.
+ *  So it's wrong for anyone other than this function to play games with it.
+ */
+fr_pair_t *request_state_replace(request_t *request, fr_pair_t *state)
+{
+	fr_pair_t *old = request->session_state_ctx;
+
+	fr_assert(request->session_state_ctx != NULL);
+	fr_assert(request->session_state_ctx != state);
+
+	fr_pair_remove(&request->pair_root->children, old);
+
+	/*
+	 *	Save (or delete) the existing state, and re-initialize
+	 *	it with a brand new one.
+	 */
+	if (!state) MEM(state = fr_pair_afrom_da(NULL, request_attr_state));
+
+	request->session_state_ctx = state;
+
+	fr_pair_append(&request->pair_root->children, state);
+
+	return old;
+}
+
 /** Unlink a subrequest from its parent
  *
  * @note This should be used for requests in preparation for freeing them.

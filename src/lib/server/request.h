@@ -315,6 +315,8 @@ request_t	*_request_alloc(char const *file, int line, TALLOC_CTX *ctx,
 request_t	*_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx,
 				      request_type_t type, request_init_args_t const *args);
 
+fr_pair_t	*request_state_replace(request_t *request, fr_pair_t *state) CC_HINT(nonnull(1));
+
 int		request_detach(request_t *child);
 
 int		request_global_init(void);
