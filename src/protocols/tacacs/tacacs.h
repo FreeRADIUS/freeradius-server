@@ -256,6 +256,14 @@ typedef struct CC_HINT(__packed__) {
 	fr_tacacs_acct_reply_status_t	status:8;
 } fr_tacacs_packet_acct_reply_hdr_t;
 
+/*
+ * Technically the flexible array extensions aren't allowed
+ * but clang and GCC still seem to do the right thing.
+ *
+ * If this ever becomes an issue the code will need to be
+ * refactored.
+ */
+DIAG_OFF(flexible-array-extensions)
 typedef struct CC_HINT(__packed__) {
 	fr_tacacs_packet_hdr_t					hdr;
 	union {
@@ -268,6 +276,7 @@ typedef struct CC_HINT(__packed__) {
 		fr_tacacs_packet_acct_reply_hdr_t	acct_reply;
 	};
 } fr_tacacs_packet_t;
+DIAG_ON(flexible-array-extensions)
 
 typedef enum {
 	FR_TACACS_CODE_INVALID = 0,
