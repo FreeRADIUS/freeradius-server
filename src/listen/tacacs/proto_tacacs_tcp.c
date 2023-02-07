@@ -459,7 +459,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(UNUSED fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
+static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
 	proto_tacacs_tcp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_tacacs_tcp_t);
 
