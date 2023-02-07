@@ -425,11 +425,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 		return -1;
 	}
 
-	if (secret && !packet_is_encrypted(pkt)) {
-		fr_strerror_const("Packet is clear-text but we expected it to be encrypted");
-		return -1;
-	}
-
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
@@ -443,7 +438,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 	 *
 	 *	If there's a secret, we alway decrypt the packets.
 	 */
-	if (secret) {
+	if (secret && packet_is_encrypted(pkt)) {
 		size_t length;
 
 		if (!secret_len) {

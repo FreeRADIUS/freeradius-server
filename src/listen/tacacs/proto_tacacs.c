@@ -207,7 +207,13 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	request->packet->data_len = data_len;
 
 	secret = client->secret;
-	if (secret) secretlen = talloc_array_length(client->secret) - 1;
+	if (secret) {
+		if (!packet_is_encrypted((fr_tacacs_packet_t const *) data)) {
+			REDEBUG("Expected to see encrypted packet, got unencrypted packet!");
+			return -1;
+		}
+		secretlen = talloc_array_length(client->secret) - 1;
+	}
 
 	/*
 	 *	Note that we don't set a limit on max_attributes here.
