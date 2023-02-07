@@ -439,8 +439,7 @@ RESUME(access_request)
 	 */
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_auth_type);
 	if (!vp) {
-		RDEBUG("No 'Auth-Type' attribute found, cannot authenticate the user - rejecting the request",
-		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
+		RDEBUG("No 'Auth-Type' attribute found, cannot authenticate the user - rejecting the request");
 
 	reject:
 		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
@@ -449,8 +448,7 @@ RESUME(access_request)
 
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
 	if (!dv) {
-		RDEBUG("Invalid value for 'Auth-Type' attribute, cannot authenticate the user - rejecting the request",
-		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
+		RDEBUG("Invalid value for 'Auth-Type' attribute, cannot authenticate the user - rejecting the request");
 
 		goto reject;
 	}

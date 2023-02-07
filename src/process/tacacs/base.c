@@ -475,8 +475,7 @@ RESUME(auth_start)
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_auth_type);
 	if (!vp) vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_authentication_type);
 	if (!vp) {
-		RDEBUG("No 'Auth-Type' attribute found, cannot authenticate the user - rejecting the request",
-		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
+		RDEBUG("No 'Auth-Type' attribute found, cannot authenticate the user - rejecting the request");
 
 	reject:
 		request->reply->code = FR_TACACS_CODE_AUTH_REPLY_FAIL;
@@ -486,7 +485,7 @@ RESUME(auth_start)
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
 	if (!dv) {
 		RDEBUG("Invalid value for '%s' attribute, cannot authenticate the user - rejecting the request",
-		       vp->da->name, fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
+		       vp->da->name);
 
 		goto reject;
 	}
