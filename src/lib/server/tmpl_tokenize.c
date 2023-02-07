@@ -1351,7 +1351,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	 */
 	if (!fr_sbuff_next_if_char(&our_name, '[')) return 0;
 
-	if (at_rules->disallow_filters) {
+	if (at_rules->disallow_filters || tmpl_attr_is_list_attr(ar)) {
 		fr_strerror_const("Filters not allowed here");
 		if (err) *err = TMPL_ATTR_ERROR_FILTER_NOT_ALLOWED;
 		fr_sbuff_set_to_start(&our_name);
