@@ -46,17 +46,19 @@
  * The sequence number must never wrap i.e. if the sequence number 2^8-1 is ever reached,
  * that session must terminate and be restarted with a sequence number of 1.
  */
-#define packet_is_authen_start_request(p)	((p->hdr.type == FR_TAC_PLUS_AUTHEN) && (p->hdr.seq_no == 1))
-#define packet_is_authen_continue(p)		((p->hdr.type == FR_TAC_PLUS_AUTHEN) && (p->hdr.seq_no > 1) && ((p->hdr.seq_no % 2) == 1))
-#define packet_is_authen_reply(p)		((p->hdr.type == FR_TAC_PLUS_AUTHEN) && ((p->hdr.seq_no % 2) == 0))
+#define packet_is_authen_start_request(p)	(((p)->hdr.type == FR_TAC_PLUS_AUTHEN) && ((p)->hdr.seq_no == 1))
+#define packet_is_authen_continue(p)		(((p)->hdr.type == FR_TAC_PLUS_AUTHEN) && ((p)->hdr.seq_no > 1) && (((p)->hdr.seq_no % 2) == 1))
+#define packet_is_authen_reply(p)		(((p)->hdr.type == FR_TAC_PLUS_AUTHEN) && (((p)->hdr.seq_no % 2) == 0))
 
-#define packet_is_author_request(p)		((p->hdr.type == FR_TAC_PLUS_AUTHOR) && ((p->hdr.seq_no % 2) == 1))
-#define packet_is_author_reply(p)		((p->hdr.type == FR_TAC_PLUS_AUTHOR) && ((p->hdr.seq_no % 2) == 0))
+#define packet_is_author_request(p)		(((p)->hdr.type == FR_TAC_PLUS_AUTHOR) && (((p)->hdr.seq_no % 2) == 1))
+#define packet_is_author_reply(p)		(((p)->hdr.type == FR_TAC_PLUS_AUTHOR) && (((p)->hdr.seq_no % 2) == 0))
 
-#define packet_is_acct_request(p)		((p->hdr.type == FR_TAC_PLUS_ACCT) && ((p->hdr.seq_no % 2) == 1))
-#define packet_is_acct_reply(p)			((p->hdr.type == FR_TAC_PLUS_ACCT) && ((p->hdr.seq_no % 2) == 0))
+#define packet_is_acct_request(p)		(((p)->hdr.type == FR_TAC_PLUS_ACCT) && (((p)->hdr.seq_no % 2) == 1))
+#define packet_is_acct_reply(p)			(((p)->hdr.type == FR_TAC_PLUS_ACCT) && (((p)->hdr.seq_no % 2) == 0))
 
-#define packet_has_valid_seq_no(p)		(p->hdr.seq_no != 0)
+#define packet_has_valid_seq_no(p)		((p)->hdr.seq_no != 0)
+
+#define packet_is_encrypted(p)			(((p)->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0)
 
 typedef enum {
 	FR_TAC_PLUS_INVALID		= 0x00,
@@ -327,7 +329,7 @@ int		fr_tacacs_init(void);
 
 void		fr_tacacs_free(void);
 
-int fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body_len, char const *secret, size_t secret_len);
+int		fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body_len, char const *secret, size_t secret_len) CC_HINT(nonnull(1,2,4));
 
 #define fr_tacacs_packet_log_hex(_log, _packet) _fr_tacacs_packet_log_hex(_log, _packet, __FILE__, __LINE__);
 void		_fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *packet, char const *file, int line) CC_HINT(nonnull);
