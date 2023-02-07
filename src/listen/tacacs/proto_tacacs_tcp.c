@@ -212,7 +212,14 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	pkt = (fr_tacacs_packet_t *) buffer;
 	if (written == 0) {
 		thread->stats.total_responses++;
-		if (thread->single_connection) pkt->hdr.flags |= FR_FLAGS_VALUE_SINGLE_CONNECT;
+
+		/*
+		 *	If this is the first reply, then ACK the single connection flag.
+		 */
+		if (thread->single_connection) {
+			thread->single_connection = false;
+			pkt->hdr.flags |= FR_FLAGS_VALUE_SINGLE_CONNECT;
+		}
 	}
 
 	/*
