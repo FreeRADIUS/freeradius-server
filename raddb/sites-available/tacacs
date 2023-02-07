@@ -202,6 +202,37 @@ server tacacs {
 	}
 
 	#
+	#  ## Clients
+	#
+	#  A virtual server can have multiple `client` definitions.  These clients take priority
+	#  over  the global `client` definitions.
+	#
+	#  See the main `clients.conf` file for documentation on the `client` section.
+	#
+	client tacacs {
+		ipaddr = 127.0.0.1
+
+		#
+		#  This has to be specified for all TACACS+ clients.
+		#
+		#  There is no standard for TACACS+ over UDP.
+		#
+		proto = tcp
+
+		#
+		#  The TACACS+ key, or secret.  If a secret is defined, then
+		#  it will be used.  All packets coming from this client MUST be
+		#  encrypted with the shared secret.
+		#
+		#  The `secret` configuration item can be omitted or deleted,
+		#  in which case all of the information (including passwords)
+		#  are sent over the network in the clear.  This practice is
+		#  not recommended.
+		#
+		secret = testing123
+	}
+
+	#
 	#  ## Authentication-Start
 	#
 
