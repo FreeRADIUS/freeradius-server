@@ -224,20 +224,23 @@ static void python_error_log(module_ctx_t const *mctx, request_t *request)
 			PyCodeObject *code = PyFrame_GetCode(cur_frame);
 #endif
 
+
+#if PY_VERSION_HEX >= 0x030A0000
 			ROPTIONAL(RERROR, ERROR, "[%ld] %s:%d at %s()",
 				fnum,
-#if PY_VERSION_HEX >= 0x030A0000
 				PyUnicode_AsUTF8(code->co_filename),
-#else
-				PyUnicode_AsUTF8(cur_frame->f_code->co_filename),
-#endif
 				PyFrame_GetLineNumber(cur_frame),
-#if PY_VERSION_HEX >= 0x30A0000
 				PyUnicode_AsUTF8(code->co_name)
-#else
-				PyUnicode_AsUTF8(cur_frame->f_code->co_name)
-#endif
 			);
+#else
+			ROPTIONAL(RERROR, ERROR, "[%ld] %s:%d at %s()",
+				  fnum,
+				  PyUnicode_AsUTF8(cur_frame->f_code->co_filename),
+				  PyFrame_GetLineNumber(cur_frame),
+				  PyUnicode_AsUTF8(cur_frame->f_code->co_name)
+			);
+#endif
+
 #if PY_VERSION_HEX >= 0x030A0000
 			Py_XDECREF(code);
 #endif
