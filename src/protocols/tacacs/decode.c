@@ -472,7 +472,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 
 		if (code) {
 			*code = fr_tacacs_packet_to_code((fr_tacacs_packet_t const *) decrypted);
-			if (*code < 0) return -1;
+			if (*code < 0) goto fail;
 		}
 	}
 
