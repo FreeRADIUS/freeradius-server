@@ -222,16 +222,14 @@ static void python_error_log(module_ctx_t const *mctx, request_t *request)
 			PyFrameObject *cur_frame = ptb->tb_frame;
 #if PY_VERSION_HEX >= 0x030A0000
 			PyCodeObject *code = PyFrame_GetCode(cur_frame);
-#endif
 
-
-#if PY_VERSION_HEX >= 0x030A0000
 			ROPTIONAL(RERROR, ERROR, "[%ld] %s:%d at %s()",
 				fnum,
 				PyUnicode_AsUTF8(code->co_filename),
 				PyFrame_GetLineNumber(cur_frame),
 				PyUnicode_AsUTF8(code->co_name)
 			);
+			Py_XDECREF(code);
 #else
 			ROPTIONAL(RERROR, ERROR, "[%ld] %s:%d at %s()",
 				  fnum,
@@ -239,10 +237,6 @@ static void python_error_log(module_ctx_t const *mctx, request_t *request)
 				  PyFrame_GetLineNumber(cur_frame),
 				  PyUnicode_AsUTF8(cur_frame->f_code->co_name)
 			);
-#endif
-
-#if PY_VERSION_HEX >= 0x030A0000
-			Py_XDECREF(code);
 #endif
 
 			ptb = ptb->tb_next;
