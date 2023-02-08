@@ -375,8 +375,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 	/*
 	 *	TACACS major / minor version MUST be 12.0 or 12.1
 	 */
-	if (!((buffer[0] == 0xc0) || (buffer[0] == 0xc1))) {
-		fr_strerror_printf("Unsupported TACACS+ version %02x", buffer[0]);
+	if (!(pkt->hdr.ver.major == 12 && (pkt->hdr.ver.minor == 0 || pkt->hdr.ver.minor == 1))) {
+		fr_strerror_printf("Unsupported TACACS+ version %d.%d (%02x)", pkt->hdr.ver.major, pkt->hdr.ver.minor, buffer[0]);
 		return -1;
 	}
 
