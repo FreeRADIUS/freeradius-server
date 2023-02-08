@@ -546,18 +546,18 @@ request_t *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx,
  *  So it's wrong for anyone other than this function to play games with it.
  *
  * @param[in] request	to replace the state of.
- * @param[in] new	state to assign to the request.
- *			May be NULL in which case a new state will
+ * @param[in] new_state	state to assign to the request.
+ *			May be NULL in which case a new_state state will
  *			be alloced and assigned.
  *
  * @return the fr_pair_t containing the old state list.
  */
-fr_pair_t *request_state_replace(request_t *request, fr_pair_t *new)
+fr_pair_t *request_state_replace(request_t *request, fr_pair_t *new_state)
 {
 	fr_pair_t *old = request->session_state_ctx;
 
 	fr_assert(request->session_state_ctx != NULL);
-	fr_assert(request->session_state_ctx != new);
+	fr_assert(request->session_state_ctx != new_state);
 
 	fr_pair_remove(&request->pair_root->children, old);
 
@@ -565,11 +565,11 @@ fr_pair_t *request_state_replace(request_t *request, fr_pair_t *new)
 	 *	Save (or delete) the existing state, and re-initialize
 	 *	it with a brand new one.
 	 */
-	if (!new) MEM(new = fr_pair_afrom_da(NULL, request_attr_state));
+	if (!new_state) MEM(new_state = fr_pair_afrom_da(NULL, request_attr_state));
 
-	request->session_state_ctx = new;
+	request->session_state_ctx = new_state;
 
-	fr_pair_append(&request->pair_root->children, new);
+	fr_pair_append(&request->pair_root->children, new_state);
 
 	return old;
 }
