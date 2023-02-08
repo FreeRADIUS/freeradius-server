@@ -29,10 +29,11 @@ FreeRADIUS 3.2.2 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	  connecting.
 	* The ldap module now supports setting "cipher_list".  See
 	  mods-available/ldap.
+	* Include thread stats in Status-Server attributes.  Fixes #4870.
 
 	Bug fixes
-	* Support for non-blocking TLS sockets.
-	  Fixes #3501.
+	* Preliminary support for non-blocking TLS sockets.
+	  Helps with #3501.
 	* Fix support for partial certificate chains
 	  after adding reload support.  Fixes #4753
 	* Fix handling of debug_condition.
@@ -47,6 +48,7 @@ FreeRADIUS 3.2.2 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	* Better error messages when %{listen:TLS-...} is used.
 	* Getting statistics via Status-Server can now be done within a
 	  virtual server.  Fixes #4868
+	* Make TTLS+MS-CHAP work with TLS 1.3.  Fixes #4878.
 
 FreeRADIUS 3.2.1 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	Feature improvements
