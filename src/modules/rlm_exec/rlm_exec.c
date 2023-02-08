@@ -41,8 +41,8 @@ typedef struct {
 	char const		*program;
 	char const		*input;
 	char const		*output;
-	fr_dict_attr_t const	*input_list;
-	fr_dict_attr_t const	*output_list;
+	tmpl_t			*input_list;
+	tmpl_t			*output_list;
 	bool			shell_escape;
 	bool			env_inherit;
 	fr_time_delta_t		timeout;
@@ -121,7 +121,7 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	fr_exec_state_t		*exec;
 
 	if (inst->input_list) {
-		env_pairs = tmpl_list_head(request, inst->input_list);
+		env_pairs = tmpl_list_head(request, tmpl_list(inst->input_list));
 		if (!env_pairs) {
 			REDEBUG("Failed to find input pairs for xlat");
 			return XLAT_ACTION_FAIL;
@@ -164,24 +164,30 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_exec_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_exec_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
 	xlat_t		*xlat;
-	char const	*p;
+	tmpl_rules_t	list_rules = (tmpl_rules_t) {
+		.attr = {
+			.dict_def = fr_dict_internal(),
+			.list_def = request_attr_request,
+			.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+		}
+	};
 
 	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, exec_xlat, FR_TYPE_STRING, 0);
 	xlat_func_args(xlat, exec_xlat_args);
 
 	if (inst->input) {
-		p = inst->input;
-		p += tmpl_pair_list_name(&inst->input_list, p, NULL);
-		if (!inst->input_list || (*p != '\0')) {
-			cf_log_err(conf, "Invalid input list '%s'", inst->input);
+		if ((tmpl_afrom_attr_substr(inst, NULL, &inst->input_list,
+					    &FR_SBUFF_IN(inst->input, strlen(inst->input)), NULL, &list_rules) < 0) ||
+		    !tmpl_is_list(inst->input_list)) {
+			cf_log_perr(conf, "Invalid input list '%s'", inst->input);
 			return -1;
 		}
 	}
 
 	if (inst->output) {
-		p = inst->output;
-		p += tmpl_pair_list_name(&inst->output_list, p, NULL);
-		if (!inst->output_list || (*p != '\0')) {
+		if ((tmpl_afrom_attr_substr(inst, NULL, &inst->output_list,
+					    &FR_SBUFF_IN(inst->output, strlen(inst->output)), NULL, &list_rules) < 0) ||
+		    !tmpl_is_list(inst->output_list)) {
 			cf_log_err(conf, "Invalid output list '%s'", inst->output);
 			return -1;
 		}
@@ -282,7 +288,7 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 	 *	Decide what input/output the program takes.
 	 */
 	if (inst->input) {
-		env_pairs = tmpl_list_head(request, inst->input_list);
+		env_pairs = tmpl_list_head(request, tmpl_list(inst->input_list));
 		if (!env_pairs) {
 			RETURN_MODULE_INVALID;
 		}
@@ -379,10 +385,10 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 			fr_value_box_t *box = fr_value_box_list_head(&m->box);
 
 			fr_pair_list_init(&vps);
-			output_pairs = tmpl_list_head(request, inst->output_list);
+			output_pairs = tmpl_list_head(request, tmpl_list(inst->output_list));
 			fr_assert(output_pairs != NULL);
 
-			ctx = tmpl_list_ctx(request, inst->output_list);
+			ctx = tmpl_list_ctx(request, tmpl_list(inst->output_list));
 
 			fr_pair_list_afrom_box(ctx, &vps, request->dict, box);
 			if (!fr_pair_list_empty(&vps)) fr_pair_list_move_op(output_pairs, &vps, T_OP_ADD_EQ);
@@ -444,12 +450,12 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	 *	Decide what input/output the program takes.
 	 */
 	if (inst->input) {
-		env_pairs = tmpl_list_head(request, inst->input_list);
+		env_pairs = tmpl_list_head(request, tmpl_list(inst->input_list));
 		if (!env_pairs) RETURN_MODULE_INVALID;
 	}
 
 	if (inst->output) {
-		if (!tmpl_list_head(request, inst->output_list)) {
+		if (!tmpl_list_head(request, tmpl_list(inst->output_list))) {
 			RETURN_MODULE_INVALID;
 		}
 	}
