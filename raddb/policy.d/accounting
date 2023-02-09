@@ -122,13 +122,12 @@ acct_counters64.preacct {
 #  the session information.
 #
 sql_session_start.post-auth {
-	acct_unique
-
 	#
 	#  The SQL accounting queries need an Acct-Status-Type attribute
 	#
 	update request {
-		Acct-Status-Type := Start
+		&Acct-Session-Query := "post-auth"
+		&Acct-Status-Type := Start
 	}
 	sql.accounting
 }

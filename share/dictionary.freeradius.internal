@@ -252,6 +252,11 @@ ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1153	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1154	ipv6addr
 ATTRIBUTE	FreeRADIUS-Response-Delay-USec		1155	integer
 
+#
+# For sql_session_start policy
+#
+ATTRIBUTE	Acct-Session-Query			1156	string
+
 ATTRIBUTE	REST-HTTP-Header			1160	string
 ATTRIBUTE	REST-HTTP-Body				1161	string
 ATTRIBUTE	REST-HTTP-Status-Code			1162	integer
