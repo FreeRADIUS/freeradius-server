@@ -341,6 +341,16 @@ BuildRequires: ruby ruby-devel
 This plugin provides Ruby support for the FreeRADIUS server project.
 %endif
 
+%package unbound
+Summary: Unbound DNS support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: unbound
+BuildRequires: unbound-devel
+
+%description unbound
+This plugin provides unbound DNS support for the FreeRADIUS server project.
+
 %if %{?_with_rlm_yubikey:1}%{!?_with_rlm_yubikey:0}
 %package yubikey
 Summary: YubiCloud support for FreeRADIUS
@@ -472,9 +482,6 @@ rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/oracle
 %endif
-%if %{?_with_rlm_unbound:0}%{!?_with_rlm_unbound:1}
-rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/unbound
-%endif
 rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/rlm_test.so
 # remove header files, we don't ship a devel package and the
 # headers have multilib conflicts
@@ -482,7 +489,6 @@ rm -rf $RPM_BUILD_ROOT/%{_includedir}
 
 # remove unsupported config files
 rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/experimental.conf
-rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/unbound
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/mongo
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/mongo
 
@@ -599,6 +605,7 @@ fi
 %doc %{_mandir}/man5/rlm_passwd.5.gz
 %doc %{_mandir}/man5/rlm_realm.5.gz
 %doc %{_mandir}/man5/rlm_sql.5.gz
+%doc %{_mandir}/man5/rlm_unbound.5.gz
 %doc %{_mandir}/man5/rlm_unix.5.gz
 %doc %{_mandir}/man5/unlang.5.gz
 %doc %{_mandir}/man5/users.5.gz
@@ -712,6 +719,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/perl/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/preprocess
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/preprocess/*
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/unbound
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/unbound/*
 %if %{?el6:0}%{!?el6:1}
 %if 0%{?rhel} <= 8
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/python
@@ -930,6 +939,10 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sql_oracle.so
 %endif
+
+%files unbound
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_unbound.so
 
 %if %{?_with_rlm_yubikey:1}%{!?_with_rlm_yubikey:0}
 %files yubikey
