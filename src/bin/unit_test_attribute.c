@@ -2871,7 +2871,6 @@ static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc
 							   cc->tmpl_rules.attr.dict_def : cc->config->dict,
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
 							.list_def = PAIR_LIST_REQUEST,
-							.list_as_attr = true,
 						}
 					   });
 	if (dec_len <= 0) {
@@ -2912,7 +2911,6 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 							   cc->tmpl_rules.attr.dict_def : cc->config->dict,
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
 							.list_def = PAIR_LIST_REQUEST,
-							.list_as_attr = true,
 						   },
 					   });
 	if (dec_len <= 0) {

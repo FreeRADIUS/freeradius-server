@@ -224,7 +224,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 						.attr = {
 							.allow_unknown = true,
 							.allow_unresolved = true,
-							.allow_foreign = true
+							.allow_foreign = true,
 						}
 					};
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));

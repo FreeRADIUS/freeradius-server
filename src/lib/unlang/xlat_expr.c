@@ -1564,7 +1564,6 @@ static xlat_action_t xlat_exists_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						   .prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 						   .allow_unknown = false,
 						   .allow_unresolved = false,
-						   .list_as_attr = true,
 					   },
 				   });
 	if (slen <= 0) goto fail;
