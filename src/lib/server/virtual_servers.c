@@ -1162,9 +1162,17 @@ int virtual_servers_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
  */
 int virtual_servers_instantiate(void)
 {
-	size_t	i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
+	size_t	i, server_cnt;
 
-	fr_assert(virtual_servers);
+	/*
+	 *	User didn't specify any "server" sections
+	 */
+	if (unlikely(!virtual_servers)) {
+		ERROR("No virtual servers configured");
+		return -1;
+	}
+
+	server_cnt = talloc_array_length(virtual_servers);
 
 	DEBUG2("#### Instantiating listeners ####");
 
