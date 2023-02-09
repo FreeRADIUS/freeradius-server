@@ -103,7 +103,9 @@ static const char *packet_name[] = {
 	[FR_TAC_PLUS_ACCT] = "Accounting",
 };
 
-static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p,
+			uint8_t *buffer, size_t buffer_len, size_t *leftover,
+			UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	// proto_tacacs_tcp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_tacacs_tcp_t);
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
@@ -113,9 +115,9 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	/*
 	 *      Read data into the buffer.
 	 */
-	data_size = read(thread->sockfd, buffer + *leftover, buffer_len - *leftover);
+	data_size = read(thread->sockfd, buffer + (*leftover), buffer_len - (*leftover));
 	if (data_size < 0) {
-		PDEBUG2("proto_tacacs_tcp got read error %zd", data_size);
+		ERROR("proto_tacacs_tcp got read error (%zd) - %s", data_size, fr_syserror(errno));
 		return data_size;
 	}
 
