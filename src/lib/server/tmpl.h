@@ -1013,6 +1013,8 @@ fr_radius_packet_t	*tmpl_packet_ptr(request_t *request, tmpl_pair_list_t list_na
 TALLOC_CTX		*tmpl_list_ctx(request_t *request, tmpl_pair_list_t list_name);
 
 size_t			tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_list_t default_list) CC_HINT(nonnull);
+fr_slen_t		tmpl_attr_list_from_substr(fr_dict_attr_t const **da_p, fr_sbuff_t *in) CC_HINT(nonnull);
+
 
 tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,4));
 
