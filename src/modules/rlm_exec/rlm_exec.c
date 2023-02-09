@@ -171,8 +171,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	if (inst->input) {
 		p = inst->input;
-		p += tmpl_pair_list_name(&inst->input_list, p, PAIR_LIST_UNKNOWN);
-		if ((inst->input_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
+		p += tmpl_pair_list_name(&inst->input_list, p, NULL);
+		if (!inst->input_list || (*p != '\0')) {
 			cf_log_err(conf, "Invalid input list '%s'", inst->input);
 			return -1;
 		}
@@ -180,8 +180,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	if (inst->output) {
 		p = inst->output;
-		p += tmpl_pair_list_name(&inst->output_list, p, PAIR_LIST_UNKNOWN);
-		if ((inst->output_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
+		p += tmpl_pair_list_name(&inst->output_list, p, NULL);
+		if (!inst->output_list || (*p != '\0')) {
 			cf_log_err(conf, "Invalid output list '%s'", inst->output);
 			return -1;
 		}
@@ -246,7 +246,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				 T_BACK_QUOTED_STRING, NULL,
 				 &(tmpl_rules_t) {
 				 	.attr = {
-						.list_def = PAIR_LIST_REQUEST,
+						.list_def = request_attr_request,
 				 		.allow_foreign = true,
 				 		.allow_unresolved = false,
 				 		.allow_unknown = false

@@ -113,7 +113,7 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, map_t const *map, edit_result_
 				   &(tmpl_rules_t){
 				   	.attr = {
 						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REQUEST,
+						.list_def = request_attr_request,
 						.prefix = TMPL_ATTR_REF_PREFIX_NO
 					}
 				   });

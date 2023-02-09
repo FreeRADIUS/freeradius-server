@@ -95,7 +95,7 @@ TMPL_REQUEST_REF_DEF(tmpl_request_def_parent, REQUEST_PARENT);
  *
  * Defaults are used if a NULL rules pointer is passed to the parsing function.
  */
-#define DEFAULT_RULES tmpl_rules_t const default_rules = { .attr = { .list_def = PAIR_LIST_REQUEST }}
+#define DEFAULT_RULES tmpl_rules_t const default_rules = { .attr = { .list_def = request_attr_request }}
 
 
 /* clang-format off */
@@ -415,10 +415,6 @@ fr_slen_t tmpl_attr_list_from_substr(fr_dict_attr_t const **da_p, fr_sbuff_t *in
  * Check the name string for #pair_list_t qualifiers and write a #pair_list_t value
  * for that list to out. This value may be passed to #tmpl_pair_list, along with the current
  * #request_t, to get a pointer to the actual list in the #request_t.
- *
- * If we're sure we've definitely found a list qualifier token delimiter (``:``) but the
- * string doesn't match a #tmpl_pair_list qualifier, return 0 and write #PAIR_LIST_UNKNOWN
- * to out.
  *
  * If we can't find a string that looks like a request qualifier, set out to def, and
  * return 0.
@@ -2159,7 +2155,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			.ar_parent = fr_dict_root(fr_dict_internal())
 		};
 
-		fr_assert(at_rules->list_def != PAIR_LIST_UNKNOWN);
+		fr_assert(at_rules->list_def);
 		ar->ar_da = at_rules->list_def;
 
 		/*

@@ -312,8 +312,8 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 	}
 	count = ldap_count_values_len(values);
 
-	list = tmpl_list_head(request, PAIR_LIST_CONTROL);
-	list_ctx = tmpl_list_ctx(request, PAIR_LIST_CONTROL);
+	list = tmpl_list_head(request, request_attr_control);
+	list_ctx = tmpl_list_ctx(request, request_attr_control);
 	fr_assert(list != NULL);
 	fr_assert(list_ctx != NULL);
 

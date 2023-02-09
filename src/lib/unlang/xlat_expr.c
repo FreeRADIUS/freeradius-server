@@ -1560,7 +1560,7 @@ static xlat_action_t xlat_exists_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   .attr = {
 						   .dict_def = request->dict,
 						   .request_def = &tmpl_request_def_current,
-						   .list_def = PAIR_LIST_REQUEST,
+						   .list_def = request_attr_request,
 						   .prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 						   .allow_unknown = false,
 						   .allow_unresolved = false,

@@ -2833,7 +2833,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 					.attr = {
 						.dict_def = cc->tmpl_rules.attr.dict_def ?
 						cc->tmpl_rules.attr.dict_def : cc->config->dict,
-						.list_def = PAIR_LIST_REQUEST,
+						.list_def = request_attr_request,
 						.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					},
 				});
@@ -2870,7 +2870,7 @@ static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc
 							.dict_def = cc->tmpl_rules.attr.dict_def ?
 							   cc->tmpl_rules.attr.dict_def : cc->config->dict,
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
-							.list_def = PAIR_LIST_REQUEST,
+							.list_def = request_attr_request,
 						}
 					   });
 	if (dec_len <= 0) {
@@ -2910,7 +2910,7 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 							.dict_def = cc->tmpl_rules.attr.dict_def ?
 							   cc->tmpl_rules.attr.dict_def : cc->config->dict,
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
-							.list_def = PAIR_LIST_REQUEST,
+							.list_def = request_attr_request,
 						   },
 					   });
 	if (dec_len <= 0) {
@@ -2963,7 +2963,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 					  .attr = {
 						  .dict_def = cc->tmpl_rules.attr.dict_def ?
 						  cc->tmpl_rules.attr.dict_def : cc->config->dict,
-						  .list_def = PAIR_LIST_REQUEST,
+						  .list_def = request_attr_request,
 						  .allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					  },
 				  });
@@ -3346,7 +3346,7 @@ static command_file_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
 
 	cc->fuzzer_dir = -1;
 
-	cc->tmpl_rules.attr.list_def = PAIR_LIST_REQUEST;
+	cc->tmpl_rules.attr.list_def = request_attr_request;
 
 	return cc;
 }

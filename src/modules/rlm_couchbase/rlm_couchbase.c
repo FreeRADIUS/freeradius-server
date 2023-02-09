@@ -158,10 +158,10 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 		/*
 		 *	Convert JSON data into maps
 		 */
-		if ((mod_json_object_to_map(pool, &maps, request, cookie->jobj, PAIR_LIST_CONTROL) < 0) ||
-		    (mod_json_object_to_map(pool, &maps, request, cookie->jobj, PAIR_LIST_REPLY) < 0) ||
-		    (mod_json_object_to_map(pool, &maps, request, cookie->jobj, PAIR_LIST_REQUEST) < 0) ||
-		    (mod_json_object_to_map(pool, &maps, request, cookie->jobj, PAIR_LIST_STATE) < 0)) {
+		if ((mod_json_object_to_map(pool, &maps, request, cookie->jobj, request_attr_control) < 0) ||
+		    (mod_json_object_to_map(pool, &maps, request, cookie->jobj, request_attr_reply) < 0) ||
+		    (mod_json_object_to_map(pool, &maps, request, cookie->jobj, request_attr_request) < 0) ||
+		    (mod_json_object_to_map(pool, &maps, request, cookie->jobj, request_attr_state) < 0)) {
 		invalid:
 			talloc_free(pool);
 			rcode = RLM_MODULE_INVALID;

@@ -1227,7 +1227,7 @@ int virtual_servers_instantiate(void)
 			tmpl_rules_t		parse_rules = {
 				.attr = {
 					.dict_def = *(process->dict),
-					.list_def = PAIR_LIST_REQUEST,
+					.list_def = request_attr_request,
 				},
 			};
 

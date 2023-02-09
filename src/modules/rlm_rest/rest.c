@@ -743,7 +743,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 						.attr = {
 							.prefix = TMPL_ATTR_REF_PREFIX_NO,
 							.dict_def = request->dict,
-							.list_def = PAIR_LIST_REPLY
+							.list_def = request_attr_reply
 						}
 					}) <= 0) {
 			RPWDEBUG("Failed parsing attribute (skipping)");
@@ -1034,7 +1034,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 							.attr = {
 								.prefix = TMPL_ATTR_REF_PREFIX_NO,
 								.dict_def = request->dict,
-								.list_def = PAIR_LIST_REPLY
+								.list_def = request_attr_reply
 							}
 						}) <= 0) {
 				RPWDEBUG("Failed parsing attribute (skipping)");

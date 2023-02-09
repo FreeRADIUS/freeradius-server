@@ -362,7 +362,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vp
 					&(tmpl_rules_t){
 						.attr = {
 							.dict_def = request->dict,
-							.list_def = PAIR_LIST_REPLY
+							.list_def = request_attr_reply
 						}
 					}) <= 0) {
 			ERROR("Failed to find attribute %s", ckey);

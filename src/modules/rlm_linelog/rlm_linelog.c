@@ -528,7 +528,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 					 NULL,
 					 &(tmpl_rules_t){
 					 	.attr = {
-							.list_def = PAIR_LIST_REQUEST,
+							.list_def = request_attr_request,
 					 		.dict_def = request->dict,
 					 		.allow_unknown = true,
 					 		.allow_unresolved = false,

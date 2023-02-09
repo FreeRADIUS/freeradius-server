@@ -79,7 +79,7 @@ int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name)
 				&(tmpl_rules_t){
 					.attr = {
 						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REQUEST,
+						.list_def = request_attr_request,
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) return -4;
@@ -1153,7 +1153,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 				&(tmpl_rules_t){
 					.attr = {
 						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REQUEST,
+						.list_def = request_attr_request,
 						.allow_wildcard = true,
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
@@ -1203,7 +1203,7 @@ static xlat_action_t xlat_func_flatten(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 				&(tmpl_rules_t){
 					.attr = {
 						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REQUEST,
+						.list_def = request_attr_request,
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
@@ -1250,7 +1250,7 @@ static xlat_action_t xlat_func_unflatten(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurs
 				&(tmpl_rules_t){
 					.attr = {
 						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REQUEST,
+						.list_def = request_attr_request,
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
@@ -1544,7 +1544,7 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	tmpl_rules_t	attr_rules = {
 		.attr = {
 			.dict_def = request->dict,
-			.list_def = PAIR_LIST_REQUEST,
+			.list_def = request_attr_request,
 			.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 		}
 	};
@@ -1756,7 +1756,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    &(tmpl_rules_t){
 					    .attr = {
 						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REQUEST,
+						.list_def = request_attr_request,
 						.allow_unknown = false,
 						.allow_unresolved = false,
 						.allow_foreign = false,
@@ -1833,7 +1833,7 @@ static xlat_action_t xlat_func_expr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    &(tmpl_rules_t){
 				    	.attr = {
 						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REQUEST,
+						.list_def = request_attr_request,
 						.allow_unknown = false,
 						.allow_unresolved = false,
 						.allow_foreign = false,
@@ -2750,7 +2750,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				&(tmpl_rules_t){
 					.attr = {
 						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REQUEST,
+						.list_def = request_attr_request,
 						.allow_wildcard = true,
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
@@ -3909,7 +3909,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				&(tmpl_rules_t){
 					.attr = {
 						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REQUEST,
+						.list_def = request_attr_request,
 						.allow_wildcard = true,
 						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}

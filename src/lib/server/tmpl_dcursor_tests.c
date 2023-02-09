@@ -136,7 +136,7 @@ int _tmpl_setup_and_cursor_init(fr_pair_t **vp_out, tmpl_dcursor_vars_t *vars, r
 	tmpl_afrom_attr_substr(autofree, NULL, &vars->vpt, &FR_SBUFF_IN(ref, strlen(ref)), NULL, &(tmpl_rules_t){
 			.attr = {
 				.dict_def = test_dict,
-				.list_def = PAIR_LIST_REQUEST,
+				.list_def = request_attr_request,
 			}});
 	TEST_CHECK(vars->vpt!= NULL);
 	TEST_MSG("Failed creating tmpl from %s: %s", ref, fr_strerror());
@@ -164,7 +164,7 @@ int _tmpl_setup_and_cursor_build_init(fr_pair_t **vp_out, tmpl_dcursor_vars_t *v
 	tmpl_afrom_attr_substr(autofree, NULL, &vars->vpt, &FR_SBUFF_IN(ref, strlen(ref)), NULL, &(tmpl_rules_t){
 			.attr = {
 				.dict_def = test_dict,
-				.list_def = PAIR_LIST_REQUEST,
+				.list_def = request_attr_request,
 			}});
 	TEST_CHECK(vars->vpt!= NULL);
 	TEST_MSG("Failed creating tmpl from %s: %s", ref, fr_strerror());

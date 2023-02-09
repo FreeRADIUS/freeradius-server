@@ -728,7 +728,7 @@ static void _lua_fr_request_register(lua_State *L, request_t *request)
 		lua_setfield(L, -2, "pairs");
 
 		lua_newtable(L);		/* Attribute list meta-table */
-		lua_pushinteger(L, PAIR_LIST_REQUEST);
+		lua_pushinteger(L, request_attr_request->attr);
 		lua_pushcclosure(L, _lua_pair_accessor_init, 1);
 		lua_setfield(L, -2, "__index");
 		lua_setmetatable(L, -2);

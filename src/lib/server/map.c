@@ -1364,7 +1364,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	/*
 	 *	We always put the request pairs into the environment
 	 */
-	input_pairs = tmpl_list_head(request, PAIR_LIST_REQUEST);
+	input_pairs = tmpl_list_head(request, request_attr_request);
 
 	/*
 	 *	Automagically switch output type depending on our destination
@@ -1768,7 +1768,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 					   &(tmpl_rules_t){
 					   	.attr = {
 					   		.dict_def = request->dict,
-							.list_def = PAIR_LIST_REQUEST,
+							.list_def = request_attr_request,
 				   			.prefix = TMPL_ATTR_REF_PREFIX_NO
 				   		}
 					   });

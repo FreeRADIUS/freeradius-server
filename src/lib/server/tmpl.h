@@ -81,12 +81,6 @@ extern "C" {
  */
 #define TMPL_MAX_REQUEST_REF_NESTING	10
 
-#define PAIR_LIST_UNKNOWN NULL
-#define PAIR_LIST_REQUEST request_attr_request
-#define PAIR_LIST_REPLY request_attr_reply
-#define PAIR_LIST_CONTROL request_attr_control
-#define PAIR_LIST_STATE request_attr_state
-
 extern fr_table_num_ordered_t const pair_list_table[];
 extern size_t pair_list_table_len;
 
@@ -972,7 +966,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
    fr_pair_list_t *head;
    fr_value_box_t value;
 
-   tmpl_pair_list_and_ctx(ctx, head, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
+   tmpl_pair_list_and_ctx(ctx, head, request, CURRENT_REQUEST, request_attr_request);
    if (!list) return -1; // error
 
    value.strvalue = talloc_typed_strdup(NULL, "my new username");
