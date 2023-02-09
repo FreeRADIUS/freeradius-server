@@ -23,6 +23,7 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  libsqlite3-dev,
  libssl-dev,
  libtalloc-dev,
+ libunbound-dev,
  libwbclient-dev,
  libyubikey-dev,
  libykclient-dev,
@@ -184,6 +185,13 @@ Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, $
 Description: Memcached module for FreeRADIUS server
  The FreeRADIUS server can cache data in memcached and this package
  contains the required module.
+
+Package: freeradius-unbound
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Unbound module for FreeRADIUS server
+ This package is required to add libunbound DNS functionality to the
+ FreeRADIUS server.
 
 Package: freeradius-yubikey
 Architecture: any
