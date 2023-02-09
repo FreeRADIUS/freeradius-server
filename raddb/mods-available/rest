@@ -376,95 +376,48 @@ rest {
 	}
 
 	#
-	#  pool { ... }::
+	#  connection { ... }::  Configure how connection handles are
+	#  managed per thread.
 	#
-	#  This pool controls the number of handles available per-thread.
-	#
-	#  Each handle represents a single HTTP request.
-	#
-	#  [NOTE]
-	#  ====
-	#  * With HTTP <= 1.1, each request is bound to a single connection
-	#  so this pool, so these configuration items are useful for limiting
-	#  the number of outbound requests to the server.
-	#
-	#  * With HTTP >= 2.0 with multiplexing enabled, multiple requests are
-	#  sent over a single HTTP connection, so the pool is more useful
-	#  for limiting the number of outstanding requests, and allowing for
-	#  handle reuse.
-	#  ====
-	#
-	pool {
-		#
-		#  start:: Handles to create during module instantiation.
-		#  If the server cannot create specified number of handles
-		#  during instantiation it will exit.
-		#
-		#  Set to `0` to allow the server to start without allocating
-		#  any connection handles.
-		#
-		start = 20
+	connection {
 
 		#
-		#  min:: Minimum number of handles to keep allocated.
+		#  Reusable connection handles are allocated in blocks.  These
+		#  parameters allow for tuning how that is done.
 		#
-		min = 1
+		#  Since http requests are performed async, the settings here
+		#  represent outstanding http requests per thread.
+		#
+		reuse {
 
-		#
-		#  max:: Maximum number of handles.
-		#
-		#  If these handles are all in use and a new one
-		#  is requested, the request will NOT get a handle.
-		#
-		#  Since http requests are performed asynchronously, this
-		#  max represents the maximum number of outstanding requests
-		#  there can be per-thread.
-		#
-		#  Setting `max` to LESS than the number of potential outstanding
-		#  requests per-thread means that some threads may starve,
-		#  and you will see errors like
-		#  'No connections available and at max connection limit'
-		#
-		max = 50
+			#
+			#  min:: The minimum number of connection handles to
+			#  keep allocated.
+			#
+			min = 10
 
-		#
-		#  spare:: Spare handles to be left idle.
-		#
-		#  NOTE: Idle handles WILL be freed if `idle_timeout`
-		#  is set.  This should be less than or equal to `max` above.
-		#
-		spare = 1
+			#
+			#  max:: The maximum number of reusable connection handles
+			#  to allocate.
+			#
+			#  Any requests to allocate a connection handle beyond
+			#  this number will cause a temporary handle to be allocated.
+			#  This is less efficient than the block allocation so
+			# `max` should be set to reflect the number of outstanding
+			# requests expected at peak load.
+			max = 100
 
-		#
-		#  uses:: Number of uses before the handle is freed.
-		#
-		#  NOTE: `0` means "infinite".
-		#
-		uses = 0
+			#
+			#  cleanup_interval:: How often to free un-used connection
+			#  handles.
+			#
+			#  Every `cleanup_interval` a cleanup routine runs which
+			#  will free any blocks of handles which are not in use,
+			#  ensuring that at least `min` handles are kept.
+			#
+			cleanup_interval = 30s
 
-		#
-		#  retry_delay:: The number of seconds to wait after the server tries
-		#  to open a connection, and fails.
-		#
-		#  During this time, no new connections will be opened.
-		#
-		retry_delay = 30
-
-		#
-		#  lifetime:: The lifetime (in seconds) of the connection.
-		#
-		#  NOTE: `0` means "infinite".
-		#
-		lifetime = 0
-
-		#
-		#  idle_timeout:: The idle timeout (in seconds).
-		#
-		#  A connection which is unused for this length of time will be closed.
-		#
-		#  NOTE: `0` means "infinite".
-		#
-		idle_timeout = 60
+		}
 
 		#
 		#  connect_timeout:: Connection timeout (in seconds).
@@ -472,20 +425,5 @@ rest {
 		#  The maximum amount of time to wait for a new connection to be established.
 		#
 		connect_timeout = 3.0
-
-		#
-		#  [NOTE]
-		#  ====
-		#  All configuration settings are enforced.  If a connection is closed because of
-		#  `idle_timeout`, `uses`, or `lifetime`, then the total number of connections MAY
-		#  fall below `min`.
-		#
-		#  When that happens, it will open a new connection.  It will also log a *WARNING*
-		#  message.
-		#
-		#  The solution is to either lower the "min" connections,
-		#  or increase lifetime/idle_timeout.
-		#  ====
-		#
 	}
 }
