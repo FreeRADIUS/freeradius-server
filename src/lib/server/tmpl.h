@@ -217,7 +217,6 @@ typedef enum tmpl_type_e {
 #define tmpl_is_data(vpt) 			(vpt->type == TMPL_TYPE_DATA)
 
 #define tmpl_is_attr(vpt) 			(vpt->type == TMPL_TYPE_ATTR)
-#define tmpl_is_list(vpt) 			(vpt->type == TMPL_TYPE_LIST)
 
 #define tmpl_is_xlat(vpt) 			(vpt->type == TMPL_TYPE_XLAT)
 #define tmpl_is_exec(vpt) 			(vpt->type == TMPL_TYPE_EXEC)
@@ -928,6 +927,12 @@ static inline fr_dict_attr_t const *tmpl_list(tmpl_t const *vpt)
 static inline char const *tmpl_list_name(fr_dict_attr_t const *list, char const *def)
 {
 	return (list ? list->name : def);
+}
+
+static inline bool tmpl_is_list(tmpl_t const *vpt)
+{
+	if (!tmpl_is_attr(vpt)) return false;
+	return tmpl_attr_is_list_attr(tmpl_attr_tail(vpt));
 }
 
 /** @name Field accessors for #TMPL_TYPE_XLAT
