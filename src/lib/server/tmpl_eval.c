@@ -442,7 +442,6 @@ ssize_t _tmpl_to_type(void *out,
 	 */
 	case TMPL_TYPE_UNINITIALISED:
 	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_EXEC_UNRESOLVED:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
@@ -774,7 +773,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 */
 	case TMPL_TYPE_UNINITIALISED:
 	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_EXEC_UNRESOLVED:
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_UNCOMPILED:
@@ -850,7 +848,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
  * @param request The current #request_t.
  * @param vpt specifying the #fr_pair_t type or list to copy.
  *	Must be one of the following types:
- *	- #TMPL_TYPE_LIST
  *	- #TMPL_TYPE_ATTR
  * @return
  *	- -1 if no matching #fr_pair_t could be found.
@@ -894,7 +891,6 @@ int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, tm
  * @param request The current #request_t.
  * @param vpt specifying the #fr_pair_t type or list to copy.
  *	Must be one of the following types:
- *	- #TMPL_TYPE_LIST
  *	- #TMPL_TYPE_ATTR
  * @return
  *	- -1 if no matching #fr_pair_t could be found.
@@ -943,7 +939,6 @@ done:
  * @param[in] request The current #request_t.
  * @param[in] vpt specifying the #fr_pair_t type to find.
  *	Must be one of the following types:
- *	- #TMPL_TYPE_LIST
  *	- #TMPL_TYPE_ATTR
  * @return
  *	- 0 on success (found matching #fr_pair_t).

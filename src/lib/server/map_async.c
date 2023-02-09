@@ -233,7 +233,7 @@ static inline fr_pair_list_t *map_check_src_or_dst(request_t *request, map_t con
  * @param[in,out] ctx		to allocate modification maps in.
  * @param[out] out		Where to write the #fr_pair_t (s), which may be NULL if not found
  * @param[in] request		The current request.
- * @param[in] original		the map. The LHS (dst) has to be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
+ * @param[in] original		the map. The LHS (dst) has to be #TMPL_TYPE_ATTR.
  * @param[in] lhs_result	of previous stack based rhs evaluation.
  *				Must be provided for rhs types:
  *				- TMPL_TYPE_XLAT
@@ -278,7 +278,6 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	/*
 	 *	Already in the correct form.
 	 */
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR:
 		break;
 
@@ -891,20 +890,6 @@ static inline void map_list_mod_debug(request_t *request,
 		rhs = fr_asprintf(request, "%s%pV%s", quote, vb, quote);
 		break;
 
-	/*
-	 *	For the lists, we can't use the original name, and have to
-	 *	rebuild it using tmpl_print, for each attribute we're
-	 *	copying.
-	 */
-	case TMPL_TYPE_LIST:
-	{
-		char buffer[256];
-
-		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->rhs, TMPL_ATTR_REF_PREFIX_YES, NULL);
-		rhs = fr_asprintf(request, "%s -> %s%pV%s", buffer, quote, vb, quote);
-	}
-		break;
-
 	case TMPL_TYPE_ATTR:
 		rhs = fr_asprintf(request, "%s -> %s%pV%s", map->rhs->name, quote, vb, quote);
 		break;
@@ -916,7 +901,6 @@ static inline void map_list_mod_debug(request_t *request,
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
 		RDEBUG2("%s %s %s", map->lhs->name, fr_table_str_by_value(fr_tokens_table, mod->op, "<INVALID>"), rhs);
 		break;
 

@@ -564,7 +564,6 @@ build_vector:
 	 */
 	switch (vpt_p->type) {
 	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
 	{
 		#define VECTOR_INCREMENT 20
 		fr_dcursor_t		cursor;

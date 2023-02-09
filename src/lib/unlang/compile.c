@@ -852,7 +852,6 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	if (!ctx) {
 		switch (map->lhs->type) {
 		case TMPL_TYPE_ATTR:
-		case TMPL_TYPE_LIST:
 			tmpl_attr_rewrite_leaf_num(map->lhs, NUM_UNSPEC, NUM_ALL);
 			break;
 
@@ -865,7 +864,6 @@ int unlang_fixup_update(map_t *map, void *ctx)
 		 */
 		switch (map->rhs->type) {
 		case TMPL_TYPE_ATTR:
-		case TMPL_TYPE_LIST:
 			tmpl_attr_rewrite_leaf_num(map->rhs, NUM_UNSPEC, NUM_ALL);
 			break;
 
