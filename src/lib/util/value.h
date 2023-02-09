@@ -687,25 +687,15 @@ _Generic((_var), \
 	fr_ethernet_t const *	: fr_value_box_ethernet_addr, \
 	bool			: fr_value_box_bool, \
 	uint8_t			: fr_value_box_uint8, \
-	uint8_t const		: fr_value_box_uint8, \
 	uint16_t		: fr_value_box_uint16, \
-	uint16_t const		: fr_value_box_uint16, \
 	uint32_t		: fr_value_box_uint32, \
-	uint32_t const		: fr_value_box_uint32, \
 	uint64_t		: fr_value_box_uint64, \
-	uint64_t const		: fr_value_box_uint64, \
 	int8_t			: fr_value_box_int8, \
-	int8_t const		: fr_value_box_int8, \
 	int16_t			: fr_value_box_int16, \
-	int16_t const		: fr_value_box_int16, \
 	int32_t			: fr_value_box_int32, \
-	int32_t	const		: fr_value_box_int32, \
 	int64_t			: fr_value_box_int64, \
-	int64_t	const		: fr_value_box_int64, \
 	float			: fr_value_box_float32, \
-	float const		: fr_value_box_float32, \
-	double			: fr_value_box_float64, \
-	double const		: fr_value_box_float64 \
+	double			: fr_value_box_float64 \
 )(_box, NULL, _var, _tainted)
 
 /** Automagically fill in a box, for types with length
