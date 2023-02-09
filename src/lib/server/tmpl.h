@@ -496,6 +496,35 @@ FR_DLIST_FUNCS(tmpl_request_list, tmpl_request_t, entry)
 #define ar_is_unknown(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNKNOWN)
 #define ar_is_unresolved(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNRESOLVED)
 
+/** Indicate whether an attribute reference is raw
+ *
+ * Determining whether an attribute reference is raw, is slightly more complex
+ * given the raw flag is either coming from the attribute or an internal
+ * "is_raw" flag in the unresolved entry.
+ *
+ * @param[in] ar	to check for rawness.
+ * @return
+ *	- true if the attribute reference is raw.
+ *	- false if the attribute reference is not raw.
+ */
+static inline bool ar_is_raw(tmpl_attr_t const *ar)
+{
+	switch (ar->ar_type) {
+	case TMPL_ATTR_TYPE_NORMAL:
+	case TMPL_ATTR_TYPE_UNKNOWN:
+		return ar->ar_da->flags.is_raw;
+
+	case TMPL_ATTR_TYPE_UNRESOLVED:
+		return ar->ar_unresolved_raw;
+
+	case TMPL_ATTR_TYPE_UNSPEC:
+		return false;
+	}
+
+	fr_assert_fail("ar type (%i) is invalid", (int)ar->ar_type);
+	return false;
+}
+
 #define ar_num				filter.num
 #define ar_filter_type			filter.type
 
