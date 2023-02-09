@@ -33,6 +33,13 @@ is done syncronously from the perspective of unlang.  This value limits the
 amount of time a request will wait for DNS to respond, after which the xlat
 will fail.  The default is 3000 milliseconds.  This setting is independent of
 any libunbound configuration values.
+.IP resolvconf
+Full path of a resolv.conf file to load resolver details from.  If this is
+not set then libunbound will query root DNS servers.
+.IP hosts
+Full path of a hosts file to load.  This provides a mechanism for local
+overrides to names which would otherwise not resolve or need different
+results to those which a DNS resolution would provide.
 .PP
 An instance named, for example, "dns" will provide the following xlat
 functionalities:
