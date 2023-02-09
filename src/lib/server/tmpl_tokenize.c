@@ -5329,7 +5329,7 @@ void tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t cons
 	fr_dict_t const *dict, *internal;
 
 	*out = *parent;
-	out->parent = parent;
+	/* don't set ->parent=parent, that is only for switching subrequest, etc. */
 
 	if (!tmpl_is_attr(vpt)) return;
 
