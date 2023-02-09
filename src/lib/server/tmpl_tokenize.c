@@ -1909,15 +1909,23 @@ do_suffix:
 		 *	it points to.
 		 */
 		case FR_TYPE_GROUP:
-			our_parent = namespace = fr_dict_attr_ref(da);
+			namespace = fr_dict_attr_ref(da);
 
 			/*
 			 *	if there's a real dictionary, and this reference is to group which is in fact
 			 *	the internal dict, then just keep using our dict_def.
 			 */
 			if (at_rules->dict_def && (namespace == fr_dict_root(fr_dict_internal()))) {
-				our_parent = namespace = fr_dict_root(at_rules->dict_def);
+				namespace = fr_dict_root(at_rules->dict_def);
 			}
+
+			/*
+			 *	If the group is from the internal dictionary, then reset the search
+			 *	for the child attribute.  Protocol attributes are allowed inside
+			 *	internal group attributes.
+			 */
+			our_parent = (namespace && (namespace->dict == fr_dict_internal())) ? NULL : namespace;
+
 			break;
 
 		case FR_TYPE_STRUCT:
