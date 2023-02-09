@@ -721,7 +721,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED
 		/*
 		 *	If name1 doesn't match, skip it.
 		 */
-		if (strncmp(methods->name1, p, len) != 0) continue;
+		if (strncasecmp(methods->name1, p, len) != 0) continue;
 
 		/*
 		 *	It may have been a partial match, like "rec",
