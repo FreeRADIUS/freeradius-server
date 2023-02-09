@@ -572,7 +572,7 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 			goto default_ref;
 		}
 
-		if (at_rules->parent || at_rules->disallow_qualifiers) {
+		if (at_rules->namespace || at_rules->disallow_qualifiers) {
 			fr_strerror_const("It is not permitted to specify a request reference here");
 			if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 
@@ -2040,7 +2040,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 */
 	ret = tmpl_attr_afrom_attr_substr(vpt, err,
 					  vpt,
-					  at_rules->parent, at_rules->parent,
+					  at_rules->namespace, at_rules->namespace,
 					  &our_name, p_rules, at_rules, 0);
 	if (ret < 0) goto error;
 
@@ -5353,7 +5353,7 @@ void tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t cons
 	 */
 	if (da->type != FR_TYPE_GROUP) {
 		out->attr.dict_def = fr_dict_by_da(da);
-		out->attr.parent = da;
+		out->attr.namespace = da;
 		return;
 	}
 
@@ -5366,7 +5366,7 @@ void tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t cons
 	 */
 	if ((dict != internal) && (dict != out->attr.dict_def)) {
 		out->attr.dict_def = dict;
-		out->attr.parent = ref;
+		out->attr.namespace = ref;
 	}
 
 	/*

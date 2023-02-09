@@ -2587,7 +2587,7 @@ static ssize_t command_tmpl_rule_attr_parent(UNUSED TALLOC_CTX *ctx, tmpl_rules_
 	fr_slen_t		slen;
 
 	slen = fr_dict_attr_by_oid_substr(&err,
-					  &rules->attr.parent,
+					  &rules->attr.namespace,
 					  rules->attr.dict_def ? fr_dict_root(rules->attr.dict_def) :
 					  			 fr_dict_root(fr_dict_internal()),
 					  value, NULL);

@@ -470,7 +470,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 */
 			if (is_child) {
 				fr_assert(tmpl_is_attr(parent->lhs));
-				our_lhs_rules.attr.parent = tmpl_attr_tail_da(parent->lhs);
+				our_lhs_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
 
 				slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
 							      &map_parse_rules_bareword_quoted, &our_lhs_rules);
@@ -854,22 +854,22 @@ do_children:
 			 *	inner section.
 			 */
 			our_lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_NO;
-			our_lhs_rules.attr.parent = tmpl_attr_tail_da(map->lhs);
+			our_lhs_rules.attr.namespace = tmpl_attr_tail_da(map->lhs);
 
 			/*
 			 *	Groups MAY change dictionaries.  If so, then swap the dictionary and the parent.
 			 */
-			if (our_lhs_rules.attr.parent->type == FR_TYPE_GROUP) {
+			if (our_lhs_rules.attr.namespace->type == FR_TYPE_GROUP) {
 				fr_dict_attr_t const *ref;
 				fr_dict_t const *dict, *internal;
 
-				ref = fr_dict_attr_ref(our_lhs_rules.attr.parent);
+				ref = fr_dict_attr_ref(our_lhs_rules.attr.namespace);
 				dict = fr_dict_by_da(ref);
 				internal = fr_dict_internal();
 
 				if ((dict != internal) && (dict != our_lhs_rules.attr.dict_def)) {
 					our_lhs_rules.attr.dict_def = dict;
-					our_lhs_rules.attr.parent = ref;
+					our_lhs_rules.attr.namespace = ref;
 				}
 			}
 

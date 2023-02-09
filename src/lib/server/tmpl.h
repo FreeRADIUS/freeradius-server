@@ -271,7 +271,7 @@ struct tmpl_attr_rules_s {
 	fr_dict_t const		*dict_def;		//!< Default dictionary to use
 							///< with unqualified attribute references.
 
-	fr_dict_attr_t const	*parent;		//!< Point in dictionary tree to resume parsing
+	fr_dict_attr_t const	*namespace;		//!< Point in dictionary tree to resume parsing
 							///< from.  If this is provided then dict_def
 							///< request_def and list_def will be ignored
 							///< and the presence of any of those qualifiers
