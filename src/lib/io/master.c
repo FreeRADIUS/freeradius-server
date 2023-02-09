@@ -1246,6 +1246,11 @@ redo:
 			return 0;
 		}
 
+		/*
+		 *	All sockets are non-blocking.
+		 */
+		(void) fr_nonblock(accept_fd);
+
 #ifdef STATIC_ANALYZER
 		saremote.ss_family = AF_INET; /* static analyzer doesn't know that accept() initializes this */
 #endif
