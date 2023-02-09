@@ -439,7 +439,7 @@ fr_slen_t tmpl_attr_list_from_substr(fr_dict_attr_t const **da_p, fr_sbuff_t *in
  * @see pair_list
  * @see tmpl_pair_list
  */
-size_t tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_list_t def)
+size_t tmpl_pair_list_name(fr_dict_attr_t const **out, char const *name, fr_dict_attr_t const *def)
 {
 	char const *p = name;
 	char const *q;
@@ -1253,7 +1253,7 @@ void tmpl_attr_set_request_ref(tmpl_t *vpt, FR_DLIST_HEAD(tmpl_request_list) con
 	TMPL_ATTR_VERIFY(vpt);
 }
 
-void tmpl_attr_set_list(tmpl_t *vpt, tmpl_pair_list_t list)
+void tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list)
 {
 	vpt->data.attribute.list = list;
 

@@ -301,7 +301,7 @@ struct tmpl_attr_rules_s {
 							///< the stack and a pointer to it
 							///< placed here.
 
-	tmpl_pair_list_t	list_def;		//!< Default list to use with unqualified
+	fr_dict_attr_t const	*list_def;		//!< Default list to use with unqualified
 							///< attribute reference.
 
 	tmpl_attr_prefix_t	prefix;			//!< Whether the attribute reference requires
@@ -545,7 +545,7 @@ struct tmpl_s {
 								///< with a '&'.
 			bool			was_oid;	//!< Was originally a numeric OID.
 
-			tmpl_pair_list_t	list;		//!< List to search or insert in.
+			fr_dict_attr_t const	*list;		//!< List to search or insert in.
 								///< deprecated.
 
 			FR_DLIST_HEAD(tmpl_request_list)	rr;	//!< Request to search or insert in.
@@ -814,7 +814,7 @@ static inline size_t tmpl_attr_num_elements(tmpl_t const *vpt)
 	return tmpl_attr_list_num_elements(tmpl_attr(vpt));
 }
 
-static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)
+static inline fr_dict_attr_t const *tmpl_list(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unresolved(vpt) ||			/* Remove once list is part of ar dlist */
@@ -1014,15 +1014,15 @@ typedef enum {
 
 void			tmpl_debug(tmpl_t const *vpt) CC_HINT(nonnull);
 
-fr_pair_list_t		*tmpl_list_head(request_t *request, tmpl_pair_list_t list);
+fr_pair_list_t		*tmpl_list_head(request_t *request, fr_dict_attr_t const *list);
 
-fr_radius_packet_t	*tmpl_packet_ptr(request_t *request, tmpl_pair_list_t list_name) CC_HINT(nonnull);
+fr_radius_packet_t	*tmpl_packet_ptr(request_t *request, fr_dict_attr_t const *list) CC_HINT(nonnull);
 
-TALLOC_CTX		*tmpl_list_ctx(request_t *request, tmpl_pair_list_t list_name);
+TALLOC_CTX		*tmpl_list_ctx(request_t *request, fr_dict_attr_t const *list);
 
-size_t			tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_list_t default_list) CC_HINT(nonnull);
 fr_slen_t		tmpl_attr_list_from_substr(fr_dict_attr_t const **da_p, fr_sbuff_t *in) CC_HINT(nonnull);
 
+size_t			tmpl_pair_list_name(fr_dict_attr_t const **out, char const *name, fr_dict_attr_t const *default_list) CC_HINT(nonnull(1,2));
 
 tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,4));
 
@@ -1132,7 +1132,7 @@ void			tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonn
 
 void			tmpl_attr_set_request_ref(tmpl_t *vpt, FR_DLIST_HEAD(tmpl_request_list) const *request_def) CC_HINT(nonnull);
 
-void			tmpl_attr_set_list(tmpl_t *vpt, tmpl_pair_list_t list) CC_HINT(nonnull);
+void			tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list) CC_HINT(nonnull);
 
 int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list,
 					     fr_dict_attr_t const *da) CC_HINT(nonnull);

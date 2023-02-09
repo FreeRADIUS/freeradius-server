@@ -96,7 +96,7 @@ static fr_dict_attr_autoload_t tmpl_dict_attr[] = {
  */
 fr_pair_t *tmpl_get_list(request_t *request, tmpl_t const *vpt)
 {
-	tmpl_pair_list_t list;
+	fr_dict_attr_t const *list;
 
 	if (!request) return NULL;
 
@@ -138,7 +138,7 @@ fr_pair_t *tmpl_get_list(request_t *request, tmpl_t const *vpt)
  *
  * @see tmpl_dcursor_init
  */
-fr_pair_list_t *tmpl_list_head(request_t *request, tmpl_pair_list_t list)
+fr_pair_list_t *tmpl_list_head(request_t *request, fr_dict_attr_t const *list)
 {
 	if (!request) return NULL;
 
@@ -176,7 +176,7 @@ fr_pair_list_t *tmpl_list_head(request_t *request, tmpl_pair_list_t list)
  *
  * @see tmpl_pair_list
  */
-TALLOC_CTX *tmpl_list_ctx(request_t *request, tmpl_pair_list_t list)
+TALLOC_CTX *tmpl_list_ctx(request_t *request, fr_dict_attr_t const *list)
 {
 	if (!request) return NULL;
 
@@ -204,7 +204,7 @@ TALLOC_CTX *tmpl_list_ctx(request_t *request, tmpl_pair_list_t list)
  *
  * @see tmpl_pair_list
  */
-fr_radius_packet_t *tmpl_packet_ptr(request_t *request, tmpl_pair_list_t list)
+fr_radius_packet_t *tmpl_packet_ptr(request_t *request, fr_dict_attr_t const *list)
 {
 	if (list == PAIR_LIST_REQUEST) return request->packet;
 

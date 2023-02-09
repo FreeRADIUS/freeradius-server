@@ -206,7 +206,7 @@ static inline fr_pair_list_t *map_check_src_or_dst(request_t *request, map_t con
 {
 	request_t		*context = request;
 	fr_pair_list_t		*list;
-	tmpl_pair_list_t	list_ref;
+	fr_dict_attr_t const	*list_ref;
 
 	if (tmpl_request_ptr(&context, tmpl_request(src_dst)) < 0) {
 		RPEDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed",
