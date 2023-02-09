@@ -40,6 +40,7 @@ rlm_totp
 rlm_unix
 rlm_sometimes
 rlm_wimax
+rlm_unbound
 rlm_yubikey
 rlm_redis
 rlm_rediswho
