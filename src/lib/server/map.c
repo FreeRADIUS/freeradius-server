@@ -758,8 +758,8 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 		}
 		p += slen;
 
-		our_lhs_rules.attr.list_def = fr_table_value_by_str(pair_list_table, p, PAIR_LIST_UNKNOWN);
-		if (our_lhs_rules.attr.list_def == PAIR_LIST_UNKNOWN) {
+		slen = tmpl_attr_list_from_substr(&our_lhs_rules.attr.list_def, &FR_SBUFF_IN(p, strlen(p)));
+		if (slen == 0) {
 			cf_log_err(ci, "Default list \"%s\" specified in mapping section is invalid", p);
 			talloc_free(tmp_ctx);
 			return -1;

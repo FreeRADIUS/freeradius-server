@@ -2619,13 +2619,13 @@ static ssize_t command_tmpl_rule_list_def(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *
 {
 	ssize_t slen;
 
-	fr_sbuff_out_by_longest_prefix(&slen, &rules->attr.list_def, pair_list_table, value, PAIR_LIST_UNKNOWN);
+	slen = tmpl_attr_list_from_substr(&rules->attr.list_def, value);
 
-	if (rules->attr.list_def == PAIR_LIST_UNKNOWN) {
+	if (slen == 0) {
 		fr_strerror_printf("Invalid list specifier \"%pV\"",
 				   fr_box_strvalue_len(fr_sbuff_current(value), fr_sbuff_remaining(value)));
 	}
-	
+
 	return slen;
 }
 
