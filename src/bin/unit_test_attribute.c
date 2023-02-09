@@ -2635,9 +2635,7 @@ static ssize_t command_tmpl_rule_request_def(TALLOC_CTX *ctx, tmpl_rules_t *rule
 
 	slen = tmpl_request_ref_list_afrom_substr(ctx, NULL,
 						  &rules->attr.request_def,
-						  value,
-						  NULL,
-						  NULL);
+						  value);
 	if (slen < 0) {
 		fr_strerror_printf("Invalid request specifier \"%pV\"",
 				   fr_box_strvalue_len(fr_sbuff_current(value), fr_sbuff_remaining(value)));

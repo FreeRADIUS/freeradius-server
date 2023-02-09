@@ -747,7 +747,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 		MEM(tmp_ctx = talloc_init_const("tmp"));
 
 		slen = tmpl_request_ref_list_afrom_substr(ctx, NULL, &our_lhs_rules.attr.request_def,
-							  &FR_SBUFF_IN(p, strlen(p)), NULL, NULL);
+							  &FR_SBUFF_IN(p, strlen(p)));
 		if (slen < 0) {
 			cf_log_err(ci, "Default request specified in mapping section is invalid");
 			talloc_free(tmp_ctx);

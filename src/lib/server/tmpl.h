@@ -1151,9 +1151,7 @@ int8_t			tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a,
 
 fr_slen_t		tmpl_request_ref_list_afrom_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 							   FR_DLIST_HEAD(tmpl_request_list) _CONST **out,
-							   fr_sbuff_t *in,
-							   fr_sbuff_parse_rules_t const *p_rules,
-							   tmpl_attr_rules_t const *t_rules);
+							   fr_sbuff_t *in);
 /** @} */
 
 void			tmpl_set_name_printf(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,3));

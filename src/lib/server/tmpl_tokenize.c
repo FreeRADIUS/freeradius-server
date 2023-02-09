@@ -628,17 +628,13 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
  * @parma[in] ctx	to allocate request refs in.
  * @param[out] err	If !NULL where to write the parsing error.
  * @param[in] in	Sbuff to read request references from.
- * @param[in] p_rules	Parse rules.
- * @param[in] at_rules	Default list and other rules.
  * @return
  *	- >= 0 the number of bytes parsed.
  *      - <0 negative offset for where the error occurred
  */
 fr_slen_t tmpl_request_ref_list_afrom_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					     FR_DLIST_HEAD(tmpl_request_list) **out,
-					     fr_sbuff_t *in,
-					     fr_sbuff_parse_rules_t const *p_rules,
-					     tmpl_attr_rules_t const *at_rules)
+					     fr_sbuff_t *in)
 {
 	fr_slen_t	slen;
 
@@ -647,7 +643,7 @@ fr_slen_t tmpl_request_ref_list_afrom_substr(TALLOC_CTX *ctx, tmpl_attr_error_t 
 	MEM(rql = talloc_zero(ctx, FR_DLIST_HEAD(tmpl_request_list)));
 	tmpl_request_list_talloc_init(rql);
 
-	slen = tmpl_request_ref_list_from_substr(rql, err, rql, in, p_rules, at_rules);
+	slen = tmpl_request_ref_list_from_substr(rql, err, rql, in, NULL, NULL);
 	if (slen < 0) {
 		talloc_free(rql);
 		return slen;
