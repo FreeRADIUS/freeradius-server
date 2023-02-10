@@ -2979,6 +2979,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					    vp, talloc_get_name(vp),
 					    parent, talloc_get_name(parent));
 
+			fr_assert(fr_dict_attr_can_contain(vp->da, child->da));
 			fr_pair_verify(file, line, &vp->vp_group, child);
 		}
 	}

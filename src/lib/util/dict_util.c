@@ -4304,3 +4304,63 @@ bool fr_dict_attr_compatible(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
 
 	return (a == b);
 }
+
+/** See if a structural da is allowed to contain another da
+ *
+ *  We have some complex rules with different structural types,
+ *  different protocol dictionaries, references to other protocols,
+ *  etc.
+ *
+ *  @param[in] parent	The parent da, must be structural
+ *  @param[in] child	The alleged child
+ *  @return
+ *	- false - the child is not allowed to be contained by the parent
+ *	- true - the child is allowed to be contained by the parent
+ */
+bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const *child)
+{
+	/*
+	 *	This is the common case: child is from the parent.
+	 */
+	if (child->parent == parent) return true;
+
+	/*
+	 *	Only structural types can have children.
+	 *
+	 *	@todo - yes, "key" members of FR_TYPE_STRUCT.
+	 */
+	if (!fr_type_structural[parent->type]) return false;
+
+	/*
+	 *	An internal attribute can go into any other container.
+	 *
+	 *	Any other attribute can go into an internal structural
+	 *	attribute, because why not?
+	 */
+	if (dict_gctx) {
+		if (child->dict == dict_gctx->internal) return true;
+
+		if (parent->dict == dict_gctx->internal) return true;
+	}
+
+	/*
+	 *	Protocol attributes have to be in the same dictionary.
+	 *
+	 *	Unless they're a cross-protocol grouping attribute.
+	 *	In which case we check if the ref is the same.
+	 */
+	if (child->dict != parent->dict) {
+		fr_dict_attr_t const *ref;
+
+		ref = fr_dict_attr_ref(parent);
+		return (ref && (ref->dict == child->dict));
+	}
+
+	/*
+	 *	We're in the same protocol dictionary, but the child
+	 *	isn't directly from the parent.  Therefore the only
+	 *	type of same-protocol structure it can go into is a
+	 *	group.
+	 */
+	return (parent->type == FR_TYPE_GROUP);
+}
