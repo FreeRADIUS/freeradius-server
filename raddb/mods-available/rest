@@ -226,6 +226,12 @@ rest {
 		tls = ${..tls}
 	}
 
+	#  Options for calling rest xlats
+	#  uri and method will be derived from the string provided to the xlat
+	xlat {
+		tls = ${..tls}
+	}
+
 	#
 	#  The connection pool is used to pool outgoing connections.
 	#

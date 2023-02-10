@@ -222,17 +222,11 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	char const	*body;
 	http_method_t	method;
 
-	/* There are no configurable parameters other than the URI */
-	rlm_rest_section_t section = {
-		.name = "xlat",
-		.method = HTTP_METHOD_GET,
-		.body = HTTP_BODY_NONE,
-		.attr_num = false,
-		.raw_value = false,
-		.body_str = "application/x-www-form-urlencoded",
-		.require_auth = false,
-		.force_to = HTTP_BODY_PLAIN
-	};
+	/*
+	 *	Start with xlat "section" config.
+	 *	The provided string will then be parsed to populate URI etc.
+	 */
+	rlm_rest_section_t section = inst->xlat;
 	*out = '\0';
 
 	rad_assert(fmt);
@@ -746,11 +740,9 @@ finish:
 }
 #endif
 
-static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, rlm_components_t comp)
+static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, char const *name)
 {
 	CONF_SECTION *cs;
-
-	char const *name = section_type_value[comp].section;
 
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
@@ -914,20 +906,21 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Parse sub-section configs.
 	 */
 	if (
-		(parse_sub_section(conf, &inst->authorize, MOD_AUTHORIZE) < 0) ||
-		(parse_sub_section(conf, &inst->authenticate, MOD_AUTHENTICATE) < 0) ||
-		(parse_sub_section(conf, &inst->preacct, MOD_PREACCT) < 0) ||
-		(parse_sub_section(conf, &inst->accounting, MOD_ACCOUNTING) < 0) ||
-		(parse_sub_section(conf, &inst->pre_proxy, MOD_PRE_PROXY) < 0) ||
-		(parse_sub_section(conf, &inst->post_proxy, MOD_POST_PROXY) < 0) ||
+		(parse_sub_section(conf, &inst->authorize, section_type_value[MOD_AUTHORIZE].section) < 0) ||
+		(parse_sub_section(conf, &inst->authenticate, section_type_value[MOD_AUTHENTICATE].section) < 0) ||
+		(parse_sub_section(conf, &inst->preacct, section_type_value[MOD_PREACCT].section) < 0) ||
+		(parse_sub_section(conf, &inst->accounting, section_type_value[MOD_ACCOUNTING].section) < 0) ||
+		(parse_sub_section(conf, &inst->pre_proxy, section_type_value[MOD_PRE_PROXY].section) < 0) ||
+		(parse_sub_section(conf, &inst->post_proxy, section_type_value[MOD_POST_PROXY].section) < 0) ||
+		(parse_sub_section(conf, &inst->xlat, "xlat") < 0) ||
 
 #ifdef WITH_COA
-		(parse_sub_section(conf, &inst->recv_coa, MOD_RECV_COA) < 0) ||
+		(parse_sub_section(conf, &inst->recv_coa, section_type_value[MOD_RECV_COA].section) < 0) ||
 #endif
 
 /* @todo add behaviour for checksimul */
 /*		(parse_sub_section(conf, &inst->checksimul, MOD_SESSION) < 0) || */
-		(parse_sub_section(conf, &inst->post_auth, MOD_POST_AUTH) < 0))
+		(parse_sub_section(conf, &inst->post_auth, section_type_value[MOD_POST_AUTH].section) < 0))
 	{
 		return -1;
 	}

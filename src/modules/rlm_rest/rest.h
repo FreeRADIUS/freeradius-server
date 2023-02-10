@@ -183,6 +183,8 @@ typedef struct rlm_rest_t {
 	rlm_rest_section_t	pre_proxy;	//!< Configuration specific to pre_proxy
 	rlm_rest_section_t	post_proxy;	//!< Configuration specific to post_proxy
 
+	rlm_rest_section_t	xlat;		//!< Configuration specific to xlats
+
 #ifdef WITH_COA
 	rlm_rest_section_t	recv_coa;		//!< Configuration specific to recv-coa
 #endif
