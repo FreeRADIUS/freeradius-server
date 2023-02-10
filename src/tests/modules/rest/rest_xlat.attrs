@@ -1,0 +1,18 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = 'Bob'
+User-Password = 'Saget'
+Called-Station-Id = 'aa:bb:cc:dd:ee:ff'
+NAS-IP-Address = '192.168.1.1'
+Login-IP-Host = 127.0.0.1
+NAS-Port = 8080
+Calling-Station-Id = 'dummy&unsafe=escaped'
+Tmp-String-9 = ''
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept
+

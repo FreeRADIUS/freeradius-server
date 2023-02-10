@@ -1,0 +1,191 @@
+#
+# PRE rest_module eval
+#
+# Largely a back port of the rlm_rest tests from v4, with v4 specific functionality removed.
+#
+
+update {
+	&Tmp-String-0 := "$ENV{REST_TEST_SERVER}"
+	&Tmp-Integer-0 := "$ENV{REST_TEST_SERVER_PORT}"
+	&Tmp-Integer-1 := "$ENV{REST_TEST_SERVER_SSL_PORT}"
+	&Tmp-String-1 := "notfound"
+}
+
+# Retrieve a plain text file
+update {
+	&control:Tmp-String-1 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/test.txt}"
+}
+
+if (!(&reply:REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(&control:Tmp-String-1 == "Sample text response\n")) {
+	test_fail
+}
+
+# Clear previous status code and body
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+# Take host from incomming packet
+update {
+	&control:Tmp-String-1 := "%{rest:http://%{Login-IP-Host}:%{Tmp-Integer-0}/test.txt}"
+}
+
+if (!(&reply:REST-HTTP-Status-Code == 200) || !(&control:Tmp-String-1 == "Sample text response\n")) {
+	test_fail
+}
+
+# Clear previous status code and body
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+# Check a "not found" gives a 404 status code
+update {
+	&control:Tmp-String-1 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/%{Tmp-String-1}}"
+}
+
+if (!(&reply:REST-HTTP-Status-Code == 404)) {
+	test_fail
+}
+
+# Clear previous status code and body
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+# GET with URL parameters
+update {
+	&Tmp-String-2 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/mac/%{Called-Station-Id}}"
+}
+
+if (!(&reply:REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(&Tmp-String-2 =~ /"control:Tmp-String-1":\["GET","\\\/user\\\/<username>\\\/mac\\\/<client>"\]/)) {
+	test_fail
+}
+
+if (&Tmp-String-2 =~ /"control:User-Name":\{([^}]+)\}/) {
+	if (!("%{1}" =~ /"value":"Bob"/)) {
+		test_fail
+	}
+} else {
+	test_fail
+}
+
+update {
+	&control:Tmp-String-3 := 'dummy'
+}
+
+update {
+	&control:Tmp-String-2 = "%{json_encode:&NAS-IP-Address}"
+}
+
+# Clear previous status code and body
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+# POST to https with JSON body data
+update {
+	&Tmp-String-2 := "%{rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting %{control:Tmp-String-2}}"
+}
+
+if (!(&reply:REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(&Tmp-String-2 =~ /"control:Tmp-String-1":\["POST","\\\/user\\\/<username>\\\/mac\\\/<client>"\]/)) {
+	test_fail
+}
+
+if (&Tmp-String-2 =~ /"control:User-Name":\{([^}]+)\}/) {
+	if (!("%{1}" =~ /"value":"Bob"/)) {
+		test_fail
+	}
+} else {
+	test_fail
+}
+
+update {
+	&control:Tmp-String-2 := "NAS=%{NAS-IP-Address}&user=%{User-Name}"
+}
+
+# Clear previous status code and body
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+# POST to https with POST body data
+update {
+	&Tmp-String-2 := "%{rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/post/test?section=dummy %{control:Tmp-String-2}}"
+}
+
+if (!(&reply:REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(&Tmp-String-2 == "Section: dummy, User: Bob\n")) {
+	test_fail
+}
+
+# Clear previous status code and body
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+# URI with tainted values in the arguments - input argument includes URI argument
+# separator - make sure this doesn't end up generating extra arguments, but gets escaped.
+update {
+	&Tmp-String-2 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/reflect/?station=%{Calling-Station-Id}}"
+}
+
+if (!(&Tmp-String-2 == "{\"station\":\"dummy&unsafe=escaped\"}\n" )) {
+	test_fail
+}
+
+# Zero length untainted value - check parsing doesn't break on zero length string
+update {
+	&Tmp-String-8 := ""
+}
+update {
+	&Tmp-String-2 := "%{rest:http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/reflect/%{Tmp-String-8}?station=%{User-Name}}"
+}
+
+if (!(&Tmp-String-2 == "{\"station\":\"Bob\"}\n" )) {
+	test_fail
+}
+
+# Clear previous status code and body
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+# Zero length tainted value - check escaping doesn't break on zero length string
+update {
+	&Tmp-String-2 := "%{rest:http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/reflect/%{Tmp-String-9}?station=%{Called-Station-Id}}"
+}
+
+if (!(&Tmp-String-2 == "{\"station\":\"aa:bb:cc:dd:ee:ff\"}\n" )) {
+	test_fail
+}
+
+# Clear previous status code and body
+update reply {
+	REST-HTTP-Status-Code !* ANY
+	REST-HTTP-Body !* ANY
+}
+
+test_pass

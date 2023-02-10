@@ -1,0 +1,111 @@
+# Pre-set Tmp-String-2 to check correct operator behaviour
+update {
+	&control:Tmp-String-2 := "foo"
+}
+
+# Test "authorize" rest call.  Uses http to a GET end point
+rest
+
+debug_control
+
+if (!(&reply:REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(&control:Tmp-String-0 == "authorize")) {
+	test_fail
+}
+
+if (!(&control:Tmp-String-1 == "GET")) {
+	test_fail
+}
+
+if (!(&control:Tmp-String-1[*] == "/user/<username>/mac/<client>")) {
+	test_fail
+}
+
+if (!(&control:User-Name == "Bob")) {
+	test_fail
+}
+
+# The "op" for setting Tmp-String-2 is ^=
+if (!(&control:Tmp-String-2[0] == "Bob") || !(&control:Tmp-String-2[1] == "foo")) {
+	test_fail
+}
+
+# Reset control attributes
+update control {
+	&Tmp-String-0[*] !* ANY
+	&Tmp-String-1[*] !* ANY
+	&User-Name[*] !* ANY
+}
+
+# Pre-fill NAS-IP-Address to check operator behaviour
+update {
+	&control:NAS-IP-Address := "10.0.0.10"
+}
+
+# Clear previous status code and body
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+# Test "accounting" rest call.  Uses https to a POST end point
+rest.accounting
+
+if (!(&reply:REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(&control:Tmp-String-0 == "accounting")) {
+	test_fail
+}
+
+if (!(&control:Tmp-String-1 == "POST")) {
+	test_fail
+}
+
+if (!(&control:Tmp-String-1[*] == "/user/<username>/mac/<client>")) {
+	test_fail
+}
+
+if (!(&control:User-Name == "Bob")) {
+	test_fail
+}
+
+if (!(&control:Tmp-String-2[0] == "Bob") || !(&control:Tmp-String-2[1] == "Bob") || !(&control:Tmp-String-2[2] == "foo")) {
+	test_fail
+}
+
+# NAS IP Address is passed in body data
+if (!(&control:NAS-IP-Address[0] == "10.0.0.10") || !(&control:NAS-IP-Address[1] == "192.168.1.1")) {
+	test_fail
+}
+
+debug_control
+
+# Clear previous status code and body
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+# Test "authenticate" rest call.  Uses http basic authentication
+rest.authenticate
+
+if (!(&reply:REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(&reply:REST-HTTP-Body == "Section: authenticate, User: Bob, Authenticated: true\n")) {
+	test_fail
+}
+
+# Clear up reply
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+test_pass

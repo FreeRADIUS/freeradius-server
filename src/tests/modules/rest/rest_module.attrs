@@ -1,0 +1,14 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = 'Bob'
+User-Password = 'Saget'
+Called-Station-Id = 'aa:bb:cc:dd:ee:ff'
+NAS-IP-Address = '192.168.1.1'
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept
+
