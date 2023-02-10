@@ -229,6 +229,12 @@ rest {
 	#  Options for calling rest xlats
 	#  uri and method will be derived from the string provided to the xlat
 	xlat {
+		#
+		#  The whole string passed to a REST xlat is URI encoded.
+		#  With body_uri_encode = yes, any body data will remain encoded.
+		#  With body_uri_encode = no, the body data will be decoded and sent as provided.
+		#
+		body_uri_encode = yes
 		tls = ${..tls}
 	}
 

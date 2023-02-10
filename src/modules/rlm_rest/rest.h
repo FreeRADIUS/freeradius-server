@@ -150,6 +150,9 @@ typedef struct rlm_rest_section_t {
 	bool			tls_check_cert;
 	bool			tls_check_cert_cn;
 
+	bool			body_encode;	//!< Should the body data be URI encoded.  Only applies
+						//!< to xlats.
+
 	struct timeval		timeout_tv;	//!< Timeout timeval.
 	long			timeout;	//!< Timeout in ms.
 	uint32_t		chunk;		//!< Max chunk-size (mainly for testing the encoders)
