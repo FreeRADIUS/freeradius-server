@@ -186,18 +186,10 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	}
 
 	/*
-	 *	We've read more than one packet.  Tell the caller that
+	 *	We've read at least one packet.  Tell the caller that
 	 *	there's more data available, and return only one packet.
 	 */
-	if (in_buffer > (size_t) packet_len) {
-		*leftover = in_buffer - packet_len;
-
-	/*
-	 *	We now have a complete packet, clear leftover.
-	 */
-	} else {
-		*leftover = 0;
-	}
+	*leftover = in_buffer - packet_len;
 
 	*recv_time_p = fr_time();
 	thread->stats.total_requests++;
