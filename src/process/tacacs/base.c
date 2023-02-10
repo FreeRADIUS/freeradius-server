@@ -817,7 +817,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	process_tacacs_t	*inst = talloc_get_type_abort(mctx->inst->data, process_tacacs_t);
 
-	inst->server_cs = cf_section_find_in_parent(mctx->inst->conf, "server", CF_IDENT_ANY);
+	inst->server_cs = cf_item_to_section(cf_parent(mctx->inst->conf));
 	if (virtual_server_section_attribute_define(inst->server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	return 0;

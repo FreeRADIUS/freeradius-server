@@ -741,7 +741,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	process_dhcpv6_t	*inst = talloc_get_type_abort(mctx->inst->data, process_dhcpv6_t);
 
-	inst->server_cs = cf_section_find_in_parent(mctx->inst->conf, "server", CF_IDENT_ANY);
+	inst->server_cs = cf_item_to_section(cf_parent(mctx->inst->conf));
 
 	return 0;
 }
