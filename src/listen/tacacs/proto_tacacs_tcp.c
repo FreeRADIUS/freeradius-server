@@ -103,11 +103,32 @@ static const char *packet_name[] = {
 	[FR_TAC_PLUS_ACCT] = "Accounting",
 };
 
+/** Read TACACS data from a TCP connection
+ *
+ * @param[in] li		representing a client connection.
+ * @param[in] packet_ctx	UNUSED.
+ * @param[out] recv_time_p	When we read the packet.
+ *				For some protocols we get this for free (but not here).
+ * @param[out] buffer		to read into.
+ * @param[in] buffer_len	Maximum length of the buffer.
+ * @param[in,out] leftover	If the previous read didn't yield a complete packet
+ *				we will have written how many bytes we read in leftover
+ *				and returned 0.  On the next call, we use the
+ *				value of leftover to offset the position we start
+ *				writing into the buffer.
+ *				*leftover must be subtracted from buffer_len when
+ *				calculating free space in the buffer.
+ * @param[out] priority		unused.
+ * @param[out] is_dup		unused.
+ * @return
+ *	- >0 when a packet was read successfully.
+ *	- 0 when we read a partial packet.
+ * 	- <0 on error (socket should be closed).
+ */
 static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p,
 			uint8_t *buffer, size_t buffer_len, size_t *leftover,
 			UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-	// proto_tacacs_tcp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_tacacs_tcp_t);
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 	ssize_t				data_size, packet_len;
 	size_t				in_buffer;
@@ -135,16 +156,31 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 		return -1;
 	}
 
+	/*
+	 *	Represents all the data we've read since we last
+	 *	decoded a complete packet.
+	 */
 	in_buffer = *leftover + data_size;
 
 	/*
-	 *	We don't have a complete TACACS+ packet.  Tell the
-	 *	caller that we need to read more.
+	 *	Figure out how big the complete TACACS packet should be.
+	 *	If we don't have enough data it'll likely come
+	 *	through in the next fragment.
 	 */
 	packet_len = fr_tacacs_length(buffer, in_buffer);
-	if (packet_len < 0) return -1;
+	if (packet_len < 0) {
+		PERROR("Invalid TACACS packet");
+		return -1;	/* Malformed, close the socket */
+	}
 
+	/*
+	 *	We don't have a complete TACACS+ packet.  Tell the
+	 *	caller that we need to read more, but record
+	 *	how much we read in leftover.
+	 */
 	if (in_buffer < (size_t) packet_len) {
+		DEBUG3("proto_tacacs_tcp - Received packet fragment of %zu bytes (%zu bytes now pending)",
+		       packet_len, *leftover);
 		*leftover = in_buffer;
 		return 0;
 	}
