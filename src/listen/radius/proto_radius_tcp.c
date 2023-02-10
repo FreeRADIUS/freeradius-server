@@ -170,6 +170,8 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	 */
 	if (in_buffer > packet_len) {
 		*leftover = in_buffer - packet_len;
+	} else {
+		*leftover = 0;
 	}
 
 	/*
