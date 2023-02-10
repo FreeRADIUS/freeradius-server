@@ -308,11 +308,11 @@ server tacacs {
 	#
 	#  ### Send
 	#
-	send Authentication-Reply-Pass {
+	send Authentication-Pass {
 		&reply.Server-Message := "Hello %{User-Name}"
 	}
 
-	send Authentication-Reply-Fail {
+	send Authentication-Fail {
 		&reply.Server-Message := "Failed login!"
 	}
 
@@ -355,7 +355,7 @@ server tacacs {
 	#
 	#	### Send
 	#
-	send Authorization-Reply-Pass-Add {
+	send Authorization-Pass-Add {
 		&reply.Authorization-Status := Pass-Add
 		&reply.Server-Message := "authorization-response-server"
 		&reply.Data := "authorization-response-data"
@@ -395,7 +395,7 @@ server tacacs {
 	#
 	#	### Send
 	#
-	send Accounting-Reply-Success {
+	send Accounting-Success {
 		&reply.Accounting-Status := Success
 		&reply.Server-Message := "Success"
 		&reply.Data := 0x00

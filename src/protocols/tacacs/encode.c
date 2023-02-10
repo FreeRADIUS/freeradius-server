@@ -41,37 +41,37 @@ int fr_tacacs_code_to_packet(fr_tacacs_packet_t *pkt, uint32_t code)
 		pkt->hdr.seq_no = 1;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_PASS:
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_PASS:
 		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
 		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_PASS;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_FAIL:
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_FAIL:
 		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
 		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_FAIL;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETDATA:
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_GETDATA:
 		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
 		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_GETDATA;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETUSER:
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_GETUSER:
 		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
 		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_GETUSER;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETPASS:
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_GETPASS:
 		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
 		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_GETPASS;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_RESTART:
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_RESTART:
 		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
 		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_RESTART;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_ERROR:
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_ERROR:
 		pkt->hdr.type = FR_TAC_PLUS_AUTHEN;
 		pkt->authen_reply.status = FR_TAC_PLUS_AUTHEN_STATUS_ERROR;
 		break;
@@ -90,17 +90,17 @@ int fr_tacacs_code_to_packet(fr_tacacs_packet_t *pkt, uint32_t code)
 		pkt->hdr.type = FR_TAC_PLUS_AUTHOR;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_PASS_ADD:
+	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_PASS_ADD:
 		pkt->hdr.type = FR_TAC_PLUS_AUTHOR;
 		pkt->author_reply.status = FR_TAC_PLUS_AUTHOR_STATUS_PASS_ADD;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_PASS_REPLACE:
+	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_PASS_REPLACE:
 		pkt->hdr.type = FR_TAC_PLUS_AUTHOR;
 		pkt->author_reply.status = FR_TAC_PLUS_AUTHOR_STATUS_PASS_REPL;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_FAIL:
+	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_FAIL:
 		pkt->hdr.type = FR_TAC_PLUS_AUTHOR;
 		pkt->author_reply.status = FR_TAC_PLUS_AUTHOR_STATUS_FAIL;
 		break;
@@ -109,12 +109,12 @@ int fr_tacacs_code_to_packet(fr_tacacs_packet_t *pkt, uint32_t code)
 		pkt->hdr.type = FR_TAC_PLUS_ACCT;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY_SUCCESS:
+	case FR_PACKET_TYPE_VALUE_ACCOUNTING_SUCCESS:
 		pkt->hdr.type = FR_TAC_PLUS_ACCT;
 		pkt->acct_reply.status = FR_TAC_PLUS_ACCT_STATUS_SUCCESS;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY_ERROR:
+	case FR_PACKET_TYPE_VALUE_ACCOUNTING_ERROR:
 		pkt->hdr.type = FR_TAC_PLUS_ACCT;
 		pkt->acct_reply.status = FR_TAC_PLUS_ACCT_STATUS_ERROR;
 		break;

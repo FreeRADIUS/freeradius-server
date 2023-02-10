@@ -123,26 +123,26 @@ typedef struct {
 	uint64_t	nothing;		// so that the next field isn't at offset 0
 
 	CONF_SECTION	*auth_start;
-	CONF_SECTION	*auth_reply_pass;
-	CONF_SECTION	*auth_reply_fail;
-	CONF_SECTION	*auth_reply_getdata;
-	CONF_SECTION	*auth_reply_getuser;
-	CONF_SECTION	*auth_reply_getpass;
-	CONF_SECTION	*auth_reply_restart;
-	CONF_SECTION	*auth_reply_error;
+	CONF_SECTION	*auth_pass;
+	CONF_SECTION	*auth_fail;
+	CONF_SECTION	*auth_getdata;
+	CONF_SECTION	*auth_getuser;
+	CONF_SECTION	*auth_getpass;
+	CONF_SECTION	*auth_restart;
+	CONF_SECTION	*auth_error;
 
 	CONF_SECTION	*auth_cont;
 	CONF_SECTION	*auth_cont_abort;
 
 	CONF_SECTION	*autz_request;
-	CONF_SECTION	*autz_reply_pass_add;
-	CONF_SECTION	*autz_reply_pass_replace;
-	CONF_SECTION	*autz_reply_fail;
-	CONF_SECTION	*autz_reply_error;
+	CONF_SECTION	*autz_pass_add;
+	CONF_SECTION	*autz_pass_replace;
+	CONF_SECTION	*autz_fail;
+	CONF_SECTION	*autz_error;
 
 	CONF_SECTION	*acct_request;
-	CONF_SECTION	*acct_reply_success;
-	CONF_SECTION	*acct_reply_error;
+	CONF_SECTION	*acct_success;
+	CONF_SECTION	*acct_error;
 
 	CONF_SECTION	*do_not_respond;
 } process_tacacs_sections_t;
@@ -393,7 +393,7 @@ RECV(auth_start)
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_action);
 	if (!vp) {
 	fail:
-		request->reply->code = FR_TACACS_CODE_AUTH_REPLY_ERROR;
+		request->reply->code = FR_TACACS_CODE_AUTH_ERROR;
 		UPDATE_STATE(reply);
 
 		fr_assert(state->send != NULL);
@@ -438,7 +438,7 @@ RESUME(auth_start)
 	/*
 	 *	Something set reject, we're done.
 	 */
-	if (request->reply->code == FR_TACACS_CODE_AUTH_REPLY_FAIL) {
+	if (request->reply->code == FR_TACACS_CODE_AUTH_FAIL) {
 		RDEBUG("The 'recv Authentication-Start' section returned %s - rejecting the request",
 		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 
@@ -478,7 +478,7 @@ RESUME(auth_start)
 		RDEBUG("No 'Auth-Type' attribute found, cannot authenticate the user - rejecting the request");
 
 	reject:
-		request->reply->code = FR_TACACS_CODE_AUTH_REPLY_FAIL;
+		request->reply->code = FR_TACACS_CODE_AUTH_FAIL;
 		goto send_reply;
 	}
 
@@ -497,11 +497,11 @@ RESUME(auth_start)
 	 */
 	if (vp->da == attr_auth_type) {
 		if (fr_value_box_cmp(enum_auth_type_accept, dv->value) == 0) {
-			request->reply->code = FR_TACACS_CODE_AUTH_REPLY_PASS;
+			request->reply->code = FR_TACACS_CODE_AUTH_PASS;
 			goto send_reply;
 
 		} else if (fr_value_box_cmp(enum_auth_type_reject, dv->value) == 0) {
-			request->reply->code = FR_TACACS_CODE_AUTH_REPLY_FAIL;
+			request->reply->code = FR_TACACS_CODE_AUTH_FAIL;
 			goto send_reply;
 		}
 	}
@@ -526,14 +526,14 @@ RESUME(auth_start)
 RESUME(auth_type)
 {
 	static const fr_process_rcode_t auth_type_rcode = {
-		[RLM_MODULE_OK] =	FR_TACACS_CODE_AUTH_REPLY_PASS,
-		[RLM_MODULE_FAIL] =	FR_TACACS_CODE_AUTH_REPLY_FAIL,
-		[RLM_MODULE_INVALID] =	FR_TACACS_CODE_AUTH_REPLY_FAIL,
-		[RLM_MODULE_NOOP] =	FR_TACACS_CODE_AUTH_REPLY_FAIL,
-		[RLM_MODULE_NOTFOUND] =	FR_TACACS_CODE_AUTH_REPLY_FAIL,
-		[RLM_MODULE_REJECT] =	FR_TACACS_CODE_AUTH_REPLY_FAIL,
-		[RLM_MODULE_UPDATED] =	FR_TACACS_CODE_AUTH_REPLY_FAIL,
-		[RLM_MODULE_DISALLOW] = FR_TACACS_CODE_AUTH_REPLY_FAIL,
+		[RLM_MODULE_OK] =	FR_TACACS_CODE_AUTH_PASS,
+		[RLM_MODULE_FAIL] =	FR_TACACS_CODE_AUTH_FAIL,
+		[RLM_MODULE_INVALID] =	FR_TACACS_CODE_AUTH_FAIL,
+		[RLM_MODULE_NOOP] =	FR_TACACS_CODE_AUTH_FAIL,
+		[RLM_MODULE_NOTFOUND] =	FR_TACACS_CODE_AUTH_FAIL,
+		[RLM_MODULE_REJECT] =	FR_TACACS_CODE_AUTH_FAIL,
+		[RLM_MODULE_UPDATED] =	FR_TACACS_CODE_AUTH_FAIL,
+		[RLM_MODULE_DISALLOW] = FR_TACACS_CODE_AUTH_FAIL,
 	};
 
 	rlm_rcode_t			rcode = *p_result;
@@ -551,21 +551,21 @@ RESUME(auth_type)
 
 	switch (request->reply->code) {
 	case 0:
-		RDEBUG("No reply code was set.  Forcing to Authentication-Reply-Fail");
+		RDEBUG("No reply code was set.  Forcing to Authentication-Fail");
 	fail:
-		request->reply->code = FR_TACACS_CODE_AUTH_REPLY_FAIL;
+		request->reply->code = FR_TACACS_CODE_AUTH_FAIL;
 		FALL_THROUGH;
 
 	/*
 	 *	Print complaints before running "send Access-Reject"
 	 */
-	case FR_TACACS_CODE_AUTH_REPLY_FAIL:
+	case FR_TACACS_CODE_AUTH_FAIL:
 		RDEBUG2("Failed to authenticate the user");
 		break;
 
-	case FR_TACACS_CODE_AUTH_REPLY_GETDATA:
-	case FR_TACACS_CODE_AUTH_REPLY_GETUSER:
-	case FR_TACACS_CODE_AUTH_REPLY_GETPASS:
+	case FR_TACACS_CODE_AUTH_GETDATA:
+	case FR_TACACS_CODE_AUTH_GETUSER:
+	case FR_TACACS_CODE_AUTH_GETPASS:
 		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_authentication_type);
 		if (vp && (vp->vp_uint32 != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
 			RDEBUG2("Cannot send challenges for %pP", vp);
@@ -583,7 +583,7 @@ RESUME(auth_type)
 	return state->send(p_result, mctx, request);
 }
 
-RESUME_NO_RCTX(auth_reply_pass)
+RESUME_NO_RCTX(auth_pass)
 {
 	fr_pair_t			*vp;
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
@@ -603,7 +603,7 @@ RESUME_NO_RCTX(auth_reply_pass)
 	RETURN_MODULE_OK;
 }
 
-RESUME_NO_RCTX(auth_reply_fail)
+RESUME_NO_RCTX(auth_fail)
 {
 	fr_pair_t			*vp;
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
@@ -624,7 +624,7 @@ RESUME_NO_RCTX(auth_reply_fail)
 	RETURN_MODULE_OK;
 }
 
-RESUME(auth_reply_get)
+RESUME(auth_get)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
 
@@ -635,7 +635,7 @@ RESUME(auth_reply_get)
 	 */
 	if ((state_create(request->reply_ctx, &request->reply_pairs, request, true) < 0) ||
 	    (fr_request_to_state(inst->auth.state_tree, request) < 0)) {
-		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_REPLY_ERROR);
+		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 
 	RETURN_MODULE_OK;
@@ -648,7 +648,7 @@ RECV(auth_cont)
 
 	if ((state_create(request->request_ctx, &request->request_pairs, request, false) < 0) ||
 	    (fr_state_to_request(inst->auth.state_tree, request) < 0)) {
-		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_REPLY_ERROR);
+		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_sequence_number);\
@@ -659,7 +659,7 @@ RECV(auth_cont)
 	 */
 	if ((vp->vp_uint8 >> 1) > 3) {
 		RDEBUG("Too many rounds of challenge / response");
-		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_REPLY_FAIL);
+		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_FAIL);
 	}
 
 	return CALL_RECV(generic);
@@ -674,7 +674,7 @@ RECV(auth_cont_abort)
 
 	if ((state_create(request->request_ctx, &request->request_pairs, request, false) < 0) ||
 	    (fr_state_to_request(inst->auth.state_tree, request) < 0)) {
-		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_REPLY_ERROR);
+		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 
 	return CALL_RECV(generic);
@@ -684,7 +684,7 @@ RESUME(auth_cont_abort)
 {
 	fr_process_state_t const	*state;
 
-	if (!request->reply->code) request->reply->code = FR_TACACS_CODE_AUTH_REPLY_RESTART;
+	if (!request->reply->code) request->reply->code = FR_TACACS_CODE_AUTH_RESTART;
 
 	UPDATE_STATE(reply);
 
@@ -696,11 +696,11 @@ RESUME(auth_cont_abort)
 RESUME(acct_type)
 {
 	static const fr_process_rcode_t acct_type_rcode = {
-		[RLM_MODULE_FAIL] =	FR_TACACS_CODE_ACCT_REPLY_ERROR,
-		[RLM_MODULE_INVALID] =	FR_TACACS_CODE_ACCT_REPLY_ERROR,
-		[RLM_MODULE_NOTFOUND] =	FR_TACACS_CODE_ACCT_REPLY_ERROR,
-		[RLM_MODULE_REJECT] =	FR_TACACS_CODE_ACCT_REPLY_ERROR,
-		[RLM_MODULE_DISALLOW] = FR_TACACS_CODE_ACCT_REPLY_ERROR,
+		[RLM_MODULE_FAIL] =	FR_TACACS_CODE_ACCT_ERROR,
+		[RLM_MODULE_INVALID] =	FR_TACACS_CODE_ACCT_ERROR,
+		[RLM_MODULE_NOTFOUND] =	FR_TACACS_CODE_ACCT_ERROR,
+		[RLM_MODULE_REJECT] =	FR_TACACS_CODE_ACCT_ERROR,
+		[RLM_MODULE_DISALLOW] = FR_TACACS_CODE_ACCT_ERROR,
 	};
 
 	rlm_rcode_t			rcode = *p_result;
@@ -712,7 +712,7 @@ RESUME(acct_type)
 	fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code));
 
 	if (acct_type_rcode[rcode]) {
-		fr_assert(acct_type_rcode[rcode] == FR_TACACS_CODE_ACCT_REPLY_ERROR);
+		fr_assert(acct_type_rcode[rcode] == FR_TACACS_CODE_ACCT_ERROR);
 
 		request->reply->code = acct_type_rcode[rcode];
 		UPDATE_STATE(reply);
@@ -724,7 +724,7 @@ RESUME(acct_type)
 		return state->send(p_result, mctx, request);
 	}
 
-	request->reply->code = FR_TACACS_CODE_ACCT_REPLY_SUCCESS;
+	request->reply->code = FR_TACACS_CODE_ACCT_SUCCESS;
 	UPDATE_STATE(reply);
 
 	fr_assert(state->send != NULL);
@@ -756,7 +756,7 @@ RESUME(accounting_request)
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_accounting_flags);
 	if (!vp) {
 	fail:
-		request->reply->code = FR_TACACS_CODE_ACCT_REPLY_ERROR;
+		request->reply->code = FR_TACACS_CODE_ACCT_ERROR;
 		UPDATE_STATE(reply);
 		fr_assert(state->send != NULL);
 		return CALL_SEND_STATE(state);
@@ -834,85 +834,85 @@ static fr_process_state_t const process_state[] = {
 	 */
 	[ FR_TACACS_CODE_AUTH_START ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTH_REPLY_FAIL
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTH_FAIL
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_auth_start,
 		.resume = resume_auth_start,
 		.section_offset = offsetof(process_tacacs_sections_t, auth_start),
 	},
-	[ FR_TACACS_CODE_AUTH_REPLY_PASS ] = {
+	[ FR_TACACS_CODE_AUTH_PASS ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_REPLY_FAIL
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
-		.resume = resume_auth_reply_pass,
-		.section_offset = offsetof(process_tacacs_sections_t, auth_reply_pass),
+		.resume = resume_auth_pass,
+		.section_offset = offsetof(process_tacacs_sections_t, auth_pass),
 	},
-	[ FR_TACACS_CODE_AUTH_REPLY_FAIL ] = {
+	[ FR_TACACS_CODE_AUTH_FAIL ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_REPLY_FAIL
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
-		.resume = resume_auth_reply_fail,
-		.section_offset = offsetof(process_tacacs_sections_t, auth_reply_fail),
+		.resume = resume_auth_fail,
+		.section_offset = offsetof(process_tacacs_sections_t, auth_fail),
 	},
-	[ FR_TACACS_CODE_AUTH_REPLY_GETDATA ] = {
+	[ FR_TACACS_CODE_AUTH_GETDATA ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_REPLY_FAIL
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
-		.resume = resume_auth_reply_get,
-		.section_offset = offsetof(process_tacacs_sections_t, auth_reply_getdata),
+		.resume = resume_auth_get,
+		.section_offset = offsetof(process_tacacs_sections_t, auth_getdata),
 	},
-	[ FR_TACACS_CODE_AUTH_REPLY_GETPASS ] = {
+	[ FR_TACACS_CODE_AUTH_GETPASS ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_REPLY_FAIL
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
-		.resume = resume_auth_reply_get,
-		.section_offset = offsetof(process_tacacs_sections_t, auth_reply_getpass),
+		.resume = resume_auth_get,
+		.section_offset = offsetof(process_tacacs_sections_t, auth_getpass),
 	},
-	[ FR_TACACS_CODE_AUTH_REPLY_GETUSER ] = {
+	[ FR_TACACS_CODE_AUTH_GETUSER ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_REPLY_FAIL
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
-		.resume = resume_auth_reply_get,
-		.section_offset = offsetof(process_tacacs_sections_t, auth_reply_getuser),
+		.resume = resume_auth_get,
+		.section_offset = offsetof(process_tacacs_sections_t, auth_getuser),
 	},
 
 	[ FR_TACACS_CODE_AUTH_CONT ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTH_REPLY_FAIL
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTH_FAIL
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_auth_cont,
@@ -921,11 +921,11 @@ static fr_process_state_t const process_state[] = {
 	},
 	[ FR_TACACS_CODE_AUTH_CONT_ABORT ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_REPLY_FAIL,
-			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTH_REPLY_FAIL
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL,
+			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTH_FAIL
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_auth_cont_abort,
@@ -938,63 +938,63 @@ static fr_process_state_t const process_state[] = {
 	 */
 	[ FR_TACACS_CODE_AUTZ_REQUEST ] = {
 		.packet_type = {
-			[RLM_MODULE_NOOP]	= FR_TACACS_CODE_AUTZ_REPLY_PASS_ADD,
-			[RLM_MODULE_OK]		= FR_TACACS_CODE_AUTZ_REPLY_PASS_ADD,
-			[RLM_MODULE_UPDATED]	= FR_TACACS_CODE_AUTZ_REPLY_PASS_ADD,
-			[RLM_MODULE_HANDLED]	= FR_TACACS_CODE_AUTZ_REPLY_PASS_ADD,
+			[RLM_MODULE_NOOP]	= FR_TACACS_CODE_AUTZ_PASS_ADD,
+			[RLM_MODULE_OK]		= FR_TACACS_CODE_AUTZ_PASS_ADD,
+			[RLM_MODULE_UPDATED]	= FR_TACACS_CODE_AUTZ_PASS_ADD,
+			[RLM_MODULE_HANDLED]	= FR_TACACS_CODE_AUTZ_PASS_ADD,
 
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
-			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTZ_FAIL,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTZ_FAIL,
+			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTZ_FAIL,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTZ_FAIL,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTZ_FAIL,
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_tacacs_sections_t, autz_request),
 	},
-	[ FR_TACACS_CODE_AUTZ_REPLY_PASS_ADD ] = {
+	[ FR_TACACS_CODE_AUTZ_PASS_ADD ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
-			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTZ_FAIL,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTZ_FAIL,
+			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTZ_FAIL,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTZ_FAIL,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTZ_FAIL,
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
-		.section_offset = offsetof(process_tacacs_sections_t, autz_reply_pass_add),
+		.section_offset = offsetof(process_tacacs_sections_t, autz_pass_add),
 	},
-	[ FR_TACACS_CODE_AUTZ_REPLY_PASS_REPLACE ] = {
+	[ FR_TACACS_CODE_AUTZ_PASS_REPLACE ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
-			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTZ_REPLY_FAIL,
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_AUTZ_FAIL,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_AUTZ_FAIL,
+			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTZ_FAIL,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_AUTZ_FAIL,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTZ_FAIL,
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
-		.section_offset = offsetof(process_tacacs_sections_t, autz_reply_pass_replace),
+		.section_offset = offsetof(process_tacacs_sections_t, autz_pass_replace),
 	},
-	[ FR_TACACS_CODE_AUTZ_REPLY_FAIL ] = {
+	[ FR_TACACS_CODE_AUTZ_FAIL ] = {
 		.packet_type = {
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
-		.section_offset = offsetof(process_tacacs_sections_t, autz_reply_fail),
+		.section_offset = offsetof(process_tacacs_sections_t, autz_fail),
 	},
-	[ FR_TACACS_CODE_AUTZ_REPLY_ERROR ] = {
+	[ FR_TACACS_CODE_AUTZ_ERROR ] = {
 		.packet_type = {
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
-		.section_offset = offsetof(process_tacacs_sections_t, autz_reply_error),
+		.section_offset = offsetof(process_tacacs_sections_t, autz_error),
 	},
 
 	/*
@@ -1002,42 +1002,42 @@ static fr_process_state_t const process_state[] = {
 	 */
 	[ FR_TACACS_CODE_ACCT_REQUEST ] = {
 		.packet_type = {
-			[RLM_MODULE_NOOP]	= FR_TACACS_CODE_ACCT_REPLY_SUCCESS,
-			[RLM_MODULE_OK]		= FR_TACACS_CODE_ACCT_REPLY_SUCCESS,
-			[RLM_MODULE_UPDATED]	= FR_TACACS_CODE_ACCT_REPLY_SUCCESS,
-			[RLM_MODULE_HANDLED]	= FR_TACACS_CODE_ACCT_REPLY_SUCCESS,
+			[RLM_MODULE_NOOP]	= FR_TACACS_CODE_ACCT_SUCCESS,
+			[RLM_MODULE_OK]		= FR_TACACS_CODE_ACCT_SUCCESS,
+			[RLM_MODULE_UPDATED]	= FR_TACACS_CODE_ACCT_SUCCESS,
+			[RLM_MODULE_HANDLED]	= FR_TACACS_CODE_ACCT_SUCCESS,
 
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_ACCT_REPLY_ERROR,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_ACCT_REPLY_ERROR,
-			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_ACCT_REPLY_ERROR,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_ACCT_REPLY_ERROR,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_ACCT_REPLY_ERROR,
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_ACCT_ERROR,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_ACCT_ERROR,
+			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_ACCT_ERROR,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_ACCT_ERROR,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_ACCT_ERROR,
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_accounting_request,
 		.section_offset = offsetof(process_tacacs_sections_t, acct_request),
 	},
-	[ FR_TACACS_CODE_ACCT_REPLY_SUCCESS ] = {
+	[ FR_TACACS_CODE_ACCT_SUCCESS ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_ACCT_REPLY_ERROR,
-			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_ACCT_REPLY_ERROR,
-			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_ACCT_REPLY_ERROR,
-			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_ACCT_REPLY_ERROR,
-			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_ACCT_REPLY_ERROR
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_ACCT_ERROR,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_ACCT_ERROR,
+			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_ACCT_ERROR,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_ACCT_ERROR,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_ACCT_ERROR
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
-		.section_offset = offsetof(process_tacacs_sections_t, acct_reply_success),
+		.section_offset = offsetof(process_tacacs_sections_t, acct_success),
 	},
-	[ FR_TACACS_CODE_ACCT_REPLY_ERROR ] = {
+	[ FR_TACACS_CODE_ACCT_ERROR ] = {
 		.packet_type = {
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
-		.section_offset = offsetof(process_tacacs_sections_t, acct_reply_error),
+		.section_offset = offsetof(process_tacacs_sections_t, acct_error),
 	},
 };
 
@@ -1064,45 +1064,45 @@ static virtual_server_compile_t compile_list[] = {
 	},
 	{
 		.name = "send",
-		.name2 = "Authentication-Reply-Pass",
+		.name2 = "Authentication-Pass",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(auth_reply_pass),
+		.offset = PROCESS_CONF_OFFSET(auth_pass),
 	},
 	{
 		.name = "send",
-		.name2 = "Authentication-Reply-Fail",
+		.name2 = "Authentication-Fail",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(auth_reply_fail),
+		.offset = PROCESS_CONF_OFFSET(auth_fail),
 	},
 	{
 		.name = "send",
-		.name2 = "Authentication-Reply-GetData",
+		.name2 = "Authentication-GetData",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(auth_reply_getdata),
+		.offset = PROCESS_CONF_OFFSET(auth_getdata),
 	},
 	{
 		.name = "send",
-		.name2 = "Authentication-Reply-GetUser",
+		.name2 = "Authentication-GetUser",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(auth_reply_getuser),
+		.offset = PROCESS_CONF_OFFSET(auth_getuser),
 	},
 	{
 		.name = "send",
-		.name2 = "Authentication-Reply-GetPass",
+		.name2 = "Authentication-GetPass",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(auth_reply_getpass),
+		.offset = PROCESS_CONF_OFFSET(auth_getpass),
 	},
 	{
 		.name = "send",
-		.name2 = "Authentication-Reply-Restart",
+		.name2 = "Authentication-Restart",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(auth_reply_restart),
+		.offset = PROCESS_CONF_OFFSET(auth_restart),
 	},
 	{
 		.name = "send",
-		.name2 = "Authentication-Reply-Error",
+		.name2 = "Authentication-Error",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(auth_reply_error),
+		.offset = PROCESS_CONF_OFFSET(auth_error),
 	},
 	{
 		.name = "recv",
@@ -1133,27 +1133,27 @@ static virtual_server_compile_t compile_list[] = {
 	},
 	{
 		.name = "send",
-		.name2 = "Authorization-Reply-Pass-Add",
+		.name2 = "Authorization-Pass-Add",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(autz_reply_pass_add),
+		.offset = PROCESS_CONF_OFFSET(autz_pass_add),
 	},
 	{
 		.name = "send",
-		.name2 = "Authorization-Reply-Pass-Replace",
+		.name2 = "Authorization-Pass-Replace",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(autz_reply_pass_replace),
+		.offset = PROCESS_CONF_OFFSET(autz_pass_replace),
 	},
 	{
 		.name = "send",
-		.name2 = "Authorization-Reply-Fail",
+		.name2 = "Authorization-Fail",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(autz_reply_fail),
+		.offset = PROCESS_CONF_OFFSET(autz_fail),
 	},
 	{
 		.name = "send",
-		.name2 = "Authorization-Reply-Error",
+		.name2 = "Authorization-Error",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(autz_reply_error),
+		.offset = PROCESS_CONF_OFFSET(autz_error),
 	},
 
 	/* accounting */
@@ -1166,15 +1166,15 @@ static virtual_server_compile_t compile_list[] = {
 	},
 	{
 		.name = "send",
-		.name2 = "Accounting-Reply-Success",
+		.name2 = "Accounting-Success",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(acct_reply_success),
+		.offset = PROCESS_CONF_OFFSET(acct_success),
 	},
 	{
 		.name = "send",
-		.name2 = "Accounting-Reply-Error",
+		.name2 = "Accounting-Error",
 		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(acct_reply_error),
+		.offset = PROCESS_CONF_OFFSET(acct_error),
 	},
 
 	{

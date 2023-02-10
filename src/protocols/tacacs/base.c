@@ -101,25 +101,25 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 
 char const *fr_tacacs_packet_names[FR_TACACS_CODE_MAX] = {
 	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START]		= "Authentication-Start",
-	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_PASS]	= "Authentication-Reply-Pass",
-	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_FAIL]	= "Authentication-Reply-Fail",
-	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETDATA]	= "Authentication-Reply-GetData",
-	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETUSER]	= "Authentication-Reply-GetUser",
-	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_GETPASS]	= "Authentication-Reply-GetPass",
-	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_RESTART]	= "Authentication-Reply-Restart",
-	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY_ERROR]	= "Authentication-Reply-Error",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_PASS]		= "Authentication-Pass",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_FAIL]		= "Authentication-Fail",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_GETDATA]		= "Authentication-GetData",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_GETUSER]		= "Authentication-GetUser",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_GETPASS]		= "Authentication-GetPass",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_RESTART]		= "Authentication-Restart",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_ERROR]		= "Authentication-Error",
 
 	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE]		= "Authentication-Continue",
 	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE_ABORT]	= "Authentication-Continue-Abort",
 
 	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST]		= "Authorization-Request",
-	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_PASS_ADD]	= "Authorization-Reply-Pass-Add",
-	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_PASS_REPLACE]	= "Authorization-Reply-Pass-Replace",
-	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY_FAIL]		= "Authorization-Reply-Fail",
+	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_PASS_ADD]		= "Authorization-Pass-Add",
+	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_PASS_REPLACE]	= "Authorization-Pass-Replace",
+	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_FAIL]		= "Authorization-Fail",
 
 	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST]		= "Accounting-Request",
-	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY_SUCCESS]		= "Accounting-Reply-Success",
-	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY_ERROR]		= "Accounting-Reply-Error",
+	[FR_PACKET_TYPE_VALUE_ACCOUNTING_SUCCESS]		= "Accounting-Success",
+	[FR_PACKET_TYPE_VALUE_ACCOUNTING_ERROR]			= "Accounting-Error",
 };
 
 
