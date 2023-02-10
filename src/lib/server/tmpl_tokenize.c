@@ -508,7 +508,8 @@ int8_t tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a, FR_D
  * @param[out] err	If !NULL where to write the parsing error.
  * @param[in] in	Sbuff to read request references from.
  * @param[in] p_rules	Parse rules.
- * @param[in] at_rules	Default list and other rules.
+ * @param[in] t_rules	Default list and other rules.
+ * @param[out] namespace the namespace to use
  * @return
  *	- >= 0 the number of bytes parsed.
  *      - <0 negative offset for where the error occurred
@@ -517,7 +518,8 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 						   FR_DLIST_HEAD(tmpl_request_list) *out,
 						   fr_sbuff_t *in,
 						   fr_sbuff_parse_rules_t const *p_rules,
-						   tmpl_attr_rules_t const *at_rules)
+						   tmpl_rules_t const *t_rules,
+						   fr_dict_attr_t const **namespace)
 {
 	tmpl_request_ref_t	ref;
 	tmpl_request_t		*rr;
@@ -526,9 +528,29 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	tmpl_request_t		*tail = tmpl_request_list_tail(out);
 	unsigned int		depth = 0;
 	fr_sbuff_marker_t	m;
+	tmpl_attr_rules_t const	*at_rules;
 	DEFAULT_RULES;
 
-	if (!at_rules) at_rules = &default_rules.attr;
+	if (!t_rules) {
+		at_rules = &default_rules.attr;
+	} else {
+		at_rules = &t_rules->attr;
+	}
+
+	/*
+	 *	The caller wants to know the default namespace for
+	 *	resolving the attribute.
+	 *
+	 *	@todo - why not use dict_def if it's set?  Tho TBH we
+	 *	should probably just remove dict_def, and always use "namespace".
+	 */
+	if (namespace) {
+		if (at_rules->namespace) {
+			*namespace = at_rules->namespace;
+		} else {
+			*namespace = NULL;
+		}
+	}
 
 	/*
 	 *	We could make the caller do this but as this
@@ -540,7 +562,6 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	fr_sbuff_marker(&m, &our_in);
 	for (depth = 0; depth < TMPL_MAX_REQUEST_REF_NESTING; depth++) {
 		bool end;
-
 
 		/*
 		 *	Search for a known request reference like
@@ -572,14 +593,32 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 			goto default_ref;
 		}
 
-		if (at_rules->namespace || at_rules->disallow_qualifiers) {
-			fr_strerror_const("It is not permitted to specify a request reference here");
-			if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
+		if (depth == 0) {
+			if (at_rules->namespace || at_rules->disallow_qualifiers) {
+				fr_strerror_const("It is not permitted to specify a request reference here");
+				if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 
-			fr_sbuff_set(&our_in, in);	/* Marker at the start */
-		error:
-			tmpl_request_list_talloc_free_to_tail(out, tail);
-			FR_SBUFF_ERROR_RETURN(&our_in);
+				fr_sbuff_set(&our_in, in);	/* Marker at the start */
+			error:
+				tmpl_request_list_talloc_free_to_tail(out, tail);
+				FR_SBUFF_ERROR_RETURN(&our_in);
+			}
+		}
+
+		/*
+		 *	If the caller is asking for a namespace, then walk back up the tmpl_rules_t to find a parent namespace.
+		 */
+		if (namespace && (ref == REQUEST_PARENT) && t_rules->parent) {
+			t_rules = t_rules->parent;
+
+			if (t_rules->attr.namespace) {
+				*namespace = t_rules->attr.namespace;
+			} else if (t_rules->attr.dict_def) {
+				*namespace = fr_dict_root(t_rules->attr.dict_def);
+
+			} else {
+				*namespace = NULL;
+			}
 		}
 
 		/*
@@ -618,7 +657,6 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	}
 
 	FR_SBUFF_SET_RETURN(in, &m);
-
 }
 
 /** Parse one or more request references, allocing a new list and adding the references to it
@@ -643,7 +681,7 @@ fr_slen_t tmpl_request_ref_list_afrom_substr(TALLOC_CTX *ctx, tmpl_attr_error_t 
 	MEM(rql = talloc_zero(ctx, FR_DLIST_HEAD(tmpl_request_list)));
 	tmpl_request_list_talloc_init(rql);
 
-	slen = tmpl_request_ref_list_from_substr(rql, err, rql, in, NULL, NULL);
+	slen = tmpl_request_ref_list_from_substr(rql, err, rql, in, NULL, NULL, NULL);
 	if (slen < 0) {
 		talloc_free(rql);
 		return slen;
@@ -1563,6 +1601,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 						  namespace,
 						  name,
 						  p_rules ? p_rules->terminals : NULL);
+
 		/*
 		 *	Allow fallback to internal attributes
 		 *	if the parent was a group, and we're
@@ -1571,16 +1610,19 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *	Discard any errors here... It's more
 		 *	useful to have the original.
 		 */
-		if (!da && !vpt->rules.attr.disallow_internal &&
-		    (ar = tmpl_attr_list_tail(&vpt->data.attribute.ar)) &&
-		    (ar->type == TMPL_ATTR_TYPE_NORMAL) && (ar->ar_da->type == FR_TYPE_GROUP)) {
-			(void)fr_dict_attr_by_name_substr(NULL,
-							  &da, fr_dict_root(fr_dict_internal()),
-							  name,
-							  p_rules ? p_rules->terminals : NULL);
-			if (da) {
-				dict_err = FR_DICT_ATTR_OK;
-				our_parent = fr_dict_root(fr_dict_internal());
+		if (!da && !vpt->rules.attr.disallow_internal) {
+			ar = tmpl_attr_list_tail(&vpt->data.attribute.ar);
+			if (!ar || ((ar->type == TMPL_ATTR_TYPE_NORMAL) && (ar->ar_da->type == FR_TYPE_GROUP))) {
+				fr_dict_attr_t const *internal_root = fr_dict_root(fr_dict_internal());
+
+				(void)fr_dict_attr_by_name_substr(NULL,
+								  &da, internal_root,
+								  name,
+								  p_rules ? p_rules->terminals : NULL);
+				if (da) {
+					dict_err = FR_DICT_ATTR_OK;
+					our_parent = internal_root;
+				}
 			}
 		}
 	}
@@ -1761,6 +1803,7 @@ check_attr:
 			fr_sbuff_set(name, &m_s);
 			goto error;
 		}
+
 		/*
 		 *	Check that the attribute we resolved was from an allowed
 		 *	dictionary.
@@ -1811,6 +1854,8 @@ do_suffix:
 	fr_sbuff_marker_release(&m_s);
 	fr_sbuff_marker(&m_s, name);
 	if (fr_sbuff_next_if_char(name, '.')) {
+		fr_dict_attr_t const *ref;
+
 		switch (da->type) {
 		/*
 		 *	If this is a group then the parent is the
@@ -1824,14 +1869,17 @@ do_suffix:
 		 *	it points to.
 		 */
 		case FR_TYPE_GROUP:
-			namespace = fr_dict_attr_ref(da);
+			ref = fr_dict_attr_ref(da);
 
 			/*
 			 *	if there's a real dictionary, and this reference is to group which is in fact
 			 *	the internal dict, then just keep using our dict_def.
 			 */
-			if (at_rules->dict_def && (namespace == fr_dict_root(fr_dict_internal()))) {
-				namespace = fr_dict_root(at_rules->dict_def);
+			if (at_rules->dict_def && (ref == fr_dict_root(fr_dict_internal()))) {
+				if (!namespace) namespace = ref;
+
+			} else {
+				namespace = ref;
 			}
 
 			/*
@@ -1885,6 +1933,7 @@ do_suffix:
 		}
 
 		if (ar) tmpl_attr_insert(vpt, ar);
+
 		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, our_parent, namespace, name, p_rules, at_rules, depth + 1) < 0) {
 			if (ar) tmpl_attr_list_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
 			goto error;
@@ -1964,6 +2013,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	bool				is_raw = false;
 	tmpl_attr_rules_t const		*at_rules;
 	fr_sbuff_marker_t		m_l;
+	fr_dict_attr_t const		*namespace;
 	DEFAULT_RULES;
 
 	if (!t_rules) t_rules = &default_rules;
@@ -2021,10 +2071,11 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *	Parse one or more request references
 	 */
 	ret = tmpl_request_ref_list_from_substr(vpt, NULL,
-					      &vpt->data.attribute.rr,
-					      &our_name,
-					      p_rules,
-				              at_rules);
+						&vpt->data.attribute.rr,
+						&our_name,
+						p_rules,
+						t_rules,
+						&namespace);
 	if (ret < 0) {
 	error:
 		*out = NULL;
@@ -2040,7 +2091,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 */
 	ret = tmpl_attr_afrom_attr_substr(vpt, err,
 					  vpt,
-					  at_rules->namespace, at_rules->namespace,
+					  namespace, namespace,
 					  &our_name, p_rules, at_rules, 0);
 	if (ret < 0) goto error;
 
