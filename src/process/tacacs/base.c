@@ -473,9 +473,9 @@ RESUME(auth_start)
 	 *	Auth-Type set by the admin, then we use what's in the packet.
 	 */
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_auth_type);
-	if (!vp) vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_authentication_type);
+	if (!vp) vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_authentication_type);
 	if (!vp) {
-		RDEBUG("No 'Auth-Type' attribute found, cannot authenticate the user - rejecting the request");
+		RDEBUG("No 'Auth-Type' or 'Authentication-Status' attribute found, cannot authenticate the user - rejecting the request");
 
 	reject:
 		request->reply->code = FR_TACACS_CODE_AUTH_FAIL;
