@@ -106,7 +106,7 @@ ATTRIBUTE	Privilege-Level				17	byte
 VALUE	Privilege-Level			Minimum			0
 VALUE	Privilege-Level			User			1
 VALUE	Privilege-Level			Root			15
-VALUE	Privilege-Level			Maximum			15
+VALUE	Privilege-Level			Max			  15
 
 ATTRIBUTE	Authorization-Status			18	byte
 VALUE	Authorization-Status		Pass-Add		1
