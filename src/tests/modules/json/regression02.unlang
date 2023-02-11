@@ -1,0 +1,28 @@
+# An error string from Azure AD, try and access all the bits
+&Tmp-String-0 := "{\"error\":\"invalid_grant\",\"error_description\":\"AADSTS50126: Error validating credentials due to invalid username or password.\\r\\nTrace ID: 20bb60a5-5504-4a6b-ab40-a353a95c2500\\r\\nCorrelation ID: e58bb567-ad15-4a46-8341-cc6e800dd817\\r\\nTimestamp: 2023-02-11 02:32:40Z\",\"error_codes\":[50126],\"timestamp\":\"2023-02-11 02:32:40Z\",\"trace_id\":\"20bb60a5-5504-4a6b-ab40-a353a95c2500\",\"correlation_id\":\"e58bb567-ad15-4a46-8341-cc6e800dd817\",\"error_uri\":\"https://login.microsoftonline.com/error?code=50126\"}"
+
+map json &Tmp-String-0 {
+	&Tmp-String-0 := '$.error'
+	&Tmp-String-1 := '$.error_description'
+	&Tmp-String-2 := '$.error_uri'
+	&Tmp-Integer-0 := '$.error_codes[0]'
+}
+
+if (&Tmp-String-0 != 'invalid_grant') {
+	test_fail
+}
+
+if (&Tmp-String-1 != "AADSTS50126: Error validating credentials due to invalid username or password.\r\nTrace ID: 20bb60a5-5504-4a6b-ab40-a353a95c2500\r\nCorrelation ID: e58bb567-ad15-4a46-8341-cc6e800dd817\r\nTimestamp: 2023-02-11 02:32:40Z") {
+	test_fail
+}
+
+if (&Tmp-String-2 != 'https://login.microsoftonline.com/error?code=50126') {
+	test_fail
+}
+
+# This was being parsed as a negative integer
+if (&Tmp-Integer-0 != 50126) {
+	test_fail
+}
+
+test_pass
