@@ -439,7 +439,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 	 */
 		} else {
 			section->method = REST_HTTP_METHOD_CUSTOM;
-			MEM(section->method_str = talloc_bstrndup(rctx, in_vb->vb_strvalue, in_vb->vb_length));
+			MEM(section->method_str = talloc_bstrndup(rctx, uri_vb->vb_strvalue, uri_vb->vb_length));
 		}
 		/*
 		 *	Move to next argument
