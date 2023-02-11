@@ -51,7 +51,6 @@ extern HIDDEN fr_dict_attr_t const *attr_tacacs_sequence_number;
 extern HIDDEN fr_dict_attr_t const *attr_tacacs_server_message;
 extern HIDDEN fr_dict_attr_t const *attr_tacacs_session_id;
 extern HIDDEN fr_dict_attr_t const *attr_tacacs_user_message;
-extern HIDDEN fr_dict_attr_t const *attr_tacacs_user_name;
 extern HIDDEN fr_dict_attr_t const *attr_tacacs_version_major;
 extern HIDDEN fr_dict_attr_t const *attr_tacacs_version_minor;
 
