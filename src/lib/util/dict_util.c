@@ -4326,8 +4326,6 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 
 	/*
 	 *	Only structural types can have children.
-	 *
-	 *	@todo - yes, "key" members of FR_TYPE_STRUCT.
 	 */
 	if (!fr_type_structural[parent->type]) return false;
 
@@ -4355,6 +4353,12 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 		ref = fr_dict_attr_ref(parent);
 		return (ref && (ref->dict == child->dict));
 	}
+
+	/*
+	 *	Key fields can have children, but everyone else thinks
+	 *	that the struct is the parent.  <sigh>
+	 */
+	if ((parent->type == FR_TYPE_STRUCT) && child->parent->parent == parent) return true;
 
 	/*
 	 *	We're in the same protocol dictionary, but the child
