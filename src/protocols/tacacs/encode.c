@@ -252,6 +252,42 @@ static ssize_t tacacs_encode_field(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_di
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+static ssize_t tacacs_encode_chap(fr_dbuff_t *dbuff, fr_tacacs_packet_t *packet, fr_pair_list_t *vps, fr_dict_attr_t const *da_chap, fr_dict_attr_t const *da_challenge)
+{
+	fr_pair_t *chap, *challenge;
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
+
+	chap = fr_pair_find_by_da(vps, NULL, da_chap);
+	if (!chap) {
+		packet->authen_start.data_len = 0;
+		return 0;
+	}
+
+	challenge = fr_pair_find_by_da(vps, NULL, da_challenge);
+	if (!challenge) {
+		fr_strerror_printf("Packet contains %s but no %s", da_chap->name, da_challenge->name);
+		return -1;
+	}
+
+	if (!challenge->vp_length) {
+		fr_strerror_printf("%s is empty", da_challenge->name);
+		return -1;
+	}
+
+	if ((chap->vp_length + challenge->vp_length) > 255) {
+		fr_strerror_printf("%s and %s are longer than 255 octets", da_chap->name, da_challenge->name);
+		return -1;
+	}
+
+	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, chap->vp_octets, 1);
+	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, challenge->vp_octets, challenge->vp_length);
+	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, chap->vp_octets + 1, chap->vp_length - 1);
+
+	packet->authen_start.data_len = chap->vp_length + challenge->vp_length;
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
 /*
  *	Magic macros to keep things happy.
  *
@@ -433,7 +469,36 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			ENCODE_FIELD_STRING8(packet->authen_start.user_len, attr_tacacs_user_name);
 			ENCODE_FIELD_STRING8(packet->authen_start.port_len, attr_tacacs_client_port);
 			ENCODE_FIELD_STRING8(packet->authen_start.rem_addr_len, attr_tacacs_remote_address);
-			ENCODE_FIELD_STRING8(packet->authen_start.data_len, attr_tacacs_data);
+
+			/*
+			 *	No explicit "Data" attribute, try to automatically determine what to do.
+			 */
+			if (fr_pair_find_by_da_nested(vps, NULL, attr_tacacs_data)) {
+				ENCODE_FIELD_STRING8(packet->authen_start.data_len, attr_tacacs_data);
+
+			} else switch (packet->authen_start.authen_type) {
+			        int rcode;
+
+				default:
+					break;
+
+				case FR_AUTHENTICATION_TYPE_VALUE_PAP:
+					ENCODE_FIELD_STRING8(packet->authen_start.data_len, attr_tacacs_user_password);
+					break;
+
+				case FR_AUTHENTICATION_TYPE_VALUE_CHAP:
+					if (tacacs_encode_chap(&work_dbuff, packet, vps, attr_tacacs_chap_password, attr_tacacs_chap_challenge) < 0) return -1;
+					break;
+
+				case FR_AUTHENTICATION_TYPE_VALUE_MSCHAP:
+					rcode = tacacs_encode_chap(&work_dbuff, packet, vps, attr_tacacs_mschap_response, attr_tacacs_mschap_challenge);
+					if (rcode < 0) return rcode;
+
+					if (rcode > 0) break;
+
+					if (tacacs_encode_chap(&work_dbuff, packet, vps, attr_tacacs_mschap2_response, attr_tacacs_mschap_challenge) < 0) return -1;
+					break;
+			}
 
 			goto check_request;
 

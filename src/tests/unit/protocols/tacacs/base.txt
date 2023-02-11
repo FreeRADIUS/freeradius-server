@@ -17,7 +17,7 @@ fuzzer-out tacacs
 #	Authentication: Start Request: (Client -> Server)
 #
 decode-proto c1 01 01 00 b7 0f c8 0e 00 00 00 22 79 d2 9a 66 67 fe fe 87 04 af 61 7e cb 79 20 bb ca 61 cf 8b 25 ab 70 9e 68 af 9f d5 ae de c5 5d 5e 73
-match Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 3071264782, Packet.Length = 34, Packet-Body-Type = Start, Action = LOGIN, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", Data = 0x68656c6c6f
+match Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 3071264782, Packet.Length = 34, Packet-Body-Type = Start, Action = LOGIN, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", User-Password = "hello"
 
 encode-proto -
 match c1 01 01 00 b7 0f c8 0e 00 00 00 22 79 d2 9a 66 67 fe fe 87 04 af 61 7e cb 79 20 bb ca 61 cf 8b 25 ab 70 9e 68 af 9f d5 ae de c5 5d 5e 73
