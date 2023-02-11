@@ -67,6 +67,14 @@ fr_dict_attr_t const *attr_tacacs_user_name;
 fr_dict_attr_t const *attr_tacacs_version_major;
 fr_dict_attr_t const *attr_tacacs_version_minor;
 
+fr_dict_attr_t const *attr_tacacs_user_name;
+fr_dict_attr_t const *attr_tacacs_user_password;
+fr_dict_attr_t const *attr_tacacs_chap_password;
+fr_dict_attr_t const *attr_tacacs_chap_challenge;
+fr_dict_attr_t const *attr_tacacs_mschap_response;
+fr_dict_attr_t const *attr_tacacs_mschap2_response;
+fr_dict_attr_t const *attr_tacacs_mschap_challenge;
+
 extern fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_accounting_flags, .name = "Accounting-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
@@ -96,6 +104,14 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_version_major, .name = "Packet.Version-Major", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_version_minor, .name = "Packet.Version-Minor", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+
+	{ .out = &attr_tacacs_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_chap_challenge, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_mschap_response, .name = "MS-CHAP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_mschap2_response, .name = "MS-CHAP2-Response", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_mschap_challenge, .name = "MS-CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 	{ NULL }
 };
 

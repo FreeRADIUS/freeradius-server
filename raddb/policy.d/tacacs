@@ -13,7 +13,7 @@ tacacs_set_authentication_status {
 tacacs_pap {
 	subrequest RADIUS.Access-Request {
 		&request.User-Name := &parent.request.User-Name
-#		&request.User-Password := &parent.request.Data
+		&request.User-Password := &parent.request.User-Password
 		&control.Password.Cleartext := &parent.control.Password.Cleartext
 
 		pap.authorize
@@ -35,8 +35,8 @@ tacacs_chap {
 		#  @todo - update code to create these, so that the
 		#  poor user doesn't need to.
 		#
-#		&request.CHAP-Password := ...
-#		&request.CHAP-Challenge := ...
+		&request.CHAP-Password := &parent.request.CHAP-Password
+		&request.CHAP-Challenge := &parent.request.CHAP-Challenge
 		&control.Password.Cleartext := &parent.control.Password.Cleartext
 
 		chap.authenticate
@@ -49,19 +49,21 @@ tacacs_mschap {
 	subrequest RADIUS.Access-Request {
 		&request.User-Name := &parent.request.User-Name
 
-		#
-		#  Data length N is 1 octet of ID, followed by
-		#  N-49 octets of challenge, followed by 49 octets of
-		#  MS-CHAP stuff.
-		#
-		#  @todo - update code to create these, so that the
-		#  poor user doesn't need to.
-		#
-#		&request.MS-CHAP-Challenge := ...
-#		&request.MS-CHAP-Response := ...
 		&control.Password.Cleartext := &parent.control.Password.Cleartext
 
-		chap.authenticate
+		#
+		#  There's always a challenge
+		#
+		&request.Vendor-Specific.Microsoft.CHAP-Challenge := &parent.request.MS-CHAP-Challenge
+
+		#
+		#  One of these two assignments will fail.  Using "+="
+		#  is simpler than checking for it via "if" and then using ":="
+		#
+		&request.Vendor-Specific.Microsoft.CHAP-Response := &parent.request.MS-CHAP-Response
+		&request.Vendor-Specific.Microsoft.CHAP2-Response := &parent.request.MS-CHAP2-Response
+
+		mschap.authenticate
 	}
 
 	tacacs_set_authentication_status

@@ -54,3 +54,11 @@ extern HIDDEN fr_dict_attr_t const *attr_tacacs_user_message;
 extern HIDDEN fr_dict_attr_t const *attr_tacacs_user_name;
 extern HIDDEN fr_dict_attr_t const *attr_tacacs_version_major;
 extern HIDDEN fr_dict_attr_t const *attr_tacacs_version_minor;
+
+extern HIDDEN fr_dict_attr_t const *attr_tacacs_user_name;
+extern HIDDEN fr_dict_attr_t const *attr_tacacs_user_password;
+extern HIDDEN fr_dict_attr_t const *attr_tacacs_chap_password;
+extern HIDDEN fr_dict_attr_t const *attr_tacacs_chap_challenge;
+extern HIDDEN fr_dict_attr_t const *attr_tacacs_mschap_response;
+extern HIDDEN fr_dict_attr_t const *attr_tacacs_mschap2_response;
+extern HIDDEN fr_dict_attr_t const *attr_tacacs_mschap_challenge;

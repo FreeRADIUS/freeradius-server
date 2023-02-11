@@ -127,3 +127,16 @@ VALUE	Accounting-Flags		Watchdog		8
 VALUE	Accounting-Flags		Watchdog-Update		10
 
 ATTRIBUTE	Argument-List				21	string
+
+#
+#  These attributes have similar names to RADIUS attributes, and similar content.
+#
+#  However, they need to be explicitly copied to a RADIUS equivalent in order
+#  for them to work in RADIUS.
+#
+ATTRIBUTE	User-Password				22	string
+ATTRIBUTE	CHAP-Password				23	octets[17]
+ATTRIBUTE	CHAP-Challenge				24	octets
+ATTRIBUTE	MS-CHAP-Response			25	octets[50]
+ATTRIBUTE	MS-CHAP2-Response			26	octets[50]
+ATTRIBUTE	MS-CHAP-Challenge			27	octets

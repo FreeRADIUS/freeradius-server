@@ -484,6 +484,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 	case FR_TAC_PLUS_AUTHEN:
 		if (packet_is_authen_start_request(pkt)) {
 			uint8_t want;
+			bool raw;
+			fr_dict_attr_t const *da, *challenge;
 
 			/**
 			 * 4.1. The Authentication START Packet Body
@@ -535,42 +537,97 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	Check the length on the various
 			 *	authentication types.
 			 */
+			raw = false;
+			challenge = NULL;
+
 			switch (pkt->authen_start.authen_type) {
 			default:
-				want = 255;
+				raw = true;
+				want = pkt->authen_start.data_len;
+				da = attr_tacacs_data;
+				break;
+
+			case FR_AUTHENTICATION_TYPE_VALUE_PAP:
+				want = pkt->authen_start.data_len;
+				da = attr_tacacs_user_password;
 				break;
 
 			case FR_AUTHENTICATION_TYPE_VALUE_CHAP:
-				want = 1 + 8 + 16; /* id + 8 octets of challenge + 16 hash */
+				want = 1 + 16; /* id + HOPEFULLY 8 octets of challenge + 16 hash */
+				da = attr_tacacs_chap_password;
+				challenge = attr_tacacs_chap_challenge;
 				break;
 
 			case FR_AUTHENTICATION_TYPE_VALUE_MSCHAP:
-				want = 1 + 8 + 49; /* id + 8 octets of challenge + 49 MS-CHAP stuff */
+				want = 1 + 49; /* id + HOPEFULLY 8 octets of challenge + 49 MS-CHAP stuff */
+				da = attr_tacacs_mschap_response;
+				challenge = attr_tacacs_mschap_challenge;
 				break;
 
 			case FR_AUTHENTICATION_TYPE_VALUE_MSCHAPV2:
-				want = 1 + 16 + 49; /* id + 16 octets of challenge + 49 MS-CHAP stuff */
+				want = 1 + 16 + 49; /* id + HOPEFULLY 16 octets of challenge + 49 MS-CHAP stuff */
+				da = attr_tacacs_mschap2_response;
+				challenge = attr_tacacs_mschap_challenge;
 				break;
 			}
 
 			/*
 			 *	If we have enough data, decode it as
 			 *	the claimed authentication type.
-			 *	Otherwise, decode it as an unknown
+			 *
+			 *	Otherwise, decode the entire field as an unknown
 			 *	attribute.
 			 */
-			if (pkt->authen_start.data_len <= want) {
-				DECODE_FIELD_STRING8(attr_tacacs_data, pkt->authen_start.data_len);
-			} else {
-				fr_dict_attr_t *da;
+			if (raw || (pkt->authen_start.data_len < want)) {
+				fr_dict_attr_t *da_unknown;
 
-				da = fr_dict_unknown_attr_afrom_da(ctx, attr_tacacs_data);
-				if (da) {
-					da->flags.is_raw = 1;
-					DECODE_FIELD_STRING8(da, pkt->authen_start.data_len);
-					talloc_free(da); /* the VP makes it's own copy */
-				}
+				da_unknown = fr_dict_unknown_attr_afrom_da(ctx, attr_tacacs_data);
+				if (!da_unknown) goto fail;
 
+				da_unknown->flags.is_raw = 1;
+				want = pkt->authen_start.data_len;
+
+				DECODE_FIELD_STRING8(da_unknown, want);
+				talloc_free(da_unknown);
+
+			} else if (!challenge) {
+				DECODE_FIELD_STRING8(da, want);
+
+			} else if (pkt->authen_start.data_len == want)  {
+				fr_strerror_printf("%s has zero length", challenge->name);
+				goto fail;
+
+			} else { /* 1 of ID + ??? of challenge + (want-1) of data */
+				uint8_t challenge_len = pkt->authen_start.data_len - want;
+				uint8_t hash[50];
+
+				/*
+				 *	Rework things to make sense.
+				 */
+				hash[0] = p[0];
+				memcpy(hash + 1, p + 1 + challenge_len, want - 1);
+
+				vp = fr_pair_afrom_da(ctx, da);
+				if (!vp) goto fail;
+
+				fr_pair_append(out, vp);
+
+				/*
+				 *	ID + hash
+				 */
+				if (fr_pair_value_memdup(vp, hash, want, true) < 0) goto fail;
+
+				/*
+				 *	And then the challenge.
+				 */
+				vp = fr_pair_afrom_da(ctx, challenge);
+				if (!vp) goto fail;
+
+				fr_pair_append(out, vp);
+
+				if (fr_pair_value_memdup(vp, p + 1, challenge_len, true) < 0) goto fail;
+
+				p += pkt->authen_start.data_len;
 			}
 
 		} else if (packet_is_authen_continue(pkt)) {
