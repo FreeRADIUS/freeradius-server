@@ -63,7 +63,6 @@ fr_dict_attr_t const *attr_tacacs_sequence_number;
 fr_dict_attr_t const *attr_tacacs_server_message;
 fr_dict_attr_t const *attr_tacacs_session_id;
 fr_dict_attr_t const *attr_tacacs_user_message;
-fr_dict_attr_t const *attr_tacacs_user_name;
 fr_dict_attr_t const *attr_tacacs_version_major;
 fr_dict_attr_t const *attr_tacacs_version_minor;
 
