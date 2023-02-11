@@ -310,6 +310,15 @@ error:
 		}
 	}
 
+finish:
+	/*
+	 *	Always output the xlat data.
+	 *
+	 *	The user can check REST-HTTP-Status-Code to figure out what happened.
+	 *
+	 *	Eventually we should just emit two boxes, one with the response code
+	 *	and one with the body.
+	 */
 	len = rest_get_handle_data(&body, handle);
 	if (len > 0) {
 		fr_value_box_t *vb;
@@ -319,7 +328,6 @@ error:
 		fr_dcursor_insert(out, vb);
 	}
 
-finish:
 	rest_request_cleanup(inst, handle);
 
 	fr_pool_connection_release(t->pool, request, handle);
