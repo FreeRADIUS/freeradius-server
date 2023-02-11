@@ -131,6 +131,7 @@ char const *fr_tacacs_packet_names[FR_TACACS_CODE_MAX] = {
 	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_PASS_ADD]		= "Authorization-Pass-Add",
 	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_PASS_REPLACE]	= "Authorization-Pass-Replace",
 	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_FAIL]		= "Authorization-Fail",
+	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_ERROR]		= "Authorization-Error",
 
 	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST]		= "Accounting-Request",
 	[FR_PACKET_TYPE_VALUE_ACCOUNTING_SUCCESS]		= "Accounting-Success",
