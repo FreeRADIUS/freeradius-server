@@ -119,7 +119,7 @@ static const char *packet_name[] = {
  *				*leftover must be subtracted from buffer_len when
  *				calculating free space in the buffer.
  * @param[out] priority		unused.
- * @param[out] is_dup		unused.
+ * @param[out] is_dup		packets are never duplicated
  * @return
  *	- >0 when a packet was read successfully.
  *	- 0 when we read a partial packet.
@@ -127,11 +127,13 @@ static const char *packet_name[] = {
  */
 static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p,
 			uint8_t *buffer, size_t buffer_len, size_t *leftover,
-			UNUSED uint32_t *priority, UNUSED bool *is_dup)
+			UNUSED uint32_t *priority, bool *is_dup)
 {
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 	ssize_t				data_size, packet_len;
 	size_t				in_buffer;
+
+	*is_dup = false;
 
 	/*
 	 *      Read data into the buffer.
@@ -328,64 +330,6 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
-			      fr_io_track_t *track, uint8_t const *buffer, UNUSED size_t buffer_len)
-{
-	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *) buffer;
-	proto_tacacs_track_t     *t;
-
-	t = talloc_zero(track, proto_tacacs_track_t);
-	if (!t) return NULL;
-
-	talloc_set_name_const(t, "proto_tacacs_track_t");
-
-	switch (pkt->hdr.type) {
-	case FR_TAC_PLUS_AUTHEN:
-		if (packet_is_authen_start_request(pkt)) {
-			t->type = FR_PACKET_TYPE_VALUE_AUTHENTICATION_START;
-		} else {
-			t->type = FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE;
-		}
-		break;
-
-	case FR_TAC_PLUS_AUTHOR:
-		t->type = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
-		break;
-
-	case FR_TAC_PLUS_ACCT:
-		t->type = FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST;
-		break;
-
-	default:
-		talloc_free(t);
-		fr_assert(0);
-		return NULL;
-	}
-
-	t->session_id = pkt->hdr.session_id;
-
-	return t;
-}
-
-static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
-			     void const *one, void const *two)
-{
-	int ret;
-	proto_tacacs_track_t const *a = talloc_get_type_abort_const(one, proto_tacacs_track_t);
-	proto_tacacs_track_t const *b = talloc_get_type_abort_const(two, proto_tacacs_track_t);
-
-	/*
-	 *	Session IDs SHOULD be random 32-bit integers.
-	 */
-	ret = (a->session_id < b->session_id) - (a->session_id > b->session_id);
-	if (ret != 0) return ret;
-
-	/*
-	 *	Then ordered by our synthetic packet type.
-	 */
-	return (a->type < b->type) - (a->type > b->type);
-}
-
 static char const *mod_name(fr_listen_t *li)
 {
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
@@ -505,14 +449,12 @@ fr_app_io_t proto_tacacs_tcp = {
 		.bootstrap		= mod_bootstrap,
 	},
 	.default_message_size	= 4096,
-	.track_duplicates	= true,
+	.track_duplicates	= false,
 
 	.open			= mod_open,
 	.read			= mod_read,
 	.write			= mod_write,
 	.fd_set			= mod_fd_set,
-	.track_create	       	= mod_track_create,
-	.track_compare		= mod_track_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,
