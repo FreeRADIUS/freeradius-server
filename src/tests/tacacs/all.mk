@@ -46,7 +46,7 @@ $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 #
 #	Run the tacacs_client commands against the radiusd.
 #
-$(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
+$(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/libfreeradius-tacacs.la | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<))$(E)
 	$(eval CMD_TEST := $(patsubst %.txt,%.cmd,$<))
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
