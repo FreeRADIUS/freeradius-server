@@ -545,6 +545,7 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_linelog_t);
+	CONF_SECTION			*conf = mctx->inst->conf;
 
 	char				buff[4096];
 
@@ -558,6 +559,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 	struct iovec			*vector = NULL, *vector_p;
 	size_t				vector_len;
 	bool				with_delim;
+
 
 	if (!inst->log_src && !inst->log_ref) {
 		cf_log_err(conf, "A 'format', or 'reference' configuration item must be set to call this module");
