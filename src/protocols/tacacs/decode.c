@@ -133,12 +133,20 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 	} \
 } while (0)
 
-#define ARG_COUNT_CHECK(_msg, _arg_cnt) do { \
-	if ((p + _arg_cnt) > end) { \
-		fr_strerror_printf("Argument count %u overflows the remaining data (%zu) in the %s packet", _arg_cnt, end - p, _msg); \
+#define ARG_COUNT_CHECK(_msg, _hdr) do { \
+	if ((p + _hdr.arg_cnt) > end) { \
+		fr_strerror_printf("Argument count %u overflows the remaining data (%zu) in the %s packet", _hdr.arg_cnt, end - p, _msg); \
 		goto fail; \
 	} \
-	p += _arg_cnt; \
+	p += _hdr.arg_cnt; \
+	data_len = 0; \
+	for (int i = 0; i < _hdr.arg_cnt; i++) { \
+		data_len += _hdr.arg_len[i]; \
+		if (data_len > (size_t) (end - p)) { \
+			fr_strerror_printf("Argument %u length %u overflows packet", i, _hdr.arg_len[i]); \
+			goto fail; \
+		} \
+	} \
 } while (0)
 
 #define DECODE_FIELD_UINT8(_da, _field) do { \
@@ -160,11 +168,11 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 
 #define BODY(_x) (((uint8_t const *) pkt) + sizeof(pkt->hdr) + sizeof(pkt->_x))
 
-/**
- *	Decode a TACACS+ 'arg_N' fields.
+/** Decode a TACACS+ 'arg_N' fields.
+ *
  */
 static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-			      uint8_t arg_cnt, uint8_t const *arg_list, uint8_t const *data, uint8_t const *end)
+			      uint8_t arg_cnt, uint8_t const *arg_list, uint8_t const *data, NDEBUG_UNUSED uint8_t const *end)
 {
 	uint8_t i;
 	uint8_t const *p = data;
@@ -175,24 +183,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 	 */
 	if (!arg_cnt) return 0;
 
-	if ((p + arg_cnt) > end) {
-		fr_strerror_printf("Argument count %u overflows the remaining data (%zu) in the packet", arg_cnt, p - end);
-		return -1;
-	}
-
-	/*
-	 *	Check for malformed packets before anything else.
-	 */
-	for (i = 0; i < arg_cnt; i++) {
-		if ((p + arg_list[i]) > end) {
-			fr_strerror_printf("'%s' argument %u length %u overflows the remaining data (%zu) in the packet",
-					   parent->name, i, arg_list[i], end - p);
-			return -1;
-		}
-
-		p += arg_list[i];
-	}
-	p = data;
+	fr_assert((p + arg_cnt) < end);
 
 	/*
 	 *	Then, do the dirty job of creating attributes.
@@ -201,6 +192,9 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		uint8_t const *value, *name_end, *arg_end;
 		fr_dict_attr_t const *da;
 		uint8_t buffer[256];
+
+		fr_assert(p < end);
+		fr_assert((p + arg_list[i]) <= end);
 
 		if (arg_list[i] < 2) goto next; /* skip malformed */
 
@@ -771,7 +765,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/* can't check for underflow, as we have argv[argc] */
 
 			p = BODY(author_req);
-			ARG_COUNT_CHECK("Authorization-Request", pkt->author_req.arg_cnt);
+			ARG_COUNT_CHECK("Authorization-Request", pkt->author_req);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
 			/*
@@ -830,7 +824,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/* can't check for underflow, as we have argv[argc] */
 
 			p = BODY(author_reply);
-			ARG_COUNT_CHECK("Authorization-Reply", pkt->author_reply.arg_cnt);
+			ARG_COUNT_CHECK("Authorization-Reply", pkt->author_reply);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_RESPONSE);
 
 			/*
@@ -893,7 +887,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/* can't check for underflow, as we have argv[argc] */
 
 			p = BODY(acct_req);
-			ARG_COUNT_CHECK("Accounting-Request", pkt->acct_req.arg_cnt);
+			ARG_COUNT_CHECK("Accounting-Request", pkt->acct_req);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
 			/*
