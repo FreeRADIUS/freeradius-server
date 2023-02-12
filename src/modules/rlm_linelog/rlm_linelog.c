@@ -273,140 +273,6 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
 	return conn;
 }
 
-static int mod_detach(module_detach_ctx_t const *mctx)
-{
-	rlm_linelog_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_linelog_t);
-
-	fr_pool_free(inst->pool);
-
-	return 0;
-}
-
-
-/*
- *	Instantiate the module.
- */
-static int mod_instantiate(module_inst_ctx_t const *mctx)
-{
-	rlm_linelog_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_linelog_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
-	char			prefix[100];
-
-	/*
-	 *	Escape filenames only if asked.
-	 */
-	if (inst->file.escape) {
-		inst->file.escape_func = rad_filename_escape;
-	} else {
-		inst->file.escape_func = rad_filename_make_safe;
-	}
-
-	inst->log_dst = fr_table_value_by_str(linefr_log_dst_table, inst->log_dst_str, LINELOG_DST_INVALID);
-	if (inst->log_dst == LINELOG_DST_INVALID) {
-		cf_log_err(conf, "Invalid log destination \"%s\"", inst->log_dst_str);
-		return -1;
-	}
-
-	if (!inst->log_src && !inst->log_ref) {
-		cf_log_err(conf, "Must specify a log format, or reference");
-		return -1;
-	}
-
-	snprintf(prefix, sizeof(prefix), "rlm_linelog (%s)", mctx->inst->name);
-
-	/*
-	 *	Setup the logging destination
-	 */
-	switch (inst->log_dst) {
-	case LINELOG_DST_FILE:
-	{
-		if (!inst->file.name) {
-			cf_log_err(conf, "No value provided for 'file.filename'");
-			return -1;
-		}
-
-		inst->file.ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
-		if (!inst->file.ef) {
-			cf_log_err(conf, "Failed creating log file context");
-			return -1;
-		}
-
-		if (inst->file.group_str) {
-			char *endptr;
-
-			inst->file.group = strtol(inst->file.group_str, &endptr, 10);
-			if (*endptr != '\0') {
-				if (fr_perm_gid_from_str(inst, &(inst->file.group), inst->file.group_str) < 0) {
-					cf_log_err(conf, "Unable to find system group \"%s\"",
-						      inst->file.group_str);
-					return -1;
-				}
-			}
-		}
-	}
-		break;
-
-	case LINELOG_DST_SYSLOG:
-	{
-		int num;
-
-#ifndef HAVE_SYSLOG_H
-		cf_log_err(conf, "Syslog output is not supported on this system");
-		return -1;
-#else
-		if (inst->syslog.facility) {
-			num = fr_table_value_by_str(syslog_facility_table, inst->syslog.facility, -1);
-			if (num < 0) {
-				cf_log_err(conf, "Invalid syslog facility \"%s\"", inst->syslog.facility);
-				return -1;
-			}
-			inst->syslog.priority |= num;
-		}
-
-		num = fr_table_value_by_str(syslog_severity_table, inst->syslog.severity, -1);
-		if (num < 0) {
-			cf_log_err(conf, "Invalid syslog severity \"%s\"", inst->syslog.severity);
-			return -1;
-		}
-		inst->syslog.priority |= num;
-#endif
-	}
-		break;
-
-	case LINELOG_DST_UNIX:
-#ifndef HAVE_SYS_UN_H
-		cf_log_err(conf, "Unix sockets are not supported on this sytem");
-		return -1;
-#else
-		inst->pool = module_rlm_connection_pool_init(cf_section_find(conf, "unix", NULL),
-							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
-		if (!inst->pool) return -1;
-#endif
-		break;
-
-	case LINELOG_DST_UDP:
-		inst->pool = module_rlm_connection_pool_init(cf_section_find(conf, "udp", NULL),
-							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
-		if (!inst->pool) return -1;
-		break;
-
-	case LINELOG_DST_TCP:
-		inst->pool = module_rlm_connection_pool_init(cf_section_find(conf, "tcp", NULL),
-							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
-		if (!inst->pool) return -1;
-		break;
-
-	case LINELOG_DST_INVALID:
-		fr_assert(0);
-		break;
-	}
-
-	inst->delimiter_len = talloc_array_length(inst->delimiter) - 1;
-	inst->cs = conf;
-
-	return 0;
-}
-
 /** Escape unprintable characters
  *
  * - Newline is escaped as ``\\n``.
@@ -437,6 +303,234 @@ static size_t linelog_escape_func(UNUSED request_t *request,
 	return fr_snprint(out, outlen, in, -1, 0);
 }
 
+static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct iovec *vector_p, size_t vector_len, bool with_delim)
+{
+	int 			ret = 0;
+	linelog_conn_t		*conn;
+	fr_time_delta_t		timeout = fr_time_delta_wrap(0);
+
+	/*
+	 *	Reserve a handle, write out the data, close the handle
+	 */
+	switch (inst->log_dst) {
+	case LINELOG_DST_FILE:
+	{
+		int		fd = -1;
+		char		path[2048];
+		off_t		offset;
+		char		*p;
+		ssize_t 	slen;
+
+		if (xlat_eval(path, sizeof(path), request, inst->file.name, inst->file.escape_func, NULL) < 0) {
+			ret = -1;
+			goto finish;
+		}
+
+		/* check path and eventually create subdirs */
+		p = strrchr(path, '/');
+		if (p) {
+			*p = '\0';
+			if (fr_mkdir(NULL, path, -1, 0700, NULL, NULL) < 0) {
+				RERROR("Failed to create directory %s: %s", path, fr_syserror(errno));
+				ret = -1;
+				goto finish;
+			}
+			*p = '/';
+		}
+
+		fd = exfile_open(inst->file.ef, path, inst->file.permissions, &offset);
+		if (fd < 0) {
+			RERROR("Failed to open %s: %s", path, fr_syserror(errno));
+			ret = -1;
+			goto finish;
+		}
+
+		if (inst->file.group_str && (chown(path, -1, inst->file.group) == -1)) {
+			RPWARN("Unable to change system group of \"%s\": %s", path, fr_strerror());
+		}
+
+		/*
+		 *	If a header format is defined and we are at the beginning
+		 *	of the file then expand the format and write it out before
+		 *	writing the actual log entries.
+		 */
+		if (inst->log_head && (offset == 0)) {
+			char 		head[4096];
+			char		*head_value;
+			struct iovec	head_vector_s[2];
+			size_t		head_vector_len;
+
+			slen = tmpl_expand(&head_value, head, sizeof(head), request, inst->log_head,
+					  linelog_escape_func, NULL);
+			if (slen < 0) {
+				exfile_close(inst->file.ef, fd);
+				ret = -1;
+				goto finish;
+			}
+
+			memcpy(&head_vector_s[0].iov_base, &head_value, sizeof(head_vector_s[0].iov_base));
+			head_vector_s[0].iov_len = slen;
+
+			if (!with_delim) {
+				head_vector_len = 1;
+			} else {
+				memcpy(&head_vector_s[1].iov_base, &(inst->delimiter),
+				       sizeof(head_vector_s[1].iov_base));
+				head_vector_s[1].iov_len = inst->delimiter_len;
+				head_vector_len = 2;
+			}
+
+			if (writev(fd, &head_vector_s[0], head_vector_len) < 0) {
+			write_fail:
+				RERROR("Failed writing to \"%s\": %s", path, fr_syserror(errno));
+				exfile_close(inst->file.ef, fd);
+
+				/* Assert on the extra fatal errors */
+				fr_assert((errno != EINVAL) && (errno != EFAULT));
+
+				ret = -1;
+				goto finish;
+			}
+		}
+
+		ret = writev(fd, vector_p, vector_len);
+		if (ret < 0) goto write_fail;
+
+		exfile_close(inst->file.ef, fd);
+	}
+		break;
+
+	case LINELOG_DST_UNIX:
+		if (fr_time_delta_ispos(inst->unix_sock.timeout)) {
+			timeout = inst->unix_sock.timeout;
+		}
+		goto do_write;
+
+	case LINELOG_DST_UDP:
+		if (fr_time_delta_ispos(inst->udp.timeout)) {
+			timeout = inst->udp.timeout;
+		}
+		goto do_write;
+
+	case LINELOG_DST_TCP:
+	{
+		int i, num;
+		if (fr_time_delta_ispos(inst->tcp.timeout)) {
+			timeout = inst->tcp.timeout;
+		}
+
+	do_write:
+		num = fr_pool_state(inst->pool)->num;
+		conn = fr_pool_connection_get(inst->pool, request);
+		if (!conn) {
+			ret = -1;
+			goto finish;
+		}
+
+		for (i = num; i >= 0; i--) {
+			ssize_t wrote;
+			char discard[64];
+
+			wrote = fr_writev(conn->sockfd, vector_p, vector_len, timeout);
+			if (wrote < 0) switch (errno) {
+			/* Errors that indicate we should reconnect */
+			case EDESTADDRREQ:
+			case EPIPE:
+			case EBADF:
+			case ECONNRESET:
+			case ENETDOWN:
+			case ENETUNREACH:
+			case EADDRNOTAVAIL: /* Which is OSX for outbound interface is down? */
+				RWARN("Failed writing to socket: %s.  Will reconnect and try again...",
+				      fr_syserror(errno));
+				conn = fr_pool_connection_reconnect(inst->pool, request, conn);
+				if (!conn) {
+					ret = -1;
+					goto done;
+				}
+				continue;
+
+			/* Assert on the extra fatal errors */
+			case EINVAL:
+			case EFAULT:
+				fr_assert(0);
+				FALL_THROUGH;
+
+			/* Normal errors that just cause the module to fail */
+			default:
+				RERROR("Failed writing to socket: %s", fr_syserror(errno));
+				ret = -1;
+				goto done;
+			}
+			RDEBUG2("Wrote %zi bytes", wrote);
+			ret = wrote;
+
+			/* Drain the receive buffer */
+			while (read(conn->sockfd, discard, sizeof(discard)) > 0);
+			break;
+		}
+	done:
+		fr_pool_connection_release(inst->pool, request, conn);
+	}
+		break;
+
+#ifdef HAVE_SYSLOG_H
+	case LINELOG_DST_SYSLOG:
+	{
+		size_t i;
+
+		ret = 0;
+		for (i = 0; i < vector_len; i++) {
+			syslog(inst->syslog.priority, "%.*s", (int)vector_p[i].iov_len, (char *)vector_p[i].iov_base);
+			ret += vector_p[i].iov_len;
+		}
+	}
+		break;
+#endif
+	case LINELOG_DST_INVALID:
+		fr_assert(0);
+		ret = -1;
+		break;
+	}
+
+finish:
+	return ret;
+}
+
+static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				  xlat_ctx_t const *xctx, request_t *request,
+				  FR_DLIST_HEAD(fr_value_box_list) *args)
+{
+	rlm_linelog_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_linelog_t);
+	struct iovec		vector[2];
+	size_t			i = 0;
+	bool			with_delim;
+	fr_value_box_t		*msg, *wrote;
+	ssize_t			slen;
+
+	XLAT_ARGS(args, &msg);
+
+	vector[i].iov_base = UNCONST(char *, msg->vb_strvalue);
+	vector[i].iov_len = msg->vb_length;
+	i++;
+
+	with_delim = (inst->log_dst != LINELOG_DST_SYSLOG) && (inst->delimiter_len > 0);
+	if (with_delim) {
+		memcpy(&vector[i].iov_base, &(inst->delimiter), sizeof(vector[i].iov_base));
+		vector[i].iov_len = inst->delimiter_len;
+		i++;
+	}
+	slen = linelog_write(inst, request, vector, i, with_delim);
+	if (slen < 0) return XLAT_ACTION_FAIL;
+
+	MEM(wrote = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
+	wrote->vb_size = (size_t)slen;
+
+	fr_dcursor_insert(out, wrote);
+
+	return XLAT_ACTION_DONE;
+}
+
 /** Write a linelog message
  *
  * Write a log message to syslog or a flat file.
@@ -451,8 +545,7 @@ static size_t linelog_escape_func(UNUSED request_t *request,
 static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_linelog_t);
-	linelog_conn_t			*conn;
-	fr_time_delta_t			timeout = fr_time_delta_wrap(0);
+
 	char				buff[4096];
 
 	char				*p = buff;
@@ -641,181 +734,7 @@ build_vector:
 		goto finish;
 	}
 
-	/*
-	 *	Reserve a handle, write out the data, close the handle
-	 */
-	switch (inst->log_dst) {
-	case LINELOG_DST_FILE:
-	{
-		int fd = -1;
-		char path[2048];
-		off_t offset;
-
-		if (xlat_eval(path, sizeof(path), request, inst->file.name, inst->file.escape_func, NULL) < 0) {
-			RETURN_MODULE_FAIL;
-		}
-
-		/* check path and eventually create subdirs */
-		p = strrchr(path, '/');
-		if (p) {
-			*p = '\0';
-			if (fr_mkdir(NULL, path, -1, 0700, NULL, NULL) < 0) {
-				RERROR("Failed to create directory %s: %s", path, fr_syserror(errno));
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
-			}
-			*p = '/';
-		}
-
-		fd = exfile_open(inst->file.ef, path, inst->file.permissions, &offset);
-		if (fd < 0) {
-			RERROR("Failed to open %s: %s", path, fr_syserror(errno));
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-		}
-
-		if (inst->file.group_str && (chown(path, -1, inst->file.group) == -1)) {
-			RPWARN("Unable to change system group of \"%s\": %s", path, fr_strerror());
-		}
-
-		/*
-		 *	If a header format is defined and we are at the beginning
-		 *	of the file then expand the format and write it out before
-		 *	writing the actual log entries.
-		 */
-		if (inst->log_head && (offset == 0)) {
-			char 		head[4096];
-			char		*head_value;
-			struct iovec	head_vector_s[2];
-			size_t		head_vector_len;
-
-			slen = tmpl_expand(&head_value, head, sizeof(head), request, inst->log_head,
-					  linelog_escape_func, NULL);
-			if (slen < 0) {
-				rcode = RLM_MODULE_FAIL;
-				exfile_close(inst->file.ef, fd);
-				goto finish;
-			}
-
-			memcpy(&head_vector_s[0].iov_base, &head_value, sizeof(head_vector_s[0].iov_base));
-			head_vector_s[0].iov_len = slen;
-
-			if (!with_delim) {
-				head_vector_len = 1;
-			} else {
-				memcpy(&head_vector_s[1].iov_base, &(inst->delimiter),
-				       sizeof(head_vector_s[1].iov_base));
-				head_vector_s[1].iov_len = inst->delimiter_len;
-				head_vector_len = 2;
-			}
-
-			if (writev(fd, &head_vector_s[0], head_vector_len) < 0) {
-			write_fail:
-				RERROR("Failed writing to \"%s\": %s", path, fr_syserror(errno));
-				exfile_close(inst->file.ef, fd);
-
-				/* Assert on the extra fatal errors */
-				fr_assert((errno != EINVAL) && (errno != EFAULT));
-
-				RETURN_MODULE_FAIL;
-			}
-		}
-
-		if (writev(fd, vector_p, vector_len) < 0) goto write_fail;
-
-		exfile_close(inst->file.ef, fd);
-	}
-		break;
-
-	case LINELOG_DST_UNIX:
-		if (fr_time_delta_ispos(inst->unix_sock.timeout)) {
-			timeout = inst->unix_sock.timeout;
-		}
-		goto do_write;
-
-	case LINELOG_DST_UDP:
-		if (fr_time_delta_ispos(inst->udp.timeout)) {
-			timeout = inst->udp.timeout;
-		}
-		goto do_write;
-
-	case LINELOG_DST_TCP:
-	{
-		int i, num;
-		if (fr_time_delta_ispos(inst->tcp.timeout)) {
-			timeout = inst->tcp.timeout;
-		}
-
-	do_write:
-		num = fr_pool_state(inst->pool)->num;
-		conn = fr_pool_connection_get(inst->pool, request);
-		if (!conn) {
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-		}
-
-		for (i = num; i >= 0; i--) {
-			ssize_t wrote;
-			char discard[64];
-
-			wrote = fr_writev(conn->sockfd, vector_p, vector_len, timeout);
-			if (wrote < 0) switch (errno) {
-			/* Errors that indicate we should reconnect */
-			case EDESTADDRREQ:
-			case EPIPE:
-			case EBADF:
-			case ECONNRESET:
-			case ENETDOWN:
-			case ENETUNREACH:
-			case EADDRNOTAVAIL: /* Which is OSX for outbound interface is down? */
-				RWARN("Failed writing to socket: %s.  Will reconnect and try again...",
-				      fr_syserror(errno));
-				conn = fr_pool_connection_reconnect(inst->pool, request, conn);
-				if (!conn) {
-					rcode = RLM_MODULE_FAIL;
-					goto done;
-				}
-				continue;
-
-			/* Assert on the extra fatal errors */
-			case EINVAL:
-			case EFAULT:
-				fr_assert(0);
-				FALL_THROUGH;
-
-			/* Normal errors that just cause the module to fail */
-			default:
-				RERROR("Failed writing to socket: %s", fr_syserror(errno));
-				rcode = RLM_MODULE_FAIL;
-				goto done;
-			}
-			RDEBUG2("Wrote %zi bytes", wrote);
-
-			/* Drain the receive buffer */
-			while (read(conn->sockfd, discard, sizeof(discard)) > 0);
-			break;
-		}
-	done:
-		fr_pool_connection_release(inst->pool, request, conn);
-	}
-		break;
-
-#ifdef HAVE_SYSLOG_H
-	case LINELOG_DST_SYSLOG:
-	{
-		size_t i;
-
-		for (i = 0; i < vector_len; i++) {
-			syslog(inst->syslog.priority, "%.*s", (int)vector_p[i].iov_len, (char *)vector_p[i].iov_base);
-		}
-	}
-		break;
-#endif
-	case LINELOG_DST_INVALID:
-		fr_assert(0);
-		rcode = RLM_MODULE_FAIL;
-		break;
-	}
+	rcode = linelog_write(inst, request, vector_p, vector_len, with_delim) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK;
 
 finish:
 	talloc_free(vpt);
@@ -824,6 +743,155 @@ finish:
 	RETURN_MODULE_RCODE(rcode);
 }
 
+
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_linelog_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_linelog_t);
+
+	fr_pool_free(inst->pool);
+
+	return 0;
+}
+
+/*
+ *	Instantiate the module.
+ */
+static int mod_instantiate(module_inst_ctx_t const *mctx)
+{
+	rlm_linelog_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_linelog_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
+	char			prefix[100];
+
+	/*
+	 *	Escape filenames only if asked.
+	 */
+	if (inst->file.escape) {
+		inst->file.escape_func = rad_filename_escape;
+	} else {
+		inst->file.escape_func = rad_filename_make_safe;
+	}
+
+	inst->log_dst = fr_table_value_by_str(linefr_log_dst_table, inst->log_dst_str, LINELOG_DST_INVALID);
+	if (inst->log_dst == LINELOG_DST_INVALID) {
+		cf_log_err(conf, "Invalid log destination \"%s\"", inst->log_dst_str);
+		return -1;
+	}
+
+	if (!inst->log_src && !inst->log_ref) {
+		cf_log_err(conf, "Must specify a log format, or reference");
+		return -1;
+	}
+
+	snprintf(prefix, sizeof(prefix), "rlm_linelog (%s)", mctx->inst->name);
+
+	/*
+	 *	Setup the logging destination
+	 */
+	switch (inst->log_dst) {
+	case LINELOG_DST_FILE:
+	{
+		if (!inst->file.name) {
+			cf_log_err(conf, "No value provided for 'file.filename'");
+			return -1;
+		}
+
+		inst->file.ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
+		if (!inst->file.ef) {
+			cf_log_err(conf, "Failed creating log file context");
+			return -1;
+		}
+
+		if (inst->file.group_str) {
+			char *endptr;
+
+			inst->file.group = strtol(inst->file.group_str, &endptr, 10);
+			if (*endptr != '\0') {
+				if (fr_perm_gid_from_str(inst, &(inst->file.group), inst->file.group_str) < 0) {
+					cf_log_err(conf, "Unable to find system group \"%s\"",
+						      inst->file.group_str);
+					return -1;
+				}
+			}
+		}
+	}
+		break;
+
+	case LINELOG_DST_SYSLOG:
+	{
+		int num;
+
+#ifndef HAVE_SYSLOG_H
+		cf_log_err(conf, "Syslog output is not supported on this system");
+		return -1;
+#else
+		if (inst->syslog.facility) {
+			num = fr_table_value_by_str(syslog_facility_table, inst->syslog.facility, -1);
+			if (num < 0) {
+				cf_log_err(conf, "Invalid syslog facility \"%s\"", inst->syslog.facility);
+				return -1;
+			}
+			inst->syslog.priority |= num;
+		}
+
+		num = fr_table_value_by_str(syslog_severity_table, inst->syslog.severity, -1);
+		if (num < 0) {
+			cf_log_err(conf, "Invalid syslog severity \"%s\"", inst->syslog.severity);
+			return -1;
+		}
+		inst->syslog.priority |= num;
+#endif
+	}
+		break;
+
+	case LINELOG_DST_UNIX:
+#ifndef HAVE_SYS_UN_H
+		cf_log_err(conf, "Unix sockets are not supported on this sytem");
+		return -1;
+#else
+		inst->pool = module_rlm_connection_pool_init(cf_section_find(conf, "unix", NULL),
+							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
+		if (!inst->pool) return -1;
+#endif
+		break;
+
+	case LINELOG_DST_UDP:
+		inst->pool = module_rlm_connection_pool_init(cf_section_find(conf, "udp", NULL),
+							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
+		if (!inst->pool) return -1;
+		break;
+
+	case LINELOG_DST_TCP:
+		inst->pool = module_rlm_connection_pool_init(cf_section_find(conf, "tcp", NULL),
+							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
+		if (!inst->pool) return -1;
+		break;
+
+	case LINELOG_DST_INVALID:
+		fr_assert(0);
+		break;
+	}
+
+	inst->delimiter_len = talloc_array_length(inst->delimiter) - 1;
+	inst->cs = conf;
+
+	return 0;
+}
+
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	rlm_linelog_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_linelog_t);
+	xlat_t		*xlat;
+
+	static xlat_arg_parser_t const linelog_xlat_args[] = {
+		{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+		XLAT_ARG_PARSER_TERMINATOR
+	};
+
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, linelog_xlat, FR_TYPE_SIZE, 0);
+	xlat_func_mono(xlat, linelog_xlat_args);
+
+	return 0;
+}
 
 /*
  *	Externally visible module definition.
@@ -835,6 +903,7 @@ module_rlm_t rlm_linelog = {
 		.name		= "linelog",
 		.inst_size	= sizeof(rlm_linelog_t),
 		.config		= module_config,
+		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
 	},
