@@ -199,7 +199,7 @@ static int _mod_conn_free(linelog_conn_t *conn)
 
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
-	rlm_linelog_t const	*inst = talloc_get_type_abort(instance, rlm_linelog_t const);
+	rlm_linelog_t const	*inst = talloc_get_type_abort(instance, rlm_linelog_t);
 	linelog_conn_t		*conn;
 	int			sockfd = -1;
 
