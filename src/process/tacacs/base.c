@@ -799,7 +799,7 @@ RECV(auth_cont)
 	 */
 	session = request_data_reference(request, inst, 0);
 	if (session) {
-		if (fr_pair_list_copy(&request->request_ctx, &request->request_pairs, session->list) < 0) {
+		if (fr_pair_list_copy(&request->request_ctx, &request->request_pairs, &session->list) < 0) {
 			return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 		}
 	}
