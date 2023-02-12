@@ -63,9 +63,9 @@ VALUE	Authentication-Method		RCMD			32
 ATTRIBUTE	Authentication-Status			7	byte
 VALUE	Authentication-Status		Pass			1
 VALUE	Authentication-Status		Fail			2
-VALUE	Authentication-Status		Get-Data		3
-VALUE	Authentication-Status		Get-User		4
-VALUE	Authentication-Status		Get-Pass		5
+VALUE	Authentication-Status		Getdata		3
+VALUE	Authentication-Status		Getuser		4
+VALUE	Authentication-Status		Getpass		5
 VALUE	Authentication-Status		Restart			6
 VALUE	Authentication-Status		Error			7
 VALUE	Authentication-Status		Follow			33
