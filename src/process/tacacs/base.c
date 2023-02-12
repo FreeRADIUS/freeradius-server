@@ -422,8 +422,10 @@ static uint32_t reply_code(request_t *request, fr_dict_attr_t const *status_da,
 		REDEBUG("Ignoring invalid status %pP", vp);
 	}
 
-	code = state->packet_type[rcode];
-	if (code > 0) return code;
+	if (state) {
+		code = state->packet_type[rcode];
+		if (code > 0) return code;
+	}
 
 	/*
 	 *	Otherwise use Packet-Type (if set)
@@ -470,6 +472,16 @@ RECV(auth_start)
 
 RESUME(auth_type);
 
+static const uint32_t authen_status_to_packet_code[UINT8_MAX + 1] = {
+	[FR_TAC_PLUS_AUTHEN_STATUS_PASS] = FR_TACACS_CODE_AUTH_PASS,
+	[FR_TAC_PLUS_AUTHEN_STATUS_FAIL] = FR_TACACS_CODE_AUTH_FAIL,
+	[FR_TAC_PLUS_AUTHEN_STATUS_GETDATA] = FR_TACACS_CODE_AUTH_GETDATA,
+	[FR_TAC_PLUS_AUTHEN_STATUS_GETUSER] = FR_TACACS_CODE_AUTH_GETUSER,
+	[FR_TAC_PLUS_AUTHEN_STATUS_GETPASS] = FR_TACACS_CODE_AUTH_GETPASS,
+	[FR_TAC_PLUS_AUTHEN_STATUS_RESTART] = FR_TACACS_CODE_AUTH_RESTART,
+	[FR_TAC_PLUS_AUTHEN_STATUS_ERROR] = FR_TACACS_CODE_AUTH_ERROR,
+};
+
 RESUME(auth_start)
 {
 	rlm_rcode_t			rcode = *p_result;
@@ -495,20 +507,9 @@ RESUME(auth_start)
 	 *	use the defaults from the state machine.
 	 */
 	if (request->reply->code == 0) {
-		static const uint32_t status2code[UINT8_MAX + 1] = {
-			[FR_TAC_PLUS_AUTHEN_STATUS_PASS] = FR_TACACS_CODE_AUTH_PASS,
-			[FR_TAC_PLUS_AUTHEN_STATUS_FAIL] = FR_TACACS_CODE_AUTH_FAIL,
-			[FR_TAC_PLUS_AUTHEN_STATUS_GETDATA] = FR_TACACS_CODE_AUTH_GETDATA,
-			[FR_TAC_PLUS_AUTHEN_STATUS_GETUSER] = FR_TACACS_CODE_AUTH_GETUSER,
-			[FR_TAC_PLUS_AUTHEN_STATUS_GETPASS] = FR_TACACS_CODE_AUTH_GETPASS,
-			[FR_TAC_PLUS_AUTHEN_STATUS_RESTART] = FR_TACACS_CODE_AUTH_RESTART,
-			[FR_TAC_PLUS_AUTHEN_STATUS_ERROR] = FR_TACACS_CODE_AUTH_ERROR,
-		};
-
 		request->reply->code = reply_code(request,
 						  attr_tacacs_authentication_status,
-						  status2code, state, rcode);
-
+						  authen_status_to_packet_code, state, rcode);
 	} else {
 		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code));
 
@@ -620,6 +621,21 @@ RESUME(auth_type)
 	 *	Most cases except handled...
 	 */
 	if (auth_type_rcode[rcode]) request->reply->code = auth_type_rcode[rcode];
+
+	/*
+	 *	If we were going to succeed, check for
+	 *	any attribute based overrides.
+	 *
+	 *	The user could have set Authentication-Status
+	 *	or Packet-Type to something other than
+	 *	pass...
+	 */
+	if (request->reply->code == FR_TACACS_CODE_AUTH_PASS) {
+		uint32_t code = reply_code(request,
+					   attr_tacacs_authentication_status,
+					   authen_status_to_packet_code, NULL, rcode);
+		if (code > 0) request->reply->code = code;
+	}
 
 	switch (request->reply->code) {
 	case 0:
@@ -809,6 +825,11 @@ RESUME(autz_request)
 	return CALL_SEND_STATE(state);
 }
 
+static const uint32_t acct_status_to_packet_code[UINT8_MAX + 1] = {
+	[FR_TAC_PLUS_ACCT_STATUS_SUCCESS] = FR_TACACS_CODE_ACCT_SUCCESS,
+	[FR_TAC_PLUS_ACCT_STATUS_ERROR] = FR_TACACS_CODE_ACCT_ERROR,
+};
+
 RESUME(acct_type)
 {
 	static const fr_process_rcode_t acct_type_rcode = {
@@ -837,7 +858,13 @@ RESUME(acct_type)
 		return state->send(p_result, mctx, request);
 	}
 
-	request->reply->code = FR_TACACS_CODE_ACCT_SUCCESS;
+	/*
+	 *	One more chance to override
+	 */
+	request->reply->code = reply_code(request, attr_tacacs_accounting_status, acct_status_to_packet_code,
+					  NULL, rcode);
+	if (!request->reply->code) request->reply->code = FR_TACACS_CODE_ACCT_SUCCESS;
+
 	UPDATE_STATE(reply);
 
 	fr_assert(state->send != NULL);
@@ -862,17 +889,12 @@ RESUME(accounting_request)
 	/*
 	 *	Nothing set the reply, so let's see if we need to do so.
 	 *
-	 *	If the admin didn't set authorization-status, just
+	 *	If the admin didn't set accounting-status, just
 	 *	use the defaults from the state machine.
 	 */
 	if (!request->reply->code) {
-		static const uint32_t status2code[UINT8_MAX + 1] = {
-			[FR_TAC_PLUS_ACCT_STATUS_SUCCESS] = FR_TACACS_CODE_ACCT_SUCCESS,
-			[FR_TAC_PLUS_ACCT_STATUS_ERROR] = FR_TACACS_CODE_ACCT_ERROR,
-		};
-
 		request->reply->code = reply_code(request, attr_tacacs_accounting_status,
-						  status2code, state, rcode);
+						  acct_status_to_packet_code, state, rcode);
 	} else {
 		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code));
 	}
