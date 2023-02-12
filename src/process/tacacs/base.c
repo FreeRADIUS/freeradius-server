@@ -73,6 +73,7 @@ static fr_dict_attr_t const *attr_tacacs_sequence_number;
 static fr_dict_attr_t const *attr_tacacs_state;
 
 static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_tacacs_user_password;
 
 extern fr_dict_attr_autoload_t process_tacacs_dict_attr[];
 fr_dict_attr_autoload_t process_tacacs_dict_attr[] = {
@@ -104,6 +105,7 @@ fr_dict_attr_autoload_t process_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 
 	{ NULL }
 };
@@ -178,6 +180,12 @@ typedef struct {
 
 	process_tacacs_auth_t	auth;		//!< Authentication configuration.
 } process_tacacs_t;
+
+typedef struct {
+	int		rounds;			//!< how many rounds were taken
+	fr_pair_list_t	list;			//!< copied from the request
+} process_tacacs_session_t;
+
 
 #define PROCESS_PACKET_TYPE		fr_tacacs_packet_code_t
 #define PROCESS_CODE_MAX		FR_TACACS_CODE_MAX
@@ -719,9 +727,52 @@ RESUME_NO_RCTX(auth_fail)
 RESUME(auth_get)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
+	process_tacacs_session_t	*session;
 
 	PROCESS_TRACE;
 
+	/*
+	 *	Track multi-round authentication flows.  Note that they can only start with an
+	 *	"Authentication-Start" packet, but they can continue with an "Authentication-Continue" packet.
+	 */
+	session = request_data_reference(request, inst, 0);
+	if (!session) {
+		fr_tacacs_packet_t const *packet = (fr_tacacs_packet_t const *) request->packet->data;
+
+		if (!packet_is_authen_start_request(packet)) goto reply;
+
+		MEM(session = talloc_zero(NULL, process_tacacs_session_t));
+
+		if (request_data_talloc_add(request, inst, 0, process_tacacs_session_t, session, true, false, true) < 0) {
+			talloc_free(session);
+			goto reply;
+		}
+
+		fr_pair_list_init(&session->list);
+		fr_pair_append(&session->list,
+			       fr_pair_copy(session, fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_user_name)));
+		fr_pair_append(&session->list,
+			       fr_pair_copy(session, fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_client_port)));
+		fr_pair_append(&session->list,
+			       fr_pair_copy(session, fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_remote_address)));
+	} else {
+		fr_pair_t *vp;
+
+		session->rounds++;
+
+		if (session->rounds > 3) {
+			REDEBUG("Too many rounds of authentication - failing the session");
+			return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_FAIL);
+		}
+
+		/*
+		 *	If we don't have a password, copy any password we have into the cached VPs.
+		 */
+		vp = fr_pair_find_by_da(&session->list, NULL, attr_tacacs_user_password);
+		if (!vp) fr_pair_append(&session->list, fr_pair_copy(session, vp));
+	}
+
+reply:
 	/*
 	 *	Cache the session state context.
 	 */
@@ -736,24 +787,21 @@ RESUME(auth_get)
 RECV(auth_cont)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
-	fr_pair_t *vp;
+	process_tacacs_session_t	*session;
 
 	if ((state_create(request->request_ctx, &request->request_pairs, request, false) < 0) ||
 	    (fr_state_to_request(inst->auth.state_tree, request) < 0)) {
 		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_sequence_number);\
-	fr_assert(vp != NULL);
-
 	/*
-	 *	Can't allow too many sequences.
-	 *
-	 *	@todo - keep our own counter, because of crappy clients.
+	 *	Restore key fields from the original Authentication-Start packet.
 	 */
-	if ((vp->vp_uint8 >> 1) > 3) {
-		RDEBUG("Too many rounds of challenge / response");
-		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_FAIL);
+	session = request_data_reference(request, inst, 0);
+	if (session) {
+		if (fr_pair_list_copy(&request->request_ctx, &request->request_pairs, session->list) < 0) {
+			return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
+		}
 	}
 
 	return CALL_RECV(generic);
