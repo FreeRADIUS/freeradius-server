@@ -381,51 +381,60 @@ static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request
 	return 0;
 }
 
-static void set_reply_code(request_t *request, fr_dict_attr_t const *da, uint32_t const status2code[static UINT8_MAX + 1], fr_process_state_t const *state, rlm_rcode_t rcode)
+/** Try and determine what the response packet type should be
+ *
+ * We check three sources:
+ * - reply.<status_attr>
+ * - reply.Packet-Type
+ * - State machine packet type assignments for the section rcode
+ *
+ * @param[in] request		The current request.
+ * @param[in] status_da		Specialised status attribute.
+ * @param[in] status2code	Mapping table of status types to rcodes.
+ * @param[in] state		Mappings.
+ * @param[in] rcode		The last section rcode.
+ * @return
+ *	- >0 if we determined a reply code.
+ *	- 0 if we couldn't - Usually indicates additional sections should be run.
+ */
+static uint32_t reply_code(request_t *request, fr_dict_attr_t const *status_da,
+			   uint32_t const status2code[static UINT8_MAX + 1],
+			   fr_process_state_t const *state, rlm_rcode_t rcode)
 {
 	fr_pair_t *vp;
+	uint32_t code;
 
-	vp = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, da);
+	/*
+	 *  First check the protocol attribute for this packet type.
+	 *
+	 *  Should be one of:
+	 *   - Authentication-Status
+	 *   - Authorization-Status
+	 *   - Accounting-Status
+	 */
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, status_da);
 	if (vp) {
-		request->reply->code = status2code[vp->vp_uint8];
-		if (request->reply->code) {
-			RDEBUG("Using reply from %pP", vp);
-			return;
+		code = status2code[vp->vp_uint8];
+		if (code > 0) {
+			RDEBUG("Setting reply Packet-Type from %pP", vp);
+			return code;
 		}
-		RDEBUG("Ignoring invalid value in %pP", vp);
-
-		/*
-		 *	The non-zero replies here can only be FAIL.
-		 *
-		 *	Maybe the user is forcing a reply Packet-Type?
-		 */
-		request->reply->code = state->packet_type[rcode];
-		if (!request->reply) {
-			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
-			if (vp && FR_TACACS_PACKET_CODE_VALID(vp->vp_uint32)) {
-				RDEBUG("Reply packet type is set to %pV", &vp->data);
-				request->reply->code = vp->vp_uint32;
-				return;
-			}
-		}
+		REDEBUG("Ignoring invalid status %pP", vp);
 	}
 
-	/*
-	 *	Use the reply from the state machine if possible.
-	 */
-	request->reply->code = state->packet_type[rcode];
-	if (request->reply->code) return;
+	code = state->packet_type[rcode];
+	if (code > 0) return code;
 
 	/*
-	 *	Otherwise use Packet-Type.
-	 *
-	 *	@todo - the admin can set invalid packet types in replies.  Oh well.
+	 *	Otherwise use Packet-Type (if set)
 	 */
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
 	if (vp && FR_TACACS_PACKET_CODE_VALID(vp->vp_uint32)) {
-		RDEBUG("Reply packet type is set to %pV", &vp->data);
-		request->reply->code = vp->vp_uint32;
+		RDEBUG("Setting reply Packet-Type from %pV", &vp->data);
+		return vp->vp_uint32;
 	}
+
+	return 0;
 }
 
 RECV(auth_start)
@@ -485,7 +494,7 @@ RESUME(auth_start)
 	 *	If the admin didn't set authentication-status, just
 	 *	use the defaults from the state machine.
 	 */
-	if (!request->reply->code) {
+	if (request->reply->code == 0) {
 		static const uint32_t status2code[UINT8_MAX + 1] = {
 			[FR_TAC_PLUS_AUTHEN_STATUS_PASS] = FR_TACACS_CODE_AUTH_PASS,
 			[FR_TAC_PLUS_AUTHEN_STATUS_FAIL] = FR_TACACS_CODE_AUTH_FAIL,
@@ -496,25 +505,28 @@ RESUME(auth_start)
 			[FR_TAC_PLUS_AUTHEN_STATUS_ERROR] = FR_TACACS_CODE_AUTH_ERROR,
 		};
 
-		set_reply_code(request, attr_tacacs_authentication_status, status2code, state, rcode);
-		if (request->reply->code) goto send_reply;
-
-		/*
-		 *	Else there's no reply set, so we run "authenticate foo { ... }"
-		 */
+		request->reply->code = reply_code(request,
+						  attr_tacacs_authentication_status,
+						  status2code, state, rcode);
 
 	} else {
 		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code));
-		RDEBUG("Reply packet type was set to %s", fr_tacacs_packet_names[request->reply->code]);
-		goto send_reply;
+
+		/*
+		 *	Something set reject, we're done.
+		 */
+		if (request->reply->code == FR_TACACS_CODE_AUTH_FAIL) {
+			RDEBUG("The 'recv Authentication-Start' section returned %s - rejecting the request",
+			       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
+		}
 	}
 
 	/*
-	 *	Something set reject, we're done.
+	 *	Something set the reply code, skip
+	 *	the normal auth flow and respond immediately.
 	 */
-	if (request->reply->code == FR_TACACS_CODE_AUTH_FAIL) {
-		RDEBUG("The 'recv Authentication-Start' section returned %s - rejecting the request",
-		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
+	if (request->reply->code > 0) {
+		RDEBUG("Reply packet type was set to %s", fr_tacacs_packet_names[request->reply->code]);
 
 	send_reply:
 		UPDATE_STATE(reply);
@@ -532,9 +544,10 @@ RESUME(auth_start)
 	 *	Auth-Type set by the admin, then we use what's in the packet.
 	 */
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_auth_type);
-	if (!vp) vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_authentication_type);
+	if (!vp) vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_authentication_type);
 	if (!vp) {
-		RDEBUG("No 'Auth-Type' or 'Authentication-Status' attribute found, cannot authenticate the user - rejecting the request");
+		RDEBUG("No 'Auth-Type' or 'Authentication-Type' attribute found, "
+		       "cannot authenticate the user - rejecting the request");
 
 	reject:
 		request->reply->code = FR_TACACS_CODE_AUTH_FAIL;
@@ -782,12 +795,13 @@ RESUME(autz_request)
 			[FR_TAC_PLUS_AUTHOR_STATUS_ERROR] = FR_TACACS_CODE_AUTZ_ERROR,
 		};
 
-		set_reply_code(request, attr_tacacs_authorization_status, status2code, state, rcode);
-
+		request->reply->code = reply_code(request, attr_tacacs_authorization_status,
+						  status2code, state, rcode);
 	} else {
 		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code));
-		RDEBUG("Reply packet type was set to %s", fr_tacacs_packet_names[request->reply->code]);
 	}
+
+	RDEBUG("Reply packet type set to %s", fr_tacacs_packet_names[request->reply->code]);
 
 	UPDATE_STATE(reply);
 
@@ -857,17 +871,18 @@ RESUME(accounting_request)
 			[FR_TAC_PLUS_ACCT_STATUS_ERROR] = FR_TACACS_CODE_ACCT_ERROR,
 		};
 
-		set_reply_code(request, attr_tacacs_accounting_status, status2code, state, rcode);
-
+		request->reply->code = reply_code(request, attr_tacacs_accounting_status,
+						  status2code, state, rcode);
 	} else {
 		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code));
-		RDEBUG("Reply packet type was set to %s", fr_tacacs_packet_names[request->reply->code]);
 	}
+
+	RDEBUG("Reply packet type was set to %s", fr_tacacs_packet_names[request->reply->code]);
 
 	/*
 	 *	Something set the reply code, so we reply and don't run "accounting foo { ... }"
 	 */
-	if (request->reply->code) {
+	if (request->reply->code > 0) {
 		UPDATE_STATE(reply);
 
 		fr_assert(state->send != NULL);
