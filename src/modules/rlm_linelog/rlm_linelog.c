@@ -559,6 +559,11 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 	size_t				vector_len;
 	bool				with_delim;
 
+	if (!inst->log_src && !inst->log_ref) {
+		cf_log_err(conf, "A 'format', or 'reference' configuration item must be set to call this module");
+		RETURN_MODULE_FAIL;
+	}
+
 	buff[0] = '.';	/* force to be in current section (by default) */
 	buff[1] = '\0';
 	buff[2] = '\0';
@@ -774,11 +779,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->log_dst = fr_table_value_by_str(linefr_log_dst_table, inst->log_dst_str, LINELOG_DST_INVALID);
 	if (inst->log_dst == LINELOG_DST_INVALID) {
 		cf_log_err(conf, "Invalid log destination \"%s\"", inst->log_dst_str);
-		return -1;
-	}
-
-	if (!inst->log_src && !inst->log_ref) {
-		cf_log_err(conf, "Must specify a log format, or reference");
 		return -1;
 	}
 
