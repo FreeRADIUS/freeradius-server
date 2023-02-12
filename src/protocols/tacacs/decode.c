@@ -124,7 +124,9 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 	}
 }
 
-#define PACKET_HEADER_CHECK(_msg) do { \
+#define PACKET_HEADER_CHECK(_msg, _hdr) do { \
+	p = (uint8_t const *) &(_hdr); \
+	data_len = sizeof(_hdr); \
 	if (p > end) { \
 		fr_strerror_printf("Header for %s is too small (%zu < %zu)", _msg, end - (uint8_t const *) pkt, p - (uint8_t const *) pkt); \
 		goto fail; \
@@ -481,6 +483,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 #endif
 
 	switch (pkt->hdr.type) {
+		size_t data_len;
+
 	case FR_TAC_PLUS_AUTHEN:
 		if (packet_is_authen_start_request(pkt)) {
 			uint8_t want;
@@ -505,8 +509,20 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 * |    data...
 			 * +----------------+----------------+----------------+----------------+
 			 */
+			PACKET_HEADER_CHECK("Authentication-Start", pkt->authen_start);
+			data_len += p[4] + p[5] + p[6] + p[7];
+			if (data_len > (size_t) (end - p)) {
+			overflow:
+				fr_strerror_const("Data overflows the packet");
+				goto fail;
+			}
+			if (data_len < (size_t) (end - p)) {
+			underflow:
+				fr_strerror_const("Data underflows the packet");
+				goto fail;
+			}
+
 			p = BODY(authen_start);
-			PACKET_HEADER_CHECK("Authentication Start");
 
 #if 0
 			if ((pkt->hdr.ver.minor == 0) &&
@@ -657,8 +673,12 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 				goto fail;
 			}
 
+			PACKET_HEADER_CHECK("Authentication-Continue", pkt->authen_cont);
+			data_len += fr_nbo_to_uint16(p) + fr_nbo_to_uint16(p + 2);
+			if (data_len > (size_t) (end - p)) goto overflow;
+			if (data_len < (size_t) (end - p)) goto underflow;
+
 			p = BODY(authen_cont);
-			PACKET_HEADER_CHECK("Authentication Continue");
 
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_CONTINUE);
 
@@ -691,9 +711,12 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	We don't care about versions for replies.
 			 *	We just echo whatever was sent in the request.
 			 */
+			PACKET_HEADER_CHECK("Authentication-Reply", pkt->authen_reply);
+			data_len += fr_nbo_to_uint16(p + 2) + fr_nbo_to_uint16(p + 4);
+			if (data_len > (size_t) (end - p)) goto overflow;
+			if (data_len < (size_t) (end - p)) goto underflow;
 
 			p = BODY(authen_reply);
-			PACKET_HEADER_CHECK("Authentication Reply");
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REPLY);
 
 			DECODE_FIELD_UINT8(attr_tacacs_authentication_status, pkt->authen_reply.status);
@@ -742,9 +765,13 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 
 			if (pkt->hdr.ver.minor != 0) goto invalid_version;
 
+			PACKET_HEADER_CHECK("Authorization-Request", pkt->author_req);
+			data_len += p[4] + p[5] + p[6] + p[7];
+			if (data_len > (size_t) (end - p)) goto overflow;
+			/* can't check for underflow, as we have argv[argc] */
+
 			p = BODY(author_req);
-			PACKET_HEADER_CHECK("Authorization REQUEST");
-			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author_req.arg_cnt);
+			ARG_COUNT_CHECK("Authorization-Request", pkt->author_req.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
 			/*
@@ -797,9 +824,13 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	We just echo whatever was sent in the request.
 			 */
 
+			PACKET_HEADER_CHECK("Authorization-Reply", pkt->author_reply);
+			data_len += p[1] + fr_nbo_to_uint16(p + 2) + fr_nbo_to_uint16(p + 4);
+			if (data_len > (size_t) (end - p)) goto overflow;
+			/* can't check for underflow, as we have argv[argc] */
+
 			p = BODY(author_reply);
-			PACKET_HEADER_CHECK("Authorization RESPONSE");
-			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author_reply.arg_cnt);
+			ARG_COUNT_CHECK("Authorization-Reply", pkt->author_reply.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_RESPONSE);
 
 			/*
@@ -856,9 +887,13 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 
 			if (pkt->hdr.ver.minor != 0) goto invalid_version;
 
+			PACKET_HEADER_CHECK("Accounting-Request", pkt->acct_req);
+			data_len += p[5] + p[6] + p[7] + p[8];
+			if (data_len > (size_t) (end - p)) goto overflow;
+			/* can't check for underflow, as we have argv[argc] */
+
 			p = BODY(acct_req);
-			PACKET_HEADER_CHECK("Accounting REQUEST");
-			ARG_COUNT_CHECK("Accounting REQUEST", pkt->acct_req.arg_cnt);
+			ARG_COUNT_CHECK("Accounting-Request", pkt->acct_req.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
 			/*
@@ -902,8 +937,12 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	We just echo whatever was sent in the request.
 			 */
 
+			PACKET_HEADER_CHECK("Accounting-Reply", pkt->acct_reply);
+			data_len += fr_nbo_to_uint16(p) + fr_nbo_to_uint16(p + 2);
+			if (data_len > (size_t) (end - p)) goto overflow;
+			if (data_len < (size_t) (end - p)) goto underflow;
+
 			p = BODY(acct_reply);
-			PACKET_HEADER_CHECK("Accounting REPLY");
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REPLY);
 
 			/*
