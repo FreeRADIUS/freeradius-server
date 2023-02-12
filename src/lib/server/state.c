@@ -738,7 +738,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 {
 	fr_state_entry_t	*entry, *old;
 	fr_dlist_head_t		data;
-	fr_pair_t		*vp;
+	fr_pair_t		*state_ctx;
 
 	old = request_data_get(request, state, 0);
 	request_data_list_init(&data);
@@ -749,10 +749,18 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 	if (!fr_pair_list_empty(&request->session_state_pairs)) {
 		RDEBUG2("Saving &session-state");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
+
+#ifdef WITH_VERIFY_PTR
+		/*
+		 *	Double check all the session state pairs
+		 *	are parented correctly, else we'll get
+		 *	memory errors when we restore.
+		 */
+		fr_pair_list_verify(__FILE__, __LINE__, request->session_state_ctx, &request->session_state_pairs);
+#endif
 	}
 
-	MEM(vp = request_state_replace(request, NULL));
-
+	MEM(state_ctx = request_state_replace(request, NULL));
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
 	/*
@@ -763,7 +771,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		RERROR("Creating state entry failed");
 
-		talloc_free(request_state_replace(request, vp));
+		talloc_free(request_state_replace(request, state_ctx));
 		request_data_restore(request, &data);	/* Put it back again */
 		return -1;
 	}
@@ -772,7 +780,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 	fr_assert(request->session_state_ctx);
 
 	entry->seq_start = request->seq_start;
-	entry->ctx = vp;
+	entry->ctx = state_ctx;
 	fr_dlist_move(&entry->data, &data);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
