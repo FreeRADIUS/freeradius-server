@@ -783,6 +783,14 @@ RESUME(auth_cont_abort)
 }
 
 
+static const uint32_t author_status_to_packet_code[UINT8_MAX + 1] = {
+	[FR_TAC_PLUS_AUTHOR_STATUS_PASS_ADD] = FR_TACACS_CODE_AUTZ_PASS_ADD,
+	[FR_TAC_PLUS_AUTHOR_STATUS_PASS_REPL] = FR_TACACS_CODE_AUTZ_PASS_REPLACE,
+	[FR_TAC_PLUS_AUTHOR_STATUS_FAIL] = FR_TACACS_CODE_AUTZ_FAIL,
+	[FR_TAC_PLUS_AUTHOR_STATUS_ERROR] = FR_TACACS_CODE_AUTZ_ERROR,
+};
+
+
 RESUME(autz_request)
 {
 	rlm_rcode_t			rcode = *p_result;
@@ -804,15 +812,8 @@ RESUME(autz_request)
 	 *	use the defaults from the state machine.
 	 */
 	if (!request->reply->code) {
-		static const uint32_t status2code[UINT8_MAX + 1] = {
-			[FR_TAC_PLUS_AUTHOR_STATUS_PASS_ADD] = FR_TACACS_CODE_AUTZ_PASS_ADD,
-			[FR_TAC_PLUS_AUTHOR_STATUS_PASS_REPL] = FR_TACACS_CODE_AUTZ_PASS_REPLACE,
-			[FR_TAC_PLUS_AUTHOR_STATUS_FAIL] = FR_TACACS_CODE_AUTZ_FAIL,
-			[FR_TAC_PLUS_AUTHOR_STATUS_ERROR] = FR_TACACS_CODE_AUTZ_ERROR,
-		};
-
 		request->reply->code = reply_code(request, attr_tacacs_authorization_status,
-						  status2code, state, rcode);
+						  author_status_to_packet_code, state, rcode);
 	} else {
 		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code));
 	}
@@ -863,7 +864,7 @@ RESUME(acct_type)
 	 */
 	request->reply->code = reply_code(request, attr_tacacs_accounting_status, acct_status_to_packet_code,
 					  NULL, rcode);
-	if (!request->reply->code) request->reply->code = FR_TACACS_CODE_ACCT_SUCCESS;
+	if (!request->reply->code) request->reply->code = FR_TACACS_CODE_ACCT_ERROR;
 
 	UPDATE_STATE(reply);
 
