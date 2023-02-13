@@ -402,9 +402,7 @@ char *talloc_bstrdup(TALLOC_CTX *ctx, char const *in)
 	char	*p;
 	size_t	inlen = talloc_array_length(in);
 
-	if (inlen == 0) inlen = 1;
-
-	p = talloc_array(ctx, char, inlen);
+	p = talloc_array(ctx, char, inlen + 1);
 	if (unlikely(!p)) return NULL;
 
 	/*
@@ -412,8 +410,8 @@ char *talloc_bstrdup(TALLOC_CTX *ctx, char const *in)
 	 *
 	 * But ubsan still flags this, grrr.
 	 */
-	if (inlen > 0) memcpy(p, in, inlen - 1);
-	p[inlen - 1] = '\0';
+	if (inlen > 0) memcpy(p, in, inlen);
+	p[inlen] = '\0';
 
 	return p;
 }
