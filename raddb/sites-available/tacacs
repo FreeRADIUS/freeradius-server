@@ -273,13 +273,17 @@ server tacacs {
 	#
 	#  ### Recv
 	#
- 	recv Authentication-Start {
+	recv Authentication-Start {
 		-sql
 
 		#
-		#  Set _our_ authentication method to the _requested_ one.
+		#  In general, it is not necessary to set `Auth-Type` here.  The packet header
+		#  contains a TACACS `Authentication-Type` with value `PAP`, `CHAP`, etc.  That value will
+		#  be used automatically.
 		#
-		&control.Auth-Type := &Authentication-Type
+		#  The only reason to set `Auth-Type` here is when you want to use a custom
+		#  authentication method, such as `ldap`.
+		#
 	}
 
 	authenticate PAP {
