@@ -73,7 +73,8 @@ static fr_dict_attr_t const *attr_tacacs_sequence_number;
 static fr_dict_attr_t const *attr_tacacs_state;
 
 static fr_dict_attr_t const *attr_user_name;
-static fr_dict_attr_t const *attr_tacacs_user_password;
+static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_chap_password;
 
 extern fr_dict_attr_autoload_t process_tacacs_dict_attr[];
 fr_dict_attr_autoload_t process_tacacs_dict_attr[] = {
@@ -105,7 +106,8 @@ fr_dict_attr_autoload_t process_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 
 	{ NULL }
 };
@@ -262,7 +264,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_tacacs_auth_t co
 	bool		logit;
 	char const	*extra_msg = NULL;
 
-//	char		password_buff[128];
+	char		password_buff[256];
 	char const	*password_str = NULL;
 
 	char		buf[1024];
@@ -287,7 +289,6 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_tacacs_auth_t co
 		if (!username) username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
 	}
 
-#if 0
 	/*
 	 *	Clean up the password
 	 */
@@ -308,7 +309,6 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_tacacs_auth_t co
 			password_str = "<CHAP-Password>";
 		}
 	}
-#endif
 
 	if (goodpass) {
 		logit = inst->log_auth_goodpass;
