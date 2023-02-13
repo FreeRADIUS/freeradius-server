@@ -576,7 +576,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 			print_args(log, file, line, p, hdr[7], end);
 
 		} else {
-			fr_log(log, L_DBG, file, line, "      authorization-response");
+			fr_log(log, L_DBG, file, line, "      authorization-reply");
 
 			fr_assert(packet_is_author_reply(packet));
 
@@ -607,7 +607,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 
 	case FR_TAC_PLUS_ACCT:
 		if (packet_is_acct_request(packet)) {
-			fr_log(log, L_DBG, file, line, "      accounting-response");
+			fr_log(log, L_DBG, file, line, "      accounting-request");
 
 			REQUIRE(9);
 
