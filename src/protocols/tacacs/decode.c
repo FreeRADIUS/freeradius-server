@@ -183,7 +183,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 	 */
 	if (!arg_cnt) return 0;
 
-	fr_assert((p + arg_cnt) < end);
+	fr_assert((p + arg_cnt) <= end);
 
 	/*
 	 *	Then, do the dirty job of creating attributes.
