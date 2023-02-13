@@ -141,6 +141,8 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("http_negotiation", FR_TYPE_VOID, rlm_rest_t, http_negotiation),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_negotiation_table, .len = &http_negotiation_table_len }, .dflt = "default" },
 
+	{ FR_CONF_OFFSET("connection", FR_TYPE_SUBSECTION, rlm_rest_t, conn_config), .subcs = (void const *) fr_curl_conn_config },
+
 #ifdef CURLPIPE_MULTIPLEX
 	{ FR_CONF_OFFSET("multiplex", FR_TYPE_BOOL, rlm_rest_t, multiplex), .dflt = "yes" },
 #endif
