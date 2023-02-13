@@ -288,6 +288,8 @@ static int mod_open(fr_listen_t *li)
 		return -1;
 	}
 
+	(void) fr_nonblock(sockfd);
+
 	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
 		close(sockfd);
 		PERROR("Failed binding socket");
