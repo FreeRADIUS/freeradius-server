@@ -157,6 +157,8 @@ typedef struct {
 
 	fr_pool_t		*pool;		//!< Pointer to the connection pool.
 
+	fr_curl_conn_config_t	conn_config;	//!< Configuration of slab allocated connection handles.
+
 	rlm_rest_section_t	xlat;		//!< Configuration specific to xlat.
 	rlm_rest_section_t	authorize;	//!< Configuration specific to authorisation.
 	rlm_rest_section_t	authenticate;	//!< Configuration specific to authentication.
