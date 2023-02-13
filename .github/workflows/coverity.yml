@@ -66,8 +66,6 @@ jobs:
           export CC=clang
           export PATH=`pwd`/coverity_tool/bin:$PATH
           ./configure -with-rlm-python-bin=/usr/bin/python2.7
-          mkdir -p coverity_tool/config
-          cov-make-library --compiler-opt -I --compiler-opt src/freeradius-devel src/coverity-model/*
           cov-configure --template --compiler clang --comptype clangcc
           cov-build --dir cov-int make
 
