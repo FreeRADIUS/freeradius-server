@@ -769,7 +769,7 @@ RESUME(auth_get)
 		 *	If we don't have a password, copy any password we have into the cached VPs.
 		 */
 		vp = fr_pair_find_by_da(&session->list, NULL, attr_tacacs_user_password);
-		if (!vp) fr_pair_append(&session->list, fr_pair_copy(session, vp));
+		if (vp) fr_pair_append(&session->list, fr_pair_copy(session, vp));
 	}
 
 reply:
