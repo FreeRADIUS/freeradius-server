@@ -33,6 +33,7 @@ extern "C" {
 #include <freeradius-devel/unlang/xlat_ctx.h>
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/io/pair.h>
+#include <freeradius-devel/util/talloc.h>
 
 #ifdef DEBUG_XLAT
 #  define XLAT_DEBUG RDEBUG3
@@ -175,6 +176,21 @@ typedef struct {
  *	Helper functions
  */
 
+static inline xlat_exp_t *xlat_exp_head(xlat_exp_head_t const *head)
+{
+	if (!head) return NULL;
+
+	return fr_dlist_head(&head->dlist);
+}
+
+/** Iterate over the contents of a list, only one level
+ *
+ * @param[in] _list_head	to iterate over.
+ * @param[in] _iter		Name of iteration variable.
+ *				Will be declared in the scope of the loop.
+ */
+#define xlat_exp_foreach(_list_head, _iter) fr_dlist_foreach(&((_list_head)->dlist), xlat_exp_t, _iter)
+
 /** Merge flags from child to parent
  *
  * For pass2, if either the parent or child is marked up for pass2, then the parent
@@ -188,14 +204,75 @@ static inline CC_HINT(nonnull) void xlat_flags_merge(xlat_flags_t *parent, xlat_
 	parent->constant &= child->constant;
 }
 
+static inline CC_HINT(nonnull) int xlat_exp_insert_tail(xlat_exp_head_t *head, xlat_exp_t *node)
+{
+	xlat_flags_merge(&head->flags, &node->flags);
+	return fr_dlist_insert_tail(&head->dlist, node);
+}
+
+static inline xlat_exp_t *xlat_exp_next(xlat_exp_head_t const *head, xlat_exp_t const *node)
+{
+	if (!head) return NULL;
+
+	return fr_dlist_next(&head->dlist, node);
+}
+
+static inline xlat_exp_head_t *xlat_exp_head_alloc(TALLOC_CTX *ctx)
+{
+	xlat_exp_head_t *head;
+
+	MEM(head = talloc_zero(ctx, xlat_exp_head_t));
+
+	fr_dlist_init(&head->dlist, xlat_exp_t, entry);
+	head->flags.pure = true;
+
+	return head;
+}
+
 /** Set the type of an xlat node
+ *
+ * Also initialises any xlat_exp_head necessary
  *
  * @param[in] node	to set type for.
  * @param[in] type	to set.
  */
 static inline void xlat_exp_set_type(xlat_exp_t *node, xlat_type_t type)
 {
+	xlat_type_t existing_type = node->type;
+
 	node->type = type;
+
+	if (existing_type != 0) return;
+
+	switch (type) {
+	case XLAT_ALTERNATE:
+		node->alternate[0] = xlat_exp_head_alloc(node);
+		node->alternate[1] = xlat_exp_head_alloc(node);
+		break;
+
+	case XLAT_GROUP:
+		node->group = xlat_exp_head_alloc(node);
+		break;
+
+	case XLAT_FUNC:
+	case XLAT_FUNC_UNRESOLVED:
+		node->call.args = xlat_exp_head_alloc(node);
+		break;
+
+	default:
+		break;
+	}
+}
+
+static inline xlat_exp_t *xlat_exp_alloc_pool(TALLOC_CTX *ctx, unsigned int extra_hdrs, size_t extra)
+{
+	xlat_exp_t *node;
+
+	MEM(node = talloc_zero_pooled_object(ctx, xlat_exp_t, extra_hdrs, extra));
+	node->flags.pure = true;	/* everything starts pure */
+	node->quote = T_BARE_WORD;
+
+	return node;
 }
 
 /** Allocate an xlat node with no name, and no type set
@@ -205,13 +282,7 @@ static inline void xlat_exp_set_type(xlat_exp_t *node, xlat_type_t type)
  */
 static inline xlat_exp_t *xlat_exp_alloc_null(TALLOC_CTX *ctx)
 {
-	xlat_exp_t *node;
-
-	MEM(node = talloc_zero(ctx, xlat_exp_t));
-	node->flags.pure = true;	/* everything starts pure */
-	node->quote = T_BARE_WORD;
-
-	return node;
+	return xlat_exp_alloc_pool(ctx, 0, 0);
 }
 
 /** Allocate an xlat node
@@ -226,9 +297,38 @@ static inline xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx, xlat_type_t type,
 					 char const *in, size_t inlen)
 {
 	xlat_exp_t *node;
+	unsigned int extra_hdrs;
+	size_t extra;
 
-	node = xlat_exp_alloc_null(ctx);
-	node->type = type;
+	/*
+	 *	Figure out how much extra memory we
+	 *	need to allocate for this node type.
+	 */
+	switch (type) {
+	case XLAT_ALTERNATE:
+		extra_hdrs = 2;
+		extra = sizeof(xlat_exp_head_t) * 2;
+		break;
+
+	case XLAT_GROUP:
+		extra_hdrs = 1;
+		extra = sizeof(xlat_exp_head_t);
+		break;
+
+	case XLAT_FUNC:
+		extra_hdrs = 1;
+		extra = sizeof(xlat_exp_head_t);
+		break;
+	
+	default:
+		extra_hdrs = 0;
+		extra = 0;
+	}
+
+	node = xlat_exp_alloc_pool(ctx,
+				   (in != NULL) + extra_hdrs,
+				   inlen + extra);
+	xlat_exp_set_type(node, type);
 
 	if (!in) return node;
 
@@ -373,47 +473,6 @@ ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_
  *	xlat_inst.c
  */
 int		xlat_inst_remove(xlat_exp_t *node);
-
-static inline xlat_exp_t *xlat_exp_head(xlat_exp_head_t const *head)
-{
-	if (!head) return NULL;
-
-	return fr_dlist_head(&head->dlist);
-}
-
-/** Iterate over the contents of a list, only one level
- *
- * @param[in] _list_head	to iterate over.
- * @param[in] _iter		Name of iteration variable.
- *				Will be declared in the scope of the loop.
- */
-#define xlat_exp_foreach(_list_head, _iter) fr_dlist_foreach(&((_list_head)->dlist), xlat_exp_t, _iter)
-
-static inline xlat_exp_t *xlat_exp_next(xlat_exp_head_t const *head, xlat_exp_t const *node)
-{
-	if (!head) return NULL;
-
-	return fr_dlist_next(&head->dlist, node);
-}
-
-static inline int xlat_exp_insert_tail(xlat_exp_head_t *head, xlat_exp_t *node)
-{
-	xlat_flags_merge(&head->flags, &node->flags);
-	return fr_dlist_insert_tail(&head->dlist, node);
-}
-
-static inline xlat_exp_head_t *xlat_exp_head_alloc(TALLOC_CTX *ctx)
-{
-	xlat_exp_head_t *head;
-
-	head = talloc_zero(ctx, xlat_exp_head_t);
-	if (!head) return NULL;
-
-	fr_dlist_init(&head->dlist, xlat_exp_t, entry);
-	head->flags.pure = true;
-
-	return head;
-}
 
 #ifdef __cplusplus
 }

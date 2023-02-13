@@ -86,14 +86,12 @@ static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node, bool exists
 		node = xlat_exists_alloc(head, node);
 	}
 
-	group = xlat_exp_alloc_null(head->call.args);
-	xlat_exp_set_type(group, XLAT_GROUP);
+	group = xlat_exp_alloc(head->call.args, XLAT_GROUP, NULL, 0);
 	group->quote = T_BARE_WORD;
 
 	group->fmt = node->fmt;	/* not entirely correct, but good enough for now */
 	group->flags = node->flags;
 
-	MEM(group->group = xlat_exp_head_alloc(group));
 	talloc_steal(group->group, node);
 	xlat_exp_insert_tail(group->group, node);
 
@@ -117,7 +115,6 @@ static xlat_exp_t *xlat_exists_alloc(TALLOC_CTX *ctx, xlat_exp_t *child)
 	 *	Create an "exists" node.
 	 */
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, "exists", 6));
-	MEM(node->call.args = xlat_exp_head_alloc(node));
 	MEM(node->call.func = xlat_func_find("exists", 6));
 	fr_assert(node->call.func != NULL);
 	node->flags = node->call.func->flags;
@@ -191,7 +188,6 @@ static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow)
 	}
 
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, arg->vpt->name, len));
-	MEM(node->call.args = xlat_exp_head_alloc(node));
 	node->call.func = func;
 	node->flags = func->flags;
 
@@ -1945,7 +1941,6 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	*out_c = c;
 
 	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, func->name, strlen(func->name)));
-	MEM(unary->call.args = xlat_exp_head_alloc(unary));
 	unary->fmt = fr_tokens[func->token];
 	unary->call.func = func;
 	unary->flags = func->flags;
@@ -1999,7 +1994,6 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 	 *	whatever "node" comes next.
 	 */
 	MEM(cast = xlat_exp_alloc(ctx, XLAT_FUNC, "cast", 4));
-	MEM(cast->call.args = xlat_exp_head_alloc(cast));
 	MEM(cast->call.func = xlat_func_find("cast", 4));
 	fr_assert(cast->call.func != NULL);
 	cast->flags = cast->call.func->flags;
@@ -2010,8 +2004,7 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 	 *	to print the name of the type, and not the
 	 *	number.
 	 */
-	MEM(node = xlat_exp_alloc_null(cast));
-	xlat_exp_set_type(node, XLAT_BOX);
+	MEM(node = xlat_exp_alloc(cast, XLAT_BOX, NULL, 0));
 	node->flags.constant = true;
 	xlat_exp_set_name_buffer_shallow(node,
 					 talloc_strdup(node,
@@ -2105,8 +2098,7 @@ static fr_slen_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_
 	/*
 	 *	Allocate the xlat node now so the talloc hierarchy is correct
 	 */
-	MEM(node = xlat_exp_alloc_null(head));
-	xlat_exp_set_type(node, XLAT_TMPL);
+	MEM(node = xlat_exp_alloc(head, XLAT_TMPL, NULL, 0));
 
 	/*
 	 *	tmpl_afrom_substr does pretty much all the work of parsing the operand.  Note that we pass '/'
@@ -2265,8 +2257,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	/*
 	 *	Allocate the xlat node now so the talloc hierarchy is correct
 	 */
-	MEM(node = xlat_exp_alloc_null(head));
-	xlat_exp_set_type(node, XLAT_TMPL);
+	MEM(node = xlat_exp_alloc(head, XLAT_TMPL, NULL, 0));
 
 	/*
 	 *	tmpl_afrom_substr does pretty much all the work of
@@ -2493,7 +2484,6 @@ static fr_slen_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr
 	ssize_t		slen;
 	fr_sbuff_marker_t  m_lhs, m_op, m_rhs;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
-	xlat_exp_head_t *args;
 	char c = '\0';
 
 	XLAT_DEBUG("EXPRESSION <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
@@ -2704,7 +2694,6 @@ redo:
 	 *	Create the function node, with the LHS / RHS arguments.
 	 */
 	MEM(node = xlat_exp_alloc(head, XLAT_FUNC, fr_tokens[op], strlen(fr_tokens[op])));
-	MEM(node->call.args = args = xlat_exp_head_alloc(node));
 	node->fmt = fr_tokens[op];
 	node->call.func = func;
 	node->flags = func->flags;

@@ -159,11 +159,7 @@ static inline int xlat_tokenize_alternation(xlat_exp_head_t *head, fr_sbuff_t *i
 
 	XLAT_DEBUG("ALTERNATE <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
-	node = xlat_exp_alloc_null(head);
-	xlat_exp_set_type(node, XLAT_ALTERNATE);
-	MEM(node->alternate[0] = xlat_exp_head_alloc(node));
-	MEM(node->alternate[1] = xlat_exp_head_alloc(node));
-
+	node = xlat_exp_alloc(head, XLAT_ALTERNATE, NULL, 0);
 	if (func_args) {
 		if (xlat_tokenize_function_args(node->alternate[0], in, t_rules) < 0) {
 		error:
@@ -189,7 +185,7 @@ static inline int xlat_tokenize_alternation(xlat_exp_head_t *head, fr_sbuff_t *i
 	 *	Parse the alternate expansion.
 	 */
 	if (xlat_tokenize_string(node->alternate[1], in,
-				  true, &xlat_expansion_rules, t_rules) < 0) goto error;
+				 true, &xlat_expansion_rules, t_rules) < 0) goto error;
 
 	if (!xlat_exp_head(node->alternate[1])) {
 		talloc_free(node);
@@ -288,7 +284,7 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 					      fr_sbuff_t *in,
 					      tmpl_rules_t const *t_rules)
 {
-	xlat_exp_t		*node;
+	xlat_exp_t		*node, *arg_group;
 	xlat_t			*func;
 	fr_sbuff_marker_t	m_s;
 
@@ -322,8 +318,7 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 	/*
 	 *	Allocate a node to hold the function
 	 */
-	MEM(node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s)));
-	MEM(node->call.args = xlat_exp_head_alloc(node));
+	node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
 	if (!func) {
 		if (!t_rules || !t_rules->attr.allow_unresolved) {
 			fr_strerror_const("Unresolved expansion functions are not allowed here");
@@ -533,7 +528,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 		xlat_exp_set_type(node, XLAT_FUNC_UNRESOLVED);
 		node->flags.needs_resolving = true;	/* Needs resolution during pass2 */
 	} else {
-		if (func && (func->input_type != XLAT_INPUT_ARGS)) {
+		if (func->input_type != XLAT_INPUT_ARGS) {
 			fr_strerror_const("Function should be called using %{func:arg} syntax");
 		error:
 			talloc_free(node);
@@ -940,7 +935,7 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 		/*
 		 *	pre-allocate the node so we don't have to steal it later.
 		 */
-		node = xlat_exp_alloc_null(head);
+		node = xlat_exp_alloc(head, XLAT_BOX, NULL, 0);
 
 		/*
 		 *	Find the next token
@@ -951,7 +946,6 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 		 *	It's a value box, create an appropriate node
 		 */
 		if (slen > 0) {
-			xlat_exp_set_type(node, XLAT_BOX);
 			xlat_exp_set_name_buffer_shallow(node, str);
 			fr_value_box_strdup_shallow(&node->data, NULL, str, false);
 			node->flags.constant = true;
@@ -1526,9 +1520,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		 *	Alloc a new node to hold the child nodes
 		 *	that make up the argument.
 		 */
-		MEM(node = xlat_exp_alloc_null(head));
-		xlat_exp_set_type(node, XLAT_GROUP);
-		MEM(node->group = xlat_exp_head_alloc(node));
+		MEM(node = xlat_exp_alloc(head, XLAT_GROUP, 0, NULL));
 		node->quote = quote;
 
 		switch (quote) {
@@ -1564,8 +1556,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			char		*str;
 			xlat_exp_t	*child;
 
-			child = xlat_exp_alloc_null(node->group);
-			xlat_exp_set_type(child, XLAT_BOX);
+			child = xlat_exp_alloc(node->group, XLAT_BOX, NULL, 0);
 			node->flags.constant = true;
 
 			slen = fr_sbuff_out_aunescape_until(child, &str, &our_in, SIZE_MAX,

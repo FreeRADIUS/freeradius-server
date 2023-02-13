@@ -36,9 +36,7 @@ static void xlat_value_list_to_xlat(xlat_exp_head_t *head, FR_DLIST_HEAD(fr_valu
 	xlat_exp_t *node;
 
 	while ((box = fr_value_box_list_pop_head(list)) != NULL) {
-		MEM(node = xlat_exp_alloc_null(head));
-		node->type = XLAT_BOX;
-
+		MEM(node = xlat_exp_alloc(head, XLAT_BOX, NULL, 0));
 		fr_value_box_copy(node, &node->data, box);
 		talloc_free(box);
 
@@ -305,8 +303,7 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 
 	if (fr_value_calc_binary_op(lhs, &box, FR_TYPE_NULL, lhs_box, op, rhs_box) < 0) return -1;
 
-	MEM(node = xlat_exp_alloc_null(ctx));
-	xlat_exp_set_type(node, XLAT_BOX);
+	MEM(node = xlat_exp_alloc(ctx, XLAT_BOX, NULL, 0));
 
 	if (box.type == FR_TYPE_BOOL) box.enumv = attr_expr_bool_enum;
 
