@@ -25,6 +25,8 @@
  */
 RCSIDH(tacacs_attrs_h, "$Id$")
 
+#include <freeradius-devel/util/dict.h>
+
 extern HIDDEN fr_dict_t const *dict_tacacs;
 
 extern HIDDEN fr_dict_attr_t const *attr_tacacs_accounting_flags;
