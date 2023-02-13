@@ -185,6 +185,7 @@ typedef struct {
 
 typedef struct {
 	int		rounds;			//!< how many rounds were taken
+	uint32_t	reply;			//!< for multiround state machine
 	fr_pair_list_t	list;			//!< copied from the request
 } process_tacacs_session_t;
 
@@ -531,6 +532,62 @@ RESUME(auth_start)
 	}
 
 	/*
+	 *	Check for multi-round authentication.
+	 *
+	 *	We only run the automatic state machine (start -> getuser -> getpass -> pass/fail)
+	 *	when the admin does NOT set any reply type, or any reply authentication status.
+	 *
+	 *	However, do DO always save and restore the attributes from the start packet, so that they are
+	 *	visible in a later packet.
+	 */
+	if (!request->reply->code) {
+		process_tacacs_session_t *session;
+		fr_tacacs_packet_t const *packet = (fr_tacacs_packet_t const *) request->packet->data;
+
+		session = request_data_reference(request, inst, 0);
+		if (!session) {
+			/*
+			 *	This function is called for resuming both "start" and "continue" packets, so
+			 *	we have to check for "start" here.
+			 *
+			 *	We only do multi-round authentication for the ASCII authentication type.
+			 *	Other authentication types are defined to be one request/reply only.
+			 */
+			if (!packet_is_authen_start_request(packet) ||
+			    (packet->authen_start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
+				goto auth_type;
+			}
+
+			vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
+			if (vp && vp->vp_length == 0) {
+				RDEBUG("No User-Name, replying with Authentication-GetUser");
+				request->reply->code = FR_TACACS_CODE_AUTH_GETUSER;
+
+			} else {
+				RDEBUG("User-Name = %pV, replying with Authentication-GetPass", &vp->data);
+				request->reply->code = FR_TACACS_CODE_AUTH_GETPASS;
+			}
+
+			goto send_reply;
+		}
+
+		/*
+		 *	Last reply was "get username", we now get the password.
+		 */
+		if (session->reply == FR_TAC_PLUS_AUTHEN_STATUS_GETUSER) {
+			RDEBUG("No User-Password, replying with Authentication-GetPass");
+			request->reply->code = FR_TACACS_CODE_AUTH_GETPASS;
+			goto send_reply;
+		}
+
+		/*
+		 *	We either have a password, or the admin screwed up the configuration somehow.  Just go
+		 *	run "Auth-Type foo".
+		 */
+		goto auth_type;
+	}
+
+	/*
 	 *	Something set the reply code, skip
 	 *	the normal auth flow and respond immediately.
 	 */
@@ -561,6 +618,7 @@ RESUME(auth_start)
 	 *	We prefer the local Auth-Type to the Authentication-Type in the packet.  But if there's no
 	 *	Auth-Type set by the admin, then we use what's in the packet.
 	 */
+	auth_type:
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_auth_type);
 	if (!vp) vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_authentication_type);
 	if (!vp) {
@@ -734,30 +792,37 @@ RESUME(auth_get)
 	/*
 	 *	Track multi-round authentication flows.  Note that they can only start with an
 	 *	"Authentication-Start" packet, but they can continue with an "Authentication-Continue" packet.
+	 *
+	 *	If there's no session being tracked, then we create one for a start packet.
 	 */
 	session = request_data_reference(request, inst, 0);
 	if (!session) {
 		fr_tacacs_packet_t const *packet = (fr_tacacs_packet_t const *) request->packet->data;
 
-		if (!packet_is_authen_start_request(packet)) goto reply;
+		if (!packet_is_authen_start_request(packet)) goto send_reply;
 
 		MEM(session = talloc_zero(NULL, process_tacacs_session_t));
 
 		if (request_data_talloc_add(request, inst, 0, process_tacacs_session_t, session, true, false, true) < 0) {
 			talloc_free(session);
-			goto reply;
+			goto send_reply;
 		}
 
+		/*
+		 *	These are the only things which saved.  The rest of the fields are either static (and statically
+		 *	known), or are irrelevant.
+		 */
 		fr_pair_list_init(&session->list);
 		fr_pair_append(&session->list,
-			       fr_pair_copy(session, fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_user_name)));
+			       fr_pair_copy(session, fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name)));
 		fr_pair_append(&session->list,
-			       fr_pair_copy(session, fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_client_port)));
+			       fr_pair_copy(session, fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_client_port)));
 		fr_pair_append(&session->list,
-			       fr_pair_copy(session, fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_remote_address)));
-	} else {
-		fr_pair_t *vp;
+			       fr_pair_copy(session, fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_remote_address)));
+		fr_pair_append(&session->list,
+			       fr_pair_copy(session, fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_privilege_level)));
 
+	} else {
 		session->rounds++;
 
 		if (session->rounds > 3) {
@@ -766,13 +831,14 @@ RESUME(auth_get)
 		}
 
 		/*
-		 *	If we don't have a password, copy any password we have into the cached VPs.
+		 *	There's no need to cache the User-Password, as the "getpass" packet is the last one in
+		 *	the chain.  The client will send a "continue" packet containing the password, and the
+		 *	admin will reply to that with pass/fail.
 		 */
-		vp = fr_pair_find_by_da(&session->list, NULL, attr_tacacs_user_password);
-		if (vp) fr_pair_append(&session->list, fr_pair_copy(session, vp));
 	}
+	session->reply = request->reply->code;
 
-reply:
+send_reply:
 	/*
 	 *	Cache the session state context.
 	 */
