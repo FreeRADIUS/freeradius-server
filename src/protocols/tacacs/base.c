@@ -622,7 +622,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 			fr_log(log, L_DBG, file, line, "      arg_cnt         %02x", hdr[8]);
 			p = hdr + 8;
 
-			OVERFLOW8(hdr[8], arg_cnt);
+			OVERFLOW8(hdr[4], arg_cnt);
 			OVERFLOW8(hdr[5], user_len);
 			OVERFLOW8(hdr[6], port_len);
 			OVERFLOW8(hdr[7], rem_addr_len);
