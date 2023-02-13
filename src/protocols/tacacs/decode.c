@@ -134,12 +134,11 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 } while (0)
 
 #define ARG_COUNT_CHECK(_msg, _hdr) do { \
-	if ((p + _hdr.arg_cnt) > end) { \
+	fr_assert(p == (uint8_t const *) &(_hdr)); \
+	if ((p + data_len) > end) { \
 		fr_strerror_printf("Argument count %u overflows the remaining data (%zu) in the %s packet", _hdr.arg_cnt, end - p, _msg); \
 		goto fail; \
 	} \
-	p += _hdr.arg_cnt; \
-	data_len = 0; \
 	for (int i = 0; i < _hdr.arg_cnt; i++) { \
 		data_len += _hdr.arg_len[i]; \
 		if (data_len > (size_t) (end - p)) { \
@@ -764,7 +763,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			if (data_len > (size_t) (end - p)) goto overflow;
 			/* can't check for underflow, as we have argv[argc] */
 
-			p = BODY(author_req);
 			ARG_COUNT_CHECK("Authorization-Request", pkt->author_req);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
@@ -823,7 +821,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			if (data_len > (size_t) (end - p)) goto overflow;
 			/* can't check for underflow, as we have argv[argc] */
 
-			p = BODY(author_reply);
 			ARG_COUNT_CHECK("Authorization-Reply", pkt->author_reply);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_RESPONSE);
 
@@ -886,7 +883,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			if (data_len > (size_t) (end - p)) goto overflow;
 			/* can't check for underflow, as we have argv[argc] */
 
-			p = BODY(acct_req);
 			ARG_COUNT_CHECK("Accounting-Request", pkt->acct_req);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
