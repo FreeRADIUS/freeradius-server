@@ -113,6 +113,17 @@ server tacacs {
 #				max = 4096
 
 				#
+				#  max_rounds: The maximum number of round trips which are allowed
+				#
+				#  This is only enforced for `Authentication-Type = ASCII`, when
+				#  the server replies with `GetUser` or `GetPass` or `GetData`.
+				#
+				#  Some broken clients will send packets in a loop, forever.
+				#  This configuration helps to catch and prevent that.
+				#
+				max_rounds = 4
+
+				#
 				#  timeout:: How long to wait before expiring a
 				#  session.
 				#

@@ -165,6 +165,8 @@ typedef struct {
 	fr_time_delta_t	session_timeout;	//!< Maximum time between the last response and next request.
 	uint32_t	max_session;		//!< Maximum ongoing session allowed.
 
+	uint32_t	max_rounds;		//!< maximum number of authentication rounds allowed
+
 	uint8_t       	state_server_id;	//!< Sets a specific byte in the state to allow the
 						//!< authenticating server to be identified in packet
 						//!<captures.
@@ -184,9 +186,9 @@ typedef struct {
 } process_tacacs_t;
 
 typedef struct {
-	int		rounds;			//!< how many rounds were taken
-	uint8_t		seq_no;			//!< sequence number of last request.
+	uint32_t       	rounds;			//!< how many rounds were taken
 	uint32_t	reply;			//!< for multiround state machine
+	uint8_t		seq_no;			//!< sequence number of last request.
 	fr_pair_list_t	list;			//!< copied from the request
 } process_tacacs_session_t;
 
@@ -201,6 +203,7 @@ typedef struct {
 static const CONF_PARSER session_config[] = {
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, process_tacacs_auth_t, session_timeout), .dflt = "15" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, process_tacacs_auth_t, max_session), .dflt = "4096" },
+	{ FR_CONF_OFFSET("max_rounds", FR_TYPE_UINT32, process_tacacs_auth_t, max_rounds), .dflt = "4" },
 	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, process_tacacs_auth_t, state_server_id) },
 
 	CONF_PARSER_TERMINATOR
@@ -826,7 +829,7 @@ RESUME(auth_get)
 	} else {
 		session->rounds++;
 
-		if (session->rounds > 3) {
+		if (session->rounds > inst->auth.max_rounds) {
 			REDEBUG("Too many rounds of authentication - failing the session");
 			return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_FAIL);
 		}
@@ -1124,6 +1127,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	inst->server_cs = cf_item_to_section(cf_parent(mctx->inst->conf));
 	if (virtual_server_section_attribute_define(inst->server_cs, "authenticate", attr_auth_type) < 0) return -1;
+
+	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.max_rounds, >=, 1);
+	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.max_rounds, <=, 8);
+
+	FR_INTEGER_BOUND_CHECK("session.max", inst->auth.max_session, >=, 64);
+	FR_INTEGER_BOUND_CHECK("session.max", inst->auth.max_session, <=, (1 << 18));
 
 	return 0;
 }
