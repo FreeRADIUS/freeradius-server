@@ -244,6 +244,31 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	if (data_size <= 0) return data_size;
 
 	/*
+	 *	If we're supposed to close the socket, then go do that.
+	 */
+	if ((data_size + written) == buffer_len) {
+		fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *) buffer;
+
+		switch (pkt->hdr.type) {
+		case FR_TAC_PLUS_AUTHEN:
+			if (pkt->authen_reply.status == FR_TAC_PLUS_AUTHEN_STATUS_ERROR) goto close_it;
+			break;
+
+
+		case FR_TAC_PLUS_AUTHOR:
+			if (pkt->author_reply.status == FR_TAC_PLUS_AUTHOR_STATUS_ERROR) {
+			close_it:
+				DEBUG("Closing connection due to unrecoverable server error response");
+				return 0;
+			}
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	/*
 	 *	Return the packet we wrote, plus any bytes previously
 	 *	left over from previous packets.
 	 */
