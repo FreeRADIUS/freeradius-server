@@ -1060,6 +1060,8 @@ RESUME(accounting_request)
 	 *	Something set the reply code, so we reply and don't run "accounting foo { ... }"
 	 */
 	if (request->reply->code) {
+		fr_assert(PROCESS_PACKET_CODE_VALID(request->packet->code));
+
 		RDEBUG("Reply packet type was set to %s", fr_tacacs_packet_names[request->reply->code]);
 
 		UPDATE_STATE(reply);
