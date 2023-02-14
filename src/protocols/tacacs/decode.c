@@ -581,7 +581,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 				break;
 
 			case FR_AUTHENTICATION_TYPE_VALUE_MSCHAPV2:
-				want = 1 + 16 + 49; /* id + HOPEFULLY 16 octets of challenge + 49 MS-CHAP stuff */
+				want = 1 + 49; /* id + HOPEFULLY 16 octets of challenge + 49 MS-CHAP stuff */
 				da = attr_tacacs_mschap2_response;
 				challenge = attr_tacacs_mschap_challenge;
 				break;
