@@ -362,26 +362,6 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	packet = (fr_tacacs_packet_t *)fr_dbuff_start(&work_dbuff);
 
 	/*
-	 *	Initialize the buffer avoiding invalid values.
-	 */
-	memset(packet, 0, sizeof(fr_tacacs_packet_t));
-
-	/*
-	 *	Initialize the reply from the request.
-	 */
-	if (original) {
-		/*
-		 *	Make room and fill up the original header. We shouldn't just copy the original packet,
-		 *	because the fields 'seq_no' and 'length' are not the same.
-		 */
-		FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(fr_tacacs_packet_hdr_t));
-		packet->hdr.version = original->version;
-		packet->hdr.type = original->type;
-		packet->hdr.flags = original->flags; /* encrypted && single connection */
-		packet->hdr.session_id = original->session_id;
-	}
-
-	/*
 	 *	Find the first attribute which is parented by TACACS-Packet.
 	 */
 	for (vp = fr_pair_dcursor_init(&cursor, vps);
@@ -396,12 +376,27 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 					   __FUNCTION__, attr_tacacs_packet->name);
 			return -1;
 		}
+
+		/*
+		 *	Initialize the buffer avoiding invalid values.
+		 */
+		memset(packet, 0, sizeof(fr_tacacs_packet_t));
+
+		/*
+		 *	Initialize the reply from the request.
+		 *
+		 *	Make room and fill up the original header. We shouldn't just copy the original packet,
+		 *	because the fields 'seq_no' and 'length' are not the same.
+		 */
+		FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(fr_tacacs_packet_hdr_t));
+
 	} else {
 		fr_proto_da_stack_build(&da_stack, attr_tacacs_packet);
 		FR_PROTO_STACK_PRINT(&da_stack, 0);
 
 		/*
-		 *	Call the struct encoder to do the actual work.
+		 *	Call the struct encoder to do the actual work,
+		 *	which fills the struct fields with zero if the member VP is not used.
 		 */
 		len = fr_struct_to_network(&work_dbuff, &da_stack, 0, &cursor, NULL, NULL, NULL);
 		if (len != sizeof(fr_tacacs_packet_hdr_t)) {
@@ -409,6 +404,17 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 					   __FUNCTION__, attr_tacacs_packet->name);
 			return -1;
 		}
+	}
+
+	/*
+	 *	Ensure that we send a sane reply to a request.
+	 */
+	if (original) {
+		packet->hdr.version = original->version;
+		packet->hdr.type = original->type;
+		packet->hdr.flags = original->flags; /* encrypted && single connection */
+		packet->hdr.session_id = original->session_id;
+
 	}
 
 	/*
@@ -885,6 +891,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	 *	caller about the total length of the packet.
 	 */
 	packet_len = fr_dbuff_used(&work_dbuff);
+	fr_assert(packet_len >= sizeof(fr_tacacs_packet_hdr_t));
+
 	body_len = (packet_len - sizeof(fr_tacacs_packet_hdr_t));
 	fr_assert(packet_len < FR_MAX_PACKET_SIZE);
 	packet->hdr.length = htonl(body_len);
