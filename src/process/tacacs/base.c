@@ -786,6 +786,16 @@ RESUME_NO_RCTX(auth_fail)
 	RETURN_MODULE_OK;
 }
 
+RESUME_NO_RCTX(auth_restart)
+{
+	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
+
+	PROCESS_TRACE;
+
+	fr_state_discard(inst->auth.state_tree, request);
+	RETURN_MODULE_OK;
+}
+
 RESUME(auth_get)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
@@ -1218,6 +1228,22 @@ static fr_process_state_t const process_state[] = {
 		.send = send_generic,
 		.resume = resume_auth_get,
 		.section_offset = offsetof(process_tacacs_sections_t, auth_getuser),
+	},
+	[ FR_TACACS_CODE_AUTH_RESTART ] = {
+		.packet_type = {
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.send = send_generic,
+		.resume = resume_auth_restart,
+		.section_offset = offsetof(process_tacacs_sections_t, auth_restart),
+	},
+	[ FR_TACACS_CODE_AUTH_ERROR ] = {
+		.packet_type = {
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.send = send_generic,
+		.resume = resume_auth_restart,
+		.section_offset = offsetof(process_tacacs_sections_t, auth_error),
 	},
 
 	[ FR_TACACS_CODE_AUTH_CONT ] = {
