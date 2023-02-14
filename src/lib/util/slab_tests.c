@@ -67,7 +67,7 @@ static void test_alloc(void)
 
 	/* "if" to keep clang scan happy */
 	if (test_elements[0]) test_elements[0]->name = talloc_strdup(test_elements[0], "Hello there");
-	if (test_elements[0]) fr_test_element_t_slab_set_destructor(test_elements[0], test_element_free, &test_uctx);
+	if (test_elements[0]) fr_test_slab_element_set_destructor(test_elements[0], test_element_free, &test_uctx);
 
 	test_elements[1] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[1] != NULL);
@@ -79,7 +79,7 @@ static void test_alloc(void)
 	test_elements[2] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[2] != NULL);
 	if (test_elements[2]) test_elements[2]->name = talloc_strdup(test_elements[2], "Hello there testing");
-	if (test_elements[2]) fr_test_element_t_slab_set_destructor(test_elements[2], test_element_free, &test_uctx2);
+	if (test_elements[2]) fr_test_slab_element_set_destructor(test_elements[2], test_element_free, &test_uctx2);
 	TEST_CHECK_RET(fr_test_slab_num_allocated(test_slab_list), 2);
 	TEST_CHECK_RET(fr_test_slab_num_elements_used(test_slab_list), 3);
 
@@ -173,7 +173,7 @@ static void test_reuse_reset(void)
 	test_uctx.count = 0;
 
 	if (test_elements[0]) test_elements[0]->name = talloc_strdup(test_elements[0], "Hello there");
-	if (test_elements[0]) fr_test_element_t_slab_set_destructor(test_elements[0], test_element_free, &test_uctx);
+	if (test_elements[0]) fr_test_slab_element_set_destructor(test_elements[0], test_element_free, &test_uctx);
 
 	test_elements[1] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[1] != NULL);
@@ -235,7 +235,7 @@ static void test_reuse_noreset(void)
 	test_uctx.count = 0;
 
 	if (test_elements[0]) test_elements[0]->name = talloc_strdup(test_elements[0], "Hello there");
-	if (test_elements[0]) fr_test_element_t_slab_set_destructor(test_elements[0], test_element_free, &test_uctx);
+	if (test_elements[0]) fr_test_slab_element_set_destructor(test_elements[0], test_element_free, &test_uctx);
 
 	test_elements[1] = fr_test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[1] != NULL);
@@ -287,7 +287,7 @@ static void test_free(void)
 	test_uctx.count = 0;
 
 	if (test_element) test_element->name = talloc_strdup(test_element, "Hello there");
-	if (test_element) fr_test_element_t_slab_set_destructor(test_element, test_element_free, &test_uctx);
+	if (test_element) fr_test_slab_element_set_destructor(test_element, test_element_free, &test_uctx);
 
 	if (test_element) talloc_free(test_element);
 	TEST_CHECK(test_uctx.count == 11);

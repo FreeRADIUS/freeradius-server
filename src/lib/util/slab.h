@@ -293,7 +293,7 @@ extern "C" {
 	 * @param[in] func	Function to attach. \
 	 * @param[in] uctx	to be passed to func. \
 	 */ \
-	static inline CC_HINT(nonnull(1,2)) void fr_ ## _type ## _slab_set_destructor(_type *elem, fr_ ## _type ## _slab_free_t func, void *uctx) \
+	static inline CC_HINT(nonnull(1,2)) void fr_ ## _name ## _slab_element_set_destructor(_type *elem, fr_ ## _type ## _slab_free_t func, void *uctx) \
 	{ \
 		fr_ ## _name ## _slab_element_t	*element = (fr_ ## _name ## _slab_element_t *)elem; \
 		element->free = func; \
