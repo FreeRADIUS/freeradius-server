@@ -185,6 +185,7 @@ typedef struct {
 
 typedef struct {
 	int		rounds;			//!< how many rounds were taken
+	uint8_t		seq_no;			//!< sequence number of last request.
 	uint32_t	reply;			//!< for multiround state machine
 	fr_pair_list_t	list;			//!< copied from the request
 } process_tacacs_session_t;
@@ -837,6 +838,7 @@ RESUME(auth_get)
 		 */
 	}
 	session->reply = request->reply->code;
+	session->seq_no = request->packet->data[2];
 
 send_reply:
 	/*
@@ -865,6 +867,11 @@ RECV(auth_cont)
 	 */
 	session = request_data_reference(request, inst, 0);
 	if (session) {
+		if (request->packet->data[2] <= session->seq_no) {
+			REDEBUG("Client sent invalid sequence number %02x, expected >%02x", request->packet->data[2], session->seq_no);
+			return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
+		}
+
 		if (fr_pair_list_copy(&request->request_ctx, &request->request_pairs, &session->list) < 0) {
 			return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 		}
