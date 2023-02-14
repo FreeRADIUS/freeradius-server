@@ -126,25 +126,33 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 
 #define PACKET_HEADER_CHECK(_msg, _hdr) do { \
 	p = (uint8_t const *) &(_hdr); \
-	data_len = sizeof(_hdr); \
-	if ((p + sizeof(_hdr)) > end) { \
+	if (sizeof(_hdr) > (size_t) (end - p)) { \
 		fr_strerror_printf("Header for %s is too small (%zu < %zu)", _msg, end - (uint8_t const *) pkt, p - (uint8_t const *) pkt); \
 		goto fail; \
 	} \
+	body = p + sizeof(_hdr); \
+	data_len = sizeof(_hdr); \
 } while (0)
 
+/*
+ *	Check argv[i] after the user_msg / server_msg / argc lengths have been added to data_len
+ */
 #define ARG_COUNT_CHECK(_msg, _hdr) do { \
 	fr_assert(p == (uint8_t const *) &(_hdr)); \
-	if ((p + data_len) > end) { \
+	if (data_len > (size_t) (end - p)) { \
 		fr_strerror_printf("Argument count %u overflows the remaining data (%zu) in the %s packet", _hdr.arg_cnt, end - p, _msg); \
 		goto fail; \
 	} \
+	argv = body; \
+	attrs = ((uint8_t const *) &(_hdr)) + data_len; \
+	body += _hdr.arg_cnt; \
+	p = attrs; \
 	for (int i = 0; i < _hdr.arg_cnt; i++) { \
-		data_len += _hdr.arg_len[i]; \
-		if (data_len > (size_t) (end - p)) { \
+		if (_hdr.arg_len[i] > (size_t) (end - p)) { \
 			fr_strerror_printf("Argument %u length %u overflows packet", i, _hdr.arg_len[i]); \
 			goto fail; \
 		} \
+		p += _hdr.arg_len[i]; \
 	} \
 } while (0)
 
@@ -171,18 +179,16 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
  *
  */
 static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-			      uint8_t arg_cnt, uint8_t const *arg_list, uint8_t const *data, NDEBUG_UNUSED uint8_t const *end)
+			      uint8_t arg_cnt, uint8_t const *argv, uint8_t const *attrs, NDEBUG_UNUSED uint8_t const *end)
 {
 	uint8_t i;
-	uint8_t const *p = data;
+	uint8_t const *p = attrs;
 	fr_pair_t *vp;
 
 	/*
 	 *	No one? Just get out!
 	 */
 	if (!arg_cnt) return 0;
-
-	fr_assert((p + arg_cnt) <= end);
 
 	/*
 	 *	Then, do the dirty job of creating attributes.
@@ -192,15 +198,14 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		fr_dict_attr_t const *da;
 		uint8_t buffer[256];
 
-		fr_assert(p < end);
-		fr_assert((p + arg_list[i]) <= end);
+		fr_assert((p + argv[i]) <= end);
 
-		if (arg_list[i] < 2) goto next; /* skip malformed */
+		if (argv[i] < 2) goto next; /* skip malformed */
 
-		memcpy(buffer, p, arg_list[i]);
-		buffer[arg_list[i]] = '\0';
+		memcpy(buffer, p, argv[i]);
+		buffer[argv[i]] = '\0';
 
-		arg_end = buffer + arg_list[i];
+		arg_end = buffer + argv[i];
 
 		for (value = buffer, name_end = NULL; value < arg_end; value++) {
 			/*
@@ -232,7 +237,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 			 */
 			da = parent;
 			value = p;
-			arg_end = p + arg_list[i];
+			arg_end = p + argv[i];
 		}
 
 		vp = fr_pair_afrom_da(ctx, da);
@@ -285,7 +290,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		fr_pair_append(out, vp);
 
 	next:
-		p += arg_list[i];
+		p += argv[i];
 	}
 
 	return 0;
@@ -337,7 +342,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 {
 	fr_tacacs_packet_t const *pkt;
 	fr_pair_t		*vp;
-	uint8_t const  		*p, *end;
+	uint8_t const  		*p, *body, *argv, *attrs, *end;
 	uint8_t			*decrypted = NULL;
 
 	/*
@@ -356,6 +361,16 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 	 * +----------------+----------------+----------------+----------------+
 	 */
 	pkt = (fr_tacacs_packet_t const *) buffer;
+
+	/*
+	 *	p	miscellaneous pointer for decoding things
+	 *	body	points to just past the (randomly sized) per-packet header,
+	 *		where the various user / server messages are.
+	 *		sometimes this is after "argv".
+	 *	argv	points to the array of argv[i] length entries
+	 *	attrs	points to the attributes we need to decode as "foo=bar".
+	 */
+	argv = attrs = NULL;
 	end = buffer + buffer_len;
 
 	/*
@@ -503,6 +518,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 * +----------------+----------------+----------------+----------------+
 			 */
 			PACKET_HEADER_CHECK("Authentication-Start", pkt->authen_start);
+
 			data_len += p[4] + p[5] + p[6] + p[7];
 			if (data_len > (size_t) (end - p)) {
 			overflow:
@@ -514,16 +530,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 				fr_strerror_const("Data underflows the packet");
 				goto fail;
 			}
-
-			p = BODY(authen_start);
-
-#if 0
-			if ((pkt->hdr.ver.minor == 0) &&
-			    (pkt->authen_start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
-				fr_strerror_const("TACACS+ minor version 1 MUST be used for non-ASCII authentication methods");
-				goto fail;
-			}
-#endif
 
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_START);
 
@@ -538,6 +544,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 4 fields, based on their "length"
 			 */
+			p = body;
 			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->authen_start.user_len);
 			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->authen_start.port_len);
 			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->authen_start.rem_addr_len);
@@ -671,13 +678,12 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			if (data_len > (size_t) (end - p)) goto overflow;
 			if (data_len < (size_t) (end - p)) goto underflow;
 
-			p = BODY(authen_cont);
-
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_CONTINUE);
 
 			/*
 			 *	Decode 2 fields, based on their "length"
 			 */
+			p = body;
 			DECODE_FIELD_STRING16(attr_tacacs_user_message, pkt->authen_cont.user_msg_len);
 			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->authen_cont.data_len);
 
@@ -709,7 +715,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			if (data_len > (size_t) (end - p)) goto overflow;
 			if (data_len < (size_t) (end - p)) goto underflow;
 
-			p = BODY(authen_reply);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REPLY);
 
 			DECODE_FIELD_UINT8(attr_tacacs_authentication_status, pkt->authen_reply.status);
@@ -718,6 +723,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 2 fields, based on their "length"
 			 */
+			p = body;
 			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->authen_reply.server_msg_len);
 			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->authen_reply.data_len);
 
@@ -760,10 +766,9 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 
 			PACKET_HEADER_CHECK("Authorization-Request", pkt->author_req);
 			data_len += p[4] + p[5] + p[6] + p[7];
-			if (data_len > (size_t) (end - p)) goto overflow;
-			/* can't check for underflow, as we have argv[argc] */
 
 			ARG_COUNT_CHECK("Authorization-Request", pkt->author_req);
+
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
 			/*
@@ -777,6 +782,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 3 fields, based on their "length"
 			 */
+			p = body;
 			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->author_req.user_len);
 			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->author_req.port_len);
 			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->author_req.rem_addr_len);
@@ -785,7 +791,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					       pkt->author_req.arg_cnt, BODY(author_req), p, end) < 0) goto fail;
+					       pkt->author_req.arg_cnt, argv, attrs, end) < 0) goto fail;
 
 		} else if (packet_is_author_reply(pkt)) {
 			/*
@@ -818,8 +824,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 
 			PACKET_HEADER_CHECK("Authorization-Reply", pkt->author_reply);
 			data_len += p[1] + fr_nbo_to_uint16(p + 2) + fr_nbo_to_uint16(p + 4);
-			if (data_len > (size_t) (end - p)) goto overflow;
-			/* can't check for underflow, as we have argv[argc] */
 
 			ARG_COUNT_CHECK("Authorization-Reply", pkt->author_reply);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_RESPONSE);
@@ -832,6 +836,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 2 fields, based on their "length"
 			 */
+			p = body;
 			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->author_reply.server_msg_len);
 			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->author_reply.data_len);
 
@@ -839,7 +844,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					pkt->author_reply.arg_cnt, BODY(author_reply), p, end) < 0) goto fail;
+					pkt->author_reply.arg_cnt, argv, attrs, end) < 0) goto fail;
 
 		} else {
 			fr_strerror_const("Unknown authorization packet");
@@ -884,6 +889,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/* can't check for underflow, as we have argv[argc] */
 
 			ARG_COUNT_CHECK("Accounting-Request", pkt->acct_req);
+
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
 			/*
@@ -898,6 +904,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 3 fields, based on their "length"
 			 */
+			p = body;
 			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->acct_req.user_len);
 			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->acct_req.port_len);
 			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->acct_req.rem_addr_len);
@@ -906,7 +913,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
-					pkt->acct_req.arg_cnt, BODY(acct_req), p, end) < 0) goto fail;
+					pkt->acct_req.arg_cnt, argv, attrs, end) < 0) goto fail;
 
 		} else if (packet_is_acct_reply(pkt)) {
 			/**
