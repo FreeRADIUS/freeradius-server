@@ -993,6 +993,28 @@ RESUME(acct_type)
 	return state->send(p_result, mctx, request);
 }
 
+static const bool acct_flag_valid[8] = {
+	false, true, true, false, /* invalid, start, stop, invalid */
+	true, true, false, false, /* watchdog - no update, watchdog - update, invalid, invalid */
+};
+
+RECV(accounting_request)
+{
+	fr_pair_t *vp;
+
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_accounting_flags);
+
+	/*
+	 *	RFC 8907 Section 7.2
+	 */
+	if (vp && !acct_flag_valid[(vp->vp_uint8 & 0x0e) >> 1]) {
+		RWDEBUG("Invalid accounting request flag field %02x", vp->vp_uint8);
+		return CALL_SEND_TYPE(FR_TACACS_CODE_ACCT_ERROR);
+	}
+
+	return CALL_RECV(generic);
+}
+
 RESUME(accounting_request)
 {
 	rlm_rcode_t			rcode = *p_result;
@@ -1292,7 +1314,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_ACCT_ERROR,
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.recv = recv_generic,
+		.recv = recv_accounting_request,
 		.resume = resume_accounting_request,
 		.section_offset = offsetof(process_tacacs_sections_t, acct_request),
 	},
