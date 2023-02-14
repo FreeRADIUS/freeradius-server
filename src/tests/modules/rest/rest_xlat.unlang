@@ -188,4 +188,21 @@ update reply {
 	REST-HTTP-Body !* ANY
 }
 
+# A request which will take longer than the timeout set for xlats
+update {
+	&Tmp-String-2 := "%{rest:http://%{Tmp-String-0}:%{Tmp-Integer-0}/delay}"
+}
+
+if (&reply:REST-HTTP-Status-Code) {
+	test_fail
+}
+
+if (!(&Tmp-String-2 == "")) {
+	test_fail
+}
+
+if (!(&Module-Failure-Message[*] == 'Request failed: 28 - Timeout was reached')) {
+	test_fail
+}
+
 test_pass
