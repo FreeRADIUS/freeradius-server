@@ -1609,6 +1609,7 @@ static void rest_response_init(rlm_rest_section_t const *section,
 	ctx->state = WRITE_STATE_INIT;
 	ctx->alloc = 0;
 	ctx->used = 0;
+	ctx->code = 0;
 	TALLOC_FREE(ctx->buffer);
 }
 
