@@ -125,7 +125,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 }
 
 #define PACKET_HEADER_CHECK(_msg, _hdr) do { \
-	p = (uint8_t const *) &(_hdr); \
+	p = buffer + FR_HEADER_LENGTH; \
 	if (sizeof(_hdr) > (size_t) (end - p)) { \
 		fr_strerror_printf("Header for %s is too small (%zu < %zu)", _msg, end - (uint8_t const *) pkt, p - (uint8_t const *) pkt); \
 		goto fail; \
@@ -144,7 +144,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 		goto fail; \
 	} \
 	argv = body; \
-	attrs = ((uint8_t const *) &(_hdr)) + data_len; \
+	attrs = buffer + FR_HEADER_LENGTH + data_len; \
 	body += _hdr.arg_cnt; \
 	p = attrs; \
 	for (int i = 0; i < _hdr.arg_cnt; i++) { \
@@ -460,6 +460,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 
 		/*
 		 *	We need that to decrypt the body content.
+		 *
+		 *	@todo - use thread-local storage to avoid allocations?
 		 */
 		decrypted = talloc_memdup(ctx, buffer, buffer_len);
 		if (!decrypted) {
@@ -484,6 +486,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			*code = fr_tacacs_packet_to_code((fr_tacacs_packet_t const *) decrypted);
 			if (*code < 0) goto fail;
 		}
+
+		buffer = decrypted;
 	}
 
 #ifndef NDEBUG
