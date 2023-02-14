@@ -206,7 +206,7 @@ typedef struct {
 	rlm_rest_t const	*instance;	//!< This instance of rlm_rest.
 	rlm_rest_section_t const *section;	//!< Section configuration.
 
-	request_t			*request;	//!< Current request.
+	request_t		*request;	//!< Current request.
 	read_state_t		state;		//!< Encoder state
 
 	fr_dcursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
@@ -224,7 +224,7 @@ typedef struct {
 	rlm_rest_t const	*instance;	//!< This instance of rlm_rest.
 	rlm_rest_section_t const *section;	//!< Section configuration.
 
-	request_t			*request;	//!< Current request.
+	request_t		*request;	//!< Current request.
 	write_state_t		state;		//!< Decoder state.
 
 	char 			*buffer;	//!< Raw incoming HTTP data.
