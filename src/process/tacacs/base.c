@@ -812,6 +812,7 @@ RESUME(auth_get)
 	session = request_data_reference(request, inst, 0);
 	if (!session) {
 		fr_tacacs_packet_t const *packet = (fr_tacacs_packet_t const *) request->packet->data;
+		fr_pair_t *vp, *copy;
 
 		if (!packet_is_authen_start_request(packet)) goto send_reply;
 
@@ -827,14 +828,18 @@ RESUME(auth_get)
 		 *	known), or are irrelevant.
 		 */
 		fr_pair_list_init(&session->list);
-		fr_pair_append(&session->list,
-			       fr_pair_copy(session, fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name)));
-		fr_pair_append(&session->list,
-			       fr_pair_copy(session, fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_client_port)));
-		fr_pair_append(&session->list,
-			       fr_pair_copy(session, fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_remote_address)));
-		fr_pair_append(&session->list,
-			       fr_pair_copy(session, fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_privilege_level)));
+#undef COPY
+#define COPY(_attr) do { \
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, _attr); \
+	if (!vp) break; \
+	MEM(copy = fr_pair_copy(session, vp));	\
+	fr_pair_append(&session->list, copy); \
+} while (0)
+
+		COPY(attr_user_name);
+		COPY(attr_tacacs_client_port);
+		COPY(attr_tacacs_remote_address);
+		COPY(attr_tacacs_privilege_level);
 
 	} else {
 		session->rounds++;
