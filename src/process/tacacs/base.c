@@ -1065,7 +1065,7 @@ RESUME(accounting_request)
 	 *	Something set the reply code, so we reply and don't run "accounting foo { ... }"
 	 */
 	if (request->reply->code) {
-		fr_assert(PROCESS_PACKET_CODE_VALID(request->packet->code));
+		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->packet->code));
 
 		RDEBUG("Reply packet type was set to %s", fr_tacacs_packet_names[request->reply->code]);
 
@@ -1113,7 +1113,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	PROCESS_TRACE;
 
 	(void)talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
-	fr_assert(PROCESS_PACKET_CODE_VALID(request->packet->code));
+	fr_assert(FR_TACACS_PACKET_CODE_VALID(request->packet->code));
 
 	request->component = "tacacs";
 	request->module = NULL;
