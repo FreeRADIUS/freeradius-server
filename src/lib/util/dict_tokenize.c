@@ -721,6 +721,125 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 }
 
 /*
+ *	Process references.
+ */
+static int dict_process_ref(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *parent, fr_dict_attr_t const *da, char *ref)
+{
+	/*
+	 *	Groups can refer to other dictionaries, or other attributes.
+	 */
+	if (da->type == FR_TYPE_GROUP) {
+		fr_dict_attr_t		*self;
+		fr_dict_t		*dict;
+		char			*p;
+		ssize_t			slen;
+
+		memcpy(&self, &da, sizeof(self)); /* const issues */
+
+		/*
+		 *	No qualifiers, just point it to the root of the current dictionary.
+		 */
+		if (!ref) {
+			dict = ctx->dict;
+			da = ctx->dict->root;
+			goto check;
+		}
+
+		/*
+		 *	Else we find the reference.
+		 */
+		da = fr_dict_attr_by_oid(NULL, parent, ref);
+		if (da) {
+			dict = ctx->dict;
+			goto check;
+		}
+
+		/*
+		 *	The attribute doesn't exist, and the reference
+		 *	is FOO, it might be just a ref to a
+		 *	dictionary.
+		 */
+		p = strchr(ref, '.');
+		if (!p) goto fixup;
+
+		/*
+		 *	Get / skip protocol name.
+		 */
+		slen = dict_by_protocol_substr(NULL, &dict, &FR_SBUFF_IN(ref, strlen(ref)), ctx->dict);
+		if (slen < 0) {
+			talloc_free(ref);
+			return -1;
+		}
+
+		/*
+		 *	No known dictionary, so we're asked to just
+		 *	use the whole string.  Which we did above.  So
+		 *	either it's a bad ref, OR it's a ref to a
+		 *	dictionary which hasn't yet been loaded.
+		 *
+		 *	Save the fixup for later, when we've hopefully
+		 *	loaded the dictionary.
+		 */
+		if (slen == 0) {
+		fixup:
+			if (dict_fixup_group(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
+					     self, ref, talloc_array_length(ref) - 1) < 0) {
+			oom:
+				talloc_free(ref);
+				return -1;
+			}
+			talloc_free(ref);
+
+			return 0;
+
+		} else if (ref[slen] == '\0') {
+			da = dict->root;
+			goto check;
+
+		} else {
+			/*
+			 *	Look up the attribute.
+			 */
+			da = fr_dict_attr_by_oid(NULL, parent, ref + slen);
+			if (!da) {
+				fr_strerror_printf("protocol loaded, but no attribute '%s'", ref + slen);
+				talloc_free(ref);
+				return -1;
+			}
+
+		check:
+			talloc_free(ref);
+
+			if (da->type != FR_TYPE_TLV) {
+				fr_strerror_const("References MUST be to an ATTRIBUTE of type 'tlv'");
+				return -1;
+			}
+
+			if (fr_dict_attr_ref(da)) {
+				fr_strerror_const("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
+				return -1;
+			}
+
+			self->dict = dict;
+
+			dict_attr_ref_set(self, da);
+		}
+	}
+
+	/*
+	 *	It's a "clone" thing.
+	 */
+	if (ref) {
+		if (dict_fixup_clone(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
+				     fr_dict_attr_unconst(parent), fr_dict_attr_unconst(da),
+				     ref, talloc_array_length(ref) - 1) < 0) goto oom;
+		talloc_free(ref);
+	}
+
+	return 0;
+}
+
+/*
  *	Process the ATTRIBUTE command
  */
 static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, int argc,
@@ -869,116 +988,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 
 	if (set_relative_attr) ctx->relative_attr = da;
 
-	/*
-	 *	Groups can refer to other dictionaries, or other attributes.
-	 */
-	if (type == FR_TYPE_GROUP) {
-		fr_dict_attr_t		*self;
-		fr_dict_t		*dict;
-		char			*p;
-
-		memcpy(&self, &da, sizeof(self)); /* const issues */
-
-		/*
-		 *	No qualifiers, just point it to the root of the current dictionary.
-		 */
-		if (!ref) {
-			dict = ctx->dict;
-			da = ctx->dict->root;
-			goto check;
-		}
-
-		/*
-		 *	Else we find the reference.
-		 */
-		da = fr_dict_attr_by_oid(NULL, parent, ref);
-		if (da) {
-			dict = ctx->dict;
-			goto check;
-		}
-
-		/*
-		 *	The attribute doesn't exist, and the reference
-		 *	is FOO, it might be just a ref to a
-		 *	dictionary.
-		 */
-		p = strchr(ref, '.');
-		if (!p) goto fixup;
-
-		/*
-		 *	Get / skip protocol name.
-		 */
-		slen = dict_by_protocol_substr(NULL, &dict, &FR_SBUFF_IN(ref, strlen(ref)), ctx->dict);
-		if (slen < 0) {
-			talloc_free(ref);
-			return -1;
-		}
-
-		/*
-		 *	No known dictionary, so we're asked to just
-		 *	use the whole string.  Which we did above.  So
-		 *	either it's a bad ref, OR it's a ref to a
-		 *	dictionary which hasn't yet been loaded.
-		 *
-		 *	Save the fixup for later, when we've hopefully
-		 *	loaded the dictionary.
-		 */
-		if (slen == 0) {
-		fixup:
-			if (dict_fixup_group(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
-					     self, ref, talloc_array_length(ref) - 1) < 0) {
-			oom:
-				talloc_free(ref);
-				return -1;
-			}
-			talloc_free(ref);
-
-			return 0;
-
-		} else if (ref[slen] == '\0') {
-			da = dict->root;
-			goto check;
-
-		} else {
-			/*
-			 *	Look up the attribute.
-			 */
-			da = fr_dict_attr_by_oid(NULL, parent, ref + slen);
-			if (!da) {
-				fr_strerror_printf("protocol loaded, but no attribute '%s'", ref + slen);
-				talloc_free(ref);
-				return -1;
-			}
-
-		check:
-			talloc_free(ref);
-
-			if (da->type != FR_TYPE_TLV) {
-				fr_strerror_const("References MUST be to an ATTRIBUTE of type 'tlv'");
-				return -1;
-			}
-
-			if (fr_dict_attr_ref(da)) {
-				fr_strerror_const("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
-				return -1;
-			}
-
-			self->dict = dict;
-
-			dict_attr_ref_set(self, da);
-		}
-	}
-
-	/*
-	 *	It's a "clone" thing.
-	 */
-	if (ref) {
-		if (dict_fixup_clone(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
-				     fr_dict_attr_unconst(parent), fr_dict_attr_unconst(da),
-				     ref, talloc_array_length(ref) - 1) < 0) goto oom;
-		talloc_free(ref);
-		return 0;
-	}
+	if (dict_process_ref(ctx, parent, da, ref) < 0) return -1;
 
 	/*
 	 *	Adding an attribute of type 'struct' is an implicit
@@ -994,6 +1004,106 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	return 0;
 }
 
+
+/*
+ *	Process the DEFINE command
+ *
+ *	Which is mostly like ATTRIBUTE, but does not have a number.
+ */
+static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int argc,
+				    fr_dict_attr_flags_t *base_flags)
+{
+	fr_type_t      		type;
+	fr_dict_attr_flags_t	flags;
+	fr_dict_attr_t const	*parent, *da;
+	char			*ref = NULL;
+
+	if ((argc < 2) || (argc > 3)) {
+		fr_strerror_const("Invalid DEFINE syntax");
+		return -1;
+	}
+
+	/*
+	 *	Dictionaries need to have real names, not shitty ones.
+	 */
+	if (strncmp(argv[0], "Attr-", 5) == 0) {
+		fr_strerror_const("Invalid DEFINE name");
+		return -1;
+	}
+
+	memcpy(&flags, base_flags, sizeof(flags));
+
+	if (dict_process_type_field(ctx, argv[1], &type, &flags) < 0) return -1;
+
+	/*
+	 *	We would like to add DEFINE for TLVs, but it's currently hard to
+	 *	define children, and (for now) we avoid BEGIN-TLV.
+	 *
+	 *	In order to support BEGIN-TLV, we need to support
+	 *	MEMBER-like allocation of TLV children.
+	 */
+	switch (type) {
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_TLV:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_VOID:
+	case FR_TYPE_VALUE_BOX:
+		fr_strerror_printf("DEFINE cannot be used for type '%s'", argv[1]);
+		return -1;
+
+	default:
+		break;
+	}
+
+	if (flags.extra && (flags.subtype == FLAG_BIT_FIELD)) {
+		fr_strerror_const("Bit fields can only be defined as a MEMBER of a STRUCT");
+		return -1;
+	}
+
+	parent = dict_gctx_unwind(ctx);
+
+	if (!fr_cond_assert(parent)) return -1;	/* Should have provided us with a parent */
+
+	/*
+	 *	Members of a 'struct' MUST use MEMBER, not ATTRIBUTE.
+	 */
+	if (parent->type == FR_TYPE_STRUCT) {
+		fr_strerror_printf("Member %s of parent %s type 'struct' MUST use the \"MEMBER\" keyword",
+				   argv[0], parent->name);
+		return -1;
+	}
+
+	/*
+	 *	Parse options.
+	 */
+	if (argc >= 3) {
+		if (dict_process_flag_field(ctx, argv[2], type, &flags, &ref) < 0) return -1;
+	} else {
+		if (!dict_attr_flags_valid(ctx->dict, parent, argv[2], NULL, type, &flags)) return -1;
+	}
+
+#ifdef STATIC_ANALYZER
+	if (!ctx->dict) return -1;
+#endif
+
+	/*
+	 *	Add in an attribute
+	 */
+	if (fr_dict_attr_add(ctx->dict, parent, argv[0], -1, type, &flags) < 0) return -1;
+
+	da = dict_attr_by_name(NULL, parent, argv[0]);
+	if (!da) {
+		fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
+		return -1;
+	}
+
+	if (dict_process_ref(ctx, parent, da, ref) < 0) return -1;
+
+	memcpy(&ctx->value_attr, &da, sizeof(da));
+
+	return 0;
+}
 
 /*
  *	Process the ENUM command
@@ -2048,6 +2158,16 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			if (dict_read_process_attribute(ctx,
 							argv + 1, argc - 1,
 							&base_flags) == -1) goto error;
+			continue;
+		}
+
+		/*
+		 *	Perhaps this is an attribute.
+		 */
+		if (strcasecmp(argv[0], "DEFINE") == 0) {
+			if (dict_read_process_define(ctx,
+						     argv + 1, argc - 1,
+						     &base_flags) == -1) goto error;
 			continue;
 		}
 
