@@ -4862,6 +4862,8 @@ ssize_t rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret, 
 			reallen = passwd[2] ^ digest[0];
 			if (reallen > encrypted_len) {
 				fr_strerror_printf("tunnel password is too long for the attribute");
+				fr_md5_destroy(&old);
+				fr_md5_destroy(&context);
 				return -1;
 			}
 
