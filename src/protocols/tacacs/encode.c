@@ -483,8 +483,6 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 				ENCODE_FIELD_STRING8(packet->authen_start.data_len, attr_tacacs_data);
 
 			} else switch (packet->authen_start.authen_type) {
-			        int rcode;
-
 				default:
 					break;
 
@@ -496,13 +494,16 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 					if (tacacs_encode_chap(&work_dbuff, packet, vps, attr_tacacs_chap_password, attr_tacacs_chap_challenge) < 0) return -1;
 					break;
 
-				case FR_AUTHENTICATION_TYPE_VALUE_MSCHAP:
+				case FR_AUTHENTICATION_TYPE_VALUE_MSCHAP: {
+					int rcode;
+
 					rcode = tacacs_encode_chap(&work_dbuff, packet, vps, attr_tacacs_mschap_response, attr_tacacs_mschap_challenge);
 					if (rcode < 0) return rcode;
 
 					if (rcode > 0) break;
 
 					if (tacacs_encode_chap(&work_dbuff, packet, vps, attr_tacacs_mschap2_response, attr_tacacs_mschap_challenge) < 0) return -1;
+					}
 					break;
 			}
 

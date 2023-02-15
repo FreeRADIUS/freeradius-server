@@ -342,6 +342,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 {
 	fr_tacacs_packet_t const *pkt;
 	fr_pair_t		*vp;
+	size_t			data_len;
 	uint8_t const  		*p, *body, *argv, *attrs, *end;
 	uint8_t			*decrypted = NULL;
 
@@ -495,8 +496,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 #endif
 
 	switch (pkt->hdr.type) {
-		size_t data_len;
-
 	case FR_TAC_PLUS_AUTHEN:
 		if (packet_is_authen_start_request(pkt)) {
 			uint8_t want;
