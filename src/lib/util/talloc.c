@@ -393,7 +393,7 @@ char *talloc_typed_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 /** Binary safe strdup function
  *
- * @param[in] ctx 	he talloc context to allocate new buffer in.
+ * @param[in] ctx 	the talloc context to allocate new buffer in.
  * @param[in] in	String to dup, may contain embedded '\0'.
  * @return duped string.
  */
