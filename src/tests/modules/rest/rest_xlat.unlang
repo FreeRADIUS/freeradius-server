@@ -133,4 +133,15 @@ if (!(&Tmp-String-2 == "{\"station\":\"aa:bb:cc:dd:ee:ff\"}\n" )) {
 	test_fail
 }
 
+# Test against endpoint which will time out
+&Tmp-String-2 := "%(rest:http://%{Tmp-String-0}:%{Tmp-Integer-0}/delay)"
+
+if (&REST-HTTP-Status-Code) {
+	test_fail
+}
+
+if (!(&Module-Failure-Message == "curl request failed: Timeout was reached (28)")) {
+	test_fail
+}
+
 test_pass

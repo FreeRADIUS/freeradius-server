@@ -83,6 +83,10 @@ http {
 	location ~ ^/post(.*)$ {
 	    content_by_lua_file  ${APIDIR}/post-api.lua;
 	}
+
+	location ~ ^/delay(.*)$ {
+	    content_by_lua_file  ${APIDIR}/delay-api.lua;
+	}
     }
 
     server {
