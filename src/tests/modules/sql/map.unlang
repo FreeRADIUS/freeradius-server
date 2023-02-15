@@ -1,9 +1,9 @@
 # Clear out any rows with priority 0 (each test should use a different
 # priority, so they don't interfere with each other).
-"%{sql:DELETE FROM radusergroup WHERE priority = 0}"
+"%{sql:DELETE FROM radusergroup WHERE priority <= 1}"
 
 # Module should return NOOP if there's no result set to work with
-map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
+map sql 'SELECT * FROM radusergroup WHERE priority <= 1' {
 	&control.Tmp-String-0	:= 'username'
 	&control.Tmp-String-1	:= 'groupname'
 	&control.Tmp-Integer-0	:= 'priority'
@@ -79,10 +79,10 @@ else {
 &control -= &Tmp-Integer-0[*]
 
 # Insert our second test row
-"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('oof', 'rab', 0)}"
+"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('oof', 'rab', 1)}"
 
 # Retrieve our test row(s) - With := we should get the values from the second row
-map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
+map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
 	&control.Tmp-String-0	:= 'username'
 	&control.Tmp-String-1	:= 'groupname'
 	&control.Tmp-Integer-0	:= 'priority'
@@ -109,10 +109,7 @@ else {
 	test_fail
 }
 
-if (&control.Tmp-Integer-0 == 0) {
-	test_pass
-}
-else {
+if !(&control.Tmp-Integer-0 == 1) {
 	test_fail
 }
 
@@ -122,7 +119,7 @@ else {
 &control -= &Tmp-Integer-0[*]
 
 # Retrieve our test row(s) - With = we should get the values from the first row
-map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
+map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
 	&control.Tmp-String-0	= 'username'
 	&control.Tmp-String-1	= 'groupname'
 	&control.Tmp-Integer-0	= 'priority'
@@ -162,7 +159,7 @@ else {
 &control -= &Tmp-Integer-0[*]
 
 # Retrieve our test row(s) - With ^= we should get the values from the second row then the first
-map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
+map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
 	&control.Tmp-String-0	^= 'username'
 	&control.Tmp-String-1	^= 'groupname'
 	&control.Tmp-Integer-0	^= 'priority'
@@ -182,7 +179,7 @@ if ((&control.Tmp-String-1[0] != 'rab') || (&control.Tmp-String-1[1] != 'bar')) 
 	test_fail
 }
 
-if ((&control.Tmp-Integer-0[0] != 0) || (&control.Tmp-Integer-0[1] != 0)) {
+if ((&control.Tmp-Integer-0[0] != 1) || (&control.Tmp-Integer-0[1] != 0)) {
 	test_fail
 }
 
@@ -192,7 +189,7 @@ if ((&control.Tmp-Integer-0[0] != 0) || (&control.Tmp-Integer-0[1] != 0)) {
 &control -= &Tmp-Integer-0[*]
 
 # Retrieve our test row(s) - With += we should get the values from both rows
-map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
+map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
 	&control.Tmp-String-0	+= 'username'
 	&control.Tmp-String-1	+= 'groupname'
 	&control.Tmp-Integer-0	+= 'priority'
@@ -233,7 +230,7 @@ else {
 	test_fail
 }
 
-if ((&control.Tmp-Integer-0[0] == 0) && (&control.Tmp-Integer-0[1] == 0)) {
+if ((&control.Tmp-Integer-0[0] == 0) && (&control.Tmp-Integer-0[1] == 1)) {
 	test_pass
 }
 else {
@@ -259,7 +256,7 @@ else {
 }
 
 # Retrieve test row with specific username (using xlat'd query)
-map sql "SELECT * FROM radusergroup WHERE priority = 0 AND username = '%{User-Name}'" {
+map sql "SELECT * FROM radusergroup WHERE priority <= 1 AND username = '%{User-Name}'" {
 	&control.Tmp-String-0	= 'username'
 	&control.Tmp-String-1	= 'groupname'
 	&control.Tmp-Integer-0	= 'priority'
@@ -293,7 +290,7 @@ else {
 	test_fail
 }
 
-&Tmp-String-0 := "SELECT * FROM radusergroup WHERE priority = 0 AND username = '%{User-Name}'"
+&Tmp-String-0 := "SELECT * FROM radusergroup WHERE priority <= 1 AND username = '%{User-Name}'"
 
 # Clear the control list
 &control -= &Tmp-String-0[*]
