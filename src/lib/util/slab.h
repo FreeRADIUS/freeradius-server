@@ -281,6 +281,7 @@ extern "C" {
 			slab_list->in_use++; \
 		} else { \
 			MEM(element = talloc_zero(slab_list, fr_ ## _name ## _slab_element_t)); \
+			talloc_set_type(element, _type); \
 			talloc_set_destructor(element, _ ## _type ## _element_free); \
 			if (slab_list->alloc) slab_list->alloc((_type *)element, slab_list->uctx); \
 		} \
