@@ -1,46 +1,54 @@
-FreeRADIUS 3.2.2 Mon 03 Oct 2022 12:00:00 EDT urgency=low
+FreeRADIUS 3.2.2 Thu 16 Feb 2023 12:00:00 EDT urgency=low
+	Configuration changes
+	* The linelog module now has a "header" configuration item,
+	  which places a header in any new file it creates.
+	* The ldap module now supports setting "cipher_list".  See
+	  mods-available/ldap.
+	* Add "connect_timeout" for outgoing TLS sockets.  Helps with #3501.
+	* Add config section for xlats in rlm_rest and an option to
+	  control REST body data encoding. Patches by Nick Porter.
+	* Allow Operator-Name and Called-Station-Id in attr_filter when
+	  proxying.  Helps with less work in Eduroam configurations.
+	* Ensure that the AcctUpdateTime field in SQL is always updated.
+	  This is so that we can track when the last packet arrived.
+	* Update the default configuration to reply to NAS when accounting
+	  proxying fails, but we still write to the detail file.
+
 	Feature improvements
 	* The "configure" process now gives a much clearer report
 	  when it's finished.  Patches by Matthew Newton.
 	* Fallback to "uname -n" on missing "hostname".  Fixes #4771
 	* Export thread details in radmin "stats threads".  Fixes #4770
-	* Allow Operator-Name and Called-Station-Id in attr_filter when
-	  proxying.  Helps with less work in Eduroam configurations.
 	* Improve queries for processing radacct into periodic usage data.
 	  Fix from Nick Porter.
-	* update dictionary.juniper
-	* add dictionary.calix
+	* Update dictionary.juniper
+	* Add dictionary.calix
 	* Fix dictionary.rfc6519 DS-Lite-Tunnel-Name to be "octets"
-	* The linelog module now has a "header" configuration item,
-	  which places a header in any new file it creates.
-	* Ensure that the AcctUpdateTime field in SQL is always updated.
-	  This is so that we can track when the last packet arrived.
 	* Update documentation for robust-proxy-accounting, and be more
 	  aggressive about sending packets.
 	* Add per-module README.md files in the source.
 	* Add default Visual Studio configuration for developers.
-	* Update the default configuration to reply to NAS when accounting
-	  proxying fails, but we still write to the detail file.
-	* Add "connect_timeout" for outgoing TLS sockets.  Helps with #3501.
 	* Postgres can now automatically use alternate queries for errors
 	  other than duplicate keys.
 	* %{listen:TLS-PSK-Identity} is now set when using PSK and psk_query
 	  This helps the server track the identity of the client which is
 	  connecting.
-	* The ldap module now supports setting "cipher_list".  See
-	  mods-available/ldap.
 	* Include thread stats in Status-Server attributes.  Fixes #4870.
+	* Mark rlm_unbound stable and add to packages. Patches by Nick Porter.
+	* Remove broken/unsupported Dockerfiles for centos8 and
+	  debian9.
+	* Ensure Docker containers have stable uid/gid. Patches
+	  from Terry Burton.
 
 	Bug fixes
-	* Preliminary support for non-blocking TLS sockets.
-	  Helps with #3501.
-	* Fix support for partial certificate chains
-	  after adding reload support.  Fixes #4753
+	* Preliminary support for non-blocking TLS sockets. Helps with #3501.
+	* Fix support for partial certificate chains after adding reload
+	  support.  Fixes #4753
 	* Fix handling of debug_condition.
 	* Clean up home server states, and re-sync with the dictionaries.
 	* Correct certificate order when creating TLS-* attributes.
 	  Fixes #4785
-	* update use of isalpha() etc. so broken configurations have less
+	* Update use of isalpha() etc. so broken configurations have less
 	  impact on the server.
 	* Outgoing TLS sockets now set SNI correctly from the "hostname"
 	  configuration item.
@@ -49,6 +57,7 @@ FreeRADIUS 3.2.2 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	* Getting statistics via Status-Server can now be done within a
 	  virtual server.  Fixes #4868
 	* Make TTLS+MS-CHAP work with TLS 1.3.  Fixes #4878.
+	* Fix md5 xlat memory leak when using OpenSSL 3. Fix by Terry Burton.
 
 FreeRADIUS 3.2.1 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	Feature improvements
