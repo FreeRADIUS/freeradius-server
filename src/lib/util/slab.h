@@ -171,6 +171,8 @@ typedef struct { \
 		MEM(*out = talloc_zero(ctx, fr_ ## _name ## _slab_list_t)); \
 		(*out)->el = el; \
 		(*out)->config = *config; \
+		if ((*out)->config.elements_per_slab == 0) \
+			(*out)->config.elements_per_slab = (config->min_elements ? config->min_elements : 1); \
 		(*out)->alloc = alloc; \
 		(*out)->reserve = reserve; \
 		(*out)->uctx = uctx; \
