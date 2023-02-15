@@ -5,6 +5,7 @@ FreeRADIUS 3.0.27 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	Bug fixes
 	* Fix rlm_python3 build with python >= 3.10. Fixes #4441
 	* The DS-Lite-Tunnel-Name data type should be 'octets'.
+	* Fix rlm_expr destroying MD context, causing leaks with OpenSSL >= 3.0 #4893
 
 FreeRADIUS 3.0.26 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	Feature improvements
