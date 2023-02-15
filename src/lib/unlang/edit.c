@@ -1077,9 +1077,74 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
  */
 static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *state, edit_map_t *current)
 {
+	fr_dict_attr_t const *da;
+	fr_type_t type;
+	fr_value_box_t *box = fr_value_box_list_head(&current->lhs.result);
+	fr_value_box_t *dst;
+	fr_sbuff_unescape_rules_t *erules = NULL;
+
 	fr_assert(current->parent);
 
-	fr_value_box_list_move(&current->parent->rhs.result, &current->lhs.result);
+	if (!box) {
+		RWDEBUG("Failed exapnding result");
+		return -1;
+	}
+
+	fr_assert(tmpl_is_attr(current->parent->lhs.vpt));
+
+	/*
+	 *	There's only one value-box, just use it as-is.  We let the parent handler complain about being
+	 *	able to parse (or not) the value.
+	 */
+	if (!fr_value_box_list_next(&current->lhs.result, box)) goto done;
+
+	/*
+	 *	Figure out how to parse the string.
+	 */
+	da = tmpl_attr_tail_da(current->parent->lhs.vpt);
+	if (fr_type_is_structural(da->type)) {
+		fr_assert(da->type == FR_TYPE_GROUP);
+
+		type = FR_TYPE_STRING;
+
+	} else if (fr_type_is_variable_size(da->type)) {
+		type = da->type;
+
+	} else {
+		type = FR_TYPE_STRING;
+	}
+
+	/*
+	 *	Mash all of the results together.
+	 */
+	if (fr_value_box_list_concat_in_place(box, box, &current->lhs.result, type, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+		RWDEBUG("Failed converting result to '%s' - no memory", fr_type_to_str(type));
+		return -1;
+	}
+
+	/*
+	 *	Strings, etc. get assigned to the parent.  Fixed-size things ger parsed according to their values / enums.
+	 */
+	if (!fr_type_is_fixed_size(da->type)) {
+	done:
+		fr_value_box_list_move(&current->parent->rhs.result, &current->lhs.result);
+		return next_map(request, state, current);
+	}
+
+	/*
+	 *	Try to re-parse the box as the destination data type.
+	 */
+	MEM(dst = fr_value_box_alloc(state, type, da, box->tainted));
+
+	erules = fr_value_unescape_by_quote[current->map->lhs->quote];
+
+	if (fr_value_box_from_str(dst, dst, da->type, da, box->vb_strvalue, box->vb_length, erules, box->tainted) < 0) {
+		RWDEBUG("Failed converting result to '%s' - %s", fr_type_to_str(type), fr_strerror());
+		return -1;
+	}
+
+	fr_value_box_list_talloc_free(&current->lhs.result);
+	fr_value_box_list_insert_tail(&current->parent->rhs.result, dst);
 	return next_map(request, state, current);
 }
 

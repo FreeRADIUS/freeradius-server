@@ -2,7 +2,7 @@
 # PRE: edit
 #
 &Tmp-String-0 := {
-	"foo",
+	"foo %{User-Name}",
 	"bar",
 	"baz",
 	&User-Name
@@ -12,7 +12,7 @@ if (!(%{request.Tmp-String-0[#]} == 4)) {
 	test_fail
 }
 
-if (!(&Tmp-String-0[0] == "foo")) {
+if (!(&Tmp-String-0[0] == "foo bob")) {
 	test_fail
 }
 
@@ -25,6 +25,28 @@ if (!(&Tmp-String-0[2] == "baz")) {
 }
 
 if (!(&Tmp-String-0[3] == "bob")) {
+	test_fail
+}
+
+#
+#  And test non-string things
+#
+&Tmp-String-0 := "127"
+
+&Framed-IP-Address := {
+	"%{Tmp-String-0}.0.0.1",
+	192.0.2.1
+}
+
+if (!(%{request.Framed-IP-Address[#]} == 2)) {
+	test_fail
+}
+
+if (!(&Framed-IP-Address[0] == 127.0.0.1)) {
+	test_fail
+}
+
+if (!(&Framed-IP-Address[1] == 192.0.2.1)) {
 	test_fail
 }
 
