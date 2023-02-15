@@ -611,6 +611,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t *inst, REQUEST *reque
 	fr_md5_update(&md5_context, request->password->vp_octets,
 		     request->password->vp_length);
 	fr_md5_final(digest, &md5_context);
+	fr_md5_destroy(&md5_context);
 
 	if (rad_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("MD5 digest does not match \"known good\" digest");
@@ -641,6 +642,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t *inst, REQUEST *requ
 		     request->password->vp_length);
 	fr_md5_update(&md5_context, &vp->vp_octets[16], vp->vp_length - 16);
 	fr_md5_final(digest, &md5_context);
+	fr_md5_destroy(&md5_context);
 
 	/*
 	 *	Compare only the MD5 hash results, not the salt.
