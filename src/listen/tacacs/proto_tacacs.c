@@ -379,6 +379,38 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		return 1;
 	}
 
+	client = address->radclient;
+	fr_assert(client);
+
+	/*
+	 *	Dynamic client stuff
+	 */
+	if (client->dynamic && !client->active) {
+		RADCLIENT *new_client;
+
+		fr_assert(buffer_len >= sizeof(client));
+
+		/*
+		 *	Allocate the client.  If that fails, send back a NAK.
+		 *
+		 *	@todo - deal with NUMA zones?  Or just deal with this
+		 *	client being in different memory.
+		 *
+		 *	Maybe we should create a CONF_SECTION from the client,
+		 *	and pass *that* back to mod_write(), which can then
+		 *	parse it to create the actual client....
+		 */
+		new_client = client_afrom_request(NULL, request);
+		if (!new_client) {
+			PERROR("Failed creating new client");
+			buffer[0] = true;
+			return 1;
+		}
+
+		memcpy(buffer, &new_client, sizeof(new_client));
+		return sizeof(new_client);
+	}
+
 	/*
 	 *	If the app_io encodes the packet, then we don't need
 	 *	to do that.
@@ -387,9 +419,6 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		data_len = inst->io.app_io->encode(inst->io.app_io_instance, request, buffer, buffer_len);
 		if (data_len > 0) return data_len;
 	}
-
-	client = address->radclient;
-	fr_assert(client);
 
 	secret = client->secret;
 	if (secret) secretlen = talloc_array_length(client->secret) - 1;
