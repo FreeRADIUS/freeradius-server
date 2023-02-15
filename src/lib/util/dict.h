@@ -173,6 +173,8 @@ struct dict_attr_s {
 	unsigned int		attr;				//!< Attribute number.
 	unsigned int		depth;				//!< Depth of nesting for this attribute.
 
+	unsigned int		last_child_attr;		//!< highest value of last child attribute.
+
 	fr_type_t		type;				//!< Value type.
 
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.

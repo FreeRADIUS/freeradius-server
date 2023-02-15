@@ -99,7 +99,6 @@ struct fr_dict {
 	unsigned int		vsa_parent;		//!< varies with different protocols
 	int			default_type_size;	//!< for TLVs and VSAs
 	int			default_type_length;	//!< for TLVs and VSAs
-	unsigned int		self_allocated;		//!< track attribute numbers for self allocations
 
 	dl_t			*dl;			//!< for validation
 

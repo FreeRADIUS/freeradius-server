@@ -529,6 +529,7 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 
 	**da_p = (fr_dict_attr_t) {
 		.attr = attr,
+		.last_child_attr = (1 << 24),
 		.type = type,
 		.flags = *args->flags,
 		.parent = parent,
@@ -3408,7 +3409,6 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	 */
 	dict->default_type_size = 1;
 	dict->default_type_length = 1;
-	dict->self_allocated = (1 << 24);
 
 	return dict;
 }
@@ -3444,7 +3444,6 @@ fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 	 */
 	dict->default_type_size = 2;
 	dict->default_type_length = 2;
-	dict->self_allocated = (1 << 24);
 
 	/*
 	 *	Allocate the root attribute.  This dictionary is

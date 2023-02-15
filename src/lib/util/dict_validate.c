@@ -637,45 +637,48 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			    char const *name, int *attr, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
 	fr_dict_attr_t const	*v;
+	fr_dict_attr_t *mutable;
 
 	if (!fr_cond_assert(parent)) return false;
 
 	if (fr_dict_valid_name(name, -1) <= 0) return false;
 
+	mutable = UNCONST(fr_dict_attr_t *, parent);
+
 	/******************** sanity check attribute number ********************/
 
-	if (parent->flags.is_root) {
-		/*
-		 *	The value -1 is the special flag for "self
-		 *	allocated" numbers.  i.e. we want an
-		 *	attribute, but we don't care what the number
-		 *	is.
-		 */
-		if (*attr == -1) {
-			flags->internal = 1;
+	/*
+	 *	The value -1 is the special flag for "self
+	 *	allocated" numbers.  i.e. we want an
+	 *	attribute, but we don't care what the number
+	 *	is.
+	 */
+	if (*attr == -1) {
 
-			v = fr_dict_attr_by_name(NULL, fr_dict_root(dict), name);
-			if (v) {
-				/*
-				 *	Exact duplicates are allowed.  The caller will take care of
-				 *	not inserting the duplicate attribute.
-				 */
-				if ((v->type == type) && (memcmp(&v->flags, flags, sizeof(*flags)) == 0)) {
-					return true;
-				}
+		flags->internal = 1;
 
-				fr_strerror_printf("Conflicting definition for attribute %s", name);
-				return false;
+		v = fr_dict_attr_by_name(NULL, fr_dict_root(dict), name);
+		if (v) {
+			/*
+			 *	Exact duplicates are allowed.  The caller will take care of
+			 *	not inserting the duplicate attribute.
+			 */
+			if ((v->type == type) && (memcmp(&v->flags, flags, sizeof(*flags)) == 0)) {
+				return true;
 			}
-			*attr = ++dict->self_allocated;
 
-		} else if (*attr <= 0) {
-			fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
+			fr_strerror_printf("Conflicting definition for attribute %s", name);
 			return false;
-
-		} else if ((unsigned int) *attr > dict->self_allocated) {
-			dict->self_allocated = *attr;
 		}
+
+		*attr = ++mutable->last_child_attr;
+
+	} else if (*attr < 0) {
+		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
+		return false;
+
+	} else if ((unsigned int) *attr > mutable->last_child_attr) {
+		mutable->last_child_attr = *attr;
 
 		/*
 		 *	If the attribute is outside of the bounds of
@@ -685,14 +688,6 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 *	checks.
 		 */
 		if ((uint64_t) *attr >= (((uint64_t)1) << (8 * parent->flags.type_size))) flags->internal = true;
-	}
-
-	/*
-	 *	Any other negative attribute number is wrong.
-	 */
-	if (*attr < 0) {
-		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
-		return false;
 	}
 
 	/*

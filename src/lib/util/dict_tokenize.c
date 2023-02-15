@@ -1036,19 +1036,12 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 	if (dict_process_type_field(ctx, argv[1], &type, &flags) < 0) return -1;
 
 	/*
-	 *	We would like to add DEFINE for TLVs, but it's currently hard to
-	 *	define children, and (for now) we avoid BEGIN-TLV.
-	 *
-	 *	In order to support BEGIN-TLV, we need to support
-	 *	MEMBER-like allocation of TLV children.
+	 *	Certain structural types MUST have numbers.
 	 */
 	switch (type) {
 	case FR_TYPE_STRUCT:
-	case FR_TYPE_TLV:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-	case FR_TYPE_VOID:
-	case FR_TYPE_VALUE_BOX:
 		fr_strerror_printf("DEFINE cannot be used for type '%s'", argv[1]);
 		return -1;
 
