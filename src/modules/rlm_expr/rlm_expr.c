@@ -955,6 +955,7 @@ static ssize_t md5_xlat(UNUSED void *instance, REQUEST *request,
 	fr_md5_init(&ctx);
 	fr_md5_update(&ctx, p, inlen);
 	fr_md5_final(digest, &ctx);
+	fr_md5_destroy(&ctx);
 
 	/*
 	 *	Each digest octet takes two hex digits, plus one for
@@ -998,6 +999,7 @@ static ssize_t md4_xlat(UNUSED void *instance, REQUEST *request,
 	fr_md4_init(&ctx);
 	fr_md4_update(&ctx, p, inlen);
 	fr_md4_final(digest, &ctx);
+	fr_md4_destroy(&ctx);
 
 	/*
 	 *	Each digest octet takes two hex digits, plus one for
