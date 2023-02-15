@@ -8,31 +8,19 @@ map sql 'SELECT * FROM radusergroup WHERE priority <= 1' {
 	&control.Tmp-String-1	:= 'groupname'
 	&control.Tmp-Integer-0	:= 'priority'
 }
-if (noop) {
-	test_pass
-}
-else {
+if (!noop) {
 	test_fail
 }
 
-if (!&control.Tmp-String-0) {
-	test_pass
-}
-else {
+if (&control.Tmp-String-0) {
 	test_fail
 }
 
-if (!&control.Tmp-String-1) {
-	test_pass
-}
-else {
+if (&control.Tmp-String-1) {
 	test_fail
 }
 
-if (!&control.Tmp-Integer-0) {
-	test_pass
-}
-else {
+if (&control.Tmp-Integer-0) {
 	test_fail
 }
 
@@ -45,31 +33,19 @@ map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
 	&control.Tmp-String-1	:= 'groupname'
 	&control.Tmp-Integer-0	:= 'priority'
 }
-if (updated) {
-	test_pass
-}
-else {
+if (!updated) {
 	test_fail
 }
 
-if (&control.Tmp-String-0 == 'bob') {
-	test_pass
-}
-else {
+if !(&control.Tmp-String-0 == 'bob') {
 	test_fail
 }
 
-if (&control.Tmp-String-1 == 'bar') {
-	test_pass
-}
-else {
+if !(&control.Tmp-String-1 == 'bar') {
 	test_fail
 }
 
-if (&control.Tmp-Integer-0 == 0) {
-	test_pass
-}
-else {
+if !(&control.Tmp-Integer-0 == 0) {
 	test_fail
 }
 
@@ -88,24 +64,15 @@ map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
 	&control.Tmp-Integer-0	:= 'priority'
 }
 
-if (updated) {
-	test_pass
-}
-else {
+if (!updated) {
 	test_fail
 }
 
-if (&control.Tmp-String-0 == 'oof') {
-	test_pass
-}
-else {
+if !(&control.Tmp-String-0 == 'oof') {
 	test_fail
 }
 
-if (&control.Tmp-String-1 == 'rab') {
-	test_pass
-}
-else {
+if !(&control.Tmp-String-1 == 'rab') {
 	test_fail
 }
 
@@ -125,31 +92,19 @@ map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
 	&control.Tmp-Integer-0	= 'priority'
 }
 
-if (updated) {
-	test_pass
-}
-else {
+if (!updated) {
 	test_fail
 }
 
-if (&control.Tmp-String-0 == 'bob') {
-	test_pass
-}
-else {
+if !(&control.Tmp-String-0 == 'bob') {
 	test_fail
 }
 
-if (&control.Tmp-String-1 == 'bar') {
-	test_pass
-}
-else {
+if !(&control.Tmp-String-1 == 'bar') {
 	test_fail
 }
 
-if (&control.Tmp-Integer-0 == 0) {
-	test_pass
-}
-else {
+if !(&control.Tmp-Integer-0 == 0) {
 	test_fail
 }
 
@@ -195,24 +150,15 @@ map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
 	&control.Tmp-Integer-0	+= 'priority'
 }
 
-if ("%{control.Tmp-String-0[#]}" == 2) {
-	test_pass
-}
-else {
+if !("%{control.Tmp-String-0[#]}" == 2) {
 	test_fail
 }
 
-if ("%{control.Tmp-String-1[#]}" == 2) {
-	test_pass
-}
-else {
+if !("%{control.Tmp-String-1[#]}" == 2) {
 	test_fail
 }
 
-if ("%{control.Tmp-Integer-0[#]}" == 2) {
-	test_pass
-}
-else {
+if !("%{control.Tmp-Integer-0[#]}" == 2) {
 	test_fail
 }
 
@@ -248,10 +194,7 @@ map sql 'SELECT username FROM radusergroup WHERE priority = 0' {
 	&control.Tmp-Integer-0	+= 'priority'
 }
 
-if (noop) {
-	test_pass
-}
-else {
+if (!noop) {
 	test_fail
 }
 
@@ -262,31 +205,19 @@ map sql "SELECT * FROM radusergroup WHERE priority <= 1 AND username = '%{User-N
 	&control.Tmp-Integer-0	= 'priority'
 }
 
-if (updated) {
-	test_pass
-}
-else {
+if (!updated) {
 	test_fail
 }
 
-if (&control.Tmp-String-0 == 'bob') {
-	test_pass
-}
-else {
+if !(&control.Tmp-String-0 == 'bob') {
 	test_fail
 }
 
-if (&control.Tmp-String-1 == 'bar') {
-	test_pass
-}
-else {
+if !(&control.Tmp-String-1 == 'bar') {
 	test_fail
 }
 
-if (&control.Tmp-Integer-0 == 0) {
-	test_pass
-}
-else {
+if !(&control.Tmp-Integer-0 == 0) {
 	test_fail
 }
 
@@ -304,31 +235,19 @@ map sql &Tmp-String-0 {
 	&control.Tmp-Integer-0	= 'priority'
 }
 
-if (updated) {
-	test_pass
-}
-else {
+if (!updated) {
 	test_fail
 }
 
-if (&control.Tmp-String-0 == 'bob') {
-	test_pass
-}
-else {
+if !(&control.Tmp-String-0 == 'bob') {
 	test_fail
 }
 
-if (&control.Tmp-String-1 == 'bar') {
-	test_pass
-}
-else {
+if !(&control.Tmp-String-1 == 'bar') {
 	test_fail
 }
 
-if (&control.Tmp-Integer-0 == 0) {
-	test_pass
-}
-else {
+if !(&control.Tmp-Integer-0 == 0) {
 	test_fail
 }
 
@@ -347,31 +266,19 @@ map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
 	&control.Tmp-Integer-0	= `/bin/echo priority`
 }
 
-if (updated) {
-	test_pass
-}
-else {
+if (!updated) {
 	test_fail
 }
 
-if (&control.Tmp-String-0 == 'bob') {
-	test_pass
-}
-else {
+if !(&control.Tmp-String-0 == 'bob') {
 	test_fail
 }
 
-if (&control.Tmp-String-1 == 'bar') {
-	test_pass
-}
-else {
+if !(&control.Tmp-String-1 == 'bar') {
 	test_fail
 }
 
-if (&control.Tmp-Integer-0 == 0) {
-	test_pass
-}
-else {
+if !(&control.Tmp-Integer-0 == 0) {
 	test_fail
 }
 
