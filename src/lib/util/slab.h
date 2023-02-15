@@ -176,7 +176,8 @@ typedef struct { \
 		MEM(*out = talloc_zero(ctx, fr_ ## _name ## _slab_list_t)); \
 		(*out)->el = el; \
 		(*out)->interval = config->interval; \
-		(*out)->elements_per_slab = config->elements_per_slab; \
+		(*out)->elements_per_slab = (config->elements_per_slab > 0 ? config->elements_per_slab : \
+					     (config->min_elements ? config->min_elements : 1)); \
 		(*out)->min_elements = config->min_elements; \
 		(*out)->max_elements = config->max_elements; \
 		(*out)->at_max_fail = config->at_max_fail; \
