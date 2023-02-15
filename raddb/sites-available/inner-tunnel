@@ -172,6 +172,33 @@ authorize {
 	#  get a chance to set Auth-Type for themselves.
 	#
 	pap
+
+	#  Uncomment this section if you want to use ldap for
+	#  authentication.  The "Auth-Type ldap { ...}" configuration
+	#  section below also has to be uncommented.
+	#
+	#  Note that this means "check plain-text password against
+	#  the ldap database", which means that EAP won't work,
+	#  as it does not supply a plain-text password.
+	#
+	#  We do NOT recommend using this, unless you have no other
+	#  choice.  LDAP servers are databases.  They are NOT
+	#  authentication servers.  FreeRADIUS is an authentication
+	#  server, and knows what to do with authentication.  LDAP
+	#  servers do not.
+	#
+	#  Note that we force "Auth-Type := LDAP" ONLY if nothing else
+	#  is authenticating the user, AND ONLY if the request contains
+	#  a plain-text password.
+	#
+	#  LDAP servers can only do PAP.  They cannot do CHAP, MS-CHAP,
+	#  or EAP.
+	#
+#	if (!&control.Auth-Type && &User-Password) {
+#		update control {
+#		       &Auth-Type := LDAP
+#		}
+#	}
 }
 
 
@@ -227,11 +254,14 @@ authenticate {
 	#  Pluggable Authentication Modules.
 #	pam
 
-	# Uncomment it if you want to use ldap for authentication
+	#  Uncomment this section if you want to use ldap for
+	#  authentication.  The "Auth-Type := LDAP" configuration
+	#  at the end of the "authorize" section also has to be
+	#  uncommented.
 	#
-	# Note that this means "check plain-text password against
-	# the ldap database", which means that EAP won't work,
-	# as it does not supply a plain-text password.
+	#  Note that this means "check plain-text password against
+	#  the ldap database", which means that EAP won't work,
+	#  as it does not supply a plain-text password.
 	#
 	#  We do NOT recommend using this.  LDAP servers are databases.
 	#  They are NOT authentication servers.  FreeRADIUS is an
