@@ -1,3 +1,10 @@
+FreeRADIUS 3.2.3 Thu 16 Feb 2023 12:00:00 EDT urgency=low
+	Configuration changes
+
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.2.2 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 	Configuration changes
 	* The linelog module now has a "header" configuration item,
