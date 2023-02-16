@@ -95,6 +95,8 @@ typedef struct {
 
 	unsigned int		counter : 1;       		//!< integer attribute is actually an impulse / counter
 
+	unsigned int		name_only : 1;			//!< this attribute should always be referred to by name, not by number
+
 	/*
 	 *	@todo - if we want to clean these fields up, make
 	 *	"subtype" and "type_size" both 4-bit bitfields.  That

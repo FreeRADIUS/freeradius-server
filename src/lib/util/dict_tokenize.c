@@ -1031,7 +1031,12 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 		return -1;
 	}
 
+	/*
+	 *	Since there is no number, the attribute MUST be
+	 *	internal, and cannot be encoded as a number.
+	 */
 	memcpy(&flags, base_flags, sizeof(flags));
+	flags.name_only = true;
 
 	if (dict_process_type_field(ctx, argv[1], &type, &flags) < 0) return -1;
 
