@@ -1165,7 +1165,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	t->inst = inst;
 
 	if (fr_rest_slab_list_alloc(t, &t->slab, mctx->el, &inst->conn_config.reuse,
-				    rest_conn_alloc, NULL, inst, false) < 0) {
+				    rest_conn_alloc, NULL, inst, false, false) < 0) {
 		ERROR("Connection handle pool instantiation failed");
 		return -1;
 	}

@@ -82,6 +82,7 @@ typedef struct { \
 		fr_ ## _type ## _slab_reserve_t		reserve; \
 		void					*uctx; \
 		bool					release_reset; \
+		bool					reserve_mru; \
 	} fr_ ## _name ## _slab_list_t; \
 \
 	typedef struct { \
@@ -159,6 +160,7 @@ DIAG_OFF(unused-function) \
 	 * @param[in] reserve		Optional callback run on element reserving. \
 	 * @param[in] uctx		to pass to callbacks. \
 	 * @param[in] release_reset	Should elements be reset and children freed when the element is released.\
+	 * @param[in] reserve_mru	If true, the most recently used element will be returned when an element is reserved. \
 	 */ \
 	static inline CC_HINT(nonnull(2)) int fr_ ## _name ## _slab_list_alloc(TALLOC_CTX *ctx, \
 									       fr_ ## _name ## _slab_list_t **out, \
@@ -167,7 +169,8 @@ DIAG_OFF(unused-function) \
 									       fr_ ## _type ## _slab_alloc_t alloc, \
 									       fr_ ## _type ## _slab_reserve_t reserve, \
 									       void *uctx, \
-									       bool release_reset) \
+									       bool release_reset, \
+									       bool reserve_mru) \
 	{ \
 		MEM(*out = talloc_zero(ctx, fr_ ## _name ## _slab_list_t)); \
 		(*out)->el = el; \
@@ -178,6 +181,7 @@ DIAG_OFF(unused-function) \
 		(*out)->reserve = reserve; \
 		(*out)->uctx = uctx; \
 		(*out)->release_reset = release_reset; \
+		(*out)->reserve_mru = reserve_mru; \
 		fr_ ## _name ## _slab_init(&(*out)->reserved); \
 		fr_ ## _name ## _slab_init(&(*out)->avail); \
 		if (el) (void) fr_event_timer_in(*out, el, &(*out)->ev, config->interval, _ ## _name ## _slab_cleanup, *out); \
@@ -218,7 +222,8 @@ DIAG_OFF(unused-function) \
 		fr_ ## _name ## _slab_t		*slab; \
 		fr_ ## _name ## _slab_element_t	*element = NULL; \
 \
-		slab = fr_ ## _name ## _slab_head(&slab_list->avail); \
+		slab = slab_list->reserve_mru ? fr_ ## _name ## _slab_tail(&slab_list->avail) : \
+						fr_ ## _name ## _slab_head(&slab_list->avail); \
 		if (!slab && ((fr_ ## _name ## _slab_num_elements(&slab_list->reserved) * \
 			       slab_list->config.elements_per_slab) < slab_list->config.max_elements)) { \
 			fr_ ## _name ## _slab_element_t *new_element; \
@@ -264,7 +269,8 @@ DIAG_OFF(unused-function) \
 			slab_list->high_water_mark += fr_ ## _name ## _slab_element_num_elements(&slab->avail); \
 		} \
 		if (!slab && slab_list->config.at_max_fail) return NULL; \
-		if (slab) element = fr_ ## _name ## _slab_element_pop_head(&slab->avail); \
+		if (slab) element = slab_list->reserve_mru ? fr_ ## _name ## _slab_element_pop_tail(&slab->avail) : \
+							     fr_ ## _name ## _slab_element_pop_head(&slab->avail); \
 		if (element) { \
 			fr_ ## _name ## _slab_element_insert_tail(&slab->reserved, element); \
 			if (fr_ ## _name ## _slab_element_num_elements(&slab->avail) == 0) { \
