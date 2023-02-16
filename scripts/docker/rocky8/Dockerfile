@@ -93,7 +93,12 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
     && yum install -y dnf-utils \
     && yum config-manager --enable epel-testing
 
-RUN yum install -y /tmp/*.rpm
+ARG radiusd_uid=95
+ARG radiusd_gid=95
+
+RUN groupadd -g ${radiusd_gid} -r radiusd \
+    && useradd -u ${radiusd_uid} -g radiusd -r -M -d /home/radiusd -s /sbin/nologin radiusd \
+    && yum install -y /tmp/*.rpm
 
 COPY docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
