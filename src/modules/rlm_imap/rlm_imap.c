@@ -57,6 +57,7 @@ typedef struct {
 	char const			*uri;		//!< URI of imap server
 	fr_time_delta_t 		timeout;	//!< Timeout for connection and server response
 	fr_curl_tls_t			tls;
+	fr_curl_conn_config_t		conn_config;	//!< Re-usable CURL handle config
 } rlm_imap_t;
 
 typedef struct {
@@ -70,6 +71,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING, rlm_imap_t, uri) },
 	{ FR_CONF_OFFSET("timeout",FR_TYPE_TIME_DELTA, rlm_imap_t, timeout) },
 	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_imap_t, tls), .subcs = (void const *) fr_curl_tls_config },//!<loading the tls values
+	{ FR_CONF_OFFSET("connection", FR_TYPE_SUBSECTION, rlm_imap_t, conn_config), .subcs = (void const *) fr_curl_conn_config },
 	CONF_PARSER_TERMINATOR
 };
 
