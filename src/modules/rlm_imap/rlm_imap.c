@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/util/slab.h>
 
 static fr_dict_t 	const 		*dict_radius; /*dictionary for radius protocol*/
 
@@ -60,7 +61,11 @@ typedef struct {
 	fr_curl_conn_config_t		conn_config;	//!< Re-usable CURL handle config
 } rlm_imap_t;
 
+FR_SLAB_TYPES(imap, fr_curl_io_request_t)
+FR_SLAB_FUNCS(imap, fr_curl_io_request_t)
+
 typedef struct {
+	fr_imap_slab_list_t		*slab;		//!< Slab list for connection handles.
 	fr_curl_handle_t    		*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch and coralling structure for imap requests.
 } rlm_imap_thread_t;
 
@@ -196,13 +201,49 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	return unlang_module_yield(request, mod_authenticate_resume, imap_io_module_signal, randle);
 }
 
+/** Clean up CURL handle on freeing
+ *
+ */
+static int _mod_conn_free(fr_curl_io_request_t *randle)
+{
+	curl_easy_cleanup(randle->candle);
+
+	return 0;
+}
+
+/** Callback to configure a CURL handle when it is allocated
+ *
+ */
+static int imap_conn_alloc(fr_curl_io_request_t *randle, void *uctx)
+{
+	rlm_imap_t const	*inst = talloc_get_type_abort(uctx, rlm_imap_t);
+
+	randle->candle = curl_easy_init();
+	if (unlikely(!randle->candle)) {
+	error:
+		fr_strerror_printf("Unable to initialise CURL handle");
+		return -1;
+	}
+
+	talloc_set_destructor(randle, _mod_conn_free);
+
+	return 0;
+}
+
 /*
  *	Initialize a new thread with a curl instance
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_imap_thread_t    		*t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
-	fr_curl_handle_t    		*mhandle;
+	rlm_imap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_imap_t);
+	rlm_imap_thread_t    	*t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
+	fr_curl_handle_t    	*mhandle;
+
+	if (fr_imap_slab_list_alloc(t, &t->slab, mctx->el, &inst->conn_config.reuse,
+				    imap_conn_alloc, NULL, inst, false, false) < 0) {
+		ERROR("Connection handle pool instantiation failed");
+		return -1;
+	}
 
 	mhandle = fr_curl_io_init(t, mctx->el, false);
 	if (!mhandle) return -1;
@@ -219,6 +260,7 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	rlm_imap_thread_t    		*t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
 
 	talloc_free(t->mhandle);
+	talloc_free(t->slab);
     	return 0;
 }
 
