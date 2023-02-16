@@ -231,6 +231,20 @@ while (@ARGV) {
         }
 
         #
+        #  Get DEFINE.
+        #
+        if (/^DEFINE\s+([-\w]+)\s+(\w+)(.*)/) {
+            my $name = $1;
+            my $tabs = tabs(40, $name);
+
+            my $type = $2;
+            my $stuff = $3;
+
+            push @output, "DEFINE\t$name$tabs\t$type$stuff\n";
+            next;
+        }
+
+        #
         #  Get MEMBER
         #
         if (/^MEMBER\s+([-\w]+)\s+(\w+)(.*)/) {
