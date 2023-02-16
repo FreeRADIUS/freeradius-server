@@ -1,7 +1,17 @@
-imap.authenticate
-if (reject) {
-    &control.Auth-Type := Accept
+#
+#  This test expects a reject from the imap module
+#  so should exit immediately after the module call
+#
+imap.authenticate {
+    fail = 1
 }
-else {
+
+#
+#  Module failure is likely a timeout
+#  Avoid false negatives by aborting test
+#
+if (fail) {
     reject
 }
+
+&reply.Packet-Type := "Access-Accept"

@@ -1,4 +1,15 @@
-imap_bad_tls.authenticate
+imap_bad_tls.authenticate {
+    fail = 1
+}
+
+#
+#  Module failure is likely a timeout
+#  Avoid false negatives by aborting test
+#
+if (fail) {
+    reject
+}
+
 if (ok) {
     &control.Auth-Type := Accept
 }

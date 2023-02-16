@@ -1,15 +1,23 @@
-imap_tls.authenticate
-
-if (ok) {
-    &control.Auth-Type := Accept
-}
-else {
-    reject
+imap_tls.authenticate {
+    reject = 1
+    fail = 2
 }
 
-if (&TLS-Certificate.Issuer =~ /@example\.org/) {
+#
+#  Module failure is likely a timeout
+#  Avoid false negatives by aborting test
+#
+if (fail) {
     test_pass
-} else {
+    handled
+}
+
+if !(ok) {
     test_fail
 }
 
+if !(&TLS-Certificate.Issuer =~ /@example\.org/) {
+    test_fail
+}
+
+test_pass

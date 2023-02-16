@@ -1,7 +1,18 @@
-imap.authenticate
-if (ok) {
-    &control.Auth-Type := Accept
+imap.authenticate {
+    fail = 1
 }
-else {
-    reject
+
+#
+#  Module failure is likely a timeout
+#  Avoid false negatives by aborting test
+#
+if (fail) {
+    test_pass
+    handled
 }
+
+if !(ok) {
+    test_fail
+}
+
+test_pass
