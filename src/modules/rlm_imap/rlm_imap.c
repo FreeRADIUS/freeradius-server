@@ -123,8 +123,15 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_r
 	}
 
 	if (randle->result != CURLE_OK) {
+		CURLcode result = randle->result;
 		fr_imap_slab_release(randle);
-		RETURN_MODULE_REJECT;
+		switch(result) {
+		case CURLE_PEER_FAILED_VERIFICATION:
+		case CURLE_LOGIN_DENIED:
+			RETURN_MODULE_REJECT;
+		default:
+			RETURN_MODULE_FAIL;
+		}
 	}
 
 	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
