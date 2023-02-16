@@ -156,6 +156,11 @@ log_path = ${LOGPATH}
 info_log_path = ${LOGINFOPATH} \
 " >> "${CONFPATH}"
 
+# Get rejects to respond quickly
+echo "
+auth_failure_delay = 0secs
+" >> "${CONFPATH}"
+
 # Add the Password File to the config
 echo  "
 passdb {
