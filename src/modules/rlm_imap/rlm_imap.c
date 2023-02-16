@@ -96,7 +96,7 @@ static void imap_io_module_signal(module_ctx_t const *mctx, request_t *request, 
 		/* Not much we can do */
 	}
 	t->mhandle->transfers--;
-	talloc_free(randle);
+	fr_imap_slab_release(randle);
 }
 
 /*
@@ -123,13 +123,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_r
 	}
 
 	if (randle->result != CURLE_OK) {
-		talloc_free(randle);
+		fr_imap_slab_release(randle);
 		RETURN_MODULE_REJECT;
 	}
 
 	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
 
-	talloc_free(randle);
+	fr_imap_slab_release(randle);
 	RETURN_MODULE_OK;
 }
 
@@ -153,12 +153,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	fr_pair_t const 	*password;
 	fr_curl_io_request_t    *randle;
 
-	randle = fr_curl_io_request_alloc(request);
-	if (!randle){
-	error:
-		RETURN_MODULE_FAIL;
-	}
-
 	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
 	password = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password);
 
@@ -175,6 +169,13 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	if (password->vp_length == 0) {
 		RDEBUG2("\"User-Password\" must not be empty");
 		RETURN_MODULE_INVALID;
+	}
+
+	randle = fr_imap_slab_reserve(t->slab);
+	if (!randle){
+	error:
+		if (randle) fr_imap_slab_release(randle);
+		RETURN_MODULE_FAIL;
 	}
 
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, username->vp_strvalue);
