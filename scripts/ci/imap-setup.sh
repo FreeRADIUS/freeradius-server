@@ -32,6 +32,9 @@ LOGINFOPATH="${LOGDIR}/dovecot-info.log"
 # Used for creating `imap-stop.sh`
 CIDIR="${BASEDIR}/scripts/ci"
 
+# When running on Docker, USER is not set
+USER=${USER:-root}
+
 #
 # Create all the necessary files
 #
@@ -54,7 +57,11 @@ touch "${LOGPATH}"
 touch "${LOGINFOPATH}" 
 
 # Get primary group name
-GROUP=$(id -gn)
+if [ -z "${USER}" ]; then
+       GROUP=$(id dovecot -gn)
+else
+       GROUP=$(id -gn)
+fi
 
 #
 # The Debian version of Dovecot cannot read password-protected private keys so
@@ -102,7 +109,7 @@ base_dir = ${RUNDIR}
 
 service imap-login {
 	process_min_avail = 16
-	user = ${USER} 
+	user = ${USER:-dovecot}
 	chroot =
 	inet_listener imap {
 		port = 1430
@@ -119,7 +126,7 @@ base_dir = ${TLSRUNDIR}
 
 service imap-login {
 	process_min_avail = 16
-	user = ${USER}
+	user = ${USER:-dovecot}
 	chroot =
 	inet_listener imap {
 		port = 1431
@@ -127,7 +134,7 @@ service imap-login {
 	inet_listener imaps {
 		port = 1432
 	}
-} 
+}
 # TLS specific configurations
 ssl = required
 ssl_cert = <${CERTDIR}/server.pem
@@ -175,16 +182,18 @@ mail_location = maildir:${MAILDIR} \
 
 # Set user for permissions
 echo "
-default_internal_user = ${USER}
+first_valid_uid=100
+first_valid_gid=100
+default_internal_user = ${USER:-dovecot}
 default_internal_group = ${GROUP}
-default_login_user = ${USER} \
+default_login_user = ${USER:-dovenull} \
 " >> "${CONFPATH}"
 
 #Configure the user mailbox privileges
 echo "
 userdb {
 	driver = static
-	args = uid=${USER} gid=${GROUP}
+	args = uid=${USER:-dovecot} gid=${GROUP}
 } \
 " >> "${CONFPATH}"
 
