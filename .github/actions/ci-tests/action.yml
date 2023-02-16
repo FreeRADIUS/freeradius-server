@@ -40,6 +40,16 @@ inputs:
     description: Redis server host
     default: 127.0.0.1
 
+  imap_test_server:
+    description: IMAP server host
+    default: 127.0.0.1
+  imap_test_server_port:
+    description: IMAP server IMAP port
+    default: 1430
+  imap_test_server_ssl_port:
+    description: IMAP server IMAPS port
+    default: 1431
+
   use_docker:
     desription: True if running in a Docker container
     default: false
@@ -160,9 +170,9 @@ runs:
         REDIS_TEST_SERVER: ${{ inputs.redis_test_server }}
         REDIS_IPPOOL_TEST_SERVER: ${{ inputs.redis_test_server }}
         CACHE_REDIS_TEST_SERVER: ${{ inputs.redis_test_server }}
-#       IMAP_TEST_SERVER: 127.0.0.1
-#       IMAP_TEST_SERVER_PORT: 1430
-#       IMAP_TEST_SERVER_SSL_PORT: 1431
+        IMAP_TEST_SERVER: ${{ inputs.imap_test_server }}
+        IMAP_TEST_SERVER_PORT: ${{ inputs.imap_test_server_port }}
+        IMAP_TEST_SERVER_SSL_PORT: ${{ inputs.imap_test_server_ssl_port }}
       run: |
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
 
@@ -218,9 +228,9 @@ runs:
         REDIS_TEST_SERVER: ${{ inputs.redis_test_server }}
         REDIS_IPPOOL_TEST_SERVER: ${{ inputs.redis_test_server }}
         CACHE_REDIS_TEST_SERVER: ${{ inputs.redis_test_server }}
-#        IMAP_TEST_SERVER: 127.0.0.1
-#        IMAP_TEST_SERVER_PORT: 1430
-#        IMAP_TEST_SERVER_SSL_PORT: 1431
+        IMAP_TEST_SERVER: ${{ inputs.imap_test_server }}
+        IMAP_TEST_SERVER_PORT: ${{ inputs.imap_test_server_port }}
+        IMAP_TEST_SERVER_SSL_PORT: ${{ inputs.imap_test_server_ssl_port }}
 
     # Restore ucf
     - name: Restore ucf
