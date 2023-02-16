@@ -146,7 +146,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_r
  */
 static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_imap_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_imap_t);
 	rlm_imap_thread_t       *t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
 
 	fr_pair_t const 	*username;
@@ -181,22 +180,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, username->vp_strvalue);
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PASSWORD, password->vp_strvalue);
 
-#if CURL_AT_LEAST_VERSION(7,45,0)
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "imap");
-#endif
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_URL, inst->uri);
-#if CURL_AT_LEAST_VERSION(7,85,0)
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS_STR, "imap,imaps");
-#else
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_IMAP | CURLPROTO_IMAPS);
-#endif
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
-
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_VERBOSE, 1L);
-
-	if (fr_curl_easy_tls_init(randle, &inst->tls) != 0) RETURN_MODULE_INVALID;
-
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
 	return unlang_module_yield(request, mod_authenticate_resume, imap_io_module_signal, randle);
@@ -227,6 +210,22 @@ static int imap_conn_alloc(fr_curl_io_request_t *randle, void *uctx)
 	}
 
 	talloc_set_destructor(randle, _mod_conn_free);
+
+#if CURL_AT_LEAST_VERSION(7,45,0)
+	FR_CURL_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "imap");
+#endif
+	FR_CURL_SET_OPTION(CURLOPT_URL, inst->uri);
+#if CURL_AT_LEAST_VERSION(7,85,0)
+	FR_CURL_SET_OPTION(CURLOPT_PROTOCOLS_STR, "imap,imaps");
+#else
+	FR_CURL_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_IMAP | CURLPROTO_IMAPS);
+#endif
+	FR_CURL_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
+	FR_CURL_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
+
+	if (DEBUG_ENABLED3) FR_CURL_SET_OPTION(CURLOPT_VERBOSE, 1L);
+
+	if (fr_curl_easy_tls_init(randle, &inst->tls) != 0) goto error;
 
 	return 0;
 }
