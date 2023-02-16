@@ -113,6 +113,7 @@ typedef struct { \
 	FR_DLIST_FUNCS(fr_ ## _name ## _slab, fr_ ## _name ## _slab_t, entry) \
 	FR_DLIST_FUNCS(fr_ ## _name ## _slab_element, fr_ ## _name ## _slab_element_t, entry) \
 \
+DIAG_OFF(unused-function) \
 	/** Timer event for freeing unused slabs \
 	 * \
 	 * Called periodically to clear up slab allocations. \
@@ -338,7 +339,8 @@ typedef struct { \
 	{ \
 		return fr_ ## _name ## _slab_num_elements(&slab_list->reserved) + \
 		       fr_ ## _name ## _slab_num_elements(&slab_list->avail); \
-	}
+	} \
+DIAG_ON(unused-function)
 
 #ifdef __cplusplus
 }
