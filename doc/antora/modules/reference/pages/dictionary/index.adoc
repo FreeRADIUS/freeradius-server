@@ -1,0 +1,152 @@
+= Dictionaries
+
+The `dictionary` files define names, numbers, and
+xref:type/index.adoc[data types] for use in the server.  In general,
+the dictionary files are defined by industry standard specifications,
+or by a vendor for their own equipment.  The dictionary files in the
+`share` directory _should not be edited_.  Editing those files will
+likely break the server.
+
+Local dictionary definitions should be placed in the
+`raddb/dictionary` file.
+
+== Concepts and Background
+
+The dictionaries are necessary because many networking protocols do
+not send humanly-readable names over the network.  Instead, the
+protocols send sequences of bytes to represent concepts, where each
+byte has a particular meaning.
+
+At the same time, it is useful for administrators to write policies
+based on names, and not on numbers.  No one wants to write a policy of
+the form `if concept 15 has value "foo", then do ...`.
+
+The dictionaries solve this problem by enabling the server to decode
+the magic numbers into humanly-readable names.  The administrator can
+then write policies of the form `if the User-Name has value "bob",
+then do...`.
+
+These policies are much simpler to create and understand.
+
+NOTE: The use of "json over HTTP" for almost everything is a few decades
+newer than RADIUS, DHCP, etc.  Perhaps one day everyone will move to
+that.  Until then, we are stuck with the dictionaries.
+
+The dictionaries also enable the server to decode protocols using
+xref:type/index.adoc[data types], and then present that decoded data
+to the administrator.  As with the other examples above, it would be
+very difficult write policies based on "raw hex" data: `if User-Name is 0x626f62 ...`.
+
+The dictionaries solve the data type problem by associating
+xref:type/index.adoc[data types] with a name and number.  That way the
+bytes `0x7f000001` can be presented to the administrator as an IPv4
+address of `127.0.0.1`.
+
+This association is two-way, protocols can get decoded to
+understandable names and data types, and those names and data can get
+encoded in protocols.
+
+=== Dictionaries are always local
+
+In almost all cases, the names defined in a dictionary have no meaning
+outside of the server.  The names are never sent "on the wire" between
+server and client.  Editing the dictionary names on one system will
+_not change_ the names used by another system.
+
+The names are also local to each implementation.  FreeRADIUS has
+chosen a set of names for itself, which are based on specifications
+and on vendor definitions.  In nearly all cases, these names are
+either the same as the external definition, or are very similar to the
+external definition.
+
+In general, the only reason for us to change the names is that the
+names conflict with another name.  It is not possible to have the same
+name mean two entirely different things.
+
+Vendors can submit new dictionaries to us via
+mailto:dictionary@freeradius.org[email], or via
+https://github.com/FreeRADIUS/freeradius-server/[GitHub].
+
+=== Names are Case-insensitive
+
+When names are printed, they are printed as the name given in the
+dictionaries.  When a name is looked up in the dictionaries, the
+lookup is done in a case-insensitive manner.
+
+=== Names are Hierarchical
+
+In earlier versions of FreeRADIUS, the names were global.  The global
+names for attributes caused issue with implementations, as noted in
+https://www.rfc-editor.org/rfc/rfc6929.html#section-2.7.1[RFC 6929
+Section 2.7.1].  This limitation caused the names to be long, and have
+"vendor prefixes", such as with `Cisco-AVPair`.
+
+The names in FreeRADIUS are now hierarchical.  In most cases, the old
+names are simply split into separate sub-names with a period (`.`).
+For example, the previously mentioned `Cisco-AVPair` now becomes
+`Cisco.AVPair.`, or `Vendor-Specific.Cisco.AVPair`.
+
+If there is still a need to use the old names, the
+xref:dictionary/alias.adoc[ALIAS] keyword can help.  See
+`raddb/dictionary` for additional documentation.
+
+== Files and Location
+
+The dictionaries are placed into a `share` directory, which is usually
+in a location such as `/usr/share/freeradius/`.  The definitions for
+each individual specification or vendor dictionary are placed in files
+with the appropriate name.  For example, `dictionary.rfc2865` or
+`dictionary.cisco`.
+
+We reiterate that these dictionaries should not be edited.  These
+dictionaries ship with the server, and any new installation (or
+upgrade) will over-write local changes.
+
+Local edits should be kept to the `raddb/dictionary` file, which will
+not be overwritten on an upgrade.
+
+== File Syntax
+
+The dictionary file format follows the standard RADIUS dictionary
+syntax.  In many respects, the format has had only minor changes since
+the original Livingston RADIUS server in 1993.
+
+The file format is simple, and line-oriented.  Blank lines are
+ignored.  Hash (`#`) characters are comments, and cause everything
+after the hash character to be ignored, up to the end of the line.
+
+Every non-blank line starts with a keyword, as given in the table
+below.  In most cases, the main keywords of interest are
+xref:dictionary/attribute.adoc[ATTRIBUTE] and xref:dictionary/value.adoc[VALUE].
+
+.Dictionary Definition Keywords
+[options="header"]
+[cols="30%,70%"]
+|=====
+| Keyword | Description
+| xref:dictionary/alias.adoc[ALIAS]          | Define a name which references an `ATTRIBUTE`
+| xref:dictionary/attribute.adoc[ATTRIBUTE]  | Define a name, number, and data type mapping
+| xref:dictionary/define.adoc[DEFINE]        | Define a name and data type mapping
+| xref:dictionary/enum.adoc[ENUM]            | Define a named enumeration of values for use with multiple `ATTRIBUTE`s
+| xref:dictionary/flags.adoc[FLAGS]          | Set flags for subsequent definitions
+| xref:dictionary/include.adoc[$INCLUDE]     | Include another dictionary file
+| xref:dictionary/member.adoc[MEMBER]        | Define a member of a `STRUCT`
+| xref:dictionary/protocol.adoc[PROTOCOL]    | Define a protocol like `RADIUS` or `DHCPv4`
+| xref:dictionary/struct.adoc[STRUCT]        | Define a structure which can contain `MEMBER`s
+| xref:dictionary/value.adoc[VALUE]          | Define a name for a particular value of an `ATTRIBUTE`
+| xref:dictionary/vendor.adoc[VENDOR]        | Define a name and number for a vendor
+|=====
+
+The following keywords still XXX
+
+.Dictionary Nesting Keywords
+[options="header"]
+[cols="30%,70%"]
+|=====
+| xref:dictionary/begin-protocol.adoc[BEGIN-PROTOCOL]  | Begin defining a protocol dictionary
+| xref:dictionary/end-protocol.adoc[END-PROTOCOL]      | End a protocol dictionary
+| xref:dictionary/begin-tlv.adoc[BEGIN-TLV]            | Begin defining children of a `tlv` data type
+| xref:dictionary/end-tlv.adoc[END-TLV]                | End defining children of a `tlv` data type
+| xref:dictionary/begin-vendor.adoc[BEGIN-VENDOR]      | Begin defining vendor-specific attributes
+| xref:dictionary/end-vendor.adoc[END-VENDOR]          | End defining vendor-specific attributes
+|=====

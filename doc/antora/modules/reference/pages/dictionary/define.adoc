@@ -1,0 +1,46 @@
+= The DEFINE keyword
+
+.Syntax
+----
+DEFINE <name> <type> [<flags>]
+----
+
+.Description
+
+The `DEFINE` keyword defines a name and data type mapping for
+attributes which do not have numbers associated with them.  These
+attributes are generally not sent in any protocol, or the underlying
+protocol is string-based, and not binary-packed data.
+
+<name>:: The name of the attribute.  The name can contain alphanumeric
+characters, `-`, and `_`.  The name should be short and descriptive.
++
+The name of this `DEFINE` is defined only within the context of its
+parent attribute.
+
+<type>:: A xref:type/index.adoc[data type].
+
+<flags>:: The flag field is optional, and is usually protocol-specific.  See
+the xref:dictionary/flags.adoc[FLAGS] page for definitions of common
+flags.
++
+Please see the protocol dictionaries for examples of these flags.
+Only the flags which are used in a protocol dictionary are valid,
+and those flags are only valid for that protocol dictionary.
+
+Common flags and meanings
+[options="header"]
+[cols="30%,70%"]
+|=====
+| Name         | Description
+| `clone=...`  | For `tlv` types, clone (or copy) child definitions from another `tlv` type
+|=====
+
+.Examples
+----
+DEFINE Foo string
+DEFINE Bar ipv4addr
+----
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

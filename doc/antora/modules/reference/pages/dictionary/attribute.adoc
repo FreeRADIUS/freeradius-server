@@ -1,0 +1,84 @@
+= The ATTRIBUTE keyword
+
+.Syntax
+----
+ATTRIBUTE <name> <number> <type> [<flags>]
+----
+
+.Description
+The `ATTRIBUTE` keyword defines a name, number, and data type mapping.
+
+<name>:: The name of the attribute.  The name can contain alphanumeric
+characters, `-`, and `_`.  The name should be short and descriptive.
++
+As the names are hierarchical, the name is scoped to its parent.  So
+the name `Counter` can mean different things, depending on its
+context.
+
+<number>:: The number of the attribute.  Numbers can be specified as
+decimal (`19`), or as hex (`0xffee`).
++
+Numbers can also be specified as object identifiers (OIDs), `26.1.9`,
+or as partial OIDs (`.14`).
++
+There are a number of complex rules and interpretations of OID values
+which are difficult to clearly document using simple examples.  This
+complex behavior is only needed for rare situations.  In short, if you
+are creating complex protocol dictionaries, you need to understand
+those protocols before creating the dictionaries.  On the other hand,
+if you are creating simple protocol dictionaries, there is no need to
+understand any complex rules around the use of OIDs.
+
+<type>:: A xref:type/index.adoc[data type]
++
+A few data types can be marked up as being fixed size, by adding an
+"array-style" suffix, such as with `octets[3]`.  See below for details.
+
+<flags>:: The flag field is optional, and is usually protocol-specific.  See
+the xref:dictionary/flags.adoc[FLAGS] page for definitions of common
+flags.
++
+Please see the protocol dictionaries for examples of these flags.
+Only the flags which are used in a protocol dictionary are valid,
+and those flags are only valid for that protocol dictionary.
++
+The old-style RADIUS syntax of specifying a vendor name in the `flags`
+field is not supported.
+
+Common flags and meanings
+[options="header"]
+[cols="30%,70%"]
+|=====
+| Name         | Description
+| `array`      | For fixed-size types, declare that the contents of the packet can have an array of this value.
+| `clone=...`  | For `tlv` types, clone (or copy) child definitions from another `tlv` type
+| `internal`   | This attribute is internal to the server, and will never be sent "on the wire"
+| `ref=...`    | For `group` types, specify which attributes are allowed to be in this `group`
+|=====
+
+
+.Examples
+----
+ATTRIBUTE Foo 1 string[3]
+ATTRIBUTE Bar 2 octets
+ATTRIBUTE baz 3 ipv4addr
+----
+
+== Fixed Size Data types
+
+The following data types can be marked up as having fixed size, by
+using an array suffix, e.g. `octets[14]`.
+
+Fixed Size types and meanings
+[options="header"]
+[cols="30%,70%"]
+|=====
+| Type         | Description
+| `octets[n]`  | Declare that this attribute uses `n` bytes of `octets` data
+| `string[n]`  | Declare that this attribute uses `n` bytes of `string` data
+| `struct[n]`  | Declare that this structure uses `n` bytes for itself, including all child xref:dictionary/member.adoc[MEMBER]s
+|=====
+
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

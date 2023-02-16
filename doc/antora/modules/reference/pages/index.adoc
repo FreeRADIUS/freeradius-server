@@ -2,6 +2,7 @@
 
 We have a lot of stuff
 
+* xref:dictionary/index.adoc[Dictionary] where attribute names and data types are defined
 * xref:type/index.adoc[Data Types] in the server
 * xref:unlang/index.adoc[Unlang] syntax
 * xref:xlat/index.adoc[Dynamic expansions] i.e. "xlat"s.

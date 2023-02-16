@@ -1,0 +1,28 @@
+= The $INCLUDE keyword
+
+.Syntax
+----
+$INCLUDE <filename>
+$INCLUDE- <filename>
+----
+
+.Description
+The `$INCLUDE` keyword includes another dictionary from `<filename>` into the dictionary.  The file must exist, and be readable by the server.
+
+The `$INCLUDE-` acts above, except it does nothing if the file does not exist.  If the file exists and is not readable by the server, an error is produced.
+
+<filename>:: The file name on the file system.
++
+Relative filenames such as `dictionary.foo` are loaded from the same directory as the current dictionary file.
++
+Absolute filenames such as `/usr/share/freeradius/dictionary.foo` are loaded starting at the root of the file system.
+
+NOTE: Attribute definitions cannot span multiple files.  This include `BEGIN-` and `END-` blocks, which must all be contained in the same file.
+
+.Example
+----
+$INCLUDE dictionary.foo
+----
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
