@@ -1377,6 +1377,11 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 		return -1;
 	}
 
+	if (da->flags.is_alias) {
+		fr_strerror_printf("Enumeration names cannot be added for ALIAS '%s'", fr_type_to_str(da->name));
+		return -1;
+	}
+
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 	if (!ext) {
 		fr_strerror_printf("VALUE cannot be defined for %s", da->name);
