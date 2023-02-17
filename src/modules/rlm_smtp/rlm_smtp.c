@@ -900,21 +900,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 	/* Set the destructor function to free all of the curl_slist elements */
 	talloc_set_destructor(mail_ctx, _free_mail_ctx);
 
-#if CURL_AT_LEAST_VERSION(7,45,0)
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "smtp");
-#endif
-	/* Set the generic curl request conditions */
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_URL, inst->uri);
-#if CURL_AT_LEAST_VERSION(7,85,0)
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS_STR, "smtp,smtps");
-#else
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_SMTP | CURLPROTO_SMTPS);
-#endif
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_UPLOAD, 1L);
-
-	if(RDEBUG_ENABLED3) FR_CURL_REQUEST_SET_OPTION(CURLOPT_VERBOSE, 1L);
 
 	/* Set the username and password if they have been provided */
 	if (mod_env->username.vb_strvalue) {
@@ -971,9 +957,6 @@ skip_auth:
 	/* Add the mime endoced elements to the curl request */
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MIMEPOST, mail_ctx->mime);
 
-	/* Initialize tls if it has been set up */
-	if (fr_curl_easy_tls_init(randle, &inst->tls) != 0) RETURN_MODULE_INVALID;
-
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
 	return unlang_module_yield(request, mod_authorize_result, smtp_io_module_signal, mail_ctx);
@@ -1027,7 +1010,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_r
  */
 static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_smtp_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_smtp_t);
 	rlm_smtp_thread_t       *t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 	fr_pair_t const 	*username, *password;
 	fr_curl_io_request_t    *randle;
@@ -1053,18 +1035,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 		RDEBUG2("Attribute \"User-Password\" is required for authentication");
 		goto error;
 	}
-
-#if CURL_AT_LEAST_VERSION(7,45,0)
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "smtp");
-#endif
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_URL, inst->uri);
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_SMTP | CURLPROTO_SMTPS);
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
-
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_VERBOSE, 1L);
-
-	if (fr_curl_easy_tls_init(randle, &inst->tls) != 0) RETURN_MODULE_INVALID;
 
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
@@ -1188,8 +1158,32 @@ static int smtp_persist_conn_alloc(fr_curl_io_request_t *randle, UNUSED void *uc
 	return 0;
 }
 
+static inline int smtp_conn_common_init(fr_curl_io_request_t *randle, rlm_smtp_t const *inst)
+{
+#if CURL_AT_LEAST_VERSION(7,45,0)
+	FR_CURL_SET_OPTION(CURLOPT_DEFAULT_PROTOCOL, "smtp");
+#endif
+	FR_CURL_SET_OPTION(CURLOPT_URL, inst->uri);
+#if CURL_AT_LEAST_VERSION(7,85,0)
+	FR_CURL_SET_OPTION(CURLOPT_PROTOCOLS_STR, "smtp,smtps");
+#else
+	FR_CURL_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_SMTP | CURLPROTO_SMTPS);
+#endif
+	FR_CURL_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
+	FR_CURL_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
+
+	if (DEBUG_ENABLED3) FR_CURL_SET_OPTION(CURLOPT_VERBOSE, 1L);
+
+	if (fr_curl_easy_tls_init(randle, &inst->tls) != 0) goto error;
+
+	return 0;
+error:
+	return -1;
+}
+
 static int smtp_onetime_conn_init(fr_curl_io_request_t *randle, void *uctx)
 {
+	rlm_smtp_t const	*inst = talloc_get_type_abort(uctx, rlm_smtp_t);
 	fr_mail_ctx_t		*mail_ctx = talloc_get_type_abort(randle->uctx, fr_mail_ctx_t);
 
 	randle->candle = curl_easy_init();
@@ -1200,16 +1194,18 @@ static int smtp_onetime_conn_init(fr_curl_io_request_t *randle, void *uctx)
 
 	memset(mail_ctx, 0, sizeof(fr_mail_ctx_t));
 
-	return 0;
+	return smtp_conn_common_init(randle, inst);
 }
+
 
 static int smtp_persist_conn_init(fr_curl_io_request_t *randle, void *uctx)
 {
+	rlm_smtp_t const	*inst = talloc_get_type_abort(uctx, rlm_smtp_t);
 	fr_mail_ctx_t		*mail_ctx = talloc_get_type_abort(randle->uctx, fr_mail_ctx_t);
 
 	memset(mail_ctx, 0, sizeof(fr_mail_ctx_t));
 
-	return 0;
+	return smtp_conn_common_init(randle, inst);
 }
 
 /*
