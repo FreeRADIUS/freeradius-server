@@ -1738,6 +1738,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 	fr_dict_t	*dict;
 	fr_dict_attr_t	*mutable;
 	bool		require_dl = false;
+	bool		string_based = false;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_const("Missing arguments after PROTOCOL.  Expected PROTOCOL <num> <name>");
@@ -1775,6 +1776,12 @@ static int dict_read_process_protocol(char **argv, int argc)
 		 */
 		if (strcmp(argv[2], "verify=lib") == 0) {
 			require_dl = true;
+			goto post_option;
+		}
+
+		if (strcmp(argv[2], "format=string") == 0) {
+			type_size = 4;
+			string_based = true;
 			goto post_option;
 		}
 
@@ -1852,6 +1859,7 @@ post_option:
 	if (dict_protocol_add(dict) < 0) goto error;
 
 	mutable = UNCONST(fr_dict_attr_t *, dict->root);
+	dict->string_based = string_based;
 	if (!type_size) {
 		mutable->flags.type_size = dict->default_type_size;
 		mutable->flags.length = dict->default_type_length;
@@ -2534,12 +2542,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 
 				vsa_da = da;
 
-			} else if (!ctx->dict->vsa_parent) {
-				fr_strerror_printf_push("BEGIN-VENDOR is forbidden for protocol %s - it has no ATTRIBUTE of type 'vsa'",
-							ctx->dict->root->name);
-				goto error;
-
-			} else {
+			} else if (ctx->dict->vsa_parent) {
 				/*
 				 *	Check that the protocol-specific VSA parent exists.
 				 */
@@ -2549,6 +2552,15 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 								vendor->name);
 					goto error;
 				}
+
+			} else if (ctx->dict->string_based) {
+				vsa_da = ctx->dict->root;
+
+			} else {
+				fr_strerror_printf_push("BEGIN-VENDOR is forbidden for protocol %s - it has no ATTRIBUTE of type 'vsa'",
+							ctx->dict->root->name);
+				goto error;
+
 			}
 
 			/*
@@ -2596,6 +2608,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				}
 
 				vendor_da = new;
+			} else {
+				fr_assert(vendor_da->type == FR_TYPE_VENDOR);
 			}
 
 			if (dict_gctx_push(ctx, vendor_da) < 0) goto error;
