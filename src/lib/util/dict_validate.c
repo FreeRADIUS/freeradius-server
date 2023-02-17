@@ -654,8 +654,12 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	is.
 	 */
 	if (*attr == -1) {
-
-		flags->internal = 1;
+		/*
+		 *	If we don't care about the number, then this attribute is almost always
+		 *	an internal one.  Unless it's a "name only" attribute for string-based
+		 *	protocols.
+		 */
+		flags->internal |= !flags->name_only;
 
 		v = fr_dict_attr_by_name(NULL, fr_dict_root(dict), name);
 		if (v) {
