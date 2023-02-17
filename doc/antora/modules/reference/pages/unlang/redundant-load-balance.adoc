@@ -45,7 +45,7 @@ redundant-load-balance &User-Name {
 }
 ----
 
-=== Redundant-load-balance Sections as Modules
+== Redundant-load-balance Sections as Modules
 
 It can be useful to use the same `redundant-load-balance` section in multiple
 places.  Instead of copying the same text multiple times, a
@@ -71,7 +71,7 @@ into the `instantiate` section of `radiusd.conf.  This configuration
 is no longer used, and the `sql123` definition can just be placed into
 a module definition in the `mods-enabled/` directory.
 
-==== Redundant-Load-Balance Expansions
+== Redundant-Load-Balance Expansions
 
 When the `sql123` module is defined as above, it can also be used as
 in a xref:xlat/index.adoc[dynamic expansion]:

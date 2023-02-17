@@ -38,7 +38,7 @@ redundant {
 }
 ----
 
-=== Redundant Sections as Modules
+== Redundant Sections as Modules
 
 It can be useful to use the same `redundant` section in multiple
 places.  Instead of copying the same text multiple times, a
@@ -64,7 +64,7 @@ into the `instantiate` section of `radiusd.conf.  This configuration
 is no longer used, and the `sql123` definition can just be placed into
 a module definition in the `mods-enabled/` directory.
 
-==== Redundant Expansions
+== Redundant Expansions
 
 When the `sql123` module is defined as above, it can also be used as
 in a xref:xlat/index.adoc[dynamic expansion]:
