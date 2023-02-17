@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/util/slab.h>
 #include <freeradius-devel/util/talloc.h>
 
 static fr_dict_t const 	*dict_radius; /*dictionary for radius protocol*/
@@ -89,8 +90,24 @@ typedef struct {
 	fr_curl_conn_config_t	conn_config;		//!< Re-usable CURL handle config
 } rlm_smtp_t;
 
+/*
+ *	Two types of SMTP connections are used:
+ *	 - persistent - where the connection can be left established as the same
+ *			authentication is used for all mails sent.
+ *	 - onetime    - where the connection is torn down after each use, since
+ *			different authentication is needed each time.
+ *
+ * 	Memory for the handles for each is stored in slabs.
+ */
+
+FR_SLAB_TYPES(smtp, fr_curl_io_request_t)
+FR_SLAB_FUNCS(smtp, fr_curl_io_request_t)
+
 typedef struct {
-	fr_curl_handle_t    	*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch and coralling structure for smtp requests
+	fr_curl_handle_t  	*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch and
+						///< coralling structure for smtp requests
+	fr_smtp_slab_list_t	*slab_persist;	//!< Slab list for persistent connections.
+	fr_smtp_slab_list_t	*slab_onetime;	//!< Slab list for onetime use connections.
 } rlm_smtp_thread_t;
 
 /*
@@ -1085,6 +1102,95 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 	}
 
+	inst->conn_config.reuse.num_children = 1;
+	inst->conn_config.reuse.child_pool_size = sizeof(fr_mail_ctx_t);
+
+	return 0;
+}
+
+#define SMTP_COMMON_CLEANUP \
+	fr_mail_ctx_t	*mail_ctx = talloc_get_type_abort(randle->uctx, fr_mail_ctx_t); \
+	if (mail_ctx->mime) curl_mime_free(mail_ctx->mime); \
+	if (mail_ctx->header) curl_slist_free_all(mail_ctx->header); \
+	if (mail_ctx->recipients) curl_slist_free_all(mail_ctx->recipients)
+
+static int smtp_onetime_request_cleanup(fr_curl_io_request_t *randle, UNUSED void *uctx)
+{
+	SMTP_COMMON_CLEANUP;
+
+	if (randle->candle) curl_easy_cleanup(randle->candle);
+
+	return 0;
+}
+
+static int smtp_persist_request_cleanup(fr_curl_io_request_t *randle, UNUSED void *uctx)
+{
+	SMTP_COMMON_CLEANUP;
+
+	if (randle->candle) curl_easy_reset(randle->candle);
+
+	return 0;
+}
+
+static int smtp_onetime_conn_alloc(fr_curl_io_request_t *randle, UNUSED void *uctx)
+{
+	fr_mail_ctx_t		*mail_ctx = NULL;
+
+	MEM(mail_ctx = talloc_zero(randle, fr_mail_ctx_t));
+	randle->uctx = mail_ctx;
+
+	fr_smtp_slab_element_set_destructor(randle, smtp_onetime_request_cleanup, NULL);
+
+	return 0;
+}
+
+static int smtp_mail_ctx_free(fr_mail_ctx_t *mail_ctx)
+{
+	if (mail_ctx->randle && mail_ctx->randle->candle) curl_easy_cleanup(mail_ctx->randle->candle);
+
+	return 0;
+}
+
+static int smtp_persist_conn_alloc(fr_curl_io_request_t *randle, UNUSED void *uctx)
+{
+	fr_mail_ctx_t		*mail_ctx = NULL;
+
+	MEM(mail_ctx = talloc_zero(randle, fr_mail_ctx_t));
+	mail_ctx->randle = randle;
+	randle->uctx = mail_ctx;
+	randle->candle = curl_easy_init();
+	if (unlikely(!randle->candle)) {
+		fr_strerror_printf("Unable to initialise CURL handle");
+		return -1;
+	}
+	talloc_set_destructor(mail_ctx, smtp_mail_ctx_free);
+
+	fr_smtp_slab_element_set_destructor(randle, smtp_persist_request_cleanup, NULL);
+
+	return 0;
+}
+
+static int smtp_onetime_conn_init(fr_curl_io_request_t *randle, void *uctx)
+{
+	fr_mail_ctx_t		*mail_ctx = talloc_get_type_abort(randle->uctx, fr_mail_ctx_t);
+
+	randle->candle = curl_easy_init();
+	if (unlikely(!randle->candle)) {
+		fr_strerror_printf("Unable to initialise CURL handle");
+		return -1;
+	}
+
+	memset(mail_ctx, 0, sizeof(fr_mail_ctx_t));
+
+	return 0;
+}
+
+static int smtp_persist_conn_init(fr_curl_io_request_t *randle, void *uctx)
+{
+	fr_mail_ctx_t		*mail_ctx = talloc_get_type_abort(randle->uctx, fr_mail_ctx_t);
+
+	memset(mail_ctx, 0, sizeof(fr_mail_ctx_t));
+
 	return 0;
 }
 
@@ -1093,8 +1199,20 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_smtp_thread_t    		*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
-	fr_curl_handle_t    		*mhandle;
+	rlm_smtp_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_smtp_t);
+	rlm_smtp_thread_t    	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
+	fr_curl_handle_t    	*mhandle;
+
+	if (fr_smtp_slab_list_alloc(t, &t->slab_onetime, mctx->el, &inst->conn_config.reuse,
+				    smtp_onetime_conn_alloc, smtp_onetime_conn_init, inst, false, false) < 0) {
+		ERROR("Connection handle pool instantiation failed");
+		return -1;
+	}
+	if (fr_smtp_slab_list_alloc(t, &t->slab_persist, mctx->el, &inst->conn_config.reuse,
+				    smtp_persist_conn_alloc, smtp_persist_conn_init, inst, false, true) < 0) {
+		ERROR("Connection handle pool instantiation failed");
+		return -1;
+	}
 
 	mhandle = fr_curl_io_init(t, mctx->el, false);
 	if (!mhandle) return -1;
@@ -1111,6 +1229,8 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	rlm_smtp_thread_t    		*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 
 	talloc_free(t->mhandle);
+	talloc_free(t->slab_persist);
+	talloc_free(t->slab_onetime);
 	return 0;
 }
 
