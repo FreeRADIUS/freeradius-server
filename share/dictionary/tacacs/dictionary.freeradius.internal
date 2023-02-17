@@ -19,7 +19,7 @@ FLAGS	internal
 #  Due to TACACS+ insanities, the unlang packet types are a combination
 #  of the TACACS+ type field, and of the status field.
 #
-ATTRIBUTE	Packet-Type				65536	uint32
+DEFINE	Packet-Type				uint32
 VALUE	Packet-Type			Authentication-Start		1
 VALUE	Packet-Type			Authentication-Pass		2
 VALUE	Packet-Type			Authentication-Fail		3
@@ -42,4 +42,4 @@ VALUE	Packet-Type			Accounting-Request		16
 VALUE	Packet-Type			Accounting-Success		17
 VALUE	Packet-Type			Accounting-Error		18
 
-ATTRIBUTE	State					65537	octets
+DEFINE	State					octets

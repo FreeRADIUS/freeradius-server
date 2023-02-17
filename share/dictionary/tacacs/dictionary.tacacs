@@ -9,7 +9,7 @@
 #
 # TACACS+ Op codes
 #
-ATTRIBUTE	Packet					1	struct
+DEFINE	Packet						struct
 MEMBER		Version-Major				bit[4]
 VALUE	Version-Major			Plus			12
 
@@ -32,7 +32,7 @@ MEMBER		Length					uint32
 #
 # TACACS+ Attributes
 #
-ATTRIBUTE	Packet-Body-Type			2	byte
+DEFINE	Packet-Body-Type			byte
 VALUE	Packet-Body-Type		Unknown			0
 VALUE	Packet-Body-Type		Start			1
 VALUE	Packet-Body-Type		Reply			2
@@ -40,14 +40,14 @@ VALUE	Packet-Body-Type		Continue		3
 VALUE	Packet-Body-Type		Request			4
 VALUE	Packet-Body-Type		Response		5
 
-ATTRIBUTE	Authentication-Flags			3	byte
+DEFINE	Authentication-Flags			byte
 VALUE	Authentication-Flags		No-Echo			1
 
-ATTRIBUTE	Authentication-Continue-Flags		4	byte
+DEFINE	Authentication-Continue-Flags		byte
 VALUE	Authentication-Continue-Flags	Unset			0
 VALUE	Authentication-Continue-Flags	Abort			1
 
-ATTRIBUTE	Authentication-Method			6	byte
+DEFINE	Authentication-Method			byte
 VALUE	Authentication-Method		Not-Set			0
 VALUE	Authentication-Method		None			1
 VALUE	Authentication-Method		KRB5			2
@@ -60,7 +60,7 @@ VALUE	Authentication-Method		RADIUS			16
 VALUE	Authentication-Method		KRB4			17
 VALUE	Authentication-Method		RCMD			32
 
-ATTRIBUTE	Authentication-Status			7	byte
+DEFINE	Authentication-Status			byte
 VALUE	Authentication-Status		Pass			1
 VALUE	Authentication-Status		Fail			2
 VALUE	Authentication-Status		Getdata		3
@@ -70,7 +70,7 @@ VALUE	Authentication-Status		Restart			6
 VALUE	Authentication-Status		Error			7
 VALUE	Authentication-Status		Follow			33
 
-ATTRIBUTE	Authentication-Service			8	byte
+DEFINE	Authentication-Service			byte
 VALUE	Authentication-Service		None			0
 VALUE	Authentication-Service		LOGIN			1
 VALUE	Authentication-Service		ENABLE			2
@@ -81,7 +81,7 @@ VALUE	Authentication-Service		X25			7
 VALUE	Authentication-Service		NASI			8
 VALUE	Authentication-Service		FWPROXY			9
 
-ATTRIBUTE	Authentication-Type			9	byte
+DEFINE	Authentication-Type			byte
 VALUE	Authentication-Type		ASCII			1
 VALUE	Authentication-Type		PAP			2
 VALUE	Authentication-Type		CHAP			3
@@ -89,44 +89,44 @@ VALUE	Authentication-Type		ARAP			4	# deprecated
 VALUE	Authentication-Type		MSCHAP			5
 VALUE	Authentication-Type		MSCHAPv2		6
 
-ATTRIBUTE	User-Name				10	string
-ATTRIBUTE	Client-Port				11	string
-ATTRIBUTE	Remote-Address				12	string
-ATTRIBUTE	Data					13	octets
+DEFINE	User-Name				string
+DEFINE	Client-Port				string
+DEFINE	Remote-Address				string
+DEFINE	Data					octets
 
-ATTRIBUTE	Server-Message				14	string
-ATTRIBUTE	User-Message				15	string
+DEFINE	Server-Message				string
+DEFINE	User-Message				string
 
-ATTRIBUTE	Action					16	byte
+DEFINE	Action					byte
 VALUE	Action				LOGIN			1
 VALUE	Action				CHPASS			2
 VALUE	Action				SENDAUTH		3
 
-ATTRIBUTE	Privilege-Level				17	byte
+DEFINE	Privilege-Level				byte
 VALUE	Privilege-Level			Minimum			0
 VALUE	Privilege-Level			User			1
 VALUE	Privilege-Level			Root			15
 VALUE	Privilege-Level			Max			  15
 
-ATTRIBUTE	Authorization-Status			18	byte
+DEFINE	Authorization-Status			byte
 VALUE	Authorization-Status		Pass-Add		1
 VALUE	Authorization-Status		Pass-Repl		2
 VALUE	Authorization-Status		Fail			16
 VALUE	Authorization-Status		Error			17
 VALUE	Authorization-Status		Follow			33
 
-ATTRIBUTE	Accounting-Status			19	byte
+DEFINE	Accounting-Status			byte
 VALUE	Accounting-Status		Success			1
 VALUE	Accounting-Status		Error			2
 VALUE	Accounting-Status		Follow			33
 
-ATTRIBUTE	Accounting-Flags			20	byte
+DEFINE	Accounting-Flags			byte
 VALUE	Accounting-Flags		Start			2
 VALUE	Accounting-Flags		Stop			4
 VALUE	Accounting-Flags		Watchdog		8
 VALUE	Accounting-Flags		Watchdog-Update		10
 
-ATTRIBUTE	Argument-List				21	string
+DEFINE	Argument-List				string
 
 #
 #  These attributes have similar names to RADIUS attributes, and similar content.
@@ -134,9 +134,9 @@ ATTRIBUTE	Argument-List				21	string
 #  However, they need to be explicitly copied to a RADIUS equivalent in order
 #  for them to work in RADIUS.
 #
-ATTRIBUTE	User-Password				22	string
-ATTRIBUTE	CHAP-Password				23	octets[17]
-ATTRIBUTE	CHAP-Challenge				24	octets
-ATTRIBUTE	MS-CHAP-Response			25	octets[50]
-ATTRIBUTE	MS-CHAP2-Response			26	octets[50]
-ATTRIBUTE	MS-CHAP-Challenge			27	octets
+DEFINE	User-Password				string
+DEFINE	CHAP-Password				octets[17]
+DEFINE	CHAP-Challenge				octets
+DEFINE	MS-CHAP-Response			octets[50]
+DEFINE	MS-CHAP2-Response			octets[50]
+DEFINE	MS-CHAP-Challenge			octets
