@@ -798,18 +798,23 @@ static void smtp_io_module_signal(module_ctx_t const *mctx, request_t *request, 
 	fr_smtp_slab_release(randle);
 }
 
-/*
- * 	Check if the email was successfully sent, and if the certificate information was extracted
+/** 	Callback to process response of SMTP server
+ *
+ * 	It checks if the response was CURLE_OK
+ * 	If it was, it tries to extract the certificate attributes
+ * 	If the response was not OK, we REJECT the request
+ * 	When responding to requests initiated by mod_authenticate this is simply
+ *	a check on the username and password.
+ *	When responding to requests initiated by mod_mail this indicates
+ *	the mail has been queued.
  */
-static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t smtp_io_module_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	fr_mail_ctx_t 			*mail_ctx = talloc_get_type_abort(mctx->rctx, fr_mail_ctx_t);
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_smtp_t);
-	fr_curl_io_request_t     	*randle = mail_ctx->randle;
-	fr_curl_tls_t const		*tls;
+	fr_curl_io_request_t     	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
+	fr_curl_tls_t const		*tls = &inst->tls;
 	long 				curl_out;
 	long				curl_out_valid;
-	tls = &inst->tls;
 
 	curl_out_valid = curl_easy_getinfo(randle->candle, CURLINFO_SSL_VERIFYRESULT, &curl_out);
 	if (curl_out_valid == CURLE_OK){
@@ -819,8 +824,15 @@ static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t 
 	}
 
 	if (randle->result != CURLE_OK) {
+		CURLcode result = randle->result;
 		fr_smtp_slab_release(randle);
-		RETURN_MODULE_REJECT;
+		switch (result) {
+		case CURLE_PEER_FAILED_VERIFICATION:
+		case CURLE_LOGIN_DENIED:
+			RETURN_MODULE_REJECT;
+		default:
+			RETURN_MODULE_FAIL;
+		}
 	}
 
 	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
@@ -841,7 +853,7 @@ static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t 
  *		File attachments
  *
  *	Then it queues the request and yeilds until a response is given
- *	When it responds, mod_authorize_resume is called.
+ *	When it responds, smtp_io_module_resume is called.
  */
 static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
@@ -959,42 +971,7 @@ skip_auth:
 
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
-	return unlang_module_yield(request, mod_authorize_result, smtp_io_module_signal, mail_ctx);
-}
-
-/*
- * 	Called when the smtp server responds
- * 	It checks if the response was CURLE_OK
- * 	If it was, it tries to extract the certificate attributes
- * 	If the response was not OK, we REJECT the request
- * 	This does not confirm an email may be sent, only that the provided login credentials are valid for the server
- */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_smtp_t);
-	fr_curl_io_request_t     	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
-	fr_curl_tls_t const		*tls;
-	long 				curl_out;
-	long				curl_out_valid;
-
-	tls = &inst->tls;
-
-	curl_out_valid = curl_easy_getinfo(randle->candle, CURLINFO_SSL_VERIFYRESULT, &curl_out);
-	if (curl_out_valid == CURLE_OK){
-		RDEBUG2("server certificate %s verified", curl_out ? "was" : "not");
-	} else {
-		RDEBUG2("server certificate result not found");
-	}
-
-	if (randle->result != CURLE_OK) {
-		fr_smtp_slab_release(randle);
-		RETURN_MODULE_REJECT;
-	}
-
-	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
-
-	fr_smtp_slab_release(randle);
-	RETURN_MODULE_OK;
+	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, randle);
 }
 
 /*
@@ -1005,8 +982,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_r
  *		timeout information
  *		and TLS information
  *
- *	Then it queues the request and yeilds until a response is given
- *	When it responds, mod_authenticate_resume is called.
+ *	Then it queues the request and yields until a response is given
+ *	When it responds, smtp_io_module_resume is called.
  */
 static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
@@ -1038,7 +1015,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
-	return unlang_module_yield(request, mod_authenticate_resume, smtp_io_module_signal, randle);
+	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, randle);
 }
 
 /** Verify that a map in the header section makes sense
