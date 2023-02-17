@@ -843,7 +843,7 @@ static int dict_process_ref(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *pare
  *	Process the ATTRIBUTE command
  */
 static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, int argc,
-				       fr_dict_attr_flags_t *base_flags)
+				       fr_dict_attr_flags_t const *base_flags)
 {
 	bool			set_relative_attr = true;
 
@@ -1011,7 +1011,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
  *	Which is mostly like ATTRIBUTE, but does not have a number.
  */
 static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int argc,
-				    fr_dict_attr_flags_t *base_flags)
+				    fr_dict_attr_flags_t const *base_flags)
 {
 	fr_type_t      		type;
 	fr_dict_attr_flags_t	flags;
@@ -1107,7 +1107,7 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
  *	Process the ENUM command
  */
 static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int argc,
-				  fr_dict_attr_flags_t *base_flags)
+				  fr_dict_attr_flags_t const *base_flags)
 {
 	int			attr = -1;
 	fr_type_t      		type;
@@ -1201,7 +1201,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
  *	Process the MEMBER command
  */
 static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int argc,
-				       fr_dict_attr_flags_t *base_flags)
+				       fr_dict_attr_flags_t const *base_flags)
 {
 	fr_type_t      		type;
 	fr_dict_attr_flags_t	flags;
