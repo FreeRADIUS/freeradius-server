@@ -31,7 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/util/slab.h>
-#include <freeradius-devel/util/talloc.h>
 
 static fr_dict_t const 	*dict_radius; /*dictionary for radius protocol*/
 static fr_dict_t const 	*dict_freeradius;
