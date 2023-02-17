@@ -1032,8 +1032,8 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 	}
 
 	/*
-	 *	Since there is no number, the attribute MUST be
-	 *	internal, and cannot be encoded as a number.
+	 *	Since there is no number, the attribute cannot be
+	 *	encoded as a number.
 	 */
 	memcpy(&flags, base_flags, sizeof(flags));
 	flags.name_only = true;
@@ -1044,7 +1044,6 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	Certain structural types MUST have numbers.
 	 */
 	switch (type) {
-	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
 		fr_strerror_printf("DEFINE cannot be used for type '%s'", argv[1]);
@@ -1098,7 +1097,16 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 
 	if (dict_process_ref(ctx, parent, da, ref) < 0) return -1;
 
-	memcpy(&ctx->value_attr, &da, sizeof(da));
+	/*
+	 *	Adding an attribute of type 'struct' is an implicit
+	 *	BEGIN-STRUCT.
+	 */
+	if (type == FR_TYPE_STRUCT) {
+		if (dict_gctx_push(ctx, da) < 0) return -1;
+		ctx->value_attr = NULL;
+	} else {
+		memcpy(&ctx->value_attr, &da, sizeof(da));
+	}
 
 	return 0;
 }

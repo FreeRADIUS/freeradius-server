@@ -1080,7 +1080,7 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	 *	The parent has children by name only, not by number.  Don't even bother trying to track
 	 *	numbers.
 	 */
-	if (parent->flags.name_only) return 0;
+	if (parent->flags.name_only && (parent->type != FR_TYPE_STRUCT)) return 0;
 
 	/*
 	 *	We only allocate the pointer array *if* the parent has children.
