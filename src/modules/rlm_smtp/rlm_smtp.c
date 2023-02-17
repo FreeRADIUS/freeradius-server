@@ -85,6 +85,8 @@ typedef struct {
 	fr_dict_enum_value_t	*auth_type;
 	map_list_t		header_maps;		//!< Attribute map used to process header elements
 	bool 			set_date;
+
+	fr_curl_conn_config_t	conn_config;		//!< Re-usable CURL handle config
 } rlm_smtp_t;
 
 typedef struct {
@@ -196,6 +198,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, rlm_smtp_t, timeout) },
 	{ FR_CONF_OFFSET("set_date", FR_TYPE_BOOL, rlm_smtp_t, set_date), .dflt = "yes" },
 	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_smtp_t, tls), .subcs = (void const *) fr_curl_tls_config },//!<loading the tls values
+	{ FR_CONF_OFFSET("connection", FR_TYPE_SUBSECTION, rlm_smtp_t, conn_config), .subcs = (void const *) fr_curl_conn_config },
 	CONF_PARSER_TERMINATOR
 };
 
