@@ -122,7 +122,11 @@ fr_minmax_heap_t *_fr_minmax_heap_alloc(TALLOC_CTX *ctx, fr_minmax_heap_cmp_t cm
 	 *	(talloc headers are big);
 	 */
 	h = (minmax_heap_t *)talloc_array(hp, uint8_t, sizeof(minmax_heap_t) + (sizeof(void *) * (init + 1)));
-	if (unlikely(!h)) return NULL;
+	if (unlikely(!h)) {
+		talloc_free(hp);
+		return NULL;
+	}
+	
 	talloc_set_type(h, minmax_heap_t);
 
 	*h = (minmax_heap_t){
