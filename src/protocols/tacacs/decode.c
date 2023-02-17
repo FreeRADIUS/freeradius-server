@@ -294,8 +294,8 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 				return -1;
 			}
 
-			value = buffer;
-			arg_end = buffer + argv[i];
+			value = p;
+			arg_end = p + argv[i];
 
 			if ((arg_end > value) &&
 			    (fr_pair_value_bstrndup(vp, (char const *) value, arg_end - value, true) < 0)) {
