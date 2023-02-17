@@ -227,63 +227,80 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		 */
 		if (!name_end) goto next;
 
-		da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_tacacs), (char *) buffer);
-		if (!da) {
-		raw:
-			/*
-			 *	Dupe the whole thing so that we have:
-			 *
-			 *	Argument-List += "name=value"
-			 */
-			da = parent;
-			value = p;
-			arg_end = p + argv[i];
-		}
-
-		vp = fr_pair_afrom_da(ctx, da);
-		if (!vp) {
-			fr_strerror_const("Out of Memory");
-			return -1;
-
-		}
-
 		/*
-		 *	If it's OCTETS or STRING type, then just copy
-		 *	the value verbatim.  But if it's zero length,
-		 *	then don't do anything.
+		 *	Dupe the whole thing so that we have:
 		 *
-		 *	Note that we copy things manually here because
-		 *	we don't want the OCTETS type to be parsed as
-		 *	hex.  And, we don't want the string type to be
-		 *	unescaped.
+		 *	Argument-List += "name=value"
 		 */
-		if (da->type == FR_TYPE_OCTETS) {
-			if ((arg_end > value) &&
-			    (fr_pair_value_memdup(vp, value, arg_end - value, true) < 0)) {
-				goto fail;
-			}
+		if (parent) {
+			da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_tacacs), (char *) buffer);
+			if (!da) goto raw;
 
-		} else if (da->type == FR_TYPE_STRING) {
-			if ((arg_end > value) &&
-			    (fr_pair_value_bstrndup(vp, (char const *) value, arg_end - value, true) < 0)) {
-				goto fail;
+			/*
+			 *      If it's OCTETS or STRING type, then just copy the value verbatim, as the
+			 *      contents are (should be?) binary-safe.  But if it's zero length, then don't need to
+			 *      copy anything.
+			 *
+			 *      Note that we copy things manually here because
+			 *      we don't want the OCTETS type to be parsed as
+			 *      hex.  And, we don't want the string type to be
+			 *      unescaped.
+			 */
+			if (da->type == FR_TYPE_OCTETS) {
+				if ((arg_end > value) &&
+				    (fr_pair_value_memdup(vp, value, arg_end - value, true) < 0)) {
+					talloc_free(vp);
+					return -1;
+				}
+
+			} else if (da->type == FR_TYPE_STRING) {
+				if ((arg_end > value) &&
+				    (fr_pair_value_bstrndup(vp, (char const *) value, arg_end - value, true) < 0)) {
+					talloc_free(vp);
+					return -1;
+				}
+
+			} else if (arg_end == value) {
+				/*
+				 *	Any other leaf type MUST have non-zero contents.
+				 */
+				goto raw;
+
+			} else {
+
+				/*
+				 *      Parse the string, and try to convert it to the
+				 *      underlying data type.  If it can't be
+				 *      converted as a data type, just convert it as
+				 *      Argument-List.
+				 *
+				 *      And if that fails, just ignore it completely.
+				 */
+				if (fr_pair_value_from_str(vp, (char const *) value, arg_end - value, NULL, true) < 0) {
+					talloc_free(vp);
+					goto raw;
+				}
+
+				/*
+				 *	Else it parsed fine, append it to the output list.
+				 */
 			}
 
 		} else {
-			/*
-			 *	Parse the string, and try to convert it to the
-			 *	underlying data type.  If it can't be
-			 *	converted as a data type, just convert it as
-			 *	Argument-List.
-			 *
-			 *	And if that fails, just ignore it completely.
-			 */
-			if (fr_pair_value_from_str(vp, (char const *) value, arg_end - value, NULL, true) < 0) {
-			fail:
-				talloc_free(vp);
-				if (da != parent) goto raw;
+		raw:
+			vp = fr_pair_afrom_da(ctx, attr_tacacs_argument_list);
+			if (!vp) {
+				fr_strerror_const("Out of Memory");
+				return -1;
+			}
 
-				goto next;
+			value = buffer;
+			arg_end = buffer + argv[i];
+
+			if ((arg_end > value) &&
+			    (fr_pair_value_bstrndup(vp, (char const *) value, arg_end - value, true) < 0)) {
+				talloc_free(vp);
+				return -1;
 			}
 		}
 
@@ -793,7 +810,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
+			if (tacacs_decode_args(ctx, out, NULL,
 					       pkt->author_req.arg_cnt, argv, attrs, end) < 0) goto fail;
 
 		} else if (packet_is_author_reply(pkt)) {
@@ -846,7 +863,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
+			if (tacacs_decode_args(ctx, out, NULL,
 					pkt->author_reply.arg_cnt, argv, attrs, end) < 0) goto fail;
 
 		} else {
@@ -915,7 +932,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
+			if (tacacs_decode_args(ctx, out, NULL,
 					pkt->acct_req.arg_cnt, argv, attrs, end) < 0) goto fail;
 
 		} else if (packet_is_acct_reply(pkt)) {
