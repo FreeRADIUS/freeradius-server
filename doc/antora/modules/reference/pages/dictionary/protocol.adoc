@@ -1,0 +1,34 @@
+= The PROTOCOL keyword
+
+.Syntax
+----
+PROTOCOL <name> <value> [<option>]
+----
+
+.Description
+
+The `PROTOCOL` keyword defines a new top-level protocol such as `RADIUS`, `DHCPv4`, etc.
+
+
+<name>:: The name of the protocol
+
+<value>:: A number associated with the protocol.
++
+These numbers have no meaning outside of FreeRADIUS, and are assigned by the FreeRADIUS developers.
+
+<option>:: The only supported option is `verify=lib`.
++
+The option tells the server to load a dynamic library
+``libfreeradius-``_<name>_.  It then uses special callbacks in that
+library to verify the contents of the protocol dictionary.
+
+The `PROTOCOL` keyword is documented for completeness, but it should
+only be used by the FreeRADIUS developers.
+
+.Examples
+----
+PROTOCOL RADIUS 1 verify=lib
+----
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

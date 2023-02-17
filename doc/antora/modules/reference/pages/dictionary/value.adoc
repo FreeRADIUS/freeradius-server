@@ -1,0 +1,44 @@
+= The VALUE keyword
+
+.Syntax
+----
+VALUE <attribute-name> <name> <data>
+----
+
+.Description
+The `VALUE` keyword defines name for a particular value of an xref:dictionary/attribute.adoc[ATTRIBUTE] or xref:dictionary/member.adoc[MEMBER].
+
+In many cases, it is useful to refer to values by name, for the same
+reason it is useful to refer to attributes by name.
+
+<attribute-name>:: The name of the attribute, which must exist.
++
+It is not possible to define a `VALUE` for structural attributes, such
+as `tlv`, `struct`, `group`, etc.  It is also not possible to define a
+`VALUE` for `string` attributes, or for an xref:dictionary/alias.adoc[ALIAS].
+
+<name>:: The name of the `VALUE`.  It can be used instead of the `<data>`.
++
+Where an attribute has a `VALUE` defined, the `<name>` will be be
+printed instead of the corresponding `<data>`.  It is still possible
+to assign a `<data>` value to an attribute, as the `<name>` is a
+synonym for the `<data>`, and does not replace the `<data>`
+
+== Data Types and VALUEs
+
+Unlike earlier versions of the server, ``VALUE``s are not limited to
+`integer` data types.  It is possible to define a `VALUE` for any
+non-structural data type.  That is, any data type which has values,
+and does not contain other attributes.
+
+It is therefore not possible to define ``VALUE``s for data types
+`group`, `struct`, `tlv`, `vendor`, etc.
+
+.Examples
+----
+VALUE Service-Type Login-User 1
+VALUE Framed-IP-Address broadcast 255.255.255.255
+----
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

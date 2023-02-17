@@ -1,0 +1,25 @@
+= The FLAG keyword
+
+.Syntax
+----
+FLAG <value>
+----
+
+.Description
+The `FLAG` keyword defines a "default" set of flags which are used for
+processing the rest of the current dictionary file.
+
+The main purpose of the `FLAG` keyword is to avoid having an extra
+field for every `ATTRIBUTE` definition.
+
+<value>:: The flag value.
++
+For now, only `internal` is supported.
+
+.Examples
+----
+FLAG internal
+----
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

@@ -1,0 +1,32 @@
+= The VENDOR keyword
+
+.Syntax
+----
+VENDOR <name> <number> [<option>]
+----
+
+.Description
+
+The `VENDOR` keyword defines a name to number mapping for vendor
+http://www.iana.org/enterprise-numbers.txt[private enterprise codes].
+These codes are assigned by the Internet Assigned Numbers Authority
+(http://iana.org[IANA]) to each vendor.
+
+
+<name>:: The name of the vendor.
+
+<numver>:: The number associated with the vendor.
+
+<option>:: The protocol-specific option associated with the vendor definition.
++
+Please see the protocol dictionaries for examples of these options.
+Only the options which are used in a protocol dictionary are valid,
+and those options are only valid for that protocol dictionary.
+
+.Examples
+----
+VENDOR Cisco 1
+----
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

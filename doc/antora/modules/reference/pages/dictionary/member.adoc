@@ -33,6 +33,8 @@ flags.
 Please see the protocol dictionaries for examples of these flags.
 Only the flags which are used in a protocol dictionary are valid,
 and those flags are only valid for that protocol dictionary.
++
+The `key` flag can only be used for ``MEMBER``s where the data type is `uint8`, `uint16`, or `uint32`.
 
 Common flags and meanings
 [options="header"]
@@ -41,6 +43,7 @@ Common flags and meanings
 | Name         | Description
 | `array`      | For fixed-size types, declare that the contents of the packet can have an array of this value.
 | `clone=...`  | For `tlv` types, clone (or copy) child definitions from another `tlv` type
+| `key`        | This member is a "key" type.  The struct can have different xref:dictionary/struct.adoc[STRUCT] children depending on the value of the key.
 |=====
 
 .Examples
