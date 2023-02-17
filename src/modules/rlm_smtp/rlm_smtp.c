@@ -795,7 +795,7 @@ static void smtp_io_module_signal(module_ctx_t const *mctx, request_t *request, 
 		/* Not much we can do */
 	}
 	t->mhandle->transfers--;
-	talloc_free(randle);
+	fr_smtp_slab_release(randle);
 }
 
 /*
@@ -819,12 +819,12 @@ static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t 
 	}
 
 	if (randle->result != CURLE_OK) {
-		talloc_free(randle);
+		fr_smtp_slab_release(randle);
 		RETURN_MODULE_REJECT;
 	}
 
 	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
-	talloc_free(randle);
+	fr_smtp_slab_release(randle);
 
 	RETURN_MODULE_OK;
 }
@@ -848,7 +848,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_smtp_t);
 	rlm_smtp_thread_t       	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 	rlm_smtp_env_t			*mod_env = talloc_get_type_abort(mctx->env_data, rlm_smtp_env_t);
-	fr_curl_io_request_t     	*randle;
+	fr_curl_io_request_t     	*randle = NULL;
 	fr_mail_ctx_t			*mail_ctx;
 	const char 			*envelope_address;
 
@@ -871,18 +871,25 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 	if (!inst->sender_address && !inst->envelope_address) {
 		RDEBUG2("At least one of \"sender_address\" or \"envelope_address\" in the config, or \"SMTP-Sender-Address\" in the request is needed");
 	error:
+		if (randle) fr_smtp_slab_release(randle);
 		RETURN_MODULE_INVALID;
 	}
 
-	/* allocate the handle and set the curl options */
-	randle = fr_curl_io_request_alloc(request);
+	/*
+	 *	If the username is defined and is not static data
+	 *	a onetime connection is used, otherwise a persistent one
+	 *	can be used.
+	 */
+	randle = (mod_env->username_tmpl &&
+		  !tmpl_is_data(mod_env->username_tmpl)) ? fr_smtp_slab_reserve(t->slab_onetime) :
+							   fr_smtp_slab_reserve(t->slab_persist);
 	if (!randle) {
 		RDEBUG2("A handle could not be allocated for the request");
 		RETURN_MODULE_FAIL;
 	}
 
 	/* Initialize the uctx to perform the email */
-	mail_ctx = talloc_zero(randle, fr_mail_ctx_t);
+	mail_ctx = talloc_get_type_abort(randle->uctx, fr_mail_ctx_t);
 	*mail_ctx = (fr_mail_ctx_t) {
 		.request 	= request,
 		.randle 	= randle,
@@ -997,13 +1004,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_r
 	}
 
 	if (randle->result != CURLE_OK) {
-		talloc_free(randle);
+		fr_smtp_slab_release(randle);
 		RETURN_MODULE_REJECT;
 	}
 
 	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
 
-	talloc_free(randle);
+	fr_smtp_slab_release(randle);
 	RETURN_MODULE_OK;
 }
 
@@ -1025,11 +1032,8 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	fr_pair_t const 	*username, *password;
 	fr_curl_io_request_t    *randle;
 
-	randle = fr_curl_io_request_alloc(request);
-	if (!randle) {
-	error:
-		RETURN_MODULE_FAIL;
-	}
+	randle = fr_smtp_slab_reserve(t->slab_onetime);
+	if (!randle) RETURN_MODULE_FAIL;
 
 	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
 	password = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password);
@@ -1037,15 +1041,17 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	/* Make sure we have a user-name and user-password, and that they are possible */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
+	error:
+		fr_smtp_slab_release(randle);
 		RETURN_MODULE_INVALID;
 	}
 	if (username->vp_length == 0) {
 		RDEBUG2("\"User-Password\" must not be empty");
-		RETURN_MODULE_INVALID;
+		goto error;
 	}
 	if (!password) {
 		RDEBUG2("Attribute \"User-Password\" is required for authentication");
-		RETURN_MODULE_INVALID;
+		goto error;
 	}
 
 #if CURL_AT_LEAST_VERSION(7,45,0)
