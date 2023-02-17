@@ -1378,7 +1378,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	}
 
 	if (da->flags.is_alias) {
-		fr_strerror_printf("Enumeration names cannot be added for ALIAS '%s'", fr_type_to_str(da->name));
+		fr_strerror_printf("Enumeration names cannot be added for ALIAS '%s'", da->name);
 		return -1;
 	}
 
