@@ -180,6 +180,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	randle = fr_imap_slab_reserve(t->slab);
 	if (!randle){
 	error:
+		/* coverity [dead_error_line] */
 		if (randle) fr_imap_slab_release(randle);
 		RETURN_MODULE_FAIL;
 	}
