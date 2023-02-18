@@ -29,7 +29,7 @@ match c0 02 01 00 e1 66 78 e6 00 00 00 35 4b c5 ea 62 13 cc ca a6 6a 03 3c 8e 3f
 #  Authorization - Response: (Client <- Server)
 #
 decode-proto c0 02 02 00 e1 66 78 e6 00 00 00 13 02 59 f9 90 38 81 e1 bb 9d a6 13 93 fc 86 7e 4a 14 1c 24
-match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 3781589222, Packet.Length = 19, Packet-Body-Type = Response, Authorization-Status = Pass-Add, Server-Message = "", Data = 0x, addr = 1.2.3.4
+match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 3781589222, Packet.Length = 19, Packet-Body-Type = Response, Authorization-Status = Pass-Add, Server-Message = "", Data = 0x, Test.addr = 1.2.3.4
 
 encode-proto -
 match c0 02 02 00 e1 66 78 e6 00 00 00 13 02 59 f9 90 38 81 e1 bb 9d a6 13 93 fc 86 7e 4a 14 1c 24

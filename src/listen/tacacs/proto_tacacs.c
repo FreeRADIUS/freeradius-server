@@ -195,6 +195,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *)data;
 	char const		*secret;
 	size_t			secretlen = 0;
+	fr_dict_attr_t const	*dv = NULL;
 
 	RHEXDUMP3(data, data_len, "proto_tacacs decode packet");
 
@@ -231,11 +232,20 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	}
 
 	/*
+	 *	See if there's a client-specific vendor in the "nas_type" field.
+	 *
+	 *	If there's no such vendor, too bad for you.
+	 */
+	if (client->nas_type) {
+		dv = fr_dict_attr_by_name(NULL, fr_dict_root(dict_tacacs), client->nas_type);
+	}
+
+	/*
 	 *	Note that we don't set a limit on max_attributes here.
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to ???
 	 */
-	if (fr_tacacs_decode(request->request_ctx, &request->request_pairs,
+	if (fr_tacacs_decode(request->request_ctx, &request->request_pairs, dv,
 			     request->packet->data, request->packet->data_len,
 			     NULL, secret, secretlen, &code) < 0) {
 		RPEDEBUG("Failed decoding packet");

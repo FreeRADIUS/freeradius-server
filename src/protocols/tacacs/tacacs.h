@@ -337,7 +337,7 @@ ssize_t		fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original, char const
 int		fr_tacacs_code_to_packet(fr_tacacs_packet_t *pkt, uint32_t code);
 
 /* decode.c */
-ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *buffer, size_t buffer_len,
+ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *vendor, uint8_t const *buffer, size_t buffer_len,
 			 UNUSED const uint8_t *original, char const * const secret, size_t secret_len, int *code);
 
 int		fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt);

@@ -151,12 +151,9 @@ static uint8_t tacacs_encode_body_arg_cnt(fr_pair_list_t *vps, fr_dict_attr_t co
 			continue;
 		}
 
-		/*
-		 *	Maybe it's still a TACACS+ attribute?
-		 */
-		if (fr_dict_by_da(vp->da) != dict_tacacs) continue;
+		fr_assert(fr_dict_by_da(vp->da) == dict_tacacs);
 
-		if (!((vp->da->attr >= 1000) && (vp->da->attr <= 65000))) continue;
+		if (vp->da->parent->type != FR_TYPE_VENDOR) continue;
 
 		arg_cnt++;
 	}
@@ -172,7 +169,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 
 	for (vp = fr_pair_list_head(vps);
 	     vp;
-	     vp = fr_pair_list_next(vps,vp)) {
+	     vp = fr_pair_list_next(vps, vp)) {
 		int len;
 
 		if (i == 255) break;
@@ -192,10 +189,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 			FR_PROTO_TRACE("arg[%d] --> %s", i, vp->vp_strvalue);
 			len = vp->vp_length;
 
-		} else if (fr_dict_by_da(vp->da) != dict_tacacs) {
-			continue;
-
-		} else if (!((vp->da->attr >= 1000) && (vp->da->attr <= 65000))) {
+		} else if (!vp->da->parent || (vp->da->parent->type != FR_TYPE_VENDOR)) {
 			continue;
 
 		} else {

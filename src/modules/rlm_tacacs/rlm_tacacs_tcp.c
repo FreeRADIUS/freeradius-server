@@ -565,7 +565,7 @@ static ssize_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_
 	 *	This only fails if the packet is strangely malformed,
 	 *	or if we run out of memory.
 	 */
-	packet_len = fr_tacacs_decode(ctx, reply, data, data_len, NULL, inst->secret, inst->secretlen, &code);
+	packet_len = fr_tacacs_decode(ctx, reply, NULL, data, data_len, NULL, inst->secret, inst->secretlen, &code);
 	if (packet_len < 0) {
 		RPEDEBUG("Failed decoding TACACS+ reply packet");
 		fr_pair_list_free(reply);

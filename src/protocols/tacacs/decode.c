@@ -233,8 +233,11 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		 *	Argument-List += "name=value"
 		 */
 		if (parent) {
-			da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_tacacs), (char *) buffer);
+			da = fr_dict_attr_by_name(NULL, parent, (char *) buffer);
 			if (!da) goto raw;
+
+			vp = fr_pair_afrom_da(ctx, da);
+			if (!vp) goto oom;
 
 			/*
 			 *      If it's OCTETS or STRING type, then just copy the value verbatim, as the
@@ -290,6 +293,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		raw:
 			vp = fr_pair_afrom_da(ctx, attr_tacacs_argument_list);
 			if (!vp) {
+			oom:
 				fr_strerror_const("Out of Memory");
 				return -1;
 			}
@@ -354,7 +358,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_att
 /**
  *	Decode a TACACS+ packet
  */
-ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *buffer, size_t buffer_len,
+ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *vendor, uint8_t const *buffer, size_t buffer_len,
 			 const uint8_t *original, char const * const secret, size_t secret_len, int *code)
 {
 	fr_tacacs_packet_t const *pkt;
@@ -810,7 +814,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, out, NULL,
+			if (tacacs_decode_args(ctx, out, vendor,
 					       pkt->author_req.arg_cnt, argv, attrs, end) < 0) goto fail;
 
 		} else if (packet_is_author_reply(pkt)) {
@@ -863,7 +867,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, out, NULL,
+			if (tacacs_decode_args(ctx, out, vendor,
 					pkt->author_reply.arg_cnt, argv, attrs, end) < 0) goto fail;
 
 		} else {
@@ -932,7 +936,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, out, NULL,
+			if (tacacs_decode_args(ctx, out, vendor,
 					pkt->acct_req.arg_cnt, argv, attrs, end) < 0) goto fail;
 
 		} else if (packet_is_acct_reply(pkt)) {
@@ -990,8 +994,12 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *bu
 static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
+	fr_dict_attr_t const *dv;
 
-	return fr_tacacs_decode(ctx, out, data, data_len, NULL,
+	dv = fr_dict_attr_by_name(NULL, fr_dict_root(dict_tacacs), "Test");
+	fr_assert(!dv || (dv->type == FR_TYPE_VENDOR));
+
+	return fr_tacacs_decode(ctx, out, dv, data, data_len, NULL,
 				test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), false);
 }
 
