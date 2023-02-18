@@ -151,6 +151,10 @@ static uint8_t tacacs_encode_body_arg_cnt(fr_pair_list_t *vps, fr_dict_attr_t co
 			continue;
 		}
 
+		/*
+		 *	@todo - if we find a Vendor, count its children
+		 */
+
 		fr_assert(fr_dict_by_da(vp->da) == dict_tacacs);
 
 		if (vp->da->parent->type != FR_TYPE_VENDOR) continue;
@@ -188,6 +192,22 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 
 			FR_PROTO_TRACE("arg[%d] --> %s", i, vp->vp_strvalue);
 			len = vp->vp_length;
+
+		} else if (vp->da->type == FR_TYPE_VENDOR) {
+			ssize_t slen;
+			uint8_t child_argc;
+
+			/*
+			 *	Nested attribute: just recurse.
+			 */
+			child_argc = fr_pair_list_num_elements(&vp->vp_group);
+			if (child_argc > (arg_cnt - i)) child_argc = arg_cnt = i;
+
+			slen = tacacs_encode_body_arg_n(&work_dbuff, child_argc, &arg_len[i], &vp->vp_group, vp->da);
+			if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+
+			i += child_argc;
+			continue;
 
 		} else if (!vp->da->parent || (vp->da->parent->type != FR_TYPE_VENDOR)) {
 			continue;
