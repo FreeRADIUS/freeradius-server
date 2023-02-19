@@ -870,7 +870,7 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
  *
  * This allows us to be smart about processing quotes within the expansions themselves.
  *
- * @param[in] head		to allocate nodes in, and where to write the first
+ * @param[out] head		to allocate nodes in, and where to write the first
  *				child, and where the flags are stored.
  * @param[in] in		sbuff to parse.
  * @param[in] brace		true if we're inside a braced expansion, else false.
