@@ -1515,7 +1515,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		 *	Alloc a new node to hold the child nodes
 		 *	that make up the argument.
 		 */
-		MEM(node = xlat_exp_alloc(head, XLAT_GROUP, 0, NULL));
+		MEM(node = xlat_exp_alloc(head, XLAT_GROUP, NULL, 0));
 		node->quote = quote;
 
 		switch (quote) {
