@@ -202,6 +202,28 @@ xlat_exp_t *_xlat_exp_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_type_t ty
  * @param[in] node	to set fmt for.
  * @param[in] fmt	talloced buffer to set as the fmt string.
  */
+void xlat_exp_set_name(xlat_exp_t *node, char const *fmt, size_t len)
+{
+	if (node->fmt) talloc_const_free(node->fmt);
+	node->fmt = talloc_bstrndup(node, fmt, len);
+}
+
+/** Set the format string for an xlat node, copying from a talloc'd buffer
+ *
+ * @param[in] node	to set fmt for.
+ * @param[in] fmt	talloced buffer to set as the fmt string.
+ */
+void xlat_exp_set_name_buffer(xlat_exp_t *node, char const *fmt)
+{
+	if (node->fmt) talloc_const_free(node->fmt);
+	node->fmt = talloc_typed_strdup_buffer(node, fmt);
+}
+
+/** Set the format string for an xlat node from a pre-existing buffer
+ *
+ * @param[in] node	to set fmt for.
+ * @param[in] fmt	talloced buffer to set as the fmt string.
+ */
 void xlat_exp_set_name_buffer_shallow(xlat_exp_t *node, char const *fmt)
 {
 	if (node->fmt) talloc_const_free(node->fmt);

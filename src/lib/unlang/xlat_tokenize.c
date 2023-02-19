@@ -934,7 +934,7 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 		 */
 		if (slen > 0) {
 			xlat_exp_set_name_buffer_shallow(node, str);
-			fr_value_box_strdup_shallow(&node->data, NULL, str, false);
+			fr_value_box_strdup(node, &node->data, NULL, str, false);
 			node->flags.constant = true;
 
 			XLAT_DEBUG("VALUE-BOX (%s)<-- %pV",
@@ -984,9 +984,9 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 				node = xlat_exp_alloc_null(head);
 			}
 
-			fr_sbuff_out_abstrncpy(node, &str, in, 1);
 			xlat_exp_set_type(node, XLAT_ONE_LETTER);
-			xlat_exp_set_name_buffer_shallow(node, str);
+			xlat_exp_set_name(node, fr_sbuff_current(in), 1);
+			fr_sbuff_next(in);	/* Consumed 1 char */
 
 #ifdef STATIC_ANALYZER
 			if (!node->fmt) goto error;
@@ -1560,7 +1560,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			if (slen < 0) goto error;
 
 			xlat_exp_set_name_buffer_shallow(child, str);
-			fr_value_box_strdup_shallow(&child->data, NULL, str, false);
+			fr_value_box_strdup(child, &child->data, NULL, str, false);
 			xlat_exp_insert_tail(node->group, child);
 		}
 			break;

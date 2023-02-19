@@ -1066,12 +1066,19 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 	 */
 	group = inst->argv[0];
 	fr_assert(group != NULL);
-	fr_assert(group->fmt != NULL);
 	talloc_steal(node, group);
 
 	xlat_inst_remove(node);
-	xlat_exp_set_type(node, XLAT_BOX);
-	xlat_exp_set_name_buffer_shallow(node, group->fmt);
+	xlat_exp_set_type(node, XLAT_GROUP);
+
+	/* re-print, with purified nodes removed */
+	{
+		char *name;
+
+		xlat_aprint(node, &name, group, NULL);
+		xlat_exp_set_name_buffer_shallow(node, name);
+	}
+
 	node->group = group;
 	node->flags = group->flags;
 
@@ -2004,9 +2011,10 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 	 */
 	MEM(node = xlat_exp_alloc(cast, XLAT_BOX, NULL, 0));
 	node->flags.constant = true;
-	xlat_exp_set_name_buffer_shallow(node,
-					 talloc_typed_strdup(node,
-							     fr_table_str_by_value(fr_type_table, type, "<INVALID>")));
+	{
+		char const *type_name = fr_table_str_by_value(fr_type_table, type, "<INVALID>");
+		xlat_exp_set_name(node, type_name, strlen(type_name));
+	}
 
 	fr_value_box_init(&node->data, FR_TYPE_UINT8, attr_cast_base, false);
 	node->data.vb_uint8 = type;

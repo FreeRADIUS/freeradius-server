@@ -179,7 +179,6 @@ struct xlat_exp_s {
 
 struct xlat_exp_head_s {
 	fr_dlist_head_t		dlist;
-	char const * _CONST	fmt;		//!< The original format string (a talloced buffer).
 	xlat_flags_t		flags;		//!< Flags that control resolution and evaluation.
 	bool			instantiated;	//!< temporary flag until we fix more things
 	fr_dict_t const		*dict;		//!< dictionary for this xlat
@@ -310,7 +309,9 @@ xlat_exp_t	*_xlat_exp_alloc_null(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx);
 xlat_exp_t	*_xlat_exp_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_type_t type, char const *in, size_t inlen);
 #define		xlat_exp_alloc(_ctx, _type, _in, _inlen) _xlat_exp_alloc(NDEBUG_LOCATION_EXP _ctx, _type, _in, _inlen)
 
+void		xlat_exp_set_name(xlat_exp_t *node, char const *fmt, size_t len) CC_HINT(nonnull);
 void		xlat_exp_set_name_buffer_shallow(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
+void		xlat_exp_set_name_buffer(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
 
 /*
  *	xlat_func.c
