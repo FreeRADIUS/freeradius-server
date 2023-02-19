@@ -207,3 +207,39 @@ void xlat_exp_set_name_buffer_shallow(xlat_exp_t *node, char const *fmt)
 	if (node->fmt) talloc_const_free(node->fmt);
 	node->fmt = talloc_get_type_abort(fmt, char);
 }
+#ifdef WITH_VERIFY_PTR
+void xlat_exp_verify(xlat_exp_t const *node)
+{
+	(void)talloc_get_type_abort(node, xlat_exp_t);
+
+	switch (node->type) {
+	case XLAT_ALTERNATE:
+		xlat_exp_head_verify(node->alternate[0]);
+		xlat_exp_head_verify(node->alternate[1]);
+		fr_assert(!node->fmt);
+		return;
+
+	case XLAT_GROUP:
+		xlat_exp_head_verify(node->group);
+		(void)talloc_get_type_abort(node->fmt, char);
+		return;
+
+	case XLAT_FUNC:
+		xlat_exp_head_verify(node->call.args);
+	(void)talloc_get_type_abort(node->fmt, char);
+		return;
+
+	default:
+		break;
+	}
+}
+
+/** Performs recursive validation of node lists
+ */
+void xlat_exp_head_verify(xlat_exp_head_t const *head)
+{
+	(void)talloc_get_type_abort(head, xlat_exp_head_t);
+
+	xlat_exp_foreach(head, node) xlat_exp_verify(node);
+}
+#endif

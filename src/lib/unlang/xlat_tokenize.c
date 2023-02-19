@@ -1616,6 +1616,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 
 	if (our_p_rules != &value_parse_rules_bareword_quoted) talloc_const_free(our_p_rules->terminals);
 
+	XLAT_HEAD_VERIFY(head);
 	*out = head;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -1660,6 +1661,7 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 		return 0;
 	}
 
+	XLAT_HEAD_VERIFY(head);
 	*out = head;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);

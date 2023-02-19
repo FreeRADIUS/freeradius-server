@@ -227,6 +227,8 @@ static inline CC_HINT(nonnull) void xlat_flags_merge(xlat_flags_t *parent, xlat_
 
 static inline CC_HINT(nonnull) int xlat_exp_insert_tail(xlat_exp_head_t *head, xlat_exp_t *node)
 {
+	XLAT_VERIFY(node);
+
 	xlat_flags_merge(&head->flags, &node->flags);
 	return fr_dlist_insert_tail(&head->dlist, node);
 }

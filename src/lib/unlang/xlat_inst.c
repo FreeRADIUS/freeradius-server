@@ -293,14 +293,17 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
 	 *	Instantiate immediately unlike permanent XLATs
 	 *	Where it's a separate phase.
 	 */
-	if (call->func->instantiate &&
-	    (call->func->instantiate(XLAT_INST_CTX(xi->data,
-		    				   xi->node,
-						   call->func->mctx,
-						   call->func->uctx)) < 0)) {
-	error:
-		TALLOC_FREE(call->inst);
-		return -1;
+	if (call->func->instantiate) {
+	    	XLAT_VERIFY(xi->node);
+		if (call->func->instantiate(XLAT_INST_CTX(xi->data,
+							  xi->node,
+							  call->func->mctx,
+							  call->func->uctx)) < 0) {
+		error:
+			TALLOC_FREE(call->inst);
+			return -1;
+		}
+		XLAT_VERIFY(xi->node);
 	}
 
 	/*
@@ -309,13 +312,17 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
 	xt = node->call.thread_inst = xlat_thread_inst_alloc(node, el, call->inst);
 	if (!xt) goto error;
 
-	if (call->func->thread_instantiate &&
-	    (call->func->thread_instantiate(XLAT_THREAD_INST_CTX(xi->data,
-	    					 		 xt->data,
-	    					 		 xi->node,
-	    					 		 xt->mctx,
-	    					 		 el,
-	    					 		 call->func->thread_uctx)) < 0)) goto error;
+	if (call->func->thread_instantiate) {
+	    	XLAT_VERIFY(xi->node);
+		if (call->func->thread_instantiate(XLAT_THREAD_INST_CTX(xi->data,
+	    					   xt->data,
+	    					   xi->node,
+	    					   xt->mctx,
+	    					   el,
+	    					   call->func->thread_uctx)) < 0) goto error;
+	    	XLAT_VERIFY(xi->node);
+	}
+
 
 	return 0;
 }

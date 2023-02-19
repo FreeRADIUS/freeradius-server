@@ -2312,6 +2312,8 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		xlat_exp_t	*arg = NULL;
 		xlat_exp_t	*cast = NULL;
 
+		XLAT_HEAD_VERIFY(xlat);
+
 		/*
 		 *	Enforce a cast type.
 		 */

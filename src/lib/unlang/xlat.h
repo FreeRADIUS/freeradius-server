@@ -481,6 +481,16 @@ tmpl_t		*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *xlat);
 int		xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **head, tmpl_t **vpt_p);
 
 int		xlat_copy(TALLOC_CTX *ctx, xlat_exp_head_t *out, xlat_exp_head_t const *in);
+#ifdef WITH_VERIFY_PTR
+void		xlat_exp_verify(xlat_exp_t const *node);
+void		xlat_exp_head_verify(xlat_exp_head_t const *head);
+
+#  define XLAT_VERIFY(_node) xlat_exp_verify(_node)
+#  define XLAT_HEAD_VERIFY(_head) xlat_exp_head_verify(_head)
+#else
+#  define XLAT_VERIFY(_node)
+#  define XLAT_HEAD_VERIFY(_head)
+#endif
 
 /*
  *	xlat_inst.c
