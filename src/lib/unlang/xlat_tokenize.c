@@ -136,19 +136,6 @@ xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_head_t c
 	return node;
 }
 
-#if 0
-/** Set the format string for an xlat node
- *
- * @param[in] node	to set fmt for.
- * @param[in] fmt	talloced buffer to set as the fmt string.
- */
-static inline CC_HINT(always_inline) void xlat_exp_set_name_buffer(xlat_exp_t *node, char const *fmt)
-{
-	if (node->fmt) talloc_const_free(node->fmt);
-	node->fmt = talloc_bstrdup(node, fmt);
-}
-#endif
-
 static int xlat_tokenize_string(xlat_exp_head_t *head, fr_sbuff_t *in, bool brace,
 				fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
