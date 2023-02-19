@@ -138,13 +138,14 @@ typedef struct {
  * These nodes form a tree which represents one or more nested expansions.
  */
 struct xlat_exp_s {
+	fr_dlist_t		entry;
+
 	char const *  _CONST	fmt;		//!< The original format string (a talloced buffer).
 	fr_token_t		quote;		//!< Type of quoting around XLAT_GROUP types.
 
 	xlat_flags_t		flags;		//!< Flags that control resolution and evaluation.
 
 	xlat_type_t _CONST	type;		//!< type of this expansion.
-	fr_dlist_t		entry;
 
 #ifndef NDEBUG
 	char const * _CONST	file;		//!< File where the xlat was allocated.
