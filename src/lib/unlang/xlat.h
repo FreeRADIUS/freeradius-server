@@ -480,7 +480,11 @@ tmpl_t		*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *xlat);
 
 int		xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **head, tmpl_t **vpt_p);
 
-int		xlat_copy(TALLOC_CTX *ctx, xlat_exp_head_t *out, xlat_exp_head_t const *in);
+/*
+ *	xlat_alloc.c
+ */
+int		_xlat_copy(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_exp_head_t *out, xlat_exp_head_t const *in);
+#define		xlat_copy(_ctx, _out, _in) _xlat_copy(NDEBUG_LOCATION_EXP _ctx, _out, _in)
 #ifdef WITH_VERIFY_PTR
 void		xlat_exp_verify(xlat_exp_t const *node);
 void		xlat_exp_head_verify(xlat_exp_head_t const *head);

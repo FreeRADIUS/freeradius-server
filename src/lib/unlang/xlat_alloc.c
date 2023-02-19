@@ -207,6 +207,119 @@ void xlat_exp_set_name_buffer_shallow(xlat_exp_t *node, char const *fmt)
 	if (node->fmt) talloc_const_free(node->fmt);
 	node->fmt = talloc_get_type_abort(fmt, char);
 }
+
+/** Copy all nodes in the input list to the output list
+ *
+ * @param[in] ctx	to allocate new nodes in.
+ * @param[out] out	Where to write new nodes.
+ * @param[in] in	Input nodes.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_exp_head_t *out, xlat_exp_head_t const *in)
+{
+	xlat_exp_head_t *head = NULL;
+
+	xlat_flags_merge(&out->flags, &in->flags);
+
+	/*
+	 *	Copy everything in the list of nodes
+	 */
+	xlat_exp_foreach(in, p) {
+		xlat_exp_t *node;
+
+		(void)talloc_get_type_abort(p, xlat_exp_t);
+
+		/*
+		 *	Ensure the format string is valid...  At this point
+		 *	they should all be talloc'd strings.
+		 */
+		MEM(node = xlat_exp_alloc(ctx, p->type,
+					  talloc_get_type_abort(p->fmt, char), talloc_array_length(p->fmt) - 1));
+		node->quote = p->quote;
+		node->flags = p->flags;
+
+		switch (p->type) {
+		case XLAT_INVALID:
+			fr_strerror_printf("Cannot copy xlat node of type \"invalid\"");
+		error:
+			talloc_free(head);
+			return -1;
+
+		case XLAT_BOX:
+			if (unlikely(fr_value_box_copy(node, &node->data, &p->data) < 0)) goto error;
+			break;
+
+		case XLAT_ONE_LETTER: /* Done with format */
+		case XLAT_FUNC_UNRESOLVED:
+		case XLAT_VIRTUAL_UNRESOLVED:
+			break;
+
+		case XLAT_VIRTUAL:
+			node->call.func = p->call.func;
+			node->call.ephemeral = p->call.ephemeral;
+			break;
+
+		case XLAT_FUNC:
+			/*
+			 *	Only copy the function pointer, and whether this
+			 *	is ephemeral.
+			 *
+			 *	All instance data is specific to the xlat node and
+			 *	cannot be duplicated.
+			 *
+			 *	The node xlat nodes will need to be registered in
+			 *	the xlat instantiation table later.
+			 */
+			node->call.func = p->call.func;
+			node->call.ephemeral = p->call.ephemeral;
+			if (unlikely(_xlat_copy_internal(NDEBUG_LOCATION_VALS
+							 node, node->call.args, p->call.args) < 0)) goto error;
+			break;
+
+		case XLAT_TMPL:
+			node->vpt = tmpl_copy(node, p->vpt);
+			break;
+
+#ifdef HAVE_REGEX
+		case XLAT_REGEX:
+			node->regex_index = p->regex_index;
+			break;
+#endif
+
+		case XLAT_ALTERNATE:
+			if (unlikely(_xlat_copy_internal(NDEBUG_LOCATION_VALS
+							 node, node->alternate[0], p->alternate[0]) < 0)) goto error;
+			if (unlikely(_xlat_copy_internal(NDEBUG_LOCATION_VALS
+							 node, node->alternate[1], p->alternate[1]) < 0)) goto error;
+			break;
+
+		case XLAT_GROUP:
+			if (unlikely(_xlat_copy_internal(NDEBUG_LOCATION_VALS
+							 node, node->group, p->group) < 0)) goto error;
+			break;
+		}
+
+		xlat_exp_insert_tail(out, node);
+	}
+
+	return 0;
+}
+
+int _xlat_copy(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_exp_head_t *out, xlat_exp_head_t const *in)
+{
+	int ret;
+
+	if (!in) return 0;
+
+	XLAT_HEAD_VERIFY(in);
+	ret = _xlat_copy_internal(NDEBUG_LOCATION_VALS ctx, out, in);
+	XLAT_HEAD_VERIFY(out);
+
+	return ret;
+}
+
 #ifdef WITH_VERIFY_PTR
 void xlat_exp_verify(xlat_exp_t const *node)
 {
