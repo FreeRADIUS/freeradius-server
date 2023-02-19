@@ -1075,7 +1075,7 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 	{
 		char *name;
 
-		xlat_aprint(node, &name, group, NULL);
+		MEM(xlat_aprint(node, &name, group, NULL) >= 0);
 		xlat_exp_set_name_buffer_shallow(node, name);
 	}
 
