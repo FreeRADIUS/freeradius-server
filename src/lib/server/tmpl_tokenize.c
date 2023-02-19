@@ -4790,7 +4790,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 					     file, line);
 		}
 
-		if (tmpl_attr_tail_da(vpt) == tmpl_attr_unspec) {
+		if (tmpl_attr_tail_is_unspecified(vpt)) {
 			fr_assert(vpt->rules.cast == FR_TYPE_NULL);
 			break;
 		}
