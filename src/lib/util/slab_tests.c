@@ -22,7 +22,7 @@ typedef struct {
 	int	initial;
 } test_conf_t;
 
-fr_slab_config_t def_slab_config = (fr_slab_config_t) {
+static fr_slab_config_t def_slab_config = (fr_slab_config_t) {
 	.elements_per_slab = 2,
 	.min_elements = 1,
 	.max_elements = 4,
