@@ -227,7 +227,7 @@ void xlat_exp_set_name_buffer(xlat_exp_t *node, char const *fmt)
 void xlat_exp_set_name_buffer_shallow(xlat_exp_t *node, char const *fmt)
 {
 	if (node->fmt) talloc_const_free(node->fmt);
-	node->fmt = talloc_get_type_abort(fmt, char);
+	node->fmt = talloc_get_type_abort_const(fmt, char);
 }
 
 /** Copy all nodes in the input list to the output list
@@ -345,7 +345,7 @@ int _xlat_copy(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_exp_head_t *out, xlat_
 #ifdef WITH_VERIFY_PTR
 void xlat_exp_verify(xlat_exp_t const *node)
 {
-	(void)talloc_get_type_abort(node, xlat_exp_t);
+	(void)talloc_get_type_abort_const(node, xlat_exp_t);
 
 	switch (node->type) {
 	case XLAT_ALTERNATE:
@@ -356,7 +356,7 @@ void xlat_exp_verify(xlat_exp_t const *node)
 
 	case XLAT_GROUP:
 		xlat_exp_head_verify(node->group);
-		(void)talloc_get_type_abort(node->fmt, char);
+		(void)talloc_get_type_abort_const(node->fmt, char);
 		return;
 
 	case XLAT_FUNC:
