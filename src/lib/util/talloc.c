@@ -341,6 +341,30 @@ char *talloc_typed_strdup(TALLOC_CTX *ctx, char const *p)
 	return n;
 }
 
+/** Call talloc_strndup, setting the type on the new chunk correctly
+ *
+ * This function is similar to talloc_typed_strdup but gets the chunk
+ * length using talloc functions.
+ *
+ * @param[in] ctx	The talloc context to hang the result off.
+ * @param[in] p		The string you want to duplicate.
+ * @return
+ *	- Duplicated string.
+ *	- NULL on error.
+ *
+ * @hidecallergraph
+ */
+char *talloc_typed_strdup_buffer(TALLOC_CTX *ctx, char const *p)
+{
+	char *n;
+
+	n = talloc_strndup(ctx, p, talloc_array_length(p) - 1);
+	if (unlikely(!n)) return NULL;
+	talloc_set_type(n, char);
+
+	return n;
+}
+
 /** Call talloc vasprintf, setting the type on the new chunk correctly
  *
  * For some bizarre reason the talloc string functions don't set the
