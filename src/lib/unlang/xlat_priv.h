@@ -171,7 +171,6 @@ struct xlat_exp_s {
 		xlat_call_t	call;
 
 		/** A value box
-		 *
 		 */
 		fr_value_box_t	data;
 	};
@@ -190,10 +189,9 @@ struct xlat_exp_head_s {
 #endif
 };
 
-
 typedef struct {
-	char const	*out;		//!< Output data.
-	size_t		len;		//!< Length of the output string.
+	char const		*out;		//!< Output data.
+	size_t			len;		//!< Length of the output string.
 } xlat_out_t;
 /*
  *	Helper functions
@@ -367,7 +365,8 @@ int		xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 int		xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 					    tmpl_rules_t const *t_rules);
 
-ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node, fr_sbuff_escape_rules_t const *e_rules);
+ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node,
+				fr_sbuff_escape_rules_t const *e_rules);
 
 /*
  *	xlat_inst.c

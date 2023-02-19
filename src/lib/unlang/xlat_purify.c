@@ -47,7 +47,6 @@ static void xlat_value_list_to_xlat(xlat_exp_head_t *head, FR_DLIST_HEAD(fr_valu
 
 			node->quote = T_BARE_WORD;
 			fr_value_box_aprint(node, &name, box, NULL);
-
 			xlat_exp_set_name_buffer_shallow(node, name);
 		}
 		talloc_free(box);
@@ -305,7 +304,6 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 	if (box.type == FR_TYPE_BOOL) box.enumv = attr_expr_bool_enum;
 
 	(void) fr_value_box_aprint(node, &name, &box, NULL);
-
 	xlat_exp_set_name_buffer_shallow(node, name);
 	fr_value_box_copy(node, &node->data, &box);
 

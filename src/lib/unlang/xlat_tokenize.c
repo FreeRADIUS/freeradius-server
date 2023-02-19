@@ -1189,7 +1189,8 @@ void xlat_debug(xlat_exp_head_t const *head)
 	_xlat_debug(head, 0);
 }
 
-ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node, fr_sbuff_escape_rules_t const *e_rules)
+ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node,
+			fr_sbuff_escape_rules_t const *e_rules)
 {
 	ssize_t			slen;
 	size_t			at_in = fr_sbuff_used_total(out);
@@ -1426,8 +1427,7 @@ fr_slen_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
 	our_t_rules.xlat.runtime_el = el;
 
 	fr_strerror_clear();	/* Clear error buffer */
-	if (xlat_tokenize_string(head, &our_in,
-				 false, p_rules, &our_t_rules) < 0) {
+	if (xlat_tokenize_string(head, &our_in, false, p_rules, &our_t_rules) < 0) {
 		talloc_free(head);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
@@ -1646,8 +1646,7 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 
 	fr_strerror_clear();	/* Clear error buffer */
 
-	if (xlat_tokenize_string(head, &our_in,
-				  false, p_rules, t_rules) < 0) {
+	if (xlat_tokenize_string(head, &our_in, false, p_rules, t_rules) < 0) {
 		talloc_free(head);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
