@@ -641,7 +641,5 @@ int xlat_inst_remove(xlat_exp_t *node)
 		TALLOC_FREE(node->call.inst);
 	}
 
-
-	node->type = XLAT_INVALID;
 	return 0;
 }

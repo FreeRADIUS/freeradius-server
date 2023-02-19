@@ -38,15 +38,19 @@ static void xlat_value_list_to_xlat(xlat_exp_head_t *head, FR_DLIST_HEAD(fr_valu
 	while ((box = fr_value_box_list_pop_head(list)) != NULL) {
 		MEM(node = xlat_exp_alloc(head, XLAT_BOX, NULL, 0));
 		fr_value_box_copy(node, &node->data, box);
-		talloc_free(box);
 
 		if (node->data.type == FR_TYPE_STRING) {
 			node->quote = T_DOUBLE_QUOTED_STRING;
-			node->fmt = node->data.vb_strvalue;
+			xlat_exp_set_name_buffer_shallow(node, node->data.vb_strvalue);
 		} else {
+			char *name;
+
 			node->quote = T_BARE_WORD;
-			node->fmt = ""; /* @todo - fixme? */
+			fr_value_box_aprint(node, &name, box, NULL);
+
+			xlat_exp_set_name_buffer_shallow(node, name);
 		}
+		talloc_free(box);
 
 		xlat_exp_insert_tail(head, node);
 	}
@@ -57,7 +61,6 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 {
 	int rcode;
 	bool success;
-	xlat_exp_head_t *group;
 	FR_DLIST_HEAD(fr_value_box_list) list;
 	xlat_flags_t our_flags;
 
@@ -155,19 +158,13 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			if (!success) return -1;
 
 			/*
-			 *	The function call becomes a GROUP of boxes.  We just re-use the argument head,
-			 *	which is already of the type we need.
+			 *	The function call becomes a GROUP of boxes
 			 */
-			/* coverity[dead_error_begin] */
-			group = node->call.args;
-			fr_dlist_talloc_free(&group->dlist);
-
 			xlat_inst_remove(node);
-			node->type = XLAT_GROUP;
-			node->group = group;
+			xlat_exp_set_type(node, XLAT_GROUP);	/* Frees the argument list */
 
-			xlat_value_list_to_xlat(group, &list);
-			node->flags = group->flags;
+			xlat_value_list_to_xlat(node->group, &list);
+			node->flags = node->group->flags;
 			break;
 		}
 

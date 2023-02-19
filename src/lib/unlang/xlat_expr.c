@@ -89,7 +89,7 @@ static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node, bool exists
 	group = xlat_exp_alloc(head->call.args, XLAT_GROUP, NULL, 0);
 	group->quote = T_BARE_WORD;
 
-	group->fmt = node->fmt;	/* not entirely correct, but good enough for now */
+	xlat_exp_set_name_buffer_shallow(group, node->fmt); /* not entirely correct, but good enough for now */
 	group->flags = node->flags;
 
 	talloc_steal(group->group, node);
@@ -121,7 +121,7 @@ static xlat_exp_t *xlat_exists_alloc(TALLOC_CTX *ctx, xlat_exp_t *child)
 
 	fr_assert(child->type == XLAT_TMPL);
 	fr_assert(tmpl_contains_attr(child->vpt));
-	node->fmt = child->vpt->name;
+	xlat_exp_set_name_buffer_shallow(node, child->vpt->name);
 
 	xlat_func_append_arg(node, child, false);
 
@@ -890,7 +890,7 @@ static int xlat_instantiate_logical(xlat_inst_ctx_t const *xctx)
  *	result is "false" for "delete this argument"
  *	result is "true" for "return this argument".
  */
-static bool xlat_node_matches_bool(xlat_exp_t *parent, xlat_exp_head_t *head, bool sense, bool *result)
+static bool xlat_node_matches_bool(bool *result, xlat_exp_t *parent, xlat_exp_head_t *head, bool sense)
 {
 	fr_value_box_t *box;
 	xlat_exp_t *node;
@@ -929,7 +929,7 @@ check:
 
 	xlat_inst_remove(parent);
 
-	parent->type = XLAT_BOX;
+	xlat_exp_set_type(parent, XLAT_BOX);
 	fr_value_box_copy(parent, &parent->data, box);
 	parent->flags = (xlat_flags_t) { .pure = true, .constant = true, };
 
@@ -969,17 +969,17 @@ static void xlat_ungroup(xlat_exp_head_t *head)
  */
 static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t *request)
 {
-	int i, j;
-	int deleted = 0;
-	bool result;
-	xlat_logical_inst_t *inst = talloc_get_type_abort(instance, xlat_logical_inst_t);
-	xlat_exp_head_t *group;
+	int			i, j;
+	int			deleted = 0;
+	bool			result;
+	xlat_logical_inst_t	*inst = talloc_get_type_abort(instance, xlat_logical_inst_t);
+	xlat_exp_head_t		*group;
 
 	fr_assert(node->type == XLAT_FUNC);
 
 	/*
-	 *	Don't check the last argument.  If everything else gets deleted, then we just return the last
-	 *	argument.
+	 *	Don't check the last argument.  If everything else gets deleted,
+	 *	then we just return the last argument.
 	 */
 	for (i = 0; i < inst->argc; i++) {
 		/*
@@ -1002,9 +1002,7 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 		 *	result is "false" for "delete this argument"
 		 *	result is "true" for "return this argument".
 		 */
-		if (!xlat_node_matches_bool(node, inst->argv[i], inst->stop_on_match, &result)) {
-			continue;
-		}
+		if (!xlat_node_matches_bool(&result, node, inst->argv[i], inst->stop_on_match)) continue;
 
 		/*
 		 *	0 && EXPR --> 0.
@@ -1068,11 +1066,12 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 	 */
 	group = inst->argv[0];
 	fr_assert(group != NULL);
+	fr_assert(group->fmt != NULL);
 	talloc_steal(node, group);
 
 	xlat_inst_remove(node);
-	node->type = XLAT_GROUP;
-	node->fmt = group->fmt;
+	xlat_exp_set_type(node, XLAT_BOX);
+	xlat_exp_set_name_buffer_shallow(node, group->fmt);
 	node->group = group;
 	node->flags = group->flags;
 
@@ -1940,8 +1939,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 */
 	*out_c = c;
 
-	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, func->name, strlen(func->name)));
-	unary->fmt = fr_tokens[func->token];
+	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, fr_tokens[func->token], strlen(fr_tokens[func->token])));
 	unary->call.func = func;
 	unary->flags = func->flags;
 
@@ -2007,9 +2005,8 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 	MEM(node = xlat_exp_alloc(cast, XLAT_BOX, NULL, 0));
 	node->flags.constant = true;
 	xlat_exp_set_name_buffer_shallow(node,
-					 talloc_strdup(node,
-						       fr_table_str_by_value(fr_type_table,
-									     type, "<INVALID>")));
+					 talloc_typed_strdup(node,
+							     fr_table_str_by_value(fr_type_table, type, "<INVALID>")));
 
 	fr_value_box_init(&node->data, FR_TYPE_UINT8, attr_cast_base, false);
 	node->data.vb_uint8 = type;
@@ -2145,7 +2142,7 @@ static fr_slen_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_
 
 	node->vpt = vpt;
 	node->quote = quote;
-	node->fmt = vpt->name;
+	xlat_exp_set_name_buffer_shallow(node, vpt->name);
 
 	node->flags.pure = !tmpl_contains_xlat(node->vpt);
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
@@ -2311,17 +2308,9 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 */
 	if (tmpl_is_xlat(vpt) || tmpl_is_xlat_unresolved(vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(vpt);
-		xlat_exp_t *cast;
-		fr_type_t type = FR_TYPE_NULL;
-
-		talloc_steal(node, xlat);
-		node->fmt = talloc_typed_strdup(node, vpt->name);
-
-		xlat_exp_set_type(node, XLAT_GROUP);
-		node->quote = quote;
-		node->group = xlat;
-
-		node->flags = xlat->flags;
+		fr_type_t	type = FR_TYPE_NULL;
+		xlat_exp_t	*arg = NULL;
+		xlat_exp_t	*cast = NULL;
 
 		/*
 		 *	Enforce a cast type.
@@ -2346,11 +2335,31 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 		if (type != FR_TYPE_NULL) {
 			MEM(cast = expr_cast_alloc(head, type));
-			xlat_func_append_arg(cast, node, false);
-			node = cast;
+			head = cast->call.args;	/* Arguments */
 		}
 
-		talloc_free(vpt);
+		MEM(arg = xlat_exp_alloc(head, XLAT_GROUP, vpt->name, strlen(vpt->name)));
+
+		/*
+		 *	This is less efficient than just stealing the
+		 *	xlat into the context of the new node...
+		 *
+		 *	But talloc_steal can be extremely inefficient O(N)
+		 *	where N is chunk siblings.
+		 */
+		xlat_copy(arg->group, arg->group, xlat);
+		arg->quote = quote;
+		arg->flags = xlat->flags;
+
+		talloc_free(node);	/* also frees tmpl, leaving just the xlat */
+
+		if (cast) {
+			xlat_func_append_arg(cast, arg, false);
+			node = cast;
+		} else {
+			node = arg;
+		}
+
 		goto done;
 	}
 
@@ -2372,7 +2381,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 */
 	node->vpt = vpt;
 	node->quote = quote;
-	node->fmt = vpt->name;
+	xlat_exp_set_name_buffer_shallow(node, vpt->name);
 
 	node->flags.pure = tmpl_is_data(node->vpt);
 	node->flags.constant = node->flags.pure;
@@ -2694,7 +2703,6 @@ redo:
 	 *	Create the function node, with the LHS / RHS arguments.
 	 */
 	MEM(node = xlat_exp_alloc(head, XLAT_FUNC, fr_tokens[op], strlen(fr_tokens[op])));
-	node->fmt = fr_tokens[op];
 	node->call.func = func;
 	node->flags = func->flags;
 

@@ -34,11 +34,24 @@ extern "C" {
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/build.h>
 
 #ifdef DEBUG_XLAT
 #  define XLAT_DEBUG RDEBUG3
 #else
 #  define XLAT_DEBUG(...)
+#endif
+
+/*
+ *	Allow public and private versions of the same structures
+ */
+#ifdef _CONST
+#  error _CONST can only be defined in the local header
+#endif
+#ifndef _XLAT_PRIVATE
+#  define _CONST const
+#else
+#  define _CONST
 #endif
 
 typedef fr_slen_t (*xlat_print_t)(fr_sbuff_t *in, xlat_exp_t const *self, void *inst, fr_sbuff_escape_rules_t const *e_rules);
@@ -125,13 +138,18 @@ typedef struct {
  * These nodes form a tree which represents one or more nested expansions.
  */
 struct xlat_exp_s {
-	char const	*fmt;		//!< The original format string (a talloced buffer).
-	fr_token_t	quote;		//!< Type of quoting around XLAT_GROUP types.
+	char const *  _CONST	fmt;		//!< The original format string (a talloced buffer).
+	fr_token_t		quote;		//!< Type of quoting around XLAT_GROUP types.
 
-	xlat_flags_t	flags;		//!< Flags that control resolution and evaluation.
+	xlat_flags_t		flags;		//!< Flags that control resolution and evaluation.
 
-	xlat_type_t	type;		//!< type of this expansion.
-	fr_dlist_t	entry;
+	xlat_type_t _CONST	type;		//!< type of this expansion.
+	fr_dlist_t		entry;
+
+#ifndef NDEBUG
+	char const * _CONST	file;		//!< File where the xlat was allocated.
+	int			line;		//!< Line where the xlat was alocated.
+#endif
 
 	union {
 		xlat_exp_head_t	*alternate[2];	//!< alternate expansions
@@ -160,11 +178,16 @@ struct xlat_exp_s {
 };
 
 struct xlat_exp_head_s {
-	char const	*fmt;		//!< The original format string (a talloced buffer).
-	xlat_flags_t	flags;		//!< Flags that control resolution and evaluation.
-	bool		instantiated;	//!< temporary flag until we fix more things
-	fr_dict_t const	*dict;		//!< dictionary for this xlat
-	fr_dlist_head_t	dlist;
+	fr_dlist_head_t		dlist;
+	char const * _CONST	fmt;		//!< The original format string (a talloced buffer).
+	xlat_flags_t		flags;		//!< Flags that control resolution and evaluation.
+	bool			instantiated;	//!< temporary flag until we fix more things
+	fr_dict_t const		*dict;		//!< dictionary for this xlat
+
+#ifndef NDEBUG
+	char const * _CONST	file;		//!< File where the xlat was allocated.
+	int			line;		//!< Line where the xlat was alocated.
+#endif
 };
 
 
@@ -216,146 +239,6 @@ static inline xlat_exp_t *xlat_exp_next(xlat_exp_head_t const *head, xlat_exp_t 
 
 	return fr_dlist_next(&head->dlist, node);
 }
-
-static inline xlat_exp_head_t *xlat_exp_head_alloc(TALLOC_CTX *ctx)
-{
-	xlat_exp_head_t *head;
-
-	MEM(head = talloc_zero(ctx, xlat_exp_head_t));
-
-	fr_dlist_init(&head->dlist, xlat_exp_t, entry);
-	head->flags.pure = true;
-
-	return head;
-}
-
-/** Set the type of an xlat node
- *
- * Also initialises any xlat_exp_head necessary
- *
- * @param[in] node	to set type for.
- * @param[in] type	to set.
- */
-static inline void xlat_exp_set_type(xlat_exp_t *node, xlat_type_t type)
-{
-	xlat_type_t existing_type = node->type;
-
-	node->type = type;
-
-	if (existing_type != 0) return;
-
-	switch (type) {
-	case XLAT_ALTERNATE:
-		node->alternate[0] = xlat_exp_head_alloc(node);
-		node->alternate[1] = xlat_exp_head_alloc(node);
-		break;
-
-	case XLAT_GROUP:
-		node->group = xlat_exp_head_alloc(node);
-		break;
-
-	case XLAT_FUNC:
-	case XLAT_FUNC_UNRESOLVED:
-		node->call.args = xlat_exp_head_alloc(node);
-		break;
-
-	default:
-		break;
-	}
-}
-
-static inline xlat_exp_t *xlat_exp_alloc_pool(TALLOC_CTX *ctx, unsigned int extra_hdrs, size_t extra)
-{
-	xlat_exp_t *node;
-
-	MEM(node = talloc_zero_pooled_object(ctx, xlat_exp_t, extra_hdrs, extra));
-	node->flags.pure = true;	/* everything starts pure */
-	node->quote = T_BARE_WORD;
-
-	return node;
-}
-
-/** Allocate an xlat node with no name, and no type set
- *
- * @param[in] ctx	to allocate node in.
- * @return A new xlat node.
- */
-static inline xlat_exp_t *xlat_exp_alloc_null(TALLOC_CTX *ctx)
-{
-	return xlat_exp_alloc_pool(ctx, 0, 0);
-}
-
-/** Allocate an xlat node
- *
- * @param[in] ctx	to allocate node in.
- * @param[in] type	of the node.
- * @param[in] in	original input string.
- * @param[in] inlen	the length of the original input string.
- * @return A new xlat node.
- */
-static inline xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx, xlat_type_t type,
-					 char const *in, size_t inlen)
-{
-	xlat_exp_t *node;
-	unsigned int extra_hdrs;
-	size_t extra;
-
-	/*
-	 *	Figure out how much extra memory we
-	 *	need to allocate for this node type.
-	 */
-	switch (type) {
-	case XLAT_ALTERNATE:
-		extra_hdrs = 2;
-		extra = sizeof(xlat_exp_head_t) * 2;
-		break;
-
-	case XLAT_GROUP:
-		extra_hdrs = 1;
-		extra = sizeof(xlat_exp_head_t);
-		break;
-
-	case XLAT_FUNC:
-		extra_hdrs = 1;
-		extra = sizeof(xlat_exp_head_t);
-		break;
-	
-	default:
-		extra_hdrs = 0;
-		extra = 0;
-	}
-
-	node = xlat_exp_alloc_pool(ctx,
-				   (in != NULL) + extra_hdrs,
-				   inlen + extra);
-	xlat_exp_set_type(node, type);
-
-	if (!in) return node;
-
-	node->fmt = talloc_bstrndup(node, in, inlen);
-	switch (type) {
-	case XLAT_BOX:
-		fr_value_box_strdup_shallow(&node->data, NULL, node->fmt, false);
-		break;
-
-	default:
-		break;
-	}
-
-	return node;
-}
-
-/** Set the format string for an xlat node
- *
- * @param[in] node	to set fmt for.
- * @param[in] fmt	talloced buffer to set as the fmt string.
- */
-static inline void xlat_exp_set_name_buffer_shallow(xlat_exp_t *node, char const *fmt)
-{
-	if (node->fmt) talloc_const_free(node->fmt);
-	node->fmt = fmt;
-}
-
 
 /** Mark an xlat function as internal
  *
@@ -412,9 +295,26 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request);
 typedef int (*xlat_walker_t)(xlat_exp_t *exp, void *uctx);
 
 /*
+ *	xlat_alloc.c
+ */
+xlat_exp_head_t	*_xlat_exp_head_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx);
+#define		xlat_exp_head_alloc(_ctx) _xlat_exp_head_alloc(NDEBUG_LOCATION_EXP _ctx)
+
+void		_xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type);
+#define		xlat_exp_set_type(_node, _type) _xlat_exp_set_type(NDEBUG_LOCATION_EXP _node, _type)
+
+xlat_exp_t	*_xlat_exp_alloc_null(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx);
+#define		xlat_exp_alloc_null(_ctx) _xlat_exp_alloc_null(NDEBUG_LOCATION_EXP _ctx)
+
+xlat_exp_t	*_xlat_exp_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_type_t type, char const *in, size_t inlen);
+#define		xlat_exp_alloc(_ctx, _type, _in, _inlen) _xlat_exp_alloc(NDEBUG_LOCATION_EXP _ctx, _type, _in, _inlen)
+
+void		xlat_exp_set_name_buffer_shallow(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
+
+/*
  *	xlat_func.c
  */
-xlat_t	*xlat_func_find(char const *name, ssize_t namelen);
+xlat_t		*xlat_func_find(char const *name, ssize_t namelen);
 
 /*
  *	xlat_eval.c
@@ -450,9 +350,9 @@ void		unlang_xlat_init(void);
 int		unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_box_list) *out,
 				      request_t *request, xlat_exp_t *node);
 
-int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			       request_t *request, void *decode_ctx, fr_pair_decode_t decode,
-			       FR_DLIST_HEAD(fr_value_box_list) *in);
+int 		xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
+					   request_t *request, void *decode_ctx, fr_pair_decode_t decode,
+					   FR_DLIST_HEAD(fr_value_box_list) *in);
 /*
  *	xlat_expr.c
  */

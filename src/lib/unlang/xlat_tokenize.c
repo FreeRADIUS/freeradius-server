@@ -120,7 +120,7 @@ xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_head_t c
 
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, func->name, strlen(func->name)));
 	node->call.func = func;
-	if (unlikely(xlat_copy(node, &node->call.args, args) < 0)) {
+	if (unlikely(xlat_copy(node, node->call.args, args) < 0)) {
 		talloc_free(node);
 		return NULL;
 	}
@@ -284,7 +284,7 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 					      fr_sbuff_t *in,
 					      tmpl_rules_t const *t_rules)
 {
-	xlat_exp_t		*node, *arg_group;
+	xlat_exp_t		*node;
 	xlat_t			*func;
 	fr_sbuff_marker_t	m_s;
 
@@ -1061,13 +1061,15 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 
 	fr_assert(head != NULL);
 
-	INFO_INDENT("head flags = { %s %s %s }",
-		    head->flags.needs_resolving ? "need_resolving" : "",
+	INFO_INDENT("head flags = %s %s %s",
+		    head->flags.needs_resolving ? "need_resolving," : "",
 		    head->flags.pure ? "pure" : "",
 		    head->flags.can_purify ? "can_purify" : "");
 
+	depth++;
+
 	xlat_exp_foreach(head, node) {
-		INFO_INDENT("[%d] flags = { %s %s %s }", i++,
+		INFO_INDENT("[%d] flags = %s %s %s ", i++,
 			    node->flags.needs_resolving ? "need_resolving" : "",
 			    node->flags.pure ? "pure" : "",
 			    node->flags.can_purify ? "can_purify" : "");
@@ -1079,6 +1081,9 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 
 		needs_resolving |= node->flags.needs_resolving;
 #endif
+
+		INFO_INDENT("{");
+		depth++;
 
 		if (node->quote != T_BARE_WORD) INFO_INDENT("quote = %c", fr_token_quote[node->quote]);
 
@@ -1173,10 +1178,10 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 
 		case XLAT_ALTERNATE:
 			DEBUG("XLAT-IF {");
-			_xlat_debug(node->alternate[0], depth + 1);
+			_xlat_debug(node->alternate[0], depth);
 			DEBUG("}");
 			DEBUG("XLAT-ELSE {");
-			_xlat_debug(node->alternate[1], depth + 1);
+			_xlat_debug(node->alternate[1], depth);
 			DEBUG("}");
 			break;
 
@@ -1184,6 +1189,9 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 			DEBUG("XLAT-INVALID");
 			break;
 		}
+
+		depth--;
+		INFO_INDENT("}");
 	}
 
 	fr_assert(needs_resolving == head->flags.needs_resolving);
@@ -2047,17 +2055,13 @@ done:
  *	- 0 on success.
  *	- -1 on failure.
  */
-int xlat_copy(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_exp_head_t const *in)
+int xlat_copy(TALLOC_CTX *ctx, xlat_exp_head_t *out, xlat_exp_head_t const *in)
 {
-	xlat_exp_head_t *head;
+	xlat_exp_head_t *head = NULL;
 
-	if (!in) {
-		*out = NULL;
-		return 0;
-	}
+	if (!in) return 0;
 
-	MEM(head = xlat_exp_head_alloc(ctx));
-	head->flags = in->flags;
+	xlat_flags_merge(&out->flags, &in->flags);
 
 	/*
 	 *	Copy everything in the list of nodes
@@ -2065,7 +2069,14 @@ int xlat_copy(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_exp_head_t const *in)
 	xlat_exp_foreach(in, p) {
 		xlat_exp_t *node;
 
-		MEM(node = xlat_exp_alloc(ctx, p->type, p->fmt, talloc_array_length(p->fmt) - 1));
+		(void)talloc_get_type_abort(p, xlat_exp_t);
+
+		/*
+		 *	Ensure the format string is valid...  At this point
+		 *	they should all be talloc'd strings.
+		 */
+		MEM(node = xlat_exp_alloc(ctx, p->type,
+					  talloc_get_type_abort(p->fmt, char), talloc_array_length(p->fmt) - 1));
 		node->quote = p->quote;
 		node->flags = p->flags;
 
@@ -2099,12 +2110,12 @@ int xlat_copy(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_exp_head_t const *in)
 			 */
 			node->call.func = p->call.func;
 			node->call.ephemeral = p->call.ephemeral;
-			if (unlikely(xlat_copy(node, &node->call.args, p->call.args) < 0)) goto error;
+			if (unlikely(xlat_copy(node, node->call.args, p->call.args) < 0)) goto error;
 			break;
 
 		case XLAT_TMPL:
 			node->vpt = tmpl_copy(node, p->vpt);
-			continue;
+			break;
 
 #ifdef HAVE_REGEX
 		case XLAT_REGEX:
@@ -2113,18 +2124,17 @@ int xlat_copy(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_exp_head_t const *in)
 #endif
 
 		case XLAT_ALTERNATE:
-			if (unlikely(xlat_copy(node, &node->alternate[0], p->alternate[0]) < 0)) goto error;
-			if (unlikely(xlat_copy(node, &node->alternate[1], p->alternate[1]) < 0)) goto error;
+			if (unlikely(xlat_copy(node, node->alternate[0], p->alternate[0]) < 0)) goto error;
+			if (unlikely(xlat_copy(node, node->alternate[1], p->alternate[1]) < 0)) goto error;
 			break;
 
 		case XLAT_GROUP:
-			if (unlikely(xlat_copy(node, &node->group, p->group) < 0)) goto error;
+			if (unlikely(xlat_copy(node, node->group, p->group) < 0)) goto error;
 			break;
 		}
 
-		xlat_exp_insert_tail(head, node);
+		xlat_exp_insert_tail(out, node);
 	}
 
-	*out = head;
 	return 0;
 }

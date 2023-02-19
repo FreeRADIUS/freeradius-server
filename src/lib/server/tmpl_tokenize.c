@@ -3198,7 +3198,7 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 	/*
 	 *	Copy the xlat component
 	 */
-	if (tmpl_contains_xlat(vpt) && unlikely(xlat_copy(vpt, &vpt->data.xlat.ex, in->data.xlat.ex) < 0)) goto error;
+	if (tmpl_contains_xlat(vpt) && unlikely(xlat_copy(vpt, vpt->data.xlat.ex, in->data.xlat.ex) < 0)) goto error;
 
 	return vpt;
 }
