@@ -412,7 +412,9 @@ int		xlat_validate_function_mono(xlat_exp_t *node);
 
 int		xlat_validate_function_args(xlat_exp_t *node);
 
-void		xlat_debug(xlat_exp_head_t const *head);
+void		xlat_debug(xlat_exp_t const *node);
+
+void		xlat_debug_head(xlat_exp_head_t const *head);
 
 bool		xlat_is_literal(xlat_exp_head_t const *head);
 

@@ -1037,14 +1037,131 @@ static fr_table_num_sorted_t const xlat_quote_table[] = {
 };
 static size_t xlat_quote_table_len = NUM_ELEMENTS(xlat_quote_table);
 
-static void _xlat_debug(xlat_exp_head_t const *head, int depth)
+#define INFO_INDENT(_fmt, ...)  INFO("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
+
+static void _xlat_debug_head(xlat_exp_head_t const *head, int depth);
+static void _xlat_debug_node(xlat_exp_t const *node, int depth)
 {
-	int i = 0;
-#ifndef NDEBUG
-	bool needs_resolving = false;
+	INFO_INDENT("{");
+	depth++;
+
+	if (node->quote != T_BARE_WORD) INFO_INDENT("quote = %c", fr_token_quote[node->quote]);
+
+	switch (node->type) {
+	case XLAT_BOX:
+		INFO_INDENT("value %s --> %pV", fr_type_to_str(node->data.type), &node->data);
+		break;
+
+	case XLAT_GROUP:
+		INFO_INDENT("group");
+		INFO_INDENT("{");
+		_xlat_debug_head(node->group, depth + 1);
+		INFO_INDENT("}");
+		break;
+
+	case XLAT_ONE_LETTER:
+		INFO_INDENT("percent (%c)", node->fmt[0]);
+		break;
+
+	case XLAT_TMPL:
+	{
+		if (tmpl_is_attr(node->vpt)) {
+			fr_assert(!node->flags.pure);
+			INFO_INDENT("attribute (%s)", tmpl_attr_tail_da(node->vpt)->name);
+			if (tmpl_attr_tail_num(node->vpt) != NUM_UNSPEC) {
+				FR_DLIST_HEAD(tmpl_request_list) const *list;
+				tmpl_request_t *rr = NULL;
+
+				INFO_INDENT("{");
+
+				/*
+				 *	Loop over the request references
+				 */
+				list = tmpl_request(node->vpt);
+				while ((rr = tmpl_request_list_next(list, rr))) {
+					INFO_INDENT("ref  %d", rr->request);
+				}
+				INFO_INDENT("list %s", tmpl_list_name(tmpl_list(node->vpt), "<INVALID>"));
+				if (tmpl_attr_tail_num(node->vpt) != NUM_UNSPEC) {
+					if (tmpl_attr_tail_num(node->vpt) == NUM_COUNT) {
+						INFO_INDENT("[#]");
+					} else if (tmpl_attr_tail_num(node->vpt) == NUM_ALL) {
+						INFO_INDENT("[*]");
+					} else {
+						INFO_INDENT("[%d]", tmpl_attr_tail_num(node->vpt));
+					}
+				}
+				INFO_INDENT("}");
+			}
+		} else if (tmpl_is_data(node->vpt)) {
+			INFO_INDENT("tmpl (%s) type %s", node->fmt, fr_type_to_str(tmpl_value_type(node->vpt)));
+		} else {
+			INFO_INDENT("tmpl (%s)", node->fmt);
+		}
+	}
+		break;
+
+	case XLAT_VIRTUAL:
+		fr_assert(node->fmt != NULL);
+		INFO_INDENT("virtual (%s)", node->fmt);
+		break;
+
+	case XLAT_VIRTUAL_UNRESOLVED:
+		fr_assert(node->fmt != NULL);
+		INFO_INDENT("virtual-unresolved (%s)", node->fmt);
+		break;
+
+	case XLAT_FUNC:
+		fr_assert(node->call.func != NULL);
+		INFO_INDENT("xlat (%s)", node->call.func->name);
+		if (xlat_exp_head(node->call.args)) {
+			INFO_INDENT("{");
+			_xlat_debug_head(node->call.args, depth + 1);
+			INFO_INDENT("}");
+		}
+		break;
+
+	case XLAT_FUNC_UNRESOLVED:
+		INFO_INDENT("xlat-unresolved (%s)", node->fmt);
+		if (xlat_exp_head(node->call.args)) {
+			INFO_INDENT("{");
+			_xlat_debug_head(node->call.args, depth + 1);
+			INFO_INDENT("}");
+		}
+		break;
+
+#ifdef HAVE_REGEX
+	case XLAT_REGEX:
+		INFO_INDENT("regex-var -- %d", node->regex_index);
+		break;
 #endif
 
-#define INFO_INDENT(_fmt, ...)  INFO("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
+	case XLAT_ALTERNATE:
+		DEBUG("XLAT-IF {");
+		_xlat_debug_head(node->alternate[0], depth);
+		DEBUG("}");
+		DEBUG("XLAT-ELSE {");
+		_xlat_debug_head(node->alternate[1], depth);
+		DEBUG("}");
+		break;
+
+	case XLAT_INVALID:
+		DEBUG("XLAT-INVALID");
+		break;
+	}
+
+	depth--;
+	INFO_INDENT("}");
+}
+
+void xlat_debug(xlat_exp_t const *node)
+{
+	_xlat_debug_node(node, 0);
+}
+
+static void _xlat_debug_head(xlat_exp_head_t const *head, int depth)
+{
+	int i = 0;
 
 	fr_assert(head != NULL);
 
@@ -1061,132 +1178,13 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 			    node->flags.pure ? "pure" : "",
 			    node->flags.can_purify ? "can_purify" : "");
 
-#ifndef NDEBUG
-		if (node->flags.needs_resolving) fr_assert(head->flags.needs_resolving);
-
-		if (!head->flags.needs_resolving) fr_assert(!node->flags.needs_resolving);
-
-		needs_resolving |= node->flags.needs_resolving;
-#endif
-
-		INFO_INDENT("{");
-		depth++;
-
-		if (node->quote != T_BARE_WORD) INFO_INDENT("quote = %c", fr_token_quote[node->quote]);
-
-		switch (node->type) {
-		case XLAT_BOX:
-			INFO_INDENT("value %s --> %pV", fr_type_to_str(node->data.type), &node->data);
-			break;
-
-		case XLAT_GROUP:
-			INFO_INDENT("group");
-			INFO_INDENT("{");
-			_xlat_debug(node->group, depth + 1);
-			INFO_INDENT("}");
-			break;
-
-		case XLAT_ONE_LETTER:
-			INFO_INDENT("percent (%c)", node->fmt[0]);
-			break;
-
-		case XLAT_TMPL:
-		{
-			if (tmpl_is_attr(node->vpt)) {
-				fr_assert(!node->flags.pure);
-				INFO_INDENT("attribute (%s)", tmpl_attr_tail_da(node->vpt)->name);
-				if (tmpl_attr_tail_num(node->vpt) != NUM_UNSPEC) {
-					FR_DLIST_HEAD(tmpl_request_list) const *list;
-					tmpl_request_t *rr = NULL;
-
-					INFO_INDENT("{");
-
-					/*
-					 *	Loop over the request references
-					 */
-					list = tmpl_request(node->vpt);
-					while ((rr = tmpl_request_list_next(list, rr))) {
-						INFO_INDENT("ref  %d", rr->request);
-					}
-					INFO_INDENT("list %s", tmpl_list_name(tmpl_list(node->vpt), "<INVALID>"));
-					if (tmpl_attr_tail_num(node->vpt) != NUM_UNSPEC) {
-						if (tmpl_attr_tail_num(node->vpt) == NUM_COUNT) {
-							INFO_INDENT("[#]");
-						} else if (tmpl_attr_tail_num(node->vpt) == NUM_ALL) {
-							INFO_INDENT("[*]");
-						} else {
-							INFO_INDENT("[%d]", tmpl_attr_tail_num(node->vpt));
-						}
-					}
-					INFO_INDENT("}");
-				}
-			} else if (tmpl_is_data(node->vpt)) {
-				INFO_INDENT("tmpl (%s) type %s", node->fmt, fr_type_to_str(tmpl_value_type(node->vpt)));
-			} else {
-				INFO_INDENT("tmpl (%s)", node->fmt);
-			}
-		}
-			break;
-
-		case XLAT_VIRTUAL:
-			fr_assert(node->fmt != NULL);
-			INFO_INDENT("virtual (%s)", node->fmt);
-			break;
-
-		case XLAT_VIRTUAL_UNRESOLVED:
-			fr_assert(node->fmt != NULL);
-			INFO_INDENT("virtual-unresolved (%s)", node->fmt);
-			break;
-
-		case XLAT_FUNC:
-			fr_assert(node->call.func != NULL);
-			INFO_INDENT("xlat (%s)", node->call.func->name);
-			if (xlat_exp_head(node->call.args)) {
-				INFO_INDENT("{");
-				_xlat_debug(node->call.args, depth + 1);
-				INFO_INDENT("}");
-			}
-			break;
-
-		case XLAT_FUNC_UNRESOLVED:
-			INFO_INDENT("xlat-unresolved (%s)", node->fmt);
-			if (xlat_exp_head(node->call.args)) {
-				INFO_INDENT("{");
-				_xlat_debug(node->call.args, depth + 1);
-				INFO_INDENT("}");
-			}
-			break;
-
-#ifdef HAVE_REGEX
-		case XLAT_REGEX:
-			INFO_INDENT("regex-var -- %d", node->regex_index);
-			break;
-#endif
-
-		case XLAT_ALTERNATE:
-			DEBUG("XLAT-IF {");
-			_xlat_debug(node->alternate[0], depth);
-			DEBUG("}");
-			DEBUG("XLAT-ELSE {");
-			_xlat_debug(node->alternate[1], depth);
-			DEBUG("}");
-			break;
-
-		case XLAT_INVALID:
-			DEBUG("XLAT-INVALID");
-			break;
-		}
-
-		depth--;
-		INFO_INDENT("}");
+		_xlat_debug_node(node, depth);
 	}
-
-	fr_assert(needs_resolving == head->flags.needs_resolving);
 }
 
-void xlat_debug(xlat_exp_head_t const *head)
+void xlat_debug_head(xlat_exp_head_t const *head)
 {
-	_xlat_debug(head, 0);
+	_xlat_debug_head(head, 0);
 }
 
 ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node,
