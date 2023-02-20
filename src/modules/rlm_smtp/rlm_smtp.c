@@ -157,6 +157,7 @@ static int cf_table_parse_tmpl(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 						.allow_foreign = true
 					}
 				};
+	rules.attr.list_def = request_attr_request;
 
 	if (!tmpl) {
 		cf_log_err(cp, "Failed parsing attribute reference");
@@ -1059,6 +1060,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 			}
 		};
+		parse_rules.attr.list_def = request_attr_request;
 
 		if (map_afrom_cs(inst, &inst->header_maps, header,
 				 &parse_rules, &parse_rules, smtp_verify, NULL, MAX_ATTRMAP) < 0) {
