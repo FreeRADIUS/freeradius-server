@@ -258,7 +258,7 @@ static int _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_exp_he
 		 *	they should all be talloc'd strings.
 		 */
 		MEM(node = xlat_exp_alloc(ctx, p->type,
-					  talloc_get_type_abort(p->fmt, char), talloc_array_length(p->fmt) - 1));
+					  talloc_get_type_abort_const(p->fmt, char), talloc_array_length(p->fmt) - 1));
 		node->quote = p->quote;
 		node->flags = p->flags;
 
@@ -361,7 +361,7 @@ void xlat_exp_verify(xlat_exp_t const *node)
 
 	case XLAT_FUNC:
 		xlat_exp_head_verify(node->call.args);
-	(void)talloc_get_type_abort(node->fmt, char);
+	(void)talloc_get_type_abort_const(node->fmt, char);
 		return;
 
 	default:
@@ -373,7 +373,7 @@ void xlat_exp_verify(xlat_exp_t const *node)
  */
 void xlat_exp_head_verify(xlat_exp_head_t const *head)
 {
-	(void)talloc_get_type_abort(head, xlat_exp_head_t);
+	(void)talloc_get_type_abort_const(head, xlat_exp_head_t);
 
 	xlat_exp_foreach(head, node) xlat_exp_verify(node);
 }
