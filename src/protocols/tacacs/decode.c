@@ -182,13 +182,30 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 			      uint8_t arg_cnt, uint8_t const *argv, uint8_t const *attrs, NDEBUG_UNUSED uint8_t const *end)
 {
 	uint8_t i;
+	bool append = false;
 	uint8_t const *p = attrs;
 	fr_pair_t *vp;
+	fr_pair_t *vendor = NULL;
 
 	/*
 	 *	No one? Just get out!
 	 */
 	if (!arg_cnt) return 0;
+
+	/*
+	 *	Try to decode as nested attributes.  If we can't, everything is
+	 *
+	 *		Argument-List = "foo=bar"
+	 */
+	if (parent) {
+		vendor = fr_pair_find_by_da(out, NULL, parent);
+		if (!vendor) {
+			vendor = fr_pair_afrom_da(ctx, parent);
+			if (!vendor) return -1;
+
+			append = true;
+		}
+	}
 
 	/*
 	 *	Then, do the dirty job of creating attributes.
@@ -232,11 +249,11 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		 *
 		 *	Argument-List += "name=value"
 		 */
-		if (parent) {
+		if (vendor) {
 			da = fr_dict_attr_by_name(NULL, parent, (char *) buffer);
 			if (!da) goto raw;
 
-			vp = fr_pair_afrom_da(ctx, da);
+			vp = fr_pair_afrom_da(vendor, da);
 			if (!vp) goto oom;
 
 			/*
@@ -252,25 +269,23 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 			if (da->type == FR_TYPE_OCTETS) {
 				if ((arg_end > value) &&
 				    (fr_pair_value_memdup(vp, value, arg_end - value, true) < 0)) {
-					talloc_free(vp);
-					return -1;
+					goto fail;
 				}
 
 			} else if (da->type == FR_TYPE_STRING) {
 				if ((arg_end > value) &&
 				    (fr_pair_value_bstrndup(vp, (char const *) value, arg_end - value, true) < 0)) {
-					talloc_free(vp);
-					return -1;
+					goto fail;
 				}
 
 			} else if (arg_end == value) {
 				/*
 				 *	Any other leaf type MUST have non-zero contents.
 				 */
+				talloc_free(vp);
 				goto raw;
 
 			} else {
-
 				/*
 				 *      Parse the string, and try to convert it to the
 				 *      underlying data type.  If it can't be
@@ -285,9 +300,11 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 				}
 
 				/*
-				 *	Else it parsed fine, append it to the output list.
+				 *	Else it parsed fine, append it to the output vendor list.
 				 */
 			}
+
+			fr_pair_append(&vendor->vp_group, vp);
 
 		} else {
 		raw:
@@ -295,6 +312,12 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 			if (!vp) {
 			oom:
 				fr_strerror_const("Out of Memory");
+			fail:
+				if (append) {
+					talloc_free(vendor);
+				} else {
+					talloc_free(vp);
+				}
 				return -1;
 			}
 
@@ -303,15 +326,22 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 
 			if ((arg_end > value) &&
 			    (fr_pair_value_bstrndup(vp, (char const *) value, arg_end - value, true) < 0)) {
-				talloc_free(vp);
-				return -1;
+				goto fail;
 			}
-		}
 
-		fr_pair_append(out, vp);
+			fr_pair_append(out, vp);
+		}
 
 	next:
 		p += argv[i];
+	}
+
+	if (append) {
+		if (fr_pair_list_num_elements(&vendor->vp_group) > 0) {
+			fr_pair_append(out, vendor);
+		} else {
+			talloc_free(vendor);
+		}
 	}
 
 	return 0;

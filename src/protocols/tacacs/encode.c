@@ -132,8 +132,8 @@ int fr_tacacs_code_to_packet(fr_tacacs_packet_t *pkt, uint32_t code)
  */
 static uint8_t tacacs_encode_body_arg_cnt(fr_pair_list_t *vps, fr_dict_attr_t const *da)
 {
-	uint8_t     arg_cnt = 0;
-	fr_pair_t   *vp;
+	int		arg_cnt = 0;
+	fr_pair_t	*vp;
 
 	for (vp = fr_pair_list_head(vps);
 	     vp;
@@ -151,11 +151,14 @@ static uint8_t tacacs_encode_body_arg_cnt(fr_pair_list_t *vps, fr_dict_attr_t co
 			continue;
 		}
 
-		/*
-		 *	@todo - if we find a Vendor, count its children
-		 */
-
 		fr_assert(fr_dict_by_da(vp->da) == dict_tacacs);
+
+		/*
+		 *	Recurse into children.
+		 */
+		if (vp->da->type == FR_TYPE_VENDOR) {
+			arg_cnt += tacacs_encode_body_arg_cnt(&vp->vp_group, NULL);
+		}
 
 		if (vp->da->parent->type != FR_TYPE_VENDOR) continue;
 
