@@ -108,7 +108,7 @@ int fr_dict_str_to_argv(char *str, char **argv, int max_argc)
 
 static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 {
-	int ret = 0;
+	int unsigned ret = 0;
 	int base = 10;
 	static char const *tab = "0123456789";
 
