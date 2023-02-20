@@ -361,7 +361,7 @@ void xlat_exp_verify(xlat_exp_t const *node)
 
 	case XLAT_FUNC:
 		xlat_exp_head_verify(node->call.args);
-	(void)talloc_get_type_abort_const(node->fmt, char);
+		(void)talloc_get_type_abort_const(node->fmt, char);
 		return;
 
 	default:
