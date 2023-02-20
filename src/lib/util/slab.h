@@ -330,9 +330,9 @@ DIAG_OFF(unused-function) \
 				fr_ ## _name ## _slab_insert_tail(&slab_list->avail, slab); \
 			} \
 			slab_list->in_use--; \
+			element->in_use = false; \
 			return; \
 		} \
-		element->in_use = false; \
 		talloc_free(element); \
 	} \
 \
