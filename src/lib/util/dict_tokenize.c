@@ -499,6 +499,11 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				return -1;
 			}
 
+			if ((type != FR_TYPE_TLV) && (type != FR_TYPE_STRUCT)) {
+				fr_strerror_const("'clone=...' references can only be used for 'tlv' and 'struct' types");
+				return -1;
+			}
+
 			/*
 			 *	Allow cloning of any types, so long as
 			 *	the types are the same.  We do the checks later.
@@ -521,12 +526,8 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				return -1;
 			}
 
-			switch (type) {
-			case FR_TYPE_LEAF:
-				break;
-
-			default:
-				fr_strerror_const("ENUM references be used for structural types");
+			if (!fr_type_is_leaf(type)) {
+				fr_strerror_const("'enum=...' references cannot be used for structural types");
 				return -1;
 			}
 
@@ -556,6 +557,11 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 				if (!ext || !ext->value_by_name) {
 					fr_strerror_const("Invalid reference in 'enum=...', target has no VALUEs");
+					return -1;
+				}
+
+				if (fr_dict_attr_is_key_field(da)) {
+					fr_strerror_const("Invalid reference in 'enum=...', target is a 'key' field");
 					return -1;
 				}
 			}
@@ -1136,6 +1142,11 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
 	}
 
 	flags = *base_flags;
+	flags.name_only = true;		/* values for ENUM are irrelevant */
+	flags.internal = true;		/* ENUMs will never get encoded into a protocol */
+#if 0
+	flags.is_enum = true;		/* it's an enum, and can't be assigned to a #fr_pair_t */
+#endif
 
 	if (dict_process_type_field(ctx, argv[1], &type, &flags) < 0) return -1;
 
@@ -1177,7 +1188,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
 	if (!dict_attr_fields_valid(ctx->dict, parent, argv[0], &attr, type, &flags)) return -1;
 
 	/*
-	 *	Add in an attribute
+	 *	Add the ENUM as if it was an ATTRIBUTE.
 	 */
 	if (fr_dict_attr_add(ctx->dict, parent, argv[0], attr, type, &flags) < 0) return -1;
 

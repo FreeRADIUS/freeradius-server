@@ -51,11 +51,11 @@ Common flags and meanings
 |=====
 | Name         | Description
 | `array`      | For fixed-size types, declare that the contents of the packet can have an array of this value.
-| `clone=...`  | For `tlv` types, clone (or copy) child definitions from another `tlv` type
+| `enum=...`   | For "leaf" types, copy xref:dictionary/value.adoc[VALUE]s from an `xref:dictionary/enum.adoc[ENUM].
+| `clone=...`  | For `tlv` or 'struct' types, clone (or copy) child definitions from another attribute of the same type
 | `internal`   | This attribute is internal to the server, and will never be sent "on the wire"
-| `ref=...`    | For `group` types, specify which attributes are allowed to be in this `group`
+| `ref=...`    | For `group` types, reference another attribute by name as being allowed in the `group`.
 |=====
-
 
 .Examples
 ----
@@ -63,6 +63,34 @@ ATTRIBUTE Foo 1 string[3]
 ATTRIBUTE Bar 2 octets
 ATTRIBUTE baz 3 ipv4addr
 ----
+
+
+== Clone
+
+In some cases, structured attributes have different parents, but
+identical children. The `clone=...` flag allows an attribute to copy
+or "clone" the children of another attribute.
+
+The `clone` flag can only be used for the data type `tlv`.
+
+.Clone Examples
+----
+ATTRIBUTE Foo 1 tlv
+ATTRIBUTE Bar 1.1 ipaddr
+ATTRIBUTE Baz 2 tlv clone=Foo
+----
+
+== References
+
+In some cases, attributes can "group" other attributes without adding
+a new hierarchy.  The `ref=...` flag allows an attribute to reference
+another attribute.
+
+If `ref` is not given for an attribute of type `group` then the
+reference is assumed to be to the "root" of the current protocol
+dictionary.
+
+The `ref` flag can only be used for the data type `group`.
 
 == Fixed Size Data types
 

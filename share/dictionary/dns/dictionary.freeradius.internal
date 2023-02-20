@@ -4,7 +4,7 @@
 # Version $Id$
 FLAGS	internal
 
-ATTRIBUTE	Packet-Type				1000	uint32 clone=packet.opcode
+ATTRIBUTE	Packet-Type				1000	uint32 enum=packet.opcode
 
 VALUE	Packet-Type			query.response		16
 VALUE	Packet-Type			iquery.response		17

@@ -1,0 +1,50 @@
+= The ENUM keyword
+
+.Syntax
+----
+ENUM <name> <type>
+----
+
+.Description
+The `ENUM` keyword defines name for set of xref:dictionary/value.adoc[VALUE]s.
+
+<name>:: The name of the enum.
++
+These names are in the same namespace as
+xref:dictionary/attribute.adoc[ATTRIBUTE]s, and must follow the same
+rules
+
+<type>:: A xref:type/index.adoc[data type]
++
+The list of allowed data types are the same as for xref:dictionary/value.adoc[VALUE].
+
+Once an `ENUM` is defined, it can have
+xref:dictionary/value.adoc[VALUE]s associated with it, just like with
+xref:dictionary/attribute.adoc[ATTRIBUTE]s.
+
+The main purpose of `ENUM` is to define commonly used values in one
+place, and then refer to those values from multiple places.  This
+reuse simplifies the dictionaries, and helps to avoid errors.
+
+In the following example, `Ethernet-Type` is defined as an `ENUM` and
+given xref:dictionary/value.adoc[VALUE]s.  We then define two
+xref:dictionary/attribute.adoc[ATTRIBUTE]s, and copy those
+xref:dictionary/value.adoc[VALUE]s from the `ENUM` to the
+xref:dictionary/attribute.adoc[ATTRIBUTE].
+
+After these definitions, when the server will allow `Some-Protocol` to
+be assigned the value `IPv4`, which will get encoded into a packet as
+the 16-bit field `0x0800.
+
+.Example
+----
+ENUM Ethernet-Type uint16
+VALUE Ethernet-Type IPv4 0x0800
+VALUE Ethernet-Type IPv6 0x86DD
+
+ATTRIBUTE Some-Protocol 2112 uint16 enum=Ethernet-Type
+ATTRIBUTE Other-Thing  6809 uint16 enum=Ethernet-Type
+----
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

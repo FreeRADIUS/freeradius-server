@@ -475,7 +475,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 		int copied;
 
 		/*
-		 *	Structural types cannot be the source or destination of clones.
+		 *	Only TLV and STRUCT types can be the source or destination of clones.
 		 *
 		 *	Leaf types can be cloned, even if they're
 		 *	different types.  But only if they don't have

@@ -18,7 +18,8 @@ overlap with the name of any other attribute.
 <reference>:: An OID by name `Vendor.Cisco.AVPair`, or by number `26.9.1`.
 +
 The full name or number must be given.
-.Examples
+
+.Example
 ----
 ALIAS Cisco-AVPair 26.9.1
 ----
@@ -26,7 +27,7 @@ ALIAS Cisco-AVPair 26.9.1
 == Purpose of the ALIAS keyword
 
 The purpose of the `ALIAS` keyword is to allow for easier transition
-from ealier versions of FreeRADIUS to version 4.  We recognize that
+from earlier versions of FreeRADIUS to version 4.  We recognize that
 the old attribute names are used in many places such as databases.  It
 can be difficult to change many thousands of existing entries in a
 "live" system.
@@ -41,9 +42,10 @@ file.
 == v3 Compatible names
 
 All of the attributes have been renamed from v3.  This change was
-necessary in order to support new funtionality in v4.  The
-unfortunate side effect of this change is that all of the names in
-SQL, LDAP, and the "files" module are incompatible with v4.
+necessary in order to support new funtionality in v4.  The unfortunate
+side effect of this change is that all of the names which are
+currently in SQL, LDAP, and the "files" module for use with v3, are
+incompatible with v4.
 
 We recognize that is is difficult to change every entry in a
 database, especially when there's no clear mapping between the
@@ -51,10 +53,11 @@ database, especially when there's no clear mapping between the
 the "new" names need to be grouped and arranged in ways that the
 old ones were not.
 
-The "old" names were all in flat lists, so that` User-Name` appeared
+The "old" names were all in flat lists, so that `User-Name` appeared
 next to `Cisco-AVPAir`.  This organization was simple enough to work
-for 20 years, but its time has come.  The new names are
-hierarchical, so that the organization is nested by definition.
+for 20 years, but its time has come.  The new names are hierarchical,
+and are contained in "parent" attributes.  This arrangment does not
+ysyakky change the length of most attribute names.
 
 For v4, the `Cisco-AVPair` attribute is called `AVPair`, and it lives
 inside of the `Cisco` namespace, which in turn lives inside of the
