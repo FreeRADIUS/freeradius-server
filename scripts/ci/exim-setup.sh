@@ -65,6 +65,7 @@ LISTEN=127.0.0.1
 #  "keep_environment" setting below.
 #
 MAIL_DIR = ${MAILDIR}
+PASS_DIR = ${BUILDDIR}
 pid_file_path = ${RUNDIR}/exim.pid
 log_file_path = ${LOGDIR}/%s
 spool_directory = ${SPOOLDIR}
@@ -116,7 +117,17 @@ begin retry
 *                *                F,1s,1m
 begin authenticators
 
+plain_server:
+  driver = plaintext
+  public_name = PLAIN
+  server_condition = "\${if eq{\$auth3}{\${extract{1}{:}{\${lookup{\$auth2}lsearch{PASS_DIR/passwd}{\$value}{*:*}}}}}{1}{0}}"
+  server_set_id = \$auth2
+  server_prompts = :
+
 " >"${CONF}"
+
+echo "Generating password file"
+echo "Bob:Saget" > ${BUILDDIR}/passwd
 
 echo "Generating the file attachment"
 # Generate a file for test email attachments
