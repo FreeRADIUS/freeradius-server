@@ -217,7 +217,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	}
 
 	request->packet->id   = data[2]; // seq_no
-	request->reply->id    = data[2]; // seq_no
+	request->reply->id    = data[2] + 1; // seq_no, but requests are odd, replies are even! */
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
