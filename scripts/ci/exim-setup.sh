@@ -33,7 +33,7 @@ echo "Checking for a running exim instance"
 if [ -e "${RUNDIR}/exim.pid" ]
 then
 	echo "Stopping the current exim instance"
-	kill "$(cat ${RUNDIR}/exim.pid)"
+	kill "$(cat ${RUNDIR}/exim.pid)" || true
 	rm -r "${BUILDDIR}"
 fi
 
