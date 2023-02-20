@@ -5811,7 +5811,7 @@ void fr_value_box_list_untaint(FR_DLIST_HEAD(fr_value_box_list) *head)
 /** Validation function to check that a fr_value_box_t is correctly initialised
  *
  */
-void value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
+void fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
 {
 DIAG_OFF(nonnull-compare)
 	/*
@@ -5844,7 +5844,7 @@ DIAG_ON(nonnull-compare)
 		break;
 
 	case FR_TYPE_GROUP:
-		value_box_list_verify(file, line, &vb->vb_group, talloced);
+		fr_value_box_list_verify(file, line, &vb->vb_group, talloced);
 		break;
 
 	default:
@@ -5852,11 +5852,9 @@ DIAG_ON(nonnull-compare)
 	}
 }
 
-void value_box_list_verify(char const *file, int line, FR_DLIST_HEAD(fr_value_box_list) const *list, bool talloced)
+void fr_value_box_list_verify(char const *file, int line, FR_DLIST_HEAD(fr_value_box_list) const *list, bool talloced)
 {
-	fr_value_box_t const *vb = NULL;
-
-	while ((vb = fr_value_box_list_next(list, vb))) value_box_verify(file, line, vb, talloced);
+	fr_value_box_list_foreach(list, vb) fr_value_box_verify(file, line, vb, talloced);
 }
 
 
@@ -5933,3 +5931,53 @@ bool fr_value_box_is_truthy(fr_value_box_t const *in)
 		return box.vb_bool;
 	}
 }
+
+#define INFO_INDENT(_fmt, ...)  FR_FAULT_LOG("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
+
+static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx);
+static void _fr_value_box_list_debug(FR_DLIST_HEAD(fr_value_box_list) const *head, int depth)
+{
+	int i = 0;
+
+	INFO_INDENT("{");
+	fr_value_box_list_foreach(head, vb) _fr_value_box_debug(vb, depth + 1, i++);
+	INFO_INDENT("}");
+}
+
+/** Print a list of value boxes as info messages
+ *
+ * @note Call directly from the debugger
+ */
+void fr_value_box_list_debug(FR_DLIST_HEAD(fr_value_box_list) const *head)
+{
+	_fr_value_box_list_debug(head, 0);
+}
+
+static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx)
+{
+	char *value;
+
+	if (fr_type_is_structural(vb->type)) {
+		_fr_value_box_list_debug(&vb->vb_group, depth + 1);
+		return;
+	}
+
+	fr_value_box_aprint(NULL, &value, vb, NULL);
+	if (idx >= 0) {
+		INFO_INDENT("[%d] %s", idx, value);
+	} else {
+		INFO_INDENT("%s", value);
+	}
+	talloc_free(value);
+}
+
+/** Print the value of a box as info messages
+ *
+ * @note Call directly from the debugger
+ */
+void fr_value_box_debug(fr_value_box_t const *vb)
+{
+	_fr_value_box_debug(vb, 0, -1);
+}
+
+

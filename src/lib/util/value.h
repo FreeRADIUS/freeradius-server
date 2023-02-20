@@ -170,7 +170,6 @@ FR_DLIST_FUNCS(fr_value_box_list, fr_value_box_t, entry)
 
 #define fr_value_box_list_foreach(_list_head, _iter)		fr_dlist_foreach(fr_value_box_list_dlist_head(_list_head), fr_value_box_t, _iter)
 #define fr_value_box_list_foreach_safe(_list_head, _iter)	fr_dlist_foreach_safe(fr_value_box_list_dlist_head(_list_head), fr_value_box_t, _iter)
-#define fr_value_box_list_verify(_list_head)			_fr_value_box_list_verify(__FILE__, __LINE__, _list_head)
 
 FR_DCURSOR_FUNCS(fr_value_box_dcursor, fr_value_box_list, fr_value_box_t)
 /** @} */
@@ -1058,16 +1057,16 @@ uint32_t	fr_value_box_hash(fr_value_box_t const *vb);
 
 /** @} */
 
-void		value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
+void		fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
 		CC_HINT(nonnull(3));
-void		value_box_list_verify(char const *file, int line, FR_DLIST_HEAD(fr_value_box_list) const *list, bool talloced)
+void		fr_value_box_list_verify(char const *file, int line, FR_DLIST_HEAD(fr_value_box_list) const *list, bool talloced)
 		CC_HINT(nonnull(3));
 
 #ifdef WITH_VERIFY_PTR
-#  define VALUE_BOX_VERIFY(_x) value_box_verify(__FILE__, __LINE__, _x, false)
-#  define VALUE_BOX_LIST_VERIFY(_x) value_box_list_verify(__FILE__, __LINE__, _x, false)
-#  define VALUE_BOX_TALLOC_VERIFY(_x) value_box_verify(__FILE__, __LINE__, _x, true)
-#  define VALUE_BOX_TALLOC_LIST_VERIFY(_x) value_box_list_verify(__FILE__, __LINE__, _x, true)
+#  define VALUE_BOX_VERIFY(_x) fr_value_box_verify(__FILE__, __LINE__, _x, false)
+#  define VALUE_BOX_LIST_VERIFY(_x) fr_value_box_list_verify(__FILE__, __LINE__, _x, false)
+#  define VALUE_BOX_TALLOC_VERIFY(_x) fr_value_box_verify(__FILE__, __LINE__, _x, true)
+#  define VALUE_BOX_TALLOC_LIST_VERIFY(_x) fr_value_box_list_verify(__FILE__, __LINE__, _x, true)
 #else
 /*
  *  Even if were building without WITH_VERIFY_PTR
@@ -1079,6 +1078,14 @@ void		value_box_list_verify(char const *file, int line, FR_DLIST_HEAD(fr_value_b
 #  define VALUE_BOX_TALLOC_VERIFY(_x) fr_assert(_x)
 #  define VALUE_BOX_TALLOC_LIST_VERIFY(_x) fr_assert(_x)
 #endif
+
+/** @name Debug functions
+ *
+ * @{
+ */
+void fr_value_box_list_debug(FR_DLIST_HEAD(fr_value_box_list) const *head);
+void fr_value_box_debug(fr_value_box_t const *vb);
+/** @} */
 
 #undef _CONST
 
