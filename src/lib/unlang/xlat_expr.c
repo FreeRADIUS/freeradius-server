@@ -1404,8 +1404,9 @@ static int xlat_function_args_to_tmpl(xlat_inst_ctx_t const *xctx)
 }
 
 
-static xlat_arg_parser_t const xlat_func_rcode_arg = {
-	.concat = true, .type = FR_TYPE_STRING,
+static xlat_arg_parser_t const xlat_func_rcode_arg[] = {
+	{ .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Return the rcode as a string, or bool match if the argument is an rcode name
@@ -1420,11 +1421,12 @@ static xlat_arg_parser_t const xlat_func_rcode_arg = {
  */
 static xlat_action_t xlat_func_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     UNUSED xlat_ctx_t const *xctx,
-				     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args)
 {
 	fr_value_box_t	*vb;
-	fr_value_box_t	*src = fr_value_box_list_head(in);
+	fr_value_box_t	*src;
 
+	XLAT_ARGS(args, &src);
 	/*
 	 *	Query the rcode if there's no argument.  Otherwise do a boolean check if the passed string
 	 *	matches the current rcode.
@@ -1456,8 +1458,9 @@ typedef struct {
 	FR_DLIST_HEAD(fr_value_box_list)	list;
 } xlat_exists_rctx_t;
 
-static xlat_arg_parser_t const xlat_func_exists_arg = {
-	.concat = true, .type = FR_TYPE_STRING,
+static xlat_arg_parser_t const xlat_func_exists_arg[] = {
+	{ .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /*
@@ -1665,7 +1668,7 @@ do { \
 #define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
 do { \
 	if (!(xlat = xlat_register(NULL, _xlat, _func, FR_TYPE_VOID, NULL))) return -1; \
-	xlat_func_mono(xlat, &_arg); \
+	xlat_func_mono(xlat, _arg); \
 	xlat_internal(xlat); \
 } while (0)
 

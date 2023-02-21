@@ -22,7 +22,7 @@ if ("%{regex:foo}") {
 	test_fail
 }
 
-if (!(&Module-Failure-Message == "No previous named regex capture group")) {
+if (!(&Module-Failure-Message[*] == "No previous named regex capture group")) {
 	test_fail
 }
 
@@ -33,7 +33,7 @@ if ("%{regex:%{Tmp-Integer-1}}") {
 	test_fail
 }
 
-if (!(&Module-Failure-Message == "No previous numbered regex capture group")) {
+if (!(&Module-Failure-Message[*] == "No previous numbered regex capture group")) {
 	test_fail
 }
 

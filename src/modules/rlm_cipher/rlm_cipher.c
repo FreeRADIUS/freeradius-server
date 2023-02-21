@@ -563,10 +563,9 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, void *pa
 	return 0;
 }
 
-static xlat_arg_parser_t const cipher_rsa_encrypt_xlat_arg = {
-	.required = true,
-	.concat = true,
-	.type = FR_TYPE_STRING
+static xlat_arg_parser_t const cipher_rsa_encrypt_xlat_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Encrypt input data
@@ -625,10 +624,9 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
-static xlat_arg_parser_t const cipher_rsa_sign_xlat_arg = {
-	.required = true,
-	.concat = true,
-	.type = FR_TYPE_STRING,
+static xlat_arg_parser_t const cipher_rsa_sign_xlat_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Sign input data
@@ -704,10 +702,9 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const cipher_rsa_decrypt_xlat_arg = {
-	.required = true,
-	.concat = true,
-	.type = FR_TYPE_OCTETS
+static xlat_arg_parser_t const cipher_rsa_decrypt_xlat_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_OCTETS },
+	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Decrypt input data
@@ -1303,7 +1300,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 */
 			xlat_name = talloc_asprintf(inst, "%s_decrypt", mctx->inst->name);
 			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_rsa_decrypt_xlat, FR_TYPE_STRING, NULL);
-			xlat_func_mono(xlat, &cipher_rsa_decrypt_xlat_arg);
+			xlat_func_mono(xlat, cipher_rsa_decrypt_xlat_arg);
 			talloc_free(xlat_name);
 
 			/*
@@ -1340,7 +1337,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 */
 			xlat_name = talloc_asprintf(inst, "%s_encrypt", mctx->inst->name);
 			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_rsa_encrypt_xlat, FR_TYPE_OCTETS, NULL);
-			xlat_func_mono(xlat, &cipher_rsa_encrypt_xlat_arg);
+			xlat_func_mono(xlat, cipher_rsa_encrypt_xlat_arg);
 			talloc_free(xlat_name);
 
 			/*
@@ -1348,7 +1345,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 */
 			xlat_name = talloc_asprintf(inst, "%s_sign", mctx->inst->name);
 			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_rsa_sign_xlat, FR_TYPE_OCTETS, NULL);
-			xlat_func_mono(xlat, &cipher_rsa_sign_xlat_arg);
+			xlat_func_mono(xlat, cipher_rsa_sign_xlat_arg);
 			talloc_free(xlat_name);
 
 			/*

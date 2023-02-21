@@ -45,3 +45,21 @@ else {
 
 #  Remove the file
 &Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_xlat.log"`
+
+
+# Try with some handcrafted JSON
+
+if (%{linelog_fmt_delim_xlat:"{ \"foo\" : \"bar\", \"baz\" : \"boink\" }"} == 36) {
+	test_pass
+} else {
+	test_fail
+}
+
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_xlat.log"`
+
+if (&Tmp-String-0 == '{ "foo" : "bar", "baz" : "boink" }, ') {
+	test_pass
+}
+else {
+	test_fail
+}

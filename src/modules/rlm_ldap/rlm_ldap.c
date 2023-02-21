@@ -176,8 +176,10 @@ global_lib_autoinst_t const *rlm_ldap_lib[] = {
 	GLOBAL_LIB_TERMINATOR
 };
 
-
-static xlat_arg_parser_t const ldap_escape_xlat_arg = { .required = true, .concat = true, .type = FR_TYPE_STRING };
+static xlat_arg_parser_t const ldap_escape_xlat_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Escape LDAP string
  *
@@ -384,7 +386,10 @@ static fr_uri_part_t const ldap_uri_parts[] = {
 	XLAT_URI_PART_TERMINATOR
 };
 
-static xlat_arg_parser_t const ldap_xlat_arg = { .required = true, .type = FR_TYPE_STRING };
+static xlat_arg_parser_t const ldap_xlat_arg[] = {
+	{ .required = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
@@ -395,7 +400,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 		       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
 {
 	fr_ldap_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
-	fr_value_box_t		*in_vb = NULL;
+	fr_value_box_t		*uri_components, *uri;
 	char			*host_url;
 	fr_ldap_config_t const	*handle_config = t->config;
 	fr_ldap_thread_trunk_t	*ttrunk;
@@ -403,21 +408,27 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	LDAPURLDesc		*ldap_url;
 
-	if (fr_uri_escape(in, ldap_uri_parts, NULL) < 0) return XLAT_ACTION_FAIL;
+	XLAT_ARGS(in, &uri_components);
 
-	in_vb = fr_value_box_list_head(in);
-	if (fr_value_box_list_concat_in_place(in_vb, in_vb, in, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE,
-					     true, SIZE_MAX) < 0) {
+	if (fr_uri_escape(&uri_components->vb_group, ldap_uri_parts, NULL) < 0) return XLAT_ACTION_FAIL;
+
+	/*
+	 *	Smush everything into the first URI box
+	 */
+	uri = fr_value_box_list_head(&uri_components->vb_group);
+
+	if (fr_value_box_list_concat_in_place(uri, uri, &uri_components->vb_group,
+					      FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		REDEBUG("Failed concattenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (!ldap_is_ldap_url(in_vb->vb_strvalue)) {
+	if (!ldap_is_ldap_url(uri->vb_strvalue)) {
 		REDEBUG("String passed does not look like an LDAP URL");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (ldap_url_parse(in_vb->vb_strvalue, &ldap_url)){
+	if (ldap_url_parse(uri->vb_strvalue, &ldap_url)){
 		REDEBUG("Parsing LDAP URL failed");
 	error:
 		ldap_free_urldesc(ldap_url);
@@ -1760,12 +1771,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	}
 
 	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, ldap_xlat, FR_TYPE_STRING, NULL);
-	xlat_func_mono(xlat, &ldap_xlat_arg);
+	xlat_func_mono(xlat, ldap_xlat_arg);
 
 	xlat = xlat_register_module(NULL, mctx, "ldap_escape", ldap_escape_xlat, FR_TYPE_STRING, XLAT_FLAG_PURE);
-	if (xlat) xlat_func_mono(xlat, &ldap_escape_xlat_arg);
+	if (xlat) xlat_func_mono(xlat, ldap_escape_xlat_arg);
 	xlat = xlat_register_module(NULL, mctx, "ldap_unescape", ldap_unescape_xlat, FR_TYPE_STRING, XLAT_FLAG_PURE);
-	if (xlat) xlat_func_mono(xlat, &ldap_escape_xlat_arg);
+	if (xlat) xlat_func_mono(xlat, ldap_escape_xlat_arg);
 
 	map_proc_register(inst, mctx->inst->name, mod_map_proc, ldap_map_verify, 0);
 

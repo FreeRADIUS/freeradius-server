@@ -324,5 +324,29 @@ match %(rpad:&User-Name 5 x)
 xlat %(rpad:&User-Name foo x)
 match ERROR offset 24: Failed parsing argument 1 as type 'uint64'
 
+#
+#  Argument quoting
+#
+#  The code here isn't great.  If it's ever fixes to actually show the quoting
+#  then these should be correct
+#
+xlat %{md5:"arg"}
+match %{md5:"arg"}
+
+xlat %{md5:"arg}"}
+match %{md5:"arg}"}
+
+xlat %{md5:"arg}
+match ERROR offset 12: Missing closing '"'
+
+xlat %{md5:"arg\""}
+match %{md5:"arg\""}
+
+xlat %{md5:'arg'}
+match %{md5:'arg'}
+
+xlat %{md5:'arg"'}
+match %{md5:'arg"'}
+
 count
-match 187
+match 199

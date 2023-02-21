@@ -105,7 +105,7 @@ if ("%(subst:%{Tmp-String-0} /***/g .)") {
 	test_fail
 }
 
-if !(&Module-Failure-Message[0] == 'Failed compiling regex: quantifier does not follow a repeatable item') {
+if !(&Module-Failure-Message[*] == 'Failed compiling regex: quantifier does not follow a repeatable item') {
 	test_fail
 }
 
@@ -116,7 +116,7 @@ if ("%(subst:%{Tmp-String-0} //g .)") {
 	test_fail
 }
 
-if !(&Module-Failure-Message[0] == 'Failed compiling regex: Empty expression') {
+if !(&Module-Failure-Message[*] == 'Failed compiling regex: Empty expression') {
 	test_fail
 }
 }

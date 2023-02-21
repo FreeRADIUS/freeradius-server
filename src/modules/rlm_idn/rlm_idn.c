@@ -86,7 +86,10 @@ static const CONF_PARSER mod_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static xlat_arg_parser_t const xlat_idna_arg = { .required = true, .concat = true, .type = FR_TYPE_STRING };
+static xlat_arg_parser_t const xlat_idna_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Convert domain name to ASCII punycode
  *
@@ -150,7 +153,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_t		*xlat;
 
 	xlat = xlat_register_module(inst, mctx, mctx->inst->name, xlat_idna, FR_TYPE_STRING, XLAT_FLAG_PURE);
-	xlat_func_mono(xlat, &xlat_idna_arg);
+	xlat_func_mono(xlat, xlat_idna_arg);
 
 	return 0;
 }

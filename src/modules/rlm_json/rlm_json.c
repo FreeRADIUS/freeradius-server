@@ -77,8 +77,9 @@ typedef struct {
 	json_object		*root;
 } rlm_json_jpath_to_eval_t;
 
-static xlat_arg_parser_t const json_quote_xlat_arg = {
-	.concat = true, .type = FR_TYPE_STRING
+static xlat_arg_parser_t const json_quote_xlat_arg[] = {
+	{ .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Ensure contents are quoted correctly for a JSON document
@@ -110,8 +111,9 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const jpath_validate_xlat_arg = {
-	.required = true, .concat = true, .type = FR_TYPE_STRING
+static xlat_arg_parser_t const jpath_validate_xlat_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Determine if a jpath expression is valid
@@ -151,8 +153,9 @@ static xlat_action_t jpath_validate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const json_encode_xlat_arg = {
-	.required = true, .concat = true, .type = FR_TYPE_STRING
+static xlat_arg_parser_t const json_encode_xlat_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Convert given attributes to a JSON document
@@ -527,13 +530,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	fr_json_format_t	*format = inst->format;
 
 	xlat = xlat_register_module(inst, mctx, "jsonquote", json_quote_xlat, FR_TYPE_STRING, NULL);
-	if (xlat) xlat_func_mono(xlat, &json_quote_xlat_arg);
+	if (xlat) xlat_func_mono(xlat, json_quote_xlat_arg);
 	xlat = xlat_register_module(inst, mctx, "jpathvalidate", jpath_validate_xlat, FR_TYPE_STRING, NULL);
-	if (xlat) xlat_func_mono(xlat, &jpath_validate_xlat_arg);
+	if (xlat) xlat_func_mono(xlat, jpath_validate_xlat_arg);
 
 	name = talloc_asprintf(inst, "%s_encode", mctx->inst->name);
 	xlat = xlat_register_module(inst, mctx, name, json_encode_xlat, FR_TYPE_STRING, NULL);
-	xlat_func_mono(xlat, &json_encode_xlat_arg);
+	xlat_func_mono(xlat, json_encode_xlat_arg);
 	talloc_free(name);
 
 	/*

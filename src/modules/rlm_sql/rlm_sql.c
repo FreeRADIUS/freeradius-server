@@ -1064,12 +1064,14 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	The xlat escape function needs access to inst - so
 	 *	argument parser details need to be defined here
 	 */
-	sql_xlat_arg = talloc_zero(inst, xlat_arg_parser_t);
-	sql_xlat_arg->type = FR_TYPE_STRING;
-	sql_xlat_arg->required = true;
-	sql_xlat_arg->concat = true;
-	sql_xlat_arg->func = sql_xlat_escape;
-	sql_xlat_arg->uctx = inst;
+	sql_xlat_arg = talloc_zero_array(inst, xlat_arg_parser_t, 2);
+	sql_xlat_arg[0].type = FR_TYPE_STRING;
+	sql_xlat_arg[0].required = true;
+	sql_xlat_arg[0].concat = true;
+	sql_xlat_arg[0].func = sql_xlat_escape;
+	sql_xlat_arg[0].uctx = inst;
+	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
+
 	xlat_func_mono(xlat, sql_xlat_arg);
 
 	/*

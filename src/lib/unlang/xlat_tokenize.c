@@ -271,7 +271,7 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 					      fr_sbuff_t *in,
 					      tmpl_rules_t const *t_rules)
 {
-	xlat_exp_t		*node;
+	xlat_exp_t		*node, *arg_group;
 	xlat_t			*func;
 	fr_sbuff_marker_t	m_s;
 
@@ -338,15 +338,75 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 	XLAT_DEBUG("FUNC-ARGS <-- %s ... %pV",
 		   node->fmt, fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
-	fr_sbuff_marker_release(&m_s);
+	fr_sbuff_set(&m_s, in);
 
 	/*
-	 *	Now parse the child nodes that form the
-	 *	function's arguments.
+	 *	Allocate a top level group to hold all
+	 *	the argument fragments.  This gives us
+	 *	somewhere to store the quoting.
 	 */
-	if (xlat_tokenize_string(node->call.args, in, true, &xlat_expansion_rules, t_rules) < 0) {
-		goto error;
+	arg_group = xlat_exp_alloc(node->call.args, XLAT_GROUP, NULL, 0);
+
+	/*
+	 *	It's the escape char.  We can't start
+	 *	a quoted string.
+	 */
+	if (fr_sbuff_is_char(in, xlat_expansion_rules.escapes->chr)) {
+	bareword:
+		arg_group->quote = T_BARE_WORD;
+
+		if (xlat_tokenize_string(arg_group->group, in, true, &xlat_expansion_rules, t_rules) < 0) {
+			goto error;
+		}
+		xlat_flags_merge(&arg_group->flags, &arg_group->group->flags);
+	/*
+	 *	Support passing the monolithic argument
+	 *	as a string.
+	 */
+	} else if (fr_sbuff_next_if_char(in, '\'')) {
+		char		*str;
+		ssize_t 	slen;
+		xlat_exp_t	*literal;
+
+		arg_group->quote = T_SINGLE_QUOTED_STRING;
+
+		literal = xlat_exp_alloc(arg_group, XLAT_BOX, NULL, 0);
+
+		/*
+		 *	Find the next token
+		 */
+		slen = fr_sbuff_out_aunescape_until(literal, &str, in, SIZE_MAX,
+						    value_parse_rules_single_quoted.terminals,
+						    value_parse_rules_single_quoted.escapes);
+		if (slen < 0) goto error;
+
+		xlat_exp_set_name_buffer_shallow(literal, str);
+		fr_value_box_strdup_shallow(&literal->data, NULL, str, false);
+		literal->flags.constant = true;
+		xlat_exp_insert_tail(arg_group->group, literal);
+
+		if (!fr_sbuff_next_if_char(in, '\'')) {
+			fr_strerror_const("Missing closing \"'\"");
+			goto error;
+		}
+	} else if (fr_sbuff_next_if_char(in, '"')) {
+		arg_group->quote = T_DOUBLE_QUOTED_STRING;
+
+		if (xlat_tokenize_string(arg_group->group, in, false,
+					 &value_parse_rules_double_quoted, t_rules) < 0) {
+			goto error;
+		}
+		if (!fr_sbuff_next_if_char(in, '"')) {
+			fr_strerror_const("Missing closing '\"'");
+			goto error;
+		}
+	} else {
+		goto bareword;
 	}
+	xlat_exp_set_name(arg_group, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
+	xlat_exp_insert_tail(node->call.args, arg_group);
+
+	fr_sbuff_marker_release(&m_s);
 
 	/*
 	 *	Check there's input if it's needed

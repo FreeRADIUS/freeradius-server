@@ -126,8 +126,9 @@ static ssize_t modhex2hex(char const *modhex, char *hex, size_t len)
 	return i;
 }
 
-static xlat_arg_parser_t const modhex_to_hex_xlat_arg = {
-	.required = true, .concat = true, .type = FR_TYPE_STRING
+static xlat_arg_parser_t const modhex_to_hex_xlat_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Xlat to convert Yubikey modhex to standard hex
@@ -196,7 +197,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 #endif
 
 	xlat = xlat_register_module(inst, mctx, "modhextohex", modhex_to_hex_xlat, FR_TYPE_STRING, XLAT_FLAG_PURE);
-	if (xlat) xlat_func_mono(xlat, &modhex_to_hex_xlat_arg);
+	if (xlat) xlat_func_mono(xlat, modhex_to_hex_xlat_arg);
 
 	return 0;
 }

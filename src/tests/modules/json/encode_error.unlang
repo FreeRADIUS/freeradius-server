@@ -2,4 +2,9 @@
 #       json xlat input parsing test - error with no input
 #
 
-&Tmp-String-1 := "%{json_object_ex_encode:}"  # ERROR
+&Tmp-String-1 := %{json_object_ex_encode:}  # ERROR
+if (&Tmp-String-1) {
+	test_fail
+}
+
+test_pass

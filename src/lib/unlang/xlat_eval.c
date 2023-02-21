@@ -47,9 +47,9 @@ static fr_dict_autoload_t xlat_eval_dict[] = {
 	{ NULL }
 };
 
-fr_dict_attr_t const	    *attr_expr_bool_enum; /* xlat_expr.c */
-fr_dict_attr_t const		*attr_module_return_code; /* xlat_expr.c */
-fr_dict_attr_t const		*attr_cast_base; /* xlat_expr.c */
+fr_dict_attr_t const *attr_expr_bool_enum; /* xlat_expr.c */
+fr_dict_attr_t const *attr_module_return_code; /* xlat_expr.c */
+fr_dict_attr_t const *attr_cast_base; /* xlat_expr.c */
 
 static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 	{ .out = &attr_module_return_code, .name = "Module-Return-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
@@ -258,14 +258,14 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_val
 do { \
 	if ((_arg)->func && ((_vb)->tainted || (_arg)->always_escape) && \
 	    ((_arg)->func(request, _vb, (_arg)->uctx) < 0)) { \
-		RPEDEBUG("Function %s failed escaping argument %u", name, _arg_num); \
+		RPEDEBUG("Function \"%s\" failed escaping argument %u", name, _arg_num); \
 		return XLAT_ACTION_FAIL; \
 	} \
 } while (0)
 
 	if (fr_value_box_list_empty(list)) {
 		if (arg->required) {
-			RWDEBUG("Function %s is missing required argument %u", name, arg_num);
+			REDEBUG("Function \"%s\" is missing required argument %u", name, arg_num);
 			return XLAT_ACTION_FAIL;
 		}
 		return XLAT_ACTION_DONE;
@@ -288,7 +288,7 @@ do { \
 						      vb, list, arg->type,
 						      FR_VALUE_BOX_LIST_FREE, true,
 						      SIZE_MAX) < 0) {
-			RPEDEBUG("Function %s failed concatenating arguments to type %s", name, fr_type_to_str(arg->type));
+			RPEDEBUG("Function \"%s\" failed concatenating arguments to type %s", name, fr_type_to_str(arg->type));
 			return XLAT_ACTION_FAIL;
 		}
 		fr_assert(fr_value_box_list_num_elements(list) <= 1);
@@ -302,7 +302,7 @@ do { \
 	 */
 	if (arg->single) {
 		if (fr_value_box_list_num_elements(list) > 1) {
-			RPEDEBUG("Function %s was provided an incorrect number of values at argument %u, "
+			RPEDEBUG("Function \"%s\" was provided an incorrect number of values at argument %u, "
 				 "expected %s got %u",
 				 name, arg_num,
 				 arg->required ? "0-1" : "1",
@@ -316,7 +316,7 @@ do { \
 		cast_error:
 			if (fr_value_box_cast_in_place(ctx, vb,
 						       arg->type, NULL) < 0) {
-				RPEDEBUG("Function %s failed cast argument %u to type %s", name, arg_num, fr_type_to_str(arg->type));
+				RPEDEBUG("Function \"%s\" failed to cast argument %u to type %s", name, arg_num, fr_type_to_str(arg->type));
 				return XLAT_ACTION_FAIL;
 			}
 		}
@@ -362,7 +362,8 @@ do { \
  * @param[in] func		to call
  */
 static inline CC_HINT(always_inline)
-xlat_action_t xlat_process_args(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, request_t *request, xlat_t const *func)
+xlat_action_t xlat_process_args(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list,
+				request_t *request, xlat_t const *func)
 {
 	xlat_arg_parser_t const	*arg_p = func->args;
 	xlat_action_t		xa;
@@ -372,6 +373,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list
 	 *	No args registered for this xlat
 	 */
 	if (!func->args) return XLAT_ACTION_DONE;
+
 
 	/*
 	 *	xlat needs no input processing just return.
@@ -384,11 +386,6 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list
 	 *	xlat takes all input as a single vb.
 	 */
 	case XLAT_INPUT_MONO:
-		return xlat_process_arg_list(ctx, list, request, func->name, arg_p, 1);
-
-	/*
-	 *	xlat consumes a sequence of arguments.
-	 */
 	case XLAT_INPUT_ARGS:
 		vb = fr_value_box_list_head(list);
 		while (arg_p->type != FR_TYPE_NULL) {
@@ -401,7 +398,8 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list
 			if (!vb) {
 				if (arg_p->required) {
 				missing:
-					REDEBUG("Function %s is missing required argument %u", func->name, (unsigned int)((arg_p - func->args) + 1));
+					REDEBUG("Function \"%s\" is missing required argument %u",
+						 func->name, (unsigned int)((arg_p - func->args) + 1));
 					return XLAT_ACTION_FAIL;
 				}
 
@@ -553,7 +551,8 @@ bool xlat_process_return(request_t *request, xlat_t const *func, FR_DLIST_HEAD(f
  *
  */
 static inline CC_HINT(always_inline)
-xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, request_t *request, char letter)
+xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out,
+				   request_t *request, char letter)
 {
 
 	char		buffer[64];
@@ -788,9 +787,9 @@ void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
  *				when it yielded.
  */
 xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       xlat_exp_head_t const **child,
-				       request_t *request,  xlat_exp_head_t const *head, xlat_exp_t const **in,
-				       FR_DLIST_HEAD(fr_value_box_list) *result, xlat_func_t resume, void *rctx)
+				     xlat_exp_head_t const **child,
+				     request_t *request,  xlat_exp_head_t const *head, xlat_exp_t const **in,
+				     FR_DLIST_HEAD(fr_value_box_list) *result, xlat_func_t resume, void *rctx)
 {
 	xlat_action_t		xa;
 	xlat_exp_t const	*node = *in;

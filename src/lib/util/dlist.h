@@ -88,12 +88,12 @@ static_assert(sizeof(unsigned int) >= 4, "Unsigned integer too small on this pla
 #define fr_dlist_foreach_safe(_list_head, _type, _iter) \
 { \
 	_type *_iter; \
-	fr_dlist_t _tmp; \
+	fr_dlist_t _tmp ## _iter; \
 	for (_iter = fr_dlist_head(_list_head), \
-	     _tmp = fr_dlist_head(_list_head) ? *fr_dlist_item_to_entry((_list_head)->offset, fr_dlist_head(_list_head)) : (fr_dlist_t){ .prev = NULL, .next = NULL }; \
+	     _tmp ## _iter = fr_dlist_head(_list_head) ? *fr_dlist_item_to_entry((_list_head)->offset, fr_dlist_head(_list_head)) : (fr_dlist_t){ .prev = NULL, .next = NULL }; \
 	     _iter; \
-	     _iter = _tmp.next && (_tmp.next != &(_list_head)->entry) ? fr_dlist_entry_to_item((_list_head)->offset, _tmp.next) : NULL, \
-	     _tmp = _tmp.next && (_tmp.next != &(_list_head)->entry) ? *_tmp.next : (fr_dlist_t){ .prev = NULL, .next = NULL })
+	     _iter = _tmp ## _iter.next && (_tmp ## _iter.next != &(_list_head)->entry) ? fr_dlist_entry_to_item((_list_head)->offset, _tmp ## _iter.next) : NULL, \
+	     _tmp ## _iter = _tmp ## _iter.next && (_tmp ## _iter.next != &(_list_head)->entry) ? *_tmp ## _iter.next : (fr_dlist_t){ .prev = NULL, .next = NULL })
 
 
 /** Find the dlist pointers within a list item
