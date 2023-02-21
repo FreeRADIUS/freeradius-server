@@ -27,10 +27,10 @@ if (fail) {
 }
 
 #
-# Wait up to half a second for exim to deliver the email
+# Wait up to five seconds for exim to deliver the email
 # Then confirm it was delivered
 #
-if (`/bin/sh -c "for i in 1 2 3 4 5 ; \
+if (`/bin/bash -c "for i in {0..50} ; \
 do if [ -e build/ci/exim4/mail/smtp_delivery_receiver ] ;\
 then break; \
 fi; sleep .1;\
@@ -43,7 +43,7 @@ echo $?"` == "1") {
 #
 # Check for the delivery of the remaining emails
 #
-if (!(`/bin/sh -c "for i in 1 2 3 4 5; \
+if (!(`/bin/bash -c "for i in {0..50} ; \
 do if [ -e build/ci/exim4/mail/smtp_cc_request_1 ] \
 && [ -e build/ci/exim4/mail/smtp_cc_request_2 ] \
 && [ -e build/ci/exim4/mail/smtp_to_request_1 ] \
@@ -91,10 +91,10 @@ if (fail) {
 }
 
 #
-# Wait up to a second for exim to deliver the email
+# Wait up to two seconds for exim to deliver the email
 # Then confirm it was delivered
 #
-if (`/bin/sh -c "for i in 0 1 2 3 4 5 6 7 8 9 ; \
+if (`/bin/sh -c "for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 ; \
 do if [ -e build/ci/exim4/mail/smtp_to_request_3 ] ;\
 then break; \
 fi; sleep .1;\

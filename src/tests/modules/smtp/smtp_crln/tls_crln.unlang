@@ -24,10 +24,10 @@ if (fail) {
 }
 
 #
-# Wait up to half a second for exim to deliver the email
+# Wait up to five seconds for exim to deliver the email
 # Then confirm it was delivered
 #
-if (`/bin/sh -c "for i in 1 2 3 4 5 ; \
+if (`/bin/bash -c "for i in {0..50} ; \
 do if [ -e build/ci/exim4/mail/crln_test_receiver ] ;\
 then break; \
 fi; sleep .1;\
