@@ -1897,8 +1897,6 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 */
 	if (!el) return;
 
-	DEBUG("TIMER - checking status of client %s", client->radclient->shortname);
-
 	// @todo - print out what we plan on doing next
 	connection = client->connection;
 	inst = client->inst;
@@ -1910,6 +1908,13 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	now==0, to signal that we have to *set* the timer.
 	 */
 	if (fr_time_eq(now, fr_time_wrap(0))) {
+		/*
+		 *	The timer is already set, don't do anything.
+		 */
+		if (client->ev) return;
+
+		DEBUG("TIMER - setting idle timeout for connection from client %s", client->radclient->shortname);
+
 		switch (client->state) {
 		case PR_CLIENT_CONNECTED:
 			fr_assert(connection != NULL);
@@ -1935,6 +1940,8 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 		goto reset_timer;
 	}
+
+	DEBUG("TIMER - checking status of client %s", client->radclient->shortname);
 
 	/*
 	 *	It's a negative cache entry.  Just delete it.
