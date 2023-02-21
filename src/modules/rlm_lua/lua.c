@@ -873,7 +873,7 @@ static void fr_lua_rcode_register(lua_State *L, char const *name)
  * Creates a new lua_State and verifies all required functions have been loaded correctly.
  *
  * @param[in] out	Where to write a pointer to the new state.
- * @parma[in] mctx	configuration data for the
+ * @param[in] mctx	configuration data for the
  * @return 0 on success else -1.
  */
 int fr_lua_init(lua_State **out, module_inst_ctx_t const *mctx)

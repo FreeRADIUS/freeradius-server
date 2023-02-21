@@ -797,7 +797,7 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
  *  This function walks down the registration table, compiling each
  *  named section.
  *
- * @parma[in] server	to search for sections in.
+ * @param[in] server	to search for sections in.
  * @param[in] list	of sections to compiler.
  * @param[in] rules	to apply for pass1.
  * @param[in] instance	module instance data.  The offset value in

@@ -504,7 +504,7 @@ int8_t tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a, FR_D
 
 /** Parse one or more request references, writing the list to out
  *
- * @parma[in] ctx	to allocate request refs in.
+ * @param[in] ctx	to allocate request refs in.
  * @param[out] err	If !NULL where to write the parsing error.
  * @param[in] in	Sbuff to read request references from.
  * @param[in] p_rules	Parse rules.
@@ -663,7 +663,7 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
  *
  * This can be used to create request ref lists for rules and for tmpls.
  *
- * @parma[in] ctx	to allocate request refs in.
+ * @param[in] ctx	to allocate request refs in.
  * @param[out] err	If !NULL where to write the parsing error.
  * @param[in] in	Sbuff to read request references from.
  * @return
