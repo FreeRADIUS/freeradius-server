@@ -147,9 +147,21 @@ echo "Generating the file attachment"
 # Generate a file for test email attachments
 dd if=/dev/urandom bs=200 count=1 2>/dev/null | base64 | tr -d '\n'> ${BUILDDIR}/testfile
 
+EXIMUSER=$(id -u)
+if [ $EXIMUSER -eq 0 ] ; then
+       EXIMUSER=$(id -u Debian-exim)
+       EXIMGROUP=$(id -g Debian-exim)
+else
+       EXIMGROUP=$(id -g)
+fi;
+
+chown -R :$EXIMGROUP "${BUILDDIR}" "${RUNDIR}" "${MAILDELIVERYDIR}" "${MAILDIR}" "${LOGDIR}" "${SPOOLDIR}" "${CERTDIR}"
+chmod g+w -R "${RUNDIR}" "${MAILDELIVERYDIR}" "${MAILDIR}" "${LOGDIR}" "${SPOOLDIR}"
+chmod g+r -R "${CERTDIR}"
+
 #
 # Run the exim instance
 #
 echo "Starting exim"
-exim -C ${CONF} -bd -DEXIMUSER=$(id -u) -DEXIMGROUP=$(id -g)
+exim -C ${CONF} -bd -DEXIMUSER=$EXIMUSER -DEXIMGROUP=$EXIMGROUP
 echo "Running exim on port 2525, accepting all local connections"
