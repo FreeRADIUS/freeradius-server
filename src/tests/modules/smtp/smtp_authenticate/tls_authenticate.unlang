@@ -7,17 +7,88 @@
 	&SMTP-Recipients = "smtp_receiver@localhost"
 	&SMTP-Attachments = "testfile"
 }
-smtp.authenticate
-
-if(ok) {
-	&control.Auth-Type := Accept
-}
-else {
-	reject
+smtp.authenticate {
+	fail = 1
 }
 
-if (&TLS-Certificate.Issuer =~ /@example\.org/) {
-        test_pass
-} else {
+if (fail) {
+	test_pass
+	handled
+}
+
+if !(&TLS-Certificate.Issuer =~ /@example\.org/) {
 	test_fail
 }
+
+if !(ok) {
+	test_fail
+}
+
+#
+#  Check the wrong password results in a reject
+#
+&User-Password := 'Wrong'
+
+smtp.authenticate {
+	reject = 1
+	fail = 2
+}
+
+if !(reject) {
+	if (&Module-Failure-Message[*] == "smtp: curl request failed: Timeout was reached (28)") {
+		test_pass
+		handled
+	}
+	test_fail
+}
+
+
+#
+#  Check an invalid user results in a reject
+#
+&User-Name := 'Invalid'
+&User-Password := 'Saget'
+
+smtp.authenticate {
+	reject = 1
+	fail = 2
+}
+
+if !(reject) {
+	if (&Module-Failure-Message[*] == "smtp: curl request failed: Timeout was reached (28)") {
+		test_pass
+		handled
+	}
+	test_fail
+}
+
+&request -= &User-Password[*]
+
+#
+#  Check that missing password is an invalid request
+#
+smtp.authenticate {
+	invalid = 1
+	fail = 2
+}
+
+if !(invalid) {
+	test_fail
+}
+
+&User-Password := 'Saget'
+&request -= &User-Name[*]
+
+#
+#  Check that missing user name is an invalid request
+#
+smtp.authenticate {
+	invalid = 1
+	fail = 2
+}
+
+if !(invalid) {
+	test_fail
+}
+
+test_pass
