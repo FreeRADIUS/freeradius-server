@@ -1279,11 +1279,6 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	if (argc >= 3) {
 		if (dict_process_flag_field(ctx, argv[2], type, &flags, &ref) < 0) return -1;
 
-		if (ref && (type != FR_TYPE_TLV) && !(flags.extra && (flags.subtype == FLAG_KEY_FIELD))) {
-			fr_strerror_const("Only MEMBERs of type 'tlv' or with 'key' flags can have references");\
-			return -1;
-		}
-
 	} else {
 		if (!dict_attr_flags_valid(ctx->dict, ctx->stack[ctx->stack_depth].da, argv[2], NULL, type, &flags)) return -1;
 	}

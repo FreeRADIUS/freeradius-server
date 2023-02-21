@@ -42,7 +42,8 @@ Common flags and meanings
 |=====
 | Name         | Description
 | `array`      | For fixed-size types, declare that the contents of the packet can have an array of this value.
-| `clone=...`  | For `tlv` types, clone (or copy) child definitions from another `tlv` type
+| `enum=...`   | For "leaf" types, copy xref:dictionary/value.adoc[VALUE]s from an `xref:dictionary/enum.adoc[ENUM].
+| `clone=...`  | For `tlv` or 'struct' types, clone (or copy) child definitions from another attribute of the same type
 | `key`        | This member is a "key" type.  The struct can have different xref:dictionary/struct.adoc[STRUCT] children depending on the value of the key.
 |=====
 
