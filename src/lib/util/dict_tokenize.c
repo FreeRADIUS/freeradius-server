@@ -35,6 +35,14 @@ RCSID("$Id$")
 
 #define MAX_ARGV (16)
 
+typedef enum {
+	NEST_NONE = 0,
+	NEST_ROOT,
+	NEST_PROTOCOL,
+	NEST_VENDOR,
+	NEST_TLV,
+} dict_nest_t;
+
 /** Parser context for dict_from_file
  *
  * Allows vendor and TLV context to persist across $INCLUDEs
@@ -45,7 +53,7 @@ typedef struct {
 	char			*filename;		//!< name of the file we're reading
 	int			line;			//!< line number of this file
 	fr_dict_attr_t const	*da;			//!< the da we care about
-	fr_type_t		nest;			//!< for manual vs automatic begin / end things
+	dict_nest_t		nest;			//!< for manual vs automatic begin / end things
 	int			member_num;		//!< structure member numbers
 	ssize_t			struct_size;		//!< size of the struct.
 } dict_tokenize_frame_t;
@@ -604,6 +612,17 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 	return 0;
 }
 
+static dict_tokenize_frame_t const *dict_gctx_find_frame(dict_tokenize_ctx_t *ctx, dict_nest_t nest)
+{
+	int i;
+
+	for (i = ctx->stack_depth; i > 0; i--) {
+		if (ctx->stack[i].nest == nest) return &ctx->stack[i];
+	}
+
+	return NULL;
+}
+
 
 static int dict_gctx_push(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *da)
 {
@@ -626,7 +645,7 @@ static int dict_gctx_push(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *da)
 static fr_dict_attr_t const *dict_gctx_unwind(dict_tokenize_ctx_t *ctx)
 {
 	while ((ctx->stack_depth > 0) &&
-	       (ctx->stack[ctx->stack_depth].nest == FR_TYPE_NULL)) {
+	       (ctx->stack[ctx->stack_depth].nest == NEST_NONE)) {
 		ctx->stack_depth--;
 	}
 
@@ -2075,6 +2094,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 	memset(&base_flags, 0, sizeof(base_flags));
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
+		dict_tokenize_frame_t const *frame;
+
 		ctx->stack[ctx->stack_depth].line = ++line;
 
 		switch (buf[0]) {
@@ -2274,7 +2295,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			}
 
 			while (ctx->stack_depth > stack_depth) {
-				if (ctx->stack[ctx->stack_depth].nest == FR_TYPE_NULL) {
+				if (ctx->stack[ctx->stack_depth].nest == NEST_NONE) {
 					ctx->stack_depth--;
 					continue;
 				}
@@ -2345,6 +2366,13 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				goto error;
 			}
 
+			frame = dict_gctx_find_frame(ctx, NEST_PROTOCOL);
+			if (frame) {
+				fr_strerror_printf_push("Nested BEGIN-PROTOCOL is forbidden.  Previous definition is at %s[%d]",
+							frame->filename, frame->line);
+				goto error;
+			}
+
 			/*
 			 *	Add a temporary fixup pool
 			 *
@@ -2361,7 +2389,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			ctx->dict = found;
 
 			if (dict_gctx_push(ctx, ctx->dict->root) < 0) goto error;
-			ctx->stack[ctx->stack_depth].nest = FR_TYPE_MAX;
+			ctx->stack[ctx->stack_depth].nest = NEST_PROTOCOL;
 			continue;
 		}
 
@@ -2391,7 +2419,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			/*
 			 *	Pop the stack until we get to a PROTOCOL nesting.
 			 */
-			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != FR_TYPE_MAX)) {
+			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != NEST_PROTOCOL)) {
 				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_NULL) {
 					fr_strerror_printf_push("END-PROTOCOL %s with mismatched BEGIN-??? %s", argv[1],
 						ctx->stack[ctx->stack_depth].da->name);
@@ -2460,7 +2488,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			}
 
 			if (dict_gctx_push(ctx, da) < 0) goto error;
-			ctx->stack[ctx->stack_depth].nest = FR_TYPE_TLV;
+			ctx->stack[ctx->stack_depth].nest = NEST_TLV;
 			continue;
 		} /* BEGIN-TLV */
 
@@ -2482,7 +2510,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			/*
 			 *	Pop the stack until we get to a TLV nesting.
 			 */
-			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != FR_TYPE_TLV)) {
+			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != NEST_TLV)) {
 				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_NULL) {
 					fr_strerror_printf_push("END-TLV %s with mismatched BEGIN-??? %s", argv[1],
 						ctx->stack[ctx->stack_depth].da->name);
@@ -2571,7 +2599,13 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				fr_strerror_printf_push("BEGIN-VENDOR is forbidden for protocol %s - it has no ATTRIBUTE of type 'vsa'",
 							ctx->dict->root->name);
 				goto error;
+			}
 
+			frame = dict_gctx_find_frame(ctx, NEST_VENDOR);
+			if (frame) {
+				fr_strerror_printf_push("Nested BEGIN-VENDOR is forbidden.  Previous definition is at %s[%d]",
+							frame->filename, frame->line);
+				goto error;
 			}
 
 			/*
@@ -2624,7 +2658,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			}
 
 			if (dict_gctx_push(ctx, vendor_da) < 0) goto error;
-			ctx->stack[ctx->stack_depth].nest = FR_TYPE_VENDOR;
+			ctx->stack[ctx->stack_depth].nest = NEST_VENDOR;
 			continue;
 		} /* BEGIN-VENDOR */
 
@@ -2645,7 +2679,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			/*
 			 *	Pop the stack until we get to a VENDOR nesting.
 			 */
-			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != FR_TYPE_VENDOR)) {
+			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != NEST_VENDOR)) {
 				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_NULL) {
 					fr_strerror_printf_push("END-VENDOR %s with mismatched BEGIN-??? %s", argv[1],
 						ctx->stack[ctx->stack_depth].da->name);
@@ -2701,7 +2735,7 @@ static int dict_from_file(fr_dict_t *dict,
 	dict_fixup_init(NULL, &ctx.fixup);
 	ctx.stack[0].dict = dict;
 	ctx.stack[0].da = dict->root;
-	ctx.stack[0].nest = FR_TYPE_MAX;
+	ctx.stack[0].nest = NEST_ROOT;
 
 	ret = _dict_from_file(&ctx, dir_name, filename, src_file, src_line);
 	if (ret < 0) {
@@ -3029,7 +3063,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 	ctx.dict = dict;
 	ctx.stack[0].dict = dict;
 	ctx.stack[0].da = dict->root;
-	ctx.stack[0].nest = FR_TYPE_MAX;
+	ctx.stack[0].nest = NEST_ROOT;
 
 	if (dict_fixup_init(NULL, &ctx.fixup) < 0) return -1;
 
