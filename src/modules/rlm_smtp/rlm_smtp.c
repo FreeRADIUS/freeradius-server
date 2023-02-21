@@ -768,17 +768,6 @@ static int attachments_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, curl_mi
 	return attachments_set;
 }
 
-/*
- * 	Free the curl slists
- */
-static int _free_mail_ctx(fr_mail_ctx_t *uctx)
-{
-	curl_mime_free(uctx->mime);
-	curl_slist_free_all(uctx->header);
-	curl_slist_free_all(uctx->recipients);
-	return 0;
-}
-
 static void smtp_io_module_signal(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
 {
 	fr_curl_io_request_t	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
@@ -908,9 +897,6 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 		.mime 		= curl_mime_init(randle->candle),
 		.time 		= fr_time() /* time the request was received. Used to set DATE: */
 	};
-
-	/* Set the destructor function to free all of the curl_slist elements */
-	talloc_set_destructor(mail_ctx, _free_mail_ctx);
 
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_UPLOAD, 1L);
 
