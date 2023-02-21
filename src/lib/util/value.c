@@ -5658,6 +5658,29 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 	return 0;
 }
 
+/** Removes a single layer of nesting, moving all children into the parent list
+ *
+ * @param[in] ctx	to reparent children in if steal is true.
+ * @param[in] list	to flatten.
+ * @param[in] steal	whether to change the talloc ctx of children.
+ * @param[in] free	whether to free any group boxes which have had
+ *			their children removed.
+ */
+void fr_value_box_flatten(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, bool steal, bool free)
+{
+	fr_value_box_list_foreach_safe(list, child) {
+		if (!fr_type_is_structural(child->type)) continue;
+
+		fr_value_box_list_foreach_safe(&child->vb_group, grandchild) {
+			fr_value_box_list_remove(&child->vb_group, grandchild);
+			if (steal) talloc_steal(ctx, grandchild);
+			fr_value_box_list_insert_before(list, child, grandchild);
+		}}
+
+		if (free) talloc_free(child);
+	}}
+}
+
 /** Concatenate the string representations of a list of value boxes together
  *
  * @param[in] ctx	to allocate the buffer in.

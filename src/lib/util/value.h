@@ -1011,6 +1011,9 @@ int		fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 						  size_t max_size)
 		CC_HINT(nonnull(2,3));
 
+void		fr_value_box_flatten(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, bool steal, bool free)
+		CC_HINT(nonnull(2));
+
 char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) const *list, char const *delim,
 					  fr_sbuff_escape_rules_t const *e_rules)
 		CC_HINT(nonnull(2));
