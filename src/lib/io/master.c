@@ -135,8 +135,6 @@ struct fr_io_connection_s {
 	fr_network_t			*nr;		//!< network for this connection
 };
 
-static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx);
-
 static fr_event_update_t pause_read[] = {
 	FR_EVENT_SUSPEND(fr_event_io_func_t, read),
 	{ 0 }
@@ -618,20 +616,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 
 	case PR_CLIENT_STATIC:
 	case PR_CLIENT_DYNAMIC:
-		{
-			fr_io_client_t *my = connection->client;
-
-			my->state = PR_CLIENT_CONNECTED;
-
-			if (fr_time_delta_ispos(my->radclient->limit.idle_timeout) &&
-			    (fr_event_timer_in(my, connection->el, &my->ev,
-					       my->radclient->limit.idle_timeout, client_expiry_timer, my) < 0)) {
-				ERROR("proto_%s - Failed adding idle timeout for client %s.  It will be permanent!",
-				      inst->app_io->common.name, my->radclient->shortname);
-				talloc_free(dl_inst);
-				return NULL;
-			}
-		}
+		connection->client->state = PR_CLIENT_CONNECTED;
 		break;
 
 	case PR_CLIENT_INVALID:
@@ -2157,7 +2142,7 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	The client isn't dynamic, stop here.
 	 */
-	if ((client->state == PR_CLIENT_STATIC) || (client->state == PR_CLIENT_CONNECTED)) return;
+	if (client->state == PR_CLIENT_STATIC) return;
 
 	fr_assert(client->state != PR_CLIENT_NAK);
 	fr_assert(client->state != PR_CLIENT_PENDING);
@@ -2438,13 +2423,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		fr_assert(client->connection != NULL);
 
 		client->state = PR_CLIENT_CONNECTED;
-
-		if (fr_time_delta_ispos(client->radclient->limit.idle_timeout) &&
-		    (fr_event_timer_in(client, connection->el, &client->ev,
-				       client->radclient->limit.idle_timeout, client_expiry_timer, client) < 0)) {
-			ERROR("proto_%s - Failed adding idle timeout for client %s.  It will be permanent!",
-			      inst->app_io->common.name, client->radclient->shortname);
-		}
 
 		radclient->active = true;
 
