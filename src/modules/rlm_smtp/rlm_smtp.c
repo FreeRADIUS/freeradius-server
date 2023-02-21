@@ -895,7 +895,9 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 		.request 	= request,
 		.randle 	= randle,
 		.mime 		= curl_mime_init(randle->candle),
-		.time 		= fr_time() /* time the request was received. Used to set DATE: */
+		.time 		= fr_time(), /* time the request was received. Used to set DATE: */
+		.recipients	= NULL,
+		.header		= NULL
 	};
 
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_UPLOAD, 1L);
@@ -920,7 +922,6 @@ skip_auth:
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MAIL_FROM, get_envelope_address(inst));
 
 	/* Set the recipients */
-	mail_ctx->recipients = NULL; /* Prepare the recipients curl_slist to be initialized */
        	if (recipients_source(t, mail_ctx, inst) <= 0) {
 		RDEBUG2("At least one recipient is required to send an email");
 		goto error;
@@ -928,7 +929,6 @@ skip_auth:
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MAIL_RCPT, mail_ctx->recipients);
 
 	/* Set the header elements */
-	mail_ctx->header = NULL; /* Prepare the header curl_slist to be initialized */
        	if (header_source(t, mail_ctx, inst) != 0) {
 		RDEBUG2("The header slist could not be generated");
 		goto error;
