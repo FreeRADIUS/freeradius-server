@@ -83,10 +83,10 @@ typedef void _mismatch_default;		//!< Dummy type used to indicate FR_TYPE_*/C ty
 typedef void conf_type_mismatch;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYPE_*.
 
-/** Check the type #_t matches the destination data type
+/** Check the #fr_type_t matches the destination data type
  *
  * Validation macro to check the type of the pointer or offset #_p passed in
- * matches the type #_t of the configuration item.
+ * matches the #fr_type_t of the configuration item.
  *
  * Uses various magic builtin precompilation functions, so will likely only
  * work with recent versions of clang and gcc.
