@@ -66,12 +66,6 @@
 *** xref:xlat/attribute.adoc[Attribute References]
 *** xref:xlat/module.adoc[Module References]
 
-** xref:man/index.adoc["man" pages]
-*** xref:man/radclient.adoc[radclient]
-*** xref:man/radiusd.adoc[radiusd]
-*** xref:man/radmin.adoc[radmin]
-*** xref:man/radsniff.adoc[radsniff]
-
 ** xref:dictionary/index.adoc[Dictionaries]
 *** xref:dictionary/alias.adoc[ALIAS]
 *** xref:dictionary/attribute.adoc[ATTRIBUTE]
@@ -90,3 +84,12 @@
 *** xref:dictionary/end-tlv.adoc[END-TLV]
 *** xref:dictionary/begin-vendor.adoc[BEGIN-VENDOR]
 *** xref:dictionary/end-vendor.adoc[END-VENDOR]
+
+** xref:policy/index.adoc[Policies]
+*** xref:policy/different.adoc[Why FreeRADIUS is different]
+
+** xref:man/index.adoc["man" pages]
+*** xref:man/radclient.adoc[radclient]
+*** xref:man/radiusd.adoc[radiusd]
+*** xref:man/radmin.adoc[radmin]
+*** xref:man/radsniff.adoc[radsniff]

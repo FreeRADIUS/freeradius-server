@@ -1,0 +1,131 @@
+= Policies
+
+The core functionality of the server is implemented in _policies_.
+These policies are written in `unlang`.  In addition to documenting
+the default policies, this section describes how and why to write good
+policies.
+
+== Concepts versus Configuration
+
+A common concern around FreeRADIUS is that the learning curve is not
+just steep, it is a cliff.  The "cliff" means that some simple things are very
+simple to do, but anything more complex is extremely difficult.
+
+While FreeRADIUS can be complex, we believe that the reason for this
+difficulty is related to the _creation of policies_, and not (so much)
+in the difficulty of _configuring the server_.
+
+In other words, once you know what you want to do, the problem is
+limited to "How do I make FreeRADIUS do X?"  If you don't know what
+you want to do, then you are left staring at the FreeRADIUS
+configuration, and wondering "What magic flag do I set to make
+FreeRADIUS do what I want?"
+
+In the end, there is no magic flag. Once you understand _conceptually_
+what you want to do, then _configuring_ the server is a much more
+straightforward process.
+
+== The only working process to configure FreeRADIUS
+
+The process for configuring FreeRADIUS should follow the steps below:
+
+1. *Find out what you have, and write it down.*
++
+For example, read the debug output to see what is in the RADIUS
+packets.  What information is there?  What information is missing?
++
+Write down where user information will be taken from, or where
+accounting data will be stored.
++
+Write down information about the network.  What are the RADIUS clients
+and their IP addresses andshared secrets.  What are the databases, and
+credentials needed to access them.
++
+This information is the basic facts you will use to build the
+FreeRADIUS policies.
+
+2. *Write down what you want FreeRADIUS to do in plain English.*
++
+For example, "When the user comes in, the server should look up the
+password in LDAP.  If the password matches, the user gets accepted.
+If the password does not match, the user is rejected."
++
+Mark up those sentences with the bits of information from step (1).
+Does the RADIUS packet contain a "password" for the user?  If so,
+where is it?  Where is the LDAP database?  How does FreeRADIUS connect
+to the database?  What credentials does it use to connect to the
+database?
++
+These descriptions will form the basis for `unlang` policies.
+
+3. *A little bit at a time, convert the English statements to `unlang`.*
++
+The important piece of information here is not "convert to `unlang`",
+but instead "take it a step at a time".
++
+Convert one piece to `unlang`, and make sure you understand what it's
+supposed to do, and what you expect the result will be.
+
+4. *Test it.*
++
+Test that the change does what you expect.  If it the change works, great.
++
+If the change does not work, then read the debug output to see what
+happened.  Ask yourself some questions.  Is the server missing
+information which it needs to make a decision?  What errors does the
+server produce?  Were your assumptions wrong?  What can you learn from
+what the server is doing?
++
+Then go back to step (1) for this portion of the policy.  Update the
+information you have, and double-check the English statements you
+wrote.  Check that those statements were translated correctly into
+`unlang`.
++
+Also test that _previous_ configurations still work!  Sometimes
+changing one thing will break something else.
+
+5. *If the configuration works, save a copy.*
++
+Saving a copy of the configuration means that you can always revert
+the your changes to a "known working" version.  It doesn't matter how
+the files are saved.  You cna use a revision control system like
+`git`, or `tar` files, or even just copying the files to a different
+directory (named for the current time/date).
++
+If you don't save a copy of the working configuration, then it is
+possible to spend hours of time creating something works, only to have
+it stop working after a few more changes.  You then have no idea what
+was changed, and what change broke the configuration.
++
+If you do save a copy of the working configuration, then if a change
+breaks anything, you can just throw away that change and revert to a
+"known working" system.  It is better to fix issues by reverting bugs,
+rather than trying to debug complex systems at 2am, on a production
+machine!
++
+When the entire configuration works, you should also save a copy
+remotely, on another machine.
+
+While this process may sound heavy-weight, it is much simpler than
+randomly poking the server until it works.  The "just bash at it"
+approach can seem productive for simple configurations and short
+periods of time.  However, it is guaranteed to be a massive time sink
+(and waste of time) for complex configurations.
+
+== Required Concepts
+
+The first concept to understand in creating policies is why
+xref:policy/different.adoc[FreeRADIUS is different] from other
+networking programs.  The summary is that most other networking
+programs use a _declarative_ configuration, as in a web server "pages
+under `~user` are served from directory `/home/user/public_html` ".
+In contrast, complex policies are _procedural_, which is programming,
+with all the difficulties of designing and debugging complex "if /
+then / else" statements.
+
+The second concept to understand in creating policies is that a
+methodical approach is critical.
+
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

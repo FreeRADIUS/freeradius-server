@@ -1,0 +1,75 @@
+= Why FreeRADIUS is different
+
+The creation of policies is what makes FreeRADIUS different from other
+products just as DNS or DHCP servers.  With some artistic license, we
+can say that those products are much simpler to configure than
+FreeRADIUS.
+
+This simplicity comes not from the choice of implementation, where
+those products have chosen to make themselves easy to configure, and
+FreeRADIUS has chosen to be difficult.  Instead, the simplicity comes
+largely from how the protocols work.
+
+If we over-simplify DNS, we can say that the bulk of DNS traffic is
+queries like "please tell me the IP address of `google.com` ", with
+responses containing addresses such as `8.8.8.8`.  For those
+situations, a simple configuration format is best.  A DNS "zone" file
+can contain a simple mapping between names and IP addresses.  That
+mapping can then serve the needs of most users.
+
+Similar arguments can be made for DHCP.  Most DHCP queries are of the
+form "here's my MAC, can I please get an IP address?".  The responses
+are then "here's your IP, gateway, netmask, and expiry time".  A DHCP
+configuration file can then be little more than defining a range of
+IPs, along with associated gateway and netmask.
+
+This is not to say that all DNS and DHCP configuration is trivial,
+it's not.  The protocols can be complicated, which leads to complex
+configurations.  However, the bulk of what most people want to do is
+relatively simple.
+
+That is not always the case for RADIUS.
+
+With RADIUS, it is true that basic configuration is simple.  For
+example, policies such as "I have users in LDAP, and I want
+authenticated users to access the network".  For this policy, the
+administrator configures the xref:raddb:mods-available/ldap.adoc[LDAP]
+module, adds some xref:raddb:clients.conf.adoc[client] definitions,
+and _everything just works_.
+
+The problem comes when people need policies like "allow users onto the
+network for six hours, except for alternate Tuesdays between 9am and
+5pm, where they can get on the network for 8 hours".  While this
+example is contrived, the underlying complexity is realistic.
+
+This last piece is what makes FreeRADIUS difficult to configure.  The
+issue is not FreeRADIUS, the complexity comes from the differences in
+_configuration styles_.
+
+For DNS, DHCP, and simple RADIUS policies, the configuration is
+*declarative*.
+
+A declarative configuration is where you declare what you want, such
+as "`google.com` has IP address `8.8.8.8`", and the server just "does
+the right thing".  There is no need to design complex policies, the
+declaration that `google.com==8.8.8.8` is enough for the server to
+know what to do.
+
+For complex RADIUS policies, the configuration is *procedural*.
+
+i.e. programming.
+
+Outside of esoteric languages and research projects, it is not
+possible to simply "declare" what you want, and have the computer
+"figure it out".  Even if that does work, the solution may be
+inefficient and therefore unusable.  Or the effort required to create
+a complex "declaration" may be no easier then effort required to
+simply program a procedural solution.
+
+In the end, the difficulty of configuring FreeRADIUS comes in part
+from the procedural nature of the `unlang` configuration language.
+The remainder of the difficulty is almost always because of poorly
+specified requirements.
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
