@@ -295,7 +295,7 @@ bad_format:
 
 /** Determine if a given identity is a 3gpp identity, and return the EAP method hinted
  *
- * @parma[in] id	to check.
+ * @param[in] id	to check.
  * @param[in] len	Length of the id.
  * @return
  *	- FR_EAP_METHOD_INVALID		if this is not a 3gpp identity.

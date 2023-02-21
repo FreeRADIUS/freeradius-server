@@ -38,7 +38,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *
  * @param[out] not_before_p	Where to write the not before time.  May be NULL.
  * @param[out] not_after_p	Where to write the not after time.  May be NULL.
- * @parma[in] cert		The Certificate to validate.
+ * @param[in] cert		The Certificate to validate.
  * @return
  *	- -1 if we can't parse the notBefore or notAfter values in the cert.
  *	- -2 if the cert has expired (not_before_p, not_after_p still populated).
