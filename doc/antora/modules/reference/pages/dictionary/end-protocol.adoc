@@ -1,0 +1,20 @@
+= The END-PROTOCOL keyword
+
+.Syntax
+----
+END-PROTOCOL <name>
+----
+
+.Description
+
+The `END-PROTOCOL` keyword finished a "nested" set of
+xref:dictionary/attribute.adoc[ATTRIBUTE] definitions which are all
+for a particular xref:dictionary/protocol.adoc[PROTOCOL].
+
+<name>:: The name of the xref:dictionary/protocol.adoc[PROTOCOL].
++
+The dictionary must have previously contained a matching
+xref:dictionary/begin-protocol.adoc[BEGIN-PROTOCOL].
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

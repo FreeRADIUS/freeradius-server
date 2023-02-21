@@ -1,0 +1,79 @@
+= The BEGIN-TLV keyword
+
+.Syntax
+----
+BEGIN-TLV <name>
+----
+
+.Description
+
+The `BEGIN-TLV` keyword starts a "nested" set of
+xref:dictionary/attribute.adoc[ATTRIBUTE] definitions wwhich are all
+for a particular parent attribute of type `tlv`.
+
+<name>:: The name of the parent attribute.
++
+The tlv must have previously been created in anref:dictionary/attribute.adoc[ATTRIBUTE] definition.
+
+The `BEGIN-TLV` keyword must always be paired with a matching xref:dictionary/end-tlv.adoc[END-TLV] keyword.
+
+Within the context of a ``BEGIN-TLV` block, the numbers for each
+xref:dictionary/attribute.adoc[ATTRIBUTE] definition are relative to
+the parent TLV.
+
+.Example
+----
+ATTRIBUTE Foo 2 tlv
+BEGIN-TLV Foo
+ATTRIBUTE Bar 1 string
+END-TLV Foo
+----
+
+This example defines an attribute `Foo.Bar`, with OID `2.1`.
+
+== Purpose
+
+The `BEGIN-TLV` keyword exists for efficiency.  It is not strictly
+needed, but without a `BEGIN-TLV` keyword, every
+xref:dictionary/attribute.adoc[ATTRIBUTE] name would need to contain
+the parent attribute name, as in the following
+example.
+
+.Example
+----
+ATTRIBUTE Foo.bar 2.1 string
+----
+
+== Nesting
+
+It is possible to nest multiple `BEGIN-TLV` keywords, so long as each
+one is paired with a matching xref:dictionary/end-tlv.adoc[END-TLV] keyword.
+
+.Example of nested BEGIN-TLV
+----
+ATTRIBUTE Foo 2 tlv
+BEGIN-TLV Foo
+ATTRIBUTE Bar 1 string
+ATTRIBUTE Baz 2 tlv
+BEGIN-TLV Baz
+ATTRIBUTE Such 4 ipaddr
+END-TLV Baz
+END-TLV Foo
+----
+
+The above example is equivalent to the example below.
+
+.Example
+----
+ATTRIBUTE Foo 2 tlv
+ATTRIBUTE Foo.Bar 2.1 string
+ATTRIBUTE Foo.Baz 2.2 tlv
+ATTRIBUTE Foo.Baz.Such 2.2.4 ipaddr
+----
+
+For short entries, it can be simpler to use the full name an OID.
+However, for complex dictionaries, it is almost always clearer to use
+`BEGIN-TLV` and xref:dictionary/end-tlv.adoc[END-TLV].
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

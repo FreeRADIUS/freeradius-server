@@ -1,0 +1,47 @@
+= The BEGIN-VENDOR keyword
+
+.Syntax
+----
+BEGIN-VENDOR <name> [parent=<ref>]
+----
+
+.Description
+
+The `BEGIN-VENDOR` keyword starts a "nested" set of
+xref:dictionary/attribute.adoc[ATTRIBUTE] definitions which are all
+for a particular xref:dictionary/vendor.adoc[VENDOR].
+
+<name>:: The name of the xref:dictionary/vendor.adoc[VENDOR].
++
+The vendor must have previously been created in a xref:dictionary/vendor.adoc[VENDOR] definition.
+
+parent=<ref>:: An optional argument defining which xref:dictionary/attribute.adoc[ATTRIBUTE] is the parent of the following definitions.
++
+Some protocols have multiple vendor-specific options.  Using the
+`parent=<ref>` syntax allows the dictionaries to "scope" the vendor
+definition to a particular part of the attribute naming tree.
+
+The `BEGIN-VENDOR` keyword must always be paired with a matching xref:dictionary/end-vendor.adoc[END-VENDOR] keyword.
+
+.Example
+----
+BEGIN-VENDOR Cisco
+ATTRIBUTE AVPair 1 string
+END-VENDOR Cisco
+----
+
+== Purpose
+
+The `BEGIN-VENDOR` keyword exists for efficiency.  It is not strictly
+needed, but without a `BEGIN-VENDOR` keyword, every
+xref:dictionary/attribute.adoc[ATTRIBUTE] name would need to contain
+the xref:dictionary/vendor.adoc[VENDOR] name, as in the following
+example.
+
+.Example
+----
+ATTRIBUTE Cisco.AVPair 1 string
+----
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

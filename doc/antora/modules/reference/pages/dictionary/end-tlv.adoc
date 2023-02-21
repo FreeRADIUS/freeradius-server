@@ -1,0 +1,20 @@
+= The END-TLV keyword
+
+.Syntax
+----
+END-TLV <name>
+----
+
+.Description
+
+The `END-TLV` keyword finished a "nested" set of
+xref:dictionary/attribute.adoc[ATTRIBUTE] definitions which are all
+for a particular `tlv` parent attribute.
+
+<name>:: The name of the xref:dictionary/attribute.adoc[ATTRIBUTE]
++
+The dictionary must have previously contained a matching
+xref:dictionary/begin-tlv.adoc[BEGIN-TLV].
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

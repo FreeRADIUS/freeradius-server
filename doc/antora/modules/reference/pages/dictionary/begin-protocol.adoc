@@ -1,0 +1,32 @@
+= The BEGIN-PROTOCOL keyword
+
+.Syntax
+----
+BEGIN-PROTOCOL <name>
+----
+
+.Description
+
+The `BEGIN-PROTOCOL` keyword starts a "nested" set of
+xref:dictionary/attribute.adoc[ATTRIBUTE] definitions which are all
+for a particular xref:dictionary/protocol.adoc[PROTOCOL].
+
+<name>:: The name of the xref:dictionary/protocol.adoc[PROTOCOL].
++
+The protocol must have previously been created in a xref:dictionary/protocol.adoc[PROTOCOL] definition.
+
+The `BEGIN-PROTOCOL` keyword must always be paired with a matching xref:dictionary/end-protocol.adoc[END-PROTOCOL] keyword.
+
+.Example
+----
+BEGIN-PROTOCOL RADIUS
+ATTRIBUTE User-Name 1 string
+END-PROTOCOL RADIUS
+----
+
+Note that unlike xref:dictionary/begin-vendor.adoc[END-VENDOR] and
+xref:dictionary/begin-tlv.adoc[END-TLV], it is not possible to omit
+the `BEGIN-PROTOCOL` keyword.
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
