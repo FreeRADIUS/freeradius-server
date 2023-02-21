@@ -2420,7 +2420,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	Pop the stack until we get to a PROTOCOL nesting.
 			 */
 			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != NEST_PROTOCOL)) {
-				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_NULL) {
+				if (ctx->stack[ctx->stack_depth].nest != NEST_NONE) {
 					fr_strerror_printf_push("END-PROTOCOL %s with mismatched BEGIN-??? %s", argv[1],
 						ctx->stack[ctx->stack_depth].da->name);
 					goto error;
@@ -2511,7 +2511,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	Pop the stack until we get to a TLV nesting.
 			 */
 			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != NEST_TLV)) {
-				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_NULL) {
+				if (ctx->stack[ctx->stack_depth].nest != NEST_NONE) {
 					fr_strerror_printf_push("END-TLV %s with mismatched BEGIN-??? %s", argv[1],
 						ctx->stack[ctx->stack_depth].da->name);
 					goto error;
@@ -2680,7 +2680,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	Pop the stack until we get to a VENDOR nesting.
 			 */
 			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != NEST_VENDOR)) {
-				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_NULL) {
+				if (ctx->stack[ctx->stack_depth].nest != NEST_NONE) {
 					fr_strerror_printf_push("END-VENDOR %s with mismatched BEGIN-??? %s", argv[1],
 						ctx->stack[ctx->stack_depth].da->name);
 					goto error;
