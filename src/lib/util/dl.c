@@ -576,18 +576,30 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 			 *	Yes, this really is the only way of getting the errno
 			 *	from the dlopen API.
 			 */
-			if (!strstr(dlerror_txt, fr_syserror(ENOENT))) {
+			if (strstr(dlerror_txt, fr_syserror_simple(ENOENT)) != NULL) {
 #ifndef __linux__
 				int access_mode = R_OK | X_OK;
 
-#ifdef AT_ACCESS
+#  ifdef AT_ACCESS
 				access_mode |= AT_ACCESS;
-#endif
+#  endif
 				if (access(path, access_mode) < 0 && errno == ENOENT) continue;
 #endif
-				fr_strerror_printf("Access check failed: %s", dlerror_txt);
+				fr_strerror_printf_push("Access check failed: %s", dlerror_txt);
 				break;
 			}
+
+			/*
+			 *	We're reliant on dlerror_txt from the loop,
+			 *	because once dlerror() is called the error
+			 *	is cleared.
+			 *
+			 *	We need to push every error because we
+			 *	don't know which one would be useful
+			 *	in diagnosing the underlying cause of the
+			 *	load failure.
+			 */
+			fr_strerror_printf_push("%s", dlerror_txt ? dlerror_txt : "unknown dlopen error");
 		}
 
 		/*
@@ -596,14 +608,10 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 		 */
 		if (!handle) {
 			talloc_free(ctx);
-			/*
-			 *	We're reliant on dlerror_txt from the loop,
-			 *	because once dlerror() is called the error
-			 *	is cleared.
-			 */
-			fr_strerror_printf("%s", dlerror_txt ? dlerror_txt : "unknown dlopen error");
 			return NULL;
 		}
+
+		fr_strerror_clear();	/* Don't leave spurious errors in the buffer */
 
 		talloc_free(ctx);
 	} else {
@@ -622,7 +630,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 			/*
 			 *	Append the error
 			 */
-			fr_strerror_printf("%s", error);
+			fr_strerror_printf_push("%s", error);
 			return NULL;
 		}
 	}

@@ -38,6 +38,9 @@ extern "C" {
 /** @hidecallergraph */
 char const	*fr_syserror(int num);
 
+/** @hidecallergraph */
+char const	*fr_syserror_simple(int num);
+
 #ifdef __cplusplus
 }
 #endif
