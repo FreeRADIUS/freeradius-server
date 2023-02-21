@@ -1013,13 +1013,20 @@ static void fr_network_vnode_extend(UNUSED fr_event_list_t *el, int sockfd, int 
  * @param[in] fd_errno		returned by kevent.
  * @param[in] ctx		the network socket context.
  */
-static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags,
-			     UNUSED int fd_errno, void *ctx)
+static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, int flags,
+			     int fd_errno, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
+	fr_network_t *nr = s->nr;
 
 	if (s->listen->app_io->error) {
 		s->listen->app_io->error(s->listen);
+
+	} else if (flags & EV_EOF) {
+		DEBUG2("Closing (EOF) socket %s", s->listen->name);
+
+	} else {
+		DEBUG2("Closing (error %s) socket %s", fr_syserror(fd_errno), s->listen->name);
 	}
 
 	fr_network_socket_dead(s->nr, s);
