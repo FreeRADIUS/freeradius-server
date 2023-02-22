@@ -101,8 +101,6 @@ typedef struct {
 	fr_time_delta_t 	timeout;		//!< Timeout for connection and server response
 	fr_curl_tls_t		tls;			//!< Used for handled all tls specific curl components
 
-	char const		*name;			//!< Auth-Type value for this module instance.
-	fr_dict_enum_value_t	*auth_type;
 	header_list_t		header_list;		//!< List of SMTP headers to add to emails.
 	bool 			set_date;
 
