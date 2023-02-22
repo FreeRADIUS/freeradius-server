@@ -576,11 +576,19 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 			data_len += p[4] + p[5] + p[6] + p[7];
 			if (data_len > (size_t) (end - p)) {
 			overflow:
+				if ((buffer[3] & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0) {
+				bad_secret:
+					fr_strerror_const("Invalid packet after decryption - is the secret key incorrect?");
+					goto fail;
+				}
+
 				fr_strerror_const("Data overflows the packet");
 				goto fail;
 			}
 			if (data_len < (size_t) (end - p)) {
 			underflow:
+				if ((buffer[3] & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0) goto bad_secret;
+
 				fr_strerror_const("Data underflows the packet");
 				goto fail;
 			}
