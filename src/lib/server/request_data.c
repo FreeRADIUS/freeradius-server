@@ -167,7 +167,7 @@ static inline request_data_t *request_data_alloc(TALLOC_CTX *ctx)
  * @param[in] type		Type of data (if talloced)
  * @param[in] opaque		Data to associate with the request.  May be NULL.
  * @param[in] free_on_replace	Free opaque data if this request_data is replaced.
- * @param[in] free_on_parent	Free opaque data if the request is freed.
+ * @param[in] free_on_parent	Free opaque data if the request or session is freed.
  *				Must not be set if the opaque data is also parented by
  *				the request or state (double free).
  * @param[in] persist		Transfer request data to an #fr_state_entry_t, and
