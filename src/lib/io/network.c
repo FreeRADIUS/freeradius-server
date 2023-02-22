@@ -1023,10 +1023,10 @@ static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, int 
 		s->listen->app_io->error(s->listen);
 
 	} else if (flags & EV_EOF) {
-		DEBUG2("Closing (EOF) socket %s", s->listen->name);
+		DEBUG2("Socket %s closed by peer", s->listen->name);
 
 	} else {
-		DEBUG2("Closing (error %s) socket %s", fr_syserror(fd_errno), s->listen->name);
+		ERROR("Socket %s errored - %s", s->listen->name, fr_syserror(fd_errno));
 	}
 
 	fr_network_socket_dead(s->nr, s);
