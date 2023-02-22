@@ -44,7 +44,6 @@ fr_dict_autoload_t rlm_smtp_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const 	*attr_auth_type;
 static fr_dict_attr_t const 	*attr_user_password;
 static fr_dict_attr_t const 	*attr_user_name;
 static fr_dict_attr_t const 	*attr_smtp_header;
@@ -52,7 +51,6 @@ static fr_dict_attr_t const 	*attr_smtp_body;
 
 extern fr_dict_attr_autoload_t rlm_smtp_dict_attr[];
 fr_dict_attr_autoload_t rlm_smtp_dict_attr[] = {
-	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_smtp_header, .name = "SMTP-Mail-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
@@ -850,11 +848,6 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 	const char 			*envelope_address;
 
 	fr_pair_t const 		*smtp_body;
-
-	if (fr_pair_find_by_da(&request->control_pairs, NULL, attr_auth_type) != NULL) {
-		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
-		RETURN_MODULE_NOOP;
-	}
 
 	/* Elements provided by the request */
 	smtp_body = fr_pair_find_by_da(&request->request_pairs, NULL, attr_smtp_body);
