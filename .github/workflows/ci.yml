@@ -122,12 +122,12 @@ jobs:
           --health-retries 5
 
       threeds:
-        image: 389ds/dirsrv
+        image: 4teamwork/389ds
         ports:
           - 3389:3389
           - 3636:3636
         options: >-
-          -e DS_SUFFIX_NAME=dc=example,dc=com
+          -e SUFFIX_NAME=dc=example,dc=com
           -e DS_DM_PASSWORD=secret123
           --health-cmd "dsctl localhost healthcheck --check backends:localhost:search"
           --health-interval 10s
