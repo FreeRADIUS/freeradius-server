@@ -411,9 +411,11 @@ server tacacs {
 	#	### Send
 	#
 	send Accounting-Success {
-		&reply.Accounting-Status := Success
 		&reply.Server-Message := "Success"
-		&reply.Data := 0x00
+	}
+
+	send Accounting-Error {
+		&reply.Server-Message := "Error"
 	}
 
 	#
