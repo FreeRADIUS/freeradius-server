@@ -28,10 +28,15 @@
 #  entries should be formatted.
 #
 #  All local attributes and `$INCLUDE` directives should
-#  go into this file.
+#  go into this files.
 #
-#  The numbers you pick should be between 3000 and 4000.
-#  These attributes will *not* go into a RADIUS packet.
+#  The attribute definitions here should use DEFINE, not ATTRIBUTE.
+#  The DEFINE keyword is exactly like ATTRIBUTE, except it does not
+#  require an attribute number.
+#
+#  As a result, there is no need to manually manage numbers.
+#
+#  Any attribute DEFINEd here will not go into a packet.
 #
 #  If you do want attributes to go into a RADIUS packet, you
 #  will need to use VSAs. This means requesting allocation
@@ -49,9 +54,9 @@
 #  required, or add your own.
 #
 
-#ATTRIBUTE	My-Local-String		3000	string
-#ATTRIBUTE	My-Local-IPAddr		3001	ipaddr
-#ATTRIBUTE	My-Local-Integer	3002	integer
+#DEFINE	My-Local-String		string
+#DEFINE	My-Local-IPAddr		ipaddr
+#DEFINE	My-Local-Integer	integer
 
 #
 #  ## v3 Compatible names.
