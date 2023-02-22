@@ -46,6 +46,7 @@ SOURCES		:= \
 		   htrie.c \
 		   hw.c \
 		   inet.c \
+		   iovec.c \
 		   isaac.c \
 		   log.c \
 		   lst.c \
@@ -91,8 +92,8 @@ SOURCES		:= \
 		   trie.c \
 		   types.c \
 		   udp.c \
-		   udpfromto.c \
 		   udp_queue.c \
+		   udpfromto.c \
 		   uri.c \
 		   value.c \
 		   version.c

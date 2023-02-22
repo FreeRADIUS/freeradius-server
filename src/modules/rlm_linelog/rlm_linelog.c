@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/iovec.h>
 #include <freeradius-devel/util/perm.h>
 
 #ifdef HAVE_FCNTL_H
@@ -303,6 +304,16 @@ static size_t linelog_escape_func(UNUSED request_t *request,
 	return fr_snprint(out, outlen, in, -1, 0);
 }
 
+static void linelog_hexdump(request_t *request, struct iovec *vector_p, size_t vector_len, char const *msg)
+{
+	fr_dbuff_t *agg;
+
+	FR_DBUFF_TALLOC_THREAD_LOCAL(&agg, 1024, SIZE_MAX);
+	fr_concatv(agg, vector_p, vector_len);
+
+	RHEXDUMP3(fr_dbuff_start(agg), fr_dbuff_used(agg), "%s", msg);
+}
+
 static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct iovec *vector_p, size_t vector_len, bool with_delim)
 {
 	int 			ret = 0;
@@ -380,6 +391,8 @@ static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct i
 				head_vector_len = 2;
 			}
 
+			if (RDEBUG_ENABLED3) linelog_hexdump(request, head_vector_s, head_vector_len, "linelog header");
+
 			if (writev(fd, &head_vector_s[0], head_vector_len) < 0) {
 			write_fail:
 				RERROR("Failed writing to \"%s\": %s", path, fr_syserror(errno));
@@ -392,6 +405,8 @@ static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct i
 				goto finish;
 			}
 		}
+
+		if (RDEBUG_ENABLED3) linelog_hexdump(request, vector_p, vector_len, "linelog data");
 
 		ret = writev(fd, vector_p, vector_len);
 		if (ret < 0) goto write_fail;
@@ -431,6 +446,7 @@ static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct i
 			ssize_t wrote;
 			char discard[64];
 
+			if (RDEBUG_ENABLED3) linelog_hexdump(request, vector_p, vector_len, "linelog data");
 			wrote = fr_writev(conn->sockfd, vector_p, vector_len, timeout);
 			if (wrote < 0) switch (errno) {
 			/* Errors that indicate we should reconnect */
