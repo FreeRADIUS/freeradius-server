@@ -809,6 +809,7 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
  *
  * Binds as the administrative user and attempts to modify an LDAP object.
  *
+ * @param[out] msgid		LDAP message ID.
  * @param[in] request		Current request.
  * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
  * @param[in] dn		of the object to modify.
@@ -921,7 +922,13 @@ fr_ldap_query_t *ldap_query_alloc(TALLOC_CTX *ctx, fr_ldap_request_type_t type)
 
 /** Allocate a new search object
  *
- * @param[in] ctx	to allocate query in.
+ * @param[in] ctx		to allocate query in.
+ * @param[in] base_dn		for the search.
+ * @param[in] scope		of the search.
+ * @param[in] filter		for the search
+ * @param[in] attrs		to request.
+ * @param[in] serverctrls	Search controls to pass to the server.  May be NULL.
+ * @param[in] clientctrls	Client controls.  May be NULL.
  */
 fr_ldap_query_t *fr_ldap_search_alloc(TALLOC_CTX *ctx,
 				      char const *base_dn, int scope, char const *filter, char const * const * attrs,

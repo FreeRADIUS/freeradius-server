@@ -537,10 +537,10 @@ int		fr_pair_unflatten(fr_pair_t *vp)  CC_HINT(nonnull);
  *
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
  *
- * @param[out] cursor	to initialise.
- * @param[in] list	to iterate over.
- * @param[in] iter	Iterator to use when filtering pairs.
- * @param[in] uctx	To pass to iterator.
+ * @param[out] _cursor	to initialise.
+ * @param[in] _list	to iterate over.
+ * @param[in] _iter	Iterator to use when filtering pairs.
+ * @param[in] _uctx	To pass to iterator.
  * @return
  *	- NULL if src does not point to any items.
  *	- The first pair in the list.
@@ -561,8 +561,8 @@ fr_pair_t	*_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const
  *
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
  *
- * @param[out] cursor	to initialise.
- * @param[in] list	to iterate over.
+ * @param[out] _cursor	to initialise.
+ * @param[in] _list	to iterate over.
  * @return
  *	- NULL if src does not point to any items.
  *	- The first pair in the list.
@@ -576,9 +576,9 @@ fr_pair_t	*_fr_pair_dcursor_init(fr_dcursor_t *cursor, fr_pair_list_t const *lis
 
 /** Initialise a cursor that will return only attributes matching the specified #fr_dict_attr_t
  *
- * @param[in] cursor	to initialise.
- * @param[in] list	to iterate over.
- * @param[in] da	to search for.
+ * @param[in] _cursor	to initialise.
+ * @param[in] _list	to iterate over.
+ * @param[in] _da	to search for.
  * @return
  *	- The first matching pair.
  *	- NULL if no pairs match.
@@ -594,9 +594,9 @@ fr_pair_t	*_fr_pair_dcursor_by_da_init(fr_dcursor_t *cursor,
 
 /** Initialise a cursor that will return only attributes descended from the specified #fr_dict_attr_t
  *
- * @param[in] cursor	to initialise.
- * @param[in] list	to iterate over.
- * @param[in] da	who's decentness to search for.
+ * @param[in] _cursor	to initialise.
+ * @param[in] _list	to iterate over.
+ * @param[in] _da	who's decentness to search for.
  * @return
  *	- The first matching pair.
  *	- NULL if no pairs match.

@@ -50,8 +50,8 @@ int _atexit_global(char const *file, int line, fr_atexit_t func, void const *uct
 
 /** Add a free function to the global free list
  *
- * @param[in] func to call.
- * @param[in] uctx to pass to func.
+ * @param[in] _func to call.
+ * @param[in] _uctx to pass to func.
  * @return
  *	- 0 on success.
  *      - -1 on failure.

@@ -228,6 +228,7 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *s
  * @param[in] inst Instance of rlm_detail.
  * @param[in] request The current request.
  * @param[in] packet associated with the request (request, reply...).
+ * @param[in] list of pairs to write.
  * @param[in] compat Write out entry in compatibility mode.
  */
 static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,

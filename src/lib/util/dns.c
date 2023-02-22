@@ -595,6 +595,7 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
  * @param[in] dbuff	Buffer where labels are written
  * @param[in] compression Whether or not to do DNS label compression.
  * @param[in] value	to encode.
+ * @param[in] lb	label tracking data structure.
  * @return
  *	- >0 the number of bytes written to the dbuff
  *	- 0 could not encode anything, an error has occurred.

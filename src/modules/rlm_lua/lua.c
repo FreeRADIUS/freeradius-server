@@ -186,6 +186,7 @@ DIAG_ON(type-limits)
  * Convert Lua values back to fr_pair_ts. How the Lua value is converted is dependent
  * on the type of the DA.
  *
+ * @param[in] ctx	To allocate new fr_pair_t in.
  * @param[out] out	Where to write a pointer to the new fr_pair_t.
  * @param[in] inst	the current instance.
  * @param[in] request	the current request.

@@ -544,7 +544,7 @@ static inline int _dbuff_thread_local_free(void *dbtl)
 
 /** Create a function local and thread local extensible dbuff
  *
- * @param[out] _dbuff_out	Where to write a pointer to the thread local dbuff
+ * @param[out] _out		Where to write a pointer to the thread local dbuff
  * @param[in] _init		Initial size for the dbuff buffer.
  * @param[in] _max		Maximum size of the dbuff buffer.
  */
@@ -1374,7 +1374,7 @@ static inline ssize_t _fr_dbuff_in_memcpy_dbuff(uint8_t **pos_p, fr_dbuff_t *out
 /** Copy exactly _inlen bytes into dbuff or marker returning if there's insufficient space
  * @copydetails fr_dbuff_in_memcpy
  */
-#define FR_DBUFF_IN_MEMCPY_RETURN(_out, _in, _inlen) FR_DBUFF_RETURN(fr_dbuff_in_memcpy, _out, _in, _inlen)
+#define FR_DBUFF_IN_MEMCPY_RETURN(_dbuff_or_marker, _in, _inlen) FR_DBUFF_RETURN(fr_dbuff_in_memcpy, _dbuff_or_marker, _in, _inlen)
 
 /** Internal function - do not call directly
  *
@@ -1577,7 +1577,7 @@ static inline ssize_t _fr_dbuff_in_double(uint8_t **pos_p, fr_dbuff_t *out, doub
  *
  * @copydetails fr_dbuff_in
  */
-#define FR_DBUFF_IN_RETURN(_out, _in) FR_DBUFF_RETURN(fr_dbuff_in, _out, _in)
+#define FR_DBUFF_IN_RETURN(_dbuff_or_marker, _in) FR_DBUFF_RETURN(fr_dbuff_in, _dbuff_or_marker, _in)
 
 /** Internal function - do not call directly
  * @private
@@ -1741,7 +1741,7 @@ static inline ssize_t _fr_dbuff_out_memcpy_dbuff(uint8_t **out_p, fr_dbuff_t *ou
  *
  * @copydetails fr_dbuff_out_memcpy
  */
-#define FR_DBUFF_OUT_MEMCPY_RETURN(_out, _in, _outlen) FR_DBUFF_RETURN(fr_dbuff_out_memcpy, _out, _in, _outlen)
+#define FR_DBUFF_OUT_MEMCPY_RETURN(_out, _dbuff_or_marker, _outlen) FR_DBUFF_RETURN(fr_dbuff_out_memcpy, _out, _dbuff_or_marker, _outlen)
 
 /** @cond */
 /** Define integer encoding functions
@@ -1794,7 +1794,7 @@ FR_DBUFF_OUT_DEF(int64)
  *
  * @copydetails fr_dbuff_out
  */
-#define FR_DBUFF_OUT_RETURN(_out, _in) FR_DBUFF_RETURN(fr_dbuff_out, _out, _in)
+#define FR_DBUFF_OUT_RETURN(_out, _dbuff_or_marker) FR_DBUFF_RETURN(fr_dbuff_out, _out, _dbuff_or_marker)
 
 /** Internal function - do not call directly
  * @private

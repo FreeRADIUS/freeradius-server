@@ -359,6 +359,7 @@ do { \
  * @param[in,out] list		value boxes provided as input.
  * 				List will be modified in accordance to rules
  * 				provided in the args array.
+ * @param[in] request		being processed.
  * @param[in] func		to call
  */
 static inline CC_HINT(always_inline)

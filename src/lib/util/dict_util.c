@@ -2325,6 +2325,7 @@ fr_dict_attr_t const *fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root
  * @param[out] err	Where to write error codes.  Any error
  *			other than FR_DICT_ATTR_NOTFOUND will
  *			prevent resolution from continuing.
+ * @param[out] out	Where to write resolved DA.
  * @param[in] parent	The dictionary root or other attribute to search from.
  * @param[in] in	Contains the string to resolve.
  * @param[in] tt	Terminal sequences to use to determine the portion
@@ -3210,6 +3211,7 @@ int dict_dependent_add(fr_dict_t *dict, char const *dependent)
  * be bound to the lifetime of an additional object.
  *
  * @param[in] dict	to increase the reference count for.
+ * @param[in] dependent	requesting the loading of the dictionary.
  * @return
  *	- 0 on success.
  *	- -1 on error.
@@ -3626,6 +3628,7 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 /** Process a dict_autoload element to load a protocol
  *
  * @param[in] to_load	dictionary definition.
+ * @param[in] dependent	that is loading this dictionary.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -3661,6 +3664,7 @@ int _fr_dict_autoload(fr_dict_autoload_t const *to_load, char const *dependent)
 /** Decrement the reference count on a previously loaded dictionary
  *
  * @param[in] to_free	previously loaded dictionary to free.
+ * @param[in] dependent	that originally allocated this dictionary
  */
 int _fr_dict_autofree(fr_dict_autoload_t const *to_free, char const *dependent)
 {

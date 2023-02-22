@@ -112,6 +112,7 @@ typedef struct {
 /** Called when a timer event fires
  *
  * @param[in] now	The current time.
+ * @param[in] el	Event list the timer event was inserted into.
  * @param[in] uctx	User ctx passed to #fr_event_timer_in or #fr_event_timer_at.
  */
 typedef	void (*fr_event_timer_cb_t)(fr_event_list_t *el, fr_time_t now, void *uctx);

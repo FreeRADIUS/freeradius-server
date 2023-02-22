@@ -50,6 +50,7 @@ USES_APPLE_DEPRECATED_API
  * @param[in] attrs Additional attributes to retrieve, may be NULL.
  * @param[in] force Query even if the User-DN already exists.
  * @param[out] result Where to write the result, may be NULL in which case result is discarded.
+ * @param[out] handle on which the LDAP query is run.
  * @param[out] rcode The status of the operation, one of the RLM_MODULE_* codes.
  * @return The user's DN or NULL on error.
  */

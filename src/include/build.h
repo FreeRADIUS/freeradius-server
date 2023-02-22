@@ -113,7 +113,7 @@ extern "C" {
  *
  * @param[in] _a	pointer to first structure.
  * @param[in] _b	pointer to second structure.
- * @param[in] _filed	within the structs to compare.
+ * @param[in] _field	within the structs to compare.
  * @return The result of the comparison.
  */
 #define CMP_RETURN(_a, _b, _field) \

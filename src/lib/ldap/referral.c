@@ -90,7 +90,9 @@ static void _ldap_referral_send(UNUSED fr_trunk_t *trunk, UNUSED fr_trunk_state_
  * We check all the possible referrals and look for one where there already
  * is an active trunk connection.
  *
- * @param query	whose result was one or more referral URLs
+ * @param t		Thread running the query.
+ * @param request	related to the query.
+ * @param query		whose result was one or more referral URLs.
  * @return
  * 	- 0 on success.
  * 	- < 0 on failure.
@@ -274,7 +276,9 @@ int fr_ldap_referral_follow(fr_ldap_thread_t *t, request_t *request, fr_ldap_que
  * new trunks are launched with watchers to send the query on the first
  * active trunk.
  *
- * @param query whose referrals are being chased
+ * @param t		Thread running the query.
+ * @param request	the query relates to.
+ * @param query		whose referrals are being chased.
  * @return
  *	- 0 on success.
  *	- < 0 on failure.

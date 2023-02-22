@@ -647,7 +647,7 @@ static inline int64_t fr_time_delta_to_sec(fr_time_delta_t delta)
 
 /** Convert a delta to a timeval
  *
- * @param[in] delta	in nanoseconds.
+ * @param[in] _delta	in nanoseconds.
  */
 #define fr_time_delta_to_timeval(_delta) \
 (struct timeval){ \
@@ -657,7 +657,7 @@ static inline int64_t fr_time_delta_to_sec(fr_time_delta_t delta)
 
 /** Convert a delta to a timespec
  *
- * @param[in] delta	in nanoseconds.
+ * @param[in] _delta	in nanoseconds.
  */
 #define fr_time_delta_to_timespec(_delta)\
 (struct timespec){ \

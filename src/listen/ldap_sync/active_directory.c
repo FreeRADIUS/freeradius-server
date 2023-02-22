@@ -163,6 +163,7 @@ int active_directory_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no,
  *
  * @param[in] sync	message was associated with.
  * @param[in] msg	containing an entry to process.
+ * @param[in] ctrls	unused LDAP controls
  * @return
  *	- 0 on success.
  *	- -1 on failure.

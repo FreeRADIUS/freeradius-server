@@ -252,6 +252,7 @@ static inline void xlat_internal(xlat_t *xlat)
 /** Set a print routine for an xlat function.
  *
  * @param[in] xlat to set
+ * @param[in] func for printing
  */
 static inline void xlat_print_set(xlat_t *xlat, xlat_print_t func)
 {
@@ -262,6 +263,7 @@ static inline void xlat_print_set(xlat_t *xlat, xlat_print_t func)
 /** Set a resolve routine for an xlat function.
  *
  * @param[in] xlat to set
+ * @param[in] func to resolve xlat.
  */
 static inline void xlat_resolve_set(xlat_t *xlat, xlat_resolve_t func)
 {
@@ -272,6 +274,7 @@ static inline void xlat_resolve_set(xlat_t *xlat, xlat_resolve_t func)
 /** Set a resolve routine for an xlat function.
  *
  * @param[in] xlat to set
+ * @param[in] func to purify xlat
  */
 static inline void xlat_purify_set(xlat_t *xlat, xlat_purify_t func)
 {

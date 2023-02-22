@@ -119,6 +119,7 @@ static inline CC_HINT(always_inline) int dict_fixup_common(char const *filename,
  * @param[in] value		Value string.  This is kept as a string until we know
  *				what type we want to transform it into.
  * @param[in] value_len		Length of the value string.
+ * @param[in] parent		of this attribute.
  * @return
  *	- 0 on success.
  *	- -1 on out of memory.
@@ -381,6 +382,7 @@ static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixu
  * @param[in] fctx		Holds current dictionary parsing information.
  * @param[in] filename		this fixup relates to.
  * @param[in] line		this fixup relates to.
+ * @param[in] parent		for the cloned attribute.
  * @param[in] da		The group dictionary attribute.
  * @param[in] ref		OID string representing what the group references.
  * @param[in] ref_len		Length of the reference string.

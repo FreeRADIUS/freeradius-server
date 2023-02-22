@@ -170,6 +170,8 @@ static int sync_state_free(sync_state_t *sync)
  *
  * @param[in] ctx	to allocate the sync state in.
  * @param[in] conn	which the sync will run on.
+ * @param[in] inst	module instance for the sync.
+ * @param[in] sync_no	number of the sync in the array of configs.
  * @param[in] config	for the sync.
  * @return new sync state.
  */

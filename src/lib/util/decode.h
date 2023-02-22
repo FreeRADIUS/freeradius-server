@@ -37,6 +37,7 @@ extern "C" {
  * @param[in] parent		of sub TLVs.
  * @param[in] data		to parse.
  * @param[in] data_len		of the data to parse
+ * @param[in] decode_ctx	ctx for decode function.
  * @return
  *	<= 0 on error
  *	bytes successfully decoded on success (<= data_len)

@@ -107,7 +107,6 @@ struct fr_rb_tree_s {
  *				If ctx is freed, tree will free any nodes, calling the
  *				free function if set.
  * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
- * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
  * @param[in] _data_cmp		Callback to compare node data.
  * @param[in] _data_free	Optional function used to free data if tree nodes are
  *				deleted or replaced.
@@ -196,7 +195,6 @@ int _fr_rb_init(fr_rb_tree_t *tree, TALLOC_CTX *node_ctx,
  *				If ctx is freed, tree will free any nodes, calling the
  *				free function if set.
  * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
- * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
  * @param[in] _data_cmp		Callback to compare node data.
  * @param[in] _data_free	Optional function used to free data if tree nodes are
  *				deleted or replaced.

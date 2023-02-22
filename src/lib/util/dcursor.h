@@ -137,6 +137,7 @@ static inline void *dcursor_current_set(fr_dcursor_t *cursor, void *current)
 /** Internal function to get the next item
  *
  * @param[in] cursor	to operate on.
+ * @param[in] iter	function.
  * @param[in] current	attribute.
  * @return
  *	- The next attribute.
@@ -643,10 +644,13 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
 /** Initialise a cursor with a custom iterator
  *
  * @param[in] _cursor		to initialise.
- * @param[in] _head		of item list.
+ * @param[in] _list		to iterate over.
  * @param[in] _iter		function.
  * @param[in] _peek		function.  If NULL _iter will be used for peeking.
  * @param[in] _iter_uctx	_iter function _uctx.
+ * @param[in] _insert		function.
+ * @param[in] _remove		function.
+ * @param[in] _mod_uctx		_insert and _remove function _uctx.
  * @return
  *	- NULL if _head does not point to any items, or the iterator matches no items
  *	  in the current list.
@@ -851,6 +855,7 @@ DIAG_OFF(unused-function)
  *				- #FR_DLIST_ENTRY
  *				- #FR_DLIST_TYPES
  *				- #FR_DLIST_FUNCS
+ * @param[in] _element_type	Type of element in the dlists.
  *
  * @note This macro should be used inside the header for the area of code
  * which will use type specific functions.

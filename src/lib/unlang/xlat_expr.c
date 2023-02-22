@@ -629,6 +629,7 @@ static xlat_arg_parser_t const regex_op_xlat_args[] = {
 
 /** Perform a regular expressions comparison between two operands
  *
+ * @param[in] ctx		to allocate resulting box in.
  * @param[in] request		The current request.
  * @param[in] in		list of item or items
  * @param[in,out] preg		Pointer to pre-compiled or runtime-compiled
@@ -639,6 +640,7 @@ static xlat_arg_parser_t const regex_op_xlat_args[] = {
  *				The caller should only free the `regex_t *` if it
  *				compiled it, and the pointer has not been set to NULL
  *				when this function returns.
+ * @param[out] out		Where result is written.
  * @param[in] op		the operation to perform.
  * @return
  *	- -1 on failure.

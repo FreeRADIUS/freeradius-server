@@ -730,8 +730,9 @@ typedef struct {
 
 /** Allocate a trie
  *
- * @param ctx The talloc ctx
- * @param get_key The "get key from object" function.
+ * @param ctx		The talloc ctx.
+ * @param get_key	The "get key from object" function.
+ * @param free_data	Callback to free data.
  * @return
  *	- NULL on error
  *	- fr_trie_node_t on success

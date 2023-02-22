@@ -33,6 +33,7 @@
  * @param[in] depth		in the da_stack.
  * @param[in,out] cursor	Current attribute we're encoding.
  * @param[in] encode_ctx	Containing DHCPv4 dictionary.
+ * @param[in] encode_value	Function to perform encoding of a single value.
  * @return
  *	- >0 length of data encoded.
  *	- 0 if we ran out of space.

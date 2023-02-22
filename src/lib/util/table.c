@@ -35,6 +35,7 @@ RCSID("$Id$")
 /** Brute force search a sorted or ordered ptr table, assuming the pointers are strings
  *
  * @param[in] table		to search in.
+ * @param[in] table_len		Number of elements in the table.
  * @param[in] str_val		to compare against the ptr field.
  * @param[in] def		default value.
  */

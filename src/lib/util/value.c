@@ -4481,7 +4481,9 @@ void fr_value_box_increment(fr_value_box_t *vb)
  *
  * @param[out] dst		where to write parsed value.
  * @param[in] dst_type		type of integer to convert string to.
+ * @param[in] dst_enumv		Enumeration values.
  * @param[in] in		String to convert to integer.
+ * @param[in] rules		for parsing string.
  * @param[in] tainted		Whether the value came from a trusted source.
  * @return
  *	- >= 0 on success (number of bytes parsed).
