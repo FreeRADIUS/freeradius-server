@@ -1,0 +1,46 @@
+VENDOR Calix  6321
+
+BEGIN-VENDOR Calix
+
+#
+# Authorization attributes
+#
+
+# Usually login
+DEFINE service		string
+
+# Which privileges to assign to the user
+DEFINE roles		string
+
+# Unknown
+DEFINE allow-permission	string
+
+# Unknown
+DEFINE deny-permission string
+
+#
+# Accounting attributes
+#
+# When command execution or the session started
+DEFINE start_time 	date
+
+# When command execution or the session stopped
+DEFINE stop_time	date
+
+# Seems to be a unique ID assigned to the user's session
+# Allows for multiple commands to be correlated within a login session
+DEFINE task_id		uint32
+
+# Only seen CLI_CMD so far, there are likely others
+DEFINE action		string
+
+# The actual undecorated command the user issued, or the RPC call
+DEFINE cmd		string
+
+# User-Agent, i.e. how the user is connecting to the device
+DEFINE ua		string
+
+# Source port of the connection, usually a port in the ephemeral range
+DEFINE port		uint16
+
+END-VENDOR Calix
