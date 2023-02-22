@@ -817,8 +817,7 @@ RESUME(auth_get)
 		if (!packet_is_authen_start_request(packet)) goto send_reply;
 
 		MEM(session = talloc_zero(NULL, process_tacacs_session_t));
-
-		if (request_data_talloc_add(request, inst, 0, process_tacacs_session_t, session, true, false, true) < 0) {
+		if (request_data_talloc_add(request, inst, 0, process_tacacs_session_t, session, true, true, true) < 0) {
 			talloc_free(session);
 			goto send_reply;
 		}
@@ -887,12 +886,11 @@ RECV(auth_cont)
 	if (session) {
 		if (request->packet->data[2] <= session->seq_no) {
 			REDEBUG("Client sent invalid sequence number %02x, expected >%02x", request->packet->data[2], session->seq_no);
+		error:
 			return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 		}
 
-		if (fr_pair_list_copy(&request->request_ctx, &request->request_pairs, &session->list) < 0) {
-			return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
-		}
+		if (fr_pair_list_copy(request->request_ctx, &request->request_pairs, &session->list) < 0) goto error;
 	}
 
 	return CALL_RECV(generic);
