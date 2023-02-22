@@ -16,7 +16,7 @@
 
 /** Tests for rbtrees
  *
- * @file src/lib/util/fr_rb_tree_tests.c
+ * @file src/lib/util/rb_tests.c
  *
  * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */

@@ -87,13 +87,13 @@ static fr_dict_attr_autoload_t tmpl_dict_attr[] = {
 };
 
 
-/** Resolve attribute #pair_list_t value to an attribute list.
+/** Resolve attribute #fr_pair_list_t value to an attribute list.
  *
  * The value returned is a pointer to the pointer of the HEAD of a #fr_pair_t list in the
  * #request_t. If the head of the list changes, the pointer will still be valid.
  *
  * @param[in] request containing the target lists.
- * @param[in] list #pair_list_t value to resolve to #fr_pair_t list. Will be NULL if list
+ * @param[in] list #fr_pair_list_t value to resolve to #fr_pair_t list. Will be NULL if list
  *	name couldn't be resolved.
  * @return a pointer to the HEAD of a list in the #request_t.
  *
@@ -130,7 +130,7 @@ fr_pair_list_t *tmpl_list_head(request_t *request, fr_dict_attr_t const *list)
  * freed too.
  *
  * @param[in] request containing the target lists.
- * @param[in] list #pair_list_t value to resolve to TALLOC_CTX.
+ * @param[in] list #fr_pair_list_t value to resolve to TALLOC_CTX.
  * @return
  *	- TALLOC_CTX on success.
  *	- NULL on failure.
@@ -158,7 +158,7 @@ TALLOC_CTX *tmpl_list_ctx(request_t *request, fr_dict_attr_t const *list)
  * for the current #request_t.
  *
  * @param[in] request To resolve list in.
- * @param[in] list #pair_list_t value to resolve to #fr_radius_packet_t.
+ * @param[in] list #fr_pair_list_t value to resolve to #fr_radius_packet_t.
  * @return
  *	- #fr_radius_packet_t on success.
  *	- NULL on failure.

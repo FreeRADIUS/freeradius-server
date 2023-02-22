@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file src/lib/process/tacacs/base.c
+ * @file src/process/tacacs/base.c
  * @brief TACACS+ handler.
  * @author Jorge Pereira <jpereira@freeradius.org>
  *

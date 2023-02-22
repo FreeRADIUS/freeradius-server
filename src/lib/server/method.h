@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file lib/server/methods.h
+ * @file lib/server/method.h
  * @brief Cannonical definition of abstract module methods.
  *
  * Multiple schemes have been used to try and pick the default module

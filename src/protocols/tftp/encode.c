@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file src/protocols/tftp/enoce.c
+ * @file src/protocols/tftp/encode.c
  * @brief Functions to encode TFTP packets.
  * @author Jorge Pereira <jpereira@freeradius.org>
  *

@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file lib/server/udp_queue.h
+ * @file lib/util/udp_queue.h
  * @brief Handle queues of outgoing UDP packets
  *
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)

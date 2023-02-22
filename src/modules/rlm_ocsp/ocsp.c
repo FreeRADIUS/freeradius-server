@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file tls/ocsp.c
+ * @file rlm_ocsp/ocsp.c
  * @brief Validate client certificates using an OCSP service.
  *
  * @copyright 2006-2016 The FreeRADIUS server project

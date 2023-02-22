@@ -16,7 +16,7 @@
 
 /** AVP manipulation and search API
  *
- * @file src/lib/util/pair.c
+ * @file src/lib/util/pair_legacy.c
  *
  * @copyright 2000,2006,2015 The FreeRADIUS server project
  */

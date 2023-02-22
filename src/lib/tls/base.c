@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file tls/base.c
+ * @file src/lib/tls/base.c
  * @brief Initialise OpenSSL
  *
  * @copyright 2001 hereUare Communications, Inc. (raghud@hereuare.com)

@@ -17,7 +17,7 @@
 
 /** Legacy API functions - DO NOT USE IN NEW CODE
  *
- * @file src/lib/util/dpair.h
+ * @file src/lib/util/pair_legacy.h
  *
  * @copyright 2015 The FreeRADIUS server project
  */

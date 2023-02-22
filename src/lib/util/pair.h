@@ -256,7 +256,7 @@ static inline bool vp_da_data_type_check(fr_pair_t *vp)
 	return false;
 }
 
-/** Iterate over the contents of a #pair_list_t
+/** Iterate over the contents of a #fr_pair_list_t
  *
  *  The iteration variable can be safely removed from the list at each pass.
  *

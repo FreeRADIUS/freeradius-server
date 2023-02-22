@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file src/lib/server/methods.c
+ * @file src/lib/server/method.c
  * @brief Cannonical definition of abstract module methods.
  *
  * @copyright 2021 The FreeRADIUS server project

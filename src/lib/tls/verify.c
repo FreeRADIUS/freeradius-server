@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file tls/validate.c
+ * @file tls/verify.c
  * @brief Expose certificate OIDs as attributes, and call validation virtual
  *	server to check cert is valid.
  *

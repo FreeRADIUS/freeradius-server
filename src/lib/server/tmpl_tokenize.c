@@ -369,9 +369,9 @@ void tmpl_debug(tmpl_t const *vpt)
 	}
 }
 
-/** @name Parse list and request qualifiers to #pair_list_t and #tmpl_request_ref_t values
+/** @name Parse list and request qualifiers to #fr_pair_list_t and #tmpl_request_ref_t values
  *
- * These functions also resolve #pair_list_t and #tmpl_request_ref_t values to #request_t
+ * These functions also resolve #fr_pair_list_t and #tmpl_request_ref_t values to #request_t
  * structs and the head of #fr_pair_t lists in those structs.
  *
  * For adding new #fr_pair_t to the lists, the #tmpl_list_ctx function can be used
@@ -1964,14 +1964,14 @@ do_suffix:
  * @param[out] err		May be NULL.  Provides the exact error that the parser hit
  *				when processing the attribute ref.
  * @param[out] out		Where to write pointer to new #tmpl_t.
- * @param[in] name		of attribute including #tmpl_request_ref_t and #pair_list_t qualifiers.
+ * @param[in] name		of attribute including #tmpl_request_ref_t and #fr_pair_list_t qualifiers.
  * @param[in] p_rules		Formatting rules used to check for trailing garbage.
  * @param[in] t_rules		Rules which control parsing:
  *				- dict_def		The default dictionary to use if attributes
  *							are unqualified.
  *				- request_def		The default #request_t to set if no
  *							#tmpl_request_ref_t qualifiers are found in name.
- *				- list_def		The default list to set if no #pair_list_t
+ *				- list_def		The default list to set if no #fr_pair_list_t
  *							qualifiers are found in the name.
  *				- allow_unknown		If true attributes in the format accepted by
  *							#fr_dict_unknown_afrom_oid_substr will be allowed,
@@ -2198,7 +2198,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
  * @param[out] err		May be NULL.  Provides the exact error that the parser hit
  *				when processing the attribute ref.
  * @param[out] out		Where to write pointer to new #tmpl_t.
- * @param[in] name		of attribute including #tmpl_request_ref_t and #pair_list_t qualifiers.
+ * @param[in] name		of attribute including #tmpl_request_ref_t and #fr_pair_list_t qualifiers.
  * @param[in] t_rules		Rules which control parsing.  See tmpl_afrom_attr_substr() for details.
  *
  * @note Unlike #tmpl_afrom_attr_substr this function will error out if the entire

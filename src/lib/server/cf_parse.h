@@ -85,7 +85,7 @@ typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYP
 
 /** Check the #fr_type_t matches the destination data type
  *
- * Validation macro to check the type of the pointer or offset #_p passed in
+ * Validation macro to check the type of the pointer or offset _p passed in
  * matches the #fr_type_t of the configuration item.
  *
  * Uses various magic builtin precompilation functions, so will likely only

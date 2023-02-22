@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief #fr_pair_t template functions
- * @file src/lib/server/tmpl_cursor.c
+ * @file src/lib/server/tmpl_dcursor.c
  *
  * @ingroup AVP
  *
@@ -47,7 +47,7 @@ void _tmpl_cursor_pool_init(tmpl_dcursor_ctx_t *cc)
  *
  * @param[in] list	being traversed.
  * @param[in] curr	item in the list to start tests from.
- * @param[in] uctx	Context for evaluation - in this instance a #tmpl_nested_dcursor_t
+ * @param[in] uctx	Context for evaluation - in this instance a #tmpl_dcursor_t
  * @return
  *	- the next matching attribute
  *	- NULL if none found

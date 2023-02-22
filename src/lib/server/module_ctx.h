@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file lib/server/module_call_ctx.h
+ * @file lib/server/module_ctx.h
  * @brief Temporary argument structures for module calls.
  *
  * These get used in various places where we may not want to include

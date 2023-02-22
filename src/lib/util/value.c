@@ -5314,7 +5314,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  *				they've been processed.
  * @param[in] flatten		If true and we encounter a #FR_TYPE_GROUP,
  *				we concat the contents of its children together.
- *      			If false, the contents will be cast to #type.
+ *      			If false, the contents will be cast to #FR_TYPE_STRING.
  * @param[in] printable		Convert 'octets' to printable strings.
  * @return
  *      - >=0 the number of bytes written to the sbuff.
@@ -5404,7 +5404,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, FR_
  *				they've been processed.
  * @param[in] flatten		If true and we encounter a #FR_TYPE_GROUP,
  *				we concat the contents of its children together.
- *      			If false, the contents will be cast to #type.
+ *      			If false, the contents will be cast to #FR_TYPE_OCTETS.
  * @return
  *      - >=0 the number of bytes written to the sbuff.
  *	- <0 how many additional bytes we would have needed to
@@ -5500,7 +5500,7 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, FR_
  *				they've been processed.
  * @param[in] flatten		If true and we encounter a #FR_TYPE_GROUP,
  *				we concat the contents of its children together.
- *      			If false, the contents will be cast to #type.
+ *      			If false, the contents will be cast to the given type.
  * @param[in] max_size		of the value.
  * @return
  *	- 0 on success.

@@ -16,7 +16,7 @@
 
 /** Performance tests for lists of fr_pair_t
  *
- * @file src/bin/pair_list_perf_test.c
+ * @file src/lib/util/pair_list_perf_test.c
  * @author Nick Porter <nick.porter@networkradius.com>
  *
  * @copyright 2021 Network RADIUS SAS <legal@networkradius.com>

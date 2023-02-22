@@ -46,7 +46,7 @@ static int cond_realize_tmpl(request_t *request,
 			     fr_value_box_t **out, fr_value_box_t **to_free,
 			     tmpl_t *in, tmpl_t *other, fr_value_box_t *async);
 
-/** Map keywords to #pair_list_t values
+/** Map keywords to #fr_pair_list_t values
  */
 static fr_table_num_sorted_t const cond_type_table[] = {
 	{ L("child"),		COND_TYPE_CHILD		},
@@ -335,7 +335,7 @@ done:
 	return p - out;
 }
 
-/** Turn a raw #tmpl_t into #fr_value_data_t, mostly.
+/** Turn a raw #tmpl_t into #fr_value_box_t, mostly.
  *
  *  It does nothing for lists, attributes, and precompiled regexes.
  *
