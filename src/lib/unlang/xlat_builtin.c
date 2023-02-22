@@ -2363,12 +2363,14 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*result;
 	fr_value_box_t	*list;
 	fr_value_box_t	*separator;
+	FR_DLIST_HEAD(fr_value_box_list) *to_concat;
 	char		*buff;
 	char const	*sep;
 
 	XLAT_ARGS(args, &list, &separator);
 
 	sep = (separator) ? separator->vb_strvalue : "";
+	to_concat = &list->vb_group;
 
 	result = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false);
 	if (!result) {
@@ -2377,7 +2379,7 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	buff = fr_value_box_list_aprint(result, &list->vb_group, sep, NULL);
+	buff = fr_value_box_list_aprint(result, to_concat, sep, NULL);
 	if (!buff) goto error;
 
 	fr_value_box_bstrdup_buffer_shallow(NULL, result, NULL, buff, fr_value_box_list_tainted(args));
