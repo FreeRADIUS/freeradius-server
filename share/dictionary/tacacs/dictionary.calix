@@ -32,7 +32,7 @@ DEFINE stop_time	date
 DEFINE task_id		uint32
 
 # Only seen CLI_CMD so far, there are likely others
-DEFINE action		string
+#DEFINE action		string
 
 # The actual undecorated command the user issued, or the RPC call
 DEFINE cmd		string
