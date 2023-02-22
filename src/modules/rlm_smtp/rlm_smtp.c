@@ -74,6 +74,17 @@ typedef struct {
 	fr_value_box_t		password;		//!< Password for authenticated mails.
 } rlm_smtp_env_t;
 
+FR_DLIST_TYPES(header_list)
+
+/** Structure to hold definitions of SMTP headers
+ */
+typedef FR_DLIST_HEAD(header_list) header_list_t;
+typedef struct {
+	char const			*name;		//!< SMTP header name
+	tmpl_t				*value;		//!< Tmpl to expand to as header value
+	FR_DLIST_ENTRY(header_list)	entry;		//!< Entry in the list of headers
+} rlm_smtp_header_t;
+
 FR_DLIST_FUNCS(header_list, rlm_smtp_header_t, entry)
 typedef struct {
 	char const		*uri;			//!< URI of smtp server
@@ -92,7 +103,7 @@ typedef struct {
 
 	char const		*name;			//!< Auth-Type value for this module instance.
 	fr_dict_enum_value_t	*auth_type;
-	map_list_t		header_maps;		//!< Attribute map used to process header elements
+	header_list_t		header_list;		//!< List of SMTP headers to add to emails.
 	bool 			set_date;
 
 	fr_curl_conn_config_t	conn_config;		//!< Re-usable CURL handle config
@@ -575,43 +586,30 @@ static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, rlm_smtp_t c
 	request_t			*request = uctx->request;
 	fr_sbuff_t 			conf_buffer;
 	fr_sbuff_uctx_talloc_t 		conf_ctx;
-	map_t				*conf_map;
-
+	rlm_smtp_header_t const		*header = NULL;
 	char 				*expanded_rhs;
-
-	/*
-	 *	Initialize the sbuff for writing the config elements as header attributes
-	 */
-	fr_sbuff_init_talloc(uctx, &conf_buffer, &conf_ctx, 256, SIZE_MAX);
-	conf_map = map_list_head(&inst->header_maps);
 
 	/*
 	 *	Load in all of the header elements supplied in the config
 	 */
-	while (conf_map->rhs && conf_map->lhs) {
+	while ((header = header_list_next(&inst->header_list, header))) {
 		/* Do any string expansion required in the rhs */
-		if( tmpl_aexpand(t, &expanded_rhs, request, conf_map->rhs, NULL, NULL) < 0) {
-			RDEBUG2("Skipping: %s's could not parse: %s", conf_map->lhs->name, conf_map->rhs->name);
-			goto next;
+		if( tmpl_aexpand(t, &expanded_rhs, request, header->value, NULL, NULL) < 0) {
+			RDEBUG2("Skipping: %s's could not parse: %s", header->name, header->value->name);
+			continue;
 		}
+
+		fr_sbuff_init_talloc(uctx, &conf_buffer, &conf_ctx, 256, SIZE_MAX);
 
 		/* Format the conf item to be a valid SMTP header */
 		/* coverity[check_return] */
-		fr_sbuff_in_bstrncpy(&conf_buffer, conf_map->lhs->name, conf_map->lhs->len);
+		fr_sbuff_in_bstrncpy(&conf_buffer, header->name, strlen(header->name));
 		fr_sbuff_in_strcpy(&conf_buffer, ": ");
 		fr_sbuff_in_bstrncpy(&conf_buffer, expanded_rhs, strlen(expanded_rhs));
 
 		/* Add the header to the curl slist */
-		uctx->header = curl_slist_append(uctx->header, conf_buffer.buff);
+		uctx->header = curl_slist_append(uctx->header, fr_sbuff_buff(&conf_buffer));
 		talloc_free(conf_buffer.buff);
-
-	next:
-		/* Check if there are more values to parse */
-
-		if (!map_list_next(&inst->header_maps, conf_map)) break;
-		/* reinitialize the buffer and move to the next value */
-		fr_sbuff_init_talloc(uctx, &conf_buffer, &conf_ctx, 256, SIZE_MAX);
-		conf_map = map_list_next(&inst->header_maps, conf_map);
 	}
 
 	/* Add the FROM: line */
@@ -1007,16 +1005,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, randle);
 }
 
-/** Verify that a map in the header section makes sense
- *
- */
-static int smtp_verify(map_t *map, void *ctx)
-{
-	if (unlang_fixup_update(map, ctx) < 0) return -1;
-
-	return 0;
-}
-
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_smtp_t 	*inst = talloc_get_type_abort(mctx->inst->data, rlm_smtp_t );
@@ -1029,32 +1017,78 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_smtp_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_smtp_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
-	CONF_SECTION	*header;
+	rlm_smtp_t			*inst = talloc_get_type_abort(mctx->inst->data, rlm_smtp_t);
+	CONF_SECTION			*conf = mctx->inst->conf;
+	CONF_SECTION			*cs;
+	CONF_ITEM			*ci;
+	CONF_PAIR			*cp;
+	tmpl_rules_t			parse_rules;
+	rlm_smtp_header_t		*header;
+	char const			*value;
+	char				*unescaped_value = NULL;
+	fr_token_t			type;
+	ssize_t				slen;
+	fr_sbuff_parse_rules_t const	*p_rules;
 
-	map_list_init(&inst->header_maps);
-	header = cf_section_find(conf, "header", NULL);
-	if (!header) return 0;
+	header_list_init(&inst->header_list);
+	cs = cf_section_find(conf, "header", NULL);
+	if (!cs) return 0;
 
-	/*
-	 *	Make sure the users don't screw up too badly.
-	 */
-	{
-		tmpl_rules_t	parse_rules = {
-			.attr = {
-				.allow_foreign = true,	/* Because we don't know where we'll be called */
-				.allow_unknown = true,
-				.allow_unresolved = true,
-				.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
-			}
-		};
-		parse_rules.attr.list_def = request_attr_request;
+	parse_rules = (tmpl_rules_t) {
+		.attr = {
+			.allow_foreign = true,	/* Because we don't know where we'll be called */
+			.allow_unknown = true,
+			.allow_unresolved = true,
+			.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+			.list_def = request_attr_request
+		}
+	};
 
-		if (map_afrom_cs(inst, &inst->header_maps, header,
-				 &parse_rules, &parse_rules, smtp_verify, NULL, MAX_ATTRMAP) < 0) {
+	for (ci = cf_item_next(cs, NULL); ci != NULL; ci = cf_item_next(cs,ci)) {
+		if (!cf_item_is_pair(ci)) {
+			cf_log_err(ci, "Entry is not in \"header = value\" format");
+		error:
+			TALLOC_FREE(unescaped_value);
+			header_list_talloc_free(&inst->header_list);
 			return -1;
 		}
+
+		cp = cf_item_to_pair(ci);
+		fr_assert(cp != NULL);
+
+		MEM(header = talloc_zero(inst, rlm_smtp_header_t));
+
+		header->name = talloc_strdup(header, cf_pair_attr(cp));
+		value = cf_pair_value(cp);
+		type = cf_pair_value_quote(cp);
+		p_rules = value_parse_rules_unquoted[type];
+
+		if (type == T_DOUBLE_QUOTED_STRING || type == T_BACK_QUOTED_STRING) {
+			slen = fr_sbuff_out_aunescape_until(NULL, &unescaped_value,
+				&FR_SBUFF_IN(value, talloc_array_length(value) - 1), SIZE_MAX, p_rules->terminals, p_rules->escapes);
+			if (slen < 0) {
+				char *spaces, *text;
+			parse_error:
+				cf_log_err(ci, "Failed to parse value %s", value);
+				fr_canonicalize_error(inst, &spaces, &text, slen, value);
+				cf_log_err(cp, "%s", text);
+				cf_log_perr(cp, "%s^", spaces);
+
+				talloc_free(spaces);
+				talloc_free(text);
+				goto error;
+			}
+			value = unescaped_value;
+			p_rules = NULL;
+		} else {
+			slen = talloc_array_length(value) - 1;
+		}
+
+		slen = tmpl_afrom_substr(header, &header->value, &FR_SBUFF_IN(value, slen), type, p_rules, &parse_rules);
+		if (slen < 0) goto parse_error;
+
+		header_list_insert_tail(&inst->header_list, header);
+		TALLOC_FREE(unescaped_value);
 	}
 
 	inst->conn_config.reuse.num_children = 1;
