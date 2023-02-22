@@ -91,17 +91,6 @@ perl {
 #	func_detach = detach
 
 	#
-	#  func_start_accounting::
-	#  func_stop_accounting::
-	#
-	#  Uncomment the following lines if you wish to use separate functions
-	#  for `Start` and `Stop` accounting packets.
-	#  In that case, the `func_accounting` function is not called.
-	#
-#	func_start_accounting = accounting_start
-#	func_stop_accounting = accounting_stop
-
-	#
 	#  config { ... }::
 	#
 	#  You can define configuration items (and nested sub-sections) in perl `config { ... }`
