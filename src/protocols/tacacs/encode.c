@@ -154,10 +154,19 @@ static uint8_t tacacs_encode_body_arg_cnt(fr_pair_list_t *vps, fr_dict_attr_t co
 		fr_assert(fr_dict_by_da(vp->da) == dict_tacacs);
 
 		/*
+		 *	RFC 8907 attributes.
+		 */
+		if (vp->da->parent->flags.is_root) {
+			arg_cnt++;
+			continue;
+		}
+
+		/*
 		 *	Recurse into children.
 		 */
 		if (vp->da->type == FR_TYPE_VENDOR) {
 			arg_cnt += tacacs_encode_body_arg_cnt(&vp->vp_group, NULL);
+			continue;
 		}
 
 		if (vp->da->parent->type != FR_TYPE_VENDOR) continue;
@@ -212,13 +221,14 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 			i += child_argc;
 			continue;
 
-		} else if (!vp->da->parent || (vp->da->parent->type != FR_TYPE_VENDOR)) {
+		} else if (!vp->da->parent || (!vp->da->parent->flags.is_root && (vp->da->parent->type != FR_TYPE_VENDOR))) {
 			continue;
 
 		} else {
 			ssize_t slen;
 			fr_sbuff_t sbuff;
 			fr_dbuff_t arg_dbuff = FR_DBUFF_MAX(&work_dbuff, 255);
+			fr_value_box_t box;
 			char buffer[256];
 
 			/*
@@ -228,8 +238,30 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 			FR_DBUFF_IN_BYTES_RETURN(&arg_dbuff, (uint8_t) '=');
 
 			sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
-			slen = fr_pair_print_value_quoted(&sbuff, vp, 0);
-			if (slen <= 0) return -1;
+
+			switch (vp->vp_type) {
+				/*
+				 *	For now, we always print time deltas and dates as integers.
+				 *
+				 *	Because everyone else's date formats are insane.
+				 */
+			case FR_TYPE_DATE:
+			case FR_TYPE_TIME_DELTA:
+				fr_value_box_init(&box, FR_TYPE_UINT64, vp->data.enumv, vp->vp_tainted);
+				if (fr_value_box_cast(NULL, &box, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
+					buffer[0] = '\0';
+					slen = 0;
+					break;
+				}
+
+				slen = fr_sbuff_in_sprintf(&sbuff, "%lu", box.vb_uint64);
+				if (slen <= 0) return -1;
+				break;
+
+			default:
+				slen = fr_pair_print_value_quoted(&sbuff, vp, T_BARE_WORD);
+				if (slen <= 0) return -1;
+			}
 
 			FR_DBUFF_IN_MEMCPY_RETURN(&arg_dbuff, buffer, (size_t) slen);
 
@@ -239,6 +271,8 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 
 			fr_dbuff_set(&work_dbuff, &arg_dbuff);
 		}
+
+		fr_assert(len <= UINT8_MAX);
 
 		FR_PROTO_TRACE("len(arg[%d]) = %d", i, len);
 		arg_len[i++] = len;
@@ -941,7 +975,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	}
 
 #ifndef NDEBUG
-	if (fr_debug_lvl >= L_DBG_LVL_4) {
+//	if (fr_debug_lvl >= L_DBG_LVL_4) {
+	if (1) {
 		uint8_t flags = packet->hdr.flags;
 
 		packet->hdr.flags |= FR_TAC_PLUS_UNENCRYPTED_FLAG;

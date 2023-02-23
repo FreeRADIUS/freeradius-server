@@ -186,6 +186,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 	uint8_t const *p = attrs;
 	fr_pair_t *vp;
 	fr_pair_t *vendor = NULL;
+	fr_dict_attr_t const *root;
 
 	/*
 	 *	No one? Just get out!
@@ -207,12 +208,15 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		}
 	}
 
+	root = fr_dict_root(dict_tacacs);
+
 	/*
 	 *	Then, do the dirty job of creating attributes.
 	 */
 	for (i = 0; i < arg_cnt; i++) {
 		uint8_t const *value, *name_end, *arg_end;
 		fr_dict_attr_t const *da;
+		fr_pair_list_t *dst;
 		uint8_t buffer[256];
 
 		fr_assert((p + argv[i]) <= end);
@@ -245,9 +249,20 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		if (!name_end) goto next;
 
 		/*
-		 *	Dupe the whole thing so that we have:
-		 *
-		 *	Argument-List += "name=value"
+		 *	Prefer to decode from the attribute root, first.
+		 */
+		da = fr_dict_attr_by_name(NULL, root, (char *) buffer);
+		if (da) {
+			vp = fr_pair_afrom_da(ctx, da);
+			if (!vp) goto oom;
+
+			dst = out;
+			goto decode;
+		}
+
+		/*
+		 *	If the attribute isn't in the main dictionary,
+		 *	maybe it's in the vendor dictionary?
 		 */
 		if (vendor) {
 			da = fr_dict_attr_by_name(NULL, parent, (char *) buffer);
@@ -256,6 +271,9 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 			vp = fr_pair_afrom_da(vendor, da);
 			if (!vp) goto oom;
 
+			dst = &vendor->vp_group;
+
+		decode:
 			/*
 			 *      If it's OCTETS or STRING type, then just copy the value verbatim, as the
 			 *      contents are (should be?) binary-safe.  But if it's zero length, then don't need to
@@ -304,7 +322,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 				 */
 			}
 
-			fr_pair_append(&vendor->vp_group, vp);
+			fr_pair_append(dst, vp);
 
 		} else {
 		raw:
