@@ -84,6 +84,8 @@ fr_connection_pool_t	*fr_connection_pool_module_init(CONF_SECTION *module,
  */
 int	fr_connection_pool_get_num(fr_connection_pool_t *pool);
 
+int	fr_connection_pool_get_retries(fr_connection_pool_t *pool);
+
 /*
  *	Pool management
  */
