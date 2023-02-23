@@ -426,12 +426,24 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	/*
 	 *	Ensure that we send a sane reply to a request.
 	 */
-	if (original) {
-		packet->hdr.version = original->version;
-		packet->hdr.type = original->type;
-		packet->hdr.flags = original->flags; /* encrypted && single connection */
-		packet->hdr.session_id = original->session_id;
+	{
+		fr_pair_t const *flags_vp;
 
+		/*
+		 *	Flags must be mutable so that the server
+		 *	can request single connection mode if
+		 *	this is configured for the client.
+		 */
+		flags_vp = fr_pair_find_by_da_nested(vps, NULL, attr_tacacs_flags);
+
+		if (original) {
+			packet->hdr.version = original->version;
+			packet->hdr.type = original->type;
+			packet->hdr.flags = original->flags; /* encrypted && single connection */
+			packet->hdr.session_id = original->session_id;
+		}
+
+		if (flags_vp) packet->hdr.flags = flags_vp->vp_uint8;
 	}
 
 	/*
