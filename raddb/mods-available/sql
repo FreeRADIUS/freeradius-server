@@ -325,6 +325,11 @@ sql {
 		#
 		#  The solution is to either lower the "min" connections,
 		#  or increase lifetime/idle_timeout.
+
+		#  Maximum number of times an operation can be retried
+		#  if it returns an error which indicates the connection
+		#  needs to be restarted.  This includes timeouts.
+		max_retries = 5
 	}
 
 	# Set to 'yes' to read radius clients from the database ('nas' table)

@@ -97,6 +97,8 @@ struct fr_connection_pool_t {
 	uint32_t       	spare;			//!< Number of spare connections to try.
 	uint32_t	pending;		//!< Number of pending open connections.
 	uint32_t       	retry_delay;		//!< seconds to delay re-open after a failed open.
+	uint32_t	max_retries;		//!< Maximum number of retries to attempt for any given
+						//!< operation (e.g. query or bind)
 	uint32_t       	cleanup_interval; 	//!< Initial timer for how often we sweep the pool
 						//!< for free connections. (0 is infinite).
 	int		delay_interval;		//!< When we next do a cleanup.  Initialized to
@@ -158,6 +160,7 @@ static const CONF_PARSER connection_config[] = {
 	{ "cleanup_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), "30" },
 	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, idle_timeout), "60" },
 	{ "retry_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, retry_delay), "1" },
+	{ "max_retries", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, max_retries), "5" },
 	{ "spread", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_connection_pool_t, spread), "no" },
 	CONF_PARSER_TERMINATOR
 };
@@ -1257,6 +1260,18 @@ int fr_connection_pool_get_num(fr_connection_pool_t *pool)
 	return pool->stats.num;
 }
 
+/** Get the number of times an operation should be retried
+ *
+ * The lower of either the number of available connections or
+ * the configured max_retries.
+ *
+ * @param pool to get the retry count for.
+ * @return the number of times an operation can be retried.
+ */
+int fr_connection_pool_get_retries(fr_connection_pool_t *pool)
+{
+	return (pool->max_retries < pool->stats.num) ? pool->max_retries : pool->stats.num;
+}
 
 /** Get the number of connections currently in the pool
  *
