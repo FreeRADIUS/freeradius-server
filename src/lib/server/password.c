@@ -51,6 +51,8 @@ typedef enum {
 /** Apply preprocessing logic to a password value
  *
  * @param[in] ctx	to allocate returned value in.
+ * @param[in] request	currently being processed.
+ * @param[in] in	Pair containing the password to process.
  * @
  */
 typedef fr_pair_t *(*password_preprocess_t)(TALLOC_CTX *ctx, request_t *request, fr_pair_t *in);

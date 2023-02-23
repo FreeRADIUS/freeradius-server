@@ -40,6 +40,7 @@ static int _fr_ldap_referral_free(fr_ldap_referral_t *referral)
 /** Allocate a new structure to handle an LDAP referral, setting the destructor
  *
  * @param[in] ctx	to allocate the referral in
+ * @param[in] request	the LDAP query relates to.
  * @return
  *	- a new referral structure on success
  *	- NULL on failure

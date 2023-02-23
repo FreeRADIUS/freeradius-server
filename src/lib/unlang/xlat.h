@@ -340,12 +340,12 @@ typedef int (*xlat_thread_detach_t)(xlat_thread_inst_ctx_t const *xctx);
 		XLAT_ARGS_NEXT(_list, _g, _h); \
 	} while (0);
 
-/** Trampoline macro for selecting which XLAT_ARGS_<num> macro to expand
+/** Trampoline macro for selecting which ``XLAT_ARGS_<num>`` macro to expand
  *
  *
  * @param[in] XLAT_ARGS_N	the name of the macro to expand.
- *				Created by concating XLAT_ARGS_ + <number of variadic arguments>.
- * @param[in] _in		The input list of value boxes.
+ *				Created by concating ``XLAT_ARGS_ + <number of variadic arguments>``.
+ * @param[in] _list		The input list of value boxes.
  * @param[in] ...		The variadic arguments themselves.
  */
 #define _XLAT_ARGS_X(XLAT_ARGS_N, _list, ...) XLAT_ARGS_N(_list, __VA_ARGS__)

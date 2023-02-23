@@ -49,7 +49,7 @@ RCSID("$Id$")
  *			- REQUEST_PARENT,
  *			- REQUEST_UNKNOWN
  */
-#define TMPL_REQUEST_REF_DEF(_name, _def) \
+#define TMPL_REQUEST_REF_DEF(_name, _ref) \
 static tmpl_request_t _name ## _entry = { \
 	.entry = { \
 		.entry = { \
@@ -57,7 +57,7 @@ static tmpl_request_t _name ## _entry = { \
 			.prev = &_name.head.entry \
 		} \
 	}, \
-	.request = _def \
+	.request = _ref \
 }; \
 FR_DLIST_HEAD(tmpl_request_list) _name = { \
 	.head = { \
@@ -506,6 +506,7 @@ int8_t tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a, FR_D
  *
  * @param[in] ctx	to allocate request refs in.
  * @param[out] err	If !NULL where to write the parsing error.
+ * @param[in] out	The list to write to.
  * @param[in] in	Sbuff to read request references from.
  * @param[in] p_rules	Parse rules.
  * @param[in] t_rules	Default list and other rules.
@@ -665,6 +666,7 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
  *
  * @param[in] ctx	to allocate request refs in.
  * @param[out] err	If !NULL where to write the parsing error.
+ * @param[out] out	The new list.
  * @param[in] in	Sbuff to read request references from.
  * @return
  *	- >= 0 the number of bytes parsed.
@@ -1428,6 +1430,7 @@ fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error
  * @param[out] err		Parse error.
  * @param[in,out] vpt		to append this reference to.
  * @param[in] parent		Last known parent.
+ * @param[in] namespace		in which the attribute will be resolved.
  * @param[in] name		to parse.
  * @param[in] at_rules		see tmpl_attr_afrom_attr_substr.
  * @return
@@ -3400,6 +3403,8 @@ ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t con
  * @param[in] existing_quote	Exiting quotation type.
  * @param[in] type		Cast type.
  * @param[in] enumv		Enumeration values.
+ * @param[in] unescaped		The unescaped value of an enumeration.
+ * @param[in] unescaped_len	Length of unescaped.
  */
 static inline CC_HINT(always_inline)
 fr_token_t tmpl_cast_quote(fr_token_t existing_quote,

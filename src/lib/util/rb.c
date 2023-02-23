@@ -806,7 +806,7 @@ void *fr_rb_iter_init_inorder(fr_rb_iter_inorder_t *iter, fr_rb_tree_t *tree)
 
 /** Return the next node
  *
- * @param[in] iter	previously initialised with #fr_rb_iter_init
+ * @param[in] iter	previously initialised with #fr_rb_iter_init_inorder
  * @return
  *	- The next node.
  *	- NULL if no more nodes remain.
@@ -857,7 +857,7 @@ void *fr_rb_iter_next_inorder(fr_rb_iter_inorder_t *iter)
  *
  * @note Only makes sense for in-order traversals.
  *
- * @param[in] iter	previously initialised with #fr_rb_iter_inorder_init
+ * @param[in] iter	previously initialised with #fr_rb_iter_init_inorder
  */
 void fr_rb_iter_delete_inorder(fr_rb_iter_inorder_t *iter)
 {
@@ -897,7 +897,7 @@ void *fr_rb_iter_init_preorder(fr_rb_iter_preorder_t *iter, fr_rb_tree_t *tree)
 
 /** Return the next node
  *
- * @param[in] iter	previously initialised with #fr_rb_iter_init
+ * @param[in] iter	previously initialised with #fr_rb_iter_init_preorder
  * @return
  *	- The next node.
  *	- NULL if no more nodes remain.
@@ -981,7 +981,7 @@ void *fr_rb_iter_init_postorder(fr_rb_iter_postorder_t *iter, fr_rb_tree_t *tree
 
 /** Return the next node
  *
- * @param[in] iter	previously initialised with #fr_rb_iter_init
+ * @param[in] iter	previously initialised with #fr_rb_iter_init_postorder
  * @return
  *	- The next node.
  *	- NULL if no more nodes remain.

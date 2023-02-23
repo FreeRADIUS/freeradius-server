@@ -100,6 +100,7 @@ typedef void (*fr_unlang_tmpl_signal_t)(request_t *request, void *rctx, fr_state
  *
  * The resumed request cannot call the normal "authorize", etc. method.  It needs a separate callback.
  *
+ * @param[in] p_result		the module return code.
  * @param[in] request		the current request.
  * @param[in] rctx		a local context for the callback.
  * @return an unlang action.

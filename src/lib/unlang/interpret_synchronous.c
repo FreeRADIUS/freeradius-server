@@ -188,6 +188,8 @@ static unlang_interpret_synchronous_t *unlang_interpret_synchronous_alloc(TALLOC
  *	are what you're doing could be done better using one of the thread
  *	event loops.
  *
+ * @param[in] el	Event list for the temporary interpreter. If NULL a
+ *			temporary list will be allocated.
  * @param[in] request	The current request.
  * @return One of the RLM_MODULE_* macros.
  */

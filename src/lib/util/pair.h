@@ -610,28 +610,8 @@ fr_pair_t	*_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
 						   fr_pair_list_t const *list, fr_dict_attr_t const *da,
 						   bool is_const) CC_HINT(nonnull);
 
-/** Initialises a special dcursor which returns only the values of the pairs
- *
- *  @note - the list cannot be modified, and structural attributes are not returned.
- *
- * @param[out] cursor	to initialise.
- * @return
- *	- NULL if src does not point to any items.
- *	- The value-box from the first pair in the list.
- */
 fr_value_box_t	*fr_pair_dcursor_value_init(fr_dcursor_t *cursor) CC_HINT(nonnull);
 
-
-/** Initialises a special dcursor which returns only the values of a pair from a parent dcursor
- *
- *  @note - the list cannot be modified, and structural attributes are not returned.
- *
- * @param[out] cursor	to initialise.
- * @param[in] parent	dcursor which returns #fr_pair_t
- * @return
- *	- NULL if src does not point to any items.
- *	- The value-box from the first pair in the parent dcursor.
- */
 fr_value_box_t	*fr_pair_dcursor_nested_init(fr_dcursor_t *cursor, fr_dcursor_t *parent) CC_HINT(nonnull);
 
 /** Compare two attributes using and operator.

@@ -179,10 +179,10 @@ struct request_s {
 
 	/** Pair lists associated with the request
 	 *
-	 * @warn DO NOT allocate pairs directly beneath the root
-	 *	 or in the ctx of the request.
-	 *	 They MUST be allocated beneath their appropriate
-	 *	 list attribute.
+	 * @warning DO NOT allocate pairs directly beneath the root
+	 *	    or in the ctx of the request.
+	 *	    They MUST be allocated beneath their appropriate
+	 *	    list attribute.
 	 */
 	request_pair_lists_t	pair_list;	//!< Structure containing all pair lists.
 

@@ -912,6 +912,7 @@ static int _thread_ldap_trunk_free(fr_ldap_thread_trunk_t *ttrunk)
  * @param[in] bind_dn		to make the connection as
  * @param[in] bind_password	for making connection
  * @param[in] request		currently being processed (only for debug messages)
+ * @param[in] config		LDAP config of the module requesting the connection.
  * @return
  *	- an existing or new connection matching the URI and bind DN
  *	- NULL on failure

@@ -327,7 +327,7 @@ static inline CC_HINT(always_inline, nonnull) void lst_move(fr_lst_t *lst, fr_ls
 	item_index_set(lst, data, index_reduce(lst, location));
 }
 
-/**  Add data to the bucket of a specified (sub)tree..
+/** Add data to the bucket of a specified (sub)tree.
  *
  */
 static void bucket_add(fr_lst_t *lst, stack_index_t stack_index, void *data)

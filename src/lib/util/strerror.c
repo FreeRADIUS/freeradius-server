@@ -190,6 +190,7 @@ static fr_log_entry_t *strerror_vprintf(char const *file, int line, char const *
  *
  * @param[in] file	the error occurred in.
  * @param[in] line	the error occurred on.
+ * @param[in] buffer	The log buffer to allocate memory from.
  * @param[in] fmt	printf style format string.
  * @param[in] ap	Arguments for the error string.
  *

@@ -227,8 +227,10 @@ found:
 
 /** Parse results of search on rootDSE to gather data on LDAP server
  *
+ * @param[in] handle	on which the query was run.
  * @param[in] query	which requested the rootDSE.
  * @param[in] result	head of LDAP results message chain.
+ * @param[in] rctx	LDAP directory whose properties are to be populated.
  */
 static void ldap_trunk_directory_alloc_read(LDAP *handle, fr_ldap_query_t *query, LDAPMessage *result, void *rctx)
 {

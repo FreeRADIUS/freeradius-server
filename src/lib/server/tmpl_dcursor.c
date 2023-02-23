@@ -47,7 +47,7 @@ void _tmpl_cursor_pool_init(tmpl_dcursor_ctx_t *cc)
  *
  * @param[in] list	being traversed.
  * @param[in] curr	item in the list to start tests from.
- * @param[in] uctx	Context for evaluation - in this instance a #tmpl_dcursor_t
+ * @param[in] uctx	Context for evaluation - in this instance a #tmpl_dcursor_nested_t
  * @return
  *	- the next matching attribute
  *	- NULL if none found
@@ -296,6 +296,8 @@ static int tmpl_dcursor_remove(UNUSED fr_dlist_head_t *list, void *to_remove, vo
  * @param[in] list		a nested list to start evaluating from.
  *				May be the child list of a pair in the request's pair tree.
  * @param[in] vpt		specifying the #fr_pair_t type or list to iterate over.
+ * @param[in] build		Callback to build missing pairs.
+ * @param[in] uctx		to pass to build.
  * @return
  *	- First #fr_pair_t specified by the #tmpl_t.
  *	- NULL if no matching #fr_pair_t found, and NULL on error.

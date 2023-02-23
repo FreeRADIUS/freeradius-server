@@ -56,6 +56,7 @@ typedef struct module_list_t			module_list_t;
  * Is called when the module is listed in a particular section of a virtual
  * server, and the request has reached the module call.
  *
+ * @param[out] p_result		Result code of the module method.
  * @param[in] mctx		Holds global instance data, thread instance
  *				data and call specific instance data.
  * @param[in] request		to process.

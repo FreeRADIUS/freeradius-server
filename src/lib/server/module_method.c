@@ -18,7 +18,7 @@
  * $Id$
  *
  * @file src/lib/server/module_method.c
- * @briefCentral module_method_name_t definitions
+ * @brief Central module_method_name_t definitions
  *
  * This file contains common module_method_t structures which may be
  * referenced within a #virtual_server_compile_t and a #module_t.

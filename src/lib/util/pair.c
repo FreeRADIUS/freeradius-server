@@ -1163,6 +1163,7 @@ static fr_dlist_head_t value_dlist = {
  * Filters can be applied later with fr_dcursor_filter_set.
  *
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
+ * @note - the list cannot be modified, and structural attributes are not returned.
  *
  * @param[out] cursor	to initialise.
  * @return
@@ -1211,6 +1212,8 @@ static void *_fr_pair_iter_next_dcursor_value(UNUSED fr_dlist_head_t *list, void
  *
  * Filters can be applied later with fr_dcursor_filter_set.
  *
+ * @note - the list cannot be modified, and structural attributes are not returned.
+  *
  * @param[out] cursor	to initialise.
  * @param[in] parent	to iterate over
  * @return

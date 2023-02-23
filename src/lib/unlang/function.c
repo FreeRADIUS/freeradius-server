@@ -266,6 +266,7 @@ int _unlang_function_repeat_set(request_t *request, unlang_function_t repeat, ch
  * @param[in] repeat_name	Name of the repeat function call (for debugging).
  * @param[in] signal		function to call if the request is signalled.
  * @param[in] signal_name	Name of the signal function call (for debugging).
+ * @param[in] top_frame		Return out of the unlang interpreter when popping this frame.
  * @param[in] uctx		to pass to func(s).
  * @return
  *	- 0 on success.

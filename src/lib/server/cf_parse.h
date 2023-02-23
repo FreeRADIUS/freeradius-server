@@ -93,7 +93,7 @@ typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYP
  *
  * @note The warnings/errors emitted are usually awful.
  *
- * @param _t a #fr_type_t value with optional FR_TYPE_* flags.
+ * @param _t a #fr_type_t value with optional ``FR_TYPE_*`` flags.
  * @param _ct data type of global or struct field, obtained with ``__typeof__``.
  * @param _p Pointer or offset.
  */

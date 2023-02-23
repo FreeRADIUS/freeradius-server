@@ -397,7 +397,7 @@ static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request
 /** Try and determine what the response packet type should be
  *
  * We check three sources:
- * - reply.<status_attr>
+ * - reply.``<status_attr>``
  * - reply.Packet-Type
  * - State machine packet type assignments for the section rcode
  *

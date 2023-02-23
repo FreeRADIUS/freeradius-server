@@ -807,42 +807,42 @@ DIAG_OFF(unused-function)
 /** Expands to the type name used for the dcursor wrapper structure
  *
  * @param[in] _name	Prefix we add to type-specific structures.
- * @return <name>_dcursor_t
+ * @return ``<name>_dcursor_t``
  */
 #define FR_DCURSOR(_name) _name ## _dcursor_t
 
 /** Expands to the type name used for the dcursor iterator type
  *
  * @param[in] _name	Prefix we add to type-specific structures.
- * @return <name>_iter_t
+ * @return ``<name>_iter_t``
  */
 #define FR_DCURSOR_ITER(_name) _name ## _iter_t
 
 /** Expands to the type name used for the dcursor evaluator type
  *
  * @param[in] _name	Prefix we add to type-specific structures.
- * @return <name>_eval_t
+ * @return ``<name>_eval_t``
  */
 #define FR_DCURSOR_EVAL(_name) _name ## _eval_t
 
 /** Expands to the type name used for the dcursor insert function type
  *
  * @param[in] _name	Prefix we add to type-specific structures.
- * @return <name>_insert_t
+ * @return ``<name>_insert_t``
  */
 #define FR_DCURSOR_INSERT(_name) _name ## _insert_t
 
 /** Expands to the type name used for the dcursor remove function type
  *
  * @param[in] _name	Prefix we add to type-specific structures.
- * @return <name>_remove_t
+ * @return ``<name>_remove_t``
  */
 #define FR_DCURSOR_REMOVE(_name) _name ## _remove_t
 
 /** Expands to the type name used for the dcursor copy function type
  *
  * @param[in] _name	Prefix we add to type-specific structures.
- * @return <name>_copy_t
+ * @return ``<name>_copy_t``
  */
 #define FR_DCURSOR_COPY(_name) _name ## _copy_t
 

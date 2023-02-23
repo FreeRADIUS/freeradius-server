@@ -38,6 +38,8 @@ extern "C" {
 
 /** A generic function pushed by a module or xlat to functions deeper in the C call stack to create resumption points
  *
+ * @param[in] p_result		The module return code.
+ * @param[in] priority		for the return code.
  * @param[in] request		The current request.
  * @param[in,out] uctx		Provided by whatever pushed the function.  Is opaque to the
  *				interpreter, but should be usable by the function.
@@ -62,9 +64,8 @@ int		unlang_function_clear(request_t *request) CC_HINT(warn_unused_result);
  *
  * The function frame being modified must be at the top of the stack.
  *
- * @param[in] request		The current request.
- * @param[in] signal		The signal function to set.
- * @param[in] signal_name	Name of the signal function call (for debugging).
+ * @param[in] _request		The current request.
+ * @param[in] _signal		The signal function to set.
  * @return
  *	- 0 on success.
  *      - -1 on failure.
@@ -99,6 +100,7 @@ int		_unlang_function_repeat_set(request_t *request, unlang_function_t repeat, c
  * @param[in] _repeat		function to call going back down the stack (may be NULL).
  *				This may be the same as func.
  * @param[in] _signal		function to call if the request is signalled.
+ * @param[in] _top_frame	Return out of the unlang interpreter when popping this frame.
  * @param[in] _uctx		to pass to func(s).
  * @return
  *	- 0 on success.

@@ -322,6 +322,7 @@ static int xlat_arg_cmp_list_no_escape(xlat_arg_parser_t const a[], xlat_arg_par
 /** Verify xlat arg specifications are valid
  *
  * @param[in] arg	specification to validate.
+ * @param[in] last	Is this the last argument in the list.
  */
 static inline int xlat_arg_parser_validate(xlat_arg_parser_t const *arg, bool last)
 {

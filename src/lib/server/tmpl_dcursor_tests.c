@@ -126,6 +126,7 @@ typedef struct {
 
 /** Initialise a tmpl using the _attr_str string, and return the first pair
  *
+ * @param[out] vp_out		where to write the returned pair
  * @param[in,out] vars		test variables
  * @param[in] request		the current request.
  * @param[in] ref		Attribute reference string.
@@ -154,6 +155,7 @@ int _tmpl_setup_and_cursor_init(fr_pair_t **vp_out, tmpl_dcursor_vars_t *vars, r
 
 /** Initialise a tmpl using the _attr_str string, and return the first pair
  *
+ * @param[out] vp_out		where to write the returned pair.
  * @param[in,out] vars		test variables
  * @param[in] request		the current request.
  * @param[in] ref		Attribute reference string.

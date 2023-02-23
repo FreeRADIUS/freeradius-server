@@ -1240,6 +1240,7 @@ int fr_log_close(fr_log_t *log)
 /** Manipulate stderr and stdout so that was capture all data send to it from libraries
  *
  * @param[in] el	The event list we use to process logging data.
+ * @param[in] daemonize	Whether the server is starting as a daemon.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

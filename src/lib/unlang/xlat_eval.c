@@ -182,6 +182,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
  * @param[in] request	The current request.
  * @param[in] node	Being processed.
  * @param[in] args	from previous expansion.
+ * @param[in] line	Unused
  */
 static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const *node, FR_DLIST_HEAD(fr_value_box_list) const *args, UNUSED int line)
 {
@@ -212,6 +213,7 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 /** Output the list result of an expansion
  *
  * @param[in] request	The current request.
+ * @param[in] node	which was expanded.
  * @param[in] result	of the expansion.
  */
 static inline void xlat_debug_log_list_result(request_t *request, xlat_exp_t const *node, FR_DLIST_HEAD(fr_value_box_list) const *result)
@@ -226,6 +228,7 @@ static inline void xlat_debug_log_list_result(request_t *request, xlat_exp_t con
 /** Output the result of an expansion
  *
  * @param[in] request	The current request.
+ * @param[in] node	which was expanded.
  * @param[in] result	of the expansion.
  */
 static inline void xlat_debug_log_result(request_t *request, xlat_exp_t const *node, fr_value_box_t const *result)

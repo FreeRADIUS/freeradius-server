@@ -815,6 +815,7 @@ int modules_bootstrap(module_list_t const *ml)
  *
  * @param[in] ctx		Where to allocate the module name.
  * @param[out] out		Where to write a pointer to the instance name.
+ * @param[in] ml		Module list in which to find the parent.
  * @param[in] parent		of the module.
  * @param[in] inst_name		module's instance name.
  */
@@ -1080,6 +1081,7 @@ static int _module_list_free(module_list_t *ml)
  * If no more instances of the module exist the module be unloaded.
  *
  * @param[in] ctx	To allocate the list in.
+ * @param[in] name	of the list.
  * @return A new module list.
  */
 module_list_t *module_list_alloc(TALLOC_CTX *ctx, char const *name)

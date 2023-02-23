@@ -175,7 +175,6 @@ void	log_global_free(void);
  * @param[in] _str_len		length of subject string. May be SIZE_MAX
  *				to print the entire string.
  * @param[in] _marker_idx	Where to place the marker.  May be negative.
- * @param[in] _marker		text to print at marker_marker_idx.
  * @param[in] _line_prefix_fmt	Prefix to add to all log lines.
  * @param[in] ...		Arguments for _line_prefix_fmt.
  */
