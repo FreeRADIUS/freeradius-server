@@ -1,0 +1,48 @@
+# -*- text -*-
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Non Protocol Attributes used by FreeRADIUS
+#
+#	$Id$
+#
+# Attributes defined in RFC8907 https://www.rfc-editor.org/rfc/rfc8907#name-argument-value-pairs
+#
+
+#
+#  Section 8,2 Authorization Arguments
+#
+DEFINE	service						string
+DEFINE	protocol					string
+DEFINE	cmd						string
+DEFINE	cmd-arg						string
+DEFINE	acl						uint32
+DEFINE	inacl						string
+DEFINE	outacl						string
+DEFINE	addr						ipv4addr
+DEFINE	addr-pool					string
+DEFINE	timeout						time_delta minutes
+DEFINE	idletime					time_delta minutes
+DEFINE	autocmd						string
+DEFINE	noescape					bool
+DEFINE	nohangup					bool
+DEFINE	priv-lvl					uint32
+
+#
+#  Section 8.3 Accounting Arguments
+#
+DEFINE	task_id						string
+DEFINE	start_time					date
+DEFINE	stop_time					date
+DEFINE	elapsed_time					time_delta
+DEFINE	timezone					string
+DEFINE	event						string
+DEFINE	reason						string
+DEFINE	bytes						uint64
+DEFINE	bytes_in					uint64
+DEFINE	bytes_out					uint64
+DEFINE	paks						uint64
+DEFINE	paks_in						uint64
+DEFINE	paks_iut					uint64
+DEFINE	err_msg						string

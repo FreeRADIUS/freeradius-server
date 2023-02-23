@@ -13,6 +13,7 @@ BEGIN-PROTOCOL TACACS
 
 $INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.tacacs
+$INCLUDE dictionary.rfc8907
 $INCLUDE dictionary.calix
 
 END-PROTOCOL TACACS

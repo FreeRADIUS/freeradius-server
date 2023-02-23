@@ -30,8 +30,12 @@ MEMBER		Session-Id				uint32
 MEMBER		Length					uint32
 
 #
-# TACACS+ Attributes
+#  Various header fields which are encoded and decoded into
+#  "top-level" attributes, because otherwise they would be buried
+#  inside of structures.
 #
+FLAGS	internal
+
 DEFINE	Packet-Body-Type			byte
 VALUE	Packet-Body-Type		Unknown			0
 VALUE	Packet-Body-Type		Start			1
@@ -126,8 +130,6 @@ VALUE	Accounting-Flags		Stop			4
 VALUE	Accounting-Flags		Watchdog		8
 VALUE	Accounting-Flags		Watchdog-Update		10
 
-DEFINE	Argument-List				string
-
 #
 #  These attributes have similar names to RADIUS attributes, and similar content.
 #
@@ -140,3 +142,11 @@ DEFINE	CHAP-Challenge				octets
 DEFINE	MS-CHAP-Response			octets[50]
 DEFINE	MS-CHAP2-Response			octets[50]
 DEFINE	MS-CHAP-Challenge			octets
+
+FLAGS !internal
+
+#
+#  This is the "fail-safe" attribute which gets created when we don't know,
+#  or can't parse, the argument string.
+#
+DEFINE	Argument-List				string
