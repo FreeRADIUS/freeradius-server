@@ -421,6 +421,10 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 		if (vp->da->parent == attr_tacacs_packet) break;
 	}
 
+	/*
+	 *	No "Packet" struct to encode.  We MUST have an original packet to copy the various fields
+	 *	from.
+	 */
 	if (!vp) {
 		if (!original) {
 			fr_strerror_printf("%s: No TACACS+ %s in the attribute list",
@@ -460,24 +464,19 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	/*
 	 *	Ensure that we send a sane reply to a request.
 	 */
-	{
-		fr_pair_t const *flags_vp;
+	if (original) {
+		packet->hdr.version = original->version;
+		packet->hdr.type = original->type;
+		packet->hdr.flags = original->flags; /* encrypted && single connection */
+		packet->hdr.session_id = original->session_id;
 
 		/*
-		 *	Flags must be mutable so that the server
-		 *	can request single connection mode if
-		 *	this is configured for the client.
+		 *	The client may not set SINGLE_CONNECT flag.  So if the administrator has set it in the reply,
+		 *	we allow setting the flag.  This lets the server tell the client that it supports "single
+		 *	connection" mode.
 		 */
-		flags_vp = fr_pair_find_by_da_nested(vps, NULL, attr_tacacs_flags);
-
-		if (original) {
-			packet->hdr.version = original->version;
-			packet->hdr.type = original->type;
-			packet->hdr.flags = original->flags; /* encrypted && single connection */
-			packet->hdr.session_id = original->session_id;
-		}
-
-		if (flags_vp) packet->hdr.flags = flags_vp->vp_uint8;
+		vp = fr_pair_find_by_da_nested(vps, NULL, attr_tacacs_flags);
+		if (vp) packet->hdr.flags |= (vp->vp_uint8 & FR_TAC_PLUS_SINGLE_CONNECT_FLAG);
 	}
 
 	/*
