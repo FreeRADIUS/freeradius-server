@@ -676,9 +676,11 @@ int module_instantiate(module_instance_t *instance)
 	 */
 	if (mi->state != MODULE_INSTANCE_BOOTSTRAPPED) return 0;
 
-	if (fr_command_register_hook(NULL, mi->name, mi, module_cmd_table) < 0) {
-		PERROR("Failed registering radmin commands for module %s", mi->name);
-		return -1;
+	if (mi->dl_inst->module->type == DL_MODULE_TYPE_MODULE) {
+		if (fr_command_register_hook(NULL, mi->name, mi, module_cmd_table) < 0) {
+			PERROR("Failed registering radmin commands for module %s", mi->name);
+			return -1;
+		}
 	}
 
 	/*
