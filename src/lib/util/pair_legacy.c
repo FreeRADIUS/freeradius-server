@@ -37,7 +37,6 @@ RCSID("$Id$")
  * Used to represent pairs in the legacy 'users' file format.
  */
 typedef struct {
-	char l_opand[256];					//!< Left hand side of the pair.
 	char r_opand[1024];					//!< Right hand side of the pair.
 
 	fr_token_t quote;					//!< Type of quoting around the r_opand.
@@ -193,14 +192,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 
 		next = p + slen;
 
-		if ((size_t) (next - p) >= sizeof(raw.l_opand)) {
-			fr_dict_unknown_free(&da);
-			fr_strerror_const("Attribute name too long");
-			goto error;
-		}
-
-		memcpy(raw.l_opand, p, next - p);
-		raw.l_opand[next - p] = '\0';
 		raw.r_opand[0] = '\0';
 
 		p = next;
