@@ -32,6 +32,19 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
+/** A fr_pair_t in string format.
+ *
+ * Used to represent pairs in the legacy 'users' file format.
+ */
+typedef struct {
+	char l_opand[256];					//!< Left hand side of the pair.
+	char r_opand[1024];					//!< Right hand side of the pair.
+
+	fr_token_t quote;					//!< Type of quoting around the r_opand.
+
+	fr_token_t op;						//!< Operator.
+} fr_pair_t_RAW;
+
 
 static fr_sbuff_term_t const 	bareword_terminals =
 				FR_SBUFF_TERMS(

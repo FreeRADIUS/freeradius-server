@@ -102,19 +102,6 @@ struct value_pair_s {
 	};
 };
 
-/** A fr_pair_t in string format.
- *
- * Used to represent pairs in the legacy 'users' file format.
- */
-typedef struct {
-	char l_opand[256];					//!< Left hand side of the pair.
-	char r_opand[1024];					//!< Right hand side of the pair.
-
-	fr_token_t quote;					//!< Type of quoting around the r_opand.
-
-	fr_token_t op;						//!< Operator.
-} fr_pair_t_RAW;
-
 #define vp_strvalue		data.vb_strvalue
 #define vp_octets		data.vb_octets
 #define vp_ptr			data.datum.ptr			//!< Either octets or strvalue
