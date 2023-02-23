@@ -388,7 +388,8 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_att
 /**
  *	Decode a TACACS+ packet
  */
-ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *vendor, uint8_t const *buffer, size_t buffer_len,
+ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *vendor,
+			 uint8_t const *buffer, size_t buffer_len,
 			 const uint8_t *original, char const * const secret, size_t secret_len, int *code)
 {
 	fr_tacacs_packet_t const *pkt;
@@ -906,7 +907,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, out, vendor,
-					pkt->author_reply.arg_cnt, argv, attrs, end) < 0) goto fail;
+					       pkt->author_reply.arg_cnt, argv, attrs, end) < 0) goto fail;
 
 		} else {
 			fr_strerror_const("Unknown authorization packet");
@@ -975,7 +976,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, out, vendor,
-					pkt->acct_req.arg_cnt, argv, attrs, end) < 0) goto fail;
+					       pkt->acct_req.arg_cnt, argv, attrs, end) < 0) goto fail;
 
 		} else if (packet_is_acct_reply(pkt)) {
 			/**
