@@ -352,25 +352,25 @@ static void print_ascii(fr_log_t const *log, char const *file, int line, char co
 	fr_log(log, L_DBG, file, line, "%s %.*s", prefix, (int) datalen, (char const *) data);
 }
 
-static void print_args(fr_log_t const *log, char const *file, int line, uint8_t const *start, size_t arg_cnt, uint8_t const *end)
+static void print_args(fr_log_t const *log, char const *file, int line, size_t arg_cnt, uint8_t const *argv, uint8_t const *start, uint8_t const *end)
 {
 	size_t i;
 	uint8_t const *p;
 	char prefix[64];
 
-	if (start + arg_cnt > end) {
+	if (argv + arg_cnt > end) {
 		fr_log(log, L_DBG, file, line, "      ARG cnt overflows packet");
 		return;
 	}
 
-	p = start + arg_cnt;
+	p = start;
 	for (i = 0; i < arg_cnt; i++) {
 		if (p == end) {
 			fr_log(log, L_DBG, file, line, "      ARG[%zu] is at EOF", i);
 			return;
 		}
 
-		if ((p + start[i]) > end) {
+		if ((p + argv[i]) > end) {
 			fr_log(log, L_DBG, file, line, "      ARG[%zu] overflows packet", i);
 			print_hex(log, file, line, "                     ", p, end - p, end);
 			return;
@@ -379,9 +379,9 @@ static void print_args(fr_log_t const *log, char const *file, int line, uint8_t 
 		snprintf(prefix, sizeof(prefix), "      arg[%zu]            ", i);
 		prefix[21] = '\0';
 
-		print_ascii(log, file, line, prefix, p, start[i], end);
+		print_ascii(log, file, line, prefix, p, argv[i], end);
 
-		p += start[i];
+		p += argv[i];
 	}
 }
 
@@ -389,7 +389,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 {
 	size_t length;
 	uint8_t const *p = (uint8_t const *) packet;
-	uint8_t const *hdr, *end;
+	uint8_t const *hdr, *end, *args;
 
 	/*
 	 *	It has to be at least 12 bytes long.
@@ -555,6 +555,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 			fr_log(log, L_DBG, file, line, "      rem_addr_len    %02x", hdr[6]);
 			fr_log(log, L_DBG, file, line, "      arg_cnt         %02x", hdr[7]);
 			p = hdr + 8;
+			args = p;
 
 			OVERFLOW8(hdr[4], user_len);
 			OVERFLOW8(hdr[5], port_len);
@@ -573,7 +574,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 			print_ascii(log, file, line, "      rem_addr       ", p, hdr[6], end);
 			p += hdr[6];
 
-			print_args(log, file, line, p, hdr[7], end);
+			print_args(log, file, line, hdr[7], args, p, end);
 
 		} else {
 			fr_log(log, L_DBG, file, line, "      authorization-reply");
@@ -587,6 +588,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 			fr_log(log, L_DBG, file, line, "      server_msg_len  %04x", fr_nbo_to_uint16(hdr + 2));
 			fr_log(log, L_DBG, file, line, "      data_len        %04x", fr_nbo_to_uint16(hdr + 4));
 			p = hdr + 6;
+			args = p;
 
 			OVERFLOW8(hdr[1], arg_cnt);
 			OVERFLOW16(hdr + 2, server_msg_len);
@@ -601,7 +603,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 			print_ascii(log, file, line, "      data           ", p, fr_nbo_to_uint16(hdr + 4), end);
 			p += fr_nbo_to_uint16(hdr + 4);
 
-			print_args(log, file, line, p, hdr[1], end);
+			print_args(log, file, line, hdr[1], args, p, end);
 		}
 		break;
 
@@ -621,6 +623,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 			fr_log(log, L_DBG, file, line, "      rem_addr_len    %02x", hdr[7]);
 			fr_log(log, L_DBG, file, line, "      arg_cnt         %02x", hdr[8]);
 			p = hdr + 8;
+			args = p;
 
 			OVERFLOW8(hdr[4], arg_cnt);
 			OVERFLOW8(hdr[5], user_len);
@@ -639,7 +642,7 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 			print_ascii(log, file, line, "      rem_addr       ", p, hdr[6], end);
 			p += hdr[7];
 
-			print_args(log, file, line, p, hdr[8], end);
+			print_args(log, file, line, hdr[8], args, p, end);
 		} else {
 			fr_log(log, L_DBG, file, line, "      accounting-reply");
 			fr_assert(packet_is_acct_reply(packet));
