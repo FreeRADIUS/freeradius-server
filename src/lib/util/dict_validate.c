@@ -293,15 +293,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					   flags->length, fr_type_to_str(type));
 			return false;
 		}
-
-		if ((flags->flag_time_res != FR_TIME_RES_SEC) &&
-		    (flags->flag_time_res != FR_TIME_RES_MSEC) &&
-		    (flags->flag_time_res != FR_TIME_RES_USEC) &&
-		    (flags->flag_time_res != FR_TIME_RES_NSEC)) {
-			fr_strerror_printf("Invalid precision for attribute of type '%s'",
-					   fr_type_to_str(type));
-			return false;
-		}
 		break;
 
 	case FR_TYPE_IPV4_ADDR:
@@ -463,16 +454,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	if (flags->type_size) {
 		if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
 			/*
-			 *	Already checked above, but what the heck.
+			 *	Allow all time res here
 			 */
-			if ((flags->flag_time_res != FR_TIME_RES_SEC) &&
-			    (flags->flag_time_res != FR_TIME_RES_USEC) &&
-			    (flags->flag_time_res != FR_TIME_RES_MSEC) &&
-			    (flags->flag_time_res != FR_TIME_RES_NSEC)) {
-				fr_strerror_printf("Invalid precision for attribute of type '%s'",
-						   fr_type_to_str(type));
-				return false;
-			}
 		} else if (!flags->extra) {
 			if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
 				fr_strerror_const("The 'format=' flag can only be used with attributes of type 'tlv'");
