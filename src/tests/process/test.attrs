@@ -1,0 +1,10 @@
+#
+#  Input packet
+#
+Packet-Type = Request
+
+#
+#  Expected answer
+#
+Packet-Type == Reply
+Result-Status == "success"
