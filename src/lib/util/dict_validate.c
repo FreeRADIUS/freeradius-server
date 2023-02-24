@@ -649,16 +649,31 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 		v = fr_dict_attr_by_name(NULL, parent, name);
 		if (v) {
+			fr_dict_attr_flags_t cmp;
+
 			/*
 			 *	Exact duplicates are allowed.  The caller will take care of
 			 *	not inserting the duplicate attribute.
 			 */
-			if ((v->type == type) && (memcmp(&v->flags, flags, sizeof(*flags)) == 0)) {
-				return true;
+			if (v->type != type) {
+				fr_strerror_printf("Conflicting type (asked %s, found %s) for re-definition for attribute %s",
+						   fr_type_to_str(type), fr_type_to_str(v->type), name);
+				return false;
 			}
 
-			fr_strerror_printf("Conflicting definition for attribute %s", name);
-			return false;
+			/*
+			 *	'has_value' is set if we define VALUEs for it.  But the new definition doesn't
+			 *	know that yet.
+			 */
+			cmp = v->flags;
+			cmp.has_value = 0;
+
+			if (memcmp(&cmp, flags, sizeof(*flags)) != 0) {
+				fr_strerror_printf("Conflicting flags for re-definition for attribute %s", name);
+				return false;
+			}
+
+			return true;
 		}
 
 		*attr = ++mutable->last_child_attr;
