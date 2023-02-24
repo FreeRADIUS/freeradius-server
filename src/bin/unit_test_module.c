@@ -141,7 +141,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 	 *	FIXME - Should be less RADIUS centric, but everything
 	 *	else assumes RADIUS at the moment so we can fix this later.
 	 */
-	request->dict = fr_dict_by_protocol_name(PROTOCOL_NAME);
+	request->dict = dict_protocol;
 	if (!request->dict) {
 		fr_strerror_printf_push("%s dictionary failed to load", PROTOCOL_NAME);
 	error:
