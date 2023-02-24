@@ -778,19 +778,10 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	/*
-	 *	Manually load the protocol dictionary, unless it's "test"
-	 */
-	if (strcmp(PROTOCOL_NAME, "test") != 0) {
-		if (fr_dict_autoload(unit_test_module_dict) < 0) {
-			fr_perror("%s", config->name);
-			EXIT_WITH_FAILURE;
-		}
-	} else {
-		dict_protocol = fr_dict_internal();
-		dict_freeradius = dict_protocol;
+	if (fr_dict_autoload(unit_test_module_dict) < 0) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
 	}
-
 	if (fr_dict_attr_autoload(unit_test_module_dict_attr) < 0) {
 		fr_perror("%s", config->name);
 		EXIT_WITH_FAILURE;
@@ -864,7 +855,6 @@ int main(int argc, char *argv[])
 	 *	Do some sanity checking.
 	 */
 	dict_check = virtual_server_dict_by_name("default");
-
 	if (!dict_check || (dict_check != dict_protocol)) {
 		ERROR("Virtual server namespace does not match requested namespace '%s'", PROTOCOL_NAME);
 		EXIT_WITH_FAILURE;
@@ -1150,8 +1140,7 @@ cleanup:
 	/*
 	 *	Free our explicitly loaded internal dictionary
 	 */
-	if ((dict_protocol != dict_freeradius) &&
-	    (fr_dict_free(&dict, __FILE__) < 0)) {
+	if (fr_dict_free(&dict, __FILE__) < 0) {
 		fr_perror("unit_test_module - dict");
 		ret = EXIT_FAILURE;
 	}

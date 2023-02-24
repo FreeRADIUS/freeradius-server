@@ -1,3 +1,7 @@
+PROTOCOL Test 314159
+
+BEGIN-PROTOCOL Test
+
 #
 #  Only for tests.
 #
@@ -6,3 +10,10 @@ FLAGS	internal
 DEFINE		Packet-Type				uint32
 VALUE	Packet-Type		Request			1
 VALUE	Packet-Type		Reply			2
+
+END-PROTOCOL Test
+
+#
+#  Generic test failure message
+#
+DEFINE		Failure					string

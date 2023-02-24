@@ -1,0 +1,11 @@
+subrequest RADIUS.Access-Request {
+	&User-Name = "bob"
+	&User-Password = "hello"
+
+
+	call radius {
+		if (&reply.Packet-Type != Access-Accept) {
+			test_fail
+		}
+	}
+}

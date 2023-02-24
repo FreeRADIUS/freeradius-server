@@ -25,11 +25,11 @@
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/arp/arp.h>
 
-static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_test;
 
 extern fr_dict_autoload_t process_test_dict[];
 fr_dict_autoload_t process_test_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_test, .proto = "test" },
 	{ NULL }
 };
 
@@ -37,7 +37,7 @@ static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t process_test_dict_attr[];
 fr_dict_attr_autoload_t process_test_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius},
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_test},
 	{ NULL }
 };
 
@@ -97,7 +97,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	request->component = "test";
 	request->module = NULL;
-	fr_assert(request->dict == dict_freeradius);
+	fr_assert(request->dict == dict_test);
 
 	UPDATE_STATE(packet);
 
@@ -131,5 +131,5 @@ fr_process_module_t process_test = {
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
-	.dict		= &dict_freeradius,
+	.dict		= &dict_test,
 };
