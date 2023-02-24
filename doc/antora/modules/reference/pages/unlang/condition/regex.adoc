@@ -129,8 +129,8 @@ more information on regular expression matching.
 [source,unlang]
 ----
 if (&User-Name =~ /^(.*)@example\.com$/) {
-    update reply {
-        Reply-Message := "Hello %{1}"
+    &reply += {
+        Reply-Message = "Hello %{1}"
     }
 }
 ----

@@ -58,8 +58,8 @@ parallel {
 Each module or subsection runs as a new child request, i.e. a
 xref:unlang/subrequest.adoc[subrequest].  Each child request is an identical
 copy of the parent request.  Policies in the child can update the
-original parent by using `update parent.request`, or `update
-parent.reply`.  Please see the xref:unlang/list.adoc[list] syntax for a
+original parent by referencing `&parent.request`, or 
+`&parent.reply`.  Please see the xref:unlang/list.adoc[list] syntax for a
 more complete description of how to refer to parent requests.
 
 The child requests are required because each subsection is run
@@ -84,8 +84,8 @@ parallel {
         radius1
         if (fail) {
            linelog1
-           update parent.reply {
-               &Reply-Message += "radius1 failed"
+           &parent.reply += {
+               &Reply-Message = "radius1 failed"
            }
         }
     }
@@ -93,8 +93,8 @@ parallel {
         radius2
         if (fail) {
            linelog2
-           update parent.reply {
-               &Reply-Message += "radius2 failed"
+           &parent.reply += {
+               &Reply-Message = "radius2 failed"
            }
         }
     }
@@ -115,7 +115,7 @@ xref:unlang/detach.adoc[detach] keyword.
 
 The `parallel empty { ... }` syntax creates empty child requests.
 These requests contain no attributes.  Attributes in the child request
-must be added manually via an xref:unlang/update.adoc[update] statement.
+must be added manually via an xref:unlang/edit.adoc[edit] statement.
 
 The `empty` keyword is most useful when it is necessary to manually
 determine which attributes go into a child request.
@@ -136,16 +136,16 @@ a different way from the parent `User-Name`, and it sees a
 ----
 parallel empty {
     group {
-        update request {
-            &User-Name := "%{&parent.request.User-Name}@example.org"
-            &User-Password := "hello"
+        &request := {
+            &User-Name = "%{&parent.request.User-Name}@example.org"
+            &User-Password = "hello"
         }
         radius1
     }
     group {
-        update request {
-            &User-Name := "%{&parent.request.User-Name}@example.com"
-            &User-Password := &parent.request.User-Password
+        &request := {
+            &User-Name = "%{&parent.request.User-Name}@example.com"
+            &User-Password = &parent.request.User-Password
         }
         radius2
     }

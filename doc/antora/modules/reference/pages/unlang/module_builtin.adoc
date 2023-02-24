@@ -31,8 +31,8 @@ Causes the request to be immediately rejected.
 [source,unlang]
 ----
 if (!&User-Name) {
-    update reply {
-        Reply-Message := "We don't know who you are"
+    &reply += {
+        &Reply-Message = "We don't know who you are"
     }
     reject
 }

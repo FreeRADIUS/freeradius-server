@@ -46,8 +46,8 @@ request to the current RADIUS reply packet, as the contents of the
 [source,unlang]
 ----
 caller dhcpv4 {
-    update reply {
-        &Filter-Id := &parent.request:Client-Identifier
+    &reply += {
+        &Filter-Id = &parent.request:Client-Identifier
     }
 }
 ----

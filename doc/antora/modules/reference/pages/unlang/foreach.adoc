@@ -30,8 +30,8 @@ The attributes being looped over cannot be modified or deleted.
 [source,unlang]
 ----
 foreach &Class {
-    update reply {
-        Reply-Message += "Contains %{Foreach-Variable-0}"
+    &reply += {
+        Reply-Message = "Contains %{Foreach-Variable-0}"
     }
 }
 ----
@@ -40,8 +40,8 @@ foreach &Class {
 [source,unlang]
 ----
 foreach &TLV[*].Child-1 {
-    update reply {
-        Reply-Message += "TLV contains %{Foreach-Variable-0}"
+    &reply += {
+        Reply-Message = "TLV contains %{Foreach-Variable-0}"
     }
 }
 ----

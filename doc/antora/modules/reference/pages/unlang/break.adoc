@@ -18,8 +18,8 @@ foreach &Class {
         break
     }
 
-    update reply {
-        Reply-Message += "Contains %{Foreach-Variable-0}"
+    &reply += {
+        Reply-Message = "Contains %{Foreach-Variable-0}"
     }
 }
 ----

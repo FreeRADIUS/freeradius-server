@@ -45,8 +45,8 @@ perform different actions based on the behaviour of the modules.
 ----
 sql
 if (notfound) {
-    update reply {
-        Reply-Message = "We don't know who you are"
+    &reply += {
+        &Reply-Message = "We don't know who you are"
     }
     reject
 }
