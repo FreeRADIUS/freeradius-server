@@ -10,3 +10,5 @@ endif
 
 TGT_PREREQS	+= libfreeradius-util$(L) libfreeradius-server$(L) libfreeradius-unlang$(L)
 SRC_CFLAGS	+= -DTESTING_TRUNK
+
+TGT_INSTALLDIR	:=
