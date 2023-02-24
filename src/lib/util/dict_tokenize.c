@@ -1781,7 +1781,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 	/*
 	 *	255 protocols FR_TYPE_GROUP type_size hack
 	 */
-	if ((value == 0) || (value > 255)) {
+	if (!value) {
 		fr_strerror_printf("Invalid value '%u' following PROTOCOL", value);
 		return -1;
 	}
