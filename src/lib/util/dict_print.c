@@ -94,6 +94,9 @@ ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type
 	if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
 		FR_SBUFF_IN_STRCPY_RETURN(&our_out,
 					  fr_table_str_by_value(fr_time_precision_table, flags->flag_time_res, "?"));
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ',');
+		if (flags->is_unsigned) FR_SBUFF_IN_CHAR_RETURN(&our_out, 'u');
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "int%d", flags->length << 3);
 	}
 
 	/*
