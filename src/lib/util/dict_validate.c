@@ -208,13 +208,12 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			break;
 
 		case FR_TYPE_OCTETS:
+		case FR_TYPE_STRING:
 			if (flags->length != 0) {
-				fr_strerror_const("Cannot use [..] and length=uint16");
+				fr_strerror_const("Cannot use [..] and length=uint...");
 				return false;
 			}
-			FALL_THROUGH;
 
-		case FR_TYPE_STRING:
 			/*
 			 *	We can do arrays of variable-length types, so long as they have a "length="
 			 *	modifier.
