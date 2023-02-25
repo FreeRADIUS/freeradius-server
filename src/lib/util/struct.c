@@ -111,6 +111,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		data_len = struct_len + need;
 	}
 
+	/*
+	 *	@todo - If the struct is truncated on a MEMBER boundary, we silently omit
+	 *	the trailing members.  Maybe this should be an error?
+	 */
 	while (p < end) {
 		size_t child_length;
 
@@ -802,10 +806,20 @@ done:
 	}
 
 	if (do_length) {
+		uint16_t length = fr_dbuff_used(&work_dbuff);
+
 		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
-			(void) fr_dbuff_in(&hdr, (uint8_t) (fr_dbuff_used(&work_dbuff) - 1));
+			length -= 1;
+
+			if (length > UINT8_MAX) return -1;
+
+			(void) fr_dbuff_in(&hdr, (uint8_t) length);
 		} else {
-			(void) fr_dbuff_in(&hdr, (uint16_t) (fr_dbuff_used(&work_dbuff) - 2));
+			length -= 2;
+
+			if (length > UINT16_MAX) return -1;
+
+			(void) fr_dbuff_in(&hdr, (uint16_t) length);
 		}
 	}
 
