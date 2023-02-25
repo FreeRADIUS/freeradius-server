@@ -1632,13 +1632,18 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	with any other type of length.
 	 */
 	if (argc == 4) {
-		if (strcmp(argv[3], "length=uint16") != 0) {
+		if (strcmp(argv[3], "length=uint16") == 0) {
+			flags.extra = 1;
+			flags.subtype = FLAG_LENGTH_UINT16;
+
+		}  else if (strcmp(argv[3], "length=uint8") == 0) {
+			flags.extra = 1;
+			flags.subtype = FLAG_LENGTH_UINT8;
+
+		} else {
 			fr_strerror_printf("Unknown option '%s'", argv[3]);
 			return -1;
 		}
-
-		flags.extra = 1;
-		flags.subtype = FLAG_LENGTH_UINT16;
 	}
 
 	/*

@@ -47,6 +47,7 @@ Common flags and meanings
 [cols="30%,70%"]
 |=====
 | Name             | Description
+| `length=uint8`  | When encoding or decoding the structure, it is prefixed by a `uint8` field containing the length of the structure.
 | `length=uint16`  | When encoding or decoding the structure, it is prefixed by a `uint16` field containing the length of the structure.
 |=====
 
