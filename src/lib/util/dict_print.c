@@ -73,7 +73,6 @@ ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type
 			break;
 
 		case FLAG_BIT_FIELD:
-			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "length=uint16,");
 			break;
 
 		case FLAG_LENGTH_UINT8:
