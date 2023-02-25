@@ -1,0 +1,16 @@
+# -*- text -*-
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	The FreeRADIUS dictionary for BFD
+#
+# Version:	$Id$
+#
+
+PROTOCOL	BFD		13
+BEGIN-PROTOCOL	BFD
+
+$INCLUDE dictionary.rfc5880
+
+END-PROTOCOL	BFD

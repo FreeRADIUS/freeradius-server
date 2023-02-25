@@ -1,0 +1,74 @@
+# -*- text -*-
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Structures defined in RFC 5880
+#	http://www.ietf.org/rfc/rfc5880.txt
+#
+# Version:	$Id$
+#
+
+DEFINE	Packet						struct
+MEMBER		version					bit[3]
+MEMBER		diagnostic				bit[5]
+MEMBER		state					bit[2]
+MEMBER		poll					bit[1]
+MEMBER		final					bit[1]
+MEMBER		control-plane-independent		bit[1]
+MEMBER		auth-present				bit[1]
+MEMBER		demand					bit[1]
+MEMBER		multipoint				bit[1]
+MEMBER		detect-multi				uint8
+MEMBER		length					uint8
+MEMBER		my-discriminator			uint32
+MEMBER		your-discriminator			uint32
+MEMBER		desired-min-tx-internal			time_delta uint32,microseconds
+MEMBER		required-min-tx-internal		time_delta uint32,microseconds
+MEMBER		required-min-echo-internal		time_delta uint32,microseconds
+MEMBER		auth-type				uint8	key
+
+VALUE	diagnostic			none			0
+VALUE	diagnostic			control-detection-time-expired 1
+VALUE	diagnostic			echo-function-failed	2
+VALUE	diagnostic			neighbour-signaled-session-down 3
+VALUE	diagnostic			forwarding-plane-reset	4
+VALUE	diagnostic			path-down		5
+VALUE	diagnostic			concatenated-path-down	6
+VALUE	diagnostic			administratively-down	7
+VALUE	diagnostic			reverse-concatenated-path-down 8
+
+VALUE	state				admin-down		0
+VALUE	state				down			1
+VALUE	state				init			2
+VALUE	state				up			3
+
+STRUCT	simple-password			auth-type		1 length=uint8
+MEMBER		key-id					uint8
+MEMBER		reserved				uint8
+MEMBER		password				string[1]	# really 1..16
+
+STRUCT	keyed-md5			auth-type		2 length=uint8
+MEMBER		key-id					uint8
+MEMBER		reserved				uint8
+MEMBER		sequence-number				uint32
+MEMBER		digest					octets[16]
+
+STRUCT	meticulous-keyed-md5		auth-type		3 length=uint8
+MEMBER		key-id					uint8
+MEMBER		reserved				uint8
+MEMBER		sequence-number				uint32
+MEMBER		digest					octets[16]
+
+STRUCT	keyed-ssha1			auth-type		4 length=uint8
+MEMBER		key-id					uint8
+MEMBER		reserved				uint8
+MEMBER		sequence-number				uint32
+MEMBER		digest					octets[20]
+
+STRUCT	meticulous-keyed-ssha1		auth-type		5 length=uint8
+MEMBER		key-id					uint8
+MEMBER		reserved				uint8
+MEMBER		sequence-number				uint32
+MEMBER		digest					octets[20]
+
