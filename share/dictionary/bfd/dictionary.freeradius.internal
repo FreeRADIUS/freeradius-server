@@ -1,0 +1,31 @@
+# -*- text -*-
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+# Internal FreeRADIUS BFD dictionary.
+#
+# $Id$
+#
+##############################################################################
+
+#
+#  BFD States
+#
+FLAGS	internal
+
+#
+#  These are the states that the other end sends us.
+#
+DEFINE	Packet-Type				uint32
+VALUE	Packet-Type			Admin-Down			0
+VALUE	Packet-Type			Down				1
+VALUE	Packet-Type			Init				2
+VALUE	Packet-Type			Up				3
+
+#
+#  This is our version of our current link state, which is copied
+#  to the request packet.
+#
+DEFINE	Link-State				uint32	enum=Packet-Type

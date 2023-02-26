@@ -11,6 +11,7 @@
 PROTOCOL	BFD		13
 BEGIN-PROTOCOL	BFD
 
+$INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.rfc5880
 
 END-PROTOCOL	BFD
