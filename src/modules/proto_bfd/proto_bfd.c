@@ -18,6 +18,8 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * @copyright 2012 Network RADIUS SAS (legal@networkradius.com)
+ *
+ *  Check on RFC 5881 for BFD over IP issues.
  */
 
 #include <freeradius-devel/server/base.h>
@@ -1732,6 +1734,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 static int bfd_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int rcode;
+	int ttl = 255;
 	uint16_t port;
 	bfd_socket_t *sock = this->data;
 
@@ -1747,6 +1750,8 @@ static int bfd_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
+	if (setsockopt(this->fd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)) < 0) goto fail;
+
 	rad_suid_up();
 	rcode = fr_socket_bind(this->fd, &sock->my_ipaddr, &port, sock->interface);
 	rad_suid_down();
@@ -1754,6 +1759,8 @@ static int bfd_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (rcode < 0) {
 		char buffer[256];
+
+	fail:
 		close(this->fd);
 
 		this->print(this, buffer, sizeof(buffer));
