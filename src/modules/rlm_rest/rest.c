@@ -49,13 +49,13 @@ RCSID("$Id$")
  * @see http_body_type_t
  */
 const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
-	REST_HTTP_BODY_UNKNOWN,		// REST_HTTP_BODY_UNKNOWN
+	REST_HTTP_BODY_UNKNOWN,			// REST_HTTP_BODY_UNKNOWN
 	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_UNSUPPORTED
-	REST_HTTP_BODY_UNSUPPORTED,  	// REST_HTTP_BODY_UNAVAILABLE
+	REST_HTTP_BODY_UNSUPPORTED,  		// REST_HTTP_BODY_UNAVAILABLE
 	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_INVALID
 	REST_HTTP_BODY_NONE,			// REST_HTTP_BODY_NONE
 	REST_HTTP_BODY_CUSTOM_XLAT,		// REST_HTTP_BODY_CUSTOM_XLAT
-	REST_HTTP_BODY_CUSTOM_LITERAL,	// REST_HTTP_BODY_CUSTOM_LITERAL
+	REST_HTTP_BODY_CUSTOM_LITERAL,		// REST_HTTP_BODY_CUSTOM_LITERAL
 	REST_HTTP_BODY_POST,			// REST_HTTP_BODY_POST
 #ifdef HAVE_JSON
 	REST_HTTP_BODY_JSON,			// REST_HTTP_BODY_JSON
@@ -64,7 +64,7 @@ const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
 #endif
 	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_XML
 	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_YAML
-	REST_HTTP_BODY_INVALID,		// REST_HTTP_BODY_HTML
+	REST_HTTP_BODY_INVALID,			// REST_HTTP_BODY_HTML
 	REST_HTTP_BODY_PLAIN			// REST_HTTP_BODY_PLAIN
 };
 
@@ -99,17 +99,17 @@ const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
  *  #define curl_easy_setopt(handle,opt,param) curl_easy_setopt(handle,opt,param)
  */
 const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES] = {
-	[REST_HTTP_AUTH_UNKNOWN]		= 0,
-	[REST_HTTP_AUTH_NONE]			= 0,
-	[REST_HTTP_AUTH_TLS_SRP]		= CURLOPT_TLSAUTH_SRP,
-	[REST_HTTP_AUTH_BASIC]			= CURLAUTH_BASIC,
-	[REST_HTTP_AUTH_DIGEST]			= CURLAUTH_DIGEST,
-	[REST_HTTP_AUTH_DIGEST_IE]		= CURLAUTH_DIGEST_IE,
-	[REST_HTTP_AUTH_GSSNEGOTIATE]		= CURLAUTH_GSSNEGOTIATE,
-	[REST_HTTP_AUTH_NTLM]			= CURLAUTH_NTLM,
-	[REST_HTTP_AUTH_NTLM_WB]		= CURLAUTH_NTLM_WB,
-	[REST_HTTP_AUTH_ANY]			= CURLAUTH_ANY,
-	[REST_HTTP_AUTH_ANY_SAFE]		= CURLAUTH_ANYSAFE
+	[REST_HTTP_AUTH_UNKNOWN]			= 0,
+	[REST_HTTP_AUTH_NONE]				= 0,
+	[REST_HTTP_AUTH_TLS_SRP]			= CURLOPT_TLSAUTH_SRP,
+	[REST_HTTP_AUTH_BASIC]				= CURLAUTH_BASIC,
+	[REST_HTTP_AUTH_DIGEST]				= CURLAUTH_DIGEST,
+	[REST_HTTP_AUTH_DIGEST_IE]			= CURLAUTH_DIGEST_IE,
+	[REST_HTTP_AUTH_GSSNEGOTIATE]			= CURLAUTH_GSSNEGOTIATE,
+	[REST_HTTP_AUTH_NTLM]				= CURLAUTH_NTLM,
+	[REST_HTTP_AUTH_NTLM_WB]			= CURLAUTH_NTLM_WB,
+	[REST_HTTP_AUTH_ANY]				= CURLAUTH_ANY,
+	[REST_HTTP_AUTH_ANY_SAFE]			= CURLAUTH_ANYSAFE
 };
 
 /** Conversion table for method config values.
@@ -125,12 +125,12 @@ const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES] = {
  * @see fr_table_str_by_value
  */
 fr_table_num_sorted_t const http_method_table[] = {
-	{ L("DELETE"),				REST_HTTP_METHOD_DELETE		},
-	{ L("GET"),				REST_HTTP_METHOD_GET		},
-	{ L("PATCH"),				REST_HTTP_METHOD_PATCH		},
-	{ L("POST"),				REST_HTTP_METHOD_POST		},
-	{ L("PUT"),				REST_HTTP_METHOD_PUT		},
-	{ L("UNKNOWN"),				REST_HTTP_METHOD_UNKNOWN	}
+	{ L("DELETE"),					REST_HTTP_METHOD_DELETE		},
+	{ L("GET"),					REST_HTTP_METHOD_GET		},
+	{ L("PATCH"),					REST_HTTP_METHOD_PATCH		},
+	{ L("POST"),					REST_HTTP_METHOD_POST		},
+	{ L("PUT"),					REST_HTTP_METHOD_PUT		},
+	{ L("UNKNOWN"),					REST_HTTP_METHOD_UNKNOWN	}
 };
 size_t http_method_table_len = NUM_ELEMENTS(http_method_table);
 
@@ -144,31 +144,31 @@ size_t http_method_table_len = NUM_ELEMENTS(http_method_table);
  * @see fr_table_str_by_value
  */
 fr_table_num_sorted_t const http_body_type_table[] = {
-	{ L("html"),				REST_HTTP_BODY_HTML		},
-	{ L("invalid"),				REST_HTTP_BODY_INVALID		},
-	{ L("json"),				REST_HTTP_BODY_JSON		},
-	{ L("none"),				REST_HTTP_BODY_NONE		},
-	{ L("plain"),				REST_HTTP_BODY_PLAIN		},
-	{ L("post"),				REST_HTTP_BODY_POST		},
-	{ L("unavailable"),			REST_HTTP_BODY_UNAVAILABLE	},
-	{ L("unknown"),				REST_HTTP_BODY_UNKNOWN		},
-	{ L("unsupported"),			REST_HTTP_BODY_UNSUPPORTED	},
-	{ L("xml"),				REST_HTTP_BODY_XML		},
-	{ L("yaml"),				REST_HTTP_BODY_YAML		}
+	{ L("html"),					REST_HTTP_BODY_HTML		},
+	{ L("invalid"),					REST_HTTP_BODY_INVALID		},
+	{ L("json"),					REST_HTTP_BODY_JSON		},
+	{ L("none"),					REST_HTTP_BODY_NONE		},
+	{ L("plain"),					REST_HTTP_BODY_PLAIN		},
+	{ L("post"),					REST_HTTP_BODY_POST		},
+	{ L("unavailable"),				REST_HTTP_BODY_UNAVAILABLE	},
+	{ L("unknown"),					REST_HTTP_BODY_UNKNOWN		},
+	{ L("unsupported"),				REST_HTTP_BODY_UNSUPPORTED	},
+	{ L("xml"),					REST_HTTP_BODY_XML		},
+	{ L("yaml"),					REST_HTTP_BODY_YAML		}
 };
 size_t http_body_type_table_len = NUM_ELEMENTS(http_body_type_table);
 
 fr_table_num_sorted_t const http_auth_table[] = {
-	{ L("any"),				REST_HTTP_AUTH_ANY		},
-	{ L("basic"),				REST_HTTP_AUTH_BASIC		},
-	{ L("digest"),				REST_HTTP_AUTH_DIGEST		},
-	{ L("digest-ie"),			REST_HTTP_AUTH_DIGEST_IE	},
-	{ L("gss-negotiate"),			REST_HTTP_AUTH_GSSNEGOTIATE	},
-	{ L("none"),				REST_HTTP_AUTH_NONE		},
-	{ L("ntlm"),				REST_HTTP_AUTH_NTLM		},
-	{ L("ntlm-winbind"),			REST_HTTP_AUTH_NTLM_WB		},
-	{ L("safe"),				REST_HTTP_AUTH_ANY_SAFE		},
-	{ L("srp"),				REST_HTTP_AUTH_TLS_SRP		}
+	{ L("any"),					REST_HTTP_AUTH_ANY		},
+	{ L("basic"),					REST_HTTP_AUTH_BASIC		},
+	{ L("digest"),					REST_HTTP_AUTH_DIGEST		},
+	{ L("digest-ie"),				REST_HTTP_AUTH_DIGEST_IE	},
+	{ L("gss-negotiate"),				REST_HTTP_AUTH_GSSNEGOTIATE	},
+	{ L("none"),					REST_HTTP_AUTH_NONE		},
+	{ L("ntlm"),					REST_HTTP_AUTH_NTLM		},
+	{ L("ntlm-winbind"),				REST_HTTP_AUTH_NTLM_WB		},
+	{ L("safe"),					REST_HTTP_AUTH_ANY_SAFE		},
+	{ L("srp"),					REST_HTTP_AUTH_TLS_SRP		}
 };
 size_t http_auth_table_len = NUM_ELEMENTS(http_auth_table);
 
