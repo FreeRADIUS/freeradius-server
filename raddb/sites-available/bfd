@@ -48,7 +48,7 @@ server bfd {
 		#
 		#  port:: Port as normal.
 		#
-		port = 10000
+		port = 3784
 
 		#
 		#  auth_type:: BFD Authentication method.
