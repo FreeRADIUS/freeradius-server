@@ -16,14 +16,13 @@
 
 /**
  * $Id$
- * @file src/process/arp/base.c
- * @brief ARP processing.
+ * @file src/process/test/base.c
+ * @brief Test state machine, which only does request and reply.
  *
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/arp/arp.h>
 
 static fr_dict_t const *dict_test;
 
