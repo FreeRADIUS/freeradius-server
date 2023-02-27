@@ -42,6 +42,7 @@ typedef struct module_method_name_s		module_method_name_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
 typedef struct module_env_s			module_env_t;
+typedef struct module_env_parsed_s		module_env_parsed_t;
 typedef struct module_list_t			module_list_t;
 
 #define MODULE_TYPE_THREAD_SAFE		(0 << 0) 	//!< Module is threadsafe.
@@ -117,6 +118,10 @@ typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+FR_DLIST_TYPES(mod_env_parsed)
+
+typedef FR_DLIST_HEAD(mod_env_parsed) mod_env_parsed_head_t;
 
 /** Named methods exported by a module
  *
@@ -265,6 +270,16 @@ struct module_env_s {
 };
 
 #define MODULE_ENV_TERMINATOR { NULL }
+
+struct module_env_parsed_s {
+	FR_DLIST_ENTRY(mod_env_parsed)	entry;		//!< Entry in list of parsed module_env.
+	tmpl_t				*tmpl;		//!< Tmpl produced from parsing conf pair.
+	size_t				opt_count;	//!< Number of instances found of this option.
+	size_t				multi_index;	//!< Array index for this instance.
+	module_env_t const		*rule;		//!< Used to produce this.
+};
+
+FR_DLIST_FUNCS(mod_env_parsed, module_env_parsed_t, entry)
 
 /** A list of modules
  *
