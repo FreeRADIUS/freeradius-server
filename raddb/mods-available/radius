@@ -425,14 +425,14 @@ radius {
 		#  initial_rtx_time::  If there is no response within this time,
 		#  the module will retransmit the packet.
 		#
-		#  Value should be `1..5`.
+		#  Value should be `1..120`.
 		#
 		initial_rtx_time = 2
 
 		#
 		#  max_rtx_time:: The maximum time between retransmissions.
 		#
-		#  Value should be `5..30`
+		#  Value should be `5..120`
 		#
 		max_rtx_time = 16
 
@@ -449,7 +449,7 @@ radius {
 		#  max_rtx_count:: How many times the module will send the packet
 		#  before giving up.
 		#
-		#  Value should be `1..20` _(0 == retransmit forever)_
+		#  Value should be `1..10` _(0 == retransmit forever)_
 		#
 		max_rtx_count = 2
 
@@ -457,9 +457,9 @@ radius {
 		#  max_rtx_duration:: The total length of time the module will
 		#  try to retransmit the packet.
 		#
-		#  Value should be `5..60`
+		#  Value should be `5..240`
 		#
-		max_rtx_duration = 30
+		max_rtx_duration = 5
 	}
 
 	#
@@ -471,9 +471,35 @@ radius {
 	#    max_rtx_count = 0
 	#
 	Accounting-Request {
+		#
+		#  initial_rtx_time::  If there is no response within this time,
+		#  the module will retransmit the packet.
+		#
+		#  Value should be `1..3`.
+		#
 		initial_rtx_time = 2
+
+		#
+		#  max_rtx_time:: The maximum time between retransmissions.
+		#
+		#  Value should be `5..30`
+		#
 		max_rtx_time = 16
+
+		#
+		#  max_rtx_count:: How many times the module will send the packet
+		#  before giving up.
+		#
+		#  Value should be `1..10` _(0 == retransmit forever)_
+		#
 		max_rtx_count = 5
+
+		#
+		#  max_rtx_duration:: The total length of time the module will
+		#  try to retransmit the packet.
+		#
+		#  Value should be `5..30`
+		#
 		max_rtx_duration = 30
 	}
 
