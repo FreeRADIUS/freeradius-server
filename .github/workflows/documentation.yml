@@ -8,17 +8,17 @@ on:
       - debug-fuzzer-**
     paths:
       - '.github/workflows/documentation.yml'
-      - 'doc/*'
-      - 'man/*'
-      - 'raddb/*'
-      - 'share/*'
+      - 'doc/**'
+      - 'man/**'
+      - 'raddb/**'
+      - 'share/**'
   pull_request:
     paths:
       - '.github/workflows/documentation.yml'
-      - 'doc/*'
-      - 'man/*'
-      - 'raddb/*'
-      - 'share/*'
+      - 'doc/**'
+      - 'man/**'
+      - 'raddb/**'
+      - 'share/**'
 
 jobs:
   documentation:
