@@ -322,7 +322,7 @@ static int fr_worker_listen_cancel_self(UNUSED fr_worker_t *worker, UNUSED fr_li
  * @param[in] data_size	size of the data
  * @param[in] now	the current time
  */
-static void worker_listen_cancel_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+static void worker_listen_cancel_callback(void *ctx, void const *data, NDEBUG_UNUSED size_t data_size, UNUSED fr_time_t now)
 {
 	fr_listen_t const	*li;
 	fr_worker_t		*worker = ctx;
