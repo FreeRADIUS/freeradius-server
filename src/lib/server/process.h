@@ -109,6 +109,9 @@ typedef struct {
 #define process_state_packet process_state
 #define process_state_reply process_state
 static fr_process_state_t const process_state[];
+#else
+static fr_process_state_t const process_state_packet[];
+static fr_process_state_t const process_state_reply[];
 #endif
 
 /*

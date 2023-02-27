@@ -161,7 +161,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	request->module = NULL;
 	fr_assert(request->dict == dict_bfd);
 
-	UPDATE_STATE_RECV(packet);
+	UPDATE_STATE(packet);
 
 	return state->recv(p_result, mctx, request);
 }
