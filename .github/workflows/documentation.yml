@@ -53,7 +53,7 @@ jobs:
          doxygen Doxyfile;
 
     - name: Deploy doxygen content to GitHub pages
-      if: ${{ github.ref == 'refs/heads/main' }}
+      if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' )
       uses: appleboy/gh-pages-action@v0.0.2
       with:
         username: ${{ secrets.CI_DOCUMENTATION_DEPLOY_USER }}
