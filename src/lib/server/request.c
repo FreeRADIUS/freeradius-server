@@ -468,6 +468,11 @@ request_t *_request_alloc(char const *file, int line, TALLOC_CTX *ctx,
 	fr_dlist_entry_init(&request->free_entry);	/* Needs to be initialised properly, else bad things happen */
 
 	/*
+	 *	This is only used by src/lib/io/worker.c
+	 */
+	fr_dlist_entry_init(&request->listen_entry);
+
+	/*
 	 *	Bind lifetime to a parent.
 	 *
 	 *	If the parent is freed the destructor

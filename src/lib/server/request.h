@@ -233,6 +233,7 @@ struct request_s {
 
 	int			alloc_line;	//!< Line the request was allocated on.
 
+	fr_dlist_t		listen_entry;	//!< request's entry in the list for this listener / socket
 	fr_dlist_t		free_entry;	//!< Request's entry in the free list.
 };				/* request_t typedef */
 
