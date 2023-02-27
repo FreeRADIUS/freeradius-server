@@ -806,7 +806,7 @@ done:
 	}
 
 	if (do_length) {
-		uint16_t length = fr_dbuff_used(&work_dbuff);
+		size_t length = fr_dbuff_used(&work_dbuff);
 
 		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
 			length -= 1;
