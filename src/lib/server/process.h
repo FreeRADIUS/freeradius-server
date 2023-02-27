@@ -90,24 +90,37 @@ typedef struct {
 	size_t			section_offset;	//!< Where to look in the process instance for
 						///< a pointer to the section we should execute.
 	rlm_rcode_t		rcode;		//!< Default rcode
-	module_method_t		recv;		//!< Method to call when receiving this type of packet.
 	unlang_module_resume_t	resume;		//!< Function to call after running a recv section.
-	unlang_module_resume_t	send;		//!< Method to call when sending this type of packet.
+
+	/*
+	 *	Each state has only one "recv" or "send".
+	 */
+	union {
+		module_method_t		recv;		//!< Method to call when receiving this type of packet.
+		unlang_module_resume_t	send;		//!< Method to call when sending this type of packet.
+	};
 	PROCESS_STATE_EXTRA_FIELDS
 } fr_process_state_t;
+
+/*
+ *	Some protocols have the same packet codes for requests and replies.
+ */
+#ifndef PROCESS_SEND_RECV
+#define process_state_packet process_state
+#define process_state_reply process_state
+static fr_process_state_t const process_state[];
+#endif
 
 /*
  *	Process state machine functions
  */
 #define UPDATE_STATE_CS(_x) \
 do { \
-	state = &process_state[request->_x->code]; \
+	state = &process_state_ ## _x[request->_x->code]; \
 	memcpy(&cs, (CONF_SECTION * const *) (((uint8_t const *) &inst->sections) + state->section_offset), sizeof(cs)); \
 } while (0)
 
-#define UPDATE_STATE(_x) state = &process_state[request->_x->code]
-
-static fr_process_state_t const process_state[];
+#define UPDATE_STATE(_x) state = &process_state_ ## _x [request->_x->code]
 
 #define RECV(_x) static inline unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 #define SEND(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -134,7 +147,7 @@ static fr_process_state_t const process_state[];
 
 /** Set the current reply code, and call the send function for that state
  */
-#define CALL_SEND_TYPE(_x) call_send_type(process_state[(request->reply->code = _x)].send, p_result, mctx, request)
+#define CALL_SEND_TYPE(_x) call_send_type(process_state_reply[(request->reply->code = _x)].send, p_result, mctx, request)
 
 static inline unlang_action_t call_send_type(unlang_module_resume_t send, \
 					     rlm_rcode_t *p_result, module_ctx_t const *mctx,
@@ -270,7 +283,7 @@ SEND(generic)
 		    (vp->vp_uint32 != PROCESS_CODE_MAX) &&
 #endif
 		    PROCESS_PACKET_CODE_VALID(vp->vp_uint32) &&
-		    process_state[vp->vp_uint32].send) {
+		    process_state_reply[vp->vp_uint32].send) {
 			request->reply->code = vp->vp_uint32;
 			UPDATE_STATE_CS(reply);
 			break;
