@@ -43,6 +43,7 @@ typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
 typedef struct module_env_s			module_env_t;
 typedef struct module_env_parsed_s		module_env_parsed_t;
+typedef struct module_method_env_s		module_method_env_t;
 typedef struct module_list_t			module_list_t;
 
 #define MODULE_TYPE_THREAD_SAFE		(0 << 0) 	//!< Module is threadsafe.
@@ -123,14 +124,21 @@ FR_DLIST_TYPES(mod_env_parsed)
 
 typedef FR_DLIST_HEAD(mod_env_parsed) mod_env_parsed_head_t;
 
+struct module_method_env_s {
+	size_t				inst_size;		//!< Size of per call module env.
+	char const			*inst_type;		//!< Type of per call module env.
+	module_env_t const		*env;			//!< Parsing rules for module method env.
+};
+
 /** Named methods exported by a module
  *
  */
 struct module_method_name_s {
-	char const		*name1;			//!< i.e. "recv", "send", "process"
-	char const		*name2;			//!< The packet type i.e Access-Request, Access-Reject.
+	char const			*name1;			//!< i.e. "recv", "send", "process"
+	char const			*name2;			//!< The packet type i.e Access-Request, Access-Reject.
 
-	module_method_t		method;			//!< Module method to call
+	module_method_t			method;			//!< Module method to call
+	module_method_env_t const	*method_env;		//!< Call specific conf parsing.
 };
 
 #define MODULE_NAME_TERMINATOR { NULL }
