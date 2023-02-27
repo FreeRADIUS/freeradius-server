@@ -41,6 +41,7 @@ typedef struct module_s				module_t;
 typedef struct module_method_name_s		module_method_name_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
+typedef struct module_env_s			module_env_t;
 typedef struct module_list_t			module_list_t;
 
 #define MODULE_TYPE_THREAD_SAFE		(0 << 0) 	//!< Module is threadsafe.
@@ -221,6 +222,49 @@ struct module_thread_instance_s {
 	uint64_t			total_calls;	//! total number of times we've been called
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
 };
+
+typedef enum {
+	MOD_ENV_TYPE_VALUE_BOX = 1,
+	MOD_ENV_TYPE_VALUE_BOX_LIST
+} mod_env_dest_t;
+
+/** Per method module config
+ *
+ * Similar to a CONF_PARSER used to hold details of conf pairs
+ * which are evaluated per call for each module method.
+ *
+ * This allows the conf pairs to be evaluated within the appropriate context
+ * and use the appropriate dictionaries for where the module is in use.
+ */
+struct module_env_s {
+	char const	*name;		//!< Of conf pair to pass to tmpl_tokenizer.
+	char const	*dflt;		//!< Default string to pass to the tmpl_tokenizer if no CONF_PAIR found.
+	fr_token_t	dflt_quote;	//!< Default quoting for the default string.
+
+	uint32_t	type;		//!< To cast boxes to. Also contains flags controlling parser behaviour.
+
+	size_t		offset;		//!< Where to write results in the output structure when the tmpls are evaluated.
+
+	union {
+		struct {
+			bool		required;	//!< Tmpl must produce output
+			bool		concat;		//!< If the tmpl produced multiple boxes they should be concatenated.
+			bool		single;		//!< If the tmpl produces more than one box this is an error.
+			bool		multi;		//!< Multiple instances of the conf pairs are allowed.  Resulting
+							///< boxes are stored in an array - one entry per conf pair.
+			mod_env_dest_t	type;		//!< Type of structure boxes will be written to.
+			size_t		size;		//!< Size of structure boxes will be written to.
+			char const	*type_name;	//!< Name of structure type boxes will be written to.
+		} pair;
+
+		struct {
+			char const		*ident2;	//!< Second identifier for a section
+			module_env_t const	*subcs;		//!< Nested definitions for subsection.
+    		} section;
+  	};
+};
+
+#define MODULE_ENV_TERMINATOR { NULL }
 
 /** A list of modules
  *
