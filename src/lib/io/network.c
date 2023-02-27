@@ -790,11 +790,20 @@ size_t fr_network_listen_outstanding(fr_network_t *nr, fr_listen_t *li) {
  */
 static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s)
 {
+	int i;
+
 	if (s->dead) return;
 
 	s->dead = true;
 
 	fr_event_fd_delete(nr->el, s->listen->fd, s->filter);
+
+
+	for (i = 0; i < nr->max_workers; i++) {
+		if (!nr->workers[i]) continue;
+
+		(void) fr_worker_listen_cancel(nr->workers[i]->worker, s->listen);
+	}
 
 	/*
 	 *	If there are no outstanding packets, then we can free
@@ -1180,6 +1189,8 @@ static int _network_socket_free(fr_network_socket_t *s)
 {
 	fr_network_t *nr = s->nr;
 	fr_channel_data_t *cd;
+
+	fr_assert(s->outstanding == 0);
 
 	fr_rb_delete(nr->sockets, s);
 	fr_rb_delete(nr->sockets_by_num, s);

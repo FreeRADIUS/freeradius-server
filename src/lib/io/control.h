@@ -58,6 +58,7 @@ typedef	void (*fr_control_callback_t)(void *ctx, void const *data, size_t data_s
 #define FR_CONTROL_ID_WORKER	(3)
 #define FR_CONTROL_ID_DIRECTORY (4)
 #define FR_CONTROL_ID_INJECT 	(5)
+#define FR_CONTROL_ID_LISTEN_DEAD (6)
 
 fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_queue_t *aq) CC_HINT(nonnull(3));
 
