@@ -784,9 +784,18 @@ void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
  *
  * @param[in] ctx		to allocate value boxes in.
  * @param[out] out		a list of #fr_value_box_t to append to.
- * @param[in] resume		function to call.
+ * @param[out] child		to evaluate. If a child needs to be evaluated
+ *				by the caller, we return XLAT_ACTION_PUSH_CHILD
+ *				and place the child to be evaluated here.
+ *				Once evaluation is complete, the caller
+ *				should call us with the same #xlat_exp_t and the
+ *				result of the nested evaluation in result.
  * @param[in] request		the current request.
+ * @param[in] head		of the list to evaluate
+ * @param[in,out] in		xlat node to evaluate. Advanced as we process
+ *				additional #xlat_exp_t.
  * @param[in] result		Previously expanded arguments to this xlat function.
+ * @param[in] resume		function to call.
  * @param[in] rctx		Opaque (to us), resume ctx provided by xlat function
  *				when it yielded.
  */
