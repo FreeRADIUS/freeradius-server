@@ -1285,6 +1285,93 @@ TALLOC_CTX *unlang_interpret_frame_talloc_ctx(request_t *request)
 	return (TALLOC_CTX *)(frame->state = talloc_new(request));
 }
 
+static xlat_arg_parser_t const unlang_cancel_xlat_args[] = {
+	{ .required = false, .single = true, .type = FR_TYPE_TIME_DELTA },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					UNUSED xlat_ctx_t const *xctx,
+					request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args);
+
+/** Signal the request to stop executing
+ *
+ * The request can't be running at this point because we're in the event
+ * loop.  This means the request is always in a consistent state when
+ * the timeout event fires, even if that's state is waiting on I/O.
+ */
+static void unlang_cancel_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	request_t *request = talloc_get_type_abort(uctx, request_t);
+
+	RDEBUG2("Request canceled by dynamic timeout");
+
+	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+	request_data_get(request, (void *)unlang_cancel_xlat, 0);
+}
+
+/** Allows a request to dynamically alter its own lifetime
+ *
+ */
+static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					UNUSED xlat_ctx_t const *xctx,
+					request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args)
+{
+	fr_value_box_t		*timeout;
+	fr_event_list_t		*el = unlang_interpret_event_list(request);
+	fr_event_timer_t const  **ev_p, **ev_p_og;
+	fr_value_box_t		*vb;
+	fr_time_t		when = fr_time_from_sec(0); /* Invalid clang complaints if we don't set this */
+
+	XLAT_ARGS(args, &timeout);
+
+	/*
+	 *	First see if we already have a timeout event
+	 *	that was previously added by this xlat.
+	 */
+	ev_p = ev_p_og = request_data_get(request, (void *)unlang_cancel_xlat, 0);
+	if (ev_p) {
+		if (*ev_p) when = fr_event_timer_when(*ev_p);	/* *ev_p should never be NULL, really... */
+	} else {
+		/*
+		 *	Must not be parented from the request
+		 *	as this is freed by request data.
+		 */
+		MEM(ev_p = talloc_zero(NULL, fr_event_timer_t const *));
+	}
+
+	if (unlikely(fr_event_timer_in(ev_p, el, ev_p,
+				       timeout ? timeout->vb_time_delta : fr_time_delta_from_sec(0),
+				       unlang_cancel_event, request) < 0)) {
+		RPERROR("Failed inserting cancellation event");
+		return XLAT_ACTION_FAIL;
+	}
+	if (unlikely(request_data_add(request, (void *)unlang_cancel_xlat, 0, UNCONST(fr_event_timer_t *, *ev_p), true, true, false) < 0)) {
+		RPERROR("Failed associating cancellation event with request");
+		talloc_free(ev_p);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (ev_p_og) {
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
+
+		/*
+		 *	Return how long before the previous
+		 *	cancel event would have fired.
+		 *
+		 *	This can be useful for doing stacked
+		 *	cancellations in policy.
+		 */
+		vb->vb_time_delta = fr_time_sub(when, fr_time());
+		fr_dcursor_insert(out, vb);
+	}
+
+	/*
+	 *	No value if this is the first cleanup event
+	 */
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_arg_parser_t const unlang_interpret_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -1506,4 +1593,7 @@ void unlang_interpret_init_global(void)
 	 */
 	xlat = xlat_register(NULL, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID, NULL);
 	xlat_func_args(xlat, unlang_interpret_xlat_args);
+
+	xlat = xlat_register(NULL, "cancel", unlang_cancel_xlat, FR_TYPE_VOID, NULL);
+	xlat_func_args(xlat, unlang_cancel_xlat_args);
 }

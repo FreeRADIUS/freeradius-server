@@ -102,7 +102,7 @@ static void _request_stop(request_t *request, void *uctx)
 {
 	unlang_interpret_synchronous_t	*intps = uctx;
 
-	RDEBUG3("Stopped detached request");
+	RDEBUG3("Synchronous request stopped");
 
 	fr_heap_extract(&intps->runnable, request);
 }

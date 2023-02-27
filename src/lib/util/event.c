@@ -1591,11 +1591,28 @@ int _fr_event_timer_in(NDEBUG_LOCATION_ARGS
 int fr_event_timer_delete(fr_event_timer_t const **ev_p)
 {
 	fr_event_timer_t *ev;
+	int ret;
 
 	if (unlikely(!*ev_p)) return 0;
 
 	ev = UNCONST(fr_event_timer_t *, *ev_p);
-	return talloc_free(ev);
+	ret = talloc_free(ev);
+
+	/*
+	 *	Don't leave a garbage pointer value
+	 *	in the parent.
+	 */
+	if (likely(ret == 0)) *ev_p = NULL;
+	return 0;
+}
+
+/** Internal timestamp representing when the timer should fire
+ *
+ * @return When the timestamp should fire.
+ */
+fr_time_t fr_event_timer_when(fr_event_timer_t const *ev)
+{
+	return ev->when;
 }
 
 /** Remove PID wait event from kevent if the fr_event_pid_t is freed

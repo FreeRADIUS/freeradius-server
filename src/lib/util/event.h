@@ -256,6 +256,8 @@ int		_fr_event_timer_in(NDEBUG_LOCATION_ARGS
 
 int		fr_event_timer_delete(fr_event_timer_t const **ev);
 
+fr_time_t	fr_event_timer_when(fr_event_timer_t const *ev) CC_HINT(nonnull);
+
 int		_fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 				   TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
 				   pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx)

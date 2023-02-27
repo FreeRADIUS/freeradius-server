@@ -1442,7 +1442,7 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		in_vb->enumv = NULL;
 
 		/*
-		 *	FR_TYPE_DATE and FR_TYPE_DELTA need to be cast
+		 *	FR_TYPE_DATE and FR_TYPE_TIME_DELTA need to be cast
 		 *	to int64_t so that they're printed in a
 		 *	numeric format.
 		 */
