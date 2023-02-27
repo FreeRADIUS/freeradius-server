@@ -90,7 +90,7 @@ extern fr_sbuff_escape_rules_t fr_value_escape_unprintables;
  */
 FR_DLIST_TYPES(fr_value_box_list)
 FR_DCURSOR_DLIST_TYPES(fr_value_box_dcursor, fr_value_box_list, fr_value_box_t)
-/** @} */
+/** @{ */
 
 typedef union {
 	/*
@@ -409,6 +409,7 @@ bool fr_value_box_list_len_min(FR_DLIST_HEAD(fr_value_box_list) const *list, uns
 
 	return (i >= min);
 }
+/** @} */
 
 /** @name Box to box copying
  *

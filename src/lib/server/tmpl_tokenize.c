@@ -3385,7 +3385,6 @@ ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t con
 	return slen;
 }
 #endif
-/** @} */
 
 /** @name Change a #tmpl_t type, usually by casting or resolving a reference
  *
