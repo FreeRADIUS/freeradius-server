@@ -868,6 +868,7 @@ fi
 
 # Protocol state machines without external deps
 %{_libdir}/freeradius/process_arp.so
+%{_libdir}/freeradius/process_bfd.so
 %{_libdir}/freeradius/process_control.so
 %{_libdir}/freeradius/process_dhcpv4.so
 %{_libdir}/freeradius/process_dhcpv6.so
