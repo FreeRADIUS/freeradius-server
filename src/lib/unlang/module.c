@@ -896,12 +896,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	RDEBUG4("[%i] %s - %s (%s)", stack_depth_current(request), __FUNCTION__,
 		mc->instance->name, mc->instance->module->name);
 
-	/*
-	 *	Grab the thread/module specific data if any exists.
-	 */
-	state->thread = module_thread(mc->instance);
 	state->p_result = NULL;
-	fr_assert(state->thread != NULL);
 
 	/*
 	 *	Return administratively configured return code
@@ -911,6 +906,12 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		ua = UNLANG_ACTION_CALCULATE_RESULT;
 		goto done;
 	}
+
+	/*
+	 *	Grab the thread/module specific data if any exists.
+	 */
+	state->thread = module_thread(mc->instance);
+	fr_assert(state->thread != NULL);
 
 	/*
 	 *	Don't allow returning _through_ modules
