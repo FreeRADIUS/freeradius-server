@@ -2147,6 +2147,7 @@ INCLUDE_FILE_PATTERNS  = *.h
 PREDEFINED             = WITH_STATS \
                          HAVE_JSON \
                          STATE \
+                         SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF \
                          CC_HINT(x)=
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this
