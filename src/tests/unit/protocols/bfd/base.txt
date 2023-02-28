@@ -12,5 +12,8 @@ fuzzer-out bfd
 encode-proto Packet = { version = 1, diagnostic = none, state = up, poll = false, final = false, control-plane-independent = false, auth-present = false, demand = false, multipoint = false, detect-multi = 3, my-discriminator = 0xdeadbeef, your-discriminator = 0x21126809, desired-min-tx-interval = 31us, required-min-tx-interval = 127us, required-min-echo-interval	= 255us }
 match 20 c0 03 18 de ad be ef 21 12 68 09 00 00 00 1f 00 00 00 7f 00 00 00 ff
 
+decode-proto -
+match Packet-Type = Up, Packet = { version = 1, diagnostic = none, state = up, poll = no, final = no, control-plane-independent = no, auth-present = no, demand = no, multipoint = no, detect-multi = 3, length = 24, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255 }
+
 count
-match 5
+match 7

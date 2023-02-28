@@ -30,8 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/test_point.h>
 #include "attrs.h"
 
-extern fr_dict_attr_t const *attr_bfd_packet;
-
 /** Encodes the data portion of an attribute
  *
  * @return
