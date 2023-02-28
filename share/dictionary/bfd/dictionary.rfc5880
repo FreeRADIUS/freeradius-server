@@ -23,9 +23,9 @@ MEMBER		detect-multi				uint8
 MEMBER		length					uint8
 MEMBER		my-discriminator			uint32
 MEMBER		your-discriminator			uint32
-MEMBER		desired-min-tx-internal			time_delta uint32,microseconds
-MEMBER		required-min-tx-internal		time_delta uint32,microseconds
-MEMBER		required-min-echo-internal		time_delta uint32,microseconds
+MEMBER		desired-min-tx-interval			time_delta uint32,microseconds
+MEMBER		required-min-tx-interval		time_delta uint32,microseconds
+MEMBER		required-min-echo-interval		time_delta uint32,microseconds
 MEMBER		auth-type				uint8	key
 
 VALUE	diagnostic			none			0
