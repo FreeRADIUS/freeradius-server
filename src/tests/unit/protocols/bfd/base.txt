@@ -1,0 +1,16 @@
+#  Test vectors for BFD Packets
+#
+#  Copyright 2023 Network RADIUS SAS (legal@networkradius.com)
+#
+proto bfd
+proto-dictionary bfd
+fuzzer-out bfd
+
+#
+#  A basic BFD packet.
+#
+encode-proto Packet = { version = 1, diagnostic = none, state = up, poll = false, final = false, control-plane-independent = false, auth-present = false, demand = false, multipoint = false, detect-multi = 3, my-discriminator = 0xdeadbeef, your-discriminator = 0x21126809, desired-min-tx-interval = 31us, required-min-tx-interval = 127us, required-min-echo-interval	= 255us }
+match 20 c0 03 18 de ad be ef 21 12 68 09 00 00 00 1f 00 00 00 7f 00 00 00 ff
+
+count
+match 5
