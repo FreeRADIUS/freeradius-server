@@ -63,5 +63,6 @@ void rest_io_xlat_signal(xlat_ctx_t const *xctx, request_t *request, fr_state_si
 	rlm_rest_xlat_rctx_t		*our_rctx = talloc_get_type_abort(xctx->rctx, rlm_rest_xlat_rctx_t);
 	fr_curl_io_request_t		*randle = talloc_get_type_abort(our_rctx->handle, fr_curl_io_request_t);
 
-	rest_io_module_signal(MODULE_CTX(dl_module_instance_by_data(mod_inst), t, randle), request, action);
+	rest_io_module_signal(MODULE_CTX(dl_module_instance_by_data(mod_inst), t, xctx->mctx->env_data, randle),
+			      request, action);
 }

@@ -54,6 +54,8 @@ typedef struct {
 								///< shared between all threads, so we can't
 								///< cache thread-specific data in the #unlang_t.
 
+	void				*env_data;		//!< Expanded per call module environment tmpls.
+
 #ifndef NDEBUG
 	int				unlang_indent;		//!< Record what this was when we entered the module.
 #endif

@@ -142,7 +142,7 @@ static void mod_tacacs_signal(module_ctx_t const *mctx, request_t *request, fr_s
 	if (!io->signal) return;
 
 	io->signal(MODULE_CTX(inst->io_submodule->dl_inst,
-			      module_thread(inst->io_submodule)->data,
+			      module_thread(inst->io_submodule)->data, mctx->env_data,
 			      mctx->rctx), request, action);
 }
 
