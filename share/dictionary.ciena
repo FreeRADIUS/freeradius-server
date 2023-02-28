@@ -28,6 +28,8 @@ VALUE	Ciena-CES-Priv-Level		admin			2
 VALUE	Ciena-CES-Priv-Level		super-user		3
 VALUE	Ciena-CES-Priv-Level		diag			4
 
+ATTRIBUTE	Ciena-CES-NACM-Groups			11	string
+
 ATTRIBUTE	Ciena-BP-Role				220	string
 ATTRIBUTE	Ciena-NCS-Role				240	integer
 ATTRIBUTE	Ciena-OC-Role				250	string
