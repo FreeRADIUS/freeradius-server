@@ -418,6 +418,7 @@ bool module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_
  * and ensures the module implements the specified method.
  *
  * @param[out] method		the method function we will call
+ * @param[out] method_env	the module_call_env to evaluate when compiling the method.
  * @param[in,out] component	the default component to use.  Updated to be the found component
  * @param[out] name1		name1 of the method being called
  * @param[out] name2		name2 of the method being called
@@ -428,7 +429,8 @@ bool module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_
  *
  *  If the module exists but the method doesn't exist, then `method` is set to NULL.
  */
-module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED rlm_components_t *component,
+module_instance_t *module_rlm_by_name_and_method(module_method_t *method, module_method_env_t const **method_env,
+						 UNUSED rlm_components_t *component,
 						 char const **name1, char const **name2,
 						 char const *name)
 {
@@ -485,6 +487,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED
 			if (methods->name1 == CF_IDENT_ANY) {
 			found:
 				*method = methods->method;
+				if (method_env) *method_env = methods->method_env;
 				if (name1) *name1 = method_name1;
 				if (name2) *name2 = method_name2;
 				return mi;
@@ -685,6 +688,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED
 			*name1 = p;
 			*name2 = NULL;
 			*method = methods->method;
+			if (method_env) *method_env = methods->method_env;
 			break;
 		}
 
@@ -752,6 +756,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, UNUSED
 		*name1 = methods->name1;
 		*name2 = name + (q - inst_name);
 		*method = methods->method;
+		if (method_env) *method_env = methods->method_env;
 		break;
 	}
 
@@ -865,7 +870,7 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 			 *	want to know if we need to register a
 			 *	redundant xlat for the virtual module.
 			 */
-			mi = module_rlm_by_name_and_method(NULL, NULL, NULL, NULL, cf_pair_attr(cp));
+			mi = module_rlm_by_name_and_method(NULL, NULL, NULL, NULL, NULL, cf_pair_attr(cp));
 			if (!mi) {
 				cf_log_err(sub_ci, "Module instance \"%s\" referenced in %s block, does not exist",
 					   cf_pair_attr(cp), cf_section_name1(cs));

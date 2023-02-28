@@ -4786,6 +4786,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	bool			policy;
 	unlang_op_compile_t	compile;
 	unlang_t		*c;
+	module_method_env_t const	*method_env = NULL;
 
 	if (cf_item_is_section(ci)) {
 		cs = cf_item_to_section(ci);
@@ -4955,7 +4956,7 @@ check_for_module:
 	 *	name2, etc.
 	 */
 	UPDATE_CTX2;
-	inst = module_rlm_by_name_and_method(&method, &unlang_ctx2.component,
+	inst = module_rlm_by_name_and_method(&method, &method_env, &unlang_ctx2.component,
 					     &unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
 					     realname);
 	if (inst) {
