@@ -1334,8 +1334,8 @@ int fr_pair_insert_before(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_ad
  *
  * @note Memory used by the VP being replaced will be freed.
  *
- * @param[in,out] list		pair list containing #to_replace.
- * @param[in] to_replace	pair to replace and free
+ * @param[in,out] list		pair list
+ * @param[in] to_replace	pair to replace and free, on #list
  * @param[in] vp		New pair to insert.
  */
 void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
