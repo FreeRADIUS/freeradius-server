@@ -905,21 +905,21 @@ skip_auth:
 	/* Send the envelope address */
 	envelope_address = get_envelope_address(inst);
 	if (!envelope_address) {
-		RDEBUG2("The envelope address must be set");
+		REDEBUG("The envelope address must be set");
 		goto error;
 	}
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MAIL_FROM, get_envelope_address(inst));
 
 	/* Set the recipients */
        	if (recipients_source(t, mail_ctx, inst) <= 0) {
-		RDEBUG2("At least one recipient is required to send an email");
+		REDEBUG("At least one recipient is required to send an email");
 		goto error;
 	}
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MAIL_RCPT, mail_ctx->recipients);
 
 	/* Set the header elements */
        	if (header_source(t, mail_ctx, inst) != 0) {
-		RDEBUG2("The header slist could not be generated");
+		REDEBUG("The header slist could not be generated");
 		goto error;
 	}
 
@@ -932,7 +932,7 @@ skip_auth:
 
 	/* Initialize the body elements to be uploaded */
 	if (body_init(mail_ctx, mail_ctx->mime) == 0) {
-		RDEBUG2("The body could not be generated");
+		REDEBUG("The body could not be generated");
 		goto error;
 	}
 
