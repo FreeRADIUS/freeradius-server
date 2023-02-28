@@ -4808,7 +4808,7 @@ static size_t method_env_count(size_t *vallen, CONF_SECTION const *cs, module_en
 
 static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				CONF_ITEM *ci, module_instance_t *inst, module_method_t method,
-				char const *realname)
+				module_method_env_t const *method_env, char const *realname)
 {
 	module_rlm_t const *mrlm = module_rlm_from_module(inst->module);
 	unlang_t *c;
@@ -4853,6 +4853,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	MEM(single = talloc_zero(parent, unlang_module_t));
 	single->instance = inst;
 	single->method = method;
+	single->method_env = method_env;
 
 	c = unlang_module_to_generic(single);
 	c->parent = parent;
@@ -4874,15 +4875,38 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	compile_action_defaults(c, unlang_ctx);
 
 	/*
+	 *	Parse the method environment for this module / method
+	 */
+	if (method_env) {
+		size_t	count, vallen = 0;
+
+		/*
+		 *	Firstly assess how many parsed env there will be and create a talloc pool to hold them.
+		 *	The pool size is a rough estimate based on each tmpl also allocating at least two children,
+		 *	for which we allow twice the length of the value to be parsed.
+		 */
+		count = method_env_count(&vallen, inst->dl_inst->conf, method_env->env);
+		MEM(single->mod_env_ctx = talloc_zero_pooled_object(single, TALLOC_CTX *, count * 4,
+						(sizeof(module_env_parsed_t) + sizeof(tmpl_t)) * count + vallen * 2));
+
+		mod_env_parsed_init(&single->mod_env_parsed);
+		if (method_env_parse(single, unlang_ctx, inst->dl_inst->conf, method_env->env) < 0) {
+		error:
+			talloc_free(c);
+			return NULL;
+		}
+		fr_assert_msg(method_env->inst_size, "Method environment for module %s, method %s %s declared, "
+			      "but no inst_size set",
+			      inst->module->name, unlang_ctx->section_name1, unlang_ctx->section_name2);
+	};
+
+	/*
 	 *	If a module reference is a section, then the section
 	 *	should contain action over-rides.  We add those here.
 	 */
 	if (cf_item_is_section(ci) &&
 	    !unlang_compile_actions(&c->actions, cf_item_to_section(ci),
-				    (inst->module->type & MODULE_TYPE_RETRY) != 0)) {
-		    talloc_free(c);
-		    return NULL;
-	}
+				    (inst->module->type & MODULE_TYPE_RETRY) != 0)) goto error;
 
 	return c;
 }
@@ -5108,7 +5132,7 @@ check_for_module:
 					     &unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
 					     realname);
 	if (inst) {
-		c = compile_module(parent, &unlang_ctx2, ci, inst, method, realname);
+		c = compile_module(parent, &unlang_ctx2, ci, inst, method, method_env, realname);
 		goto allocate_number;
 	}
 

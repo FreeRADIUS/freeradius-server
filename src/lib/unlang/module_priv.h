@@ -36,6 +36,7 @@ typedef struct {
 	unlang_t			self;			//!< Common fields in all #unlang_t tree nodes.
 	module_instance_t		*instance;		//!< Global instance of the module we're calling.
 	module_method_t			method;			//!< The entry point into the module.
+	module_method_env_t const	*method_env;		//!< Module environment for this method.
 	mod_env_parsed_head_t		mod_env_parsed;		//!< The per call parsed module environment.
 	TALLOC_CTX			*mod_env_ctx;		//!< A talloc pooled object for parsed module env
 								///< to be allocated from.
