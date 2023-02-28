@@ -4657,6 +4657,116 @@ check_for_loop:
 	return subcs;
 }
 
+/** Parse per call module env
+ *
+ * Used for config options which must be parsed in the context in which
+ * the module is being called.
+ *
+ * @param[in] single		Module call being compiled.
+ * @param[in] unlang_ctx	Current compilation context.
+ * @param[in] cs		Module config.
+ * @param[in] module_env	to parse.
+ * @return
+ *	- 0 on success;
+ *	- <0 on failure;
+ */
+static int method_env_parse(unlang_module_t *single, unlang_compile_t *unlang_ctx, CONF_SECTION const *cs,
+			    module_env_t const *module_env) {
+	CONF_PAIR const		*cp, *next;
+	module_env_parsed_t	*module_env_parsed;
+	ssize_t			len, opt_count, multi_index;
+	char const		*value;
+	fr_token_t		quote;
+	fr_type_t		type;
+
+	while (module_env->name) {
+		if (FR_BASE_TYPE(module_env->type) == FR_TYPE_SUBSECTION) {
+			CONF_SECTION const *subcs;
+			subcs = cf_section_find(cs, module_env->name, module_env->section.ident2);
+			if (!subcs) goto next;
+
+			if (method_env_parse(single, unlang_ctx, subcs, module_env->section.subcs) < 0) return -1;
+			goto next;
+		}
+
+		cp = cf_pair_find(cs, module_env->name);
+
+		if (!cp && !module_env->dflt) {
+			if (!module_env->pair.required) goto next;
+
+			cf_log_err(cs, "Module %s missing required option %s", single->self.name, module_env->name);
+			return -1;
+		}
+
+		/*
+		 *	Check for additional conf pairs and error
+		 *	if there is one and multi is not allowed.
+		 */
+		if (!module_env->pair.multi && ((next = cf_pair_find_next(cs, cp, module_env->name)))) {
+			cf_log_err(cf_pair_to_item(next), "Invalid duplicate configuration item '%s'", module_env->name);
+			return -1;
+		}
+
+		opt_count = cf_pair_count(cs, module_env->name);
+		if (opt_count == 0) opt_count = 1;
+
+		for (multi_index = 0; multi_index < opt_count; multi_index ++) {
+			MEM(module_env_parsed = talloc_zero(single->mod_env_ctx, module_env_parsed_t));
+			module_env_parsed->rule = module_env;
+			module_env_parsed->opt_count = opt_count;
+			module_env_parsed->multi_index = multi_index;
+
+			if (cp) {
+				value = cf_pair_value(cp);
+				len = talloc_array_length(value) - 1;
+				quote = cf_pair_value_quote(cp);
+			} else {
+				value = module_env->dflt;
+				len = strlen(value);
+				quote = module_env->dflt_quote;
+			}
+
+			type = FR_BASE_TYPE(module_env->type);
+			if (tmpl_afrom_substr(module_env_parsed, &module_env_parsed->tmpl, &FR_SBUFF_IN(value, len),
+					      quote, NULL, &(tmpl_rules_t){
+							.cast = (type == FR_TYPE_VOID ? FR_TYPE_NULL : type),
+							.attr = {
+								.list_def = request_attr_request,
+								.dict_def = unlang_ctx->rules->attr.dict_def
+							}
+						}) < 0) {
+			error:
+				talloc_free(module_env_parsed);
+				cf_log_perr(cp, "Failed to parse '%s' for %s", cf_pair_value(cp), module_env->name);
+				return -1;
+			}
+
+			/*
+			 *	Ensure only valid TMPL types are produced.
+			 */
+			switch (module_env_parsed->tmpl->type) {
+			case TMPL_TYPE_ATTR:
+			case TMPL_TYPE_DATA:
+			case TMPL_TYPE_EXEC:
+			case TMPL_TYPE_XLAT:
+				break;
+
+			default:
+				cf_log_err(cp, "'%s' expands to invalid tmpl type %s", value,
+					   fr_table_str_by_value(tmpl_type_table, module_env_parsed->tmpl->type, "<INVALID>"));
+				goto error;
+			}
+
+			mod_env_parsed_insert_tail(&single->mod_env_parsed, module_env_parsed);
+
+			cp = cf_pair_find_next(cs, cp, module_env->name);
+		}
+	next:
+		module_env++;
+	}
+
+	return 0;
+}
 
 static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				CONF_ITEM *ci, module_instance_t *inst, module_method_t method,
