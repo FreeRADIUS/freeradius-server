@@ -23,6 +23,7 @@
  */
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/bfd/bfd.h>
 
 static fr_dict_t const *dict_bfd;
 
@@ -58,16 +59,6 @@ typedef struct {
 
 	process_bfd_sections_t	sections;
 } process_bfd_t;
-
-typedef enum {
-	FR_BFD_ADMIN_DOWN,
-	FR_BFD_DOWN,
-	FR_BFD_INIT,
-	FR_BFD_UP,
-} fr_bfd_packet_code_t;
-#define FR_BFD_CODE_MAX (4)
-
-#define FR_BFD_PACKET_CODE_VALID(_code) (_code < FR_BFD_CODE_MAX)
 
 #define PROCESS_PACKET_TYPE		fr_bfd_packet_code_t
 #define PROCESS_CODE_MAX		FR_BFD_CODE_MAX

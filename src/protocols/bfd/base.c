@@ -58,6 +58,12 @@ fr_dict_attr_autoload_t libfreeradius_bfd_dict_attr[] = {
 	{ NULL }
 };
 
+char const *fr_bfd_packet_names[FR_BFD_CODE_MAX] = {
+	"Admin-Down",
+	"Down",
+	"Init",
+	"Up",
+};
 
 int fr_bfd_init(void)
 {

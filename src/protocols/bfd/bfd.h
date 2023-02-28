@@ -140,6 +140,17 @@ typedef struct {
 
 #define FR_BFD_HEADER_LENGTH (24)
 
+typedef enum {
+	FR_BFD_ADMIN_DOWN,
+	FR_BFD_DOWN,
+	FR_BFD_INIT,
+	FR_BFD_UP,
+} fr_bfd_packet_code_t;
+#define FR_BFD_CODE_MAX (4)
+
+extern char const *fr_bfd_packet_names[FR_BFD_CODE_MAX];
+#define FR_BFD_PACKET_CODE_VALID(_code) (_code < FR_BFD_CODE_MAX)
+
 typedef struct {
 	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
 	char const		*secret;		//!< shared secret.  MUST be talloc'd
