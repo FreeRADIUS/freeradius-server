@@ -57,11 +57,13 @@ typedef struct {
 
 	uint16_t			port;			//!< Port to listen on.
 
+	uint8_t				ttl;			//!< default ttl
+
 	bool				recv_buff_is_set;	//!< Whether we were provided with a recv_buff
 	bool				send_buff_is_set;	//!< Whether we were provided with a send_buff
 	bool				dynamic_clients;	//!< whether we have dynamic clients
 
-	fr_client_list_t			*clients;		//!< local clients
+	fr_client_list_t		*clients;		//!< local clients
 
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
@@ -86,6 +88,8 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, proto_bfd_udp_t, port_name) },
 
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_bfd_udp_t, port) },
+
+	{ FR_CONF_OFFSET("ttl", FR_TYPE_UINT8, proto_bfd_udp_t, ttl), .dflt = "255" },
 
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_bfd_udp_t, recv_buff) },
 	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, proto_bfd_udp_t, send_buff) },
@@ -258,6 +262,17 @@ static int mod_open(fr_listen_t *li)
 	}
 #endif
 
+#ifdef IP_TTL
+	{
+		int opt;
+
+		opt = inst->ttl;
+		if (setsockopt(sockfd, IPPROTO_IP, IP_TTL, &opt, sizeof(opt)) < 0) {
+			WARN("Failed setting 'ttl': %s", fr_syserror(errno));
+		}
+	}
+#endif
+
 	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
 		close(sockfd);
 		PERROR("Failed binding socket");
@@ -329,6 +344,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		FR_INTEGER_BOUND_CHECK("send_buff", inst->send_buff, >=, 256);
 		FR_INTEGER_BOUND_CHECK("send_buff", inst->send_buff, <=, (1 << 30));
 	}
+
+	FR_INTEGER_BOUND_CHECK("ttl", inst->ttl, >=, 64);
 
 	if (!inst->port) {
 		struct servent *s;
