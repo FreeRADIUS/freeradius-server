@@ -6,5 +6,5 @@ endif
 
 SOURCES		:= base.c
 
-TGT_PREREQS	:= libfreeradius-util$(L)
+TGT_PREREQS	:= libfreeradius-bfd$(L)
 
