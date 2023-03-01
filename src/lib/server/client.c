@@ -447,9 +447,9 @@ static const CONF_PARSER client_config[] = {
 
 	{ FR_CONF_OFFSET("track_connections", FR_TYPE_BOOL, fr_client_t, use_connected) },
 
-	{ FR_CONF_OFFSET("require_message_authenticator", FR_TYPE_BOOL, fr_client_t, message_authenticator), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_message_authenticator", FR_TYPE_BOOL, fr_client_t, message_authenticator) },
 
-	{ FR_CONF_OFFSET("dedup_authenticator", FR_TYPE_BOOL, fr_client_t, dedup_authenticator), .dflt = "no" },
+	{ FR_CONF_OFFSET("dedup_authenticator", FR_TYPE_BOOL, fr_client_t, dedup_authenticator) },
 
 	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIME_DELTA, fr_client_t, response_window) },
 
