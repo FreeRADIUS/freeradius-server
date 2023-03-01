@@ -134,10 +134,6 @@ int		client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value
 
 fr_client_t	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs);
 
-fr_client_t	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
-				    char const *type, char const *server, bool require_ma)
-		CC_HINT(nonnull(2, 3));
-
 fr_client_t	*client_find(fr_client_list_t const *clients, fr_ipaddr_t const *ipaddr, int proto);
 
 fr_client_t	*client_findbynumber(fr_client_list_t const *clients, int number);
