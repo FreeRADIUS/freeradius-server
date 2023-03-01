@@ -449,7 +449,6 @@ static const CONF_PARSER client_config[] = {
 
 	{ FR_CONF_OFFSET("nas_type", FR_TYPE_STRING, fr_client_t, nas_type) },
 
-	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, fr_client_t, server) },
 	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIME_DELTA, fr_client_t, response_window) },
 
 	{ FR_CONF_OFFSET("track_connections", FR_TYPE_BOOL, fr_client_t, use_connected) },
