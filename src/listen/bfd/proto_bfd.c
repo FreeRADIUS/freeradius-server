@@ -50,12 +50,19 @@ fr_dict_autoload_t proto_bfd_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_bfd_packet;
+static fr_dict_attr_t const *attr_my_discriminator;
+static fr_dict_attr_t const *attr_your_discriminator;
 static fr_dict_attr_t const *attr_link_state;
 
 extern fr_dict_attr_autoload_t proto_bfd_dict_attr[];
 fr_dict_attr_autoload_t proto_bfd_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_bfd},
 	{ .out = &attr_link_state, .name = "Link-State", .type = FR_TYPE_UINT32, .dict = &dict_bfd},
+
+	{ .out = &attr_bfd_packet, .name = "Packet", .type = FR_TYPE_STRUCT, .dict = &dict_bfd},
+	{ .out = &attr_my_discriminator, .name = "Packet.my-discriminator", .type = FR_TYPE_UINT32, .dict = &dict_bfd},
+	{ .out = &attr_your_discriminator, .name = "Packet.your-discriminator", .type = FR_TYPE_UINT32, .dict = &dict_bfd},
 	{ NULL }
 };
 
@@ -120,6 +127,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
 	RADCLIENT const		*client;
+	fr_pair_t		*vp, *reply, *my, *your;
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -163,14 +171,31 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	REQUEST_VERIFY(request);
 
 	/*
+	 *	Initialize the reply.
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_bfd_packet);
+	if (!vp) return -1;
+
+	reply = fr_pair_copy(request->reply_ctx, vp);
+	fr_pair_append(&request->reply_pairs, reply);
+
+	my = fr_pair_find_by_da(&reply->vp_group, NULL, attr_my_discriminator);
+	your = fr_pair_find_by_da(&reply->vp_group, NULL, attr_your_discriminator);
+
+	if (my && your) {
+		uint32_t tmp = your->vp_uint32;
+
+		your->vp_uint32 = my->vp_uint32;
+		my->vp_uint32 = tmp;
+	}
+
+	/*
 	 *	If we're defining a dynamic client, this packet is
 	 *	fake.  We don't have a secret, so we mash all of the
 	 *	encrypted attributes to sane (i.e. non-hurtful)
 	 *	values.
 	 */
 	if (!client->active) {
-		fr_pair_t *vp;
-
 		fr_assert(client->dynamic);
 
 		for (vp = fr_pair_list_head(&request->request_pairs);
