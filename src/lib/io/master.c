@@ -2647,8 +2647,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		 */
 	}
 
-	if (inst->ipproto && !inst->app_io->connection_set) {
-		cf_log_err(inst->app_io_conf, "Cannot set TCP for proto_%s - internal set error", inst->app_io->common.name);
+	if ((inst->ipproto == IPPROTO_TCP) && !inst->app_io->connection_set) {
+		cf_log_err(inst->app_io_conf, "Missing 'connection set' API for proto_%s", inst->app_io->common.name);
 		return -1;
 	}
 
