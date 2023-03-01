@@ -246,7 +246,7 @@ static const CONF_PARSER config[] = {
 static char *auth_name(char *buf, size_t buflen, request_t *request)
 {
 	char const	*tls = "";
-	RADCLIENT	*client = client_from_request(request);
+	fr_client_t	*client = client_from_request(request);
 
 	if (request->packet->socket.inet.dst_port == 0) tls = " via proxy to virtual server";
 

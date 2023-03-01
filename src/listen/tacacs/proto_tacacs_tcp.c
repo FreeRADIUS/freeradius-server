@@ -63,7 +63,7 @@ typedef struct {
 	bool				recv_buff_is_set;	//!< Whether we were provided with a recv_buff
 	bool				dynamic_clients;	//!< whether we have dynamic clients
 
-	RADCLIENT_LIST			*clients;		//!< local clients
+	fr_client_list_t			*clients;		//!< local clients
 
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
@@ -449,7 +449,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
+static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
 	proto_tacacs_tcp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_tacacs_tcp_t);
 
@@ -457,7 +457,7 @@ static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, in
 	 *	Prefer local clients.
 	 */
 	if (inst->clients) {
-		RADCLIENT *client;
+		fr_client_t *client;
 
 		client = client_find(inst->clients, ipaddr, ipproto);
 		if (client) return client;

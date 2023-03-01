@@ -387,7 +387,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_opendirectory_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_opendirectory_t);
 	struct passwd			*userdata = NULL;
 	int				ismember = 0;
-	RADCLIENT			*client = NULL;
+	fr_client_t			*client = NULL;
 	uuid_t				uuid;
 	uuid_t				guid_sacl;
 	uuid_t				guid_nasgroup;

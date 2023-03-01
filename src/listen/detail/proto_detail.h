@@ -94,7 +94,7 @@ struct proto_detail_work_s {
 
 	fr_rb_node_t			filename_node;		//!< for dedup
 
-	RADCLIENT			*client;		//!< so the rest of the server doesn't complain
+	fr_client_t			*client;		//!< so the rest of the server doesn't complain
 };
 
 typedef struct proto_detail_work_thread_s proto_detail_work_thread_t;

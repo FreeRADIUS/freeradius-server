@@ -66,7 +66,7 @@ typedef struct {
 	bool				dynamic_clients;	//!< whether we have dynamic clients
 	bool				dedup_authenticator;	//!< dedup using the request authenticator
 
-	RADCLIENT_LIST			*clients;		//!< local clients
+	fr_client_list_t			*clients;		//!< local clients
 
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
@@ -375,13 +375,13 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED fr_client_t *client,
 			      fr_io_track_t *track, uint8_t const *packet, UNUSED size_t packet_len)
 {
 	return talloc_memdup(track, packet, RADIUS_HEADER_LENGTH);
 }
 
-static int mod_track_compare(void const *instance, UNUSED void *thread_instance, RADCLIENT *client,
+static int mod_track_compare(void const *instance, UNUSED void *thread_instance, fr_client_t *client,
 			     void const *one, void const *two)
 {
 	int ret;
@@ -510,10 +510,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
+static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
 	proto_radius_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_udp_t);
-	RADCLIENT		*client;
+	fr_client_t		*client;
 
 	/*
 	 *	Prefer local clients.

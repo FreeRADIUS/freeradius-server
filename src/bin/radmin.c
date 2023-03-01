@@ -781,7 +781,7 @@ static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd
 
 static int cmd_show_client(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
-	RADCLIENT *client;
+	fr_client_t *client;
 
 	if (info->argc >= 2) {
 		int proto;

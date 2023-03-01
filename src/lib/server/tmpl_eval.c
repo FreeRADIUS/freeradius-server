@@ -1105,7 +1105,7 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_li
 	 *	Some non-packet expansions
 	 */
 	if (tmpl_attr_tail_da(vpt) == attr_client_shortname) {
-		RADCLIENT *client = client_from_request(request);
+		fr_client_t *client = client_from_request(request);
 		if (!client || !client->shortname) return 0;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
@@ -1166,7 +1166,7 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_li
 		fr_value_box_memdup(ctx, value, tmpl_attr_tail_da(vpt), packet->vector, sizeof(packet->vector), true);
 
 	} else if (tmpl_attr_tail_da(vpt) == attr_client_ip_address) {
-		RADCLIENT *client = client_from_request(request);
+		fr_client_t *client = client_from_request(request);
 		if (client) {
 			MEM(value = fr_value_box_alloc_null(ctx));
 			fr_value_box_ipaddr(value, NULL, &client->ipaddr, false);	/* Enum might not match type */

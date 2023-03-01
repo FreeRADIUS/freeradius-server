@@ -57,7 +57,7 @@ typedef struct {
 	FILE				*misc;
 	fr_cmd_info_t			*info;			//!< for running commands
 
-	RADCLIENT			radclient;		//!< for faking out clients
+	fr_client_t			radclient;		//!< for faking out clients
 } proto_control_unix_thread_t;
 
 typedef struct {
@@ -1193,7 +1193,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
+static fr_client_t *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
 {
 	proto_control_unix_thread_t    	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 

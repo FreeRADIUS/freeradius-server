@@ -84,7 +84,7 @@ struct fr_io_client_s {
 	fr_io_client_state_t		state;		//!< state of this client
 	fr_ipaddr_t			src_ipaddr;	//!< packets come from this address
 	fr_ipaddr_t			network;	//!< network for dynamic clients
-	RADCLIENT			*radclient;	//!< old-style definition of this client
+	fr_client_t			*radclient;	//!< old-style definition of this client
 
 	int				packets;	//!< number of packets using this client
 	int				pending_id;	//!< for pending clients
@@ -352,13 +352,13 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_thread_t *thread)
 	return pending;
 }
 
-static RADCLIENT *radclient_clone(TALLOC_CTX *ctx, RADCLIENT const *parent)
+static fr_client_t *radclient_clone(TALLOC_CTX *ctx, fr_client_t const *parent)
 {
-	RADCLIENT *c;
+	fr_client_t *c;
 
 	if (!parent) return NULL;
 
-	c = talloc_zero(ctx, RADCLIENT);
+	c = talloc_zero(ctx, fr_client_t);
 	if (!c) return NULL;
 
 	/*
@@ -464,7 +464,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	fr_io_connection_t *connection;
 	dl_module_inst_t *dl_inst = NULL;
 	fr_listen_t *li;
-	RADCLIENT *radclient;
+	fr_client_t *radclient;
 
 	/*
 	 *	Reload the app_io module as a "new" library.  This
@@ -844,12 +844,12 @@ static void get_inst(fr_listen_t *li, fr_io_instance_t const **inst, fr_io_threa
 }
 
 
-static RADCLIENT *radclient_alloc(TALLOC_CTX *ctx, int ipproto, fr_io_address_t *address)
+static fr_client_t *radclient_alloc(TALLOC_CTX *ctx, int ipproto, fr_io_address_t *address)
 {
-	RADCLIENT	*radclient;
+	fr_client_t	*radclient;
 	char		*shortname;
 
-	MEM(radclient = talloc_zero(ctx, RADCLIENT));
+	MEM(radclient = talloc_zero(ctx, fr_client_t));
 
 	fr_value_box_aprint(radclient, &shortname, fr_box_ipaddr(address->socket.inet.src_ipaddr), NULL);
 	radclient->longname = radclient->shortname = shortname;
@@ -1377,7 +1377,7 @@ do_read:
 	 *	allowed, try to define a dynamic client.
 	 */
 	if (!client) {
-		RADCLIENT *radclient = NULL;
+		fr_client_t *radclient = NULL;
 		fr_io_client_state_t state;
 		fr_ipaddr_t const *network = NULL;
 
@@ -1446,7 +1446,7 @@ do_read:
 		/*
 		 *	Create our own local client.  This client
 		 *	holds our state which really shouldn't go into
-		 *	RADCLIENT.
+		 *	fr_client_t.
 		 *
 		 *	Note that we create a new top-level talloc
 		 *	context for this client, as there may be tens
@@ -2171,7 +2171,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	fr_io_connection_t *connection;
 	fr_io_track_t *track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	fr_io_client_t *client;
-	RADCLIENT *radclient;
+	fr_client_t *radclient;
 	fr_listen_t *child;
 	fr_event_list_t *el;
 

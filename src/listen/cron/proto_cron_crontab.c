@@ -75,7 +75,7 @@ struct proto_cron_tab_s {
 
 	cron_tab_t			tab[5];
 
-	RADCLIENT			*client;		//!< static client
+	fr_client_t			*client;		//!< static client
 };
 
 
@@ -459,7 +459,7 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
 	/*
 	 *	Set the rest of the fields.
 	 */
-	request->client = UNCONST(RADCLIENT *, address->radclient);
+	request->client = UNCONST(fr_client_t *, address->radclient);
 
 	request->packet->socket = address->socket;
 	fr_socket_addr_swap(&request->reply->socket, &address->socket);
@@ -704,7 +704,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
+static fr_client_t *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
 {
 	proto_cron_crontab_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_cron_crontab_t);
 
@@ -716,13 +716,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	proto_cron_crontab_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_cron_crontab_t);
 	CONF_SECTION		*conf = mctx->inst->data;
-	RADCLIENT		*client;
+	fr_client_t		*client;
 	fr_pair_t		*vp;
 	FILE			*fp;
 	bool			done = false;
 
 	fr_pair_list_init(&inst->pair_list);
-	inst->client = client = talloc_zero(inst, RADCLIENT);
+	inst->client = client = talloc_zero(inst, fr_client_t);
 	if (!inst->client) return 0;
 
 	client->ipaddr.af = AF_INET;

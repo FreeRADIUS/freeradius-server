@@ -99,10 +99,10 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
  */
 static void usage(main_config_t const *config, int status);
 
-static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name)
+static fr_client_t *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name)
 {
 	CONF_SECTION *cs;
-	RADCLIENT *client;
+	fr_client_t *client;
 
 	cs = cf_section_alloc(ctx, NULL, "client", name);
 	MEM(cf_pair_alloc(cs, "ipaddr", ip, T_OP_EQ, T_BARE_WORD, T_BARE_WORD));
@@ -124,7 +124,7 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 	return client;
 }
 
-static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client, CONF_SECTION *server_cs)
+static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *client, CONF_SECTION *server_cs)
 {
 	fr_pair_t	*vp;
 	request_t	*request;
@@ -561,7 +561,7 @@ int main(int argc, char *argv[])
 	fr_pair_list_t		filter_vps;
 	bool			xlat_only = false;
 	fr_event_list_t		*el = NULL;
-	RADCLIENT		*client = NULL;
+	fr_client_t		*client = NULL;
 	fr_dict_t		*dict = NULL;
 	fr_dict_t const		*dict_check;
 	char const 		*receipt_file = NULL;

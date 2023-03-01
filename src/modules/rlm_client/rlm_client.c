@@ -119,7 +119,7 @@ static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	map_t const		*map = NULL;
-	RADCLIENT		*client;
+	fr_client_t		*client;
 	client_get_vp_ctx_t	uctx;
 
 	if (!fr_value_box_list_empty(client_override)) {
@@ -236,7 +236,7 @@ static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char const	*value = NULL;
 	fr_ipaddr_t	ip;
 	CONF_PAIR	*cp;
-	RADCLIENT	*client = NULL;
+	fr_client_t	*client = NULL;
 	fr_value_box_t	*field = fr_value_box_list_head(in);
 	fr_value_box_t	*client_ip = fr_value_box_list_next(in, field);
 	fr_value_box_t	*vb;
@@ -292,7 +292,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	char const	*value;
 	CONF_PAIR	*cp;
 	char		buffer[2048];
-	RADCLIENT	*client;
+	fr_client_t	*client;
 
 	/*
 	 *	Ensure we're only being called from the main thread,

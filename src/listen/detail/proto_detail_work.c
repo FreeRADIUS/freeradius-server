@@ -817,9 +817,9 @@ static char const *mod_name(fr_listen_t *li)
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	proto_detail_work_t *inst = talloc_get_type_abort(mctx->inst->data, proto_detail_work_t);
-	RADCLIENT *client;
+	fr_client_t *client;
 
-	client = inst->client = talloc_zero(inst, RADCLIENT);
+	client = inst->client = talloc_zero(inst, fr_client_t);
 	if (!inst->client) return 0;
 
 	client->ipaddr.af = AF_INET;

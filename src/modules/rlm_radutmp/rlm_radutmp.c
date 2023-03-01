@@ -195,7 +195,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 
 	char			*filename = NULL;
 	char			*expanded = NULL;
-	RADCLIENT		*client;
+	fr_client_t		*client;
 
 	if (request->dict != dict_radius) RETURN_MODULE_NOOP;
 

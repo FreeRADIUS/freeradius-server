@@ -248,7 +248,7 @@ static char *auth_name(char *buf, size_t buflen, request_t *request)
 	fr_pair_t	*pair;
 	uint32_t	port = 0;	/* RFC 2865 NAS-Port is 4 bytes */
 	char const	*tls = "";
-	RADCLIENT	*client = client_from_request(request);
+	fr_client_t	*client = client_from_request(request);
 
 	cli = fr_pair_find_by_da(&request->request_pairs, NULL, attr_calling_station_id);
 

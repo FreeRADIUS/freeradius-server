@@ -30,8 +30,8 @@ RCSIDH(clients_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct rad_client RADCLIENT;
-typedef struct rad_client_list RADCLIENT_LIST;
+typedef struct fr_client_s fr_client_t;
+typedef struct fr_client_list_s fr_client_list_t;
 
 /** Callback for retrieving values when building client sections
  *
@@ -74,7 +74,7 @@ typedef int (*client_value_cb_t)(char **out, CONF_PAIR const *cp, void *data);
 /** Describes a host allowed to send packets to the server
  *
  */
-struct rad_client {
+struct fr_client_s {
 	fr_rb_node_t		node;			//!< Entry in the client tree.
 
 	fr_ipaddr_t		ipaddr;			//!< IPv4/IPv6 address of the host.
@@ -116,35 +116,35 @@ struct rad_client {
 	fr_socket_limit_t	limit;			//!< Connections per client (TCP clients only).
 };
 
-RADCLIENT_LIST	*client_list_init(CONF_SECTION *cs);
+fr_client_list_t	*client_list_init(CONF_SECTION *cs);
 
 void		client_list_free(void);
 
-RADCLIENT_LIST	*client_list_parse_section(CONF_SECTION *section, int proto, bool tls_required);
+fr_client_list_t	*client_list_parse_section(CONF_SECTION *section, int proto, bool tls_required);
 
-void		client_free(RADCLIENT *client);
+void		client_free(fr_client_t *client);
 
-bool		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
+bool		client_add(fr_client_list_t *clients, fr_client_t *client);
 
-void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
+void		client_delete(fr_client_list_t *clients, fr_client_t *client);
 
-RADCLIENT	*client_afrom_request(TALLOC_CTX *ctx, request_t *request);
+fr_client_t	*client_afrom_request(TALLOC_CTX *ctx, request_t *request);
 
 int		client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_cb_t func, void *data);
 
-RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs);
+fr_client_t	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs);
 
-RADCLIENT	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
+fr_client_t	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
 				    char const *type, char const *server, bool require_ma)
 		CC_HINT(nonnull(2, 3));
 
-RADCLIENT	*client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto);
+fr_client_t	*client_find(fr_client_list_t const *clients, fr_ipaddr_t const *ipaddr, int proto);
 
-RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients, int number);
+fr_client_t	*client_findbynumber(fr_client_list_t const *clients, int number);
 
-RADCLIENT	*client_read(char const *filename, CONF_SECTION *server_cs, bool check_dns);
+fr_client_t	*client_read(char const *filename, CONF_SECTION *server_cs, bool check_dns);
 
-RADCLIENT	*client_from_request(request_t *request);
+fr_client_t	*client_from_request(request_t *request);
 #ifdef __cplusplus
 }
 #endif

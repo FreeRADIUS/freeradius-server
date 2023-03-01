@@ -49,7 +49,7 @@ RCSID("$Id$")
 /** Group of clients
  *
  */
-struct rad_client_list {
+struct fr_client_list_s {
 	char const	*name;			//!< Name of the client list.
 #ifdef WITH_TRIE
 	fr_trie_t	*v4_udp;
@@ -61,14 +61,14 @@ struct rad_client_list {
 #endif
 };
 
-static RADCLIENT_LIST	*root_clients = NULL;	//!< Global client list.
+static fr_client_list_t	*root_clients = NULL;	//!< Global client list.
 
 #ifndef WITH_TRIE
 static int8_t client_cmp(void const *one, void const *two)
 {
 	int ret;
-	RADCLIENT const *a = one;
-	RADCLIENT const *b = two;
+	fr_client_t const *a = one;
+	fr_client_t const *b = two;
 
 	ret = fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
 	if (ret != 0) return ret;
@@ -90,9 +90,9 @@ void client_list_free(void)
 
 /** Free a client
  *
- *  It's up to the caller to ensure that it's deleted from any RADCLIENT_LIST.
+ *  It's up to the caller to ensure that it's deleted from any fr_client_list_t.
  */
-void client_free(RADCLIENT *client)
+void client_free(fr_client_t *client)
 {
 	if (!client) return;
 
@@ -107,9 +107,9 @@ void client_free(RADCLIENT *client)
  *	- New client list on success.
  *	- NULL on error (OOM).
  */
-RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
+fr_client_list_t *client_list_init(CONF_SECTION *cs)
 {
-	RADCLIENT_LIST *clients = talloc_zero(cs, RADCLIENT_LIST);
+	fr_client_list_t *clients = talloc_zero(cs, fr_client_list_t);
 
 	if (!clients) return NULL;
 
@@ -153,10 +153,10 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
  *	instead do post-processing?  Though those two clients can have
  *	different secrets... and the trie code doesn't allow 2
  *	fr_trie_user_t nodes in a row.  So we would have to instead
- *	handle that ourselves, with a wrapper around the RADCLIENT
+ *	handle that ourselves, with a wrapper around the fr_client_t
  *	structure that does udp/tcp/wildcard demultiplexing
  */
-static fr_trie_t *clients_trie(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
+static fr_trie_t *clients_trie(fr_client_list_t const *clients, fr_ipaddr_t const *ipaddr,
 			       int proto)
 {
 	if (ipaddr->af == AF_INET) {
@@ -173,7 +173,7 @@ static fr_trie_t *clients_trie(RADCLIENT_LIST const *clients, fr_ipaddr_t const 
 }
 #endif	/* WITH_TRIE */
 
-/** Add a client to a RADCLIENT_LIST
+/** Add a client to a fr_client_list_t
  *
  * @param clients list to add client to, may be NULL if global client list is being used.
  * @param client to add.
@@ -181,13 +181,13 @@ static fr_trie_t *clients_trie(RADCLIENT_LIST const *clients, fr_ipaddr_t const 
  *	- true on success.
  *	- false on failure.
  */
-bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
+bool client_add(fr_client_list_t *clients, fr_client_t *client)
 {
 #ifdef WITH_TRIE
 	fr_trie_t *trie;
 #else
 #endif
-	RADCLIENT *old;
+	fr_client_t *old;
 	char buffer[FR_IPADDR_PREFIX_STRLEN];
 
 	if (!client) return false;
@@ -247,7 +247,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			 *	If the client list already exists, use that.
 			 *	Otherwise, create a new client list.
 			 */
-			clients = cf_data_value(cf_data_find(cs, RADCLIENT_LIST, NULL));
+			clients = cf_data_value(cf_data_find(cs, fr_client_list_t, NULL));
 			if (!clients) {
 				clients = client_list_init(cs);
 				if (!clients) {
@@ -288,7 +288,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 #else  /* WITH_TRIE */
 
 	if (!clients->tree[client->ipaddr.prefix]) {
-		clients->tree[client->ipaddr.prefix] = fr_rb_inline_talloc_alloc(clients, RADCLIENT, node, client_cmp,
+		clients->tree[client->ipaddr.prefix] = fr_rb_inline_talloc_alloc(clients, fr_client_t, node, client_cmp,
 										 NULL);
 		if (!clients->tree[client->ipaddr.prefix]) {
 			return false;
@@ -341,7 +341,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 }
 
 
-void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
+void client_delete(fr_client_list_t *clients, fr_client_t *client)
 {
 #ifdef WITH_TRIE
 	fr_trie_t *trie;
@@ -368,22 +368,22 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 #endif
 }
 
-RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int number)
+fr_client_t *client_findbynumber(UNUSED const fr_client_list_t *clients, UNUSED int number)
 {
 	return NULL;
 }
 
 
 /*
- *	Find a client in the RADCLIENTS list.
+ *	Find a client in the fr_client_tS list.
  */
-RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto)
+fr_client_t *client_find(fr_client_list_t const *clients, fr_ipaddr_t const *ipaddr, int proto)
 {
 #ifdef WITH_TRIE
 	fr_trie_t *trie;
 #else
 	int i, max;
-	RADCLIENT my_client, *client;
+	fr_client_t my_client, *client;
 #endif
 
 	if (!clients) clients = root_clients;
@@ -425,11 +425,11 @@ static char const *cl_srcipaddr = NULL;
 static char const *hs_proto = NULL;
 
 static CONF_PARSER limit_config[] = {
-	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, RADCLIENT, limit.max_connections), .dflt = "16" },
+	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, fr_client_t, limit.max_connections), .dflt = "16" },
 
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_TIME_DELTA, RADCLIENT, limit.lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_TIME_DELTA, fr_client_t, limit.lifetime), .dflt = "0" },
 
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, RADCLIENT, limit.idle_timeout), .dflt = "30s" },
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, fr_client_t, limit.idle_timeout), .dflt = "30s" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -440,19 +440,19 @@ static const CONF_PARSER client_config[] = {
 
 	{ FR_CONF_POINTER("src_ipaddr", FR_TYPE_STRING, &cl_srcipaddr) },
 
-	{ FR_CONF_OFFSET("require_message_authenticator", FR_TYPE_BOOL, RADCLIENT, message_authenticator), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_message_authenticator", FR_TYPE_BOOL, fr_client_t, message_authenticator), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("dedup_authenticator", FR_TYPE_BOOL, RADCLIENT, dedup_authenticator), .dflt = "no" },
+	{ FR_CONF_OFFSET("dedup_authenticator", FR_TYPE_BOOL, fr_client_t, dedup_authenticator), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("secret", FR_TYPE_STRING | FR_TYPE_SECRET, RADCLIENT, secret) },
-	{ FR_CONF_OFFSET("shortname", FR_TYPE_STRING, RADCLIENT, shortname) },
+	{ FR_CONF_OFFSET("secret", FR_TYPE_STRING | FR_TYPE_SECRET, fr_client_t, secret) },
+	{ FR_CONF_OFFSET("shortname", FR_TYPE_STRING, fr_client_t, shortname) },
 
-	{ FR_CONF_OFFSET("nas_type", FR_TYPE_STRING, RADCLIENT, nas_type) },
+	{ FR_CONF_OFFSET("nas_type", FR_TYPE_STRING, fr_client_t, nas_type) },
 
-	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, RADCLIENT, server) },
-	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIME_DELTA, RADCLIENT, response_window) },
+	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, fr_client_t, server) },
+	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIME_DELTA, fr_client_t, response_window) },
 
-	{ FR_CONF_OFFSET("track_connections", FR_TYPE_BOOL, RADCLIENT, use_connected) },
+	{ FR_CONF_OFFSET("track_connections", FR_TYPE_BOOL, fr_client_t, use_connected) },
 
 	{ FR_CONF_POINTER("proto", FR_TYPE_STRING, &hs_proto) },
 	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
@@ -470,19 +470,19 @@ static const CONF_PARSER client_config[] = {
 #define TLS_UNUSED UNUSED
 #endif
 
-RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, int proto, TLS_UNUSED bool tls_required)
+fr_client_list_t *client_list_parse_section(CONF_SECTION *section, int proto, TLS_UNUSED bool tls_required)
 {
 	bool		global = false;
 	CONF_SECTION	*cs = NULL;
-	RADCLIENT	*c = NULL;
-	RADCLIENT_LIST	*clients = NULL;
+	fr_client_t	*c = NULL;
+	fr_client_list_t	*clients = NULL;
 	CONF_SECTION	*server_cs = NULL;
 
 	/*
 	 *	Be forgiving.  If there's already a clients, return
 	 *	it.  Otherwise create a new one.
 	 */
-	clients = cf_data_value(cf_data_find(section, RADCLIENT_LIST, NULL));
+	clients = cf_data_value(cf_data_find(section, fr_client_list_t, NULL));
 	if (clients) return clients;
 
 	/*
@@ -696,11 +696,11 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
  * @param ctx to allocate new clients in.
  * @param cs to process as a client.
  * @param server_cs The virtual server that this client belongs to.
- * @return new RADCLIENT struct.
+ * @return new fr_client_t struct.
  */
-RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs)
+fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs)
 {
-	RADCLIENT	*c;
+	fr_client_t	*c;
 	char const	*name2;
 	CONF_PAIR	*cp;
 
@@ -713,7 +713,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 	/*
 	 *	The size is fine.. Let's create the buffer
 	 */
-	c = talloc_zero(ctx, RADCLIENT);
+	c = talloc_zero(ctx, fr_client_t);
 	c->cs = cs;
 
 	memset(&cl_ipaddr, 0, sizeof(cl_ipaddr));
@@ -910,13 +910,13 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
  *	- New client.
  *	- NULL on error.
  */
-RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret,
+fr_client_t *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret,
 			      char const *shortname, char const *type, char const *server, bool require_ma)
 {
-	RADCLIENT *c;
+	fr_client_t *c;
 	char buffer[128];
 
-	c = talloc_zero(ctx, RADCLIENT);
+	c = talloc_zero(ctx, fr_client_t);
 
 	if (fr_inet_pton(&c->ipaddr, identifier, -1, AF_UNSPEC, true, true) < 0) {
 		PERROR("Failed parsing client IP");
@@ -948,12 +948,12 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
  *	- New client on success.
  *	- NULL on error.
  */
-RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
+fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 {
 	static int	cnt;
 	CONF_SECTION	*cs;
 	char		src_buf[128], buffer[256];
-	RADCLIENT	*c;
+	fr_client_t	*c;
 
 	if (!request) return NULL;
 
@@ -1059,10 +1059,10 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
  *	- The new client on success.
  *	- NULL on failure.
  */
-RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check_dns)
+fr_client_t *client_read(char const *filename, CONF_SECTION *server_cs, bool check_dns)
 {
 	char const	*p;
-	RADCLIENT	*c;
+	fr_client_t	*c;
 	CONF_SECTION	*cs;
 	char buffer[256];
 
@@ -1111,9 +1111,9 @@ RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check
 /** Search up a list of requests trying to locate one which has a client
  *
  */
-RADCLIENT *client_from_request(request_t *request)
+fr_client_t *client_from_request(request_t *request)
 {
-	RADCLIENT *client;
+	fr_client_t *client;
 	request_t *parent = request;
 
 	do {

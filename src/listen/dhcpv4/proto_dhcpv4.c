@@ -195,7 +195,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const *address = track->address;
-	RADCLIENT const *client;
+	fr_client_t const *client;
 	fr_radius_packet_t *packet = request->packet;
 
 	/*
@@ -233,7 +233,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	/*
 	 *	Set the rest of the fields.
 	 */
-	request->client = UNCONST(RADCLIENT *, client);
+	request->client = UNCONST(fr_client_t *, client);
 
 	request->packet->socket = address->socket;
 	fr_socket_addr_swap(&request->reply->socket, &address->socket);
@@ -256,7 +256,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	dhcp_packet_t *reply = (dhcp_packet_t *) buffer;
 	dhcp_packet_t *original = (dhcp_packet_t *) request->packet->data;
 	ssize_t data_len;
-	RADCLIENT const *client;
+	fr_client_t const *client;
 
 	/*
 	 *	process layer NAK, or "Do not respond".  We also never
@@ -277,7 +277,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	 *	Dynamic client stuff
 	 */
 	if (client->dynamic && !client->active) {
-		RADCLIENT *new_client;
+		fr_client_t *new_client;
 
 		fr_assert(buffer_len >= sizeof(client));
 

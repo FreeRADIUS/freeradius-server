@@ -68,8 +68,8 @@ typedef struct {
 								//!< buffer value.
 	bool				dynamic_clients;	//!< whether we have dynamic clients
 
-	RADCLIENT_LIST			*clients;		//!< local clients
-	RADCLIENT			*default_client;	//!< default 0/0 client
+	fr_client_list_t			*clients;		//!< local clients
+	fr_client_t			*default_client;	//!< default 0/0 client
 
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
@@ -588,7 +588,7 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 }
 
 
-static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED fr_client_t *client,
 			      fr_io_track_t *track, uint8_t const *packet, size_t packet_len)
 {
 	proto_dhcpv4_track_t *t;
@@ -627,7 +627,7 @@ static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_i
 	return t;
 }
 
-static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED fr_client_t *client,
 			     void const *one, void const *two)
 {
 	int ret;
@@ -671,7 +671,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	size_t			num;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server_cs;
-	RADCLIENT		*client;
+	fr_client_t		*client;
 
 	inst->cs = conf;
 
@@ -782,7 +782,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Create a fake client.
 	 */
-	client = inst->default_client = talloc_zero(inst, RADCLIENT);
+	client = inst->default_client = talloc_zero(inst, fr_client_t);
 	if (!inst->default_client) return 0;
 
 	client->ipaddr.af = AF_INET;
@@ -795,7 +795,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
+static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
 	proto_dhcpv4_udp_t const *inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv4_udp_t);
 
@@ -803,7 +803,7 @@ static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, in
 	 *	Prefer local clients.
 	 */
 	if (inst->clients) {
-		RADCLIENT *client;
+		fr_client_t *client;
 
 		client = client_find(inst->clients, ipaddr, ipproto);
 		if (client) return client;

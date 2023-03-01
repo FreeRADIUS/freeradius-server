@@ -349,7 +349,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 #endif
 	uint32_t		nas_port = 0;
 	bool			port_seen = true;
-	RADCLIENT		*client;
+	fr_client_t		*client;
 
 	/*
 	 *	No radwtmp.  Don't do anything.

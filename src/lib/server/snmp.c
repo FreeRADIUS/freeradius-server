@@ -188,7 +188,7 @@ static int snmp_client_index(UNUSED TALLOC_CTX *ctx, void **snmp_ctx_out,
 			     UNUSED fr_snmp_map_t const *map,
 			     NDEBUG_UNUSED void const *snmp_ctx_in, uint32_t index_num)
 {
-	RADCLIENT *client;
+	fr_client_t *client;
 
 	fr_assert(!snmp_ctx_in);
 
@@ -203,7 +203,7 @@ static int snmp_client_index(UNUSED TALLOC_CTX *ctx, void **snmp_ctx_out,
 static int snmp_client_index_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 				 UNUSED fr_snmp_map_t const *map, void *snmp_ctx)
 {
-	RADCLIENT *client = snmp_ctx;
+	fr_client_t *client = snmp_ctx;
 
 	fr_assert(client);
 
@@ -215,7 +215,7 @@ static int snmp_client_index_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 static int snmp_client_ipv4addr_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 				    NDEBUG_UNUSED fr_snmp_map_t const *map, void *snmp_ctx)
 {
-	RADCLIENT *client = snmp_ctx;
+	fr_client_t *client = snmp_ctx;
 
 	fr_assert(client);
 	fr_assert(map->da->type == FR_TYPE_IPV4_ADDR);
@@ -236,7 +236,7 @@ static int snmp_client_ipv4addr_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 static int snmp_client_id_get(TALLOC_CTX *ctx, fr_value_box_t *out,
 			      NDEBUG_UNUSED fr_snmp_map_t const *map, void *snmp_ctx)
 {
-	RADCLIENT *client = snmp_ctx;
+	fr_client_t *client = snmp_ctx;
 
 	fr_assert(client);
 	fr_assert(map->da->type == FR_TYPE_STRING);
@@ -249,7 +249,7 @@ static int snmp_client_id_get(TALLOC_CTX *ctx, fr_value_box_t *out,
 static int snmp_auth_client_stats_offset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 				  	     fr_snmp_map_t const *map, void *snmp_ctx)
 {
-	RADCLIENT *client = snmp_ctx;
+	fr_client_t *client = snmp_ctx;
 
 	fr_assert(client);
 	fr_assert(map->da->type == FR_TYPE_UINT32);

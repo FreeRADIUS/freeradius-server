@@ -716,7 +716,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	json_object *json, *j_value;                                /* json object holders */
 	json_object *jrows = NULL;                               /* json object to hold view rows */
 	CONF_SECTION *client;                                    /* freeradius config list */
-	RADCLIENT *c;                                            /* freeradius client */
+	fr_client_t *c;                                            /* freeradius client */
 
 	/* get handle */
 	handle = fr_pool_connection_get(inst->pool, NULL);

@@ -35,8 +35,7 @@ extern "C" {
 typedef struct fr_async_s fr_async_t;
 typedef struct request_s request_t;
 
-typedef struct rad_listen rad_listen_t;
-typedef struct rad_client RADCLIENT;
+typedef struct fr_client_s fr_client_t;
 
 #ifdef __cplusplus
 }
@@ -214,7 +213,7 @@ struct request_s {
 	fr_radius_packet_t	*packet;	//!< Incoming request.
 	fr_radius_packet_t	*reply;		//!< Outgoing response.
 
-	RADCLIENT		*client;	//!< The client that originally sent us the request.
+	fr_client_t		*client;	//!< The client that originally sent us the request.
 
 	request_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
 						//!< working with the request, to do something.

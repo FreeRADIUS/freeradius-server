@@ -126,7 +126,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	proto_bfd_t const	*inst = talloc_get_type_abort_const(instance, proto_bfd_t);
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
-	RADCLIENT const		*client;
+	fr_client_t const		*client;
 	fr_pair_t		*vp, *reply, *my, *your;
 
 	/*
@@ -163,7 +163,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	/*
 	 *	Set the rest of the fields.
 	 */
-	request->client = UNCONST(RADCLIENT *, client);
+	request->client = UNCONST(fr_client_t *, client);
 
 	request->packet->socket = address->socket;
 	fr_socket_addr_swap(&request->reply->socket, &address->socket);
@@ -240,7 +240,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
 	ssize_t			data_len;
-	RADCLIENT const		*client;
+	fr_client_t const		*client;
 
 	/*
 	 *	Process layer NAK, or "Do not respond".
@@ -256,7 +256,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	 *	Dynamic client stuff
 	 */
 	if (client->dynamic && !client->active) {
-		RADCLIENT *new_client;
+		fr_client_t *new_client;
 
 		fr_assert(buffer_len >= sizeof(client));
 

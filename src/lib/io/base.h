@@ -273,7 +273,7 @@ typedef struct fr_io_track_s fr_io_track_t; /* in master.h */
  *	- NULL on error
  *	- !NULL the packet tracking structure
  */
-typedef void *(*fr_io_track_create_t)(void const *instance, void *thread_instance, RADCLIENT *client, fr_io_track_t *track, uint8_t const *packet, size_t packet_len);
+typedef void *(*fr_io_track_create_t)(void const *instance, void *thread_instance, fr_client_t *client, fr_io_track_t *track, uint8_t const *packet, size_t packet_len);
 
 /** Compare two tracking structures for storing in a duplicate detection tree.
  *
@@ -301,7 +301,7 @@ typedef void *(*fr_io_track_create_t)(void const *instance, void *thread_instanc
  *	- >0 on packet two "larger" than packet one
  *	- =0 on the two packets being identical
  */
-typedef int (*fr_io_track_cmp_t)(void const *instance, void *thread_instance, RADCLIENT *client, void const *one, void const *two);
+typedef int (*fr_io_track_cmp_t)(void const *instance, void *thread_instance, fr_client_t *client, void const *one, void const *two);
 
 /**  Handle an error on the socket.
  *
@@ -337,14 +337,14 @@ typedef int (*fr_io_close_t)(fr_listen_t *li);
 typedef struct {
 	fr_socket_t		socket;		//!< src/dst ip and port.
 
-	RADCLIENT const		*radclient;	//!< old-style client definition
+	fr_client_t const		*radclient;	//!< old-style client definition
 } fr_io_address_t;
 
 typedef int (*fr_io_connection_set_t)(fr_listen_t *li, fr_io_address_t *connection);
 
-typedef struct rad_client RADCLIENT;
+typedef struct fr_client_s fr_client_t;
 
-typedef RADCLIENT *(*fr_io_client_find_t)(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto);
+typedef fr_client_t *(*fr_io_client_find_t)(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto);
 
 typedef void (*fr_io_network_get_t)(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie);
 
