@@ -37,8 +37,21 @@ git checkout v4.0.x
 @endcode
 - Web: http://github.com/FreeRADIUS/freeradius-server/tree/v4.0.x
 
+@subsection branch_32x 3.2.x stable + feature branch
+
+@code
+git clone git@github.com:FreeRADIUS/freeradius-server.git
+cd freeradius-server
+git fetch origin v3.2.x:v3.2.x
+git checkout v3.2.x
+@endcode
+- Web: http://github.com/FreeRADIUS/freeradius-server/tree/v3.2.x
+
 @subsection branch_30x 3.0.x stable branch
 
+@note This branch is now permanently feature frozen. Only security
+      fixes will be applied to it.  New features or modules should be
+      submitted against the v3.2.x branch, or the v4.0.x branch.
 @code
 git clone git@github.com:FreeRADIUS/freeradius-server.git
 cd freeradius-server
@@ -49,9 +62,8 @@ git checkout v3.0.x
 
 @subsection branch_2xx 2.x.x EOL branch
 
-@note This branch is now permanently feature frozen. Only security
-      fixes will be applied to it.  New features or modules should be
-      submitted against the v4.0.x branch.
+@note This branch is now permanently end of life. No bug fixes or
+      security fixes will be performed for this branch.
 
 @code
 git clone git@github.com:FreeRADIUS/freeradius-server.git
@@ -64,8 +76,7 @@ git checkout v2.x.x
 @subsection branch_1xx 1.1.x EOL branch
 
 @note This branch is now permanently end of life. No bug fixes or
-      security fixes will be performed for this branch.  New features
-      or modules should be submitted against the v4.0.x branch.
+      security fixes will be performed for this branch.
 
 @code
 git clone git@github.com:FreeRADIUS/freeradius-server.git
