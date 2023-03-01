@@ -1,6 +1,6 @@
 # Current sbuff failings
 
-# The major issues with the current sbuffs are
+## The major issues with the current sbuffs are
 
 - Markers need to be released before the function they're created in returns.  This means we often create temporary `fr_sbuff_t` on the stack which is inefficient.
 - Using pointers often results in abuse, i.e. people storing pointers pointing into the underlying char buffer.
@@ -10,8 +10,8 @@
 - Last matched token isn't stored anywhere, so the caller of a parsing function needs to check the current position of an sbuff against its tokens.
 - Returning negative offsets to indicate error positions dosn't work when there are transform functions in the sbuff chain.
 
-# Fixes
-## Marker release
+## Fixes
+### Marker release
 
 Current sbuffs require markers to be tracked because the marker's pointer needs to be updated is the sbuff is shifted,
 
@@ -25,7 +25,7 @@ typedef struct {
 } sbuff_marker_t;
 ----
 
-## Pointer abuse
+### Pointer abuse
 
 In almost every instance a "legacy" C function that's operating on a standard C buffer takes a `buffer` and a `length`.
 
@@ -41,7 +41,7 @@ result in a syntax error.
 Standard copy functions could copy data from one "parsing" sbuff to a "printing" sbuff which wrapped a buffer on the stack.
 Printing sbuffs could also be setup to do standard escaping for \0, making the string "c safe".
 
-## Overzealous pinning
+### Overzealous pinning
 
 The key to fixing the pinning problem is to allow backtracking.
 
@@ -160,7 +160,7 @@ One concern is a `parent_start` offset falling in the middle of an atom in the p
 transform function is broken.  i.e. if a transform function provides the `\` from `\t` in its output buffer, then the transform
 function must be rewritten. The output buffer of a transform sbuff must contain only complete, transformed, atoms.
 
-## Shifting data out of sbuffs is expensive
+### Shifting data out of sbuffs is expensive
 
 The reason why it's expensive is because the entire sbuff chain needs to have its pointers updated.  If every sbuff maintains
 positions using offsets, only the start and end offsets need to be changed.  This gives a real advantage to using markers,
@@ -169,7 +169,7 @@ as they will never need to be updated during shifts.  marker's offsets remain re
 
 If `sbuff->offset < sbuff->start`, this event would trigger a backtrack.
 
-## Pasing terminal sequences and escape rules into functions is awful
+### Pasing terminal sequences and escape rules into functions is awful
 
 Text transformation must be transparent to the parsing function, anything else will not function correctly, or will add
 horendous complexity.
@@ -213,7 +213,7 @@ Here `tmpl_afrom_substr` would be completely unaware it was processing a double 
 (we need to do that so it can find xlats).  All unescaping and terminal sequence location is done transparently, and
 `tmpl_afrom_substr` only sees the unescaped byte stream.
 
-## Negative offsets don't work when transform sbuffs are used
+### Negative offsets don't work when transform sbuffs are used
 
 One key realisation is that returning negative offsets up the call stack will not work when the offsets don't map 1:1
 between parent and child.

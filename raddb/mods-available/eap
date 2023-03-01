@@ -188,6 +188,7 @@ eap {
 	#  ====
 	#  As of 4.0 the following TLS config items/config sections have been
 	#  removed.  Equivalent functionality is available.
+	#  ====
 	#
 	#  [options="header,autowidth"]
 	#  |===
