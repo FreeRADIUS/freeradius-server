@@ -115,8 +115,45 @@ static ssize_t fr_bfd_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	packet = (bfd_packet_t const *) data;
 
 	if (packet->length > data_len) {
-		fr_strerror_const("Packet.lenth is larger than received data");
+		fr_strerror_const("Packet.length is larger than received data");
 		return -1;
+	}
+
+	if (packet->length < FR_BFD_HEADER_LENGTH) {
+		fr_strerror_const("Packet.length is smaller then BFD header size");
+		return -1;
+	}
+
+	if (packet->version != 1) {
+		fr_strerror_const("Packet.version has invalid value");
+		return -1;
+	}
+
+	if (packet->detect_multi == 0) {
+		fr_strerror_const("Packet.detect-multi has invalid value zero");
+		return -1;
+	}
+
+	if (packet->detect_multi == 0) {
+		fr_strerror_const("Packet.detect-multi has invalid value zero");
+		return -1;
+	}
+
+	if (packet->multipoint != 0) {
+		fr_strerror_const("Packet.multipoint has invalid non-zero value");
+		return -1;
+	}
+
+	if (packet->my_disc == 0) {
+		fr_strerror_const("Packet.my-discriminator has invalid value zero");
+		return -1;
+	}
+
+	if ((packet->your_disc == 0) &&
+	    !((packet->state == BFD_STATE_DOWN) ||
+	      (packet->state == BFD_STATE_ADMIN_DOWN))) {
+		fr_strerror_const("Packet has invalid values for your-discriminator and state");
+		return 0;
 	}
 
 	/*
