@@ -886,6 +886,7 @@ fi
 %{_libdir}/freeradius/proto_arp.so
 %{_libdir}/freeradius/proto_arp_ethernet.so
 %{_libdir}/freeradius/proto_bfd.so
+%{_libdir}/freeradius/proto_bfd_udp.so
 %{_libdir}/freeradius/proto_control.so
 %{_libdir}/freeradius/proto_control_unix.so
 %{_libdir}/freeradius/proto_cron.so
