@@ -911,6 +911,7 @@ fi
 
 # Support libraries without external deps
 %{_libdir}/freeradius/libfreeradius-arp.so
+%{_libdir}/freeradius/libfreeradius-bfd.so
 %{_libdir}/freeradius/libfreeradius-control.so
 %{_libdir}/freeradius/libfreeradius-dhcpv4.so
 %{_libdir}/freeradius/libfreeradius-dhcpv6.so
