@@ -34,5 +34,14 @@ typedef struct {
 
 	uint32_t			max_packet_size;		//!< for message ring buffer.
 	uint32_t			num_messages;			//!< for message ring buffer.
+
+	fr_client_list_t       		*peers;
 } proto_bfd_t;
 
+typedef struct {
+	fr_client_t			client;			//!< might as well re-use this, others need it
+
+	fr_time_delta_t			min_transmit_interval;
+	fr_time_delta_t			min_receive_interval;
+	uint32_t			max_timeouts;
+} proto_bfd_peer_t;

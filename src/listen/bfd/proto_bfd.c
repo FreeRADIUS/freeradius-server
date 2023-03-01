@@ -41,6 +41,15 @@ static CONF_PARSER const proto_bfd_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static const CONF_PARSER peer_config[] = {
+	{ FR_CONF_OFFSET("min_transmit_interval", FR_TYPE_TIME_DELTA, proto_bfd_peer_t, min_transmit_interval ) },
+	{ FR_CONF_OFFSET("min_receive_interval", FR_TYPE_TIME_DELTA, proto_bfd_peer_t, min_receive_interval ) },
+	{ FR_CONF_OFFSET("max_timeouts", FR_TYPE_UINT32, proto_bfd_peer_t, max_timeouts ) },
+
+
+	CONF_PARSER_TERMINATOR
+};
+
 static fr_dict_t const *dict_bfd;
 
 extern fr_dict_autoload_t proto_bfd_dict[];
@@ -388,6 +397,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	proto_bfd_t 		*inst = talloc_get_type_abort(mctx->inst->data, proto_bfd_t);
+	CONF_SECTION		*server;
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
@@ -410,6 +420,37 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	inst->io.dl_inst = dl_module_instance_by_data(inst);
 	fr_assert(inst != NULL);
+
+	server = inst->io.server_cs;
+
+	inst->peers = cf_data_value(cf_data_find(server, fr_client_list_t, NULL));
+	if (!inst->peers) {
+		CONF_SECTION *cs = NULL;
+
+		inst->peers = client_list_init(server);
+		if (!inst->peers) return -1;
+
+		while ((cs = cf_section_find_next(server, cs, "peer", CF_IDENT_ANY))) {
+			fr_client_t *c;
+
+			if (cf_section_rules_push(cs, peer_config) < 0) return -1;
+
+			c = client_afrom_cs(cs, cs, server, sizeof(proto_bfd_peer_t));
+			if (!c) {
+			error:
+				cf_log_err(cs, "Failed to parse peer %s", cf_section_name2(cs));
+				talloc_free(inst->peers);
+				return -1;
+			}
+
+			if (!client_add(inst->peers, c)) {
+				cf_log_err(cs, "Failed to add peer %s", cf_section_name2(cs));
+				goto error;
+			}
+		}
+
+		(void) cf_data_add(server, inst->peers, NULL, true);
+	}
 
 	/*
 	 *	Bootstrap the master IO handler.

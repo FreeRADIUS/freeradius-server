@@ -378,12 +378,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	@todo - ensure that we only parse clients which are
 	 *	for IPPROTO_UDP, and require a "secret".
 	 */
-	if (cf_section_find_next(server_cs, NULL, "client", CF_IDENT_ANY)) {
-		inst->clients = client_list_parse_section(server_cs, IPPROTO_UDP, false);
-		if (!inst->clients) {
-			cf_log_err(conf, "Failed creating local clients");
-			return -1;
-		}
+	inst->clients = cf_data_value(cf_data_find(server_cs, fr_client_list_t, NULL));
+	if (!inst->clients) {
+		cf_log_err(conf, "Failed finding local clients");
+		return -1;
 	}
 
 	return 0;
