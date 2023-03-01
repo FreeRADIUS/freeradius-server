@@ -113,7 +113,7 @@ static fr_client_t *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *na
 	MEM(cf_pair_alloc(cs, "groups", "bar", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING));
 	MEM(cf_pair_alloc(cs, "groups", "baz", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING));
 
-	client = client_afrom_cs(ctx, cs, NULL);
+	client = client_afrom_cs(ctx, cs, NULL, 0);
 	if (!client) {
 		PERROR("Failed creating test client");
 		fr_assert(0);

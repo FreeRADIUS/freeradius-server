@@ -440,18 +440,18 @@ static const CONF_PARSER client_config[] = {
 
 	{ FR_CONF_POINTER("src_ipaddr", FR_TYPE_STRING, &cl_srcipaddr) },
 
-	{ FR_CONF_OFFSET("require_message_authenticator", FR_TYPE_BOOL, fr_client_t, message_authenticator), .dflt = "no" },
-
-	{ FR_CONF_OFFSET("dedup_authenticator", FR_TYPE_BOOL, fr_client_t, dedup_authenticator), .dflt = "no" },
-
 	{ FR_CONF_OFFSET("secret", FR_TYPE_STRING | FR_TYPE_SECRET, fr_client_t, secret) },
 	{ FR_CONF_OFFSET("shortname", FR_TYPE_STRING, fr_client_t, shortname) },
 
 	{ FR_CONF_OFFSET("nas_type", FR_TYPE_STRING, fr_client_t, nas_type) },
 
-	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIME_DELTA, fr_client_t, response_window) },
-
 	{ FR_CONF_OFFSET("track_connections", FR_TYPE_BOOL, fr_client_t, use_connected) },
+
+	{ FR_CONF_OFFSET("require_message_authenticator", FR_TYPE_BOOL, fr_client_t, message_authenticator), .dflt = "no" },
+
+	{ FR_CONF_OFFSET("dedup_authenticator", FR_TYPE_BOOL, fr_client_t, dedup_authenticator), .dflt = "no" },
+
+	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIME_DELTA, fr_client_t, response_window) },
 
 	{ FR_CONF_POINTER("proto", FR_TYPE_STRING, &hs_proto) },
 	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
@@ -549,7 +549,7 @@ fr_client_list_t *client_list_parse_section(CONF_SECTION *section, int proto, TL
 		}
 
 
-		c = client_afrom_cs(cs, cs, server_cs);
+		c = client_afrom_cs(cs, cs, server_cs, 0);
 		if (!c) {
 		error:
 			client_free(c);
@@ -697,7 +697,7 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
  * @param server_cs The virtual server that this client belongs to.
  * @return new fr_client_t struct.
  */
-fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs)
+fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs, size_t extra)
 {
 	fr_client_t	*c;
 	char const	*name2;
@@ -712,7 +712,18 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 	/*
 	 *	The size is fine.. Let's create the buffer
 	 */
-	c = talloc_zero(ctx, fr_client_t);
+	if (!extra) {
+		c = talloc_zero(ctx, fr_client_t);
+		if (!c) return NULL;
+	} else {
+		fr_assert(extra > sizeof(fr_client_t));
+
+		c = (fr_client_t *) talloc_zero_array(ctx, uint8_t, extra);
+		if (!c) return NULL;
+
+		talloc_set_name_const(c, "fr_client_t");
+	}
+
 	c->cs = cs;
 
 	memset(&cl_ipaddr, 0, sizeof(cl_ipaddr));
@@ -992,7 +1003,7 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 	 *	@todo - allow for setting a DIFFERENT virtual server,
 	 *	src IP, protocol, etc.  This should all be in TLVs..
 	 */
-	c = client_afrom_cs(cs, cs, unlang_call_current(request));
+	c = client_afrom_cs(cs, cs, unlang_call_current(request), 0);
 	if (!c) {
 	error:
 		talloc_free(cs);
@@ -1036,7 +1047,7 @@ fr_client_t *client_read(char const *filename, CONF_SECTION *server_cs, bool che
 		return NULL;
 	}
 
-	c = client_afrom_cs(cs, cs, server_cs);
+	c = client_afrom_cs(cs, cs, server_cs, 0);
 	if (!c) return NULL;
 	talloc_steal(cs, c);
 

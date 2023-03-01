@@ -132,7 +132,7 @@ fr_client_t	*client_afrom_request(TALLOC_CTX *ctx, request_t *request);
 
 int		client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_cb_t func, void *data);
 
-fr_client_t	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs);
+fr_client_t	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs, size_t extra);
 
 fr_client_t	*client_find(fr_client_list_t const *clients, fr_ipaddr_t const *ipaddr, int proto);
 
