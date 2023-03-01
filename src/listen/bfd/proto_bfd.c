@@ -432,6 +432,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 		while ((cs = cf_section_find_next(server, cs, "peer", CF_IDENT_ANY))) {
 			fr_client_t *c;
+			proto_bfd_peer_t *peer;
 
 			if (cf_section_rules_push(cs, peer_config) < 0) return -1;
 
@@ -442,6 +443,22 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 				talloc_free(inst->peers);
 				return -1;
 			}
+
+			if (c->proto != IPPROTO_UDP) {
+				cf_log_err(cs, "Peer must use 'proto = udp' in %s", cf_section_name2(cs));
+				goto error;
+			}
+
+			peer = (proto_bfd_peer_t *) c;
+
+			FR_TIME_DELTA_BOUND_CHECK("peer.min_transmit_interval", peer->min_transmit_interval, >=, fr_time_delta_from_usec(30));
+			FR_TIME_DELTA_BOUND_CHECK("peer.min_transmit_interval", peer->min_transmit_interval, <=, fr_time_delta_from_sec(2));
+
+			FR_TIME_DELTA_BOUND_CHECK("peer.min_recieve_interval", peer->min_transmit_interval, >=, fr_time_delta_from_usec(30));
+			FR_TIME_DELTA_BOUND_CHECK("peer.min_received_interval", peer->min_transmit_interval, <=, fr_time_delta_from_sec(2));
+
+			FR_INTEGER_BOUND_CHECK("peer.max_timeouts", peer->max_timeouts, >=, 1);
+			FR_INTEGER_BOUND_CHECK("peer.max_timeouts", peer->max_timeouts, <=, 10);
 
 			if (!client_add(inst->peers, c)) {
 				cf_log_err(cs, "Failed to add peer %s", cf_section_name2(cs));
