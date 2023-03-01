@@ -409,7 +409,7 @@ static void mod_unload(void)
 fr_app_t proto_bfd = {
 	.common = {
 		.magic			= MODULE_MAGIC_INIT,
-		.name			= "radius",
+		.name			= "bfd",
 		.config			= proto_bfd_config,
 		.inst_size		= sizeof(proto_bfd_t),
 		.onload			= mod_load,
