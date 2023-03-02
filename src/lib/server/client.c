@@ -695,6 +695,8 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
  * @param ctx to allocate new clients in.
  * @param cs to process as a client.
  * @param server_cs The virtual server that this client belongs to.
+ * @param extra 0                 allocate sizeof(fr_client_t) bytes
+ *              >sizeof(client_t) number of bytes to allocate
  * @return new fr_client_t struct.
  */
 fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs, size_t extra)
