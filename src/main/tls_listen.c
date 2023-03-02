@@ -1021,6 +1021,7 @@ static int try_connect(listen_socket_t *sock)
 
 		case SSL_ERROR_WANT_READ:
 		case SSL_ERROR_WANT_WRITE:
+			DEBUG3("(TLS) SSL_connect() returned %s", ERR_reason_error_string(ret));
 			return 0;
 		}
 	}
@@ -1083,6 +1084,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 			switch (err) {
 			case SSL_ERROR_WANT_READ:
 			case SSL_ERROR_WANT_WRITE:
+				DEBUG3("(TLS) SSL_read() returned %s", ERR_reason_error_string(err));
 				return 0; /* do some more work later */
 
 			case SSL_ERROR_ZERO_RETURN:
@@ -1135,6 +1137,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 			switch (SSL_get_error(sock->ssn->ssl, rcode)) {
 			case SSL_ERROR_WANT_READ:
 			case SSL_ERROR_WANT_WRITE:
+				DEBUG3("(TLS) SSL_read() returned %s", ERR_reason_error_string(rcode));
 				return 0;
 
 			case SSL_ERROR_ZERO_RETURN:
@@ -1326,6 +1329,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 		case SSL_ERROR_NONE:
 		case SSL_ERROR_WANT_READ:
 		case SSL_ERROR_WANT_WRITE:
+			DEBUG3("(TLS) SSL_write() returned %s", ERR_reason_error_string(err));
 			break;	/* let someone else retry */
 
 		default:
@@ -1392,6 +1396,7 @@ int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request)
 		case SSL_ERROR_NONE:
 		case SSL_ERROR_WANT_READ:
 		case SSL_ERROR_WANT_WRITE:
+			DEBUG3("(TLS) SSL_write() returned %s", ERR_reason_error_string(err));
 			break;	/* let someone else retry */
 
 		default:
