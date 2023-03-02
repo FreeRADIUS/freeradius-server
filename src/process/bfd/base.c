@@ -34,10 +34,16 @@ fr_dict_autoload_t process_bfd_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_bfd_packet;
+static fr_dict_attr_t const *attr_bfd_state;
 
 extern fr_dict_attr_autoload_t process_bfd_dict_attr[];
 fr_dict_attr_autoload_t process_bfd_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_bfd},
+
+	{ .out = &attr_bfd_packet, .name = "Packet", .type = FR_TYPE_STRUCT, .dict = &dict_bfd},
+	{ .out = &attr_bfd_state, .name = "Packet.state", .type = FR_TYPE_UINT8, .dict = &dict_bfd},
+
 	{ NULL }
 };
 
@@ -111,6 +117,38 @@ static void bfd_packet_debug(request_t *request, fr_radius_packet_t *packet, fr_
 	}
 }
 
+RESUME_NO_MCTX(recv_bfd)
+{
+	rlm_rcode_t			rcode = *p_result;
+	fr_pair_t			*vp;
+	uint32_t			state = 0;
+
+	PROCESS_TRACE;
+
+	fr_assert(rcode < RLM_MODULE_NUMCODES);
+
+	/*
+	 *	Check for a state / reply code.
+	 */
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
+	if (vp) {
+		state = vp->vp_uint32;
+	} else {
+		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_bfd_packet);
+		if (vp) vp = fr_pair_find_by_da(&vp->vp_group, NULL, attr_bfd_state);
+		if (vp) state = vp->vp_uint8;
+	}
+
+	fr_assert(PROCESS_PACKET_CODE_VALID(state));
+
+	request->reply->code = state;
+
+	request->reply->timestamp = fr_time();
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+
 /*
  *	recv FOO
  */
@@ -119,7 +157,7 @@ static fr_process_state_t const process_state_packet[] = {
 		.default_reply = FR_BFD_DOWN,
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
-		.resume = resume_recv_generic,
+		.resume = resume_recv_bfd,
 		.section_offset = offsetof(process_bfd_sections_t, recv_admin_down),
 	},
 
@@ -127,7 +165,7 @@ static fr_process_state_t const process_state_packet[] = {
 		.default_reply = FR_BFD_DOWN,
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
-		.resume = resume_recv_generic,
+		.resume = resume_recv_bfd,
 		.section_offset = offsetof(process_bfd_sections_t, recv_down),
 	},
 
@@ -135,7 +173,7 @@ static fr_process_state_t const process_state_packet[] = {
 		.default_reply = FR_BFD_UP,
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
-		.resume = resume_recv_generic,
+		.resume = resume_recv_bfd,
 		.section_offset = offsetof(process_bfd_sections_t, recv_init),
 	},
 
@@ -143,7 +181,7 @@ static fr_process_state_t const process_state_packet[] = {
 		.default_reply = FR_BFD_UP,
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
-		.resume = resume_recv_generic,
+		.resume = resume_recv_bfd,
 		.section_offset = offsetof(process_bfd_sections_t, recv_up),
 	},
 };

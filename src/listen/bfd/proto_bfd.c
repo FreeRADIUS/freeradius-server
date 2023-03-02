@@ -259,8 +259,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 //	proto_bfd_t const	*inst = talloc_get_type_abort_const(instance, proto_bfd_t);
 	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
-	ssize_t			data_len;
-	fr_client_t const		*client;
+	fr_client_t const	*client;
 
 	/*
 	 *	Process layer NAK, or "Do not respond".
@@ -302,38 +301,10 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	}
 
 	/*
-	 *	Overwrite the src ip address on the outbound packet
-	 *	with the one specified by the client.  This is useful
-	 *	to work around broken DSR implementations and other
-	 *	routing issues.
+	 *	@todo - change our state based on the reply packet.
 	 */
-	if (client->src_ipaddr.af != AF_UNSPEC) {
-		request->reply->socket.inet.src_ipaddr = client->src_ipaddr;
-	}
-
-	data_len = fr_bfd_encode(buffer, buffer_len, request->packet->data,
-				 client->secret, talloc_array_length(client->secret) - 1,
-				 &request->reply_pairs);
-	if (data_len < 0) {
-		RPEDEBUG("Failed encoding BFD reply");
-		return -1;
-	}
-
-	if (RDEBUG_ENABLED) {
-		RDEBUG("Sending %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
-		       fr_bfd_packet_names[request->reply->code],
-		       request->reply->id,
-		       fr_box_ipaddr(request->reply->socket.inet.src_ipaddr),
-		       request->reply->socket.inet.src_port,
-		       fr_box_ipaddr(request->reply->socket.inet.dst_ipaddr),
-		       request->reply->socket.inet.dst_port,
-		       data_len,
-		       request->async->listen->name);
-
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
-	}
-
-	return data_len;
+	*buffer = 0x00;
+	return 1;
 }
 
 /** Open listen sockets/connect to external event source
