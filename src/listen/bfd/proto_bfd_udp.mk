@@ -4,6 +4,6 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME)$(L)
 endif
 
-SOURCES		:= $(TARGETNAME).c
+SOURCES		:= $(TARGETNAME).c session.c
 
 TGT_PREREQS	:= libfreeradius-bfd$(L)

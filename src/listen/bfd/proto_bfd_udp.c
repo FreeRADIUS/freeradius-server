@@ -30,7 +30,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 
-#include "proto_bfd.h"
+#include "session.h"
 
 extern fr_app_io_t proto_bfd_udp;
 
@@ -321,11 +321,13 @@ static char const *mod_name(fr_listen_t *li)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_bfd_udp_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_bfd_udp_t);
+	proto_bfd_udp_t		*inst = talloc_get_type_abort(mctx->inst->data, proto_bfd_udp_t);
 	CONF_SECTION		*conf = mctx->inst->conf;
 	size_t			num;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server_cs;
+	fr_rb_iter_inorder_t	iter;
+	proto_bfd_peer_t	*peer;
 
 	inst->cs = conf;
 
@@ -398,6 +400,22 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	if (!inst->peers) {
 		cf_log_err(conf, "Failed finding peer list");
 		return -1;
+	}
+
+	/*
+	 *	Walk over the list of peers, associating them with this listener.
+	 */
+	for (peer = fr_rb_iter_init_inorder(&iter, inst->peers);
+	     peer != NULL;
+	     peer = fr_rb_iter_next_inorder(&iter)) {
+		if (peer->client.ipaddr.af != inst->ipaddr.af) continue;
+
+		if (peer->inst) continue;
+
+		peer->inst = inst;
+		if (bfd_session_init(peer) < 0) {
+			return -1;
+		}
 	}
 
 	return 0;

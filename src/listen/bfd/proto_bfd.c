@@ -42,10 +42,10 @@ static CONF_PARSER const proto_bfd_config[] = {
 };
 
 static const CONF_PARSER peer_config[] = {
-	{ FR_CONF_OFFSET("min_transmit_interval", FR_TYPE_TIME_DELTA, proto_bfd_peer_t, min_transmit_interval ) },
-	{ FR_CONF_OFFSET("min_receive_interval", FR_TYPE_TIME_DELTA, proto_bfd_peer_t, min_receive_interval ) },
-	{ FR_CONF_OFFSET("max_timeouts", FR_TYPE_UINT32, proto_bfd_peer_t, max_timeouts ) },
-
+	{ FR_CONF_OFFSET("min_transmit_interval", FR_TYPE_TIME_DELTA, proto_bfd_peer_t, desired_min_tx_interval ) },
+	{ FR_CONF_OFFSET("min_receive_interval", FR_TYPE_TIME_DELTA, proto_bfd_peer_t, required_min_rx_interval ) },
+	{ FR_CONF_OFFSET("max_timeouts", FR_TYPE_UINT32, proto_bfd_peer_t, detect_multi ) },
+	{ FR_CONF_OFFSET("demand", FR_TYPE_BOOL, proto_bfd_peer_t, demand_mode ) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -433,14 +433,14 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 			peer = (proto_bfd_peer_t *) c;
 
-			FR_TIME_DELTA_BOUND_CHECK("peer.min_transmit_interval", peer->min_transmit_interval, >=, fr_time_delta_from_usec(30));
-			FR_TIME_DELTA_BOUND_CHECK("peer.min_transmit_interval", peer->min_transmit_interval, <=, fr_time_delta_from_sec(2));
+			FR_TIME_DELTA_BOUND_CHECK("peer.min_transmit_interval", peer->desired_min_tx_interval, >=, fr_time_delta_from_usec(30));
+			FR_TIME_DELTA_BOUND_CHECK("peer.min_transmit_interval", peer->desired_min_tx_interval, <=, fr_time_delta_from_sec(2));
 
-			FR_TIME_DELTA_BOUND_CHECK("peer.min_recieve_interval", peer->min_transmit_interval, >=, fr_time_delta_from_usec(30));
-			FR_TIME_DELTA_BOUND_CHECK("peer.min_received_interval", peer->min_transmit_interval, <=, fr_time_delta_from_sec(2));
+			FR_TIME_DELTA_BOUND_CHECK("peer.min_recieve_interval", peer->required_min_rx_interval, >=, fr_time_delta_from_usec(30));
+			FR_TIME_DELTA_BOUND_CHECK("peer.min_received_interval", peer->required_min_rx_interval, <=, fr_time_delta_from_sec(2));
 
-			FR_INTEGER_BOUND_CHECK("peer.max_timeouts", peer->max_timeouts, >=, 1);
-			FR_INTEGER_BOUND_CHECK("peer.max_timeouts", peer->max_timeouts, <=, 10);
+			FR_INTEGER_BOUND_CHECK("peer.max_timeouts", peer->detect_multi, >=, 1);
+			FR_INTEGER_BOUND_CHECK("peer.max_timeouts", peer->detect_multi, <=, 10);
 
 			if (((c->ipaddr.af == AF_INET) && (c->ipaddr.prefix != 32)) ||
 			    ((c->ipaddr.af == AF_INET6) && (c->ipaddr.prefix != 128))) {
