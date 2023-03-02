@@ -412,7 +412,16 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 		if (peer->inst) continue;
 
+		/*
+		 *	unspecified src_ipaddr is us, OR our address
+		 *	matches.
+		 */
+		if (!(fr_ipaddr_is_inaddr_any(&peer->client.src_ipaddr) ||
+		      (fr_ipaddr_cmp(&peer->client.src_ipaddr, &inst->ipaddr) == 0))) continue;
+
 		peer->inst = inst;
+		peer->client.src_ipaddr = inst->ipaddr; /* override inaddr_any */
+
 		if (bfd_session_init(peer) < 0) {
 			return -1;
 		}
