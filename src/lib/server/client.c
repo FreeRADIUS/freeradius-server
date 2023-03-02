@@ -872,6 +872,8 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 			goto error;
 		}
 		cl_srcipaddr = NULL;
+	} else {
+		c->src_ipaddr.af = c->ipaddr.af; /* leave the rest as IFADDR_ANY */
 	}
 
 	/*
