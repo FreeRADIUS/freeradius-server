@@ -38,9 +38,9 @@ References cannot be to fields in other dictionaries.
 as this `struct`.  Numbers can be specified as decimal (`19`), or as
 hex (`0xffee`).
 
-<flags>:: Can only be `length=uint16`.  When encoding or decoding the
-structure, it is prefixed by a `uint16` field containing the length of
-the structure.
+<flags>:: Can only be `length=uint8` or `length=uint16`.  When
+encoding or decoding the structure, it is prefixed by a `uint8` or `uint16` field
+containing the length of the structure.
 
 Common flags and meanings
 [options="header"]
