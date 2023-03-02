@@ -439,6 +439,34 @@ static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, 
 	return fr_rb_find(inst->peers, &(fr_client_t) { .ipaddr = *ipaddr, .proto = IPPROTO_UDP });
 }
 
+/** Set the event list for a new socket
+ *
+ * @param[in] li the listener
+ * @param[in] el the event list
+ * @param[in] nr context from the network side
+ */
+static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void *nr)
+{
+	proto_bfd_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_bfd_udp_t);
+	proto_bfd_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_bfd_udp_thread_t);
+	fr_rb_iter_inorder_t	iter;
+	proto_bfd_peer_t	*peer;
+
+	inst->el = el;
+
+	/*
+	 *	Walk over the list of peers, associating them with this listener.
+	 */
+	for (peer = fr_rb_iter_init_inorder(&iter, inst->peers);
+	     peer != NULL;
+	     peer = fr_rb_iter_next_inorder(&iter)) {
+		if (peer->inst != inst) continue;
+
+		bfd_session_start(peer, el, thread->sockfd);
+	}
+}
+
+
 fr_app_io_t proto_bfd_udp = {
 	.common = {
 		.magic			= MODULE_MAGIC_INIT,
@@ -456,6 +484,7 @@ fr_app_io_t proto_bfd_udp = {
 	.write			= mod_write,
 	.fd_set			= mod_fd_set,
 	.network_get		= mod_network_get,
+	.event_list_set		= mod_event_list_set,
 	.client_find		= mod_client_find,
 	.get_name      		= mod_name,
 };

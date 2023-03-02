@@ -26,3 +26,5 @@
 #include "proto_bfd.h"
 
 int	bfd_session_init(proto_bfd_peer_t *session);
+
+void	bfd_session_start(proto_bfd_peer_t *session, fr_event_list_t *el, int sockfd);

@@ -904,13 +904,11 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 }
 #endif
 
-//static int bfd_start_packets(proto_bfd_peer_t *session);
-static int bfd_start_control(proto_bfd_peer_t *session);
+static void bfd_start_packets(proto_bfd_peer_t *session);
+static void bfd_start_control(proto_bfd_peer_t *session);
 static int bfd_stop_control(proto_bfd_peer_t *session);
 //static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd);
 static void bfd_set_timeout(proto_bfd_peer_t *session, fr_time_t when);
-
-static int bfd_start_packets(proto_bfd_peer_t *session);
 
 static const char *bfd_state[] = {
 	"admin-down",
@@ -997,7 +995,7 @@ static void bfd_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 /*
  *	Start sending packets.
  */
-static int bfd_start_packets(proto_bfd_peer_t *session)
+static void bfd_start_packets(proto_bfd_peer_t *session)
 {
 	uint64_t	interval, base;
 	uint64_t	jitter;
@@ -1035,17 +1033,15 @@ static int bfd_start_packets(proto_bfd_peer_t *session)
 			      bfd_send_packet, session) < 0) {
 		fr_assert("Failed to insert event" == NULL);
 	}
-
-	return 0;
 }
 
 
 /*
  *	Start polling for the peer.
  */
-static int bfd_start_poll(proto_bfd_peer_t *session)
+static void bfd_start_poll(proto_bfd_peer_t *session)
 {
-	if (session->doing_poll) return 0;
+	if (session->doing_poll) return;
 
 	/*
 	 *	Already sending packets.  Reset the timers and set the
@@ -1061,7 +1057,7 @@ static int bfd_start_poll(proto_bfd_peer_t *session)
 	 *	Send POLL packets, even if we're not sending CONTROL
 	 *	packets.
 	 */
-	return bfd_start_packets(session);
+	bfd_start_packets(session);
 }
 
 /*
@@ -1214,7 +1210,7 @@ static int bfd_stop_control(proto_bfd_peer_t *session)
 	return 1;
 }
 
-static int bfd_start_control(proto_bfd_peer_t *session)
+static void bfd_start_control(proto_bfd_peer_t *session)
 {
 	/*
 	 *	@todo - change our discriminator?
@@ -1223,9 +1219,20 @@ static int bfd_start_control(proto_bfd_peer_t *session)
 	/*
 	 *	We don't expect to see remote packets, so don't do anything.
 	 */
-	if (fr_time_delta_unwrap(session->remote_min_rx_interval) == 0) return 0;
+	if (fr_time_delta_unwrap(session->remote_min_rx_interval) == 0) return;
 
-	if ((session->remote_disc == 0) && session->passive) return 0;
+	/*
+	 *	@todo - support passive.  From 6.1:
+	 *
+	 *	A system may take either an Active role or a Passive role in session
+	 *	initialization.  A system taking the Active role MUST send BFD
+	 *	Control packets for a particular session, regardless of whether it
+	 *	has received any BFD packets for that session.  A system taking the
+	 *	Passive role MUST NOT begin sending BFD packets for a particular
+	 *	session until it has received a BFD packet for that session, and thus
+	 *	has learned the remote system's discriminator value.
+	 */
+	if ((session->remote_disc == 0) && session->passive) return;
 
 	/*
 	 *	We were asked to go "up" when we were alread "up" 
@@ -1238,17 +1245,18 @@ static int bfd_start_control(proto_bfd_peer_t *session)
 		      session->client.shortname);
 		fr_assert(0 == 1);
 		bfd_stop_control(session);
-		return 0;
+		return;
 	}
 
 	bfd_set_timeout(session, session->last_recv);
 
-	if (session->ev_packet) return 0;
+	if (session->ev_packet) return;
+
 
 	/*
 	 *	Start sending packets.
 	 */
-	return bfd_start_packets(session);
+	bfd_start_packets(session);
 }
 
 
@@ -1258,7 +1266,7 @@ int bfd_session_init(proto_bfd_peer_t *session)
 	session->local_disc = fr_rand();
 	session->remote_disc = 0;
 	session->local_diag = BFD_DIAG_NONE;
-	session->remote_min_rx_interval = fr_time_delta_wrap(0);
+	session->remote_min_rx_interval = fr_time_delta_wrap(1);
 	session->remote_demand_mode = false;
 	session->recv_auth_seq = 0;
 	session->xmit_auth_seq = fr_rand();
@@ -1277,4 +1285,16 @@ int bfd_session_init(proto_bfd_peer_t *session)
 	bfd_stop_poll(session);	/* compilation hack for now */
 
 	return 0;
+}
+
+void bfd_session_start(proto_bfd_peer_t *session, fr_event_list_t *el, int sockfd)
+{
+	DEBUG("Starting BFD for %s", session->client.shortname);
+
+	fr_assert(!session->el);
+
+	session->el = el;
+	session->sockfd = sockfd;
+
+	bfd_start_control(session);
 }
