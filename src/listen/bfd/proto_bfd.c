@@ -75,6 +75,17 @@ fr_dict_attr_autoload_t proto_bfd_dict_attr[] = {
 	{ NULL }
 };
 
+/*
+ *	They all have to be UDP.
+ */
+static int8_t client_cmp(void const *one, void const *two)
+{
+	fr_client_t const *a = one;
+	fr_client_t const *b = two;
+
+	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
+}
+
 /** Wrapper around dl_instance
  *
  * @param[in] ctx	to allocate data in (instance of proto_bfd).
@@ -423,11 +434,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	server = inst->io.server_cs;
 
-	inst->peers = cf_data_value(cf_data_find(server, fr_client_list_t, NULL));
+	inst->peers = cf_data_value(cf_data_find(server, fr_rb_tree_t, "peers"));
 	if (!inst->peers) {
 		CONF_SECTION *cs = NULL;
 
-		inst->peers = client_list_init(server);
+		inst->peers = fr_rb_inline_talloc_alloc(inst, fr_client_t, node, client_cmp, NULL);
 		if (!inst->peers) return -1;
 
 		while ((cs = cf_section_find_next(server, cs, "peer", CF_IDENT_ANY))) {
@@ -460,13 +471,19 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			FR_INTEGER_BOUND_CHECK("peer.max_timeouts", peer->max_timeouts, >=, 1);
 			FR_INTEGER_BOUND_CHECK("peer.max_timeouts", peer->max_timeouts, <=, 10);
 
-			if (!client_add(inst->peers, c)) {
+			if (((c->ipaddr.af == AF_INET) && (c->ipaddr.prefix != 32)) ||
+			    ((c->ipaddr.af == AF_INET6) && (c->ipaddr.prefix != 128))) {
+				cf_log_err(cs, "Invalid IP prefix - cannot use ip/mask for BFD");
+				goto error;
+			}
+
+			if (!fr_rb_insert(inst->peers, c)) {
 				cf_log_err(cs, "Failed to add peer %s", cf_section_name2(cs));
 				goto error;
 			}
 		}
 
-		(void) cf_data_add(server, inst->peers, NULL, true);
+		(void) cf_data_add(server, inst->peers, "peers", false);
 	}
 
 	/*

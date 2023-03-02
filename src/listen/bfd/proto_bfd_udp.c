@@ -47,6 +47,8 @@ typedef struct {
 typedef struct {
 	CONF_SECTION			*cs;			//!< our configuration
 
+	fr_event_list_t			*el;
+
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
 
 	char const			*interface;		//!< Interface to bind to.
@@ -63,7 +65,7 @@ typedef struct {
 	bool				send_buff_is_set;	//!< Whether we were provided with a send_buff
 	bool				dynamic_clients;	//!< whether we have dynamic clients
 
-	fr_client_list_t		*clients;		//!< local clients
+	fr_rb_tree_t			*peers;			//!< our peers
 
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
@@ -390,14 +392,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	server_cs = cf_item_to_section(ci);
 
 	/*
-	 *	Look up local clients, if they exist.
-	 *
-	 *	@todo - ensure that we only parse clients which are
-	 *	for IPPROTO_UDP, and require a "secret".
+	 *	Look up peer list.
 	 */
-	inst->clients = cf_data_value(cf_data_find(server_cs, fr_client_list_t, NULL));
-	if (!inst->clients) {
-		cf_log_err(conf, "Failed finding local clients");
+	inst->peers = cf_data_value(cf_data_find(server_cs, fr_rb_tree_t, "peers"));
+	if (!inst->peers) {
+		cf_log_err(conf, "Failed finding peer list");
 		return -1;
 	}
 
@@ -406,18 +405,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
-	proto_bfd_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
-	fr_client_t		*client;
+	proto_bfd_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
 
-	/*
-	 *	Prefer local clients.
-	 */
-	if (inst->clients) {
-		client = client_find(inst->clients, ipaddr, ipproto);
-		if (client) return client;
-	}
+	if (ipproto != IPPROTO_UDP) return NULL;
 
-	return client_find(NULL, ipaddr, ipproto);
+	return fr_rb_find(inst->peers, &(fr_client_t) { .ipaddr = *ipaddr, .proto = IPPROTO_UDP });
 }
 
 fr_app_io_t proto_bfd_udp = {
