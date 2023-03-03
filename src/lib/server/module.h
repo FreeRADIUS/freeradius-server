@@ -288,6 +288,73 @@ struct module_env_parsed_s {
 
 FR_DLIST_FUNCS(mod_env_parsed, module_env_parsed_t, entry)
 
+/** Derive whether tmpl can only emit a single box.
+ */
+#define FR_MODULE_ENV_SINGLE(_s, _f, _c) \
+_Generic((((_s *)NULL)->_f), \
+	fr_value_box_t			: __builtin_choose_expr(_c, false, true), \
+	fr_value_box_t *		: __builtin_choose_expr(_c, false, true), \
+	fr_value_box_list_t		: false, \
+	fr_value_box_list_t *		: false \
+)
+
+/** Derive whether multi conf pairs are allowed from target field type.
+ */
+#define FR_MODULE_ENV_MULTI(_s, _f) \
+_Generic((((_s *)NULL)->_f), \
+	fr_value_box_t			: false, \
+	fr_value_box_t *		: true, \
+	fr_value_box_list_t		: false, \
+	fr_value_box_list_t *		: true \
+)
+
+/** Only FR_TYPE_STRING and FR_TYPE_OCTETS can be concatenated.
+ */
+#define FR_MODULE_ENV_CONCAT(_c, _ct) \
+__builtin_choose_expr(FR_BASE_TYPE(_ct) == FR_TYPE_STRING, _c, \
+__builtin_choose_expr(FR_BASE_TYPE(_ct) == FR_TYPE_OCTETS, _c, \
+__builtin_choose_expr(_c, (void)0, false)))
+
+/** Mapping from field types to destination type enum
+ */
+#define FR_MODULE_ENV_DST_TYPE(_s, _f) \
+_Generic((((_s *)NULL)->_f), \
+	fr_value_box_t			: MOD_ENV_TYPE_VALUE_BOX, \
+	fr_value_box_t *		: MOD_ENV_TYPE_VALUE_BOX, \
+	fr_value_box_list_t		: MOD_ENV_TYPE_VALUE_BOX_LIST, \
+	fr_value_box_list_t *		: MOD_ENV_TYPE_VALUE_BOX_LIST \
+)
+
+#define FR_MODULE_ENV_DST_SIZE(_s, _f) \
+_Generic((((_s *)NULL)->_f), \
+	fr_value_box_t			: sizeof(fr_value_box_t), \
+	fr_value_box_t *		: sizeof(fr_value_box_t), \
+	fr_value_box_list_t		: sizeof(fr_value_box_list_t), \
+	fr_value_box_list_t *		: sizeof(fr_value_box_list_t) \
+)
+
+#define FR_MODULE_ENV_DST_TYPE_NAME(_s, _f) \
+_Generic((((_s *)NULL)->_f), \
+	fr_value_box_t			: "fr_value_box_t", \
+	fr_value_box_t *		: "fr_value_box_t", \
+	fr_value_box_list_t		: "fr_value_box_list_t", \
+	fr_value_box_list_t *		: "fr_value_box_list_t" \
+)
+
+#define FR_MODULE_ENV_OFFSET(_name, _cast_type, _struct, _field, _dflt, _dflt_quote, _required, _concat) \
+	.name = _name, \
+	.type = _cast_type, \
+	.offset = offsetof(_struct, _field), \
+	.dflt = _dflt, \
+	.dflt_quote = _dflt_quote, \
+	.pair = { .required = _required, \
+		  .concat = FR_MODULE_ENV_CONCAT(_concat, _cast_type), \
+		  .single = FR_MODULE_ENV_SINGLE(_struct, _field, _concat), \
+		  .multi = FR_MODULE_ENV_MULTI(_struct, _field), \
+		  .type = FR_MODULE_ENV_DST_TYPE(_struct, _field), \
+		  .size = FR_MODULE_ENV_DST_SIZE(_struct, _field), \
+		  .type_name = FR_MODULE_ENV_DST_TYPE_NAME(_struct, _field) }
+
 /** A list of modules
  *
  * This allows modules to be instantiated and freed in phases,
