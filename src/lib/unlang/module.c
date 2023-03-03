@@ -954,6 +954,93 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		goto done;
 	}
 
+	if (mc->method_env) {
+		void				*out, **array;
+		module_env_parsed_t const	*env;
+		TALLOC_CTX			*ctx;
+
+		switch (state->env_state) {
+		/*
+		 *	We have a method env and this is the first call.
+		 *	Allocate the data structure.
+		 */
+		case MOD_ENV_EXP_INIT:
+			MEM(state->env_data = talloc_zero_array(state, uint8_t, mc->method_env->inst_size));
+			talloc_set_name_const(state->env_data, mc->method_env->inst_type);
+			fr_value_box_list_init(&state->tmpl_expanded);
+			state->env_state = MOD_ENV_EXP_PROC;
+			break;
+
+		/*
+		 *	Processing of module env is underway, parse the
+		 *	value returned but the last expansion.
+		 */
+		case MOD_ENV_EXP_PROC:
+		{
+			env = state->last_expanded;
+
+			/*
+			 *	Find the location of the output
+			 */
+			out = ((uint8_t *)state->env_data) + env->rule->offset;
+
+			/*
+			 *	If this is a multi pair option, the output is an array.
+			 *	Find the correct offset in the array.
+			 */
+			if (env->rule->pair.multi) {
+				array = *(void **)out;
+				out = ((uint8_t *)array) + env->rule->pair.size * env->multi_index;
+			}
+
+			if (module_env_value_parse(request, out, state) < 0) {
+				ua = UNLANG_ACTION_FAIL;
+				goto fail;
+			}
+		}
+			break;
+
+		case MOD_ENV_EXP_DONE:
+			goto expansion_done;
+		}
+
+		/*
+		 *	Look for the next tmpl to expand
+		 */
+		state->last_expanded = mod_env_parsed_next(&mc->mod_env_parsed, state->last_expanded);
+		if (!state->last_expanded) {
+			state->env_state = MOD_ENV_EXP_DONE;
+			goto expansion_done;
+		}
+		env = state->last_expanded;
+		ctx = state->env_data;
+
+		/*
+		 *	Multi pair options should allocate boxes in the context of the array
+		 */
+		if (env->rule->pair.multi) {
+			out = ((uint8_t *)state->env_data) + env->rule->offset;
+
+			/*
+			 *	For multi pair options, allocate the array before expanding the first entry.
+			 */
+			if (env->multi_index == 0) {
+				MEM(array = _talloc_zero_array(state->env_data, env->rule->pair.size,
+							       env->opt_count, env->rule->pair.type_name));
+				*(void **)out = array;
+			}
+			ctx = *(void **)out;
+		}
+
+		frame_repeat(frame, unlang_module);
+		if (unlang_tmpl_push(ctx, &state->tmpl_expanded, request, state->last_expanded->tmpl, NULL) < 0) {
+			ua = UNLANG_ACTION_FAIL;
+			goto fail;
+		}
+		return UNLANG_ACTION_PUSHED_CHILD;
+	}
+
+expansion_done:
 	/*
 	 *	Grab the thread/module specific data if any exists.
 	 */
