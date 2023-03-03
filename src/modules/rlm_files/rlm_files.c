@@ -62,6 +62,10 @@ typedef struct {
 	PAIR_LIST_LIST *postauth_users_def;
 } rlm_files_t;
 
+typedef struct {
+	fr_value_box_t	key;
+} rlm_files_env_t;
+
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
@@ -376,7 +380,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 /*
  *	Common code called by everything below.
  */
-static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *inst,
+static unlang_action_t file_common(rlm_rcode_t *p_result, UNUSED rlm_files_t const *inst, rlm_files_env_t *env,
 				   request_t *request, char const *filename, fr_htrie_t *tree, PAIR_LIST_LIST *default_list)
 {
 	PAIR_LIST_LIST const	*user_list;
@@ -388,16 +392,11 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 
 	if (!tree && !default_list) RETURN_MODULE_NOOP;
 
+	RDEBUG2("Looking for key \"%pV\"", &env->key);
+
 	if (tree) {
-		fr_value_box_t *box;
-
-		if (tmpl_aexpand(request, &box, request, inst->key, NULL, NULL) < 0) {
-			REDEBUG("Failed expanding key %s", inst->key->name);
-			RETURN_MODULE_FAIL;
-		}
-
 		my_list.name = NULL;
-		my_list.box = box;
+		my_list.box = &env->key;
 		user_list = fr_htrie_find(tree, &my_list);
 
 		trie = (tree->type == FR_HTRIE_TRIE);
@@ -409,7 +408,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			key = key_buffer;
 			keylen = sizeof(key_buffer) * 8;
 
-			(void) fr_value_box_to_key(&key, &keylen, box);
+			(void) fr_value_box_to_key(&key, &keylen, &env->key);
 
 			RDEBUG3("Keylen %ld", keylen);
 			RHEXDUMP3(key, (keylen + 7) >> 3, "KEY ");
@@ -429,8 +428,6 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 				key = key_buffer;
 			}
 		}
-
-		talloc_free(box);
 
 		user_pl = user_list ? fr_dlist_head(&user_list->head) : NULL;
 	} else {
@@ -629,8 +626,9 @@ redo:
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
+	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
-	return file_common(p_result, inst, request, inst->filename,
+	return file_common(p_result, inst, env_data, request, inst->filename,
 			   inst->users ? inst->users : inst->common,
 			   inst->users ? inst->users_def : inst->common_def);
 }
@@ -644,8 +642,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
+	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
-	return file_common(p_result, inst, request, inst->acct_usersfile,
+	return file_common(p_result, inst, env_data, request, inst->acct_usersfile,
 			   inst->acct_users ? inst->acct_users : inst->common,
 			   inst->acct_users ? inst->acct_users_def : inst->common_def);
 }
@@ -653,8 +652,9 @@ static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, modul
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
+	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
-	return file_common(p_result, inst, request, inst->auth_usersfile,
+	return file_common(p_result, inst, env_data, request, inst->auth_usersfile,
 			   inst->auth_users ? inst->auth_users : inst->common,
 			   inst->auth_users ? inst->auth_users_def : inst->common_def);
 }
@@ -662,12 +662,24 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
+	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
-	return file_common(p_result, inst, request, inst->postauth_usersfile,
+	return file_common(p_result, inst, env_data, request, inst->postauth_usersfile,
 			   inst->postauth_users ? inst->postauth_users : inst->common,
 			   inst->postauth_users ? inst->postauth_users_def : inst->common_def);
 }
 
+static const module_env_t module_env[] = {
+	{ FR_MODULE_ENV_OFFSET("key", FR_TYPE_VOID, rlm_files_env_t, key, "%{%{Stripped-User-Name}:-%{User-Name}}",
+			       T_DOUBLE_QUOTED_STRING, true, false) },
+	MODULE_ENV_TERMINATOR
+};
+
+static const module_method_env_t method_env = {
+	.inst_size = sizeof(rlm_files_env_t),
+	.inst_type = "rlm_files_env_t",
+	.env = module_env
+};
 
 /* globally exported name */
 extern module_rlm_t rlm_files;
@@ -683,12 +695,17 @@ module_rlm_t rlm_files = {
 		/*
 		 *	Hack to support old configurations
 		 */
-		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
+		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
+		  .method_env = &method_env	},
 
-		{ .name1 = "recv",		.name2 = "accounting-request",	.method = mod_preacct		},
-		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
-		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate	},
-		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth		},
+		{ .name1 = "recv",		.name2 = "accounting-request",	.method = mod_preacct,
+		  .method_env = &method_env	},
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
+		  .method_env = &method_env	},
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,
+		  .method_env = &method_env	},
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth,
+		  .method_env = &method_env	},
 		MODULE_NAME_TERMINATOR
 	}
 
