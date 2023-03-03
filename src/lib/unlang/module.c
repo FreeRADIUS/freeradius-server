@@ -871,6 +871,53 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 	frame->signal(request, frame, FR_SIGNAL_TIMEOUT);
 }
 
+/** Parse the result of module_env tmpl expansion
+ */
+static inline CC_HINT(always_inline) int module_env_value_parse(request_t *request, void * out, unlang_frame_state_module_t *state) {
+	fr_value_box_t			*vb;
+	module_env_parsed_t const	*env = state->last_expanded;
+
+	vb = fr_value_box_list_head(&state->tmpl_expanded);
+
+	if (!vb) {
+		if (env->rule->pair.required) {
+			RPEDEBUG("Failed to evaluate required module option %s", env->rule->name);
+			return -1;
+		}
+		return 0;
+	}
+
+	/*
+	 *	Concatenate multiple boxes if needed
+	 */
+	if (env->rule->pair.concat &&
+	    fr_value_box_list_concat_in_place(vb, vb, &state->tmpl_expanded, FR_BASE_TYPE(env->rule->type),
+					      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0 ) {
+		RPEDEBUG("Failed concatenating values for %s", env->rule->name);
+		return -1;
+	}
+
+	if (env->rule->pair.single && (fr_value_box_list_num_elements(&state->tmpl_expanded) > 1)) {
+		RPEDEBUG("%d values found for %s.  Only one is allowed",
+			 fr_value_box_list_num_elements(&state->tmpl_expanded), env->rule->name);
+		return -1;
+	}
+
+	while ((vb = fr_value_box_list_pop_head(&state->tmpl_expanded))) {
+		switch (env->rule->pair.type) {
+		case MOD_ENV_TYPE_VALUE_BOX:
+			fr_value_box_copy_shallow(state->env_data, (fr_value_box_t *)(out), vb);
+			break;
+
+		case MOD_ENV_TYPE_VALUE_BOX_LIST:
+			if (!fr_value_box_list_initialised((fr_value_box_list_t *)out)) fr_value_box_list_init((fr_value_box_list_t *)out);
+			fr_value_box_list_insert_tail((fr_value_box_list_t *)out, vb);
+			break;
+		}
+	}
+
+	return 0;
+}
 
 static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
