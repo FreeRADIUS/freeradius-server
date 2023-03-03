@@ -42,6 +42,15 @@ typedef struct {
 								///< to be allocated from.
 } unlang_module_t;
 
+/** What state the module env for the current call is in.
+ *
+ */
+typedef enum {
+	MOD_ENV_EXP_INIT = 0,		//!< Expansion not yet started.
+	MOD_ENV_EXP_PROC,		//!< Expansion in progress.
+	MOD_ENV_EXP_DONE		//!< All expansions done.
+} module_env_state_t;
+
 /** A module stack entry
  *
  * Represents a single module call on the unlang stack.
@@ -54,6 +63,9 @@ typedef struct {
 								///< shared between all threads, so we can't
 								///< cache thread-specific data in the #unlang_t.
 
+	module_env_state_t		env_state;		//!< State of the current call module_env.
+	module_env_parsed_t const	*last_expanded;		//!< Last environment tmpl expanded.
+	fr_value_box_list_t		tmpl_expanded;		//!< Value boxes produced by last expanded tmpl.
 	void				*env_data;		//!< Expanded per call module environment tmpls.
 
 #ifndef NDEBUG
