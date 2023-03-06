@@ -89,7 +89,7 @@ struct value_pair_s {
 			 * fr_value_box_t which gives us much greater packing efficiency.
 			 */
 			uint8_t		pad[offsetof(fr_value_box_t, type) + sizeof(fr_type_t)];
-	
+
 			fr_pair_list_t	children;		//!< Nested attributes of this pair.
 		};
 	};
@@ -415,6 +415,7 @@ do { \
 } while (0)
 
 /* Initialisation */
+/** @hidecallergraph */
 void fr_pair_list_init(fr_pair_list_t *head) CC_HINT(nonnull);
 
 void fr_pair_init_null(fr_pair_t *vp) CC_HINT(nonnull);
@@ -454,6 +455,7 @@ bool		fr_pair_matches_da(void const *item, void const *uctx) CC_HINT(nonnull);
 unsigned int	fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da)
 				    CC_HINT(nonnull);
 
+/** @hidecallergraph */
 fr_pair_t	*fr_pair_find_by_da(fr_pair_list_t const *list,
 				    fr_pair_t const *prev, fr_dict_attr_t const *da) CC_HINT(nonnull(1,3));
 
@@ -476,6 +478,7 @@ fr_pair_t	*fr_pair_find_by_child_num_idx(fr_pair_list_t const *list,
 					       fr_dict_attr_t const *parent, unsigned int attr,
 					       unsigned int idx) CC_HINT(nonnull);
 
+/** @hidecallergraph */
 int		fr_pair_append(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
 int		fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);

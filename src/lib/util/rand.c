@@ -95,6 +95,7 @@ void fr_rand_seed(void const *data, size_t size)
 
 /** Return a 32-bit random number
  *
+ * @hidecallergraph
  */
 uint32_t fr_rand(void)
 {

@@ -352,6 +352,8 @@ static inline CC_HINT(nonnull) int fr_dlist_insert_head(fr_dlist_head_t *list_he
  * @return
  * 	- 0 on success.
  *	- -1 on failure.
+ *
+ * @hidecallergraph
  */
 static inline CC_HINT(nonnull) int fr_dlist_insert_tail(fr_dlist_head_t *list_head, void *ptr)
 {
@@ -458,6 +460,8 @@ static inline CC_HINT(nonnull(1,3)) int fr_dlist_insert_before(fr_dlist_head_t *
  * @return
  *	- The HEAD item.
  *	- NULL if no items exist in the list.
+ *
+ * @hidecallergraph
  */
 static inline CC_HINT(nonnull) void *fr_dlist_head(fr_dlist_head_t const *list_head)
 {
@@ -526,6 +530,7 @@ static inline CC_HINT(nonnull) void *fr_dlist_tail(fr_dlist_head_t const *list_h
  *	- The next item in the list if ptr is not NULL.
  *	- The head of the list if ptr is NULL.
  *	- NULL if ptr is the tail of the list (no more items).
+ * @hidecallergraph
  */
 static inline CC_HINT(nonnull(1)) void *fr_dlist_next(fr_dlist_head_t const *list_head, void const *ptr)
 {
@@ -607,6 +612,8 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_prev(fr_dlist_head_t const *lis
  * @return
  *	- The previous item in the list (makes iteration easier).
  *	- NULL if we just removed the head of the list.
+ *
+ * @hidecallergraph
  */
 static inline CC_HINT(nonnull(1)) void *fr_dlist_remove(fr_dlist_head_t *list_head, void *ptr)
 {

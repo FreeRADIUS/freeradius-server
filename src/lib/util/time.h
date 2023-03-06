@@ -150,6 +150,7 @@ static inline int64_t fr_time_unwrap(fr_time_t time) { return time.value; }	/* f
 #define fr_time_delta_max() (fr_time_delta_t){ .value = INT64_MAX }
 #define fr_time_delta_min() (fr_time_delta_t){ .value = INT64_MIN }
 #define fr_time_delta_wrap(_time) (fr_time_delta_t){ .value = (_time) }
+/** @hidecallergraph */
 static inline int64_t fr_time_delta_unwrap(fr_time_delta_t time) { return time.value; }	/* func to stop mixing with fr_time_t */
 #define fr_time_delta_overflow_add(_a, _b) (fr_time_overflow_ispos(_a, true, _b) ? fr_time_delta_max() : fr_time_delta_min())
 #define fr_time_delta_overflow_sub(_a, _b) (fr_time_overflow_ispos(_a, false, _b) ? fr_time_delta_max() : fr_time_delta_min())
@@ -583,6 +584,7 @@ static inline fr_time_delta_t fr_time_delta_from_csec(int64_t csec)
 	return fr_time_delta_wrap(out);
 }
 
+/** @hidecallergraph */
 static inline fr_time_delta_t fr_time_delta_from_sec(int64_t sec)
 {
 	int64_t out;

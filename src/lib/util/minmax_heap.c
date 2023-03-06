@@ -77,6 +77,9 @@ typedef struct fr_minmax_heap_s minmax_heap_t;
 #define HEAP_RIGHT(_x) (2 * (_x) + 1 )
 #define	HEAP_SWAP(_a, _b) { void *_tmp = _a; _a = _b; _b = _tmp; }
 
+/**
+ * @hidecallergraph
+ */
 static inline uint8_t depth(fr_minmax_heap_index_t i)
 {
 	return fr_high_bit_pos(i) - 1;

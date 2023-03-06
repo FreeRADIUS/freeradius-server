@@ -449,6 +449,8 @@ int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *sr
  * @param[in] type	to set.
  * @param[in] enumv	Enumeration values.
  * @param[in] tainted	Whether data will come from an untrusted source.
+ *
+ * @hidecallergraph
  */
 static inline CC_HINT(nonnull(1), always_inline)
 void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
@@ -535,6 +537,8 @@ fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type, fr_dict_attr
  * @return
  *	- A new fr_value_box_t.
  *	- NULL on error.
+ *
+ *  @hidecallergraph
  */
 static inline CC_HINT(always_inline)
 fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
