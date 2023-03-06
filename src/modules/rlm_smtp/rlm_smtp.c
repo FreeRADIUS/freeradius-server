@@ -684,7 +684,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 static int body_init(fr_mail_ctx_t *uctx, curl_mime *mime)
 {
 	fr_pair_t 	*vp;
-	request_t		*request = uctx->request;
+	request_t	*request = uctx->request;
 
 	curl_mimepart	*part;
 	curl_mime	*mime_body;
