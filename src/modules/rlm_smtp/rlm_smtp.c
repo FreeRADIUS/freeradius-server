@@ -67,6 +67,15 @@ global_lib_autoinst_t const * const rlm_smtp_lib[] = {
 	GLOBAL_LIB_TERMINATOR
 };
 
+/** Module environment for sending emails.
+*/
+typedef struct {
+	fr_value_box_t		username;		//!< User to authenticate as when sending emails.
+	tmpl_t			*username_tmpl;		//!< The tmpl used to produce the above.
+	fr_value_box_t		password;		//!< Password for authenticated mails.
+} rlm_smtp_env_t;
+
+FR_DLIST_FUNCS(header_list, rlm_smtp_header_t, entry)
 typedef struct {
 	char const		*uri;			//!< URI of smtp server
 	char const		*template_dir;		//!< The directory that contains all email attachments
@@ -838,11 +847,12 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 {
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_smtp_t);
 	rlm_smtp_thread_t       	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
+	rlm_smtp_env_t			*mod_env = talloc_get_type_abort(mctx->env_data, rlm_smtp_env_t);
 	fr_curl_io_request_t     	*randle;
 	fr_mail_ctx_t			*mail_ctx;
 	const char 			*envelope_address;
 
-	fr_pair_t const 		*smtp_body, *username, *password;
+	fr_pair_t const 		*smtp_body;
 
 	if (fr_pair_find_by_da(&request->control_pairs, NULL, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
@@ -850,8 +860,6 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 	}
 
 	/* Elements provided by the request */
-	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-	password = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password);
 	smtp_body = fr_pair_find_by_da(&request->request_pairs, NULL, attr_smtp_body);
 
 	/* Make sure all of the essential email components are present and possible*/
@@ -901,12 +909,16 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 
 	if(RDEBUG_ENABLED3) FR_CURL_REQUEST_SET_OPTION(CURLOPT_VERBOSE, 1L);
 
-	/* Set the username and pasword if they have been provided */
-	if (username && username->vp_length != 0 && password) {
-		FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, username->vp_strvalue);
-		FR_CURL_REQUEST_SET_OPTION(CURLOPT_PASSWORD, password->vp_strvalue);
+	/* Set the username and password if they have been provided */
+	if (mod_env->username.vb_strvalue) {
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, mod_env->username.vb_strvalue);
+
+		if (!mod_env->password.vb_strvalue) goto skip_auth;
+
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_PASSWORD, mod_env->password.vb_strvalue);
 		RDEBUG2("Username and password set");
 	}
+skip_auth:
 
 	/* Send the envelope address */
 	envelope_address = get_envelope_address(inst);
@@ -1234,6 +1246,20 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static const module_env_t module_env[] = {
+	{ FR_MODULE_ENV_TMPL_OFFSET("username", FR_TYPE_STRING, rlm_smtp_env_t, username, username_tmpl, NULL,
+				T_DOUBLE_QUOTED_STRING, false, true, true) },
+	{ FR_MODULE_ENV_OFFSET("password", FR_TYPE_STRING, rlm_smtp_env_t, password, NULL,
+				T_DOUBLE_QUOTED_STRING, false, true, true) },
+	MODULE_ENV_TERMINATOR
+};
+
+static const module_method_env_t method_env = {
+	.inst_size = sizeof(rlm_smtp_env_t),
+	.inst_type = "rlm_smtp_env_t",
+	.env = module_env
+};
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -1258,7 +1284,8 @@ module_rlm_t rlm_smtp = {
 		.thread_detach      	= mod_thread_detach,
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = "mail",		.name2 = CF_IDENT_ANY,		.method = mod_mail },
+		{ .name1 = "mail",		.name2 = CF_IDENT_ANY,		.method = mod_mail,
+		  .method_env = &method_env },
 		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
 		MODULE_NAME_TERMINATOR
 	}
