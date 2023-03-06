@@ -834,7 +834,7 @@ static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t 
  *	Then it queues the request and yeilds until a response is given
  *	When it responds, mod_authorize_resume is called.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_smtp_t);
 	rlm_smtp_thread_t       	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
@@ -1258,7 +1258,7 @@ module_rlm_t rlm_smtp = {
 		.thread_detach      	= mod_thread_detach,
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize },
+		{ .name1 = "mail",		.name2 = CF_IDENT_ANY,		.method = mod_mail },
 		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
 		MODULE_NAME_TERMINATOR
 	}
