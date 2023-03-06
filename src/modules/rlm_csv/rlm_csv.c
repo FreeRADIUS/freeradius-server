@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc.h>
 
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				FR_DLIST_HEAD(fr_value_box_list) *key, map_list_t const *maps);
+				fr_value_box_list_t *key, map_list_t const *maps);
 
 /*
  *	Define a structure for our module configuration.
@@ -975,7 +975,7 @@ finish:
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				FR_DLIST_HEAD(fr_value_box_list) *key, map_list_t const *maps)
+				fr_value_box_list_t *key, map_list_t const *maps)
 {
 	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);
 	fr_value_box_t		*key_head = fr_value_box_list_head(key);

@@ -89,6 +89,7 @@ extern fr_sbuff_escape_rules_t fr_value_escape_unprintables;
 /** @name List and cursor type definitions
  */
 FR_DLIST_TYPES(fr_value_box_list)
+FR_DLIST_TYPEDEFS(fr_value_box_list, fr_value_box_list_t, fr_value_box_entry_t)
 FR_DCURSOR_DLIST_TYPES(fr_value_box_dcursor, fr_value_box_list, fr_value_box_t)
 /** @{ */
 
@@ -137,7 +138,7 @@ typedef union {
 	size_t					size;			//!< System specific file/memory size.
 	fr_time_delta_t				time_delta;		//!< a delta time in nanoseconds
 
-	FR_DLIST_HEAD(fr_value_box_list)	children;		//!< for groups
+	fr_value_box_list_t			children;		//!< for groups
 } fr_value_box_datum_t;
 
 /** Union containing all data types supported by the server
@@ -156,7 +157,7 @@ struct value_box_s {
 	bool					tainted;		//!< i.e. did it come from an untrusted source
 	uint16_t		_CONST		safe;			//!< more detailed safety
 
-	FR_DLIST_ENTRY(fr_value_box_list)	entry;			//!< Doubly linked list entry.
+	fr_value_box_entry_t			entry;			//!< Doubly linked list entry.
 
 	fr_dict_attr_t const			*enumv;			//!< Enumeration values.
 
@@ -403,7 +404,7 @@ extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
  *	- false if the list has fewer than min boxes.
  */
 static inline CC_HINT(nonnull)
-bool fr_value_box_list_len_min(FR_DLIST_HEAD(fr_value_box_list) const *list, unsigned int min)
+bool fr_value_box_list_len_min(fr_value_box_list_t const *list, unsigned int min)
 {
 	unsigned int i = fr_value_box_list_num_elements(list);
 
@@ -996,39 +997,39 @@ ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  *
  * @{
  */
-ssize_t 	fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, FR_DLIST_HEAD(fr_value_box_list) *list,
+ssize_t 	fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   	  char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
 					   	  fr_value_box_list_action_t proc_action, bool flatten, bool printable)
 		CC_HINT(nonnull(2,3));
 
-ssize_t		fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, FR_DLIST_HEAD(fr_value_box_list) *list,
+ssize_t		fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
 						   uint8_t const *sep, size_t sep_len,
 						   fr_value_box_list_action_t proc_action, bool flatten)
 		CC_HINT(nonnull(2,3));
 
 int		fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
-						  fr_value_box_t *out, FR_DLIST_HEAD(fr_value_box_list) *list, fr_type_t type,
+						  fr_value_box_t *out, fr_value_box_list_t *list, fr_type_t type,
 						  fr_value_box_list_action_t proc_action, bool flatten,
 						  size_t max_size)
 		CC_HINT(nonnull(2,3));
 
-void		fr_value_box_flatten(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, bool steal, bool free)
+void		fr_value_box_flatten(TALLOC_CTX *ctx, fr_value_box_list_t *list, bool steal, bool free)
 		CC_HINT(nonnull(2));
 
-char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) const *list, char const *delim,
+char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
 					  fr_sbuff_escape_rules_t const *e_rules)
 		CC_HINT(nonnull(2));
 
-int		fr_value_box_list_acopy(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, FR_DLIST_HEAD(fr_value_box_list) const *in)
+int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in)
 		CC_HINT(nonnull(2,3));
 
-bool		fr_value_box_list_tainted(FR_DLIST_HEAD(fr_value_box_list) const *head)
+bool		fr_value_box_list_tainted(fr_value_box_list_t const *head)
 		CC_HINT(nonnull(1));
 
-void		fr_value_box_list_taint(FR_DLIST_HEAD(fr_value_box_list) *head)
+void		fr_value_box_list_taint(fr_value_box_list_t *head)
 		CC_HINT(nonnull(1));
 
-void		fr_value_box_list_untaint(FR_DLIST_HEAD(fr_value_box_list) *head)
+void		fr_value_box_list_untaint(fr_value_box_list_t *head)
 		CC_HINT(nonnull(1));
 /** @} */
 
@@ -1063,7 +1064,7 @@ uint32_t	fr_value_box_hash(fr_value_box_t const *vb);
 
 void		fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
 		CC_HINT(nonnull(3));
-void		fr_value_box_list_verify(char const *file, int line, FR_DLIST_HEAD(fr_value_box_list) const *list, bool talloced)
+void		fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list, bool talloced)
 		CC_HINT(nonnull(3));
 
 #ifdef WITH_VERIFY_PTR
@@ -1087,7 +1088,7 @@ void		fr_value_box_list_verify(char const *file, int line, FR_DLIST_HEAD(fr_valu
  *
  * @{
  */
-void fr_value_box_list_debug(FR_DLIST_HEAD(fr_value_box_list) const *head);
+void fr_value_box_list_debug(fr_value_box_list_t const *head);
 void fr_value_box_debug(fr_value_box_t const *vb);
 /** @} */
 

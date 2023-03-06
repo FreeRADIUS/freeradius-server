@@ -262,7 +262,7 @@ static int rlm_rest_perform(module_ctx_t const *mctx,
 
 static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-				      request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
+				      request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	rlm_rest_xlat_rctx_t		*rctx = talloc_get_type_abort(xctx->rctx, rlm_rest_xlat_rctx_t);
 	int				hcode;
@@ -400,7 +400,7 @@ static xlat_arg_parser_t const rest_xlat_args[] = {
  */
 static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       xlat_ctx_t const *xctx, request_t *request,
-			       FR_DLIST_HEAD(fr_value_box_list) *in)
+			       fr_value_box_list_t *in)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, rlm_rest_thread_t);

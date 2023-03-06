@@ -2095,7 +2095,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_GROUP:
 		return fr_value_box_list_concat_in_place(ctx,
-							 dst, UNCONST(FR_DLIST_HEAD(fr_value_box_list) *, &src->vb_group),
+							 dst, UNCONST(fr_value_box_list_t *, &src->vb_group),
 							 FR_TYPE_STRING,
 							 FR_VALUE_BOX_LIST_NONE, false,
 							 SIZE_MAX);
@@ -2144,7 +2144,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 
 	case FR_TYPE_GROUP:
 		return fr_value_box_list_concat_in_place(ctx,
-							 dst, UNCONST(FR_DLIST_HEAD(fr_value_box_list) *, &src->vb_group),
+							 dst, UNCONST(fr_value_box_list_t *, &src->vb_group),
 							 FR_TYPE_OCTETS,
 							 FR_VALUE_BOX_LIST_NONE, false,
 							 SIZE_MAX);
@@ -3401,7 +3401,7 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 	/*
 	 *	Store list poiters to restore later - fr_value_box_cast clears them
 	 */
-	FR_DLIST_ENTRY(fr_value_box_list) entry = vb->entry;
+	fr_value_box_entry_t entry = vb->entry;
 
 	/*
 	 *	Simple case, destination type and current
@@ -5245,7 +5245,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		 */
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{');
 		FR_SBUFF_RETURN(fr_value_box_list_concat_as_string,
-				NULL, &our_out, UNCONST(FR_DLIST_HEAD(fr_value_box_list) *, &data->vb_group),
+				NULL, &our_out, UNCONST(fr_value_box_list_t *, &data->vb_group),
 				", ", (sizeof(", ") - 1), e_rules,
 				0, false, true);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
@@ -5323,7 +5323,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  *	- <0 how many additional bytes we would have needed to
  *	  concat the next box.
  */
-ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, FR_DLIST_HEAD(fr_value_box_list) *list,
+ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
 					   fr_value_box_list_action_t proc_action, bool flatten, bool printable)
 {
@@ -5412,7 +5412,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, FR_
  *	- <0 how many additional bytes we would have needed to
  *	  concat the next box.
  */
-ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, FR_DLIST_HEAD(fr_value_box_list) *list,
+ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
 					   uint8_t const *sep, size_t sep_len,
 					   fr_value_box_list_action_t proc_action, bool flatten)
 {
@@ -5509,7 +5509,7 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, FR_
  *	- -1 on failure.
  */
 int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
-				      fr_value_box_t *out, FR_DLIST_HEAD(fr_value_box_list) *list, fr_type_t type,
+				      fr_value_box_t *out, fr_value_box_list_t *list, fr_type_t type,
 				      fr_value_box_list_action_t proc_action, bool flatten,
 				      size_t max_size)
 {
@@ -5522,7 +5522,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 	fr_value_box_t			*head_vb = fr_value_box_list_head(list);
 	bool				tainted = false;
 
-	FR_DLIST_ENTRY(fr_value_box_list)	entry;
+	fr_value_box_entry_t		entry;
 
 	if (fr_value_box_list_empty(list)) {
 		fr_strerror_const("Invalid arguments.  List contains no elements");
@@ -5668,7 +5668,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
  * @param[in] free	whether to free any group boxes which have had
  *			their children removed.
  */
-void fr_value_box_flatten(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, bool steal, bool free)
+void fr_value_box_flatten(TALLOC_CTX *ctx, fr_value_box_list_t *list, bool steal, bool free)
 {
 	fr_value_box_list_foreach_safe(list, child) {
 		if (!fr_type_is_structural(child->type)) continue;
@@ -5693,7 +5693,7 @@ void fr_value_box_flatten(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *lis
  *	- NULL on error.
  *	- The concatenation of the string values of the value box list on success.
  */
-char *fr_value_box_list_aprint(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) const *list, char const *delim,
+char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
 			       fr_sbuff_escape_rules_t const *e_rules)
 {
 	fr_value_box_t const	*vb = fr_value_box_list_head(list);
@@ -5765,7 +5765,7 @@ uint32_t fr_value_box_hash(fr_value_box_t const *vb)
  *	- A duplicate list of value boxes, allocated in the context of 'ctx'
  *	- NULL on error, or empty input list.
  */
-int fr_value_box_list_acopy(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, FR_DLIST_HEAD(fr_value_box_list) const *in)
+int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in)
 {
 	fr_value_box_t const *in_p = NULL;
 
@@ -5793,7 +5793,7 @@ int fr_value_box_list_acopy(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *o
  *	- true if a list member is tainted.
  *	- false if no list members are tainted.
  */
-bool fr_value_box_list_tainted(FR_DLIST_HEAD(fr_value_box_list) const *head)
+bool fr_value_box_list_tainted(fr_value_box_list_t const *head)
 {
 	fr_value_box_t *vb = NULL;
 
@@ -5809,7 +5809,7 @@ bool fr_value_box_list_tainted(FR_DLIST_HEAD(fr_value_box_list) const *head)
  *
  * @param[in] head	of list.
  */
-void fr_value_box_list_taint(FR_DLIST_HEAD(fr_value_box_list) *head)
+void fr_value_box_list_taint(fr_value_box_list_t *head)
 {
 	fr_value_box_t *vb = NULL;
 
@@ -5823,7 +5823,7 @@ void fr_value_box_list_taint(FR_DLIST_HEAD(fr_value_box_list) *head)
  *
  * @param[in] head	of list.
  */
-void fr_value_box_list_untaint(FR_DLIST_HEAD(fr_value_box_list) *head)
+void fr_value_box_list_untaint(fr_value_box_list_t *head)
 {
 	fr_value_box_t *vb = NULL;
 
@@ -5877,7 +5877,7 @@ DIAG_ON(nonnull-compare)
 	}
 }
 
-void fr_value_box_list_verify(char const *file, int line, FR_DLIST_HEAD(fr_value_box_list) const *list, bool talloced)
+void fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list, bool talloced)
 {
 	fr_value_box_list_foreach(list, vb) fr_value_box_verify(file, line, vb, talloced);
 }
@@ -5960,7 +5960,7 @@ bool fr_value_box_is_truthy(fr_value_box_t const *in)
 #define INFO_INDENT(_fmt, ...)  FR_FAULT_LOG("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
 
 static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx);
-static void _fr_value_box_list_debug(FR_DLIST_HEAD(fr_value_box_list) const *head, int depth)
+static void _fr_value_box_list_debug(fr_value_box_list_t const *head, int depth)
 {
 	int i = 0;
 
@@ -5973,7 +5973,7 @@ static void _fr_value_box_list_debug(FR_DLIST_HEAD(fr_value_box_list) const *hea
  *
  * @note Call directly from the debugger
  */
-void fr_value_box_list_debug(FR_DLIST_HEAD(fr_value_box_list) const *head)
+void fr_value_box_list_debug(fr_value_box_list_t const *head)
 {
 	_fr_value_box_list_debug(head, 0);
 }

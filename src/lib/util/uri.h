@@ -55,7 +55,7 @@ typedef struct {
 
 #define XLAT_URI_PART_TERMINATOR { .name = NULL, .terminals = NULL, .tainted_allowed = false, .func = NULL }
 
-int fr_uri_escape(FR_DLIST_HEAD(fr_value_box_list) *uri, fr_uri_part_t const *uri_parts, void *uctx);
+int fr_uri_escape(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void *uctx);
 
 #ifdef __cplusplus
 }

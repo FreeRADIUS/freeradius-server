@@ -35,7 +35,7 @@ RCSID("$Id$")
 #include "edit_priv.h"
 
 typedef struct {
-	FR_DLIST_HEAD(fr_value_box_list)	result;			//!< result of expansion
+	fr_value_box_list_t	result;			//!< result of expansion
 	tmpl_t const		*vpt;			//!< expanded tmpl
 	tmpl_t			*to_free;		//!< tmpl to free.
 	bool			create;			//!< whether we need to create the VP

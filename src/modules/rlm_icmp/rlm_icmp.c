@@ -111,7 +111,7 @@ static const CONF_PARSER module_config[] = {
 
 static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-				      UNUSED request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
+				      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	rlm_icmp_echo_t *echo = talloc_get_type_abort(xctx->rctx, rlm_icmp_echo_t);
 	rlm_icmp_thread_t *t = talloc_get_type_abort(xctx->mctx->thread, rlm_icmp_thread_t);
@@ -169,7 +169,7 @@ static xlat_arg_parser_t const xlat_icmp_args[] = {
  */
 static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       xlat_ctx_t const *xctx,
-			       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+			       request_t *request, fr_value_box_list_t *in)
 {
 	rlm_icmp_t		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_icmp_t);
 	rlm_icmp_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_icmp_thread_t);

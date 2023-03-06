@@ -48,8 +48,8 @@ typedef struct {
 
 	fr_dlist_head_t		vlm_head;			//!< Head of list of VP List Mod.
 
-	FR_DLIST_HEAD(fr_value_box_list)	lhs_result;			//!< Result of expanding the LHS
-	FR_DLIST_HEAD(fr_value_box_list)	rhs_result;			//!< Result of expanding the RHS.
+	fr_value_box_list_t	lhs_result;			//!< Result of expanding the LHS
+	fr_value_box_list_t	rhs_result;			//!< Result of expanding the RHS.
 
 	unlang_update_state_t	state;				//!< What we're currently doing.
 } unlang_frame_state_update_t;
@@ -58,7 +58,7 @@ typedef struct {
  *
  */
 typedef struct {
-	FR_DLIST_HEAD(fr_value_box_list)	src_result;			//!< Result of expanding the map source.
+	fr_value_box_list_t	src_result;			//!< Result of expanding the map source.
 } unlang_frame_state_map_proc_t;
 
 /** Apply a list of modifications on one or more fr_pair_t lists.

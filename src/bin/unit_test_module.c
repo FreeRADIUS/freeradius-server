@@ -514,7 +514,7 @@ static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
 }
 
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, UNUSED request_t *request,
-			      	UNUSED FR_DLIST_HEAD(fr_value_box_list) *src, UNUSED map_list_t const *maps)
+			      	UNUSED fr_value_box_list_t *src, UNUSED map_list_t const *maps)
 {
 	return RLM_MODULE_FAIL;
 }

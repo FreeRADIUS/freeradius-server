@@ -2293,7 +2293,7 @@ int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, 
 /** Apply a set of operations in order to create an output box.
  *
  */
-int fr_value_calc_list_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op, FR_DLIST_HEAD(fr_value_box_list) const *list)
+int fr_value_calc_list_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op, fr_value_box_list_t const *list)
 {
 	/*
 	 *	For octets and string and prepend / append, figure out
@@ -2362,7 +2362,7 @@ brute_force:
  *	This implementation is arguably wrong... it should be checking individual entries in list1 against individual entries in list2.
  *	Instead, it checks if ANY entry in list1 matches ANY entry in list2.
  */
-int fr_value_calc_list_cmp(TALLOC_CTX *ctx, fr_value_box_t *dst, FR_DLIST_HEAD(fr_value_box_list) const *list1, fr_token_t op, FR_DLIST_HEAD(fr_value_box_list) const *list2)
+int fr_value_calc_list_cmp(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_list_t const *list1, fr_token_t op, fr_value_box_list_t const *list2)
 {
 	int rcode;
 	bool invert = false;

@@ -154,7 +154,7 @@ static xlat_arg_parser_t const redis_remap_xlat_args[] = {
  */
 static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-				      request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				      request_t *request, fr_value_box_list_t *in)
 {
 	rlm_redis_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_redis_t);
 
@@ -208,7 +208,7 @@ static xlat_arg_parser_t const redis_node_xlat_args[] = {
  */
 static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_ctx_t const *xctx,
-				     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				     request_t *request, fr_value_box_list_t *in)
 {
 	rlm_redis_t const			*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_redis_t);
 
@@ -264,7 +264,7 @@ static xlat_arg_parser_t const redis_args[] = {
  */
 static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				xlat_ctx_t const *xctx,
-				request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				request_t *request, fr_value_box_list_t *in)
 {
 	rlm_redis_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_redis_t);
 	xlat_action_t		action = XLAT_ACTION_DONE;

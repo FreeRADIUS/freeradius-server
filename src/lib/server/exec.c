@@ -45,7 +45,7 @@ static _Thread_local fr_sbuff_marker_t env_m[NUM_ELEMENTS(env_arr)];
  *	- >= 0 number of array elements in argv
  *	- <0 on error
  */
-static int exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, FR_DLIST_HEAD(fr_value_box_list) const *in)
+static int exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_list_t const *in)
 {
 	char		**argv;
 	unsigned int	i = 0;
@@ -324,7 +324,7 @@ static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **env
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args,
+int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
 			fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit)
 {
 
@@ -446,7 +446,7 @@ int fr_exec_fork_nowait(request_t *request, FR_DLIST_HEAD(fr_value_box_list) *ar
  */
 int fr_exec_fork_wait(pid_t *pid_p,
 		      int *stdin_fd, int *stdout_fd, int *stderr_fd,
-		      request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args,
+		      request_t *request, fr_value_box_list_t *args,
 		      fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit)
 {
 	int		argc;
@@ -903,7 +903,7 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
  *	- -1 on failure
  */
 int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
-		  FR_DLIST_HEAD(fr_value_box_list) *args,
+		  fr_value_box_list_t *args,
 		  fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit,
 		  bool need_stdin,
 		  bool store_stdout, TALLOC_CTX *stdout_ctx,

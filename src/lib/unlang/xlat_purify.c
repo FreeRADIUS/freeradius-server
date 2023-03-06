@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
 
-static void xlat_value_list_to_xlat(xlat_exp_head_t *head, FR_DLIST_HEAD(fr_value_box_list) *list)
+static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *list)
 {
 	fr_value_box_t *box;
 	xlat_exp_t *node;
@@ -60,7 +60,7 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 {
 	int rcode;
 	bool success;
-	FR_DLIST_HEAD(fr_value_box_list) list;
+	fr_value_box_list_t list;
 	xlat_flags_t our_flags;
 
 	if (!head->flags.can_purify) return 0;

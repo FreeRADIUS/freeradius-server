@@ -770,7 +770,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 			case 'M':
 			{
-				FR_DLIST_HEAD(fr_value_box_list) const *in = va_arg(ap_q, FR_DLIST_HEAD(fr_value_box_list) const *);
+				fr_value_box_list_t const *in = va_arg(ap_q, fr_value_box_list_t const *);
 
 				if (!in) {
 					subst = talloc_strdup(NULL, "(null)");

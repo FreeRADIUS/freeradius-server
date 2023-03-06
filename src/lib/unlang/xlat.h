@@ -206,7 +206,7 @@ typedef void (*fr_unlang_xlat_fd_event_t)(xlat_ctx_t const *xctx, request_t *req
  *	- XLAT_ACTION_FAIL	the xlat function failed.
  */
 typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     xlat_ctx_t const *xctx, request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in);
+				     xlat_ctx_t const *xctx, request_t *request, fr_value_box_list_t *in);
 
 /** A callback when the request gets a fr_state_signal_t.
  *
@@ -531,7 +531,7 @@ int		xlat_purify_op(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token
 int		unlang_xlat_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
 					void const *rctx, fr_time_t when);
 
-int		unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_box_list) *out,
+int		unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 				 request_t *request, xlat_exp_head_t const *head, bool top_frame)
 				 CC_HINT(warn_unused_result);
 

@@ -48,7 +48,7 @@ typedef struct {
 	/*
 	 *	For func and alternate
 	 */
-	FR_DLIST_HEAD(fr_value_box_list)	out;				//!< Head of the result of a nested
+	fr_value_box_list_t	out;				//!< Head of the result of a nested
 								///< expansion.
 	bool			alternate;			//!< record which alternate branch we
 								///< previously took.
@@ -188,7 +188,7 @@ int unlang_xlat_timeout_add(request_t *request,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_box_list) *out,
+static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 				     request_t *request, xlat_exp_head_t const *xlat, xlat_exp_t *node, bool top_frame)
 {
 	/** Static instruction for performing xlat evaluations
@@ -271,7 +271,7 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_box_list) *out,
+int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 		     request_t *request, xlat_exp_head_t const *xlat, bool top_frame)
 {
 	(void) talloc_get_type_abort_const(xlat, xlat_exp_head_t);
@@ -291,7 +291,7 @@ int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_bo
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_box_list) *out,
+int unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 			  request_t *request, xlat_exp_t *node)
 {
 	return unlang_xlat_push_internal(ctx, p_success, out, request, NULL, node, UNLANG_TOP_FRAME);

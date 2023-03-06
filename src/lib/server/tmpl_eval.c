@@ -1057,7 +1057,7 @@ int pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t 
  *	- <0 for "cast failed"
  *	- 0 for success
  */
-int tmpl_value_list_insert_tail(FR_DLIST_HEAD(fr_value_box_list) *list, fr_value_box_t *box, tmpl_t const *vpt)
+int tmpl_value_list_insert_tail(fr_value_box_list_t *list, fr_value_box_t *box, tmpl_t const *vpt)
 {
 	if (fr_type_is_null(tmpl_rules_cast(vpt)) ||
 	    (box->type == tmpl_rules_cast(vpt))) {
@@ -1085,12 +1085,12 @@ int tmpl_value_list_insert_tail(FR_DLIST_HEAD(fr_value_box_list) *list, fr_value
  *	- <0	on memory allocation errors.
  *	- 0	success.
  */
-static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out,
+static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 				  request_t *request, tmpl_t const *vpt)
 {
 	fr_radius_packet_t *packet = NULL;
 	fr_value_box_t	*value;
-	FR_DLIST_HEAD(fr_value_box_list) list;
+	fr_value_box_list_t list;
 
 	/*
 	 *	Virtual attributes always have a count of 1
@@ -1244,7 +1244,7 @@ done:
  *	- <0		we failed getting a value for the attribute.
  *	- 0		we successfully evaluated the tmpl
  */
-int tmpl_eval_pair(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, request_t *request, tmpl_t const *vpt)
+int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp = NULL;
 	fr_value_box_t		*value;
@@ -1253,7 +1253,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, reque
 	tmpl_dcursor_ctx_t	cc;
 
 	int			ret = 0;
-	FR_DLIST_HEAD(fr_value_box_list)	list;
+	fr_value_box_list_t	list;
 
 	fr_assert(tmpl_is_attr(vpt));
 
@@ -1389,11 +1389,11 @@ fail:
  *	- <0		we failed getting a value for the tmpl
  *	- 0		we successfully evaluated the tmpl
  */
-int tmpl_eval(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, request_t *request, tmpl_t const *vpt)
+int tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt)
 {
 	char *p;
 	fr_value_box_t		*value;
-	FR_DLIST_HEAD(fr_value_box_list)	list;
+	fr_value_box_list_t	list;
 
 	if (tmpl_needs_resolving(vpt)) {
 		fr_strerror_const("Cannot evaluate unresolved tmpl");
@@ -1465,7 +1465,7 @@ done:
  *	- <0		the cast failed
  *	- 0		we successfully evaluated the tmpl
  */
-int tmpl_eval_cast(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, tmpl_t const *vpt)
+int tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *list, tmpl_t const *vpt)
 {
 	fr_type_t cast = tmpl_rules_cast(vpt);
 	fr_value_box_t *vb;

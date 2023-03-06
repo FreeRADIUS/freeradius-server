@@ -89,7 +89,7 @@ static xlat_arg_parser_t const json_quote_xlat_arg[] = {
  */
 static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     UNUSED xlat_ctx_t const *xctx,
-				     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				     request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t *vb;
 	fr_value_box_t *in_head = fr_value_box_list_head(in);
@@ -124,7 +124,7 @@ static xlat_arg_parser_t const jpath_validate_xlat_arg[] = {
  */
 static xlat_action_t jpath_validate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 UNUSED xlat_ctx_t const *xctx,
-					 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+					 request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*path = fr_value_box_list_head(in);
 	fr_jpath_node_t *head;
@@ -166,7 +166,7 @@ static xlat_arg_parser_t const json_encode_xlat_arg[] = {
  */
 static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-				      request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				      request_t *request, fr_value_box_list_t *in)
 {
 	rlm_json_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_json_t);
 	fr_json_format_t const	*format = inst->format;
@@ -378,7 +378,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 	fr_pair_t			*vp;
 	rlm_json_jpath_to_eval_t	*to_eval = uctx;
 	fr_value_box_t			*value;
-	FR_DLIST_HEAD(fr_value_box_list)		head;
+	fr_value_box_list_t		head;
 	int				ret;
 
 	fr_pair_list_free(out);
@@ -422,7 +422,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_t *request,
-			      	FR_DLIST_HEAD(fr_value_box_list) *json, map_list_t const *maps)
+			      	fr_value_box_list_t *json, map_list_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
 	struct json_tokener		*tok;

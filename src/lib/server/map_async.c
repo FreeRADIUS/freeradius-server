@@ -250,14 +250,14 @@ static inline fr_pair_list_t *map_check_src_or_dst(request_t *request, map_t con
  */
 int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		    request_t *request, map_t const *original,
-		    FR_DLIST_HEAD(fr_value_box_list) *lhs_result, FR_DLIST_HEAD(fr_value_box_list) *rhs_result)
+		    fr_value_box_list_t *lhs_result, fr_value_box_list_t *rhs_result)
 {
 	vp_list_mod_t	*n = NULL;
 	map_t		map_tmp;
 	map_t const	*mutated = original;
 
 	fr_dcursor_t	values;
-	FR_DLIST_HEAD(fr_value_box_list)	head;
+	fr_value_box_list_t	head;
 	TALLOC_CTX	*tmp_ctx = NULL;
 
 	MAP_VERIFY(original);

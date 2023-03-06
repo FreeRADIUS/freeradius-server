@@ -59,7 +59,7 @@ typedef struct {
 	fr_type_t		return_type;	//!< Data type to parse results into
 	bool			has_priority;	//!< Does the returned data start with a priority field
 	uint16_t		count;		//!< Number of results to return
-	FR_DLIST_HEAD(fr_value_box_list)	list;		//!< Where to put the parsed results
+	fr_value_box_list_t	list;		//!< Where to put the parsed results
 	TALLOC_CTX		*out_ctx;	//!< CTX to allocate parsed results in
 	fr_event_timer_t const	*ev;		//!< Event for timeout
 } unbound_request_t;
@@ -282,7 +282,7 @@ static void xlat_unbound_signal(xlat_ctx_t const *xctx, request_t *request, fr_s
  */
 static xlat_action_t xlat_unbound_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 xlat_ctx_t const *xctx,
-					 request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
+					 request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	fr_value_box_t		*vb;
 	unbound_request_t	*ur = talloc_get_type_abort(xctx->rctx, unbound_request_t);
@@ -342,7 +342,7 @@ static xlat_arg_parser_t const xlat_unbound_args[] = {
  */
 static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				  xlat_ctx_t const *xctx,
-				  request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				  request_t *request, fr_value_box_list_t *in)
 {
 	rlm_unbound_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_unbound_t);
 	rlm_unbound_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, rlm_unbound_thread_t);

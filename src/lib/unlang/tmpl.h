@@ -107,7 +107,7 @@ typedef void (*fr_unlang_tmpl_signal_t)(request_t *request, void *rctx, fr_state
  */
 typedef unlang_action_t (*fr_unlang_tmpl_resume_t)(rlm_rcode_t *p_result, request_t *request, void *rctx);
 
-int		unlang_tmpl_push(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out,
+int		unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 				 request_t *request, tmpl_t const *tmpl, unlang_tmpl_args_t *args)
 		CC_HINT(warn_unused_result);
 

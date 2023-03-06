@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include "group_priv.h"
 
 typedef struct {
-	FR_DLIST_HEAD(fr_value_box_list)	out;				//!< Head of the result of a nested
+	fr_value_box_list_t	out;				//!< Head of the result of a nested
 								///< expansion.
 	bool			success;			//!< If set, where to record the result
 								///< of the execution.

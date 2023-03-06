@@ -35,7 +35,7 @@ typedef struct {
 	rindent_t				indent;
 	fr_event_timer_t const			*ev;
 
-	FR_DLIST_HEAD(fr_value_box_list)	result;
+	fr_value_box_list_t			result;
 } unlang_frame_state_timeout_t;
 
 static void unlang_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)

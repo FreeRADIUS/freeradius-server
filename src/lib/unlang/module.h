@@ -121,12 +121,12 @@ unlang_action_t	unlang_module_yield_to_section(rlm_rcode_t *p_result,
 					       unlang_module_resume_t resume,
 					       unlang_module_signal_t signal, void *rctx);
 
-unlang_action_t	unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, FR_DLIST_HEAD(fr_value_box_list) *out,
+unlang_action_t	unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 					    request_t *request, xlat_exp_head_t const *xlat,
 					    unlang_module_resume_t resume,
 					    unlang_module_signal_t signal, void *rctx);
 
-unlang_action_t	unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out,
+unlang_action_t	unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 					    request_t *request, tmpl_t const *vpt,
 					    unlang_tmpl_args_t *args,
 					    unlang_module_resume_t resume,

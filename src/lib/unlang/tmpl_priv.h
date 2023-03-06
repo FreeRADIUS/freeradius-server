@@ -36,8 +36,8 @@ extern "C" {
  */
 typedef struct {
 	TALLOC_CTX			*ctx;		//!< for allocating value boxes
-	FR_DLIST_HEAD(fr_value_box_list)		*out;		//!< output list if the exec succeeds
-	FR_DLIST_HEAD(fr_value_box_list)		list;		//!< our intermediate working list
+	fr_value_box_list_t		*out;		//!< output list if the exec succeeds
+	fr_value_box_list_t		list;		//!< our intermediate working list
 
 	void				*rctx;		//!< for resume
 	fr_unlang_tmpl_resume_t		resume;	       	//!< resumption handler

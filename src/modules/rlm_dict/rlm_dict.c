@@ -38,7 +38,7 @@ static xlat_arg_parser_t const xlat_dict_attr_by_num_args[] = {
  */
 static xlat_action_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
-					   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+					   request_t *request, fr_value_box_list_t *in)
 {
 	fr_dict_attr_t const	*da;
 	fr_value_box_t		*attr = fr_value_box_list_head(in);
@@ -72,7 +72,7 @@ static xlat_arg_parser_t const xlat_dict_attr_by_oid_args[] = {
  */
 static xlat_action_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
-					   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+					   request_t *request, fr_value_box_list_t *in)
 {
 	unsigned int		attr = 0;
 	fr_dict_attr_t const	*parent = fr_dict_root(request->dict);
@@ -111,7 +111,7 @@ static xlat_arg_parser_t const xlat_vendor_args[] = {
  */
 static xlat_action_t xlat_vendor(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 UNUSED xlat_ctx_t const *xctx,
-				 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				 request_t *request, fr_value_box_list_t *in)
 {
 	fr_pair_t		*vp;
 	fr_dict_vendor_t const	*vendor;
@@ -145,7 +145,7 @@ static xlat_arg_parser_t const xlat_vendor_num_args[] = {
  */
 static xlat_action_t xlat_vendor_num(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     UNUSED xlat_ctx_t const *xctx,
-				     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				     request_t *request, fr_value_box_list_t *in)
 {
 	fr_pair_t	*vp;
 	fr_value_box_t	*attr = fr_value_box_list_head(in);
@@ -170,7 +170,7 @@ static xlat_arg_parser_t const xlat_attr_args[] = {
  */
 static xlat_action_t xlat_attr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			       UNUSED xlat_ctx_t const *xctx,
-			       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+			       request_t *request, fr_value_box_list_t *in)
 {
 	fr_pair_t	*vp;
 	fr_value_box_t	*attr = fr_value_box_list_head(in);
@@ -200,7 +200,7 @@ static xlat_arg_parser_t const xlat_attr_num_args[] = {
  */
 static xlat_action_t xlat_attr_num(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   UNUSED xlat_ctx_t const *xctx,
-				   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				   request_t *request, fr_value_box_list_t *in)
 {
 	fr_pair_t	*vp;
 	fr_value_box_t	*attr = fr_value_box_list_head(in);

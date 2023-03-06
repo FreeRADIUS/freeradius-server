@@ -50,7 +50,7 @@ static xlat_arg_parser_t const unpack_xlat_args[] = {
  */
 static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 UNUSED xlat_ctx_t const *xctx, request_t *request,
-				 FR_DLIST_HEAD(fr_value_box_list) *in)
+				 fr_value_box_list_t *in)
 {
 	size_t		len, input_len, offset;
 	fr_type_t	type;

@@ -251,7 +251,7 @@ static void xs_init(pTHX)
  * 	- 0 on success
  * 	- -1 on failure
  */
-static int perl_vblist_to_av(AV *av, FR_DLIST_HEAD(fr_value_box_list) *head) {
+static int perl_vblist_to_av(AV *av, fr_value_box_list_t *head) {
 	fr_value_box_t	*vb = NULL;
 	SV		*sv;
 
@@ -305,7 +305,7 @@ static int perl_vblist_to_av(AV *av, FR_DLIST_HEAD(fr_value_box_list) *head) {
  * 	- 0 on success
  * 	- -1 on failure
  */
-static int perl_sv_to_vblist(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, request_t *request, SV *sv) {
+static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request, SV *sv) {
 	fr_value_box_t	*vb = NULL;
 	char		*tmp;
 	STRLEN		len;
@@ -421,7 +421,7 @@ static xlat_arg_parser_t const perl_xlat_args[] = {
  */
 static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			       xlat_ctx_t const *xctx,
-			       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+			       request_t *request, fr_value_box_list_t *in)
 {
 	rlm_perl_thread_t const		*t = talloc_get_type_abort_const(xctx->mctx->thread, rlm_perl_thread_t);
 	int				count, i;
@@ -431,7 +431,7 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t			*arg = NULL, *child;
 	SV				*sv;
 	AV				*av;
-	FR_DLIST_HEAD(fr_value_box_list)		list, sub_list;
+	fr_value_box_list_t		list, sub_list;
 	fr_value_box_t			*vb = NULL;
 
 	fr_value_box_list_init(&list);

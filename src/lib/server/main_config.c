@@ -540,7 +540,7 @@ static xlat_arg_parser_t const xlat_config_args[] = {
  */
 static xlat_action_t xlat_config(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 UNUSED xlat_ctx_t const *xctx,
-				 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				 request_t *request, fr_value_box_list_t *in)
 {
 	char const	*value;
 	CONF_PAIR	*cp;

@@ -115,7 +115,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				   FR_DLIST_HEAD(fr_value_box_list) *client_override, map_list_t const *maps)
+				   fr_value_box_list_t *client_override, map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	map_t const		*map = NULL;
@@ -231,7 +231,7 @@ static xlat_arg_parser_t const xlat_client_args[] = {
  */
 static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 UNUSED xlat_ctx_t const *xctx,
-				 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				 request_t *request, fr_value_box_list_t *in)
 {
 	char const	*value = NULL;
 	fr_ipaddr_t	ip;

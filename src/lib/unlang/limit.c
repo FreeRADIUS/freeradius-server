@@ -36,7 +36,7 @@ typedef struct {
 	uint32_t				limit;
 	request_t				*request;
 
-	FR_DLIST_HEAD(fr_value_box_list)	result;
+	fr_value_box_list_t			result;
 } unlang_frame_state_limit_t;
 
 /** Send a signal (usually stop) to a request

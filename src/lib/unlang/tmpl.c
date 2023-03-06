@@ -255,7 +255,7 @@ push:
  * @param[in] args		where the status of exited programs will be stored.
  *				Used only for #TMPL_TYPE_EXEC.
  */
-unlang_action_t unlang_tmpl_push(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out, request_t *request,
+unlang_action_t unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request,
 				 tmpl_t const *tmpl, unlang_tmpl_args_t *args)
 {
 	unlang_stack_t			*stack = request->stack;

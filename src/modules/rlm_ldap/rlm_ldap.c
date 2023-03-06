@@ -187,7 +187,7 @@ static xlat_arg_parser_t const ldap_escape_xlat_arg[] = {
  */
 static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      UNUSED xlat_ctx_t const *xctx,
-				      request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				      request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t		*vb, *in_vb = fr_value_box_list_head(in);
 	fr_sbuff_t		sbuff;
@@ -225,7 +225,7 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t ldap_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					UNUSED xlat_ctx_t const *xctx,
-					request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+					request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t		*vb, *in_vb = fr_value_box_list_head(in);
 	fr_sbuff_t		sbuff;
@@ -310,7 +310,7 @@ static void ldap_query_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now,
  */
 static xlat_action_t ldap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-	 			      request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
+	 			      request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(xctx->rctx, fr_ldap_query_t);
 	fr_ldap_connection_t	*ldap_conn = query->ldap_conn;
@@ -397,7 +397,7 @@ static xlat_arg_parser_t const ldap_xlat_arg[] = {
  */
 static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       xlat_ctx_t const *xctx,
-	 		       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+	 		       request_t *request, fr_value_box_list_t *in)
 {
 	fr_ldap_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
 	fr_value_box_t		*uri_components, *uri;
@@ -650,7 +650,7 @@ static void _ldap_async_bind_auth_watch(fr_connection_t *conn, UNUSED fr_connect
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				FR_DLIST_HEAD(fr_value_box_list) *url, map_list_t const *maps)
+				fr_value_box_list_t *url, map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);

@@ -515,7 +515,7 @@ finish:
 
 static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				  xlat_ctx_t const *xctx, request_t *request,
-				  FR_DLIST_HEAD(fr_value_box_list) *args)
+				  fr_value_box_list_t *args)
 {
 	rlm_linelog_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_linelog_t);
 	struct iovec		vector[2];

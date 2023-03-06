@@ -1292,7 +1292,7 @@ static xlat_arg_parser_t const unlang_cancel_xlat_args[] = {
 
 static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					UNUSED xlat_ctx_t const *xctx,
-					request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args);
+					request_t *request, fr_value_box_list_t *args);
 
 /** Signal the request to stop executing
  *
@@ -1315,7 +1315,7 @@ static void unlang_cancel_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now
  */
 static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					UNUSED xlat_ctx_t const *xctx,
-					request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args)
+					request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_t		*timeout;
 	fr_event_list_t		*el = unlang_interpret_event_list(request);
@@ -1383,7 +1383,7 @@ static xlat_arg_parser_t const unlang_interpret_xlat_args[] = {
  */
 static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
-					   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+					   request_t *request, fr_value_box_list_t *in)
 {
 	unlang_stack_t		*stack = request->stack;
 	int			depth = stack->depth;

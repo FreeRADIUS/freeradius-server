@@ -184,7 +184,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
  * @param[in] args	from previous expansion.
  * @param[in] line	Unused
  */
-static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const *node, FR_DLIST_HEAD(fr_value_box_list) const *args, UNUSED int line)
+static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const *node, fr_value_box_list_t const *args, UNUSED int line)
 {
 	if (node->flags.constant) return;
 
@@ -216,7 +216,7 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
  * @param[in] node	which was expanded.
  * @param[in] result	of the expansion.
  */
-static inline void xlat_debug_log_list_result(request_t *request, xlat_exp_t const *node, FR_DLIST_HEAD(fr_value_box_list) const *result)
+static inline void xlat_debug_log_list_result(request_t *request, xlat_exp_t const *node, fr_value_box_list_t const *result)
 {
 	if (node->flags.constant) return;
 
@@ -252,7 +252,7 @@ static inline void xlat_debug_log_result(request_t *request, xlat_exp_t const *n
  *	- XLAT_ACTION_DONE on success.
  *	- XLAT_ACTION_FAIL on failure.
  */
-static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list, request_t *request,
+static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
 					   char const *name, xlat_arg_parser_t const *arg, unsigned int arg_num)
 {
 	fr_value_box_t *vb;
@@ -366,7 +366,7 @@ do { \
  * @param[in] func		to call
  */
 static inline CC_HINT(always_inline)
-xlat_action_t xlat_process_args(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *list,
+xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 				request_t *request, xlat_t const *func)
 {
 	xlat_arg_parser_t const	*arg_p = func->args;
@@ -508,7 +508,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list
  *	- false - If the return values were incorrect.
  */
 static inline CC_HINT(nonnull(1,2,3))
-bool xlat_process_return(request_t *request, xlat_t const *func, FR_DLIST_HEAD(fr_value_box_list) const *returned, fr_value_box_t *pos)
+bool xlat_process_return(request_t *request, xlat_t const *func, fr_value_box_list_t const *returned, fr_value_box_t *pos)
 {
 	unsigned int count = 0;
 
@@ -555,7 +555,7 @@ bool xlat_process_return(request_t *request, xlat_t const *func, FR_DLIST_HEAD(f
  *
  */
 static inline CC_HINT(always_inline)
-xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_list) *out,
+xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 				   request_t *request, char letter)
 {
 
@@ -743,12 +743,12 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, FR_DLIST_HEAD(fr_value_box_l
 
 typedef struct {
 	int			status;
-	FR_DLIST_HEAD(fr_value_box_list)	list;
+	fr_value_box_list_t	list;
 } xlat_exec_rctx_t;
 
 static xlat_action_t xlat_exec_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-				      UNUSED request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
+				      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	xlat_exec_rctx_t *rctx = talloc_get_type_abort(xctx->rctx, xlat_exec_rctx_t);
 
@@ -757,7 +757,7 @@ static xlat_action_t xlat_exec_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, &rctx->list);
+	fr_value_box_list_move((fr_value_box_list_t *)out->dlist, &rctx->list);
 
 	return XLAT_ACTION_DONE;
 }
@@ -802,7 +802,7 @@ void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_exp_head_t const **child,
 				     request_t *request,  xlat_exp_head_t const *head, xlat_exp_t const **in,
-				     FR_DLIST_HEAD(fr_value_box_list) *result, xlat_func_t resume, void *rctx)
+				     fr_value_box_list_t *result, xlat_func_t resume, void *rctx)
 {
 	xlat_action_t		xa;
 	xlat_exp_t const	*node = *in;
@@ -838,7 +838,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
 		RDEBUG2("| --> %pV", fr_dcursor_current(out));
 		if (node->call.func &&
-		    !xlat_process_return(request, node->call.func, (FR_DLIST_HEAD(fr_value_box_list) *)out->dlist,
+		    !xlat_process_return(request, node->call.func, (fr_value_box_list_t *)out->dlist,
 					 fr_dcursor_current(out))) {
 			return XLAT_ACTION_FAIL;
 		}
@@ -878,7 +878,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_exp_head_t const **child, bool *alternate,
 				     request_t *request, xlat_exp_head_t const *head, xlat_exp_t const **in,
-				     FR_DLIST_HEAD(fr_value_box_list) *result)
+				     fr_value_box_list_t *result)
 {
 	xlat_exp_t const	*node = *in;
 
@@ -889,7 +889,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	{
 		xlat_action_t		xa;
 		xlat_thread_inst_t	*t;
-		FR_DLIST_HEAD(fr_value_box_list)	result_copy;
+		fr_value_box_list_t	result_copy;
 
 		t = xlat_thread_instance_find(node);
 		fr_assert(t);
@@ -954,7 +954,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			REXDENT();
 			xlat_debug_log_result(request, *in, fr_dcursor_current(out));
 			if (!xlat_process_return(request, node->call.func,
-						 (FR_DLIST_HEAD(fr_value_box_list) *)out->dlist,
+						 (fr_value_box_list_t *)out->dlist,
 						 fr_dcursor_current(out))) return XLAT_ACTION_FAIL;
 			RINDENT();
 			break;
@@ -997,7 +997,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		xlat_debug_log_list_result(request, *in, result);
 
 		VALUE_BOX_TALLOC_LIST_VERIFY(result);
-		fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, result);
+		fr_value_box_list_move((fr_value_box_list_t *)out->dlist, result);
 	}
 		break;
 
@@ -1040,7 +1040,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	First entry is the command to run.  Subsequent entries are the options to pass to the
 		 *	command.
 		 */
-		fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, result);
+		fr_value_box_list_move((fr_value_box_list_t *)out->dlist, result);
 		break;
 
 	default:
@@ -1087,7 +1087,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 {
 	xlat_action_t		xa = XLAT_ACTION_DONE;
 	xlat_exp_t const       	*node;
-	FR_DLIST_HEAD(fr_value_box_list)	result;		/* tmp list so debug works correctly */
+	fr_value_box_list_t	result;		/* tmp list so debug works correctly */
 	fr_value_box_t		*value;
 
 	fr_value_box_list_init(&result);
@@ -1101,7 +1101,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 	for (node = *in; node; node = xlat_exp_next(head, node)) {
 	     	*in = node;		/* Update node in our caller */
 		fr_dcursor_tail(out);	/* Needed for debugging */
-		VALUE_BOX_TALLOC_LIST_VERIFY((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist);
+		VALUE_BOX_TALLOC_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 
 		fr_assert(fr_value_box_list_num_elements(&result) == 0);	/* Should all have been moved */
 
@@ -1139,7 +1139,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				goto finish;
 			}
 			xlat_debug_log_list_result(request, *in, &result);
-			fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, &result);
+			fr_value_box_list_move((fr_value_box_list_t *)out->dlist, &result);
 			continue;
 
 		case XLAT_TMPL:
@@ -1158,7 +1158,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				 */
 				if (tmpl_eval_cast(ctx, &result, node->vpt) < 0) goto fail;
 
-				fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, &result);
+				fr_value_box_list_move((fr_value_box_list_t *)out->dlist, &result);
 				continue;
 
 			} else if (tmpl_is_attr(node->vpt)) {
@@ -1206,7 +1206,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			}
 
 			xlat_debug_log_list_result(request, node, &result);
-			fr_value_box_list_move((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist, &result);
+			fr_value_box_list_move((fr_value_box_list_t *)out->dlist, &result);
 			continue;
 
 		case XLAT_VIRTUAL:
@@ -1303,7 +1303,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 	}
 
 finish:
-	VALUE_BOX_TALLOC_LIST_VERIFY((FR_DLIST_HEAD(fr_value_box_list) *)out->dlist);
+	VALUE_BOX_TALLOC_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 	XLAT_DEBUG("** [%i] %s << %s", unlang_interpret_stack_depth(request),
 		   __FUNCTION__, fr_table_str_by_value(xlat_action_table, xa, "<INVALID>"));
 
@@ -1313,7 +1313,7 @@ finish:
 static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_head_t const * const head,
 			      xlat_escape_legacy_t escape, void const *escape_ctx)
 {
-	FR_DLIST_HEAD(fr_value_box_list)	result;
+	fr_value_box_list_t	result;
 	bool			success = false;
 	TALLOC_CTX		*pool = talloc_new(NULL);
 	rlm_rcode_t		rcode;
@@ -1355,7 +1355,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 			 *	For tainted boxes perform the requested escaping
 			 */
 			while ((vb = fr_value_box_list_next(&result, vb))) {
-				FR_DLIST_ENTRY(fr_value_box_list) entry;
+				fr_value_box_entry_t entry;
 				size_t len, real_len;
 				char *escaped;
 
@@ -1606,7 +1606,7 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_ex
 		my_argv[i++] = talloc_steal(my_argv, node->group);
 	}
 
-	fr_value_box_list_talloc_free((FR_DLIST_HEAD(fr_value_box_list) *)&head->dlist);
+	fr_value_box_list_talloc_free((fr_value_box_list_t *)&head->dlist);
 
 	return count;
 }

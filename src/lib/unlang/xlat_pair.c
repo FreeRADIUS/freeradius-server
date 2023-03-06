@@ -89,7 +89,7 @@ static ssize_t fr_pair_decode_multi(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
  */
 int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			       request_t *request, void *decode_ctx, fr_pair_decode_t decode,
-			       FR_DLIST_HEAD(fr_value_box_list) *in)
+			       fr_value_box_list_t *in)
 {
 	int		decoded = 0;
 	fr_value_box_t	*vb = NULL;

@@ -354,7 +354,7 @@ static xlat_arg_parser_t const binary_op_xlat_args[] = {
 
 static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED xlat_ctx_t const *xctx,
-				    request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in,
+				    request_t *request, fr_value_box_list_t *in,
 				    fr_token_t op,
 				    fr_type_t default_type, fr_dict_attr_t const *enumv)
 {
@@ -426,7 +426,7 @@ static xlat_arg_parser_t const xlat_paircmp_xlat_args[] = {
  */
 static xlat_action_t xlat_paircmp_func(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED xlat_ctx_t const *xctx,
-				    request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				    request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*dst, *vb_da, *vb;
 	fr_dict_attr_t const *da;
@@ -461,7 +461,7 @@ static xlat_action_t xlat_paircmp_func(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #define XLAT_BINARY_FUNC(_name, _op)  \
 static xlat_action_t xlat_func_ ## _name(TALLOC_CTX *ctx, fr_dcursor_t *out, \
 				   xlat_ctx_t const *xctx, \
-				   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)  \
+				   request_t *request, fr_value_box_list_t *in)  \
 { \
 	return xlat_binary_op(ctx, out, xctx, request, in, _op, FR_TYPE_NULL, NULL); \
 }
@@ -480,7 +480,7 @@ XLAT_BINARY_FUNC(op_lshift, T_LSHIFT)
 #define XLAT_CMP_FUNC(_name, _op)  \
 static xlat_action_t xlat_func_ ## _name(TALLOC_CTX *ctx, fr_dcursor_t *out, \
 				   xlat_ctx_t const *xctx, \
-				   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)  \
+				   request_t *request, fr_value_box_list_t *in)  \
 { \
 	return xlat_binary_op(ctx, out, xctx, request, in, _op, FR_TYPE_BOOL, attr_expr_bool_enum); \
 }
@@ -503,7 +503,7 @@ typedef struct {
 
 typedef struct {
 	bool			last_success;
-	FR_DLIST_HEAD(fr_value_box_list)	list;
+	fr_value_box_list_t	list;
 } xlat_regex_rctx_t;
 
 static fr_slen_t xlat_expr_print_regex(fr_sbuff_t *out, xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
@@ -647,7 +647,7 @@ static xlat_arg_parser_t const regex_op_xlat_args[] = {
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in, regex_t **preg,
+static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_value_box_list_t *in, regex_t **preg,
 				      fr_dcursor_t *out, fr_token_t op)
 {
 	uint32_t	subcaptures;
@@ -676,7 +676,7 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, FR_DL
 			len = vb->vb_length;
 
 		} else {
-			FR_DLIST_HEAD(fr_value_box_list)	list;
+			fr_value_box_list_t	list;
 
 			fr_value_box_list_init(&list);
 			fr_value_box_list_insert_head(&list, vb);
@@ -735,7 +735,7 @@ done:
 
 static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_ctx_t const *xctx,
-				       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				       request_t *request, fr_value_box_list_t *in)
 {
 	xlat_regex_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_regex_inst_t);
 	xlat_regex_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_regex_rctx_t);
@@ -775,7 +775,7 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   xlat_ctx_t const *xctx,
-				   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in,
+				   request_t *request, fr_value_box_list_t *in,
 				   fr_token_t op)
 {
 	xlat_regex_inst_t const	*inst = talloc_get_type_abort_const(xctx->inst, xlat_regex_inst_t);
@@ -809,7 +809,7 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #define XLAT_REGEX_FUNC(_name, _op)  \
 static xlat_action_t xlat_func_ ## _name(TALLOC_CTX *ctx, fr_dcursor_t *out, \
 				   xlat_ctx_t const *xctx, \
-				   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)  \
+				   request_t *request, fr_value_box_list_t *in)  \
 { \
 	return xlat_regex_op(ctx, out, xctx, request, in, _op); \
 }
@@ -827,7 +827,7 @@ typedef struct {
 	bool			last_success;
 	fr_value_box_t		*box;		//!< output value-box
 	int			current;
-	FR_DLIST_HEAD(fr_value_box_list)	list;
+	fr_value_box_list_t	list;
 } xlat_logical_rctx_t;
 
 static fr_slen_t xlat_expr_print_logical(fr_sbuff_t *out, xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
@@ -1098,7 +1098,7 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
  *
  *  Empty lists are not truthy.
  */
-static bool xlat_logical_match(fr_value_box_t **dst, FR_DLIST_HEAD(fr_value_box_list) const *in, bool logical_or)
+static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t const *in, bool logical_or)
 {
 	fr_value_box_t *last = NULL;
 
@@ -1149,7 +1149,7 @@ static bool xlat_logical_match(fr_value_box_t **dst, FR_DLIST_HEAD(fr_value_box_
 
 static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 xlat_ctx_t const *xctx,
-					 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in);
+					 request_t *request, fr_value_box_list_t *in);
 
 /** Process one argument of a logical operation.
  *
@@ -1161,7 +1161,7 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t xlat_logical_process_arg(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 					      xlat_ctx_t const *xctx,
-					      request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
+					      request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	xlat_logical_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_logical_inst_t);
 	xlat_logical_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_logical_rctx_t);
@@ -1187,7 +1187,7 @@ static xlat_action_t xlat_logical_process_arg(UNUSED TALLOC_CTX *ctx, UNUSED fr_
  */
 static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 xlat_ctx_t const *xctx,
-					 request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+					 request_t *request, fr_value_box_list_t *in)
 {
 	xlat_logical_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_logical_inst_t);
 	xlat_logical_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_logical_rctx_t);
@@ -1256,7 +1256,7 @@ next:
  */
 static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_ctx_t const *xctx,
-				       request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+				       request_t *request, fr_value_box_list_t *in)
 {
 	xlat_logical_rctx_t	*rctx;
 
@@ -1278,7 +1278,7 @@ static xlat_arg_parser_t const unary_op_xlat_args[] = {
 
 static xlat_action_t xlat_func_unary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					UNUSED xlat_ctx_t const *xctx,
-					request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in, fr_token_t op)
+					request_t *request, fr_value_box_list_t *in, fr_token_t op)
 {
 	int rcode;
 	fr_value_box_t *dst, *group, *vb;
@@ -1322,7 +1322,7 @@ static xlat_action_t xlat_func_unary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static xlat_action_t xlat_func_unary_not(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 UNUSED xlat_ctx_t const *xctx,
-					 UNUSED request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+					 UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t *dst, *group, *vb;
 
@@ -1349,14 +1349,14 @@ static xlat_action_t xlat_func_unary_not(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static xlat_action_t xlat_func_unary_minus(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   xlat_ctx_t const *xctx,
-					   request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+					   request_t *request, fr_value_box_list_t *in)
 {
 	return xlat_func_unary_op(ctx, out, xctx, request, in, T_SUB);
 }
 
 static xlat_action_t xlat_func_unary_complement(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						xlat_ctx_t const *xctx,
-						request_t *request, FR_DLIST_HEAD(fr_value_box_list) *in)
+						request_t *request, fr_value_box_list_t *in)
 {
 	return xlat_func_unary_op(ctx, out, xctx, request, in, T_COMPLEMENT);
 }
@@ -1423,7 +1423,7 @@ static xlat_arg_parser_t const xlat_func_rcode_arg[] = {
  */
 static xlat_action_t xlat_func_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     UNUSED xlat_ctx_t const *xctx,
-				     request_t *request, FR_DLIST_HEAD(fr_value_box_list) *args)
+				     request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_t	*vb;
 	fr_value_box_t	*src;
@@ -1457,7 +1457,7 @@ typedef struct {
 
 typedef struct {
 	bool			last_success;
-	FR_DLIST_HEAD(fr_value_box_list)	list;
+	fr_value_box_list_t	list;
 } xlat_exists_rctx_t;
 
 static xlat_arg_parser_t const xlat_func_exists_arg[] = {
@@ -1530,7 +1530,7 @@ static xlat_action_t xlat_attr_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static xlat_action_t xlat_exists_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					xlat_ctx_t const *xctx,
-					request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
+					request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	xlat_exists_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_exists_rctx_t);
 	ssize_t			slen;
@@ -1590,7 +1590,7 @@ static xlat_action_t xlat_exists_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t xlat_func_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_ctx_t const *xctx,
-				     request_t *request, UNUSED FR_DLIST_HEAD(fr_value_box_list) *in)
+				     request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	xlat_exists_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_exists_inst_t);
 	xlat_exists_rctx_t	*rctx;
