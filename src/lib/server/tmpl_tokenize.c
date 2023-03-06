@@ -43,6 +43,8 @@ RCSID("$Id$")
 /** Define a global variable for specifying a default request reference
  *
  * @param[in] _name	what the global variable should be called.
+ *			Assign its address to .attr.request_def to
+ * 			make it the default.
  * @param[in] _ref	one of the values of tmpl_request_ref_t
  *			- REQUEST_CURRENT
  *			- REQUEST_OUTER,
@@ -71,20 +73,14 @@ FR_DLIST_HEAD(tmpl_request_list) _name = { \
 }
 
 /** Use the current request as the default
- *
- * Used as .attr.request_def = &tmpl_request_def_current;
  */
 TMPL_REQUEST_REF_DEF(tmpl_request_def_current, REQUEST_CURRENT);
 
 /** Use the outer request as the default
- *
- * Used as .attr.request_def = &tmpl_request_def_outer;
  */
 TMPL_REQUEST_REF_DEF(tmpl_request_def_outer, REQUEST_OUTER);
 
 /** Use the parent request as the default
- *
- * Used as .attr.request_def = &tmpl_request_def_parent;
  */
 TMPL_REQUEST_REF_DEF(tmpl_request_def_parent, REQUEST_PARENT);
 
