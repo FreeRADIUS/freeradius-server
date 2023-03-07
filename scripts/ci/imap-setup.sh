@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash
 
 #
 # ### This is a script to setup a dovecot imap server for testing rlm_imap
@@ -31,9 +31,6 @@ LOGINFOPATH="${LOGDIR}/dovecot-info.log"
 
 # Used for creating `imap-stop.sh`
 CIDIR="${BASEDIR}/scripts/ci"
-
-# When running on Docker, USER is not set
-USER=${USER:-root}
 
 #
 # Create all the necessary files
@@ -72,24 +69,12 @@ openssl rsa -in "${BASEDIR}/raddb/certs/rsa/server.key" -passin 'pass:whatever' 
 #
 # Add users to the password file
 #
-
-# Generate passwords for the users
-USER1P=$(doveadm -o stats_writer_socket_path= pw -p test1 -s CRYPT)
-USER2P=$(doveadm -o stats_writer_socket_path= pw -p test2 -s CRYPT)
-USER3P=$(doveadm -o stats_writer_socket_path= pw -p test3 -s CRYPT)
-
-# Add user password combinations
-echo "\
-user1:${USER1P}:::::: 
-" >"${PASSPATH}"
-
-echo "\
-user2:${USER2P}:::::: 
-" >>"${PASSPATH}"
-
-echo "\
-user3:${USER3P}:::::: 
-" >>"${PASSPATH}"
+rm -f ${PASSPATH}
+for i in {1..3}; do
+	PASS=$(doveadm -o stats_writer_socket_path= pw -p test${i} -s CRYPT)
+	echo "user${i}:${PASS}:::::: 
+" >> "${PASSPATH}"
+done
 
 #
 # Configure instance specific dovecot information

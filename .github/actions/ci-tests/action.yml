@@ -48,7 +48,7 @@ inputs:
     default: 1430
   imap_test_server_ssl_port:
     description: IMAP server IMAPS port
-    default: 1431
+    default: 1432
 
   use_docker:
     desription: True if running in a Docker container

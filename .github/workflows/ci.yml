@@ -176,7 +176,7 @@ jobs:
           rest_test_ssl_port: 8443
           imap_test_server: 127.0.0.1
           imap_test_server_port: 1430
-          imap_test_server_ssl_port: 1431
+          imap_test_server_ssl_port: 1432
 
       - name: Run fuzzer
         uses: ./.github/actions/fuzzer
