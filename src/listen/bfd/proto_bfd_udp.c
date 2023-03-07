@@ -156,9 +156,10 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_bfd_udp - Received %s ID length %d %s",
+	DEBUG2("proto_bfd_udp %s - Received %s ID length %d on %s from %pV:%u",
 	       fr_bfd_packet_names[packet->state],
-	       (int) packet_len, thread->name);
+	       (int) packet_len, thread->name,
+	       fr_box_ipaddr(address->socket.inet.src_ipaddr), address->socket.inet.src_port);
 
 	return packet_len;
 }
