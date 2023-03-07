@@ -165,3 +165,6 @@ ssize_t		fr_bfd_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 int	fr_bfd_init(void);
 void	fr_bfd_free(void);
+
+extern fr_table_num_ordered_t const bfd_auth_type_table[];
+extern size_t const bfd_auth_type_table_len;

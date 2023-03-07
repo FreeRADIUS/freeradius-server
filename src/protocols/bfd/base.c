@@ -65,6 +65,17 @@ char const *fr_bfd_packet_names[FR_BFD_CODE_MAX] = {
 	"Up",
 };
 
+fr_table_num_ordered_t const bfd_auth_type_table[] = {
+	{ L("none"),		BFD_AUTH_RESERVED		},
+	{ L("simple"),		BFD_AUTH_SIMPLE			},
+	{ L("keyed-md5"),	BFD_AUTH_KEYED_MD5		},
+	{ L("met-keyed-md5"),	BFD_AUTH_MET_KEYED_MD5		},
+	{ L("keyed-sha1"),	BFD_AUTH_KEYED_SHA1		},
+	{ L("met-keyed-sha1"),	BFD_AUTH_MET_KEYED_SHA1		},
+};
+size_t const bfd_auth_type_table_len = NUM_ELEMENTS(bfd_auth_type_table);
+
+
 int fr_bfd_init(void)
 {
 	if (instance_count > 0) {
