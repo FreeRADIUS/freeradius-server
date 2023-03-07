@@ -51,6 +51,8 @@ static const CONF_PARSER peer_config[] = {
 	{ FR_CONF_OFFSET("auth_type", FR_TYPE_VOID, proto_bfd_peer_t, auth_type ),
 	.func = auth_type_parse },
 
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_bfd_peer_t, port ) },
+
 	CONF_PARSER_TERMINATOR
 };
 

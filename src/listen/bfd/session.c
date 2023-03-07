@@ -737,13 +737,12 @@ static void bfd_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 	DEBUG("BFD %s sending packet state %s",
 	      session->client.shortname, fr_bfd_packet_names[session->session_state]);
 
-#if 0
-	if (sendto(session->socket.fd, &bfd, bfd.length, 0,
-		   (struct sockaddr *) &session->remote_sockaddr,
-		   session->salen) < 0) {
+	if (sendfromto(session->sockfd, &bfd, bfd.length, 0, 0,
+		       (struct sockaddr *) &session->local_sockaddr, session->local_salen,
+		       (struct sockaddr *) &session->remote_sockaddr, session->remote_salen) < 0) {
 		ERROR("Failed sending packet: %s", fr_syserror(errno));
+		fr_assert(0);
 	}
-#endif
 }
 
 /*

@@ -41,6 +41,8 @@ typedef struct {
 typedef struct {
 	fr_client_t			client;			//!< might as well re-use this, others need it
 
+	uint16_t			port;			//!< peer port where packets are sent to
+
 	/*
 	 *	Peers are defined globally to a virtual server.  Each
 	 *	peer can only have one session associated with it.
@@ -52,7 +54,10 @@ typedef struct {
 	fr_event_list_t			*el;
 
 	struct sockaddr_storage remote_sockaddr;		//!< cached for laziness
-	socklen_t	salen;
+	socklen_t	remote_salen;
+
+	struct sockaddr_storage local_sockaddr;		//!< cached for laziness
+	socklen_t	local_salen;
 
 	/*
 	 *	Internal state management

@@ -275,6 +275,9 @@ static int mod_open(fr_listen_t *li)
 	}
 #endif
 
+	/*
+	 *	@todo - cache ifindex for use with udpfromto.
+	 */
 	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
 		close(sockfd);
 		PERROR("Failed binding socket");
@@ -421,6 +424,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 		peer->inst = inst;
 		peer->client.src_ipaddr = inst->ipaddr; /* override inaddr_any */
+
+		/*
+		 *	Cache these so that they don't get recalculated on every packet.
+		 */
+		fr_ipaddr_to_sockaddr(&peer->remote_sockaddr, &peer->remote_salen, &peer->client.ipaddr, peer->port);
+		fr_ipaddr_to_sockaddr(&peer->local_sockaddr, &peer->local_salen, &inst->ipaddr, inst->port);
 
 		if (bfd_session_init(peer) < 0) {
 			return -1;
