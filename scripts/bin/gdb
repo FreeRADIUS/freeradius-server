@@ -1,0 +1,5 @@
+#!/bin/sh
+export PANIC_ACTION=
+export DEBUGGER_ATTACHED=yes
+
+exec ./build//make/jlibtool --mode=execute gdb --args ./build/bin/local/radiusd -sf -xx -l stdout -d ./raddb -D share/dictionary $@
