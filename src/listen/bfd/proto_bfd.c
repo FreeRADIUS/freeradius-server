@@ -30,6 +30,7 @@
 extern fr_app_t proto_bfd;
 
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 /** How to parse a BFD listen section
  *
@@ -46,6 +47,9 @@ static const CONF_PARSER peer_config[] = {
 	{ FR_CONF_OFFSET("min_receive_interval", FR_TYPE_TIME_DELTA, proto_bfd_peer_t, required_min_rx_interval ) },
 	{ FR_CONF_OFFSET("max_timeouts", FR_TYPE_UINT32, proto_bfd_peer_t, detect_multi ) },
 	{ FR_CONF_OFFSET("demand", FR_TYPE_BOOL, proto_bfd_peer_t, demand_mode ) },
+
+	{ FR_CONF_OFFSET("auth_type", FR_TYPE_VOID, proto_bfd_peer_t, auth_type ),
+	.func = auth_type_parse },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -137,6 +141,34 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 
 	return 0;
 }
+
+/** Parse auth_type
+ *
+ * @param[in] ctx	to allocate data in (instance of proto_bfd).
+ * @param[out] out	Where to write the auth_type value
+ * @param[in] parent	Base structure address.
+ * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	char const		*name = cf_pair_value(cf_item_to_pair(ci));
+	int			auth_type;
+
+	auth_type = fr_table_value_by_str(bfd_auth_type_table, name, -1);
+	if (auth_type < 0) {
+		cf_log_err(ci, "Invalid value for 'auth_type'");
+		return -1;
+	}
+
+	*(bfd_auth_type_t *) out = auth_type;
+
+	return 0;
+}
+
 
 /** Decode the packet
  *
@@ -446,6 +478,35 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			    ((c->ipaddr.af == AF_INET6) && (c->ipaddr.prefix != 128))) {
 				cf_log_err(cs, "Invalid IP prefix - cannot use ip/mask for BFD");
 				goto error;
+			}
+
+			/*
+			 *	Secret and auth_type handling.
+			 */
+			if (c->secret && !*c->secret) {
+				cf_log_err(cs, "Secret cannot be an empty string");
+				goto error;
+			}
+			peer->secret_len = strlen(c->secret);
+
+			switch (peer->auth_type) {
+			case BFD_AUTH_RESERVED:
+				if (c->secret) cf_log_warn(cs, "Ignoring 'secret' due to 'auth_type = none'");
+				break;
+
+			case BFD_AUTH_SIMPLE:
+				if (strlen(c->secret) > 16) {
+					cf_log_err(cs, "Length of 'secret' must be no more than 16 octets for 'auth_type = simple'");
+					goto error;
+				}
+				break;
+
+				/*
+				 *	Secrets can be any length.
+				 */
+			default:
+				break;
+
 			}
 
 			if (!fr_rb_insert(inst->peers, c)) {

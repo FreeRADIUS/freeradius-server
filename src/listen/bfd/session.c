@@ -36,260 +36,7 @@
 
 #include "session.h"
 
-
-#define BFD_MAX_SECRET_LENGTH 20
-
 #if 0
-typedef struct {
-	uint8_t		auth_type;
-	uint8_t		auth_len;
-	uint8_t		key_id;
-} __attribute__ ((packed)) bfd_auth_basic_t;
-
-
-typedef struct {
-	uint8_t		auth_type;
-	uint8_t		auth_len;
-	uint8_t		key_id;
-	uint8_t		password[16];
-} __attribute__ ((packed)) bfd_auth_simple_t;
-
-typedef struct {
-	uint8_t		auth_type;
-	uint8_t		auth_len;
-	uint8_t		key_id;
-	uint8_t		reserved;
-	uint32_t	sequence_no;
-	uint8_t		digest[MD5_DIGEST_LENGTH];
-} __attribute__ ((packed)) bfd_auth_md5_t;
-
-typedef struct {
-	uint8_t		auth_type;
-	uint8_t		auth_len;
-	uint8_t		key_id;
-	uint8_t		reserved;
-	uint32_t	sequence_no;
-	uint8_t		digest[SHA1_DIGEST_LENGTH];
-} __attribute__ ((packed)) bfd_auth_sha1_t;
-
-typedef union bfd_auth_t {
-	bfd_auth_basic_t        basic;
-	bfd_auth_simple_t	password;
-	bfd_auth_md5_t		md5;
-	bfd_auth_sha1_t		sha1;
-} __attribute__ ((packed)) bfd_auth_t;
-
-
-static int bfd_verify_sequence(proto_bfd_peer_t *session, uint32_t sequence_no,
-			       int keyed)
-{
-	uint32_t start, stop;
-
-	start = session->recv_auth_seq;
-	if (keyed) {
-		start++;
-	}
-	stop = start + 3 * session->detect_multi;
-
-	if (start < stop) {
-		if ((sequence_no < start) ||
-		    (sequence_no > stop)) {
-			return 0;
-		}
-
-	} else {	/* start is ~2^32, stop is ~10 */
-		if ((sequence_no > start) &&
-		    (sequence_no < stop)) {
-			return 0;
-		}
-	}
-
-	return 1;
-}
-
-static void bfd_calc_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
-{
-	bfd_auth_md5_t *md5 = &bfd->auth.md5;
-
-	fr_assert(session->secret_len <= sizeof(md5->digest));
-	fr_assert(md5->auth_len == sizeof(*md5));
-
-	memset(md5->digest, 0, sizeof(md5->digest));
-	memcpy(md5->digest, session->secret, session->secret_len);
-
-	fr_md5_calc(md5->digest,(const uint8_t *) bfd, bfd->length);
-}
-
-static void bfd_auth_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
-{
-	bfd_auth_md5_t *md5 = &bfd->auth.md5;
-
-	md5->auth_type = session->auth_type;
-	md5->auth_len = sizeof(*md5);
-	bfd->length += md5->auth_len;
-
-	md5->key_id = 0;
-	md5->sequence_no = session->xmit_auth_seq++;
-
-	bfd_calc_md5(session, bfd);
-}
-
-static int bfd_verify_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
-{
-	int rcode;
-	bfd_auth_md5_t *md5 = &bfd->auth.md5;
-	uint8_t digest[sizeof(md5->digest)];
-
-	if (md5->auth_len != sizeof(*md5)) return 0;
-
-	if (md5->key_id != 0) return 0;
-
-	memcpy(digest, md5->digest, sizeof(digest));
-
-	bfd_calc_md5(session, bfd);
-	rcode = fr_digest_cmp(digest, md5->digest, sizeof(digest));
-
-	memcpy(md5->digest, digest, sizeof(md5->digest)); /* pedantic */
-
-	if (rcode != 0) {
-		DEBUG("BFD %s MD5 Digest failed: **** RE-ENTER THE SECRET ON BOTH ENDS ****", session->client.shortname);
-		return 0;
-	}
-
-	/*
-	 *	Do this AFTER the authentication instead of before!
-	 */
-	if (!session->auth_seq_known) {
-		session->auth_seq_known = 1;
-
-	} else if (!bfd_verify_sequence(session, md5->sequence_no,
-					(md5->auth_type == BFD_AUTH_MET_KEYED_MD5))) {
-		DEBUG("MD5 sequence out of window");
-		return 0;
-	}
-
-	session->recv_auth_seq = md5->sequence_no;
-
-	return 1;
-}
-
-static void bfd_calc_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
-{
-	fr_sha1_ctx ctx;
-	bfd_auth_sha1_t *sha1 = &bfd->auth.sha1;
-
-	fr_assert(session->secret_len <= sizeof(sha1->digest));
-	fr_assert(sha1->auth_len == sizeof(*sha1));
-
-	memset(sha1->digest, 0, sizeof(sha1->digest));
-	memcpy(sha1->digest, session->secret, session->secret_len);
-
-	fr_sha1_init(&ctx);
-	fr_sha1_update(&ctx, (const uint8_t *) bfd, bfd->length);
-	fr_sha1_final(sha1->digest, &ctx);
-}
-
-static void bfd_auth_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
-{
-	bfd_auth_sha1_t *sha1 = &bfd->auth.sha1;
-
-	sha1->auth_type = session->auth_type;
-	sha1->auth_len = sizeof(*sha1);
-	bfd->length += sha1->auth_len;
-
-	sha1->key_id = 0;
-	sha1->sequence_no = session->xmit_auth_seq++;
-
-	bfd_calc_sha1(session, bfd);
-}
-
-static int bfd_verify_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
-{
-	int rcode;
-	bfd_auth_sha1_t *sha1 = &bfd->auth.sha1;
-	uint8_t digest[sizeof(sha1->digest)];
-
-	if (sha1->auth_len != sizeof(*sha1)) return 0;
-
-	if (sha1->key_id != 0) return 0;
-
-	memcpy(digest, sha1->digest, sizeof(digest));
-
-	bfd_calc_sha1(session, bfd);
-	rcode = fr_digest_cmp(digest, sha1->digest, sizeof(digest));
-
-	memcpy(sha1->digest, digest, sizeof(sha1->digest)); /* pedantic */
-
-	if (rcode != 0) {
-		DEBUG("BFD %d SHA1 Digest failed: **** RE-ENTER THE SECRET ON BOTH ENDS ****", session->number);
-		return 0;
-	}
-
-	/*
-	 *	Do this AFTER the authentication instead of before!
-	 */
-	if (!session->auth_seq_known) {
-		session->auth_seq_known = 1;
-
-	} else if (!bfd_verify_sequence(session, sha1->sequence_no,
-					(sha1->auth_type == BFD_AUTH_MET_KEYED_SHA1))) {
-		DEBUG("SHA1 sequence out of window");
-		return 0;
-	}
-
-	session->recv_auth_seq = sha1->sequence_no;
-
-	return 1;
-}
-
-
-static int bfd_authenticate(proto_bfd_peer_t *session, bfd_packet_t *bfd)
-{
-	switch (bfd->auth.basic.auth_type) {
-	case BFD_AUTH_RESERVED:
-		return 0;
-
-	case BFD_AUTH_SIMPLE:
-		break;
-
-	case BFD_AUTH_KEYED_MD5:
-	case BFD_AUTH_MET_KEYED_MD5:
-		return bfd_verify_md5(session, bfd);
-
-	case BFD_AUTH_KEYED_SHA1:
-	case BFD_AUTH_MET_KEYED_SHA1:
-		return bfd_verify_sha1(session, bfd);
-	}
-
-	return 0;
-}
-
-
-
-static void bfd_sign(proto_bfd_peer_t *session, bfd_packet_t *bfd)
-{
-	if (bfd->auth_present) {
-		switch (session->auth_type) {
-		case BFD_AUTH_RESERVED:
-			break;
-
-		case BFD_AUTH_SIMPLE:
-			break;
-
-		case BFD_AUTH_KEYED_MD5:
-		case BFD_AUTH_MET_KEYED_MD5:
-			bfd_auth_md5(session, bfd);
-			break;
-
-		case BFD_AUTH_KEYED_SHA1:
-		case BFD_AUTH_MET_KEYED_SHA1:
-			bfd_auth_sha1(session, bfd);
-			break;
-		}
-	}
-}
-
-
 /*
  *	Send an immediate response to a poll request.
  *
@@ -701,207 +448,6 @@ static int bfd_socket_recv(rad_listen_t *listener)
 	return bfd_process(session, &bfd);
 }
 
-static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, uint16_t *port)
-{
-	int rcode;
-
-	/*
-	 *	Try IPv4 first
-	 */
-	memset(ipaddr, 0, sizeof(*ipaddr));
-	ipaddr->addr.v4.s_addr = htonl(INADDR_NONE);
-	rcode = cf_pair_parse(NULL, cs, "ipaddr", FR_ITEM_POINTER(FR_TYPE_IPV4_ADDR, ipaddr), NULL, T_INVALID);
-	if (rcode < 0) return -1;
-
-	if (rcode == 0) { /* successfully parsed IPv4 */
-		ipaddr->af = AF_INET;
-
-	} else {	/* maybe IPv6? */
-		rcode = cf_pair_parse(NULL, cs, "ipv6addr", FR_ITEM_POINTER(FR_TYPE_IPV6_ADDR, ipaddr), NULL, T_INVALID);
-		if (rcode < 0) return -1;
-
-		if (rcode == 1) {
-			cf_log_err(cf_section_to_item(cs),
-				   "No address specified in section");
-			return -1;
-		}
-		ipaddr->af = AF_INET6;
-	}
-
-	rcode = cf_pair_parse(NULL, cs, "port", FR_ITEM_POINTER(FR_TYPE_UINT16, port), "0", T_INVALID);
-	if (rcode < 0) return -1;
-
-	return 0;
-}
-
-/*
- *	@fixme: move some of this to parse
- */
-static int bfd_init_sessions(CONF_SECTION *cs, bfd_socket_t *sock, int sockfd)
-{
-	CONF_ITEM *ci;
-	CONF_SECTION *peer;
-	uint16_t port;
-	fr_ipaddr_t ipaddr;
-
-	for (ci=cf_item_next(cs, NULL);
-	     ci != NULL;
-	     ci=cf_item_next(cs, ci)) {
-		proto_bfd_peer_t *session, my_session;
-
-	       if (!cf_item_is_section(ci)) continue;
-
-	       peer = cf_item_to_section(ci);
-
-	       if (strcmp(cf_section_name1(peer), "peer") != 0) continue;
-
-	       if (bfd_parse_ip_port(peer, &ipaddr, &port) < 0) {
-		       return -1;
-	       }
-
-	       my_session.socket.inet.dst_ipaddr = ipaddr;
-	       my_session.socket.inet.dst_port = port;
-	       if (fr_rb_find(sock->session_tree, &my_session) != NULL) {
-		       cf_log_err(ci, "Peers must have unique IP addresses");
-		       return -1;
-	       }
-
-	       session = bfd_new_session(sock, sockfd, peer, &ipaddr, port);
-	       if (!session) return -1;
-	}
-
-	return 0;
-}
-
-
-/*
- *	None of these functions are used.
- */
-static int bfd_socket_send(UNUSED rad_listen_t *listener, UNUSED request_t *request)
-{
-	fr_assert(0 == 1);
-	return 0;
-}
-
-
-static int bfd_socket_encode(UNUSED rad_listen_t *listener, UNUSED request_t *request)
-{
-	fr_assert(0 == 1);
-	return 0;
-}
-
-
-static int bfd_socket_decode(UNUSED rad_listen_t *listener, UNUSED request_t *request)
-{
-	fr_assert(0 == 1);
-	return 0;
-}
-
-static fr_table_num_sorted_t const auth_types[] = {
-	{ L("keyed-md5"),		BFD_AUTH_KEYED_MD5	},
-	{ L("keyed-sha1"),		BFD_AUTH_KEYED_SHA1	},
-	{ L("met-keyed-md5"),	BFD_AUTH_MET_KEYED_MD5	},
-	{ L("met-keyed-sha1"),	BFD_AUTH_MET_KEYED_SHA1 },
-	{ L("none"),		BFD_AUTH_RESERVED	},
-	{ L("simple"),		BFD_AUTH_SIMPLE		}
-};
-static size_t auth_types_len = NUM_ELEMENTS(auth_types);
-
-static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
-{
-	bfd_socket_t *sock = this->data;
-	char const *auth_type_str = NULL;
-	uint16_t listen_port;
-	fr_ipaddr_t ipaddr;
-
-	fr_assert(sock != NULL);
-
-	if (bfd_parse_ip_port(cs, &ipaddr, &listen_port) < 0) {
-		return -1;
-	}
-
-	sock->my_ipaddr = ipaddr;
-	sock->my_port = listen_port;
-
-	if (cf_pair_parse(sock, cs, "interface", FR_ITEM_POINTER(FR_TYPE_STRING, &sock->interface), NULL, T_INVALID) < 0) return -1;
-
-	if (cf_pair_parse(sock, cs, "min_receive_interval", FR_ITEM_POINTER(FR_TYPE_UINT32,
-			  &sock->min_rx_interval), "1000", T_BARE_WORD) < 0) return -1;
-	if (cf_pair_parse(sock, cs, "max_timeouts", FR_ITEM_POINTER(FR_TYPE_UINT32,
-			  &sock->max_timeouts), "3", T_BARE_WORD) < 0) return -1;
-	if (cf_pair_parse(sock, cs, "demand", FR_ITEM_POINTER(FR_TYPE_BOOL, &sock->demand),
-			  "no", T_DOUBLE_QUOTED_STRING) < 0) return -1;
-	if (cf_pair_parse(NULL, cs, "auth_type", FR_ITEM_POINTER(FR_TYPE_STRING, &auth_type_str),
-			  NULL, T_INVALID) < 0) return -1;
-
-	if (!this->server) {
-		char const *server;
-		if (cf_pair_parse(sock, cs, "server", FR_ITEM_POINTER(FR_TYPE_STRING, &server),
-				  NULL, T_INVALID) < 0) return -1;
-		sock->server_cs = virtual_server_find(server);
-	} else {
-		sock->server_cs = this->server_cs;
-	}
-
-	if (sock->min_tx_interval < 100) sock->min_tx_interval = 100;
-	if (sock->min_tx_interval > 10000) sock->min_tx_interval = 10000;
-
-	if (sock->min_rx_interval < 100) sock->min_rx_interval = 100;
-	if (sock->min_rx_interval > 10000) sock->min_rx_interval = 10000;
-
-	if (sock->max_timeouts == 0) sock->max_timeouts = 1;
-	if (sock->max_timeouts > 10) sock->max_timeouts = 10;
-
-	sock->auth_type = fr_table_value_by_str(auth_types, auth_type_str, BFD_AUTH_INVALID);
-	if (sock->auth_type == BFD_AUTH_INVALID) {
-		ERROR("Unknown auth_type '%s'", auth_type_str);
-		return -1;
-	}
-
-	if (sock->auth_type == BFD_AUTH_SIMPLE) {
-		ERROR("'simple' authentication is insecure and is not supported");
-		return -1;
-	}
-
-	if (sock->auth_type != BFD_AUTH_RESERVED) {
-		sock->secret_len = bfd_parse_secret(cs, sock->secret);
-
-		if (sock->secret_len == 0) {
-			ERROR("Cannot have empty secret");
-			return -1;
-		}
-
-		if (((sock->auth_type == BFD_AUTH_KEYED_MD5) ||
-		     (sock->auth_type == BFD_AUTH_MET_KEYED_MD5)) &&
-		    (sock->secret_len > 16)) {
-			ERROR("Secret must be no more than 16 bytes when using MD5");
-			return -1;
-		}
-	}
-
-	sock->session_tree = fr_rb_inline_talloc_alloc(sock, proto_bfd_peer_t, node, bfd_session_cmp, bfd_session_free);
-	if (!sock->session_tree) {
-		ERROR("Failed creating session tree!");
-		return -1;
-	}
-
-	/*
-	 *	Find the sibling "bfd" section of the "listen" section.
-	 */
-	sock->unlang = cf_section_find(cf_item_to_section(cf_parent(cs)), "bfd", NULL);
-
-	return 0;
-}
-
-	/*
-	 *	Bootstrap the initial set of connections.
-	 */
-	if (bfd_init_sessions(cs, sock, this->fd) < 0) {
-		return -1;
-	}
-
-	return 0;
-}
 #endif
 
 static void bfd_start_packets(proto_bfd_peer_t *session);
@@ -910,14 +456,222 @@ static int bfd_stop_control(proto_bfd_peer_t *session);
 //static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd);
 static void bfd_set_timeout(proto_bfd_peer_t *session, fr_time_t when);
 
-static const char *bfd_state[] = {
-	"admin-down",
-	"down",
-	"init",
-	"up"
-};
+/*
+ *	Verify and/or calculate auth-type digests.
+ */
+static void bfd_calc_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+{
+	bfd_auth_md5_t *md5 = &bfd->auth.md5;
+
+	fr_assert(session->secret_len <= sizeof(md5->digest));
+	fr_assert(md5->auth_len == sizeof(*md5));
+
+	memset(md5->digest, 0, sizeof(md5->digest));
+	memcpy(md5->digest, session->client.secret, session->secret_len);
+
+	fr_md5_calc(md5->digest,(const uint8_t *) bfd, bfd->length);
+}
+
+static void bfd_auth_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+{
+	bfd_auth_md5_t *md5 = &bfd->auth.md5;
+
+	md5->auth_type = session->auth_type;
+	md5->auth_len = sizeof(*md5);
+	bfd->length += md5->auth_len;
+
+	md5->key_id = 0;
+	md5->sequence_no = session->xmit_auth_seq++;
+
+	bfd_calc_md5(session, bfd);
+}
+
+static void bfd_calc_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+{
+	fr_sha1_ctx ctx;
+	bfd_auth_sha1_t *sha1 = &bfd->auth.sha1;
+
+	fr_assert(session->secret_len <= sizeof(sha1->digest));
+	fr_assert(sha1->auth_len == sizeof(*sha1));
+
+	memset(sha1->digest, 0, sizeof(sha1->digest));
+	memcpy(sha1->digest, session->client.secret, session->secret_len);
+
+	fr_sha1_init(&ctx);
+	fr_sha1_update(&ctx, (const uint8_t *) bfd, bfd->length);
+	fr_sha1_final(sha1->digest, &ctx);
+}
+
+static void bfd_auth_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+{
+	bfd_auth_sha1_t *sha1 = &bfd->auth.sha1;
+
+	sha1->auth_type = session->auth_type;
+	sha1->auth_len = sizeof(*sha1);
+	bfd->length += sha1->auth_len;
+
+	sha1->key_id = 0;
+	sha1->sequence_no = session->xmit_auth_seq++;
+
+	bfd_calc_sha1(session, bfd);
+}
+
+#if 0
+static int bfd_verify_sequence(proto_bfd_peer_t *session, uint32_t sequence_no,
+			       int keyed)
+{
+	uint32_t start, stop;
+
+	start = session->recv_auth_seq;
+	if (keyed) {
+		start++;
+	}
+	stop = start + 3 * session->detect_multi;
+
+	if (start < stop) {
+		if ((sequence_no < start) ||
+		    (sequence_no > stop)) {
+			return 0;
+		}
+
+	} else {	/* start is ~2^32, stop is ~10 */
+		if ((sequence_no > start) &&
+		    (sequence_no < stop)) {
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+static int bfd_verify_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+{
+	int rcode;
+	bfd_auth_md5_t *md5 = &bfd->auth.md5;
+	uint8_t digest[sizeof(md5->digest)];
+
+	if (md5->auth_len != sizeof(*md5)) return 0;
+
+	if (md5->key_id != 0) return 0;
+
+	memcpy(digest, md5->digest, sizeof(digest));
+
+	bfd_calc_md5(session, bfd);
+	rcode = fr_digest_cmp(digest, md5->digest, sizeof(digest));
+
+	memcpy(md5->digest, digest, sizeof(md5->digest)); /* pedantic */
+
+	if (rcode != 0) {
+		DEBUG("BFD %s MD5 Digest failed: **** RE-ENTER THE SECRET ON BOTH ENDS ****", session->client.shortname);
+		return 0;
+	}
+
+	/*
+	 *	Do this AFTER the authentication instead of before!
+	 */
+	if (!session->auth_seq_known) {
+		session->auth_seq_known = 1;
+
+	} else if (!bfd_verify_sequence(session, md5->sequence_no,
+					(md5->auth_type == BFD_AUTH_MET_KEYED_MD5))) {
+		DEBUG("MD5 sequence out of window");
+		return 0;
+	}
+
+	session->recv_auth_seq = md5->sequence_no;
+
+	return 1;
+}
+
+static int bfd_verify_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+{
+	int rcode;
+	bfd_auth_sha1_t *sha1 = &bfd->auth.sha1;
+	uint8_t digest[sizeof(sha1->digest)];
+
+	if (sha1->auth_len != sizeof(*sha1)) return 0;
+
+	if (sha1->key_id != 0) return 0;
+
+	memcpy(digest, sha1->digest, sizeof(digest));
+
+	bfd_calc_sha1(session, bfd);
+	rcode = fr_digest_cmp(digest, sha1->digest, sizeof(digest));
+
+	memcpy(sha1->digest, digest, sizeof(sha1->digest)); /* pedantic */
+
+	if (rcode != 0) {
+		DEBUG("BFD %s SHA1 Digest failed: **** RE-ENTER THE SECRET ON BOTH ENDS ****", session->client.shortname);
+		return 0;
+	}
+
+	/*
+	 *	Do this AFTER the authentication instead of before!
+	 */
+	if (!session->auth_seq_known) {
+		session->auth_seq_known = 1;
+
+	} else if (!bfd_verify_sequence(session, sha1->sequence_no,
+					(sha1->auth_type == BFD_AUTH_MET_KEYED_SHA1))) {
+		DEBUG("SHA1 sequence out of window");
+		return 0;
+	}
+
+	session->recv_auth_seq = sha1->sequence_no;
+
+	return 1;
+}
+
+static int bfd_authenticate(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+{
+	switch (bfd->auth.basic.auth_type) {
+	case BFD_AUTH_RESERVED:
+		return 0;
+
+	case BFD_AUTH_SIMPLE:
+		break;
+
+	case BFD_AUTH_KEYED_MD5:
+	case BFD_AUTH_MET_KEYED_MD5:
+		return bfd_verify_md5(session, bfd);
+
+	case BFD_AUTH_KEYED_SHA1:
+	case BFD_AUTH_MET_KEYED_SHA1:
+		return bfd_verify_sha1(session, bfd);
+	}
+
+	return 0;
+}
+#endif
 
 
+static void bfd_sign(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+{
+	if (bfd->auth_present) {
+		switch (session->auth_type) {
+		case BFD_AUTH_RESERVED:
+			break;
+
+		case BFD_AUTH_SIMPLE:
+			break;
+
+		case BFD_AUTH_KEYED_MD5:
+		case BFD_AUTH_MET_KEYED_MD5:
+			bfd_auth_md5(session, bfd);
+			break;
+
+		case BFD_AUTH_KEYED_SHA1:
+		case BFD_AUTH_MET_KEYED_SHA1:
+			bfd_auth_sha1(session, bfd);
+			break;
+		}
+	}
+}
+
+
+/*
+ *	Initialize a control packet.
+ */
 static void bfd_control_packet_init(proto_bfd_peer_t *session,
 				   bfd_packet_t *bfd)
 {
@@ -978,10 +732,10 @@ static void bfd_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 		bfd_start_packets(session);
 	}
 
-//	bfd_sign(session, &bfd);
+	bfd_sign(session, &bfd);
 
 	DEBUG("BFD %s sending packet state %s",
-	      session->client.shortname, bfd_state[session->session_state]);
+	      session->client.shortname, fr_bfd_packet_names[session->session_state]);
 
 #if 0
 	if (sendto(session->socket.fd, &bfd, bfd.length, 0,
@@ -1135,7 +889,7 @@ static void bfd_detection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, voi
 	proto_bfd_peer_t *session = ctx;
 
 	DEBUG("BFD %s Timeout state %s ****** ", session->client.shortname,
-	      bfd_state[session->session_state]);
+	      fr_bfd_packet_names[session->session_state]);
 
 	if (!session->demand_mode) {
 		switch (session->session_state) {
