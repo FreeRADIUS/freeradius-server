@@ -4768,6 +4768,44 @@ static int method_env_parse(unlang_module_t *single, unlang_compile_t *unlang_ct
 	return 0;
 }
 
+/**  Perform a quick assesment of how many parsed module env will be produced.
+ *
+ * @param[in,out] vallen	Where to write the sum of the length of pair values.
+ * @param[in] cs		Conf section to search for pairs.
+ * @param[in] module_env	to parse.
+ * @return Number of parsed_module_env expected to be required.
+ */
+static size_t method_env_count(size_t *vallen, CONF_SECTION const *cs, module_env_t const *module_env) {
+	size_t	pair_count, tmpl_count = 0;
+	CONF_PAIR const	*cp;
+
+	while (module_env->name) {
+		if (FR_BASE_TYPE(module_env->type) == FR_TYPE_SUBSECTION) {
+			CONF_SECTION const *subcs;
+			subcs = cf_section_find(cs, module_env->name, module_env->section.ident2);
+			if (!subcs) goto next;
+
+			tmpl_count += method_env_count(vallen, subcs, module_env->section.subcs);
+			goto next;
+		}
+		pair_count = 0;
+		cp = NULL;
+		while ((cp = cf_pair_find_next(cs, cp, module_env->name))) {
+			pair_count++;
+			*vallen += talloc_array_length(cf_pair_value(cp));
+		}
+		if (!pair_count && module_env->dflt) {
+			pair_count = 1;
+			*vallen += strlen(module_env->dflt);
+		}
+		tmpl_count += pair_count;
+	next:
+		module_env++;
+	}
+
+	return tmpl_count;
+}
+
 static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				CONF_ITEM *ci, module_instance_t *inst, module_method_t method,
 				char const *realname)
