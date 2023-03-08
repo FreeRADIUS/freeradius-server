@@ -1202,6 +1202,7 @@ packet_done:
 	return 0;
 }
 
+DIAG_OFF(deprecated-declarations)
 int main(int argc, char **argv)
 {
 	int		c;
@@ -1702,3 +1703,4 @@ int main(int argc, char **argv)
 
 	exit(0);
 }
+DIAG_ON(deprecated-declarations)

@@ -958,6 +958,7 @@ void fr_talloc_fault_setup(void)
  * @param program Name of program currently executing (argv[0]).
  * @return 0 on success -1 on failure.
  */
+DIAG_OFF(deprecated-declarations)
 int fr_fault_setup(char const *cmd, char const *program)
 {
 	static bool setup = false;
@@ -1105,6 +1106,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 
 	return 0;
 }
+DIAG_ON(deprecated-declarations)
 
 /** Set a callback to be called before fr_fault()
  *
