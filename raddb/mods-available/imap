@@ -187,4 +187,48 @@ imap {
 	#  from the IMAP server.
 	#
 	timeout = 5s
+
+	#
+	#  connection { .. }:: Configure how connection handles are
+	#  managed per thread.
+	#
+	connection {
+		#
+		#  Reusable connection handles are allocated in blocks.  These
+		#  parameters allow for tuning how that is done.
+		#
+		#  Since http requests are performed async, the settings here
+		#  represent outstanding http requests per thread.
+		#
+		reuse {
+
+			#
+			#  min:: The minimum number of connection handles to
+			#  keep allocated.
+			#
+			min = 10
+
+			#
+			#  max:: The maximum number of reusable connection handles
+			#  to allocate.
+			#
+			#  Any requests to allocate a connection handle beyond
+			#  this number will cause a temporary handle to be allocated.
+			#  This is less efficient than the block allocation so
+			# `max` should be set to reflect the number of outstanding
+			# requests expected at peak load.
+			max = 100
+
+			#
+			#  cleanup_interval:: How often to free un-used connection
+			#  handles.
+			#
+			#  Every `cleanup_interval` a cleanup routine runs which
+			#  will free any blocks of handles which are not in use,
+			#  ensuring that at least `min` handles are kept.
+			#
+			cleanup_interval = 30s
+
+		}
+	}
 }
