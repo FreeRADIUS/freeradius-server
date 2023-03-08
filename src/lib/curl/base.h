@@ -82,6 +82,18 @@ do {\
 #  define CURL_AT_LEAST_VERSION(x, y, z) (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
 #endif
 
+/** Structure for optional CURL multi handle config options
+ *
+ */
+typedef struct {
+	uint32_t		max_connects;		//!< Setting for CURLMOPT_MAXCONNECTS - maximum number of
+							///< connections to maintain in the connection cache
+	uint32_t		max_host_connections;	//!< Setting for CURLMOPT_MAX_HOST_CONNECTIONS - maximum
+							///< number of open connections for a given host and port
+	uint32_t		max_total_connections;	//!< Setting for CURLMOPT_MAX_TOTAL_CONNECTIONS - maximum
+							///< total number of open connections.
+} fr_curl_mhandle_opts_t;
+
 /** Uctx data for timer and I/O functions
  *
  * Seems like overkill for a single field, but I'm sure we'll need to
@@ -121,6 +133,7 @@ typedef struct {
 typedef struct {
 	fr_slab_config_t	reuse;
 	fr_time_delta_t		connect_timeout;
+	fr_curl_mhandle_opts_t	curl_opts;
 } fr_curl_conn_config_t;
 
 extern CONF_PARSER	 	fr_curl_tls_config[];
