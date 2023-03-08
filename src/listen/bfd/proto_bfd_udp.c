@@ -47,8 +47,6 @@ typedef struct {
 typedef struct {
 	CONF_SECTION			*cs;			//!< our configuration
 
-	fr_event_list_t			*el;
-
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
 
 	char const			*interface;		//!< Interface to bind to.
@@ -520,12 +518,10 @@ static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, 
  */
 static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void *nr)
 {
-	proto_bfd_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_bfd_udp_t);
+	proto_bfd_udp_t const  	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
 	proto_bfd_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_bfd_udp_thread_t);
 	fr_rb_iter_inorder_t	iter;
 	proto_bfd_peer_t	*peer;
-
-	inst->el = el;
 
 	/*
 	 *	Walk over the list of peers, associating them with this listener.
