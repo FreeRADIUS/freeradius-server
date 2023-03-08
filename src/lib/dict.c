@@ -1342,7 +1342,7 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 
 static int sscanf_i(char const *str, unsigned int *pvalue)
 {
-	int rcode = 0;
+	unsigned int rcode = 0;
 	int base = 10;
 	static char const *tab = "0123456789";
 
