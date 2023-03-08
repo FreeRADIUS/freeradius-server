@@ -273,11 +273,9 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.30
 	SINGLE-VALUE
  )
  
- attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.31
-	NAME 'radiusFramedIPv6Address'
-	DESC 'replyItem: Framed-IP-Address'
+attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.31
+	NAME 'radiusPrompt'
 	EQUALITY caseIgnoreMatch
-	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
 	SINGLE-VALUE
  )
@@ -287,13 +285,6 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.49
 	EQUALITY distinguishedNameMatch
 	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.12
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.31
-	NAME 'radiusPrompt'
-	EQUALITY caseIgnoreMatch
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
-	SINGLE-VALUE
  )
 
 attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.50
@@ -455,7 +446,16 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.62
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.63
+ attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.168
+        NAME 'radiusFramedIPv6Address'
+        DESC 'replyItem: Framed-IPv6-Address'
+        EQUALITY caseIgnoreMatch 
+        SUBSTR caseIgnoreSubstringsMatch
+        SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+        SINGLE-VALUE
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.256
 	NAME 'radiusControlAttribute'
 	DESC 'controlItem: $GENERIC$'
 	EQUALITY caseIgnoreMatch
@@ -463,7 +463,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.63
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.64
+attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.257
 	NAME 'radiusReplyAttribute'
 	DESC 'replyItem: $GENERIC$'
 	EQUALITY caseIgnoreMatch
@@ -471,7 +471,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.64
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.65
+attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.258
 	NAME 'radiusRequestAttribute'
 	DESC 'requestItem: $GENERIC$'
 	EQUALITY caseIgnoreMatch
@@ -483,7 +483,7 @@ objectclass ( 1.3.6.1.4.1.11344.4.3.2.1
 	NAME 'radiusprofile'
 	SUP top
 	AUXILIARY
-	MAY ( radiusArapFeatures $ radiusArapSecurity $ radiusArapZoneAccess $ radiusAuthType $ radiusCallbackId $ radiusCallbackNumber $ radiusCalledStationId $ radiusCallingStationId $ radiusClass $ radiusClientIPAddress $ radiusFilterId $ radiusFramedAppleTalkLink $ radiusFramedAppleTalkNetwork $ radiusFramedAppleTalkZone $ radiusFramedCompression $ radiusFramedIPAddress $ radiusFramedIPNetmask $ radiusFramedIPXNetwork $ radiusFramedMTU $ radiusFramedProtocol $ radiusAttribute $ radiusFramedRoute $ radiusFramedRouting $ radiusIdleTimeout $ radiusGroupName $ radiusHint $ radiusHuntgroupName $ radiusLoginIPHost $ radiusLoginLATGroup $ radiusLoginLATNode $ radiusLoginLATPort $ radiusLoginLATService $ radiusLoginService $ radiusLoginTCPPort $ radiusLoginTime $ radiusPasswordRetry $ radiusPortLimit $ radiusFramedIPv6Address $ radiusPrompt $ radiusProxyToRealm $ radiusRealm $ radiusServiceType $ radiusSessionTimeout $ radiusStripUserName $ radiusTerminationAction $ radiusTunnelClientEndpoint $ radiusProfileDN $ radiusSimultaneousUse $ radiusTunnelAssignmentId $ radiusTunnelMediumType $ radiusTunnelPassword $ radiusTunnelPreference $ radiusTunnelPrivateGroupId $ radiusTunnelServerEndpoint $ radiusTunnelType $ radiusUserCategory $ radiusVSA $ radiusExpiration $ dialupAccess $ radiusNASIpAddress $ radiusReplyMessage $ radiusControlAttribute $ radiusReplyAttribute $ radiusRequestAttribute )
+	MAY ( radiusArapFeatures $ radiusArapSecurity $ radiusArapZoneAccess $ radiusAuthType $ radiusCallbackId $ radiusCallbackNumber $ radiusCalledStationId $ radiusCallingStationId $ radiusClass $ radiusClientIPAddress $ radiusFilterId $ radiusFramedAppleTalkLink $ radiusFramedAppleTalkNetwork $ radiusFramedAppleTalkZone $ radiusFramedCompression $ radiusFramedIPAddress $ radiusFramedIPNetmask $ radiusFramedIPXNetwork $ radiusFramedMTU $ radiusFramedProtocol $ radiusAttribute $ radiusFramedRoute $ radiusFramedRouting $ radiusIdleTimeout $ radiusGroupName $ radiusHint $ radiusHuntgroupName $ radiusLoginIPHost $ radiusLoginLATGroup $ radiusLoginLATNode $ radiusLoginLATPort $ radiusLoginLATService $ radiusLoginService $ radiusLoginTCPPort $ radiusLoginTime $ radiusPasswordRetry $ radiusPortLimit $ radiusPrompt $ radiusProxyToRealm $ radiusRealm $ radiusServiceType $ radiusSessionTimeout $ radiusStripUserName $ radiusTerminationAction $ radiusTunnelClientEndpoint $ radiusProfileDN $ radiusSimultaneousUse $ radiusTunnelAssignmentId $ radiusTunnelMediumType $ radiusTunnelPassword $ radiusTunnelPreference $ radiusTunnelPrivateGroupId $ radiusTunnelServerEndpoint $ radiusTunnelType $ radiusUserCategory $ radiusVSA $ radiusExpiration $ dialupAccess $ radiusNASIpAddress $ radiusReplyMessage $ radiusFramedIPv6Address $ radiusControlAttribute $ radiusReplyAttribute $ radiusRequestAttribute )
  )
 
 objectclass ( 1.3.6.1.4.1.11344.4.3.2.2

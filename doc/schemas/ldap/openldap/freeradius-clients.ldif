@@ -1,23 +1,11 @@
-#
-# LDIF Openldap schema to load dynamic clients from LDAP
-#
-# copyright 2013 Olivier Beytrison <olivier@heliosnet.org>
-#
-# 11344.4.1.1.1
-# |     | | | |_ Client attributes (.1) client objects
-# |     | | |_ Clients
-# |     | |_ RADIUS
-# |     |_ LDAP Attributes
-# |_ Vendor
-#
-dn: cn=radiusClient,cn=schema,cn=config
+dn: cn=freeradius-clients,cn=schema,cn=config
 objectClass: olcSchemaConfig
-cn: radiusClient
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.2 NAME 'radiusClientIdentifier' SINGLE-VALUE DESC 'Client identifier' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX '1.3.6.1.4.1.1466.115.121.1.15' )
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.3 NAME 'radiusClientSecret' SINGLE-VALUE DESC 'Client secret' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX '1.3.6.1.4.1.1466.115.121.1.15' )
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.4 NAME 'radiusClientShortname' SINGLE-VALUE DESC 'Client shortname' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX '1.3.6.1.4.1.1466.115.121.1.15' )
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.5 NAME 'radiusClientVirtualServer' SINGLE-VALUE DESC 'VirtualServer' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX '1.3.6.1.4.1.1466.115.121.1.15' )
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.6 NAME 'radiusClientType' SINGLE-VALUE DESC 'Client Type' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX '1.3.6.1.4.1.1466.115.121.1.15' )
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.7 NAME 'radiusClientRequireMa' SINGLE-VALUE DESC 'Require Message Authenticator' EQUALITY booleanMatch SYNTAX '1.3.6.1.4.1.1466.115.121.1.7' )
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.8 NAME 'radiusClientComment' SINGLE-VALUE DESC 'Client comment' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX '1.3.6.1.4.1.1466.115.121.1.15' )
-olcObjectClasses: ( 1.3.6.1.4.1.11344.4.1.1.1.1 NAME 'radiusClient' DESC 'radiusClient object class' SUP top STRUCTURAL MUST ( radiusClientIdentifier $ radiusClientSecret ) MAY ( radiusClientShortname $ radiusClientVirtualServer $ radiusClientType $ radiusClientRequireMa $ radiusClientComment ))
+cn: freeradius-clients
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.1 NAME 'radiusClientIdentifier' DESC 'Client Identifier' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.2 NAME 'radiusClientSecret' DESC 'Client Secret' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.3 NAME 'radiusClientShortname' DESC 'Client Shortname' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.4 NAME 'radiusClientVirtualServer' DESC 'VirtualServer' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.5 NAME 'radiusClientType' DESC 'Client Type' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.6 NAME 'radiusClientRequireMa' DESC 'Require Message Authenticator' EQUALITY booleanMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.7 SINGLE-VALUE )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.1.1.2.7 NAME 'radiusClientComment' DESC 'Client comment' EQUALITY caseIgnoreMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
+olcObjectClasses: ( 1.3.6.1.4.1.11344.4.1.1.1.1 NAME 'radiusClient' DESC 'radiusClient object class' SUP top STRUCTURAL MUST ( radiusClientIdentifier $ radiusClientSecret ) MAY ( radiusClientShortname $ radiusClientVirtualServer $ radiusClientType $ radiusClientRequireMa $ radiusClientComment ) )
