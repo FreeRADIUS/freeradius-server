@@ -230,5 +230,38 @@ imap {
 			cleanup_interval = 30s
 
 		}
+
+		#
+		# curl_opts { .. }:: Options for resource limiting connections
+		# handled by libcurl.  These represent per thread limits.
+		#
+		curl_opts {
+			#
+			#  max_connects:: The libcurl option CURLMOPT_MAXCONNECTS.
+			#
+			#  Sets the maximum number of connections to maintain in
+			#  the connection cache.  If this number is exceeded, then
+			#  the oldest connection is closed when a new one is
+			#  requested.
+			#
+			max_connects = 100
+
+			#
+			#  max_host_connections:: The libcurl option CURLMOPT_MAX_HOST_CONNECTIONS.
+			#
+			#  Sets the maximum number of currently open connections
+			#  to a given host and port combination.  Requests beyond
+			#  this limit will be queued by libcurl.
+			#
+		#	max_host_connections = 0
+
+			#
+			#  max_total_connections:  The libcurl option CURLMOPT_MAX_TOTAL_CONNECTIONS.
+			#
+			#  Sets the maximum total number of open connections.
+			#  Requests beyond this limit will be queued by libcurl.
+			#
+		#	max_total_connections = 0
+		}
 	}
 }
