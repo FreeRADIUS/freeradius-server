@@ -49,7 +49,7 @@ static inline int __fr_thread_local_destructor_##_n(pthread_destructor_t *ctx)\
 	func(_n);\
 	return 0;\
 }\
-DIAG_OFF(deprecated-declarations)
+DIAG_OFF(deprecated-declarations) \
 static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 {\
 	static pthread_destructor_t *ctx;\
@@ -59,8 +59,9 @@ static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 		*ctx = func;\
 	}\
 	return _n;\
-}
+} \
 DIAG_ON(deprecated-declarations)
+
 #  define fr_thread_local_init(_n, _f) __fr_thread_local_init_##_n(_f)
 #  define fr_thread_local_set(_n, _v) ((int)!((_n = _v) || 1))
 #  define fr_thread_local_get(_n) _n
