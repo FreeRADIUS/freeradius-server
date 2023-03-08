@@ -1328,7 +1328,6 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 		return ldap_errno;
 	}
 
-
 	return LDAP_SUCCESS;
 }
 #endif
@@ -1363,6 +1362,26 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 	 */
 	maybe_ldap_global_option(LDAP_OPT_X_TLS_RANDOM_FILE, "random_file", inst->tls_random_file);
 #endif
+
+#ifdef LDAP_OPT_X_TLS_PACKAGE
+	{
+		char *name = NULL;
+
+		if (ldap_get_option(NULL, LDAP_OPT_X_TLS_PACKAGE, (void *) &name) == LDAP_OPT_SUCCESS) {
+			if (strcmp(name, "OpenSSL") != 0) {
+				WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+				WARN("!! libldap is not using OpenSSL, while FreeRADIUS is using OpenSSL");
+				WARN("!! There may be random issues with TLS connections due to this conflict.");
+				WARN("!! The server may also crash.");
+				WARN("!! See https://wiki.freeradius.org/modules/Rlm_ldap for more information.");
+				WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			}
+
+			ldap_memfree(name);
+		}
+	}
+#endif
+
 	return 0;
 }
 
