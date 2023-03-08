@@ -1093,7 +1093,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_smtp_thread_t    		*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 	fr_curl_handle_t    		*mhandle;
 
-	mhandle = fr_curl_io_init(t, mctx->el, false);
+	mhandle = fr_curl_io_init(t, mctx->el, false, NULL);
 	if (!mhandle) return -1;
 
 	t->mhandle = mhandle;

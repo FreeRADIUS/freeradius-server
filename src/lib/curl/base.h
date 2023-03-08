@@ -145,7 +145,8 @@ int			fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle,
 
 fr_curl_io_request_t	*fr_curl_io_request_alloc(TALLOC_CTX *ctx);
 
-fr_curl_handle_t	*fr_curl_io_init(TALLOC_CTX *ctx, fr_event_list_t *el, bool multiplex);
+fr_curl_handle_t	*fr_curl_io_init(TALLOC_CTX *ctx, fr_event_list_t *el, bool multiplex,
+					 fr_curl_mhandle_opts_t const *curl_opts);
 
 int			fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle);
 

@@ -1170,7 +1170,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	mhandle = fr_curl_io_init(t, mctx->el, inst->multiplex);
+	mhandle = fr_curl_io_init(t, mctx->el, inst->multiplex, &inst->conn_config.curl_opts);
 	if (!mhandle) return -1;
 
 	t->mhandle = mhandle;

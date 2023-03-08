@@ -570,7 +570,8 @@ fr_curl_handle_t *fr_curl_io_init(TALLOC_CTX *ctx,
 #ifndef CURLPIPE_MULTIPLEX
 				   UNUSED
 #endif
-				   bool multiplex)
+				   bool multiplex,
+				   fr_curl_mhandle_opts_t const *curl_opts)
 {
 	CURLMcode		ret;
 	CURLM			*mandle;
@@ -604,6 +605,14 @@ fr_curl_handle_t *fr_curl_io_init(TALLOC_CTX *ctx,
 #ifdef CURLPIPE_MULTIPLEX
 	SET_MOPTION(mandle, CURLMOPT_PIPELINING, multiplex ? CURLPIPE_MULTIPLEX : CURLPIPE_NOTHING);
 #endif
+
+	if (!curl_opts) return mhandle;
+
+	if (curl_opts->max_host_connections) SET_MOPTION(mandle, CURLMOPT_MAX_HOST_CONNECTIONS,
+							 (long)curl_opts->max_host_connections);
+	if (curl_opts->max_total_connections) SET_MOPTION(mandle, CURLMOPT_MAX_TOTAL_CONNECTIONS,
+							 (long)curl_opts->max_host_connections);
+	if (curl_opts->max_connects) SET_MOPTION(mandle, CURLMOPT_MAXCONNECTS, (long)curl_opts->max_connects);
 
 	return mhandle;
 
