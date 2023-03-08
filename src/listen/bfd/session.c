@@ -33,10 +33,79 @@
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/server/trigger.h>
 
 #include "session.h"
 
-#if 0
+static void bfd_sign(proto_bfd_peer_t *session, bfd_packet_t *bfd);
+static int bfd_authenticate(proto_bfd_peer_t *session, bfd_packet_t *bfd);
+static void bfd_control_packet_init(proto_bfd_peer_t *session, bfd_packet_t *bfd);
+
+static void bfd_set_desired_min_tx_interval(proto_bfd_peer_t *session, fr_time_delta_t value);
+
+static void bfd_start_packets(proto_bfd_peer_t *session);
+static void bfd_start_control(proto_bfd_peer_t *session);
+static int bfd_stop_control(proto_bfd_peer_t *session);
+static void bfd_set_timeout(proto_bfd_peer_t *session, fr_time_t when);
+
+
+/*
+ *	Wrapper to run a trigger.
+ *
+ *	@todo - push the trigger name, and various other VPs to the worker side?
+ *	we will need to define some other kind of fake packet to send to the process
+ *	module.
+ */
+static void bfd_trigger(proto_bfd_peer_t *session)
+{
+//	fr_radius_packet_t	packet;
+//	request_t		*request = request_local_alloc_external(session, NULL);
+	char			buffer[256];
+
+	snprintf(buffer, sizeof(buffer), "server.bfd.%s",
+		 fr_bfd_packet_names[session->session_state]);
+
+//	bfd_request(session, request, &packet);
+
+	trigger_exec(unlang_interpret_get_thread_default(), NULL, buffer, false, NULL);
+}
+
+/*
+ *	Stop polling for packets.
+ */
+static int bfd_stop_poll(proto_bfd_peer_t *session)
+{
+	if (!session->doing_poll) return 0;
+
+	/*
+	 *	We tried to increase the min_tx during a polling
+	 *	sequence.  That isn't kosher, so we instead waited
+	 *	until now.
+	 */
+	if (fr_time_delta_unwrap(session->next_min_tx_interval) > 0) {
+		session->desired_min_tx_interval = session->next_min_tx_interval;
+		session->next_min_tx_interval = fr_time_delta_wrap(0);
+	}
+
+	/*
+	 *	Already sending packets.  Clear the poll bit and
+	 *	re-set the timers.
+	 */
+	if (!session->remote_demand_mode) {
+		fr_assert(session->ev_timeout != NULL);
+		fr_assert(session->ev_packet != NULL);
+		session->doing_poll = false;
+
+		bfd_stop_control(session);
+		bfd_start_control(session);
+		return 1;
+	}
+
+	session->doing_poll = false;
+
+	return bfd_stop_control(session);
+}
+
 /*
  *	Send an immediate response to a poll request.
  *
@@ -57,25 +126,26 @@ static void bfd_poll_response(proto_bfd_peer_t *session)
 
 	bfd_sign(session, &bfd);
 
-	if (sendto(session->socket.fd, &bfd, bfd.length, 0,
-		   (struct sockaddr *) &session->remote_sockaddr,
-		   session->salen) < 0) {
-		ERROR("Failed sending poll response: %s", fr_syserror(errno));
+	if (sendfromto(session->sockfd, &bfd, bfd.length, 0, 0,
+		       (struct sockaddr *) &session->local_sockaddr, session->local_salen,
+		       (struct sockaddr *) &session->remote_sockaddr, session->remote_salen) < 0) {
+		ERROR("Failed sending packet: %s", fr_syserror(errno));
+		fr_assert(0);
 	}
 }
 
 
-static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 {
 	if (bfd->auth_present &&
 	    (session->auth_type == BFD_AUTH_RESERVED)) {
-		DEBUG("BFD %d packet asked to authenticate an unauthenticated session.", session->number);
+		DEBUG("BFD %s packet asked to authenticate an unauthenticated session.", session->client.shortname);
 		return 0;
 	}
 
 	if (!bfd->auth_present &&
 	    (session->auth_type != BFD_AUTH_RESERVED)) {
-		DEBUG("BFD %d packet failed to authenticate an authenticated session.", session->number);
+		DEBUG("BFD %s packet failed to authenticate an authenticated session.", session->client.shortname);
 		return 0;
 	}
 
@@ -83,7 +153,7 @@ static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 		return 0;
 	}
 
-	DEBUG("BFD %d processing packet", session->number);
+	DEBUG("BFD %s processing packet", session->client.shortname);
 	session->remote_disc = bfd->my_disc;
 	session->remote_session_state = bfd->state;
 	session->remote_demand_mode = bfd->demand;
@@ -92,14 +162,19 @@ static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	 *	The other end is reducing the RX interval.  Do that
 	 *	now.
 	 */
-	if ((bfd->required_min_rx_interval < session->remote_min_rx_interval) &&
+	if (fr_time_delta_lt(fr_time_delta_from_usec(bfd->required_min_rx_interval), session->remote_min_rx_interval) &&
 	    !session->demand_mode) {
 		bfd_stop_control(session);
 		bfd_start_control(session);
 	}
-	session->remote_min_rx_interval = bfd->required_min_rx_interval;
 
-	session->remote_min_echo_rx_interval = bfd->min_echo_rx_interval;
+	/*
+	 *	@todo - clamp these at some reasonable value, or maybe
+	 *	just trust the other side.
+	 */
+	session->remote_min_rx_interval = fr_time_delta_from_usec(bfd->required_min_rx_interval);
+	session->remote_min_echo_rx_interval = fr_time_delta_from_usec(bfd->min_echo_rx_interval);
+
 	if (bfd->min_echo_rx_interval == 0) {
 #if 0
 		/*
@@ -123,19 +198,19 @@ static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	 *	Update detection times as in 6.8.4
 	 */
 	if (!session->demand_mode) {
-		if (session->required_min_rx_interval >= bfd->desired_min_tx_interval) {
+		if (fr_time_delta_gteq(session->required_min_rx_interval, fr_time_delta_from_usec(bfd->desired_min_tx_interval))) {
 			session->detection_time = session->required_min_rx_interval;
 		} else {
-			session->detection_time = bfd->desired_min_tx_interval;
+			session->detection_time = fr_time_delta_from_usec(bfd->desired_min_tx_interval);
 		}
 	} else {
-		if (session->desired_min_tx_interval >= session->remote_min_rx_interval) {
+		if (fr_time_delta_gteq(session->desired_min_tx_interval, session->remote_min_rx_interval)) {
 			session->detection_time = session->desired_min_tx_interval;
 		} else {
 			session->detection_time = session->remote_min_rx_interval;
 		}
 	}
-	session->detection_time *= session->detect_multi;
+	session->detection_time = fr_time_delta_wrap(session->detect_multi * fr_time_delta_unwrap(session->detection_time));
 
 	if (session->session_state == BFD_STATE_ADMIN_DOWN) {
 		DEBUG("Discarding BFD packet (admin down)");
@@ -147,29 +222,29 @@ static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 			session->local_diag = BFD_NEIGHBOR_DOWN;
 		}
 
-		DEBUG("BFD %d State %s -> DOWN (admin down)",
-		      session->number, bfd_state[session->session_state]);
+		DEBUG("BFD %s State %s -> DOWN (admin down)",
+		      session->client.shortname, fr_bfd_packet_names[session->session_state]);
 		session->session_state = BFD_STATE_DOWN;
 		bfd_trigger(session);
 
-		bfd_set_desired_min_tx_interval(session, USEC);
+		bfd_set_desired_min_tx_interval(session, fr_time_delta_from_usec(1));
 
 	} else {
 		switch (session->session_state) {
 		case BFD_STATE_DOWN:
 			switch (bfd->state) {
 			case BFD_STATE_DOWN:
-				DEBUG("BFD %d State DOWN -> INIT (neighbor down)",
-				      session->number);
+				DEBUG("BFD %s State DOWN -> INIT (neighbor down)",
+				      session->client.shortname);
 				session->session_state = BFD_STATE_INIT;
 				bfd_trigger(session);
 
-				bfd_set_desired_min_tx_interval(session, USEC);
+				bfd_set_desired_min_tx_interval(session, fr_time_delta_from_usec(1));
 				break;
 
 			case BFD_STATE_INIT:
-				DEBUG("BFD %d State DOWN -> UP (neighbor INIT)",
-				      session->number);
+				DEBUG("BFD %s State DOWN -> UP (neighbor INIT)",
+				      session->client.shortname);
 				session->session_state = BFD_STATE_UP;
 				bfd_trigger(session);
 				break;
@@ -183,8 +258,8 @@ static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 			switch (bfd->state) {
 			case BFD_STATE_INIT:
 			case BFD_STATE_UP:
-				DEBUG("BFD %d State INIT -> UP",
-				      session->number);
+				DEBUG("BFD %s State INIT -> UP",
+				      session->client.shortname);
 				session->session_state = BFD_STATE_UP;
 				bfd_trigger(session);
 				break;
@@ -199,11 +274,11 @@ static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 			case BFD_STATE_DOWN:
 				session->local_diag = BFD_NEIGHBOR_DOWN;
 
-				DEBUG("BFD %d State UP -> DOWN (neighbor down)", session->number);
+				DEBUG("BFD %s State UP -> DOWN (neighbor down)", session->client.shortname);
 				session->session_state = BFD_STATE_DOWN;
 				bfd_trigger(session);
 
-				bfd_set_desired_min_tx_interval(session, USEC);
+				bfd_set_desired_min_tx_interval(session, fr_time_delta_from_usec(1));
 				break;
 
 			default:
@@ -223,7 +298,7 @@ static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	if (session->remote_demand_mode &&
 	    (session->session_state == BFD_STATE_UP) &&
 	    (session->remote_session_state == BFD_STATE_UP)) {
-		DEBUG("BFD %d demand mode UP / UP, stopping packets", session->number);
+		DEBUG("BFD %s demand mode UP / UP, stopping packets", session->client.shortname);
 		bfd_stop_control(session);
 	}
 
@@ -237,6 +312,7 @@ static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	 */
 	session->last_recv = fr_time();
 
+#if 0
 	/*
 	 *	We've received a packet, but missed the previous one.
 	 *	Warn about it.
@@ -249,6 +325,7 @@ static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 
 		trigger_exec(unlang_interpret_get_thread_default(), NULL, "server.bfd.warn", false, NULL);
 	}
+#endif
 
 
 	if ((!session->remote_demand_mode) ||
@@ -257,48 +334,7 @@ static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 		bfd_start_control(session);
 	}
 
-	if (session->server_cs) {
-		request_t *request;
-		fr_radius_packet_t *packet, *reply;
-
-		request = request_alloc_internal(session, NULL);
-		packet = fr_radius_packet_alloc(request, 0);
-		reply = fr_radius_packet_alloc(request, 0);
-
-		bfd_request(session, request, packet);
-
-		memset(reply, 0, sizeof(*reply));
-
-		request->reply = reply;
-		fr_socket_addr_swap(&request->reply->socket, &session->socket);
-
-		/*
-		 *	FIXME: add my state, remote state as VPs?
-		 */
-		if (fr_debug_lvl) {
-			request->log.dst = talloc_zero(request, log_dst_t);
-			request->log.dst->func = vlog_request;
-			request->log.dst->uctx = &default_log;
-
-			request->log.lvl = fr_debug_lvl;
-		}
-		request->component = NULL;
-		request->module = NULL;
-
-		DEBUG2("server %s {", cf_section_name2(unlang_call_current(request)));
-		if (unlang_interpret_push_section(request, session->unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME) < 0) {
-			talloc_free(request);
-			return 0;
-		}
-		unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-		DEBUG("}");
-
-		/*
-		 *	FIXME: grab attributes from the reply
-		 *	and cache them for use in the next request.
-		 */
-		talloc_free(request);
-	}
+	// @todo - send the packet through a "recv foo" section?
 
 	return 1;
 }
@@ -315,146 +351,6 @@ static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
  *	mean we start polling.
  */
 
-/*
- *	Check if an incoming request is "ok"
- *
- *	It takes packets, not requests.  It sees if the packet looks
- *	OK.  If so, it does a number of sanity checks on it.
- */
-static int bfd_socket_recv(rad_listen_t *listener)
-{
-	ssize_t		rcode;
-	bfd_socket_t	*sock = listener->data;
-	proto_bfd_peer_t	*session;
-	proto_bfd_peer_t	my_session;
-	struct sockaddr_storage src;
-	socklen_t	sizeof_src = sizeof(src);
-	bfd_packet_t	bfd;
-
-	rcode = recvfrom(listener->fd, &bfd, sizeof(bfd), 0,
-			 (struct sockaddr *)&src, &sizeof_src);
-	if (rcode < 0) {
-		ERROR("Failed receiving packet: %s", fr_syserror(errno));
-		return 0;
-	}
-
-	if (rcode < 24) {
-		DEBUG("BFD packet is too short (%d < 24)", (int) rcode);
-		return 0;
-	}
-
-	if (bfd.version != 1) {
-		DEBUG("BFD packet has wrong version (%d != 1)", bfd.version);
-		return 0;
-	}
-
-	if (bfd.length < 24) {
-		DEBUG("BFD packet has wrong length (%d < 24)", bfd.length);
-		return 0;
-	}
-
-	if (bfd.length > sizeof(bfd)) {
-		DEBUG("BFD packet has wrong length (%d > %zd)", bfd.length, sizeof(bfd));
-		return 0;
-	}
-
-	if (bfd.auth_present) {
-		if (bfd.length < 26) {
-			DEBUG("BFD packet has wrong length (%d < 26)",
-			      bfd.length);
-			return 0;
-		}
-
-		if (bfd.length < 24 + bfd.auth.basic.auth_len) {
-			DEBUG("BFD packet is too short (%d < %d)",
-			      bfd.length, 24 + bfd.auth.basic.auth_len);
-			return 0;
-
-		}
-
-		if (bfd.length != 24 + bfd.auth.basic.auth_len) {
-			DEBUG("WARNING: What is the extra data?");
-		}
-
-	}
-
-	if (bfd.detect_multi == 0) {
-		DEBUG("BFD packet has detect_multi == 0");
-		return 0;
-	}
-
-	if (bfd.multipoint != 0) {
-		DEBUG("BFD packet has multi != 0");
-		return 0;
-	}
-
-	if (bfd.my_disc == 0) {
-		DEBUG("BFD packet has my_disc == 0");
-		return 0;
-	}
-
-	if ((bfd.your_disc == 0) &&
-	    !((bfd.state == BFD_STATE_DOWN) ||
-	      (bfd.state == BFD_STATE_ADMIN_DOWN))) {
-		DEBUG("BFD packet has invalid your-disc / state");
-		return 0;
-	}
-
-	/*
-	 *	We SHOULD use "your_disc", but what the heck.
-	 */
-	fr_ipaddr_from_sockaddr(&my_session.socket.inet.dst_ipaddr,
-				&my_session.socket.inet.dst_port, &src, sizeof_src);
-
-	session = fr_rb_find(sock->session_tree, &my_session);
-	if (!session) {
-		DEBUG("BFD unknown peer");
-		return 0;
-	}
-
-	if (!event_list) {
-		uint8_t *p = (uint8_t *) &bfd;
-		size_t total = bfd.length;
-
-		/*
-		 *	A child has had a problem.  Do some cleanups.
-		 */
-		if (session->blocked) bfd_pthread_free(session);
-
-		/*
-		 *	No event list, try to create a new one.
-		 */
-		if (!session->el && !bfd_pthread_create(session)) {
-			DEBUG("BFD %d - error trying to create child thread",
-			      session->number);
-			return 0;
-		}
-
-		do {
-			rcode = write(session->pipefd[1], p, total);
-			if ((rcode < 0) && (errno == EINTR)) continue;
-
-			if (rcode < 0) {
-				session->blocked = true;
-				return 0;
-			}
-
-			total -= rcode;
-			p += rcode;
-		} while (total > 0);
-		return 0;
-	}
-
-	return bfd_process(session, &bfd);
-}
-
-#endif
-
-static void bfd_start_packets(proto_bfd_peer_t *session);
-static void bfd_start_control(proto_bfd_peer_t *session);
-static int bfd_stop_control(proto_bfd_peer_t *session);
-//static int bfd_process(proto_bfd_peer_t *session, bfd_packet_t *bfd);
-static void bfd_set_timeout(proto_bfd_peer_t *session, fr_time_t when);
 
 /*
  *	Verify and/or calculate auth-type digests.
@@ -516,7 +412,6 @@ static void bfd_auth_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	bfd_calc_sha1(session, bfd);
 }
 
-#if 0
 static int bfd_verify_sequence(proto_bfd_peer_t *session, uint32_t sequence_no,
 			       int keyed)
 {
@@ -642,7 +537,6 @@ static int bfd_authenticate(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 
 	return 0;
 }
-#endif
 
 
 static void bfd_sign(proto_bfd_peer_t *session, bfd_packet_t *bfd)
@@ -672,8 +566,7 @@ static void bfd_sign(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 /*
  *	Initialize a control packet.
  */
-static void bfd_control_packet_init(proto_bfd_peer_t *session,
-				   bfd_packet_t *bfd)
+static void bfd_control_packet_init(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 {
 	memset(bfd, 0, sizeof(*bfd));
 
@@ -814,42 +707,6 @@ static void bfd_start_poll(proto_bfd_peer_t *session)
 }
 
 /*
- *	Stop polling for packets.
- */
-static int bfd_stop_poll(proto_bfd_peer_t *session)
-{
-	if (!session->doing_poll) return 0;
-
-	/*
-	 *	We tried to increase the min_tx during a polling
-	 *	sequence.  That isn't kosher, so we instead waited
-	 *	until now.
-	 */
-	if (fr_time_delta_unwrap(session->next_min_tx_interval) > 0) {
-		session->desired_min_tx_interval = session->next_min_tx_interval;
-		session->next_min_tx_interval = fr_time_delta_wrap(0);
-	}
-
-	/*
-	 *	Already sending packets.  Clear the poll bit and
-	 *	re-set the timers.
-	 */
-	if (!session->remote_demand_mode) {
-		fr_assert(session->ev_timeout != NULL);
-		fr_assert(session->ev_packet != NULL);
-		session->doing_poll = false;
-
-		bfd_stop_control(session);
-		bfd_start_control(session);
-		return 1;
-	}
-
-	session->doing_poll = false;
-
-	return bfd_stop_control(session);
-}
-
-/*
  *	Timer functions
  */
 static void bfd_set_desired_min_tx_interval(proto_bfd_peer_t *session, fr_time_delta_t value)
@@ -905,7 +762,7 @@ static void bfd_detection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, voi
 		DEBUG("BFD %s State <timeout> -> DOWN (control expired)", session->client.shortname);
 		session->session_state = BFD_STATE_DOWN;
 		session->local_diag =  BFD_CTRL_EXPIRED;
-//		bfd_trigger(session);
+		bfd_trigger(session);
 
 		bfd_set_desired_min_tx_interval(session, fr_time_delta_from_sec(1));
 	}
@@ -1034,8 +891,6 @@ int bfd_session_init(proto_bfd_peer_t *session)
 		session->detection_time = session->desired_min_tx_interval;
 	}
 	session->detection_time = fr_time_delta_wrap(session->detect_multi * fr_time_delta_unwrap(session->detection_time));
-
-	bfd_stop_poll(session);	/* compilation hack for now */
 
 	return 0;
 }
