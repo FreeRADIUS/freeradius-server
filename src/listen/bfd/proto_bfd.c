@@ -500,6 +500,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 				break;
 
 			case BFD_AUTH_SIMPLE:
+				if (!c->secret) {
+					cf_log_err(cs, "A 'secret' must be specified when using 'auth_type = simple'");
+					goto error;
+				}
+
 				if (strlen(c->secret) > 16) {
 					cf_log_err(cs, "Length of 'secret' must be no more than 16 octets for 'auth_type = simple'");
 					goto error;
@@ -510,6 +515,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 				 *	Secrets can be any length.
 				 */
 			default:
+				if (!c->secret) {
+					cf_log_err(cs, "A 'secret' must be specified when using 'auth_type = ...'");
+					goto error;
+				}
+
 				break;
 
 			}
