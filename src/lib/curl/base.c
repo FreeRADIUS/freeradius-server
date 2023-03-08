@@ -79,8 +79,16 @@ static CONF_PARSER reuse_curl_conn_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static CONF_PARSER curl_opts_config[] = {
+	{ FR_CONF_OFFSET("max_connects", FR_TYPE_UINT32, fr_curl_mhandle_opts_t, max_connects) },
+	{ FR_CONF_OFFSET("max_host_connections", FR_TYPE_UINT32, fr_curl_mhandle_opts_t, max_host_connections) },
+	{ FR_CONF_OFFSET("max_total_connections", FR_TYPE_UINT32, fr_curl_mhandle_opts_t, max_total_connections) },
+	CONF_PARSER_TERMINATOR
+};
+
 CONF_PARSER fr_curl_conn_config[] = {
 	{ FR_CONF_OFFSET("reuse", FR_TYPE_SUBSECTION, fr_curl_conn_config_t, reuse), .subcs = (void const *) reuse_curl_conn_config },
+	{ FR_CONF_OFFSET("curl_opts", FR_TYPE_SUBSECTION, fr_curl_conn_config_t, curl_opts), .subcs = (void const *) curl_opts_config },
 	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, fr_curl_conn_config_t, connect_timeout), .dflt = "3.0" },
 	CONF_PARSER_TERMINATOR
 };
