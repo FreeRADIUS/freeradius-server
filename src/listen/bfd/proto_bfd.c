@@ -485,11 +485,14 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			/*
 			 *	Secret and auth_type handling.
 			 */
-			if (c->secret && !*c->secret) {
-				cf_log_err(cs, "Secret cannot be an empty string");
-				goto error;
+			if (c->secret) {
+				if (!*c->secret) {
+					cf_log_err(cs, "Secret cannot be an empty string");
+					goto error;
+				}
+
+				peer->secret_len = talloc_array_length(c->secret) - 1;
 			}
-			peer->secret_len = strlen(c->secret);
 
 			switch (peer->auth_type) {
 			case BFD_AUTH_RESERVED:
