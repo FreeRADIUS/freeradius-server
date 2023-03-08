@@ -145,6 +145,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	if (data_size < FR_BFD_HEADER_LENGTH) {
 		DEBUG2("proto_bfd_udp got 'too short' packet size %zd", data_size);
+	fail:
 		thread->stats.total_malformed_requests++;
 		return 0;
 	}
@@ -153,10 +154,72 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	packet = (bfd_packet_t *) buffer;
 
+	if (packet->version != 1) {
+		DEBUG("BFD packet has wrong version (%d != 1)", packet->version);
+		goto fail;
+	}
+
+	if (packet->length < 24) {
+		DEBUG("BFD packet has wrong length (%d < 24)", packet->length);
+		goto fail;
+	}
+
+	if (packet->length > sizeof(*packet)) {
+		DEBUG("BFD packet has wrong length (%d > %zd)", packet->length, sizeof(*packet));
+		goto fail;
+	}
+
+	if (packet->length != packet_len) {
+		DEBUG("BFD packet is not the size of the data we read from UDP (%d > %zd)", packet->length, packet_len);
+		goto fail;
+	}
+
+	if (packet->auth_present) {
+		if (packet->length < (FR_BFD_HEADER_LENGTH + 2)) { /* auth-type and auth-len */
+			DEBUG("BFD packet has wrong length (%d < 26)",
+			      packet->length);
+			goto fail;
+		}
+
+		if (packet->length < 24 + packet->auth.basic.auth_len) {
+			DEBUG("BFD packet is too short (%d < %d)",
+			      packet->length, FR_BFD_HEADER_LENGTH + packet->auth.basic.auth_len);
+			goto fail;
+
+		}
+
+		if (packet->length != FR_BFD_HEADER_LENGTH + packet->auth.basic.auth_len) {
+			DEBUG("WARNING: What is the extra data?");
+		}
+
+	}
+
+	if (packet->detect_multi == 0) {
+		DEBUG("BFD packet has detect_multi == 0");
+		goto fail;
+	}
+
+	if (packet->multipoint != 0) {
+		DEBUG("BFD packet has multi != 0");
+		goto fail;
+	}
+
+	if (packet->my_disc == 0) {
+		DEBUG("BFD packet has my_disc == 0");
+		goto fail;
+	}
+
+	if ((packet->your_disc == 0) &&
+	    !((packet->state == BFD_STATE_DOWN) ||
+	      (packet->state == BFD_STATE_ADMIN_DOWN))) {
+		DEBUG("BFD packet has invalid your-disc / state");
+		goto fail;
+	}
+
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_bfd_udp %s - Received %s ID length %d on %s from %pV:%u",
+	DEBUG2("proto_bfd_udp - Received %s ID length %d on %s from %pV:%u",
 	       fr_bfd_packet_names[packet->state],
 	       (int) packet_len, thread->name,
 	       fr_box_ipaddr(address->socket.inet.src_ipaddr), address->socket.inet.src_port);
