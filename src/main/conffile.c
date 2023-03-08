@@ -1803,6 +1803,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 				  CONF_PARSER const *variables)
 {
 	int i;
+	void *data;
 
 	for (i = 0; variables[i].name != NULL; i++) {
 		if (variables[i].type == PW_TYPE_SUBSECTION) {
@@ -1827,9 +1828,13 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 				subcs->item.lineno = cs->item.lineno;
 				cf_item_add(cs, &(subcs->item));
 			}
+			if (base) {
+				data = ((uint8_t *)base) + variables[i].offset;
+			} else {
+				data = NULL;
+			}
 
-			cf_section_parse_init(subcs, (uint8_t *)base + variables[i].offset,
-					      (CONF_PARSER const *) variables[i].dflt);
+			cf_section_parse_init(subcs, data, (CONF_PARSER const *) variables[i].dflt);
 			continue;
 		}
 
@@ -1927,8 +1932,13 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 				goto finish;
 			}
 
-			ret = cf_section_parse(subcs, (uint8_t *)base + variables[i].offset,
-					       (CONF_PARSER const *) variables[i].dflt);
+			if (base) {
+				data = ((uint8_t *)base) + variables[i].offset;
+			} else {
+				data = NULL;
+			}
+
+			ret = cf_section_parse(subcs, data, (CONF_PARSER const *) variables[i].dflt);
 			if (ret < 0) goto finish;
 			continue;
 		} /* else it's a CONF_PAIR */
