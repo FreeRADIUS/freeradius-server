@@ -1346,11 +1346,19 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		RPERROR("Failed inserting cancellation event");
 		return XLAT_ACTION_FAIL;
 	}
-	if (unlikely(request_data_add(request, (void *)unlang_cancel_xlat, 0, UNCONST(fr_event_timer_t *, *ev_p), true, true, false) < 0)) {
+	if (unlikely(request_data_add(request, (void *)unlang_cancel_xlat, 0,
+				      UNCONST(fr_event_timer_t *, *ev_p), true, true, false) < 0)) {
 		RPERROR("Failed associating cancellation event with request");
 		talloc_free(ev_p);
 		return XLAT_ACTION_FAIL;
 	}
+
+	/*
+	 *	No timeout means cancel immediately, so yield allowing
+	 *	the interpreter to run the event we added to cancel
+	 *	the request.
+	 */
+	if (!timeout) return XLAT_ACTION_YIELD;
 
 	if (ev_p_og) {
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
