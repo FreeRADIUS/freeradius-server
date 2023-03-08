@@ -1103,6 +1103,16 @@ static inline void fr_dlist_noop(void)
 	typedef struct { fr_dlist_t entry; } FR_DLIST_ENTRY(_name); \
 	typedef struct { fr_dlist_head_t head; } FR_DLIST_HEAD(_name); \
 
+/** Define friendly names for type specific dlist head and entry structures
+ *
+ * @param[in] _name	Prefix we add to type-specific structures.
+ * @param[in] _head	Name to use for head structure.
+ * @param[in] _entry	Name to use for entry structure.
+*/
+#define FR_DLIST_TYPEDEFS(_name, _head, _entry) \
+	typedef FR_DLIST_HEAD(_name) _head; \
+	typedef FR_DLIST_ENTRY(_name) _entry;
+
 /** Define type specific wrapper functions for dlists
  *
  * @note This macro should be used inside the source file that will use
