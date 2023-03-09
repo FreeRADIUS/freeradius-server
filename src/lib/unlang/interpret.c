@@ -1303,13 +1303,16 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 static void unlang_cancel_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	request_t *request = talloc_get_type_abort(uctx, request_t);
-	fr_event_timer_t const **ev_p;
 
 	RDEBUG2("Request canceled by dynamic timeout");
 
 	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
-	ev_p = request_data_get(request, (void *)unlang_cancel_xlat, 0);
-	TALLOC_FREE(ev_p);
+
+	/*
+	 *	Cleans up the memory allocated to hold
+	 *	the pointer, not the event itself.
+	 */
+	talloc_free(request_data_get(request, (void *)unlang_cancel_xlat, 0));
 }
 
 /** Allows a request to dynamically alter its own lifetime
