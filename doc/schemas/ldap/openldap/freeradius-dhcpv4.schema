@@ -47,7 +47,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.2.1.1.2
 
 attributetype ( 1.3.6.1.4.1.11344.4.2.1.1.3
 	NAME 'freeradiusDhcpv4PoolName'
-	DESC 'DHCP ip pool name''
+	DESC 'DHCP ip pool name'
 	EQUALITY caseIgnoreMatch
 	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
