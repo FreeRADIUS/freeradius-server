@@ -386,16 +386,33 @@ int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 	fr_ring_buffer_t *rb;
 	fr_network_inject_t my_inject;
 
-	rb = fr_network_rb_init();
-	if (!rb) return -1;
-
-	(void) talloc_get_type_abort(nr, fr_network_t);
-	(void) talloc_get_type_abort(li, fr_listen_t);
-
 	/*
 	 *	Can't inject to injection-less destinations.
 	 */
 	if (!li->app_io->inject) return -1;
+
+	/*
+	 *	Avoid a bounce through the event loop if we're being called from the network thread.
+	 */
+	if (is_network_thread(nr)) {
+		fr_network_socket_t *s;
+
+		s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+		if (!s) return -1;
+
+		/*
+		 *	Inject the packet.  The master.c mod_read() routine will then take care of avoiding
+		 *	IO, and instead return the packet to the network side.
+		 */
+		if (li->app_io->inject(li, packet, packet_len, recv_time) == 0) {
+			fr_network_read(nr->el, li->fd, 0, s);
+		}
+
+		return 0;
+	}
+
+	rb = fr_network_rb_init();
+	if (!rb) return -1;
 
 	my_inject.listen = li;
 	my_inject.packet = talloc_memdup(NULL, packet, packet_len);
