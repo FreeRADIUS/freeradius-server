@@ -1036,6 +1036,7 @@ static int pid_cmp(void const *one, void const *two)
  *
  *	FIXME: What to do on a SIGHUP???
  */
+DIAG_OFF(deprecated-declarations)
 int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 {
 #ifndef WITH_GCD
@@ -1046,6 +1047,9 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 	time_t		now;
 #ifdef HAVE_STDATOMIC_H
 	int num;
+	TALLOC_CTX *autofree;
+
+	autofree = talloc_autofree_context();
 #endif
 
 	now = time(NULL);
@@ -1166,7 +1170,7 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 	 */
 	for (i = 0; i < NUM_FIFOS; i++) {
 #ifdef HAVE_STDATOMIC_H
-		thread_pool.queue[i] = fr_atomic_queue_create(NULL, thread_pool.max_queue_size);
+		thread_pool.queue[i] = fr_atomic_queue_alloc(autofree, thread_pool.max_queue_size);
 		if (!thread_pool.queue[i]) {
 			ERROR("FATAL: Failed to set up request fifo");
 			return -1;
@@ -1204,7 +1208,7 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 	pool_initialized = true;
 	return 0;
 }
-
+DIAG_ON(deprecated-declarations)
 
 /*
  *	Stop all threads in the pool.
