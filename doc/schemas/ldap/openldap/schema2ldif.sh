@@ -12,8 +12,9 @@ cat << EOF > ${SCHEMA_CONV_DIR}/convert.conf
 include $1
 EOF
 
-slapcat -o ldif-wrap=no -f ${SCHEMA_CONV_DIR}/convert.conf -F ${SCHEMA_CONV_DIR} -n 0 \
-  -s "cn={0}${SCHEMA_NAME},cn=schema,cn=config" | sed -re 's/\{[0-9]+\}//' \
+mkdir -p ${SCHEMA_CONV_DIR}/out
+
+slapcat -o ldif-wrap=no -f ${SCHEMA_CONV_DIR}/convert.conf -F ${SCHEMA_CONV_DIR}/out -n 0 -H "ldap:///cn={0}${SCHEMA_NAME},cn=schema,cn=config" | sed -re 's/\{[0-9]+\}//' \
   -e '/^structuralObjectClass: /d' -e '/^entryUUID: /d' -e '/^creatorsName: /d' \
   -e '/^createTimestamp: /d' -e '/^entryCSN: /d' -e '/^modifiersName: /d' \
   -e '/^modifyTimestamp: /d' -e '/^$/d' > ${SCHEMA_OUT}
