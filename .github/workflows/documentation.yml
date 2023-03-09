@@ -67,7 +67,7 @@ jobs:
 
   # Actual deployment to GitHub Pages is only on pushes to the head of the master branch
   deploy-docs:
-    if: ( github.repository.owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && ( github.event_name == 'push' )
+    if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && ( github.event_name == 'push' )
 
     needs:
       - build-docs
