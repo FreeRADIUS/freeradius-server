@@ -20,22 +20,8 @@ on:
       - 'raddb/**'
       - 'share/**'
 
-# Permissions needed to deploy on GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Ensure only one job is attempting to update GitHub Pages
-concurrency:
-  group: "documentation"
-  cancel-in-progress: true
-
 jobs:
-  documentation:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build-docs:
     runs-on: ubuntu-latest
 
     strategy:
@@ -66,21 +52,63 @@ jobs:
          cd doc/doxygen;
          doxygen Doxyfile;
 
-    # Actual deployment to GitHub Pages is only on pushes to the head of the master branch
+    - name: Build Antora docsite
+      run: antora site.yml
+
+    - name: Tar output files
+      run: tar -czf site.tgz doc/doxygen/html build/docsite
+
+    - name: Store output
+      uses: actions/upload-artifact@v3
+      with:
+        name: compiled-docs
+        path: site.tgz
+        retention-days: 1
+
+  # Actual deployment to GitHub Pages is only on pushes to the head of the master branch
+  deploy-docs:
+    if: ( github.repository.owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && ( github.event_name == 'push' )
+
+    needs:
+      - build-docs
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+
+    # Permissions needed to deploy on GitHub Pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    # Ensure only one job is attempting to update GitHub Pages
+    concurrency:
+      group: "documentation"
+      cancel-in-progress: true
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: Retrieve output
+      uses: actions/download-artifacts@v3
+      with:
+        name: compiled-docs
+
+    - name: Extract sites
+      run: tar -zxf site.tgz
+
     - name: Setup Pages
-      if: ( github.repository.owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && ( github.event_name == 'push' )
       uses: actions/configure-pages@v3
 
     - name: Upload Doxygen content
-      if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && ( github.event_name == 'push' )
       uses: actions/upload-pages-artifact@v1
       with:
         path: 'doc/doxygen/html'
 
     - name: Deploy doxygen content to GitHub pages
-      if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && ( github.event_name == 'push' )
       id: deployment
       uses: actions/deploy-pages@v1
-
-    - name: Build Antora docsite
-      run: antora site.yml
