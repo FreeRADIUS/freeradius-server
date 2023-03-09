@@ -154,6 +154,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	}
 
 	if (bfd->auth_present && !bfd_authenticate(session, bfd)) {
+		DEBUG("BFD %s authentication failed", session->client.shortname);
 		return 0;
 	}
 
