@@ -1303,11 +1303,13 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 static void unlang_cancel_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	request_t *request = talloc_get_type_abort(uctx, request_t);
+	fr_event_timer_t const **ev_p;
 
 	RDEBUG2("Request canceled by dynamic timeout");
 
 	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
-	request_data_get(request, (void *)unlang_cancel_xlat, 0);
+	ev_p = request_data_get(request, (void *)unlang_cancel_xlat, 0);
+	TALLOC_FREE(ev_p);
 }
 
 /** Allows a request to dynamically alter its own lifetime
@@ -1344,10 +1346,11 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       timeout ? timeout->vb_time_delta : fr_time_delta_from_sec(0),
 				       unlang_cancel_event, request) < 0)) {
 		RPERROR("Failed inserting cancellation event");
+		talloc_free(ev_p);
 		return XLAT_ACTION_FAIL;
 	}
 	if (unlikely(request_data_add(request, (void *)unlang_cancel_xlat, 0,
-				      UNCONST(fr_event_timer_t *, *ev_p), true, true, false) < 0)) {
+				      UNCONST(fr_event_timer_t **, ev_p), true, true, false) < 0)) {
 		RPERROR("Failed associating cancellation event with request");
 		talloc_free(ev_p);
 		return XLAT_ACTION_FAIL;
