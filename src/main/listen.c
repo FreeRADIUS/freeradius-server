@@ -2967,6 +2967,7 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
 		this->encode = master_listen[this->type].encode;
 		this->decode = master_listen[this->type].decode;
 	} else {
+		this->send = NULL; /* proxy packets shouldn't call this! */
 		this->proxy_send = master_listen[this->type].send;
 		this->proxy_encode = master_listen[this->type].encode;
 		this->proxy_decode = master_listen[this->type].decode;

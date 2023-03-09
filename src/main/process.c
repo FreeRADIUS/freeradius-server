@@ -3855,8 +3855,8 @@ static void ping_home_server(void *ctx)
 	rad_assert(request->proxy_listener != NULL);
 	request->proxy_listener->proxy_encode(request->proxy_listener, request);
 	debug_packet(request, request->proxy, false);
-	request->proxy_listener->send(request->proxy_listener,
-				      request);
+	request->proxy_listener->proxy_send(request->proxy_listener,
+					    request);
 
 	/*
 	 *	Add +/- 2s of jitter, as suggested in RFC 3539
@@ -4142,7 +4142,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		home->last_packet_sent = now.tv_sec;
 		request->proxy->timestamp = now;
 		debug_packet(request, request->proxy, false);
-		request->proxy_listener->send(request->proxy_listener, request);
+		request->proxy_listener->proxy_send(request->proxy_listener, request);
 		break;
 
 	case FR_ACTION_TIMER:
