@@ -4108,6 +4108,8 @@ static int xlat_protocol_init(void)
  * @return
  *	- 0 on success.
  *	- -1 on failure.
+ *
+ * @hidecallgraph
  */
 int xlat_init(void)
 {
