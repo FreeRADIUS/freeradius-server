@@ -245,7 +245,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 				bfd_trigger(session);
 				state_change = true;
 
-				bfd_set_desired_min_tx_interval(session, fr_time_delta_from_usec(1));
+				bfd_set_desired_min_tx_interval(session, fr_time_delta_from_sec(1));
 				break;
 
 			case BFD_STATE_INIT:
@@ -287,7 +287,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 				bfd_trigger(session);
 				state_change = true;
 
-				bfd_set_desired_min_tx_interval(session, fr_time_delta_from_usec(1));
+				bfd_set_desired_min_tx_interval(session, fr_time_delta_from_sec(1));
 				break;
 
 			default:
