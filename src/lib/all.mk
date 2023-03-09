@@ -42,7 +42,8 @@ SOURCES		:= cbuff.c \
 		   tcp.c \
 		   base64.c \
 		   version.c \
-		   atomic_queue.c
+		   atomic_queue.c \
+		   talloc.c
 
 SRC_CFLAGS	:= -D_LIBRADIUS -I$(top_builddir)/src
 
