@@ -65,9 +65,11 @@ static void bfd_trigger(proto_bfd_peer_t *session)
 	snprintf(buffer, sizeof(buffer), "server.bfd.%s",
 		 fr_bfd_packet_names[session->session_state]);
 
+	DEBUG("BFD %s trigger %s", session->client.shortname, buffer);
+
 //	bfd_request(session, request, &packet);
 
-	trigger_exec(unlang_interpret_get_thread_default(), NULL, buffer, false, NULL);
+//	trigger_exec(unlang_interpret_get_thread_default(), NULL, buffer, false, NULL);
 }
 
 /*
@@ -137,6 +139,8 @@ static void bfd_poll_response(proto_bfd_peer_t *session)
 
 int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 {
+	bool state_change = false;
+
 	if (bfd->auth_present &&
 	    (session->auth_type == BFD_AUTH_RESERVED)) {
 		DEBUG("BFD %s packet asked to authenticate an unauthenticated session.", session->client.shortname);
@@ -226,6 +230,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 		      session->client.shortname, fr_bfd_packet_names[session->session_state]);
 		session->session_state = BFD_STATE_DOWN;
 		bfd_trigger(session);
+		state_change = true;
 
 		bfd_set_desired_min_tx_interval(session, fr_time_delta_from_usec(1));
 
@@ -238,6 +243,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 				      session->client.shortname);
 				session->session_state = BFD_STATE_INIT;
 				bfd_trigger(session);
+				state_change = true;
 
 				bfd_set_desired_min_tx_interval(session, fr_time_delta_from_usec(1));
 				break;
@@ -247,6 +253,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 				      session->client.shortname);
 				session->session_state = BFD_STATE_UP;
 				bfd_trigger(session);
+				state_change = true;
 				break;
 
 			default: /* don't change anything */
@@ -262,6 +269,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 				      session->client.shortname);
 				session->session_state = BFD_STATE_UP;
 				bfd_trigger(session);
+				state_change = true;
 				break;
 
 			default: /* don't change anything */
@@ -277,6 +285,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 				DEBUG("BFD %s State UP -> DOWN (neighbor down)", session->client.shortname);
 				session->session_state = BFD_STATE_DOWN;
 				bfd_trigger(session);
+				state_change = true;
 
 				bfd_set_desired_min_tx_interval(session, fr_time_delta_from_usec(1));
 				break;
@@ -327,12 +336,13 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	}
 #endif
 
-
 	if ((!session->remote_demand_mode) ||
 	    (session->session_state != BFD_STATE_UP) ||
 	    (session->remote_session_state != BFD_STATE_UP)) {
 		bfd_start_control(session);
 	}
+
+	if (!state_change) return 0;
 
 	// @todo - send the packet through a "recv foo" section?
 
@@ -351,6 +361,31 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
  *	mean we start polling.
  */
 
+/*
+ *	Verify and/or calculate passwords
+ */
+static void bfd_calc_simple(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+{
+	bfd_auth_simple_t *simple = &bfd->auth.password;
+
+	fr_assert(session->secret_len <= sizeof(simple->password));
+
+	memcpy(simple->password, session->client.secret, session->secret_len);
+	simple->auth_len = session->secret_len;
+}
+
+static void bfd_auth_simple(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+{
+	bfd_auth_simple_t *simple = &bfd->auth.password;
+
+	simple->auth_type = session->auth_type;
+	simple->auth_len = session->secret_len;
+	bfd->length += simple->auth_len;
+
+	simple->key_id = 0;
+
+	bfd_calc_simple(session, bfd);
+}
 
 /*
  *	Verify and/or calculate auth-type digests.
@@ -439,6 +474,17 @@ static int bfd_verify_sequence(proto_bfd_peer_t *session, uint32_t sequence_no,
 	return 1;
 }
 
+static int bfd_verify_simple(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+{
+	bfd_auth_simple_t *simple = &bfd->auth.password;
+
+	if (simple->auth_len != session->secret_len) return 0;
+
+	if (simple->key_id != 0) return 0;
+
+	return (fr_digest_cmp((uint8_t const *) session->client.secret, simple->password, session->secret_len) == 0);
+}
+
 static int bfd_verify_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 {
 	int rcode;
@@ -524,6 +570,7 @@ static int bfd_authenticate(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 		return 0;
 
 	case BFD_AUTH_SIMPLE:
+		bfd_verify_simple(session, bfd);
 		break;
 
 	case BFD_AUTH_KEYED_MD5:
@@ -547,6 +594,7 @@ static void bfd_sign(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 			break;
 
 		case BFD_AUTH_SIMPLE:
+			bfd_auth_simple(session, bfd);
 			break;
 
 		case BFD_AUTH_KEYED_MD5:

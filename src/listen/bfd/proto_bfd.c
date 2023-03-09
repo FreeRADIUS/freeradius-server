@@ -500,6 +500,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 				break;
 
 			case BFD_AUTH_SIMPLE:
+			case BFD_AUTH_KEYED_MD5:
+			case BFD_AUTH_MET_KEYED_MD5:
 				if (!c->secret) {
 					cf_log_err(cs, "A 'secret' must be specified when using 'auth_type = simple'");
 					goto error;
@@ -511,15 +513,17 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 				}
 				break;
 
-				/*
-				 *	Secrets can be any length.
-				 */
-			default:
+			case BFD_AUTH_KEYED_SHA1:
+			case BFD_AUTH_MET_KEYED_SHA1:
 				if (!c->secret) {
 					cf_log_err(cs, "A 'secret' must be specified when using 'auth_type = ...'");
 					goto error;
 				}
 
+				if (strlen(c->secret) > 20) {
+					cf_log_err(cs, "Length of 'secret' must be no more than 16 octets for 'auth_type = simple'");
+					goto error;
+				}
 				break;
 
 			}

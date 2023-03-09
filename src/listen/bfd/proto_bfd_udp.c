@@ -157,13 +157,13 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		goto fail;
 	}
 
-	if (packet->length < 24) {
-		DEBUG("BFD packet has wrong length (%d < 24)", packet->length);
+	if (packet->length < FR_BFD_HEADER_LENGTH) {
+		DEBUG("BFD packet header has wrong length (%d < 24)", packet->length);
 		goto fail;
 	}
 
 	if (packet->length > sizeof(*packet)) {
-		DEBUG("BFD packet has wrong length (%d > %zd)", packet->length, sizeof(*packet));
+		DEBUG("BFD packet length is larger than received packet (%d > %zd)", packet->length, sizeof(*packet));
 		goto fail;
 	}
 
@@ -174,13 +174,13 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	if (packet->auth_present) {
 		if (packet->length < (FR_BFD_HEADER_LENGTH + 2)) { /* auth-type and auth-len */
-			DEBUG("BFD packet has wrong length (%d < 26)",
+			DEBUG("BFD packet length is not enough for auth-type and auth-len (%d < 26)",
 			      packet->length);
 			goto fail;
 		}
 
 		if (packet->length < 24 + packet->auth.basic.auth_len) {
-			DEBUG("BFD packet is too short (%d < %d)",
+			DEBUG("BFD packet length is not enough for authentication data (%d < %d)",
 			      packet->length, FR_BFD_HEADER_LENGTH + packet->auth.basic.auth_len);
 			goto fail;
 
