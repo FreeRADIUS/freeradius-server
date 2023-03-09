@@ -368,8 +368,10 @@ int vsnprintf(char *str, size_t count, char const *fmt, va_list arg);
 int snprintf(char *str, size_t count, char const *fmt, ...);
 #endif
 
-/*
+/**
  *	Functions from strl{cat,cpy}.c
+ *
+ * @hidecallergraph
  */
 #ifndef HAVE_STRLCPY
 size_t strlcpy(char *dst, char const *src, size_t siz);

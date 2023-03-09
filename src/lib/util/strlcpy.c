@@ -29,6 +29,7 @@ RCSID("$Id$")
  * will be copied.  Always NUL terminates (unless siz == 0).
  * Returns strlen(src); if retval >= siz, truncation occurred.
  */
+/** @hidecallergraph */
 size_t
 strlcpy(char *dst, char const *src, size_t siz)
 {
