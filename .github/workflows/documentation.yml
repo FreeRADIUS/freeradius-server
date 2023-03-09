@@ -94,7 +94,7 @@ jobs:
 
     steps:
     - name: Retrieve output
-      uses: actions/download-artifacts@v3
+      uses: actions/download-artifact@v3
       with:
         name: compiled-docs
 
