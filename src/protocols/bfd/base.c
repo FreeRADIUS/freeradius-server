@@ -76,6 +76,81 @@ fr_table_num_ordered_t const bfd_auth_type_table[] = {
 size_t const bfd_auth_type_table_len = NUM_ELEMENTS(bfd_auth_type_table);
 
 
+bool fr_bfd_packet_ok(char const **err, uint8_t const *packet, size_t packet_len)
+{
+	bfd_packet_t const *bfd;
+	char const *msg = NULL;
+
+	if (packet_len < FR_BFD_HEADER_LENGTH) {
+		msg = "Packet is too short to be BFD";
+	fail:
+		if (err) *err = msg;
+		return false;
+	}
+
+	bfd = (bfd_packet_t const *) packet;
+
+	if (bfd->version != 1) {
+		msg = "Packet has wrong version - should be 1";
+		goto fail;
+	}
+
+	if (bfd->length < FR_BFD_HEADER_LENGTH) {
+		msg = "Header length is too small";
+		goto fail;
+	}
+
+	if (bfd->length > sizeof(*bfd)) {
+		msg = "Header length is larger than received packet";
+		goto fail;
+	}
+
+	if (bfd->length != packet_len) {
+		msg = "Header length is not the same as the amount of data we read";
+		goto fail;
+	}
+
+	if (bfd->auth_present) {
+		if (bfd->length < (FR_BFD_HEADER_LENGTH + 2)) { /* auth-type and auth-len */
+			msg = "Header length is not enough for auth-type and auth-len";
+			goto fail;
+		}
+
+		if (bfd->length != FR_BFD_HEADER_LENGTH + bfd->auth.basic.auth_len) {
+			msg = "Header length mismatch with auth-len and amount of received data";
+			goto fail;
+
+		}
+	}
+
+	if (bfd->detect_multi == 0) {
+		msg = "Packet has invalid detect-multi == 0";
+		goto fail;
+	}
+
+	if (bfd->multipoint != 0) {
+		msg = "Packet has invalid multipoint != 0";
+		goto fail;
+	}
+
+	if (bfd->my_disc == 0) {
+		msg = "Packet has invalid my-discriminator == 0";
+		goto fail;
+	}
+
+	if ((bfd->your_disc == 0) &&
+	    !((bfd->state == BFD_STATE_DOWN) ||
+	      (bfd->state == BFD_STATE_ADMIN_DOWN))) {
+		msg = "Packet has your-discrimator==0, but state is not down or admin-down";
+		goto fail;
+	}
+
+	if (err) *err = NULL;
+	return true;
+}
+
+
+
 int fr_bfd_init(void)
 {
 	if (instance_count > 0) {

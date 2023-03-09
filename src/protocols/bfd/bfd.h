@@ -163,6 +163,8 @@ ssize_t		fr_bfd_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			      uint8_t const *packet, size_t packet_len,
 			      char const *secret, size_t secret_len);
 
+bool		fr_bfd_packet_ok(char const **err, uint8_t const *packet, size_t packet_len);
+
 int	fr_bfd_init(void);
 void	fr_bfd_free(void);
 

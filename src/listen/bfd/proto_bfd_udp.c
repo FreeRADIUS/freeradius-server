@@ -113,6 +113,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	size_t				packet_len;
 
 	bfd_packet_t			*packet;
+	char const			*err = NULL;
 
 	*leftover = 0;		/* always for UDP */
 
@@ -141,9 +142,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	packet_len = data_size;
 
-	if (data_size < FR_BFD_HEADER_LENGTH) {
-		DEBUG2("proto_bfd_udp got 'too short' packet size %zd", data_size);
-	fail:
+	if (!fr_bfd_packet_ok(&err, buffer, packet_len)) {
+		DEBUG2("proto_bfd_udp - Received invalid packet on %s - %s", thread->name, err);
 		thread->stats.total_malformed_requests++;
 		return 0;
 	}
@@ -151,68 +151,6 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	thread->stats.total_requests++;
 
 	packet = (bfd_packet_t *) buffer;
-
-	if (packet->version != 1) {
-		DEBUG("BFD packet has wrong version (%d != 1)", packet->version);
-		goto fail;
-	}
-
-	if (packet->length < FR_BFD_HEADER_LENGTH) {
-		DEBUG("BFD packet header has wrong length (%d < 24)", packet->length);
-		goto fail;
-	}
-
-	if (packet->length > sizeof(*packet)) {
-		DEBUG("BFD packet length is larger than received packet (%d > %zd)", packet->length, sizeof(*packet));
-		goto fail;
-	}
-
-	if (packet->length != packet_len) {
-		DEBUG("BFD packet is not the size of the data we read from UDP (%d > %zd)", packet->length, packet_len);
-		goto fail;
-	}
-
-	if (packet->auth_present) {
-		if (packet->length < (FR_BFD_HEADER_LENGTH + 2)) { /* auth-type and auth-len */
-			DEBUG("BFD packet length is not enough for auth-type and auth-len (%d < 26)",
-			      packet->length);
-			goto fail;
-		}
-
-		if (packet->length < 24 + packet->auth.basic.auth_len) {
-			DEBUG("BFD packet length is not enough for authentication data (%d < %d)",
-			      packet->length, FR_BFD_HEADER_LENGTH + packet->auth.basic.auth_len);
-			goto fail;
-
-		}
-
-		if (packet->length != FR_BFD_HEADER_LENGTH + packet->auth.basic.auth_len) {
-			DEBUG("WARNING: What is the extra data?");
-		}
-
-	}
-
-	if (packet->detect_multi == 0) {
-		DEBUG("BFD packet has detect_multi == 0");
-		goto fail;
-	}
-
-	if (packet->multipoint != 0) {
-		DEBUG("BFD packet has multi != 0");
-		goto fail;
-	}
-
-	if (packet->my_disc == 0) {
-		DEBUG("BFD packet has my_disc == 0");
-		goto fail;
-	}
-
-	if ((packet->your_disc == 0) &&
-	    !((packet->state == BFD_STATE_DOWN) ||
-	      (packet->state == BFD_STATE_ADMIN_DOWN))) {
-		DEBUG("BFD packet has invalid your-disc / state");
-		goto fail;
-	}
 
 	/*
 	 *	Print out what we received.
