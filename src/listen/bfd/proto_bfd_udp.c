@@ -104,9 +104,10 @@ static const CONF_PARSER udp_listen_config[] = {
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len,
 			size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-//	proto_bfd_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
+	proto_bfd_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
 	proto_bfd_udp_thread_t		*thread = talloc_get_type_abort(li->thread_instance, proto_bfd_udp_thread_t);
 	fr_io_address_t			*address, **address_p;
+	fr_client_t			*client;
 
 	int				flags;
 	ssize_t				data_size;
@@ -140,6 +141,17 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		return 0;
 	}
 
+	/*
+	 *	Try to find the client before looking at any packet data.
+	 */
+	client =  fr_rb_find(inst->peers, &(fr_client_t) { .ipaddr = address->socket.inet.src_ipaddr, .proto = IPPROTO_UDP });
+	if (!client) {
+		DEBUG2("proto_bfd_udp - Received invalid packet on %s - uknown client %pV:%u", thread->name,
+		       fr_box_ipaddr(address->socket.inet.src_ipaddr), address->socket.inet.src_port);
+		thread->stats.total_packets_dropped++;
+		return 0;
+	}
+
 	packet_len = data_size;
 
 	if (!fr_bfd_packet_ok(&err, buffer, packet_len)) {
@@ -159,6 +171,12 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	       fr_bfd_packet_names[packet->state],
 	       (int) packet_len, thread->name,
 	       fr_box_ipaddr(address->socket.inet.src_ipaddr), address->socket.inet.src_port);
+
+	/*
+	 *	Run the BFD state machine.  Depending on that result,
+	 *	we either send the packet through to unlang, or not.
+	 */
+	if (!bfd_session_process((proto_bfd_peer_t *) client, packet)) return 0;
 
 	return packet_len;
 }
