@@ -639,7 +639,7 @@ static int bfd_authenticate(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 		return 0;
 
 	case BFD_AUTH_SIMPLE:
-		bfd_verify_simple(session, bfd);
+		return bfd_verify_simple(session, bfd);
 		break;
 
 	case BFD_AUTH_KEYED_MD5:
