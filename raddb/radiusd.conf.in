@@ -215,8 +215,8 @@ correct_escapes = true
 
 #  max_request_time: The maximum time (in seconds) to handle a request.
 #
-#  Requests which take more time than this to process may be killed, and
-#  a REJECT message is returned.
+#  Requests which take more time than this to process are discarded,
+#  and no reply is returned.
 #
 #  WARNING: If you notice that requests take a long time to be handled,
 #  then this MAY INDICATE a bug in the server, in one of the modules
@@ -226,6 +226,12 @@ correct_escapes = true
 #  more than a second or two to receive an answer from the SQL database,
 #  then it probably means that you haven't indexed the database.  See your
 #  SQL server documentation for more information.
+#
+#  In general, values larger than 30 or so are useless.  If the server
+#  replies to the NAS after 60 seconds, the NAS will almost always
+#  have given up on the request, and gone to another one.  You can see
+#  this happening when the logs have messages like "received conflicting
+#  packet", and "discarding old request".
 #
 #  Useful range of values: 5 to 120
 #
