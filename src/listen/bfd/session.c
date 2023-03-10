@@ -343,11 +343,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 		bfd_start_control(session);
 	}
 
-	if (!state_change) return 0;
-
-	// @todo - send the packet through a "recv foo" section?
-
-	return 1;
+	return state_change;
 }
 
 
@@ -706,6 +702,12 @@ static void bfd_start_packets(proto_bfd_peer_t *session)
 		interval = fr_time_delta_unwrap(session->desired_min_tx_interval);
 	} else {
 		interval = fr_time_delta_unwrap(session->remote_min_rx_interval);
+
+		/*
+		 *	The other end doesn't want to receive control packets.  So we stop sending them.
+		 */
+		if (!interval) return;
+
 	}
 	base = (interval * 3) / 4;
 	jitter = fr_rand();	/* 32-bit number */
@@ -811,7 +813,7 @@ static void bfd_detection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, voi
 		DEBUG("BFD %s State <timeout> -> DOWN (control expired)", session->client.shortname);
 		session->session_state = BFD_STATE_DOWN;
 		session->local_diag =  BFD_CTRL_EXPIRED;
-		bfd_trigger(session);
+		bfd_trigger(session); /* @todo - send timeout state change to unlang */
 
 		bfd_set_desired_min_tx_interval(session, fr_time_delta_from_sec(1));
 	}

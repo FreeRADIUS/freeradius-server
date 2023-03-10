@@ -467,10 +467,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 			peer = (proto_bfd_peer_t *) c;
 
-			FR_TIME_DELTA_BOUND_CHECK("peer.min_transmit_interval", peer->desired_min_tx_interval, >=, fr_time_delta_from_usec(30));
+			FR_TIME_DELTA_BOUND_CHECK("peer.min_transmit_interval", peer->desired_min_tx_interval, >=, fr_time_delta_from_usec(32));
 			FR_TIME_DELTA_BOUND_CHECK("peer.min_transmit_interval", peer->desired_min_tx_interval, <=, fr_time_delta_from_sec(2));
 
-			FR_TIME_DELTA_BOUND_CHECK("peer.min_recieve_interval", peer->required_min_rx_interval, >=, fr_time_delta_from_usec(30));
+			FR_TIME_DELTA_BOUND_CHECK("peer.min_recieve_interval", peer->required_min_rx_interval, >=, fr_time_delta_from_usec(32));
 			FR_TIME_DELTA_BOUND_CHECK("peer.min_received_interval", peer->required_min_rx_interval, <=, fr_time_delta_from_sec(2));
 
 			FR_INTEGER_BOUND_CHECK("peer.max_timeouts", peer->detect_multi, >=, 1);
