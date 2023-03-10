@@ -248,7 +248,7 @@ typedef ssize_t (*fr_io_data_write_t)(fr_listen_t *li, void *packet_ctx, fr_time
  *	- <0 on error
  *	- 0 on success
  */
-typedef int (*fr_io_data_inject_t)(fr_listen_t *li,uint8_t *buffer, size_t buffer_len, fr_time_t recv_time);
+typedef int (*fr_io_data_inject_t)(fr_listen_t *li,uint8_t const *buffer, size_t buffer_len, fr_time_t recv_time);
 
 /** Tell the IO handler that a VNODE has changed
  *

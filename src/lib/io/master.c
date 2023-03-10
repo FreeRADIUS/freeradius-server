@@ -1755,7 +1755,7 @@ done:
  *
  *  Always called in the context of the network.
  */
-static int mod_inject(fr_listen_t *li, uint8_t *buffer, size_t buffer_len, fr_time_t recv_time)
+static int mod_inject(fr_listen_t *li, uint8_t const *buffer, size_t buffer_len, fr_time_t recv_time)
 {
 	fr_io_instance_t const *inst;
 	int		priority;
