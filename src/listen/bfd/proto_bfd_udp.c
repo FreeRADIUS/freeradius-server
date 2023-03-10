@@ -472,7 +472,7 @@ static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, 
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
-static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void *nr)
+static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 {
 	proto_bfd_udp_t const  	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
 	proto_bfd_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_bfd_udp_thread_t);
@@ -487,7 +487,11 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 	     peer = fr_rb_iter_next_inorder(&iter)) {
 		if (peer->inst != inst) continue;
 
-		bfd_session_start(peer, el, thread->sockfd);
+		peer->el = el;
+		peer->nr = (fr_network_t *) nr;
+		peer->sockfd = thread->sockfd;
+
+		bfd_session_start(peer);
 	}
 }
 

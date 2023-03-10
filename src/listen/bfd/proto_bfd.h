@@ -51,7 +51,8 @@ typedef struct {
 	fr_listen_t			*listen;		//!< associated listener
 
 	int				sockfd;			//!< cached for laziness
-	fr_event_list_t			*el;
+	fr_event_list_t			*el;			//!< event list
+	fr_network_t			*nr;			//!< network side of things
 
 	struct sockaddr_storage remote_sockaddr;		//!< cached for laziness
 	socklen_t	remote_salen;

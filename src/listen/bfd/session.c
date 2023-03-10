@@ -946,14 +946,11 @@ int bfd_session_init(proto_bfd_peer_t *session)
 	return 0;
 }
 
-void bfd_session_start(proto_bfd_peer_t *session, fr_event_list_t *el, int sockfd)
+void bfd_session_start(proto_bfd_peer_t *session)
 {
 	DEBUG("Starting BFD for %s", session->client.shortname);
 
-	fr_assert(!session->el);
-
-	session->el = el;
-	session->sockfd = sockfd;
+	fr_assert(session->el);
 
 	bfd_start_control(session);
 }

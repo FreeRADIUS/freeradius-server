@@ -27,6 +27,6 @@
 
 int	bfd_session_init(proto_bfd_peer_t *session);
 
-void	bfd_session_start(proto_bfd_peer_t *session, fr_event_list_t *el, int sockfd);
+void	bfd_session_start(proto_bfd_peer_t *session);
 
 int	bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd);
