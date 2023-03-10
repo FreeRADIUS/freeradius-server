@@ -91,7 +91,6 @@ typedef struct {
 	fr_time_delta_t	required_min_rx_interval;		//!< intervals between receives
 
 	fr_time_delta_t	remote_min_rx_interval;			//!< their min_rx_interval
-	fr_time_delta_t	remote_min_echo_rx_interval;		//!< their min_echo_rx_interval
 
 	fr_time_delta_t	my_min_echo_rx_interval;		//!< what we send for echo_rx_interval
 

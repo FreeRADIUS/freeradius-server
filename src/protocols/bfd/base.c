@@ -75,7 +75,9 @@ fr_table_num_ordered_t const bfd_auth_type_table[] = {
 };
 size_t const bfd_auth_type_table_len = NUM_ELEMENTS(bfd_auth_type_table);
 
-
+/*
+ *	Perform basic packet checks as per the first part of RFC 5880 Section 6.8.6.
+ */
 bool fr_bfd_packet_ok(char const **err, uint8_t const *packet, size_t packet_len)
 {
 	bfd_packet_t const *bfd;
@@ -90,26 +92,45 @@ bool fr_bfd_packet_ok(char const **err, uint8_t const *packet, size_t packet_len
 
 	bfd = (bfd_packet_t const *) packet;
 
+	/*
+	 *	If the version number is not correct (1), the packet MUST be
+	 *	discarded.
+	 */
 	if (bfd->version != 1) {
 		msg = "Packet has wrong version - should be 1";
 		goto fail;
 	}
 
+	/*
+	 *	If the Length field is less than the minimum correct value (24 if
+	 *	the A bit is clear, or 26 if the A bit is set), the packet MUST be
+	 *	discarded.
+	 */
 	if (bfd->length < FR_BFD_HEADER_LENGTH) {
 		msg = "Header length is too small";
 		goto fail;
 	}
 
-	if (bfd->length > sizeof(*bfd)) {
-		msg = "Header length is larger than received packet";
-		goto fail;
-	}
-
-	if (bfd->length != packet_len) {
+	/*
+	 *	If the Length field is greater than the payload of the
+	 *	encapsulating protocol, the packet MUST be discarded.
+	 *
+	 *	Addendum: if the Length field is smaller than the
+	 *	received data, that's bad, too.
+	 */
+	if (bfd->length > packet_len) {
 		msg = "Header length is not the same as the amount of data we read";
 		goto fail;
 	}
 
+	/*
+	 *	If the Length field is less than the minimum correct value (24 if
+	 *	the A bit is clear, or 26 if the A bit is set), the packet MUST be
+	 *	discarded.
+	 *
+	 *	Addendum: if the Length field is not equal to 24 plus Auth-Len field,
+	 *	then the packet is discarded.
+	 */
 	if (bfd->auth_present) {
 		if (bfd->length < (FR_BFD_HEADER_LENGTH + 2)) { /* auth-type and auth-len */
 			msg = "Header length is not enough for auth-type and auth-len";
@@ -123,21 +144,36 @@ bool fr_bfd_packet_ok(char const **err, uint8_t const *packet, size_t packet_len
 		}
 	}
 
+	/*
+	 *	If the Detect Mult field is zero, the packet MUST be discarded.
+	 */
 	if (bfd->detect_multi == 0) {
 		msg = "Packet has invalid detect-multi == 0";
 		goto fail;
 	}
 
+	/*
+	 *	If the Multipoint (M) bit is nonzero, the packet MUST be
+	 *	discarded.
+	 */
 	if (bfd->multipoint != 0) {
 		msg = "Packet has invalid multipoint != 0";
 		goto fail;
 	}
 
+	/*
+	 *	If the My Discriminator field is zero, the packet MUST be
+	 *	discarded.
+	 */
 	if (bfd->my_disc == 0) {
 		msg = "Packet has invalid my-discriminator == 0";
 		goto fail;
 	}
 
+	/*
+	 *	If the Your Discriminator field is zero and the State field is not
+	 *	Down or AdminDown, the packet MUST be discarded.
+	 */
 	if ((bfd->your_disc == 0) &&
 	    !((bfd->state == BFD_STATE_DOWN) ||
 	      (bfd->state == BFD_STATE_ADMIN_DOWN))) {

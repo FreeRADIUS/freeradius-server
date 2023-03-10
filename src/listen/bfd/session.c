@@ -136,50 +136,82 @@ static void bfd_poll_response(proto_bfd_peer_t *session)
 	}
 }
 
-
+/*
+ *	Implement the requirements of RFC 5880 Section 6.8.6.
+ */
 int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 {
 	bool state_change = false;
 
+	/*
+	 *
+	 *	If the Your Discriminator field is nonzero, it MUST be used to
+	 *	select the session with which this BFD packet is associated.  If
+	 *	no session is found, the packet MUST be discarded.
+	 */
+	if ((bfd->your_disc != 0) && (bfd->your_disc != session->local_disc)) {
+		DEBUG("BFD %s packet has unexpected Your-Discriminator (got %08x, expected %08x",
+		      session->client.shortname, bfd->your_disc, session->local_disc);
+		return 0;
+	}
+
+	/*
+	 *	If the A bit is set and no authentication is in use (bfd.AuthType
+	 *	is zero), the packet MUST be discarded.
+	 */
 	if (bfd->auth_present &&
 	    (session->auth_type == BFD_AUTH_RESERVED)) {
 		DEBUG("BFD %s packet asked to authenticate an unauthenticated session.", session->client.shortname);
 		return 0;
 	}
 
+	/*
+	 *	If the A bit is clear and authentication is in use (bfd.AuthType
+	 *	is nonzero), the packet MUST be discarded.
+	 */
 	if (!bfd->auth_present &&
 	    (session->auth_type != BFD_AUTH_RESERVED)) {
 		DEBUG("BFD %s packet failed to authenticate an authenticated session.", session->client.shortname);
 		return 0;
 	}
 
+	/*
+	 *	 If the A bit is set, the packet MUST be authenticated under the
+	 *	rules of section 6.7, based on the authentication type in use
+	 *	(bfd.AuthType).  This may cause the packet to be discarded.
+	 */
 	if (bfd->auth_present && !bfd_authenticate(session, bfd)) {
 		DEBUG("BFD %s authentication failed", session->client.shortname);
 		return 0;
 	}
 
 	DEBUG("BFD %s processing packet", session->client.shortname);
+
+	/*
+	 *	Set bfd.RemoteDiscr to the value of My Discriminator.
+	 *
+	 *	Set bfd.RemoteState to the value of the State (Sta) field.
+	 *
+	 *	Set bfd.RemoteDemandMode to the value of the Demand (D) bit.
+	 */
 	session->remote_disc = bfd->my_disc;
 	session->remote_session_state = bfd->state;
 	session->remote_demand_mode = bfd->demand;
 
 	/*
-	 *	The other end is reducing the RX interval.  Do that
-	 *	now.
+	 *	Set bfd.RemoteMinRxInterval to the value of Required Min RX
+	 *	Interval.
+	 *
+	 *	Addendum: clamp it to be between 32ms and 1s.
 	 */
-	if (fr_time_delta_lt(fr_time_delta_from_usec(bfd->required_min_rx_interval), session->remote_min_rx_interval) &&
-	    !session->demand_mode) {
-		bfd_stop_control(session);
-		bfd_start_control(session);
+	if ((bfd->required_min_rx_interval > 32) && (bfd->required_min_rx_interval < USEC)) {
+		session->remote_min_rx_interval = fr_time_delta_from_usec(bfd->required_min_rx_interval);
 	}
 
 	/*
-	 *	@todo - clamp these at some reasonable value, or maybe
-	 *	just trust the other side.
+	 *	If the Required Min Echo RX Interval field is zero, the
+	 *	transmission of Echo packets, if any, MUST cease.
 	 */
-	session->remote_min_rx_interval = fr_time_delta_from_usec(bfd->required_min_rx_interval);
-	session->remote_min_echo_rx_interval = fr_time_delta_from_usec(bfd->min_echo_rx_interval);
-
 	if (bfd->min_echo_rx_interval == 0) {
 #if 0
 		/*
@@ -191,12 +223,17 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 #endif
 	}
 
+	/*
+	 *	If a Poll Sequence is being transmitted by the local system and
+	 *	the Final (F) bit in the received packet is set, the Poll Sequence
+	 *	MUST be terminated.
+	 */
 	if (session->doing_poll && bfd->final) {
 		bfd_stop_poll(session);
 	}
 
 	/*
-	 *	Update transmit intervals as in 6.8.7
+	 *	Update transmit intervals as in 6.8.2
 	 */
 
 	/*
@@ -217,36 +254,46 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	}
 	session->detection_time = fr_time_delta_wrap(session->detect_multi * fr_time_delta_unwrap(session->detection_time));
 
+	/*
+	 *	If bfd.SessionState is AdminDown
+	 *
+	 *		Discard the packet.
+	 */
 	if (session->session_state == BFD_STATE_ADMIN_DOWN) {
 		DEBUG("Discarding BFD packet (admin down)");
 		return 0;
 	}
 
+	/*
+	 *	If received state is AdminDown
+	 *		If bfd.SessionState is not Down
+	 *			Set bfd.LocalDiag to 3 (Neighbor signaled session down)
+	 *			Set bfd.SessionState to Down
+	 */
 	if (bfd->state == BFD_STATE_ADMIN_DOWN) {
 		if (bfd->state != BFD_STATE_DOWN) {
+		down:
 			session->local_diag = BFD_NEIGHBOR_DOWN;
+
+			DEBUG("BFD %s State %s -> DOWN (neighbour %s)",
+			      session->client.shortname,
+			      fr_bfd_packet_names[session->session_state],
+			      fr_bfd_packet_names[bfd->state]);
+			session->session_state = BFD_STATE_DOWN;
+			bfd_trigger(session);
+			state_change = true;
 		}
-
-		DEBUG("BFD %s State %s -> DOWN (admin down)",
-		      session->client.shortname, fr_bfd_packet_names[session->session_state]);
-		session->session_state = BFD_STATE_DOWN;
-		bfd_trigger(session);
-		state_change = true;
-
-		bfd_set_desired_min_tx_interval(session, fr_time_delta_from_usec(1));
 
 	} else {
 		switch (session->session_state) {
 		case BFD_STATE_DOWN:
 			switch (bfd->state) {
 			case BFD_STATE_DOWN:
-				DEBUG("BFD %s State DOWN -> INIT (neighbor down)",
+				DEBUG("BFD %s State DOWN -> INIT (neighbor DOWN)",
 				      session->client.shortname);
 				session->session_state = BFD_STATE_INIT;
 				bfd_trigger(session);
 				state_change = true;
-
-				bfd_set_desired_min_tx_interval(session, fr_time_delta_from_sec(1));
 				break;
 
 			case BFD_STATE_INIT:
@@ -281,15 +328,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 		case BFD_STATE_UP:
 			switch (bfd->state) {
 			case BFD_STATE_DOWN:
-				session->local_diag = BFD_NEIGHBOR_DOWN;
-
-				DEBUG("BFD %s State UP -> DOWN (neighbor down)", session->client.shortname);
-				session->session_state = BFD_STATE_DOWN;
-				bfd_trigger(session);
-				state_change = true;
-
-				bfd_set_desired_min_tx_interval(session, fr_time_delta_from_sec(1));
-				break;
+				goto down;
 
 			default:
 				break;
@@ -303,7 +342,25 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	}
 
 	/*
+	 *	Section 6.8.3
+	 *
+	 *	When bfd.SessionState is not Up, the system MUST set
+	 *	bfd.DesiredMinTxInterval to a value of not less than one second
+	 *	(1,000,000 microseconds).  This is intended to ensure that the
+	 *	bandwidth consumed by BFD sessions that are not Up is negligible,
+	 *	particularly in the case where a neighbor may not be running BFD.
+	 */
+	if (state_change && (session->session_state != BFD_STATE_UP)) {
+		bfd_set_desired_min_tx_interval(session, fr_time_delta_from_sec(1));
+	}
+
+	/*
 	 *	Check if demand mode should be active (Section 6.6)
+	 *
+	 *	If bfd.RemoteDemandMode is 1, bfd.SessionState is Up, and
+	 *	bfd.RemoteSessionState is Up, Demand mode is active on the remote
+	 *	system and the local system MUST cease the periodic transmission
+	 *	of BFD Control packets (see section 6.8.7).
 	 */
 	if (session->remote_demand_mode &&
 	    (session->session_state == BFD_STATE_UP) &&
@@ -312,36 +369,51 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 		bfd_stop_control(session);
 	}
 
-	if (bfd->poll) {
-		bfd_poll_response(session);
-	}
-
 	/*
-	 *	We've received the packet for the purpose of Section
-	 *	6.8.4.
+	 *	If bfd.RemoteDemandMode is 0, or bfd.SessionState is not Up, or
+	 *	bfd.RemoteSessionState is not Up, Demand mode is not active on the
+	 *	remote system and the local system MUST send periodic BFD Control
+	 *	packets.
 	 */
-	session->last_recv = fr_time();
-
-#if 0
-	/*
-	 *	We've received a packet, but missed the previous one.
-	 *	Warn about it.
-	 */
-	if ((session->detect_multi >= 2) && (fr_time_gt(session->last_recv, session->next_recv))) {
-		fr_radius_packet_t packet;
-		request_t request;
-
-		bfd_request(session, &request, &packet);
-
-		trigger_exec(unlang_interpret_get_thread_default(), NULL, "server.bfd.warn", false, NULL);
-	}
-#endif
-
 	if ((!session->remote_demand_mode) ||
 	    (session->session_state != BFD_STATE_UP) ||
 	    (session->remote_session_state != BFD_STATE_UP)) {
 		bfd_start_control(session);
 	}
+
+	/*
+	 *	If the Poll (P) bit is set, send a BFD Control packet to the
+	 *	remote system with the Poll (P) bit clear, and the Final (F) bit
+	 *	set (see section 6.8.7).
+	 */
+	if (bfd->poll) {
+		bfd_poll_response(session);
+	}
+
+	/*
+	 *	If the packet was not discarded, it has been received for purposes
+	 *	of the Detection Time expiration rules in section 6.8.4.
+	 */
+	session->last_recv = fr_time();
+
+	/*
+	 *	The other end is reducing the RX interval.  Do that
+	 *	now.
+	 */
+	if (fr_time_delta_lt(fr_time_delta_from_usec(bfd->required_min_rx_interval), session->remote_min_rx_interval) &&
+	    !session->demand_mode) {
+		bfd_stop_control(session);
+		bfd_start_control(session);
+	}
+
+	/*
+	 *	@todo - warn about missing packets?
+	 */
+#if 0
+	if ((session->detect_multi >= 2) && (fr_time_gt(session->last_recv, session->next_recv))) {
+		...
+	}
+#endif
 
 	return state_change;
 }
@@ -709,6 +781,15 @@ static void bfd_start_packets(proto_bfd_peer_t *session)
 		if (!interval) return;
 
 	}
+
+	/*
+	 *	If bfd.DetectMult is equal to 1, the interval between transmitted BFD
+	 *	Control packets MUST be no more than 90% of the negotiated
+	 *	transmission interval, and MUST be no less than 75% of the negotiated
+	 *	transmission interval.  This is to ensure that, on the remote system,
+	 *	the calculated Detection Time does not pass prior to the receipt of
+	 *	the next BFD Control packet.
+	 */
 	base = (interval * 3) / 4;
 	jitter = fr_rand();	/* 32-bit number */
 
@@ -779,6 +860,16 @@ static void bfd_set_desired_min_tx_interval(proto_bfd_peer_t *session, fr_time_d
 	if (session->session_state != BFD_STATE_UP) {
 		if (fr_time_delta_cmp(value, fr_time_delta_from_sec(1)) < 0) value = fr_time_delta_from_sec(1);
 	}
+
+	/*
+	 *	If either bfd.DesiredMinTxInterval is changed or
+	 *	bfd.RequiredMinRxInterval is changed, a Poll Sequence MUST be
+	 *	initiated (see section 6.5).  If the timing is such that a system
+	 *	receiving a Poll Sequence wishes to change the parameters described
+	 *	in this paragraph, the new parameter values MAY be carried in packets
+	 *	with the Final (F) bit set, even if the Poll Sequence has not yet
+	 *	been sent.
+	 */
 
 	session->desired_min_tx_interval = value;
 	bfd_stop_control(session);
