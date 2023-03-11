@@ -59,6 +59,8 @@ typedef struct {
 
 	uint8_t				ttl;			//!< default ttl
 
+	bool				only_state_changes;	//!< on read(), only send packets which signal a state change
+
 	bool				recv_buff_is_set;	//!< Whether we were provided with a recv_buff
 	bool				send_buff_is_set;	//!< Whether we were provided with a send_buff
 	bool				dynamic_clients;	//!< whether we have dynamic clients
@@ -91,6 +93,8 @@ static const CONF_PARSER udp_listen_config[] = {
 
 	{ FR_CONF_OFFSET("ttl", FR_TYPE_UINT8, proto_bfd_udp_t, ttl), .dflt = "255" },
 
+	{ FR_CONF_OFFSET("only_state_changes", FR_TYPE_BOOL, proto_bfd_udp_t, only_state_changes), .dflt = "yes" },
+
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_bfd_udp_t, recv_buff) },
 	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, proto_bfd_udp_t, send_buff) },
 
@@ -115,6 +119,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	bfd_packet_t			*packet;
 	char const			*err = NULL;
+	bfd_state_change_t		state_change;
 
 	*leftover = 0;		/* always for UDP */
 
@@ -176,7 +181,10 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	Run the BFD state machine.  Depending on that result,
 	 *	we either send the packet through to unlang, or not.
 	 */
-	if (!bfd_session_process((proto_bfd_peer_t *) client, packet)) return 0;
+	state_change = bfd_session_process((bfd_session_t *) client, packet);
+	if ((state_change == BFD_STATE_CHANGE_INVALID) || (state_change == BFD_STATE_CHANGE_ADMIN_DOWN)) return 0;
+
+	if ((state_change == BFD_STATE_CHANGE_NONE) && inst->only_state_changes) return 0;
 
 	return packet_len;
 }
@@ -348,7 +356,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server_cs;
 	fr_rb_iter_inorder_t	iter;
-	proto_bfd_peer_t	*peer;
+	bfd_session_t	*peer;
 
 	inst->cs = conf;
 
@@ -477,7 +485,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	proto_bfd_udp_t const  	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_bfd_udp_t);
 	proto_bfd_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_bfd_udp_thread_t);
 	fr_rb_iter_inorder_t	iter;
-	proto_bfd_peer_t	*peer;
+	bfd_session_t		*peer;
 
 	/*
 	 *	Walk over the list of peers, associating them with this listener.

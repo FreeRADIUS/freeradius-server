@@ -43,15 +43,15 @@ static CONF_PARSER const proto_bfd_config[] = {
 };
 
 static const CONF_PARSER peer_config[] = {
-	{ FR_CONF_OFFSET("min_transmit_interval", FR_TYPE_TIME_DELTA, proto_bfd_peer_t, desired_min_tx_interval ) },
-	{ FR_CONF_OFFSET("min_receive_interval", FR_TYPE_TIME_DELTA, proto_bfd_peer_t, required_min_rx_interval ) },
-	{ FR_CONF_OFFSET("max_timeouts", FR_TYPE_UINT32, proto_bfd_peer_t, detect_multi ) },
-	{ FR_CONF_OFFSET("demand", FR_TYPE_BOOL, proto_bfd_peer_t, demand_mode ) },
+	{ FR_CONF_OFFSET("min_transmit_interval", FR_TYPE_TIME_DELTA, bfd_session_t, desired_min_tx_interval ) },
+	{ FR_CONF_OFFSET("min_receive_interval", FR_TYPE_TIME_DELTA, bfd_session_t, required_min_rx_interval ) },
+	{ FR_CONF_OFFSET("max_timeouts", FR_TYPE_UINT32, bfd_session_t, detect_multi ) },
+	{ FR_CONF_OFFSET("demand", FR_TYPE_BOOL, bfd_session_t, demand_mode ) },
 
-	{ FR_CONF_OFFSET("auth_type", FR_TYPE_VOID, proto_bfd_peer_t, auth_type ),
+	{ FR_CONF_OFFSET("auth_type", FR_TYPE_VOID, bfd_session_t, auth_type ),
 	.func = auth_type_parse },
 
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_bfd_peer_t, port ) },
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, bfd_session_t, port ) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -448,11 +448,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 		while ((cs = cf_section_find_next(server, cs, "peer", CF_IDENT_ANY))) {
 			fr_client_t *c;
-			proto_bfd_peer_t *peer;
+			bfd_session_t *peer;
 
 			if (cf_section_rules_push(cs, peer_config) < 0) return -1;
 
-			c = client_afrom_cs(cs, cs, server, sizeof(proto_bfd_peer_t));
+			c = client_afrom_cs(cs, cs, server, sizeof(bfd_session_t));
 			if (!c) {
 			error:
 				cf_log_err(cs, "Failed to parse peer %s", cf_section_name2(cs));
@@ -465,7 +465,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 				goto error;
 			}
 
-			peer = (proto_bfd_peer_t *) c;
+			peer = (bfd_session_t *) c;
 
 			FR_TIME_DELTA_BOUND_CHECK("peer.min_transmit_interval", peer->desired_min_tx_interval, >=, fr_time_delta_from_usec(32));
 			FR_TIME_DELTA_BOUND_CHECK("peer.min_transmit_interval", peer->desired_min_tx_interval, <=, fr_time_delta_from_sec(2));

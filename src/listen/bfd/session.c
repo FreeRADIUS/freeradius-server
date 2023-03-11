@@ -33,20 +33,19 @@
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/time.h>
-#include <freeradius-devel/server/trigger.h>
 
 #include "session.h"
 
-static void bfd_sign(proto_bfd_peer_t *session, bfd_packet_t *bfd);
-static int bfd_authenticate(proto_bfd_peer_t *session, bfd_packet_t *bfd);
-static void bfd_control_packet_init(proto_bfd_peer_t *session, bfd_packet_t *bfd);
+static void bfd_sign(bfd_session_t *session, bfd_packet_t *bfd);
+static int bfd_authenticate(bfd_session_t *session, bfd_packet_t *bfd);
+static void bfd_control_packet_init(bfd_session_t *session, bfd_packet_t *bfd);
 
-static void bfd_set_desired_min_tx_interval(proto_bfd_peer_t *session, fr_time_delta_t value);
+static void bfd_set_desired_min_tx_interval(bfd_session_t *session, fr_time_delta_t value);
 
-static void bfd_start_packets(proto_bfd_peer_t *session);
-static void bfd_start_control(proto_bfd_peer_t *session);
-static int bfd_stop_control(proto_bfd_peer_t *session);
-static void bfd_set_timeout(proto_bfd_peer_t *session, fr_time_t when);
+static void bfd_start_packets(bfd_session_t *session);
+static void bfd_start_control(bfd_session_t *session);
+static int bfd_stop_control(bfd_session_t *session);
+static void bfd_set_timeout(bfd_session_t *session, fr_time_t when);
 
 
 /*
@@ -56,7 +55,7 @@ static void bfd_set_timeout(proto_bfd_peer_t *session, fr_time_t when);
  *	we will need to define some other kind of fake packet to send to the process
  *	module.
  */
-static void bfd_trigger(proto_bfd_peer_t *session)
+static void bfd_trigger(bfd_session_t *session, UNUSED bfd_state_change_t change)
 {
 //	fr_radius_packet_t	packet;
 //	request_t		*request = request_local_alloc_external(session, NULL);
@@ -75,7 +74,7 @@ static void bfd_trigger(proto_bfd_peer_t *session)
 /*
  *	Stop polling for packets.
  */
-static int bfd_stop_poll(proto_bfd_peer_t *session)
+static int bfd_stop_poll(bfd_session_t *session)
 {
 	if (!session->doing_poll) return 0;
 
@@ -114,7 +113,7 @@ static int bfd_stop_poll(proto_bfd_peer_t *session)
  *	Note that this doesn't affect our "last_sent" timer.
  *	That's set only when we intend to send a packet.
  */
-static void bfd_poll_response(proto_bfd_peer_t *session)
+static void bfd_poll_response(bfd_session_t *session)
 {
 	bfd_packet_t bfd;
 
@@ -139,9 +138,9 @@ static void bfd_poll_response(proto_bfd_peer_t *session)
 /*
  *	Implement the requirements of RFC 5880 Section 6.8.6.
  */
-int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd)
 {
-	bool state_change = false;
+	bfd_state_change_t state_change = BFD_STATE_CHANGE_NONE;
 
 	/*
 	 *
@@ -152,7 +151,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	if ((bfd->your_disc != 0) && (bfd->your_disc != session->local_disc)) {
 		DEBUG("BFD %s packet has unexpected Your-Discriminator (got %08x, expected %08x",
 		      session->client.shortname, bfd->your_disc, session->local_disc);
-		return 0;
+		return BFD_STATE_CHANGE_INVALID;
 	}
 
 	/*
@@ -162,7 +161,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	if (bfd->auth_present &&
 	    (session->auth_type == BFD_AUTH_RESERVED)) {
 		DEBUG("BFD %s packet asked to authenticate an unauthenticated session.", session->client.shortname);
-		return 0;
+		return BFD_STATE_CHANGE_INVALID;
 	}
 
 	/*
@@ -172,7 +171,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	if (!bfd->auth_present &&
 	    (session->auth_type != BFD_AUTH_RESERVED)) {
 		DEBUG("BFD %s packet failed to authenticate an authenticated session.", session->client.shortname);
-		return 0;
+		return BFD_STATE_CHANGE_INVALID;
 	}
 
 	/*
@@ -182,7 +181,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	 */
 	if (bfd->auth_present && !bfd_authenticate(session, bfd)) {
 		DEBUG("BFD %s authentication failed", session->client.shortname);
-		return 0;
+		return BFD_STATE_CHANGE_INVALID;
 	}
 
 	DEBUG("BFD %s processing packet", session->client.shortname);
@@ -261,7 +260,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	 */
 	if (session->session_state == BFD_STATE_ADMIN_DOWN) {
 		DEBUG("Discarding BFD packet (admin down)");
-		return 0;
+		return BFD_STATE_CHANGE_ADMIN_DOWN;
 	}
 
 	/*
@@ -280,8 +279,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 			      fr_bfd_packet_names[session->session_state],
 			      fr_bfd_packet_names[bfd->state]);
 			session->session_state = BFD_STATE_DOWN;
-			bfd_trigger(session);
-			state_change = true;
+			state_change = BFD_STATE_CHANGE_PEER_DOWN;
 		}
 
 	} else {
@@ -292,16 +290,14 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 				DEBUG("BFD %s State DOWN -> INIT (neighbor DOWN)",
 				      session->client.shortname);
 				session->session_state = BFD_STATE_INIT;
-				bfd_trigger(session);
-				state_change = true;
+				state_change = BFD_STATE_CHANGE_INIT;
 				break;
 
 			case BFD_STATE_INIT:
 				DEBUG("BFD %s State DOWN -> UP (neighbor INIT)",
 				      session->client.shortname);
 				session->session_state = BFD_STATE_UP;
-				bfd_trigger(session);
-				state_change = true;
+				state_change = BFD_STATE_CHANGE_UP;
 				break;
 
 			default: /* don't change anything */
@@ -316,8 +312,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 				DEBUG("BFD %s State INIT -> UP",
 				      session->client.shortname);
 				session->session_state = BFD_STATE_UP;
-				bfd_trigger(session);
-				state_change = true;
+				state_change = BFD_STATE_CHANGE_UP;
 				break;
 
 			default: /* don't change anything */
@@ -337,7 +332,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 
 		default:
 			DEBUG("Internal sanity check failed");
-			return 0;
+			return BFD_STATE_CHANGE_INVALID;
 		}
 	}
 
@@ -433,7 +428,7 @@ int bfd_session_process(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 /*
  *	Verify and/or calculate passwords
  */
-static void bfd_calc_simple(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+static void bfd_calc_simple(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	bfd_auth_simple_t *simple = &bfd->auth.password;
 
@@ -443,7 +438,7 @@ static void bfd_calc_simple(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	simple->auth_len = session->secret_len;
 }
 
-static void bfd_auth_simple(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+static void bfd_auth_simple(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	bfd_auth_simple_t *simple = &bfd->auth.password;
 
@@ -459,7 +454,7 @@ static void bfd_auth_simple(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 /*
  *	Verify and/or calculate auth-type digests.
  */
-static void bfd_calc_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+static void bfd_calc_md5(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	bfd_auth_md5_t *md5 = &bfd->auth.md5;
 
@@ -472,7 +467,7 @@ static void bfd_calc_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	fr_md5_calc(md5->digest,(const uint8_t *) bfd, bfd->length);
 }
 
-static void bfd_auth_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+static void bfd_auth_md5(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	bfd_auth_md5_t *md5 = &bfd->auth.md5;
 
@@ -486,7 +481,7 @@ static void bfd_auth_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	bfd_calc_md5(session, bfd);
 }
 
-static void bfd_calc_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+static void bfd_calc_sha1(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	fr_sha1_ctx ctx;
 	bfd_auth_sha1_t *sha1 = &bfd->auth.sha1;
@@ -502,7 +497,7 @@ static void bfd_calc_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	fr_sha1_final(sha1->digest, &ctx);
 }
 
-static void bfd_auth_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+static void bfd_auth_sha1(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	bfd_auth_sha1_t *sha1 = &bfd->auth.sha1;
 
@@ -516,7 +511,7 @@ static void bfd_auth_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	bfd_calc_sha1(session, bfd);
 }
 
-static int bfd_verify_sequence(proto_bfd_peer_t *session, uint32_t sequence_no,
+static int bfd_verify_sequence(bfd_session_t *session, uint32_t sequence_no,
 			       int keyed)
 {
 	uint32_t start, stop;
@@ -543,7 +538,7 @@ static int bfd_verify_sequence(proto_bfd_peer_t *session, uint32_t sequence_no,
 	return 1;
 }
 
-static int bfd_verify_simple(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+static int bfd_verify_simple(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	bfd_auth_simple_t *simple = &bfd->auth.password;
 
@@ -554,7 +549,7 @@ static int bfd_verify_simple(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	return (fr_digest_cmp((uint8_t const *) session->client.secret, simple->password, session->secret_len) == 0);
 }
 
-static int bfd_verify_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+static int bfd_verify_md5(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	int rcode;
 	bfd_auth_md5_t *md5 = &bfd->auth.md5;
@@ -593,7 +588,7 @@ static int bfd_verify_md5(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	return 1;
 }
 
-static int bfd_verify_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+static int bfd_verify_sha1(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	int rcode;
 	bfd_auth_sha1_t *sha1 = &bfd->auth.sha1;
@@ -632,7 +627,7 @@ static int bfd_verify_sha1(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 	return 1;
 }
 
-static int bfd_authenticate(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+static int bfd_authenticate(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	switch (bfd->auth.basic.auth_type) {
 	case BFD_AUTH_RESERVED:
@@ -655,7 +650,7 @@ static int bfd_authenticate(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 }
 
 
-static void bfd_sign(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+static void bfd_sign(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	if (bfd->auth_present) {
 		switch (session->auth_type) {
@@ -683,7 +678,7 @@ static void bfd_sign(proto_bfd_peer_t *session, bfd_packet_t *bfd)
 /*
  *	Initialize a control packet.
  */
-static void bfd_control_packet_init(proto_bfd_peer_t *session, bfd_packet_t *bfd)
+static void bfd_control_packet_init(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	memset(bfd, 0, sizeof(*bfd));
 
@@ -731,7 +726,7 @@ static void bfd_control_packet_init(proto_bfd_peer_t *session, bfd_packet_t *bfd
  */
 static void bfd_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
 {
-	proto_bfd_peer_t *session = ctx;
+	bfd_session_t *session = ctx;
 	bfd_packet_t bfd;
 
 	bfd_control_packet_init(session, &bfd);
@@ -747,6 +742,8 @@ static void bfd_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 	DEBUG("BFD %s sending packet state %s",
 	      session->client.shortname, fr_bfd_packet_names[session->session_state]);
 
+	session->last_sent = fr_time();
+
 	if (sendfromto(session->sockfd, &bfd, bfd.length, 0, 0,
 		       (struct sockaddr *) &session->local_sockaddr, session->local_salen,
 		       (struct sockaddr *) &session->remote_sockaddr, session->remote_salen) < 0) {
@@ -758,7 +755,7 @@ static void bfd_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 /*
  *	Start sending packets.
  */
-static void bfd_start_packets(proto_bfd_peer_t *session)
+static void bfd_start_packets(bfd_session_t *session)
 {
 	uint64_t	interval, base;
 	uint64_t	jitter;
@@ -768,8 +765,6 @@ static void bfd_start_packets(proto_bfd_peer_t *session)
 	 */
 	fr_event_timer_delete(&session->ev_packet);
 
-	session->last_sent = fr_time();
-	
 	if (fr_time_delta_cmp(session->desired_min_tx_interval, session->remote_min_rx_interval) >= 0) {
 		interval = fr_time_delta_unwrap(session->desired_min_tx_interval);
 	} else {
@@ -817,7 +812,7 @@ static void bfd_start_packets(proto_bfd_peer_t *session)
 /*
  *	Start polling for the peer.
  */
-static void bfd_start_poll(proto_bfd_peer_t *session)
+static void bfd_start_poll(bfd_session_t *session)
 {
 	if (session->doing_poll) return;
 
@@ -841,7 +836,7 @@ static void bfd_start_poll(proto_bfd_peer_t *session)
 /*
  *	Timer functions
  */
-static void bfd_set_desired_min_tx_interval(proto_bfd_peer_t *session, fr_time_delta_t value)
+static void bfd_set_desired_min_tx_interval(bfd_session_t *session, fr_time_delta_t value)
 {
 	/*
 	 *	Increasing the value: don't change it if we're already
@@ -884,7 +879,7 @@ static void bfd_set_desired_min_tx_interval(proto_bfd_peer_t *session, fr_time_d
  */
 static void bfd_detection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx)
 {
-	proto_bfd_peer_t *session = ctx;
+	bfd_session_t *session = ctx;
 
 	DEBUG("BFD %s Timeout state %s ****** ", session->client.shortname,
 	      fr_bfd_packet_names[session->session_state]);
@@ -904,7 +899,7 @@ static void bfd_detection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, voi
 		DEBUG("BFD %s State <timeout> -> DOWN (control expired)", session->client.shortname);
 		session->session_state = BFD_STATE_DOWN;
 		session->local_diag =  BFD_CTRL_EXPIRED;
-		bfd_trigger(session); /* @todo - send timeout state change to unlang */
+		bfd_trigger(session, BFD_STATE_CHANGE_TIMEOUT_DOWN);
 
 		bfd_set_desired_min_tx_interval(session, fr_time_delta_from_sec(1));
 	}
@@ -924,7 +919,7 @@ static void bfd_detection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, voi
  *	Set the timeout for when we've lost enough packets to be
  *	worried.
  */
-static void bfd_set_timeout(proto_bfd_peer_t *session, fr_time_t when)
+static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
 {
 	fr_time_t timeout;
 	uint64_t delay;
@@ -955,14 +950,14 @@ static void bfd_set_timeout(proto_bfd_peer_t *session, fr_time_t when)
 /*
  *	Start / stop control packets.
  */
-static int bfd_stop_control(proto_bfd_peer_t *session)
+static int bfd_stop_control(bfd_session_t *session)
 {
 	fr_event_timer_delete(&session->ev_timeout);
 	fr_event_timer_delete(&session->ev_packet);
 	return 1;
 }
 
-static void bfd_start_control(proto_bfd_peer_t *session)
+static void bfd_start_control(bfd_session_t *session)
 {
 	/*
 	 *	@todo - change our discriminator?
@@ -1012,7 +1007,7 @@ static void bfd_start_control(proto_bfd_peer_t *session)
 }
 
 
-int bfd_session_init(proto_bfd_peer_t *session)
+int bfd_session_init(bfd_session_t *session)
 {
 	session->session_state = BFD_STATE_DOWN;
 	session->local_disc = fr_rand();
@@ -1037,7 +1032,7 @@ int bfd_session_init(proto_bfd_peer_t *session)
 	return 0;
 }
 
-void bfd_session_start(proto_bfd_peer_t *session)
+void bfd_session_start(bfd_session_t *session)
 {
 	DEBUG("Starting BFD for %s", session->client.shortname);
 
