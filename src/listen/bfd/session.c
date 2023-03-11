@@ -55,20 +55,20 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when);
  *	we will need to define some other kind of fake packet to send to the process
  *	module.
  */
-static void bfd_trigger(bfd_session_t *session, UNUSED bfd_state_change_t change)
+static void bfd_trigger(bfd_session_t *session, bfd_state_change_t change)
 {
-//	fr_radius_packet_t	packet;
-//	request_t		*request = request_local_alloc_external(session, NULL);
-	char			buffer[256];
+	bfd_wrapper_t wrapper;
 
-	snprintf(buffer, sizeof(buffer), "server.bfd.%s",
-		 fr_bfd_packet_names[session->session_state]);
+	wrapper.type = BFD_WRAPPER_STATE_CHANGE;
+	wrapper.state_change = change;
+	wrapper.session = session;
 
-	DEBUG("BFD %s trigger %s", session->client.shortname, buffer);
+	/*
+	 *	@todo - proto_bfd.c mod_decode() has to be updated to check for non-existent packet,
+	 *	and create a fake "timeout" packet with appropriate data.
+	 */
 
-//	bfd_request(session, request, &packet);
-
-//	trigger_exec(unlang_interpret_get_thread_default(), NULL, buffer, false, NULL);
+//	(void) fr_network_listen_inject(session->nr, session->listen, (uint8_t const *) &wrapper, sizeof(wrapper), fr_time());
 }
 
 /*

@@ -180,8 +180,10 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	proto_bfd_t const	*inst = talloc_get_type_abort_const(instance, proto_bfd_t);
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
-	fr_client_t const		*client;
+	fr_client_t const	*client;
 	fr_pair_t		*vp, *reply, *my, *your;
+	bfd_wrapper_t const    	*wrapper = (bfd_wrapper_t const *) data;
+	bfd_packet_t const     	*packet = (bfd_packet_t const *) wrapper->packet;
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -195,8 +197,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	/*
 	 *	Hacks for now until we have a lower-level decode routine.
 	 */
-	request->packet->code = data[1] >> 6;
-	request->packet->id = fr_nbo_to_uint32(data + 4);
+	request->packet->code = packet->state;
+	request->packet->id = fr_nbo_to_uint32((uint8_t const *) &packet->my_disc);
 	request->reply->id = request->packet->id;
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
@@ -208,7 +210,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	transport, via a call to fr_radius_ok().
 	 */
 	if (fr_bfd_decode(request->request_ctx, &request->request_pairs,
-			  request->packet->data, request->packet->data_len,
+			  (uint8_t const *) packet, packet->length,
 			  client->secret, talloc_array_length(client->secret) - 1) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;

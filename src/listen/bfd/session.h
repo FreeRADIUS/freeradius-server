@@ -135,14 +135,10 @@ typedef enum {
 } bfd_state_change_t;
 
 typedef struct {
-	uint32_t	type;
-	union {
-		bfd_packet_t			packet;
-		struct {
-			bfd_state_change_t	state_change;
-			bfd_session_t	*peer;
-		};
-	};
+	uint32_t		type;
+	bfd_state_change_t	state_change;
+	bfd_session_t		*session;
+	uint8_t			packet[];
 } bfd_wrapper_t;
 
 int	bfd_session_init(bfd_session_t *session);

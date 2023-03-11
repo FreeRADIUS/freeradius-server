@@ -117,9 +117,10 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	ssize_t				data_size;
 	size_t				packet_len;
 
-	bfd_packet_t			*packet;
+	bfd_packet_t	   		*packet;
 	char const			*err = NULL;
 	bfd_state_change_t		state_change;
+	bfd_wrapper_t			*wrapper = (bfd_wrapper_t *) buffer;
 
 	*leftover = 0;		/* always for UDP */
 
@@ -135,7 +136,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	data_size = udp_recv(thread->sockfd, flags, &address->socket, buffer, buffer_len, recv_time_p);
+	data_size = udp_recv(thread->sockfd, flags, &address->socket, wrapper->packet, buffer_len - (wrapper->packet - buffer), recv_time_p);
 	if (data_size < 0) {
 		PDEBUG2("proto_bfd_udp got read error");
 		return data_size;
@@ -159,15 +160,14 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	packet_len = data_size;
 
-	if (!fr_bfd_packet_ok(&err, buffer, packet_len)) {
+	if (!fr_bfd_packet_ok(&err, wrapper->packet, packet_len)) {
 		DEBUG2("proto_bfd_udp - Received invalid packet on %s - %s", thread->name, err);
 		thread->stats.total_malformed_requests++;
 		return 0;
 	}
 
 	thread->stats.total_requests++;
-
-	packet = (bfd_packet_t *) buffer;
+	packet = (bfd_packet_t *) wrapper->packet;
 
 	/*
 	 *	Print out what we received.
@@ -182,11 +182,15 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	we either send the packet through to unlang, or not.
 	 */
 	state_change = bfd_session_process((bfd_session_t *) client, packet);
+
 	if ((state_change == BFD_STATE_CHANGE_INVALID) || (state_change == BFD_STATE_CHANGE_ADMIN_DOWN)) return 0;
 
 	if ((state_change == BFD_STATE_CHANGE_NONE) && inst->only_state_changes) return 0;
 
-	return packet_len;
+	wrapper->type = BFD_WRAPPER_RECV_PACKET;
+	wrapper->state_change = state_change;
+
+	return sizeof(wrapper) + packet_len;
 }
 
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
@@ -496,6 +500,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 		if (peer->inst != inst) continue;
 
 		peer->el = el;
+		peer->listen = li;
 		peer->nr = (fr_network_t *) nr;
 		peer->sockfd = thread->sockfd;
 
