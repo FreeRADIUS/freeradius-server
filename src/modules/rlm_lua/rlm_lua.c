@@ -119,7 +119,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 					      &(rlm_lua_thread_t){
 							.interpreter = inst->interpreter
 					      },
-					      NULL),
+					      NULL, NULL),
 				   NULL, inst->func_detach);
 		}
 		lua_close(inst->interpreter);
@@ -148,7 +148,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			   	      &(rlm_lua_thread_t){
 						.interpreter = inst->interpreter
 				      },
-				      NULL),
+				      NULL, NULL),
 			   NULL, inst->func_instantiate);
 	}
 
