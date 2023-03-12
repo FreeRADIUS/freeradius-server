@@ -316,7 +316,6 @@ static int fr_message_ring_gc(fr_message_set_t *ms, fr_ring_buffer_t *mr, int ma
 		fr_assert(m != NULL);
 		fr_assert(size >= ms->message_size);
 
-
 		fr_assert(m->status != FR_MESSAGE_FREE);
 		if (m->status != FR_MESSAGE_DONE) break;
 
@@ -1005,6 +1004,16 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 	fr_assert(m->data != NULL);
 	fr_assert(m->data_size == 0);
 	fr_assert(m->rb_size >= actual_packet_size);
+
+	/*
+	 *	No data to send?  Just send a bare message;
+	 */
+	if (actual_packet_size == 0) {
+		m->data = NULL;
+		m->rb = NULL;
+		m->data_size = m->rb_size = 0;
+		return m;
+	}
 
 	reserve_size = actual_packet_size;
 	CACHE_ALIGN(reserve_size);
