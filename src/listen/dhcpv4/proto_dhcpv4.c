@@ -190,9 +190,8 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 /** Decode the packet
  *
  */
-static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
+static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
-	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const *address = track->address;
 	fr_client_t const *client;
@@ -240,12 +239,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 	REQUEST_VERIFY(request);
 
-	if (!inst->io.app_io->decode) return 0;
-
-	/*
-	 *	Let the app_io do anything it needs to do.
-	 */
-	return inst->io.app_io->decode(inst->io.app_io_instance, request, data, data_len);
+	return 0;
 }
 
 static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
