@@ -238,9 +238,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	return inst->io.app_io->decode(inst->io.app_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
-	proto_dns_t const	*inst = talloc_get_type_abort_const(instance, proto_dns_t);
 //	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_dns_packet_t		*reply = (fr_dns_packet_t *) buffer;
 	fr_dns_packet_t		*original = (fr_dns_packet_t *) request->packet->data;
@@ -260,15 +259,6 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	if (buffer_len < DNS_HDR_LEN) {
 		REDEBUG("Output buffer is too small to hold a DNS packet.");
 		return -1;
-	}
-
-	/*
-	 *	If the app_io encodes the packet, then we don't need
-	 *	to do that.
-	 */
-	if (inst->io.app_io->encode) {
-		data_len = inst->io.app_io->encode(inst->io.app_io_instance, request, buffer, buffer_len);
-		if (data_len > 0) return data_len;
 	}
 
 	packet_ctx.tmp_ctx = talloc(request, uint8_t);

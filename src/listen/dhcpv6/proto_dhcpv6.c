@@ -247,9 +247,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	return inst->io.app_io->decode(inst->io.app_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
-	proto_dhcpv6_t const	*inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
 	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const	*address = track->address;
 	fr_dhcpv6_packet_t	*reply = (fr_dhcpv6_packet_t *) buffer;
@@ -306,15 +305,6 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 
 	memset(buffer, 0, buffer_len);
 	memcpy(&reply->transaction_id, &original->transaction_id, sizeof(reply->transaction_id));
-
-	/*
-	 *	If the app_io encodes the packet, then we don't need
-	 *	to do that.
-	 */
-	if (inst->io.app_io->encode) {
-		data_len = inst->io.app_io->encode(inst->io.app_io_instance, request, buffer, buffer_len);
-		if (data_len > 0) return data_len;
-	}
 
 	data_len = fr_dhcpv6_encode(&FR_DBUFF_TMP(buffer, buffer_len),
 				    request->packet->data, request->packet->data_len,

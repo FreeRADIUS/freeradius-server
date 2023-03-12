@@ -648,12 +648,12 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 			fr_pair_unflatten(request->pair_list.reply);
 		} /* else noop */
 
-		if (listen->app->encode) {
-			slen = listen->app->encode(listen->app_instance, request,
-						   reply->m.data, reply->m.rb_size);
-		} else if (listen->app_io->encode) {
+		if (listen->app_io->encode) {
 			slen = listen->app_io->encode(listen->app_io_instance, request,
 						      reply->m.data, reply->m.rb_size);
+		} else if (listen->app->encode) {
+			slen = listen->app->encode(listen->app_instance, request,
+						   reply->m.data, reply->m.rb_size);
 		}
 		if (slen < 0) {
 			RPERROR("Failed encoding request");

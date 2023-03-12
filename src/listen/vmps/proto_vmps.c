@@ -239,9 +239,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	return inst->io.app_io->decode(inst->io.app_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
-	proto_vmps_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_t);
 	fr_io_track_t *track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const *address = track->address;
 	ssize_t data_len;
@@ -288,15 +287,6 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 
 		memcpy(buffer, &new_client, sizeof(new_client));
 		return sizeof(new_client);
-	}
-
-	/*
-	 *	If the app_io encodes the packet, then we don't need
-	 *	to do that.
-	 */
-	if (inst->io.app_io->encode) {
-		data_len = inst->io.app_io->encode(inst->io.app_io_instance, request, buffer, buffer_len);
-		if (data_len > 0) return data_len;
 	}
 
 	/*
