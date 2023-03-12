@@ -296,12 +296,13 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
 	fr_client_t const	*client;
+	bfd_wrapper_t const    	*wrapper = (bfd_wrapper_t const *) request->packet->data;
 
 	/*
 	 *	Process layer NAK, or "Do not respond".
 	 */
-	if (buffer_len == 1) {
-		return 1;
+	if ((buffer_len == 1) || (wrapper->type == BFD_WRAPPER_RECV_PACKET) || (wrapper->type == BFD_WRAPPER_STATE_CHANGE)) {
+		return 0;
 	}
 
 	client = address->radclient;
