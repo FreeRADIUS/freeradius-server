@@ -30,6 +30,8 @@ typedef struct {
 
 	uint16_t			port;			//!< peer port where packets are sent to
 
+	char const			*server_name;		//!< our name
+
 	/*
 	 *	Peers are defined globally to a virtual server.  Each
 	 *	peer can only have one session associated with it.

@@ -148,8 +148,8 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 *	no session is found, the packet MUST be discarded.
 	 */
 	if ((bfd->your_disc != 0) && (bfd->your_disc != session->local_disc)) {
-		DEBUG("BFD %s packet has unexpected Your-Discriminator (got %08x, expected %08x",
-		      session->client.shortname, bfd->your_disc, session->local_disc);
+		DEBUG("BFD %s peer %s packet has unexpected Your-Discriminator (got %08x, expected %08x",
+		      session->server_name, session->client.shortname, bfd->your_disc, session->local_disc);
 		return BFD_STATE_CHANGE_INVALID;
 	}
 
@@ -159,7 +159,8 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 */
 	if (bfd->auth_present &&
 	    (session->auth_type == BFD_AUTH_RESERVED)) {
-		DEBUG("BFD %s packet asked to authenticate an unauthenticated session.", session->client.shortname);
+		DEBUG("BFD %s peer %s packet asked to authenticate an unauthenticated session.",
+		      session->server_name, session->client.shortname);
 		return BFD_STATE_CHANGE_INVALID;
 	}
 
@@ -169,7 +170,8 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 */
 	if (!bfd->auth_present &&
 	    (session->auth_type != BFD_AUTH_RESERVED)) {
-		DEBUG("BFD %s packet failed to authenticate an authenticated session.", session->client.shortname);
+		DEBUG("BFD %s peer %s packet failed to authenticate an authenticated session.",
+		      session->server_name, session->client.shortname);
 		return BFD_STATE_CHANGE_INVALID;
 	}
 
@@ -179,11 +181,10 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	 *	(bfd.AuthType).  This may cause the packet to be discarded.
 	 */
 	if (bfd->auth_present && !bfd_authenticate(session, bfd)) {
-		DEBUG("BFD %s authentication failed", session->client.shortname);
+		DEBUG("BFD %s peer %s authentication failed for packet",
+		      session->server_name, session->client.shortname);
 		return BFD_STATE_CHANGE_INVALID;
 	}
-
-	DEBUG("BFD %s processing packet", session->client.shortname);
 
 	/*
 	 *	Set bfd.RemoteDiscr to the value of My Discriminator.
@@ -272,8 +273,8 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 		down:
 			session->local_diag = BFD_NEIGHBOR_DOWN;
 
-			DEBUG("BFD %s State %s -> DOWN (neighbour %s)",
-			      session->client.shortname,
+			DEBUG("BFD %s peer %s State %s -> DOWN (neighbour %s)",
+			      session->server_name, session->client.shortname,
 			      fr_bfd_packet_names[session->session_state],
 			      fr_bfd_packet_names[bfd->state]);
 			session->session_state = BFD_STATE_DOWN;
@@ -285,15 +286,15 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 		case BFD_STATE_DOWN:
 			switch (bfd->state) {
 			case BFD_STATE_DOWN:
-				DEBUG("BFD %s State DOWN -> INIT (neighbor DOWN)",
-				      session->client.shortname);
+				DEBUG("BFD %s peer %s State DOWN -> INIT (neighbor DOWN)",
+				      session->server_name, session->client.shortname);
 				session->session_state = BFD_STATE_INIT;
 				state_change = BFD_STATE_CHANGE_INIT;
 				break;
 
 			case BFD_STATE_INIT:
-				DEBUG("BFD %s State DOWN -> UP (neighbor INIT)",
-				      session->client.shortname);
+				DEBUG("BFD %s peer State DOWN -> UP (neighbor INIT)",
+				      session->server_name, session->client.shortname);
 				session->session_state = BFD_STATE_UP;
 				state_change = BFD_STATE_CHANGE_UP;
 				break;
@@ -307,8 +308,8 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 			switch (bfd->state) {
 			case BFD_STATE_INIT:
 			case BFD_STATE_UP:
-				DEBUG("BFD %s State INIT -> UP",
-				      session->client.shortname);
+				DEBUG("BFD %s peer %s State INIT -> UP",
+				      session->server_name, session->client.shortname);
 				session->session_state = BFD_STATE_UP;
 				state_change = BFD_STATE_CHANGE_UP;
 				break;
@@ -358,7 +359,8 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 	if (session->remote_demand_mode &&
 	    (session->session_state == BFD_STATE_UP) &&
 	    (session->remote_session_state == BFD_STATE_UP)) {
-		DEBUG("BFD %s demand mode UP / UP, stopping packets", session->client.shortname);
+		DEBUG("BFD %s peer %s demand mode UP / UP, stopping packets",
+		      session->server_name, session->client.shortname);
 		bfd_stop_control(session);
 	}
 
@@ -565,7 +567,8 @@ static int bfd_verify_md5(bfd_session_t *session, bfd_packet_t *bfd)
 	memcpy(md5->digest, digest, sizeof(md5->digest)); /* pedantic */
 
 	if (rcode != 0) {
-		DEBUG("BFD %s MD5 Digest failed: **** RE-ENTER THE SECRET ON BOTH ENDS ****", session->client.shortname);
+		DEBUG("BFD %s peer %s MD5 Digest failed: **** RE-ENTER THE SECRET ON BOTH ENDS ****",
+		      session->server_name, session->client.shortname);
 		return 0;
 	}
 
@@ -604,7 +607,8 @@ static int bfd_verify_sha1(bfd_session_t *session, bfd_packet_t *bfd)
 	memcpy(sha1->digest, digest, sizeof(sha1->digest)); /* pedantic */
 
 	if (rcode != 0) {
-		DEBUG("BFD %s SHA1 Digest failed: **** RE-ENTER THE SECRET ON BOTH ENDS ****", session->client.shortname);
+		DEBUG("BFD %s peer %s SHA1 Digest failed: **** RE-ENTER THE SECRET ON BOTH ENDS ****",
+		      session->server_name, session->client.shortname);
 		return 0;
 	}
 
@@ -698,8 +702,8 @@ static void bfd_control_packet_init(bfd_session_t *session, bfd_packet_t *bfd)
 	    (session->remote_session_state == BFD_STATE_UP)) {
 		bfd->demand = true;
 
-		DEBUG("BFD %s demand mode UP / UP, sending ACK and done.",
-		      session->client.shortname);
+		DEBUG("BFD %s peer %s demand mode UP / UP, sending ACK and done.",
+		      session->server_name, session->client.shortname);
 		bfd_stop_control(session);
 	} else {
 		bfd->demand = false;
@@ -737,8 +741,8 @@ static void bfd_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 
 	bfd_sign(session, &bfd);
 
-	DEBUG("BFD %s sending packet state %s",
-	      session->client.shortname, fr_bfd_packet_names[session->session_state]);
+	DEBUG("BFD %s peer %s sending %s",
+	      session->server_name, session->client.shortname, fr_bfd_packet_names[session->session_state]);
 
 	session->last_sent = fr_time();
 
@@ -774,7 +778,6 @@ static void bfd_start_packets(bfd_session_t *session)
 		 *	The other end doesn't want to receive control packets.  So we stop sending them.
 		 */
 		if (!interval) return;
-
 	}
 
 	/*
@@ -885,7 +888,8 @@ static void bfd_detection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, voi
 {
 	bfd_session_t *session = ctx;
 
-	DEBUG("BFD %s Timeout state %s ****** ", session->client.shortname,
+	DEBUG("BFD %s peer %s TIMEOUT state %s",
+	      session->server_name, session->client.shortname,
 	      fr_bfd_packet_names[session->session_state]);
 
 	if (!session->demand_mode) {
@@ -900,7 +904,8 @@ static void bfd_detection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, voi
 
 	} else if (!session->doing_poll) {
 	start_poll:
-		DEBUG("BFD %s State <timeout> -> DOWN (control expired)", session->client.shortname);
+		DEBUG("BFD %s peer %s State <timeout> -> DOWN (control expired)",
+		      session->server_name, session->client.shortname);
 		session->session_state = BFD_STATE_DOWN;
 		session->local_diag =  BFD_CTRL_EXPIRED;
 		bfd_trigger(session, BFD_STATE_CHANGE_TIMEOUT_DOWN);
@@ -987,8 +992,8 @@ static void bfd_start_control(bfd_session_t *session)
 	    (session->session_state == BFD_STATE_UP) &&
 	    (session->remote_session_state == BFD_STATE_UP) &&
 	    !session->doing_poll) {
-		DEBUG("BFD %s warning: asked to start UP / UP ?",
-		      session->client.shortname);
+		DEBUG("BFD %s peer %s warning: asked to start UP / UP ?",
+		      session->server_name, session->client.shortname);
 		fr_assert(0 == 1);
 		bfd_stop_control(session);
 		return;

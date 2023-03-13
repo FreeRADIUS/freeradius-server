@@ -46,6 +46,7 @@ typedef struct {
 
 typedef struct {
 	CONF_SECTION			*cs;			//!< our configuration
+	char const			*server_name;		//!< virtual server name
 
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
 
@@ -172,10 +173,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_bfd_udp - Received %s ID length %d on %s from %pV:%u",
-	       fr_bfd_packet_names[packet->state],
-	       (int) packet_len, thread->name,
-	       fr_box_ipaddr(address->socket.inet.src_ipaddr), address->socket.inet.src_port);
+	DEBUG2("BFD %s peer %s received %s", client->shortname, inst->server_name, fr_bfd_packet_names[packet->state]);
 
 	/*
 	 *	Run the BFD state machine.  Depending on that result,
@@ -425,6 +423,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	fr_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
+	inst->server_name = cf_section_name2(server_cs);
 
 	/*
 	 *	Look up peer list.
@@ -503,6 +502,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 		peer->listen = li;
 		peer->nr = (fr_network_t *) nr;
 		peer->sockfd = thread->sockfd;
+		peer->server_name = inst->server_name;
 
 		bfd_session_start(peer);
 	}
