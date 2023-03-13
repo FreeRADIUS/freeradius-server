@@ -4886,7 +4886,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		 *	for which we allow twice the length of the value to be parsed.
 		 */
 		count = method_env_count(&vallen, inst->dl_inst->conf, method_env->env);
-		MEM(single->mod_env_ctx = talloc_zero_pooled_object(single, TALLOC_CTX *, count * 4,
+		MEM(single->mod_env_ctx = _talloc_pooled_object(single, 0, "mod_env_ctx", count * 4,
 						(sizeof(module_env_parsed_t) + sizeof(tmpl_t)) * count + vallen * 2));
 
 		mod_env_parsed_init(&single->mod_env_parsed);
