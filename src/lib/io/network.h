@@ -61,6 +61,8 @@ void		fr_network_listen_write(fr_network_t *nr, fr_listen_t *li, uint8_t const *
 
 int		fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *packet, size_t packet_len, fr_time_t recv_time);
 
+int		fr_network_sendto_worker(fr_network_t *nr, fr_listen_t *li, void *packet_ctx, uint8_t const *data, size_t data_len, fr_time_t recv_time);
+
 int		fr_network_listen_send_packet(fr_network_t *nr, fr_listen_t *parent, fr_listen_t *li,
 					      const uint8_t *buffer, size_t buflen, fr_time_t recv_time, void *packet_ctx) CC_HINT(nonnull(1,2,3,4));
 

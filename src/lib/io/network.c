@@ -853,9 +853,6 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	fr_network_t		*nr = s->nr;
 	ssize_t			data_size;
 	fr_channel_data_t	*cd, *next;
-#ifndef NDEBUG
-	fr_time_t		now;
-#endif
 
 	if (!fr_cond_assert_msg(s->listen->fd == sockfd, "Expected listen->fd (%u) to be equal event fd (%u)",
 				s->listen->fd, sockfd)) return;
@@ -944,9 +941,6 @@ next_message:
 	 *	duplicate.
 	 */
 	cd->m.when = fr_time();
-#ifndef NDEBUG
-	now = cd->m.when;
-#endif
 	cd->listen = s->listen;
 
 	/*
@@ -971,12 +965,6 @@ next_message:
 			fr_assert(0 == 1);
 		}
 	}
-
-	/*
-	 *	Ensure this hasn't been somehow corrupted during
-	 *	ring buffer allocation.
-	 */
-	fr_assert(fr_time_eq(cd->m.when, now));
 
 	if (fr_network_send_request(nr, cd) < 0) {
 		talloc_free(cd->packet_ctx); /* not sure what else to do here */
@@ -1004,6 +992,44 @@ next_message:
 		num_messages++;
 		goto next_message;
 	}
+}
+
+int fr_network_sendto_worker(fr_network_t *nr, fr_listen_t *li, void *packet_ctx, uint8_t const *data, size_t data_len, fr_time_t recv_time)
+{
+	fr_channel_data_t *cd;
+	fr_network_socket_t *s;
+
+	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	if (!s) return -1;
+
+	cd = (fr_channel_data_t *) fr_message_alloc(s->ms, NULL, data_len);
+	if (!cd) return -1;
+
+	s->stats.in++;
+
+	cd->request.is_dup = false;
+	cd->priority = PRIORITY_NORMAL;
+
+	cd->m.when = recv_time;
+	cd->listen = li;
+	cd->packet_ctx = packet_ctx;
+
+	memcpy(cd->m.data, data, data_len);
+
+	if (fr_network_send_request(nr, cd) < 0) {
+		talloc_free(packet_ctx);
+		fr_message_done(&cd->m);
+		nr->stats.dropped++;
+		s->stats.dropped++;
+
+	} else {
+		/*
+		 *	One more packet sent to a worker.
+		 */
+		s->outstanding++;
+	}
+
+	return 0;
 }
 
 
