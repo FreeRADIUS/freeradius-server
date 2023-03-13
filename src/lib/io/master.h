@@ -115,6 +115,8 @@ extern fr_app_io_t fr_master_app_io;
 fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_ipaddr_t *deny);
 int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc,
 			size_t default_message_size, size_t num_messages) CC_HINT(nonnull);
+fr_io_track_t *fr_master_io_track_alloc(fr_listen_t *li, fr_client_t *client, fr_ipaddr_t const *src_ipaddr, int src_port,
+					fr_ipaddr_t const *dst_ipaddr, int dst_port);
 
 #ifdef __cplusplus
 }
