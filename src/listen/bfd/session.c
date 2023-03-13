@@ -78,6 +78,8 @@ static int bfd_stop_poll(bfd_session_t *session)
 {
 	if (!session->doing_poll) return 0;
 
+	session->doing_poll = false;
+
 	/*
 	 *	We tried to increase the min_tx during a polling
 	 *	sequence.  That isn't kosher, so we instead waited
@@ -95,14 +97,11 @@ static int bfd_stop_poll(bfd_session_t *session)
 	if (!session->remote_demand_mode) {
 		fr_assert(session->ev_timeout != NULL);
 		fr_assert(session->ev_packet != NULL);
-		session->doing_poll = false;
 
 		bfd_stop_control(session);
 		bfd_start_control(session);
 		return 1;
 	}
-
-	session->doing_poll = false;
 
 	return bfd_stop_control(session);
 }
@@ -867,9 +866,13 @@ static void bfd_set_desired_min_tx_interval(bfd_session_t *session, fr_time_delt
 	 */
 
 	session->desired_min_tx_interval = value;
-	bfd_stop_control(session);
-	session->doing_poll = 0;
 
+	/*
+	 *	Already polling, don't change anything.
+	 */
+	if (session->doing_poll) return;
+
+	bfd_stop_control(session);
 	bfd_start_poll(session);
 }
 
