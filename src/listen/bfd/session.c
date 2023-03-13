@@ -250,7 +250,6 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 			session->detection_time = session->remote_min_rx_interval;
 		}
 	}
-	session->detection_time = fr_time_delta_wrap(session->detect_multi * fr_time_delta_unwrap(session->detection_time));
 
 	/*
 	 *	If bfd.SessionState is AdminDown
@@ -926,23 +925,18 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
 {
 	fr_time_t timeout;
 	uint64_t delay;
+	fr_time_delta_t delta;
 
 	fr_event_timer_delete(&session->ev_timeout);
 
-	timeout = fr_time_add(when, session->detection_time);
+	delay = fr_time_delta_unwrap(session->detection_time);
+	delay *= session->detect_multi;
 
-	/*
-	 *	When we SHOULD have received the next packet.
-	 */
-	if (session->detect_multi >= 2) {
-		delay = fr_time_delta_unwrap(session->detection_time) / session->detect_multi;
-	} else {
-		delay = fr_time_delta_unwrap(session->detection_time);
-	}
-	delay += delay / 2;
+	delay += fr_time_delta_unwrap(session->detection_time) / 2;
+	delta = fr_time_delta_from_usec(delay);
 
-	session->next_recv = fr_time_add(when, fr_time_delta_from_usec(delay));
-	
+	timeout = fr_time_add(when, delta);
+
 	if (fr_event_timer_at(session, session->el, &session->ev_timeout,
 			      timeout, bfd_detection_timeout, session) < 0) {
 		fr_assert("Failed to insert event" == NULL);
@@ -1030,7 +1024,6 @@ int bfd_session_init(bfd_session_t *session)
 	} else {
 		session->detection_time = session->desired_min_tx_interval;
 	}
-	session->detection_time = fr_time_delta_wrap(session->detect_multi * fr_time_delta_unwrap(session->detection_time));
 
 	return 0;
 }
