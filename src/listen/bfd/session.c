@@ -758,6 +758,8 @@ static void bfd_start_packets(bfd_session_t *session)
 	uint64_t	interval, base;
 	uint64_t	jitter;
 
+	if (session->ev_packet) return;
+
 	/*
 	 *	Reset the timers.
 	 */
@@ -993,9 +995,6 @@ static void bfd_start_control(bfd_session_t *session)
 	}
 
 	bfd_set_timeout(session, session->last_recv);
-
-	if (session->ev_packet) return;
-
 
 	/*
 	 *	Start sending packets.
