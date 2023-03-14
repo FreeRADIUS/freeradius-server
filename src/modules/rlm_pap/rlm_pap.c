@@ -904,7 +904,9 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 		goto finish;
 	}
 
-	strlcpy(hash_token, (char const *)p, (q - p) + 1);
+	memcpy(hash_token, (char const *)p, (q - p));
+	hash_token[q - p] = '\0';
+
 	digest_type = fr_str2int(hash_names, hash_token, -1);
 	switch (digest_type) {
 	case PW_SSHA1_PASSWORD:
