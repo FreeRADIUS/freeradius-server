@@ -6,6 +6,9 @@ FR_INIT_MODULE([rlm_unbound])
 
 FR_MODULE_START_TESTS
 
+AC_PROG_CC
+AC_PROG_CPP
+
 dnl extra argument: --with-rlm-unbound-lib-dir
 rlm_unbound_lib_dir=
 AC_ARG_WITH(rlm-unbound-lib-dir,
@@ -53,7 +56,7 @@ fi
 FR_MODULE_END_TESTS
 
 mod_ldflags="${SMART_LIBS}"
-mod_cflags="${SMART_CFLAGS}"
+mod_cflags="${SMART_CPPFLAGS}"
 
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
