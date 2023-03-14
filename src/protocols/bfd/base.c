@@ -142,6 +142,35 @@ bool fr_bfd_packet_ok(char const **err, uint8_t const *packet, size_t packet_len
 			goto fail;
 
 		}
+
+		switch (bfd->auth.basic.auth_type) {
+		case BFD_AUTH_SIMPLE:
+			if ((bfd->auth.basic.auth_len < (3 + 1)) || (bfd->auth.basic.auth_len > (3 + 16))) {
+				msg = "Auth-Type Simple has invalid value for password length";
+				goto fail;
+			}
+			break;
+
+		case BFD_AUTH_KEYED_MD5:
+		case BFD_AUTH_MET_KEYED_MD5:
+			if (bfd->auth.basic.auth_len != 24) {
+				msg = "Auth-Type MD5 has invalid value for digest length";
+				goto fail;
+			}
+			break;
+
+		case BFD_AUTH_KEYED_SHA1:
+		case BFD_AUTH_MET_KEYED_SHA1:
+			if (bfd->auth.basic.auth_len != 28) {
+				msg = "Auth-Type SHA1 has invalid value for digest length";
+				goto fail;
+			}
+			break;
+
+		default:
+			msg = "Invalid Auth-Type";
+			goto fail;
+		}
 	}
 
 	/*
