@@ -182,7 +182,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	fr_client_t const	*client;
 	fr_pair_t		*vp, *reply, *my, *your;
 	bfd_wrapper_t const    	*wrapper = (bfd_wrapper_t const *) data;
-	bfd_packet_t const     	*packet = (bfd_packet_t const *) wrapper->packet;
+	bfd_packet_t const     	*bfd = (bfd_packet_t const *) wrapper->packet;
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -196,24 +196,12 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	/*
 	 *	Hacks for now until we have a lower-level decode routine.
 	 */
-	request->packet->code = packet->state;
-	request->packet->id = fr_nbo_to_uint32((uint8_t const *) &packet->my_disc);
+	request->packet->code = bfd->state;
+	request->packet->id = fr_nbo_to_uint32((uint8_t const *) &bfd->my_disc);
 	request->reply->id = request->packet->id;
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
-
-	/*
-	 *	Note that we don't set a limit on max_attributes here.
-	 *	That MUST be set and checked in the underlying
-	 *	transport, via a call to fr_radius_ok().
-	 */
-	if (fr_bfd_decode(request->request_ctx, &request->request_pairs,
-			  (uint8_t const *) packet, packet->length,
-			  client->secret, talloc_array_length(client->secret) - 1) < 0) {
-		RPEDEBUG("Failed decoding packet");
-		return -1;
-	}
 
 	/*
 	 *	Set the rest of the fields.
@@ -224,6 +212,34 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	fr_socket_addr_swap(&request->reply->socket, &address->socket);
 
 	REQUEST_VERIFY(request);
+
+	/*
+	 *	Decode the packet into the reply.
+	 */
+	if (wrapper->type == BFD_WRAPPER_SEND_PACKET) {
+		if (fr_bfd_decode(request->reply_ctx, &request->reply_pairs,
+				  (uint8_t const *) bfd, bfd->length,
+				  client->secret, talloc_array_length(client->secret) - 1) < 0) {
+			RPEDEBUG("Failed decoding packet");
+			return -1;
+		}
+
+		request->reply->code = bfd->state;
+
+		return 0;
+	}
+
+	/*
+	 *	Note that we don't set a limit on max_attributes here.
+	 *	That MUST be set and checked in the underlying
+	 *	transport, via a call to fr_radius_ok().
+	 */
+	if (fr_bfd_decode(request->request_ctx, &request->request_pairs,
+			  (uint8_t const *) bfd, bfd->length,
+			  client->secret, talloc_array_length(client->secret) - 1) < 0) {
+		RPEDEBUG("Failed decoding packet");
+		return -1;
+	}
 
 	/*
 	 *	Initialize the reply.
@@ -291,6 +307,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	fr_io_address_t const  	*address = track->address;
 	fr_client_t const	*client;
 	bfd_wrapper_t const    	*wrapper = (bfd_wrapper_t const *) request->packet->data;
+	bfd_packet_t const	*bfd = (bfd_packet_t const *) wrapper->packet;
 
 	/*
 	 *	Process layer NAK, or "Do not respond".
@@ -331,11 +348,16 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		return sizeof(new_client);
 	}
 
+	fr_assert((wrapper->packet + bfd->length) == (request->packet->data + request->packet->data_len));
+
 	/*
-	 *	@todo - change our state based on the reply packet.
+	 *	Don't bother re-encoding the packet.
 	 */
-	*buffer = 0x00;
-	return 1;
+	memcpy(buffer, bfd, bfd->length);
+
+	fr_assert(fr_bfd_packet_ok(NULL, buffer, bfd->length));
+
+	return bfd->length;
 }
 
 /** Open listen sockets/connect to external event source

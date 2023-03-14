@@ -32,6 +32,8 @@ typedef struct {
 
 	char const			*server_name;		//!< our name
 
+	bool				only_state_changes;	//!< copied from proto_bfd_udp.c
+
 	/*
 	 *	Peers are defined globally to a virtual server.  Each
 	 *	peer can only have one session associated with it.

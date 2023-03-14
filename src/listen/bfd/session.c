@@ -55,20 +55,22 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when);
  *	we will need to define some other kind of fake packet to send to the process
  *	module.
  */
-static void bfd_trigger(bfd_session_t *session, bfd_state_change_t change)
+static void bfd_trigger(UNUSED bfd_session_t *session, UNUSED bfd_state_change_t change)
 {
+#if 0
 	bfd_wrapper_t wrapper;
+	fr_io_track_t *track;
 
 	wrapper.type = BFD_WRAPPER_STATE_CHANGE;
 	wrapper.state_change = change;
 	wrapper.session = session;
 
-	/*
-	 *	@todo - proto_bfd.c mod_decode() has to be updated to check for non-existent packet,
-	 *	and create a fake "timeout" packet with appropriate data.
-	 */
+	track = fr_master_io_track_alloc(session->listen, &session->client, &session->client.ipaddr, session->port,
+					 &session->client.src_ipaddr, session->port);
+	if (!track) return;
 
-//	(void) fr_network_listen_inject(session->nr, session->listen, (uint8_t const *) &wrapper, sizeof(wrapper), fr_time());
+	(void) fr_network_sendto_worker(session->nr, session->listen, track, (uint8_t const *) &wrapper, sizeof(wrapper), fr_time());
+#endif
 }
 
 /*
@@ -721,6 +723,18 @@ static void bfd_control_packet_init(bfd_session_t *session, bfd_packet_t *bfd)
 	bfd->min_echo_rx_interval = fr_time_delta_to_usec(session->my_min_echo_rx_interval);
 }
 
+static void bfd_send_init(bfd_session_t *session, bfd_packet_t *bfd)
+{
+	bfd_control_packet_init(session, bfd);
+
+	bfd->poll = session->doing_poll;
+
+	if (!bfd->demand) {
+		bfd_start_packets(session);
+	}
+
+	bfd_sign(session, bfd);
+}
 
 /*
  *	Send one BFD packet.
@@ -730,15 +744,7 @@ static void bfd_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 	bfd_session_t *session = ctx;
 	bfd_packet_t bfd;
 
-	bfd_control_packet_init(session, &bfd);
-
-	bfd.poll = session->doing_poll;
-
-	if (!bfd.demand) {
-		bfd_start_packets(session);
-	}
-
-	bfd_sign(session, &bfd);
+	bfd_send_init(session, &bfd);
 
 	DEBUG("BFD %s peer %s sending %s",
 	      session->server_name, session->client.shortname, fr_bfd_packet_names[session->session_state]);
@@ -754,12 +760,46 @@ static void bfd_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 }
 
 /*
+ *	Send one BFD packet.
+ */
+static void bfd_unlang_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
+{
+	bfd_session_t *session = ctx;
+	bfd_packet_t *bfd;
+	bfd_wrapper_t *wrapper;
+	fr_io_track_t *track;
+	fr_listen_t *parent;
+	uint8_t buffer[sizeof(bfd_wrapper_t) + sizeof(*bfd)];
+
+	wrapper = (bfd_wrapper_t *) buffer;
+	bfd = (bfd_packet_t *) wrapper->packet;
+
+	bfd_send_init(session, bfd);
+
+	session->last_sent = fr_time();
+
+	wrapper->type = BFD_WRAPPER_SEND_PACKET;
+	wrapper->state_change = BFD_STATE_CHANGE_NONE;
+	wrapper->session = session;
+
+	parent = talloc_parent(session->listen);
+	(void) talloc_get_type_abort(parent, fr_listen_t);
+
+	track = fr_master_io_track_alloc(session->listen, &session->client, &session->client.ipaddr, session->port,
+					 &session->client.src_ipaddr, session->port);
+	if (!track) return;
+
+	(void) fr_network_sendto_worker(session->nr, parent, track, (uint8_t const *) wrapper, (wrapper->packet + bfd->length) - (uint8_t *) wrapper, fr_time());
+}
+
+/*
  *	Start sending packets.
  */
 static void bfd_start_packets(bfd_session_t *session)
 {
 	uint64_t	interval, base;
 	uint64_t	jitter;
+	fr_event_timer_cb_t cb;
 
 	if (session->ev_packet) return;
 
@@ -803,9 +843,15 @@ static void bfd_start_packets(bfd_session_t *session)
 	interval = base;
 	interval += jitter;
 
+	if (!session->only_state_changes) {
+		cb = bfd_unlang_send_packet;
+	} else {
+		cb = bfd_send_packet;
+	}
+
 	if (fr_event_timer_in(session, session->el, &session->ev_packet,
 			      fr_time_delta_wrap(interval),
-			      bfd_send_packet, session) < 0) {
+			      cb, session) < 0) {
 		fr_assert("Failed to insert event" == NULL);
 	}
 }

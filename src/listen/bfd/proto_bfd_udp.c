@@ -137,7 +137,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	data_size = udp_recv(thread->sockfd, flags, &address->socket, wrapper->packet, buffer_len - (wrapper->packet - buffer), recv_time_p);
+	data_size = udp_recv(thread->sockfd, flags, &address->socket, wrapper->packet, buffer_len - offsetof(bfd_wrapper_t, packet), recv_time_p);
 	if (data_size < 0) {
 		PDEBUG2("proto_bfd_udp got read error");
 		return data_size;
@@ -153,7 +153,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	client =  fr_rb_find(inst->peers, &(fr_client_t) { .ipaddr = address->socket.inet.src_ipaddr, .proto = IPPROTO_UDP });
 	if (!client) {
-		DEBUG2("proto_bfd_udp - Received invalid packet on %s - uknown client %pV:%u", thread->name,
+		DEBUG2("BFD %s - Received invalid packet on %s - unknown client %pV:%u", inst->server_name, thread->name,
 		       fr_box_ipaddr(address->socket.inet.src_ipaddr), address->socket.inet.src_port);
 		thread->stats.total_packets_dropped++;
 		return 0;
@@ -162,7 +162,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	packet_len = data_size;
 
 	if (!fr_bfd_packet_ok(&err, wrapper->packet, packet_len)) {
-		DEBUG2("proto_bfd_udp - Received invalid packet on %s - %s", thread->name, err);
+		DEBUG2("BFD %s - Received invalid packet on %s - %s", inst->server_name, thread->name, err);
 		thread->stats.total_malformed_requests++;
 		return 0;
 	}
@@ -195,11 +195,10 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	proto_bfd_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_bfd_udp_thread_t);
-	fr_io_track_t *track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
-
-	fr_socket_t  			socket;
-
-	int				flags;
+	fr_io_track_t		*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
+	bfd_session_t		*session;
+	ssize_t			rcode;
+	char const *err;
 
 	/*
 	 *	@todo - share a stats interface with the parent?  or
@@ -208,24 +207,24 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 */
 	thread->stats.total_responses++;
 
-	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
+	session = UNCONST(bfd_session_t *, track->address->radclient);
 
-	/*
-	 *	Swap src/dst address so we send the response to
-	 *	the client, not ourselves.
-	 */
-	fr_socket_addr_swap(&socket, &track->address->socket);
-
-	/*
-	 *	We only write RADIUS packets.
-	 */
 	fr_assert(buffer_len >= FR_BFD_HEADER_LENGTH);
 
-	/*
-	 *	Only write replies if they're RADIUS packets.
-	 *	sometimes we want to NOT send a reply...
-	 */
-	return udp_send(&socket, flags, buffer, buffer_len);
+	fr_assert(fr_bfd_packet_ok(&err, buffer, buffer_len));
+
+	DEBUG("BFD %s peer %s sending %s",
+	      session->server_name, session->client.shortname, fr_bfd_packet_names[session->session_state]);
+
+	rcode = sendfromto(session->sockfd, buffer, buffer_len, 0, 0,
+			   (struct sockaddr *) &session->local_sockaddr, session->local_salen,
+			   (struct sockaddr *) &session->remote_sockaddr, session->remote_salen);
+	if (rcode < 0) {
+		ERROR("Failed sending packet: %s", fr_syserror(errno));
+		fr_assert(0);
+	}
+
+	return rcode;
 }
 
 static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie)
@@ -503,6 +502,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 		peer->nr = (fr_network_t *) nr;
 		peer->sockfd = thread->sockfd;
 		peer->server_name = inst->server_name;
+		peer->only_state_changes = inst->only_state_changes;
 
 		bfd_session_start(peer);
 	}
