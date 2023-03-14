@@ -203,7 +203,7 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		return snprintf(out, outlen, "%u", htonl(vp->vp_ipaddr));
 
 	case PW_TYPE_IPV4_PREFIX:
-		return snprintf(out, outlen, "%u", htonl((*(uint32_t *)(vp->vp_ipv4prefix + 2))));
+		return snprintf(out, outlen, "%u", htonl((*(uint32_t *)(&vp->vp_ipv4prefix[2]))));
 
 	case PW_TYPE_INTEGER:
 		return snprintf(out, outlen, "%u", vp->vp_integer);
