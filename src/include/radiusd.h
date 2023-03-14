@@ -357,8 +357,8 @@ extern char const	*radacct_dir;
 extern char const	*radlog_dir;
 extern char const	*radlib_dir;
 extern bool		log_stripped_names;
-extern char const	*radiusd_version;
-extern char const	*radiusd_version_short;
+extern HIDDEN char const	*radiusd_version;
+extern HIDDEN char const	*radiusd_version_short;
 void			radius_signal_self(int flag);
 
 typedef enum {

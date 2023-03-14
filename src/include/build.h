@@ -158,6 +158,7 @@ extern "C" {
 
 #define PRINTF_LIKE(n)		CC_HINT(format(printf, n, n+1))
 #define NEVER_RETURNS		CC_HINT(noreturn)
+#define HIDDEN                CC_HINT(visibility("hidden"))
 #define UNUSED			CC_HINT(unused)
 #define BLANK_FORMAT		" "	/* GCC_LINT whines about empty formats */
 
