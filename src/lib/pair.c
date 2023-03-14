@@ -2279,6 +2279,8 @@ void fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len)
 
 	VERIFY_VP(vp);
 
+	if (!src) return;
+
 	p = talloc_array(vp, char, len + 1);
 	if (!p) return;
 
