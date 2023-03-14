@@ -59,6 +59,8 @@ pid_t rad_waitpid(pid_t pid, int *status)
 }
 #endif
 
+static TALLOC_CTX *autofree;
+
 static ssize_t xlat_test(UNUSED void *instance, UNUSED REQUEST *request,
 			 UNUSED char const *fmt, UNUSED char *out, UNUSED size_t outlen)
 {
@@ -562,10 +564,10 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 {
 	ssize_t slen;
 	char const *error = NULL;
-	char *fmt = talloc_typed_strdup(NULL, input);
+	char *fmt = talloc_typed_strdup(autofree, input);
 	xlat_exp_t *head;
 
-	slen = xlat_tokenize(fmt, fmt, &head, &error);
+	slen = xlat_tokenize(autofree, fmt, &head, &error);
 	if (slen <= 0) {
 		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -slen, error);
 		return;
@@ -573,6 +575,7 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 
 	if (input[slen] != '\0') {
 		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) slen);
+		talloc_free(fmt);
 		return;
 	}
 
@@ -724,7 +727,7 @@ static void process_file(const char *root_dir, char const *filename)
 				p += 7;
 			}
 
-			if (fr_pair_list_afrom_str(NULL, p, &head) != T_EOL) {
+			if (fr_pair_list_afrom_str(autofree, p, &head) != T_EOL) {
 				strlcpy(output, fr_strerror(), sizeof(output));
 				continue;
 			}
@@ -742,6 +745,7 @@ static void process_file(const char *root_dir, char const *filename)
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
 						vp->da->name, fr_strerror());
+					fr_pair_list_free(&head);
 					exit(1);
 				}
 
@@ -772,7 +776,7 @@ static void process_file(const char *root_dir, char const *filename)
 			my_len = 0;
 			while (len > 0) {
 				vp = NULL;
-				my_len = rad_attr2vp(NULL, my_packet, my_original, my_secret, attr, len, &vp);
+				my_len = rad_attr2vp(autofree, my_packet, my_original, my_secret, attr, len, &vp);
 				if (my_len < 0) {
 					fr_pair_list_free(&head);
 					break;
@@ -806,7 +810,8 @@ static void process_file(const char *root_dir, char const *filename)
 					vp_prints(p, sizeof(output) - (p - output), vp);
 					p += strlen(p);
 
-					if (vp->next) {strcpy(p, ", ");
+					if (vp->next) {
+						strcpy(p, ", ");
 						p += 2;
 					}
 				}
@@ -818,6 +823,7 @@ static void process_file(const char *root_dir, char const *filename)
 			} else { /* zero-length attribute */
 				*output = '\0';
 			}
+
 			continue;
 		}
 
@@ -915,6 +921,8 @@ static void process_file(const char *root_dir, char const *filename)
 			}
 
 			vp_prints(output, sizeof(output), head);
+
+			fr_pair_list_free(&head);
 			continue;
 		}
 
@@ -1033,6 +1041,10 @@ int main(int argc, char *argv[])
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
 	int *inst = &c;
+
+DIAG_OFF(deprecated-declarations)
+	autofree = talloc_autofree_context();
+DIAG_ON(deprecated-declarations)
 
 	cf_new_escape = true;	/* fix the tests */
 
