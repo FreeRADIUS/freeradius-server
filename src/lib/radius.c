@@ -3220,6 +3220,7 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 		tlv_len = data2vp(ctx, packet, original, secret, child,
 				  data + 2, data[1] - 2, data[1] - 2, tail);
 		if (tlv_len < 0) {
+			dict_attr_free(&child); /* only frees unknowns */
 			fr_pair_list_free(&head);
 			return -1;
 		}
@@ -3307,7 +3308,10 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 			 attrlen - (dv->type + dv->length),
 			 attrlen - (dv->type + dv->length),
 			 pvp);
-	if (my_len < 0) return my_len;
+	if (my_len < 0) {
+		dict_attr_free(&da); /* only frees unknowns */
+		return my_len;
+	}
 
 	return attrlen;
 }
@@ -3360,7 +3364,10 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 
 		rcode = data2vp(ctx, packet, original, secret, child,
 				data, attrlen, attrlen, pvp);
-		if (rcode < 0) return rcode;
+		if (rcode < 0) {
+			dict_attr_free(&child); /* only frees unknowns */
+			return rcode;
+		}
 		return attrlen;
 	}
 
@@ -3371,7 +3378,6 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		rcode = data2vp(ctx, packet, original, secret, da,
 				data + 2, attrlen - 2, attrlen - 2,
 				pvp);
-
 		if ((rcode < 0) || (((size_t) rcode + 2) != attrlen)) goto raw; /* didn't decode all of the data */
 		return attrlen;
 	}
@@ -3513,7 +3519,10 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 
 		rcode = data2vp(ctx, packet, original, secret, child,
 				data, attrlen, attrlen, pvp);
-		if (rcode < 0) return rcode;
+		if (rcode < 0) {
+			dict_attr_free(&child); /* only frees unknowns */
+			return rcode;
+		}
 		return attrlen;
 	}
 
@@ -4073,8 +4082,10 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		/*
 		 *	This requires a whole lot more work.
 		 */
-		return data2vp_extended(ctx, packet, original, secret, child,
-					start, attrlen, packetlen, pvp);
+		rcode = data2vp_extended(ctx, packet, original, secret, child,
+					 start, attrlen, packetlen, pvp);
+		if (rcode < 0) dict_attr_free(&child); /* only frees unknowns */
+		return rcode;
 
 	case PW_TYPE_EVS:
 		if (datalen < 6) goto raw; /* vid, vtype, value */
@@ -4157,7 +4168,10 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	 *	information, decode the actual data.
 	 */
 	vp = fr_pair_afrom_da(ctx, da);
-	if (!vp) return -1;
+	if (!vp) {
+		dict_attr_free(&da); /* only frees unknowns */
+		return -1;
+	}
 
 alloc_raw:
 	vp->vp_length = datalen;
@@ -4267,6 +4281,7 @@ alloc_raw:
 	fail:
 #endif
 	default:
+		dict_attr_free(&da); /* only frees unknowns */
 		fr_pair_list_free(&vp);
 		fr_strerror_printf("Internal sanity check %d", __LINE__);
 		return -1;
@@ -4326,7 +4341,10 @@ ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 	 */
 	rcode = data2vp(ctx, packet, original, secret, da,
 			data + 2, data[1] - 2, length - 2, pvp);
-	if (rcode < 0) return rcode;
+	if (rcode < 0) {
+		dict_attr_free(&da); /* only frees unknowns */
+		return rcode;
+	}
 
 	return 2 + rcode;
 }
