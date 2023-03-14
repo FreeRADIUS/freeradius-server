@@ -435,7 +435,7 @@ static void bfd_calc_simple(bfd_session_t *session, bfd_packet_t *bfd)
 	fr_assert(session->secret_len <= sizeof(simple->password));
 
 	memcpy(simple->password, session->client.secret, session->secret_len);
-	simple->auth_len = session->secret_len;
+	simple->auth_len = 3 + session->secret_len;
 }
 
 static void bfd_auth_simple(bfd_session_t *session, bfd_packet_t *bfd)
@@ -443,8 +443,8 @@ static void bfd_auth_simple(bfd_session_t *session, bfd_packet_t *bfd)
 	bfd_auth_simple_t *simple = &bfd->auth.password;
 
 	simple->auth_type = session->auth_type;
-	simple->auth_len = session->secret_len;
-	bfd->length += simple->auth_len;
+	simple->auth_len = 3 + session->secret_len;
+	bfd->length = FR_BFD_HEADER_LENGTH + simple->auth_len;
 
 	simple->key_id = 0;
 
@@ -473,7 +473,7 @@ static void bfd_auth_md5(bfd_session_t *session, bfd_packet_t *bfd)
 
 	md5->auth_type = session->auth_type;
 	md5->auth_len = sizeof(*md5);
-	bfd->length += md5->auth_len;
+	bfd->length = FR_BFD_HEADER_LENGTH + md5->auth_len;
 
 	md5->key_id = 0;
 	md5->sequence_no = session->xmit_auth_seq++;
@@ -503,7 +503,7 @@ static void bfd_auth_sha1(bfd_session_t *session, bfd_packet_t *bfd)
 
 	sha1->auth_type = session->auth_type;
 	sha1->auth_len = sizeof(*sha1);
-	bfd->length += sha1->auth_len;
+	bfd->length = FR_BFD_HEADER_LENGTH + sha1->auth_len;
 
 	sha1->key_id = 0;
 	sha1->sequence_no = session->xmit_auth_seq++;
@@ -542,7 +542,7 @@ static int bfd_verify_simple(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	bfd_auth_simple_t *simple = &bfd->auth.password;
 
-	if (simple->auth_len != session->secret_len) return 0;
+	if ((simple->auth_len - 3) != session->secret_len) return 0;
 
 	if (simple->key_id != 0) return 0;
 
@@ -637,7 +637,6 @@ static int bfd_authenticate(bfd_session_t *session, bfd_packet_t *bfd)
 
 	case BFD_AUTH_SIMPLE:
 		return bfd_verify_simple(session, bfd);
-		break;
 
 	case BFD_AUTH_KEYED_MD5:
 	case BFD_AUTH_MET_KEYED_MD5:
@@ -711,7 +710,7 @@ static void bfd_control_packet_init(bfd_session_t *session, bfd_packet_t *bfd)
 
 	bfd->multipoint = 0;
 	bfd->detect_multi = session->detect_multi;
-	bfd->length = 24;	/* auth types add to this later */
+	bfd->length = FR_BFD_HEADER_LENGTH;
 
 	bfd->my_disc = session->local_disc;
 	bfd->your_disc = session->remote_disc;
