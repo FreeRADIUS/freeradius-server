@@ -396,7 +396,7 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
  *	- <0 on error
  *	- 0 on success
  */
-int unlang_module_set_resume(request_t *request, unlang_module_resume_t resume)
+int unlang_module_set_resume(request_t *request, module_method_t resume)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -446,7 +446,7 @@ int unlang_module_set_resume(request_t *request, unlang_module_resume_t resume)
  */
 unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 					    request_t *request, xlat_exp_head_t const *exp,
-					    unlang_module_resume_t resume,
+					    module_method_t resume,
 					    unlang_module_signal_t signal, void *rctx)
 {
 	/*
@@ -493,7 +493,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr
 unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 					    request_t *request, tmpl_t const *vpt,
 					    unlang_tmpl_args_t *args,
-					    unlang_module_resume_t resume,
+					    module_method_t resume,
 					    unlang_module_signal_t signal, void *rctx)
 {
 	/*
@@ -515,7 +515,7 @@ unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t
 unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 					       request_t *request, CONF_SECTION *subcs,
 					       rlm_rcode_t default_rcode,
-					       unlang_module_resume_t resume,
+					       module_method_t resume,
 					       unlang_module_signal_t signal, void *rctx)
 {
 	if (!subcs) {
@@ -571,7 +571,7 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
  *	- UNLANG_ACTION_YIELD.
  */
 unlang_action_t unlang_module_yield(request_t *request,
-				    unlang_module_resume_t resume, unlang_module_signal_t signal, void *rctx)
+				    module_method_t resume, unlang_module_signal_t signal, void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -695,7 +695,7 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 {
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	unlang_module_t			*mc = unlang_generic_to_module(frame->instruction);
-	unlang_module_resume_t		resume;
+	module_method_t		resume;
 	unlang_action_t			ua;
 
 	/*

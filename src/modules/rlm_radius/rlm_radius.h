@@ -82,5 +82,5 @@ struct rlm_radius_io_s {
 	module_t		common;			//!< Common fields to all loadable modules.
 	rlm_radius_io_enqueue_t	enqueue;		//!< Enqueue a request_t with an IO submodule.
 	unlang_module_signal_t	signal;			//!< Send a signal to an IO module.
-	unlang_module_resume_t	resume;			//!< Resume a request, and get rcode.
+	module_method_t	resume;			//!< Resume a request, and get rcode.
 };

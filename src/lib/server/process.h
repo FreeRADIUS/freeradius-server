@@ -90,14 +90,14 @@ typedef struct {
 	size_t			section_offset;	//!< Where to look in the process instance for
 						///< a pointer to the section we should execute.
 	rlm_rcode_t		rcode;		//!< Default rcode
-	unlang_module_resume_t	resume;		//!< Function to call after running a recv section.
+	module_method_t	resume;		//!< Function to call after running a recv section.
 
 	/*
 	 *	Each state has only one "recv" or "send".
 	 */
 	union {
 		module_method_t		recv;		//!< Method to call when receiving this type of packet.
-		unlang_module_resume_t	send;		//!< Method to call when sending this type of packet.
+		module_method_t	send;		//!< Method to call when sending this type of packet.
 	};
 	PROCESS_STATE_EXTRA_FIELDS
 } fr_process_state_t;
@@ -152,7 +152,7 @@ do { \
  */
 #define CALL_SEND_TYPE(_x) call_send_type(process_state_reply[(request->reply->code = _x)].send, p_result, mctx, request)
 
-static inline unlang_action_t call_send_type(unlang_module_resume_t send, \
+static inline unlang_action_t call_send_type(module_method_t send, \
 					     rlm_rcode_t *p_result, module_ctx_t const *mctx,
 					     request_t *request)
 {
