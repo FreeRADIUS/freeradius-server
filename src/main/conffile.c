@@ -353,6 +353,7 @@ error:
 
 	file->filename = filename;
 	file->cs = cs;
+	file->from_dir = from_dir;
 
 	if (fstat(fd, &file->buf) == 0) {
 #ifdef S_IWOTH
