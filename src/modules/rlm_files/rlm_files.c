@@ -346,8 +346,8 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			       RADIUS_PACKET *request_packet, RADIUS_PACKET *reply_packet)
 {
 	char const	*name;
-	VALUE_PAIR	*check_tmp;
-	VALUE_PAIR	*reply_tmp;
+	VALUE_PAIR	*check_tmp = NULL;
+	VALUE_PAIR	*reply_tmp = NULL;
 	PAIR_LIST const *user_pl, *default_pl;
 	bool		found = false;
 	PAIR_LIST	my_pl;
@@ -411,14 +411,16 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			default_pl = default_pl->next;
 		}
 
-		check_tmp = fr_pair_list_copy(request, pl->check);
-		for (vp = fr_cursor_init(&cursor, &check_tmp);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			if (radius_xlat_do(request, vp) < 0) {
-				RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
-				fr_pair_list_free(&check_tmp);
-				continue;
+		if (pl->check) {
+			check_tmp = fr_pair_list_copy(request, pl->check);
+			for (vp = fr_cursor_init(&cursor, &check_tmp);
+			     vp;
+			     vp = fr_cursor_next(&cursor)) {
+				if (radius_xlat_do(request, vp) < 0) {
+					RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
+					fr_pair_list_free(&check_tmp);
+					continue;
+				}
 			}
 		}
 
@@ -428,15 +430,15 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 
 			/* ctx may be reply or proxy */
 			reply_tmp = fr_pair_list_copy(reply_packet, pl->reply);
-			radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
+			if (reply_tmp) radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
+
 			fr_pair_list_move(request, &request->config, &check_tmp, T_OP_ADD);
 			fr_pair_list_free(&check_tmp);
 
 			/*
 			 *	Fallthrough?
 			 */
-			if (!fall_through(pl->reply))
-				break;
+			if (!fall_through(pl->reply)) break;
 		}
 	}
 
@@ -448,8 +450,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 	/*
 	 *	See if we succeeded.
 	 */
-	if (!found)
-		return RLM_MODULE_NOOP; /* on to the next module */
+	if (!found)	return RLM_MODULE_NOOP; /* on to the next module */
 
 	return RLM_MODULE_OK;
 
