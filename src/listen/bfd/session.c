@@ -47,7 +47,6 @@ static void bfd_start_control(bfd_session_t *session);
 static int bfd_stop_control(bfd_session_t *session);
 static void bfd_set_timeout(bfd_session_t *session, fr_time_t when);
 
-
 /*
  *	Wrapper to run a trigger.
  *
@@ -72,6 +71,15 @@ static void bfd_trigger(UNUSED bfd_session_t *session, UNUSED bfd_state_change_t
 	(void) fr_network_sendto_worker(session->nr, session->listen, track, (uint8_t const *) &wrapper, sizeof(wrapper), fr_time());
 #endif
 }
+
+void bfd_session_admin_down(bfd_session_t *session)
+{
+	bfd_stop_control(session);
+
+	session->session_state = BFD_STATE_ADMIN_DOWN;
+	bfd_trigger(session,  BFD_STATE_CHANGE_ADMIN_DOWN);
+}
+
 
 /*
  *	Stop polling for packets.
@@ -132,7 +140,7 @@ static void bfd_poll_response(bfd_session_t *session)
 		       (struct sockaddr *) &session->local_sockaddr, session->local_salen,
 		       (struct sockaddr *) &session->remote_sockaddr, session->remote_salen) < 0) {
 		ERROR("Failed sending packet: %s", fr_syserror(errno));
-		fr_assert(0);
+		bfd_session_admin_down(session);
 	}
 }
 
@@ -755,7 +763,7 @@ static void bfd_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 		       (struct sockaddr *) &session->local_sockaddr, session->local_salen,
 		       (struct sockaddr *) &session->remote_sockaddr, session->remote_salen) < 0) {
 		ERROR("Failed sending packet: %s", fr_syserror(errno));
-		fr_assert(0);
+		bfd_session_admin_down(session);
 	}
 }
 
@@ -1031,7 +1039,7 @@ static void bfd_start_control(bfd_session_t *session)
 	if ((session->remote_disc == 0) && session->passive) return;
 
 	/*
-	 *	We were asked to go "up" when we were alread "up" 
+	 *	We were asked to go "up" when we were already "up"
 	 */
 	if (session->remote_demand_mode &&
 	    (session->session_state == BFD_STATE_UP) &&
@@ -1039,8 +1047,7 @@ static void bfd_start_control(bfd_session_t *session)
 	    !session->doing_poll) {
 		DEBUG("BFD %s peer %s warning: asked to start UP / UP ?",
 		      session->server_name, session->client.shortname);
-		fr_assert(0 == 1);
-		bfd_stop_control(session);
+		bfd_session_admin_down(session);
 		return;
 	}
 

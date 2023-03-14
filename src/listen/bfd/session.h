@@ -149,4 +149,6 @@ int	bfd_session_init(bfd_session_t *session);
 
 void	bfd_session_start(bfd_session_t *session);
 
+void	bfd_session_admin_down(bfd_session_t *session);
+
 bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd);

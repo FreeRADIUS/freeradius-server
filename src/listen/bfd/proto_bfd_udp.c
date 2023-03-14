@@ -221,7 +221,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			   (struct sockaddr *) &session->remote_sockaddr, session->remote_salen);
 	if (rcode < 0) {
 		ERROR("Failed sending packet: %s", fr_syserror(errno));
-		fr_assert(0);
+		bfd_session_admin_down(session);
+		return 0;
 	}
 
 	return rcode;
