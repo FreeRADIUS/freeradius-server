@@ -1662,6 +1662,32 @@ int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 	return 1;
 }
 
+/** Multiply with modulo wrap
+ *
+ * Avoids multiplication overflow.
+ *
+ * @param[in] lhs	First operand.
+ * @param[in] rhs	Second operand.
+ * @param[in] mod	Modulo.
+ * @return
+ *	- Result.
+ */
+uint64_t fr_multiply_mod(uint64_t lhs, uint64_t rhs, uint64_t mod)
+{
+	uint64_t res = 0;
+
+	lhs %= mod;
+
+	while (rhs > 0) {
+		if (rhs & 0x01) res = (res + lhs) % mod;
+
+		lhs = (lhs * 2) % mod;
+		rhs /= 2;
+	}
+
+	return res % mod;
+}
+
 #ifdef O_NONBLOCK
 /** Set O_NONBLOCK on a socket
  *

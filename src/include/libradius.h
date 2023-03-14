@@ -750,6 +750,7 @@ int		fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 				   struct sockaddr_storage *sa, socklen_t *salen);
 int		fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 				   fr_ipaddr_t *ipaddr, uint16_t *port);
+uint64_t fr_multiply_mod(uint64_t lhs, uint64_t rhs, uint64_t mod);
 int		fr_nonblock(int fd);
 int		fr_blocking(int fd);
 ssize_t		fr_writev(int fd, struct iovec[], int iovcnt, struct timeval *timeout);
