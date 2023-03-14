@@ -785,17 +785,6 @@ int		fr_ldap_map_do(request_t *request,
 			       char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry);
 
 /*
- *	sasl_s.c - SASL synchronous bind functions
- */
-#ifdef WITH_SASL
-fr_ldap_rcode_t	 fr_ldap_sasl_interactive(request_t *request,
-					  fr_ldap_connection_t *pconn, char const *dn,
-					  char const *password, fr_ldap_sasl_t const *sasl,
-					  LDAPControl **serverctrls, LDAPControl **clientctrls,
-					  fr_time_delta_t timeout);
-#endif
-
-/*
  *	connection.c - Connection configuration functions
  */
 fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx);

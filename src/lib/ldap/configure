@@ -4102,7 +4102,7 @@ smart_prefix=
 
 printf "%s\n" "#define WITH_SASL 1" >>confdefs.h
 
-	    SASL="sasl_s.c sasl.c"
+	    SASL="sasl.c"
 	  fi
 	fi
 

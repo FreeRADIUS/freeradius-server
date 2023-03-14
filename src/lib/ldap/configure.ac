@@ -119,7 +119,7 @@ FR_LIBRARY_START_TESTS
 	if test "x$ac_cv_header_sasl_sasl_h" = "xyes"; then
 	  if test x"$ac_cv_func_ldap_sasl_interactive_bind" = "xyes"; then
 	    AC_DEFINE(WITH_SASL, 1, [Build the server with support for SASL binds])
-	    SASL="sasl_s.c sasl.c"
+	    SASL="sasl.c"
 	  fi
 	fi
 
