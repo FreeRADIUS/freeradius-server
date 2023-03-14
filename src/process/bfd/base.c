@@ -24,6 +24,7 @@
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/bfd/bfd.h>
+#include "bfd/session.h"
 
 static fr_dict_t const *dict_bfd;
 
@@ -226,6 +227,7 @@ static fr_process_state_t const process_state_reply[] = {
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
+	bfd_wrapper_t const *wrapper;
 
 	PROCESS_TRACE;
 
@@ -234,7 +236,24 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	request->component = "bfd";
 	request->module = NULL;
+
 	fr_assert(request->dict == dict_bfd);
+
+	wrapper = (bfd_wrapper_t const *) request->packet->data;
+
+	/*
+	 *	If there's no packet, we must be calling the "send" routine
+	 */
+	if (wrapper->type == BFD_WRAPPER_SEND_PACKET) {
+		fr_assert(wrapper->type == BFD_WRAPPER_SEND_PACKET);
+
+		UPDATE_STATE(reply);
+
+		bfd_packet_debug(request, request->reply, &request->reply_pairs, false);
+		return state->send(p_result, mctx, request);
+	}
+
+	fr_assert(wrapper->type == BFD_WRAPPER_RECV_PACKET);
 
 	UPDATE_STATE(packet);
 
