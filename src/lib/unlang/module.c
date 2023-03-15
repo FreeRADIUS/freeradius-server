@@ -873,7 +873,8 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 
 /** Parse the result of module_env tmpl expansion
  */
-static inline CC_HINT(always_inline) int module_env_value_parse(request_t *request, void * out, unlang_frame_state_module_t *state) {
+static inline CC_HINT(always_inline) int module_env_value_parse(request_t *request, void *out, void **tmpl_out,
+								unlang_frame_state_module_t *state) {
 	fr_value_box_t			*vb;
 	module_env_parsed_t const	*env = state->last_expanded;
 
@@ -916,6 +917,8 @@ static inline CC_HINT(always_inline) int module_env_value_parse(request_t *reque
 		}
 	}
 
+	if (tmpl_out) *tmpl_out = env->tmpl;
+
 	return 0;
 }
 
@@ -955,7 +958,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	}
 
 	if (mc->method_env) {
-		void				*out, **array;
+		void				*out, **array, *tmpl_out = NULL;
 		module_env_parsed_t const	*env;
 		TALLOC_CTX			*ctx;
 
@@ -993,7 +996,9 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 				out = ((uint8_t *)array) + env->rule->pair.size * env->multi_index;
 			}
 
-			if (module_env_value_parse(request, out, state) < 0) {
+			if (env->rule->pair.tmpl_offset) tmpl_out = ((uint8_t *)state->env_data) + env->rule->pair.tmpl_offset;
+
+			if (module_env_value_parse(request, out, tmpl_out, state) < 0) {
 				ua = UNLANG_ACTION_FAIL;
 				goto fail;
 			}

@@ -267,6 +267,7 @@ struct module_env_s {
 			mod_env_dest_t	type;		//!< Type of structure boxes will be written to.
 			size_t		size;		//!< Size of structure boxes will be written to.
 			char const	*type_name;	//!< Name of structure type boxes will be written to.
+			size_t		tmpl_offset;	//!< Where to write pointer to tmpl in the output structure.  Optional.
 		} pair;
 
 		struct {
@@ -354,6 +355,23 @@ _Generic((((_s *)NULL)->_f), \
 		  .type = FR_MODULE_ENV_DST_TYPE(_struct, _field), \
 		  .size = FR_MODULE_ENV_DST_SIZE(_struct, _field), \
 		  .type_name = FR_MODULE_ENV_DST_TYPE_NAME(_struct, _field) }
+
+/** Version of the above which sets optional field for pointer to tmpl
+ */
+#define FR_MODULE_ENV_TMPL_OFFSET(_name, _cast_type, _struct, _field, _tmpl_field, _dflt, _dflt_quote, _required, _concat) \
+	.name = _name, \
+	.type = _cast_type, \
+	.offset = offsetof(_struct, _field), \
+	.dflt = _dflt, \
+	.dflt_quote = _dflt_quote, \
+	.pair = { .required = _required, \
+		  .concat = FR_MODULE_ENV_CONCAT(_concat, _cast_type), \
+		  .single = FR_MODULE_ENV_SINGLE(_struct, _field, _concat), \
+		  .multi = FR_MODULE_ENV_MULTI(_struct, _field), \
+		  .type = FR_MODULE_ENV_DST_TYPE(_struct, _field), \
+		  .size = FR_MODULE_ENV_DST_SIZE(_struct, _field), \
+		  .type_name = FR_MODULE_ENV_DST_TYPE_NAME(_struct, _field), \
+		  .tmpl_offset = offsetof(_struct, _tmpl_field) }
 
 /** A list of modules
  *
