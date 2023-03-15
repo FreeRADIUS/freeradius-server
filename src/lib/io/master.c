@@ -1553,7 +1553,6 @@ have_client:
 	if (accept_fd >= 0) {
 		if (!fr_io_connection_alloc(inst, thread, client, accept_fd, &address, NULL)) {
 			DEBUG("Failed to allocate connection from client %s.", client->radclient->shortname);
-			close(accept_fd);
 		}
 
 		return 0;
