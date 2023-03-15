@@ -83,4 +83,12 @@ ATTRIBUTE	HS20-Deauthentication-Request		4	octets
 #
 ATTRIBUTE	HS20-Session-Information-URL		5	octets
 
+#  Values are:
+#
+#  5A-03-BA-00-00 OpenRoaming for All Identities, settlement-free, no personal data requested, baseline QoS
+#  5A-03-BA-08-00 "OpenRoaming for Educational or Research Identities, settlement-free, no personal data requested, baseline QoS"
+ATTRIBUTE      HS20-Roaming-Consortium                 6       octets
+
+
+
 END-VENDOR    WiFi-Alliance
