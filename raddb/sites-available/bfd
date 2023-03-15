@@ -24,135 +24,214 @@
 #
 
 #
-#  ## Default instance
+#  ## server bfd  { ... }
 #
-
+#  The virtual server which manages BFD.
 #
-#  ### server bfd  { ... }
-#
-server bfd {
+server main {
 	#
-	#  #### listen { ... }
+	#  namespace::
+	#
+	#  The Bidirectional Forwarding Detection (BFD) protocol.
+	#
+	namespace = bfd
+
+	#
+	#  Common configuration for the BFD state machine.
+	#  For now, unused.
+	#
+	bfd {
+
+	}
+
+	#
+	#  ### listen { ... }
 	#
 	listen {
 		#
-		#  type:: Type is bfd
+		#  Only IP transport is supported for BFD.
+		#  There is no ethernet type for BFD.
 		#
-		type = bfd
+		transport = udp
 
 		#
-		#  ipaddr: IP address, or IPv6 address as normal.
 		#
-		ipaddr = 127.0.0.1
-
 		#
-		#  port:: Port as normal.
-		#
-		port = 3784
-
-		#
-		#  auth_type:: BFD Authentication method.
-		#
-		#  May be one of:
-		#
-		#  [options="header,autowidth"]
-		#  |===
-		#  | Option         | Description
-		#  | none           | no password, not recommended
-		#  | simple         | cleartext password in the packet, not recommended
-		#  | keyed-md5      | MD5 based, like  RADIUS style shared secret key
-		#  | met-keyed-md5  | similar to above
-		#  | keyed-sha1     | SHA1 based, like RADIUS style shared secret key
-		#  | met-keyed-sha1 | similar to above
-		#  |===
-		#
-		#  NOTE: The other side of the BFD connection has to have the same
-		#  kind of authentication set.
-		#
-		auth_type = keyed-sha1
-
-		#
-		#  secret:: The secret key used for authentication.
-		#
-		#  If it starts with "0x", then it is treated as a hex string. This is recommended
-		#  for security.  The secrets should be `~16` octets long, and random.
-		#
-		secret = "hello"
-
-		#
-		#  min_transmit_interval:: Minimum time interval to transmit. (milliseconds)
-		#
-		min_transmit_interval = 1000
-
-		#
-		#  min_receive_interval:: Minimum time interval to receive. (milliseconds)
-		#
-		min_receive_interval = 1000
-
-		#
-		#  max_timeouts:: Max number of timeouts. (milliseconds)
-		#
-		max_timeouts = 3
-
-		#
-		#  demand:: BFD Demand mode.
-		#
-		#  allowed values: {no, yes}
-		#
-		demand = no
-
-		#
-		#  ### peer { ... }
-		#
-		#  Each BFD `listen { ... }` socket has at least one, possibly more, peer.
-		#
-		#  It exchanges BFD packets with each peer.
-		#
-		peer {
+		udp {
 			#
-			#  ipaddr:: Each peer has an IP address and a port.
+			#  ipaddr::
 			#
-			#  NOTE: For now, you can't set a per-peer `auth_type`.
+			#   IP address, or IPv6 address as with other
 			#
-			ipaddr = 127.0.0.1
+			ipaddr = 192.0.2.1
 
 			#
-			#  port:: The peer port.
+			#  port:: Port as normal.
 			#
-			port = 10001
+			port = 3784
 
 			#
-			#  demand:: BFD Demand mode.
+			#  only_state_changes::
 			#
-			#  allowed values: {no, yes}
+			#  In general the server only needs to know if the BFD session state has changed.  Set
+			#  this value to "false" if you want every received and every sent packet to be
+			#  processed through this virtual server.
 			#
-			demand = no
-
-			#
-			#  secret:: Each peer should have its own unique secret.
-			#
-			#  NOTE: If this isn't set, the global secret above will be used.
-			#
-			secret = 0x12345678
+			only_state_changes = true
 		}
 	}
 
+#
+#  peer:: BFD peer
+#
+#  The peer definition is based on the `client` definition.  The standard client configuration items will work
+#  here.
+#
+peer other {
 	#
-	#  #### bfd { ... }
+	#  ipaddr:: address of the peer
 	#
-	#  The virtual server used to handle BFD packets.
-	#
-	#  NOTE: You can't really run any of the normal RADIUS modules here.
-	#  But you could run an external shell script, Perl, etc.
-	#
-	bfd {
-		#
-		#  Say it's OK.
-		#
-		ok
+	ipaddr = 192.0.2.2
 
-		#
-		#  Any other modules listed here will have their `authorize` section run.
-		#
-	}
+	#
+	#  port:: the peers port where we send packets
+	#
+	port = 3784
+
+	#
+	#  src_ipaddr:: Source address used when sending packets to this peer.
+	#
+	#  This source address should match a `listen` section above.  If not source address is given, then a
+	#  "wildcard" listener will be chosen.  i.e. A listener which has `ipaddr = *`
+	#
+	#  If the source IP address does not match any listener, then the peer will be ignored.
+	#
+#	src_ipaddr = 192.0.2.1
+
+	#
+	#  auth_type:: BFD Authentication method.
+	#
+	#  May be one of:
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | Option         | Description
+	#  | none           | no password, not recommended
+	#  | simple         | cleartext password in the packet, not recommended
+	#  | keyed-md5      | MD5 based, like  RADIUS style shared secret key
+	#  | met-keyed-md5  | similar to above
+	#  | keyed-sha1     | SHA1 based, like RADIUS style shared secret key
+	#  | met-keyed-sha1 | similar to above
+	#  |===
+	#
+	#  NOTE: The other side of the BFD connection has to have the same
+	#  kind of authentication set.
+	#
+	auth_type = none
+
+	#
+	#  secret:: The secret key used for authentication.
+	#
+	#  If it starts with "0x", then it is treated as a hex string. This is recommended
+	#  for security.  The secrets should be no more than 16 octets long, and random.
+	#
+#	secret = "hello"
+
+	#
+	#  min_transmit_interval:: Minimum time interval to transmit.
+	#
+	min_transmit_interval = 250ms
+
+	#
+	#  min_receive_interval:: Minimum time interval to receive.
+	#
+	min_receive_interval = 250ms
+
+	#
+	#  max_timeouts:: Max number of timeouts before the session is declared dead.
+	#
+	max_timeouts = 3
+
+	#
+	#  demand:: BFD Demand mode.
+	#
+	#  allowed values: {no, yes}
+	#
+	demand = no
+}
+
+#
+#  ## Packet Processing sections
+#
+#  Unlike other protocols, BFD does not follow a "request / reply" process.  Instead, there are two
+#  independent streams of packets.  One where the peer sends us packets (`recv foo { ... }`), and the other
+#  where we send packets to the peer (`send foo { ... }`).
+#
+#  Note that when running `send`, the packet contents *cannot be changed*.  The contents of the BFD packet
+#  are defined by the protocol.  The `send` section is called only for informational purposes.
+#
+
+#
+#  ### Receive "Admin-Down" packets from the peer.
+#
+recv Admin-Down {
+	ok
+}
+
+#
+#  ### Receive "Down" packets from the peer.
+#
+recv Down {
+	ok
+}
+
+#
+#  ### Receive "Init" packets from the peer.
+#
+recv Init {
+	ok
+}
+
+#
+#  ### Receive "Up" packets from the peer.
+#
+recv Up {
+	ok
+}
+
+#
+#  ### Send "Admin-Down" packets to the peer.
+#
+send Admin-Down {
+	ok
+}
+
+#
+#  ### Send "Down" packets to the peer.
+#
+send Down {
+	ok
+}
+
+#
+#  ### Send "Init" packets to the peer.
+#
+send Init {
+	ok
+}
+
+#
+#  ### Send "Up" packets to the peer.
+#
+send Up {
+	ok
+
+	#
+	#  Sneak in more data after a BFD packet!
+	#
+#	&reply.Additional-Data := {
+#		&Tmp-Octets-0 := 0xabcdef
+#	}
+}
+
 }
