@@ -35,7 +35,7 @@ RCSID("$Id$")
  */
 void other_function(void)
 {
-  int i = 1;			/* do nothing */
+  UNUSED int i = 1;			/* do nothing */
 
   i++;
 }
