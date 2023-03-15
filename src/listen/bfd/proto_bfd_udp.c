@@ -198,7 +198,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	fr_io_track_t		*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	bfd_session_t		*session;
 	ssize_t			rcode;
-	char const *err;
+#ifndef NDEBUG
+	char const		*err;
+#endif
 
 	/*
 	 *	@todo - share a stats interface with the parent?  or
