@@ -334,7 +334,6 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			}
 		}
 
-
 		/*
 		 *	Search for the first '=' or ','
 		 */
@@ -385,6 +384,31 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 		} else if (strcmp(key, "virtual") == 0) {
 			flags->virtual = 1;
 
+		} else if (strcmp(key, "offset") == 0) {
+			int offset;
+
+			if (type != FR_TYPE_STRUCT) {
+				fr_strerror_const("The 'offset' flag can only be used with data type 'struct'");
+				return -1;
+			}
+
+			if (!flags->extra || (!(flags->subtype == FLAG_LENGTH_UINT8) || (flags->subtype == FLAG_LENGTH_UINT16))) {
+				fr_strerror_const("The 'offset' flag can only be used in combination with 'length=uint8' or 'length=uint16'");
+				return -1;
+			}
+
+			if (!value) {
+				fr_strerror_const("The 'offset' flag requires a value");
+				return -1;
+			}
+
+			offset = atoi(value);
+			if ((offset <= 0) || (offset > 255)) {
+				fr_strerror_const("The 'offset' value must be between 1..255");
+				return -1;
+			}
+			flags->type_size = offset;
+
 		} else if (strcmp(key, "key") == 0) {
 			if ((type != FR_TYPE_UINT8) && (type != FR_TYPE_UINT16) && (type != FR_TYPE_UINT32)) {
 				fr_strerror_const("The 'key' flag can only be used for attributes of type 'uint8', 'uint16', or 'uint32'");
@@ -417,6 +441,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				fr_strerror_const("Invalid value given for the 'length' flag");
 				return -1;
 			}
+			flags->type_size = 0;
 
 		} else if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
 			/*
@@ -1632,18 +1657,9 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	with any other type of length.
 	 */
 	if (argc == 4) {
-		if (strcmp(argv[3], "length=uint16") == 0) {
-			flags.extra = 1;
-			flags.subtype = FLAG_LENGTH_UINT16;
+		char *ref;
 
-		}  else if (strcmp(argv[3], "length=uint8") == 0) {
-			flags.extra = 1;
-			flags.subtype = FLAG_LENGTH_UINT8;
-
-		} else {
-			fr_strerror_printf("Unknown option '%s'", argv[3]);
-			return -1;
-		}
+		if (dict_process_flag_field(ctx, argv[3], FR_TYPE_STRUCT, &flags, &ref) < 0) return -1;
 	}
 
 	/*
