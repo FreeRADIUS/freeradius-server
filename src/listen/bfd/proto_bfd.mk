@@ -6,4 +6,4 @@ endif
 
 SOURCES		:= $(TARGETNAME).c
 
-TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-io$(L) libfreeradius-bfd$(L)
+TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-io$(L)  libfreeradius-internal$(L) libfreeradius-bfd$(L)
