@@ -264,6 +264,7 @@ struct module_env_s {
 			bool		single;		//!< If the tmpl produces more than one box this is an error.
 			bool		multi;		//!< Multiple instances of the conf pairs are allowed.  Resulting
 							///< boxes are stored in an array - one entry per conf pair.
+			bool		nullable;	//!< Tmpl expansions are allowed to produce no output.
 			mod_env_dest_t	type;		//!< Type of structure boxes will be written to.
 			size_t		size;		//!< Size of structure boxes will be written to.
 			char const	*type_name;	//!< Name of structure type boxes will be written to.
@@ -342,7 +343,7 @@ _Generic((((_s *)NULL)->_f), \
 	fr_value_box_list_t *		: "fr_value_box_list_t" \
 )
 
-#define FR_MODULE_ENV_OFFSET(_name, _cast_type, _struct, _field, _dflt, _dflt_quote, _required, _concat) \
+#define FR_MODULE_ENV_OFFSET(_name, _cast_type, _struct, _field, _dflt, _dflt_quote, _required, _nullable, _concat) \
 	.name = _name, \
 	.type = _cast_type, \
 	.offset = offsetof(_struct, _field), \
@@ -352,13 +353,14 @@ _Generic((((_s *)NULL)->_f), \
 		  .concat = FR_MODULE_ENV_CONCAT(_concat, _cast_type), \
 		  .single = FR_MODULE_ENV_SINGLE(_struct, _field, _concat), \
 		  .multi = FR_MODULE_ENV_MULTI(_struct, _field), \
+		  .nullable = _nullable, \
 		  .type = FR_MODULE_ENV_DST_TYPE(_struct, _field), \
 		  .size = FR_MODULE_ENV_DST_SIZE(_struct, _field), \
 		  .type_name = FR_MODULE_ENV_DST_TYPE_NAME(_struct, _field) }
 
 /** Version of the above which sets optional field for pointer to tmpl
  */
-#define FR_MODULE_ENV_TMPL_OFFSET(_name, _cast_type, _struct, _field, _tmpl_field, _dflt, _dflt_quote, _required, _concat) \
+#define FR_MODULE_ENV_TMPL_OFFSET(_name, _cast_type, _struct, _field, _tmpl_field, _dflt, _dflt_quote, _required, _nullable, _concat) \
 	.name = _name, \
 	.type = _cast_type, \
 	.offset = offsetof(_struct, _field), \
@@ -368,6 +370,7 @@ _Generic((((_s *)NULL)->_f), \
 		  .concat = FR_MODULE_ENV_CONCAT(_concat, _cast_type), \
 		  .single = FR_MODULE_ENV_SINGLE(_struct, _field, _concat), \
 		  .multi = FR_MODULE_ENV_MULTI(_struct, _field), \
+		  .nullable = _nullable, \
 		  .type = FR_MODULE_ENV_DST_TYPE(_struct, _field), \
 		  .size = FR_MODULE_ENV_DST_SIZE(_struct, _field), \
 		  .type_name = FR_MODULE_ENV_DST_TYPE_NAME(_struct, _field), \

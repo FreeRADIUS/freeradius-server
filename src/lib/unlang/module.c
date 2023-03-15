@@ -881,7 +881,7 @@ static inline CC_HINT(always_inline) int module_env_value_parse(request_t *reque
 	vb = fr_value_box_list_head(&state->tmpl_expanded);
 
 	if (!vb) {
-		if (env->rule->pair.required) {
+		if (!env->rule->pair.nullable) {
 			RPEDEBUG("Failed to evaluate required module option %s", env->rule->name);
 			return -1;
 		}
