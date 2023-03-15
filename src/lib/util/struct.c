@@ -98,7 +98,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		}
 
 		if ((p + struct_len + need) > end) {
-			FR_PROTO_TRACE("Length header is larger than remaining data");
+			FR_PROTO_TRACE("Length header (%zu) is larger than remaining data (%zu)",
+				       struct_len + need, (end - p));
 			goto unknown;
 		}
 
@@ -291,7 +292,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
 					      &FR_DBUFF_TMP(p, child_length), child_length, true) < 0) {
-			FR_PROTO_TRACE("fr_struct_from_network - failed decoding child VP");
+			FR_PROTO_TRACE("fr_struct_from_network - failed decoding child VP %s", vp->da->name);
 			talloc_free(vp);
 		unknown:
 			if (nested) {
@@ -352,13 +353,13 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 */
 			child = fr_dict_unknown_attr_afrom_num(child_ctx, key_vp->da, 0);
 			if (!child) {
-				FR_PROTO_TRACE("failed allocating unknown child?");
+				FR_PROTO_TRACE("failed allocating unknown child for key VP %s", key_vp->da->name);
 				goto unknown;
 			}
 
 			slen = fr_pair_raw_from_network(child_ctx, child_list, child, p, end - p);
 			if (slen < 0) {
-				FR_PROTO_TRACE("Failed creating raw VP from malformed or unknown substruct");
+				FR_PROTO_TRACE("Failed creating raw VP from malformed or unknown substruct for child %s", child->name);
 				fr_dict_unknown_free(&child);
 				return slen;
 			}
