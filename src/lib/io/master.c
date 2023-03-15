@@ -3110,6 +3110,7 @@ fr_io_track_t *fr_master_io_track_alloc(fr_listen_t *li, fr_client_t *radclient,
 
 	fr_assert(child == li);
 
+	if (unlikely(!thread)) return NULL;
 	fr_assert(thread->trie != NULL);
 
 	client = fr_trie_lookup_by_key(thread->trie, &src_ipaddr->addr, src_ipaddr->prefix);
