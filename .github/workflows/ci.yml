@@ -179,7 +179,7 @@ jobs:
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
         sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-15 main"
-        sudo apt-get install ${APT_OPTS} clang-15 llvm-15 gdb
+        sudo apt-get install ${APT_OPTS} clang-15 llvm-15 gdb libclang-rt-15-dev
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-15 60 && sudo update-alternatives --set clang /usr/bin/clang-15
         sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-15 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-15
 
@@ -188,7 +188,7 @@ jobs:
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
         sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-15 main"
-        sudo apt-get install ${APT_OPTS} clang-15 llvm-15 gdb
+        sudo apt-get install ${APT_OPTS} clang-15 llvm-15 gdb libclang-rt-15-dev
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-15 60 && sudo update-alternatives --set clang /usr/bin/clang-15
         sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-15 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-15
 
