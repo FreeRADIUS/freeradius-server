@@ -170,23 +170,23 @@ jobs:
         software-properties-common \
         quilt
 
-    - name: Install LLVM 10 for 18.04
+    - name: Install LLVM 15 for 18.04
       if: ${{ matrix.os.code == 'ubuntu1804' && matrix.env.CC == 'clang' }}
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
-        sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
-        sudo apt-get install ${APT_OPTS} clang-10 llvm-10 gdb
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
-        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
+        sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-15 main"
+        sudo apt-get install ${APT_OPTS} clang-15 llvm-15 gdb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-15 60 && sudo update-alternatives --set clang /usr/bin/clang-15
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-15 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-15
 
-    - name: Install LLVM 10 for 20.04
+    - name: Install LLVM 15 for 20.04
       if: ${{ matrix.os.code == 'ubuntu2004' && matrix.env.CC == 'clang' }}
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
-        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main"
-        sudo apt-get install ${APT_OPTS} clang-10 llvm-10 gdb
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
-        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
+        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-15 main"
+        sudo apt-get install ${APT_OPTS} clang-15 llvm-15 gdb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-15 60 && sudo update-alternatives --set clang /usr/bin/clang-15
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-15 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-15
 
     - name: Install GCC
       if: ${{ matrix.env.CC == 'gcc' }}
