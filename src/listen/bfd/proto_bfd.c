@@ -547,6 +547,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 			}
 
+			c->active = true;
+
 			if (!fr_rb_insert(inst->peers, c)) {
 				cf_log_err(cs, "Failed to add peer %s", cf_section_name2(cs));
 				goto error;
