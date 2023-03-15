@@ -552,7 +552,7 @@ static int bfd_verify_simple(bfd_session_t *session, bfd_packet_t *bfd)
 {
 	bfd_auth_simple_t *simple = &bfd->auth.password;
 
-	if ((simple->auth_len - 3) != session->secret_len) return 0;
+	if ((size_t) simple->auth_len != (3 + session->secret_len)) return 0;
 
 	if (simple->key_id != 0) return 0;
 
