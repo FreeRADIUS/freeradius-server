@@ -25,6 +25,8 @@
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/internal/internal.h>
+
 #include "proto_bfd.h"
 
 extern fr_app_t proto_bfd;
@@ -68,6 +70,7 @@ static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_bfd_packet;
 static fr_dict_attr_t const *attr_my_discriminator;
 static fr_dict_attr_t const *attr_your_discriminator;
+static fr_dict_attr_t const *attr_additional_data;
 
 extern fr_dict_attr_autoload_t proto_bfd_dict_attr[];
 fr_dict_attr_autoload_t proto_bfd_dict_attr[] = {
@@ -76,6 +79,8 @@ fr_dict_attr_autoload_t proto_bfd_dict_attr[] = {
 	{ .out = &attr_bfd_packet, .name = "Packet", .type = FR_TYPE_STRUCT, .dict = &dict_bfd},
 	{ .out = &attr_my_discriminator, .name = "Packet.my-discriminator", .type = FR_TYPE_UINT32, .dict = &dict_bfd},
 	{ .out = &attr_your_discriminator, .name = "Packet.your-discriminator", .type = FR_TYPE_UINT32, .dict = &dict_bfd},
+
+	{ .out = &attr_additional_data, .name = "Additional-Data", .type = FR_TYPE_GROUP, .dict = &dict_bfd},
 	{ NULL }
 };
 
@@ -306,6 +311,9 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	fr_client_t const	*client;
 	bfd_wrapper_t const    	*wrapper = (bfd_wrapper_t const *) request->packet->data;
 	bfd_packet_t const	*bfd = (bfd_packet_t const *) wrapper->packet;
+	fr_pair_t		*vp;
+	ssize_t			slen;
+	fr_dbuff_t		dbuff;
 
 	/*
 	 *	Process layer NAK, or "Do not respond".
@@ -355,7 +363,14 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 
 	fr_assert(fr_bfd_packet_ok(NULL, buffer, bfd->length));
 
-	return bfd->length;
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_additional_data);
+	if (!vp) return bfd->length;
+
+	fr_dbuff_init(&dbuff, buffer + bfd->length, buffer_len - bfd->length);
+	slen =  fr_internal_encode_list(&dbuff, &vp->vp_group, NULL);
+	if (slen <= 0) return bfd->length;
+
+	return bfd->length + slen;
 }
 
 /** Open listen sockets/connect to external event source
