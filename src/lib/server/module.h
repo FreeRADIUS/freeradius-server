@@ -376,6 +376,12 @@ _Generic((((_s *)NULL)->_f), \
 		  .type_name = FR_MODULE_ENV_DST_TYPE_NAME(_struct, _field), \
 		  .tmpl_offset = offsetof(_struct, _tmpl_field) }
 
+#define FR_MODULE_ENV_SUBSECTION(_name, _ident2, _subcs ) \
+	.name = _name, \
+	.type = FR_TYPE_SUBSECTION, \
+	.section = { .ident2 = _ident2, \
+		     .subcs = _subcs }
+
 /** A list of modules
  *
  * This allows modules to be instantiated and freed in phases,
