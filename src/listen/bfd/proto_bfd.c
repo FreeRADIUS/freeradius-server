@@ -68,12 +68,10 @@ static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_bfd_packet;
 static fr_dict_attr_t const *attr_my_discriminator;
 static fr_dict_attr_t const *attr_your_discriminator;
-static fr_dict_attr_t const *attr_link_state;
 
 extern fr_dict_attr_autoload_t proto_bfd_dict_attr[];
 fr_dict_attr_autoload_t proto_bfd_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_bfd},
-	{ .out = &attr_link_state, .name = "Link-State", .type = FR_TYPE_UINT32, .dict = &dict_bfd},
 
 	{ .out = &attr_bfd_packet, .name = "Packet", .type = FR_TYPE_STRUCT, .dict = &dict_bfd},
 	{ .out = &attr_my_discriminator, .name = "Packet.my-discriminator", .type = FR_TYPE_UINT32, .dict = &dict_bfd},

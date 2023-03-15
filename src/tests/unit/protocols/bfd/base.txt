@@ -15,5 +15,17 @@ match 20 c0 03 18 de ad be ef 21 12 68 09 00 00 00 1f 00 00 00 7f 00 00 00 ff
 decode-proto -
 match Packet-Type = Up, Packet = { version = 1, diagnostic = none, state = up, poll = no, final = no, control-plane-independent = no, auth-present = no, demand = no, multipoint = no, detect-multi = 3, length = 24, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255 }
 
+
+#
+#  And with additional data.
+#
+#  The BFD packet is exactly the same, but we also have a 3 octet string "foo", which is encoded via the internal dictionary, after the packet.
+#
+encode-proto Packet = { version = 1, diagnostic = none, state = up, poll = false, final = false, control-plane-independent = false, auth-present = false, demand = false, multipoint = false, detect-multi = 3, my-discriminator = 0xdeadbeef, your-discriminator = 0x21126809, desired-min-tx-interval = 31us, required-min-tx-interval = 127us, required-min-echo-interval	= 255us }, Additional-Data = { Tmp-String-0 = "foo" }
+match 20 c0 03 18 de ad be ef 21 12 68 09 00 00 00 1f 00 00 00 7f 00 00 00 ff 21 40 06 ae 03 66 6f 6f
+
+decode-proto -
+match Packet-Type = Up, Packet = { version = 1, diagnostic = none, state = up, poll = no, final = no, control-plane-independent = no, auth-present = no, demand = no, multipoint = no, detect-multi = 3, length = 24, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255 }, Additional-Data = { Tmp-String-0 = "foo" }
+
 count
-match 7
+match 11

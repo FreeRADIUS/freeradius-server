@@ -26,7 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/io/test_point.h>
-#include <freeradius-devel/protocol/radius/freeradius.internal.h>
+#include <freeradius-devel/internal/internal.h>
 
 #include "attrs.h"
 
@@ -67,12 +67,34 @@ ssize_t fr_bfd_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 {
 	ssize_t			slen;
 	fr_bfd_ctx_t		packet_ctx;
+	bfd_packet_t const	*bfd;
+	fr_pair_t		*vp;
+	fr_dbuff_t		dbuff;
 
 	packet_ctx.secret = secret;
 
-	slen = fr_struct_from_network(ctx, out, attr_bfd_packet, packet, packet_len, true,
+	bfd = (bfd_packet_t const *) packet;
+
+	slen = fr_struct_from_network(ctx, out, attr_bfd_packet, packet, bfd->length, true,
 				      &packet_ctx, decode_value, NULL);
 	if (slen < 0) return slen;
+
+	if (bfd->length == packet_len) return packet_len;
+
+	/*
+	 *	Try to decode additional data.
+	 */
+	vp = fr_pair_afrom_da(ctx, attr_bfd_additional_data);
+	if (!vp) return packet_len;
+
+	fr_dbuff_init(&dbuff, packet + slen, packet_len - slen);
+
+	if ((fr_internal_decode_list_dbuff(vp, &vp->vp_group, fr_dict_root(dict_bfd), &dbuff, NULL) < 0) ||
+	    (fr_pair_list_num_elements(&vp->vp_group) == 0)) {
+		TALLOC_FREE(vp);
+	} else {
+		fr_pair_append(out, vp);
+	}
 
 	return slen;
 }

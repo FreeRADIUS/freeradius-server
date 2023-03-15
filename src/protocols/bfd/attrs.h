@@ -32,3 +32,4 @@ extern HIDDEN fr_dict_t const *dict_bfd;
 
 extern HIDDEN fr_dict_attr_t const *attr_packet_type;
 extern HIDDEN fr_dict_attr_t const *attr_bfd_packet;
+extern HIDDEN fr_dict_attr_t const *attr_bfd_additional_data;

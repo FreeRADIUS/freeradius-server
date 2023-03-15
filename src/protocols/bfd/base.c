@@ -49,11 +49,13 @@ fr_dict_autoload_t libfreeradius_bfd_dict[] = {
 
 fr_dict_attr_t const *attr_packet_type;
 fr_dict_attr_t const *attr_bfd_packet;
+fr_dict_attr_t const *attr_bfd_additional_data;
 
 extern fr_dict_attr_autoload_t libfreeradius_bfd_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_bfd_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_bfd },
 	{ .out = &attr_bfd_packet, .name = "Packet", .type = FR_TYPE_STRUCT, .dict = &dict_bfd },
+	{ .out = &attr_bfd_additional_data, .name = "Additional-Data", .type = FR_TYPE_GROUP, .dict = &dict_bfd },
 
 	{ NULL }
 };

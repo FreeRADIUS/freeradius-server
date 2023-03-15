@@ -25,9 +25,10 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/dbuff.h>
-#include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/io/test_point.h>
+#include <freeradius-devel/internal/internal.h>
+
 #include "attrs.h"
 
 /** Encodes the data portion of an attribute
@@ -186,7 +187,9 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 static ssize_t fr_bfd_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, void *proto_ctx)
 {
 	fr_bfd_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_bfd_ctx_t);
-	ssize_t		slen;
+	ssize_t		slen, alen;
+	fr_pair_t	*vp;
+	fr_dbuff_t	dbuff;
 
 	/*
 	 *	@todo - pass in test_ctx to this function, so that we
@@ -195,7 +198,14 @@ static ssize_t fr_bfd_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, 
 	slen = fr_bfd_encode(data, data_len, NULL, test_ctx->secret, talloc_array_length(test_ctx->secret) - 1, vps);
 	if (slen <= 0) return slen;
 
-	return slen;
+	vp = fr_pair_find_by_da(vps, NULL, attr_bfd_additional_data);
+	if (!vp) return slen;
+
+	fr_dbuff_init(&dbuff, data + slen, data_len - slen);
+	alen =  fr_internal_encode_list(&dbuff, &vp->vp_group, NULL);
+	if (alen <= 0) return slen;
+
+	return slen + alen;
 }
 
 /*

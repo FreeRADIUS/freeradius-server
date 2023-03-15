@@ -25,7 +25,6 @@ VALUE	Packet-Type			Init				2
 VALUE	Packet-Type			Up				3
 
 #
-#  This is our version of our current link state, which is copied
-#  to the request packet.
+#  Additional data which gets added to the end of the BFD packet.
 #
-DEFINE	Link-State				uint32	enum=Packet-Type
+DEFINE	Additional-Data				group
