@@ -82,5 +82,6 @@ ATTRIBUTE	HS20-Deauthentication-Request		4	octets
 #  extend the session.
 #
 ATTRIBUTE	HS20-Session-Information-URL		5	octets
+ATTRIBUTE	HS20-Roaming-Consortium			6	octets
 
 END-VENDOR    WiFi-Alliance
