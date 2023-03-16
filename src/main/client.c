@@ -179,7 +179,8 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	 *	Initialize the global list, if not done already.
 	 */
 	if (!root_clients) {
-		root_clients = client_list_init(NULL);
+		root_clients = cf_data_find(main_config.config, "clients");
+		if (!root_clients) root_clients = client_list_init(main_config.config);
 		if (!root_clients) {
 			ERROR("Cannot add client - failed creating client list");
 			return false;
