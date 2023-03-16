@@ -2663,11 +2663,17 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	ignore it.  This does the MD5 calculations in the
 	 *	server core, but I guess we can fix that later.
 	 */
-	if (!request->proxy_reply &&
-	    (rad_verify(packet, request->proxy,
-			request->home_server->secret) != 0)) {
-		DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
-		return 0;
+	if (!request->proxy_reply) {
+		if (!request->home_server) {
+			proxy_reply_too_late(request);
+			return 0;
+		}
+
+		if (rad_verify(packet, request->proxy,
+			       request->home_server->secret) != 0) {
+			DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
+			return 0;
+		}
 	}
 
 	/*
