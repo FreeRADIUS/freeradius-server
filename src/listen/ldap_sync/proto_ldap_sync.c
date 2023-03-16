@@ -228,7 +228,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	}
 
 send:
-	fr_internal_encode_list(&dbuff, &pairs, NULL);
+	if (fr_internal_encode_list(&dbuff, &pairs, NULL) < 0) goto error;
 	talloc_free(local);
 
 	return fr_dbuff_used(&dbuff);
