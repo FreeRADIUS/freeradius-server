@@ -493,6 +493,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 
 				if ((thread->num_connections + 1) >= max_connections) {
 					DEBUG("Too many open connections.  Ignoring dynamic client %s.  Discarding packet.", client->radclient->shortname);
+				close_and_return:
+					if (fd >= 0) close(fd);
 					return NULL;
 				}
 			}
@@ -506,14 +508,13 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 				       DL_MODULE_TYPE_SUBMODULE, inst->transport, inst_name) < 0) {
 			talloc_free(inst_name);
 			DEBUG("Failed to find proto_%s_%s", inst->app->common.name, inst->transport);
-			return NULL;
+			goto close_and_return;
 		}
 		talloc_free(inst_name);
 
 /*
 		if (dl_module_conf_parse(dl_inst, inst->server_cs) < 0) {
-			TALLOC_FREE(dl_inst);
-			return NULL;
+			goto cleanup;
 		}
 */
 		fr_assert(dl_inst != NULL);
@@ -623,8 +624,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	case PR_CLIENT_NAK:
 	case PR_CLIENT_CONNECTED:
 		fr_assert(0 == 1);
-		talloc_free(dl_inst);
-		return NULL;
+		goto cleanup;
 	}
 
 	if (!nak) {
@@ -689,8 +689,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 
 		if (inst->app_io->connection_set(connection->child, connection->address) < 0) {
 			DEBUG("Failed setting connection for socket.");
-			talloc_free(dl_inst);
-			return NULL;
+			goto cleanup;
 		}
 
 		/*
@@ -719,10 +718,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 			}
 
 			if (connect(fd, (struct sockaddr *) &src, salen) < 0) {
-				close(fd);
 				ERROR("Failed in connect: %s", fr_syserror(errno));
-				talloc_free(dl_inst);
-				return NULL;
+				goto cleanup;
 			}
 		} else {
 			connection->child->fd = fd;
@@ -733,8 +730,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		 */
 		if (inst->app_io->fd_set(connection->child, fd) < 0) {
 			DEBUG3("Failed setting FD to %s", inst->app_io->common.name);
-			close(fd);
-			return NULL;
+			goto cleanup;
 		}
 
 		li->fd = fd;
@@ -799,6 +795,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		pthread_mutex_unlock(&client->mutex);
 
 	cleanup:
+		if (fd >= 0) close(fd);
 		talloc_free(dl_inst);
 		return NULL;
 	}
