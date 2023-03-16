@@ -97,13 +97,13 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			struct_len |= p[1];
 		}
 
-		if (struct_len < parent->flags.type_size) {
+		if (struct_len < da_length_offset(parent)) {
 			FR_PROTO_TRACE("Length header (%zu) is smaller than minimum value (%u)",
 				       struct_len, parent->flags.type_size);
 			goto unknown;
 		}
 
-		if ((p + struct_len + need - parent->flags.type_size) > end) {
+		if ((p + struct_len + need - da_length_offset(parent)) > end) {
 			FR_PROTO_TRACE("Length header (%zu) is larger than remaining data (%zu)",
 				       struct_len + need, (end - p));
 			goto unknown;
@@ -818,7 +818,7 @@ done:
 		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
 			length -= 1;
 
-			length += parent->flags.type_size;
+			length += da_length_offset(parent);
 
 			if (length > UINT8_MAX) return -1;
 
@@ -826,7 +826,7 @@ done:
 		} else {
 			length -= 2;
 
-			length += parent->flags.type_size;
+			length += da_length_offset(parent);
 
 			if (length > UINT16_MAX) return -1;
 
