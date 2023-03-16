@@ -207,7 +207,7 @@ char const *ssl_version_num(void)
 	return "not linked";
 }
 
-char const *ssl_version()
+char const *ssl_version(void)
 {
 	return "not linked";
 }
