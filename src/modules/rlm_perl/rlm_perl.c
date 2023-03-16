@@ -28,6 +28,10 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(compound-token-split-by-macro) /* Perl does horrible things with macros */
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+
 #ifdef INADDR_ANY
 #  undef INADDR_ANY
 #endif
