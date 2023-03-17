@@ -123,10 +123,8 @@ static void destroy_password (struct mypasswd * pass)
 
 static unsigned int hash(char const * username, unsigned int tablesize)
 {
-	int h=1;
-	while (*username) {
-		h = h * 7907 + *username++;
-	}
+	uint32_t h = fr_hash_string(username);
+
 	return h%tablesize;
 }
 
