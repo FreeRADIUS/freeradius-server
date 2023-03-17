@@ -1527,9 +1527,6 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
  *				  result in a parse error.
  *				- allow_unresolved - If false unknown attribute names
  *				  result in a parse error.
- *				- disallow_internal - If an attribute resolves in the
- *				  internal dictionary then that results in a parse
- *				  error.
  *				- allow_foreign - If an attribute resolves in a dictionary
  *				  that does not match the parent
  *				  (exception being FR_TYPE_GROUP) then that results
@@ -1579,7 +1576,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		(void)fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
 								   at_rules->dict_def,
 								   name, p_rules ? p_rules->terminals : NULL,
-								   !at_rules->disallow_internal,
+								   true,
 								   at_rules->allow_foreign);
 		/*
 		 *	We can't know which dictionary the
@@ -1613,7 +1610,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *	Discard any errors here... It's more
 		 *	useful to have the original.
 		 */
-		if (!da && !vpt->rules.attr.disallow_internal) {
+		if (!da) {
 			ar = tmpl_attr_list_tail(&vpt->data.attribute.ar);
 			if (!ar || ((ar->type == TMPL_ATTR_TYPE_NORMAL) && (ar->ar_da->type == FR_TYPE_GROUP))) {
 				fr_dict_attr_t const *internal_root = fr_dict_root(fr_dict_internal());
@@ -1674,7 +1671,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	function.
 	 */
 	if (!namespace && at_rules->dict_def) our_parent = namespace = fr_dict_root(at_rules->dict_def);
-	if (!namespace && !at_rules->disallow_internal) our_parent = namespace = fr_dict_root(fr_dict_internal());
+	if (!namespace) our_parent = namespace = fr_dict_root(fr_dict_internal());
 	if (!namespace) {
 		fr_strerror_const("Attribute references must be qualified with a protocol when used here");
 		if (err) *err = TMPL_ATTR_ERROR_UNQUALIFIED_NOT_ALLOWED;
@@ -1786,7 +1783,7 @@ check_attr:
 	/*
 	 *	Attribute location (dictionary) checks
 	 */
-	if (!at_rules->allow_foreign || at_rules->disallow_internal) {
+	if (!at_rules->allow_foreign) {
 		fr_dict_t const *found_in = fr_dict_by_da(da);
 		fr_dict_t const *dict_def = at_rules->dict_def ? at_rules->dict_def : fr_dict_internal();
 
@@ -1795,17 +1792,6 @@ check_attr:
 		 *	chain.
 		 */
 		if (!our_parent) our_parent = fr_dict_root(dict_def);
-
-		/*
-		 *	Even if allow_foreign is false, if disallow_internal is not
-		 *	true, we still allow the resolution.
-		 */
-		if (at_rules->disallow_internal && (found_in == fr_dict_internal())) {
-			fr_strerror_const("Internal attributes not allowed here");
-			if (err) *err = TMPL_ATTR_ERROR_INTERNAL_NOT_ALLOWED;
-			fr_sbuff_set(name, &m_s);
-			goto error;
-		}
 
 		/*
 		 *	Check that the attribute we resolved was from an allowed
@@ -1994,8 +1980,6 @@ do_suffix:
  *							#tmpl_t will be produced.
  *				- allow_foreign		If true, allow attribute names to be qualified
  *							with a protocol outside of the passed dict_def.
- *				- disallow_internal	If true, don't allow fallback to internal
- *							attributes.
  *				- disallow_filters
  *
  * @see REMARKER to produce pretty error markers from the return value.
@@ -3585,7 +3569,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 							 &FR_SBUFF_IN(ar->ar_unresolved,
 							 	      talloc_array_length(ar->ar_unresolved) - 1),
 							 NULL,
-							 !vpt->rules.attr.disallow_internal,
+							 true,
 							 vpt->rules.attr.allow_foreign);
 		if (!da) return -2;	/* Can't resolve, maybe the caller can resolve later */
 
@@ -3650,7 +3634,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 		 *	in the internal dictionary.
 		 */
 		if (!da) {
-			if (!vpt->rules.attr.disallow_internal && prev && (prev->ar_da->type == FR_TYPE_GROUP)) {
+			if (prev && (prev->ar_da->type == FR_TYPE_GROUP)) {
 				(void)fr_dict_attr_by_name_substr(NULL,
 								  &da,
 								  fr_dict_root(fr_dict_internal()),
