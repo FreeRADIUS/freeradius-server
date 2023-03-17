@@ -131,11 +131,9 @@ static void destroy_password (struct mypasswd * pass)
 
 static unsigned int hash(char const * username, unsigned int tablesize)
 {
-	uint64_t h = 1;
+	uint32_t h = fr_hash_string(username);
 
-	while (*username) h = fr_multiply_mod(h, (7907 + *username++), tablesize);
-
-	return (unsigned int)h;
+	return h % tablesize;
 }
 
 static void release_hash_table(struct hashtable * ht){

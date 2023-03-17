@@ -396,32 +396,6 @@ size_t fr_snprint_uint128(char *out, size_t outlen, uint128_t const num)
 	return strlcpy(out, p, outlen);
 }
 
-/** Multiply with modulo wrap
- *
- * Avoids multiplication overflow.
- *
- * @param[in] lhs	First operand.
- * @param[in] rhs	Second operand.
- * @param[in] mod	Modulo.
- * @return
- *	- Result.
- */
-uint64_t fr_multiply_mod(uint64_t lhs, uint64_t rhs, uint64_t mod)
-{
-	uint64_t res = 0;
-
-	lhs %= mod;
-
-	while (rhs > 0) {
-		if (rhs & 0x01) res = (res + lhs) % mod;
-
-		lhs = (lhs * 2) % mod;
-		rhs /= 2;
-	}
-
-	return res % mod;
-}
-
 /** Compares two pointers
  *
  * @param a first pointer to compare.
