@@ -1570,7 +1570,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	}
 
 	/*
-	 *	No parent means we use the default dictionary.
+	 *	No parent means we need to go hunting through all the dictionaries
 	 */
 	if (!our_parent) {
 		(void)fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
@@ -1596,8 +1596,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	or its reference in the case of group attributes.
 	 */
 	} else {
-		fr_assert(namespace != NULL);
-
 		(void)fr_dict_attr_by_name_substr(&dict_err,
 						  &da,
 						  namespace,
@@ -1680,9 +1678,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		fr_sbuff_set(name, &m_s);
 		goto error;
 	}
-
-	fr_assert(our_parent != NULL);
-	fr_assert(namespace != NULL);
 
 	/*
 	 *	See if the ref begins with an unsigned integer
@@ -1853,9 +1848,7 @@ do_suffix:
 		switch (da->type) {
 		/*
 		 *	If this is a group then the parent is the
-		 *	group ref.  If no explicit ref is set in the
-		 *	dictionary, the ref is the dict root of the
-		 *	attribute.
+		 *	group ref.
 		 *
 		 *	The dictionary resolution functions will
 		 *	automatically follow the ref, so we don't
@@ -1868,25 +1861,23 @@ do_suffix:
 			ref = fr_dict_attr_ref(da);
 
 			/*
-			 *	If we're swapping dictionaries, do so.  Otherwise ref is to the internal
-			 *	dictionary, and we don't want to use that.
-			 *
-			 *	Instead of using the internal dictionary, just reset parent / namespace to the
-			 *	root of dict_def.
-			 *
-			 *	Note that means we cannot put random protocol attributes into an internal
-			 *	attribute of type "group".
+			 *	if there's a real dictionary, and this reference is to group which is in fact
+			 *	the internal dict, then just keep using our dict_def.
 			 */
-			if (ref != fr_dict_root(fr_dict_internal())) {
-				namespace = ref;
-
-			} else if (at_rules->dict_def) {
-				namespace = fr_dict_root(at_rules->dict_def);
+			if (at_rules->dict_def && (ref == fr_dict_root(fr_dict_internal()))) {
+				if (!namespace) namespace = ref;
 
 			} else {
-				namespace = NULL;
+				namespace = ref;
 			}
-			our_parent = NULL;
+
+			/*
+			 *	If the group is from the internal dictionary, then reset the search
+			 *	for the child attribute.  Protocol attributes are allowed inside
+			 *	internal group attributes.
+			 */
+			our_parent = (namespace && (namespace->dict == fr_dict_internal())) ? NULL : namespace;
+
 			break;
 
 		case FR_TYPE_STRUCT:
