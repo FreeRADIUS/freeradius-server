@@ -1315,6 +1315,14 @@ static void unlang_cancel_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now
 	talloc_free(request_data_get(request, (void *)unlang_cancel_xlat, 0));
 }
 
+static xlat_action_t unlang_cancel_never_run(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					     UNUSED xlat_ctx_t const *xctx,
+					     UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	fr_assert_msg(0, "Should never be run");
+	return XLAT_ACTION_FAIL;
+}
+
 /** Allows a request to dynamically alter its own lifetime
  *
  */
@@ -1363,8 +1371,11 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	No timeout means cancel immediately, so yield allowing
 	 *	the interpreter to run the event we added to cancel
 	 *	the request.
+	 *
+	 *	We call unlang_xlat_yield to keep the interpreter happy
+	 *	as it expects to see a resume function set.
 	 */
-	if (!timeout) return XLAT_ACTION_YIELD;
+	if (!timeout) return unlang_xlat_yield(request, unlang_cancel_never_run, NULL, NULL);
 
 	if (ev_p_og) {
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
