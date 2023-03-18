@@ -1570,7 +1570,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	}
 
 	/*
-	 *	No parent means we need to go hunting through all the dictionaries
+	 *	No parent means we use the default dictionary.
 	 */
 	if (!our_parent) {
 		(void)fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
@@ -1596,6 +1596,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	or its reference in the case of group attributes.
 	 */
 	} else {
+		fr_assert(namespace != NULL);
+
 		(void)fr_dict_attr_by_name_substr(&dict_err,
 						  &da,
 						  namespace,
@@ -1678,6 +1680,9 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		fr_sbuff_set(name, &m_s);
 		goto error;
 	}
+
+	fr_assert(our_parent != NULL);
+	fr_assert(namespace != NULL);
 
 	/*
 	 *	See if the ref begins with an unsigned integer
@@ -1873,13 +1878,15 @@ do_suffix:
 			 *	attribute of type "group".
 			 */
 			if (ref != fr_dict_root(fr_dict_internal())) {
-				our_parent = namespace = ref;
+				namespace = ref;
+
+			} else if (at_rules->dict_def) {
+				namespace = fr_dict_root(at_rules->dict_def);
 
 			} else {
-				fr_assert(at_rules->dict_def);
-
-				our_parent = namespace = fr_dict_root(at_rules->dict_def);
+				namespace = NULL;
 			}
+			our_parent = NULL;
 			break;
 
 		case FR_TYPE_STRUCT:
