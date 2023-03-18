@@ -104,7 +104,12 @@ static void _request_stop(request_t *request, void *uctx)
 
 	RDEBUG3("Synchronous request stopped");
 
-	fr_heap_extract(&intps->runnable, request);
+	/*
+	 *  The assumption here is that if the request
+	 *  not in the runnable queue, and it's not
+	 *  currently running, then it must be yielded.
+	 */
+	if (fr_heap_extract(&intps->runnable, request) < 0) intps->yielded--;
 }
 
 /** Request is now runnable
