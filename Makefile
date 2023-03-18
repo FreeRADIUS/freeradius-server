@@ -25,6 +25,17 @@ ifeq "0" "1"
 endif
 
 #
+#  This Makefile is included in-line, and not via the "boilermake"
+#  wrapper.  But it's still useful to use the same process for
+#  seeing commands that are run.
+#
+ifeq "${VERBOSE}" ""
+    Q=@
+else
+    Q=
+endif
+
+#
 #  We require Make.inc, UNLESS the target is "make deb"
 #
 #  Since "make deb" re-runs configure... there's no point in
@@ -85,32 +96,32 @@ raddb/test.conf:
 #  Don't molest STDERR as this may be used to receive output from a debugger.
 #
 $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd | build.raddb
-	@$(MAKE) -C raddb/certs
-	@printf "radiusd -C... "
-	@if ! $(TESTBIN)/radiusd -XCMd ./raddb -D ./share -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
+	$(Q)$(MAKE) -C raddb/certs
+	$(Q)printf "radiusd -C... "
+	$(Q)if ! $(TESTBIN)/radiusd -XCMd ./raddb -D ./share -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
 		rm -f raddb/test.conf; \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
 		exit 1; \
 	fi
-	@rm -f raddb/test.conf
-	@echo "ok"
-	@touch $@
+	$(Q)rm -f raddb/test.conf
+	$(Q)echo "ok"
+	$(Q)touch $@
 
 test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.xlat tests.keywords tests.modules tests.auth test.sql_nas_table $(BUILD_DIR)/tests/radiusd-c | build.raddb
-	@$(MAKE) -C src/tests tests
+	$(Q)$(MAKE) -C src/tests tests
 
 #
 #  Tests specifically for CI. We do a LOT more than just
 #  the above tests
 #
 ci-test: raddb/test.conf test
-	@$(TESTBIN)/radiusd -xxxv -n test
-	@rm -f raddb/test.conf
-	@$(MAKE) install
-	@perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
-	@sh ${HOME}/freeradius/etc/raddb/certs
-	@${sbindir}/radiusd -XC
+	$(Q)$(TESTBIN)/radiusd -xxxv -n test
+	$(Q)rm -f raddb/test.conf
+	$(Q)$(MAKE) install
+	$(Q)perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
+	$(Q)sh ${HOME}/freeradius/etc/raddb/certs
+	$(Q)${sbindir}/radiusd -XC
 
 #
 #  The $(R) is a magic variable not defined anywhere in this source.
@@ -136,27 +147,27 @@ install.share: $(addprefix $(R)$(dictdir)/,$(notdir $(DICTIONARIES)))
 
 .PHONY: dictionary.format
 dictionary.format: $(DICTIONARIES)
-	@./share/format.pl $(DICTIONARIES)
+	$(Q)./share/format.pl $(DICTIONARIES)
 
 $(R)$(dictdir)/%: share/%
 	@echo INSTALL $(notdir $<)
-	@$(INSTALL) -m 644 $< $@
+	$(Q)$(INSTALL) -m 644 $< $@
 
 MANFILES := $(wildcard man/man*/*.?)
 MANDIR   := $(wildcard man/man*)
 install.man: $(subst man/,$(R)$(mandir)/,$(MANFILES))
 
 $(MANDIR):
-	@echo INSTALL $(patsubst $(R)$(mandir)/%,man/%,$@)
-	@$(INSTALL) -d -m 755 $@
+	$(Q)echo INSTALL $(patsubst $(R)$(mandir)/%,man/%,$@)
+	$(Q)$(INSTALL) -d -m 755 $@
 
 $(R)$(mandir)/%: man/% | $(dir $@)
-	@echo INSTALL $(notdir $<)
-	@sed -e "s,/etc/raddb,$(raddbdir),g" \
+	$(Q)echo INSTALL $(notdir $<)
+	$(Q)sed -e "s,/etc/raddb,$(raddbdir),g" \
 		-e "s,/usr/local/share,$(datarootdir),g" \
 		$< > $<.subst
-	@$(INSTALL) -m 644 $<.subst $@
-	@rm $<.subst
+	$(Q)$(INSTALL) -m 644 $<.subst $@
+	$(Q)rm $<.subst
 
 #
 #  Don't install rlm_test
@@ -164,8 +175,8 @@ $(R)$(mandir)/%: man/% | $(dir $@)
 ALL_INSTALL := $(patsubst %rlm_test.la,,$(ALL_INSTALL))
 
 install: install.share install.man
-	@$(INSTALL) -d -m 700	$(R)$(logdir)
-	@$(INSTALL) -d -m 700	$(R)$(radacctdir)
+	$(Q)$(INSTALL) -d -m 700	$(R)$(logdir)
+	$(Q)$(INSTALL) -d -m 700	$(R)$(radacctdir)
 
 ifneq ($(RADMIN),)
 ifneq ($(RGROUP),)
@@ -229,10 +240,10 @@ endif
 #  If there are headers, run auto-header, too.
 src/%configure: src/%configure.ac acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4/*m4) | src/freeradius-devel
 	@echo AUTOCONF $(dir $@)
-	@cd $(dir $@) && \
+	$(Q)cd $(dir $@) && \
 		$(ACLOCAL) --force -I $(top_builddir) -I $(top_builddir)/m4 && \
 		$(AUTOCONF) --force
-	@if grep AC_CONFIG_HEADERS $@ >/dev/null; then\
+	$(Q)if grep AC_CONFIG_HEADERS $@ >/dev/null; then\
 		echo AUTOHEADER $@ \
 		cd $(dir $@) && $(AUTOHEADER) --force; \
 	 fi
@@ -264,9 +275,9 @@ ifneq "$(wildcard config.log)" ""
 CONFIGURE_ARGS	   := $(shell head -10 config.log | grep '^  \$$' | sed 's/^....//;s:.*configure ::')
 
 src/%all.mk: src/%all.mk.in src/%configure
-	@echo CONFIGURE $(dir $@)
-	@rm -f ./config.cache $(dir $<)/config.cache
-	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS) && touch $(notdir $@)
+	$(Q)echo CONFIGURE $(dir $@)
+	$(Q)rm -f ./config.cache $(dir $<)/config.cache
+	$(Q)cd $(dir $<) && ./configure $(CONFIGURE_ARGS) && touch $(notdir $@)
 endif
 
 .PHONY: check-includes
@@ -282,7 +293,7 @@ TAGS:
 #
 .PHONY: certs
 certs:
-	@$(MAKE) -C raddb/certs
+	$(Q)$(MAKE) -C raddb/certs
 
 ######################################################################
 #
@@ -308,27 +319,27 @@ freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: .git/HEAD
 #
 .PHONY: dist-check
 dist-check: redhat/freeradius.spec suse/freeradius.spec debian/changelog
-	@if [ `grep ^Version: redhat/freeradius.spec | sed 's/.*://;s/ //g'` != "$(RADIUSD_VERSION_STRING)" ]; then \
+	$(Q)if [ `grep ^Version: redhat/freeradius.spec | sed 's/.*://;s/ //g'` != "$(RADIUSD_VERSION_STRING)" ]; then \
 		cat redhat/freeradius.spec | sed 's/^Version:.*/Version: $(RADIUSD_VERSION_STRING)/' > redhat/.foo; \
 		mv redhat/.foo redhat/freeradius.spec; \
 		echo redhat/freeradius.spec 'Version' needs to be updated; \
 		exit 1; \
 	fi
-	@if [ `grep ^Version: suse/freeradius.spec | sed 's/.*://;s/ //g'` != "$(RADIUSD_VERSION_STRING)" ]; then \
+	$(Q)if [ `grep ^Version: suse/freeradius.spec | sed 's/.*://;s/ //g'` != "$(RADIUSD_VERSION_STRING)" ]; then \
 		cat suse/freeradius.spec | sed 's/^Version: .*/Version:      $(RADIUSD_VERSION_STRING)/' > suse/.foo; \
 		mv suse/.foo suse/freeradius.spec; \
 		echo suse/freeradius.spec 'Version' needs to be updated; \
 		exit 1; \
 	fi
-	@if [ `head -n 1 doc/ChangeLog | awk '/^FreeRADIUS/{print $$2}'` != "$(RADIUSD_VERSION_STRING)" ]; then \
+	$(Q)if [ `head -n 1 doc/ChangeLog | awk '/^FreeRADIUS/{print $$2}'` != "$(RADIUSD_VERSION_STRING)" ]; then \
 		echo doc/ChangeLog needs to be updated; \
 		exit 1; \
 	fi
-	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/-0).*//;s/-1).*//;s/\+.*//'` != "$(RADIUSD_VERSION_STRING)" ]; then \
+	$(Q)if [ `head -n 1 debian/changelog | sed 's/.*(//;s/-0).*//;s/-1).*//;s/\+.*//'` != "$(RADIUSD_VERSION_STRING)" ]; then \
 		echo debian/changelog needs to be updated; \
 		exit 1; \
 	fi
-	@if [ `grep version doc/antora/antora.yml | sed 's/^.*version: //'` != "'$(RADIUSD_VERSION_STRING)'" ]; then \
+	$(Q)if [ `grep version doc/antora/antora.yml | sed 's/^.*version: //'` != "'$(RADIUSD_VERSION_STRING)'" ]; then \
 		echo doc/antora/antora.yml needs to be updated with: version '$(RADIUSD_VERSION_STRING)'; \
 		exit 1; \
 	fi
@@ -345,7 +356,7 @@ dist-publish: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig freeradius-
 #  to do!
 #
 dist-tag: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
-	@echo "git tag release_`echo $(RADIUSD_VERSION_STRING) | tr .- __`"
+	$(Q)echo "git tag release_`echo $(RADIUSD_VERSION_STRING) | tr .- __`"
 
 #
 #  Docker-related targets (main Docker images and crossbuild)
@@ -372,24 +383,24 @@ deb:
 #
 .PHONY: rpm
 rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
-	@mkdir -p $(addprefix rpmbuild/,SOURCES SPECS BUILD RPMS SRPMS BUILDROOT)
-	@for file in `awk '/^Source...:/ {print $$2}' redhat/freeradius.spec` ; do cp redhat/$$file rpmbuild/SOURCES/$$file ; done
-	@cp $< $@
+	$(Q)mkdir -p $(addprefix rpmbuild/,SOURCES SPECS BUILD RPMS SRPMS BUILDROOT)
+	$(Q)for file in `awk '/^Source...:/ {print $$2}' redhat/freeradius.spec` ; do cp redhat/$$file rpmbuild/SOURCES/$$file ; done
+	$(Q)cp $< $@
 
 rpm: rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
-	@if ! yum-builddep -q -C --assumeno redhat/freeradius.spec 1> /dev/null 2>&1; then \
+	$(Q)if ! yum-builddep -q -C --assumeno redhat/freeradius.spec 1> /dev/null 2>&1; then \
 		echo "ERROR: Required depdendencies not found, install them with: yum-builddep redhat/freeradius.spec"; \
 		exit 1; \
 	fi
-	@QA_RPATHS=0x0003 rpmbuild --define "_topdir `pwd`/rpmbuild" -bb redhat/freeradius.spec
+	$(Q)QA_RPATHS=0x0003 rpmbuild --define "_topdir `pwd`/rpmbuild" -bb redhat/freeradius.spec
 
 #
 #  Developer checks
 #
 .PHONY: warnings
 warnings:
-	@(make clean all 2>&1) | egrep -v '^/|deprecated|^In file included|: In function|   from |^HEADER|^CC|^LN|^LINK' > warnings.txt
-	@wc -l warnings.txt
+	$(Q)(make clean all 2>&1) | egrep -v '^/|deprecated|^In file included|: In function|   from |^HEADER|^CC|^LN|^LINK' > warnings.txt
+	$(Q)@wc -l warnings.txt
 
 #
 #  Ensure we're using tabs in the configuration files,
@@ -397,5 +408,5 @@ warnings:
 #
 .PHONY: whitespace
 whitespace:
-	@for x in $$(git ls-files raddb/ src/); do unexpand $$x > $$x.bak; cp $$x.bak $$x; rm -f $$x.bak;done
-	@perl -p -i -e 'trim' $$(git ls-files src/)
+	$(Q)for x in $$(git ls-files raddb/ src/); do unexpand $$x > $$x.bak; cp $$x.bak $$x; rm -f $$x.bak;done
+	$(Q)perl -p -i -e 'trim' $$(git ls-files src/)
