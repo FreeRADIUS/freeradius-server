@@ -1770,7 +1770,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					    .escapes = &escape_rules
 				    },
 				    &(tmpl_rules_t){
-					    .attr = {
+					.attr = {
 						.dict_def = request->dict,
 						.list_def = request_attr_request,
 						.allow_unknown = false,
