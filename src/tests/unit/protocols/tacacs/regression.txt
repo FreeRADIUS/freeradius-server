@@ -1,0 +1,17 @@
+#  Test vectors for TACACS attributes
+#
+#  Copyright 2023 Network RADIUS SARL (legal@networkradius.com)
+#
+proto tacacs
+proto-dictionary tacacs
+fuzzer-out tacacs
+
+#
+#  Authorization - Response: (Client <- Server)
+#
+#  Flags = Single-Connect
+#
+#  Regression test - Flags VP not respected
+#
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 2, Packet.Flags = Single-Connect, Packet.Session-Id = 3781589222, Packet.Length = 19, Packet-Body-Type = Response, Authorization-Status = Pass-Add, Server-Message = "", Data = 0x, Argument-List = "addr=1.2.3.4"
+match c0 02 02 04 e1 66 78 e6 00 00 00 13 02 59 f9 90 38 81 e1 bb 9d a6 13 93 fc 86 7e 4a 14 1c 24
