@@ -1,0 +1,9 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+
+#
+#  Expected answer
+#
+Packet-Type == 0
