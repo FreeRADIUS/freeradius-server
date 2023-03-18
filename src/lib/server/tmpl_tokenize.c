@@ -1848,7 +1848,9 @@ do_suffix:
 		switch (da->type) {
 		/*
 		 *	If this is a group then the parent is the
-		 *	group ref.
+		 *	group ref.  If no explicit ref is set in the
+		 *	dictionary, the ref is the dict root of the
+		 *	attribute.
 		 *
 		 *	The dictionary resolution functions will
 		 *	automatically follow the ref, so we don't
@@ -1861,23 +1863,23 @@ do_suffix:
 			ref = fr_dict_attr_ref(da);
 
 			/*
-			 *	if there's a real dictionary, and this reference is to group which is in fact
-			 *	the internal dict, then just keep using our dict_def.
+			 *	If we're swapping dictionaries, do so.  Otherwise ref is to the internal
+			 *	dictionary, and we don't want to use that.
+			 *
+			 *	Instead of using the internal dictionary, just reset parent / namespace to the
+			 *	root of dict_def.
+			 *
+			 *	Note that means we cannot put random protocol attributes into an internal
+			 *	attribute of type "group".
 			 */
-			if (at_rules->dict_def && (ref == fr_dict_root(fr_dict_internal()))) {
-				if (!namespace) namespace = ref;
+			if (ref != fr_dict_root(fr_dict_internal())) {
+				our_parent = namespace = ref;
 
 			} else {
-				namespace = ref;
+				fr_assert(at_rules->dict_def);
+
+				our_parent = namespace = fr_dict_root(at_rules->dict_def);
 			}
-
-			/*
-			 *	If the group is from the internal dictionary, then reset the search
-			 *	for the child attribute.  Protocol attributes are allowed inside
-			 *	internal group attributes.
-			 */
-			our_parent = (namespace && (namespace->dict == fr_dict_internal())) ? NULL : namespace;
-
 			break;
 
 		case FR_TYPE_STRUCT:
