@@ -1,0 +1,11 @@
+#
+#  PROTOCOL: DHCPv4
+#
+#  Not really, but it's a way to test cross-protocol issues
+#
+update {
+	&Proto.radius.User-Name = 'uid'
+	&Password.With-Header = 'userPassword'
+}
+
+success
