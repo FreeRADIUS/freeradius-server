@@ -1,5 +1,5 @@
 #
-#  PROTOCOL: DHCPv4
+#  PROTOCOL: dhcpv4
 #
 #  Not really, but it's a way to test cross-protocol issues
 #
