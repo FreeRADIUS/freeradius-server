@@ -1517,8 +1517,8 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
  * @param[in] ctx		to allocate new attribute reference in.
  * @param[out] err		Parse error.
  * @param[in,out] vpt		to append this reference to.
- * @param[in] parent		Parent to associate with the attribute reference.
- * @param[in] namespace		Where to search to resolve the next reference.
+ * @param[in] parent		Parent where the attribute will be placed (group, struct, tlv, etc).
+ * @param[in] namespace		Where the child attribute will be parsed from (dict root, struct member, TLV child, etc)
  * @param[in] name		to parse.
  * @param[in] p_rules		Formatting rules used to check for trailing garbage.
  * @param[in] at_rules		which places constraints on attribute reference parsing.
@@ -1570,34 +1570,41 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	}
 
 	/*
-	 *	No parent means we use the default dictionary.
+	 *	Maybe there's no child namespace (struct member, tlv child, etc).  In which case we must
+	 *	search from the default dictionary root.
 	 */
-	if (!our_parent) {
+	if (!namespace) {
+		fr_assert(parent == NULL);
+
 		(void)fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
 								   at_rules->dict_def,
 								   name, p_rules ? p_rules->terminals : NULL,
 								   true,
 								   at_rules->allow_foreign);
 		/*
-		 *	We can't know which dictionary the
-		 *	attribute will be resolved in, so the
-		 *	only way of recording what the parent
-		 *	is by looking at the da.
+		 *	The attribute was found either in the dict_def root, OR in the internal root, OR if
+		 *	!dict_def && allow_foreign, in some other dictionary root.
 		 *
-		 *	Else no da reference, the parent is the namespace.
+		 *	Otherwise we're still not sure what the attribute is.  It may end up being an
+		 *	unresolved one.
 		 */
 		if (da) {
 			our_parent = da->parent;
-		} else {
-			our_parent = namespace;
+			fr_assert(our_parent->flags.is_root);
 		}
-	/*
-	 *	Otherwise we're resolving in the context of the last component,
-	 *	or its reference in the case of group attributes.
-	 */
 	} else {
-		fr_assert(namespace != NULL);
+		fr_assert(parent != NULL);
 
+		/*
+		 *	Otherwise we're resolving the next piece in the context of where-ever we ended up from
+		 *	parsing the last bit.
+		 *
+		 *	The "parent" could be the same as "namespace", if both are at a dictionary root, OR
+		 *	both are from a struct / tlv attribute.
+
+		 *	Or, "parent" could be a grouping attribute (e.g. request), and "namespace" could be
+		 *	the dictionary root.
+		 */
 		(void)fr_dict_attr_by_name_substr(&dict_err,
 						  &da,
 						  namespace,
@@ -1634,6 +1641,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 */
 	switch (dict_err) {
 	case FR_DICT_ATTR_NO_CHILDREN:
+		fr_assert(our_parent != NULL);
 		if (our_parent->flags.is_unknown) break;
 		goto error;
 
@@ -1647,6 +1655,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *	reference.
 		 */
 		if (da) {
+			fr_assert(our_parent != NULL);
+
 			MEM(ar = talloc(ctx, tmpl_attr_t));
 			*ar = (tmpl_attr_t){
 				.ar_num = NUM_UNSPEC,
@@ -1793,17 +1803,11 @@ check_attr:
 		fr_dict_t const *dict_def = at_rules->dict_def ? at_rules->dict_def : fr_dict_internal();
 
 		/*
-		 *	Parent is the dict root if this is the first ref in the
-		 *	chain.
-		 */
-		if (!our_parent) our_parent = fr_dict_root(dict_def);
-
-		/*
 		 *	Check that the attribute we resolved was from an allowed
 		 *	dictionary.
 		 *
-		 *	We already checked if internal attributes were disallowed
-		 *	above, so we skip this check if the attribute is internal.
+		 *	We skip this check if the attribute is internal, because that was already checked
+		 *	above.
 		 *
 		 * 	The reason this checks works with foreign attributes is
 		 *	because when an attr ref resolves to a group parent is not
@@ -1878,15 +1882,14 @@ do_suffix:
 			 *	attribute of type "group".
 			 */
 			if (ref != fr_dict_root(fr_dict_internal())) {
-				namespace = ref;
+				our_parent = namespace = ref;
 
 			} else if (at_rules->dict_def) {
-				namespace = fr_dict_root(at_rules->dict_def);
+				our_parent = namespace = fr_dict_root(at_rules->dict_def);
 
 			} else {
-				namespace = NULL;
+				our_parent = namespace = NULL;
 			}
-			our_parent = NULL;
 			break;
 
 		case FR_TYPE_STRUCT:
