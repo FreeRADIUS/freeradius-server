@@ -466,7 +466,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	fr_value_box_list_init(&m->box);
 	return unlang_module_yield_to_tmpl(m, &m->box,
 					   request, inst->tmpl,
-					   TMPL_ARGS_EXEC(env_pairs, fr_time_delta_wrap(0), true, &m->status),
+					   TMPL_ARGS_EXEC(env_pairs, inst->timeout, true, &m->status),
 					   mod_exec_wait_resume,
 					   NULL, &m->box);
 }
