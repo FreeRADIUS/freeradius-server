@@ -1701,8 +1701,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	.<oid>
 	 */
 	if (fr_sbuff_out(NULL, &oid, name) > 0) {
-		fr_dict_attr_t *da_unknown;
-
 		fr_strerror_clear();	/* Clear out any existing errors */
 
 		/*
@@ -1725,7 +1723,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 				.ar_parent = our_parent,
 			};
 			vpt->data.attribute.was_oid = true;
-
 			goto check_attr;
 		}
 
@@ -1736,38 +1733,29 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 			goto error;
 		}
 
-		MEM(ar = talloc(ctx, tmpl_attr_t));
 		switch (namespace->type) {
 		case FR_TYPE_VSA:
-			da_unknown = fr_dict_unknown_vendor_afrom_num(ar, namespace, oid);
-			if (!da_unknown) {
-				if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;	/* strerror set by dict function */
-				goto error;
-			}
+			da = fr_dict_unknown_vendor_afrom_num(ar, namespace, oid);
 			break;
 
 		default:
-			da_unknown = fr_dict_unknown_attr_afrom_num(ar, namespace, oid);
-			if (!da_unknown) {
-				if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;	/* strerror set by dict function */
-				goto error;
-			}
+			da  = fr_dict_unknown_attr_afrom_num(ar, namespace, oid);
 			break;
 		}
 
-		/*
-		 *	Inherit the internal flag from our parent.
-		 */
-		da_unknown->flags.internal = our_parent->flags.internal;
+		if (!da) {
+			if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;	/* strerror set by dict function */
+			goto error;
+		}
 
+		MEM(ar = talloc(ctx, tmpl_attr_t));
 		*ar = (tmpl_attr_t){
 			.ar_num = NUM_UNSPEC,
 			.ar_type = TMPL_ATTR_TYPE_UNKNOWN,
-			.ar_unknown = da_unknown,
-			.ar_da = da_unknown,
+			.ar_unknown = UNCONST(fr_dict_attr_t *, da),
+			.ar_da = da,
 			.ar_parent = our_parent,
 		};
-		da = da_unknown;
 		vpt->data.attribute.was_oid = true;
 		goto do_suffix;
 	}
