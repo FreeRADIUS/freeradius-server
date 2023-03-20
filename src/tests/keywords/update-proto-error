@@ -1,0 +1,11 @@
+#
+#  PROTOCOL: dhcpv4
+#
+#  We cannot refer to internal attributes by number
+#  Those numbers don't mean anything.
+#
+update {
+	&Proto.1.User-Name += 'foo'	# ERROR
+}
+
+success

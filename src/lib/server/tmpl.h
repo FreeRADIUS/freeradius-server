@@ -558,8 +558,6 @@ struct tmpl_s {
 		_CONST struct {
 			bool			ref_prefix;	//!< true if the reference was prefixed
 								///< with a '&'.
-			bool			was_oid;	//!< Was originally a numeric OID.
-
 			FR_DLIST_HEAD(tmpl_request_list)	rr;	//!< Request to search or insert in.
 			FR_DLIST_HEAD(tmpl_attr_list)		ar;	//!< Head of the attribute reference list.
 		} attribute;

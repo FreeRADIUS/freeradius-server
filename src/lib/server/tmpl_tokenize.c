@@ -1556,6 +1556,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		fr_strerror_const("Attribute nesting too deep");
 		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
 	error:
+		talloc_free(ar);
 		fr_sbuff_marker_release(&m_s);
 		FR_SBUFF_ERROR_RETURN(name);
 	}
@@ -1633,6 +1634,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 					our_parent = internal_root;
 				}
 			}
+			ar = NULL;
 		}
 	}
 
@@ -1649,46 +1651,35 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		goto error;
 
 	default:
+		if (!da) break;
+
 		/*
 		 *	The named component was a known attribute
 		 *	so record it as a normal attribute
 		 *	reference.
 		 */
-		if (da) {
-			fr_assert(our_parent != NULL);
+		fr_assert(our_parent != NULL);
 
-			MEM(ar = talloc(ctx, tmpl_attr_t));
-			*ar = (tmpl_attr_t){
-				.ar_num = NUM_UNSPEC,
-				.ar_type = TMPL_ATTR_TYPE_NORMAL,
-				.ar_da = da,
-				.ar_parent = our_parent
-			};
-			goto check_attr;
-		}
-		break;
+		goto alloc_ar;
 	}
 
 	/*
-	 *	Locating OID/Unresolved attributes is
-	 *	different than locating named attributes
-	 *	because we have significantly more numberspace
-	 *	overlap between the protocols so we can't just go
-	 *	hunting and expect to hit the right
-	 *	dictionary.
+	 *	At this point we haven't found a known attribute.  What remains MUST be an OID component, OR an
+	 *	unresolved attribute.
 	 *
-	 *	FIXME - We should really fix the above named
-	 *	resolution calls to hunt for a dictionary prefix
-	 *	first, and then run the rest of the logic in this
-	 *	function.
+	 *	The default is to parse the OIDs in the current namespace.  If there is none, then we parse
+	 *	the OIDs and unresolved attributes in the dict_def.  And if that doesn't exist, in the
+	 *	internal dictionaries.
+	 *
+	 *	Note that we do NOT allow unknown attributes in the internal dictionary.  Those attributes are
+	 *	generally just DEFINEs, and their numbers have no meaning.
 	 */
-	if (!namespace && at_rules->dict_def) our_parent = namespace = fr_dict_root(at_rules->dict_def);
-	if (!namespace) our_parent = namespace = fr_dict_root(fr_dict_internal());
 	if (!namespace) {
-		fr_strerror_const("Attribute references must be qualified with a protocol when used here");
-		if (err) *err = TMPL_ATTR_ERROR_UNQUALIFIED_NOT_ALLOWED;
-		fr_sbuff_set(name, &m_s);
-		goto error;
+		if (at_rules->dict_def) {
+			our_parent = namespace = fr_dict_root(at_rules->dict_def);
+		} else {
+			our_parent = namespace = fr_dict_root(fr_dict_internal());
+		}
 	}
 
 	fr_assert(our_parent != NULL);
@@ -1703,36 +1694,33 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	if (fr_sbuff_out(NULL, &oid, name) > 0) {
 		fr_strerror_clear();	/* Clear out any existing errors */
 
+		if (fr_dict_by_da(namespace) == fr_dict_internal()) goto disallow_unknown;
+
 		/*
-		 *	If it's numeric and not a known attribute
-		 *      then we create an unknown attribute with
-		 *	the specified attribute number.
+		 *	The OID component was a known attribute
+		 *	so record it as a normal attribute
+		 *	reference.
 		 */
 		da = fr_dict_attr_child_by_num(namespace, oid);
-		if (da) {
-			/*
-			 *	The OID component was a known attribute
-			 *	so record it as a normal attribute
-			 *	reference.
-			 */
-			MEM(ar = talloc(ctx, tmpl_attr_t));
-			*ar = (tmpl_attr_t){
-				.ar_num = NUM_UNSPEC,
-				.ar_type = TMPL_ATTR_TYPE_NORMAL,
-				.ar_da = da,
-				.ar_parent = our_parent,
-			};
-			vpt->data.attribute.was_oid = true;
-			goto check_attr;
-		}
+		if (da) goto  alloc_ar;
 
 		if (!at_rules->allow_unknown) {
+		disallow_unknown:
 			fr_strerror_const("Unknown attributes not allowed here");
 			if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
 			goto error;
 		}
 
+		/*
+		 *	If it's numeric and not a known attribute
+		 *      then we create an unknown attribute with
+		 *	the specified attribute number.
+		 */
+
+		/*
+		 *	VSAs have VENDORs as children.  All others are just normal things.
+		 */
 		switch (namespace->type) {
 		case FR_TYPE_VSA:
 			da = fr_dict_unknown_vendor_afrom_num(ar, namespace, oid);
@@ -1756,7 +1744,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 			.ar_da = da,
 			.ar_parent = our_parent,
 		};
-		vpt->data.attribute.was_oid = true;
 		goto do_suffix;
 	}
 
@@ -1782,41 +1769,14 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 */
 	return tmpl_attr_ref_afrom_unresolved_substr(ctx, err, vpt, our_parent, namespace, name, at_rules);
 
-check_attr:
-	/*
-	 *	Attribute location (dictionary) checks
-	 */
-	if (!at_rules->allow_foreign) {
-		fr_dict_t const *found_in = fr_dict_by_da(da);
-		fr_dict_t const *dict_def = at_rules->dict_def ? at_rules->dict_def : fr_dict_internal();
-
-		/*
-		 *	Check that the attribute we resolved was from an allowed
-		 *	dictionary.
-		 *
-		 *	We skip this check if the attribute is internal, because that was already checked
-		 *	above.
-		 *
-		 * 	The reason this checks works with foreign attributes is
-		 *	because when an attr ref resolves to a group parent is not
-		 *	set to that attribute, but the foreign dictionary attribute
-		 *	that it references.
-		 *
-		 *	My-Dhcp-In-RADIUS-Attribute.My-DHCP-Attribute
-		 *	|			  ||_ DHCP attribute
-		 *	|			  |_ Lookup inside linking attribute triggers dictionary change
-		 *	|_ RADIUS attribute
-		 */
-		if (found_in != fr_dict_internal() &&
-		    !at_rules->allow_foreign && !fr_dict_compatible(found_in, fr_dict_by_da(our_parent))) {
-			fr_strerror_printf("Foreign %s attribute found.  Only %s attributes are allowed here",
-					   fr_dict_root(found_in)->name,
-					   fr_dict_root(dict_def)->name);
-			if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
-			fr_sbuff_set(name, &m_s);
-			goto error;
-		}
-	}
+alloc_ar:
+	MEM(ar = talloc(ctx, tmpl_attr_t));
+	*ar = (tmpl_attr_t) {
+		.ar_num = NUM_UNSPEC,
+		.ar_type = TMPL_ATTR_TYPE_NORMAL,
+		.ar_da = da,
+		.ar_parent = our_parent,
+	};
 
 do_suffix:
 	/*
@@ -1839,23 +1799,11 @@ do_suffix:
 	 */
 	fr_sbuff_marker_release(&m_s);
 	fr_sbuff_marker(&m_s, name);
+
 	if (fr_sbuff_next_if_char(name, '.')) {
 		fr_dict_attr_t const *ref;
 
 		switch (da->type) {
-		/*
-		 *	If this is a group then the parent is the
-		 *	group ref.  If no explicit ref is set in the
-		 *	dictionary, the ref is the dict root of the
-		 *	attribute.
-		 *
-		 *	The dictionary resolution functions will
-		 *	automatically follow the ref, so we don't
-		 *	need to do it here, especially as some
-		 *	of the logic in this function depends
-		 *	on having the group attribute and not what
-		 *	it points to.
-		 */
 		case FR_TYPE_GROUP:
 			ref = fr_dict_attr_ref(da);
 
@@ -1907,10 +1855,19 @@ do_suffix:
 			} else {
 				our_parent = da;	/* Only update the parent if we're not stripping */
 			}
+
+			/*
+			 *	The child might not go into the parent list, but the child definitely is in
+			 *	the parents namespace.
+			 */
 			namespace = da;
 			break;
 
 		default:
+			/*
+			 *	Key fields can have children, because we really don't know how else to
+			 *	represent the child structures.
+			 */
 			if (fr_dict_attr_is_key_field(da)) goto is_union;
 
 			fr_strerror_printf("Parent type of nested attribute %s must be of type "
@@ -1924,15 +1881,19 @@ do_suffix:
 		if (ar) tmpl_attr_insert(vpt, ar);
 
 		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, our_parent, namespace, name, p_rules, at_rules, depth + 1) < 0) {
-			if (ar) tmpl_attr_list_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
+			if (ar) {
+				tmpl_attr_list_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
+				ar = NULL;
+			}
 			goto error;
 		}
+
 	/*
 	 *	If it's a leaf we always insert the attribute
 	 *	reference into the list, even if it's a
 	 *	nesting attribute.
 	 *
-	 *	This is useful for nested update sections
+	 *	This is useful for nested edit sections
 	 *	where the tmpl might be the name of a new
 	 *	subsection.
 	 */
@@ -1940,6 +1901,9 @@ do_suffix:
 		tmpl_attr_insert(vpt, ar);
 	}
 
+	/*
+	 *	Remove unnecessary casts.
+	 */
 	if (tmpl_is_attr(vpt) && tmpl_attr_tail_is_normal(vpt) &&
 	    (tmpl_rules_cast(vpt) == tmpl_attr_tail_da(vpt)->type)) vpt->rules.cast = FR_TYPE_NULL;
 

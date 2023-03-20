@@ -59,7 +59,7 @@ KEYWORD_UPDATE_REWRITE_TESTS := update-all update-array update-delete update-rem
 #
 ifneq "$(findstring ${1}, paircmp if-paircmp)" ""
 $(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=no -S use_new_conditions=no
-else ifneq "$(findstring ${1}, comments update-to-edit if-regex-multivalue smash wimax unknown $(KEYWORD_UPDATE_TESTS) vendor_specific vendor_specific.raw xlat-unknown update-proto)" ""
+else ifneq "$(findstring ${1}, comments update-to-edit if-regex-multivalue smash wimax unknown $(KEYWORD_UPDATE_TESTS) vendor_specific vendor_specific.raw xlat-unknown update-proto update-proto-error)" ""
 $(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=yes -S use_new_conditions=yes
 else ifneq "$(findstring ${1}, $(KEYWORD_UPDATE_REWRITE_TESTS))" ""
 $(OUTPUT)/${1}: NEW_COND=-S parse_new_conditions=yes -S use_new_conditions=yes -S rewrite_update=yes
