@@ -16,6 +16,7 @@ static void *test_iter(fr_dlist_head_t *list, void *current, UNUSED void *uctx)
 	return fr_dlist_next(list, current);
 }
 
+/** @hidecallergraph */
 static void test_list_init(test_item_list_t *list)
 {
 	fr_dlist_talloc_init(&list->head, test_item_t, entry);

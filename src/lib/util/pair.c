@@ -40,6 +40,8 @@ FR_TLIST_FUNCS(fr_pair_order_list, fr_pair_t, order_entry)
 /** Initialise a pair list header
  *
  * @param[in,out] list to initialise
+ *
+ * @hidecallergraph
  */
 void fr_pair_list_init(fr_pair_list_t *list)
 {
@@ -1259,6 +1261,8 @@ int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
  * @return
  *	- 0 on success.
  *	- -1 on failure (pair already in list).
+ *
+ * @hidecallergraph
  */
 int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 {

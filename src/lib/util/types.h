@@ -366,6 +366,8 @@ extern size_t fr_type_table_len;
  *
  * @param[in] type to return name for.
  * @return name of the type
+ *
+ * @hidecallergraph
  */
 static inline char const *fr_type_to_str(fr_type_t type)
 {
