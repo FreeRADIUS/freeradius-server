@@ -12,9 +12,8 @@ olcLastMod: TRUE
 olcDbCheckpoint: 512 30
 olcAccess: to attrs=userPassword by dn="cn=admin,dc=example,dc=com" write by anonymous auth by self write by * none
 olcAccess: to attrs=shadowLastChange by self write by * read
-olcAccess: to * by dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage by dn="cn=admin,cn=config" manage
-olcAccess: to dn.base="" by * read
-olcAccess: to * by dn="cn=admin,dc=example,dc=com" write by * read
+olcAccess: to dn.base="" by dn="cn=admin,cn=config" manage by * read
+olcAccess: to * by dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage by dn="cn=admin,cn=config" manage by dn="cn=admin,dc=example,dc=com" write by * read
 
 dn: olcOverlay=syncprov,olcDatabase={1}mdb,cn=config
 objectClass: olcOverlayConfig
