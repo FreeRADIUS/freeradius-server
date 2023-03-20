@@ -274,7 +274,8 @@ fr_dict_attr_t	*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = 1,
 					.type_size = 1,
-					.length = 1
+					.length = 1,
+					.internal = parent->flags.internal,
 				};
 
 	/*
@@ -311,6 +312,7 @@ fr_dict_attr_t *fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t co
 {
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = true,
+					.internal = parent->flags.internal,
 				};
 
 	if (!fr_type_is_structural_except_vsa(parent->type)) {
@@ -338,6 +340,7 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t c
 {
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = true,
+					.internal = parent->flags.internal,
 				};
 
 	if (!fr_type_is_structural_except_vsa(parent->type)) {
