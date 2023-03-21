@@ -35,6 +35,7 @@ jobs:
     # Map a step output to a job output
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
+      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
     steps:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@master
@@ -68,10 +69,10 @@ jobs:
         #  docker  - the docker image name, if containers are being used
         #  name    - used in the job name only
         os:
-          - runs_on: "${{ github.repository_owner == 'FreeRADIUS' && 'self-hosted' || 'ubuntu-20.04' }}"
+          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-20.04' }}"
+            docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:20.04' }}"
+            name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu20"
             code: "ubuntu2004"
-            docker: "ubuntu:20.04"
-            name: "${{ github.repository_owner == 'FreeRADIUS' && 'self' || 'gh' }}-ubuntu20"
             imageos: "ubuntu20"
 
         env:
