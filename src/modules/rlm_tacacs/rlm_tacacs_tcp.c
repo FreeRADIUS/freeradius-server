@@ -1381,6 +1381,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, UNUSE
 	udp_result_t			*r;
 	udp_request_t			*u;
 	fr_trunk_request_t		*treq;
+	fr_trunk_enqueue_t		q;
 
 	fr_assert(FR_TACACS_PACKET_CODE_VALID(request->packet->code));
 
@@ -1402,11 +1403,21 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, UNUSE
 
 	r->rcode = RLM_MODULE_FAIL;
 
-	if (fr_trunk_request_enqueue(&treq, t->trunk, request, u, r) < 0) {
+	q = fr_trunk_request_enqueue(&treq, t->trunk, request, u, r);
+	if (q < 0) {
 		fr_assert(!u->packet);	/* Should not have been fed to the muxer */
 		fr_trunk_request_free(&treq);		/* Return to the free list */
+	fail:
 		talloc_free(r);
 		RETURN_MODULE_FAIL;
+	}
+
+	/*
+	 *	All destinations are down.
+	 */
+	if (q == FR_TRUNK_ENQUEUE_IN_BACKLOG) {
+		RDEBUG("All destinations are down - cannot send packet");
+		goto fail;
 	}
 
 	r->treq = treq;	/* Remember for signalling purposes */
