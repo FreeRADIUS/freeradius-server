@@ -596,15 +596,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, module
 	 */
 	p = strchr(name, '.');
 	if (!p) {
-		if (!mi) {
-			fr_strerror_printf("No such module '%s'", name);
-
-		} else if (method_name2) {
-			fr_strerror_printf("Module '%s' does not have a '%s %s' method", name, method_name1, method_name2);
-
-		} else {
-			fr_strerror_printf("Module '%s' does not have a '%s' method", name, method_name1);
-		}
+		fr_strerror_printf("No such module '%s'", name);
 		return NULL;
 	}
 
