@@ -152,10 +152,12 @@ typedef struct {
 	process_radius_auth_t		auth;		//!< Authentication configuration.
 } process_radius_t;
 
+#define FR_RADIUS_PROCESS_CODE_VALID(_x) (FR_RADIUS_PACKET_CODE_VALID(_x) || (_x == FR_RADIUS_CODE_DO_NOT_RESPOND))
+
 #define PROCESS_PACKET_TYPE		fr_radius_packet_code_t
 #define PROCESS_CODE_MAX		FR_RADIUS_CODE_MAX
 #define PROCESS_CODE_DO_NOT_RESPOND	FR_RADIUS_CODE_DO_NOT_RESPOND
-#define PROCESS_PACKET_CODE_VALID	FR_RADIUS_PACKET_CODE_VALID
+#define PROCESS_PACKET_CODE_VALID	FR_RADIUS_PROCESS_CODE_VALID
 #define PROCESS_INST			process_radius_t
 #include <freeradius-devel/server/process.h>
 
@@ -421,7 +423,7 @@ RESUME(access_request)
 	 */
 	if (!request->reply->code) {
 		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
-		if (vp && FR_RADIUS_PACKET_CODE_VALID(vp->vp_uint32)) {
+		if (vp && FR_RADIUS_PROCESS_CODE_VALID(vp->vp_uint32)) {
 			request->reply->code = vp->vp_uint32;
 		}
 	}
@@ -674,7 +676,7 @@ RESUME(acct_type)
 	PROCESS_TRACE;
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
-	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->reply->code));
+	fr_assert(FR_RADIUS_PROCESS_CODE_VALID(request->reply->code));
 
 	if (acct_type_rcode[rcode]) {
 		fr_assert(acct_type_rcode[rcode] == FR_RADIUS_CODE_DO_NOT_RESPOND);
