@@ -1573,6 +1573,12 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	/*
 	 *	Maybe there's no child namespace (struct member, tlv child, etc).  In which case we must
 	 *	search from the default dictionary root.
+	 *
+	 *	This search is probably wrong in some cases.  See the comments below around FR_TYPE_GROUP.
+	 *
+	 *	If we change out the dictionaries, we should arguably also change dict_def in the
+	 *	tmpl_attr_rules_t.  On top of that, the "dict_attr_search" functions take a #fr_dict_t
+	 *	pointer, and not a pointer to the dict root.  So we can't pass them a namespace.
 	 */
 	if (!namespace) {
 		fr_assert(parent == NULL);
@@ -1808,17 +1814,29 @@ do_suffix:
 			ref = fr_dict_attr_ref(da);
 
 			/*
-			 *	If we're swapping dictionaries, do so.  Otherwise ref is to the internal
-			 *	dictionary, and we don't want to use that.
+			 *	If the ref is outside of the internal namespace, then we use it.
 			 *
-			 *	Instead of using the internal dictionary, just reset parent / namespace to the
-			 *	root of dict_def.
+			 *	If the ref is inside of the internal namespace (e.g. "request"), then we do
+			 *	somthing else.
 			 *
-			 *	Note that means we cannot put random protocol attributes into an internal
-			 *	attribute of type "group".
+			 *	If we were given a root dictionary on input, use that.  We have to follow this
+			 *	dictionary because this function calls itself recursively, WITHOUT updating
+			 *	"dict_def" in the attr_rules.  So the dict-def there is whatever got passed
+			 *	into tmpl_afrom_attr_substr(), BEFORE the "parent.parent.parent..." parsing.
+			 *	Which means that in many cases, the "dict_def" is completely irrelevant.
+			 *
+			 *	If there is no parent on input, then we just use dict_def.
+			 *
+			 *	Otherwise we search through all of the dictionaries.
+			 *
+			 *	Note that we cannot put random protocol attributes into an internal attribute
+			 *	of type "group".
 			 */
 			if (ref != fr_dict_root(fr_dict_internal())) {
 				our_parent = namespace = ref;
+
+			} else if (parent && parent->flags.is_root) {
+				our_parent = namespace = parent;
 
 			} else if (at_rules->dict_def) {
 				our_parent = namespace = fr_dict_root(at_rules->dict_def);
@@ -2038,7 +2056,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 
 	/*
 	 *	Parse the list and / or attribute reference
-	 *
 	 */
 	ret = tmpl_attr_afrom_attr_substr(vpt, err,
 					  vpt,
