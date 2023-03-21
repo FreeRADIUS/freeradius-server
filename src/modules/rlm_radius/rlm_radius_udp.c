@@ -1535,7 +1535,7 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	Revive the connection after a time.
 	 */
 	if (fr_event_timer_at(h, el, &h->zombie_ev,
-			      fr_time_add(now, h->inst->parent->revive_interval), revive_timeout, h) < 0) {
+			      fr_time_add(now, h->inst->parent->revive_interval), revive_timeout, tconn) < 0) {
 		ERROR("Failed inserting revive timeout for connection");
 		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 	}
@@ -1617,7 +1617,7 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 		}
 	} else {
 		if (fr_event_timer_at(h, el, &h->zombie_ev, fr_time_add(now, h->inst->parent->zombie_period),
-				      zombie_timeout, h) < 0) {
+				      zombie_timeout, tconn) < 0) {
 			ERROR("Failed inserting zombie timeout for connection");
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 		}
