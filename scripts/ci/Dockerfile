@@ -1,141 +1,143 @@
-FROM ubuntu:16.04
+FROM ubuntu:20.04
+
+ARG llvm_ver=12
+ARG gcc_ver=11
+ARG openssl_ver=3.0.2
+
 ENV DEBIAN_FRONTEND=noninteractive
 
+#
+#  Refresh APT lists and ensure up-to-date
+#
 RUN apt-get update && \
-	apt-get upgrade -y
+	apt-get dist-upgrade -y
 
-RUN apt-get install -y \
+#
+#  Install packages needed by the build
+#
+RUN apt-get install -y --no-install-recommends \
 	apt-transport-https \
-	software-properties-common \
-	wget \
-	curl
-
-
-#
-#  Set up extra repositories
-#
-#  GCC and clang
-RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test
-RUN add-apt-repository -y "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main"
-
-#  cmake (script below used instead)
-# RUN add-apt-repository -y ppa:rjvbertin/misc
-
-#  Redis and PostgreSQL
-RUN add-apt-repository ppa:chris-lea/redis-server
-RUN add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -sc)-pgdg main"
-
-
-#
-#  Install repo keys
-#
-RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | \
-	apt-key add -
-
-RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
-	apt-key add -
-
-
-#
-#  Update with repos added above
-#
-RUN apt-get update && \
-	apt-get upgrade -y
-
-
-#
-#  Install everything needed
-#
-RUN apt-get install -y \
-	autoconf \
 	build-essential \
-	clang-8 \
-	debhelper \
+	ca-certificates \
+	curl \
 	devscripts \
-	dh-make \
-	doxygen \
-	fakeroot \
-	firebird-dev \
-	freetds-dev \
-	gcc-7 \
-	gccgo-7 \
-	gdb \
-	graphviz \
-	ldap-utils \
-	libcollectdclient-dev \
-	libcap-dev \
-	libcurl4-openssl-dev \
-	libgdbm-dev \
-	libhiredis-dev \
-	libidn11-dev \
-	libiodbc2-dev \
-	libiodbc2 \
-	libjson0 \
-	libjson0-dev \
-	libkrb5-dev \
-	libldap2-dev \
-	libluajit-5.1-dev \
-	libmemcached-dev \
-	libmysqlclient-dev \
-	libnl-genl-3-dev \
-	libpam0g-dev \
-	libpcap-dev \
-	libpcre3-dev \
-	libperl-dev \
-	libpq-dev \
-	libpython-all-dev \
-	libreadline-dev \
-	libsnmp-dev \
-	libssl-dev \
-	libtalloc-dev \
-	libtalloc2-dbg \
-	libunbound-dev \
-	libwbclient-dev \
-	libykclient-dev \
-	libyubikey-dev \
-	lintian \
-	llvm-8 \
-	luajit \
-	lynx \
-	mysql-server \
-	pbuilder \
-	postgresql-10 \
-	postgresql-client-10 \
-	python-dev \
-	quilt \
-	slapd \
-	ruby \
+	equivs \
+	gawk \
 	git \
+	git-lfs \
+	gnupg \
+	libasan6 \
+	lsb-release \
+	python3-pip \
+	quilt \
+	ruby-dev \
+	software-properties-common \
+	wget
+
+#
+#  Set up Ubuntu toolchain repo
+#
+RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test
+
+#
+#  Set up Network RADIUS repo
+#
+RUN mkdir -p /etc/apt/keyrings && \
+	curl -sS -o /etc/apt/keyrings/networkradius.asc \
+	https://packages.networkradius.com/pgp/packages%40networkradius.com
+
+RUN DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]') && \
+	RELEASE=$(lsb_release -cs) && \
+	echo "deb [signed-by=/etc/apt/keyrings/networkradius.asc] http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main" \
+		> /etc/apt/sources.list.d/networkradius-extras.list
+
+RUN apt-get update
+
+#
+#  Install FreeRADIUS build-dep packages
+#  After NR repo so that we pick up newer libkqueue packages.
+#
+COPY freeradius-build-deps.deb /tmp/freeradius-build-deps.deb
+COPY freeradius-build-deps-extra.deb /tmp/freeradius-build-deps-extra.deb
+RUN apt-get install -y --no-install-recommends /tmp/freeradius-build-deps.deb && \
+	apt-get --purge -y remove freeradius-build-deps && \
+	apt-get install -y --no-install-recommends /tmp/freeradius-build-deps-extra.deb && \
+	apt-get --purge -y remove freeradius-build-deps
+
+RUN pip3 install tacacs_plus
+
+#
+#  Install Clang and GCC
+#
+RUN apt-get install -y --no-install-recommends \
+	clang-${llvm_ver} \
+	llvm-${llvm_ver} \
+	gcc-${gcc_ver} \
+	gdb \
+	lldb
+
+#
+#  Install Cassandra database
+#
+#./scripts/ci/cassandra-install.sh
+
+
+#
+#  Install OpenSSL
+#
+#RUN wget https://www.openssl.org/source/openssl-${openssl_ver}.tar.gz && \
+#	tar xzf openssl-${openssl_ver}.tar.gz && \
+#	cd openssl-${openssl_ver} && \
+#	./Configure --prefix=/opt/openssl --openssldir=. --debug && \
+#	make -j `nproc` && \
+#	make install_sw
+
+
+#
+#  Download to APT cache but do not install
+#
+RUN apt-get install -yd --no-install-recommends \
+	heimdal-dev \
+	libpcre3-dev
+
+
+
+#
+#  Extra installs for the CI testing stage
+#
+RUN mkdir -p /etc/apt/keyrings && \
+	curl -sS -o /etc/apt/keyrings/openresty.asc \
+	https://openresty.org/package/pubkey.gpg
+
+RUN RELEASE=$(lsb_release -cs) && \
+	echo "deb [signed-by=/etc/apt/keyrings/openresty.asc] http://openresty.org/package/ubuntu $(lsb_release -sc) main" \
+		> /etc/apt/sources.list.d/openresty.list && \
+	apt-get update
+
+RUN echo "samba-common samba-common/workgroup string WORKGROUP" | debconf-set-selections && \
+	echo "samba-common samba-common/dhcp boolean false" | debconf-set-selections && \
+	echo "samba-common samba-common/do_debconf boolean true" | debconf-set-selections
+
+RUN apt-get install -y --no-install-recommends \
+	389-ds \
+	apparmor-utils \
+	dovecot-imapd \
+	exim4 \
+	krb5-user \
+	ldap-utils \
+	mariadb-client \
+	openresty \
+	postgresql-client \
 	redis-server \
-	jq
+	redis-tools \
+	slapd \
+	winbind
+#	samba \
 
 
 #
-#  Install cmake
+#  Additional improvements
+#  - install eapol_test
+#  - install openssl 3.0 (needs CI update to enable/disable)
 #
-RUN curl -f -o cmake.sh https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh 
-RUN [ "$(cat cmake.sh | openssl sha256 | sed 's/^.* //')" = "bb26b1871f9e5c2fb73476186cc94d03b674608f704b48b94d617340b87b4d73" ]
-RUN sh cmake.sh --skip-license --prefix=/usr/local
 
-
-#
-#  Install libkqueue
-#
-WORKDIR /usr/local/src/repositories
-
-RUN git clone --branch master --depth=1 https://github.com/mheily/libkqueue.git
-
-### Get the latest release of libkqueue 
-# RUN curl -sL https://github.com/mheily/libkqueue/archive/09f9ae5560974f132ee9e8313e2b6c82c7e74f69.tar.gz > libkqueue.tgz
-# RUN curl -sL $(curl -s https://api.github.com/repos/mheily/libkqueue/releases/latest | jq -r .tarball_url) > libkqueue.tgz 
-### Figure out the directory structure. 
-# RUN tar zxf libkqueue.tgz && mv $(tar ztf libkqueue.tgz | head -1) libkqueue
-
-WORKDIR /usr/local/src/repositories/libkqueue
-
-RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
-	make && \
-	cpack -G DEB && \
-	dpkg -i --force-all ./libkqueue*.deb
-
-WORKDIR /usr/local/src/repositories
