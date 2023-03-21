@@ -412,9 +412,7 @@ RESUME(access_request)
 		return CALL_SEND_STATE(state);
 	}
 
-	if (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) {
-		RDEBUG("The 'recv Access-Request' section returned %s - not sending a response",
-		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
+	if (request->reply->code) {
 		goto send_reply;
 	}
 
@@ -425,11 +423,8 @@ RESUME(access_request)
 		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
 		if (vp && FR_RADIUS_PROCESS_CODE_VALID(vp->vp_uint32)) {
 			request->reply->code = vp->vp_uint32;
+			goto send_reply;
 		}
-	}
-
-	if (request->reply->code) {
-		goto send_reply;
 	}
 
 	/*
