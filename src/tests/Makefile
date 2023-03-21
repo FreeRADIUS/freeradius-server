@@ -300,8 +300,9 @@ endif # there's no "prefix", so we don't run the full EAP tests
 EAPOL_OK_FILES := $(sort $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok, $(notdir $(EAP_TLS_FILES) $(EAP_FILES)))) $(EAP_TLS_VERSION_FILES))
 
 tests.eap: $(EAPOL_OK_FILES) | radiusd.kill radiusd.pid
-	@$(MAKE) radiusd.kill
-
+else
+tests.eap:
+	@echo "EAPOL Tests is disabled"
 endif # we have eapol_test built
 
 # kill the server (if it's running)
@@ -309,9 +310,8 @@ endif # we have eapol_test built
 # run the tests (ignoring any failures)
 # kill the server
 # remove the changes to raddb/
-tests: test.conf | radiusd.kill radiusd.pid
+tests.runtests:  test.conf | radiusd.kill radiusd.pid
 	@chmod a+x runtests.sh
 	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
-ifneq "$(EAPOL_TEST)" ""
-	@$(MAKE) tests.eap
-endif
+
+tests: tests.runtests tests.eap
