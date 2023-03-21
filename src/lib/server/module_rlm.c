@@ -595,7 +595,18 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, module
 	 *	doesn't exist.
 	 */
 	p = strchr(name, '.');
-	if (!p) return NULL;
+	if (!p) {
+		if (!mi) {
+			fr_strerror_printf("No such module '%s'", name);
+
+		} else if (method_name2) {
+			fr_strerror_printf("Module '%s' does not have a '%s %s' method", name, method_name1, method_name2);
+
+		} else {
+			fr_strerror_printf("Module '%s' does not have a '%s' method", name, method_name1);
+		}
+		return NULL;
+	}
 
 	/*
 	 *	The module name may have a '.' in it, AND it may have
@@ -625,6 +636,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, module
 	 *	No such module, we're done.
 	 */
 	if (!mi) {
+		fr_strerror_printf("Failed to find module '%s'", inst_name);
 		talloc_free(inst_name);
 		return NULL;
 	}
