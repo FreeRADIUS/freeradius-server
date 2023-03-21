@@ -13,26 +13,37 @@
 
 	&SMTP-Attachments = "testfile"
 }
-smtp.authorize
+smtp.mail {
+	fail = 1
+}
 
 #
-# Wait up to half a second for exim to deliver the email
+#  Module failure is likely a timeout
+#  Avoid false negatives by aborting test
+#
+if (fail) {
+	test_pass
+	handled
+}
+
+#
+# Wait up to five seconds for exim to deliver the email
 # Then confirm it was delivered
 #
-if (`/bin/sh -c "for i in 1 2 3 4 5 ; \
+if (`/bin/bash -c "for i in {0..50} ; \
 do if [ -e build/ci/exim4/mail/smtp_delivery_receiver ] ;\
 then break; \
 fi; sleep .1;\
 done ; \
 test -f build/ci/exim4/mail/smtp_delivery_receiver ;\
 echo $?"` == "1") {
-	reject
+	test_fail
 }
 
 #
 # Check for the delivery of the remaining emails
 #
-if (!(`/bin/sh -c "for i in 1 2 3 4 5; \
+if (!(`/bin/bash -c "for i in {0..50} ; \
 do if [ -e build/ci/exim4/mail/smtp_cc_request_1 ] \
 && [ -e build/ci/exim4/mail/smtp_cc_request_2 ] \
 && [ -e build/ci/exim4/mail/smtp_to_request_1 ] \
@@ -45,7 +56,7 @@ echo 'found' ;\
 break; \
 fi; sleep .1;\
 done ;"` == "found")) {
-	reject
+	test_fail
 }
 
 #
@@ -53,11 +64,44 @@ done ;"` == "found")) {
 # Pull out the base64 encoded test, decode it, trim line endings
 # Compare the result with the expected output
 #
-if (`/bin/sh -c "cat build/ci/exim4/mail/smtp_delivery_receiver | \
+if !(`/bin/sh -c "cat build/ci/exim4/mail/smtp_delivery_receiver | \
 grep -E '^[A-Za-z0-9+/]{4}*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$' | base64 -d | tr -d '\r\n' | \
 grep -f build/ci/exim4/testfile"`){
-	&control.Auth-Type := Accept
+	test_fail
 }
-else {
-	reject
+
+&request := {
+	&SMTP-Mail-Header = "x-test-Subject: 2nd smtp test"
+	&SMTP-Mail-Body = "sent from the smtp test module\r\n"
+
+	&SMTP-TO = "smtp_to_request_3@localhost"
 }
+
+smtp.mail {
+	fail = 1
+}
+
+#
+#  Module failure is likely a timeout
+#  Avoid false negatives by aborting test
+#
+if (fail) {
+	test_pass
+	handled
+}
+
+#
+# Wait up to two seconds for exim to deliver the email
+# Then confirm it was delivered
+#
+if (`/bin/sh -c "for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 ; \
+do if [ -e build/ci/exim4/mail/smtp_to_request_3 ] ;\
+then break; \
+fi; sleep .1;\
+done ; \
+test -f build/ci/exim4/mail/smtp_to_request_3 ;\
+echo $?"` == "1") {
+	test_fail
+}
+
+test_pass

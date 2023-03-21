@@ -33,7 +33,7 @@ echo "Checking for a running exim instance"
 if [ -e "${RUNDIR}/exim.pid" ]
 then
 	echo "Stopping the current exim instance"
-	kill "$(cat ${RUNDIR}/exim.pid)"
+	kill "$(cat ${RUNDIR}/exim.pid)" || true
 	rm -r "${BUILDDIR}"
 fi
 
@@ -65,6 +65,7 @@ LISTEN=127.0.0.1
 #  "keep_environment" setting below.
 #
 MAIL_DIR = ${MAILDIR}
+PASS_DIR = ${BUILDDIR}
 pid_file_path = ${RUNDIR}/exim.pid
 log_file_path = ${LOGDIR}/%s
 spool_directory = ${SPOOLDIR}
@@ -106,25 +107,61 @@ local_delivery:
   directory_mode = 0750
   mode = 0600
 #
-#  File to write to. Really dangerous in a normal config as it'll
-#  accept anything, including ../whatever, but we're writing our
-#  own headers so it doesn't matter so much here.
+#  File to write to.
+#  Files need to be pre-configured in the untaint file to get past exim's tainting rules.
 #
-  file = \${if eq {\$h_x-testname:}{} {MAIL_DIR/\$local_part}{MAIL_DIR/\$h_x-testname:}}
+  file = \${if eq {\$h_x-testname:}{} {MAIL_DIR/\${lookup{\$local_part}lsearch{PASS_DIR/untaint}}}{MAIL_DIR/\$h_x-testname:}}
 begin rewrite
 begin retry
 *                *                F,1s,1m
 begin authenticators
 
+plain_server:
+  driver = plaintext
+  public_name = PLAIN
+  server_condition = "\${if eq{\$auth3}{\${extract{1}{:}{\${lookup{\$auth2}lsearch{PASS_DIR/passwd}{\$value}{*:*}}}}}{1}{0}}"
+  server_set_id = \$auth2
+  server_prompts = :
+
 " >"${CONF}"
+
+echo "Generating password file"
+echo "Bob:Saget" > ${BUILDDIR}/passwd
+
+echo "Generating lookup file to untaint data"
+echo "conf_recipient_1: conf_recipient_1" > ${BUILDDIR}/untaint
+echo "conf_recipient_2: conf_recipient_2" >> ${BUILDDIR}/untaint
+echo "smtp_attachment_receiver: smtp_attachment_receiver" >> ${BUILDDIR}/untaint
+echo "crln_test_receiver: crln_test_receiver" >> ${BUILDDIR}/untaint
+echo "conf-stringparse-recipient: conf-stringparse-recipient" >> ${BUILDDIR}/untaint
+echo "stringparse_test_receiver: stringparse_test_receiver" >> ${BUILDDIR}/untaint
+echo "smtp_delivery_receiver: smtp_delivery_receiver" >> ${BUILDDIR}/untaint
+echo "smtp_recipient_request: smtp_recipient_request" >> ${BUILDDIR}/untaint
+echo "smtp_to_request_1: smtp_to_request_1" >> ${BUILDDIR}/untaint
+echo "smtp_to_request_2: smtp_to_request_2" >> ${BUILDDIR}/untaint
+echo "smtp_to_request_3: smtp_to_request_3" >> ${BUILDDIR}/untaint
+echo "smtp_cc_request_1: smtp_cc_request_1" >> ${BUILDDIR}/untaint
+echo "smtp_cc_request_2: smtp_cc_request_2" >> ${BUILDDIR}/untaint
 
 echo "Generating the file attachment"
 # Generate a file for test email attachments
 dd if=/dev/urandom bs=200 count=1 2>/dev/null | base64 | tr -d '\n'> ${BUILDDIR}/testfile
 
+EXIMUSER=$(id -u)
+if [ $EXIMUSER -eq 0 ] ; then
+       EXIMUSER=$(id -u Debian-exim)
+       EXIMGROUP=$(id -g Debian-exim)
+else
+       EXIMGROUP=$(id -g)
+fi;
+
+chown -R :$EXIMGROUP "${BUILDDIR}" "${RUNDIR}" "${MAILDELIVERYDIR}" "${MAILDIR}" "${LOGDIR}" "${SPOOLDIR}" "${CERTDIR}"
+chmod g+w -R "${RUNDIR}" "${MAILDELIVERYDIR}" "${MAILDIR}" "${LOGDIR}" "${SPOOLDIR}"
+chmod g+r -R "${CERTDIR}"
+
 #
 # Run the exim instance
 #
 echo "Starting exim"
-exim -C ${CONF} -bd -DEXIMUSER=$(id -u) -DEXIMGROUP=$(id -g)
+exim -C ${CONF} -bd -DEXIMUSER=$EXIMUSER -DEXIMGROUP=$EXIMGROUP
 echo "Running exim on port 2525, accepting all local connections"
