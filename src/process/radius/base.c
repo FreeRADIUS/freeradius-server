@@ -429,7 +429,6 @@ RESUME(access_request)
 	}
 
 	if (request->reply->code) {
-		RDEBUG("Reply packet type was set to %s", fr_radius_packet_names[request->reply->code]);
 		goto send_reply;
 	}
 
