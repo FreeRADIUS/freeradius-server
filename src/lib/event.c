@@ -34,6 +34,7 @@ RCSID("$Id$")
 
 #else
 #include <sys/event.h>
+#include <pthread.h>
 #endif
 #endif	/* HAVE_KQUEUE */
 
