@@ -1,0 +1,101 @@
+/*
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+ /**
+ * $Id$
+ *
+ * Copyright 2023 Network RADIUS SARL (legal@networkradius.com)
+ */
+
+ digraph fr_trunk_request_t_states {
+	label = "fr_trunk_request_t states"
+	condition_key [
+		shape=plaintext
+		label=<
+		<table border='0'>
+			<tr><td align='left'>[ no_cancel_mux ]</td><td align='left'> [ !treq-&gt;pub.trunkfuncs.request_cancel_mux ]</td></tr>
+			<tr><td align='left'>[ enqueue_backlog ]</td><td align='left'> { trunk_request_check_enqueue() == FR_TRUNK_ENQUEUE_IN_BACKLOG ]</td></tr>
+			<tr><td align='left'>[ enqueue_pending ]</td><td align='left'> { trunk_request_check_enqueue() == FR_TRUNK_ENQUEUE_PENDING ]</td></tr>
+			<tr><td align='left'>[ on_connection ]</td><td align='left'> { treq-&gt;pub.tconn == tconn ]</td></tr>
+			<tr><td align='left'>[ not_too_many ]</td><td align='left'> { count &lt; max ]</td></tr>
+			<tr><td align='left'>[ in_states ]</td><td align='left'> { treq-&gt;pub.state &amp; states ]</td></tr>
+			<tr><td align='left'>[ dequeueable ]</td><td align='left'> { on_connection &amp;&amp; not_too_many &amp;&amp; in_states ]</td></tr>
+		</table>
+	>];
+
+	subgraph cluster_01 {
+		label = "Legend"
+		node [shape=point]
+		{
+			rank=same
+			d0 [style = invis];
+			d1 [style = invis];
+			p0 [style = invis];
+			p1 [style = invis];
+		}
+		d0 -> d1 [label="&gt; 1 transition/call" style=dashed]
+		p0 -> p1 [label="1 transition/call"]
+	}
+
+	node [shape = point, width=.1 ]; alloc;
+	node [shape = circle, label = "INIT", width=1 ]; init;
+	node [shape = doublecircle, label = "COMPLETE", width=1 ]; complete;
+	node [shape = doublecircle, label = "FAILED", width=1 ]; failed;
+	node [shape = doublecircle, label = "CANCEL COMPLETE", width=1 ]; cancel_complete;
+	node [shape = circle, label = "UNASSIGNED", width=1 ]; unassigned;
+	node [shape = circle, label = "BACKLOG", width=1 ]; backlog;
+	node [shape = circle, label = "PENDING", width=1 ]; pending;
+	node [shape = circle, label = "PARTIAL", width=1]; partial;
+	node [shape = circle, label = "SENT", width=1 ]; sent;
+	node [shape = circle, label = "CANCEL", width=1 ]; cancel;
+	node [shape = circle, label = "CANCEL SENT", width=1 ]; cancel_sent;
+	node [shape = circle, label = "CANCEL PARTIAL", width=1 ]; cancel_partial;
+
+	{rank=source; alloc;}
+
+	{rank=same; init; pending;}
+
+	{rank=sink; complete;}
+	{rank=sink; failed;}
+	{rank=sink; cancel_complete;}
+
+	alloc -> init
+
+	backlog -> failed [label = "_trunk_free();"]
+
+	{backlog, pending, cancel, cancel_partial, cancel_sent} -> unassigned [ label = "trunk_connection_requests_dequeue(); [ dequeueable ]" ]
+
+	cancel -> cancel_partial [ label = "fr_trunk_request_signal_cancel_partial()" ]
+
+	{cancel, cancel_partial} -> cancel_sent [ label = "trunk_request_signal_sent()" ]
+
+	{cancel, cancel_sent} -> cancel_complete [ label = "fr_trunk_request_signal_cancel_complete(()" ]
+
+	init -> backlog [ label = "fr_trunk_request_enqueue(); [ enqueue_backlog ]" ]
+	init -> pending [ label = "fr_trunk_request_enqueue(); [ enqueue_pending ]" ]
+
+	{pending, partial} -> sent [ label = "fr_trunk_request_signal_sent()" ]
+
+	{partial, sent} -> cancel [label = "fr_trunk_request_requeue()", style = dashed, color = red]
+	cancel -> pending [style = dashed, color = red]
+	{partial, sent} -> cancel [label = "fr_trunk_request_signal_cancel()", style = dashed, color = blue]
+	cancel -> unassigned [label = "no_cancel_mux", style = dashed, color = blue]
+
+	{sent, pending} -> complete [ label = "fr_trunk_request_signal_complete()" ]
+
+	pending -> partial [ label = "fr_trunk_request_signal_partial()" ]
+
+}

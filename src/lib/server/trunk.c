@@ -122,6 +122,7 @@ struct fr_trunk_request_s {
 /** Associates request queues with a connection
  *
  * @dotfile src/lib/server/trunk_conn.gv "Trunk connection state machine"
+ * @dotfile src/lib/server/trunk_req.gv "Trunk request state machine"
  */
 struct fr_trunk_connection_s {
 	struct fr_trunk_connection_pub_s pub;		//!< Public fields in the trunk connection.
