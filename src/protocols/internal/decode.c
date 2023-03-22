@@ -382,6 +382,7 @@ ssize_t fr_internal_decode_list_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	while (fr_dbuff_remaining(dbuff)) {
 		ret = fr_internal_decode_pair_dbuff(ctx, out, parent, dbuff, decode_ctx);
 		if (ret < 0) return ret;
+		if (ret == 0) break;
 		len += ret;
 	}
 
