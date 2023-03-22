@@ -29,24 +29,6 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/debug.h>
 #include <sasl/sasl.h>
 
-/** Holds arguments for the bind operation
- *
- */
-typedef struct {
-	fr_ldap_connection_t	*c;			//!< to bind.
-	char const		*mechs;			//!< SASL mechanisms to run
-	char const		*identity;		//!< of the user.
-	char const		*password;		//!< of the user, may be NULL if no password is specified.
-	char const		*proxy;			//!< Proxy identity, may be NULL in which case identity is used.
-	char const		*realm;			//!< SASL realm (may be NULL).
-	LDAPControl		**serverctrls;		//!< Controls to pass to the server.
-	LDAPControl		**clientctrls;		//!< Controls to pass to the client (library).
-
-	int			msgid;			//!< Last msgid.
-	LDAPMessage		*result;		//!< Previous result.
-	char const		*rmech;			//!< Mech we're continuing with.
-} fr_ldap_sasl_ctx_t;
-
 static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
 
 /** Error reading from or writing to the file descriptor
