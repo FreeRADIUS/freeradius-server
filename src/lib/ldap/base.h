@@ -856,6 +856,14 @@ int		fr_ldap_sasl_bind_async(fr_ldap_connection_t *c,
 			    		char const *proxy,
 			    		char const *realm,
 			    		LDAPControl **serverctrls, LDAPControl **clientctrls);
+
+int		fr_ldap_sasl_bind_auth_async(request_t *request,
+					     fr_ldap_thread_t *thread,
+					     char const *mechs,
+					     char const *dn,
+					     char const *identity,
+					     char const *password,
+					     char const *proxy, char const *realm);
 #endif
 
 /*
