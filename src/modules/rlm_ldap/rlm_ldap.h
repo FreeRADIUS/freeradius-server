@@ -18,12 +18,6 @@
 #include <freeradius-devel/ldap/base.h>
 
 typedef struct {
-	tmpl_t	*mech;				//!< SASL mech(s) to try.
-	tmpl_t	*proxy;				//!< Identity to proxy.
-	tmpl_t	*realm;				//!< Kerberos realm.
-} fr_ldap_sasl_t_dynamic_t;
-
-typedef struct {
 	CONF_SECTION	*cs;				//!< Section configuration.
 
 	char const	*reference;			//!< Configuration reference string.
@@ -62,8 +56,6 @@ typedef struct {
 	char const	*userobj_access_attr;		//!< Attribute to check to see if the user should be locked out.
 	bool		access_positive;		//!< If true the presence of the attribute will allow access,
 							//!< else it will deny access.
-
-	fr_ldap_sasl_t_dynamic_t user_sasl;			//!< SASL parameters used when binding as the user.
 
 	char const	*valuepair_attr;		//!< Generic dynamic mapping attribute, contains a RADIUS
 							//!< attribute and value.
@@ -109,13 +101,8 @@ typedef struct {
 	/*
 	 *	Profiles
 	 */
-	tmpl_t	*default_profile;		//!< If this is set, we will search for a profile object
-							//!< with this name, and map any attributes it contains.
-							//!< No value should be set if profiles are not being used
-							//!< as there is an associated performance penalty.
 	char const	*profile_attr;			//!< Attribute that identifies profiles to apply. May appear
 							//!< in userobj or groupobj.
-	tmpl_t	*profile_filter;		//!< Filter to retrieve only retrieve group objects.
 
 	/*
 	 *	Accounting
