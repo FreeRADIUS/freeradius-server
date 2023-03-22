@@ -486,6 +486,29 @@ typedef struct {
 	int			msgid;
 } fr_ldap_bind_ctx_t;
 
+/** Holds arguments for the async SASL bind operation
+ *
+ */
+typedef struct {
+	fr_ldap_connection_t	*c;			//!< to bind.
+	char const		*mechs;			//!< SASL mechanisms to run
+	char const		*dn;			//!< to bind as.
+	char const		*identity;		//!< of the user.
+	char const		*password;		//!< of the user, may be NULL if no password is specified.
+	char const		*proxy;			//!< Proxy identity, may be NULL in which case identity is used.
+	char const		*realm;			//!< SASL realm (may be NULL).
+	LDAPControl		**serverctrls;		//!< Controls to pass to the server.
+	LDAPControl		**clientctrls;		//!< Controls to pass to the client (library).
+
+	int			msgid;			//!< Last msgid.
+	LDAPMessage		*result;		//!< Previous result.
+	char const		*rmech;			//!< Mech we're continuing with.
+} fr_ldap_sasl_ctx_t;
+
+typedef enum {
+	LDAP_BIND_SIMPLE		= 0,
+	LDAP_BIND_SASL
+} fr_ldap_bind_type_t;
 
 /** Holds arguments for async bind auth requests
  *
@@ -497,7 +520,11 @@ typedef struct {
 	fr_ldap_thread_t	*thread;	//!< This bind is being run by.
 	int			msgid;		//!< libldap msgid for this bind.
 	request_t		*request;	//!< this bind relates to.
-	fr_ldap_bind_ctx_t	*bind_ctx;	//!< Data relating to the user being bound.
+	fr_ldap_bind_type_t	type;		//!< type of bind.
+	union {
+		fr_ldap_bind_ctx_t	*bind_ctx;	//!< User data for simple binds.
+		fr_ldap_sasl_ctx_t	*sasl_ctx;	//!< User data for SASL binds.
+	};
 	fr_ldap_result_code_t	ret;		//!< Return code of bind operation.
 } fr_ldap_bind_auth_ctx_t;
 
