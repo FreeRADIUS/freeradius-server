@@ -42,6 +42,15 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/unlang/xlat_func.h>
 
+typedef struct {
+	fr_value_box_t	user_base;
+	fr_value_box_t	user_filter;
+	fr_value_box_t	user_sasl_mech;
+	fr_value_box_t	user_sasl_authname;
+	fr_value_box_t	user_sasl_proxy;
+	fr_value_box_t	user_sasl_realm;
+} ldap_auth_mod_env_t;
+
 static CONF_PARSER sasl_mech_dynamic[] = {
 	{ FR_CONF_OFFSET("mech", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, fr_ldap_sasl_t_dynamic_t, mech) },
 	{ FR_CONF_OFFSET("proxy", FR_TYPE_TMPL, fr_ldap_sasl_t_dynamic_t, proxy) },
@@ -49,11 +58,31 @@ static CONF_PARSER sasl_mech_dynamic[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static const module_env_t sasl_module_env[] = {
+	{ FR_MODULE_ENV_OFFSET("mech", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_mech,
+			       NULL, T_INVALID, false, false, false) },
+	{ FR_MODULE_ENV_OFFSET("authname", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_authname,
+			       NULL, T_INVALID, false, false, false) },
+	{ FR_MODULE_ENV_OFFSET("proxy", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_proxy,
+			       NULL, T_INVALID, false, true, false) },
+	{ FR_MODULE_ENV_OFFSET("realm", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_realm,
+			       NULL, T_INVALID, false, true, false) },
+	MODULE_ENV_TERMINATOR
+};
+
 static CONF_PARSER profile_config[] = {
 	{ FR_CONF_OFFSET("filter", FR_TYPE_TMPL, rlm_ldap_t, profile_filter), .dflt = "(&)", .quote = T_SINGLE_QUOTED_STRING },	//!< Correct filter for when the DN is known.
 	{ FR_CONF_OFFSET("attribute", FR_TYPE_STRING, rlm_ldap_t, profile_attr) },
 	{ FR_CONF_OFFSET("default", FR_TYPE_TMPL, rlm_ldap_t, default_profile) },
 	CONF_PARSER_TERMINATOR
+};
+
+static const module_env_t autz_profile_module_env[] = {
+	{ FR_MODULE_ENV_OFFSET("default", FR_TYPE_STRING, ldap_autz_mod_env_t, default_profile,
+			       NULL, T_INVALID, false, false, true) },
+	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_mod_env_t, profile_filter,
+			       "(&)", T_SINGLE_QUOTED_STRING, false, false, true ) },	//!< Correct filter for when the DN is known.
+	MODULE_ENV_TERMINATOR
 };
 
 /*
@@ -73,6 +102,23 @@ static CONF_PARSER user_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static const module_env_t auth_user_module_env[] = {
+	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_auth_mod_env_t, user_base,
+			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
+	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_auth_mod_env_t, user_filter,
+			       NULL, T_INVALID, false, true, true) },
+	{ FR_MODULE_ENV_SUBSECTION("sasl", NULL, sasl_module_env) },
+	MODULE_ENV_TERMINATOR
+};
+
+static const module_env_t autz_user_module_env[] = {
+	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_mod_env_t, user_base,
+			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
+	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_mod_env_t, user_filter,
+			       NULL, T_INVALID, false, true, true) },
+	MODULE_ENV_TERMINATOR
+};
+
 /*
  *	Group configuration
  */
@@ -90,6 +136,12 @@ static CONF_PARSER group_config[] = {
 	{ FR_CONF_OFFSET("group_attribute", FR_TYPE_STRING, rlm_ldap_t, group_attribute) },
 	{ FR_CONF_OFFSET("allow_dangling_group_ref", FR_TYPE_BOOL, rlm_ldap_t, allow_dangling_group_refs), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
+};
+
+static const module_env_t autz_group_module_env[] = {
+	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_mod_env_t, group_base,
+			       NULL, T_INVALID, false, false, true) },
+	MODULE_ENV_TERMINATOR
 };
 
 /*
@@ -137,6 +189,33 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("pool", FR_TYPE_SUBSECTION, rlm_ldap_t, trunk_conf), .subcs = (void const *) fr_trunk_config },
 
 	CONF_PARSER_TERMINATOR
+};
+
+/*
+ *	Method specific module environments
+ */
+static const module_env_t authenticate_module_env[] = {
+	{ FR_MODULE_ENV_SUBSECTION("user", NULL, auth_user_module_env) },
+	MODULE_ENV_TERMINATOR
+};
+
+static const module_env_t authorize_module_env[] = {
+	{ FR_MODULE_ENV_SUBSECTION("user", NULL, autz_user_module_env) },
+	{ FR_MODULE_ENV_SUBSECTION("group", NULL, autz_group_module_env) },
+	{ FR_MODULE_ENV_SUBSECTION("profile", NULL, autz_profile_module_env) },
+	MODULE_ENV_TERMINATOR
+};
+
+static const module_method_env_t authenticate_method_env = {
+	.inst_size = sizeof(ldap_auth_mod_env_t),
+	.inst_type = "ldap_auth_mod_env_t",
+	.env = authenticate_module_env
+};
+
+static const module_method_env_t authorize_method_env = {
+	.inst_size = sizeof(ldap_autz_mod_env_t),
+	.inst_type = "ldap_autz_mod_env_t",
+	.env = authorize_module_env
 };
 
 static fr_dict_t const *dict_freeradius;
@@ -2056,11 +2135,14 @@ module_rlm_t rlm_ldap = {
 		/*
 		 *	Hack to support old configurations
 		 */
-		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
+		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
+		  .method_env = &authorize_method_env		},
 
-		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
+		  .method_env = &authorize_method_env		},
 		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting	},
-		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate	},
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,
+		  .method_env = &authenticate_method_env	},
 		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth		},
 		MODULE_NAME_TERMINATOR
 	}

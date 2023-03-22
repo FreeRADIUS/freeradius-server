@@ -138,6 +138,20 @@ typedef struct {
 	fr_trunk_conf_t	trunk_conf;			//!< Trunk configuration
 } rlm_ldap_t;
 
+/** Module environment used in LDAP authorization
+ *
+ */
+typedef struct {
+	fr_value_box_t	user_base;			//!< Base DN in which to search for users.
+	fr_value_box_t	user_filter;			//!< Filter to use when searching for users.
+	fr_value_box_t 	group_base;			//!< Base DN in which to search for groups.
+	fr_value_box_t	default_profile;		//!< If this is set, we will search for a profile object
+							//!< with this name, and map any attributes it contains.
+							//!< No value should be set if profiles are not being used
+							//!< as there is an associated performance penalty.
+	fr_value_box_t	profile_filter;			//!< Filter to use when searching for profiles.
+} ldap_autz_mod_env_t;
+
 extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;
 extern HIDDEN fr_dict_attr_t const *attr_crypt_password;
 extern HIDDEN fr_dict_attr_t const *attr_ldap_userdn;
