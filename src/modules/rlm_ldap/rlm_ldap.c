@@ -51,13 +51,6 @@ typedef struct {
 	fr_value_box_t	user_sasl_realm;
 } ldap_auth_mod_env_t;
 
-static CONF_PARSER sasl_mech_dynamic[] = {
-	{ FR_CONF_OFFSET("mech", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, fr_ldap_sasl_t_dynamic_t, mech) },
-	{ FR_CONF_OFFSET("proxy", FR_TYPE_TMPL, fr_ldap_sasl_t_dynamic_t, proxy) },
-	{ FR_CONF_OFFSET("realm", FR_TYPE_TMPL, fr_ldap_sasl_t_dynamic_t, realm) },
-	CONF_PARSER_TERMINATOR
-};
-
 static const module_env_t sasl_module_env[] = {
 	{ FR_MODULE_ENV_OFFSET("mech", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_mech,
 			       NULL, T_INVALID, false, false, false) },
@@ -71,9 +64,7 @@ static const module_env_t sasl_module_env[] = {
 };
 
 static CONF_PARSER profile_config[] = {
-	{ FR_CONF_OFFSET("filter", FR_TYPE_TMPL, rlm_ldap_t, profile_filter), .dflt = "(&)", .quote = T_SINGLE_QUOTED_STRING },	//!< Correct filter for when the DN is known.
 	{ FR_CONF_OFFSET("attribute", FR_TYPE_STRING, rlm_ldap_t, profile_attr) },
-	{ FR_CONF_OFFSET("default", FR_TYPE_TMPL, rlm_ldap_t, default_profile) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -96,9 +87,6 @@ static CONF_PARSER user_config[] = {
 
 	{ FR_CONF_OFFSET("access_attribute", FR_TYPE_STRING, rlm_ldap_t, userobj_access_attr) },
 	{ FR_CONF_OFFSET("access_positive", FR_TYPE_BOOL, rlm_ldap_t, access_positive), .dflt = "yes" },
-
-	/* Should be deprecated */
-	{ FR_CONF_OFFSET("sasl", FR_TYPE_SUBSECTION, rlm_ldap_t, user_sasl), .subcs = (void const *) sasl_mech_dynamic },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1131,10 +1119,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	ldap_auth_ctx_t		*auth_ctx;
 	ldap_auth_mod_env_t	*mod_env = talloc_get_type_abort(mctx->env_data, ldap_auth_mod_env_t);
 
-	char			sasl_mech_buff[LDAP_MAX_DN_STR_LEN];
-	char			sasl_proxy_buff[LDAP_MAX_DN_STR_LEN];
-	char			sasl_realm_buff[LDAP_MAX_DN_STR_LEN];
-	fr_ldap_sasl_t		sasl;
 	fr_pair_t *username, *password;
 
 	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
@@ -1181,36 +1165,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	ttrunk =  fr_thread_ldap_trunk_get(thread, inst->handle_config.server, inst->handle_config.admin_identity,
 					   inst->handle_config.admin_password, request, &inst->handle_config);
 	if (!ttrunk) RETURN_MODULE_FAIL;
-
-	/*
-	 *	Expand dynamic SASL fields
-	 */
-	if (inst->user_sasl.mech) {
-		memset(&sasl, 0, sizeof(sasl));
-
-		if (tmpl_expand(&sasl.mech, sasl_mech_buff, sizeof(sasl_mech_buff), request,
-				inst->user_sasl.mech, fr_ldap_escape_func, inst) < 0) {
-			RPEDEBUG("Failed expanding user.sasl.mech");
-		fail:
-			RETURN_MODULE_RCODE(RLM_MODULE_FAIL);
-		}
-
-		if (inst->user_sasl.proxy) {
-			if (tmpl_expand(&sasl.proxy, sasl_proxy_buff, sizeof(sasl_proxy_buff), request,
-					inst->user_sasl.proxy, fr_ldap_escape_func, inst) < 0) {
-				RPEDEBUG("Failed expanding user.sasl.proxy");
-				goto fail;
-			}
-		}
-
-		if (inst->user_sasl.realm) {
-			if (tmpl_expand(&sasl.realm, sasl_realm_buff, sizeof(sasl_realm_buff), request,
-					inst->user_sasl.realm, fr_ldap_escape_func, inst) < 0) {
-				RPEDEBUG("Failed expanding user.sasl.realm");
-				goto fail;
-			}
-		}
-	}
 
 	RDEBUG2("Login attempt by \"%pV\"", &username->data);
 
