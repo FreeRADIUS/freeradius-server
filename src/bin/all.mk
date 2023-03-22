@@ -24,7 +24,7 @@ SUBMAKEFILES := \
 #  The fuzzer binary needs special magic to run, as it doesn't parse
 #  command-line options.  See fuzzer.mk for details.
 #
-FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp util
+FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp util bfd
 
 #
 #  Add the fuzzer only if everything was built with the fuzzing flags.
