@@ -275,6 +275,12 @@ ldap {
 #			mech = 'PLAIN'
 
 			#
+			#  authname:: SASL authentication name.  Mechanism specific value
+			#  to use when prompted for the client authentication name.
+			#
+#			authname = &User-Name
+
+			#
 			#  proxy:: SASL authorisation identity to proxy.
 			#
 #			proxy = &User-Name

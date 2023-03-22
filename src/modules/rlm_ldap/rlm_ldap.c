@@ -673,22 +673,55 @@ static void _ldap_bind_auth_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, U
 		/*
 		 *	Accept or reject will be SUCCESS, NOT_PERMITTED or REJECT
 		 */
-		case LDAP_PROC_SUCCESS:
 		case LDAP_PROC_NOT_PERMITTED:
 		case LDAP_PROC_REJECT:
+		case LDAP_PROC_BAD_DN:
+		case LDAP_PROC_NO_RESULT:
+			break;
+
+		case LDAP_PROC_SUCCESS:
+			if (bind_auth_ctx->type == LDAP_BIND_SIMPLE) break;
+			FALL_THROUGH;
+
+		case LDAP_PROC_CONTINUE:
+		{
+			fr_ldap_sasl_ctx_t	*sasl_ctx = bind_auth_ctx->sasl_ctx;
+			struct berval		*srv_cred;
+
+			/*
+			 *	Free any previous result and track the new one.
+			 */
+			if (sasl_ctx->result) ldap_msgfree(sasl_ctx->result);
+			sasl_ctx->result = result;
+			result = NULL;
+
+			ret = ldap_parse_sasl_bind_result(ldap_conn->handle, sasl_ctx->result, &srv_cred, 0);
+			if (ret != LDAP_SUCCESS) {
+				ERROR("SASL decode failed (bind failed): %s", ldap_err2string(ret));
+				break;
+			}
+
+			if (srv_cred) {
+				DEBUG("SASL response  : %pV",
+					fr_box_strvalue_len(srv_cred->bv_val, srv_cred->bv_len));
+				ber_bvfree(srv_cred);
+			}
+
+			if (sasl_ctx->rmech) DEBUG("Continuing SASL mech %s...", sasl_ctx->rmech);
+		}
 			break;
 
 		default:
-			ERROR("LDAP connection returned an error - restarting the connection");
+			PERROR("LDAP connection returned an error - restarting the connection");
 			fr_ldap_state_error(bind_auth_ctx->bind_ctx->c);	/* Restart the connection state machine */
 			break;
 		}
 		unlang_interpret_mark_runnable(bind_auth_ctx->request);
 
 		/*
-		 *	Clear up the libldap results
+		 *	Clear up the libldap results if they are not being tracked.
 		 */
-		ldap_msgfree(result);
+		if (result) ldap_msgfree(result);
 
 	} while (1);
 }
@@ -1077,7 +1110,15 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	/*
 	 *	Attempt a bind using the thread specific connection for bind auths
 	 */
-	if (fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password) < 0) goto fail;
+	if (auth_ctx->mod_env->user_sasl_mech.type == FR_TYPE_STRING) {
+		ldap_auth_mod_env_t *mod_env = auth_ctx->mod_env;
+		if (fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, mod_env->user_sasl_mech.vb_strvalue,
+						 auth_ctx->dn, mod_env->user_sasl_authname.vb_strvalue,
+						 auth_ctx->password, mod_env->user_sasl_proxy.vb_strvalue,
+						 mod_env->user_sasl_realm.vb_strvalue) < 0) goto fail;
+	} else {
+		if (fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password) < 0) goto fail;
+	}
 
 	RETURN_MODULE_RCODE(unlang_interpret_synchronous(unlang_interpret_event_list(request), request));
 }
