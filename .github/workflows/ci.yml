@@ -251,11 +251,11 @@ jobs:
 
     - name: Show versions
       run: |
-        $CC --version
-        make --version
-        krb5-config --all || :
+        printf "$CC: " ; $CC --version
+        printf "\nmake: " ; make --version
+        printf "\nkrb5: " ; krb5-config --all || :
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
-        openssl version
+        printf "\nopenssl: " ; openssl version
 
     - uses: actions/checkout@v3
 
