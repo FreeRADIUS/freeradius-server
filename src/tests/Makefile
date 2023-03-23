@@ -8,6 +8,17 @@
 #
 include ../../Make.inc
 
+#
+#  You can watch what it's doing by:
+#
+#	$ VERBOSE=1 make ... args ...
+#
+ifeq "${VERBOSE}" ""
+    Q=@
+else
+    Q=
+endif
+
 BUILD_PATH := $(top_builddir)/build
 
 #
@@ -15,7 +26,7 @@ BUILD_PATH := $(top_builddir)/build
 #
 .PHONY: eapol_test
 eapol_test: $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
-	@echo EAPOL_TEST=$(EAPOL_TEST)
+	${Q}echo EAPOL_TEST=$(EAPOL_TEST)
 
 #
 #  If we're doing anything resembling EAP, then make sure that
@@ -23,7 +34,7 @@ eapol_test: $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
 #
 ifneq "(findstring eap,$(MAKECMDGOALS))" ""
 $(BUILD_PATH)/tests/eapol_test:
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 TEST_PATH := $(top_builddir)/src/tests
 DICT_PATH := $(TEST_PATH)
@@ -49,17 +60,17 @@ override EAPOL_TEST_BIN := $(shell $(top_builddir)/scripts/ci/eapol_test-build.s
 endif
 
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
-	@echo "EAPOL_TEST=$(EAPOL_TEST_BIN)" > $@
-	@echo "TLS1_3=$(shell openssl ciphers -s -v 'ECDHE:!COMPLEMENTOFDEFAULT'| grep -q 'TLSv1.3' && echo yes)" >> $@
-	@echo "OPENSSL_OK=$(shell openssl version | grep -v ' 1\.0' >/dev/null && echo yes)" >> $@
-	@echo "OPENSSL3_OK=$(shell openssl version | grep -q ' OpenSSL 3\.0' && echo yes)" >> $@
+	${Q}echo "EAPOL_TEST=$(EAPOL_TEST_BIN)" > $@
+	${Q}echo "TLS1_3=$(shell openssl ciphers -s -v 'ECDHE:!COMPLEMENTOFDEFAULT'| grep -q 'TLSv1.3' && echo yes)" >> $@
+	${Q}echo "OPENSSL_OK=$(shell openssl version | grep -v ' 1\.0' >/dev/null && echo yes)" >> $@
+	${Q}echo "OPENSSL3_OK=$(shell openssl version | grep -q ' OpenSSL 3\.0' && echo yes)" >> $@
 else
 #
 #  No OpenSSL means that we don't even try to build eapol_test
 #
 .PHONY: $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
-	@touch $@
+	${Q}touch $@
 endif
 
 -include $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
@@ -120,30 +131,30 @@ dictionary:
 
 test.conf: dictionary config/eap-test
 	@echo "# test configuration file.  Do not install.  Delete at any time." > $@
-	@if [ -n "$(LIB_PATH)" ]; then  \
+	${Q}if [ -n "$(LIB_PATH)" ]; then  \
 	    echo "libdir =" $(LIB_PATH) >> $@; \
 	fi
-	@echo "testdir =" $(TEST_PATH) >> $@
-	@echo 'logdir = $${testdir}' >> $@
-	@echo "maindir =" $(RADDB_PATH) >> $@
-	@echo 'radacctdir = $${testdir}' >> $@
-	@echo 'pidfile = $${testdir}/radiusd.pid' >> $@
-	@echo 'panic_action = "gdb -batch -x $${testdir}/panic.gdb %e %p > $${testdir}/gdb.log 2>&1; cat $${testdir}/gdb.log"' >> $@
-	@echo 'security {' >> $@
-	@echo '        allow_vulnerable_openssl = yes' >> $@
-	@echo '}' >> $@
-	@echo >> $@
-	@echo 'modconfdir = $${maindir}mods-config' >> $@
-	@echo 'certdir = $${maindir}/certs' >> $@
-	@echo 'cadir   = $${maindir}/certs' >> $@
-	@echo '$$INCLUDE $${testdir}/config/' >> $@
-	@echo '$$INCLUDE $${maindir}/radiusd.conf' >> $@
+	${Q}echo "testdir =" $(TEST_PATH) >> $@
+	${Q}echo 'logdir = $${testdir}' >> $@
+	${Q}echo "maindir =" $(RADDB_PATH) >> $@
+	${Q}echo 'radacctdir = $${testdir}' >> $@
+	${Q}echo 'pidfile = $${testdir}/radiusd.pid' >> $@
+	${Q}echo 'panic_action = "gdb -batch -x $${testdir}/panic.gdb %e %p > $${testdir}/gdb.log 2>&1; cat $${testdir}/gdb.log"' >> $@
+	${Q}echo 'security {' >> $@
+	${Q}echo '        allow_vulnerable_openssl = yes' >> $@
+	${Q}echo '}' >> $@
+	${Q}echo >> $@
+	${Q}echo 'modconfdir = $${maindir}mods-config' >> $@
+	${Q}echo 'certdir = $${maindir}/certs' >> $@
+	${Q}echo 'cadir   = $${maindir}/certs' >> $@
+	${Q}echo '$$INCLUDE $${testdir}/config/' >> $@
+	${Q}echo '$$INCLUDE $${maindir}/radiusd.conf' >> $@
 
 #
 #  Rename "inner-tunnel", and ensure that it only uses the "eap-test" module.
 #
 config/eap-test-inner-tunnel: $(RADDB_PATH)sites-available/inner-tunnel
-	@sed 's/eap/eap-test/;s/server inner-tunnel/server eap-test-inner-tunnel/' < $< > $@
+	${Q}sed 's/eap/eap-test/;s/server inner-tunnel/server eap-test-inner-tunnel/' < $< > $@
 
 #
 #  * Same renames as above
@@ -155,7 +166,7 @@ config/eap-test-inner-tunnel: $(RADDB_PATH)sites-available/inner-tunnel
 #  * tell OpenSSL to enable insecure ciphers TLS 1.0 and TLS 1.1
 #
 config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
-	@sed -e 's/eap {/eap eap-test {/' \
+	${Q}sed -e 's/eap {/eap eap-test {/' \
 	     -e 's/= inner-tunnel/= eap-test-inner-tunnel/;s/use_tunneled_reply = no/use_tunneled_reply = yes/' \
 	     -e 's/enable = no/enable = yes/' \
 	     -e 's/^\(.*\)persist_dir =/  persist_dir =/' \
@@ -165,21 +176,21 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 		 < $< > $@
 
 radiusd.pid: test.conf
-	@rm -rf $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log $(TEST_PATH)/tlscache
-	@mkdir -p $(TEST_PATH)/tlscache
-	@printf "Starting server... "
-	@if ! $(RADIUSD_BIN) -Pxxxxml $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -i 127.0.0.1 -p $(PORT) -D $(DICT_PATH); then \
+	${Q}rm -rf $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log $(TEST_PATH)/tlscache
+	${Q}mkdir -p $(TEST_PATH)/tlscache
+	${Q}printf "Starting server... "
+	${Q}if ! $(RADIUSD_BIN) -Pxxxxml $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -i 127.0.0.1 -p $(PORT) -D $(DICT_PATH); then \
 		echo "failed"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(TEST_PATH)/radius.log"; \
 	fi
-	@echo "ok"
+	${Q}echo "ok"
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
 .PHONY: radiusd.kill
 radiusd.kill:
-	@if [ -f radiusd.pid ]; then \
+	${Q}if [ -f radiusd.pid ]; then \
 	    ret=0; \
 	    if ! ps `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
 		rm -f radiusd.pid; \
@@ -195,7 +206,7 @@ radiusd.kill:
 		fi; \
 		exit $$ret; \
 	fi
-	@rm -f radiusd.pid
+	${Q}rm -f radiusd.pid
 
 #
 #  Run eapol_test if it exists and we built with openssl support.
@@ -214,11 +225,11 @@ endif
 
 .PHONY: $(BUILD_PATH)/tests/eap
 $(BUILD_PATH)/tests/eap:
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 .PHONY: clean.tests.eap
 clean.tests.eap:
-	@rm -rf $(BUILD_PATH)/tests/eap config/tlscache config/eap-test config/eap-test-inner-tunnel
+	${Q}rm -rf $(BUILD_PATH)/tests/eap config/tlscache config/eap-test config/eap-test-inner-tunnel
 
 #
 #  Set target-specific variables, so that the later shell scripts are rather more understandable.
@@ -230,8 +241,8 @@ $(BUILD_PATH)/tests/eap/%.ok: CMD =  $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET)
 $(BUILD_PATH)/tests/eap/%.ok: LOG =  $(patsubst %.ok,%,$@).log
 
 $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | radiusd.kill $(BUILD_PATH)/tests/eap radiusd.pid radiusd.kill
-	@printf 'EAPOL_TEST %s ' $(notdir $(patsubst %.conf,%,$<))
-	@if ! $(CMD) > $(LOG) 2>&1; then \
+	${Q}printf 'EAPOL_TEST %s ' $(notdir $(patsubst %.conf,%,$<))
+	${Q}if ! $(CMD) > $(LOG) 2>&1; then \
 		echo " - " FAILED - command failed; \
 		echo ">>> cmd -" $(CMD); \
 		echo ">>> log -" $(LOG); \
@@ -242,7 +253,7 @@ $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | radiusd.kill $(
 		exit 1; \
 	fi
 	@echo
-	@touch $@
+	${Q}touch $@
 
 #
 #  Don't run the full TLS version tests for CI post-install.
@@ -257,13 +268,13 @@ ifneq "$(prefix)" ""
 #
 define EAP_TLS_CONFIG
 $(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf
-	@sed -e 's/phase1="/phase1="$(subst $(subst .,_,${2})=1,$(subst .,_,${2})=0,$(EAP_TLS_DISABLE_STRING)) /' \
+	${Q}sed -e 's/phase1="/phase1="$(subst $(subst .,_,${2})=1,$(subst .,_,${2})=0,$(EAP_TLS_DISABLE_STRING)) /' \
 	     -e  '/password/s/^//p; /password/s/^.*/        openssl_ciphers="DEFAULT${SECLEVEL}"/' \
 		< $$< > $$@
 
 $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
-	@printf 'EAPOL_TEST %s' $$(notdir $$(patsubst %.ok,%,$$@))
-	@if ! $$(CMD) -r 1 > $$(LOG) 2>&1; then \
+	${Q}printf 'EAPOL_TEST %s' $$(notdir $$(patsubst %.ok,%,$$@))
+	${Q}if ! $$(CMD) -r 1 > $$(LOG) 2>&1; then \
 		echo " - " FAILED  - command failed; \
 		echo ">>> cmd -" $$(CMD) -r 1; \
 		echo ">>> log -" $$(LOG); \
@@ -286,7 +297,7 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 		exit 1; \
 	fi
 	@echo
-	@touch $$@
+	${Q}touch $$@
 
 # EAP-FAST doesn't do TLS 1.3
 ifneq "${1}-${2}" "eap-fast-1.3"
@@ -302,7 +313,7 @@ EAPOL_OK_FILES := $(sort $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,
 tests.eap: $(EAPOL_OK_FILES) | radiusd.kill radiusd.pid
 else
 tests.eap:
-	@echo "EAPOL Tests is disabled"
+	${Q}echo "EAPOL Tests is disabled"
 endif # we have eapol_test built
 
 # kill the server (if it's running)
@@ -311,7 +322,7 @@ endif # we have eapol_test built
 # kill the server
 # remove the changes to raddb/
 tests.runtests:  test.conf | radiusd.kill radiusd.pid
-	@chmod a+x runtests.sh
-	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
+	${Q}chmod a+x runtests.sh
+	${Q}BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 
 tests: tests.runtests tests.eap
