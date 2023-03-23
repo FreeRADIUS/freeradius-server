@@ -27,17 +27,12 @@
 #include <freeradius-devel/modcall.h>
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/channel.h>
+#include <freeradius-devel/connection.h>
+#include <freeradius-devel/socket.h>
 
 #include <libgen.h>
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
-#endif
-
-#ifdef HAVE_SYS_UN_H
-#include <sys/un.h>
-#ifndef SUN_LEN
-#define SUN_LEN(su)  (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
-#endif
 #endif
 
 #ifdef HAVE_SYS_STAT_H
