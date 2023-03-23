@@ -3867,13 +3867,11 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_
 				}
 				SSL_CTX_set_default_passwd_cb_userdata(ctx, password);
 				SSL_CTX_set_default_passwd_cb(ctx, cbtls_password);
-			}
-			else {
+			} else {
 				ERROR(LOG_PREFIX ": Error reading private_key_password_file %s", conf->private_key_password_file);
 			}
 			fclose(passwordfile);
-		}
-		else {
+		} else {
 			ERROR(LOG_PREFIX ": Error opening private_key_password_file %s", conf->private_key_password_file);
 		}
 	}
