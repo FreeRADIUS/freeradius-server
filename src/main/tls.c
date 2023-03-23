@@ -3857,6 +3857,14 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_
 		if (passwordfile) {
 			char password[256];
 			if(fgets(password, sizeof(password), passwordfile)) {
+				/*
+				 *  Remove CR/LF characters at the end of the string
+				 */
+				size_t index = strlen(password);
+				while (index > 0 && (password[index - 1] == '\r' || password[index - 1] == '\n')) {
+					index = index - 1;
+					password[index] = '\0';
+				}
 				SSL_CTX_set_default_passwd_cb_userdata(ctx, password);
 				SSL_CTX_set_default_passwd_cb(ctx, cbtls_password);
 			}
