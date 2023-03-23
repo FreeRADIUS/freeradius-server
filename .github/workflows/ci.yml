@@ -27,6 +27,7 @@ jobs:
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
       selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
+      docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
     steps:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@master
@@ -80,7 +81,7 @@ jobs:
     # we need to run separate database containers to provide these.
     services:
       mariadb:
-        image: mariadb
+        image: ${{ needs.pre-ci.outputs.docker_prefix }}mariadb
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
         ports:
@@ -88,7 +89,7 @@ jobs:
         options: --health-cmd="mysqladmin ping" --health-interval 10s --health-timeout 5s --health-retries 10
 
       postgres:
-        image: postgres
+        image: ${{ needs.pre-ci.outputs.docker_prefix }}postgres
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
