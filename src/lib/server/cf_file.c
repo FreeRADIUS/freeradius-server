@@ -164,6 +164,8 @@ static inline CC_HINT(always_inline) int cf_tmpl_rules_verify(CONF_SECTION *cs, 
 
 #define RULES_VERIFY(_cs, _rules) if (cf_tmpl_rules_verify(_cs, _rules) < 0) return NULL;
 
+static ssize_t fr_skip_xlat(char const *start, char const *end);
+
 /*
  *	Expand the variables in an input string.
  *
@@ -211,39 +213,71 @@ char const *cf_expand_variables(char const *cf, int lineno,
 			CONF_ITEM *ci;
 			CONF_PAIR *cp;
 			char *q;
+			ssize_t len;
 
-			/*
-			 *	FIXME: Add support for ${foo:-bar},
-			 *	like in xlat.c
-			 */
-
-			/*
-			 *	Look for trailing '}', and log a
-			 *	warning for anything that doesn't match,
-			 *	and exit with a fatal error.
-			 */
-			next = strchr(ptr, '}');
-			if (next == NULL) {
-				*p = '\0';
-				ERROR("%s[%d]: Variable expansion '%s' missing '}'",
-				     cf, lineno, input);
+			len = fr_skip_xlat(ptr, end);
+			if (len <= 0) {
+				ERROR("%s[%d]: Failed parsing variable expansion '%s''",
+				      cf, lineno, input);
 				return NULL;
 			}
 
+			next = ptr + len;
 			ptr += 2;
 
 			/*
 			 *	Can't really happen because input lines are
 			 *	capped at 8k, which is sizeof(name)
 			 */
-			if ((size_t) (next - ptr) >= sizeof(name)) {
+			if ((size_t) len >= sizeof(name)) {
 				ERROR("%s[%d]: Reference string is too large",
 				      cf, lineno);
 				return NULL;
 			}
 
-			memcpy(name, ptr, next - ptr);
-			name[next - ptr] = '\0';
+			memcpy(name, ptr, len - 3);
+			name[len - 3] = '\0';
+
+			/*
+			 *	Read configuration value from a file.
+			 *
+			 *	Note that this is "read binary data", and the contents aren't stripped of
+			 *	CRLF.
+			 */
+			if (name[0] == '/') {
+				int fd = open(name, O_RDONLY);
+				struct stat buf;
+
+				fprintf(stderr, "%s[%d]:READING %s\n", cf, lineno, name);
+
+				if (!fd) {
+					ERROR("%s[%d]: Reference \"${%s}\" failed opening file - %s", cf, lineno, name, fr_syserror(errno));
+					return NULL;
+				}
+
+				if (fstat(fd, &buf) < 0) {
+				fail_fd:
+					close(fd);
+					ERROR("%s[%d]: Reference \"${%s}\" failed reading file - %s", cf, lineno, name, fr_syserror(errno));
+					return NULL;
+				}
+
+				if (buf.st_size >= ((output + outsize) - p)) {
+					close(fd);
+					ERROR("%s[%d]: Reference \"${%s}\" file is too large (%zd >= %zd)", cf, lineno, name,
+					      (size_t) buf.st_size, ((output + outsize) - p));
+					return NULL;
+				}
+
+				len = read(fd, p, (output + outsize) - p);
+				if (len < 0) goto fail_fd;
+
+				close(fd);
+				p += len;
+				*p = '\0';
+				ptr = next;
+				goto check_eos;
+			}
 
 			q = strchr(name, ':');
 			if (q) {
@@ -283,7 +317,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 					return NULL;
 				}
 				p += strlen(p);
-				ptr = next + 1;
+				ptr = next;
 
 			} else if (ci->type == CONF_ITEM_PAIR) {
 				/*
@@ -319,7 +353,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 
 				strcpy(p, cp->value);
 				p += strlen(p);
-				ptr = next + 1;
+				ptr = next;
 
 			} else if (ci->type == CONF_ITEM_SECTION) {
 				CONF_SECTION *subcs;
@@ -350,7 +384,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 				cf_filename_set(subcs, ci->filename);
 				cf_lineno_set(subcs, ci->lineno);
 
-				ptr = next + 1;
+				ptr = next;
 
 			} else {
 				ERROR("%s[%d]: Reference \"%s\" type is invalid", cf, lineno, input);
@@ -414,6 +448,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 			*(p++) = *(ptr++);
 		}
 
+	check_eos:
 		if (p >= (output + outsize)) {
 			ERROR("%s[%d]: Reference \"%s\" is too long",
 			      cf, lineno, input);
@@ -1200,7 +1235,7 @@ static ssize_t fr_skip_xlat(char const *start, char const *end)
 	}
 
 	if ((*p != '%') && (*p != '$')) {
-		fr_strerror_const("Unexpected character in xlat");
+		fr_strerror_const("Unexpected character in expansion");
 		return -(p - start);
 	}
 
@@ -1286,7 +1321,7 @@ static ssize_t fr_skip_xlat(char const *start, char const *end)
 	/*
 	 *	Unexpected end of xlat
 	 */
-	fr_strerror_const("Unexpected end of xlat");
+	fr_strerror_const("Unexpected end of expansion");
 	return -(p - start);
 }
 
