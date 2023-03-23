@@ -78,7 +78,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	Decode structs with length prefixes.
 	 */
 	if (da_is_length_field(parent)) {
-		size_t struct_len, need;
+		size_t struct_len, need, new_len;
 
 		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
 			need = 1;
@@ -115,7 +115,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		p += need;
 		end = p + struct_len;
-		data_len = struct_len + need - offset;
+		new_len = struct_len + need - offset;
+		if (new_len > data_len) goto unknown;
+
+		data_len = new_len;
 	}
 
 	/*
