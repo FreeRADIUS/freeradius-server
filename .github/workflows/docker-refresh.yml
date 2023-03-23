@@ -9,6 +9,7 @@ env:
   DOCKER_REGISTRY: "docker.internal.networkradius.com"
   DOCKER_IMAGE_NAME: "docker.internal.networkradius.com/self-hosted"
   DOCKER_BASE_IMAGE: "ubuntu:20.04"
+  DOCKER_EXTRA_IMAGES: "mariadb postgres 4teamwork/389ds"
 
 jobs:
   build-image:
@@ -25,11 +26,15 @@ jobs:
         with:
           lfs: false
 
-      - name: Fetch standard base image
+      - name: Fetch images
         shell: bash
         run: |
           docker pull "$DOCKER_BASE_IMAGE"
           docker tag "$DOCKER_BASE_IMAGE" "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE"
+          for IMAGE in $DOCKER_EXTRA_IMAGES; do \
+            docker pull "$IMAGE"; \
+            docker tag "$IMAGE" "$DOCKER_REGISTRY/$IMAGE"; \
+          done
 
       - name: Create build dependency package
         uses: addnab/docker-run-action@v3
@@ -60,8 +65,11 @@ jobs:
           password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
           registry: ${{ env.DOCKER_REGISTRY }}
 
-      - name: Push images to registry
+      - name: Push images to local registry
         shell: bash
         run: |
           docker push "$DOCKER_IMAGE_NAME"
           docker push "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE"
+          for IMAGE in $DOCKER_EXTRA_IMAGES; do \
+            docker push "$DOCKER_REGISTRY/$IMAGE"; \
+          done
