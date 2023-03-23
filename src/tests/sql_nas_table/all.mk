@@ -41,19 +41,19 @@ $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 
 .PHONY: sql_nas_table_bootstrap
 sql_nas_table_bootstrap:
-	$(Q)rm -f $(SQL_NASTABLE_DB)
-	$(Q)mkdir -p $(SQL_NASTABLE_BUILD_DIR)
-	$(Q)sqlite3 $(SQL_NASTABLE_DB) < ./raddb/mods-config/sql/main/sqlite/schema.sql
-	$(Q)sqlite3 $(SQL_NASTABLE_DB) < ./src/tests/sql_nas_table/clients.sql
+	${Q}rm -f $(SQL_NASTABLE_DB)
+	${Q}mkdir -p $(SQL_NASTABLE_BUILD_DIR)
+	${Q}sqlite3 $(SQL_NASTABLE_DB) < ./raddb/mods-config/sql/main/sqlite/schema.sql
+	${Q}sqlite3 $(SQL_NASTABLE_DB) < ./src/tests/sql_nas_table/clients.sql
 
 #
 #	Run the radclient commands against the radiusd.
 #
 $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill sql_nas_table_bootstrap $(TEST).radiusd_start
-	$(Q)echo "SQL_NASTABLE-TEST"
-	$(Q)mkdir -p $(dir $@)
-	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
-	$(Q)if ! $(TESTBIN)/radclient $(ARGV) -xf src/tests/sql_nas_table/auth.txt -D share/ 127.0.0.1:$(PORT) auth $(SECRET) 1> $(SQL_NASTABLE_BUILD_DIR)/radclient.log 2>&1; then \
+	${Q}echo "SQL_NASTABLE-TEST"
+	${Q}mkdir -p $(dir $@)
+	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
+	${Q}if ! $(TESTBIN)/radclient $(ARGV) -xf src/tests/sql_nas_table/auth.txt -D share/ 127.0.0.1:$(PORT) auth $(SECRET) 1> $(SQL_NASTABLE_BUILD_DIR)/radclient.log 2>&1; then \
 		echo "FAILED";                                              \
 		rm -f $(BUILD_DIR)/tests/test.sql_nas_table;		    \
 		$(MAKE) --no-print-directory test.sql_nas_table.radiusd_kill;   \
@@ -65,10 +65,10 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill sql_nas_table_bootstrap $(TEST).rad
 		exit 1;                                                     \
 	fi
 
-	$(Q)touch $@
+	${Q}touch $@
 
 $(TEST):
-	$(Q)$(MAKE) --no-print-directory $@.radiusd_stop
+	${Q}$(MAKE) --no-print-directory $@.radiusd_stop
 	@touch $(BUILD_DIR)/tests/$@
 else
 #
