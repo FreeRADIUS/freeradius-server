@@ -34,7 +34,18 @@ env:
 #  SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
 
 jobs:
+  pre-ci:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@master
+
   ci:
+    needs: pre-ci
+    if: ${{ needs.pre-ci.outputs.should_skip != 'true' }}
 
     runs-on: ${{ matrix.os.runs_on }}
 
@@ -54,7 +65,10 @@ jobs:
 # name    - used in the job name only
 #
 # Self-hosted runner (must set USE_DOCKER=1 above):
-          - { runs_on: "${{ github.repository_owner == 'FreeRADIUS' && 'self-hosted' || 'ubuntu-20.04' }}", code: "ubuntu2004", docker: "ubuntu:20.04", name: "${{ github.repository_owner == 'FreeRADIUS' && 'self' || 'gh' }}-ubuntu20" }
+          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-20.04' }}"
+            docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:20.04' }}"
+            name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu20"
+            code: "ubuntu2004"
 # GitHub runner (may set USE_DOCKER=0 or 1 above):
 #          - { runs_on: "ubuntu-20.04", code: "ubuntu2004", docker: "ubuntu:20.04", name: "gh20-ubuntu20" }
 
