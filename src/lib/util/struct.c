@@ -242,7 +242,12 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	The child is variable sized, OR it's an array.
 		 *	Eat up the rest of the data.
 		 */
-		if (!child_length || (child->flags.array)) child_length = (end - p);
+		if (!child_length || (child->flags.array)) {
+			child_length = (end - p);
+
+		} else if ((size_t) (end - p) < child_length) {
+			goto unknown;
+		}
 
 		/*
 		 *	Magic values get the callback called.
