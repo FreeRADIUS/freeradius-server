@@ -18,7 +18,7 @@ include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 
 $(TEST).trigger_clear:
-	$(Q)rm -f $(BUILD_DIR)/tests/ldap_sync/rfc4533/sync_started
+	${Q}rm -f $(BUILD_DIR)/tests/ldap_sync/rfc4533/sync_started
 
 $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<))
@@ -28,12 +28,12 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 	$(eval OUT_DIR  := $(BUILD_DIR)/tests/ldap_sync/rfc4533)
 	$(eval OUT      := $(shell grep "#.*OUT:" $< | cut -f2 -d ':'))
 
-	$(Q)echo "LDAPSYNC-TEST rfc4533 $(TARGET)"
-	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
-	$(Q)rm -f $(OUT_DIR)/$(OUT).out
+	${Q}echo "LDAPSYNC-TEST rfc4533 $(TARGET)"
+	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
+	${Q}rm -f $(OUT_DIR)/$(OUT).out
 
 #	Wait for the sync to start before applying changes
-	$(Q)i=0; while [ $$i -lt 100 ] ; \
+	${Q}i=0; while [ $$i -lt 100 ] ; \
 		do if [ -e $(OUT_DIR)/sync_started ];	\
 		then					\
 		break;					\
@@ -42,8 +42,8 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 		i=$$((i+1));				\
 	done ;
 
-	$(Q)ldapmodify $(ARGV) -f $< > /dev/null
-	$(Q)i=0; while [ $$i -lt 600 ] ; \
+	${Q}ldapmodify $(ARGV) -f $< > /dev/null
+	${Q}i=0; while [ $$i -lt 600 ] ; \
 		do if [ -e $(OUT_DIR)/$(OUT).out ] ;	\
 		then					\
 		break;					\
@@ -51,19 +51,19 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 		sleep .1;				\
 		i=$$((i+1));				\
 	done ;
-	$(Q)sleep .1
-	$(Q)mv $(OUT_DIR)/$(OUT).out $(FOUND)
-	$(Q)if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then	\
+	${Q}sleep .1
+	${Q}mv $(OUT_DIR)/$(OUT).out $(FOUND)
+	${Q}if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then	\
 		echo "LDAP_SYNC FAILED $@";					\
 		rm -rf $(BUILD_DIR)/tests/test.ldap_sync/rfc4533;		\
 		$(MAKE) --no-print-directory test.ldap_sync/rfc4533.radiusd_kill; \
 		exit 1;								\
 	fi
-	$(Q)touch $@
+	${Q}touch $@
 
 $(TEST):
 	$(eval OUT_DIR  := $(BUILD_DIR)/tests/ldap_sync/rfc4533)
-	$(Q)$(MAKE) --no-print-directory $@.radiusd_stop
+	${Q}$(MAKE) --no-print-directory $@.radiusd_stop
 
 #
 #	Once all the individual tests are run, there should be cookies in the cookie log.
@@ -73,18 +73,18 @@ $(TEST):
 #	Since the tests open two searches, and each receives the cookeis, it can be more than
 #	number of tests / 2.
 #
-	$(Q)echo "LDAPSYNC-TEST rfc4533 cookie"
-	$(Q)if [ ! -e $(OUT_DIR)/cookielog.out ]; then		\
+	${Q}echo "LDAPSYNC-TEST rfc4533 cookie"
+	${Q}if [ ! -e $(OUT_DIR)/cookielog.out ]; then		\
 		echo "LDAP_SYNC FAILED $@ - no cookie stored";	\
 		exit 1;						\
 	fi
-	$(Q)if [ `grep -v -P 'Cookie = rid=\d{3},csn=\d{14}\.\d{6}Z#\d{6}#\d{3}#\d{6}' $(OUT_DIR)/cookielog.out | wc -l` -ne 0 ]; then	\
+	${Q}if [ `grep -v -P 'Cookie = rid=\d{3},csn=\d{14}\.\d{6}Z#\d{6}#\d{3}#\d{6}' $(OUT_DIR)/cookielog.out | wc -l` -ne 0 ]; then	\
 		echo "LDAP_SYNC FAILED $@ - invalid cookie stored";	\
 		rm -f $(BUILD_DIR)/tests/test.ldap_sync/rfc4533;	\
 		$(MAKE) --no-print-direcotry test.ldap_sync/rfc4533.radiusd_kill; \
 		exit 1;							\
 	fi
-	$(Q)if [ "`cat $(OUT_DIR)/cookielog.out | wc -l`" -lt "`expr $(TEST_COUNT) / 2`" ]; then \
+	${Q}if [ "`cat $(OUT_DIR)/cookielog.out | wc -l`" -lt "`expr $(TEST_COUNT) / 2`" ]; then \
 		echo "LDAP_SYNC_FAILED $@ - insufficient cookies stored";	\
 		exit 1;								\
 	fi

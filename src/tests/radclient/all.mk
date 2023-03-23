@@ -42,9 +42,9 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval IGNORE_ERROR := $(shell grep -q "#.*IGNORE_ERROR:.*1" $< && echo 1 || echo 0))
 	$(eval RADCLIENT_CLIENT_PORT := $(shell echo $$(($(RADCLIENT_CLIENT_PORT)+1))))
 
-	$(Q)echo "RADCLIENT-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
-	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
-	$(Q)if ! $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
+	${Q}echo "RADCLIENT-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
+	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
+	${Q}if ! $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
 		if [ "$(IGNORE_ERROR)" != "1" ]; then                               \
 			echo "FAILED";                                              \
 			cat $(FOUND);                                               \
@@ -58,17 +58,17 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 #
 #	Lets normalize the loopback interface on OSX and FreeBSD
 #
-	$(Q)if [ "$$(uname -s)" = "Darwin" ]; then sed -i.bak 's/via lo0/via lo/g' $(FOUND); fi
-	$(Q)if [ "$$(uname -s)" = "FreeBSD" ]; then sed -i.bak 's/via (null)/via lo/g' $(FOUND); fi
+	${Q}if [ "$$(uname -s)" = "Darwin" ]; then sed -i.bak 's/via lo0/via lo/g' $(FOUND); fi
+	${Q}if [ "$$(uname -s)" = "FreeBSD" ]; then sed -i.bak 's/via (null)/via lo/g' $(FOUND); fi
 #
 #	Remove all entries with "^_EXIT.*CALLED .*/"
 #	It is necessary to match all builds with/without -DNDEBUG
 #
-	$(Q)sed -i.bak '/^_EXIT.*CALLED .*/d' $(FOUND)
+	${Q}sed -i.bak '/^_EXIT.*CALLED .*/d' $(FOUND)
 #
 #	Ignore spurious output from jlibtool when VERBOSE=1
 #
-	$(Q)sed -i.bak '$${/Executing: /d;}' $(FOUND)
+	${Q}sed -i.bak '$${/Executing: /d;}' $(FOUND)
 #
 #	Checking.
 #
@@ -76,7 +76,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 #	or
 #	2. call the script src/test/radclient/$test.cmd to validate the build/test/radclient/$test.out
 #
-	$(Q)if [ -e "$(EXPECTED)" ] && ! diff -I 'Sent' -I 'Received' $(EXPECTED) $(FOUND); then  \
+	${Q}if [ -e "$(EXPECTED)" ] && ! diff -I 'Sent' -I 'Received' $(EXPECTED) $(FOUND); then  \
 		echo "RADCLIENT FAILED $@";                                 \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
 		echo "RADCLIENT: $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
@@ -97,9 +97,9 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 		exit 1;                                                     \
 	fi
-	$(Q)touch $@
+	${Q}touch $@
 
 .NO_PARALLEL: $(TEST)
 $(TEST):
-	$(Q)$(MAKE) --no-print-directory $@.radiusd_stop
+	${Q}$(MAKE) --no-print-directory $@.radiusd_stop
 	@touch $(BUILD_DIR)/tests/$@

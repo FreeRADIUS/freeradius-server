@@ -17,7 +17,7 @@ PCAP_IN := $(BUILD_DIR)/tests/radsniff/radius-auth+acct+coa-100pkts.pcap
 
 ifeq "$(GIT_HAS_LFS)" "no"
 test.radsniff:
-	$(Q)echo "WARNING: Can't execute 'test.radsniff' without 'git lfs' installed. ignoring."
+	${Q}echo "WARNING: Can't execute 'test.radsniff' without 'git lfs' installed. ignoring."
 else
 
 #
@@ -34,8 +34,8 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 .PRECIOUS: $(OUTPUT)/%.pcap
 $(OUTPUT)/%.pcap: $(DIR)/%.pcap.gz
-	$(Q)mkdir -p $(@D)
-	$(Q)gunzip -c $< > $@
+	${Q}mkdir -p $(@D)
+	${Q}gunzip -c $< > $@
 
 #
 #	Run the radsniff commands
@@ -47,18 +47,18 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 	$(eval EXPECTED := $<)
 	$(eval ARGV     := $(shell grep "^#.*ARGV:" $< | cut -f2 -d ':'))
 
-	$(Q)echo "RADSNIFF-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
+	${Q}echo "RADSNIFF-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
 #
 # 	We need that 'TZ=UTC ...' to libpcap pass the same timestamp in anywhere.
 #
-	$(Q)if ! TZ='UTC' $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary 1> $(FOUND); then     \
+	${Q}if ! TZ='UTC' $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary 1> $(FOUND); then     \
 		echo "FAILED";                                                                                \
 		cat $(FOUND);                                                                                 \
 		echo "RADSNIFF: TZ='UTC' $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary" -xx;  \
 		rm -f $@;										      \
 		exit 1;                                                                                       \
 	fi
-	$(Q)if [ -e "$(EXPECTED)" ]; then                                                                     \
+	${Q}if [ -e "$(EXPECTED)" ]; then                                                                     \
 		grep -v "^#" $(EXPECTED) > $(FOUND).result || true;                                           \
 		sed -i.bak -e '$${/Executing: /d;}' $(FOUND);                                                 \
 		if ! cmp $(FOUND) $(FOUND).result; then                                                       \
@@ -82,5 +82,5 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 		echo "ERROR! We should have at least one .txt or .cmd test";                                  \
 		exit 1;                                                                                       \
 	fi
-	$(Q)touch $@
+	${Q}touch $@
 endif

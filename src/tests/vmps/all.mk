@@ -33,9 +33,9 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
-	$(Q)echo "VMPS-TEST INPUT=$(TARGET) VMPS_ARGV=\"$(ARGV)\""
-	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
-	$(Q)if ! $(VQCLI) -s 127.0.0.1 -p $(vmps_port) $(ARGV) 1> $(FOUND) 2>&1; then \
+	${Q}echo "VMPS-TEST INPUT=$(TARGET) VMPS_ARGV=\"$(ARGV)\""
+	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
+	${Q}if ! $(VQCLI) -s 127.0.0.1 -p $(vmps_port) $(ARGV) 1> $(FOUND) 2>&1; then \
 		echo "FAILED";                                            \
 		cat $(FOUND);                                             \
 		rm -f $(BUILD_DIR)/tests/test.vmps;                       \
@@ -49,7 +49,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 #
 #	1. diff between src/test/vmps/$test.out & build/test/vmps/$test.out
 #
-	$(Q)if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then   \
+	${Q}if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then   \
 		echo "VMPS FAILED $@";                                       \
 		echo "RADIUSD:    $(RADIUSD_RUN)";                           \
 		echo "VQCLI:      $(VQCLI) -s 127.0.0.1 -p $(PORT) $(ARGV)"; \
@@ -61,8 +61,8 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 		$(MAKE) --no-print-directory test.vmps.radiusd_kill;         \
 		exit 1;                                                      \
 	fi
-	$(Q)touch $@
+	${Q}touch $@
 
 $(TEST):
-	$(Q)$(MAKE) --no-print-directory $@.radiusd_stop
+	${Q}$(MAKE) --no-print-directory $@.radiusd_stop
 	@touch $(BUILD_DIR)/tests/$@

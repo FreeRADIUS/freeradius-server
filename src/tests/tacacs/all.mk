@@ -52,9 +52,9 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/libfreeradius-tacacs.la $(BUILD_DIR)/lib/
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
-	$(Q)echo "TACACS-TEST INPUT=$(TARGET) TACACS_ARGV=\"$(ARGV)\""
-	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
-	$(Q)if ! $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV) 1> $(FOUND) 2>&1; then \
+	${Q}echo "TACACS-TEST INPUT=$(TARGET) TACACS_ARGV=\"$(ARGV)\""
+	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
+	${Q}if ! $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV) 1> $(FOUND) 2>&1; then \
 		echo "FAILED";                                              \
 		cat $(FOUND);                                               \
 		rm -f $(BUILD_DIR)/tests/test.tacacs;                       \
@@ -68,7 +68,7 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/libfreeradius-tacacs.la $(BUILD_DIR)/lib/
 #
 #	1. diff between src/test/tacacs/$test.out & build/test/tacacs/$test.out
 #
-	$(Q)if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then  \
+	${Q}if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then  \
 		echo "TACCLIENT FAILED $@";                                 \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
 		echo "TACCLIENT: $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV)"; \
@@ -80,17 +80,17 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/libfreeradius-tacacs.la $(BUILD_DIR)/lib/
 		$(MAKE) --no-print-directory test.tacacs.radiusd_kill;      \
 		exit 1;                                                     \
 	fi
-	$(Q)touch $@
+	${Q}touch $@
 
 $(TEST):
-	$(Q)$(MAKE) --no-print-directory $@.radiusd_stop
+	${Q}$(MAKE) --no-print-directory $@.radiusd_stop
 	@touch $(BUILD_DIR)/tests/$@
 
 else
 .PHONY: test.tacacs
 test.tacacs:
-	$(Q)echo "WARNING: 'tests.tacacs' requires 'tacacs_plus' Python3 module. e.g: pip3 install tacacs_plus"
-	$(Q)echo "Skipping 'test.tacacs'"
+	${Q}echo "WARNING: 'tests.tacacs' requires 'tacacs_plus' Python3 module. e.g: pip3 install tacacs_plus"
+	${Q}echo "Skipping 'test.tacacs'"
 
 .PHONY: clean.test.tacacs
 clean.test.tacacs:

@@ -71,7 +71,7 @@ include src/tests/radiusd.mk
 
 define ADD_TEST_EAP_OUTPUT
 $(OUTPUT)/${1}:
-	$(Q)mkdir -p $$@
+	${Q}mkdir -p $$@
 endef
 
 #
