@@ -3,6 +3,9 @@ AC_INIT(rlm_unbound.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_unbound])
 
+AC_PROG_CC
+AC_PROG_CPP
+
 AC_ARG_WITH([]modname,
 [  --with-[]modname              build []modname. (default=yes)])
 
@@ -68,7 +71,7 @@ if test x"$fail" != x""; then
 fi
 
 mod_ldflags="${SMART_LIBS}"
-mod_cflags="${SMART_CFLAGS}"
+mod_cflags="${SMART_CPPFLAGS}"
 
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
