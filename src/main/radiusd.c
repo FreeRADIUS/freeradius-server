@@ -710,6 +710,7 @@ cleanup:
 	if (main_config.memory_report) {
 		INFO("Allocated memory at time of report:");
 		fr_log_talloc_report(NULL);
+		talloc_disable_null_tracking();
 	}
 
 	return rcode;
