@@ -596,8 +596,8 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 
 		if (depth == 0) {
 			if (at_rules->namespace || (at_rules->list_presence == TMPL_ATTR_LIST_FORBID)) {
-				fr_strerror_const("It is not permitted to specify a request reference here");
-				if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
+				fr_strerror_const("List qualifiers are not allowed here");
+				if (err) *err = TMPL_ATTR_ERROR_LIST_NOT_ALLOWED;
 
 				fr_sbuff_set(&our_in, in);	/* Marker at the start */
 			error:

@@ -1012,7 +1012,6 @@ typedef enum {
 	TMPL_ATTR_ERROR_NONE = 0,			//!< No error.
 	TMPL_ATTR_ERROR_EMPTY,				//!< Attribute ref contains no data.
 	TMPL_ATTR_ERROR_BAD_PREFIX,			//!< Missing '&' or has '&' when it shouldn't.
-	TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER,		//!< List qualifier is invalid.
 	TMPL_ATTR_ERROR_LIST_NOT_ALLOWED,		//!< List qualifier is not allowed here.
 	TMPL_ATTR_ERROR_LIST_MISSING,			//!< List qualifier is required, but missing.
 	TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED,		//!< Attribute specified as OID, could not be
