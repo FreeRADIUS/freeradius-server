@@ -248,9 +248,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 				int fd = open(name, O_RDONLY);
 				struct stat buf;
 
-				fprintf(stderr, "%s[%d]:READING %s\n", cf, lineno, name);
-
-				if (!fd) {
+				if (fd < 0) {
 					ERROR("%s[%d]: Reference \"${%s}\" failed opening file - %s", cf, lineno, name, fr_syserror(errno));
 					return NULL;
 				}
