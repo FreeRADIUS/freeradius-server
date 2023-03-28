@@ -779,7 +779,7 @@ static uint32_t event_rand(void)
 {
 	uint32_t num;
 
-	num = rand_pool.randrsl[rand_pool.randcnt++];
+	num = rand_pool.randrsl[rand_pool.randcnt++ & 0xff];
 	if (rand_pool.randcnt == 256) {
 		fr_isaac(&rand_pool);
 		rand_pool.randcnt = 0;
