@@ -422,16 +422,6 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	}
 
 	/*
-	 *	Force the correct header type, and randomly-placed
-	 *	status fields.  But only if there's no code field.
-	 *	Only the unit tests pass a zero code field, as that's
-	 *	normally invalid.  The unit tests ensure that all of
-	 *	the VPs are passed to encode a packet, and they all
-	 *	must be correct
-	 */
-	if (code && (fr_tacacs_code_to_packet(packet, code) < 0)) return -1;
-
-	/*
 	 *	No "Packet" struct to encode.  We MUST have an original packet to copy the various fields
 	 *	from.
 	 */
@@ -947,6 +937,16 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 		fr_strerror_printf("encode: unknown packet type %u", packet->hdr.type);
 		return -1;
 	}
+
+	/*
+	 *	Force the correct header type, and randomly-placed
+	 *	status fields.  But only if there's no code field.
+	 *	Only the unit tests pass a zero code field, as that's
+	 *	normally invalid.  The unit tests ensure that all of
+	 *	the VPs are passed to encode a packet, and they all
+	 *	must be correct
+	 */
+	if (code && (fr_tacacs_code_to_packet(packet, code) < 0)) return -1;
 
 	/*
 	 *	The packet length we store in the header doesn't
