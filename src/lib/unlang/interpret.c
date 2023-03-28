@@ -1118,6 +1118,15 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 	case FR_SIGNAL_CANCEL:
 		unlang_interpret_request_stop(request);		/* Stop gets the request in a consistent state */
 		unlang_interpret_request_done(request);		/* Done signals the request is complete */
+
+		/*
+		 *	If we're cancelling a child, detach it from
+		 *	its parent, so we don't leak memory allocated
+		 *	in request_detachable_init.
+		 */
+		if (request_is_detachable(request) && (request_detach(request) < 0)) {
+			RPEDEBUG("Failed detaching request on cancel");
+		}
 		break;
 
 	case FR_SIGNAL_DETACH:
