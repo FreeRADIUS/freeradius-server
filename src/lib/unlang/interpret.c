@@ -556,8 +556,11 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	now continue at the deepest frame.
 		 */
 		case UNLANG_ACTION_PUSHED_CHILD:
+			fr_assert_msg(&stack->frame[stack->depth] > frame,
+				      "Instruction %s returned UNLANG_ACTION_PUSHED_CHILD, "
+				      "but stack depth was not increased",
+				      instruction->name);
 			unlang_frame_perf_yield(frame);
-			fr_assert(&stack->frame[stack->depth] > frame);
 			*result = frame->result;
 			return UNLANG_FRAME_ACTION_NEXT;
 
@@ -578,6 +581,10 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	called the interpreter.
 		 */
 		case UNLANG_ACTION_YIELD:
+			fr_assert_msg(&stack->frame[stack->depth] == frame,
+				      "Instruction %s returned UNLANG_ACTION_YIELD, but pushed additional "
+				      "frames for evaluation.  Instruction should return UNLANG_ACTION_PUSHED_CHILD "
+				      "instead", instruction->name);
 			unlang_frame_perf_yield(frame);
 			yielded_set(frame);
 			RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
@@ -588,7 +595,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 
 		/*
 		 *	This action is intended to be returned by library
-		 *	functions.  It reduces the boilerplate.
+		 *	functions.  It reduces boilerplate.
 		 */
 		case UNLANG_ACTION_FAIL:
 			*result = RLM_MODULE_FAIL;
