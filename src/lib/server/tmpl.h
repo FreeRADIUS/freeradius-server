@@ -262,6 +262,15 @@ typedef enum {
 	TMPL_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
 } tmpl_attr_prefix_t;
 
+/** Specify whether attribute references can have a list (or parent) reference
+ *
+ */
+typedef enum {
+	TMPL_ATTR_LIST_ALLOW = 0,			//!< Attribute refs are allowed to have a list
+	TMPL_ATTR_LIST_FORBID,				//!< Attribute refs are forbidden from having a list
+	TMPL_ATTR_LIST_REQUIRE 				//!< Attribute refs are required to have a list.
+} tmpl_attr_list_presence_t;
+
 /** Define entry and head types for tmpl request references
  *
  */
@@ -295,6 +304,9 @@ struct tmpl_attr_rules_s {
 
 	tmpl_attr_prefix_t	prefix;			//!< Whether the attribute reference requires
 							///< a prefix.
+
+	tmpl_attr_list_presence_t list_presence;	//!< Whether the attribute reference can
+							///< have a list, forbid it, or require it.
 
 	uint8_t			allow_unknown:1;	//!< Allow unknown attributes i.e. attributes
 							///< defined by OID string.
@@ -1003,6 +1015,8 @@ typedef enum {
 	TMPL_ATTR_ERROR_EMPTY,				//!< Attribute ref contains no data.
 	TMPL_ATTR_ERROR_BAD_PREFIX,			//!< Missing '&' or has '&' when it shouldn't.
 	TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER,		//!< List qualifier is invalid.
+	TMPL_ATTR_ERROR_LIST_NOT_ALLOWED,		//!< List qualifier is not allowed here.
+	TMPL_ATTR_ERROR_LIST_MISSING,			//!< List qualifier is required, but missing.
 	TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED,		//!< Attribute specified as OID, could not be
 							///< found in the dictionaries, and is disallowed
 							///< because 'disallow_internal' in tmpl_rules_t

@@ -767,6 +767,13 @@ do_children:
 	for (ci = cf_item_next(cs, NULL);
 	     ci != NULL;
 	     ci = cf_item_next(cs, ci)) {
+		tmpl_rules_t	child_lhs_rules = our_lhs_rules;
+
+		/*
+		 *	Disallow list references on the LHS of child lists for edit sections.
+		 */
+		if (edit) child_lhs_rules.attr.list_presence = TMPL_ATTR_LIST_FORBID;
+
 		if (total++ == max) {
 			cf_log_err(ci, "Map size exceeded");
 		error:
@@ -787,7 +794,6 @@ do_children:
 			CONF_SECTION	*subcs;
 			fr_token_t	token;
 			ssize_t		slen;
-			bool		qualifiers = our_lhs_rules.attr.disallow_qualifiers;
 			map_list_t	child_list;
 
 			map_list_init(&child_list);
@@ -846,30 +852,30 @@ do_children:
 			 *	the child attributes go into the
 			 *	parent one.
 			 */
-			our_lhs_rules.attr.disallow_qualifiers = true;
+			child_lhs_rules.attr.disallow_qualifiers = true;
 
 			/*
 			 *	The leaf reference of the outer section
 			 *	is used as the parsing context of the
 			 *	inner section.
 			 */
-			our_lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_NO;
-			our_lhs_rules.attr.namespace = tmpl_attr_tail_da(map->lhs);
+			child_lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_NO;
+			child_lhs_rules.attr.namespace = tmpl_attr_tail_da(map->lhs);
 
 			/*
 			 *	Groups MAY change dictionaries.  If so, then swap the dictionary and the parent.
 			 */
-			if (our_lhs_rules.attr.namespace->type == FR_TYPE_GROUP) {
+			if (child_lhs_rules.attr.namespace->type == FR_TYPE_GROUP) {
 				fr_dict_attr_t const *ref;
 				fr_dict_t const *dict, *internal;
 
-				ref = fr_dict_attr_ref(our_lhs_rules.attr.namespace);
+				ref = fr_dict_attr_ref(child_lhs_rules.attr.namespace);
 				dict = fr_dict_by_da(ref);
 				internal = fr_dict_internal();
 
-				if ((dict != internal) && (dict != our_lhs_rules.attr.dict_def)) {
-					our_lhs_rules.attr.dict_def = dict;
-					our_lhs_rules.attr.namespace = ref;
+				if ((dict != internal) && (dict != child_lhs_rules.attr.dict_def)) {
+					child_lhs_rules.attr.dict_def = dict;
+					child_lhs_rules.attr.namespace = ref;
 				}
 			}
 
@@ -884,14 +890,13 @@ do_children:
 			 *	correct parent map.
 			 */
 			if (_map_afrom_cs(map, &child_list, map, cf_item_to_section(ci),
-					 &our_lhs_rules, rhs_rules, validate, uctx, max, false, edit) < 0) {
+					 &child_lhs_rules, rhs_rules, validate, uctx, max, false, edit) < 0) {
 				map_list_talloc_free(&child_list);
 				talloc_free(map);
 				goto error;
 			}
 			map_list_move(&map->child, &child_list);
 
-			our_lhs_rules.attr.disallow_qualifiers = qualifiers;
 			MAP_VERIFY(map);
 			goto next;
 		}
@@ -904,7 +909,7 @@ do_children:
 		cp = cf_item_to_pair(ci);
 		fr_assert(cp != NULL);
 
-		if (map_afrom_cp(parent_ctx, &map, parent, cp, &our_lhs_rules, rhs_rules, edit) < 0) {
+		if (map_afrom_cp(parent_ctx, &map, parent, cp, &child_lhs_rules, rhs_rules, edit) < 0) {
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;

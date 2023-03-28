@@ -2080,8 +2080,34 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *	then we need to add in a default list.
 	 */
 
-	if (!tmpl_attr_is_list_attr(tmpl_attr_list_head(tmpl_attr(vpt))))
-	{
+	/*
+	 *	Check whether the tmpl has a list qualifier.
+	 */
+	switch (at_rules->list_presence) {
+	case TMPL_ATTR_LIST_ALLOW:
+		break;
+
+	case TMPL_ATTR_LIST_FORBID:
+		if (tmpl_attr_is_list_attr(tmpl_attr_list_head(tmpl_attr(vpt)))) {
+			fr_strerror_const("List qualifiers are not allowed here.");
+			if (err) *err = TMPL_ATTR_ERROR_LIST_NOT_ALLOWED;
+			goto error;
+		}
+		break;
+
+	case TMPL_ATTR_LIST_REQUIRE:
+		if (!tmpl_attr_is_list_attr(tmpl_attr_list_head(tmpl_attr(vpt)))) {
+			fr_strerror_const("List qualifier is required, but no list was found.");
+			if (err) *err = TMPL_ATTR_ERROR_LIST_MISSING;
+			goto error;
+		}
+		break;
+	}
+
+	/*
+	 *	If we're using lists, ensure that the default list is specified.
+	 */
+	if (!tmpl_attr_is_list_attr(tmpl_attr_list_head(tmpl_attr(vpt)))) {
 		tmpl_attr_t *ar;
 
 		MEM(ar = talloc(vpt, tmpl_attr_t));

@@ -1,0 +1,8 @@
+#
+#  Once we have a sublist, we can't put a list reference into the LHS.
+#
+#  The name on the LHS MUST be given in the context of the parent.
+#
+&reply += {
+	&request.User-Name = "foo" # ERROR
+}
