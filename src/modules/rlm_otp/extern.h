@@ -64,7 +64,9 @@ typedef struct rlm_otp_t {
 void otp_mppe(REQUEST *, otp_pwe_t, rlm_otp_t const *, char const *);
 
 /* otp_pw_valid.c */
-int otp_pw_valid(REQUEST *, int, char const *, rlm_otp_t const *, char []);
+int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
+		 rlm_otp_t const *opt,
+		 char passcode[OTP_MAX_PASSCODE_LEN + 1]);
 
 /* otp_radstate.c */
 #define OTP_MAX_RADSTATE_LEN 2 + (OTP_MAX_CHALLENGE_LEN * 2 + 8 + 8 + 32)*2 + 1
