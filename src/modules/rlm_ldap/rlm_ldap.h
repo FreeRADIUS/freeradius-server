@@ -152,6 +152,21 @@ typedef struct {
 	fr_value_box_t	profile_filter;			//!< Filter to use when searching for profiles.
 } ldap_autz_mod_env_t;
 
+/** State list for resumption of authorization
+ *
+ */
+typedef enum {
+	LDAP_AUTZ_FIND = 0,
+	LDAP_AUTZ_GROUP,
+	LDAP_AUTZ_POST_GROUP,
+#ifdef WITH_EDIR
+	LDAP_AUTZ_POST_EDIR,
+#endif
+	LDAP_AUTZ_POST_DEFAULT_PROFILE,
+	LDAP_AUTZ_USER_PROFILE,
+	LDAP_AUTZ_MAP
+} ldap_autz_status_t;
+
 /** Holds state of in progress async authorization
  *
  */
@@ -163,6 +178,7 @@ typedef struct {
 	fr_ldap_thread_trunk_t	*ttrunk;
 	ldap_autz_mod_env_t	*mod_env;
 	LDAPMessage		*entry;
+	ldap_autz_status_t	status;
 } ldap_autz_ctx_t;
 
 extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;
