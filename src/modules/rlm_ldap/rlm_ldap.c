@@ -1240,40 +1240,30 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
  * sets of attributes to the request.
  *
  * @param[out] p_result		the result of applying the profile.
- * @param[in] inst		rlm_ldap configuration.
  * @param[in] request		Current request.
- * @param[in] ttrunk		to use.
+ * @param[in] autz_ctx		Authorization context being processed.
  * @param[in] dn		of profile object to apply.
  * @param[in] expanded		Structure containing a list of xlat
  *				expanded attribute names and mapping information.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t rlm_ldap_map_profile(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
-					    request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+static unlang_action_t rlm_ldap_map_profile(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx,
 					    char const *dn, fr_ldap_map_exp_t const *expanded)
 {
+	rlm_ldap_t const	*inst = autz_ctx->inst;
+	fr_ldap_thread_trunk_t	*ttrunk = autz_ctx->ttrunk;
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	LDAPMessage	*entry = NULL;
 	int		ldap_errno;
 	LDAP		*handle;
-	char const	*filter;
-	char		filter_buff[LDAP_MAX_FILTER_STR_LEN];
 	fr_ldap_query_t	*query;
-
-	fr_assert(inst->profile_filter); 	/* We always have a default filter set */
 
 	if (!dn || !*dn) RETURN_MODULE_OK;
 
-	if (tmpl_expand(&filter, filter_buff, sizeof(filter_buff), request,
-			inst->profile_filter, fr_ldap_escape_func, NULL) < 0) {
-		REDEBUG("Failed creating profile filter");
-
-		RETURN_MODULE_INVALID;
-	}
-
 	if (fr_ldap_trunk_search(&rcode,
 				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
-				 LDAP_SCOPE_BASE, filter, expanded->attrs, NULL, NULL, false) < 0) RETURN_MODULE_FAIL;
+				 LDAP_SCOPE_BASE, autz_ctx->mod_env->profile_filter.vb_strvalue,
+				 expanded->attrs, NULL, NULL, false) < 0) RETURN_MODULE_FAIL;
 	switch (rcode) {
 	case RLM_MODULE_OK:
 		break;
