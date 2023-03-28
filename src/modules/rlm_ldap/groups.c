@@ -54,6 +54,21 @@ typedef struct {
 	fr_ldap_query_t		*query;					//!< Current query performing group resolution.
 } ldap_group_userobj_ctx_t;
 
+/** Cancel a pending group lookup query
+ *
+ */
+static void ldap_group_userobj_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+{
+	ldap_group_userobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_ctx_t);
+
+	/*
+	 *	If the query is not in flight, just return.
+	 */
+	if (!group_ctx->query || !(group_ctx->query->treq)) return;
+
+	fr_trunk_request_signal_cancel(group_ctx->query->treq);
+}
+
 /** Convert multiple group names into a DNs
  *
  * Given an array of group names, builds a filter matching all names, then retrieves all group objects
@@ -371,37 +386,122 @@ finish:
 	RETURN_MODULE_RCODE(rcode);
 }
 
+/** Move user object group attributes to the control list
+ *
+ * @param p_result	The result of adding user object group attributes
+ * @param request	Current request.
+ * @param group_ctx	Context used to evaluate group attributes
+ * @return RLM_MODULE_OK
+ */
+static unlang_action_t ldap_cacheable_userobj_store(rlm_rcode_t *p_result, request_t *request,
+						    ldap_group_userobj_ctx_t *group_ctx)
+{
+	fr_pair_t		*vp;
+	fr_pair_list_t		*list;
+
+	list = tmpl_list_head(request, request_attr_control);
+	fr_assert(list != NULL);
+
+	RDEBUG2("Adding cacheable user object memberships");
+	RINDENT();
+	if (RDEBUG_ENABLED) {
+		for (vp = fr_pair_list_head(&group_ctx->groups);
+		     vp;
+		     vp = fr_pair_list_next(&group_ctx->groups, vp)) {
+			RDEBUG2("&control.%s += \"%pV\"", group_ctx->inst->cache_da->name, &vp->data);
+		}
+	}
+
+	fr_pair_list_append(list, &group_ctx->groups);
+	REXDENT();
+
+	talloc_free(group_ctx);
+	RETURN_MODULE_OK;
+}
+
+/** Initiate DN to name and name to DN group lookups
+ *
+ * Called repeatedly until there are no more lookups to perform
+ * or an unresolved lookup causes the module to fail.
+ *
+ * @param p_result	The result of the previous expansion.
+ * @param priority	unused.
+ * @param request	Current request.
+ * @param uctx		The group context being processed.
+ * @return One of the RLM_MODULE_* values.
+ */
+static unlang_action_t ldap_cacheable_userobj_resolve(rlm_rcode_t *p_result, UNUSED int *priority,
+						      request_t *request, void *uctx)
+{
+	ldap_group_userobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_ctx_t);
+
+	/*
+	 *	If we've previously failed to expand, fail the group section
+	 */
+	switch (*p_result) {
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_INVALID:
+		talloc_free(group_ctx);
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	default:
+		break;
+	}
+
+	/*
+	 *	Are there any DN to resolve to names?
+	 *	These are resolved one at a time as most directories don't allow for
+	 *	filters on the DN.
+	 */
+	if (*group_ctx->dn) {
+		if (unlang_function_repeat_set(request, ldap_cacheable_userobj_resolve) < 0) RETURN_MODULE_FAIL;
+		if (unlang_function_push(request, ldap_group_dn2name_start, ldap_group_dn2name_resume,
+					 ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
+					 UNLANG_SUB_FRAME, group_ctx) < 0) RETURN_MODULE_FAIL;
+		return UNLANG_ACTION_PUSHED_CHILD;
+	}
+
+	/*
+	 *	Are there any names to resolve to DN?
+	 */
+	if (*group_ctx->group_name) {
+		if (unlang_function_repeat_set(request, ldap_cacheable_userobj_resolve) < 0) RETURN_MODULE_FAIL;
+		if (unlang_function_push(request, ldap_group_name2dn_start, ldap_group_name2dn_resume,
+					 ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
+					 UNLANG_SUB_FRAME, group_ctx) < 0) RETURN_MODULE_FAIL;
+		return UNLANG_ACTION_PUSHED_CHILD;
+	}
+
+	/*
+	 *	Nothing left to resolve, move the resulting attributes to
+	 *	the control list.
+	 */
+	return ldap_cacheable_userobj_store(p_result, request, group_ctx);
+}
+
 /** Convert group membership information into attributes
  *
+ * This may just be able to parse attribute values in the user object
+ * or it may need to yield to other LDAP searches depending on what was
+ * returned and what is set to be cached.
+ *
  * @param[out] p_result		The result of trying to resolve a dn to a group name.
- * @param[in] inst		rlm_ldap configuration.
  * @param[in] request		Current request.
- * @param[in] ttrunk		to use.
- * @param[in] entry		retrieved by rlm_ldap_find_user or fr_ldap_search.
+ * @param[in] autz_ctx		LDAP authorization context being processed.
  * @param[in] attr		membership attribute to look for in the entry.
  * @return One of the RLM_MODULE_* values.
  */
-unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
-					   request_t *request, fr_ldap_thread_trunk_t *ttrunk,
-					   LDAPMessage *entry, char const *attr)
+unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx,
+					   char const *attr)
 {
-	rlm_rcode_t rcode = RLM_MODULE_OK;
-
-	struct berval **values;
-
-	char *group_name[LDAP_MAX_CACHEABLE + 1];
-	char **name_p = group_name;
-
-	char *group_dn[LDAP_MAX_CACHEABLE + 1];
-	char **dn_p;
-
-	char *name;
-
-	fr_pair_t *vp;
-	fr_pair_list_t *list, groups;
-	TALLOC_CTX *list_ctx, *value_ctx;
-
-	int is_dn, i, count;
+	rlm_ldap_t const		*inst = autz_ctx->inst;
+	LDAPMessage			*entry = autz_ctx->entry;
+	fr_ldap_thread_trunk_t		*ttrunk = autz_ctx->ttrunk;
+	ldap_group_userobj_ctx_t	*group_ctx;
+	struct berval			**values;
+	char				**name_p;
+	char				**dn_p;
+	fr_pair_t			*vp;
+	int				is_dn, i, count;
 
 	fr_assert(entry);
 	fr_assert(attr);
@@ -417,22 +517,28 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 	}
 	count = ldap_count_values_len(values);
 
-	list = tmpl_list_head(request, request_attr_control);
-	list_ctx = tmpl_list_ctx(request, request_attr_control);
-	fr_assert(list != NULL);
-	fr_assert(list_ctx != NULL);
+	/*
+	 *	Set up context for managing group membership attribute resolution.
+	 */
+	MEM(group_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_group_userobj_ctx_t));
+	group_ctx->inst = inst;
+	group_ctx->ttrunk = ttrunk;
+	group_ctx->base_dn = &autz_ctx->mod_env->group_base;
+	group_ctx->list_ctx = tmpl_list_ctx(request, request_attr_control);
+	fr_assert(group_ctx->list_ctx != NULL);
 
 	/*
-	 *	Simplifies freeing temporary values
+	 *	Set up pointers to entries in arrays of names / DNs to resolve.
 	 */
-	value_ctx = talloc_new(request);
+	name_p = group_ctx->group_name;
+	group_ctx->dn = dn_p = group_ctx->group_dn;
 
 	/*
 	 *	Temporary list to hold new group VPs, will be merged
 	 *	once all group info has been gathered/resolved
 	 *	successfully.
 	 */
-	fr_pair_list_init(&groups);
+	fr_pair_list_init(&group_ctx->groups);
 
 	for (i = 0; (i < LDAP_MAX_CACHEABLE) && (i < count); i++) {
 		is_dn = fr_ldap_util_is_dn(values[i]->bv_val, values[i]->bv_len);
@@ -442,15 +548,15 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 			 *	The easy case, we're caching DNs and we got a DN.
 			 */
 			if (is_dn) {
-				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
+				MEM(vp = fr_pair_afrom_da(group_ctx->list_ctx, inst->cache_da));
 				fr_pair_value_bstrndup(vp, values[i]->bv_val, values[i]->bv_len, true);
-				fr_pair_append(&groups, vp);
+				fr_pair_append(&group_ctx->groups, vp);
 			/*
 			 *	We were told to cache DNs but we got a name, we now need to resolve
 			 *	this to a DN. Store all the group names in an array so we can do one query.
 			 */
 			} else {
-				*name_p++ = fr_ldap_berval_to_string(value_ctx, values[i]);
+				*name_p++ = fr_ldap_berval_to_string(group_ctx, values[i]);
 			}
 		}
 
@@ -459,71 +565,41 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 			 *	The easy case, we're caching names and we got a name.
 			 */
 			if (!is_dn) {
-				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
+				MEM(vp = fr_pair_afrom_da(group_ctx->list_ctx, inst->cache_da));
 				fr_pair_value_bstrndup(vp, values[i]->bv_val, values[i]->bv_len, true);
-				fr_pair_append(&groups, vp);
+				fr_pair_append(&group_ctx->groups, vp);
 			/*
 			 *	We were told to cache names but we got a DN, we now need to resolve
-			 *	this to a name.
-			 *	Only Active Directory supports filtering on DN, so we have to search
-			 *	for each individual group.
+			 *	this to a name.  Store group DNs which need resolving to names.
 			 */
 			} else {
-				char *dn;
-
-				dn = fr_ldap_berval_to_string(value_ctx, values[i]);
-				rlm_ldap_group_dn2name(&rcode, inst, request, ttrunk, dn, &name);
-				talloc_free(dn);
-
-				if (rcode == RLM_MODULE_NOOP) continue;
-
-				if (rcode != RLM_MODULE_OK) {
-					ldap_value_free_len(values);
-					talloc_free(value_ctx);
-					fr_pair_list_free(&groups);
-
-					RETURN_MODULE_RCODE(rcode);
-				}
-
-				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
-				fr_pair_value_bstrdup_buffer(vp, name, true);
-				fr_pair_append(&groups, vp);
-				talloc_free(name);
+				*dn_p++ = fr_ldap_berval_to_string(group_ctx, values[i]);
 			}
 		}
 	}
-	*name_p = NULL;
-
-	rlm_ldap_group_name2dn(&rcode, inst, request, ttrunk, group_name, group_dn, sizeof(group_dn));
 
 	ldap_value_free_len(values);
-	talloc_free(value_ctx);
 
-	if (rcode != RLM_MODULE_OK) RETURN_MODULE_RCODE(rcode);
-
-	RDEBUG2("Adding cacheable user object memberships");
-	RINDENT();
-	if (RDEBUG_ENABLED) {
-		for (vp = fr_pair_list_head(&groups);
-		     vp;
-		     vp = fr_pair_list_next(&groups, vp)) {
-			RDEBUG2("&control.%s += \"%pV\"", inst->cache_da->name, &vp->data);
+	/*
+	 *	We either have group names which need converting to DNs or
+	 *	DNs which need resolving to names.  Push a function which will
+	 *	do the resolution.
+	 */
+	if ((name_p != group_ctx->group_name) || (dn_p != group_ctx->group_dn)) {
+		group_ctx->attrs[0] = inst->groupobj_name_attr;
+		if (unlang_function_push(request, ldap_cacheable_userobj_resolve, NULL, ldap_group_userobj_cancel,
+					 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, group_ctx) < 0) {
+			talloc_free(group_ctx);
+			RETURN_MODULE_FAIL;
 		}
+		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
-	fr_pair_list_append(list, &groups);
-
-	for (dn_p = group_dn; *dn_p; dn_p++) {
-		MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
-		fr_pair_value_strdup(vp, *dn_p, false);
-		fr_pair_append(list, vp);
-
-		RDEBUG2("&control.%s += \"%pV\"", inst->cache_da->name, &vp->data);
-		ldap_memfree(*dn_p);
-	}
-	REXDENT();
-
-	RETURN_MODULE_RCODE(rcode);
+	/*
+	 *	No additional queries needed, just process the context to
+	 *	move any generated pairs into the correct list.
+	 */
+	return ldap_cacheable_userobj_store(p_result, request, group_ctx);
 }
 
 /** Convert group membership information into attributes

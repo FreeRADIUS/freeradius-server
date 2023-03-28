@@ -205,9 +205,8 @@ void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_
 /*
  *	groups.c - Group membership functions.
  */
-unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
-					   request_t *request, fr_ldap_thread_trunk_t *ttrunk,
-					   LDAPMessage *entry, char const *attr);
+unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx,
+					   char const *attr);
 
 unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result,
 					    rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk);
