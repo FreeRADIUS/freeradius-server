@@ -273,7 +273,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 			.dict_def = dict,
 			.prefix = TMPL_ATTR_REF_PREFIX_NO,
 			.list_def = request_attr_request,
-			.disallow_qualifiers = true, /* for now, until more tests are made */
+			.list_presence = TMPL_ATTR_LIST_FORBID,
 
 			/*
 			 *	Otherwise the tmpl code returns 0 when asked
@@ -290,7 +290,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 			.dict_def = dict,
 			.prefix = TMPL_ATTR_REF_PREFIX_YES,
 			.list_def = request_attr_request,
-			.disallow_qualifiers = true, /* for now, until rlm_files supports it */
+			.list_presence = TMPL_ATTR_LIST_FORBID,
 		}
 	};
 

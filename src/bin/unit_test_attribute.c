@@ -2595,16 +2595,6 @@ static ssize_t command_tmpl_rule_attr_parent(UNUSED TALLOC_CTX *ctx, tmpl_rules_
 	return slen;
 }
 
-static ssize_t command_tmpl_rule_disallow_qualifiers(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
-{
-	bool res;
-	ssize_t slen;
-
-	slen = fr_sbuff_out_bool(&res, value);
-	rules->attr.disallow_qualifiers = res;
-	return slen;
-}
-
 static ssize_t command_tmpl_rule_list_def(UNUSED TALLOC_CTX *ctx, tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	ssize_t slen;
@@ -2647,7 +2637,6 @@ static size_t command_tmpl_rules(command_result_t *result, command_file_ctx_t *c
 		{ L("allow_unknown"),		(void *)command_tmpl_rule_allow_unknown		},
 		{ L("allow_unresolved"),	(void *)command_tmpl_rule_allow_unresolved	},
 		{ L("attr_parent"),		(void *)command_tmpl_rule_attr_parent		},
-		{ L("disallow_qualifiers"), 	(void *)command_tmpl_rule_disallow_qualifiers	},
 		{ L("list_def"),		(void *)command_tmpl_rule_list_def		},
 		{ L("request_def"),		(void *)command_tmpl_rule_request_def		}
 	};
@@ -3152,7 +3141,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 
 	{ L("tmpl-rules "),	&(command_entry_t){
 					.func = command_tmpl_rules,
-					.usage = "tmpl-rule [allow_foreign=yes] [allow_unknown=yes|no] [allow_unresolved=yes|no] [attr_parent=<oid>] [disallow_qualifiers=yes|no] [list_def=request|reply|control|session-state] [request_def=current|outer|parent]",
+					.usage = "tmpl-rule [allow_foreign=yes] [allow_unknown=yes|no] [allow_unresolved=yes|no] [attr_parent=<oid>] [list_def=request|reply|control|session-state] [request_def=current|outer|parent]",
 					.description = "Alter the tmpl parsing rules for subsequent tmpl parsing commands in the same command context"
 				}},
 	{ L("touch "),		&(command_entry_t){

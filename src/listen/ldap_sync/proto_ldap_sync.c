@@ -290,7 +290,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			.allow_foreign = false,
 			.allow_unknown = false,
 			.allow_unresolved = false,
-			.disallow_qualifiers = true,
+			.list_presence = TMPL_ATTR_LIST_FORBID,
 		}
 	};
 

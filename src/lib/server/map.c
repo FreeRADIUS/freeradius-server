@@ -847,14 +847,6 @@ do_children:
 			}
 
 			/*
-			 *	Disallow list qualifiers for the child
-			 *	templates.  The syntax requires that
-			 *	the child attributes go into the
-			 *	parent one.
-			 */
-			child_lhs_rules.attr.disallow_qualifiers = true;
-
-			/*
 			 *	The leaf reference of the outer section
 			 *	is used as the parsing context of the
 			 *	inner section.

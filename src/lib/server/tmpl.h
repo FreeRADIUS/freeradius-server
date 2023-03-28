@@ -321,8 +321,6 @@ struct tmpl_attr_rules_s {
 
 	uint8_t			allow_foreign:1;	//!< Allow arguments not found in dict_def.
 
-	uint8_t			disallow_qualifiers:1;	//!< disallow request / list qualifiers
-
 	uint8_t			disallow_filters:1;	//!< disallow filters.
 };
 
