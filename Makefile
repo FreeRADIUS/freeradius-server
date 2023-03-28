@@ -91,6 +91,7 @@ export PROJECT_NAME := freeradius
 #
 PROTOCOLS    := \
 	arp \
+	bfd \
 	dhcpv4 \
 	dhcpv6 \
 	dns \
