@@ -35,6 +35,23 @@ USES_APPLE_DEPRECATED_API
 
 #include "rlm_ldap.h"
 
+/** Context to use when resolving group membership from the user object.
+ *
+ */
+typedef struct {
+	rlm_ldap_t const	*inst;					//!< Module instance.
+	fr_value_box_t		*base_dn;				//!< The base DN to search for groups in.
+	fr_ldap_thread_trunk_t	*ttrunk;				//!< Trunk on which to perform additional queries.
+	fr_pair_list_t		groups;					//!< Temporary list to hold pairs.
+	TALLOC_CTX		*list_ctx;				//!< In which to allocate pairs.
+	char			*group_name[LDAP_MAX_CACHEABLE + 1];	//!< List of group names which need resolving.
+	unsigned int		name_cnt;				//!< How many names need resolving.
+	char			*group_dn[LDAP_MAX_CACHEABLE + 1];	//!< List of group DNs which need resolving.
+	char			**dn;					//!< Current DN being resolved.
+	char const		*attrs[2];				//!< For resolving name from DN.
+	fr_ldap_query_t		*query;					//!< Current query performing group resolution.
+} ldap_group_userobj_ctx_t;
+
 /** Convert multiple group names into a DNs
  *
  * Given an array of group names, builds a filter matching all names, then retrieves all group objects
