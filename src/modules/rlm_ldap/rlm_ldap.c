@@ -1526,6 +1526,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	autz_ctx->dlinst = mctx->inst;
 	autz_ctx->inst = inst;
 	autz_ctx->mod_env = mod_env;
+	autz_ctx->status = LDAP_AUTZ_FIND;
 
 	if (unlang_function_push(request, mod_authorize_start, mod_authorize_resume, mod_authorize_cancel,
 				 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, autz_ctx) < 0) RETURN_MODULE_FAIL;
