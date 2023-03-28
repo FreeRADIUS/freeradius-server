@@ -1312,182 +1312,217 @@ static unlang_action_t mod_authorize_start(UNUSED rlm_rcode_t *p_result, UNUSED 
 					&autz_ctx->query);
 }
 
+#define REPEAT_MOD_AUTHORIZE_RESUME \
+	if (unlang_function_repeat_set(request, mod_authorize_resume) < 0) { \
+		rcode = RLM_MODULE_FAIL; \
+		goto finish; \
+	}
+
+/** Resume function called after each potential yield in LDAP authorization
+ *
+ * Some operations may or may not yeild.  E.g. if group membership is
+ * read from an attribute returned with the user object and is already
+ * in the correct form, that will not yeild.
+ * Hence, each state may fall through to the next.
+ *
+ * @param p_result	Result of current authorization.
+ * @param priority	Unused.
+ * @param request	Current request.
+ * @param uctx		Current authrorization context.
+ * @return One of the RLM_MODULE_* values.
+ */
 static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
 	ldap_autz_ctx_t		*autz_ctx = talloc_get_type_abort(uctx, ldap_autz_ctx_t);
 	rlm_ldap_t const	*inst = talloc_get_type_abort_const(autz_ctx->inst, rlm_ldap_t);
-	LDAPMessage		*entry;
-	int			i, ldap_errno;
+	ldap_autz_mod_env_t	*mod_env = talloc_get_type_abort(autz_ctx->mod_env, ldap_autz_mod_env_t);
+	int			ldap_errno;
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	struct berval		**values;
 	LDAP			*handle = fr_ldap_handle_thread_local();
 
-	/*
-	 *	If a user entry has been found the current rcode will be OK
-	 */
-	if (*p_result != RLM_MODULE_OK) return UNLANG_ACTION_CALCULATE_RESULT;
+	switch (autz_ctx->status) {
+	case LDAP_AUTZ_FIND:
+		/*
+		 *	If a user entry has been found the current rcode will be OK
+		 */
+		if (*p_result != RLM_MODULE_OK) return UNLANG_ACTION_CALCULATE_RESULT;
 
-	entry = ldap_first_entry(handle, autz_ctx->query->result);
-	if (!entry) {
-		ldap_get_option(handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+		autz_ctx->entry = ldap_first_entry(handle, autz_ctx->query->result);
+		if (!autz_ctx->entry) {
+			ldap_get_option(handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+			REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 
-		goto finish;
-	}
-
-	/*
-	 *	Check for access.
-	 */
-	if (inst->userobj_access_attr) {
-		rcode = rlm_ldap_check_access(inst, request, entry);
-		if (rcode != RLM_MODULE_OK) {
 			goto finish;
 		}
-	}
 
-	/*
-	 *	Check if we need to cache group memberships
-	 */
-	if (inst->cacheable_group_dn || inst->cacheable_group_name) {
-		if (inst->userobj_membership_attr) {
-			rlm_ldap_cacheable_userobj(&rcode, inst, request, autz_ctx->ttrunk, entry, inst->userobj_membership_attr);
+		/*
+		 *	Check for access.
+		 */
+		if (inst->userobj_access_attr) {
+			rcode = rlm_ldap_check_access(inst, request, autz_ctx->entry);
 			if (rcode != RLM_MODULE_OK) {
 				goto finish;
 			}
 		}
 
-		rlm_ldap_cacheable_groupobj(&rcode, inst, request, autz_ctx->ttrunk);
-		if (rcode != RLM_MODULE_OK) {
-			goto finish;
+		/*
+		 *	Check if we need to cache group memberships
+		 */
+		if ((inst->cacheable_group_dn || inst->cacheable_group_name) && (inst->userobj_membership_attr)) {
+			REPEAT_MOD_AUTHORIZE_RESUME;
+			if (rlm_ldap_cacheable_userobj(&rcode, request, autz_ctx,
+						       inst->userobj_membership_attr) == UNLANG_ACTION_PUSHED_CHILD) {
+				autz_ctx->status = LDAP_AUTZ_GROUP;
+				return UNLANG_ACTION_PUSHED_CHILD;
+			}
+			if (rcode != RLM_MODULE_OK) goto finish;
 		}
-	}
+		FALL_THROUGH;
 
+	case LDAP_AUTZ_GROUP:
+		if (inst->cacheable_group_dn || inst->cacheable_group_name) {
+			REPEAT_MOD_AUTHORIZE_RESUME;
+			if (rlm_ldap_cacheable_groupobj(&rcode, request, autz_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
+				autz_ctx->status = LDAP_AUTZ_POST_GROUP;
+				return UNLANG_ACTION_PUSHED_CHILD;
+			}
+			if (rcode != RLM_MODULE_OK) goto finish;
+		}
+		FALL_THROUGH;
+
+	case LDAP_AUTZ_POST_GROUP:
 #ifdef WITH_EDIR
-	/*
-	 *	We already have a Password.Cleartext.  Skip edir.
-	 */
-	if (fr_pair_find_by_da(&request->control_pairs, NULL, attr_cleartext_password)) goto skip_edir;
-
-	/*
-	 *      Retrieve Universal Password if we use eDirectory
-	 */
-	if (inst->edir) {
-		fr_pair_t	*vp;
-		int		res = 0;
-		char		password[256];
-		size_t		pass_size = sizeof(password);
-		char const	*dn = rlm_find_user_dn_cached(request);;
+		/*
+		 *	We already have a Password.Cleartext.  Skip edir.
+		 */
+		if (fr_pair_find_by_da(&request->control_pairs, NULL, attr_cleartext_password)) goto skip_edir;
 
 		/*
-		 *	Retrive universal password
+		 *      Retrieve Universal Password if we use eDirectory
 		 */
-		res = fr_ldap_edir_get_password(handle, dn, password, &pass_size);
-		if (res != 0) {
-			REDEBUG("Failed to retrieve eDirectory password: (%i) %s", res, fr_ldap_edir_errstr(res));
-			rcode = RLM_MODULE_FAIL;
+		if (inst->edir) {
+			fr_pair_t	*vp;
+			int		res = 0;
+			char		password[256];
+			size_t		pass_size = sizeof(password);
+			char const	*dn = rlm_find_user_dn_cached(request);;
 
-			goto finish;
-		}
-
-		/*
-		 *	Add Password.Cleartext attribute to the request
-		 */
-		MEM(pair_update_control(&vp, attr_cleartext_password) >= 0);
-		fr_pair_value_bstrndup(vp, password, pass_size, true);
-
-		if (RDEBUG_ENABLED3) {
-			RDEBUG3("Added eDirectory password.  control.%pP", vp);
-		} else {
-			RDEBUG2("Added eDirectory password");
-		}
-
-		if (inst->edir_autz) {
-			fr_ldap_thread_t *thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data,
-									 fr_ldap_thread_t);
-
-			RDEBUG2("Binding as user for eDirectory authorization checks");
 			/*
-			 *	Bind as the user
+			 *	Retrive universal password
 			 */
-			if (fr_ldap_bind_auth_async(request, thread, dn, vp->vp_strvalue) < 0) {
+			res = fr_ldap_edir_get_password(handle, dn, password, &pass_size);
+			if (res != 0) {
+				REDEBUG("Failed to retrieve eDirectory password: (%i) %s", res, fr_ldap_edir_errstr(res));
 				rcode = RLM_MODULE_FAIL;
+
 				goto finish;
 			}
 
-			rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+			/*
+			 *	Add Password.Cleartext attribute to the request
+			 */
+			MEM(pair_update_control(&vp, attr_cleartext_password) >= 0);
+			fr_pair_value_bstrndup(vp, password, pass_size, true);
 
-			if (rcode != RLM_MODULE_OK) goto finish;
-		}
-	}
+			if (RDEBUG_ENABLED3) {
+				RDEBUG3("Added eDirectory password.  control.%pP", vp);
+			} else {
+				RDEBUG2("Added eDirectory password");
+			}
 
-skip_edir:
-#endif
+			if (inst->edir_autz) {
+				fr_ldap_thread_t *thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data,
+									 fr_ldap_thread_t);
 
-	/*
-	 *	Apply ONE user profile, or a default user profile.
-	 */
-	if (inst->default_profile) {
-		char const	*profile;
-		char		profile_buff[1024];
-		rlm_rcode_t	ret;
-
-		if (tmpl_expand(&profile, profile_buff, sizeof(profile_buff),
-				request, inst->default_profile, NULL, NULL) < 0) {
-			REDEBUG("Failed creating default profile string");
-
-			rcode = RLM_MODULE_INVALID;
-			goto finish;
-		}
-
-		rlm_ldap_map_profile(&ret, inst, request, autz_ctx->ttrunk, profile, &autz_ctx->expanded);
-		switch (ret) {
-		case RLM_MODULE_INVALID:
-			rcode = RLM_MODULE_INVALID;
-			goto finish;
-
-		case RLM_MODULE_FAIL:
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-
-		case RLM_MODULE_UPDATED:
-			rcode = RLM_MODULE_UPDATED;
-			FALL_THROUGH;
-		default:
-			break;
-		}
-	}
-
-	/*
-	 *	Apply a SET of user profiles.
-	 */
-	if (inst->profile_attr) {
-		values = ldap_get_values_len(handle, entry, inst->profile_attr);
-		if (values != NULL) {
-			for (i = 0; values[i] != NULL; i++) {
-				rlm_rcode_t ret;
-				char *value;
-
-				value = fr_ldap_berval_to_string(request, values[i]);
-				rlm_ldap_map_profile(&ret, inst, request, autz_ctx->ttrunk, value, &autz_ctx->expanded);
-				talloc_free(value);
-				if (ret == RLM_MODULE_FAIL) {
-					ldap_value_free_len(values);
-					rcode = ret;
+				RDEBUG2("Binding as user for eDirectory authorization checks");
+				/*
+				 *	Bind as the user
+				 */
+				if (fr_ldap_bind_auth_async(request, thread, dn, vp->vp_strvalue) < 0) {
+					rcode = RLM_MODULE_FAIL;
 					goto finish;
 				}
 
-			}
-			ldap_value_free_len(values);
-		}
-	}
+				rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 
-	if (!map_list_empty(&inst->user_map) || inst->valuepair_attr) {
-		RDEBUG2("Processing user attributes");
-		RINDENT();
-		if (fr_ldap_map_do(request, inst->valuepair_attr,
-				   &autz_ctx->expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
-		REXDENT();
-		rlm_ldap_check_reply(&(module_ctx_t){.inst = autz_ctx->dlinst}, request, autz_ctx->ttrunk);
+				if (rcode != RLM_MODULE_OK) goto finish;
+			}
+		}
+		FALL_THROUGH;
+
+	case LDAP_AUTZ_POST_EDIR:
+	skip_edir:
+#endif
+		/*
+		 *	Apply ONE user profile, or a default user profile.
+		 */
+		if (mod_env->default_profile.type == FR_TYPE_STRING) {
+			unlang_action_t	ret;
+
+			REPEAT_MOD_AUTHORIZE_RESUME;
+			ret = rlm_ldap_map_profile(request, autz_ctx, mod_env->default_profile.vb_strvalue,
+						   &autz_ctx->expanded);
+			switch (ret) {
+			case UNLANG_ACTION_FAIL:
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+
+			case UNLANG_ACTION_PUSHED_CHILD:
+				autz_ctx->status = LDAP_AUTZ_POST_DEFAULT_PROFILE;
+				return UNLANG_ACTION_PUSHED_CHILD;
+
+			default:
+				break;
+			}
+		}
+		FALL_THROUGH;
+
+	case LDAP_AUTZ_POST_DEFAULT_PROFILE:
+		/*
+		 *	Apply a SET of user profiles.
+		 */
+		if (inst->profile_attr) {
+			autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr);
+		}
+		FALL_THROUGH;
+
+	case LDAP_AUTZ_USER_PROFILE:
+		/*
+		 *	After each profile has been applied, execution will restart here.
+		 *	Start by clearing the previously used value.
+		 */
+		TALLOC_FREE(autz_ctx->profile_value);
+
+		if (autz_ctx->profile_values && autz_ctx->profile_values[autz_ctx->value_idx]) {
+			unlang_action_t	ret;
+
+			autz_ctx->profile_value = fr_ldap_berval_to_string(autz_ctx, autz_ctx->profile_values[autz_ctx->value_idx++]);
+			REPEAT_MOD_AUTHORIZE_RESUME;
+			ret = rlm_ldap_map_profile(request, autz_ctx, autz_ctx->profile_value, &autz_ctx->expanded);
+			switch (ret) {
+			case UNLANG_ACTION_FAIL:
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+
+			case UNLANG_ACTION_PUSHED_CHILD:
+				autz_ctx->status = LDAP_AUTZ_USER_PROFILE;
+				return UNLANG_ACTION_PUSHED_CHILD;
+
+			default:
+				break;
+			}
+		}
+		FALL_THROUGH;
+
+	case LDAP_AUTZ_MAP:
+		if (!map_list_empty(&inst->user_map) || inst->valuepair_attr) {
+			RDEBUG2("Processing user attributes");
+			RINDENT();
+			if (fr_ldap_map_do(request, inst->valuepair_attr,
+					   &autz_ctx->expanded, autz_ctx->entry) > 0) rcode = RLM_MODULE_UPDATED;
+			REXDENT();
+			rlm_ldap_check_reply(&(module_ctx_t){.inst = autz_ctx->dlinst}, request, autz_ctx->ttrunk);
+		}
 	}
 
 finish:
