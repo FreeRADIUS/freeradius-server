@@ -35,6 +35,8 @@ USES_APPLE_DEPRECATED_API
 
 #include "rlm_ldap.h"
 
+static char const *null_attrs[] = { NULL };
+
 /** Context to use when resolving group membership from the user object.
  *
  */
@@ -58,44 +60,26 @@ typedef struct {
  * and stores the DN associated with each group object.
  *
  * @param[out] p_result		The result of trying to resolve a group name to a dn.
- * @param[in] inst		rlm_ldap configuration.
+ * @param[out] priority		Unused
  * @param[in] request		Current request.
- * @param[in] ttrunk		to use.
- * @param[in] names		to convert to DNs (NULL terminated).
- * @param[out] out		Where to write the DNs. DNs must be freed with
- *				ldap_memfree(). Will be NULL terminated.
- * @param[in] outlen		Size of out.
+ * @param[in] uctx		Group lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t rlm_ldap_group_name2dn(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
-					      fr_ldap_thread_trunk_t *ttrunk,
-					      char **names, char **out, size_t outlen)
+static unlang_action_t ldap_group_name2dn_start(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+						void *uctx)
 {
-	rlm_rcode_t	rcode = RLM_MODULE_OK;
-	int		ldap_errno;
-
-	unsigned int	name_cnt = 0;
-	unsigned int	entry_cnt;
-	char const	*attrs[] = { NULL };
-
-	LDAPMessage	*entry;
-	fr_ldap_query_t	*query = NULL;
-
-	char		**name = names;
-	char		**dn = out;
-	char const	*base_dn = NULL;
-	char		base_dn_buff[LDAP_MAX_DN_STR_LEN];
-	char		buffer[LDAP_MAX_GROUP_NAME_LEN + 1];
-
-	char		*filter;
-
-	*dn = NULL;
-
-	if (!*names) RETURN_MODULE_OK;
+	ldap_group_userobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_ctx_t);
+	rlm_ldap_t const		*inst = group_ctx->inst;
+	char				**name = group_ctx->group_name;
+	char				buffer[LDAP_MAX_GROUP_NAME_LEN + 1];
+	char				*filter;
 
 	if (!inst->groupobj_name_attr) {
 		REDEBUG("Told to convert group names to DNs but missing 'group.name_attribute' directive");
-
+		RETURN_MODULE_INVALID;
+	}
+	if (group_ctx->base_dn->type != FR_TYPE_STRING) {
+		REDEBUG("Missing group base_dn");
 		RETURN_MODULE_INVALID;
 	}
 
@@ -105,37 +89,52 @@ static unlang_action_t rlm_ldap_group_name2dn(rlm_rcode_t *p_result, rlm_ldap_t 
 	 *	It'll probably only save a few ms in network latency, but it means we can send a query
 	 *	for the entire group list at once.
 	 */
-	filter = talloc_typed_asprintf(request, "%s%s%s",
+	filter = talloc_typed_asprintf(group_ctx, "%s%s%s",
 				 inst->groupobj_filter ? "(&" : "",
 				 inst->groupobj_filter ? inst->groupobj_filter : "",
-				 names[0] && names[1] ? "(|" : "");
+				 group_ctx->group_name[0] && group_ctx->group_name[1] ? "(|" : "");
 	while (*name) {
 		fr_ldap_escape_func(request, buffer, sizeof(buffer), *name++, NULL);
 		filter = talloc_asprintf_append_buffer(filter, "(%s=%s)", inst->groupobj_name_attr, buffer);
 
-		name_cnt++;
+		group_ctx->name_cnt++;
 	}
 	filter = talloc_asprintf_append_buffer(filter, "%s%s",
 					       inst->groupobj_filter ? ")" : "",
-					       names[0] && names[1] ? ")" : "");
+					       group_ctx->group_name[0] && group_ctx->group_name[1] ? ")" : "");
 
-	if (tmpl_expand(&base_dn, base_dn_buff, sizeof(base_dn_buff), request,
-			inst->groupobj_base_dn, fr_ldap_escape_func, NULL) < 0) {
-		REDEBUG("Failed creating base_dn");
+	return fr_ldap_trunk_search(p_result, group_ctx, &group_ctx->query, request, group_ctx->ttrunk,
+				    group_ctx->base_dn->vb_strvalue, inst->groupobj_scope, filter,
+				    null_attrs, NULL, NULL, true);
+}
 
-		RETURN_MODULE_INVALID;
-	}
+/** Process the results of looking up group DNs from names
+ *
+ * @param[out] p_result		The result of trying to resolve a group name to a dn.
+ * @param[out] priority		Unused
+ * @param[in] request		Current request.
+ * @param[in] uctx		Group lookup context.
+ * @return One of the RLM_MODULE_* values.
+ */
+static unlang_action_t ldap_group_name2dn_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+						void *uctx)
+{
+	ldap_group_userobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_ctx_t);
+	fr_ldap_query_t			*query = talloc_get_type_abort(group_ctx->query, fr_ldap_query_t);
+	rlm_ldap_t const		*inst = group_ctx->inst;
+	rlm_rcode_t			rcode = RLM_MODULE_OK;
+	unsigned int			entry_cnt;
+	LDAPMessage			*entry;
+	int				ldap_errno;
+	char				*dn;
+	fr_pair_t			*vp;
 
-	if (fr_ldap_trunk_search(&rcode,
-				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
-				 inst->groupobj_scope, filter, attrs, NULL, NULL, false) < 0 ) {
-		goto finish;
-	}
-	switch (rcode) {
-	case RLM_MODULE_OK:
+	switch (query->ret) {
+	case LDAP_RESULT_SUCCESS:
 		break;
 
-	case RLM_MODULE_NOTFOUND:
+	case LDAP_RESULT_NO_RESULT:
+	case LDAP_RESULT_BAD_DN:
 		RDEBUG2("Tried to resolve group name(s) to DNs but got no results");
 		goto finish;
 
@@ -145,23 +144,16 @@ static unlang_action_t rlm_ldap_group_name2dn(rlm_rcode_t *p_result, rlm_ldap_t 
 	}
 
 	entry_cnt = ldap_count_entries(query->ldap_conn->handle, query->result);
-	if (entry_cnt > name_cnt) {
+	if (entry_cnt > group_ctx->name_cnt) {
 		REDEBUG("Number of DNs exceeds number of names, group and/or dn should be more restrictive");
 		rcode = RLM_MODULE_INVALID;
 
 		goto finish;
 	}
 
-	if (entry_cnt > (outlen - 1)) {
-		REDEBUG("Number of DNs exceeds limit (%zu)", outlen - 1);
-		rcode = RLM_MODULE_INVALID;
-
-		goto finish;
-	}
-
-	if (entry_cnt < name_cnt) {
+	if (entry_cnt < group_ctx->name_cnt) {
 		RWDEBUG("Got partial mapping of group names (%i) to DNs (%i), membership information may be incomplete",
-			name_cnt, entry_cnt);
+			group_ctx->name_cnt, entry_cnt);
 	}
 
 	entry = ldap_first_entry(query->ldap_conn->handle, query->result);
@@ -174,33 +166,30 @@ static unlang_action_t rlm_ldap_group_name2dn(rlm_rcode_t *p_result, rlm_ldap_t 
 	}
 
 	do {
-		*dn = ldap_get_dn(query->ldap_conn->handle, entry);
-		if (!*dn) {
+		dn = ldap_get_dn(query->ldap_conn->handle, entry);
+		if (!dn) {
 			ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 			REDEBUG("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
 
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
-		fr_ldap_util_normalise_dn(*dn, *dn);
+		fr_ldap_util_normalise_dn(dn, dn);
 
-		RDEBUG2("Got group DN \"%s\"", *dn);
-		dn++;
+		RDEBUG2("Got group DN \"%s\"", dn);
+		MEM(vp = fr_pair_afrom_da(group_ctx->list_ctx, inst->cache_da));
+		fr_pair_value_bstrndup(vp, dn, strlen(dn), true);
+		fr_pair_append(&group_ctx->groups, vp);
+		ldap_memfree(dn);
 	} while((entry = ldap_next_entry(query->ldap_conn->handle, entry)));
 
-	*dn = NULL;
-
 finish:
-	talloc_free(filter);
-
 	/*
-	 *	Be nice and cleanup the output array if we error out.
+	 *	Remove pointer to group name to resolve so we don't
+	 *	try to do it again
 	 */
-	if (rcode != RLM_MODULE_OK) {
-		dn = out;
-		while(*dn) ldap_memfree(*dn++);
-		*dn = NULL;
-	}
+	*group_ctx->group_name = NULL;
+	talloc_free(group_ctx->query);
 
 	RETURN_MODULE_RCODE(rcode);
 }
