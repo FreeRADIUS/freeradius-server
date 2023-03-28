@@ -1244,8 +1244,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_rest_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
 	xlat_t		*xlat;
 
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, rest_xlat, FR_TYPE_STRING, 0);
-	xlat_func_args(xlat, rest_xlat_args);
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, rest_xlat, FR_TYPE_STRING);
+	xlat_func_args_set(xlat, rest_xlat_args);
 
 	return 0;
 }

@@ -905,8 +905,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		XLAT_ARG_PARSER_TERMINATOR
 	};
 
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, linelog_xlat, FR_TYPE_SIZE, 0);
-	xlat_func_mono(xlat, linelog_xlat_args);
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, linelog_xlat, FR_TYPE_SIZE);
+	xlat_func_mono_set(xlat, linelog_xlat_args);
 
 	return 0;
 }

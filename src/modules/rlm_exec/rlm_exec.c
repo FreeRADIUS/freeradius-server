@@ -172,8 +172,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		}
 	};
 
-	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, exec_xlat, FR_TYPE_STRING, 0);
-	xlat_func_args(xlat, exec_xlat_args);
+	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, exec_xlat, FR_TYPE_STRING);
+	xlat_func_args_set(xlat, exec_xlat_args);
 
 	if (inst->input) {
 		if ((tmpl_afrom_attr_substr(inst, NULL, &inst->input_list,

@@ -408,6 +408,8 @@ static inline fr_slen_t xlat_aprint(TALLOC_CTX *ctx, char **out, xlat_exp_head_t
 				    fr_sbuff_escape_rules_t const *e_rules)
 		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(xlat_print, head, e_rules)
 
+bool		xlat_is_truthy(xlat_exp_head_t const *head, bool *out);
+
 int		xlat_validate_function_mono(xlat_exp_t *node);
 
 int		xlat_validate_function_args(xlat_exp_t *node);
@@ -425,14 +427,14 @@ bool		xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_head_t **head);
 int		xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules);
 
 xlat_t		*xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
-				      char const *name, xlat_func_t func, fr_type_t return_type, xlat_flags_t const *flags);
-xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, fr_type_t return_type, xlat_flags_t const *flags) CC_HINT(nonnull(2));
+				      char const *name, xlat_func_t func, fr_type_t return_type);
+xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, fr_type_t return_type) CC_HINT(nonnull(2));
 
-int		xlat_func_args(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(nonnull);
+int		xlat_func_args_set(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(nonnull);
 
-int		xlat_func_mono(xlat_t *xlat, xlat_arg_parser_t const *arg) CC_HINT(nonnull);
+int		xlat_func_mono_set(xlat_t *xlat, xlat_arg_parser_t const *arg) CC_HINT(nonnull);
 
-bool		xlat_is_truthy(xlat_exp_head_t const *head, bool *out);
+void		xlat_func_flags_set(xlat_t *x, xlat_flags_t const *flags) CC_HINT(nonnull);
 
 /** Set a callback for global instantiation of xlat functions
  *

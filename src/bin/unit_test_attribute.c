@@ -3850,7 +3850,7 @@ int main(int argc, char *argv[])
 
 	unlang_thread_instantiate(thread_ctx);
 
-	if (!xlat_register(NULL, "test", xlat_test, FR_TYPE_NULL, NULL)) {
+	if (!xlat_register(NULL, "test", xlat_test, FR_TYPE_NULL)) {
 		ERROR("Failed registering xlat");
 		EXIT_WITH_FAILURE;
 	}

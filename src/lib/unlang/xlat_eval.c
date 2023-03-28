@@ -408,7 +408,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 				}
 
 				/*
-				 *	The argument isn't required.  Just omit it.  xlat_func_args() enforces
+				 *	The argument isn't required.  Just omit it.  xlat_func_args_set() enforces
 				 *	that optional arguments are at the end of the argument list.
 				 */
 				return XLAT_ACTION_DONE;

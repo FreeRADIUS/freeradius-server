@@ -971,8 +971,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, cache_xlat, FR_TYPE_VOID, 0);
-	xlat_func_args(xlat, cache_xlat_args);
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, cache_xlat, FR_TYPE_VOID);
+	xlat_func_args_set(xlat, cache_xlat_args);
 
 	return 0;
 }

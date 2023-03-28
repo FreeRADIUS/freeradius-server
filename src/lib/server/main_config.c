@@ -23,6 +23,7 @@
  * @copyright 2002,2006-2007 The FreeRADIUS server project
  * @copyright 2002 Alan DeKok (aland@freeradius.org)
  */
+#include "lib/unlang/xlat.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
@@ -1364,8 +1365,9 @@ do {\
 	/*
 	 *	Register the %(config:section.subsection) xlat function.
 	 */
-	xlat = xlat_register(NULL, "config", xlat_config, FR_TYPE_STRING, XLAT_FLAG_PURE);
-	xlat_func_args(xlat, xlat_config_args);
+	xlat = xlat_register(NULL, "config", xlat_config, FR_TYPE_STRING);
+	xlat_func_args_set(xlat, xlat_config_args);
+	xlat_func_flags_set(xlat, XLAT_FLAG_PURE);
 
 	/*
 	 *	Ensure cwd is inside the chroot.

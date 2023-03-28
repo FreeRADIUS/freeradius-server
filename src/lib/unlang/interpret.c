@@ -1632,9 +1632,9 @@ void unlang_interpret_init_global(void)
 	 *  Should be void, but someone decided not to register multiple xlats
 	 *  breaking the convention we use everywhere else in the server...
 	 */
-	xlat = xlat_register(NULL, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID, NULL);
-	xlat_func_args(xlat, unlang_interpret_xlat_args);
+	xlat = xlat_register(NULL, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID);
+	xlat_func_args_set(xlat, unlang_interpret_xlat_args);
 
-	xlat = xlat_register(NULL, "cancel", unlang_cancel_xlat, FR_TYPE_VOID, NULL);
-	xlat_func_args(xlat, unlang_cancel_xlat_args);
+	xlat = xlat_register(NULL, "cancel", unlang_cancel_xlat, FR_TYPE_VOID);
+	xlat_func_args_set(xlat, unlang_cancel_xlat_args);
 }

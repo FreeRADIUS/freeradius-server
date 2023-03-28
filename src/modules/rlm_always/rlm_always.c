@@ -125,8 +125,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, always_xlat, FR_TYPE_STRING, NULL);
-	xlat_func_args(xlat, always_xlat_args);
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, always_xlat, FR_TYPE_STRING);
+	xlat_func_args_set(xlat, always_xlat_args);
 
 	return 0;
 }

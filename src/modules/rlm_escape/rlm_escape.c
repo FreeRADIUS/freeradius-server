@@ -196,11 +196,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_t		*xlat;
 
 	MEM(unescape = talloc_asprintf(NULL, "un%s", mctx->inst->name));
-	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, escape_xlat, FR_TYPE_STRING, XLAT_FLAG_PURE);
-	xlat_func_mono(xlat, escape_xlat_arg);
+	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, escape_xlat, FR_TYPE_STRING);
+	xlat_func_mono_set(xlat, escape_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FLAG_PURE);
 
-	xlat = xlat_register_module(NULL, mctx, unescape, unescape_xlat, FR_TYPE_STRING, XLAT_FLAG_PURE);
-	xlat_func_mono(xlat, unescape_xlat_arg);
+	xlat = xlat_register_module(NULL, mctx, unescape, unescape_xlat, FR_TYPE_STRING);
+	xlat_func_mono_set(xlat, unescape_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FLAG_PURE);
 	talloc_free(unescape);
 
 	return 0;

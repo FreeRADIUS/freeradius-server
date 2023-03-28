@@ -292,9 +292,9 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	xlat = xlat_register(NULL, "chap_password", xlat_func_chap_password, FR_TYPE_OCTETS, NULL);
+	xlat = xlat_register(NULL, "chap_password", xlat_func_chap_password, FR_TYPE_OCTETS);
 	if (!xlat) return -1;
-	xlat_func_args(xlat, xlat_func_chap_password_args);
+	xlat_func_args_set(xlat, xlat_func_chap_password_args);
 
 	return 0;
 }
