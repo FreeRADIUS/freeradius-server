@@ -194,6 +194,105 @@ finish:
 	RETURN_MODULE_RCODE(rcode);
 }
 
+/** Initiate an LDAP search to turn a group DN into it's name
+ *
+ * Unlike the inverse conversion of a name to a DN, most LDAP directories don't allow filtering by DN,
+ * so we need to search for each DN individually.
+ *
+ * @param[out] p_result		The result of trying to resolve a dn to a group name.
+ * @param[in] priority		unused.
+ * @param[in] request		Current request.
+ * @param[in] uctx		The group resolution context.
+ * @return One of the RLM_MODULE_* values.
+ */
+static unlang_action_t ldap_group_dn2name_start(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+						void *uctx)
+{
+	ldap_group_userobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_ctx_t);
+	rlm_ldap_t const		*inst = group_ctx->inst;
+
+	if (!inst->groupobj_name_attr) {
+		REDEBUG("Told to resolve group DN to name but missing 'group.name_attribute' directive");
+		RETURN_MODULE_INVALID;
+	}
+
+	RDEBUG2("Resolving group DN \"%s\" to group name", *group_ctx->dn);
+
+	return fr_ldap_trunk_search(p_result, group_ctx, &group_ctx->query, request, group_ctx->ttrunk, *group_ctx->dn,
+				    LDAP_SCOPE_BASE, NULL, group_ctx->attrs, NULL, NULL, true);
+}
+
+/** Process the results of a group DN -> name lookup.
+ *
+ * The retrieved value is added as a value pair to the
+ * temporary list in the group resolution context.
+ *
+ * @param[out] p_result		The result of trying to resolve a dn to a group name.
+ * @param[in] priority		unused.
+ * @param[in] request		Current request.
+ * @param[in] uctx		The group resolution context.
+ * @return One of the RLM_MODULE_* values.
+ */
+static unlang_action_t ldap_group_dn2name_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+						 void *uctx)
+{
+	ldap_group_userobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_ctx_t);
+	fr_ldap_query_t			*query = talloc_get_type_abort(group_ctx->query, fr_ldap_query_t);
+	rlm_ldap_t const		*inst = group_ctx->inst;
+	LDAPMessage			*entry;
+	struct berval			**values = NULL;
+	int				ldap_errno;
+	rlm_rcode_t			rcode = RLM_MODULE_OK;
+	fr_pair_t			*vp;
+
+	switch (query->ret) {
+	case LDAP_RESULT_SUCCESS:
+		break;
+
+	case LDAP_RESULT_NO_RESULT:
+	case LDAP_RESULT_BAD_DN:
+		REDEBUG("Group DN \"%s\" did not resolve to an object", *group_ctx->dn);
+		rcode = (inst->allow_dangling_group_refs ? RLM_MODULE_NOOP : RLM_MODULE_INVALID);
+		goto finish;
+
+	default:
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+
+	entry = ldap_first_entry(query->ldap_conn->handle, query->result);
+	if (!entry) {
+		ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+		rcode = RLM_MODULE_INVALID;
+		goto finish;
+	}
+
+	values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->groupobj_name_attr);
+	if (!values) {
+		REDEBUG("No %s attributes found in object", inst->groupobj_name_attr);
+		rcode = RLM_MODULE_INVALID;
+		goto finish;
+	}
+
+	MEM(vp = fr_pair_afrom_da(group_ctx->list_ctx, inst->cache_da));
+	fr_pair_value_bstrndup(vp, values[0]->bv_val, values[0]->bv_len, true);
+	fr_pair_append(&group_ctx->groups, vp);
+	RDEBUG2("Group DN \"%s\" resolves to name \"%pV\"", *group_ctx->dn, &vp->data);
+
+finish:
+	/*
+	 *	Walk the pointer to the DN being resolved forward
+	 *	ready for the next resolution.
+	 */
+	group_ctx->dn++;
+
+	if (values) ldap_value_free_len(values);
+	talloc_free(query);
+
+	RETURN_MODULE_RCODE(rcode);
+}
+
 /** Convert a single group DN into a name
  *
  * Unlike the inverse conversion of a name to a DN, most LDAP directories don't allow filtering by DN,
