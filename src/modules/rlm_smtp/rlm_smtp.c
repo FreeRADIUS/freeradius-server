@@ -35,8 +35,6 @@ RCSID("$Id$")
 static fr_dict_t const 	*dict_radius; /*dictionary for radius protocol*/
 static fr_dict_t const 	*dict_freeradius;
 
-#define MAX_ATTRMAP	128
-
 extern fr_dict_autoload_t rlm_smtp_dict[];
 fr_dict_autoload_t rlm_smtp_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },

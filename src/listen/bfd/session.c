@@ -303,7 +303,7 @@ bfd_state_change_t bfd_session_process(bfd_session_t *session, bfd_packet_t *bfd
 				break;
 
 			case BFD_STATE_INIT:
-				DEBUG("BFD %s peer State DOWN -> UP (neighbor INIT)",
+				DEBUG("BFD %s peer %s State DOWN -> UP (neighbor INIT)",
 				      session->server_name, session->client.shortname);
 				session->session_state = BFD_STATE_UP;
 				state_change = BFD_STATE_CHANGE_UP;

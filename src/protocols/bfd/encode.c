@@ -43,7 +43,7 @@ RCSID("$Id$")
  */
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_dcursor_t *cursor, UNUSED void *encode_ctx)
+			    fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
 	fr_pair_t const		*vp = fr_dcursor_current(cursor);
