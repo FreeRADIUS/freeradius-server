@@ -54,6 +54,18 @@ typedef struct {
 	fr_ldap_query_t		*query;					//!< Current query performing group resolution.
 } ldap_group_userobj_ctx_t;
 
+/** Context to use when looking up group membership using group objects.
+ *
+ */
+typedef struct {
+	rlm_ldap_t const	*inst;					//!< Module instance.
+	fr_value_box_t		*base_dn;				//!< The base DN to search for groups in.
+	fr_ldap_thread_trunk_t	*ttrunk;				//!< Trunk on which to perform additional queries.
+	char			filter[LDAP_MAX_FILTER_STR_LEN + 1];	//!< Filter used to search for groups.
+	char const		*attrs[2];				//!< For retrieving the group name.
+	fr_ldap_query_t		*query;					//!< Current query performing group lookup.
+} ldap_group_groupojb_ctx_t;
+
 /** Cancel a pending group lookup query
  *
  */
@@ -602,67 +614,70 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
 	return ldap_cacheable_userobj_store(p_result, request, group_ctx);
 }
 
-/** Convert group membership information into attributes
+/** Initiate an LDAP search for group membership looking at the group objects
  *
- * @param[out] p_result		The result of trying to resolve a dn to a group name.
- * @param[in] inst		rlm_ldap configuration.
+ * @param[out] p_result		Result of submitting LDAP search
+ * @param[out] priority		Unused.
  * @param[in] request		Current request.
- * @param[in] ttrunk		to use.
+ * @param[in] uctx		Group lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
-					    request_t *request, fr_ldap_thread_trunk_t *ttrunk)
+static unlang_action_t ldap_cacheable_groupobj_start(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+						     void *uctx)
 {
-	rlm_rcode_t	rcode = RLM_MODULE_OK;
-	int		ldap_errno;
+	ldap_group_groupojb_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupojb_ctx_t);
+	rlm_ldap_t const		*inst = group_ctx->inst;
 
-	LDAPMessage	*entry;
-	fr_ldap_query_t	*query;
+	group_ctx->attrs[0] = inst->groupobj_name_attr;
+	return fr_ldap_trunk_search(p_result, group_ctx, &group_ctx->query, request, group_ctx->ttrunk,
+				    group_ctx->base_dn->vb_strvalue, inst->groupobj_scope,
+				    group_ctx->filter, group_ctx->attrs, NULL, NULL, true);
 
-	char const	*base_dn;
-	char		base_dn_buff[LDAP_MAX_DN_STR_LEN];
+}
 
-	char const	*filters[] = { inst->groupobj_filter, inst->groupobj_membership_filter };
-	char		filter[LDAP_MAX_FILTER_STR_LEN + 1];
+/** Cancel a pending group object lookup.
+ *
+ */
+static void ldap_group_groupobj_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+{
+	ldap_group_groupojb_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupojb_ctx_t);
 
-	char const	*attrs[] = { inst->groupobj_name_attr, NULL };
+	/*
+	 *	If the query is not in flight, just return
+	 */
+	if (!group_ctx->query || !group_ctx->query->treq) return;
 
-	fr_pair_t	*vp;
-	char		*dn;
+	fr_trunk_request_signal_cancel(group_ctx->query->treq);
+}
 
-	fr_assert(inst->groupobj_base_dn);
+/** Process the results of a group object lookup.
+ *
+ * @param[out] p_result		Result of processing group lookup.
+ * @param[out] priority		Unused.
+ * @param[in] request		Current request.
+ * @param[in] uctx		Group lookup context.
+ * @return One of the RLM_MODULE_* values.
+ */
+static unlang_action_t ldap_cacheable_groupobj_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+						      void *uctx)
+{
+	ldap_group_groupojb_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupojb_ctx_t);
+	rlm_ldap_t const		*inst = group_ctx->inst;
+	fr_ldap_query_t			*query = group_ctx->query;
+	rlm_rcode_t			rcode = RLM_MODULE_OK;
+	LDAPMessage			*entry;
+	int				ldap_errno;
+	char				*dn;
+	fr_pair_t			*vp;
 
-	if (!inst->groupobj_membership_filter) {
-		RDEBUG2("Skipping caching group objects as directive 'group.membership_filter' is not set");
-
-		RETURN_MODULE_OK;
-	}
-
-	if (fr_ldap_xlat_filter(request,
-				 filters, NUM_ELEMENTS(filters),
-				 filter, sizeof(filter)) < 0) {
-		RETURN_MODULE_INVALID;
-	}
-
-	if (tmpl_expand(&base_dn, base_dn_buff, sizeof(base_dn_buff), request,
-			inst->groupobj_base_dn, fr_ldap_escape_func, NULL) < 0) {
-		REDEBUG("Failed creating base_dn");
-
-		RETURN_MODULE_INVALID;
-	}
-
-	if (fr_ldap_trunk_search(&rcode,
-				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
-				 inst->groupobj_scope, filter, attrs, NULL, NULL, false) < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
-	}
-	switch (rcode) {
-	case RLM_MODULE_OK:
+	switch (query->ret) {
+	case LDAP_SUCCESS:
 		break;
 
-	case RLM_MODULE_NOTFOUND:
+	case LDAP_RESULT_NO_RESULT:
+	case LDAP_RESULT_BAD_DN:
 		RDEBUG2("No cacheable group memberships found in group objects");
+		rcode = RLM_MODULE_NOTFOUND;
 		goto finish;
 
 	default:
@@ -717,8 +732,52 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t co
 	} while ((entry = ldap_next_entry(query->ldap_conn->handle, entry)));
 
 finish:
+	talloc_free(group_ctx);
 
 	RETURN_MODULE_RCODE(rcode);
+}
+
+/** Convert group membership information into attributes
+ *
+ * @param[out] p_result		The result of trying to resolve a dn to a group name.
+ * @param[in] request		Current request.
+ * @param[in] autz_ctx		Authentication context being processed.
+ * @return One of the RLM_MODULE_* values.
+ */
+unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx)
+{
+	rlm_ldap_t const		*inst = autz_ctx->inst;
+	ldap_group_groupojb_ctx_t	*group_ctx;
+	char const			*filters[] = { inst->groupobj_filter, inst->groupobj_membership_filter };
+
+	if (!inst->groupobj_membership_filter) {
+		RDEBUG2("Skipping caching group objects as directive 'group.membership_filter' is not set");
+		RETURN_MODULE_OK;
+	}
+
+	if (autz_ctx->mod_env->group_base.type != FR_TYPE_STRING) {
+		REDEBUG("Missing group base_dn");
+		RETURN_MODULE_INVALID;
+	}
+
+	MEM(group_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_group_groupojb_ctx_t));
+	group_ctx->inst = inst;
+	group_ctx->ttrunk = autz_ctx->ttrunk;
+	group_ctx->base_dn = &autz_ctx->mod_env->group_base;
+
+	if (fr_ldap_xlat_filter(request, filters, NUM_ELEMENTS(filters),
+				group_ctx->filter, sizeof(group_ctx->filter)) < 0) {
+		talloc_free(group_ctx);
+		RETURN_MODULE_INVALID;
+	}
+
+	if (unlang_function_push(request, ldap_cacheable_groupobj_start, ldap_cacheable_groupobj_resume,
+				 ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, group_ctx) < 0) {
+		talloc_free(group_ctx);
+		RETURN_MODULE_FAIL;
+	}
+
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Query the LDAP directory to check if a group object includes a user object as a member
