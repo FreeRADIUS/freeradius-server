@@ -28,13 +28,14 @@ RCSID("$Id$")
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/event.h>
 
+#include <pthread.h>
+
 #ifdef HAVE_KQUEUE
 #ifndef HAVE_SYS_EVENT_H
 #error kqueue requires <sys/event.h>
 
 #else
 #include <sys/event.h>
-#include <pthread.h>
 #endif
 #endif	/* HAVE_KQUEUE */
 
