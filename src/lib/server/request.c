@@ -614,6 +614,11 @@ int request_detach(request_t *child)
 	 */
 	child->type = REQUEST_TYPE_DETACHED;
 
+	/*
+	 *	...and is no longer detachable.
+	 */
+	child->flags.detachable = 0;
+
 	return 0;
 }
 
