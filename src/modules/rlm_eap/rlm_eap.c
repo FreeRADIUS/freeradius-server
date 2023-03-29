@@ -35,6 +35,7 @@ RCSID("$Id$")
 static const CONF_PARSER module_config[] = {
 	{ "default_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_t, default_method_name), "md5" },
 	{ "timer_expire", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_t, timer_limit), "60" },
+	{ "max_eap_type", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_t, max_eap_type), "52" },
 	{ "ignore_unknown_eap_types", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_t, ignore_unknown_types), "no" },
 	{ "cisco_accounting_username_bug", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_t, mod_accounting_username_bug), "no" },
 	{ "max_sessions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_t, max_sessions), "2048" },
@@ -559,6 +560,27 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 
 #ifdef WITH_PROXY
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
+{
+	VALUE_PAIR	*vp;
+	size_t		length;
+	rlm_eap_t	*inst = instance;
+
+	vp = fr_pair_find_by_num(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+	if (!vp) return RLM_MODULE_NOOP;
+
+	if (vp->vp_length < 4) return RLM_MODULE_NOOP;
+
+	length = (vp->vp_octets[2] << 8) | vp->vp_octets[3];
+	if (length != vp->vp_length) return RLM_MODULE_REJECT;
+
+	if (!inst->max_eap_type) return RLM_MODULE_NOOP;
+
+	if (vp->vp_octets[4] > inst->max_eap_type) return RLM_MODULE_REJECT;
+
+	return RLM_MODULE_NOOP;
+}
+
 /*
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
@@ -807,6 +829,7 @@ module_t rlm_eap = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
 #ifdef WITH_PROXY
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
 		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
 		[MOD_POST_AUTH]		= mod_post_auth

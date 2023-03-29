@@ -56,6 +56,7 @@ typedef struct rlm_eap {
 	 *	Configuration items.
 	 */
 	uint32_t	timer_limit;
+	uint32_t	max_eap_type;
 
 	char const	*default_method_name;
 	eap_type_t	default_method;
