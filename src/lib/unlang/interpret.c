@@ -997,7 +997,7 @@ void unlang_interpret_request_done(request_t *request)
 		break;
 
 	case REQUEST_TYPE_DETACHED:
-		intp->funcs.done_detached(request, stack->result, intp->uctx);
+		intp->funcs.done_detached(request, stack->result, intp->uctx);	/* Callback will usually free the request */
 		break;
 	}
 }
@@ -1024,8 +1024,12 @@ void unlang_interpret_request_detach(request_t *request)
 
 	if (!fr_cond_assert(stack != NULL)) return;
 
+	if (!request_is_detachable(request)) return;
+
 	intp = stack->intp;
 	intp->funcs.detach(request, intp->uctx);
+
+	if (request_detach(request) < 0) RPEDEBUG("Failed detaching request");
 }
 
 /** Send a signal (usually stop) to a request
@@ -1123,22 +1127,33 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 
 	switch (action) {
 	case FR_SIGNAL_CANCEL:
-		unlang_interpret_request_stop(request);		/* Stop gets the request in a consistent state */
-		unlang_interpret_request_done(request);		/* Done signals the request is complete */
+		/*
+		 *	Detach the request from the parent to cleanup 
+		 *	any cross-request pointers.  This is a noop
+		 *	if the request is not detachable.
+		 */
+		if (request_is_detachable(request)) unlang_interpret_request_detach(request);
 
 		/*
-		 *	If we're cancelling a child, detach it from
-		 *	its parent, so we don't leak memory allocated
-		 *	in request_detachable_init.
+		 *	Get the request into a consistent state,
+		 *	removing it from any runnable lists.
 		 */
-		if (request_is_detachable(request) && (request_detach(request) < 0)) {
-			RPEDEBUG("Failed detaching request on cancel");
-		}
+		unlang_interpret_request_stop(request);
+
+		/*
+		 *	As the request is detached, we call the done_detached
+		 *	callback which should free the request.
+		 */
+		unlang_interpret_request_done(request);
 		break;
 
 	case FR_SIGNAL_DETACH:
-		unlang_interpret_request_detach(request);	/* Tell our caller that the request is being detached */
-		if (request_detach(request) < 0) RPEDEBUG("Failed detaching request");
+		/*
+		 *	Cleanup any cross-request pointers, and mark the
+		 *	request as detached.  When the request completes it
+		 *	should by automatically freed.
+		 */
+		unlang_interpret_request_detach(request);
 		break;
 
 	default:

@@ -84,6 +84,15 @@ static void _request_done_internal(request_t *request, UNUSED rlm_rcode_t rcode,
 static void _request_done_detached(request_t *request, UNUSED rlm_rcode_t rcode, UNUSED void *uctx)
 {
 	RDEBUG3("Done synchronous detached request");
+
+	/*
+	 *	Detached requests have to be freed by us
+	 *	as nothing else can free them.
+	 *
+	 *	All other requests must be freed by the
+	 *	code which allocated them.
+	 */
+	talloc_free(request);
 }
 
 /** We don't need to do anything for internal -> detached
@@ -278,14 +287,11 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 		RDEBUG4("<<< interpreter (iteration %i) - %s", iterations,
 			fr_table_str_by_value(rcode_table, sub_rcode, "<INVALID>"));
 
-		if (sub_request == request) {
-			rcode = sub_rcode;
 		/*
-		 *	Free detached, resumable requests
+		 *	If the request being run was the original request
+		 *	then update the rcode we're returning.
 		 */
-		} else if (!sub_request->parent && !unlang_interpret_is_resumable(sub_request)) {
-			talloc_free(sub_request);	/* Free detached requests */
-		}
+		if (sub_request == request) rcode = sub_rcode;
 
 		DEBUG3("%u runnable, %u yielded", fr_heap_num_elements(intps->runnable), intps->yielded);
 	}

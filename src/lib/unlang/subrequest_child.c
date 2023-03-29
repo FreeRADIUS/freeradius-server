@@ -56,21 +56,7 @@ static void unlang_detached_max_request_time(UNUSED fr_event_list_t *el, UNUSED 
 
 	RDEBUG("Reached Request-Lifetime.  Forcibly stopping request");
 
-	fr_assert(!request->parent);	/* must be detached */
-
-	/*
-	 *	The request is scheduled and isn't running.  Remove it
-	 *	from the backlog.
-	 */
-	if (unlang_request_is_scheduled(request)) {
-		unlang_stack_t		*stack = request->stack;
-		unlang_interpret_t	*intp = stack->intp;
-
-		fr_assert(request_is_internal(request));
-		intp->funcs.done_internal(request, stack->result, intp->uctx);	/* Should free the request */
-	} else {
-		talloc_free(request);
-	}
+	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);	/* Request should now be freed */
 }
 
 /** Initialize a detached child
@@ -127,6 +113,12 @@ static void unlang_subrequest_child_signal(request_t *request, fr_state_signal_t
 {
 	unlang_frame_state_subrequest_t	*state;
 
+	/*
+	 *	We're already detached so we don't
+	 *	need to notify the parent we're
+	 *	waking up, and we don't need to detach
+	 *	again...
+	 */
 	if (!request->parent) return;
 
 	state = talloc_get_type_abort(frame_current(request->parent)->state, unlang_frame_state_subrequest_t);
@@ -155,7 +147,7 @@ static void unlang_subrequest_child_signal(request_t *request, fr_state_signal_t
 		 *	Indicate to the parent there's no longer a child
 		 */
 		state->child = NULL;
-
+		
 		/*
 		 *	Tell the parent to resume
 		 */
