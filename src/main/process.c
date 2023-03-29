@@ -5424,8 +5424,6 @@ static void event_new_fd(rad_listen_t *this)
 	if (this->type != RAD_LISTEN_DETAIL) {
 		sock = this->data;
 		rad_assert(sock != NULL);
-	} else {
-		rad_assert(!this->send_coa);
 	}
 
 	if (this->status == RAD_LISTEN_STATUS_INIT) {
