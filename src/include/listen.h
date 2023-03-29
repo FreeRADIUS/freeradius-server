@@ -80,6 +80,7 @@ struct rad_listen {
 #endif
 	bool		nodup;
 	bool		synchronous;
+	bool		dead;
 	uint32_t	workers;
 
 #ifdef WITH_TLS
@@ -91,7 +92,6 @@ struct rad_listen {
 #ifdef WITH_COA_TUNNEL
 	char const	*key;		/* Originating-Realm-Key */
 	bool		send_coa;	/* to the NAS */
-	bool		dead;
 
 	uint32_t	coa_irt;
 	uint32_t	coa_mrc;
