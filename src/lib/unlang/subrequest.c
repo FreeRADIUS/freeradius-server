@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/unlang/action.h>
 #include "unlang_priv.h"
 #include "interpret_priv.h"
 #include "subrequest_priv.h"
@@ -74,7 +75,13 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 	 */
 	if (!state->child) {
 		RDEBUG3("Child has detached");
-		return UNLANG_ACTION_CALCULATE_RESULT;
+
+		/*
+		 *	If the child detached the subrequest section
+		 *	should become entirely transparent, and
+		 *	should not update the section rcode.
+		 */
+		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
 	/*

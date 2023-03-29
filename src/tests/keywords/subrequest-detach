@@ -1,0 +1,44 @@
+#
+#  PRE: subrequest
+#
+&Tmp-String-1 := 'testing'
+
+# Cancel in subrequest
+subrequest Access-Request {
+	detach
+
+	# Smoke test, check for crashes
+	if (&parent.Tmp-String-1 == 'testing') {
+		test_fail
+	}
+
+	&parent.Tmp-String-2 = 'testing'
+
+	# As we're detached this failure doesn't do anything
+	test_fail
+}
+
+# Should not have been set from detached child
+if (&Tmp-String-2 && (&Tmp-String-2 == 'testing')) {
+	test_fail
+}
+
+# Regression test - Previous behaviour of detached subrequest
+# sections was to leave the previous rcode set, but evaluate
+# it with the priorities of the subrequest section, which was
+# wrong.
+#
+# New behaviour should be to avoid calculating a new rcode.
+fail {
+	fail = 1
+}
+
+# Check that detached requests can be cancelled
+subrequest Access-Request {
+	detach
+
+	# Smoke test for cancelling detached requests
+	%(cancel:)
+}
+
+success
