@@ -35,6 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/radmin.h>
 #include <freeradius-devel/server/request_data.h>
+#include <freeradius-devel/unlang/xlat_register.h>
 
 /** Heap of all lists/modules used to get a common index with module_thread_inst_list
  *

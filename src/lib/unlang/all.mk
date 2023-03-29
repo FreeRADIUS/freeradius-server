@@ -32,8 +32,9 @@ SOURCES	:=	base.c \
 		xlat_expr.c \
 		xlat_inst.c \
 		xlat_pair.c \
-		xlat_tokenize.c \
-		xlat_purify.c
+		xlat_purify.c \
+		xlat_register.c \
+		xlat_tokenize.c
 
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/unlang/*.h))
 

@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/unlang/xlat_register.h>
 
 #include <freeradius-devel/tls/openssl_user_macros.h>
 #include <openssl/crypto.h>

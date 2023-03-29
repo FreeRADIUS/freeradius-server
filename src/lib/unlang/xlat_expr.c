@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/unlang/xlat_register.h>
 
 #undef XLAT_DEBUG
 #ifdef DEBUG_XLAT

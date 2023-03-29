@@ -28,6 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/unlang/xlat_register.h>
 
 /*
  *	The instance data for rlm_always is the list of fake values we are

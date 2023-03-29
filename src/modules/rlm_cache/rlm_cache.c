@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/unlang/xlat_register.h>
 
 #include "rlm_cache.h"
 

@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/uri.h>
+#include <freeradius-devel/unlang/xlat_register.h>
 
 #include <ctype.h>
 #include "rest.h"

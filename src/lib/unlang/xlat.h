@@ -426,54 +426,6 @@ bool		xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_head_t **head);
 
 int		xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules);
 
-xlat_t		*xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
-				      char const *name, xlat_func_t func, fr_type_t return_type);
-xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, fr_type_t return_type) CC_HINT(nonnull(2));
-
-int		xlat_func_args_set(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(nonnull);
-
-int		xlat_func_mono_set(xlat_t *xlat, xlat_arg_parser_t const *arg) CC_HINT(nonnull);
-
-void		xlat_func_flags_set(xlat_t *x, xlat_flags_t const *flags) CC_HINT(nonnull);
-
-/** Set a callback for global instantiation of xlat functions
- *
- * @param[in] _xlat		function to set the callback for (as returned by xlat_register).
- * @param[in] _instantiate	A instantiation callback.
- * @param[in] _inst_struct	The instance struct to pre-allocate.
- * @param[in] _detach		A destructor callback.
- * @param[in] _uctx		to pass to _instantiate and _detach callbacks.
- */
-#define	xlat_async_instantiate_set(_xlat, _instantiate, _inst_struct, _detach, _uctx) \
-	_xlat_async_instantiate_set(_xlat, _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, _uctx)
-void _xlat_async_instantiate_set(xlat_t const *xlat,
-				        xlat_instantiate_t instantiate, char const *inst_type, size_t inst_size,
-				        xlat_detach_t detach,
-				        void *uctx);
-
-/** Set a callback for thread-specific instantiation of xlat functions
- *
- * @param[in] _xlat		function to set the callback for (as returned by xlat_register).
- * @param[in] _instantiate	A instantiation callback.
- * @param[in] _inst_struct	The instance struct to pre-allocate.
- * @param[in] _detach		A destructor callback.
- * @param[in] _uctx		to pass to _instantiate and _detach callbacks.
- */
-#define	xlat_async_thread_instantiate_set(_xlat, _instantiate, _inst_struct, _detach, _uctx) \
-	_xlat_async_thread_instantiate_set(_xlat, _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, _uctx)
-void _xlat_async_thread_instantiate_set(xlat_t const *xlat,
-					xlat_thread_instantiate_t thread_instantiate,
-				        char const *thread_inst_type, size_t thread_inst_size,
-				        xlat_thread_detach_t thread_detach,
-					void *uctx);
-
-void		xlat_unregister(char const *name);
-void		xlat_unregister_module(dl_module_inst_t const *inst);
-int		xlat_register_redundant(CONF_SECTION *cs);
-/** @hidecallgraph */
-int		xlat_init(void);
-void		xlat_free(void);
-
 void		xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list);
 void		xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt);
 /*
@@ -541,6 +493,13 @@ int		unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out
 xlat_action_t	unlang_xlat_yield(request_t *request,
 				  xlat_func_t callback, xlat_func_signal_t signal,
 				  void *rctx);
+
+/*
+ *	xlat_builtin.c
+ */
+int		xlat_init(void);
+void		xlat_free(void);
+
 #ifdef __cplusplus
 }
 #endif

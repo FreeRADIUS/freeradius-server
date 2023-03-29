@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/unlang/xlat_register.h>
 
 static xlat_arg_parser_t const xlat_dict_attr_by_num_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_UINT32 },

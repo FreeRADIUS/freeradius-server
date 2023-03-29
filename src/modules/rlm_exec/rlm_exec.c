@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/unlang/xlat_register.h>
 
 /*
  *	Define a structure for our module configuration.

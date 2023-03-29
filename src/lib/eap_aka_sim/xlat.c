@@ -25,6 +25,8 @@
  */
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/unlang/xlat_register.h>
+
 #include "base.h"
 #include "attrs.h"
 

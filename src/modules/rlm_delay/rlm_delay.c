@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/unlang/xlat_register.h>
 
 typedef struct {
 	tmpl_t		*delay;			//!< How long we delay for.

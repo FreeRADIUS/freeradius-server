@@ -26,6 +26,7 @@
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/unlang/xlat_register.h>
 #include <ctype.h>
 #include <time.h>
 

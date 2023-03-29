@@ -45,6 +45,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/sem.h>
 
+#include <freeradius-devel/unlang/xlat_register.h>
+
 #include <sys/stat.h>
 #include <pwd.h>
 #include <grp.h>
@@ -1020,7 +1022,7 @@ int main_config_init(main_config_t *config)
 	/*
 	 *	Initialize the xlats before we load the configuration files, so that we can later call xlat_register().
 	 */
-	xlat_init();
+	xlat_register_init();
 
 	if (stat(config->raddb_dir, &statbuf) < 0) {
 		ERROR("Error checking raddb_dir \"%s\": %s", config->raddb_dir, fr_syserror(errno));

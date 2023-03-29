@@ -41,6 +41,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/sha1.h>
 
+#include <freeradius-devel/unlang/xlat_register.h>
+
 #include <sys/wait.h>
 #include <ctype.h>
 

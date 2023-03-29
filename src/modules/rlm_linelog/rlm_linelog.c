@@ -31,6 +31,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/iovec.h>
 #include <freeradius-devel/util/perm.h>
 
+#include <freeradius-devel/unlang/xlat_register.h>
+
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
 #endif

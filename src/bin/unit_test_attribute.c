@@ -42,6 +42,7 @@ typedef struct request_s request_t;
 #endif
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/xlat.h>
+#include <freeradius-devel/unlang/xlat_register.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/calc.h>
