@@ -36,6 +36,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_redundant.h>
 
 /** Lookup virtual module by name
  */

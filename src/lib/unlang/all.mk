@@ -33,6 +33,7 @@ SOURCES	:=	base.c \
 		xlat_inst.c \
 		xlat_pair.c \
 		xlat_purify.c \
+		xlat_redundant.c \
 		xlat_register.c \
 		xlat_tokenize.c
 

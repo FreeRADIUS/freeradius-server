@@ -70,7 +70,6 @@ void _xlat_async_thread_instantiate_set(xlat_t const *xlat,
 
 void		xlat_unregister(char const *name);
 void		xlat_unregister_module(dl_module_inst_t const *inst);
-int		xlat_register_redundant(CONF_SECTION *cs);
 /** @hidecallgraph */
 
 int		xlat_register_init(void);
