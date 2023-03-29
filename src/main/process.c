@@ -5337,7 +5337,6 @@ static void event_status(struct timeval *wake)
 	}
 }
 
-#ifdef WITH_TCP
 static void listener_free_cb(void *ctx)
 {
 	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
@@ -5369,6 +5368,7 @@ static void listener_free_cb(void *ctx)
 	talloc_free(this);
 }
 
+#ifdef WITH_TCP
 #ifdef WITH_PROXY
 static int proxy_eol_cb(void *ctx, void *data)
 {
@@ -5413,6 +5413,7 @@ static int proxy_eol_cb(void *ctx, void *data)
 static void event_new_fd(rad_listen_t *this)
 {
 	char buffer[1024];
+	listen_socket_t *sock;
 
 	ASSERT_MASTER;
 
@@ -5420,10 +5421,12 @@ static void event_new_fd(rad_listen_t *this)
 
 	this->print(this, buffer, sizeof(buffer));
 
-	if (this->status == RAD_LISTEN_STATUS_INIT) {
-		listen_socket_t *sock = this->data;
-
+	if (this->type != RAD_LISTEN_DETAIL) {
+		sock = this->data;
 		rad_assert(sock != NULL);
+	}
+
+	if (this->status == RAD_LISTEN_STATUS_INIT) {
 		if (just_started) {
 			DEBUG("Listening on %s", buffer);
 
@@ -5599,7 +5602,6 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		if (this->count > 0) {
 			struct timeval when;
-			listen_socket_t *sock = this->data;
 
 			/*
 			 *	Try again to clean up the socket in 30
@@ -5661,7 +5663,6 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		if (this->count > 0) {
 			struct timeval when;
-			listen_socket_t *sock = this->data;
 
 			/*
 			 *	Try again to clean up the socket in 30
@@ -5687,15 +5688,15 @@ static void event_new_fd(rad_listen_t *this)
 	} /* socket is at EOL */
 #endif	  /* WITH_TCP */
 
+	if (this->dead) goto wait_some_more;
+
 	/*
 	 *	Nuke the socket.
 	 */
 	if (this->status == RAD_LISTEN_STATUS_REMOVE_NOW) {
 		int devnull;
-#ifdef WITH_TCP
-		listen_socket_t *sock = this->data;
-		struct timeval when;
-#endif
+
+		this->dead = true;
 
 		/*
 		 *      Re-open the socket, pointing it to /dev/null.
@@ -5794,16 +5795,6 @@ static void event_new_fd(rad_listen_t *this)
 			 *	EOL all requests using this socket.
 			 */
 			rbtree_walk(pl, RBTREE_DELETE_ORDER, eol_listener, this);
-
-#ifdef WITH_COA_TUNNEL
-			/*
-			 *	Delete the listener from the set of
-			 *	listeners by key.  This is done early,
-			 *	so that it won't be used while the
-			 *	cleanup timers are being run.
-			 */
-			if (this->tls) this->dead = true;
-#endif
 		}
 
 		/*
@@ -5819,14 +5810,8 @@ static void event_new_fd(rad_listen_t *this)
 		/*
 		 *	Wait until all requests using this socket are done.
 		 */
-		gettimeofday(&when, NULL);
-		when.tv_sec += 3;
-
-		ASSERT_MASTER;
-		if (!fr_event_insert(el, listener_free_cb, this, &when,
-				     &(sock->ev))) {
-			rad_panic("Failed to insert event");
-		}
+	wait_some_more:
+		listener_free_cb(this);
 #endif	/* WITH_TCP */
 	}
 
