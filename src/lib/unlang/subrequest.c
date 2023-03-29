@@ -68,13 +68,11 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 	request_t				*child = state->child;
 	unlang_subrequest_t			*gext;
 
-	RDEBUG3("Subrequest complete");
-
 	/*
 	 *	Child detached
 	 */
 	if (!state->child) {
-		RDEBUG3("Child has detached");
+		RDEBUG3("subrequest detached during its execution - Not updating rcode or reply attributes");
 
 		/*
 		 *	If the child detached the subrequest section
@@ -83,6 +81,8 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 		 */
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
+
+	RDEBUG3("subrequest complete");
 
 	/*
 	 *	If there's a no destination tmpl, we're done.
