@@ -40,7 +40,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
 
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 static CONF_PARSER sasl_mech_dynamic[] = {
 	{ FR_CONF_OFFSET("mech", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, fr_ldap_sasl_t_dynamic_t, mech) },
@@ -1772,18 +1772,18 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		inst->cache_da = inst->group_da;	/* Default to the group_da */
 	}
 
-	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, ldap_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(NULL, mctx, mctx->inst->name, ldap_xlat, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, ldap_xlat_arg);
 
-	xlat = xlat_register_module(NULL, mctx, "ldap_escape", ldap_escape_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(NULL, mctx, "ldap_escape", ldap_escape_xlat, FR_TYPE_STRING);
 	if (xlat) {
 		xlat_func_mono_set(xlat, ldap_escape_xlat_arg);
-		xlat_func_flags_set(xlat, XLAT_FLAG_PURE);
+		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 	}
-	xlat = xlat_register_module(NULL, mctx, "ldap_unescape", ldap_unescape_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(NULL, mctx, "ldap_unescape", ldap_unescape_xlat, FR_TYPE_STRING);
 	if (xlat) {
 		xlat_func_mono_set(xlat, ldap_escape_xlat_arg);
-		xlat_func_flags_set(xlat, XLAT_FLAG_PURE);
+		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 	}
 
 	map_proc_register(inst, mctx->inst->name, mod_map_proc, ldap_map_verify, 0);

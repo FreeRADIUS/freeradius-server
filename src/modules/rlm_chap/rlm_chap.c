@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/password.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 typedef struct {
 	fr_dict_enum_value_t		*auth_type;
@@ -293,7 +293,7 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	xlat = xlat_register(NULL, "chap_password", xlat_func_chap_password, FR_TYPE_OCTETS);
+	xlat = xlat_func_register(NULL, "chap_password", xlat_func_chap_password, FR_TYPE_OCTETS);
 	if (!xlat) return -1;
 	xlat_func_args_set(xlat, xlat_func_chap_password_args);
 
@@ -302,7 +302,7 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	xlat_unregister("chap_password");
+	xlat_func_unregister("chap_password");
 }
 
 /*

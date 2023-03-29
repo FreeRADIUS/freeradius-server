@@ -45,7 +45,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/sem.h>
 
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include <sys/stat.h>
 #include <pwd.h>
@@ -1020,9 +1020,10 @@ int main_config_init(main_config_t *config)
 	xlat_t		*xlat;
 
 	/*
-	 *	Initialize the xlats before we load the configuration files, so that we can later call xlat_register().
+	 *	Initialize the xlats before we load the configuration files,
+	 *	so that we can later call xlat_func_register().
 	 */
-	xlat_register_init();
+	xlat_func_init();
 
 	if (stat(config->raddb_dir, &statbuf) < 0) {
 		ERROR("Error checking raddb_dir \"%s\": %s", config->raddb_dir, fr_syserror(errno));
@@ -1367,9 +1368,9 @@ do {\
 	/*
 	 *	Register the %(config:section.subsection) xlat function.
 	 */
-	xlat = xlat_register(NULL, "config", xlat_config, FR_TYPE_STRING);
+	xlat = xlat_func_register(NULL, "config", xlat_config, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, xlat_config_args);
-	xlat_func_flags_set(xlat, XLAT_FLAG_PURE);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
 	/*
 	 *	Ensure cwd is inside the chroot.

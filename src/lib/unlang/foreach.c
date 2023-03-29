@@ -25,7 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/request_data.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include "foreach_priv.h"
 #include "return_priv.h"
@@ -275,7 +275,7 @@ void unlang_foreach_init(void)
 	for (i = 0; i < NUM_ELEMENTS(xlat_foreach_names); i++) {
 		xlat_t *x;
 
-		x = xlat_register(NULL, xlat_foreach_names[i],
+		x = xlat_func_register(NULL, xlat_foreach_names[i],
 				  unlang_foreach_xlat, FR_TYPE_VOID);
 		fr_assert(x);
 		x->uctx = &xlat_foreach_inst[i];
@@ -301,6 +301,6 @@ void unlang_foreach_free(void)
 	size_t	i;
 
 	for (i = 0; i < NUM_ELEMENTS(xlat_foreach_names); i++) {
-		xlat_unregister(xlat_foreach_names[i]);
+		xlat_func_unregister(xlat_foreach_names[i]);
 	}
 }

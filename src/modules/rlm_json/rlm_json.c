@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/json/base.h>
 
 #include <ctype.h>
@@ -530,13 +530,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	char 			*name;
 	fr_json_format_t	*format = inst->format;
 
-	xlat = xlat_register_module(inst, mctx, "jsonquote", json_quote_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(inst, mctx, "jsonquote", json_quote_xlat, FR_TYPE_STRING);
 	if (xlat) xlat_func_mono_set(xlat, json_quote_xlat_arg);
-	xlat = xlat_register_module(inst, mctx, "jpathvalidate", jpath_validate_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(inst, mctx, "jpathvalidate", jpath_validate_xlat, FR_TYPE_STRING);
 	if (xlat) xlat_func_mono_set(xlat, jpath_validate_xlat_arg);
 
 	name = talloc_asprintf(inst, "%s_encode", mctx->inst->name);
-	xlat = xlat_register_module(inst, mctx, name, json_encode_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(inst, mctx, name, json_encode_xlat, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, json_encode_xlat_arg);
 	talloc_free(name);
 

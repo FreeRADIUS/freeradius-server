@@ -26,7 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include "interpret_priv.h"
 #include "module_priv.h"
@@ -1129,7 +1129,7 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 	switch (action) {
 	case FR_SIGNAL_CANCEL:
 		/*
-		 *	Detach the request from the parent to cleanup 
+		 *	Detach the request from the parent to cleanup
 		 *	any cross-request pointers.  This is a noop
 		 *	if the request is not detachable.
 		 */
@@ -1648,9 +1648,9 @@ void unlang_interpret_init_global(void)
 	 *  Should be void, but someone decided not to register multiple xlats
 	 *  breaking the convention we use everywhere else in the server...
 	 */
-	xlat = xlat_register(NULL, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID);
+	xlat = xlat_func_register(NULL, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, unlang_interpret_xlat_args);
 
-	xlat = xlat_register(NULL, "cancel", unlang_cancel_xlat, FR_TYPE_VOID);
+	xlat = xlat_func_register(NULL, "cancel", unlang_cancel_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, unlang_cancel_xlat_args);
 }

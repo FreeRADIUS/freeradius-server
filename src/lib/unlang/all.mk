@@ -30,11 +30,11 @@ SOURCES	:=	base.c \
 		xlat_builtin.c \
 		xlat_eval.c \
 		xlat_expr.c \
+		xlat_func.c \
 		xlat_inst.c \
 		xlat_pair.c \
 		xlat_purify.c \
 		xlat_redundant.c \
-		xlat_register.c \
 		xlat_tokenize.c
 
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/unlang/*.h))

@@ -346,5 +346,5 @@ void		fr_aka_sim_fips186_2prf(uint8_t out[static 160], uint8_t mk[static 20]);
 /*
  *	xlat.c
  */
-void		fr_aka_sim_xlat_register(void);
-void		fr_aka_sim_xlat_unregister(void);
+void		fr_aka_sim_xlat_func_register(void);
+void		fr_aka_sim_xlat_func_unregister(void);

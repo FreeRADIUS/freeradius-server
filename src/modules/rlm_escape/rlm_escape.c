@@ -29,7 +29,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include <ctype.h>
 
@@ -197,13 +197,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_t		*xlat;
 
 	MEM(unescape = talloc_asprintf(NULL, "un%s", mctx->inst->name));
-	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, escape_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(NULL, mctx, mctx->inst->name, escape_xlat, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, escape_xlat_arg);
-	xlat_func_flags_set(xlat, XLAT_FLAG_PURE);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
-	xlat = xlat_register_module(NULL, mctx, unescape, unescape_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(NULL, mctx, unescape, unescape_xlat, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, unescape_xlat_arg);
-	xlat_func_flags_set(xlat, XLAT_FLAG_PURE);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 	talloc_free(unescape);
 
 	return 0;

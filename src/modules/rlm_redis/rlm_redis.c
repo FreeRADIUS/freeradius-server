@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
@@ -453,19 +453,19 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	char		*name;
 	xlat_t		*xlat;
 
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, redis_xlat, FR_TYPE_VOID);
+	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, redis_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, redis_args);
 
 	/*
 	 *	%(redis_node:<key>[ idx])
 	 */
 	name = talloc_asprintf(NULL, "%s_node", mctx->inst->name);
-	xlat = xlat_register_module(inst, mctx, name, redis_node_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(inst, mctx, name, redis_node_xlat, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, redis_node_xlat_args);
 	talloc_free(name);
 
 	name = talloc_asprintf(NULL, "%s_remap", mctx->inst->name);
-	xlat = xlat_register_module(inst, mctx, name, redis_remap_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(inst, mctx, name, redis_remap_xlat, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, redis_remap_xlat_args);
 	talloc_free(name);
 

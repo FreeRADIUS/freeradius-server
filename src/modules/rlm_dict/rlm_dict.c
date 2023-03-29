@@ -26,7 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 static xlat_arg_parser_t const xlat_dict_attr_by_num_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_UINT32 },
@@ -237,17 +237,17 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	if (cf_section_name2(mctx->inst->conf) != NULL) return 0;
 
-	xlat = xlat_register_module(inst, mctx, "attr_by_num", xlat_dict_attr_by_num, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(inst, mctx, "attr_by_num", xlat_dict_attr_by_num, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, xlat_dict_attr_by_num_args);
-	xlat = xlat_register_module(inst, mctx, "attr_by_oid", xlat_dict_attr_by_oid, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(inst, mctx, "attr_by_oid", xlat_dict_attr_by_oid, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, xlat_dict_attr_by_oid_args);
-	xlat = xlat_register_module(inst, mctx, "vendor", xlat_vendor, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(inst, mctx, "vendor", xlat_vendor, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, xlat_vendor_args);
-	xlat = xlat_register_module(inst, mctx, "vendor_num", xlat_vendor_num, FR_TYPE_UINT32);
+	xlat = xlat_func_register_module(inst, mctx, "vendor_num", xlat_vendor_num, FR_TYPE_UINT32);
 	xlat_func_args_set(xlat, xlat_vendor_num_args);
-	xlat = xlat_register_module(inst, mctx, "attr", xlat_attr, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(inst, mctx, "attr", xlat_attr, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, xlat_attr_args);
-	xlat = xlat_register_module(inst, mctx, "attr_num", xlat_attr_num, FR_TYPE_UINT32);
+	xlat = xlat_func_register_module(inst, mctx, "attr_num", xlat_attr_num, FR_TYPE_UINT32);
 	xlat_func_args_set(xlat, xlat_attr_num_args);
 
 	return 0;

@@ -114,13 +114,6 @@ typedef struct {
 	bool			constant;	//!< xlat is just tmpl_attr_tail_data, or XLAT_BOX
 } xlat_flags_t;
 
-/*
- *	Simplify many use-cases
- *
- *	We can't set "needs_resolving" here, and async functions can't be pure.
- */
-#define XLAT_FLAG_PURE &(xlat_flags_t) { .pure = true, }
-
 extern fr_table_num_sorted_t const xlat_action_table[];
 extern size_t xlat_action_table_len;
 

@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/xlat_redundant.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/rand.h>
 
@@ -450,7 +450,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		return 1;
 	}
 
-	xlat = xlat_register(NULL, name2, xlat_redundant, return_type);
+	xlat = xlat_func_register(NULL, name2, xlat_redundant, return_type);
 	if (!xlat) {
 		ERROR("Registering xlat for %s section failed",
 		      fr_table_str_by_value(xlat_redundant_type_table, xr->type, "<INVALID>"));
@@ -458,7 +458,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		return -1;
 	}
 	xlat_func_flags_set(xlat, &flags);
-	xlat_async_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_inst_t, NULL, xr);
+	xlat_func_async_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_inst_t, NULL, xr);
 	if (args) xlat_func_args_set(xlat, xlat_redundant_args);
 
 	return 0;

@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #undef XLAT_DEBUG
 #ifdef DEBUG_XLAT
@@ -1627,21 +1627,21 @@ static xlat_action_t xlat_func_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #undef XLAT_REGISTER_BINARY_OP
 #define XLAT_REGISTER_BINARY_OP(_op, _name) \
 do { \
-	if (!(xlat = xlat_register(NULL, "op_" STRINGIFY(_name), xlat_func_op_ ## _name, FR_TYPE_VOID))) return -1; \
+	if (!(xlat = xlat_func_register(NULL, "op_" STRINGIFY(_name), xlat_func_op_ ## _name, FR_TYPE_VOID))) return -1; \
 	xlat_func_args_set(xlat, binary_op_xlat_args); \
-	xlat_func_flags_set(xlat, XLAT_FLAG_PURE); \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE); \
 	xlat_internal(xlat); \
 	xlat_print_set(xlat, xlat_expr_print_binary); \
-	xlat_async_instantiate_set(xlat, xlat_function_args_to_tmpl, NULL, NULL, NULL); \
+	xlat_func_async_instantiate_set(xlat, xlat_function_args_to_tmpl, NULL, NULL, NULL); \
 	xlat->token = _op; \
 } while (0)
 
 #undef XLAT_REGISTER_BINARY_CMP
 #define XLAT_REGISTER_BINARY_CMP(_op, _name) \
 do { \
-	if (!(xlat = xlat_register(NULL, "cmp_" STRINGIFY(_name), xlat_func_cmp_ ## _name, FR_TYPE_VOID))) return -1; \
+	if (!(xlat = xlat_func_register(NULL, "cmp_" STRINGIFY(_name), xlat_func_cmp_ ## _name, FR_TYPE_VOID))) return -1; \
 	xlat_func_args_set(xlat, binary_op_xlat_args); \
-	xlat_func_flags_set(xlat, XLAT_FLAG_PURE); \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE); \
 	xlat_internal(xlat); \
 	xlat_print_set(xlat, xlat_expr_print_binary); \
 	xlat_resolve_set(xlat, xlat_expr_resolve_binary); \
@@ -1651,9 +1651,9 @@ do { \
 #undef XLAT_REGISTER_NARY_OP
 #define XLAT_REGISTER_NARY_OP(_op, _name, _func_name) \
 do { \
-	if (!(xlat = xlat_register(NULL, STRINGIFY(_name), xlat_func_ ## _func_name, FR_TYPE_VOID))) return -1; \
-	xlat_async_instantiate_set(xlat, xlat_instantiate_ ## _func_name, xlat_ ## _func_name ## _inst_t, NULL, NULL); \
-	xlat_func_flags_set(xlat, XLAT_FLAG_PURE); \
+	if (!(xlat = xlat_func_register(NULL, STRINGIFY(_name), xlat_func_ ## _func_name, FR_TYPE_VOID))) return -1; \
+	xlat_func_async_instantiate_set(xlat, xlat_instantiate_ ## _func_name, xlat_ ## _func_name ## _inst_t, NULL, NULL); \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE); \
 	xlat_internal(xlat); \
 	xlat_print_set(xlat, xlat_expr_print_ ## _func_name); \
 	xlat_purify_set(xlat, xlat_expr_logical_purify); \
@@ -1663,10 +1663,10 @@ do { \
 #undef XLAT_REGISTER_REGEX_OP
 #define XLAT_REGISTER_REGEX_OP(_op, _name) \
 do { \
-	if (!(xlat = xlat_register(NULL, STRINGIFY(_name), xlat_func_ ## _name, FR_TYPE_VOID))) return -1; \
+	if (!(xlat = xlat_func_register(NULL, STRINGIFY(_name), xlat_func_ ## _name, FR_TYPE_VOID))) return -1; \
 	xlat_func_args_set(xlat, regex_op_xlat_args); \
-	xlat_func_flags_set(xlat, XLAT_FLAG_PURE); \
-	xlat_async_instantiate_set(xlat, xlat_instantiate_regex, xlat_regex_inst_t, NULL, NULL); \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE); \
+	xlat_func_async_instantiate_set(xlat, xlat_instantiate_regex, xlat_regex_inst_t, NULL, NULL); \
 	xlat_print_set(xlat, xlat_expr_print_regex); \
 	xlat_internal(xlat); \
 	xlat->token = _op; \
@@ -1674,16 +1674,16 @@ do { \
 
 #define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
 do { \
-	if (!(xlat = xlat_register(NULL, _xlat, _func, FR_TYPE_VOID))) return -1; \
+	if (!(xlat = xlat_func_register(NULL, _xlat, _func, FR_TYPE_VOID))) return -1; \
 	xlat_func_mono_set(xlat, _arg); \
 	xlat_internal(xlat); \
 } while (0)
 
 #define XLAT_REGISTER_UNARY(_op, _xlat, _func) \
 do { \
-	if (!(xlat = xlat_register(NULL, _xlat, _func, FR_TYPE_VOID))) return -1; \
+	if (!(xlat = xlat_func_register(NULL, _xlat, _func, FR_TYPE_VOID))) return -1; \
 	xlat_func_args_set(xlat, unary_op_xlat_args); \
-	xlat_func_flags_set(xlat, XLAT_FLAG_PURE); \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE); \
 	xlat_internal(xlat); \
 	xlat_print_set(xlat, xlat_expr_print_unary); \
 	xlat->token = _op; \
@@ -1727,7 +1727,7 @@ int xlat_register_expressions(void)
 
 	XLAT_REGISTER_MONO("rcode", xlat_func_rcode, xlat_func_rcode_arg);
 	XLAT_REGISTER_MONO("exists", xlat_func_exists, xlat_func_exists_arg);
-	xlat_async_instantiate_set(xlat, xlat_instantiate_exists, xlat_exists_inst_t, NULL, NULL);
+	xlat_func_async_instantiate_set(xlat, xlat_instantiate_exists, xlat_exists_inst_t, NULL, NULL);
 	xlat_print_set(xlat, xlat_expr_print_exists);
 
 	/*
@@ -1742,7 +1742,7 @@ int xlat_register_expressions(void)
 	/*
 	 *	Callback wrapper around old paircmp() API.
 	 */
-	if (!(xlat = xlat_register(NULL, "paircmp", xlat_paircmp_func, FR_TYPE_VOID))) return -1; /* never pure! */
+	if (!(xlat = xlat_func_register(NULL, "paircmp", xlat_paircmp_func, FR_TYPE_VOID))) return -1; /* never pure! */
 	xlat_func_args_set(xlat, xlat_paircmp_xlat_args);
 	xlat_internal(xlat);
 

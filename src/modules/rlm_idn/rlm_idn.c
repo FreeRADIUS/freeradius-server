@@ -25,7 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include <idna.h>
 
@@ -153,9 +153,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_idn_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_idn_t);
 	xlat_t		*xlat;
 
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, xlat_idna, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, xlat_idna, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, xlat_idna_arg);
-	xlat_func_flags_set(xlat, XLAT_FLAG_PURE);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
 	return 0;
 }

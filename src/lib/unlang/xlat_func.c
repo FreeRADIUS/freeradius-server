@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/unlang/xlat.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 static fr_rb_tree_t *xlat_root = NULL;
 
@@ -168,7 +168,7 @@ static int xlat_arg_cmp_list_no_escape(xlat_arg_parser_t const a[], xlat_arg_par
  *	- A handle for the newly registered xlat function on success.
  *	- NULL on failure.
  */
-xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
+xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 			     char const *name, xlat_func_t func, fr_type_t return_type)
 {
 	xlat_t	*c;
@@ -236,9 +236,9 @@ xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
  *	- A handle for the newly registered xlat function on success.
  *	- NULL on failure.
  */
-xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, fr_type_t return_type)
+xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, fr_type_t return_type)
 {
-	return xlat_register_module(ctx, NULL, name, func, return_type);
+	return xlat_func_register_module(ctx, NULL, name, func, return_type);
 }
 
 /** Verify xlat arg specifications are valid
@@ -339,15 +339,9 @@ int xlat_func_mono_set(xlat_t *x, xlat_arg_parser_t const args[])
  * @param[in] x			xlat to set flags for.
  * @param[in] flags		to set.
  */
-void xlat_func_flags_set(xlat_t *x, xlat_flags_t const *flags)
+void xlat_func_flags_set(xlat_t *x, xlat_func_flags_t flags)
 {
-	/*
-	 *	If the function is async, it can't be pure.  But
-	 *	non-pure functions don't need to be async.
-	 */
-	fr_assert(!flags->needs_resolving);
-
-	x->flags = *flags;
+	x->flags.pure = flags & XLAT_FUNC_FLAG_PURE;
 }
 
 /** Set global instantiation/detach callbacks
@@ -362,7 +356,7 @@ void xlat_func_flags_set(xlat_t *x, xlat_flags_t const *flags)
  * @param[in] detach		Called when an xlat_exp_t is freed.
  * @param[in] uctx		Passed to the instantiation function.
  */
-void _xlat_async_instantiate_set(xlat_t const *xlat,
+void _xlat_func_async_instantiate_set(xlat_t const *xlat,
 				 xlat_instantiate_t instantiate, char const *inst_type, size_t inst_size,
 				 xlat_detach_t detach,
 				 void *uctx)
@@ -390,7 +384,7 @@ void _xlat_async_instantiate_set(xlat_t const *xlat,
  * @param[in] thread_detach		Called when the thread is freed.
  * @param[in] uctx			Passed to the thread instantiate function.
  */
-void _xlat_async_thread_instantiate_set(xlat_t const *xlat,
+void _xlat_func_async_thread_instantiate_set(xlat_t const *xlat,
 					xlat_thread_instantiate_t thread_instantiate,
 				        char const *thread_inst_type, size_t thread_inst_size,
 				        xlat_thread_detach_t thread_detach,
@@ -420,7 +414,7 @@ void _xlat_async_thread_instantiate_set(xlat_t const *xlat,
  *
  * @param[in] name xlat to unregister.
  */
-void xlat_unregister(char const *name)
+void xlat_func_unregister(char const *name)
 {
 	xlat_t	*c;
 
@@ -434,7 +428,7 @@ void xlat_unregister(char const *name)
 	talloc_free(c);	/* Should also remove from tree */
 }
 
-void xlat_unregister_module(dl_module_inst_t const *inst)
+void xlat_func_unregister_module(dl_module_inst_t const *inst)
 {
 	xlat_t				*c;
 	fr_rb_iter_inorder_t	iter;
@@ -451,7 +445,7 @@ void xlat_unregister_module(dl_module_inst_t const *inst)
 	}
 }
 
-int xlat_register_init(void)
+int xlat_func_init(void)
 {
 	if (xlat_root) return 0;
 
@@ -467,7 +461,7 @@ int xlat_register_init(void)
 	return 0;
 }
 
-void xlat_register_free(void)
+void xlat_func_free(void)
 {
 	fr_rb_tree_t *xr = xlat_root;		/* Make sure the tree can't be freed multiple times */
 

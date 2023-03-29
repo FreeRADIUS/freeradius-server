@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 #include <fcntl.h>
 
 #include "io.h"
@@ -491,7 +491,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if(!(xlat = xlat_register_module(NULL, mctx, mctx->inst->name, xlat_unbound, FR_TYPE_VOID))) return -1;
+	if(!(xlat = xlat_func_register_module(NULL, mctx, mctx->inst->name, xlat_unbound, FR_TYPE_VOID))) return -1;
 	xlat_func_args_set(xlat, xlat_unbound_args);
 
 	return 0;

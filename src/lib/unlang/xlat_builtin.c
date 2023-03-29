@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/xlat.h>
 
 #include <freeradius-devel/io/test_point.h>
@@ -3191,11 +3191,11 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	if (tp_decode) {
 		snprintf(buffer, sizeof(buffer), "decode.%s", name);
 
-		xlat = xlat_register(NULL, buffer, protocol_decode_xlat, FR_TYPE_UINT32);
+		xlat = xlat_func_register(NULL, buffer, protocol_decode_xlat, FR_TYPE_UINT32);
 		if (!xlat) return -1;
 		xlat_func_args_set(xlat, protocol_decode_xlat_args);
 		/* coverity[suspicious_sizeof] */
-		xlat_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
+		xlat_func_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
 		xlat_internal(xlat);
 	}
 
@@ -3207,11 +3207,11 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	if (tp_encode) {
 		snprintf(buffer, sizeof(buffer), "encode.%s", name);
 
-		xlat = xlat_register(NULL, buffer, protocol_encode_xlat, FR_TYPE_OCTETS);
+		xlat = xlat_func_register(NULL, buffer, protocol_encode_xlat, FR_TYPE_OCTETS);
 		if (!xlat) return -1;
 		xlat_func_args_set(xlat, protocol_encode_xlat_args);
 		/* coverity[suspicious_sizeof] */
-		xlat_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
+		xlat_func_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
 		xlat_internal(xlat);
 	}
 
@@ -3252,7 +3252,7 @@ int xlat_init(void)
 {
 	xlat_t *xlat;
 
-	if (xlat_register_init() < 0) return -1;
+	if (xlat_func_init() < 0) return -1;
 
 	/*
 	 *	Lookup attributes used by virtual xlat expansions.
@@ -3274,9 +3274,9 @@ int xlat_init(void)
 	 */
 #define XLAT_REGISTER_ARGS(_xlat, _func, _return_type, _args) \
 do { \
-	if (!(xlat = xlat_register(NULL, _xlat, _func, _return_type))) return -1; \
+	if (!(xlat = xlat_func_register(NULL, _xlat, _func, _return_type))) return -1; \
 	xlat_func_args_set(xlat, _args); \
-	xlat_func_flags_set(xlat, XLAT_FLAG_PURE); \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE); \
 	xlat_internal(xlat); \
 } while (0)
 
@@ -3298,7 +3298,7 @@ do { \
 #undef XLAT_REGISTER_ARGS
 #define XLAT_REGISTER_ARGS(_xlat, _func, _return_type, _args) \
 do { \
-	if (!(xlat = xlat_register(NULL, _xlat, _func, _return_type))) return -1; \
+	if (!(xlat = xlat_func_register(NULL, _xlat, _func, _return_type))) return -1; \
 	xlat_func_args_set(xlat, _args); \
 	xlat_internal(xlat); \
 } while (0)
@@ -3317,9 +3317,9 @@ do { \
 	XLAT_REGISTER_ARGS("flatten", xlat_func_flatten, FR_TYPE_NULL, xlat_func_debug_attr_args); /* takes an attribute reference */
 	XLAT_REGISTER_ARGS("unflatten", xlat_func_unflatten, FR_TYPE_NULL, xlat_func_debug_attr_args); /* takes an attribute reference */
 
-	xlat = xlat_register(NULL, "untaint", xlat_func_untaint, FR_TYPE_VOID);
+	xlat = xlat_func_register(NULL, "untaint", xlat_func_untaint, FR_TYPE_VOID);
 	xlat_internal(xlat);
-	xlat = xlat_register(NULL, "taint", xlat_func_taint, FR_TYPE_VOID);
+	xlat = xlat_func_register(NULL, "taint", xlat_func_taint, FR_TYPE_VOID);
 	xlat_internal(xlat);
 
 	/*
@@ -3327,9 +3327,9 @@ do { \
 	 */
 #define XLAT_REGISTER_MONO(_xlat, _func, _return_type, _arg) \
 do { \
-	if (!(xlat = xlat_register(NULL, _xlat, _func, _return_type))) return -1; \
+	if (!(xlat = xlat_func_register(NULL, _xlat, _func, _return_type))) return -1; \
 	xlat_func_mono_set(xlat, _arg); \
-	xlat_func_flags_set(xlat, XLAT_FLAG_PURE); \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE); \
 	xlat_internal(xlat); \
 } while (0)
 
@@ -3342,7 +3342,7 @@ do { \
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, FR_TYPE_OCTETS, xlat_func_md5_arg);
 	XLAT_REGISTER_MONO("pack", xlat_func_pack, FR_TYPE_OCTETS, xlat_func_pack_arg);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
-	xlat = xlat_register(NULL, "regex", xlat_func_regex, FR_TYPE_STRING);
+	xlat = xlat_func_register(NULL, "regex", xlat_func_regex, FR_TYPE_STRING);
 	xlat_internal(xlat);
 #endif
 	XLAT_REGISTER_MONO("sha1", xlat_func_sha1, FR_TYPE_OCTETS, xlat_func_sha_arg);
@@ -3376,7 +3376,7 @@ do { \
 #undef XLAT_REGISTER_MONO
 #define XLAT_REGISTER_MONO(_xlat, _func, _return_type, _arg) \
 do { \
-	if (!(xlat = xlat_register(NULL, _xlat, _func, _return_type))) return -1; \
+	if (!(xlat = xlat_func_register(NULL, _xlat, _func, _return_type))) return -1; \
 	xlat_func_mono_set(xlat, _arg); \
 	xlat_internal(xlat); \
 } while (0)
@@ -3384,7 +3384,7 @@ do { \
 	XLAT_REGISTER_MONO("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
 	XLAT_REGISTER_MONO("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 
-	xlat = xlat_register(NULL, "module", xlat_func_module, FR_TYPE_STRING);
+	xlat = xlat_func_register(NULL, "module", xlat_func_module, FR_TYPE_STRING);
 	xlat_internal(xlat);
 
 	return xlat_register_expressions();
@@ -3395,7 +3395,7 @@ do { \
  */
 void xlat_free(void)
 {
-	xlat_register_free();
+	xlat_func_free();
 
 	xlat_eval_free();
 }

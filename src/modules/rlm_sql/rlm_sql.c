@@ -37,7 +37,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/table.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include <sys/stat.h>
 
@@ -1059,7 +1059,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Register the SQL xlat function
 	 */
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
+	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
 
 	/*
 	 *	The xlat escape function needs access to inst - so

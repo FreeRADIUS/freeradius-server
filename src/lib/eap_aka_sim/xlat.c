@@ -25,7 +25,7 @@
  */
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include "base.h"
 #include "attrs.h"
@@ -496,7 +496,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 	return XLAT_ACTION_DONE;
 }
 
-void fr_aka_sim_xlat_register(void)
+void fr_aka_sim_xlat_func_register(void)
 {
 	xlat_t	*xlat;
 
@@ -505,30 +505,30 @@ void fr_aka_sim_xlat_register(void)
 		return;
 	}
 
-	xlat = xlat_register(NULL, "aka_sim_id_method", aka_sim_xlat_id_method_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register(NULL, "aka_sim_id_method", aka_sim_xlat_id_method_xlat, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, aka_sim_xlat_id_method_xlat_args);
-	xlat = xlat_register(NULL, "aka_sim_id_type", aka_sim_xlat_id_type_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register(NULL, "aka_sim_id_type", aka_sim_xlat_id_type_xlat, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, aka_sim_xlat_id_type_xlat_args);
-	xlat = xlat_register(NULL, "3gpp_temporary_id_key_index", aka_sim_id_3gpp_temporary_id_key_index_xlat, FR_TYPE_UINT8);
+	xlat = xlat_func_register(NULL, "3gpp_temporary_id_key_index", aka_sim_id_3gpp_temporary_id_key_index_xlat, FR_TYPE_UINT8);
 	xlat_func_args_set(xlat, aka_sim_id_3gpp_temporary_id_key_index_xlat_args);
-	xlat = xlat_register(NULL, "3gpp_temporary_id_decrypt", aka_sim_3gpp_temporary_id_decrypt_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register(NULL, "3gpp_temporary_id_decrypt", aka_sim_3gpp_temporary_id_decrypt_xlat, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, aka_sim_3gpp_temporary_id_decrypt_xlat_args);
-	xlat = xlat_register(NULL, "3gpp_temporary_id_encrypt", aka_sim_3gpp_temporary_id_encrypt_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register(NULL, "3gpp_temporary_id_encrypt", aka_sim_3gpp_temporary_id_encrypt_xlat, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, aka_sim_3gpp_temporary_id_encrypt_xlat_args);
 	aka_sim_xlat_refs = 1;
 }
 
-void fr_aka_sim_xlat_unregister(void)
+void fr_aka_sim_xlat_func_unregister(void)
 {
 	if (aka_sim_xlat_refs > 1) {
 		aka_sim_xlat_refs--;
 		return;
 	}
 
-	xlat_unregister("aka_sim_id_method");
-	xlat_unregister("aka_sim_id_type");
-	xlat_unregister("3gpp_pseudonym_key_index");
-	xlat_unregister("3gpp_pseudonym_decrypt");
-	xlat_unregister("3gpp_pseudonym_encrypt");
+	xlat_func_unregister("aka_sim_id_method");
+	xlat_func_unregister("aka_sim_id_type");
+	xlat_func_unregister("3gpp_pseudonym_key_index");
+	xlat_func_unregister("3gpp_pseudonym_decrypt");
+	xlat_func_unregister("3gpp_pseudonym_encrypt");
 	aka_sim_xlat_refs = 0;
 }

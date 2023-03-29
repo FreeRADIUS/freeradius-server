@@ -77,14 +77,14 @@ static int mod_load(void)
 {
 	if (fr_aka_sim_init() < 0) return -1;
 
-	fr_aka_sim_xlat_register();
+	fr_aka_sim_xlat_func_register();
 
 	return 0;
 }
 
 static void mod_unload(void)
 {
-	fr_aka_sim_xlat_unregister();
+	fr_aka_sim_xlat_func_unregister();
 
 	fr_aka_sim_free();
 }

@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/util/time.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 typedef struct {
 	tmpl_t		*delay;			//!< How long we delay for.
@@ -269,7 +269,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_delay_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_delay_t);
 	xlat_t		*xlat;
 
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, xlat_delay, FR_TYPE_TIME_DELTA);
+	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, xlat_delay, FR_TYPE_TIME_DELTA);
 	xlat_func_args_set(xlat, xlat_delay_args);
 	return 0;
 }

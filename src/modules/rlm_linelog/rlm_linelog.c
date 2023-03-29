@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/iovec.h>
 #include <freeradius-devel/util/perm.h>
 
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
@@ -907,7 +907,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		XLAT_ARG_PARSER_TERMINATOR
 	};
 
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, linelog_xlat, FR_TYPE_SIZE);
+	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, linelog_xlat, FR_TYPE_SIZE);
 	xlat_func_mono_set(xlat, linelog_xlat_args);
 
 	return 0;

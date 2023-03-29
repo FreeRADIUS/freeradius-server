@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 /** Client field
  *
@@ -353,7 +353,7 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	xlat = xlat_register(NULL, "client", xlat_client, FR_TYPE_STRING);
+	xlat = xlat_func_register(NULL, "client", xlat_client, FR_TYPE_STRING);
 	if (!xlat) return -1;
 	xlat_func_args_set(xlat, xlat_client_args);
 
@@ -364,7 +364,7 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	xlat_unregister("client");
+	xlat_func_unregister("client");
 }
 
 /*

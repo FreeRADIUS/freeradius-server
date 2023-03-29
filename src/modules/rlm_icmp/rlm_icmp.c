@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/cap.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -498,7 +498,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_icmp_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_icmp_t);
 	xlat_t		*xlat;
 
-	xlat = xlat_register_module(inst, mctx, mctx->inst->name, xlat_icmp, FR_TYPE_BOOL);
+	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, xlat_icmp, FR_TYPE_BOOL);
 	xlat_func_args_set(xlat, xlat_icmp_args);
 
 	FR_TIME_DELTA_BOUND_CHECK("timeout", inst->timeout, >=, fr_time_delta_from_msec(100)); /* 1/10s minimum timeout */

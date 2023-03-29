@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include <freeradius-devel/tls/openssl_user_macros.h>
 #include <openssl/crypto.h>
@@ -1300,7 +1300,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 *	Register decrypt xlat
 			 */
 			xlat_name = talloc_asprintf(inst, "%s_decrypt", mctx->inst->name);
-			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_rsa_decrypt_xlat, FR_TYPE_STRING);
+			xlat = xlat_func_register_module(inst, mctx, xlat_name, cipher_rsa_decrypt_xlat, FR_TYPE_STRING);
 			xlat_func_mono_set(xlat, cipher_rsa_decrypt_xlat_arg);
 			talloc_free(xlat_name);
 
@@ -1308,7 +1308,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 *	Verify sign xlat
 			 */
 			xlat_name = talloc_asprintf(inst, "%s_verify", mctx->inst->name);
-			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_rsa_verify_xlat, FR_TYPE_BOOL);
+			xlat = xlat_func_register_module(inst, mctx, xlat_name, cipher_rsa_verify_xlat, FR_TYPE_BOOL);
 			xlat_func_args_set(xlat, cipher_rsa_verify_xlat_arg);
 			talloc_free(xlat_name);
 		}
@@ -1337,7 +1337,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 *	Register encrypt xlat
 			 */
 			xlat_name = talloc_asprintf(inst, "%s_encrypt", mctx->inst->name);
-			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_rsa_encrypt_xlat, FR_TYPE_OCTETS);
+			xlat = xlat_func_register_module(inst, mctx, xlat_name, cipher_rsa_encrypt_xlat, FR_TYPE_OCTETS);
 			xlat_func_mono_set(xlat, cipher_rsa_encrypt_xlat_arg);
 			talloc_free(xlat_name);
 
@@ -1345,7 +1345,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 *	Register sign xlat
 			 */
 			xlat_name = talloc_asprintf(inst, "%s_sign", mctx->inst->name);
-			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_rsa_sign_xlat, FR_TYPE_OCTETS);
+			xlat = xlat_func_register_module(inst, mctx, xlat_name, cipher_rsa_sign_xlat, FR_TYPE_OCTETS);
 			xlat_func_mono_set(xlat, cipher_rsa_sign_xlat_arg);
 			talloc_free(xlat_name);
 
@@ -1354,7 +1354,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 *	so we can optimise for return types.
 			 */
 			xlat_name = talloc_asprintf(inst, "%s_certificate", mctx->inst->name);
-			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_certificate_xlat, FR_TYPE_VOID);
+			xlat = xlat_func_register_module(inst, mctx, xlat_name, cipher_certificate_xlat, FR_TYPE_VOID);
 			xlat_func_args_set(xlat, cipher_certificate_xlat_args);
 
 			talloc_free(xlat_name);

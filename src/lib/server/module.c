@@ -35,7 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/radmin.h>
 #include <freeradius-devel/server/request_data.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 /** Heap of all lists/modules used to get a common index with module_thread_inst_list
  *
@@ -886,12 +886,12 @@ static int _module_instance_free(module_instance_t *mi)
 	 *	Remove all xlat's registered to module instance.
 	 */
 	if (mi->dl_inst && mi->dl_inst->data) {
-		xlat_unregister(mi->name);
+		xlat_func_unregister(mi->name);
 		/*
 		 *	Remove any registered paircmps.
 		 */
 		paircmp_unregister_instance(mi->dl_inst->data);
-		xlat_unregister_module(mi->dl_inst);
+		xlat_func_unregister_module(mi->dl_inst);
 	}
 
 	/*

@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/unlang/xlat_register.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 #include "rlm_yubikey.h"
 
 #ifdef HAVE_YKCLIENT
@@ -197,10 +197,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	}
 #endif
 
-	xlat = xlat_register_module(inst, mctx, "modhextohex", modhex_to_hex_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(inst, mctx, "modhextohex", modhex_to_hex_xlat, FR_TYPE_STRING);
 	if (xlat) {
 		xlat_func_mono_set(xlat, modhex_to_hex_xlat_arg);
-		xlat_func_flags_set(xlat, XLAT_FLAG_PURE);
+		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 	}
 	return 0;
 }
