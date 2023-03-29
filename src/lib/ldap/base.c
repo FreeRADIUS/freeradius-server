@@ -737,7 +737,7 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	return UNLANG_ACTION_YIELD;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Run an async or sync modification LDAP query on a trunk connection
@@ -801,7 +801,7 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	return UNLANG_ACTION_YIELD;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Modify something in the LDAP directory
