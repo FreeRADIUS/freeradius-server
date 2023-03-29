@@ -5804,6 +5804,7 @@ static void event_new_fd(rad_listen_t *this)
 			ASSERT_MASTER;
 
 			if (this->type != RAD_LISTEN_DETAIL && sock->ev) {
+				sock = this->data;
 				fr_event_delete(el, &sock->ev);
 			}
 			listen_free(&this);
