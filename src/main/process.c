@@ -5413,7 +5413,7 @@ static int proxy_eol_cb(void *ctx, void *data)
 static void event_new_fd(rad_listen_t *this)
 {
 	char buffer[1024];
-	listen_socket_t *sock;
+	listen_socket_t *sock = NULL;
 
 	ASSERT_MASTER;
 
@@ -5424,6 +5424,8 @@ static void event_new_fd(rad_listen_t *this)
 	if (this->type != RAD_LISTEN_DETAIL) {
 		sock = this->data;
 		rad_assert(sock != NULL);
+	} else {
+		rad_assert(!this->send_coa);
 	}
 
 	if (this->status == RAD_LISTEN_STATUS_INIT) {
@@ -5473,6 +5475,7 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		case RAD_LISTEN_PROXY:
 #ifdef WITH_TCP
+			rad_assert(sock != NULL);
 			rad_assert((sock->proto == IPPROTO_UDP) || (sock->home != NULL));
 
 			/*
@@ -5742,6 +5745,7 @@ static void event_new_fd(rad_listen_t *this)
 #endif
 			) {
 			home_server_t *home;
+			sock = this->data;
 
 			home = sock->home;
 			if (!home || !home->limit.max_connections) {
@@ -5803,8 +5807,7 @@ static void event_new_fd(rad_listen_t *this)
 		if (!spawn_flag) {
 			ASSERT_MASTER;
 
-			if (this->type != RAD_LISTEN_DETAIL && sock->ev) {
-				sock = this->data;
+			if (this->type != RAD_LISTEN_DETAIL && sock && sock->ev) {
 				fr_event_delete(el, &sock->ev);
 			}
 			listen_free(&this);
