@@ -452,3 +452,20 @@ do { \
  *	For closing macros which open a code block e.g. fr_rb_inorder_foreach
  */
 #define endforeach }
+
+/* Explicitly evaluate and ignore an expression
+ *
+ * Why this macro?
+ * 1. gcc will warn about unused return values, even with the traditional cast to void.
+ * 2. There are cases in which an error case wants to clean up, but the function to
+ *    clean up itself returns a status. In this context you don't care, but then you
+ *    have the Scylla of unused return value and the Charybdis of Coverity complaining
+ *    about an if that doesn't affect control flow. The following evaluates _expr and
+ *    stores it in a variable marked as unused
+ * @param _expr		The expression to be evaluated and ignored
+ * @param _type		The type of the expression
+ */
+#define IGNORE(_expr, _type) \
+	do { \
+		_type ignored UNUSED = (_expr); \
+	} while (0)
