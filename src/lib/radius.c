@@ -5016,7 +5016,7 @@ void fr_rand_seed(void const *data, size_t size)
 	if (!hash) hash = fr_rand();
 	hash = fr_hash_update(data, size, hash);
 
-	fr_rand_pool.randmem[fr_rand_pool.randcnt] ^= hash;
+	fr_rand_pool.randmem[fr_rand_pool.randcnt & 0xff] ^= hash;
 }
 
 
@@ -5034,7 +5034,7 @@ uint32_t fr_rand(void)
 		fr_rand_seed(NULL, 0);
 	}
 
-	num = fr_rand_pool.randrsl[fr_rand_pool.randcnt++];
+	num = fr_rand_pool.randrsl[fr_rand_pool.randcnt++ & 0xff];
 	if (fr_rand_pool.randcnt >= 256) {
 		fr_rand_pool.randcnt = 0;
 		fr_isaac(&fr_rand_pool);
