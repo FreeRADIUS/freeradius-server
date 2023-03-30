@@ -1,5 +1,6 @@
 #!/bin/sh
 DIR=$(dirname $0)/../..
 PROGRAM=$(basename $0)
+echo $DIR
 
-exec $DIR/build/make/jlibtool --mode=execute $FR_DEBUGGER $DIR/build/bin/local/$PROGRAM -d $DIR/raddb -D $DIR/share/dictionary $@
+exec $DIR/build/make/jlibtool --mode=execute $FR_DEBUGGER $DIR/build/bin/local/$PROGRAM -d $DIR/raddb -D $DIR/share/ $@
