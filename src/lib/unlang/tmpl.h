@@ -83,7 +83,7 @@ typedef struct {
 		}, \
 	}
 
-/** A callback when the request gets a fr_state_signal_t.
+/** A callback when the request gets a fr_signal_t.
  *
  * A module may call unlang_yeild(), but still need to do something on FR_SIGNAL_DUP.  If so, it's
  * set here.
@@ -94,7 +94,7 @@ typedef struct {
  * @param[in] request		The current request.
  * @param[in] action		which is signalling the request.
  */
-typedef void (*fr_unlang_tmpl_signal_t)(request_t *request, void *rctx, fr_state_signal_t action);
+typedef void (*fr_unlang_tmpl_signal_t)(request_t *request, void *rctx, fr_signal_t action);
 
 /** A callback for when the request is resumed.
  *

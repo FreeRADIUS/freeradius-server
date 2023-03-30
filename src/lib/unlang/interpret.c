@@ -1048,7 +1048,7 @@ void unlang_interpret_request_detach(request_t *request)
  * @param[in] action		to signal.
  * @param[in] limit		the frame at which to stop signaling.
  */
-void unlang_frame_signal(request_t *request, fr_state_signal_t action, int limit)
+void unlang_frame_signal(request_t *request, fr_signal_t action, int limit)
 {
 	unlang_stack_frame_t	*frame;
 	unlang_stack_t		*stack = request->stack;
@@ -1102,7 +1102,7 @@ void unlang_frame_signal(request_t *request, fr_state_signal_t action, int limit
  * @param[in] request		The current request.
  * @param[in] action		to signal.
  */
-void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
+void unlang_interpret_signal(request_t *request, fr_signal_t action)
 {
 	unlang_stack_t		*stack = request->stack;
 
@@ -1407,7 +1407,7 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	We call unlang_xlat_yield to keep the interpreter happy
 	 *	as it expects to see a resume function set.
 	 */
-	if (!timeout) return unlang_xlat_yield(request, unlang_cancel_never_run, NULL, NULL);
+	if (!timeout) return unlang_xlat_yield(request, unlang_cancel_never_run, NULL, 0, NULL);
 
 	if (ev_p_og) {
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));

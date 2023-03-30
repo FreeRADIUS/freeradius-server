@@ -80,13 +80,11 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static void imap_io_module_signal(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
+static void imap_io_module_signal(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
 {
 	fr_curl_io_request_t	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 	rlm_imap_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
 	CURLMcode		ret;
-
-	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG2("Forcefully cancelling pending IMAP request");
 
@@ -192,7 +190,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_authenticate_resume, imap_io_module_signal, randle);
+	return unlang_module_yield(request, mod_authenticate_resume, imap_io_module_signal, ~FR_SIGNAL_CANCEL, randle);
 }
 
 /** Clean up CURL handle on freeing

@@ -56,7 +56,7 @@ typedef unlang_action_t (*unlang_function_t)(rlm_rcode_t *p_result, int *priorit
  *				interpreter, but should be usable by the function.
  *				All input (args) and output will be done using this structure.
  */
-typedef void (*unlang_function_signal_t)(request_t *request, fr_state_signal_t action, void *uctx);
+typedef void (*unlang_function_signal_t)(request_t *request, fr_signal_t action, void *uctx);
 
 int		unlang_function_clear(request_t *request) CC_HINT(warn_unused_result);
 
@@ -72,7 +72,7 @@ int		unlang_function_clear(request_t *request) CC_HINT(warn_unused_result);
  */
 #define		unlang_function_signal_set(_request, _signal) \
 		_unlang_function_signal_set(_request, _signal, STRINGIFY(_signal))
-int		_unlang_function_signal_set(request_t *request, unlang_function_signal_t signal, char const *name)
+int		_unlang_function_signal_set(request_t *request, unlang_function_signal_t signal, fr_signal_t sigmask, char const *name)
 		CC_HINT(warn_unused_result);
 
 /** Set a new repeat function for an existing function frame
@@ -100,22 +100,23 @@ int		_unlang_function_repeat_set(request_t *request, unlang_function_t repeat, c
  * @param[in] _repeat		function to call going back down the stack (may be NULL).
  *				This may be the same as func.
  * @param[in] _signal		function to call if the request is signalled.
+ * @param[in] _sigmask		Signals to block.
  * @param[in] _top_frame	Return out of the unlang interpreter when popping this frame.
  * @param[in] _uctx		to pass to func(s).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-#define		unlang_function_push(_request, _func, _repeat, _signal, _top_frame, _uctx) \
+#define		unlang_function_push(_request, _func, _repeat, _signal, _sigmask, _top_frame, _uctx) \
 		_unlang_function_push(_request, \
 				      _func, STRINGIFY(_func), \
 				      _repeat, STRINGIFY(_repeat), \
-				      _signal, STRINGIFY(_signal), \
+				      _signal, _sigmask, STRINGIFY(_signal), \
 				      _top_frame, _uctx)
 unlang_action_t	_unlang_function_push(request_t *request,
 				      unlang_function_t func, char const *func_name,
 				      unlang_function_t repeat, char const *repeat_name,
-				      unlang_function_signal_t signal, char const *signal_name,
+				      unlang_function_signal_t signal, fr_signal_t sigmask, char const *signal_name,
 				      bool top_frame, void *uctx)
 				      CC_HINT(warn_unused_result);
 

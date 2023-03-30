@@ -795,7 +795,7 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_regex_rctx_t));
 	fr_value_box_list_init(&rctx->list);
 
-	if (unlang_xlat_yield(request, xlat_regex_resume, NULL, rctx) != XLAT_ACTION_YIELD) {
+	if (unlang_xlat_yield(request, xlat_regex_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) {
 	fail:
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
@@ -1170,7 +1170,7 @@ static xlat_action_t xlat_logical_process_arg(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 	/*
 	 *	Push the xlat onto the stack for expansion.
 	 */
-	if (unlang_xlat_yield(request, xlat_logical_resume, NULL, rctx) != XLAT_ACTION_YIELD) {
+	if (unlang_xlat_yield(request, xlat_logical_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) {
 	fail:
 		talloc_free(rctx->box);
 		talloc_free(rctx);
@@ -1612,7 +1612,7 @@ static xlat_action_t xlat_func_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_exists_rctx_t));
 	fr_value_box_list_init(&rctx->list);
 
-	if (unlang_xlat_yield(request, xlat_exists_resume, NULL, rctx) != XLAT_ACTION_YIELD) {
+	if (unlang_xlat_yield(request, xlat_exists_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) {
 	fail:
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;

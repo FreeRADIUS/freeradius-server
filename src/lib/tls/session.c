@@ -1285,12 +1285,10 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
  * @param[in] action	we're being signalled with.
  * @param[in] uctx	the SSL * to cancell.
  */
-static void tls_session_async_handshake_signal(UNUSED request_t *request, fr_state_signal_t action, void *uctx)
+static void tls_session_async_handshake_signal(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	int			ret;
-
-	if (action != FR_SIGNAL_CANCEL) return;
 
 	/*
 	 *	We might want to set can_pause = false here
@@ -1578,6 +1576,7 @@ unlang_action_t fr_tls_session_async_handshake_push(request_t *request, fr_tls_s
 				    tls_session_async_handshake,
 				    NULL,
 				    tls_session_async_handshake_signal,
+				    ~FR_SIGNAL_CANCEL,
 				    UNLANG_SUB_FRAME,
 				    tls_session);
 }

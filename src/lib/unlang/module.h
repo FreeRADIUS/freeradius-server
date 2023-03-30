@@ -64,7 +64,7 @@ typedef	void (*unlang_module_timeout_t)(module_ctx_t const *mctx, request_t *req
  */
 typedef void (*unlang_module_fd_event_t)(module_ctx_t const *mctx, request_t *request, int fd);
 
-/** A callback when the request gets a fr_state_signal_t.
+/** A callback when the request gets a fr_signal_t.
  *
  * A module may call unlang_yeild(), but still need to do something on FR_SIGNAL_DUP.  If so, it's
  * set here.
@@ -76,7 +76,7 @@ typedef void (*unlang_module_fd_event_t)(module_ctx_t const *mctx, request_t *re
  * @param[in] request		The current request.
  * @param[in] action		which is signalling the request.
  */
-typedef void (*unlang_module_signal_t)(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action);
+typedef void (*unlang_module_signal_t)(module_ctx_t const *mctx, request_t *request, fr_signal_t action);
 
 int		unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callback,
 					  void const *rctx, fr_time_t when);
@@ -97,32 +97,26 @@ int		unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 
 int		unlang_module_set_resume(request_t *request, module_method_t resume);
 
-unlang_action_t	unlang_module_yield_to_subrequest(rlm_rcode_t *p_result, request_t *child,
-						  module_method_t resume,
-						  unlang_module_signal_t signal,
-						  unlang_subrequest_session_t const *session,
-						  void *rctx);
-
 unlang_action_t	unlang_module_yield_to_section(rlm_rcode_t *p_result,
 					       request_t *request, CONF_SECTION *subcs,
 					       rlm_rcode_t default_rcode,
 					       module_method_t resume,
-					       unlang_module_signal_t signal, void *rctx);
+					       unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx);
 
 unlang_action_t	unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 					    request_t *request, xlat_exp_head_t const *xlat,
 					    module_method_t resume,
-					    unlang_module_signal_t signal, void *rctx);
+					    unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx);
 
 unlang_action_t	unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 					    request_t *request, tmpl_t const *vpt,
 					    unlang_tmpl_args_t *args,
 					    module_method_t resume,
-					    unlang_module_signal_t signal, void *rctx);
+					    unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx);
 
 unlang_action_t	unlang_module_yield(request_t *request,
 				    module_method_t resume,
-				    unlang_module_signal_t signal, void *rctx);
+				    unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx);
 
 #ifdef __cplusplus
 }

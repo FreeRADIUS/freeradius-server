@@ -110,13 +110,11 @@ static void unlang_parallel_cancel_siblings(request_t *request)
  *
  * When a request detaches we need
  */
-static void unlang_parallel_child_signal(request_t *request, fr_state_signal_t action, void *uctx)
+static void unlang_parallel_child_signal(request_t *request, UNUSED fr_signal_t action, void *uctx)
 {
 	unlang_parallel_child_t		*child = uctx;
 	unlang_stack_frame_t		*frame;
 	unlang_parallel_state_t		*state;
-
-	if (action != FR_SIGNAL_DETACH) return;
 
 	frame = frame_current(request->parent);
 	state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
@@ -368,6 +366,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 		    				 NULL,
 		    				 unlang_parallel_child_done,
 		    				 unlang_parallel_child_signal,
+						 ~FR_SIGNAL_DETACH,
 		    				 UNLANG_TOP_FRAME,
 		    				 &state->children[i]) < 0) goto error;
 			child_frame = frame_current(child);
@@ -420,7 +419,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
  *
  */
 static void unlang_parallel_signal(UNUSED request_t *request,
-				   unlang_stack_frame_t *frame, fr_state_signal_t action)
+				   unlang_stack_frame_t *frame, fr_signal_t action)
 {
 	unlang_parallel_state_t	*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
 	int			i;

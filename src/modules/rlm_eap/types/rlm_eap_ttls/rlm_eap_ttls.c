@@ -272,7 +272,7 @@ static unlang_action_t mod_handshake_process(UNUSED rlm_rcode_t *p_result, UNUSE
 	/*
 	 *	Setup the resumption frame to process the result
 	 */
-	(void)unlang_module_yield(request, mod_handshake_resume, NULL, eap_session);
+	(void)unlang_module_yield(request, mod_handshake_resume, NULL, 0, eap_session);
 
 	/*
 	 *	Process TLS layer until done.

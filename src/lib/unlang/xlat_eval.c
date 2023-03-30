@@ -773,7 +773,7 @@ static xlat_action_t xlat_exec_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @param[in] action		What the request should do (the type of signal).
  */
 void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
-		 request_t *request, void *rctx, fr_state_signal_t action)
+		 request_t *request, void *rctx, fr_signal_t action)
 {
 	xlat_thread_inst_t *t = xlat_thread_instance_find(exp);
 
@@ -1184,7 +1184,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 
 				xlat_debug_log_expansion(request, node, NULL, __LINE__);
 
-				if (unlang_xlat_yield(request, xlat_exec_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto fail;
+				if (unlang_xlat_yield(request, xlat_exec_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto fail;
 
 				if (unlang_tmpl_push(ctx, &rctx->list, request, node->vpt,
 						     TMPL_ARGS_EXEC(NULL, fr_time_delta_from_sec(EXEC_TIMEOUT),

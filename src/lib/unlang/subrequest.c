@@ -36,7 +36,7 @@ RCSID("$Id$")
  *
  */
 static void unlang_subrequest_parent_signal(UNUSED request_t *request, unlang_stack_frame_t *frame,
-					    fr_state_signal_t action)
+					    fr_signal_t action)
 {
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
 	request_t			*child = talloc_get_type_abort(state->child, request_t);

@@ -746,7 +746,7 @@ packet_ready:
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield_to_section(p_result, request, unlang, RLM_MODULE_FAIL, mschap_resume, NULL, eap_session);
+	return unlang_module_yield_to_section(p_result, request, unlang, RLM_MODULE_FAIL, mschap_resume, NULL, 0, eap_session);
 }
 
 /*

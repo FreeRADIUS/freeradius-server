@@ -283,7 +283,7 @@ static unlang_action_t CC_HINT(nonnull) mod_return(rlm_rcode_t *p_result, UNUSED
 	RETURN_MODULE_OK;
 }
 
-static void mod_retry_signal(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action);
+static void mod_retry_signal(module_ctx_t const *mctx, request_t *request, fr_signal_t action);
 
 /** Continue after marked runnable
  *
@@ -302,7 +302,7 @@ static unlang_action_t mod_retry_resume_retry(UNUSED rlm_rcode_t *p_result, UNUS
 {
 	RDEBUG("Test retry");
 
-	return unlang_module_yield(request, mod_retry_resume, mod_retry_signal, NULL);
+	return unlang_module_yield(request, mod_retry_resume, mod_retry_signal, 0, NULL);
 }
 
 /** Continue after FR_SIGNAL_TIMEOUT
@@ -315,7 +315,7 @@ static unlang_action_t mod_retry_resume_timeout(rlm_rcode_t *p_result, UNUSED mo
 	RETURN_MODULE_OK;
 }
 
-static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
+static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request, fr_signal_t action)
 {
 	switch (action) {
 	case FR_SIGNAL_RETRY:
@@ -344,7 +344,7 @@ static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request
  */
 static unlang_action_t CC_HINT(nonnull) mod_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
-	return unlang_module_yield(request, mod_retry_resume, mod_retry_signal, NULL);
+	return unlang_module_yield(request, mod_retry_resume, mod_retry_signal, 0, NULL);
 }
 
 

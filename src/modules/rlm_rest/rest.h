@@ -312,5 +312,5 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, re
 /*
  *	Async IO helpers
  */
-void rest_io_module_signal(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action);
-void rest_io_xlat_signal(xlat_ctx_t const *xctx, request_t *request, fr_state_signal_t action);
+void rest_io_module_signal(module_ctx_t const *mctx, request_t *request, fr_signal_t action);
+void rest_io_xlat_signal(xlat_ctx_t const *xctx, request_t *request, fr_signal_t action);

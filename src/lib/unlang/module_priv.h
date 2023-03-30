@@ -85,8 +85,9 @@ typedef struct {
 	 * @{
  	 */
 	void				*rctx;			//!< for resume / signal
-	module_method_t		resume;			//!< resumption handler
+	module_method_t			resume;			//!< resumption handler
 	unlang_module_signal_t		signal;			//!< for signal handlers
+	fr_signal_t			sigmask;		//!< Signals to block.
 
 	/** @} */
 

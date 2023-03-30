@@ -109,7 +109,7 @@ int unlang_subrequest_lifetime_set(request_t *request)
  * This processes any detach signals the child receives
  * The child doesn't actually do the detaching
  */
-static void unlang_subrequest_child_signal(request_t *request, fr_state_signal_t action, UNUSED void *uctx)
+static void unlang_subrequest_child_signal(request_t *request, fr_signal_t action, UNUSED void *uctx)
 {
 	unlang_frame_state_subrequest_t	*state;
 
@@ -147,7 +147,7 @@ static void unlang_subrequest_child_signal(request_t *request, fr_state_signal_t
 		 *	Indicate to the parent there's no longer a child
 		 */
 		state->child = NULL;
-		
+
 		/*
 		 *	Tell the parent to resume
 		 */
@@ -206,7 +206,10 @@ int unlang_subrequest_child_push_resume(request_t *child, unlang_frame_state_sub
 	 */
 	if (unlang_function_push(child, NULL,
 				 unlang_subrequest_child_done,
-				 unlang_subrequest_child_signal, UNLANG_TOP_FRAME, state) < 0) return -1;
+				 unlang_subrequest_child_signal,
+				 ~(FR_SIGNAL_DETACH | FR_SIGNAL_CANCEL),
+				 UNLANG_TOP_FRAME,
+				 state) < 0) return -1;
 
 	return_point_set(frame_current(child));	/* Stop return going through the resumption frame */
 

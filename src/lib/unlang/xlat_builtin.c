@@ -934,7 +934,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	}
 
-	if (unlang_xlat_yield(request, xlat_eval_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto error;
+	if (unlang_xlat_yield(request, xlat_eval_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
 
 	if (unlang_xlat_push(ctx, &rctx->last_success, (fr_value_box_list_t *)out->dlist,
 			     request, rctx->ex, UNLANG_SUB_FRAME) < 0) goto error;
@@ -1013,7 +1013,7 @@ static xlat_action_t xlat_func_expr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	}
 
-	if (unlang_xlat_yield(request, xlat_eval_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto error;
+	if (unlang_xlat_yield(request, xlat_eval_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
 
 	if (unlang_xlat_push(ctx, &rctx->last_success, (fr_value_box_list_t *)out->dlist,
 			     request, rctx->ex, UNLANG_SUB_FRAME) < 0) goto error;

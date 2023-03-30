@@ -412,7 +412,7 @@ RECV(for_any_server)
 
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
-					      NULL, rctx);
+					      NULL, 0, rctx);
 }
 
 /** Validate a request/renew/decline/release
@@ -447,7 +447,7 @@ RECV(for_this_server)
 
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
-					      NULL, rctx);
+					      NULL, 0, rctx);
 }
 
 /** Copy a reply pair back into the response
@@ -673,7 +673,7 @@ RECV(from_relay)
 
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
-					      NULL, rctx);
+					      NULL, 0, rctx);
 }
 
 /** Restore our copy of the header fields into the reply list

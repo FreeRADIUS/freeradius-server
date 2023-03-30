@@ -201,7 +201,7 @@ typedef void (*fr_unlang_xlat_fd_event_t)(xlat_ctx_t const *xctx, request_t *req
 typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_ctx_t const *xctx, request_t *request, fr_value_box_list_t *in);
 
-/** A callback when the request gets a fr_state_signal_t.
+/** A callback when the request gets a fr_signal_t.
  *
  * @note The callback is automatically removed on unlang_interpret_mark_runnable().
  *
@@ -209,7 +209,7 @@ typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @param[in] xctx		xlat calling ctx.  Contains all instance data.
  * @param[in] action		which is signalling the request.
  */
-typedef void (*xlat_func_signal_t)(xlat_ctx_t const *xctx, request_t *request, fr_state_signal_t action);
+typedef void (*xlat_func_signal_t)(xlat_ctx_t const *xctx, request_t *request, fr_signal_t action);
 
 /** Allocate new instance data for an xlat instance
  *
@@ -484,7 +484,7 @@ int		unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out
 				 CC_HINT(warn_unused_result);
 
 xlat_action_t	unlang_xlat_yield(request_t *request,
-				  xlat_func_t callback, xlat_func_signal_t signal,
+				  xlat_func_t callback, xlat_func_signal_t signal, fr_signal_t sigmask,
 				  void *rctx);
 
 /*

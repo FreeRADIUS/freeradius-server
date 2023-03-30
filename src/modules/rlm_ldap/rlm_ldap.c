@@ -357,11 +357,9 @@ static xlat_action_t ldap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 /** Callback for signalling async ldap query
  *
  */
-static void ldap_xlat_signal(xlat_ctx_t const *xctx, request_t *request, fr_state_signal_t action)
+static void ldap_xlat_signal(xlat_ctx_t const *xctx, request_t *request, UNUSED fr_signal_t action)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(xctx->rctx, fr_ldap_query_t);
-
-	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG2("Forcefully cancelling pending LDAP query");
 
@@ -496,7 +494,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		goto error;
 	}
 
-	return unlang_xlat_yield(request, ldap_xlat_resume, ldap_xlat_signal, query);
+	return unlang_xlat_yield(request, ldap_xlat_resume, ldap_xlat_signal, ~FR_SIGNAL_CANCEL, query);
 }
 
 /*

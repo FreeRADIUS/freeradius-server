@@ -387,11 +387,9 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
  * @param[in] request	The current request.
  * @param[in] action	to perform.
  */
-static void mod_authenticate_cancel(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
+static void mod_authenticate_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
 {
 	eap_session_t	*eap_session;
-
-	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG2("Request cancelled - Destroying EAP-Session");
 
@@ -791,7 +789,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	 *	done (after the subrequest frame in the
 	 *	parent gets popped).
 	 */
-	(void)unlang_module_yield(request, mod_authenticate_result_async, mod_authenticate_cancel, eap_session);
+	(void)unlang_module_yield(request, mod_authenticate_result_async, mod_authenticate_cancel, ~FR_SIGNAL_CANCEL, eap_session);
 
 	/*
 	 *	This sets up a subrequest frame in the parent

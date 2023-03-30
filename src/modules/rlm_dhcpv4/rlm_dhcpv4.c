@@ -311,7 +311,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, dhcpv4_resume, NULL, d);
+	return unlang_module_yield(request, dhcpv4_resume, NULL, 0, d);
 }
 
 extern module_rlm_t rlm_dhcpv4;

@@ -147,7 +147,7 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	return unlang_xlat_yield(request, exec_xlat_resume, NULL, exec);
+	return unlang_xlat_yield(request, exec_xlat_resume, NULL, 0, exec);
 }
 
 /*
@@ -444,7 +444,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 
 		fr_value_box_list_init(box);
 		return unlang_module_yield_to_xlat(request, NULL, box, request, tmpl_xlat(inst->tmpl),
-						   mod_exec_nowait_resume, NULL, box);
+						   mod_exec_nowait_resume, NULL, 0, box);
 	}
 
 	/*
@@ -469,7 +469,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 					   request, inst->tmpl,
 					   TMPL_ARGS_EXEC(env_pairs, inst->timeout, true, &m->status),
 					   mod_exec_wait_resume,
-					   NULL, &m->box);
+					   NULL, 0, &m->box);
 }
 
 

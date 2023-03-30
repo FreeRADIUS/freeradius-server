@@ -266,11 +266,9 @@ static void xlat_unbound_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t no
 /*
  *	Xlat signal callback if an unbound request needs cancelling
  */
-static void xlat_unbound_signal(xlat_ctx_t const *xctx, request_t *request, fr_state_signal_t action)
+static void xlat_unbound_signal(xlat_ctx_t const *xctx, request_t *request, UNUSED fr_signal_t action)
 {
 	unbound_request_t	*ur = talloc_get_type_abort(xctx->rctx, unbound_request_t);
-
-	if (action != FR_SIGNAL_CANCEL) return;
 
 	if (ur->ev) (void)fr_event_timer_delete(&ur->ev);
 
@@ -413,7 +411,7 @@ static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	return unlang_xlat_yield(request, xlat_unbound_resume, xlat_unbound_signal, ur);
+	return unlang_xlat_yield(request, xlat_unbound_resume, xlat_unbound_signal, ~FR_SIGNAL_CANCEL, ur);
 }
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)

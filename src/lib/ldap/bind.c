@@ -306,11 +306,9 @@ static unlang_action_t ldap_async_auth_bind_results(rlm_rcode_t *p_result, UNUSE
 /** Signal an outstanding LDAP bind request to cancel
  *
  */
-static void ldap_async_auth_bind_cancel(UNUSED request_t *request, fr_state_signal_t action, void *uctx)
+static void ldap_async_auth_bind_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
 {
 	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
-
-	if (action != FR_SIGNAL_CANCEL) return;
 
 	ldap_abandon_ext(bind_auth_ctx->bind_ctx->c->handle, bind_auth_ctx->msgid, NULL, NULL);
 	fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
@@ -350,5 +348,9 @@ int fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char c
 	bind_auth_ctx->thread = thread;
 	bind_auth_ctx->ret = LDAP_RESULT_PENDING;
 
-	return unlang_function_push(request, ldap_async_auth_bind_start, ldap_async_auth_bind_results, ldap_async_auth_bind_cancel, UNLANG_TOP_FRAME, bind_auth_ctx);
+	return unlang_function_push(request,
+				    ldap_async_auth_bind_start,
+				    ldap_async_auth_bind_results,
+				    ldap_async_auth_bind_cancel,
+				    ~FR_SIGNAL_CANCEL, UNLANG_TOP_FRAME, bind_auth_ctx);
 }

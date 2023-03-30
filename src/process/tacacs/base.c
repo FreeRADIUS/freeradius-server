@@ -672,7 +672,7 @@ RESUME(auth_start)
 	RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
-					      NULL, mctx->rctx);
+					      NULL, 0, mctx->rctx);
 }
 
 RESUME(auth_type)
@@ -1101,7 +1101,7 @@ RESUME(accounting_request)
 	 */
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, RLM_MODULE_NOOP, resume_acct_type,
-					      NULL, mctx->rctx);
+					      NULL, 0, mctx->rctx);
 }
 
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)

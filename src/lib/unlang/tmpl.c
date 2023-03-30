@@ -47,7 +47,7 @@ RCSID("$Id$")
  * @param[in] frame		being signalled.
  * @param[in] action		to signal.
  */
-static void unlang_tmpl_signal(request_t *request, unlang_stack_frame_t *frame, fr_state_signal_t action)
+static void unlang_tmpl_signal(request_t *request, unlang_stack_frame_t *frame, fr_signal_t action)
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);

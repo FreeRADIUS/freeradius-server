@@ -269,14 +269,9 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
 	return 0;
 }
 
-static void sigtran_client_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_state_signal_t action)
+static void sigtran_client_signal(module_ctx_t const *mctx, UNUSED request_t *request, UNUSED fr_signal_t action)
 {
 	sigtran_transaction_t	*txn = talloc_get_type_abort(mctx->rctx, sigtran_transaction_t);
-
-	/*
-	 *	Ignore DUP signals, along with all others.
-	 */
-	if (action != FR_SIGNAL_CANCEL) return;
 
 	txn->ctx.defunct = true;	/* Mark the transaction up as needing to be freed */
 	txn->ctx.request = NULL;	/* remove the link to the (now dead) request */
@@ -475,5 +470,5 @@ unlang_action_t sigtran_client_map_send_auth_info(rlm_rcode_t *p_result, rlm_sig
 		goto error;
 	}
 
-	return unlang_module_yield(request, sigtran_client_map_resume, sigtran_client_signal, txn);
+	return unlang_module_yield(request, sigtran_client_map_resume, sigtran_client_signal, ~FR_SIGNAL_CANCEL, txn);
 }

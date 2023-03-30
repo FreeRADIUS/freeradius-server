@@ -37,6 +37,7 @@ typedef struct {
 	unlang_function_t		repeat;			//!< To call when going back up the stack.
 	char const			*repeat_name;		//!< Debug name for the repeat function.
 	unlang_function_signal_t	signal;			//!< Signal function to call.
+	fr_signal_t			sigmask;		//!< Signals to block.
 	char const			*signal_name;		//!< Debug name for the signal function.
 	void				*uctx;			//!< Uctx to pass to function.
 } unlang_frame_state_func_t;
@@ -71,11 +72,11 @@ static unlang_t function_instruction = {
  * @param[in] action		Type of signal.
  */
 static void unlang_function_signal(request_t *request,
-				   unlang_stack_frame_t *frame, fr_state_signal_t action)
+				   unlang_stack_frame_t *frame, fr_signal_t action)
 {
 	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
 
-	if (!state->signal) return;
+	if (!state->signal || (action & state->sigmask)) return;
 
 	state->signal(request, action, state->uctx);
 }
@@ -184,12 +185,13 @@ int unlang_function_clear(request_t *request)
  *
  * @param[in] request		The current request.
  * @param[in] signal		The signal function to set.
+ * @param[in] sigmask		Signals to block.
  * @param[in] signal_name	Name of the signal function call (for debugging).
  * @return
  *	- 0 on success.
  *      - -1 on failure.
  */
-int _unlang_function_signal_set(request_t *request, unlang_function_signal_t signal, char const *signal_name)
+int _unlang_function_signal_set(request_t *request, unlang_function_signal_t signal, fr_signal_t sigmask, char const *signal_name)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -208,6 +210,7 @@ int _unlang_function_signal_set(request_t *request, unlang_function_signal_t sig
 	 *	once the current function returns.
 	 */
 	state->signal = signal;
+	state->sigmask = sigmask;
 	state->signal_name = signal_name;
 
 	return 0;
@@ -265,6 +268,7 @@ int _unlang_function_repeat_set(request_t *request, unlang_function_t repeat, ch
  *				This may be the same as func.
  * @param[in] repeat_name	Name of the repeat function call (for debugging).
  * @param[in] signal		function to call if the request is signalled.
+ * @param[in] sigmask		Signals to block.
  * @param[in] signal_name	Name of the signal function call (for debugging).
  * @param[in] top_frame		Return out of the unlang interpreter when popping this frame.
  * @param[in] uctx		to pass to func(s).
@@ -275,7 +279,7 @@ int _unlang_function_repeat_set(request_t *request, unlang_function_t repeat, ch
 unlang_action_t _unlang_function_push(request_t *request,
 				      unlang_function_t func, char const *func_name,
 				      unlang_function_t repeat, char const *repeat_name,
-				      unlang_function_signal_t signal, char const *signal_name,
+				      unlang_function_signal_t signal, fr_signal_t sigmask, char const *signal_name,
 				      bool top_frame, void *uctx)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -305,6 +309,7 @@ unlang_action_t _unlang_function_push(request_t *request,
 	state->repeat = repeat;
 	state->repeat_name = repeat_name;
 	state->signal = signal;
+	state->sigmask = sigmask;
 	state->signal_name = signal_name;
 	state->uctx = uctx;
 

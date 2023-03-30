@@ -608,11 +608,10 @@ static unlang_action_t ldap_trunk_query_results(rlm_rcode_t *p_result, UNUSED in
 /** Signal an LDAP query running on a trunk connection to cancel
  *
  */
-static void ldap_trunk_query_cancel(UNUSED request_t *request, fr_state_signal_t action, void *uctx)
+static void ldap_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
 {
 	fr_ldap_query_t	*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
 
-	if (action != FR_SIGNAL_CANCEL) return;
 	/*
 	 *	Query may have completed, but the request
 	 *	not yet have been resumed.
@@ -708,7 +707,7 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 	}
 
 	action = unlang_function_push(request, is_async ? NULL : ldap_trunk_query_start, ldap_trunk_query_results,
-				      ldap_trunk_query_cancel, is_async ? UNLANG_SUB_FRAME : UNLANG_TOP_FRAME, query);
+				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL, is_async ? UNLANG_SUB_FRAME : UNLANG_TOP_FRAME, query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;
 
@@ -788,7 +787,7 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 	}
 
 	action = unlang_function_push(request, is_async ? NULL : ldap_trunk_query_start, ldap_trunk_query_results,
-				      ldap_trunk_query_cancel, is_async ? UNLANG_SUB_FRAME : UNLANG_TOP_FRAME, query);
+				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL, is_async ? UNLANG_SUB_FRAME : UNLANG_TOP_FRAME, query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;
 

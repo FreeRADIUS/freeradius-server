@@ -106,7 +106,7 @@ static xlat_action_t xlat_redundant_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		goto done;
 	}
 
-	if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto error;
+	if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
 
 	/*
 	 *	Push the next child...
@@ -152,7 +152,7 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	case XLAT_REDUNDANT:
 		rctx->current = rctx->first = xri->ex;	/* First element first */
-		if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, rctx) != XLAT_ACTION_YIELD) {
+		if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) {
 		error:
 			talloc_free(rctx);
 			return XLAT_ACTION_FAIL;
@@ -164,7 +164,7 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	case XLAT_LOAD_BALANCE:
 		rctx->first = &xri->ex[(size_t)fr_rand() & (talloc_array_length(xri->ex) - 1)];	/* Random start */
-		if (unlang_xlat_yield(request, xlat_load_balance_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto error;
+		if (unlang_xlat_yield(request, xlat_load_balance_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
 		break;
 
 	/*
@@ -173,7 +173,7 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	case XLAT_REDUNDANT_LOAD_BALANCE:
 		rctx->first = &xri->ex[(size_t)fr_rand() & (talloc_array_length(xri->ex) - 1)];	/* Random start */
-		if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto error;
+		if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
 		break;
 
 	default:

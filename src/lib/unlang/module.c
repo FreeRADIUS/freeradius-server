@@ -440,6 +440,7 @@ int unlang_module_set_resume(request_t *request, module_method_t resume)
  * @param[in] exp		XLAT expansion to evaluate.
  * @param[in] resume		function to call when the XLAT expansion is complete.
  * @param[in] signal		function to call if a signal is received.
+ * @param[in] sigmask		Signals to block.
  * @param[in] rctx		to pass to the resume() and signal() callbacks.
  * @return
  *	- UNLANG_ACTION_PUSHED_CHILD
@@ -447,13 +448,13 @@ int unlang_module_set_resume(request_t *request, module_method_t resume)
 unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 					    request_t *request, xlat_exp_head_t const *exp,
 					    module_method_t resume,
-					    unlang_module_signal_t signal, void *rctx)
+					    unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx)
 {
 	/*
 	 *	Push the resumption point BEFORE pushing the xlat onto
 	 *	the parents stack.
 	 */
-	(void) unlang_module_yield(request, resume, signal, rctx);
+	(void) unlang_module_yield(request, resume, signal, sigmask, rctx);
 
 	/*
 	 *	Push the xlat function
@@ -494,13 +495,13 @@ unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t
 					    request_t *request, tmpl_t const *vpt,
 					    unlang_tmpl_args_t *args,
 					    module_method_t resume,
-					    unlang_module_signal_t signal, void *rctx)
+					    unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx)
 {
 	/*
 	 *	Push the resumption point BEFORE pushing the xlat onto
 	 *	the parents stack.
 	 */
-	(void) unlang_module_yield(request, resume, signal, rctx);
+	(void) unlang_module_yield(request, resume, signal, sigmask, rctx);
 
 	/*
 	 *	Push the xlat function
@@ -516,7 +517,7 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 					       request_t *request, CONF_SECTION *subcs,
 					       rlm_rcode_t default_rcode,
 					       module_method_t resume,
-					       unlang_module_signal_t signal, void *rctx)
+					       unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx)
 {
 	if (!subcs) {
 		unlang_stack_t		*stack = request->stack;
@@ -545,7 +546,7 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 	 *	Push the resumption point BEFORE adding the subsection
 	 *	to the parents stack.
 	 */
-	(void) unlang_module_yield(request, resume, signal, rctx);
+	(void) unlang_module_yield(request, resume, signal, sigmask, rctx);
 
 	if (unlang_interpret_push_section(request, subcs,
 					  default_rcode, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_STOP_PROCESSING;
@@ -566,12 +567,13 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
  * @param[in] request		The current request.
  * @param[in] resume		Called on unlang_interpret_mark_runnable().
  * @param[in] signal		Called on unlang_action().
+ * @param[in] sigmask		Set of signals to block.
  * @param[in] rctx		to pass to the callbacks.
  * @return
  *	- UNLANG_ACTION_YIELD.
  */
 unlang_action_t unlang_module_yield(request_t *request,
-				    module_method_t resume, unlang_module_signal_t signal, void *rctx)
+				    module_method_t resume, unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -582,6 +584,7 @@ unlang_action_t unlang_module_yield(request_t *request,
 	state->rctx = rctx;
 	state->resume = resume;
 	state->signal = signal;
+	state->sigmask = sigmask;
 
 	/*
 	 *	We set the repeatable flag here,
@@ -620,7 +623,7 @@ static inline CC_HINT(always_inline) void safe_unlock(module_instance_t *mi)
  * @param[in] frame		current stack frame.
  * @param[in] action		to signal.
  */
-static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame, fr_state_signal_t action)
+static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame, fr_signal_t action)
 {
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	unlang_module_t			*mc = unlang_generic_to_module(frame->instruction);
@@ -634,7 +637,7 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 	caller = request->module;
 	request->module = mc->instance->name;
 	safe_lock(mc->instance);
-	state->signal(MODULE_CTX(mc->instance->dl_inst, state->thread->data, state->env_data, state->rctx), request, action);
+	if (!(action & state->sigmask)) state->signal(MODULE_CTX(mc->instance->dl_inst, state->thread->data, state->env_data, state->rctx), request, action);
 	safe_unlock(mc->instance);
 	request->module = caller;
 

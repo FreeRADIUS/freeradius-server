@@ -70,7 +70,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
 	 *	subrequest completes.
 	 */
 	if (unlang_function_push(child, NULL, resume,
-				 NULL, UNLANG_SUB_FRAME, tls_session) < 0) return UNLANG_ACTION_FAIL;
+				 NULL, 0, UNLANG_SUB_FRAME, tls_session) < 0) return UNLANG_ACTION_FAIL;
 
 	/*
 	 *	Now the child and parent stacks are both

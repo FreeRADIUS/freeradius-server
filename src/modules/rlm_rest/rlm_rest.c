@@ -533,7 +533,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	ret = fr_curl_io_request_enqueue(t->mhandle, request, randle);
 	if (ret < 0) goto error;
 
-	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, rctx);
+	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, ~FR_SIGNAL_CANCEL, rctx);
 }
 
 static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -643,7 +643,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_authorize_result, rest_io_module_signal, handle);
+	return unlang_module_yield(request, mod_authorize_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
 }
 
 static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
@@ -789,7 +789,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_authenticate_result, rest_io_module_signal, handle);
+	return unlang_module_yield(request, mod_authenticate_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
 }
 
 static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -864,7 +864,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_accounting_result, rest_io_module_signal, handle);
+	return unlang_module_yield(request, mod_accounting_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
 }
 
 static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -939,7 +939,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_post_auth_result, rest_io_module_signal, handle);
+	return unlang_module_yield(request, mod_post_auth_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
 }
 
 static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER const *config_items,

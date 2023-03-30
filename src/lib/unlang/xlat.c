@@ -54,6 +54,7 @@ typedef struct {
 								///< previously took.
 	xlat_func_t		resume;				//!< called on resume
 	xlat_func_signal_t	signal;				//!< called on signal
+	fr_signal_t		sigmask;			//!< Signals to block
 	void			*rctx;				//!< for resume / signal
 
 	bool			*success;			//!< If set, where to record the result
@@ -431,7 +432,7 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
  * @param[in] frame		The current stack frame.
  * @param[in] action		What the request should do (the type of signal).
  */
-static void unlang_xlat_signal(request_t *request, unlang_stack_frame_t *frame, fr_state_signal_t action)
+static void unlang_xlat_signal(request_t *request, unlang_stack_frame_t *frame, fr_signal_t action)
 {
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 
@@ -442,7 +443,7 @@ static void unlang_xlat_signal(request_t *request, unlang_stack_frame_t *frame, 
 		TALLOC_FREE(state->event_ctx);
 	}
 
-	if (!state->signal) return;
+	if (!state->signal || (state->sigmask & action)) return;
 
 	xlat_signal(state->signal, state->exp, request, state->rctx, action);
 }
@@ -535,11 +536,12 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
  * @param[in] request		The current request.
  * @param[in] resume		Called on unlang_interpret_mark_runnable().
  * @param[in] signal		Called on unlang_action().
+ * @param[in] sigmask		Signals to block.
  * @param[in] rctx		to pass to the callbacks.
  * @return always returns XLAT_ACTION_YIELD
  */
 xlat_action_t unlang_xlat_yield(request_t *request,
-				xlat_func_t resume, xlat_func_signal_t signal,
+				xlat_func_t resume, xlat_func_signal_t signal, fr_signal_t sigmask,
 				void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -553,6 +555,7 @@ xlat_action_t unlang_xlat_yield(request_t *request,
 	 */
 	state->resume = resume;
 	state->signal = signal;
+	state->sigmask = sigmask;
 	state->rctx = rctx;
 
 	return XLAT_ACTION_YIELD;

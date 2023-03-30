@@ -190,7 +190,7 @@ RECV(generic)
 	if (cs) RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
-					      NULL, mctx->rctx);
+					      NULL, 0, mctx->rctx);
 }
 
 RESUME(recv_generic)
@@ -219,7 +219,7 @@ RESUME(recv_generic)
 	fr_assert(state->send != NULL);
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->send,
-					      NULL, mctx->rctx);
+					      NULL, 0, mctx->rctx);
 }
 
 RESUME_NO_MCTX(recv_no_send)
@@ -303,7 +303,7 @@ SEND(generic)
 
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
-					      NULL, mctx->rctx);
+					      NULL, 0, mctx->rctx);
 }
 
 RESUME(send_generic)
@@ -358,7 +358,7 @@ RESUME(send_generic)
 
 			return unlang_module_yield_to_section(p_result, request,
 							      cs, state->rcode, state->send,
-							      NULL, mctx->rctx);
+							      NULL, 0, mctx->rctx);
 		}
 
 		fr_assert(!state->packet_type[rcode] || (state->packet_type[rcode] == request->reply->code));

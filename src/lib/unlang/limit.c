@@ -45,7 +45,7 @@ typedef struct {
  * @param[in] frame		current stack frame.
  * @param[in] action		to signal.
  */
-static void unlang_limit_signal(UNUSED request_t *request, unlang_stack_frame_t *frame, fr_state_signal_t action)
+static void unlang_limit_signal(UNUSED request_t *request, unlang_stack_frame_t *frame, fr_signal_t action)
 {
 	unlang_frame_state_limit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_limit_t);
 

@@ -1302,7 +1302,7 @@ static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mct
 	RETURN_MODULE_RCODE(rcode);
 }
 
-static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_state_signal_t action)
+static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_signal_t action)
 {
 //	udp_thread_t		*t = talloc_get_type_abort(mctx->thread, udp_thread_t);
 	udp_result_t		*r = talloc_get_type_abort(mctx->rctx, udp_result_t);

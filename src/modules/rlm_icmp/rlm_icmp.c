@@ -129,12 +129,10 @@ static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static void xlat_icmp_cancel(xlat_ctx_t const *xctx, request_t *request, fr_state_signal_t action)
+static void xlat_icmp_cancel(xlat_ctx_t const *xctx, request_t *request, UNUSED fr_signal_t action)
 {
 	rlm_icmp_echo_t *echo = talloc_get_type_abort(xctx->rctx, rlm_icmp_echo_t);
 	rlm_icmp_thread_t *t = talloc_get_type_abort(xctx->mctx->thread, rlm_icmp_thread_t);
-
-	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG2("Cancelling ICMP request for %pV (counter=%d)", echo->ip, echo->counter);
 
@@ -262,7 +260,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	return unlang_xlat_yield(request, xlat_icmp_resume, xlat_icmp_cancel, echo);
+	return unlang_xlat_yield(request, xlat_icmp_resume, xlat_icmp_cancel, ~FR_SIGNAL_CANCEL, echo);
 }
 
 static int8_t echo_cmp(void const *one, void const *two)

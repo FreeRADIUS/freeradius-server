@@ -60,6 +60,7 @@ RCSID("$Id$")
 							       RLM_MODULE_NOOP, \
 							       resume_ ## _x, \
 							       mod_signal, \
+							       ~FR_SIGNAL_CANCEL, \
 							       talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t))
 
 /*
@@ -114,10 +115,8 @@ static size_t aka_sim_state_table_len = NUM_ELEMENTS(aka_sim_state_table);
  * @param[in] request	The current request.
  * @param[in] action	to perform.
  */
-static void mod_signal(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
+static void mod_signal(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
 {
-	if (action != FR_SIGNAL_CANCEL) return;
-
 	RDEBUG2("Request cancelled - Destroying session");
 
 	/*
@@ -2952,6 +2951,7 @@ STATE(aka_identity)
 						      RLM_MODULE_NOOP,
 						      resume_recv_aka_identity_response,
 						      mod_signal,
+						      ~FR_SIGNAL_CANCEL,
 						      eap_aka_sim_session);
 	}
 
@@ -3057,6 +3057,7 @@ STATE_GUARD(aka_identity)
 					      RLM_MODULE_NOOP,
 					      resume_send_aka_identity_request,
 					      mod_signal,
+					      ~FR_SIGNAL_CANCEL,
 					      eap_aka_sim_session);
 }
 
@@ -3288,6 +3289,7 @@ STATE(sim_start)
 						      RLM_MODULE_NOOP,
 						      resume_recv_sim_start_response,
 						      mod_signal,
+						      ~FR_SIGNAL_CANCEL,
 						      eap_aka_sim_session);
 	}
 
@@ -3420,6 +3422,7 @@ STATE_GUARD(sim_start)
 					      RLM_MODULE_NOOP,
 					      resume_send_sim_start,
 					      mod_signal,
+					      ~FR_SIGNAL_CANCEL,
 					      eap_aka_sim_session);
 }
 

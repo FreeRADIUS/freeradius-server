@@ -186,7 +186,7 @@ typedef unlang_action_t (*unlang_process_t)(rlm_rcode_t *p_result, request_t *re
  * @param[in] action		We're being signalled with.
  */
 typedef void (*unlang_signal_t)(request_t *request,
-				unlang_stack_frame_t *frame, fr_state_signal_t action);
+				unlang_stack_frame_t *frame, fr_signal_t action);
 
 /** Custom callback for dumping information about frame state
  *
@@ -253,7 +253,7 @@ void		unlang_frame_perf_cleanup(unlang_stack_frame_t *frame);
 #define		unlang_frame_perf_cleanup(_x)
 #endif
 
-void	unlang_frame_signal(request_t *request, fr_state_signal_t action, int limit);
+void	unlang_frame_signal(request_t *request, fr_signal_t action, int limit);
 
 typedef struct {
 	request_t		*request;

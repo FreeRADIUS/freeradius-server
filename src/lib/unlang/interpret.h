@@ -158,7 +158,7 @@ void			unlang_interpret_mark_runnable(request_t *request);
 
 bool			unlang_interpret_is_resumable(request_t *request);
 
-void			unlang_interpret_signal(request_t *request, fr_state_signal_t action);
+void			unlang_interpret_signal(request_t *request, fr_signal_t action);
 
 int			unlang_interpret_stack_depth(request_t *request);
 

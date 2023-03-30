@@ -760,13 +760,11 @@ static int attachments_source(fr_mail_ctx_t *uctx, curl_mime *mime, rlm_smtp_t c
 	return attachments_set;
 }
 
-static void smtp_io_module_signal(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
+static void smtp_io_module_signal(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
 {
 	fr_curl_io_request_t	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 	rlm_smtp_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 	CURLMcode		ret;
-
-	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG2("Forcefully cancelling pending SMTP request");
 
@@ -944,7 +942,7 @@ skip_auth:
 
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
-	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, randle);
+	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, ~FR_SIGNAL_CANCEL, randle);
 }
 
 /*
@@ -991,7 +989,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
-	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, randle);
+	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, ~FR_SIGNAL_CANCEL, randle);
 }
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
