@@ -278,8 +278,8 @@ void unlang_foreach_init(void)
 		x = xlat_func_register(NULL, xlat_foreach_names[i],
 				  unlang_foreach_xlat, FR_TYPE_VOID);
 		fr_assert(x);
+		xlat_func_flags_set(x, XLAT_FUNC_FLAG_INTERNAL);
 		x->uctx = &xlat_foreach_inst[i];
-		xlat_internal(x);
 	}
 
 	unlang_register(UNLANG_TYPE_FOREACH,

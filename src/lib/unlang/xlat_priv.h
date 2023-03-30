@@ -240,15 +240,6 @@ static inline xlat_exp_t *xlat_exp_next(xlat_exp_head_t const *head, xlat_exp_t 
 	return fr_dlist_next(&head->dlist, node);
 }
 
-/** Mark an xlat function as internal
- *
- * @param[in] xlat to mark as internal.
- */
-static inline void xlat_internal(xlat_t *xlat)
-{
-	xlat->internal = true;
-}
-
 /** Set a print routine for an xlat function.
  *
  * @param[in] xlat to set

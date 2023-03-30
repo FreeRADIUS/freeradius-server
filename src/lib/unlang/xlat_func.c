@@ -342,6 +342,7 @@ int xlat_func_mono_set(xlat_t *x, xlat_arg_parser_t const args[])
 void xlat_func_flags_set(xlat_t *x, xlat_func_flags_t flags)
 {
 	x->flags.pure = flags & XLAT_FUNC_FLAG_PURE;
+	x->internal = flags & XLAT_FUNC_FLAG_INTERNAL;
 }
 
 /** Set global instantiation/detach callbacks

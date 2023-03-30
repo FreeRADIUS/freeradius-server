@@ -35,7 +35,8 @@ RCSIDH(xlat_register_h, "$Id$")
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
 	XLAT_FUNC_FLAG_NONE = 0x00,
-	XLAT_FUNC_FLAG_PURE = 0x01
+	XLAT_FUNC_FLAG_PURE = 0x01,
+	XLAT_FUNC_FLAG_INTERNAL = 0x02
 } xlat_func_flags_t;
 DIAG_ON(attributes)
 
