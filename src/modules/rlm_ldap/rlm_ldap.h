@@ -166,6 +166,9 @@ typedef struct {
 	ldap_autz_mod_env_t	*mod_env;
 	LDAPMessage		*entry;
 	ldap_autz_status_t	status;
+	struct berval		**profile_values;
+	int			value_idx;
+	char			*profile_value;
 } ldap_autz_ctx_t;
 
 extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;
