@@ -452,7 +452,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	}
 
 	xlat = xlat_func_register(NULL, name2, xlat_redundant, return_type);
-	if (!xlat) {
+	if (unlikely(xlat == NULL)) {
 		ERROR("Registering xlat for %s section failed",
 		      fr_table_str_by_value(xlat_redundant_type_table, xr->type, "<INVALID>"));
 		talloc_free(xr);

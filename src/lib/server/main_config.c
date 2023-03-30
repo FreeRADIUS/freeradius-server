@@ -1368,7 +1368,7 @@ do {\
 	/*
 	 *	Register the %(config:section.subsection) xlat function.
 	 */
-	xlat = xlat_func_register(NULL, "config", xlat_config, FR_TYPE_STRING);
+	if (unlikely((xlat = xlat_func_register(NULL, "config", xlat_config, FR_TYPE_STRING)) == NULL)) goto failure;
 	xlat_func_args_set(xlat, xlat_config_args);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 

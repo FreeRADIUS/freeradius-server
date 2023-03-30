@@ -496,26 +496,28 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 	return XLAT_ACTION_DONE;
 }
 
-void fr_aka_sim_xlat_func_register(void)
+int fr_aka_sim_xlat_func_register(void)
 {
 	xlat_t	*xlat;
 
 	if (aka_sim_xlat_refs) {
 		aka_sim_xlat_refs++;
-		return;
+		return 0;
 	}
 
-	xlat = xlat_func_register(NULL, "aka_sim_id_method", aka_sim_xlat_id_method_xlat, FR_TYPE_STRING);
+	if (unlikely((xlat = xlat_func_register(NULL, "aka_sim_id_method", aka_sim_xlat_id_method_xlat, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, aka_sim_xlat_id_method_xlat_args);
-	xlat = xlat_func_register(NULL, "aka_sim_id_type", aka_sim_xlat_id_type_xlat, FR_TYPE_STRING);
+	if (unlikely((xlat = xlat_func_register(NULL, "aka_sim_id_type", aka_sim_xlat_id_type_xlat, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, aka_sim_xlat_id_type_xlat_args);
-	xlat = xlat_func_register(NULL, "3gpp_temporary_id_key_index", aka_sim_id_3gpp_temporary_id_key_index_xlat, FR_TYPE_UINT8);
+	if (unlikely((xlat = xlat_func_register(NULL, "3gpp_temporary_id_key_index", aka_sim_id_3gpp_temporary_id_key_index_xlat, FR_TYPE_UINT8)) == NULL)) return -1;
 	xlat_func_args_set(xlat, aka_sim_id_3gpp_temporary_id_key_index_xlat_args);
-	xlat = xlat_func_register(NULL, "3gpp_temporary_id_decrypt", aka_sim_3gpp_temporary_id_decrypt_xlat, FR_TYPE_STRING);
+	if (unlikely((xlat = xlat_func_register(NULL, "3gpp_temporary_id_decrypt", aka_sim_3gpp_temporary_id_decrypt_xlat, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, aka_sim_3gpp_temporary_id_decrypt_xlat_args);
-	xlat = xlat_func_register(NULL, "3gpp_temporary_id_encrypt", aka_sim_3gpp_temporary_id_encrypt_xlat, FR_TYPE_STRING);
+	if (unlikely((xlat = xlat_func_register(NULL, "3gpp_temporary_id_encrypt", aka_sim_3gpp_temporary_id_encrypt_xlat, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, aka_sim_3gpp_temporary_id_encrypt_xlat_args);
 	aka_sim_xlat_refs = 1;
+
+	return 0;
 }
 
 void fr_aka_sim_xlat_func_unregister(void)

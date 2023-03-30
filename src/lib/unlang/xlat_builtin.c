@@ -3381,7 +3381,7 @@ do { \
 	XLAT_REGISTER_MONO("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
 	XLAT_REGISTER_MONO("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 
-	xlat = xlat_func_register(NULL, "module", xlat_func_module, FR_TYPE_STRING);
+	if (unlikely((xlat = xlat_func_register(NULL, "module", xlat_func_module, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 
 	return xlat_register_expressions();
