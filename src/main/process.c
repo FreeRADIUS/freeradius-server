@@ -5366,7 +5366,7 @@ static void listener_free_cb(void *ctx)
 	DEBUG("... cleaning up socket %s", buffer);
 	rad_assert(this->next == NULL);
 #ifdef WITH_TCP
-	TALLOC_FREE(sock->ev);
+	fr_event_delete(el, &sock->ev);
 #endif
 	talloc_free(this);
 }
