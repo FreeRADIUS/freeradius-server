@@ -585,8 +585,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *reque
 	if (vp->vp_octets[0] != PW_EAP_REQUEST) return RLM_MODULE_NOOP;
 	if (!inst->max_eap_type) return RLM_MODULE_NOOP;
 
+	if (vp->vp_length < 5) return RLM_MODULE_NOOP;
+
+	if (vp->vp_octets[4] == 254) return RLM_MODULE_NOOP; /* allow extended types */
+
 	if (vp->vp_octets[4] > inst->max_eap_type) {
-		RDEBUG("EAP method %u is too large", vp->vp_octets[0]);
+		RDEBUG("EAP method %u is too large", vp->vp_octets[4]);
 		return RLM_MODULE_REJECT;
 	}
 
