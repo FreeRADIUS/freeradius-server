@@ -5340,11 +5340,11 @@ static void event_status(struct timeval *wake)
 static void listener_free_cb(void *ctx)
 {
 	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
+	listen_socket_t *sock = this->data;
 	char buffer[1024];
 
 	if (this->count > 0) {
 		struct timeval when;
-		listen_socket_t *sock = this->data;
 
 		fr_event_now(el, &when);
 		when.tv_sec += 3;
@@ -5365,6 +5365,7 @@ static void listener_free_cb(void *ctx)
 	this->print(this, buffer, sizeof(buffer));
 	DEBUG("... cleaning up socket %s", buffer);
 	rad_assert(this->next == NULL);
+	TALLOC_FREE(&sock->ev);
 	talloc_free(this);
 }
 
