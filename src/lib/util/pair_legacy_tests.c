@@ -166,7 +166,6 @@ static void test_fr_pair_list_move_op(void)
 	fr_pair_list_t old_list, new_list;
 	bool           pfiledone;
 	char const     *fake_file = "Test-Uint32-0 = 123\nTest-String-0 = \"Testing123\"\n";
-	/* coverity[alloc_strlen] */
 	FILE           *fp = open_buffer_as_file((uint8_t const *)fake_file, strlen(fake_file));
 
 	fr_pair_list_init(&old_list);
