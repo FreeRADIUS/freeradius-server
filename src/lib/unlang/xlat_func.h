@@ -40,6 +40,18 @@ typedef enum CC_HINT(flag_enum) {
 } xlat_func_flags_t;
 DIAG_ON(attributes)
 
+/** Custom function to print xlat debug
+ */
+typedef	fr_slen_t (*xlat_print_t)(fr_sbuff_t *in, xlat_exp_t const *self, void *inst, fr_sbuff_escape_rules_t const *e_rules);
+
+/** Custom function to perform resolution of arguments
+ */
+typedef	int (*xlat_resolve_t)(xlat_exp_t *xlat, void *inst, xlat_res_rules_t const *xr_rules);
+
+/** Custom function purify the result of an xlat function
+ */
+typedef int (*xlat_purify_t)(xlat_exp_t *xlat, void *inst, request_t *request);
+
 xlat_t		*xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 					   char const *name, xlat_func_t func, fr_type_t return_type);
 xlat_t		*xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, fr_type_t return_type) CC_HINT(nonnull(2));
@@ -49,6 +61,12 @@ int		xlat_func_args_set(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(no
 int		xlat_func_mono_set(xlat_t *xlat, xlat_arg_parser_t const *arg) CC_HINT(nonnull);
 
 void		xlat_func_flags_set(xlat_t *x, xlat_func_flags_t flags) CC_HINT(nonnull);
+
+void		xlat_func_print_set(xlat_t *xlat, xlat_print_t func);
+
+void		xlat_func_resolve_set(xlat_t *xlat, xlat_resolve_t func);
+
+void		xlat_purify_func_set(xlat_t *xlat, xlat_purify_t func);
 
 /** Set a callback for global instantiation of xlat functions
  *

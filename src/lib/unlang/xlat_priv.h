@@ -32,6 +32,7 @@ extern "C" {
 
 #include <freeradius-devel/unlang/xlat_ctx.h>
 #include <freeradius-devel/unlang/xlat.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/build.h>
@@ -53,10 +54,6 @@ extern "C" {
 #else
 #  define _CONST
 #endif
-
-typedef fr_slen_t (*xlat_print_t)(fr_sbuff_t *in, xlat_exp_t const *self, void *inst, fr_sbuff_escape_rules_t const *e_rules);
-typedef int (*xlat_resolve_t)(xlat_exp_t *self, void *inst, xlat_res_rules_t const *xr_rules);
-typedef int (*xlat_purify_t)(xlat_exp_t *self, void *inst, request_t *request);
 
 typedef struct xlat_s {
 	fr_rb_node_t		node;			//!< Entry in the xlat function tree.
@@ -238,38 +235,6 @@ static inline xlat_exp_t *xlat_exp_next(xlat_exp_head_t const *head, xlat_exp_t 
 	if (!head) return NULL;
 
 	return fr_dlist_next(&head->dlist, node);
-}
-
-/** Set a print routine for an xlat function.
- *
- * @param[in] xlat to set
- * @param[in] func for printing
- */
-static inline void xlat_print_set(xlat_t *xlat, xlat_print_t func)
-{
-	xlat->print = func;
-}
-
-
-/** Set a resolve routine for an xlat function.
- *
- * @param[in] xlat to set
- * @param[in] func to resolve xlat.
- */
-static inline void xlat_resolve_set(xlat_t *xlat, xlat_resolve_t func)
-{
-	xlat->resolve = func;
-}
-
-
-/** Set a resolve routine for an xlat function.
- *
- * @param[in] xlat to set
- * @param[in] func to purify xlat
- */
-static inline void xlat_purify_set(xlat_t *xlat, xlat_purify_t func)
-{
-	xlat->purify = func;
 }
 
 /*

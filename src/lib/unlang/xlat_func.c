@@ -345,6 +345,36 @@ void xlat_func_flags_set(xlat_t *x, xlat_func_flags_t flags)
 	x->internal = flags & XLAT_FUNC_FLAG_INTERNAL;
 }
 
+/** Set a print routine for an xlat function.
+ *
+ * @param[in] xlat to set
+ * @param[in] func for printing
+ */
+void xlat_func_print_set(xlat_t *xlat, xlat_print_t func)
+{
+	xlat->print = func;
+}
+
+/** Set a resolve routine for an xlat function.
+ *
+ * @param[in] xlat to set
+ * @param[in] func to resolve xlat.
+ */
+void xlat_func_resolve_set(xlat_t *xlat, xlat_resolve_t func)
+{
+	xlat->resolve = func;
+}
+
+/** Set a resolve routine for an xlat function.
+ *
+ * @param[in] xlat to set
+ * @param[in] func to purify xlat
+ */
+void xlat_purify_func_set(xlat_t *xlat, xlat_purify_t func)
+{
+	xlat->purify = func;
+}
+
 /** Set global instantiation/detach callbacks
  *
  * @param[in] xlat		to set instantiation callbacks for.
