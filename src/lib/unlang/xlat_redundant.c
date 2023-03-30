@@ -339,7 +339,8 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	char const		*name1, *name2;
 	xlat_redundant_type_t	xr_type;
 	xlat_redundant_t	*xr;
-	xlat_flags_t		flags = {};
+	xlat_func_flags_t	flags = XLAT_FUNC_FLAG_NONE;
+	bool			can_be_pure;
 	xlat_arg_parser_t const *args = NULL;
 
 	fr_type_t		return_type = FR_TYPE_NULL;
@@ -356,15 +357,15 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		return -1;
 
 	case XLAT_REDUNDANT:
-		flags.pure = true;	/* Can be pure */
+		can_be_pure = true;	/* Can be pure */
 		break;
 
 	case XLAT_LOAD_BALANCE:
-		flags.pure = false;	/* Can never be pure because of random selection */
+		can_be_pure = false;	/* Can never be pure because of random selection */
 		break;
 
 	case XLAT_REDUNDANT_LOAD_BALANCE:
-		flags.pure = false;	/* Can never be pure because of random selection */
+		can_be_pure = false;	/* Can never be pure because of random selection */
 		break;
 	}
 
@@ -439,7 +440,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		 *	whole redundant xlat is un-pure,
 		 *	same with async.
 		 */
-		xlat_flags_merge(&flags, &mod_func->flags);
+		if (can_be_pure && mod_func->flags.pure) flags |= XLAT_FUNC_FLAG_PURE;
 	}
 
 	/*
@@ -457,7 +458,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		talloc_free(xr);
 		return -1;
 	}
-	xlat_func_flags_set(xlat, &flags);
+	xlat_func_flags_set(xlat, flags);
 	xlat_func_async_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_inst_t, NULL, xr);
 	if (args) xlat_func_args_set(xlat, xlat_redundant_args);
 
