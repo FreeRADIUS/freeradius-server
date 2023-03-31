@@ -455,6 +455,7 @@ int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *sr
 static inline CC_HINT(nonnull(1), always_inline)
 void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
 {
+	/* coverity[store_writes_const_field] */
 	memcpy(vb, &(fr_value_box_t){
 	       		.type = type,
 			.enumv = enumv,
