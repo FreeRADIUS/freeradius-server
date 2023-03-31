@@ -1052,7 +1052,7 @@ static void test_file_extend(void)
 	fr_sbuff_uctx_file_t	fctx;
 	FILE		*fp;
 	char		buff[5];
-	char		out[16 + 1];
+	char		out[24];
 	char		fbuff[24];
 	const char	PATTERN[] = "xyzzy";
 #define PATTERN_LEN (sizeof(PATTERN) - 1)
@@ -1094,6 +1094,16 @@ static void test_file_extend(void)
 	TEST_CHECK_SLEN(slen, 0);
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, sizeof(out)), &our_sbuff, SIZE_MAX, allow_lowercase_and_space);
 	TEST_CHECK_SLEN(slen, 0);
+
+	fclose(fp);
+
+	TEST_CASE("Verify fr_sbuff_out_bstrncpy_until() extends from file properly");
+	fp = fmemopen(fbuff, sizeof(fbuff), "r");
+	TEST_CHECK(fp != NULL);
+	TEST_CHECK(fr_sbuff_init_file(&sbuff, &fctx, buff, sizeof(buff), fp, 128) == &sbuff);
+	our_sbuff = FR_SBUFF_BIND_CURRENT(&sbuff);
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &our_sbuff, SIZE_MAX, &FR_SBUFF_TERM("x"), NULL);
+	TEST_CHECK_SLEN(slen, sizeof(fbuff) - PATTERN_LEN);
 
 	fclose(fp);
 }

@@ -846,7 +846,7 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		char	*p;
 		char	*end;
 
-		if (fr_sbuff_extend_lowat(NULL, in, needle_len) == 0) break;
+		if (fr_sbuff_extend_lowat(NULL, &our_in, needle_len) == 0) break;
 
 		p = fr_sbuff_current(&our_in);
 		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
