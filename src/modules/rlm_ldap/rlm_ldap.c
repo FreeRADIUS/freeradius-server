@@ -51,6 +51,11 @@ typedef struct {
 	fr_value_box_t	user_sasl_realm;
 } ldap_auth_mod_env_t;
 
+typedef struct {
+	fr_value_box_t	user_base;
+	fr_value_box_t	user_filter;
+} ldap_usermod_mod_env_t;
+
 static const module_env_t sasl_module_env[] = {
 	{ FR_MODULE_ENV_OFFSET("mech", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_mech,
 			       NULL, T_INVALID, false, false, false) },
@@ -103,6 +108,14 @@ static const module_env_t autz_user_module_env[] = {
 	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_mod_env_t, user_base,
 			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
 	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_mod_env_t, user_filter,
+			       NULL, T_INVALID, false, true, true) },
+	MODULE_ENV_TERMINATOR
+};
+
+static const module_env_t usermod_user_module_env[] = {
+	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_usermod_mod_env_t, user_base,
+			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
+	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_usermod_mod_env_t, user_filter,
 			       NULL, T_INVALID, false, true, true) },
 	MODULE_ENV_TERMINATOR
 };
@@ -194,6 +207,11 @@ static const module_env_t authorize_module_env[] = {
 	MODULE_ENV_TERMINATOR
 };
 
+static const module_env_t usermod_module_env[] = {
+	{ FR_MODULE_ENV_SUBSECTION("user", NULL, usermod_user_module_env) },
+	MODULE_ENV_TERMINATOR
+};
+
 static const module_method_env_t authenticate_method_env = {
 	.inst_size = sizeof(ldap_auth_mod_env_t),
 	.inst_type = "ldap_auth_mod_env_t",
@@ -204,6 +222,12 @@ static const module_method_env_t authorize_method_env = {
 	.inst_size = sizeof(ldap_autz_mod_env_t),
 	.inst_type = "ldap_autz_mod_env_t",
 	.env = authorize_module_env
+};
+
+static const module_method_env_t usermod_method_env = {
+	.inst_size = sizeof(ldap_usermod_mod_env_t),
+	.inst_type = "ldap_usermod_mod_env_t",
+	.env = usermod_module_env
 };
 
 static fr_dict_t const *dict_freeradius;
@@ -266,6 +290,20 @@ typedef struct {
 	rlm_ldap_t const	*inst;
 	fr_ldap_map_exp_t	const *expanded;
 } ldap_profile_ctx_t;
+
+/** Holds state of in progress ldap user modifications
+ *
+ */
+typedef struct {
+	rlm_ldap_t const	*inst;
+	ldap_usermod_mod_env_t	*mod_env;
+	char const		*dn;
+	char			*passed[LDAP_MAX_ATTRMAP * 2];
+	LDAPMod			*mod_p[LDAP_MAX_ATTRMAP + 1];
+	LDAPMod			mod_s[LDAP_MAX_ATTRMAP];
+	fr_ldap_thread_trunk_t	*ttrunk;
+	fr_ldap_query_t		*query;
+} ldap_user_modify_ctx_t;
 
 static xlat_arg_parser_t const ldap_escape_xlat_arg[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
@@ -1605,6 +1643,87 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+/** Perform async lookup of user DN if required for user modification
+ *
+ */
+static unlang_action_t user_modify_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+					 request_t *request, void *uctx)
+{
+	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
+
+	return rlm_ldap_find_user_async(usermod_ctx, usermod_ctx->inst, request, &usermod_ctx->mod_env->user_base,
+		&usermod_ctx->mod_env->user_filter, usermod_ctx->ttrunk, NULL, NULL);
+}
+
+/** Cancel an in progress user modification.
+ *
+ */
+static void user_modify_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+{
+	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
+
+	if (!usermod_ctx->query || !usermod_ctx->query->treq) return;
+
+	fr_trunk_request_signal_cancel(usermod_ctx->query->treq);
+}
+
+/** Handle results of user modification.
+ *
+ */
+static unlang_action_t user_modify_final(rlm_rcode_t *p_result, UNUSED int *priority,
+					 request_t *request, void *uctx)
+{
+	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
+	fr_ldap_query_t		*query = usermod_ctx->query;
+	rlm_rcode_t		rcode = RLM_MODULE_OK;
+
+	switch (query->ret) {
+	case LDAP_RESULT_SUCCESS:
+		break;
+
+	case LDAP_RESULT_NO_RESULT:
+	case LDAP_RESULT_BAD_DN:
+		RDEBUG2("User object \"%s\" not modified", usermod_ctx->dn);
+		rcode = RLM_MODULE_INVALID;
+		break;
+
+	default:
+		rcode = RLM_MODULE_FAIL;
+		break;
+	}
+
+	talloc_free(usermod_ctx);
+	RETURN_MODULE_RCODE(rcode);
+}
+
+/** Take the retrieved user DN and launch the async modification.
+ *
+ */
+static unlang_action_t user_modify_resume(rlm_rcode_t *p_result, UNUSED int *priority,
+					  request_t *request, void *uctx)
+{
+	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
+	LDAPMod			**modify = usermod_ctx->mod_p;
+
+	/*
+	 *	If an LDAP search was used to find the user DN
+	 *	usermod_ctx->dn will be NULL.
+	 */
+	if (!usermod_ctx->dn) usermod_ctx->dn = rlm_find_user_dn_cached(request);
+
+	if (!usermod_ctx->dn) {
+	fail:
+		talloc_free(usermod_ctx);
+		RETURN_MODULE_FAIL;
+	}
+
+	if (unlang_function_push(request, NULL, user_modify_final, user_modify_cancel, ~FR_SIGNAL_CANCEL,
+				 UNLANG_SUB_FRAME, usermod_ctx) < 0) goto fail;
+
+	return fr_ldap_trunk_modify(p_result, usermod_ctx, &usermod_ctx->query, request, usermod_ctx->ttrunk,
+				    usermod_ctx->dn, modify, NULL, NULL, true);
+}
+
 /** Modify user's object in LDAP
  *
  * Process a modifcation map to update a user object in the LDAP directory.
@@ -1615,28 +1734,18 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  * @param[in] section		that holds the map to process.
  * @return one of the RLM_MODULE_* values.
  */
-static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
-				   request_t *request, ldap_acct_section_t *section)
+static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
+				   ldap_acct_section_t *section, ldap_usermod_mod_env_t *mod_env)
 {
-	rlm_rcode_t	rcode = RLM_MODULE_OK;
+	rlm_rcode_t		rcode = RLM_MODULE_FAIL;
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
+	ldap_user_modify_ctx_t	*usermod_ctx = NULL;
 
-	fr_ldap_thread_trunk_t	*ttrunk = NULL;
-	fr_ldap_query_t		*query = NULL;
-
-	LDAPMod		*mod_p[LDAP_MAX_ATTRMAP + 1], mod_s[LDAP_MAX_ATTRMAP];
-	LDAPMod		**modify = mod_p;
-
-	char		*passed[LDAP_MAX_ATTRMAP * 2];
-	int		i, total = 0, last_pass = 0;
-
-	char 		*expanded[LDAP_MAX_ATTRMAP];
-	int		last_exp = 0;
+	int		total = 0, last_pass = 0;
 
 	char const	*attr;
 	char const	*value;
 
-	char const	*dn;
 	/*
 	 *	Build our set of modifications using the update sections in
 	 *	the config.
@@ -1654,18 +1763,12 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 	/*
 	 *	Locate the update section were going to be using
 	 */
-	if (section->reference[0] != '.') {
-		*p++ = '.';
-	}
+	if (section->reference[0] != '.') *p++ = '.';
 
-	if (xlat_eval(p, (sizeof(path) - (p - path)) - 1, request, section->reference, NULL, NULL) < 0) {
-		goto error;
-	}
+	if (xlat_eval(p, (sizeof(path) - (p - path)) - 1, request, section->reference, NULL, NULL) < 0) goto error;
 
 	ci = cf_reference_item(NULL, section->cs, path);
-	if (!ci) {
-		goto error;
-	}
+	if (!ci) goto error;
 
 	if (!cf_item_is_section(ci)){
 		REDEBUG("Reference must resolve to a section");
@@ -1679,6 +1782,12 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 
 		goto error;
 	}
+
+	MEM(usermod_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_user_modify_ctx_t));
+	*usermod_ctx = (ldap_user_modify_ctx_t) {
+		.inst = inst,
+		.mod_env = mod_env
+	};
 
 	/*
 	 *	Iterate over all the pairs, building our mods array
@@ -1728,31 +1837,27 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 		}
 
 		if (op == T_OP_CMP_FALSE) {
-			passed[last_pass] = NULL;
+			usermod_ctx->passed[last_pass] = NULL;
 		} else if (do_xlat) {
 			char *exp = NULL;
 
-			if (xlat_aeval(request, &exp, request, value, NULL, NULL) <= 0) {
+			if (xlat_aeval(usermod_ctx, &exp, request, value, NULL, NULL) <= 0) {
 				RDEBUG2("Skipping attribute \"%s\"", attr);
-
 				talloc_free(exp);
 
 				continue;
 			}
 
-			expanded[last_exp++] = exp;
-			passed[last_pass] = exp;
+			usermod_ctx->passed[last_pass] = exp;
 		/*
 		 *	Static strings
 		 */
 		} else {
-			memcpy(&(passed[last_pass]), &value, sizeof(passed[last_pass]));
+			memcpy(&(usermod_ctx->passed[last_pass]), &value, sizeof(usermod_ctx->passed[last_pass]));
 		}
 
-		passed[last_pass + 1] = NULL;
-
-		mod_s[total].mod_values = &(passed[last_pass]);
-
+		usermod_ctx->passed[last_pass + 1] = NULL;
+		usermod_ctx->mod_s[total].mod_values = &(usermod_ctx->passed[last_pass]);
 		last_pass += 2;
 
 		switch (op) {
@@ -1761,20 +1866,20 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 		 *  support because of the lack of transactions in LDAP
 		 */
 		case T_OP_ADD_EQ:
-			mod_s[total].mod_op = LDAP_MOD_ADD;
+			usermod_ctx->mod_s[total].mod_op = LDAP_MOD_ADD;
 			break;
 
 		case T_OP_SET:
-			mod_s[total].mod_op = LDAP_MOD_REPLACE;
+			usermod_ctx->mod_s[total].mod_op = LDAP_MOD_REPLACE;
 			break;
 
 		case T_OP_SUB_EQ:
 		case T_OP_CMP_FALSE:
-			mod_s[total].mod_op = LDAP_MOD_DELETE;
+			usermod_ctx->mod_s[total].mod_op = LDAP_MOD_DELETE;
 			break;
 
 		case T_OP_INCRM:
-			mod_s[total].mod_op = LDAP_MOD_INCREMENT;
+			usermod_ctx->mod_s[total].mod_op = LDAP_MOD_INCREMENT;
 			break;
 
 		default:
@@ -1788,9 +1893,9 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 		 *	Now we know the value is ok, copy the pointers into
 		 *	the ldapmod struct.
 		 */
-		memcpy(&(mod_s[total].mod_type), &attr, sizeof(mod_s[total].mod_type));
+		memcpy(&(usermod_ctx->mod_s[total].mod_type), &attr, sizeof(usermod_ctx->mod_s[total].mod_type));
 
-		mod_p[total] = &(mod_s[total]);
+		usermod_ctx->mod_p[total] = &(usermod_ctx->mod_s[total]);
 		total++;
 	}
 
@@ -1799,51 +1904,37 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 		goto release;
 	}
 
-	mod_p[total] = NULL;
+	usermod_ctx->mod_p[total] = NULL;
 
-	MEM(ttrunk = fr_thread_ldap_trunk_get(thread, inst->handle_config.server, inst->handle_config.admin_identity,
-					      inst->handle_config.admin_password, request, &inst->handle_config));
-
-
-	dn = rlm_ldap_find_user(inst, request, ttrunk, NULL, false, NULL, NULL, &rcode);
-	if (!dn || (rcode != RLM_MODULE_OK)) {
-		goto error;
+	usermod_ctx->ttrunk = fr_thread_ldap_trunk_get(thread, inst->handle_config.server,
+						       inst->handle_config.admin_identity,
+						       inst->handle_config.admin_password,
+						       request, &inst->handle_config);
+	if (!usermod_ctx->ttrunk) {
+		REDEBUG("Unable to get LDAP trunk for update");
+		talloc_free(usermod_ctx);
+		RETURN_MODULE_FAIL;
 	}
 
-	if (fr_ldap_trunk_modify(&rcode, unlang_interpret_frame_talloc_ctx(request),
-				 &query, request, ttrunk,
-				 dn, modify, NULL, NULL, false) < 0 ){
-		rcode = RLM_MODULE_FAIL;
-		goto error;
-	}
-	switch (rcode) {
-	case RLM_MODULE_OK:
-		break;
+	usermod_ctx->dn = rlm_find_user_dn_cached(request);
 
-	case RLM_MODULE_NOTFOUND:
-		rcode = RLM_MODULE_INVALID;
-		break;
+	if (unlang_function_push(request, usermod_ctx->dn ? NULL : user_modify_start, user_modify_resume,
+				 NULL, 0, UNLANG_SUB_FRAME, usermod_ctx) < 0) goto error;
 
-	default:
-		rcode = RLM_MODULE_FAIL;
-		break;
-	};
+	return UNLANG_ACTION_PUSHED_CHILD;
 
 release:
 error:
-	/*
-	 *	Free up any buffers we allocated for xlat expansion
-	 */
-	for (i = 0; i < last_exp; i++) talloc_free(expanded[i]);
-
+	TALLOC_FREE(usermod_ctx);
 	RETURN_MODULE_RCODE(rcode);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
+	ldap_usermod_mod_env_t	*mod_env = talloc_get_type_abort(mctx->env_data, ldap_usermod_mod_env_t);
 
-	if (inst->accounting) return user_modify(p_result, inst, request, inst->accounting);
+	if (inst->accounting) return user_modify(p_result, inst, request, inst->accounting, mod_env);
 
 	RETURN_MODULE_NOOP;
 }
@@ -1851,8 +1942,9 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
+	ldap_usermod_mod_env_t	*mod_env = talloc_get_type_abort(mctx->env_data, ldap_usermod_mod_env_t);
 
-	if (inst->postauth) return user_modify(p_result, inst, request, inst->postauth);
+	if (inst->postauth) return user_modify(p_result, inst, request, inst->postauth, mod_env);
 
 	RETURN_MODULE_NOOP;
 }
@@ -2318,10 +2410,12 @@ module_rlm_t rlm_ldap = {
 
 		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
 		  .method_env = &authorize_method_env		},
-		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting	},
+		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting,
+		  .method_env = &usermod_method_env		},
 		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,
 		  .method_env = &authenticate_method_env	},
-		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth		},
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth,
+		  .method_env = &usermod_method_env		},
 		MODULE_NAME_TERMINATOR
 	}
 };
