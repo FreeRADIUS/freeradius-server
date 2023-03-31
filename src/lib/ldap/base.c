@@ -751,11 +751,6 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
  * @param[in] mods		to be performed.
  * @param[in] serverctrls	specific to this query.
  * @param[in] clientctrls	specific to this query.
- * @param[in] is_async		If true, will return UNLANG_ACTION_YIELD
- *				and push a modify onto the unlang stack
- *				for the current request.
- *				If false, will perform a synchronous search
- *				and provide the result in p_result.
  * @return
  *	- UNLANG_ACTION_FAIL on error.
  *	- UNLANG_ACTION_YIELD on success.
@@ -765,8 +760,7 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 				     TALLOC_CTX *ctx,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *dn, LDAPMod *mods[],
-				     LDAPControl **serverctrls, LDAPControl **clientctrls,
-				     bool is_async)
+				     LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	unlang_action_t action;
 	fr_ldap_query_t *query;
@@ -786,20 +780,12 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	action = unlang_function_push(request, is_async ? NULL : ldap_trunk_query_start, ldap_trunk_query_results,
-				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL, is_async ? UNLANG_SUB_FRAME : UNLANG_TOP_FRAME, query);
+	action = unlang_function_push(request, NULL, ldap_trunk_query_results, ldap_trunk_query_cancel,
+				      ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;
 
 	*out = query;
-
-	/*
-	 *	Hack until everything is async
-	 */
-	if (!is_async) {
-		*p_result = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

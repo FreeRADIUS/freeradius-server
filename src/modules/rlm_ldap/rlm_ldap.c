@@ -1721,7 +1721,7 @@ static unlang_action_t user_modify_resume(rlm_rcode_t *p_result, UNUSED int *pri
 				 UNLANG_SUB_FRAME, usermod_ctx) < 0) goto fail;
 
 	return fr_ldap_trunk_modify(p_result, usermod_ctx, &usermod_ctx->query, request, usermod_ctx->ttrunk,
-				    usermod_ctx->dn, modify, NULL, NULL, true);
+				    usermod_ctx->dn, modify, NULL, NULL);
 }
 
 /** Modify user's object in LDAP
