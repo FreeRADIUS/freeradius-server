@@ -266,24 +266,34 @@ static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSE
  */
 int tls_mutexes_init(void)
 {
-	int i;
+#ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
+	int i, num;
 
-	ssl_mutexes = rad_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t));
+	num = CRYPTO_num_locks();
+
+	ssl_mutexes = rad_malloc(num() * sizeof(pthread_mutex_t));
 	if (!ssl_mutexes) {
 		ERROR("Error allocating memory for SSL mutexes!");
 		return -1;
 	}
 
-	for (i = 0; i < CRYPTO_num_locks(); i++) {
+	for (i = 0; i < num(); i++) {
 		pthread_mutex_init(&(ssl_mutexes[i]), NULL);
 	}
 
-#ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 	CRYPTO_set_locking_callback(ssl_locking_function);
 #endif
 
 	return 0;
 }
+
+static void tls_mutexes_destroy(void)
+{
+	CRYPTO_set_locking_callback(NULL);
+	free(ssl_mutexes);
+}
+#else
+#define tls_mutexes_destroy
 #endif
 
 #ifdef WNOHANG
@@ -577,7 +587,7 @@ retry:
 		 *	Calculate the instantaneous departure rate
 		 *	from the queue.
 		 */
-		thread_pool.pps_out.pps  = rad_pps(&thread_pool.pps_out.pps_old,
+>		thread_pool.pps_out.pps  = rad_pps(&thread_pool.pps_out.pps_old,
 						   &thread_pool.pps_out.pps_now,
 						   &thread_pool.pps_out.time_old,
 						   &now);
@@ -1222,21 +1232,11 @@ void thread_pool_stop(void)
 	fr_hash_table_free(thread_pool.waiters);
 #endif
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
 	/*
 	 *	We're no longer threaded.  Remove the mutexes and free
 	 *	the memory.
 	 */
-#ifdef HAVE_CRYPTO_SET_ID_CALLBACK
-	set_id_callback(NULL);
-#endif
-#ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
-	CRYPTO_set_locking_callback(NULL);
-#endif
-
-	free(ssl_mutexes);
-#endif
-
+	tls_mutexes_destroy();
 #endif
 }
 
