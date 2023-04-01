@@ -250,38 +250,6 @@ static const CONF_PARSER thread_config[] = {
 
 static pthread_mutex_t *ssl_mutexes = NULL;
 
-#ifdef HAVE_CRYPTO_SET_ID_CALLBACK
-static unsigned long get_ssl_id(void)
-{
-	unsigned long ret;
-	pthread_t thread = pthread_self();
-
-	if (sizeof(ret) >= sizeof(thread)) {
-		memcpy(&ret, &thread, sizeof(thread));
-	} else {
-		memcpy(&ret, &thread, sizeof(ret));
-	}
-
-	return ret;
-}
-
-/*
- *	Use preprocessor magic to get the right function and argument
- *	to use.  This avoids ifdef's through the rest of the code.
- */
-#if OPENSSL_VERSION_NUMBER < 0x10000000L
-#define ssl_id_function get_ssl_id
-#define set_id_callback CRYPTO_set_id_callback
-
-#else
-static void ssl_id_function(CRYPTO_THREADID *id)
-{
-	CRYPTO_THREADID_set_numeric(id, get_ssl_id());
-}
-#define set_id_callback CRYPTO_THREADID_set_callback
-#endif
-#endif
-
 #ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSED int line)
 {
@@ -310,9 +278,6 @@ int tls_mutexes_init(void)
 		pthread_mutex_init(&(ssl_mutexes[i]), NULL);
 	}
 
-#ifdef HAVE_CRYPTO_SET_ID_CALLBACK
-	set_id_callback(ssl_id_function);
-#endif
 #ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 	CRYPTO_set_locking_callback(ssl_locking_function);
 #endif
