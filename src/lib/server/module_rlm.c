@@ -206,7 +206,7 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 			parent = tmp;
 		} while (true);
 
-		module_instantiate(module_by_name(rlm_modules, NULL, inst_name));
+		if (unlikely(module_instantiate(module_by_name(rlm_modules, NULL, inst_name)) < 0)) return -1;
 	}
 
 	/*
@@ -1007,7 +1007,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 	     ci = cf_item_next(modules, ci)) {
 		char const *name;
 		CONF_SECTION *subcs;
-		module_instance_t *mi;
+		module_instance_t *mi = NULL;
 
 		/*
 		 *	@todo - maybe this should be a warning?
@@ -1066,10 +1066,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 		 *	Compile the default "actions" subsection, which includes retries.
 		 */
 		actions = cf_section_find(subcs, "actions", NULL);
-		if (actions && unlang_compile_actions(&mi->actions, actions, (mi->module->type & MODULE_TYPE_RETRY) != 0)) {
-			talloc_free(mi);
-			goto error;
-		}
+		if (actions && unlang_compile_actions(&mi->actions, actions, (mi->module->type & MODULE_TYPE_RETRY) != 0)) goto error;
 	}
 
 	/*
@@ -1077,9 +1074,13 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 	 *	This needs to be after parsing so that submodules can access
 	 *	their parent's fully parsed data.
 	 */
-	modules_bootstrap(rlm_modules);
+	{
+		int ret = modules_bootstrap(rlm_modules);
 
-	cf_log_debug(modules, " } # modules");
+		cf_log_debug(modules, " } # modules");
+
+		if (unlikely(ret < 0)) return -1;
+	}
 
 	if (fr_command_register_hook(NULL, NULL, modules, module_cmd_list_table) < 0) {
 		PERROR("Failed registering radmin commands for modules");
