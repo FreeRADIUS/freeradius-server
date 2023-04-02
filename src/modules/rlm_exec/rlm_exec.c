@@ -40,29 +40,25 @@ RCSID("$Id$")
 typedef struct {
 	bool			wait;
 	char const		*program;
-	char const		*input;
-	char const		*output;
 	tmpl_t			*input_list;
 	tmpl_t			*output_list;
 	bool			shell_escape;
 	bool			env_inherit;
 	fr_time_delta_t		timeout;
 	bool			timeout_is_set;
-
-	tmpl_t	*tmpl;
+	tmpl_t			*tmpl;
 } rlm_exec_t;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("wait", FR_TYPE_BOOL, rlm_exec_t, wait), .dflt = "yes" },
 	{ FR_CONF_OFFSET("program", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_exec_t, program) },
-	{ FR_CONF_OFFSET("input_pairs", FR_TYPE_STRING, rlm_exec_t, input) },
-	{ FR_CONF_OFFSET("output_pairs", FR_TYPE_STRING, rlm_exec_t, output) },
+	{ FR_CONF_OFFSET("input_pairs", FR_TYPE_TMPL, rlm_exec_t, input_list) },
+	{ FR_CONF_OFFSET("output_pairs", FR_TYPE_TMPL, rlm_exec_t, output_list) },
 	{ FR_CONF_OFFSET("shell_escape", FR_TYPE_BOOL, rlm_exec_t, shell_escape), .dflt = "yes" },
 	{ FR_CONF_OFFSET("env_inherit", FR_TYPE_BOOL, rlm_exec_t, env_inherit), .dflt = "no" },
 	{ FR_CONF_OFFSET_IS_SET("timeout", FR_TYPE_TIME_DELTA, rlm_exec_t, timeout) },
 	CONF_PARSER_TERMINATOR
 };
-
 
 static xlat_action_t exec_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
@@ -135,7 +131,7 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		return XLAT_ACTION_DONE;
 	}
 
-	MEM(exec = talloc_zero(request, fr_exec_state_t)); /* Fixme - Should be frame ctx */
+	MEM(exec = talloc_zero(unlang_interpret_frame_talloc_ctx(request), fr_exec_state_t));
 
 	if (fr_exec_start(exec, exec, request,
 			  in,
@@ -165,40 +161,25 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_exec_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_exec_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
 	xlat_t		*xlat;
-	tmpl_rules_t	list_rules = (tmpl_rules_t) {
-		.attr = {
-			.dict_def = fr_dict_internal(),
-			.list_def = request_attr_request,
-			.prefix = TMPL_ATTR_REF_PREFIX_AUTO
-		}
-	};
 
 	xlat = xlat_func_register_module(NULL, mctx, mctx->inst->name, exec_xlat, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, exec_xlat_args);
 
-	if (inst->input) {
-		if ((tmpl_afrom_attr_substr(inst, NULL, &inst->input_list,
-					    &FR_SBUFF_IN(inst->input, strlen(inst->input)), NULL, &list_rules) < 0) ||
-		    !tmpl_is_list(inst->input_list)) {
-			cf_log_perr(conf, "Invalid input list '%s'", inst->input);
-			return -1;
-		}
+	if (inst->input_list && !tmpl_is_list(inst->input_list)) {
+		cf_log_perr(conf, "Invalid input list '%s'", inst->input_list->name);
+		return -1;
 	}
 
-	if (inst->output) {
-		if ((tmpl_afrom_attr_substr(inst, NULL, &inst->output_list,
-					    &FR_SBUFF_IN(inst->output, strlen(inst->output)), NULL, &list_rules) < 0) ||
-		    !tmpl_is_list(inst->output_list)) {
-			cf_log_err(conf, "Invalid output list '%s'", inst->output);
-			return -1;
-		}
+	if (inst->output_list && !tmpl_is_list(inst->output_list)) {
+		cf_log_err(conf, "Invalid output list '%s'", inst->output_list->name);
+		return -1;
 	}
 
 	/*
 	 *	Sanity check the config.  If we're told to NOT wait,
 	 *	then the output pairs must not be defined.
 	 */
-	if (!inst->wait && (inst->output != NULL)) {
+	if (!inst->wait && (inst->output_list != NULL)) {
 		cf_log_err(conf, "Cannot read output pairs if wait = no");
 		return -1;
 	}
@@ -288,7 +269,7 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 	/*
 	 *	Decide what input/output the program takes.
 	 */
-	if (inst->input) {
+	if (inst->input_list) {
 		env_pairs = tmpl_list_head(request, tmpl_list(inst->input_list));
 		if (!env_pairs) {
 			RETURN_MODULE_INVALID;
@@ -380,7 +361,7 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 	switch (rcode) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		if (inst->output && !fr_value_box_list_empty(&m->box)) {
+		if (inst->output_list && !fr_value_box_list_empty(&m->box)) {
 			TALLOC_CTX *ctx;
 			fr_pair_list_t vps, *output_pairs;
 			fr_value_box_t *box = fr_value_box_list_head(&m->box);
@@ -450,12 +431,12 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	/*
 	 *	Decide what input/output the program takes.
 	 */
-	if (inst->input) {
+	if (inst->input_list) {
 		env_pairs = tmpl_list_head(request, tmpl_list(inst->input_list));
 		if (!env_pairs) RETURN_MODULE_INVALID;
 	}
 
-	if (inst->output) {
+	if (inst->output_list) {
 		if (!tmpl_list_head(request, tmpl_list(inst->output_list))) {
 			RETURN_MODULE_INVALID;
 		}

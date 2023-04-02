@@ -84,14 +84,14 @@ exec {
 	#
 	#  [options="header,autowidth"]
 	#  |===
-	#  | Pairs         | Description
-	#  | request       | attributes from the request
-	#  | config        | attributes from the configuration items list
-	#  | reply         | attributes from the reply
-	#  | session-state | attributes that persist over multiple request/response rounds.
+	#  | Pairs          | Description
+	#  | &request       | attributes from the request
+	#  | &config        | attributes from the configuration items list
+	#  | &reply         | attributes from the reply
+	#  | &session-state | attributes that persist over multiple request/response rounds.
 	#  |===
 	#
-	input_pairs = request
+	input_pairs = &request
 
 	#
 	#  output_pairs::: Where to place the output attributes (if any) from
@@ -103,7 +103,7 @@ exec {
 	#  This configuration item is used only when the `program`
 	#  configuration item is set, and when `wait = yes` is set.
 	#
-#	output_pairs = reply
+#	output_pairs = &reply
 
 	#
 	#  shell_escape:: Escape the environment variables.
