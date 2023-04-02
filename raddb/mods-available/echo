@@ -77,13 +77,13 @@ exec echo {
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Pairs         | Description
-	#  | request       | attributes from the request
-	#  | config        | attributes from the configuration items list
-	#  | reply         | attributes from the reply
-	#  | session-state | attributes that persist over multiple request/response rounds.
+	#  | &request       | attributes from the request
+	#  | &config        | attributes from the configuration items list
+	#  | &reply         | attributes from the reply
+	#  | &session-state | attributes that persist over multiple request/response rounds.
 	#  |===
 	#
-	input_pairs = request
+	input_pairs = &request
 
 	#
 	#  output_pairs::: Where to place the output attributes (if any) from
@@ -92,7 +92,7 @@ exec echo {
 	#  The values allowed, and the restrictions as to availability, are the
 	#  same as for the `input_pairs`.
 	#
-	output_pairs = reply
+	output_pairs = &reply
 
 	#
 	#  shell_escape:: Escape the environment variables.
