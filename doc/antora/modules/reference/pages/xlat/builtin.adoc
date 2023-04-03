@@ -182,21 +182,22 @@ That being said, the main use of these expansions is for the
 decode any attribute from any protocol.
 
 If you need to store attributes in an external database, then it is
-possible to encode them via `%(encode.internal:...)`.  The result will
+possible to encode them via `%(internal.encode:...)`.  The result will
 be an opaque hex string which can be treated as an opaque blob, and
 stored externally.  Then, when the data is needed again, it can be
-turned back into attributes via `%(decode.internal:...)`.
+turned back into attributes via `%(internal.decode:...)`.
 
-=== %(decode.PROTO:<hex>)
+=== %(PROTO.decode:<data>)
 
-Decodes _hex_ as the named protocol.  The _hex_ string can be an expansion, too.
+Decodes _data_ as the named protocol.  The _data_ string can be an
+expansion, which is usually a reference to an attribute of type `octets.
 
-The `decode.PROTO` expansion is automatically registered for every
+The `PROTO.decode` expansion is automatically registered for every
 protocol which is used by the server.
 
 Note that the output attributes _must_ come from the same dictionary
 as the `request` they are being added to.  For example, you cannot use
-`decode.dhcpv4` inside of a virtual server which has `namespace =
+`dhcpv4.decode` inside of a virtual server which has `namespace =
 radius`.  Doing so would result in DHCPv4 attributes being inside of a
 RADIUS virtual server, which is not allowed.
 
@@ -219,11 +220,11 @@ It returns the number of attributes which were decoded.
 &User-Name = "ABCD"
 ```
 
-=== %(encode.PROTO:<list>)
+=== %(PROTO.encode:<list>)
 
 Encodes _list_ as the named protocol.  The _list_ can also be a series of attributes.
 
-The `encode.PROTO` expansion is automatically registered for every
+The `PROTO.encode` expansion is automatically registered for every
 protocol which is used by the server.
 
 .Return: _octets_
@@ -234,8 +235,8 @@ It returns the raw encoded data
 
 [source,unlang]
 ----
-%(encode.dhcpv4:&Relay-Agent-Information.Circuit-Id = 0xabcdef  &Relay-Agent-Information.Remote-Id = 0x010203040506)
-%(encode.radius:&User-Name = "ABCD")
+%(dhcpv4.encode:&Relay-Agent-Information.Circuit-Id = 0xabcdef  &Relay-Agent-Information.Remote-Id = 0x010203040506)
+%(radius.radius:&User-Name = "ABCD")
 ----
 
 .Output

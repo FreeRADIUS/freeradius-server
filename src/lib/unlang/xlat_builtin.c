@@ -3011,7 +3011,7 @@ static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
  *
  * Example:
 @verbatim
-%(decode.dhcpv4:%{Tmp-Octets-0})
+%(dhcpv4.decode:%{Tmp-Octets-0})
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -3068,7 +3068,7 @@ static xlat_arg_parser_t const protocol_encode_xlat_args[] = {
  *
  * Example:
 @verbatim
-%(encode.dhcpv4:&request[*])
+%(dhcpv4.encode:&request[*])
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -3189,7 +3189,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	snprintf(buffer, sizeof(buffer), "%s_tp_decode_pair", name);
 	tp_decode = dlsym(dl->handle, buffer);
 	if (tp_decode) {
-		snprintf(buffer, sizeof(buffer), "decode.%s", name);
+		snprintf(buffer, sizeof(buffer), "%s.decode", name);
 
 		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_decode_xlat, FR_TYPE_UINT32)) == NULL)) return -1;
 		xlat_func_args_set(xlat, protocol_decode_xlat_args);
@@ -3204,7 +3204,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	snprintf(buffer, sizeof(buffer), "%s_tp_encode_pair", name);
 	tp_encode = dlsym(dl->handle, buffer);
 	if (tp_encode) {
-		snprintf(buffer, sizeof(buffer), "encode.%s", name);
+		snprintf(buffer, sizeof(buffer), "%s.encode", name);
 
 		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_encode_xlat, FR_TYPE_OCTETS)) == NULL)) return -1;
 		xlat_func_args_set(xlat, protocol_encode_xlat_args);
