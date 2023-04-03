@@ -253,10 +253,12 @@ static pthread_mutex_t *ssl_mutexes = NULL;
 #ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSED int line)
 {
+	rad_assert(ssl_mutexes[n] != NULL);
+
 	if (mode & CRYPTO_LOCK) {
-		pthread_mutex_lock(&(ssl_mutexes[n]));
+		pthread_mutex_lock(&ssl_mutexes[n]);
 	} else {
-		pthread_mutex_unlock(&(ssl_mutexes[n]));
+		pthread_mutex_unlock(&ssl_mutexes[n]);
 	}
 }
 #endif
@@ -269,6 +271,8 @@ int tls_mutexes_init(void)
 #ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 	int i, num;
 
+	rad_assert(ssl_mutexes == NULL);
+
 	num = CRYPTO_num_locks();
 
 	ssl_mutexes = rad_malloc(num * sizeof(pthread_mutex_t));
@@ -278,7 +282,7 @@ int tls_mutexes_init(void)
 	}
 
 	for (i = 0; i < num; i++) {
-		pthread_mutex_init(&(ssl_mutexes[i]), NULL);
+		pthread_mutex_init(&ssl_mutexes[i], NULL);
 	}
 
 	CRYPTO_set_locking_callback(ssl_locking_function);
@@ -290,6 +294,8 @@ int tls_mutexes_init(void)
 static void tls_mutexes_destroy(void)
 {
 	int i, num;
+
+	rad_assert(ssl_mutexes != NULL);
 
 	num = CRYPTO_num_locks();
 
@@ -1187,7 +1193,6 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 	pool_initialized = true;
 	return 0;
 }
-
 
 /*
  *	Stop all threads in the pool.
