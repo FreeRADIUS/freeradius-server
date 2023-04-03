@@ -289,8 +289,16 @@ int tls_mutexes_init(void)
 
 static void tls_mutexes_destroy(void)
 {
-	CRYPTO_set_locking_callback(NULL);
+	int i, num;
+
+	num = CRYPTO_num_locks();
+
+	for (i = 0; i < num; i++) {
+		pthread_mutex_destroy(&ssl_mutexes[i]);
+	}
 	free(ssl_mutexes);
+
+	CRYPTO_set_locking_callback(NULL);
 }
 #else
 #define tls_mutexes_destroy
