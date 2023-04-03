@@ -271,13 +271,13 @@ int tls_mutexes_init(void)
 
 	num = CRYPTO_num_locks();
 
-	ssl_mutexes = rad_malloc(num() * sizeof(pthread_mutex_t));
+	ssl_mutexes = rad_malloc(num * sizeof(pthread_mutex_t));
 	if (!ssl_mutexes) {
 		ERROR("Error allocating memory for SSL mutexes!");
 		return -1;
 	}
 
-	for (i = 0; i < num(); i++) {
+	for (i = 0; i < num; i++) {
 		pthread_mutex_init(&(ssl_mutexes[i]), NULL);
 	}
 
