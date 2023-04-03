@@ -180,109 +180,126 @@ _Generic((_ct), \
 	double **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT64) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_double_m) 0), \
 	default: (conf_type_mismatch)0)))))))))))))
-
-#  define FR_CONF_OFFSET(_n, _t, _s, _f) \
-	.name = _n, \
-	.type = _t, \
-	.offset = FR_CONF_TYPE_CHECK((_t), &(((_s *)NULL)->_f), offsetof(_s, _f))
-#  define FR_CONF_OFFSET_IS_SET(_n, _t, _s, _f) \
-	.name = _n, \
-	.type = (_t) | FR_TYPE_IS_SET, \
-	.offset = FR_CONF_TYPE_CHECK((_t), &(((_s *)NULL)->_f), offsetof(_s, _f)), \
-	.is_set_offset = offsetof(_s, _f ## _is_set)
-#  define FR_CONF_POINTER(_n, _t, _p) \
-	.name = _n, \
-	.type = _t, \
-	.data = FR_CONF_TYPE_CHECK((_t), (_p), _p)
-#  define FR_CONF_POINTER_IS_SET(_n, _t, _p) \
-	.name = _n, \
-	.type = (_t) | FR_TYPE_IS_SET, \
-	.data = FR_CONF_TYPE_CHECK((_t), (_p), _p), \
-	.is_set_ptr = _p ## _is_set
-#  define FR_ITEM_POINTER(_t, _p) _t, FR_CONF_TYPE_CHECK((_t), (_p), _p)
-
-/** A CONF_PARSER multi-subsection
- *
- * Parse multiple instance of a subsection.
- *
- * @param _n	name of subsection to search for.
- * @param _t	Must be FR_TYPE_SUBSECTION | FR_TYPE_MULTI and any optional flags.
- * @param _s	instance data struct.
- * @param _f	field in instance data struct.
- * @param _sub	CONF_PARSER array to use to parse subsection data.
- */
-#  define FR_CONF_SUBSECTION_ALLOC(_n, _t, _s, _f, _sub) \
-	.name = _n, \
-	.type = (_t), \
-	.offset = FR_CONF_TYPE_CHECK((_t), &(((_s *)NULL)->_f), offsetof(_s, _f)), \
-	.subcs = _sub, \
-	.subcs_size = sizeof(**(((_s *)0)->_f))
 #else
-#  define FR_CONF_OFFSET(_n, _t, _s, _f) \
-	.name = _n, \
-	.type = _t, \
-	.offset = offsetof(_s, _f)
-#  define FR_CONF_OFFSET_IS_SET(_n, _t, _s, _f) \
-	.name = _n, \
-	.type = (_t) | FR_TYPE_IS_SET, \
-	.offset = offsetof(_s, _f), \
-	.is_set_offset = offsetof(_s, _f ## _is_set)
-#  define FR_CONF_POINTER(_n, _t, _p) \
-	.name = _n, \
-	.type = _t, \
-	.data = _p
-#  define FR_CONF_POINTER_IS_SET(_n, _t, _p) \
-	.name = _n, \
-	.type = (_t) | FR_TYPE_IS_SET, \
-	.data = _p, \
-	.is_set_ptr = _p ## _is_set
-#  define FR_ITEM_POINTER(_t, _p) _t, _p
+#  define FR_CONF_TYPE_CHECK(_type, _c_type, _ptr_or_offset) _ptr_or_offset
+#endif
+
+/** CONF_PARSER which parses a single CONF_PAIR, writing the result to a field in a struct
+ *
+ * @param[in] _name		of the CONF_PAIR to search for.
+ * @param[in] _type		to parse the CONF_PAIR as.
+ * @param[in] _struct		contaning the field to write the result to.
+ * @param[in] _field		to write the result to.
+ */
+#  define FR_CONF_OFFSET(_name, _type, _struct, _field) \
+	.name = _name, \
+	.type = _type, \
+	.offset = FR_CONF_TYPE_CHECK((_type), &(((_struct *)NULL)->_field), offsetof(_struct, _field))
+
+/** CONF_PARSER which parses a single CONF_PAIR, writing the result to a field in a struct, recording if a default was used in <_field>_is_set
+ *
+ * @param[in] _name		of the CONF_PAIR to search for.
+ * @param[in] _type		to parse the CONF_PAIR as.
+ * @param[in] _struct		contaning the field to write the result to.
+ * @param[in] _field		to write the result to.
+ */
+#  define FR_CONF_OFFSET_IS_SET(_name, _type, _struct, _field) \
+	.name = _name, \
+	.type = (_type) | FR_TYPE_IS_SET, \
+	.offset = FR_CONF_TYPE_CHECK((_type), &(((_struct *)NULL)->_field), offsetof(_struct, _field)), \
+	.is_set_offset = offsetof(_struct, _field ## _is_set)
+
+/** CONF_PARSER which populates a sub-struct using a CONF_SECTION
+ *
+ * @param[in] _name		of the CONF_SECTION to search for.
+ * @param[in] _flags		any additional flags to set.
+ * @param[in] _struct		containing the sub-struct to populate.
+ * @param[in] _field		containing the sub-struct to populate.
+ */
+#  define FR_CONF_OFFSET_SUBSECTION(_name, _flags, _struct, _field, _subcs) \
+	.name = _name, \
+	.type = (FR_TYPE_SUBSECTION | _flags), \
+	.offset = offsetof(_struct, _field), \
+	.subcs = _subcs
+
+/** CONF_PARSER which parses a single CONF_PAIR producing a single global result
+ *
+ * @param[in] _name		of the CONF_PAIR to search for.
+ * @param[in] _type		to parse the CONF_PAIR as.
+ * @param[out] _res_p		pointer to a global var, where the result will be written.
+ */
+#  define FR_CONF_POINTER(_name, _type, _res_p) \
+	.name = _name, \
+	.type = _type, \
+	.data = FR_CONF_TYPE_CHECK((_type), (_res_p), _res_p)
+
+/** CONF_PARSER which parses a single CONF_PAIR producing a single global result, recording if a default was used in <_res_p>_is_set
+ *
+ * @note is set state is recorded in variable <_res_p>_is_set.
+ *
+ * @param[in] _name		of the CONF_PAIR to search for.
+ * @param[in] _type		to parse the CONF_PAIR as.
+ * @param[out] _res_p		pointer to a global var, where the result will be written.
+ */
+#  define FR_CONF_POINTER_IS_SET(_name, _type, _res_p) \
+	.name = _name, \
+	.type = (_type) | FR_TYPE_IS_SET, \
+	.data = FR_CONF_TYPE_CHECK((_type), (_res_p), _res_p), \
+	.is_set_ptr = _res_p ## _is_set
+#  define FR_ITEM_POINTER(_type, _res_p) _type, FR_CONF_TYPE_CHECK((_type), (_res_p), _res_p)
 
 /** A CONF_PARSER multi-subsection
  *
- * Parse multiple instance of a subsection.
+ * Parse multiple instance of a subsection, allocating an array of structs
+ * to hold the result.
  *
- * @param _n	name of subsection to search for.
- * @param _t	Must be FR_TYPE_SUBSECTION | FR_TYPE_MULTI and any optional flags.
- * @param _s	instance data struct.
- * @param _f	field in instance data struct.
- * @param _sub	CONF_PARSER array to use to parse subsection data.
+ * @param _name		name of subsection to search for.
+ * @param _type		Must be FR_TYPE_SUBSECTION | FR_TYPE_MULTI and any optional flags.
+ * @param _struct	instance data struct.
+ * @param _field	field in instance data struct.
+ * @param _subcs	CONF_PARSER array to use to parse subsection data.
  */
-#  define FR_CONF_SUBSECTION_ALLOC(_n, _t, _s, _f, _sub) \
-	.name = _n, \
-	.type = _t, \
-	.offset = offsetof(_s, _f), \
-	.subcs = _sub, \
-	.subcs_size = sizeof(**(((_s *)0)->_f))
-#endif
+#  define FR_CONF_SUBSECTION_ALLOC(_name, _type, _struct, _field, _subcs) \
+	.name = _name, \
+	.type = (_type), \
+	.offset = FR_CONF_TYPE_CHECK((_type), &(((_struct *)NULL)->_field), offsetof(_struct, _field)), \
+	.subcs = _subcs, \
+	.subcs_size = sizeof(**(((_struct *)0)->_field))
 
 /** CONF_PARSER entry which doesn't fill in a pointer or offset, but relies on functions to record values
  *
- * @param[in] _n		name of pair to search for.
- * @param[in] _t		base type to parse pair as.
+ * @param[in] _nand		name of pair to search for.
+ * @param[in] _type		base type to parse pair as.
  * @param[in] _func		to use to record value.
  * @param[in] _dflt_func	to use to get defaults from a 3rd party library.
  */
-#  define FR_CONF_FUNC(_n, _t, _func, _dflt_func) \
-	.name = _n, \
-	.type = _t, \
+#  define FR_CONF_FUNC(_name, _type, _func, _dflt_func) \
+	.name = _name, \
+	.type = _type, \
 	.func = _func, \
 	.dflt_func = _dflt_func
 
 /** CONF_PARSER entry which runs CONF_PARSER entries for a subsection without any output
  *
- * @param[in] _n		name of pair to search for.
+ * @param[in] _name		of pair to search for.
  * @param[in] _flags		any extra flags to add.
  * @param[in] _subcs		to use to get defaults from a 3rd party library.
  */
-#  define FR_CONF_SUBSECTION_GLOBAL(_n, _flags, _subcs) \
-	.name = _n, \
-	.type = FR_TYPE_SUBSECTION | 0, \
+#  define FR_CONF_SUBSECTION_GLOBAL(_name, _flags, _subcs) \
+	.name = _name, \
+	.type = FR_TYPE_SUBSECTION, \
 	.subcs = _subcs
 
-#define FR_CONF_DEPRECATED(_n, _t, _p, _f) \
-	.name = _n, \
-	.type = (_t) | FR_TYPE_DEPRECATED
+/** CONF_PARSER entry which raises an error if a matching CONF_PAIR is found
+ *
+ * @param[in] _name		of pair to search for.
+ * @param[in] _type		type, mostly unused.
+ * @param[in] _struct		where the result was previously written.
+ * @param[in] _field		in the struct where the result was previously written.
+ */
+#define FR_CONF_DEPRECATED(_name, _type, _struct, _field) \
+	.name = _name, \
+	.type = (_type) | FR_TYPE_DEPRECATED
 
 /*
  *  Instead of putting the information into a configuration structure,

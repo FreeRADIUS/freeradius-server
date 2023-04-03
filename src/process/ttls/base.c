@@ -123,29 +123,37 @@ typedef struct {
 } process_ttls_sections_t;
 
 typedef struct {
-	bool		log_stripped_names;
-	bool		log_auth;		//!< Log authentication attempts.
-	bool		log_auth_badpass;	//!< Log successful authentications.
-	bool		log_auth_goodpass;	//!< Log failed authentications.
+	bool		stripped_names;
+	bool		auth;		//!< Log authentication attempts.
+	bool		auth_badpass;	//!< Log successful authentications.
+	bool		auth_goodpass;	//!< Log failed authentications.
 	char const	*auth_badpass_msg;	//!< Additional text to append to successful auth messages.
 	char const	*auth_goodpass_msg;	//!< Additional text to append to failed auth messages.
 
 	char const	*denied_msg;		//!< Additional text to append if the user is already logged
 						//!< in (simultaneous use check failed).
+} process_ttls_auth_log_t;
 
-	fr_time_delta_t	session_timeout;	//!< Maximum time between the last response and next request.
-	uint32_t	max_session;		//!< Maximum ongoing session allowed.
+typedef struct {
+	fr_time_delta_t	timeout;	//!< Maximum time between the last response and next request.
+	uint32_t	max;		//!< Maximum ongoing session allowed.
 
 	uint8_t       	state_server_id;	//!< Sets a specific byte in the state to allow the
 						//!< authenticating server to be identified in packet
 						//!<captures.
+} process_ttls_session_t;
 
-	fr_state_tree_t	*state_tree;		//!< State tree to link multiple requests/responses.
+typedef struct {
+	process_ttls_auth_log_t 	log;		//!< Log setting for TTLS.
+
+	process_ttls_session_t 		session;	//!< Session settings.
+
+	fr_state_tree_t			*state_tree;	//!< State tree to link multiple requests/responses.
 } process_ttls_auth_t;
 
 typedef struct {
 	CONF_SECTION			*server_cs;	//!< Our virtual server.
-	process_ttls_sections_t	sections;	//!< Pointers to various config sections
+	process_ttls_sections_t		sections;	//!< Pointers to various config sections
 							///< we need to execute.
 	process_ttls_auth_t		auth;		//!< Authentication configuration.
 } process_ttls_t;
@@ -158,36 +166,35 @@ typedef struct {
 #include <freeradius-devel/server/process.h>
 
 static const CONF_PARSER session_config[] = {
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, process_ttls_auth_t, session_timeout), .dflt = "15" },
-	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, process_ttls_auth_t, max_session), .dflt = "4096" },
-	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, process_ttls_auth_t, state_server_id) },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, process_ttls_session_t, timeout), .dflt = "15" },
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, process_ttls_session_t, max), .dflt = "4096" },
+	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, process_ttls_session_t, state_server_id) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER log_config[] = {
-	{ FR_CONF_OFFSET("stripped_names", FR_TYPE_BOOL, process_ttls_auth_t, log_stripped_names), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth", FR_TYPE_BOOL, process_ttls_auth_t, log_auth), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth_badpass", FR_TYPE_BOOL, process_ttls_auth_t, log_auth_badpass), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth_goodpass", FR_TYPE_BOOL,process_ttls_auth_t,  log_auth_goodpass), .dflt = "no" },
-	{ FR_CONF_OFFSET("msg_badpass", FR_TYPE_STRING, process_ttls_auth_t, auth_badpass_msg) },
-	{ FR_CONF_OFFSET("msg_goodpass", FR_TYPE_STRING, process_ttls_auth_t, auth_goodpass_msg) },
-	{ FR_CONF_OFFSET("msg_denied", FR_TYPE_STRING, process_ttls_auth_t, denied_msg), .dflt = "You are already logged in - access denied" },
+	{ FR_CONF_OFFSET("stripped_names", FR_TYPE_BOOL, process_ttls_auth_log_t, stripped_names), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth", FR_TYPE_BOOL, process_ttls_auth_log_t, auth), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth_badpass", FR_TYPE_BOOL, process_ttls_auth_log_t, auth_badpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth_goodpass", FR_TYPE_BOOL,process_ttls_auth_log_t,  auth_goodpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("msg_badpass", FR_TYPE_STRING, process_ttls_auth_log_t, auth_badpass_msg) },
+	{ FR_CONF_OFFSET("msg_goodpass", FR_TYPE_STRING, process_ttls_auth_log_t, auth_goodpass_msg) },
+	{ FR_CONF_OFFSET("msg_denied", FR_TYPE_STRING, process_ttls_auth_log_t, denied_msg), .dflt = "You are already logged in - access denied" },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER auth_config[] = {
-	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
+	{ FR_CONF_OFFSET_SUBSECTION("log,", 0, process_ttls_auth_t, log, log_config) },
 
-	{ FR_CONF_POINTER("session", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) session_config },
+	{ FR_CONF_OFFSET_SUBSECTION("session", 0, process_ttls_auth_t, session, session_config )},
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER config[] = {
-	{ FR_CONF_POINTER("Access-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) auth_config,
-	  .offset = offsetof(process_ttls_t, auth), },
+	{ FR_CONF_OFFSET_SUBSECTION("Access-Request", 0, process_ttls_t, auth, auth_config) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -288,12 +295,12 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_ttls_auth_t cons
 	/*
 	 *	No logs?  Then no logs.
 	 */
-	if (!inst->log_auth) return;
+	if (!inst->log.auth) return;
 
 	/*
 	 * Get the correct username based on the configured value
 	 */
-	if (!inst->log_stripped_names) {
+	if (!inst->log.stripped_names) {
 		username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
 	} else {
 		username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_stripped_user_name);
@@ -303,7 +310,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_ttls_auth_t cons
 	/*
 	 *	Clean up the password
 	 */
-	if (inst->log_auth_badpass || inst->log_auth_goodpass) {
+	if (inst->log.auth_badpass || inst->log.auth_goodpass) {
 		password = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password);
 		if (!password) {
 			fr_pair_t *auth_type;
@@ -322,11 +329,11 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_ttls_auth_t cons
 	}
 
 	if (goodpass) {
-		logit = inst->log_auth_goodpass;
-		extra_msg = inst->auth_goodpass_msg;
+		logit = inst->log.auth_goodpass;
+		extra_msg = inst->log.auth_goodpass_msg;
 	} else {
-		logit = inst->log_auth_badpass;
-		extra_msg = inst->auth_badpass_msg;
+		logit = inst->log.auth_badpass;
+		extra_msg = inst->log.auth_badpass_msg;
 	}
 
 	if (extra_msg) {
@@ -664,8 +671,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	process_ttls_t	*inst = talloc_get_type_abort(mctx->inst->data, process_ttls_t);
 
-	inst->auth.state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->auth.max_session,
-						   inst->auth.session_timeout, inst->auth.state_server_id,
+	inst->auth.state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->auth.session.max,
+						   inst->auth.session.timeout, inst->auth.session.state_server_id,
 						   fr_hash_string(cf_section_name2(inst->server_cs)));
 
 	return 0;
