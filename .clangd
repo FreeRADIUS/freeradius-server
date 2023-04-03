@@ -1,3 +1,9 @@
+# osmocom code has many errors/warnings and seems to lock up clangd
+If:
+  PathMatch: .*/rlm_sigtran/(libosmo|asn1).*
+Index:
+  Background: Skip
+---
 # Should apply only to header files
 If:
   PathMatch: .*\.h
