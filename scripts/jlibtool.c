@@ -861,7 +861,7 @@ static void external_spawn_sig_handler(int signo)
 	kill(spawn_pid, signo);	/* Forward the signal to the process we're executing */
 }
 
-void external_spawn_timeout(int pid)
+static void external_spawn_timeout(__attribute__((unused)) int pid)
 {
 	timeout = true;
 }
