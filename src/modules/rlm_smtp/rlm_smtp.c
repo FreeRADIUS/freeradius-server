@@ -119,8 +119,8 @@ FR_SLAB_FUNCS(smtp, fr_curl_io_request_t)
 typedef struct {
 	fr_curl_handle_t  	*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch and
 						///< coralling structure for smtp requests
-	fr_smtp_slab_list_t	*slab_persist;	//!< Slab list for persistent connections.
-	fr_smtp_slab_list_t	*slab_onetime;	//!< Slab list for onetime use connections.
+	smtp_slab_list_t	*slab_persist;	//!< Slab list for persistent connections.
+	smtp_slab_list_t	*slab_onetime;	//!< Slab list for onetime use connections.
 } rlm_smtp_thread_t;
 
 /*
@@ -774,7 +774,7 @@ static void smtp_io_module_signal(module_ctx_t const *mctx, request_t *request, 
 		/* Not much we can do */
 	}
 	t->mhandle->transfers--;
-	fr_smtp_slab_release(randle);
+	smtp_slab_release(randle);
 }
 
 /** 	Callback to process response of SMTP server
@@ -804,7 +804,7 @@ static unlang_action_t smtp_io_module_resume(rlm_rcode_t *p_result, module_ctx_t
 
 	if (randle->result != CURLE_OK) {
 		CURLcode result = randle->result;
-		fr_smtp_slab_release(randle);
+		smtp_slab_release(randle);
 		switch (result) {
 		case CURLE_PEER_FAILED_VERIFICATION:
 		case CURLE_LOGIN_DENIED:
@@ -815,7 +815,7 @@ static unlang_action_t smtp_io_module_resume(rlm_rcode_t *p_result, module_ctx_t
 	}
 
 	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
-	fr_smtp_slab_release(randle);
+	smtp_slab_release(randle);
 
 	RETURN_MODULE_OK;
 }
@@ -857,7 +857,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 	if (!inst->sender_address && !inst->envelope_address) {
 		RDEBUG2("At least one of \"sender_address\" or \"envelope_address\" in the config, or \"SMTP-Sender-Address\" in the request is needed");
 	error:
-		if (randle) fr_smtp_slab_release(randle);
+		if (randle) smtp_slab_release(randle);
 		RETURN_MODULE_INVALID;
 	}
 
@@ -867,8 +867,8 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 	 *	can be used.
 	 */
 	randle = (mod_env->username_tmpl &&
-		  !tmpl_is_data(mod_env->username_tmpl)) ? fr_smtp_slab_reserve(t->slab_onetime) :
-							   fr_smtp_slab_reserve(t->slab_persist);
+		  !tmpl_is_data(mod_env->username_tmpl)) ? smtp_slab_reserve(t->slab_onetime) :
+							   smtp_slab_reserve(t->slab_persist);
 	if (!randle) {
 		RDEBUG2("A handle could not be allocated for the request");
 		RETURN_MODULE_FAIL;
@@ -962,7 +962,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	fr_pair_t const 	*username, *password;
 	fr_curl_io_request_t    *randle;
 
-	randle = fr_smtp_slab_reserve(t->slab_onetime);
+	randle = smtp_slab_reserve(t->slab_onetime);
 	if (!randle) RETURN_MODULE_FAIL;
 
 	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
@@ -972,7 +972,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
 	error:
-		fr_smtp_slab_release(randle);
+		smtp_slab_release(randle);
 		RETURN_MODULE_INVALID;
 	}
 	if (username->vp_length == 0) {
@@ -1115,7 +1115,7 @@ static int smtp_onetime_conn_alloc(fr_curl_io_request_t *randle, UNUSED void *uc
 	MEM(mail_ctx = talloc_zero(randle, fr_mail_ctx_t));
 	randle->uctx = mail_ctx;
 
-	fr_smtp_slab_element_set_destructor(randle, smtp_onetime_request_cleanup, NULL);
+	smtp_slab_element_set_destructor(randle, smtp_onetime_request_cleanup, NULL);
 
 	return 0;
 }
@@ -1141,7 +1141,7 @@ static int smtp_persist_conn_alloc(fr_curl_io_request_t *randle, UNUSED void *uc
 	}
 	talloc_set_destructor(mail_ctx, smtp_mail_ctx_free);
 
-	fr_smtp_slab_element_set_destructor(randle, smtp_persist_request_cleanup, NULL);
+	smtp_slab_element_set_destructor(randle, smtp_persist_request_cleanup, NULL);
 
 	return 0;
 }
@@ -1205,12 +1205,12 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_smtp_thread_t    	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 	fr_curl_handle_t    	*mhandle;
 
-	if (fr_smtp_slab_list_alloc(t, &t->slab_onetime, mctx->el, &inst->conn_config.reuse,
+	if (smtp_slab_list_alloc(t, &t->slab_onetime, mctx->el, &inst->conn_config.reuse,
 				    smtp_onetime_conn_alloc, smtp_onetime_conn_init, inst, false, false) < 0) {
 		ERROR("Connection handle pool instantiation failed");
 		return -1;
 	}
-	if (fr_smtp_slab_list_alloc(t, &t->slab_persist, mctx->el, &inst->conn_config.reuse,
+	if (smtp_slab_list_alloc(t, &t->slab_persist, mctx->el, &inst->conn_config.reuse,
 				    smtp_persist_conn_alloc, smtp_persist_conn_init, inst, false, true) < 0) {
 		ERROR("Connection handle pool instantiation failed");
 		return -1;

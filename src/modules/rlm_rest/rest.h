@@ -177,7 +177,7 @@ FR_SLAB_FUNCS(rest, fr_curl_io_request_t)
  */
 typedef struct {
 	rlm_rest_t const	*inst;		//!< Instance of rlm_rest.
-	fr_rest_slab_list_t	*slab;		//!< Slab list for connection handles.
+	rest_slab_list_t	*slab;		//!< Slab list for connection handles.
 	fr_curl_handle_t	*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch
 						//!< and coralling structure for REST requests.
 } rlm_rest_thread_t;

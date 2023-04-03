@@ -65,7 +65,7 @@ FR_SLAB_TYPES(imap, fr_curl_io_request_t)
 FR_SLAB_FUNCS(imap, fr_curl_io_request_t)
 
 typedef struct {
-	fr_imap_slab_list_t		*slab;		//!< Slab list for connection handles.
+	imap_slab_list_t		*slab;		//!< Slab list for connection handles.
 	fr_curl_handle_t    		*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch and coralling structure for imap requests.
 } rlm_imap_thread_t;
 
@@ -94,7 +94,7 @@ static void imap_io_module_signal(module_ctx_t const *mctx, request_t *request, 
 		/* Not much we can do */
 	}
 	t->mhandle->transfers--;
-	fr_imap_slab_release(randle);
+	imap_slab_release(randle);
 }
 
 /*
@@ -122,7 +122,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_r
 
 	if (randle->result != CURLE_OK) {
 		CURLcode result = randle->result;
-		fr_imap_slab_release(randle);
+		imap_slab_release(randle);
 		switch(result) {
 		case CURLE_PEER_FAILED_VERIFICATION:
 		case CURLE_LOGIN_DENIED:
@@ -134,7 +134,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_r
 
 	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
 
-	fr_imap_slab_release(randle);
+	imap_slab_release(randle);
 	RETURN_MODULE_OK;
 }
 
@@ -175,9 +175,9 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 		RETURN_MODULE_INVALID;
 	}
 
-	randle = fr_imap_slab_reserve(t->slab);
+	randle = imap_slab_reserve(t->slab);
 	if (!randle){
-		if (randle) fr_imap_slab_release(randle);
+		if (randle) imap_slab_release(randle);
 		RETURN_MODULE_FAIL;
 	}
 
@@ -186,7 +186,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) {
 	error:
-		fr_imap_slab_release(randle);
+		imap_slab_release(randle);
 		RETURN_MODULE_FAIL;
 	}
 
@@ -247,7 +247,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_imap_thread_t    	*t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
 	fr_curl_handle_t    	*mhandle;
 
-	if (fr_imap_slab_list_alloc(t, &t->slab, mctx->el, &inst->conn_config.reuse,
+	if (imap_slab_list_alloc(t, &t->slab, mctx->el, &inst->conn_config.reuse,
 				    imap_conn_alloc, NULL, inst, false, false) < 0) {
 		ERROR("Connection handle pool instantiation failed");
 		return -1;

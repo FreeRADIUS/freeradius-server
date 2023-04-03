@@ -329,7 +329,7 @@ finish:
 		fr_dcursor_insert(out, vb);
 	}
 
-	fr_rest_slab_release(handle);
+	rest_slab_release(handle);
 
 	talloc_free(rctx);
 
@@ -461,7 +461,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	We get a connection from the pool here as the CURL object
 	 *	is needed to use curl_easy_escape() for escaping
 	 */
-	randle = rctx->handle = fr_rest_slab_reserve(t->slab);
+	randle = rctx->handle = rest_slab_reserve(t->slab);
 	if (!randle) return XLAT_ACTION_FAIL;
 
 	/*
@@ -478,7 +478,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		RPEDEBUG("Failed escaping URI");
 
 	error:
-		fr_rest_slab_release(randle);
+		rest_slab_release(randle);
 		talloc_free(section);
 
 		return XLAT_ACTION_FAIL;
@@ -611,7 +611,7 @@ static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t 
 	}
 
 finish:
-	fr_rest_slab_release(handle);
+	rest_slab_release(handle);
 
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -633,12 +633,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!section->name) RETURN_MODULE_NOOP;
 
-	handle = fr_rest_slab_reserve(t->slab);
+	handle = rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		fr_rest_slab_release(handle);
+		rest_slab_release(handle);
 
 		RETURN_MODULE_FAIL;
 	}
@@ -722,7 +722,7 @@ static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
 	}
 
 finish:
-	fr_rest_slab_release(handle);
+	rest_slab_release(handle);
 
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -778,13 +778,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		RDEBUG2("Login attempt with password");
 	}
 
-	handle = fr_rest_slab_reserve(t->slab);
+	handle = rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
 
 	ret = rlm_rest_perform(mctx, section,
 			       handle, request, username->vp_strvalue, password->vp_strvalue);
 	if (ret < 0) {
-		fr_rest_slab_release(handle);
+		rest_slab_release(handle);
 
 		RETURN_MODULE_FAIL;
 	}
@@ -835,7 +835,7 @@ static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result, module_ctx_t
 	}
 
 finish:
-	fr_rest_slab_release(handle);
+	rest_slab_release(handle);
 
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -854,12 +854,12 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 
 	if (!section->name) RETURN_MODULE_NOOP;
 
-	handle = fr_rest_slab_reserve(t->slab);
+	handle = rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		fr_rest_slab_release(handle);
+		rest_slab_release(handle);
 
 		RETURN_MODULE_FAIL;
 	}
@@ -910,7 +910,7 @@ static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t 
 	}
 
 finish:
-	fr_rest_slab_release(handle);
+	rest_slab_release(handle);
 
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -929,12 +929,12 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 
 	if (!section->name) RETURN_MODULE_NOOP;
 
-	handle = fr_rest_slab_reserve(t->slab);
+	handle = rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		fr_rest_slab_release(handle);
+		rest_slab_release(handle);
 
 		RETURN_MODULE_FAIL;
 	}
@@ -1142,7 +1142,7 @@ static int rest_conn_alloc(fr_curl_io_request_t *randle, void *uctx)
 	randle->uctx = curl_ctx;
 	talloc_set_destructor(randle, _mod_conn_free);
 
-	fr_rest_slab_element_set_destructor(randle, rest_request_cleanup, NULL);
+	rest_slab_element_set_destructor(randle, rest_request_cleanup, NULL);
 
 	return 0;
 }
@@ -1165,8 +1165,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 	t->inst = inst;
 
-	if (fr_rest_slab_list_alloc(t, &t->slab, mctx->el, &inst->conn_config.reuse,
-				    rest_conn_alloc, NULL, inst, false, false) < 0) {
+	if (rest_slab_list_alloc(t, &t->slab, mctx->el, &inst->conn_config.reuse,
+				 rest_conn_alloc, NULL, inst, false, false) < 0) {
 		ERROR("Connection handle pool instantiation failed");
 		return -1;
 	}

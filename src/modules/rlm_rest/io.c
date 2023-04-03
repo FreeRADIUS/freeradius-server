@@ -45,7 +45,7 @@ void rest_io_module_signal(module_ctx_t const *mctx, request_t *request, UNUSED 
 	}
 	t->mhandle->transfers--;
 
-	fr_rest_slab_release(randle);
+	rest_slab_release(randle);
 }
 
 /** Handle asynchronous cancellation of a request
