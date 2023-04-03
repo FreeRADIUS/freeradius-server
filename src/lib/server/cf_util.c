@@ -1940,7 +1940,7 @@ void _cf_vlog(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int lin
 	if (!ci || !ci->filename || !*ci->filename || (*ci->filename == '<') ||
 	    (((type == L_DBG) || (type == L_INFO)) && !DEBUG_ENABLED4)) {
 		va_copy(aq, ap);
-		fr_vlog(LOG_DST, type, file, line, fmt, ap);
+		fr_vlog(LOG_DST, type, file, line, fmt, aq);
 		va_end(aq);
 		return;
 	}
@@ -1953,7 +1953,7 @@ void _cf_vlog(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int lin
 		truncate_filename(&e, &p, &len, ci->filename);
 
 		va_copy(aq, ap);
-		msg = fr_vasprintf(NULL, fmt, ap);
+		msg = fr_vasprintf(NULL, fmt, aq);
 		va_end(aq);
 
 		fr_log(LOG_DST, type, file, line, "%s%.*s[%d]: %s", e, len, p, ci->lineno, msg);
