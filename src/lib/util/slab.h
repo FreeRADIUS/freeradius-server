@@ -30,6 +30,13 @@ extern "C" {
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/event.h>
 
+/** CONF_PARSER entries to populate user configurable slab values
+ */
+#define FR_SLAB_CONFIG_CONF_PARSER \
+	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, fr_slab_config_t, min_elements), .dflt = "10" }, \
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, fr_slab_config_t, max_elements), .dflt = "100" }, \
+	{ FR_CONF_OFFSET("cleanup_interval", FR_TYPE_TIME_DELTA, fr_slab_config_t, interval), .dflt = "30s" }, \
+
 /** Tuneable parameters for slabs
  */
 typedef struct { \
@@ -38,7 +45,7 @@ typedef struct { \
 	unsigned int		max_elements;		//!< Maximum number of elements to allocate using slabs.
 	bool			at_max_fail;		//!< Should requests for additional elements fail when the
 							///< number in use has reached max_elements.
-	size_t			num_children;		//!< How many child allocations are expected off each element.
+	unsigned int		num_children;		//!< How many child allocations are expected off each element.
 	size_t			child_pool_size;	//!< Size of pool space to be allocated to each element.
 	fr_time_delta_t		interval;		//!< Interval between slab cleanup events being fired.
 } fr_slab_config_t;
