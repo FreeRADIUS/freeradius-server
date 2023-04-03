@@ -1,0 +1,12 @@
+#
+#  PRE: edit-list
+#
+&request += {
+	&Tmp-Group-0 = {}
+}
+
+if (!&request.Tmp-Group-0) {
+	test_fail
+}
+
+success

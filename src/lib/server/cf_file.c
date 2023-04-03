@@ -2401,7 +2401,7 @@ check_for_eol:
 	 *	allow it everywhere.
 	 */
 	if (*ptr == '{') {
-		if (!parent->allow_unlang) {
+		if (!parent->allow_unlang && !frame->require_edits) {
 			ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
 			      frame->filename, frame->lineno);
 			return -1;

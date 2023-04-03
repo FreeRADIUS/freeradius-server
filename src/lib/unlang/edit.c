@@ -432,12 +432,35 @@ apply_list:
 	}
 	RDEBUG2("}");
 
-	rcode = fr_edit_list_apply_list_assignment(current->el, current->lhs.vp, map->op, children, copy_vps);
-	if (rcode < 0) RPERROR("Failed performing list %s operation", fr_tokens[map->op]);
+	if (current->el) {
+		rcode = fr_edit_list_apply_list_assignment(current->el, current->lhs.vp, map->op, children, copy_vps);
+		if (rcode < 0) RPERROR("Failed performing list %s operation", fr_tokens[map->op]);
+
+	} else {
+		fr_assert(map->op == T_OP_EQ);
+
+		if (copy_vps) {
+			fr_assert(children != &current->rhs.pair_list);
+			fr_assert(fr_pair_list_empty(&current->rhs.pair_list));
+
+			if (fr_pair_list_copy(current->lhs.vp, &current->rhs.pair_list, children) < 0) {
+				rcode = 01;
+				goto done;
+			}
+			children = &current->rhs.pair_list;
+		} else {
+			copy_vps = true; /* the  */
+		}
+
+		fr_pair_list_append(&current->lhs.vp->vp_group, children);
+		PAIR_VERIFY(current->lhs.vp);
+		rcode = 0;
+	}
 
 	/*
 	 *	If the child list wasn't copied, then we just created it, and we need to free it.
 	 */
+done:
 	if (!copy_vps) fr_pair_list_free(children);
 	return rcode;
 }
