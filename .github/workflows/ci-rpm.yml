@@ -18,12 +18,17 @@ jobs:
           - { NAME: "centos-7",  OS: "centos:7" }
           - { NAME: "centos-8",  OS: "centos:8" }
           - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8" }
+#          - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9" }
       fail-fast: false
 
     runs-on: ubuntu-latest
 
     container:
       image: ${{ matrix.env.OS }}
+
+    env:
+      HOSTAPD_BUILD_DIR: /tmp/eapol_test.ci
+      HOSTAPD_GIT_TAG: hostapd_2_8
 
     name: "RPM build"
 
@@ -52,8 +57,8 @@ jobs:
       run: |
         yum install -y https://packages.endpointdev.com/rhel/7/os/x86_64/git-core-2.30.1-1.ep7.x86_64.rpm
 
-    - name: Install distro git for Rocky 8 and CentOS 8.
-      if: ${{ matrix.env.NAME == 'rocky-8' || matrix.env.NAME == 'centos-8' }}
+    - name: Install distro git for Rocky and CentOS 8.
+      if: ${{ startsWith(matrix.env.NAME, 'rocky-') || matrix.env.NAME == 'centos-8' }}
       run: |
         yum install -y git-core
 
@@ -65,12 +70,11 @@ jobs:
       run: |
         pwd
         ls -la
-        cp -r freeradius freeradius-tests
         mkdir rpms
         ls -la
 
-    - name: Extra repos for CentOS and Rocky Linux
-      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
+    - name: LTB repo for CentOS and Rocky Linux 8
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || matrix.env.NAME == 'rocky-8' }}
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
@@ -79,6 +83,10 @@ jobs:
         echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
         echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
+
+    - name: Enable EPEL for CentOS and Rocky Linux
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
+      run: |
         yum install -y epel-release
 
     - name: Enable PowerTools on Rocky 8 and CentOS 8.
@@ -87,6 +95,12 @@ jobs:
         yum install -y yum-utils
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
+
+    - name: Enable Code Ready Builer on Rocky 9.
+      if: ${{ matrix.env.NAME == 'rocky-9' }}
+      run: |
+        yum install -y yum-utils
+        yum config-manager --enable crb
 
     - name: Install common tools
       run: |
@@ -129,19 +143,9 @@ jobs:
 
     # For pkill and ps
     - name: Enable procps-ng on Centos and Rocky
-      if: ${{ startsWith(matrix.env.NAME, 'centos-8') || startsWith(matrix.env.NAME, 'rocky-8') }}
+      if: ${{ startsWith(matrix.env.NAME, 'centos-8') || startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
         yum install -y procps-ng
-
-    - name: Run tests and build eapol_test
-      run: |
-        yum install -y libnl3-devel which
-        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
-        ./configure
-        make -j `nproc`
-        make test
-        mv scripts/ci/eapol_test/eapol_test ../rpms/
-      working-directory: freeradius-tests
 
     - name: Build RPMs
       run: |
@@ -153,6 +157,21 @@ jobs:
     - name: Collect RPMs
       run: |
         mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms/
+
+    - name: Restore eapol_test build directory from cache
+      uses: actions/cache@v3
+      id: hostapd-cache
+      with:
+        path: ${{ env.HOSTAPD_BUILD_DIR }}
+        key: hostapd-${{ matrix.env.NAME }}-${{ env.HOSTAPD_GIT_TAG }}-v1
+
+    - name: Build eapol_test
+      run: |
+        yum install -y libnl3-devel which
+        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
+        scripts/ci/eapol_test-build.sh
+        mv scripts/ci/eapol_test/eapol_test ../rpms/
+      working-directory: freeradius
 
     - name: Store RPMs
       uses: actions/upload-artifact@v3
@@ -189,6 +208,7 @@ jobs:
           - { NAME: "centos-7", OS: "centos:7" }
           - { NAME: "centos-8", OS: "centos:8" }
           - { NAME: "rocky-8", OS: "rockylinux/rockylinux:8" }
+#          - { NAME: "rocky-9", OS: "rockylinux/rockylinux:9" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -216,8 +236,8 @@ jobs:
         yum clean all && yum makecache
         yum distro-sync -y --allowerasing
 
-    - name: Extra repos for CentOS and Rocky
-      if: ${{ startsWith(matrix.env.NAME, 'centos-')  || startsWith(matrix.env.NAME, 'rocky-') }}
+    - name: LTB repo for CentOS and Rocky 8
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || matrix.env.NAME == 'rocky-8' }}
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
@@ -226,6 +246,10 @@ jobs:
         echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
         echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
+
+    - name: Enable EPEL for CentOS and Rocky Linux
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
+      run: |
         yum install -y epel-release
 
     - name: Enable PowerTools on Centos 8 and Rocky 8
@@ -234,6 +258,12 @@ jobs:
         yum install -y yum-utils
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
+
+    - name: Enable Code Ready Builer on Rocky 9.
+      if: ${{ matrix.env.NAME == 'rocky-9' }}
+      run: |
+        yum install -y yum-utils
+        yum config-manager --enable crb
 
     # For pkill
     - name: Enable procps-ng on Centos and Rocky
