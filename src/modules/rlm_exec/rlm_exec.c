@@ -60,9 +60,9 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static xlat_action_t exec_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				      xlat_ctx_t const *xctx,
-				      request_t *request, UNUSED fr_value_box_list_t *in)
+static xlat_action_t exec_xlat_oneshot_wait_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+						   xlat_ctx_t const *xctx,
+						   request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	fr_exec_state_t	*exec = talloc_get_type_abort(xctx->rctx, fr_exec_state_t);
 	fr_value_box_t	*vb;
@@ -107,11 +107,14 @@ static xlat_arg_parser_t const exec_xlat_args[] = {
 "%(exec:/bin/echo hello)" == "hello"
 @endverbatim
  *
+ * Exactly one request is consumed during the process lifetime,
+ * after which the process exits.
+ *
  * @ingroup xlat_functions
  */
-static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-			       xlat_ctx_t const *xctx,
-			       request_t *request, fr_value_box_list_t *in)
+static xlat_action_t exec_xlat_oneshot(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+				       xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *in)
 {
 	rlm_exec_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_exec_t);
 	fr_pair_list_t		*env_pairs = NULL;
@@ -143,145 +146,7 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	return unlang_xlat_yield(request, exec_xlat_resume, NULL, 0, exec);
-}
-
-/*
- *	Do any per-module initialization that is separate to each
- *	configured instance of the module.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	If configuration information is given in the config section
- *	that must be referenced in later calls, store a handle to it
- *	in *instance otherwise put a null pointer there.
- */
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_exec_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_exec_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
-	xlat_t		*xlat;
-
-	xlat = xlat_func_register_module(NULL, mctx, mctx->inst->name, exec_xlat, FR_TYPE_STRING);
-	xlat_func_args_set(xlat, exec_xlat_args);
-
-	if (inst->input_list && !tmpl_is_list(inst->input_list)) {
-		cf_log_perr(conf, "Invalid input list '%s'", inst->input_list->name);
-		return -1;
-	}
-
-	if (inst->output_list && !tmpl_is_list(inst->output_list)) {
-		cf_log_err(conf, "Invalid output list '%s'", inst->output_list->name);
-		return -1;
-	}
-
-	/*
-	 *	Sanity check the config.  If we're told to NOT wait,
-	 *	then the output pairs must not be defined.
-	 */
-	if (!inst->wait && (inst->output_list != NULL)) {
-		cf_log_err(conf, "Cannot read output pairs if wait = no");
-		return -1;
-	}
-
-	if (!inst->timeout_is_set || !fr_time_delta_ispos(inst->timeout)) {
-		/*
-		 *	Pick the shorter one
-		 */
-		inst->timeout = fr_time_delta_gt(main_config->max_request_time, fr_time_delta_from_sec(EXEC_TIMEOUT)) ?
-			fr_time_delta_from_sec(EXEC_TIMEOUT):
-			main_config->max_request_time;
-	}
-	else {
-		if (fr_time_delta_lt(inst->timeout, fr_time_delta_from_sec(1))) {
-			cf_log_err(conf, "Timeout '%pVs' is too small (minimum: 1s)", fr_box_time_delta(inst->timeout));
-			return -1;
-		}
-
-		/*
-		 *	Blocking a request longer than max_request_time isn't going to help anyone.
-		 */
-		if (fr_time_delta_gt(inst->timeout, main_config->max_request_time)) {
-			cf_log_err(conf, "Timeout '%pVs' is too large (maximum: %pVs)",
-				   fr_box_time_delta(inst->timeout), fr_box_time_delta(main_config->max_request_time));
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-
-/** Instantiate the module
- *
- * Creates a new instance of the module reading parameters from a configuration section.
- *
- * @param[in] mctx to parse.
- * @return
- *	- 0 on success.
- *	- < 0 on failure.
- */
-static int mod_instantiate(module_inst_ctx_t const *mctx)
-{
-	rlm_exec_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_exec_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
-	ssize_t			slen;
-
-	if (!inst->program) return 0;
-
-	slen = tmpl_afrom_substr(inst, &inst->tmpl,
-				 &FR_SBUFF_IN(inst->program, strlen(inst->program)),
-				 T_BACK_QUOTED_STRING, NULL,
-				 &(tmpl_rules_t) {
-				 	.attr = {
-						.list_def = request_attr_request,
-				 		.allow_foreign = true,
-				 		.allow_unresolved = false,
-				 		.allow_unknown = false
-				 	}
-				 });
-	if (!inst->tmpl) {
-		char *spaces, *text;
-
-		fr_canonicalize_error(inst, &spaces, &text, slen, inst->program);
-
-		cf_log_err(conf, "%s", text);
-		cf_log_perr(conf, "%s^", spaces);
-
-		talloc_free(spaces);
-		talloc_free(text);
-		return -1;
-	}
-
-	return 0;
-}
-
-/** Resume a request after xlat expansion.
- *
- */
-static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					      request_t *request)
-{
-	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_exec_t);
-	fr_value_box_list_t	*box = talloc_get_type_abort(mctx->rctx, fr_value_box_list_t);
-	fr_pair_list_t		*env_pairs = NULL;
-
-	/*
-	 *	Decide what input/output the program takes.
-	 */
-	if (inst->input_list) {
-		env_pairs = tmpl_list_head(request, tmpl_list(inst->input_list));
-		if (!env_pairs) {
-			RETURN_MODULE_INVALID;
-		}
-	}
-
-	if (fr_exec_fork_nowait(request, box, env_pairs, inst->shell_escape, inst->env_inherit) < 0) {
-		RPEDEBUG("Failed executing program");
-		RETURN_MODULE_FAIL;
-	}
-
-	RETURN_MODULE_OK;
+	return unlang_xlat_yield(request, exec_xlat_oneshot_wait_resume, NULL, 0, exec);
 }
 
 typedef struct {
@@ -347,7 +212,38 @@ static rlm_rcode_t rlm_exec_status2rcode(request_t *request, fr_value_box_t *box
 	return rcode;
 }
 
-static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+/** Resume a request after xlat expansion.
+ *
+ */
+static unlang_action_t mod_exec_oneshot_nowait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+						      request_t *request)
+{
+	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_exec_t);
+	fr_value_box_list_t	*box = talloc_get_type_abort(mctx->rctx, fr_value_box_list_t);
+	fr_pair_list_t		*env_pairs = NULL;
+
+	/*
+	 *	Decide what input/output the program takes.
+	 */
+	if (inst->input_list) {
+		env_pairs = tmpl_list_head(request, tmpl_list(inst->input_list));
+		if (!env_pairs) {
+			RETURN_MODULE_INVALID;
+		}
+	}
+
+	if (fr_exec_fork_nowait(request, box, env_pairs, inst->shell_escape, inst->env_inherit) < 0) {
+		RPEDEBUG("Failed executing program");
+		RETURN_MODULE_FAIL;
+	}
+
+	RETURN_MODULE_OK;
+}
+
+/** Process the exit code and output of a short lived process
+ *
+ */
+static unlang_action_t mod_exec_oneshot_wait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	int			status;
 	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_exec_t);
@@ -384,7 +280,6 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 	}
 
 	status = m->status;
-
 	if (status < 0) {
 		REDEBUG("Program exited with signal %d", -status);
 		RETURN_MODULE_FAIL;
@@ -397,15 +292,15 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 	RETURN_MODULE_RCODE(rcode);
 }
 
-/*
- *  Dispatch an async exec method
+/** Dispatch one request using a short lived process
+ *
  */
-static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_exec_t);
 	rlm_exec_ctx_t		*m;
 	fr_pair_list_t		*env_pairs = NULL;
 	TALLOC_CTX		*ctx;
+	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_exec_t);
 
 	if (!inst->tmpl) {
 		RDEBUG("This module requires 'program' to be set.");
@@ -424,8 +319,14 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 		fr_value_box_list_t *box = talloc_zero(ctx, fr_value_box_list_t);
 
 		fr_value_box_list_init(box);
+
+		/*
+		 *  The xlat here only expands the arguments, then calls
+		 *  the resume function we set to actually dispatch the
+		 *  exec request.
+		 */
 		return unlang_module_yield_to_xlat(request, NULL, box, request, tmpl_xlat(inst->tmpl),
-						   mod_exec_nowait_resume, NULL, 0, box);
+						   mod_exec_oneshot_nowait_resume, NULL, 0, box);
 	}
 
 	/*
@@ -449,10 +350,118 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	return unlang_module_yield_to_tmpl(m, &m->box,
 					   request, inst->tmpl,
 					   TMPL_ARGS_EXEC(env_pairs, inst->timeout, true, &m->status),
-					   mod_exec_wait_resume,
+					   mod_exec_oneshot_wait_resume,
 					   NULL, 0, &m->box);
 }
 
+/** Instantiate the module
+ *
+ * Creates a new instance of the module reading parameters from a configuration section.
+ *
+ * @param[in] mctx to parse.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
+ */
+static int mod_instantiate(module_inst_ctx_t const *mctx)
+{
+	rlm_exec_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_exec_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
+	ssize_t			slen;
+
+	if (!inst->program) return 0;
+
+	slen = tmpl_afrom_substr(inst, &inst->tmpl,
+				 &FR_SBUFF_IN(inst->program, strlen(inst->program)),
+				 T_BACK_QUOTED_STRING, NULL,
+				 &(tmpl_rules_t) {
+				 	.attr = {
+						.list_def = request_attr_request,
+				 		.allow_foreign = true,
+				 		.allow_unresolved = false,
+				 		.allow_unknown = false
+				 	}
+				 });
+	if (!inst->tmpl) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(inst, &spaces, &text, slen, inst->program);
+
+		cf_log_err(conf, "%s", text);
+		cf_log_perr(conf, "%s^", spaces);
+
+		talloc_free(spaces);
+		talloc_free(text);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ *	Do any per-module initialization that is separate to each
+ *	configured instance of the module.  e.g. set up connections
+ *	to external databases, read configuration files, set up
+ *	dictionary entries, etc.
+ *
+ *	If configuration information is given in the config section
+ *	that must be referenced in later calls, store a handle to it
+ *	in *instance otherwise put a null pointer there.
+ */
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	rlm_exec_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_exec_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
+	xlat_t		*xlat;
+
+	xlat = xlat_func_register_module(NULL, mctx, mctx->inst->name, exec_xlat_oneshot, FR_TYPE_STRING);
+	xlat_func_args_set(xlat, exec_xlat_args);
+
+	if (inst->input_list && !tmpl_is_list(inst->input_list)) {
+		cf_log_perr(conf, "Invalid input list '%s'", inst->input_list->name);
+		return -1;
+	}
+
+	if (inst->output_list && !tmpl_is_list(inst->output_list)) {
+		cf_log_err(conf, "Invalid output list '%s'", inst->output_list->name);
+		return -1;
+	}
+
+	/*
+	 *	Sanity check the config.  If we're told to NOT wait,
+	 *	then the output pairs must not be defined.
+	 */
+	if (!inst->wait && (inst->output_list != NULL)) {
+		cf_log_err(conf, "Cannot read output pairs if wait = no");
+		return -1;
+	}
+
+	if (!inst->timeout_is_set || !fr_time_delta_ispos(inst->timeout)) {
+		/*
+		 *	Pick the shorter one
+		 */
+		inst->timeout = fr_time_delta_gt(main_config->max_request_time, fr_time_delta_from_sec(EXEC_TIMEOUT)) ?
+			fr_time_delta_from_sec(EXEC_TIMEOUT):
+			main_config->max_request_time;
+	}
+	else {
+		if (fr_time_delta_lt(inst->timeout, fr_time_delta_from_sec(1))) {
+			cf_log_err(conf, "Timeout '%pVs' is too small (minimum: 1s)", fr_box_time_delta(inst->timeout));
+			return -1;
+		}
+
+		/*
+		 *	Blocking a request longer than max_request_time isn't going to help anyone.
+		 */
+		if (fr_time_delta_gt(inst->timeout, main_config->max_request_time)) {
+			cf_log_err(conf, "Timeout '%pVs' is too large (maximum: %pVs)",
+				   fr_box_time_delta(inst->timeout), fr_box_time_delta(main_config->max_request_time));
+			return -1;
+		}
+	}
+
+	return 0;
+}
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -475,7 +484,7 @@ module_rlm_t rlm_exec = {
 		.instantiate	= mod_instantiate
 	},
         .method_names = (module_method_name_t[]){
-                { .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_exec_dispatch },
+                { .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_exec_dispatch_oneshot },
                 MODULE_NAME_TERMINATOR
         }
 };
