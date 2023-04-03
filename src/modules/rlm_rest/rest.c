@@ -964,6 +964,7 @@ static ssize_t rest_request_encode_wrapper(char **buffer, rest_read_t func, size
 	size_t alloc = REST_BODY_INIT;	/* Size of buffer to alloc */
 	size_t used = 0;		/* Size of data written */
 	size_t len = 0;
+	rlm_rest_request_t *ctx = userdata;
 
 	while (alloc <= limit) {
 		current = rad_malloc(alloc);
@@ -975,7 +976,7 @@ static ssize_t rest_request_encode_wrapper(char **buffer, rest_read_t func, size
 
 		len = func(current + used, alloc - used, 1, userdata);
 		used += len;
-		if (!len) {
+		if (ctx->state == READ_STATE_END || !len) {
 			*buffer = current;
 			return used;
 		}
