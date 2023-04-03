@@ -587,7 +587,7 @@ retry:
 		 *	Calculate the instantaneous departure rate
 		 *	from the queue.
 		 */
->		thread_pool.pps_out.pps  = rad_pps(&thread_pool.pps_out.pps_old,
+		thread_pool.pps_out.pps  = rad_pps(&thread_pool.pps_out.pps_old,
 						   &thread_pool.pps_out.pps_now,
 						   &thread_pool.pps_out.time_old,
 						   &now);
