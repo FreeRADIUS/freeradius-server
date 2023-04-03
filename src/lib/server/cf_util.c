@@ -1991,19 +1991,19 @@ void _cf_log(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line
  * @param[in] ci	#CONF_ITEM to print file/lineno for.
  * @param[in] f_rules	Additional optional formatting controls.
  * @param[in] fmt	of the message.
- * @param[in] ...	Message args.
+ * @param[in] ap	Message args.
  */
-void _cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line,
-		  fr_log_perror_format_t const *f_rules, char const *fmt, ...)
+void _cf_vlog_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line,
+		   fr_log_perror_format_t const *f_rules, char const *fmt, va_list ap)
 {
-	va_list			ap;
+	va_list	aq;
 
 	if ((type == L_DBG) && !DEBUG_ENABLED) return;
 
 	if (!ci || !ci->filename) {
-		va_start(ap, fmt);
-		fr_vlog_perror(LOG_DST, type, file, line, f_rules, fmt, ap);
-		va_end(ap);
+		va_copy(aq, ap);
+		fr_vlog_perror(LOG_DST, type, file, line, f_rules, fmt, aq);
+		va_end(aq);
 		return;
 	}
 
@@ -2062,12 +2062,36 @@ void _cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int
 			our_f_rules.subsq_prefix = prefix;
 		}
 
-		va_start(ap, fmt);
-		fr_vlog_perror(LOG_DST, type, file, line, &our_f_rules, fmt, ap);
-		va_end(ap);
+		va_copy(aq, ap);
+		fr_vlog_perror(LOG_DST, type, file, line, &our_f_rules, fmt, aq);
+		va_end(aq);
 
 		talloc_free(pool);
 	}
+}
+
+/** Log an error message relating to a #CONF_ITEM
+ *
+ * Drains the fr_strerror() stack emitting one or more error messages.
+ *
+ * @param[in] type	of log message.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
+ * @param[in] ci	#CONF_ITEM to print file/lineno for.
+ * @param[in] f_rules	Additional optional formatting controls.
+ * @param[in] fmt	of the message.
+ * @param[in] ...	Message args.
+ */
+void _cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line,
+		  fr_log_perror_format_t const *f_rules, char const *fmt, ...)
+{
+	va_list ap;
+
+	if ((type == L_DBG) && !DEBUG_ENABLED) return;
+
+	va_start(ap, fmt);
+	_cf_vlog_perr(type, ci, file, line, f_rules, fmt, ap);
+	va_end(ap);
 }
 
 /** Log a debug message relating to a #CONF_ITEM
@@ -2136,6 +2160,37 @@ void _cf_log_by_child(fr_log_type_t type, CONF_SECTION const *parent, char const
 
 	va_start(ap, fmt);
 	_cf_vlog(type, CF_TO_ITEM(parent), file, line, fmt, ap);
+	va_end(ap);
+}
+
+
+/** Log an error message in the context of a child pair of the specified parent
+ *
+ * @param[in] parent	containing the pair.
+ * @param[in] child	name to use as a logging context.
+ * @param[in] type	of log message.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
+ * @param[in] fmt	of the message.
+ * @param[in] ...	Message args.
+ */
+void _cf_log_perr_by_child(fr_log_type_t type, CONF_SECTION const *parent, char const *child,
+			   char const *file, int line, fr_log_perror_format_t const *f_rules,
+			   char const *fmt, ...)
+{
+	va_list		ap;
+	CONF_PAIR const	*cp;
+
+	cp = cf_pair_find(parent, child);
+	if (cp) {
+		va_start(ap, fmt);
+		_cf_vlog_perr(type, CF_TO_ITEM(cp), file, line, f_rules, fmt, ap);
+		va_end(ap);
+		return;
+	}
+
+	va_start(ap, fmt);
+	_cf_vlog_perr(type, CF_TO_ITEM(parent), file, line, f_rules, fmt, ap);
 	va_end(ap);
 }
 

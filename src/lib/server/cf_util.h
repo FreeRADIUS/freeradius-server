@@ -271,8 +271,12 @@ void		_cf_log(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int lin
 
 #define		cf_log_perr(_cf, _fmt, ...) _cf_log_perr(L_ERR, CF_TO_ITEM(_cf),  __FILE__, __LINE__, NULL, _fmt, ## __VA_ARGS__)
 #define		cf_log_pwarn(_cf, _fmt, ...) _cf_log_perr(L_WARN, CF_TO_ITEM(_cf),  __FILE__, __LINE__, NULL, _fmt, ## __VA_ARGS__)
+
+void		_cf_vlog_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line,
+			      fr_log_perror_format_t const *f_rules, char const *fmt, va_list ap)
+		CC_HINT(format (printf, 6, 0));
 void		_cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line,
-			     fr_log_perror_format_t const *f_rules, char const *fmt, ...)
+			      fr_log_perror_format_t const *f_rules, char const *fmt, ...)
 		CC_HINT(format (printf, 6, 7));
 
 #define		cf_log_debug_prefix(_cf, _fmt, ...) _cf_log_with_filename(L_DBG, CF_TO_ITEM(_cf),  __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
@@ -286,6 +290,15 @@ void		_cf_log_with_filename(fr_log_type_t type, CONF_ITEM const *ci, char const 
  * @param[in] ...	arguments.
  */
 #define		cf_log_err_by_child(_parent, _child, _fmt, ...) _cf_log_by_child(L_ERR, _parent, _child, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
+
+/** Log an error message against a specified child, draining the thread local error stack
+ *
+ * @param[in] _parent	CONF_SECTION.
+ * @param[in] _child	string identifier.
+ * @param[in] _fmt	of message.
+ * @param[in] ...	arguments.
+ */
+#define		cf_log_perr_by_child(_parent, _child, _f_rules, _fmt, ...) _cf_log_perr_by_child(L_ERR, _parent, _child, __FILE__, __LINE__, _f_rules, _fmt, ## __VA_ARGS__)
 
 /** Log a warning message against a specified child
  *
@@ -315,6 +328,10 @@ void		_cf_log_with_filename(fr_log_type_t type, CONF_ITEM const *ci, char const 
 #define		cf_log_debug_by_child(_parent, _child, _fmt, ...) _cf_log_by_child(L_DBG, _parent, _child, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
 void		_cf_log_by_child(fr_log_type_t type, CONF_SECTION const *parent, char const *child,
 				   char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 6, 7));
+
+void		_cf_log_perr_by_child(fr_log_type_t type, CONF_SECTION const *parent, char const *child,
+				      char const *file, int line, fr_log_perror_format_t const *f_rules,
+				      char const *fmt, ...) CC_HINT(format (printf, 7, 8));
 
 #define		cf_debug(_cf) _cf_debug(CF_TO_ITEM(_cf))
 void		_cf_debug(CONF_ITEM const *ci);
