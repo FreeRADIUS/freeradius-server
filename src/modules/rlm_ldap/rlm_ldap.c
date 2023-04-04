@@ -1959,8 +1959,6 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 	if (inst->userobj_sort_ctrl) ldap_control_free(inst->userobj_sort_ctrl);
 
-	fr_pool_free(inst->pool);
-
 	return 0;
 }
 

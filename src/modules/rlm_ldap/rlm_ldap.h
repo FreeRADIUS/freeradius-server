@@ -120,7 +120,6 @@ typedef struct {
 							//!< to perform additional authorisation checks.
 #endif
 
-	fr_pool_t	*pool;				//!< Connection pool instance.
 	fr_ldap_config_t handle_config;			//!< Connection configuration instance.
 	fr_trunk_conf_t	trunk_conf;			//!< Trunk configuration
 } rlm_ldap_t;
