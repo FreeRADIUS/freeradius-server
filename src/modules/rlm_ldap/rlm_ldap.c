@@ -738,12 +738,12 @@ static void _ldap_bind_auth_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, U
 			}
 
 			if (srv_cred) {
-				DEBUG("SASL response  : %pV",
+				DEBUG3("SASL response  : %pV",
 					fr_box_strvalue_len(srv_cred->bv_val, srv_cred->bv_len));
 				ber_bvfree(srv_cred);
 			}
 
-			if (sasl_ctx->rmech) DEBUG("Continuing SASL mech %s...", sasl_ctx->rmech);
+			if (sasl_ctx->rmech) DEBUG3("Continuing SASL mech %s...", sasl_ctx->rmech);
 		}
 			break;
 
