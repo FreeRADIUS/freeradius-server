@@ -310,7 +310,7 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 	{
 		tmpl_rules_t	parse_rules = {
 			.attr = {
-				.allow_foreign = true	/* Because we don't know where we'll be called */
+				.dict_def = dict_radius,
 			}
 		};
 
