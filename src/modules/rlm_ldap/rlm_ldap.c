@@ -1147,11 +1147,18 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	 *	Attempt a bind using the thread specific connection for bind auths
 	 */
 	if (auth_ctx->mod_env->user_sasl_mech.type == FR_TYPE_STRING) {
+#ifdef WITH_SASL
 		ldap_auth_mod_env_t *mod_env = auth_ctx->mod_env;
 		if (fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, mod_env->user_sasl_mech.vb_strvalue,
 						 auth_ctx->dn, mod_env->user_sasl_authname.vb_strvalue,
 						 auth_ctx->password, mod_env->user_sasl_proxy.vb_strvalue,
 						 mod_env->user_sasl_realm.vb_strvalue) < 0) goto fail;
+#else
+		
+		RDEBUG("Configuration item 'sasl.mech' is not supported.  "
+		       "The linked version of libldap does not provide ldap_sasl_bind( function");
+		RETURN_MODULE_FAIL;
+#endif
 	} else {
 		if (fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password) < 0) goto fail;
 	}
@@ -2195,12 +2202,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 #ifndef WITH_SASL
-	if (inst->user_sasl.mech) {
-		cf_log_err(conf, "Configuration item 'user.sasl.mech' not supported.  "
-			   "Linked libldap does not provide ldap_sasl_bind( function");
-		goto error;
-	}
-
 	if (inst->handle_config.admin_sasl.mech) {
 		cf_log_err(conf, "Configuration item 'sasl.mech' not supported.  "
 			   "Linked libldap does not provide ldap_sasl_interactive_bind function");
