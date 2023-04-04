@@ -248,9 +248,9 @@ static const CONF_PARSER thread_config[] = {
  *	to add them at some point.
  */
 
+#ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 static pthread_mutex_t *ssl_mutexes = NULL;
 
-#ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSED int line)
 {
 	if (mode & CRYPTO_LOCK) {
@@ -289,6 +289,7 @@ int tls_mutexes_init(void)
 
 static void tls_mutexes_destroy(void)
 {
+#ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 	int i, num;
 
 	num = CRYPTO_num_locks();
@@ -299,6 +300,7 @@ static void tls_mutexes_destroy(void)
 	free(ssl_mutexes);
 
 	CRYPTO_set_locking_callback(NULL);
+#endif
 }
 #else
 #define tls_mutexes_destroy
