@@ -57,13 +57,11 @@ static void test_alloc(void)
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[5];
 	test_uctx_t		test_uctx, test_uctx2;
-	int			ret = -1;
 
 	/*
 	 *	Each slab will contain 2 elements, maximum of 4 elements allocated from slabs.
 	 */
-	ret = test_slab_list_alloc(NULL, &test_slab_list, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -129,15 +127,13 @@ static void test_alloc_fail(void)
 {
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[5];
-	int			ret = -1;
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	/*
 	 *	Each slab will contain 2 elements, maximum of 4 elements allocated from slabs.
 	 */
 	slab_config.at_max_fail = true;
-	ret = test_slab_list_alloc(NULL, &test_slab_list, NULL, &slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, NULL, NULL, NULL, true, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -170,10 +166,8 @@ static void test_reuse_reset(void)
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[5];
 	test_uctx_t		test_uctx;
-	int			ret = -1;
 
-	ret = test_slab_list_alloc(NULL, &test_slab_list, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -232,10 +226,8 @@ static void test_reuse_noreset(void)
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[3];
 	test_uctx_t		test_uctx;
-	int			ret = -1;
 
-	ret = test_slab_list_alloc(NULL, &test_slab_list, NULL, &def_slab_config, NULL, NULL, NULL, false, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, false, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -286,14 +278,12 @@ static void test_reserve_mru(void)
 {
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[2];
-	int			ret = -1;
 
 	/*
 	 *	First use a slab list with reserve_mru = false to verify that the two reservations
 	 *	result in different elements being returned
 	 */
-	ret = test_slab_list_alloc(NULL, &test_slab_list, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -311,8 +301,7 @@ static void test_reserve_mru(void)
 	/*
 	 *	Now use a slab list with reserve_mru = true
 	 */
-	ret = test_slab_list_alloc(NULL, &test_slab_list, NULL, &def_slab_config, NULL, NULL, NULL, true, true);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, true, true);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -336,10 +325,8 @@ static void test_free(void)
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_element;
 	test_uctx_t		test_uctx;
-	int			ret = -1;
 
-	ret = test_slab_list_alloc(NULL, &test_slab_list, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -372,12 +359,10 @@ static void test_init(void)
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[2];
 	test_conf_t		test_conf = { .initial = 10 };
-	int			ret = -1;
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	slab_config.elements_per_slab = 1;
-	ret = test_slab_list_alloc(NULL, &test_slab_list, NULL, &slab_config, test_element_alloc, NULL, &test_conf, false, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, test_element_alloc, NULL, &test_conf, false, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -412,12 +397,10 @@ static void test_reserve(void)
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[2];
 	test_conf_t		test_conf = { .initial = 10 };
-	int			ret = -1;
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	slab_config.elements_per_slab = 1;
-	ret = test_slab_list_alloc(NULL, &test_slab_list, NULL, &slab_config, NULL, test_element_alloc, &test_conf, false, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, NULL, test_element_alloc, &test_conf, false, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -459,12 +442,10 @@ static void test_init_reserve(void)
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[2];
 	test_conf_t		test_conf = { .initial = 10 };
-	int			ret = -1;
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	slab_config.elements_per_slab = 1;
-	ret = test_slab_list_alloc(NULL, &test_slab_list, NULL, &slab_config, test_element_alloc, test_element_reserve, &test_conf, false, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, test_element_alloc, test_element_reserve, &test_conf, false, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -500,15 +481,14 @@ static void test_clearup_1(void)
 	fr_event_list_t		*el;
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[6];
-	int			i, events, ret = -1;
+	int			i, events;
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	fr_event_list_set_time_func(el, test_time);
 
 	slab_config.max_elements = 6;
-	ret = test_slab_list_alloc(NULL, &test_slab_list, el, &slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, el, &slab_config, NULL, NULL, NULL, true, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -555,7 +535,7 @@ static void test_clearup_2(void)
 	fr_event_list_t		*el;
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[20];
-	int			i, events, ret = -1;
+	int			i, events;
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
@@ -563,8 +543,7 @@ static void test_clearup_2(void)
 
 	slab_config.min_elements = 16;
 	slab_config.max_elements = 20;
-	ret = test_slab_list_alloc(NULL, &test_slab_list, el, &slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, el, &slab_config, NULL, NULL, NULL, true, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -621,7 +600,7 @@ static void test_clearup_3(void)
 	fr_event_list_t		*el;
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[20];
-	int			i, events, ret = -1;
+	int			i, events;
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
@@ -629,8 +608,7 @@ static void test_clearup_3(void)
 
 	slab_config.min_elements = 0;
 	slab_config.max_elements = 20;
-	ret = test_slab_list_alloc(NULL, &test_slab_list, el, &slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, el, &slab_config, NULL, NULL, NULL, true, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -716,7 +694,7 @@ static void test_realloc(void)
 	fr_event_list_t		*el;
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[20];
-	int			i, events, ret = -1;
+	int			i, events;
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
@@ -724,8 +702,7 @@ static void test_realloc(void)
 
 	slab_config.min_elements = 0;
 	slab_config.max_elements = 20;
-	ret = test_slab_list_alloc(NULL, &test_slab_list, el, &slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, el, &slab_config, NULL, NULL, NULL, true, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -777,14 +754,12 @@ static void test_child_alloc(void)
 {
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_elements[2];
-	int			ret = -1;
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	slab_config.max_elements = 2;
 	slab_config.num_children = 1;
 	slab_config.child_pool_size = 128;
-	ret = test_slab_list_alloc(NULL, &test_slab_list, NULL, &slab_config, NULL, NULL, NULL, false, false);
-	TEST_CHECK(ret == 0);
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, NULL, NULL, NULL, false, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 

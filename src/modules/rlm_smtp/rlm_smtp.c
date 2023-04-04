@@ -1205,13 +1205,15 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_smtp_thread_t    	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 	fr_curl_handle_t    	*mhandle;
 
-	if (smtp_slab_list_alloc(t, &t->slab_onetime, mctx->el, &inst->conn_config.reuse,
-				    smtp_onetime_conn_alloc, smtp_onetime_conn_init, inst, false, false) < 0) {
+	if (!(t->slab_onetime = smtp_slab_list_alloc(t, mctx->el, &inst->conn_config.reuse,
+						     smtp_onetime_conn_alloc, smtp_onetime_conn_init,
+						     inst, false, false))) {
 		ERROR("Connection handle pool instantiation failed");
 		return -1;
 	}
-	if (smtp_slab_list_alloc(t, &t->slab_persist, mctx->el, &inst->conn_config.reuse,
-				    smtp_persist_conn_alloc, smtp_persist_conn_init, inst, false, true) < 0) {
+	if (!(t->slab_persist = smtp_slab_list_alloc(t, mctx->el, &inst->conn_config.reuse,
+						     smtp_persist_conn_alloc, smtp_persist_conn_init,
+						     inst, false, true))) {
 		ERROR("Connection handle pool instantiation failed");
 		return -1;
 	}

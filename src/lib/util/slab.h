@@ -160,7 +160,6 @@ DIAG_OFF(unused-function) \
 	/** Allocate a slab list to manage slabs of allocated memory \
 	 * \
 	 * @param[in] ctx		in which to allocate the slab list. \
-	 * @param[out] out		slab_list that has been allocated. \
 	 * @param[in] el		Event list in which to run clean up function. \
 	 * @param[in] config		Slab config parameters. \
 	 * @param[in] alloc		Optional callback to use when allocating new elements. \
@@ -168,31 +167,40 @@ DIAG_OFF(unused-function) \
 	 * @param[in] uctx		to pass to callbacks. \
 	 * @param[in] release_reset	Should elements be reset and children freed when the element is released.\
 	 * @param[in] reserve_mru	If true, the most recently used element will be returned when an element is reserved. \
+	 * @return \
+	 *	- A new slab. \
+	 *	- NULL on error. \
 	 */ \
-	static inline CC_HINT(nonnull(2)) int _name ## _slab_list_alloc(TALLOC_CTX *ctx, \
-									       _name ## _slab_list_t **out, \
-									       fr_event_list_t *el, \
-									       fr_slab_config_t const *config, \
-									       _type ## _slab_alloc_t alloc, \
-									       _type ## _slab_reserve_t reserve, \
-									       void *uctx, \
-									       bool release_reset, \
-									       bool reserve_mru) \
+	static inline _name ## _slab_list_t *_name ## _slab_list_alloc(TALLOC_CTX *ctx, \
+								       fr_event_list_t *el, \
+								       fr_slab_config_t const *config, \
+								       _type ## _slab_alloc_t alloc, \
+								       _type ## _slab_reserve_t reserve, \
+								       void *uctx, \
+								       bool release_reset, \
+								       bool reserve_mru) \
 	{ \
-		MEM(*out = talloc_zero(ctx, _name ## _slab_list_t)); \
-		(*out)->el = el; \
-		(*out)->config = *config; \
-		if ((*out)->config.elements_per_slab == 0) \
-			(*out)->config.elements_per_slab = (config->min_elements ? config->min_elements : 1); \
-		(*out)->alloc = alloc; \
-		(*out)->reserve = reserve; \
-		(*out)->uctx = uctx; \
-		(*out)->release_reset = release_reset; \
-		(*out)->reserve_mru = reserve_mru; \
-		_name ## _slab_init(&(*out)->reserved); \
-		_name ## _slab_init(&(*out)->avail); \
-		if (el) (void) fr_event_timer_in(*out, el, &(*out)->ev, config->interval, _ ## _name ## _slab_cleanup, *out); \
-		return 0; \
+		_name ## _slab_list_t *slab; \
+		MEM(slab = talloc_zero(ctx, _name ## _slab_list_t)); \
+		slab->el = el; \
+		slab->config = *config; \
+		if (slab->config.elements_per_slab == 0) { \
+			slab->config.elements_per_slab = (config->min_elements ? config->min_elements : 1); \
+		} \
+		slab->alloc = alloc; \
+		slab->reserve = reserve; \
+		slab->uctx = uctx; \
+		slab->release_reset = release_reset; \
+		slab->reserve_mru = reserve_mru; \
+		_name ## _slab_init(&slab->reserved); \
+		_name ## _slab_init(&slab->avail); \
+		if (el) { \
+			if (unlikely(fr_event_timer_in(slab, el, &slab->ev, config->interval, _ ## _name ## _slab_cleanup, slab) < 0)) { \
+				talloc_free(slab); \
+				return NULL; \
+			}; \
+		} \
+		return slab; \
 	} \
 \
 	/** Callback for talloc freeing a slab element \
