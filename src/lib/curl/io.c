@@ -575,7 +575,7 @@ fr_curl_handle_t *fr_curl_io_init(TALLOC_CTX *ctx,
 	CURLMcode		ret;
 	CURLM			*mandle;
 	fr_curl_handle_t	*mhandle;
-	char const		*option = "unknown";
+	char const		*option;
 
 	mandle = curl_multi_init();
 	if (!mandle) {

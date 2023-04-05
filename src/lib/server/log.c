@@ -297,7 +297,7 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 	char const	*fmt_location = "";
 	char const	*fmt_prefix = "";
 	char const	*fmt_module = "";
-	char const	*fmt_exp = "";
+	char const	*fmt_exp;
 
 	fr_log_t	*log_dst = uctx;
 	TALLOC_CTX	*pool;

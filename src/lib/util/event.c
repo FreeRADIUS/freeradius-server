@@ -1389,13 +1389,17 @@ static int _event_timer_free(fr_event_timer_t *ev)
 		(void) fr_dlist_remove(&el->ev_to_add, ev);
 	} else {
 		int		ret = fr_lst_extract(el->times, ev);
-		char const	*err_file = "not-available";
-		int		err_line = 0;
+		char const	*err_file;
+		int		err_line;
 
 #ifndef NDEBUG
 		err_file = ev->file;
 		err_line = ev->line;
+#else
+		err_file = "not-available";
+		err_line = 0;
 #endif
+
 
 		/*
 		 *	Events MUST be in the lst (or the insertion list).
@@ -1504,14 +1508,17 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		 */
 		if (!fr_dlist_entry_in_list(&ev->entry)) {
 			int		ret;
-			char const	*err_file = "not-available";
-			int		err_line = 0;
+			char const	*err_file;
+			int		err_line;
 
 			ret = fr_lst_extract(el->times, ev);
 
 #ifndef NDEBUG
 			err_file = ev->file;
 			err_line = ev->line;
+#else
+			err_file = "not-available";
+			err_line = 0;
 #endif
 
 			/*

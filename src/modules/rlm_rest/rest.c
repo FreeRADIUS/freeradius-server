@@ -1736,7 +1736,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	http_auth_type_t	auth = section->auth;
 
 	CURLcode		ret = CURLE_OK;
-	char const		*option = "unknown";
+	char const		*option;
 
 	char			buffer[512];
 	bool			content_type_set = false;
