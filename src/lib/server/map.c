@@ -725,6 +725,8 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 
 	tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
 	TALLOC_CTX	*tmp_ctx = NULL;		/* Temporary context for request lists */
+	tmpl_rules_t	child_rhs_rules = *rhs_rules;
+	tmpl_rules_t const  *our_rhs_rules;
 
 	/*
 	 *	The first map has ctx as the parent context.
@@ -908,7 +910,33 @@ do_children:
 		cp = cf_item_to_pair(ci);
 		fr_assert(cp != NULL);
 
-		if (map_afrom_cp(parent_ctx, &map, parent, cp, &child_lhs_rules, rhs_rules, edit) < 0) {
+		/*
+		 *	Over-ride RHS rules for
+		 *
+		 *	&reply += {
+		 *		&User-Name = &User-Name
+		 *	}
+		 *
+		 *	Which looks stupid.  Instead we require
+		 *
+		 *	&reply += {
+		 *		&User-Name = &request.User-Name
+		 *	}
+		 *
+		 *	On the other hand, any xlats on the RHS don't use the full path.  :( And we still need
+		 *	to allow relative attribute references via "&.foo", when updating structures.
+		 */
+		our_rhs_rules = rhs_rules;
+		if (edit && (rhs_rules->attr.list_def != child_lhs_rules.attr.list_def)) {
+			char const *value = cf_pair_value(cp);
+
+			if (value && (*value == '&')) {
+				child_rhs_rules.attr.list_presence = TMPL_ATTR_LIST_REQUIRE;
+				our_rhs_rules = &child_rhs_rules;
+			}
+		}
+
+		if (map_afrom_cp(parent_ctx, &map, parent, cp, &child_lhs_rules, our_rhs_rules, edit) < 0) {
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;
