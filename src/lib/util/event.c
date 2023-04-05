@@ -1767,6 +1767,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	 */
 	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
     		siginfo_t	info;
+		int ret;
 
 		/*
 		 *	Ensure we don't accidentally pick up the error
@@ -1799,7 +1800,8 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		 *	we'd consider to indicate that the process
 		 *	had completed.
 		 */
-		if (waitid(P_PID, pid, &info, WEXITED | WNOHANG | WNOWAIT) >= 0) {
+		ret = waitid(P_PID, pid, &info, WEXITED | WNOHANG | WNOWAIT);
+		if (ret > 0) {
 			static fr_table_num_sorted_t const si_codes[] = {
 				{ L("exited"),	CLD_EXITED },
 				{ L("killed"),	CLD_KILLED },
@@ -1838,6 +1840,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 				 *	because they were not yet yielded,
 				 *	leading to hangs.
 				 */
+			early_exit:
 				if (fr_event_user_insert(ev, el, &ev->early_exit.ev, true, _fr_event_pid_early_exit, ev) < 0) {
 					fr_strerror_printf_push("Failed adding wait for PID %ld, and failed adding "
 								"backup user event", (long) pid);
@@ -1854,6 +1857,18 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 
 				goto error;
 			}
+		/*
+		 *	Failed adding waiter for process, but process has not completed...
+		 *
+		 *	This weird, but seems to happen on macOS ocassionally.
+		 *
+		 *	Add an event to run early exit...
+		 *
+		 *	Man pages for waitid say if it returns 0 the info struct can be in
+		 *	a nondeterministic state, so there's nothing more to do.
+		 */
+		} else if (ret == 0) {
+			goto early_exit;
 		} else {
 			/*
 			*	Print this error here, so that the caller gets
