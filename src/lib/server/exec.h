@@ -77,22 +77,51 @@ typedef struct {
 
 } fr_exec_state_t;
 
-void	fr_exec_cleanup(fr_exec_state_t *exec, int signal);
+/** @name Low level interface
+ *
+ * These functions are used both by fr_exec_oneshot function, and any code which
+ * needs a lower level interface for execing external programs.
+ *
+ * In the case of fr_exec_fork_wait, the caller is responsible for installing
+ * I/O handlers, cleaning up file descriptors returned, and reaping the process.
+ *
+ * @{
+ */
+int	fr_exec_value_box_list_to_argv(TALLOC_CTX *ctx,
+				       char ***argv_p, fr_value_box_list_t const *in);
 
-int	fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
-			    fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit);
+char	**fr_exec_pair_to_env(request_t *request, fr_pair_list_t *env_pairs, bool env_escape);
+
+int	fr_exec_fork_nowait(fr_event_list_t *el,
+			    char **argv_in, char **env_in,
+			    bool env_inherit, bool debug);
 
 int 	fr_exec_fork_wait(pid_t *pid_p,
-			   int *stdin_fd, int *stdout_fd, int *stderr_fd,
-			   request_t *request, fr_value_box_list_t *args,
-			   fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit);
+			  int *stdin_fd, int *stdout_fd, int *stderr_fd,
+			  char **argv_in, char **env_usr,
+			  bool env_inherit, bool debug);
+/** @} */
 
-int	fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
-		      fr_value_box_list_t *args,
-		      fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit,
-		      bool need_stdin,
-		      bool store_stdout, TALLOC_CTX *stdout_ctx,
-		      fr_time_delta_t timeout);
+/** @name High level interface
+ *
+ * These functions allow easy processing of oneshot exec calls.
+ *
+ * @{
+ */
+int	fr_exec_oneshot_nowait(request_t *request,
+			       fr_value_box_list_t *args, fr_pair_list_t *env_pairs,
+			       bool env_escape, bool env_inherit);
+
+void	fr_exec_oneshot_cleanup(fr_exec_state_t *exec, int signal);
+
+int	fr_exec_oneshot(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
+		        fr_value_box_list_t *args,
+		        fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit,
+		        bool need_stdin,
+		        bool store_stdout, TALLOC_CTX *stdout_ctx,
+		        fr_time_delta_t timeout);
+/** @} */
+
 #ifdef __cplusplus
 }
 #endif

@@ -26,14 +26,19 @@ RCSID("$Id$")
 
 #define LOG_PREFIX mctx->inst->name
 
-#include <freeradius-devel/server/base.h>
+#include <stdint.h>
+
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/server/exec.h>
+#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-
+#include <freeradius-devel/unlang/xlat.h>
+#include <freeradius-devel/unlang/module.h>
 /*
  *	Define a structure for our module configuration.
  */
@@ -129,14 +134,19 @@ static xlat_action_t exec_xlat_oneshot(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 	}
 
 	if (!inst->wait) {
-		/* Not waiting for the response */
-		fr_exec_fork_nowait(request, in, env_pairs, inst->shell_escape, false);
+		int ret;
+
+		ret = fr_exec_oneshot_nowait(request, in, env_pairs, inst->shell_escape, inst->env_inherit);
+		if (unlikely(ret < 0)) {
+			RPEDEBUG("Failed executing program");
+			return XLAT_ACTION_FAIL;
+		}
+
 		return XLAT_ACTION_DONE;
 	}
 
 	MEM(exec = talloc_zero(unlang_interpret_frame_talloc_ctx(request), fr_exec_state_t));
-
-	if (fr_exec_start(exec, exec, request,
+	if (fr_exec_oneshot(exec, exec, request,
 			  in,
 			  env_pairs, inst->shell_escape, inst->env_inherit,
 			  false,
@@ -219,8 +229,9 @@ static unlang_action_t mod_exec_oneshot_nowait_resume(rlm_rcode_t *p_result, mod
 						      request_t *request)
 {
 	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_exec_t);
-	fr_value_box_list_t	*box = talloc_get_type_abort(mctx->rctx, fr_value_box_list_t);
+	fr_value_box_list_t	*args = talloc_get_type_abort(mctx->rctx, fr_value_box_list_t);
 	fr_pair_list_t		*env_pairs = NULL;
+	int			ret;
 
 	/*
 	 *	Decide what input/output the program takes.
@@ -232,7 +243,8 @@ static unlang_action_t mod_exec_oneshot_nowait_resume(rlm_rcode_t *p_result, mod
 		}
 	}
 
-	if (fr_exec_fork_nowait(request, box, env_pairs, inst->shell_escape, inst->env_inherit) < 0) {
+	ret = fr_exec_oneshot_nowait(request, args, env_pairs, inst->shell_escape, inst->env_inherit);
+	if (unlikely(ret < 0)) {
 		RPEDEBUG("Failed executing program");
 		RETURN_MODULE_FAIL;
 	}

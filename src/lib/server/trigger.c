@@ -219,10 +219,10 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	}
 
 	/*
-	 *	fr_exec_start just calls request_resume when it's
+	 *	fr_exec_oneshot just calls request_resume when it's
 	 *	done.
 	 */
-	if (fr_exec_start(request, &trigger->exec, request,
+	if (fr_exec_oneshot(request, &trigger->exec, request,
 	                  &trigger->args,
 	                  NULL, false, true,
 	                  false,
@@ -239,7 +239,7 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	 *	gets called repeatedly.
 	 */
 	if (unlang_function_repeat_set(request, trigger_done) < 0) {
-		fr_exec_cleanup(&trigger->exec, SIGKILL);
+		fr_exec_oneshot_cleanup(&trigger->exec, SIGKILL);
 		goto fail;
 	}
 

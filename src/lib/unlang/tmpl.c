@@ -55,7 +55,7 @@ static void unlang_tmpl_signal(request_t *request, unlang_stack_frame_t *frame, 
 	/*
 	 *	If we're cancelled, then kill any child processes
 	 */
-	if ((action == FR_SIGNAL_CANCEL) && state->exec.request) fr_exec_cleanup(&state->exec, SIGKILL);
+	if ((action == FR_SIGNAL_CANCEL) && state->exec.request) fr_exec_oneshot_cleanup(&state->exec, SIGKILL);
 
 	if (!state->signal) return;
 
@@ -63,7 +63,7 @@ static void unlang_tmpl_signal(request_t *request, unlang_stack_frame_t *frame, 
 
 	/*
 	 *	If we're cancelled then disable this signal handler.
-	 *	fr_exec_cleanup should handle being called spuriously.
+	 *	fr_exec_oneshot_cleanup should handle being called spuriously.
 	 */
 	if (action == FR_SIGNAL_CANCEL) state->signal = NULL;
 }
@@ -173,7 +173,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
-	if (fr_exec_start(state->ctx, &state->exec, request,
+	if (fr_exec_oneshot(state->ctx, &state->exec, request,
 			  &state->list,
 			  state->args.exec.env, false, false,
 			  false,
