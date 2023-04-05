@@ -851,7 +851,7 @@ do_children:
 			 *	is used as the parsing context of the
 			 *	inner section.
 			 */
-			child_lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_NO;
+			child_lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_AUTO;
 			child_lhs_rules.attr.namespace = tmpl_attr_tail_da(map->lhs);
 
 			/*
@@ -865,9 +865,16 @@ do_children:
 				dict = fr_dict_by_da(ref);
 				internal = fr_dict_internal();
 
-				if ((dict != internal) && (dict != child_lhs_rules.attr.dict_def)) {
-					child_lhs_rules.attr.dict_def = dict;
-					child_lhs_rules.attr.namespace = ref;
+				if (dict != internal) {
+					if (dict != child_lhs_rules.attr.dict_def) {
+						child_lhs_rules.attr.dict_def = dict;
+						child_lhs_rules.attr.namespace = ref;
+					}
+				} else {
+					/*
+					 *	We're internal: don't use it, and instead rely on dict_def.
+					 */
+					child_lhs_rules.attr.namespace = NULL;
 				}
 			}
 

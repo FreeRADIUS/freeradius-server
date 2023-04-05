@@ -9,4 +9,24 @@ if (!&request.Tmp-Group-0) {
 	test_fail
 }
 
+&request.Tmp-Group-0 += {
+	&User-Name = "hello"
+}
+
+if !(&request.Tmp-Group-0.User-Name == "hello") {
+	test_fail
+}
+
+
+&request.Tmp-Group-0 += {
+	&Tmp-Group-1 = {
+		&User-Name = "foo"
+	}
+}
+
+if !(&request.Tmp-Group-0.Tmp-Group-1.User-Name == "foo") {
+	test_fail
+}
+
+
 success
