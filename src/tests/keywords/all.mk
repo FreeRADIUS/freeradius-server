@@ -40,6 +40,20 @@ test.keywords.${1}: $(addprefix $(OUTPUT)/,${1})
 test.keywords.help: TEST_KEYWORDS_HELP += test.keywords.${1}
 
 #
+#  Create the input attrs, either from the test-specific input,
+#  or from the default input.
+#
+$(OUTPUT)/${1}: $(OUTPUT)/${1}.attrs | $(dir $(OUTPUT)/${1})
+$(OUTPUT)/${1}.attrs: | $(dir $(OUTPUT)/${1})
+
+ifneq "$(wildcard src/tests/keywords/${1}.attrs)" ""
+$(OUTPUT)/${1}.attrs: src/tests/keywords/${1}.attrs
+else
+$(OUTPUT)/${1}.attrs: src/tests/keywords/default-input.attrs
+endif
+	@cp $$< $$@
+
+#
 #  All of the "update" tests which should also be run with "-S rewrite_update=yes"
 #
 #  update-attr-ref-null		&foo := &bar, where bar doesn't exist.  Now does nothing
@@ -135,7 +149,6 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_csv.la
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_test.la rlm_csv.la rlm_unpack.la
 	$(eval CMD:=KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(NEW_COND) $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx)
 	@echo "KEYWORD-TEST $(notdir $@)"
-	${Q}cp $(if $(wildcard $<.attrs),$<.attrs,$(dir $<)/default-input.attrs) $@.attrs
 	${Q}if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
