@@ -1,0 +1,12 @@
+#
+#  PRE: edit
+#
+&session-state += {
+	&User-Name = "foo"
+}
+
+if !(&session-state.User-Name == "foo") {
+	test_fail
+}
+
+success
