@@ -1,3 +1,9 @@
+# Doxygen table of contents
+If:
+  PathMatch: .*doc/doxygen/.*
+Index:
+  Background: Skip
+---
 # osmocom code has many errors/warnings and seems to lock up clangd
 If:
   PathMatch: .*/rlm_sigtran/(libosmo|asn1).*
