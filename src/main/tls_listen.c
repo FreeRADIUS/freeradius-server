@@ -81,7 +81,7 @@ static void tls_socket_close(rad_listen_t *listener)
 	/*
 	 *	Tell the event handler that an FD has disappeared.
 	 */
-	DEBUG("(TLS) Client has closed connection");
+	DEBUG("(TLS) Closing connection");
 	radius_update_listener(listener);
 
 	/*
@@ -500,7 +500,10 @@ static int tls_socket_recv(rad_listen_t *listener)
 		/*
 		 *	Normal socket close.
 		 */
-		if (rcode == 0) goto do_close;
+		if (rcode == 0) {
+			RDEBUG("(TLS) Client has closed the TCP connection");
+			goto do_close;
+		}
 
 		sock->ssn->dirty_in.used = rcode;
 	}
@@ -605,6 +608,16 @@ get_application_data:
 
 	status = tls_application_data(sock->ssn, request);
 	RDEBUG3("(TLS) Application data status %d", status);
+
+	/*
+	 *	Some kind of failure.  Close the socket.
+	 */
+	if (status == FR_TLS_FAIL) {
+		DEBUG("(TLS) Unable to recover from TLS error, closing socket from client port %u", sock->other_port);
+		tls_socket_close(listener);
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+		return 0;
+	}
 
 	if (status == FR_TLS_MORE_FRAGMENTS) {
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
@@ -1134,7 +1147,8 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 		rcode = SSL_read(sock->ssn->ssl, data + sock->partial,
 				 length - sock->partial);
 		if (rcode <= 0) {
-			switch (SSL_get_error(sock->ssn->ssl, rcode)) {
+			int err = SSL_get_error(sock->ssn->ssl, rcode);
+			switch (err) {
 			case SSL_ERROR_WANT_READ:
 			case SSL_ERROR_WANT_WRITE:
 				DEBUG3("(TLS) SSL_read() returned %s", ERR_reason_error_string(rcode));
@@ -1145,6 +1159,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 				SSL_shutdown(sock->ssn->ssl);
 				goto do_close;
 			default:
+				DEBUG("(TLS) Unexpected OpenSSL error %d", err);
 				goto do_close;
 			}
 		}
