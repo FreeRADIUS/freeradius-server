@@ -134,10 +134,7 @@ static xlat_action_t exec_xlat_oneshot(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 	}
 
 	if (!inst->wait) {
-		int ret;
-
-		ret = fr_exec_oneshot_nowait(request, in, env_pairs, inst->shell_escape, inst->env_inherit);
-		if (unlikely(ret < 0)) {
+		if (unlikely(fr_exec_oneshot_nowait(request, in, env_pairs, inst->shell_escape, inst->env_inherit) < 0)) {
 			RPEDEBUG("Failed executing program");
 			return XLAT_ACTION_FAIL;
 		}
@@ -147,11 +144,11 @@ static xlat_action_t exec_xlat_oneshot(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 
 	MEM(exec = talloc_zero(unlang_interpret_frame_talloc_ctx(request), fr_exec_state_t));
 	if (fr_exec_oneshot(exec, exec, request,
-			  in,
-			  env_pairs, inst->shell_escape, inst->env_inherit,
-			  false,
-			  inst->wait, ctx,
-			  inst->timeout) < 0) {
+			    in,
+			    env_pairs, inst->shell_escape, inst->env_inherit,
+			    false,
+			    inst->wait, ctx,
+			    inst->timeout) < 0) {
 		talloc_free(exec);
 		return XLAT_ACTION_FAIL;
 	}
@@ -231,7 +228,6 @@ static unlang_action_t mod_exec_oneshot_nowait_resume(rlm_rcode_t *p_result, mod
 	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_exec_t);
 	fr_value_box_list_t	*args = talloc_get_type_abort(mctx->rctx, fr_value_box_list_t);
 	fr_pair_list_t		*env_pairs = NULL;
-	int			ret;
 
 	/*
 	 *	Decide what input/output the program takes.
@@ -243,8 +239,7 @@ static unlang_action_t mod_exec_oneshot_nowait_resume(rlm_rcode_t *p_result, mod
 		}
 	}
 
-	ret = fr_exec_oneshot_nowait(request, args, env_pairs, inst->shell_escape, inst->env_inherit);
-	if (unlikely(ret < 0)) {
+	if (unlikely(fr_exec_oneshot_nowait(request, args, env_pairs, inst->shell_escape, inst->env_inherit) < 0)) {
 		RPEDEBUG("Failed executing program");
 		RETURN_MODULE_FAIL;
 	}
@@ -453,8 +448,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		 *	Pick the shorter one
 		 */
 		inst->timeout = fr_time_delta_gt(main_config->max_request_time, fr_time_delta_from_sec(EXEC_TIMEOUT)) ?
-			fr_time_delta_from_sec(EXEC_TIMEOUT):
-			main_config->max_request_time;
+						 fr_time_delta_from_sec(EXEC_TIMEOUT):
+						 main_config->max_request_time;
 	}
 	else {
 		if (fr_time_delta_lt(inst->timeout, fr_time_delta_from_sec(1))) {
