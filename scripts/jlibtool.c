@@ -2253,7 +2253,11 @@ static int run_mode(command_t *cmd)
 #ifdef __APPLE__
 		setenv("DYLD_FALLBACK_LIBRARY_PATH", l, 1);
 #endif
-		setenv("FR_LIBRARY_PATH", "./build/lib/local/.libs", 1);
+
+		l = getenv("FR_LIBRARY_PATH");
+		if (!l) l = "./build/lib/local/.libs";
+		setenv("FR_LIBRARY_PATH", l, 1);
+
 		rv = run_command(cmd, cmd->arglist);
 		if (rv) goto finish;
 	}
