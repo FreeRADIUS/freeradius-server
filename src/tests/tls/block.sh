@@ -9,6 +9,17 @@ if [ $UID -ne 0 ]; then
         exit 1
 fi
 
+# avoid keep the server blocked
+function trap_ctrlc ()
+{
+        echo "Ctrl-C caught...performing clean up"
+
+        iptables -D INPUT -p tcp --dport 2083 -j REJECT 1> /dev/null 2>&1
+        exit 0
+}
+
+trap "trap_ctrlc" 2
+
 MAXWAIT=5
 while true; do
         _wait="$((RANDOM % MAXWAIT))"
