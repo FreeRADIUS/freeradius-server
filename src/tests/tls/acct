@@ -1,0 +1,7 @@
+User-Name = "bob"
+Acct-Session-Id := "0000"
+Acct-Status-Type = Start
+Called-Station-Id := "00:01:02:03"
+Calling-Station-Id := "04:05:06:07"
+Message-Authenticator = 0x00
+Framed-IP-Address = 127.0.0.1

@@ -32,3 +32,9 @@ Send 500,000 packets:
 ./radclient.sh -c 500000
 ```
 
+You can also send accounting packets:
+
+```
+./radacct.sh
+```
+
