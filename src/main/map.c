@@ -1223,9 +1223,10 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 */
 	num = map->lhs->tmpl_num;
 	(void) fr_cursor_init(&dst_list, list);
-	if (num != NUM_ANY) {
+	if ((num != NUM_ANY) && (num > 0)) {
 		while ((dst = fr_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag))) {
-			if (num-- == 0) break;
+			if (num <= 0) break;
+			num--;
 		}
 	} else {
 		dst = fr_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag);
