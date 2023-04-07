@@ -51,10 +51,12 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
+#if 0
 static pthread_mutex_t tls_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define TLS_MUTEX tls_mutex
-//#define TLS_MUTEX sock->mutex
+#endif
+#define TLS_MUTEX sock->mutex
 
 static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
 {
