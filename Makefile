@@ -458,7 +458,7 @@ deb:
 		  echo "'make deb' only works on debian systems" ; \
 		  exit 1; \
 		fi ; \
-		echo "Please run 'apt-get install build-essentials' "; \
+		echo "Please run 'apt-get install build-essential' "; \
 		exit 1; \
 	fi
 	EMAIL="packages@freeradius.org" fakeroot dch -b -v$(PKG_VERSION) ""
