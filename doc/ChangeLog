@@ -13,17 +13,16 @@ FreeRADIUS 3.2.3 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 	Bug fixes
 	* Don't leak MD contexts with OpenSSL 3.0.
 	* increase internal buffer size for TLS connections, which
-	  helps with high-load proxies.
+	  can help with high-load proxies.
 	* Send Status-Server checks for TLS connections
-	* "update CoA" cannot be used with "fake" packets,
-	  i.e. inner-tunnel and virtual home servers.
+	* Give descriptive error if "update CoA" is used with "fake" packets,
+	  as it won't work. i.e. inner-tunnel and virtual home servers.
 	* Many small ASAN / LSAN fixes from Jorge Pereira.
 	* Close inbound  RADIUS/TLS socket on TLS errors.  When a home server
 	  sees a TLS error, it will now close the socket, so proxies do not
 	  have an open (but dead) TLS connection.
-	* Change the way we mutex lock inbound RADIUS/TLS connections.
-	  This change avoids random issues with "bad record mac" due to poorly
-	  defined SSL mutex locking behavior.
+	* Fix mutex locking issues on inbound RADIUS/TLS connections.
+	  This change avoids random issues with "bad record mac".
 
 FreeRADIUS 3.2.2 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 	Configuration changes
