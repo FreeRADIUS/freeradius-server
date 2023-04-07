@@ -388,55 +388,10 @@ extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted[T_TOKEN_LAST];
 extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
 /** @} */
 
-/** @name Convenience functions
+/** @name Allocation and initialisation functions
  *
  * These macros and inline functions simplify working
  * with lists of value boxes.
- *
- * @{
- */
-/** Determines whether a list contains the number of boxes required
- *
- * @param[in] list	of value boxes.
- * @param[in] min	The number of boxes required to return true.
- * @return
- *	- true if the list has at least min boxes.
- *	- false if the list has fewer than min boxes.
- */
-static inline CC_HINT(nonnull)
-bool fr_value_box_list_len_min(fr_value_box_list_t const *list, unsigned int min)
-{
-	unsigned int i = fr_value_box_list_num_elements(list);
-
-	return (i >= min);
-}
-/** @} */
-
-/** @name Box to box copying
- *
- * @{
- */
-void		fr_value_box_clear_value(fr_value_box_t *data)
-		CC_HINT(nonnull(1));
-
-void		fr_value_box_clear(fr_value_box_t *data)
-		CC_HINT(nonnull(1));
-
-int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
-		CC_HINT(nonnull(2,3));
-
-void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					  const fr_value_box_t *src)
-		CC_HINT(nonnull(2,3));
-
-int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src)
-		CC_HINT(nonnull(2,3));
-/** @} */
-
-/** @name Value box assignment functions
- *
- * These functions allow C values to be assigned to value boxes.
- * They will work with uninitialised/stack allocated memory.
  *
  * @{
  */
@@ -546,6 +501,78 @@ fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
 {
 	return fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL, false);
 }
+/** @} */
+
+/** @name Convenience functions
+ *
+ * These macros and inline functions simplify working
+ * with lists of value boxes.
+ *
+ * @{
+ */
+/** Determines whether a list contains the number of boxes required
+ *
+ * @param[in] list	of value boxes.
+ * @param[in] min	The number of boxes required to return true.
+ * @return
+ *	- true if the list has at least min boxes.
+ *	- false if the list has fewer than min boxes.
+ */
+static inline CC_HINT(nonnull)
+bool fr_value_box_list_len_min(fr_value_box_list_t const *list, unsigned int min)
+{
+	unsigned int i = fr_value_box_list_num_elements(list);
+
+	return (i >= min);
+}
+/** @} */
+
+/** @name Box to box copying
+ *
+ * @{
+ */
+void		fr_value_box_clear_value(fr_value_box_t *data)
+		CC_HINT(nonnull(1));
+
+void		fr_value_box_clear(fr_value_box_t *data)
+		CC_HINT(nonnull(1));
+
+int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
+		CC_HINT(nonnull(2,3));
+
+void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,
+					  const fr_value_box_t *src)
+		CC_HINT(nonnull(2,3));
+
+int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src)
+		CC_HINT(nonnull(2,3));
+
+/** Copy an existing box, allocating a new box to hold its contents
+ *
+ * @param[in] ctx	to allocate new box in.
+ * @param[in] src	box to copy.
+ */
+static inline CC_HINT(nonnull(2))
+fr_value_box_t *fr_value_box_acopy(TALLOC_CTX *ctx, fr_value_box_t const *src)
+{
+	fr_value_box_t *vb = fr_value_box_alloc_null(ctx);
+
+	if ((unlikely(fr_value_box_copy(vb, vb, src) < 0))) {
+		talloc_free(vb);
+		return NULL;
+	}
+
+	return vb;
+}
+/** @} */
+
+/** @name Value box assignment functions
+ *
+ * These functions allow C values to be assigned to value boxes.
+ * They will work with uninitialised/stack allocated memory.
+ *
+ * @{
+ */
 
 /** Return a pointer to the "raw" value from a value-box.
  *
