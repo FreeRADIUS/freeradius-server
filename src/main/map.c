@@ -1020,7 +1020,7 @@ do {\
 int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t func, void *ctx)
 {
 	int rcode = 0;
-	int num;
+	int num = 0;
 	VALUE_PAIR **list, *vp, *dst, *head = NULL;
 	bool found = false;
 	REQUEST *context;
@@ -1225,7 +1225,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	(void) fr_cursor_init(&dst_list, list);
 	if (num != NUM_ANY) {
 		while ((dst = fr_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag))) {
-			if (num-- == 0) break;
+			if (num-- <= 0) break;
 		}
 	} else {
 		dst = fr_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag);

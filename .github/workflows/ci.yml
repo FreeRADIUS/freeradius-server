@@ -262,7 +262,6 @@ jobs:
             # Temporarily hack just to skip and see the result.
             # memory leak in rlm_{ldap,rest} and problems in perl+llvm
             rm -rf src/tests/modules/ldap/
-            rm -rf src/tests/modules/rest/
         else
             enable_sanitizers=""
             extra_cflags=""
