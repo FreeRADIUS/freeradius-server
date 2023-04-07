@@ -91,7 +91,6 @@ endif
 
 	./configure $(confflags) \
 		--config-cache \
-		--disable-developer \
 		--disable-openssl-version-check \
 		--prefix=/usr \
 		--exec-prefix=/usr \
