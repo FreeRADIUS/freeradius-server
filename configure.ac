@@ -154,7 +154,12 @@ AC_ARG_ENABLE(developer,
 dnl #
 dnl #  Turn on the developer flag when taken from a git checkout (not a release)
 dnl #
-if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
+dnl #  Passing --git-dir explicitly limits the search to the CWD.  Without it
+dnl #  git will search back up the directory tree for a git repository.
+dnl #  This can cause the configure script to erroneously determine that it's
+dnl #  running in a git repo.
+dnl #
+if test "x$GIT" = "xyes" && git --git-dir=.git status 2>&1 > /dev/null; then
   if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
     AC_MSG_CHECKING([build commit])
     RADIUSD_VERSION_COMMIT=`git rev-parse --short=8 HEAD`
@@ -2645,8 +2650,8 @@ dnl #
 case "$target" in
   *-darwin*)
     echo "Please be sure to use 'xcrun gmake' or 'xcrun lldb' in order to build and run the server from the source tree"
-    ;;	
+    ;;
 
   *)
     ;;
-esac 
+esac
