@@ -1270,7 +1270,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			}
 #endif
 
-
 			rcode = cf_item_parse(cs, "check_client_connections", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->check_client_connections), "no");
 			if (rcode < 0) return -1;
 		}
@@ -3163,6 +3162,14 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 
 		this->recv = proxy_tls_recv;
 		this->proxy_send = proxy_tls_send;
+
+#ifdef HAVE_PTHREAD_H
+		if (pthread_mutex_init(&sock->mutex, NULL) < 0) {
+			rad_assert(0 == 1);
+			listen_free(&this);
+			return 0;
+		}
+#endif
 
 		/*
 		 *	Make sure that this listener is associated with the home server.
