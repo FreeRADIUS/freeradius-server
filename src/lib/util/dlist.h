@@ -870,7 +870,7 @@ static inline void fr_dlist_talloc_free_to_tail(fr_dlist_head_t *head, void *ptr
 {
 	void *e = ptr, *p;
 
-	if (!ptr) return;	/* uninitialized means don't do anything */
+	if (!ptr) return;	/* NULL means don't do anything */
 
 	while (e) {
 		p = fr_dlist_next(head, e);
