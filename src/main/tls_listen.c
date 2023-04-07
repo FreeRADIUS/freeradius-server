@@ -727,6 +727,10 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 			do_close:
 				return -1;
 
+			case SSL_ERROR_SSL:
+				DEBUG("(TLS) Home server has closed the connection");
+				goto do_close;
+
 			default:
 				tls_error_log(NULL, "Failed in proxy receive with OpenSSL error %d", err);
 				goto do_close;
@@ -775,6 +779,11 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 				/* remote end sent close_notify, send one back */
 				SSL_shutdown(sock->ssn->ssl);
 				goto do_close;
+
+			case SSL_ERROR_SSL:
+				DEBUG("(TLS) Home server has closed the connection");
+				goto do_close;
+
 			default:
 				DEBUG("(TLS) Unexpected OpenSSL error %d", err);
 				goto do_close;
