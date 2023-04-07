@@ -154,12 +154,16 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener)
 	return 0;
 }
 
-static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int sock, void *ctx)
+static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void *ctx)
 {
 	rad_listen_t *listener = ctx;
+	listen_socket_t *sock = listener->data;
 
 	proxy_listener_thaw(listener);
+
+	PTHREAD_MUTEX_LOCK(&TLS_MUTEX);
 	(void) tls_socket_write(listener);
+	PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
 }
 
 
