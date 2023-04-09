@@ -89,8 +89,10 @@ typedef struct radius_packet_t {
 
 static fr_randctx fr_rand_pool;	/* across multiple calls */
 static int fr_rand_initialized = 0;
+#ifndef WITH_RADIUSV11_ONLY
 static unsigned int salt_offset = 0;
 static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; /* for CoA decode */
+#endif
 
 char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "",					//!< 0
@@ -507,6 +509,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 }
 
 
+#ifndef WITH_RADIUSV11_ONLY
 #define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
 /** Build an encrypted secret value to return in a reply packet
  *
@@ -692,6 +695,7 @@ static void make_tunnel_passwd(uint8_t *output, ssize_t *outlen,
 	fr_md5_destroy(&old);
 	fr_md5_destroy(&context);
 }
+#endif	/* WITH_RADIUSV11_ONLY */
 
 static int do_next_tlv(VALUE_PAIR const *vp, VALUE_PAIR const *next, int nest)
 {
@@ -936,6 +940,13 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	 */
 	if (len > (ssize_t) room) len = room;
 
+#ifdef WITH_RADIUSV11
+	/*
+	 *	RADIUSV11 does not encrypt any attributes.
+	 */
+	if (packet->radiusv11) goto tag;
+#endif
+
 	/*
 	 *	Encrypt the various password styles
 	 *
@@ -943,6 +954,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	 *	128 bytes long.
 	 */
 	switch (vp->da->flags.encrypt) {
+#ifndef WITH_RADIUSV11_ONLY
 	case FLAG_ENCRYPT_USER_PASSWORD:
 		make_passwd(ptr, &len, data, len,
 			    secret, packet->vector);
@@ -996,9 +1008,12 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 		make_secret(ptr, packet->vector, secret, data, len);
 		len = AUTH_VECTOR_LEN;
 		break;
-
+#endif	/* WITH_RADIUSV11_ONLY */
 
 	default:
+#ifdef WITH_RADIUSV11
+	tag:
+#endif
 		if (vp->da->flags.has_tag && TAG_VALID(vp->tag)) {
 			if (vp->da->type == PW_TYPE_STRING) {
 				if (len > ((ssize_t) (room - 1))) len = room - 1;
@@ -1591,6 +1606,16 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 	 *	Message-Authenticator is hard-coded.
 	 */
 	if (vp->da->attr == PW_MESSAGE_AUTHENTICATOR) {
+#ifdef WITH_RADIUSV11
+		/*
+		 *	RADIUSV11 does not encode or verify Message-Authenticator.
+		 */
+		if (packet->radiusv11) {
+			*pvp = (*pvp)->next;
+			return 0;
+		}
+#endif
+
 		if (room < 18) return -1;
 
 		ptr[0] = PW_MESSAGE_AUTHENTICATOR;
@@ -1926,6 +1951,16 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	length and initial value.
 		 */
 		if (!reply->da->vendor && (reply->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
+#ifdef WITH_RADIUSV11
+			/*
+			 *	RADIUSV11 does not encode or verify Message-Authenticator.
+			 */
+			if (packet->radiusv11) {
+				reply = reply->next;
+				continue;
+			}
+#endif
+
 			if (room < 18) break;
 
 			/*
@@ -1992,12 +2027,17 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	return 0;
 }
 
+#ifdef WITH_RADIUSV11_ONLY
+#define RADIUSV11_UNUSED UNUSED
+#else
+#define RADIUSV11_UNUSED
+#endif
 
 /** Sign a previously encoded packet
  *
  */
 int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-	     char const *secret)
+	     RADIUSV11_UNUSED char const *secret)
 {
 	radius_packet_t	*hdr = (radius_packet_t *)packet->data;
 
@@ -2014,6 +2054,17 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		fr_strerror_printf("ERROR: You must call rad_encode() before rad_sign()");
 		return -1;
 	}
+
+#ifdef WITH_RADIUSV11
+	/*
+	 *	RADIUSV11 uses the authenticator field for matching
+	 *	requests to responses, and does not otherwise verify
+	 *	it.
+	 */
+	if (packet->radiusv11) {
+		return 0;
+	}
+#endif
 
 	/*
 	 *	Set up the authentication vector with zero, or with
@@ -2051,6 +2102,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	if ((fr_debug_lvl > 3) && fr_log_fp) rad_print_hex(packet);
 #endif
 
+#ifndef WITH_RADIUSV11_ONLY
 	/*
 	 *	If there's a Message-Authenticator, update it
 	 *	now.
@@ -2097,12 +2149,14 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		memcpy(packet->data + packet->offset + 2,
 		       calc_auth_vector, AUTH_VECTOR_LEN);
 	}
+#endif	/* WITH_RADIUSV11_ONLY */
 
 	/*
 	 *	Copy the request authenticator over to the packet.
 	 */
 	memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
 
+#ifndef WITH_RADIUSV11_ONLY
 	/*
 	 *	Switch over the packet code, deciding how to
 	 *	sign the packet.
@@ -2137,6 +2191,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			break;
 		}
 	}/* switch over packet codes */
+#endif	 /* WITH_RADIUSV11_ONLY */
 
 	return 0;
 }
@@ -2229,7 +2284,7 @@ int rad_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 	return result;		/* 0 is OK, !0 is !OK, just like memcmp */
 }
 
-
+#ifndef WITH_RADIUSV11_ONLY
 /** Validates the requesting client NAS
  *
  * Calculates the request Authenticator based on the clients private key.
@@ -2307,6 +2362,7 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	if (rad_digest_cmp(packet->vector, calc_digest, AUTH_VECTOR_LEN) != 0) return 2;
 	return 0;
 }
+#endif	/* WITH_RADIUSV11_ONLY */
 
 /** Check if a set of RADIUS formatted TLVs are OK
  *
@@ -2419,12 +2475,14 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	int			count;
 	radius_packet_t		*hdr;
 	char			host_ipaddr[128];
+#ifndef WITH_RADIUSV11_ONLY
 	bool			require_ma = false;
 	bool			seen_ma = false;
-	uint32_t		num_attributes;
-	decode_fail_t		failure = DECODE_FAIL_NONE;
 	bool			eap = false;
 	bool			non_eap = false;
+#endif
+	uint32_t		num_attributes;
+	decode_fail_t		failure = DECODE_FAIL_NONE;
 
 	/*
 	 *	Check for packets smaller than the packet header.
@@ -2617,6 +2675,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 			goto finish;
 		}
 
+#ifndef WITH_RADIUSV11_ONLY
 		/*
 		 *	Sanity check the attributes for length.
 		 */
@@ -2640,6 +2699,13 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 			break;
 
 		case PW_MESSAGE_AUTHENTICATOR:
+#ifdef WITH_RADIUSV11
+			/*
+			 *	RADIUSV11 does not encode or verify Message-Authenticator.
+			 */
+			if (packet->radiusv11) break;
+#endif
+
 			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
 				FR_DEBUG_STRERROR_PRINTF("Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
 					   inet_ntop(packet->src_ipaddr.af,
@@ -2652,6 +2718,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 			seen_ma = true;
 			break;
 		}
+#endif
 
 		/*
 		 *	FIXME: Look up the base 255 attributes in the
@@ -2705,7 +2772,14 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	Similarly, Status-Server packets MUST contain
 	 *	Message-Authenticator attributes.
 	 */
-	if (require_ma && !seen_ma) {
+	if (require_ma &&
+#ifdef WITH_RADIUSV11
+	    /*
+	     *	RADIUSV11 does not encode or verify Message-Authenticator.
+	     */
+	    !packet->radiusv11 &&
+#endif
+	    !seen_ma) {
 		FR_DEBUG_STRERROR_PRINTF("Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
@@ -2714,6 +2788,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 		goto finish;
 	}
 
+#ifndef WITH_RADIUSV11_ONLY
 	if (eap && non_eap) {
 		FR_DEBUG_STRERROR_PRINTF("Bad packet from host %s:  Packet contains EAP-Message and non-EAP authentication attribute",
 			   inet_ntop(packet->src_ipaddr.af,
@@ -2722,6 +2797,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 		failure = DECODE_FAIL_TOO_MANY_AUTH;
 		goto finish;
 	}
+#endif
 
 	/*
 	 *	Fill RADIUS header fields
@@ -2820,15 +2896,28 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 /** Verify the Request/Response Authenticator (and Message-Authenticator if present) of a packet
  *
  */
-int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
+int rad_verify(RADIUS_PACKET *packet, RADIUSV11_UNUSED RADIUS_PACKET *original, RADIUSV11_UNUSED char const *secret)
 {
 	uint8_t		*ptr;
 	int		length;
 	int		attrlen;
+#ifndef WITH_RADIUSV11_ONLY
 	int		rcode;
+#endif
 	char		buffer[32];
 
 	if (!packet || !packet->data) return -1;
+
+#ifdef WITH_RADIUSV11
+	/*
+	 *	RADIUSV11 uses the authenticator field for matching
+	 *	requests to responses, and does not otherwise verify
+	 *	it.
+	 */
+	if (packet->radiusv11) {
+		return 0;
+	}
+#endif
 
 	/*
 	 *	Before we allocate memory for the attributes, do more
@@ -2837,11 +2926,14 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 	ptr = packet->data + RADIUS_HDR_LEN;
 	length = packet->data_len - RADIUS_HDR_LEN;
 	while (length > 0) {
+#ifndef WITH_RADIUSV11_ONLY
 		uint8_t	msg_auth_vector[AUTH_VECTOR_LEN];
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
+#endif
 
 		attrlen = ptr[1];
 
+#ifndef WITH_RADIUSV11_ONLY
 		switch (ptr[0]) {
 		default:	/* don't do anything. */
 			break;
@@ -2851,6 +2943,13 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 			 *	attribute is invalid.
 			 */
 		case PW_MESSAGE_AUTHENTICATOR:
+#ifdef WITH_RADIUSV11
+			/*
+			 *	Ignore Message-Authenticator for RADIUSV11 packets.
+			 */
+			if (packet->radiusv11) break;
+#endif
+
 			memcpy(msg_auth_vector, &ptr[2], sizeof(msg_auth_vector));
 			memset(&ptr[2], 0, AUTH_VECTOR_LEN);
 
@@ -2908,6 +3007,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 			memcpy(packet->data + 4, packet->vector, AUTH_VECTOR_LEN);
 			break;
 		} /* switch over the attributes */
+#endif		  /* WITH_RADIUSV11_ONLY */
 
 		ptr += attrlen;
 		length -= attrlen;
@@ -2927,6 +3027,16 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 				   packet->src_port);
 		return -1;
 	}
+
+#ifndef WITH_RADIUSV11_ONLY
+#ifdef WITH_RADIUSV11
+	/*
+	 *	RADIUSV11 uses the authenticator field for matching
+	 *	requests to responses, and does not otherwise verify
+	 *	it.
+	 */
+	if (packet->radiusv11) return 0;
+#endif
 
 	/*
 	 *	Calculate and/or verify Request or Response Authenticator.
@@ -2988,6 +3098,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 				   packet->src_port);
 		return -1;
 	}
+#endif
 
 	return 0;
 }
@@ -3220,7 +3331,6 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 		tlv_len = data2vp(ctx, packet, original, secret, child,
 				  data + 2, data[1] - 2, data[1] - 2, tail);
 		if (tlv_len < 0) {
-			dict_attr_free(&child); /* only frees unknowns */
 			fr_pair_list_free(&head);
 			return -1;
 		}
@@ -3308,10 +3418,7 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 			 attrlen - (dv->type + dv->length),
 			 attrlen - (dv->type + dv->length),
 			 pvp);
-	if (my_len < 0) {
-		dict_attr_free(&da); /* only frees unknowns */
-		return my_len;
-	}
+	if (my_len < 0) return my_len;
 
 	return attrlen;
 }
@@ -3364,10 +3471,7 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 
 		rcode = data2vp(ctx, packet, original, secret, child,
 				data, attrlen, attrlen, pvp);
-		if (rcode < 0) {
-			dict_attr_free(&child); /* only frees unknowns */
-			return rcode;
-		}
+		if (rcode < 0) return rcode;
 		return attrlen;
 	}
 
@@ -3378,6 +3482,7 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		rcode = data2vp(ctx, packet, original, secret, da,
 				data + 2, attrlen - 2, attrlen - 2,
 				pvp);
+
 		if ((rcode < 0) || (((size_t) rcode + 2) != attrlen)) goto raw; /* didn't decode all of the data */
 		return attrlen;
 	}
@@ -3519,10 +3624,7 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 
 		rcode = data2vp(ctx, packet, original, secret, child,
 				data, attrlen, attrlen, pvp);
-		if (rcode < 0) {
-			dict_attr_free(&child); /* only frees unknowns */
-			return rcode;
-		}
+		if (rcode < 0) return rcode;
 		return attrlen;
 	}
 
@@ -3840,8 +3942,12 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	 *	then decode the tag.
 	 */
 	if (da->flags.has_tag && (datalen > 1) &&
-	    ((data[0] < 0x20) ||
-	     (da->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
+	    ((data[0] < 0x20)
+#ifndef WITH_RADIUSV11_ONLY
+	     || (da->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD)
+#endif
+		    )) {
+
 		/*
 		 *	Only "short" attributes can be encrypted.
 		 */
@@ -3864,10 +3970,20 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		data = buffer;
 	}
 
+#ifndef WITH_RADIUSV11_ONLY
 	/*
 	 *	Decrypt the attribute.
 	 */
-	if (secret && packet && (da->flags.encrypt != FLAG_ENCRYPT_NONE)) {
+	if (secret && packet &&
+
+#ifdef WITH_RADIUSV11
+	    /*
+	     *	RADIUSV11 does not encrypt any attributes.
+	     */
+	    !packet->radiusv11 &&
+#endif
+
+	    (da->flags.encrypt != FLAG_ENCRYPT_NONE)) {
 		VP_TRACE("data2vp: decrypting type %u\n", da->flags.encrypt);
 		/*
 		 *	Encrypted attributes can only exist for the
@@ -3963,6 +4079,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 			break;
 		} /* switch over encryption flags */
 	}
+#endif	/* WITH_RADIUSV11_ONLY */
 
 	/*
 	 *	Double-check the length after decrypting the
@@ -4082,10 +4199,8 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		/*
 		 *	This requires a whole lot more work.
 		 */
-		rcode = data2vp_extended(ctx, packet, original, secret, child,
-					 start, attrlen, packetlen, pvp);
-		if (rcode < 0) dict_attr_free(&child); /* only frees unknowns */
-		return rcode;
+		return data2vp_extended(ctx, packet, original, secret, child,
+					start, attrlen, packetlen, pvp);
 
 	case PW_TYPE_EVS:
 		if (datalen < 6) goto raw; /* vid, vtype, value */
@@ -4168,10 +4283,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	 *	information, decode the actual data.
 	 */
 	vp = fr_pair_afrom_da(ctx, da);
-	if (!vp) {
-		dict_attr_free(&da); /* only frees unknowns */
-		return -1;
-	}
+	if (!vp) return -1;
 
 alloc_raw:
 	vp->vp_length = datalen;
@@ -4281,7 +4393,6 @@ alloc_raw:
 	fail:
 #endif
 	default:
-		dict_attr_free(&da); /* only frees unknowns */
 		fr_pair_list_free(&vp);
 		fr_strerror_printf("Internal sanity check %d", __LINE__);
 		return -1;
@@ -4341,10 +4452,7 @@ ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 	 */
 	rcode = data2vp(ctx, packet, original, secret, da,
 			data + 2, data[1] - 2, length - 2, pvp);
-	if (rcode < 0) {
-		dict_attr_free(&da); /* only frees unknowns */
-		return rcode;
-	}
+	if (rcode < 0) return rcode;
 
 	return 2 + rcode;
 }
@@ -4563,7 +4671,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	return 0;
 }
 
-
+#ifndef WITH_RADIUSV11_ONLY
 /** Encode password
  *
  * We assume that the passwd buffer passed is big enough.
@@ -4880,8 +4988,6 @@ ssize_t rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret, 
 			reallen = passwd[2] ^ digest[0];
 			if (reallen > encrypted_len) {
 				fr_strerror_printf("tunnel password is too long for the attribute");
-				fr_md5_destroy(&old);
-				fr_md5_destroy(&context);
 				return -1;
 			}
 
@@ -4965,6 +5071,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 
 	return 0;
 }
+#endif	/* WITH_RADIUSV11_ONLYx */
 
 
 /** Seed the random number generator
@@ -5116,6 +5223,12 @@ RADIUS_PACKET *rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 
 #ifdef WITH_TCP
 	reply->proto = packet->proto;
+#ifdef WITH_RADIUSV11
+	reply->radiusv11 = packet->radiusv11;
+	if (reply->radiusv11) {
+		memcpy(reply->vector, packet->vector, sizeof(reply->vector));
+	}
+#endif
 #endif
 	return reply;
 }
