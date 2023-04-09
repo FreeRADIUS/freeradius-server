@@ -88,6 +88,9 @@ struct rad_listen {
 	bool		check_client_connections;
 	bool		nonblock;
 	bool		blocked;
+#ifdef WITH_RADIUSV11
+	fr_radiusv11_t 	radiusv11;
+#endif
 
 #ifdef WITH_COA_TUNNEL
 	char const	*key;		/* Originating-Realm-Key */

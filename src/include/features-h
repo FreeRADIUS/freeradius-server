@@ -79,3 +79,17 @@
 #    error Reverse CoA requests requires TLS
 #  endif
 #endif
+
+#ifdef WITH_RADIUSV11_ONLY
+#  define WITH_RADIUSV11
+#else
+#  ifndef WITHOUT_RADIUSV11
+#    define WITH_RADIUSV11
+#endif
+#endif
+
+#ifdef WITH_RADIUSV11
+#  ifndef WITH_TLS
+#    error RADIUSv11 requires TLS
+#  endif
+#endif

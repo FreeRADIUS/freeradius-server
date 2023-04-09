@@ -140,6 +140,9 @@ typedef struct home_server {
 	fr_tls_server_conf_t	*tls;
 	uint32_t		connect_timeout;
 	rbtree_t		*listeners;
+#ifdef WITH_RADIUSV11
+	fr_radiusv11_t 		radiusv11;
+#endif
 #endif
 
 #ifdef WITH_STATS
