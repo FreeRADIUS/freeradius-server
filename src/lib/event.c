@@ -722,6 +722,14 @@ int fr_event_loop(fr_event_list_t *el)
 		if (el->status) el->status(wake);
 
 #ifndef HAVE_KQUEUE
+		pthread_mutex_lock(&el->mutex);
+		if (el->want_read || el->want_write) {
+			when.tv_sec = 0;
+			when.tv_usec = 0;
+			wake = &when;
+		}
+		pthread_mutex_unlock(&el->mutex);
+
 		read_fds = el->read_fds;
 		write_fds = el->write_fds;
 		rcode = select(el->max_fd + 1, &read_fds, &write_fds, NULL, wake);
@@ -737,10 +745,6 @@ int fr_event_loop(fr_event_list_t *el)
 		 */
 		pthread_mutex_lock(&el->mutex);
 		if (el->want_read || el->want_write) {
-			when.tv_sec = 0;
-			when.tv_usec = 0;
-			wake = &when;
-
 			for (i = 0; i <= el->max_fd; i++) {
 				if (FD_ISSET(i, &el->want_read_fds)) FD_SET(i, &read_fds);
 				if (FD_ISSET(i, &el->want_write_fds)) FD_SET(i, &write_fds);
