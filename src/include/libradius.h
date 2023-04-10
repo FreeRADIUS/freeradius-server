@@ -436,6 +436,8 @@ typedef enum {
        FR_RADIUSV11_ALLOW,
        FR_RADIUSV11_REQUIRE,
 } fr_radiusv11_t;
+
+extern const FR_NAME_NUMBER radiusv11_types[];
 #endif
 
 /*

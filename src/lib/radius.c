@@ -5284,3 +5284,13 @@ RADIUS_PACKET *rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
 
 	return out;
 }
+
+#ifdef WITH_RADIUSV11
+const FR_NAME_NUMBER radiusv11_types[] = {
+	{ "forbid",	FR_RADIUSV11_FORBID },
+	{ "allow",	FR_RADIUSV11_ALLOW },
+	{ "require",	FR_RADIUSV11_REQUIRE },
+	{ NULL, 0 }
+
+};
+#endif

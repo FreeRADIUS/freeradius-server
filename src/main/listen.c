@@ -770,6 +770,33 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		close(newfd);
 		return 0;
 	}
+
+#ifdef WITH_RADIUSV11
+	switch (listener->radiusv11) {
+	case FR_RADIUSV11_FORBID:
+		if (client->radiusv11 == FR_RADIUSV11_REQUIRE) {
+			INFO("Ignoring new connection as client is marked as 'radiusv11 = require', and this socket has 'radiusv11 = forbid'");
+			close(newfd);
+			return 0;
+		}
+		break;
+
+	case FR_RADIUSV11_ALLOW:
+		/*
+		 *	We negotiate it as per the client recommendations (forbid, allow, require)
+		 */
+		break;
+
+	case FR_RADIUSV11_REQUIRE:
+		if (client->radiusv11 == FR_RADIUSV11_FORBID) {
+			INFO("Ignoring new connection as client is marked as 'radiusv11 = forbid', and this socket has 'radiusv11 = require'");
+			close(newfd);
+			return 0;
+		}
+		break;
+	}
+#endif
+
 #endif
 
 	/*
@@ -1272,6 +1299,23 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 			rcode = cf_item_parse(cs, "check_client_connections", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->check_client_connections), "no");
 			if (rcode < 0) return -1;
+
+#ifdef WITH_RADIUSV11
+			if (cf_pair_find(cs, "radiusv11")) {
+				char const *name = NULL;
+
+				rcode = cf_item_parse(cs, "radiusv11", FR_ITEM_POINTER(PW_TYPE_STRING, &name), "forbid");
+				if (rcode < 0) return -1;
+
+				rcode = fr_str2int(radiusv11_types, name, -1);
+				if (rcode < 0) {
+					cf_log_err_cs(cs, "Invalid value for 'radiusv11'");
+					return -1;
+				}
+
+				this->radiusv11 = rcode;
+			}
+#endif
 		}
 #else  /* WITH_TLS */
 		/*

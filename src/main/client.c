@@ -1045,6 +1045,24 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 		cl_srcipaddr = NULL;
 	}
 
+#ifdef WITH_RADIUSV11
+	if (c->tls_required && (cf_pair_find(cs, "radiusv11") != NULL)) {
+		int rcode;
+		char const *name = NULL;
+
+		rcode = cf_item_parse(cs, "radiusv11", FR_ITEM_POINTER(PW_TYPE_STRING, &name), "forbid");
+		if (rcode < 0) goto error;
+
+		rcode = fr_str2int(radiusv11_types, name, -1);
+		if (rcode < 0) {
+			cf_log_err_cs(cs, "Invalid value for 'radiusv11'");
+			goto error;
+		}
+
+		c->radiusv11 = rcode;
+	}
+#endif
+
 	/*
 	 *	A response_window of zero is OK, and means that it's
 	 *	ignored by the rest of the server timers.
