@@ -36,14 +36,14 @@ dnl #  Custom hackery to discover version at configure time
 dnl #
 dnl #############################################################
 
-RADIUSD_VERSION_MAJOR=`cat VERSION | cut -f1 -d.`
-RADIUSD_VERSION_MINOR=`cat VERSION | cut -f2 -d.`
-RADIUSD_VERSION_INCRM=`git status > /dev/null 2>&1 && git describe --tags --match 'branch_*' --match 'release_*' | cut -d '-' -f 2`
+RADIUSD_VERSION_MAJOR=`./version.sh major`
+RADIUSD_VERSION_MINOR=`./version.sh minor`
+RADIUSD_VERSION_INCRM=`./version.sh commit_depth`
 
 dnl #  To handle tarballs and GitHub downloads, we can also put the incremental
 dnl #  patch number in VERSION, or it gets set to FFFF.
 if test "x$RADIUSD_VERSION_INCRM" = "x"; then
-	RADIUSD_VERSION_INCRM=`cat VERSION | cut -f3 -d.`
+	RADIUSD_VERSION_INCRM=`./version.sh incrm`
 fi
 if test "x$RADIUSD_VERSION_INCRM" = "x"; then
 	RADIUSD_VERSION_INCRM=65535
@@ -143,38 +143,30 @@ dnl #
 AC_ARG_ENABLE(developer,
 [  --enable-developer      enables features of interest to developers.],
 [ case "$enableval" in
+  yes)
+    developer=yes
+    ;;
   no)
     developer=no
     ;;
   *)
-    developer=yes
-  esac ]
+    ;;
+  esac ],
+[ developer=`([[ "$(./version.sh is_release)" -eq 0 ]] && echo 'yes') || echo 'no'` ]
 )
 
-dnl #
-dnl #  Turn on the developer flag when taken from a git checkout (not a release)
-dnl #
-dnl #  Passing --git-dir explicitly limits the search to the CWD.  Without it
-dnl #  git will search back up the directory tree for a git repository.
-dnl #  This can cause the configure script to erroneously determine that it's
-dnl #  running in a git repo.
-dnl #
-if test "x$GIT" = "xyes" && git --git-dir=.git status 2>&1 > /dev/null; then
-  if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
-    AC_MSG_CHECKING([build commit])
-    RADIUSD_VERSION_COMMIT=`git rev-parse --short=8 HEAD`
-    AC_MSG_RESULT($RADIUSD_VERSION_COMMIT)
-  fi
-
-  if test "x$developer" != "xno"; then
-    AC_MSG_NOTICE([in git repository, enabling developer build implicitly, disable with --disable-developer])
-    developer="yes"
-  fi
+if test "x$developer" = "xyes"; then
+  AC_MSG_NOTICE([Enabling developer build implicitly, disable with --disable-developer])
 fi
 
-if test "x$RADIUSD_VERSION_COMMIT" != "x"; then
-  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],[${RADIUSD_VERSION_COMMIT}],[Commit HEAD at time of configuring])
-fi
+dnl #
+dnl #  Write the current commit into Make.inc
+dnl #
+AC_MSG_CHECKING([build commit])
+RADIUSD_VERSION_COMMIT=`./version.sh commit`
+AC_MSG_RESULT($RADIUSD_VERSION_COMMIT)
+AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],[${RADIUSD_VERSION_COMMIT}],[Commit HEAD at time of configuring])
+AC_SUBST(RADIUSD_VERSION_COMMIT)
 
 dnl #
 dnl #  Autoconf sets -O2 and -g by default, but this is a PITA for debugging

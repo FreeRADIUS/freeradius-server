@@ -28,6 +28,11 @@
 *.profraw
 .pc
 
+# Version markers
+VERSION_COMMIT
+VERSION_COMMIT_DEPTH
+RELEASE
+
 # Editor projects
 *.kdev4
 *.cproject

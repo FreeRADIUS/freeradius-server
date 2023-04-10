@@ -725,6 +725,7 @@ build_os
 build_vendor
 build_cpu
 build
+RADIUSD_VERSION_COMMIT
 ANTORA
 GRAPHVIZ_DOT
 DOXYGEN
@@ -2820,12 +2821,12 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
-RADIUSD_VERSION_MAJOR=`cat VERSION | cut -f1 -d.`
-RADIUSD_VERSION_MINOR=`cat VERSION | cut -f2 -d.`
-RADIUSD_VERSION_INCRM=`git status > /dev/null 2>&1 && git describe --tags --match 'branch_*' --match 'release_*' | cut -d '-' -f 2`
+RADIUSD_VERSION_MAJOR=`./version.sh major`
+RADIUSD_VERSION_MINOR=`./version.sh minor`
+RADIUSD_VERSION_INCRM=`./version.sh commit_depth`
 
 if test "x$RADIUSD_VERSION_INCRM" = "x"; then
-	RADIUSD_VERSION_INCRM=`cat VERSION | cut -f3 -d.`
+	RADIUSD_VERSION_INCRM=`./version.sh incrm`
 fi
 if test "x$RADIUSD_VERSION_INCRM" = "x"; then
 	RADIUSD_VERSION_INCRM=65535
@@ -3254,37 +3255,35 @@ fi
 if test ${enable_developer+y}
 then :
   enableval=$enable_developer;  case "$enableval" in
+  yes)
+    developer=yes
+    ;;
   no)
     developer=no
     ;;
   *)
-    developer=yes
+    ;;
   esac
+else $as_nop
+   developer=`([ "$(./version.sh is_release)" -eq 0 ] && echo 'yes') || echo 'no'`
 
 fi
 
 
-if test "x$GIT" = "xyes" && git --git-dir=.git status 2>&1 > /dev/null; then
-  if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking build commit" >&5
+if test "x$developer" = "xyes"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Enabling developer build implicitly, disable with --disable-developer" >&5
+printf "%s\n" "$as_me: Enabling developer build implicitly, disable with --disable-developer" >&6;}
+fi
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking build commit" >&5
 printf %s "checking build commit... " >&6; }
-    RADIUSD_VERSION_COMMIT=`git rev-parse --short=8 HEAD`
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION_COMMIT" >&5
+RADIUSD_VERSION_COMMIT=`./version.sh commit`
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION_COMMIT" >&5
 printf "%s\n" "$RADIUSD_VERSION_COMMIT" >&6; }
-  fi
-
-  if test "x$developer" != "xno"; then
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: in git repository, enabling developer build implicitly, disable with --disable-developer" >&5
-printf "%s\n" "$as_me: in git repository, enabling developer build implicitly, disable with --disable-developer" >&6;}
-    developer="yes"
-  fi
-fi
-
-if test "x$RADIUSD_VERSION_COMMIT" != "x"; then
 
 printf "%s\n" "#define RADIUSD_VERSION_COMMIT ${RADIUSD_VERSION_COMMIT}" >>confdefs.h
 
-fi
+
 
 if test "x$developer" = "xyes"; then
   CFLAGS="$CFLAGS -g3"
