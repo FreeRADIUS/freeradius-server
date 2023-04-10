@@ -396,6 +396,15 @@ static int tls_socket_recv(rad_listen_t *listener)
 		sock->packet->dst_port = sock->my_port;
 
 		if (sock->request) sock->request->packet = talloc_steal(sock->request, sock->packet);
+
+#ifdef WITH_RADIUSV11
+		/*
+		 *	If the flag is "allow", then the ALPN negotiation updates it to "require" if RADIUSv11
+		 *	is negotiated.
+		 */
+		sock->packet->radiusv11 = (listener->radiusv11 == FR_RADIUSV11_REQUIRE);
+#endif
+
 	}
 
 	/*

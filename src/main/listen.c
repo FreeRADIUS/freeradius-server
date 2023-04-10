@@ -899,6 +899,15 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 			this->recv = dual_tls_recv;
 			this->send = dual_tls_send;
+
+#ifdef WITH_RADIUSV11
+			/*
+			 *	We've checked above for conflicts between require/forbid and forbid/require.
+			 *	So either the settings agree (forbid/forbid, require/require), OR this listener
+			 *	is marker "allow".  In which case we just use whatever the client has set.
+			 */
+			this->radiusv11 = client->radiusv11;
+#endif
 		}
 #endif
 	}
