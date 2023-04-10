@@ -132,7 +132,7 @@ while getopts "hcd" arg; do
 	c)
 		[ ! -e "${commit_file}" ] || rm "${commit_file}"
 		[ ! -e "${commit_depth_file}" ] || rm "${commit_depth_file}"
-		[ ! -e "${release_file}" ] || rm "${release_file}"
+		[ "$(version_component is_release)" -eq 0 ] && rm "${release_file}"
 		exit 0
 	;;
 
@@ -144,7 +144,7 @@ while getopts "hcd" arg; do
 		echo "$commit" > "${commit_file}"
 		commit_depth="$(version_component commit_depth)"
 		echo "$commit_depth" > "${commit_depth_file}"
-		if [ "$(version_component is_release)" = 'true' ]; then touch "${release_file}"; fi
+		[ "$(version_component is_release)" -eq 1 ] && touch "${release_file}"
 		exit 0
 	;;
 

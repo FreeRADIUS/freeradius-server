@@ -401,25 +401,36 @@ certs:
 # Do NOT move calculation of BRANCH outside of the recipe.  Every shell expansion
 # carries with it a performance penalty, that is felt every time make is executed.
 #
+# Original recipe used --add-virtual-file which was added in 237a1d1, on May 30th
+# 2022, which was too late for current versions of our target distros.
+# Code should be revisited in a few years to switch --add-file to -add-virtual-file.
+#
 BRANCH_CMD := git rev-parse --abbrev-ref HEAD
 freeradius-server-$(PKG_VERSION).tar:
 	rm -rf $(top_srcdir)/$(BUILD_DIR)/freeradius-server-$(PKG_VERSION)
 	mkdir -p $(top_srcdir)/$(BUILD_DIR)
 	BRANCH=$$(${BRANCH_CMD}); \
-	[ $$(./version.sh is_release) -eq 1 ] && release_arg="--add-virtual-file=freeradius-server-$(PKG_VERSION)/RELEASE:"; \
+	tmp=$$(mktemp -d); \
+	if [ $$(./version.sh is_release) -eq 1 ]; then\
+		touch "$${tmp}/RELEASE"; \
+		release_arg="--add-file=$${tmp}/RELEASE"; \
+	fi; \
+	echo "$$(./version.sh commit)" > "$${tmp}/VERSION_COMMIT"; \
+	echo "$$(./version.sh commit_depth)" > "$${tmp}/VERSION_COMMIT_DEPTH"; \
 	git archive \
 		--format=tar \
-		--prefix=freeradius-server-$(PKG_VERSION)/ \
-		--add-virtual-file=freeradius-server-$(PKG_VERSION)/VERSION_COMMIT:$$(./version.sh commit) \
-		--add-virtual-file=freeradius-server-$(PKG_VERSION)/VERSION_COMMIT_DEPTH:$$(./version.sh commit_depth) \
+		--prefix="freeradius-server-$(PKG_VERSION)/" \
+		--add-file="$${tmp}/VERSION_COMMIT" \
+		--add-file="$${tmp}/VERSION_COMMIT_DEPTH" \
 		$${release_arg} \
-		$${BRANCH} | tar -C $(top_srcdir)/$(BUILD_DIR) -xf -; \
-	git submodule foreach --recursive 'git archive --format=tar --prefix=freeradius-server-$(PKG_VERSION)/$$sm_path/ $$sha1 | tar -C $(top_srcdir)/$(BUILD_DIR) -xf -'
+		$${BRANCH} | tar -C "${top_srcdir}/${BUILD_DIR}" -xf -; \
+	rm -rf "$${tmp}"; \
+	git submodule foreach --recursive 'git archive --format=tar --prefix=freeradius-server-$(PKG_VERSION)/$$sm_path/ $$sha1 | tar -C "${top_srcdir}/${BUILD_DIR}" -xf -'
 ifneq "$(EXT_MODULES)" ""
 	BRANCH=$$(${BRANCH_CMD}); \
 	for x in $(subst _ext,,$(EXT_MODULES)); do \
 		cd $(top_srcdir)/$${x}_ext && \
-		git archive --format=tar --prefix=freeradius-server-$(PKG_VERSION)/$$x/ $${BRANCH} | tar -C $(top_srcdir)/$(BUILD_DIR) -xf -; \
+		git archive --format=tar --prefix=freeradius-server-$(PKG_VERSION)/$$x/ $${BRANCH} | tar -C "${top_srcdir}/${BUILD_DIR}" -xf -; \
 	done
 endif
 	tar -cf $@ -C $(top_srcdir)/$(BUILD_DIR) freeradius-server-$(PKG_VERSION)
