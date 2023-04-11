@@ -345,7 +345,7 @@ int fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char c
 	bind_auth_ctx->bind_ctx->password = password;
 	bind_auth_ctx->request = request;
 	bind_auth_ctx->thread = thread;
-	bind_auth_ctx->ret = LDAP_RESULT_PENDING;
+	bind_auth_ctx->ret = LDAP_PROC_NO_RESULT;
 
 	return unlang_function_push(request,
 				    ldap_async_auth_bind_start,

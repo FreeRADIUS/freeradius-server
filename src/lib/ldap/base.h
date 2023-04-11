@@ -510,24 +510,6 @@ typedef enum {
 	LDAP_BIND_SASL
 } fr_ldap_bind_type_t;
 
-/** Holds arguments for async bind auth requests
- *
- * Used when LDAP binds are being used to authenticate users, rather than admin binds.
- * Allows tracking of multiple bind requests on a single connection.
- */
-typedef struct {
-	fr_rb_node_t		node;		//!< Entry in the tree of outstanding bind requests.
-	fr_ldap_thread_t	*thread;	//!< This bind is being run by.
-	int			msgid;		//!< libldap msgid for this bind.
-	request_t		*request;	//!< this bind relates to.
-	fr_ldap_bind_type_t	type;		//!< type of bind.
-	union {
-		fr_ldap_bind_ctx_t	*bind_ctx;	//!< User data for simple binds.
-		fr_ldap_sasl_ctx_t	*sasl_ctx;	//!< User data for SASL binds.
-	};
-	fr_ldap_result_code_t	ret;		//!< Return code of bind operation.
-} fr_ldap_bind_auth_ctx_t;
-
 typedef struct ldap_filter_s ldap_filter_t;
 
 /** Types of parsed LDAP filter nodes
@@ -607,6 +589,24 @@ typedef enum {
 	LDAP_PROC_REFRESH_REQUIRED = -8			//!< Don't continue with the current refresh phase,
 							//!< exit, and retry the operation with a NULL cookie.
 } fr_ldap_rcode_t;
+
+/** Holds arguments for async bind auth requests
+ *
+ * Used when LDAP binds are being used to authenticate users, rather than admin binds.
+ * Allows tracking of multiple bind requests on a single connection.
+ */
+typedef struct {
+	fr_rb_node_t		node;		//!< Entry in the tree of outstanding bind requests.
+	fr_ldap_thread_t	*thread;	//!< This bind is being run by.
+	int			msgid;		//!< libldap msgid for this bind.
+	request_t		*request;	//!< this bind relates to.
+	fr_ldap_bind_type_t	type;		//!< type of bind.
+	union {
+		fr_ldap_bind_ctx_t	*bind_ctx;	//!< User data for simple binds.
+		fr_ldap_sasl_ctx_t	*sasl_ctx;	//!< User data for SASL binds.
+	};
+	fr_ldap_rcode_t		ret;		//!< Return code of bind operation.
+} fr_ldap_bind_auth_ctx_t;
 
 /*
  *	Tables for resolving strings to LDAP constants

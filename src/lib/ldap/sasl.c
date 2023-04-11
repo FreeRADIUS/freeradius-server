@@ -418,7 +418,7 @@ static unlang_action_t ldap_async_sasl_auth_bind_results(rlm_rcode_t *p_result, 
 {
 	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
 	fr_ldap_sasl_ctx_t	*sasl_ctx = bind_auth_ctx->sasl_ctx;
-	fr_ldap_result_code_t	ret = bind_auth_ctx->ret;
+	fr_ldap_rcode_t		ret = bind_auth_ctx->ret;
 
 	switch (bind_auth_ctx->ret) {
 	case LDAP_PROC_SUCCESS:
@@ -503,7 +503,7 @@ int fr_ldap_sasl_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, c
 	};
 	bind_auth_ctx->request = request;
 	bind_auth_ctx->thread = thread;
-	bind_auth_ctx->ret = LDAP_RESULT_PENDING;
+	bind_auth_ctx->ret = LDAP_PROC_NO_RESULT;
 	bind_auth_ctx->type = LDAP_BIND_SASL;
 
 	return unlang_function_push(request, ldap_async_sasl_auth_bind_start, ldap_async_sasl_auth_bind_results,
