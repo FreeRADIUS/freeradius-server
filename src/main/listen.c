@@ -721,7 +721,7 @@ static const unsigned char radiusv11_require_protos[] = {
 /*
  *	On the server, get the ALPN list requested by the client.
  */
-static int radiusv11_server_alpn_cb(UNUSED SSL *ssl,
+static int radiusv11_server_alpn_cb(SSL *ssl,
 				    const unsigned char **out,
 				    unsigned char *outlen,
 				    const unsigned char *in,
@@ -732,6 +732,11 @@ static int radiusv11_server_alpn_cb(UNUSED SSL *ssl,
 	listen_socket_t *sock = this->data;
 	const unsigned char *server, *client;
 	unsigned int server_len, i, j;
+	REQUEST *request;
+
+	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	fr_assert(request != NULL);
+
 
 	fr_assert(inlen > 0);
 
@@ -788,7 +793,7 @@ static int radiusv11_server_alpn_cb(UNUSED SSL *ssl,
 		       fr_assert(s[0] == 10);
 		       sock->radiusv11 = (s[10] == '1');
 
-		       DEBUG("(TLS) ALPN negotiated application protocol %.*s", (int) s[0], s + 1);
+		       RDEBUG("(TLS) ALPN negotiated application protocol %.*s", (int) s[0], s + 1);
 		       return SSL_TLSEXT_ERR_OK;
 		}
 	}
@@ -796,7 +801,7 @@ static int radiusv11_server_alpn_cb(UNUSED SSL *ssl,
 	/*
 	 *	No common ALPN.
 	 */
-	DEBUG("(TLS) ALPN failure - no protocols in common");
+	RDEBUG("(TLS) ALPN failure - no protocols in common");
 	return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
 
