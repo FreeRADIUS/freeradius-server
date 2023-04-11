@@ -874,17 +874,14 @@ int fr_radiusv11_client_init(fr_tls_server_conf_t *tls)
 			return -1;
 		}
 		SSL_CTX_set_next_proto_select_cb(tls->ctx, radiusv11_client_alpn_cb, NULL);
-		DEBUG("(TLS) ALPN proxy has radiusv11 = allow");
 		break;
 
 	case FR_RADIUSV11_REQUIRE:
 		if (SSL_CTX_set_alpn_protos(tls->ctx, radiusv11_require_protos, sizeof(radiusv11_require_protos)) != 0) goto fail_protos;
 		SSL_CTX_set_next_proto_select_cb(tls->ctx, radiusv11_client_alpn_cb, NULL);
-		DEBUG("(TLS) ALPN proxy has radiusv11 = require");
 		break;
 
 	default:
-		DEBUG("(TLS) ALPN proxy has radiusv11 = forbid");
 		break;
 	}
 
