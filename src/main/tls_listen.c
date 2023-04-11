@@ -1253,6 +1253,10 @@ int proxy_tls_recv(rad_listen_t *listener)
 	memcpy(packet->data, data, packet->data_len);
 	memcpy(packet->vector, packet->data + 4, 16);
 
+#ifdef WITH_RADIUSV11
+	packet->radiusv11 = sock->radiusv11;
+#endif
+
 	/*
 	 *	FIXME: Client MIB updates?
 	 */
@@ -1339,6 +1343,10 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	 *	if there's no packet, encode it here.
 	 */
 	if (!request->proxy->data) {
+#ifdef WITH_RADIUSV11
+		request->proxy->radiusv11 = sock->radiusv11;
+#endif
+
 		request->proxy_listener->proxy_encode(request->proxy_listener,
 						      request);
 	}

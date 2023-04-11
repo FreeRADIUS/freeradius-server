@@ -745,8 +745,9 @@ static int radiusv11_server_alpn_cb(UNUSED SSL *ssl,
 		 *	never have been registered.
 		 */
 	case FR_RADIUSV11_FORBID:
-		fr_assert(0);
-		return SSL_TLSEXT_ERR_NOACK; /* no ALPN was negotiated for this connection */
+		server =  radiusv11_allow_protos;
+		server_len = radiusv11_allow_protos[0] + 1; /* only allow 'radius/1.0' */
+		break;
 
 	case FR_RADIUSV11_ALLOW:
 		server = radiusv11_allow_protos;
@@ -787,7 +788,7 @@ static int radiusv11_server_alpn_cb(UNUSED SSL *ssl,
 		       fr_assert(s[0] == 10);
 		       sock->radiusv11 = (s[10] == '1');
 
-		       DEBUG("(TLS) Negotiated ALPN as %.*s", (int) s[0], s + 1);
+		       DEBUG("(TLS) ALPN negotiated application protocol %.*s", (int) s[0], s + 1);
 		       return SSL_TLSEXT_ERR_OK;
 		}
 	}
@@ -795,7 +796,7 @@ static int radiusv11_server_alpn_cb(UNUSED SSL *ssl,
 	/*
 	 *	No common ALPN.
 	 */
-	DEBUG("(TLS) no common radiusv11 settings");
+	DEBUG("(TLS) ALPN failure - no protocols in common");
 	return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
 
@@ -813,7 +814,46 @@ static int radiusv11_client_alpn_cb(UNUSED SSL *ssl,
 	 */
 	memcpy(&my_out, &out, sizeof(out)); /* const issues */
 
+	fr_assert(0);
+
 	return radiusv11_server_alpn_cb(ssl, my_out, outlen, in, inlen, arg);
+}
+
+
+static int radiusv11_server_advertised_cb(UNUSED SSL *ssl,
+					 const unsigned char **out,
+					 unsigned int *outlen,
+					 void *arg)
+{
+	rad_listen_t *this = arg;
+
+	fr_assert(0);
+
+	/*
+	 *	The RADIUSv11 configuration for this socket is a combination of what we require, and what we
+	 *	require of the client.
+	 */
+	switch (this->radiusv11) {
+		/*
+		 *	If we forbid RADIUSv11, then we never advertised it via ALPN, and this callback should
+		 *	never have been registered.
+		 */
+	case FR_RADIUSV11_FORBID:
+		fr_assert(0);
+		return SSL_TLSEXT_ERR_NOACK; /* no ALPN was negotiated for this connection */
+
+	case FR_RADIUSV11_ALLOW:
+		*out = radiusv11_allow_protos;
+		*outlen = sizeof(radiusv11_allow_protos);
+		break;
+
+	case FR_RADIUSV11_REQUIRE:
+		*out = radiusv11_require_protos;
+		*outlen = sizeof(radiusv11_require_protos);
+		break;
+	}
+
+	return SSL_TLSEXT_ERR_OK;
 }
 #endif
 
@@ -1014,14 +1054,14 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 #ifdef WITH_RADIUSV11
 			/*
-			 *	Default is "forbid" (0).  In which case we don't set any ALPN callbacks, and
-			 *	the ServerHello does not contain an ALPN section.
+			 *      Default is "forbid" (0).  In which case we don't set any ALPN callbacks, and
+			 *      the ServerHello does not contain an ALPN section.
 			 */
 			if (client->radiusv11 != FR_RADIUSV11_FORBID) {
 				SSL_CTX_set_alpn_select_cb(this->tls->ctx, radiusv11_server_alpn_cb, this);
-				DEBUG("(TLS) LISTEN Maybe negotiating radiusv11");
+				DEBUG("(TLS) ALPN radiusv11 = allow / require");
 			} else {
-				DEBUG("(TLS) LISTEN Not doing radiusv11");
+				DEBUG("(TLS) ALPN radiusv11 = forbid");
 			}
 #endif
 		}
@@ -1434,6 +1474,28 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				}
 
 				this->radiusv11 = this->tls->radiusv11 = rcode;
+
+				switch (this->tls->radiusv11) {
+				case FR_RADIUSV11_ALLOW:
+					if (SSL_CTX_set_alpn_protos(this->tls->ctx, radiusv11_allow_protos, sizeof(radiusv11_allow_protos)) != 0) {
+					fail_protos:
+						ERROR("Failed setting RADIUSv11 negotiation flags");
+						return -1;
+					}
+					DEBUG("(TLS) ALPN advertising radiusv11 = allow");
+					SSL_CTX_set_next_protos_advertised_cb(this->tls->ctx, radiusv11_server_advertised_cb, this);
+					break;
+
+				case FR_RADIUSV11_REQUIRE:
+					if (SSL_CTX_set_alpn_protos(this->tls->ctx, radiusv11_require_protos, sizeof(radiusv11_require_protos)) != 0) goto fail_protos;
+					DEBUG("(TLS) ALPN advertising radiusv11 = require");
+					SSL_CTX_set_next_protos_advertised_cb(this->tls->ctx, radiusv11_server_advertised_cb, this);
+					break;
+
+				default:
+					DEBUG("(TLS) ALPN Forbidding radiusv11");
+					break;
+				}
 			}
 #endif
 		}
@@ -3312,17 +3374,17 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 				return 0;
 			}
 			SSL_CTX_set_next_proto_select_cb(home->tls->ctx, radiusv11_client_alpn_cb, this);
-			DEBUG("(TLS) LISTEN-PROXY Maybe negotiating allow radiusv11");
+			DEBUG("(TLS) ALPN proxy has radiusv11 = allow");
 			break;
 
 		case FR_RADIUSV11_REQUIRE:
 			if (SSL_CTX_set_alpn_protos(home->tls->ctx, radiusv11_require_protos, sizeof(radiusv11_require_protos)) != 0) goto fail_protos;
 			SSL_CTX_set_next_proto_select_cb(home->tls->ctx, radiusv11_client_alpn_cb, this);
-			DEBUG("(TLS) LISTEN-PROXY Maybe negotiating require radiusv11");
+			DEBUG("(TLS) ALPN proxy has radiusv11 = require");
 			break;
 
 		default:
-			DEBUG("(TLS) LISTEN-PROXY Forbidding radiusv11");
+			DEBUG("(TLS) ALPN proxy has radiusv11 = forbid");
 			break;
 		}
 #endif
