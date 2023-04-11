@@ -989,8 +989,8 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 	{
 		request_t *request = treq->pub.request;
 
-		ROPTIONAL(RDEBUG3, DEBUG3, "[%" PRIu64 "] Trunk connection released request %" PRIu64,
-			  tconn->pub.conn->id, treq->id);
+		ROPTIONAL(RDEBUG3, DEBUG3, "%s Trunk connection released request %" PRIu64,
+			  tconn->pub.conn->name, treq->id);
 	}
 	/*
 	 *	Release any connection specific resources the
@@ -1163,8 +1163,8 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	{
 		request_t *request = treq->pub.request;
 
-		ROPTIONAL(RDEBUG, DEBUG3, "[%" PRIu64 "] Trunk connection assigned request %"PRIu64,
-			  tconn->pub.conn->id, treq->id);
+		ROPTIONAL(RDEBUG, DEBUG3, "%s Trunk connection assigned request %"PRIu64,
+			  tconn->pub.conn->name, treq->id);
 	}
 	fr_heap_insert(&tconn->pending, treq);
 
