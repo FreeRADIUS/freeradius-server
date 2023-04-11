@@ -1362,6 +1362,17 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 			radius_update_listener(listener);
 			return rcode;
 		}
+#ifdef WITH_RADIUSV11
+	} else if ((listener->radiusv11 == FR_RADIUSV11_REQUIRE) &&
+		   !sock->radiusv11) {
+
+			DEBUG("(TLS) We have 'radiusv11 = require', but the home server has not negotiated it - closing socket");
+
+			PTHREAD_MUTEX_LOCK(&TLS_MUTEX);
+			tls_socket_close(listener);
+			PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
+			return 0;
+#endif
 	}
 
 	DEBUG3("Proxy is writing %u bytes to SSL",
@@ -1382,7 +1393,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 
 		default:
 			tls_error_log(NULL, "Failed in proxy send with OpenSSL error %d", err);
-			DEBUG("Closing TLS socket to home server");
+			DEBUG("(TLS) Closing socket to home server");
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
 			return 0;
