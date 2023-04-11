@@ -814,6 +814,8 @@ static int radiusv11_client_alpn_cb(UNUSED SSL *ssl,
 	 */
 	memcpy(&my_out, &out, sizeof(out)); /* const issues */
 
+	// @todo - get this listener from SSL context, and then pass it as "arg".
+
 	fr_assert(0);
 
 	return radiusv11_server_alpn_cb(ssl, my_out, outlen, in, inlen, arg);
@@ -1041,6 +1043,9 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 #ifdef WITH_TLS
 		if (this->tls) {
+			this->recv = dual_tls_recv;
+			this->send = dual_tls_send;
+
 			/*
 			 *	Set up SNI callback.  We don't do it
 			 *	in the main TLS code, because EAP
@@ -1048,16 +1053,13 @@ static int dual_tcp_accept(rad_listen_t *listener)
 			 */
 			SSL_CTX_set_tlsext_servername_callback(this->tls->ctx, tls_sni_callback);
 			SSL_CTX_set_tlsext_servername_arg(this->tls->ctx, this->tls);
-
-			this->recv = dual_tls_recv;
-			this->send = dual_tls_send;
-
 #ifdef WITH_RADIUSV11
 			/*
 			 *      Default is "forbid" (0).  In which case we don't set any ALPN callbacks, and
 			 *      the ServerHello does not contain an ALPN section.
 			 */
 			if (client->radiusv11 != FR_RADIUSV11_FORBID) {
+				SSL_CTX_set_next_protos_advertised_cb(this->tls->ctx, radiusv11_server_advertised_cb, this);
 				SSL_CTX_set_alpn_select_cb(this->tls->ctx, radiusv11_server_alpn_cb, this);
 				DEBUG("(TLS) ALPN radiusv11 = allow / require");
 			} else {
@@ -1475,26 +1477,8 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 				this->radiusv11 = this->tls->radiusv11 = rcode;
 
-				switch (this->tls->radiusv11) {
-				case FR_RADIUSV11_ALLOW:
-					if (SSL_CTX_set_alpn_protos(this->tls->ctx, radiusv11_allow_protos, sizeof(radiusv11_allow_protos)) != 0) {
-					fail_protos:
-						ERROR("Failed setting RADIUSv11 negotiation flags");
-						return -1;
-					}
-					DEBUG("(TLS) ALPN advertising radiusv11 = allow");
+				if (this->type != RAD_LISTEN_PROXY) {
 					SSL_CTX_set_next_protos_advertised_cb(this->tls->ctx, radiusv11_server_advertised_cb, this);
-					break;
-
-				case FR_RADIUSV11_REQUIRE:
-					if (SSL_CTX_set_alpn_protos(this->tls->ctx, radiusv11_require_protos, sizeof(radiusv11_require_protos)) != 0) goto fail_protos;
-					DEBUG("(TLS) ALPN advertising radiusv11 = require");
-					SSL_CTX_set_next_protos_advertised_cb(this->tls->ctx, radiusv11_server_advertised_cb, this);
-					break;
-
-				default:
-					DEBUG("(TLS) ALPN Forbidding radiusv11");
-					break;
 				}
 			}
 #endif
@@ -3362,9 +3346,14 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		 *	Tell the TLS code that we have a list of ALPN protocols to send over, and set the
 		 *	callbacks to decide what we negotiated.
 		 *
-		 *	@todo - this code should arguably be in src/main/realms.c, as manging SSL_CTX isn't thread-safe.
+		 *	@todo - this code should arguably be in src/main/realms.c, as mangling SSL_CTX isn't thread-safe.
+		 *
+		 *	However, the OpenSSL API allows setting the callback only for the SSL_CTX, and not for
+		 *	this particular SSL session.  So we have to associate this listener with the SSL*, and then
+		 *	the radiusv11_client_alpn_cb() will retrieve the listener from SSL*, and then do the actual work.
 		 */
 		this->radiusv11 = home->tls->radiusv11;
+
 		switch (home->tls->radiusv11) {
 		case FR_RADIUSV11_ALLOW:
 			if (SSL_CTX_set_alpn_protos(home->tls->ctx, radiusv11_allow_protos, sizeof(radiusv11_allow_protos)) != 0) {
@@ -3373,13 +3362,13 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 				listen_free(&this);
 				return 0;
 			}
-			SSL_CTX_set_next_proto_select_cb(home->tls->ctx, radiusv11_client_alpn_cb, this);
+			SSL_CTX_set_next_proto_select_cb(home->tls->ctx, radiusv11_client_alpn_cb, NULL);
 			DEBUG("(TLS) ALPN proxy has radiusv11 = allow");
 			break;
 
 		case FR_RADIUSV11_REQUIRE:
 			if (SSL_CTX_set_alpn_protos(home->tls->ctx, radiusv11_require_protos, sizeof(radiusv11_require_protos)) != 0) goto fail_protos;
-			SSL_CTX_set_next_proto_select_cb(home->tls->ctx, radiusv11_client_alpn_cb, this);
+			SSL_CTX_set_next_proto_select_cb(home->tls->ctx, radiusv11_client_alpn_cb, NULL);
 			DEBUG("(TLS) ALPN proxy has radiusv11 = require");
 			break;
 
