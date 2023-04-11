@@ -189,6 +189,9 @@ static const CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("pool", FR_TYPE_SUBSECTION, rlm_ldap_t, trunk_conf), .subcs = (void const *) fr_trunk_config },
 
+	{ FR_CONF_OFFSET("bind_pool", FR_TYPE_SUBSECTION, rlm_ldap_t, bind_trunk_conf),
+	  .subcs = (void const *) fr_trunk_config },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -2035,6 +2038,7 @@ static int mod_thread_instatiate(module_thread_inst_ctx_t const *mctx)
 
 	t->config = &inst->handle_config;
 	t->trunk_conf = &inst->trunk_conf;
+	t->bind_trunk_conf = &inst->bind_trunk_conf;
 	t->el = mctx->el;
 
 	/*
@@ -2130,6 +2134,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	} else {
 		inst->cache_da = inst->group_da;	/* Default to the group_da */
 	}
+
+	/*
+	 *	Trunks used for bind auth can only have one request in flight per connection.
+	 */
+	inst->bind_trunk_conf.target_req_per_conn = 1;
+	inst->bind_trunk_conf.max_req_per_conn = 1;
 
 	xlat = xlat_func_register_module(NULL, mctx, mctx->inst->name, ldap_xlat, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, ldap_xlat_arg);

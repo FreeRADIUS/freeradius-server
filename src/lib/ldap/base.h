@@ -378,6 +378,7 @@ typedef struct {
 	fr_rb_tree_t		*trunks;	//!< Tree of LDAP trunks used by this thread
 	fr_ldap_config_t	*config;	//!< Module instance config
 	fr_trunk_conf_t		*trunk_conf;	//!< Module trunk config
+	fr_trunk_conf_t		*bind_trunk_conf;	//!< Trunk config for bind auth trunk
 	fr_event_list_t		*el;		//!< Thread event list for callbacks / timeouts
 	fr_connection_t		*conn;		//!< LDAP connection used for bind auths
 	fr_rb_tree_t		*binds;		//!< Tree of outstanding bind auths
