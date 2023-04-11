@@ -710,8 +710,8 @@ static int tls_sni_callback(SSL *ssl, UNUSED int *al, void *arg)
 
 #ifdef WITH_RADIUSV11
 static const unsigned char radiusv11_allow_protos[] = {
+	10, 'r', 'a', 'd', 'i', 'u', 's', '/', '1', '.', '1', /* prefer this */
 	10, 'r', 'a', 'd', 'i', 'u', 's', '/', '1', '.', '0',
-	10, 'r', 'a', 'd', 'i', 'u', 's', '/', '1', '.', '1',
 };
 
 static const unsigned char radiusv11_require_protos[] = {
@@ -730,14 +730,18 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 {
 	rad_listen_t *this = arg;
 	listen_socket_t *sock = this->data;
-	const unsigned char *server, *client;
-	unsigned int server_len, i, j;
+	unsigned char **hack;
+	const unsigned char *server;
+	unsigned int server_len, i;
+	int rcode;
 	REQUEST *request;
 
 	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	fr_assert(request != NULL);
 
 	fr_assert(inlen > 0);
+
+	memcpy(&hack, &out, sizeof(out)); /* const issues */
 
 	/*
 	 *	The RADIUSv11 configuration for this socket is a combination of what we require, and what we
@@ -749,8 +753,8 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 		 *	never have been registered.
 		 */
 	case FR_RADIUSV11_FORBID:
-		server =  radiusv11_allow_protos;
-		server_len = radiusv11_allow_protos[0] + 1; /* only allow 'radius/1.0' */
+		server =  radiusv11_allow_protos + 11;
+		server_len = 11;
 		break;
 
 	case FR_RADIUSV11_ALLOW:
@@ -764,37 +768,25 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 		break;
 	}
 
+	for (i = 0; i < inlen; i += in[0] + 1) {
+		RDEBUG("(TLS) ALPN sent by client is %.*s", in[i], &in[i + 1]);
+	}
+
 	/*
-	 *	SSL_select_next_proto() doesn't quite give us what we need, which is an easy way to know which
-	 *	protocol was selected.
+	 *	Select the next protocol.
 	 */
-	client = in;
-	for (i = 0; i < inlen; i += client[0] + 1) {
-		const unsigned char *s;
+	rcode = SSL_select_next_proto(hack, outlen, server, server_len, in, inlen);
+	if (rcode == OPENSSL_NPN_NEGOTIATED) {
+		server = *out;
 
-		client = in + i;
+		/*
+		 *	Tell our socket which protocol we negotiated.
+		 */
+		fr_assert(*outlen == 10);
+		sock->radiusv11 = (server[9] == '1');
 
-		if ((client + client[0] + 1) > (in + inlen)) break;
-
-		for (j = 0; j < server_len; j += s[0] + 1) {
-			s = server + j;
-
-			if (client[0] != s[0]) continue;
-
-			if (memcmp(client + 1, s + 1, s[0]) != 0) continue;
-
-		       *out = s;
-		       *outlen = s[0] + 1;
-
-		       /*
-			*	Tell our socket which protocol we negotiated.
-			*/
-		       fr_assert(s[0] == 10);
-		       sock->radiusv11 = (s[10] == '1');
-
-		       RDEBUG("(TLS) ALPN negotiated application protocol %.*s", (int) s[0], s + 1);
-		       return SSL_TLSEXT_ERR_OK;
-		}
+		RDEBUG("(TLS) ALPN negotiated application protocol %.*s", (int) *outlen, server);
+		return SSL_TLSEXT_ERR_OK;
 	}
 
 	/*
