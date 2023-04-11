@@ -84,8 +84,10 @@
 #  define WITH_RADIUSV11
 #else
 #  ifndef WITHOUT_RADIUSV11
-#    define WITH_RADIUSV11
-#endif
+#    ifdef WITH_TLS
+#      define WITH_RADIUSV11
+#    endif
+#  endif
 #endif
 
 #ifdef WITH_RADIUSV11
