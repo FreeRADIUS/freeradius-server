@@ -396,15 +396,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 		sock->packet->dst_port = sock->my_port;
 
 		if (sock->request) sock->request->packet = talloc_steal(sock->request, sock->packet);
-
-#ifdef WITH_RADIUSV11
-		/*
-		 *	If the flag is "allow", then the ALPN negotiation updates it to "require" if RADIUSv11
-		 *	is negotiated.
-		 */
-		sock->packet->radiusv11 = (listener->radiusv11 == FR_RADIUSV11_REQUIRE);
-#endif
-
 	}
 
 	/*
@@ -439,6 +430,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 		SSL_set_ex_data(sock->ssn->ssl, fr_tls_ex_index_certs, (void *) &sock->certs);
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_TALLOC, sock);
+
 		sock->ssn->quick_session_tickets = true; /* we don't have inner-tunnel authentication */
 
 		doing_init = true;
@@ -682,6 +674,10 @@ read_application_data:
 	sock->ssn->record_minus(&sock->ssn->clean_out, packet->data, packet->data_len);
 	packet->vps = NULL;
 	PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
+
+#ifdef WITH_RADIUSV11
+	packet->radiusv11 = sock->radiusv11;
+#endif
 
 	if (!rad_packet_ok(packet, 0, NULL)) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());

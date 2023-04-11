@@ -772,28 +772,30 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	}
 
 #ifdef WITH_RADIUSV11
-	switch (listener->radiusv11) {
-	case FR_RADIUSV11_FORBID:
-		if (client->radiusv11 == FR_RADIUSV11_REQUIRE) {
-			INFO("Ignoring new connection as client is marked as 'radiusv11 = require', and this socket has 'radiusv11 = forbid'");
-			close(newfd);
-			return 0;
-		}
-		break;
+	if (listener->tls) {
+		switch (listener->radiusv11) {
+		case FR_RADIUSV11_FORBID:
+			if (client->radiusv11 == FR_RADIUSV11_REQUIRE) {
+				INFO("Ignoring new connection as client is marked as 'radiusv11 = require', and this socket has 'radiusv11 = forbid'");
+				close(newfd);
+				return 0;
+			}
+			break;
 
-	case FR_RADIUSV11_ALLOW:
-		/*
-		 *	We negotiate it as per the client recommendations (forbid, allow, require)
-		 */
-		break;
+		case FR_RADIUSV11_ALLOW:
+			/*
+			 *	We negotiate it as per the client recommendations (forbid, allow, require)
+			 */
+			break;
 
-	case FR_RADIUSV11_REQUIRE:
-		if (client->radiusv11 == FR_RADIUSV11_FORBID) {
-			INFO("Ignoring new connection as client is marked as 'radiusv11 = forbid', and this socket has 'radiusv11 = require'");
-			close(newfd);
-			return 0;
+		case FR_RADIUSV11_REQUIRE:
+			if (client->radiusv11 == FR_RADIUSV11_FORBID) {
+				INFO("Ignoring new connection as client is marked as 'radiusv11 = forbid', and this socket has 'radiusv11 = require'");
+				close(newfd);
+				return 0;
+			}
+			break;
 		}
-		break;
 	}
 #endif
 
@@ -1182,6 +1184,111 @@ static int listener_unlink(UNUSED void *ctx, UNUSED void *data)
 }
 #endif
 
+#ifdef WITH_RADIUSV11
+static const unsigned char radiusv11_allow_protos[] = {
+	10, 'r', 'a', 'd', 'i', 'u', 's', '/', '1', '.', '0',
+	10, 'r', 'a', 'd', 'i', 'u', 's', '/', '1', '.', '1',
+};
+
+static const unsigned char radiusv11_require_protos[] = {
+	10, 'r', 'a', 'd', 'i', 'u', 's', '/', '1', '.', '1',
+};
+
+/*
+ *	On the server, get the ALPN list requested by the client.
+ */
+static int radiusv11_server_alpn_cb(UNUSED SSL *ssl,
+				    const unsigned char **out,
+				    unsigned char *outlen,
+				    const unsigned char *in,
+				    unsigned int inlen,
+				    void *arg)
+{
+	rad_listen_t *this = arg;
+	listen_socket_t *sock = this->data;
+	const unsigned char *server, *client;
+	unsigned int server_len, i, j;
+
+	fr_assert(inlen > 0);
+
+	if (inlen > 2) inlen = 2; /* catch crazy clients. */
+
+	switch (this->radiusv11) {
+		/*
+		 *	If we forbid RADIUSv11, then we never advertised it via ALPN, and this callback should
+		 *	never have been registered.
+		 */
+	case FR_RADIUSV11_FORBID:
+		fr_assert(0);
+		return SSL_TLSEXT_ERR_NOACK; /* no ALPN was negotiated for this connection */
+
+	case FR_RADIUSV11_ALLOW:
+		server = radiusv11_allow_protos;
+		server_len = sizeof(radiusv11_allow_protos);
+		break;
+
+	case FR_RADIUSV11_REQUIRE:
+		server = radiusv11_require_protos;
+		server_len = sizeof(radiusv11_require_protos);
+		break;
+	}
+
+	/*
+	 *	SSL_select_next_proto() doesn't quite give us what we need, which is an easy way to know which
+	 *	protocol was selected.
+	 */
+	client = in;
+	for (i = 0; i < inlen; i += client[0] + 1) {
+		const unsigned char *s;
+
+		client = in + i;
+
+		if ((client + client[0] + 1) > (in + inlen)) break; /* paranoia */
+
+		for (j = 0; j < server_len; j += s[0] + 1) {
+			s = server + j;
+
+			if (client[0] != s[0]) continue;
+
+			if (memcmp(client + 1, s + 1, s[0]) != 0) continue;
+
+		       *out = s;
+		       *outlen = s[0] + 1;
+
+		       /*
+			*	Tell our socket which protocol we negotiated.
+			*/
+		       fr_assert(s[0] == 10);
+		       sock->radiusv11 = (s[10] == '1');
+
+		       return SSL_TLSEXT_ERR_OK;
+		}
+	}
+
+	/*
+	 *	No common ALPN.
+	 */
+	return SSL_TLSEXT_ERR_ALERT_FATAL;
+}
+
+static int radiusv11_client_alpn_cb(UNUSED SSL *ssl,
+				    unsigned char **out,
+				    unsigned char *outlen,
+				    const unsigned char *in,
+				    unsigned int inlen,
+				    void *arg)
+{
+	const unsigned char **my_out;
+
+	/*
+	 *	The OpenSSL functions randonly take "const" (or not).
+	 */
+	memcpy(&my_out, &out, sizeof(out)); /* const issues */
+
+	return radiusv11_server_alpn_cb(ssl, my_out, outlen, in, inlen, arg);
+}
+#endif
+
 
 /*
  *	Parse an authentication or accounting socket.
@@ -1323,6 +1430,18 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				}
 
 				this->radiusv11 = rcode;
+			}
+
+			/*
+			 *	Default is "forbid" (0).  In which case we don't set any ALPN callbacks, and
+			 *	the ServerHello does not contain an ALPN section.
+			 */
+			if (this->radiusv11 != FR_RADIUSV11_FORBID) {
+				if (this->type != RAD_LISTEN_PROXY) {
+					SSL_CTX_set_alpn_select_cb(this->tls->ctx, radiusv11_server_alpn_cb, this);
+				} else {
+					SSL_CTX_set_next_proto_select_cb(this->tls->ctx, radiusv11_client_alpn_cb, this);
+				}
 			}
 #endif
 		}
@@ -3086,6 +3205,7 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
 }
 
 #ifdef WITH_PROXY
+
 /*
  *	Externally visible function for creating a new proxy LISTENER.
  *
@@ -3221,6 +3341,30 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			rad_assert(0 == 1);
 			listen_free(&this);
 			return 0;
+		}
+#endif
+
+#ifdef WITH_RADIUSV11
+		/*
+		 *	Tell the TLS code that we have a list of ALPN protocols to send over.
+		 */
+		switch (this->radiusv11) {
+		case FR_RADIUSV11_ALLOW:
+			if (SSL_set_alpn_protos(sock->ssn->ssl, radiusv11_allow_protos, sizeof(radiusv11_allow_protos)) != 0) {
+			fail_protos:
+				ERROR("Failed setting RADIUSv11 negotiation flags");
+				listen_free(&this);
+				return 0;
+			}
+			break;
+
+		case FR_RADIUSV11_REQUIRE:
+			if (SSL_set_alpn_protos(sock->ssn->ssl, radiusv11_require_protos, sizeof(radiusv11_require_protos)) != 0) goto fail_protos;
+			break;
+
+
+		default:
+			break;
 		}
 #endif
 

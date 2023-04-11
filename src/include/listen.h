@@ -193,6 +193,10 @@ typedef struct listen_socket_t {
 		LISTEN_TLS_SETUP,
 		LISTEN_TLS_RUNNING,
 	} state;
+
+#ifdef WITH_RADIUSV11
+	bool		radiusv11;		//!< defaults to "no"!
+#endif
 #endif
 
 	RADCLIENT_LIST	*clients;
