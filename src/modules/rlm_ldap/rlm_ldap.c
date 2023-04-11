@@ -717,6 +717,13 @@ static void _ldap_bind_auth_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, U
 
 		case LDAP_PROC_SUCCESS:
 			if (bind_auth_ctx->type == LDAP_BIND_SIMPLE) break;
+
+			/*
+			 *	With SASL binds, we will be here after ldap_sasl_interactive_bind
+			 *	returned LDAP_SASL_BIND_IN_PROGRESS.  That always requires a further
+			 *	call of ldap_sasl_interactive_bind to get the final result.
+			 */
+			bind_auth_ctx->ret = LDAP_PROC_CONTINUE;
 			FALL_THROUGH;
 
 		case LDAP_PROC_CONTINUE:
@@ -1154,7 +1161,6 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 						 auth_ctx->password, mod_env->user_sasl_proxy.vb_strvalue,
 						 mod_env->user_sasl_realm.vb_strvalue) < 0) goto fail;
 #else
-		
 		RDEBUG("Configuration item 'sasl.mech' is not supported.  "
 		       "The linked version of libldap does not provide ldap_sasl_bind( function");
 		RETURN_MODULE_FAIL;

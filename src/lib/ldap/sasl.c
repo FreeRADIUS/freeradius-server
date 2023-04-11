@@ -372,13 +372,14 @@ static unlang_action_t ldap_async_sasl_auth_bind_start(UNUSED rlm_rcode_t *p_res
 
 	RDEBUG2("%s SASL bind auth operation as %s", sasl_ctx->rmech ? "Continuing" : "Starting", sasl_ctx->dn);
 
-	ret = ldap_sasl_interactive_bind(sasl_ctx->c->handle, sasl_ctx->dn, sasl_ctx->mechs,
+	ret = ldap_sasl_interactive_bind(sasl_ctx->c->handle, NULL, sasl_ctx->mechs,
 					 NULL, NULL, LDAP_SASL_AUTOMATIC,
 					 _sasl_interact, sasl_ctx, sasl_ctx->result,
 					 &sasl_ctx->rmech, &bind_auth_ctx->msgid);
 
 	switch (ret) {
 	case LDAP_SUCCESS:
+		bind_auth_ctx->ret = LDAP_PROC_SUCCESS;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case LDAP_SASL_BIND_IN_PROGRESS:
