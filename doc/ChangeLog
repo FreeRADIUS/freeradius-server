@@ -9,6 +9,10 @@ FreeRADIUS 3.2.3 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 	* Add "max_retries" for connection pools.  Fixes #4908
 	  Patch from Nick Porter.
 	* Update dictionary.wifialliance
+	* You can now list "eap" in the "pre-proxy" section.  If the packet
+	  contains a malformed EAP message, then the request will be rejected.
+	  The home server will either reject (or discard) this packet anyways,
+	  so this change can only help with large proxy scenarios.
 
 	Bug fixes
 	* Don't leak MD contexts with OpenSSL 3.0.
