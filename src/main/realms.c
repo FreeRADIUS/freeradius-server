@@ -93,6 +93,9 @@ static const FR_NAME_NUMBER home_proto[] = {
 	{ NULL, 0 }
 };
 
+#ifdef WITH_RADIUSV11
+extern int fr_radiusv11_client_init(fr_tls_server_conf_t *tls);
+#endif
 
 static realm_config_t *realm_config = NULL;
 
@@ -1139,6 +1142,11 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 				}
 
 				home->tls->radiusv11 = rcode;
+
+				if (fr_radiusv11_client_init(home->tls) < 0) {
+					cf_log_err_cs(cs, "Failed setting OpenSSL callbacks for radiusv11");
+					goto error;
+				}
 			}
 #endif
 

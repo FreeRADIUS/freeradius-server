@@ -737,7 +737,6 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	fr_assert(request != NULL);
 
-
 	fr_assert(inlen > 0);
 
 	/*
@@ -861,6 +860,43 @@ static int radiusv11_server_advertised_cb(UNUSED SSL *ssl,
 	}
 
 	return SSL_TLSEXT_ERR_OK;
+}
+
+/*
+ *	Tell the TLS code that we have a list of ALPN protocols to send over, and set the
+ *	callbacks to decide what we negotiated.
+ *
+ *	However, the OpenSSL API allows setting the callback only for the SSL_CTX, and not for
+ *	this particular SSL session.  So we have to associate this listener with the SSL*, and then
+ *	the radiusv11_client_alpn_cb() will retrieve the listener from SSL*, and then do the actual work.
+ */
+int fr_radiusv11_client_init(fr_tls_server_conf_t *tls);
+
+int fr_radiusv11_client_init(fr_tls_server_conf_t *tls)
+{
+	switch (tls->radiusv11) {
+	case FR_RADIUSV11_ALLOW:
+		if (SSL_CTX_set_alpn_protos(tls->ctx, radiusv11_allow_protos, sizeof(radiusv11_allow_protos)) != 0) {
+		fail_protos:
+			ERROR("Failed setting RADIUSv11 negotiation flags");
+			return -1;
+		}
+		SSL_CTX_set_next_proto_select_cb(tls->ctx, radiusv11_client_alpn_cb, NULL);
+		DEBUG("(TLS) ALPN proxy has radiusv11 = allow");
+		break;
+
+	case FR_RADIUSV11_REQUIRE:
+		if (SSL_CTX_set_alpn_protos(tls->ctx, radiusv11_require_protos, sizeof(radiusv11_require_protos)) != 0) goto fail_protos;
+		SSL_CTX_set_next_proto_select_cb(tls->ctx, radiusv11_client_alpn_cb, NULL);
+		DEBUG("(TLS) ALPN proxy has radiusv11 = require");
+		break;
+
+	default:
+		DEBUG("(TLS) ALPN proxy has radiusv11 = forbid");
+		break;
+	}
+
+	return 0;
 }
 #endif
 
@@ -3347,40 +3383,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		}
 
 #ifdef WITH_RADIUSV11
-		/*
-		 *	Tell the TLS code that we have a list of ALPN protocols to send over, and set the
-		 *	callbacks to decide what we negotiated.
-		 *
-		 *	@todo - this code should arguably be in src/main/realms.c, as mangling SSL_CTX isn't thread-safe.
-		 *
-		 *	However, the OpenSSL API allows setting the callback only for the SSL_CTX, and not for
-		 *	this particular SSL session.  So we have to associate this listener with the SSL*, and then
-		 *	the radiusv11_client_alpn_cb() will retrieve the listener from SSL*, and then do the actual work.
-		 */
 		this->radiusv11 = home->tls->radiusv11;
-
-		switch (home->tls->radiusv11) {
-		case FR_RADIUSV11_ALLOW:
-			if (SSL_CTX_set_alpn_protos(home->tls->ctx, radiusv11_allow_protos, sizeof(radiusv11_allow_protos)) != 0) {
-			fail_protos:
-				ERROR("Failed setting RADIUSv11 negotiation flags");
-				listen_free(&this);
-				return 0;
-			}
-			SSL_CTX_set_next_proto_select_cb(home->tls->ctx, radiusv11_client_alpn_cb, NULL);
-			DEBUG("(TLS) ALPN proxy has radiusv11 = allow");
-			break;
-
-		case FR_RADIUSV11_REQUIRE:
-			if (SSL_CTX_set_alpn_protos(home->tls->ctx, radiusv11_require_protos, sizeof(radiusv11_require_protos)) != 0) goto fail_protos;
-			SSL_CTX_set_next_proto_select_cb(home->tls->ctx, radiusv11_client_alpn_cb, NULL);
-			DEBUG("(TLS) ALPN proxy has radiusv11 = require");
-			break;
-
-		default:
-			DEBUG("(TLS) ALPN proxy has radiusv11 = forbid");
-			break;
-		}
 #endif
 
 		this->nonblock |= home->nonblock;
