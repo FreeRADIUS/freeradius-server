@@ -1707,6 +1707,10 @@ static CONF_PARSER tls_server_config[] = {
 #endif
 	},
 
+#ifdef WITH_RADIUSV11
+	{ "radiusv11", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, radiusv11_name), "forbid" },
+#endif
+
 	{ "realm_dir", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, realm_dir), NULL },
 
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
@@ -1769,6 +1773,10 @@ static CONF_PARSER tls_client_config[] = {
 	  "1.0"
 #endif
 	},
+
+#ifdef WITH_RADIUSV11
+	{ "radiusv11", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, radiusv11_name), "forbid" },
+#endif
 
 	{ "hostname", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, client_hostname), NULL },
 

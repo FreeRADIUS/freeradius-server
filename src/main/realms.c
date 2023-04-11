@@ -1131,19 +1131,14 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			if (!home->listeners) goto error;
 
 #ifdef WITH_RADIUSV11
-			if (cf_pair_find(tls, "radiusv11")) {
-				char const *name = NULL;
-
-				rcode = cf_item_parse(cs, "radiusv11", FR_ITEM_POINTER(PW_TYPE_STRING, &name), "forbid");
-				if (rcode < 0) goto error;
-
-				rcode = fr_str2int(radiusv11_types, name, -1);
+			if (home->tls->radiusv11_name) {
+				rcode = fr_str2int(radiusv11_types, home->tls->radiusv11_name, -1);
 				if (rcode < 0) {
 					cf_log_err_cs(cs, "Invalid value for 'radiusv11'");
 					goto error;
 				}
 
-				home->radiusv11 = rcode;
+				home->tls->radiusv11 = rcode;
 			}
 #endif
 

@@ -438,6 +438,11 @@ struct fr_tls_server_conf_t {
 	fr_hash_table_t	*realms;
 
 	char const	*client_hostname;
+
+#ifdef WITH_RADIUSV11
+       char const	*radiusv11_name;
+       fr_radiusv11_t	radiusv11;
+#endif
 };
 
 #ifdef __cplusplus

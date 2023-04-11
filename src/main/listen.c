@@ -773,7 +773,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 #ifdef WITH_RADIUSV11
 	if (listener->tls) {
-		switch (listener->radiusv11) {
+		switch (listener->tls->radiusv11) {
 		case FR_RADIUSV11_FORBID:
 			if (client->radiusv11 == FR_RADIUSV11_REQUIRE) {
 				INFO("Ignoring new connection as client is marked as 'radiusv11 = require', and this socket has 'radiusv11 = forbid'");
@@ -1417,31 +1417,14 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			if (rcode < 0) return -1;
 
 #ifdef WITH_RADIUSV11
-			if (cf_pair_find(cs, "radiusv11")) {
-				char const *name = NULL;
-
-				rcode = cf_item_parse(cs, "radiusv11", FR_ITEM_POINTER(PW_TYPE_STRING, &name), "forbid");
-				if (rcode < 0) return -1;
-
-				rcode = fr_str2int(radiusv11_types, name, -1);
+			if (this->tls->radiusv11_name) {
+				rcode = fr_str2int(radiusv11_types, this->tls->radiusv11_name, -1);
 				if (rcode < 0) {
 					cf_log_err_cs(cs, "Invalid value for 'radiusv11'");
 					return -1;
 				}
 
-				this->radiusv11 = rcode;
-			}
-
-			/*
-			 *	Default is "forbid" (0).  In which case we don't set any ALPN callbacks, and
-			 *	the ServerHello does not contain an ALPN section.
-			 */
-			if (this->radiusv11 != FR_RADIUSV11_FORBID) {
-				if (this->type != RAD_LISTEN_PROXY) {
-					SSL_CTX_set_alpn_select_cb(this->tls->ctx, radiusv11_server_alpn_cb, this);
-				} else {
-					SSL_CTX_set_next_proto_select_cb(this->tls->ctx, radiusv11_client_alpn_cb, this);
-				}
+				this->radiusv11 = this->tls->radiusv11 = rcode;
 			}
 #endif
 		}
