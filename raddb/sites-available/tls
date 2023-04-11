@@ -310,6 +310,17 @@ listen {
 		tls_max_version = "1.3"
 
 		#
+		#  RADIUSv11 configuration
+		#
+		#  forbid  - just use normal RADIUS/TLS
+		#  allow   - use RADIUSv11 if the other end negotiates it
+		#  require - require the use of RADIUSv11 on this connection.
+		#
+		#  The default is "forbid"
+		#
+	#	radiusv11 = forbid
+
+		#
 		#  Session resumption / fast reauthentication
 		#  cache.
 		#
@@ -477,6 +488,8 @@ clients radsec {
 		#
 		secret = radsec
 
+	#	radiusv11 = forbid
+
 		#
 		#  You can also use a "limit" section here.
 		#  See raddb/clients.conf for examples.
@@ -549,6 +562,9 @@ home_server tls {
 		#  see "ipaddr", above.
 		#
 	#	hostname = "example.com"
+
+
+	#	radiusv11 = forbid
 
 		private_key_password = whatever
 		private_key_file = ${certdir}/client.pem
