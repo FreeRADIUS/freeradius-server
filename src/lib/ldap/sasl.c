@@ -357,6 +357,23 @@ int fr_ldap_sasl_bind_async(fr_ldap_connection_t *c,
 }
 
 
+/** Send a SASL LDAP auth bind
+ *
+ * Shares the same callback as SASL admin binds
+ *
+ * @param[in] sasl_ctx	containing SASL parameters / state for the bind.
+ * @param[out] msgid	where to write the LDAP message ID.
+ * @param[in] ldap_conn	on which the message should be sent.
+ */
+int fr_ldap_sasl_bind_auth_send(fr_ldap_sasl_ctx_t *sasl_ctx, int *msgid,
+				 fr_ldap_connection_t *ldap_conn)
+{
+	return ldap_sasl_interactive_bind(ldap_conn->handle, NULL, sasl_ctx->mechs,
+					  NULL, NULL, LDAP_SASL_AUTOMATIC,
+					  _sasl_interact, sasl_ctx, sasl_ctx->result,
+					  &sasl_ctx->rmech, msgid);
+}
+
 /** Submit an async SASL LDAP auth bind
  *
  * @param[in] p_result	Unused.
