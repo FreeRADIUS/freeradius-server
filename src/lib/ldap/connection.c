@@ -1047,3 +1047,44 @@ fr_trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const
 
 	return (found) ? found->trunk->state : FR_TRUNK_STATE_MAX;
 }
+
+/** Find the thread specific trunk to use for LDAP bind auths
+ *
+ * If there is no current trunk then a new one is created.
+ *
+ * @param[in] thread	to which the connection belongs
+ * @return
+ *	- an existing or new trunk.
+ *	- NULL on failure
+ */
+fr_ldap_thread_trunk_t *fr_thread_ldap_bind_trunk_get(fr_ldap_thread_t *thread)
+{
+	fr_ldap_thread_trunk_t	*ttrunk;
+
+	if (thread->bind_trunk) return (thread->bind_trunk);
+
+	MEM(ttrunk = talloc_zero(thread, fr_ldap_thread_trunk_t));
+	memcpy(&ttrunk->config, thread->config, sizeof(fr_ldap_config_t));
+
+	ttrunk->uri = ttrunk->config.server;
+	ttrunk->bind_dn = ttrunk->config.admin_identity;
+
+	ttrunk->trunk = fr_trunk_alloc(ttrunk, thread->el,
+				       &(fr_trunk_io_funcs_t){
+					      .connection_alloc = ldap_trunk_connection_alloc,
+					      .connection_notify = ldap_trunk_connection_notify,
+					},
+				       thread->bind_trunk_conf,
+				       "rlm_ldap bind auth", ttrunk, false);
+
+	if (!ttrunk->trunk) {
+		ERROR("Unable to create LDAP connection");
+		talloc_free(ttrunk);
+		return NULL;
+	}
+
+	ttrunk->t = thread;
+	thread->bind_trunk = ttrunk;
+
+	return ttrunk;
+}
