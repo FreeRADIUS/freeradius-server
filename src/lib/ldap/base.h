@@ -381,6 +381,7 @@ typedef struct {
 	fr_trunk_conf_t		*bind_trunk_conf;	//!< Trunk config for bind auth trunk
 	fr_event_list_t		*el;		//!< Thread event list for callbacks / timeouts
 	fr_connection_t		*conn;		//!< LDAP connection used for bind auths
+	fr_ldap_thread_trunk_t	*bind_trunk;	//!< LDAP trunk used for bind auths
 	fr_rb_tree_t		*binds;		//!< Tree of outstanding bind auths
 } fr_ldap_thread_t;
 
@@ -849,6 +850,8 @@ fr_ldap_thread_trunk_t	*fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 					       request_t *request, fr_ldap_config_t const *config);
 
 fr_trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const *uri, char const *bind_dn);
+
+fr_ldap_thread_trunk_t	*fr_thread_ldap_bind_trunk_get(fr_ldap_thread_t *thread);
 
 /*
  *	state.c - Connection state machine
