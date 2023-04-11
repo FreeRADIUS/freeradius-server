@@ -485,20 +485,20 @@ typedef struct fr_ldap_referral_s {
  *
  */
 typedef struct {
-	fr_ldap_connection_t	*c;			//!< to bind.
+	fr_ldap_connection_t	*c;			//!< to bind.  Only used when binding as admin user.
 	char const		*bind_dn;		//!< of the user, may be NULL to bind anonymously.
 	char const		*password;		//!< of the user, may be NULL if no password is specified.
 	LDAPControl		**serverctrls;		//!< Controls to pass to the server.
 	LDAPControl		**clientctrls;		//!< Controls to pass to the client (library).
 
-	int			msgid;
+	int			msgid;			//!< Of the bind operation.  Only used when binding as admin.
 } fr_ldap_bind_ctx_t;
 
 /** Holds arguments for the async SASL bind operation
  *
  */
 typedef struct {
-	fr_ldap_connection_t	*c;			//!< to bind.
+	fr_ldap_connection_t	*c;			//!< to bind.  Only used when binding as admin user.
 	char const		*mechs;			//!< SASL mechanisms to run
 	char const		*dn;			//!< to bind as.
 	char const		*identity;		//!< of the user.
@@ -508,7 +508,7 @@ typedef struct {
 	LDAPControl		**serverctrls;		//!< Controls to pass to the server.
 	LDAPControl		**clientctrls;		//!< Controls to pass to the client (library).
 
-	int			msgid;			//!< Last msgid.
+	int			msgid;			//!< Last msgid.  Only used when binding as admin user.
 	LDAPMessage		*result;		//!< Previous result.
 	char const		*rmech;			//!< Mech we're continuing with.
 } fr_ldap_sasl_ctx_t;
