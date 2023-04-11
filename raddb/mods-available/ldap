@@ -651,6 +651,13 @@ ldap {
 		interval = 3
 
 		#
+		#  net_timeout:: Sets the timeout for establishing connections.
+		#
+		#  NOTE: `LDAP_OPT_NETWORK_TIMEOUT` is set to this value.
+		#
+		net_timeout = 10
+
+		#
 		#  reconnection_delay:: Sets the time in seconds before a failed connection
 		#  will attempt reconnection.  This includes failures to bind as the admin
 		#  user due to incorrect credentials.
