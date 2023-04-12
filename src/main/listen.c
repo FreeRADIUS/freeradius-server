@@ -769,7 +769,7 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 	}
 
 	for (i = 0; i < inlen; i += in[0] + 1) {
-		RDEBUG("(TLS) ALPN sent by client is %.*s", in[i], &in[i + 1]);
+		RDEBUG("(TLS) ALPN sent by client is \"%.*s\"", in[i], &in[i + 1]);
 	}
 
 	/*
@@ -785,7 +785,7 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 		fr_assert(*outlen == 10);
 		sock->radiusv11 = (server[9] == '1');
 
-		RDEBUG("(TLS) ALPN negotiated application protocol %.*s", (int) *outlen, server);
+		RDEBUG("(TLS) ALPN server negotiated application protocol \"%.*s\"", (int) *outlen, server);
 		return SSL_TLSEXT_ERR_OK;
 	}
 
@@ -796,73 +796,8 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 	return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
 
-static int radiusv11_client_alpn_cb(UNUSED SSL *ssl,
-				    unsigned char **out,
-				    unsigned char *outlen,
-				    const unsigned char *in,
-				    unsigned int inlen,
-				    void *arg)
-{
-	const unsigned char **my_out;
-
-	/*
-	 *	The OpenSSL functions randonly take "const" (or not).
-	 */
-	memcpy(&my_out, &out, sizeof(out)); /* const issues */
-
-	// @todo - get this listener from SSL context, and then pass it as "arg".
-
-	fr_assert(0);
-
-	return radiusv11_server_alpn_cb(ssl, my_out, outlen, in, inlen, arg);
-}
-
-
-static int radiusv11_server_advertised_cb(UNUSED SSL *ssl,
-					 const unsigned char **out,
-					 unsigned int *outlen,
-					 void *arg)
-{
-	rad_listen_t *this = arg;
-
-	fr_assert(0);
-
-	/*
-	 *	The RADIUSv11 configuration for this socket is a combination of what we require, and what we
-	 *	require of the client.
-	 */
-	switch (this->radiusv11) {
-		/*
-		 *	If we forbid RADIUSv11, then we never advertised it via ALPN, and this callback should
-		 *	never have been registered.
-		 */
-	case FR_RADIUSV11_FORBID:
-		fr_assert(0);
-		return SSL_TLSEXT_ERR_NOACK; /* no ALPN was negotiated for this connection */
-
-	case FR_RADIUSV11_ALLOW:
-		*out = radiusv11_allow_protos;
-		*outlen = sizeof(radiusv11_allow_protos);
-		break;
-
-	case FR_RADIUSV11_REQUIRE:
-		*out = radiusv11_require_protos;
-		*outlen = sizeof(radiusv11_require_protos);
-		break;
-	}
-
-	return SSL_TLSEXT_ERR_OK;
-}
-
-/*
- *	Tell the TLS code that we have a list of ALPN protocols to send over, and set the
- *	callbacks to decide what we negotiated.
- *
- *	However, the OpenSSL API allows setting the callback only for the SSL_CTX, and not for
- *	this particular SSL session.  So we have to associate this listener with the SSL*, and then
- *	the radiusv11_client_alpn_cb() will retrieve the listener from SSL*, and then do the actual work.
- */
 int fr_radiusv11_client_init(fr_tls_server_conf_t *tls);
+int fr_radiusv11_client_get_alpn(rad_listen_t *listener);
 
 int fr_radiusv11_client_init(fr_tls_server_conf_t *tls)
 {
@@ -873,18 +808,76 @@ int fr_radiusv11_client_init(fr_tls_server_conf_t *tls)
 			ERROR("Failed setting RADIUSv11 negotiation flags");
 			return -1;
 		}
-		SSL_CTX_set_next_proto_select_cb(tls->ctx, radiusv11_client_alpn_cb, NULL);
 		break;
 
 	case FR_RADIUSV11_REQUIRE:
 		if (SSL_CTX_set_alpn_protos(tls->ctx, radiusv11_require_protos, sizeof(radiusv11_require_protos)) != 0) goto fail_protos;
-		SSL_CTX_set_next_proto_select_cb(tls->ctx, radiusv11_client_alpn_cb, NULL);
 		break;
 
 	default:
 		break;
 	}
 
+	return 0;
+}
+
+int fr_radiusv11_client_get_alpn(rad_listen_t *listener)
+{
+	const unsigned char *data;
+	unsigned int len;
+	listen_socket_t *sock = listener->data;
+
+	SSL_get0_alpn_selected(sock->ssn->ssl, &data, &len);
+	if (!data) {
+		DEBUG("(TLS) ALPN server did not send any application protocol");
+		if (listener->radiusv11 == FR_RADIUSV11_REQUIRE) {
+			DEBUG("(TLS) We have 'radiusv11 = require', but the home server has not negotiated it - closing socket");
+			return -1;
+		}
+
+		return 0;	/* allow radius/1.0 */
+	}
+
+	DEBUG("(TLS) ALPN server sent application protocol \"%.*s\"", (int) len, data);
+
+	if (len != 10) {
+	radiusv11_unknown:
+		DEBUG("(TLS) ALPN unknown application protocol - closing connection to home server");
+		return -1;
+	}
+
+	/*
+	 *	Should always be "radius/1.0" or "radius/1.1"
+	 */
+	if (memcmp(data, "radius/1.", 9) != 0) goto radiusv11_unknown;
+
+	if ((data[9] != '0') && (data[9] != '1')) goto radiusv11_unknown;
+
+
+	switch (listener->radiusv11) {
+	case FR_RADIUSV11_FORBID:
+		if (data[9] != '0') {
+			DEBUG("(TLS) ALPN is not \"radius/v1.0\" - closing connection to home server");					
+			return -1;
+		}
+		break;
+
+	case FR_RADIUSV11_ALLOW:
+		sock->radiusv11 = (data[9] == '1');
+		break;
+	
+	case FR_RADIUSV11_REQUIRE:
+		if (data[9] != '1') {
+			DEBUG("(TLS) ALPN is not \"radius/v1.1\" - closing connection to home server");					
+			return -1;
+		}
+
+		sock->radiusv11 = true;
+		break;
+				
+	}
+
+	sock->alpn_checked = true;
 	return 0;
 }
 #endif
@@ -1089,7 +1082,6 @@ static int dual_tcp_accept(rad_listen_t *listener)
 			 *      the ServerHello does not contain an ALPN section.
 			 */
 			if (client->radiusv11 != FR_RADIUSV11_FORBID) {
-				SSL_CTX_set_next_protos_advertised_cb(this->tls->ctx, radiusv11_server_advertised_cb, this);
 				SSL_CTX_set_alpn_select_cb(this->tls->ctx, radiusv11_server_alpn_cb, this);
 				DEBUG("(TLS) ALPN radiusv11 = allow / require");
 			} else {
@@ -1506,10 +1498,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				}
 
 				this->radiusv11 = this->tls->radiusv11 = rcode;
-
-				if (this->type != RAD_LISTEN_PROXY) {
-					SSL_CTX_set_next_protos_advertised_cb(this->tls->ctx, radiusv11_server_advertised_cb, this);
-				}
 			}
 #endif
 		}
@@ -3402,6 +3390,15 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			ERROR("(TLS) Failed opening connection on proxy socket '%s'", buffer);
 			goto error;
 		}
+
+#ifdef WITH_RADIUSV11
+		/*
+		 *	Must not have alpn_checked yet.  This code only runs for blocking sockets.
+		 */
+		if (sock->ssn->connected && (fr_radiusv11_client_get_alpn(this) < 0)) {
+			goto error;
+		}
+#endif
 
 		sock->connect_timeout = home->connect_timeout;
 

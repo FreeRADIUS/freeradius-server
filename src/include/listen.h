@@ -195,6 +195,7 @@ typedef struct listen_socket_t {
 	} state;
 
 #ifdef WITH_RADIUSV11
+	bool		alpn_checked;
 	bool		radiusv11;		//!< defaults to "no"!
 #endif
 #endif

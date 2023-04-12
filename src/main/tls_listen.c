@@ -1064,11 +1064,15 @@ static int try_connect(listen_socket_t *sock)
 	}
 
 	sock->ssn->connected = true;
-	return 1;
+       	return 1;
 }
 
 
 #ifdef WITH_PROXY
+#ifdef WITH_RADIUSV11
+extern int fr_radiusv11_client_get_alpn(rad_listen_t *listener);
+#endif
+
 /*
  *	Read from the SSL socket.  Safe with either blocking or
  *	non-blocking IO.  This level of complexity is probably not
@@ -1095,6 +1099,14 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 			radius_update_listener(listener);
 			return rcode;
 		}
+
+#ifdef WITH_RADIUSV11
+		if (!sock->alpn_checked && (fr_radiusv11_client_get_alpn(listener) < 0)) {
+			listener->status = RAD_LISTEN_STATUS_EOL;
+			radius_update_listener(listener);
+			return -1;
+		}
+#endif
 	}
 
 	/*
@@ -1362,16 +1374,13 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 			radius_update_listener(listener);
 			return rcode;
 		}
+
 #ifdef WITH_RADIUSV11
-	} else if ((listener->radiusv11 == FR_RADIUSV11_REQUIRE) &&
-		   !sock->radiusv11) {
-
-			DEBUG("(TLS) We have 'radiusv11 = require', but the home server has not negotiated it - closing socket");
-
-			PTHREAD_MUTEX_LOCK(&TLS_MUTEX);
-			tls_socket_close(listener);
-			PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
-			return 0;
+		if (!sock->alpn_checked && (fr_radiusv11_client_get_alpn(listener) < 0)) {
+			listener->status = RAD_LISTEN_STATUS_EOL;
+			radius_update_listener(listener);
+			return -1;
+		}
 #endif
 	}
 
