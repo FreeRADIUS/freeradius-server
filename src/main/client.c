@@ -535,6 +535,10 @@ static const CONF_PARSER client_config[] = {
 	{ "rate_limit", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, rate_limit), NULL },
 #endif
 
+#ifdef WITH_RADIUSV11
+	{ "radiusv11", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, radiusv11_name), NULL },
+#endif
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1044,6 +1048,20 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 #endif
 		cl_srcipaddr = NULL;
 	}
+
+#ifdef WITH_RADIUSV11
+	if (c->tls_required && c->radiusv11_name) {
+		int rcode;
+
+		rcode = fr_str2int(radiusv11_types, c->radiusv11_name, -1);
+		if (rcode < 0) {
+			cf_log_err_cs(cs, "Invalid value for 'radiusv11'");
+			goto error;
+		}
+
+		c->radiusv11 = rcode;
+	}
+#endif
 
 	/*
 	 *	A response_window of zero is OK, and means that it's
