@@ -74,45 +74,6 @@ jobs:
     name: "RPM build"
 
     steps:
-
-    # Required so that the checkout action uses git protocol rather than the GitHub REST API.
-    # make rpm requires the FR directory to be a git repository.
-    - name: Install recent git for CentOS 7
-      if: ${{ matrix.env.NAME == 'centos-7' }}
-      run: |
-        yum install -y https://packages.endpointdev.com/rhel/7/os/x86_64/git-core-2.24.1-1.ep7.x86_64.rpm
-
-    - name: Install distro git for CentOS > 7
-      if: ${{ matrix.env.NAME != 'centos-7' }}
-      run: |
-        yum install -y git-core
-
-    - name: Set up NetworkRADIUS extras repository
-      run: |
-        echo '[networkradius-extras]'                                                               >  /etc/yum.repos.d/networkradius-extras.repo
-        echo 'name=NetworkRADIUS-extras-$releasever'                                                >> /etc/yum.repos.d/networkradius-extras.repo
-        echo 'baseurl=http://packages.networkradius.com/extras/${{ matrix.env.DIST }}/$releasever/' >> /etc/yum.repos.d/networkradius-extras.repo
-        echo 'enabled=1'                                                                            >> /etc/yum.repos.d/networkradius-extras.repo
-        echo 'gpgcheck=1'                                                                           >> /etc/yum.repos.d/networkradius-extras.repo
-        echo 'gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'             >> /etc/yum.repos.d/networkradius-extras.repo
-        rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
-
-    - name: Install common tools
-      run: |
-        yum install -y yum-utils rpm-build openssl make gcc perl
-
-    - name: Install SCL compiler on CentOS 7
-      if: ${{ matrix.env.NAME == 'centos-7' }}
-      run: |
-        yum install -y centos-release-scl
-        yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++ devtoolset-8-make
-        rm -f /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
-        rm -f /etc/yum.repos.d/CentOS-SCLo-scl.repo
-
-    - uses: actions/checkout@v3
-      with:
-        path: freeradius
-
     - name: Extra repos for CentOS and Rocky Linux
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
@@ -127,6 +88,7 @@ jobs:
     - name: Enable PowerTools on CentOS 8
       if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
       run: |
+        yum install -y yum-utils dnf-plugins-core
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
 
@@ -135,6 +97,51 @@ jobs:
       if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
       run: |
         yum install -y procps-ng
+
+    - name: Set up NetworkRADIUS extras repository
+      run: |
+        echo '[networkradius-extras]'                                                               >  /etc/yum.repos.d/networkradius-extras.repo
+        echo 'name=NetworkRADIUS-extras-$releasever'                                                >> /etc/yum.repos.d/networkradius-extras.repo
+        echo 'baseurl=http://packages.networkradius.com/extras/${{ matrix.env.DIST }}/$releasever/' >> /etc/yum.repos.d/networkradius-extras.repo
+        echo 'enabled=1'                                                                            >> /etc/yum.repos.d/networkradius-extras.repo
+        echo 'gpgcheck=1'                                                                           >> /etc/yum.repos.d/networkradius-extras.repo
+        echo 'gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'             >> /etc/yum.repos.d/networkradius-extras.repo
+        rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
+
+    - name: Install common tools
+      run: |
+        yum install -y rpm-build openssl make gcc perl
+
+    - name: Install SCL compiler on CentOS 7
+      if: ${{ matrix.env.NAME == 'centos-7' }}
+      run: |
+        yum install -y centos-release-scl
+        yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++ devtoolset-8-make
+        rm -f /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
+        rm -f /etc/yum.repos.d/CentOS-SCLo-scl.repo
+
+    # Required so that the checkout action uses git protocol rather than the GitHub REST API.
+    # make rpm requires the FR directory to be a git repository.
+
+    # Centos 7 installs an extremely old version of Git.  This version of git's archive
+    # command is missing --add-file and --add-virtual-file so cannot be used for creating
+    # tarballs.  Here we install a more modern version from a 3rd party repo listed on the
+    # git website.
+    - name: Install recent git for CentOS 7
+      if: ${{ matrix.env.NAME == 'centos-7' }}
+      run: |
+        yum remove git
+        rpm -U https://repo.ius.io/ius-release-el7.rpm
+        yum install -y git2*-core
+
+    - name: Install distro git for CentOS > 7
+      if: ${{ matrix.env.NAME != 'centos-7' }}
+      run: |
+        yum install -y git-core
+
+    - uses: actions/checkout@v3
+      with:
+        path: freeradius
 
     #
     #  It has been observed that sometimes not all the dependencies are
@@ -245,7 +252,7 @@ jobs:
     - name: Enable PowerTools on Centos 8
       if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
       run: |
-        yum install -y yum-utils
+        yum install -y yum-utils dnf-plugins-core
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
 
