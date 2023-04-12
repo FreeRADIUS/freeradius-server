@@ -388,12 +388,23 @@ certs:
 #
 #  Make a release.
 #
-#  Note that "Make.inc" has to be updated with the release number
-#  BEFORE running this command!
+#  Note that VERSION has to be updated with the release number and configure should
+#  be re-run if it's been run previously, BEFORE running this command!
+#
+#  These targets determine if release tarballs/rpms/debs should be produced by checking
+#  the following conditions:
+#
+#  - RELEASE=1 is set in make's environment.
+#  - A RELEASE file is present in the root of the working directory.
+#  - The current commit matches a release_ tag.
+#
+#  If none of these conditions are true, or RELEASE=0 is set, then development
+#  tarballs/rpms/debs will be produced.  These will build with developer-mode
+#  enabled, which enables additional debugging, adds full debugging symbols and disables
+#  optimisation.
 #
 ######################################################################
 .PHONY: freeradius-server-$(PKG_VERSION).tar
-
 #
 # This can't depend on .git/ (dirs don't work) or .git/HEAD (not present in submodules)
 # so it's just left as a phony target.
@@ -403,7 +414,7 @@ certs:
 #
 # Original recipe used --add-virtual-file which was added in 237a1d1, on May 30th
 # 2022, which was too late for current versions of our target distros.
-# Code should be revisited in a few years to switch --add-file to -add-virtual-file.
+# Code should be revisited in a few years to switch --add-file to --add-virtual-file.
 #
 BRANCH_CMD := git rev-parse --abbrev-ref HEAD
 freeradius-server-$(PKG_VERSION).tar:
