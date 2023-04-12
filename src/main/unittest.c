@@ -72,6 +72,13 @@ void request_inject(UNUSED REQUEST *request)
 	/* do nothing */
 }
 
+#ifdef WITH_RADIUSV11
+int fr_radiusv11_client_init(fr_tls_server_conf_t *tls)
+{
+	return 0;
+}
+#endif
+
 static rad_listen_t *listen_alloc(void *ctx)
 {
 	rad_listen_t *this;
