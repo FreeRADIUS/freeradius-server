@@ -708,6 +708,184 @@ static int tls_sni_callback(SSL *ssl, UNUSED int *al, void *arg)
 }
 #endif
 
+#ifdef WITH_RADIUSV11
+static const unsigned char radiusv11_allow_protos[] = {
+	10, 'r', 'a', 'd', 'i', 'u', 's', '/', '1', '.', '1', /* prefer this */
+	10, 'r', 'a', 'd', 'i', 'u', 's', '/', '1', '.', '0',
+};
+
+static const unsigned char radiusv11_require_protos[] = {
+	10, 'r', 'a', 'd', 'i', 'u', 's', '/', '1', '.', '1',
+};
+
+/*
+ *	On the server, get the ALPN list requested by the client.
+ */
+static int radiusv11_server_alpn_cb(SSL *ssl,
+				    const unsigned char **out,
+				    unsigned char *outlen,
+				    const unsigned char *in,
+				    unsigned int inlen,
+				    void *arg)
+{
+	rad_listen_t *this = arg;
+	listen_socket_t *sock = this->data;
+	unsigned char **hack;
+	const unsigned char *server;
+	unsigned int server_len, i;
+	int rcode;
+	REQUEST *request;
+
+	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	fr_assert(request != NULL);
+
+	fr_assert(inlen > 0);
+
+	memcpy(&hack, &out, sizeof(out)); /* const issues */
+
+	/*
+	 *	The RADIUSv11 configuration for this socket is a combination of what we require, and what we
+	 *	require of the client.
+	 */
+	switch (this->radiusv11) {
+		/*
+		 *	If we forbid RADIUSv11, then we never advertised it via ALPN, and this callback should
+		 *	never have been registered.
+		 */
+	case FR_RADIUSV11_FORBID:
+		server =  radiusv11_allow_protos + 11;
+		server_len = 11;
+		break;
+
+	case FR_RADIUSV11_ALLOW:
+		server = radiusv11_allow_protos;
+		server_len = sizeof(radiusv11_allow_protos);
+		break;
+
+	case FR_RADIUSV11_REQUIRE:
+		server = radiusv11_require_protos;
+		server_len = sizeof(radiusv11_require_protos);
+		break;
+	}
+
+	for (i = 0; i < inlen; i += in[0] + 1) {
+		RDEBUG("(TLS) ALPN sent by client is \"%.*s\"", in[i], &in[i + 1]);
+	}
+
+	/*
+	 *	Select the next protocol.
+	 */
+	rcode = SSL_select_next_proto(hack, outlen, server, server_len, in, inlen);
+	if (rcode == OPENSSL_NPN_NEGOTIATED) {
+		server = *out;
+
+		/*
+		 *	Tell our socket which protocol we negotiated.
+		 */
+		fr_assert(*outlen == 10);
+		sock->radiusv11 = (server[9] == '1');
+
+		RDEBUG("(TLS) ALPN server negotiated application protocol \"%.*s\"", (int) *outlen, server);
+		return SSL_TLSEXT_ERR_OK;
+	}
+
+	/*
+	 *	No common ALPN.
+	 */
+	RDEBUG("(TLS) ALPN failure - no protocols in common");
+	return SSL_TLSEXT_ERR_ALERT_FATAL;
+}
+
+int fr_radiusv11_client_init(fr_tls_server_conf_t *tls);
+int fr_radiusv11_client_get_alpn(rad_listen_t *listener);
+
+int fr_radiusv11_client_init(fr_tls_server_conf_t *tls)
+{
+	switch (tls->radiusv11) {
+	case FR_RADIUSV11_ALLOW:
+		if (SSL_CTX_set_alpn_protos(tls->ctx, radiusv11_allow_protos, sizeof(radiusv11_allow_protos)) != 0) {
+		fail_protos:
+			ERROR("Failed setting RADIUSv11 negotiation flags");
+			return -1;
+		}
+		break;
+
+	case FR_RADIUSV11_REQUIRE:
+		if (SSL_CTX_set_alpn_protos(tls->ctx, radiusv11_require_protos, sizeof(radiusv11_require_protos)) != 0) goto fail_protos;
+		break;
+
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+int fr_radiusv11_client_get_alpn(rad_listen_t *listener)
+{
+	const unsigned char *data;
+	unsigned int len;
+	listen_socket_t *sock = listener->data;
+
+	SSL_get0_alpn_selected(sock->ssn->ssl, &data, &len);
+	if (!data) {
+		DEBUG("(TLS) ALPN server did not send any application protocol");
+		if (listener->radiusv11 == FR_RADIUSV11_REQUIRE) {
+			DEBUG("(TLS) We have 'radiusv11 = require', but the home server has not negotiated it - closing socket");
+			return -1;
+		}
+
+		DEBUG("(TLS) ALPN assuming \"radius/1.0\");
+		return 0;	/* allow radius/1.0 */
+	}
+
+	DEBUG("(TLS) ALPN server sent application protocol \"%.*s\"", (int) len, data);
+
+	if (len != 10) {
+	radiusv11_unknown:
+		DEBUG("(TLS) ALPN server sent unknown application protocol - closing connection to home server");
+		return -1;
+	}
+
+	/*
+	 *	Should always be "radius/1.0" or "radius/1.1".  The server MUST echo back one of the strings
+	 *	we sent.  If it doesn't, it's a bad server.
+	 */
+	if (memcmp(data, "radius/1.", 9) != 0) goto radiusv11_unknown;
+
+	if ((data[9] != '0') && (data[9] != '1')) goto radiusv11_unknown;
+
+	/*
+	 *	Double-check what the server sent us.  It SHOULD be sane, but it never hurts to check.
+	 */
+	switch (listener->radiusv11) {
+	case FR_RADIUSV11_FORBID:
+		if (data[9] != '0') {
+			DEBUG("(TLS) ALPN server did not send \"radius/v1.0\" - closing connection to home server");
+			return -1;
+		}
+		break;
+
+	case FR_RADIUSV11_ALLOW:
+		sock->radiusv11 = (data[9] == '1');
+		break;
+
+	case FR_RADIUSV11_REQUIRE:
+		if (data[9] != '1') {
+			DEBUG("(TLS) ALPN server did not send \"radius/v1.1\" - closing connection to home server");
+			return -1;
+		}
+
+		sock->radiusv11 = true;
+		break;
+	}
+
+	sock->alpn_checked = true;
+	return 0;
+}
+#endif
+
+
 static int dual_tcp_accept(rad_listen_t *listener)
 {
 	int newfd;
@@ -770,6 +948,35 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		close(newfd);
 		return 0;
 	}
+
+#ifdef WITH_RADIUSV11
+	if (listener->tls) {
+		switch (listener->tls->radiusv11) {
+		case FR_RADIUSV11_FORBID:
+			if (client->radiusv11 == FR_RADIUSV11_REQUIRE) {
+				INFO("Ignoring new connection as client is marked as 'radiusv11 = require', and this socket has 'radiusv11 = forbid'");
+				close(newfd);
+				return 0;
+			}
+			break;
+
+		case FR_RADIUSV11_ALLOW:
+			/*
+			 *	We negotiate it as per the client recommendations (forbid, allow, require)
+			 */
+			break;
+
+		case FR_RADIUSV11_REQUIRE:
+			if (client->radiusv11 == FR_RADIUSV11_FORBID) {
+				INFO("Ignoring new connection as client is marked as 'radiusv11 = forbid', and this socket has 'radiusv11 = require'");
+				close(newfd);
+				return 0;
+			}
+			break;
+		}
+	}
+#endif
+
 #endif
 
 	/*
@@ -862,6 +1069,9 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 #ifdef WITH_TLS
 		if (this->tls) {
+			this->recv = dual_tls_recv;
+			this->send = dual_tls_send;
+
 			/*
 			 *	Set up SNI callback.  We don't do it
 			 *	in the main TLS code, because EAP
@@ -869,9 +1079,18 @@ static int dual_tcp_accept(rad_listen_t *listener)
 			 */
 			SSL_CTX_set_tlsext_servername_callback(this->tls->ctx, tls_sni_callback);
 			SSL_CTX_set_tlsext_servername_arg(this->tls->ctx, this->tls);
-
-			this->recv = dual_tls_recv;
-			this->send = dual_tls_send;
+#ifdef WITH_RADIUSV11
+			/*
+			 *      Default is "forbid" (0).  In which case we don't set any ALPN callbacks, and
+			 *      the ServerHello does not contain an ALPN section.
+			 */
+			if (client->radiusv11 != FR_RADIUSV11_FORBID) {
+				SSL_CTX_set_alpn_select_cb(this->tls->ctx, radiusv11_server_alpn_cb, this);
+				DEBUG("(TLS) ALPN radiusv11 = allow / require");
+			} else {
+				DEBUG("(TLS) ALPN radiusv11 = forbid");
+			}
+#endif
 		}
 #endif
 	}
@@ -1272,6 +1491,18 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 			rcode = cf_item_parse(cs, "check_client_connections", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->check_client_connections), "no");
 			if (rcode < 0) return -1;
+
+#ifdef WITH_RADIUSV11
+			if (this->tls->radiusv11_name) {
+				rcode = fr_str2int(radiusv11_types, this->tls->radiusv11_name, -1);
+				if (rcode < 0) {
+					cf_log_err_cs(cs, "Invalid value for 'radiusv11'");
+					return -1;
+				}
+
+				this->radiusv11 = this->tls->radiusv11 = rcode;
+			}
+#endif
 		}
 #else  /* WITH_TLS */
 		/*
@@ -3033,6 +3264,7 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
 }
 
 #ifdef WITH_PROXY
+
 /*
  *	Externally visible function for creating a new proxy LISTENER.
  *
@@ -3130,6 +3362,10 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			(void) SSL_set_tlsext_host_name(sock->ssn->ssl, (void *) (uintptr_t) home->tls->client_hostname);
 		}
 
+#ifdef WITH_RADIUSV11
+		this->radiusv11 = home->tls->radiusv11;
+#endif
+
 		this->nonblock |= home->nonblock;
 
 		/*
@@ -3157,6 +3393,15 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			ERROR("(TLS) Failed opening connection on proxy socket '%s'", buffer);
 			goto error;
 		}
+
+#ifdef WITH_RADIUSV11
+		/*
+		 *	Must not have alpn_checked yet.  This code only runs for blocking sockets.
+		 */
+		if (sock->ssn->connected && (fr_radiusv11_client_get_alpn(this) < 0)) {
+			goto error;
+		}
+#endif
 
 		sock->connect_timeout = home->connect_timeout;
 

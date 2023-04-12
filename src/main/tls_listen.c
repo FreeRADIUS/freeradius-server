@@ -430,6 +430,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 		SSL_set_ex_data(sock->ssn->ssl, fr_tls_ex_index_certs, (void *) &sock->certs);
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_TALLOC, sock);
+
 		sock->ssn->quick_session_tickets = true; /* we don't have inner-tunnel authentication */
 
 		doing_init = true;
@@ -673,6 +674,10 @@ read_application_data:
 	sock->ssn->record_minus(&sock->ssn->clean_out, packet->data, packet->data_len);
 	packet->vps = NULL;
 	PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
+
+#ifdef WITH_RADIUSV11
+	packet->radiusv11 = sock->radiusv11;
+#endif
 
 	if (!rad_packet_ok(packet, 0, NULL)) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -1064,6 +1069,10 @@ static int try_connect(listen_socket_t *sock)
 
 
 #ifdef WITH_PROXY
+#ifdef WITH_RADIUSV11
+extern int fr_radiusv11_client_get_alpn(rad_listen_t *listener);
+#endif
+
 /*
  *	Read from the SSL socket.  Safe with either blocking or
  *	non-blocking IO.  This level of complexity is probably not
@@ -1090,6 +1099,14 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 			radius_update_listener(listener);
 			return rcode;
 		}
+
+#ifdef WITH_RADIUSV11
+		if (!sock->alpn_checked && (fr_radiusv11_client_get_alpn(listener) < 0)) {
+			listener->status = RAD_LISTEN_STATUS_EOL;
+			radius_update_listener(listener);
+			return -1;
+		}
+#endif
 	}
 
 	/*
@@ -1248,6 +1265,10 @@ int proxy_tls_recv(rad_listen_t *listener)
 	memcpy(packet->data, data, packet->data_len);
 	memcpy(packet->vector, packet->data + 4, 16);
 
+#ifdef WITH_RADIUSV11
+	packet->radiusv11 = sock->radiusv11;
+#endif
+
 	/*
 	 *	FIXME: Client MIB updates?
 	 */
@@ -1334,6 +1355,10 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	 *	if there's no packet, encode it here.
 	 */
 	if (!request->proxy->data) {
+#ifdef WITH_RADIUSV11
+		request->proxy->radiusv11 = sock->radiusv11;
+#endif
+
 		request->proxy_listener->proxy_encode(request->proxy_listener,
 						      request);
 	}
@@ -1349,6 +1374,14 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 			radius_update_listener(listener);
 			return rcode;
 		}
+
+#ifdef WITH_RADIUSV11
+		if (!sock->alpn_checked && (fr_radiusv11_client_get_alpn(listener) < 0)) {
+			listener->status = RAD_LISTEN_STATUS_EOL;
+			radius_update_listener(listener);
+			return -1;
+		}
+#endif
 	}
 
 	DEBUG3("Proxy is writing %u bytes to SSL",
@@ -1369,7 +1402,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 
 		default:
 			tls_error_log(NULL, "Failed in proxy send with OpenSSL error %d", err);
-			DEBUG("Closing TLS socket to home server");
+			DEBUG("(TLS) Closing socket to home server");
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
 			return 0;
