@@ -835,7 +835,7 @@ int fr_radiusv11_client_get_alpn(rad_listen_t *listener)
 			return -1;
 		}
 
-		DEBUG("(TLS) ALPN assuming \"radius/1.0\");
+		DEBUG("(TLS) ALPN assuming \"radius/1.0\"");
 		return 0;	/* allow radius/1.0 */
 	}
 
