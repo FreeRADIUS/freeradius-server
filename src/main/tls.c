@@ -634,7 +634,12 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 			break;
 
 		case SSL_ERROR_WANT_READ:
+			fr_event_fd_want_read(radius_event_list_corral(EVENT_CORRAL_MAIN), fd);
+			ssn->connected = false;
+			return ssn;
+
 		case SSL_ERROR_WANT_WRITE:
+			fr_event_fd_want_write(radius_event_list_corral(EVENT_CORRAL_MAIN), fd);
 			ssn->connected = false;
 			return ssn;
 		}
