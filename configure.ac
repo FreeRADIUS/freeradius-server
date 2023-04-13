@@ -484,6 +484,24 @@ if test "x$WITH_ASCEND_BINARY" = "xyes"; then
 fi
 
 dnl #
+dnl #  extra argument: --with-radiusv11
+dnl #
+WITH_RADIUSV11=
+AC_ARG_WITH(radiusv11,
+[  --with-radiusv11        compile in RADIUSv11 support. (default=no)],
+[ case "$withval" in
+  yes)
+    WITH_RADIUSV11=yes
+    ;;
+  *)
+    ;;
+  esac ]
+)
+if test "x$WITH_RADIUSCV11" = "xyes"; then
+  AC_DEFINE(WITH_RADIUSV11, [1], [define if you want RADIUSv11 support (For RADSec et al)])
+fi
+
+dnl #
 dnl #  extra argument: --with-threads
 dnl #
 WITH_THREADS=yes

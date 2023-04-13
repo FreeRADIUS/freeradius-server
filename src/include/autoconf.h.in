@@ -658,6 +658,9 @@
 /* define if the server was built with -DNDEBUG */
 #undef WITH_NDEBUG
 
+/* define if you want RADIUSv11 support (For RADSec et al) */
+#undef WITH_RADIUSV11
+
 /* define if you want TCP support (For RADSec et al) */
 #undef WITH_TCP
 

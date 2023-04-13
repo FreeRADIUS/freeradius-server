@@ -780,6 +780,7 @@ with_radacctdir
 with_raddbdir
 with_dictdir
 with_ascend_binary
+with_radiusv11
 with_threads
 with_tcp
 with_vmps
@@ -1484,6 +1485,7 @@ Optional Packages:
   --with-raddbdir=DIR     directory for config files SYSCONFDIR/raddb
   --with-dictdir=DIR      directory for dictionary files DATAROOTDIR/freeradius
   --with-ascend-binary    include support for Ascend binary filter attributes (default=yes)
+  --with-radiusv11        compile in RADIUSv11 support. (default=no)
   --with-threads          use threads, if available.  (default=yes)
   --with-tcp              compile in TCP support. (default=yes)
   --with-vmps             compile in VMPS support. (default=yes)
@@ -6694,6 +6696,27 @@ fi
 if test "x$WITH_ASCEND_BINARY" = "xyes"; then
 
 printf "%s\n" "#define WITH_ASCEND_BINARY 1" >>confdefs.h
+
+fi
+
+WITH_RADIUSV11=
+
+# Check whether --with-radiusv11 was given.
+if test ${with_radiusv11+y}
+then :
+  withval=$with_radiusv11;  case "$withval" in
+  yes)
+    WITH_RADIUSV11=yes
+    ;;
+  *)
+    ;;
+  esac
+
+fi
+
+if test "x$WITH_RADIUSCV11" = "xyes"; then
+
+printf "%s\n" "#define WITH_RADIUSV11 1" >>confdefs.h
 
 fi
 
