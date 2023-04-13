@@ -1,4 +1,4 @@
-/*
+</*
  * tls.c
  *
  * Version:     $Id$
@@ -589,6 +589,7 @@ check_for_setup:
 		request->packet->data = talloc_zero_array(request->packet, uint8_t, 20);
 		request->packet->data[0] = PW_CODE_STATUS_SERVER;
 		request->packet->data[3] = 20;
+		request->listener = listener;
 		sock->state = LISTEN_TLS_CHECKING;
 		PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
 
@@ -1030,7 +1031,7 @@ int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request)
 }
 #endif
 
-static int try_connect(listen_socket_t *sock)
+static int try_connect(int fd, listen_socket_t *sock)
 {
 	int ret;
 	time_t now;
@@ -1048,9 +1049,17 @@ static int try_connect(listen_socket_t *sock)
 			tls_error_io_log(NULL, sock->ssn, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
 			break;
 
+		case SSL_ERROR_NONE:
+			break;
+
 		case SSL_ERROR_WANT_READ:
+			fr_event_fd_want_read(radius_event_list_corral(EVENT_CORRAL_MAIN), fd);
+			DEBUG3("(TLS) SSL_connect() returned WANT_READ");
+			return 0;
+			
 		case SSL_ERROR_WANT_WRITE:
-			DEBUG3("(TLS) SSL_connect() returned %s", ERR_reason_error_string(ret));
+			fr_event_fd_want_write(radius_event_list_corral(EVENT_CORRAL_MAIN), fd);
+			DEBUG3("(TLS) SSL_connect() returned WANT_WRITE");
 			return 0;
 		}
 	}
@@ -1093,7 +1102,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 
 	if (!sock->ssn->connected) {
-		rcode = try_connect(sock);
+		rcode = try_connect(listener->fd, sock);
 		if (rcode <= 0) {
 			listener->status = RAD_LISTEN_STATUS_EOL;
 			radius_update_listener(listener);
@@ -1123,10 +1132,16 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 		if (rcode <= 0) {
 			int err = SSL_get_error(sock->ssn->ssl, rcode);
 			switch (err) {
+
 			case SSL_ERROR_WANT_READ:
+				fr_event_fd_want_read(radius_event_list_corral(EVENT_CORRAL_MAIN), listener->fd);
+				DEBUG3("(TLS) SSL_connect() returned WANT_READ");
+				return 0;
+			
 			case SSL_ERROR_WANT_WRITE:
-				DEBUG3("(TLS) SSL_read() returned %s", ERR_reason_error_string(err));
-				return 0; /* do some more work later */
+				fr_event_fd_want_write(radius_event_list_corral(EVENT_CORRAL_MAIN), listener->fd);
+				DEBUG3("(TLS) SSL_connect() returned WANT_WRITE");
+				return 0;
 
 			case SSL_ERROR_ZERO_RETURN:
 				/* remote end sent close_notify, send one back */
@@ -1180,10 +1195,16 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 				 length - sock->partial);
 		if (rcode <= 0) {
 			int err = SSL_get_error(sock->ssn->ssl, rcode);
-			switch (err) {
+			switch (err) {	
+
 			case SSL_ERROR_WANT_READ:
+				fr_event_fd_want_read(radius_event_list_corral(EVENT_CORRAL_MAIN), listener->fd);
+				DEBUG3("(TLS) SSL_connect() returned WANT_READ");
+				return 0;
+			
 			case SSL_ERROR_WANT_WRITE:
-				DEBUG3("(TLS) SSL_read() returned %s", ERR_reason_error_string(rcode));
+				fr_event_fd_want_write(radius_event_list_corral(EVENT_CORRAL_MAIN), listener->fd);
+				DEBUG3("(TLS) SSL_connect() returned WANT_WRITE");
 				return 0;
 
 			case SSL_ERROR_ZERO_RETURN:
@@ -1367,7 +1388,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	if (!sock->ssn->connected) {
 		PTHREAD_MUTEX_LOCK(&TLS_MUTEX);
-		rcode = try_connect(sock);
+		rcode = try_connect(listener->fd, sock);
 		PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
 		if (rcode <= 0) {
 			listener->status = RAD_LISTEN_STATUS_EOL;
@@ -1395,10 +1416,17 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 		err = ERR_get_error();
 		switch (err) {
 		case SSL_ERROR_NONE:
+			break;
+
 		case SSL_ERROR_WANT_READ:
+			fr_event_fd_want_read(radius_event_list_corral(EVENT_CORRAL_MAIN), listener->fd);
+			DEBUG3("(TLS) SSL_connect() returned WANT_READ");
+			break;
+			
 		case SSL_ERROR_WANT_WRITE:
-			DEBUG3("(TLS) SSL_write() returned %s", ERR_reason_error_string(err));
-			break;	/* let someone else retry */
+			fr_event_fd_want_write(radius_event_list_corral(EVENT_CORRAL_MAIN), listener->fd);
+			DEBUG3("(TLS) SSL_connect() returned WANT_WRITE");
+			break;
 
 		default:
 			tls_error_log(NULL, "Failed in proxy send with OpenSSL error %d", err);
