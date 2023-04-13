@@ -152,6 +152,7 @@
 #include <freeradius-devel/util/fifo.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
+#include <freeradius-devel/util/time.h>
 
 #include "base.h"
 #include "cluster.h"
@@ -1013,7 +1014,7 @@ fr_redis_cluster_rcode_t fr_redis_cluster_remap(request_t *request, fr_redis_clu
 	 *	The remap times are _our_ times, not the _request_ time.
 	 */
 	now = fr_time();
-	if (fr_time_eq(now, cluster->last_updated)) {
+	if (fr_time_to_sec(now) == fr_time_to_sec(cluster->last_updated)) {
 	too_soon:
 		ROPTIONAL(RWARN, WARN, "Cluster was updated less than a second ago, ignoring remap request");
 		return FR_REDIS_CLUSTER_RCODE_IGNORED;
@@ -1074,7 +1075,7 @@ fr_redis_cluster_rcode_t fr_redis_cluster_remap(request_t *request, fr_redis_clu
 		fr_redis_reply_free(&map);	/* Free the map */
 		goto in_progress;
 	}
-	if (fr_time_eq(now, cluster->last_updated)) {
+	if (fr_time_to_sec(now) == fr_time_to_sec(cluster->last_updated)) {
 		pthread_mutex_unlock(&cluster->mutex);
 		fr_redis_reply_free(&map);	/* Free the map */
 		goto too_soon;
