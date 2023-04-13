@@ -132,6 +132,19 @@ typedef enum {
 	FR_TRUNK_CONN_DRAINING_TO_FREE \
 )
 
+/** States where the connection may be processing requests
+ *
+ */
+#define FR_TRUNK_CONN_PROCESSING \
+(\
+	FR_TRUNK_CONN_ACTIVE | \
+	FR_TRUNK_CONN_FULL | \
+	FR_TRUNK_CONN_INACTIVE | \
+	FR_TRUNK_CONN_DRAINING | \
+	FR_TRUNK_CONN_INACTIVE_DRAINING | \
+	FR_TRUNK_CONN_DRAINING_TO_FREE \
+)
+
 typedef enum {
 	FR_TRUNK_ENQUEUE_IN_BACKLOG = 1,		//!< Request should be enqueued in backlog
 	FR_TRUNK_ENQUEUE_OK = 0,			//!< Operation was successful.
