@@ -695,6 +695,7 @@ do { \
 #define IN_REQUEST_CANCEL_MUX(_trunk)	(((_trunk)->funcs.request_cancel_mux) && ((_trunk)->in_handler == (void *)(_trunk)->funcs.request_cancel_mux))
 
 #define IS_SERVICEABLE(_tconn)		((_tconn)->pub.state & FR_TRUNK_CONN_SERVICEABLE)
+#define IS_PROCESSING(_tconn)		((tconn)->pub.state & FR_TRUNK_CONN_PROCESSING)
 
 /** Remove the current request from the backlog
  *
@@ -1131,7 +1132,7 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 	fr_trunk_t		*trunk = treq->pub.trunk;
 
 	fr_assert(tconn->pub.trunk == trunk);
-	fr_assert(IS_SERVICEABLE(tconn));
+	fr_assert(IS_PROCESSING(tconn));
 
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_INIT:
@@ -2570,7 +2571,7 @@ fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
 
 	if (!tconn) return FR_TRUNK_ENQUEUE_FAIL;
 
-	if (!IS_SERVICEABLE(tconn)) {
+	if (!IS_PROCESSING(tconn)) {
 		trunk_request_enter_failed(treq);
 		return FR_TRUNK_ENQUEUE_DST_UNAVAILABLE;
 	}
