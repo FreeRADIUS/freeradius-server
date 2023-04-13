@@ -840,6 +840,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	Loop over the lua functions, registering an xlat
 	 *	that'll call that function specifically.
 	 */
+	if (!inst->lua.funcs) return 0;
 	talloc_foreach(inst->lua.funcs, func) {
 		name = talloc_asprintf(NULL, "%s.%s", mctx->inst->name, func->name);
 		if (unlikely((xlat = xlat_func_register_module(inst, mctx, name, redis_lua_func_xlat, FR_TYPE_VOID)) == NULL)) return -1;
