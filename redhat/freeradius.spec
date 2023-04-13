@@ -588,6 +588,10 @@ export LDFLAGS="-Wl,--build-id"
 # Note: It's a bad idea to set PATH here as this may interfere with the modified path passed in by
 # code-ready-builder.  If the path needs to be modified, _install_script_path should be set in
 # /etc/rpm/macros.  e.g. echo "%_install_script_path   /usr/sbin:/usr/bin:/usr/X11R6/bin" > /etc/rpm/macros
+#
+# If altering _install_script_path does not change the PATH set by rpmbuild, secure_path may have been
+# enabled in /etc/sudoers. The secure_path directive should be removed to allow rpmbuild to manipulate PATH
+# in the build environment.
 
 # Pass in the release number, which was passed to us by whatever called rpmbuild
 %if %{?_release:1}%{!?_release:0}
