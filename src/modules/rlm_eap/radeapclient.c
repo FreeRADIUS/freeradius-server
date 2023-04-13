@@ -191,6 +191,11 @@ rlm_rcode_t process_post_auth(UNUSED int postauth_type, UNUSED REQUEST *request)
 }
 
 
+fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint)
+{
+	return NULL;
+}
+
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stdout, "Usage: radeapclient [options] server[:port] <command> [<secret>]\n");
