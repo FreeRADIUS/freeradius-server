@@ -1,6 +1,8 @@
 #!/bin/bash -e
 
 TMP_REDIS_DIR='/tmp/redis'
+REDIS_MAJOR_VERSION="$(redis-server -v | grep -o 'v=[0-9.]*' | cut -d= -f2 | cut -d. -f1)"
+
 export PATH="${TMP_REDIS_DIR}:${PATH}"
 
 if [ ! -e "${TMP_REDIS_DIR}" ]; then
@@ -22,15 +24,19 @@ if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
     curl https://raw.githubusercontent.com/antirez/redis/unstable/utils/create-cluster/create-cluster > "${TMP_REDIS_DIR}/create-cluster"
     chmod +x "${TMP_REDIS_DIR}/create-cluster"
 
-    echo "ADDITIONAL_OPTIONS=\"--enable-debug-command local\"" > "${TMP_REDIS_DIR}/config.sh"
+    # redis versions greater than 7 need --enable-debug-command local passed otherwise
+    # they don't allow access to the debug commands we use in tests.
+    if [ "${REDIS_MAJOR_VERSION}" -ge 7 ]; then
+        echo "ADDITIONAL_OPTIONS=\"--enable-debug-command local\"" > "${TMP_REDIS_DIR}/config.sh"
+    fi
 fi
 
 # Fix hardcoded paths in the test script
 sed -ie "s#\$BIN_PATH/redis-cli#echo 'yes' | redis-cli#" "${TMP_REDIS_DIR}/create-cluster"
 sed -ie "s#\$BIN_PATH/redis-server#redis-server#" "${TMP_REDIS_DIR}/create-cluster"
 
-if which lsb_release > /dev/null && lsb_release -ds | grep 'Ubuntu 20.04'; then
-    # Remove option not applicable to redis version on Ubuntu 20.04
+# appenddirname was added in v7 and triggers errors if passed to older versions
+if [ "${REDIS_MAJOR_VERSION}" -lt 7 ]; then
     sed -ie "s# --appenddirname appendonlydir-\${PORT}##" "${TMP_REDIS_DIR}/create-cluster"
     # Fix cleanup to match option change above
     sed -ie "s#appendonlydir-\*#appendonly\*.aof#" "${TMP_REDIS_DIR}/create-cluster"
