@@ -7,17 +7,13 @@ if [ ! -e "${TMP_REDIS_DIR}" ]; then
     mkdir -p "${TMP_REDIS_DIR}"
 fi
 
-if [ ! -e "${TMP_REDIS_DIR}/cluster" ]; then
-    mkdir -p "${TMP_REDIS_DIR}/cluster"
-fi
-
 if [ "$(which redis-server)" = '' ]; then
     echo "Can't find redis-server (sudo apt-get install redis, brew install redis etc...)"
     exit 1
 fi
 
 # The various Redis setup scripts and instances put their data here
-cd "${TMP_REDIS_DIR}/cluster"
+cd "${TMP_REDIS_DIR}"
 
 # Download the latest versions of the cluster test utilities
 # these are only available via the Redis repo, and it seems more sensible to download
@@ -25,6 +21,8 @@ cd "${TMP_REDIS_DIR}/cluster"
 if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
     curl https://raw.githubusercontent.com/antirez/redis/unstable/utils/create-cluster/create-cluster > "${TMP_REDIS_DIR}/create-cluster"
     chmod +x "${TMP_REDIS_DIR}/create-cluster"
+
+    echo "ADDITIONAL_OPTIONS=\"--enable-debug-command local\"" > "${TMP_REDIS_DIR}/config.sh"
 fi
 
 # Fix hardcoded paths in the test script
