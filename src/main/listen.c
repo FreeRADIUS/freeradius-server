@@ -709,12 +709,7 @@ static int tls_sni_callback(SSL *ssl, UNUSED int *al, void *arg)
 #endif
 
 #ifdef WITH_RADIUSV11
-static const unsigned char radiusv11_allow_protos[] = {
-	10, 'r', 'a', 'd', 'i', 'u', 's', '/', '1', '.', '1', /* prefer this */
-	10, 'r', 'a', 'd', 'i', 'u', 's', '/', '1', '.', '0',
-};
-
-static const unsigned char radiusv11_require_protos[] = {
+static const unsigned char radiusv11_alpn_protos[] = {
 	10, 'r', 'a', 'd', 'i', 'u', 's', '/', '1', '.', '1',
 };
 
@@ -753,18 +748,14 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 		 *	never have been registered.
 		 */
 	case FR_RADIUSV11_FORBID:
-		server =  radiusv11_allow_protos + 11;
-		server_len = 11;
-		break;
+		*out = NULL;
+		*outlen = 0;
+		return SSL_TLSEXT_ERR_OK;
 
 	case FR_RADIUSV11_ALLOW:
-		server = radiusv11_allow_protos;
-		server_len = sizeof(radiusv11_allow_protos);
-		break;
-
 	case FR_RADIUSV11_REQUIRE:
-		server = radiusv11_require_protos;
-		server_len = sizeof(radiusv11_require_protos);
+		server = radiusv11_alpn_protos;
+		server_len = sizeof(radiusv11_alpn_protos);
 		break;
 	}
 
@@ -803,15 +794,11 @@ int fr_radiusv11_client_init(fr_tls_server_conf_t *tls)
 {
 	switch (tls->radiusv11) {
 	case FR_RADIUSV11_ALLOW:
-		if (SSL_CTX_set_alpn_protos(tls->ctx, radiusv11_allow_protos, sizeof(radiusv11_allow_protos)) != 0) {
-		fail_protos:
+	case FR_RADIUSV11_REQUIRE:
+		if (SSL_CTX_set_alpn_protos(tls->ctx, radiusv11_alpn_protos, sizeof(radiusv11_alpn_protos)) != 0) {
 			ERROR("Failed setting RADIUSv11 negotiation flags");
 			return -1;
 		}
-		break;
-
-	case FR_RADIUSV11_REQUIRE:
-		if (SSL_CTX_set_alpn_protos(tls->ctx, radiusv11_require_protos, sizeof(radiusv11_require_protos)) != 0) goto fail_protos;
 		break;
 
 	default:
@@ -829,53 +816,41 @@ int fr_radiusv11_client_get_alpn(rad_listen_t *listener)
 
 	SSL_get0_alpn_selected(sock->ssn->ssl, &data, &len);
 	if (!data) {
-		DEBUG("(TLS) ALPN server did not send any application protocol");
+		DEBUG("(TLS) ALPN home server did not send any application protocol");
 		if (listener->radiusv11 == FR_RADIUSV11_REQUIRE) {
 			DEBUG("(TLS) We have 'radiusv11 = require', but the home server has not negotiated it - closing socket");
 			return -1;
 		}
 
-		DEBUG("(TLS) ALPN assuming \"radius/1.0\"");
-		return 0;	/* allow radius/1.0 */
+		DEBUG("(TLS) ALPN assuming historical RADIUS");
+		return 0;
 	}
 
-	DEBUG("(TLS) ALPN server sent application protocol \"%.*s\"", (int) len, data);
+	DEBUG("(TLS) ALPN home server sent application protocol \"%.*s\"", (int) len, data);
 
 	if (len != 10) {
 	radiusv11_unknown:
-		DEBUG("(TLS) ALPN server sent unknown application protocol - closing connection to home server");
+		DEBUG("(TLS) ALPN home server sent unknown application protocol - closing connection");
 		return -1;
 	}
 
 	/*
-	 *	Should always be "radius/1.0" or "radius/1.1".  The server MUST echo back one of the strings
+	 *	Should always be "radius/1.1".  The server MUST echo back one of the strings
 	 *	we sent.  If it doesn't, it's a bad server.
 	 */
-	if (memcmp(data, "radius/1.", 9) != 0) goto radiusv11_unknown;
-
-	if ((data[9] != '0') && (data[9] != '1')) goto radiusv11_unknown;
+	if (memcmp(data, "radius/1.1", 10) != 0) goto radiusv11_unknown;
 
 	/*
 	 *	Double-check what the server sent us.  It SHOULD be sane, but it never hurts to check.
 	 */
 	switch (listener->radiusv11) {
 	case FR_RADIUSV11_FORBID:
-		if (data[9] != '0') {
-			DEBUG("(TLS) ALPN server did not send \"radius/v1.0\" - closing connection to home server");
-			return -1;
-		}
-		break;
+		DEBUG("(TLS) ALPN home server sent \"radius/v1.1\" but we forbid it - closing connection to home server");
+		return -1;
 
 	case FR_RADIUSV11_ALLOW:
-		sock->radiusv11 = (data[9] == '1');
-		break;
-
 	case FR_RADIUSV11_REQUIRE:
-		if (data[9] != '1') {
-			DEBUG("(TLS) ALPN server did not send \"radius/v1.1\" - closing connection to home server");
-			return -1;
-		}
-
+		DEBUG("(TLS) ALPN using \"radius/1.1\"");
 		sock->radiusv11 = true;
 		break;
 	}
