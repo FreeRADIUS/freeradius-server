@@ -15,6 +15,17 @@
 	&Tmp-Integer-0 = 8
 	&Tmp-Integer-0 = 9
 	&Tmp-Integer-0 = 10
+	&Tmp-Integer-0 = 11
+	&Tmp-Integer-0 = 12
+	&Tmp-Integer-0 = 13
+	&Tmp-Integer-0 = 14
+	&Tmp-Integer-0 = 15
+	&Tmp-Integer-0 = 16
+	&Tmp-Integer-0 = 17
+	&Tmp-Integer-0 = 18
+	&Tmp-Integer-0 = 19
+	&Tmp-Integer-0 = 20
+	&Tmp-Integer-0 = 21
 }
 
 &control.Tmp-String-0 := "1-%{randstr:aaaaaaaa}"
@@ -75,15 +86,18 @@ foreach &control.Tmp-Integer-0 {
 
 	&request -= &Module-Failure-Message[*]
 
-	# Perform checks every 0.5 seconds
-	&Tmp-Integer-0 := `/bin/sleep 0.5`
+	# Perform checks every half second for 10 seconds.
+	#
+	# The cluster tends to come up within a couple of seconds, but it takes longer
+	# for the replicas to be displayed in cluster slot output (usually ~5 seconds).
+	%(delay:0.5)
 
 	#
 	#  If the cluster is still not behaving
 	#  abandon the test to avoid false negatives
 	#
-	if ("%{Foreach-Variable-0}" == 10) {
-		test_pass
+	if ("%{Foreach-Variable-0}" == 20) {
+		test_fail
 		return
 	}
 }
