@@ -426,6 +426,7 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			REXDENT();
 		}
 		if (!func->read_only) {
+			fr_redis_reply_free(&reply);
 			reply = redisCommandArgv(conn->handle, argc, argv, arg_len);
 			status = fr_redis_command_status(conn, reply);
 		} else if (redis_command_read_only(&status, &reply, request, conn, argc, argv, arg_len) == -2) {
@@ -466,6 +467,7 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			 *	we just load the script and try again.
 			 */
 			if (!func->read_only) {
+				fr_redis_reply_free(&reply);
 				reply = redisCommandArgv(conn->handle, NUM_ELEMENTS(script_load_argv),
 							 script_load_argv, script_load_arg_len);
 				status = fr_redis_command_status(conn, reply);
