@@ -355,7 +355,7 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 request_t *request, fr_value_box_list_t *in)
 {
 	rlm_redis_t			*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_redis_t);
-	redis_lua_func_inst_t		*xlat_inst = talloc_get_type_abort(xctx->inst, redis_lua_func_inst_t);
+	redis_lua_func_inst_t const	*xlat_inst = talloc_get_type_abort_const(xctx->inst, redis_lua_func_inst_t);
 	redis_lua_func_t		*func = xlat_inst->func;
 
 	fr_redis_conn_t			*conn;
