@@ -31,10 +31,12 @@ fi
 sed -ie "s#\$BIN_PATH/redis-cli#echo 'yes' | redis-cli#" "${TMP_REDIS_DIR}/create-cluster"
 sed -ie "s#\$BIN_PATH/redis-server#redis-server#" "${TMP_REDIS_DIR}/create-cluster"
 
-# Remove option not applicable to redis version on Ubuntu 20.04
-sed -ie "s# --appenddirname appendonlydir-\${PORT}##" "${TMP_REDIS_DIR}/create-cluster"
-# Fix cleanup to match option change above
-sed -ie "s#appendonlydir-\*#appendonly\*.aof#" "${TMP_REDIS_DIR}/create-cluster"
+if which lsb_release > /dev/null && lsb_release -ds | grep 'Ubuntu 20.04'; then
+    # Remove option not applicable to redis version on Ubuntu 20.04
+    sed -ie "s# --appenddirname appendonlydir-\${PORT}##" "${TMP_REDIS_DIR}/create-cluster"
+    # Fix cleanup to match option change above
+    sed -ie "s#appendonlydir-\*#appendonly\*.aof#" "${TMP_REDIS_DIR}/create-cluster"
+fi
 
 # Ensure all nodes are accessible before creating cluster
 if [ "$1" == "create" ]; then
