@@ -274,7 +274,15 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	rcode = fr_redis_cluster_remap(request, inst->cluster, conn);
-	fr_pool_connection_release(pool, request, conn);
+	switch (rcode) {
+	case FR_REDIS_CLUSTER_RCODE_NO_CONNECTION:
+		fr_pool_connection_close(pool, request, conn);
+		break;
+
+	default:
+		fr_pool_connection_release(pool, request, conn);
+		break;
+	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_value(fr_redis_cluster_rcodes_table, rcode, "<INVALID>"), false);
