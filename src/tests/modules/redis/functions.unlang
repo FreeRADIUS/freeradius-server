@@ -1,0 +1,32 @@
+#
+#  Run the "redis" xlat
+#
+$INCLUDE cluster_reset.inc
+
+if (!("%(redis.hello_world:0)" == 'hello world')) {
+	test_fail
+}
+
+# ...and again, now hopefully using the cached function
+if (!(%(redis.hello_world:0) == 'hello world')) {
+	test_fail
+}
+
+if (!(%(redis.concat_args_keys:1 foo bar baz) == 'foo,bar,baz')) {
+	test_fail
+}
+
+if (!(%(redis.multiline:0 0) == 0)) {
+	test_fail
+}
+
+if (!(%(redis.multiline:0 1) == 1)) {
+	test_fail
+}
+
+# Bad call
+if (%(redis.multiline:10) != '') {
+	test_fail
+}
+
+test_pass

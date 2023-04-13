@@ -58,6 +58,43 @@ redis {
 #	password = thisisreallysecretandhardtoguess
 
 	#
+	#  lua { ... }::
+	#
+	#  Configuration options which control the execution of lua scripts
+	#  on redis nodes.
+	#
+	lua {
+		#
+		#  function <name> { ... }::
+		#
+		#  Every function section listed here will be registered as an expansion with a name
+		#  in the format `<inst>.<name>`.
+		#
+		#  For example the function below would be callable as `%(redis.hello_world:...)`.
+		#
+		#  expansion functions take the same arguments as the redis `EVALSHA` command,
+		#  i.e. `<numkeys> [<key> [<key> ...]] [<arg> [<arg> ...]]`.
+		#
+		#  `numkeys` specifies how many of the proceeding arguments should be treated as keys.
+		#
+		#  The redis module will use the first key to determine which cluster node the function
+		#  should called on.
+		#
+		#  The redis module pre-calcualtes the SHA1 hash of all lua functions on startup.
+		#  When an expansion function is called, it uses the `EVALSHA` command to attempt to
+		#  call lua function on a remote redis node.  If `EVALSHA` fails with an error indicating
+		#  no script could be found with the calculated SHA1 hash, the lua function will be
+		#  loaded transparently using `SCRIPT LOAD`.
+		#
+		function hello_world {
+			#
+			#  body:: Lua code to send to redis nodes with SCRIPT LOAD
+			#
+			body = 'return "hello world"'
+		}
+	}
+
+	#
 	#  pool { ... }::
 	#
 	#  Information for the connection pool.  The configuration items below
