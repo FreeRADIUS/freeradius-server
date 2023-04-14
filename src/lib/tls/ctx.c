@@ -615,7 +615,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	int		verify_mode = SSL_VERIFY_NONE;
 	int		ctx_options = 0;
 
-	ctx = SSL_CTX_new(SSLv23_method());
+	ctx = SSL_CTX_new(TLS_method());
 	if (!ctx) {
 		fr_tls_log(NULL, "Failed creating TLS context");
 		return NULL;

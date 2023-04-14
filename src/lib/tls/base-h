@@ -104,7 +104,7 @@ extern _Thread_local TALLOC_CTX *ssl_talloc_ctx;
  * so will free the allocated object last, after doing manual cleanups.
  *
  @code{.c}
-   FR_OPENSSL_BIND_MEMORY(ctx = SSL_CTX_new(SSLv23_method()));
+   FR_OPENSSL_BIND_MEMORY(ctx = SSL_CTX_new(TLS_method()));
    if (!ctx) ..error
  @endcode
  * @param _expr		The call to the OpenSSL function and storage of the
