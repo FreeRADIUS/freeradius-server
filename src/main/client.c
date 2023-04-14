@@ -536,7 +536,7 @@ static const CONF_PARSER client_config[] = {
 #endif
 
 #ifdef WITH_RADIUSV11
-	{ "radiusv11", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, radiusv11_name), NULL },
+	{ "radius_1_1", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, radiusv11_name), NULL },
 #endif
 
 	CONF_PARSER_TERMINATOR
