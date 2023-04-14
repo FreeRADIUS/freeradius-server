@@ -1376,10 +1376,6 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	 *	if there's no packet, encode it here.
 	 */
 	if (!request->proxy->data) {
-#ifdef WITH_RADIUSV11
-		request->proxy->radiusv11 = sock->radiusv11;
-#endif
-
 		request->proxy_listener->proxy_encode(request->proxy_listener,
 						      request);
 	}

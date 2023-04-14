@@ -2611,8 +2611,20 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 }
 
 #ifdef WITH_PROXY
-static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
+#ifdef WITH_RADIUSV11
+#define RADIUSV11_UNUSED
+#else
+#define RADIUSV11_UNUSED UNUSED
+#endif
+
+static int proxy_socket_encode(RADIUSV11_UNUSED rad_listen_t *listener, REQUEST *request)
 {
+#ifdef WITH_RADIUSV11
+	listen_socket_t *sock = listener->data;
+
+	request->proxy->radiusv11 = sock->radiusv11;
+#endif
+
 	if (rad_encode(request->proxy, NULL, request->home_server->secret) < 0) {
 		RERROR("Failed encoding proxied packet: %s", fr_strerror());
 

@@ -3638,6 +3638,14 @@ static int request_proxy(REQUEST *request)
 
 #ifdef WITH_TLS
 		if (request->home_server->tls) {
+#ifdef WITH_RADIUSV11
+			listen_socket_t *sock = request->proxy_listener->data;
+
+			if (sock->radiusv11) {
+				fr_pair_delete_by_num(&request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+			}
+#endif
+
 			RDEBUG2("Proxying request to home server %s port %d (TLS) timeout %d.%06d",
 				inet_ntop(request->proxy->dst_ipaddr.af,
 					  &request->proxy->dst_ipaddr.ipaddr,
