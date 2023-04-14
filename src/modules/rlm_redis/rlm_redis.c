@@ -435,7 +435,7 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		if (status != REDIS_RCODE_NO_SCRIPT) continue;
 
-		REDEBUG3("Loading lua function \"%s\" (0x%s)", func->name, func->digest);
+		RDEBUG3("Loading lua function \"%s\" (0x%s)", func->name, func->digest);
 		{
 			char const	*script_load_argv[] = {
 						"SCRIPT",
