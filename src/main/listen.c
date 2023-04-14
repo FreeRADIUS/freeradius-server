@@ -2548,6 +2548,11 @@ static int client_socket_encode(TLS_UNUSED rad_listen_t *listener, REQUEST *requ
 	 */
 	listen_socket_t *sock = listener->data;
 	if (sock->state == LISTEN_TLS_CHECKING) return 0;
+
+#ifdef WITH_RADIUSV11
+	request->reply->radiusv11 = sock->radiusv11;
+#endif
+
 #endif
 
 	if (!request->reply->code) return 0;
@@ -2578,7 +2583,11 @@ static int client_socket_encode(TLS_UNUSED rad_listen_t *listener, REQUEST *requ
 static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 #ifdef WITH_TLS
-	listen_socket_t *sock;
+	listen_socket_t *sock = request->listener->data;
+
+#ifdef WITH_RADIUSV11
+	request->packet->radiusv11 = sock->radiusv11;
+#endif
 #endif
 
 	if (rad_verify(request->packet, NULL,
@@ -2587,9 +2596,6 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	}
 
 #ifdef WITH_TLS
-	sock = request->listener->data;
-	rad_assert(sock != NULL);
-
 	/*
 	 *	FIXME: Add the rest of the TLS parameters, too?  But
 	 *	how do we separate EAP-TLS parameters from RADIUS/TLS
@@ -2648,6 +2654,12 @@ static int proxy_socket_encode(RADIUSV11_UNUSED rad_listen_t *listener, REQUEST 
 
 static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
+#ifdef WITH_RADIUSV11
+	listen_socket_t *sock = listener->data;
+
+	request->proxy_reply->radiusv11 = sock->radiusv11;
+#endif
+
 	/*
 	 *	rad_verify is run in event.c, received_proxy_response()
 	 */

@@ -935,6 +935,9 @@ static int send_one_packet(rc_request_t *request)
 #endif
 			}
 			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
+#ifdef WITH_RADIUSV11
+						       false,
+#endif
 						       &request->packet->dst_ipaddr,
 						       request->packet->dst_port, NULL)) {
 				ERROR("Can't add new socket");
@@ -1525,8 +1528,11 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (!fr_packet_list_socket_add(pl, sockfd, ipproto, &server_ipaddr,
-				       server_port, NULL)) {
+	if (!fr_packet_list_socket_add(pl, sockfd, ipproto,
+#ifdef WITH_RADIUSV11
+				       false,
+#endif
+				       &server_ipaddr, server_port, NULL)) {
 		ERROR("Out of memory");
 		exit(1);
 	}

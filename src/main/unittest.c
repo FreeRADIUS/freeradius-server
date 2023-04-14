@@ -73,7 +73,9 @@ void request_inject(UNUSED REQUEST *request)
 }
 
 #ifdef WITH_RADIUSV11
-int fr_radiusv11_client_init(fr_tls_server_conf_t *tls)
+int fr_radiusv11_client_init(UNUSED fr_tls_server_conf_t *tls);
+
+int fr_radiusv11_client_init(UNUSED fr_tls_server_conf_t *tls)
 {
 	return 0;
 }

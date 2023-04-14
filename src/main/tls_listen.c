@@ -1288,6 +1288,14 @@ int proxy_tls_recv(rad_listen_t *listener)
 
 #ifdef WITH_RADIUSV11
 	packet->radiusv11 = sock->radiusv11;
+
+	if (sock->radiusv11) {
+		uint32_t id;
+
+		memcpy(&id, data + 4, sizeof(id));
+		packet->id = ntohl(id);
+	}
+
 #endif
 
 	/*

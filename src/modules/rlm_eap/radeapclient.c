@@ -1351,7 +1351,11 @@ static void rc_add_socket(fr_ipaddr_t *src_ipaddr, uint16_t src_port, fr_ipaddr_
 		exit(1);
 	}
 
-	if (!fr_packet_list_socket_add(pl, mysockfd, ipproto, dst_ipaddr, dst_port, NULL)) {
+	if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
+#ifdef WITH_RADIUSV11
+				       false,
+#endif
+				       dst_ipaddr, dst_port, NULL)) {
 		ERROR("Failed to add new socket: %s\n", fr_strerror());
 		exit(1);
 	}

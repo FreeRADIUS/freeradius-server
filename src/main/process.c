@@ -2471,6 +2471,9 @@ static int insert_into_proxy_hash(REQUEST *request)
 		sock = this->data;
 		if (!fr_packet_list_socket_add(proxy_list, this->fd,
 					       sock->proto,
+#ifdef WITH_RADIUSV11
+					       sock->radiusv11,
+#endif
 					       &sock->other_ipaddr, sock->other_port,
 					       this)) {
 
@@ -2517,7 +2520,9 @@ static int insert_into_proxy_hash(REQUEST *request)
 		return 0;
 	}
 
+#ifndef WITH_RADIUSV11
 	rad_assert(request->proxy->id >= 0);
+#endif
 
 	request->proxy_listener = proxy_listener;
 	request->in_proxy_hash = true;
@@ -3629,7 +3634,9 @@ static int request_proxy(REQUEST *request)
 		return -1;
 	}
 
+#ifndef WITH_RADIUSV11
 	rad_assert(request->proxy->id >= 0);
+#endif
 
 	if (rad_debug_lvl) {
 		struct timeval *response_window;
@@ -5559,6 +5566,9 @@ static void event_new_fd(rad_listen_t *this)
 				PTHREAD_MUTEX_LOCK(&proxy_mutex);
 				if (!fr_packet_list_socket_add(proxy_list, this->fd,
 							       sock->proto,
+#ifdef WITH_RADIUSV11
+							       sock->radiusv11,
+#endif
 							       &sock->other_ipaddr, sock->other_port,
 							       this)) {
 					ERROR("Failed adding coa proxy socket");
@@ -6069,6 +6079,9 @@ static void create_default_proxy_listener(int af)
 	sock = this->data;
 	if (!fr_packet_list_socket_add(proxy_list, this->fd,
 				       sock->proto,
+#ifdef WITH_RADIUSV11
+				       sock->radiusv11,
+#endif
 				       &sock->other_ipaddr, sock->other_port,
 				       this)) {
 		ERROR("Failed adding proxy socket");

@@ -1873,9 +1873,23 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	Build standard header
 	 */
 	hdr->code = packet->code;
-	hdr->id = packet->id;
 
-	memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
+#ifdef WITH_RADIUSV11
+	if (packet->radiusv11) {
+		uint32_t id = packet->id;
+
+		hdr->id = 0;
+
+		id = htonl(id);
+		memcpy(hdr->vector, &id, sizeof(id));
+		memset(hdr->vector + sizeof(id), 0, sizeof(hdr->vector) - sizeof(id));
+	} else
+#endif
+	{
+		hdr->id = packet->id;
+
+		memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
+	}
 
 	total_length = RADIUS_HDR_LEN;
 
@@ -2041,14 +2055,6 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 {
 	radius_packet_t	*hdr = (radius_packet_t *)packet->data;
 
-	/*
-	 *	It wasn't assigned an Id, this is bad!
-	 */
-	if (packet->id < 0) {
-		fr_strerror_printf("ERROR: RADIUS packets must be assigned an Id");
-		return -1;
-	}
-
 	if (!packet->data || (packet->data_len < RADIUS_HDR_LEN) ||
 	    (packet->offset < 0)) {
 		fr_strerror_printf("ERROR: You must call rad_encode() before rad_sign()");
@@ -2065,6 +2071,14 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		return 0;
 	}
 #endif
+
+	/*
+	 *	It wasn't assigned an Id, this is bad!
+	 */
+	if (packet->id < 0) {
+		fr_strerror_printf("ERROR: RADIUS packets must be assigned an Id");
+		return -1;
+	}
 
 	/*
 	 *	Set up the authentication vector with zero, or with
@@ -2804,6 +2818,14 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 */
 	packet->code = hdr->code;
 	packet->id = hdr->id;
+#ifdef WITH_RADIUSV11
+	if (packet->radiusv11) {
+		uint32_t id;
+
+		memcpy(&id, hdr->vector, sizeof(id));
+		packet->id = ntohl(id);
+	}
+#endif
 	memcpy(packet->vector, hdr->vector, AUTH_VECTOR_LEN);
 
 
@@ -5225,9 +5247,6 @@ RADIUS_PACKET *rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 	reply->proto = packet->proto;
 #ifdef WITH_RADIUSV11
 	reply->radiusv11 = packet->radiusv11;
-	if (reply->radiusv11) {
-		memcpy(reply->vector, packet->vector, sizeof(reply->vector));
-	}
 #endif
 #endif
 	return reply;
