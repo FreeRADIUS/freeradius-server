@@ -147,7 +147,7 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	 */
 	if ((content_type > UINT8_MAX) && (content_type != SSL3_RT_INNER_CONTENT_TYPE)) {
 #endif
-		DEBUG4("(TLS) Ignoring cbtls_msg call with pseudo content type %i, version %i",
+		DEBUG4("(TLS) Ignoring cbtls_msg call with pseudo content type %i, version %08x",
 		       content_type, msg_version);
 		return;
 	}
