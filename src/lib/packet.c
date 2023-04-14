@@ -44,8 +44,6 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 	if (a->sockfd < b->sockfd) return -1;
 	if (a->sockfd > b->sockfd) return +1;
 
-	fprintf(stderr, "CMP %08x %08x\n", (uint32_t) a->id, (uint32_t) b->id);
-
 	/*
 	 *	IDs should be spread effectively randomly
 	 */
