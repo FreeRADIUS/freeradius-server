@@ -1937,7 +1937,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 			if (cluster_node_find_live(&state->node, conn, request,
 						   cluster, state->node) < 0) return REDIS_RCODE_RECONNECT;
 
-			return REDIS_RCODE_TRY_AGAIN;
+			goto try_again;
 		}
 
 		state->retries = 0;
