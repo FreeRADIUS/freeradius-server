@@ -933,7 +933,7 @@ static int send_one_packet(rc_request_t *request)
 			int mysockfd;
 
 			if (ipproto == IPPROTO_TCP) {
-				mysockfd = fr_socket_client_tcp(NULL,
+				mysockfd = fr_socket_client_tcp(NULL, NULL,
 								&request->packet->socket.inet.dst_ipaddr,
 								request->packet->socket.inet.dst_port, false);
 				if (mysockfd < 0) {
@@ -1774,7 +1774,7 @@ int main(int argc, char **argv)
 	if (client_port == 0) client_port = request->packet->socket.inet.src_port;
 
 	if (ipproto == IPPROTO_TCP) {
-		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
+		sockfd = fr_socket_client_tcp(NULL, NULL, &server_ipaddr, server_port, false);
 		if (sockfd < 0) {
 			ERROR("Failed opening socket");
 			return -1;

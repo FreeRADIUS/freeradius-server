@@ -1118,12 +1118,12 @@ int main(int argc, char **argv)
 
 	switch (conf->proto) {
 	case IPPROTO_TCP:
-		sockfd = fr_socket_client_tcp(NULL, &conf->server_ipaddr, conf->server_port, true);
+		sockfd = fr_socket_client_tcp(NULL, NULL, &conf->server_ipaddr, conf->server_port, true);
 		break;
 
 	default:
 	case IPPROTO_UDP:
-		sockfd = fr_socket_client_udp(NULL, NULL, &conf->server_ipaddr, conf->server_port, true);
+		sockfd = fr_socket_client_udp(NULL, NULL, NULL, &conf->server_ipaddr, conf->server_port, true);
 		break;
 	}
 	if (sockfd < 0) {

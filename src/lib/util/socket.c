@@ -34,10 +34,7 @@
 #include <freeradius-devel/util/cap.h>
 
 #include <fcntl.h>
-
-#ifndef SO_BINDTODEVICE
-#endif
-
+#include <sys/socket.h>
 #include <ifaddrs.h>
 
 /** Resolve a named service to a port
@@ -312,6 +309,31 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
 }
 #endif /* WITH_SYS_UN_H */
 
+static inline CC_HINT(always_inline) int socket_bind_ifname(int sockfd, char const *ifname)
+{
+#if defined(SO_BINDTODEVICE)
+	if (setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, ifname, strlen(ifname)) < 0) {
+		fr_strerror_printf("Failed binding socket to %s: %s", ifname, fr_syserror(errno));
+		return -1;
+	}
+#elif defined(IP_BOUND_IF)
+	{
+		int idx = if_nametoindex(ifname);
+		if (idx == 0) {
+		error:
+			fr_strerror_printf("Failed binding socket to %s: %s", ifname, fr_syserror(errno));
+			return -1;
+		}
+		if (unlikely(setsockopt(sockfd, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof(idx)) < 0)) goto error;
+	}
+#else
+	fr_strerror_const("Binding sockets to interfaces not supported on this platform");
+	return -1;
+#endif
+
+	return 0;
+}
+
 /** Establish a connected UDP socket
  *
  * Connected UDP sockets can be used with write(), unlike unconnected sockets
@@ -319,7 +341,7 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
  *
  * The following code demonstrates using this function with a connection timeout:
  @code {.c}
-   sockfd = fr_socket_client_udp(NULL, NULL, ipaddr, port, true);
+   sockfd = fr_socket_client_udp(NULL, NULL, NULL, ipaddr, port, true);
    if (sockfd < 0) {
    	fr_perror();
    	fr_exit_now(1);
@@ -334,18 +356,20 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
    if (fr_blocking(sockfd) < 0) goto error;
  @endcode
  *
+ * @param[in] ifname		If non-NULL, bind the socket to this interface.
  * @param[in,out] src_ipaddr	to bind socket to, may be NULL if socket is not bound to any specific
- *			address.  If non-null, the bound IP is copied here, too.
- * @param[out] src_port	The source port we were bound to, may be NULL.
- * @param dst_ipaddr	Where to send datagrams.
- * @param dst_port	Where to send datagrams.
- * @param async		Whether to set the socket to nonblocking, allowing use of
- *			#fr_socket_wait_for_connect.
+ *				address.  If non-null, the bound IP is copied here, too.
+ * @param[out] src_port		The source port we were bound to, may be NULL.
+ * @param[in] dst_ipaddr	Where to send datagrams.
+ * @param[in] dst_port		Where to send datagrams.
+ * @param[in] async		Whether to set the socket to nonblocking, allowing use of
+ *				#fr_socket_wait_for_connect.
  * @return
  *	- FD on success.
  *	- -1 on failure.
  */
-int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
+int fr_socket_client_udp(char const *ifname, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
+			 fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
 {
 	int			sockfd;
 	struct sockaddr_storage salocal;
@@ -364,6 +388,11 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_
 		close(sockfd);
 		return -1;
 	}
+
+	/*
+	 *	Bind to a specific interface
+	 */
+	if (ifname && (socket_bind_ifname(sockfd, ifname) < 0)) goto error;
 
 	/*
 	 *	Allow the caller to bind us to a specific source IP.
@@ -454,7 +483,7 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_
  *
  * The following code demonstrates using this function with a connection timeout:
  @code {.c}
-   sockfd = fr_socket_client_tcp(NULL, ipaddr, port, true);
+   sockfd = fr_socket_client_tcp(NULL, NULL, ipaddr, port, true);
    if (sockfd < 0) {
    	fr_perror();
    	fr_exit_now(1);
@@ -469,6 +498,7 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_
    if (fr_blocking(sockfd) < 0) goto error;
  @endcode
  *
+ * @param[in] ifname	If non-NULL, bind the socket to this interface.
  * @param src_ipaddr	to bind socket to, may be NULL if socket is not bound to any specific
  *			address.
  * @param dst_ipaddr	Where to connect to.
@@ -479,7 +509,8 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_
  *	- FD on success
  *	- -1 on failure.
  */
-int fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
+int fr_socket_client_tcp(char const *ifname, fr_ipaddr_t const *src_ipaddr,
+			 fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
 {
 	int			sockfd;
 	struct sockaddr_storage	salocal;
@@ -494,9 +525,15 @@ int fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_i
 	}
 
 	if (async && (fr_nonblock(sockfd) < 0)) {
+	error:
 		close(sockfd);
 		return -1;
 	}
+
+	/*
+	 *	Bind to a specific interface
+	 */
+	if (ifname && (socket_bind_ifname(sockfd, ifname) < 0)) goto error;
 
 	/*
 	 *	Allow the caller to bind us to a specific source IP.

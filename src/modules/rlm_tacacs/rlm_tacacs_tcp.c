@@ -282,7 +282,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	/*
 	 *	Open the outgoing socket.
 	 */
-	fd = fr_socket_client_tcp(&h->src_ipaddr, &h->inst->dst_ipaddr, h->inst->dst_port, true);
+	fd = fr_socket_client_tcp(NULL, &h->src_ipaddr, &h->inst->dst_ipaddr, h->inst->dst_port, true);
 	if (fd < 0) {
 		PERROR("%s - Failed opening socket", h->module_name);
 		talloc_free(h);
