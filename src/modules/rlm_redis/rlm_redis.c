@@ -425,7 +425,6 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			for (int i = 2; i < argc; i++) RDEBUG3("[%i] %s", i, argv[i]);
 			REXDENT();
 		}
-		fr_redis_reply_free(&reply);
 		if (!func->read_only) {
 			reply = redisCommandArgv(conn->handle, argc, argv, arg_len);
 			status = fr_redis_command_status(conn, reply);
@@ -466,7 +465,6 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			 *	synchronous code will need to be rewritten, so for now
 			 *	we just load the script and try again.
 			 */
-			fr_redis_reply_free(&reply);
 			if (!func->read_only) {
 				reply = redisCommandArgv(conn->handle, NUM_ELEMENTS(script_load_argv),
 							 script_load_argv, script_load_arg_len);
@@ -492,6 +490,7 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					REDEBUG("Function digest %s, does not match calculated digest %s", reply->str, func->digest);
 					goto script_load_failed;
 				}
+				fr_redis_reply_free(&reply);
 				goto again;
 			}
 		}
