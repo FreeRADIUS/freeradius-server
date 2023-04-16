@@ -24,7 +24,6 @@
  * @copyright 2000,2006 The FreeRADIUS server project
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
@@ -32,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/sbuff.h>
 
 #include <freeradius-devel/unlang/unlang_priv.h>	/* Remove when everything uses new xlat API */
 
@@ -72,46 +72,46 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 
 /** Reconstruct the original expansion string from an xlat tree
  *
- * @param[in] ctx	to allocate result in.
+ * @param[in] out	sbuff to print result in.
  * @param[in] node	in the tree to start printing.
  * @return
  *	- The original expansion string on success.
  *	- NULL on error.
  */
-static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
+static fr_slen_t xlat_fmt_print(fr_sbuff_t *out, xlat_exp_t const *node)
 {
 	switch (node->type) {
 	case XLAT_BOX:
 	case XLAT_GROUP:
 		fr_assert(node->fmt != NULL);
-		return talloc_asprintf(ctx, "%s", node->fmt);
+		return fr_sbuff_in_strcpy(out, node->fmt);
 
 	case XLAT_ONE_LETTER:
 		fr_assert(node->fmt != NULL);
-		return talloc_asprintf(ctx, "%%%s", node->fmt);
+		return fr_sbuff_in_sprintf(out, "%%%s", node->fmt);
 
 	case XLAT_TMPL:
 		fr_assert(node->fmt != NULL);
 		if (tmpl_is_attr(node->vpt) && (node->fmt[0] == '&')) {
-			return talloc_strdup(ctx, node->fmt);
+			return fr_sbuff_in_strcpy(out, node->fmt);
 		} else {
-			return talloc_asprintf(ctx, "%%{%s}", node->fmt);
+			return fr_sbuff_in_sprintf(out, "%%{%s}", node->fmt);
 		}
 
 	case XLAT_VIRTUAL:
-		return talloc_asprintf(ctx, "%%{%s}", node->call.func->name);
+		return fr_sbuff_in_sprintf(out, "%%{%s}", node->call.func->name);
 
 #ifdef HAVE_REGEX
 	case XLAT_REGEX:
-		return talloc_asprintf(ctx, "%%{%u}", node->regex_index);
+		return fr_sbuff_in_sprintf(out, "%%{%u}", node->regex_index);
 #endif
 
 	case XLAT_FUNC:
 	{
-		char		 	*out, *n_out;
-		TALLOC_CTX		*pool;
 		char			open = '{', close = '}';
 		bool			first_done = false;
+		fr_sbuff_t 		our_out;
+		fr_slen_t		slen;
 
 		if (node->call.func->input_type == XLAT_INPUT_ARGS) {
 			open = '(';
@@ -121,59 +121,52 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 		/*
 		 *	No arguments, just print an empty function.
 		 */
-		if (!xlat_exp_head(node->call.args)) return talloc_asprintf(ctx, "%%%c%s:%c", open, node->call.func->name, close);
+		if (!xlat_exp_head(node->call.args)) return fr_sbuff_in_sprintf(out, "%%%c%s:%c", open, node->call.func->name, close);
 
-		out = talloc_asprintf(ctx, "%%%c%s:", open, node->call.func->name);
-		pool = talloc_pool(NULL, 128);	/* Size of a single child (probably ok...) */
+		our_out = FR_SBUFF(out);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%%%c%s:", open, node->call.func->name);
 
 		xlat_exp_foreach(node->call.args, arg) {
-			char *arg_str;
-
-			arg_str = xlat_fmt_aprint(pool, arg);
-			if (arg_str) {
-				if ((first_done) && (node->call.func->input_type == XLAT_INPUT_ARGS)) {
-					n_out = talloc_strdup_append_buffer(out, " ");
-					if (!n_out) {
-					child_error:
-						talloc_free(out);
-						talloc_free(pool);
-						return NULL;
-					}
-					out = n_out;
-				}
-
-				n_out = talloc_buffer_append_buffer(ctx, out, arg_str);
-				if (!n_out) goto child_error;
-				out = n_out;
-				first_done = true;
+			if ((first_done) && (node->call.func->input_type == XLAT_INPUT_ARGS)) {
+				FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
 			}
-			talloc_free_children(pool);	/* Clear pool contents */
-		}
-		talloc_free(pool);
 
-		n_out = talloc_strndup_append_buffer(out, &close, 1);
-		if (!n_out) {
-			talloc_free(out);
-			return NULL;
+			slen = xlat_fmt_print(&our_out, arg);
+			if (slen < 0) return slen - fr_sbuff_used(&our_out);
+
+			first_done = true;
 		}
-		return n_out;
+
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, close);
+		return fr_sbuff_set(out, &our_out);
 	}
 
 	case XLAT_ALTERNATE:
 	{
-		char *first, *second, *result;
+		fr_sbuff_t 	our_out = FR_SBUFF(out);
+		fr_slen_t	slen;
 
-		first = xlat_fmt_aprint(NULL, xlat_exp_head(node->alternate[0]));
-		second = xlat_fmt_aprint(NULL, xlat_exp_head(node->alternate[1]));
-		result = talloc_asprintf(ctx, "%%{%s:-%s}", first, second);
-		talloc_free(first);
-		talloc_free(second);
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "%{");
 
-		return result;
+		xlat_exp_foreach(node->alternate[0], child) {
+			slen = xlat_fmt_print(&our_out, child);
+			if (slen < 0) return slen - fr_sbuff_used(&our_out);
+		}
+
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ":-");
+
+		xlat_exp_foreach(node->alternate[1], child) {
+			slen = xlat_fmt_print(&our_out, child);
+			if (slen < 0) return slen - fr_sbuff_used(&our_out);
+		}
+
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "}");
+
+		return fr_sbuff_set(out, &our_out);
 	}
 
 	default:
-		return NULL;
+		return 0;
 	}
 }
 
@@ -202,11 +195,15 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 			node->call.func->name, args,
 			(node->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
 	} else {
-		char *str;
+		fr_sbuff_t *agg;
 
-		str = xlat_fmt_aprint(NULL, node);
-		RDEBUG2("| %s", str); /* print line number here for debugging */
-		talloc_free(str);
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 1024, SIZE_MAX);
+
+		if (xlat_fmt_print(agg, node) < 0) {
+			RERROR("Failed printing expansion");
+			return;
+		}
+		RDEBUG2("| %s", fr_sbuff_start(agg)); /* print line number here for debugging */
 	}
 }
 

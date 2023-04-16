@@ -26,7 +26,15 @@ if (!(&Tmp-String-2 == 'bar')) {
 #  Multiple things in an alternation
 #
 &Tmp-String-2 := "%{%{Tmp-String-0}:-%{Tmp-String-1} foo}"
-if !(&Tmp-String-2 == 'bar foo') {
+if (!(&Tmp-String-2 == 'bar foo')) {
+	test_fail
+}
+
+#
+#  Alternation is empty
+#
+&Tmp-String-2 := "%{%{Tmp-String-0}:-}"
+if (!(&Tmp-String-2 == '')) {
 	test_fail
 }
 
@@ -40,7 +48,7 @@ if !(&Tmp-String-2 == 'bar foo') {
 #  Both sides are failing, so the assignment returns a NULL string
 #
 &Tmp-String-2 := "%{%{Tmp-String-0}:-%{Tmp-String-1}}"
-if !(&Tmp-String-2 == "") {
+if (!(&Tmp-String-2 == "")) {
 	test_fail
 }
 

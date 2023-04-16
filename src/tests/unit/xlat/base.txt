@@ -210,6 +210,9 @@ match ERROR offset 15: Expected ':-' after first expansion
 xlat %{%{User-Name}}
 match ERROR offset 15: Expected ':-' after first expansion
 
+xlat %{%{User-Name}:-}
+match %{%{User-Name}:-}
+
 
 #
 #  Empty and malformed expansions
@@ -327,9 +330,6 @@ match ERROR offset 24: Failed parsing argument 1 as type 'uint64'
 #
 #  Argument quoting
 #
-#  The code here isn't great.  If it's ever fixes to actually show the quoting
-#  then these should be correct
-#
 xlat %{md5:"arg"}
 match %{md5:"arg"}
 
@@ -349,4 +349,4 @@ xlat %{md5:'arg"'}
 match %{md5:'arg"'}
 
 count
-match 199
+match 201
