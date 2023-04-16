@@ -302,7 +302,7 @@ int		fr_socket_client_unix(char const *path, bool async);
 int		fr_socket_client_udp(char const *ifname, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 				     fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async);
 
-int		fr_socket_client_tcp(char const *ifname, fr_ipaddr_t const *src_ipaddr,
+int		fr_socket_client_tcp(char const *ifname, fr_ipaddr_t *src_ipaddr,
 				     fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async);
 int		fr_socket_wait_for_connect(int sockfd, fr_time_delta_t timeout);
 
@@ -310,7 +310,7 @@ int		fr_socket_server_udp(fr_ipaddr_t const *ipaddr, uint16_t *port, char const 
 
 int		fr_socket_server_tcp(fr_ipaddr_t const *ipaddr, uint16_t *port, char const *port_name, bool async);
 
-int		fr_socket_bind(int sockfd, fr_ipaddr_t const *ipaddr, uint16_t *port, char const *interface);
+int		fr_socket_bind(int sockfd, char const *ifname, fr_ipaddr_t *src_ipaddr, uint16_t *src_port);
 
 #ifdef __cplusplus
 }

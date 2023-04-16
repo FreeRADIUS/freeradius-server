@@ -285,6 +285,7 @@ static int mod_open(fr_listen_t *li)
 	proto_vmps_udp_thread_t		*thread = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_thread_t);
 
 	int				sockfd;
+	fr_ipaddr_t			ipaddr = inst->ipaddr;
 	uint16_t			port = inst->port;
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
@@ -309,7 +310,7 @@ static int mod_open(fr_listen_t *li)
 		}
 	}
 
-	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
+	if (fr_socket_bind(sockfd, inst->interface, &ipaddr, &port) < 0) {
 		close(sockfd);
 		PERROR("Failed binding socket");
 		goto error;

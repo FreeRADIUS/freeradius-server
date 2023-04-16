@@ -366,7 +366,7 @@ static int send_with_socket(fr_radius_packet_t **reply, fr_radius_packet_t *requ
 			return -1;
 		}
 
-		if (fr_socket_bind(sockfd, &request->socket.inet.src_ipaddr, &request->socket.inet.src_port, NULL) < 0) {
+		if (fr_socket_bind(sockfd, NULL, &request->socket.inet.src_ipaddr, &request->socket.inet.src_port) < 0) {
 			ERROR("Error binding socket - %s", fr_strerror());
 			return -1;
 		}

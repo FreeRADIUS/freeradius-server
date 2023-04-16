@@ -95,9 +95,10 @@ static int _udp_queue_entry_free(fr_udp_queue_entry_t *entry)
 fr_udp_queue_t *fr_udp_queue_alloc(TALLOC_CTX *ctx, fr_udp_queue_config_t const *config, fr_event_list_t *el,
 				   fr_udp_queue_resume_t resume)
 {
-	fr_udp_queue_t *uq;
-	int fd;
-	uint16_t port = config->port;
+	fr_udp_queue_t	*uq;
+	int		fd;
+	fr_ipaddr_t	ipaddr = config->ipaddr;
+	uint16_t	port = config->port;
 
 	/*
 	 *	Open the socket.
@@ -123,7 +124,7 @@ fr_udp_queue_t *fr_udp_queue_alloc(TALLOC_CTX *ctx, fr_udp_queue_config_t const 
 	 *	Bind to the given interface.
 	 */
 	if (config->interface &&
-	    (fr_socket_bind(fd, &config->ipaddr, &port, config->interface) < 0)) goto error;
+	    (fr_socket_bind(fd, config->interface, &ipaddr, &port) < 0)) goto error;
 
 #ifdef SO_SNDBUF
 	/*

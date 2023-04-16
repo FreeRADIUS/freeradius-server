@@ -468,7 +468,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	/*
 	 *	Only bind if we have a src and interface.
 	 */
-	if (src && inst->interface && (fr_socket_bind(fd, src, NULL, inst->interface) < 0)) {
+	if (src && inst->interface && (fr_socket_bind(fd, inst->interface, src, NULL) < 0)) {
 		close(fd);
 		return -1;
 	}

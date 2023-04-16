@@ -119,7 +119,7 @@ static int test_open(void *ctx, UNUSED void const *master_ctx)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (fr_socket_bind(io_ctx->sockfd, &io_ctx->ipaddr, &io_ctx->port, NULL) < 0) {
+	if (fr_socket_bind(io_ctx->sockfd, NULL, &io_ctx->ipaddr, &io_ctx->port) < 0) {
 		fr_perror("radius_test: Failed binding to socket");
 		fr_exit_now(EXIT_FAILURE);
 	}

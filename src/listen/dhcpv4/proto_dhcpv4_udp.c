@@ -502,6 +502,7 @@ static int mod_open(fr_listen_t *li)
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
 	int				sockfd, rcode;
+	fr_ipaddr_t			ipaddr = inst->ipaddr;
 	uint16_t			port = inst->port;
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
@@ -548,7 +549,7 @@ static int mod_open(fr_listen_t *li)
 		}
 	}
 
-	rcode = fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface);
+	rcode = fr_socket_bind(sockfd, inst->interface, &ipaddr, &port);
 	if (rcode < 0) {
 		close(sockfd);
 		PERROR("Failed binding socket");

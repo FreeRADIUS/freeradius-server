@@ -303,7 +303,7 @@ static int mod_open(fr_listen_t *li)
 
 	(void) fr_nonblock(sockfd);
 
-	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
+	if (fr_socket_bind(sockfd, inst->interface, &inst->ipaddr, &port) < 0) {
 		close(sockfd);
 		PERROR("Failed binding socket");
 		goto error;

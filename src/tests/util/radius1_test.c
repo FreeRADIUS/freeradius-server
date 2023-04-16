@@ -247,7 +247,7 @@ static void master_process(TALLOC_CTX *ctx)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (fr_socket_bind(sockfd, &my_ipaddr, &my_port, NULL) < 0) {
+	if (fr_socket_bind(sockfd, NULL, &my_ipaddr, &my_port) < 0) {
 		fr_perror("radius_test: Failed binding to socket");
 		fr_exit_now(EXIT_FAILURE);
 	}

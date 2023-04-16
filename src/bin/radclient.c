@@ -949,7 +949,7 @@ static int send_one_packet(rc_request_t *request)
 					return -1;
 				}
 
-				if (fr_socket_bind(mysockfd, &client_ipaddr, &port, NULL) < 0) {
+				if (fr_socket_bind(mysockfd, NULL, &client_ipaddr, &port) < 0) {
 					fr_perror("Error binding socket");
 					return -1;
 				}
@@ -1787,7 +1787,7 @@ int main(int argc, char **argv)
 			return -1;
 		}
 
-		if (fr_socket_bind(sockfd, &client_ipaddr, &client_port, NULL) < 0) {
+		if (fr_socket_bind(sockfd, NULL, &client_ipaddr, &client_port) < 0) {
 			fr_perror("Error binding socket");
 			return -1;
 		}
@@ -1800,7 +1800,7 @@ int main(int argc, char **argv)
 			return -1;
 		}
 
-		if (fr_socket_bind(coafd, &client_ipaddr, &coa_port, NULL) < 0) {
+		if (fr_socket_bind(coafd, NULL, &client_ipaddr, &coa_port) < 0) {
 			fr_perror("Error binding socket");
 			return -1;
 		}

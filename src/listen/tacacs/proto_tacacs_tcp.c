@@ -302,6 +302,7 @@ static int mod_open(fr_listen_t *li)
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 
 	int				sockfd;
+	fr_ipaddr_t			ipaddr = inst->ipaddr;
 	uint16_t			port = inst->port;
 
 	fr_assert(!thread->connection);
@@ -315,7 +316,7 @@ static int mod_open(fr_listen_t *li)
 
 	(void) fr_nonblock(sockfd);
 
-	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
+	if (fr_socket_bind(sockfd, inst->interface, &ipaddr, &port) < 0) {
 		close(sockfd);
 		PERROR("Failed binding socket");
 		goto error;

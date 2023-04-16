@@ -258,6 +258,7 @@ static int mod_open(fr_listen_t *li)
 	proto_dns_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dns_udp_thread_t);
 
 	int				sockfd, rcode;
+	fr_ipaddr_t			ipaddr = inst->ipaddr;
 	uint16_t			port = inst->port;
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, "domain", true);
@@ -287,7 +288,7 @@ static int mod_open(fr_listen_t *li)
 	 *	SUID up is really only needed if interface is set, OR port <1024.
 	 */
 	rad_suid_up();
-	rcode = fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface);
+	rcode = fr_socket_bind(sockfd, inst->interface, &ipaddr, &port);
 	rad_suid_down();
 	if (rcode < 0) {
 		PERROR("Failed binding socket");
