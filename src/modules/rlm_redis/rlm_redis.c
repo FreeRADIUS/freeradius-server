@@ -350,7 +350,8 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const redis_lua_func_args[] = {
-	{ .required = true, .variadic = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .single = true, .type = FR_TYPE_UINT64 }, /* key count */
+	{ .variadic = true, .concat = true, .type = FR_TYPE_STRING }, /* keys and args */
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -377,11 +378,21 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char const			*argv[MAX_REDIS_ARGS];
 	size_t				arg_len[MAX_REDIS_ARGS];
 	int				argc;
+	char				key_count[sizeof("184467440737095551615")];
 	uint8_t	const			*key = NULL;
 	size_t				key_len = 0;
 
 	xlat_action_t			action = XLAT_ACTION_DONE;
 	fr_value_box_t			*vb_out;
+
+	/*
+	 *	First argument is always the key count
+	 */
+	if (unlikely(fr_value_box_print(&FR_SBUFF_OUT(key_count, sizeof(key_count)), fr_value_box_list_head(in), NULL) < 0)) {
+		RPERROR("Failed converting key count to string");
+		return XLAT_ACTION_FAIL;
+	}
+	fr_value_box_list_talloc_free_head(in);
 
 	/*
 	 *	Try EVALSHA first, and if that fails fall back to SCRIPT LOAD
@@ -390,7 +401,9 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	arg_len[0] = sizeof("EVALSHA") - 1;
 	argv[1] = func->digest;
 	arg_len[1] = sizeof(func->digest) - 1;
-	argc = 2;
+	argv[2] = key_count;
+	arg_len[2] = strlen(key_count);
+	argc = 3;
 
 	fr_value_box_list_foreach(in, vb) {
 		if (argc == NUM_ELEMENTS(argv)) {
