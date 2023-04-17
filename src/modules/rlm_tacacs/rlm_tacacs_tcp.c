@@ -799,12 +799,6 @@ static void request_mux(fr_event_list_t *el,
 	uint8_t			*partial;
 
 	/*
-	 *	If the connection is zombie, then don't try to enqueue
-	 *	things on it!
-	 */
-	if (check_for_zombie(el, tconn, fr_time_wrap(0), h->last_sent)) return;
-
-	/*
 	 *	Encode multiple packets in preparation for transmission with write()
 	 */
 	for (i = 0, queued = 0; (i < inst->max_send_coalesce); i++) {

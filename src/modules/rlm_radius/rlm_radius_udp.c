@@ -1756,12 +1756,6 @@ static void request_mux(fr_event_list_t *el,
 	size_t			total_len = 0;
 
 	/*
-	 *	If the connection is zombie, then don't try to enqueue
-	 *	things on it!
-	 */
-	if (check_for_zombie(el, tconn, fr_time_wrap(0), h->last_sent)) return;
-
-	/*
 	 *	Encode multiple packets in preparation
 	 *      for transmission with sendmmsg.
 	 */
