@@ -209,6 +209,7 @@ $INCLUDE dictionary.digium
 $INCLUDE dictionary.dlink
 $INCLUDE dictionary.dragonwave
 $INCLUDE dictionary.efficientip
+$INCLUDE dictionary.eleven
 $INCLUDE dictionary.eltex
 $INCLUDE dictionary.epygi
 $INCLUDE dictionary.equallogic
