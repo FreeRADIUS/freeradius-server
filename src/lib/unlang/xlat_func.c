@@ -243,32 +243,35 @@ xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, 
 
 /** Verify xlat arg specifications are valid
  *
+ * @param[in] x		we're setting arguments for.
  * @param[in] arg	specification to validate.
  * @param[in] last	Is this the last argument in the list.
  */
-static inline int xlat_arg_parser_validate(xlat_arg_parser_t const *arg, bool last)
+static inline int xlat_arg_parser_validate(xlat_t *x, xlat_arg_parser_t const *arg, bool last)
 {
 	if (arg->concat) {
 		if (!fr_cond_assert_msg((arg->type == FR_TYPE_STRING) || (arg->type == FR_TYPE_OCTETS),
-					"concat type must be string or octets")) return -1;
+					"%s - concat type must be string or octets", x->name)) return -1;
 
-		if (!fr_cond_assert_msg(!arg->single, "concat and single are mutually exclusive")) return -1;
+		if (!fr_cond_assert_msg(!arg->single, "%s - concat and single are mutually exclusive", x->name)) return -1;
 	}
 
 	if (arg->single) {
-		if (!fr_cond_assert_msg(!arg->concat, "single and concat are mutually exclusive")) return -1;
+		if (!fr_cond_assert_msg(!arg->concat, "%s - single and concat are mutually exclusive", x->name)) return -1;
 	}
 
 	if (arg->variadic) {
-		if (!fr_cond_assert_msg(last, "variadic can only be set on the last argument")) return -1;
+		if (!fr_cond_assert_msg(last, "%s - variadic can only be set on the last argument", x->name)) return -1;
+		if (!fr_cond_assert_msg(!arg->required, "%s - required can't be set on a variadic argument. "
+					"Set required in the preceeding entry", x->name)) return -1;
 	}
 
 	if (arg->always_escape) {
-		if (!fr_cond_assert_msg(arg->func, "always_escape requires an escape func")) return -1;
+		if (!fr_cond_assert_msg(arg->func, "%s - always_escape requires an escape func", x->name)) return -1;
 	}
 
 	if (arg->uctx) {
-		if (!fr_cond_assert_msg(arg->func, "uctx requires an escape func")) return -1;
+		if (!fr_cond_assert_msg(arg->func, "%s - uctx requires an escape func", x->name)) return -1;
 	}
 
 	switch (arg->type) {
@@ -277,7 +280,7 @@ static inline int xlat_arg_parser_validate(xlat_arg_parser_t const *arg, bool la
 		break;
 
 	default:
-		fr_assert_fail("type must be a leaf box type");
+		fr_assert_fail("%s - type must be a leaf box type", x->name);
 		return -1;
 	}
 
@@ -300,7 +303,7 @@ int xlat_func_args_set(xlat_t *x, xlat_arg_parser_t const args[])
 	bool			seen_optional = false;
 
 	for (arg_p = args; arg_p->type != FR_TYPE_NULL; arg_p++) {
-		if (xlat_arg_parser_validate(arg_p, (arg_p + 1)->type == FR_TYPE_NULL) < 0) return -1;
+		if (xlat_arg_parser_validate(x, arg_p, (arg_p + 1)->type == FR_TYPE_NULL) < 0) return -1;
 
 		if (arg_p->required) {
 			if (!fr_cond_assert_msg(!seen_optional,
