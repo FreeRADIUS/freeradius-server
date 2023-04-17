@@ -763,10 +763,9 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const cipher_rsa_verify_xlat_arg[] = {
-	{ .required = true, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_VOID,
-	  .func = NULL, .uctx = NULL },
 	{ .required = true, .concat = true, .single = false, .variadic = true, .type = FR_TYPE_STRING,
 	  .func = NULL, .uctx = NULL },
+	{ .required = true, .concat = false, .single = true, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -880,8 +879,8 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const cipher_certificate_xlat_args[] = {
-	{ .required = true, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_STRING },
-	{ .required = false, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_STRING }, /* Optional hash for fingerprint mode */
+	{ .required = true, .concat = false, .single = true, .type = FR_TYPE_STRING },
+	{ .required = false, .concat = false, .single = true, .type = FR_TYPE_STRING }, /* Optional hash for fingerprint mode */
 	XLAT_ARG_PARSER_TERMINATOR
 };
 

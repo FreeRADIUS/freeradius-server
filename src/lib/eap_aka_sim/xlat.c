@@ -181,11 +181,11 @@ static xlat_action_t aka_sim_id_3gpp_temporary_id_key_index_xlat(TALLOC_CTX *ctx
 
 extern xlat_arg_parser_t aka_sim_3gpp_temporary_id_decrypt_xlat_args[];
 xlat_arg_parser_t aka_sim_3gpp_temporary_id_decrypt_xlat_args[] = {
-	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_STRING,
+	{ .required = true, .concat = true, .single = false, .type = FR_TYPE_STRING,
 	  .func = NULL, .uctx = NULL },
-	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_OCTETS,
+	{ .required = true, .concat = true, .single = false, .type = FR_TYPE_OCTETS,
 	  .func = NULL, .uctx = NULL },
-	{ .required = false, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_BOOL,
+	{ .required = false, .concat = false, .single = true, .type = FR_TYPE_BOOL,
 	  .func = NULL, .uctx = NULL },
 	XLAT_ARG_PARSER_TERMINATOR
 };
@@ -327,10 +327,10 @@ static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_
 
 extern xlat_arg_parser_t aka_sim_3gpp_temporary_id_encrypt_xlat_args[];
 xlat_arg_parser_t aka_sim_3gpp_temporary_id_encrypt_xlat_args[] = {
-	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_STRING	},
-	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_OCTETS	},
-	{ .required = true, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_UINT8	},
-	{ .required = false, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_STRING	},
+	{ .required = true, .concat = true, .single = false, .type = FR_TYPE_STRING	},
+	{ .required = true, .concat = true, .single = false, .type = FR_TYPE_OCTETS	},
+	{ .required = true, .concat = false, .single = true, .type = FR_TYPE_UINT8	},
+	{ .required = false, .concat = false, .single = true, .type = FR_TYPE_STRING	},
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
