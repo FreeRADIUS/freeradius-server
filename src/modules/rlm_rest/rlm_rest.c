@@ -386,7 +386,8 @@ static fr_uri_part_t const rest_uri_parts[] = {
 };
 
 static xlat_arg_parser_t const rest_xlat_args[] = {
-	{ .required = true, .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_STRING },
+	{ .required = true, .type = FR_TYPE_STRING },
+	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
