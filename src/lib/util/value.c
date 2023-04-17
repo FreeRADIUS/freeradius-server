@@ -5360,6 +5360,9 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
 			slen = fr_sbuff_in_bstrncpy(&our_sbuff, vb->vb_strvalue, vb->vb_length);
 			break;
 
+		case FR_TYPE_NULL:	/* Skip null */
+			continue;
+
 		default:
 		print:
 			slen = fr_value_box_print(&our_sbuff, vb, e_rules);
@@ -5438,6 +5441,9 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_
 		case FR_TYPE_STRING:
 			slen = fr_dbuff_in_memcpy(&our_dbuff, (uint8_t const *)vb->vb_strvalue, vb->vb_length);
 			break;
+
+		case FR_TYPE_NULL:	/* Skip null */
+			continue;
 
 		default:
 		cast:
