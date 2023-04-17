@@ -1374,7 +1374,8 @@ finish:
 
 static xlat_arg_parser_t const xlat_func_cast_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_VOID },
-	{ .required = true, .variadic = true, .type = FR_TYPE_VOID },
+	{ .required = true, .type = FR_TYPE_VOID },
+	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -1645,27 +1646,26 @@ static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const xlat_func_join_args[] = {
-	{ .required = true, .variadic = true, .type = FR_TYPE_VOID },
+	{ .required = true, .type = FR_TYPE_VOID },
+	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Join a series of arguments to form a single list
  *
+ * null boxes are not preserved.
  */
 static xlat_action_t xlat_func_join(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED xlat_ctx_t const *xctx,
 				    UNUSED request_t *request, fr_value_box_list_t *in)
 {
-	fr_value_box_t	*arg = NULL, *vb, *p;
-
-	while ((arg = fr_value_box_list_next(in, arg))) {
+	fr_value_box_list_foreach(in, arg) {
 		fr_assert(arg->type == FR_TYPE_GROUP);
-		vb = fr_value_box_list_head(&arg->vb_group);
-		while (vb) {
-			p = fr_value_box_list_remove(&arg->vb_group, vb);
+
+		fr_value_box_list_foreach_safe(&arg->vb_group, vb) {
+			fr_value_box_list_remove(&arg->vb_group, vb);
 			fr_dcursor_append(out, vb);
-			vb = fr_value_box_list_next(&arg->vb_group, p);
-		}
+		}}
 	}
 	return XLAT_ACTION_DONE;
 }
@@ -1701,11 +1701,13 @@ static xlat_action_t xlat_func_ungroup(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out
 }
 
 static xlat_arg_parser_t const xlat_func_length_args[] = {
-	{ .single = true, .variadic = true, .type = FR_TYPE_VOID },
+	{ .single = true, .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Return the on-the-wire size of the boxes in bytes
+ *
+ * skips null values
  *
  * Example:
 @verbatim
@@ -1722,13 +1724,11 @@ static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      UNUSED request_t *request, fr_value_box_list_t *in)
 
 {
-	fr_value_box_t	*vb = NULL;
-
-	while ((vb = fr_value_box_list_next(in, vb))) {
+	fr_value_box_list_foreach(in, vb) {
 		fr_value_box_t *my;
 
 		MEM(my = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
-		my->vb_size = fr_value_box_network_length(vb);
+		if (!fr_type_is_null(vb->type)) my->vb_size = fr_value_box_network_length(vb);
 		fr_dcursor_append(out, my);
 	}
 
@@ -3001,7 +3001,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
-	{ .single = true, .variadic = true, .type = FR_TYPE_VOID },
+	{ .single = true, .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 

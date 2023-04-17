@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/value.h>
 
 #include <freeradius-devel/unlang/unlang_priv.h>	/* Remove when everything uses new xlat API */
 
@@ -375,7 +376,6 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 	 */
 	if (!func->args) return XLAT_ACTION_DONE;
 
-
 	/*
 	 *	xlat needs no input processing just return.
 	 */
@@ -431,11 +431,24 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 			 */
 			if (fr_value_box_list_empty(&vb->vb_group)) {
 				/*
+				 *	Variadic rules deal with empty boxes differently...
+				 */
+				switch (arg_p->variadic) {
+				case XLAT_ARG_VARIADIC_EMPTY_SQUASH:
+					fr_value_box_list_talloc_free_head(list);
+					continue;
+
+				case XLAT_ARG_VARIADIC_EMPTY_KEEP:
+					goto empty_ok;
+
+				case XLAT_ARG_VARIADIC_DISABLED:
+					break;
+				}
+
+				/*
 				 *	Empty groups for optional arguments are OK, we can just stop processing the list.
 				 */
 				if (!arg_p->required) {
-					fr_assert(!next);
-
 					/*
 					 *	If the caller doesn't care about the type, then we leave the
 					 *	empty group there.
@@ -455,8 +468,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 					 *	accessing the box as vb_uint8, hoping that it's being passed
 					 *	the right thing.
 					 */
-					fr_value_box_list_remove(list, vb);
-					talloc_free(vb);
+					fr_value_box_list_talloc_free_head(list);
 					break;
 				}
 
@@ -470,13 +482,23 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 				if (arg_p->type != FR_TYPE_VOID) goto missing;
 			}
 
+		empty_ok:
 			/*
 			 *	In some cases we replace the current argument with the head of the group.
 			 *
 			 *	xlat_process_arg_list() has already done concatenations for us.
 			 */
 			if (arg_p->single || arg_p->concat) {
-				fr_value_box_list_replace(list, vb, fr_value_box_list_pop_head(&vb->vb_group));
+				fr_value_box_t *head = fr_value_box_list_pop_head(&vb->vb_group);
+
+				/*
+				 *	If we're meant to be smashing the argument
+				 *	to a single box, but the group was empty,
+				 *	add a null box instead so ordering is maintained
+				 *	for subsequent boxes.
+				 */
+				if (!head) head = fr_value_box_alloc_null(ctx);
+				fr_value_box_list_replace(list, vb, head);
 				talloc_free(vb);
 			}
 

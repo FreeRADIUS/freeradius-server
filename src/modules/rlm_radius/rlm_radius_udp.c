@@ -1578,7 +1578,6 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 
 	/*
 	 *	If we're status checking OR already zombie, don't go to zombie
-	 *
 	 */
 	if (h->status_checking || h->zombie_ev) return true;
 
@@ -1595,13 +1594,7 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	if (h->inst->parent->synchronous && fr_time_gt(last_sent, fr_time_wrap(0)) &&
 	    (fr_time_lt(fr_time_add(last_sent, h->inst->parent->response_window), now))) return false;
 
-	/*
-	 *	Mark the connection as inactive, but keep sending
-	 *	packets on it.
-	 */
 	WARN("%s - Entering Zombie state - connection %s", h->module_name, h->name);
-	fr_trunk_connection_signal_inactive(tconn);
-
 	if (h->inst->parent->status_check) {
 		h->status_checking = true;
 

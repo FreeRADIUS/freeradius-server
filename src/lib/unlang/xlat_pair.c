@@ -92,14 +92,13 @@ int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			       fr_value_box_list_t *in)
 {
 	int		decoded = 0;
-	fr_value_box_t	*vb = NULL;
 	fr_pair_t	*vp = NULL;
 	fr_dict_attr_t const *parent = fr_dict_root(request->dict);
 	fr_pair_list_t	head;
 
 	fr_pair_list_init(&head);
 
-	while ((vb = fr_value_box_list_next(in, vb))) {
+	fr_value_box_list_foreach(in, vb) {
 		ssize_t		len;
 
 		if (vb->type != FR_TYPE_OCTETS) {

@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/radius/radius.h>
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
@@ -412,7 +413,7 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 
 static xlat_arg_parser_t const perl_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
-	{ .variadic = true, .type = FR_TYPE_VOID },
+	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -429,7 +430,7 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	xlat_action_t			ret = XLAT_ACTION_FAIL;
 	STRLEN				n_a;
 	fr_value_box_t			*func = fr_value_box_list_pop_head(in);
-	fr_value_box_t			*arg = NULL, *child;
+	fr_value_box_t			*child;
 	SV				*sv;
 	AV				*av;
 	fr_value_box_list_t		list, sub_list;
@@ -449,7 +450,7 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		PUSHMARK(SP);
 
-		while ((arg = fr_value_box_list_next(in, arg))) {
+		fr_value_box_list_foreach(in, arg) {
 			fr_assert(arg->type == FR_TYPE_GROUP);
 			if (fr_value_box_list_empty(&arg->vb_group)) continue;
 

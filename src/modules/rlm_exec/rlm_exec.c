@@ -101,7 +101,7 @@ static xlat_action_t exec_xlat_oneshot_wait_resume(TALLOC_CTX *ctx, fr_dcursor_t
 
 static xlat_arg_parser_t const exec_xlat_args[] = {
 	{ .required = true, .type = FR_TYPE_STRING },
-	{ .variadic = true, .type = FR_TYPE_VOID},
+	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID},
 	XLAT_ARG_PARSER_TERMINATOR
 };
 

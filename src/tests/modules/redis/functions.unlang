@@ -15,11 +15,16 @@ if (!(%(redis.hello_world:0) == 'hello world')) {
 # ...and again using an argument that would produce a null result
 # this is a regression test where the arg parser would require all
 # arguments to be non-null if the first argument was
-if (!(%(redis.hello_world:0 %{Framed-IP-Address}) == 'hello world')) {
+if (!(%(redis.hello_world:0 %{Tmp-String-9}) == 'hello world')) {
 	test_fail
 }
 
 if (!(%(redis.concat_args_keys:1 foo bar baz) == 'foo,bar,baz')) {
+	test_fail
+}
+
+# Concat with an empty argument.  This is a regression test
+if (!(%(redis.concat_args_keys:1 foo %{Tmp-String-9} baz) == 'foo,,baz')) {
 	test_fail
 }
 

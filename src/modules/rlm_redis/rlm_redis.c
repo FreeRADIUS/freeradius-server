@@ -351,7 +351,7 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static xlat_arg_parser_t const redis_lua_func_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_UINT64 }, /* key count */
-	{ .variadic = true, .concat = true, .type = FR_TYPE_STRING }, /* keys and args */
+	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .concat = true, .type = FR_TYPE_STRING }, /* keys and args */
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -411,9 +411,20 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			REXDENT();
 			return XLAT_ACTION_FAIL;
 		}
+
+		/*
+		 *	Fixup null or empty arguments to be
+		 *	zero length strings so that the position
+		 *	of subsequent arguments are maintained.
+		 */
+		if (!fr_type_is_string(vb->type)) {
+			argv[argc] = "";
+			arg_len[argc++] = 0;
+			continue;
+		}
+
 		argv[argc] = vb->vb_strvalue;
-		arg_len[argc] = vb->vb_length;
-		argc++;
+		arg_len[argc++] = vb->vb_length;
 	}
 
 	/*
@@ -551,14 +562,15 @@ static int redis_lua_func_instantiate(xlat_inst_ctx_t const *xctx)
 }
 
 static xlat_arg_parser_t const redis_args[] = {
-	{ .required = true, .variadic = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Xlat to make calls to redis
  *
 @verbatim
-%{redis:<redis command>}
+%(redis:<redis command>)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -628,9 +640,19 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				goto fail;
 			}
 
+			/*
+			 *	Fixup null or empty arguments to be
+			 *	zero length strings so that the position
+			 *	of subsequent arguments are maintained.
+			 */
+			if (!fr_type_is_string(vb->type)) {
+				argv[argc] = "";
+				arg_len[argc++] = 0;
+				continue;
+			}
+
 			argv[argc] = vb->vb_strvalue;
-			arg_len[argc] = vb->vb_length;
-			argc++;
+			arg_len[argc++] = vb->vb_length;
 		}
 
 		RDEBUG2("Executing command: %pV", fr_value_box_list_head(in));

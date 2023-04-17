@@ -35,6 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/unlang/xlat.h>
 
 #include <freeradius-devel/tls/openssl_user_macros.h>
 #include <openssl/crypto.h>
@@ -763,9 +764,9 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const cipher_rsa_verify_xlat_arg[] = {
-	{ .required = true, .concat = true, .single = false, .variadic = true, .type = FR_TYPE_STRING,
-	  .func = NULL, .uctx = NULL },
 	{ .required = true, .concat = false, .single = true, .type = FR_TYPE_VOID },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH, .concat = true,  .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 

@@ -128,20 +128,28 @@ extern size_t xlat_action_table_len;
  */
 typedef int (*xlat_escape_func_t)(request_t *request, fr_value_box_t *vb, void *uctx);
 
+typedef enum {
+	XLAT_ARG_VARIADIC_DISABLED	= 0,
+	XLAT_ARG_VARIADIC_EMPTY_SQUASH	= 1,	//!< Empty argument groups are removed.
+	XLAT_ARG_VARIADIC_EMPTY_KEEP	= 2, 	//!< Empty argument groups are left alone,
+						///< and either passed through as empty groups
+						///< or null boxes.
+} xlat_arg_parser_variadic_t;
+
 /** Definition for a single argument consumend by an xlat function
  *
  */
 typedef struct {
-	bool			required;	//!< Argument must be present.
-	bool			concat;		//!< Concat boxes together.
-	bool			single;		//!< Argument must only contain a single box
-	bool			variadic;	//!< All additional boxes should be processed
-						///< using this definition.
-	bool			always_escape;	//!< Pass all arguments to escape function not just
-						///< tainted ones.
-	fr_type_t		type;		//!< Type to cast argument to.
-	xlat_escape_func_t	func;		//!< Function to handle tainted values.
-	void			*uctx;		//!< Argument to pass to escape callback.
+	bool				required;	//!< Argument must be present, and non-empty.
+	bool				concat;		//!< Concat boxes together.
+	bool				single;		//!< Argument must only contain a single box
+	xlat_arg_parser_variadic_t	variadic;	//!< All additional boxes should be processed
+							///< using this definition.
+	bool				always_escape;	//!< Pass all arguments to escape function not just
+							///< tainted ones.
+	fr_type_t			type;		//!< Type to cast argument to.
+	xlat_escape_func_t		func;		//!< Function to handle tainted values.
+	void				*uctx;		//!< Argument to pass to escape callback.
 } xlat_arg_parser_t;
 
 typedef struct {
