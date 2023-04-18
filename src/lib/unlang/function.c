@@ -273,8 +273,8 @@ int _unlang_function_repeat_set(request_t *request, unlang_function_t repeat, ch
  * @param[in] top_frame		Return out of the unlang interpreter when popping this frame.
  * @param[in] uctx		to pass to func(s).
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *	- UNLANG_ACTION_FAIL on failure.
  */
 unlang_action_t _unlang_function_push(request_t *request,
 				      unlang_function_t func, char const *func_name,
