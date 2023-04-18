@@ -546,7 +546,7 @@ static void ldap_conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED in
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 
-	ERROR("rlm_ldap - Connection failed: %s", fr_syserror(fd_errno));
+	ERROR("%s - Connection failed: %s", tconn->conn->name, fr_syserror(fd_errno));
 
 	fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_FAILED);
 }
