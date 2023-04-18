@@ -380,7 +380,6 @@ typedef struct {
 	fr_trunk_conf_t		*trunk_conf;	//!< Module trunk config
 	fr_trunk_conf_t		*bind_trunk_conf;	//!< Trunk config for bind auth trunk
 	fr_event_list_t		*el;		//!< Thread event list for callbacks / timeouts
-	fr_connection_t		*conn;		//!< LDAP connection used for bind auths
 	fr_ldap_thread_trunk_t	*bind_trunk;	//!< LDAP trunk used for bind auths
 	fr_rb_tree_t		*binds;		//!< Tree of outstanding bind auths
 } fr_ldap_thread_t;
@@ -605,6 +604,7 @@ typedef enum {
 typedef struct {
 	fr_rb_node_t		node;		//!< Entry in the tree of outstanding bind requests.
 	fr_ldap_thread_t	*thread;	//!< This bind is being run by.
+	fr_trunk_request_t	*treq;		//!< Trunk request this bind is associated with.
 	int			msgid;		//!< libldap msgid for this bind.
 	request_t		*request;	//!< this bind relates to.
 	fr_ldap_bind_type_t	type;		//!< type of bind.
