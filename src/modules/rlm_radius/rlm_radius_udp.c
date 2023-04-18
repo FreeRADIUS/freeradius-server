@@ -2765,6 +2765,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void 
 	 */
 	if (q == FR_TRUNK_ENQUEUE_IN_BACKLOG) {
 		RDEBUG("All destinations are down - cannot send packet");
+		fr_trunk_request_signal_cancel(treq);
 		goto fail;
 	}
 
