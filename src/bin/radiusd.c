@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
 	bool			display_version = false;
 	bool			radmin = false;
 	int			from_child[2] = {-1, -1};
-	char			*program;
+	char const		*program;
 	fr_schedule_t		*sc = NULL;
 	int			ret = EXIT_SUCCESS;
 

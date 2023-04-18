@@ -340,7 +340,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	xlat_redundant_type_t	xr_type;
 	xlat_redundant_t	*xr;
 	xlat_func_flags_t	flags = XLAT_FUNC_FLAG_NONE;
-	bool			can_be_pure;
+	bool			can_be_pure = false;
 	xlat_arg_parser_t const *args = NULL;
 
 	fr_type_t		return_type = FR_TYPE_NULL;
