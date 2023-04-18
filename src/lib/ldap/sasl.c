@@ -267,6 +267,8 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 	 *	We're done, woohoo!
 	 */
 	case LDAP_SUCCESS:
+		DEBUG2("SASL bind as \"%s\" to \"%s\" successful",
+		       sasl_ctx->identity ? sasl_ctx->identity : "(anonymous)", c->config->server);
 		talloc_free(sasl_ctx);
 		fr_ldap_state_next(c);
 		break;

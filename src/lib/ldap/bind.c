@@ -66,8 +66,8 @@ static void _ldap_bind_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 	status = fr_ldap_result(NULL, NULL, c, bind_ctx->msgid, LDAP_MSG_ALL, bind_ctx->bind_dn, fr_time_delta_wrap(0));
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
-		DEBUG("Bind as \"%s\" to \"%s\" successful",
-		      *bind_ctx->bind_dn? bind_ctx->bind_dn : "(anonymous)", c->config->server);
+		DEBUG2("Bind as \"%s\" to \"%s\" successful",
+		       *bind_ctx->bind_dn ? bind_ctx->bind_dn : "(anonymous)", c->config->server);
 		fr_ldap_state_next(c);		/* onto the next operation */
 		break;
 
