@@ -641,166 +641,6 @@ static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
 	return 0;
 }
 
-/** Error reading from or writing to the file descriptor
- *
- * @param[in] el	the event occurred in.
- * @param[in] fd	the event occurred on.
- * @param[in] flags	from kevent.
- * @param[in] fd_errno	The error that ocurred.
- * @param[in] uctx	LDAP thread the connection that faulted relates to.
- */
-static void _ldap_bind_auth_io_error(UNUSED fr_event_list_t *el, UNUSED int fd,
-				     UNUSED int flags, UNUSED int fd_errno, void *uctx)
-{
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(uctx, fr_ldap_thread_t);
-	fr_ldap_connection_t	*c = talloc_get_type_abort(thread->conn->h, fr_ldap_connection_t);
-
-	fr_ldap_state_error(c);		/* Restart the connection state machine */
-}
-
-/** Callback used to process LDAP bind auth results
- *
- * @param[in] el	the read event occurred in.
- * @param[in] fd	the read event occurred on.
- * @param[in] flags	from kevent.
- * @param[in] uctx	LDAP thread associated with the event.
- */
-static void _ldap_bind_auth_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
-{
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(uctx, fr_ldap_thread_t);
-	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(thread->conn->h, fr_ldap_connection_t);
-	fr_ldap_bind_auth_ctx_t	find = { .msgid = -1 }, *bind_auth_ctx;
-	LDAPMessage		*result = NULL;
-
-	int			ret;
-
-	do {
-		/*
-		 *	Fetch the next LDAP result which has been fully received
-		 */
-		ret = fr_ldap_result(&result, NULL, ldap_conn, LDAP_RES_ANY, LDAP_MSG_ALL, NULL, fr_time_delta_wrap(10));
-
-		/*
-		 *	Timeout in this case really means no results to read - we've
-		 *	handled everything that was available
-		 */
-		if (ret == LDAP_PROC_TIMEOUT) return;
-
-		/*
-		 *	If there is no result don't try to process one
-		 */
-		if (!result) return;
-
-		find.msgid = ldap_msgid(result);
-		bind_auth_ctx = fr_rb_find(thread->binds, &find);
-
-		if (!bind_auth_ctx) {
-			WARN("Ignoring bind result msgid %i - doesn't match any outstanidng binds", find.msgid);
-			ldap_msgfree(result);
-			continue;
-		}
-
-		/*
-		 *	Remove from the list of pending bind requests
-		 */
-		fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
-
-		bind_auth_ctx->ret = ret;
-
-		switch (ret) {
-		/*
-		 *	Accept or reject will be SUCCESS, NOT_PERMITTED or REJECT
-		 */
-		case LDAP_PROC_NOT_PERMITTED:
-		case LDAP_PROC_REJECT:
-		case LDAP_PROC_BAD_DN:
-		case LDAP_PROC_NO_RESULT:
-			break;
-
-		case LDAP_PROC_SUCCESS:
-			if (bind_auth_ctx->type == LDAP_BIND_SIMPLE) break;
-
-			/*
-			 *	With SASL binds, we will be here after ldap_sasl_interactive_bind
-			 *	returned LDAP_SASL_BIND_IN_PROGRESS.  That always requires a further
-			 *	call of ldap_sasl_interactive_bind to get the final result.
-			 */
-			bind_auth_ctx->ret = LDAP_PROC_CONTINUE;
-			FALL_THROUGH;
-
-		case LDAP_PROC_CONTINUE:
-		{
-			fr_ldap_sasl_ctx_t	*sasl_ctx = bind_auth_ctx->sasl_ctx;
-			struct berval		*srv_cred;
-
-			/*
-			 *	Free any previous result and track the new one.
-			 */
-			if (sasl_ctx->result) ldap_msgfree(sasl_ctx->result);
-			sasl_ctx->result = result;
-			result = NULL;
-
-			ret = ldap_parse_sasl_bind_result(ldap_conn->handle, sasl_ctx->result, &srv_cred, 0);
-			if (ret != LDAP_SUCCESS) {
-				ERROR("SASL decode failed (bind failed): %s", ldap_err2string(ret));
-				break;
-			}
-
-			if (srv_cred) {
-				DEBUG3("SASL response  : %pV",
-					fr_box_strvalue_len(srv_cred->bv_val, srv_cred->bv_len));
-				ber_bvfree(srv_cred);
-			}
-
-			if (sasl_ctx->rmech) DEBUG3("Continuing SASL mech %s...", sasl_ctx->rmech);
-		}
-			break;
-
-		default:
-			PERROR("LDAP connection returned an error - restarting the connection");
-			fr_ldap_state_error(bind_auth_ctx->bind_ctx->c);	/* Restart the connection state machine */
-			break;
-		}
-		unlang_interpret_mark_runnable(bind_auth_ctx->request);
-
-		/*
-		 *	Clear up the libldap results if they are not being tracked.
-		 */
-		if (result) ldap_msgfree(result);
-
-	} while (1);
-}
-
-/** Watch callback to add fd read callback to LDAP connection
- *
- * To add "bind" specific callbacks to LDAP conneciton being used
- * for bind auths, when the connection becomes connected.
- *
- * @param[in] conn	to watch.
- * @param[in] prev	connection state.
- * @param[in] state	the connection is now in.
- * @param[in] uctx	LDAP thread this connection relates to.
- */
-static void _ldap_async_bind_auth_watch(fr_connection_t *conn, UNUSED fr_connection_state_t prev,
-					UNUSED fr_connection_state_t state, void *uctx)
-{
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(uctx, fr_ldap_thread_t);
-	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
-
-	if (ldap_conn->fd < 0) {
-	connection_failed:
-		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
-		return;
-	}
-	if (fr_event_fd_insert(conn, conn->el, ldap_conn->fd,
-			       _ldap_bind_auth_io_read,
-			       NULL,
-			       _ldap_bind_auth_io_error,
-			       thread) < 0) {
-		goto connection_failed;
-	};
-}
-
 /** Perform a search and map the result of the search to server attributes
  *
  * Unlike LDAP xlat, this can be used to process attributes from multiple entries.
@@ -1159,7 +999,7 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	}
 
 	/*
-	 *	Attempt a bind using the thread specific connection for bind auths
+	 *	Attempt a bind using the thread specific trunk for bind auths
 	 */
 	if (auth_ctx->mod_env->user_sasl_mech.type == FR_TYPE_STRING) {
 #ifdef WITH_SASL
@@ -1176,8 +1016,7 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	} else {
 		if (fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password) < 0) goto fail;
 	}
-
-	RETURN_MODULE_RCODE(unlang_interpret_synchronous(unlang_interpret_event_list(request), request));
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -2052,11 +1891,9 @@ static int mod_thread_instatiate(module_thread_inst_ctx_t const *mctx)
 	}
 
 	/*
-	 *	Set up a per-thread LDAP connection to use for bind auths
+	 *	Set up a per-thread LDAP trunk to use for bind auths
 	 */
-	t->conn = fr_ldap_connection_state_alloc(t, mctx->el, t->config, mctx->inst->name);
-	fr_connection_add_watch_post(t->conn, FR_CONNECTION_STATE_CONNECTED, _ldap_async_bind_auth_watch, false, t);
-	fr_connection_signal_init(t->conn);
+	t->bind_trunk = fr_thread_ldap_bind_trunk_get(t);
 
 	MEM(t->binds = fr_rb_inline_talloc_alloc(t, fr_ldap_bind_auth_ctx_t, node, fr_ldap_bind_auth_cmp, NULL));
 

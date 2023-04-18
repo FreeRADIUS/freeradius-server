@@ -1048,6 +1048,266 @@ fr_trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const
 	return (found) ? found->trunk->state : FR_TRUNK_STATE_MAX;
 }
 
+/** Free LDAP bind auth ctx when trunk request is "freed" with fr_trunk_request_free()
+ *
+ */
+static void ldap_trunk_bind_auth_free(UNUSED request_t *request, void *preq_to_free, UNUSED void *uctx)
+{
+	fr_ldap_bind_auth_ctx_t *bind = talloc_get_type_abort(preq_to_free, fr_ldap_bind_auth_ctx_t);
+
+	talloc_free(bind);
+}
+
+/** Take pending LDAP bind auths from the queue and send them.
+ *
+ * @param[in] el	Event list for timers.
+ * @param[in] tconn	Trunk handle.
+ * @param[in] conn	on which to send the queries
+ * @param[in] uctx	User context passed to fr_trunk_alloc
+ */
+static void ldap_trunk_bind_auth_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn,
+				   fr_connection_t *conn, void *uctx)
+{
+	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
+	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
+	fr_ldap_thread_t	*thread = ttrunk->t;
+	fr_trunk_request_t	*treq;
+
+	fr_ldap_bind_auth_ctx_t	*bind = NULL;
+	int			ret = 0;
+	struct berval		cred;
+	request_t		*request;
+
+	if (fr_trunk_connection_pop_request(&treq, tconn) != 0) return;
+
+	/* Pacify clang scan */
+	if (!treq) return;
+
+	bind = talloc_get_type_abort(treq->preq, fr_ldap_bind_auth_ctx_t);
+	request = bind->request;
+
+	switch (bind->type) {
+	case LDAP_BIND_SIMPLE:
+	{
+		fr_ldap_bind_ctx_t	*bind_ctx = bind->bind_ctx;
+
+		RDEBUG2("Starting bind auth operation as %s", bind_ctx->bind_dn);
+
+		if (bind_ctx->password) {
+			memcpy(&cred.bv_val, &bind_ctx->password, sizeof(cred.bv_val));
+			cred.bv_len = talloc_array_length(bind_ctx->password) - 1;
+		} else {
+			cred.bv_val = NULL;
+			cred.bv_len = 0;
+		}
+
+		ret = ldap_sasl_bind(ldap_conn->handle, bind_ctx->bind_dn, LDAP_SASL_SIMPLE,
+			     	     &cred, NULL, NULL, &bind->msgid);
+
+		switch (ret) {
+		case LDAP_SUCCESS:
+			fr_rb_insert(thread->binds, bind);
+			RDEBUG3("Bind auth sent as LDAP msgid %d", bind->msgid);
+			break;
+
+		default:
+			bind->ret = LDAP_PROC_ERROR;
+			unlang_interpret_mark_runnable(treq->request);
+			RERROR("Failed to send bind auth");
+			break;
+		}
+	}
+		break;
+
+	case LDAP_BIND_SASL:
+	{
+		fr_ldap_sasl_ctx_t	*sasl_ctx = bind->sasl_ctx;
+
+		RDEBUG2("%s SASL bind auth operation as %s", sasl_ctx->rmech ? "Continuing" : "Starting",
+			sasl_ctx->identity);
+
+		ret = fr_ldap_sasl_bind_auth_send(sasl_ctx, &bind->msgid, ldap_conn);
+
+		switch (ret) {
+		case LDAP_SASL_BIND_IN_PROGRESS:
+			/*
+			 *	Add the bind to the list of pending binds.
+			 */
+			fr_rb_insert(thread->binds, bind);
+			RDEBUG3("SASL bind auth sent as LDAP msgid %d", bind->msgid);
+			break;
+
+		case LDAP_SUCCESS:
+			bind->ret = LDAP_PROC_SUCCESS;
+			unlang_interpret_mark_runnable(treq->request);
+			break;
+
+		default:
+			bind->ret = LDAP_PROC_ERROR;
+			unlang_interpret_mark_runnable(treq->request);
+			RERROR("Failed to send SASL bind auth");
+			break;
+		}
+	}
+		break;
+	}
+	/*
+	 *	The request is marked as sent, to remove from the pending list.
+	 *	This is regardless of whether the sending was successful or not as
+	 *	the different states are handled by the resume function which then
+	 *	marks the request as complete triggering the tidy up.
+	 */
+	fr_trunk_request_signal_sent(treq);
+}
+
+/** Read LDAP bind auth responses
+ *
+ * @param[in] el	To insert timers into.
+ * @param[in] tconn	Trunk connection associated with these results.
+ * @param[in] conn	Connection handle for these results.
+ * @param[in] uctx	Thread specific trunk structure - contains tree of pending queries.
+ */
+static void ldap_trunk_bind_auth_demux(UNUSED fr_event_list_t *el, UNUSED fr_trunk_connection_t *tconn,
+				       fr_connection_t *conn, void *uctx)
+{
+	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
+	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
+	fr_ldap_thread_t	*thread = ttrunk->t;
+	fr_ldap_bind_auth_ctx_t	find = { .msgid = -1 }, *bind = NULL;
+
+	int 			ret = 0;
+	LDAPMessage		*result = NULL;
+	request_t		*request;
+	bool			really_no_result = false;
+
+	do {
+		/*
+		 *	The first time ldap_result is called when there's pending network
+		 *	data, it may read the data, but actually return a timeout.
+		 *
+		 *	In order to fix the spurious debugging messages and overhead,
+		 *	if this is the first iteration through the loop and fr_ldap_result
+		 *	returns a timeout, we call it again.
+		 */
+		ret = fr_ldap_result(&result, NULL, ldap_conn, LDAP_RES_ANY, LDAP_MSG_ALL, NULL, fr_time_delta_wrap(10));
+		if (ret == LDAP_PROC_TIMEOUT) {
+			if (really_no_result) return;
+			really_no_result = true;
+			continue;
+		}
+
+		if (!result) return;
+
+		really_no_result = true;
+		find.msgid = ldap_msgid(result);
+		bind = fr_rb_find(thread->binds, &find);
+
+		if (!bind) {
+			WARN("Ignoring bind result msgid %i - doesn't match any outstanding binds", find.msgid);
+			ldap_msgfree(result);
+			result = NULL;
+			continue;
+		}
+	} while (!bind);
+
+	/*
+	 *	There will only ever be one bind in flight at a time on a given
+	 *	connection - so having got a result, no need to loop.
+	 */
+
+	fr_rb_remove(thread->binds, bind);
+	request = bind->request;
+	bind->ret = ret;
+
+	switch (ret) {
+	/*
+	 *	Accept or reject will be SUCCESS, NOT_PERMITTED or REJECT
+	 */
+	case LDAP_PROC_NOT_PERMITTED:
+	case LDAP_PROC_REJECT:
+	case LDAP_PROC_BAD_DN:
+	case LDAP_PROC_NO_RESULT:
+		break;
+
+	case LDAP_PROC_SUCCESS:
+		if (bind->type == LDAP_BIND_SIMPLE) break;
+
+		/*
+		 *	With SASL binds, we will be here after ldap_sasl_interactive_bind
+		 *	returned LDAP_SASL_BIND_IN_PROGRESS.  That always requires a further
+		 *	call of ldap_sasl_interactive_bind to get the final result.
+		 */
+		bind->ret = LDAP_PROC_CONTINUE;
+		FALL_THROUGH;
+
+	case LDAP_PROC_CONTINUE:
+	{
+		fr_ldap_sasl_ctx_t	*sasl_ctx = bind->sasl_ctx;
+		struct berval		*srv_cred;
+
+		/*
+		 *	Free any previous result and track the new one.
+		 */
+		if (sasl_ctx->result) ldap_msgfree(sasl_ctx->result);
+		sasl_ctx->result = result;
+		result = NULL;
+
+		ret = ldap_parse_sasl_bind_result(ldap_conn->handle, sasl_ctx->result, &srv_cred, 0);
+		if (ret != LDAP_SUCCESS) {
+			RERROR("SASL decode failed (bind failed): %s", ldap_err2string(ret));
+			break;
+		}
+
+		if (srv_cred) {
+			RDEBUG3("SASL response  : %pV",
+				fr_box_strvalue_len(srv_cred->bv_val, srv_cred->bv_len));
+			ber_bvfree(srv_cred);
+		}
+
+		if (sasl_ctx->rmech) RDEBUG3("Continuing SASL mech %s...", sasl_ctx->rmech);
+	}
+		break;
+
+	default:
+		break;
+	}
+
+	ldap_msgfree(result);
+	unlang_interpret_mark_runnable(request);
+}
+
+/** Callback to cancel LDAP bind auth
+ *
+ * Inform the remote LDAP server that we no longer want responses to specific bind.
+ *
+ * @param[in] el	For timer management.
+ * @param[in] tconn	The trunk connection handle
+ * @param[in] conn	The specific connection binds will be cancelled on
+ * @param[in] uctx	Context provided to fr_trunk_alloc
+ */
+static void ldap_bind_auth_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn,
+				    fr_connection_t *conn, UNUSED void *uctx)
+{
+	fr_trunk_request_t	*treq;
+	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
+	fr_ldap_bind_auth_ctx_t	*bind;
+
+	while ((fr_trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
+		bind = talloc_get_type_abort(treq->preq, fr_ldap_bind_auth_ctx_t);
+		if (bind->type == LDAP_BIND_SASL) {
+			/*
+			 *	With SASL binds, abandoning the bind part way through
+			 *	seems to leave the connection in an unpredictable state
+			 *	so safer to restart.
+			 */
+			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+		} else {
+			ldap_abandon_ext(ldap_conn->handle, bind->msgid, NULL, NULL);
+		}
+		fr_trunk_request_signal_cancel_complete(treq);
+	}
+}
+
 /** Find the thread specific trunk to use for LDAP bind auths
  *
  * If there is no current trunk then a new one is created.
@@ -1073,6 +1333,10 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_bind_trunk_get(fr_ldap_thread_t *thread)
 				       &(fr_trunk_io_funcs_t){
 					      .connection_alloc = ldap_trunk_connection_alloc,
 					      .connection_notify = ldap_trunk_connection_notify,
+					      .request_mux = ldap_trunk_bind_auth_mux,
+					      .request_demux = ldap_trunk_bind_auth_demux,
+					      .request_cancel_mux = ldap_bind_auth_cancel_mux,
+					      .request_free = ldap_trunk_bind_auth_free
 					},
 				       thread->bind_trunk_conf,
 				       "rlm_ldap bind auth", ttrunk, false);

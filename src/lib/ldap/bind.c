@@ -233,38 +233,13 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 	return 0;
 }
 
-/** Submit an async LDAP auth bind
+/** Yield interpreter after queueing LDAP bind
  *
  */
-static unlang_action_t ldap_async_auth_bind_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t ldap_async_auth_bind_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+						  UNUSED request_t *request, UNUSED void *uctx)
 {
-	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
-	fr_ldap_bind_ctx_t	*bind_ctx = bind_auth_ctx->bind_ctx;
-
-	int			ret;
-	struct berval		cred;
-
-	RDEBUG2("Starting bind auth operation as %s", bind_ctx->bind_dn);
-
-	if (bind_ctx->password) {
-		memcpy(&cred.bv_val, &bind_ctx->password, sizeof(cred.bv_val));
-		cred.bv_len = talloc_array_length(bind_ctx->password) - 1;
-	} else {
-		cred.bv_val = NULL;
-		cred.bv_len = 0;
-	}
-
-	ret = ldap_sasl_bind(bind_auth_ctx->bind_ctx->c->handle, bind_ctx->bind_dn, LDAP_SASL_SIMPLE,
-			     &cred, NULL, NULL, &bind_auth_ctx->msgid);
-
-	switch (ret) {
-	case LDAP_SUCCESS:
-		fr_rb_insert(bind_auth_ctx->thread->binds, bind_auth_ctx);
-		return UNLANG_ACTION_YIELD;
-
-	default:
-		return UNLANG_ACTION_FAIL;
-	}
+	return UNLANG_ACTION_YIELD;
 }
 
 /** Handle the return code from parsed LDAP results to set the module rcode
@@ -274,45 +249,54 @@ static unlang_action_t ldap_async_auth_bind_results(rlm_rcode_t *p_result, UNUSE
 {
 	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
 	fr_ldap_bind_ctx_t	*bind_ctx = bind_auth_ctx->bind_ctx;
+	rlm_rcode_t		rcode = RLM_MODULE_OK;
 
 	switch (bind_auth_ctx->ret) {
 	case LDAP_PROC_SUCCESS:
 		RDEBUG2("Bind as user \"%s\" was successful", bind_ctx->bind_dn);
-		RETURN_MODULE_OK;
+		break;
 
 	case LDAP_PROC_NOT_PERMITTED:
 		RDEBUG2("Bind as user \"%s\" not permitted", bind_ctx->bind_dn);
-		RETURN_MODULE_DISALLOW;
+		rcode = RLM_MODULE_DISALLOW;
+		break;
 
 	case LDAP_PROC_REJECT:
 		RDEBUG2("Bind as user \"%s\" rejected", bind_ctx->bind_dn);
-		RETURN_MODULE_REJECT;
+		rcode = RLM_MODULE_REJECT;
+		break;
 
 	case LDAP_PROC_BAD_DN:
-		RETURN_MODULE_INVALID;
+		rcode = RLM_MODULE_INVALID;
+		break;
 
 	case LDAP_PROC_NO_RESULT:
-		RETURN_MODULE_NOTFOUND;
+		rcode = RLM_MODULE_NOTFOUND;
+		break;
 
 	default:
-		RETURN_MODULE_FAIL;
-
+		rcode = RLM_MODULE_FAIL;
+		break;
 	}
 
-	talloc_free(bind_auth_ctx);
+	/*
+	 *	Bind auth ctx is freed by trunk request free.
+	 */
+	fr_trunk_request_signal_complete(bind_auth_ctx->treq);
+
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Signal an outstanding LDAP bind request to cancel
  *
  */
-static void ldap_async_auth_bind_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+static void ldap_async_auth_bind_cancel(request_t *request, UNUSED fr_signal_t action, void *uctx)
 {
 	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
 
-	ldap_abandon_ext(bind_auth_ctx->bind_ctx->c->handle, bind_auth_ctx->msgid, NULL, NULL);
-	fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
-
-	talloc_free(bind_auth_ctx);
+	RWARN("Cancelling bind auth");
+	if (bind_auth_ctx->msgid > 0) fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
+	fr_trunk_request_signal_cancel(bind_auth_ctx->treq);
 }
 
 /** Initiate an async LDAP bind for authentication
@@ -328,28 +312,52 @@ static void ldap_async_auth_bind_cancel(UNUSED request_t *request, UNUSED fr_sig
 int fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char const *bind_dn, char const *password)
 {
 	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx;
-	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(thread->conn->h, fr_ldap_connection_t);
+	fr_trunk_request_t	*treq;
+	fr_ldap_thread_trunk_t	*ttrunk = fr_thread_ldap_bind_trunk_get(thread);
+	fr_trunk_enqueue_t	ret;
 
-	if (ldap_conn->state != FR_LDAP_STATE_RUN) {
-	connection_fault:
-		fr_connection_signal_reconnect(ldap_conn->conn, FR_CONNECTION_FAILED);
+	if (!ttrunk) {
+		ERROR("Failed to get trunk connection for LDAP bind");
 		return -1;
 	}
 
-	if (ldap_conn->fd < 0) goto connection_fault;
+	treq = fr_trunk_request_alloc(ttrunk->trunk, request);
+	if (!treq) {
+		ERROR ("Failed to allocate trunk request for LDAP bind");
+		return -1;
+	}
 
-	MEM(bind_auth_ctx = talloc_zero(request, fr_ldap_bind_auth_ctx_t));
-	MEM(bind_auth_ctx->bind_ctx = talloc_zero(bind_auth_ctx, fr_ldap_bind_ctx_t));
-	bind_auth_ctx->bind_ctx->c = ldap_conn;
-	bind_auth_ctx->bind_ctx->bind_dn = bind_dn;
-	bind_auth_ctx->bind_ctx->password = password;
-	bind_auth_ctx->request = request;
-	bind_auth_ctx->thread = thread;
-	bind_auth_ctx->ret = LDAP_PROC_NO_RESULT;
+	MEM(bind_auth_ctx = talloc(treq, fr_ldap_bind_auth_ctx_t));
+	*bind_auth_ctx = (fr_ldap_bind_auth_ctx_t) {
+		.treq = treq,
+		.request = request,
+		.thread = thread,
+		.ret = LDAP_PROC_NO_RESULT
+	};
+
+	MEM(bind_auth_ctx->bind_ctx = talloc(bind_auth_ctx, fr_ldap_bind_ctx_t));
+	*bind_auth_ctx->bind_ctx = (fr_ldap_bind_ctx_t) {
+		.bind_dn = bind_dn,
+		.password = password
+	};
+
+	ret = fr_trunk_request_enqueue(&bind_auth_ctx->treq, ttrunk->trunk, request, bind_auth_ctx, NULL);
+
+	switch (ret) {
+	case FR_TRUNK_ENQUEUE_OK:
+	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+		break;
+
+	default:
+		ERROR("Failed to enqueue bind request");
+		fr_trunk_request_free(&treq);
+		return -1;
+	}
 
 	return unlang_function_push(request,
 				    ldap_async_auth_bind_start,
 				    ldap_async_auth_bind_results,
 				    ldap_async_auth_bind_cancel,
-				    ~FR_SIGNAL_CANCEL, UNLANG_TOP_FRAME, bind_auth_ctx);
+				    ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
+				    bind_auth_ctx) == UNLANG_ACTION_PUSHED_CHILD ? 0 : -1;
 }
