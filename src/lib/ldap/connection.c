@@ -192,9 +192,9 @@ static void _ldap_connection_close(fr_event_list_t *el, void *h, UNUSED void *uc
 	fr_ldap_connection_t *c = talloc_get_type_abort(h, fr_ldap_connection_t);
 
 	/*
-	 *	Explicitly remove the file descriptor
+	 *	Explicitly remove the file descriptor event
 	 *
-	 *	Event if the fr_ldap_connection_t has outstanding
+	 *	Even if the fr_ldap_connection_t has outstanding
 	 *	queries, we still don't want its fd in the event loop.
 	 */
 	if (c->fd >= 0) {
