@@ -382,7 +382,7 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 	int		outfd, dupfd;
 	char		buffer[DIRLEN];
 
-	FILE		*outfp;
+	FILE		*outfp = NULL;
 
 	rlm_detail_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_detail_t);
 
@@ -405,13 +405,11 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 
 	if (inst->group_is_set) {
 		if (chown(buffer, -1, inst->group) == -1) {
-			RDEBUG2("Unable to set detail file group to '%s': %s", buffer, fr_syserror(errno));
-			exfile_close(inst->ef, outfd);
-			RETURN_MODULE_FAIL;
+			RERROR("Unable to set detail file group to '%s': %s", buffer, fr_syserror(errno));
+			goto fail;
 		}
 	}
 
-	outfp = NULL;
 	dupfd = dup(outfd);
 	if (dupfd < 0) {
 		RERROR("Failed to dup() file descriptor for detail file");
