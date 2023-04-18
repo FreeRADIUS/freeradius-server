@@ -26,6 +26,7 @@ RCSID("$Id$")
 #define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
@@ -52,7 +53,8 @@ RCSID("$Id$")
 typedef struct {
 	char const	*filename;	//!< File/path to write to.
 	uint32_t	perm;		//!< Permissions to use for new files.
-	char const	*group;		//!< Group to use for new files.
+	gid_t		group;		//!< Resolved group.
+	bool		group_is_set;	//!< Whether group was set.
 
 	tmpl_t		*header;	//!< Header format.
 	bool		locking;	//!< Whether the file should be locked.
@@ -68,12 +70,15 @@ typedef struct {
 	fr_hash_table_t *ht;		//!< Holds suppressed attributes.
 } rlm_detail_t;
 
+int detail_group_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
+		       CONF_ITEM *ci, CONF_PARSER const *rule);
+
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Packet-Src-IP-Address}/detail" },
 	{ FR_CONF_OFFSET("header", FR_TYPE_TMPL | FR_TYPE_XLAT, rlm_detail_t, header),
 	  .dflt = "%t", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, rlm_detail_t, perm), .dflt = "0600" },
-	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, rlm_detail_t, group) },
+	{ FR_CONF_OFFSET_IS_SET("group", FR_TYPE_VOID, rlm_detail_t, group), .func = detail_group_parse },
 	{ FR_CONF_OFFSET("locking", FR_TYPE_BOOL, rlm_detail_t, locking), .dflt = "no" },
 	{ FR_CONF_OFFSET("escape_filenames", FR_TYPE_BOOL, rlm_detail_t, escape), .dflt = "no" },
 	{ FR_CONF_OFFSET("log_packet_header", FR_TYPE_BOOL, rlm_detail_t, log_srcdst), .dflt = "no" },
@@ -114,6 +119,32 @@ fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
 
 	{ NULL }
 };
+
+/** Generic function for parsing conf pair values as int
+ *
+ * @note This should be used for enum types as c99 6.4.4.3 states that the enumeration
+ * constants are of type int.
+ *
+ */
+int detail_group_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
+		       CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	char const 			*group;
+	char				*endptr;
+	gid_t				gid;
+
+	group = cf_pair_value(cf_item_to_pair(ci));
+	gid = strtol(group, &endptr, 10);
+	if (*endptr != '\0') {
+		if (fr_perm_gid_from_str(parent, &gid, group) < 0) {
+			cf_log_err(ci, "Unable to find system group '%s'", group);
+			return -1;
+		}
+	}
+	*((gid_t *)out) = gid;
+
+	return 0;
+}
 
 static uint32_t detail_hash(void const *data)
 {
@@ -353,11 +384,6 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 
 	FILE		*outfp;
 
-#ifdef HAVE_GRP_H
-	gid_t		gid;
-	char		*endptr;
-#endif
-
 	rlm_detail_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_detail_t);
 
 	/*
@@ -377,21 +403,13 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 		RETURN_MODULE_FAIL;
 	}
 
-	if (inst->group != NULL) {
-		gid = strtol(inst->group, &endptr, 10);
-		if (*endptr != '\0') {
-			if (fr_perm_gid_from_str(request, &gid, inst->group) < 0) {
-				RDEBUG2("Unable to find system group '%s'", inst->group);
-				goto skip_group;
-			}
-		}
-
-		if (chown(buffer, -1, gid) == -1) {
-			RDEBUG2("Unable to change system group of '%s'", buffer);
+	if (inst->group_is_set) {
+		if (chown(buffer, -1, inst->group) == -1) {
+			RDEBUG2("Unable to set detail file group to '%s': %s", buffer, fr_syserror(errno));
+			return -1;
 		}
 	}
 
-skip_group:
 	outfp = NULL;
 	dupfd = dup(outfd);
 	if (dupfd < 0) {
