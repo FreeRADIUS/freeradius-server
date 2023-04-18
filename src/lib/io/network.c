@@ -83,7 +83,7 @@ typedef struct {
 	bool			dead;			//!< is it dead?
 	bool			blocked;		//!< is it blocked?
 
-	size_t			outstanding;		//!< number of outstanding packets sent to the worker
+	unsigned int		outstanding;		//!< number of outstanding packets sent to the worker
 	fr_listen_t		*listen;		//!< I/O ctx and functions.
 
 	fr_message_set_t	*ms;			//!< message buffers for this socket.
@@ -1657,7 +1657,15 @@ int fr_network_destroy(fr_network_t *nr)
 		if (fr_rb_flatten_inorder(nr, (void ***)&sockets, nr->sockets) < 0) return -1;
 		len = talloc_array_length(sockets);
 
-		for (i = 0; i < len; i++) talloc_free(sockets[i]);
+		for (i = 0; i < len; i++) {
+			/*
+			 *	Force to zero so we don't trigger asserts
+			 *	if packets are being processed and the
+			 *	server exits.
+			 */
+			sockets[i]->outstanding = 0;
+			talloc_free(sockets[i]);
+		}
 
 		talloc_free(sockets);
 	}
