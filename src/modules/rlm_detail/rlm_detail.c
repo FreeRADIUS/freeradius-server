@@ -406,7 +406,8 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 	if (inst->group_is_set) {
 		if (chown(buffer, -1, inst->group) == -1) {
 			RDEBUG2("Unable to set detail file group to '%s': %s", buffer, fr_syserror(errno));
-			return -1;
+			exfile_close(inst->ef, outfd);
+			RETURN_MODULE_FAIL;
 		}
 	}
 
