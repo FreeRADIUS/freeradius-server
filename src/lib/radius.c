@@ -1941,6 +1941,16 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			continue;
 		}
 
+#ifdef WITH_RADIUSV11
+		/*
+		 *	Do not encode Message-Authenticator for RADIUS/1.1
+		 */
+		if ((reply->da->vendor == 0) && (reply->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
+			reply = reply->next;
+			continue;
+		}
+#endif
+
 		/*
 		 *	We allow zero-length strings in "unlang", but
 		 *	skip them (except for CUI, thanks WiMAX!) on
