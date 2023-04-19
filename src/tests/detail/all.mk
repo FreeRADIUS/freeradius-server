@@ -11,7 +11,9 @@ FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 $(eval $(call TEST_BOOTSTRAP))
 
 #
-#	Run the radclient commands against the radiusd.
+#	The server is reading and consuming the input detail file,
+# 	so we copy it manually to the output directory (always), and then
+#	put the server logs into the output file.
 #
 $(OUTPUT)/%: $(DIR)/%
 	$(eval DIR := $(dir $<))
