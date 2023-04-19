@@ -25,6 +25,7 @@
 #include <netdb.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/pair.h>
+#include <freeradius-devel/server/main_loop.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/util/syserror.h>
@@ -721,6 +722,8 @@ static int mod_open(fr_listen_t *li)
 
 static int mod_close_internal(proto_detail_work_thread_t *thread)
 {
+	proto_detail_work_t const	*inst = talloc_get_type_abort_const(thread->inst, proto_detail_work_t);
+
 	/*
 	 *	One less worker...  we check for "0" because of the
 	 *	hacks in proto_detail which let us start up with
@@ -750,6 +753,11 @@ static int mod_close_internal(proto_detail_work_thread_t *thread)
 	 */
 	if (thread->listen) {
 		talloc_free(thread->listen);
+	}
+
+	if (inst->parent->exit_when_done) {
+		fr_event_list_t *el = main_loop_event_list();
+		fr_event_loop_exit(el, 1);
 	}
 
 	return 0;

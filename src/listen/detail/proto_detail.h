@@ -62,6 +62,8 @@ typedef struct {
 	uint32_t			num_messages;			//!< for message ring buffer
 	uint32_t			priority;			//!< for packet processing, larger == higher
 
+	bool				exit_when_done;		//!< exit when done reading the current file.
+
 	fr_schedule_t			*sc;				//!< the scheduler, where we insert new readers
 
 	fr_listen_t			*listen;			//!< The listener structure which describes

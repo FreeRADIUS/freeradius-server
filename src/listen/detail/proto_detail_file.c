@@ -511,6 +511,14 @@ retry:
 
 delay:
 		/*
+		 *	If we're processing one file and exiting, then the input file must exist.
+		 */
+		if (inst->immediate && inst->parent->exit_when_done) {
+			ERROR("Input file does not exist");
+			fr_exit(EXIT_FAILURE);
+		}
+
+		/*
 		 *	Check every N seconds.
 		 */
 		DEBUG3("Waiting %d.000000s for new files in %s", inst->poll_interval, thread->name);
@@ -651,6 +659,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	We need this for the lock.
 	 */
 	inst->mode = O_RDWR;
+
+	if (inst->parent->exit_when_done && !inst->immediate) {
+		cf_log_warn(conf, "Ignoring 'exit_when_done' due to 'immediate' flag not being set");
+		inst->parent->exit_when_done = false;
+	}
 
 	return 0;
 }
