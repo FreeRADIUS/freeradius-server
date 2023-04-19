@@ -282,10 +282,16 @@ jobs:
     #  create the actual commit due to the "signed-commits" branch protection
     #  rule for the master branch.
     #
+    #  Force reinstall of pyOpenSSL is to work around Python
+    #  cryptograpy package issue - PyGithub pulls in a newer
+    #  version which clashes with older apt-installed pyOpenSSL
+    #  https://github.com/pyca/pyopenssl/issues/1143
+    #
     - name: Monthly push back of corpus
       run: |
         export FILE=src/tests/fuzzer-corpus/$PROTOCOL.tar
         if ! git diff --exit-code "$FILE"; then
+          sudo pip3 install --force-reinstall -I -U pyOpenSSL
           pip install PyGithub
           git add "$FILE"
           OID="$(git lfs ls-files -l -I "$FILE" | cut -f1 -d ' ')"
