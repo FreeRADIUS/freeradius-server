@@ -29,6 +29,12 @@ server detail {
 	#
 	listen detail {
 		#
+		#  Overrides the default transport prefix set by
+		#  namespace and loads the detail reader code.
+		#
+		proto = detail
+
+		#
 		#  Types of packets we are reading.
 		#
 		type = Accounting-Request
