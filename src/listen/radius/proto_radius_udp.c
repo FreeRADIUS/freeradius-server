@@ -49,6 +49,10 @@ typedef struct {
 	CONF_SECTION			*cs;			//!< our configuration
 
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
+	fr_ipaddr_t			src_ipaddr;		//!< IP to use for responses, which may be
+								///< different from the ipaddr we're listening on
+								///< with L3 load balancing setups.
+	bool				src_ipaddr_is_set;	//!< Use specified a source ip address.
 
 	char const			*interface;		//!< Interface to bind to.
 	char const			*port_name;		//!< Name of the port for getservent().
@@ -86,6 +90,8 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_radius_udp_t, ipaddr) },
 	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, proto_radius_udp_t, ipaddr) },
 	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, proto_radius_udp_t, ipaddr) },
+
+	{ FR_CONF_OFFSET_IS_SET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_radius_udp_t, src_ipaddr) },
 
 	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, proto_radius_udp_t, interface) },
 	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, proto_radius_udp_t, port_name) },
@@ -193,6 +199,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
+	proto_radius_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_udp_t);
 	proto_radius_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_udp_thread_t);
 
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
@@ -215,6 +222,12 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	the client, not ourselves.
 	 */
 	fr_socket_addr_swap(&socket, &track->address->socket);
+
+	/*
+	 *	Override the source ip address in the outbound
+	 *	packet.
+	 */
+	if (inst->src_ipaddr_is_set) socket.inet.src_ipaddr = inst->src_ipaddr;
 
 	/*
 	 *	This handles the race condition where we get a DUP,
