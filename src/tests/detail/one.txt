@@ -1,0 +1,8 @@
+Tue Sep 13 16:24:27 2011
+	User-Name = "bob"
+	NAS-IP-Address = 10.10.0.179
+	NAS-Port = 0
+	NAS-Port-Type = Wireless-802.16
+	Calling-Station-Id = "0123456789"
+	Acct-Unique-Session-Id = "ed8119f6919c6f6f"
+	Timestamp = 1554226681
