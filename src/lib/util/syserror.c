@@ -260,6 +260,7 @@ char const *fr_syserror(int num)
 	 *	Grab our thread local buffer
 	 */
 	buffer = _fr_syserror_buffer();
+	if (!buffer) goto error;
 
 	p = buffer;
 	end = p + FR_SYSERROR_BUFSIZE;
@@ -297,7 +298,7 @@ char const *fr_syserror_simple(int num)
 	 *	Grab our thread local buffer
 	 */
 	buffer = _fr_syserror_buffer();
-	if (_fr_syserror(num, buffer, FR_SYSERROR_BUFSIZE) < 0) return "Failed retrieving error";
+	if (!buffer || (_fr_syserror(num, buffer, FR_SYSERROR_BUFSIZE) < 0)) return "Failed retrieving error";
 
 	return buffer;
 }
