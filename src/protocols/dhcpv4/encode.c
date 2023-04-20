@@ -38,7 +38,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_option_data(fr_dbuff_t *dbuff,
+static ssize_t encode_child(fr_dbuff_t *dbuff,
 				  fr_da_stack_t *da_stack, unsigned int depth,
 				  fr_dcursor_t *cursor, void *encode_ctx);
 
@@ -294,7 +294,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	while (fr_dbuff_extend_lowat(&status, &work_dbuff, DHCPV4_OPT_HDR_LEN) > DHCPV4_OPT_HDR_LEN) {
 		FR_PROTO_STACK_PRINT(da_stack, depth);
 
-		len = encode_option_data(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+		len = encode_child(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		if (len < 0) return len;
 
 		/*
@@ -398,7 +398,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_option_data(fr_dbuff_t *dbuff,
+static ssize_t encode_child(fr_dbuff_t *dbuff,
 				  fr_da_stack_t *da_stack, unsigned int depth,
 				  fr_dcursor_t *cursor, void *encode_ctx)
 {
@@ -520,7 +520,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 *	Encode any sub TLVs or values
 	 */
 	while (fr_dbuff_extend_lowat(NULL, &work_dbuff, 3) >= 3) {
-		len = encode_option_data(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+		len = encode_child(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		if (len < 0) return len;
 		if (len == 0) break;		/* Insufficient space */
 
@@ -661,7 +661,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	da = da_stack->da[depth + 1];
 
 	while (true) {
-		len = encode_option_data(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+		len = encode_child(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		if (len == 0) break; /* insufficient space */
 		if (len < 0) return len;
 

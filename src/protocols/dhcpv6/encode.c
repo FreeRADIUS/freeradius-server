@@ -374,7 +374,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
 			       fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_option_data(fr_dbuff_t *dbuff,
+static ssize_t encode_child(fr_dbuff_t *dbuff,
 				  fr_da_stack_t *da_stack, unsigned int depth,
 				  fr_dcursor_t *cursor, void *encode_ctx)
 {
@@ -466,7 +466,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	while (fr_dbuff_extend_lowat(&status, &work_dbuff, DHCPV6_OPT_HDR_LEN) > DHCPV6_OPT_HDR_LEN) {
 		FR_PROTO_STACK_PRINT(da_stack, depth);
 
-		len = encode_option_data(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+		len = encode_child(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		if (len < 0) return len;
 
 		/*
@@ -650,7 +650,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Encode the different data types
 	 */
-	len = encode_option_data(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+	len = encode_child(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 	if (len < 0) return len;
 
 	(void) encode_option_hdr(&hdr, da->attr, fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN);
@@ -759,7 +759,7 @@ ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * 
 		break;
 
 	default:
-		len = encode_option_data(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
+		len = encode_child(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 	}
 	if (len < 0) return len;
