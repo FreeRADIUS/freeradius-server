@@ -175,7 +175,8 @@ typedef enum {
  */
 typedef enum {
 	LDAP_REQUEST_SEARCH = 1,			//!< A lookup in an LDAP directory
-	LDAP_REQUEST_MODIFY				//!< A modification to an LDAP entity
+	LDAP_REQUEST_MODIFY,				//!< A modification to an LDAP entity
+	LDAP_REQUEST_EXTENDED				//!< An extended LDAP operation
 } fr_ldap_request_type_t;
 
 /** LDAP query result codes
@@ -427,6 +428,10 @@ struct fr_ldap_query_s {
 			int		scope;		//!< Search scope.
 			char const	*filter;	//!< Filter for search.
 		} search;
+		struct {
+			char const	*reqoid;	//!< OID of extended operation to perform.
+			struct berval	*reqdata;	//!< Data required for the request.
+		} extended;
 		LDAPMod			**mods;		//!< Changes to be applied if this query is a modification.
 	};
 
@@ -700,6 +705,9 @@ fr_ldap_query_t *fr_ldap_search_alloc(TALLOC_CTX *ctx,
 fr_ldap_query_t *fr_ldap_modify_alloc(TALLOC_CTX *ctx, char const *dn,
 				      LDAPMod *mods[], LDAPControl **serverctrls, LDAPControl **clientctrls);
 
+fr_ldap_query_t *fr_ldap_extended_alloc(TALLOC_CTX *ctx, char const *reqiod, struct berval *reqdata,
+					LDAPControl **serverctrls, LDAPControl **clientctrls);
+
 unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 				     TALLOC_CTX *ctx,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
@@ -712,6 +720,12 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *dn, LDAPMod *mods[],
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
+
+unlang_action_t fr_ldap_trunk_extended(rlm_rcode_t *p_result,
+				       TALLOC_CTX *ctx,
+				       fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+				       char const *reqoid, struct berval *reqdata,
+				       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 /*
  *	base.c - Wrappers arounds OpenLDAP functions.
@@ -735,6 +749,9 @@ fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, request_t *request,
 fr_ldap_rcode_t	fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
 			       char const *dn, LDAPMod *mods[],
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
+
+fr_ldap_rcode_t fr_ldap_extended_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
+				       char const *reqiod, struct berval *reqdata);
 
 fr_ldap_rcode_t	fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_connection_t const *conn,
 				    LDAPMessage *msg, char const *dn);

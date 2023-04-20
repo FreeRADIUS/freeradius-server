@@ -836,6 +836,81 @@ fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_con
 	return LDAP_PROC_SUCCESS;
 }
 
+/** Run an async LDAP "extended operation" query on a trunk connection
+ *
+ * @param[out] p_result		from synchronous evaluation.
+ * @param[in] ctx		to allocate the query in.
+ * @param[out] out		that has been allocated.
+ * @param[in] request		this query relates to.
+ * @param[in] ttrunk		to submit the query to.
+ * @param[in] reqoid		OID of extended operation.
+ * @param[in] reqdata		Request data to send.
+ * @param[in] serverctrls	specific to this query.
+ * @param[in] clientctrls	specific to this query.
+ * @return
+ *	- UNLANG_ACTION_FAIL on error.
+ *	- UNLANG_ACTION_YIELD on success.
+ *	- UNLANG_ACTION_CALCULATE_RESULT if the query was run synchronously.
+ */
+unlang_action_t fr_ldap_trunk_extended(rlm_rcode_t *p_result,
+				       TALLOC_CTX *ctx,
+				       fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+				       char const *reqoid, struct berval *reqdata,
+				       LDAPControl **serverctrls, LDAPControl **clientctrls)
+{
+	unlang_action_t action;
+	fr_ldap_query_t *query;
+
+	query = fr_ldap_extended_alloc(ctx, reqoid, reqdata, serverctrls, clientctrls);
+
+	switch (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
+	case FR_TRUNK_ENQUEUE_OK:
+	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+		break;
+
+	default:
+	error:
+		*out = NULL;
+		*p_result = RLM_MODULE_FAIL;
+		talloc_free(query);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	action = unlang_function_push(request, NULL, ldap_trunk_query_results, ldap_trunk_query_cancel,
+				      ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, query);
+
+	if (action == UNLANG_ACTION_FAIL) goto error;
+
+	*out = query;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+/** Initiate an LDAP extended operation
+ *
+ * Called by the trunk mux function
+ *
+ * @param[out] msgid	LDAP message ID.
+ * @param[in] request	Current request.
+ * @param[in] pconn	to use.
+ * @param[in] reqoid	OID of extended operation to perform.
+ * @param[in] reqdata	Data required for the request.
+ * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
+ */
+fr_ldap_rcode_t fr_ldap_extended_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
+				       char const *reqoid, struct berval *reqdata)
+{
+	int	err;
+
+	fr_assert(*pconn && (*pconn)->handle);
+
+	RDEBUG2("Requesting extended operation with OID %s", reqoid);
+	err = ldap_extended_operation((*pconn)->handle, reqoid, reqdata, NULL, NULL, msgid);
+
+	if (err) return LDAP_PROC_ERROR;
+	return LDAP_PROC_SUCCESS;
+}
+
 /** Free any libldap structures when an fr_ldap_query_t is freed
  *
  * It is also possible that the connection used for this query is now closed,
@@ -888,6 +963,11 @@ static int _ldap_query_free(fr_ldap_query_t *query)
 	    (fr_rb_num_elements(query->ldap_conn->queries) == 0)) {
 		talloc_free(query->ldap_conn);
 	}
+
+	/*
+	 *	Ensure the request data for extended operations are freed.
+	 */
+	if (query->type == LDAP_REQUEST_EXTENDED && query->extended.reqdata) ber_bvfree(query->extended.reqdata);
 
 	return 0;
 }
@@ -957,6 +1037,29 @@ fr_ldap_query_t *fr_ldap_modify_alloc(TALLOC_CTX *ctx, char const *dn,
 	SET_LDAP_CTRLS(query->clientctrls, clientctrls);
 
 	return query;
+}
+
+/** Allocate a new LDAP extended operations object
+ *
+ * @param[in] ctx		to allocate the query in.
+ * @param[in] reqoid		OID of extended operation to perform.
+ * @param[in] reqdata		Request data to send.
+ * @param[in] serverctrls	Controls to pass to the server.  May be NULL.
+ * @param[in] clientctrls	Client controls.  May be NULL.
+ * @return LDAP query object
+ */
+fr_ldap_query_t *fr_ldap_extended_alloc(TALLOC_CTX *ctx, char const *reqoid, struct berval *reqdata,
+					LDAPControl **serverctrls, LDAPControl **clientctrls)
+{
+	fr_ldap_query_t *query;
+
+	query = ldap_query_alloc(ctx, LDAP_REQUEST_EXTENDED);
+	query->extended.reqoid = reqoid;
+	query->extended.reqdata = reqdata;
+	SET_LDAP_CTRLS(query->serverctrls, serverctrls);
+	SET_LDAP_CTRLS(query->clientctrls, clientctrls);
+
+	return (query);
 }
 
 static int _ldap_handle_thread_local_free(void *handle)
