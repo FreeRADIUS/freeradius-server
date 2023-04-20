@@ -617,6 +617,14 @@ ldap {
 
 #		require_cert	= 'demand'
 
+
+		#
+		#  Check the CRL, as with the EAP module.
+		#
+		#  The default is "no".
+		#
+#		check_crl = yes
+
 		#
 		#  Minimum TLS version to accept. We STRONGLY recommend
 		#  setting this to "1.2"

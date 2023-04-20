@@ -1382,6 +1382,18 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 	}
 #endif
 
+#ifdef LDAP_OPT_X_TLS_CTX
+	{
+		X509_STORE *store;
+		SSL_CTX *ssl_ctx;
+
+		if (ldap_get_option(NULL, LDAP_OPT_X_TLS_PACKAGE, (void *) &ssl_ctx) == LDAP_OPT_SUCCESS) {
+			store = SSL_CTX_get_cert_store(ssl_ctx);
+			X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK);
+		}
+	}
+#endif
+
 	return 0;
 }
 

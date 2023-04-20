@@ -266,6 +266,8 @@ typedef struct ldap_instance {
 
 	int		tls_require_cert;		//!< OpenLDAP constant representing the require cert string.
 
+	bool		tls_check_crl;			//!< whether we do CRL checks or not
+
 	char const	*tls_min_version_str;		//!< Minimum TLS version
 	int		tls_min_version;
 

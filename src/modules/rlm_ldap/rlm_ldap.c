@@ -113,6 +113,11 @@ static CONF_PARSER tls_config[] = {
 #ifdef LDAP_OPT_X_TLS_CIPHER_SUITE
 	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, tls_cipher_list), NULL },
 #endif
+
+#ifdef LDAP_OPT_X_TLS_CTX
+	{ "check_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, tls_check_crl), "no" },
+#endif
+
 	/*
 	 *	LDAP Specific TLS attributes
 	 */
