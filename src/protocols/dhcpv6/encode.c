@@ -41,11 +41,11 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
+static ssize_t encode_rfc(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
+static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx);
 
@@ -370,7 +370,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 }
 
 
-static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
+static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
 			       fr_dcursor_t *cursor, void *encode_ctx);
 
@@ -391,12 +391,12 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 		case FR_TYPE_TLV:
 			if (!da_stack->da[depth + 1]) goto do_child;
 
-			return encode_tlv_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+			return encode_tlv(dbuff, da_stack, depth, cursor, encode_ctx);
 
 		case FR_TYPE_VSA:
 			if (!da_stack->da[depth + 1]) goto do_child;
 
-			return encode_vsio_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+			return encode_vsio(dbuff, da_stack, depth, cursor, encode_ctx);
 
 		case FR_TYPE_GROUP:
 			if (!da_stack->da[depth + 1]) goto do_child;
@@ -406,7 +406,7 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 			break;
 		}
 
-		return encode_rfc_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+		return encode_rfc(dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 
 	if (!da_stack->da[depth]) {
@@ -429,15 +429,15 @@ do_child:
 
 		switch (da_stack->da[depth]->type) {
 		case FR_TYPE_VSA:
-			len = encode_vsio_hdr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+			len = encode_vsio(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 			break;
 
 		case FR_TYPE_TLV:
-			len = encode_tlv_hdr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+			len = encode_tlv(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 			break;
 
 		default:
-			len = encode_rfc_hdr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+			len = encode_rfc(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 			break;
 		}
 
@@ -494,7 +494,7 @@ static ssize_t encode_cursor(fr_dbuff_t *dbuff,
  * If it's a standard attribute, then vp->da->attr == attribute.
  * Otherwise, attribute may be something else.
  */
-static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
+static ssize_t encode_rfc(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx)
 {
@@ -532,7 +532,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
+static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx)
 {
@@ -589,7 +589,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
  *     .                                                               .
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
+static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
 			       fr_dcursor_t *cursor, void *encode_ctx)
 {
@@ -755,7 +755,7 @@ ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * 
 			break;
 		}
 
-		len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
+		len = encode_rfc(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 
 	default:
