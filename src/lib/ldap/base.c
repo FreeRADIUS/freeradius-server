@@ -509,7 +509,10 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 
 /** Search for something in the LDAP directory
  *
- * Binds as the administrative user and performs a search, dealing with any errors.
+ * Performs an LDAP search, typically on a connection bound as the
+ * administrative user, dealing with any errors.
+ * Called from the trunk mux function and elsewhere where appropriate
+ * event handlers have been set on the connection fd.
  *
  * @param[out] msgid		to match response to request.
  * @param[in] request		Current request.
@@ -740,7 +743,7 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/** Run an async or sync modification LDAP query on a trunk connection
+/** Run an async modification LDAP query on a trunk connection
  *
  * @param[out] p_result		from synchronous evaluation.
  * @param[in] ctx		to allocate the query in.
@@ -792,7 +795,8 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 
 /** Modify something in the LDAP directory
  *
- * Binds as the administrative user and attempts to modify an LDAP object.
+ * Used on connections bound as the administrative user to attempt to modify an LDAP object.
+ * Called by the trunk mux function
  *
  * @param[out] msgid		LDAP message ID.
  * @param[in] request		Current request.
@@ -932,6 +936,15 @@ fr_ldap_query_t *fr_ldap_search_alloc(TALLOC_CTX *ctx,
 	return query;
 }
 
+/** Allocate a new LDAP modify object
+ *
+ * @param[in] ctx		to allocate the query in.
+ * @param[in] dn		of the object to modify.
+ * @param[in] mods		to apply to the object.
+ * @param[in] serverctrls	Controls to pass to the server.  May be NULL.
+ * @param[in] clientctrls	Client controls.  May be NULL.
+ * @return LDAP query object
+ */
 fr_ldap_query_t *fr_ldap_modify_alloc(TALLOC_CTX *ctx, char const *dn,
 				      LDAPMod *mods[], LDAPControl **serverctrls, LDAPControl **clientctrls)
 {

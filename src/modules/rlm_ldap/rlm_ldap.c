@@ -1744,6 +1744,7 @@ static unlang_action_t user_modify_resume(rlm_rcode_t *p_result, UNUSED int *pri
  * @param[in] inst		rlm_ldap instance.
  * @param[in] request		Current request.
  * @param[in] section		that holds the map to process.
+ * @param[in] mod_env		Module environment.  Contains expanded base and filter to find user.
  * @return one of the RLM_MODULE_* values.
  */
 static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
