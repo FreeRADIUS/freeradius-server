@@ -48,9 +48,9 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_tlv(fr_dbuff_t *dbuff,
-			  fr_da_stack_t *da_stack, unsigned int depth,
-			  fr_dcursor_t *cursor, void *encode_ctx);
+static ssize_t encode_cursor(fr_dbuff_t *dbuff,
+			     fr_da_stack_t *da_stack, unsigned int depth,
+			     fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Macro-like function for encoding an option header
  *
@@ -97,7 +97,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 		fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx, encode_value, encode_tlv);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx, encode_value, encode_cursor);
 		if (slen < 0) return slen;
 
 		/*
@@ -112,7 +112,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Flat-list
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_tlv);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_cursor);
 		if (slen <= 0) return slen;
 
 		/*
@@ -298,9 +298,9 @@ do_child:
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_tlv(fr_dbuff_t *dbuff,
-			  fr_da_stack_t *da_stack, unsigned int depth,
-			  fr_dcursor_t *cursor, void *encode_ctx)
+static ssize_t encode_cursor(fr_dbuff_t *dbuff,
+			     fr_da_stack_t *da_stack, unsigned int depth,
+			     fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
@@ -404,7 +404,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 
 	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, DNS_OPT_HDR_LEN);	/* Make room for option header */
 
-	len = encode_tlv(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+	len = encode_cursor(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	if (len < 0) return len;
 
 	/*
@@ -450,12 +450,12 @@ static ssize_t fr_dns_encode_rr(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 
 		fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 
-		slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, &child_cursor, encode_ctx, encode_value, encode_tlv);
+		slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, &child_cursor, encode_ctx, encode_value, encode_cursor);
 		if (slen <= 0) return slen;
 		(void) fr_dcursor_next(cursor);
 
 	} else {
-		slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, cursor, encode_ctx, encode_value, encode_tlv);
+		slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, cursor, encode_ctx, encode_value, encode_cursor);
 		if (slen <= 0) return slen;
 	}
 
@@ -487,7 +487,7 @@ static ssize_t encode_record(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, fr_pair
 		fr_dcursor_t child_cursor;
 
 		fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
-		slen = fr_struct_to_network(&work_dbuff, da_stack, 0, &child_cursor, packet_ctx, encode_value, encode_tlv);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, 0, &child_cursor, packet_ctx, encode_value, encode_cursor);
 		if (slen <= 0) return slen;
 
 		count++;

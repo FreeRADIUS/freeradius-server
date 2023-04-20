@@ -49,9 +49,9 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_tlv(fr_dbuff_t *dbuff,
-			  fr_da_stack_t *da_stack, unsigned int depth,
-			  fr_dcursor_t *cursor, void *encode_ctx);
+static ssize_t encode_cursor(fr_dbuff_t *dbuff,
+			     fr_da_stack_t *da_stack, unsigned int depth,
+			     fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Macro-like function for encoding an option header
  *
@@ -93,7 +93,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Pack multiple attributes into into a single option
 	 */
 	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_tlv);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_cursor);
 		if (slen <= 0) return slen;
 
 		/*
@@ -453,7 +453,7 @@ do_child:
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_tlv(fr_dbuff_t *dbuff,
+static ssize_t encode_cursor(fr_dbuff_t *dbuff,
 			  fr_da_stack_t *da_stack, unsigned int depth,
 			  fr_dcursor_t *cursor, void *encode_ctx)
 {
@@ -559,7 +559,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 
 	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);	/* Make room for option header */
 
-	len = encode_tlv(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+	len = encode_cursor(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	if (len < 0) return len;
 
 	/*

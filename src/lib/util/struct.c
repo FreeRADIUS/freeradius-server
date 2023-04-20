@@ -477,7 +477,7 @@ static void *struct_next_encodable(fr_dlist_head_t *list, void *current, void *u
 ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
 			     fr_dcursor_t *parent_cursor, void *encode_ctx,
-			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_tlv)
+			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_cursor)
 {
 	fr_dbuff_t		work_dbuff;
 	fr_dbuff_marker_t	hdr;
@@ -757,7 +757,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			fr_proto_da_stack_build(da_stack, vp->da);
 
 			len = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
-						   cursor, encode_ctx, encode_value, encode_tlv);
+						   cursor, encode_ctx, encode_value, encode_cursor);
 			if (len < 0) return len;
 			goto done;
 		}
@@ -775,7 +775,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			fr_proto_da_stack_build(da_stack, vp->da->parent);
 
 			len = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
-						   cursor, encode_ctx, encode_value, encode_tlv);
+						   cursor, encode_ctx, encode_value, encode_cursor);
 			if (len < 0) return len;
 			goto done;
 		}
@@ -800,8 +800,8 @@ done:
 	if (tlv) {
 		ssize_t slen;
 
-		if (!encode_tlv) {
-			fr_strerror_printf("Asked to encode TLV %s, but not passed an encoding function",
+		if (!encode_cursor) {
+			fr_strerror_printf("Asked to encode child attribute %s, but we were not passed an encoding function",
 					   tlv->name);
 			return -1;
 		}
@@ -812,7 +812,7 @@ done:
 		 *	Encode any TLV attributes which are part of this structure.
 		 */
 		while (vp && (da_stack->da[depth] == parent) && (da_stack->depth >= parent->depth)) {
-			slen = encode_tlv(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+			slen = encode_cursor(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 			if (slen < 0) return slen;
 
 			vp = fr_dcursor_current(cursor);

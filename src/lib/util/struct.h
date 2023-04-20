@@ -43,7 +43,7 @@ typedef ssize_t (*fr_encode_dbuff_t)(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack,
 
 ssize_t fr_struct_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
 			     fr_dcursor_t *cursor, void *encode_ctx,
-			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_tlv) CC_HINT(nonnull(1,2,4));
+			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_cursor) CC_HINT(nonnull(1,2,4));
 
 #ifdef __cplusplus
 }

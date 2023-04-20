@@ -42,9 +42,9 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 				  fr_da_stack_t *da_stack, unsigned int depth,
 				  fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_tlv(fr_dbuff_t *dbuff,
-			  fr_da_stack_t *da_stack, unsigned int depth,
-			  fr_dcursor_t *cursor, void *encode_ctx);
+static ssize_t encode_cursor(fr_dbuff_t *dbuff,
+			     fr_da_stack_t *da_stack, unsigned int depth,
+			     fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Write DHCP option value into buffer
  *
@@ -76,7 +76,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Structures are special.
 	 */
 	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_tlv);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_cursor);
 		if (slen <= 0) return slen;
 
 		/*
@@ -281,9 +281,9 @@ static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
 
 #define DHCPV4_OPT_HDR_LEN (2)
 
-static ssize_t encode_tlv(fr_dbuff_t *dbuff,
-			  fr_da_stack_t *da_stack, unsigned int depth,
-			  fr_dcursor_t *cursor, void *encode_ctx)
+static ssize_t encode_cursor(fr_dbuff_t *dbuff,
+			     fr_da_stack_t *da_stack, unsigned int depth,
+			     fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
