@@ -31,6 +31,10 @@
 #include <stdarg.h>
 #include <ctype.h>
 
+#ifdef HAVE_OPENSSL_SSL_H
+#  include <openssl/ssl.h>
+#endif
+
 #include "ldap.h"
 
 /** Converts "bad" strings into ones which are safe for LDAP
@@ -1383,6 +1387,7 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 #endif
 
 #ifdef LDAP_OPT_X_TLS_CTX
+#ifdef HAVE_OPENSSL_SSL_H
 	{
 		X509_STORE *store;
 		SSL_CTX *ssl_ctx;
@@ -1392,6 +1397,7 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 			X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK);
 		}
 	}
+#endif
 #endif
 
 	return 0;
