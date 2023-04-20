@@ -413,12 +413,12 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 		 */
 		switch (da_stack->da[depth]->type) {
 		case FR_TYPE_TLV:
-			if (!da_stack->da[depth + 1]) goto do_child;
+			if (!da_stack->da[depth + 1]) goto do_nested_children;
 
 			return encode_tlv(dbuff, da_stack, depth, cursor, encode_ctx);
 
 		case FR_TYPE_VSA:
-			if (!da_stack->da[depth + 1]) goto do_child;
+			if (!da_stack->da[depth + 1]) goto do_nested_children;
 
 			return encode_vsio(dbuff, da_stack, depth, cursor, encode_ctx);
 
@@ -440,7 +440,7 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 		}
 	}
 
-do_child:
+do_nested_children:
 	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 	work_dbuff = FR_DBUFF(dbuff);
 

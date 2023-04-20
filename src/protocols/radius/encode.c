@@ -910,6 +910,9 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 	hlen = 2;
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, hlen);
 
+	fr_assert(da_stack->da[depth] != NULL);
+	fr_assert(fr_type_is_leaf(da_stack->da[depth]->type));
+
 	slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
 
