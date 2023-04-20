@@ -190,12 +190,11 @@ int rlm_ldap_map_verify(vp_map_t *map, void *instance)
 	}
 
 	/*
-	 *	Only =, :=, += and -= operators are supported for LDAP mappings.
+	 *	Only =, :=, and += aoperators are supported for LDAP mappings.
 	 */
 	switch (map->op) {
 	case T_OP_SET:
 	case T_OP_EQ:
-	case T_OP_SUB:
 	case T_OP_ADD:
 		break;
 
