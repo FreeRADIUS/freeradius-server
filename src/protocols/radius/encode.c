@@ -251,9 +251,9 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 /*
  *	Encode the contents of an attribute of type TLV.
  */
-static ssize_t encode_tlv_children(fr_dbuff_t *dbuff,
-				   fr_da_stack_t *da_stack, unsigned int depth,
-				   fr_dcursor_t *cursor, void *encode_ctx)
+static ssize_t encode_tlv(fr_dbuff_t *dbuff,
+			  fr_da_stack_t *da_stack, unsigned int depth,
+			  fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t		slen;
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
@@ -286,7 +286,7 @@ static ssize_t encode_tlv_children(fr_dbuff_t *dbuff,
 			/*
 			 *	Call ourselves recursively to encode children.
 			 */
-			slen = encode_tlv_children(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+			slen = encode_tlv(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 			if (slen < 0) {
 				if (slen == PAIR_ENCODE_SKIPPED) continue;
 				return slen;
@@ -377,7 +377,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	/*
 	 *	TLVs are just another type of value.
 	 */
-	if (da->type == FR_TYPE_TLV) return encode_tlv_children(dbuff, da_stack, depth, cursor, encode_ctx);
+	if (da->type == FR_TYPE_TLV) return encode_tlv(dbuff, da_stack, depth, cursor, encode_ctx);
 
 	/*
 	 *	Catch errors early on.
@@ -392,7 +392,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 */
 	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
 		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value,
-					    encode_tlv_children);
+					    encode_tlv);
 		if (slen < 0) return slen;
 
 		vp = fr_dcursor_current(cursor);
