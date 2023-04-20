@@ -431,7 +431,7 @@ static uint32_t reply_code(request_t *request, fr_dict_attr_t const *status_da,
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, status_da);
 	if (vp) {
 		code = status2code[vp->vp_uint8];
-		if (code > 0) {
+		if (FR_TACACS_PACKET_CODE_VALID(code)) {
 			RDEBUG("Setting reply Packet-Type from %pP", vp);
 			return code;
 		}
@@ -440,12 +440,12 @@ static uint32_t reply_code(request_t *request, fr_dict_attr_t const *status_da,
 
 	if (state) {
 		code = state->packet_type[rcode];
-		if (code > 0) return code;
+		if (FR_TACACS_PACKET_CODE_VALID(code)) return code;
 	}
 
 	if (process_rcode) {
 		code = process_rcode[rcode];
-		if (code) return code;
+		if (FR_TACACS_PACKET_CODE_VALID(code)) return code;
 	}
 
 	/*
