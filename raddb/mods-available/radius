@@ -120,8 +120,13 @@ radius {
 	#
 	status_check {
 		#
-		#  type:: You can specify any type of packet here, though
-		#  Status-Server is recommended.
+		#  type:: You can specify any type of request packet here, 
+		#  e.g. 'Access-Request', 'Accounting-Request' or 
+		#  'Status-Server'.
+		#
+		#  Status-Server is recommended as other packet types may
+		#  be interpreted incorrectly, or proxied to a remote 
+		#  server defeting the purpose of the status checl
 		#
 		#  If you specify another type of packet, it MUST be listed
 		#  as an allowed `type`, above.
@@ -153,11 +158,12 @@ radius {
 		#  created when a connection is opened, and are not
 		#  changeable after that.
 		#
-#		&request.User-Name := "test-user"
-#		&request.User-Password := "this-is-not-a-real-password"
-#		&request.NAS-Identifier := "Status check.  Are you alive?"
-#		&request.Event-Timestamp = 0
-
+#		update request {
+#			&User-Name := "test-user"
+#			&User-Password := "this-is-not-a-real-password"
+#			&NAS-Identifier := "Status check.  Are you alive?"
+#			&Event-Timestamp = 0
+#		}
 	}
 
 	#
