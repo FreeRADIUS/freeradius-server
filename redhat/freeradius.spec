@@ -598,7 +598,7 @@ export LDFLAGS="-Wl,--build-id"
 export RADIUSD_VERSION_RELEASE="%{release}"
 %endif
 
-# Due to an autoconf quirk --with-modules=<module> and --without-<module> is actually correct
+# Due to an autoconf quirk --with-modules=<module> and --without-<module> are actually correct.
 # --with-modules forms the module list we want to explicitly configure, and --without-<module>
 # is ignored by the main configure script, but passed down to the individual configure scripts
 # where it's used to turn the configure run for the module into a noop.
