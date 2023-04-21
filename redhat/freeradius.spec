@@ -598,7 +598,7 @@ export LDFLAGS="-Wl,--build-id"
 export RADIUSD_VERSION_RELEASE="%{release}"
 %endif
 
-%define autoconf_with() %{expand:%%{?with_%{1}:--with-%{1}}%%{!?with_%{1}:--without-%{1}}}
+%define autoconf_mod_with() %{expand:%%{?with_%{1}:--with-modules%{1}}%%{!?with_%{1}:--without-modules%{1}}}
 
 %configure \
         --libdir=%{_libdir}/freeradius \
@@ -608,16 +608,16 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
-        %{autoconf_with experimental-modules} \
-        %{autoconf_with rlm_cache_memcached} \
-        %{autoconf_with rlm_idn} \
-        %{autoconf_with rlm_lua} \
-        %{autoconf_with rlm_mruby} \
-        %{autoconf_with rlm_opendirectory} \
-        %{autoconf_with rlm_securid} \
-        %{autoconf_with rlm_sigtran} \
-        %{autoconf_with rlm_sql_oracle} \
-        %{autoconf_with rlm_yubikey} \
+        %{autoconf_mod_with experimental-modules} \
+        %{autoconf_mod_with rlm_cache_memcached} \
+        %{autoconf_mod_with rlm_idn} \
+        %{autoconf_mod_with rlm_lua} \
+        %{autoconf_mod_with rlm_mruby} \
+        %{autoconf_mod_with rlm_opendirectory} \
+        %{autoconf_mod_with rlm_securid} \
+        %{autoconf_mod_with rlm_sigtran} \
+        %{autoconf_mod_with rlm_sql_oracle} \
+        %{autoconf_mod_with rlm_yubikey} \
 %if %{without ldap}
         --without-libfreeradius-ldap \
 %else
