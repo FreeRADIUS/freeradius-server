@@ -1332,18 +1332,26 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			/*
 			 *	Bind as the user
 			 */
+			REPEAT_MOD_AUTHORIZE_RESUME;
 			if (fr_ldap_bind_auth_async(request, thread, autz_ctx->dn, password->vp_strvalue) < 0) {
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
-
-			rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-
-			if (rcode != RLM_MODULE_OK) goto finish;
+			autz_ctx->status = LDAP_AUTZ_POST_EDIR;
+			return UNLANG_ACTION_PUSHED_CHILD;
 		}
-		FALL_THROUGH;
+		goto skip_edir;
 
 	case LDAP_AUTZ_POST_EDIR:
+		/*
+		 *	The result of the eDirectory user bind will be in p_result.
+		 *	Anything other than RLM_MODULE_OK is a failure.
+		 */
+		if (*p_result != RLM_MODULE_OK) {
+			rcode = *p_result;
+			goto finish;
+		}
+
 	skip_edir:
 #endif
 		/*
