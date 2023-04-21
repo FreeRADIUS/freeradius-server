@@ -602,7 +602,7 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 # --with-modules forms the module list we want to explicitly configure, and --without-<module>
 # is ignored by the main configure script, but passed down to the individual configure scripts
 # where it's used to turn the configure run for the module into a noop.
-%define autoconf_mod_with() %{expand:%%{?with_%{1}:--with-modules%{1}}%%{!?with_%{1}:--without-%{1}}}
+%define autoconf_mod_with() %{expand:%%{?with_%{1}:--with-modules=%{1}}%%{!?with_%{1}:--without-%{1}}}
 
 %configure \
         --libdir=%{_libdir}/freeradius \
