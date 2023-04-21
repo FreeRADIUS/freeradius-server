@@ -3382,6 +3382,20 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 				ERROR("(TLS) Failed adding tracking informtion for proxy socket '%s'", buffer);
 				goto error;
 			}
+
+#ifdef TCP_NODELAY
+			/*
+			 *	Also set TCP_NODELAY, to force the data to be written quickly.
+			 */
+			if (sock->proto == IPPROTO_TCP) {
+				int on = 1;
+
+				if (setsockopt(this->fd, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
+					ERROR("(TLS) Failed to set TCP_NODELAY: %s", fr_syserror(errno));
+					goto error;
+				}
+			}
+#endif
 		}
 
 		/*
