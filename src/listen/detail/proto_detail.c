@@ -550,7 +550,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			}
 		}
 
-		if (dl_module_instance(inst->cs, &inst->work_submodule,
+		if (dl_module_instance(parent_inst, &inst->work_submodule,
 				       parent_inst,
 				       DL_MODULE_TYPE_SUBMODULE, "work", dl_module_inst_name_from_conf(transport_cs)) < 0) {
 			cf_log_perr(inst->cs, "Failed to load proto_detail_work");
