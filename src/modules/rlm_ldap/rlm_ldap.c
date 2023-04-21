@@ -1451,52 +1451,46 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		 *      Retrieve Universal Password if we use eDirectory
 		 */
 		if (inst->edir) {
-			fr_pair_t	*vp;
-			int		res = 0;
-			char		password[256];
-			size_t		pass_size = sizeof(password);
-			char const	*dn = rlm_find_user_dn_cached(request);;
+			autz_ctx->dn = rlm_find_user_dn_cached(request);;
 
 			/*
 			 *	Retrive universal password
 			 */
-			res = fr_ldap_edir_get_password(handle, dn, password, &pass_size);
-			if (res != 0) {
-				REDEBUG("Failed to retrieve eDirectory password: (%i) %s", res, fr_ldap_edir_errstr(res));
+			REPEAT_MOD_AUTHORIZE_RESUME;
+			if (fr_ldap_edir_get_password(p_result, request, autz_ctx->dn, autz_ctx->ttrunk,
+						      attr_cleartext_password) < 0) {
 				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
+			autz_ctx->status = LDAP_AUTZ_EDIR_BIND;
+			return UNLANG_ACTION_PUSHED_CHILD;
+		}
+		FALL_THROUGH;
 
+	case LDAP_AUTZ_EDIR_BIND:
+		if (*p_result != RLM_MODULE_OK) {
+			rcode = *p_result;
+			goto finish;
+		}
+
+		if (inst->edir && inst->edir_autz) {
+			fr_pair_t	*password = fr_pair_find_by_da(&request->control_pairs,
+								       NULL, attr_cleartext_password);
+			fr_ldap_thread_t *thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data,
+									 fr_ldap_thread_t);
+
+			RDEBUG2("Binding as %s for eDirectory authorization checks", autz_ctx->dn);
+			/*
+			 *	Bind as the user
+			 */
+			if (fr_ldap_bind_auth_async(request, thread, autz_ctx->dn, password->vp_strvalue) < 0) {
+				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
 
-			/*
-			 *	Add Password.Cleartext attribute to the request
-			 */
-			MEM(pair_update_control(&vp, attr_cleartext_password) >= 0);
-			fr_pair_value_bstrndup(vp, password, pass_size, true);
+			rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 
-			if (RDEBUG_ENABLED3) {
-				RDEBUG3("Added eDirectory password.  control.%pP", vp);
-			} else {
-				RDEBUG2("Added eDirectory password");
-			}
-
-			if (inst->edir_autz) {
-				fr_ldap_thread_t *thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data,
-									 fr_ldap_thread_t);
-
-				RDEBUG2("Binding as user for eDirectory authorization checks");
-				/*
-				 *	Bind as the user
-				 */
-				if (fr_ldap_bind_auth_async(request, thread, dn, vp->vp_strvalue) < 0) {
-					rcode = RLM_MODULE_FAIL;
-					goto finish;
-				}
-
-				rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-
-				if (rcode != RLM_MODULE_OK) goto finish;
-			}
+			if (rcode != RLM_MODULE_OK) goto finish;
 		}
 		FALL_THROUGH;
 

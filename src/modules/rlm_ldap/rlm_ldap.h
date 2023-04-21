@@ -146,6 +146,7 @@ typedef enum {
 	LDAP_AUTZ_GROUP,
 	LDAP_AUTZ_POST_GROUP,
 #ifdef WITH_EDIR
+	LDAP_AUTZ_EDIR_BIND,
 	LDAP_AUTZ_POST_EDIR,
 #endif
 	LDAP_AUTZ_POST_DEFAULT_PROFILE,
@@ -168,6 +169,7 @@ typedef struct {
 	struct berval		**profile_values;
 	int			value_idx;
 	char			*profile_value;
+	char const		*dn;
 } ldap_autz_ctx_t;
 
 extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;

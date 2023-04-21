@@ -37,7 +37,6 @@ USES_APPLE_DEPRECATED_API
 #define NMAS_E_BASE	(-1600)
 
 #define NMAS_E_FRAG_FAILURE		(NMAS_E_BASE-31)	/* -1631 0xFFFFF9A1 */
-#define NMAS_E_BUFFER_OVERFLOW		(NMAS_E_BASE-33)	/* -1633 0xFFFFF99F */
 #define NMAS_E_SYSTEM_RESOURCES		(NMAS_E_BASE-34)	/* -1634 0xFFFFF99E */
 #define NMAS_E_INSUFFICIENT_MEMORY	(NMAS_E_BASE-35)	/* -1635 0xFFFFF99D */
 #define NMAS_E_NOT_SUPPORTED		(NMAS_E_BASE-36)	/* -1636 0xFFFFF99C */
@@ -51,6 +50,14 @@ USES_APPLE_DEPRECATED_API
 #define NMASLDAP_GET_PASSWORD_RESPONSE    "2.16.840.1.113719.1.39.42.100.14"
 
 #define NMAS_LDAP_EXT_VERSION 1
+
+typedef struct {
+	fr_ldap_query_t		*query;
+	fr_ldap_thread_trunk_t	*ttrunk;
+	char const		*reqoid;
+	struct berval		*dn;
+	fr_dict_attr_t const	*password_da;
+} ldap_edir_ctx_t;
 
 /** Takes the object DN and BER encodes the data into the BER value which is used as part of the request
  *
@@ -145,43 +152,65 @@ static int ber_decode_login_data(struct berval *reply_bv, int *server_version, v
 	}
 
 finish:
-
 	if (reply_ber) ber_free(reply_ber, 1);
 
 	return err;
 }
 
-/** Attempt to retrieve the universal password from Novell eDirectory
+/** Submit LDAP extended operation to retrieve Universal Password
  *
- * @param[in] ld LDAP handle.
- * @param[in] dn of user we want to retrieve the password for.
- * @param[out] password Where to write the retrieved password.
- * @param[out] passlen Length of data written to the password buffer.
- * @return
- *	- 0 on success.
- *	- < 0 on failure.
+ * @param p_result	Result of current operation.
+ * @param priority	Unused.
+ * @param request	Current request.
+ * @param uctx		eDir lookup context.
+ * @return One of the RLM_MODULE_* values.
  */
-int fr_ldap_edir_get_password(LDAP *ld, char const *dn, char *password, size_t *passlen)
+static unlang_action_t ldap_edir_get_password_start(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+						    void *uctx)
 {
-	int err = 0;
-	struct berval *request_bv = NULL;
-	char *reply_oid = NULL;
-	struct berval *reply_bv = NULL;
-	int server_version;
-	size_t bufsize;
-	char buffer[256];
+	ldap_edir_ctx_t	*edir_ctx = talloc_get_type_abort(uctx, ldap_edir_ctx_t);
+	return fr_ldap_trunk_extended(p_result, edir_ctx, &edir_ctx->query, request, edir_ctx->ttrunk,
+				      edir_ctx->reqoid, edir_ctx->dn, NULL, NULL);
+}
 
-	/* Validate  parameters. */
-	if (!dn || !*dn || !passlen || !ld) {
-		return NMAS_E_INVALID_PARAMETER;
+/** Handle results of retrieving Universal Password
+ *
+ * @param p_result	Result of current operation.
+ * @param priority	Unused.
+ * @param request	Current request.
+ * @param uctx		eDir lookup context.
+ * @return One of the RLM_MODULE_* values.
+ */
+static unlang_action_t ldap_edir_get_password_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+						     void *uctx)
+{
+	ldap_edir_ctx_t *edir_ctx = talloc_get_type_abort(uctx, ldap_edir_ctx_t);
+	fr_ldap_query_t	*query = edir_ctx->query;
+	rlm_rcode_t	rcode = RLM_MODULE_OK;
+	fr_pair_t	*vp;
+	char		*reply_oid = NULL;
+	struct berval	*reply_bv = NULL;
+	size_t		bufsize;
+	char		buffer[256];
+	int		err = 0;
+	int		server_version;
+
+	switch (query->ret){
+	case LDAP_SUCCESS:
+		break;
+
+	default:
+		REDEBUG("Failed retrieving Universal Password");
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
 	}
 
-	err = ber_encode_request_data(dn, &request_bv);
-	if (err) goto finish;
+	err = ldap_parse_extended_result(query->ldap_conn->handle, query->result, &reply_oid, &reply_bv, false);
 
-	/* Call the ldap_extended_operation (synchronously) */
-	err = ldap_extended_operation_s(ld, NMASLDAP_GET_PASSWORD_REQUEST, request_bv, NULL, NULL, &reply_oid, &reply_bv);
-	if (err) goto finish;
+	switch (err) {
+	case LDAP_SUCCESS:
+		break;
+	}
 
 	/* Make sure there is a return OID */
 	if (!reply_oid) {
@@ -214,31 +243,88 @@ int fr_ldap_edir_get_password(LDAP *ld, char const *dn, char *password, size_t *
 		goto finish;
 	}
 
-	if (bufsize > *passlen) {
-		err = NMAS_E_BUFFER_OVERFLOW;
-		goto finish;
-	}
+	/*
+	 *	Add Password.Cleartext attribute to the request
+	 */
+	MEM(pair_update_control(&vp, edir_ctx->password_da) >= 0);
+	fr_pair_value_bstrndup(vp, buffer, bufsize, true);
 
-	memcpy(password, buffer, bufsize);
-	password[bufsize] = '\0';
-	*passlen = bufsize;
+	if (RDEBUG_ENABLED3) {
+		RDEBUG3("Added eDirectory password.  control.%pP", vp);
+	} else {
+		RDEBUG2("Added eDirectory password");
+	}
 
 finish:
-	if (reply_bv) {
-		ber_bvfree(reply_bv);
+	/*
+	 *	Free any libldap allocated resources.
+	 */
+	if (reply_bv) ber_bvfree(reply_bv);
+	if (reply_oid) ldap_memfree(reply_oid);
+
+	if (err) {
+		REDEBUG("Failed to retrieve eDirectory password: (%i) %s", err, fr_ldap_edir_errstr(err));
+		rcode = RLM_MODULE_FAIL;
 	}
 
-	/* Free the return OID string if one was returned. */
-	if (reply_oid) {
-		ldap_memfree(reply_oid);
+	RETURN_MODULE_RCODE(rcode);
+}
+
+/** Cancel an in progress Universal Password lookup
+ *
+ */
+static void ldap_edir_get_password_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+{
+	ldap_edir_ctx_t	*edir_ctx = talloc_get_type_abort(uctx, ldap_edir_ctx_t);
+
+	if (!edir_ctx->query || !edir_ctx->query->treq) return;
+
+	fr_trunk_request_signal_cancel(edir_ctx->query->treq);
+}
+
+/** Initiate retrieval of the universal password from Novell eDirectory
+ *
+ * @param[in,out] p_result	Current result code.
+ * @param[in] request		Current request.
+ * @param[in] dn		of the user whose password is to be retrieved.
+ * @param[in] ttrunk		on which to send the LDAP request.
+ * @param[in] password_da	DA to use when creating password attribute.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
+ */
+int fr_ldap_edir_get_password(rlm_rcode_t *p_result, request_t *request, char const *dn,
+			      fr_ldap_thread_trunk_t *ttrunk, fr_dict_attr_t const *password_da)
+{
+	ldap_edir_ctx_t	*edir_ctx;
+	int		err = 0;
+
+	if (!dn || !*dn) {
+		REDEBUG("Missing DN");
+		RETURN_MODULE_FAIL;
 	}
 
-	/* Free memory allocated while building the request ber and berval. */
-	if (request_bv) {
-		ber_bvfree(request_bv);
+	MEM(edir_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_edir_ctx_t));
+
+	*edir_ctx = (ldap_edir_ctx_t) {
+		.reqoid = NMASLDAP_GET_PASSWORD_REQUEST,
+		.ttrunk = ttrunk,
+		.password_da = password_da
+	};
+
+	err = ber_encode_request_data(dn, &edir_ctx->dn);
+	if (err) {
+		REDEBUG("Failed to encode user DN: %s", fr_ldap_edir_errstr(err));
+	fail:
+		talloc_free(edir_ctx);
+		RETURN_MODULE_FAIL;
 	}
 
-	return err;
+	if (unlang_function_push(request, ldap_edir_get_password_start, ldap_edir_get_password_resume,
+				 ldap_edir_get_password_cancel, ~FR_SIGNAL_CANCEL,
+				 UNLANG_SUB_FRAME, edir_ctx) < 0) goto fail;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 char const *fr_ldap_edir_errstr(int code)
@@ -246,9 +332,6 @@ char const *fr_ldap_edir_errstr(int code)
 	switch (code) {
 	case NMAS_E_FRAG_FAILURE:
 		return "BER manipulation failed";
-
-	case NMAS_E_BUFFER_OVERFLOW:
-		return "Insufficient buffer space to write retrieved password";
 
 	case NMAS_E_SYSTEM_RESOURCES:
 	case NMAS_E_INSUFFICIENT_MEMORY:
