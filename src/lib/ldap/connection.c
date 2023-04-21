@@ -682,6 +682,14 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 						      our_serverctrls, our_clientctrls);
 			break;
 
+		case LDAP_REQUEST_EXTENDED:
+			/*
+			 *	This query is an LDAP extended operation.
+			 */
+			status = fr_ldap_extended_async(&query->msgid, query->treq->request, &ldap_conn,
+							query->extended.reqoid, query->extended.reqdata);
+			break;
+
 		default:
 			ERROR("Invalid LDAP query for trunk connection");
 		error:
@@ -808,9 +816,16 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t 
 
 		switch (rcode) {
 		case LDAP_PROC_SUCCESS:
-			query->ret = ((query->type == LDAP_REQUEST_SEARCH) &&
-				      (ldap_count_entries(ldap_conn->handle, result) == 0)) ?
-				     LDAP_RESULT_NO_RESULT : LDAP_RESULT_SUCCESS;
+			switch (query->type) {
+			case LDAP_REQUEST_SEARCH:
+				query->ret = (ldap_count_entries(ldap_conn->handle, result) == 0) ?
+						LDAP_RESULT_NO_RESULT : LDAP_RESULT_SUCCESS;
+				break;
+
+			default:
+				query->ret = LDAP_RESULT_SUCCESS;
+				break;
+			}
 			break;
 
 		case LDAP_PROC_REFERRAL:
