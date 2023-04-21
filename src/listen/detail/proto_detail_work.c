@@ -155,6 +155,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	fr_assert(*leftover < buffer_len);
 	fr_assert(thread->fd >= 0);
+	fr_assert(thread->el);
 
 	MPRINT("AT COUNT %d offset %ld", thread->count, (long) thread->read_offset);
 
