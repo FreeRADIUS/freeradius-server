@@ -1079,7 +1079,7 @@ smart_try_dir="$talloc_lib_dir"
 FR_SMART_CHECK_LIB(talloc, _talloc)
 if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
   AC_MSG_WARN([talloc library not found. Use --with-talloc-lib-dir=<path>.])
-  AC_MSG_ERROR([FreeRADIUS requires libtalloc.  Please read doc/developers/dependencies.adoc for further instructions.])
+  AC_MSG_ERROR([FreeRADIUS requires libtalloc.  Please read doc/antora/modules/installation/pages/dependencies.adoc for further instructions.])
 fi
 
 dnl #
