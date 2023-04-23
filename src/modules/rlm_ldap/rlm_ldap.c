@@ -1479,7 +1479,14 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			fr_ldap_thread_t *thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data,
 									 fr_ldap_thread_t);
 
+			if (!password) {
+				REDEBUG("Failed to find &control.Password.Cleartext");
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
+
 			RDEBUG2("Binding as %s for eDirectory authorization checks", autz_ctx->dn);
+
 			/*
 			 *	Bind as the user
 			 */
