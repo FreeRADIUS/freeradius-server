@@ -887,6 +887,7 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t 
 				 *	We're processing a referral - see if there are any more to try
 				 */
 				fr_dlist_talloc_free_item(&query->referrals, query->referral);
+				query->referral = NULL;
 
 				if ((fr_dlist_num_elements(&query->referrals) > 0) &&
 				    (fr_ldap_referral_next(ttrunk->t, request, query) == 0)) goto next_follow;
