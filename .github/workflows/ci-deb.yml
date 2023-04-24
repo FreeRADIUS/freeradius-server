@@ -19,7 +19,6 @@ jobs:
           - { NAME: "ubuntu-18.04", OS: "ubuntu:bionic-20220801" }
           - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
           - { NAME: "ubuntu-22.04", OS: "ubuntu:22.04" }
-          - { NAME: "debian-9",     OS: "debian:stretch" }
           - { NAME: "debian-10",    OS: "debian:buster" }
           - { NAME: "debian-11",    OS: "debian:bullseye" }
           - { NAME: "debian-sid",   OS: "debian:sid" }
@@ -142,7 +141,6 @@ jobs:
           - { NAME: "ubuntu-18.04", OS: "ubuntu:bionic-20220801" }
           - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
           - { NAME: "ubuntu-22.04", OS: "ubuntu:22.04" }
-          - { NAME: "debian-9", OS: "debian:stretch" }
           - { NAME: "debian-10", OS: "debian:buster" }
           - { NAME: "debian-11", OS: "debian:bullseye" }
           - { NAME: "debian-sid", OS: "debian:sid" }
