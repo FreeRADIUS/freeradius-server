@@ -793,6 +793,11 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t 
 		}
 
 		/*
+		 *	Remove the query from the tree of outstanding queries
+		 */
+		fr_rb_remove(ldap_conn->queries, query);
+
+		/*
 		 *	This really shouldn't happen - as we only retrieve complete sets of results -
 		 *	but as the query data structure will last until its results are fully handled
 		 *	better to have this safety check here.

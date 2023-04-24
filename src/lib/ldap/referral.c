@@ -115,12 +115,6 @@ int fr_ldap_referral_follow(fr_ldap_thread_t *t, request_t *request, fr_ldap_que
 	int			referral_no = -1;
 	fr_ldap_referral_t	*referral;
 
-	/*
-	 *	In following a referral, firstly remove the query from the
-	 *	tree of pending queries clear the message id.
-	 */
-	fr_rb_remove(query->ldap_conn->queries, query);
-	query->msgid = 0;
 	fr_trunk_request_signal_complete(query->treq);
 	query->treq = NULL;
 

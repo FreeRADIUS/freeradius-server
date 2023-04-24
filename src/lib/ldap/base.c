@@ -921,11 +921,6 @@ static int _ldap_query_free(fr_ldap_query_t *query)
 	int 	i;
 
 	/*
-	 *	Remove the query from the tree of outstanding queries
-	 */
-	if (query->ldap_conn) fr_rb_remove(query->ldap_conn->queries, query);
-
-	/*
 	 *	Free any results which were retrieved
 	 */
 	if (query->result) ldap_msgfree(query->result);
