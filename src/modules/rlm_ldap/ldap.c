@@ -1385,7 +1385,7 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 			}
 #if defined(LDAP_OPT_X_TLS_CTX) && defined(HAVE_OPENSSL_SSL_H)
 			else {
-				use_openssl = false;
+				use_openssl = true;
 			}
 #endif
 
