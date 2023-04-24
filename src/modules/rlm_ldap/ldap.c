@@ -1374,7 +1374,7 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 		if (ldap_get_option(NULL, LDAP_OPT_X_TLS_PACKAGE, (void *) &name) == LDAP_OPT_SUCCESS) {
 			if (strcmp(name, "OpenSSL") != 0) {
 				WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-				WARN("!! libldap is not using OpenSSL, while FreeRADIUS is using OpenSSL");
+				WARN("!! libldap is using %s, while FreeRADIUS is using OpenSSL", name);
 				WARN("!! There may be random issues with TLS connections due to this conflict.");
 				WARN("!! The server may also crash.");
 				WARN("!! See https://wiki.freeradius.org/modules/Rlm_ldap for more information.");
