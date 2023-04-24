@@ -301,6 +301,9 @@ int fr_ldap_referral_next(fr_ldap_thread_t *t, request_t *request, fr_ldap_query
 	fr_ldap_referral_t	*referral = NULL;
 	fr_ldap_thread_trunk_t	*ttrunk;
 
+	fr_trunk_request_signal_complete(query->treq);
+	query->treq = NULL;
+
 	while ((referral = fr_dlist_next(&query->referrals, referral))) {
 		if (fr_thread_ldap_trunk_state(t, referral->host_uri,
 					       referral->identity) != FR_TRUNK_STATE_ACTIVE) {
