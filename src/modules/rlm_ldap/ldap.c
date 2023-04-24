@@ -1339,6 +1339,9 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 int rlm_ldap_global_init(rlm_ldap_t *inst)
 {
 	int ldap_errno;
+#if defined(LDAP_OPT_X_TLS_PACKAGE) && defined(LDAP_OPT_X_TLS_CTX) && defined(HAVE_OPENSSL_SSL_H)
+	bool use_openssl = false;
+#endif
 
 #define do_ldap_global_option(_option, _name, _value) \
 	if (ldap_set_option(NULL, _option, _value) != LDAP_OPT_SUCCESS) { \
@@ -1380,6 +1383,11 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 				WARN("!! See https://wiki.freeradius.org/modules/Rlm_ldap for more information.");
 				WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			}
+#if defined(LDAP_OPT_X_TLS_CTX) && defined(HAVE_OPENSSL_SSL_H)
+			else {
+				use_openssl = false;
+			}
+#endif
 
 			ldap_memfree(name);
 		}
@@ -1393,6 +1401,10 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 		SSL_CTX *ssl_ctx;
 
 		if (inst->tls_check_crl &&
+#ifdef LDAP_OPT_X_TLS_PACKAGE
+		    use_openssl &&
+#endif
+
 		    (ldap_get_option(NULL, LDAP_OPT_X_TLS_CTX, (void *) &ssl_ctx) == LDAP_OPT_SUCCESS)) {
 			store = SSL_CTX_get_cert_store(ssl_ctx);
 			X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK);
