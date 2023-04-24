@@ -13,6 +13,12 @@ FreeRADIUS 3.2.3 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 	  contains a malformed EAP message, then the request will be rejected.
 	  The home server will either reject (or discard) this packet anyways,
 	  so this change can only help with large proxy scenarios.
+	* Added "check_crl" configuration to rlm_ldap.  This only works with
+	  OpenSSL.  Many Linux distributions use other TLS libraries, which
+	  won't work.
+	* Support RADIUS/1.1.  See https://datatracker.ietf.org/doc/draft-dekok-radext-radiusv11/
+	  Disabled by default.  Building it requires adding CFLAGS="-DWITH_RADIUSV11".
+	  For now, this is for testing interoperability.
 
 	Bug fixes
 	* Don't leak MD contexts with OpenSSL 3.0.
@@ -27,6 +33,8 @@ FreeRADIUS 3.2.3 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 	  have an open (but dead) TLS connection.
 	* Fix mutex locking issues on inbound RADIUS/TLS connections.
 	  This change avoids random issues with "bad record mac".
+	* Note that rlm_ldap does not support "-=" operators.  The documentation
+	  disagreed with the code, so we fixed the documentation.
 
 FreeRADIUS 3.2.2 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 	Configuration changes
