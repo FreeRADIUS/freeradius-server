@@ -316,7 +316,7 @@ endef
 #   top-level directory, the canonical form is the absolute path (i.e. from
 #   the root of the filesystem) also without "./" or "../" sequences.
 define CANONICAL_PATH
-$(patsubst $(PWD)/%,%,$(patsubst ${CURDIR}/%,%,$(abspath ${1})))
+$(patsubst ${top_srcdir}/%,%,$(patsubst ${CURDIR}/%,%,$(abspath ${1})))
 endef
 
 # COMPILE_C_CMDS - Commands for compiling C source code.
