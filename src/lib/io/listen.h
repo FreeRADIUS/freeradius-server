@@ -41,7 +41,7 @@ struct fr_listen {
 
 	bool			connected;		//!< is this for a connected socket?
 	bool			track_duplicates;	//!< do we track duplicate packets?
-	bool			read_only;		//!< sometimes we don't need to do writes
+	bool			no_write_callback;     	//!< sometimes we don't need to do writes
 
 	size_t			default_message_size;	//!< copied from app_io, but may be changed
 	size_t			num_messages;		//!< for the message ring buffer

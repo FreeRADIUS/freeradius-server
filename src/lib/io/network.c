@@ -1357,7 +1357,7 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *listen)
 
 	if (fr_event_fd_insert(nr, nr->el, s->listen->fd,
 			       fr_network_read,
-			       s->listen->read_only ? NULL : fr_network_write,
+			       s->listen->no_write_callback ? NULL : fr_network_write,
 			       fr_network_error,
 			       s) < 0) {
 		PERROR("Failed adding new socket to network event loop");

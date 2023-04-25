@@ -717,6 +717,18 @@ static int mod_open(fr_listen_t *li)
 	fr_assert(thread->filename_work != NULL);
 	thread->name = talloc_typed_asprintf(thread, "detail_work reading file %s", thread->filename_work);
 
+	/*
+	 *	Linux doesn't like us adding write callbacks for FDs
+	 *	which reference files.  Since the callback is only
+	 *	used when the FD blocks, and files don't (mostly)
+	 *	block, we just mark this read-only.
+	 *
+	 *	The code in src/lib/io/network.c will call the
+	 *	mod_write() callback on any write, even if the
+	 *	listener is marked "read_only"
+	 */
+	li->no_write_callback = true;
+
 	return 0;
 }
 
