@@ -99,6 +99,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 {
 	proto_detail_file_thread_t  *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
+	fr_assert(0);
+
 	return thread->listen->app_io->write(thread->listen, packet_ctx, request_time, buffer, buffer_len, written);
 }
 
