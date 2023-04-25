@@ -97,11 +97,15 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
-	proto_detail_file_thread_t  *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
-
+#if 1
 	fr_assert(0);
 
+	return -1;
+#else
+	proto_detail_file_thread_t  *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
+
 	return thread->listen->app_io->write(thread->listen, packet_ctx, request_time, buffer, buffer_len, written);
+#endif
 }
 
 static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
