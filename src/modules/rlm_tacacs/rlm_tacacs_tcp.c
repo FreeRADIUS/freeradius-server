@@ -1144,7 +1144,6 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 		 *	TACACS+ doesn't care about packet codes.  All packet of the codes share the same ID
 		 *	space.
 		 */
-		/* coverity[tainted_data] */
 		treq = h->tracking[h->recv.read[1]];
 		if (!treq) {
 			WARN("%s - Ignoring reply with ID %i that arrived too late",

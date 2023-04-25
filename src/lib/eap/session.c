@@ -273,7 +273,6 @@ static char *eap_identity(request_t *request, eap_session_t *eap_session, eap_pa
 	 *	If the length is 5, then a buffer with a length of 1 is
 	 *	created with a \0 byte.
 	 */
-	/* coverity[tainted_data] */
 	return talloc_bstrndup(eap_session, (char *)&eap_packet->data[1], len - 5);
 }
 

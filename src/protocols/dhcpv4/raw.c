@@ -319,7 +319,6 @@ fr_radius_packet_t *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *lin
 	 *      and use that, too?
 	 */
 	memset(packet->vector, 0, sizeof(packet->vector));
-	/* coverity[tainted_data] */
 	memcpy(packet->vector, packet->data + 28, packet->data[2]);
 	packet->vector[packet->data[2]] = packet->code & 0xff;
 

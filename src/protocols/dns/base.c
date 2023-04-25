@@ -248,7 +248,6 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 					return false;
 				}
 
-				/* coverity[tainted_data] */
 				if (!fr_dns_marker[offset]) {
 					DECODE_FAIL(POINTER_TO_NON_LABEL);
 					return false;

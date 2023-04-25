@@ -886,7 +886,6 @@ static void dhcpv6_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len,
 			break;
 		}
 
-		/* coverity[tainted_data] */
 		print_hex_data(fp, option + 4, length, depth + 3);
 		if ((option[0] == 0) && (option[1] == attr_relay_message->attr)) {
 			dhcpv6_print_hex(fp, option + 4, length, depth + 2);

@@ -1373,7 +1373,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		if ((version == 4) && conf->verify_udp_checksum) {
 			uint16_t expected;
 
-			/* coverity[tainted_data] */
 			expected = fr_udp_checksum((uint8_t const *) udp, udp_len, udp->checksum,
 						   ip->ip_src, ip->ip_dst);
 			if (udp->checksum != expected) {

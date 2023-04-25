@@ -485,7 +485,6 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 			print_ascii(log, file, line, "      rem_addr       ", p, hdr[6], end);
 			p += hdr[6];
 
-			/* coverity[tainted_data] */
 			print_hex(log, file, line, "      data           ", p, hdr[7], end); /* common auth flows */
 
 		} else if (packet_is_authen_continue(packet)) {
