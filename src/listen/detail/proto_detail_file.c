@@ -94,8 +94,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	return inst->parent->work_io->decode(inst->parent->work_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
-			 uint8_t *buffer, size_t buffer_len, size_t written)
+static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
+			 UNUSED uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t written)
 {
 #if 1
 	fr_assert(0);
