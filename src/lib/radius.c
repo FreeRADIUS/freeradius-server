@@ -1949,6 +1949,15 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			reply = reply->next;
 			continue;
 		}
+
+
+		/*
+		 *	Do not encode Original-Packet-Code for RADIUS/1.1
+		 */
+		if (reply->da->vendor == ((unsigned int) PW_EXTENDED_ATTRIBUTE_1 << 24) && (reply->da->attr == 4)) {
+			reply = reply->next;
+			continue;
+		}
 #endif
 
 		/*
@@ -4643,6 +4652,26 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 */
 	while (packet_length > 0) {
 		ssize_t my_len;
+
+#ifdef WITH_RADIUSV11
+		/*
+		 *	Don't decode Message-Authenticator
+		 */
+		if (ptr[0] == PW_MESSAGE_AUTHENTICATOR) {
+			packet_length -= ptr[1];
+			ptr += ptr[1];
+			continue;
+		}
+
+		/*
+		 *	Don't decode Original-Packet-Code
+		 */
+		if ((ptr[0] == PW_EXTENDED_ATTRIBUTE_1) && (ptr[1] >= 3) && (ptr[2] == 4)) {
+			packet_length -= ptr[1];
+			ptr += ptr[1];
+			continue;
+		}
+#endif
 
 		/*
 		 *	This may return many VPs
