@@ -573,6 +573,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *reque
 
 	if ((vp->vp_octets[0] == 0) ||( vp->vp_octets[0] > 6)) {
 		RDEBUG("EAP header byte zero has invalid value");
+
+	add_error_cause:
+		/*
+		 *	Invalid EAP packet (ignored)
+		 */
+		pair_make_reply("Error-Cause", "202", T_OP_EQ);
 		return RLM_MODULE_REJECT;
 	}
 
@@ -591,7 +597,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *reque
 
 	if (vp->vp_octets[4] > inst->max_eap_type) {
 		RDEBUG("EAP method %u is too large", vp->vp_octets[4]);
-		return RLM_MODULE_REJECT;
+		goto add_error_cause;
 	}
 
 	return RLM_MODULE_NOOP;
