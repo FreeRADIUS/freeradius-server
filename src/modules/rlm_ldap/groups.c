@@ -64,7 +64,7 @@ typedef struct {
 	char			filter[LDAP_MAX_FILTER_STR_LEN + 1];	//!< Filter used to search for groups.
 	char const		*attrs[2];				//!< For retrieving the group name.
 	fr_ldap_query_t		*query;					//!< Current query performing group lookup.
-} ldap_group_groupojb_ctx_t;
+} ldap_group_groupobj_ctx_t;
 
 /** Cancel a pending group lookup query
  *
@@ -625,7 +625,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
 static unlang_action_t ldap_cacheable_groupobj_start(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
 						     void *uctx)
 {
-	ldap_group_groupojb_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupojb_ctx_t);
+	ldap_group_groupobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupobj_ctx_t);
 	rlm_ldap_t const		*inst = group_ctx->inst;
 
 	group_ctx->attrs[0] = inst->groupobj_name_attr;
@@ -640,7 +640,7 @@ static unlang_action_t ldap_cacheable_groupobj_start(rlm_rcode_t *p_result, UNUS
  */
 static void ldap_group_groupobj_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
 {
-	ldap_group_groupojb_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupojb_ctx_t);
+	ldap_group_groupobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupobj_ctx_t);
 
 	/*
 	 *	If the query is not in flight, just return
@@ -661,7 +661,7 @@ static void ldap_group_groupobj_cancel(UNUSED request_t *request, UNUSED fr_sign
 static unlang_action_t ldap_cacheable_groupobj_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
 						      void *uctx)
 {
-	ldap_group_groupojb_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupojb_ctx_t);
+	ldap_group_groupobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupobj_ctx_t);
 	rlm_ldap_t const		*inst = group_ctx->inst;
 	fr_ldap_query_t			*query = group_ctx->query;
 	rlm_rcode_t			rcode = RLM_MODULE_OK;
@@ -747,7 +747,7 @@ finish:
 unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx)
 {
 	rlm_ldap_t const		*inst = autz_ctx->inst;
-	ldap_group_groupojb_ctx_t	*group_ctx;
+	ldap_group_groupobj_ctx_t	*group_ctx;
 	char const			*filters[] = { inst->groupobj_filter, inst->groupobj_membership_filter };
 
 	if (!inst->groupobj_membership_filter) {
@@ -760,7 +760,7 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *re
 		RETURN_MODULE_INVALID;
 	}
 
-	MEM(group_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_group_groupojb_ctx_t));
+	MEM(group_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_group_groupobj_ctx_t));
 	group_ctx->inst = inst;
 	group_ctx->ttrunk = autz_ctx->ttrunk;
 	group_ctx->base_dn = &autz_ctx->mod_env->group_base;
