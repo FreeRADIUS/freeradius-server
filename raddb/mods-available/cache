@@ -180,19 +180,61 @@ cache {
 #	max_entries = 0
 
 	#
-	#  update { ... }:: The list of attributes to cache for a particular key.
+	#  update { ... }:: The attributes to cache for a particular key.
 	#
-	#  Each key gets the same set of cached attributes. The attributes
-	#  are dynamically expanded at run time.
+	#  Each key gets the same set of cached attributes.
 	#
-	#  The semantics of this construct are identical to an `unlang`
-	#  update block, except the left hand side of the expression
-	#  represents the cache entry. see man unlang for more information
-	#  on update blocks.
+	#  The operation of the `update` section is a little different
+	#  from normal `update` sections.  This is because we need to
+	#  both reference the attributes which we want to store in the
+	#  cache, and also to describe where those attributes are
+	#  written to when the cache entry is read.
 	#
-	#  NOTE: Only `request`, `reply`, `control` and `session-state` lists
-	#  are available in cache entries. Attempting to store attributes
-	#  in other lists *will raise an error* during config validation.
+	#  The solution (albeit an imperfect one) is that the cache
+	#  does not store attributes, it stores `update` sections.
+	#  The `update` section given below is used as a template
+	#  for the cache entry.
+	#
+	#  When the cache entry is created, the right-hand side of
+	#  each attribute assignment line is expanded.  The left-hand
+	#  side of the attribute assignment is left alone.
+	#
+	#  Once all of the right-hand side values are expanded, the
+	#  result is an `update` section with left-hand side
+	#  assignments, and right-hand side values.  That `update`
+	#  section is then cached, indexed by the `key`
+	#
+	#  When the cache entry is read, it is looked up by the `key`,
+	#  and the cached `update` section is found.  This cache entry
+	#  now has left-hand side assignments, and right-hand side
+	#  values.  It is then applied to the current request.
+	#
+	#  For example, if the `cache` module is configured with the
+	#  block below:
+	#
+	#	update {
+	#	       &reply.Reply-Message := "Hello %{User-Name}"
+	#	}
+	#
+	#  When the cache entry is created, the module will expand the
+	#  right side of the entry, using the attributes from the
+	#  packet.  In this case, the string could expand to `"Hello bob"`.
+	#
+	#  Once all of the right-hand values are expanded, the
+	#  resulting cache entry will look like this:
+	#
+	#	update {
+	#	       &reply.Reply-Message := "Hello bob"
+	#	}
+	#
+	#  When the cache module is read, this `update` section is
+	#  applied just as if it had been specified in a configuration
+	#  file.
+	#
+	#  NOTE: Only `request`, `reply`, `control` and
+	#  `session-state` lists are available for the left side of
+	#  cache entries. Attempting to reference other lists *will
+	#  raise an error* during config validation.
 	#
 	update {
 		#
