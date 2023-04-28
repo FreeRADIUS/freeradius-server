@@ -67,6 +67,21 @@ typedef struct {
 	void			*uctx;					//!< Optional context for use in results parsing.
 } ldap_group_groupobj_ctx_t;
 
+/** Context to use when evaluating group membership from the user object in an xlat
+ *
+ */
+typedef struct {
+	ldap_memberof_xlat_ctx_t	*xlat_ctx;		//!< Xlat context being evaluated.
+	char const			*attrs[2];		//!< For retrieving the group name.
+	struct berval			**values;		//!< Values of the membership attribute to check.
+	int				count;			//!< How many entries there are in values.
+	int				value_no;		//!< The current entry in values being processed.
+	char const			*lookup_dn;		//!< The DN currently being looked up, when resolving DN to name.
+	char				*group_name;		//!< Result of resolving the provided group DN as to a name.
+	fr_ldap_query_t			*query;			//!< Current query doing a DN to name resolution.
+	bool				resolving_value;	//!< Is the current query resolving a DN from values.
+} ldap_group_userobj_dyn_ctx_t;
+
 /** Cancel a pending group lookup query
  *
  */
@@ -893,115 +908,202 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/** Query the LDAP directory to check if a user object is a member of a group
+/** Initiate resolving a group DN to its name
  *
- * @param[out] p_result		Result of calling the module.
- * @param[in] inst		rlm_ldap configuration.
- * @param[in] request		Current request.
- * @param[in] ttrunk		to use.
- * @param[in] dn		of user object.
- * @param[in] check		vp containing the group value (name or dn).
  */
-unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
-					       fr_ldap_thread_trunk_t *ttrunk,
-					       char const *dn, fr_pair_t const *check)
+static unlang_action_t ldap_dn2name_start (rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
-	rlm_rcode_t	rcode = RLM_MODULE_NOTFOUND, ret;
-	bool		name_is_dn = false, value_is_dn = false;
-	fr_ldap_query_t	*query;
+	ldap_group_userobj_dyn_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_dyn_ctx_t);
+	ldap_memberof_xlat_ctx_t	*xlat_ctx = group_ctx->xlat_ctx;
+	rlm_ldap_t const		*inst = xlat_ctx->inst;
 
-	LDAPMessage     *entry = NULL;
-	struct berval	**values = NULL;
-
-	char const	*attrs[] = { inst->userobj_membership_attr, NULL };
-	int		i, count, ldap_errno;
-
-	RDEBUG2("Checking user object's %s attributes", inst->userobj_membership_attr);
-	RINDENT();
-	if (fr_ldap_trunk_search(&rcode,
-				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
-				 LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL, false) < 0) {
-		REXDENT();
-		goto finish;
-	}
-	REXDENT();
-	switch (rcode) {
-	case RLM_MODULE_OK:
-		break;
-
-	case RLM_MODULE_NOTFOUND:
-		RDEBUG2("Can't check membership attributes, user object not found");
-
-		FALL_THROUGH;
-	default:
-		goto finish;
+	if (!inst->groupobj_name_attr) {
+		REDEBUG("Told to resolve group DN to name but missing 'group.name_attribute' directive");
+		RETURN_MODULE_INVALID;
 	}
 
-	entry = ldap_first_entry(query->ldap_conn->handle, query->result);
-	if (!entry) {
-		ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+	RDEBUG2("Resolving group DN \"%s\" to group name", group_ctx->lookup_dn);
 
-		rcode = RLM_MODULE_FAIL;
+	return fr_ldap_trunk_search(p_result, group_ctx, &group_ctx->query, request, xlat_ctx->ttrunk,
+				    group_ctx->lookup_dn, LDAP_SCOPE_BASE, NULL, group_ctx->attrs,
+				    NULL, NULL, true);
+}
 
-		goto finish;
-	}
+/** Cancel an in-progress DN to name lookup.
+ *
+ */
+static void ldap_dn2name_cancel (UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+{
+	ldap_group_userobj_dyn_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_dyn_ctx_t);
 
-	values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->userobj_membership_attr);
-	if (!values) {
-		RDEBUG2("No group membership attribute(s) found in user object");
+	if (!group_ctx->query || !group_ctx->query->treq) return;
 
-		goto finish;
+	fr_trunk_request_signal_cancel(group_ctx->query->treq);
+}
+
+/** Initiate a user lookup to check membership.
+ *
+ * Used when the user's DN is already known but cached group membership has not been stored
+ *
+ */
+static unlang_action_t ldap_check_userobj_start (UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+						 request_t *request, void *uctx)
+{
+	ldap_group_userobj_dyn_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_dyn_ctx_t);
+	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(group_ctx->xlat_ctx, ldap_memberof_xlat_ctx_t);
+
+	return fr_ldap_trunk_search(p_result, xlat_ctx, &xlat_ctx->query, request, xlat_ctx->ttrunk, xlat_ctx->dn,
+				    LDAP_SCOPE_BASE, NULL, xlat_ctx->attrs, NULL, NULL, true);
+}
+
+/** Process the results of evaluating a user object when checking group membership
+ *
+ */
+static unlang_action_t ldap_check_userobj_resume(rlm_rcode_t *p_result, UNUSED int *priority,
+						 request_t *request, void *uctx)
+{
+	ldap_group_userobj_dyn_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_dyn_ctx_t);
+	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(group_ctx->xlat_ctx, ldap_memberof_xlat_ctx_t);
+	rlm_ldap_t const		*inst = xlat_ctx->inst;
+	fr_ldap_query_t			*query = xlat_ctx->query;
+	LDAPMessage			*entry;
+	int				ldap_errno;
+	bool				value_is_dn = false;
+	fr_value_box_t			*group = xlat_ctx->group;
+	char				*value_name = NULL;
+
+	/*
+	 *	If group_ctx->values is not populated, this is the first call
+	 *	- extract the returned values if any.
+	 */
+	if (!group_ctx->values) {
+		entry = ldap_first_entry(query->ldap_conn->handle, query->result);
+		if (!entry) {
+			ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+			REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+			RETURN_MODULE_FAIL;
+		}
+
+		group_ctx->values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->userobj_membership_attr);
+		if (!group_ctx->values) {
+			RDEBUG2("No group membership attribute(s) found in user object");
+			RETURN_MODULE_FAIL;
+		}
+
+		/*
+		 *	To avoid re-assessing after each call out to do a DN -> name
+		 *	lookup, cache this.
+		 */
+		group_ctx->count = ldap_count_values_len(group_ctx->values);
 	}
 
 	/*
-	 *	Loop over the list of groups the user is a member of,
-	 *	looking for a match.
+	 *	Following a call out to do a DN -> name lookup, group_ctx->query will be
+	 *	populated - process the results.
 	 */
-	name_is_dn = fr_ldap_util_is_dn(check->vp_strvalue, check->vp_length);
-	count = ldap_count_values_len(values);
-	for (i = 0; i < count; i++) {
-		value_is_dn = fr_ldap_util_is_dn(values[i]->bv_val, values[i]->bv_len);
+	if (group_ctx->query) {
+		char		*buff;
+		struct berval	**values = NULL;
+
+		switch (group_ctx->query->ret) {
+		case LDAP_RESULT_SUCCESS:
+			break;
+
+		case LDAP_RESULT_NO_RESULT:
+		case LDAP_RESULT_BAD_DN:
+			REDEBUG("Group DN \"%s\" did not resolve to an object", group_ctx->lookup_dn);
+			RETURN_MODULE_INVALID;
+
+		default:
+			RETURN_MODULE_FAIL;
+		}
+
+		entry = ldap_first_entry(group_ctx->query->ldap_conn->handle, group_ctx->query->result);
+		if (!entry) {
+			ldap_get_option(group_ctx->query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+			REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+			RETURN_MODULE_INVALID;
+		}
+
+		values = ldap_get_values_len(group_ctx->query->ldap_conn->handle, entry, inst->groupobj_name_attr);
+		if (!values) {
+			REDEBUG("No %s attributes found in object", inst->groupobj_name_attr);
+			RETURN_MODULE_INVALID;
+		}
+
+		buff = talloc_bstrndup(group_ctx, values[0]->bv_val, values[0]->bv_len);
+		RDEBUG2("Group DN \"%s\" resolves to name \"%s\"", group_ctx->lookup_dn, buff);
+		ldap_value_free_len(values);
+
+		if (group_ctx->resolving_value) {
+			value_name = buff;
+		} else {
+			group_ctx->group_name = buff;
+		}
+	}
+
+	/*
+	 *	Loop over the list of groups the user is a member of, looking for a match.
+	 */
+	while (group_ctx->value_no < group_ctx->count) {
+		struct berval	*value = group_ctx->values[group_ctx->value_no];
+
+		/*
+		 *	We have come back from resolving a membership DN to its name,
+		 *	compare to the provided name.
+		 */
+		if (value_name && group_ctx->resolving_value) {
+			if (((talloc_array_length(value_name) - 1) == group->vb_length) &&
+			    (memcmp(group->vb_strvalue, value_name, group->vb_length) == 0)) {
+				RDEBUG2("User found in group \"%pV\". Comparison between membership: name "
+				       "(resolved from DN \"%s\"), check: name", group, group_ctx->lookup_dn);
+				talloc_free(value_name);
+				goto found;
+			}
+			talloc_const_free(group_ctx->lookup_dn);
+			talloc_free(value_name);
+			group_ctx->resolving_value = false;
+			group_ctx->value_no++;
+			continue;
+		}
+
+		value_is_dn = fr_ldap_util_is_dn(value->bv_val, value->bv_len);
 
 		RDEBUG2("Processing %s value \"%pV\" as a %s", inst->userobj_membership_attr,
-			fr_box_strvalue_len(values[i]->bv_val, values[i]->bv_len),
-			value_is_dn ? "DN" : "group name");
+			fr_box_strvalue_len(value->bv_val, value->bv_len),
+			value_is_dn ? "DN" : "group name", group_ctx->count);
 
 		/*
 		 *	Both literal group names, do case sensitive comparison
 		 */
-		if (!name_is_dn && !value_is_dn) {
-			if ((check->vp_length == values[i]->bv_len) &&
-			    (memcmp(values[i]->bv_val, check->vp_strvalue, values[i]->bv_len) == 0)) {
-				RDEBUG2("User found in group \"%s\". Comparison between membership: name, check: name",
-				       check->vp_strvalue);
-				rcode = RLM_MODULE_OK;
-
-				goto finish;
+		if (!xlat_ctx->group_is_dn && !value_is_dn) {
+			if ((group->vb_length == value->bv_len) &&
+			    (memcmp(value->bv_val, group->vb_strvalue, value->bv_len) == 0)) {
+				RDEBUG2("User found in group \"%pV\". Comparison between membership: name, check: name",
+				       group);
+				goto found;
 			}
-
+			group_ctx->value_no++;
 			continue;
 		}
 
 		/*
 		 *	Both DNs, do case insensitive, binary safe comparison
 		 */
-		if (name_is_dn && value_is_dn) {
-			if (check->vp_length == values[i]->bv_len) {
+		if (xlat_ctx->group_is_dn && value_is_dn) {
+			if (group->vb_length == value->bv_len) {
 				int j;
 
-				for (j = 0; j < (int)values[i]->bv_len; j++) {
-					if (tolower(values[i]->bv_val[j]) != tolower(check->vp_strvalue[j])) break;
+				for (j = 0; j < (int)value->bv_len; j++) {
+					if (tolower(value->bv_val[j]) != tolower(group->vb_strvalue[j])) break;
 				}
-				if (j == (int)values[i]->bv_len) {
-					RDEBUG2("User found in group DN \"%s\". "
-					       "Comparison between membership: dn, check: dn", check->vp_strvalue);
-					rcode = RLM_MODULE_OK;
-
-					goto finish;
+				if (j == (int)value->bv_len) {
+					RDEBUG2("User found in group DN \"%pV\". "
+					       "Comparison between membership: dn, check: dn", group);
+					goto found;
 				}
 			}
-
+			group_ctx->value_no++;
 			continue;
 		}
 
@@ -1009,33 +1111,28 @@ unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t
 		 *	If the value is not a DN, and the name we were given is a dn
 		 *	convert the value to a DN and do a comparison.
 		 */
-		if (!value_is_dn && name_is_dn) {
-			char *resolved;
-			bool eq = false;
+		if (!value_is_dn && xlat_ctx->group_is_dn) {
+			/*
+			 *	So we only do the DN -> name lookup once, regardless of how many
+			 *	group values we have to check, the resolved name is put in group_ctx->group_name
+			 */
+			if (!group_ctx->group_name) {
+				group_ctx->lookup_dn = group->vb_strvalue;
 
-			RINDENT();
-			rlm_ldap_group_dn2name(&ret, inst, request, ttrunk, check->vp_strvalue, &resolved);
-			REXDENT();
+				if (unlang_function_repeat_set(request, ldap_check_userobj_resume) < 0) RETURN_MODULE_FAIL;
 
-			if (ret == RLM_MODULE_NOOP) continue;
-
-			if (ret != RLM_MODULE_OK) {
-				rcode = ret;
-				goto finish;
+				return unlang_function_push(request, ldap_dn2name_start, NULL, ldap_dn2name_cancel,
+							    ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, group_ctx);
 			}
 
-			if (((talloc_array_length(resolved) - 1) == values[i]->bv_len) &&
-			    (memcmp(values[i]->bv_val, resolved, values[i]->bv_len) == 0)) eq = true;
-			talloc_free(resolved);
-			if (eq) {
-				RDEBUG2("User found in group \"%pV\". Comparison between membership: name, check: name "
-				       "(resolved from DN \"%s\")",
-				       fr_box_strvalue_len(values[i]->bv_val, values[i]->bv_len), check->vp_strvalue);
-				rcode = RLM_MODULE_OK;
-
-				goto finish;
+			if (((talloc_array_length(group_ctx->group_name) - 1) == value->bv_len) &&
+			    (memcmp(value->bv_val, group_ctx->group_name, value->bv_len) == 0)) {
+				RDEBUG2("User found in group \"%pV\". Comparison between membership: "
+					"name, check: name (resolved from DN \"%pV\")",
+			       		fr_box_strvalue_len(value->bv_val, value->bv_len), group);
+				goto found;
 			}
-
+			group_ctx->value_no++;
 			continue;
 		}
 
@@ -1043,44 +1140,63 @@ unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t
 		 *	We have a value which is a DN, and a check item which specifies the name of a group,
 		 *	convert the value to a name so we can do a comparison.
 		 */
-		if (value_is_dn && !name_is_dn) {
-			char *resolved;
-			char *value;
-			bool eq = false;
+		if (value_is_dn && !xlat_ctx->group_is_dn) {
+			group_ctx->lookup_dn = fr_ldap_berval_to_string(group_ctx, value);
+			group_ctx->resolving_value = true;
 
-			value = fr_ldap_berval_to_string(request, values[i]);
-			RINDENT();
-			rlm_ldap_group_dn2name(&ret, inst, request, ttrunk, value, &resolved);
-			REXDENT();
-			talloc_free(value);
+			if (unlang_function_repeat_set(request, ldap_check_userobj_resume) < 0) RETURN_MODULE_FAIL;
 
-			if (ret == RLM_MODULE_NOOP) continue;
-
-			if (ret != RLM_MODULE_OK) {
-				rcode = ret;
-				goto finish;
-			}
-
-			if (((talloc_array_length(resolved) - 1) == check->vp_length) &&
-			    (memcmp(check->vp_strvalue, resolved, check->vp_length) == 0)) eq = true;
-			talloc_free(resolved);
-			if (eq) {
-				RDEBUG2("User found in group \"%pV\". Comparison between membership: name "
-				       "(resolved from DN \"%s\"), check: name", &check->data, value);
-				rcode = RLM_MODULE_OK;
-
-				goto finish;
-			}
-
-			continue;
+			return unlang_function_push(request, ldap_dn2name_start, NULL, ldap_dn2name_cancel,
+						    ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, group_ctx);
 		}
+
 		fr_assert(0);
 	}
+	RETURN_MODULE_NOTFOUND;
 
-finish:
-	if (values) ldap_value_free_len(values);
+found:
+	xlat_ctx->found = true;
+	RETURN_MODULE_OK;
+}
 
-	RETURN_MODULE_RCODE(rcode);
+/** Ensure retrieved LDAP values are cleared up
+ *
+ */
+static int userobj_dyn_free(ldap_group_userobj_dyn_ctx_t *group_ctx)
+{
+	if (group_ctx->values) ldap_value_free_len(group_ctx->values);
+	return 0;
+}
+
+/** Query the LDAP directory to check if a user object is a member of a group
+ *
+ * @param[out] p_result		Result of calling the module.
+ * @param[in] request		Current request.
+ * @param[in] xlat_ctx		Context of the xlat being evaluated.
+ */
+unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, request_t *request,
+					       ldap_memberof_xlat_ctx_t *xlat_ctx)
+{
+	rlm_ldap_t const		*inst = xlat_ctx->inst;
+	ldap_group_userobj_dyn_ctx_t	*group_ctx;
+
+	MEM(group_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_group_userobj_dyn_ctx_t));
+	talloc_set_destructor(group_ctx, userobj_dyn_free);
+
+	*group_ctx = (ldap_group_userobj_dyn_ctx_t) {
+		.xlat_ctx = xlat_ctx,
+		.attrs = { inst->groupobj_name_attr, NULL }
+	};
+
+	RDEBUG2("Checking user object's %s attributes", inst->userobj_membership_attr);
+
+	if (unlang_function_push(request, xlat_ctx->query ? NULL : ldap_check_userobj_start, ldap_check_userobj_resume,
+				 ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, group_ctx) < 0) {
+		talloc_free(group_ctx);
+		RETURN_MODULE_FAIL;
+	}
+
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Check group membership attributes to see if a user is a member.
