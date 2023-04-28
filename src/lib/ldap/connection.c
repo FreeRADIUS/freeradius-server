@@ -740,6 +740,7 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t 
 	fr_ldap_query_t		find = { .msgid = -1 }, *query = NULL;
 	request_t		*request;
 	bool			really_no_result = false;
+	fr_trunk_request_t	*treq;
 
 	/*
 	 *  Reset the idle timeout event
@@ -911,8 +912,14 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t 
 		 *	Mark the trunk request as complete and set the request as runnable
 		 */
 		if (query->treq->request) unlang_interpret_mark_runnable(query->treq->request);
-		fr_trunk_request_signal_complete(query->treq);
+
+		/*
+		 *	If the query is parented off just the treq, then it will be freed when
+		 *	the request is completed.  If it has other parenting, then it will not.
+		 */
+		treq = query->treq;
 		query->treq = NULL;
+		fr_trunk_request_signal_complete(treq);
 	} while (1);
 }
 
