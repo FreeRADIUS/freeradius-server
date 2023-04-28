@@ -52,6 +52,10 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #endif
 
+#ifdef WITH_TLS
+#include <netinet/tcp.h>
+#endif
+
 #ifdef DEBUG_PRINT_PACKET
 static void print_packet(RADIUS_PACKET *packet)
 {
