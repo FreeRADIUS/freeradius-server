@@ -648,6 +648,204 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	return unlang_xlat_yield(request, ldap_xlat_resume, ldap_xlat_signal, ~FR_SIGNAL_CANCEL, query);
 }
 
+/** User object lookup as part of group membership xlat
+ *
+ * Called if the ldap membership xlat is used and the user DN is not already known
+ */
+static unlang_action_t ldap_memberof_xlat_user_find(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+						    request_t *request, void *uctx)
+{
+	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(uctx, ldap_memberof_xlat_ctx_t);
+
+	if (xlat_ctx->env_data->user_filter.type == FR_TYPE_STRING) xlat_ctx->filter = &xlat_ctx->env_data->user_filter;
+
+	xlat_ctx->basedn = &xlat_ctx->env_data->user_base;
+
+	return rlm_ldap_find_user_async(xlat_ctx, xlat_ctx->inst, request, xlat_ctx->basedn, xlat_ctx->filter,
+					xlat_ctx->ttrunk, xlat_ctx->attrs, &xlat_ctx->query);
+}
+
+/** Cancel an in-progress query for the LDAP group membership xlat
+ *
+ */
+static void ldap_memberof_xlat_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+{
+	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(uctx, ldap_memberof_xlat_ctx_t);
+
+	if (!xlat_ctx->query || !xlat_ctx->query->treq) return;
+
+	fr_trunk_request_signal_cancel(xlat_ctx->query->treq);
+}
+
+#define REPEAT_LDAP_MEMBEROF_XLAT_RESULTS \
+	if (unlang_function_repeat_set(request, ldap_memberof_xlat_results) < 0) { \
+		rcode = RLM_MODULE_FAIL; \
+		goto finish; \
+	}
+
+/** Run the state machine for the LDAP membership xlat
+ *
+ * This is called after each async lookup is completed
+ */
+static unlang_action_t ldap_memberof_xlat_results(rlm_rcode_t *p_result, UNUSED int *priority,
+						  request_t *request, void *uctx)
+{
+	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(uctx, ldap_memberof_xlat_ctx_t);
+	rlm_ldap_t const		*inst = xlat_ctx->inst;
+	rlm_rcode_t			rcode = RLM_MODULE_NOTFOUND;
+
+	switch (xlat_ctx->status) {
+	case GROUP_XLAT_FIND_USER:
+		if (!xlat_ctx->dn) xlat_ctx->dn = rlm_find_user_dn_cached(request);
+		if (!xlat_ctx->dn) RETURN_MODULE_FAIL;
+
+		if (inst->groupobj_membership_filter) {
+			REPEAT_LDAP_MEMBEROF_XLAT_RESULTS;
+			if (rlm_ldap_check_groupobj_dynamic(&rcode, request, xlat_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
+				xlat_ctx->status = GROUP_XLAT_MEMB_FILTER;
+				return UNLANG_ACTION_PUSHED_CHILD;
+			}
+		}
+		FALL_THROUGH;
+
+	case GROUP_XLAT_MEMB_FILTER:
+		if (xlat_ctx->found) {
+			rcode = RLM_MODULE_OK;
+			goto finish;
+		}
+
+		if (inst->userobj_membership_attr) {
+			REPEAT_LDAP_MEMBEROF_XLAT_RESULTS;
+			if (rlm_ldap_check_userobj_dynamic(&rcode, request, xlat_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
+				xlat_ctx->status = GROUP_XLAT_MEMB_ATTR;
+				return UNLANG_ACTION_PUSHED_CHILD;
+			}
+		}
+		FALL_THROUGH;
+
+	case GROUP_XLAT_MEMB_ATTR:
+		if (xlat_ctx->found) rcode = RLM_MODULE_OK;
+		break;
+	}
+
+finish:
+	RETURN_MODULE_RCODE(rcode);
+}
+
+/** Process the results of evaluating LDAP group membership
+ *
+ */
+static xlat_action_t ldap_memberof_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+					    UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, ldap_memberof_xlat_ctx_t);
+	fr_value_box_t			*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+	vb->vb_bool = xlat_ctx->found;
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_arg_parser_t const ldap_memberof_xlat_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Check for a user being in a LDAP group
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+	 				request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t			*vb = NULL, *group_vb = fr_value_box_list_pop_head(in);
+	rlm_ldap_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_ldap_t);
+	fr_ldap_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
+	ldap_memberof_mod_env_t		*env_data = talloc_get_type_abort(xctx->env_data, ldap_memberof_mod_env_t);
+	bool				group_is_dn;
+	ldap_memberof_xlat_ctx_t	*xlat_ctx;
+
+	RDEBUG2("Searching for user in group \"%pV\"", group_vb);
+
+	if (group_vb->vb_length == 0) {
+		REDEBUG("Cannot do comparison (group name is empty)");
+		return XLAT_ACTION_FAIL;
+	}
+
+	group_is_dn = fr_ldap_util_is_dn(group_vb->vb_strvalue, group_vb->vb_length);
+	if (group_is_dn) {
+		char	*norm;
+		size_t	len;
+
+		MEM(norm = talloc_array(group_vb, char, talloc_array_length(group_vb->vb_strvalue)));
+		len = fr_ldap_util_normalise_dn(norm, group_vb->vb_strvalue);
+
+		/*
+		 *	Will clear existing buffer (i.e. group_vb->vb_strvalue)
+		 */
+		fr_value_box_bstrdup_buffer_shallow(group_vb, group_vb, NULL, norm, group_vb->tainted);
+
+		/*
+		 *	Trim buffer to match normalised DN
+		 */
+		fr_value_box_bstr_realloc(group_vb, NULL, group_vb, len);
+	}
+
+	if ((group_is_dn && inst->cacheable_group_dn) || (!group_is_dn && inst->cacheable_group_name)) {
+		rlm_rcode_t our_rcode;
+
+		rlm_ldap_check_cached(&our_rcode, inst, request, group_vb);
+		switch (our_rcode) {
+		case RLM_MODULE_NOTFOUND:
+			RDEBUG2("User is not a member of \"%pV\"", group_vb);
+			return XLAT_ACTION_DONE;
+
+		case RLM_MODULE_OK:
+			MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+			vb->vb_bool = true;
+			fr_dcursor_append(out, vb);
+			return XLAT_ACTION_DONE;
+
+		/*
+		 *	Fallback to dynamic search
+		 */
+		default:
+			break;
+		}
+	}
+
+	MEM(xlat_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_memberof_xlat_ctx_t));
+
+	*xlat_ctx = (ldap_memberof_xlat_ctx_t){
+		.inst = inst,
+		.group = group_vb,
+		.dn = rlm_find_user_dn_cached(request),
+		.attrs = { inst->userobj_membership_attr, NULL },
+		.group_is_dn = group_is_dn,
+		.env_data = env_data
+	};
+
+	xlat_ctx->ttrunk = fr_thread_ldap_trunk_get(t, inst->handle_config.server, inst->handle_config.admin_identity,
+						    inst->handle_config.admin_password, request, &inst->handle_config);
+
+	if (!xlat_ctx->ttrunk) {
+		REDEBUG("Unable to get LDAP trunk for group membership check");
+	error:
+		talloc_free(xlat_ctx);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (unlang_xlat_yield(request, ldap_memberof_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) goto error;
+
+	if (unlang_function_push(request, xlat_ctx->dn ? NULL : ldap_memberof_xlat_user_find,
+				 ldap_memberof_xlat_results, ldap_memberof_xlat_cancel, ~FR_SIGNAL_CANCEL,
+				 UNLANG_SUB_FRAME, xlat_ctx) < 0) goto error;
+
+	return XLAT_ACTION_PUSH_UNLANG;
+}
+
 /*
  *	Verify the result of the map.
  */
@@ -1845,7 +2043,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
-	char		buffer[256];
+	char		buffer[256], memberof_xlat[256];
 	char const	*group_attribute;
 	xlat_t		*xlat;
 
@@ -1910,6 +2108,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_func_register_module(NULL, mctx, mctx->inst->name, ldap_xlat, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, ldap_xlat_arg);
+
+	snprintf(memberof_xlat, sizeof(memberof_xlat), "%s_memberof", mctx->inst->name);
+	xlat = xlat_func_register_module(NULL, mctx, memberof_xlat, ldap_memberof_xlat, FR_TYPE_BOOL);
+	xlat_func_args_set(xlat, ldap_memberof_xlat_arg);
+	xlat_func_mod_method_set(xlat, &memberof_method_env);
 
 	xlat = xlat_func_register_module(NULL, mctx, "ldap_escape", ldap_escape_xlat, FR_TYPE_STRING);
 	if (xlat) {
