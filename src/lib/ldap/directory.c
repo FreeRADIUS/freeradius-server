@@ -259,8 +259,6 @@ int fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t 
 	ttrunk->directory = talloc_zero(ctx, fr_ldap_directory_t);
 	if (!ttrunk->directory) return -1;
 
-	ttrunk->directory->type = FR_LDAP_DIRECTORY_UNKNOWN;
-
 	treq = fr_trunk_request_alloc(ttrunk->trunk, NULL);
 	if (!treq) return -1;
 
