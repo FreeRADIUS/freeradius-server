@@ -140,7 +140,7 @@ static void ldap_find_user_async_cancel(UNUSED request_t *request, UNUSED fr_sig
  * @param[in] query_out	Where to put a pointer to the LDAP query structure -
  *			for extracting extra returned attributes, may be NULL.
  * @return
- *	- UNLANG_ACTION_YIELD on success.
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
  *	- UNLANG_ACTION_FAIL on failure.
  */
 unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst, request_t *request,
