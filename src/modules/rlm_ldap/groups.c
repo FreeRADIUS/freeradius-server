@@ -64,6 +64,7 @@ typedef struct {
 	char			filter[LDAP_MAX_FILTER_STR_LEN + 1];	//!< Filter used to search for groups.
 	char const		*attrs[2];				//!< For retrieving the group name.
 	fr_ldap_query_t		*query;					//!< Current query performing group lookup.
+	void			*uctx;					//!< Optional context for use in results parsing.
 } ldap_group_groupobj_ctx_t;
 
 /** Cancel a pending group lookup query
@@ -780,55 +781,87 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *re
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/** Query the LDAP directory to check if a group object includes a user object as a member
+/** Process the results of a group object lookup.
  *
- * @param[out] p_result		Result of calling the module.
- * @param[in] inst		rlm_ldap configuration.
+ * @param[out] p_result		Result of processing group lookup.
+ * @param[out] priority		Unused.
  * @param[in] request		Current request.
- * @param[in] ttrunk		to use.
- * @param[in] check		vp containing the group value (name or dn).
+ * @param[in] uctx		Group lookup context.
+ * @return One of the RLM_MODULE_* values.
  */
-unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
-						fr_ldap_thread_trunk_t *ttrunk, fr_pair_t const *check)
+static unlang_action_t ldap_check_groupobj_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+						      void *uctx)
 {
-	rlm_rcode_t	rcode;
-	fr_ldap_query_t	*query = NULL;
+	ldap_group_groupobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupobj_ctx_t);
+	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(group_ctx->uctx, ldap_memberof_xlat_ctx_t);
+	fr_ldap_query_t			*query = group_ctx->query;
+	rlm_rcode_t			rcode = RLM_MODULE_OK;
 
-	char const	*base_dn;
-	char		base_dn_buff[LDAP_MAX_DN_STR_LEN + 1];
-	char 		filter[LDAP_MAX_FILTER_STR_LEN + 1];
-	int		ret;
+	switch (query->ret) {
+	case LDAP_SUCCESS:
+		xlat_ctx->found = true;
+		if (RDEBUG_ENABLED2) {
+			LDAPMessage	*entry = NULL;
+			char		*dn = NULL;
+			entry = ldap_first_entry(query->ldap_conn->handle, query->result);
+			if (entry) dn = ldap_get_dn(query->ldap_conn->handle, entry);
+			RDEBUG2("User found in group object \"%pV\"", fr_box_strvalue(dn));
+			ldap_memfree(dn);
+		}
+		break;
 
-	fr_assert(inst->groupobj_base_dn);
-
-	switch (check->op) {
-	case T_OP_CMP_EQ:
-	case T_OP_CMP_FALSE:
-	case T_OP_CMP_TRUE:
-	case T_OP_REG_EQ:
-	case T_OP_REG_NE:
+	case LDAP_RESULT_NO_RESULT:
+	case LDAP_RESULT_BAD_DN:
+		rcode = RLM_MODULE_NOTFOUND;
 		break;
 
 	default:
-		REDEBUG("Operator \"%s\" not allowed for LDAP group comparisons",
-			fr_table_str_by_value(fr_tokens_table, check->op, "<INVALID>"));
-		return 1;
+		rcode = RLM_MODULE_FAIL;
+		break;
 	}
 
-	RDEBUG2("Checking for user in group objects");
+	talloc_free(group_ctx);
+	RETURN_MODULE_RCODE(rcode);
+}
 
-	if (fr_ldap_util_is_dn(check->vp_strvalue, check->vp_length)) {
+/** Initiate an LDAP search to determine group membership, querying group objects
+ *
+ * Used by LDAP group membership xlat
+ *
+ * @param p_result	Current module result code.
+ * @param request	Current request.
+ * @param xlat_ctx	xlat context being processed.
+ */
+unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t *request,
+						ldap_memberof_xlat_ctx_t *xlat_ctx)
+{
+	rlm_ldap_t const		*inst = xlat_ctx->inst;
+	ldap_group_groupobj_ctx_t	*group_ctx;
+	int				ret;
+
+	MEM(group_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_group_groupobj_ctx_t));
+	*group_ctx = (ldap_group_groupobj_ctx_t) {
+		.inst = inst,
+		.ttrunk = xlat_ctx->ttrunk,
+		.uctx = xlat_ctx
+	};
+
+	if (fr_ldap_util_is_dn(xlat_ctx->group->vb_strvalue, xlat_ctx->group->vb_length)) {
 		char const *filters[] = { inst->groupobj_filter, inst->groupobj_membership_filter };
 
 		RINDENT();
 		ret = fr_ldap_xlat_filter(request,
-					   filters, NUM_ELEMENTS(filters),
-					   filter, sizeof(filter));
+					  filters, NUM_ELEMENTS(filters),
+					  group_ctx->filter, sizeof(group_ctx->filter));
 		REXDENT();
 
-		if (ret < 0) RETURN_MODULE_INVALID;
+		if (ret < 0) {
+		invalid:
+			talloc_free(group_ctx);
+			RETURN_MODULE_INVALID;
+		}
 
-		base_dn = check->vp_strvalue;
+		group_ctx->base_dn = xlat_ctx->group;
 	} else {
 		char name_filter[LDAP_MAX_FILTER_STR_LEN];
 		char const *filters[] = { name_filter, inst->groupobj_filter, inst->groupobj_membership_filter };
@@ -837,53 +870,27 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_
 			REDEBUG("Told to search for group by name, but missing 'group.name_attribute' "
 				"directive");
 
-			RETURN_MODULE_INVALID;
+			goto invalid;
 		}
 
-		snprintf(name_filter, sizeof(name_filter), "(%s=%s)", inst->groupobj_name_attr, check->vp_strvalue);
+		snprintf(name_filter, sizeof(name_filter), "(%s=%s)",
+			 inst->groupobj_name_attr, xlat_ctx->group->vb_strvalue);
 		RINDENT();
 		ret = fr_ldap_xlat_filter(request,
-					   filters, NUM_ELEMENTS(filters),
-					   filter, sizeof(filter));
+					  filters, NUM_ELEMENTS(filters),
+					  group_ctx->filter, sizeof(group_ctx->filter));
 		REXDENT();
-		if (ret < 0) RETURN_MODULE_INVALID;
+		if (ret < 0) goto invalid;
 
-
-		/*
-		 *	rlm_ldap_find_user does this, too.  Oh well.
-		 */
-		RINDENT();
-		ret = tmpl_expand(&base_dn, base_dn_buff, sizeof(base_dn_buff), request, inst->groupobj_base_dn,
-				  fr_ldap_escape_func, NULL);
-		REXDENT();
-		if (ret < 0) {
-			REDEBUG("Failed creating base_dn");
-
-			RETURN_MODULE_INVALID;
-		}
+		fr_assert(xlat_ctx->env_data);
+		group_ctx->base_dn = &xlat_ctx->env_data->group_base;
 	}
 
-	RINDENT();
-	if (fr_ldap_trunk_search(&rcode,
-				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
-				 inst->groupobj_scope, filter, NULL, NULL, NULL, false) < 0) {
-		REXDENT();
-		RETURN_MODULE_FAIL;
-	}
-	REXDENT();
-	switch (rcode) {
-	case RLM_MODULE_OK:
-		RDEBUG2("User found in group object \"%s\"", base_dn);
-		break;
+	if (unlang_function_push(request, ldap_cacheable_groupobj_start, ldap_check_groupobj_resume,
+				 ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL,
+				 UNLANG_SUB_FRAME, group_ctx) < 0) goto invalid;
 
-	case RLM_MODULE_NOTFOUND:
-		RETURN_MODULE_NOTFOUND;
-
-	default:
-		RETURN_MODULE_FAIL;
-	}
-
-	RETURN_MODULE_OK;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Query the LDAP directory to check if a user object is a member of a group
