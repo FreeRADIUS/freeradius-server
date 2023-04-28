@@ -253,9 +253,8 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *re
 unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t *request,
 						ldap_memberof_xlat_ctx_t *xlat_ctx);
 
-unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result,
-					       rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
-					       char const *dn, fr_pair_t const *check);
+unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, request_t *request,
+					       ldap_memberof_xlat_ctx_t *xlat_ctx);
 
 unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
 				      rlm_ldap_t const *inst, request_t *request, fr_value_box_t const *check);
