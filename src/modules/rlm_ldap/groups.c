@@ -1081,10 +1081,10 @@ finish:
  * @param[out] p_result		Result of calling the module.
  * @param[in] inst		rlm_ldap configuration.
  * @param[in] request		Current request.
- * @param[in] check		vp containing the group value (name or dn).
+ * @param[in] check		vb containing the group value (name or dn).
  */
 unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
-				      rlm_ldap_t const *inst, request_t *request, fr_pair_t const *check)
+				      rlm_ldap_t const *inst, request_t *request, fr_value_box_t const *check)
 {
 	fr_pair_t	*vp;
 	int		ret;
@@ -1100,7 +1100,7 @@ unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
 	for (vp = fr_dcursor_current(&cursor);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
-		ret = fr_pair_cmp_op(T_OP_CMP_EQ, vp, check);
+		ret = fr_value_box_cmp_op(T_OP_CMP_EQ, &vp->data, check);
 		if (ret == 1) {
 			RDEBUG2("User found. Matched cached membership");
 			RETURN_MODULE_OK;
