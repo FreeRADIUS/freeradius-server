@@ -853,147 +853,6 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 				    NULL, NULL, true);
 }
 
-/** Perform LDAP-Group comparison checking
- *
- * Attempts to match users to groups using a variety of methods.
- *
- * @param instance of the rlm_ldap module.
- * @param request Current request.
- * @param check Which group to check for user membership.
- * @return
- *	- 1 on failure (or if the user is not a member).
- *	- 0 on success.
- */
-static int rlm_ldap_groupcmp(void *instance, request_t *request, fr_pair_t const *check)
-{
-	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
-	rlm_rcode_t		rcode;
-
-	bool			found = false;
-	bool			check_is_dn;
-
-	fr_ldap_thread_trunk_t	*ttrunk = NULL;
-	char const		*user_dn;
-	fr_pair_t		*check_p = NULL;
-
-	fr_assert(inst->groupobj_base_dn);
-
-	RDEBUG2("Searching for user in group \"%pV\"", &check->data);
-
-	if (check->vp_length == 0) {
-		REDEBUG("Cannot do comparison (group name is empty)");
-		return 1;
-	}
-
-	/*
-	 *	Check if we can do cached membership verification
-	 */
-	check_is_dn = fr_ldap_util_is_dn(check->vp_strvalue, check->vp_length);
-	if (check_is_dn) {
-		char	*norm;
-		size_t	len;
-
-		check = check_p = fr_pair_copy(request, check); /* allocate a mutable version */
-
-		MEM(norm = talloc_array(check_p, char, talloc_array_length(check_p->vp_strvalue)));
-		len = fr_ldap_util_normalise_dn(norm, check->vp_strvalue);
-
-		/*
-		 *	Will clear existing buffer (i.e. check->vp_strvalue)
-		 */
-		fr_pair_value_bstrdup_buffer_shallow(check_p, norm, check->vp_tainted);
-
-		/*
-		 *	Trim buffer to match normalised DN
-		 */
-		fr_pair_value_bstr_realloc(check_p, NULL, len);
-	}
-	if ((check_is_dn && inst->cacheable_group_dn) || (!check_is_dn && inst->cacheable_group_name)) {
-		rlm_rcode_t our_rcode;
-
-		rlm_ldap_check_cached(&our_rcode, inst, request, check);
-		switch (our_rcode) {
-		case RLM_MODULE_NOTFOUND:
-			found = false;
-			goto finish;
-
-		case RLM_MODULE_OK:
-			found = true;
-			goto finish;
-		/*
-		 *	Fallback to dynamic search on failure
-		 */
-		case RLM_MODULE_FAIL:
-		case RLM_MODULE_INVALID:
-		default:
-			break;
-		}
-	}
-
-	ttrunk =  fr_thread_ldap_trunk_get(thread, inst->handle_config.server, inst->handle_config.admin_identity,
-					   inst->handle_config.admin_password, request, &inst->handle_config);
-	if (!ttrunk) goto cleanup;
-
-	/*
-	 *	This is used in the default membership filter.
-	 */
-	user_dn = rlm_ldap_find_user(inst, request, ttrunk, NULL, false, NULL, NULL, &rcode);
-	if (!user_dn) goto cleanup;
-
-	/*
-	 *	Check groupobj user membership
-	 */
-	if (inst->groupobj_membership_filter) {
-		rlm_rcode_t our_rcode;
-
-		rlm_ldap_check_groupobj_dynamic(&our_rcode, inst, request, ttrunk, check);
-		switch (our_rcode) {
-		case RLM_MODULE_NOTFOUND:
-			break;
-
-		case RLM_MODULE_OK:
-			found = true;
-			FALL_THROUGH;
-
-		default:
-			goto finish;
-		}
-	}
-
-	/*
-	 *	Check userobj group membership
-	 */
-	if (inst->userobj_membership_attr) {
-		rlm_rcode_t our_rcode;
-
-		rlm_ldap_check_userobj_dynamic(&our_rcode, inst, request, ttrunk, user_dn, check);
-		switch (our_rcode) {
-		case RLM_MODULE_NOTFOUND:
-			break;
-
-		case RLM_MODULE_OK:
-			found = true;
-			FALL_THROUGH;
-
-		default:
-			goto finish;
-		}
-	}
-
-finish:
-	if (found) {
-		talloc_free(check_p);
-		return 0;
-	}
-
-	RDEBUG2("User is not a member of \"%pV\"", &check->data);
-
-cleanup:
-	talloc_free(check_p);
-	return 1;
-}
-
 /** Perform async lookup of user DN if required for authentication
  *
  */
@@ -1990,11 +1849,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		group_attribute = "LDAP-Group";
 	}
 
-	if (paircmp_register_by_name(group_attribute, attr_user_name, false, rlm_ldap_groupcmp, inst) < 0) {
-		PERROR("Error registering group comparison");
-		goto error;
-	}
-
 	inst->group_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
 
 	/*
@@ -2007,7 +1861,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
 				     inst->cache_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
 			PERROR("Error creating cache attribute");
-		error:
 			return -1;
 
 		}
