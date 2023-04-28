@@ -1852,6 +1852,22 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	inst->group_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
 
 	/*
+	 *	If the group attribute was not in the dictionary, create it
+	 */
+	if (!inst->group_da) {
+		fr_dict_attr_flags_t	flags;
+
+		memset(&flags, 0, sizeof(flags));
+		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
+				     group_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
+			PERROR("Error creating group attribute");
+			return -1;
+
+		}
+		inst->group_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
+	}
+
+	/*
 	 *	Setup the cache attribute
 	 */
 	if (inst->cache_attribute) {
