@@ -139,6 +139,15 @@ typedef struct {
 	fr_value_box_t	profile_filter;			//!< Filter to use when searching for profiles.
 } ldap_autz_mod_env_t;
 
+/** Module environment used in group membership xlat
+ *
+ */
+typedef struct {
+	fr_value_box_t	user_base;			//!< Base DN in which to search for users.
+	fr_value_box_t	user_filter;			//!< Filter to use when searching for users.
+	fr_value_box_t	group_base;			//!< Base DN in which to search for groups.
+} ldap_memberof_mod_env_t;
+
 /** State list for resumption of authorization
  *
  */
@@ -172,6 +181,32 @@ typedef struct {
 	char			*profile_value;
 	char const		*dn;
 } ldap_autz_ctx_t;
+
+/** State list for xlat evaluation of LDAP group membership
+ */
+typedef enum {
+	GROUP_XLAT_FIND_USER = 0,
+	GROUP_XLAT_MEMB_FILTER,
+	GROUP_XLAT_MEMB_ATTR
+} ldap_group_xlat_status_t;
+
+/** Holds state of in progress group membership check xlat
+ *
+ */
+typedef struct {
+	rlm_ldap_t const		*inst;
+	fr_value_box_t			*group;
+	ldap_memberof_mod_env_t		*env_data;
+	bool				group_is_dn;
+	char const			*dn;
+	char const			*attrs[2];
+	fr_value_box_t			*filter;
+	fr_value_box_t			*basedn;
+	fr_ldap_thread_trunk_t		*ttrunk;
+	fr_ldap_query_t			*query;
+	ldap_group_xlat_status_t	status;
+	bool				found;
+} ldap_memberof_xlat_ctx_t;
 
 extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;
 extern HIDDEN fr_dict_attr_t const *attr_crypt_password;
