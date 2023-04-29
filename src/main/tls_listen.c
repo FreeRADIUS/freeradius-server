@@ -1120,6 +1120,23 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 #endif
 	}
 
+	if (sock->ssn->clean_out.used) {
+		DEBUG3("(TLS) proxy writing %zu to socket", sock->ssn->clean_out.used);
+		/*
+		 *	Write to SSL.
+		 */
+		rcode = SSL_write(sock->ssn->ssl, sock->ssn->clean_out.data, sock->ssn->clean_out.used);
+		if (rcode > 0) {
+			if ((size_t) rcode < sock->ssn->clean_out.used) {
+				memmove(sock->ssn->clean_out.data,  sock->ssn->clean_out.data + rcode,
+					sock->ssn->clean_out.used - rcode);
+				sock->ssn->clean_out.used -= rcode;
+			} else {
+				sock->ssn->clean_out.used = 0;
+			}
+		}
+	}
+
 	/*
 	 *	Get the maximum size of data to receive.
 	 */
@@ -1402,7 +1419,30 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 			return rcode;
 		}
 
-		if (rcode == 2) return 0; /* more negotiation needed */
+		/*
+		 *	More negotiation is needed, but remember to
+		 *	save this packet to an intermediate buffer.
+		 *	Once the SSL connection is established, the
+		 *	later code writes the packet to the
+		 *	connection.
+		 */
+		if (rcode == 2) {
+			PTHREAD_MUTEX_LOCK(&TLS_MUTEX);
+			if ((sock->ssn->clean_out.used + request->proxy->data_len) > MAX_RECORD_SIZE) {
+				PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
+				RERROR("(TLS) Too much data buffered during SSL_connect()");
+				listener->status = RAD_LISTEN_STATUS_EOL;
+				radius_update_listener(listener);
+				return -1;
+			}
+
+			memcpy(sock->ssn->clean_out.data + sock->ssn->clean_out.used, request->proxy->data, request->proxy->data_len);
+			sock->ssn->clean_out.used += request->proxy->data_len;
+			RDEBUG3("(TLS) Writing %zu bytes for later (total %zu)", request->proxy->data_len, sock->ssn->clean_out.used);
+
+			PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
+			return 0;
+		}
 
 #ifdef WITH_RADIUSV11
 		if (!sock->alpn_checked && (fr_radiusv11_client_get_alpn(listener) < 0)) {
@@ -1416,8 +1456,46 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	DEBUG3("Proxy is writing %u bytes to SSL",
 	       (unsigned int) request->proxy->data_len);
 	PTHREAD_MUTEX_LOCK(&TLS_MUTEX);
-	rcode = SSL_write(sock->ssn->ssl, request->proxy->data,
-			  request->proxy->data_len);
+
+	/*
+	 *	We may have previously cached data on SSL_connect(), which now needs to be written to the home server.
+	 */
+	if (sock->ssn->clean_out.used > 0) {
+		if ((sock->ssn->clean_out.used + request->proxy->data_len) > MAX_RECORD_SIZE) {
+			PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
+			RERROR("(TLS) Too much data buffered after SSL_connect()");
+			listener->status = RAD_LISTEN_STATUS_EOL;
+			radius_update_listener(listener);
+			return -1;
+		}
+
+		/*
+		 *	Add in our packet.
+		 */
+		memcpy(sock->ssn->clean_out.data + sock->ssn->clean_out.used, request->proxy->data, request->proxy->data_len);
+		sock->ssn->clean_out.used += request->proxy->data_len;
+
+		/*
+		 *	Write to SSL.
+		 */
+		DEBUG3("(TLS) proxy writing %zu to socket", sock->ssn->clean_out.used);
+
+		rcode = SSL_write(sock->ssn->ssl, sock->ssn->clean_out.data, sock->ssn->clean_out.used);
+		if (rcode > 0) {
+			if ((size_t) rcode < sock->ssn->clean_out.used) {
+				memmove(sock->ssn->clean_out.data,  sock->ssn->clean_out.data + rcode,
+					sock->ssn->clean_out.used - rcode);
+				sock->ssn->clean_out.used -= rcode;
+			} else {
+				sock->ssn->clean_out.used = 0;
+			}
+			PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
+			return 1;
+		}
+	} else {
+		rcode = SSL_write(sock->ssn->ssl, request->proxy->data,
+				  request->proxy->data_len);
+	}
 	if (rcode < 0) {
 		int err;
 
