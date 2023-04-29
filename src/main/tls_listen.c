@@ -1053,12 +1053,10 @@ static int try_connect(int fd, listen_socket_t *sock)
 			break;
 
 		case SSL_ERROR_WANT_READ:
-			fr_event_fd_want_read(radius_event_list_corral(EVENT_CORRAL_MAIN), fd);
 			DEBUG3("(TLS) SSL_connect() returned WANT_READ");
 			return 2;
 			
 		case SSL_ERROR_WANT_WRITE:
-			fr_event_fd_want_write(radius_event_list_corral(EVENT_CORRAL_MAIN), fd);
 			DEBUG3("(TLS) SSL_connect() returned WANT_WRITE");
 			return 2;
 		}
@@ -1153,12 +1151,10 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 			switch (err) {
 
 			case SSL_ERROR_WANT_READ:
-				fr_event_fd_want_read(radius_event_list_corral(EVENT_CORRAL_MAIN), listener->fd);
 				DEBUG3("(TLS) OpenSSL returned WANT_READ");
 				return 0;
 
 			case SSL_ERROR_WANT_WRITE:
-				fr_event_fd_want_write(radius_event_list_corral(EVENT_CORRAL_MAIN), listener->fd);
 				DEBUG3("(TLS) OpenSSL returned WANT_WRITE");
 				return 0;
 
@@ -1217,12 +1213,10 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 			switch (err) {
 
 			case SSL_ERROR_WANT_READ:
-				fr_event_fd_want_read(radius_event_list_corral(EVENT_CORRAL_MAIN), listener->fd);
 				DEBUG3("(TLS) OpenSSL returned WANT_READ");
 				return 0;
 
 			case SSL_ERROR_WANT_WRITE:
-				fr_event_fd_want_write(radius_event_list_corral(EVENT_CORRAL_MAIN), listener->fd);
 				DEBUG3("(TLS) OpenSSL returned WANT_WRITE");
 				return 0;
 
@@ -1505,12 +1499,10 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 			break;
 
 		case SSL_ERROR_WANT_READ:
-			fr_event_fd_want_read(radius_event_list_corral(EVENT_CORRAL_MAIN), listener->fd);
 			DEBUG3("(TLS) OpenSSL returned WANT_READ");
 			break;
 
 		case SSL_ERROR_WANT_WRITE:
-			fr_event_fd_want_write(radius_event_list_corral(EVENT_CORRAL_MAIN), listener->fd);
 			DEBUG3("(TLS) OpenSSL returned WANT_WRITE");
 			break;
 
