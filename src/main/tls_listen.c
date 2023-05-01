@@ -1031,7 +1031,7 @@ int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request)
 }
 #endif
 
-static int try_connect(int fd, listen_socket_t *sock)
+static int try_connect(listen_socket_t *sock)
 {
 	int ret;
 	time_t now;
@@ -1055,7 +1055,7 @@ static int try_connect(int fd, listen_socket_t *sock)
 		case SSL_ERROR_WANT_READ:
 			DEBUG3("(TLS) SSL_connect() returned WANT_READ");
 			return 2;
-			
+
 		case SSL_ERROR_WANT_WRITE:
 			DEBUG3("(TLS) SSL_connect() returned WANT_WRITE");
 			return 2;
@@ -1100,7 +1100,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 
 	if (!sock->ssn->connected) {
-		rcode = try_connect(listener->fd, sock);
+		rcode = try_connect(sock);
 		if (rcode <= 0) {
 			listener->status = RAD_LISTEN_STATUS_EOL;
 			radius_update_listener(listener);
@@ -1405,7 +1405,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	if (!sock->ssn->connected) {
 		PTHREAD_MUTEX_LOCK(&TLS_MUTEX);
-		rcode = try_connect(listener->fd, sock);
+		rcode = try_connect(sock);
 		PTHREAD_MUTEX_UNLOCK(&TLS_MUTEX);
 		if (rcode <= 0) {
 			listener->status = RAD_LISTEN_STATUS_EOL;
