@@ -465,6 +465,20 @@ static void _ldap_trunk_idle_timeout(fr_event_list_t *el, UNUSED fr_time_t now, 
 	}
 }
 
+/** Callback when an LDAP trunk request is cancelled
+ *
+ * Ensure the request is removed from the list of outstanding requests
+ */
+static void ldap_request_cancel(UNUSED fr_connection_t *conn, void *preq, UNUSED fr_trunk_cancel_reason_t reason,
+			        UNUSED void *uctx) {
+	fr_ldap_query_t	*query = talloc_get_type_abort(preq, fr_ldap_query_t);
+
+	if (query->ldap_conn) {
+		fr_rb_remove(query->ldap_conn->queries, query);
+		query->ldap_conn = NULL;
+	}
+}
+
 /** Callback to cancel LDAP queries
  *
  * Inform the remote LDAP server that we no longer want responses to specific queries.
@@ -985,6 +999,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 					      .connection_notify = ldap_trunk_connection_notify,
 					      .request_mux = ldap_trunk_request_mux,
 					      .request_demux = ldap_trunk_request_demux,
+					      .request_cancel = ldap_request_cancel,
 					      .request_cancel_mux = ldap_request_cancel_mux
 					},
 				      thread->trunk_conf,
