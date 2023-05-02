@@ -707,7 +707,7 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 
 	default:
 	error:
-		*p_result = RLM_MODULE_FAIL;
+		if (p_result) *p_result = RLM_MODULE_FAIL;
 		*out = NULL;
 		talloc_free(query);
 		return UNLANG_ACTION_FAIL;
