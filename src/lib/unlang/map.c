@@ -291,6 +291,7 @@ static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request,
 
 	map_proc_inst_t			*inst = gext->proc_inst;
 	unlang_frame_state_map_proc_t	*map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
+	unlang_action_t			ret;
 
 	RDEBUG2("MAP %s \"%pM\"", inst->proc->name, &map_proc_state->src_result);
 
@@ -298,10 +299,10 @@ static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request,
 	 *	FIXME - We don't yet support async LHS/RHS expansions for map procs
 	 */
 	VALUE_BOX_LIST_VERIFY(&map_proc_state->src_result);
-	*p_result = map_proc(request, gext->proc_inst, &map_proc_state->src_result);
+	ret = map_proc(p_result, request, gext->proc_inst, &map_proc_state->src_result);
 	VALUE_BOX_LIST_VERIFY(&map_proc_state->src_result);
 
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return ret;
 }
 
 static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
