@@ -31,8 +31,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/map_proc.h>
 
-static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_list_t *key, map_list_t const *maps);
+static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSED void *proc_inst, request_t *request,
+				    fr_value_box_list_t *key, map_list_t const *maps);
 
 /*
  *	Define a structure for our module configuration.
@@ -965,25 +965,26 @@ finish:
 
 /** Perform a search and map the result of the search to server attributes
  *
+* @param[out] p_result	Result of applying map:
+ *			- #RLM_MODULE_NOOP no rows were returned.
+ *			- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
+ *			- #RLM_MODULE_FAIL if an error occurred.
  * @param[in] mod_inst	#rlm_csv_t.
  * @param[in] proc_inst	mapping map entries to field numbers.
  * @param[in,out]	request The current request.
  * @param[in] key	key to look for
  * @param[in] maps	Head of the map list.
- * @return
- *	- #RLM_MODULE_NOOP no rows were returned.
- *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
- *	- #RLM_MODULE_FAIL if an error occurred.
+ * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_list_t *key, map_list_t const *maps)
+static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSED void *proc_inst, request_t *request,
+				    fr_value_box_list_t *key, map_list_t const *maps)
 {
 	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);
 	fr_value_box_t		*key_head = fr_value_box_list_head(key);
 
 	if (!key_head) {
 		REDEBUG("CSV key cannot be (null)");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if ((inst->key_data_type == FR_TYPE_OCTETS) || (inst->key_data_type == FR_TYPE_STRING)) {
@@ -992,11 +993,11 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 						      FR_VALUE_BOX_LIST_FREE, true,
 						      SIZE_MAX) < 0) {
 			REDEBUG("Failed parsing key");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 	}
 
-	return mod_map_apply(inst, request, key_head, maps);
+	RETURN_MODULE_RCODE(mod_map_apply(inst, request, key_head, maps));
 }
 
 

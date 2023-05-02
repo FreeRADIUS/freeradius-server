@@ -648,18 +648,19 @@ static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
  * @todo For xlat expansions we need to parse the raw URL first, and then apply
  *	different escape functions to the different parts.
  *
+ * @param[out] p_result	Result of map expansion:
+ *			- #RLM_MODULE_NOOP no rows were returned.
+ *			- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
+ *			- #RLM_MODULE_FAIL if an error occurred.
  * @param[in] mod_inst #rlm_ldap_t
  * @param[in] proc_inst unused.
  * @param[in,out] request The current request.
  * @param[in] url LDAP url specifying base DN and filter.
  * @param[in] maps Head of the map list.
- * @return
- *	- #RLM_MODULE_NOOP no rows were returned.
- *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
- *	- #RLM_MODULE_FAIL if an error occurred.
+ * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_list_t *url, map_list_t const *maps)
+static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSED void *proc_inst, request_t *request,
+				    fr_value_box_list_t *url, map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
@@ -683,7 +684,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 	 */
 	if (!url_head) {
 		REDEBUG("LDAP URL cannot be (null)");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (fr_value_box_list_concat_in_place(request,
@@ -691,18 +692,18 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 					      FR_VALUE_BOX_LIST_FREE, true,
 					      SIZE_MAX) < 0) {
 		REDEBUG("Failed concatenating input");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 	url_str = url_head->vb_strvalue;
 
 	if (!ldap_is_ldap_url(url_str)) {
 		REDEBUG("Map query string does not look like a valid LDAP URI");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (ldap_url_parse(url_str, &ldap_url)){
 		REDEBUG("Parsing LDAP URL failed");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -814,7 +815,7 @@ free_expanded:
 free_urldesc:
 	ldap_free_urldesc(ldap_url);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Perform LDAP-Group comparison checking

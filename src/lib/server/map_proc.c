@@ -192,14 +192,16 @@ map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
  * Evaluate the map processor src template, then call a map processor function to do
  * something with the expanded src template and map the result to attributes in the request.
  *
+ * @param[out] p_result		Result code of evaluating the map.
  * @param[in] request		The current request.
  * @param[in] inst		of a map processor.
  * @param[in,out] result	Result of expanding the map input.  May be consumed
  *				by the map processor.
+ * @return one of UNLANG_ACTION_*
  */
-rlm_rcode_t map_proc(request_t *request, map_proc_inst_t const *inst, fr_value_box_list_t *result)
+unlang_action_t map_proc(rlm_rcode_t *p_result, request_t *request, map_proc_inst_t const *inst, fr_value_box_list_t *result)
 {
-	return inst->proc->evaluate(inst->proc->mod_inst, inst->data, request, result, inst->maps);
+	return inst->proc->evaluate(p_result, inst->proc->mod_inst, inst->data, request, result, inst->maps);
 }
 
 /** Free all map_processors unregistering them
