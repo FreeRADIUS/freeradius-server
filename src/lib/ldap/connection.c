@@ -222,11 +222,7 @@ static int _ldap_connection_free(fr_ldap_connection_t *c)
 
 	talloc_free_children(c);	/* Force inverted free order */
 
-	fr_ldap_control_clear(c);
-
-	if (!c->handle) return 0;	/* Don't need to do anything else if we don't yet have a handle */
-
-	{
+	if (c->handle) {
 		LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
 		LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
 
@@ -239,7 +235,7 @@ static int _ldap_connection_free(fr_ldap_connection_t *c)
 		ldap_unbind_ext(c->handle, our_serverctrls, our_clientctrls);	/* Same code as ldap_unbind_ext_s */
 	}
 
-	c->handle = NULL;
+	fr_ldap_control_clear(c);
 
 	return 0;
 }
