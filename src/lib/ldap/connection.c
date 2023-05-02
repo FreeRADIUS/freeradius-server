@@ -486,11 +486,6 @@ static void ldap_request_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_connect
 		ldap_abandon_ext(ldap_conn->handle, query->msgid, NULL, NULL);
 
 		fr_trunk_request_signal_cancel_complete(treq);
-
-		/*
-		 *	Ensure any query resouces are cleared straight away
-		 */
-		talloc_free(query);
 	}
 }
 
