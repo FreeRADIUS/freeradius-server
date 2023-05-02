@@ -346,6 +346,7 @@ typedef struct {
 	int			fd;			//!< File descriptor for this connection.
 
 	fr_rb_tree_t		*queries;		//!< Outstanding queries on this connection
+	fr_dlist_head_t		refs;			//!< Replied to queries still referencing this connection.
 
 	void			*uctx;			//!< User data associated with the handle.
 } fr_ldap_connection_t;
@@ -416,6 +417,7 @@ typedef void (*fr_ldap_result_parser_t)(LDAP *handle, fr_ldap_query_t *query, LD
  */
 struct fr_ldap_query_s {
 	fr_rb_node_t		node;		//!< Entry in the tree of outstanding queries.
+	fr_dlist_t		entry;		//!< Entry in the list of connection references.
 
 	LDAPURLDesc		*ldap_url;	//!< parsed URL for current query if the source
 						///< of the query was a URL.

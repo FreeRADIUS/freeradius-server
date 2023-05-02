@@ -218,7 +218,7 @@ static int _ldap_connection_free(fr_ldap_connection_t *c)
 	/*
 	 *	If there are any pending queries, don't free
 	 */
-	if ((c->queries) && (fr_rb_num_elements(c->queries) > 0)) return -1;
+	if (((c->queries) && (fr_rb_num_elements(c->queries) > 0)) || (fr_dlist_num_elements(&c->refs) > 0)) return -1;
 
 	talloc_free_children(c);	/* Force inverted free order */
 
@@ -283,7 +283,7 @@ static void _ldap_connection_close_watch(fr_connection_t *conn, UNUSED fr_connec
 {
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(uctx, fr_ldap_connection_t);
 
-	if (fr_rb_num_elements(ldap_conn->queries) == 0) return;
+	if ((fr_rb_num_elements(ldap_conn->queries) == 0) && (fr_dlist_num_elements(&ldap_conn->refs) == 0)) return;
 
 	talloc_reparent(conn, NULL, ldap_conn);
 	ldap_conn->conn = NULL;
@@ -364,6 +364,7 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
 	 *	Initialise tree for outstanding queries handled by this connection
 	 */
 	MEM(c->queries = fr_rb_inline_talloc_alloc(c, fr_ldap_query_t, node, fr_ldap_query_cmp, NULL));
+	fr_dlist_init(&c->refs, fr_ldap_query_t, entry);
 
 	*h = c;	/* Set the handle */
 
@@ -697,6 +698,12 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 		if (status != LDAP_PROC_SUCCESS) goto error;
 
 		/*
+		 *	If the query has previously been associated with a different
+		 *	connection, remove that reference.  Typically when following references.
+		 */
+		if (query->ldap_conn) fr_dlist_remove(&query->ldap_conn->refs, query);
+
+		/*
 		 *	Record which connection was used for this query
 		 *	- results processing often needs access to an LDAP handle
 		 */
@@ -793,6 +800,12 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t 
 		 *	Remove the query from the tree of outstanding queries
 		 */
 		fr_rb_remove(ldap_conn->queries, query);
+
+		/*
+		 *	Add the query to the list of queries referencing this connection.
+		 *	Prevents the connection from being freed until the query has finished using it.
+		 */
+		fr_dlist_insert_tail(&ldap_conn->refs, query);
 
 		/*
 		 *	This really shouldn't happen - as we only retrieve complete sets of results -

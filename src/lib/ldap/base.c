@@ -962,13 +962,18 @@ static int _ldap_query_free(fr_ldap_query_t *query)
 
 	fr_dlist_talloc_free(&query->referrals);
 
-	/*
-	 *	If the connection this query was using has no pending queries and
-	 * 	is no-longer associated with a fr_connection_t then free it
-	 */
-	if ((query->ldap_conn) && (query->ldap_conn->conn == NULL) &&
-	    (fr_rb_num_elements(query->ldap_conn->queries) == 0)) {
-		talloc_free(query->ldap_conn);
+	if (query->ldap_conn) {
+		/*
+		 *	Remove the query from the list of references to its connection
+		 */
+		fr_dlist_remove(&query->ldap_conn->refs, query);
+
+		/*
+		 *	If the connection this query was using has no pending queries and
+		 * 	is no-longer associated with a fr_connection_t then free it
+		 */
+		if (!query->ldap_conn->conn && (fr_dlist_num_elements(&query->ldap_conn->refs) == 0) &&
+	    	    (fr_rb_num_elements(query->ldap_conn->queries) == 0)) talloc_free(query->ldap_conn);
 	}
 
 	/*
