@@ -487,6 +487,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr
  *				types of xlats.
  * @param[in] resume		function to call when the XLAT expansion is complete.
  * @param[in] signal		function to call if a signal is received.
+ * @param[in] sigmask		Signals to block.
  * @param[in] rctx		to pass to the resume() and signal() callbacks.
  * @return
  *	- UNLANG_ACTION_PUSHED_CHILD

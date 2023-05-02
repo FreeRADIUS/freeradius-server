@@ -295,6 +295,7 @@ void		_cf_log_with_filename(fr_log_type_t type, CONF_ITEM const *ci, char const 
  *
  * @param[in] _parent	CONF_SECTION.
  * @param[in] _child	string identifier.
+ * @param[in] _f_rules	Line prefixes.
  * @param[in] _fmt	of message.
  * @param[in] ...	arguments.
  */

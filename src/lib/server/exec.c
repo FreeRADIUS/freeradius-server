@@ -264,7 +264,7 @@ char **fr_exec_pair_to_env(request_t *request, fr_pair_list_t *env_pairs, bool e
  * We try to be fail-safe here. So if ANYTHING goes wrong, we exit with status 1.
  *
  * @param[in] argv		array of arguments to pass to child.
- * @param[in] envp		array of environment variables in form <attr>=<val>
+ * @param[in] envp		array of environment variables in form `<attr>=<val>`
  * @param[in] exec_wait		if true, redirect child process' stdin, stdout, stderr
  *				to the pipes provided, redirecting any to /dev/null
  *				where no pipe was provided.  If false redirect

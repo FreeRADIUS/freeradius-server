@@ -66,6 +66,7 @@ int		unlang_function_clear(request_t *request) CC_HINT(warn_unused_result);
  *
  * @param[in] _request		The current request.
  * @param[in] _signal		The signal function to set.
+ * @param[in] _sigmask		Signals to block.
  * @return
  *	- 0 on success.
  *      - -1 on failure.

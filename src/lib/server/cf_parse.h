@@ -196,7 +196,7 @@ _Generic((_ct), \
 	.type = _type, \
 	.offset = FR_CONF_TYPE_CHECK((_type), &(((_struct *)NULL)->_field), offsetof(_struct, _field))
 
-/** CONF_PARSER which parses a single CONF_PAIR, writing the result to a field in a struct, recording if a default was used in <_field>_is_set
+/** CONF_PARSER which parses a single CONF_PAIR, writing the result to a field in a struct, recording if a default was used in `<_field>`_is_set
  *
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
@@ -215,6 +215,7 @@ _Generic((_ct), \
  * @param[in] _flags		any additional flags to set.
  * @param[in] _struct		containing the sub-struct to populate.
  * @param[in] _field		containing the sub-struct to populate.
+ * @param[in] _subcs		CONF_SECTION to parse.
  */
 #  define FR_CONF_OFFSET_SUBSECTION(_name, _flags, _struct, _field, _subcs) \
 	.name = _name, \
@@ -233,9 +234,9 @@ _Generic((_ct), \
 	.type = _type, \
 	.data = FR_CONF_TYPE_CHECK((_type), (_res_p), _res_p)
 
-/** CONF_PARSER which parses a single CONF_PAIR producing a single global result, recording if a default was used in <_res_p>_is_set
+/** CONF_PARSER which parses a single CONF_PAIR producing a single global result, recording if a default was used in `<_res_p>`_is_set
  *
- * @note is set state is recorded in variable <_res_p>_is_set.
+ * @note is set state is recorded in variable `<_res_p>`_is_set.
  *
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
@@ -268,7 +269,7 @@ _Generic((_ct), \
 
 /** CONF_PARSER entry which doesn't fill in a pointer or offset, but relies on functions to record values
  *
- * @param[in] _nand		name of pair to search for.
+ * @param[in] _name		name of pair to search for.
  * @param[in] _type		base type to parse pair as.
  * @param[in] _func		to use to record value.
  * @param[in] _dflt_func	to use to get defaults from a 3rd party library.

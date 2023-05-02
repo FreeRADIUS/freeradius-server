@@ -2171,6 +2171,7 @@ void _cf_log_by_child(fr_log_type_t type, CONF_SECTION const *parent, char const
  * @param[in] type	of log message.
  * @param[in] file	src file the log message was generated in.
  * @param[in] line	number the log message was generated on.
+ * @param[in] f_rules	Line prefixes.
  * @param[in] fmt	of the message.
  * @param[in] ...	Message args.
  */
