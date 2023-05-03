@@ -681,7 +681,7 @@ static void _ldap_search_sync_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time
  *				and provide the result in p_result.
  * @return
  *	- UNLANG_ACTION_FAIL on error.
- *	- UNLANG_ACTION_YIELD on success.
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
  *	- UNLANG_ACTION_CALCULATE_RESULT if the query was run synchronously.
  */
 unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
@@ -760,8 +760,7 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
  * @param[in] clientctrls	specific to this query.
  * @return
  *	- UNLANG_ACTION_FAIL on error.
- *	- UNLANG_ACTION_YIELD on success.
- *	- UNLANG_ACTION_CALCULATE_RESULT if the query was run synchronously.
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
  */
 unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 				     TALLOC_CTX *ctx,
@@ -857,8 +856,7 @@ fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_con
  * @param[in] clientctrls	specific to this query.
  * @return
  *	- UNLANG_ACTION_FAIL on error.
- *	- UNLANG_ACTION_YIELD on success.
- *	- UNLANG_ACTION_CALCULATE_RESULT if the query was run synchronously.
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
  */
 unlang_action_t fr_ldap_trunk_extended(rlm_rcode_t *p_result,
 				       TALLOC_CTX *ctx,
