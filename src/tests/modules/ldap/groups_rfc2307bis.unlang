@@ -1,33 +1,41 @@
 #
-#  Run the "ldap" module
+#  Run group membership tests before calling the "ldap"
+#  module to check it runs lookups when there are no cached values.
 #
-ldap
 
 #
 #  Resolve using group name attribute
 #
-if (!(&LDAP-Group == 'foo')) {
+if (!(%(ldap.memberof:foo) == 'yes')) {
         test_fail
 }
 
-if (!(&LDAP-Group == 'foo')) {
-        test_fail
-}
-
-#
-#  Using paircmp xlat expansion.  This is only for internal use,
-#  and will be removed before v4 alpha.
-#
-if (!%(paircmp:&LDAP-Group foo)) {
+if (!(%(ldap.memberof:baz) == 'no')) {
         test_fail
 }
 
 #
 #  Resolve using group DN
 #
-if (!(&LDAP-Group == 'cn=foo,ou=groups,dc=example,dc=com')) {
+if (!(%(ldap.memberof:cn=foo,ou=groups,dc=example,dc=com) == 'yes')) {
         test_fail
 }
+
+if (!(%(ldap.memberof:cn=baz,ou=groups,dc=example,dc=com) == 'no')) {
+        test_fail
+}
+
+#
+#  Check no cached membership has been added
+#
+if (&control.LDAP-Cached-Membership) {
+        test_fail
+}
+
+#
+#  Run the "ldap" module
+#
+ldap
 
 #
 #  Check we have these values cached
