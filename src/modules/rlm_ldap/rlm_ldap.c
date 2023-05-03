@@ -304,6 +304,17 @@ typedef struct {
 	fr_ldap_query_t		*query;
 } ldap_user_modify_ctx_t;
 
+/** Holds state of in progress LDAP map
+ *
+ */
+typedef struct {
+	map_list_t const	*maps;
+	LDAPURLDesc		*ldap_url;
+	fr_ldap_query_t		*query;
+	fr_ldap_map_exp_t	expanded;
+	char const		*host_url;
+} ldap_map_ctx_t;
+
 static xlat_arg_parser_t const ldap_escape_xlat_arg[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -798,6 +809,114 @@ static void _ldap_async_bind_auth_watch(fr_connection_t *conn, UNUSED fr_connect
 	};
 }
 
+/** Process the results of an LDAP map query
+ *
+ * @param[out] p_result	Result of applying the map.
+ * @param[in] priority	Unused.
+ * @param[in] request	Current request.
+ * @param[in] uctx	Map context.
+ * @return One of UNLANG_ACTION_*
+ */
+static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	ldap_map_ctx_t		*map_ctx = talloc_get_type_abort(uctx, ldap_map_ctx_t);
+	fr_ldap_query_t		*query = map_ctx->query;
+	fr_ldap_map_exp_t	*expanded = &map_ctx->expanded;
+	rlm_rcode_t		rcode = RLM_MODULE_NOTFOUND;
+	LDAPMessage		*entry;
+	map_t const		*map;
+
+	switch (query->ret) {
+	case LDAP_RESULT_SUCCESS:
+		rcode = RLM_MODULE_UPDATED;
+		break;
+
+	case LDAP_RESULT_NO_RESULT:
+		goto finish;
+
+	default:
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+
+	for (entry = ldap_first_entry(query->ldap_conn->handle, query->result);
+	     entry;
+	     entry = ldap_next_entry(query->ldap_conn->handle, entry)) {
+		char	*dn = NULL;
+		int	i;
+
+
+		if (RDEBUG_ENABLED2) {
+			dn = ldap_get_dn(query->ldap_conn->handle, entry);
+			RDEBUG2("Processing \"%s\"", dn);
+		}
+
+		RINDENT();
+		for (map = map_list_head(map_ctx->maps), i = 0;
+		     map != NULL;
+		     map = map_list_next(map_ctx->maps, map), i++) {
+			int			ret;
+			fr_ldap_result_t	attr;
+
+			attr.values = ldap_get_values_len(query->ldap_conn->handle, entry, expanded->attrs[i]);
+			if (!attr.values) {
+				/*
+				 *	Many LDAP directories don't expose the DN of
+				 *	the object as an attribute, so we need this
+				 *	hack, to allow the user to retrieve it.
+				 */
+				if (strcmp(LDAP_VIRTUAL_DN_ATTR, expanded->attrs[i]) == 0) {
+					struct berval value;
+					struct berval *values[2] = { &value, NULL };
+
+					if (!dn) dn = ldap_get_dn(query->ldap_conn->handle, entry);
+					value.bv_val = dn;
+					value.bv_len = strlen(dn);
+
+					attr.values = values;
+					attr.count = 1;
+
+					ret = map_to_request(request, map, fr_ldap_map_getvalue, &attr);
+					if (ret == -1) {
+						rcode = RLM_MODULE_FAIL;
+						ldap_memfree(dn);
+						goto finish;
+					}
+					continue;
+				}
+
+				RDEBUG3("Attribute \"%s\" not found in LDAP object", expanded->attrs[i]);
+
+				continue;
+			}
+			attr.count = ldap_count_values_len(attr.values);
+
+			ret = map_to_request(request, map, fr_ldap_map_getvalue, &attr);
+			ldap_value_free_len(attr.values);
+			if (ret == -1) {
+				rcode = RLM_MODULE_FAIL;
+				ldap_memfree(dn);
+				goto finish;
+			}
+		}
+		ldap_memfree(dn);
+		REXDENT();
+	}
+
+finish:
+	RETURN_MODULE_RCODE(rcode);
+}
+
+/**  Ensure map context is properly cleared up
+ *
+ */
+static int map_ctx_free(ldap_map_ctx_t *map_ctx)
+{
+	talloc_free(map_ctx->expanded.ctx);
+	ldap_free_urldesc(map_ctx->ldap_url);
+	return (0);
+}
+
 /** Perform a search and map the result of the search to server attributes
  *
  * Unlike LDAP xlat, this can be used to process attributes from multiple entries.
@@ -824,17 +943,12 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
 
 	LDAPURLDesc		*ldap_url;
-
-	LDAPMessage		*entry = NULL;
-	map_t const		*map;
 	char const 		*url_str;
 
-	char			*host_url;
-	fr_ldap_query_t		*query;
 	fr_ldap_thread_trunk_t	*ttrunk;
 
-	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
 	fr_value_box_t		*url_head = fr_value_box_list_head(url);
+	ldap_map_ctx_t		*map_ctx;
 
 	/*
 	 *	FIXME - Maybe it can be NULL?
@@ -858,121 +972,43 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 		RETURN_MODULE_FAIL;
 	}
 
-	if (ldap_url_parse(url_str, &ldap_url)){
+	MEM(map_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_map_ctx_t));
+	talloc_set_destructor(map_ctx, map_ctx_free);
+	map_ctx->maps = maps;
+
+	if (ldap_url_parse(url_str, &map_ctx->ldap_url)){
 		REDEBUG("Parsing LDAP URL failed");
+	fail:
+		talloc_free(map_ctx);
 		RETURN_MODULE_FAIL;
 	}
+	ldap_url = map_ctx->ldap_url;
 
 	/*
 	 *	Expand the RHS of the maps to get the name of the attributes.
 	 */
-	if (fr_ldap_map_expand(&expanded, request, maps) < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto free_urldesc;
-	}
+	if (fr_ldap_map_expand(&map_ctx->expanded, request, maps) < 0) goto fail;
 
 	/*
 	 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
 	 */
 	if (!ldap_url->lud_host) {
-		host_url = inst->handle_config.server;
+		map_ctx->host_url = inst->handle_config.server;
 	} else {
-		host_url = talloc_asprintf(unlang_interpret_frame_talloc_ctx(request), "%s://%s:%d",
-					   ldap_url->lud_scheme, ldap_url->lud_host, ldap_url->lud_port);
+		map_ctx->host_url = talloc_asprintf(map_ctx, "%s://%s:%d", ldap_url->lud_scheme,
+						    ldap_url->lud_host, ldap_url->lud_port);
 	}
 
-	ttrunk =  fr_thread_ldap_trunk_get(thread, host_url, inst->handle_config.admin_identity,
+	ttrunk =  fr_thread_ldap_trunk_get(thread, map_ctx->host_url, inst->handle_config.admin_identity,
 					   inst->handle_config.admin_password, request, &inst->handle_config);
-	if (!ttrunk) goto free_expanded;
+	if (!ttrunk) goto fail;
 
-	if (fr_ldap_trunk_search(&rcode,
-			    	 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, ldap_url->lud_dn,
-				 ldap_url->lud_scope, ldap_url->lud_filter, expanded.attrs, NULL, NULL, false) < 0) {
-		goto free_expanded;
-	}
-	switch (rcode) {
-	case RLM_MODULE_OK:
-		rcode = RLM_MODULE_UPDATED;
-		break;
+	if (unlang_function_push(request, NULL, mod_map_resume, NULL, 0,
+				 UNLANG_SUB_FRAME, map_ctx) != UNLANG_ACTION_PUSHED_CHILD) goto fail;
 
-	case RLM_MODULE_NOTFOUND:
-		goto free_expanded;
-
-	default:
-		rcode = RLM_MODULE_FAIL;
-		goto free_expanded;
-	}
-
-	for (entry = ldap_first_entry(query->ldap_conn->handle, query->result);
-	     entry;
-	     entry = ldap_next_entry(query->ldap_conn->handle, entry)) {
-		char	*dn = NULL;
-		int	i;
-
-
-		if (RDEBUG_ENABLED2) {
-			dn = ldap_get_dn(query->ldap_conn->handle, entry);
-			RDEBUG2("Processing \"%s\"", dn);
-		}
-
-		RINDENT();
-		for (map = map_list_head(maps), i = 0;
-		     map != NULL;
-		     map = map_list_next(maps, map), i++) {
-			int			ret;
-			fr_ldap_result_t	attr;
-
-			attr.values = ldap_get_values_len(query->ldap_conn->handle, entry, expanded.attrs[i]);
-			if (!attr.values) {
-				/*
-				 *	Many LDAP directories don't expose the DN of
-				 *	the object as an attribute, so we need this
-				 *	hack, to allow the user to retrieve it.
-				 */
-				if (strcmp(LDAP_VIRTUAL_DN_ATTR, expanded.attrs[i]) == 0) {
-					struct berval value;
-					struct berval *values[2] = { &value, NULL };
-
-					if (!dn) dn = ldap_get_dn(query->ldap_conn->handle, entry);
-					value.bv_val = dn;
-					value.bv_len = strlen(dn);
-
-					attr.values = values;
-					attr.count = 1;
-
-					ret = map_to_request(request, map, fr_ldap_map_getvalue, &attr);
-					if (ret == -1) {
-						rcode = RLM_MODULE_FAIL;
-						ldap_memfree(dn);
-						goto free_expanded;
-					}
-					continue;
-				}
-
-				RDEBUG3("Attribute \"%s\" not found in LDAP object", expanded.attrs[i]);
-
-				continue;
-			}
-			attr.count = ldap_count_values_len(attr.values);
-
-			ret = map_to_request(request, map, fr_ldap_map_getvalue, &attr);
-			ldap_value_free_len(attr.values);
-			if (ret == -1) {
-				rcode = RLM_MODULE_FAIL;
-				ldap_memfree(dn);
-				goto free_expanded;
-			}
-		}
-		ldap_memfree(dn);
-		REXDENT();
-	}
-
-free_expanded:
-	talloc_free(expanded.ctx);
-free_urldesc:
-	ldap_free_urldesc(ldap_url);
-
-	RETURN_MODULE_RCODE(rcode);
+	return fr_ldap_trunk_search(&rcode, map_ctx, &map_ctx->query, request, ttrunk, ldap_url->lud_dn,
+				    ldap_url->lud_scope, ldap_url->lud_filter, map_ctx->expanded.attrs,
+				    NULL, NULL, true);
 }
 
 /** Perform LDAP-Group comparison checking
