@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file xlat_register.c
+ * @file xlat_func.c
  * @brief Registration API for xlat functions
  *
  * @copyright 2023 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
