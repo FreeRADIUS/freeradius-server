@@ -60,6 +60,8 @@ int		xlat_func_args_set(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(no
 
 int		xlat_func_mono_set(xlat_t *xlat, xlat_arg_parser_t const *arg) CC_HINT(nonnull);
 
+void		xlat_func_call_env_set(xlat_t *x, call_method_env_t const *env) CC_HINT(nonnull);
+
 void		xlat_func_flags_set(xlat_t *x, xlat_func_flags_t flags) CC_HINT(nonnull);
 
 void		xlat_func_print_set(xlat_t *xlat, xlat_print_t func);

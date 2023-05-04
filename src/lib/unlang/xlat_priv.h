@@ -88,6 +88,10 @@ typedef struct xlat_s {
 	xlat_input_type_t	input_type;		//!< Type of input used.
 	xlat_arg_parser_t const	*args;			//!< Definition of args consumed.
 
+	call_method_env_t const	*call_env;		//!< Optional tmpl expansions performed before calling the
+							///< xlat.  Typically used for xlats which refer to tmpls
+							///< in their module config.
+
 	fr_type_t		return_type;		//!< Function is guaranteed to return one or more boxes
 							///< of this type.  If the return type is FR_TYPE_VOID
 							///< then the xlat function can return any type of output.
