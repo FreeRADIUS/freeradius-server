@@ -621,6 +621,12 @@ static void ldap_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_
 	 */
 	if (!query->treq) return;
 
+	/*
+	 *	The query needs to be parented by the treq so that it still
+	 *	exists when the cancel_mux callback is run.
+	 */
+	talloc_steal(query->treq, query);
+
 	fr_trunk_request_signal_cancel(query->treq);
 
 	/*
@@ -629,7 +635,6 @@ static void ldap_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_
 	 *	the trunk code.
 	 */
 	query->treq = NULL;
-
 }
 
 #define SET_LDAP_CTRLS(_dest, _src) \
@@ -699,10 +704,6 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 	switch (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
 	case FR_TRUNK_ENQUEUE_OK:
 	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
-		/*
-		 *	Ensure the query ctx will last until the trunk request frees its children
-		 */
-		talloc_reference(query->treq, query);
 		break;
 
 	default:
@@ -776,10 +777,6 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 	switch (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
 	case FR_TRUNK_ENQUEUE_OK:
 	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
-		/*
-		 *	Ensure the query ctx will last until the trunk request frees its children
-		 */
-		talloc_reference(query->treq, query);
 		break;
 
 	default:
@@ -872,10 +869,6 @@ unlang_action_t fr_ldap_trunk_extended(rlm_rcode_t *p_result,
 	switch (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
 	case FR_TRUNK_ENQUEUE_OK:
 	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
-		/*
-		 *	Ensure the query ctx will last until the trunk request frees its children
-		 */
-		talloc_reference(query->treq, query);
 		break;
 
 	default:

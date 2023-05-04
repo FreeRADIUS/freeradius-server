@@ -82,7 +82,6 @@ static void _ldap_referral_send(UNUSED fr_trunk_t *trunk, UNUSED fr_trunk_state_
 	switch (fr_trunk_request_enqueue(&query->treq, referral->ttrunk->trunk, request, query, NULL)) {
 	case FR_TRUNK_ENQUEUE_OK:
 	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
-		talloc_reference(query->treq, query);
 		break;
 
 	default:
@@ -238,7 +237,6 @@ int fr_ldap_referral_follow(fr_ldap_thread_t *t, request_t *request, fr_ldap_que
 		switch (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
 		case FR_TRUNK_ENQUEUE_OK:
 		case FR_TRUNK_ENQUEUE_IN_BACKLOG:
-			talloc_reference(query->treq, query);
 			break;
 
 		default:
@@ -330,7 +328,6 @@ int fr_ldap_referral_next(fr_ldap_thread_t *t, request_t *request, fr_ldap_query
 		switch(fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
 		case FR_TRUNK_ENQUEUE_OK:
 		case FR_TRUNK_ENQUEUE_IN_BACKLOG:
-			talloc_reference(query->treq, query);
 			break;
 
 		default:
