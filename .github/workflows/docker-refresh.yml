@@ -26,14 +26,14 @@ jobs:
         with:
           lfs: false
 
-      - name: Fetch images
+      - name: Fetch and label images
         shell: bash
         run: |
           docker pull "$DOCKER_BASE_IMAGE"
-          docker tag "$DOCKER_BASE_IMAGE" "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE"
+          echo "FROM $DOCKER_BASE_IMAGE" | docker build --label preserve=true -t "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE" -
           for IMAGE in $DOCKER_EXTRA_IMAGES; do \
             docker pull "$IMAGE"; \
-            docker tag "$IMAGE" "$DOCKER_REGISTRY/$IMAGE"; \
+            echo "FROM $IMAGE" | docker build --label preserve=true -t "$DOCKER_REGISTRY/$IMAGE" -; \
           done
 
       - name: Create build dependency package
@@ -53,10 +53,10 @@ jobs:
             mv freeradius-build-deps_1*.deb freeradius-build-deps-extra.deb
             chown $(stat -c'%u:%g' .git) *
 
-      - name: Build Docker image
+      - name: Build main Docker image
         shell: bash
         run: |
-          docker build --no-cache -f scripts/ci/Dockerfile -t "$DOCKER_IMAGE_NAME" .
+          docker build --no-cache -f scripts/ci/Dockerfile -t "$DOCKER_IMAGE_NAME" --label preserve=true .
 
       - name: Docker login
         uses: docker/login-action@v2
