@@ -337,6 +337,16 @@ int xlat_func_mono_set(xlat_t *x, xlat_arg_parser_t const args[])
 	return 0;
 }
 
+/** Register module method environment of an xlat
+ *
+ * @param[in,out] x		to have it's module method env registered.
+ * @param[in] env		to be registered.
+ */
+void xlat_func_mod_method_set(xlat_t *x, module_method_env_t const *env)
+{
+	x->method_env = env;
+}
+
 /** Specify flags that alter the xlat's behaviour
  *
  * @param[in] x			xlat to set flags for.

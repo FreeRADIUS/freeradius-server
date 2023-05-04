@@ -67,6 +67,8 @@ typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t out
 
 #include <freeradius-devel/unlang/xlat_ctx.h>
 
+#include <freeradius-devel/server/module.h>
+
 /** Instance data for an xlat expansion node
  *
  */
