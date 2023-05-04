@@ -537,6 +537,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *req
 
 {
 	ldap_rcode_t	status;
+	LDAPMessage	*result = NULL;
 
 	char const	*base_dn;
 	char		base_dn_buff[LDAP_MAX_DN_STR_LEN + 1];
@@ -608,11 +609,19 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *req
 	}
 
 	RINDENT();
-	status = rlm_ldap_search(NULL, inst, request, pconn, base_dn, inst->groupobj_scope, filter, NULL, NULL, NULL);
+	status = rlm_ldap_search(&result, inst, request, pconn, base_dn, inst->groupobj_scope, filter, NULL, NULL, NULL);
 	REXDENT();
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
-		RDEBUG("User found in group object \"%s\"", base_dn);
+	{
+		LDAPMessage	*entry = NULL;
+		char		*dn = NULL;
+		entry = ldap_first_entry((*pconn)->handle, result);
+		if (entry) dn = ldap_get_dn((*pconn)->handle, entry);
+		RDEBUG("User found in group object \"%s\"", dn);
+		ldap_memfree(dn);
+		ldap_msgfree(result);
+	}
 		break;
 
 	case LDAP_PROC_NO_RESULT:
