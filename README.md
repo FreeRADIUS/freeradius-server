@@ -6,7 +6,7 @@
 
 The FreeRADIUS Server Project is a high performance and highly
 configurable multi-protocol policy server, supporting RADIUS, DHCPv4
-DHCPv6, TACACS+ and VMPS. It is available under the terms of the GNU GPLv2.
+DHCPv6, DNS, TACACS+ and VMPS. It is available under the terms of the GNU GPLv2.
 Using RADIUS allows authentication and authorization for a network
 to be centralized, and minimizes the number of changes that have to
 be done when adding or deleting new users to a network.
@@ -88,8 +88,13 @@ the FreeRADIUS mailing lists.
 
 Instructions for what to post on the mailing list are [on the
 wiki](http://wiki.freeradius.org/list-help).  Please note that we DO
-recommend posting the output of `radiusd -X`.  We do NOT recommend
-posting the configuration files.
+recommend posting the output of `radiusd -X`.  That information shows
+what the server is doing when it receives packets, and how it
+processes those packets.
+
+We do NOT recommend posting the configuration files to the mailing
+list.  They don't help.  Instead, post the output of `radiusd -X`.  We
+really cannot emphasize that enough.
 
 ## Feedback, Defects, and Community Support
 
@@ -115,13 +120,13 @@ Instructions for gathering data for defect reports can be found in
 Under no circumstances should the issue tracker be used for support
 requests, those questions belong on the user's mailing list.  If you
 post questions related to the server in the issue tracker, the issue
-will be closed and locked.  If you persist in positing questions to
+will be closed and locked.  If you persist in posting questions to
 the issue tracker you will be banned from all FreeRADIUS project
 repositories on GitHub.
 
-Please do NOT complain that the developers aren't answering your
+Please do _not_ complain that the developers aren't answering your
 questions quickly enough, or aren't fixing the problems quickly
-enough.  Please do NOT complain if you're told to go read
+enough.  Please do _not_ complain if you're told to go read
 documentation.  We recognize that the documentation isn't perfect, but
 it *does* exist, and reading it can solve most common questions.
 
