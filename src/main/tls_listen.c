@@ -85,11 +85,12 @@ static void tls_socket_close(rad_listen_t *listener)
 	radius_update_listener(listener);
 
 	/*
-	 *	Do NOT free the listener here.  It's in use by
+	 *	Do NOT free the listener here.  It may be in use by
 	 *	a request, and will need to hang around until
 	 *	all of the requests are done.
 	 *
-	 *	It is instead free'd in remove_from_request_hash()
+	 *	It is instead free'd when all of the requests using it
+	 *	are done.
 	 */
 }
 
@@ -1032,18 +1033,15 @@ static int try_connect(listen_socket_t *sock)
 	now = time(NULL);
 	if ((sock->opened + sock->connect_timeout) < now) {
 		tls_error_io_log(NULL, sock->ssn, 0, "Timeout in SSL_connect");
-		goto fail;
+		return -1;
 	}
 
 	ret = SSL_connect(sock->ssn->ssl);
-	if (ret < 0) {
+	if (ret <= 0) {
 		switch (SSL_get_error(sock->ssn->ssl, ret)) {
 		default:
 			tls_error_io_log(NULL, sock->ssn, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
-			break;
-
-		case SSL_ERROR_NONE:
-			break;
+			return -1;
 
 		case SSL_ERROR_WANT_READ:
 			DEBUG3("(TLS) SSL_connect() returned WANT_READ");
@@ -1053,14 +1051,6 @@ static int try_connect(listen_socket_t *sock)
 			DEBUG3("(TLS) SSL_connect() returned WANT_WRITE");
 			return 2;
 		}
-	}
-
-	if (ret <= 0) {
-	fail:
-		SSL_shutdown(sock->ssn->ssl);
-		TALLOC_FREE(sock->ssn);
-
-		return -1;
 	}
 
 	sock->ssn->connected = true;
@@ -1094,18 +1084,13 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 
 	if (!sock->ssn->connected) {
 		rcode = try_connect(sock);
-		if (rcode <= 0) {
-			listener->status = RAD_LISTEN_STATUS_EOL;
-			radius_update_listener(listener);
-			return rcode;
-		}
+		if (rcode <= 0) return rcode;
 
 		if (rcode == 2) return 0; /* more negotiation needed */
 
 #ifdef WITH_RADIUSV11
 		if (!sock->alpn_checked && (fr_radiusv11_client_get_alpn(listener) < 0)) {
-			listener->status = RAD_LISTEN_STATUS_EOL;
-			radius_update_listener(listener);
+			tls_socket_close(listener);
 			return -1;
 		}
 #endif
@@ -1265,15 +1250,13 @@ int proxy_tls_recv(rad_listen_t *listener)
 	DEBUG3("Proxy SSL socket has data to read");
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
 	data_len = proxy_tls_read(listener);
-	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-
 	if (data_len < 0) {
-		DEBUG("Closing TLS socket to home server");
-		PTHREAD_MUTEX_LOCK(&sock->mutex);
 		tls_socket_close(listener);
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+		DEBUG("Closing TLS socket to home server");
 		return 0;
 	}
+	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
 	if (data_len == 0) return 0; /* not done yet */
 
@@ -1399,12 +1382,12 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	if (!sock->ssn->connected) {
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
 		rcode = try_connect(sock);
-		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		if (rcode <= 0) {
-			listener->status = RAD_LISTEN_STATUS_EOL;
-			radius_update_listener(listener);
+			tls_socket_close(listener);
+			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return rcode;
 		}
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
 		/*
 		 *	More negotiation is needed, but remember to
