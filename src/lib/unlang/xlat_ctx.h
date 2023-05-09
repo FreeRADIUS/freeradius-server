@@ -43,6 +43,7 @@ typedef struct {
 	void const			*inst;			//!< xlat instance data.
 	void				*thread;		//!< xlat threadinstance data.
 	module_ctx_t const		*mctx;			//!< Synthesised module calling ctx.
+	void				*env_data;		//!< Expanded module env data.
 	void				*rctx;			//!< Resume context.
 } xlat_ctx_t;
 
@@ -79,9 +80,11 @@ typedef struct {
  * @param[in] _inst	Instance data of the module being called.
  * @param[in] _thread 	Instance data of the thread being called.
  * @param[in] _mctx	Module ctx.
+ * @param[in] _env_data	Expanded module env.
  * @param[in] _rctx	resume ctx data.
  */
-#define XLAT_CTX(_inst, _thread, _mctx, _rctx) &(xlat_ctx_t){ .inst = _inst, .thread = _thread, .mctx = _mctx, .rctx = _rctx }
+#define XLAT_CTX(_inst, _thread, _mctx, _env_data, _rctx) &(xlat_ctx_t){ .inst = _inst, .thread = _thread, \
+							    .mctx = _mctx, .env_data = _env_data, .rctx = _rctx }
 
 /** Wrapper to create a xlat_inst_ctx_t as a compound literal
  *
