@@ -1141,3 +1141,154 @@ void modules_init(char const *lib_dir)
 	 */
 	fr_atexit_global_once(_module_global_list_init, _module_global_list_free, UNCONST(char *, lib_dir));
 }
+
+/**  Perform a quick assessment of how many parsed module env will be produced.
+ *
+ * @param[in,out] vallen	Where to write the sum of the length of pair values.
+ * @param[in] cs		Conf section to search for pairs.
+ * @param[in] module_env	to parse.
+ * @return Number of parsed_module_env expected to be required.
+ */
+size_t method_env_count(size_t *vallen, CONF_SECTION const *cs, module_env_t const *module_env) {
+	size_t	pair_count, tmpl_count = 0;
+	CONF_PAIR const	*cp;
+
+	while (module_env->name) {
+		if (FR_BASE_TYPE(module_env->type) == FR_TYPE_SUBSECTION) {
+			CONF_SECTION const *subcs;
+			subcs = cf_section_find(cs, module_env->name, module_env->section.ident2);
+			if (!subcs) goto next;
+
+			tmpl_count += method_env_count(vallen, subcs, module_env->section.subcs);
+			goto next;
+		}
+		pair_count = 0;
+		cp = NULL;
+		while ((cp = cf_pair_find_next(cs, cp, module_env->name))) {
+			pair_count++;
+			*vallen += talloc_array_length(cf_pair_value(cp));
+		}
+		if (!pair_count && module_env->dflt) {
+			pair_count = 1;
+			*vallen += strlen(module_env->dflt);
+		}
+		tmpl_count += pair_count;
+	next:
+		module_env++;
+	}
+
+	return tmpl_count;
+}
+
+/** Parse per call module env
+ *
+ * Used for config options which must be parsed in the context in which
+ * the module is being called.
+ *
+ * @param[in] ctx		To allocate parsed environment in.
+ * @param[out] parsed		Where to write parsed environment.
+ * @param[in] name		Module name for error messages.
+ * @param[in] dict_def		Default dictionary to use when tokenizing tmpls.
+ * @param[in] cs		Module config.
+ * @param[in] module_env	to parse.
+ * @return
+ *	- 0 on success;
+ *	- <0 on failure;
+ */
+int method_env_parse(TALLOC_CTX *ctx, mod_env_parsed_head_t *parsed, char const *name, fr_dict_t const *dict_def,
+		     CONF_SECTION const *cs, module_env_t const *module_env) {
+	CONF_PAIR const		*cp, *next;
+	module_env_parsed_t	*module_env_parsed;
+	ssize_t			len, opt_count, multi_index;
+	char const		*value;
+	fr_token_t		quote;
+	fr_type_t		type;
+
+	while (module_env->name) {
+		if (FR_BASE_TYPE(module_env->type) == FR_TYPE_SUBSECTION) {
+			CONF_SECTION const *subcs;
+			subcs = cf_section_find(cs, module_env->name, module_env->section.ident2);
+			if (!subcs) goto next;
+
+			if (method_env_parse(ctx, parsed, name, dict_def, subcs, module_env->section.subcs) < 0) return -1;
+			goto next;
+		}
+
+		cp = cf_pair_find(cs, module_env->name);
+
+		if (!cp && !module_env->dflt) {
+			if (!module_env->pair.required) goto next;
+
+			cf_log_err(cs, "Module %s missing required option %s", name, module_env->name);
+			return -1;
+		}
+
+		/*
+		 *	Check for additional conf pairs and error
+		 *	if there is one and multi is not allowed.
+		 */
+		if (!module_env->pair.multi && ((next = cf_pair_find_next(cs, cp, module_env->name)))) {
+			cf_log_err(cf_pair_to_item(next), "Invalid duplicate configuration item '%s'", module_env->name);
+			return -1;
+		}
+
+		opt_count = cf_pair_count(cs, module_env->name);
+		if (opt_count == 0) opt_count = 1;
+
+		for (multi_index = 0; multi_index < opt_count; multi_index ++) {
+			MEM(module_env_parsed = talloc_zero(ctx, module_env_parsed_t));
+			module_env_parsed->rule = module_env;
+			module_env_parsed->opt_count = opt_count;
+			module_env_parsed->multi_index = multi_index;
+
+			if (cp) {
+				value = cf_pair_value(cp);
+				len = talloc_array_length(value) - 1;
+				quote = cf_pair_value_quote(cp);
+			} else {
+				value = module_env->dflt;
+				len = strlen(value);
+				quote = module_env->dflt_quote;
+			}
+
+			type = FR_BASE_TYPE(module_env->type);
+			if (tmpl_afrom_substr(module_env_parsed, &module_env_parsed->tmpl, &FR_SBUFF_IN(value, len),
+					      quote, NULL, &(tmpl_rules_t){
+							.cast = (type == FR_TYPE_VOID ? FR_TYPE_NULL : type),
+							.attr = {
+								.list_def = request_attr_request,
+								.dict_def = dict_def
+							}
+						}) < 0) {
+			error:
+				talloc_free(module_env_parsed);
+				cf_log_perr(cp, "Failed to parse '%s' for %s", cf_pair_value(cp), module_env->name);
+				return -1;
+			}
+
+			/*
+			 *	Ensure only valid TMPL types are produced.
+			 */
+			switch (module_env_parsed->tmpl->type) {
+			case TMPL_TYPE_ATTR:
+			case TMPL_TYPE_DATA:
+			case TMPL_TYPE_EXEC:
+			case TMPL_TYPE_XLAT:
+				break;
+
+			default:
+				cf_log_err(cp, "'%s' expands to invalid tmpl type %s", value,
+					   fr_table_str_by_value(tmpl_type_table, module_env_parsed->tmpl->type, "<INVALID>"));
+				goto error;
+			}
+
+			mod_env_parsed_insert_tail(parsed, module_env_parsed);
+
+			cp = cf_pair_find_next(cs, cp, module_env->name);
+		}
+	next:
+		module_env++;
+	}
+
+	return 0;
+}

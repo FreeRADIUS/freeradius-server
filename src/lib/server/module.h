@@ -34,7 +34,6 @@ extern "C" {
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/module_ctx.h>
 #include <freeradius-devel/unlang/action.h>
-#include <freeradius-devel/unlang/compile.h>
 #include <freeradius-devel/util/event.h>
 
 typedef struct module_s				module_t;
@@ -45,6 +44,11 @@ typedef struct module_env_s			module_env_t;
 typedef struct module_env_parsed_s		module_env_parsed_t;
 typedef struct module_method_env_s		module_method_env_t;
 typedef struct module_list_t			module_list_t;
+
+FR_DLIST_TYPES(mod_env_parsed)
+FR_DLIST_TYPEDEFS(mod_env_parsed, mod_env_parsed_head_t, mod_env_parsed_entry_t)
+
+#include <freeradius-devel/unlang/compile.h>
 
 #define MODULE_TYPE_THREAD_SAFE		(0 << 0) 	//!< Module is threadsafe.
 #define MODULE_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe.
@@ -119,9 +123,6 @@ typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-FR_DLIST_TYPES(mod_env_parsed)
-FR_DLIST_TYPEDEFS(mod_env_parsed, mod_env_parsed_head_t, mod_env_parsed_entry_t)
 
 struct module_method_env_s {
 	size_t				inst_size;		//!< Size of per call module env.
@@ -456,6 +457,16 @@ module_instance_t *module_alloc(module_list_t *ml,
 module_list_t	*module_list_alloc(TALLOC_CTX *ctx, char const *name) CC_HINT(warn_unused_result);
 
 void		modules_init(char const *lib_dir);
+/** @} */
+
+/** @name Module method parsing
+ *
+ * @{
+ */
+size_t		method_env_count(size_t *vallen, CONF_SECTION const *cs, module_env_t const *module_env);
+
+int		method_env_parse(TALLOC_CTX *ctx, mod_env_parsed_head_t *parsed, char const *name,
+				 fr_dict_t const *dict_def, CONF_SECTION const *cs, module_env_t const *module_env);
 /** @} */
 
 #ifdef __cplusplus
