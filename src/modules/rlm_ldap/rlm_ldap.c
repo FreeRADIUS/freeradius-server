@@ -95,30 +95,23 @@ static CONF_PARSER user_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const module_env_t auth_user_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_auth_mod_env_t, user_base,
-			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
-	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_auth_mod_env_t, user_filter,
-			       NULL, T_INVALID, false, true, true) },
-	{ FR_MODULE_ENV_SUBSECTION("sasl", NULL, sasl_module_env) },
-	MODULE_ENV_TERMINATOR
-};
+#define user_mod_env(_prefix, _struct, ...) \
+static const module_env_t _prefix ## _user_module_env[] = { \
+	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, _struct, user_base, \
+			       "", T_SINGLE_QUOTED_STRING, true, false, true) }, \
+	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, _struct, user_filter, \
+			       NULL, T_INVALID, false, true, true) }, \
+	##__VA_ARGS__, \
+	MODULE_ENV_TERMINATOR \
+}
 
-static const module_env_t autz_user_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_mod_env_t, user_base,
-			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
-	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_mod_env_t, user_filter,
-			       NULL, T_INVALID, false, true, true) },
-	MODULE_ENV_TERMINATOR
-};
+user_mod_env(auth, ldap_auth_mod_env_t, { FR_MODULE_ENV_SUBSECTION("sasl", NULL, sasl_module_env)} );
 
-static const module_env_t usermod_user_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_usermod_mod_env_t, user_base,
-			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
-	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_usermod_mod_env_t, user_filter,
-			       NULL, T_INVALID, false, true, true) },
-	MODULE_ENV_TERMINATOR
-};
+user_mod_env(autz, ldap_autz_mod_env_t);
+
+user_mod_env(usermod, ldap_usermod_mod_env_t);
+
+user_mod_env(memberof, ldap_memberof_mod_env_t);
 
 /*
  *	Group configuration
@@ -141,6 +134,12 @@ static CONF_PARSER group_config[] = {
 
 static const module_env_t autz_group_module_env[] = {
 	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_mod_env_t, group_base,
+			       NULL, T_INVALID, false, false, true) },
+	MODULE_ENV_TERMINATOR
+};
+
+static const module_env_t memberof_group_module_env[] = {
+	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_memberof_mod_env_t, group_base,
 			       NULL, T_INVALID, false, false, true) },
 	MODULE_ENV_TERMINATOR
 };
@@ -215,6 +214,12 @@ static const module_env_t usermod_module_env[] = {
 	MODULE_ENV_TERMINATOR
 };
 
+static const module_env_t memberof_module_env[] = {
+	{ FR_MODULE_ENV_SUBSECTION("user", NULL, memberof_user_module_env) },
+	{ FR_MODULE_ENV_SUBSECTION("group", NULL, memberof_group_module_env) },
+	MODULE_ENV_TERMINATOR
+};
+
 static const module_method_env_t authenticate_method_env = {
 	.inst_size = sizeof(ldap_auth_mod_env_t),
 	.inst_type = "ldap_auth_mod_env_t",
@@ -231,6 +236,12 @@ static const module_method_env_t usermod_method_env = {
 	.inst_size = sizeof(ldap_usermod_mod_env_t),
 	.inst_type = "ldap_usermod_mod_env_t",
 	.env = usermod_module_env
+};
+
+static const module_method_env_t memberof_method_env = {
+	.inst_size = sizeof(ldap_memberof_mod_env_t),
+	.inst_type = "ldap_memberof_mod_env_t",
+	.env = memberof_module_env
 };
 
 static fr_dict_t const *dict_freeradius;
