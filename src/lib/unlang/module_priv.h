@@ -42,15 +42,6 @@ typedef struct {
 								///< to be allocated from.
 } unlang_module_t;
 
-/** What state the module env for the current call is in.
- *
- */
-typedef enum {
-	MOD_ENV_EXP_INIT = 0,		//!< Expansion not yet started.
-	MOD_ENV_EXP_PROC,		//!< Expansion in progress.
-	MOD_ENV_EXP_DONE		//!< All expansions done.
-} module_env_state_t;
-
 /** A module stack entry
  *
  * Represents a single module call on the unlang stack.

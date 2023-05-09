@@ -98,6 +98,15 @@ typedef enum {
 						///< stack.
 } unlang_frame_action_t;
 
+/** What state the module env for the current call is in.
+ *
+ */
+typedef enum {
+	MOD_ENV_EXP_INIT = 0,			//!< Expansion not yet started.
+	MOD_ENV_EXP_PROC,			//!< Expansion in progress.
+	MOD_ENV_EXP_DONE			//!< All expansions done.
+} module_env_state_t;
+
 #define UNLANG_NEXT_STOP	(false)
 #define UNLANG_NEXT_SIBLING	(true)
 
