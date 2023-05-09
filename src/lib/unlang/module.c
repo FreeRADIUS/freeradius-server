@@ -983,7 +983,6 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		 *	value returned but the last expansion.
 		 */
 		case MOD_ENV_EXP_PROC:
-		{
 			env = state->last_expanded;
 
 			/*
@@ -1006,7 +1005,6 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 				ua = UNLANG_ACTION_FAIL;
 				goto fail;
 			}
-		}
 			break;
 
 		case MOD_ENV_EXP_DONE:
