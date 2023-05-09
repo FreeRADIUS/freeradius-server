@@ -520,6 +520,57 @@ static inline void frame_repeat(unlang_stack_frame_t *frame, unlang_process_t pr
 	frame->process = process;
 }
 
+/** Parse the result of module_env tmpl expansion
+ */
+static inline CC_HINT(always_inline) int module_env_value_parse(TALLOC_CTX *ctx, request_t *request, void *out,
+								void **tmpl_out, module_env_parsed_t const *env,
+								fr_value_box_list_t *tmpl_expanded) {
+	fr_value_box_t			*vb;
+
+	vb = fr_value_box_list_head(tmpl_expanded);
+
+	if (!vb) {
+		if (!env->rule->pair.nullable) {
+			RPEDEBUG("Failed to evaluate required module option %s", env->rule->name);
+			return -1;
+		}
+		return 0;
+	}
+
+	/*
+	 *	Concatenate multiple boxes if needed
+	 */
+	if (env->rule->pair.concat &&
+	    fr_value_box_list_concat_in_place(vb, vb, tmpl_expanded, FR_BASE_TYPE(env->rule->type),
+					      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0 ) {
+		RPEDEBUG("Failed concatenating values for %s", env->rule->name);
+		return -1;
+	}
+
+	if (env->rule->pair.single && (fr_value_box_list_num_elements(tmpl_expanded) > 1)) {
+		RPEDEBUG("%d values found for %s.  Only one is allowed",
+			 fr_value_box_list_num_elements(tmpl_expanded), env->rule->name);
+		return -1;
+	}
+
+	while ((vb = fr_value_box_list_pop_head(tmpl_expanded))) {
+		switch (env->rule->pair.type) {
+		case MOD_ENV_TYPE_VALUE_BOX:
+			fr_value_box_copy_shallow(ctx, (fr_value_box_t *)(out), vb);
+			break;
+
+		case MOD_ENV_TYPE_VALUE_BOX_LIST:
+			if (!fr_value_box_list_initialised((fr_value_box_list_t *)out)) fr_value_box_list_init((fr_value_box_list_t *)out);
+			fr_value_box_list_insert_tail((fr_value_box_list_t *)out, vb);
+			break;
+		}
+	}
+
+	if (tmpl_out) *tmpl_out = env->tmpl;
+
+	return 0;
+}
+
 /** @name Conversion functions for converting #unlang_t to its specialisations
  *
  * Simple conversions: #unlang_module_t and #unlang_group_t are subclasses of #unlang_t,
