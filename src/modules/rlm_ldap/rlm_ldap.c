@@ -1056,7 +1056,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 
 	return fr_ldap_trunk_search(&rcode, map_ctx, &map_ctx->query, request, ttrunk, ldap_url->lud_dn,
 				    ldap_url->lud_scope, ldap_url->lud_filter, map_ctx->expanded.attrs,
-				    NULL, NULL, true);
+				    NULL, NULL);
 }
 
 /** Perform async lookup of user DN if required for authentication
@@ -1290,7 +1290,7 @@ static unlang_action_t rlm_ldap_map_profile(request_t *request, ldap_autz_ctx_t 
 
 	return fr_ldap_trunk_search(&ret, profile_ctx, &profile_ctx->query, request, ttrunk, dn,
 				    LDAP_SCOPE_BASE, autz_ctx->call_env->profile_filter.vb_strvalue,
-				    expanded->attrs, NULL, NULL, true);
+				    expanded->attrs, NULL, NULL);
 }
 
 /** Start LDAP authorization with async lookup of user DN

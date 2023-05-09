@@ -647,25 +647,6 @@ do { \
 	} \
 } while (0)
 
-
-/** Hack to make code work with synchronous interpreter
- *
- */
-static unlang_action_t ldap_trunk_query_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-					      UNUSED request_t *request, UNUSED void *uctx)
-{
-	return UNLANG_ACTION_YIELD;
-}
-
-/** Hack to add timeouts
- *
- * Here we send a cancellation signal to the trunk if the request hits the timeout limit.
- */
-static void _ldap_search_sync_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
-{
-	ldap_trunk_query_cancel(NULL, FR_SIGNAL_CANCEL, uctx);
-}
-
 /** Run an async or sync search LDAP query on a trunk connection
  *
  * @param[out] p_result		from synchronous evaluation.
@@ -679,22 +660,15 @@ static void _ldap_search_sync_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time
  * @param[in] attrs		to be returned.
  * @param[in] serverctrls	specific to this query.
  * @param[in] clientctrls	specific to this query.
- * @param[in] is_async		If true, will return UNLANG_ACTION_YIELD
- *				and push a search onto the unlang stack
- *				for the current request.
- *				If false, will perform a synchronous search
- *				and provide the result in p_result.
  * @return
  *	- UNLANG_ACTION_FAIL on error.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
- *	- UNLANG_ACTION_CALCULATE_RESULT if the query was run synchronously.
  */
 unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 				     TALLOC_CTX *ctx,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *base_dn, int scope, char const *filter, char const * const *attrs,
-				     LDAPControl **serverctrls, LDAPControl **clientctrls,
-				     bool is_async)
+				     LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	unlang_action_t action;
 	fr_ldap_query_t *query;
@@ -714,36 +688,12 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	action = unlang_function_push(request, is_async ? NULL : ldap_trunk_query_start, ldap_trunk_query_results,
-				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL, is_async ? UNLANG_SUB_FRAME : UNLANG_TOP_FRAME, query);
+	action = unlang_function_push(request, NULL, ldap_trunk_query_results,
+				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;
 
 	*out = query;
-
-	/*
-	 *	Hack until everything is async
-	 */
-	if (!is_async) {
-		fr_event_timer_t const *ev = NULL;
-
-		fr_time_delta_t timeout = ttrunk->config.res_timeout;
-
-		/*
-		 *	Add an event that'll send a cancellation request
-		 *	to the request.
-		 */
-		if (fr_time_delta_ispos(timeout)) {
-			if (fr_event_timer_in(ctx, unlang_interpret_event_list(request), &ev, timeout,
-					      _ldap_search_sync_timeout, query) < 0) goto error;
-		}
-
-		*p_result = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-
-		talloc_const_free(ev);	/* If the timer fired this should be NULL */
-
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
