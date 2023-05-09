@@ -245,6 +245,27 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 		}
 	}
 
+	/*
+	 *	If the xlat has a module env defined, parse it.
+	 */
+	if (call->func->method_env) {
+		size_t				count, vallen = 0;
+		CONF_SECTION			*cs = call->func->mctx->inst->conf;
+		module_method_env_t const	*method_env = call->func->method_env;
+
+		count = method_env_count(&vallen, cs, method_env->env);
+		MEM(xi->mod_env_ctx = _talloc_pooled_object(xi, 0, "mod_env_ctx", count * 4,
+					(sizeof(module_env_parsed_t) + sizeof(tmpl_t)) * count + vallen * 2));
+		mod_env_parsed_init(&xi->mod_env_parsed);
+		if (method_env_parse(xi->mod_env_ctx, &xi->mod_env_parsed, call->func->mctx->inst->name,
+				     call->dict, call->func->mctx->inst->conf, method_env->env) < 0) {
+			talloc_free(xi);
+			return NULL;
+		}
+		fr_assert_msg(method_env->inst_size, "Method environment for module %s, xlat %s declared, "
+			      "but no inst_size set", call->func->mctx->inst->name, call->func->name);
+	}
+
 	return xi;
 }
 

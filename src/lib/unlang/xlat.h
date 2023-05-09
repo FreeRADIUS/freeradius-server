@@ -80,6 +80,9 @@ struct xlat_inst {
 
 	xlat_exp_t		*node;		//!< Node this data relates to.
 	void			*data;		//!< xlat node specific instance data.
+	mod_env_parsed_head_t	mod_env_parsed;	//!< The per call parsed module environment.
+	TALLOC_CTX		*mod_env_ctx;	//!< A talloc pooled object for parsed module env
+						///< to be allocated from.
 };
 
 /** Thread specific instance data for xlat expansion node
