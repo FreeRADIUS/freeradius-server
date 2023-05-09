@@ -44,8 +44,6 @@ typedef struct {
 	/*
 	 *	User object attributes and filters
 	 */
-	tmpl_t	*userobj_filter;		//!< Filter to retrieve only user objects.
-	tmpl_t	*userobj_base_dn;		//!< DN to search for users under.
 	char const	*userobj_scope_str;		//!< Scope (sub, one, base).
 	char const	*userobj_sort_by;		//!< List of attributes to sort by.
 	LDAPControl	*userobj_sort_ctrl;		//!< Server side sort control.
@@ -65,7 +63,6 @@ typedef struct {
 	 *	Group object attributes and filters
 	 */
 	char const	*groupobj_filter;		//!< Filter to retrieve only group objects.
-	tmpl_t	*groupobj_base_dn;		//!< DN to search for users under.
 	char const	*groupobj_scope_str;		//!< Scope (sub, one, base).
 	int		groupobj_scope;			//!< Search scope.
 
