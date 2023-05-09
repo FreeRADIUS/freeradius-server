@@ -148,7 +148,7 @@ static unlang_action_t ldap_group_name2dn_start(rlm_rcode_t *p_result, UNUSED in
 
 	return fr_ldap_trunk_search(p_result, group_ctx, &group_ctx->query, request, group_ctx->ttrunk,
 				    group_ctx->base_dn->vb_strvalue, inst->groupobj_scope, filter,
-				    null_attrs, NULL, NULL, true);
+				    null_attrs, NULL, NULL);
 }
 
 /** Process the results of looking up group DNs from names
@@ -262,7 +262,7 @@ static unlang_action_t ldap_group_dn2name_start(rlm_rcode_t *p_result, UNUSED in
 	RDEBUG2("Resolving group DN \"%s\" to group name", *group_ctx->dn);
 
 	return fr_ldap_trunk_search(p_result, group_ctx, &group_ctx->query, request, group_ctx->ttrunk, *group_ctx->dn,
-				    LDAP_SCOPE_BASE, NULL, group_ctx->attrs, NULL, NULL, true);
+				    LDAP_SCOPE_BASE, NULL, group_ctx->attrs, NULL, NULL);
 }
 
 /** Process the results of a group DN -> name lookup.
@@ -569,8 +569,7 @@ static unlang_action_t ldap_cacheable_groupobj_start(rlm_rcode_t *p_result, UNUS
 	group_ctx->attrs[0] = inst->groupobj_name_attr;
 	return fr_ldap_trunk_search(p_result, group_ctx, &group_ctx->query, request, group_ctx->ttrunk,
 				    group_ctx->base_dn->vb_strvalue, inst->groupobj_scope,
-				    group_ctx->filter, group_ctx->attrs, NULL, NULL, true);
-
+				    group_ctx->filter, group_ctx->attrs, NULL, NULL);
 }
 
 /** Cancel a pending group object lookup.
@@ -848,7 +847,7 @@ static unlang_action_t ldap_dn2name_start (rlm_rcode_t *p_result, UNUSED int *pr
 
 	return fr_ldap_trunk_search(p_result, group_ctx, &group_ctx->query, request, xlat_ctx->ttrunk,
 				    group_ctx->lookup_dn, LDAP_SCOPE_BASE, NULL, group_ctx->attrs,
-				    NULL, NULL, true);
+				    NULL, NULL);
 }
 
 /** Cancel an in-progress DN to name lookup.
@@ -875,7 +874,7 @@ static unlang_action_t ldap_check_userobj_start (UNUSED rlm_rcode_t *p_result, U
 	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(group_ctx->xlat_ctx, ldap_memberof_xlat_ctx_t);
 
 	return fr_ldap_trunk_search(p_result, xlat_ctx, &xlat_ctx->query, request, xlat_ctx->ttrunk, xlat_ctx->dn,
-				    LDAP_SCOPE_BASE, NULL, xlat_ctx->attrs, NULL, NULL, true);
+				    LDAP_SCOPE_BASE, NULL, xlat_ctx->attrs, NULL, NULL);
 }
 
 /** Process the results of evaluating a user object when checking group membership

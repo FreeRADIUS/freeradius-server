@@ -716,8 +716,7 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 				     TALLOC_CTX *ctx,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *base_dn, int scope, char const *filter, char const * const *attrs,
-				     LDAPControl **serverctrls, LDAPControl **clientctrls,
-				     bool is_async);
+				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 				     TALLOC_CTX *ctx,

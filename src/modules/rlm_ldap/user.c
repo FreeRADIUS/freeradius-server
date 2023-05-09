@@ -171,7 +171,7 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst
 
 	return fr_ldap_trunk_search(NULL, user_ctx, &user_ctx->query, request, user_ctx->ttrunk,
 				    user_ctx->base_dn, user_ctx->inst->userobj_scope, user_ctx->filter,
-				    user_ctx->attrs, serverctrls, NULL, true);
+				    user_ctx->attrs, serverctrls, NULL);
 }
 
 /** Check for presence of access attribute in result
