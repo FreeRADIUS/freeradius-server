@@ -305,6 +305,26 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 	xlat_action_t			xa;
 	xlat_exp_head_t const		*child = NULL;
 
+	/*
+	 *	If the xlat is a function with a method_env, expand it before calling the function.
+	 */
+	if ((state->exp->type == XLAT_FUNC) && state->exp->call.func->call_env && !state->env_data) {
+		unlang_action_t ua = call_env_expand(state, request, &state->env_data,
+						     state->exp->call.func->call_env,
+						     &state->exp->call.inst->call_env_parsed);
+		switch (ua) {
+		case UNLANG_ACTION_FAIL:
+			goto fail;
+
+		case UNLANG_ACTION_PUSHED_CHILD:
+			frame_repeat(frame, unlang_xlat_repeat);
+			return UNLANG_ACTION_PUSHED_CHILD;
+
+		default:
+			break;
+		}
+	}
+
 	xa = xlat_frame_eval_repeat(state->ctx, &state->values, &child,
 				    &state->alternate, request, state->head, &state->exp, state->env_data, &state->out);
 	switch (xa) {
