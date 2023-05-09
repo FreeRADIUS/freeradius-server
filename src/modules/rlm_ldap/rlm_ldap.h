@@ -235,9 +235,6 @@ int rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst, request_t 
 			     fr_value_box_t *filter_box, fr_ldap_thread_trunk_t *ttrunk, char const *attrs[],
 			     fr_ldap_query_t **query_out);
 
-char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *tconn,
-			       char const *attrs[], bool force, LDAPMessage **result, LDAP **handle, rlm_rcode_t *rcode);
-
 rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAPMessage *entry);
 
 void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_thread_trunk_t const *ttrunk);
