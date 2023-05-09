@@ -122,7 +122,7 @@ static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, fr_tim
 	 */
 	ev->timeout(XLAT_CTX(ev->inst->data,
 			     ev->thread->data,
-			     ev->thread->mctx,
+			     ev->thread->mctx, NULL,
 			     UNCONST(void *, ev->rctx)),
 			     ev->request, now);
 
@@ -309,7 +309,7 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 	xlat_exp_head_t const		*child = NULL;
 
 	xa = xlat_frame_eval_repeat(state->ctx, &state->values, &child,
-				    &state->alternate, request, state->head, &state->exp, &state->out);
+				    &state->alternate, request, state->head, &state->exp, state->env_data, &state->out);
 	switch (xa) {
 	case XLAT_ACTION_PUSH_CHILD:
 		fr_assert(child);
