@@ -45,6 +45,10 @@ typedef struct {
 
 	rindent_t		indent;				//!< indentation
 
+	module_env_state_t		env_state;		//!< State of processing module env
+	module_env_parsed_t const	*last_expanded;		//!< Last module env to be expanded
+	fr_value_box_list_t		tmpl_expanded;		//!< Value boxes produced by last expanded tmpl.
+	void				*env_data;		//!< Expanded per call module environment tmpls.
 	/*
 	 *	For func and alternate
 	 */
