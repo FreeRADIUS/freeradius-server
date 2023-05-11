@@ -132,12 +132,12 @@ fr_atomic_queue_t *fr_atomic_queue_alloc(TALLOC_CTX *ctx, size_t size)
  * This function is needed because the atomic queue memory
  * must be cache line aligned.
  */
-void fr_atomic_queue_free(fr_atomic_queue_t **aq)
+void fr_atomic_queue_free(fr_atomic_queue_t *aq)
 {
-	if (!*aq) return;
+	if (!aq) return;
 
-	talloc_free((*aq)->chunk);
-	*aq = NULL;
+	talloc_free((aq->chunk);
+	aq = NULL;
 }
 
 /** Push a pointer into the atomic queue
