@@ -1639,6 +1639,11 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 	if ((node->last_hup + 2) >= when) return 1;
 	node->last_hup = when;
 
+	/*
+	 *	Clear any old instances before attempting to reload
+	 */
+	module_instance_free_old(cs, node, when);
+
 	cf_log_module(cs, "Trying to reload module \"%s\"", node->name);
 
 	/*
@@ -1661,8 +1666,6 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 	}
 
 	INFO(" Module: Reloaded module \"%s\"", node->name);
-
-	module_instance_free_old(cs, node, when);
 
 	/*
 	 *	Save the old instance handle for later deletion.
