@@ -136,7 +136,7 @@ void fr_atomic_queue_free(fr_atomic_queue_t *aq)
 {
 	if (!aq) return;
 
-	talloc_free((aq->chunk);
+	talloc_free(aq->chunk);
 	aq = NULL;
 }
 
