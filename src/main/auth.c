@@ -318,6 +318,10 @@ int rad_postauth(REQUEST *request)
 		postauth_type = vp->vp_integer;
 		RDEBUG2("Using Post-Auth-Type %s",
 			dict_valnamebyattr(PW_POST_AUTH_TYPE, 0, postauth_type));
+
+		if (postauth_type == PW_POST_AUTH_TYPE_CHALLENGE) request->reply->code = PW_CODE_ACCESS_CHALLENGE;
+
+		if (postauth_type == PW_POST_AUTH_TYPE_REJECT) request->reply->code = PW_CODE_ACCESS_REJECT;
 	}
 
 	result = process_post_auth(postauth_type, request);
