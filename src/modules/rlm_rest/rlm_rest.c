@@ -453,7 +453,6 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		 *	Move to next argument
 		 */
 		in_vb = fr_value_box_list_pop_head(in);
-		uri_vb = NULL;
 	} else {
 		section->method = REST_HTTP_METHOD_GET;
 	}
