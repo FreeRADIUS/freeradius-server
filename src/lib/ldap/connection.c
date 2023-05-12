@@ -969,7 +969,8 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 {
 	fr_ldap_thread_trunk_t	*found, find = {.uri = uri, .bind_dn = bind_dn};
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "Looking for LDAP connection to \"%s\" bound as \"%s\"", uri, bind_dn);
+	ROPTIONAL(RDEBUG2, DEBUG2, "Looking for LDAP connection to \"%s\" bound as \"%s\"", uri,
+		 bind_dn ? bind_dn : "(anonymous)");
 	found = fr_rb_find(thread->trunks, &find);
 
 	if (found) return found;
