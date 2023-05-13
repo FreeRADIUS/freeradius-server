@@ -470,7 +470,7 @@ static fr_redis_cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_sl
 	}
 	p++;			/* Skip the ' ' */
 
-	if (fr_inet_pton_port(&ipaddr, &port, p, redirect->len - (p - redirect->str), AF_UNSPEC, false, true) < 0) {
+	if (fr_inet_pton_port(&ipaddr, &port, p, redirect->len - (p - redirect->str), AF_UNSPEC, true, true) < 0) {
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
 	fr_assert(ipaddr.af);
@@ -536,14 +536,14 @@ static fr_redis_cluster_rcode_t cluster_map_apply(fr_redis_cluster_t *cluster, r
 #  define SET_ADDR(_addr, _map) \
 do { \
 	int _ret; \
-	_ret = fr_inet_pton(&_addr.inet.dst_ipaddr, _map->element[0]->str, _map->element[0]->len, AF_UNSPEC, false, true);\
+	_ret = fr_inet_pton(&_addr.inet.dst_ipaddr, _map->element[0]->str, _map->element[0]->len, AF_UNSPEC, true, true);\
 	fr_assert(_ret == 0);\
 	_addr.inet.dst_port = _map->element[1]->integer; \
 } while (0)
 #else
 #  define SET_ADDR(_addr, _map) \
 do { \
-	fr_inet_pton(&_addr.inet.dst_ipaddr, _map->element[0]->str, _map->element[0]->len, AF_UNSPEC, false, true);\
+	fr_inet_pton(&_addr.inet.dst_ipaddr, _map->element[0]->str, _map->element[0]->len, AF_UNSPEC, true, true);\
 	_addr.inet.dst_port = _map->element[1]->integer; \
 } while (0)
 #endif
