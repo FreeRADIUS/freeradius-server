@@ -270,8 +270,11 @@ static REQUEST *fr_state_cleanup_request(state_entry_t *entry)
 	request->handle = rad_postauth;
 
 	/*
-	 *	Move session-state VPS over
+	 *	Move session-state VPS over, after first freeing the
+	 *	separately-parented state_ctx that was allocated along with the
+	 *	fake request.
 	 */
+	talloc_free(request->state_ctx);
 	request->state_ctx = entry->ctx;
 	request->state = entry->vps;
 
