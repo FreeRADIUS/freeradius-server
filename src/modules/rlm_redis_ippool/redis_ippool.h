@@ -67,6 +67,10 @@ typedef enum {
  */
 #define IPPOOL_MAX_IP_KEY_SIZE		IPPOOL_MAX_KEY_PREFIX_SIZE + (sizeof("{}:" IPPOOL_ADDRESS_KEY ":") - 1) + INET6_ADDRSTRLEN + 4
 
+/** {prefix}:device
+ */
+#define IPPOOL_MAX_OWNER_KEY_SIZE	IPPOOL_MAX_KEY_PREFIX_SIZE + (sizeof("{}:" IPPOOL_OWNER_KEY ":") - 1) + 128
+
 
 #define IPADDR_LEN(_af) ((_af == AF_UNSPEC) ? 0 : ((_af == AF_INET6) ? 128 : 32))
 

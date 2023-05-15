@@ -43,7 +43,8 @@ typedef enum ippool_tool_action {
 	IPPOOL_TOOL_REMOVE,			//!< Remove one or more IP addresses.
 	IPPOOL_TOOL_RELEASE,			//!< Release one or more IP addresses.
 	IPPOOL_TOOL_SHOW,			//!< Show one or more IP addresses.
-	IPPOOL_TOOL_MODIFY			//!< Modify attributes of one or more IP addresses.
+	IPPOOL_TOOL_MODIFY,			//!< Modify attributes of one or more IP addresses.
+	IPPOOL_TOOL_ASSIGN			//!< Assign a static IP address to a device.
 } ippool_tool_action_t;
 
 /** A single pool operation
@@ -100,6 +101,10 @@ typedef struct {
 	CONF_SECTION		*cs;
 } ippool_tool_t;
 
+typedef struct {
+	char const		*owner;
+} ippool_tool_owner_t;
+
 typedef int (*redis_ippool_queue_t)(redis_driver_conf_t *inst, fr_redis_conn_t *conn,
 				    uint8_t const *key_prefix, size_t key_prefix_len,
 				    uint8_t const *range, size_t range_len,
@@ -120,6 +125,21 @@ do { \
 	} \
 	_p += (size_t)_slen;\
 	_p += strlcpy((char *)_p, _ip_str, sizeof(_buff) - (_p - _buff)); \
+} while (0)
+
+#define IPPOOL_BUILD_OWNER_KEY(_buff, _p, _key, _key_len, _owner) \
+do { \
+	ssize_t _slen; \
+	*_p++ = '{'; \
+	memcpy(_p, _key, _key_len); \
+	_p += _key_len; \
+	_slen = strlcpy((char *)_p, "}:"IPPOOL_OWNER_KEY":", sizeof(_buff) - (_p - _buff)); \
+	if (is_truncated((size_t)_slen, sizeof(_buff) - (_p - _buff))) { \
+		ERROR("Owner key too long"); \
+		return 0;\
+	} \
+	_p += (size_t)_slen;\
+	_p += strlcpy((char *)_p, _owner, sizeof(_buff) - (_p - _buff)); \
 } while (0)
 
 #define EOL "\n"
@@ -203,6 +223,8 @@ static NEVER_RETURNS void usage(int ret) {
 	INFO("  -d range               Delete address(es)/prefix(es) in this range.");
 	INFO("  -r range               Release address(es)/prefix(es) in this range.");
 	INFO("  -s range               Show addresses/prefix in this range.");
+	INFO("  -A address/prefix      Assign a static lease.");
+	INFO("  -O owner               To use when assigning a static lease.");
 	INFO("  -p prefix_len          Length of prefix to allocate (defaults to 32/128)");
 	INFO("                         This is used primarily for IPv6 where a prefix is");
 	INFO("                         allocated to an intermediary router, which in turn");
@@ -687,6 +709,73 @@ static int driver_modify_lease(void *out, void *instance, ippool_tool_operation_
 			       _driver_modify_lease_enqueue, _driver_modify_lease_process, NULL);
 }
 
+static int _driver_assign_lease_process(void *out, UNUSED fr_ipaddr_t const *ipaddr, redisReply const *reply)
+{
+	uint64_t *modified = out;
+	if (reply->type != REDIS_REPLY_ARRAY) return -1;
+
+	if ((reply->elements > 0) && (reply->element[0]->type == REDIS_REPLY_INTEGER)) {
+		*modified += reply->element[0]->integer;
+	}
+	return 0;
+}
+
+/** Enqueue static lease assignment commands
+ *
+ */
+static int _driver_assign_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
+				     uint8_t const *key_prefix, size_t key_prefix_len,
+				     uint8_t const *range, size_t range_len,
+				     fr_ipaddr_t *ipaddr, uint8_t prefix, void *uctx)
+{
+	ippool_tool_owner_t	*owner = uctx;
+	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
+	uint8_t		*key_p = key;
+	char		ip_buff[FR_IPADDR_PREFIX_STRLEN];
+
+	uint8_t		ip_key[IPPOOL_MAX_IP_KEY_SIZE];
+	uint8_t		*ip_key_p = ip_key;
+
+	uint8_t		owner_key[IPPOOL_MAX_OWNER_KEY_SIZE];
+	uint8_t		*owner_key_p = owner_key;
+
+	int		enqueued = 0;
+
+	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
+	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
+	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
+	IPPOOL_BUILD_OWNER_KEY(owner_key, owner_key_p, key_prefix, key_prefix_len, owner->owner);
+
+	DEBUG("Assigning address %s to owner %s", ip_buff, owner->owner);
+
+	redisAppendCommand(conn->handle, "MULTI");
+	enqueued++;
+	redisAppendCommand(conn->handle, "ZADD %b CH %"PRIu64" %s", key, key_p - key, IPPOOL_STATIC_BIT, ip_buff);
+	enqueued++;
+	redisAppendCommand(conn->handle, "SET %b %s", owner_key, owner_key_p - owner_key, ip_buff);
+	enqueued++;
+	redisAppendCommand(conn->handle, "HSET %b device %s counter 0", ip_key, ip_key_p - ip_key, owner->owner);
+	enqueued++;
+	if (range) {
+		redisAppendCommand(conn->handle, "HSET %b range %b", ip_key, ip_key_p - ip_key, range, range_len);
+		enqueued++;
+	}
+	redisAppendCommand(conn->handle, "EXEC");
+	enqueued++;
+
+	return enqueued;
+}
+
+/** Add static lease assignments
+ *
+ */
+static int driver_assign_lease(void *out, void *instance, ippool_tool_operation_t const *op, char const *owner)
+{
+	return driver_do_lease(out, instance, op,
+			       _driver_assign_lease_enqueue, _driver_assign_lease_process,
+			       &(ippool_tool_owner_t){ .owner = owner });
+}
+
 /** Compare two pool names
  *
  */
@@ -726,7 +815,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 	uint8_t			*key_p = key;
 	uint8_t 		**result;
 
-	IPPOOL_BUILD_KEY(key, key_p, "*}:pool", 1);
+	IPPOOL_BUILD_KEY(key, key_p, "*}:"IPPOOL_POOL_KEY, 1);
 
 	*out = NULL;	/* Initialise output pointer */
 
@@ -1205,6 +1294,7 @@ int main(int argc, char *argv[])
 	bool				need_pool = false;
 	char				*do_import = NULL;
 	char const			*filename = NULL;
+	char const			*owner = NULL;
 
 	CONF_SECTION			*pool_cs;
 	CONF_PAIR			*cp;
@@ -1229,7 +1319,7 @@ do { \
 	need_pool = true; \
 } while (0);
 
-	while ((c = getopt(argc, argv, "a:d:r:s:Sm:p:ilLhxo:f:")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "a:d:r:s:Sm:A:O:p:ilLhxo:f:")) != -1) switch (c) {
 		case 'a':
 			ADD_ACTION(IPPOOL_TOOL_ADD);
 			break;
@@ -1248,6 +1338,14 @@ do { \
 
 		case 'm':
 			ADD_ACTION(IPPOOL_TOOL_MODIFY);
+			break;
+
+		case 'A':
+			ADD_ACTION(IPPOOL_TOOL_ASSIGN);
+			break;
+
+		case 'O':
+			owner = optarg;
 			break;
 
 		case 'p':
@@ -1588,6 +1686,26 @@ do { \
 			fr_exit_now(EXIT_FAILURE);
 		}
 		INFO("Modified %" PRIu64 " address(es)/prefix(es)", count);
+	}
+		continue;
+
+	case IPPOOL_TOOL_ASSIGN:
+	{
+		uint64_t count = 0;
+
+		if (fr_ipaddr_cmp(&p->start, &p->end) != 0) {
+			ERROR("Static assignment requires a single IP");
+			fr_exit_now(EXIT_FAILURE);
+		}
+		if (!owner) {
+			ERROR("Static assignment requires an owner");
+			fr_exit_now(EXIT_FAILURE);
+		}
+
+		if (driver_assign_lease(&count, conf->driver, p, owner) < 0) {
+			fr_exit_now(EXIT_FAILURE);
+		}
+		INFO("Assigned %" PRIu64 " address(es)/prefix(es)", count);
 	}
 		continue;
 
