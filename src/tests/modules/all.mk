@@ -79,8 +79,8 @@ $(foreach x, $(filter sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst 
 #  Migration support.  Some of the tests don't run under the new
 #  conditions, so we don't run them under the new conditions.
 #
-$(foreach x, $(filter ldap% sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: NEW_COND=-S parse_new_conditions=no -S use_new_conditions=no))
-$(foreach x, $(filter-out ldap% sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: NEW_COND=-S parse_new_conditions=yes -S use_new_conditions=yes))
+$(foreach x, $(filter ldap% sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: NEW_COND=-S use_new_conditions=no))
+$(foreach x, $(filter-out ldap% sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: NEW_COND=-S use_new_conditions=yes))
 
 #
 #  Files in the output dir depend on the unit tests

@@ -1518,7 +1518,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	char		*buff[4];
 	tmpl_rules_t	t_rules;
 	bool		use_new_conditions = main_config_migrate_option_get("use_new_conditions");
-	bool		parse_new_conditions = main_config_migrate_option_get("parse_new_conditions");
 
 	/*
 	 *	Short names are nicer.
@@ -1678,9 +1677,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 				talloc_free(cs);
 				return NULL;
 			}
-		}
-
-		if (parse_new_conditions) {
+		} else {
 			name2 = buff[3];
 		}
 	}

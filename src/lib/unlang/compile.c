@@ -3654,7 +3654,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	/*
 	 *	Migration support.
 	 */
-	if (main_config->parse_new_conditions) {
+	if (main_config->use_new_conditions) {
 		char const *name2 = cf_section_name2(cs);
 		ssize_t slen;
 
@@ -3700,11 +3700,9 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		 *	If the condition is always false, we don't compile the
 		 *	children.
 		 */
-		if (main_config->use_new_conditions) {
-			if (is_truthy && !value) goto skip;
+		if (is_truthy && !value) goto skip;
 
-			goto do_compile;
-		}
+		goto do_compile;
 	}
 
 	cond = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));

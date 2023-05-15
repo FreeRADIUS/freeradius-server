@@ -184,7 +184,6 @@ static const CONF_PARSER migrate_config[] = {
 	{ FR_CONF_OFFSET("unflatten_after_decode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, unflatten_after_decode) },
 	{ FR_CONF_OFFSET("unflatten_before_encode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, unflatten_before_encode) },
 	{ FR_CONF_OFFSET("tmpl_tokenize_all_nested", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, tmpl_tokenize_all_nested) },
-	{ FR_CONF_OFFSET("parse_new_conditions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, parse_new_conditions) },
 	{ FR_CONF_OFFSET("use_new_conditions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, use_new_conditions) },
 	{ FR_CONF_OFFSET("rewrite_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET("forbid_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, forbid_update) },
@@ -1461,7 +1460,6 @@ void main_config_hup(main_config_t *config)
 }
 
 static fr_table_num_ordered_t config_arg_table[] = {
-	{ L("parse_new_conditions"),	 offsetof(main_config_t, parse_new_conditions) },
 	{ L("use_new_conditions"),	 offsetof(main_config_t, use_new_conditions) },
 	{ L("tmpl_tokenize_all_nested"), offsetof(main_config_t, tmpl_tokenize_all_nested) },
 	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },

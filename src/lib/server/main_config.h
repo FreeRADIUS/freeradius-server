@@ -161,7 +161,6 @@ struct main_config_s {
 	bool		unflatten_after_decode;		//!< the worker will call "unflatten" after protocol decoding
 	bool		unflatten_before_encode;	//!< the worker will call "unflatten" before all encoding
 	bool		tmpl_tokenize_all_nested;      	//!< tmpl_tokenize will create nested tmpls instead of flat ones
-	bool		parse_new_conditions;		//!< the new xlat expressions will be parsed, but not used.
 	bool		use_new_conditions;		//!< the new xlat expressions will be used for conditions, instead of the old code
 	bool		rewrite_update;			//!< rewrite "update" to be new edit sections
 	bool		forbid_update;			//!< forbid "update" sections
