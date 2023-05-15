@@ -1238,7 +1238,7 @@ void thread_pool_stop(void)
 
 	for (i = 0; i < NUM_FIFOS; i++) {
 #ifdef HAVE_STDATOMIC_H
-		talloc_free(thread_pool.queue[i]);
+		fr_atomic_queue_free(&thread_pool.queue[i]);
 #else
 		fr_fifo_free(thread_pool.fifo[i]);
 #endif
