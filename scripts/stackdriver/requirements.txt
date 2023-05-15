@@ -1,0 +1,6 @@
+grpcio
+opencensus-ext-stackdriver==0.8.0
+opencensus-ext-prometheus
+opencensus==0.10.0
+python-ldap
+pyyaml
