@@ -571,6 +571,64 @@ global {
 }
 
 #
+#  .Migration Flags
+#
+#  These flags are only for the "alpha" release of v4.  They will be
+#  removed (and made into errors!) in the final release.
+#
+#  Some of these flags can also be passed on the command line as
+#  `-S flag=value`.
+#
+migrate {
+	#
+	#  unflatten_after_decode:: Convert "flat" attribute lists to
+	#  "nested" ones after the protocol decoders have run, but
+	#  before any `unlang` policies are used.
+	#
+	#  Some protocol decoders still produce "flat" attribute
+	#  lists.  This is in large part because many of the core
+	#  modules still expect to see "flat" lists.
+	#
+	unflatten_after_decode = no
+
+	#
+	#  unflatten_before_encode:: Convert "flat" attribute lists to
+	#  "nested" ones before calling the protocol encoders.
+	#
+	#  All of the protocol encoders currently handle flat or
+	#  nested attributes.  This flag should be forced to `true`,
+	#  and the "flat" code removed from the protocol encoders.
+	#
+	unflatten_before_encode = false
+
+	#
+	#  tmpl_tokenize_all_nested:: Create all internal "tmpl" data
+	#  structures as using nested structures instead of flat ones.
+	tmpl_tokenize_all_nested = false
+
+	#
+	#  use_new_conditions:: Use the new condition code based on
+	#  xlats, instead of the old condition code.
+	use_new_conditions = false
+
+	#
+	#  rewrite_update:: Rewrite old `update` sections to use the new
+	#  "edit" code.
+	#
+	#  Not all `update` sections can be automatically converted.
+	#  If the conversion process does not work, then the server
+	#  will produce an error instead of doing the wrong thing.
+	rewrite_update = false;
+
+	#
+	#  forbid_update:: Forbid the use of the `update` keyword.
+	#
+	#  This flag allows us to remove the last bits of the v2
+	#  configuration from the server.
+	forbid_update = false
+}
+
+#
 #  .Module Configuration
 #
 #  The names and configuration of each module is located in this section.
@@ -630,7 +688,6 @@ modules {
 	$INCLUDE mods-enabled/
 }
 
-######################################################################
 #
 #  .Policies
 #
@@ -648,7 +705,6 @@ policy {
 	$INCLUDE policy.d/
 }
 
-######################################################################
 #
 #  .Load virtual servers.
 #
@@ -668,7 +724,7 @@ policy {
 #
 #  `raddb/sites-available/default`
 #
-#  This is the `default` virtual server that has the same
+y#  This is the `default` virtual server that has the same
 #  configuration as in version 1.0.x and 1.1.x.  The default
 #  installation enables this virtual server.  You should
 #  edit it to create policies for your local site.
