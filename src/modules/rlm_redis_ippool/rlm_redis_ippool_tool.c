@@ -103,7 +103,7 @@ typedef struct {
 typedef int (*redis_ippool_queue_t)(redis_driver_conf_t *inst, fr_redis_conn_t *conn,
 				    uint8_t const *key_prefix, size_t key_prefix_len,
 				    uint8_t const *range, size_t range_len,
-				    fr_ipaddr_t *ipaddr, uint8_t prefix);
+				    fr_ipaddr_t *ipaddr, uint8_t prefix, void *uctx);
 
 typedef int (*redis_ippool_process_t)(void *out, fr_ipaddr_t const *ipaddr, redisReply const *reply);
 
@@ -305,7 +305,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
  * @return the number of new addresses added.
  */
 static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t const *op,
-			   redis_ippool_queue_t enqueue, redis_ippool_process_t process)
+			   redis_ippool_queue_t enqueue, redis_ippool_process_t process, void *uctx)
 {
 	redis_driver_conf_t		*inst = talloc_get_type_abort(instance, redis_driver_conf_t);
 
@@ -343,7 +343,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 				int enqueued;
 
 				enqueued = enqueue(inst, conn, op->pool, op->pool_len,
-						   op->range, op->range_len, &ipaddr, op->prefix);
+						   op->range, op->range_len, &ipaddr, op->prefix, uctx);
 				if (enqueued < 0) break;
 				pipelined += enqueued;
 			}
@@ -432,7 +432,7 @@ static int _driver_show_lease_process(void *out, fr_ipaddr_t const *ipaddr, redi
 static int _driver_show_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
 				      uint8_t const *key_prefix, size_t key_prefix_len,
 				      UNUSED uint8_t const *range, UNUSED size_t range_len,
-				      fr_ipaddr_t *ipaddr, uint8_t prefix)
+				      fr_ipaddr_t *ipaddr, uint8_t prefix, UNUSED void *uctx)
 {
 	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t		*key_p = key;
@@ -462,7 +462,7 @@ static int _driver_show_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis
  */
 static inline int driver_show_lease(void *out, void *instance, ippool_tool_operation_t const *op)
 {
-	return driver_do_lease(out, instance, op, _driver_show_lease_enqueue, _driver_show_lease_process);
+	return driver_do_lease(out, instance, op, _driver_show_lease_enqueue, _driver_show_lease_process, NULL);
 }
 
 /** Count the number of leases we released
@@ -489,7 +489,7 @@ static int _driver_release_lease_process(void *out, UNUSED fr_ipaddr_t const *ip
 static int _driver_release_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
 					 uint8_t const *key_prefix, size_t key_prefix_len,
 					 UNUSED uint8_t const *range, UNUSED size_t range_len,
-					 fr_ipaddr_t *ipaddr, uint8_t prefix)
+					 fr_ipaddr_t *ipaddr, uint8_t prefix, UNUSED void *uctx)
 {
 	char		ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
@@ -507,7 +507,7 @@ static int _driver_release_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_re
 static inline int driver_release_lease(void *out, void *instance, ippool_tool_operation_t const *op)
 {
 	return driver_do_lease(out, instance, op,
-			       _driver_release_lease_enqueue, _driver_release_lease_process);
+			       _driver_release_lease_enqueue, _driver_release_lease_process, NULL);
 }
 
 /** Count the number of leases we removed
@@ -538,7 +538,7 @@ static int _driver_remove_lease_process(void *out, UNUSED fr_ipaddr_t const *ipa
 static int _driver_remove_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
 					uint8_t const *key_prefix, size_t key_prefix_len,
 					UNUSED uint8_t const *range, UNUSED size_t range_len,
-					fr_ipaddr_t *ipaddr, uint8_t prefix)
+					fr_ipaddr_t *ipaddr, uint8_t prefix, UNUSED void *uctx)
 {
 	char		ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
@@ -556,7 +556,7 @@ static int _driver_remove_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_red
 static int driver_remove_lease(void *out, void *instance, ippool_tool_operation_t const *op)
 {
 	return driver_do_lease(out, instance, op,
-			       _driver_remove_lease_enqueue, _driver_remove_lease_process);
+			       _driver_remove_lease_enqueue, _driver_remove_lease_process, NULL);
 }
 
 /** Count the number of leases we actually added
@@ -586,7 +586,7 @@ static int _driver_add_lease_process(void *out, UNUSED fr_ipaddr_t const *ipaddr
 static int _driver_add_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
 				     uint8_t const *key_prefix, size_t key_prefix_len,
 				     uint8_t const *range, size_t range_len,
-				     fr_ipaddr_t *ipaddr, uint8_t prefix)
+				     fr_ipaddr_t *ipaddr, uint8_t prefix, UNUSED void *uctx)
 {
 	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t		*key_p = key;
@@ -627,7 +627,7 @@ static int _driver_add_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_
  */
 static int driver_add_lease(void *out, void *instance, ippool_tool_operation_t const *op)
 {
-	return driver_do_lease(out, instance, op, _driver_add_lease_enqueue, _driver_add_lease_process);
+	return driver_do_lease(out, instance, op, _driver_add_lease_enqueue, _driver_add_lease_process, NULL);
 }
 
 /** Count the number of leases we modified
@@ -659,7 +659,7 @@ static int _driver_modify_lease_process(void *out, UNUSED fr_ipaddr_t const *ipa
 static int _driver_modify_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
 					uint8_t const *key_prefix, size_t key_prefix_len,
 					uint8_t const *range, size_t range_len,
-					fr_ipaddr_t *ipaddr, uint8_t prefix)
+					fr_ipaddr_t *ipaddr, uint8_t prefix, UNUSED void *uctx)
 {
 	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t		*key_p = key;
@@ -684,7 +684,7 @@ static int _driver_modify_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_red
 static int driver_modify_lease(void *out, void *instance, ippool_tool_operation_t const *op)
 {
 	return driver_do_lease(out, instance, op,
-			       _driver_modify_lease_enqueue, _driver_modify_lease_process);
+			       _driver_modify_lease_enqueue, _driver_modify_lease_process, NULL);
 }
 
 /** Compare two pool names
