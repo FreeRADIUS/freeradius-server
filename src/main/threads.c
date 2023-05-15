@@ -253,7 +253,7 @@ static pthread_mutex_t *ssl_mutexes = NULL;
 
 static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSED int line)
 {
-	rad_assert(ssl_mutexes[n] != NULL);
+	rad_assert(&ssl_mutexes[n] != NULL);
 
 	if (mode & CRYPTO_LOCK) {
 		pthread_mutex_lock(&ssl_mutexes[n]);
