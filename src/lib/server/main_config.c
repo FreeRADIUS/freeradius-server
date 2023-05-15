@@ -183,7 +183,6 @@ static const CONF_PARSER thread_config[] = {
 static const CONF_PARSER migrate_config[] = {
 	{ FR_CONF_OFFSET("unflatten_after_decode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, unflatten_after_decode) },
 	{ FR_CONF_OFFSET("unflatten_before_encode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, unflatten_before_encode) },
-	{ FR_CONF_OFFSET("flatten_before_encode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, flatten_before_encode) },
 	{ FR_CONF_OFFSET("tmpl_tokenize_all_nested", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, tmpl_tokenize_all_nested) },
 	{ FR_CONF_OFFSET("parse_new_conditions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, parse_new_conditions) },
 	{ FR_CONF_OFFSET("use_new_conditions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, use_new_conditions) },

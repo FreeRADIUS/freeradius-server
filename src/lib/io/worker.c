@@ -641,10 +641,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 		ssize_t slen = 0;
 		fr_listen_t const *listen = request->async->listen;
 
-		if (worker->config.flatten_before_encode) {
-			fr_pair_flatten(request->pair_list.reply);
-
-		} else if (worker->config.unflatten_before_encode) {
+		if (worker->config.unflatten_before_encode) {
 			fr_pair_unflatten(request->pair_list.reply);
 		} /* else noop */
 
