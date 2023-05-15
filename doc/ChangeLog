@@ -1,6 +1,7 @@
 FreeRADIUS 3.0.27 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	Feature improvements
 	* Update dictionary.alcatel.sr
+	* Added dictionary.eleven
 
 	Bug fixes
 	* Don't leak MD contexts with OpenSSL 3.0.
@@ -8,6 +9,13 @@ FreeRADIUS 3.0.27 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	* The DS-Lite-Tunnel-Name data type should be 'octets'.
 	* Fix rlm_expr destroying MD context, causing leaks with OpenSSL >= 3.0 #4893
 	* Many small ASAN / LSAN fixes from Jorge Pereira.
+	* Allow auth+acct for TCP sockets, and allow both types of packets.
+	* Call atomic_queue_free function on exit, which avoids talloc complaints
+	  on exit.
+	* Clear old module instances before reloading which helps lower
+	  peak memory usage.  Patch from Nick Porter.
+	* Note that rlm_ldap does not support "-=".
+	* Force reply packet type to Reject when running Post-Auth-Type Reject.
 
 FreeRADIUS 3.0.26 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	Feature improvements
