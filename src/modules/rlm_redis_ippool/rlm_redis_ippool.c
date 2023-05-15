@@ -211,14 +211,23 @@ static char lua_alloc_cmd[] =
 	 */
 	"exists = redis.call('GET', owner_key);" EOL							/* 8 */
 	"if exists then" EOL										/* 9 */
-	"  local expires_in = tonumber(redis.call('ZSCORE', pool_key, exists) - ARGV[1])" EOL		/* 10 */
-	"  if expires_in > 0 then" EOL									/* 11 */
-	"    ip = redis.call('HMGET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. exists, 'device', 'range', 'counter')" EOL	/* 12 */
+	"  local expires = tonumber(redis.call('ZSCORE', pool_key, exists))" EOL			/* 10 */
+	"  local static = expires >= " STRINGIFY(IPPOOL_STATIC_BIT) EOL
+	"  local expires_in = expires - (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0) - ARGV[1]" EOL
+	"  if expires_in > 0 or static then" EOL							/* 11 */
+	"    ip = redis.call('HMGET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. exists, 'device', 'range', 'counter', 'gateway')" EOL	/* 12 */
 	"    if ip and (ip[1] == ARGV[3]) then" EOL							/* 13 */
 	"      if expires_in < tonumber(ARGV[2]) then" EOL						/* 14 */
-	"        redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], exists)" EOL			/* 15 */
+	"        redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2] + (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0), exists)" EOL	/* 15 */
 	"        expires_in = tonumber(ARGV[2])" EOL							/* 16 */
 	"      end" EOL											/* 17 */
+
+	/*
+	 *	Ensure gateway is set correctly
+	 */
+	"      if ARGV[4] ~= ip[4] then" EOL
+	"        redis.call('HSET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":', 'gateway', ARGV[4])" EOL
+	"      end" EOL
 	"      return {" STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", exists, ip[2], expires_in, ip[3] }" EOL	/* 18 */
 	"    end" EOL											/* 19 */
 	"  end" EOL											/* 20 */
@@ -295,7 +304,9 @@ static char lua_update_cmd[] =
 	 *	Update the expiry time
 	 */
 	"pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL			/* 14 */
-	"redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ARGV[3])" EOL		/* 15 */
+	"local expires = tonumber(redis.call('ZSCORE', pool_key, ARGV[3]))" EOL
+	"local static = expires > " STRINGIFY(IPPOOL_STATIC_BIT) EOL
+	"redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2] + (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0), ARGV[3])" EOL	/* 15 */
 
 	/*
 	 *	The device key should usually exist, but
@@ -303,8 +314,8 @@ static char lua_update_cmd[] =
 	 *	of a lease being expired, it may have been
 	 *	removed.
 	 */
-	"owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[4]" EOL	/* 16 */
-	"if redis.call('EXPIRE', owner_key, ARGV[2]) == 0 then" EOL			/* 17 */
+	"owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[4]" EOL		/* 16 */
+	"if not static and (redis.call('EXPIRE', owner_key, ARGV[2]) == 0) then" EOL	/* 17 */
 	"  redis.call('SET', owner_key, ARGV[3])" EOL					/* 18 */
 	"  redis.call('EXPIRE', owner_key, ARGV[2])" EOL				/* 19 */
 	"end" EOL									/* 20 */
@@ -355,16 +366,19 @@ static char lua_release_cmd[] =
 	"end" EOL									/* 14 */
 
 	/*
-	 *	Set expiry time to now() - 1
+	 *	Set expiry time to now() - 1 if it is not static
 	 */
 	"pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL			/* 15 */
-	"redis.call('ZADD', pool_key, 'XX', ARGV[1] - 1, ARGV[2])" EOL			/* 16 */
+	"found = tonumber(redis.call('ZSCORE', pool_key, ARGV[2]))" EOL
+	"if found < " STRINGIFY(IPPOOL_STATIC_BIT) " then" EOL
+	"  redis.call('ZADD', pool_key, 'XX', ARGV[1] - 1, ARGV[2])" EOL		/* 16 */
 
 	/*
 	 *	Remove the association between the device and a lease
 	 */
-	"owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[3]" EOL	/* 17 */
-	"redis.call('DEL', owner_key)" EOL						/* 18 */
+	"  owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[3]" EOL	/* 17 */
+	"  redis.call('DEL', owner_key)" EOL						/* 18 */
+	"end" EOL
 	"return { " EOL
 	"  " STRINGIFY(_IPPOOL_RCODE_SUCCESS) "," EOL					/* 19 */
 	"  redis.call('HINCRBY', address_key, 'counter', 1) - 1" EOL			/* 20 */

@@ -57,6 +57,7 @@ typedef enum {
 #define IPPOOL_POOL_KEY			"pool"
 #define IPPOOL_ADDRESS_KEY		"ip"
 #define IPPOOL_OWNER_KEY		"device"
+#define IPPOOL_STATIC_BIT		0x10000000000000   /* A high bit which Redis ZSCORE will represent accurately*/
 
 /** {prefix}:pool
  */
