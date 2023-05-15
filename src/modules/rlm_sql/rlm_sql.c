@@ -437,7 +437,6 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	handle = fr_pool_connection_get(inst->pool, request);		/* connection pool should produce error */
 	if (!handle) {
 		RETURN_MODULE_FAIL;
-		goto finish;
 	}
 
 	rlm_sql_query_log(inst, request, NULL, query_str);
