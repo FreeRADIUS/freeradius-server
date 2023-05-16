@@ -724,7 +724,7 @@ policy {
 #
 #  `raddb/sites-available/default`
 #
-y#  This is the `default` virtual server that has the same
+#  This is the `default` virtual server that has the same
 #  configuration as in version 1.0.x and 1.1.x.  The default
 #  installation enables this virtual server.  You should
 #  edit it to create policies for your local site.
