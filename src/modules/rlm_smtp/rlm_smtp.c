@@ -1239,9 +1239,9 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 }
 
 static const call_env_t module_env[] = {
-	{ FR_MODULE_ENV_TMPL_OFFSET("username", FR_TYPE_STRING, rlm_smtp_env_t, username, username_tmpl, NULL,
+	{ FR_CALL_ENV_TMPL_OFFSET("username", FR_TYPE_STRING, rlm_smtp_env_t, username, username_tmpl, NULL,
 				T_DOUBLE_QUOTED_STRING, false, true, true) },
-	{ FR_MODULE_ENV_OFFSET("password", FR_TYPE_STRING, rlm_smtp_env_t, password, NULL,
+	{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, rlm_smtp_env_t, password, NULL,
 				T_DOUBLE_QUOTED_STRING, false, true, true) },
 	CALL_ENV_TERMINATOR
 };

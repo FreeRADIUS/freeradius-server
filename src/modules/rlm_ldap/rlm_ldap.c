@@ -57,14 +57,14 @@ typedef struct {
 } ldap_usermod_mod_env_t;
 
 static const call_env_t sasl_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("mech", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_mech,
-			       NULL, T_INVALID, false, false, false) },
-	{ FR_MODULE_ENV_OFFSET("authname", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_authname,
-			       NULL, T_INVALID, false, false, false) },
-	{ FR_MODULE_ENV_OFFSET("proxy", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_proxy,
-			       NULL, T_INVALID, false, true, false) },
-	{ FR_MODULE_ENV_OFFSET("realm", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_realm,
-			       NULL, T_INVALID, false, true, false) },
+	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_mech,
+			     NULL, T_INVALID, false, false, false) },
+	{ FR_CALL_ENV_OFFSET("authname", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_authname,
+			     NULL, T_INVALID, false, false, false) },
+	{ FR_CALL_ENV_OFFSET("proxy", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_proxy,
+			     NULL, T_INVALID, false, true, false) },
+	{ FR_CALL_ENV_OFFSET("realm", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_realm,
+			     NULL, T_INVALID, false, true, false) },
 	CALL_ENV_TERMINATOR
 };
 
@@ -74,10 +74,10 @@ static CONF_PARSER profile_config[] = {
 };
 
 static const call_env_t autz_profile_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("default", FR_TYPE_STRING, ldap_autz_mod_env_t, default_profile,
-			       NULL, T_INVALID, false, false, true) },
-	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_mod_env_t, profile_filter,
-			       "(&)", T_SINGLE_QUOTED_STRING, false, false, true ) },	//!< Correct filter for when the DN is known.
+	{ FR_CALL_ENV_OFFSET("default", FR_TYPE_STRING, ldap_autz_mod_env_t, default_profile,
+			     NULL, T_INVALID, false, false, true) },
+	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_mod_env_t, profile_filter,
+			     "(&)", T_SINGLE_QUOTED_STRING, false, false, true ) },	//!< Correct filter for when the DN is known.
 	CALL_ENV_TERMINATOR
 };
 
@@ -96,27 +96,27 @@ static CONF_PARSER user_config[] = {
 };
 
 static const call_env_t auth_user_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_auth_mod_env_t, user_base,
-			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
-	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_auth_mod_env_t, user_filter,
-			       NULL, T_INVALID, false, true, true) },
-	{ FR_MODULE_ENV_SUBSECTION("sasl", NULL, sasl_module_env) },
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_auth_mod_env_t, user_base,
+			     "", T_SINGLE_QUOTED_STRING, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_auth_mod_env_t, user_filter,
+			     NULL, T_INVALID, false, true, true) },
+	{ FR_CALL_ENV_SUBSECTION("sasl", NULL, sasl_module_env) },
 	CALL_ENV_TERMINATOR
 };
 
 static const call_env_t autz_user_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_mod_env_t, user_base,
-			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
-	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_mod_env_t, user_filter,
-			       NULL, T_INVALID, false, true, true) },
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_mod_env_t, user_base,
+			     "", T_SINGLE_QUOTED_STRING, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_mod_env_t, user_filter,
+			     NULL, T_INVALID, false, true, true) },
 	CALL_ENV_TERMINATOR
 };
 
 static const call_env_t usermod_user_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_usermod_mod_env_t, user_base,
-			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
-	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_usermod_mod_env_t, user_filter,
-			       NULL, T_INVALID, false, true, true) },
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_usermod_mod_env_t, user_base,
+			     "", T_SINGLE_QUOTED_STRING, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_usermod_mod_env_t, user_filter,
+			     NULL, T_INVALID, false, true, true) },
 	CALL_ENV_TERMINATOR
 };
 
@@ -140,8 +140,8 @@ static CONF_PARSER group_config[] = {
 };
 
 static const call_env_t autz_group_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_mod_env_t, group_base,
-			       NULL, T_INVALID, false, false, true) },
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_mod_env_t, group_base,
+			     NULL, T_INVALID, false, false, true) },
 	CALL_ENV_TERMINATOR
 };
 
@@ -199,19 +199,19 @@ static const CONF_PARSER module_config[] = {
  *	Method specific module environments
  */
 static const call_env_t authenticate_module_env[] = {
-	{ FR_MODULE_ENV_SUBSECTION("user", NULL, auth_user_module_env) },
+	{ FR_CALL_ENV_SUBSECTION("user", NULL, auth_user_module_env) },
 	CALL_ENV_TERMINATOR
 };
 
 static const call_env_t authorize_module_env[] = {
-	{ FR_MODULE_ENV_SUBSECTION("user", NULL, autz_user_module_env) },
-	{ FR_MODULE_ENV_SUBSECTION("group", NULL, autz_group_module_env) },
-	{ FR_MODULE_ENV_SUBSECTION("profile", NULL, autz_profile_module_env) },
+	{ FR_CALL_ENV_SUBSECTION("user", NULL, autz_user_module_env) },
+	{ FR_CALL_ENV_SUBSECTION("group", NULL, autz_group_module_env) },
+	{ FR_CALL_ENV_SUBSECTION("profile", NULL, autz_profile_module_env) },
 	CALL_ENV_TERMINATOR
 };
 
 static const call_env_t usermod_module_env[] = {
-	{ FR_MODULE_ENV_SUBSECTION("user", NULL, usermod_user_module_env) },
+	{ FR_CALL_ENV_SUBSECTION("user", NULL, usermod_user_module_env) },
 	CALL_ENV_TERMINATOR
 };
 

@@ -675,8 +675,8 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
  *	so more restructuring is needed to make the module protocol agnostic.
  */
 static const call_env_t module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("key", FR_TYPE_VOID, rlm_files_env_t, key, "%{%{Stripped-User-Name}:-%{User-Name}}",
-			       T_DOUBLE_QUOTED_STRING, true, false, false) },
+	{ FR_CALL_ENV_OFFSET("key", FR_TYPE_VOID, rlm_files_env_t, key, "%{%{Stripped-User-Name}:-%{User-Name}}",
+			     T_DOUBLE_QUOTED_STRING, true, false, false) },
 	CALL_ENV_TERMINATOR
 };
 
