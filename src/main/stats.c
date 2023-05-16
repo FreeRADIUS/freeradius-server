@@ -794,6 +794,9 @@ void request_stats_reply(REQUEST *request)
 		 *	Not found: don't do anything
 		 */
 		this = listener_find_byipaddr(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
+#ifdef WITH_TCP
+		if (!this) this = listener_find_byipaddr(&ipaddr, server_port->vp_integer, IPPROTO_TCP);
+#endif
 		if (!this) {
 			stats_error(request, "No such listener");
 			return;
@@ -868,6 +871,9 @@ void request_stats_reply(REQUEST *request)
 		 *	Not found: don't do anything
 		 */
 		home = home_server_find(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
+#ifdef WITH_TCP
+		if (!home) home = home_server_find(&ipaddr, server_port->vp_integer, IPPROTO_TCP);
+#endif
 		if (!home) {
 			stats_error(request, "Failed to find home server IP");
 			return;
