@@ -880,7 +880,7 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 static inline CC_HINT(always_inline) int module_env_value_parse(request_t *request, void *out, void **tmpl_out,
 								unlang_frame_state_module_t *state) {
 	fr_value_box_t			*vb;
-	module_env_parsed_t const	*env = state->last_expanded;
+	call_env_parsed_t const		*env = state->last_expanded;
 
 	vb = fr_value_box_list_head(&state->tmpl_expanded);
 
@@ -963,7 +963,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 
 	if (mc->method_env) {
 		void				*out, **array, *tmpl_out = NULL;
-		module_env_parsed_t const	*env;
+		call_env_parsed_t const		*env;
 		TALLOC_CTX			*ctx;
 
 		switch (state->env_state) {
@@ -1014,7 +1014,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		/*
 		 *	Look for the next tmpl to expand
 		 */
-		state->last_expanded = mod_env_parsed_next(&mc->mod_env_parsed, state->last_expanded);
+		state->last_expanded = call_env_parsed_next(&mc->call_env_parsed, state->last_expanded);
 		if (!state->last_expanded) {
 			state->env_state = MOD_ENV_EXP_DONE;
 			goto expansion_done;

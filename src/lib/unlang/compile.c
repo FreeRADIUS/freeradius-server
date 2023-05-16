@@ -4671,7 +4671,7 @@ check_for_loop:
 static int method_env_parse(unlang_module_t *single, unlang_compile_t *unlang_ctx, CONF_SECTION const *cs,
 			    call_env_t const *module_env) {
 	CONF_PAIR const		*cp, *next;
-	module_env_parsed_t	*module_env_parsed;
+	call_env_parsed_t	*call_env_parsed;
 	ssize_t			len, opt_count, multi_index;
 	char const		*value;
 	fr_token_t		quote;
@@ -4709,10 +4709,10 @@ static int method_env_parse(unlang_module_t *single, unlang_compile_t *unlang_ct
 		if (opt_count == 0) opt_count = 1;
 
 		for (multi_index = 0; multi_index < opt_count; multi_index ++) {
-			MEM(module_env_parsed = talloc_zero(single->mod_env_ctx, module_env_parsed_t));
-			module_env_parsed->rule = module_env;
-			module_env_parsed->opt_count = opt_count;
-			module_env_parsed->multi_index = multi_index;
+			MEM(call_env_parsed = talloc_zero(single->mod_env_ctx, call_env_parsed_t));
+			call_env_parsed->rule = module_env;
+			call_env_parsed->opt_count = opt_count;
+			call_env_parsed->multi_index = multi_index;
 
 			if (cp) {
 				value = cf_pair_value(cp);
@@ -4725,7 +4725,7 @@ static int method_env_parse(unlang_module_t *single, unlang_compile_t *unlang_ct
 			}
 
 			type = FR_BASE_TYPE(module_env->type);
-			if (tmpl_afrom_substr(module_env_parsed, &module_env_parsed->tmpl, &FR_SBUFF_IN(value, len),
+			if (tmpl_afrom_substr(call_env_parsed, &call_env_parsed->tmpl, &FR_SBUFF_IN(value, len),
 					      quote, NULL, &(tmpl_rules_t){
 							.cast = (type == FR_TYPE_VOID ? FR_TYPE_NULL : type),
 							.attr = {
@@ -4734,7 +4734,7 @@ static int method_env_parse(unlang_module_t *single, unlang_compile_t *unlang_ct
 							}
 						}) < 0) {
 			error:
-				talloc_free(module_env_parsed);
+				talloc_free(call_env_parsed);
 				cf_log_perr(cp, "Failed to parse '%s' for %s", cf_pair_value(cp), module_env->name);
 				return -1;
 			}
@@ -4742,7 +4742,7 @@ static int method_env_parse(unlang_module_t *single, unlang_compile_t *unlang_ct
 			/*
 			 *	Ensure only valid TMPL types are produced.
 			 */
-			switch (module_env_parsed->tmpl->type) {
+			switch (call_env_parsed->tmpl->type) {
 			case TMPL_TYPE_ATTR:
 			case TMPL_TYPE_DATA:
 			case TMPL_TYPE_EXEC:
@@ -4751,11 +4751,11 @@ static int method_env_parse(unlang_module_t *single, unlang_compile_t *unlang_ct
 
 			default:
 				cf_log_err(cp, "'%s' expands to invalid tmpl type %s", value,
-					   fr_table_str_by_value(tmpl_type_table, module_env_parsed->tmpl->type, "<INVALID>"));
+					   fr_table_str_by_value(tmpl_type_table, call_env_parsed->tmpl->type, "<INVALID>"));
 				goto error;
 			}
 
-			mod_env_parsed_insert_tail(&single->mod_env_parsed, module_env_parsed);
+			call_env_parsed_insert_tail(&single->call_env_parsed, call_env_parsed);
 
 			cp = cf_pair_find_next(cs, cp, module_env->name);
 		}
@@ -4871,9 +4871,9 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		 */
 		count = method_env_count(&vallen, inst->dl_inst->conf, method_env->env);
 		MEM(single->mod_env_ctx = _talloc_pooled_object(single, 0, "mod_env_ctx", count * 4,
-						(sizeof(module_env_parsed_t) + sizeof(tmpl_t)) * count + vallen * 2));
+						(sizeof(call_env_parsed_t) + sizeof(tmpl_t)) * count + vallen * 2));
 
-		mod_env_parsed_init(&single->mod_env_parsed);
+		call_env_parsed_init(&single->call_env_parsed);
 		if (method_env_parse(single, unlang_ctx, inst->dl_inst->conf, method_env->env) < 0) {
 		error:
 			talloc_free(c);

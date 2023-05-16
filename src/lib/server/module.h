@@ -42,7 +42,6 @@ typedef struct module_s				module_t;
 typedef struct module_method_name_s		module_method_name_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
-typedef struct module_env_parsed_s		module_env_parsed_t;
 typedef struct module_method_env_s		module_method_env_t;
 typedef struct module_list_t			module_list_t;
 
@@ -119,9 +118,6 @@ typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-FR_DLIST_TYPES(mod_env_parsed)
-FR_DLIST_TYPEDEFS(mod_env_parsed, mod_env_parsed_head_t, mod_env_parsed_entry_t)
 
 struct module_method_env_s {
 	size_t				inst_size;		//!< Size of per call module env.
@@ -234,16 +230,6 @@ struct module_thread_instance_s {
 	uint64_t			total_calls;	//! total number of times we've been called
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
 };
-
-struct module_env_parsed_s {
-	mod_env_parsed_entry_t	entry;		//!< Entry in list of parsed module_env.
-	tmpl_t			*tmpl;		//!< Tmpl produced from parsing conf pair.
-	size_t			opt_count;	//!< Number of instances found of this option.
-	size_t			multi_index;	//!< Array index for this instance.
-	call_env_t const	*rule;		//!< Used to produce this.
-};
-
-FR_DLIST_FUNCS(mod_env_parsed, module_env_parsed_t, entry)
 
 /** Derive whether tmpl can only emit a single box.
  */

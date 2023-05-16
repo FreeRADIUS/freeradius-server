@@ -29,7 +29,13 @@ RCSIDH(call_env_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/util/dlist.h>
+
 typedef struct call_env_s		call_env_t;
+typedef struct call_env_parsed_s	call_env_parsed_t;
+
+FR_DLIST_TYPES(call_env_parsed)
+FR_DLIST_TYPEDEFS(call_env_parsed, call_env_parsed_head_t, call_env_parsed_entry_t)
 
 typedef enum {
 	CALL_ENV_TYPE_VALUE_BOX = 1,
@@ -76,6 +82,15 @@ struct call_env_s {
 
 #define CALL_ENV_TERMINATOR { NULL }
 
+struct call_env_parsed_s {
+	call_env_parsed_entry_t	entry;		//!< Entry in list of parsed call_env.
+	tmpl_t			*tmpl;		//!< Tmpl produced from parsing conf pair.
+	size_t			opt_count;	//!< Number of instances found of this option.
+	size_t			multi_index;	//!< Array index for this instance.
+	call_env_t const	*rule;		//!< Used to produce this.
+};
+
+FR_DLIST_FUNCS(call_env_parsed, call_env_parsed_t, entry)
 
 #ifdef __cplusplus
 }

@@ -37,7 +37,7 @@ typedef struct {
 	module_instance_t		*instance;		//!< Global instance of the module we're calling.
 	module_method_t			method;			//!< The entry point into the module.
 	module_method_env_t const	*method_env;		//!< Module environment for this method.
-	mod_env_parsed_head_t		mod_env_parsed;		//!< The per call parsed module environment.
+	call_env_parsed_head_t		call_env_parsed;	//!< The per call parsed call environment.
 	TALLOC_CTX			*mod_env_ctx;		//!< A talloc pooled object for parsed module env
 								///< to be allocated from.
 } unlang_module_t;
@@ -64,7 +64,7 @@ typedef struct {
 								///< cache thread-specific data in the #unlang_t.
 
 	module_env_state_t		env_state;		//!< State of the current call module_env.
-	module_env_parsed_t const	*last_expanded;		//!< Last environment tmpl expanded.
+	call_env_parsed_t const		*last_expanded;		//!< Last environment tmpl expanded.
 	fr_value_box_list_t		tmpl_expanded;		//!< Value boxes produced by last expanded tmpl.
 	void				*env_data;		//!< Expanded per call module environment tmpls.
 
