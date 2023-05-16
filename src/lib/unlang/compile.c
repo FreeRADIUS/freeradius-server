@@ -4669,7 +4669,7 @@ check_for_loop:
  *	- <0 on failure;
  */
 static int method_env_parse(unlang_module_t *single, unlang_compile_t *unlang_ctx, CONF_SECTION const *cs,
-			    module_env_t const *module_env) {
+			    call_env_t const *module_env) {
 	CONF_PAIR const		*cp, *next;
 	module_env_parsed_t	*module_env_parsed;
 	ssize_t			len, opt_count, multi_index;
@@ -4773,7 +4773,7 @@ static int method_env_parse(unlang_module_t *single, unlang_compile_t *unlang_ct
  * @param[in] module_env	to parse.
  * @return Number of parsed_module_env expected to be required.
  */
-static size_t method_env_count(size_t *vallen, CONF_SECTION const *cs, module_env_t const *module_env) {
+static size_t method_env_count(size_t *vallen, CONF_SECTION const *cs, call_env_t const *module_env) {
 	size_t	pair_count, tmpl_count = 0;
 	CONF_PAIR const	*cp;
 

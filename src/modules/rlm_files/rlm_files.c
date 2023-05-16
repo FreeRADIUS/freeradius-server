@@ -674,10 +674,10 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
  *	it is still evaluated during module instantiation to determine the tree type in use
  *	so more restructuring is needed to make the module protocol agnostic.
  */
-static const module_env_t module_env[] = {
+static const call_env_t module_env[] = {
 	{ FR_MODULE_ENV_OFFSET("key", FR_TYPE_VOID, rlm_files_env_t, key, "%{%{Stripped-User-Name}:-%{User-Name}}",
 			       T_DOUBLE_QUOTED_STRING, true, false, false) },
-	MODULE_ENV_TERMINATOR
+	CALL_ENV_TERMINATOR
 };
 
 static const module_method_env_t method_env = {

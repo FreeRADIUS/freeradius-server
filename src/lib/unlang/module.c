@@ -910,11 +910,11 @@ static inline CC_HINT(always_inline) int module_env_value_parse(request_t *reque
 
 	while ((vb = fr_value_box_list_pop_head(&state->tmpl_expanded))) {
 		switch (env->rule->pair.type) {
-		case MOD_ENV_TYPE_VALUE_BOX:
+		case CALL_ENV_TYPE_VALUE_BOX:
 			fr_value_box_copy_shallow(state->env_data, (fr_value_box_t *)(out), vb);
 			break;
 
-		case MOD_ENV_TYPE_VALUE_BOX_LIST:
+		case CALL_ENV_TYPE_VALUE_BOX_LIST:
 			if (!fr_value_box_list_initialised((fr_value_box_list_t *)out)) fr_value_box_list_init((fr_value_box_list_t *)out);
 			fr_value_box_list_insert_tail((fr_value_box_list_t *)out, vb);
 			break;

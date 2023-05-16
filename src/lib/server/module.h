@@ -35,13 +35,13 @@ extern "C" {
 #include <freeradius-devel/server/module_ctx.h>
 #include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/compile.h>
+#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/util/event.h>
 
 typedef struct module_s				module_t;
 typedef struct module_method_name_s		module_method_name_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
-typedef struct module_env_s			module_env_t;
 typedef struct module_env_parsed_s		module_env_parsed_t;
 typedef struct module_method_env_s		module_method_env_t;
 typedef struct module_list_t			module_list_t;
@@ -126,7 +126,7 @@ FR_DLIST_TYPEDEFS(mod_env_parsed, mod_env_parsed_head_t, mod_env_parsed_entry_t)
 struct module_method_env_s {
 	size_t				inst_size;		//!< Size of per call module env.
 	char const			*inst_type;		//!< Type of per call module env.
-	module_env_t const		*env;			//!< Parsing rules for module method env.
+	call_env_t const		*env;			//!< Parsing rules for module method env.
 };
 
 /** Named methods exported by a module
@@ -235,57 +235,12 @@ struct module_thread_instance_s {
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
 };
 
-typedef enum {
-	MOD_ENV_TYPE_VALUE_BOX = 1,
-	MOD_ENV_TYPE_VALUE_BOX_LIST
-} mod_env_dest_t;
-
-/** Per method module config
- *
- * Similar to a CONF_PARSER used to hold details of conf pairs
- * which are evaluated per call for each module method.
- *
- * This allows the conf pairs to be evaluated within the appropriate context
- * and use the appropriate dictionaries for where the module is in use.
- */
-struct module_env_s {
-	char const	*name;		//!< Of conf pair to pass to tmpl_tokenizer.
-	char const	*dflt;		//!< Default string to pass to the tmpl_tokenizer if no CONF_PAIR found.
-	fr_token_t	dflt_quote;	//!< Default quoting for the default string.
-
-	uint32_t	type;		//!< To cast boxes to. Also contains flags controlling parser behaviour.
-
-	size_t		offset;		//!< Where to write results in the output structure when the tmpls are evaluated.
-
-	union {
-		struct {
-			bool		required;	//!< Tmpl must produce output
-			bool		concat;		//!< If the tmpl produced multiple boxes they should be concatenated.
-			bool		single;		//!< If the tmpl produces more than one box this is an error.
-			bool		multi;		//!< Multiple instances of the conf pairs are allowed.  Resulting
-							///< boxes are stored in an array - one entry per conf pair.
-			bool		nullable;	//!< Tmpl expansions are allowed to produce no output.
-			mod_env_dest_t	type;		//!< Type of structure boxes will be written to.
-			size_t		size;		//!< Size of structure boxes will be written to.
-			char const	*type_name;	//!< Name of structure type boxes will be written to.
-			size_t		tmpl_offset;	//!< Where to write pointer to tmpl in the output structure.  Optional.
-		} pair;
-
-		struct {
-			char const		*ident2;	//!< Second identifier for a section
-			module_env_t const	*subcs;		//!< Nested definitions for subsection.
-    		} section;
-  	};
-};
-
-#define MODULE_ENV_TERMINATOR { NULL }
-
 struct module_env_parsed_s {
 	mod_env_parsed_entry_t	entry;		//!< Entry in list of parsed module_env.
 	tmpl_t			*tmpl;		//!< Tmpl produced from parsing conf pair.
 	size_t			opt_count;	//!< Number of instances found of this option.
 	size_t			multi_index;	//!< Array index for this instance.
-	module_env_t const	*rule;		//!< Used to produce this.
+	call_env_t const	*rule;		//!< Used to produce this.
 };
 
 FR_DLIST_FUNCS(mod_env_parsed, module_env_parsed_t, entry)
@@ -321,10 +276,10 @@ __builtin_choose_expr(_c, (void)0, false)))
  */
 #define FR_MODULE_ENV_DST_TYPE(_s, _f) \
 _Generic((((_s *)NULL)->_f), \
-	fr_value_box_t			: MOD_ENV_TYPE_VALUE_BOX, \
-	fr_value_box_t *		: MOD_ENV_TYPE_VALUE_BOX, \
-	fr_value_box_list_t		: MOD_ENV_TYPE_VALUE_BOX_LIST, \
-	fr_value_box_list_t *		: MOD_ENV_TYPE_VALUE_BOX_LIST \
+	fr_value_box_t			: CALL_ENV_TYPE_VALUE_BOX, \
+	fr_value_box_t *		: CALL_ENV_TYPE_VALUE_BOX, \
+	fr_value_box_list_t		: CALL_ENV_TYPE_VALUE_BOX_LIST, \
+	fr_value_box_list_t *		: CALL_ENV_TYPE_VALUE_BOX_LIST \
 )
 
 #define FR_MODULE_ENV_DST_SIZE(_s, _f) \
