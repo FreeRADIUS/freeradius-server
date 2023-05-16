@@ -2,6 +2,7 @@ TARGET		:= libfreeradius-unlang$(L)
 
 SOURCES	:=	base.c \
 		call.c \
+		call_env.c \
 		caller.c \
 		compile.c \
 		condition.c \

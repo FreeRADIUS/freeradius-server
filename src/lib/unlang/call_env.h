@@ -191,6 +191,11 @@ _Generic((((_s *)NULL)->_f), \
 	.section = { .ident2 = _ident2, \
 		     .subcs = _subcs }
 
+int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, fr_dict_t const *dict_def,
+		   CONF_SECTION const *cs, call_env_t const *call_env);
+
+size_t call_env_count(size_t *vallen, CONF_SECTION const *cs, call_env_t const *call_env);
+
 #ifdef __cplusplus
 }
 #endif
