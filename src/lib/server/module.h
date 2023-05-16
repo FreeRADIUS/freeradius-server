@@ -42,7 +42,6 @@ typedef struct module_s				module_t;
 typedef struct module_method_name_s		module_method_name_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
-typedef struct module_method_env_s		module_method_env_t;
 typedef struct module_list_t			module_list_t;
 
 #define MODULE_TYPE_THREAD_SAFE		(0 << 0) 	//!< Module is threadsafe.
@@ -119,12 +118,6 @@ typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 extern "C" {
 #endif
 
-struct module_method_env_s {
-	size_t				inst_size;		//!< Size of per call module env.
-	char const			*inst_type;		//!< Type of per call module env.
-	call_env_t const		*env;			//!< Parsing rules for module method env.
-};
-
 /** Named methods exported by a module
  *
  */
@@ -133,7 +126,7 @@ struct module_method_name_s {
 	char const			*name2;			//!< The packet type i.e Access-Request, Access-Reject.
 
 	module_method_t			method;			//!< Module method to call
-	module_method_env_t const	*method_env;		//!< Call specific conf parsing.
+	call_method_env_t const		*method_env;		//!< Call specific conf parsing.
 };
 
 #define MODULE_NAME_TERMINATOR { NULL }

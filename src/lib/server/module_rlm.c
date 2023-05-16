@@ -431,7 +431,7 @@ bool module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_
  *
  *  If the module exists but the method doesn't exist, then `method` is set to NULL.
  */
-module_instance_t *module_rlm_by_name_and_method(module_method_t *method, module_method_env_t const **method_env,
+module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_method_env_t const **method_env,
 						 UNUSED rlm_components_t *component,
 						 char const **name1, char const **name2,
 						 char const *name)

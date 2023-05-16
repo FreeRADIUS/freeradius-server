@@ -4806,7 +4806,7 @@ static size_t method_env_count(size_t *vallen, CONF_SECTION const *cs, call_env_
 
 static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				CONF_ITEM *ci, module_instance_t *inst, module_method_t method,
-				module_method_env_t const *method_env, char const *realname)
+				call_method_env_t const *method_env, char const *realname)
 {
 	module_rlm_t const *mrlm = module_rlm_from_module(inst->module);
 	unlang_t *c;
@@ -4942,7 +4942,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	bool			policy;
 	unlang_op_compile_t	compile;
 	unlang_t		*c;
-	module_method_env_t const	*method_env = NULL;
+	call_method_env_t const	*method_env = NULL;
 
 	if (cf_item_is_section(ci)) {
 		cs = cf_item_to_section(ci);

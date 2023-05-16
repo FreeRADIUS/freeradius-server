@@ -33,6 +33,7 @@ extern "C" {
 
 typedef struct call_env_s		call_env_t;
 typedef struct call_env_parsed_s	call_env_parsed_t;
+typedef struct call_method_env_s	call_method_env_t;
 
 FR_DLIST_TYPES(call_env_parsed)
 FR_DLIST_TYPEDEFS(call_env_parsed, call_env_parsed_head_t, call_env_parsed_entry_t)
@@ -91,6 +92,12 @@ struct call_env_parsed_s {
 };
 
 FR_DLIST_FUNCS(call_env_parsed, call_env_parsed_t, entry)
+
+struct call_method_env_s {
+	size_t			inst_size;	//!< Size of per call env.
+	char const		*inst_type;	//!< Type of per call env.
+	call_env_t const	*env;		//!< Parsing rules for call method env.
+};
 
 #ifdef __cplusplus
 }

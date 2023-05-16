@@ -215,19 +215,19 @@ static const call_env_t usermod_module_env[] = {
 	CALL_ENV_TERMINATOR
 };
 
-static const module_method_env_t authenticate_method_env = {
+static const call_method_env_t authenticate_method_env = {
 	.inst_size = sizeof(ldap_auth_mod_env_t),
 	.inst_type = "ldap_auth_mod_env_t",
 	.env = authenticate_module_env
 };
 
-static const module_method_env_t authorize_method_env = {
+static const call_method_env_t authorize_method_env = {
 	.inst_size = sizeof(ldap_autz_mod_env_t),
 	.inst_type = "ldap_autz_mod_env_t",
 	.env = authorize_module_env
 };
 
-static const module_method_env_t usermod_method_env = {
+static const call_method_env_t usermod_method_env = {
 	.inst_size = sizeof(ldap_usermod_mod_env_t),
 	.inst_type = "ldap_usermod_mod_env_t",
 	.env = usermod_module_env

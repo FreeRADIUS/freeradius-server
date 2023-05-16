@@ -1246,7 +1246,7 @@ static const call_env_t module_env[] = {
 	CALL_ENV_TERMINATOR
 };
 
-static const module_method_env_t method_env = {
+static const call_method_env_t method_env = {
 	.inst_size = sizeof(rlm_smtp_env_t),
 	.inst_type = "rlm_smtp_env_t",
 	.env = module_env
