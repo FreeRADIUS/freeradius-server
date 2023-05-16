@@ -3118,16 +3118,18 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	if (crl_dp != NULL) {
 		for (int i = 0; i < sk_DIST_POINT_num(crl_dp); i++) {
 			dp = sk_DIST_POINT_value(crl_dp, i);
-			if (dp != NULL) {
-				cdp[0] = '\0';
-				url_ptr = get_dp_url(dp);
-				if (url_ptr != NULL) {
-					strncpy(cdp, (char*) url_ptr, (int) strlen(url_ptr));
-					cdp[strlen(url_ptr)] = '\0';
-					vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_CDP][lookup], cdp, T_OP_ADD);
-					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
-				}
+			if (dp == NULL) {
+				continue;
 			}
+			cdp[0] = '\0';
+			url_ptr = get_dp_url(dp);
+			if (url_ptr == NULL) {
+				continue;
+                        }
+			strncpy(cdp, (char*) url_ptr, (int) strlen(url_ptr));
+			cdp[strlen(url_ptr)] = '\0';
+			vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_CDP][lookup], cdp, T_OP_ADD);
+			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 		}
 	}
 
