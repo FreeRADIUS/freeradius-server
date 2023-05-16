@@ -2,51 +2,52 @@
  * Below are modeling functions that use Coverity functions (the __coverity_*__())
  * to tell it the functions' intent.
  *
- * cov-make-library is the only model-related program that lets one specify compiler
- * options, notably -I to specify where header files live....but it is NOT in the
- * gzipped tar file of coverity programs one can run locally, so pending further
- * information, one must create a file with modelig functions that one can upload via
- * the web interfacet that does not #include header files not in the C standard.
+ * Summary: there doesn't appear to be any way we can run cov-make-library, which
+ * leaves us with uploading it via the Coverity web page. We found out the hard
+ * way that just preprocessing won't cut it. Coverity can't handle the expansions
+ * of some of the macro usage in FreeRADIUS. In fact, one (open source) Coverity
+ * modeling file says in comments that you *can't* include header files.
  *
- * Speaking of -I, it would need to be cc -E -I <path to get to src>, since
- * src contains the freeradius-devel symlink.
+ * That said... coverity models only describe the modeled functions' effects that
+ * matter to coverity. There's an example in the Coverity docs modeling a function
+ * that calls fopen(), and it actually typedefs FILE as an empty structure. It works..
+ * because coverity is told what happens only in terms of the FILE * fopen() returns.
  *
- * The most nearly sane way to do that is to preprocessthis file and upload the
- * output via the web. It would be good if this could be automated. One can do this
- * from the command line in the top-level directory of the reposiitory with the command
+ * We can't always get away with that. For example, initializing a value box, if
+ * successful, writes sizeof(fr_value_box_t) bytes, so coverity has to know enough
+ * to accurately determine that. We may find other issues as well... ah! If the models
+ * keep things symbolic, maybe we CAN get away with only mentioning referenced fields.
  *
- *	cc -E -I src -I/usr/include/kqueue -D HAVE_CLOCK_GETTIME src/coverity-model/merged_model.c
+ * All this leads to possible coupling between the declarations and typedefs herein
+ * and the real ones in FreeRADIUS header files, so that changes in the latter may
+ * require changes to the former. So... We will declare ONLY what the modeling functions
+ * need, mentioning their source, until we find out that more is necessary.
  *
- * and redirecting standard output to a file to then upload via Coverity's web interface as the
- * modeling file.
- *
- * (One may well ask what static functions are doing here. Coverity says that one
- * can model static functions, so here they are. This may require further change.)
- *
- * Since standard header files are guaranteed idempotent and FreeRADIUS header files
- * are idempotent, we group modeling functions according to the source file the
- * functions being modeled come from and keep the #include directives in that file
- * with them.
+ * NOTE: Any time this file changes, it must be reuploaded via the coverity scan web
+ * interface.
  */
 
+typedef unsigned char bool;
 
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/exfile.h>
+typedef unsigned int mode_t;
+typedef long long int off_t;
 
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/perm.h>
-#include <freeradius-devel/util/syserror.h>
 
-#include <sys/stat.h>
-#include <fcntl.h>
+typedef union {
+} pthread_mutex_t;
+
+/* from src/lib/server/exfile.[ch] */
+
+typedef struct exfile_s {
+	pthread_mutex_t		mutex;
+	bool			locking;
+} exfile_t;
 
 int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, off_t *offset)
 {
     int result;
 
-    if (ef->locking && result > 0) __coverity_exclusive_lock_acquire__(ef->mutex);
+    if (ef->locking && result > 0) __coverity_exclusive_lock_acquire__((void *) &ef->mutex);
     return result;
 }
 
@@ -54,24 +55,31 @@ int exfile_close(exfile_t *ef, int fd)
 {
     int result;
 
-    if (ef->locking) __coverity_exclusive_lock_release__(ef->mutex);
+    if (ef->locking) __coverity_exclusive_lock_release__((void *) &ef->mutex);
     return result;
 }
 
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/util/debug.h>
+/* from src/lib/server/pool.[ch] */
 
-#include <freeradius-devel/util/heap.h>
-#include <freeradius-devel/util/misc.h>
+typedef struct {
+} request_t;
 
-#include <time.h>
+typedef struct {
+	pthread_mutex_t	mutex;
+} fr_pool_t;
+
+typedef struct {
+} fr_pool_connection_t;
+
+typedef struct {
+} fr_time_t;
+
 
 static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *request, fr_time_t now, bool in_use, bool unlock)
 {
 	fr_pool_connection_t *result;
 
-	if (result && !unlock)  __coverity_exclusive_lock_acquire__(pool->mutex);
+	if (result && !unlock)  __coverity_exclusive_lock_acquire__((void *) &pool->mutex);
 	return result;
 }
 
@@ -79,7 +87,7 @@ static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 {
 	fr_pool_connection_t *result;
 
-	if (result)  __coverity_exclusive_lock_acquire__(pool->mutex);
+	if (result)  __coverity_exclusive_lock_acquire__((void *) &pool->mutex);
 	return result;
 }
 
