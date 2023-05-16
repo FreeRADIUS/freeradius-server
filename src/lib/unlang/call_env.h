@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/server/cf_parse.h>
 
 typedef struct call_env_s		call_env_t;
 typedef struct call_env_parsed_s	call_env_parsed_t;
@@ -195,6 +196,9 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 		   CONF_SECTION const *cs, call_env_t const *call_env);
 
 size_t call_env_count(size_t *vallen, CONF_SECTION const *cs, call_env_t const *call_env);
+
+unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, void **env_data, call_method_env_t const *call_env,
+				call_env_parsed_head_t const *call_env_parsed);
 
 #ifdef __cplusplus
 }
