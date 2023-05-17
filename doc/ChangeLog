@@ -1,40 +1,50 @@
 FreeRADIUS 3.2.3 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 	Configuration changes
-	* Modules ldap and sql modules now have  a "max_retries"
+	* The rlm_ldap and rlm_sql modules now have a "max_retries"
 	  configuration item in the pool section.  This sets a
 	  limit on how many times an operation will be retried
 	  if it fails indicating a connection issue.
+	* Added "check_crl" configuration to rlm_ldap.  This only works with
+	  OpenSSL.  Many Linux distributions use other TLS libraries, which
+	  won't work.
+	* Note that rlm_ldap does not support "-=" operators.  The documentation
+	  disagreed with the code, so we fixed the documentation.
 
 	Feature improvements
-	* Add "max_retries" for connection pools.  Fixes #4908
-	  Patch from Nick Porter.
-	* Update dictionary.wifialliance
+	* Add "max_retries" for connection pools. Fixes #4908. Patch from Nick Porter.
+	* Update dictionary.wifialliance and dictionary.ciena; add dictionary.eleven.
 	* You can now list "eap" in the "pre-proxy" section.  If the packet
 	  contains a malformed EAP message, then the request will be rejected.
 	  The home server will either reject (or discard) this packet anyways,
 	  so this change can only help with large proxy scenarios.
-	* Added "check_crl" configuration to rlm_ldap.  This only works with
-	  OpenSSL.  Many Linux distributions use other TLS libraries, which
-	  won't work.
+	* Show warnings if libldap is not using OpenSSL.
 	* Support RADIUS/1.1.  See https://datatracker.ietf.org/doc/draft-dekok-radext-radiusv11/
-	  Disabled by default.  Building it requires adding CFLAGS="-DWITH_RADIUSV11".
-	  For now, this is for testing interoperability.
+	  Disabled by default, can be enabled by passing `--with-radiusv11` to the
+	  configure script. For now, this is for testing interoperability.
+	* Add extra sanity checks for malformed EAP attributes.
+	* More TLS debugging output
+	* Clear old module instance data before HUP reload. Avoids burst memory use
+	  when e.g. using large data files with rlm_files. Patch from Nick Porter.
 
 	Bug fixes
 	* Don't leak MD contexts with OpenSSL 3.0.
-	* increase internal buffer size for TLS connections, which
+	* Increase internal buffer size for TLS connections, which
 	  can help with high-load proxies.
 	* Send Status-Server checks for TLS connections
 	* Give descriptive error if "update CoA" is used with "fake" packets,
 	  as it won't work. i.e. inner-tunnel and virtual home servers.
 	* Many small ASAN / LSAN fixes from Jorge Pereira.
-	* Close inbound  RADIUS/TLS socket on TLS errors.  When a home server
+	* Close inbound RADIUS/TLS socket on TLS errors.  When a home server
 	  sees a TLS error, it will now close the socket, so proxies do not
 	  have an open (but dead) TLS connection.
 	* Fix mutex locking issues on inbound RADIUS/TLS connections.
 	  This change avoids random issues with "bad record mac".
-	* Note that rlm_ldap does not support "-=" operators.  The documentation
-	  disagreed with the code, so we fixed the documentation.
+	* Improve REST encoding loop. Patch from Herwin Weststrate. Closes #4950
+	* Correctly report the LDAP group a user was found in. Fixes #3084.
+	  Patch from Nick Porter.
+	* Force correct packet type when running Post-Auth-Type. Helps with #4980
+	* Fix small leak in Client-Lost code. Patch from Terry Burton. PR #4996
+	* Fix TCP socket statistics. Closes #4990
 
 FreeRADIUS 3.2.2 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 	Configuration changes
@@ -99,7 +109,7 @@ FreeRADIUS 3.2.2 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 
 FreeRADIUS 3.2.1 Mon 03 Oct 2022 12:00:00 EDT urgency=low
 	Feature improvements
-	* Add dictionary.ciena, dictionary.nile, and DHCPv4 dictionaries,
+	* Add dictionary.ciena, dictionary.nile, and DHCPv4 dictionaries.
 	* Add simultaneous-use queries for MS SQL.
 	* Add radmin command for "stats pool <module-name>"
 	  Which prints out statistics about the connection pools
