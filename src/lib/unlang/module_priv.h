@@ -38,7 +38,7 @@ typedef struct {
 	module_method_t			method;			//!< The entry point into the module.
 	module_method_env_t const	*method_env;		//!< Module environment for this method.
 	call_env_parsed_head_t		call_env_parsed;	//!< The per call parsed call environment.
-	TALLOC_CTX			*mod_env_ctx;		//!< A talloc pooled object for parsed module env
+	TALLOC_CTX			*call_env_ctx;		//!< A talloc pooled object for parsed call env
 								///< to be allocated from.
 } unlang_module_t;
 
