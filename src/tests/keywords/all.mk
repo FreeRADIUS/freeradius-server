@@ -79,6 +79,10 @@ else ifneq "$(findstring ${1}, $(KEYWORD_UPDATE_REWRITE_TESTS))" ""
 $(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S rewrite_update=yes
 else
 $(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S forbid_update=yes
+
+ifeq "${1}" "mschap"
+$(OUTPUT)/${1}: rlm_mschap.la
+endif
 endif
 
 endef
