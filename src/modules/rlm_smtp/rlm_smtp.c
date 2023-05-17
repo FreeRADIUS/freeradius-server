@@ -838,7 +838,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 {
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_smtp_t);
 	rlm_smtp_thread_t       	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
-	rlm_smtp_env_t			*mod_env = talloc_get_type_abort(mctx->env_data, rlm_smtp_env_t);
+	rlm_smtp_env_t			*call_env = talloc_get_type_abort(mctx->env_data, rlm_smtp_env_t);
 	fr_curl_io_request_t     	*randle = NULL;
 	fr_mail_ctx_t			*mail_ctx;
 	const char 			*envelope_address;
@@ -866,9 +866,9 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 	 *	a onetime connection is used, otherwise a persistent one
 	 *	can be used.
 	 */
-	randle = (mod_env->username_tmpl &&
-		  !tmpl_is_data(mod_env->username_tmpl)) ? smtp_slab_reserve(t->slab_onetime) :
-							   smtp_slab_reserve(t->slab_persist);
+	randle = (call_env->username_tmpl &&
+		  !tmpl_is_data(call_env->username_tmpl)) ? smtp_slab_reserve(t->slab_onetime) :
+							    smtp_slab_reserve(t->slab_persist);
 	if (!randle) {
 		RDEBUG2("A handle could not be allocated for the request");
 		RETURN_MODULE_FAIL;
@@ -888,12 +888,12 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_UPLOAD, 1L);
 
 	/* Set the username and password if they have been provided */
-	if (mod_env->username.vb_strvalue) {
-		FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, mod_env->username.vb_strvalue);
+	if (call_env->username.vb_strvalue) {
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, call_env->username.vb_strvalue);
 
-		if (!mod_env->password.vb_strvalue) goto skip_auth;
+		if (!call_env->password.vb_strvalue) goto skip_auth;
 
-		FR_CURL_REQUEST_SET_OPTION(CURLOPT_PASSWORD, mod_env->password.vb_strvalue);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_PASSWORD, call_env->password.vb_strvalue);
 		RDEBUG2("Username and password set");
 	}
 skip_auth:
@@ -1238,7 +1238,7 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static const call_env_t module_env[] = {
+static const call_env_t call_env[] = {
 	{ FR_CALL_ENV_TMPL_OFFSET("username", FR_TYPE_STRING, rlm_smtp_env_t, username, username_tmpl, NULL,
 				T_DOUBLE_QUOTED_STRING, false, true, true) },
 	{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, rlm_smtp_env_t, password, NULL,
@@ -1249,7 +1249,7 @@ static const call_env_t module_env[] = {
 static const call_method_env_t method_env = {
 	.inst_size = sizeof(rlm_smtp_env_t),
 	.inst_type = "rlm_smtp_env_t",
-	.env = module_env
+	.env = call_env
 };
 
 /*
