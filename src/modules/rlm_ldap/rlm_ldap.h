@@ -137,7 +137,7 @@ typedef struct {
 							//!< No value should be set if profiles are not being used
 							//!< as there is an associated performance penalty.
 	fr_value_box_t	profile_filter;			//!< Filter to use when searching for profiles.
-} ldap_autz_mod_env_t;
+} ldap_autz_call_env_t;
 
 /** State list for resumption of authorization
  *
@@ -164,7 +164,7 @@ typedef struct {
 	fr_ldap_map_exp_t	expanded;
 	fr_ldap_query_t		*query;
 	fr_ldap_thread_trunk_t	*ttrunk;
-	ldap_autz_mod_env_t	*mod_env;
+	ldap_autz_call_env_t	*call_env;
 	LDAPMessage		*entry;
 	ldap_autz_status_t	status;
 	struct berval		**profile_values;
