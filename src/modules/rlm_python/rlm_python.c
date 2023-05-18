@@ -879,7 +879,40 @@ static int python_interpreter_init(module_inst_ctx_t const *mctx)
 	DEBUG3("Setting python path to \"%s\"", path);
 	wide_path = Py_DecodeLocale(path, NULL);
 	talloc_free(path);
-	PySys_SetPath(wide_path);
+
+	/*
+	 *	Set program path (i.e. the software calling the interpreter)
+	 */
+	{
+#if PY_VERSION_HEX < 0x030b0000
+		/*
+		 * The Py_SetPath() is deprecated in >= 3.11.x
+		 * as described in https://docs.python.org/3.11/c-api/init.html#c.Py_SetPath
+		 */
+		PySys_SetPath(wide_path);
+#else
+		{
+			PyStatus status;
+			PyConfig config;
+
+			PyConfig_InitPythonConfig(&config);
+
+			config.module_search_paths_set = 1;
+			status = PyWideStringList_Append(&config.module_search_paths, wide_path);
+			if (PyStatus_Exception(status)) {
+			fail:
+				PyMem_RawFree(wide_path);
+				PyConfig_Clear(&config);
+				return -1;
+			}
+
+			status = Py_InitializeFromConfig(&config);
+			if (PyStatus_Exception(status)) goto fail;
+
+			PyConfig_Clear(&config);
+		}
+#endif
+	}
 	PyMem_RawFree(wide_path);
 
 	/*
@@ -1106,9 +1139,37 @@ static int mod_load(void)
 	{
 		wchar_t *wide_name;
 		wide_name = Py_DecodeLocale(main_config->name, NULL);
+
+#if PY_VERSION_HEX < 0x030b0000
+		/*
+		 * The Py_SetProgramName() is deprecated in >= 3.11.x
+		 * as described in https://docs.python.org/3.11/c-api/init.html#c.Py_SetProgramName
+		 */
 		Py_SetProgramName(wide_name);		/* The value of argv[0] as a wide char string */
+#else
+		{
+			PyStatus status;
+			PyConfig config;
+
+			PyConfig_InitPythonConfig(&config);
+
+			status = PyConfig_SetString(&config, &config.program_name, wide_name);
+			if (PyStatus_Exception(status)) {
+			fail:
+				PyMem_RawFree(wide_name);
+				PyConfig_Clear(&config);
+				return -1;
+			}
+
+			status = Py_InitializeFromConfig(&config);
+			if (PyStatus_Exception(status)) goto fail;
+
+			PyConfig_Clear(&config);
+		}
+#endif
 		PyMem_RawFree(wide_name);
 	}
+
 	global_interpreter = PyEval_SaveThread();	/* Store reference to the main interpreter and release the GIL */
 
 	return 0;
