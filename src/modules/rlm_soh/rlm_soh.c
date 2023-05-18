@@ -253,7 +253,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	int rv;
 
 	/* try to find the MS-SoH payload */
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_ms_quarantine_soh);
+	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_ms_quarantine_soh);
 	if (!vp) {
 		RDEBUG2("SoH radius VP not found");
 		RETURN_MODULE_NOOP;
