@@ -1479,10 +1479,9 @@ int fr_pair_append_by_da_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t
 
 /** Return the first fr_pair_t matching the #fr_dict_attr_t or alloc a new fr_pair_t (and append)
  *
- * @param[in] ctx	to allocate any new #fr_pair_t in.
+ * @param[in] parent	to search for attributes in or append attributes to
  * @param[out] out	Pair we allocated or found.  May be NULL if the caller doesn't
  *			care about manipulating the fr_pair_t.
- * @param[in,out] list	to search for attributes in or append attributes to.
  * @param[in] da	of attribute to locate or alloc.
  * @param[in] n		update the n'th instance of this da.
  *			Note: If we can't find the n'th instance the attribute created
@@ -1493,25 +1492,25 @@ int fr_pair_append_by_da_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
-int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
+int fr_pair_update_by_da(fr_pair_t *parent, fr_pair_t **out,
 			 fr_dict_attr_t const *da, unsigned int n)
 {
 	fr_pair_t	*vp;
 
-	vp = fr_pair_find_by_da_idx(list, da, n);
+	vp = fr_pair_find_by_da_idx(&parent->vp_group, da, n);
 	if (vp) {
-		PAIR_VERIFY_WITH_LIST(list, vp);
+		PAIR_VERIFY_WITH_LIST(&parent->vp_group, vp);
 		if (out) *out = vp;
 		return 1;
 	}
 
-	vp = fr_pair_afrom_da(ctx, da);
+	vp = fr_pair_afrom_da(parent, da);
 	if (unlikely(!vp)) {
 		if (out) *out = NULL;
 		return -1;
 	}
 
-	fr_pair_append(list, vp);
+	fr_pair_append(&parent->vp_group, vp);
 	if (out) *out = vp;
 
 	return 0;
