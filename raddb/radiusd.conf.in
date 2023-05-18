@@ -604,11 +604,13 @@ migrate {
 	#
 	#  tmpl_tokenize_all_nested:: Create all internal "tmpl" data
 	#  structures as using nested structures instead of flat ones.
+	#
 	tmpl_tokenize_all_nested = false
 
 	#
 	#  use_new_conditions:: Use the new condition code based on
 	#  xlats, instead of the old condition code.
+	#
 	use_new_conditions = false
 
 	#
@@ -618,6 +620,7 @@ migrate {
 	#  Not all `update` sections can be automatically converted.
 	#  If the conversion process does not work, then the server
 	#  will produce an error instead of doing the wrong thing.
+	#
 	rewrite_update = false
 
 	#
@@ -625,6 +628,7 @@ migrate {
 	#
 	#  This flag allows us to remove the last bits of the v2
 	#  configuration from the server.
+	#
 	forbid_update = false
 }
 
