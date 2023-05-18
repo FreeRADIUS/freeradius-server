@@ -49,7 +49,14 @@ typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 
 #include "radclient.h"
 
-#define pair_update_request(_attr, _da) fr_pair_update_by_da(request, _attr, &request->request_pairs, _da, 0)
+#define pair_update_request(_attr, _da) do { \
+		_attr = fr_pair_find_by_da(&request->request_pairs, NULL, _da); \
+		if (!_attr) { \
+			_attr = fr_pair_afrom_da(request, _da); \
+			assert(_attr != NULL); \
+			fr_pair_append(&request->request_pairs, _attr); \
+		} \
+	} while (0)
 #define request_pairs	request_list
 #define reply_pairs	reply_list
 
@@ -618,11 +625,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				/*
 				 *	CHAP-Password is octets, so it may not be zero terminated.
 				 */
-				MEM(pair_update_request(&request->password, attr_cleartext_password) >= 0);
+				pair_update_request(request->password, attr_cleartext_password);
 				fr_pair_value_bstrndup(request->password, vp->vp_strvalue, vp->vp_length, true);
 			} else if ((vp->da == attr_user_password) ||
 				   (vp->da == attr_ms_chap_password)) {
-				MEM(pair_update_request(&request->password, attr_cleartext_password) >= 0);
+				pair_update_request(request->password, attr_cleartext_password);
 				fr_pair_value_bstrndup(request->password, vp->vp_strvalue, vp->vp_length, true);
 
 			} else if (vp->da == attr_radclient_test_name) {
