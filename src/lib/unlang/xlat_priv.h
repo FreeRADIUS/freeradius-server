@@ -88,6 +88,10 @@ typedef struct xlat_s {
 	xlat_input_type_t	input_type;		//!< Type of input used.
 	xlat_arg_parser_t const	*args;			//!< Definition of args consumed.
 
+	call_method_env_t const	*call_env;		//!< Optional tmpl expansions performed before calling the
+							///< xlat.  Typically used for xlats which refer to tmpls
+							///< in their module config.
+
 	fr_type_t		return_type;		//!< Function is guaranteed to return one or more boxes
 							///< of this type.  If the return type is FR_TYPE_VOID
 							///< then the xlat function can return any type of output.
@@ -128,6 +132,8 @@ typedef struct {
 							///< into the instance tree.
 	xlat_input_type_t	input_type;		//!< The input type used inferred from the
 							///< bracketing style.
+
+	fr_dict_t const		*dict;			//!< Dictionary to use when resolving module env tmpls
 } xlat_call_t;
 
 /** An xlat expansion node
@@ -295,7 +301,7 @@ xlat_action_t	xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_exp_head_t const **child, bool *alternate,
 				       request_t *request, xlat_exp_head_t const *head, xlat_exp_t const **in,
-				       fr_value_box_list_t *result) CC_HINT(nonnull(1,2,3,5));
+				       void *env_data, fr_value_box_list_t *result) CC_HINT(nonnull(1,2,3,5));
 
 xlat_action_t	xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_t const **child,
 				request_t *request, xlat_exp_head_t const *head, xlat_exp_t const **in);

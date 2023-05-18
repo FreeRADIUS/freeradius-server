@@ -35,15 +35,13 @@ extern "C" {
 #include <freeradius-devel/server/module_ctx.h>
 #include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/compile.h>
+#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/util/event.h>
 
 typedef struct module_s				module_t;
 typedef struct module_method_name_s		module_method_name_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
-typedef struct module_env_s			module_env_t;
-typedef struct module_env_parsed_s		module_env_parsed_t;
-typedef struct module_method_env_s		module_method_env_t;
 typedef struct module_list_t			module_list_t;
 
 #define MODULE_TYPE_THREAD_SAFE		(0 << 0) 	//!< Module is threadsafe.
@@ -120,15 +118,6 @@ typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 extern "C" {
 #endif
 
-FR_DLIST_TYPES(mod_env_parsed)
-FR_DLIST_TYPEDEFS(mod_env_parsed, mod_env_parsed_head_t, mod_env_parsed_entry_t)
-
-struct module_method_env_s {
-	size_t				inst_size;		//!< Size of per call module env.
-	char const			*inst_type;		//!< Type of per call module env.
-	module_env_t const		*env;			//!< Parsing rules for module method env.
-};
-
 /** Named methods exported by a module
  *
  */
@@ -137,7 +126,7 @@ struct module_method_name_s {
 	char const			*name2;			//!< The packet type i.e Access-Request, Access-Reject.
 
 	module_method_t			method;			//!< Module method to call
-	module_method_env_t const	*method_env;		//!< Call specific conf parsing.
+	call_method_env_t const		*method_env;		//!< Call specific conf parsing.
 };
 
 #define MODULE_NAME_TERMINATOR { NULL }
@@ -234,153 +223,6 @@ struct module_thread_instance_s {
 	uint64_t			total_calls;	//! total number of times we've been called
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
 };
-
-typedef enum {
-	MOD_ENV_TYPE_VALUE_BOX = 1,
-	MOD_ENV_TYPE_VALUE_BOX_LIST
-} mod_env_dest_t;
-
-/** Per method module config
- *
- * Similar to a CONF_PARSER used to hold details of conf pairs
- * which are evaluated per call for each module method.
- *
- * This allows the conf pairs to be evaluated within the appropriate context
- * and use the appropriate dictionaries for where the module is in use.
- */
-struct module_env_s {
-	char const	*name;		//!< Of conf pair to pass to tmpl_tokenizer.
-	char const	*dflt;		//!< Default string to pass to the tmpl_tokenizer if no CONF_PAIR found.
-	fr_token_t	dflt_quote;	//!< Default quoting for the default string.
-
-	uint32_t	type;		//!< To cast boxes to. Also contains flags controlling parser behaviour.
-
-	size_t		offset;		//!< Where to write results in the output structure when the tmpls are evaluated.
-
-	union {
-		struct {
-			bool		required;	//!< Tmpl must produce output
-			bool		concat;		//!< If the tmpl produced multiple boxes they should be concatenated.
-			bool		single;		//!< If the tmpl produces more than one box this is an error.
-			bool		multi;		//!< Multiple instances of the conf pairs are allowed.  Resulting
-							///< boxes are stored in an array - one entry per conf pair.
-			bool		nullable;	//!< Tmpl expansions are allowed to produce no output.
-			mod_env_dest_t	type;		//!< Type of structure boxes will be written to.
-			size_t		size;		//!< Size of structure boxes will be written to.
-			char const	*type_name;	//!< Name of structure type boxes will be written to.
-			size_t		tmpl_offset;	//!< Where to write pointer to tmpl in the output structure.  Optional.
-		} pair;
-
-		struct {
-			char const		*ident2;	//!< Second identifier for a section
-			module_env_t const	*subcs;		//!< Nested definitions for subsection.
-    		} section;
-  	};
-};
-
-#define MODULE_ENV_TERMINATOR { NULL }
-
-struct module_env_parsed_s {
-	mod_env_parsed_entry_t	entry;		//!< Entry in list of parsed module_env.
-	tmpl_t			*tmpl;		//!< Tmpl produced from parsing conf pair.
-	size_t			opt_count;	//!< Number of instances found of this option.
-	size_t			multi_index;	//!< Array index for this instance.
-	module_env_t const	*rule;		//!< Used to produce this.
-};
-
-FR_DLIST_FUNCS(mod_env_parsed, module_env_parsed_t, entry)
-
-/** Derive whether tmpl can only emit a single box.
- */
-#define FR_MODULE_ENV_SINGLE(_s, _f, _c) \
-_Generic((((_s *)NULL)->_f), \
-	fr_value_box_t			: __builtin_choose_expr(_c, false, true), \
-	fr_value_box_t *		: __builtin_choose_expr(_c, false, true), \
-	fr_value_box_list_t		: false, \
-	fr_value_box_list_t *		: false \
-)
-
-/** Derive whether multi conf pairs are allowed from target field type.
- */
-#define FR_MODULE_ENV_MULTI(_s, _f) \
-_Generic((((_s *)NULL)->_f), \
-	fr_value_box_t			: false, \
-	fr_value_box_t *		: true, \
-	fr_value_box_list_t		: false, \
-	fr_value_box_list_t *		: true \
-)
-
-/** Only FR_TYPE_STRING and FR_TYPE_OCTETS can be concatenated.
- */
-#define FR_MODULE_ENV_CONCAT(_c, _ct) \
-__builtin_choose_expr(FR_BASE_TYPE(_ct) == FR_TYPE_STRING, _c, \
-__builtin_choose_expr(FR_BASE_TYPE(_ct) == FR_TYPE_OCTETS, _c, \
-__builtin_choose_expr(_c, (void)0, false)))
-
-/** Mapping from field types to destination type enum
- */
-#define FR_MODULE_ENV_DST_TYPE(_s, _f) \
-_Generic((((_s *)NULL)->_f), \
-	fr_value_box_t			: MOD_ENV_TYPE_VALUE_BOX, \
-	fr_value_box_t *		: MOD_ENV_TYPE_VALUE_BOX, \
-	fr_value_box_list_t		: MOD_ENV_TYPE_VALUE_BOX_LIST, \
-	fr_value_box_list_t *		: MOD_ENV_TYPE_VALUE_BOX_LIST \
-)
-
-#define FR_MODULE_ENV_DST_SIZE(_s, _f) \
-_Generic((((_s *)NULL)->_f), \
-	fr_value_box_t			: sizeof(fr_value_box_t), \
-	fr_value_box_t *		: sizeof(fr_value_box_t), \
-	fr_value_box_list_t		: sizeof(fr_value_box_list_t), \
-	fr_value_box_list_t *		: sizeof(fr_value_box_list_t) \
-)
-
-#define FR_MODULE_ENV_DST_TYPE_NAME(_s, _f) \
-_Generic((((_s *)NULL)->_f), \
-	fr_value_box_t			: "fr_value_box_t", \
-	fr_value_box_t *		: "fr_value_box_t", \
-	fr_value_box_list_t		: "fr_value_box_list_t", \
-	fr_value_box_list_t *		: "fr_value_box_list_t" \
-)
-
-#define FR_MODULE_ENV_OFFSET(_name, _cast_type, _struct, _field, _dflt, _dflt_quote, _required, _nullable, _concat) \
-	.name = _name, \
-	.type = _cast_type, \
-	.offset = offsetof(_struct, _field), \
-	.dflt = _dflt, \
-	.dflt_quote = _dflt_quote, \
-	.pair = { .required = _required, \
-		  .concat = FR_MODULE_ENV_CONCAT(_concat, _cast_type), \
-		  .single = FR_MODULE_ENV_SINGLE(_struct, _field, _concat), \
-		  .multi = FR_MODULE_ENV_MULTI(_struct, _field), \
-		  .nullable = _nullable, \
-		  .type = FR_MODULE_ENV_DST_TYPE(_struct, _field), \
-		  .size = FR_MODULE_ENV_DST_SIZE(_struct, _field), \
-		  .type_name = FR_MODULE_ENV_DST_TYPE_NAME(_struct, _field) }
-
-/** Version of the above which sets optional field for pointer to tmpl
- */
-#define FR_MODULE_ENV_TMPL_OFFSET(_name, _cast_type, _struct, _field, _tmpl_field, _dflt, _dflt_quote, _required, _nullable, _concat) \
-	.name = _name, \
-	.type = _cast_type, \
-	.offset = offsetof(_struct, _field), \
-	.dflt = _dflt, \
-	.dflt_quote = _dflt_quote, \
-	.pair = { .required = _required, \
-		  .concat = FR_MODULE_ENV_CONCAT(_concat, _cast_type), \
-		  .single = FR_MODULE_ENV_SINGLE(_struct, _field, _concat), \
-		  .multi = FR_MODULE_ENV_MULTI(_struct, _field), \
-		  .nullable = _nullable, \
-		  .type = FR_MODULE_ENV_DST_TYPE(_struct, _field), \
-		  .size = FR_MODULE_ENV_DST_SIZE(_struct, _field), \
-		  .type_name = FR_MODULE_ENV_DST_TYPE_NAME(_struct, _field), \
-		  .tmpl_offset = offsetof(_struct, _tmpl_field) }
-
-#define FR_MODULE_ENV_SUBSECTION(_name, _ident2, _subcs ) \
-	.name = _name, \
-	.type = FR_TYPE_SUBSECTION, \
-	.section = { .ident2 = _ident2, \
-		     .subcs = _subcs }
 
 /** A list of modules
  *

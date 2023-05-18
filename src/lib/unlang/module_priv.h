@@ -36,20 +36,11 @@ typedef struct {
 	unlang_t			self;			//!< Common fields in all #unlang_t tree nodes.
 	module_instance_t		*instance;		//!< Global instance of the module we're calling.
 	module_method_t			method;			//!< The entry point into the module.
-	module_method_env_t const	*method_env;		//!< Module environment for this method.
-	mod_env_parsed_head_t		mod_env_parsed;		//!< The per call parsed module environment.
-	TALLOC_CTX			*mod_env_ctx;		//!< A talloc pooled object for parsed module env
+	call_method_env_t const		*method_env;		//!< Call environment for this method.
+	call_env_parsed_head_t		call_env_parsed;	//!< The per call parsed call environment.
+	TALLOC_CTX			*call_env_ctx;		//!< A talloc pooled object for parsed call env
 								///< to be allocated from.
 } unlang_module_t;
-
-/** What state the module env for the current call is in.
- *
- */
-typedef enum {
-	MOD_ENV_EXP_INIT = 0,		//!< Expansion not yet started.
-	MOD_ENV_EXP_PROC,		//!< Expansion in progress.
-	MOD_ENV_EXP_DONE		//!< All expansions done.
-} module_env_state_t;
 
 /** A module stack entry
  *
@@ -63,9 +54,6 @@ typedef struct {
 								///< shared between all threads, so we can't
 								///< cache thread-specific data in the #unlang_t.
 
-	module_env_state_t		env_state;		//!< State of the current call module_env.
-	module_env_parsed_t const	*last_expanded;		//!< Last environment tmpl expanded.
-	fr_value_box_list_t		tmpl_expanded;		//!< Value boxes produced by last expanded tmpl.
 	void				*env_data;		//!< Expanded per call module environment tmpls.
 
 #ifndef NDEBUG

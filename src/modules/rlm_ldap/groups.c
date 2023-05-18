@@ -535,7 +535,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
 	MEM(group_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_group_userobj_ctx_t));
 	group_ctx->inst = inst;
 	group_ctx->ttrunk = ttrunk;
-	group_ctx->base_dn = &autz_ctx->mod_env->group_base;
+	group_ctx->base_dn = &autz_ctx->call_env->group_base;
 	group_ctx->list_ctx = tmpl_list_ctx(request, request_attr_control);
 	fr_assert(group_ctx->list_ctx != NULL);
 
@@ -755,7 +755,7 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *re
 		RETURN_MODULE_OK;
 	}
 
-	if (autz_ctx->mod_env->group_base.type != FR_TYPE_STRING) {
+	if (autz_ctx->call_env->group_base.type != FR_TYPE_STRING) {
 		REDEBUG("Missing group base_dn");
 		RETURN_MODULE_INVALID;
 	}
@@ -763,7 +763,7 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *re
 	MEM(group_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_group_groupobj_ctx_t));
 	group_ctx->inst = inst;
 	group_ctx->ttrunk = autz_ctx->ttrunk;
-	group_ctx->base_dn = &autz_ctx->mod_env->group_base;
+	group_ctx->base_dn = &autz_ctx->call_env->group_base;
 
 	if (fr_ldap_xlat_filter(request, filters, NUM_ELEMENTS(filters),
 				group_ctx->filter, sizeof(group_ctx->filter)) < 0) {

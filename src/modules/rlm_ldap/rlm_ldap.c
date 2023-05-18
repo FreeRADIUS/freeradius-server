@@ -49,23 +49,23 @@ typedef struct {
 	fr_value_box_t	user_sasl_authname;
 	fr_value_box_t	user_sasl_proxy;
 	fr_value_box_t	user_sasl_realm;
-} ldap_auth_mod_env_t;
+} ldap_auth_call_env_t;
 
 typedef struct {
 	fr_value_box_t	user_base;
 	fr_value_box_t	user_filter;
-} ldap_usermod_mod_env_t;
+} ldap_usermod_call_env_t;
 
-static const module_env_t sasl_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("mech", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_mech,
-			       NULL, T_INVALID, false, false, false) },
-	{ FR_MODULE_ENV_OFFSET("authname", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_authname,
-			       NULL, T_INVALID, false, false, false) },
-	{ FR_MODULE_ENV_OFFSET("proxy", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_proxy,
-			       NULL, T_INVALID, false, true, false) },
-	{ FR_MODULE_ENV_OFFSET("realm", FR_TYPE_STRING, ldap_auth_mod_env_t, user_sasl_realm,
-			       NULL, T_INVALID, false, true, false) },
-	MODULE_ENV_TERMINATOR
+static const call_env_t sasl_call_env[] = {
+	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, ldap_auth_call_env_t, user_sasl_mech,
+			     NULL, T_INVALID, false, false, false) },
+	{ FR_CALL_ENV_OFFSET("authname", FR_TYPE_STRING, ldap_auth_call_env_t, user_sasl_authname,
+			     NULL, T_INVALID, false, false, false) },
+	{ FR_CALL_ENV_OFFSET("proxy", FR_TYPE_STRING, ldap_auth_call_env_t, user_sasl_proxy,
+			     NULL, T_INVALID, false, true, false) },
+	{ FR_CALL_ENV_OFFSET("realm", FR_TYPE_STRING, ldap_auth_call_env_t, user_sasl_realm,
+			     NULL, T_INVALID, false, true, false) },
+	CALL_ENV_TERMINATOR
 };
 
 static CONF_PARSER profile_config[] = {
@@ -73,12 +73,12 @@ static CONF_PARSER profile_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const module_env_t autz_profile_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("default", FR_TYPE_STRING, ldap_autz_mod_env_t, default_profile,
-			       NULL, T_INVALID, false, false, true) },
-	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_mod_env_t, profile_filter,
-			       "(&)", T_SINGLE_QUOTED_STRING, false, false, true ) },	//!< Correct filter for when the DN is known.
-	MODULE_ENV_TERMINATOR
+static const call_env_t autz_profile_call_env[] = {
+	{ FR_CALL_ENV_OFFSET("default", FR_TYPE_STRING, ldap_autz_call_env_t, default_profile,
+			     NULL, T_INVALID, false, false, true) },
+	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_call_env_t, profile_filter,
+			     "(&)", T_SINGLE_QUOTED_STRING, false, false, true ) },	//!< Correct filter for when the DN is known.
+	CALL_ENV_TERMINATOR
 };
 
 /*
@@ -95,29 +95,29 @@ static CONF_PARSER user_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const module_env_t auth_user_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_auth_mod_env_t, user_base,
-			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
-	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_auth_mod_env_t, user_filter,
-			       NULL, T_INVALID, false, true, true) },
-	{ FR_MODULE_ENV_SUBSECTION("sasl", NULL, sasl_module_env) },
-	MODULE_ENV_TERMINATOR
+static const call_env_t auth_user_call_env[] = {
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_auth_call_env_t, user_base,
+			     "", T_SINGLE_QUOTED_STRING, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_auth_call_env_t, user_filter,
+			     NULL, T_INVALID, false, true, true) },
+	{ FR_CALL_ENV_SUBSECTION("sasl", NULL, sasl_call_env) },
+	CALL_ENV_TERMINATOR
 };
 
-static const module_env_t autz_user_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_mod_env_t, user_base,
-			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
-	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_mod_env_t, user_filter,
-			       NULL, T_INVALID, false, true, true) },
-	MODULE_ENV_TERMINATOR
+static const call_env_t autz_user_call_env[] = {
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_call_env_t, user_base,
+			     "", T_SINGLE_QUOTED_STRING, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_call_env_t, user_filter,
+			     NULL, T_INVALID, false, true, true) },
+	CALL_ENV_TERMINATOR
 };
 
-static const module_env_t usermod_user_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_usermod_mod_env_t, user_base,
-			       "", T_SINGLE_QUOTED_STRING, true, false, true) },
-	{ FR_MODULE_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_usermod_mod_env_t, user_filter,
-			       NULL, T_INVALID, false, true, true) },
-	MODULE_ENV_TERMINATOR
+static const call_env_t usermod_user_call_env[] = {
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_usermod_call_env_t, user_base,
+			     "", T_SINGLE_QUOTED_STRING, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_usermod_call_env_t, user_filter,
+			     NULL, T_INVALID, false, true, true) },
+	CALL_ENV_TERMINATOR
 };
 
 /*
@@ -139,10 +139,10 @@ static CONF_PARSER group_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const module_env_t autz_group_module_env[] = {
-	{ FR_MODULE_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_mod_env_t, group_base,
-			       NULL, T_INVALID, false, false, true) },
-	MODULE_ENV_TERMINATOR
+static const call_env_t autz_group_call_env[] = {
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_call_env_t, group_base,
+			     NULL, T_INVALID, false, false, true) },
+	CALL_ENV_TERMINATOR
 };
 
 /*
@@ -196,41 +196,41 @@ static const CONF_PARSER module_config[] = {
 };
 
 /*
- *	Method specific module environments
+ *	Method specific call environments
  */
-static const module_env_t authenticate_module_env[] = {
-	{ FR_MODULE_ENV_SUBSECTION("user", NULL, auth_user_module_env) },
-	MODULE_ENV_TERMINATOR
+static const call_env_t authenticate_call_env[] = {
+	{ FR_CALL_ENV_SUBSECTION("user", NULL, auth_user_call_env) },
+	CALL_ENV_TERMINATOR
 };
 
-static const module_env_t authorize_module_env[] = {
-	{ FR_MODULE_ENV_SUBSECTION("user", NULL, autz_user_module_env) },
-	{ FR_MODULE_ENV_SUBSECTION("group", NULL, autz_group_module_env) },
-	{ FR_MODULE_ENV_SUBSECTION("profile", NULL, autz_profile_module_env) },
-	MODULE_ENV_TERMINATOR
+static const call_env_t authorize_call_env[] = {
+	{ FR_CALL_ENV_SUBSECTION("user", NULL, autz_user_call_env) },
+	{ FR_CALL_ENV_SUBSECTION("group", NULL, autz_group_call_env) },
+	{ FR_CALL_ENV_SUBSECTION("profile", NULL, autz_profile_call_env) },
+	CALL_ENV_TERMINATOR
 };
 
-static const module_env_t usermod_module_env[] = {
-	{ FR_MODULE_ENV_SUBSECTION("user", NULL, usermod_user_module_env) },
-	MODULE_ENV_TERMINATOR
+static const call_env_t usermod_call_env[] = {
+	{ FR_CALL_ENV_SUBSECTION("user", NULL, usermod_user_call_env) },
+	CALL_ENV_TERMINATOR
 };
 
-static const module_method_env_t authenticate_method_env = {
-	.inst_size = sizeof(ldap_auth_mod_env_t),
-	.inst_type = "ldap_auth_mod_env_t",
-	.env = authenticate_module_env
+static const call_method_env_t authenticate_method_env = {
+	.inst_size = sizeof(ldap_auth_call_env_t),
+	.inst_type = "ldap_auth_call_env_t",
+	.env = authenticate_call_env
 };
 
-static const module_method_env_t authorize_method_env = {
-	.inst_size = sizeof(ldap_autz_mod_env_t),
-	.inst_type = "ldap_autz_mod_env_t",
-	.env = authorize_module_env
+static const call_method_env_t authorize_method_env = {
+	.inst_size = sizeof(ldap_autz_call_env_t),
+	.inst_type = "ldap_autz_call_env_t",
+	.env = authorize_call_env
 };
 
-static const module_method_env_t usermod_method_env = {
-	.inst_size = sizeof(ldap_usermod_mod_env_t),
-	.inst_type = "ldap_usermod_mod_env_t",
-	.env = usermod_module_env
+static const call_method_env_t usermod_method_env = {
+	.inst_size = sizeof(ldap_usermod_call_env_t),
+	.inst_type = "ldap_usermod_call_env_t",
+	.env = usermod_call_env
 };
 
 static fr_dict_t const *dict_freeradius;
@@ -280,7 +280,7 @@ typedef struct {
 	char const		*password;
 	rlm_ldap_t const	*inst;
 	fr_ldap_thread_t	*thread;
-	ldap_auth_mod_env_t	*mod_env;
+	ldap_auth_call_env_t	*call_env;
 } ldap_auth_ctx_t;
 
 /** Holds state of in progress async profile lookups
@@ -298,7 +298,7 @@ typedef struct {
  */
 typedef struct {
 	rlm_ldap_t const	*inst;
-	ldap_usermod_mod_env_t	*mod_env;
+	ldap_usermod_call_env_t	*call_env;
 	char const		*dn;
 	char			*passed[LDAP_MAX_ATTRMAP * 2];
 	LDAPMod			*mod_p[LDAP_MAX_ATTRMAP + 1];
@@ -1008,8 +1008,8 @@ static unlang_action_t mod_authenticate_start(rlm_rcode_t *p_result, UNUSED int 
 					  inst->handle_config.admin_password, request, &inst->handle_config);
 	if (!ttrunk) RETURN_MODULE_FAIL;
 
-	return rlm_ldap_find_user_async(auth_ctx, auth_ctx->inst, request, &auth_ctx->mod_env->user_base,
-					&auth_ctx->mod_env->user_filter, ttrunk, NULL, NULL);
+	return rlm_ldap_find_user_async(auth_ctx, auth_ctx->inst, request, &auth_ctx->call_env->user_base,
+					&auth_ctx->call_env->user_filter, ttrunk, NULL, NULL);
 }
 
 /** Initiate async LDAP bind to authenticate user
@@ -1037,13 +1037,13 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	/*
 	 *	Attempt a bind using the thread specific trunk for bind auths
 	 */
-	if (auth_ctx->mod_env->user_sasl_mech.type == FR_TYPE_STRING) {
+	if (auth_ctx->call_env->user_sasl_mech.type == FR_TYPE_STRING) {
 #ifdef WITH_SASL
-		ldap_auth_mod_env_t *mod_env = auth_ctx->mod_env;
-		if (fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, mod_env->user_sasl_mech.vb_strvalue,
-						 auth_ctx->dn, mod_env->user_sasl_authname.vb_strvalue,
-						 auth_ctx->password, mod_env->user_sasl_proxy.vb_strvalue,
-						 mod_env->user_sasl_realm.vb_strvalue) < 0) goto fail;
+		ldap_auth_call_env_t *call_env = auth_ctx->call_env;
+		if (fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
+						 auth_ctx->dn, call_env->user_sasl_authname.vb_strvalue,
+						 auth_ctx->password, call_env->user_sasl_proxy.vb_strvalue,
+						 call_env->user_sasl_realm.vb_strvalue) < 0) goto fail;
 #else
 		RDEBUG("Configuration item 'sasl.mech' is not supported.  "
 		       "The linked version of libldap does not provide ldap_sasl_bind( function");
@@ -1060,7 +1060,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
 	ldap_auth_ctx_t		*auth_ctx;
-	ldap_auth_mod_env_t	*mod_env = talloc_get_type_abort(mctx->env_data, ldap_auth_mod_env_t);
+	ldap_auth_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_auth_call_env_t);
 
 	fr_pair_t *username, *password;
 
@@ -1112,7 +1112,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		.password = password->vp_strvalue,
 		.thread = thread,
 		.inst = inst,
-		.mod_env = mod_env
+		.call_env = call_env
 	};
 
 	/*
@@ -1224,7 +1224,7 @@ static unlang_action_t rlm_ldap_map_profile(request_t *request, ldap_autz_ctx_t 
 	}
 
 	return fr_ldap_trunk_search(&ret, profile_ctx, &profile_ctx->query, request, ttrunk, dn,
-				    LDAP_SCOPE_BASE, autz_ctx->mod_env->profile_filter.vb_strvalue,
+				    LDAP_SCOPE_BASE, autz_ctx->call_env->profile_filter.vb_strvalue,
 				    expanded->attrs, NULL, NULL, true);
 }
 
@@ -1235,8 +1235,8 @@ static unlang_action_t mod_authorize_start(UNUSED rlm_rcode_t *p_result, UNUSED 
 					   request_t *request, void *uctx)
 {
 	ldap_autz_ctx_t	*autz_ctx = talloc_get_type_abort(uctx, ldap_autz_ctx_t);
-	return rlm_ldap_find_user_async(autz_ctx, autz_ctx->inst, request, &autz_ctx->mod_env->user_base,
-					&autz_ctx->mod_env->user_filter, autz_ctx->ttrunk, autz_ctx->expanded.attrs,
+	return rlm_ldap_find_user_async(autz_ctx, autz_ctx->inst, request, &autz_ctx->call_env->user_base,
+					&autz_ctx->call_env->user_filter, autz_ctx->ttrunk, autz_ctx->expanded.attrs,
 					&autz_ctx->query);
 }
 
@@ -1263,7 +1263,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 {
 	ldap_autz_ctx_t		*autz_ctx = talloc_get_type_abort(uctx, ldap_autz_ctx_t);
 	rlm_ldap_t const	*inst = talloc_get_type_abort_const(autz_ctx->inst, rlm_ldap_t);
-	ldap_autz_mod_env_t	*mod_env = talloc_get_type_abort(autz_ctx->mod_env, ldap_autz_mod_env_t);
+	ldap_autz_call_env_t	*call_env = talloc_get_type_abort(autz_ctx->call_env, ldap_autz_call_env_t);
 	int			ldap_errno;
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	LDAP			*handle = fr_ldap_handle_thread_local();
@@ -1393,11 +1393,11 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		/*
 		 *	Apply ONE user profile, or a default user profile.
 		 */
-		if (mod_env->default_profile.type == FR_TYPE_STRING) {
+		if (call_env->default_profile.type == FR_TYPE_STRING) {
 			unlang_action_t	ret;
 
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(request, autz_ctx, mod_env->default_profile.vb_strvalue,
+			ret = rlm_ldap_map_profile(request, autz_ctx, call_env->default_profile.vb_strvalue,
 						   &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
@@ -1494,7 +1494,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
 	ldap_autz_ctx_t		*autz_ctx;
 	fr_ldap_map_exp_t	*expanded;
-	ldap_autz_mod_env_t	*mod_env = talloc_get_type_abort(mctx->env_data, ldap_autz_mod_env_t);
+	ldap_autz_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_autz_call_env_t);
 
 	MEM(autz_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_autz_ctx_t));
 	talloc_set_destructor(autz_ctx, autz_ctx_free);
@@ -1533,7 +1533,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	autz_ctx->dlinst = mctx->inst;
 	autz_ctx->inst = inst;
-	autz_ctx->mod_env = mod_env;
+	autz_ctx->call_env = call_env;
 	autz_ctx->status = LDAP_AUTZ_FIND;
 
 	if (unlang_function_push(request, mod_authorize_start, mod_authorize_resume, mod_authorize_cancel,
@@ -1550,8 +1550,8 @@ static unlang_action_t user_modify_start(UNUSED rlm_rcode_t *p_result, UNUSED in
 {
 	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
 
-	return rlm_ldap_find_user_async(usermod_ctx, usermod_ctx->inst, request, &usermod_ctx->mod_env->user_base,
-		&usermod_ctx->mod_env->user_filter, usermod_ctx->ttrunk, NULL, NULL);
+	return rlm_ldap_find_user_async(usermod_ctx, usermod_ctx->inst, request, &usermod_ctx->call_env->user_base,
+		&usermod_ctx->call_env->user_filter, usermod_ctx->ttrunk, NULL, NULL);
 }
 
 /** Cancel an in progress user modification.
@@ -1631,11 +1631,11 @@ static unlang_action_t user_modify_resume(rlm_rcode_t *p_result, UNUSED int *pri
  * @param[in] inst		rlm_ldap instance.
  * @param[in] request		Current request.
  * @param[in] section		that holds the map to process.
- * @param[in] mod_env		Module environment.  Contains expanded base and filter to find user.
+ * @param[in] call_env		Call environment.  Contains expanded base and filter to find user.
  * @return one of the RLM_MODULE_* values.
  */
 static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
-				   ldap_acct_section_t *section, ldap_usermod_mod_env_t *mod_env)
+				   ldap_acct_section_t *section, ldap_usermod_call_env_t *call_env)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_FAIL;
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
@@ -1686,7 +1686,7 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 	MEM(usermod_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_user_modify_ctx_t));
 	*usermod_ctx = (ldap_user_modify_ctx_t) {
 		.inst = inst,
-		.mod_env = mod_env
+		.call_env = call_env
 	};
 
 	/*
@@ -1832,9 +1832,9 @@ error:
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
-	ldap_usermod_mod_env_t	*mod_env = talloc_get_type_abort(mctx->env_data, ldap_usermod_mod_env_t);
+	ldap_usermod_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_usermod_call_env_t);
 
-	if (inst->accounting) return user_modify(p_result, inst, request, inst->accounting, mod_env);
+	if (inst->accounting) return user_modify(p_result, inst, request, inst->accounting, call_env);
 
 	RETURN_MODULE_NOOP;
 }
@@ -1842,9 +1842,9 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
-	ldap_usermod_mod_env_t	*mod_env = talloc_get_type_abort(mctx->env_data, ldap_usermod_mod_env_t);
+	ldap_usermod_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_usermod_call_env_t);
 
-	if (inst->postauth) return user_modify(p_result, inst, request, inst->postauth, mod_env);
+	if (inst->postauth) return user_modify(p_result, inst, request, inst->postauth, call_env);
 
 	RETURN_MODULE_NOOP;
 }

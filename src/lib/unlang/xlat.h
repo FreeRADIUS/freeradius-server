@@ -65,6 +65,7 @@ typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t out
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/value.h>
 
+#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_ctx.h>
 
 /** Instance data for an xlat expansion node
@@ -78,6 +79,9 @@ struct xlat_inst {
 
 	xlat_exp_t		*node;		//!< Node this data relates to.
 	void			*data;		//!< xlat node specific instance data.
+	call_env_parsed_head_t	call_env_parsed;	//!< The per call parsed environment.
+	TALLOC_CTX		*call_env_ctx;	//!< A talloc pooled object for parsed call env
+						///< to be allocated from.
 };
 
 /** Thread specific instance data for xlat expansion node

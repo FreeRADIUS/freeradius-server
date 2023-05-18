@@ -322,6 +322,7 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 			return -1;
 		}
 		node->call.func = func;
+		if (t_rules) node->call.dict = t_rules->attr.dict_def;
 		node->flags = func->flags;
 	}
 
@@ -582,6 +583,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 			return -1;
 		}
 		node->call.func = func;
+		if (t_rules) node->call.dict = t_rules->attr.dict_def;
 		node->flags = func->flags;
 	}
 
@@ -1865,6 +1867,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			}
 
 			xlat_exp_set_type(node, XLAT_FUNC);
+			node->call.dict = xr_rules->tr_rules->dict_def;
 
 			/*
 			 *	Check input arguments of our freshly
