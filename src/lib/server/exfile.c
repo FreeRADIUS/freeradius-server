@@ -260,21 +260,12 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 	return fd;
 }
 
-
-/** Open a new log file, or maybe an existing one.
- *
- * When multithreaded, the FD is locked via a mutex.  This way we're
- * sure that no other thread is writing to the file.
- *
- * @param ef The logfile context returned from exfile_init().
- * @param filename the file to open.
- * @param permissions to use.
- * @param offset Optional pointer to store offset in when seeking the end of file.
- * @return
- *	- FD used to write to the file.
- *	- -1 on failure.
+/*
+ * Experience appears to show that coverity models of functions can't use incoming parameters
+ * to influence whether and which __coverity*__() functions are called. We therefore create a
+ * separate function for the locking case which we *can* model.
  */
-int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, off_t *offset)
+static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissions, off_t *offset)
 {
 	int i, tries, unused = -1, found = -1, oldest = -1;
 	bool do_cleanup = false;
@@ -282,20 +273,6 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, off_t *o
 	fr_time_t now;
 	struct stat st;
 	off_t real_offset;
-
-	if (!ef || !filename) return -1;
-
-	/*
-	 *	No locking: just return a new FD.
-	 */
-	if (!ef->locking) {
-		found = exfile_open_mkdir(ef, filename, permissions);
-		if (found < 0) return -1;
-
-		real_offset = lseek(found, 0, SEEK_END);
-		if (offset) *offset = real_offset;
-		return found;
-	}
 
 	/*
 	 *	It's faster to do hash comparisons of a string than
@@ -511,29 +488,42 @@ try_lock:
 	return ef->entries[i].fd;
 }
 
-/** Close the log file.  Really just return it to the pool.
+/** Open a new log file, or maybe an existing one.
  *
- * When multithreaded, the FD is locked via a mutex. This way we're sure that no other thread is
- * writing to the file. This function will unlock the mutex, so that other threads can write to
- * the file.
+ * When multithreaded, the FD is locked via a mutex.  This way we're
+ * sure that no other thread is writing to the file.
  *
- * @param ef The logfile context returned from #exfile_init.
- * @param fd the FD to close (i.e. return to the pool).
+ * @param ef The logfile context returned from exfile_init().
+ * @param filename the file to open.
+ * @param permissions to use.
+ * @param offset Optional pointer to store offset in when seeking the end of file.
  * @return
- *	- 0 on success.
+ *	- FD used to write to the file.
  *	- -1 on failure.
  */
-int exfile_close(exfile_t *ef, int fd)
+int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, off_t *offset)
+{
+	if (!ef || !filename) return -1;
+
+	if (!ef->locking) {
+		int found = exfile_open_mkdir(ef, filename, permissions);
+		off_t real_offset;
+
+		if (found < 0) return -1;
+		real_offset = lseek(found, 0, SEEK_END);
+		if (offset) *offset = real_offset;
+		return found;
+	}
+
+	return exfile_open_lock(ef, filename, permissions, offset);
+}
+
+/*
+ * Same split for exfile_close().
+ */
+static int exfile_close_lock(exfile_t *ef, int fd)
 {
 	uint32_t i;
-
-	/*
-	 *	No locking: just close the file.
-	 */
-	if (!ef->locking) {
-		close(fd);
-		return 0;
-	}
 
 	/*
 	 *	Unlock the bytes that we had previously locked.
@@ -553,4 +543,28 @@ int exfile_close(exfile_t *ef, int fd)
 
 	fr_strerror_const("Attempt to unlock file which is not tracked");
 	return -1;
+}
+
+/** Close the log file.  Really just return it to the pool.
+ *
+ * When multithreaded, the FD is locked via a mutex. This way we're sure that no other thread is
+ * writing to the file. This function will unlock the mutex, so that other threads can write to
+ * the file.
+ *
+ * @param ef The logfile context returned from #exfile_init.
+ * @param fd the FD to close (i.e. return to the pool).
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int exfile_close(exfile_t *ef, int fd)
+{
+	if (!ef->locking) {
+		/*
+		 *	No locking: just close the file.
+		 */
+		close(fd);
+		return 0;
+	}
+	return exfile_close_lock(ef, fd);
 }
