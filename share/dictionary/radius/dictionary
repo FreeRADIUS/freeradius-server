@@ -3,61 +3,6 @@
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
-#
-#	DO NOT EDIT THE FILES IN THIS DIRECTORY
-#
-#	The files in this directory are maintained and updated by
-#	the FreeRADIUS project.  Newer releases of software may update
-#	or change these files.
-#
-#	Use the main dictionary file (usually /etc/raddb/dictionary)
-#	for local system attributes and $INCLUDEs.
-#
-#
-#
-#	This file contains dictionary translations for parsing
-#	requests and generating responses.  All transactions are
-#	composed of Attribute/Value Pairs.  The value of each attribute
-#	is specified as one of a few data types.  Valid data types are:
-#
-#	string     - printable text, generally UTF-8 encoded.  (The RFCs call this "text")
-#	ipaddr     - 4 octets in network byte order
-#	ipv4prefix - 1 octet reserved, one octet prefix, 4 octets ipaddr
-#	integer    - 32 bit value in big endian order
-#	integer64  - 64 bit value in big endian order
-#	date       - 32 bit value in big endian order - seconds since
-#		     00:00:00 GMT,  Jan.  1,  1970
-#	ifid       - 8 octets in network byte order
-#	ipv6addr   - 16 octets in network byte order
-#	ipv6prefix - 1 octet reserved, one octet prefix, 16 octets ipv6addr
-#	tlv	   - type-length-value
-#
-#	FreeRADIUS includes data types which are not defined
-#	in the RFC's.  These data types are:
-#
-#	byte    - 8 bit unsigned integer
-#	ether   - 6 octets of hh:hh:hh:hh:hh:hh
-#		  where 'h' is hex digits, upper or lowercase.
-#	short   - 16-bit unsigned integer in network byte order
-#	signed  - 32-bit signed integer in network byte order
-#	octets  - raw octets, printed and input as hex strings.
-#		  e.g.: 0x123456789abcdef  The RFCs call this "string".
-#
-# 	FreeRADIUS uses a number of data types which are defined in
-#	RFC 6929.  These data types should NEVER be used in any other
-#	dictionary.  We won't even list them here.
-#
-#
-#	Enumerated values are stored in the user file with dictionary
-#	VALUE translations for easy administration.
-#
-#	Example:
-#
-#	ATTRIBUTE	  VALUE
-#	---------------   -----
-#	Framed-Protocol = PPP
-#	7		= 1	(integer encoding)
-#
 
 PROTOCOL	RADIUS		1	verify=lib
 BEGIN-PROTOCOL	RADIUS
