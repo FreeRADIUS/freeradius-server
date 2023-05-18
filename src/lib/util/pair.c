@@ -1483,21 +1483,17 @@ int fr_pair_append_by_da_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t
  * @param[out] out	Pair we allocated or found.  May be NULL if the caller doesn't
  *			care about manipulating the fr_pair_t.
  * @param[in] da	of attribute to locate or alloc.
- * @param[in] n		update the n'th instance of this da.
- *			Note: If we can't find the n'th instance the attribute created
- *			won't necessarily be at index n.  So use cases for this are
- *			limited .
  * @return
  *	- 1 if attribute already existed.
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
 int fr_pair_update_by_da(fr_pair_t *parent, fr_pair_t **out,
-			 fr_dict_attr_t const *da, unsigned int n)
+			 fr_dict_attr_t const *da)
 {
 	fr_pair_t	*vp;
 
-	vp = fr_pair_find_by_da_idx(&parent->vp_group, da, n);
+	vp = fr_pair_find_by_da_idx(&parent->vp_group, da, 0);
 	if (vp) {
 		PAIR_VERIFY_WITH_LIST(&parent->vp_group, vp);
 		if (out) *out = vp;

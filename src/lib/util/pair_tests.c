@@ -530,7 +530,7 @@ static void test_fr_pair_update_by_da(void)
 	TEST_CHECK((group = fr_pair_afrom_da(autofree, fr_dict_attr_test_group)) != NULL);
 
 	TEST_CASE("Update Add using fr_pair_prepend_by_da()");
-	TEST_CHECK(fr_pair_update_by_da(group, &vp, fr_dict_attr_test_uint32, 0) == 0); /* attribute doesn't exist in this group */
+	TEST_CHECK(fr_pair_update_by_da(group, &vp, fr_dict_attr_test_uint32) == 0); /* attribute doesn't exist in this group */
 	vp->vp_uint32 = 54321;
 
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 54321)");
