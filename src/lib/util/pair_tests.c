@@ -523,14 +523,14 @@ static void test_fr_pair_prepend_by_da(void)
 	fr_pair_list_free(&local_pairs);
 }
 
-static void test_fr_pair_update_by_da(void)
+static void test_fr_pair_update_by_da_parent(void)
 {
 	fr_pair_t *vp, *group;
 
 	TEST_CHECK((group = fr_pair_afrom_da(autofree, fr_dict_attr_test_group)) != NULL);
 
 	TEST_CASE("Update Add using fr_pair_prepend_by_da()");
-	TEST_CHECK(fr_pair_update_by_da(group, &vp, fr_dict_attr_test_uint32) == 0); /* attribute doesn't exist in this group */
+	TEST_CHECK(fr_pair_update_by_da_parent(group, &vp, fr_dict_attr_test_uint32) == 0); /* attribute doesn't exist in this group */
 	vp->vp_uint32 = 54321;
 
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 54321)");
@@ -1360,7 +1360,7 @@ TEST_LIST = {
 	{ "fr_pair_prepend_by_da",                test_fr_pair_prepend_by_da },
 	{ "fr_pair_append_by_da_parent",          test_fr_pair_append_by_da_parent },
 	{ "fr_pair_delete_by_child_num",          test_fr_pair_delete_by_child_num },
-	{ "fr_pair_update_by_da",                 test_fr_pair_update_by_da },
+	{ "fr_pair_update_by_da_parent",          test_fr_pair_update_by_da_parent },
 	{ "fr_pair_delete",                       test_fr_pair_delete },
 	{ "fr_pair_delete_by_da",                 test_fr_pair_delete_by_da },
 

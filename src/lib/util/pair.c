@@ -1488,28 +1488,69 @@ int fr_pair_append_by_da_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
-int fr_pair_update_by_da(fr_pair_t *parent, fr_pair_t **out,
-			 fr_dict_attr_t const *da)
+int fr_pair_update_by_da_parent(fr_pair_t *parent, fr_pair_t **out,
+				fr_dict_attr_t const *da)
 {
-	fr_pair_t	*vp;
+	fr_pair_t		*vp = NULL;
+	fr_da_stack_t		da_stack;
+	fr_dict_attr_t const	**find;
+	TALLOC_CTX		*pair_ctx = parent;
+	fr_pair_list_t		*list = &parent->vp_group;
 
-	vp = fr_pair_find_by_da_idx(&parent->vp_group, da, 0);
-	if (vp) {
-		PAIR_VERIFY_WITH_LIST(&parent->vp_group, vp);
-		if (out) *out = vp;
-		return 1;
+	/*
+	 *	Fast path for non-nested attributes
+	 */
+	if (da->depth <= 1) {
+		vp = fr_pair_find_by_da(list, NULL, da);
+		if (vp) {
+			*out = vp;
+			return 1;
+		}
+
+		return fr_pair_append_by_da(parent, out, list, da);
 	}
 
-	vp = fr_pair_afrom_da(parent, da);
-	if (unlikely(!vp)) {
-		if (out) *out = NULL;
-		return -1;
+	fr_proto_da_stack_build(&da_stack, da);
+	find = &da_stack.da[0];
+
+	/*
+	 *	Walk down the da stack looking for candidate parent
+	 *	attributes and then allocating the leaf.
+	 */
+	while (true) {
+		fr_assert((*find)->depth <= da->depth);
+
+		/*
+		 *	We're not at the leaf, look for a potential parent
+		 */
+		if ((*find) != da) vp = fr_pair_find_by_da(list, NULL, *find);
+
+		/*
+		 *	Nothing found, create the pair
+		 */
+		if (!vp) {
+			if (fr_pair_append_by_da(pair_ctx, &vp, list, *find) < 0) {
+				*out = NULL;
+				return -1;
+			}
+		}
+
+		/*
+		 *	We're at the leaf, return
+		 */
+		if ((*find) == da) {
+			*out = vp;
+			return 0;
+		}
+
+		/*
+		 *	Prepare for next level
+		 */
+		list = &vp->vp_group;
+		pair_ctx = vp;
+		vp = NULL;
+		find++;
 	}
-
-	fr_pair_append(&parent->vp_group, vp);
-	if (out) *out = vp;
-
-	return 0;
 }
 
 /** Delete matching pairs from the specified list

@@ -501,8 +501,8 @@ int		fr_pair_prepend_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *lis
 int		fr_pair_append_by_da_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
 					    fr_dict_attr_t const *da) CC_HINT(nonnull(3,4));
 
-int		fr_pair_update_by_da(fr_pair_t *parent, fr_pair_t **out,
-				     fr_dict_attr_t const *da) CC_HINT(nonnull(1,3));
+int		fr_pair_update_by_da_parent(fr_pair_t *parent, fr_pair_t **out,
+					    fr_dict_attr_t const *da) CC_HINT(nonnull(1,3));
 
 int		fr_pair_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
