@@ -618,7 +618,7 @@ migrate {
 	#  Not all `update` sections can be automatically converted.
 	#  If the conversion process does not work, then the server
 	#  will produce an error instead of doing the wrong thing.
-	rewrite_update = false;
+	rewrite_update = false
 
 	#
 	#  forbid_update:: Forbid the use of the `update` keyword.
