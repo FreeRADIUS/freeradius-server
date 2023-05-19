@@ -892,7 +892,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @param[in] head		of the list to evaluate
  * @param[in,out] in		xlat node to evaluate.  Advanced as we process
  *				additional #xlat_exp_t.
- * @param[in] env_data		Expanded module env.
+ * @param[in] env_data		Expanded call env.
  * @param[in] result		of a previous nested evaluation.
  */
 xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,

@@ -133,7 +133,7 @@ typedef struct {
 	xlat_input_type_t	input_type;		//!< The input type used inferred from the
 							///< bracketing style.
 
-	fr_dict_t const		*dict;			//!< Dictionary to use when resolving module env tmpls
+	fr_dict_t const		*dict;			//!< Dictionary to use when resolving call env tmpls
 } xlat_call_t;
 
 /** An xlat expansion node

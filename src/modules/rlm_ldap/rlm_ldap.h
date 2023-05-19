@@ -125,7 +125,7 @@ typedef struct {
 	fr_trunk_conf_t	bind_trunk_conf;		//!< Trunk configuration for trunk used for bind auths
 } rlm_ldap_t;
 
-/** Module environment used in LDAP authorization
+/** Call environment used in LDAP authorization
  *
  */
 typedef struct {

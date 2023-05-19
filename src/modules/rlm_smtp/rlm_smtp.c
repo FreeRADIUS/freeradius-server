@@ -62,7 +62,7 @@ global_lib_autoinst_t const * const rlm_smtp_lib[] = {
 	GLOBAL_LIB_TERMINATOR
 };
 
-/** Module environment for sending emails.
+/** Call environment for sending emails.
 */
 typedef struct {
 	fr_value_box_t		username;		//!< User to authenticate as when sending emails.

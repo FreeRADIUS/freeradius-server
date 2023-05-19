@@ -117,7 +117,7 @@ DIAG_ON(unused-function)
  *
  * @param[in] _dl_inst	of the module being called.
  * @param[in] _thread 	instance of the module being called.
- * @param[in] _env_data	Module environment data.
+ * @param[in] _env_data	Call environment data.
  * @param[in] _rctx	Resume ctx (if any).
  */
 #define MODULE_CTX(_dl_inst, _thread, _env_data, _rctx) &(module_ctx_t){ .inst = _dl_inst, .thread = _thread, .env_data = _env_data, .rctx = _rctx }
