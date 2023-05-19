@@ -7,7 +7,7 @@
 # |_ Vendor
 #
 attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.1
-	NAME 'radiusClientIdentifier'
+	NAME 'freeradiusClientIdentifier'
 	DESC 'Client Identifier'
 	EQUALITY caseIgnoreMatch
 	SUBSTR caseIgnoreSubstringsMatch
@@ -16,7 +16,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.1
  )
 
 attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.2
-	NAME 'radiusClientSecret'
+	NAME 'freeradiusClientSecret'
 	DESC 'Client Secret'
 	EQUALITY caseIgnoreMatch
 	SUBSTR caseIgnoreSubstringsMatch
@@ -25,7 +25,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.2
  )
 
 attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.3
-	NAME 'radiusClientShortname'
+	NAME 'freeradiusClientShortname'
 	DESC 'Client Shortname'
 	EQUALITY caseIgnoreMatch
 	SUBSTR caseIgnoreSubstringsMatch
@@ -34,7 +34,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.3
  )
 
 attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.4
-	NAME 'radiusClientVirtualServer'
+	NAME 'freeradiusClientVirtualServer'
 	DESC 'VirtualServer'
 	EQUALITY caseIgnoreMatch
 	SUBSTR caseIgnoreSubstringsMatch
@@ -43,7 +43,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.4
  )
 
 attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.5
-	NAME 'radiusClientType'
+	NAME 'freeradiusClientType'
 	DESC 'Client Type'
 	EQUALITY caseIgnoreMatch
 	SUBSTR caseIgnoreSubstringsMatch
@@ -52,7 +52,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.5
  )
 
 attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.6
-	NAME 'radiusClientRequireMa'
+	NAME 'freeradiusClientRequireMa'
 	DESC 'Require Message Authenticator'
 	EQUALITY booleanMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.7
@@ -60,19 +60,37 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.6
  )
 
 attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.7
-	NAME 'radiusClientComment'
+	NAME 'freeradiusClientComment'
 	DESC 'Client comment'
 	EQUALITY caseIgnoreMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
 	SINGLE-VALUE
  )
 
+attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.8
+	NAME 'freeradiusClientProto'
+	DESC 'Client Type'
+	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+	SINGLE-VALUE
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.1.1.2.9
+	NAME 'freeradiusClientTransport'
+	DESC 'Client Type'
+	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+	SINGLE-VALUE
+ )
+
 objectclass ( 1.3.6.1.4.1.11344.4.1.1.1.1
-	NAME 'radiusClient'
-	DESC 'radiusClient object class'
+	NAME 'freeradiusClient'
+	DESC 'freeradiusClient object class'
 	SUP top
 	STRUCTURAL
-	MUST ( radiusClientIdentifier $ radiusClientSecret )
-	MAY ( radiusClientShortname $ radiusClientVirtualServer $ radiusClientType $ radiusClientRequireMa $ radiusClientComment )
+	MUST ( freeradiusClientIdentifier $ freeradiusClientSecret )
+	MAY ( freeradiusClientShortname $ freeradiusClientVirtualServer $ freeradiusClientType $ freeradiusClientRequireMa $ freeradiusClientComment $ freeradiusClientProto $ freeradiusClientTransport )
  )
 
