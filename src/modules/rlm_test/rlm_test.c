@@ -483,19 +483,25 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		INFO("inst->tmpl_m is NULL");
 	}
 
-	if (!cf_section_name2(mctx->inst->conf)) {
-		if (!(xlat = xlat_func_register_module(inst, mctx, "test_trigger", trigger_test_xlat, FR_TYPE_BOOL))) return -1;
-		xlat_func_args_set(xlat, trigger_test_xlat_args);
-
-		if (!(xlat = xlat_func_register_module(inst, mctx, "test", test_xlat, FR_TYPE_STRING))) return -1;
-		xlat_func_args_set(xlat, test_xlat_args);
-
-	} else {
-		if (!(xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, test_xlat, FR_TYPE_VOID))) return -1;
-		xlat_func_args_set(xlat, test_xlat_args);
-	}
+	if (!(xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, test_xlat, FR_TYPE_VOID))) return -1;
+	xlat_func_args_set(xlat, test_xlat_args);
 
 	return 0;
+}
+
+static int mod_load(void)
+{
+	xlat_t	*xlat;
+
+	if (!(xlat = xlat_func_register(NULL, "test_trigger", trigger_test_xlat, FR_TYPE_BOOL))) return -1;
+	xlat_func_args_set(xlat, trigger_test_xlat_args);
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	xlat_func_unregister("test_trigger");
 }
 
 /*
@@ -517,6 +523,8 @@ module_rlm_t rlm_test = {
 		.thread_inst_size	= sizeof(rlm_test_thread_t),
 		.config			= module_config,
 		.bootstrap		= mod_bootstrap,
+		.onload			= mod_load,
+		.unload			= mod_unload,
 		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach
 	},
