@@ -161,7 +161,7 @@ static xlat_arg_parser_t const json_encode_xlat_arg[] = {
 
 /** Convert given attributes to a JSON document
  *
- * Usage is `%{json_encode:attr tmpl list}`
+ * Usage is `%{json.encode:attr tmpl list}`
  *
  * @ingroup xlat_functions
  */
@@ -528,13 +528,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_json_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_json_t);
 	CONF_SECTION		*conf = mctx->inst->conf;
 	xlat_t			*xlat;
-	char 			*name;
 	fr_json_format_t	*format = inst->format;
 
-	name = talloc_asprintf(inst, "%s_encode", mctx->inst->name);
-	xlat = xlat_func_register_module(inst, mctx, name, json_encode_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(inst, mctx, "encode", json_encode_xlat, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, json_encode_xlat_arg);
-	talloc_free(name);
 
 	/*
 	 *	Check the output format type and warn on unused

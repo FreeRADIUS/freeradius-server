@@ -575,7 +575,7 @@ static xlat_arg_parser_t const cipher_rsa_encrypt_xlat_arg[] = {
  * Arguments are @verbatim(<plaintext>...)@endverbatim
  *
 @verbatim
-%{<inst>_encrypt:<plaintext>...}
+%{<inst>.encrypt:<plaintext>...}
 @endverbatim
  *
  * If multiple arguments are provided they will be concatenated.
@@ -636,7 +636,7 @@ static xlat_arg_parser_t const cipher_rsa_sign_xlat_arg[] = {
  * Arguments are @verbatim(<plaintext>...)@endverbatim
  *
 @verbatim
-%{<inst>_sign:<plaintext>...}
+%{<inst>.sign:<plaintext>...}
 @endverbatim
  *
  * If multiple arguments are provided they will be concatenated.
@@ -714,7 +714,7 @@ static xlat_arg_parser_t const cipher_rsa_decrypt_xlat_arg[] = {
  * Arguments are @verbatim(<ciphertext\>...)@endverbatim
  *
 @verbatim
-%{<inst>_decrypt:<ciphertext>...}
+%{<inst>.decrypt:<ciphertext>...}
 @endverbatim
  *
  * If multiple arguments are provided they will be concatenated.
@@ -775,7 +775,7 @@ static xlat_arg_parser_t const cipher_rsa_verify_xlat_arg[] = {
  * Arguments are @verbatim(<signature>, <plaintext>...)@endverbatim
  *
 @verbatim
-%(<inst>_verify:<signature> <plaintext>...)
+%(<inst>.verify:<signature> <plaintext>...)
 @endverbatim
  *
  * If multiple arguments are provided (after @verbatim<signature>@endverbatim)
@@ -890,7 +890,7 @@ static xlat_arg_parser_t const cipher_certificate_xlat_args[] = {
  * Arguments are @verbatim(<digest>)@endverbatim
  *
 @verbatim
-%(<inst>_certificate:fingerprint <digest>)
+%(<inst>.certificate:fingerprint <digest>)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -939,7 +939,7 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 /** Return the serial of the public certificate
  *
 @verbatim
-%(<inst>_certificate:serial)
+%(<inst>.certificate:serial)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1293,28 +1293,22 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		}
 
 		if (inst->rsa->private_key_file) {
-			char *xlat_name;
 			xlat_t *xlat;
 
 			/*
 			 *	Register decrypt xlat
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_decrypt", mctx->inst->name);
-			xlat = xlat_func_register_module(inst, mctx, xlat_name, cipher_rsa_decrypt_xlat, FR_TYPE_STRING);
+			xlat = xlat_func_register_module(inst, mctx, "decrypt", cipher_rsa_decrypt_xlat, FR_TYPE_STRING);
 			xlat_func_mono_set(xlat, cipher_rsa_decrypt_xlat_arg);
-			talloc_free(xlat_name);
 
 			/*
 			 *	Verify sign xlat
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_verify", mctx->inst->name);
-			xlat = xlat_func_register_module(inst, mctx, xlat_name, cipher_rsa_verify_xlat, FR_TYPE_BOOL);
+			xlat = xlat_func_register_module(inst, mctx, "verify", cipher_rsa_verify_xlat, FR_TYPE_BOOL);
 			xlat_func_args_set(xlat, cipher_rsa_verify_xlat_arg);
-			talloc_free(xlat_name);
 		}
 
 		if (inst->rsa->certificate_file) {
-			char *xlat_name;
 			xlat_t *xlat;
 
 			/*
@@ -1336,28 +1330,21 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			/*
 			 *	Register encrypt xlat
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_encrypt", mctx->inst->name);
-			xlat = xlat_func_register_module(inst, mctx, xlat_name, cipher_rsa_encrypt_xlat, FR_TYPE_OCTETS);
+			xlat = xlat_func_register_module(inst, mctx, "encrypt", cipher_rsa_encrypt_xlat, FR_TYPE_OCTETS);
 			xlat_func_mono_set(xlat, cipher_rsa_encrypt_xlat_arg);
-			talloc_free(xlat_name);
 
 			/*
 			 *	Register sign xlat
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_sign", mctx->inst->name);
-			xlat = xlat_func_register_module(inst, mctx, xlat_name, cipher_rsa_sign_xlat, FR_TYPE_OCTETS);
+			xlat = xlat_func_register_module(inst, mctx, "sign", cipher_rsa_sign_xlat, FR_TYPE_OCTETS);
 			xlat_func_mono_set(xlat, cipher_rsa_sign_xlat_arg);
-			talloc_free(xlat_name);
 
 			/*
 			 *	FIXME: These should probably be split into separate xlats
 			 *	so we can optimise for return types.
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_certificate", mctx->inst->name);
-			xlat = xlat_func_register_module(inst, mctx, xlat_name, cipher_certificate_xlat, FR_TYPE_VOID);
+			xlat = xlat_func_register_module(inst, mctx, "certificate", cipher_certificate_xlat, FR_TYPE_VOID);
 			xlat_func_args_set(xlat, cipher_certificate_xlat_args);
-
-			talloc_free(xlat_name);
 		}
 		break;
 

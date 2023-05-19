@@ -38,19 +38,19 @@ if ("%(redis:SET d "%{control.Tmp-String-2}")" == 'OK') {
 #
 #  Now check they are where we expect
 #
-if ("%(redis:@%(redis_node:b 0) GET b)" == "%{control.Tmp-String-0}") {
+if ("%(redis:@%(redis.node:b 0) GET b)" == "%{control.Tmp-String-0}") {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%(redis:@%(redis_node:c 0) GET c)" == "%{control.Tmp-String-1}") {
+if ("%(redis:@%(redis.node:c 0) GET c)" == "%{control.Tmp-String-1}") {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%(redis:@%(redis_node:d 0) GET d)" == "%{control.Tmp-String-2}") {
+if ("%(redis:@%(redis.node:d 0) GET d)" == "%{control.Tmp-String-2}") {
 	test_pass
 } else {
 	test_fail

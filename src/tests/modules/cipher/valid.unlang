@@ -1,5 +1,5 @@
-&Tmp-Date-0 := "%(cipher_rsa_certificate:notBefore)"
-&Tmp-Date-1 := "%(cipher_rsa_certificate:notAfter)"
+&Tmp-Date-0 := "%(cipher_rsa.certificate:notBefore)"
+&Tmp-Date-1 := "%(cipher_rsa.certificate:notAfter)"
 
 # Check the cert validity period is 30 days
 if (<uint32>"%{expr:%(integer:%{Tmp-Date-1}) - %(integer:%{Tmp-Date-0})}" != <uint32>"%{expr:86400 * 60}") {

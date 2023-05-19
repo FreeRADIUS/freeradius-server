@@ -1,18 +1,18 @@
 #
-#	json_encode tests
+#	json.encode tests
 #
 &request -= &Packet-Type[*]
 
 # 0. Check basic xlat parsing
-&control.Tmp-String-1 := "%{json_encode:&request.[*]}"
-&control.Tmp-String-2 := "%{json_encode:&request.[*] }"
-&control.Tmp-String-3 := "%{json_encode: &request.[*]}"
-&control.Tmp-String-4 := "%{json_encode: 	 &request.[*]	}"
-&control.Tmp-String-5 := "%{json_encode: &request.[*]    !&Filter-Id }"
-&control.Tmp-String-6 := "%{json_encode:&request.[*] ! }"
+&control.Tmp-String-1 := "%{json.encode:&request.[*]}"
+&control.Tmp-String-2 := "%{json.encode:&request.[*] }"
+&control.Tmp-String-3 := "%{json.encode: &request.[*]}"
+&control.Tmp-String-4 := "%{json.encode: 	 &request.[*]	}"
+&control.Tmp-String-5 := "%{json.encode: &request.[*]    !&Filter-Id }"
+&control.Tmp-String-6 := "%{json.encode:&request.[*] ! }"
 #  Check defaults are the same as output_mode "object":
-&control.Tmp-String-7 := "%{json_object_encode:&request.[*]}"
-&control.Tmp-String-8 := "%{json_object_no_encode:&request.[*]}"
+&control.Tmp-String-7 := "%{json_object.encode:&request.[*]}"
+&control.Tmp-String-8 := "%{json_object_no.encode:&request.[*]}"
 
 if (!(&control.Tmp-String-1 == '{"User-Name":{"type":"string","value":"john"},"Filter-Id":{"type":"string","value":["f1","f2"]},"NAS-Port":{"type":"uint32","value":999},"Service-Type":{"type":"uint32","value":"Login-User"}}')) {
 	test_fail
@@ -43,8 +43,8 @@ if !(&control.Tmp-String-6 == "") {
 
 # These are unsorted dictionaries. Hopefully json-c doesn't suddenly
 # decide that it's going to use a different ordering of the keys...
-&control.Tmp-String-1 := "%{json_object_encode:&request.[*]}"
-&control.Tmp-String-2 := "%{json_object_ex_encode:&request.[*]}"
+&control.Tmp-String-1 := "%{json_object.encode:&request.[*]}"
+&control.Tmp-String-2 := "%{json_object_ex.encode:&request.[*]}"
 
 if !(&control.Tmp-String-1 == '{"User-Name":{"type":"string","value":"john"},"Filter-Id":{"type":"string","value":["f1","f2"]},"NAS-Port":{"type":"uint32","value":999},"Service-Type":{"type":"uint32","value":"Login-User"}}') {
 	test_fail
@@ -56,15 +56,15 @@ if !(&control.Tmp-String-2 == '{"pf:User-Name":{"type":"string","value":["john"]
 }
 
 # 1b. "object" empty inputs
-&control.Tmp-String-1 := "%{json_object_encode:!&request.[*]}"
+&control.Tmp-String-1 := "%{json_object.encode:!&request.[*]}"
 
 if !(&control.Tmp-String-1 == '{}') {
 	test_fail
 }
 
 # 2a. Output mode "object_simple" tests
-&control.Tmp-String-1 := "%{json_object_simple_encode:&request.[*]}"
-&control.Tmp-String-2 := "%{json_object_simple_ex_encode:&request.[*]}"
+&control.Tmp-String-1 := "%{json_object_simple.encode:&request.[*]}"
+&control.Tmp-String-2 := "%{json_object_simple_ex.encode:&request.[*]}"
 
 if !(&control.Tmp-String-1 == '{"User-Name":"john","Filter-Id":["f1","f2"],"NAS-Port":999,"Service-Type":"Login-User"}') {
 	test_fail
@@ -75,15 +75,15 @@ if !(&control.Tmp-String-2 == '{"pf:User-Name":["john"],"pf:Filter-Id":["f1","f2
 }
 
 # 2b. "object_simple" empty inputs
-&control.Tmp-String-1 := "%{json_object_simple_encode:!&request.[*]}"
+&control.Tmp-String-1 := "%{json_object_simple.encode:!&request.[*]}"
 
 if !(&control.Tmp-String-1 == '{}') {
 	test_fail
 }
 
 # 3a. Output mode "array" tests
-&control.Tmp-String-1 := "%{json_array_encode:&request.[*]}"
-&control.Tmp-String-2 := "%{json_array_ex_encode:&request.[*]}"
+&control.Tmp-String-1 := "%{json_array.encode:&request.[*]}"
+&control.Tmp-String-2 := "%{json_array_ex.encode:&request.[*]}"
 
 if !(&control.Tmp-String-1 == '[{"name":"User-Name","type":"string","value":"john"},{"name":"Filter-Id","type":"string","value":"f1"},{"name":"Filter-Id","type":"string","value":"f2"},{"name":"NAS-Port","type":"uint32","value":999},{"name":"Service-Type","type":"uint32","value":"Login-User"}]') {
 	test_fail
@@ -94,15 +94,15 @@ if !(&control.Tmp-String-2 == '[{"name":"pf:User-Name","type":"string","value":[
 }
 
 # 3b. "array" empty inputs
-&control.Tmp-String-1 := "%{json_array_encode:!&request.[*]}"
+&control.Tmp-String-1 := "%{json_array.encode:!&request.[*]}"
 
 if !(&control.Tmp-String-1 == '[]') {
 	test_fail
 }
 
 # 4a. Output mode "array_of_names" tests
-&control.Tmp-String-1 := "%{json_array_names_encode:&request.[*]}"
-&control.Tmp-String-2 := "%{json_array_names_ex_encode:&request.[*]}"
+&control.Tmp-String-1 := "%{json_array_names.encode:&request.[*]}"
+&control.Tmp-String-2 := "%{json_array_names_ex.encode:&request.[*]}"
 
 if !(&control.Tmp-String-1 == '["User-Name","Filter-Id","Filter-Id","NAS-Port","Service-Type"]') {
 	test_fail
@@ -113,15 +113,15 @@ if !(&control.Tmp-String-2 == '["pf:User-Name","pf:Filter-Id","pf:Filter-Id","pf
 }
 
 # 4b. "array_of_names" empty inputs
-&control.Tmp-String-1 := "%{json_array_names_encode:!&request.[*]}"
+&control.Tmp-String-1 := "%{json_array_names.encode:!&request.[*]}"
 
 if !(&control.Tmp-String-1 == '[]') {
 	test_fail
 }
 
 # 5a. Output mode "array_of_values" tests
-&control.Tmp-String-1 := "%{json_array_values_encode:&request.[*]}"
-&control.Tmp-String-2 := "%{json_array_values_ex_encode:&request.[*]}"
+&control.Tmp-String-1 := "%{json_array_values.encode:&request.[*]}"
+&control.Tmp-String-2 := "%{json_array_values_ex.encode:&request.[*]}"
 
 if !(&control.Tmp-String-1 == '["john","f1","f2",999,"Login-User"]') {
 	test_fail
@@ -132,7 +132,7 @@ if !(&control.Tmp-String-2 == '["john","f1","f2","999","1"]') {
 }
 
 # 5b. "array_of_values" empty inputs
-&control.Tmp-String-1 := "%{json_array_values_encode:!&request.[*]}"
+&control.Tmp-String-1 := "%{json_array_values.encode:!&request.[*]}"
 
 if !(&control.Tmp-String-1 == '[]') {
 	test_fail
@@ -140,7 +140,7 @@ if !(&control.Tmp-String-1 == '[]') {
 
 # Convert `make json.test` unlang update output to tests, for when
 # things need updating.
-#  
+#
 #  cat \
 #    | cut -c44- \
 #    | sed -e 's/\\"/"/g' \

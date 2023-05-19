@@ -193,18 +193,15 @@ static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	char		*unescape;
 	xlat_t		*xlat;
 
-	MEM(unescape = talloc_asprintf(NULL, "un%s", mctx->inst->name));
-	xlat = xlat_func_register_module(NULL, mctx, mctx->inst->name, escape_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(NULL, mctx, "escape", escape_xlat, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, escape_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
-	xlat = xlat_func_register_module(NULL, mctx, unescape, unescape_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(NULL, mctx, "unescape", unescape_xlat, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, unescape_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
-	talloc_free(unescape);
 
 	return 0;
 }

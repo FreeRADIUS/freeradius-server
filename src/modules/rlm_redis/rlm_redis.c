@@ -239,7 +239,7 @@ static xlat_arg_parser_t const redis_remap_xlat_args[] = {
 /** Force a redis cluster remap
  *
 @verbatim
-%{redis_remap:<redis server ip>:<redis server port>}
+%{redis.remap:<redis server ip>:<redis server port>}
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -301,7 +301,7 @@ static xlat_arg_parser_t const redis_node_xlat_args[] = {
 /** Return the node that is currently servicing a particular key
  *
 @verbatim
-%(redis_node:<key> [<index>])
+%(redis.node:<key> [<index>])
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -856,35 +856,28 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_redis_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_redis_t);
-	char		*name;
 	xlat_t		*xlat;
 
 	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, redis_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, redis_args);
 
 	/*
-	 *	%(redis_node:<key>[ idx])
+	 *	%(redis.node:<key>[ idx])
 	 */
-	name = talloc_asprintf(NULL, "%s_node", mctx->inst->name);
-	if (unlikely((xlat = xlat_func_register_module(inst, mctx, name, redis_node_xlat, FR_TYPE_STRING)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register_module(inst, mctx, "node", redis_node_xlat, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_node_xlat_args);
-	talloc_free(name);
 
-	name = talloc_asprintf(NULL, "%s_remap", mctx->inst->name);
-	if (unlikely((xlat = xlat_func_register_module(inst, mctx, name, redis_remap_xlat, FR_TYPE_STRING)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register_module(inst, mctx, "remap", redis_remap_xlat, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_remap_xlat_args);
-	talloc_free(name);
 
 	/*
 	 *	Loop over the lua functions, registering an xlat
 	 *	that'll call that function specifically.
 	 */
 	talloc_foreach(inst->lua.funcs, func) {
-		name = talloc_asprintf(NULL, "%s.%s", mctx->inst->name, func->name);
-		if (unlikely((xlat = xlat_func_register_module(inst, mctx, name, redis_lua_func_xlat, FR_TYPE_VOID)) == NULL)) return -1;
+		if (unlikely((xlat = xlat_func_register_module(inst, mctx, func->name, redis_lua_func_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 		xlat_func_args_set(xlat, redis_lua_func_args);
 		xlat_func_async_instantiate_set(xlat, redis_lua_func_instantiate, redis_lua_func_inst_t, NULL, func);
-		talloc_free(name);
 	}
 
 	return 0;

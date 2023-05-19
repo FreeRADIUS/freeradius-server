@@ -66,7 +66,7 @@ foreach &control.Tmp-Integer-0 {
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
-	if ("%(redis_remap:%{Tmp-String-0}:30001)" == 'success') {
+	if ("%(redis.remap:%{Tmp-String-0}:30001)" == 'success') {
 		#  Hashes to Redis cluster node master 0 (1)
 		if (("%(redis:SET b "%{control.Tmp-String-0}")" == 'OK') && \
 		    ("%(redis:SET c "%{control.Tmp-String-1}")" == 'OK') && \
@@ -76,9 +76,9 @@ foreach &control.Tmp-Integer-0 {
 			#  so we now need to figure out which slave each of those keys
 			#  ended up on.
 			#
-			if (("%(redis:-@%(redis_node:b 1) GET b)" == "%{control.Tmp-String-0}") && \
-			    ("%(redis:-@%(redis_node:c 1) GET c)" == "%{control.Tmp-String-1}") && \
-			    ("%(redis:-@%(redis_node:d 1) GET d)" == "%{control.Tmp-String-2}")) {
+			if (("%(redis:-@%(redis.node:b 1) GET b)" == "%{control.Tmp-String-0}") && \
+			    ("%(redis:-@%(redis.node:c 1) GET c)" == "%{control.Tmp-String-1}") && \
+			    ("%(redis:-@%(redis.node:d 1) GET d)" == "%{control.Tmp-String-2}")) {
 				break
 			}
 		}

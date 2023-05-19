@@ -2,7 +2,7 @@
 #  We can't really check the values here as the certs change periodically
 #  but we can test the digest length, and for smoke...
 #
-&Tmp-Octets-0 := "%(cipher_rsa_certificate:fingerprint sha1)"
+&Tmp-Octets-0 := "%(cipher_rsa.certificate:fingerprint sha1)"
 
 if ("%(length:%{Tmp-Octets-0})" != 20) {
 	test_fail
@@ -10,7 +10,7 @@ if ("%(length:%{Tmp-Octets-0})" != 20) {
 	test_pass
 }
 
-&Tmp-Octets-0 := "%(cipher_rsa_certificate:fingerprint sha256)"
+&Tmp-Octets-0 := "%(cipher_rsa.certificate:fingerprint sha256)"
 
 if ("%(length:%{Tmp-Octets-0})" != 32) {
 	test_fail
