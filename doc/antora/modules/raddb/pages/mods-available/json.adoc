@@ -77,7 +77,7 @@ map json "%(rest:GET http://example.org/api/user/%{User-Name})" {
 
 
 The only options for the JSON module are to control the output
-format of the `json_encode` xlat.
+format of the `json.encode` xlat.
 
 
 
@@ -187,7 +187,7 @@ Escapes string for use as a JSON string.
 The string caipirinha/gelada should be caipirinha\\/gelada to be a valid JSON string.
 ```
 
-### %{json_encode:...}
+### %{json.encode:...}
 
 Generates a JSON document from a given list of attribute templates. The
 format of document generated can be controlled with the 'encode' section in
@@ -210,7 +210,7 @@ it, `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` and `lin
 .Example
 
 ```
-%{json_encode:&User-Name &Calling-Station-Id}
+%{json.encode:&User-Name &Calling-Station-Id}
 ```
 
 The following will include all attributes in the RADIUS request, except for
@@ -219,7 +219,7 @@ The following will include all attributes in the RADIUS request, except for
 .Example
 
 ```
-%{json_encode:&request[*] !&User-Password}
+%{json.encode:&request[*] !&User-Password}
 ```
 
 In another (contrived) example, all the attributes in the RADIUS request will
@@ -229,7 +229,7 @@ be included in the document, _except_ any attributes in the RADIUS reply.
 .Example
 
 ```
-%{json_encode:&request[*] !&reply[*] &control.User-Name}
+%{json.encode:&request[*] !&reply[*] &control.User-Name}
 ```
 
 #### Output format modes

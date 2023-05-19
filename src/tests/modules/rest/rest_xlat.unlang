@@ -70,7 +70,7 @@ if (!(&control.Tmp-String-3[0] == 'Bob') || !(&control.Tmp-String-3[1] == 'dummy
 	test_fail
 }
 
-&control.Tmp-String-2 = "%{json_encode:&NAS-IP-Address}"
+&control.Tmp-String-2 = "%{json.encode:&NAS-IP-Address}"
 
 # POST to https with JSON body data
 &Tmp-String-2 := "%(rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting %{control.Tmp-String-2})"

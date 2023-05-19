@@ -1,4 +1,4 @@
-&Tmp-Octets-0 := "%(cipher_rsa_certificate:serial)"
+&Tmp-Octets-0 := "%(cipher_rsa.certificate:serial)"
 
 if ("%(length:%{Tmp-Octets-0})" != 1) {
 	test_fail

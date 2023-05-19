@@ -12,13 +12,13 @@ if (!("%(redis:SET b 'boom')" == 'OK')) {
 %(delay:0.5)
 
 #  Note the current master
-&Tmp-String-1 := %(redis_node:b 0)
+&Tmp-String-1 := %(redis.node:b 0)
 
 #  Note the current replica
-&Tmp-String-2 := %(redis_node:b 1)
+&Tmp-String-2 := %(redis.node:b 1)
 
 #  Cause one of the redis cluster nodes to SEGV
-if ("%(redis:@%(redis_node:b 0) DEBUG SEGFAULT)" != '') {
+if ("%(redis:@%(redis.node:b 0) DEBUG SEGFAULT)" != '') {
 	test_fail
 }
 
@@ -30,9 +30,9 @@ if (!("%(redis:@%{Tmp-String-2} CLUSTER FAILOVER TAKEOVER)" == 'OK')) {
 #  Allow time for the takeover to propagate to other nodes
 foreach &control.Tmp-Integer-0 {
 	# Keep remapping the cluster
-	%(redis_remap:%{Tmp-String-2})
+	%(redis.remap:%{Tmp-String-2})
 
-	if (%(redis_node:b 0) == &Tmp-String-2) {
+	if (%(redis.node:b 0) == &Tmp-String-2) {
 		break
 	}
 	%(delay:0.5)
@@ -43,7 +43,7 @@ if (!("%(redis:GET b)" == 'boom')) {
 }
 
 #  Kill that one too
-if ("%(redis:@%(redis_node:b) DEBUG SEGFAULT)" != '') {
+if ("%(redis:@%(redis.node:b) DEBUG SEGFAULT)" != '') {
 	test_fail
 }
 
