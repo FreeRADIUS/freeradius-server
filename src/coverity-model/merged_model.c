@@ -43,19 +43,19 @@ typedef struct exfile_s {
 	bool			locking;
 } exfile_t;
 
-int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, off_t *offset)
+static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissions, off_t *offset)
 {
     int result;
 
-    if (ef->locking && result > 0) __coverity_exclusive_lock_acquire__((void *) &ef->mutex);
+    if (result > 0) __coverity_exclusive_lock_acquire__((void *) &ef->mutex);
     return result;
 }
 
-int exfile_close(exfile_t *ef, int fd)
+static int exfile_close_lock(exfile_t *ef, int fd)
 {
     int result;
 
-    if (ef->locking) __coverity_exclusive_lock_release__((void *) &ef->mutex);
+    __coverity_exclusive_lock_release__((void *) &ef->mutex);
     return result;
 }
 
@@ -73,7 +73,6 @@ typedef struct {
 
 typedef struct {
 } fr_time_t;
-
 
 static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *request, fr_time_t now, bool in_use, bool unlock)
 {
