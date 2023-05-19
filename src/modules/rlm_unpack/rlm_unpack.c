@@ -130,17 +130,20 @@ static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 /*
  *	Register the xlats
  */
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
+static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	xlat = xlat_func_register_module(NULL, mctx, "unpack", unpack_xlat, FR_TYPE_VOID);
-	if (xlat) {
-		xlat_func_args_set(xlat, unpack_xlat_args);
-		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
-	}
+	if (unlikely(!(xlat = xlat_func_register(NULL, "unpack", unpack_xlat, FR_TYPE_VOID)))) return -1;
+	xlat_func_args_set(xlat, unpack_xlat_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
 	return 0;
+}
+
+static void mod_unload(void)
+{
+	xlat_func_unregister("unpack");
 }
 
 /*
@@ -158,6 +161,7 @@ module_rlm_t rlm_unpack = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "unpack",
 		.type		= MODULE_TYPE_THREAD_SAFE,
-		.bootstrap	= mod_bootstrap
+		.onload		= mod_load,
+		.unload		= mod_unload
 	}
 };
