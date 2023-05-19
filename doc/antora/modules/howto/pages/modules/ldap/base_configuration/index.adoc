@@ -110,8 +110,7 @@ server default {
 }
 ----
 
-Group checks may be performed _after_ the LDAP's authorize
-method has run, using the pair comparison attribute `LDAP-Group`.
+Group checks may be performed  using the xlat `%(ldap.memberof:)`.
 
 [source,unlang]
 ----
@@ -119,7 +118,7 @@ server default {
 	...
 	recv Access-Request {
 		ldap
-		if (&LDAP-Group != 'cn=authorized_users,ou=groups,dc=example,dc=com') {
+		if (%(ldap.memberof:cn=authorized_users,ou=groups,dc=example,dc=com) == 'yes') {
 			reject
 		}
 		...

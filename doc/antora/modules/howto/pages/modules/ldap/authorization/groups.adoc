@@ -129,10 +129,11 @@ specified as a DN, and if the directory implements _variant 2_, then the group
 would be specified by name.
 ====
 
-Group checks are performed using the virtual attribute `LDAP-Group`.
-Comparing this attribute to a group name or group DN, will, (if group caching
-is not enabled) result in a query being sent to the LDAP Directory to determine
-if the user is a member of the specified group.
+Group checks can be performed using the xlat `%(ldap.memberof:)`.
+Using this xlat, will, (if group caching is not enabled or the
+ldap module has not already been called) result in one or more
+queries being sent to the LDAP Directory to determine if the
+user is a member of the specified group.
 
 When performing group checks LDAP module abstracts away the differences between
 group membership _variants [1-4]_ so long as it has been configured
@@ -142,7 +143,7 @@ appropriately.
 
 [source,unlang]
 ----
-if (LDAP-Group == 'cn=foo,ou=groups,dc=example,dc=com') {
+if (%(ldap.memberof:cn=foo,ou=groups,dc=example,dc=com) == 'yes') {
 	update reply {
 		&Reply-Message := "Welcome member of group 'foo'"
 	}
@@ -153,7 +154,7 @@ if (LDAP-Group == 'cn=foo,ou=groups,dc=example,dc=com') {
 
 [source,unlang]
 ----
-if (LDAP-Group == 'foo') {
+if (%(ldap.memberof:foo) == 'yes') {
 	update reply {
 		&Reply-Message := "Welcome member of group 'foo'"
 	}
