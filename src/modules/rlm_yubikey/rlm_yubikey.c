@@ -165,6 +165,8 @@ static xlat_action_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t * o
 
 static int mod_load(void)
 {
+	xlat_t		*xlat;
+
 	if (fr_dict_autoload(rlm_yubikey_dict) < 0) {
 		PERROR("%s", __FUNCTION__);
 		return -1;
@@ -176,34 +178,31 @@ static int mod_load(void)
 		return -1;
 	}
 
-	return 0;
+	if (unlikely(!(xlat = xlat_func_register(NULL, "modhextohex", modhex_to_hex_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_mono_set(xlat, modhex_to_hex_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
+	return 0;
 }
 
 static void mod_unload(void)
 {
+	xlat_func_unregister("modhextohex");
 	fr_dict_autofree(rlm_yubikey_dict);
 }
 
+#ifndef HAVE_YUBIKEY
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_yubikey_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_yubikey_t);
-	xlat_t		*xlat;
 
-#ifndef HAVE_YUBIKEY
 	if (inst->decrypt) {
 		cf_log_err(mctx->inst->conf, "Requires libyubikey for OTP decryption");
 		return -1;
 	}
-#endif
-
-	xlat = xlat_func_register_module(inst, mctx, "modhextohex", modhex_to_hex_xlat, FR_TYPE_STRING);
-	if (xlat) {
-		xlat_func_mono_set(xlat, modhex_to_hex_xlat_arg);
-		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
-	}
 	return 0;
 }
+#endif
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -468,7 +467,9 @@ module_rlm_t rlm_yubikey = {
 		.onload		= mod_load,
 		.unload		= mod_unload,
 		.config		= module_config,
+#ifndef HAVE_YUBIKEY
 		.bootstrap	= mod_bootstrap,
+#endif
 		.instantiate	= mod_instantiate,
 #ifdef HAVE_YKCLIENT
 		.detach		= mod_detach,
