@@ -531,11 +531,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	char 			*name;
 	fr_json_format_t	*format = inst->format;
 
-	xlat = xlat_func_register_module(inst, mctx, "jsonquote", json_quote_xlat, FR_TYPE_STRING);
-	if (xlat) xlat_func_mono_set(xlat, json_quote_xlat_arg);
-	xlat = xlat_func_register_module(inst, mctx, "jpathvalidate", jpath_validate_xlat, FR_TYPE_STRING);
-	if (xlat) xlat_func_mono_set(xlat, jpath_validate_xlat_arg);
-
 	name = talloc_asprintf(inst, "%s_encode", mctx->inst->name);
 	xlat = xlat_func_register_module(inst, mctx, name, json_encode_xlat, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, json_encode_xlat_arg);
@@ -559,9 +554,22 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 static int mod_load(void)
 {
+	xlat_t	*xlat;
+
 	fr_json_version_print();
 
+	if (unlikely(!(xlat = xlat_func_register(NULL, "jsonquote", json_quote_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_mono_set(xlat, json_quote_xlat_arg);
+	if (unlikely(!(xlat = xlat_func_register(NULL, "jpathvalidate", jpath_validate_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_mono_set(xlat, jpath_validate_xlat_arg);
+
 	return 0;
+}
+
+static void mod_unload(void)
+{
+	xlat_func_unregister("jsonquote");
+	xlat_func_unregister("jpathvalidate");
 }
 
 /*
@@ -580,6 +588,7 @@ module_rlm_t rlm_json = {
 		.name		= "json",
 		.type		= MODULE_TYPE_THREAD_SAFE,
 		.onload		= mod_load,
+		.unload		= mod_unload,
 		.config		= module_config,
 		.inst_size	= sizeof(rlm_json_t),
 		.bootstrap	= mod_bootstrap
