@@ -4726,7 +4726,8 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 		call_env_parsed_init(&single->call_env_parsed);
 		if (call_env_parse(single->call_env_ctx, &single->call_env_parsed, single->self.name,
-				   unlang_ctx->rules->attr.dict_def, inst->dl_inst->conf, method_env->env) < 0) {
+				   unlang_ctx->rules ? unlang_ctx->rules->attr.dict_def : fr_dict_internal(),
+				   inst->dl_inst->conf, method_env->env) < 0) {
 		error:
 			talloc_free(c);
 			return NULL;
