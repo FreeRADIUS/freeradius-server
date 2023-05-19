@@ -2031,17 +2031,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat = xlat_func_register_module(NULL, mctx, mctx->inst->name, ldap_xlat, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, ldap_xlat_arg);
 
-	xlat = xlat_func_register_module(NULL, mctx, "ldap_escape", ldap_escape_xlat, FR_TYPE_STRING);
-	if (xlat) {
-		xlat_func_mono_set(xlat, ldap_escape_xlat_arg);
-		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
-	}
-	xlat = xlat_func_register_module(NULL, mctx, "ldap_unescape", ldap_unescape_xlat, FR_TYPE_STRING);
-	if (xlat) {
-		xlat_func_mono_set(xlat, ldap_escape_xlat_arg);
-		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
-	}
-
 	map_proc_register(inst, mctx->inst->name, mod_map_proc, ldap_map_verify, 0);
 
 	return 0;
@@ -2287,6 +2276,26 @@ error:
 	return -1;
 }
 
+static int mod_load(void)
+{
+	xlat_t	*xlat;
+
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap_escape", ldap_escape_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_mono_set(xlat, ldap_escape_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap_unescape", ldap_unescape_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_mono_set(xlat, ldap_escape_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	xlat_func_unregister("ldap_escape");
+	xlat_func_unregister("ldap_unescape");
+}
+
 /* globally exported name */
 extern module_rlm_t rlm_ldap;
 module_rlm_t rlm_ldap = {
@@ -2296,6 +2305,8 @@ module_rlm_t rlm_ldap = {
 		.type		= 0,
 		.inst_size	= sizeof(rlm_ldap_t),
 		.config		= module_config,
+		.onload		= mod_load,
+		.unload		= mod_unload,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach,
