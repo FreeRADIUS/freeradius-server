@@ -85,32 +85,32 @@ instructions].
 As a final step you should verify that test data has been loaded correctly.
 This can be done using the `ldapsearch` utility using the LDAP read only user.
 
-The command below will retrieve the entry for one of the test `radiusClient`
+The command below will retrieve the entry for one of the test `freeradiusClient`
 entries. You should see a single search result returned if everything worked
 correctly.
 
 [source,shell]
 ----
-ldapsearch -LLL -H ldap://localhost -x -D cn=readonly,<base_dn> -w <readonly_password> -b <base_dn> '(&(objectClass=radiusClient)(radiusClientShortname=client2))'
+ldapsearch -LLL -H ldap://localhost -x -D cn=readonly,<base_dn> -w <readonly_password> -b <base_dn> '(&(objectClass=freeradiusClient)(freeradiusClientShortname=client2))'
 ----
 
 .Searching for a RADIUS Client
 ====
 [source,shell]
 ----
-ldapsearch -LLL -H ldap://localhost -x -D cn=readonly,dc=example,dc=com -w readonly -b dc=example,dc=com '(&(objectClass=radiusClient)(radiusClientShortname=client2))'
+ldapsearch -LLL -H ldap://localhost -x -D cn=readonly,dc=example,dc=com -w readonly -b dc=example,dc=com '(&(objectClass=freeradiusClient)(freeradiusClientShortname=client2))'
 ----
 
 .Expected output
 [source,ldif]
 ----
-dn: radiusClientIdentifier=2.2.2.2,ou=clients,dc=example,dc=com
-objectClass: radiusClient
-radiusClientIdentifier: 2.2.2.2
-radiusClientSecret: 123secret
-radiusClientShortname: client2
-radiusClientType: cisco
-radiusClientRequireMa: TRUE
-radiusClientComment: Another test client
+dn: freeradiusClientIdentifier=2.2.2.2,ou=clients,dc=example,dc=com
+objectClass: freeradiusClient
+freeradiusClientIdentifier: 2.2.2.2
+freeradiusClientSecret: 123secret
+freeradiusClientShortname: client2
+freeradiusClientType: cisco
+freeradiusClientRequireMa: TRUE
+freeradiusClientComment: Another test client
 ----
 ====

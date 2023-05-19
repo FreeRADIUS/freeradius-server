@@ -52,7 +52,7 @@ if (!(&Tmp-String-6 == "John Doe")) {
 }
 
 # Return multiple values - could be in any sequence
-&Tmp-String-7 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=clients,dc=example,dc=com?radiusClientIdentifier?sub?(objectClass=radiusClient)}"
+&Tmp-String-7 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=clients,dc=example,dc=com?freeradiusClientIdentifier?sub?(objectClass=freeradiusClient)}"
 
 if (!(&Tmp-String-7 == "1.1.1.12.2.2.2") && !(&Tmp-String-7 == "2.2.2.21.1.1.1")) {
         test_fail

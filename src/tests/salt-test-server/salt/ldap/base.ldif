@@ -158,23 +158,23 @@ dn: ou=clients,dc=example,dc=com
 objectClass: organizationalUnit
 ou: clients
 
-dn: radiusClientIdentifier=1.1.1.1,ou=clients,dc=example,dc=com
-objectClass: radiusClient
-radiusClientIdentifier: 1.1.1.1
-radiusClientSecret: secret123
-radiusClientShortname: client1
-radiusClientType: other
-radiusClientRequireMa: FALSE
-radiusClientComment: Test client
+dn: freeradiusClientIdentifier=1.1.1.1,ou=clients,dc=example,dc=com
+objectClass: freeradiusClient
+freeradiusClientIdentifier: 1.1.1.1
+freeradiusClientSecret: secret123
+freeradiusClientShortname: client1
+freeradiusClientType: other
+freeradiusClientRequireMa: FALSE
+freeradiusClientComment: Test client
 
-dn: radiusClientIdentifier=2.2.2.2,ou=clients,dc=example,dc=com
-objectClass: radiusClient
-radiusClientIdentifier: 2.2.2.2
-radiusClientSecret: 123secret
-radiusClientShortname: client2
-radiusClientType: cisco
-radiusClientRequireMa: TRUE
-radiusClientComment: Another test client
+dn: freeradiusClientIdentifier=2.2.2.2,ou=clients,dc=example,dc=com
+objectClass: freeradiusClient
+freeradiusClientIdentifier: 2.2.2.2
+freeradiusClientSecret: 123secret
+freeradiusClientShortname: client2
+freeradiusClientType: cisco
+freeradiusClientRequireMa: TRUE
+freeradiusClientComment: Another test client
 
 dn: dc=subdept,dc=example,dc=com
 objectClass: referral
