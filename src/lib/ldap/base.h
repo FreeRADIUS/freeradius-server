@@ -661,6 +661,24 @@ static inline void fr_ldap_berval_to_value_str_shallow(fr_value_box_t *value, st
 	fr_value_box_bstrndup_shallow(value, NULL, berval->bv_val, berval->bv_len, true);
 }
 
+/** Compare a berval with a C string of a known length using case insensitive comparison
+ *
+ * @param[in] value	berval.
+ * @param[in] str	String to compare with value.
+ * @param[in] strlen	Number of characters of str to compare.
+ */
+static inline int fr_ldap_berval_strncasecmp(struct berval *value, char const *str, size_t strlen)
+{
+	size_t i;
+	if (strlen != value->bv_len) return CMP(strlen, value->bv_len);
+
+	for (i = 0; i < strlen; i++) {
+		if (tolower(value->bv_val[i]) != tolower(str[i])) return CMP(value->bv_val[i], str[i]);
+	}
+
+	return 0;
+}
+
 /** Compare two ldap trunk structures on connection URI / DN
  *
  * @param[in] one	first connection to compare.
