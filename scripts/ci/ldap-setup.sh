@@ -29,7 +29,10 @@ else
 fi
 
 # Start slapd
-slapd -d any -h "ldap://127.0.0.1:3890/" -f scripts/ci/ldap/slapd.conf 2>&1 > /tmp/slapd.log &
+slapd -d any -h "ldap://127.0.0.1:3890/" -f scripts/ci/ldap/slapd.conf 2>&1 > /tmp/ldap/slapd.log &
+
+# Wait for LDAP to start
+sleep 1
 
 # Add test data
 count=0
@@ -42,8 +45,9 @@ while [ $count -lt 10 ] ; do
     fi
 done
 
-if [ $? -ne 0 ]; then
+# Exit code gets overwritten, so we check for failure using count
+if [ $count -eq 10 ]; then
 	echo "Error configuring server"
-    cat /tmp/slapd.log
+	cat /tmp/ldap/slapd.log
 	exit 1
 fi

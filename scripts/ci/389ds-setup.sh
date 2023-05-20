@@ -42,7 +42,8 @@ while [ $count -lt 10 ] ; do
     fi
 done
 
-if [ $? -ne 0 ]; then
+# Exit code gets overwritten, so we check for failure using count
+if [ $count -eq 10 ]; then
 	echo "Error configuring server"
 	exit 1
 fi
@@ -57,7 +58,7 @@ fi
 #  List databases:
 #    dsconf -D 'cn=Directory Manager' -w secret123 ldap://threeds:3389/ backend suffix list
 #    dc=example,dc=com (localhost)
-# 
+#
 #  Create some basic data in the directory:
 #    dsidm -D 'cn=Directory Manager' -w secret123 ldap://threeds:3389/ -b 'dc=example,dc=com' initialise
 #
@@ -66,7 +67,7 @@ fi
 #
 #  Set user password:
 #    dsidm -D 'cn=Directory Manager' -w secret123 ldap://threeds:3389/ -b 'dc=example,dc=com' account reset_password uid=manager,ou=people,dc=example,dc=com secret123
-# 
+#
 #
 #  Give permissions for user to edit anything:
 #    cat <<EOF > permissions.ldif
@@ -75,9 +76,9 @@ fi
 #    add: aci
 #    aci: (targetattr="*")(target="ldap:///dc=example,dc=com")(version 3.0; acl "allow whatever"; allow (all)(userdn="ldap:///uid=manager,ou=people,dc=example,dc=com");)
 #    EOF
-# 
+#
 #    ldapmodify -D 'cn=Directory Manager' -w secret123 -H "ldap://threeds:3389/" -x -f permissions.ldif
-# 
+#
 #  List ACLs:
 #    ldapsearch -D 'cn=Directory Manager' -w secret123 -H "ldap://threeds:3389/" -x -b 'dc=example,dc=com' '(aci=*)' aci
-# 
+#

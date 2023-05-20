@@ -42,7 +42,7 @@ cp raddb/certs/rsa/server.pem /tmp/ldap2/certs/servercert.pem
 openssl rsa -in raddb/certs/rsa/server.key -out /tmp/ldap2/certs/serverkey.pem -passin pass:whatever
 
 # Start slapd
-slapd -h "ldap://127.0.0.1:3891/ ldaps://127.0.0.1:6360" -f scripts/ci/ldap/slapd2.conf &
+slapd -h "ldap://127.0.0.1:3891/ ldaps://127.0.0.1:6360" -f scripts/ci/ldap/slapd2.conf 2>&1 > /tmp/ldap/slapd.log &
 
 # Wait for LDAP to start
 sleep 1
@@ -58,8 +58,9 @@ while [ $count -lt 10 ] ; do
     fi
 done
 
-if [ $? -ne 0 ]; then
-        echo "Error configuring server"
-        exit 1
+# Exit code gets overwritten, so we check for failure using count
+if [ $count -eq 10 ]; then
+	echo "Error configuring server"
+	cat /tmp/ldap/slapd.log
+	exit 1
 fi
-
