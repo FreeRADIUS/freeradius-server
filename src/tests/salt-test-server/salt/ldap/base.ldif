@@ -160,21 +160,24 @@ ou: clients
 
 dn: freeradiusClientIdentifier=1.1.1.1,ou=clients,dc=example,dc=com
 objectClass: freeradiusClient
+objectClass: radiusClient
 freeradiusClientIdentifier: 1.1.1.1
-freeradiusClientSecret: secret123
 freeradiusClientShortname: client1
 freeradiusClientType: other
-freeradiusClientRequireMa: FALSE
 freeradiusClientComment: Test client
+radiusClientSecret: secret123
+radiusClientRequireMa: FALSE
 
 dn: freeradiusClientIdentifier=2.2.2.2,ou=clients,dc=example,dc=com
 objectClass: freeradiusClient
+objectClass: radiusClient
 freeradiusClientIdentifier: 2.2.2.2
-freeradiusClientSecret: 123secret
+
 freeradiusClientShortname: client2
 freeradiusClientType: cisco
-freeradiusClientRequireMa: TRUE
 freeradiusClientComment: Another test client
+radiusClientSecret: 123secret
+radiusClientRequireMa: TRUE
 
 dn: dc=subdept,dc=example,dc=com
 objectClass: referral

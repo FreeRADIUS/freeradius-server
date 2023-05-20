@@ -106,11 +106,12 @@ ldapsearch -LLL -H ldap://localhost -x -D cn=readonly,dc=example,dc=com -w reado
 ----
 dn: freeradiusClientIdentifier=2.2.2.2,ou=clients,dc=example,dc=com
 objectClass: freeradiusClient
+objectClass: radiusClient
 freeradiusClientIdentifier: 2.2.2.2
-freeradiusClientSecret: 123secret
 freeradiusClientShortname: client2
 freeradiusClientType: cisco
-freeradiusClientRequireMa: TRUE
 freeradiusClientComment: Another test client
+radiusClientSecret: 123secret
+radiusClientRequireMa: TRUE
 ----
 ====
