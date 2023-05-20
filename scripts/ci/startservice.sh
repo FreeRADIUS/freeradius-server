@@ -30,7 +30,6 @@ function run-tests() {
         ### set global environment variables
         export ASAN_OPTIONS="symbolize=1 detect_leaks=1 detect_stack_use_after_return=1"
         export LSAN_OPTIONS="fast_unwind_on_malloc=0:malloc_context_size=50"
-        export KQUEUE_DEBUG="yes"
         export M_PERTURB=0x42
         export PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p"
         export SQL_MYSQL_TEST_SERVER="127.0.0.1"

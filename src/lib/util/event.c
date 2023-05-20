@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/lst.h>
+#include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
@@ -90,6 +91,10 @@ static fr_table_num_sorted_t const kevent_filter_table[] = {
 	{ L("EVFILT_WRITE"),	EVFILT_WRITE }
 };
 static size_t kevent_filter_table_len = NUM_ELEMENTS(kevent_filter_table);
+
+#ifdef __linux__
+static int log_conf_kq;
+#endif
 
 /** A timer event
  *
@@ -2812,6 +2817,68 @@ static int _event_build_indexes(UNUSED void *uctx)
 	return 0;
 }
 
+#ifdef __linux__
+/** kqueue logging wrapper function
+ *
+ */
+static CC_HINT(format (printf, 1, 2)) CC_HINT(nonnull)
+void _event_kqueue_log(char const *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	fr_vlog(&default_log, L_DBG, __FILE__, __LINE__, fmt, ap);
+	va_end(ap);
+}
+
+/** If we're building with libkqueue, and at debug level 4 or higher, enable libkqueue debugging output
+ *
+ * This requires a debug build of libkqueue
+ */
+static int _event_kqueue_logging(UNUSED void *uctx)
+{
+	struct kevent kev, receipt;
+
+	log_conf_kq = kqueue();
+	if (unlikely(log_conf_kq < 0)) {
+		fr_strerror_const("Failed initialising logging configuration kqueue");
+		return -1;
+	}
+
+	EV_SET(&kev, 0, EVFILT_LIBKQUEUE, EV_ADD, NOTE_DEBUG_FUNC, (intptr_t)_event_kqueue_log, NULL);
+	if (kevent(log_conf_kq, &kev, 1, &receipt, 1, &(struct timespec){}) != 1) {
+		close(log_conf_kq);
+		log_conf_kq = -1;
+		return 1;
+	}
+
+	if (fr_debug_lvl >= L_DBG_LVL_3) {
+		EV_SET(&kev, 0, EVFILT_LIBKQUEUE, EV_ADD, NOTE_DEBUG, 1, NULL);
+		if (kevent(log_conf_kq, &kev, 1, &receipt, 1, &(struct timespec){}) != 1) {
+			fr_strerror_const("Failed enabling libkqueue debug logging");
+			close(log_conf_kq);
+			log_conf_kq = -1;
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int _event_kqueue_logging_stop(UNUSED void *uctx)
+{
+	struct kevent kev, receipt;
+
+	EV_SET(&kev, 0, EVFILT_LIBKQUEUE, EV_ADD, NOTE_DEBUG_FUNC, 0, NULL);
+	(void)kevent(log_conf_kq, &kev, 1, &receipt, 1, &(struct timespec){});
+
+	close(log_conf_kq);
+	log_conf_kq = -1;
+
+	return 0;
+}
+#endif
+
 /** Initialise a new event list
  *
  * @param[in] ctx		to allocate memory in.
@@ -2832,6 +2899,9 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	 *	function is called.
 	 */
 	fr_atexit_global_once_ret(&ret, _event_build_indexes, _event_free_indexes, NULL);
+#ifdef __linux__
+	fr_atexit_global_once_ret(&ret, _event_kqueue_logging, _event_kqueue_logging_stop, NULL);
+#endif
 
 	el = talloc_zero(ctx, fr_event_list_t);
 	if (!fr_cond_assert(el)) {
