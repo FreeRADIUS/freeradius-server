@@ -172,7 +172,6 @@ dn: freeradiusClientIdentifier=2.2.2.2,ou=clients,dc=example,dc=com
 objectClass: freeradiusClient
 objectClass: radiusClient
 freeradiusClientIdentifier: 2.2.2.2
-
 freeradiusClientShortname: client2
 freeradiusClientType: cisco
 freeradiusClientComment: Another test client
