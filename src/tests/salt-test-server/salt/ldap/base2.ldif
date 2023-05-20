@@ -43,7 +43,7 @@ objectClass: organizationalUnit
 ou: profiles
 
 dn: cn=radprofile,ou=profiles,dc=subdept,dc=example,dc=com
-objectClass: radiusObjectProfile
+objectClass: freeradiusPolicy
 objectClass: radiusprofile
 cn: radprofile
 radiusFramedIPNetmask: 255.255.255.0

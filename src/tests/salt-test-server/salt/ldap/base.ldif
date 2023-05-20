@@ -64,13 +64,13 @@ objectClass: organizationalUnit
 ou: profiles
 
 dn: cn=radprofile,ou=profiles,dc=example,dc=com
-objectClass: radiusObjectProfile
+objectClass: freeradiusPolicy
 objectClass: radiusprofile
 cn: radprofile
 radiusFramedIPNetmask: 255.255.255.0
 
 dn: cn=profile1,ou=profiles,dc=example,dc=com
-objectClass: radiusObjectProfile
+objectClass: freeradiusPolicy
 objectClass: radiusprofile
 cn: profile1
 radiusReplyAttribute: Framed-IP-Netmask := 255.255.0.0
