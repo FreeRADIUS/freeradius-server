@@ -48,7 +48,7 @@ following recommendations for LDAP "best practices" security.
 
 * When storing RADIUS user profiles (quotas, `Simultaneous-Use` flags,
   access time restrictions, etc) in LDAP, the LDAP schema
-  `doc/schemas/ldap/openldap/freeradius.schema` must first be imported
+  `doc/schemas/ldap/openldap/freeradius-radius.schema` must first be imported
   into the LDAP server.
 
 == Authentication method compatibility

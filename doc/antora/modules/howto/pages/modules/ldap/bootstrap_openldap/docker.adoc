@@ -48,7 +48,7 @@ docker run -it --rm -p 389:389 \
 	--env LDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD} \
 	--env LDAP_READONLY_USER=true \
 	--env LDAP_READONLY_USER_PASSWORD=${LDAP_READONLY_PASSWORD} \
-	--volume "${FREERADIUS_SRC}/doc/schemas/ldap/openldap/freeradius.schema:/container/service/slapd/assets/config/bootstrap/schema/mmc/radius.schema:ro" \
+	--volume "${FREERADIUS_SRC}/doc/schemas/ldap/openldap/freeradius-radius.schema:/container/service/slapd/assets/config/bootstrap/schema/mmc/radius.schema:ro" \
 	--volume "${FREERADIUS_SRC}/doc/schemas/ldap/openldap/freeradius-clients.schema:/container/service/slapd/assets/config/bootstrap/schema/mmc/freeradius-clients.schema:ro" \
 	osixia/openldap:1.2.5 --copy-service
 ----
