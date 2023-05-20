@@ -29,13 +29,7 @@ else
 fi
 
 # Start slapd
-if ! slapd -d any -h "ldap://127.0.0.1:3890/" -f scripts/ci/ldap/slapd.conf 2>&1 > /tmp/slapd.log &; then
-    cat /tmp/slapd.log
-    exit 1
-fi
-
-# Wait for LDAP to start
-sleep 1
+slapd -d any -h "ldap://127.0.0.1:3890/" -f scripts/ci/ldap/slapd.conf 2>&1 > /tmp/slapd.log &
 
 # Add test data
 count=0
@@ -50,5 +44,6 @@ done
 
 if [ $? -ne 0 ]; then
 	echo "Error configuring server"
+    cat /tmp/slapd.log
 	exit 1
 fi
