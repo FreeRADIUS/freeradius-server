@@ -741,9 +741,11 @@ static unlang_action_t ldap_check_groupobj_resume(rlm_rcode_t *p_result, UNUSED 
 			LDAPMessage	*entry = NULL;
 			char		*dn = NULL;
 			entry = ldap_first_entry(query->ldap_conn->handle, query->result);
-			if (entry) dn = ldap_get_dn(query->ldap_conn->handle, entry);
-			RDEBUG2("User found in group object \"%pV\"", fr_box_strvalue(dn));
-			ldap_memfree(dn);
+			if (entry) {
+				dn = ldap_get_dn(query->ldap_conn->handle, entry);
+				RDEBUG2("User found in group object \"%pV\"", fr_box_strvalue(dn));
+				ldap_memfree(dn);
+			}
 		}
 		break;
 
