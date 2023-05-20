@@ -515,7 +515,9 @@ typedef struct {
 
 typedef enum {
 	LDAP_BIND_SIMPLE		= 0,
+#ifdef WITH_SASL
 	LDAP_BIND_SASL
+#endif
 } fr_ldap_bind_type_t;
 
 typedef struct ldap_filter_s ldap_filter_t;

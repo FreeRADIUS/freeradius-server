@@ -1120,6 +1120,7 @@ static void ldap_trunk_bind_auth_mux(UNUSED fr_event_list_t *el, fr_trunk_connec
 	}
 		break;
 
+#ifdef WITH_SASL
 	case LDAP_BIND_SASL:
 	{
 		fr_ldap_sasl_ctx_t	*sasl_ctx = bind->sasl_ctx;
@@ -1150,6 +1151,7 @@ static void ldap_trunk_bind_auth_mux(UNUSED fr_event_list_t *el, fr_trunk_connec
 			break;
 		}
 	}
+#endif
 		break;
 	}
 	/*
@@ -1295,6 +1297,7 @@ static void ldap_bind_auth_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_conne
 
 	while ((fr_trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
 		bind = talloc_get_type_abort(treq->preq, fr_ldap_bind_auth_ctx_t);
+#ifdef WITH_SASL
 		if (bind->type == LDAP_BIND_SASL) {
 			/*
 			 *	With SASL binds, abandoning the bind part way through
@@ -1303,8 +1306,11 @@ static void ldap_bind_auth_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_conne
 			 */
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 		} else {
+#endif
 			ldap_abandon_ext(ldap_conn->handle, bind->msgid, NULL, NULL);
+#ifdef WITH_SASL
 		}
+#endif
 		fr_trunk_request_signal_cancel_complete(treq);
 	}
 }
