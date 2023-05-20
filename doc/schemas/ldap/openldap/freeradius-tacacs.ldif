@@ -1,0 +1,6 @@
+dn: cn=freeradius-tacacs,cn=schema,cn=config
+objectClass: olcSchemaConfig
+cn: freeradius-tacacs
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.5.1.1.1 NAME 'tacacsClientSecret' DESC 'Client Secret' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.5.1.1.2 NAME 'tacacsClientSingleConnectionMode' DESC 'Set whether we allow and request single connection mode for this client' EQUALITY booleanMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.7 SINGLE-VALUE )
+olcObjectClasses: ( 1.3.6.1.4.1.11344.4.5.1.2.1 NAME 'tacacsClient' SUP top AUXILIARY MUST tacacsClientSecret MAY tacacsClientSingleConnectionMode )
