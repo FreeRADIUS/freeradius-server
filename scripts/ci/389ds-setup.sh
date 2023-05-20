@@ -3,8 +3,8 @@
 ROOTDN="cn=Directory Manager"
 
 if [ "x$USE_DOCKER" = "xtrue" ]; then
-	dsconf -D "${ROOTDN}" -w "secret123" "${PERSISTENT_SEARCH_TEST_SERVER}" backend create --suffix 'dc=example,dc=com' --be-name localhost
-	dsidm -D "${ROOTDN}" -w "secret123" "${PERSISTENT_SEARCH_TEST_SERVER}" -b 'dc=example,dc=com' initialise
+    dsconf -D "${ROOTDN}" -w "secret123" "${PERSISTENT_SEARCH_TEST_SERVER}" backend create --suffix 'dc=example,dc=com' --be-name localhost
+    dsidm -D "${ROOTDN}" -w "secret123" "${PERSISTENT_SEARCH_TEST_SERVER}" -b 'dc=example,dc=com' initialise
 
 else
 
@@ -34,9 +34,10 @@ fi
 # Load base entries
 count=0
 while [ $count -lt 10 ] ; do
-    if ldapadd -x -H "${PERSISTENT_SEARCH_TEST_SERVER}" -D "${ROOTDN}" -w "secret123" -f src/tests/salt-test-server/salt/ldap/base3.ldif ; then
+    if ldapadd -v -x -H "${PERSISTENT_SEARCH_TEST_SERVER}" -D "${ROOTDN}" -w "secret123" -f src/tests/salt-test-server/salt/ldap/base3.ldif ; then
         break 2
     else
+        echo "ldap add failed, retrying..."
         count=$((count+1))
         sleep 1
     fi
@@ -44,8 +45,8 @@ done
 
 # Exit code gets overwritten, so we check for failure using count
 if [ $count -eq 10 ]; then
-	echo "Error configuring server"
-	exit 1
+    echo "Error configuring server"
+    exit 1
 fi
 
 
