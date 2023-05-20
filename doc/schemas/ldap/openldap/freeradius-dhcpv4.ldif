@@ -1,9 +1,9 @@
 dn: cn=freeradius-dhcpv4,cn=schema,cn=config
 objectClass: olcSchemaConfig
 cn: freeradius-dhcpv4
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.2.2.1.1 NAME 'freeradiusDhcpv4Attribute' DESC 'DHCP attribute in format [<list>.]<attr> <op> <value>' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.2.1.1.1 NAME 'freeradiusDhcpv4GatewayIdentifier' DESC 'Gateway Identifier, usually Option 82 Remote ID' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.2.1.1.2 NAME 'freeradiusDhcpv4GatewayAddr' DESC 'Gateway IP address, usually GIADDR' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.2.1.1.3 NAME 'freeradiusDhcpv4PoolName' DESC 'DHCP ip pool name' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
-olcObjectClasses: ( 1.3.6.1.4.1.11344.4.2.2.2.2 NAME 'freeradiusDhcpv4Profile' SUP top AUXILIARY MAY freeradiusDhcpv4Attribute )
-olcObjectClasses: ( 1.3.6.1.4.1.11344.4.2.1.2.1 NAME 'freeradiusDhcpv4Gateway' DESC 'A DHCP gateway, and attributes specific to it' SUP top AUXILIARY MAY ( freeradiusDhcpv4GatewayIdentifier $ freeradiusDhcpv4GatewayAddr $ freeradiusDhcpv4PoolName ) )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.3.2.1.1 NAME 'dhcpv4Attribute' DESC 'DHCP attribute in format [<list>.]<attr> <op> <value>' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.3.1.1.1 NAME 'dhcpv4GatewayIdentifier' DESC 'Gateway Identifier, usually Option 82 Remote ID' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.3.1.1.2 NAME 'dhcpv4GatewayAddr' DESC 'Gateway IP address, usually GIADDR' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.3.1.1.3 NAME 'dhcpv4PoolName' DESC 'DHCP ip pool name' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
+olcObjectClasses: ( 1.3.6.1.4.1.11344.4.3.2.2.2 NAME 'dhcpv4Profile' SUP top AUXILIARY MAY dhcpv4Attribute )
+olcObjectClasses: ( 1.3.6.1.4.1.11344.4.3.1.2.1 NAME 'dhcpv4Gateway' DESC 'A DHCP gateway, and attributes specific to it' SUP top AUXILIARY MAY ( dhcpv4GatewayIdentifier $ dhcpv4GatewayAddr $ dhcpv4PoolName ) )

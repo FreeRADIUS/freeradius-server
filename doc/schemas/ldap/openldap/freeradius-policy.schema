@@ -1,0 +1,15 @@
+#
+# 11344.4.1.2.[1|2]
+# |     | | |   |_ .1 Profile attributes, .2 profile objects
+# |     | | |_ Profile
+# |     | |_ Internal
+# |     |_ LDAP Attributes
+# |_ Vendor
+#
+objectclass ( 1.3.6.1.4.1.11344.4.1.2.2.1
+	NAME 'freeradiusPolicy'
+	DESC 'A Container Objectclass containing one or more types of <protocol>Profile'
+	SUP top
+	STRUCTURAL
+	MUST cn
+ )

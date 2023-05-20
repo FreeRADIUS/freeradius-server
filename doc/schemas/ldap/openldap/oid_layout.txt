@@ -5,26 +5,28 @@ Base vendor specific FreeRADIUS OID is:
 
 Next node indicates server area:
 ```
-1.3.6.1.4.1.11344.1 - Dictionary attributes
-1.3.6.1.4.1.11344.4 - LDAP attributes
+1.3.6.1.4.1.11344.4 - LDAP attributes i.e. attributes that are _only_ found in LDAP
 ```
 
 For LDAP attributes and Dictionary attributes, the next node indicates protocol identifier:
 ```
-1.3.6.1.4.1.11344.4.1 - RADIUS
-1.3.6.1.4.1.11344.4.2 - DHCPv4
-1.3.6.1.4.1.11344.4.3 - DHCPv6
+1.3.6.1.4.1.11344.4.1 - Internal
+1.3.6.1.4.1.11344.4.2 - RADIUS
+1.3.6.1.4.1.11344.4.3 - DHCPv4
+1.3.6.1.4.1.11344.4.4 - DHCPv6
 ```
 
-Next we distinguish between sets of attributes
+Next we distinguish between the types of object.  There's usually three objects for each protocol
 ```
-.1 - Clients
-.2 - Profile attributes
+.1 - Client - Any protocol specific attributes for a client.
+.2 - Profile attributes - Generic and dictionary attributes that can be sent in a reply
+.3 - Accounting - Attributes that describe an accounting session.
 ```
 
-Then individual objects and their attributes
+Then individual objects and their attributes.  This is based on the OpenLDAP recommendations here
+https://www.openldap.org/doc/admin22/schema.html.
 ```
-.1 - Object 1
-.2 - Object 2
+.1 - Attributes
+.2 - Objects
 ```
 
