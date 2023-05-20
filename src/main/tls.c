@@ -4124,6 +4124,16 @@ post_ca:
 		 *	time.
 		 */
 #if defined(TLS1_3_VERSION)
+#ifdef WITH_RADIUSV11
+		/*
+		 *	RADIUS 1.1 requires TLS 1.3 or later.
+		 */
+		if (conf->radiusv11) {
+			max_version = TLS1_3_VERSION;
+		} else
+#endif
+
+
 		max_version = TLS1_2_VERSION; /* yes, we only use TLS 1.3 if it's EXPLICITELY ENABLED */
 #elif defined(TLS1_2_VERSION)
 		max_version = TLS1_2_VERSION;
@@ -4144,6 +4154,14 @@ post_ca:
 			return NULL;
 		}
 	} else {
+#ifdef WITH_RADIUSV11
+		/*
+		 *	RADIUS 1.1 requires TLS 1.3 or later.
+		 */
+		if (conf->radiusv11) {
+			min_version = TLS1_3_VERSION;
+		} else
+#endif
 		/*
 		 *	Allow TLS 1.0.  It is horribly insecure, but
 		 *	some systems still use it.
@@ -4266,6 +4284,17 @@ post_ca:
 	if (max_version < TLS1_3_VERSION) ctx_options |= SSL_OP_NO_TLSv1_3;
 #endif
 
+
+#ifdef WITH_RADIUSV11
+	/*
+	 *	RADIUS 1.1 requires TLS 1.3 or later.
+	 */
+	if (conf->radiusv11 && (min_version < TLS1_3_VERSION)) {
+		ERROR(LOG_PREFIX ": Please set 'tls_min_version = 1.2' or greater to use 'radiusv1_1 = true'");
+		return NULL;
+	}
+#endif
+
 	/*
 	 *	Set the cipher list if we were told to do so.  We do
 	 *	this before setting min/max TLS version.  In a sane
@@ -4344,7 +4373,6 @@ post_ca:
 		ERROR("Failed setting TLS maximum version");
 		return NULL;
 	}
-
 	if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
 		ERROR("Failed setting TLS minimum version");
 		return NULL;
