@@ -928,13 +928,18 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t 
 		if (query->parser) query->parser(ldap_conn->handle, query, result, query->treq->rctx);
 
 		/*
-		 *	Mark the trunk request as complete and set the request as runnable
+		 *	Set the request as runnable
 		 */
-		if (query->treq->request) unlang_interpret_mark_runnable(query->treq->request);
+		if (request) unlang_interpret_mark_runnable(request);
 
 		/*
-		 *	If the query is parented off just the treq, then it will be freed when
-		 *	the request is completed.  If it has other parenting, then it will not.
+		 *	If referral following failed, there is no active trunk request.
+		 */
+		if (!query->treq) continue;
+
+		/*
+		 *	If the query is parented off the treq then it will be freed when
+		 *	the request is completed.  If it is parented by something else then it will not.
 		 */
 		treq = query->treq;
 		query->treq = NULL;
