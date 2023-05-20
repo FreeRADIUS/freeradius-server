@@ -200,7 +200,9 @@ runs:
             echo "================================================================================"
             echo "Calling $i"
             echo
-            $script
+            if ! $script; then
+              exit 1
+            fi
         done
         echo
         echo "Setup scripts complete"
