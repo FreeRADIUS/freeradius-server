@@ -66,6 +66,8 @@ static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_ms_chap_peer_challenge;
 static fr_dict_attr_t const *attr_ms_chap_user_name;
 
+static fr_dict_attr_t const *attr_microsoft;
+
 static fr_dict_attr_t const *attr_ms_chap_challenge;
 static fr_dict_attr_t const *attr_ms_chap_error;
 static fr_dict_attr_t const *attr_ms_chap_nt_enc_pw;
@@ -85,6 +87,8 @@ fr_dict_attr_autoload_t rlm_eap_mschapv2_dict_attr[] = {
 	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_user_name, .name = "MS-CHAP-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
+	{ .out = &attr_microsoft, .name = "Vendor-Specific.Microsoft", .type = FR_TYPE_VENDOR, .dict = &dict_radius },
+
 	{ .out = &attr_ms_chap_challenge, .name = "Vendor-Specific.Microsoft.CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_error, .name = "Vendor-Specific.Microsoft.CHAP-Error", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_nt_enc_pw, .name = "Vendor-Specific.Microsoft.CHAP-NT-Enc-PW", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -102,22 +106,27 @@ fr_dict_attr_autoload_t rlm_eap_mschapv2_dict_attr[] = {
 
 static void mppe_keys_store(request_t *request, mschapv2_opaque_t *data)
 {
+	fr_pair_t *parent;
+
 	RDEBUG2("Storing attributes for final response");
 
+	parent = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_microsoft);
+	if (!parent) parent = request->reply_ctx;
+
 	RINDENT();
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &request->reply_pairs,
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &parent->vp_group,
 				    attr_ms_mppe_encryption_policy, 0) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_encryption_policy->name);
 	}
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &request->reply_pairs,
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &parent->vp_group,
 				    attr_ms_mppe_encryption_type, 0) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_encryption_type->name);
 	}
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &request->reply_pairs,
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &parent->vp_group,
 				    attr_ms_mppe_recv_key, 0) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_recv_key->name);
 	}
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &request->reply_pairs,
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &parent->vp_group,
 				    attr_ms_mppe_send_key, 0) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_send_key->name);
 	}
@@ -275,6 +284,7 @@ static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *
 	fr_pair_list_t			response;
  	rlm_eap_mschapv2_t const	*inst = mctx->inst->data;
 	rlm_rcode_t			rcode;
+	fr_pair_t *parent;
 
 	fr_pair_list_init(&response);
 
@@ -286,19 +296,22 @@ static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *
 	 */
 	mppe_keys_store(request, data);
 
+	parent = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_microsoft);
+	if (!parent) parent = request->reply_ctx;
+
 	/*
 	 *	Take the response from the mschap module, and
 	 *	return success or failure, depending on the result.
 	 */
 	if (rcode == RLM_MODULE_OK) {
-		if (fr_pair_list_copy_by_da(data, &response, &request->reply_pairs, attr_ms_chap2_success, 0) < 0) {
+		if (fr_pair_list_copy_by_da(data, &response, &parent->vp_group, attr_ms_chap2_success, 0) < 0) {
 			RPERROR("Failed copying %s", attr_ms_chap2_success->name);
 			RETURN_MODULE_FAIL;
 		}
 
 		data->code = FR_EAP_MSCHAPV2_SUCCESS;
 	} else if (inst->send_error) {
-		if (fr_pair_list_copy_by_da(data, &response, &request->reply_pairs, attr_ms_chap_error, 0) < 0) {
+		if (fr_pair_list_copy_by_da(data, &response, &parent->vp_group, attr_ms_chap_error, 0) < 0) {
 			RPERROR("Failed copying %s", attr_ms_chap_error->name);
 			RETURN_MODULE_FAIL;
 		}
@@ -399,6 +412,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 			int		mschap_id = eap_round->response->type.data[1];
 			int		copied = 0;
 			int		seq = 1;
+			fr_pair_t	*ms;
 
 			RDEBUG2("Password change packet received");
 
@@ -411,6 +425,9 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 			p[1] = mschap_id;
 			memcpy(p + 2, eap_round->response->type.data + 520, 66);
 
+			ms = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_microsoft);
+			if (!ms) ms = request->request_ctx;
+
 			/*
 			 * break the encoded password into VPs (3 of them)
 			 */
@@ -420,8 +437,9 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 				int to_copy = 516 - copied;
 				if (to_copy > 243) to_copy = 243;
 
-				MEM(pair_append_request(&nt_enc, attr_ms_chap_nt_enc_pw) >= 0);
+				MEM(nt_enc = fr_pair_afrom_da(ms, attr_ms_chap_nt_enc_pw));
 				MEM(fr_pair_value_mem_alloc(nt_enc, &p, 4 + to_copy, false) == 0);
+				MEM(fr_pair_append(&ms->vp_group, nt_enc) == 0);
 				p[0] = 6;
 				p[1] = mschap_id;
 				p[2] = 0;
@@ -622,13 +640,13 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	/*
 	 *	Allow the administrator to set the CHAP-Challenge and Peer-Challenge attributes.
 	 */
-	auth_challenge = fr_pair_find_by_da(&parent->control_pairs, NULL, attr_ms_chap_challenge);
+	auth_challenge = fr_pair_find_by_da_nested(&parent->control_pairs, NULL, attr_ms_chap_challenge);
 	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("&parent.control.MS-CHAP-Challenge is incorrect length.  Ignoring it");
 		auth_challenge = NULL;
 	}
 
-	peer_challenge = fr_pair_find_by_da(&parent->control_pairs, NULL, attr_ms_chap_peer_challenge);
+	peer_challenge = fr_pair_find_by_da_nested(&parent->control_pairs, NULL, attr_ms_chap_peer_challenge);
 	if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("&parent.control.MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 		peer_challenge = NULL;
