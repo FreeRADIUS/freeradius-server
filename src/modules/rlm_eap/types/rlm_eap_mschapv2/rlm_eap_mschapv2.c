@@ -772,6 +772,14 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	 */
 	if (!fr_cond_assert(parent)) RETURN_MODULE_FAIL;
 
+	/*
+	 *	Keep track of the challenge and the state we are in.
+	 */
+	MEM(data = talloc_zero(eap_session, mschapv2_opaque_t));
+	data->code = FR_EAP_MSCHAPV2_CHALLENGE;
+	fr_pair_list_init(&data->mppe_keys);
+	fr_pair_list_init(&data->reply);
+
 	auth_challenge = fr_pair_find_by_da(&parent->control_pairs, NULL, attr_ms_chap_challenge);
 	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("&parent.control.MS-CHAP-Challenge is incorrect length.  Ignoring it");
@@ -787,12 +795,6 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	if (auth_challenge) {
 		created_auth_challenge = false;
 
-		peer_challenge = fr_pair_find_by_da(&parent->control_pairs, NULL, attr_ms_chap_peer_challenge);
-		if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-			RWDEBUG("&parent.control.MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
-			peer_challenge = NULL;
-		}
-
 	} else {
 		created_auth_challenge = true;
 		peer_challenge = NULL;
@@ -807,20 +809,9 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	RDEBUG2("Issuing Challenge");
 
 	/*
-	 *	Keep track of the challenge.
-	 */
-	data = talloc_zero(eap_session, mschapv2_opaque_t);
-	fr_assert(data != NULL);
-	fr_pair_list_init(&data->mppe_keys);
-	fr_pair_list_init(&data->reply);
-
-	/*
 	 *	We're at the stage where we're challenging the user.
 	 */
-	data->code = FR_EAP_MSCHAPV2_CHALLENGE;
 	memcpy(data->auth_challenge, auth_challenge->vp_octets, MSCHAPV2_CHALLENGE_LEN);
-	fr_pair_list_init(&data->mppe_keys);
-	fr_pair_list_init(&data->reply);
 
 	if (peer_challenge) {
 		data->has_peer_challenge = true;
