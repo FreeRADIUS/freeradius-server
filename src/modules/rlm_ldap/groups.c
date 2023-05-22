@@ -283,7 +283,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 	TALLOC_CTX *list_ctx, *value_ctx;
 	vp_cursor_t list_cursor, groups_cursor;
 
-	int is_dn, i, count;
+	int is_dn, i, count, to_resolve = 0;
 
 	rad_assert(entry);
 	rad_assert(attr);
@@ -314,7 +314,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 	 */
 	fr_cursor_init(&groups_cursor, &groups);
 
-	for (i = 0; (i < LDAP_MAX_CACHEABLE) && (i < count); i++) {
+	for (i = 0; (to_resolve < LDAP_MAX_CACHEABLE) && (i < count); i++) {
 		is_dn = rlm_ldap_is_dn(values[i]->bv_val, values[i]->bv_len);
 
 		if (inst->cacheable_group_dn) {
@@ -331,6 +331,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 			 */
 			} else {
 				*name_p++ = rlm_ldap_berval_to_string(value_ctx, values[i]);
+				to_resolve++;
 			}
 		}
 

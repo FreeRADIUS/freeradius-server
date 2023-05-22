@@ -82,8 +82,7 @@ USES_APPLE_DEPRECATED_API	/* Apple wants us to use OpenDirectory Framework, we d
 							//!< and profile attribute.
 
 #define LDAP_MAX_CACHEABLE		64		//!< Maximum number of groups we retrieve from the server for
-							//!< a given user. If more than this number are retrieve the
-							//!< module returns invalid.
+							//!< a given user which need resolving from name to DN.
 
 #define LDAP_MAX_GROUP_NAME_LEN		128		//!< Maximum name of a group name.
 #define LDAP_MAX_ATTR_STR_LEN		256		//!< Maximum length of an xlat expanded LDAP attribute.
