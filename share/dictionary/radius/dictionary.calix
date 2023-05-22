@@ -1,0 +1,41 @@
+# -*- text -*-
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#	Calix VSAs
+#
+#	$Id$
+#
+##############################################################################
+
+VENDOR		Calix				6321
+
+BEGIN-VENDOR	Calix
+
+ATTRIBUTE	Role					1	string
+
+#
+#  CMS attributes
+#
+
+# Attribute for user group name – required, user group name must exist in CMS
+ATTRIBUTE	CMS-User-Group				220	string
+
+# Attribute for alarm filter – optional, default 1 (alarm enabled)
+ATTRIBUTE	CMS-Alarm-Filter			221	integer
+VALUE	CMS-Alarm-Filter		AlarmDisabled		0
+VALUE	CMS-Alarm-Filter		AlarmEnabled		1
+
+# Attribute for event filter – optional, default 0 (event disabled)
+ATTRIBUTE	CMS-Event-Filter			222	integer
+VALUE	CMS-Event-Filter		EventDisabled		0
+VALUE	CMS-Event-Filter		EventEnabled		1
+
+# Attribute for threshold event filter – optional, default 0 (disabled)
+ATTRIBUTE	CMS-Threshold-Event-Filter		223	integer
+VALUE	CMS-Threshold-Event-Filter	ThresholdEventDisabled	0
+VALUE	CMS-Threshold-Event-Filter	ThresholdEventEnabled	1
+
+END-VENDOR	Calix
