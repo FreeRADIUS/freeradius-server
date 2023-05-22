@@ -267,88 +267,6 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 
 static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
 
-#ifdef WITH_PROXY
-/*
- *	Do post-proxy processing,
- *	0 = fail
- *	1 = OK.
- *
- *	Called from rlm_eap.c, eap_postproxy().
- */
-static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED void *tunnel_data)
-{
-	fr_pair_list_t		response;
-	mschapv2_opaque_t	*data;
-	request_t			*request = eap_session->request;
-
-	fr_pair_list_init(&response);
-	data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
-	fr_assert(request != NULL);
-
-	RDEBUG2("Passing reply from proxy back into the tunnel %d", request->reply->code);
-
-	/*
-	 *	There is only a limited number of possibilities.
-	 */
-	switch (request->reply->code) {
-	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		RDEBUG2("Proxied authentication succeeded");
-
-		/*
-		 *	Move the attribute, so it doesn't go into
-		 *	the reply.
-		 */
-		fr_pair_list_copy_by_da(data, &response, &request->reply_pairs, attr_ms_chap2_success, 0);
-		break;
-
-	default:
-	case FR_RADIUS_CODE_ACCESS_REJECT:
-		REDEBUG("Proxied authentication was rejected");
-		RETURN_MODULE_REJECT;
-	}
-
-	/*
-	 *	No response, die.
-	 */
-	if (!response) {
-		REDEBUG("Proxied reply contained no MS-CHAP2-Success or MS-CHAP-Error");
-		RETURN_MODULE_INVALID;
-	}
-
-	/*
-	 *	Done doing EAP proxy stuff.
-	 */
-	request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-	if (!fr_cond_assert(eap_session->inst)) RETURN_MODULE_FAIL;
-	eap_mschapv2_compose(eap_session->inst, request, eap_session, response);
-	data->code = FR_EAP_MSCHAPV2_SUCCESS;
-
-	/*
-	 *	Delete MPPE keys & encryption policy
-	 *
-	 *	FIXME: Use intelligent names...
-	 */
-	mppe_keys_store(request, data);
-
-	/*
-	 *	Save any other attributes for re-use in the final
-	 *	access-accept e.g. vlan, etc. This lets the PEAP
-	 *	use_tunneled_reply code work
-	 */
-	MEM(fr_pair_list_copy(data, &data->reply, &request->reply_pairs) >= 0);
-
-	/*
-	 *	And we need to challenge the user, not ack/reject them,
-	 *	so we re-write the ACK to a challenge.  Yuck.
-	 */
-	request->reply->code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
-	fr_pair_list_free(&response);
-
-	RETURN_MODULE_HANDLED;
-}
-#endif
-
-
 static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t			*eap_session = mctx->rctx;
@@ -531,7 +449,6 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		}
 
 failure:
-		request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
 		RETURN_MODULE_REJECT;
 
@@ -557,12 +474,6 @@ failure:
 			FALL_THROUGH;
 
 		case FR_EAP_MSCHAPV2_ACK:
-#ifdef WITH_PROXY
-			/*
-			 *	It's a success.  Don't proxy it.
-			 */
-			request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-#endif
 			MEM(fr_pair_list_copy(parent->reply_ctx, &parent->reply_pairs, &data->reply) >= 0);
 			RETURN_MODULE_OK;
 		}
@@ -661,78 +572,6 @@ failure:
 				   length - 49 - 5, true) == 0);
 packet_ready:
 
-#ifdef WITH_PROXY
-	/*
-	 *	If this options is set, then we do NOT authenticate the
-	 *	user here.  Instead, now that we've added the MS-CHAP
-	 *	attributes to the request, we STOP, and let the outer
-	 *	tunnel code handle it.
-	 *
-	 *	This means that the outer tunnel code will DELETE the
-	 *	EAP attributes, and proxy the MS-CHAP attributes to a
-	 *	home server.
-	 */
-	if (request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
-		int			ret;
-		char			*username = NULL;
-		eap_tunnel_data_t	*tunnel;
-
-		RDEBUG2("Cancelling authentication and letting it be proxied");
-
-		/*
-		 *	Set up the callbacks for the tunnel
-		 */
-		tunnel = talloc_zero(request, eap_tunnel_data_t);
-
-		tunnel->tls_session = mctx->inst->data;
-		tunnel->callback = mschap_postproxy;
-
-		/*
-		 *	Associate the callback with the request.
-		 */
-		ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-				       tunnel, false, false, false);
-		fr_cond_assert(ret == 0);
-
-		/*
-		 *	The State attribute is NOT supposed to
-		 *	go into the proxied packet, it will confuse
-		 *	other RADIUS servers, and they will discard
-		 *	the request.
-		 *
-		 *	The PEAP module will take care of adding
-		 *	the State attribute back, before passing
-		 *	the eap_session & request back into the tunnel.
-		 */
-		pair_delete_request(attr_state);
-
-		/*
-		 *	Fix the User-Name when proxying, to strip off
-		 *	the NT Domain, if we're told to, and a User-Name
-		 *	exists, and there's a \\, meaning an NT-Domain
-		 *	in the user name, THEN discard the user name.
-		 */
-		if (inst->with_ntdomain_hack &&
-		    ((auth_challenge = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name)) != NULL) &&
-		    ((username = memchr(auth_challenge->vp_octets, '\\', auth_challenge->vp_length)) != NULL)) {
-			/*
-			 *	Wipe out the NT domain.
-			 *
-			 *	FIXME: Put it into MS-CHAP-Domain?
-			 */
-			username++; /* skip the \\ */
-			fr_pair_value_strdup(auth_challenge, username, auth_challenge->vp_tainted);
-		}
-
-		/*
-		 *	Remember that in the post-proxy stage, we've got
-		 *	to do the work below, AFTER the call to MS-CHAP
-		 *	authentication...
-		 */
-		RETURN_MODULE_OK;
-	}
-#endif
-
 	/*
 	 *	Look for "authenticate foo" in the current virtual
 	 *	server.  If not there, then in the parent one.
@@ -825,14 +664,6 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	 */
 	eap_mschapv2_compose(mctx->inst->data, request, eap_session, auth_challenge);
 	if (created_auth_challenge) TALLOC_FREE(auth_challenge);
-
-#ifdef WITH_PROXY
-	/*
-	 *	The EAP session doesn't have enough information to
-	 *	proxy the "inside EAP" protocol.  Disable EAP proxying.
-	 */
-	eap_session->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-#endif
 
 	/*
 	 *	We don't need to authorize the user at this point.

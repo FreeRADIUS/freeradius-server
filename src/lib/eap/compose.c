@@ -269,13 +269,6 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 		break;
 
 	default:
-		/*
-		 *	When we're pulling MS-CHAPv2 out of EAP-MS-CHAPv2,
-		 *	we do so WITHOUT setting a reply code, as the
-		 *	request is being proxied.
-		 */
-		if (request->options & RAD_REQUEST_OPTION_PROXY_EAP) return RLM_MODULE_HANDLED;
-
 		/* Should never enter here */
 		REDEBUG("Reply code %d is unknown, rejecting the request", reply->code);
 		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
