@@ -528,6 +528,7 @@ static void test_fr_pair_update_by_da_parent(void)
 	fr_pair_t *vp, *group;
 
 	TEST_CHECK((group = fr_pair_afrom_da(autofree, fr_dict_attr_test_group)) != NULL);
+	if (!group) return NULL; /* quiet clang scan */
 
 	TEST_CASE("Update Add using fr_pair_prepend_by_da()");
 	TEST_CHECK(fr_pair_update_by_da_parent(group, &vp, fr_dict_attr_test_uint32) == 0); /* attribute doesn't exist in this group */
