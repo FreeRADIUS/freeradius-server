@@ -60,6 +60,8 @@ EAPOL_OK_FILES	 := $(patsubst $(DIR)/%.conf,$(OUTPUT)/%.ok,$(EAPOL_TEST_FILES))
 #
 define ADD_TEST_EAP
 test.eap.${1}: $(OUTPUT)/${1}.ok
+
+test.eap.help: TEST_EAP_HELP += test.eap.${1}
 endef
 $(foreach x,$(patsubst $(DIR)/%.conf,%,$(EAPOL_TEST_FILES)),$(eval $(call ADD_TEST_EAP,$x)))
 
@@ -126,6 +128,9 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 
 $(TEST): $(EAPOL_OK_FILES)
 	@touch $(BUILD_DIR)/tests/$@
+
+$(TEST).help:
+	@echo make $(TEST_EAP_HELP)
 
 else
 $(BUILD_DIR)/tests/eapol_test:
