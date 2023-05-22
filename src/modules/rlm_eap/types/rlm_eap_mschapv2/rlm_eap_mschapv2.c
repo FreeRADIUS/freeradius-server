@@ -780,6 +780,9 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	fr_pair_list_init(&data->mppe_keys);
 	fr_pair_list_init(&data->reply);
 
+	/*
+	 *	Allow the administrator to set the CHAP-Challenge and Peer-Challenge attributes.
+	 */
 	auth_challenge = fr_pair_find_by_da(&parent->control_pairs, NULL, attr_ms_chap_challenge);
 	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("&parent.control.MS-CHAP-Challenge is incorrect length.  Ignoring it");
@@ -792,16 +795,12 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 		peer_challenge = NULL;
 	}
 
-	if (auth_challenge) {
-		created_auth_challenge = false;
+	created_auth_challenge = (auth_challenge == NULL);
 
-	} else {
-		created_auth_challenge = true;
-		peer_challenge = NULL;
-
-		/*
-		 *	Get a random challenge.
-		 */
+	/*
+	 *	if the administrator didn't set a challenge, then create one ourselves.
+	 */
+	if (!auth_challenge) {
 		MEM(auth_challenge = fr_pair_afrom_da(eap_session, attr_ms_chap_challenge));
 		MEM(fr_pair_value_mem_alloc(auth_challenge, &p, MSCHAPV2_CHALLENGE_LEN, false) == 0);
 		for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) p[i] = fr_rand();
