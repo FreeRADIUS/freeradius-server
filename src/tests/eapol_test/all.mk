@@ -62,9 +62,19 @@ define ADD_TEST_EAP
 test.eap.${1}: $(OUTPUT)/${1}.ok
 
 test.eap.help: TEST_EAP_HELP += test.eap.${1}
+
+#
+#  Ensure that we run
+#
+$(OUTPUT)/${1}.ok:  $(patsubst %,rlm_eap_%.la,$(subst -,_,${1}))
+
 endef
 $(foreach x,$(patsubst $(DIR)/%.conf,%,$(EAPOL_TEST_FILES)),$(eval $(call ADD_TEST_EAP,$x)))
 
+#
+#  The EAP-MSCHAPv2 module calls MSCHAP to do the dirty work.
+#
+$(OUTPUT)/mschapv2.ok: rlm_mschap.la
 
 #
 #  Generic rules to start / stop the radius service.
