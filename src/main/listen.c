@@ -1526,57 +1526,74 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 }
 #endif
 
-#ifdef WITH_PROXY
+#ifdef WITH_STATS
 /*
- *	Send a packet to a home server.
+ *	Check if an incoming request is "ok"
  *
- *	FIXME: have different code for proxy auth & acct!
- */static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
+ *	It takes packets, not requests.  It sees if the packet looks
+ *	OK.  If so, it does a number of sanity checks on it.
+  */
+static int stats_socket_recv(rad_listen_t *listener)
 {
-	rad_assert(request->proxy_listener == listener);
-	rad_assert(listener->proxy_send == proxy_socket_send);
+	ssize_t		rcode;
+	int		code;
+	uint16_t	src_port;
+	RADIUS_PACKET	*packet;
+	RADCLIENT	*client = NULL;
+	fr_ipaddr_t	src_ipaddr;
 
-	if (rad_send(request->proxy, NULL,
-		     request->home_server->secret) < 0) {
-		RERROR("Failed sending proxied request: %s",
-			       fr_strerror());
-		return -1;
+	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
+	if (rcode < 0) return 0;
+
+	FR_STATS_INC(auth, total_requests);
+
+	if (rcode < 20) {	/* RADIUS_HDR_LEN */
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
+		FR_STATS_INC(auth, total_malformed_requests);
+		return 0;
 	}
 
-	return 0;
+	if ((client = client_listener_find(listener,
+					   &src_ipaddr, src_port)) == NULL) {
+		rad_recv_discard(listener->fd);
+		FR_STATS_INC(auth, total_invalid_requests);
+		return 0;
+	}
+
+	FR_STATS_TYPE_INC(client->auth.total_requests);
+
+	/*
+	 *	We only understand Status-Server on this socket.
+	 */
+	if (code != PW_CODE_STATUS_SERVER) {
+		DEBUG("Ignoring packet code %d sent to Status-Server port",
+		      code);
+		rad_recv_discard(listener->fd);
+		FR_STATS_INC(auth, total_unknown_types);
+		return 0;
+	}
+
+	/*
+	 *	Now that we've sanity checked everything, receive the
+	 *	packet.
+	 */
+	packet = rad_recv(NULL, listener->fd, 1); /* require message authenticator */
+	if (!packet) {
+		FR_STATS_INC(auth, total_malformed_requests);
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
+		return 0;
+	}
+
+	if (!request_receive(NULL, listener, packet, client, rad_status_server)) {
+		FR_STATS_INC(auth, total_packets_dropped);
+		rad_free(&packet);
+		return 0;
+	}
+
+	return 1;
 }
-#endif
-
-cket code %d sent to Status-Server port",
-  code);
-rad_recv_discard(listener->fd);
-FR_STATS_INC(auth, total_unknown_types);
-return 0;
-}
-
-/*
- *Now that we've sanity checked everything, receive the
- *packet.
- */
-packet = rad_recv(NULL, listener->fd, 1); /* require message authenticator */
-if (!packet) {
-  FR_STATS_INC(auth, total_malformed_requests);
-  if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
-  return 0;
- }
-
-if (!request_receive(NULL, listener, packet, client, rad_status_server)) {
-  FR_STATS_INC(auth, total_packets_dropped);
-  rad_free(&packet);
-  return 0;
- }
-
-return 1;
-}
-#endif
-
-
 #ifdef WITH_STATS
+
 /*
  *	Check if an incoming request is "ok"
  *
