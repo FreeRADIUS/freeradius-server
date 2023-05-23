@@ -61,29 +61,6 @@ python {
 #	cext_compat = false
 
 	#
-	#  python_path::
-	#
-	#  The search path for Python modules.  It must include the path to your
-	#  Python module.
-	#
-#	python_path = ${modconfdir}/${.:name}
-
-	#
-	#  python_path_include_conf_dir::
-	#
-	#  If "yes", include the directory containing this file in Python's
-	#  module search path.
-	#
-#	python_path_include_conf_dir = "yes"
-
-	#
-	#  python_path_include_default::
-	#
-	#  If "yes", retain the default search path.  Any additional search
-	#  path components will be prepended to the the default search path.
-	#
-#	python_path_include_default = "yes"
-	#
 	#  [NOTE]
 	#  ====
 	#  * You may set `mod_<section>` for any of the section to module
