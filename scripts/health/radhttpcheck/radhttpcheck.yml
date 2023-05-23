@@ -11,7 +11,10 @@ endpoints:
     attributes:
       Acct-Session-Id: '0123456789'
       Acct-Status-Type: 'Start'
+      NAS-Identifier: 'healthcheck'
   '/auth':
     port: 1812
     secret: testing123
     type: Access-Request
+    attributes:
+      NAS-Identifier: 'healthcheck'
