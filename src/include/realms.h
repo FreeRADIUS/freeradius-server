@@ -63,6 +63,7 @@ typedef struct home_server {
 
 	bool			dual;			//!< One of a pair of homeservers on consecutive ports.
 	bool			dynamic;		//!< is this a dynamically added home server?
+	bool			nonblock;
 	char const		*virtual_server;		//!< For internal proxying
 	char const		*parent_server;
 
@@ -126,6 +127,8 @@ typedef struct home_server {
 #endif
 #ifdef WITH_TLS
 	fr_tls_server_conf_t	*tls;
+	uint32_t		connect_timeout;
+	rbtree_t		*listeners;
 #endif
 
 #ifdef WITH_STATS
