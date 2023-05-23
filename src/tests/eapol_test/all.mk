@@ -63,10 +63,12 @@ test.eap.${1}: $(OUTPUT)/${1}.ok
 
 test.eap.help: TEST_EAP_HELP += test.eap.${1}
 
+ifeq "$(PACKAGE_TEST)" ""
 #
 #  Ensure that we run
 #
 $(OUTPUT)/${1}.ok:  $(patsubst %,rlm_eap_%.la,$(subst -,_,${1}))
+endif
 
 endef
 $(foreach x,$(patsubst $(DIR)/%.conf,%,$(EAPOL_TEST_FILES)),$(eval $(call ADD_TEST_EAP,$x)))

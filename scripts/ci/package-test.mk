@@ -26,6 +26,7 @@ top_srcdir:=.
 BUILD_DIR:=build
 DIR:=src/tests/eapol_test
 OUTPUT:=$(BUILD_DIR)/tests/eapol_test
+PACKAGE_TEST:=true
 
 ALL_TGTS:=$(addprefix rlm_eap_,$(notdir $(subst -,_,$(patsubst %.conf,%.la,$(wildcard $(DIR)/*.conf)))))
 
