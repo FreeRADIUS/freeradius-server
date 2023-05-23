@@ -28,7 +28,7 @@ By default this script loads its configuration from `radhttpcheck.yml`
 ```yaml
 listen:
   # Address we bind to
-  address: '*'
+  ipaddr: '*'
   # HTTP port to listen on
   port: 8080
 # URLs the healthcheck script will respond on, and the various types of requests they create
@@ -56,8 +56,8 @@ dictionary: /usr/local/radhttpcheck/dictionary
 ### `listen`
 | attr          | default          | comment                                                  |
 |---------------|------------------|----------------------------------------------------------|
-| `address`     | `*`              | Interface we listen for HTTP requests on                 |
-| `port`        | `8080`           | Port we listen for HTTP requests on                      |
+| `ipaddr`      | `*`              | IP address listen for HTTP requests on. `*` is any.      |
+| `port`        | `8080`           | Port we listen for HTTP requests on.                     |
 
 ### `healthchecks`
 
@@ -66,14 +66,14 @@ and a dict containing the healthcheck configuration.
 
 | attr          | default          | comment                                                  |
 |---------------|------------------|----------------------------------------------------------|
-| `server`      | `127.0.0.1`      | Where we send RADIUS requests to                         |
-| `port`        | set by type      | UDP port we send RADIUS requests to                      |
-| `secret`      | `testing123`     | RADIUS shared secret                                     |
-| `type`        | set by port      | Request packet type, `Access-Request`, `Accounting-Request`, `CoA-Request`, `Disconnect-Request`, `Status-Server`, or the packet code as an integer value |
-| `retries`     | `1`              | How many times we resend the request on timeout          |
-| `timeout`     | `1`              | How long we wait for a response                          |
-| `attributes`  | `{}`             | A dictionary of RADIUS attributes to send in the request, each attribute can be sent once |
-| `require_ack` | False            | Whether we require a positive acknowledgement i.e. `Access-Accept` for `Access-Request`, `CoA-ACK` for `CoA-Request` to count the healthcheck as successful.  When `False`, any response is OK |
+| `server`      | `127.0.0.1`      | Where we send RADIUS requests to.                        |
+| `port`        | set by type      | UDP port we send RADIUS requests to.                     |
+| `secret`      | `testing123`     | RADIUS shared secret.                                    |
+| `type`        | set by port      | Request packet type, `Access-Request`, `Accounting-Request`, `CoA-Request`, `Disconnect-Request`, `Status-Server`, or the packet code as an integer value. |
+| `retries`     | `1`              | How many times we resend the request on timeout.         |
+| `timeout`     | `1`              | How long we wait for a response.                         |
+| `attributes`  | `{}`             | A dictionary of RADIUS attributes to send in the request, each attribute can be sent once. |
+| `require_ack` | False            | Whether we require a positive acknowledgement i.e. `Access-Accept` for `Access-Request`, `CoA-ACK` for `CoA-Request` to count the healthcheck as successful.  When `False`, any response is OK. |
 
 ### `dictionary`
 
@@ -94,10 +94,10 @@ codes are used to indicate errors.
 
 | code          | meaning           | comment                                                  |
 |---------------|-------------------|----------------------------------------------------------|
-| `200`         | Success           | We received a valid response from the RADIUS server      |
-| `500`         | Script failure    | An internal error ocurred in the healthcheck script      |
-| `502`         | Invalid response  | Either the response packet was malformed or failed validation (bad shared secret), or `require_ack` was enabled, and the response contained a NAK response like `Access-Reject` |
-| `504`         | Timeout           | No response received from the RADIUS server              |
+| `200`         | Success           | We received a valid response from the RADIUS server.     |
+| `500`         | Script failure    | An internal error ocurred in the healthcheck script.     |
+| `502`         | Invalid response  | Either the response packet was malformed or failed validation (bad shared secret), or `require_ack` was enabled, and the response contained a NAK response like `Access-Reject`. |
+| `504`         | Timeout           | No response received from the RADIUS server.             |
 
 In all cases a JSON blob will be received in the format `{ 'msg": "<extended response message>" }`
 
@@ -105,5 +105,5 @@ In all cases a JSON blob will be received in the format `{ 'msg": "<extended res
 
 | endpoint      | usage             | comment                                                  |
 |---------------|-------------------|----------------------------------------------------------|
-| `/alwaysOk`   | CoA/DM src ports  | Sometimes CoA/DM src ports need to be routed via a loadbalancer, this endpoint ensures the healthchecks never fail so long as the CoA/DM server is reachable |
-| `/list`       | Show healthchecks | List all the available healthchecks                      |
+| `/alwaysOk`   | CoA/DM src ports  | Sometimes CoA/DM src ports need to be routed via a loadbalancer, this endpoint ensures the healthchecks never fail so long as the CoA/DM server is reachable. |
+| `/list`       | Show healthchecks | List all the available healthchecks.                     |
