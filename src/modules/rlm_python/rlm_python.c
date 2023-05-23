@@ -836,27 +836,6 @@ static int python_module_import_constants(module_inst_ctx_t const *mctx, PyObjec
 	return 0;
 }
 
-static char *python_path_build(TALLOC_CTX *ctx, rlm_python_t *inst, CONF_SECTION *conf)
-{
-	char *path;
-
-	MEM(path = talloc_strdup(ctx, ""));
-	if (inst->python_path) {
-		MEM(path = talloc_asprintf_append_buffer(path, "%s:", inst->python_path));
-	}
-	if (inst->python_path_include_conf_dir) {
-		MEM(path = talloc_asprintf_append_buffer(path, "%s:", dirname(UNCONST(char *, cf_filename(conf)))));
-	}
-	if (inst->python_path_include_default) {
-		MEM(path = talloc_asprintf_append_buffer(path, "%s:", default_path));
-	}
-	if (path[talloc_array_length(path) - 1] == ':') {
-		MEM(path = talloc_bstr_realloc(ctx, path, talloc_array_length(path) - 2));
-	}
-
-	return path;
-}
-
 /*
  *	Python 3 interpreter initialisation and destruction
  */
@@ -887,9 +866,7 @@ static int python_interpreter_init(module_inst_ctx_t const *mctx)
 {
 	rlm_python_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_python_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
-	char		*path;
 	PyObject	*module;
-	wchar_t	        *wide_path;
 
 	/*
 	 *	python_module_init takes no args, so we need
@@ -910,13 +887,6 @@ static int python_interpreter_init(module_inst_ctx_t const *mctx)
 	PyEval_SaveThread();		/* Unlock GIL */
 
 	PyEval_RestoreThread(inst->interpreter);
-
-	path = python_path_build(inst, inst, conf);
-	DEBUG3("Setting python path to \"%s\"", path);
-	wide_path = Py_DecodeLocale(path, NULL);
-	talloc_free(path);
-	PySys_SetPath(wide_path);
-	PyMem_RawFree(wide_path);
 
 	/*
 	 *	Import the radiusd module into this python
@@ -1130,6 +1100,7 @@ static int libpython_init(void)
 
 	if (PyStatus_Exception(status)) {
 	fail:
+		LOAD_WARN("%s", status.err_msg);
 		PyConfig_Clear(&config);
 		return -1;
 	}
@@ -1142,6 +1113,27 @@ static int libpython_init(void)
 	 */
 	PyImport_AppendInittab("freeradius", python_module_init);
 
+	if (libpython_global_config.path) {
+		wchar_t *wide_path = Py_DecodeLocale(libpython_global_config.path, NULL);
+
+		if (libpython_global_config.path_include_default) {
+			/*
+			 *	The path from config is to be used in addition to the default.
+			 *	Set it in the pythonpath_env.
+			 */
+			status = PyConfig_SetString(&config, &config.pythonpath_env, wide_path);
+		} else {
+			/*
+			 *	Only the path from config is to be used.
+			 *	Setting module_search_paths_set to 1 disables any automatic paths.
+			 */
+			config.module_search_paths_set = 1;
+			status = PyWideStringList_Append(&config.module_search_paths, wide_path);
+		}
+		PyMem_RawFree(wide_path);
+		if (PyStatus_Exception(status)) goto fail;
+	}
+
 	config.install_signal_handlers = 0;	/* Don't override signal handlers - noop on subs calls */
 
 	LSAN_DISABLE(status = Py_InitializeFromConfig(&config));
@@ -1153,6 +1145,7 @@ static int libpython_init(void)
 	 *	Get the default search path so we can append to it.
 	 */
 	default_path = Py_EncodeLocale(Py_GetPath(), NULL);
+	LOAD_INFO("Python path set to \"%s\"", default_path);
 
 	global_interpreter = PyEval_SaveThread();	/* Store reference to the main interpreter and release the GIL */
 
