@@ -1101,6 +1101,9 @@ static int libpython_init(void)
 					   	.subsq_prefix = "rlm_python - ", \
 					   }, \
 					   _fmt,  ## __VA_ARGS__)
+	PyConfig	config;
+	PyStatus	status;
+	wchar_t		*wide_name;
 
 	fr_assert(!Py_IsInitialized());
 
@@ -1115,6 +1118,22 @@ static int libpython_init(void)
 	python_dlhandle = dl_open_by_sym("Py_IsInitialized", RTLD_NOW | RTLD_GLOBAL);
 	if (!python_dlhandle) LOAD_WARN("Failed loading libpython symbols into global symbol table");
 
+	PyConfig_InitPythonConfig(&config);
+
+	/*
+	 *	Set program name (i.e. the software calling the interpreter)
+	 *	The value of argv[0] as a wide char string
+	 */
+	wide_name = Py_DecodeLocale(main_config->name, NULL);
+	status = PyConfig_SetString(&config, &config.program_name, wide_name);
+	PyMem_RawFree(wide_name);
+
+	if (PyStatus_Exception(status)) {
+	fail:
+		PyConfig_Clear(&config);
+		return -1;
+	}
+
 	/*
 	 *	Python 3 introduces the concept of a
 	 *	"inittab", i.e. a list of modules which
@@ -1122,22 +1141,19 @@ static int libpython_init(void)
 	 *	interpreter is spawned.
 	 */
 	PyImport_AppendInittab("freeradius", python_module_init);
-	LSAN_DISABLE(Py_InitializeEx(0));	/* Don't override signal handlers - noop on subs calls */
+
+	config.install_signal_handlers = 0;	/* Don't override signal handlers - noop on subs calls */
+
+	LSAN_DISABLE(status = Py_InitializeFromConfig(&config));
+	if (PyStatus_Exception(status)) goto fail;
+
+	PyConfig_Clear(&config);
 
 	/*
 	 *	Get the default search path so we can append to it.
 	 */
 	default_path = Py_EncodeLocale(Py_GetPath(), NULL);
 
-	/*
-	 *	Set program name (i.e. the software calling the interpreter)
-	 */
-	{
-		wchar_t *wide_name;
-		wide_name = Py_DecodeLocale(main_config->name, NULL);
-		Py_SetProgramName(wide_name);		/* The value of argv[0] as a wide char string */
-		PyMem_RawFree(wide_name);
-	}
 	global_interpreter = PyEval_SaveThread();	/* Store reference to the main interpreter and release the GIL */
 
 	return 0;
