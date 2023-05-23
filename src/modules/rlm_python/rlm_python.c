@@ -57,11 +57,6 @@ typedef struct {
 typedef struct {
 	char const	*name;			//!< Name of the module instance
 	PyThreadState	*interpreter;		//!< The interpreter used for this instance of rlm_python.
-	char const	*python_path;		//!< Path to search for python files in.
-	bool		python_path_include_conf_dir;	//!< Include the directory of the current
-							///< rlm_python module config in the python path.
-	bool		python_path_include_default;	//!< Include the default python path
-							///< in the python path.
 	PyObject	*module;		//!< Local, interpreter specific module.
 
 	python_func_def_t
@@ -164,10 +159,6 @@ static CONF_PARSER module_config[] = {
 	A(detach)
 
 #undef A
-
-	{ FR_CONF_OFFSET("python_path", FR_TYPE_STRING, rlm_python_t, python_path) },
-	{ FR_CONF_OFFSET("python_path_include_conf_dir", FR_TYPE_BOOL, rlm_python_t, python_path_include_conf_dir), .dflt = "yes" },
-	{ FR_CONF_OFFSET("python_path_include_default", FR_TYPE_BOOL, rlm_python_t, python_path_include_default), .dflt = "yes" },
 
 	CONF_PARSER_TERMINATOR
 };
