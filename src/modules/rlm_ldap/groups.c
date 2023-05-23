@@ -451,7 +451,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
 	char				**name_p;
 	char				**dn_p;
 	fr_pair_t			*vp;
-	int				is_dn, i, count;
+	int				is_dn, i, count, name2dn = 0, dn2name = 0;
 
 	fr_assert(entry);
 	fr_assert(attr);
@@ -490,7 +490,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
 	 */
 	fr_pair_list_init(&group_ctx->groups);
 
-	for (i = 0; (i < LDAP_MAX_CACHEABLE) && (i < count); i++) {
+	for (i = 0; (i < count); i++) {
 		is_dn = fr_ldap_util_is_dn(values[i]->bv_val, values[i]->bv_len);
 
 		if (inst->cacheable_group_dn) {
@@ -506,6 +506,13 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
 			 *	this to a DN. Store all the group names in an array so we can do one query.
 			 */
 			} else {
+				if (++name2dn > LDAP_MAX_CACHEABLE) {
+					REDEBUG("Too many groups require name to DN resolution");
+				invalid:
+					ldap_value_free_len(values);
+					talloc_free(group_ctx);
+					RETURN_MODULE_INVALID;
+				}
 				*name_p++ = fr_ldap_berval_to_string(group_ctx, values[i]);
 			}
 		}
@@ -523,6 +530,10 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
 			 *	this to a name.  Store group DNs which need resolving to names.
 			 */
 			} else {
+				if (++dn2name > LDAP_MAX_CACHEABLE) {
+					REDEBUG("Too many groups require DN to name resolution");
+					goto invalid;
+				}
 				*dn_p++ = fr_ldap_berval_to_string(group_ctx, values[i]);
 			}
 		}

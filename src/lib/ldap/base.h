@@ -101,7 +101,8 @@ ldap_create_session_tracking_control LDAP_P((
 							//!< and profile attribute.
 
 #define LDAP_MAX_CACHEABLE		64		//!< Maximum number of groups we retrieve from the server for
-							//!< a given user. If more than this number are retrieve the
+							//!< a given user which need resolving from name to DN or DN
+							//!< to name.  If more than this require resolving, the
 							//!< module returns invalid.
 
 #define LDAP_MAX_GROUP_NAME_LEN		128		//!< Maximum name of a group name.
