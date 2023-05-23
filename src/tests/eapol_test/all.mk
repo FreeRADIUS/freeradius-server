@@ -73,10 +73,12 @@ endif
 endef
 $(foreach x,$(patsubst $(DIR)/%.conf,%,$(EAPOL_TEST_FILES)),$(eval $(call ADD_TEST_EAP,$x)))
 
+ifeq "$(PACKAGE_TEST)" ""
 #
 #  The EAP-MSCHAPv2 module calls MSCHAP to do the dirty work.
 #
 $(OUTPUT)/mschapv2.ok: rlm_mschap.la
+endif
 
 #
 #  Generic rules to start / stop the radius service.
