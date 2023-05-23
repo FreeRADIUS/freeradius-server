@@ -66,6 +66,7 @@ and a dict containing the healthcheck configuration.
 
 | attr          | default          | comment                                                  |
 |---------------|------------------|----------------------------------------------------------|
+| `server`      | `127.0.0.1`      | Where we send RADIUS requests to                         |
 | `port`        | set by type      | UDP port we send RADIUS requests to                      |
 | `secret`      | `testing123`     | RADIUS shared secret                                     |
 | `type`        | set by port      | Request packet type, `Access-Request`, `Accounting-Request`, `CoA-Request`, `Disconnect-Request`, `Status-Server`, or the packet code as an integer value |
