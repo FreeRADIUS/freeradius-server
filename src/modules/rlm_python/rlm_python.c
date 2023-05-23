@@ -112,9 +112,14 @@ static CONF_PARSER const python_global_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static int libpython_init(void);
+static void libpython_free(void);
+
 global_lib_autoinst_t rlm_python_autoinst = {
 	.name = "python",
 	.config = python_global_config,
+	.init = libpython_init,
+	.free = libpython_free,
 	.inst = &libpython_global_config
 };
 
@@ -1087,7 +1092,7 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static int mod_load(void)
+static int libpython_init(void)
 {
 #define LOAD_INFO(_fmt, ...) fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
 #define LOAD_WARN(_fmt, ...) fr_log_perror(LOG_DST, L_WARN, __FILE__, __LINE__, \
@@ -1138,7 +1143,7 @@ static int mod_load(void)
 	return 0;
 }
 
-static void mod_unload(void)
+static void libpython_free(void)
 {
 	PyThreadState_Swap(global_interpreter); /* Swap to the main thread */
 	if (default_path) PyMem_Free(default_path);
@@ -1172,8 +1177,6 @@ module_rlm_t rlm_python = {
 		.thread_inst_size	= sizeof(rlm_python_thread_t),
 
 		.config			= module_config,
-		.onload			= mod_load,
-		.unload			= mod_unload,
 
 		.instantiate		= mod_instantiate,
 		.detach			= mod_detach,
