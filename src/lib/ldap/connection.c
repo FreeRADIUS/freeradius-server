@@ -925,7 +925,8 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t 
 		/*
 		 *	If we have a specific parser to handle the result, call it
 		 */
-		if (query->parser) query->parser(ldap_conn->handle, query, result, query->treq->rctx);
+		if (query->parser && (rcode == LDAP_PROC_SUCCESS)) query->parser(ldap_conn->handle, query,
+										 result, query->treq->rctx);
 
 		/*
 		 *	Set the request as runnable
