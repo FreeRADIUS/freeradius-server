@@ -5,8 +5,8 @@ No cloud providers currently support sending RADIUS packets from their cloud nat
 In order to actively monitor FreeRADIUS (or other RADIUS servers) in these environments, we need to
 provide a HTTP service which sends RADIUS packets on behalf of the load balancer
 
-This script provides a HTTP <-> RADIUS gateway, sending pre-configured RADIUS packets to a IP/Port
-and translating the response codes in HTTP response codes.
+This script provides a HTTP <-> RADIUS gateway, sending pre-configured RADIUS packets to an ip/port
+and translating the response (or lack of response) to a HTTP response code.
 
 ## How it works
 The configuration file allows one or more healthchecks to be configured, these healthchecks, when accessed
