@@ -343,7 +343,6 @@ static ssize_t xlat_home_server_dynamic(UNUSED void *instance, REQUEST *request,
 	int type;
 	char const *p;
 	home_server_t *home;
-	char buffer[1024];
 
 	if (outlen < 2) return 0;
 

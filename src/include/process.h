@@ -75,6 +75,12 @@ void request_inject(REQUEST *request);
 
 #ifdef WITH_PROXY
 int request_proxy_reply(RADIUS_PACKET *packet);
+
+void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler);
+void proxy_listener_thaw(rad_listen_t *listener);
+#endif
+
+
 #endif
 
 #ifdef __cplusplus
