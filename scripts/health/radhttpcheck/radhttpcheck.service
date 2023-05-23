@@ -1,0 +1,16 @@
+[Unit]
+Description=radhttpcheck health probe translator
+After=network-online.target
+Documentation=raddhtpcheck/README.md
+
+[Service]
+Type=exec
+ExecStart=/usr/local/radhttpcheck/radhttpcheck.py
+Restart=on-failure
+RestartSec=5
+
+# Allow binding to low ports like 80
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

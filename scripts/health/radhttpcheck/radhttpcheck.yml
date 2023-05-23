@@ -1,0 +1,17 @@
+# Address listened on for HTTP traffic
+listen:
+  address: '*'
+  port: 8000
+# URLs the healthcheck script will respond on, and the various types of requests they create
+endpoints:
+  '/acct':
+    port: 1813
+    secret: testing123
+    type: Accounting-Request
+    attributes:
+      Acct-Session-Id: '0123456789'
+      Acct-Status-Type: 'Start'
+  '/auth':
+    port: 1812
+    secret: testing123
+    type: Access-Request
