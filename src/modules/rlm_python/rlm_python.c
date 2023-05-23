@@ -1094,13 +1094,6 @@ static int mod_load(void)
 	default_path = Py_EncodeLocale(Py_GetPath(), NULL);
 
 	/*
-	 *	As of 3.7 this is called by Py_Initialize
-	 */
-#if PY_VERSION_HEX < 0x03070000
-	PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
-#endif
-
-	/*
 	 *	Set program name (i.e. the software calling the interpreter)
 	 */
 	{
