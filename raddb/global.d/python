@@ -1,0 +1,17 @@
+python {
+	#
+	#  path::
+	#
+	#  The search path for Python modules.  It must include the path to your
+	#  Python module.
+	#
+#	path = ${modconfdir}/${.:name}
+
+	#
+	#  path_include_default::
+	#
+	#  If "yes", retain the default search path.  Any additional search
+	#  path components will be prepended to the the default search path.
+	#
+#	path_include_default = "yes"
+}

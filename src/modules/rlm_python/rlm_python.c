@@ -77,6 +77,14 @@ typedef struct {
 						//!< made available to the python script.
 } rlm_python_t;
 
+/** Global config for python library
+ *
+ */
+typedef struct {
+	char const	*path;			//!< Path to search for python files in.
+	bool		path_include_default;	//!< Include the default python path in `path`
+} libpython_global_config_t;
+
 /** Tracks a python module inst/thread state pair
  *
  * Multiple instances of python create multiple interpreters and each
@@ -92,6 +100,29 @@ static PyThreadState		*global_interpreter;	//!< Our first interpreter.
 static module_ctx_t const	*current_mctx;		//!< Used for communication with inittab functions.
 static CONF_SECTION		*current_conf;		//!< Used for communication with inittab functions.
 static char			*default_path;		//!< The default python path.
+
+static libpython_global_config_t libpython_global_config = {
+	.path = NULL,
+	.path_include_default = true
+};
+
+static CONF_PARSER const python_global_config[] = {
+	{ FR_CONF_OFFSET("path", FR_TYPE_STRING, libpython_global_config_t, path) },
+	{ FR_CONF_OFFSET("path_include_default", FR_TYPE_BOOL, libpython_global_config_t, path_include_default) },
+	CONF_PARSER_TERMINATOR
+};
+
+global_lib_autoinst_t rlm_python_autoinst = {
+	.name = "python",
+	.config = python_global_config,
+	.inst = &libpython_global_config
+};
+
+extern global_lib_autoinst_t const * const rlm_python_lib[];
+global_lib_autoinst_t const * const rlm_python_lib[] = {
+	&rlm_python_autoinst,
+	GLOBAL_LIB_TERMINATOR
+};
 
 /*
  *	As of Python 3.8 the GIL will be per-interpreter
