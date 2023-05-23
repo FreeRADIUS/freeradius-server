@@ -33,34 +33,6 @@ python {
 	module = example
 
 	#
-	#  cext_compat::
-	#
-	#  Uncomment the following line (and set to true) if you need
-	#  to call Python C extensions that acquire the GIL.
-	#
-	#  This will use the first Python interpreter (*not a sub-interpreter*)
-	#  to provide the execution environment for this module instance.
-	#
-	#  The tradeoff is, that any module instance with `cext_compat = true`,
-	#  will share the same environment, and will use the same user
-	#  configurable configuration items, and `python_path`, as the first
-	#  instance of `rlm_python` to be loaded with `cext_compat` enabled.
-	#
-	#  Not all Python functions use the GIL as it prevents parallel
-	#  execution.  A good indication of whether `cext_compat` is needed
-	#  is whether your script locks up or crashes when calling a
-	#  Python C extension.
-	#
-	#  [NOTE]
-	#  ====
-	#  This functionality is only available when building with Python 2.7
-	#  or below.  For Python 3 you should build against Python 3.8 which
-	#  has a proper fix for this issue (per interpreter GILs)
-	#  ====
-	#
-#	cext_compat = false
-
-	#
 	#  [NOTE]
 	#  ====
 	#  * You may set `mod_<section>` for any of the section to module
