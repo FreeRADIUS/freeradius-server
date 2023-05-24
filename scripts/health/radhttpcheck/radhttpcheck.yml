@@ -3,7 +3,7 @@ listen:
   address: '*'
   port: 8080
 # URLs the healthcheck script will respond on, and the various types of requests they create
-endpoints:
+healthchecks:
   '/acct':
     port: 1813
     secret: testing123

@@ -40,7 +40,10 @@ class RadiusHealthCheckHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
-        self.wfile.write(bytes(content, 'utf8'))
+        try:
+            self.wfile.write(bytes(content, 'utf8'))
+        except BrokenPipeError:
+            pass
 
     def codeToStr(self, code):
         code_map = {
@@ -109,6 +112,7 @@ class RadiusHealthCheckHandler(BaseHTTPRequestHandler):
         req.add_message_authenticator()
 
         # We now block until retries and timeout have expired
+        rsp = None
         try:
             rsp = client.SendPacket(req)
         except pyrad.packet.PacketError as e:
@@ -119,6 +123,7 @@ class RadiusHealthCheckHandler(BaseHTTPRequestHandler):
             self.genericResponse(500, json.dumps({"msg": "Internal error: " + str(e) })) # Internal error
         finally:
             del client # Ensure the socket is closed in a timely fashion
+        if not rsp:
             return
 
         # Deal with response code mismatches
