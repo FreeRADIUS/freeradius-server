@@ -112,19 +112,19 @@ class RadiusHealthCheckHandler(BaseHTTPRequestHandler):
         req.add_message_authenticator()
 
         # We now block until retries and timeout have expired
-        rsp = None
         try:
             rsp = client.SendPacket(req)
         except pyrad.packet.PacketError as e:
             self.genericResponse(502, json.dumps({"msg": "Healthcheck error: " + str(e) })) # BadGateway
+            return
         except pyrad.client.Timeout as e:
             self.genericResponse(504, json.dumps({"msg": "Healthcheck error: No response from upstream"})) # Gateway timeout
+            return
         except Exception as e:
             self.genericResponse(500, json.dumps({"msg": "Internal error: " + str(e) })) # Internal error
+            return
         finally:
             del client # Ensure the socket is closed in a timely fashion
-        if not rsp:
-            return
 
         # Deal with response code mismatches
         if healthcheck['require_ack'] and healthcheck['type'].has_key('rsp_code') and rsp.code != healthcheck['type']['rsp_code']:

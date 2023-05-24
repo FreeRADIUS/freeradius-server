@@ -1,7 +1,7 @@
 [Unit]
 Description=radhttpcheck health probe translator
 After=network-online.target
-Documentation=raddhtpcheck/README.md
+Documentation=https://github.com/FreeRADIUS/freeradius-server/blob/master/scripts/health/radhttpcheck/README.md
 
 [Service]
 Type=exec
