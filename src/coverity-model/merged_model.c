@@ -32,6 +32,8 @@ typedef unsigned char bool;
 typedef unsigned int mode_t;
 typedef long long int off_t;
 
+typedef long int ssize_t;
+typedef unsigned long int size_t;
 
 typedef union {
 } pthread_mutex_t;
@@ -90,3 +92,207 @@ static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 	return result;
 }
 
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+#define UINT8_MAX 255
+
+typedef ssize_t	fr_slen_t;
+
+typedef struct {
+	char	*p;
+}	fr_sbuff_t;
+
+typedef struct {
+	uint8_t	*p;
+}	fr_dbuff_t;
+
+typedef enum {
+	FR_SBUFF_PARSE_OK			= 0,		//!< No error.
+	FR_SBUFF_PARSE_ERROR_NOT_FOUND		= -1,		//!< String does not contain a token
+								///< matching the output type.
+	FR_SBUFF_PARSE_ERROR_TRAILING		= -2,		//!< Trailing characters found.
+	FR_SBUFF_PARSE_ERROR_FORMAT		= -3,		//!< Format of data was invalid.
+	FR_SBUFF_PARSE_ERROR_OUT_OF_SPACE	= -4,		//!< No space available in output buffer.
+	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW	= -5,		//!< Integer type would overflow.
+	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW	= -6		//!< Integer type would underflow.
+} fr_sbuff_parse_error_t;
+
+fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static UINT8_MAX + 1])
+{
+	fr_slen_t	result;
+
+	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result);
+
+	return result;
+}
+
+fr_slen_t fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
+				bool no_trailing, uint8_t const alphabet[static UINT8_MAX + 1])
+{
+	fr_slen_t	result;
+
+	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result + 1);
+
+	return result;
+}
+
+/*
+ * We have two choices here, both unfortunate. We can fill in the fields of fr_value_box_t, so
+ * we can refer to sizeof(fr_value_box_t) in the fr_value_box_init() model, or we can determine
+ * its size some other way and #define it to make its meaning clear. Both are subject to changes
+ * in src/lib/util/value.h and whatever it (transitive closure of #include)s.
+ *
+ * OK. Actually giving the details of an fr_value_box_t at a level or so of indirection gets you
+ * to a type that's defined via macros, not to mention that it's not clear whether there's a way
+ * to force alignment in the "compiler" coverity uses on modeling files, which you'd need to get
+ * sizeof(fr_value_box_datum_t), which is part of a fr_value_box_t.
+ */
+
+#define REAL_SIZEOF_FR_VALUE_BOX_T	64
+
+typedef enum {
+	FR_TYPE_NULL = 0,			//!< Invalid (uninitialised) attribute type.
+
+	FR_TYPE_STRING,				//!< String of printable characters.
+	FR_TYPE_OCTETS,				//!< Raw octets.
+
+	FR_TYPE_IPV4_ADDR,			//!< 32 Bit IPv4 Address.
+	FR_TYPE_IPV4_PREFIX,			//!< IPv4 Prefix.
+	FR_TYPE_IPV6_ADDR,			//!< 128 Bit IPv6 Address.
+	FR_TYPE_IPV6_PREFIX,			//!< IPv6 Prefix.
+	FR_TYPE_IFID,				//!< Interface ID.
+	FR_TYPE_COMBO_IP_ADDR,			//!< IPv4 or IPv6 address depending on length.
+	FR_TYPE_COMBO_IP_PREFIX,		//!< IPv4 or IPv6 address prefix depending on length.
+	FR_TYPE_ETHERNET,			//!< 48 Bit Mac-Address.
+
+	FR_TYPE_BOOL,				//!< A truth value.
+
+	FR_TYPE_UINT8,				//!< 8 Bit unsigned integer.
+	FR_TYPE_UINT16,				//!< 16 Bit unsigned integer.
+	FR_TYPE_UINT32,				//!< 32 Bit unsigned integer.
+	FR_TYPE_UINT64,				//!< 64 Bit unsigned integer.
+
+
+	FR_TYPE_INT8,				//!< 8 Bit signed integer.
+	FR_TYPE_INT16,				//!< 16 Bit signed integer.
+	FR_TYPE_INT32,				//!< 32 Bit signed integer.
+	FR_TYPE_INT64,				//!< 64 Bit signed integer.
+
+	FR_TYPE_FLOAT32,			//!< Single precision floating point.
+	FR_TYPE_FLOAT64,			//!< Double precision floating point.
+
+	FR_TYPE_DATE,				//!< Unix time stamp, always has value >2^31
+
+	FR_TYPE_TIME_DELTA,			//!< A period of time measured in nanoseconds.
+
+	FR_TYPE_SIZE,				//!< Unsigned integer capable of representing any memory
+						//!< address on the local system.
+
+	FR_TYPE_TLV,				//!< Contains nested attributes.
+	FR_TYPE_STRUCT,				//!< like TLV, but without T or L, and fixed-width children
+
+	FR_TYPE_VSA,				//!< Vendor-Specific, for RADIUS attribute 26.
+	FR_TYPE_VENDOR,				//!< Attribute that represents a vendor in the attribute tree.
+
+	FR_TYPE_GROUP,				//!< A grouping of other attributes
+	FR_TYPE_VALUE_BOX,			//!< A boxed value.
+
+	FR_TYPE_VOID,				//!< User data.  Should be a talloced chunk
+						///< assigned to the ptr value of the union.
+
+	FR_TYPE_MAX				//!< Number of defined data types.
+} fr_type_t;
+
+typedef struct {
+}	fr_dict_attr_t;
+
+typedef struct {
+}	fr_value_box_t;
+
+typedef struct {
+}	fr_dict_attr_flags_t;
+
+static void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
+{
+	__coverity_write_buffer_bytes__(vb, REAL_SIZEOF_FR_VALUE_BOX_T);
+}
+
+ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
+{
+	ssize_t	result;
+
+	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result);
+
+	return result;
+}
+
+size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
+				     bool const allowed[static UINT8_MAX + 1])
+{
+	size_t	result;
+
+	__coverity_write_buffer_bytes__(out->p, result + 1);
+
+	return result;
+}
+
+typedef struct {
+} 	fr_sbuff_term_t;
+typedef struct {
+} 	fr_sbuff_unescape_rules_t;
+
+size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
+				   fr_sbuff_term_t const *tt,
+				   fr_sbuff_unescape_rules_t const *u_rules)
+{
+	size_t	result;
+
+	__coverity_write_buffer_bytes__(out->p, result + 1);
+
+	return result;
+}
+
+size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
+				   fr_sbuff_term_t const *tt,
+				   fr_sbuff_unescape_rules_t const *u_rules)
+{
+	size_t	result;
+
+	__coverity_write_buffer_bytes__(out->p, result + 1);
+
+	return result;
+}
+
+ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out,
+			       fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da, bool numeric)
+{
+	ssize_t	result;
+
+	if (result > 0) __coverity_write_buffer_bytes__(out->p, result);
+
+	return result;
+}
+
+typedef struct {
+}	fr_dict_t;
+
+ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type_t type, fr_dict_attr_flags_t const *flags)
+{
+	ssize_t	result;
+
+	if (result > 0) __coverity_write_buffer_bytes__(out->p, result);
+
+	return result;
+}
+
+typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t outlen, char const *in, void *arg);
+
+ssize_t xlat_eval(char *out, size_t outlen, request_t *request,
+		  char const *fmt, xlat_escape_legacy_t escape, void const *escape_ctx)
+{
+	ssize_t	result;
+
+	if (result > 0) __coverity_write_buffer_bytes__(out, result + 1);
+
+	return result;
+}
