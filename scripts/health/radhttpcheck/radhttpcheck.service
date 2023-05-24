@@ -5,8 +5,9 @@ Documentation=raddhtpcheck/README.md
 
 [Service]
 Type=exec
-ExecStart=/usr/local/radhttpcheck/radhttpcheck.py --conf /usr/local/radhttpcheck/radhttpcheck.yml
-Restart=on-failure
+WorkingDirectory=/usr/local/radhttpcheck
+ExecStart=/usr/local/radhttpcheck/radhttpcheck.py
+Restart=always
 RestartSec=5
 
 # Allow binding to low ports like 80
