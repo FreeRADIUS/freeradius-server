@@ -402,7 +402,10 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, UNUSED rlm_files_t con
 		trie = (tree->type == FR_HTRIE_TRIE);
 
 		/*
-		 *	Grab our own copy of the key if necessary.
+		 *	Convert the value-box to a key for use in a trie.  The trie assumes that the key
+		 *	starts at the high bit of the data, and that isn't always the case.  e.g. "bool" and
+		 *	"integer" may be in host byte order, in which case we have to convert them to network
+		 *	byte order.
 		 */
 		if (user_list && trie) {
 			key = key_buffer;
@@ -412,21 +415,6 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, UNUSED rlm_files_t con
 
 			RDEBUG3("Keylen %ld", keylen);
 			RHEXDUMP3(key, (keylen + 7) >> 3, "KEY ");
-
-			/*
-			 *	We're going to free the value_box
-			 *	shortly, so copy the key to our
-			 *	internal key buffer.
-			 */
-			if (key != key_buffer) {
-				if (((keylen + 7) >> 3) > sizeof(key_buffer)) {
-					REDEBUG("Key is too long - truncating");
-					keylen = sizeof(key_buffer) << 3;
-				}
-
-				memcpy(key_buffer, key, (keylen + 7) >> 3);
-				key = key_buffer;
-			}
 		}
 
 		user_pl = user_list ? fr_dlist_head(&user_list->head) : NULL;
