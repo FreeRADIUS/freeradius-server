@@ -128,7 +128,7 @@ class RadiusHealthCheckHandler(BaseHTTPRequestHandler):
 
         # Deal with response code mismatches
         if healthcheck['require_ack'] and healthcheck['type'].has_key('rsp_code') and rsp.code != healthcheck['type']['rsp_code']:
-            self.genericResponse(502, json.dumps({"msg": "Healthcheck error: Bad response code, expected " + code2str(healthcheck['type']['rsp_code']) + ", got " + code2str(rsp.code) })) # BadGateway
+            self.genericResponse(502, json.dumps({"msg": "Healthcheck error: Bad response code, expected " + self.code2str(healthcheck['type']['rsp_code']) + ", got " + self.code2str(rsp.code) })) # BadGateway
             return
 
         self.genericResponse(200, json.dumps({"msg": "Healthcheck OK" }))
