@@ -1,7 +1,7 @@
 # Address listened on for HTTP traffic
 listen:
   address: '*'
-  port: 8000
+  port: 8080
 # URLs the healthcheck script will respond on, and the various types of requests they create
 endpoints:
   '/acct':

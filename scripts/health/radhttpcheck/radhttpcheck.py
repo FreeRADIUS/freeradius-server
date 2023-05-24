@@ -26,6 +26,7 @@ from pyrad.client import Client, Timeout
 from pyrad.dictionary import Dictionary
 import pyrad.packet
 
+import argparse
 import json
 import yaml
 
@@ -234,8 +235,12 @@ def main():
     global config
     global raddict
 
+    parser = argparse.ArgumentParser(description='HTTP to RADIUS healthcheck')
+    parser.add_argument('-c', '--conf', default='radhttpcheck.yml', help='path to configuration file')
+    args = parser.parse_args()
+
     # Parse our configuration, setting defaults
-    config = Configuration()
+    config = Configuration(args.conf)
 
     # Start the HTTP server
     with ThreadedHTTPServer((config.listen['ipaddr'], config.listen['port']), RadiusHealthCheckHandler) as httpd:

@@ -5,7 +5,7 @@ Documentation=raddhtpcheck/README.md
 
 [Service]
 Type=exec
-ExecStart=/usr/local/radhttpcheck/radhttpcheck.py
+ExecStart=/usr/local/radhttpcheck/radhttpcheck.py --conf /usr/local/radhttpcheck/radhttpcheck.yml
 Restart=on-failure
 RestartSec=5
 
