@@ -1,1 +1,2 @@
 rlm_cache_memcached
+rlm_cache_redis

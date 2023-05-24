@@ -917,6 +917,7 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_redis.so
 %{_libdir}/freeradius/rlm_rediswho.so
+%{_libdir}/freeradius/rlm_cache_redis.so
 %endif
 
 %files rest

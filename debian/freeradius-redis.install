@@ -1,1 +1,2 @@
 usr/lib/freeradius/rlm_redis*.so
+usr/lib/freeradius/rlm_cache_redis.so
