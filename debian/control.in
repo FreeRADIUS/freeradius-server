@@ -29,7 +29,8 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  libykclient-dev,
  libmemcached-dev,
  libhiredis-dev,
- python-dev | python3-dev | libpython3-dev,
+ python2-dev | python-dev,
+ python3-dev,
  samba-dev | samba4-dev
 Section: net
 Priority: optional
@@ -42,7 +43,7 @@ Package: freeradius
 Architecture: any
 Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, freeradius-common, freeradius-config, libfreeradius3 (= ${binary:Version}), ssl-cert, adduser
 Provides: radius-server
-Recommends: freeradius-utils
+Recommends: freeradius-utils, freeradius-python2, freeradius-python3
 Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5, snmp
 Description: high-performance and highly configurable RADIUS server
  FreeRADIUS is a high-performance RADIUS server with support for:
@@ -185,6 +186,26 @@ Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, $
 Description: Memcached module for FreeRADIUS server
  The FreeRADIUS server can cache data in memcached and this package
  contains the required module.
+
+Package: freeradius-python2
+Architecture: any
+Conflicts: freeradius (<< 3.2.2+git161)
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Python2 module for the FreeRADIUS server
+ This package provides the FreeRADIUS rlm_python (Python 2)
+ module. Prior to version 3.2.3 the Python module was included in
+ the freeradius package and would be either Python2 or Python3
+ depending on the system default.
+
+Package: freeradius-python3
+Architecture: any
+Conflicts: freeradius (<< 3.2.2+git161)
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Python3 module for the FreeRADIUS server
+ This package provides the FreeRADIUS rlm_python3 module. Prior to
+ version 3.2.3 the Python module was included in the freeradius
+ package and would be either Python2 or Python3 depending on the
+ system default.
 
 Package: freeradius-unbound
 Architecture: any

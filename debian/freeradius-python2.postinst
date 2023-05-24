@@ -1,0 +1,19 @@
+#! /bin/sh
+
+set -e
+
+case "$1" in
+  configure)
+        if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+          invoke-rc.d freeradius force-reload || true
+        else
+          /etc/init.d/freeradius force-reload
+        fi
+	;;
+esac
+
+#DEBHELPER#
+
+exit 0
+
+
