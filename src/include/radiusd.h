@@ -277,6 +277,8 @@ struct rad_request {
 
 	RAD_LISTEN_TYPE		priority;
 
+	bool			max_time;	//!< did we hit max time?
+
 	bool			in_request_hash;
 #ifdef WITH_PROXY
 	bool			in_proxy_hash;
@@ -543,6 +545,7 @@ int	total_active_threads(void);
 void	thread_pool_lock(void);
 void	thread_pool_unlock(void);
 void	thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
+void	thread_pool_thread_stats(int stats[3]);
 
 #ifndef HAVE_PTHREAD_H
 #  define rad_fork(n) fork()
