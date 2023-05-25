@@ -690,6 +690,19 @@ bool realm_home_server_add(home_server_t *home)
 	return true;
 }
 
+#ifdef WITH_TLS
+/*
+ *	The listeners are always different.  And we always look them up by *known* listener.  And not "find me some random thing".
+ */
+static int listener_cmp(void const *one, void const *two)
+{
+	if (one < two) return -1;
+	if (one > two) return +1;
+
+	return 0;
+}
+#endif
+
 /** Alloc a new home server defined by a CONF_SECTION
  *
  * @param ctx to allocate home_server_t in.
@@ -997,10 +1010,24 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 *	Parse the SSL client configuration.
 		 */
 		if (tls) {
+			int rcode;
+
 			home->tls = tls_client_conf_parse(tls);
 			if (!home->tls) {
 				goto error;
 			}
+
+			/*
+			 *	Connection timeouts for outgoing TLS connections.
+			 */
+
+			rcode = cf_item_parse(tls, "connect_timeout", FR_ITEM_POINTER(PW_TYPE_INTEGER, &home->connect_timeout), NULL);
+			if (rcode < 0) goto error;
+
+			if (!home->connect_timeout || (home->connect_timeout > 30)) home->connect_timeout = 30;
+
+			home->listeners = rbtree_create(home, listener_cmp, NULL, RBTREE_FLAG_LOCK);
+			if (!home->listeners) goto error;
 		}
 #endif
 	} /* end of parse home server */

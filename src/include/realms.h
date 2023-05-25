@@ -127,6 +127,8 @@ typedef struct home_server {
 #endif
 #ifdef WITH_TLS
 	fr_tls_server_conf_t	*tls;
+	uint32_t		connect_timeout;
+	rbtree_t		*listeners;
 #endif
 
 #ifdef WITH_STATS
