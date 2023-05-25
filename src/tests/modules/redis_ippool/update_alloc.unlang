@@ -12,9 +12,7 @@ $INCLUDE cluster_reset.inc
 
 # 1. Check allocation
 redis_ippool
-if (updated) {
-	test_pass
-} else {
+if (!updated) {
 	test_fail
 }
 
@@ -28,24 +26,20 @@ if (updated) {
 redis_ippool
 
 # 3. Check the expiry attribute is present and correct
-if (&reply.Session-Timeout == 60) {
-	test_pass
-} else {
+if !(&reply.Session-Timeout == 60) {
 	test_fail
 }
 
 # 4. Verify the gateway was set
-if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} gateway)" == '127.0.0.1') {
-	test_pass
-} else {
+if !("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} gateway)" == '127.0.0.1') {
 	test_fail
 }
 
 # 5. Verify we got an IP
-if (&reply.Framed-IP-Address == 192.168.0.1) {
-	test_pass
-} else {
+if !(&reply.Framed-IP-Address == 192.168.0.1) {
 	test_fail
 }
 
 &reply := {}
+
+test_pass
