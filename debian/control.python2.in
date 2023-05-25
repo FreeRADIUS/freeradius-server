@@ -1,0 +1,10 @@
+
+Package: freeradius-python2
+Architecture: any
+Conflicts: freeradius (<< 3.2.2+git161)
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Python2 module for the FreeRADIUS server
+ This package provides the FreeRADIUS rlm_python (Python 2)
+ module. Prior to version 3.2.3 the Python module was included in
+ the freeradius package and would be either Python2 or Python3
+ depending on the system default.

@@ -71,7 +71,16 @@ endif
 debian/control: debian/control.in
 	sed -e 's/@BUILDDEPS@/$(CONTROL_BUILDDEPS)/g' \
 	     debian/control.in > debian/control.tmp
-	mv debian/control.tmp debian/control
+	if apt-cache show python2-dev 2>&1 | grep -q ^Package || \
+		apt-cache show python-dev 2>&1 | grep -q ^Package ; then \
+		sed -e 's/@PYTWODEPS@/python2-dev | python-dev,/g' \
+			-e 's/@PYTWOPKG@/, freeradius-python2/g' \
+			debian/control.tmp debian/control.python2.in > debian/control.tmp2; \
+		mv debian/control.tmp2 debian/control.tmp; \
+	fi
+	sed -e 's/@PYTWODEPS@//g' -e 's/@PYTWOPKG@//g' \
+		debian/control.tmp > debian/control
+	rm debian/control.tmp
 
 include /usr/share/quilt/quilt.make
 
