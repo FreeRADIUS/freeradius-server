@@ -470,7 +470,6 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 
 			fr_base16_encode(&FR_SBUFF_OUT(vector, sizeof(vector)),
 					 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH));
-			/* coverity[uninit_use_in_call] */
 			INFO("\tAuthenticator-Field = 0x%s", vector);
 		}
 	}
@@ -512,7 +511,6 @@ static void rs_packet_save_in_output_dir(uint64_t count, UNUSED rs_status_t stat
 	fr_base16_encode(&FR_SBUFF_OUT(vector, sizeof(vector)),
 			 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH));
 
-	/* coverity[uninit_use_in_call] */
 	fprintf(output_file.handle, "Authenticator-Field = 0x%s\n", vector);
 
 	if (fr_log_close(&output_file) < 0) {

@@ -4960,7 +4960,6 @@ parse:
 		fr_base16_decode(&err, &dbuff, &our_in, true);
 		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
 
-		/* coverity[uninit_use_in_call] */
 		fr_value_box_ethernet_addr(dst, dst_enumv, &ether, tainted);
 
 		FR_SBUFF_SET_RETURN(in, &our_in);
