@@ -52,6 +52,17 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #endif
 
+#ifdef WITH_TLS
+#include <netinet/tcp.h>
+
+#  ifdef __APPLE__
+#    if !defined(SOL_TCP) && defined(IPPROTO_TCP)
+#      define SOL_TCP IPPROTO_TCP
+#    endif
+#  endif
+
+#endif
+
 #ifdef DEBUG_PRINT_PACKET
 static void print_packet(RADIUS_PACKET *packet)
 {
@@ -65,7 +76,6 @@ static void print_packet(RADIUS_PACKET *packet)
 
 }
 #endif
-
 
 static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type);
 
@@ -1177,6 +1187,18 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			}
 
 			/*
+			 *	Add support for http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+			 */
+			rcode = cf_item_parse(cs, "proxy_protocol", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->proxy_protocol), NULL);
+			if (rcode < 0) return -1;
+
+			/*
+			 *	Allow non-blocking for TLS sockets
+			 */
+			rcode = cf_item_parse(cs, "nonblock", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->nonblock), NULL);
+			if (rcode < 0) return -1;
+
+			/*
 			 *	If unset, set to default.
 			 */
 			if (listen_port == 0) listen_port = PW_RADIUS_TLS_PORT;
@@ -1457,12 +1479,12 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 }
 
 /*
- *	Send an authentication response packet
+ *	Send a response packet
  */
-static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
+static int common_socket_send(rad_listen_t *listener, REQUEST *request)
 {
 	rad_assert(request->listener == listener);
-	rad_assert(listener->send == auth_socket_send);
+	rad_assert(listener->send == common_socket_send);
 
 	if (request->reply->code == 0) return 0;
 
@@ -1487,39 +1509,20 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 	return 0;
 }
 
-
-#ifdef WITH_ACCOUNTING
+#ifdef WITH_PROXY
 /*
- *	Send an accounting response packet (or not)
+ *	Send a packet to a home server.
+ *
+ *	FIXME: have different code for proxy auth & acct!
  */
-static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
+static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 {
-	rad_assert(request->listener == listener);
-	rad_assert(listener->send == acct_socket_send);
+	rad_assert(request->proxy_listener == listener);
+	rad_assert(listener->proxy_send == proxy_socket_send);
 
-	/*
-	 *	Accounting reject's are silently dropped.
-	 *
-	 *	We do it here to avoid polluting the rest of the
-	 *	code with this knowledge
-	 */
-	if (request->reply->code == 0) return 0;
-
-#ifdef WITH_UDPFROMTO
-	/*
-	 *	Overwrite the src ip address on the outbound packet
-	 *	with the one specified by the client.
-	 *	This is useful to work around broken DSR implementations
-	 *	and other routing issues.
-	 */
-	if (request->client->src_ipaddr.af != AF_UNSPEC) {
-		request->reply->src_ipaddr = request->client->src_ipaddr;
-	}
-#endif
-
-	if (rad_send(request->reply, request->packet,
-		     request->client->secret) < 0) {
-		RERROR("Failed sending reply: %s",
+	if (rad_send(request->proxy, NULL,
+		     request->home_server->secret) < 0) {
+		RERROR("Failed sending proxied request: %s",
 			       fr_strerror());
 		return -1;
 	}
@@ -1549,75 +1552,6 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 	return 0;
 }
 #endif
-
-#ifdef WITH_STATS
-/*
- *	Check if an incoming request is "ok"
- *
- *	It takes packets, not requests.  It sees if the packet looks
- *	OK.  If so, it does a number of sanity checks on it.
-  */
-static int stats_socket_recv(rad_listen_t *listener)
-{
-	ssize_t		rcode;
-	int		code;
-	uint16_t	src_port;
-	RADIUS_PACKET	*packet;
-	RADCLIENT	*client = NULL;
-	fr_ipaddr_t	src_ipaddr;
-
-	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
-	if (rcode < 0) return 0;
-
-	FR_STATS_INC(auth, total_requests);
-
-	if (rcode < 20) {	/* RADIUS_HDR_LEN */
-		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
-		FR_STATS_INC(auth, total_malformed_requests);
-		return 0;
-	}
-
-	if ((client = client_listener_find(listener,
-					   &src_ipaddr, src_port)) == NULL) {
-		rad_recv_discard(listener->fd);
-		FR_STATS_INC(auth, total_invalid_requests);
-		return 0;
-	}
-
-	FR_STATS_TYPE_INC(client->auth.total_requests);
-
-	/*
-	 *	We only understand Status-Server on this socket.
-	 */
-	if (code != PW_CODE_STATUS_SERVER) {
-		DEBUG("Ignoring packet code %d sent to Status-Server port",
-		      code);
-		rad_recv_discard(listener->fd);
-		FR_STATS_INC(auth, total_unknown_types);
-		return 0;
-	}
-
-	/*
-	 *	Now that we've sanity checked everything, receive the
-	 *	packet.
-	 */
-	packet = rad_recv(NULL, listener->fd, 1); /* require message authenticator */
-	if (!packet) {
-		FR_STATS_INC(auth, total_malformed_requests);
-		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
-		return 0;
-	}
-
-	if (!request_receive(NULL, listener, packet, client, rad_status_server)) {
-		FR_STATS_INC(auth, total_packets_dropped);
-		rad_free(&packet);
-		return 0;
-	}
-
-	return 1;
-}
-#endif
-
 
 /*
  *	Check if an incoming request is "ok"
@@ -2332,7 +2266,7 @@ static int client_socket_encode(TLS_UNUSED rad_listen_t *listener, REQUEST *requ
 static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 #ifdef WITH_TLS
-	listen_socket_t *sock;
+	listen_socket_t *sock = request->listener->data;
 #endif
 
 	if (rad_verify(request->packet, NULL,
@@ -2341,8 +2275,6 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	}
 
 #ifdef WITH_TLS
-	sock = request->listener->data;
-	rad_assert(sock != NULL);
 
 	/*
 	 *	FIXME: Add the rest of the TLS parameters, too?  But
@@ -2408,7 +2340,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 #ifdef WITH_STATS
 	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
-	  stats_socket_recv, auth_socket_send,
+	  stats_socket_recv, common_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode },
 #else
 	/*
@@ -2431,14 +2363,14 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	/* authentication */
 	{ RLM_MODULE_INIT, "auth", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, common_socket_free,
-	  auth_socket_recv, auth_socket_send,
+	  auth_socket_recv, common_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode },
 
 #ifdef WITH_ACCOUNTING
 	/* accounting */
 	{ RLM_MODULE_INIT, "acct", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, common_socket_free,
-	  acct_socket_recv, acct_socket_send,
+	  acct_socket_recv, common_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode},
 #else
 	{ 0, "acct", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
@@ -2472,7 +2404,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	/* Change of Authorization */
 	{ RLM_MODULE_INIT, "coa", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
-	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
+	  coa_socket_recv, common_socket_send, 
 	  common_socket_print, client_socket_encode, client_socket_decode },
 #else
 	{ 0, "coa", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
@@ -2945,6 +2877,9 @@ static int _listener_free(rad_listen_t *this)
 
 			rad_assert(!sock->ssn || (talloc_parent(sock->ssn) == sock));
 			rad_assert(!sock->request || (talloc_parent(sock->request) == sock));
+
+			if (sock->home && sock->home->listeners) (void) rbtree_deletebydata(sock->home->listeners, this);
+			
 #ifdef HAVE_PTHREAD_H
 			pthread_mutex_destroy(&(sock->mutex));
 #endif
@@ -3050,6 +2985,11 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		 */
 		this->fd = fr_socket_client_tcp(&home->src_ipaddr,
 						&home->ipaddr, home->port, false);
+
+		/*
+		 *	Set max_requests, lifetime, and idle_timeout from the home server.
+		 */
+		sock->limit = home->limit;
 	} else
 #endif
 		this->fd = fr_socket(&home->src_ipaddr, src_port);
@@ -3080,6 +3020,39 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		if (home->tls->client_hostname) {
 			(void) SSL_set_tlsext_host_name(sock->ssn->ssl, (void *) (uintptr_t) home->tls->client_hostname);
 		}
+		this->nonblock |= home->nonblock;
+
+		/*
+		 *	Set non-blocking if it's configured.
+		 */
+		if (this->nonblock) {
+			if (fr_nonblock(this->fd) < 0) {
+				ERROR("(TLS) Failed setting nonblocking for proxy socket '%s' - %s", buffer, fr_strerror());
+				goto error;
+			}
+
+			rad_assert(home->listeners != NULL);
+
+			if (!rbtree_insert(home->listeners, this)) {
+				ERROR("(TLS) Failed adding tracking informtion for proxy socket '%s'", buffer);
+				goto error;
+			}
+
+#ifdef TCP_NODELAY
+			/*
+			 *	Also set TCP_NODELAY, to force the data to be written quickly.
+			 */
+			if (sock->proto == IPPROTO_TCP) {
+				int on = 1;
+
+				if (setsockopt(this->fd, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
+					ERROR("(TLS) Failed to set TCP_NODELAY: %s", fr_syserror(errno));
+					goto error;
+				}
+			}
+#endif
+		}
+
 
 		/*
 		 *	This is blocking.  :(
@@ -3089,6 +3062,8 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			ERROR("(TLS) Failed opening connection on proxy socket '%s'", buffer);
 			goto error;
 		}
+
+		sock->connect_timeout = home->connect_timeout;
 
 		this->recv = proxy_tls_recv;
 		this->proxy_send = proxy_tls_send;
@@ -3100,6 +3075,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			return 0;
 		}
 #endif
+
 	}
 #endif
 #endif

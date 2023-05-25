@@ -341,8 +341,9 @@ static ssize_t xlat_home_server_dynamic(UNUSED void *instance, REQUEST *request,
 					char const *fmt, char *out, size_t outlen)
 {
 	int type;
-	char const *p;
+	char const *p, *name;
 	home_server_t *home;
+	char buffer[1024];
 
 	if (outlen < 2) return 0;
 
@@ -372,7 +373,29 @@ static ssize_t xlat_home_server_dynamic(UNUSED void *instance, REQUEST *request,
 	p = fmt;
 	while (isspace((uint8_t) *p)) p++;
 
-	home = home_server_byname(p, type);
+        /*                                                                                                              
+         *      Allow for dynamic strings as arguments.                                                                 
+         */
+        if (*p == '&') {
+                VALUE_PAIR *vp;
+
+                if ((radius_get_vp(&vp, request, p) < 0) || !vp ||
+                    (vp->da->type != PW_TYPE_STRING)) {
+                        return -1;
+                }
+                name = vp->vp_strvalue;
+
+        } else if (*p == '%') {
+                if (radius_xlat(buffer, sizeof(buffer), request, p, NULL, NULL) < 0) {
+                        return -1;
+                }
+                name = buffer;
+
+        } else {
+                name = p;
+	}
+
+        home = home_server_byname(name, type);
 	if (!home) {
 		*out = '\0';
 		return 0;
@@ -418,6 +441,7 @@ void realms_free(void)
 
 #ifdef WITH_PROXY
 static CONF_PARSER limit_config[] = {
+	{ "nonblock", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, home_server_t, nonblock), "no" },
 	{ "max_connections", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.max_connections), "16" },
 	{ "max_requests", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.max_requests), "0" },
 	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.lifetime), "0" },
@@ -688,6 +712,20 @@ bool realm_home_server_add(home_server_t *home)
 
 	return true;
 }
+
+#ifdef WITH_TLS
+/*
+ *	The listeners are always different.  And we always look them up by *known* listener.  And not "find me some random thing".
+ */
+static int listener_cmp(void const *one, void const *two)
+{
+	if (one < two) return -1;
+	if (one > two) return +1;
+
+	return 0;
+}
+#endif
+
 
 /** Alloc a new home server defined by a CONF_SECTION
  *
@@ -996,10 +1034,23 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 *	Parse the SSL client configuration.
 		 */
 		if (tls) {
+			int rcode;
+		  
 			home->tls = tls_client_conf_parse(tls);
 			if (!home->tls) {
 				goto error;
 			}
+			/*
+			 *	Connection timeouts for outgoing TLS connections.
+			 */
+
+			rcode = cf_item_parse(tls, "connect_timeout", FR_ITEM_POINTER(PW_TYPE_INTEGER, &home->connect_timeout), NULL);
+			if (rcode < 0) goto error;
+
+			if (!home->connect_timeout || (home->connect_timeout > 30)) home->connect_timeout = 30;
+
+			home->listeners = rbtree_create(home, listener_cmp, NULL, RBTREE_FLAG_LOCK);
+			if (!home->listeners) goto error;
 		}
 #endif
 	} /* end of parse home server */
@@ -1245,8 +1296,17 @@ void realm_pool_free(home_pool_t *pool)
 }
 #endif	/* HAVE_PTHREAD_H */
 
-int realm_pool_add(home_pool_t *pool, UNUSED CONF_SECTION *cs)
+int realm_pool_add(home_pool_t *pool, CONF_SECTION *cs)
 {
+	home_pool_t *old;
+
+	old = rbtree_finddata(home_pools_byname, pool);
+	if (old) {
+		cf_log_err_cs(cs, "Cannot add duplicate home server %s, original is at %s[%d]", pool->name,
+			      cf_section_filename(old->cs), cf_section_lineno(old->cs));
+		return 0;
+	}
+
 	/*
 	 *	The structs aren't mutex protected.  Refuse to destroy
 	 *	the server.
@@ -2365,6 +2425,11 @@ int realms_init(CONF_SECTION *config)
 			if (dp->d_name[0] == '.') continue;
 
 			/*
+			 *	Skip the TLS configuration.
+			 */
+			if (strcmp(dp->d_name, "tls.conf") == 0) continue;
+		
+			/*
 			 *	Check for valid characters
 			 */
 			for (p = dp->d_name; *p != '\0'; p++) {
@@ -2519,7 +2584,7 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 		 *	the 'hints' file.
 		 */
 		request->proxy->vps = fr_pair_list_copy(request->proxy,
-					       request->packet->vps);
+							request->packet->vps);
 	}
 
 	/*
