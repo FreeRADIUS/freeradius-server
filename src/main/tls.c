@@ -3605,6 +3605,7 @@ int tls_global_init(bool spawn_flag, bool check)
 	 */
 	fr_tls_ex_index_certs = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 
+#if defined(HAVE_OPENSSL_CRYPTO_H) && defined(HAVE_CRYPTO_SET_LOCKING_CALLBACK)
 	/*
 	 *	If we're linking with OpenSSL too, then we need
 	 *	to set up the mutexes and enable the thread callbacks.
@@ -3616,6 +3617,7 @@ int tls_global_init(bool spawn_flag, bool check)
 		ERROR("(TLS) FATAL: Failed to set up SSL mutexes");
 		return -1;
 	}
+#endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	/*

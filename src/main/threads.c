@@ -234,7 +234,7 @@ static const CONF_PARSER thread_config[] = {
 };
 #endif
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#if defined(HAVE_OPENSSL_CRYPTO_H) && defined(HAVE_CRYPTO_SET_LOCKING_CALLBACK)
 
 /*
  *	If we're linking against OpenSSL, then it is the
@@ -247,10 +247,8 @@ static const CONF_PARSER thread_config[] = {
  *	right now, but may in the future, so we will have
  *	to add them at some point.
  */
-
 static pthread_mutex_t *ssl_mutexes = NULL;
 
-#ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSED int line)
 {
 	rad_assert(&ssl_mutexes[n] != NULL);
@@ -261,14 +259,12 @@ static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSE
 		pthread_mutex_unlock(&ssl_mutexes[n]);
 	}
 }
-#endif
 
 /*
  *	Create the TLS mutexes.
  */
 int tls_mutexes_init(void)
 {
-#ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 	int i, num;
 
 	rad_assert(ssl_mutexes == NULL);
@@ -286,7 +282,6 @@ int tls_mutexes_init(void)
 	}
 
 	CRYPTO_set_locking_callback(ssl_locking_function);
-#endif
 
 	return 0;
 }
@@ -295,7 +290,7 @@ static void tls_mutexes_destroy(void)
 {
 	int i, num;
 
-	rad_assert(ssl_mutexes != NULL);
+	rad_assert(ssl_mutex != NULL);
 
 	num = CRYPTO_num_locks();
 
@@ -307,7 +302,7 @@ static void tls_mutexes_destroy(void)
 	CRYPTO_set_locking_callback(NULL);
 }
 #else
-#define tls_mutexes_destroy
+#define tls_mutexes_destroy()
 #endif
 
 #ifdef WNOHANG
