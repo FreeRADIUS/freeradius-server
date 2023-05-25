@@ -1273,8 +1273,17 @@ void realm_pool_free(home_pool_t *pool)
 }
 #endif	/* HAVE_PTHREAD_H */
 
-int realm_pool_add(home_pool_t *pool, UNUSED CONF_SECTION *cs)
+int realm_pool_add(home_pool_t *pool, CONF_SECTION *cs)
 {
+	home_pool_t *old;
+
+	old = rbtree_finddata(home_pools_byname, pool);
+	if (old) {
+		cf_log_err_cs(cs, "Cannot add duplicate home server %s, original is at %s[%d]", pool->name,
+			      cf_section_filename(old->cs), cf_section_lineno(old->cs));
+		return 0;
+	}
+
 	/*
 	 *	The structs aren't mutex protected.  Refuse to destroy
 	 *	the server.
@@ -2404,7 +2413,7 @@ int realms_init(CONF_SECTION *config)
 				break;
 			}
 			if (*p != '\0') continue;
-		
+
 			snprintf(conf_file, sizeof(conf_file), "%s/%s", rc->directory, dp->d_name);
 			if (home_server_afrom_file(conf_file) < 0) {
 				ERROR("Failed reading home_server from %s - %s",
@@ -2547,7 +2556,7 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 		 *	the 'hints' file.
 		 */
 		request->proxy->vps = fr_pair_list_copy(request->proxy,
-					       request->packet->vps);
+							request->packet->vps);
 	}
 
 	/*
