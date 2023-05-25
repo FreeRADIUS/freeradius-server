@@ -3049,6 +3049,11 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		 */
 		this->fd = fr_socket_client_tcp(&home->src_ipaddr,
 						&home->ipaddr, home->port, false);
+
+		/*
+		 *	Set max_requests, lifetime, and idle_timeout from the home server.
+		 */
+		sock->limit = home->limit;
 	} else
 #endif
 		this->fd = fr_socket(&home->src_ipaddr, src_port);
@@ -3088,6 +3093,8 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			ERROR("(TLS) Failed opening connection on proxy socket '%s'", buffer);
 			goto error;
 		}
+
+		sock->connect_timeout = home->connect_timeout;
 
 		this->recv = proxy_tls_recv;
 		this->proxy_send = proxy_tls_send;

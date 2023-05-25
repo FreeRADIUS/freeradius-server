@@ -159,6 +159,7 @@ typedef struct listen_socket_t {
 	tls_session_t	*ssn;
 	REQUEST		*request; /* horrible hacks */
 	VALUE_PAIR	*certs;
+	uint32_t	connect_timeout;
 	pthread_mutex_t mutex;
 	uint8_t		*data;
 	size_t		partial;
