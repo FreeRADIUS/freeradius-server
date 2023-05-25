@@ -94,7 +94,6 @@ static PyThreadState		*global_interpreter;	//!< Our first interpreter.
 
 static module_ctx_t const	*current_mctx;		//!< Used for communication with inittab functions.
 static CONF_SECTION		*current_conf;		//!< Used for communication with inittab functions.
-static char			*default_path;		//!< The default python path.
 
 static libpython_global_config_t libpython_global_config = {
 	.path = NULL,
@@ -1065,6 +1064,7 @@ static int libpython_init(void)
 	PyConfig	config;
 	PyStatus	status;
 	wchar_t		*wide_name;
+	char		*path;
 
 	fr_assert(!Py_IsInitialized());
 
@@ -1133,10 +1133,11 @@ static int libpython_init(void)
 	PyConfig_Clear(&config);
 
 	/*
-	 *	Get the default search path so we can append to it.
+	 *	Report the path
 	 */
-	default_path = Py_EncodeLocale(Py_GetPath(), NULL);
-	LOAD_INFO("Python path set to \"%s\"", default_path);
+	path = Py_EncodeLocale(Py_GetPath(), NULL);
+	LOAD_INFO("Python path set to \"%s\"", path);
+	PyMem_Free(path);
 
 	global_interpreter = PyEval_SaveThread();	/* Store reference to the main interpreter and release the GIL */
 
@@ -1146,7 +1147,6 @@ static int libpython_init(void)
 static void libpython_free(void)
 {
 	PyThreadState_Swap(global_interpreter); /* Swap to the main thread */
-	if (default_path) PyMem_Free(default_path);
 
 	/*
 	 *	PyImport_Cleanup - Leaks memory in python 3.6
