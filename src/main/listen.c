@@ -52,6 +52,17 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #endif
 
+#ifdef WITH_TLS
+#include <netinet/tcp.h>
+
+#  ifdef __APPLE__
+#    if !defined(SOL_TCP) && defined(IPPROTO_TCP)
+#      define SOL_TCP IPPROTO_TCP
+#    endif
+#  endif
+
+#endif
+
 #ifdef DEBUG_PRINT_PACKET
 static void print_packet(RADIUS_PACKET *packet)
 {
@@ -1176,6 +1187,12 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			}
 
 			/*
+			 *	Allow non-blocking for TLS sockets
+			 */
+			rcode = cf_item_parse(cs, "nonblock", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->nonblock), NULL);
+			if (rcode < 0) return -1;
+
+			/*
 			 *	If unset, set to default.
 			 */
 			if (listen_port == 0) listen_port = PW_RADIUS_TLS_PORT;
@@ -2290,7 +2307,7 @@ static int client_socket_encode(TLS_UNUSED rad_listen_t *listener, REQUEST *requ
 static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 #ifdef WITH_TLS
-	listen_socket_t *sock;
+	listen_socket_t *sock = request->listener->data;
 #endif
 
 	if (rad_verify(request->packet, NULL,
@@ -2299,9 +2316,6 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	}
 
 #ifdef WITH_TLS
-	sock = request->listener->data;
-	rad_assert(sock != NULL);
-
 	/*
 	 *	FIXME: Add the rest of the TLS parameters, too?  But
 	 *	how do we separate EAP-TLS parameters from RADIUS/TLS
@@ -2903,6 +2917,9 @@ static int _listener_free(rad_listen_t *this)
 
 			rad_assert(!sock->ssn || (talloc_parent(sock->ssn) == sock));
 			rad_assert(!sock->request || (talloc_parent(sock->request) == sock));
+
+			if (sock->home && sock->home->listeners) (void) rbtree_deletebydata(sock->home->listeners, this);
+
 #ifdef HAVE_PTHREAD_H
 			pthread_mutex_destroy(&(sock->mutex));
 #endif
@@ -3042,6 +3059,39 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		 */
 		if (home->tls->client_hostname) {
 			(void) SSL_set_tlsext_host_name(sock->ssn->ssl, (void *) (uintptr_t) home->tls->client_hostname);
+		}
+
+		this->nonblock |= home->nonblock;
+
+		/*
+		 *	Set non-blocking if it's configured.
+		 */
+		if (this->nonblock) {
+			if (fr_nonblock(this->fd) < 0) {
+				ERROR("(TLS) Failed setting nonblocking for proxy socket '%s' - %s", buffer, fr_strerror());
+				goto error;
+			}
+
+			rad_assert(home->listeners != NULL);
+
+			if (!rbtree_insert(home->listeners, this)) {
+				ERROR("(TLS) Failed adding tracking informtion for proxy socket '%s'", buffer);
+				goto error;
+			}
+
+#ifdef TCP_NODELAY
+			/*
+			 *	Also set TCP_NODELAY, to force the data to be written quickly.
+			 */
+			if (sock->proto == IPPROTO_TCP) {
+				int on = 1;
+
+				if (setsockopt(this->fd, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
+					ERROR("(TLS) Failed to set TCP_NODELAY: %s", fr_syserror(errno));
+					goto error;
+				}
+			}
+#endif
 		}
 
 		/*
