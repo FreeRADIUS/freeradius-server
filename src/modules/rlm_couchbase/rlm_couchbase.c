@@ -709,7 +709,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 		}
 
 		/* check terminal server */
-		int check = rad_check_ts(&nas_addr, nas_port, user_name, session_id);
+		int check = rad_check_ts(&nas_addr, nas_port, NULL, user_name, session_id);
 
 		/* take action based on check return */
 		if (check == 0) {
@@ -744,7 +744,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 				}
 
 				/* zap session */
-				session_zap(request, &nas_addr, nas_port, user_name, session_id,
+				session_zap(request, &nas_addr, nas_port, NULL, user_name, session_id,
 					    framed_ip_addr, framed_proto, session_time);
 			}
 		} else if (check == 1) {

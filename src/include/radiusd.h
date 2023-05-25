@@ -380,9 +380,9 @@ int		rad_accounting(REQUEST *);
 int		rad_coa_recv(REQUEST *request);
 
 /* session.c */
-int		rad_check_ts(fr_ipaddr_t const *nas_addr, uint32_t nas_port, char const *user, char const *sessionid);
+int		rad_check_ts(fr_ipaddr_t const *nas_addr, uint32_t nas_port, char const *nas_port_id, char const *user, char const *sessionid);
 int		session_zap(REQUEST *request, fr_ipaddr_t const *nas_addr,
-			    uint32_t nas_port, char const *user,
+			    uint32_t nas_port, char const *nas_port_id, char const *user,
 			    char const *sessionid, uint32_t cliaddr,
 			    char proto, int session_time);
 

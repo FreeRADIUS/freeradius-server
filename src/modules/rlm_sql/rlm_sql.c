@@ -1605,7 +1605,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 	VALUE_PAIR		*vp;
 	int			ret;
 	fr_ipaddr_t		nas_addr;
-	uint32_t		nas_port = 0;
+	char const		*nas_port_id = NULL;
 
 	char 			*expanded = NULL;
 
@@ -1735,10 +1735,10 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 		}
 
 		if (row[4]) {
-			nas_port = atoi(row[4]);
+			nas_port_id = atoi(row[4]);
 		}
 
-		check = rad_check_ts(&nas_addr, nas_port, row[2], row[1]);
+		check = rad_check_ts(&nas_addr, 0, nas_port_id, row[2], row[1]);
 		if (check == 0) {
 			/*
 			 *	Stale record - zap it.
@@ -1758,7 +1758,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 				}
 				if ((num_rows > 8) && row[8])
 					sess_time = atoi(row[8]);
-				session_zap(request, &nas_addr, nas_port,
+				session_zap(request, &nas_addr, 0, nas_port_id,
 					    row[2], row[1], framed_addr,
 					    proto, sess_time);
 			}

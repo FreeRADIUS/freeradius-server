@@ -699,14 +699,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *requ
 			 *	to block everyone else while
 			 *	that's happening.  */
 			rad_unlockfd(fd, LOCK_LEN);
-			rcode = rad_check_ts(&nasaddr, u.nas_port, utmp_login, session_id);
+			rcode = rad_check_ts(&nasaddr, u.nas_port, NULL, utmp_login, session_id);
 			rad_lockfd(fd, LOCK_LEN);
 
 			if (rcode == 0) {
 				/*
 				 *	Stale record - zap it.
 				 */
-				session_zap(request, &nasaddr, u.nas_port, expanded, session_id,
+				session_zap(request, &nasaddr, u.nas_port, NULL, expanded, session_id,
 					    u.framed_address, u.proto, 0);
 			}
 			else if (rcode == 1) {

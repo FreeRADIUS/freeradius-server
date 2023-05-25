@@ -35,7 +35,7 @@ RCSID("$Id$")
  *	End a session by faking a Stop packet to all accounting modules.
  */
 int session_zap(REQUEST *request, fr_ipaddr_t const *nasaddr, uint32_t nas_port,
-		char const *user,
+		char const *nas_port_id, char const *user,
 		char const *sessionid, uint32_t cliaddr, char proto,
 		int session_time)
 {
@@ -91,7 +91,11 @@ int session_zap(REQUEST *request, fr_ipaddr_t const *nasaddr, uint32_t nas_port,
 	STRINGPAIR(PW_USER_NAME, user);
 	stopreq->username = vp;
 
-	INTPAIR(PW_NAS_PORT, nas_port);
+	if (!nas_port_id) {
+		INTPAIR(PW_NAS_PORT, nas_port);
+	} else {
+		STRINGPAIR(PW_NAS_PORT_ID, nas_port_id);
+	}
 	STRINGPAIR(PW_ACCT_SESSION_ID, sessionid);
 	if(proto == 'P') {
 		INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);
@@ -134,7 +138,7 @@ int session_zap(REQUEST *request, fr_ipaddr_t const *nasaddr, uint32_t nas_port,
  *		1 The user is logged in.
  *		2 Some error occured.
  */
-int rad_check_ts(fr_ipaddr_t const *nasaddr, uint32_t nas_port, char const *user,
+int rad_check_ts(fr_ipaddr_t const *nasaddr, uint32_t nas_port, char const *nas_port_id, char const *user,
 		 char const *session_id)
 {
 	pid_t	pid, child_pid;
@@ -206,16 +210,20 @@ int rad_check_ts(fr_ipaddr_t const *nasaddr, uint32_t nas_port, char const *user
 	closefrom(3);
 
 	inet_ntop(nasaddr->af, &(nasaddr->ipaddr), address, sizeof(address));
-	snprintf(port, sizeof(port), "%u", nas_port);
+
+	if (!nas_port_id) {
+		snprintf(port, sizeof(port), "%u", nas_port);
+		nas_port_id = port;
+	}
 
 #ifdef __EMX__
 	/* OS/2 can't directly execute scripts then we call the command
 	   processor to execute checkrad
 	*/
-	execl(getenv("COMSPEC"), "", "/C","checkrad", cl->nas_type, address, port,
+	execl(getenv("COMSPEC"), "", "/C","checkrad", cl->nas_type, address, nas_port_id,
 		user, session_id, NULL);
 #else
-	execl(main_config.checkrad, "checkrad", cl->nas_type, address, port,
+	execl(main_config.checkrad, "checkrad", cl->nas_type, address, nas_port_id,
 		user, session_id, NULL);
 #endif
 	ERROR("Check-TS: exec %s: %s", main_config.checkrad, fr_syserror(errno));
@@ -238,7 +246,7 @@ int rad_check_ts(fr_ipaddr_t const *nasaddr, UNUSED unsigned int nas_port,
 /* WITH_SESSION_MGMT */
 
 int session_zap(UNUSED REQUEST *request, fr_ipaddr_t const *nasaddr, UNUSED uint32_t nas_port,
-		UNUSED char const *user,
+		UNUSED char const *nas_port_id, UNUSED char const *user,
 		UNUSED char const *sessionid, UNUSED uint32_t cliaddr, UNUSED char proto,
 		UNUSED int session_time)
 {
@@ -246,7 +254,7 @@ int session_zap(UNUSED REQUEST *request, fr_ipaddr_t const *nasaddr, UNUSED uint
 }
 
 int rad_check_ts(fr_ipaddr_t const *nasaddr, UNUSED unsigned int nas_port,
-		 UNUSED char const *user, UNUSED char const *session_id)
+		 UNUSED char const *nas_port_id, UNUSED char const *user, UNUSED char const *session_id)
 {
 	ERROR("Simultaneous-Use is not supported");
 	return 2;
