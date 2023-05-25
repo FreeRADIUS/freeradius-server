@@ -1734,9 +1734,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 			}
 		}
 
-		if (row[4]) {
-			nas_port_id = atoi(row[4]);
-		}
+		nas_port_id = row[4];
 
 		check = rad_check_ts(&nas_addr, 0, nas_port_id, row[2], row[1]);
 		if (check == 0) {
