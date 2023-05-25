@@ -163,7 +163,7 @@ static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void 
 
 static int tls_socket_recv(rad_listen_t *listener)
 {
-        bool doing_init = false; already_read = false;
+	bool doing_init = false, already_read = false;
 	ssize_t rcode;
 	RADIUS_PACKET *packet;
 	REQUEST *request;
@@ -307,7 +307,7 @@ check_for_setup:
 		 */
 		if (sock->ssn->dirty_out.used > 0) {
 			RDEBUG3("(TLS) Writing to socket %d", listener->fd);
-			tls_socket_write(listener, request);
+			tls_socket_write(listener);
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return 0;
 		}
@@ -701,7 +701,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	return 0;
 }
 
-static int try_connect(tls_session_t *ssn)
+static int try_connect(listen_socket_t *sock)
 {
 	int ret;
 	time_t now;
