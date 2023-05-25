@@ -227,6 +227,23 @@ eap {
 		#
 		ca_file = ${cadir}/ca.pem
 
+		#
+		#  Directory where multiple CAs are stored.  Both
+		#  "ca_file" and "ca_path" can be used at the same time.
+		#
+		ca_path = ${cadir}
+
+		# OpenSSL does not reload contents of ca_path dir over time.
+		# That means that if check_crl is enabled and CRLs are loaded
+		# from ca_path dir, at some point CRLs will expire and
+		# the server will stop authenticating users.
+		#
+		# If ca_path_reload_interval is non-zero, it will force OpenSSL
+		# to reload all data from ca_path periodically
+		#
+		# Flush ca_path each hour
+	#	ca_path_reload_interval = 3600
+
 	 	#  OpenSSL will automatically create certificate chains,
 	 	#  unless we tell it to not do that.  The problem is that
 	 	#  it sometimes gets the chains right from a certificate
@@ -323,19 +340,6 @@ eap {
 
 		# Check if intermediate CAs have been revoked.
 	#	check_all_crl = yes
-
-		ca_path = ${cadir}
-
-		# OpenSSL does not reload contents of ca_path dir over time.
-		# That means that if check_crl is enabled and CRLs are loaded
-		# from ca_path dir, at some point CRLs will expire and
-		# RADIUSd will stop authenticating users.
-		# If ca_path_reload_interval is non-zero, it will force OpenSSL
-		# to reload all data from ca_path periodically
-		#
-		# Flush ca_path each hour
-	#	ca_path_reload_interval = 3600
-
 
 		# Accept an expired Certificate Revocation List
 		#
