@@ -7,14 +7,12 @@ healthchecks:
   '/acct':
     port: 1813
     secret: testing123
-    type: Accounting-Request
+    type: Status-Server
     attributes:
-      Acct-Session-Id: '0123456789'
-      Acct-Status-Type: 'Start'
       NAS-Identifier: 'healthcheck'
   '/auth':
     port: 1812
     secret: testing123
-    type: Access-Request
+    type: Status-Server
     attributes:
       NAS-Identifier: 'healthcheck'
