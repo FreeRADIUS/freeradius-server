@@ -5237,7 +5237,7 @@ static int proxy_eol_cb(void *ctx, void *data)
 #endif	/* WITH_TCP */
 
 static void event_new_fd(rad_listen_t *this)
-  (
+{
 	char buffer[1024];
 	listen_socket_t *sock = NULL;
 	
