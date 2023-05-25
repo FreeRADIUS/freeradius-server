@@ -5403,7 +5403,7 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		if (this->count > 0) {
 			struct timeval when;
-			listen_socket_t *sock = this->data;
+			sock = this->data;
 
 			/*
 			 *	Try again to clean up the socket in 30
@@ -5461,7 +5461,7 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		if (this->count > 0) {
 			struct timeval when;
-			listen_socket_t *sock = this->data;
+			sock = this->data;
 
 			/*
 			 *	Try again to clean up the socket in 30
