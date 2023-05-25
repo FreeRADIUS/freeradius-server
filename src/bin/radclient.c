@@ -163,29 +163,29 @@ static NEVER_RETURNS void usage(void)
 {
 	fprintf(stderr, "Usage: radclient [options] server[:port] <command> [<secret>]\n");
 
-	fprintf(stderr, "  <command>              One of auth, acct, status, coa, disconnect or auto.\n");
-	fprintf(stderr, "  -4                     Use IPv4 address of server\n");
-	fprintf(stderr, "  -6                     Use IPv6 address of server.\n");
-	fprintf(stderr, "  -A <attribute>         Use named 'attribute' to match CoA requests to packets.  Default is User-Name\n");
-	fprintf(stderr, "  -C <client_port>       Assigning port number to client socket. Values may be 1..65535\n");
-	fprintf(stderr, "  -c <count>             Send each packet 'count' times.\n");
-	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
-	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
-	fprintf(stderr, "  -f <file>[:<file>]     Read packets from file, not stdin.\n");
-	fprintf(stderr, "                         If a second file is provided, it will be used to verify responses\n");
-	fprintf(stderr, "  -F                     Print the file name, packet number and reply code.\n");
-	fprintf(stderr, "  -h                     Print usage help information.\n");
-	fprintf(stderr, "  -i <id>                Set request id to 'id'.  Values may be 0..255\n");
-	fprintf(stderr, "  -n <num>               Send N requests/s\n");
-	fprintf(stderr, "  -o <port>              Set CoA port (defaults to 3799)\n");
-	fprintf(stderr, "  -p <num>               Send 'num' packets from a file in parallel.\n");
-	fprintf(stderr, "  -P <proto>             Use proto (tcp or udp) for transport.\n");
-	fprintf(stderr, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");
-	fprintf(stderr, "  -s                     Print out summary information of auth results.\n");
-	fprintf(stderr, "  -S <file>              read secret from file, not command line.\n");
-	fprintf(stderr, "  -t <timeout>           Wait 'timeout' seconds before retrying (may be a floating point number).\n");
-	fprintf(stderr, "  -v                     Show program version information.\n");
-	fprintf(stderr, "  -x                     Debugging mode.\n");
+	fprintf(stderr, "  <command>                         One of auth, acct, status, coa, disconnect or auto.\n");
+	fprintf(stderr, "  -4                                Use IPv4 address of server\n");
+	fprintf(stderr, "  -6                                Use IPv6 address of server.\n");
+	fprintf(stderr, "  -A <attribute>		     Use named 'attribute' to match CoA requests to packets.  Default is User-Name\n");
+	fprintf(stderr, "  -C [<client_ip>:]<client_port>    Client source port and source IP address.  Port values may be 1..65535\n");
+	fprintf(stderr, "  -c <count>			     Send each packet 'count' times.\n");
+	fprintf(stderr, "  -d <raddb>                        Set user dictionary directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -D <dictdir>                      Set main dictionary directory (defaults to " DICTDIR ").\n");
+	fprintf(stderr, "  -f <file>[:<file>]                Read packets from file, not stdin.\n");
+	fprintf(stderr, "                                    If a second file is provided, it will be used to verify responses\n");
+	fprintf(stderr, "  -F                                Print the file name, packet number and reply code.\n");
+	fprintf(stderr, "  -h                                Print usage help information.\n");
+	fprintf(stderr, "  -i <id>                           Set request id to 'id'.  Values may be 0..255\n");
+	fprintf(stderr, "  -n <num>                          Send N requests/s\n");
+	fprintf(stderr, "  -o <port>                         Set CoA listening port (defaults to 3799)\n");
+	fprintf(stderr, "  -p <num>                          Send 'num' packets from a file in parallel.\n");
+	fprintf(stderr, "  -P <proto>                        Use proto (tcp or udp) for transport.\n");
+	fprintf(stderr, "  -r <retries>                      If timeout, retry sending the packet 'retries' times.\n");
+	fprintf(stderr, "  -s                                Print out summary information of auth results.\n");
+	fprintf(stderr, "  -S <file>                         read secret from file, not command line.\n");
+	fprintf(stderr, "  -t <timeout>                      Wait 'timeout' seconds before retrying (may be a floating point number).\n");
+	fprintf(stderr, "  -v                                Show program version information.\n");
+	fprintf(stderr, "  -x                                Debugging mode.\n");
 
 	fr_exit_now(EXIT_SUCCESS);
 }
@@ -1485,6 +1485,15 @@ int main(int argc, char **argv)
 		{
 			int tmp;
 
+			if (strchr(optarg, ':')) {
+				if (fr_inet_pton_port(&client_ipaddr, &client_port,
+						      optarg, -1, AF_UNSPEC, true, false) < 0) {
+					fr_perror("Failed parsing source address");
+					fr_exit_now(1);
+				}
+				break;
+			}
+
 			tmp = atoi(optarg);
 			if (tmp < 1 || tmp > 65535) usage();
 
@@ -1771,11 +1780,14 @@ int main(int argc, char **argv)
 	 *	This means we ignore later ones.
 	 */
 	request = fr_dlist_head(&rc_request_list);
-	if (request->packet->socket.inet.src_ipaddr.af == AF_UNSPEC) {
-		memset(&client_ipaddr, 0, sizeof(client_ipaddr));
-		client_ipaddr.af = server_ipaddr.af;
-	} else {
-		client_ipaddr = request->packet->socket.inet.src_ipaddr;
+
+	if (client_ipaddr.af == AF_UNSPEC) {
+		if (request->packet->socket.inet.src_ipaddr.af == AF_UNSPEC) {
+			memset(&client_ipaddr, 0, sizeof(client_ipaddr));
+			client_ipaddr.af = server_ipaddr.af;
+		} else {
+			client_ipaddr = request->packet->socket.inet.src_ipaddr;
+		}
 	}
 
 	if (client_port == 0) client_port = request->packet->socket.inet.src_port;
