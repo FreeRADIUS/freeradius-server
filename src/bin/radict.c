@@ -165,7 +165,6 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 	fr_dict_attr_flags_print(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
 
 	/* Protocol Name Type */
-	/* coverity[uninit_use_in_call] */
 
 	switch(output_format) {
 		case RADICT_OUT_CSV:

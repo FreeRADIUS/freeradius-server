@@ -2616,7 +2616,6 @@ static ssize_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
 	vb = tmpl_value(vpt);
 
 	fr_value_box_init(vb, FR_TYPE_ETHERNET, NULL, false);
-	/* coverity[uninit_use_in_call] */
 	memcpy(vb->vb_ether, buff, sizeof(vb->vb_ether));
 
 	*out = vpt;
