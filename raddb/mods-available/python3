@@ -27,6 +27,10 @@ python3 {
 	# This option prevales over "pass_all_vps"
 #	pass_all_vps_dict = no
 
+	# Return a byte string if the string has characters that can't be interpreted as UTF8.
+	# Otherwise, when invalid UTF8 is encountered, the module errors out.
+#	utf8_fail_as_bytes = no
+
 #	mod_instantiate = ${.module}
 #	func_instantiate = instantiate
 
