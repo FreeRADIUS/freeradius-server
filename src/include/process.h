@@ -80,9 +80,6 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 void proxy_listener_thaw(rad_listen_t *listener);
 #endif
 
-
-#endif
-
 #ifdef __cplusplus
 }
 #endif
