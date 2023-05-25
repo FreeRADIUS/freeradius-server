@@ -13,9 +13,7 @@ $INCLUDE cluster_reset.inc
 #
 #  Verify the range was set OK
 #
-if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:192.168.0.1 range)" == '192.168.0.0') {
-	test_pass
-} else {
+if !("%(redis:HGET {%{control.IP-Pool.Name}}:ip:192.168.0.1 range)" == '192.168.0.0') {
 	test_fail
 }
 
@@ -27,8 +25,8 @@ if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:192.168.0.1 range)" == '192.168.0
 #
 #  Check it was updated
 #
-if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:192.168.0.1 range)" == '10.0.0.0') {
-	test_pass
-} else {
+if !("%(redis:HGET {%{control.IP-Pool.Name}}:ip:192.168.0.1 range)" == '10.0.0.0') {
 	test_fail
 }
+
+test_pass

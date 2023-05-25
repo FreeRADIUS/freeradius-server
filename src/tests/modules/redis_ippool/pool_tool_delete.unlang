@@ -16,15 +16,11 @@ $INCLUDE cluster_reset.inc
 redis_ippool {
 	invalid = 1
 }
-if (updated) {
-	test_pass
-} else {
+if (!updated) {
 	test_fail
 }
 
-if (&reply.Framed-IP-Address == 192.168.0.1) {
-	test_pass
-} else {
+if !(&reply.Framed-IP-Address == 192.168.0.1) {
 	test_fail
 }
 
@@ -36,26 +32,22 @@ if (&reply.Framed-IP-Address == 192.168.0.1) {
 #
 #  Verify the association with the device has been removed
 #
-if ("%(redis:EXISTS {%{control.IP-Pool.Name}}:device:%{Calling-Station-ID})" == '0') {
-	test_pass
-} else {
+if !("%(redis:EXISTS {%{control.IP-Pool.Name}}:device:%{Calling-Station-ID})" == '0') {
 	test_fail
 }
 
 #
 #  Verify the hash information is removed
 #
-if ("%(redis:EXISTS {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address})" == '0') {
-	test_pass
-} else {
+if !("%(redis:EXISTS {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address})" == '0') {
 	test_fail
 }
 
 # Check the ZSCORE
-if ("%(redis:ZCOUNT {%{control.IP-Pool.Name}%}:pool -inf +inf)" == 0) {
-	test_pass
-} else {
+if !("%(redis:ZCOUNT {%{control.IP-Pool.Name}%}:pool -inf +inf)" == 0) {
 	test_fail
 }
 
 &reply := {}
+
+test_pass
