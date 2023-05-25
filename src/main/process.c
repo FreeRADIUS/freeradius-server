@@ -1067,6 +1067,8 @@ static bool request_max_time(REQUEST *request)
 			      request->number,
 			      request->component ? request->component : "<core>",
 			      request->module ? request->module : "<core>");
+			request->max_time = true;
+			
 			exec_trigger(request, NULL, "server.thread.unresponsive", true);
 		}
 #endif
@@ -1868,12 +1870,6 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 			      old_module);
 		}
 
-		/*
-		 *	Mark the old request as done.  If there's no
-		 *	child, the request will be cleaned up
-		 *	immediately.  If there is a child, we'll set a
-		 *	timer to go clean up the request.
-		 */
 	} /* else the new packet is unique */
 
 	/*
@@ -2103,23 +2099,7 @@ static void tcp_socket_timer(void *ctx)
 
 	fr_event_now(el, &now);
 
-	switch (listener->type) {
-#ifdef WITH_PROXY
-	case RAD_LISTEN_PROXY:
-		limit = &sock->home->limit;
-		break;
-#endif
-
-	case RAD_LISTEN_AUTH:
-#ifdef WITH_ACCOUNTING
-	case RAD_LISTEN_ACCT:
-#endif
-		limit = &sock->limit;
-		break;
-
-	default:
-		return;
-	}
+	limit = &sock->limit;
 
 	/*
 	 *	If we enforce a lifetime, do it now.
@@ -2156,6 +2136,17 @@ static void tcp_socket_timer(void *ctx)
 			 *	Mark the socket as "don't use if at all possible".
 			 */
 			listener->status = RAD_LISTEN_STATUS_FROZEN;
+
+
+			/*
+			 *	If it's blocked, then push all of the requests to other sockets.
+			 */
+#ifdef WITH_TLS
+			if (listener->blocked) {
+				listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+			}
+#endif
+
 			event_new_fd(listener);
 			return;
 		}
@@ -2394,17 +2385,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 #ifdef HAVE_PTHREAD_H
 		if (proxy_no_new_sockets) break;
 #endif
-
-		/*
-		 *	Don't try to add a new listener if it's not possible.
-		 */
-		if (fr_event_list_full(el)) {
-			RATE_LIMIT(ERROR("Cannot open a new proxy socket - too many sockets are already open"));
-			request->home_server->state = HOME_STATE_CONNECTION_FAIL;
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			goto fail;
-		}
-
 		RDEBUG3("proxy: Trying to open a new listener to the home server");
 		this = proxy_new_listener(proxy_ctx, request->home_server, 0);
 		if (!this) {
@@ -3149,9 +3129,10 @@ static int request_will_proxy(REQUEST *request)
 		}
 
 		/*
-		 *	Nothing does CoA over TCP.
+		 *	Find the home server..
 		 */
 		home = home_server_find(&dst_ipaddr, dst_port, IPPROTO_UDP);
+		if (!home) home = home_server_find(&dst_ipaddr, dst_port, IPPROTO_TCP);
 		if (!home) {
 			char buffer[256];
 
@@ -3261,7 +3242,9 @@ do_home:
 	/*
 	 *	Remember that we sent the request to a Realm.
 	 */
-	if (realmname) pair_make_request("Realm", realmname, T_OP_EQ);
+	if (realmname && !fr_pair_find_by_num(request->packet->vps, PW_REALM, 0, TAG_ANY)) {
+		pair_make_request("Realm", realmname, T_OP_EQ);
+	}	
 
 	/*
 	 *	Strip the name, if told to.
@@ -4004,6 +3987,33 @@ void revive_home_server(void *ctx)
 	       home->port);
 }
 
+#ifdef WITH_TLS
+static int eol_home_listener(UNUSED void *ctx, void *data)
+{
+	rad_listen_t *this = talloc_get_type_abort(data, rad_listen_t);
+
+	/*
+	 *	The socket isn't blocked, we can still use it.
+	 *
+	 *	i.e. the home server is dead for a reason OTHER than
+	 *	"all available sockets are blocked".
+	 *
+	 *	We can still ping the home server via sockets which
+	 *	are writable.
+	 */
+	if (!this->blocked) return 0;
+
+	this->status = RAD_LISTEN_STATUS_EOL;
+
+	FD_MUTEX_LOCK(&fd_mutex);
+	this->next = new_listeners;
+	new_listeners = this;
+	FD_MUTEX_UNLOCK(&fd_mutex);
+
+	return 1;		/* alway delete from this tree */
+}
+#endif
+
 void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 {
 	int previous_state = home->state;
@@ -4016,6 +4026,25 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 
 	home->state = HOME_STATE_IS_DEAD;
 	home_trigger(home, "home_server.dead");
+
+#ifdef WITH_TLS
+	/*
+	 *	If the home server is dead, then close all of the sockets associated with it.
+	 *
+	 *	Note that the "EOL listener" code expects to _also_
+	 *	delete the listeners.  At which point we end up with a
+	 *	mutex locked twice, and bad things happen.  The
+	 *	solution is to move the listeners to the global
+	 *	"waiting for update" list, and then notify ourselves
+	 *	that there are listeners waiting to be updated.
+	 */
+	if (home->listeners) {
+		ASSERT_MASTER;
+
+		rbtree_walk(home->listeners, RBTREE_DELETE_ORDER, eol_home_listener, NULL);
+		radius_signal_self(RADIUS_SIGNAL_SELF_NEW_FD);
+	}
+#endif
 
 	/*
 	 *	Administratively down - don't do anything to bring it
@@ -4760,6 +4789,7 @@ static bool coa_max_time(REQUEST *request)
 	 */
 	if (request->child_state == REQUEST_DONE) {
 	done:
+		request->max_time = true;
 		request_done(request, FR_ACTION_MAX_TIME);
 		return true;
 	}
@@ -4796,7 +4826,8 @@ static bool coa_max_time(REQUEST *request)
 					 buffer, sizeof(buffer)),
 			       request->proxy->dst_port,
 			       mrd);
-			goto done;
+			request_done(request, FR_ACTION_DONE);
+			return true;
 		}
 
 #ifdef HAVE_PTHREAD_H
@@ -5129,15 +5160,14 @@ static void event_status(struct timeval *wake)
 	}
 }
 
-#ifdef WITH_TCP
 static void listener_free_cb(void *ctx)
 {
 	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
+	listen_socket_t *sock = this->data;
 	char buffer[1024];
 
 	if (this->count > 0) {
 		struct timeval when;
-		listen_socket_t *sock = this->data;
 
 		fr_event_now(el, &when);
 		when.tv_sec += 3;
@@ -5158,9 +5188,13 @@ static void listener_free_cb(void *ctx)
 	this->print(this, buffer, sizeof(buffer));
 	DEBUG("... cleaning up socket %s", buffer);
 	rad_assert(this->next == NULL);
+#ifdef WITH_TCP
+	fr_event_delete(el, &sock->ev);
+#endif
 	talloc_free(this);
 }
 
+#ifdef WITH_TCP
 #ifdef WITH_PROXY
 static int proxy_eol_cb(void *ctx, void *data)
 {
@@ -5203,19 +5237,22 @@ static int proxy_eol_cb(void *ctx, void *data)
 #endif	/* WITH_TCP */
 
 static void event_new_fd(rad_listen_t *this)
-{
+  (
 	char buffer[1024];
-
+	listen_socket_t *sock = NULL;
+	
 	ASSERT_MASTER;
 
 	if (this->status == RAD_LISTEN_STATUS_KNOWN) return;
 
 	this->print(this, buffer, sizeof(buffer));
 
-	if (this->status == RAD_LISTEN_STATUS_INIT) {
-		listen_socket_t *sock = this->data;
-
+	if (this->type != RAD_LISTEN_DETAIL) {
+		sock = this->data;
 		rad_assert(sock != NULL);
+	}
+
+	if (this->status == RAD_LISTEN_STATUS_INIT) {
 		if (just_started) {
 			DEBUG("Listening on %s", buffer);
 
@@ -5455,10 +5492,8 @@ static void event_new_fd(rad_listen_t *this)
 	 */
 	if (this->status == RAD_LISTEN_STATUS_REMOVE_NOW) {
 		int devnull;
-#ifdef WITH_TCP
-		listen_socket_t *sock = this->data;
-		struct timeval when;
-#endif
+
+		this->dead = true;
 
 		/*
 		 *      Re-open the socket, pointing it to /dev/null.
@@ -5500,7 +5535,8 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
 			home_server_t *home;
-
+			sock = this->data;
+			
 			home = sock->home;
 			if (!home || !home->limit.max_connections) {
 				INFO(" ... shutting down socket %s", buffer);
@@ -5517,6 +5553,20 @@ static void event_new_fd(rad_listen_t *this)
 				      buffer, fr_strerror());
 				fr_exit(1);
 			}
+
+#ifdef WITH_TLS
+			/*
+			 *	Remove this socket from the list of sockets assocated with this home server.
+			 *
+			 *	This MUST be done with the proxy mutex locked!
+			 */
+			if (home && home->tls) {
+				fr_assert(home->listeners);
+
+				(void) rbtree_deletebydata(home->listeners, this);
+			}
+#endif
+
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		} else
 #endif	/* WITH_PROXY */
@@ -5534,22 +5584,18 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		if (!spawn_flag) {
 			ASSERT_MASTER;
-			if (sock->ev) fr_event_delete(el, &sock->ev);
-			listen_free(&this);
+			if (this->type != RAD_LISTEN_DETAIL && sock && sock->ev) {
+				fr_event_delete(el, &sock->ev);
+			}
+		        listen_free(&this);
 			return;
 		}
 
 		/*
 		 *	Wait until all requests using this socket are done.
 		 */
-		gettimeofday(&when, NULL);
-		when.tv_sec += 3;
-
-		ASSERT_MASTER;
-		if (!fr_event_insert(el, listener_free_cb, this, &when,
-				     &(sock->ev))) {
-			rad_panic("Failed to insert event");
-		}
+	wait_some_more:
+		listener_free_cb(this);
 #endif	/* WITH_TCP */
 	}
 
