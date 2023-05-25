@@ -65,13 +65,15 @@ struct fr_event_list_t {
 	int		num_readers;
 #ifndef HAVE_KQUEUE
 	int		max_readers;
+	int		max_fd;
 
-	bool		changed;
-
+	fd_set		read_fds;
+	fd_set		write_fds;
 #else
 	int		kq;
 	struct kevent	events[FR_EV_MAX_FDS]; /* so it doesn't go on the stack every time */
 #endif
+
 	fr_event_fd_t	readers[FR_EV_MAX_FDS];
 };
 
@@ -596,7 +598,7 @@ int fr_event_loop(fr_event_list_t *el)
 #ifdef HAVE_KQUEUE
 	struct timespec ts_when, *ts_wake;
 #else
-	fd_set read_fds, master_fds;
+	fd_set read_fds, write_fds;
 #endif
 
 	el->exit = 0;
