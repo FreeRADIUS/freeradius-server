@@ -3645,7 +3645,7 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
  * This should be called exactly once from main, before reading the main config
  * or initialising any modules.
  */
-int tls_global_init(TLS_UNUSED bool spawn_flag, bool check)
+int tls_global_init(TLS_UNUSED bool spawn_flag, TLS_UNUSED bool check)
 {
 	SSL_load_error_strings();	/* readable error messages (examples show call before library_init) */
 	SSL_library_init();		/* initialize library */
