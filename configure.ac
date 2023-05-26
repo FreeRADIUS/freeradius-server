@@ -1331,6 +1331,10 @@ if test "x$WITH_OPENSSL" = xyes; then
     OPENSSL_LIBS="$smart_lib"
     OPENSSL_LDFLAGS="$smart_ldflags"
 
+    dnl #
+    dnl #  Search first in the dir we found the crypto library
+    dnl #
+    smart_try_dir="${SMART_LD_FOUND}"
     FR_SMART_CHECK_LIB(ssl, SSL_new)
     if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
       AC_MSG_FAILURE([failed linking to libssl. Use --with-openssl-lib-dir=<path>, or --with-openssl=no (builds without OpenSSL)])
