@@ -857,7 +857,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	If the caller didn't set a session ID, use a random one.
 			 */
-			if (!fr_pair_find_by_da(vps, NULL, attr_tacacs_session_id)) {
+			if (!fr_pair_find_by_da_nested(vps, NULL, attr_tacacs_session_id)) {
 				packet->hdr.session_id = fr_rand();
 			}
 
