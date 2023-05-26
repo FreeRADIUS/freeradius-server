@@ -318,7 +318,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 	/*
 	 *	First look for Relay-Link-Selection
 	 */
-	netaddr = fr_pair_find_by_da(&tmp, NULL, attr_dhcp_relay_link_selection);
+	netaddr = fr_pair_find_by_da_nested(&tmp, NULL, attr_dhcp_relay_link_selection);
 	if (!netaddr) {
 		/*
 		 *	Next try Subnet-Selection-Option
