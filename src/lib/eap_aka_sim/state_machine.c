@@ -684,7 +684,7 @@ RESUME(store_pseudonym)
 	 *	find a next_reauth_id pair in the
 	 *	reply list.
 	 */
-	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_eap_aka_sim_next_reauth_id);
+	vp = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_eap_aka_sim_next_reauth_id);
 	if (vp) {
 		/*
 		 *	Generate a random fastauth string
@@ -764,7 +764,7 @@ RESUME(store_pseudonym)
 		 *	state increment by 1, otherwise, add the
 		 *	attribute and set to zero.
 		 */
-		vp = fr_pair_find_by_da(&request->session_state_pairs, NULL, attr_eap_aka_sim_counter);
+		vp = fr_pair_find_by_da_nested(&request->session_state_pairs, NULL, attr_eap_aka_sim_counter);
 		if (vp) {
 			vp->vp_uint16++;
 		/*
@@ -815,7 +815,7 @@ static unlang_action_t session_and_pseudonym_store(rlm_rcode_t *p_result, module
 
 	unlang_interpret_stack_result_set(request, RLM_MODULE_NOOP); /* Needed because we may call resume functions directly */
 
-	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_eap_aka_sim_next_pseudonym);
+	vp = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_eap_aka_sim_next_pseudonym);
 	if (vp) {
 		/*
 		 *	Generate a random pseudonym string
@@ -1683,7 +1683,7 @@ RESUME(recv_common_reauthentication_response)
 	 *	clear out reauth information and enter the
 	 *	challenge state.
 	 */
-	if (fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_aka_sim_counter_too_small)) {
+	if (fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_eap_aka_sim_counter_too_small)) {
 		RWDEBUG("Peer sent AT_COUNTER_TOO_SMALL (indicating our AT_COUNTER value (%u) wasn't fresh)",
 			eap_aka_sim_session->keys.reauth.counter);
 
