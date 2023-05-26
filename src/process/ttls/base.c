@@ -619,7 +619,7 @@ RESUME(protocol_error)
 	/*
 	 *	https://tools.ietf.org/html/rfc7930#section-4
 	 */
-	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_original_packet_code);
+	vp = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_original_packet_code);
 	if (!vp) {
 		vp = fr_pair_afrom_da(request->reply_ctx, attr_original_packet_code);
 		if (vp) {
