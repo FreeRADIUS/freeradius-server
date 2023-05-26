@@ -259,10 +259,10 @@ jobs:
             if [ "`uname`" != "Darwin" ]; then
                 enable_sanitizers="$enable_sanitizers --enable-leak-sanitizer"
             fi
-            # TODO: The libunbound is broken when built with LSAN/ASAN, let's disable it for now.
+            # TODO: libunbound is broken when built with LSAN/ASAN, let's disable it for now.
             extra_cflags="--without-rlm_unbound"
 
-            # Temporarily hack just to skip and see the result.
+            # Temporary hack just to skip and see the result.
             # memory leak in rlm_{ldap,rest} and problems in perl+llvm
             rm -rf src/tests/modules/ldap/
             rm -rf src/tests/modules/rest/
@@ -304,7 +304,7 @@ jobs:
 
         sudo apt-get update
 
-    - name: Setup git (containers)
+    - name: Setup git
       shell: bash
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
