@@ -253,8 +253,8 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	reply = fr_pair_copy(request->reply_ctx, vp);
 	fr_pair_append(&request->reply_pairs, reply);
 
-	my = fr_pair_find_by_da(&reply->vp_group, NULL, attr_my_discriminator);
-	your = fr_pair_find_by_da(&reply->vp_group, NULL, attr_your_discriminator);
+	my = fr_pair_find_by_da_nested(&reply->vp_group, NULL, attr_my_discriminator);
+	your = fr_pair_find_by_da_nested(&reply->vp_group, NULL, attr_your_discriminator);
 
 	if (my && your) {
 		uint32_t tmp = your->vp_uint32;
