@@ -1,18 +1,19 @@
-FreeRADIUS 3.2.3 Thu 16 Feb 2023 12:00:00 EDT urgency=low
+FreeRADIUS 3.2.3 Fri 26 May 2023 12:00:00 EDT urgency=low
 	Configuration changes
-	* The rlm_ldap and rlm_sql modules now have a "max_retries"
-	  configuration item in the pool section.  This sets a
-	  limit on how many times an operation will be retried
-	  if it fails indicating a connection issue.
-	* Added "check_crl" configuration to rlm_ldap.  This only works with
-	  OpenSSL.  Many Linux distributions use other TLS libraries, which
-	  won't work.
+	* The rlm_ldap and rlm_sql modules now have a "max_retries" configuration
+	  item in the pool section.  This sets a limit on how many times an operation
+	  will be retried if it fails indicating a connection issue.
+	* Added "check_crl" configuration to rlm_ldap.  This only works with OpenSSL.
+	  Many Linux distributions use other TLS libraries, which won't work.
 	* Note that rlm_ldap does not support "-=" operators.  The documentation
 	  disagreed with the code, so we fixed the documentation.
+	* If checkrad is called from SQL Simultaneous-Use checks it will now be
+	  passed NAS-Port-Id (as stored in the database), rather than NAS-Port.
 
 	Feature improvements
 	* Add "max_retries" for connection pools. Fixes #4908. Patch from Nick Porter.
-	* Update dictionary.wifialliance and dictionary.ciena; add dictionary.eleven.
+	* Update dictionary.ciena, dictionary.huawei, dictionary.wifialliance and
+	  dictionary.wispr; add dictionary.eleven.
 	* You can now list "eap" in the "pre-proxy" section.  If the packet
 	  contains a malformed EAP message, then the request will be rejected.
 	  The home server will either reject (or discard) this packet anyways,
@@ -25,6 +26,10 @@ FreeRADIUS 3.2.3 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 	* More TLS debugging output
 	* Clear old module instance data before HUP reload. Avoids burst memory use
 	  when e.g. using large data files with rlm_files. Patch from Nick Porter.
+	* `rlm_cache_redis` is now included in the freeradius-redis packages.
+	* Separate out python2/python3 in Debian Packages. Previously python 2 or 3
+	  was built depending on the system default which led to confusion. We now build
+	  both freeradius-python2 and freeradius-python3 packages where possible.
 
 	Bug fixes
 	* Don't leak MD contexts with OpenSSL 3.0.
@@ -45,6 +50,8 @@ FreeRADIUS 3.2.3 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 	* Force correct packet type when running Post-Auth-Type. Helps with #4980
 	* Fix small leak in Client-Lost code. Patch from Terry Burton. PR #4996
 	* Fix TCP socket statistics. Closes #4990
+	* Use NAS-Port-Id instead of NAS-Port during SQL simultaneous-use
+	  checks. Helps with #5010
 
 FreeRADIUS 3.2.2 Thu 16 Feb 2023 12:00:00 EDT urgency=low
 	Configuration changes
