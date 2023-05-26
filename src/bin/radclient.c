@@ -1006,7 +1006,7 @@ static int send_one_packet(rc_request_t *request)
 							       request->password->vp_length);
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
 
-			} else if (fr_pair_find_by_da(&request->request_pairs, NULL, attr_ms_chap_password) != NULL) {
+			} else if (fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_ms_chap_password) != NULL) {
 				mschapv1_encode(request->packet, &request->request_pairs, request->password->vp_strvalue);
 
 			} else {
