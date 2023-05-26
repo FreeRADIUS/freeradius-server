@@ -28,26 +28,29 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/unlang/interpret.h>
 
-static fr_dict_t const *dict_freeradius;
+typedef struct {
+	fr_value_box_t		secret;
+	fr_value_box_t		key;
+	fr_value_box_t		user_password;
+} rlm_totp_call_env_t;
 
-extern fr_dict_autoload_t rlm_totp_dict[];
-fr_dict_autoload_t rlm_totp_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+static const call_env_t call_env[] = {
+	{ FR_CALL_ENV_OFFSET("secret", FR_TYPE_STRING, rlm_totp_call_env_t, secret,
+			     "&control.TOTP.Secret", T_BARE_WORD, false, false, false) },
+
+	{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, rlm_totp_call_env_t, key,
+			     "&control.TOTP.key", T_BARE_WORD, false, false, false) },
+
+	{ FR_CALL_ENV_OFFSET("user_password", FR_TYPE_STRING, rlm_totp_call_env_t, user_password,
+			     "&request.TOTP.From-User", T_BARE_WORD, false, false, false) },
+
+	CALL_ENV_TERMINATOR
 };
 
-static fr_dict_attr_t const *attr_totp_secret;
-static fr_dict_attr_t const *attr_totp_key;
-static fr_dict_attr_t const *attr_totp_user_password;
-
-
-extern fr_dict_attr_autoload_t rlm_totp_dict_attr[];
-fr_dict_attr_autoload_t rlm_totp_dict_attr[] = {
-	{ .out = &attr_totp_secret, .name = "TOTP.Secret", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_totp_key, .name = "TOTP.Key", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_totp_user_password, .name = "TOTP.From-User", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-
-	{ NULL }
+static const call_method_env_t method_env = {
+	.inst_size = sizeof(rlm_totp_call_env_t),
+	.inst_type = "rlm_totp_call_env_t",
+	.env = call_env
 };
 
 #define TIME_STEP (30)
@@ -231,47 +234,47 @@ static int totp_cmp(time_t now, uint8_t const *key, size_t keylen, char const *t
 /*
  *  Do the authentication
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	fr_pair_t *vp, *password;
-	uint8_t const *key;
-	size_t keylen;
-	uint8_t buffer[80];	/* multiple of 5*8 characters */
+	rlm_totp_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, rlm_totp_call_env_t);
+	fr_value_box_t		*user_password = &env_data->user_password;
+	fr_value_box_t		*secret = &env_data->secret;
+	fr_value_box_t		*key = &env_data->key;
 
+	uint8_t const		*our_key;
+	size_t			our_keylen;
+	uint8_t			buffer[80];	/* multiple of 5*8 characters */
 
-	password = fr_pair_find_by_da(&request->request_pairs, NULL, attr_totp_user_password);
-	if (!password) RETURN_MODULE_NOOP;
+	if (fr_type_is_null(user_password->type)) RETURN_MODULE_NOOP;
 
-	if (password->vp_length != 6) {
-		RDEBUG("TOTP-Password has incorrect length %d", (int) password->vp_length);
+	if (user_password->vb_length != 6) {
+		RDEBUG("TOTP-Password has incorrect length.  Expected 6, got %zu", user_password->vb_length);
 		RETURN_MODULE_FAIL;
 	}
 
 	/*
 	 *	Look for the raw key first.
 	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_totp_key);
-	if (vp) {
-		key = vp->vp_octets;
-		keylen = vp->vp_length;
+	if (!fr_type_is_null(key->type)) {
+		our_key = key->vb_octets;
+		our_keylen = key->vb_length;
 
 	} else {
 		ssize_t len;
 
-		vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_totp_secret);
-		if (!vp) RETURN_MODULE_NOOP;
+		if (!fr_type_is_null(secret->type)) RETURN_MODULE_NOOP;
 
-		len = base32_decode(buffer, sizeof(buffer), vp->vp_strvalue);
+		len = base32_decode(buffer, sizeof(buffer), secret->vb_strvalue);
 		if (len < 0) {
 			RDEBUG("TOTP-Secret cannot be decoded");
 			RETURN_MODULE_FAIL;
 		}
 
-		key = buffer;
-		keylen = len;
+		our_key = buffer;
+		our_keylen = len;
 	}
 
-	if (totp_cmp(fr_time_to_sec(request->packet->timestamp), key, keylen, password->vp_strvalue) != 0) RETURN_MODULE_FAIL;
+	if (totp_cmp(fr_time_to_sec(request->packet->timestamp), our_key, our_keylen, secret->vb_strvalue) != 0) RETURN_MODULE_FAIL;
 
 	RETURN_MODULE_OK;
 }
@@ -294,7 +297,7 @@ module_rlm_t rlm_totp = {
 		.type		= MODULE_TYPE_THREAD_SAFE
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,	.method_env = &method_env },
 		MODULE_NAME_TERMINATOR
 	}
 };
