@@ -221,8 +221,9 @@ rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LD
 void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_thread_trunk_t const *ttrunk)
 {
 	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
+	fr_pair_t 	*parent;
 
-       /*
+   /*
 	*	More warning messages for people who can't be bothered to read the documentation.
 	*
 	*	Expect_password is set when we process the mapping, and is only true if there was a mapping between
@@ -230,11 +231,14 @@ void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_
 	*/
 	if (!inst->expect_password || !RDEBUG_ENABLED2) return;
 
-	if (!fr_pair_find_by_da(&request->control_pairs, NULL, attr_cleartext_password) &&
-	    !fr_pair_find_by_da(&request->control_pairs, NULL, attr_nt_password) &&
+	parent = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_password);
+	if (!parent) parent = request->control_ctx;
+
+	if (!fr_pair_find_by_da_nested(&parent->vp_group, NULL, attr_cleartext_password) &&
+	    !fr_pair_find_by_da_nested(&parent->vp_group, NULL, attr_nt_password) &&
 	    !fr_pair_find_by_da(&request->control_pairs, NULL, attr_user_password) &&
-	    !fr_pair_find_by_da(&request->control_pairs, NULL, attr_password_with_header) &&
-	    !fr_pair_find_by_da(&request->control_pairs, NULL, attr_crypt_password)) {
+	    !fr_pair_find_by_da_nested(&parent->vp_group, NULL, attr_password_with_header) &&
+	    !fr_pair_find_by_da_nested(&parent->vp_group, NULL, attr_crypt_password)) {
 		switch (ttrunk->directory->type) {
 		case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
 			RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");

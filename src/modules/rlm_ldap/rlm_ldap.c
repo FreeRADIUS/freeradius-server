@@ -251,6 +251,7 @@ fr_dict_autoload_t rlm_ldap_dict[] = {
 	{ NULL }
 };
 
+fr_dict_attr_t const *attr_password;
 fr_dict_attr_t const *attr_cleartext_password;
 fr_dict_attr_t const *attr_crypt_password;
 fr_dict_attr_t const *attr_ldap_userdn;
@@ -262,6 +263,7 @@ fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t rlm_ldap_dict_attr[];
 fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
+	{ .out = &attr_password, .name = "Password", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_crypt_password, .name = "Password.Crypt", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ldap_userdn, .name = "LDAP-UserDN", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
@@ -1388,7 +1390,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		/*
 		 *	We already have a Password.Cleartext.  Skip edir.
 		 */
-		if (fr_pair_find_by_da(&request->control_pairs, NULL, attr_cleartext_password)) goto skip_edir;
+		if (fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_cleartext_password)) goto skip_edir;
 
 		/*
 		 *      Retrieve Universal Password if we use eDirectory

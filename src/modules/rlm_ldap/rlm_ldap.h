@@ -205,6 +205,7 @@ typedef struct {
 	bool				found;
 } ldap_memberof_xlat_ctx_t;
 
+extern HIDDEN fr_dict_attr_t const *attr_password;
 extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;
 extern HIDDEN fr_dict_attr_t const *attr_crypt_password;
 extern HIDDEN fr_dict_attr_t const *attr_ldap_userdn;
