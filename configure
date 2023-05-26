@@ -3430,8 +3430,7 @@ TARGET_SYSTEM="$target"
 case "$target" in
   *-darwin*)
     CFLAGS="$CFLAGS -DDARWIN -mmacosx-version-min=$(sw_vers -productVersion)"
-    LDFLAGS="$LDFLAGS -L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib -mmacosx-version-min=$(sw_vers -productVersion)"
-    LIBS="$LIBS -F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/ -framework DirectoryService"
+    LDFLAGS="$LDFLAGS -mmacosx-version-min=$(sw_vers -productVersion)"
     echo "Please be sure to use 'xcrun ./configure ...' so that the tests can find the system header files"
     ;;
 esac
@@ -8428,7 +8427,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -8452,6 +8451,7 @@ then :
 
 		   smart_lib="-ltalloc"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -8486,6 +8486,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-ltalloc"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -8520,6 +8521,7 @@ then :
 
 		   smart_lib="-ltalloc"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -8539,12 +8541,13 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
 if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: talloc library not found. Use --with-talloc-lib-dir=<path>." >&5
 printf "%s\n" "$as_me: WARNING: talloc library not found. Use --with-talloc-lib-dir=<path>." >&2;}
-  as_fn_error $? "FreeRADIUS requires libtalloc.  Please read doc/developers/dependencies.adoc for further instructions." "$LINENO" 5
+  as_fn_error $? "FreeRADIUS requires libtalloc.  Please read doc/antora/modules/installation/pages/dependencies.adoc for further instructions." "$LINENO" 5
 fi
 
 ac_fn_c_check_func "$LINENO" "_talloc_pooled_object" "ac_cv_func__talloc_pooled_object"
@@ -8578,7 +8581,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -8602,6 +8605,7 @@ then :
 
 		   smart_lib="-lkqueue"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -8636,6 +8640,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lkqueue"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -8670,6 +8675,7 @@ then :
 
 		   smart_lib="-lkqueue"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -8689,6 +8695,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
   if test "x$ac_cv_lib_kqueue_kqueue" != "xyes"; then
@@ -8732,7 +8739,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -8756,6 +8763,7 @@ then :
 
 		   smart_lib="-lpcap"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -8790,6 +8798,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lpcap"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -8824,6 +8833,7 @@ then :
 
 		   smart_lib="-lpcap"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -8843,6 +8853,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
   if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
@@ -8909,7 +8920,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -8933,6 +8944,7 @@ then :
 
 		   smart_lib="-lcollectdclient"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -8967,6 +8979,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lcollectdclient"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -9001,6 +9014,7 @@ then :
 
 		   smart_lib="-lcollectdclient"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -9020,6 +9034,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
   if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
@@ -9060,7 +9075,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -9084,6 +9099,7 @@ then :
 
 		   smart_lib="-lcap"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -9118,6 +9134,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lcap"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -9152,6 +9169,7 @@ then :
 
 		   smart_lib="-lcap"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -9171,6 +9189,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
   if test "x$ac_cv_lib_cap_cap_get_proc" != "xyes"; then
@@ -9195,7 +9214,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -9219,6 +9238,7 @@ then :
 
 		   smart_lib="-lprofiler"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -9253,6 +9273,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lprofiler"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -9287,6 +9308,7 @@ then :
 
 		   smart_lib="-lprofiler"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -9306,6 +9328,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
   if test "x$ac_cv_lib_profiler_ProfilerStart" != "xyes"; then
@@ -9329,7 +9352,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -9353,6 +9376,7 @@ then :
 
 		   smart_lib="-lsystemd"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -9387,6 +9411,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lsystemd"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -9421,6 +9446,7 @@ then :
 
 		   smart_lib="-lsystemd"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -9440,6 +9466,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
   if test "x$ac_cv_lib_systemd_sd_notify" != "xyes"; then
@@ -9470,7 +9497,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -9494,6 +9521,7 @@ then :
 
 		   smart_lib="-lsystemd"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -9528,6 +9556,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lsystemd"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -9562,6 +9591,7 @@ then :
 
 		   smart_lib="-lsystemd"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -9581,6 +9611,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
   if test "x$ac_cv_lib_systemd_sd_watchdog_enabled" != "xyes"; then
@@ -9732,7 +9763,7 @@ smart_try_dir="$talloc_include_dir"
 ac_safe=`echo "talloc.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -9935,7 +9966,7 @@ smart_try_dir="${kqueue_include_dir:-/usr/include/kqueue}"
 ac_safe=`echo "sys/event.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -10158,7 +10189,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -10182,6 +10213,7 @@ then :
 
 		   smart_lib="-lcrypto"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -10216,6 +10248,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lcrypto"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -10250,6 +10283,7 @@ then :
 
 		   smart_lib="-lcrypto"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -10269,6 +10303,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
   if test "x$ac_cv_lib_crypto_DH_new" = "xyes"; then
@@ -10278,6 +10313,7 @@ printf "%s\n" "#define HAVE_LIBCRYPTO 1" >>confdefs.h
     OPENSSL_LIBS="$smart_lib"
     OPENSSL_LDFLAGS="$smart_ldflags"
 
+                smart_try_dir="${SMART_LD_FOUND}"
 
 
 sm_lib_safe=`echo "ssl" | sed 'y%./+-%__p_%'`
@@ -10287,7 +10323,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -10311,6 +10347,7 @@ then :
 
 		   smart_lib="-lssl"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -10345,6 +10382,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lssl"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -10379,6 +10417,7 @@ then :
 
 		   smart_lib="-lssl"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -10398,6 +10437,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
     if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
@@ -10431,7 +10471,7 @@ See \`config.log' for more details" "$LINENO" 5; }
 ac_safe=`echo "openssl/ssl.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -10757,7 +10797,7 @@ else
 ac_safe=`echo "pcap.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -10970,7 +11010,7 @@ else
 ac_safe=`echo "collectd/client.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -11183,7 +11223,7 @@ else
 ac_safe=`echo "sys/capability.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -11394,7 +11434,7 @@ else
 ac_safe=`echo "gperftools/profiler.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -11607,7 +11647,7 @@ else
 ac_safe=`echo "systemd/sd-daemon.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -11816,7 +11856,7 @@ smart_try_dir="$gnumake_include_dir"
 ac_safe=`echo "gnumake.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -14042,7 +14082,7 @@ smart_try_dir=$execinfo_include_dir
 ac_safe=`echo "execinfo.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -14277,7 +14317,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -14301,6 +14341,7 @@ then :
 
 		   smart_lib="-lexecinfo"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -14335,6 +14376,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lexecinfo"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -14369,6 +14411,7 @@ then :
 
 		   smart_lib="-lexecinfo"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -14388,6 +14431,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
   fi
@@ -14408,7 +14452,7 @@ if test "x$WITH_REGEX" != "xno" && test "x$WITH_PCRE" != "xno"; then
 ac_safe=`echo "pcre2.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -14610,7 +14654,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -14634,6 +14678,7 @@ then :
 
 		   smart_lib="-lpcre2-8"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -14668,6 +14713,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lpcre2-8"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -14702,6 +14748,7 @@ then :
 
 		   smart_lib="-lpcre2-8"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -14721,6 +14768,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
      if test "x$ac_cv_lib_pcre2_8_pcre2_compile_8" = "xyes"; then
@@ -14740,7 +14788,7 @@ printf "%s\n" "#define HAVE_BINSAFE_REGEX 1" >>confdefs.h
 ac_safe=`echo "pcre.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -14942,7 +14990,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -14966,6 +15014,7 @@ then :
 
 		   smart_lib="-lpcre"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -15000,6 +15049,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lpcre"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -15034,6 +15084,7 @@ then :
 
 		   smart_lib="-lpcre"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -15053,6 +15104,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
       if test "x$ac_cv_lib_pcre_pcre_compile" = "xyes"; then
@@ -15137,7 +15189,7 @@ if test "x$REGEX" = "x"; then
 ac_safe=`echo "regex.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 _smart_try_dir=
 _smart_include_dir=

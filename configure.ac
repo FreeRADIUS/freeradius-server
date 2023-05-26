@@ -218,8 +218,7 @@ dnl #
 case "$target" in
   *-darwin*)
     CFLAGS="$CFLAGS -DDARWIN -mmacosx-version-min=$(sw_vers -productVersion)"
-    LDFLAGS="$LDFLAGS -L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib -mmacosx-version-min=$(sw_vers -productVersion)"
-    LIBS="$LIBS -F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/ -framework DirectoryService"
+    LDFLAGS="$LDFLAGS -mmacosx-version-min=$(sw_vers -productVersion)"
     echo "Please be sure to use 'xcrun ./configure ...' so that the tests can find the system header files"
     ;;
 esac
