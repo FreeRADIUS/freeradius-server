@@ -18,7 +18,7 @@ jobs:
           - { NAME: "centos-7",  OS: "centos:7" }
           - { NAME: "centos-8",  OS: "centos:8" }
           - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8" }
-#          - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9" }
+          - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -208,7 +208,7 @@ jobs:
           - { NAME: "centos-7", OS: "centos:7" }
           - { NAME: "centos-8", OS: "centos:8" }
           - { NAME: "rocky-8", OS: "rockylinux/rockylinux:8" }
-#          - { NAME: "rocky-9", OS: "rockylinux/rockylinux:9" }
+          - { NAME: "rocky-9", OS: "rockylinux/rockylinux:9" }
       fail-fast: false
 
     runs-on: ubuntu-latest
