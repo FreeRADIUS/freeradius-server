@@ -358,12 +358,12 @@ static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request
 	uint32_t	hash;
 	fr_pair_t 	*vp;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_session_id);
+	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_session_id);
 	if (!vp) return -1;
 
 	fr_nbo_from_uint32(buffer, vp->vp_uint32);
 
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_sequence_number);
+	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_sequence_number);
 	if (!vp) return -1;
 
 	/*
