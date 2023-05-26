@@ -54,7 +54,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
 
 dnl #
 dnl #  Try first any user-specified directory, otherwise we may pick up
@@ -69,6 +69,7 @@ for try in $smart_try_dir; do
 		 [
 		   smart_lib="-l$1"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   AC_MSG_RESULT(yes)
 		   break
 		 ],
@@ -136,7 +137,7 @@ ac_safe=`echo "$1" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 dnl #  The default directories we search in (in addition to the compilers search path)
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
 
 dnl #  Our local versions
 _smart_try_dir=
