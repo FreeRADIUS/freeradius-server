@@ -55,7 +55,7 @@ RCSID("$Id$")
 #ifdef WITH_TLS
 #include <netinet/tcp.h>
 
-#  ifdef __APPLE__
+#  if defined(__APPLE__) || defined(__FreeBSD__)
 #    if !defined(SOL_TCP) && defined(IPPROTO_TCP)
 #      define SOL_TCP IPPROTO_TCP
 #    endif
