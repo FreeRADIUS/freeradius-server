@@ -34,6 +34,8 @@
 #include <assert.h>
 #include <signal.h>
 
+extern char **environ;
+
 #ifndef FALL_THROUGH
 /** clang 10 doesn't recognised the FALL-THROUGH comment anymore
  */
@@ -870,6 +872,13 @@ static int external_spawn(command_t *cmd, __attribute__((unused)) char const *fi
 {
 	if (!cmd->options.silent) {
 		char const **argument = argv;
+		char **env_p = environ;
+
+		while (*env_p) {
+			NOTICE("Environment: %s\n", *env_p);
+			env_p++;
+		}
+
 		NOTICE("Executing: ");
 		while (*argument) {
 			NOTICE("%s ", *argument);
