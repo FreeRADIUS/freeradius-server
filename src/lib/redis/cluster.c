@@ -2037,8 +2037,12 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 {
 	fr_redis_cluster_node_t	find, *found;
 
-	find.addr.inet.dst_ipaddr = node_addr->inet.dst_ipaddr;
-	find.addr.inet.dst_port = node_addr->inet.dst_port;
+	find.addr = (fr_socket_t) {
+		.inet = {
+			.dst_ipaddr = node_addr->inet.dst_ipaddr,
+			.dst_port = node_addr->inet.dst_port,
+		}
+	};
 
 	pthread_mutex_lock(&cluster->mutex);
 	found = fr_rb_find(cluster->used_nodes, &find);
@@ -2063,7 +2067,6 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 			pthread_mutex_unlock(&cluster->mutex);
 			return -1;
 		}
-		/* coverity[uninit_use] */
 		spare->pending_addr = find.addr;	/* Set the config to be applied */
 		if (cluster_node_connect(cluster, spare) < 0) {
 			pthread_mutex_unlock(&cluster->mutex);
