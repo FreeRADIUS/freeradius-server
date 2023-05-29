@@ -429,7 +429,10 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 	qual_inst_name = talloc_asprintf(NULL, "%s.%s", cf_section_name2(server_cs), inst_name);
 	mi = module_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, mod_name, qual_inst_name);
 	talloc_free(qual_inst_name);
-	if (mi == NULL) return -1;
+	if (!mi) {
+		cf_log_err(listener_cs, "Failed loading listener");
+		return -1;
+	}
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", inst_name, out);
 
