@@ -986,7 +986,6 @@ fi
 %{_libdir}/freeradius/rlm_radius.so
 %{_libdir}/freeradius/rlm_radius_udp.so
 %{_libdir}/freeradius/rlm_radutmp.so
-%{_libdir}/freeradius/rlm_soh.so
 %{_libdir}/freeradius/rlm_sometimes.so
 %{_libdir}/freeradius/rlm_sql.so
 %{_libdir}/freeradius/rlm_sql_null.so
