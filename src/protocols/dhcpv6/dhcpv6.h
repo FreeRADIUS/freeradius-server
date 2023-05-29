@@ -49,6 +49,8 @@ RCSIDH(dhcpv6_h, "$Id$")
 
 #define DHCPV6_MAX_RELAY_NESTING	10
 
+#define DHCPV6_MAX_ATTRIBUTES		1024
+
 /*
  *	Defined addresses from RFC 8415 Section 7.1
  */
