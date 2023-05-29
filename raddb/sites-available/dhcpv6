@@ -62,7 +62,7 @@ server dhcpv6 {
 	#  suggestion is because all DHCPv6 listeners will receive all
 	#  DHCPv6 packets.
 	#
-	listen {
+	listen all_dhcp_servers_and_relays {
 		#
 		#  type:: The type of packet to accept.
 		#
@@ -151,7 +151,7 @@ server dhcpv6 {
 	#  suggestion is because all DHCPv6 listeners will receive all
 	#  DHCPv6 packets.
 	#
-	listen {
+	listen local_network {
 		#
 		#  type:: The type of packet to accept.
 		#
