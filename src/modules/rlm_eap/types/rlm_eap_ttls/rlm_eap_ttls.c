@@ -204,7 +204,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	status = eaptls_start(handler->eap_ds, ssn->peap_flag);
+	status = eaptls_request(handler->eap_ds, ssn, true);
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
@@ -284,7 +284,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			ret = eaptls_success(handler, 0);
 			goto done;
 		} else {
-			eaptls_request(handler->eap_ds, tls_session);
+			eaptls_request(handler->eap_ds, tls_session, false);
 		}
 		ret = 1;
 		goto done;
@@ -341,7 +341,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		 *	Access-Challenge, continue tunneled conversation.
 		 */
 	case PW_CODE_ACCESS_CHALLENGE:
-		eaptls_request(handler->eap_ds, tls_session);
+		eaptls_request(handler->eap_ds, tls_session, false);
 		ret = 1;
 		goto done;
 

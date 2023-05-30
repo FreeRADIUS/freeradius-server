@@ -591,8 +591,6 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 			fprintf(fr_log_fp, "server %s {\n", fake->server);
 		}
 
-		fake->reply->code = PW_CODE_ACCESS_ACCEPT;
-
 		/*
 		 *	Perform a post-auth stage, which will get the EAP
 		 *	handler, too...
@@ -667,7 +665,7 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 
 	case RLM_MODULE_HANDLED:
 		RDEBUG2("Reply was handled");
-		eaptls_request(handler->eap_ds, tls_session);
+		eaptls_request(handler->eap_ds, tls_session, false);
 		request->proxy_reply->code = PW_CODE_ACCESS_CHALLENGE;
 		return 1;
 

@@ -59,10 +59,12 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler);
 
 int	eaptls_success(eap_handler_t *handler, int peap_flag) CC_HINT(nonnull);
 int	eaptls_fail(eap_handler_t *handler, int peap_flag) CC_HINT(nonnull);
-int	eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn) CC_HINT(nonnull);
+int	eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start) CC_HINT(nonnull);
 
 
+void	TLS_PRF(SSL *ssl, unsigned char *sec, size_t seclen, struct iovec *iov, size_t iovcnt, unsigned char *key, size_t keylen);
 void	T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed,  unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull(1,3,6));
+void	eaptls_gen_keys_only(REQUEST *request, SSL *s, char const *label, uint8_t const *context, UNUSED size_t context_size, uint8_t *out, size_t outlen);
 void	eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *label, uint8_t const *context, size_t context_size);
 void	eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
 void	eaptls_gen_eap_key(eap_handler_t *handler);
@@ -101,7 +103,6 @@ typedef struct tls_packet {
 EAPTLS_PACKET	*eaptls_alloc(void);
 void		eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr);
 tls_session_t	*eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_conf, bool client_cert, bool allow_tls13);
-int		eaptls_start(EAP_DS *eap_ds, int peap);
 int		eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply);
 
 fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, char const *key);

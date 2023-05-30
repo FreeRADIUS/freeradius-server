@@ -479,7 +479,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	case PW_CODE_ACCESS_CHALLENGE:
 		RDEBUG("Challenge");
 		tls_handshake_send(request, tls_session);
-		eaptls_request(handler->eap_ds, tls_session);
+		eaptls_request(handler->eap_ds, tls_session, false);
 		ret = 1;
 		goto done;
 
