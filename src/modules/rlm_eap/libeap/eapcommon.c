@@ -443,7 +443,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 			 */
 			memcpy(&tls_len, eap_packet->data + 2, 4);
 			tls_len = ntohl(tls_len);
-			if (tls_len > MAX_RECORD_SIZE) {
+			if (tls_len > 16384) {
 				fr_strerror_printf("Malformed EAP packet - TLS reassembled data length %u (%08x) (will be greater than the TLS maximum record size of 16384 bytes", tls_len, tls_len);
 				talloc_free(eap_packet);
 				return NULL;
