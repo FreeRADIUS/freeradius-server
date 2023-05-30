@@ -1414,8 +1414,6 @@ do { \
 		}
 
 		for (i = 0; i < (size_t)slen; i++) {
-			uint64_t acum = 0;
-
 			if (driver_get_stats(&stats, conf->driver,
 					     pools[i], talloc_array_length(pools[i])) < 0) fr_exit_now(EXIT_FAILURE);
 
@@ -1431,12 +1429,9 @@ do { \
 				INFO("used (%%)         : 0");
 			}
 			INFO("expiring 0-1m    : %" PRIu64, stats.expiring_1m);
-			acum += stats.expiring_1m;
-			INFO("expiring 1-30m   : %" PRIu64, stats.expiring_30m - acum);
-			acum += stats.expiring_30m;
-			INFO("expiring 30m-1h  : %" PRIu64, stats.expiring_1h - acum);
-			acum += stats.expiring_1h;
-			INFO("expiring 1h-1d   : %" PRIu64, stats.expiring_1d - acum);
+			INFO("expiring 1-30m   : %" PRIu64, stats.expiring_30m - stats.expiring_1m);
+			INFO("expiring 30m-1h  : %" PRIu64, stats.expiring_1h - stats.expiring_30m);
+			INFO("expiring 1h-1d   : %" PRIu64, stats.expiring_1d - stats.expiring_1h);
 			INFO("--");
 		}
 	}
