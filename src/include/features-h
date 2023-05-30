@@ -69,7 +69,7 @@
 #ifdef WITH_TLS
 #  ifdef WITH_COA
 #    ifndef WITHOUT_COA_TUNNEL
-#      define WITH_COA_TUNNEL (1)
+//#      define WITH_COA_TUNNEL (1)
 #    endif
 #  endif
 #endif
