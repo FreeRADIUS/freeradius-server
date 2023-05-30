@@ -28,7 +28,7 @@ include passwords.mk
 #
 ######################################################################
 .PHONY: all
-all: index.txt serial dh ca server client
+all: index.txt serial ca server client
 
 .PHONY: client
 client: client.pem
