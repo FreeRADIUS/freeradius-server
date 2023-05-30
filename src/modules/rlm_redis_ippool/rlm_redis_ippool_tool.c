@@ -44,7 +44,8 @@ typedef enum ippool_tool_action {
 	IPPOOL_TOOL_RELEASE,			//!< Release one or more IP addresses.
 	IPPOOL_TOOL_SHOW,			//!< Show one or more IP addresses.
 	IPPOOL_TOOL_MODIFY,			//!< Modify attributes of one or more IP addresses.
-	IPPOOL_TOOL_ASSIGN			//!< Assign a static IP address to a device.
+	IPPOOL_TOOL_ASSIGN,			//!< Assign a static IP address to a device.
+	IPPOOL_TOOL_UNASSIGN			//!< Remove static IP address assignment.
 } ippool_tool_action_t;
 
 /** A single pool operation
@@ -182,6 +183,61 @@ static char lua_release_cmd[] =
 	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. found)" EOL	/* 11 */
 	"return 1";									/* 12 */
 
+/** Lua script for un-assigning a static lease
+ *
+ * - KEYS[1] The pool name.
+ * - ARGV[1] IP address to remove static lease from.
+ * - ARGV[2] The owner the static lease should be removed from.
+ * - ARGV[3] Wall time (seconds since epoch).
+ *
+ * Removes the static flag from the IP entry in the ZSET, then, depending on the remaining time
+ * determined by the ZSCORE removes the address hash, and the device key.
+ *
+ * Will do nothing if the static assignment does not exist or the IP and device do not match.
+ *
+ * Returns
+ * - 0 if no ip addresses were removed.
+ * - 1 if an ip address was removed.
+ */
+static char lua_unassign_cmd[] =
+	"local found" EOL								/* 1 */
+	"local pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL			/* 2 */
+	"local owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[2]" EOL	/* 3 */
+
+	/*
+	 *	Check that the device hash exists and points at the correct IP
+	 */
+	"found = redis.call('GET', owner_key)" EOL					/* 4 */
+	"if not found or found ~= ARGV[1] then" EOL					/* 5 */
+	"  return 0" EOL								/* 6 */
+	"end"	 EOL									/* 7 */
+
+	/*
+	 *	Check the assignment is actually static
+	 */
+	"local expires = tonumber(redis.call('ZSCORE', pool_key, ARGV[1]))" EOL		/* 8 */
+	"local static = expires >= " STRINGIFY(IPPOOL_STATIC_BIT) EOL			/* 9 */
+	"if not static then" EOL							/* 10 */
+	" return 0" EOL									/* 11 */
+	"end" EOL									/* 12 */
+
+	/*
+	 *	Remove static bit from ZSCORE
+	 */
+	"expires = expires - " STRINGIFY(IPPOOL_STATIC_BIT) EOL				/* 13 */
+	"redis.call('ZADD', pool_key, 'XX', expires, ARGV[1])" EOL			/* 14 */
+
+	/*
+	 *	If the lease still has time left, set an expiry on the device key.
+	 *	otherwise delete it.
+	 */
+	"if expires > tonumber(ARGV[3]) then" EOL					/* 15 */
+	"  redis.call('EXPIRE', owner_key, expires - tonumber(ARGV[3]))" EOL		/* 16 */
+	"else" EOL									/* 17 */
+	"  redis.call('DEL', owner_key)" EOL						/* 18 */
+	"end" EOL									/* 19 */
+	"return 1";									/* 20 */
+
 /** Lua script for removing a lease
  *
  * - KEYS[1] The pool name.
@@ -225,6 +281,7 @@ static NEVER_RETURNS void usage(int ret) {
 	INFO("  -s range               Show addresses/prefix in this range.");
 	INFO("  -A address/prefix      Assign a static lease.");
 	INFO("  -O owner               To use when assigning a static lease.");
+	INFO("  -U address/prefix      Un-assign a static lease");
 	INFO("  -p prefix_len          Length of prefix to allocate (defaults to 32/128)");
 	INFO("                         This is used primarily for IPv6 where a prefix is");
 	INFO("                         allocated to an intermediary router, which in turn");
@@ -776,6 +833,50 @@ static int driver_assign_lease(void *out, void *instance, ippool_tool_operation_
 			       &(ippool_tool_owner_t){ .owner = owner });
 }
 
+static int _driver_unassign_lease_process(void *out, UNUSED fr_ipaddr_t const *ipaddr, redisReply const *reply)
+{
+	uint64_t *modified = out;
+	/*
+	 *	Record the actual number of addresses unassigned.
+	 */
+	if (reply->type != REDIS_REPLY_INTEGER) return -1;
+
+	*modified += reply->integer;
+
+	return 0;
+}
+
+/** Enqueue static lease un-assignment commands
+ *
+ */
+static int _driver_unassign_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
+				     uint8_t const *key_prefix, size_t key_prefix_len,
+				     UNUSED uint8_t const *range, UNUSED size_t range_len,
+				     fr_ipaddr_t *ipaddr, uint8_t prefix, void *uctx)
+{
+	ippool_tool_owner_t	*owner = uctx;
+	char			ip_buff[FR_IPADDR_PREFIX_STRLEN];
+	fr_time_t		now;
+
+	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
+	now = fr_time();
+
+	DEBUG("Un-assigning address %s from owner %s", ip_buff, owner->owner);
+	redisAppendCommand(conn->handle, "EVAL %s 1 %b %s %b %i", lua_unassign_cmd, key_prefix, key_prefix_len,
+			   ip_buff, owner->owner, strlen(owner->owner), fr_time_to_sec(now));
+	return 1;
+}
+
+/** Unassign static lease assignments
+ *
+ */
+static int driver_unassign_lease(void *out, void *instance, ippool_tool_operation_t const *op, char const *owner)
+{
+	return driver_do_lease(out, instance, op,
+			       _driver_unassign_lease_enqueue, _driver_unassign_lease_process,
+			       &(ippool_tool_owner_t){ .owner = owner });
+}
+
 /** Compare two pool names
  *
  */
@@ -1319,7 +1420,7 @@ do { \
 	need_pool = true; \
 } while (0);
 
-	while ((c = getopt(argc, argv, "a:d:r:s:Sm:A:O:p:ilLhxo:f:")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "a:d:r:s:Sm:A:U:O:p:ilLhxo:f:")) != -1) switch (c) {
 		case 'a':
 			ADD_ACTION(IPPOOL_TOOL_ADD);
 			break;
@@ -1342,6 +1443,10 @@ do { \
 
 		case 'A':
 			ADD_ACTION(IPPOOL_TOOL_ASSIGN);
+			break;
+
+		case 'U':
+			ADD_ACTION(IPPOOL_TOOL_UNASSIGN);
 			break;
 
 		case 'O':
@@ -1706,6 +1811,26 @@ do { \
 			fr_exit_now(EXIT_FAILURE);
 		}
 		INFO("Assigned %" PRIu64 " address(es)/prefix(es)", count);
+	}
+		continue;
+
+	case IPPOOL_TOOL_UNASSIGN:
+	{
+		uint64_t count = 0;
+
+		if (fr_ipaddr_cmp(&p->start, &p->end) != 0) {
+			ERROR("Static lease un-assignment requires a single IP");
+			fr_exit_now(EXIT_FAILURE);
+		}
+		if (!owner) {
+			ERROR("Static lease un-assignment requires an owner");
+			fr_exit_now(EXIT_FAILURE);
+		}
+
+		if (driver_unassign_lease(&count, conf->driver, p, owner) < 0) {
+			fr_exit_now(EXIT_FAILURE);
+		}
+		INFO("Un-assigned %" PRIu64 " address(es)/prefix(es)", count);
 	}
 		continue;
 
