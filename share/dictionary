@@ -271,6 +271,7 @@ $INCLUDE dictionary.nokia
 $INCLUDE dictionary.nomadix
 $INCLUDE dictionary.nortel
 $INCLUDE dictionary.ntua
+$INCLUDE dictionary.openwifi
 $INCLUDE dictionary.packeteer
 $INCLUDE dictionary.paloalto
 $INCLUDE dictionary.patton
