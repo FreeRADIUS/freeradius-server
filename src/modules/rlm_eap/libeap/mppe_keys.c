@@ -41,11 +41,14 @@ void TLS_PRF(SSL *ssl,
 	     unsigned char *key, size_t keylen)
 {
 	const EVP_MD *md = SSL_CIPHER_get_handshake_digest(SSL_get_current_cipher(ssl));
-
+	EVP_MD *unconst_md;
 	EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_TLS1_PRF, NULL);
 
 	EVP_PKEY_derive_init(pctx);
-	EVP_PKEY_CTX_set_tls1_prf_md(pctx, md);
+
+	memcpy(&unconst_md, &md, sizeof(md)); /* const issues */
+	EVP_PKEY_CTX_set_tls1_prf_md(pctx, unconst_md);
+
 	EVP_PKEY_CTX_set1_tls1_prf_secret(pctx, sec, seclen);
 
 	for (unsigned int i = 0; i < iovcnt; i++) {
