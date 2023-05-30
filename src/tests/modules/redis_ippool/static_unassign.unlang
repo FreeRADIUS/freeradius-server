@@ -1,0 +1,131 @@
+#
+#  Test static IP allocation followed by un-assignment using redis_ippool
+#
+$INCLUDE cluster_reset.inc
+
+&control.IP-Pool.Name := 'test_static_unassign'
+
+#
+#  Add a dynamic IP addresses
+#
+&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
+
+#
+#  Add a static IP assigned to the calling station in the request
+#
+&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -A 192.168.0.10/32 -O aa:bb:cc:dd:ee:ff $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
+
+#
+#  Check allocation
+#
+redis_ippool {
+	invalid = 1
+}
+if (!updated) {
+	test_fail
+}
+
+if (!(&reply.Framed-IP-Address == 192.168.0.10)) {
+	test_fail
+}
+
+#
+#  Check the expiry attribute is present and correct - although the allocation is static
+#  we report the expiry as if it were dynamic e.g. to drive DHCP renewals
+#
+if (!(&reply.Session-Timeout == 30)) {
+	test_fail
+}
+
+#
+#  Un-assign static allocation
+#
+&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -U 192.168.0.10/32 -O aa:bb:cc:dd:ee:ff $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name}`
+
+#
+#  Check ZSCORE is now < 2^52 - the "static bit"
+#
+if (%(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address}) >= %(cast:uint64 0x10000000000000)) {
+	test_fail
+}
+
+#
+#  Verify there is now an expiry on the device.
+#  This is based on the initial lease duration given (of 30 sec) but will have reduced
+#  due to elapsed time since the allocation.
+#
+if ("%(redis:TTL {%{control.IP-Pool.Name}}:device:%{Calling-Station-Id})" < 20) {
+	test_fail
+}
+
+#
+#  Check that renewal still works as we are within the exipiry time
+#
+&Framed-IP-Address := &reply.Framed-IP-Address
+&control.IP-Pool.Action := Renew
+
+redis_ippool {
+	invalid = 1
+}
+
+#
+#  Check that releasing now frees
+#
+&control.IP-Pool.Action := Release
+
+redis_ippool {
+	invalid = 1
+}
+if (!updated) {
+	test_fail
+}
+
+#
+#  Verify the association with the device is removed
+#
+if ("%(redis:EXISTS {%{control.IP-Pool.Name}}:device:%{Calling-Station-ID})" != '0') {
+	test_fail
+}
+
+# Check the ZSCORE
+&Tmp-Date-0 := "%l"
+if ("%(redis:ZSCORE {%{control.IP-Pool.Name}%}:pool %{reply.Framed-IP-Address})" > %(integer:%{Tmp-Date-0})) {
+	test_fail
+}
+
+#
+#  Delete original dynamic address - so only the previously static one remains
+#
+&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -d 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name}`
+
+#
+#  Perform IP allocation for alternative device
+#  Should be allocated the previously static address as that is the only one in the pool
+#
+&reply -= &Framed-IP-Address[*]
+&request -= &Framed-IP-Address[*]
+&Calling-Station-Id := '00:11:22:33:44:55'
+
+&control.IP-Pool.Action := Allocate
+redis_ippool {
+	invalid = 1
+}
+
+if (!updated) {
+	test_fail
+}
+
+if !(&reply.Framed-IP-Address == '192.168.0.10') {
+	test_fail
+}
+
+#
+#  Verify the IP hash has been set to point to the new device
+#
+if !("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} 'device')" == '00:11:22:33:44:55') {
+	test_fail
+}
+
+&reply := {}
+
+test_pass
