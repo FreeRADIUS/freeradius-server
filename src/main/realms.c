@@ -3181,7 +3181,7 @@ int home_server_afrom_file(char const *filename)
 		goto error;
 	}
 
-#ifdef COA_TUNNEL
+#ifdef WITH_COA_TUNNEL
 	if (home->recv_coa) {
 		fr_strerror_printf("Dynamic home_server '%s' cannot receive CoA requests'", p);
 		talloc_free(home);

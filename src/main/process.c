@@ -2286,7 +2286,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 
 	if (!request->in_proxy_hash) return;
 
-#ifdef COA_TUNNEL
+#ifdef WITH_COA_TUNNEL
 	/*
 	 *	Track how many IDs are used.  This information
 	 *	helps the listen_coa_find() function get a
@@ -2493,7 +2493,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 			goto fail;
 		}
 
-#ifdef COA_TUNNEL
+#ifdef WITH_COA_TUNNEL
 		/*
 		 *	Track how many IDs are used.  This information
 		 *	helps the listen_coa_find() function get a
