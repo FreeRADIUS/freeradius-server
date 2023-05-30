@@ -85,6 +85,12 @@ typedef struct {
 	uint64_t		expiring_30m;	//!< Addresses that expire in the next 30 minutes.
 	uint64_t		expiring_1h;	//!< Addresses that expire in the next hour.
 	uint64_t		expiring_1d;	//!< Addresses that expire in the next day.
+	uint64_t		static_tot;	//!< Static assignments configured.
+	uint64_t		static_free;	//!< Static leases that have not been requested.
+	uint64_t		static_1m;	//!< Static leases that should renew in the next minute.
+	uint64_t		static_30m;	//!< Static leases that should renew in the next 30 minutes.
+	uint64_t		static_1h;	//!< Static leases that should renew in the next hour.
+	uint64_t		static_1d;	//!< Static leases that should renew in the next day.
 } ippool_tool_stats_t;
 
 static CONF_PARSER redis_config[] = {
@@ -1100,7 +1106,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 
 	size_t				reply_cnt = 0, i = 0;
 
-#define STATS_COMMANDS_TOTAL 8
+#define STATS_COMMANDS_TOTAL 14
 
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 
@@ -1125,6 +1131,22 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 				   key, key_p - key, fr_time_to_sec(now) + (60 * 60));	/* Free in next 60 mins */
 		redisAppendCommand(conn->handle, "ZCOUNT %b -inf %i",
 				   key, key_p - key, fr_time_to_sec(now) + (60 * 60 * 24));	/* Free in next day */
+		redisAppendCommand(conn->handle, "ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " inf",
+				   key, key_p - key);					/* Total static */
+		redisAppendCommand(conn->handle, "ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " %"PRIu64,
+				   key, key_p - key, IPPOOL_STATIC_BIT + fr_time_to_sec(now));	/* Static assignments 'free' */
+		redisAppendCommand(conn->handle, "ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " %"PRIu64,
+				   key, key_p - key,
+				   IPPOOL_STATIC_BIT + fr_time_to_sec(now) + 60);	/* Static renew in 60s */
+		redisAppendCommand(conn->handle, "ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " %"PRIu64,
+				   key, key_p - key,
+				   IPPOOL_STATIC_BIT + fr_time_to_sec(now) + (60 * 30));	/* Static renew in 30 mins */
+		redisAppendCommand(conn->handle, "ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " %"PRIu64,
+				   key, key_p - key,
+				   IPPOOL_STATIC_BIT + fr_time_to_sec(now) + (60 * 60));	/* Static renew in 60 mins */
+		redisAppendCommand(conn->handle, "ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " %"PRIu64,
+				   key, key_p - key,
+				   IPPOOL_STATIC_BIT + fr_time_to_sec(now) + (60 * 60 * 24));	/* Static renew in 1 day */
 		redisAppendCommand(conn->handle, "EXEC");
 		if (!replies) return -1;
 
@@ -1170,6 +1192,12 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 	out->expiring_30m = reply->element[3]->integer - out->free;
 	out->expiring_1h = reply->element[4]->integer - out->free;
 	out->expiring_1d = reply->element[5]->integer - out->free;
+	out->static_tot = reply->element[6]->integer;
+	out->static_free = reply->element[7]->integer;
+	out->static_1m = reply->element[8]->integer - out->static_free;
+	out->static_30m = reply->element[9]->integer - out->static_free;
+	out->static_1h = reply->element[10]->integer - out->static_free;
+	out->static_1d = reply->element[11]->integer - out->static_free;
 
 	fr_redis_pipeline_free(replies, reply_cnt);
 	talloc_free(replies);
@@ -1628,21 +1656,37 @@ do { \
 			if (driver_get_stats(&stats, conf->driver,
 					     pools[i], talloc_array_length(pools[i])) < 0) fr_exit_now(EXIT_FAILURE);
 
-			INFO("pool             : %pV", fr_box_strvalue_len((char *)pools[i],
+			INFO("pool                : %pV", fr_box_strvalue_len((char *)pools[i],
 									   talloc_array_length(pools[i])));
-			INFO("total            : %" PRIu64, stats.total);
-			INFO("free             : %" PRIu64, stats.free);
-			INFO("used             : %" PRIu64, stats.total - stats.free);
-			if (stats.total) {
-				INFO("used (%%)         : %.2Lf",
-				     ((long double)(stats.total - stats.free) / (long double)stats.total) * 100);
+			INFO("total               : %" PRIu64, stats.total);
+			INFO("dynamic total       : %" PRIu64, stats.total - stats.static_tot);
+			INFO("dynamic free        : %" PRIu64, stats.free);
+			INFO("dynamic used        : %" PRIu64, stats.total - stats.free - stats.static_tot);
+			if ((stats.total - stats.static_tot) > 0) {
+				INFO("dynamic used (%%)    : %.2Lf",
+				     ((long double)(stats.total - stats.free - stats.static_tot) /
+				      (long double)(stats.total - stats.static_tot)) * 100);
 			} else {
-				INFO("used (%%)         : 0");
+				INFO("used (%%)            : 0");
 			}
-			INFO("expiring 0-1m    : %" PRIu64, stats.expiring_1m);
-			INFO("expiring 1-30m   : %" PRIu64, stats.expiring_30m - stats.expiring_1m);
-			INFO("expiring 30m-1h  : %" PRIu64, stats.expiring_1h - stats.expiring_30m);
-			INFO("expiring 1h-1d   : %" PRIu64, stats.expiring_1d - stats.expiring_1h);
+			INFO("expiring 0-1m       : %" PRIu64, stats.expiring_1m);
+			INFO("expiring 1-30m      : %" PRIu64, stats.expiring_30m - stats.expiring_1m);
+			INFO("expiring 30m-1h     : %" PRIu64, stats.expiring_1h - stats.expiring_30m);
+			INFO("expiring 1h-1d      : %" PRIu64, stats.expiring_1d - stats.expiring_1h);
+			INFO("static total        : %" PRIu64, stats.static_tot);
+			INFO("static 'free'       : %" PRIu64, stats.static_free);
+			INFO("static issued       : %" PRIu64, stats.static_tot - stats.static_free);
+			if (stats.static_tot) {
+				INFO("static issued (%%)   : %.2Lf",
+				     ((long double)(stats.static_tot - stats.static_free) /
+				      (long double)(stats.static_tot)) * 100);
+			} else {
+				INFO("static issued (%%)   : 0");
+			}
+			INFO("static renew 0-1m   : %" PRIu64, stats.static_1m);
+			INFO("static renew 1-30m  : %" PRIu64, stats.static_30m - stats.static_1m);
+			INFO("static renew 30m-1h : %" PRIu64, stats.static_1h - stats.static_30m);
+			INFO("static renew 1h-1d  : %" PRIu64, stats.static_1d - stats.static_1h);
 			INFO("--");
 		}
 	}
