@@ -2286,16 +2286,6 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 
 	if (!request->in_proxy_hash) return;
 
-#ifdef WITH_COA_TUNNEL
-	/*
-	 *	Track how many IDs are used.  This information
-	 *	helps the listen_coa_find() function get a
-	 *	listener which has free IDs.
-	 */
-	rad_assert(request->proxy_listener->num_ids_used > 0);
-	request->proxy_listener->num_ids_used--;
-#endif
-
 	fr_packet_list_id_free(proxy_list, request->proxy, yank);
 	request->in_proxy_hash = false;
 
@@ -2341,6 +2331,16 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 
 	if (request->proxy_listener) {
 		request->proxy_listener->count--;
+
+#ifdef WITH_COA_TUNNEL
+		/*
+		 *	Track how many IDs are used.  This information
+		 *	helps the listen_coa_find() function get a
+		 *	listener which has free IDs.
+		 */
+		rad_assert(request->proxy_listener->num_ids_used > 0);
+		request->proxy_listener->num_ids_used--;
+#endif
 	}
 	request->proxy_listener = NULL;
 
