@@ -221,6 +221,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 	uint32_t	nlen;
 	uint16_t	ohdr[2];
 	uint32_t	olen = 0;
+	uint32_t	tls_mtu;
 
 	/* This value determines whether we set (L)ength flag for
 		EVERY packet we send and add corresponding
@@ -255,6 +256,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 				continue;
 			}
 			obit = 4;
+			olen += sizeof(ohdr) + vp->vp_length;
 			break;
 		}
 	}
@@ -267,9 +269,19 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 	reply.flags = ssn->peap_flag;
 	if (start) reply.flags = SET_START(reply.flags);
 
+	/*
+	 *	This is only true for TEAP, so only TEAP has to check the return value of this function.
+	 */
+	if (lbit + obit + olen >= ssn->mtu) {
+		ERROR("fragment_size is too small for outer TLVs");
+		return -1;
+	}
+
+	tls_mtu = ssn->mtu - lbit - obit - olen;
+
 	/* Send data, NOT more than the FRAGMENT size */
-	if (ssn->dirty_out.used > ssn->mtu) {
-		size = ssn->mtu;
+	if (ssn->dirty_out.used > tls_mtu) {
+		size = tls_mtu;
 		reply.flags = SET_MORE_FRAGMENTS(reply.flags);
 		/* Length MUST be included if it is the First Fragment */
 		if (ssn->fragment == 0) {
@@ -279,15 +291,6 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 	} else {
 		size = ssn->dirty_out.used;
 		ssn->fragment = 0;
-	}
-
-	if (obit) {
-		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			if (vp->da->type != PW_TYPE_OCTETS) continue;
-			olen += sizeof(ohdr) + vp->vp_length;
-		}
 	}
 
 	reply.dlen = lbit + obit + size + olen;
@@ -301,6 +304,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 		memcpy(reply.data, &nlen, sizeof(nlen));
 		reply.flags = SET_LENGTH_INCLUDED(reply.flags);
 	}
+
 	if (obit) {
 		nlen = 0;
 		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs);
