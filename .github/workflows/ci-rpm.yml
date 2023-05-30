@@ -32,9 +32,9 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "centos-7", "OS": "centos:7",                      "DIST": "centos" },
               { "NAME": "stream-8", "OS": "tgagor/centos-stream:stream8",  "DIST": "centos" },
-              { "NAME": "rocky-8",  "OS": "rockylinux/rockylinux:8",       "DIST": "rocky"  }
+              { "NAME": "rocky-8",  "OS": "rockylinux/rockylinux:8",       "DIST": "rocky"  },
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky"  },
             ]
           }
         EOF
@@ -74,7 +74,8 @@ jobs:
     name: "RPM build"
 
     steps:
-    - name: Extra repos for CentOS and Rocky Linux
+    - name: Extra repos for CentOS and Rocky Linux 8
+      if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
@@ -85,16 +86,20 @@ jobs:
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
         yum install -y epel-release
 
-    - name: Enable PowerTools on CentOS 8
-      if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
+    - name: Enable PowerTools / CRB
       run: |
         yum install -y yum-utils dnf-plugins-core
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
+        yum config-manager --enable crb || :
+
+    - name: Enable EPEL for Rocky Linux 9
+      if: ${{ matrix.env.NAME == 'rocky-9' }}
+      run: |
+        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 
     # For pkill
-    - name: Enable procps-ng on CentOS 8
-      if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
+    - name: Enable procps-ng
       run: |
         yum install -y procps-ng
 
@@ -110,34 +115,7 @@ jobs:
 
     - name: Install common tools
       run: |
-        yum install -y rpm-build openssl make gcc perl
-
-    - name: Install SCL compiler on CentOS 7
-      if: ${{ matrix.env.NAME == 'centos-7' }}
-      run: |
-        yum install -y centos-release-scl
-        yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++ devtoolset-8-make
-        rm -f /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
-        rm -f /etc/yum.repos.d/CentOS-SCLo-scl.repo
-
-    # Required so that the checkout action uses git protocol rather than the GitHub REST API.
-    # make rpm requires the FR directory to be a git repository.
-
-    # Centos 7 installs an extremely old version of Git.  This version of git's archive
-    # command is missing --add-file and --add-virtual-file so cannot be used for creating
-    # tarballs.  Here we install a more modern version from a 3rd party repo listed on the
-    # git website.
-    - name: Install recent git for CentOS 7
-      if: ${{ matrix.env.NAME == 'centos-7' }}
-      run: |
-        yum remove git
-        rpm -U https://repo.ius.io/ius-release-el7.rpm
-        yum install -y git2*-core
-
-    - name: Install distro git for CentOS > 7
-      if: ${{ matrix.env.NAME != 'centos-7' }}
-      run: |
-        yum install -y git-core
+        yum install -y rpm-build openssl make gcc perl git-core
 
     - uses: actions/checkout@v3
       with:
@@ -239,6 +217,7 @@ jobs:
 
 
     - name: Extra repos
+      if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
@@ -249,16 +228,20 @@ jobs:
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
         yum install -y epel-release
 
-    - name: Enable PowerTools on Centos 8
-      if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
+    - name: Enable PowerTools / CRB
       run: |
         yum install -y yum-utils dnf-plugins-core
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
+        yum config-manager --enable crb || :
+
+    - name: Enable EPEL for Rocky Linux 9
+      if: ${{ matrix.env.NAME == 'rocky-9' }}
+      run: |
+        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 
     # For pkill
-    - name: Enable procps-ng on Centos 8
-      if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
+    - name: Enable procps-ng
       run: |
         yum install -y procps-ng
 
