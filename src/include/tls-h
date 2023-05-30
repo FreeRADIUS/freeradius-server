@@ -152,6 +152,9 @@ typedef struct _tls_session_t {
 							//!< If set to no then only the first fragment contains length.
 	int		peap_flag;
 
+	VALUE_PAIR	*outer_tlvs;			//!< only for TEAP, and only for the first fragment.
+	uint8_t		*outer_tlvs_octets;		//!< only for TEAP, needed for Crypto-Binding TLV
+
 	size_t		tls_record_in_total_len;	//!< How long the peer indicated the complete tls record
 							//!< would be.
 	size_t		tls_record_in_recvd_len;	//!< How much of the record we've received so far.
@@ -176,17 +179,19 @@ typedef struct _tls_session_t {
  *
  *      0 1 2 3 4 5 6 7 8
  *      +-+-+-+-+-+-+-+-+
- *      |L M S R R R R R|
+ *      |L M S O R R R R|
  *      +-+-+-+-+-+-+-+-+
  *
  *      L = Length included
  *      M = More fragments
  *      S = EAP-TLS start
+ *	O = outer TLV length included (4 octets, only for TEAP)
  *      R = Reserved
  */
 #define TLS_START(x) 		(((x) & 0x20) != 0)
 #define TLS_MORE_FRAGMENTS(x) 	(((x) & 0x40) != 0)
 #define TLS_LENGTH_INCLUDED(x) 	(((x) & 0x80) != 0)
+#define TLS_OUTER_TLV_INCLUDED(x) (((x) & 0x10) != 0)
 
 #define TLS_CHANGE_CIPHER_SPEC(x) 	(((x) & 0x0014) == 0x0014)
 #define TLS_ALERT(x) 			(((x) & 0x0015) == 0x0015)
@@ -195,6 +200,7 @@ typedef struct _tls_session_t {
 #define SET_START(x) 		((x) | (0x20))
 #define SET_MORE_FRAGMENTS(x) 	((x) | (0x40))
 #define SET_LENGTH_INCLUDED(x) 	((x) | (0x80))
+#define SET_OUTER_TLV_INCLUDED(x) ((x) | (0x10))
 
 /*
  *	Following enums from rfc2246
