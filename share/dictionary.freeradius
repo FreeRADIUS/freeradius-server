@@ -187,6 +187,105 @@ ATTRIBUTE	FreeRADIUS-Stats-Error			187	string
 ATTRIBUTE	FreeRADIUS-Stats-Client-IPv6-Address	188	ipv6addr
 ATTRIBUTE	FreeRADIUS-Stats-Server-IPv6-Address	189	ipv6addr
 
+######################################################################
+#
+#  EAP-TEAP TLVs.  Some are the same as EAP-FAST. some are unnecessarily different.
+#
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-TLV			190	tlv
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Authority-ID	190.1	octets
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Identity-Type	190.2	uint16
+VALUE	FreeRADIUS-EAP-TEAP-Identity-Type User			1
+VALUE	FreeRADIUS-EAP-TEAP-Identity-Type Machine		2
+
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Result		190.3	short
+VALUE	FreeRADIUS-EAP-TEAP-Result	Success			1
+VALUE	FreeRADIUS-EAP-TEAP-Result	Failure			2
+
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-NAK			190.4	octets	# 4 octet Vendor-Id + 1 octet NAK type + TLVs
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Error		190.5	integer
+VALUE	FreeRADIUS-EAP-TEAP-Error	User-Account-Expires-Soon 1
+VALUE	FreeRADIUS-EAP-TEAP-Error	User-Account-Credential-Expires-Soon 2
+VALUE	FreeRADIUS-EAP-TEAP-Error	User-Account-Authorizations-Change-Soon 3
+VALUE	FreeRADIUS-EAP-TEAP-Error	Clock-Skew-Detected	4
+VALUE	FreeRADIUS-EAP-TEAP-Error	Contact-Administrator	5
+VALUE	FreeRADIUS-EAP-TEAP-Error	User-Account-Credentials-Change-Requires 6
+VALUE	FreeRADIUS-EAP-TEAP-Error	Inner-Method-Error	1001
+VALUE	FreeRADIUS-EAP-TEAP-Error	Unspecified-Authentication-Infrastructure-Problem 1002
+VALUE	FreeRADIUS-EAP-TEAP-Error	Unspecified-Authentication-Failure 1003
+VALUE	FreeRADIUS-EAP-TEAP-Error	Unspecified-Authorization-Failure 1004
+VALUE	FreeRADIUS-EAP-TEAP-Error	User-Account-Credentials-Unavailable 1005
+VALUE	FreeRADIUS-EAP-TEAP-Error	User-Account-Expired	1006
+VALUE	FreeRADIUS-EAP-TEAP-Error	User-Account-Locked-Try-Again-Later 1007
+VALUE	FreeRADIUS-EAP-TEAP-Error	User-Account-Locked-Admin-Intervention-Required 1008
+VALUE	FreeRADIUS-EAP-TEAP-Error	Authentication-Infrastructure-Unavailable 1009
+VALUE	FreeRADIUS-EAP-TEAP-Error	Authentication-Infrastructure-Not-Trusted 1010
+VALUE	FreeRADIUS-EAP-TEAP-Error	Clock-Skew-Too-Great	1011
+VALUE	FreeRADIUS-EAP-TEAP-Error	Invalid-Inner-Realm	1012
+VALUE	FreeRADIUS-EAP-TEAP-Error	Token-Out-of-Sync-Admin-Intervention-Required 1013
+VALUE	FreeRADIUS-EAP-TEAP-Error	Token-Out-of-Sync-PIN-Change-Required 1014
+VALUE	FreeRADIUS-EAP-TEAP-Error	Token-Revoked		1015
+VALUE	FreeRADIUS-EAP-TEAP-Error	Tokens-Exhausted	1016
+VALUE	FreeRADIUS-EAP-TEAP-Error	Challenge-Expired	1017
+VALUE	FreeRADIUS-EAP-TEAP-Error	Challenge-Algorithm-Mismatch 1018
+VALUE	FreeRADIUS-EAP-TEAP-Error	Client-Certificate-Not-Supplied 1019
+VALUE	FreeRADIUS-EAP-TEAP-Error	Client-Certificate-Rejected 1020
+VALUE	FreeRADIUS-EAP-TEAP-Error	Realm-Mismatch-Inner-Outer-Identity 1021
+VALUE	FreeRADIUS-EAP-TEAP-Error	Unsupported-Algorithm-in-CSR 1022
+VALUE	FreeRADIUS-EAP-TEAP-Error	Unsupported-Extension-in-CSR 1023
+VALUE	FreeRADIUS-EAP-TEAP-Error	Bad-Identity-in-CSR	1024
+VALUE	FreeRADIUS-EAP-TEAP-Error	Bad-CSR			1025
+VALUE	FreeRADIUS-EAP-TEAP-Error	Internal-CA-Error	1026
+VALUE	FreeRADIUS-EAP-TEAP-Error	General-PKI-Error	1027
+VALUE	FreeRADIUS-EAP-TEAP-Error	Inner-Method-Channel-Binding-Not-Supplied 1028
+VALUE	FreeRADIUS-EAP-TEAP-Error	Inner-Method-Channel-Binding-Missing-Info 1029
+VALUE	FreeRADIUS-EAP-TEAP-Error	Inner-Method-Channel-Binding-Data-Failed 1030
+VALUE	FreeRADIUS-EAP-TEAP-Error	User-Account-Credentials-Incorrect 1031
+VALUE	FreeRADIUS-EAP-TEAP-Error	Tunnel-Compromise-Error	2001
+VALUE	FreeRADIUS-EAP-TEAP-Error	Unexpected-TLVs		2002
+
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Channel-Binding	190.6	octets # complex format
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Vendor-Specific	190.7	octets # 4-octet vendor ID + TLVs
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Request-Action	190.8	octets # 1 octet + sub TLVs
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-EAP-Payload		190.9	octets # EAP packet + TLVs
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Intermediate-Result	190.10	octets
+
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC			190.11	tlv
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Key		190.11.1	octets
+
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Opaque		190.11.2	octets
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Lifetime	190.11.3	integer
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-A-ID		190.11.4	octets
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-I-ID		190.11.5	octets
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-A-ID-Info	190.11.7	octets
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Acknowledgement	190.11.8	short
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Info-TLV	190.11.9	tlv
+ATTRIBUTE	FreeRADIUS-EAP-TRAP-PAC-Type		186.11.10	short
+#
+#  Sub-TLVs with the same numbers as the similar ones above.
+#
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Info-PAC-Lifetime 190.11.9.3	integer
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Info-A-ID	190.11.9.4	octets
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Info-I-ID	190.11.9.5	octets
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Info-A-ID-Info	190.11.9.7	octets
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Info-PAC-Type	190.11.9.10	short
+
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Type		190.11.10	short
+
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Crypto-Binding	190.12	octets # complex struct
+
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Basic-Password-Auth-Req 190.13	string
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Basic-Password-Auth-Resp 190.14	octets # complex struct
+
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PKCS7		190.15	octets
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-PKCS10		190.16	octets
+
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Trusted-Server-Root	190.17	octets # 1 octet + sub TLVs
+
+#
+# End of EAP-TEAP
+#
+######################################################################
+
 # 190 is reserved
 
 ATTRIBUTE	FreeRADIUS-Total-Auth-Conflicts		191	integer
