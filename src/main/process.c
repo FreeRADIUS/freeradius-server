@@ -2338,8 +2338,10 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 		 *	helps the listen_coa_find() function get a
 		 *	listener which has free IDs.
 		 */
-		rad_assert(request->proxy_listener->num_ids_used > 0);
-		request->proxy_listener->num_ids_used--;
+		if (request->proxy_listener->send_coa) {
+			rad_assert(request->proxy_listener->num_ids_used > 0);
+			request->proxy_listener->num_ids_used--;
+		}
 #endif
 	}
 	request->proxy_listener = NULL;
@@ -2499,7 +2501,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		 *	helps the listen_coa_find() function get a
 		 *	listener which has free IDs.
 		 */
-		request->proxy_listener->num_ids_used++;
+		if (request->proxy_listener->send_coa) request->proxy_listener->num_ids_used++;
 #endif
 
 		/*
