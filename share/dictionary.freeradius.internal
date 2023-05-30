@@ -405,6 +405,8 @@ ATTRIBUTE	EAP-Type-EAP-AKA2			1330	octets
 ATTRIBUTE	EAP-Type-EAP-GPSK			1331	octets
 ATTRIBUTE	EAP-Type-EAP-PWD			1332	octets
 ATTRIBUTE	EAP-Type-EAP-EVEv1			1333	octets
+ATTRIBUTE	EAP-Type-EAP-PT-EAP			1334	octets
+ATTRIBUTE	EAP-Type-EAP-TEAP			1335	octets
 
 ATTRIBUTE	EAP-Type-Microsoft-MS-CHAPv2		1306	octets
 ATTRIBUTE	EAP-Type-Cisco-MS-CHAPv2		1309	octets
@@ -861,6 +863,8 @@ VALUE	EAP-Type			AKA2			50
 VALUE	EAP-Type			GPSK			51
 VALUE	EAP-Type			PWD			52
 VALUE	EAP-Type			EKEv1			53
+VALUE	EAP-Type			PT-EAP			54
+VALUE	EAP-Type			TEAP			55
 
 #
 #	And this is what most people mean by MS-CHAPv2
