@@ -845,7 +845,7 @@ int main(int argc, char **argv)
 	TALLOC_CTX		*autofree;
 
 	char *commands[MAX_COMMANDS];
-	int num_commands = -1;
+	int num_commands = 0;
 
 	int exit_status = EXIT_SUCCESS;
 
@@ -891,13 +891,12 @@ int main(int argc, char **argv)
 			break;
 
 		case 'e':
-			num_commands++; /* starts at -1 */
 			if (num_commands >= MAX_COMMANDS) {
 				fprintf(stderr, "%s: Too many '-e'\n", progname);
 				fr_exit_now(EXIT_FAILURE);
 			}
 
-			commands[num_commands] = optarg;
+			commands[num_commands++] = optarg;
 			break;
 
 		case 'E':
@@ -1116,11 +1115,10 @@ int main(int argc, char **argv)
 	/*
 	 *	Run commands from the command-line.
 	 */
-	/* coverity[check_after_sink] */
-	if (num_commands >= 0) {
+	if (num_commands > 0) {
 		int i;
 
-		for (i = 0; i <= num_commands; i++) {
+		for (i = 0; i < num_commands; i++) {
 			result = run_command(sockfd, commands[i], io_buffer, sizeof(io_buffer));
 			if (result < 0) fr_exit_now(EXIT_FAILURE);
 
