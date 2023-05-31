@@ -469,7 +469,7 @@ static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_
 	 *	ratio of workers to networks,
 	 *      which seems like a sensible ratio.
 	 */
-	if ((conf->max_networks * 4) < value) {
+	else if (value > (conf->max_networks * 4)) {
 		value -= conf->max_networks;
 	}
 	strvalue = talloc_asprintf(NULL, "%u", value);
