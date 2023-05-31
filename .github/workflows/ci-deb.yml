@@ -36,7 +36,7 @@ jobs:
           {
             "env": [
               { "NAME": "ubuntu-20.04", "OS": "ubuntu:20.04"    },
-              { "NAME": "debian-10",    "OS": "debian:buster"   },
+              { "NAME": "ubuntu-22.04", "OS": "ubuntu:22.04"    },
               { "NAME": "debian-11",    "OS": "debian:bullseye" },
               { "NAME": "debian-sid",   "OS": "debian:sid"      }
             ]
