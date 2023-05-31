@@ -101,14 +101,14 @@ uint32_t fr_hw_num_cores_active(void)
 	 */
 	if (unlikely((tsibs == 0) || (lcores == 0) || (lcores > tsibs))) {
 		fr_strerror_printf("Failed retrieving cpu topology info: %s", fr_syserror(errno));
-		return -1;
+		return 0;
 	}
 
 #ifdef STATIC_ANALYZER
 	/*
 	 *	Prevent static analyzer from warning about divide by zero
 	 */
-	if ((tsibs / lcores) == 0) return -1;
+	if ((tsibs / lcores) == 0) return 0;
 #endif
 
 	return lcores / (tsibs / lcores);
