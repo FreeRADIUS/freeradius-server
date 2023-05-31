@@ -201,7 +201,7 @@ static int kafka_config_dflt_single(CONF_PAIR **out, UNUSED void *parent, CONF_S
  *	- 0 on success.
  *      - -1 on failure.
  */
-static int kafka_config_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+static int kafka_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
 {
 	char				buff[1024];
 	size_t				buff_len = sizeof(buff);
@@ -249,7 +249,7 @@ static int kafka_config_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION 
 		ue_rules.subs[(uint8_t)kctx->string_sep[0]] = kctx->string_sep[0];
 
 		while (fr_sbuff_out_unescape_until(&value_elem, &value_in, SIZE_MAX, &tt, &ue_rules) > 0) {
-			if (kafka_config_dflt_single(out, cs, fr_sbuff_start(&value_elem), quote, rule) < 0) return -1;
+			if (kafka_config_dflt_single(out, parent, cs, fr_sbuff_start(&value_elem), quote, rule) < 0) return -1;
 
 			/*
 			 *	Skip past the string separator
@@ -267,7 +267,7 @@ static int kafka_config_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION 
 	/*
 	 *	Parse a single value
 	 */
-	if (kafka_config_dflt_single(out, cs, value, quote, rule) < 0) return -1;
+	if (kafka_config_dflt_single(out, parent, cs, value, quote, rule) < 0) return -1;
 
 	return 0;
 }
@@ -283,7 +283,7 @@ static int kafka_config_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION 
  *	- 0 on success.
  *      - -1 on failure.
  */
-static int kafka_topic_config_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+static int kafka_topic_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
 {
 	char				buff[1024];
 	size_t				buff_len = sizeof(buff);
@@ -316,7 +316,7 @@ static int kafka_topic_config_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SE
 	/*
 	 *	Parse a single value
 	 */
-	if (kafka_config_dflt_single(out, cs, value, quote, rule) < 0) return -1;
+	if (kafka_config_dflt_single(out, parent, cs, value, quote, rule) < 0) return -1;
 
 	return 0;
 }
