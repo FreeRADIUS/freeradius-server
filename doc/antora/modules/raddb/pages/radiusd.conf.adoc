@@ -669,7 +669,7 @@ security {
 $INCLUDE clients.conf
 thread pool {
 #	num_networks = 1
-	num_workers = 0
+#	num_workers = 1
 #	openssl_async_pool_init = 64
 #	openssl_async_pool_max = 1024
 }

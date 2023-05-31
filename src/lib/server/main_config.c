@@ -432,8 +432,6 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CO
 
 	memcpy(&value, out, sizeof(value));
 
-	fr_assert_msg(value != 0, "Number of workers should never be zero, verify num_workers_dflt called");
-
 	/*
 	 *	If no value is specified, try and
 	 *	discover it automatically.

@@ -523,10 +523,10 @@ thread pool {
 	#  non-blocking, there is no reason to run hundreds of threads
 	#  as in v3.
 	#
-	#  When set to 0 the number of workers will be set from the number
-	#  of cores available on the system.
+	#  Defaults to the number of cores available on the system, or,
+	#  1, if this cannot be determined.
 	#
-	num_workers = 0
+#	num_workers = 1
 
 	#
 	#  openssl_async_pool_init:: Controls the initial number of async
