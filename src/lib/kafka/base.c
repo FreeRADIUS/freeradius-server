@@ -115,6 +115,7 @@ fr_kafka_topic_conf_t *kafka_topic_conf_from_cs(CONF_SECTION *cs)
 /** Perform any conversions necessary to map kafka defaults to our values
  *
  * @param[out] out	Where to write the pair.
+ * @param[in] parent	being populated.
  * @param[in] cs	to allocate the pair in.
  * @param[in] value	to convert.
  * @param[in] quote	to use when allocing the pair.
@@ -123,7 +124,7 @@ fr_kafka_topic_conf_t *kafka_topic_conf_from_cs(CONF_SECTION *cs)
  *	- 0 on success.
  *      - -1 on failure.
  */
-static int kafka_config_dflt_single(CONF_PAIR **out, CONF_SECTION *cs, char const *value,
+static int kafka_config_dflt_single(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, char const *value,
 				    fr_token_t quote, CONF_PARSER const *rule)
 {
 	char				tmp[sizeof("18446744073709551615b")];
@@ -192,6 +193,7 @@ static int kafka_config_dflt_single(CONF_PAIR **out, CONF_SECTION *cs, char cons
 /** Return the default value from the kafka client library
  *
  * @param[out] out	Where to write the pair.
+ * @param[in] parent	being populated.
  * @param[in] cs	to allocate the pair in.
  * @param[in] quote	to use when allocing the pair.
  * @param[in] rule	UNUSED.
@@ -199,7 +201,7 @@ static int kafka_config_dflt_single(CONF_PAIR **out, CONF_SECTION *cs, char cons
  *	- 0 on success.
  *      - -1 on failure.
  */
-static int kafka_config_dflt(CONF_PAIR **out, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+static int kafka_config_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
 {
 	char				buff[1024];
 	size_t				buff_len = sizeof(buff);
@@ -273,6 +275,7 @@ static int kafka_config_dflt(CONF_PAIR **out, CONF_SECTION *cs, fr_token_t quote
 /** Return the default value for a topic from the kafka client library
  *
  * @param[out] out	Where to write the pair.
+ * @param[in] parent	being populated.
  * @param[in] cs	to allocate the pair in.
  * @param[in] quote	to use when allocing the pair.
  * @param[in] rule	UNUSED.
@@ -280,7 +283,7 @@ static int kafka_config_dflt(CONF_PAIR **out, CONF_SECTION *cs, fr_token_t quote
  *	- 0 on success.
  *      - -1 on failure.
  */
-static int kafka_topic_config_dflt(CONF_PAIR **out, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+static int kafka_topic_config_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
 {
 	char				buff[1024];
 	size_t				buff_len = sizeof(buff);
