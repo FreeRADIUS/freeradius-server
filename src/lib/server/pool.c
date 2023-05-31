@@ -1082,10 +1082,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	 *	to only 1 connection.
 	 *
 	 */
-	if (check_config) {
-		pool->start = pool->min = pool->max = 1;
-		return pool;
-	}
+	if (check_config) pool->start = pool->min = pool->max = 1;
 
 	return pool;
 }
