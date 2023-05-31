@@ -77,6 +77,7 @@ rewrite_called_station_id {
 	if (&Called-Station-Id && (&Called-Station-Id =~ /^${policy.mac-addr-regexp}([^0-9a-f](.+))?$/i)) {
 		update request {
 			&Called-Station-Id := "%{toupper:%{1}-%{2}-%{3}-%{4}-%{5}-%{6}}"
+			&Called-Station-MAC := "0x%{toupper:%{1}%{2}%{3}%{4}%{5}%{6}}"
 		}
 
 		# SSID component?
