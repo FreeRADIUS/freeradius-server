@@ -46,7 +46,7 @@ krb5 {
 		#  Set to `0` to allow the server to start without the
 		#  KDC being available.
 		#
-		start = ${thread[pool].num_workers}
+		start = 0
 
 		#
 		#  min:: Minimum number of connections to keep open.

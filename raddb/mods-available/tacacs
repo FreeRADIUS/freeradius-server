@@ -125,7 +125,7 @@ tacacs {
 		#
 		#  Set to `0` to allow the server to start without the database being available.
 		#
-		start = 1
+		start = 0
 
 		#
 		#  min:: Minimum number of connections to keep open.
