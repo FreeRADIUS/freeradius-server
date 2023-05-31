@@ -324,9 +324,9 @@ cache {
 #	memcached {
 #		options = "--SERVER=localhost"
 #		pool {
-#			start = ${thread[pool].num_workers}
-#			min = ${thread[pool].num_workers}
-#			max = ${thread[pool].num_workers}
+#		  start = 0
+#		  min = 0
+#		  max =
 #			spare = 1
 #			uses = 0
 #			lifetime = 0
@@ -339,9 +339,9 @@ cache {
 #		password = 'supersecret'
 #		database = 0
 #		pool {
-#			start = ${thread[pool].num_workers}
-#			min = ${thread[pool].num_workers}
-#			max = ${thread[pool].num_workers}
+#		  start = 0
+#		  min = 0
+#		  max =
 #			spare = 1
 #			uses = 0
 #			lifetime = 0

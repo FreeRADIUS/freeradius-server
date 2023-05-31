@@ -39,6 +39,7 @@ RCSID("$Id$")
 typedef struct fr_pool_connection_s fr_pool_connection_t;
 
 static int connection_check(fr_pool_t *pool, request_t *request);
+static int max_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule);
 
 /** An individual connection within the connection pool
  *
@@ -150,7 +151,7 @@ struct fr_pool_s {
 static const CONF_PARSER pool_config[] = {
 	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, fr_pool_t, start), .dflt = "5" },
 	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, fr_pool_t, min), .dflt = "5" },
-	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, fr_pool_t, max), .dflt = "10" },
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, fr_pool_t, max), .dflt_func = max_dflt },
 	{ FR_CONF_OFFSET("max_pending", FR_TYPE_UINT32, fr_pool_t, max_pending), .dflt = "0" },
 	{ FR_CONF_OFFSET("spare", FR_TYPE_UINT32, fr_pool_t, spare), .dflt = "3" },
 	{ FR_CONF_OFFSET("uses", FR_TYPE_UINT64, fr_pool_t, max_uses), .dflt = "0" },
@@ -164,6 +165,17 @@ static const CONF_PARSER pool_config[] = {
 	{ FR_CONF_OFFSET("spread", FR_TYPE_BOOL, fr_pool_t, spread), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
+
+static int max_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+{
+	char		*strvalue;
+
+	strvalue = talloc_asprintf(NULL, "%u", main_config->max_workers);
+	*out = cf_pair_alloc(cs, rule->name, strvalue, T_OP_EQ, T_BARE_WORD, quote);
+	talloc_free(strvalue);
+
+	return 0;
+}
 
 /** Order connections by reserved most recently
  */

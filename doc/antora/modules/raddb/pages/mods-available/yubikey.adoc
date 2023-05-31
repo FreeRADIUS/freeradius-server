@@ -274,9 +274,9 @@ yubikey {
 #		client_id = 00000
 #		api_key = '000000000000000000000000'
 		pool {
-			start = ${thread[pool].num_workers}
-			min = ${thread[pool].num_workers}
-			max = ${thread[pool].num_workers}
+		  start = 0
+		  min = 0
+#		  max =
 			uses = 0
 			retry_delay = 30
 			lifetime = 86400

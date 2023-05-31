@@ -44,14 +44,14 @@ krb5 {
 		#  If the server cannot create specified number of
 		#  connections during instantiation it will exit.
 		#  Set to `0` to allow the server to start without the
-		#  KDC being available.
+		#  external service being available.
 		#
 		start = 0
 
 		#
 		#  min:: Minimum number of connections to keep open.
 		#
-		min = ${thread[pool].num_workers}
+		min = 0
 
 		#
 		#  max:: Maximum number of connections.
@@ -66,7 +66,10 @@ krb5 {
 		#  Setting `max` to MORE than the number of threads means
 		#  that there are more connections than necessary.
 		#
-		max = ${thread[pool].num_workers}
+		#  If `max` is not specified, then it defaults to the number
+		#  of workers configured.
+		#
+#		max =
 
 		#
 		#  spare:: Spare connections to be left idle.

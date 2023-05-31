@@ -156,8 +156,8 @@ redis_ippool {
 
 		pool {
 			start = 0
-			min = ${thread[pool].num_workers}
-			max = ${thread[pool].num_workers}
+			min = 0
+#			max = 1
 			spare = 1
 			uses = 0
 			lifetime = 0

@@ -243,9 +243,9 @@ couchbase {
 		}
 	}
 	pool {
-		start = ${thread[pool].num_workers}
-		min = ${thread[pool].num_workers}
-		max = ${thread[pool].num_workers}
+		start = 0
+		min = 0
+#		max =
 		spare = 1
 		uses = 0
 		lifetime = 0

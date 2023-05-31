@@ -93,7 +93,7 @@ sql cuisql {
 	pool {
 		start = 5
 		min = 4
-		max = 10
+#		max =
 		spare = 3
 		uses = 0
 		lifetime = 0
