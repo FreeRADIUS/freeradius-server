@@ -298,13 +298,14 @@ finish:
  * The pair created by this function should fed to #cf_pair_parse for parsing.
  *
  * @param[out] out	Where to write the CONF_PAIR we created with the default value.
+ * @param[in] parent	being populated.
  * @param[in] cs	to parent the CONF_PAIR from.
  * @param[in] rule	to use to create the default.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, CONF_PARSER const *rule)
+static int cf_pair_default(CONF_PAIR **out, void *parent, CONF_SECTION *cs, CONF_PARSER const *rule)
 
 {
 	int		lineno = 0;
@@ -338,7 +339,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, CONF_PARSER const 
 	 *	Use the dynamic default function if set
 	 */
 	if (rule->dflt_func) {
-		if (rule->dflt_func(out, cs, dflt_quote, rule) < 0) {
+		if (rule->dflt_func(out, parent, cs, dflt_quote, rule) < 0) {
 			cf_log_perr(cs, "Failed producing default for \"%s\"", rule->name);
 			return -1;
 		}
@@ -437,7 +438,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 				return 1;
 			}
 
-			if (cf_pair_default(&dflt_cp, cs, rule) < 0) return -1;
+			if (cf_pair_default(&dflt_cp, base, cs, rule) < 0) return -1;
 			count = cf_pair_count(cs, rule->name);	/* Dynamic functions can add multiple defaults */
 			if (!count) {
 				if (fr_rule_not_empty(rule)) {
@@ -535,7 +536,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 				return 1;
 			}
 
-			if (cf_pair_default(&dflt_cp, cs, rule) < 0) return -1;
+			if (cf_pair_default(&dflt_cp, base, cs, rule) < 0) return -1;
 			cp = dflt_cp;
 			if (!cp) {
 				if (fr_rule_not_empty(rule)) {

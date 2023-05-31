@@ -445,6 +445,7 @@ typedef int (*cf_parse_t)(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *c
 /** Callback for producing dynamic defaults from 3rd party libraries
  *
  * @param[out] out	Where to write default conf pair.
+ * @param[in] parent	being populated.
  * @param[in] cs	to allocate pair in.
  * @param[in] quote	to use when allocing the pair.  Provided as a convenience.
  * @param[in] rule	to produce default for.
@@ -452,7 +453,7 @@ typedef int (*cf_parse_t)(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *c
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*cf_dflt_t)(CONF_PAIR **out, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule);
+typedef int (*cf_dflt_t)(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule);
 
 /** Defines a #CONF_PAIR to C data type mapping
  *
