@@ -17510,6 +17510,9 @@ done
 case "$target" in
   *-darwin*)
     echo "Please be sure to use 'xcrun gmake' or 'xcrun lldb' in order to build and run the server from the source tree"
+                                                if test "x$target_cpu" = "xaarch64" -a "x$WITH_OPENSSL" = "xyes"; then
+      echo "If debugging with lldb 'echo -e \"set platform.plugin.darwin.ignored-exceptions EXC_BAD_INSTRUCTION\\\nprocess handle SIGILL -n false -p true -s false\" >> ~/.lldbinit'"
+    fi
     ;;
 
   *)

@@ -2645,6 +2645,20 @@ dnl #
 case "$target" in
   *-darwin*)
     echo "Please be sure to use 'xcrun gmake' or 'xcrun lldb' in order to build and run the server from the source tree"
+    dnl #
+    dnl #  OpenSSL >= 3.0 uses instruction probing to look for extensions
+    dnl #  Unfortunately Apple ARM CPUs don't support these instructions
+    dnl #  and LLDB throws an EXC_BAD_INSTRUCTION exception.
+    dnl #
+    dnl #  OpenSSL installs a SIGILL handler to catch the signal but this
+    dnl #  is also overriden by lldb.
+    dnl #
+    dnl #  To allow us to debug on macOS + LLDB + ARM we need to ignore
+    dnl #  this exception and ignore SIGILL.
+    dnl #
+    if test "x$target_cpu" = "xaarch64" -a "x$WITH_OPENSSL" = "xyes"; then
+      echo "If debugging with lldb 'echo -e \"set platform.plugin.darwin.ignored-exceptions EXC_BAD_INSTRUCTION\\\nprocess handle SIGILL -n false -p true -s false\" >> ~/.lldbinit'"
+    fi
     ;;
 
   *)
