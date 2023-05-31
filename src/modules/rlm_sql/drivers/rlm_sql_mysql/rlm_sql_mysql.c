@@ -99,6 +99,7 @@ typedef struct rlm_sql_mysql_config {
 						///< cert and one of the CAs we have configured.
 	bool		tls_check_cert_cn;	//!< Verify that the CN in the server cert matches the host
 						///< we passed to mysql_real_connect().
+	bool		enabled_compression;   //!< Enable compression.
 
 	char const	*warnings_str;		//!< Whether we always query the server for additional warnings.
 	rlm_sql_mysql_warnings	warnings;	//!< mysql_warning_count() doesn't
@@ -135,6 +136,7 @@ static CONF_PARSER tls_config[] = {
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_mysql_config_t, tls_check_cert_cn), "no" },
 #  endif
 #endif
+	{ "enabled_compression", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_mysql_config_t, enabled_compression), "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -340,7 +342,12 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		mysql_options(&(conn->db), MYSQL_OPT_READ_TIMEOUT, &read_timeout);
 		mysql_options(&(conn->db), MYSQL_OPT_WRITE_TIMEOUT, &write_timeout);
 	}
+
 #endif
+
+	if (driver->enabled_compression) {
+		mysql_options(&(conn->db), MYSQL_OPT_COMPRESS, NULL);
+	}
 
 #if (MYSQL_VERSION_ID >= 40100)
 	sql_flags = CLIENT_MULTI_RESULTS | CLIENT_FOUND_ROWS;
