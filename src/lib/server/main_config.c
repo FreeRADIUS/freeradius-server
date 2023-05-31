@@ -453,6 +453,10 @@ static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_
 	main_config_t	*conf = parent;
 
 	value = fr_hw_num_cores_active();
+	if (value < 0) {
+		cf_log_pwarn(parent, "Failed retrieving core count, defaulting to 1 worker");
+		value = 1;
+	}
 
 	/*
 	 *	If we've got more than four times

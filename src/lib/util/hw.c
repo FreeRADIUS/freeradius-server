@@ -25,6 +25,9 @@
 #define CORES_DEFAULT		1
 
 #include <freeradius-devel/util/hw.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/strerror.h>
+#include <errno.h>
 
 #if defined(__APPLE__) || defined(__FreeBSD__)
 #include <sys/sysctl.h>
@@ -96,13 +99,16 @@ uint32_t fr_hw_num_cores_active(void)
 	 *	You'd think this'd be enough to quiet clang scan,
 	 *	but it's not.
 	 */
-	if (unlikely((tsibs == 0) || (lcores == 0) || (lcores > tsibs))) return 1;
+	if (unlikely((tsibs == 0) || (lcores == 0) || (lcores > tsibs))) {
+		fr_strerror_printf("Failed retrieving cpu topology info: %s", fr_syserror(errno));
+		return -1;
+	}
 
 #ifdef STATIC_ANALYZER
 	/*
 	 *	Prevent static analyzer from warning about divide by zero
 	 */
-	if ((tsibs / lcores) == 0) return 1;
+	if ((tsibs / lcores) == 0) return -1;
 #endif
 
 	return lcores / (tsibs / lcores);
