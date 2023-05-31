@@ -75,7 +75,7 @@ sql cuisql {
 	#  pool { ... }:: persistent connections to external resources.
 	#
 	pool {
-		start = 5
+		start = 0
 		min = 4
 		max = 10
 		spare = 3

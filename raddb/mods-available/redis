@@ -109,7 +109,7 @@ redis {
 		#  Set to `0` to allow the server to start without the web service
 		#  being available.
 		#
-		start = ${thread[pool].num_workers}
+		start = 0
 
 		#
 		#  min:: Minimum number of connections to keep open.

@@ -76,7 +76,7 @@ cache {
 		#  pool:: Connection pool.
 		#
 #		pool {
-#			start = ${thread[pool].num_workers}
+#			start = 0
 #			min = ${thread[pool].num_workers}
 #			max = ${thread[pool].num_workers}
 #			spare = 1
@@ -131,7 +131,7 @@ cache {
 		#  pool:: Connection pool.
 		#
 #		pool {
-#			start = ${thread[pool].num_workers}
+#			start = 0
 #			min = ${thread[pool].num_workers}
 #			max = ${thread[pool].num_workers}
 #			spare = 1

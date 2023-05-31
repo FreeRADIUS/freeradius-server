@@ -209,7 +209,7 @@ mschap {
 		#  Set to 0 to allow the server to start without the
 		#  winbind daemon being available.
 		#
-		start = ${thread[pool].num_workers}
+		start = 0
 
 		#
 		#  min::
