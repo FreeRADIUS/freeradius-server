@@ -291,7 +291,7 @@ static void tls_mutexes_destroy(void)
 #ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 	int i, num;
 
-	rad_assert(ssl_mutex != NULL);
+	rad_assert(ssl_mutexes != NULL);
 
 	num = CRYPTO_num_locks();
 
