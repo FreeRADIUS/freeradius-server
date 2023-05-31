@@ -199,7 +199,7 @@ static int kafka_config_dflt_single(CONF_PAIR **out, CONF_SECTION *cs, char cons
  *	- 0 on success.
  *      - -1 on failure.
  */
-static int kafka_config_dflt(CONF_PAIR **out, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+static int kafka_config_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
 {
 	char				buff[1024];
 	size_t				buff_len = sizeof(buff);
@@ -280,7 +280,7 @@ static int kafka_config_dflt(CONF_PAIR **out, CONF_SECTION *cs, fr_token_t quote
  *	- 0 on success.
  *      - -1 on failure.
  */
-static int kafka_topic_config_dflt(CONF_PAIR **out, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+static int kafka_topic_config_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
 {
 	char				buff[1024];
 	size_t				buff_len = sizeof(buff);
