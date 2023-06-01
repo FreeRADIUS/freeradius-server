@@ -367,8 +367,11 @@ static uint16_t get_chunk(uint8_t const *key, int start_bit, int num_bits)
 	if (start_bit == 0) {
 		if (num_bits < 7) return key[0] >> (8 - num_bits);
 		if (num_bits == 8) return key[0];
-		if (num_bits == 16) return (key[0] << 8) | key[1];
-		return ((key[0] << 8) | key[1]) >> (16 - num_bits);
+
+		chunk = (key[0] << 8) | key[1];
+		if (num_bits < 16) chunk >>= (16 - num_bits);
+		fr_cond_assert(chunk < (1 << num_bits));
+		return chunk;
 	}
 
 	/*
@@ -1147,7 +1150,6 @@ static void *trie_node_match(fr_trie_t *trie, uint8_t const *key, int start_bit,
 	fr_trie_node_t *node = (fr_trie_node_t *) trie;
 
 	chunk = get_chunk(key, start_bit, node->bits);
-	/* coverity[tainted_data] */
 	if (!node->trie[chunk]) {
 		MPRINT2("no match for node chunk %02x at %d\n", chunk, __LINE__);
 		return NULL;
@@ -1385,7 +1387,6 @@ static int trie_node_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *
 	 *	No existing trie, create a brand new trie from
 	 *	the key.
 	 */
-	/* coverity[tainted_data] */
 	if (!node->trie[chunk]) {
 		node->trie[chunk] = trie_key_alloc(ctx, key, start_bit + node->bits, end_bit, data);
 		if (!node->trie[chunk]) {
@@ -1940,7 +1941,6 @@ static void *trie_node_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const
 	void *data;
 
 	chunk = get_chunk(key, start_bit, node->bits);
-	/* coverity[tainted_data] */
 	if (!node->trie[chunk]) return NULL;
 
 	data = trie_key_remove(ctx, &node->trie[chunk], key, start_bit + node->bits, end_bit);
