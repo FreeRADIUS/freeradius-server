@@ -71,7 +71,10 @@ ATTRIBUTE	Ruckus-Client-Host-Name			138	string
 ATTRIBUTE	Ruckus-Client-Os-Type			139	string
 ATTRIBUTE	Ruckus-Client-Os-Class			140	string
 ATTRIBUTE	Ruckus-Vlan-Pool			141	string
-ATTRIBUTE	Ruckus-Dpsk				142	octets
+
+# 0x00 + (PBKDF2(HMAC−SHA1, passphrase, ssid, 4096, 256))
+# for a length of 33 octets.
+ATTRIBUTE	Ruckus-DPSK				142	octets
 ATTRIBUTE	Ruckus-CP-Token				143	string
 ATTRIBUTE	Ruckus-Max-DL-UL-Quota			144	integer
 ATTRIBUTE	Ruckus-Traffic-Class-Attribute-Ids	145	string
