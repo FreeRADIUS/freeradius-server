@@ -1342,14 +1342,14 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	udp = (udp_header_t const *)p;
 	{
 		uint16_t udp_len;
-		ssize_t diff;
+		ssize_t actual_len;
 
 		udp_len = ntohs(udp->len);
-		diff = udp_len - (header->caplen - (p - data));
+		actual_len = header->caplen - (p - data);
 		/* Truncated data */
-		if (diff > 0) {
+		if (udp_len > actual_len) {
 			REDEBUG("Packet too small by %zi bytes, UDP header + Payload should be %hu bytes",
-				diff, udp_len);
+				udp_len - actual_len, udp_len);
 			return;
 		}
 
@@ -1362,16 +1362,15 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	Leaving the code here in case it's ever needed for
 		 *	debugging.
 		 */
-		else if (diff < 0) {
+		else if (udp_len < actual_len) {
 			REDEBUG("Packet too big by %zi bytes, UDP header + Payload should be %hu bytes",
-				diff * -1, udp_len);
+				actual_len - udp_len, udp_len);
 			return;
 		}
 #endif
 		if ((version == 4) && conf->verify_udp_checksum) {
 			uint16_t expected;
 
-			/* coverity[tainted_data] */
 			expected = fr_udp_checksum((uint8_t const *) udp, udp_len, udp->checksum,
 						   ip->ip_src, ip->ip_dst);
 			if (udp->checksum != expected) {
