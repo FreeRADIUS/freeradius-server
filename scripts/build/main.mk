@@ -1,4 +1,5 @@
 SUBMAKEFILES := \
 	../../src/include/all.mk \
-	dlopen.mk \
-	version.mk
+	make/dlopen.mk \
+	make/version.mk \
+	make/util.mk

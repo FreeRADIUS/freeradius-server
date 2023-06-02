@@ -194,9 +194,9 @@ static char *make_version_eq(char const *nm, unsigned int argc, char **argv)
 }
 int version_gmk_setup(void)
 {
-	gmk_add_function("version_gt", &make_version_gt, 2, 2, 0); /* min 1, max 1, please expand the input string */
-	gmk_add_function("version_lt", &make_version_lt, 2, 2, 0); /* min 1, max 1, please expand the input string */
-	gmk_add_function("version_eq", &make_version_eq, 2, 2, 0); /* min 1, max 1, please expand the input string */
+	gmk_add_function("version_gt", &make_version_gt, 2, 2, 0); /* min 2, max 2, please expand the input string */
+	gmk_add_function("version_lt", &make_version_lt, 2, 2, 0); /* min 2, max 2, please expand the input string */
+	gmk_add_function("version_eq", &make_version_eq, 2, 2, 0); /* min 2, max 2, please expand the input string */
 
 	return 1;
 }

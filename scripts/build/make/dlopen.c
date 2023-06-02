@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file build/dlopen.c
+ * @file build/make/dlopen.c
  * @brief GNU make plugin to run dlopen()
  *
  * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)

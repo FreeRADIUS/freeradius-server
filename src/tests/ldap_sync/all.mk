@@ -9,7 +9,7 @@ TEST := test.ldap_sync
 FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*/all.mk))
 
 define LDAP_FILTER
-ifeq "$($(shell echo ${1} | tr a-z A-Z)_TEST_SERVER)" ""
+ifeq "$($(toupper ${1})_TEST_SERVER)" ""
   FILES_SKIP += ${2}
 endif
 endef

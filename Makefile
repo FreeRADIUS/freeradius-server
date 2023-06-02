@@ -155,11 +155,12 @@ build/autoconf.mk: src/include/autoconf.h
           ifdef BUILD_MAKE_LIBS
             define n
           endef
-          $(info $(subst CC,$nCC,$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.${BUILD_LIB_EXT} libfreeradius-make-version.${BUILD_LIB_EXT})))
+          $(info $(subst CC,$nCC,$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.${BUILD_LIB_EXT} libfreeradius-make-version.${BUILD_LIB_EXT} libfreeradius-make-util.${BUILD_LIB_EXT})))
         endif
 
         load build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT}(dlopen_gmk_setup)
         load build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT}(version_gmk_setup)
+        load build/lib/.libs/libfreeradius-make-util.${BUILD_LIB_EXT}(util_gmk_setup)
       else
         BUILD_DIR:=${top_srcdir}/build
         top_builddir:=${top_srcdir}/scripts/build
