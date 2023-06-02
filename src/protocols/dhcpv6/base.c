@@ -881,12 +881,11 @@ static void dhcpv6_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len,
 		fprintf(fp, "%.*s", depth + 1, tabs);
 		fprintf(fp, "%04x %04x\t", fr_nbo_to_uint16(option), length);
 
-		if ((option + 4 + length) > end) {
+		if (length > end - (option + 4)) {
 			print_hex_data(fp, option + 4, end - (option + 4), depth + 3);
 			break;
 		}
 
-		/* coverity[tainted_data] */
 		print_hex_data(fp, option + 4, length, depth + 3);
 		if ((option[0] == 0) && (option[1] == attr_relay_message->attr)) {
 			dhcpv6_print_hex(fp, option + 4, length, depth + 2);
