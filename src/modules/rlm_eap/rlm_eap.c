@@ -569,10 +569,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *reque
 	vp = fr_pair_find_by_num(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	if (!vp) return RLM_MODULE_NOOP;
 
-	if (vp->vp_length < 4) return RLM_MODULE_NOOP;
-
-	if ((vp->vp_octets[0] == 0) ||( vp->vp_octets[0] > 6)) {
-		RDEBUG("EAP header byte zero has invalid value");
+	if (vp->vp_length < 4) {
+		RDEBUG("EAP packet is too small");
 
 	add_error_cause:
 		/*
@@ -582,21 +580,22 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *reque
 		return RLM_MODULE_REJECT;
 	}
 
+	/*
+	 *	Allow only valid EAP packet codes.  Of these, only
+	 *	Request should be used.  But we will allow more just
+	 *	in case there are future protocol changes.
+	 */
+	if ((vp->vp_octets[0] == 0) ||( vp->vp_octets[0] > 6)) {
+		RDEBUG("EAP header byte zero has invalid value");
+
+	}
+
+	/*
+	 *	The length field has to match the length of EAP-Message.
+	 */
 	length = (vp->vp_octets[2] << 8) | vp->vp_octets[3];
 	if (length != vp->vp_length) {
 		RDEBUG("EAP length does not match attribute length");
-		return RLM_MODULE_REJECT;
-	}
-
-	if (vp->vp_octets[0] != PW_EAP_REQUEST) return RLM_MODULE_NOOP;
-	if (!inst->max_eap_type) return RLM_MODULE_NOOP;
-
-	if (vp->vp_length < 5) return RLM_MODULE_NOOP;
-
-	if (vp->vp_octets[4] == 254) return RLM_MODULE_NOOP; /* allow extended types */
-
-	if (vp->vp_octets[4] > inst->max_eap_type) {
-		RDEBUG("EAP method %u is too large", vp->vp_octets[4]);
 		goto add_error_cause;
 	}
 
