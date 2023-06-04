@@ -5,7 +5,7 @@
 -- that is much faster.
 --
 
-CREATE TABLE dhcpippool (
+CREATE TABLE IF NOT EXISTS dhcpippool (
 	id			int unsigned NOT NULL auto_increment,
 	pool_name		varchar(30) NOT NULL,
 	framedipaddress		varchar(15) NOT NULL default '',

@@ -3,7 +3,7 @@
 # which replaces the "radpostauth" table.
 #
 
-CREATE TABLE wimax (
+CREATE TABLE IF NOT EXISTS wimax (
   id int(11) NOT NULL auto_increment,
   username varchar(64) NOT NULL default '',
   authdate timestamp NOT NULL,

@@ -45,7 +45,7 @@
 --      +----------------+----------------+-----------------+
 --      7 rows in set (0.000 sec)
 --
-CREATE TABLE data_usage_by_period (
+CREATE TABLE IF NOT EXISTS data_usage_by_period (
     username VARCHAR(64),
     period_start DATETIME,
     period_end DATETIME,
