@@ -1,0 +1,68 @@
+#
+#  No proxy-state attributes
+#
+subrequest RADIUS.Access-Request {
+	&User-Name = "bob"
+	&User-Password = "hello"
+
+	call radius {}
+
+	if (!(&reply.Packet-Type == Access-Accept)) {
+		test_fail
+	}
+
+	# We shouldnt magically acquire new proxy state values
+	if (&reply.Proxy-State) {
+		test_fail
+	}
+}
+
+#
+#  One proxy state-attribute
+#
+subrequest RADIUS.Access-Request {
+	&User-Name = "bob"
+	&User-Password = "hello"
+	&Proxy-State := { 0x01 }
+
+	call radius {}
+
+	if (!(&reply.Packet-Type == Access-Accept)) {
+		test_fail
+	}
+
+	if (!(&reply.Proxy-State[0] == 0x01)) {
+		test_fail
+	}
+
+	if (&reply.Proxy-State[1]) {
+		test_fail
+	}
+}
+
+#
+#  Two proxy state-attributes
+#
+subrequest RADIUS.Access-Request {
+	&User-Name = "bob"
+	&User-Password = "hello"
+	&Proxy-State := { 0x01, 0x02 }
+
+	call radius {}
+
+	if (!(&reply.Packet-Type == Access-Accept)) {
+		test_fail
+	}
+
+	if (!(&reply.Proxy-State[0] == 0x01)) {
+		test_fail
+	}
+
+	if (!(&reply.Proxy-State[1] == 0x02)) {
+		test_fail
+	}
+
+	if (&reply.Proxy-State[2]) {
+		test_fail
+	}
+}
