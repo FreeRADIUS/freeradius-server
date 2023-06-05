@@ -61,10 +61,14 @@ typedef enum {
 	LINELOG_DST_UNIX,				//!< Log via Unix socket.
 	LINELOG_DST_UDP,				//!< Log via UDP.
 	LINELOG_DST_TCP,				//!< Log via TCP.
+	LINELOG_DST_STDOUT,				//!< Log to stdout.
+	LINELOG_DST_STDERR,				//!< Log to stderr.
 } linefr_log_dst_t;
 
 static fr_table_num_sorted_t const linefr_log_dst_table[] = {
 	{ L("file"),	LINELOG_DST_FILE	},
+	{ L("stderr"),	LINELOG_DST_STDERR	},
+	{ L("stdout"),	LINELOG_DST_STDOUT	},
 	{ L("syslog"),	LINELOG_DST_SYSLOG	},
 	{ L("tcp"),	LINELOG_DST_TCP		},
 	{ L("udp"),	LINELOG_DST_UDP		},
@@ -242,6 +246,8 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
 	case LINELOG_DST_INVALID:
 	case LINELOG_DST_FILE:
 	case LINELOG_DST_SYSLOG:
+	case LINELOG_DST_STDOUT:
+	case LINELOG_DST_STDERR:
 		fr_assert(0);
 		return NULL;
 	}
@@ -505,6 +511,19 @@ static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct i
 	}
 		break;
 #endif
+
+	case LINELOG_DST_STDOUT:
+	case LINELOG_DST_STDERR:
+	{
+		int fd = inst->log_dst == LINELOG_DST_STDOUT ? STDOUT_FILENO : STDERR_FILENO;
+		if ((ret = writev(fd, vector_p, vector_len)) < 0) {
+			RERROR("Failed writing to \"%s\": %s",
+			       fr_table_str_by_value(linefr_log_dst_table, inst->log_dst, NULL),
+			       fr_syserror(errno));
+		}
+	}
+		break;
+
 	case LINELOG_DST_INVALID:
 		fr_assert(0);
 		ret = -1;
@@ -884,6 +903,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		inst->pool = module_rlm_connection_pool_init(cf_section_find(conf, "tcp", NULL),
 							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
 		if (!inst->pool) return -1;
+		break;
+
+	case LINELOG_DST_STDOUT:
+	case LINELOG_DST_STDERR:
 		break;
 
 	case LINELOG_DST_INVALID:
