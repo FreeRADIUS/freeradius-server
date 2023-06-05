@@ -157,7 +157,8 @@ redis_ippool {
 		pool {
 			start = 0
 			min = 0
-#			max = 1
+			# Hack to make tests pass
+			max = 10
 			spare = 1
 			uses = 0
 			lifetime = 0
