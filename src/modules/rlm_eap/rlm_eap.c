@@ -560,11 +560,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 
 #ifdef WITH_PROXY
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*vp;
 	size_t		length;
-	rlm_eap_t	*inst = instance;
 
 	vp = fr_pair_find_by_num(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	if (!vp) return RLM_MODULE_NOOP;
@@ -578,16 +577,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *reque
 		 */
 		pair_make_reply("Error-Cause", "202", T_OP_EQ);
 		return RLM_MODULE_REJECT;
-	}
-
-	/*
-	 *	Allow only valid EAP packet codes.  Of these, only
-	 *	Request should be used.  But we will allow more just
-	 *	in case there are future protocol changes.
-	 */
-	if ((vp->vp_octets[0] == 0) ||( vp->vp_octets[0] > 6)) {
-		RDEBUG("EAP header byte zero has invalid value");
-
 	}
 
 	/*
