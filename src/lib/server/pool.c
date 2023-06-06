@@ -149,8 +149,8 @@ struct fr_pool_s {
 };
 
 static const CONF_PARSER pool_config[] = {
-	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, fr_pool_t, start), .dflt = "5" },
-	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, fr_pool_t, min), .dflt = "5" },
+	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, fr_pool_t, start), .dflt = "0" },
+	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, fr_pool_t, min), .dflt = "0" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, fr_pool_t, max), .dflt_func = max_dflt },
 	{ FR_CONF_OFFSET("max_pending", FR_TYPE_UINT32, fr_pool_t, max_pending), .dflt = "0" },
 	{ FR_CONF_OFFSET("spare", FR_TYPE_UINT32, fr_pool_t, spare), .dflt = "3" },
