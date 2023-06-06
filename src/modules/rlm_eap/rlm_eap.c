@@ -563,7 +563,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*vp;
-	size_t		length;
+	size_t		length, eap_length;
 
 	vp = fr_pair_find_by_num(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	if (!vp) return RLM_MODULE_NOOP;
@@ -580,10 +580,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance, REQUEST
 	}
 
 	/*
-	 *	The length field has to match the length of EAP-Message.
+	 *	The length field has to match the length of all EAP-Messages.
 	 */
 	length = (vp->vp_octets[2] << 8) | vp->vp_octets[3];
-	if (length != vp->vp_length) {
+
+	/*
+	 *	Get length of all EAP-Message attributes
+	 */
+	for (eap_length = 0; vp != NULL; vp = vp->next) {
+		eap_length += vp->vp_length;
+	}
+
+	if (length != eap_length) {
 		RDEBUG("EAP length does not match attribute length");
 		goto add_error_cause;
 	}
