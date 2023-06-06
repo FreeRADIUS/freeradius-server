@@ -556,6 +556,7 @@ static inline CC_HINT(nonnull(2))
 fr_value_box_t *fr_value_box_acopy(TALLOC_CTX *ctx, fr_value_box_t const *src)
 {
 	fr_value_box_t *vb = fr_value_box_alloc_null(ctx);
+	if (unlikely(!vb)) return NULL;
 
 	if ((unlikely(fr_value_box_copy(vb, vb, src) < 0))) {
 		talloc_free(vb);
