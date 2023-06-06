@@ -34,3 +34,4 @@ Proxy-State = 0x323531
 #  Expected answer
 #
 Packet-Type == Access-Accept
+Proxy-State == 0x323531
