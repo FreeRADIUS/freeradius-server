@@ -3020,11 +3020,9 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		 *	FIXME: connect() is blocking!
 		 *	We do this with the proxy mutex locked, which may
 		 *	cause large delays!
-		 *
-		 *	http://www.developerweb.net/forum/showthread.php?p=13486
 		 */
 		this->fd = fr_socket_client_tcp(&home->src_ipaddr,
-						&home->ipaddr, home->port, false);
+						&home->ipaddr, home->port, !this->nonblock);
 
 		/*
 		 *	Set max_requests, lifetime, and idle_timeout from the home server.
