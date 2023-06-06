@@ -437,11 +437,11 @@ RECV(generic_radius_request)
 /** A wrapper around send generic which restores fields
  *
  */
-SEND(generic_radius_response)
+RESUME(generic_radius_response)
 {
 	if (mctx->rctx) radius_request_pairs_to_reply(request, talloc_get_type_abort(mctx->rctx, process_radius_request_pairs_t));
 
-	return CALL_SEND(generic);
+	return CALL_RESUME(send_generic);
 }
 
 RECV(access_request)
@@ -699,6 +699,7 @@ RESUME(access_accept)
 	}
 
 	fr_state_discard(inst->auth.state_tree, request);
+	radius_request_pairs_to_reply(request, mctx->rctx);
 	RETURN_MODULE_OK;
 }
 
@@ -717,6 +718,7 @@ RESUME(access_reject)
 	}
 
 	fr_state_discard(inst->auth.state_tree, request);
+	radius_request_pairs_to_reply(request, mctx->rctx);
 	RETURN_MODULE_OK;
 }
 
@@ -736,6 +738,7 @@ RESUME(access_challenge)
 	}
 
 	fr_assert(request->reply->code == FR_RADIUS_CODE_ACCESS_CHALLENGE);
+	radius_request_pairs_to_reply(request, mctx->rctx);
 	RETURN_MODULE_OK;
 }
 
@@ -782,7 +785,7 @@ RESUME(accounting_request)
 	rlm_rcode_t			rcode = *p_result;
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
-	fr_dict_enum_value_t const		*dv;
+	fr_dict_enum_value_t const	*dv;
 	fr_process_state_t const	*state;
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
 
@@ -950,7 +953,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.send = send_generic_radius_response,
+		.send = send_generic,
 		.resume = resume_access_accept,
 		.section_offset = offsetof(process_radius_sections_t, access_accept),
 	},
@@ -962,7 +965,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.send = send_generic_radius_response,
+		.send = send_generic,
 		.resume = resume_access_reject,
 		.section_offset = offsetof(process_radius_sections_t, access_reject),
 	},
@@ -974,7 +977,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.send = send_generic_radius_response,
+		.send = send_generic,
 		.resume = resume_access_challenge,
 		.section_offset = offsetof(process_radius_sections_t, access_challenge),
 	},
@@ -1006,8 +1009,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.send = send_generic_radius_response,
-		.resume = resume_send_generic,
+		.send = send_generic,
+		.resume = resume_generic_radius_response,
 		.section_offset = offsetof(process_radius_sections_t, accounting_response),
 	},
 	[ FR_RADIUS_CODE_STATUS_SERVER ] = { /* @todo - negotiation, stats, etc. */
@@ -1052,8 +1055,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_COA_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.send = send_generic_radius_response,
-		.resume = resume_send_generic,
+		.send = send_generic,
+		.resume = resume_generic_radius_response,
 		.section_offset = offsetof(process_radius_sections_t, coa_ack),
 	},
 	[ FR_RADIUS_CODE_COA_NAK ] = {
@@ -1065,7 +1068,7 @@ static fr_process_state_t const process_state[] = {
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
-		.resume = resume_send_generic,
+		.resume = resume_generic_radius_response,
 		.section_offset = offsetof(process_radius_sections_t, coa_nak),
 	},
 	[ FR_RADIUS_CODE_DISCONNECT_REQUEST ] = {
@@ -1081,8 +1084,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DISCONNECT_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.recv = recv_generic_radius_request,
-		.resume = resume_recv_generic,
+		.send = send_generic,
+		.resume = resume_generic_radius_response,
 		.section_offset = offsetof(process_radius_sections_t, disconnect_request),
 	},
 	[ FR_RADIUS_CODE_DISCONNECT_ACK ] = {
@@ -1093,8 +1096,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DISCONNECT_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.send = send_generic_radius_response,
-		.resume = resume_send_generic,
+		.send = send_generic,
+		.resume = resume_generic_radius_response,
 		.section_offset = offsetof(process_radius_sections_t, disconnect_ack),
 	},
 	[ FR_RADIUS_CODE_DISCONNECT_NAK ] = {
@@ -1105,8 +1108,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DISCONNECT_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.send = send_generic_radius_response,
-		.resume = resume_send_generic,
+		.send = send_generic,
+		.resume = resume_generic_radius_response,
 		.section_offset = offsetof(process_radius_sections_t, disconnect_nak),
 	},
 	[ FR_RADIUS_CODE_PROTOCOL_ERROR ] = { /* @todo - fill out required fields */
