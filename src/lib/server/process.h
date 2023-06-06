@@ -128,8 +128,6 @@ do { \
 #define RECV(_x) static inline unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 #define SEND(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 #define RESUME(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define SEND_NO_RCTX(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define RESUME_NO_RCTX(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 #define RESUME_NO_MCTX(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 
 /** Call a named recv function directly

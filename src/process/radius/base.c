@@ -669,7 +669,7 @@ RESUME(auth_type)
 	return state->send(p_result, mctx, request);
 }
 
-RESUME_NO_RCTX(access_accept)
+RESUME(access_accept)
 {
 	fr_pair_t			*vp;
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
@@ -702,7 +702,7 @@ RESUME_NO_RCTX(access_accept)
 	RETURN_MODULE_OK;
 }
 
-RESUME_NO_RCTX(access_reject)
+RESUME(access_reject)
 {
 	fr_pair_t			*vp;
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);

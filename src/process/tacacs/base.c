@@ -745,7 +745,7 @@ RESUME(auth_type)
 	return state->send(p_result, mctx, request);
 }
 
-RESUME_NO_RCTX(auth_pass)
+RESUME(auth_pass)
 {
 	fr_pair_t			*vp;
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
@@ -765,7 +765,7 @@ RESUME_NO_RCTX(auth_pass)
 	RETURN_MODULE_OK;
 }
 
-RESUME_NO_RCTX(auth_fail)
+RESUME(auth_fail)
 {
 	fr_pair_t			*vp;
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
@@ -786,7 +786,7 @@ RESUME_NO_RCTX(auth_fail)
 	RETURN_MODULE_OK;
 }
 
-RESUME_NO_RCTX(auth_restart)
+RESUME(auth_restart)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
 
