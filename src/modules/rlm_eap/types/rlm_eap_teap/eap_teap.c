@@ -1016,8 +1016,6 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	}
 
 	if (t->stage == AUTHENTICATION) {
-		VALUE_PAIR *tvp;
-
 		RDEBUG2("AUTHENTICATION");
 
 		if (t->default_method) {
@@ -1032,6 +1030,8 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 			 *	This is left over from EAP-FAST, and is unused in TEAP.
 			 */
 			if (t->default_method == PW_EAP_MSCHAPV2 && t->mode == EAP_TEAP_PROVISIONING_ANON) {
+				VALUE_PAIR *tvp;
+
 				tvp = fr_pair_afrom_num(fake, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
 				//fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, CHAP_VALUE_LENGTH);
 				fr_pair_add(&fake->config, tvp);
