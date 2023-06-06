@@ -1384,6 +1384,14 @@ do { \
 	if (!cp) {
 		(void) cf_pair_alloc(pool_cs, "min", "0", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 	}
+	cp = cf_pair_find(pool_cs, "max");
+	if (!cp) {
+		/*
+		 *	Set a safe default for "max" - as this is a stand alone tool,
+		 *	it can't use automatic value from the worker thread count.
+		 */
+		(void) cf_pair_alloc(pool_cs, "max", "10", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
+	}
 
 	if (driver_init(conf, conf->cs, &conf->driver) < 0) {
 		ERROR("Driver initialisation failed");
