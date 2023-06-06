@@ -132,9 +132,7 @@ redis {
 		#  If `max` is not specified, then it defaults to the number
 		#  of workers configured.
 		#
-
-		# Hack to make tests pass
-		max = 10
+#		max =
 
 		#
 		#  spare:: Spare connections to be left idle.
