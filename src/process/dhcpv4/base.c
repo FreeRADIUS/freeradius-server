@@ -131,10 +131,12 @@ typedef struct {
 	process_dhcpv4_sections_t sections;
 } process_dhcpv4_t;
 
+#define FR_DHCP_PROCESS_CODE_VALID(_x) (FR_DHCP_PACKET_CODE_VALID(_x) || (_x == FR_DHCP_DO_NOT_RESPOND))
+
 #define PROCESS_PACKET_TYPE		fr_dhcpv4_packet_code_t
 #define PROCESS_CODE_MAX		FR_DHCP_CODE_MAX
 #define PROCESS_CODE_DO_NOT_RESPOND	FR_DHCP_DO_NOT_RESPOND
-#define PROCESS_PACKET_CODE_VALID	FR_DHCP_PACKET_CODE_VALID
+#define PROCESS_PACKET_CODE_VALID	FR_DHCP_PROCESS_CODE_VALID
 #define PROCESS_INST			process_dhcpv4_t
 #include <freeradius-devel/server/process.h>
 
