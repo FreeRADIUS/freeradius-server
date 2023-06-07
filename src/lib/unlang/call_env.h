@@ -41,7 +41,8 @@ FR_DLIST_TYPEDEFS(call_env_parsed, call_env_parsed_head_t, call_env_parsed_entry
 
 typedef enum {
 	CALL_ENV_TYPE_VALUE_BOX = 1,
-	CALL_ENV_TYPE_VALUE_BOX_LIST
+	CALL_ENV_TYPE_VALUE_BOX_LIST,
+	CALL_ENV_TYPE_TMPL_ONLY
 } call_env_dest_t;
 
 /** Per method call config
@@ -90,6 +91,8 @@ struct call_env_parsed_s {
 	size_t			opt_count;	//!< Number of instances found of this option.
 	size_t			multi_index;	//!< Array index for this instance.
 	call_env_t const	*rule;		//!< Used to produce this.
+	bool			tmpl_only;	//!< Don't evaluate before module / xlat call.
+						///< Only the tmpl reference is needed.
 };
 
 FR_DLIST_FUNCS(call_env_parsed, call_env_parsed_t, entry)
@@ -184,6 +187,17 @@ _Generic((((_s *)NULL)->_f), \
 		  .type = FR_CALL_ENV_DST_TYPE(_struct, _field), \
 		  .size = FR_CALL_ENV_DST_SIZE(_struct, _field), \
 		  .type_name = FR_CALL_ENV_DST_TYPE_NAME(_struct, _field), \
+		  .tmpl_offset = offsetof(_struct, _tmpl_field) }
+
+/** Version of the above which only sets the field for a pointer to the tmpl
+ */
+#define FR_CALL_ENV_TMPL_ONLY_OFFSET(_name, _cast_type, _struct, _tmpl_field, _dflt, _dflt_quote, _required) \
+	.name = _name, \
+	.type = _cast_type, \
+	.dflt = _dflt, \
+	.dflt_quote = _dflt_quote, \
+	.pair = { .required = _required, \
+		  .type = CALL_ENV_TYPE_TMPL_ONLY, \
 		  .tmpl_offset = offsetof(_struct, _tmpl_field) }
 
 #define FR_CALL_ENV_SUBSECTION(_name, _ident2, _subcs ) \

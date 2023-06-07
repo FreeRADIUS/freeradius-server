@@ -90,6 +90,7 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 			call_env_parsed->rule = call_env;
 			call_env_parsed->opt_count = opt_count;
 			call_env_parsed->multi_index = multi_index;
+			if (call_env->pair.type == CALL_ENV_TYPE_TMPL_ONLY) call_env_parsed->tmpl_only = true;
 
 			if (cp) {
 				value = cf_pair_value(cp);
@@ -187,8 +188,12 @@ static inline CC_HINT(always_inline) int call_env_value_parse(TALLOC_CTX *ctx, r
 							      void **tmpl_out, call_env_parsed_t const *env,
 							      fr_value_box_list_t *tmpl_expanded)
 {
-	fr_value_box_t	*vb = fr_value_box_list_head(tmpl_expanded);
+	fr_value_box_t	*vb;
 
+	if (tmpl_out) *tmpl_out = env->tmpl;
+	if (env->tmpl_only) return 0;
+
+	vb = fr_value_box_list_head(tmpl_expanded);
 	if (!vb) {
 		if (!env->rule->pair.nullable) {
 			RPEDEBUG("Failed to evaluate required module option %s", env->rule->name);
@@ -223,10 +228,12 @@ static inline CC_HINT(always_inline) int call_env_value_parse(TALLOC_CTX *ctx, r
 			if (!fr_value_box_list_initialised((fr_value_box_list_t *)out)) fr_value_box_list_init((fr_value_box_list_t *)out);
 			fr_value_box_list_insert_tail((fr_value_box_list_t *)out, vb);
 			break;
+
+		case CALL_ENV_TYPE_TMPL_ONLY:
+			fr_assert(0);
+			break;
 		}
 	}
-
-	if (tmpl_out) *tmpl_out = env->tmpl;
 
 	return 0;
 }
@@ -240,6 +247,8 @@ typedef struct {
 	fr_value_box_list_t		tmpl_expanded;		//!< List to write value boxes to as tmpls are expanded.
 	void				**env_data;		//!< Final destination structure for value boxes.
 } call_env_ctx_t;
+
+static unlang_action_t call_env_expand_repeat(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
 
 /** Start the expansion of a call environment tmpl.
  *
@@ -256,6 +265,14 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 
 	ctx = *call_env_ctx->env_data;
 	env = call_env_ctx->last_expanded;
+
+	/*
+	 *	If we only need the tmpl, use the repeat function to set the pointer.
+	 */
+	if (env->tmpl_only) {
+		if (unlang_function_repeat_set(request, call_env_expand_repeat) < 0) return UNLANG_ACTION_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	/*
 	 *	Multi pair options should allocate boxes in the context of the array
@@ -288,13 +305,14 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
 					      request_t *request, void *uctx)
 {
-	void			*out, *tmpl_out = NULL;
+	void			*out = NULL, *tmpl_out = NULL;
 	call_env_ctx_t		*call_env_ctx = talloc_get_type_abort(uctx, call_env_ctx_t);
 	call_env_parsed_t	const *env;
 
 	env = call_env_ctx->last_expanded;
 	if (!env) return UNLANG_ACTION_CALCULATE_RESULT;
 
+	if (env->tmpl_only) goto tmpl_only;
 	/*
 	 *	Find the location of the output
 	 */
@@ -309,6 +327,7 @@ static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUS
 		out = ((uint8_t *)array) + env->rule->pair.size * env->multi_index;
 	}
 
+tmpl_only:
 	if (env->rule->pair.tmpl_offset) tmpl_out = ((uint8_t *)*call_env_ctx->env_data) + env->rule->pair.tmpl_offset;
 
 	if (call_env_value_parse(*call_env_ctx->env_data, request, out, tmpl_out, env,
