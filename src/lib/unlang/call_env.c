@@ -309,7 +309,7 @@ static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUS
 		out = ((uint8_t *)array) + env->rule->pair.size * env->multi_index;
 	}
 
-	if (env->rule->pair.tmpl_offset) tmpl_out = ((uint8_t *)call_env_ctx->env_data) + env->rule->pair.tmpl_offset;
+	if (env->rule->pair.tmpl_offset) tmpl_out = ((uint8_t *)*call_env_ctx->env_data) + env->rule->pair.tmpl_offset;
 
 	if (call_env_value_parse(*call_env_ctx->env_data, request, out, tmpl_out, env,
 				 &call_env_ctx->tmpl_expanded) < 0) return UNLANG_ACTION_FAIL;
