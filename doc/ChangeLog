@@ -2,8 +2,12 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	Configuration changes
 
 	Feature improvements
+	* Preliminary support for TEAP.
+	* Update EAP module pre_proxy checks to make them less restrictive.
+	  This prevents the "middle box" effect from affecting future traffic.
 
 	Bug fixes
+	* Fix corner case with empty defaults in rlm_files.  Fixes #5035
 
 FreeRADIUS 3.2.3 Fri 26 May 2023 12:00:00 EDT urgency=low
 	Configuration changes
