@@ -90,3 +90,13 @@ addcontrol  Cleartext-Password := "testing123", Reply-Message := "success1"
             Fall-Through = yes
 
 addcontrol  Reply-Message += "success2"
+
+
+#
+#  Doesn't match
+#
+DEFAULT	Framed-IP-Address == 192.0.2.1
+	Reply-Message += "unexpected match in DEFAULT"
+
+DEFAULT
+	Reply-Message = "empty DEFAULT"

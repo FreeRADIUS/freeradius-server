@@ -347,7 +347,6 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 {
 	char const	*name;
 	VALUE_PAIR	*check_tmp = NULL;
-	VALUE_PAIR	*reply_tmp = NULL;
 	PAIR_LIST const *user_pl, *default_pl;
 	bool		found = false;
 	PAIR_LIST	my_pl;
@@ -404,6 +403,8 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			default_pl = default_pl->next;
 		}
 
+		RDEBUG3("%s: Checking entry %s at line %d", filename, pl->name, pl->lineno);
+
 		if (pl->check) {
 			check_tmp = fr_pair_list_copy(request, pl->check);
 			for (vp = fr_cursor_init(&cursor, &check_tmp);
@@ -418,32 +419,35 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 		}
 
 		if (paircompare(request, request_packet->vps, check_tmp, &reply_packet->vps) == 0) {
+			VALUE_PAIR	*reply_tmp = NULL;
+
 			RDEBUG2("%s: Matched entry %s at line %d", filename, pl->name, pl->lineno);
 			found = true;
 
 			/* ctx may be reply or proxy */
 			reply_tmp = fr_pair_list_copy(reply_packet, pl->reply);
+
+			if (reply_tmp) fr_pair_delete_by_num(&reply_tmp, PW_FALL_THROUGH, 0, TAG_ANY);
 			if (reply_tmp) radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
 
 			fr_pair_list_move(request, &request->config, &check_tmp, T_OP_ADD);
-			fr_pair_list_free(&check_tmp);
 
 			/*
-			 *	Fallthrough?
+			 *	Check Fall-Through against the original reply list, which has Fall-Through
 			 */
 			if (!fall_through(pl->reply)) break;
 		}
-	}
 
-	/*
-	 *	Remove server internal parameters.
-	 */
-	fr_pair_delete_by_num(&reply_packet->vps, PW_FALL_THROUGH, 0, TAG_ANY);
+		/*
+		 *	Always free check_tmp, even if the paircompare() didn't match.
+		 */
+		fr_pair_list_free(&check_tmp);
+	}
 
 	/*
 	 *	See if we succeeded.
 	 */
-	if (!found)	return RLM_MODULE_NOOP; /* on to the next module */
+	if (!found) return RLM_MODULE_NOOP; /* on to the next module */
 
 	return RLM_MODULE_OK;
 

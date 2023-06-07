@@ -1,0 +1,11 @@
+#
+#  Input packet
+#
+User-Name = "empty_default"
+User-Password = "testing123"
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept
+Reply-Message == "empty DEFAULT"
