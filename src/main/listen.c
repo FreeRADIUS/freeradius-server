@@ -2948,15 +2948,30 @@ static int listen_bind(rad_listen_t *this)
 		} else
 #endif
 #endif
-				/*
-				 *	IPv4: no link local addresses,
-				 *	and no bind to device.
-				 */
+
+#ifdef IP_BOUND_IF
+		{
+			int idx = if_nametoindex(sock->interface);
+
+			if (idx == 0) {
+			error:
+				ERROR("Failed binding socket to %s: %s", sock->interface, fr_syserror(errno));
+				return -1;
+			}
+
+			if (unlikely(setsockopt(this->fd, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof(idx)) < 0)) goto error;
+		}
+#else
+		/*
+		 *	IPv4: no link local addresses,
+		 *	and no bind to device.
+		 */
 		{
 			close(this->fd);
 			ERROR("Failed binding to interface %s: \"bind to device\" is unsupported", sock->interface);
 			return -1;
 		}
+#endif
 #endif
 	}
 
