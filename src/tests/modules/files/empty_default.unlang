@@ -1,0 +1,9 @@
+#
+#  Run the "files" module
+#
+files
+
+update control {
+	Auth-Type := Accept
+}
+
