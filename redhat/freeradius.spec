@@ -647,6 +647,7 @@ fi
 %{_libdir}/freeradius/rlm_eap_mschapv2.so
 %{_libdir}/freeradius/rlm_eap_peap.so
 %{_libdir}/freeradius/rlm_eap_sim.so
+%{_libdir}/freeradius/rlm_eap_teap.so
 %{_libdir}/freeradius/rlm_eap_tls.so
 %{_libdir}/freeradius/rlm_eap_ttls.so
 %{_libdir}/freeradius/rlm_exec.so
