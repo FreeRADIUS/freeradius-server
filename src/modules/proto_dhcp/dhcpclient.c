@@ -52,8 +52,9 @@ struct sockaddr_ll ll;	/* Socket address structure */
 static char *iface = NULL;
 static int iface_ind = -1;
 
-#  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
 #endif
+
+#  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
 
 static RADIUS_PACKET *reply = NULL;
 
@@ -130,6 +131,7 @@ static RADIUS_PACKET *request_init(char const *filename)
 			return NULL;
 		}
 	} else {
+		DEBUG("Read packets from stdin\n");
 		fp = stdin;
 	}
 
