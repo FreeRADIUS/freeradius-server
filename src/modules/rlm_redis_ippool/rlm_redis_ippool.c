@@ -137,6 +137,63 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/** Call environment used when calling redis_ippool module methods.
+ *
+ */
+typedef struct {
+	fr_value_box_t	pool_name;			//!< Name of the pool we're allocating IP addresses from.
+
+	fr_value_box_t	offer_time;			//!< How long we should reserve a lease for during
+							///< the pre-allocation stage (typically responding
+							///< to DHCP discover).
+
+	fr_value_box_t	lease_time;			//!< How long an IP address should be allocated for.
+
+	fr_value_box_t	owner;				//!< Unique lease owner identifier.  Could be mac-address
+							///< or a combination of User-Name and something
+							///< unique to the device.
+
+	fr_value_box_t	gateway_id;			//!< Gateway identifier, usually NAS-Identifier or
+							///< Option 82 gateway.  Used for bulk lease cleanups.
+
+	fr_value_box_t	requested_address;		//!< Attribute to read the IP for renewal from.
+
+	tmpl_t		*allocated_address_attr;	//!< Attribute to populate with allocated IP.
+
+	tmpl_t		*range_attr;			//!< Attribute to write the range ID to.
+
+	tmpl_t		*expiry_attr;			//!< Time at which the lease will expire.
+} redis_ippool_call_env_t;
+
+static const call_env_t redis_ippool_call_env[] = {
+	{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, redis_ippool_call_env_t, pool_name,
+			     NULL, T_INVALID, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("owner", FR_TYPE_STRING, redis_ippool_call_env_t, owner,
+			     NULL, T_INVALID, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, redis_ippool_call_env_t, gateway_id,
+			     "", T_SINGLE_QUOTED_STRING, false, true, true ) },
+	{ FR_CALL_ENV_OFFSET("offer_time", FR_TYPE_UINT32, redis_ippool_call_env_t, offer_time,
+			     NULL, T_INVALID, false, false, false) },
+	{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, redis_ippool_call_env_t, lease_time,
+			     NULL, T_INVALID, true, false, false) },
+	{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, redis_ippool_call_env_t, requested_address,
+			     "%{%{Requested-IP-Address}:-%{Client-IP-Address}}", T_DOUBLE_QUOTED_STRING,
+			     true, true, false) },
+	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("allocated_address_attr", FR_TYPE_ATTRIBUTE, redis_ippool_call_env_t,
+				       allocated_address_attr, NULL, T_INVALID, true ) },
+	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("range_attr", FR_TYPE_ATTRIBUTE, redis_ippool_call_env_t,
+				       range_attr, "&reply.IP-Pool.Range", T_BARE_WORD, true) },
+	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("expiry_attr", FR_TYPE_ATTRIBUTE, redis_ippool_call_env_t,
+				       expiry_attr, NULL, T_INVALID, false) },
+	CALL_ENV_TERMINATOR
+};
+
+static const call_method_env_t redis_ippool_method_env = {
+	.inst_size = sizeof(redis_ippool_call_env_t),
+	.inst_type = "redis_ippool_call_env_t",
+	.env = redis_ippool_call_env
+};
+
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 static fr_dict_t const *dict_dhcpv4;
@@ -1455,26 +1512,34 @@ module_rlm_t rlm_redis_ippool = {
 		/*
 		 *	RADIUS specific
 		 */
-		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_alloc },
-		{ .name1 = "accounting",	.name2 = "stop",		.method = mod_release },
+		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_alloc,
+		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "accounting",	.name2 = "stop",		.method = mod_release,
+		  .method_env = &redis_ippool_method_env },
 
 		/*
 		 *	DHCPv4
 		 */
-		{ .name1 = "recv",		.name2 = "discover",		.method = mod_alloc },
-		{ .name1 = "recv",		.name2 = "release",		.method = mod_release },
+		{ .name1 = "recv",		.name2 = "discover",		.method = mod_alloc,
+		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "recv",		.name2 = "release",		.method = mod_release,
+		  .method_env = &redis_ippool_method_env },
 
 		/*
 		 *	DHCPv6
 		 */
-		{ .name1 = "recv",		.name2 = "solicit",		.method = mod_alloc },
+		{ .name1 = "recv",		.name2 = "solicit",		.method = mod_alloc,
+		  .method_env = &redis_ippool_method_env },
 
 		/*
 		 *	Generic
 		 */
-		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_update },
-		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting },
-		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth },
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_update,
+		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting,
+		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth,
+		  .method_env = &redis_ippool_method_env },
 		MODULE_NAME_TERMINATOR
 	}
 };
