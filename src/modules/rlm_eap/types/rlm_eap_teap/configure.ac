@@ -62,18 +62,18 @@ fi
 
 AC_EGREP_CPP(yes,
 	[#include <openssl/crypto.h>
-		#if (OPENSSL_VERSION_NUMBER >= 0x01000100fL)
+		#if (OPENSSL_VERSION_NUMBER >= 0x10101000L)
 		yes
 		#endif
 	],
 	[
-		AC_MSG_CHECKING([for OpenSSL version >= 1.0.1a])
+		AC_MSG_CHECKING([for OpenSSL version >= 1.1.1])
 		AC_MSG_RESULT(yes)
 	],
 	[
-		AC_MSG_CHECKING([for OpenSSL version >= 1.0.1a])
+		AC_MSG_CHECKING([for OpenSSL version >= 1.1.1])
 		AC_MSG_RESULT(no)
-		FR_MODULE_FAIL([OpenSSL>1.0.1])
+		FR_MODULE_FAIL([OpenSSL>=1.1.1])
 	]
 )
 

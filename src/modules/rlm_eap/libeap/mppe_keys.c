@@ -26,7 +26,6 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_tls.h"
-#include <openssl/kdf.h>
 #include <openssl/ssl.h>
 #include <openssl/hmac.h>
 #include <freeradius-devel/openssl3.h>
@@ -34,6 +33,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #include <openssl/provider.h>
 #endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#include <openssl/kdf.h>
 
 void TLS_PRF(SSL *ssl,
 	     unsigned char *sec, size_t seclen,
@@ -59,6 +61,7 @@ void TLS_PRF(SSL *ssl,
 
 	EVP_PKEY_CTX_free(pctx);
 }
+#endif
 
 /*
  *	TLS P_hash from RFC 2246/5246 section 5

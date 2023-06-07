@@ -3271,7 +3271,7 @@ $as_echo "$ac_cv_path_EGREP" >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <openssl/crypto.h>
-		#if (OPENSSL_VERSION_NUMBER >= 0x01000100fL)
+		#if (OPENSSL_VERSION_NUMBER >= 0x10101000L)
 		yes
 		#endif
 
@@ -3279,19 +3279,19 @@ _ACEOF
 if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
   $EGREP "yes" >/dev/null 2>&1; then :
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 1.0.1a" >&5
-$as_echo_n "checking for OpenSSL version >= 1.0.1a... " >&6; }
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 1.1.1" >&5
+$as_echo_n "checking for OpenSSL version >= 1.1.1... " >&6; }
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
 else
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 1.0.1a" >&5
-$as_echo_n "checking for OpenSSL version >= 1.0.1a... " >&6; }
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 1.1.1" >&5
+$as_echo_n "checking for OpenSSL version >= 1.1.1... " >&6; }
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
-fail="$fail OpenSSL>1.0.1"
+fail="$fail OpenSSL>=1.1.1"
 
 
 
