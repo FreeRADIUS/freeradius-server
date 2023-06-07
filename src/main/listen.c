@@ -3069,6 +3069,7 @@ static int listen_bind(rad_listen_t *this)
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
 			ERROR("Can't set broadcast option: %s",
 			       fr_syserror(errno));
+			close(this->fd);
 			return -1;
 		}
 	}
@@ -3117,6 +3118,7 @@ static int listen_bind(rad_listen_t *this)
 					&sizeof_src) < 0) {
 				ERROR("Failed getting socket name: %s",
 				       fr_syserror(errno));
+				close(this->fd);
 				return -1;
 			}
 
