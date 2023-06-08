@@ -1074,45 +1074,6 @@ finish:
 	return ret;
 }
 
-/** Find the pool name we'll be allocating from
- *
- * @param[out] out	Where to write the pool name.
- * @param[out] buff	Where to write the pool name (in the case of an expansion).
- * @param[in] bufflen	Size of the output buffer.
- * @param[in] inst	This instance of the rlm_redis_ippool module.
- * @param[in] request	The current request.
- * @return
- *	- < 0 on error.
- *	- 0 if no pool attribute exists, or the pool name is a zero length string.
- *	- > 0 on success (length of data written to out).
- */
-static inline ssize_t ippool_pool_name(uint8_t const **out, uint8_t buff[], size_t bufflen,
-				       rlm_redis_ippool_t const *inst, request_t *request)
-{
-	ssize_t slen;
-
-	slen = tmpl_expand(out, (char *)buff, bufflen, request, inst->pool_name, NULL, NULL);
-	if (slen < 0) {
-		if (tmpl_is_attr(inst->pool_name)) {
-			RDEBUG2("Pool attribute not present in request.  Doing nothing");
-			return 0;
-		}
-		REDEBUG("Failed expanding pool name");
-		return -1;
-	}
-	if (slen == 0) {
-		RDEBUG2("Empty pool name.  Doing nothing");
-		return 0;
-	}
-
-	if ((*out == buff) && is_truncated((size_t)slen, bufflen)) {
-		REDEBUG("Pool name too long.  Expected %zu bytes, got %zu bytes", bufflen, (size_t)slen);
-		return -1;
-	}
-
-	return slen;
-}
-
 static unlang_action_t mod_action(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
 				  ippool_action_t action)
 {
