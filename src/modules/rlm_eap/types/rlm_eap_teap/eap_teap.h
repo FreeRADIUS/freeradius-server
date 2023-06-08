@@ -48,6 +48,7 @@ RCSIDH(eap_teap_h, "$Id$")
 typedef enum eap_teap_stage_t {
 	TLS_SESSION_HANDSHAKE = 0,
 	AUTHENTICATION,
+	CRYPTOBIND_CHECK,
 	PROVISIONING,
 	COMPLETE
 } eap_teap_stage_t;
@@ -214,10 +215,6 @@ typedef enum eap_teap_tlv_crypto_binding_tlv_subtype_t {
 	EAP_TEAP_TLV_CRYPTO_BINDING_SUBTYPE_RESPONSE		// 1
 } eap_teap_tlv_crypto_binding_tlv_subtype_t;
 
-typedef struct teap_imck_t {
-	uint8_t		simck[EAP_TEAP_SIMCK_LEN];
-	uint8_t		cmk[EAP_TEAP_CMK_LEN];
-} CC_HINT(__packed__) teap_imck_t;
 typedef struct teap_tunnel_t {
 	VALUE_PAIR	*username;
 	VALUE_PAIR	*state;
@@ -232,11 +229,10 @@ typedef struct teap_tunnel_t {
 	eap_teap_stage_t	stage;
 
 	int			imckc;
-	bool			imck_emsk_available;
-	struct teap_imck_t	*imck;		/* points to either imck_emsk or imck_msk */
-	struct teap_imck_t	imck_msk;
-	struct teap_imck_t	imck_emsk;
-
+	struct {
+		uint8_t		simck[EAP_TEAP_SIMCK_LEN];
+		uint8_t		cmk[EAP_TEAP_CMK_LEN];
+	} CC_HINT(__packed__)	imck;
 	uint8_t			msk[EAP_TEAP_MSK_LEN];
 	uint8_t			emsk[EAP_TEAP_EMSK_LEN];
 
