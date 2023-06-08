@@ -44,8 +44,6 @@ typedef struct {
 #endif
 	char const		*virtual_server;	//!< Virtual server for inner tunnel session.
 
-	bool			soh;			//!< Do we do SoH request?
-	char const		*soh_virtual_server;
 	bool			req_client_cert;	//!< Do we do require a client cert?
 } rlm_eap_peap_t;
 
@@ -62,11 +60,8 @@ static CONF_PARSER submodule_config[] = {
 
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_eap_peap_t, virtual_server) },
 
-	{ FR_CONF_OFFSET("soh", FR_TYPE_BOOL, rlm_eap_peap_t, soh), .dflt = "no" },
-
 	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOL, rlm_eap_peap_t, req_client_cert), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("soh_virtual_server", FR_TYPE_STRING, rlm_eap_peap_t, soh_virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -83,7 +78,6 @@ fr_dict_autoload_t rlm_eap_peap_dict[] = {
 fr_dict_attr_t const *attr_auth_type;
 fr_dict_attr_t const *attr_eap_tls_require_client_cert;
 fr_dict_attr_t const *attr_proxy_to_realm;
-fr_dict_attr_t const *attr_soh_supported;
 
 fr_dict_attr_t const *attr_eap_message;
 fr_dict_attr_t const *attr_freeradius_proxied_to;
@@ -94,7 +88,6 @@ fr_dict_attr_autoload_t rlm_eap_peap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_eap_tls_require_client_cert, .name = "EAP-TLS-Require-Client-Cert", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_soh_supported, .name = "SoH-Supported", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_freeradius_proxied_to, .name = "Vendor-Specific.FreeRADIUS.Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
@@ -116,10 +109,7 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 	t->proxy_tunneled_request_as_eap = inst->proxy_tunneled_request_as_eap;
 #endif
 	t->virtual_server = inst->virtual_server;
-	t->soh = inst->soh;
-	t->soh_virtual_server = inst->soh_virtual_server;
 	t->session_resumption_state = PEAP_RESUMPTION_MAYBE;
-	fr_pair_list_init(&t->soh_reply_vps);
 
 	return t;
 }
@@ -381,13 +371,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (inst->soh_virtual_server) {
-		if (!virtual_server_find(inst->soh_virtual_server)) {
-			cf_log_err_by_child(conf, "soh_virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
-			return -1;
-		}
-	}
-
 	/*
 	 *	Read tls configuration, either from group given by 'tls'
 	 *	option, or from the eap-tls configuration.
@@ -401,18 +384,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static int mod_load(void)
-{
-	if (fr_soh_init() < 0) return -1;
-
-	return 0;
-}
-
-static void mod_unload(void)
-{
-	fr_soh_free();
-}
-
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -424,8 +395,6 @@ rlm_eap_submodule_t rlm_eap_peap = {
 		.name			= "eap_peap",
 		.inst_size		= sizeof(rlm_eap_peap_t),
 		.config			= submodule_config,
-		.onload			= mod_load,
-		.unload			= mod_unload,
 		.instantiate		= mod_instantiate,
 
 		.thread_inst_size	= sizeof(rlm_eap_peap_thread_t),

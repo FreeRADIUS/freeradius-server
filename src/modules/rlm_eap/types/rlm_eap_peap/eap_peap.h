@@ -24,7 +24,6 @@
 RCSIDH(eap_peap_h, "$Id$")
 
 #include <freeradius-devel/eap/tls.h>
-#include <freeradius-devel/soh/base.h>
 
 typedef enum {
 	PEAP_STATUS_INVALID,
@@ -34,7 +33,6 @@ typedef enum {
 	PEAP_STATUS_INNER_IDENTITY_REQ_SENT,
 	PEAP_STATUS_PHASE2_INIT,
 	PEAP_STATUS_PHASE2,
-	PEAP_STATUS_WAIT_FOR_SOH_RESPONSE
 } peap_status;
 
 typedef enum {
@@ -50,16 +48,12 @@ typedef struct {
 	int		default_method;
 	bool		proxy_tunneled_request_as_eap;
 	char const	*virtual_server;
-	bool		soh;
-	char const	*soh_virtual_server;
-	fr_pair_list_t	soh_reply_vps;
 	peap_resumption	session_resumption_state;
 } peap_tunnel_t;
 
 extern HIDDEN fr_dict_attr_t const *attr_auth_type;
 extern HIDDEN fr_dict_attr_t const *attr_eap_tls_require_client_cert;
 extern HIDDEN fr_dict_attr_t const *attr_proxy_to_realm;
-extern HIDDEN fr_dict_attr_t const *attr_soh_supported;
 
 extern HIDDEN fr_dict_attr_t const *attr_eap_message;
 extern HIDDEN fr_dict_attr_t const *attr_freeradius_proxied_to;
