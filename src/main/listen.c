@@ -3106,6 +3106,7 @@ static int listen_bind(rad_listen_t *this)
 		int on = 1;
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
+			close(this->fd);
 			ERROR("Can't set broadcast option: %s",
 			       fr_syserror(errno));
 			return -1;
@@ -3154,6 +3155,7 @@ static int listen_bind(rad_listen_t *this)
 			memset(&src, 0, sizeof_src);
 			if (getsockname(this->fd, (struct sockaddr *) &src,
 					&sizeof_src) < 0) {
+				close(this->fd);
 				ERROR("Failed getting socket name: %s",
 				       fr_syserror(errno));
 				return -1;
@@ -3161,6 +3163,7 @@ static int listen_bind(rad_listen_t *this)
 
 			if (!fr_sockaddr2ipaddr(&src, sizeof_src,
 						&sock->my_ipaddr, &sock->my_port)) {
+				close(this->fd);
 				ERROR("Socket has unsupported address family");
 				return -1;
 			}
