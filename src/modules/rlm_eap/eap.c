@@ -833,6 +833,8 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	}
 
 	if ((eap_msg->vp_octets[4] == PW_EAP_TTLS) ||
+	    (eap_msg->vp_octets[4] == PW_EAP_FAST) ||
+	    (eap_msg->vp_octets[4] == PW_EAP_TEAP) ||
 	    (eap_msg->vp_octets[4] == PW_EAP_PEAP)) {
 		RDEBUG2("Continuing tunnel setup");
 		return EAP_OK;

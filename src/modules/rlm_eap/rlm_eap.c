@@ -185,6 +185,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		case PW_EAP_TTLS:
 		case PW_EAP_PEAP:
 		case PW_EAP_PWD:
+		case PW_EAP_TEAP:
 			WARN("rlm_eap (%s): Ignoring EAP method %s because we don't have OpenSSL support",
 			     inst->xlat_name, name);
 			continue;
