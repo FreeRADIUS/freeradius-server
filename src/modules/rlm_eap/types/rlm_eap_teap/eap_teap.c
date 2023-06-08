@@ -1335,7 +1335,6 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		code = PW_CODE_ACCESS_CHALLENGE;
 		break;
 	case CRYPTOBIND_CHECK:
-	{
 		eap_teap_append_crypto_binding(request, tls_session);
 
 		code = PW_CODE_ACCESS_CHALLENGE;
@@ -1344,8 +1343,8 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		if (!(t->mode != EAP_TEAP_PROVISIONING_ANON && !t->pac.send)) break;
 #endif
 
-		/* fallthrough */
-	}
+		/* FALLTHROUGH */
+
 	case PROVISIONING:
 		t->result_final = true;
 
@@ -1359,6 +1358,7 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		}
 #endif
 		break;
+
 	case COMPLETE:
 #if 0
 		/*
