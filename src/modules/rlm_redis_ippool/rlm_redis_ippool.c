@@ -52,8 +52,6 @@ RCSID("$Id$")
 #include <freeradius-devel/redis/cluster.h>
 #include "redis_ippool.h"
 
-#include <freeradius-devel/dhcpv4/dhcpv4.h>
-
 /** rlm_redis module instance
  *
  */
@@ -160,25 +158,21 @@ static const call_method_env_t redis_ippool_method_env = {
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
-static fr_dict_t const *dict_dhcpv4;
 
 extern fr_dict_autoload_t rlm_redis_ippool_dict[];
 fr_dict_autoload_t rlm_redis_ippool_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
 	{ NULL }
 };
 
 static fr_dict_attr_t const *attr_pool_action;
 static fr_dict_attr_t const *attr_acct_status_type;
-static fr_dict_attr_t const *attr_message_type;
 
 extern fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[];
 fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
 	{ .out = &attr_pool_action, .name = "IP-Pool.Action", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 
@@ -1255,15 +1249,8 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 			RWDEBUG("Ignoring invalid action %d", vp->vp_uint32);
 			RETURN_MODULE_NOOP;
 		}
-
-	} else if (request->dict == dict_dhcpv4) {
-		vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_message_type);
-		if (!vp) goto run;
-
-		if (vp->vp_uint8 == FR_DHCP_REQUEST) action = POOL_ACTION_UPDATE;
 	}
 
-run:
 	return mod_action(p_result, mctx, request, action);
 }
 
@@ -1369,6 +1356,8 @@ module_rlm_t rlm_redis_ippool = {
 		{ .name1 = "recv",		.name2 = "discover",		.method = mod_alloc,
 		  .method_env = &redis_ippool_method_env },
 		{ .name1 = "recv",		.name2 = "release",		.method = mod_release,
+		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "send",		.name2 = "ack",			.method = mod_update,
 		  .method_env = &redis_ippool_method_env },
 
 		/*
