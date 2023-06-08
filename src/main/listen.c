@@ -2907,6 +2907,9 @@ static int listen_bind(rad_listen_t *this)
 	 */
 	if (sock->interface) {
 #ifdef SO_BINDTODEVICE
+		/*
+		 *	Linux: Bind to an interface by name.
+		 */
 		struct ifreq ifreq;
 
 		memset(&ifreq, 0, sizeof(ifreq));
@@ -2919,45 +2922,81 @@ static int listen_bind(rad_listen_t *this)
 		if (rcode < 0) {
 			close(this->fd);
 			ERROR("Failed binding to interface %s: %s",
-			       sock->interface, fr_syserror(errno));
+			      sock->interface, fr_syserror(errno));
 			return -1;
-		} /* else it worked. */
+		}
 #else
+
+		/*
+		 *	If we don't bind to an interface by name, we usually bind to it by index.
+		 */
+		int idx = if_nametoindex(sock->interface);
+
+		if (idx == 0) {
+			close(this->fd);
+			ERROR("Failed finding interface %s: %s",
+			      sock->interface, fr_syserror(errno));
+			return -1;
+		}
+
+#ifdef IP_BOUND_IF
+		/*
+		 *	OSX / ?BSD / Solaris: bind to interface by index for IPv4
+		 */
+		if (sock->my_ipaddr.af == AF_INET) {
+			rad_suid_up();
+			rcode = setsockopt(this->fd, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof(idx));
+			rad_suid_down();
+			if (rcode < 0) {
+				close(this->fd);
+				ERROR("Failed binding to interface %s: %s",
+				      sock->interface, fr_syserror(errno));
+				return -1;
+			}
+		} else
+#endif
+
+#ifdef IPV6_BOUND_IF
+		/*
+		 *	OSX / ?BSD / Solaris: bind to interface by index for IPv6
+		 */
+		if (sock->my_ipaddr.af == AF_INET6) {
+			rad_suid_up();
+			rcode = setsockopt(this->fd, IPPROTO_IPV6, IPV6_BOUND_IF, &idx, sizeof(idx));
+			rad_suid_down();
+			if (rcode < 0) {
+				close(this->fd);
+				ERROR("Failed binding to interface %s: %s",
+				      sock->interface, fr_syserror(errno));
+				return -1;
+			}
+		} else
+#endif
+
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 #ifdef HAVE_NET_IF_H
 		/*
-		 *	Odds are that any system supporting "bind to
-		 *	device" also supports IPv6, so this next bit
-		 *	isn't necessary.  But it's here for
-		 *	completeness.
-		 *
-		 *	If we're doing IPv6, and the scope hasn't yet
-		 *	been defined, set the scope to the scope of
-		 *	the interface.
+		 *	Otherwise generic IPv6: set the scope to the
+		 *	interface, and hope that all of the read/write
+		 *	routines respect that.
 		 */
 		if (sock->my_ipaddr.af == AF_INET6) {
 			if (sock->my_ipaddr.scope == 0) {
-				sock->my_ipaddr.scope = if_nametoindex(sock->interface);
-				if (sock->my_ipaddr.scope == 0) {
-					close(this->fd);
-					ERROR("Failed finding interface %s: %s",
-					       sock->interface, fr_syserror(errno));
-					return -1;
-				}
-			} /* else scope was defined: we're OK. */
+				sock->my_ipaddr.scope = idx;
+			} /* else scope was already defined */
 		} else
 #endif
 #endif
-				/*
-				 *	IPv4: no link local addresses,
-				 *	and no bind to device.
-				 */
+
+		/*
+		 *	IPv4, or no socket options to bind to interface.
+		 */
 		{
 			close(this->fd);
 			ERROR("Failed binding to interface %s: \"bind to device\" is unsupported", sock->interface);
 			return -1;
 		}
-#endif
+#endif	/* SO_BINDTODEVICE */
 	}
 
 #ifdef WITH_TCP
