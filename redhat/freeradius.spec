@@ -7,6 +7,7 @@
 %{!?_with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
 %{!?_with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
 %{?_without_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
+%{?el7: %global _without_rlm_eap_teap --without-rlm_eap_teap}
 
 # experimental modules
 %bcond_with rlm_idn
@@ -647,7 +648,9 @@ fi
 %{_libdir}/freeradius/rlm_eap_mschapv2.so
 %{_libdir}/freeradius/rlm_eap_peap.so
 %{_libdir}/freeradius/rlm_eap_sim.so
+%if 0%{?rhel} >= 8
 %{_libdir}/freeradius/rlm_eap_teap.so
+%endif
 %{_libdir}/freeradius/rlm_eap_tls.so
 %{_libdir}/freeradius/rlm_eap_ttls.so
 %{_libdir}/freeradius/rlm_exec.so
