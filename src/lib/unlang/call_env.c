@@ -121,10 +121,18 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 			 *	Ensure only valid TMPL types are produced.
 			 */
 			switch (call_env_parsed->tmpl->type) {
-			case TMPL_TYPE_ATTR:
 			case TMPL_TYPE_DATA:
 			case TMPL_TYPE_EXEC:
 			case TMPL_TYPE_XLAT:
+				if (call_env->type & FR_TYPE_ATTRIBUTE) {
+					cf_log_perr(cp, "'%s' expands to %s - attribute reference required", value,
+					   	    fr_table_str_by_value(tmpl_type_table, call_env_parsed->tmpl->type,
+						    			  "<INVALID>"));
+					goto error;
+				}
+				FALL_THROUGH;
+
+			case TMPL_TYPE_ATTR:
 				break;
 
 			default:
