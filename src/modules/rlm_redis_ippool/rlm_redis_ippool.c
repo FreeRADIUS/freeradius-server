@@ -63,33 +63,10 @@ typedef struct {
 
 	char const		*name;		//!< Instance name.
 
-	tmpl_t			*pool_name;	//!< Name of the pool we're allocating IP addresses from.
-
-	tmpl_t			*offer_time;	//!< How long we should reserve a lease for during
-						//!< the pre-allocation stage (typically responding
-						//!< to DHCP discover).
-	tmpl_t			*lease_time;	//!< How long an IP address should be allocated for.
-
 	uint32_t		wait_num;	//!< How many slaves we want to acknowledge allocations
 						//!< or updates.
 
 	fr_time_delta_t		wait_timeout;	//!< How long we wait for slaves to acknowledge writing.
-
-	tmpl_t			*owner;	//!< Unique Lease owner identifier.  Could be mac-address
-						//!< or a combination of User-Name and something
-						//!< unique to the device.
-
-	tmpl_t			*gateway_id;	//!< Gateway identifier, usually
-						//!< NAS-Identifier or the actual Option 82 gateway.
-						//!< Used for bulk lease cleanups.
-
-	tmpl_t			*requested_address;		//!< Attribute to read the IP for renewal from.
-
-	tmpl_t			*allocated_address_attr;	//!< IP attribute and destination.
-
-	tmpl_t			*range_attr;	//!< Attribute to write the range ID to.
-
-	tmpl_t			*expiry_attr;	//!< Time at which the lease will expire.
 
 	bool			ipv4_integer;	//!< Whether IPv4 addresses should be cast to integers,
 						//!< for renew operations.
@@ -106,25 +83,12 @@ static CONF_PARSER redis_config[] = {
 };
 
 static CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("pool_name", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, pool_name) },
-
-	{ FR_CONF_OFFSET("owner", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, owner) },
-	{ FR_CONF_OFFSET("gateway", FR_TYPE_TMPL, rlm_redis_ippool_t, gateway_id) },\
-
-	{ FR_CONF_OFFSET("offer_time", FR_TYPE_TMPL, rlm_redis_ippool_t, offer_time) },
-	{ FR_CONF_OFFSET("lease_time", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, lease_time) },
-
 	{ FR_CONF_OFFSET("wait_num", FR_TYPE_UINT32, rlm_redis_ippool_t, wait_num) },
 	{ FR_CONF_OFFSET("wait_timeout", FR_TYPE_TIME_DELTA, rlm_redis_ippool_t, wait_timeout) },
 
-	{ FR_CONF_OFFSET("requested_address", FR_TYPE_TMPL, rlm_redis_ippool_t, requested_address), .dflt = "%{%{Requested-IP-Address}:-%{Client-IP-Address}}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_DEPRECATED("ip_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, NULL) },
 
-	{ FR_CONF_OFFSET("allocated_address_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_redis_ippool_t, allocated_address_attr), .dflt = "&reply.Your-IP-Address", .quote = T_BARE_WORD },
 	{ FR_CONF_DEPRECATED("reply_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, NULL) },
-
-	{ FR_CONF_OFFSET("range_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_redis_ippool_t, range_attr), .dflt = "&reply.IP-Pool.Range", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("expiry_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_redis_ippool_t, expiry_attr) },
 
 	{ FR_CONF_OFFSET("ipv4_integer", FR_TYPE_BOOL, rlm_redis_ippool_t, ipv4_integer) },
 	{ FR_CONF_OFFSET("copy_on_update", FR_TYPE_BOOL, rlm_redis_ippool_t, copy_on_update), .dflt = "yes", .quote = T_BARE_WORD },
