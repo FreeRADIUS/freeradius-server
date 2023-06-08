@@ -267,7 +267,7 @@ int fr_socket_bind(int sockfd, char const *ifname, fr_ipaddr_t *src_ipaddr, uint
 	 */
 	if (ifname) {
 #ifdef HAVE_NET_IF_H
-		uint32_t scope_id;
+		unsigned int scope_id;
 
 		scope_id = if_nametoindex(ifname);
 		if (!scope_id) {
@@ -309,7 +309,7 @@ int fr_socket_bind(int sockfd, char const *ifname, fr_ipaddr_t *src_ipaddr, uint
 #endif
 			ret = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, ifname, strlen(ifname));
 			if (ret < 0) {
-				fr_strerror_printf_push("Bind failed on interface %s: %s",
+				fr_strerror_printf_push("Failed binding socket to interface %s: %s",
 							ifname, fr_syserror(errno));
 				return -1;
 			} /* else it worked. */
@@ -319,21 +319,35 @@ int fr_socket_bind(int sockfd, char const *ifname, fr_ipaddr_t *src_ipaddr, uint
 			 */
 			my_ipaddr.scope_id = scope_id;
 		}
+
 		/*
 		 *	SO_BINDTODEVICE succeeded, so we're always
 		 *	bound to the socket.
 		 */
 
-#elif defined(IP_BOUND_IF)
+#elif defined(IP_BOUND_IF) || defined(IPV6_BOUND_IF)
 		{
-			int idx = if_nametoindex(ifname);
-			if (idx == 0) {
-			error:
-				fr_strerror_printf("Failed binding socket to %s: %s", ifname, fr_syserror(errno));
+			int idx = scope_id;
+
+			if (my_ipaddr.af == AF_INET) {
+				if (unlikely(setsockopt(sockfd, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof(idx)) < 0)) {
+				error:
+					fr_strerror_printf_push("Failed binding socket to interface %s: %s",
+								ifname, fr_syserror(errno));
+					return -1;
+				}
+
+			} else if (my_ipaddr.af == AF_INET6) {
+				if (unlikely(setsockopt(sockfd, IPPROTO_IPV6, IPV6_BOUND_IF, &idx, sizeof(idx)) < 0)) goto error;
+
+			} else {
+				fr_strerror_printf("Invalid address family for 'interface = ...'");
 				return -1;
 			}
-			if (unlikely(setsockopt(sockfd, IPPROTO_IP, IP_BOUND_IF, &idx, sizeof(idx)) < 0)) goto error;
+
+			my_ipaddr.scope_id = scope_id;
 		}
+
 #else
 		{
 			struct ifaddrs *list = NULL;
