@@ -231,6 +231,9 @@ eap {
 		#  Directory where multiple CAs are stored.  Both
 		#  "ca_file" and "ca_path" can be used at the same time.
 		#
+		#  Each file in this directory must contain one
+		#  certificate, and ONLY one certificate.
+		#
 		ca_path = ${cadir}
 
 		# OpenSSL does not reload contents of ca_path dir over time.
