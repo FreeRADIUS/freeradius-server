@@ -151,6 +151,9 @@ build/autoconf.mk: src/include/autoconf.h
           ifeq "$(wildcard build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT})" ""
             BUILD_MAKE_LIBS=yes
           endif
+          ifeq "$(wildcard build/lib/.libs/libfreeradius-make-util.${BUILD_LIB_EXT})" ""
+            BUILD_MAKE_LIBS=yes
+          endif
 
           ifdef BUILD_MAKE_LIBS
             define n
