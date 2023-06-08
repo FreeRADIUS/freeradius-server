@@ -247,7 +247,10 @@ ATTRIBUTE	FreeRADIUS-EAP-TEAP-Channel-Binding	190.6	octets # complex format
 ATTRIBUTE	FreeRADIUS-EAP-TEAP-Vendor-Specific	190.7	octets # 4-octet vendor ID + TLVs
 ATTRIBUTE	FreeRADIUS-EAP-TEAP-Request-Action	190.8	octets # 1 octet + sub TLVs
 ATTRIBUTE	FreeRADIUS-EAP-TEAP-EAP-Payload		190.9	octets # EAP packet + TLVs
-ATTRIBUTE	FreeRADIUS-EAP-TEAP-Intermediate-Result	190.10	octets
+
+ATTRIBUTE	FreeRADIUS-EAP-TEAP-Intermediate-Result	190.10	short
+VALUE	FreeRADIUS-EAP-TEAP-Intermediate-Result		Success	1
+VALUE	FreeRADIUS-EAP-TEAP-Intermediate-Result		Failure 2
 
 ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC			190.11	tlv
 ATTRIBUTE	FreeRADIUS-EAP-TEAP-PAC-Key		190.11.1	octets
