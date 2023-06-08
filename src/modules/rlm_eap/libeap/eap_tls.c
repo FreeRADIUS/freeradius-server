@@ -702,7 +702,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	case FR_TLS_LENGTH_INCLUDED:
 	case FR_TLS_MORE_FRAGMENTS_WITH_LENGTH:
 		memcpy(&data_len, &eap_ds->response->type.data[1], 4);
-		data_len = ntohl(data_len) - obit;
+		data_len = ntohl(data_len);
 		data = eap_ds->response->type.data + 5 + obit;
 		break;
 
