@@ -252,7 +252,7 @@ static char *eap_identity(request_t *request, eap_session_t *eap_session, eap_pa
 	 *
 	 *  Code (1) + Identifier (1) + Length (2) + Type (1) = 5.
 	 *
-	 *  The maximum value is not bounded by the RFC. The eap_validation()
+	 *  The maximum value is not bounded by the RFC. The eap_is_valid()
 	 *  function called before eap_identity(), checks that the length
 	 *  field does not overrun the available data.
 	 *
