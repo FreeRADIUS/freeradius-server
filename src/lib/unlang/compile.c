@@ -4965,7 +4965,7 @@ check_for_module:
 	 *	name2, etc.
 	 */
 	UPDATE_CTX2;
-	inst = module_rlm_by_name_and_method(&method, &method_env, &unlang_ctx2.component,
+	inst = module_rlm_by_name_and_method(&method, &method_env,
 					     &unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
 					     realname);
 	if (inst) {
