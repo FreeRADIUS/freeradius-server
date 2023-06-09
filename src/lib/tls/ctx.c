@@ -797,6 +797,8 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		 *	those are set above with SSL_CTX_load_verify_locations.
 		 */
 		if (conf->ca_file) SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
+	} else {
+		X509_STORE_set_default_paths(verify_store);
 	}
 
 	/*
