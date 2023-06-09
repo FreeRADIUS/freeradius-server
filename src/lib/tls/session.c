@@ -1624,7 +1624,6 @@ static void session_init(fr_tls_session_t *session)
  */
 fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 {
-	int			ret;
 	int			verify_mode;
 	fr_tls_session_t	*tls_session = NULL;
 	request_t		*request;
@@ -1642,7 +1641,7 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 
 	request = request_alloc_internal(tls_session, NULL);
 
-	fr_tls_session_request_bind(tls_session->ssl, request);		/* Is unbound in this function */
+	fr_tls_session_request_bind(tls_session->ssl, request);
 
 	/*
 	 *	Add the message callback to identify what type of
@@ -1663,18 +1662,7 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
 
-	ret = SSL_connect(tls_session->ssl);
-	if (ret <= 0) {
-		fr_tls_log_io_error(NULL, SSL_get_error(tls_session->ssl, ret), "SSL_connect (%s)", __FUNCTION__);
-		fr_tls_session_request_unbind(tls_session->ssl);	/* Was bound in this function */
-		talloc_free(tls_session);
-
-		return NULL;
-	}
-
 	tls_session->mtu = conf->fragment_size;
-
-	fr_tls_session_request_unbind(tls_session->ssl);		/* Was bound in this function */
 
 	return tls_session;
 }
