@@ -1120,12 +1120,12 @@ eap {
 	#
 	#  The TEAP module implements the EAP-TEAP protocol
 	#
-	teap {
+	#teap {
 		#  Point to the common TLS configuration
 		#
-		tls = tls-common
+	#	tls = tls-common
 
-		default_eap_type = mschapv2
+	#	default_eap_type = mschapv2
 
 		#  If 'cipher_list' is set here, it will over-ride the
 		#  'cipher_list' configuration from the 'tls-common'
@@ -1139,11 +1139,11 @@ eap {
 		#  "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
 		#  recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
 		#
-		cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
+	#	cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
 
 		#  PAC lifetime in seconds (default: seven days)
 		#
-		pac_lifetime = 604800
+	#	pac_lifetime = 604800
 
 		#  Authority ID of the server
 		#
@@ -1152,17 +1152,17 @@ eap {
 		#  your RADIUS servers.  This value should be unique to your
 		#  installation.  We suggest using a domain name.
 		#
-		authority_identity = "1234"
+	#	authority_identity = "1234"
 
 		#  PAC Opaque encryption key (must be exactly 32 bytes in size)
 		#
 		#  This value MUST be secret, and MUST be generated using
 		#  a secure method, such as via 'openssl rand -hex 32'
 		#
-		pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
+	#	pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
 
 		#  Same as for TTLS, PEAP, etc.
 		#
-		virtual_server = inner-tunnel
-	}
+	#	virtual_server = inner-tunnel
+	#}
 }
