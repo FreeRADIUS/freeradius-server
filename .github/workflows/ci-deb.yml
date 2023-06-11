@@ -21,6 +21,7 @@ jobs:
           - { NAME: "ubuntu-22.04", OS: "ubuntu:22.04" }
           - { NAME: "debian-10",    OS: "debian:buster" }
           - { NAME: "debian-11",    OS: "debian:bullseye" }
+          - { NAME: "debian-12",    OS: "debian:bookworm" }
           - { NAME: "debian-sid",   OS: "debian:sid" }
       fail-fast: false
 
@@ -143,6 +144,7 @@ jobs:
           - { NAME: "ubuntu-22.04", OS: "ubuntu:22.04" }
           - { NAME: "debian-10", OS: "debian:buster" }
           - { NAME: "debian-11", OS: "debian:bullseye" }
+          - { NAME: "debian-12", OS: "debian:bookworm" }
           - { NAME: "debian-sid", OS: "debian:sid" }
       fail-fast: false
 
