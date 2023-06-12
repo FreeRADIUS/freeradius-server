@@ -1,8 +1,11 @@
 ARG from=D_IMAGE
 FROM ${from} as build
 
-ifelse(D_OSVER, 7,,`dnl
+ifelse(D_OSVER, 8, `dnl
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-rockyofficial
+')dnl
+ifelse(D_OSVER, 9, `dnl
+RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
 ')
 #
 #  Install build tools
@@ -33,8 +36,9 @@ WORKDIR freeradius-server
 #
 #  Other requirements
 #
-
-# Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
+changequote(`{', `}')dnl
+ifelse(ifelse(D_OSVER, 7, yes, D_OSVER, 8, yes, no), yes, {
+#  Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
 RUN echo $'[ltb-project]\n\
 name=LTB project packages\n\
 baseurl=https://ltb-project.org/rpm/$releasever/$basearch\n\
@@ -43,19 +47,32 @@ gpgcheck=1\n\
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo
 RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+})dnl
+changequote({`}, {'})dnl
 
-# EPEL repository for freetds and hiredis
+#  Enable EPEL repository for freetds and hiredis
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-D_OSVER.noarch.rpm
-
-ifelse(D_OSVER, 8,`
+ifelse(D_OSVER, 8, `
+#  Enable powertools repo
 RUN yum config-manager --enable powertools
-# Currently needed for hiredis-devel
+
+#  Enable epel-testing, currently needed for hiredis-devel
 RUN yum config-manager --enable epel-testing
-')
+')dnl
+ifelse(D_OSVER, 9, `
+#  Enable Code Ready Builder repo (CentOS powertools equivalent)
+RUN yum install -y yum-utils
+RUN yum config-manager --enable crb
+')dnl
+
 #
 #  Install build dependencies
 #
-RUN [ -e redhat/freeradius.spec ] && yum-builddep -y redhat/freeradius.spec
+#  Run twice, it doesn't always get everything with one invocation
+#
+RUN [ -e redhat/freeradius.spec ] && \
+	yum-builddep -y redhat/freeradius.spec && \
+	yum-builddep -y redhat/freeradius.spec
 
 #
 #  Create RPM build environment
@@ -85,6 +102,8 @@ RUN mv $BUILDDIR/RPMS/*/*.rpm /root/rpms/
 FROM ${from}
 COPY --from=build /root/rpms /tmp/
 
+changequote(`{', `}')dnl
+ifelse(ifelse(D_OSVER, 7, yes, D_OSVER, 8, yes, no), yes, {dnl
 # Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
 RUN echo $'[ltb-project]\n\
 name=LTB project packages\n\
@@ -93,11 +112,19 @@ enabled=1\n\
 gpgcheck=1\n\
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo \
-    && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project \
-    \
-# EPEL repository for freetds and hiredis
-    && yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-D_OSVER.noarch.rpm \
-ifelse(D_OSVER, 8,`dnl
+    && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+})dnl
+changequote({`}, {'})dnl
+
+ifelse(D_OSVER, 9, `dnl
+#  Needed for mysql-libs on Rocky 9
+RUN yum install -y yum-utils
+RUN yum config-manager --enable crb
+')dnl
+
+#  EPEL repository for freetds and hiredis
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-D_OSVER.noarch.rpm \
+ifelse(D_OSVER, 7, `    \', `dnl
     && yum install -y dnf-utils \
     && yum config-manager --enable epel-testing
 
@@ -105,7 +132,7 @@ ARG radiusd_uid=95
 ARG radiusd_gid=95
 
 RUN groupadd -g ${radiusd_gid} -r radiusd \
-    && useradd -u ${radiusd_uid} -g radiusd -r -M -d /home/radiusd -s /sbin/nologin radiusd \',`    \')
+    && useradd -u ${radiusd_uid} -g radiusd -r -M -d /home/radiusd -s /sbin/nologin radiusd \')
     && yum install -y /tmp/*.rpm
 
 COPY docker-entrypoint.sh /

@@ -1,7 +1,7 @@
-ARG from=rockylinux/rockylinux:8
+ARG from=rockylinux/rockylinux:9
 FROM ${from} as build
 
-RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-rockyofficial
+RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
 
 #
 #  Install build tools
@@ -30,24 +30,12 @@ WORKDIR freeradius-server
 #  Other requirements
 #
 
-#  Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
-RUN echo $'[ltb-project]\n\
-name=LTB project packages\n\
-baseurl=https://ltb-project.org/rpm/$releasever/$basearch\n\
-enabled=1\n\
-gpgcheck=1\n\
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
-> /etc/yum.repos.d/ltb-project.repo
-RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
-
 #  Enable EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 
-#  Enable powertools repo
-RUN yum config-manager --enable powertools
-
-#  Enable epel-testing, currently needed for hiredis-devel
-RUN yum config-manager --enable epel-testing
+#  Enable Code Ready Builder repo (CentOS powertools equivalent)
+RUN yum install -y yum-utils
+RUN yum config-manager --enable crb
 
 #
 #  Install build dependencies
@@ -86,19 +74,13 @@ RUN mv $BUILDDIR/RPMS/*/*.rpm /root/rpms/
 FROM ${from}
 COPY --from=build /root/rpms /tmp/
 
-# Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
-RUN echo $'[ltb-project]\n\
-name=LTB project packages\n\
-baseurl=https://ltb-project.org/rpm/$releasever/$basearch\n\
-enabled=1\n\
-gpgcheck=1\n\
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
-> /etc/yum.repos.d/ltb-project.repo \
-    && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
+#  Needed for mysql-libs on Rocky 9
+RUN yum install -y yum-utils
+RUN yum config-manager --enable crb
 
 #  EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
     && yum install -y dnf-utils \
     && yum config-manager --enable epel-testing
 

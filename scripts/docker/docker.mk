@@ -85,6 +85,7 @@ $(eval $(call ADD_DOCKER_REBUILD,ubuntu20,deb,ubuntu:20.04,ubuntu,20,focal))
 $(eval $(call ADD_DOCKER_REBUILD,ubuntu22,deb,ubuntu:22.04,ubuntu,22,jammy))
 $(eval $(call ADD_DOCKER_REBUILD,centos7,rpm,centos:centos7,centos,7,7))
 $(eval $(call ADD_DOCKER_REBUILD,rocky8,rpm,rockylinux/rockylinux:8,rocky,8,8))
+$(eval $(call ADD_DOCKER_REBUILD,rocky9,rpm,rockylinux/rockylinux:9,rocky,9,9))
 
 .PHONY: docker.refresh
 docker.refresh: $(DOCKER_DOCKERFILES)
