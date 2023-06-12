@@ -89,7 +89,7 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval 10s --health-timeout 5s --health-retries 10
+        options: --health-cmd="mariadb-admin ping" --health-interval 10s --health-timeout 5s --health-retries 10
 
       postgres:
         image: ${{ needs.pre-ci.outputs.docker_prefix }}postgres
