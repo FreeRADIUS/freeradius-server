@@ -131,7 +131,7 @@ static RADIUS_PACKET *request_init(char const *filename)
 			return NULL;
 		}
 	} else {
-		DEBUG("Read packets from stdin\n");
+		DEBUG("Reading packets from stdin\n");
 		fp = stdin;
 	}
 
