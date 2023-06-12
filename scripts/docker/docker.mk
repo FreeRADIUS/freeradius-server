@@ -79,6 +79,7 @@ endef
 
 $(eval $(call ADD_DOCKER_REBUILD,debian10,deb,debian:buster,debian,10,buster))
 $(eval $(call ADD_DOCKER_REBUILD,debian11,deb,debian:bullseye,debian,11,bullseye))
+$(eval $(call ADD_DOCKER_REBUILD,debian12,deb,debian:bookworm,debian,12,bookworm))
 $(eval $(call ADD_DOCKER_REBUILD,ubuntu18,deb,ubuntu:18.04,ubuntu,18,bionic))
 $(eval $(call ADD_DOCKER_REBUILD,ubuntu20,deb,ubuntu:20.04,ubuntu,20,focal))
 $(eval $(call ADD_DOCKER_REBUILD,ubuntu22,deb,ubuntu:22.04,ubuntu,22,jammy))
