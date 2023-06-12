@@ -204,7 +204,7 @@ CONF_PARSER fr_tls_server_config[] = {
 };
 
 CONF_PARSER fr_tls_client_config[] = {
-	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, chains),
+	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, fr_tls_conf_t, chains),
 	  .subcs_size = sizeof(fr_tls_chain_conf_t), .subcs_type = "fr_tls_chain_conf_t",
 	  .subcs = tls_chain_config },
 
