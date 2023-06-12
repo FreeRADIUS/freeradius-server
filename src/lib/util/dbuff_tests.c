@@ -1,32 +1,8 @@
 #include <freeradius-devel/util/acutest.h>
+#include <freeradius-devel/util/acutest_helpers.h>
 #include <float.h>
 
 #include "dbuff.h"
-
-/*
- *	We're testing float equality not by adding numbers, but by
- *	copying memory to / from network buffers.  Disable this
- *	spurious warning.
- *
- *	The tests should arguably be doing memcmp(), to ensure that
- *	the floats are equal on a *bit* level, not on a *semantic*
- *	level.
- */
-#define TEST_CHECK_LEN(_got, _exp) \
-do { \
-	size_t _our_got = (_got); \
-	TEST_CHECK((_exp) == (_our_got)); \
-	TEST_MSG("Expected length : %zu", (ssize_t)_exp); \
-	TEST_MSG("Got length      : %zu", (ssize_t)_our_got); \
-} while(0)
-
-#define TEST_CHECK_SLEN(_got, _exp) \
-do { \
-	ssize_t _our_got = (_got); \
-	TEST_CHECK((_exp) == (_our_got)); \
-	TEST_MSG("Expected length : %zd", (ssize_t)_exp); \
-	TEST_MSG("Got length      : %zd", (ssize_t)_our_got); \
-} while(0)
 
 //#include <gperftools/profiler.h>
 
