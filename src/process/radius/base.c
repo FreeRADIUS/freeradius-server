@@ -408,22 +408,26 @@ void radius_request_pairs_to_reply(request_t *request, process_radius_request_pa
 {
 	if (!rctx) return;
 
-	if (fr_pair_find_by_da(&request->reply_pairs, NULL, attr_proxy_state)) {
-		/*
-		 *	Because we send Proxy-State to upstreams, if we
-		 *	include the raw upstream response in our reply,
-		 *	AND add back the proxy states we recorded from
-		 *	the request, then we have too many proxy state
-		 *	attributes!
-		 *
-		 *	There's various other ways this could happen too
-		 *	so it's safer just not to add proxy-state
-		 *	attributes to the reply if they're already
-		 *	present.
-		 */
-		RDEBUG3("Not adding Proxy-Sate attributes, already present");
-		return;
-	}
+	/*
+	 *	Proxy-State is a link-level signal between RADIUS
+	 *	client and server.  RFC 2865 Section 5.33 says that
+	 *	Proxy-State is an opaque field, and implementations
+	 *	most not examine it, interpret it, or assign it any
+	 *	meaning.  Implementations must also copy all Proxy-State
+	 *	from the request to the reply.
+	 *
+	 *	The rlm_radius module already deletes any Proxy-State
+	 *	from the reply before appending the proxy reply to the
+	 *	current reply.
+	 *
+	 *	If any policy creates Proxy-State, that could affect
+	 *	individual RADIUS links (perhaps), and that would be
+	 *	wrong.  As such, we nuke any nonsensical Proxy-State
+	 *	added by policies or errant modules, and instead just
+	 *	do exactly what the RFCs require us to do.  No more.
+	 */
+	fr_pair_delete_by_da(&request->reply_pairs, attr_proxy_state);
+
 	RDEBUG3("Adding Proxy-State attributes from request");
 	RINDENT();
 	fr_value_box_list_foreach(&rctx->proxy_state, proxy_state_value) {
