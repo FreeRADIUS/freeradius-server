@@ -200,6 +200,7 @@ ATTRIBUTE	MNG-IPv6				196	integer
 VALUE	MNG-IPv6			Unsupported		0
 VALUE	MNG-IPv6			Supported		1
 
+ATTRIBUTE	DPSK-Info				206	string
 ATTRIBUTE	Flow-Info				211	string
 ATTRIBUTE	Flow-Id					212	integer
 ATTRIBUTE	DHCP-Server-IP				214	ipaddr
