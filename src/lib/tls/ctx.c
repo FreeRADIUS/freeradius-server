@@ -612,7 +612,6 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	SSL_CTX		*ctx;
 	X509_STORE	*cert_vpstore;
 	X509_STORE	*verify_store;
-	int		verify_mode = SSL_VERIFY_NONE;
 	int		ctx_options = 0;
 
 	ctx = SSL_CTX_new(TLS_method());
