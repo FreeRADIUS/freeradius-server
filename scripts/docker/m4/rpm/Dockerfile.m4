@@ -1,15 +1,19 @@
-ARG from=rockylinux/rockylinux:8
+ARG from=D_IMAGE
 FROM ${from} as build
 
+ifelse(D_OSVER, 7,,`dnl
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-rockyofficial
-
+')
 #
 #  Install build tools
 #
 RUN yum groupinstall -y "Development Tools"
-
+ifelse(D_OSVER, 7,`dnl
+RUN yum install -y rpmdevtools
+RUN yum install -y openssl
+',`
 RUN yum install -y rpmdevtools openssl dnf-utils
-
+')
 
 #
 #  Create build directory
@@ -41,13 +45,13 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
 # EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-D_OSVER.noarch.rpm
 
-
+ifelse(D_OSVER, 8,`
 RUN yum config-manager --enable powertools
 # Currently needed for hiredis-devel
 RUN yum config-manager --enable epel-testing
-
+')
 #
 #  Install build dependencies
 #
@@ -92,7 +96,8 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
     && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project \
     \
 # EPEL repository for freetds and hiredis
-    && yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
+    && yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-D_OSVER.noarch.rpm \
+ifelse(D_OSVER, 8,`dnl
     && yum install -y dnf-utils \
     && yum config-manager --enable epel-testing
 
@@ -100,7 +105,7 @@ ARG radiusd_uid=95
 ARG radiusd_gid=95
 
 RUN groupadd -g ${radiusd_gid} -r radiusd \
-    && useradd -u ${radiusd_uid} -g radiusd -r -M -d /home/radiusd -s /sbin/nologin radiusd \
+    && useradd -u ${radiusd_uid} -g radiusd -r -M -d /home/radiusd -s /sbin/nologin radiusd \',`    \')
     && yum install -y /tmp/*.rpm
 
 COPY docker-entrypoint.sh /

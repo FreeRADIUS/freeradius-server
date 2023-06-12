@@ -1,12 +1,14 @@
 ARG from=centos:centos7
 FROM ${from} as build
 
+
 #
 #  Install build tools
 #
 RUN yum groupinstall -y "Development Tools"
 RUN yum install -y rpmdevtools
 RUN yum install -y openssl
+
 
 #
 #  Create build directory
@@ -39,6 +41,7 @@ RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
 # EPEL repository for freetds and hiredis
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+
 
 #
 #  Install build dependencies

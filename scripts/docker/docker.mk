@@ -40,6 +40,15 @@ DOCKER_REPO := freeradius
 #  Registry to push to
 DOCKER_REGISTRY :=
 #
+#  Location of Docker-related files
+DOCKER_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+ifeq "${VERBOSE}" ""
+    Q=@
+else
+    Q=
+endif
+
 
 ifneq "$(DOCKER_REPO)" ""
 	override DOCKER_REPO := $(DOCKER_REPO)/
@@ -49,6 +58,40 @@ ifneq "$(DOCKER_REGISTRY)" ""
 	override DOCKER_REGISTRY := $(DOCKER_REGISTRY)/
 endif
 
+
+#
+#  Rules to rebuild Dockerfiles
+#
+
+define ADD_DOCKER_REBUILD
+    $$(DOCKER_DIR)/${1}/Dockerfile: $(DOCKER_DIR)/m4/${2}/Dockerfile.m4 $(DOCKER_DIR)/docker.mk
+	@echo REFRESH ${1}/Dockerfile
+	$$(Q)m4 -D D_NAME=${1} \
+		-D D_TYPE=${2} \
+		-D D_IMAGE=${3} \
+		-D D_OS=${4} \
+		-D D_OSVER=${5} \
+		-D D_CODENAME=${6} \
+			$$< > $$@
+
+    DOCKER_DOCKERFILES += $$(DOCKER_DIR)/${1}/Dockerfile
+endef
+
+$(eval $(call ADD_DOCKER_REBUILD,debian10,deb,debian:buster,debian,10,buster))
+$(eval $(call ADD_DOCKER_REBUILD,debian11,deb,debian:bullseye,debian,11,bullseye))
+$(eval $(call ADD_DOCKER_REBUILD,ubuntu18,deb,ubuntu:18.04,ubuntu,18,bionic))
+$(eval $(call ADD_DOCKER_REBUILD,ubuntu20,deb,ubuntu:20.04,ubuntu,20,focal))
+$(eval $(call ADD_DOCKER_REBUILD,ubuntu22,deb,ubuntu:22.04,ubuntu,22,jammy))
+$(eval $(call ADD_DOCKER_REBUILD,centos7,rpm,centos:centos7,centos,7,7))
+$(eval $(call ADD_DOCKER_REBUILD,rocky8,rpm,rockylinux/rockylinux:8,rocky,8,8))
+
+.PHONY: docker.refresh
+docker.refresh: $(DOCKER_DOCKERFILES)
+
+
+#
+#  Rules to rebuild Docker images
+#
 
 .PHONY: docker-ubuntu
 docker-ubuntu:
