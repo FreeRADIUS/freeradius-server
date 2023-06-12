@@ -615,7 +615,7 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 	 *	Don't print this out in the normal course of
 	 *	operations.
 	 */
-	if (!RDEBUG_ENABLED2) return;
+	if (!ROPTIONAL_ENABLED(RDEBUG_ENABLED2, DEBUG_ENABLED3)) return;
 
 	if (((size_t)tls_session->info.version >= NUM_ELEMENTS(tls_version_str)) ||
 	    !tls_version_str[tls_session->info.version]) {
@@ -699,10 +699,10 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 	 *	Print out information about the record and print the
 	 *	data at higher debug levels.
 	 */
-	if (RDEBUG_ENABLED4) {
-		RHEXDUMP4(data, data_len, "%s", tls_session->info.info_description);
+	if (ROPTIONAL_ENABLED(RDEBUG_ENABLED4, DEBUG_ENABLED4)) {
+		ROPTIONAL(RHEXDUMP4, HEXDUMP4, data, data_len, "%s", tls_session->info.info_description);
 	} else {
-		RDEBUG2("%s", tls_session->info.info_description);
+		ROPTIONAL(RDEBUG2, DEBUG2, "%s", tls_session->info.info_description);
 	}
 }
 
