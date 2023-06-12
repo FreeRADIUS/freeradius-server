@@ -168,12 +168,32 @@ static void unlang_subrequest_child_signal(request_t *request, fr_signal_t actio
 static unlang_action_t unlang_subrequest_child_done(rlm_rcode_t *p_result,
 						    UNUSED int *p_priority, request_t *request, void *uctx)
 {
-	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(uctx, unlang_frame_state_subrequest_t);
+	unlang_frame_state_subrequest_t	*state;
 
 	/*
 	 *	Child was detached, nothing more to do.
+	 *
+	 *	This frame was left on the stack when the child
+	 *	detached.  It's normally meant to trigger a
+	 *	resume in the parent, but as there is no parent
+	 *	it just becomes a noop and gets popped.
+	 *
+	 *	This is cheaper/less complex then rooting it
+	 *	out at detach time and unsetting the repeat
+	 *	function.
 	 */
 	if (!request->parent) return UNLANG_ACTION_CALCULATE_RESULT;
+
+	/*
+	 *	'state' in this context, is the frame state
+	 *	in the parent request, so we cannot examine it
+	 *	until AFTER we've determined there is still
+	 *	a parent, else the memory could've been freed.
+	 *
+	 *	i.e. don't move the get_type_abort call onto
+	 *	the same line as the state variable declaration.
+	 */
+	state = talloc_get_type_abort(uctx, unlang_frame_state_subrequest_t);
 
 	/*
 	 *	Place child state back inside the parent

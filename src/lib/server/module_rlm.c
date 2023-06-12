@@ -421,7 +421,6 @@ bool module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_
  *
  * @param[out] method		the method function we will call
  * @param[out] method_env	the module_call_env to evaluate when compiling the method.
- * @param[in,out] component	the default component to use.  Updated to be the found component
  * @param[out] name1		name1 of the method being called
  * @param[out] name2		name2 of the method being called
  * @param[in] name 		The name of the module we're attempting to find, possibly concatenated with the method
@@ -432,7 +431,6 @@ bool module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_
  *  If the module exists but the method doesn't exist, then `method` is set to NULL.
  */
 module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_method_env_t const **method_env,
-						 UNUSED rlm_components_t *component,
 						 char const **name1, char const **name2,
 						 char const *name)
 {
@@ -876,7 +874,7 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 			 *	want to know if we need to register a
 			 *	redundant xlat for the virtual module.
 			 */
-			mi = module_rlm_by_name_and_method(NULL, NULL, NULL, NULL, NULL, cf_pair_attr(cp));
+			mi = module_rlm_by_name_and_method(NULL, NULL, NULL, NULL, cf_pair_attr(cp));
 			if (!mi) {
 				cf_log_err(sub_ci, "Module instance \"%s\" referenced in %s block, does not exist",
 					   cf_pair_attr(cp), cf_section_name1(cs));

@@ -85,9 +85,8 @@ bool		module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type
  * @{
  */
 module_instance_t	*module_rlm_by_name_and_method(module_method_t *method, call_method_env_t const ** method_env,
-						   rlm_components_t *component,
-						   char const **name1, char const **name2,
-						   char const *asked_name);
+						       char const **name1, char const **name2,
+						       char const *asked_name);
 
 module_thread_instance_t *module_rlm_thread_by_data(void const *data);
 

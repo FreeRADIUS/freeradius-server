@@ -1,0 +1,22 @@
+#
+#  PRE: subrequest
+#
+
+# This is mostly a regression test, if it doesn't crash we're good
+subrequest {
+	# At this point the main request continues
+	detach
+
+	parallel {
+		redundant {
+			ok
+			fail
+		}
+		redundant {
+			fail
+			ok
+		}
+	}
+}
+
+success

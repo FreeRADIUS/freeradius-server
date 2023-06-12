@@ -28,6 +28,7 @@
 #define LOG_PREFIX "tls"
 
 #include <freeradius-devel/server/pair.h>
+#include <freeradius-devel/server/log.h>
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
@@ -453,7 +454,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 	state = state ? state : "<INVALID>";
 
 	if ((where & SSL_CB_LOOP) || (where & SSL_CB_HANDSHAKE_START) || (where & SSL_CB_HANDSHAKE_DONE)) {
-		if (RDEBUG_ENABLED3) {
+		if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
 			char const *abbrv = SSL_state_string(ssl);
 			size_t len;
 
@@ -463,7 +464,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			len = strlen(abbrv);
 			if ((len > 1) && (abbrv[len - 1] == ' ')) len--;
 
-			RDEBUG3("Handshake state [%.*s] - %s%s", (int)len, abbrv, role, state);
+			ROPTIONAL(RDEBUG3, DEBUG3, "Handshake state [%.*s] - %s%s", (int)len, abbrv, role, state);
 
 #ifdef OPENSSL_NO_SSL_TRACE
 	        	{
@@ -484,42 +485,41 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 					int num_ciphers;
 					const SSL_CIPHER *this_cipher;
 
-
 					server_ciphers = SSL_get_ciphers(ssl);
 					/*
 					 *	These are printed on startup, so not usually
 					 *      required.
 					 */
-					RDEBUG4("Our preferred ciphers (by priority)");
-					if (RDEBUG_ENABLED4) {
-						RINDENT();
+					ROPTIONAL(RDEBUG4, DEBUG4, "Our preferred ciphers (by priority)");
+					if (ROPTIONAL_ENABLED(RDEBUG_ENABLED4, DEBUG_ENABLED4)) {
+						if (request) RINDENT();
 						num_ciphers = sk_SSL_CIPHER_num(server_ciphers);
 						for (i = 0; i < num_ciphers; i++) {
 							this_cipher = sk_SSL_CIPHER_value(server_ciphers, i);
-							RDEBUG4("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+							ROPTIONAL(RDEBUG4, DEBUG4, "[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
 						}
-						REXDENT();
+						if (request) REXDENT();
 					}
 
 					/*
 					 *	Print information about the client's
 					 *      handshake message.
 					 */
-					if (RDEBUG_ENABLED3) {
-						RDEBUG3("Client's preferred ciphers (by priority)");
-						RINDENT();
+					if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
+						ROPTIONAL(RDEBUG3, DEBUG3, "Client's preferred ciphers (by priority)");
+						if (request) RINDENT();
 						num_ciphers = sk_SSL_CIPHER_num(client_ciphers);
 						for (i = 0; i < num_ciphers; i++) {
 							this_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
-							RDEBUG3("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+							ROPTIONAL(RDEBUG3, DEBUG3, "[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
 						}
-						REXDENT();
+						if (request) REXDENT();
 					}
 				}
 			}
 #  endif
 		} else {
-			RDEBUG2("Handshake state - %s%s (%i)", role, state, SSL_get_state(ssl));
+			ROPTIONAL(RDEBUG2, DEBUG2, "Handshake state - %s%s (%i)", role, state, SSL_get_state(ssl));
 		}
 		return;
 	}
@@ -533,8 +533,8 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 		if (where & SSL_CB_READ) {
 			fr_pair_t *vp;
 
-			REDEBUG("Client sent %s TLS alert (%i) - %s", SSL_alert_type_string_long(ret),
-			        ret & 0xff, SSL_alert_desc_string_long(ret));
+			ROPTIONAL(REDEBUG, ERROR, "Client sent %s TLS alert (%i) - %s", SSL_alert_type_string_long(ret),
+			          ret & 0xff, SSL_alert_desc_string_long(ret));
 
 			/*
 			 *	Offer helpful advice... Should be expanded.
@@ -551,23 +551,23 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 			MEM(pair_update_request(&vp, attr_tls_client_error_code) >= 0);
 			vp->vp_uint8 = ret & 0xff;
-			RDEBUG2("&TLS-Client-Error-Code := %pV", &vp->data);
+			ROPTIONAL(RDEBUG2, DEBUG2, "&TLS-Client-Error-Code := %pV", &vp->data);
 		/*
 		 *	We're sending the client an alert.
 		 */
 		} else {
-			REDEBUG("Sending client %s TLS alert (%i) - %s", SSL_alert_type_string_long(ret),
-				ret & 0xff, SSL_alert_desc_string_long(ret));
+			ROPTIONAL(REDEBUG, ERROR, "Sending client %s TLS alert (%i) - %s",
+				  SSL_alert_type_string_long(ret), ret & 0xff, SSL_alert_desc_string_long(ret));
 
 			/*
 			 *	Offer helpful advice... Should be expanded.
 			 */
 			switch (ret & 0xff) {
 			case TLS1_AD_PROTOCOL_VERSION:
-				REDEBUG("Client requested a TLS protocol version that is not enabled or not supported. "
-				        "Upgrade FreeRADIUS + OpenSSL to their latest versions and/or adjust "
-				        "'tls_max_version'/'tls_min_version' if you want authentication to "
-				        "succeed");
+				ROPTIONAL(REDEBUG, ERROR, "Client requested a TLS protocol version that is not "
+					  "enabled or not supported. Upgrade FreeRADIUS + OpenSSL to their latest "
+					  "versions and/or adjust 'tls_max_version'/'tls_min_version' if you want "
+					  "authentication to succeed");
 				break;
 
 			default:
@@ -579,7 +579,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 	if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			REDEBUG("Handshake exit state %s%s", role, state);
+			ROPTIONAL(REDEBUG, ERROR, "Handshake exit state %s%s", role, state);
 			return;
 		}
 
@@ -588,7 +588,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 				RDEBUG2("Need more data from client"); /* State same as previous call, don't print */
 				return;
 			}
-			REDEBUG("Handshake exit state %s%s", role, state);
+			ROPTIONAL(REDEBUG, ERROR, "Handshake exit state %s%s", role, state);
 		}
 	}
 }
@@ -747,7 +747,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 *	Mostly to check for memory corruption...
 	 */
 	if (!fr_cond_assert(tls_session->ssl = ssl)) {
-		ERROR("fr_tls_session_t and ssl arg do not match in fr_tls_session_msg_cb");
+		ROPTIONAL(REDEBUG, ERROR, "fr_tls_session_t and ssl arg do not match in fr_tls_session_msg_cb");
 		tls_session->invalid = true;
 		return;
 	}
@@ -779,13 +779,13 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 *	the SSL Session state.
 	 */
 	if ((msg_version == 0) && (content_type > UINT8_MAX)) {
-		DEBUG4("Ignoring fr_tls_session_msg_cb call with pseudo content type %i, version %i",
+		ROPTIONAL(REDEBUG4, DEBUG4, "Ignoring fr_tls_session_msg_cb call with pseudo content type %i, version %i",
 		       content_type, msg_version);
 		return;
 	}
 
 	if ((write_p != 0) && (write_p != 1)) {
-		DEBUG4("Ignoring fr_tls_session_msg_cb call with invalid write_p %d", write_p);
+		ROPTIONAL(REDEBUG4, DEBUG4, "Ignoring fr_tls_session_msg_cb call with invalid write_p %d", write_p);
 		return;
 	}
 
@@ -996,7 +996,6 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 			fr_tls_log_io_error(request, code, "SSL_read (%s)", __FUNCTION__);
 			goto error;
 		}
-
 	}
 
 	/*
@@ -1626,7 +1625,6 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 {
 	int			verify_mode;
 	fr_tls_session_t	*tls_session = NULL;
-	request_t		*request;
 	fr_tls_conf_t		*conf = fr_tls_ctx_conf(ssl_ctx);
 
 	MEM(tls_session = talloc_zero(ctx, fr_tls_session_t));
@@ -1638,10 +1636,6 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 		talloc_free(tls_session);
 		return NULL;
 	}
-
-	request = request_alloc_internal(tls_session, NULL);
-
-	fr_tls_session_request_bind(tls_session->ssl, request);
 
 	/*
 	 *	Add the message callback to identify what type of
@@ -1657,8 +1651,17 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 	DEBUG2("Requiring Server certificate");
 	verify_mode = SSL_VERIFY_PEER;
 	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-	SSL_set_verify(tls_session->ssl, verify_mode, NULL);
 
+	/*
+	 *	Callback should be fr_tls_verify_cert_cb but this
+	 *	requires support around SSL_connect for dealing
+	 *	with async.
+	 *
+	 *	If the callback is NULL OpenSSL uses its own validation
+	 *	function, and the flags modifies that function's
+	 *	behaviour.
+	 */
+	SSL_set_verify(tls_session->ssl, verify_mode, NULL);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
 

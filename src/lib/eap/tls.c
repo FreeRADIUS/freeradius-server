@@ -482,7 +482,7 @@ static int eap_tls_ack(request_t *request, eap_session_t *eap_session)
 static eap_tls_status_t eap_tls_session_status(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	if (tls_session == NULL){
 		REDEBUG("Unexpected ACK received:  No ongoing SSL tls_session");

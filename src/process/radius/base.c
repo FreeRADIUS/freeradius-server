@@ -408,6 +408,22 @@ void radius_request_pairs_to_reply(request_t *request, process_radius_request_pa
 {
 	if (!rctx) return;
 
+	if (fr_pair_find_by_da(&request->reply_pairs, NULL, attr_proxy_state)) {
+		/*
+		 *	Because we send Proxy-State to upstreams, if we
+		 *	include the raw upstream response in our reply,
+		 *	AND add back the proxy states we recorded from
+		 *	the request, then we have too many proxy state
+		 *	attributes!
+		 *
+		 *	There's various other ways this could happen too
+		 *	so it's safer just not to add proxy-state
+		 *	attributes to the reply if they're already
+		 *	present.
+		 */
+		RDEBUG3("Not adding Proxy-Sate attributes, already present");
+		return;
+	}
 	RDEBUG3("Adding Proxy-State attributes from request");
 	RINDENT();
 	fr_value_box_list_foreach(&rctx->proxy_state, proxy_state_value) {
