@@ -296,3 +296,25 @@ ssize_t xlat_eval(char *out, size_t outlen, request_t *request,
 
 	return result;
 }
+
+typedef struct {
+} tmpl_t;
+
+typedef enum {
+	TMPL_ATTR_REF_PREFIX_YES = 0,			//!< Attribute refs must have '&' prefix.
+	TMPL_ATTR_REF_PREFIX_NO,			//!< Attribute refs have no '&' prefix.
+	TMPL_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
+} tmpl_attr_prefix_t;
+
+typedef struct {
+} fr_sbuff_escape_rules_t;
+
+fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
+                     tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules)
+{
+	fr_slen_t result;
+
+	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result + 1);
+
+	return result;
+}
