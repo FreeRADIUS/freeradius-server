@@ -979,14 +979,11 @@ post_ca:
 #endif
 
 	/*
-	 *	Set verify modes
-	 *	Always verify the peer certificate
+	 *	SSL_ctx_set_verify is now called in the session
+	 *	alloc functions so they can set custom behaviour
+	 *	depending on the code area the SSL * will be used
+	 *	and whether we're acting as a client or server.
 	 */
-	verify_mode |= SSL_VERIFY_PEER;
-	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-	verify_mode |= SSL_VERIFY_CLIENT_ONCE;
-	SSL_CTX_set_verify(ctx, verify_mode, fr_tls_verify_cert_cb);
-
 	if (conf->verify_depth) {
 		SSL_CTX_set_verify_depth(ctx, conf->verify_depth);
 	}
