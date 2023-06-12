@@ -47,8 +47,6 @@ COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 ARG freerad_uid=101
 ARG freerad_gid=101
 
-ARG DEBIAN_FRONTEND=noninteractive
-
 RUN groupadd -g ${freerad_gid} -r freerad \
     && useradd -u ${freerad_uid} -g freerad -r -M -d /etc/freeradius -s /usr/sbin/nologin freerad \
     && apt-get update \
