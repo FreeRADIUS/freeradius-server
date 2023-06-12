@@ -113,7 +113,7 @@ static void test_bstrncpy_exact(void)
 
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5);
-	TEST_CHECK_SLEN(slen, 5);
+	TEST_CHECK_SLEN_RETURN(slen, 5);
 	TEST_CHECK_STRCMP(out, "i am ");
 	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
@@ -165,7 +165,7 @@ static void test_bstrncpy(void)
 
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_bstrncpy(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5);
-	TEST_CHECK_SLEN(slen, 5);
+	TEST_CHECK_SLEN_RETURN(slen, 5);
 	TEST_CHECK_STRCMP(out, "i am ");
 	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
@@ -240,7 +240,7 @@ static void test_bstrncpy_allowed(void)
 	 */
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5, allow_lowercase_and_space);
-	TEST_CHECK_SLEN(slen, 5);
+	TEST_CHECK_SLEN_RETURN(slen, 5);
 	TEST_CHECK_STRCMP(out, "i am ");
 	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
@@ -328,7 +328,7 @@ static void test_bstrncpy_until(void)
 	 */
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5, NULL, NULL);
-	TEST_CHECK_SLEN(slen, 5);
+	TEST_CHECK_SLEN_RETURN(slen, 5);
 	TEST_CHECK_STRCMP(out, "i am ");
 	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
@@ -455,7 +455,7 @@ static void test_unescape_until(void)
 	 */
 	TEST_CASE("Copy 5 bytes to out");
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, 5, NULL, &rules);
-	TEST_CHECK_SLEN(slen, 5);
+	TEST_CHECK_SLEN_RETURN(slen, 5);
 	TEST_CHECK_STRCMP(out, "i am ");
 	TEST_CHECK_STRCMP(sbuff.p, "a test string");
 
@@ -532,7 +532,7 @@ static void test_unescape_until(void)
 	fr_sbuff_init_in(&sbuff, in_escapes, sizeof(in_escapes) - 1);
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(escape_out, sizeof(escape_out)), &sbuff, SIZE_MAX,
 					   &FR_SBUFF_TERM("g"), &pipe_rules);
-	TEST_CHECK_SLEN(slen, 20);
+	TEST_CHECK_SLEN_RETURN(slen, 20);
 	TEST_CHECK_STRCMP(escape_out, "i am a |t|est string");
 	TEST_CHECK_STRCMP(sbuff.p, "");
 
@@ -551,7 +551,7 @@ static void test_unescape_until(void)
 		fr_sbuff_init_in(&sbuff, in_escapes_seq, sizeof(in_escapes_seq) - 1);
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
 						   &FR_SBUFF_TERM("g"), &pipe_rules_sub_hex);
-		TEST_CHECK_SLEN(slen, 24);
+		TEST_CHECK_SLEN_RETURN(slen, 24);
 		TEST_CHECK_STRCMP(tmp_out, "i |x|0am a |t|est strinh");
 		TEST_CHECK_STRCMP(sbuff.p, "|x20|040");
 	}
@@ -714,7 +714,7 @@ static void test_unescape_multi_char_terminals(void)
 	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt, NULL);
-	TEST_CHECK(slen == 3);
+	TEST_CHECK_SLEN_RETURN(slen, 3);
 	TEST_CHECK_STRCMP(out, "foo");
 
 	fr_sbuff_advance(&sbuff, 1);
@@ -747,13 +747,13 @@ static void test_eof_terminal(void)
 	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt_eof, NULL);
-	TEST_CHECK(slen == 3);
+	TEST_CHECK_SLEN_RETURN(slen, 3);
 	TEST_CHECK_STRCMP(out, "foo");
 
 	fr_sbuff_advance(&sbuff, 1);	/* Advance past comma */
 
 	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt_eof, NULL);
-	TEST_CHECK(slen == 4);
+	TEST_CHECK_SLEN_RETURN(slen, 4);
 	TEST_CHECK_STRCMP(out, " bar");
 
 	TEST_CHECK(fr_sbuff_is_terminal(&sbuff, &tt_eof) == true);
@@ -836,8 +836,7 @@ static void test_no_advance(void)
 	TEST_CASE("Copy 5 bytes to out - no advance");
 	TEST_CHECK(sbuff.p == sbuff.start);
 	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &FR_SBUFF(&sbuff), 5);
-	TEST_CHECK(slen == 5);
-	/* coverity[uninit_use_in_call] */
+	TEST_CHECK_SLEN_RETURN(slen, 5);
 	TEST_CHECK(strcmp(out, "i am ") == 0);
 	TEST_CHECK(sbuff.p == sbuff.start);
 }
