@@ -1,9 +1,9 @@
-# Auto generated for centos7
+# Auto generated for rocky9
 # from scripts/crossbuild/m4/Dockerfile.rpm.m4
 #
-# Rebuild this file with `make crossbuild.centos7.regen`
+# Rebuild this file with `make crossbuild.rocky9.regen`
 #
-ARG from=centos:7
+ARG from=rockylinux/rockylinux:9
 FROM ${from} as build
 
 #
@@ -12,23 +12,11 @@ FROM ${from} as build
 #
 RUN yum update -y
 RUN yum install -y rpmdevtools openssl epel-release git procps yum-utils \
-	rsync 
-
-#
-#  Install GCC that has the requisite support for C11 keywords and atomics
-#
-RUN yum install -y centos-release-scl
-RUN yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++
-ENV CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
-
-#
-#  Remove the CentOS-SCLo repo which is apparently not valid?
-#  See: https://bugs.centos.org/view.php?id=14773
-#
-RUN rm /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
-RUN rm /etc/yum.repos.d/CentOS-SCLo-scl.repo
+	rsync dnf-plugins-core
 
 
+
+RUN yum config-manager --set-enabled crb
 
 #
 #  Documentation build dependecies
@@ -53,17 +41,6 @@ RUN gem install asciidoctor
 RUN mkdir -p /usr/local/src/repositories
 WORKDIR /usr/local/src/repositories
 
-#
-#  Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
-#
-RUN echo $'[ltb-project]\n\
-name=LTB project packages\n\
-baseurl=https://ltb-project.org/rpm/$releasever/$basearch\n\
-enabled=1\n\
-gpgcheck=1\n\
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
-> /etc/yum.repos.d/ltb-project.repo
-RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
 #
 #  Shallow clone the FreeRADIUS source
@@ -80,7 +57,7 @@ WORKDIR freeradius-server
 RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[0-9x]*\.x|master)$");\
 	do \
 		git checkout $i; \
-		[ -e redhat/freeradius.spec ] && yum-builddep --disablerepo="nodesource*" -y redhat/freeradius.spec; \
+		[ -e redhat/freeradius.spec ] && yum-builddep  -y redhat/freeradius.spec; \
 	done
 
 #
@@ -93,6 +70,11 @@ RUN yum install -y which
 #
 RUN yum install -y libnl3-devel
 
+#
+#  We test with TLS1.1, but that is disabled by default on some
+#  newer systems.
+#
+RUN update-crypto-policies --set LEGACY
 
 #
 #  Create the RPM build tree

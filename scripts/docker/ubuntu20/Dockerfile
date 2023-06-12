@@ -1,3 +1,8 @@
+# Auto generated for ubuntu20
+# from scripts/docker/m4/Dockerfile.deb.m4
+#
+# Rebuild this file with `make docker.ubuntu20.regen`
+#
 ARG from=ubuntu:20.04
 FROM ${from} as build
 
@@ -43,8 +48,6 @@ RUN make -j2 deb
 #
 FROM ${from}
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
-
-ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get install -y /tmp/*.deb \

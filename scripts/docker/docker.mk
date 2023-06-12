@@ -40,6 +40,15 @@ DOCKER_REPO := freeradius
 #  Registry to push to
 DOCKER_REGISTRY :=
 #
+#  Location of Docker-related files
+DOCKER_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+ifeq "${VERBOSE}" ""
+    Q=@
+else
+    Q=
+endif
+
 
 ifneq "$(DOCKER_REPO)" ""
 	override DOCKER_REPO := $(DOCKER_REPO)/
@@ -49,6 +58,39 @@ ifneq "$(DOCKER_REGISTRY)" ""
 	override DOCKER_REGISTRY := $(DOCKER_REGISTRY)/
 endif
 
+
+#
+#  Rules to regenerate Dockerfiles
+#
+
+define ADD_DOCKER_REGEN
+    $$(DOCKER_DIR)/${1}/Dockerfile: $(DOCKER_DIR)/m4/Dockerfile.m4 $(DOCKER_DIR)/m4/Dockerfile.deb.m4 $(DOCKER_DIR)/m4/Dockerfile.rpm.m4 $(DOCKER_DIR)/docker.mk
+	$$(Q)echo REGEN ${1}/Dockerfile
+	$$(Q)m4 -I $(DOCKER_DIR)/m4 -D D_NAME=${1} -D D_TYPE=docker $$< > $$@
+
+    DOCKER_DOCKERFILES += $$(DOCKER_DIR)/${1}/Dockerfile
+
+    .PHONY: docker.${1}.regen
+    docker.${1}.regen: $$(DOCKER_DIR)/${1}/Dockerfile
+endef
+
+$(eval $(call ADD_DOCKER_REGEN,debian10,deb,debian:buster,debian,10,buster))
+$(eval $(call ADD_DOCKER_REGEN,debian11,deb,debian:bullseye,debian,11,bullseye))
+$(eval $(call ADD_DOCKER_REGEN,debian12,deb,debian:bookworm,debian,12,bookworm))
+$(eval $(call ADD_DOCKER_REGEN,ubuntu18,deb,ubuntu:18.04,ubuntu,18,bionic))
+$(eval $(call ADD_DOCKER_REGEN,ubuntu20,deb,ubuntu:20.04,ubuntu,20,focal))
+$(eval $(call ADD_DOCKER_REGEN,ubuntu22,deb,ubuntu:22.04,ubuntu,22,jammy))
+$(eval $(call ADD_DOCKER_REGEN,centos7,rpm,centos:centos7,centos,7,7))
+$(eval $(call ADD_DOCKER_REGEN,rocky8,rpm,rockylinux/rockylinux:8,rocky,8,8))
+$(eval $(call ADD_DOCKER_REGEN,rocky9,rpm,rockylinux/rockylinux:9,rocky,9,9))
+
+.PHONY: docker.regen
+docker.regen: $(DOCKER_DOCKERFILES)
+
+
+#
+#  Rules to rebuild Docker images
+#
 
 .PHONY: docker-ubuntu
 docker-ubuntu:

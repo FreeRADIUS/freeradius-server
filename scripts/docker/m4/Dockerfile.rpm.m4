@@ -1,19 +1,22 @@
-# Auto generated for centos7
-# from scripts/docker/m4/Dockerfile.rpm.m4
-#
-# Rebuild this file with `make docker.centos7.regen`
-#
-ARG from=centos:7
+ARG from=DOCKER_IMAGE
 FROM ${from} as build
 
-
+ifelse(OS_VER, 8, `dnl
+RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-rockyofficial
+')dnl
+ifelse(OS_VER, 9, `dnl
+RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
+')
 #
 #  Install build tools
 #
 RUN yum groupinstall -y "Development Tools"
+ifelse(OS_VER, 7,`dnl
 RUN yum install -y rpmdevtools
 RUN yum install -y openssl
-
+',`
+RUN yum install -y rpmdevtools openssl dnf-utils
+')
 
 #
 #  Create build directory
@@ -33,7 +36,8 @@ WORKDIR freeradius-server
 #
 #  Other requirements
 #
-
+changequote(`{', `}')dnl
+ifelse(ifelse(OS_VER, 7, yes, OS_VER, 8, yes, no), yes, {
 #  Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
 RUN echo $'[ltb-project]\n\
 name=LTB project packages\n\
@@ -43,9 +47,23 @@ gpgcheck=1\n\
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo
 RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+})dnl
+changequote({`}, {'})dnl
 
 #  Enable EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-OS_VER.noarch.rpm
+ifelse(OS_VER, 8, `
+#  Enable powertools repo
+RUN yum config-manager --enable powertools
+
+#  Enable epel-testing, currently needed for hiredis-devel
+RUN yum config-manager --enable epel-testing
+')dnl
+ifelse(OS_VER, 9, `
+#  Enable Code Ready Builder repo (CentOS powertools equivalent)
+RUN yum install -y yum-utils
+RUN yum config-manager --enable crb
+')dnl
 
 #
 #  Install build dependencies
@@ -84,6 +102,8 @@ RUN mv $BUILDDIR/RPMS/*/*.rpm /root/rpms/
 FROM ${from}
 COPY --from=build /root/rpms /tmp/
 
+changequote(`{', `}')dnl
+ifelse(ifelse(OS_VER, 7, yes, OS_VER, 8, yes, no), yes, {dnl
 # Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
 RUN echo $'[ltb-project]\n\
 name=LTB project packages\n\
@@ -93,11 +113,26 @@ gpgcheck=1\n\
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo \
     && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+})dnl
+changequote({`}, {'})dnl
 
+ifelse(OS_VER, 9, `dnl
+#  Needed for mysql-libs on Rocky 9
+RUN yum install -y yum-utils
+RUN yum config-manager --enable crb
+')dnl
 
 #  EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
-    \
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-OS_VER.noarch.rpm \
+ifelse(OS_VER, 7, `    \', `dnl
+    && yum install -y dnf-utils \
+    && yum config-manager --enable epel-testing
+
+ARG radiusd_uid=95
+ARG radiusd_gid=95
+
+RUN groupadd -g ${radiusd_gid} -r radiusd \
+    && useradd -u ${radiusd_uid} -g radiusd -r -M -d /home/radiusd -s /sbin/nologin radiusd \')
     && yum install -y /tmp/*.rpm
 
 COPY docker-entrypoint.sh /

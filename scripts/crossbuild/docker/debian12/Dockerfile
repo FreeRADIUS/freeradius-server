@@ -1,9 +1,9 @@
-# Auto generated for ubuntu18
+# Auto generated for debian12
 # from scripts/crossbuild/m4/Dockerfile.deb.m4
 #
-# Rebuild this file with `make crossbuild.ubuntu18.regen`
+# Rebuild this file with `make crossbuild.debian12.regen`
 #
-ARG from=ubuntu:18.04
+ARG from=debian:bookworm
 FROM ${from} as build
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -33,7 +33,7 @@ RUN apt-get update && \
 RUN apt-get install -y doxygen graphviz libjson-perl
 #  - antora (npm needed)
 RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
-RUN apt-get install -y nodejs
+RUN apt-get install -y nodejs npm
 RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
 #  - pandoc
 WORKDIR /tmp

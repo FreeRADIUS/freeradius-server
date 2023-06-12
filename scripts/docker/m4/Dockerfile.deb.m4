@@ -1,9 +1,4 @@
-# Auto generated for debian10
-# from scripts/docker/m4/Dockerfile.deb.m4
-#
-# Rebuild this file with `make docker.debian10.regen`
-#
-ARG from=debian:buster
+ARG from=DOCKER_IMAGE
 FROM ${from} as build
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -49,7 +44,18 @@ RUN make -j2 deb
 FROM ${from}
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 
-RUN apt-get update \
+ifelse(ifelse(
+	D_NAME, `debian10', no,
+	D_NAME, `ubuntu18', no,
+	D_NAME, `ubuntu20', no,
+	yes), yes, `dnl
+ARG freerad_uid=101
+ARG freerad_gid=101
+
+RUN groupadd -g ${freerad_gid} -r freerad \
+    && useradd -u ${freerad_uid} -g freerad -r -M -d /etc/freeradius -s /usr/sbin/nologin freerad \
+    && apt-get update \',
+`RUN apt-get update \')
     && apt-get install -y /tmp/*.deb \
     && apt-get clean \
     && rm -r /var/lib/apt/lists/* /tmp/*.deb \

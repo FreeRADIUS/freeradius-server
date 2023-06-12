@@ -24,7 +24,7 @@ least on the first run):
 
     make crossbuild
 
-or for the most common systems (Debian, Ubuntu, CentOS):
+or for the most common systems (Debian, Ubuntu, CentOS, Rocky):
 
     make crossbuild.common
 
@@ -41,7 +41,9 @@ The Docker containers are left running, and may be stopped with
     make crossbuild.down
 
 The system tries to be as efficient as possible, so will not
-rebuild from scratch every time.
+rebuild the Docker images from scratch every time, but use an
+existing image and copy just the latest git commits in for
+testing.
 
 
 ## Global make targets
@@ -49,47 +51,47 @@ rebuild from scratch every time.
 The following targets will operate on the crossbuild system
 globally, or on all images (unless otherwise stated):
 
+  - `make crossbuild`
 
-### `make crossbuild`
-
-Create all docker images (if required), start them, build and test
-FreeRADIUS.
-
-
-### `make crossbuild.common`
-
-As `make crossbuild`, but only build and test the most common
-systems.
+    Create all docker images (if required), start them, build and
+    test FreeRADIUS.
 
 
-### `make crossbuild.info`
+  - `make crossbuild.common`
 
-List all systems, together with the expected state. See
-`crossbuild.reset`.
-
-
-### `make crossbuild.down`
-
-Stop all containers.
+    As `make crossbuild`, but only build and test the most common
+    systems.
 
 
-### `make crossbuild.reset`
+  - `make crossbuild.info`
 
-If containers are stopped or started outside Docker, crossbuild
-may get confused. This will clear the internal state which should
-try and start everything from be beginning again.
-
-
-### `make crossbuild.clean`
-
-Bring down all containers, clear state. This is a general "tidy
-up".
+    List all systems, together with the expected state. See
+    `crossbuild.reset`.
 
 
-### `make crossbuild.wipe`
+  - `make crossbuild.down`
 
-Don't just stop, but destroy all crossbuild docker images. This
-will mean they need to be recreated again upon next use.
+    Stop all containers.
+
+
+  - `make crossbuild.reset`
+
+    If containers are stopped or started outside Docker,
+    crossbuild may get confused. This will clear the internal
+    state which should try and start everything from be beginning
+    again.
+
+
+  - `make crossbuild.clean`
+
+    Bring down all containers, clear state. This is a general
+    "tidy up".
+
+
+  - `make crossbuild.wipe`
+
+    Don't just stop, but destroy all crossbuild docker images.
+    This will mean they need to be recreated again upon next use.
 
 
 ## Per-image make targets
@@ -116,7 +118,16 @@ Docker images will be created with names in the form:
 
     freeradius-build/debian10
 
-whil containers will have names like:
+while containers will have names like:
 
     fr-crossbuild-debian10
 
+
+## Re-generating Dockerfiles
+
+The Dockerfiles used for crossbuild are generated from m4
+templates. To regenerate one use `make crossbuild.IMAGE.regen`, or
+`make crossbuild.regen` to generate them all. The m4 templates are
+stored in `scripts/crossbuild/m4/`. This will usually only need to
+be used to add a new operating system, not during standard build
+testing.
