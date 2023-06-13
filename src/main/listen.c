@@ -3621,7 +3621,9 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	char const	*value;
 	fr_dlhandle	handle;
 	CONF_SECTION	*server_cs;
+#ifdef WITH_TCP
 	char const	*p;
+#endif
 	char		buffer[32];
 
 	cp = cf_pair_find(cs, "type");
