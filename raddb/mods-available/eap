@@ -1086,22 +1086,6 @@ eap {
 		virtual_server = "inner-tunnel"
 
 		#
-		#  soh::
-		#
-		#  This option enables support for `MS-SoH` see `doc/SoH.txt` for
-		#  more info. It is disabled by default.
-		#
-#		soh = yes
-
-		#
-		#  soh_virtual_server::
-		#
-		#  The `SoH` reply will be turned into a request which can be sent
-		#  to a specific virtual server:
-		#
-#		soh_virtual_server = "soh-server"
-
-		#
 		#  require_client_cert::
 		#
 		#  Unlike `EAP-TLS`, `PEAP `does not require a client certificate.
