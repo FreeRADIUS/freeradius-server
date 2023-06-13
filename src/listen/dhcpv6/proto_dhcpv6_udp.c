@@ -543,7 +543,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 			if (fr_interface_to_ipaddr(inst->interface, &inst->src_ipaddr, AF_INET6, true) < 0) {
 				cf_log_err(conf, "No 'src_ipaddr' specified, and we cannot determine "
-					   "one for 'ipaddr = %pV and interface '%s'",
+					   "one for 'ipaddr = %pV' and interface '%s'",
 					   fr_box_ipaddr(inst->ipaddr), inst->interface);
 				return -1;
 			}
