@@ -2,6 +2,7 @@ FreeRADIUS 3.0.27 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	Feature improvements
 	* Update dictionary.alcatel.sr
 	* Added dictionary.eleven
+	* relax EAP pre-proxy checks based on discussions in the IETF.
 
 	Bug fixes
 	* Don't leak MD contexts with OpenSSL 3.0.
@@ -16,6 +17,11 @@ FreeRADIUS 3.0.27 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	  peak memory usage.  Patch from Nick Porter.
 	* Note that rlm_ldap does not support "-=".
 	* Force reply packet type to Reject when running Post-Auth-Type Reject.
+	* Back-port RPM fixes from 3.2.
+	* Don't lock when TLS connections block.  Fixes #3051.
+	  See "nonblock" configuration sites-available/tls
+	* Clean up state ctx storage for lost packets.  Fixes #5055.
+	* Fix compiler warning when building without TCP.  Fixes #5054.
 
 FreeRADIUS 3.0.26 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	Feature improvements
