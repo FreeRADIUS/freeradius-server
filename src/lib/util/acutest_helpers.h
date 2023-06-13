@@ -43,6 +43,15 @@ do { \
 	TEST_MSG("Got length      : %zd", (ssize_t)_our_got); \
 } while(0)
 
+#define TEST_CHECK_SLEN_RETURN(_got, _exp) \
+do { \
+	ssize_t _our_got = (_got); \
+	TEST_CHECK_(_exp == _our_got, "%s", #_got); \
+	TEST_MSG("Expected length : %zd", (ssize_t)_exp); \
+	TEST_MSG("Got length      : %zd", (ssize_t)_our_got); \
+	if (_exp != _our_got) return; \
+} while(0)
+
 #define TEST_CHECK_RET(_got, _exp) \
 do { \
 	int _our_got = (_got); \
