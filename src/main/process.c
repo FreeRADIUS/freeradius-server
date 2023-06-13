@@ -5394,7 +5394,9 @@ static void event_new_fd(rad_listen_t *this)
 		this->print(this, buffer, sizeof(buffer));
 		ERROR("Failed adding event handler for socket %s: %s", buffer, fr_strerror());
 		this->status = RAD_LISTEN_STATUS_EOL;
+	#ifdef WITH_TCP
 		goto listener_is_eol;
+	#endif
 	} /* end of INIT */
 
 	if (this->status == RAD_LISTEN_STATUS_PAUSE) {
