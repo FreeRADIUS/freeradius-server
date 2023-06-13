@@ -5393,6 +5393,7 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		this->print(this, buffer, sizeof(buffer));
 		ERROR("Failed adding event handler for socket %s: %s", buffer, fr_strerror());
+
 		this->status = RAD_LISTEN_STATUS_EOL;
 		goto listener_is_eol;
 	} /* end of INIT */
@@ -5436,6 +5437,7 @@ static void event_new_fd(rad_listen_t *this)
 		fr_event_fd_delete(el, 0, this->fd);
 		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 	}
+#endif	/* WITH_TCP */
 
 	/*
 	 *	The socket has had a catastrophic error.  Close it.
@@ -5495,7 +5497,6 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 	} /* socket is at EOL */
-#endif	  /* WITH_TCP */
 
 	if (this->dead) goto wait_some_more;
 
