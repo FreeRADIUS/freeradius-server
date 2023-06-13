@@ -56,13 +56,32 @@ listen {
 	#
 	type = auth+acct
 
-	# For now, only TCP transport is allowed.
+	#  For now, only TCP transport is allowed.
 	proto = tcp
 
-	# Send packets to the default virtual server
+	#  Send packets to the default virtual server
 	virtual_server = default
 
+	#
+	#  We have clients specifically for TLS.
+	#
 	clients = radsec
+
+	#
+	#  This configuration item should be enabled for all listen
+	#  sections which do TLS.
+	#
+	#  It is only disabled because we are careful about changing
+	#  existing behavior in a stable release.
+	#
+	#  Setting this configuration item to "yes" means that the
+	#  server will be able to gracefully recover if a TLS
+	#  connection is blocking at the network layer.
+	#
+	#  Note that setting "nonblock = yes" is NOT possible for bare
+	#  TCP connections.  RADIUS/TCP should generally be avoided.
+	#
+#	nonblock = yes
 
 	#
 	#  When this is set to "yes", new TLS connections
@@ -490,6 +509,22 @@ home_server tls {
 	secret = radsec
 	proto = tcp
 	status_check = none
+
+	#
+	#  This configuration item should be enabled for all
+	#  home_server sections which do TLS.
+	#
+	#  It is only disabled because we are careful about changing
+	#  existing behavior in a stable release.
+	#
+	#  Setting this configuration item to "yes" means that the
+	#  server will be able to gracefully recover if a TLS
+	#  connection is blocking at the network layer.
+	#
+	#  Note that setting "nonblock = yes" is NOT possible for bare
+	#  TCP connections.  RADIUS/TCP should generally be avoided.
+	#
+#	nonblock = yes
 
 	tls {
 		#
