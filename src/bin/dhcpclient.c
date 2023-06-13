@@ -34,7 +34,7 @@ RCSID("$Id$")
 /*
  *	Logging macros
  */
- #undef DEBUG
+#undef DEBUG
 #define DEBUG(fmt, ...)		if (fr_debug_lvl > 0) fprintf(stdout, fmt "\n", ## __VA_ARGS__)
 
 #define ERROR(fmt, ...)		fr_perror("dhcpclient: " fmt, ## __VA_ARGS__)
@@ -161,6 +161,7 @@ static int request_init(fr_radius_packet_t **out, fr_pair_list_t *packet_vps, ch
 			return -1;
 		}
 	} else {
+		DEBUG("Reading packets from stdin\n");
 		fp = stdin;
 	}
 
