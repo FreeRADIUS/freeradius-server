@@ -615,7 +615,7 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 	 *	Don't print this out in the normal course of
 	 *	operations.
 	 */
-	if (!RDEBUG_ENABLED2) return;
+	if (!ROPTIONAL_ENABLED(RDEBUG_ENABLED2, DEBUG_ENABLED2)) return;
 
 	if (((size_t)tls_session->info.version >= NUM_ELEMENTS(tls_version_str)) ||
 	    !tls_version_str[tls_session->info.version]) {
@@ -699,10 +699,10 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 	 *	Print out information about the record and print the
 	 *	data at higher debug levels.
 	 */
-	if (RDEBUG_ENABLED4) {
-		RHEXDUMP4(data, data_len, "%s", tls_session->info.info_description);
+	if (ROPTIONAL_ENABLED(RDEBUG_ENABLED4, DEBUG_ENABLED4)) {
+		ROPTIONAL(RHEXDUMP4, HEXDUMP4, data, data_len, "%s", tls_session->info.info_description);
 	} else {
-		RDEBUG2("%s", tls_session->info.info_description);
+		ROPTIONAL(RDEBUG2, DEBUG2, "%s", tls_session->info.info_description);
 	}
 }
 
@@ -780,7 +780,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 */
 	if ((msg_version == 0) && (content_type > UINT8_MAX)) {
 		ROPTIONAL(REDEBUG4, DEBUG4, "Ignoring fr_tls_session_msg_cb call with pseudo content type %i, version %i",
-		       content_type, msg_version);
+		          content_type, msg_version);
 		return;
 	}
 
@@ -835,12 +835,16 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	session_msg_log(request, tls_session, (uint8_t const *)inbuf, len);
 
 #ifndef OPENSSL_NO_SSL_TRACE
-	if (RDEBUG_ENABLED3) SSL_trace(tls_session->info.origin,
-				       tls_session->info.version,
-				       tls_session->info.content_type,
-				       inbuf, len,
-				       ssl,
-				       fr_tls_request_log_bio(request, L_DBG, L_DBG_LVL_3));
+	if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
+		SSL_trace(tls_session->info.origin,
+			  tls_session->info.version,
+			  tls_session->info.content_type,
+			  inbuf, len,
+			  ssl,
+			  request ?
+			  	fr_tls_request_log_bio(request, L_DBG, L_DBG_LVL_3) :
+				fr_tls_global_log_bio(L_DBG, L_DBG_LVL_3));
+	}
 #endif
 }
 
