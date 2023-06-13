@@ -379,6 +379,12 @@ static void fr_state_cleanup(state_entry_t *head)
 			request_inject(request);
 		}
 
+		if (entry->opaque) {
+			entry->free_opaque(entry->opaque);
+		}
+
+		if (entry->ctx) talloc_free(entry->ctx);
+
 		talloc_free(entry);
 	}
 }
