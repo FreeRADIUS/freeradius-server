@@ -34,7 +34,7 @@ RCSID("$Id$")
 /*
  *	Logging macros
  */
- #undef DEBUG
+#undef DEBUG
 #define DEBUG(fmt, ...)		if (fr_debug_lvl > 0) fprintf(stdout, fmt "\n", ## __VA_ARGS__)
 
 #define ERROR(fmt, ...)		fr_perror("dhcpclient: " fmt, ## __VA_ARGS__)
@@ -132,6 +132,7 @@ static NEVER_RETURNS void usage(void)
 	DEBUG("  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").");
 	DEBUG("  -f <file>              Read packets from file, not stdin.");
 	DEBUG("  -i <interface>         Use this interface to send/receive at packet level on a raw socket.");
+	DEBUG("  -r <retries>           On timeout, retry sending the packet 'retries' times.\n");
 	DEBUG("  -t <timeout>           Wait 'timeout' seconds for a reply (may be a floating point number).");
 	DEBUG("  -v                     Show program version information.");
 	DEBUG("  -x                     Debugging mode.");
@@ -160,6 +161,7 @@ static int request_init(fr_radius_packet_t **out, fr_pair_list_t *packet_vps, ch
 			return -1;
 		}
 	} else {
+		DEBUG("Reading packets from stdin\n");
 		fp = stdin;
 	}
 
