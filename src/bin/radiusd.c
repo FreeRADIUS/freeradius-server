@@ -1105,6 +1105,13 @@ cleanup:
 	if (config) talloc_memory_report = config->talloc_memory_report;	/* Grab this before we free the config */
 
 	/*
+	 *	Virtual servers need to be freed before modules
+	 *	as state entries containing data with module-specific
+	 *	destructors may exist.
+	 */
+	virtual_servers_free();
+
+	/*
 	 *	Free modules, this needs to be done explicitly
 	 *	because some libraries used by modules use atexit
 	 *	handlers registered after ours, and they may deinit
@@ -1112,11 +1119,6 @@ cleanup:
 	 *	crashes on exit.
 	 */
 	modules_rlm_free();
-
-	/*
-	 *	Same with virtual servers and proto modules.
-	 */
-	virtual_servers_free();
 
 	/*
 	 *  And now nothing should be left anywhere except the
