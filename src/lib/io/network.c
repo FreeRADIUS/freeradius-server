@@ -922,32 +922,6 @@ next_message:
 	}
 	s->cd = NULL;
 
-	/*
-	 *	Set the priority.  Which incidentally also checks if
-	 *	we're allowed to read this particular kind of packet.
-	 *
-	 *	That check is because the app_io handlers just read
-	 *	packets, and don't really have access to the parent
-	 *	"list of allowed packet types".  So we have to do the
-	 *	work here in a callback.
-	 *
-	 *	That should probably be fixed...
-	 */
-	if (s->listen->app->priority) {
-		int priority;
-
-		priority = s->listen->app->priority(s->listen->app_instance, cd->m.data, data_size);
-		if (priority <= 0) {
-			talloc_free(cd->packet_ctx); /* not sure what else to do here */
-			fr_message_done(&cd->m);
-			nr->stats.dropped++;
-			s->stats.dropped++;
-			goto done;
-		}
-
-		cd->priority = priority;
-	}
-
 	DEBUG3("Read %zd byte(s) from FD %u", data_size, sockfd);
 	nr->stats.in++;
 	s->stats.in++;
@@ -990,7 +964,28 @@ next_message:
 		}
 	}
 
+	/*
+	 *	Set the priority.  Which incidentally also checks if
+	 *	we're allowed to read this particular kind of packet.
+	 *
+	 *	That check is because the app_io handlers just read
+	 *	packets, and don't really have access to the parent
+	 *	"list of allowed packet types".  So we have to do the
+	 *	work here in a callback.
+	 *
+	 *	That should probably be fixed...
+	 */
+	if (s->listen->app->priority) {
+		int priority;
+
+		priority = s->listen->app->priority(s->listen->app_instance, cd->m.data, data_size);
+		if (priority <= 0) goto discard;
+
+		cd->priority = priority;
+	}
+
 	if (fr_network_send_request(nr, cd) < 0) {
+	discard:
 		talloc_free(cd->packet_ctx); /* not sure what else to do here */
 		fr_message_done(&cd->m);
 		nr->stats.dropped++;
