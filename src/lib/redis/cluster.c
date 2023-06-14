@@ -154,9 +154,15 @@
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/time.h>
 
+#include "config.h"
 #include "base.h"
 #include "cluster.h"
 #include "crc16.h"
+
+#ifdef HAVE_REDIS_SSL
+#include <freeradius-devel/tls/strerror.h>
+#include <hiredis/hiredis_ssl.h>
+#endif
 
 #define KEY_SLOTS		16384			//!< Maximum number of keyslots (should not change).
 
@@ -252,6 +258,9 @@ struct fr_redis_cluster {
 
 	fr_redis_conf_t		*conf;			//!< Base configuration data such as the database number
 							//!< and passwords.
+#ifdef HAVE_REDIS_SSL
+	SSL_CTX			*ssl_ctx;		//!< SSL context.
+#endif
 
 	fr_redis_cluster_node_t	*node;			//!< Structure containing a node id, its address and
 							//!< a pool of its connections.
@@ -806,7 +815,7 @@ static int cluster_map_node_validate(redisReply *node, int map_idx, int node_idx
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
 
-	if (fr_inet_pton(&ipaddr, node->element[0]->str, node->element[0]->len, AF_UNSPEC, false, true) < 0) {
+	if (fr_inet_pton(&ipaddr, node->element[0]->str, node->element[0]->len, AF_UNSPEC, true, true) < 0) {
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
 
@@ -1471,6 +1480,27 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delt
 		ERROR("%s - [%i] Connection failed", log_prefix, node->id);
 		return NULL;
 	}
+
+#ifdef HAVE_REDIS_SSL
+	if (node->cluster->ssl_ctx != NULL) {
+		fr_tls_session_t *tls_session = fr_tls_session_alloc_client(ctx, node->cluster->ssl_ctx);
+		if (!tls_session) {
+			fr_tls_strerror_printf("%s - [%i]", log_prefix, node->id);
+			ERROR("%s - [%i] Failed to allocate TLS session", log_prefix, node->id);
+			redisFree(handle);
+			return NULL;
+		}
+
+		// redisInitiateSSL() takes ownership of SSL object on success
+		SSL_up_ref(tls_session->ssl);
+		if (redisInitiateSSL(handle, tls_session->ssl) != REDIS_OK) {
+			ERROR("%s - [%i] Failed to initiate SSL: %s", log_prefix, node->id, handle->errstr);
+			SSL_free(tls_session->ssl);
+			redisFree(handle);
+			return NULL;
+		}
+	}
+#endif
 
 	if (node->cluster->conf->password) {
 		if (node->cluster->conf->username) {
@@ -2287,6 +2317,37 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	 */
 	if (!cf_section_find(module, "pool", NULL)) {
 		(void) cf_section_alloc(module, module, "pool", NULL);
+	}
+
+	/*
+	 *	Parse TLS configuration
+	 */
+	if (conf->use_tls) {
+#ifdef HAVE_REDIS_SSL
+		CONF_SECTION *tls_cs;
+		fr_tls_conf_t *tls_conf;
+
+		tls_cs = cf_section_find(module, "tls", NULL);
+		if (!tls_cs) {
+			tls_cs = cf_section_alloc(module, module, "tls", NULL);
+		}
+
+		tls_conf = fr_tls_conf_parse_client(tls_cs);
+		if (!tls_conf) {
+			ERROR("%s - Failed to parse TLS configuation", cluster->log_prefix);
+			talloc_free(cluster);
+			return NULL;
+		}
+
+		cluster->ssl_ctx = fr_tls_ctx_alloc(tls_conf, true);
+		if (!cluster->ssl_ctx) {
+			ERROR("%s - Failed to allocate SSL context", cluster->log_prefix);
+			talloc_free(cluster);
+			return NULL;
+		}
+#else
+		WARN("%s - No redis SSL support, ignoring \"use_tls = yes\"", cluster->log_prefix);
+#endif
 	}
 
 	if (conf->max_nodes == UINT8_MAX) {

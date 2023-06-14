@@ -672,6 +672,9 @@ with_libfreeradius_redis
 with_redis_include_dir
 with_redis_lib_dir
 with_redis_dir
+with_openssl
+with_openssl_lib_dir
+with_openssl_include_dir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1303,6 +1306,11 @@ Optional Packages:
   --with-redis-lib-dir=DIR
                           Directory where the redis libraries may be found
   --with-redis-dir=DIR    Base directory where redis is installed
+  --with-openssl          build with openssl if available (default=yes)
+  --with-openssl-lib-dir=DIR
+                          directory in which to look for openssl library files
+  --with-openssl-include-dir=DIR
+                          directory in which to look for openssl include files
 
 Some influential environment variables:
   CC          C compiler command
@@ -3239,6 +3247,58 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+    WITH_OPENSSL=yes
+
+
+# Check whether --with-openssl was given.
+if test ${with_openssl+y}
+then :
+  withval=$with_openssl; case "$withval" in
+            yes|no|'')
+                WITH_OPENSSL="$withval"
+                ;;
+            *)
+                as_fn_error $? "--with[out]-openssl expects yes|no|''" "$LINENO" 5
+                ;;
+        esac
+fi
+
+
+
+
+# Check whether --with-openssl-lib-dir was given.
+if test ${with_openssl_lib_dir+y}
+then :
+  withval=$with_openssl_lib_dir; case "$withval" in
+            yes|no|'')
+                as_fn_error $? "--with[out]-openssl-lib=PATH expects a valid PATH" "$LINENO" 5
+                ;;
+            *)
+                openssl_lib_dir="$withval"
+                ;;
+        esac
+fi
+
+
+
+# Check whether --with-openssl-include-dir was given.
+if test ${with_openssl_include_dir+y}
+then :
+  withval=$with_openssl_include_dir; case "$withval" in
+            yes|no|'')
+                as_fn_error $? "--with[out]-openssl-include=PATH expects a valid PATH" "$LINENO" 5
+                ;;
+
+            *)
+                openssl_include_dir="$withval"
+                ;;
+    esac
+fi
+
+
+
+
+
     smart_try_dir="${redis_include_dir}"
 
 
@@ -3574,6 +3634,135 @@ printf "%s\n" "$as_me: WARNING: hiredis libraries not found. Use --with-redis-li
       fail="$fail libhiredis"
     fi
 
+    smart_try_dir="$openssl_lib_dir"
+
+
+sm_lib_safe=`echo "hiredis_ssl" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "redisCreateSSLContext" | sed 'y%./+-%__p_%'`
+
+old_LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
+smart_lib=
+smart_ldflags=
+smart_lib_dir="/usr/local/lib /opt/lib"
+
+if test "x$smart_try_dir" != "x"; then
+for try in $smart_try_dir; do
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for redisCreateSSLContext in -lhiredis_ssl in $try" >&5
+printf %s "checking for redisCreateSSLContext in -lhiredis_ssl in $try... " >&6; }
+  LIBS="-lhiredis_ssl $old_LIBS"
+  CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char redisCreateSSLContext();
+int
+main (void)
+{
+redisCreateSSLContext()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+
+		   smart_lib="-lhiredis_ssl"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+		   break
+
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+done
+LIBS="$old_LIBS"
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_lib" = "x"; then
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for redisCreateSSLContext in -lhiredis_ssl" >&5
+printf %s "checking for redisCreateSSLContext in -lhiredis_ssl... " >&6; }
+LIBS="-lhiredis_ssl $old_LIBS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char redisCreateSSLContext();
+int
+main (void)
+{
+redisCreateSSLContext()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+
+	           smart_lib="-lhiredis_ssl"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+for try in $smart_lib_dir; do
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for redisCreateSSLContext in -lhiredis_ssl in $try" >&5
+printf %s "checking for redisCreateSSLContext in -lhiredis_ssl in $try... " >&6; }
+  LIBS="-lhiredis_ssl $old_LIBS"
+  CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char redisCreateSSLContext();
+int
+main (void)
+{
+redisCreateSSLContext()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+
+		   smart_lib="-lhiredis_ssl"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+		   break
+
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+done
+LIBS="$old_LIBS"
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_lib" != "x"; then
+eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+LIBS="$smart_ldflags $smart_lib $old_LIBS"
+SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+fi
+
+    if test "x$ac_cv_lib_hiredis_ssl_redisCreateSSLContext" == "xyes"
+    then
+
+printf "%s\n" "#define HAVE_REDIS_SSL 1" >>confdefs.h
+
+    fi
 
 	targetname=libfreeradius-redis
 else
@@ -3630,6 +3819,8 @@ mod_cflags="$SMART_CPPFLAGS"
 
 
 
+
+ac_config_headers="$ac_config_headers config.h"
 
 ac_config_files="$ac_config_files all.mk"
 
@@ -3723,43 +3914,7 @@ test "x$prefix" = xNONE && prefix=$ac_default_prefix
 # Let make expand exec_prefix.
 test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 
-# Transform confdefs.h into DEFS.
-# Protect against shell expansion while executing Makefile rules.
-# Protect against Makefile macro expansion.
-#
-# If the first sed substitution is executed (which looks for macros that
-# take arguments), then branch to the quote section.  Otherwise,
-# look for a macro that doesn't take arguments.
-ac_script='
-:mline
-/\\$/{
- N
- s,\\\n,,
- b mline
-}
-t clear
-:clear
-s/^[	 ]*#[	 ]*define[	 ][	 ]*\([^	 (][^	 (]*([^)]*)\)[	 ]*\(.*\)/-D\1=\2/g
-t quote
-s/^[	 ]*#[	 ]*define[	 ][	 ]*\([^	 ][^	 ]*\)[	 ]*\(.*\)/-D\1=\2/g
-t quote
-b any
-:quote
-s/[	 `~#$^&*(){}\\|;'\''"<>?]/\\&/g
-s/\[/\\&/g
-s/\]/\\&/g
-s/\$/$$/g
-H
-:any
-${
-	g
-	s/^\n//
-	s/\n/ /g
-	p
-}
-'
-DEFS=`sed -n "$ac_script" confdefs.h`
-
+DEFS=-DHAVE_CONFIG_H
 
 ac_libobjs=
 ac_ltlibobjs=
@@ -4186,11 +4341,15 @@ case $ac_config_files in *"
 "*) set x $ac_config_files; shift; ac_config_files=$*;;
 esac
 
+case $ac_config_headers in *"
+"*) set x $ac_config_headers; shift; ac_config_headers=$*;;
+esac
 
 
 cat >>$CONFIG_STATUS <<_ACEOF || ac_write_fail=1
 # Files that config.status was made for.
 config_files="$ac_config_files"
+config_headers="$ac_config_headers"
 
 _ACEOF
 
@@ -4211,9 +4370,14 @@ Usage: $0 [OPTION]... [TAG]...
       --recheck    update $as_me by reconfiguring in the same conditions
       --file=FILE[:TEMPLATE]
                    instantiate the configuration file FILE
+      --header=FILE[:TEMPLATE]
+                   instantiate the configuration header FILE
 
 Configuration files:
 $config_files
+
+Configuration headers:
+$config_headers
 
 Report bugs to the package provider."
 
@@ -4277,7 +4441,18 @@ do
     esac
     as_fn_append CONFIG_FILES " '$ac_optarg'"
     ac_need_defaults=false;;
-  --he | --h |  --help | --hel | -h )
+  --header | --heade | --head | --hea )
+    $ac_shift
+    case $ac_optarg in
+    *\'*) ac_optarg=`printf "%s\n" "$ac_optarg" | sed "s/'/'\\\\\\\\''/g"` ;;
+    esac
+    as_fn_append CONFIG_HEADERS " '$ac_optarg'"
+    ac_need_defaults=false;;
+  --he | --h)
+    # Conflict between --help and --header
+    as_fn_error $? "ambiguous option: \`$1'
+Try \`$0 --help' for more information.";;
+  --help | --hel | -h )
     printf "%s\n" "$ac_cs_usage"; exit ;;
   -q | -quiet | --quiet | --quie | --qui | --qu | --q \
   | -silent | --silent | --silen | --sile | --sil | --si | --s)
@@ -4333,6 +4508,7 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
+    "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
     "all.mk") CONFIG_FILES="$CONFIG_FILES all.mk" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
@@ -4346,6 +4522,7 @@ done
 # bizarre bug on SunOS 4.1.3.
 if $ac_need_defaults; then
   test ${CONFIG_FILES+y} || CONFIG_FILES=$config_files
+  test ${CONFIG_HEADERS+y} || CONFIG_HEADERS=$config_headers
 fi
 
 # Have a temporary directory for convenience.  Make it in the build tree
@@ -4533,8 +4710,116 @@ fi
 cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 fi # test -n "$CONFIG_FILES"
 
+# Set up the scripts for CONFIG_HEADERS section.
+# No need to generate them if there are no CONFIG_HEADERS.
+# This happens for instance with `./config.status Makefile'.
+if test -n "$CONFIG_HEADERS"; then
+cat >"$ac_tmp/defines.awk" <<\_ACAWK ||
+BEGIN {
+_ACEOF
 
-eval set X "  :F $CONFIG_FILES      "
+# Transform confdefs.h into an awk script `defines.awk', embedded as
+# here-document in config.status, that substitutes the proper values into
+# config.h.in to produce config.h.
+
+# Create a delimiter string that does not exist in confdefs.h, to ease
+# handling of long lines.
+ac_delim='%!_!# '
+for ac_last_try in false false :; do
+  ac_tt=`sed -n "/$ac_delim/p" confdefs.h`
+  if test -z "$ac_tt"; then
+    break
+  elif $ac_last_try; then
+    as_fn_error $? "could not make $CONFIG_HEADERS" "$LINENO" 5
+  else
+    ac_delim="$ac_delim!$ac_delim _$ac_delim!! "
+  fi
+done
+
+# For the awk script, D is an array of macro values keyed by name,
+# likewise P contains macro parameters if any.  Preserve backslash
+# newline sequences.
+
+ac_word_re=[_$as_cr_Letters][_$as_cr_alnum]*
+sed -n '
+s/.\{148\}/&'"$ac_delim"'/g
+t rset
+:rset
+s/^[	 ]*#[	 ]*define[	 ][	 ]*/ /
+t def
+d
+:def
+s/\\$//
+t bsnl
+s/["\\]/\\&/g
+s/^ \('"$ac_word_re"'\)\(([^()]*)\)[	 ]*\(.*\)/P["\1"]="\2"\
+D["\1"]=" \3"/p
+s/^ \('"$ac_word_re"'\)[	 ]*\(.*\)/D["\1"]=" \2"/p
+d
+:bsnl
+s/["\\]/\\&/g
+s/^ \('"$ac_word_re"'\)\(([^()]*)\)[	 ]*\(.*\)/P["\1"]="\2"\
+D["\1"]=" \3\\\\\\n"\\/p
+t cont
+s/^ \('"$ac_word_re"'\)[	 ]*\(.*\)/D["\1"]=" \2\\\\\\n"\\/p
+t cont
+d
+:cont
+n
+s/.\{148\}/&'"$ac_delim"'/g
+t clear
+:clear
+s/\\$//
+t bsnlc
+s/["\\]/\\&/g; s/^/"/; s/$/"/p
+d
+:bsnlc
+s/["\\]/\\&/g; s/^/"/; s/$/\\\\\\n"\\/p
+b cont
+' <confdefs.h | sed '
+s/'"$ac_delim"'/"\\\
+"/g' >>$CONFIG_STATUS || ac_write_fail=1
+
+cat >>$CONFIG_STATUS <<_ACEOF || ac_write_fail=1
+  for (key in D) D_is_set[key] = 1
+  FS = ""
+}
+/^[\t ]*#[\t ]*(define|undef)[\t ]+$ac_word_re([\t (]|\$)/ {
+  line = \$ 0
+  split(line, arg, " ")
+  if (arg[1] == "#") {
+    defundef = arg[2]
+    mac1 = arg[3]
+  } else {
+    defundef = substr(arg[1], 2)
+    mac1 = arg[2]
+  }
+  split(mac1, mac2, "(") #)
+  macro = mac2[1]
+  prefix = substr(line, 1, index(line, defundef) - 1)
+  if (D_is_set[macro]) {
+    # Preserve the white space surrounding the "#".
+    print prefix "define", macro P[macro] D[macro]
+    next
+  } else {
+    # Replace #undef with comments.  This is necessary, for example,
+    # in the case of _POSIX_SOURCE, which is predefined and required
+    # on some systems where configure will not decide to define it.
+    if (defundef == "undef") {
+      print "/*", prefix defundef, macro, "*/"
+      next
+    }
+  }
+}
+{ print }
+_ACAWK
+_ACEOF
+cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
+  as_fn_error $? "could not setup config headers machinery" "$LINENO" 5
+fi # test -n "$CONFIG_HEADERS"
+
+
+eval set X "  :F $CONFIG_FILES  :H $CONFIG_HEADERS    "
 shift
 for ac_tag
 do
@@ -4742,7 +5027,30 @@ which seems to be undefined.  Please make sure it is defined" >&2;}
   esac \
   || as_fn_error $? "could not create $ac_file" "$LINENO" 5
  ;;
-
+  :H)
+  #
+  # CONFIG_HEADER
+  #
+  if test x"$ac_file" != x-; then
+    {
+      printf "%s\n" "/* $configure_input  */" >&1 \
+      && eval '$AWK -f "$ac_tmp/defines.awk"' "$ac_file_inputs"
+    } >"$ac_tmp/config.h" \
+      || as_fn_error $? "could not create $ac_file" "$LINENO" 5
+    if diff "$ac_file" "$ac_tmp/config.h" >/dev/null 2>&1; then
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: $ac_file is unchanged" >&5
+printf "%s\n" "$as_me: $ac_file is unchanged" >&6;}
+    else
+      rm -f "$ac_file"
+      mv "$ac_tmp/config.h" "$ac_file" \
+	|| as_fn_error $? "could not create $ac_file" "$LINENO" 5
+    fi
+  else
+    printf "%s\n" "/* $configure_input  */" >&1 \
+      && eval '$AWK -f "$ac_tmp/defines.awk"' "$ac_file_inputs" \
+      || as_fn_error $? "could not create -" "$LINENO" 5
+  fi
+ ;;
 
 
   esac
