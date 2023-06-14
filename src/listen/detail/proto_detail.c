@@ -353,6 +353,17 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	return 1;
 }
 
+static int mod_priority_set(void const *instance, UNUSED uint8_t const *buffer, UNUSED size_t buflen)
+{
+	proto_detail_t const *inst = talloc_get_type_abort_const(instance, proto_detail_t);
+
+	/*
+	 *	Return the configured priority.
+	 */
+	return inst->priority;
+}
+
+
 /** Open listen sockets/connect to external event source
  *
  * @param[in] instance	Ctx data for this application.
@@ -594,4 +605,5 @@ fr_app_t proto_detail = {
 	.open			= mod_open,
 	.decode			= mod_decode,
 	.encode			= mod_encode,
+	.priority		= mod_priority_set
 };
