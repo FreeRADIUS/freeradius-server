@@ -209,6 +209,25 @@ static fr_process_state_t const process_state[] = {
 		.resume = resume_recv_generic,
 		.section_offset = PROCESS_CONF_OFFSET(request),
 	},
+	[FR_DHCP_DECLINE] = {
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOOP] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_UPDATED] =	FR_DHCP_DO_NOT_RESPOND,
+
+			[RLM_MODULE_REJECT] =  	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.default_reply = FR_DHCP_DO_NOT_RESPOND,
+		.recv = recv_generic,
+		.resume = resume_recv_generic,
+		.section_offset = PROCESS_CONF_OFFSET(request),
+	},
+
 	[FR_DHCP_ACK] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_DHCP_ACK,
