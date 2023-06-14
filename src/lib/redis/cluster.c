@@ -1481,13 +1481,17 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delt
 		return NULL;
 	}
 
+	conn = talloc_zero(ctx, fr_redis_conn_t);
+	conn->handle = handle;
+	talloc_set_destructor(conn, _cluster_conn_free);
+
 #ifdef HAVE_REDIS_SSL
 	if (node->cluster->ssl_ctx != NULL) {
-		fr_tls_session_t *tls_session = fr_tls_session_alloc_client(ctx, node->cluster->ssl_ctx);
+		fr_tls_session_t *tls_session = fr_tls_session_alloc_client(conn, node->cluster->ssl_ctx);
 		if (!tls_session) {
 			fr_tls_strerror_printf("%s - [%i]", log_prefix, node->id);
 			ERROR("%s - [%i] Failed to allocate TLS session", log_prefix, node->id);
-			redisFree(handle);
+			talloc_free(conn);
 			return NULL;
 		}
 
@@ -1496,7 +1500,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delt
 		if (redisInitiateSSL(handle, tls_session->ssl) != REDIS_OK) {
 			ERROR("%s - [%i] Failed to initiate SSL: %s", log_prefix, node->id, handle->errstr);
 			SSL_free(tls_session->ssl);
-			redisFree(handle);
+			talloc_free(conn);
 			return NULL;
 		}
 	}
@@ -1518,7 +1522,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delt
 			ERROR("%s - [%i] Failed authenticating: %s", log_prefix, node->id, handle->errstr);
 		error:
 			if (reply) fr_redis_reply_free(&reply);
-			redisFree(handle);
+			talloc_free(conn);
 			return NULL;
 		}
 
@@ -1573,10 +1577,6 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delt
 			goto error;
 		}
 	}
-
-	conn = talloc_zero(ctx, fr_redis_conn_t);
-	conn->handle = handle;
-	talloc_set_destructor(conn, _cluster_conn_free);
 
 	return conn;
 }
