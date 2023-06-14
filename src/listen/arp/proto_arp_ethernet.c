@@ -57,7 +57,7 @@ static CONF_PARSER const arp_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority)
+static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover)
 {
 	proto_arp_ethernet_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_arp_ethernet_thread_t);
 	int				ret;

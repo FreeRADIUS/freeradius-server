@@ -895,7 +895,7 @@ next_message:
 	 *	connection.
 	 */
 	data_size = s->listen->app_io->read(s->listen, &cd->packet_ctx, &cd->request.recv_time,
-					    cd->m.data, cd->m.rb_size, &s->leftover, &cd->priority);
+					    cd->m.data, cd->m.rb_size, &s->leftover);
 	if (data_size == 0) {
 		/*
 		 *	Cache the message for later.  This is

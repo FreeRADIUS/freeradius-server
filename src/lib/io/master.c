@@ -1208,7 +1208,7 @@ static int8_t alive_client_cmp(void const *one, void const *two)
  *  The app_io->read does the transport-specific data read.
  */
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p,
-			uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
+			uint8_t *buffer, size_t buffer_len, size_t *leftover)
 {
 	fr_io_instance_t const	*inst;
 	fr_io_thread_t		*thread;
@@ -1221,6 +1221,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	fr_io_track_t		*track, *new_track;
 	fr_listen_t		*child;
 	int			value, accept_fd = -1;
+	uint32_t		priority = PRIORITY_NORMAL;
 
 	get_inst(li, &inst, &thread, &connection, &child);
 
@@ -1292,7 +1293,6 @@ redo:
 		 */
 		*packet_ctx = track;
 		*leftover = 0;
-		*priority = pending->priority;
 		recv_time = *recv_time_p = pending->recv_time;
 		client = track->client;
 
@@ -1388,7 +1388,7 @@ do_read:
 		 *	functions which do all of the TLS work.
 		 */
 		packet_len = inst->app_io->read(child, (void **) &local_address, &recv_time,
-					  buffer, buffer_len, leftover, priority);
+					  buffer, buffer_len, leftover);
 		if (packet_len <= 0) {
 			return packet_len;
 		}
@@ -1411,9 +1411,7 @@ do_read:
 				       inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 				return 0;
 			}
-			*priority = value;
-		} else {
-			*priority = PRIORITY_NORMAL;
+			priority = value;
 		}
 
 		/*
@@ -1648,7 +1646,7 @@ have_client:
 			 *	Allocate the pending packet structure.
 			 */
 			pending = fr_io_pending_alloc(client, buffer, packet_len,
-						      track, *priority);
+						      track, priority);
 			if (!pending) {
 				DEBUG("Failed tracking packet from client %pV - discarding packet", fr_box_ipaddr(client->src_ipaddr));
 				goto done;
