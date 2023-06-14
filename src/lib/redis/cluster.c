@@ -2486,6 +2486,11 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 			break;
 		}
 
+		if (!cluster->conf->use_cluster_map) {
+			fr_pool_connection_release(node->pool, NULL, conn);
+			continue;
+		}
+
 		switch (cluster_map_get(&map, conn)) {
 		/*
 		 *	We got a valid map! See if we can apply it...
