@@ -1006,7 +1006,6 @@ next_message:
 	 *	able to check that, too.  We might just remove this
 	 *	"goto"...
 	 */
-done:
 	if (next) {
 		cd = next;
 		num_messages++;
