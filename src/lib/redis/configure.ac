@@ -67,6 +67,11 @@ FR_LIBRARY_START_TESTS
 
     AC_PROG_CC
 
+    dnl #############################################################
+    dnl # Library/include paths
+    dnl #############################################################
+    AX_WITH_LIB_ARGS_OPT([openssl],[yes])
+
     dnl ############################################################
     dnl # Check for header files
     dnl ############################################################
@@ -90,6 +95,12 @@ FR_LIBRARY_START_TESTS
       fail="$fail libhiredis"
     fi
 
+    smart_try_dir="$openssl_lib_dir"
+    FR_SMART_CHECK_LIB(hiredis_ssl, redisCreateSSLContext)
+    if test "x$ac_cv_lib_hiredis_ssl_redisCreateSSLContext" == "xyes"
+    then
+      AC_DEFINE([HAVE_REDIS_SSL],[1],[Build with SSL support])
+    fi
 FR_LIBRARY_END_TESTS
 
 mod_ldflags="$SMART_LIBS"
@@ -98,5 +109,6 @@ mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([all.mk])
 AC_OUTPUT

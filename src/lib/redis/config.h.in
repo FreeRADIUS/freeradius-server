@@ -1,0 +1,4 @@
+/* config.h.in.  Generated from configure.ac by autoheader.  */
+
+/* Build with SSL support */
+#undef HAVE_REDIS_SSL
