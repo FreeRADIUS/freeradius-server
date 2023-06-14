@@ -770,7 +770,6 @@ void worker_request_name_number(request_t *request)
 
 static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now)
 {
-	bool			is_dup;
 	int			ret = -1;
 	request_t		*request;
 	TALLOC_CTX		*ctx;
@@ -842,7 +841,6 @@ nak:
 	/*
 	 *	We're done with this message.
 	 */
-	is_dup = cd->request.is_dup;
 	fr_message_done(&cd->m);
 
 	/*
@@ -854,16 +852,6 @@ nak:
 
 		old = fr_rb_find(worker->dedup, request);
 		if (!old) {
-			/*
-			 *	Ignore duplicate packets where we've
-			 *	already sent the reply.
-			 */
-			if (is_dup) {
-				RDEBUG("Got duplicate packet notice after we had sent a reply - ignoring");
-				fr_channel_null_reply(request->async->channel);
-				talloc_free(request);
-				return;
-			}
 			goto insert_new;
 		}
 

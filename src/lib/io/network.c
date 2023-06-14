@@ -762,7 +762,6 @@ int fr_network_listen_send_packet(fr_network_t *nr, fr_listen_t *parent, fr_list
 	if (!cd) return -1;
 
 	cd->listen = parent;
-	cd->request.is_dup = false;
 	cd->priority = PRIORITY_NORMAL;
 	cd->packet_ctx = packet_ctx;
 	cd->request.recv_time = recv_time;
@@ -883,7 +882,6 @@ next_message:
 		return;
 	}
 
-	cd->request.is_dup = false;
 	cd->priority = PRIORITY_NORMAL;
 
 	/*
@@ -897,7 +895,7 @@ next_message:
 	 *	connection.
 	 */
 	data_size = s->listen->app_io->read(s->listen, &cd->packet_ctx, &cd->request.recv_time,
-					    cd->m.data, cd->m.rb_size, &s->leftover, &cd->priority, &cd->request.is_dup);
+					    cd->m.data, cd->m.rb_size, &s->leftover, &cd->priority);
 	if (data_size == 0) {
 		/*
 		 *	Cache the message for later.  This is
@@ -1007,7 +1005,6 @@ int fr_network_sendto_worker(fr_network_t *nr, fr_listen_t *li, void *packet_ctx
 
 	s->stats.in++;
 
-	cd->request.is_dup = false;
 	cd->priority = PRIORITY_NORMAL;
 
 	cd->m.when = recv_time;

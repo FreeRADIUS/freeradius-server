@@ -128,7 +128,6 @@ typedef struct {
 	union {
 		struct {
 			fr_time_t		recv_time;	//!< time original request was received (network -> worker)
-			bool			is_dup;		//!< dup, new, etc.
 		} request;
 
 		struct {

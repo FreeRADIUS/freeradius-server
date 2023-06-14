@@ -593,8 +593,7 @@ static int proto_ldap_child_mod_close(fr_listen_t *li)
  *     addition to their other data.
  */
 static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t *recv_time_p, UNUSED uint8_t *buffer,
-					 UNUSED size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority,
-					 UNUSED bool *is_dup)
+					 UNUSED size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority)
 {
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_ldap_sync_ldap_thread_t);
 	fr_ldap_connection_t		*conn = talloc_get_type_abort(thread->conn->h, fr_ldap_connection_t);

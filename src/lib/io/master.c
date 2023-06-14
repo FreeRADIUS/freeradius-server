@@ -1208,7 +1208,7 @@ static int8_t alive_client_cmp(void const *one, void const *two)
  *  The app_io->read does the transport-specific data read.
  */
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p,
-			uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
+			uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
 	fr_io_instance_t const	*inst;
 	fr_io_thread_t		*thread;
@@ -1221,9 +1221,6 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	fr_io_track_t		*track, *new_track;
 	fr_listen_t		*child;
 	int			value, accept_fd = -1;
-
-	fr_assert(is_dup != NULL);
-	*is_dup = false;
 
 	get_inst(li, &inst, &thread, &connection, &child);
 
@@ -1391,7 +1388,7 @@ do_read:
 		 *	functions which do all of the TLS work.
 		 */
 		packet_len = inst->app_io->read(child, (void **) &local_address, &recv_time,
-					  buffer, buffer_len, leftover, priority, is_dup);
+					  buffer, buffer_len, leftover, priority);
 		if (packet_len <= 0) {
 			return packet_len;
 		}
@@ -1569,7 +1566,9 @@ have_client:
 		 *	"live" packets.
 		 */
 		if (!track) {
-			track = fr_io_track_add(client, &address, buffer, packet_len, recv_time, is_dup);
+			bool	is_dup = false;
+
+			track = fr_io_track_add(client, &address, buffer, packet_len, recv_time, &is_dup);
 			if (!track) {
 				DEBUG("Failed tracking packet from client %s - discarding it",
 				      client->radclient->shortname);
@@ -1579,7 +1578,7 @@ have_client:
 			/*
 			 *	If there's a cached reply, just send that and don't do anything else.
 			 */
-			if (*is_dup) {
+			if (is_dup) {
 				fr_network_t *nr;
 
 				if (track->do_not_respond) {
