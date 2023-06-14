@@ -365,7 +365,6 @@ server.
 * xref:sites-available/proxy-inner-tunnel.adoc[proxy inner tunnel]
 * xref:sites-available/radius-acct.adoc[radius acct]
 * xref:sites-available/robust-proxy-accounting.adoc[robust proxy accounting]
-* xref:sites-available/soh.adoc[soh]
 * xref:sites-available/status.adoc[status]
 * xref:sites-available/tacacs.adoc[tacacs]
 * xref:sites-available/tls.adoc[tls]

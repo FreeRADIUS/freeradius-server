@@ -994,21 +994,6 @@ will be sent through the virtual server that processed the
 outer requests.
 
 
-
-soh::
-
-This option enables support for `MS-SoH` see `doc/SoH.txt` for
-more info. It is disabled by default.
-
-
-
-soh_virtual_server::
-
-The `SoH` reply will be turned into a request which can be sent
-to a specific virtual server:
-
-
-
 require_client_cert::
 
 Unlike `EAP-TLS`, `PEAP `does not require a client certificate.
@@ -1379,8 +1364,6 @@ eap {
 		default_eap_type = mschapv2
 #		proxy_tunneled_request_as_eap = yes
 		virtual_server = "inner-tunnel"
-#		soh = yes
-#		soh_virtual_server = "soh-server"
 #		require_client_cert = yes
 	}
 	mschapv2 {

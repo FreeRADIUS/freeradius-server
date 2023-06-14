@@ -470,18 +470,8 @@ VALUE	TLS-OCSP-Cert-Valid		no			0
 # Number of seconds before new OCSP status information will be available
 ATTRIBUTE	TLS-OCSP-Next-Update			1944	integer
 ATTRIBUTE	TLS-OCSP-Response			1945	octets
-#
-#	Range:	1951-2099
-#		Free
-#
-#	Range:	2100-2199
-#	SoH attributes; FIXME: these should really be protocol attributes
-#	so that the SoH radius request can be proxied, but from which
-#	vendor? Sigh...
-#
 
 ATTRIBUTE	TLS-Client-Error-Code			1946	uint8
-
 VALUE	TLS-Client-Error-Code		Close-Notify		0
 VALUE	TLS-Client-Error-Code		End-Of-Early-Data	1
 VALUE	TLS-Client-Error-Code		Unexpected-Message	10
@@ -520,6 +510,11 @@ VALUE	TLS-Client-Error-Code		No-Application-Protocol	120
 
 ATTRIBUTE	TLS-Session-Version			1947	string
 ATTRIBUTE	TLS-Session-Cipher-Suite		1948	string
+
+#
+#	Range:	1951-2199
+#		Free
+#
 
 #
 #	Range:	2200-2219

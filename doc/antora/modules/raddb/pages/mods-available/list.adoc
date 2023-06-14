@@ -19,7 +19,6 @@ authenticate.
 and etc. The module verifies the User-Password against the the "known good" password.
 | xref:securid.adoc[securid]	| Supports authentication against an RSA SecurID ACE instance.
 | xref:sigtran.adoc[sigtran]	| Supports authentication against a Sigtran interface.
-| xref:soh.adoc[soh]	| Implements support for Microsoft's Statement of Health (SoH) protocol, which can run inside of PEAP or DHCP.
 | xref:wimax.adoc[wimax]	| Implements WiMAX authentication over RADIUS.
 | xref:winbind.adoc[winbind]	| The module also allows for direct connection to Samba winbindd (version 4.2.1 or above), which communicates with
 Active-Directory to retrieve group information and the user's NT-Password.
