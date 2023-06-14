@@ -18,7 +18,6 @@ authenticate.
 | xref:mods-available/pap.adoc[pap]	| Accepts a large number of formats for the "known good" (reference) password, such as crypt hashes, md5 hashes,
 and etc. The module takes the User-Password and performs the necessary transformations of the user submitted password
 to match the copy of the password the server has retrieved.
-| xref:mods-available/soh.adoc[soh]	| Implements support for Microsoft's Statement of Health (SoH) protocol, which can run inside of PEAP or DHCP.
 | xref:mods-available/wimax.adoc[wimax]	| Implements WiMAX authentication over RADIUS.
 | xref:mods-available/winbind.adoc[winbind]	| The module also allows for direct connection to Samba winbindd (version 4.2.1 or above), which communicates with
 Active-Directory to retrieve group information and the user's NT-Password.

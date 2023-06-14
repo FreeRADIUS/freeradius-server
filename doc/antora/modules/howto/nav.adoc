@@ -38,7 +38,6 @@
 **** xref:modules/rest/bootstrap_nginx.adoc[Installing and Configuring NGINX]
 **** xref:modules/rest/configuration.adoc[Base configuration]
 
-*** xref:modules/soh/index.adoc[SoH]
 *** xref:modules/sql/index.adoc[SQL]
 **** xref:modules/sql/data-usage-reporting.adoc[Data Usage Reporting]
 **** xref:modules/sql/odbc.adoc[ODBC]
