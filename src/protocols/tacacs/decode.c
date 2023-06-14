@@ -374,7 +374,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_att
 	uint8_t const *p = *field_data;
 	fr_pair_t *vp;
 
-	if ((p + field_len) > end) {
+	if (field_len > (end - p)) {
 		fr_strerror_printf("'%s' length %u overflows the remaining data (%zu) in the packet",
 				   da->name, field_len, end - p);
 		return -1;
