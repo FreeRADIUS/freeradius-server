@@ -699,23 +699,15 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 				}
 			}
 		}
-
+	do_init:
 		/*
 		 *	Ensure it's valid.
 		 */
 		if ((next < FR_EAP_METHOD_MD5) || (next >= FR_EAP_METHOD_MAX) || (!inst->methods[next].submodule)) {
-			REDEBUG2("Tried to start unsupported EAP type %s (%d)",
+			REDEBUG2("Peer tried to start unsupported EAP type %s (%d)",
 				 eap_type2name(next), next);
 			goto is_invalid;
 		}
-
-	do_init:
-		/*
-		 *	If any of these fail, we messed badly somewhere
-		 */
-		fr_assert(next >= FR_EAP_METHOD_MD5);
-		fr_assert(next < FR_EAP_METHOD_MAX);
-		fr_assert(inst->methods[next].submodule);
 
 		eap_session->process = inst->methods[next].submodule->session_init;
 		eap_session->type = next;
@@ -749,9 +741,32 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	 */
 	default:
 		if (!inst->methods[type->num].submodule) {
-			REDEBUG2("Client asked for unsupported EAP type %s (%d)", eap_type2name(type->num), type->num);
+			REDEBUG2("Peer asked for unsupported EAP type %s (%d)", eap_type2name(type->num), type->num);
 			goto is_invalid;
 		}
+		/*
+		 *	Perr started the EAP method without
+		 *	sending an Identity-Response.
+		 *
+		 *	There's nothing that says it *HAS* to send an
+		 *	identity response before starting a method,
+		 *	so just jump to the initialisation function
+		 *	of the method and continue.
+		 */
+		if (eap_session->rounds == 0) {
+			RDEBUG2("Peer started EAP type %s (%d) without sending an Identity", eap_type2name(type->num), type->num);
+			vp = fr_pair_find_by_da(&eap_session->request->control_pairs, NULL, attr_eap_type);
+			if (vp) {
+				RDEBUG2("Using method from &control.EAP-Type");
+				next = vp->vp_uint32;
+			}
+			goto do_init;
+		}
+
+		/*
+		 *	FIXME - We should only update the type
+		 *	on completion of the final round.
+		 */
 		eap_session->type = type->num;
 		break;
 	}
