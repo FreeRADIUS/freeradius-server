@@ -11,7 +11,7 @@ else
 #
 #  Short list of common builds
 #
-CB_COMMON:=centos7 debian10 ubuntu18
+CB_COMMON:=centos7 rocky9 debian11 ubuntu20
 
 # Where to put stamp files (subdirectory of where this makefile is)
 CB_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
