@@ -71,6 +71,12 @@ RUN yum install -y which
 RUN yum install -y libnl3-devel
 
 #
+#  We test with TLS1.1, but that is disabled by default on some
+#  newer systems.
+#
+RUN update-crypto-policies --set LEGACY
+
+#
 #  Create the RPM build tree
 #
 RUN rpmdev-setuptree
