@@ -1,8 +1,10 @@
-FROM debian:buster
-
-ARG gccver=8
-ARG clangver=8
-ARG osname=buster
+# Auto generated for debian10
+# from scripts/crossbuild/m4/Dockerfile.deb.m4
+#
+# Rebuild this file with `make crossbuild.debian10.regen`
+#
+ARG from=debian:buster
+FROM ${from} as build
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -15,14 +17,14 @@ RUN apt-get update && \
     rm -r /var/lib/apt/lists/*
 
 #  For clang
-RUN add-apt-repository -y "deb http://apt.llvm.org/${osname}/ llvm-toolchain-${osname}-${clangver} main" && \
+RUN add-apt-repository -y "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-8 main" && \
     apt-key adv --fetch-keys http://apt.llvm.org/llvm-snapshot.gpg.key
 
 RUN apt-get update && \
 #  Development utilities
     apt-get install -y devscripts equivs git quilt rsync && \
 #  Compilers
-    apt-get install -y g++-${gccver} llvm-${clangver} clang-${clangver} lldb-${clangver} && \
+    apt-get install -y g++ llvm-8 clang-8 lldb-8 && \
 #  eapol_test dependencies
     apt-get install -y libnl-3-dev libnl-genl-3-dev
 
@@ -33,7 +35,7 @@ RUN apt-get update && \
 #  - doxygen & JSON.pm
 RUN apt-get install -y doxygen graphviz libjson-perl
 #  - antora (npm needed)
-RUN curl -sL https://deb.nodesource.com/setup_10.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
 RUN apt-get install -y nodejs
 RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
 #  - pandoc
@@ -44,15 +46,13 @@ RUN apt-get install -y ./pandoc-*.deb
 RUN apt-get install -y ruby-dev
 RUN gem install asciidoctor
 
-# set default things
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${gccver} 50 \
-                        --slave /usr/bin/g++ g++ /usr/bin/g++-${gccver} && \
-    update-alternatives --config gcc
-
-RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${clangver} 60 && \
+#
+#  Set defaults
+#
+RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-8 60 && \
     update-alternatives --config clang
 
-RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-${clangver} 60 && \
+RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-8 60 && \
     update-alternatives --config lldb
 
 
@@ -70,20 +70,16 @@ WORKDIR /usr/local/src/repositories
 ARG source=https://github.com/FreeRADIUS/freeradius-server.git
 RUN git clone --depth 1 --no-single-branch ${source}
 
-
 #
-#  Install build dependencies for all v3 branches
+#  Install build dependencies for all branches from v3 onwards
 #
 WORKDIR freeradius-server
-RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^v3\..*\.x");\
+RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[0-9x]*\.x|master)$");\
 	do \
 		git checkout $i; \
 		if [ -e ./debian/control.in ] ; then \
 			debian/rules debian/control ; \
 		fi ; \
-		echo Installing dependencies for $i ; \
-		mk-build-deps debian/control ; \
-		apt-get --no-install-recommends -y -V install ./freeradius-build-deps*.deb || true ; \
-		apt-get -y -f remove freeradius-build-deps libiodbc2-dev || true ; \
-		rm ./freeradius-build-deps*.deb ; \
+		echo 'y' | \
+		mk-build-deps -irt'apt-get -yV' debian/control ; \
 	done

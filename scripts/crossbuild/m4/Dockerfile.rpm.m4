@@ -1,9 +1,4 @@
-# Auto generated for centos7
-# from scripts/crossbuild/m4/Dockerfile.rpm.m4
-#
-# Rebuild this file with `make crossbuild.centos7.regen`
-#
-ARG from=centos:7
+ARG from=DOCKER_IMAGE
 FROM ${from} as build
 
 #
@@ -12,8 +7,9 @@ FROM ${from} as build
 #
 RUN yum update -y
 RUN yum install -y rpmdevtools openssl epel-release git procps yum-utils \
-	rsync 
+	rsync ifelse(OS_VER, `7',, `dnf-plugins-core')
 
+ifelse(OS_VER, `7', `dnl
 #
 #  Install GCC that has the requisite support for C11 keywords and atomics
 #
@@ -27,8 +23,20 @@ ENV CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
 #
 RUN rm /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
 RUN rm /etc/yum.repos.d/CentOS-SCLo-scl.repo
+')dnl
 
+ifelse(OS_VER, `8', `dnl
+RUN yum config-manager --set-enabled powertools
 
+#
+#  Install GCC that has the requisite support for C11 keywords and atomics
+#
+RUN yum install -y gcc-toolset-9
+')dnl
+
+ifelse(OS_VER, `9', `dnl
+RUN yum config-manager --set-enabled crb
+')dnl
 
 #
 #  Documentation build dependecies
@@ -53,6 +61,8 @@ RUN gem install asciidoctor
 RUN mkdir -p /usr/local/src/repositories
 WORKDIR /usr/local/src/repositories
 
+changequote([{,}])dnl Only add LTB on centos7/rocky8
+ifelse(ifelse(OS_VER, 7, yes,   OS_VER, 8, yes,   no), yes, [{dnl
 #
 #  Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
 #
@@ -64,6 +74,8 @@ gpgcheck=1\n\
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo
 RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+}])dnl
+changequote(`,')dnl
 
 #
 #  Shallow clone the FreeRADIUS source
@@ -76,11 +88,12 @@ RUN git clone --depth 1 --no-single-branch ${source}
 #  Install build dependencies for all branches from v3 onwards
 #  Nodesource has issues (no SRPMS in some repos) and is not needed here
 #
+define(`EXTRA_DISABLE', ifelse(OS_VER, 7, `--disablerepo="nodesource*"', `'))dnl
 WORKDIR freeradius-server
 RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[0-9x]*\.x|master)$");\
 	do \
 		git checkout $i; \
-		[ -e redhat/freeradius.spec ] && yum-builddep --disablerepo="nodesource*" -y redhat/freeradius.spec; \
+		[ -e redhat/freeradius.spec ] && yum-builddep EXTRA_DISABLE -y redhat/freeradius.spec; \
 	done
 
 #

@@ -1,9 +1,4 @@
-# Auto generated for ubuntu18
-# from scripts/crossbuild/m4/Dockerfile.deb.m4
-#
-# Rebuild this file with `make crossbuild.ubuntu18.regen`
-#
-ARG from=ubuntu:18.04
+ARG from=DOCKER_IMAGE
 FROM ${from} as build
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -16,12 +11,20 @@ RUN apt-get update && \
     apt-get clean && \
     rm -r /var/lib/apt/lists/*
 
+define(`CLANG_PKGS', `llvm clang lldb')dnl
+ifelse(D_NAME, `debian10', `dnl
+define(`CLANG_VER', `8')dnl
+define(`CLANG_PKGS', `llvm-CLANG_VER clang-CLANG_VER lldb-CLANG_VER')dnl
+#  For clang
+RUN add-apt-repository -y "deb http://apt.llvm.org/OS_CODENAME/ llvm-toolchain-OS_CODENAME-CLANG_VER main" && \
+    apt-key adv --fetch-keys http://apt.llvm.org/llvm-snapshot.gpg.key
+')dnl
 
 RUN apt-get update && \
 #  Development utilities
     apt-get install -y devscripts equivs git quilt rsync && \
 #  Compilers
-    apt-get install -y g++ llvm clang lldb && \
+    apt-get install -y g++ CLANG_PKGS && \
 #  eapol_test dependencies
     apt-get install -y libnl-3-dev libnl-genl-3-dev
 
@@ -32,7 +35,7 @@ RUN apt-get update && \
 #  - doxygen & JSON.pm
 RUN apt-get install -y doxygen graphviz libjson-perl
 #  - antora (npm needed)
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_10.x | bash -
 RUN apt-get install -y nodejs
 RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
 #  - pandoc
@@ -43,7 +46,16 @@ RUN apt-get install -y ./pandoc-*.deb
 RUN apt-get install -y ruby-dev
 RUN gem install asciidoctor
 
+ifelse(D_NAME, `debian10', `dnl
+#
+#  Set defaults
+#
+RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-CLANG_VER 60 && \
+    update-alternatives --config clang
 
+RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-CLANG_VER 60 && \
+    update-alternatives --config lldb
+')
 
 #
 #  Setup a src dir in /usr/local

@@ -13,11 +13,14 @@ else
 #
 CB_COMMON:=centos7 debian10 ubuntu18
 
+# Where to put stamp files (subdirectory of where this makefile is)
+CB_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+
 # Where the docker directories are
-DT:=scripts/crossbuild/docker
+DT:=$(CB_DIR)/docker
 
 # Where to put stamp files (subdirectory of where this makefile is)
-DD:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))/build
+DD:=$(CB_DIR)/build
 
 # List of all the docker images (sorted for "crossbuild.info")
 CB_IMAGES:=$(sort $(patsubst $(DT)/%,%,$(wildcard $(DT)/*)))
@@ -97,6 +100,11 @@ crossbuild.clean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.clean)
 #  Remove all images
 #
 crossbuild.wipe: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.wipe)
+
+#
+#  Regenerate all Dockerfiles from m4 templates
+#
+crossbuild.regen: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.regen)
 
 #
 #  Define rules for building a particular image
@@ -216,6 +224,16 @@ crossbuild.${1}.wipe:
 #
 .PHONY: crossbuild.${1}.refresh
 crossbuild.${1}.refresh: $(DD)/docker.refresh.${1}
+
+#
+#  Regenerate the image Dockerfile from the m4 templates
+#
+.PHONY: crossbuild.${1}.regen
+crossbuild.${1}.regen: $(DT)/${1}/Dockerfile
+
+$(DT)/${1}/Dockerfile: $(CB_DIR)/m4/Dockerfile.m4 $(CB_DIR)/m4/Dockerfile.deb.m4 $(CB_DIR)/m4/Dockerfile.rpm.m4
+	${Q}echo REGEN ${1}
+	${Q}m4 -I $(CB_DIR)/m4 -D D_NAME=${1} $$< > $$@
 
 #
 #  Run the build test
