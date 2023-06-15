@@ -3270,11 +3270,6 @@ int xlat_init(void)
 	unlang_xlat_init();
 
 	/*
-	 *	Define encode/decode xlats for the various protocols.
-	 */
-	if (xlat_protocol_init() < 0) return -1;
-
-	/*
 	 *	These are all "pure" functions.
 	 */
 #define XLAT_REGISTER_ARGS(_xlat, _func, _return_type, _args) \

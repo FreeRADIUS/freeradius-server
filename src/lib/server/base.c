@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/unlang/xlat.h>
 
 /** Initialize src/lib/server/
  *
@@ -73,6 +74,17 @@ int server_init(CONF_SECTION *cs)
 	 *	After this step, all dynamic attributes, xlats, etc. are defined.
 	 */
 	if (modules_rlm_bootstrap(cs) < 0) return -1;
+
+	/*
+	 *	Now all the modules and virtual servers have been bootstrapped,
+	 *	we have all the dictionaries we're going to use in the server.
+	 *
+	 *	We can now register xlats for any protocol encoders/decoders.
+	 *
+	 *	Note: These xlats get freed automatically, so no explicit cleanup
+	 *	is required.
+	 */
+	if (xlat_protocols_register() < 0) return -1;
 
 	/*
 	 *	And then load the virtual servers.
