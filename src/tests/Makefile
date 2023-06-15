@@ -185,6 +185,7 @@ radiusd.pid: test.conf
 		tail -n 20 "$(TEST_PATH)/radius.log"; \
 	fi
 	${Q}echo "ok"
+	${Q}echo "radiusd logging to $(TEST_PATH)/radius.log"
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
