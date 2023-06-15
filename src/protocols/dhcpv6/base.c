@@ -583,8 +583,6 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 	fr_pair_t		*vp;
 	fr_pair_list_t		tmp;
 
-	fr_pair_list_init(&tmp);
-
 	if (packet_len < DHCPV6_HDR_LEN) return 0; /* protect access to packet[0] */
 
 	/*
@@ -593,6 +591,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 	vp = fr_pair_afrom_da(ctx, attr_packet_type);
 	if (!vp) return -1;
 
+	fr_pair_list_init(&tmp);
 	vp->vp_uint32 = packet[0];
 	fr_pair_append(&tmp, vp);
 
