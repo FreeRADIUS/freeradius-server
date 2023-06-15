@@ -52,6 +52,8 @@ typedef	int (*xlat_resolve_t)(xlat_exp_t *xlat, void *inst, xlat_res_rules_t con
  */
 typedef int (*xlat_purify_t)(xlat_exp_t *xlat, void *inst, request_t *request);
 
+xlat_t		*xlat_func_find_module(module_inst_ctx_t const *mctx, char const *name);
+
 xlat_t		*xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 					   char const *name, xlat_func_t func, fr_type_t return_type);
 xlat_t		*xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, fr_type_t return_type) CC_HINT(nonnull(2));

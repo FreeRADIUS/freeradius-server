@@ -156,6 +156,32 @@ static int xlat_arg_cmp_list_no_escape(xlat_arg_parser_t const a[], xlat_arg_par
 }
 #endif
 
+xlat_t *xlat_func_find_module(module_inst_ctx_t const *mctx, char const *name)
+{
+	char inst_name[256];
+
+	fr_assert(xlat_root);
+
+	if (!*name) {
+		ERROR("%s: Invalid xlat name", __FUNCTION__);
+		return NULL;
+	}
+
+	/*
+	 *	Name xlats other than those which are just the module instance
+	 *	as <instance name>.<function name>
+	 */
+	if (mctx && name != mctx->inst->name) {
+		snprintf(inst_name, sizeof(inst_name), "%s.%s", mctx->inst->name, name);
+		name = inst_name;
+	}
+
+	/*
+	 *	If it already exists, replace the instance.
+	 */
+	return fr_rb_find(xlat_root, &(xlat_t){ .name = name });
+}
+
 /** Register an xlat function for a module
  *
  * @param[in] ctx		Used to automate deregistration of the xlat fnction.
@@ -169,7 +195,7 @@ static int xlat_arg_cmp_list_no_escape(xlat_arg_parser_t const a[], xlat_arg_par
  *	- NULL on failure.
  */
 xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
-			     char const *name, xlat_func_t func, fr_type_t return_type)
+				  char const *name, xlat_func_t func, fr_type_t return_type)
 {
 	xlat_t	*c;
 	module_inst_ctx_t *our_mctx = NULL;
