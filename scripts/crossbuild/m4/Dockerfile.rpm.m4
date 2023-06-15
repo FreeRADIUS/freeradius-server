@@ -109,5 +109,4 @@ RUN yum install -y libnl3-devel
 #
 #  Create the RPM build tree
 #
-ENV BUILDDIR=/root/rpmbuild
 RUN rpmdev-setuptree
