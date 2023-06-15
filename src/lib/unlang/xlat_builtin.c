@@ -3191,6 +3191,9 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	if (tp_decode) {
 		snprintf(buffer, sizeof(buffer), "%s.decode", name);
 
+		/* May be called multiple times, so just skip protocols we've already registered */
+		if (xlat_func_find(buffer, -1)) return 1;
+
 		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_decode_xlat, FR_TYPE_UINT32)) == NULL)) return -1;
 		xlat_func_args_set(xlat, protocol_decode_xlat_args);
 		/* coverity[suspicious_sizeof] */
@@ -3206,6 +3209,8 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	if (tp_encode) {
 		snprintf(buffer, sizeof(buffer), "%s.encode", name);
 
+		if (xlat_func_find(buffer, -1)) return 1;
+
 		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_encode_xlat, FR_TYPE_OCTETS)) == NULL)) return -1;
 		xlat_func_args_set(xlat, protocol_encode_xlat_args);
 		/* coverity[suspicious_sizeof] */
@@ -3216,7 +3221,9 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	return 0;
 }
 
-static int xlat_protocol_init(void)
+/** Register xlats for any loaded dictionaries
+ */
+int xlat_protocols_register(void)
 {
 	fr_dict_t *dict;
 	fr_dict_global_ctx_iter_t iter;
