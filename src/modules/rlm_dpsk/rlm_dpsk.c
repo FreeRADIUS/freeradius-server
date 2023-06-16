@@ -244,14 +244,18 @@ static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffe
 
 		entry = rbtree_finddata(inst->cache, &my_entry);
 		if (entry) {
-			if (entry->expires < request->timestamp) {
+			if (entry->expires > request->timestamp) {
+				RDEBUG3("Found cached PSK entry");
 				memcpy(buffer, entry->pmk, buflen);
 				return 1;
 			}
 
+			RDEBUG3("Expiring cached PSK entry");
 			rbtree_deletebydata(inst->cache, entry);
+		} else {
+			RDEBUG3("No cached PSK entry");
 		}
-	}
+	} /* else no caching */
 
 	psk = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
 	if (!psk) {
@@ -489,18 +493,26 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 				MEM(entry->psk = talloc_memdup(entry, vp->vp_octets, vp->vp_length));
 				entry->psk_len = vp->vp_length;
 			}
+
+			/*
+			 *	Cache it.
+			 */
+			if (!rbtree_insert(inst->cache, entry)) {
+				talloc_free(entry);
+				goto save_found_psk;
+			}
 		}
 		entry->expires = request->timestamp + inst->cache_lifetime;
-
 		/*
 		 *	Add the PSK to the reply items, if it was cached.
 		 */
 		if (entry->psk) {
 			MEM(vp = fr_pair_afrom_num(request->reply, PW_PRE_SHARED_KEY, 0));
-			fr_pair_value_memcpy(vp, entry->psk, entry->psk_len);
+			fr_pair_value_bstrncpy(vp, entry->psk, entry->psk_len);
 
 			fr_pair_add(&request->reply->vps, vp);
 		}
+
 		return RLM_MODULE_OK;
 	}
 
@@ -509,6 +521,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 */
 save_psk:
 	vp = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
+
+save_found_psk:
 	if (!vp) return RLM_MODULE_OK;
 
 	fr_pair_add(&request->reply->vps, fr_pair_copy(request->reply, vp));
