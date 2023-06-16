@@ -6,6 +6,7 @@ rlm_counter
 rlm_detail
 rlm_dhcp
 rlm_digest
+rlm_dpsk
 rlm_dynamic_clients
 rlm_eap
 rlm_exec

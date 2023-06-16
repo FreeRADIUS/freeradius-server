@@ -1,0 +1,50 @@
+# -*- text -*-
+#
+#  $Id$
+
+#
+#  Calculate dynamic PSKs
+#
+#  This module needs the following attributes as input:
+#
+#	* control:Pre-Shared-Key -  the PSK for the user
+#	* User-Name - the supplicant MAC in hex format, e.g. "abcdef012345"
+#	* Called-Station-MAC - the AP MAC in binary
+#	  this attribute is set by the "rewrite_called_station_id" policy.
+#	* FreeRADIUS-802.1X-Anonce - from the AP
+#	* FreeRADIUS-802.1X-EAPoL-Key-Msg - from the AP
+#
+#  Note that you MUST run the "rewrite_called_station_id" policy before calling this module.
+#
+#  That policy MUST also create the Called-Station-MAC attribute.
+#
+#  Then place the following configuration into the "authorize" section:
+#
+#	authorize {
+#		...
+#		rewrite_called_station_id
+#
+#		update control {
+#			&Pre-Shared-Key := "this-is-super-secret"
+#		}
+#		dpsk
+#
+#	}
+#
+#  And update the "authenticate" section to list the "dpsk" module:
+#
+#	authenticate {
+#		...
+#		dpsk
+#		...
+#	}
+#
+#  The module will return "fail" if the PSK is not correct.  It will return "ok"
+#  if the PSK is corret.
+#
+
+#
+#  The module takes no configuration.
+#
+dpsk {
+}
