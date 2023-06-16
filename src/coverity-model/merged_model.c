@@ -318,3 +318,12 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 
 	return result;
 }
+
+#ifndef MD5_DIGEST_LENGTH
+#  define MD5_DIGEST_LENGTH 16
+#endif
+
+void fr_md5_calc(uint8_t out[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen)
+{
+	__coverity_write_buffer_bytes__(out, MD5_DIGEST_LENGTH);
+}
