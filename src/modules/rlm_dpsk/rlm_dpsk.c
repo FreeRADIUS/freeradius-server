@@ -28,7 +28,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/base64.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <openssl/ssl.h>
@@ -90,18 +89,41 @@ typedef struct eapol_attr_t {
 	eapol_key_frame_t frame;
 } CC_HINT(__packed__) eapol_attr_t;
 
+/*
+ *	We have an internal cache, keyed by (mac + ssid).
+ *
+ *	It returns the PMK and PSK for the user.
+ */
+typedef struct {
+	uint8_t			mac[6];
+	uint8_t			pmk[32];
+
+	uint8_t			*ssid;
+	size_t			ssid_len;
+
+	uint8_t			*psk;
+	size_t			psk_len;
+	time_t			expires;
+} rlm_dpsk_cache_t;
+
 typedef struct rlm_dpsk_t {
 	char const		*xlat_name;
 	bool			ruckus;
 
+	rbtree_t		*cache;
+	uint32_t		cache_size;
+	uint32_t		cache_lifetime;
+
 	DICT_ATTR const		*ssid;
 	DICT_ATTR const		*anonce;
 	DICT_ATTR const		*frame;
-
 } rlm_dpsk_t;
 
 static const CONF_PARSER module_config[] = {
 	{ "ruckus", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_dpsk_t, ruckus), "no" },
+
+	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_size), "0" },
+	{ "cache_lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_lifetime), "0" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -197,9 +219,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
 }
 
 
-static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffer, size_t buflen)
+static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffer, size_t buflen, uint8_t const *mac)
 {
 	VALUE_PAIR *ssid, *psk;
+	rlm_dpsk_cache_t *entry;
 
 	fr_assert(buflen == 32);
 
@@ -207,6 +230,27 @@ static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffe
 	if (!ssid) {
 		RDEBUG("No %s in the request", inst->ssid->name);
 		return 0;
+	}
+
+	/*
+	 *	Found the cache entry, use the calculated PMK.
+	 */
+	if (inst->cache && mac) {
+		rlm_dpsk_cache_t my_entry;
+
+		memcpy(my_entry.mac, mac, sizeof(my_entry.mac));
+		memcpy(&my_entry.ssid, &ssid->vp_octets, sizeof(my_entry.ssid)); /* const issues */
+		my_entry.ssid_len = ssid->vp_length;
+
+		entry = rbtree_finddata(inst->cache, &my_entry);
+		if (entry) {
+			if (entry->expires < request->timestamp) {
+				memcpy(buffer, entry->pmk, buflen);
+				return 1;
+			}
+
+			rbtree_deletebydata(inst->cache, entry);
+		}
 	}
 
 	psk = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
@@ -230,6 +274,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 {
 	rlm_dpsk_t *inst = instance;
 	VALUE_PAIR *anonce, *key_msg, *vp;
+	rlm_dpsk_cache_t *entry;
 	size_t len;
 	unsigned int digest_len, mic_len;
 	eapol_attr_t const *eapol;
@@ -273,26 +318,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	}
 
 	/*
-	 *	Use the PMK if it already exists.  Otherwise calculate it from the PSK.
-	 */
-	vp = fr_pair_find_by_num(request->config, PW_PAIRWISE_MASTER_KEY, 0, TAG_ANY);
-	if (!vp) {
-
-		if (generate_pmk(request, inst, pmk, sizeof(pmk)) == 0) {
-			RDEBUG("No &config:Pairwise-Master-Key or &config.Pre-Shared-Key found");
-			return RLM_MODULE_NOOP;
-		}
-
-	} else if (vp->vp_length != sizeof(pmk)) {
-		RDEBUG("Pairwise-Master-Key has incorrect length (%zu != %zu)", vp->vp_length, sizeof(pmk));
-		return RLM_MODULE_NOOP;
-
-	} else {
-		memcpy(pmk, vp->vp_octets, sizeof(pmk));
-	}
-
-	/*
-	 *	Get supplicant MAC and AP MAC addresses
+	 *	Get supplicant MAC address.
 	 */
 	vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 	if (!vp) {
@@ -306,6 +332,27 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		return RLM_MODULE_NOOP;
 	}
 
+	/*
+	 *	Use the PMK if it already exists.  Otherwise calculate it from the PSK.
+	 */
+	vp = fr_pair_find_by_num(request->config, PW_PAIRWISE_MASTER_KEY, 0, TAG_ANY);
+	if (!vp) {
+		if (generate_pmk(request, inst, pmk, sizeof(pmk), s_mac) == 0) {
+			RDEBUG("No &config:Pairwise-Master-Key or &config.Pre-Shared-Key found");
+			return RLM_MODULE_NOOP;
+		}
+
+	} else if (vp->vp_length != sizeof(pmk)) {
+		RDEBUG("Pairwise-Master-Key has incorrect length (%zu != %zu)", vp->vp_length, sizeof(pmk));
+		return RLM_MODULE_NOOP;
+
+	} else {
+		memcpy(pmk, vp->vp_octets, sizeof(pmk));
+	}
+
+	/*
+	 *	Get the AP MAC address.
+	 */
 	vp = fr_pair_find_by_num(request->packet->vps, PW_CALLED_STATION_MAC, 0, TAG_ANY);
 	if (!vp) {
 		RDEBUG("No &Called-Station-MAC");
@@ -399,8 +446,68 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	}
 
 	/*
+	 *	Extend the lifetime of the cache entry, or add the
+	 *	cache entry if necessary.
+	 */
+	if (inst->cache) {
+		rlm_dpsk_cache_t my_entry;
+
+		/*
+		 *	Find the entry (again), and update the expiry time.
+		 *
+		 *	Create the entry if neessary.
+		 */
+		memcpy(my_entry.mac, s_mac, sizeof(my_entry.mac));
+
+		vp = fr_pair_find_by_da(request->packet->vps, inst->ssid, TAG_ANY);
+		if (!vp) goto save_psk; /* should never really happen, but just to be safe */
+
+		memcpy(&my_entry.ssid, &vp->vp_octets, sizeof(my_entry.ssid)); /* const issues */
+		my_entry.ssid_len = vp->vp_length;
+
+		entry = rbtree_finddata(inst->cache, &my_entry);
+		if (!entry) {
+			if (rbtree_num_elements(inst->cache) > inst->cache_size) goto save_psk;
+
+			MEM(entry = talloc_zero(NULL, rlm_dpsk_cache_t));
+
+			memcpy(entry->mac, s_mac, sizeof(entry->mac));
+			memcpy(entry->pmk, pmk, sizeof(entry->pmk));
+
+			/*
+			 *	Save the variable-length SSID.
+			 */
+			MEM(entry->ssid = talloc_memdup(entry, vp->vp_octets, vp->vp_length));
+			entry->ssid_len = vp->vp_length;
+
+			/*
+			 *	Save the PSK.  If we just have the
+			 *	PMK, then we can still cache that.
+			 */
+			vp = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
+			if (vp) {
+				MEM(entry->psk = talloc_memdup(entry, vp->vp_octets, vp->vp_length));
+				entry->psk_len = vp->vp_length;
+			}
+		}
+		entry->expires = request->timestamp + inst->cache_lifetime;
+
+		/*
+		 *	Add the PSK to the reply items, if it was cached.
+		 */
+		if (entry->psk) {
+			MEM(vp = fr_pair_afrom_num(request->reply, PW_PRE_SHARED_KEY, 0));
+			fr_pair_value_memcpy(vp, entry->psk, entry->psk_len);
+
+			fr_pair_add(&request->reply->vps, vp);
+		}
+		return RLM_MODULE_OK;
+	}
+
+	/*
 	 *	Save a copy of the found PSK in the reply;
 	 */
+save_psk:
 	vp = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
 	if (!vp) return RLM_MODULE_OK;
 
@@ -427,7 +534,7 @@ static ssize_t dpsk_xlat(void *instance, REQUEST *request,
 	while (isspace((uint8_t) *p)) p++;
 
 	if (!*p) {
-		if (generate_pmk(request, inst, buffer, sizeof(buffer)) == 0) {
+		if (generate_pmk(request, inst, buffer, sizeof(buffer), NULL) == 0) {
 			RDEBUG("No &request.Called-Station-SSID or &config.Pre-Shared-Key found");
 			return 0;
 		}
@@ -494,6 +601,47 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
+static int cmp_cache_entry(void const *one, void const *two)
+{
+	rlm_dpsk_cache_t const *a = (rlm_dpsk_cache_t const *) one;
+	rlm_dpsk_cache_t const *b = (rlm_dpsk_cache_t const *) two;
+	int rcode;
+
+	rcode = memcmp(a->mac, b->mac, sizeof(a->mac));
+	if (rcode != 0) return rcode;
+
+	if (a->ssid_len < b->ssid_len) return -1;
+	if (a->ssid_len > b->ssid_len) return +1;
+
+	return memcmp(a->ssid, b->ssid, a->ssid_len);
+}
+
+static void free_cache_entry(void *data)
+{
+	talloc_free(data);
+}
+
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
+{
+	rlm_dpsk_t *inst = instance;
+
+	if (!inst->cache_size) return 0;
+
+	FR_INTEGER_BOUND_CHECK("cache_size", inst->cache_size, <=, ((uint32_t) 1) << 16);
+
+	if (!inst->cache_size) return 0;
+
+	FR_INTEGER_BOUND_CHECK("cache_lifetime", inst->cache_lifetime, <=, (7 * 86400));
+	FR_INTEGER_BOUND_CHECK("cache_lifetime", inst->cache_lifetime, >=, 3600);
+
+	inst->cache = rbtree_create(inst, cmp_cache_entry, free_cache_entry, RBTREE_FLAG_LOCK);
+	if (!inst->cache) {
+		cf_log_err_cs(conf, "Failed creating internal cache");
+		return -1;
+	}
+
+	return 0;
+}
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -512,6 +660,7 @@ module_t rlm_dpsk = {
 	.inst_size	= sizeof(rlm_dpsk_t),
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_AUTHENTICATE]	= mod_authenticate,

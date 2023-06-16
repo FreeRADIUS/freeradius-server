@@ -40,11 +40,27 @@
 #	}
 #
 #  The module will return "fail" if the PSK is not correct.  It will return "ok"
-#  if the PSK is corret.
+#  if the PSK is correct.
+#
+#  It also updatess &reply.Pre-Shared-Key with the found key.
 #
 
 #
-#  The module takes no configuration.
+#  The modules configuration.
 #
 dpsk {
+	#
+	#  The maximum number of entries to cache.
+	#
+	#  The cache is keyed by (supplicant MAC + SSID)
+	#
+	#  The cache entry is the PSK and/or the PMK which are used to
+	#  verify the information in the Access-Request.
+	#
+	cache_size = 0
+
+	#
+	#  The lifetime of an entry in the cache.
+	#
+	cache_lifetime = 86400
 }
