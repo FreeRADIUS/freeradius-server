@@ -219,9 +219,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
 }
 
 
-static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffer, size_t buflen, uint8_t const *mac)
+static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffer, size_t buflen, uint8_t const *mac, char const *psk, size_t psk_len)
 {
-	VALUE_PAIR *ssid, *psk;
+	VALUE_PAIR *ssid, *vp;
 	rlm_dpsk_cache_t *entry;
 
 	fr_assert(buflen == 32);
@@ -257,13 +257,18 @@ static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffe
 		}
 	} /* else no caching */
 
-	psk = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
 	if (!psk) {
-		RDEBUG("No &config:Pre-Shared-Key");
-		return 0;
+		vp = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
+		if (!vp) {
+			RDEBUG("No &config:Pre-Shared-Key");
+			return 0;
+		}
+
+		psk = vp->vp_strvalue;
+		psk_len = vp->vp_length;
 	}
 
-	if (PKCS5_PBKDF2_HMAC_SHA1((const char *) psk->vp_octets, psk->vp_length, (const unsigned char *) ssid->vp_strvalue, ssid->vp_length, 4096, buflen, buffer) == 0) {
+	if (PKCS5_PBKDF2_HMAC_SHA1((const char *) psk, psk_len, (const unsigned char *) ssid->vp_strvalue, ssid->vp_length, 4096, buflen, buffer) == 0) {
 		RDEBUG("Failed calling OpenSSL to calculate the PMK");
 		return 0;
 	}
@@ -337,24 +342,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	}
 
 	/*
-	 *	Use the PMK if it already exists.  Otherwise calculate it from the PSK.
-	 */
-	vp = fr_pair_find_by_num(request->config, PW_PAIRWISE_MASTER_KEY, 0, TAG_ANY);
-	if (!vp) {
-		if (generate_pmk(request, inst, pmk, sizeof(pmk), s_mac) == 0) {
-			RDEBUG("No &config:Pairwise-Master-Key or &config.Pre-Shared-Key found");
-			return RLM_MODULE_NOOP;
-		}
-
-	} else if (vp->vp_length != sizeof(pmk)) {
-		RDEBUG("Pairwise-Master-Key has incorrect length (%zu != %zu)", vp->vp_length, sizeof(pmk));
-		return RLM_MODULE_NOOP;
-
-	} else {
-		memcpy(pmk, vp->vp_octets, sizeof(pmk));
-	}
-
-	/*
 	 *	Get the AP MAC address.
 	 */
 	vp = fr_pair_find_by_num(request->packet->vps, PW_CALLED_STATION_MAC, 0, TAG_ANY);
@@ -415,6 +402,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	fr_assert(sizeof(message) == (p + 1 - message));
 
 	RDEBUG_HEX(request, "message:", message, sizeof(message));
+
+	/*
+	 *	Use the PMK if it already exists.  Otherwise calculate it from the PSK.
+	 */
+	vp = fr_pair_find_by_num(request->config, PW_PAIRWISE_MASTER_KEY, 0, TAG_ANY);
+	if (!vp) {
+		if (generate_pmk(request, inst, pmk, sizeof(pmk), s_mac, NULL, 0) == 0) {
+			RDEBUG("No &config:Pairwise-Master-Key or &config.Pre-Shared-Key found");
+			return RLM_MODULE_NOOP;
+		}
+
+	} else if (vp->vp_length != sizeof(pmk)) {
+		RDEBUG("Pairwise-Master-Key has incorrect length (%zu != %zu)", vp->vp_length, sizeof(pmk));
+		return RLM_MODULE_NOOP;
+
+	} else {
+		memcpy(pmk, vp->vp_octets, sizeof(pmk));
+	}
 
 	/*
 	 *	HMAC = HMAC_SHA1(pmk, message);
@@ -548,7 +553,7 @@ static ssize_t dpsk_xlat(void *instance, REQUEST *request,
 	while (isspace((uint8_t) *p)) p++;
 
 	if (!*p) {
-		if (generate_pmk(request, inst, buffer, sizeof(buffer), NULL) == 0) {
+		if (generate_pmk(request, inst, buffer, sizeof(buffer), NULL, NULL, 0) == 0) {
 			RDEBUG("No &request.Called-Station-SSID or &config.Pre-Shared-Key found");
 			return 0;
 		}
