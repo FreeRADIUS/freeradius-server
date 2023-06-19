@@ -42,7 +42,20 @@
 #  The module will return "fail" if the PSK is not correct.  It will return "ok"
 #  if the PSK is correct.
 #
-#  It also updatess &reply.Pre-Shared-Key with the found key.
+#  It also updates &reply.Pre-Shared-Key with the found key.
+#
+#  We STRONGLY RECOMMEND THAT NO ONE USE THIS MODULE.
+#
+#  While it works, it needs to use a brute-force method to match MAC
+#  to PSK.  That process is extremely slow, and scales very poorly.
+#
+#  i.e. if you have 10 PSKs, it's not too bad.  If you have 10,000
+#  PSKs, then the module can comsume 100% of CPU trying to
+#  brute-force every PSK.
+#
+#  This is a limitation of how DPSK works.  There is no way to make it
+#  better.  The only thing we've done is to add a cache which can help
+#  to minimize the amount of brute-force attempts.
 #
 
 #
