@@ -238,6 +238,7 @@ ATTRIBUTE	Called-Station-SSID			1139	string
 ATTRIBUTE	Called-Station-MAC			1140	octets
 ATTRIBUTE	Pre-Shared-Key				1141	string
 ATTRIBUTE	Pairwise-Master-Key			1142	octets
+ATTRIBUTE	PSK-Identity				1143	string
 
 ATTRIBUTE	OTP-Challenge				1145	string
 ATTRIBUTE	EAP-Session-Id				1146	octets

@@ -101,6 +101,9 @@ typedef struct {
 	uint8_t			*ssid;
 	size_t			ssid_len;
 
+	char			*identity;
+	size_t			identity_len;
+
 	uint8_t			*psk;
 	size_t			psk_len;
 	time_t			expires;
@@ -308,6 +311,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	eapol_attr_t const *eapol;
 	eapol_attr_t *zeroed;
 	FILE *fp = NULL;
+	char const *psk_identity = NULL;
 	uint8_t *p;
 	uint8_t const *snonce, *ap_mac;
 	uint8_t const *min_mac, *max_mac;
@@ -315,6 +319,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	uint8_t pmk[32];
 	uint8_t s_mac[6], message[sizeof("Pairwise key expansion") + 6 + 6 + 32 + 32 + 1], frame[128];
 	uint8_t digest[EVP_MAX_MD_SIZE], mic[EVP_MAX_MD_SIZE];
+	char token_identity[256];
 
 	/*
 	 *	Search for the information in a bunch of attributes.
@@ -366,6 +371,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		RDEBUG("&User-Name is not a recognizable hex MAC address");
 		return RLM_MODULE_NOOP;
 	}
+
+	/*
+	 *	In case we're not reading from a file.
+	 */
+	vp = fr_pair_find_by_num(request->config, PW_PSK_IDENTITY, 0, TAG_ANY);
+	if (vp) psk_identity = vp->vp_strvalue;
 
 	/*
 	 *	Get the AP MAC address.
@@ -429,16 +440,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	if (inst->filename) {
 		FR_TOKEN token;
 		char const *q;
-		char token_identity[256];
 		char token_psk[256];
 		char token_mac[256];
 		char buffer[1024];
 
 		/*
-		 *
+		 *	If there's a cached entry, we don't read the file.
 		 */
 		entry = dpsk_cache_find(request, inst, pmk, sizeof(pmk), ssid, s_mac);
-		if (entry) goto make_digest;
+		if (entry) {
+			psk_identity = entry->identity;
+			goto make_digest;
+		}
 
 		RDEBUG3("Looking for PSK in file %s", inst->filename);
 
@@ -499,7 +512,10 @@ get_next_psk:
 				goto fail;
 			}
 
-			if (memcmp(s_mac, token_mac, 6) != 0) goto get_next_psk;
+			if (memcmp(s_mac, token_mac, 6) != 0) {
+				psk_identity = NULL;
+				goto get_next_psk;
+			}
 
 			/*
 			 *	Close the file so that we don't check any other entries.
@@ -524,9 +540,9 @@ get_next_psk:
 		}
 
 		/*
-		 *	@todo - save the identity somewhere.  We should likely only save it if the MIC
-		 *	matches.
+		 *	Remember which identity we had
 		 */
+		psk_identity = token_identity;
 		goto make_digest;
 	}
 
@@ -579,7 +595,10 @@ make_digest:
 	 *	Do the MICs match?
 	 */
 	if (memcmp(&eapol->frame.mic[0], mic, 16) != 0) {
-		if (fp) goto get_next_psk;
+		if (fp) {
+			psk_identity = NULL;
+			goto get_next_psk;
+		}
 
 		RDEBUG_HEX(request, "calculated mic:", mic, 16);
 		RDEBUG_HEX(request, "packet mic    :", &eapol->frame.mic[0], 16);
@@ -637,6 +656,14 @@ make_digest:
 			}
 
 			/*
+			 *	Save the identity.
+			 */
+			if (psk_identity) {
+				MEM(entry->identity = talloc_memdup(entry, psk_identity, strlen(psk_identity)));
+				entry->identity_len = strlen(psk_identity);
+			}
+
+			/*
 			 *	Cache it.
 			 */
 			if (!rbtree_insert(inst->cache, entry)) {
@@ -657,7 +684,7 @@ make_digest:
 			fr_pair_add(&request->reply->vps, vp);
 		}
 
-		return RLM_MODULE_OK;
+		goto save_psk_identity;
 	}
 
 	/*
@@ -670,6 +697,17 @@ save_found_psk:
 	if (!vp) return RLM_MODULE_OK;
 
 	fr_pair_add(&request->reply->vps, fr_pair_copy(request->reply, vp));
+
+save_psk_identity:
+	/*
+	 *	Save which identity matched.
+	 */
+	if (psk_identity) {
+		MEM(vp = fr_pair_afrom_num(request->reply, PW_PSK_IDENTITY, 0));
+		fr_pair_value_bstrncpy(vp, psk_identity, strlen(psk_identity));
+
+		fr_pair_add(&request->reply->vps, vp);
+	}
 
 	return RLM_MODULE_OK;
 }

@@ -25,6 +25,7 @@
 #		rewrite_called_station_id
 #
 #		update control {
+#			&PSK-Identity := "bob"
 #			&Pre-Shared-Key := "this-is-super-secret"
 #		}
 #		dpsk
@@ -42,7 +43,8 @@
 #  The module will return "fail" if the PSK is not correct.  It will return "ok"
 #  if the PSK is correct.
 #
-#  It also updates &reply.Pre-Shared-Key with the found key.
+#  It also updates &reply:Pre-Shared-Key with the found key, along with
+#  &reply:PSK-Identity with the found identity.
 #
 #  We STRONGLY RECOMMEND THAT NO ONE USE THIS MODULE.
 #
@@ -67,8 +69,9 @@ dpsk {
 	#
 	#  The cache is keyed by (supplicant MAC + SSID)
 	#
-	#  The cache entry is the PSK and/or the PMK which are used to
-	#  verify the information in the Access-Request.
+	#  The cache entry is the PSK-Identity and Pre-Sharedd-Key,
+	#  and/or the PMK which are used to verify the information in
+	#  the Access-Request.
 	#
 	cache_size = 1024
 
