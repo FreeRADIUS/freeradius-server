@@ -57,10 +57,64 @@ dpsk {
 	#  The cache entry is the PSK and/or the PMK which are used to
 	#  verify the information in the Access-Request.
 	#
-	cache_size = 0
+	cache_size = 1024
 
 	#
 	#  The lifetime of an entry in the cache.
 	#
 	cache_lifetime = 86400
+
+	#
+	#  PSKs can also be stored in a CSV file.  The format of the file is:
+	#
+	#	identity,psk,mac
+	#
+	#  If there are commas in a field, then the field can be
+	#  double quoted: "psk".
+	#
+	#  The mac field is optional.  If it exists, then that PSK
+	#  will be used.
+	#
+	#  NOTE: the file is opened and read from top to bottom for every
+	#  new request which comes in.  This process can be very slow!
+	#
+	#  However, opening the file for every new request means that the
+	#  server does not have to be reloaded when the file changes.  Instead,
+	#  the file can be generated, and then moved into place atomically:
+	#
+	# 	create csv file > psk.csv.new
+	#	mv psk.csv.new psk.csv
+	#
+	#  Any process which writes a new "psk.csv" file MUST NOT
+	#  write to the file directly, as that will cause the dpsk
+	#  module to read partial entries and fail.  Instead, use "mv"
+	#  to atomically overwrite the old file with a new one.
+	#
+	#  Both "cache_size" and "filename" can be configured at the
+	#  same time, which is recommended.  When an entry in the file
+	#  is found, the identity, PSK, and MAC are saved in the cache.
+	#
+	#  If a cache entry is found, then the filename is NOT read.
+	#
+	#  The resulting combination of features means that the module
+	#  should be as fast as possible, given the limitations of DPSK.
+	#
+	#  NOTE: Tests show that the module can do ~100K PSK / DPSK
+	#  checks per second.  This means that if you have 10,000
+	#  users and 10 packets a second, the system will be 100% busy
+	#  checking PSKs.
+	#
+	#  As a result, the DPSK functionality is scales poorly.  It
+	#  should be used only with a small number of PSKs (100s
+	#  perhaps), and only at low packet rates.  If the server is
+	#  getting 1000 packets per second, then it can only handle
+	#  100 PSKs before running out of CPU.
+	#
+	#  Using the cache will help substantially.  But the cache is
+	#  only in memory, which means that all cache entries are lost
+	#  when the server restarts.  As a result, the combination of
+	#  number of PSKs and packet rates should be kept as low as
+	#  possible.
+	#
+#	filename = "${modconfdir}/${..:name}/psk.csv"
 }

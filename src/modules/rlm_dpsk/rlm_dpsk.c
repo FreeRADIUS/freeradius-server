@@ -114,6 +114,8 @@ typedef struct rlm_dpsk_t {
 	uint32_t		cache_size;
 	uint32_t		cache_lifetime;
 
+	char const		*filename;
+
 	DICT_ATTR const		*ssid;
 	DICT_ATTR const		*anonce;
 	DICT_ATTR const		*frame;
@@ -124,6 +126,9 @@ static const CONF_PARSER module_config[] = {
 
 	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_size), "0" },
 	{ "cache_lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_lifetime), "0" },
+
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, struct rlm_dpsk_t, filename), NULL },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -218,43 +223,56 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
-
-static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffer, size_t buflen, uint8_t const *mac, char const *psk, size_t psk_len)
+static rlm_dpsk_cache_t *dpsk_cache_find(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffer, size_t buflen, VALUE_PAIR *ssid, uint8_t const *mac)
 {
-	VALUE_PAIR *ssid, *vp;
-	rlm_dpsk_cache_t *entry;
+	rlm_dpsk_cache_t *entry, my_entry;
+
+	memcpy(my_entry.mac, mac, sizeof(my_entry.mac));
+	memcpy(&my_entry.ssid, &ssid->vp_octets, sizeof(my_entry.ssid)); /* const issues */
+	my_entry.ssid_len = ssid->vp_length;
+
+	entry = rbtree_finddata(inst->cache, &my_entry);
+	if (entry) {
+		if (entry->expires > request->timestamp) {
+			RDEBUG3("Cache entry found");
+			memcpy(buffer, entry->pmk, buflen);
+			return entry;
+		}
+
+		RDEBUG3("Cache entry has expired");
+		rbtree_deletebydata(inst->cache, entry);
+	}
+
+	return NULL;
+}
+
+
+static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffer, size_t buflen, VALUE_PAIR *ssid, uint8_t const *mac, char const *psk, size_t psk_len)
+{
+	VALUE_PAIR *vp;
 
 	fr_assert(buflen == 32);
 
-	ssid = fr_pair_find_by_da(request->packet->vps, inst->ssid, TAG_ANY);
 	if (!ssid) {
-		RDEBUG("No %s in the request", inst->ssid->name);
-		return 0;
+		ssid = fr_pair_find_by_da(request->packet->vps, inst->ssid, TAG_ANY);
+		if (!ssid) {
+			RDEBUG("No %s in the request", inst->ssid->name);
+			return 0;
+		}
 	}
 
 	/*
 	 *	Found the cache entry, use the calculated PMK.
 	 */
 	if (inst->cache && mac) {
-		rlm_dpsk_cache_t my_entry;
+		rlm_dpsk_cache_t *entry;
 
-		memcpy(my_entry.mac, mac, sizeof(my_entry.mac));
-		memcpy(&my_entry.ssid, &ssid->vp_octets, sizeof(my_entry.ssid)); /* const issues */
-		my_entry.ssid_len = ssid->vp_length;
-
-		entry = rbtree_finddata(inst->cache, &my_entry);
+		entry = dpsk_cache_find(request, inst, buffer, buflen, ssid, mac);
 		if (entry) {
-			if (entry->expires > request->timestamp) {
-				RDEBUG3("Found cached PSK entry");
-				memcpy(buffer, entry->pmk, buflen);
-				return 1;
-			}
-
-			RDEBUG3("Expiring cached PSK entry");
-			rbtree_deletebydata(inst->cache, entry);
-		} else {
-			RDEBUG3("No cached PSK entry");
+			memcpy(buffer, entry->pmk, buflen);
+			return 1;
 		}
+		RDEBUG3("Cache entry not found");
 	} /* else no caching */
 
 	if (!psk) {
@@ -282,12 +300,14 @@ static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffe
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_dpsk_t *inst = instance;
-	VALUE_PAIR *anonce, *key_msg, *vp;
+	VALUE_PAIR *anonce, *key_msg, *ssid, *vp;
 	rlm_dpsk_cache_t *entry;
+	int lineno;
 	size_t len;
 	unsigned int digest_len, mic_len;
 	eapol_attr_t const *eapol;
 	eapol_attr_t *zeroed;
+	FILE *fp = NULL;
 	uint8_t *p;
 	uint8_t const *snonce, *ap_mac;
 	uint8_t const *min_mac, *max_mac;
@@ -324,6 +344,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	if (key_msg->vp_length > sizeof(frame)) {
 		RDEBUG("%s has incorrect length (%zu > %zu)", inst->frame->name, key_msg->vp_length, sizeof(frame));
 		return RLM_MODULE_NOOP;
+	}
+
+	ssid = fr_pair_find_by_da(request->packet->vps, inst->ssid, TAG_ANY);
+	if (!ssid) {
+		RDEBUG("No %s in the request", inst->ssid->name);
+		return 0;
 	}
 
 	/*
@@ -398,23 +424,126 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	memcpy(p + 32, max_nonce, 32);
 	p += 64;
 	*p = '\0';
-
 	fr_assert(sizeof(message) == (p + 1 - message));
 
-	RDEBUG_HEX(request, "message:", message, sizeof(message));
+	if (inst->filename) {
+		FR_TOKEN token;
+		char const *q;
+		char token_identity[256];
+		char token_psk[256];
+		char token_mac[256];
+		char buffer[1024];
+
+		/*
+		 *
+		 */
+		entry = dpsk_cache_find(request, inst, pmk, sizeof(pmk), ssid, s_mac);
+		if (entry) goto make_digest;
+
+		RDEBUG3("Looking for PSK in file %s", inst->filename);
+
+		fp = fopen(inst->filename, "r");
+		if (!fp) {
+			REDEBUG("Failed opening %s - %s", inst->filename, fr_syserror(errno));
+			return RLM_MODULE_FAIL;
+		}
+
+		lineno = 0;
+
+get_next_psk:
+		q = fgets(buffer, sizeof(buffer), fp);
+		if (!q) {
+			RDEBUG("Failed to find matching key in %s", inst->filename);
+		fail:
+			fclose(fp);
+			return RLM_MODULE_FAIL;
+		}
+
+		/*
+		 *	Split the line on commas, paying attention to double quotes.
+		 */
+		token = getstring(&q, token_identity, sizeof(token_identity), true);
+		if (token == T_INVALID) {
+			RDEBUG("%s[%d] Failed parsing identity", inst->filename, lineno);
+			goto fail;
+		}
+
+		if (*q != ',') {
+			RDEBUG("%s[%d] Failed to find ',' after identity", inst->filename, lineno);
+			goto fail;
+		}
+		q++;
+
+		token = getstring(&q, token_psk, sizeof(token_psk), true);
+		if (token == T_INVALID) {
+			RDEBUG("%s[%d] Failed parsing PSK", inst->filename, lineno);
+			goto fail;
+		}
+
+		if (*q == ',') {
+			q++;
+
+			token = getstring(&q, token_mac, sizeof(token_mac), true);
+			if (token == T_INVALID) {
+				RDEBUG("%s[%d] Failed parsing MAC", inst->filename, lineno);
+				goto fail;
+			}
+
+			/*
+			 *	See if the MAC matches.  If not, skip
+			 *	this entry.  That's a basic negative cache.
+			 */
+			if ((strlen(token_mac) != 12) ||
+			    (fr_hex2bin((uint8_t *) token_mac, 6, token_mac, 12) != 12)) {
+				RDEBUG("%s[%d] Failed parsing MAC", inst->filename, lineno);
+				goto fail;
+			}
+
+			if (memcmp(s_mac, token_mac, 6) != 0) goto get_next_psk;
+
+			/*
+			 *	Close the file so that we don't check any other entries.
+			 */
+			MEM(vp = fr_pair_afrom_num(request, PW_PRE_SHARED_KEY, 0));
+			fr_pair_value_bstrncpy(vp, token_psk, strlen(token_psk));
+
+			fr_pair_add(&request->config, vp);
+			fclose(fp);
+			fp = NULL;
+
+			RDEBUG3("Found matching MAC");
+		}
+
+		/*
+		 *	Generate the PMK using the SSID, this MAC, and the PSK we just read.
+		 */
+		RDEBUG3("%s[%d] Trying PSK %s", inst->filename, lineno, token_psk);
+		if (generate_pmk(request, inst, pmk, sizeof(pmk), ssid, s_mac, token_psk, strlen(token_psk)) == 0) {
+			RDEBUG("No &config:Pairwise-Master-Key or &config.Pre-Shared-Key found");
+			return RLM_MODULE_NOOP;
+		}
+
+		/*
+		 *	@todo - save the identity somewhere.  We should likely only save it if the MIC
+		 *	matches.
+		 */
+		goto make_digest;
+	}
 
 	/*
 	 *	Use the PMK if it already exists.  Otherwise calculate it from the PSK.
 	 */
 	vp = fr_pair_find_by_num(request->config, PW_PAIRWISE_MASTER_KEY, 0, TAG_ANY);
 	if (!vp) {
-		if (generate_pmk(request, inst, pmk, sizeof(pmk), s_mac, NULL, 0) == 0) {
+		if (generate_pmk(request, inst, pmk, sizeof(pmk), ssid, s_mac, NULL, 0) == 0) {
 			RDEBUG("No &config:Pairwise-Master-Key or &config.Pre-Shared-Key found");
+			fr_assert(!fp);
 			return RLM_MODULE_NOOP;
 		}
 
 	} else if (vp->vp_length != sizeof(pmk)) {
 		RDEBUG("Pairwise-Master-Key has incorrect length (%zu != %zu)", vp->vp_length, sizeof(pmk));
+		fr_assert(!fp);
 		return RLM_MODULE_NOOP;
 
 	} else {
@@ -426,9 +555,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *
 	 *	We need the first 16 octets of this.
 	 */
+make_digest:
 	digest_len = sizeof(digest);
 	HMAC(EVP_sha1(), pmk, sizeof(pmk), message, sizeof(message), digest, &digest_len);
 
+	RDEBUG_HEX(request, "message:", message, sizeof(message));
 	RDEBUG_HEX(request, "pmk   :", pmk, sizeof(pmk));
 	RDEBUG_HEX(request, "kck   :", digest, 16);
 
@@ -448,11 +579,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	Do the MICs match?
 	 */
 	if (memcmp(&eapol->frame.mic[0], mic, 16) != 0) {
+		if (fp) goto get_next_psk;
+
 		RDEBUG_HEX(request, "calculated mic:", mic, 16);
 		RDEBUG_HEX(request, "packet mic    :", &eapol->frame.mic[0], 16);
-
 		return RLM_MODULE_FAIL;
 	}
+
+	/*
+	 *	It matches.  Close the input file if necessary.
+	 */
+	if (fp) fclose(fp);
 
 	/*
 	 *	Extend the lifetime of the cache entry, or add the
@@ -506,6 +643,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 				talloc_free(entry);
 				goto save_found_psk;
 			}
+
+			RDEBUG3("Cache entry saved");
 		}
 		entry->expires = request->timestamp + inst->cache_lifetime;
 		/*
@@ -553,7 +692,7 @@ static ssize_t dpsk_xlat(void *instance, REQUEST *request,
 	while (isspace((uint8_t) *p)) p++;
 
 	if (!*p) {
-		if (generate_pmk(request, inst, buffer, sizeof(buffer), NULL, NULL, 0) == 0) {
+		if (generate_pmk(request, inst, buffer, sizeof(buffer), NULL, NULL, NULL, 0) == 0) {
 			RDEBUG("No &request.Called-Station-SSID or &config.Pre-Shared-Key found");
 			return 0;
 		}
