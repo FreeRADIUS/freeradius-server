@@ -142,14 +142,16 @@ static ssize_t base32_decode(uint8_t *out, size_t outlen, char const *in)
 	return b - out;
 }
 
-#ifndef TESTING
 #define LEN 6
 #define PRINT "%06u"
 #define DIV 1000000
+
+#ifndef TESTING
+#define TESTING_UNUSED
 #else
-#define LEN 8
-#define PRINT "%08u"
-#define DIV 100000000
+#undef RDEBUG3
+#define RDEBUG3(fmt, ...)	printf(fmt "\n", ## __VA_ARGS__)
+#define TESTING_UNUSED UNUSED
 #endif
 
 /*
@@ -159,7 +161,7 @@ static ssize_t base32_decode(uint8_t *out, size_t outlen, char const *in)
  *	for 8-character challenges, and not for 6 character
  *	challenges!
  */
-static int totp_cmp(REQUEST *request, time_t now, uint8_t const *key, size_t keylen, char const *totp)
+static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *key, size_t keylen, char const *totp)
 {
 	uint8_t offset;
 	uint32_t challenge;
@@ -201,6 +203,7 @@ static int totp_cmp(REQUEST *request, time_t now, uint8_t const *key, size_t key
 	 */
 	snprintf(buffer, sizeof(buffer), PRINT, challenge % DIV);
 
+	RDEBUG3("Time %llu", (uint64_t) now);
 	RDEBUG3("Expected %s", buffer);
 	RDEBUG3("Received %s", totp);
 
@@ -278,6 +281,11 @@ module_t rlm_totp = {
 };
 
 #else /* TESTING */
+/*
+ *	./totp decode KEY_BASE32
+ *
+ *	./totp totp now KEY TOTP
+ */
 int main(int argc, char **argv)
 {
 	size_t len;
@@ -308,9 +316,13 @@ int main(int argc, char **argv)
 
 		if (argc < 5) return 0;
 
-		(void) sscanf(argv[2], "%llu", &now);
+		if (strcmp(argv[2], "now") == 0) {
+			now = time(NULL);
+		} else {
+			(void) sscanf(argv[2], "%llu", &now);
+		}
 
-		if (totp_cmp((time_t) now, (uint8_t const *) argv[3], strlen(argv[3]), argv[4]) == 0) {
+		if (totp_cmp(NULL, (time_t) now, (uint8_t const *) argv[3], strlen(argv[3]), argv[4]) == 0) {
 			return 0;
 		}
 		printf("Fail\n");

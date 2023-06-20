@@ -22,7 +22,7 @@ freeradius-devel:
 #  ./totp totp <time> <sha1key> <8-character-challenge>
 #
 totp: rlm_totp.c | src freeradius-devel
-	@$(CC) -DTESTING $(CFLAGS) $(OPENSSL_CPPFLAGS) -o $@ $(LDFLAGS) $(LIBS) ../../../build/lib/.libs/libfreeradius-radius.a rlm_totp.c
+	@$(CC) -DTESTING $(CFLAGS) $(CPPFLAGS) $(OPENSSL_CPPFLAGS) -o $@ $(LDFLAGS) $(LIBS) ../../../build/lib/.libs/libfreeradius-radius.a rlm_totp.c
 
 #
 #  Test vectors from RFC 6238, Appendix B
