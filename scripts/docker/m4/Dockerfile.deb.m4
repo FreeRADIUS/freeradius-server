@@ -1,4 +1,4 @@
-ARG from=D_IMAGE
+ARG from=DOCKER_IMAGE
 FROM ${from} as build
 
 ARG DEBIAN_FRONTEND=noninteractive

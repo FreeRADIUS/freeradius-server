@@ -1,3 +1,8 @@
+# Auto generated for debian11
+# from scripts/docker/m4/Dockerfile.deb.m4
+#
+# Rebuild this file with `make docker.debian11.regen`
+#
 ARG from=debian:bullseye
 FROM ${from} as build
 

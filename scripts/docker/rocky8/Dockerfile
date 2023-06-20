@@ -1,3 +1,8 @@
+# Auto generated for rocky8
+# from scripts/docker/m4/Dockerfile.rpm.m4
+#
+# Rebuild this file with `make docker.rocky8.regen`
+#
 ARG from=rockylinux/rockylinux:8
 FROM ${from} as build
 

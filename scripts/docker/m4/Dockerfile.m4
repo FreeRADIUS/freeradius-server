@@ -1,5 +1,10 @@
-dnl Look up the OS codename, docker base image etc before including
-dnl the main Dockerfile template.
+dnl  Look up the OS codename, docker base image etc before including
+dnl  the main Dockerfile template.
+dnl
+dnl  This top-level template is used by both the docker makefile
+dnl  (scripts/docker/docker.mk) and the crossbuild makefile
+dnl  (scripts/crossbuild/crossbuild.mk), but the Dockerfile templates
+dnl  they use are different - see the m4 directories for each.
 dnl
 divert(`-1')
 changequote(`[', `]')
@@ -28,9 +33,9 @@ ifelse(
 undefine([p_SET])
 divert[]dnl
 [#] Auto generated for D_NAME
-[#] from scripts/crossbuild/m4/Dockerfile.PKG_TYPE.m4
+[#] from scripts/D_TYPE/m4/Dockerfile.PKG_TYPE.m4
 [#]
-[#] Rebuild this file with `make crossbuild.D_NAME.regen`
+[#] Rebuild this file with `make D_TYPE.D_NAME.regen`
 [#]
 changequote([`], ['])dnl
 include(Dockerfile.PKG_TYPE.m4)dnl

@@ -22,6 +22,9 @@ DT:=$(CB_DIR)/docker
 # Where to put stamp files (subdirectory of where this makefile is)
 DD:=$(CB_DIR)/build
 
+# Location of top-level m4 template
+DOCKER_TMPL:=$(CB_DIR)/../docker/m4/Dockerfile.m4
+
 # List of all the docker images (sorted for "crossbuild.info")
 CB_IMAGES:=$(sort $(patsubst $(DT)/%,%,$(wildcard $(DT)/*)))
 
@@ -231,9 +234,9 @@ crossbuild.${1}.refresh: $(DD)/docker.refresh.${1}
 .PHONY: crossbuild.${1}.regen
 crossbuild.${1}.regen: $(DT)/${1}/Dockerfile
 
-$(DT)/${1}/Dockerfile: $(CB_DIR)/m4/Dockerfile.m4 $(CB_DIR)/m4/Dockerfile.deb.m4 $(CB_DIR)/m4/Dockerfile.rpm.m4
+$(DT)/${1}/Dockerfile: $(DOCKER_TMPL) $(CB_DIR)/m4/Dockerfile.deb.m4 $(CB_DIR)/m4/Dockerfile.rpm.m4
 	${Q}echo REGEN ${1}
-	${Q}m4 -I $(CB_DIR)/m4 -D D_NAME=${1} $$< > $$@
+	${Q}m4 -I $(CB_DIR)/m4 -D D_NAME=${1} -D D_TYPE=crossbuild $$< > $$@
 
 #
 #  Run the build test

@@ -60,35 +60,32 @@ endif
 
 
 #
-#  Rules to rebuild Dockerfiles
+#  Rules to regenerate Dockerfiles
 #
 
-define ADD_DOCKER_REBUILD
-    $$(DOCKER_DIR)/${1}/Dockerfile: $(DOCKER_DIR)/m4/${2}/Dockerfile.m4 $(DOCKER_DIR)/docker.mk
-	@echo REFRESH ${1}/Dockerfile
-	$$(Q)m4 -D D_NAME=${1} \
-		-D D_TYPE=${2} \
-		-D D_IMAGE=${3} \
-		-D D_OS=${4} \
-		-D D_OSVER=${5} \
-		-D D_CODENAME=${6} \
-			$$< > $$@
+define ADD_DOCKER_REGEN
+    $$(DOCKER_DIR)/${1}/Dockerfile: $(DOCKER_DIR)/m4/Dockerfile.m4 $(DOCKER_DIR)/m4/Dockerfile.deb.m4 $(DOCKER_DIR)/m4/Dockerfile.rpm.m4 $(DOCKER_DIR)/docker.mk
+	$$(Q)echo REGEN ${1}/Dockerfile
+	$$(Q)m4 -I $(DOCKER_DIR)/m4 -D D_NAME=${1} -D D_TYPE=docker $$< > $$@
 
     DOCKER_DOCKERFILES += $$(DOCKER_DIR)/${1}/Dockerfile
+
+    .PHONY: docker.${1}.regen
+    docker.${1}.regen: $$(DOCKER_DIR)/${1}/Dockerfile
 endef
 
-$(eval $(call ADD_DOCKER_REBUILD,debian10,deb,debian:buster,debian,10,buster))
-$(eval $(call ADD_DOCKER_REBUILD,debian11,deb,debian:bullseye,debian,11,bullseye))
-$(eval $(call ADD_DOCKER_REBUILD,debian12,deb,debian:bookworm,debian,12,bookworm))
-$(eval $(call ADD_DOCKER_REBUILD,ubuntu18,deb,ubuntu:18.04,ubuntu,18,bionic))
-$(eval $(call ADD_DOCKER_REBUILD,ubuntu20,deb,ubuntu:20.04,ubuntu,20,focal))
-$(eval $(call ADD_DOCKER_REBUILD,ubuntu22,deb,ubuntu:22.04,ubuntu,22,jammy))
-$(eval $(call ADD_DOCKER_REBUILD,centos7,rpm,centos:centos7,centos,7,7))
-$(eval $(call ADD_DOCKER_REBUILD,rocky8,rpm,rockylinux/rockylinux:8,rocky,8,8))
-$(eval $(call ADD_DOCKER_REBUILD,rocky9,rpm,rockylinux/rockylinux:9,rocky,9,9))
+$(eval $(call ADD_DOCKER_REGEN,debian10,deb,debian:buster,debian,10,buster))
+$(eval $(call ADD_DOCKER_REGEN,debian11,deb,debian:bullseye,debian,11,bullseye))
+$(eval $(call ADD_DOCKER_REGEN,debian12,deb,debian:bookworm,debian,12,bookworm))
+$(eval $(call ADD_DOCKER_REGEN,ubuntu18,deb,ubuntu:18.04,ubuntu,18,bionic))
+$(eval $(call ADD_DOCKER_REGEN,ubuntu20,deb,ubuntu:20.04,ubuntu,20,focal))
+$(eval $(call ADD_DOCKER_REGEN,ubuntu22,deb,ubuntu:22.04,ubuntu,22,jammy))
+$(eval $(call ADD_DOCKER_REGEN,centos7,rpm,centos:centos7,centos,7,7))
+$(eval $(call ADD_DOCKER_REGEN,rocky8,rpm,rockylinux/rockylinux:8,rocky,8,8))
+$(eval $(call ADD_DOCKER_REGEN,rocky9,rpm,rockylinux/rockylinux:9,rocky,9,9))
 
-.PHONY: docker.refresh
-docker.refresh: $(DOCKER_DOCKERFILES)
+.PHONY: docker.regen
+docker.regen: $(DOCKER_DOCKERFILES)
 
 
 #

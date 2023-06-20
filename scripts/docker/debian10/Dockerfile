@@ -1,3 +1,8 @@
+# Auto generated for debian10
+# from scripts/docker/m4/Dockerfile.deb.m4
+#
+# Rebuild this file with `make docker.debian10.regen`
+#
 ARG from=debian:buster
 FROM ${from} as build
 

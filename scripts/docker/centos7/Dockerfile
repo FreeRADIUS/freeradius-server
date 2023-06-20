@@ -1,4 +1,9 @@
-ARG from=centos:centos7
+# Auto generated for centos7
+# from scripts/docker/m4/Dockerfile.rpm.m4
+#
+# Rebuild this file with `make docker.centos7.regen`
+#
+ARG from=centos:7
 FROM ${from} as build
 
 

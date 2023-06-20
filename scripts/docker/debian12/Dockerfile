@@ -1,3 +1,8 @@
+# Auto generated for debian12
+# from scripts/docker/m4/Dockerfile.deb.m4
+#
+# Rebuild this file with `make docker.debian12.regen`
+#
 ARG from=debian:bookworm
 FROM ${from} as build
 
