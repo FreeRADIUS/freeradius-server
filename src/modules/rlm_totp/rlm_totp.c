@@ -319,7 +319,7 @@ int main(int argc, char **argv)
 		if (strcmp(argv[2], "now") == 0) {
 			now = time(NULL);
 		} else {
-			(void) sscanf(argv[2], "%llu", &now);
+			(void) sscanf(argv[2], "%lu", &now);
 		}
 
 		if (totp_cmp(NULL, (time_t) now, (uint8_t const *) argv[3], strlen(argv[3]), argv[4]) == 0) {
