@@ -640,6 +640,7 @@ fi
 %{_libdir}/freeradius/rlm_detail.so
 %{_libdir}/freeradius/rlm_dhcp.so
 %{_libdir}/freeradius/rlm_digest.so
+%{_libdir}/freeradius/rlm_dpsk.so
 %{_libdir}/freeradius/rlm_dynamic_clients.so
 %{_libdir}/freeradius/rlm_eap.so
 %{_libdir}/freeradius/rlm_eap_fast.so
