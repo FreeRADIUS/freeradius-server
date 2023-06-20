@@ -109,6 +109,9 @@ fi
 
 cp "$BUILD_CONF_FILE" "$WPA_SUPPLICANT_DIR/.config"
 
+# Don't crash out on build warnings, some newer GCC versions are quite picky
+sed -i -e 's/-Werror//' "${WPA_SUPPLICANT_DIR}/Makefile"
+
 if ! make -C "${WPA_SUPPLICANT_DIR}" -j8 eapol_test 1>&2 || [ ! -e "${WPA_SUPPLICANT_DIR}/eapol_test" ]; then
     echo "Build error" 1>&2
     if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
