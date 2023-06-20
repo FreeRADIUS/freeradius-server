@@ -5388,7 +5388,6 @@ static void listener_free_cb(void *ctx)
 	talloc_free(this);
 }
 
-#ifdef WITH_TCP
 #ifdef WITH_PROXY
 static int proxy_eol_cb(void *ctx, void *data)
 {
@@ -5428,7 +5427,6 @@ static int proxy_eol_cb(void *ctx, void *data)
 	return 0;
 }
 #endif	/* WITH_PROXY */
-#endif	/* WITH_TCP */
 
 static void event_new_fd(rad_listen_t *this)
 {
