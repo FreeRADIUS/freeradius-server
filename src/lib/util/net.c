@@ -70,22 +70,22 @@ size_t fr_net_af_table_len = NUM_ELEMENTS(fr_net_af_table);
 	 *	UDP header validation.
 	 */
 	uint16_t udp_len;
-	ssize_t diff;
+	ssize_t actual_len;
 	uint16_t expected;
 
 	udp = (udp_header_t const *)data;
 	udp_len = ntohs(udp->len);
-	diff = udp_len - remaining;
+	actual_len = remaining;
 	/* Truncated data */
-	if (diff > 0) {
+	if (udp_len > actual_len) {
 		fr_strerror_printf("packet too small by %zi bytes, UDP header + Payload should be %hu bytes",
-				   diff, udp_len);
+				   (udp_len - actual_len), udp_len);
 		return -1;
 	}
 	/* Trailing data */
-	else if (diff < 0) {
+	else if (udp_len < actual_len) {
 		fr_strerror_printf("Packet too big by %zi bytes, UDP header + Payload should be %hu bytes",
-				   diff * -1, udp_len);
+				   (actual_len - udp_len), udp_len);
 		return -1;
 	}
 
