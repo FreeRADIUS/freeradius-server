@@ -535,7 +535,7 @@ get_next_psk:
 		 */
 		RDEBUG3("%s[%d] Trying PSK %s", inst->filename, lineno, token_psk);
 		if (generate_pmk(request, inst, pmk, sizeof(pmk), ssid, s_mac, token_psk, strlen(token_psk)) == 0) {
-			RDEBUG("No &config:Pairwise-Master-Key or &config.Pre-Shared-Key found");
+			RDEBUG("No &config:Pairwise-Master-Key or &config:Pre-Shared-Key found");
 			return RLM_MODULE_NOOP;
 		}
 
@@ -552,7 +552,7 @@ get_next_psk:
 	vp = fr_pair_find_by_num(request->config, PW_PAIRWISE_MASTER_KEY, 0, TAG_ANY);
 	if (!vp) {
 		if (generate_pmk(request, inst, pmk, sizeof(pmk), ssid, s_mac, NULL, 0) == 0) {
-			RDEBUG("No &config:Pairwise-Master-Key or &config.Pre-Shared-Key found");
+			RDEBUG("No &config:Pairwise-Master-Key or &config:Pre-Shared-Key found");
 			fr_assert(!fp);
 			return RLM_MODULE_NOOP;
 		}
@@ -731,7 +731,7 @@ static ssize_t dpsk_xlat(void *instance, REQUEST *request,
 
 	if (!*p) {
 		if (generate_pmk(request, inst, buffer, sizeof(buffer), NULL, NULL, NULL, 0) == 0) {
-			RDEBUG("No &request.Called-Station-SSID or &config.Pre-Shared-Key found");
+			RDEBUG("No &request:Called-Station-SSID or &config:Pre-Shared-Key found");
 			return 0;
 		}
 	} else {
