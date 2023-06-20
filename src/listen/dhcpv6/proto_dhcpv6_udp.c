@@ -561,7 +561,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	Get the MAC address associated with this interface.
 	 *	It can be used to create a server ID.
 	 */
-	(void) fr_interface_to_ethernet(inst->interface, &inst->ethernet);
+	if (inst->interface) fr_interface_to_ethernet(inst->interface, &inst->ethernet);
 
 	if (inst->recv_buff_is_set) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);
