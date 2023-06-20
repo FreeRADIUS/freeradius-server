@@ -203,7 +203,7 @@ static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *
 	 */
 	snprintf(buffer, sizeof(buffer), PRINT, challenge % DIV);
 
-	RDEBUG3("Time %llu", (uint64_t) now);
+	RDEBUG3("Time %lu", (uint64_t) now);
 	RDEBUG3("Expected %s", buffer);
 	RDEBUG3("Received %s", totp);
 
