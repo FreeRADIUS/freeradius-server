@@ -296,14 +296,6 @@ recv Request {
 	ok
 }
 
-send Offer {
-	#
-	#  All replies MUST include a Server-ID option
-	#
-	&reply.Server-ID.DUID = UUID
-	&reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
-}
-
 #
 #  We also support recv / send for all normal DHCPv6 packet types.
 #
@@ -319,8 +311,34 @@ send Reply {
 	#
 	#  All replies MUST include a Server-ID option
 	#
+	&reply.Transaction-ID = &request.Transaction-ID
+
 	&reply.Server-ID.DUID = UUID
 	&reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
+
+	switch &request.Packet-Type {
+		case Request {
+			&reply += {
+				#&SOL-Max-RT = 60
+				#&DNS-Servers = fd85:d2bb:92c::1
+				#&DNS-Servers = fd85:d2bb:92c::2
+				#&Domain-List = "example.com"
+			}
+		}
+
+		case Release {
+			&reply += {
+				#&Client-ID.DUID = UUID
+				#&Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
+				#&Status-Code.Value = Success
+				#Status-Code.Message = "Release received."
+			}
+		}
+
+		case {
+			failed
+		}
+	}
 }
 
 }
