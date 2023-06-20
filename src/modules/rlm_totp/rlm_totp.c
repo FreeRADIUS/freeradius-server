@@ -159,7 +159,7 @@ static ssize_t base32_decode(uint8_t *out, size_t outlen, char const *in)
  *	for 8-character challenges, and not for 6 character
  *	challenges!
  */
-static int totp_cmp(time_t now, uint8_t const *key, size_t keylen, char const *totp)
+static int totp_cmp(REQUEST *request, time_t now, uint8_t const *key, size_t keylen, char const *totp)
 {
 	uint8_t offset;
 	uint32_t challenge;
@@ -201,6 +201,9 @@ static int totp_cmp(time_t now, uint8_t const *key, size_t keylen, char const *t
 	 */
 	snprintf(buffer, sizeof(buffer), PRINT, challenge % DIV);
 
+	RDEBUG3("Expected %s", buffer);
+	RDEBUG3("Received %s", totp);
+
 	return rad_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, LEN);
 }
 
@@ -221,7 +224,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	if (!password) return RLM_MODULE_NOOP;
 
 	if (password->vp_length != 6) {
-		RDEBUG("TOTP-Password has incorrect length %d", (int) password->vp_length);
+		REDEBUG("TOTP-Password has incorrect length %d", (int) password->vp_length);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -241,7 +244,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 
 		len = base32_decode(buffer, sizeof(buffer), vp->vp_strvalue);
 		if (len < 0) {
-			RDEBUG("TOTP-Secret cannot be decoded");
+			REDEBUG("TOTP-Secret cannot be decoded");
 			return RLM_MODULE_FAIL;
 		}
 
@@ -249,7 +252,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		keylen = len;
 	}
 
-	if (totp_cmp(time(NULL), key, keylen, password->vp_strvalue) != 0) return RLM_MODULE_FAIL;
+	if (totp_cmp(request, time(NULL), key, keylen, password->vp_strvalue) != 0) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_OK;
 }
