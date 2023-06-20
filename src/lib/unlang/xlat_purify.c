@@ -142,8 +142,8 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			 *	evaluate the entire thing to purify it.
 			 */
 			fr_assert(node->flags.pure);
-
 			fr_value_box_list_init(&list);
+			success = false;
 			if (unlang_xlat_push_node(head, &success, &list, request, node) < 0) {
 				return -1;
 			}
@@ -151,9 +151,8 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			/*
 			 *	Hope to god it doesn't yield. :)
 			 */
-			success = false;
-			(void) unlang_interpret_synchronous(NULL, request);
 
+			(void) unlang_interpret_synchronous(NULL, request);
 			if (!success) return -1;
 
 			/*
