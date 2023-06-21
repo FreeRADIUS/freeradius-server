@@ -696,7 +696,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 	/*
 	 *	Process IP address
 	 */
-	if (reply->elements > 1) {
+	if (env->allocated_address_attr && reply->elements > 1) {
 		tmpl_t ip_rhs;
 		map_t ip_map = {
 			.lhs = env->allocated_address_attr,
@@ -752,7 +752,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 	/*
 	 *	Process Range identifier
 	 */
-	if (reply->elements > 2) {
+	if (env->range_attr && reply->elements > 2) {
 		switch (reply->element[2]->type) {
 		/*
 		 *	Add range ID to request
