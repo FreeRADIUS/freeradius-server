@@ -13,14 +13,20 @@ else
 #
 CB_COMMON:=centos7 debian10 ubuntu18
 
-# Where the docker "build-" directories are
-DT:=scripts/docker
+# Top level of where all crossbuild and docker files are
+CB_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 
-# Location of this makefile, and where to put stamp files
-DD:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+# Where the docker directories are
+DT:=$(CB_DIR)/build
+
+# Where to put stamp files and logs
+DD:=$(CB_DIR)/crossbuild
+
+# Location of top-level m4 template
+DOCKER_TMPL:=$(CB_DIR)/m4/Dockerfile.m4
 
 # List of all the docker images (sorted for "crossbuild.info")
-CB_IMAGES:=$(sort $(patsubst $(DT)/build-%,%,$(wildcard $(DT)/build-*)))
+CB_IMAGES:=$(sort $(patsubst $(DT)/%,%,$(wildcard $(DT)/*)))
 
 # Location of the .git dir (may be different for e.g. submodules)
 GITDIR:=$(shell perl -MCwd -e 'print Cwd::abs_path shift' $$(git rev-parse --git-dir))
@@ -124,7 +130,7 @@ crossbuild.${1}.status:
 #
 $(DD)/stamp-image.${1}:
 	${Q}echo "BUILD ${1} ($(CB_IPREFIX)/${1}) > $(DD)/build.${1}"
-	${Q}docker build $(NO_CACHE) $(DT)/build-${1} -f $(DT)/build-${1}/Dockerfile.deps -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
+	${Q}docker build $(NO_CACHE) $(DT)/${1} -f $(DT)/${1}/Dockerfile.cb -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
 	${Q}touch $(DD)/stamp-image.${1}
 
 #
