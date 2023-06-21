@@ -129,56 +129,57 @@ build/autoconf.mk: src/include/autoconf.h
 	@mkdir -p build
 	${Q}grep '^#define' $^ | sed 's/#define /AC_/;s/ / := /' > $@
 
-      -include build/autoconf.mk
+  -include build/autoconf.mk
+
+  #
+  #  Autoload the various libraries needed for building.
+  #
+  #  If the build is targeting these explicitly, then we are OK if their
+  #  features don't exist.  If we're building everything else, then
+  #  build these first, and then load the libraries.
+  #
+  #  Ensure that these libraries are built ONLY when doing a full build,
+  #  AND that they are built and loaded before using the rest of the
+  #  boilermake framework, UNLESS we're doing "make clean", in which case
+  #  don't include the magic libraries.
+  #
+  ifeq "$(findstring clean,$(MAKECMDGOALS))" ""
+    ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
 
       #
-      #  Autoload the various libraries needed for building.
+      #  Avoid calling shell if we don't need to build support libraries
       #
-      #  If the build is targeting these explicitly, then we are OK if their
-      #  features don't exist.  If we're building everything else, then
-      #  build these first, and then load the libraries.
-      #
-      #  Ensure that these libraries are built ONLY when doing a full build,
-      #  AND that they are built and loaded before using the rest of the
-      #  boilermake framework, UNLESS we're doing "make clean", in which case
-      #  don't include the magic libraries.
-      #
-      ifeq "$(findstring clean,$(MAKECMDGOALS))" ""
-        ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
-
-          #
-          #  Avoid calling shell if we don't need to build support libraries
-          #
-          ifeq "$(wildcard build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT})" ""
-            BUILD_MAKE_LIBS=yes
-          endif
-          ifeq "$(wildcard build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT})" ""
-            BUILD_MAKE_LIBS=yes
-          endif
-          ifeq "$(wildcard build/lib/.libs/libfreeradius-make-util.${BUILD_LIB_EXT})" ""
-            BUILD_MAKE_LIBS=yes
-          endif
-
-          ifdef BUILD_MAKE_LIBS
-            define n
-          endef
-          $(info $(subst CC,$nCC,$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.${BUILD_LIB_EXT} libfreeradius-make-version.${BUILD_LIB_EXT} libfreeradius-make-util.${BUILD_LIB_EXT})))
-        endif
-
-        load build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT}(dlopen_gmk_setup)
-        load build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT}(version_gmk_setup)
-        load build/lib/.libs/libfreeradius-make-util.${BUILD_LIB_EXT}(util_gmk_setup)
-      else
-        BUILD_DIR:=${top_srcdir}/build
-        top_builddir:=${top_srcdir}/scripts/build
+      ifeq "$(wildcard build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT})" ""
+        BUILD_MAKE_LIBS=yes
       endif
-    endif
+      ifeq "$(wildcard build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT})" ""
+        BUILD_MAKE_LIBS=yes
+      endif
+      ifeq "$(wildcard build/lib/.libs/libfreeradius-make-util.${BUILD_LIB_EXT})" ""
+        BUILD_MAKE_LIBS=yes
+      endif
 
-    #
-    #  Load the huge boilermake framework.
-    #
-    include scripts/boiler.mk
+      ifdef BUILD_MAKE_LIBS
+        define n
+
+
+        endef
+        $(info $(subst CC,$nCC,$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.${BUILD_LIB_EXT} libfreeradius-make-version.${BUILD_LIB_EXT} libfreeradius-make-util.${BUILD_LIB_EXT})))
+      endif
+
+      load build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT}(dlopen_gmk_setup)
+      load build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT}(version_gmk_setup)
+      load build/lib/.libs/libfreeradius-make-util.${BUILD_LIB_EXT}(util_gmk_setup)
+    else
+      BUILD_DIR:=${top_srcdir}/build
+      top_builddir:=${top_srcdir}/scripts/build
+    endif
   endif
+
+  #
+  #  Load the huge boilermake framework.
+  #
+  include scripts/boiler.mk
 endif
 
 #
