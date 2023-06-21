@@ -483,7 +483,9 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 
 	if ((cf_section_parse(conf, conf, cs) < 0) ||
 	    (cf_section_parse_pass2(conf, cs) < 0)) {
+#ifdef __APPLE__
 	error:
+#endif
 		talloc_free(conf);
 		return NULL;
 	}
