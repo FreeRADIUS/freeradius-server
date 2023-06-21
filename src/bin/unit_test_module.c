@@ -481,8 +481,8 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 		 */
 		if (strncmp(input, "match ", 6) == 0) {
 			if (strcmp(input + 6, output) != 0) {
-				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
-					lineno, filename, output, input + 6);
+				fprintf(stderr, "Mismatch at %s[%u]\n\tgot      : %s\n\texpected : %s\n",
+					filename, lineno,  output, input + 6);
 				TALLOC_FREE(request);
 				return false;
 			}
