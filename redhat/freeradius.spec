@@ -15,6 +15,9 @@
 # Build without OpenLDAP (no rlm_ldap, proto_ldap_sync)
 %bcond_without ldap
 
+# Build without Python
+%bcond_without rlm_python
+
 # Many distributions have extremely old versions of OpenSSL
 # if you'd like to build with the FreeRADIUS openssl packages
 # which are installed in /opt/openssl you should pass
@@ -360,6 +363,7 @@ BuildRequires: perl(ExtUtils::Embed)
 %description perl
 This plugin provides Perl support for the FreeRADIUS server project.
 
+%if %{with rlm_python}
 %package python
 Summary: Python support for FreeRADIUS
 Group: System Environment/Daemons
@@ -374,6 +378,7 @@ BuildRequires: python3-devel
 
 %description python
 This plugin provides Python support for the FreeRADIUS server project.
+%endif
 
 %package mysql
 Summary: MySQL support for FreeRADIUS
@@ -623,6 +628,7 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         %{autoconf_mod_with rlm_lua} \
         %{autoconf_mod_with rlm_mruby} \
         %{autoconf_mod_with rlm_opendirectory} \
+        %{autoconf_mod_with rlm_python} \
         %{autoconf_mod_with rlm_securid} \
         %{autoconf_mod_with rlm_sigtran} \
         %{autoconf_mod_with rlm_sql_oracle} \
@@ -1180,10 +1186,12 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/perl
 %{_libdir}/freeradius/rlm_perl.so
 
+%if %{with rlm_python}
 %files python
 %defattr(-,root,root,750)
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/python
 %{_libdir}/freeradius/rlm_python.so
+%endif
 
 %files mysql
 %defattr(-,root,root)
