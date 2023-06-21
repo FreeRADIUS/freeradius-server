@@ -309,7 +309,7 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 	 *	If the xlat is a function with a method_env, expand it before calling the function.
 	 */
 	if ((state->exp->type == XLAT_FUNC) && state->exp->call.func->call_env && !state->env_data) {
-		unlang_action_t ua = call_env_expand(state, request, &state->env_data,
+		unlang_action_t ua = call_env_expand(state, request, NULL, &state->env_data,
 						     state->exp->call.func->call_env,
 						     &state->exp->call.inst->call_env_parsed);
 		switch (ua) {

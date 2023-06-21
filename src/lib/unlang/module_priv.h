@@ -53,7 +53,7 @@ typedef struct {
 								///< structure because the #unlang_t tree is
 								///< shared between all threads, so we can't
 								///< cache thread-specific data in the #unlang_t.
-
+	call_env_result_t		env_result;		//!< Result of the previous call environment expansion.
 	void				*env_data;		//!< Expanded per call "call environment" tmpls.
 
 #ifndef NDEBUG

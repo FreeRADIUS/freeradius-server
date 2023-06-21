@@ -192,9 +192,10 @@ size_t call_env_count(size_t *vallen, CONF_SECTION const *cs, call_env_t const *
 
 /** Parse the result of call_env tmpl expansion
  */
-static inline CC_HINT(always_inline) int call_env_value_parse(TALLOC_CTX *ctx, request_t *request, void *out,
-							      void **tmpl_out, call_env_parsed_t const *env,
-							      fr_value_box_list_t *tmpl_expanded)
+static inline CC_HINT(always_inline)
+call_env_result_t call_env_value_parse(TALLOC_CTX *ctx, request_t *request, void *out,
+				       void **tmpl_out, call_env_parsed_t const *env,
+				       fr_value_box_list_t *tmpl_expanded)
 {
 	fr_value_box_t	*vb;
 
@@ -205,7 +206,7 @@ static inline CC_HINT(always_inline) int call_env_value_parse(TALLOC_CTX *ctx, r
 	if (!vb) {
 		if (!env->rule->pair.nullable) {
 			RPEDEBUG("Failed to evaluate required module option %s", env->rule->name);
-			return -1;
+			return CALL_ENV_MISSING;
 		}
 		return 0;
 	}
@@ -217,13 +218,13 @@ static inline CC_HINT(always_inline) int call_env_value_parse(TALLOC_CTX *ctx, r
 	    fr_value_box_list_concat_in_place(vb, vb, tmpl_expanded, FR_BASE_TYPE(env->rule->type),
 					      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0 ) {
 		RPEDEBUG("Failed concatenating values for %s", env->rule->name);
-		return -1;
+		return CALL_ENV_INVALID;
 	}
 
 	if (env->rule->pair.single && (fr_value_box_list_num_elements(tmpl_expanded) > 1)) {
 		RPEDEBUG("%d values found for %s.  Only one is allowed",
 			 fr_value_box_list_num_elements(tmpl_expanded), env->rule->name);
-		return -1;
+		return CALL_ENV_INVALID;
 	}
 
 	while ((vb = fr_value_box_list_pop_head(tmpl_expanded))) {
@@ -243,17 +244,18 @@ static inline CC_HINT(always_inline) int call_env_value_parse(TALLOC_CTX *ctx, r
 		}
 	}
 
-	return 0;
+	return CALL_ENV_SUCCESS;
 }
 
 /** Context to keep track of expansion of call environments
  *
  */
 typedef struct {
-	call_env_parsed_head_t const	*call_env_parsed;	//!< Head of the parsed list of tmpls to expand.
+	call_env_result_t		*result;		//!< Where to write the return code of callenv expansion.
+	call_env_parsed_head_t const	*parsed;		//!< Head of the parsed list of tmpls to expand.
 	call_env_parsed_t const		*last_expanded;		//!< The last expanded tmpl.
 	fr_value_box_list_t		tmpl_expanded;		//!< List to write value boxes to as tmpls are expanded.
-	void				**env_data;		//!< Final destination structure for value boxes.
+	void				**data;			//!< Final destination structure for value boxes.
 } call_env_ctx_t;
 
 static unlang_action_t call_env_expand_repeat(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
@@ -268,10 +270,13 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 	call_env_parsed_t const	*env;
 	void		*out;
 
-	call_env_ctx->last_expanded = call_env_parsed_next(call_env_ctx->call_env_parsed, call_env_ctx->last_expanded);
-	if (!call_env_ctx->last_expanded) return UNLANG_ACTION_CALCULATE_RESULT;
+	call_env_ctx->last_expanded = call_env_parsed_next(call_env_ctx->parsed, call_env_ctx->last_expanded);
+	if (!call_env_ctx->last_expanded) {	/* No more! */
+		if (call_env_ctx->result) *call_env_ctx->result = CALL_ENV_SUCCESS;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
-	ctx = *call_env_ctx->env_data;
+	ctx = *call_env_ctx->data;
 	env = call_env_ctx->last_expanded;
 
 	/*
@@ -286,14 +291,14 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 	 *	Multi pair options should allocate boxes in the context of the array
 	 */
 	if (env->rule->pair.multi) {
-		out = ((uint8_t *)(*call_env_ctx->env_data)) + env->rule->offset;
+		out = ((uint8_t *)(*call_env_ctx->data)) + env->rule->offset;
 
 		/*
 		 *	For multi pair options, allocate the array before expanding the first entry.
 		 */
 		if (env->multi_index == 0) {
 			void *array;
-			MEM(array = _talloc_zero_array((*call_env_ctx->env_data), env->rule->pair.size,
+			MEM(array = _talloc_zero_array((*call_env_ctx->data), env->rule->pair.size,
 						       env->opt_count, env->rule->pair.type_name));
 			*(void **)out = array;
 		}
@@ -316,6 +321,7 @@ static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUS
 	void			*out = NULL, *tmpl_out = NULL;
 	call_env_ctx_t		*call_env_ctx = talloc_get_type_abort(uctx, call_env_ctx_t);
 	call_env_parsed_t	const *env;
+	call_env_result_t	result;
 
 	env = call_env_ctx->last_expanded;
 	if (!env) return UNLANG_ACTION_CALCULATE_RESULT;
@@ -324,7 +330,7 @@ static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUS
 	/*
 	 *	Find the location of the output
 	 */
-	out = ((uint8_t*)(*call_env_ctx->env_data)) + env->rule->offset;
+	out = ((uint8_t*)(*call_env_ctx->data)) + env->rule->offset;
 
 	/*
 	 *	If this is a multi pair option, the output is an array.
@@ -336,12 +342,18 @@ static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUS
 	}
 
 tmpl_only:
-	if (env->rule->pair.tmpl_offset) tmpl_out = ((uint8_t *)*call_env_ctx->env_data) + env->rule->pair.tmpl_offset;
+	if (env->rule->pair.tmpl_offset) tmpl_out = ((uint8_t *)*call_env_ctx->data) + env->rule->pair.tmpl_offset;
 
-	if (call_env_value_parse(*call_env_ctx->env_data, request, out, tmpl_out, env,
-				 &call_env_ctx->tmpl_expanded) < 0) return UNLANG_ACTION_FAIL;
+	result = call_env_value_parse(*call_env_ctx->data, request, out, tmpl_out, env, &call_env_ctx->tmpl_expanded);
+	if (result != CALL_ENV_SUCCESS) {
+		if (call_env_ctx->result) *call_env_ctx->result = result;
+		return UNLANG_ACTION_FAIL;
+	}
 
-	if (!call_env_parsed_next(call_env_ctx->call_env_parsed, env)) return UNLANG_ACTION_CALCULATE_RESULT;
+	if (!call_env_parsed_next(call_env_ctx->parsed, env)) {
+		if (call_env_ctx->result) *call_env_ctx->result = CALL_ENV_SUCCESS;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	return unlang_function_push(request, call_env_expand_start, call_env_expand_repeat, NULL, 0, UNLANG_SUB_FRAME,
 				    call_env_ctx);
@@ -351,11 +363,12 @@ tmpl_only:
  *
  * @param[in] ctx		in which to allocate destination structure for resulting value boxes.
  * @param[in] request		Current request.
+ * @param[out] env_result	Where to write the result of the callenv expansion.  May be NULL
  * @param[in,out] env_data	Where the destination structure should be created.
  * @param[in] call_env		Call environment being expanded.
  * @param[in] call_env_parsed	Parsed tmpls for the call environment.
  */
-unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, void **env_data, call_method_env_t const *call_env,
+unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_result_t *env_result, void **env_data, call_method_env_t const *call_env,
 				call_env_parsed_head_t const *call_env_parsed)
 {
 	call_env_ctx_t	*call_env_ctx;
@@ -363,8 +376,10 @@ unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, void **env_
 	MEM(call_env_ctx = talloc_zero(ctx, call_env_ctx_t));
 	MEM(*env_data = talloc_zero_array(ctx, uint8_t, call_env->inst_size));
 	talloc_set_name_const(*env_data, call_env->inst_type);
-	call_env_ctx->env_data = env_data;
-	call_env_ctx->call_env_parsed = call_env_parsed;
+	call_env_ctx->result = env_result;
+	if (env_result) *env_result = CALL_ENV_INVALID;	/* Make sure we ran to completion*/
+	call_env_ctx->data = env_data;
+	call_env_ctx->parsed = call_env_parsed;
 	fr_value_box_list_init(&call_env_ctx->tmpl_expanded);
 
 	return unlang_function_push(request, call_env_expand_start, call_env_expand_repeat, NULL, 0, UNLANG_SUB_FRAME,

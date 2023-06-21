@@ -29,6 +29,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/request_data.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/unlang/call_env.h>
 
 #include "module_priv.h"
 #include "subrequest_priv.h"
@@ -910,19 +912,26 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		goto done;
 	}
 
-	if (mc->method_env && !state->env_data) {
-		ua = call_env_expand(state, request, &state->env_data, mc->method_env, &mc->call_env_parsed);
-		switch (ua) {
-		case UNLANG_ACTION_FAIL:
-			goto fail;
+	if (mc->method_env) {
+		if (!state->env_data) {
+			ua = call_env_expand(state, request, &state->env_result, &state->env_data, mc->method_env, &mc->call_env_parsed);
+			switch (ua) {
+			case UNLANG_ACTION_FAIL:
+				goto fail;
 
-		case UNLANG_ACTION_PUSHED_CHILD:
-			frame_repeat(frame, unlang_module);
-			return UNLANG_ACTION_PUSHED_CHILD;
+			case UNLANG_ACTION_PUSHED_CHILD:
+				frame_repeat(frame, unlang_module);
+				return UNLANG_ACTION_PUSHED_CHILD;
 
-		default:
-			break;
+			default:
+				break;
+			}
 		}
+
+		/*
+		 *	Fail the module call on callenv failure
+		 */
+		if (state->env_result != CALL_ENV_SUCCESS) RETURN_MODULE_FAIL;
 	}
 
 	/*
