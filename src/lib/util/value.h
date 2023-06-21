@@ -411,11 +411,11 @@ static inline CC_HINT(nonnull(1), always_inline)
 void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
 {
 	/* coverity[store_writes_const_field] */
-	memcpy(vb, &(fr_value_box_t){
+	memcpy((void *) vb, &(fr_value_box_t){
 	       		.type = type,
 			.enumv = enumv,
 			.tainted = tainted
-	       }, sizeof(*vb));
+		}, sizeof(*vb));
 	fr_value_box_list_entry_init(vb);
 
 	/*
