@@ -358,6 +358,11 @@ static NEVER_RETURNS void exec_child(char **argv, char **envp,
 	fr_atexit_thread_local_disarm_all();
 
 	/*
+	 *	Disarm the global destructors for the same reason
+	 */
+	fr_atexit_global_disarm_all();
+
+	/*
 	 *	I swear the signature for execve is wrong and should
 	 *	take 'char const * const argv[]'.
 	 *
