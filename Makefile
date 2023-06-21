@@ -423,22 +423,20 @@ certs:
 BRANCH_CMD := git rev-parse --abbrev-ref HEAD
 freeradius-server-$(PKG_VERSION).tar:
 	rm -rf $(top_srcdir)/$(BUILD_DIR)/freeradius-server-$(PKG_VERSION)
-	mkdir -p $(top_srcdir)/$(BUILD_DIR)
+	mkdir -p $(top_srcdir)/$(BUILD_DIR)/freeradius-server-$(PKG_VERSION)
 	BRANCH=$$(${BRANCH_CMD}); \
 	tmp=$$(mktemp -d); \
 	if [ $$(./version.sh is_release) -eq 1 ]; then\
 		touch "$${tmp}/RELEASE"; \
-		release_arg="--add-file=$${tmp}/RELEASE"; \
+		cp -a $${tmp}/RELEASE $(top_srcdir)/$(BUILD_DIR)/freeradius-server-$(PKG_VERSION); \
 	fi; \
 	echo "$$(./version.sh commit)" > "$${tmp}/VERSION_COMMIT"; \
 	echo "$$(./version.sh commit_depth)" > "$${tmp}/VERSION_COMMIT_DEPTH"; \
 	git archive \
 		--format=tar \
 		--prefix="freeradius-server-$(PKG_VERSION)/" \
-		--add-file="$${tmp}/VERSION_COMMIT" \
-		--add-file="$${tmp}/VERSION_COMMIT_DEPTH" \
-		$${release_arg} \
 		$${BRANCH} | tar -C "${top_srcdir}/${BUILD_DIR}" -xf -; \
+	cp -a "$${tmp}/VERSION_COMMIT" "$${tmp}/VERSION_COMMIT_DEPTH" $(top_srcdir)/$(BUILD_DIR)/freeradius-server-$(PKG_VERSION); \
 	rm -rf "$${tmp}"; \
 	git submodule foreach --recursive 'git archive --format=tar --prefix=freeradius-server-$(PKG_VERSION)/$$sm_path/ $$sha1 | tar -C "${top_srcdir}/${BUILD_DIR}" -xf -'
 ifneq "$(EXT_MODULES)" ""
