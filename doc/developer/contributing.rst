@@ -92,7 +92,7 @@ example::
 If you are on the developers mailing list, send the patch there.
 freeradius-devel@lists.freeradius.org
 
-Otherwise, send the patch to 'patches@freeradius.org'
+Otherwise, please use GitHub.
 
 3. No MIME, no links, no compression, no attachments. Just plain text
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
