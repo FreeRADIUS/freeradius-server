@@ -74,6 +74,22 @@ typedef enum {
 	PR_CLIENT_PENDING,				//!< dynamic client pending definition
 } fr_io_client_state_t;
 
+/*
+ *	Dynamic clients are run through the normal src/process/foo state machine.
+ *
+ *	request->async->packet_ctx is an fr_io_track_t
+ *
+ *	track->dynamic is set to a non-zero value.
+ *
+ *	The dynamic client code returns a buffer of 1 byte for a NAK.
+ *
+ *	If the client creation is successful, then it does talloc(NULL, fr_client_t),
+ *	fills out the structure, and sends the pointer in the buffer (8 bytes).
+ *
+ *	This code will take over ownership of the structure, and
+ *	create the dynamic client.
+ */
+
 typedef struct fr_io_connection_s fr_io_connection_t;
 
 /** Client definitions for master IO
