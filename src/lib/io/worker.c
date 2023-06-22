@@ -711,7 +711,6 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 
 #ifndef NDEBUG
 	request->async->el = NULL;
-	request->async->process = NULL;
 	request->async->channel = NULL;
 	request->async->packet_ctx = NULL;
 	request->async->listen = NULL;

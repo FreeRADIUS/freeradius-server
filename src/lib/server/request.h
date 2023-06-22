@@ -75,9 +75,6 @@ typedef enum request_state_t {
 	REQUEST_OTHER_4,
 } request_state_t;
 
-typedef	void (*fr_request_process_t)(request_t *, fr_signal_t);	//!< Function handler for requests.
-typedef	rlm_rcode_t (*RAD_REQUEST_FUNP)(request_t *);
-
 extern HIDDEN fr_dict_attr_t const *request_attr_root;
 extern fr_dict_attr_t const *request_attr_request;
 extern fr_dict_attr_t const *request_attr_reply;

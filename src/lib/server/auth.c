@@ -47,10 +47,16 @@ RCSID("$Id$")
  */
 unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 {
-	rlm_rcode_t final;
-
-	RDEBUG("Virtual server %s received request", cf_section_name2(unlang_call_current(request)));
+	RDEBUG("Virtual server %s received request NOT IMPLEMENTED", cf_section_name2(unlang_call_current(request)));
 	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
+
+	/*
+	 *	Just push the virtual server onto the stack?
+	 *
+	 *	Except that the caller expects this function to be run
+	 *	_synchronously_, and all of that needs to be fixed.
+	 */
+	RETURN_MODULE_FAIL;
 
 #if 0
 	{
@@ -155,7 +161,6 @@ unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 			}
 		}
 	}
-#endif
 
 	if (!request->async) {
 #ifdef STATIC_ANALYZER
@@ -185,6 +190,7 @@ unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 	}
 
 	RETURN_MODULE_OK;
+#endif
 }
 
 /*
