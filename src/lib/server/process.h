@@ -34,7 +34,7 @@
  * The following macros may (optionally) be defined before this header is included:
  *
  * - PROCESS_CODE_MAX			the highest valid protocol packet code + 1.
- * - PROCESS_DO_NOT_RESPOND		The packet code that's used to indicate that no response
+ * - PROCESS_CODE_DO_NOT_RESPOND	The packet code that's used to indicate that no response
  *					should be sent.
  * - PROCESS_STATE_EXTRA_FIELDS		extra fields to add to the fr_process_state_t structure.
  *
@@ -391,6 +391,61 @@ RESUME(send_generic)
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
+
+#ifdef PROCESS_CODE_DYNAMIC_CLIENT
+RESUME_NO_MCTX(new_client_done)
+{
+	*p_result = RLM_MODULE_OK;
+
+	request->reply->timestamp = fr_time();
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+RESUME(new_client)
+{
+	rlm_rcode_t			rcode = *p_result;
+	CONF_SECTION			*cs;
+	PROCESS_INST const		*inst = mctx->inst->data;
+
+	switch (rcode) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		cs = inst->sections.add_client;
+		request->reply->code = PROCESS_CODE_DYNAMIC_CLIENT;
+		break;
+
+	default:
+		cs = inst->sections.add_client;
+		request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
+		break;
+	}
+	fr_assert(cs != NULL);
+
+	request->component = NULL;
+	request->module = NULL;
+
+	RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
+	return unlang_module_yield_to_section(p_result, request,
+					      cs, RLM_MODULE_FAIL, resume_new_client_done,
+					      NULL, 0, mctx->rctx);
+}
+
+static inline unlang_action_t new_client(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	CONF_SECTION			*cs;
+	PROCESS_INST const		*inst = mctx->inst->data;
+
+	PROCESS_TRACE;
+	fr_assert(inst->sections.new_client != NULL);
+	cs = inst->sections.new_client;
+
+	RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
+	return unlang_module_yield_to_section(p_result, request,
+					      cs, RLM_MODULE_FAIL, resume_new_client,
+					      NULL, 0, mctx->rctx);
+}
+#endif	/* PROCESS_DYNAMIC_CLIENT */
 
 #endif	/* defined(PROCESS_INST) && defined(PROCESS_PACKET_TYPE) && defined(PROCESS_PACKET_CODE_VALID) */
 

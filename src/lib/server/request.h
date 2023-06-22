@@ -146,6 +146,8 @@ typedef enum {
 #define request_is_internal(_x) ((_x)->type == REQUEST_TYPE_INTERNAL)
 #define request_is_detached(_x) ((_x)->type == REQUEST_TYPE_DETACHED)
 #define request_is_detachable(_x) ((_x)->flags.detachable)
+#define request_is_dynamic_client(_x) ((_x)->flags.dynamic_client)
+#define request_set_dynamic_client(_x) ((_x)->flags.dynamic_client = true)
 
 struct request_s {
 #ifndef NDEBUG
@@ -189,6 +191,7 @@ struct request_s {
 	 */
 	struct {
 		uint8_t			detachable : 1;		//!< This request may be detached from its parent..
+		uint8_t			dynamic_client : 1;	//!< this is a dynamic client request
 	} flags;
 
 	/** Logging information

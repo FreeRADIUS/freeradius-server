@@ -175,6 +175,7 @@ typedef struct {
 #define PROCESS_CODE_DO_NOT_RESPOND	FR_RADIUS_CODE_DO_NOT_RESPOND
 #define PROCESS_PACKET_CODE_VALID	FR_RADIUS_PROCESS_CODE_VALID
 #define PROCESS_INST			process_radius_t
+#define PROCESS_CODE_DYNAMIC_CLIENT	FR_RADIUS_CODE_ACCESS_ACCEPT
 #include <freeradius-devel/server/process.h>
 
 static const CONF_PARSER session_config[] = {
@@ -930,6 +931,10 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	}
 
 	radius_packet_debug(request, request->packet, &request->request_pairs, true);
+
+	if (unlikely(request_is_dynamic_client(request))) {
+		return new_client(p_result, mctx, request);
+	}
 
 	return state->recv(p_result, mctx, request);
 }

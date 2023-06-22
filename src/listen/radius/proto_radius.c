@@ -264,6 +264,8 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 
 		fr_assert(client->dynamic);
 
+		request_set_dynamic_client(request);
+
 		for (vp = fr_pair_list_head(&request->request_pairs);
 		     vp != NULL;
 		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
