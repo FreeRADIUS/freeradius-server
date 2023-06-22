@@ -242,6 +242,7 @@ $INCLUDE dictionary.shasta
 $INCLUDE dictionary.shiva
 $INCLUDE dictionary.siemens
 $INCLUDE dictionary.slipstream
+$INCLUDE dictionary.smartsharesystems
 $INCLUDE dictionary.sonicwall
 $INCLUDE dictionary.springtide
 $INCLUDE dictionary.starent
