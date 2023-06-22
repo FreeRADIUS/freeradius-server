@@ -127,6 +127,10 @@ typedef struct {
 
 	CONF_SECTION	*do_not_respond;
 	CONF_SECTION	*protocol_error;	/* @todo - allow protocol error as a reject reply? */
+
+	CONF_SECTION	*new_client;
+	CONF_SECTION	*add_client;
+	CONF_SECTION	*deny_client;
 } process_radius_sections_t;
 
 typedef struct {
@@ -912,11 +916,11 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	PROCESS_TRACE;
 
-	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->packet->code));
-
 	request->component = "radius";
 	request->module = NULL;
 	fr_assert(request->dict == dict_radius);
+
+	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->packet->code));
 
 	UPDATE_STATE(packet);
 
@@ -1270,6 +1274,25 @@ static virtual_server_compile_t const compile_list[] = {
 		.name = "accounting",
 		.name2 = CF_IDENT_ANY,
 		.component = MOD_AUTHENTICATE
+	},
+
+	{
+		.name = "new",
+		.name2 = "client",
+		.component = MOD_AUTHORIZE,
+		.offset = PROCESS_CONF_OFFSET(new_client),
+	},
+	{
+		.name = "add",
+		.name2 = "client",
+		.component = MOD_AUTHORIZE,
+		.offset = PROCESS_CONF_OFFSET(add_client),
+	},
+	{
+		.name = "deny",
+		.name2 = "client",
+		.component = MOD_AUTHORIZE,
+		.offset = PROCESS_CONF_OFFSET(deny_client),
 	},
 	COMPILE_TERMINATOR
 };
