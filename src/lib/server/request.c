@@ -334,8 +334,8 @@ static int _request_free(request_t *request)
 		 *	if the request is freed out of
 		 *	the free list.
 		 */
-		request->time_order_id = 0;
-		request->runnable_id = 0;
+		request->time_order_id = FR_HEAP_INDEX_INVALID;
+		request->runnable_id = FR_HEAP_INDEX_INVALID;
 #endif
 
 		/*

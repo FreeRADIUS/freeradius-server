@@ -347,7 +347,7 @@ void fr_network_listen_write(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 		},
 
 		.channel = {
-			.heap_id = 0,
+			.heap_id = FR_HEAP_INDEX_INVALID,
 		},
 
 		.listen = li,
@@ -500,7 +500,7 @@ static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t
 	/*
 	 *	Ensure that heap insert works.
 	 */
-	cd->channel.heap_id = 0;
+	cd->channel.heap_id = FR_HEAP_INDEX_INVALID;
 	if (fr_heap_insert(&nr->replies, cd) < 0) {
 		fr_message_done(&cd->m);
 		fr_assert(0 == 1);
