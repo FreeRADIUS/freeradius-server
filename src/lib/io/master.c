@@ -53,7 +53,7 @@ typedef struct {
  *
  */
 typedef struct {
-	int			heap_id;
+	fr_heap_index_t		heap_id;
 	uint32_t		priority;
 	fr_time_t		recv_time;
 	fr_io_track_t		*track;
@@ -103,8 +103,8 @@ struct fr_io_client_s {
 	fr_client_t			*radclient;	//!< old-style definition of this client
 
 	int				packets;	//!< number of packets using this client
-	int				pending_id;	//!< for pending clients
-	int				alive_id;	//!< for all clients
+	fr_heap_index_t			pending_id;	//!< for pending clients
+	fr_heap_index_t			alive_id;	//!< for all clients
 
 	bool				use_connected;	//!< does this client allow connected sub-sockets?
 	bool				ready_to_delete; //!< are we ready to delete this client?
@@ -553,8 +553,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	talloc_set_destructor(connection->client, _client_free);
 	talloc_set_destructor(connection, connection_free);
 
-	connection->client->pending_id = -1;
-	connection->client->alive_id = -1;
+	connection->client->pending_id = FR_HEAP_INDEX_INVALID;
+	connection->client->alive_id = FR_HEAP_INDEX_INVALID;
 	connection->client->connection = connection;
 
 	/*
@@ -983,7 +983,7 @@ static fr_io_client_t *client_alloc(TALLOC_CTX *ctx, fr_io_client_state_t state,
 	 *	them up.
 	 */
 	(void) fr_heap_insert(&thread->alive_clients, client);
-	client->pending_id = -1;
+	client->pending_id = FR_HEAP_INDEX_INVALID;
 
 	/*
 	 *	Now that we've inserted it into the heap and
@@ -2526,7 +2526,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 							   fr_io_client_t, pending_id, 0));
 	}
 
-	fr_assert(client->pending_id < 0);
+	fr_assert(!fr_heap_entry_inserted((client->pending_id)));
 	(void) fr_heap_insert(&thread->pending_clients, client);
 
 finish:
