@@ -51,6 +51,7 @@ redis {
 	#
 	port = 6379
 
+	#
 	#  password:: The password used to authenticate to the server.
 	#
 	#  We recommend using a strong password.
@@ -58,6 +59,26 @@ redis {
 #	password = thisisreallysecretandhardtoguess
 
 	#
+	#  use_tls:: Use TLS (requires hiredis 1.0+)
+	#
+	#  TLS parameters can be specified in the optional adjacent tls {} section
+	#
+#	use_tls = no
+#	tls { }
+
+	#
+	#  use_cluster_map:: Use cluster map
+	#
+	#  Build cluster map during initialization.
+	#
+	#  The cluster client can operate, albeit inefficiently, without a cluster map
+	#  by following '-ASK' and '-MOVE' redirects.
+	#
+	#  Disabling cluster map can be required for stunnel-based deployments.
+	#  Alternatively, cluster map is not built during initialization when pool.start == 0
+	#
+#	use_cluster_map = yes
+
 	#  lua { ... }::
 	#
 	#  Configuration options which control the execution of lua scripts
