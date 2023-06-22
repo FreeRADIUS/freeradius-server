@@ -80,6 +80,8 @@ typedef struct {
 typedef unsigned int fr_heap_index_t;
 typedef unsigned int fr_heap_iter_t;
 
+#define FR_HEAP_INDEX_INVALID (0)
+
 /** How many talloc headers need to be pre-allocated for a heap
  */
 #define FR_HEAP_TALLOC_HEADERS 2
@@ -121,7 +123,7 @@ fr_heap_t	*_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *talloc
  */
 static inline bool fr_heap_entry_inserted(fr_heap_index_t heap_idx)
 {
-	return (heap_idx > 0);
+	return (heap_idx != FR_HEAP_INDEX_INVALID);
 }
 
 /** Return the item from the top of the heap but don't pop it

@@ -203,7 +203,7 @@ int fr_heap_insert(fr_heap_t **hp, void *data)
 
 static inline CC_HINT(always_inline) void fr_heap_bubble(fr_heap_t *h, fr_heap_index_t child)
 {
-	if (!fr_cond_assert(child > 0)) return;
+	if (!fr_cond_assert(child != FR_HEAP_INDEX_INVALID)) return;
 
 	/*
 	 *	Bubble up the element.
