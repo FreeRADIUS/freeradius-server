@@ -423,7 +423,7 @@ static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	return 0;
 }
 
-static int num_workers_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		ret;
 	uint32_t	value;
