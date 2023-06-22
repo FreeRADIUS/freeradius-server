@@ -95,8 +95,6 @@ typedef struct {
 	dl_module_inst_t		*submodule;			//!< As provided by the transport_parse
 									///< callback.  Broken out into the
 									///< app_io_* fields below for convenience.
-	dl_module_inst_t		*dynamic_submodule;		//!< for dynamically defined clients
-
 	fr_app_t			*app;				//!< main protocol handler
 	void				*app_instance;			//!< instance data for main protocol handler
 

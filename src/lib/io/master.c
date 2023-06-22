@@ -2620,40 +2620,33 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		inst->app_io->network_get(inst->app_io_instance, &inst->ipproto, &inst->dynamic_clients, &inst->networks);
 	}
 
-	/*
-	 *	The caller determines if we have dynamic clients.
-	 */
-	if (inst->dynamic_clients) {
-		/*
-		 *	Load proto_dhcpv4_dynamic_client
-		 */
-		if (dl_module_instance(conf, &inst->dynamic_submodule,
-				       inst->dl_inst,
-				       DL_MODULE_TYPE_SUBMODULE, inst->app->common.name, "dynamic_client") < 0) {
-			cf_log_err(conf, "Failed finding proto_%s_dynamic_client", inst->app->common.name);
-			return -1;
-		}
-
-		if (dl_module_conf_parse(inst->dynamic_submodule, conf) < 0) {
-			TALLOC_FREE(inst->dynamic_submodule);
-			return -1;
-		}
-
-		fr_assert(inst->dynamic_submodule != NULL);
-
-		/*
-		 *	Don't bootstrap the dynamic submodule.  We're
-		 *	not even sure what that means...
-		 *
-		 *	@todo - maybe register the sections in
-		 *	app_process->compile_list?
-		 */
-	}
-
 	if ((inst->ipproto == IPPROTO_TCP) && !inst->app_io->connection_set) {
 		cf_log_err(inst->app_io_conf, "Missing 'connection set' API for proto_%s", inst->app_io->common.name);
 		return -1;
 	}
+
+	/*
+	 *
+	 */
+	if (inst->dynamic_clients) {
+		CONF_SECTION *server = cf_item_to_section(cf_parent(conf));
+
+		if (!cf_section_find(server, "new", "client")) {
+			cf_log_err(conf, "Cannot use 'dynamic_clients = yes' as the virtual server has no 'new client { ... }' section defined.");
+			return -1;
+		}
+
+		if (!cf_section_find(server, "add", "client")) {
+			cf_log_err(conf, "Cannot use 'dynamic_clients = yes' as the virtual server has no 'add client { ... }' section defined.");
+			return -1;
+		}
+
+		if (!cf_section_find(server, "deny", "client")) {
+			cf_log_err(conf, "Cannot use 'dynamic_clients = yes' as the virtual server has no 'deny client { ... }' section defined.");
+			return -1;
+		}
+	}
+
 
 	return 0;
 }
@@ -2684,46 +2677,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->submodule)) < 0)) {
 		cf_log_err(conf, "Instantiation failed for \"proto_%s\"", inst->app_io->common.name);
 		return -1;
-	}
-
-	/*
-	 *	Instantiate the dynamic client processor.
-	 */
-	if (inst->dynamic_clients) {
-		fr_app_worker_t const	*app_process;
-
-		if (!inst->dynamic_submodule) {
-			cf_log_err(conf, "Instantiation failed for \"proto_%s\" - there is no way to define dynamic clients", inst->app_io->common.name);
-			return -1;
-		}
-
-		app_process = (fr_app_worker_t const *) inst->dynamic_submodule->module->common;
-
-		/*
-		 *	Compile the processing sections if the compile
-		 *	list exists.
-		 *
-		 *	Note that we don't register these sections.
-		 *	Maybe we should?
-		 */
-		if (app_process->compile_list) {
-			tmpl_rules_t	parse_rules = {
-				.attr = {
-					.dict_def = virtual_server_dict_by_name(cf_section_name2(inst->server_cs)),
-					.list_def = request_attr_request
-				}
-			};
-
-			if (virtual_server_compile_sections(inst->server_cs, app_process->compile_list,
-							    &parse_rules, inst->dynamic_submodule->data) < 0) {
-				return -1;
-			};
-		}
-
-		if (app_process->common.instantiate && (app_process->common.instantiate(MODULE_INST_CTX(inst->dynamic_submodule)) < 0)) {
-			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->common.name);
-			return -1;
-		}
 	}
 
 	return 0;
