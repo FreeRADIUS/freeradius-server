@@ -880,7 +880,7 @@ static void ldap_dn2name_cancel(UNUSED request_t *request, UNUSED fr_signal_t ac
  * Used when the user's DN is already known but cached group membership has not been stored
  *
  */
-static unlang_action_t ldap_check_userobj_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t ldap_check_userobj_start(rlm_rcode_t *p_result, UNUSED int *priority,
 						request_t *request, void *uctx)
 {
 	ldap_group_userobj_dyn_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_dyn_ctx_t);
