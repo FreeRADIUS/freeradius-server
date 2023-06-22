@@ -44,7 +44,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "base.h"
 #include "log.h"
 
-int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 /** Certificate formats
  *
@@ -248,7 +248,7 @@ CONF_PARSER fr_tls_client_config[] = {
  */
 static char const *special_string = "Apple:UsecertAdmin";
 
-int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	fr_tls_conf_t	*conf = talloc_get_type_abort(parent, fr_tls_conf_t);
 	int		cache_mode;
