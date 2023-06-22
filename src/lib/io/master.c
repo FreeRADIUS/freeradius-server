@@ -2376,7 +2376,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		     (radclient->ipaddr.prefix != 32)) ||
 		    ((radclient->ipaddr.af == AF_INET6) &&
 		     (radclient->ipaddr.prefix != 128))) {
-			ERROR("prot_radius - Cannot define a dynamic client as a network");
+			ERROR("Cannot define a dynamic client as a network");
 
 		error:
 			talloc_free(radclient);
