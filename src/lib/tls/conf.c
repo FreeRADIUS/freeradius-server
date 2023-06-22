@@ -240,14 +240,6 @@ CONF_PARSER fr_tls_client_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-#ifdef __APPLE__
-/*
- *	We don't want to put the private key password in eap.conf, so check
- *	for our special string which indicates we should get the password
- *	programmatically.
- */
-static char const *special_string = "Apple:UsecertAdmin";
-
 static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	fr_tls_conf_t	*conf = talloc_get_type_abort(parent, fr_tls_conf_t);
@@ -350,6 +342,14 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 
 	return 0;
 }
+
+#ifdef __APPLE__
+/*
+ *	We don't want to put the private key password in eap.conf, so check
+ *	for our special string which indicates we should get the password
+ *	programmatically.
+ */
+static char const *special_string = "Apple:UsecertAdmin";
 
 /** Use cert_admin to retrieve the password for the private key
  *
