@@ -50,13 +50,6 @@ typedef struct fr_io_track_s {
 	bool				do_not_respond;	//!< don't respond
 	bool				finished;	//!< are we finished the request?
 
-	/*
-	 *	We can't set the "process" function here, because a
-	 *	second (conflicting) packet may arrive while we're
-	 *	processing this one.  Instead, set the timestamp of
-	 *	the packet which creates the dynamic client
-	 *	definition.
-	 */
 	fr_time_t			dynamic;	//!< timestamp for packet doing dynamic client definition
 	fr_io_address_t const  		*address;	//!< of this packet.. shared between multiple packets
 	fr_io_client_t			*client;	//!< client handling this packet.
