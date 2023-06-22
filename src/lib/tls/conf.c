@@ -242,7 +242,7 @@ CONF_PARSER fr_tls_client_config[] = {
 
 static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
-	fr_tls_conf_t	*conf = talloc_get_type_abort(parent, fr_tls_conf_t);
+	fr_tls_conf_t	*conf = talloc_get_type_abort((uint8_t *)parent - offsetof(fr_tls_conf_t, cache), fr_tls_conf_t);
 	int		cache_mode;
 
 	if (cf_table_parse_int(ctx, &cache_mode, parent, ci, rule) < 0) return -1;
