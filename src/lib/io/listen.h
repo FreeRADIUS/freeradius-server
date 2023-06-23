@@ -57,6 +57,8 @@ struct fr_async_s {
 	fr_time_tracking_t	tracking;
 	fr_channel_t		*channel;
 
+	fr_dlist_t		entry;		//!< in the list of requests associated with this channel
+
 	void			*packet_ctx;
 	fr_listen_t		*listen;	//!< How we received this request,
 						//!< and how we'll send the reply.
