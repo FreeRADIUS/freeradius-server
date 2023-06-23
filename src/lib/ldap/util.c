@@ -422,7 +422,6 @@ size_t fr_ldap_util_normalise_dn(char *out, char const *in)
 			 *	special encoding, get rewritten to the
 			 *	special encoding.
 			 */
-			/* coverity[dead_error_condition] */
 			if (fr_base16_decode(NULL, &FR_DBUFF_TMP((uint8_t *) &c, 1), &FR_SBUFF_IN(p + 1, 2), false) == 1 &&
 			    escapes[(uint8_t) c]) {
 				*o++ = '\\';
