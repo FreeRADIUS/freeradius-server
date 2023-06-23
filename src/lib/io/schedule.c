@@ -236,8 +236,6 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	/*
 	 *	Do all of the work.
-	 *
-	 *	@todo check for child processes.
 	 */
 	fr_worker(sw->worker);
 
