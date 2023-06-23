@@ -235,6 +235,9 @@ static char lua_alloc_cmd[] =
 	"      if expires_in < tonumber(ARGV[2]) then" EOL						/* 16 */
 	"        redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2] + (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0), exists)" EOL	/* 17 */
 	"        expires_in = tonumber(ARGV[2])" EOL							/* 18 */
+	"        if not static then" EOL
+	"          redis.call('EXPIRE', owner_key, ARGV[2])" EOL
+	"        end" EOL
 	"      end" EOL											/* 19 */
 
 	/*
