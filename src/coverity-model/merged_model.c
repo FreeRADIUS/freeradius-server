@@ -95,6 +95,7 @@ static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 #define UINT8_MAX 255
+typedef unsigned int uint32_t;
 
 typedef ssize_t	fr_slen_t;
 
@@ -326,4 +327,33 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 void fr_md5_calc(uint8_t out[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen)
 {
 	__coverity_write_buffer_bytes__(out, MD5_DIGEST_LENGTH);
+}
+
+typedef enum {
+	DECODE_FAIL_NONE = 0,
+	DECODE_FAIL_MIN_LENGTH_PACKET,
+	DECODE_FAIL_MIN_LENGTH_FIELD,
+	DECODE_FAIL_MIN_LENGTH_MISMATCH,
+	DECODE_FAIL_HEADER_OVERFLOW,
+	DECODE_FAIL_UNKNOWN_PACKET_CODE,
+	DECODE_FAIL_INVALID_ATTRIBUTE,
+	DECODE_FAIL_ATTRIBUTE_TOO_SHORT,
+	DECODE_FAIL_ATTRIBUTE_OVERFLOW,
+	DECODE_FAIL_MA_INVALID_LENGTH,
+	DECODE_FAIL_ATTRIBUTE_UNDERFLOW,
+	DECODE_FAIL_TOO_MANY_ATTRIBUTES,
+	DECODE_FAIL_MA_MISSING,
+	DECODE_FAIL_MA_INVALID,
+	DECODE_FAIL_UNKNOWN,
+	DECODE_FAIL_MAX
+} decode_fail_t;
+
+bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
+		  uint32_t max_attributes, bool require_ma, decode_fail_t *reason)
+{
+	bool result;
+
+	if (result) __coverity_mark_pointee_as_sanitized__(packet, TAINTED_SCALAR_GENERIC);
+
+	return result;
 }
