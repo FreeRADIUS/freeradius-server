@@ -1195,9 +1195,9 @@ static void _worker_request_done_detached(request_t *request, UNUSED rlm_rcode_t
 /** Make us responsible for running the request
  *
  */
-static void _worker_request_detach(request_t *request, void *uctx)
+static void _worker_request_detach(request_t *request, UNUSED void *uctx)
 {
-	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
+//	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
 
 	RDEBUG3("Request is detached");
 	fr_assert(request_is_detached(request));
@@ -1207,7 +1207,7 @@ static void _worker_request_detach(request_t *request, void *uctx)
 	 *	because they don't contribute for the time consumed by an
 	 *	external request.
 	 */
-	worker_request_time_tracking_end(worker, request, fr_time());
+//	worker_request_time_tracking_end(worker, request, fr_time());
 
 	return;
 }
@@ -1465,7 +1465,11 @@ nomem:
 }
 
 
-/** The main loop and entry point of the worker thread.
+/** The main loop and entry point of the stand-alone worker thread.
+ *
+ *  Where there is only one thread, the event loop runs fr_worker_pre_event() and fr_worker_post_event()
+ *  instead, And then fr_worker_post_event() takes care of calling worker_run_request() to actually run the
+ *  request.
  *
  * @param[in] worker the worker data structure to manage
  */
@@ -1473,7 +1477,7 @@ void fr_worker(fr_worker_t *worker)
 {
 	WORKER_VERIFY;
 
-	while (!worker->exiting) {
+	while (true) {
 		bool wait_for_event;
 		int num_events;
 
@@ -1485,6 +1489,8 @@ void fr_worker(fr_worker_t *worker)
 		 */
 		wait_for_event = (fr_heap_num_elements(worker->runnable) == 0);
 		if (wait_for_event) {
+			if (worker->exiting && (fr_minmax_heap_num_elements(worker->time_order) == 0)) break;
+
 			DEBUG4("Ready to process requests");
 		}
 
