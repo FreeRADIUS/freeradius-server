@@ -395,7 +395,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	size_t			len;
 	int			ret;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_yubikey_otp);
+	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_yubikey_otp);
 	if (!vp) {
 		RDEBUG2("No Yubikey-OTP attribute found, falling back to User-Password");
 		/*
