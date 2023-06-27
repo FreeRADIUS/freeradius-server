@@ -17,30 +17,7 @@
 	&Tmp-String-3 = "%{string:%{Tmp-Octets-3}}"
 }
 
-#
-#  Cast of octets to string is the octets *printed* to a string, just
-#  like every other data type.  If we want to *convert* the octets to
-#  a string, we have to use "%{string:...}"
-#
-if (!((string)&Tmp-Octets-0 == "0x5c5c")) {
-	test_fail
-}
-
-#
-#	And the printed "0x5c5c" is not equivalent to the octet string
-#
-if ((string)&Tmp-Octets-0 == 0x5c5c) {
-	test_fail
-}
-
 if (!(&Tmp-String-0 == "\\\\")) {
-	test_fail
-}
-
-#
-#  These are now defined to be different.
-#
-if ((string)&Tmp-Octets-0 == "%{string:%{Tmp-Octets-0}}") {
 	test_fail
 }
 

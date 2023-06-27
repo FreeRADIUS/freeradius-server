@@ -1051,7 +1051,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	case XLAT_TMPL:
 		fr_assert(tmpl_is_exec(node->vpt));
 
-		if (tmpl_eval_cast(ctx, result, node->vpt) < 0) {
+		if (tmpl_eval_cast_in_place(result, node->vpt) < 0) {
 			fr_value_box_list_talloc_free(result);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1176,7 +1176,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				/*
 				 *	Cast the results if necessary.
 				 */
-				if (tmpl_eval_cast(ctx, &result, node->vpt) < 0) goto fail;
+				if (tmpl_eval_cast_in_place(&result, node->vpt) < 0) goto fail;
 
 				fr_value_box_list_move((fr_value_box_list_t *)out->dlist, &result);
 				continue;

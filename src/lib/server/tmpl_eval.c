@@ -38,6 +38,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/edit.h>
+#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/types.h>
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
@@ -1224,7 +1226,7 @@ done:
 	fr_value_box_list_init(&list);
 	fr_value_box_list_insert_tail(&list, value);
 
-	if (tmpl_eval_cast(ctx, &list, vpt) < 0) {
+	if (tmpl_eval_cast_in_place(&list, vpt) < 0) {
 		fr_value_box_list_talloc_free(&list);
 		return -1;
 	};
@@ -1362,7 +1364,7 @@ done:
 	 *	Evaluate casts if necessary.
 	 */
 	if (ret == 0) {
-		if (tmpl_eval_cast(ctx, &list, vpt) < 0) {
+		if (tmpl_eval_cast_in_place(&list, vpt) < 0) {
 			fr_value_box_list_talloc_free(&list);
 			ret = -1;
 			goto fail;
@@ -1445,7 +1447,7 @@ done:
 	fr_value_box_list_init(&list);
 	fr_value_box_list_insert_tail(&list, value);
 
-	if (tmpl_eval_cast(ctx, &list, vpt) < 0) {
+	if (tmpl_eval_cast_in_place(&list, vpt) < 0) {
 		fr_value_box_list_talloc_free(&list);
 		return -1;
 	};
@@ -1458,75 +1460,79 @@ done:
 
 /** Casts a value or list of values according to the tmpl
  *
- * @param[in] ctx	to allocate boxed value, and buffers in.
  * @param[in,out] list	Where to write the boxed value.
  * @param[in] vpt	Representing the attribute.
  * @return
  *	- <0		the cast failed
  *	- 0		we successfully evaluated the tmpl
  */
-int tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *list, tmpl_t const *vpt)
+int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 {
 	fr_type_t cast = tmpl_rules_cast(vpt);
-	fr_value_box_t *vb;
-	bool tainted = false;
-	ssize_t slen, vlen;
-	fr_sbuff_t *agg;
 
-	if (cast == FR_TYPE_NULL) return 0;
-
-	/*
-	 *	Apply a cast to the results if required.
-	 */
-	vb = fr_value_box_list_head(list);
-	if (!vb) return 0;
-
-	switch (cast) {
-	default:
-		/*
-		 *	One box, we cast it as the destination type.
-		 *
-		 *	Many boxes, turn them into strings, and try to parse it as the
-		 *	output type.
-		 */
-		if (!fr_value_box_list_next(list, vb)) {
-			return fr_value_box_cast_in_place(vb, vb, cast, NULL);
-		}
-		FALL_THROUGH;
-
-		/*
-		 *	Strings aren't *cast* to the output.  They're *printed* to the output.
-		 */
-	case FR_TYPE_STRING:
-		FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, 256);
-
-		slen = fr_value_box_list_concat_as_string(&tainted, agg, list, NULL, 0,
-							  (cast == FR_TYPE_STRING) ? &fr_value_escape_double : NULL,
-							  FR_VALUE_BOX_LIST_FREE_BOX, true, true);
-		if (slen < 0) return -1;
-
-		MEM(vb = fr_value_box_alloc_null(ctx));
-		vlen = fr_value_box_from_str(vb, vb, cast, NULL,
-					     fr_sbuff_start(agg), fr_sbuff_used(agg),
-					     NULL, tainted);
-		if ((vlen < 0) || (slen != vlen)) return -1;
-
-		fr_value_box_list_insert_tail(list, vb);
-		break;
-
-	case FR_TYPE_OCTETS:
-		return fr_value_box_list_concat_in_place(vb, vb, list, cast,
-							 FR_VALUE_BOX_LIST_FREE_BOX, true, SIZE_MAX);
-	case FR_TYPE_STRUCTURAL:
-		fr_strerror_printf("Cannot cast to structural type '%s'",
-				   fr_type_to_str(cast));
+	if (fr_type_is_structural(cast)) {
+		fr_strerror_printf("Cannot cast to structural type '%s'", fr_type_to_str(cast));
 		return -1;
 	}
 
+	/*
+	 *	Quoting around the tmpl means everything
+	 *	needs to be concatenated, either as a string
+	 *	or octets string.
+	 */
+	switch (vpt->quote) {
+	case T_DOUBLE_QUOTED_STRING:
+	case T_SINGLE_QUOTED_STRING:
+	case T_SOLIDUS_QUOTED_STRING:
+	case T_BACK_QUOTED_STRING:
+	{
+		ssize_t		slen;
+		fr_value_box_t	*vb;
+
+		vb = fr_value_box_list_head(list);
+		if (!vb) return 0;
+
+		/*
+		 *	Convert directly to concatenated octets
+		 *	don't go through a string representation
+		 *	first.
+		 */
+		if (fr_type_is_octets((cast))) {
+			return fr_value_box_list_concat_in_place(vb, vb, list, FR_TYPE_OCTETS,
+								FR_VALUE_BOX_LIST_FREE_BOX, true, SIZE_MAX);
+		}
+
+		slen = fr_value_box_list_concat_in_place(vb, vb, list, FR_TYPE_STRING,
+							 FR_VALUE_BOX_LIST_FREE_BOX, true, SIZE_MAX);
+		if (slen < 0) return -1;
+
+		/*
+		 *	If there's no cast, or it's a cast to
+		 *	a string, we're done!
+		 *
+		 *	Otherwise we now need to re-cast the
+		 *	result.
+		 */
+		if (fr_type_is_null(cast) || fr_type_is_string(cast)) return 0;
+	}
+		break;
+
+	default:
+		break;
+	}
+
+	if (fr_type_is_null(cast)) return 0;
+
+	/*
+	 *	Quoting above handled all concatenation,
+	 *	we now need to handle potentially
+	 *	multivalued lists.
+	 */
+	fr_value_box_list_foreach_safe(list, vb) {
+		if (fr_value_box_cast_in_place(vb, vb, cast, NULL) < 0) return -1;
+	}}
 	return 0;
 }
-
-
 
 int tmpl_global_init(void)
 {

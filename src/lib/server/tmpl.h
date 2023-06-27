@@ -1326,7 +1326,7 @@ int			tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 
 int			tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt);
 
-int			tmpl_eval_cast(TALLOC_CTX *ctx, fr_value_box_list_t *out, tmpl_t const *vpt);
+int			tmpl_eval_cast_in_place(fr_value_box_list_t *out, tmpl_t const *vpt);
 /** @} */
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,

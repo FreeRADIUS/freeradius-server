@@ -1,0 +1,13 @@
+&Tmp-String-0 := 'test0'
+&Tmp-String-1 := 'test1'
+
+compound_key
+if (!ok) {
+	test_fail
+}
+
+if (!(&control.Tmp-String-0 == 'matched')) {
+	test_fail
+}
+
+test_pass
