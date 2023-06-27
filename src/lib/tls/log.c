@@ -352,8 +352,7 @@ static int tls_log_request_bio_write_cb(BIO *bio, char const *in, int len)
 	 *	to aggregate it, then look for new line chars
 	 *	as an indication we need to print the line.
 	 */
-	/* coverity[check_return] */
-	fr_sbuff_in_bstrncpy(&lb->sbuff, in, len);
+	if (fr_sbuff_in_bstrncpy(&lb->sbuff, in, len) < 0) return 0;
 
 	/*
 	 *	Split incoming data on new lines
@@ -436,8 +435,7 @@ static int tls_log_global_bio_write_cb(BIO *bio, char const *in, int len)
 	 *	to aggregate it, then look for new line chars
 	 *	as an indication we need to print the line.
 	 */
-	/* coverity[check_return] */
-	fr_sbuff_in_bstrncpy(&lb->sbuff, in, len);
+	if (fr_sbuff_in_bstrncpy(&lb->sbuff, in, len) < 0) return 0;
 
 	/*
 	 *	Split incoming data on new lines
