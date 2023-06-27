@@ -54,7 +54,7 @@ match 4294967296
 #  in xlat_eval.c.  Oh well.
 #
 xlat_expr (uint32)((uint32) 1 << 32)
-match ERROR expanding xlat: 
+match ERROR expanding xlat: no error provided
 
 #
 #  This shifts it 8, and then tries to cast it to uint8?

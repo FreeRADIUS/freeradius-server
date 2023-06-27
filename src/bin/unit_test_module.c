@@ -31,7 +31,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/value.h>
-#include <freeradius-devel//util/sbuff.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/tls/base.h>
@@ -320,8 +321,19 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 	char		output_buff[8192];
 	char		unescaped[sizeof(output_buff)];
 	request_t	*request;
-	fr_sbuff_t	line = FR_SBUFF_IN(line_buff, sizeof(line_buff));
+	fr_sbuff_t	line;
 	fr_sbuff_t	out = FR_SBUFF_OUT(output_buff, sizeof(output_buff));
+
+	static fr_sbuff_escape_rules_t unprintables = {
+		.name = "unprintables",
+		.chr = '\\',
+		.esc = {
+			SBUFF_CHAR_UNPRINTABLES_LOW,
+			SBUFF_CHAR_UNPRINTABLES_EXTENDED
+		},
+		.do_utf8 = true,
+		.do_oct = true
+	};
 
 	/*
 	 *	Create and initialize the new request.
@@ -367,17 +379,19 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 	while (fgets(line_buff, sizeof(line_buff), fp) != NULL) {
 		lineno++;
 
+		line = FR_SBUFF_IN(line_buff, sizeof(line_buff));
 		fr_sbuff_set_to_start(&out);
-		fr_sbuff_set_to_start(&line);
 		if (!fr_sbuff_adv_to_chr(&line, SIZE_MAX, '\n')) {
 			if (!feof(fp)) {
-				fprintf(stderr, "Line %d too long in %s\n", lineno, filename);
+				fprintf(stderr, "%s[%d] Line too long\n", filename, lineno);
 				TALLOC_FREE(request);
 				return false;
 			}
 		} else {
 			fr_sbuff_terminate(&line);
 		}
+		line.end = line.p;
+		fr_sbuff_set_to_start(&line);
 
 		/*
 		 *	Ignore blank lines and comments
@@ -411,15 +425,16 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 
 			len = xlat_eval_compiled(unescaped, sizeof(unescaped), request, head, NULL, NULL);
 			if (len < 0) {
+				char const *err = fr_strerror();
 				talloc_free(xlat_ctx);
-				fr_sbuff_in_sprintf(&out, "ERROR expanding xlat: %s", fr_strerror());
+				fr_sbuff_in_sprintf(&out, "ERROR expanding xlat: %s", *err ? err : "no error provided");
 				continue;
 			}
 
 			/*
 			 *	Escape the output as if it were a double quoted string.
 			 */
-			fr_sbuff_in_escape(&out, unescaped, len, &fr_value_escape_double);
+			fr_sbuff_in_escape(&out, unescaped, len, &unprintables);
 
 			TALLOC_FREE(xlat_ctx); /* also frees 'head' */
 			continue;
@@ -464,15 +479,16 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 
 			len = xlat_eval_compiled(unescaped, sizeof(unescaped), request, head, NULL, NULL);
 			if (len < 0) {
+				char const *err = fr_strerror();
 				talloc_free(xlat_ctx);
-				fr_sbuff_in_sprintf(&out, "ERROR expanding xlat: %s", fr_strerror());
+				fr_sbuff_in_sprintf(&out, "ERROR expanding xlat: %s", *err ? err : "no error provided");
 				continue;
 			}
 
 			/*
 			 *	Escape the output as if it were a double quoted string.
 			 */
-			fr_sbuff_in_escape(&out, unescaped, len, &fr_value_escape_double);
+			fr_sbuff_in_escape(&out, unescaped, len, &unprintables);
 
 			TALLOC_FREE(xlat_ctx); /* also frees 'head' */
 			continue;
@@ -482,9 +498,10 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 		 *	Look for "match".
 		 */
 		if (fr_sbuff_adv_past_str_literal(&line, "match ") > 0) {
-			if (fr_sbuff_adv_past_str(&line, output_buff, strlen(output_buff)) == 0) {
-				fprintf(stderr, "Mismatch at %s[%u]\n\tgot      : %s\n\texpected : %s\n",
-					filename, lineno,  output_buff, fr_sbuff_current(&line));
+			size_t output_len = strlen(output_buff);
+			if (!fr_sbuff_is_str(&line, output_buff, output_len) && (output_len != fr_sbuff_remaining(&line))) {
+				fprintf(stderr, "Mismatch at %s[%u]\n\tgot          : %s (%zu)\n\texpected     : %s (%zu)\n",
+					filename, lineno,  output_buff, output_len, fr_sbuff_current(&line), fr_sbuff_remaining(&line));
 				TALLOC_FREE(request);
 				return false;
 			}
