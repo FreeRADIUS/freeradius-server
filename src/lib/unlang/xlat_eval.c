@@ -1454,11 +1454,18 @@ static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, r
 		return slen;
 	}
 
+	if ((size_t)slen >= outlen) {
+		fr_strerror_const("Insufficient output buffer space");
+		return -1;
+	}
+
 	/*
 	 *	Otherwise copy the talloced buffer to the fixed one.
 	 */
-	strlcpy(*out, buff, outlen);
+	memcpy(*out, buff, slen);
+	(*out)[slen] = '\0';
 	talloc_free(buff);
+
 	return slen;
 }
 
