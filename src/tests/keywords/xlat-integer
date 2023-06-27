@@ -38,7 +38,7 @@ if ("%(integer:%{Tmp-String-2})") {
 # Octets - network order representation of a 4 byte octet string
 &Tmp-Integer-1 := "%(integer:%{Tmp-Octets-0})"
 
-if (!("%{Tmp-Octets-0}" == "0x%{hex:%{Tmp-Integer-1}}")) {
+if (!(%{Tmp-Octets-0} == <octets>%{Tmp-Integer-1})) {
 	test_fail
 }
 
@@ -49,10 +49,7 @@ if (!(&Tmp-Integer-1 == 959985457)) {
 # Octets - network order representation of a 8 byte octet string
 &Tmp-uint64-0 := "%(integer:%{Tmp-Octets-1})"
 
-#
-#  Handle octets as strings for now.
-#
-if (!("%{Tmp-Octets-1}" == "0x%{hex:%{Tmp-uint64-0}}")) {
+if (!(%{Tmp-Octets-1} == <octets>%{Tmp-uint64-0})) {
 	test_fail
 }
 

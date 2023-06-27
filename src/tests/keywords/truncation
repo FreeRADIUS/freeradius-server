@@ -78,7 +78,7 @@ if (!(%(length:%{Tmp-Octets-0}) == 4083)) {
 }
 
 # Octets are expanded to 8168 hexits
-if !("%{Tmp-Octets-0}" =~ /^0x([0-9a-f]+)$/) {
+if !("0x%{hex:%{Tmp-Octets-0}}" =~ /^0x([0-9a-f]+)$/) {
 	test_fail
 }
 

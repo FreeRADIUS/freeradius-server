@@ -22,7 +22,7 @@ if (!("%{Packet-Type}" == 'Access-Request')) {
 #  Response hasn't been set yet, but reply.Packet-Type
 #  is virtual, and always exists.
 
-if (!("%{Packet-Authentication-Vector}" == '0x00000000000000000000000000000000')) {
+if (!("%{Packet-Authentication-Vector}" == 0x00000000000000000000000000000000)) {
 	test_fail
 }
 

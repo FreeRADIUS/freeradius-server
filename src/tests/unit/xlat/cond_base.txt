@@ -262,9 +262,10 @@ match ERROR offset 1: Failed parsing string as type 'uint32'
 xlat_purify <ipaddr>127.0.0.1 == "127.0.0.1"
 match true
 
-# LHS is IPaddr, RHS is string.
+# LHS is IPaddr, RHS is string (malformed IP address).
+# Condition code attempts to cast md4 hash to IP address resulting in an invalid comparison
 xlat_purify <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
-match false
+match NULL
 
 #
 #  Bare %{...} is allowed.
@@ -350,12 +351,6 @@ match (&User-Name == "bob")
 
 xlat_purify (&User-Name == %{md4: blah})
 match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
-
-xlat_purify (&User-Name == (string) %{md4: blah})
-match (&User-Name == "0x544924d05ec4481925ba3749a096a0a7")
-
-xlat_purify (&User-Name == "%{md4: blah}")
-match (&User-Name == "0x544924d05ec4481925ba3749a096a0a7")
 
 #  and without the double quotes.
 xlat_purify (&User-Name == %{md4: blah})
@@ -794,4 +789,4 @@ xlat_purify (192.168.0.1 !== 192.168.0.2)
 match true
 
 count
-match 334
+match 330

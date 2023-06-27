@@ -1492,16 +1492,6 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 		vb = fr_value_box_list_head(list);
 		if (!vb) return 0;
 
-		/*
-		 *	Convert directly to concatenated octets
-		 *	don't go through a string representation
-		 *	first.
-		 */
-		if (fr_type_is_octets((cast))) {
-			return fr_value_box_list_concat_in_place(vb, vb, list, FR_TYPE_OCTETS,
-								FR_VALUE_BOX_LIST_FREE_BOX, true, SIZE_MAX);
-		}
-
 		slen = fr_value_box_list_concat_in_place(vb, vb, list, FR_TYPE_STRING,
 							 FR_VALUE_BOX_LIST_FREE_BOX, true, SIZE_MAX);
 		if (slen < 0) return -1;

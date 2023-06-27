@@ -5246,7 +5246,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		FR_SBUFF_RETURN(fr_value_box_list_concat_as_string,
 				NULL, &our_out, UNCONST(fr_value_box_list_t *, &data->vb_group),
 				", ", (sizeof(", ") - 1), e_rules,
-				0, false, true);
+				0, false);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
 		break;
 
@@ -5316,7 +5316,6 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  * @param[in] flatten		If true and we encounter a #FR_TYPE_GROUP,
  *				we concat the contents of its children together.
  *      			If false, the contents will be cast to #FR_TYPE_STRING.
- * @param[in] printable		Convert 'octets' to printable strings.
  * @return
  *      - >=0 the number of bytes written to the sbuff.
  *	- <0 how many additional bytes we would have needed to
@@ -5324,7 +5323,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  */
 ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
-					   fr_value_box_list_action_t proc_action, bool flatten, bool printable)
+					   fr_value_box_list_action_t proc_action, bool flatten)
 {
 	fr_sbuff_t our_sbuff = FR_SBUFF(sbuff);
 	ssize_t slen;
@@ -5337,11 +5336,10 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
 			if (!flatten) goto print;
 			slen = fr_value_box_list_concat_as_string(tainted, &our_sbuff, &vb->vb_group,
 								  sep, sep_len, e_rules,
-								  proc_action, flatten, printable);
+								  proc_action, flatten);
 			break;
 
 		case FR_TYPE_OCTETS:
-			if (printable) goto print; /* even if !tainted */
 
 			/*
 			 *	Copy the raw string over, if necessary with escaping.
@@ -5573,7 +5571,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			 */
 			if (fr_value_box_list_concat_as_string(&tainted, &sbuff, list,
 							       NULL, 0, NULL,
-							       FR_VALUE_BOX_LIST_REMOVE, flatten, false) < 0) {
+							       FR_VALUE_BOX_LIST_REMOVE, flatten) < 0) {
 				fr_strerror_printf("Concatenation exceeded max_size (%zu)", max_size);
 			error:
 				switch (type) {
@@ -5596,7 +5594,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			 */
 			if (fr_value_box_list_concat_as_string(&tainted, &sbuff, list,
 							       NULL, 0, NULL,
-							       proc_action, flatten, true) < 0) {
+							       proc_action, flatten) < 0) {
 				fr_value_box_list_insert_head(list, head_vb);
 				goto error;
 			}
@@ -5638,7 +5636,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 		case FR_TYPE_STRING:
 			if (fr_value_box_list_concat_as_string(&tainted, &sbuff, list,
 							       NULL, 0, NULL,
-							       proc_action, flatten, true) < 0) goto error;
+							       proc_action, flatten) < 0) goto error;
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 
 			entry = out->entry;
