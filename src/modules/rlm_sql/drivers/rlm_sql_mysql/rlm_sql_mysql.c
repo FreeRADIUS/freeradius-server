@@ -368,7 +368,6 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 	if (sql_errno > 0) switch (sql_errno) {
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
-	case -1:
 		return RLM_SQL_RECONNECT;
 
 	case CR_OUT_OF_MEMORY:
