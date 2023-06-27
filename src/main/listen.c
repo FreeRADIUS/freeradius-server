@@ -1467,6 +1467,8 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				return -1;
 			}
 
+			this->tls->name = "RADIUS/TLS";
+
 #ifdef HAVE_PTHREAD_H
 			if (pthread_mutex_init(&sock->mutex, NULL) < 0) {
 				rad_assert(0 == 1);
@@ -3472,6 +3474,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			goto error;
 		}
 #endif
+
 
 		sock->connect_timeout = home->connect_timeout;
 

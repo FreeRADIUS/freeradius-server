@@ -31,6 +31,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 {
 	char const *role, *state;
 	REQUEST *request = SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
+	fr_tls_server_conf_t *conf = (fr_tls_server_conf_t *) SSL_get_ex_data(s, FR_TLS_EX_INDEX_CONF);
 
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
 		role = "Client ";
@@ -58,7 +59,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 			len = strlen(abbrv);
 			if ((len > 1) && (abbrv[len - 1] == ' ')) len--;
 
-			RDEBUG3("(TLS) Handshake state [%.*s] - %s%s (%d)",
+			RDEBUG3("(TLS) %s - Handshake state [%.*s] - %s%s (%d)", conf->name,
 				(int)len, abbrv, role, state, SSL_get_state(s));
 
 			/*
@@ -82,7 +83,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 	
 				client_ciphers = SSL_get_client_ciphers(s);
 				if (client_ciphers) {
-					RDEBUG3("Client preferred ciphers (by priority)");
+					RDEBUG3("(TLS) %s - Client preferred ciphers (by priority)", conf->name);
 					num_ciphers = sk_SSL_CIPHER_num(client_ciphers);
 					for (i = 0; i < num_ciphers; i++) {
 						this_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
@@ -92,7 +93,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 			}
 #endif
 		} else {
-			RDEBUG2("(TLS) Handshake state - %s%s", role, state);
+			RDEBUG2("(TLS) %s - Handshake state - %s%s", conf->name, role, state);
 		}
 		return;
 	}
@@ -100,23 +101,23 @@ void cbtls_info(SSL const *s, int where, int ret)
 	if (where & SSL_CB_ALERT) {
 		if ((ret & 0xff) == SSL_AD_CLOSE_NOTIFY) return;
 
-		RERROR("(TLS) Alert %s:%s:%s", (where & SSL_CB_READ) ? "read": "write",
+		RERROR("(TLS) %s - Alert %s:%s:%s", conf->name, (where & SSL_CB_READ) ? "read": "write",
 		       SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
 		return;
 	}
 
 	if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			RERROR("(TLS) %s: Failed in %s", role, state);
+			RERROR("(TLS) %s - %s: Failed in %s", conf->name, role, state);
 			return;
 		}
 
 		if (ret < 0) {
 			if (SSL_want_read(s)) {
-				RDEBUG2("(TLS) %s: Need to read more data: %s", role, state);
+				RDEBUG2("(TLS) %s - %s: Need to read more data: %s", conf->name, role, state);
 				return;
 			}
-			RERROR("(TLS) %s: Error in %s", role, state);
+			RERROR("(TLS) %s - %s: Error in %s", conf->name, role, state);
 		}
 	}
 }

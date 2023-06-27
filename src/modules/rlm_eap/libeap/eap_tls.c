@@ -69,6 +69,9 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 
 	handler->tls = true;
 
+	tls_conf->name = dict_valnamebyattr(PW_EAP_TYPE, 0, handler->type);
+	if (!tls_conf->name) tls_conf->name = "???";
+
 	/*
 	 *	Every new session is started only from EAP-TLS-START.
 	 *	Before Sending EAP-TLS-START, open a new SSL session.

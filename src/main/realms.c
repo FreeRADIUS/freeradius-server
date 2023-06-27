@@ -1121,6 +1121,8 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 				goto error;
 			}
 
+			home->tls->name = "RADIUS/TLS";
+
 			/*
 			 *	Connection timeouts for outgoing TLS connections.
 			 */
