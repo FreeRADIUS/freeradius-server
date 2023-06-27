@@ -78,6 +78,13 @@ runs:
         sudo /bin/sh -c "echo \"deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
           > /etc/apt/sources.list.d/networkradius-extras.list"
 
+    #  Currently GitHub runners have a conflicting version of libhashkit2 installed which breaks dependency installation
+    - name: Remove package conflicts
+      if: ${{ runner.os != 'macOS' }}
+      shell: bash
+      run: |
+        sudo apt-get remove -y libhashkit2
+
     - name: Install build dependencies based on Debian packages plus extra CI packages
       if: ${{ runner.os != 'macOS' }}
       shell: bash
