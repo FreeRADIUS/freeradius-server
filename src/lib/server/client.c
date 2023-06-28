@@ -978,6 +978,15 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 			value = vp->vp_strvalue;
 			break;
 
+		case FR_FREERADIUS_CLIENT_REQUIRE_MA:
+			attr = "require_message_authenticator";
+			if (vp->vp_bool) {
+				value = "true";
+			} else {
+				value = "false";
+			}
+			break;
+
 		case FR_FREERADIUS_CLIENT_TRACK_CONNECTIONS:
 			attr = "track_connections";
 			if (vp->vp_bool) {
