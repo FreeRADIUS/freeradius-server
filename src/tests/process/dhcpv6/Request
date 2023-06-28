@@ -1,0 +1,41 @@
+subrequest DHCPv6.Request {
+	&Transaction-ID = 0x1e291d
+
+	&Server-ID.DUID = LLT
+	&Server-ID.DUID.LLT.Hardware-Type = Ethernet
+	&Server-ID.DUID.LLT.Time = "Nov 21 2012 08:36:00 UTC"
+	&Server-ID.DUID.LLT.Hardware-Type.Ethernet.Address = 00:11:22:33:44:55
+
+	&Client-ID.DUID = LL
+	&Client-ID.DUID.LL.Hardware-Type = Ethernet
+	&Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05
+
+	&request += {
+		&Option-Request = DNS-Servers
+		&Option-Request = AFTR-Name
+	}
+
+	&Elapsed-Time = 0
+
+	call dhcpv6 {
+		# 'Request' expects 'Reply'
+		if (&reply.Packet-Type != Reply) {
+			test_fail
+		}
+
+		test_dhcpv6_reply_matches_request
+
+		# ... Server-ID must be inside &reply
+		if (!&reply.Server-ID.DUID.LLT.Hardware-Type) {
+			test_fail
+		}
+
+		if (!&reply.Server-ID.DUID.LLT.Time) {
+			test_fail
+		}
+
+		if (!&reply.Server-ID.DUID.LLT.Hardware-Type.Ethernet.Address) {
+			test_fail
+		}
+	}
+}
