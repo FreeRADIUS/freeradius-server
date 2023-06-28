@@ -275,6 +275,15 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		fr_assert(buffer_len >= sizeof(client));
 
 		/*
+		 *	We don't accept the new client, so don't do
+		 *	anything.
+		 */
+		if (request->reply->code != FR_DHCP_ACK) {
+			*buffer = true;
+			return 1;
+		}
+
+		/*
 		 *	Allocate the client.  If that fails, send back a NAK.
 		 *
 		 *	@todo - deal with NUMA zones?  Or just deal with this

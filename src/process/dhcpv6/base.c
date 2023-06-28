@@ -60,6 +60,10 @@ typedef struct {
 	CONF_SECTION	*send_relay_reply;
 
 	CONF_SECTION	*do_not_respond;
+
+	CONF_SECTION	*new_client;
+	CONF_SECTION	*add_client;
+	CONF_SECTION	*deny_client;
 } process_dhcpv6_sections_t;
 
 typedef struct {
@@ -171,6 +175,7 @@ fr_dict_enum_autoload_t process_dhcpv6_dict_enum[] = {
 #define PROCESS_CODE_DO_NOT_RESPOND	FR_DHCPV6_DO_NOT_RESPOND
 #define PROCESS_PACKET_CODE_VALID	FR_DHCPV6_PROCESS_CODE_VALID
 #define PROCESS_INST			process_dhcpv6_t
+#define PROCESS_CODE_DYNAMIC_CLIENT	FR_DHCPV6_REPLY
 
 /*
  *	DHCPv6 is nonstandard in that we reply
@@ -273,6 +278,9 @@ static const virtual_server_compile_t compile_list[] = {
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond)
 	},
+
+	DYNAMIC_CLIENT_SECTIONS,
+
 	COMPILE_TERMINATOR
 };
 
@@ -735,6 +743,10 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	}
 
 	dhcpv6_packet_debug(request, request->packet, &request->request_pairs, true);
+
+	if (unlikely(request_is_dynamic_client(request))) {
+		return new_client(p_result, mctx, request);
+	}
 
 	return state->recv(p_result, mctx, request);
 }
