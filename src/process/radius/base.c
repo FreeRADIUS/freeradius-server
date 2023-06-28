@@ -1281,24 +1281,8 @@ static virtual_server_compile_t const compile_list[] = {
 		.component = MOD_AUTHENTICATE
 	},
 
-	{
-		.name = "new",
-		.name2 = "client",
-		.component = MOD_AUTHORIZE,
-		.offset = PROCESS_CONF_OFFSET(new_client),
-	},
-	{
-		.name = "add",
-		.name2 = "client",
-		.component = MOD_AUTHORIZE,
-		.offset = PROCESS_CONF_OFFSET(add_client),
-	},
-	{
-		.name = "deny",
-		.name2 = "client",
-		.component = MOD_AUTHORIZE,
-		.offset = PROCESS_CONF_OFFSET(deny_client),
-	},
+	DYNAMIC_CLIENT_SECTIONS,
+
 	COMPILE_TERMINATOR
 };
 

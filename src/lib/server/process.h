@@ -445,6 +445,27 @@ static inline unlang_action_t new_client(rlm_rcode_t *p_result, module_ctx_t con
 					      cs, RLM_MODULE_FAIL, resume_new_client,
 					      NULL, 0, mctx->rctx);
 }
+
+#define DYNAMIC_CLIENT_SECTIONS \
+	{ \
+		.name = "new", \
+		.name2 = "client", \
+		.component = MOD_AUTHORIZE, \
+		.offset = PROCESS_CONF_OFFSET(new_client), \
+	}, \
+	{ \
+		.name = "add", \
+		.name2 = "client", \
+		.component = MOD_AUTHORIZE, \
+		.offset = PROCESS_CONF_OFFSET(add_client), \
+	}, \
+	{ \
+		.name = "deny", \
+		.name2 = "client", \
+		.component = MOD_AUTHORIZE, \
+		.offset = PROCESS_CONF_OFFSET(deny_client), \
+	}
+
 #endif	/* PROCESS_DYNAMIC_CLIENT */
 
 #endif	/* defined(PROCESS_INST) && defined(PROCESS_PACKET_TYPE) && defined(PROCESS_PACKET_CODE_VALID) */
