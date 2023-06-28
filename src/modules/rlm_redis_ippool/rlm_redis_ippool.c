@@ -384,16 +384,17 @@ static char lua_release_cmd[] =
 	"end" EOL									/* 14 */
 
 	/*
-	 *	Set expiry time to now() - 1 if it is not static
+	 *	Set expiry time to now() - 1
 	 */
 	"pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL			/* 15 */
 	"found = tonumber(redis.call('ZSCORE', pool_key, ARGV[2]))" EOL			/* 16 */
-	"if found < " STRINGIFY(IPPOOL_STATIC_BIT) " then" EOL				/* 17 */
-	"  redis.call('ZADD', pool_key, 'XX', ARGV[1] - 1, ARGV[2])" EOL		/* 18 */
+	"local static = found > " STRINGIFY(IPPOOL_STATIC_BIT) EOL			/* 17 */
+	"redis.call('ZADD', pool_key, 'XX', ARGV[1] - 1 + (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0), ARGV[2])" EOL		/* 18 */
 
 	/*
 	 *	Remove the association between the device and a lease
 	 */
+	"if not static then" EOL							/* 18 */
 	"  owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[3]" EOL	/* 19 */
 	"  redis.call('DEL', owner_key)" EOL						/* 20 */
 	"end" EOL									/* 21 */
