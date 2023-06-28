@@ -89,8 +89,9 @@ PROCESS_ARGS += -S use_new_conditions=yes -S forbid_update=yes
 PROCESS_ARGS += -i $(DIR)/test.attrs -f $(DIR)/test.attrs
 
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module $(DIR)/unit_test_module.conf
+	$(eval PROTOCOL_NAME=$(lastword $(subst /, ,$(dir $(abspath $@)))))
 	$(eval CMD:=PROCESS=$< PROTOCOL=$(dir $<) $(TEST_BIN)/unit_test_module $(PROCESS_ARGS) -r "$@" -xx)
-	@echo PROCESS-TEST $(notdir $@)
+	@echo PROCESS-TEST $(PROTOCOL_NAME) $(notdir $@)
 	@mkdir -p $(dir $@)
 	@if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		cat $@.log; \
