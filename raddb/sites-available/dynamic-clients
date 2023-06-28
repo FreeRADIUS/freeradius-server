@@ -5,8 +5,10 @@
 #	of RADIUS clients at run time.
 #
 #	Everything is keyed off a client "network" (for example,
-#	192.168.0.2/24). This configuration lets the server know
-#	that clients within that network are defined dynamically.
+#	192.168.0.2/24). This configuration lets the server know that
+#	clients within that network are defined dynamically.  The
+#	network limitation also ensures that the server accepts
+#	dynamic client requests from only a limited, "local" network.
 #
 #	When the server receives a packet from an unknown IP address
 #	within that network, it tries to find a dynamic definition
@@ -16,8 +18,8 @@
 #
 #	Further packets from that IP address result in the client
 #	definition being found in the cache.  Once the lifetime is
-#	reached, the client definition is deleted, and any new requests
-#	from that client are looked up as above.
+#	reached, the client definition is deleted, and any new
+#	requests from that client are looked up as above.
 #
 #	If the dynamic definition is not found, then the request is
 #	treated as if it came from an unknown client, i.e. it is
@@ -32,12 +34,14 @@
 ######################################################################
 
 #
-#  This virtual server is an EXAMPLE, and should not be enabled as-is.
+#  This virtual server is an example, and should not be enabled as-is.
 #
-#  To enable dynamic clients in an existing virtual server, copy
-#  the "dynamic_clients" sub-section of the "udp" listener from
-#  the below example. Then copy the "new client", "add client",
-#  and "deny client" sub-sections into the virtual server.
+#  To enable dynamic clients in an existing virtual server, copy the
+#  "dynamic_clients" sub-section of the "udp" listener from the below
+#  example. Then copy the "new client", "add client", and "deny
+#  client" sub-sections into the virtual server.  Set `dynamic_clients
+#  = yes` in the listener, and then the virtual server will be enabled
+#  for dynamic clients.
 #
 #  When clients are added to a listener, they exist ONLY for that
 #  listener.  Dynamic clients can process packets ONLY through the
@@ -45,6 +49,8 @@
 #  define a global client, and point it to a different virtual server,
 #
 server dynamic_clients {
+	namespace = radius
+
 	#
 	#  See the "default" virtual server for examples of how to
 	#  configure a "listen" section.  Only the "dynamic_clients"
@@ -139,7 +145,7 @@ server dynamic_clients {
 		}
 
 		udp {
-			ipaddr = *
+			ipaddr = 127.0.0.1
 			port = 2812
 
 			#
@@ -169,11 +175,15 @@ server dynamic_clients {
 				#  be rejected.
 				#
 				#  Even if a packet is from an allowed
-				#  network, it still must be allowed
-				#  by the "new client" subsection.
+				#  network, it still must be
+				#  configured by the "new client"
+				#  subsection.
 				#
 				#  There is no limit to the number of
 				#  networks which can be listed here.
+				#  Networks are put into a patricia
+				#  trie, so lookups are fast and
+				#  efficient.
 				#
 				allow = 127/8
 				allow = 192.0.2/24
@@ -199,12 +209,14 @@ server dynamic_clients {
 	}
 
 	#
-	#  When a request is received from an unknown client, it
-	#  is initially passed through this 'new client' section
-	#  to determine whether to add the client or not.
+	#  When a request is received from an unknown client, it is
+	#  initially passed through this 'new client' section to
+	#  determine whether to add the client or not.
 	#
-	#  If the client is added, the request is then sent "for real"
-	#  through the normal virtual server sections, as usual.
+	#  This section should define the client fields as attributes,
+	#  and return `ok` to add the client.
+	#
+	#  If this section returns `fail`, then the client is denied.
 	#
 	new client {
 		#
@@ -214,10 +226,9 @@ server dynamic_clients {
 		#  control list.
 		#
 		#  The packet received here is a complete, normal,
-		#  RADIUS packet.  All attributes are decoded and
-		#  available.  However, all attributes that depend on
-		#  the shared secret (e.g. User-Password, etc.) are
-		#  blank.
+		#  packet.  All attributes are decoded and available.
+		#  However, all attributes that depend on the shared
+		#  secret (e.g. User-Password, etc.) are blank.
 		#
 
 		#
@@ -227,101 +238,30 @@ server dynamic_clients {
 		#
 		#  Copy the IP address of the client from
 		#  the request just received
-		&control.FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
+		&control += {
+			FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
 
-		#  require_message_authenticator
-		&control.FreeRADIUS-Client-Require-MA = no
+			#  require_message_authenticator
+			&FreeRADIUS-Client-Require-MA = no
 
-		#  secret
-		&control.FreeRADIUS-Client-Secret = "testing123"
+			&FreeRADIUS-Client-Secret = "testing123"
 
-		#  shortname
-		&control.FreeRADIUS-Client-Shortname = "%{Packet-Src-IP-Address}"
+			#  shortname
+			&FreeRADIUS-Client-Shortname = "%{Packet-Src-IP-Address}"
 
-		#  nas_type
-		&control.FreeRADIUS-Client-NAS-Type = "other"
-
-		#  virtual_server
-		#
-		#  This can ONLY be used if the network client
-		#  definition (e.g. "client dynamic" above) has
-		#  NO virtual_server defined.
-		#
-		#  If the network client definition does have a
-		#  virtual_server defined, then that is used,
-		#  and there is no need to define this attribute.
-		#
-	#	&control.FreeRADIUS-Client-Virtual-Server = "something"
-
-		#
-		#  Example 2: Look the clients up in SQL.
-		#
-		#  This requires the SQL module to be configured, of course.
-		#
-		map sql "SELECT nasname,shortname,secret,type,server FROM nas WHERE nasname = '%{Packet-Src-IP-Address}' LIMIT 1" {
-			&control.FreeRADIUS-Client-IP-Address := 'nasname'
-			&control.FreeRADIUS-Client-Shortname := 'shortname'
-			&control.FreeRADIUS-Client-Secret := 'secret'
-			&control.FreeRADIUS-Client-NAS-Type := 'type'
-			&control.FreeRADIUS-Client-Virtual-Server := 'server'
+			#  nas_type
+			&FreeRADIUS-Client-NAS-Type = "other"
 		}
 
-		#
-		#  Example 3: Look the clients up in LDAP
-		#
-		#  @todo - use the new 'map' function to map the
-		#         'nastable' to the attributes
-		#
-		#  Do an LDAP lookup in the elements OU, check to
-		#  see if the Packet-Src-IP-Address object has an
-		#  "ou" attribute, if it does continue.  Change
-		#  "ACME.COM" to the real OU of your organization.
-		#
-		#  Assuming the following schema:
-		#
-		#    OU=Elements,OU=Radius,DC=ACME,DC=COM
-		#
-		#  Elements will hold a record of every NAS in your
-		#  Network.  Create Group objects based on the IP
-		#  Address of the NAS and set the "Location" or "l"
-		#  attribute to the NAS Huntgroup the NAS belongs to
-		#  allow them to be centrally managed in LDAP.
-		#
-		#  e.g. CN=10.1.2.3,OU=Elements,OU=Radius,DC=ACME,DC=COM
-		#
-		#  With a "l" value of "CiscoRTR" for a Cisco Router
-		#  that has a NAS-IP-Address or Source-IP-Address of
-		#  10.1.2.3.
-		#
-		#  And with a "ou" value of the shared secret password
-		#  for the NAS element, i.e. "password".
-		#
-		if ("%{ldap:ldap:///OU=Elements,OU=Radius,DC=ACME,DC=COM?ou?sub?cn=%{Packet-Src-IP-Address}}") {
-			&control.FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
-
-			#  Set the Client-Shortname to be the Location
-			#  "l" just like in the Huntgroups, but this
-			#  time to the shortname.
-
-			&control.FreeRADIUS-Client-Shortname = "%{ldap:ldap:///OU=Elements,OU=Radius,DC=ACME,DC=COM?l?sub?cn=%{Packet-Src-IP-Address}}"
-
-			#  Lookup and set the Shared Secret based on
-			#  the "ou" attribute.
-			&control.FreeRADIUS-Client-Secret = "%{ldap:ldap:///OU=Elements,OU=Radius,DC=ACME,DC=COM?ou?sub?cn=%{Packet-Src-IP-Address}}"
-		}
-
-		#
-		#  Tell the caller that the client was defined properly.
-		#
-		#  If the 'new client' section does NOT return "ok", then
-		#  the new client is ignored.
-		#
 		ok
 	}
 
 
 	#
-	#  This subsection is called if the client was added.
+	#  This subsection is called when the client was added.
+	#
+	#  The main purpose of this section is to enable logging when
+	#  a client is added.
 	#
 	#  If this section is empty, you can just delete it entirely.
 	#
@@ -332,6 +272,9 @@ server dynamic_clients {
 	#
 	#  This subsection is called if the client was NOT added.
 	#
+	#  The main purpose of this section is to enable logging when
+	#  a client is denied.
+	#
 	#  If this section is empty, you can just delete it entirely.
 	#
 	deny client {
@@ -339,14 +282,10 @@ server dynamic_clients {
 	}
 
 	#
-	#  Reject all packets sent to this dummy virtual server.
-	#
-	#  This virtual server is just an example for dynamic
-	#  clients, and should not be used for authentication or
-	#  accounting. Copy the above sections to the real virtual
-	#  server being used instead.
+	#  After client is added, the packet is run through the normal
+	#  processing sections
 	#
 	recv Access-Request {
-		reject
+		accept
 	}
 }
