@@ -445,10 +445,6 @@ int fr_socket_bind(int sockfd, char const *ifname, fr_ipaddr_t *src_ipaddr, uint
 	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
 	 *	kernel instead binds us to a 1.2.3.4.  So once the
 	 *	socket is bound, ask it what it's IP address is.
-	 *
-	 *	@todo - Uh... we don't update src_ipaddr with the new
-	 *	IP address.  This means that we don't tell the caller
-	 *	what IP address we're bound to.  That seems wrong.
 	 */
 	salen = sizeof(salocal);
 	memset(&salocal, 0, salen);
