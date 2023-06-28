@@ -1,0 +1,45 @@
+subrequest DHCPv6.Solicit {
+	&Transaction-ID = 0xd81eb8
+	&Client-ID.DUID = LL
+	&Client-ID.DUID.LL.Hardware-Type = Ethernet
+	&Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05
+	&Option-Request = DNS-Servers
+	&Option-Request = AFTR-Name
+	&Elapsed-Time = 0
+	&IA-PD.IAID = 33752069
+	&IA-PD.T1 = 3600
+	&IA-PD.T2 = 5400
+
+	call dhcpv6 {
+		if (&reply.Packet-Type != Advertise) {
+			test_fail
+		}
+
+		# We should reply the below attributes...
+		if (!&reply.Transaction-ID) {
+			test_fail
+		}
+
+		# ... these must be the same as in &request
+		if (&reply.Transaction-ID != &request.Transaction-ID) {
+			test_fail
+		}
+
+		if (&reply.Client-ID.DUID != &request.Client-ID.DUID) {
+			test_fail
+		}
+
+		if (&request.Option-Request[*] == DNS-Servers) {
+			if (&reply.DNS-Servers[*] != "2a01:cafe:1") {
+				test_fail
+			}
+		}
+
+		if (&request.Option-Request[*] == AFTR-Name) {
+			if (&reply.AFTR-Name != "tapioca.net") {
+				test_fail
+			}
+		}
+
+	}
+}
