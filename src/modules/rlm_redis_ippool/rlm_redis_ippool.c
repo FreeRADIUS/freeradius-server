@@ -999,176 +999,162 @@ finish:
 	return ret;
 }
 
-static unlang_action_t mod_action(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
-				  ippool_action_t action)
-{
-	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_redis_ippool_t);
-	redis_ippool_call_env_t		*env = talloc_get_type_abort(mctx->env_data, redis_ippool_call_env_t);
-
-	fr_ipaddr_t	ip;
-
-	if (env->pool_name.vb_length > IPPOOL_MAX_KEY_PREFIX_SIZE) {
-		REDEBUG("Pool name too long.  Expected %u bytes, got %ld bytes",
-			IPPOOL_MAX_KEY_PREFIX_SIZE, env->pool_name.vb_length);
-		RETURN_MODULE_FAIL;
+#define CHECK_POOL_NAME \
+	if (env->pool_name.vb_length > IPPOOL_MAX_KEY_PREFIX_SIZE) { \
+		REDEBUG("Pool name too long.  Expected %u bytes, got %ld bytes", \
+			IPPOOL_MAX_KEY_PREFIX_SIZE, env->pool_name.vb_length); \
+		RETURN_MODULE_FAIL; \
+	} \
+	if (env->pool_name.vb_length == 0) { \
+		RDEBUG2("Empty pool name.  Doing nothing"); \
+		RETURN_MODULE_NOOP; \
 	}
-	if (env->pool_name.vb_length == 0) {
-		RDEBUG2("Empty pool name.  Doing nothing");
-		RETURN_MODULE_NOOP;
-	}
-
-	switch (action) {
-	case POOL_ACTION_ALLOCATE:
-	{
-		/*
-		 *	If offer_time is defined, it will be FR_TYPE_UINT32.
-		 *	Fall back to lease_time otherwise.
-		 */
-		uint32_t lease_time = (env->offer_time.type == FR_TYPE_UINT32) ?
-					env->offer_time.vb_uint32 : env->lease_time.vb_uint32;;
-		ippool_action_print(request, action, L_DBG_LVL_2, &env->pool_name, NULL,
-				    &env->owner, &env->gateway_id, lease_time);
-		switch (redis_ippool_allocate(inst, request, env, lease_time)) {
-		case IPPOOL_RCODE_SUCCESS:
-			RDEBUG2("IP address lease allocated");
-			RETURN_MODULE_UPDATED;
-
-		case IPPOOL_RCODE_POOL_EMPTY:
-			RWDEBUG("Pool contains no free addresses");
-			RETURN_MODULE_NOTFOUND;
-
-		default:
-			RETURN_MODULE_FAIL;
-		}
-	}
-
-	case POOL_ACTION_UPDATE:
-	{
-		if (fr_inet_pton(&ip, env->requested_address.vb_strvalue, env->requested_address.vb_length,
-				 AF_UNSPEC, false, true) < 0) {
-			RPEDEBUG("Failed parsing address");
-			RETURN_MODULE_FAIL;
-		}
-
-		ippool_action_print(request, action, L_DBG_LVL_2, &env->pool_name,
-				    &env->requested_address, &env->owner, &env->gateway_id, env->lease_time.vb_uint32);
-		switch (redis_ippool_update(inst, request, env,
-					    &ip, &env->owner,
-					    &env->gateway_id,
-					    env->lease_time.vb_uint32)) {
-		case IPPOOL_RCODE_SUCCESS:
-			RDEBUG2("Requested IP address' \"%pV\" lease updated", &env->requested_address);
-
-			/*
-			 *	Copy over the input IP address to the reply attribute
-			 */
-			if (inst->copy_on_update) {
-				tmpl_t ip_rhs = {
-					.name = "",
-					.type = TMPL_TYPE_DATA,
-					.quote = T_BARE_WORD,
-				};
-				map_t ip_map = {
-					.lhs = env->allocated_address_attr,
-					.op = T_OP_SET,
-					.rhs = &ip_rhs
-				};
-
-				fr_value_box_copy_shallow(NULL, &ip_rhs.data.literal, &env->requested_address);
-
-				if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) RETURN_MODULE_FAIL;
-			}
-			RETURN_MODULE_UPDATED;
-
-		/*
-		 *	It's useful to be able to identify the 'not found' case
-		 *	as we can relay to a server where the IP address might
-		 *	be found.  This extremely useful for migrations.
-		 */
-		case IPPOOL_RCODE_NOT_FOUND:
-			REDEBUG("Requested IP address \"%pV\" is not a member of the specified pool",
-				&env->requested_address);
-			RETURN_MODULE_NOTFOUND;
-
-		case IPPOOL_RCODE_EXPIRED:
-			REDEBUG("Requested IP address' \"%pV\" lease already expired at time of renewal",
-				&env->requested_address);
-			RETURN_MODULE_INVALID;
-
-		case IPPOOL_RCODE_DEVICE_MISMATCH:
-			REDEBUG("Requested IP address' \"%pV\" lease allocated to another device",
-				&env->requested_address);
-			RETURN_MODULE_INVALID;
-
-		default:
-			RETURN_MODULE_FAIL;
-		}
-	}
-
-	case POOL_ACTION_RELEASE:
-	{
-		if (fr_inet_pton(&ip, env->requested_address.vb_strvalue, env->requested_address.vb_length,
-				 AF_UNSPEC, false, true) < 0) {
-			RPEDEBUG("Failed parsing address");
-			RETURN_MODULE_FAIL;
-		}
-
-		ippool_action_print(request, action, L_DBG_LVL_2, &env->pool_name,
-				    &env->requested_address, &env->owner, &env->gateway_id, 0);
-		switch (redis_ippool_release(inst, request, &env->pool_name,
-					     &ip, &env->owner)) {
-		case IPPOOL_RCODE_SUCCESS:
-			RDEBUG2("IP address \"%pV\" released", &env->requested_address);
-			RETURN_MODULE_UPDATED;
-
-		/*
-		 *	It's useful to be able to identify the 'not found' case
-		 *	as we can relay to a server where the IP address might
-		 *	be found.  This extremely useful for migrations.
-		 */
-		case IPPOOL_RCODE_NOT_FOUND:
-			REDEBUG("Requested IP address \"%pV\" is not a member of the specified pool",
-				&env->requested_address);
-			RETURN_MODULE_NOTFOUND;
-
-		case IPPOOL_RCODE_DEVICE_MISMATCH:
-			REDEBUG("Requested IP address' \"%pV\" lease allocated to another device",
-				&env->requested_address);
-			RETURN_MODULE_INVALID;
-
-		default:
-			RETURN_MODULE_FAIL;
-		}
-	}
-
-	case POOL_ACTION_BULK_RELEASE:
-		RDEBUG2("Bulk release not yet implemented");
-		RETURN_MODULE_NOOP;
-
-	default:
-		fr_assert(0);
-		RETURN_MODULE_FAIL;
-	}
-}
 
 static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return mod_action(p_result, mctx, request, POOL_ACTION_ALLOCATE);
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_redis_ippool_t);
+	redis_ippool_call_env_t		*env = talloc_get_type_abort(mctx->env_data, redis_ippool_call_env_t);
+	uint32_t			lease_time;
+
+	CHECK_POOL_NAME
+
+	/*
+	 *	If offer_time is defined, it will be FR_TYPE_UINT32.
+	 *	Fall back to lease_time otherwise.
+	 */
+	lease_time = (env->offer_time.type == FR_TYPE_UINT32) ?
+			env->offer_time.vb_uint32 : env->lease_time.vb_uint32;;
+	ippool_action_print(request, POOL_ACTION_ALLOCATE, L_DBG_LVL_2, &env->pool_name, NULL,
+			    &env->owner, &env->gateway_id, lease_time);
+	switch (redis_ippool_allocate(inst, request, env, lease_time)) {
+	case IPPOOL_RCODE_SUCCESS:
+		RDEBUG2("IP address lease allocated");
+		RETURN_MODULE_UPDATED;
+
+	case IPPOOL_RCODE_POOL_EMPTY:
+		RWDEBUG("Pool contains no free addresses");
+		RETURN_MODULE_NOTFOUND;
+
+	default:
+		RETURN_MODULE_FAIL;
+	}
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return mod_action(p_result, mctx, request, POOL_ACTION_UPDATE);
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_redis_ippool_t);
+	redis_ippool_call_env_t		*env = talloc_get_type_abort(mctx->env_data, redis_ippool_call_env_t);
+	fr_ipaddr_t			ip;
+
+	CHECK_POOL_NAME
+
+	if (fr_inet_pton(&ip, env->requested_address.vb_strvalue, env->requested_address.vb_length,
+			 AF_UNSPEC, false, true) < 0) {
+		RPEDEBUG("Failed parsing address");
+		RETURN_MODULE_FAIL;
+	}
+
+	ippool_action_print(request, POOL_ACTION_UPDATE, L_DBG_LVL_2, &env->pool_name,
+			    &env->requested_address, &env->owner, &env->gateway_id, env->lease_time.vb_uint32);
+	switch (redis_ippool_update(inst, request, env,
+				    &ip, &env->owner,
+				    &env->gateway_id,
+				    env->lease_time.vb_uint32)) {
+	case IPPOOL_RCODE_SUCCESS:
+		RDEBUG2("Requested IP address' \"%pV\" lease updated", &env->requested_address);
+
+		/*
+		 *	Copy over the input IP address to the reply attribute
+		 */
+		if (inst->copy_on_update) {
+			tmpl_t ip_rhs = {
+				.name = "",
+				.type = TMPL_TYPE_DATA,
+				.quote = T_BARE_WORD,
+			};
+			map_t ip_map = {
+				.lhs = env->allocated_address_attr,
+				.op = T_OP_SET,
+				.rhs = &ip_rhs
+			};
+
+			fr_value_box_copy_shallow(NULL, &ip_rhs.data.literal, &env->requested_address);
+
+			if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) RETURN_MODULE_FAIL;
+		}
+		RETURN_MODULE_UPDATED;
+
+	/*
+	 *	It's useful to be able to identify the 'not found' case
+	 *	as we can relay to a server where the IP address might
+	 *	be found.  This extremely useful for migrations.
+	 */
+	case IPPOOL_RCODE_NOT_FOUND:
+		REDEBUG("Requested IP address \"%pV\" is not a member of the specified pool",
+			&env->requested_address);
+		RETURN_MODULE_NOTFOUND;
+
+	case IPPOOL_RCODE_EXPIRED:
+		REDEBUG("Requested IP address' \"%pV\" lease already expired at time of renewal",
+			&env->requested_address);
+		RETURN_MODULE_INVALID;
+
+	case IPPOOL_RCODE_DEVICE_MISMATCH:
+		REDEBUG("Requested IP address' \"%pV\" lease allocated to another device",
+			&env->requested_address);
+		RETURN_MODULE_INVALID;
+
+	default:
+		RETURN_MODULE_FAIL;
+	}
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return mod_action(p_result, mctx, request, POOL_ACTION_RELEASE);
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_redis_ippool_t);
+	redis_ippool_call_env_t		*env = talloc_get_type_abort(mctx->env_data, redis_ippool_call_env_t);
+	fr_ipaddr_t			ip;
+
+	CHECK_POOL_NAME
+
+	if (fr_inet_pton(&ip, env->requested_address.vb_strvalue, env->requested_address.vb_length,
+			 AF_UNSPEC, false, true) < 0) {
+		RPEDEBUG("Failed parsing address");
+		RETURN_MODULE_FAIL;
+	}
+
+	ippool_action_print(request, POOL_ACTION_RELEASE, L_DBG_LVL_2, &env->pool_name,
+			    &env->requested_address, &env->owner, &env->gateway_id, 0);
+	switch (redis_ippool_release(inst, request, &env->pool_name, &ip, &env->owner)) {
+	case IPPOOL_RCODE_SUCCESS:
+		RDEBUG2("IP address \"%pV\" released", &env->requested_address);
+		RETURN_MODULE_UPDATED;
+
+	/*
+	 *	It's useful to be able to identify the 'not found' case
+	 *	as we can relay to a server where the IP address might
+	 *	be found.  This extremely useful for migrations.
+	 */
+	case IPPOOL_RCODE_NOT_FOUND:
+		REDEBUG("Requested IP address \"%pV\" is not a member of the specified pool",
+			&env->requested_address);
+		RETURN_MODULE_NOTFOUND;
+
+	case IPPOOL_RCODE_DEVICE_MISMATCH:
+		REDEBUG("Requested IP address' \"%pV\" lease allocated to another device",
+			&env->requested_address);
+		RETURN_MODULE_INVALID;
+
+	default:
+		RETURN_MODULE_FAIL;
+	}
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_bulk_release(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_bulk_release(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+							 request_t *request)
 {
-	return mod_action(p_result, mctx, request, POOL_ACTION_BULK_RELEASE);
+	RDEBUG2("Bulk release not yet implemented");
+	RETURN_MODULE_NOOP;
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
