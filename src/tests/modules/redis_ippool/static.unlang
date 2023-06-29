@@ -41,9 +41,8 @@ if (!(&reply.Session-Timeout == 30)) {
 #  Check that renewal does not mess with static IP
 #
 &Framed-IP-Address := &reply.Framed-IP-Address
-&control.IP-Pool.Action := Renew
 
-redis_ippool {
+redis_ippool.renew {
 	invalid = 1
 }
 
@@ -64,9 +63,7 @@ if (!(&reply.Session-Timeout == 60)) {
 #
 #  Check that releasing does not mess with static IP
 #
-&control.IP-Pool.Action := Release
-
-redis_ippool {
+redis_ippool.release {
 	invalid = 1
 }
 if (!(updated)) {

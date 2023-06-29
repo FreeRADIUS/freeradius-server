@@ -62,18 +62,15 @@ if ("%(redis:TTL {%{control.IP-Pool.Name}}:device:%{Calling-Station-Id})" < 20) 
 #  Check that renewal still works as we are within the exipiry time
 #
 &Framed-IP-Address := &reply.Framed-IP-Address
-&control.IP-Pool.Action := Renew
 
-redis_ippool {
+redis_ippool.renew {
 	invalid = 1
 }
 
 #
 #  Check that releasing now frees
 #
-&control.IP-Pool.Action := Release
-
-redis_ippool {
+redis_ippool.release {
 	invalid = 1
 }
 if (!updated) {
@@ -106,8 +103,7 @@ if ("%(redis:ZSCORE {%{control.IP-Pool.Name}%}:pool %{reply.Framed-IP-Address})"
 &request -= &Framed-IP-Address[*]
 &Calling-Station-Id := '00:11:22:33:44:55'
 
-&control.IP-Pool.Action := Allocate
-redis_ippool {
+redis_ippool.allocate {
 	invalid = 1
 }
 

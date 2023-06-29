@@ -156,42 +156,6 @@ static const call_method_env_t redis_ippool_method_env = {
 	.env = redis_ippool_call_env
 };
 
-static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
-
-extern fr_dict_autoload_t rlm_redis_ippool_dict[];
-fr_dict_autoload_t rlm_redis_ippool_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
-};
-
-static fr_dict_attr_t const *attr_pool_action;
-static fr_dict_attr_t const *attr_acct_status_type;
-
-extern fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[];
-fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
-	{ .out = &attr_pool_action, .name = "IP-Pool.Action", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ NULL }
-};
-
-static fr_value_box_t const	*enum_acct_status_type_start;
-static fr_value_box_t const	*enum_acct_status_type_interim_update;
-static fr_value_box_t const	*enum_acct_status_type_stop;
-static fr_value_box_t const	*enum_acct_status_type_on;
-static fr_value_box_t const	*enum_acct_status_type_off;
-
-extern fr_dict_enum_autoload_t rlm_redis_ippool_dict_enum[];
-fr_dict_enum_autoload_t rlm_redis_ippool_dict_enum[] = {
-	{ .out = &enum_acct_status_type_start, .name = "Start", .attr = &attr_acct_status_type },
-	{ .out = &enum_acct_status_type_interim_update, .name = "Interim-Update", .attr = &attr_acct_status_type },
-	{ .out = &enum_acct_status_type_interim_update, .name = "Stop", .attr = &attr_acct_status_type},
-	{ .out = &enum_acct_status_type_on, .name = "Accounting-On", .attr = &attr_acct_status_type },
-	{ .out = &enum_acct_status_type_off, .name = "Accounting-Off", .attr = &attr_acct_status_type},
-	{ NULL }
-};
-
 #define EOL "\n"
 
 /** Lua script for allocating new leases
@@ -1187,100 +1151,24 @@ static unlang_action_t mod_action(rlm_rcode_t *p_result, module_ctx_t const *mct
 	}
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	fr_pair_t	*vp;
-
-	/*
-	 *	IP-Pool.Action override
-	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_pool_action);
-	if (vp) return mod_action(p_result, mctx, request, vp->vp_uint32);
-
-	/*
-	 *	Otherwise, guess the action by Acct-Status-Type
-	 */
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_acct_status_type);
-	if (!vp) {
-		RDEBUG2("Couldn't find &request.Acct-Status-Type or &control.IP-Pool.Action, doing nothing...");
-		RETURN_MODULE_NOOP;
-	}
-
-	if ((vp->vp_uint32 == enum_acct_status_type_start->vb_uint32) ||
-	    (vp->vp_uint32 == enum_acct_status_type_interim_update->vb_uint32)) {
-		return mod_action(p_result, mctx, request, POOL_ACTION_UPDATE);
-
-	} else if (vp->vp_uint32 == enum_acct_status_type_stop->vb_uint32) {
-		return mod_action(p_result, mctx, request, POOL_ACTION_RELEASE);
-
-	} else if ((vp->vp_uint32 == enum_acct_status_type_on->vb_uint32) ||
-		   (vp->vp_uint32 == enum_acct_status_type_off->vb_uint32)) {
-		return mod_action(p_result, mctx, request, POOL_ACTION_BULK_RELEASE);
-
-	}
-
-	RETURN_MODULE_NOOP;
-}
-
 static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	fr_pair_t	*vp;
-
-	/*
-	 *	Unless it's overridden the default action is to allocate
-	 *	when called in Post-Auth.
-	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_pool_action);
-	return mod_action(p_result, mctx, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
-}
-
-static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	fr_pair_t	*vp;
-	ippool_action_t	action = POOL_ACTION_ALLOCATE;
-
-	/*
-	 *	Unless it's overridden the default action is to allocate
-	 *	when called in Post-Auth.
-	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_pool_action);
-	if (vp) {
-		if ((vp->vp_uint32 > 0) && (vp->vp_uint32 <= POOL_ACTION_BULK_RELEASE)) {
-			action = vp->vp_uint32;
-
-		} else {
-			RWDEBUG("Ignoring invalid action %d", vp->vp_uint32);
-			RETURN_MODULE_NOOP;
-		}
-	}
-
-	return mod_action(p_result, mctx, request, action);
+	return mod_action(p_result, mctx, request, POOL_ACTION_ALLOCATE);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	fr_pair_t	*vp;
-
-	/*
-	 *	Unless it's overridden the default action is to update
-	 *	when called by DHCP request
-	 */
-
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_pool_action);
-	return mod_action(p_result, mctx, request, vp ? vp->vp_uint32 : POOL_ACTION_UPDATE);
+	return mod_action(p_result, mctx, request, POOL_ACTION_UPDATE);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	fr_pair_t	*vp;
+	return mod_action(p_result, mctx, request, POOL_ACTION_RELEASE);
+}
 
-	/*
-	 *	Unless it's overridden the default action is to release
-	 *	when called by DHCP release
-	 */
-
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_pool_action);
-	return mod_action(p_result, mctx, request, vp ? vp->vp_uint32 : POOL_ACTION_RELEASE);
+static unlang_action_t CC_HINT(nonnull) mod_bulk_release(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	return mod_action(p_result, mctx, request, POOL_ACTION_BULK_RELEASE);
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
@@ -1350,7 +1238,15 @@ module_rlm_t rlm_redis_ippool = {
 		 */
 		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_alloc,
 		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "accounting",	.name2 = "start",		.method = mod_update,
+		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "accounting",	.name2 = "alive",		.method = mod_update,
+		  .method_env = &redis_ippool_method_env },
 		{ .name1 = "accounting",	.name2 = "stop",		.method = mod_release,
+		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "accounting",	.name2 = "accounting-on",	.method = mod_bulk_release,
+		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "accounting",	.name2 = "accounting-off",	.method = mod_bulk_release,
 		  .method_env = &redis_ippool_method_env },
 
 		/*
@@ -1374,9 +1270,21 @@ module_rlm_t rlm_redis_ippool = {
 		 */
 		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_update,
 		  .method_env = &redis_ippool_method_env },
-		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting,
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_alloc,
 		  .method_env = &redis_ippool_method_env },
-		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth,
+
+		/*
+		 *	Named methods matching module operations
+		 */
+		{ .name1 = "allocate",		.name2 = CF_IDENT_ANY,		.method = mod_alloc,
+		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "update",		.name2 = CF_IDENT_ANY,		.method = mod_update,
+		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "renew",		.name2 = CF_IDENT_ANY,		.method = mod_update,
+		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "release",		.name2 = CF_IDENT_ANY,		.method = mod_release,
+		  .method_env = &redis_ippool_method_env },
+		{ .name1 = "bulk-release",	.name2 = CF_IDENT_ANY,		.method = mod_bulk_release,
 		  .method_env = &redis_ippool_method_env },
 		MODULE_NAME_TERMINATOR
 	}

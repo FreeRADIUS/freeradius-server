@@ -28,9 +28,8 @@ if (!(&reply.Framed-IP-Address == 192.168.0.1)) {
 #  Release the IP address
 #
 &Framed-IP-Address := &reply.Framed-IP-Address
-&control.IP-Pool.Action := Release
 
-redis_ippool {
+redis_ippool.release {
 	invalid = 1
 }
 if (!(updated)) {
@@ -74,9 +73,8 @@ if (%(integer:%{Tmp-Date-0}) - %(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{r
 #  Release the IP address again (should still be fine)
 #
 &Framed-IP-Address := &reply.Framed-IP-Address
-&control.IP-Pool.Action := Release
 
-redis_ippool {
+redis_ippool.release {
 	invalid = 1
 }
 if (updated) {

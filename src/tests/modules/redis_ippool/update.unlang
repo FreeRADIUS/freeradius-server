@@ -37,9 +37,8 @@ if !("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} gatew
 # 6. Verify that the lease time is extended
 &Framed-IP-Address := &reply.Framed-IP-Address
 &NAS-IP-Address := 127.0.0.2
-&control.IP-Pool.Action := Renew
 
-redis_ippool
+redis_ippool.renew
 if (!updated) {
 	test_fail
 }
@@ -84,7 +83,7 @@ if !(&reply.IP-Pool.Range && (&reply.IP-Pool.Range == '192.168.0.0')) {
 # Change the ip address to one that doesn't exist in the pool and check we *can't* update it
 &Framed-IP-Address := 192.168.3.1
 
-redis_ippool {
+redis_ippool.renew {
 	invalid = 1
 }
 # 14.
@@ -96,7 +95,7 @@ if (!notfound) {
 # 15. Now change the calling station ID and check that we *can't* update the lease
 &Calling-Station-ID := 'naughty'
 
-redis_ippool {
+redis_ippool.renew {
 	invalid = 1
 }
 if (!invalid) {
