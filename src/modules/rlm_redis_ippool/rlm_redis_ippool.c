@@ -454,18 +454,18 @@ static char lua_release_cmd[] =
 	"found = redis.call('HGET', address_key, 'device')" EOL				/* 7 */
 	"if not found then" EOL								/* 8 */
 	"  return { " STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) "}" EOL			/* 9 */
-	"end" EOL									/* 11 */
-	"if found and found ~= ARGV[3] then" EOL					/* 12 */
-	"  return { " STRINGIFY(_IPPOOL_RCODE_DEVICE_MISMATCH) ", found }" EOL		/* 13 */
-	"end" EOL									/* 14 */
+	"end" EOL									/* 10 */
+	"if found and found ~= ARGV[3] then" EOL					/* 11 */
+	"  return { " STRINGIFY(_IPPOOL_RCODE_DEVICE_MISMATCH) ", found }" EOL		/* 12 */
+	"end" EOL									/* 13 */
 
 	/*
 	 *	Set expiry time to now() - 1
 	 */
-	"pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL			/* 15 */
-	"found = tonumber(redis.call('ZSCORE', pool_key, ARGV[2]))" EOL			/* 16 */
-	"local static = found > " STRINGIFY(IPPOOL_STATIC_BIT) EOL			/* 17 */
-	"redis.call('ZADD', pool_key, 'XX', ARGV[1] - 1 + (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0), ARGV[2])" EOL		/* 18 */
+	"pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL			/* 14 */
+	"found = tonumber(redis.call('ZSCORE', pool_key, ARGV[2]))" EOL			/* 15 */
+	"local static = found > " STRINGIFY(IPPOOL_STATIC_BIT) EOL			/* 16 */
+	"redis.call('ZADD', pool_key, 'XX', ARGV[1] - 1 + (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0), ARGV[2])" EOL		/* 17 */
 
 	/*
 	 *	Remove the association between the device and a lease
