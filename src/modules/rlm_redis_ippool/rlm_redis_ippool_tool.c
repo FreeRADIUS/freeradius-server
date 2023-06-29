@@ -189,6 +189,68 @@ static char lua_release_cmd[] =
 	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. found)" EOL	/* 11 */
 	"return 1";									/* 12 */
 
+/** Lua script for assigning a static lease
+ *
+ * - KEYS[1] The pool name.
+ * - ARGV[1] THE ip address to create a static assignment for.
+ * - ARGV[2] The owner to assign the static lease to.
+ * - ARGV[3] The range identifier.
+ * - ARGV[4] Wall time (seconds since epoch)
+ *
+ * Checks whether the IP already has a static assignment, and
+ * whether the owner is already associated with a different IP.
+ *
+ * If check pass, sets the static flag on the IP entry in the ZSET and
+ * creates the association between the IP and the owner.
+ *
+ * Returns
+ *  - 0 if no assignment is made.
+ *  - 1 if the IP assignment is made.
+ */
+static char lua_assign_cmd[] =
+	"local pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL			/* 1 */
+	"local owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[2]" EOL	/* 2 */
+	"local ip_key = '{' .. KEYS[1]..'}:"IPPOOL_ADDRESS_KEY":' .. ARGV[1]" EOL	/* 3 */
+
+	/*
+	 *	Check the address doesn't already have a static assignment.
+	 */
+	"local expires = tonumber(redis.call('ZSCORE', pool_key, ARGV[1]))" EOL		/* 4 */
+	"if expires and expires >= " STRINGIFY(IPPOOL_STATIC_BIT) " then" EOL		/* 5 */
+	"  return 0" EOL								/* 6 */
+	"end" EOL									/* 7 */
+
+	/*
+	 *	Check current assignment for device.
+	 */
+	"local found = redis.call('GET', owner_key)" EOL				/* 8 */
+	"if found and found ~= ARGV[1] then" EOL					/* 9 */
+	"  return 0" EOL								/* 10 */
+	"end" EOL									/* 11 */
+
+	/*
+	 *	If expires is in the future, check it is not
+	 *	another owner.
+	 */
+	"if expires and expires > tonumber(ARGV[4]) then" EOL				/* 12 */
+	"  found = redis.call('HGET', ip_key, 'device')"				/* 13 */
+	"  if found and found ~= ARGV[2] then" EOL					/* 14 */
+	"    return 0" EOL								/* 15 */
+	"  end" EOL									/* 16 */
+	"end" EOL									/* 17 */
+
+	/*
+	 *	All checks passed - set the assignment.
+	 */
+	"expires = (expires or 0) + " STRINGIFY(IPPOOL_STATIC_BIT) EOL			/* 18 */
+	"redis.call('ZADD', pool_key, 'CH', expires, ARGV[1])" EOL			/* 19 */
+	"redis.call('SET', owner_key, ARGV[1])" EOL					/* 20 */
+	"redis.call('HSET', ip_key, 'device', ARGV[2], 'counter', 0)" EOL		/* 21 */
+	"if ARGV[3] then" EOL								/* 22 */
+	"  redis.call('HSET', ip_key, range, ARGV[3])" EOL				/* 23 */
+	"end" EOL									/* 24 */
+	"return 1";									/* 25 */
+
 /** Lua script for un-assigning a static lease
  *
  * - KEYS[1] The pool name.
@@ -202,8 +264,8 @@ static char lua_release_cmd[] =
  * Will do nothing if the static assignment does not exist or the IP and device do not match.
  *
  * Returns
- * - 0 if no ip addresses were removed.
- * - 1 if an ip address was removed.
+ * - 0 if no ip addresses were unassigned.
+ * - 1 if an ip address was unassigned.
  */
 static char lua_unassign_cmd[] =
 	"local found" EOL								/* 1 */
@@ -775,11 +837,9 @@ static int driver_modify_lease(void *out, void *instance, ippool_tool_operation_
 static int _driver_assign_lease_process(void *out, UNUSED fr_ipaddr_t const *ipaddr, redisReply const *reply)
 {
 	uint64_t *modified = out;
-	if (reply->type != REDIS_REPLY_ARRAY) return -1;
+	if (reply->type != REDIS_REPLY_INTEGER) return -1;
 
-	if ((reply->elements > 0) && (reply->element[0]->type == REDIS_REPLY_INTEGER)) {
-		*modified += reply->element[0]->integer;
-	}
+	*modified += reply->integer;
 	return 0;
 }
 
@@ -792,41 +852,17 @@ static int _driver_assign_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_red
 				     fr_ipaddr_t *ipaddr, uint8_t prefix, void *uctx)
 {
 	ippool_tool_owner_t	*owner = uctx;
-	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
-	uint8_t		*key_p = key;
 	char		ip_buff[FR_IPADDR_PREFIX_STRLEN];
+	fr_time_t	now;
 
-	uint8_t		ip_key[IPPOOL_MAX_IP_KEY_SIZE];
-	uint8_t		*ip_key_p = ip_key;
-
-	uint8_t		owner_key[IPPOOL_MAX_OWNER_KEY_SIZE];
-	uint8_t		*owner_key_p = owner_key;
-
-	int		enqueued = 0;
-
-	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
-	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
-	IPPOOL_BUILD_OWNER_KEY(owner_key, owner_key_p, key_prefix, key_prefix_len, owner->owner);
+	now = fr_time();
 
 	DEBUG("Assigning address %s to owner %s", ip_buff, owner->owner);
 
-	redisAppendCommand(conn->handle, "MULTI");
-	enqueued++;
-	redisAppendCommand(conn->handle, "ZADD %b CH %"PRIu64" %s", key, key_p - key, IPPOOL_STATIC_BIT, ip_buff);
-	enqueued++;
-	redisAppendCommand(conn->handle, "SET %b %s", owner_key, owner_key_p - owner_key, ip_buff);
-	enqueued++;
-	redisAppendCommand(conn->handle, "HSET %b device %s counter 0", ip_key, ip_key_p - ip_key, owner->owner);
-	enqueued++;
-	if (range) {
-		redisAppendCommand(conn->handle, "HSET %b range %b", ip_key, ip_key_p - ip_key, range, range_len);
-		enqueued++;
-	}
-	redisAppendCommand(conn->handle, "EXEC");
-	enqueued++;
-
-	return enqueued;
+	redisAppendCommand(conn->handle, "EVAL %s 1 %b %s %b %b %i", lua_assign_cmd, key_prefix, key_prefix_len,
+			   ip_buff, owner->owner, strlen(owner->owner), range, range_len, fr_time_to_sec(now));
+	return 1;
 }
 
 /** Add static lease assignments
