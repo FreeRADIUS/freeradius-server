@@ -1,0 +1,50 @@
+# This file is automatically changed based on the commands given in run_test.sh.
+# Comments/lines with a comment starting in '###' are used/changed by the script,
+# modifying them may break functionality and changes may be undone!
+version: "3"
+
+networks:
+  test-net: 
+
+services:
+  # Does not run radiusd; this container is run first to make sure the shared folder is prepared for entry
+  tasks:
+    image: freeradius-tls-test ###image
+    build: https://github.com/FreeRADIUS/freeradius-server.git#v3.2.x:scripts/docker/ubuntu22 ###build
+    entrypoint: bash -c "rm /test/containers/*"
+    volumes:
+      - /home/del/Projects/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
+  
+  proxy:
+    depends_on:
+      - home
+      - client
+    image: freeradius-tls-test ###image
+    build: https://github.com/FreeRADIUS/freeradius-server.git#v3.2.x:scripts/docker/ubuntu22 ###build
+    entrypoint: bash /test/proxy-entrypoint.sh
+    networks:
+      - test-net
+    volumes:
+      - /home/del/Projects/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
+
+  home:
+    depends_on:
+      - tasks
+    image: freeradius-tls-test ###image
+    build: https://github.com/FreeRADIUS/freeradius-server.git#v3.2.x:scripts/docker/ubuntu22 ###build
+    entrypoint: bash /test/home-entrypoint.sh
+    networks:
+      - test-net
+    volumes:
+      - /home/del/Projects/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
+
+  client:
+    depends_on:
+      - tasks
+    image: freeradius-tls-test ###image
+    build: https://github.com/FreeRADIUS/freeradius-server.git#v3.2.x:scripts/docker/ubuntu22 ###build
+    entrypoint: bash /test/client-entrypoint.sh
+    networks:
+      - test-net
+    volumes:
+      - /home/del/Projects/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
