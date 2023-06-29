@@ -99,7 +99,7 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/** Call environment used when calling redis_ippool module methods.
+/** Call environment used when calling redis_ippool allocate method.
  *
  */
 typedef struct {
@@ -125,35 +125,147 @@ typedef struct {
 	tmpl_t		*range_attr;			//!< Attribute to write the range ID to.
 
 	tmpl_t		*expiry_attr;			//!< Time at which the lease will expire.
-} redis_ippool_call_env_t;
+} redis_ippool_alloc_call_env_t;
 
-static const call_env_t redis_ippool_call_env[] = {
-	{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, redis_ippool_call_env_t, pool_name,
+/** Call environment used when calling redis_ippool update method.
+ *
+ */
+typedef struct {
+	fr_value_box_t	pool_name;			//!< Name of the pool we're allocating IP addresses from.
+
+	fr_value_box_t	lease_time;			//!< How long an IP address should be allocated for.
+
+	fr_value_box_t	owner;				//!< Unique lease owner identifier.  Could be mac-address
+							///< or a combination of User-Name and something
+							///< unique to the device.
+
+	fr_value_box_t	gateway_id;			//!< Gateway identifier, usually NAS-Identifier or
+							///< Option 82 gateway.  Used for bulk lease cleanups.
+
+	fr_value_box_t	requested_address;		//!< Attribute to read the IP for renewal from.
+
+	tmpl_t		*allocated_address_attr;	//!< Attribute to populate with allocated IP.
+
+	tmpl_t		*range_attr;			//!< Attribute to write the range ID to.
+
+	tmpl_t		*expiry_attr;			//!< Time at which the lease will expire.
+} redis_ippool_update_call_env_t;
+
+/** Call environment used when calling redis_ippool release method.
+ *
+ */
+typedef struct {
+	fr_value_box_t	pool_name;			//!< Name of the pool we're allocating IP addresses from.
+
+	fr_value_box_t	owner;				//!< Unique lease owner identifier.  Could be mac-address
+							///< or a combination of User-Name and something
+							///< unique to the device.
+
+	fr_value_box_t	gateway_id;			//!< Gateway identifier, usually NAS-Identifier or
+							///< Option 82 gateway.  Used for bulk lease cleanups.
+
+	fr_value_box_t	requested_address;		//!< Attribute to read the IP for renewal from.
+
+} redis_ippool_release_call_env_t;
+
+/** Call environment used when calling redis_ippool bulk release method.
+ *
+ */
+typedef struct {
+	fr_value_box_t	pool_name;			//!< Name of the pool we're allocating IP addresses from.
+
+	fr_value_box_t	gateway_id;			//!< Gateway identifier, usually NAS-Identifier or
+							///< Option 82 gateway.  Used for bulk lease cleanups.
+} redis_ippool_bulk_release_call_env_t;
+
+
+static const call_env_t redis_ippool_alloc_call_env[] = {
+	{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, redis_ippool_alloc_call_env_t, pool_name,
 			     NULL, T_INVALID, true, false, true) },
-	{ FR_CALL_ENV_OFFSET("owner", FR_TYPE_STRING, redis_ippool_call_env_t, owner,
+	{ FR_CALL_ENV_OFFSET("owner", FR_TYPE_STRING, redis_ippool_alloc_call_env_t, owner,
 			     NULL, T_INVALID, true, false, true) },
-	{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, redis_ippool_call_env_t, gateway_id,
+	{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, redis_ippool_alloc_call_env_t, gateway_id,
 			     "", T_SINGLE_QUOTED_STRING, false, true, true ) },
-	{ FR_CALL_ENV_OFFSET("offer_time", FR_TYPE_UINT32, redis_ippool_call_env_t, offer_time,
+	{ FR_CALL_ENV_OFFSET("offer_time", FR_TYPE_UINT32, redis_ippool_alloc_call_env_t, offer_time,
 			     NULL, T_INVALID, false, false, false) },
-	{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, redis_ippool_call_env_t, lease_time,
+	{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, redis_ippool_alloc_call_env_t, lease_time,
 			     NULL, T_INVALID, true, false, false) },
-	{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, redis_ippool_call_env_t, requested_address,
+	{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, redis_ippool_alloc_call_env_t, requested_address,
 			     "%{%{Requested-IP-Address}:-%{Client-IP-Address}}", T_DOUBLE_QUOTED_STRING,
 			     true, true, false) },
-	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("allocated_address_attr", FR_TYPE_ATTRIBUTE, redis_ippool_call_env_t,
+	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("allocated_address_attr", FR_TYPE_ATTRIBUTE, redis_ippool_alloc_call_env_t,
 				       allocated_address_attr, NULL, T_INVALID, true ) },
-	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("range_attr", FR_TYPE_ATTRIBUTE, redis_ippool_call_env_t,
+	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("range_attr", FR_TYPE_ATTRIBUTE, redis_ippool_alloc_call_env_t,
 				       range_attr, "&reply.IP-Pool.Range", T_BARE_WORD, true) },
-	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("expiry_attr", FR_TYPE_ATTRIBUTE, redis_ippool_call_env_t,
+	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("expiry_attr", FR_TYPE_ATTRIBUTE, redis_ippool_alloc_call_env_t,
 				       expiry_attr, NULL, T_INVALID, false) },
 	CALL_ENV_TERMINATOR
 };
 
-static const call_method_env_t redis_ippool_method_env = {
-	.inst_size = sizeof(redis_ippool_call_env_t),
-	.inst_type = "redis_ippool_call_env_t",
-	.env = redis_ippool_call_env
+static const call_env_t redis_ippool_update_call_env[] = {
+	{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, redis_ippool_update_call_env_t, pool_name,
+			     NULL, T_INVALID, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("owner", FR_TYPE_STRING, redis_ippool_update_call_env_t, owner,
+			     NULL, T_INVALID, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, redis_ippool_update_call_env_t, gateway_id,
+			     "", T_SINGLE_QUOTED_STRING, false, true, true ) },
+	{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, redis_ippool_update_call_env_t, lease_time,
+			     NULL, T_INVALID, true, false, false) },
+	{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, redis_ippool_update_call_env_t, requested_address,
+			     "%{%{Requested-IP-Address}:-%{Client-IP-Address}}", T_DOUBLE_QUOTED_STRING,
+			     true, true, false) },
+	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("allocated_address_attr", FR_TYPE_ATTRIBUTE, redis_ippool_update_call_env_t,
+				       allocated_address_attr, NULL, T_INVALID, true ) },
+	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("range_attr", FR_TYPE_ATTRIBUTE, redis_ippool_update_call_env_t,
+				       range_attr, "&reply.IP-Pool.Range", T_BARE_WORD, true) },
+	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("expiry_attr", FR_TYPE_ATTRIBUTE, redis_ippool_update_call_env_t,
+				       expiry_attr, NULL, T_INVALID, false) },
+	CALL_ENV_TERMINATOR
+};
+
+static const call_env_t redis_ippool_release_call_env[] = {
+	{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, redis_ippool_release_call_env_t, pool_name,
+			     NULL, T_INVALID, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("owner", FR_TYPE_STRING, redis_ippool_release_call_env_t, owner,
+			     NULL, T_INVALID, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, redis_ippool_release_call_env_t, gateway_id,
+			     "", T_SINGLE_QUOTED_STRING, false, true, true ) },
+	{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, redis_ippool_release_call_env_t, requested_address,
+			     "%{%{Requested-IP-Address}:-%{Client-IP-Address}}", T_DOUBLE_QUOTED_STRING,
+			     true, true, false) },
+	CALL_ENV_TERMINATOR
+};
+
+static const call_env_t redis_ippool_bulk_release_call_env[] = {
+	{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, redis_ippool_bulk_release_call_env_t, pool_name,
+			     NULL, T_INVALID, true, false, true) },
+	{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, redis_ippool_bulk_release_call_env_t, gateway_id,
+			     "", T_SINGLE_QUOTED_STRING, false, true, true ) },
+	CALL_ENV_TERMINATOR
+};
+
+static const call_method_env_t redis_ippool_alloc_method_env = {
+	.inst_size = sizeof(redis_ippool_alloc_call_env_t),
+	.inst_type = "redis_ippool_alloc_call_env_t",
+	.env = redis_ippool_alloc_call_env
+};
+
+static const call_method_env_t redis_ippool_update_method_env = {
+	.inst_size = sizeof(redis_ippool_update_call_env_t),
+	.inst_type = "redis_ippool_update_call_env_t",
+	.env = redis_ippool_update_call_env
+};
+
+static const call_method_env_t redis_ippool_release_method_env = {
+	.inst_size = sizeof(redis_ippool_release_call_env_t),
+	.inst_type = "redis_ippool_release_call_env_t",
+	.env = redis_ippool_release_call_env
+};
+
+static const call_method_env_t redis_ippool_bulk_release_method_env = {
+	.inst_size = sizeof(redis_ippool_bulk_release_call_env_t),
+	.inst_type = "redis_ippool_bulk_release_call_env_t",
+	.env = redis_ippool_bulk_release_call_env
 };
 
 #define EOL "\n"
@@ -606,7 +718,7 @@ finish:
  *
  */
 static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, request_t *request,
-					    redis_ippool_call_env_t *env, uint32_t lease_time)
+					    redis_ippool_alloc_call_env_t *env, uint32_t lease_time)
 {
 	struct			timeval now;
 	redisReply		*reply = NULL;
@@ -788,7 +900,7 @@ finish:
  *
  */
 static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, request_t *request,
-					  redis_ippool_call_env_t *env,
+					  redis_ippool_update_call_env_t *env,
 					  fr_ipaddr_t *ip,
 					  fr_value_box_t const *owner,
 					  fr_value_box_t const *gateway_id,
@@ -1013,7 +1125,7 @@ finish:
 static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_redis_ippool_t);
-	redis_ippool_call_env_t		*env = talloc_get_type_abort(mctx->env_data, redis_ippool_call_env_t);
+	redis_ippool_alloc_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_alloc_call_env_t);
 	uint32_t			lease_time;
 
 	CHECK_POOL_NAME
@@ -1043,7 +1155,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_redis_ippool_t);
-	redis_ippool_call_env_t		*env = talloc_get_type_abort(mctx->env_data, redis_ippool_call_env_t);
+	redis_ippool_update_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_update_call_env_t);
 	fr_ipaddr_t			ip;
 
 	CHECK_POOL_NAME
@@ -1112,7 +1224,7 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_redis_ippool_t);
-	redis_ippool_call_env_t		*env = talloc_get_type_abort(mctx->env_data, redis_ippool_call_env_t);
+	redis_ippool_release_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_release_call_env_t);
 	fr_ipaddr_t			ip;
 
 	CHECK_POOL_NAME
@@ -1223,55 +1335,55 @@ module_rlm_t rlm_redis_ippool = {
 		 *	RADIUS specific
 		 */
 		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_alloc,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_alloc_method_env },
 		{ .name1 = "accounting",	.name2 = "start",		.method = mod_update,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_update_method_env },
 		{ .name1 = "accounting",	.name2 = "alive",		.method = mod_update,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_update_method_env },
 		{ .name1 = "accounting",	.name2 = "stop",		.method = mod_release,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_release_method_env },
 		{ .name1 = "accounting",	.name2 = "accounting-on",	.method = mod_bulk_release,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_bulk_release_method_env },
 		{ .name1 = "accounting",	.name2 = "accounting-off",	.method = mod_bulk_release,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_bulk_release_method_env },
 
 		/*
 		 *	DHCPv4
 		 */
 		{ .name1 = "recv",		.name2 = "discover",		.method = mod_alloc,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_alloc_method_env },
 		{ .name1 = "recv",		.name2 = "release",		.method = mod_release,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_release_method_env },
 		{ .name1 = "send",		.name2 = "ack",			.method = mod_update,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_update_method_env },
 
 		/*
 		 *	DHCPv6
 		 */
 		{ .name1 = "recv",		.name2 = "solicit",		.method = mod_alloc,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_alloc_method_env },
 
 		/*
 		 *	Generic
 		 */
 		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_update,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_update_method_env },
 		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_alloc,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_alloc_method_env },
 
 		/*
 		 *	Named methods matching module operations
 		 */
 		{ .name1 = "allocate",		.name2 = CF_IDENT_ANY,		.method = mod_alloc,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_alloc_method_env },
 		{ .name1 = "update",		.name2 = CF_IDENT_ANY,		.method = mod_update,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_update_method_env },
 		{ .name1 = "renew",		.name2 = CF_IDENT_ANY,		.method = mod_update,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_update_method_env },
 		{ .name1 = "release",		.name2 = CF_IDENT_ANY,		.method = mod_release,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_release_method_env },
 		{ .name1 = "bulk-release",	.name2 = CF_IDENT_ANY,		.method = mod_bulk_release,
-		  .method_env = &redis_ippool_method_env },
+		  .method_env = &redis_ippool_bulk_release_method_env },
 		MODULE_NAME_TERMINATOR
 	}
 };
