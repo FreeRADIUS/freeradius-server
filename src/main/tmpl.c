@@ -579,6 +579,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 	long num;
 	char *q;
 	tmpl_type_t type = TMPL_TYPE_ATTR;
+	DICT_ATTR const *da;
 
 	value_pair_tmpl_attr_t attr;	/* So we don't fill the tmpl with junk and then error out */
 
@@ -692,6 +693,16 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 
 		goto do_num;
 	}
+
+	/*
+	 *	Canonicalize the attribute.
+	 *
+	 *	We can define multiple names for one attribute.  In
+	 *	which case we only use the canonical name.
+	 */
+	da = dict_attrbyvalue(attr.da->attr, attr.da->vendor);
+	if (attr.da != da) attr.da = da;
+
 
 	/*
 	 *	The string MIGHT have a tag.
