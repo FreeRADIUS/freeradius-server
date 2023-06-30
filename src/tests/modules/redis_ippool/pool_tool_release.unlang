@@ -3,7 +3,7 @@
 #
 $INCLUDE cluster_reset.inc
 
-&control.IP-Pool.Name := 'test_update'
+&control.IP-Pool.Name := 'test_tool_release'
 
 #
 #  Add IP addresses
