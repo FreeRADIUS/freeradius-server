@@ -21,15 +21,6 @@ $(BUILD_DIR)/tests/keywords:
 	@mkdir -p $@
 
 #
-#  Find which input files are needed by the tests
-#  strip out the ones which exist
-#  move the filenames to the build directory.
-#
-BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(KEYWORD_FILES)))
-BOOTSTRAP_NEEDS	 := $(filter-out $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
-BOOTSTRAP	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
-
-#
 #  For each file, look for precursor test.
 #  Ensure that each test depends on its precursors.
 #
@@ -49,16 +40,34 @@ $(BUILD_DIR)/tests/keywords/depends.mk: $(addprefix $(DIR)/,$(KEYWORD_FILES)) | 
 	done
 
 #
-#  These ones get copied over from the default input
+#  For sheer laziness, allow "make test.keywords.foo"
 #
-$(BOOTSTRAP): $(DIR)/default-input.attrs | $(BUILD_DIR)/tests/keywords
-	@cp $< $@
+define KEYWORD_TEST
+tests.keywords.${1}: $(addprefix $(OUTPUT)/,${1})
+
+tests.keywords.help: TEST_KEYWORDS_HELP += tests.keywords.${1}
+
+OUTPUT := $(BUILD_DIR)/tests/keywords
 
 #
-#  These ones get copied over from their original files
+#  Create the input attrs, either from the test-specific input,
+#  or from the default input.
 #
-$(BUILD_DIR)/tests/keywords/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/keywords
-	@cp $< $@
+$(OUTPUT)/${1}: $(OUTPUT)/${1}.attrs | $(dir $(OUTPUT)/${1})
+$(OUTPUT)/${1}.attrs: | $(dir $(OUTPUT)/${1})
+
+ifneq "$(wildcard src/tests/keywords/${1}.attrs)" ""
+$(OUTPUT)/${1}.attrs: src/tests/keywords/${1}.attrs
+else
+$(OUTPUT)/${1}.attrs: src/tests/keywords/default-input.attrs
+endif
+	@cp $$< $$@
+ifeq "${1}" "mschap"
+$(OUTPUT)/${1}: rlm_mschap.la
+endif
+
+endef
+$(foreach x,$(KEYWORD_FILES),$(eval $(call KEYWORD_TEST,$x)))
 
 #
 #  Don't auto-remove the files copied by the rule just above.
