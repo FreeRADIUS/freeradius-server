@@ -778,7 +778,7 @@ finish:
 	 *	sure what we were passed is valid.
 	 */
 	memcpy(&vpt->data.attribute, &attr, sizeof(vpt->data.attribute));
-	if ((vpt->type == TMPL_TYPE_ATTR) && attr.da->flags.is_unknown) {
+	if ((vpt->type == TMPL_TYPE_ATTR) && attr.da && attr.da->flags.is_unknown) {
 		vpt->tmpl_da = (DICT_ATTR *)&vpt->data.attribute.unknown.da;
 	}
 
