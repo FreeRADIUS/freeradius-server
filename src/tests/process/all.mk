@@ -35,7 +35,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #  local dictionaries from "./dictionary".
 #
 src/tests/process/share/%: ${top_srcdir}/share/dictionary/%
-	@ln -sf $< $@
+	$(Q)ln -sf $< $@
 
 ifneq "$(OPENSSL_LIBS)" ""
 PROCESS_DICT_TLS := $(DIR)/share/tls
@@ -92,8 +92,8 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module $(DIR)/unit_test_module.c
 	$(eval PROTOCOL_NAME=$(lastword $(subst /, ,$(dir $(abspath $@)))))
 	$(eval CMD:=PROCESS=$< PROTOCOL=$(dir $<) $(TEST_BIN)/unit_test_module $(PROCESS_ARGS) -r "$@" -xx)
 	@echo PROCESS-TEST $(PROTOCOL_NAME) $(notdir $@)
-	@mkdir -p $(dir $@)
-	@if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
+	$(Q)mkdir -p $(dir $@)
+	$(Q)if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		cat $@.log; \
 		echo "# $@.log"; \
 		echo $(CMD); \
@@ -101,7 +101,7 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module $(DIR)/unit_test_module.c
 	fi
 
 $(TEST):
-	@touch $(BUILD_DIR)/tests/$@
+	$(Q)touch $(BUILD_DIR)/tests/$@
 
 $(TEST).help:
-	@echo make $(TEST_PROCESS_HELP)
+	$(Q)echo make $(TEST_PROCESS_HELP)
