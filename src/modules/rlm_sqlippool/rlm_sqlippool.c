@@ -486,7 +486,7 @@ static unlang_action_t do_logging(rlm_rcode_t *p_result, UNUSED rlm_sqlippool_t 
 	if (!str || !*str) RETURN_MODULE_RCODE(rcode);
 
 	MEM(pair_append_request(&vp, attr_module_success_message) == 0);
-	if (xlat_aeval(request, &expanded, request, str, NULL, NULL) < 0) {
+	if (xlat_aeval(vp, &expanded, request, str, NULL, NULL) < 0) {
 		pair_delete_request(vp);
 		RETURN_MODULE_RCODE(rcode);
 	}
