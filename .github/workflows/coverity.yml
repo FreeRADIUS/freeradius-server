@@ -23,6 +23,11 @@ jobs:
           sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
           sudo apt-get update
 
+      # Remove pre-installed package which conflicts with dependency installation
+      - name: Remove package conflicts
+        run: |
+          sudo apt-get remove -y libhashkit2
+
       - name: Install build dependencies
         run: |
           sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
