@@ -6,9 +6,17 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	* Update EAP module pre_proxy checks to make them less restrictive.
 	  This prevents the "middle box" effect from affecting future traffic.
 	* Support "interface = ..." on OSX and other *BSD which have IP_BOUND_IF.
+	* Many fixes and updates for docker images
+	* add dpsk module.  See mods-available/dpsk
+	* Print out what cause the TLS operations to be made, such as the EAP
+	  method name (peap, ttls, etc), or RADIUS/TLS listen / proxy socket.
 
 	Bug fixes
 	* Fix corner case with empty defaults in rlm_files.  Fixes #5035
+	* When we have multiple attributes of the same name, always use the
+	  canonical attribute
+	* Make FreeRADIUS-Server-EMA* attributes work again for home server
+	  exponential moving average statistics.
 
 FreeRADIUS 3.2.3 Fri 26 May 2023 12:00:00 EDT urgency=low
 	Configuration changes
