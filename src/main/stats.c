@@ -991,14 +991,14 @@ void radius_stats_ema(fr_stats_ema_t *ema,
 	}
 
 
-	tdiff = start->tv_sec;
-	tdiff -= end->tv_sec;
+	tdiff = end->tv_sec;
+	tdiff -= start->tv_sec;
 
 	micro = (int) tdiff;
 	if (micro > 40) micro = 40; /* don't overflow 32-bit ints */
 	micro *= USEC;
-	micro += start->tv_usec;
-	micro -= end->tv_usec;
+	micro += end->tv_usec;
+	micro -= start->tv_usec;
 
 	micro *= EMA_SCALE;
 
