@@ -424,13 +424,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	if (xlat_aeval(request, &expanded, request, query, NULL, NULL) < 0) {
 		RETURN_MODULE_FAIL;
 	}
-	talloc_free(expanded);
 
 	if (sscanf(expanded, "%" PRIu64, &counter) != 1) {
 		RDEBUG2("No integer found in result string \"%s\".  May be first session, setting counter to 0",
 			expanded);
 		counter = 0;
 	}
+
+	talloc_free(expanded);
 
 	/*
 	 *	Check if check item > counter
