@@ -2701,7 +2701,7 @@ static int command_stats_socket(rad_listen_t *listener, int argc, char *argv[])
 	return command_print_stats(listener, &sock->stats, auth, 0);
 }
 
-static int command_stats_pool(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+static int command_stats_pool(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
 	module_instance_t *mi;

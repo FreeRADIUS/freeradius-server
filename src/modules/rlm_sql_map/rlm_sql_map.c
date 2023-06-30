@@ -32,8 +32,6 @@ RCSID("$Id$")
 
 #include <rlm_sql.h>
 
-#define MAX_QUERY_LEN 2048
-
 typedef struct rlm_sql_map_t {
 	char const	*sql_instance_name;	//!< Instance of SQL module to use,
 						//!< usually just 'sql'.

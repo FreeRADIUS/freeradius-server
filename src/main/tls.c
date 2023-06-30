@@ -3346,8 +3346,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 #if 0
 		ASN1_TIME_print(bio_err, X509_get_notAfter(ctx->current_cert));
-#endif
 		break;
+#endif
 	}
 
 	/*

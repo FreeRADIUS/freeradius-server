@@ -81,7 +81,7 @@ static CONF_PARSER const module_config[] = {
  * @param outlen space available for the output
  * @return length of output generated
  */
-static ssize_t json_encode_xlat(UNUSED void * instance, REQUEST *request, char const *fmt,
+static ssize_t json_encode_xlat(void * instance, REQUEST *request, char const *fmt,
 				      char *out, size_t outlen)
 {
 	rlm_json_t const	*inst = instance;

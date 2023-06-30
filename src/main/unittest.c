@@ -55,7 +55,7 @@ char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #endif
 ;
 
-fr_event_list_t	*el = NULL;
+static fr_event_list_t	*el = NULL;
 
 /*
  *	Static functions.

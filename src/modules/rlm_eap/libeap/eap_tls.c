@@ -166,7 +166,6 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 			/* Should never happen */
 			rad_assert(0);
 			return 0;
-			break;
 		}
 		eaptls_gen_mppe_keys(request,
 				     tls_session->ssl, tls_session->label,
