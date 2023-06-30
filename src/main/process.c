@@ -2865,6 +2865,18 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 #ifdef WITH_STATS
 	/*
+	 *	The average includes our time to receive packets and
+	 *	look them up in the hashes, which should be the same
+	 *	for all packets.
+	 *
+	 *	We update the response time only for the FIRST packet
+	 *	we receive.
+	 */
+	if (request->home_server->ema.window > 0) {
+		radius_stats_ema(&request->home_server->ema, &request->proxy->timestamp, &now);
+	}
+
+	/*
 	 *	Update the proxy listener stats here, because only one
 	 *	thread accesses that at a time.  The home_server and
 	 *	main proxy_*_stats structures are updated once the
