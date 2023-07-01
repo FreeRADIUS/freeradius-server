@@ -701,7 +701,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 	 *	which case we only use the canonical name.
 	 */
 	da = dict_attrbyvalue(attr.da->attr, attr.da->vendor);
-	if (attr.da != da) attr.da = da;
+	if (da && (attr.da != da)) attr.da = da;
 
 
 	/*
