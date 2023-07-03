@@ -292,12 +292,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			 */
 			ret = eaptls_success(handler, 0);
 			goto done;
-		} else {
-			goto phase2;
-//			eaptls_request(handler->eap_ds, tls_session, false);
 		}
-		ret = 1;
-		goto done;
+		goto phase2;
 
 	/*
 	 *	The TLS code is still working on the TLS

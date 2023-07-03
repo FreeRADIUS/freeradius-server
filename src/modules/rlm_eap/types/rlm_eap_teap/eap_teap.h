@@ -42,13 +42,13 @@ RCSIDH(eap_teap_h, "$Id$")
 #define EAP_TEAP_ERR_TUNNEL_COMPROMISED		2001
 #define EAP_TEAP_ERR_UNEXPECTED_TLV		2002
 
+/* intermediate result values also match */
 #define EAP_TEAP_TLV_RESULT_SUCCESS		1
 #define EAP_TEAP_TLV_RESULT_FAILURE		2
 
 typedef enum eap_teap_stage_t {
 	TLS_SESSION_HANDSHAKE = 0,
 	AUTHENTICATION,
-	CRYPTOBIND_CHECK,
 	PROVISIONING,
 	COMPLETE
 } eap_teap_stage_t;
@@ -180,27 +180,24 @@ typedef struct eap_tlv_crypto_binding_tlv_t {
 } CC_HINT(__packed__) eap_tlv_crypto_binding_tlv_t;
 
 typedef enum eap_teap_tlv_type_t {
-	EAP_TEAP_TLV_RESERVED_0 = 0,	// 0
-	EAP_TEAP_TLV_RESERVED_1,  	// 1
-	EAP_TEAP_TLV_RESERVED_2,  	// 2
-	EAP_TEAP_TLV_RESULT,     	// 3
-	EAP_TEAP_TLV_NAK,        	// 4
-	EAP_TEAP_TLV_ERROR,      	// 5
-	EAP_TEAP_TLV_RESERVED6,  	// 6
-	EAP_TEAP_TLV_VENDOR_SPECIFIC,	// 7
-	EAP_TEAP_TLV_REQUEST_ACTION,	// 8
-	EAP_TEAP_TLV_EAP_PAYLOAD,       // 9
-	EAP_TEAP_TLV_INTERMED_RESULT,	// 10
-	EAP_TEAP_TLV_PAC,		// 11
-	EAP_TEAP_TLV_CRYPTO_BINDING,	// 12
-	EAP_TEAP_TLV_RESERVED_13,	// 13
-	EAP_TEAP_TLV_RESERVED_14, 	// 14
-	EAP_TEAP_TLV_RESERVED_15, 	// 15
-	EAP_TEAP_TLV_RESERVED_16,	// 16
-	EAP_TEAP_TLV_RESERVED_17, 	// 17
-	EAP_TEAP_TLV_TRUSTED_ROOT, 	// 18
-	EAP_TEAP_TLV_REQ_ACTION, 	// 19
-	EAP_TEAP_TLV_PKCS,		// 20
+	EAP_TEAP_TLV_RESERVED_0 = 0,		// 0
+	EAP_TEAP_TLV_AUTHORITY,  		// 1
+	EAP_TEAP_TLV_IDENTITY,  		// 2
+	EAP_TEAP_TLV_RESULT,     		// 3
+	EAP_TEAP_TLV_NAK,        		// 4
+	EAP_TEAP_TLV_ERROR,      		// 5
+	EAP_TEAP_TLV_CHANNEL_BINDING,  		// 6
+	EAP_TEAP_TLV_VENDOR_SPECIFIC,		// 7
+	EAP_TEAP_TLV_REQUEST_ACTION,		// 8
+	EAP_TEAP_TLV_EAP_PAYLOAD,       	// 9
+	EAP_TEAP_TLV_INTERMED_RESULT,		// 10
+	EAP_TEAP_TLV_PAC,			// 11
+	EAP_TEAP_TLV_CRYPTO_BINDING,		// 12
+	EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ,	// 13
+	EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP, 	// 14
+	EAP_TEAP_TLV_PKCS7,	 		// 15
+	EAP_TEAP_TLV_PKCS10,			// 16
+	EAP_TEAP_TLV_TRUSTED_ROOT, 		// 17
 	EAP_TEAP_TLV_MAX
 } eap_teap_tlv_type_t;
 
@@ -215,6 +212,10 @@ typedef enum eap_teap_tlv_crypto_binding_tlv_subtype_t {
 	EAP_TEAP_TLV_CRYPTO_BINDING_SUBTYPE_RESPONSE		// 1
 } eap_teap_tlv_crypto_binding_tlv_subtype_t;
 
+typedef struct teap_imck_t {
+	uint8_t		simck[EAP_TEAP_SIMCK_LEN];
+	uint8_t		cmk[EAP_TEAP_CMK_LEN];
+} CC_HINT(__packed__) teap_imck_t;
 typedef struct teap_tunnel_t {
 	VALUE_PAIR	*username;
 	VALUE_PAIR	*state;
@@ -229,10 +230,10 @@ typedef struct teap_tunnel_t {
 	eap_teap_stage_t	stage;
 
 	int			imckc;
-	struct {
-		uint8_t		simck[EAP_TEAP_SIMCK_LEN];
-		uint8_t		cmk[EAP_TEAP_CMK_LEN];
-	} CC_HINT(__packed__)	imck;
+	bool			imck_emsk_available;
+	struct teap_imck_t	imck_msk;
+	struct teap_imck_t	imck_emsk;
+
 	uint8_t			msk[EAP_TEAP_MSK_LEN];
 	uint8_t			emsk[EAP_TEAP_EMSK_LEN];
 
