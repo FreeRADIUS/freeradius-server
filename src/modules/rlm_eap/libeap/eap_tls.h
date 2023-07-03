@@ -63,7 +63,7 @@ int	eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start) CC_HINT(nonnu
 
 
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
-void	TLS_PRF(SSL *ssl, unsigned char const *sec, size_t seclen, struct iovec *iov, size_t iovcnt, unsigned char const *key, size_t keylen);
+void	TLS_PRF(SSL *ssl, unsigned char *sec, size_t seclen, struct iovec *iov, size_t iovcnt, unsigned char *key, size_t keylen);
 #endif
 void	T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed,  unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull(1,3,6));
 void	eaptls_gen_keys_only(REQUEST *request, SSL *s, char const *label, uint8_t const *context, UNUSED size_t context_size, uint8_t *out, size_t outlen);

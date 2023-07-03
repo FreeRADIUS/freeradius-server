@@ -38,9 +38,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/kdf.h>
 
 void TLS_PRF(SSL *ssl,
-	     unsigned char const *sec, size_t seclen,
+	     unsigned char *sec, size_t seclen,
 	     struct iovec *iov, size_t iovcnt,
-	     unsigned char const *key, size_t keylen)
+	     unsigned char *key, size_t keylen)
 {
 	const EVP_MD *md = SSL_CIPHER_get_handshake_digest(SSL_get_current_cipher(ssl));
 	EVP_MD *unconst_md;
