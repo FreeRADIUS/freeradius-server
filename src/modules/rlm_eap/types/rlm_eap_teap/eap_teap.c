@@ -61,7 +61,7 @@ do {\
 	_cbb->eap_type = PW_EAP_TEAP;\
 } while (0)
 
-static const struct teap_imck_t imck_zeros = { 0 };
+static struct teap_imck_t imck_zeros = { 0 };
 
 /**
  * RFC 7170 EAP-TEAP Authentication Phase 1: Key Derivations
@@ -1149,7 +1149,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	uint8_t				mac[EVP_MAX_MD_SIZE];
 	unsigned int			maclen = sizeof(mac);
 	unsigned int			flags;
-	struct teap_imck_t const       	*imck = NULL;
+	struct teap_imck_t	 	*imck = NULL;
 
 	olen = tls_session->outer_tlvs_octets ? talloc_array_length(tls_session->outer_tlvs_octets) : 0;
 	/* FIXME: include client outer TLVs */
