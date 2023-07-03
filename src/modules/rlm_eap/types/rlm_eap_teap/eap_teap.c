@@ -61,6 +61,8 @@ do {\
 	_cbb->eap_type = PW_EAP_TEAP;\
 } while (0)
 
+static const struct teap_imck_t imck_zeros = { 0 };
+
 /**
  * RFC 7170 EAP-TEAP Authentication Phase 1: Key Derivations
  */
@@ -837,8 +839,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 				wrong_length:
 					REDEBUG("Found %s with incorrect length.  Expected %u or %u, got %zu",
 						vp->da->name, CHAP_VALUE_LENGTH, EAPTLS_MPPE_KEY_LEN, vp->vp_length);
-					rcode = RLM_MODULE_INVALID;
-					break;
+					return RLM_MODULE_INVALID;
 				}
 
 				RDEBUGHEX("MSCHAP_MPPE_SEND_KEY [low MSK]", vp->vp_octets, vp->length);
@@ -863,7 +864,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 
 			case PW_MSCHAP2_SUCCESS:
 				RDEBUG("Got %s, tunneling it to the client in a challenge", vp->da->name);
-				rcode = RLM_MODULE_HANDLED;
 				if (t->use_tunneled_reply) {
 					t->authenticated = true;
 					/*
@@ -1149,7 +1149,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	uint8_t				mac[EVP_MAX_MD_SIZE];
 	unsigned int			maclen = sizeof(mac);
 	unsigned int			flags;
-	struct teap_imck_t		*imck = NULL;
+	struct teap_imck_t const       	*imck = NULL;
 
 	olen = tls_session->outer_tlvs_octets ? talloc_array_length(tls_session->outer_tlvs_octets) : 0;
 	/* FIXME: include client outer TLVs */
@@ -1199,12 +1199,13 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 		imck = &t->imck_emsk;
 	}
 
-	fr_assert(imck != NULL); /* @fixme - turn into run-time check, or make IMCK all zeros? */
+	if (!imck) imck = &imck_zeros;
 
 	/* IMCK[j] 60 octets => S-IMCK[j] first 40 octets, CMK[j] last 20 octets */
 	RDEBUGHEX("S-IMCK[j]", imck->simck, sizeof(imck->simck));
 
 	uint8_t mk_msk_label[31] = "Session Key Generating Function";
+
 	struct iovec mk_msk_seed[1] = {
 		{ (void *)mk_msk_label, sizeof(mk_msk_label) }
 	};
