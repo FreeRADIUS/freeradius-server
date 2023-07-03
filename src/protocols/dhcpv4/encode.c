@@ -208,8 +208,13 @@ static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
 	fr_dbuff_marker(&hdr_io, dbuff);
 
 	fr_dbuff_set(&hdr_io, hdr);
-	fr_dbuff_out(&type, &hdr_io);
-	fr_dbuff_out(&option_len, &hdr_io);
+	if (fr_dbuff_out(&type, &hdr_io) < 0 || fr_dbuff_out(&option_len, &hdr_io) < 0) {
+	error:
+		fr_dbuff_marker_release(&dest);
+		fr_dbuff_marker_release(&src);
+		fr_dbuff_marker_release(&hdr_io);
+		return false;
+	}
 
 	/*
 	 *	How many bytes we will need to add for headers.
@@ -219,12 +224,7 @@ static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
 	/*
 	 *	No room for the new headers and data, we're done.
 	 */
-	if (fr_dbuff_extend_lowat(NULL, dbuff, header_bytes) < header_bytes) {
-		fr_dbuff_marker_release(&dest);
-		fr_dbuff_marker_release(&src);
-		fr_dbuff_marker_release(&hdr_io);
-		return false;
-	}
+	if (fr_dbuff_extend_lowat(NULL, dbuff, header_bytes) < header_bytes) goto error;
 	fr_dbuff_advance(dbuff, header_bytes);
 
 	/*
@@ -564,7 +564,8 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			} else {
 				if (!extend_option(&work_dbuff, &hdr, len)) break;
 				fr_dbuff_set(&hdr_io, fr_dbuff_current(&hdr) + 1);
-				fr_dbuff_out(&option_len, &hdr_io);
+				len = fr_dbuff_out(&option_len, &hdr_io);
+				if (len < 0) return len;
 			}
 		}
 
