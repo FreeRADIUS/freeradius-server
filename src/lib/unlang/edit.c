@@ -580,18 +580,23 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 	 *	the appropriate place.
 	 */
 	if (current->temporary_pair_list) {
-		fr_dict_attr_t const *da = tmpl_attr_tail_da(current->lhs.vpt);
 		fr_pair_list_t *list = &current->parent->rhs.pair_list;
+		fr_pair_t *vp;
 
 		while (box) {
-			fr_pair_t *vp;
+			/*
+			 *	Create (or find) all intermediate attributes.  The LHS map might have multiple
+			 *	attribute names in it.
+			 *
+			 *	@todo - audit other uses of tmpl_attr_tail_da() and fr_pair_afrom_da() in this file.
+			 */
+			if (pair_append_by_tmpl_parent(current->parent->lhs.vp, &vp, list, current->lhs.vpt, true) < 0) {
+				RWDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
+				return -1;
+			}
 
-			MEM(vp = fr_pair_afrom_da(current->parent->lhs.vp, da));
 			vp->op = map->op;
 			if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, box) < 0) return -1;
-			if (fr_pair_append(list, vp) < 0) return -1;
-
-//			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], &vp->data);
 
 			if (single) break;
 
