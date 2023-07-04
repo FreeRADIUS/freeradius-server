@@ -1,5 +1,5 @@
 #
-# PRE: update update-remove-index
+# PRE: update
 #
 update {
 	&control.Reply-Message += 'a'
