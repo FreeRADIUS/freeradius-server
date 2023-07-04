@@ -1,0 +1,114 @@
+#  -*- text -*-
+#
+#  Based on dhcp.pcap from Wireshark
+#
+#  $ wget https://wiki.wireshark.org/uploads/__moin_import__/attachments/SampleCaptures/dhcp.pcap
+#  $ ./scripts//util/pcap2decode-proto.py  -f dhcp.pcap -p dhcpv4 > src/tests/unit/protocols/dhcpv4/client-server.txt
+#
+
+proto dhcpv4
+proto-dictionary dhcpv4
+
+#
+#  1.
+#
+# [ BOOTP ]
+#   op        = BOOTREQUEST
+#   htype     = Ethernet (10Mb)
+#   hlen      = 6
+#   hops      = 0
+#   xid       = 0x3d1d
+#   secs      = 0
+#   flags     =
+#   ciaddr    = 0.0.0.0
+#   yiaddr    = 0.0.0.0
+#   siaddr    = 0.0.0.0
+#   giaddr    = 0.0.0.0
+#   chaddr    = 00:0b:82:01:fc:42 (+ 10 nul pad)
+#   sname     = ''
+#   file      = ''
+#   options   = b'c\x82Sc' (DHCP magic)
+# [ DHCP options ]
+#    options   = [message-type=discover client_id='\x01\x00\x0b\\x82\x01\\xfcB' requested_addr=0.0.0.0 param_req_list=[1, 3, 6, 42] end pad pad pad pad pad pad pad]
+#
+decode-proto 01 01 06 00 00 00 3d 1d 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0b 82 01 fc 42 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 63 82 53 63 35 01 01 3d 07 01 00 0b 82 01 fc 42 32 04 00 00 00 00 37 04 01 03 06 2a ff 00 00 00 00 00 00 00
+match Opcode = Client-Message, Hardware-Type = Ethernet, Hardware-Address-Length = 6, Hop-Count = 0, Transaction-Id = 15645, Number-of-Seconds = 0, Flags = 0, Client-IP-Address = 0.0.0.0, Your-IP-Address = 0.0.0.0, Server-IP-Address = 0.0.0.0, Gateway-IP-Address = 0.0.0.0, Client-Hardware-Address = 00:0b:82:01:fc:42, Message-Type = Discover, Client-Identifier = 0x01000b8201fc42, Requested-IP-Address = 0.0.0.0, Parameter-Request-List = Subnet-Mask, Parameter-Request-List = Router-Address, Parameter-Request-List = Domain-Name-Server, Parameter-Request-List = NTP-Servers, Network-Subnet = 0.0.0.0/32
+
+#
+#  2.
+#
+# [ BOOTP ]
+#   op        = BOOTREPLY
+#   htype     = Ethernet (10Mb)
+#   hlen      = 6
+#   hops      = 0
+#   xid       = 0x3d1d
+#   secs      = 0
+#   flags     =
+#   ciaddr    = 0.0.0.0
+#   yiaddr    = 192.168.0.10
+#   siaddr    = 192.168.0.1
+#   giaddr    = 0.0.0.0
+#   chaddr    = 00:0b:82:01:fc:42 (+ 10 nul pad)
+#   sname     = ''
+#   file      = ''
+#   options   = b'c\x82Sc' (DHCP magic)
+# [ DHCP options ]
+#    options   = [message-type=offer subnet_mask=255.255.255.0 renewal_time=1800 rebinding_time=3150 lease_time=3600 server_id=192.168.0.1 end pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad]
+#
+decode-proto 02 01 06 00 00 00 3d 1d 00 00 00 00 00 00 00 00 c0 a8 00 0a c0 a8 00 01 00 00 00 00 00 0b 82 01 fc 42 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 63 82 53 63 35 01 02 01 04 ff ff ff 00 3a 04 00 00 07 08 3b 04 00 00 0c 4e 33 04 00 00 0e 10 36 04 c0 a8 00 01 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+match Opcode = Server-Message, Hardware-Type = Ethernet, Hardware-Address-Length = 6, Hop-Count = 0, Transaction-Id = 15645, Number-of-Seconds = 0, Flags = 0, Client-IP-Address = 0.0.0.0, Your-IP-Address = 192.168.0.10, Server-IP-Address = 192.168.0.1, Gateway-IP-Address = 0.0.0.0, Client-Hardware-Address = 00:0b:82:01:fc:42, Message-Type = Offer, Subnet-Mask = 255.255.255.0, Renewal-Time = 1800, Rebinding-Time = 3150, IP-Address-Lease-Time = 3600, Server-Identifier = 192.168.0.1, Network-Subnet = 0.0.0.0/32
+
+#
+#  3.
+#
+# [ BOOTP ]
+#   op        = BOOTREQUEST
+#   htype     = Ethernet (10Mb)
+#   hlen      = 6
+#   hops      = 0
+#   xid       = 0x3d1e
+#   secs      = 0
+#   flags     =
+#   ciaddr    = 0.0.0.0
+#   yiaddr    = 0.0.0.0
+#   siaddr    = 0.0.0.0
+#   giaddr    = 0.0.0.0
+#   chaddr    = 00:0b:82:01:fc:42 (+ 10 nul pad)
+#   sname     = ''
+#   file      = ''
+#   options   = b'c\x82Sc' (DHCP magic)
+# [ DHCP options ]
+#    options   = [message-type=request client_id='\x01\x00\x0b\\x82\x01\\xfcB' requested_addr=192.168.0.10 server_id=192.168.0.1 param_req_list=[1, 3, 6, 42] end pad]
+#
+decode-proto 01 01 06 00 00 00 3d 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0b 82 01 fc 42 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 63 82 53 63 35 01 03 3d 07 01 00 0b 82 01 fc 42 32 04 c0 a8 00 0a 36 04 c0 a8 00 01 37 04 01 03 06 2a ff 00
+match Opcode = Client-Message, Hardware-Type = Ethernet, Hardware-Address-Length = 6, Hop-Count = 0, Transaction-Id = 15646, Number-of-Seconds = 0, Flags = 0, Client-IP-Address = 0.0.0.0, Your-IP-Address = 0.0.0.0, Server-IP-Address = 0.0.0.0, Gateway-IP-Address = 0.0.0.0, Client-Hardware-Address = 00:0b:82:01:fc:42, Message-Type = Request, Client-Identifier = 0x01000b8201fc42, Requested-IP-Address = 192.168.0.10, Server-Identifier = 192.168.0.1, Parameter-Request-List = Subnet-Mask, Parameter-Request-List = Router-Address, Parameter-Request-List = Domain-Name-Server, Parameter-Request-List = NTP-Servers, Network-Subnet = 0.0.0.0/32
+
+#
+#  4.
+#
+# [ BOOTP ]
+#   op        = BOOTREPLY
+#   htype     = Ethernet (10Mb)
+#   hlen      = 6
+#   hops      = 0
+#   xid       = 0x3d1e
+#   secs      = 0
+#   flags     =
+#   ciaddr    = 0.0.0.0
+#   yiaddr    = 192.168.0.10
+#   siaddr    = 0.0.0.0
+#   giaddr    = 0.0.0.0
+#   chaddr    = 00:0b:82:01:fc:42 (+ 10 nul pad)
+#   sname     = ''
+#   file      = ''
+#   options   = b'c\x82Sc' (DHCP magic)
+# [ DHCP options ]
+#    options   = [message-type=ack renewal_time=1800 rebinding_time=3150 lease_time=3600 server_id=192.168.0.1 subnet_mask=255.255.255.0 end pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad]
+#
+decode-proto 02 01 06 00 00 00 3d 1e 00 00 00 00 00 00 00 00 c0 a8 00 0a 00 00 00 00 00 00 00 00 00 0b 82 01 fc 42 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 63 82 53 63 35 01 05 3a 04 00 00 07 08 3b 04 00 00 0c 4e 33 04 00 00 0e 10 36 04 c0 a8 00 01 01 04 ff ff ff 00 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+match Opcode = Server-Message, Hardware-Type = Ethernet, Hardware-Address-Length = 6, Hop-Count = 0, Transaction-Id = 15646, Number-of-Seconds = 0, Flags = 0, Client-IP-Address = 0.0.0.0, Your-IP-Address = 192.168.0.10, Server-IP-Address = 0.0.0.0, Gateway-IP-Address = 0.0.0.0, Client-Hardware-Address = 00:0b:82:01:fc:42, Message-Type = Ack, Renewal-Time = 1800, Rebinding-Time = 3150, IP-Address-Lease-Time = 3600, Server-Identifier = 192.168.0.1, Subnet-Mask = 255.255.255.0, Network-Subnet = 0.0.0.0/32
+
+count
+match 10
+
