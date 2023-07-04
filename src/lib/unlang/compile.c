@@ -1823,8 +1823,11 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 		 *	Don't update namespace for &reply += { ... }
 		 *
 		 *	Do update namespace for &reply.foo += { ... }
+		 *
+		 *	Don't update if the LHS is an internal group.
 		 */
-		if ((tmpl_attr_num_elements(map->lhs) > 1) && (t_rules.attr.list_def != parent_da)) {
+		if ((tmpl_attr_num_elements(map->lhs) > 1) && (t_rules.attr.list_def != parent_da) &&
+		    !((parent_da->type == FR_TYPE_GROUP) && parent_da->flags.internal)) {
 			t_rules.attr.namespace = parent_da;
 		}
 
