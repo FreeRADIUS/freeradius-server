@@ -92,7 +92,7 @@ else
 $(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S forbid_update=yes -S tmpl_tokenize_all_nested=yes
 
 ifeq "${1}" "mschap"
-$(OUTPUT)/${1}: rlm_mschap.la
+$(OUTPUT)/${1}: $(BUILD_DIR)/lib/rlm_mschap.la
 endif
 endif
 
