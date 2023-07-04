@@ -5422,3 +5422,29 @@ void tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t cons
 	 *	grouping attributes to appear anywhere.
 	 */
 }
+
+static void tmpl_attr_rules_debug(tmpl_attr_rules_t const *at_rules)
+{
+	FR_FAULT_LOG("\tdict_def          = %s", at_rules->dict_def ? fr_dict_root(at_rules->dict_def)->name : "");
+	FR_FAULT_LOG("\tnamespace         = %s", at_rules->namespace ? at_rules->namespace->name : "");
+
+	FR_FAULT_LOG("\tlist_def          = %s", at_rules->list_def ? at_rules->list_def->name : "");
+
+	FR_FAULT_LOG("\tallow_unknown     = %u", at_rules->allow_unknown);
+	FR_FAULT_LOG("\tallow_unresolved  = %u", at_rules->allow_unresolved);
+	FR_FAULT_LOG("\tallow_wildcard    = %u", at_rules->allow_wildcard);
+	FR_FAULT_LOG("\tallow_foreign     = %u", at_rules->allow_foreign);
+	FR_FAULT_LOG("\tdisallow_filters  = %u", at_rules->disallow_filters);
+}
+
+
+void tmpl_rules_debug(tmpl_rules_t const *rules)
+{
+	FR_FAULT_LOG("\tparent     = %p", rules->parent);
+	FR_FAULT_LOG("    attr {");
+	tmpl_attr_rules_debug(&rules->attr);
+	FR_FAULT_LOG("    }");
+	FR_FAULT_LOG("\tenumv      = %s", rules->enumv ? rules->enumv->name : "");
+	FR_FAULT_LOG("\tcast       = %s", fr_type_to_str(rules->cast));
+	FR_FAULT_LOG("\tat_runtime = %u", rules->at_runtime);
+}
