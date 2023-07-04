@@ -71,7 +71,7 @@ KEYWORD_UPDATE_TESTS := update-attr-ref-null update-error-3 update-group-error u
 KEYWORD_UPDATE_REWRITE_TESTS := update-all update-array update-delete update-remove-any update-group update-hex update-remove-value update-index update-list-error update-remove-list update-prepend unknown-update  update-error update-error-2 update-exec-error update-list-null-rhs update-exec
 
 # Tests which can use new conditions, but which can't use tmpl_tokenize_all_nested=yes
-KEYWORD_UPDATE_TMPL_TESTS	:= foreach-regex pairs xlat-dhcpv4
+KEYWORD_UPDATE_TMPL_TESTS	:= foreach-regex xlat-dhcpv4
 
 #
 #  Migration support.  Some of the tests don't run under the new
