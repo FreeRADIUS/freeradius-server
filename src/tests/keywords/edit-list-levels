@@ -1,0 +1,12 @@
+#
+#  PRE: edit-list
+#
+&control.TLS-Certificate := {
+	&Issuer = "test"
+}
+
+if !(&control.TLS-Certificate.Issuer == "test") {
+	test_fail
+}
+
+success

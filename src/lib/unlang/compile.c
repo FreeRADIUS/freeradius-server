@@ -1819,6 +1819,15 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	if (fr_type_is_structural(parent_da->type)) {
 		map_t *child;
 
+		/*
+		 *	Don't update namespace for &reply += { ... }
+		 *
+		 *	Do update namespace for &reply.foo += { ... }
+		 */
+		if ((tmpl_attr_num_elements(map->lhs) > 1) && (t_rules.attr.list_def != parent_da)) {
+			t_rules.attr.namespace = parent_da;
+		}
+
 		if (map_afrom_cs_edit(map, &map->child, cs, &t_rules, &t_rules, unlang_fixup_edit, map, 256) < 0) {
 			goto fail;
 		}

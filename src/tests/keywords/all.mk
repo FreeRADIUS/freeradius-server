@@ -67,6 +67,8 @@ KEYWORD_UPDATE_TESTS := update-attr-ref-null update-error-3 update-group-error u
 
 KEYWORD_UPDATE_REWRITE_TESTS := update-all update-array update-delete update-remove-any update-group update-hex update-remove-value update-index update-list-error update-remove-list update-prepend unknown-update  update-error update-error-2 update-exec-error update-list-null-rhs update-exec
 
+KEYWORD_UPDATE_TMPL_TESTS	:= edit-list-levels
+
 #
 #  Migration support.  Some of the tests don't run under the new
 #  conditions, so we don't run them under the new conditions.
@@ -77,6 +79,8 @@ else ifneq "$(findstring ${1}, comments update-to-edit if-regex-multivalue smash
 $(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes
 else ifneq "$(findstring ${1}, $(KEYWORD_UPDATE_REWRITE_TESTS))" ""
 $(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S rewrite_update=yes
+else ifneq "$(findstring ${1}, $(KEYWORD_UPDATE_TMPL_TESTS))" ""
+$(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S rewrite_update=yes -S tmpl_tokenize_all_nested=yes
 else
 $(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S forbid_update=yes
 
