@@ -1,0 +1,49 @@
+subrequest DHCPv4.Request {
+	# Client -> Server
+	&request += {
+		&Message-Type = Request
+
+		&Hardware-Type = Ethernet
+		&Hardware-Address-Length = 6
+		&Hop-Count = 0
+		&Transaction-Id = 15646
+		&Number-of-Seconds = 0
+		&Flags = 0
+
+		&Client-IP-Address = 0.0.0.0
+		&Your-IP-Address = 0.0.0.0
+		&Server-IP-Address = 0.0.0.0
+		&Gateway-IP-Address = 0.0.0.0
+		&Client-Hardware-Address = ca:fe:ca:fe:ca:fe
+		&Client-Identifier = 0x01020304050607
+		&Requested-IP-Address = 192.168.0.10
+
+		&Server-Identifier = 192.168.0.1
+		&Parameter-Request-List = Subnet-Mask
+		&Parameter-Request-List = Router-Address
+		&Parameter-Request-List = Domain-Name
+		&Parameter-Request-List = Domain-Name-Server
+		&Parameter-Request-List = NTP-Servers
+		&Network-Subnet = 0.0.0.0/32
+	}
+
+	call dhcpv4 {
+		# 'Discover' expects 'Ack'
+		if (&reply.Packet-Type != Ack) {
+			test_fail
+		}
+
+		# We should reply the below attributes...
+		if (!&reply.Transaction-Id) {
+			test_fail
+		}
+
+		if (&reply.Subnet-Mask != "255.255.255.0") {
+			test_fail
+		}
+
+		if (&reply.Gateway-IP-Address != "0.0.0.0") {
+			test_fail
+		}
+	}
+}
