@@ -1,0 +1,30 @@
+#
+#  PRE: edit
+#
+&request += {
+	&Tmp-Integer-0 = 0
+	&Tmp-Integer-1 = 1
+}
+
+#
+#  ! (true && true) --> false
+#
+if !((&Tmp-Integer-0 == 0) && (&Tmp-Integer-1 == 1)) {
+	test_fail
+}
+
+#
+#  false && true --> false
+#
+if ((&Tmp-Integer-0 == 1) && (&Tmp-Integer-1 == 1)) {
+	test_fail
+}
+
+#
+#  true && false -> false
+#
+if ((&Tmp-Integer-0 == 0) && (&Tmp-Integer-1 == 0)) {
+	test_fail
+}
+
+success

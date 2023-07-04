@@ -1219,14 +1219,11 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		rctx->box->vb_bool = false;
 
 		/*
-		 *	Try for another match, if possible.
+		 *	we didn't match, (&&), so we're done.
 		 */
-		if (inst->stop_on_match) goto next;
-
-		goto done;
+		if (!inst->stop_on_match) goto done;
 	}
 
-next:
 	fr_value_box_list_talloc_free(&rctx->list);
 	rctx->current++;
 
