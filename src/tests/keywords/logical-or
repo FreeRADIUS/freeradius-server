@@ -1,0 +1,17 @@
+#
+#  PRE: edit
+#
+&request += {
+	&Tmp-Integer-0 = 0
+	&Tmp-Integer-1 = 1
+}
+
+if !((&Tmp-Integer-0 == 1) || (&Tmp-Integer-1 == 1)) {
+	test_fail
+}
+
+if !((&Tmp-Integer-1 == 1) || (&Tmp-Integer-0 == 1)) {
+	test_fail
+}
+
+success

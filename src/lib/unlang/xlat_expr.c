@@ -1223,19 +1223,7 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 */
 		if (inst->stop_on_match) goto next;
 
-		/*
-		 *	Otherwise we stop on failure, with the boolean
-		 *	we just updated.
-		 */
 		goto done;
-	}
-
-	if (inst->stop_on_match) {
-	done:
-		fr_dcursor_append(out, rctx->box);
-
-		talloc_free(rctx);
-		return XLAT_ACTION_DONE;
 	}
 
 next:
@@ -1246,7 +1234,15 @@ next:
 	 *	Nothing to expand, return the final value we saw.
 	 */
 	if (rctx->current >= inst->argc) {
-		goto done;
+	done:
+		/*
+		 *	Otherwise we stop on failure, with the boolean
+		 *	we just updated.
+		 */
+		fr_dcursor_append(out, rctx->box);
+
+		talloc_free(rctx);
+		return XLAT_ACTION_DONE;
 	}
 
 	return xlat_logical_process_arg(ctx, out, xctx, request, in);
