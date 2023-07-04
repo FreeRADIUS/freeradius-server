@@ -309,11 +309,10 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	if (xlat_aeval(request, &expanded, request, query, data->sql_inst->sql_escape_func, *handle) < 0) return -1;
 
 	ret = data->sql_inst->sql_query(data->sql_inst, request, handle, expanded);
+	talloc_free(expanded);
 	if (ret < 0){
-		talloc_free(expanded);
 		return -1;
 	}
-	talloc_free(expanded);
 
 	/*
 	 *	No handle, we can't continue.
