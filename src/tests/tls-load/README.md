@@ -3,7 +3,7 @@
 Runs local radiusd load testing for TLS using docker compose.  
 Requires Docker.  
 ### Usage:  
-`bash run_test.sh (number of concurrent clients/servers running)`  
+`bash run_test.sh -f base_freeradius_dir (number of concurrent clients/servers running)`  
 ### Options:  
 - `-n`: number of messages to send per client (default is 1000)
 - `-l`: log level for home/proxy servers (default is 1, 1=`radiusd -f`, 2=`radiusd -fx`, 3=`radiusd -fxx`, other=no log files generated)
