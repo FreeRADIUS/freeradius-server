@@ -338,6 +338,6 @@ tests.runtests:  test.conf | radiusd.kill radiusd.pid
 
 # not run in the rest of the test suite, requires Docker
 tests.load:
-	${Q}(cd tls-load && ./run_test.sh -m -f ${top_builddir} 10)
+	${Q}(cd tls-load && ./run_test.sh -m 10)
 
 tests: tests.runtests tests.eap
