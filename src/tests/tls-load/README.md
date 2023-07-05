@@ -8,7 +8,6 @@ Requires Docker.
 - `-n`: number of messages to send per client (default is 1000)
 - `-l`: log level for home/proxy servers (default is 1, 1=`radiusd -f`, 2=`radiusd -fx`, 3=`radiusd -fxx`, other=no log files generated)
 - `-o`: where to put log files after running (default is `./test/containers`)
-- `-i`: name of generated docker image (only needed if you have generated your own docker image to run, rather than the one from the repository)
 - `-d`: folder path to the Dockerfile to build
 - `-r`: the Github branch to build from
 - `-b`: force rebuilding the docker image, even if it already exists
