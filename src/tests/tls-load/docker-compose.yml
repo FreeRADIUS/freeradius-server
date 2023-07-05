@@ -13,7 +13,7 @@ services:
     build: https://github.com/FreeRADIUS/freeradius-server.git#v3.2.x:scripts/docker/ubuntu22 ###build
     entrypoint: bash -c "mkdir /test/containers ; rm /test/containers/*"
     volumes:
-      - /home/del/Projects/3/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
+      - ###PWD
   
   proxy:
     depends_on:
@@ -25,7 +25,7 @@ services:
     networks:
       - test-net
     volumes:
-      - /home/del/Projects/3/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
+      - ###PWD
 
   home:
     depends_on:
@@ -36,7 +36,7 @@ services:
     networks:
       - test-net
     volumes:
-      - /home/del/Projects/3/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
+      - ###PWD
 
   client:
     depends_on:
@@ -47,4 +47,4 @@ services:
     networks:
       - test-net
     volumes:
-      - /home/del/Projects/3/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
+      - ###PWD
