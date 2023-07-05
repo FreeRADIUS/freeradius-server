@@ -11,9 +11,8 @@ Requires Docker.
 - `-i`: name of generated docker image (only needed if you have generated your own docker image to run, rather than the one from the repository)
 - `-d`: folder path to the Dockerfile to build
 - `-r`: the Github branch to build from
-- `-b`: force rebuilding the docker image, even if it exists
-
-If a docker image is present and `-b` or `-s` are used, the image must be manually removed or the name must be changed with `-i` to regenerate it.  
+- `-b`: force rebuilding the docker image, even if it already exists
+ 
 ### Output:  
 - `client_*.log`: Output of radclient for each running client
 - `home_server_*.log`: Output from radiusd of home servers
