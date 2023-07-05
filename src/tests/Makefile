@@ -115,7 +115,7 @@ SECRET	= testing123
 #
 #	Build the directory for testing the server
 #
-all: tests
+all: tests tests.load
 
 clean:
 	@rm -f test.conf dictionary *.ok *.log $(BUILD_DIR)/tests/eap
