@@ -9,7 +9,7 @@ fi
 
 ### ARGUMENT PARSING ###
 # Note -s and -b require the freeradius docker image to be rebuilt, meaning it must be removed, or renamed with -i.
-while getopts ':n:l:i:d:r:o:bm' OPTION; do
+while getopts ':n:l:i:d:r:o:f:bm' OPTION; do
   case "$OPTION" in
     n)
       num_requests="$OPTARG"
@@ -20,6 +20,9 @@ while getopts ':n:l:i:d:r:o:bm' OPTION; do
     i)
       image="$OPTARG"
       ;;
+    f)
+    	folder="$OPTARG"
+    	;;
     d)
       temp="$(tail -1 build_config)"
       echo "$OPTARG" > build_config
@@ -34,14 +37,14 @@ while getopts ':n:l:i:d:r:o:bm' OPTION; do
       output_dir="$OPTARG"
       ;;
     m)
-    	# This doesn't actually work because according to the docker script, release must be a branch and not a commit.
-      release=$(git rev-parse HEAD)
+    	# As per the docker script, release must be a branch and not a commit.
+      release=$(git rev-parse --abbrev-ref HEAD)
       ;;
     b)
       rebuild=1
       ;;
     ?)
-      echo "Usage: $0 [-n number_of_requests_per_realm] [-l log_level (0=none, 1,2,3=radiusd -f, -fx, -fxx)] [-b repository_branch_to_build_docker_image] [-s repository_Dockerfile_directory] [-o output_log_dir] [-r freeradius_directory] number_of_realms"
+      echo "Usage: $0 [-n number_of_requests_per_realm] [-l log_level (0=none, 1,2,3=radiusd -f, -fx, -fxx)] [-f base_freeradius_folder] [-i docker_image_name] [-d Dockerfile_directory_to_build] [-r Github_branch_to_build] [-b (to force building image)] [-s repository_Dockerfile_directory] [-o output_log_dir] [-r freeradius_directory] number_of_realms"
       exit 1
       ;;
   esac
@@ -75,9 +78,10 @@ else
 fi
 
 if [ "1$rebuild" -eq 11 ] || ! docker images | grep "$image" > /dev/null; then
-  docker image rm "$image"
-  # Can't cache, we want the most recent commit
-  docker build "$(head -1 build_config)" --build-arg=release="$(tail -1 build_config)" --build-arg=source=https://github.com/FreeRADIUS/freeradius-server.git --no-cache -t "$image"
+  docker image rm "$image" &>/dev/null
+  # Can't cache, we always want to update to the most recent commit
+	# Docker doesn't
+  docker build "$(head -1 build_config | sed "s|##FOLDER##|$folder|g")" --build-arg=release="$(tail -1 build_config)" --build-arg=source=https://github.com/FreeRADIUS/freeradius-server.git --no-cache -t "$image"
 fi
 
 sed -i "s|-.*###PWD|- $PWD/test:/test ###PWD|g" docker-compose.yml 
@@ -90,18 +94,18 @@ echo "$num_requests" >> "test/config"
 echo "$log_level"    >> "test/config"
 
 ### DOCKER ###
-docker compose up -d --scale home="$num_realms" --scale client="$num_realms" &>/dev/null
+docker compose up -d --scale home="$num_realms" --scale client="$num_realms"
 if ! [ "$?" -eq 0 ]; then
   echo "Docker failed"
   exit 1
 fi
 
 # Check for when all of the client containers have exited
-while docker compose ps | grep client > /dev/null; do
+while docker compose ps | grep client; do
   sleep 3
 done
 
-docker compose stop &>/dev/null
+docker compose stop
 rm -f test/containers/proxy-running
 
 # Move all the output to an external directory if specified

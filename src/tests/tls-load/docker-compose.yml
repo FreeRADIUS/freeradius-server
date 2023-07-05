@@ -11,9 +11,9 @@ services:
   tasks:
     image: freeradius-tls-test ###image
     build: https://github.com/FreeRADIUS/freeradius-server.git#v3.2.x:scripts/docker/ubuntu22 ###build
-    entrypoint: bash -c "rm /test/containers/*"
+    entrypoint: bash -c "mkdir /test/containers ; rm /test/containers/*"
     volumes:
-      - /home/del/Projects/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
+      - /home/del/Projects/3/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
   
   proxy:
     depends_on:
@@ -25,7 +25,7 @@ services:
     networks:
       - test-net
     volumes:
-      - /home/del/Projects/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
+      - /home/del/Projects/3/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
 
   home:
     depends_on:
@@ -36,7 +36,7 @@ services:
     networks:
       - test-net
     volumes:
-      - /home/del/Projects/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
+      - /home/del/Projects/3/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
 
   client:
     depends_on:
@@ -47,4 +47,4 @@ services:
     networks:
       - test-net
     volumes:
-      - /home/del/Projects/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD
+      - /home/del/Projects/3/freeradius-tlstest/src/tests/tls-load/test:/test ###PWD

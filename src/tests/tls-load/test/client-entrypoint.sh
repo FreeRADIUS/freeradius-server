@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 111
 if ! [ -f "/test/config" ]; then
   echo "There is no /test directory (specifically the /test/config file) connected to the docker image, test run incorrectly or docker-compose.yml not set up correctly?"
   exit 1

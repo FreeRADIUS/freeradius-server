@@ -25,13 +25,14 @@ do
 done 3<"/client-hostnames.txt"
 
 # This file is so the clients know the proxy is starting the server soon; checking at an earlier point is possible to fail if hostname resolution is very slow
+umask 111
 touch /test/containers/proxy-running
 if [ "$log_level" -eq 1 ]; then
-  freeradius -d /eqx -f -l "/test/containers/proxy_server.log"
+  exec freeradius -d /eqx -f -l "/test/containers/proxy_server.log"
 elif [ "$log_level" -eq 2 ]; then
-  freeradius -d /eqx -fx -l "/test/containers/proxy_server.log"
+  exec freeradius -d /eqx -fx -l "/test/containers/proxy_server.log"
 elif [ "$log_level" -eq 3 ]; then
-  freeradius -d /eqx -fxx -l "/test/containers/proxy_server.log"
+  exec freeradius -d /eqx -fxx -l "/test/containers/proxy_server.log"
 else
-  freeradius -d /eqx -f -l stdout
+  exec freeradius -d /eqx -f -l stdout
 fi
