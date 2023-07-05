@@ -336,8 +336,8 @@ tests.runtests:  test.conf | radiusd.kill radiusd.pid
 	${Q}chmod a+x runtests.sh
 	${Q}BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 
-# probably not the best way to do this
+# not run in the rest of the test suite, requires Docker
 tests.load:
-	${Q}(cd tls-load && ./run_test.sh 10)
+	${Q}(cd tls-load && ./run_test.sh -m -f ${top_builddir} 10)
 
 tests: tests.runtests tests.eap
