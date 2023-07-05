@@ -1,8 +1,6 @@
 #!/bin/bash
 # Other shells not tested
 
-# Docker compose needs to use our current PWD (can't be relative, as far as I can tell?)
-sed -i "s|-.*###PWD|- $PWD/test:/test ###PWD|g" docker-compose.yml 
 yes | docker compose rm &> /dev/null
 if ! [ "$?" -eq 0 ]; then
   echo "Docker failed"
@@ -117,12 +115,9 @@ fi
 if [ $(docker compose ps --all | grep -c client) -eq $(docker compose ps --all | grep -c "client.*Exited (0)") ]; then
   echo "TLS load test succeeded"
   yes | docker compose rm &> /dev/null
-  # Remove filesystem information from docker compose; we don't need to see that
-  sed -i "s|-.*###PWD|- ###PWD|g" docker-compose.yml 
   exit 0
 else
   echo "TLS load test failed"
   yes | docker compose rm &> /dev/null
-  sed -i "s|-.*###PWD|- ###PWD|g" docker-compose.yml 
   exit 1
 fi
