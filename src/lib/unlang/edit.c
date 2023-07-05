@@ -217,6 +217,33 @@ static void edit_debug_attr_list(request_t *request, fr_pair_list_t const *list,
 	}
 }
 
+static int edit_create_lhs_vp(request_t *request, TALLOC_CTX *ctx, edit_map_t *current)
+{
+	int err;
+	fr_pair_t *vp;
+	tmpl_dcursor_ctx_t lhs_cc;
+	fr_dcursor_t lhs_cursor;
+
+	fr_assert(current->lhs.create);
+
+	/*
+	 *	Now that we have the RHS values, go create the LHS vp.  We delay creating it until
+	 *	now, because the RHS might just be nothing.  In which case we don't want to create the
+	 *	LHS, and then discover that we need to delete it.
+	 */
+	fr_strerror_clear();
+	vp = tmpl_dcursor_build_init(&err, ctx, &lhs_cc, &lhs_cursor, request, current->lhs.vpt, edit_list_pair_build, current);
+	tmpl_dcursor_clear(&lhs_cc);
+	if (!vp) {
+		RWDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
+		return -1;
+	}
+
+	current->lhs.vp_parent = fr_pair_parent(vp);
+	current->lhs.vp = vp;
+
+	return 0;
+}
 
 /*	Apply the edits to a structural attribute..
  *
@@ -393,26 +420,8 @@ apply_list:
 	/*
 	 *	If we have to create the LHS, then do so now.
 	 */
-	if (current->lhs.create) {
-		int err;
-		tmpl_dcursor_ctx_t lhs_cc;
-		fr_dcursor_t lhs_cursor;
-
-		/*
-		 *	Now that we have the RHS values, go create the LHS vp.  We delay creating it until
-		 *	now, because the RHS might just be nothing.  In which case we don't want to create the
-		 *	LHS, and then discover that we need to delete it.
-		 */
-		fr_strerror_clear();
-		vp = tmpl_dcursor_build_init(&err, state, &lhs_cc, &lhs_cursor, request, current->lhs.vpt, edit_list_pair_build, current);
-		tmpl_dcursor_clear(&lhs_cc);
-		if (!vp) {
-			RWDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
-			return -1;
-		}
-
-		current->lhs.vp_parent = fr_pair_parent(vp);
-		current->lhs.vp = vp;
+	if (current->lhs.create && (edit_create_lhs_vp(request, state, current) < 0)) {
+		return -1;
 	}
 
 	fr_assert(current->lhs.vp != NULL);
@@ -582,6 +591,10 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 	if (current->temporary_pair_list) {
 		fr_pair_list_t *list = &current->parent->rhs.pair_list;
 		fr_pair_t *vp;
+
+		if (!current->parent->lhs.vp) {
+			if (edit_create_lhs_vp(request, request, current->parent) < 0) return -1;
+		}
 
 		while (box) {
 			/*
@@ -1268,7 +1281,6 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 			RWDEBUG("Cannot set one entry to multiple values for %s", current->lhs.vpt->name);
 			return -1;
 		}
-
 	}
 
 	/*
