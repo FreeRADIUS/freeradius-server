@@ -34,6 +34,7 @@ while getopts ':n:l:i:d:r:o:bm' OPTION; do
       output_dir="$OPTARG"
       ;;
     m)
+    	# This doesn't actually work because according to the docker script, release must be a branch and not a commit.
       release=$(git rev-parse HEAD)
       ;;
     b)
