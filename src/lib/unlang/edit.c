@@ -239,7 +239,6 @@ static int edit_create_lhs_vp(request_t *request, TALLOC_CTX *ctx, edit_map_t *c
 		return -1;
 	}
 
-	current->lhs.vp_parent = fr_pair_parent(vp);
 	current->lhs.vp = vp;
 
 	return 0;
@@ -625,16 +624,6 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 	if (current->lhs.create) {
 		fr_dict_attr_t const *da = tmpl_attr_tail_da(current->lhs.vpt);
 		fr_pair_t *vp;
-		int err;
-		tmpl_dcursor_ctx_t lhs_cc;
-		fr_dcursor_t lhs_cursor;
-
-		/*
-		 *	Now that we have the RHS values, go create the LHS vp.  We delay creating it until
-		 *	now, because the RHS might just be nothing.  In which case we don't want to create the
-		 *	LHS, and then discover that we need to delete it.
-		 */
-		fr_strerror_clear();
 
 		/*
 		 *	Something went wrong creating the value, it's a failure.  Note that we fail _all_
@@ -642,15 +631,12 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		 */
 		if (fr_type_is_null(box->type)) goto fail;
 
-		vp = tmpl_dcursor_build_init(&err, state, &lhs_cc, &lhs_cursor, request, current->lhs.vpt, edit_list_pair_build, current);
-		tmpl_dcursor_clear(&lhs_cc);
-		if (!vp) {
-			RWDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
-			return -1;
-		}
+		if (edit_create_lhs_vp(request, state, current) < 0) goto fail;
 
 		fr_assert(current->lhs.vp_parent != NULL);
 		fr_assert(fr_type_is_structural(current->lhs.vp_parent->da->type));
+
+		vp = current->lhs.vp;
 
 		/*
 		 *	There's always at least one LHS vp created.  So we apply that first.
