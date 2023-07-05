@@ -1,5 +1,6 @@
 #!/bin/bash
 # Other shells not tested
+# Arguments in caps are exported to containers or relevant in docker-compose.yml
 
 export IMAGE=${IMAGE:-freeradius-tls-test}
 yes | docker compose rm
@@ -81,7 +82,13 @@ docker compose stop
 
 # Move all the output to an external directory if specified
 if [[ "/$output_dir" != "/" ]]; then
-  mv test/containers/* "$output_dir"
+  docker logs test-container-proxy-1 > "$output_dir"/proxy.log
+  i=1
+  while [ "$i" -le $num_realms ]; do
+    docker logs test-container-client-"$i" > "$output_dir"/client_"$i".log&
+    docker logs test-container-home-"$i" > "$output_dir"/home_"$i".log&
+    i=$((i+1))
+  done
 fi
 
 # Check that the number of clients that were created is the same as the number of clients that were created and exited successfully
