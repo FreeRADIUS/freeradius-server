@@ -3,7 +3,7 @@
 ## Makefile -- Build and run tests for the server.
 ##
 ##	http://www.freeradius.org/
-##	$Id$
+##	$Id: f7ab1f9b400f3e3bee1d80ba97ae24b4c6bd7f2a $
 ##
 #
 include ../../Make.inc
@@ -136,7 +136,7 @@ test.conf: dictionary config/eap-test
 	fi
 	${Q}echo "testdir =" $(TEST_PATH) >> $@
 	${Q}echo 'logdir = $${testdir}' >> $@
-	${Q}echo "maindir =" $(RADDB_PATH) >> $@
+	${Q}echo "maindir =" $(RADDB_PATH:/=) >> $@
 	${Q}echo 'radacctdir = $${testdir}' >> $@
 	${Q}echo 'pidfile = $${testdir}/radiusd.pid' >> $@
 	${Q}echo 'panic_action = "gdb -batch -x $${testdir}/panic.gdb %e %p > $${testdir}/gdb.log 2>&1; cat $${testdir}/gdb.log"' >> $@
@@ -144,11 +144,21 @@ test.conf: dictionary config/eap-test
 	${Q}echo '        allow_vulnerable_openssl = yes' >> $@
 	${Q}echo '}' >> $@
 	${Q}echo >> $@
-	${Q}echo 'modconfdir = $${maindir}mods-config' >> $@
+	${Q}echo 'modconfdir = $${maindir}/mods-config' >> $@
 	${Q}echo 'certdir = $${maindir}/certs' >> $@
 	${Q}echo 'cadir   = $${maindir}/certs' >> $@
 	${Q}echo '$$INCLUDE $${testdir}/config/' >> $@
 	${Q}echo '$$INCLUDE $${maindir}/radiusd.conf' >> $@
+
+$(RADDB_PATH)certs/server.pem:
+	${Q}openssl genrsa -out test.key 2048
+	${Q}openssl req -x509 -sha256 -new -nodes -key test.key -days 3650 -subj "/C=--/ST=--/L=--/O=--/CN=--" -out test.crt
+	${Q}cat test.key test.crt > $(RADDB_PATH)certs/server.pem
+
+$(RADDB_PATH)certs/ca.pem:
+	${Q}openssl genrsa -out test.key 2048
+	${Q}openssl req -x509 -sha256 -new -nodes -key test.key -days 3650 -subj "/C=--/ST=--/L=--/O=--/CN=--" -out test.crt
+	${Q}cat test.key test.crt > $(RADDB_PATH)certs/ca.pem
 
 #
 #  Rename "inner-tunnel", and ensure that it only uses the "eap-test" module.
@@ -175,7 +185,7 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 	     -e 's/cipher_list = "DEFAULT"/cipher_list = "DEFAULT${SECLEVEL}"/' \
 		 < $< > $@
 
-radiusd.pid: test.conf
+radiusd.pid: test.conf $(RADDB_PATH)certs/ca.pem $(RADDB_PATH)certs/server.pem
 	${Q}rm -rf $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log $(TEST_PATH)/tlscache
 	${Q}mkdir -p $(TEST_PATH)/tlscache
 	${Q}printf "Starting server... "
