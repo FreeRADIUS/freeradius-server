@@ -382,39 +382,53 @@ static NEVER_RETURNS void exec_child(char **argv, char **envp,
 	exit(2);
 }
 
-/** Merge extra environmental vairables and potentially the inherited environment
+/** Merge extra environmental variables and potentially the inherited environment
  *
  * @param[in] env_in		to merge.
  * @param[in] env_inherit	inherite environment from radiusd.
  * @return merged environmental variables.
  */
-static inline CC_HINT(always_inline)
+static
 char **exec_build_env(char **env_in, bool env_inherit)
 {
-	char **env;
+	size_t num_in, num_environ;
 
-	if (env_in && !env_in[0]) {
-		char **env_out_p, **env_end, **env_in_p;
-
-		env_out_p = env_exec_arr;
-		env_end = env_out_p + NUM_ELEMENTS(env_exec_arr);
-		if (env_inherit) {
-			for (env_in_p = environ; (env_out_p < env_end) && *env_in_p; env_in_p++, env_out_p++) *env_out_p = *env_in_p;
-		}
-		for (env_in_p = env_in; (env_out_p < env_end) && *env_in_p; env_in_p++, env_out_p++) *env_out_p = *env_in_p;
-		if (env_out_p == env_end) {
-			fr_strerror_printf("Too many enivronmental variables specified");
-			return NULL;
-		}
-		env = env_exec_arr;
-	} else if (env_inherit) {
-		env = environ;
-	} else {
-		env = env_exec_arr;
-		env[0] = NULL;
+	/*
+	 *	Not inheriting the radiusd environment, just return whatever we were given.
+	 */
+	if (!env_inherit) {
+		return env_in;
 	}
 
-	return env;
+	/*
+	 *	No additional environment variables, just return the ones from radiusd.
+	 */
+	if (!env_in) return environ;
+
+	for (num_environ = 0; environ[num_environ] != NULL; num_environ++) {
+		/* nothing */
+	}
+
+	/*
+	 *	No room to copy anything after the environment variables.
+	 */
+	if (((num_environ + 1) == NUM_ELEMENTS(env_exec_arr))) {
+		return environ;
+	}
+
+	/*
+	 *	Copy the radiusd environment to the local array
+	 */
+	memcpy(env_exec_arr, environ, num_environ + 1);
+
+	for (num_in = 0; env_in[num_in] != NULL; num_in++) {
+		if ((num_environ + num_in + 1) >= NUM_ELEMENTS(env_exec_arr)) break;
+	}
+
+	memcpy(env_exec_arr + num_environ, env_in, num_in);
+	env_exec_arr[num_environ + num_in] = NULL;
+
+	return env_exec_arr;
 }
 
 /** Execute a program without waiting for the program to finish.
