@@ -117,12 +117,12 @@ fi
 if [ $(docker compose ps --all | grep -c client) -eq $(docker compose ps --all | grep -c "client.*Exited (0)") ]; then
   echo "TLS load test succeeded"
   yes | docker compose rm &> /dev/null
-	# Remove filesystem information from docker compose; we don't need to see that
-	sed -i "s|-.*###PWD|- ###PWD|g" docker-compose.yml 
+  # Remove filesystem information from docker compose; we don't need to see that
+  sed -i "s|-.*###PWD|- ###PWD|g" docker-compose.yml 
   exit 0
 else
   echo "TLS load test failed"
   yes | docker compose rm &> /dev/null
-	sed -i "s|-.*###PWD|- ###PWD|g" docker-compose.yml 
+  sed -i "s|-.*###PWD|- ###PWD|g" docker-compose.yml 
   exit 1
 fi
