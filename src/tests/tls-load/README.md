@@ -10,7 +10,9 @@ Requires Docker.
 - `-o`: where to put log files after running (default is `./test/containers`)
 - `-d`: folder path to the Dockerfile to build
 - `-r`: the Github branch to build from
+- `-m`: build from the most recent Github branch (HEAD)
 - `-b`: force rebuilding the docker image, even if it already exists
+- Setting `IMAGE=` can be used to change the image used
  
 ### Output:  
 - `client_*.log`: Output of radclient for each running client
