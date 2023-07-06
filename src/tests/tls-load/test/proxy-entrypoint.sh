@@ -17,12 +17,12 @@ done 3<"/client-hostnames.txt"
 
 # This file is so the clients know the proxy is starting the server soon; checking at an earlier point is possible to fail if hostname resolution is very slow
 touch /test/containers/proxy-running
-echo /etc/freeradius/lib/local/.libs >> /etc/ld.so.conf
+echo /build/lib/local/.libs >> /etc/ld.so.conf
 ldconfig
 if [ "$LOG_LEVEL" -eq 2 ]; then
-  exec /etc/freeradius/bin/local/radiusd -D /dict -d /eqx -fx -l stdout
+  exec /build/bin/local/radiusd -D /dict -d /eqx -fx -l stdout
 elif [ "$LOG_LEVEL" -eq 3 ]; then
-  exec /etc/freeradius/bin/local/radiusd -D /dict -d /eqx -fxx -l stdout
+  exec /build/bin/local/radiusd -D /dict -d /eqx -fxx -l stdout
 else
-  exec /etc/freeradius/bin/local/radiusd -D /dict -d /eqx -f -l stdout
+  exec /build/bin/local/radiusd -D /dict -d /eqx -f -l stdout
 fi

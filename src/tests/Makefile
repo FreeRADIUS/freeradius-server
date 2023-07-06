@@ -150,15 +150,14 @@ test.conf: dictionary config/eap-test
 	${Q}echo '$$INCLUDE $${testdir}/config/' >> $@
 	${Q}echo '$$INCLUDE $${maindir}/radiusd.conf' >> $@
 
-$(RADDB_PATH)certs/server.pem:
-	${Q}openssl genrsa -out test.key 2048
-	${Q}openssl req -x509 -sha256 -new -nodes -key test.key -days 3650 -subj "/C=--/ST=--/L=--/O=--/CN=--" -out test.crt
-	${Q}cat test.key test.crt > $(RADDB_PATH)certs/server.pem
-
 $(RADDB_PATH)certs/ca.pem:
-	${Q}openssl genrsa -out test.key 2048
-	${Q}openssl req -x509 -sha256 -new -nodes -key test.key -days 3650 -subj "/C=--/ST=--/L=--/O=--/CN=--" -out test.crt
-	${Q}cat test.key test.crt > $(RADDB_PATH)certs/ca.pem
+	${Q}make -C $(RADDB_PATH)certs ca.pem
+
+$(RADDB_PATH)certs/server.pem:
+	${Q}make -C $(RADDB_PATH)certs server.pem
+
+$(RADDB_PATH)certs/client.pem:
+	${Q}make -C $(RADDB_PATH)certs client.pem
 
 #
 #  Rename "inner-tunnel", and ensure that it only uses the "eap-test" module.
@@ -188,7 +187,6 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 radiusd.pid: test.conf $(RADDB_PATH)certs/ca.pem $(RADDB_PATH)certs/server.pem
 	${Q}rm -rf $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log $(TEST_PATH)/tlscache
 	${Q}mkdir -p $(TEST_PATH)/tlscache
-	$(info ${RADIUSD_BIN} -Pxxxxml ${TEST_PATH}/radius.log -d ${top_builddir}/src/tests -n test -i 127.0.0.1 -p ${PORT} -D ${DICT_PATH})
 	${Q}printf "Starting server... "
 	${Q}if ! $(RADIUSD_BIN) -Pxxxxml $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -i 127.0.0.1 -p $(PORT) -D $(DICT_PATH); then \
 		echo "failed"; \
@@ -338,7 +336,7 @@ tests.runtests:  test.conf | radiusd.kill radiusd.pid
 	${Q}BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 
 # probably not the best way to do this
-tests.load:
+tests.load: $(RADDB_PATH)certs/ca.pem $(RADDB_PATH)certs/server.pem $(RADDB_PATH)certs/client.pem
 	${Q}(cd tls-load && BUILD_DIR=${BUILD_PATH} LIB_DIR=${LIB_PATH} DICT_DIR=${top_builddir}/share RADDB_DIR=${top_builddir}/raddb ./run_test.sh -o output 10)
 
 tests: tests.runtests tests.eap

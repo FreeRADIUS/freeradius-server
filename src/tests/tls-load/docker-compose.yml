@@ -32,11 +32,10 @@ services:
       - test-net
     volumes:
       - ./test:/test
-      - ${BUILD_DIR}:/etc/freeradius
+      - ${BUILD_DIR}:/build
       - ${DICT_DIR}:/dict
       - ${LIB_DIR}:/usr/lib/freeradius
-      - ${RADDB_DIR}:/raddb
-      - ./certs:/certs
+      - ${RADDB_DIR}:/etc/freeradius
 
   home:
     depends_on:
@@ -53,11 +52,10 @@ services:
       - test-net
     volumes:
       - ./test:/test
-      - ${BUILD_DIR}:/etc/freeradius
+      - ${BUILD_DIR}:/build
       - ${DICT_DIR}:/dict
       - ${LIB_DIR}:/usr/lib/freeradius
-      - ${RADDB_DIR}:/raddb
-      - ./certs:/certs
+      - ${RADDB_DIR}:/etc/freeradius
 
   client:
     depends_on:
@@ -74,6 +72,7 @@ services:
       - test-net
     volumes:
       - ./test:/test
-      - ${BUILD_DIR}:/etc/freeradius
+      - ${BUILD_DIR}:/build
       - ${DICT_DIR}:/dict
       - ${LIB_DIR}:/usr/lib/freeradius
+      - ${RADDB_DIR}:/etc/freeradius
