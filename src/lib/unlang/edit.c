@@ -34,6 +34,11 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/unlang_priv.h>
 #include "edit_priv.h"
 
+#if 1
+#undef DEBUG
+#define DEBUG(...)
+#endif
+
 typedef struct {
 	fr_value_box_list_t	result;			//!< result of expansion
 	tmpl_t const		*vpt;			//!< expanded tmpl
@@ -804,6 +809,8 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 {
 	map_t const *map = current->map;
 
+	DEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
+
 	/*
 	 *	:= is "remove all matching, and then add".  So if even if we don't add anything, we still remove things.
 	 *
@@ -930,6 +937,8 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	map_t const *map = current->map;
 	edit_map_t *child;
 
+	DEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
+
 	/*
 	 *	If there's no RHS tmpl, then the RHS is a child list.
 	 */
@@ -1018,6 +1027,8 @@ static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit
 
 	if (!map->rhs) return expand_rhs_list(request, state, current);
 
+	DEBUG("%s map %s %s %s", __FUNCTION__, map->lhs->name, fr_tokens[map->op], map->rhs->name);
+
 	/*
 	 *	Turn the RHS into a tmpl_t.  This can involve just referencing an existing
 	 *	tmpl in map->rhs, or expanding an xlat to get an attribute name.
@@ -1048,6 +1059,8 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 	fr_dcursor_t		cursor;
 
 	fr_assert(current->parent);
+
+	DEBUG("%s map %s", __FUNCTION__, map->lhs->name);
 
 	if (tmpl_is_data(map->lhs)) {
 		vpt = map->lhs;
@@ -1188,6 +1201,8 @@ static int check_lhs_nested(request_t *request, unlang_frame_state_edit_t *state
 
 	fr_assert(current->parent != NULL);
 
+	DEBUG("%s map %s", __FUNCTION__, map->lhs->name);
+
 	/*
 	 *	Don't create the leaf.  The apply_edits_to_leaf() function will create them after the RHS has
 	 *	been expanded.
@@ -1230,6 +1245,8 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 
 	current->lhs.create = false;
 	current->lhs.vp = NULL;
+
+	DEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
 
 	/*
 	 *	Create the attribute, including any necessary parents.
@@ -1352,6 +1369,8 @@ static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit
 	int rcode;
 	map_t const *map = current->map;
 
+	DEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
+
 	fr_assert(fr_value_box_list_empty(&current->lhs.result));	/* Should have been consumed */
 	fr_assert(fr_value_box_list_empty(&current->rhs.result));	/* Should have been consumed */
 
@@ -1386,6 +1405,14 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 	while (state->current) {
 		while (state->current->map) {
 			int rcode;
+
+			if (!state->current->map->rhs) {
+				DEBUG("MAP %s ...", state->current->map->lhs->name);
+			} else {
+				DEBUG("MAP %s ... %s", state->current->map->lhs->name, state->current->map->rhs->name);
+
+				DEBUG("\t%08x", state->current->map->rhs->type);
+			}
 
 			rcode = state->current->func(request, state, state->current);
 			if (rcode < 0) {
