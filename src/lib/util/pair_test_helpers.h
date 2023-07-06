@@ -51,7 +51,7 @@ static inline int fr_pair_test_list_alloc(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	for (p = test_defs;
 	     p->attr != -1;
-	     p++) if (fr_pair_prepend_by_da(ctx, NULL, out, *p->da) < 0) return -1;
+	     p++) if (!fr_type_is_structural((*p->da)->type) && fr_pair_prepend_by_da(ctx, NULL, out, *p->da) < 0) return -1;
 
 	PAIR_LIST_VERIFY(out);
 
