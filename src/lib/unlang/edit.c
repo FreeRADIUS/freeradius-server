@@ -447,7 +447,7 @@ apply_list:
 
 	if (current->el) {
 		rcode = fr_edit_list_apply_list_assignment(current->el, current->lhs.vp, map->op, children, copy_vps);
-		if (rcode < 0) RPERROR("Failed performing list %s operation", fr_tokens[map->op]);
+		if (rcode < 0) RPERROR("Failed performing list '%s' operation", fr_tokens[map->op]);
 
 	} else {
 		fr_assert(map->op == T_OP_EQ);
