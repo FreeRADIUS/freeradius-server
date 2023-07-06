@@ -38,6 +38,7 @@ jobs:
               { "NAME": "ubuntu-20.04", "OS": "ubuntu:20.04"    },
               { "NAME": "ubuntu-22.04", "OS": "ubuntu:22.04"    },
               { "NAME": "debian-11",    "OS": "debian:bullseye" },
+              { "NAME": "debian-12",    "OS": "debian:bookworm" },
               { "NAME": "debian-sid",   "OS": "debian:sid"      }
             ]
           }
