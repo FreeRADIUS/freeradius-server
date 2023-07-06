@@ -3,9 +3,9 @@
 # Arguments in caps are exported to containers or relevant in docker-compose.yml
 
 export BASE_IMAGE=${BASE_IMAGE:-ubuntu:latest}
+export JLIBTOOL_DIR=${JLIBTOOL_DIR:-../../../scripts/bin}
 export BUILD_DIR=${BUILD_DIR:-../../../build}
 export DICT_DIR=${DICT_DIR:-../../../share}
-export LIB_DIR=${LIB_DIR:-../../../build/lib/.libs}
 export RADDB_DIR=${RADDB_DIR:-../../../raddb}
 yes | docker compose rm
 if ! [ "$?" -eq 0 ]; then
@@ -59,7 +59,8 @@ while docker compose ps | grep client; do
   sleep 3
 done
 
-docker compose stop
+# We don't care about the processes now, and we need to send a SIGKILL because of zombie processes spawned by jlibtool.
+docker compose kill
 
 # Move all the output to an external directory if specified
 if [[ "/$output_dir" != "/" ]]; then

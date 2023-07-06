@@ -32,10 +32,10 @@ services:
       - test-net
     volumes:
       - ./test:/test
+      - ${JLIBTOOL_DIR}:/fbin
       - ${BUILD_DIR}:/build
-      - ${DICT_DIR}:/dict
-      - ${LIB_DIR}:/usr/lib/freeradius
-      - ${RADDB_DIR}:/etc/freeradius
+      - ${DICT_DIR}:/share
+      - ${RADDB_DIR}:/raddb
 
   home:
     depends_on:
@@ -45,17 +45,17 @@ services:
       context: .
       args:
         from: ${BASE_IMAGE}
-    entrypoint: bash /test/home-entrypoint.sh
+    entrypoint: /test/home-entrypoint.sh
     environment:
       - LOG_LEVEL
     networks:
       - test-net
     volumes:
       - ./test:/test
+      - ${JLIBTOOL_DIR}:/fbin
       - ${BUILD_DIR}:/build
-      - ${DICT_DIR}:/dict
-      - ${LIB_DIR}:/usr/lib/freeradius
-      - ${RADDB_DIR}:/etc/freeradius
+      - ${DICT_DIR}:/share
+      - ${RADDB_DIR}:/raddb
 
   client:
     depends_on:
@@ -72,7 +72,7 @@ services:
       - test-net
     volumes:
       - ./test:/test
+      - ${JLIBTOOL_DIR}:/fbin
       - ${BUILD_DIR}:/build
-      - ${DICT_DIR}:/dict
-      - ${LIB_DIR}:/usr/lib/freeradius
-      - ${RADDB_DIR}:/etc/freeradius
+      - ${DICT_DIR}:/share
+      - ${RADDB_DIR}:/raddb
