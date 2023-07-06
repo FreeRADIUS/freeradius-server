@@ -1473,7 +1473,7 @@ int fr_pair_append_by_da_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t
 		 */
 		if (!vp) {
 			if (fr_pair_append_by_da(pair_ctx, &vp, list, *find) < 0) {
-				*out = NULL;
+				if (out) *out = NULL;
 				return -1;
 			}
 		}
@@ -1482,7 +1482,7 @@ int fr_pair_append_by_da_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t
 		 *	We're at the leaf, return
 		 */
 		if ((*find) == da) {
-			*out = vp;
+			if(out) *out = vp;
 			return 0;
 		}
 
@@ -1522,7 +1522,7 @@ int fr_pair_update_by_da_parent(fr_pair_t *parent, fr_pair_t **out,
 	if (da->depth <= 1) {
 		vp = fr_pair_find_by_da(list, NULL, da);
 		if (vp) {
-			*out = vp;
+			if (out) *out = vp;
 			return 1;
 		}
 
@@ -1549,7 +1549,7 @@ int fr_pair_update_by_da_parent(fr_pair_t *parent, fr_pair_t **out,
 		 */
 		if (!vp) {
 			if (fr_pair_append_by_da(pair_ctx, &vp, list, *find) < 0) {
-				*out = NULL;
+				if (out) *out = NULL;
 				return -1;
 			}
 		}
@@ -1558,7 +1558,7 @@ int fr_pair_update_by_da_parent(fr_pair_t *parent, fr_pair_t **out,
 		 *	We're at the leaf, return
 		 */
 		if ((*find) == da) {
-			*out = vp;
+			if (out) *out = vp;
 			return 0;
 		}
 
