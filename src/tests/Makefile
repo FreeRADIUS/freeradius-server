@@ -3,7 +3,7 @@
 ## Makefile -- Build and run tests for the server.
 ##
 ##	http://www.freeradius.org/
-##	$Id: f7ab1f9b400f3e3bee1d80ba97ae24b4c6bd7f2a $
+##	$Id$
 ##
 #
 include ../../Make.inc
@@ -115,7 +115,7 @@ SECRET	= testing123
 #
 #	Build the directory for testing the server
 #
-all: tests
+all: tests tests.load
 
 clean:
 	@rm -f test.conf dictionary *.ok *.log $(BUILD_DIR)/tests/eap
@@ -188,6 +188,7 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 radiusd.pid: test.conf $(RADDB_PATH)certs/ca.pem $(RADDB_PATH)certs/server.pem
 	${Q}rm -rf $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log $(TEST_PATH)/tlscache
 	${Q}mkdir -p $(TEST_PATH)/tlscache
+	$(info ${RADIUSD_BIN} -Pxxxxml ${TEST_PATH}/radius.log -d ${top_builddir}/src/tests -n test -i 127.0.0.1 -p ${PORT} -D ${DICT_PATH})
 	${Q}printf "Starting server... "
 	${Q}if ! $(RADIUSD_BIN) -Pxxxxml $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -i 127.0.0.1 -p $(PORT) -D $(DICT_PATH); then \
 		echo "failed"; \
@@ -335,5 +336,9 @@ endif # we have eapol_test built
 tests.runtests:  test.conf | radiusd.kill radiusd.pid
 	${Q}chmod a+x runtests.sh
 	${Q}BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
+
+# probably not the best way to do this
+tests.load:
+	${Q}(cd tls-load && BUILD_DIR=${BUILD_PATH} LIB_DIR=${LIB_PATH} DICT_DIR=${top_builddir}/share RADDB_DIR=${top_builddir}/raddb ./run_test.sh -o output 10)
 
 tests: tests.runtests tests.eap

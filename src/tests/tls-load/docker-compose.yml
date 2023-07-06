@@ -1,0 +1,79 @@
+version: "3"
+
+name: test-container
+
+networks:
+  test-net: 
+
+services:
+  tasks:
+    image: radius_libraries
+    build:
+      context: .
+      args:
+        from: ${BASE_IMAGE}
+    entrypoint: bash -c "mkdir /test/containers ; rm /test/containers/*"
+    volumes:
+      - ./test:/test
+  
+  proxy:
+    depends_on:
+      - home
+      - client
+    image: radius_libraries
+    build:
+      context: .
+      args:
+        from: ${BASE_IMAGE}
+    entrypoint: /test/proxy-entrypoint.sh
+    environment:
+      - LOG_LEVEL
+    networks:
+      - test-net
+    volumes:
+      - ./test:/test
+      - ${BUILD_DIR}:/etc/freeradius
+      - ${DICT_DIR}:/dict
+      - ${LIB_DIR}:/usr/lib/freeradius
+      - ${RADDB_DIR}:/raddb
+      - ./certs:/certs
+
+  home:
+    depends_on:
+      - tasks
+    image: radius_libraries
+    build:
+      context: .
+      args:
+        from: ${BASE_IMAGE}
+    entrypoint: bash /test/home-entrypoint.sh
+    environment:
+      - LOG_LEVEL
+    networks:
+      - test-net
+    volumes:
+      - ./test:/test
+      - ${BUILD_DIR}:/etc/freeradius
+      - ${DICT_DIR}:/dict
+      - ${LIB_DIR}:/usr/lib/freeradius
+      - ${RADDB_DIR}:/raddb
+      - ./certs:/certs
+
+  client:
+    depends_on:
+      - tasks
+    image: radius_libraries
+    build:
+      context: .
+      args:
+        from: ${BASE_IMAGE}
+    entrypoint: /test/client-entrypoint.sh
+    environment:
+      - NUM_REQUESTS
+    networks:
+      - test-net
+    volumes:
+      - ./test:/test
+      - ${BUILD_DIR}:/etc/freeradius
+      - ${DICT_DIR}:/dict
+      - ${LIB_DIR}:/usr/lib/freeradius
