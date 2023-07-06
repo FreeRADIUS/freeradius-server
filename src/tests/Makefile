@@ -336,7 +336,11 @@ tests.runtests:  test.conf | radiusd.kill radiusd.pid
 	${Q}BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 
 # probably not the best way to do this
-tests.load: $(RADDB_PATH)certs/ca.pem $(RADDB_PATH)certs/server.pem $(RADDB_PATH)certs/client.pem
-	${Q}(cd tls-load && BUILD_DIR=${BUILD_PATH} LIB_DIR=${LIB_PATH} DICT_DIR=${top_builddir}/share RADDB_DIR=${top_builddir}/raddb ./run_test.sh -o output 10)
+.PHONY: $(BUILD_PATH)/tests/tls-load
+$(BUILD_PATH)/tests/tls-load:
+	${Q}mkdir -p $@
+
+tests.load: $(BUILD_PATH)/tests/tls-load $(RADDB_PATH)certs/ca.pem $(RADDB_PATH)certs/server.pem $(RADDB_PATH)certs/client.pem
+	${Q}(cd tls-load && BUILD_DIR=${BUILD_PATH} LIB_DIR=${LIB_PATH} DICT_DIR=${top_builddir}/share RADDB_DIR=${top_builddir}/raddb ./run_test.sh -o $(BUILD_PATH)/tests/tls-load 10)
 
 tests: tests.runtests tests.eap
