@@ -26,7 +26,7 @@ if (!((&Tmp-IP-Address-0[0] == 192.0.2.1)) ||
 	(!(&Tmp-IP-Address-0[1] == 192.0.2.2)) ||
 	(!(&Tmp-IP-Address-0[2] == 192.0.2.3)) ||
 	(!(&Tmp-IP-Address-0[3] == 192.0.2.4)) ||
-	(!(&Tmp-IP-Address-0[4] == ''))) {
+	(&Tmp-IP-Address-0[4])) {
 	test_fail
 }
 
@@ -40,7 +40,7 @@ if (!(("%{Tmp-IP-Address-0[0]}" == '192.0.2.1')) ||
 	(!("%{Tmp-IP-Address-0[1]}" == '192.0.2.2')) ||
 	(!("%{Tmp-IP-Address-0[2]}" == '192.0.2.3')) ||
 	(!("%{Tmp-IP-Address-0[3]}" == '192.0.2.4')) ||
-	(!("%{Tmp-IP-Address-0[4]}" == ''))) {
+	(&Tmp-IP-Address-0[4])) {
 	test_fail
 }
 
@@ -53,7 +53,7 @@ update request {
 if (!(("%{Tmp-IP-Address-0[0]}" == '192.0.2.2')) ||
 	(!("%{Tmp-IP-Address-0[1]}" == '192.0.2.3')) ||
 	(!("%{Tmp-IP-Address-0[2]}" == '192.0.2.4')) ||
-	(!("%{Tmp-IP-Address-0[3]}" == ''))) {
+	(&Tmp-IP-Address-0[3])) {
 	test_fail
 }
 
@@ -66,7 +66,7 @@ update request {
 if (!(("%{Tmp-IP-Address-0[0]}" == '192.0.2.2')) ||
 	(!("%{Tmp-IP-Address-0[1]}" == '192.0.2.3')) ||
 	(!("%{Tmp-IP-Address-0[2]}" == '192.0.2.4')) ||
-	(!("%{Tmp-IP-Address-0[3]}" == ''))) {
+	(&Tmp-IP-Address-0[3])) {
 	test_fail
 }
 

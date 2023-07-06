@@ -29,7 +29,7 @@ update {
 if (!((&Tmp-IP-Address-0[0] == 192.0.2.2)) || \
 	(!(&Tmp-IP-Address-0[1] == 192.0.2.3)) || \
 	(!(&Tmp-IP-Address-0[2] == 192.0.2.4)) || \
-	(!("%{Tmp-IP-Address-0[3]}" == ''))) {
+	(&Tmp-IP-Address-0[3])) {
 	test_fail
 }
 
@@ -41,7 +41,7 @@ update {
 # Only the 1st, and 3rd Tmp-IP-Address attributes should still be in the list
 if (!((&Tmp-IP-Address-0[0] == 192.0.2.2)) || \
 	(!(&Tmp-IP-Address-0[1] == 192.0.2.4)) || \
-	(!("%{Tmp-IP-Address-0[2]}" == ''))) {
+	(&Tmp-IP-Address-0[2])) {
 	test_fail
 }
 
@@ -53,7 +53,7 @@ update {
 # Only the 1st, and 3rd Tmp-IP-Address attributes should still be in the list
 if (!((&Tmp-IP-Address-0[0] == 192.0.2.2)) || \
 	(!(&Tmp-IP-Address-0[1] == 192.0.2.4)) || \
-	(!("%{Tmp-IP-Address-0[2]}" == ''))) {
+	(&Tmp-IP-Address-0[2])) {
 	test_fail
 }
 
@@ -69,7 +69,7 @@ update {
 
 # Only the 1st, and 3rd Tmp-IP-Address attributes should still be in the list
 if (!((&Tmp-IP-Address-0[0] == 192.0.2.2)) || \
-	(!("%{Tmp-IP-Address-0[1]}" == ''))) {
+	(&Tmp-IP-Address-0[1])) {
 	test_fail
 }
 
