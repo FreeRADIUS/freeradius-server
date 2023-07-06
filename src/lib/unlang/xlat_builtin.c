@@ -1374,7 +1374,7 @@ finish:
 
 static xlat_arg_parser_t const xlat_func_cast_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_VOID },
-	{ .required = true, .type = FR_TYPE_VOID },
+	{ .type = FR_TYPE_VOID },
 	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
@@ -1425,6 +1425,25 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 	}
 
+	(void) fr_value_box_list_pop_head(args);
+
+	/*
+	 *	When we cast nothing to a string / octets, the result is an empty string/octets.
+	 */
+	if (unlikely(!fr_value_box_list_head(args))) {
+		if ((type == FR_TYPE_STRING) || (type == FR_TYPE_OCTETS)) {
+			fr_value_box_t *dst;
+
+			MEM(dst = fr_value_box_alloc(ctx, type, NULL, false));
+			fr_dcursor_append(out, dst);
+
+			return XLAT_ACTION_DONE;
+		}
+
+		RDEBUG("No data for cast to '%s'", fr_type_to_str(type));
+		return XLAT_ACTION_FAIL;
+	}
+
 	/*
 	 *	Cast to string means *print* to string.
 	 */
@@ -1432,7 +1451,6 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_sbuff_t *agg;
 		fr_value_box_t *dst;
 
-		(void) fr_value_box_list_pop_head(args);
 		talloc_free(name);
 
 		FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, SIZE_MAX);
@@ -1453,7 +1471,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Copy inputs to outputs, casting them along the way.
 	 */
-	arg = name;
+	arg = NULL;
 	while ((arg = fr_value_box_list_next(args, arg)) != NULL) {
 		fr_value_box_t	*vb, *p;
 
