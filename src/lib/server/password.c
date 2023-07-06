@@ -965,7 +965,6 @@ fr_pair_t *password_find(bool *ephemeral, TALLOC_CTX *ctx, request_t *request,
 {
 	fr_dcursor_t	cursor;
 	fr_pair_t	*known_good;
-	fr_pair_t	*password_tlv;
 
 	if (fr_pair_find_by_da(&request->control_pairs, NULL, attr_user) != NULL) {
 		RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -976,17 +975,7 @@ fr_pair_t *password_find(bool *ephemeral, TALLOC_CTX *ctx, request_t *request,
 		RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
 
-	/*
-	 *	Allow nested (or not);
-	 */
-	password_tlv = fr_pair_find_by_da(&request->control_pairs, NULL, attr_root);
-	if (!password_tlv) {
-		known_good = fr_pair_dcursor_by_ancestor_init(&cursor, &request->control_pairs, attr_root);
-	} else {
-		known_good = fr_pair_dcursor_init(&cursor, &password_tlv->vp_group);
-	}
-
-	for ( /* nothing */;
+	for (known_good = fr_pair_dcursor_by_ancestor_init(&cursor, &request->control_pairs, attr_root);
 	     known_good;
 	     known_good = fr_dcursor_next(&cursor)) {
 		password_info_t		*info;

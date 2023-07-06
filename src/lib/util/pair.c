@@ -1111,6 +1111,25 @@ fr_pair_t *_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
 					     fr_pair_list_t const *list, fr_dict_attr_t const *da,
 					     bool is_const)
 {
+	fr_pair_t *vp;
+
+	fr_assert(fr_type_is_structural(da->type));
+
+	/*
+	 *	This function is only used by snmp.c and password.c.  Once we've fully moved to
+	 *	nested attributes, it should be removed.
+	 */
+	fr_assert(da->parent->flags.is_root);
+
+	vp = fr_pair_find_by_da(list, NULL, da);
+	if (vp) {
+		list = &vp->vp_group;
+
+		return _fr_dcursor_init(cursor, fr_pair_order_list_dlist_head(&list->order),
+					NULL, NULL, NULL,
+					_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
+	}
+
 	return _fr_dcursor_init(cursor, fr_pair_order_list_dlist_head(&list->order),
 				fr_pair_iter_next_by_ancestor, NULL, da,
 				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
