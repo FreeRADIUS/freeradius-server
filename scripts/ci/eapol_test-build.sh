@@ -95,6 +95,9 @@ fi
 
 cp -n "$BUILD_CONF_FILE" "$WPA_SUPPLICANT_DIR/.config"
 
+# Don't crash out on build warnings, some newer GCC versions are quite picky
+sed -i -e 's/-Werror//' "${WPA_SUPPLICANT_DIR}/Makefile"
+
 # There is currently a code path incorrectly identified as a use-after-free by GCC on sid
 # Make that just a warning rather than a compilation failure
 if ! [ -z `lsb_release -d | grep sid` ]; then
