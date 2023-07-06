@@ -111,7 +111,7 @@ jobs:
         if [ "$RELEASE" = "n/a" ]; then
             RELEASE=$(cat /etc/debian_version | awk -F \/ '{ print $(NF) }')
         fi
-        [ "$RELEASE" != "bookworm" ] || RELEASE=sid
+        [ "$RELEASE" != "trixie" ] || RELEASE=sid
         echo "deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main" \
           > /etc/apt/sources.list.d/networkradius-extras.list
 
@@ -233,7 +233,7 @@ jobs:
         if [ "$RELEASE" = "n/a" ]; then
             RELEASE=$(cat /etc/debian_version | awk -F \/ '{ print $(NF) }')
         fi
-        [ "$RELEASE" != "bookworm" ] || RELEASE=sid
+        [ "$RELEASE" != "trixie" ] || RELEASE=sid
         echo "deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main" \
           > /etc/apt/sources.list.d/networkradius-extras.list
 
