@@ -289,14 +289,14 @@ static void test_fr_pair_find_by_da_idx(void)
 {
 	fr_pair_t *vp;
 
-	TEST_CASE("Search for fr_dict_attr_test_tlv_string using fr_pair_find_by_da_idx()");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, NULL, fr_dict_attr_test_tlv_string)) != NULL);
+	TEST_CASE("Search for fr_dict_attr_test_string using fr_pair_find_by_da_idx()");
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
 
-	TEST_CASE("Expected (vp->da == fr_dict_attr_test_tlv_string)");
-	TEST_CHECK(vp && vp->da == fr_dict_attr_test_tlv_string);
+	TEST_CASE("Expected (vp->da == fr_dict_attr_test_string)");
+	TEST_CHECK(vp && vp->da == fr_dict_attr_test_string);
 }
 
 static void test_fr_pair_find_by_child_num_idx(void)
