@@ -1313,6 +1313,23 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		 */
 		current->lhs.create = false;
 
+		if (map->rhs && fr_type_is_structural(vp->da->type) && tmpl_is_exec(map->rhs)) {
+			int rcode;
+
+			current->lhs.vp = vp;
+			current->lhs.vp_parent = fr_pair_parent(vp);
+
+			rcode = tmpl_to_values(state, &current->rhs, request, map->rhs);
+			if (rcode < 0) return -1;
+
+			if (rcode == 1) {
+				current->func = check_rhs;
+				return 1;
+			}
+
+			return expand_rhs(request, state, current);
+		}
+
 		/*
 		 *	We found it, but the attribute already exists.  This
 		 *	is a NOOP, where we ignore this assignment.
