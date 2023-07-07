@@ -105,7 +105,7 @@ static void test_bstrncpy_exact(void)
 {
 	char const	in[] = "i am a test string";
 	char const	in_long[] = "i am a longer test string";
-	char		out[18 + 1];
+	char		out[18 + 1] = " ";
 	fr_sbuff_t	sbuff;
 	ssize_t		slen;
 
@@ -227,7 +227,7 @@ static void test_bstrncpy_allowed(void)
 {
 	char const	in[] = "i am a test string";
 	char const	in_long[] = "i am a longer test string";
-	char		out[18 + 1];
+	char		out[18 + 1] = " ";
 	fr_sbuff_t	sbuff;
 	ssize_t		slen;
 
@@ -409,7 +409,7 @@ static void test_unescape_until(void)
 	char const		in_long[] = "i am a longer test string";
 	char const		in_escapes[] = "i am a |t|est strin|g";
 	char const		in_escapes_seq[] = "i |x|0am a |t|est strin|g|x20|040";
-	char			out[18 + 1];
+	char			out[18 + 1] = " ";
 	char			escape_out[20 + 1];
 
 	fr_sbuff_t		sbuff;
@@ -827,7 +827,7 @@ static void test_terminal_merge(void)
 static void test_no_advance(void)
 {
 	char const	*in = "i am a test string";
-	char		out[18 + 1];
+	char		out[18 + 1] = " ";
 	fr_sbuff_t	sbuff;
 	ssize_t		slen;
 
