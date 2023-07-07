@@ -158,13 +158,9 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_list_t
 	}
 
 	/*
-	 *	Find the first attribute which is parented by ARP-Packet.
+	 *	Get a cursor over the ARP attributes.
 	 */
-	for (vp = fr_pair_dcursor_init(&cursor, vps);
-	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
-		if (vp->da->parent == attr_arp_packet) break;
-	}
+	vp = fr_pair_dcursor_by_ancestor_init(&cursor, vps, attr_arp_packet);
 
 	/*
 	 *	For simplicity, we allow the caller to omit things
