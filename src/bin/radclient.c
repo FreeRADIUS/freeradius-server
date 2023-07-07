@@ -34,6 +34,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/radius/list.h>
 #include <freeradius-devel/radius/radius.h>
+#ifdef HAVE_OPENSSL_SSL_H
+#include <openssl/ssl.h>
+#endif
 #include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
@@ -202,6 +205,54 @@ static int _rc_request_free(rc_request_t *request)
 
 	return 0;
 }
+
+#if defined(OPENSSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x30000000L
+#  include <openssl/provider.h>
+
+static OSSL_PROVIDER *openssl_default_provider = NULL;
+static OSSL_PROVIDER *openssl_legacy_provider = NULL;
+
+static int openssl3_init(void)
+{
+	/*
+	 *	Load the default provider for most algorithms
+	 */
+	openssl_default_provider = OSSL_PROVIDER_load(NULL, "default");
+	if (!openssl_default_provider) {
+		ERROR("(TLS) Failed loading default provider");
+		return -1;
+	}
+
+	/*
+	 *	Needed for MD4
+	 *
+	 *	https://www.openssl.org/docs/man3.0/man7/migration_guide.html#Legacy-Algorithms
+	 */
+	openssl_legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+	if (!openssl_legacy_provider) {
+		ERROR("(TLS) Failed loading legacy provider");
+		return -1;
+	}
+
+	return 0;
+}
+
+static void openssl3_free(void)
+{
+	if (openssl_default_provider && !OSSL_PROVIDER_unload(openssl_default_provider)) {
+		ERROR("Failed unloading default provider");
+	}
+	openssl_default_provider = NULL;
+
+	if (openssl_legacy_provider && !OSSL_PROVIDER_unload(openssl_legacy_provider)) {
+		ERROR("Failed unloading legacy provider");
+	}
+	openssl_legacy_provider = NULL;
+}
+#else
+#define openssl3_init()
+#define openssl3_free()
+#endif
 
 static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 			   char const *password)
@@ -1775,6 +1826,8 @@ int main(int argc, char **argv)
 		fr_exit_now(1);
 	}
 
+	openssl3_init();
+
 	/*
 	 *	Bind to the first specified IP address and port.
 	 *	This means we ignore later ones.
@@ -2050,6 +2103,8 @@ int main(int argc, char **argv)
 	fr_atexit_global_trigger_all();
 
 	if ((stats.lost > 0) || (stats.failed > 0)) return EXIT_FAILURE;
+
+	openssl3_free();
 
 	return ret;
 }
