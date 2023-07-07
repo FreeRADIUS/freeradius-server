@@ -108,7 +108,10 @@ ssize_t fr_bfd_encode(uint8_t *out, size_t outlen, UNUSED uint8_t const *origina
 	fr_dbuff_t		work_dbuff = FR_DBUFF_TMP(out, outlen);
 	fr_da_stack_t		da_stack;
 
-	fr_pair_dcursor_init(&cursor, vps);
+	if (!fr_pair_dcursor_by_ancestor_init(&cursor, vps, attr_bfd_packet)) {
+		fr_strerror_const("No BFD attributes found in the list");
+		return -1;
+	}
 
 	packet_ctx.secret = secret;
 
