@@ -465,12 +465,6 @@ fr_pair_t	*fr_pair_find_by_da_idx(fr_pair_list_t const *list,
 fr_pair_t	*fr_pair_find_by_da_nested(fr_pair_list_t const *list, fr_pair_t const *prev,
 					   fr_dict_attr_t const *da) CC_HINT(nonnull(1,3));
 
-fr_pair_t	*fr_pair_find_by_ancestor(fr_pair_list_t const *list, fr_pair_t const *prev,
-					  fr_dict_attr_t const *ancestor) CC_HINT(nonnull(1,3));
-
-fr_pair_t	*fr_pair_find_by_ancestor_idx(fr_pair_list_t const *list,
-					      fr_dict_attr_t const *ancestor, unsigned int idx) CC_HINT(nonnull);
-
 fr_pair_t	*fr_pair_find_by_child_num(fr_pair_list_t const *list, fr_pair_t const *prev,
 					   fr_dict_attr_t const *parent, unsigned int attr) CC_HINT(nonnull(1,3));
 
