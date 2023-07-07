@@ -78,11 +78,6 @@ void eap_ds_free(EAP_DS **eap_ds_p)
 
 static int _eap_handler_free(eap_handler_t *handler)
 {
-	if (handler->identity) {
-		talloc_free(handler->identity);
-		handler->identity = NULL;
-	}
-
 	if (handler->prev_eapds) eap_ds_free(&(handler->prev_eapds));
 	if (handler->eap_ds) eap_ds_free(&(handler->eap_ds));
 

@@ -103,7 +103,7 @@ typedef struct _eap_handler {
 
 	REQUEST		*request;
 
-	char		*identity;	//!< User name from EAP-Identity
+	char const     	*identity;	//!< User name from EAP-Identity
 
 	EAP_DS 		*prev_eapds;
 	EAP_DS 		*eap_ds;
