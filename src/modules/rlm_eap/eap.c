@@ -1226,10 +1226,14 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		 */
 		handler->identity = eap_identity(request, handler, eap_packet);
 		if (!handler->identity) {
-			RDEBUG("Identity Unknown, authentication failed");
-		error2:
-			talloc_free(handler);
-			goto error;
+			if (!inst->allow_empty_identities) {
+				RDEBUG("Identity Unknown, authentication failed");
+			error2:
+				talloc_free(handler);
+				goto error;
+			}
+
+			handler->identity = "";
 		}
 
 	       vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);

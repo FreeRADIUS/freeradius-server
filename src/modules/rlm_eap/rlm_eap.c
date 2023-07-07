@@ -38,6 +38,7 @@ static const CONF_PARSER module_config[] = {
 	{ "max_eap_type", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_t, max_eap_type), "52" },
 	{ "ignore_unknown_eap_types", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_t, ignore_unknown_types), "no" },
 	{ "cisco_accounting_username_bug", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_t, mod_accounting_username_bug), "no" },
+	{ "allow_empty_identities", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_t, allow_empty_identities), NULL },
 	{ "max_sessions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_t, max_sessions), "2048" },
 	CONF_PARSER_TERMINATOR
 };

@@ -63,6 +63,7 @@ typedef struct rlm_eap {
 
 	bool		ignore_unknown_types;
 	bool		mod_accounting_username_bug;
+	bool		allow_empty_identities;
 
 	uint32_t	max_sessions;
 
