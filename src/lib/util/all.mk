@@ -12,6 +12,7 @@ SUBMAKEFILES := \
 	minmax_heap_tests.mk \
 	pair_legacy_tests.mk \
 	pair_list_perf_test.mk \
+	pair_nested_tests.mk \
 	pair_tests.mk \
 	rb_tests.mk \
 	sbuff_tests.mk \

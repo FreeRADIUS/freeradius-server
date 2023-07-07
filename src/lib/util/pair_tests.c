@@ -61,7 +61,11 @@ static void test_init(void)
 	autofree = talloc_autofree_context();
 	if (!autofree) {
 	error:
+#ifdef TEST_NESTED_PAIRS
+		fr_perror("pair_nested_tests");
+#else
 		fr_perror("pair_tests");
+#endif
 		fr_exit_now(EXIT_FAILURE);
 	}
 
@@ -75,7 +79,11 @@ static void test_init(void)
 	/* Initialize the "test_pairs" list */
 	fr_pair_list_init(&test_pairs);
 
+#ifdef TEST_NESTED_PAIRS
+	if (fr_pair_test_list_alloc_nested(autofree, &test_pairs, NULL) < 0) goto error;
+#else
 	if (fr_pair_test_list_alloc(autofree, &test_pairs, NULL) < 0) goto error;
+#endif
 }
 
 /*
