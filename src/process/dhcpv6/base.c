@@ -341,7 +341,7 @@ static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t const *pa
 static inline CC_HINT(always_inline)
 process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, bool expect_server_id)
 {
-	fr_pair_t			*transaction_id, *client_id, *server_id;
+	fr_pair_t			*transaction_id;
 	process_dhcpv6_client_fields_t	*rctx;
 
 	transaction_id = fr_pair_find_by_da(&request->request_pairs, NULL, attr_transaction_id);
@@ -356,21 +356,6 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 		return NULL;
 	}
 
-	client_id = fr_pair_find_by_ancestor(&request->request_pairs, NULL, attr_client_id);
-	if (!client_id) {
-		REDEBUG("Missing Client-ID");
-		return NULL;
-	}
-
-	server_id = fr_pair_find_by_ancestor(&request->request_pairs, NULL, attr_server_id);
-	if (!server_id && expect_server_id) {
-		REDEBUG("Missing Server-ID");
-		return NULL;
-	} else if (server_id && !expect_server_id) {
-		REDEBUG("Server-ID should not be present");
-		return NULL;
-	}
-
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), process_dhcpv6_client_fields_t));
 	rctx->transaction_id = fr_pair_copy(rctx, transaction_id);
 
@@ -381,20 +366,41 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 	 *	These should just become straight copies
 	 *	when the structure pairs are nested.
 	 */
-	if (fr_pair_list_copy_by_ancestor(rctx, &rctx->client_id,
-					  &request->request_pairs, attr_client_id, 0) < 0) {
+	switch (fr_pair_list_copy_by_ancestor(rctx, &rctx->client_id,
+					      &request->request_pairs, attr_client_id, 0)) {
+	case -1:
 		REDEBUG("Error copying Client-ID");
 	error:
 		talloc_free(rctx);
 		return NULL;
+
+	case 0:
+		REDEBUG("Missing Client-ID");
+		goto error;
+
+	default:
+		break;
 	}
 
-	if (expect_server_id) {
-		if (fr_pair_list_copy_by_ancestor(rctx, &rctx->server_id,
-						  &request->request_pairs, attr_server_id, 0) < 0) {
+	switch (fr_pair_list_copy_by_ancestor(rctx, &rctx->server_id,
+					      &request->request_pairs, attr_server_id, 0)) {
+	case -1:
 			REDEBUG("Error copying Server-ID");
 			goto error;
+
+	case 0:
+		if (expect_server_id) {
+			REDEBUG("Missing Server-ID");
+			goto error;
 		}
+		break;
+
+	default:
+		if (!expect_server_id) {
+			REDEBUG("Server-ID should not be present");
+			goto error;
+		}
+		break;
 	}
 
 	return rctx;
