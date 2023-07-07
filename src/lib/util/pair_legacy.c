@@ -32,19 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
-/** A fr_pair_t in string format.
- *
- * Used to represent pairs in the legacy 'users' file format.
- */
-typedef struct {
-	char r_opand[1024];					//!< Right hand side of the pair.
-
-	fr_token_t quote;					//!< Type of quoting around the r_opand.
-
-	fr_token_t op;						//!< Operator.
-} fr_pair_t_RAW;
-
-
 static fr_sbuff_term_t const 	bareword_terminals =
 				FR_SBUFF_TERMS(
 					L("\t"),
@@ -95,10 +82,10 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	fr_pair_t		*my_relative_vp;
 	char const		*p, *next;
 	fr_token_t		quote, last_token = T_INVALID;
-	fr_pair_t_RAW		raw;
 	fr_dict_attr_t const	*internal = NULL;
 	fr_pair_list_t		*my_list;
 	TALLOC_CTX		*my_ctx;
+	char			rhs[1024];
 
 	if (fr_dict_internal()) internal = fr_dict_root(fr_dict_internal());
 	if (!internal && !parent) return 0;
@@ -117,8 +104,10 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	p = buffer;
 	while (true) {
 		ssize_t slen;
+		fr_token_t op;
 		fr_dict_attr_t const *da;
 		fr_dict_attr_t *da_unknown = NULL;
+
 		fr_skip_whitespace(p);
 
 		/*
@@ -192,7 +181,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 
 		next = p + slen;
 
-		raw.r_opand[0] = '\0';
+		rhs[0] = '\0';
 
 		p = next;
 		fr_skip_whitespace(p);
@@ -200,8 +189,8 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		/*
 		 *	There must be an operator here.
 		 */
-		raw.op = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
-		if ((raw.op  < T_EQSTART) || (raw.op  > T_EQEND)) {
+		op = gettoken(&p, rhs, sizeof(rhs), false);
+		if ((op  < T_EQSTART) || (op  > T_EQEND)) {
 			fr_dict_unknown_free(&da);
 			fr_strerror_const("Expecting operator");
 			goto error;
@@ -209,19 +198,27 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 
 		fr_skip_whitespace(p);
 
+		vp = fr_pair_afrom_da(my_ctx, da);
+		if (!vp) goto error;
+		fr_pair_append(my_list, vp);
+
+		vp->op = op;
+
 		/*
 		 *	Allow grouping attributes.
 		 */
 		switch (da->type) {
 		case FR_TYPE_NON_LEAF:
+			if ((op != T_OP_EQ) && (op != T_OP_CMP_EQ)) {
+				fr_strerror_printf("Group list for %s MUST use '=' as the operator", da->name);
+				goto error;
+			}
+
 			if (*p != '{') {
 				fr_strerror_printf("Group list for %s MUST start with '{'", da->name);
 				goto error;
 			}
 			p++;
-
-			vp = fr_pair_afrom_da(my_ctx, da);
-			if (!vp) goto error;
 
 			/*
 			 *	Parse nested attributes, but the
@@ -231,14 +228,12 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			my_relative_vp = NULL;
 			slen = fr_pair_list_afrom_substr(vp, vp->da, p, end, &vp->vp_group, &last_token, depth + 1, &my_relative_vp);
 			if (slen <= 0) {
-				talloc_free(vp);
 				goto error;
 			}
 
 			if (last_token != T_RCBRACE) {
 			failed_group:
 				fr_strerror_const("Failed to end group list with '}'");
-				talloc_free(vp);
 				goto error;
 			}
 
@@ -258,7 +253,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			/*
 			 *	Get the RHS thing.
 			 */
-			quote = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
+			quote = gettoken(&p, rhs, sizeof(rhs), false);
 			if (quote == T_EOL) {
 				fr_strerror_const("Failed to get value");
 				goto error;
@@ -269,7 +264,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			case T_SINGLE_QUOTED_STRING:
 			case T_BACK_QUOTED_STRING:
 			case T_BARE_WORD:
-				raw.quote = quote;
 				break;
 
 			default:
@@ -285,18 +279,10 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			 *	@todo - note that they will also be escaped,
 			 *	so we may need to fix that later.
 			 */
-			vp = fr_pair_afrom_da(my_ctx, da);
-			if (!vp) goto error;
-			vp->op = raw.op;
+			if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {
+				if (fr_pair_value_bstrndup(vp, rhs, strlen(rhs), false) < 0) goto error;
 
-			if ((raw.op == T_OP_REG_EQ) || (raw.op == T_OP_REG_NE)) {
-				if (fr_pair_value_bstrndup(vp, raw.r_opand, strlen(raw.r_opand), false) < 0) {
-				free:
-					talloc_free(vp);
-					goto error;
-				}
-
-			} else if ((raw.op == T_OP_CMP_TRUE) || (raw.op == T_OP_CMP_FALSE)) {
+			} else if ((vp->op == T_OP_CMP_TRUE) || (vp->op == T_OP_CMP_FALSE)) {
 				/*
 				 *	We don't care what the value is, so
 				 *	ignore it.
@@ -304,8 +290,8 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 				break;
 			}
 
-			if (fr_pair_value_from_str(vp, raw.r_opand, strlen(raw.r_opand),
-						   fr_value_unescape_by_quote[quote], false) < 0) goto free;
+			if (fr_pair_value_from_str(vp, rhs, strlen(rhs),
+						   fr_value_unescape_by_quote[quote], false) < 0) goto error;
 			break;
 		}
 
@@ -315,7 +301,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		fr_dict_unknown_free(&da);
 
 		fr_assert(vp != NULL);
-		fr_pair_append(my_list, vp);
 
 		/*
 		 *	If there's a relative VP, and it's not the one
@@ -379,7 +364,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *buffer, size_t len, fr_pair_list_t *list)
 {
 	fr_token_t token;
-	fr_pair_t	*relative_vp = NULL;
+	fr_pair_t    *relative_vp = NULL;
 
 	(void) fr_pair_list_afrom_substr(ctx, parent, buffer, buffer + len, list, &token, 0, &relative_vp);
 	return token;
