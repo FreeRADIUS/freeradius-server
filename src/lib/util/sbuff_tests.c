@@ -600,7 +600,6 @@ static void test_unescape_until(void)
 		slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(tmp_out, sizeof(tmp_out)), &sbuff, SIZE_MAX,
 						   &FR_SBUFF_TERM("g"), &pipe_rules_both);
 		TEST_CHECK_SLEN(slen, 26);
-		/* coverity[uninit_use_in_call] */
 		TEST_CHECK_STRCMP(tmp_out, "i |x|0am a |t|est strinh  ");
 		TEST_CHECK_STRCMP(sbuff.p, "");
 	}
