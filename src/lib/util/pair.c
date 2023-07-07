@@ -3628,16 +3628,6 @@ void fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 	fr_pair_list_tainted(out);
 }
 
-/*
- *	print.c doesn't include pair.h, and doing so causes too many knock-on effects.
- */
-void fr_fprintf_pair(FILE *fp, char const *msg, fr_pair_t const *vp)
-{
-	if (msg) fputs(msg, fp);
-
-	fr_fprintf(fp, "%s %s %pV\n", vp->da->name, fr_tokens[vp->op], &vp->data);
-}
-
 static const char spaces[] = "                                                                                                                                ";
 
 static void fprintf_pair_list(FILE *fp, fr_pair_list_t const *list, int depth)
@@ -3659,4 +3649,20 @@ static void fprintf_pair_list(FILE *fp, fr_pair_list_t const *list, int depth)
 void fr_fprintf_pair_list(FILE *fp, fr_pair_list_t const *list)
 {
 	fprintf_pair_list(fp, list, 0);
+}
+
+/*
+ *	print.c doesn't include pair.h, and doing so causes too many knock-on effects.
+ */
+void fr_fprintf_pair(FILE *fp, char const *msg, fr_pair_t const *vp)
+{
+	if (msg) fputs(msg, fp);
+
+	if (fr_type_is_leaf(vp->da->type)) {
+		fr_fprintf(fp, "%s %s %pV\n", vp->da->name, fr_tokens[vp->op], &vp->data);
+	} else {
+		fprintf(fp, "%s = {\n", vp->da->name);
+		fprintf_pair_list(fp, &vp->vp_group, 1);
+		fprintf(fp, "}\n");
+	}
 }
