@@ -2209,15 +2209,30 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 				  fr_pair_list_t const *from, fr_dict_attr_t const *parent_da, unsigned int count)
 {
-	fr_pair_t	*vp, *new_vp;
+	fr_pair_t	*vp, *new_vp, *tlv;
 	unsigned int	cnt = 0;
 
 	if (count == 0) count = UINT_MAX;
 
+	/*
+	 *	Allow for nested attributes.
+	 */
+	tlv = fr_pair_find_by_da(from, NULL, parent_da);
+	if (tlv) {
+		switch (parent_da->type) {
+		case FR_TYPE_STRUCTURAL:
+			from = &tlv->vp_group;
+			break;
+
+		default:
+			fr_assert(0);
+		}
+	}
+
 	for (vp = fr_pair_list_head(from);
 	     vp && (cnt < count);
 	     vp = fr_pair_list_next(from, vp)) {
-		if (!fr_dict_attr_common_parent(parent_da, vp->da, true)) continue;
+		if (!tlv && !fr_dict_attr_common_parent(parent_da, vp->da, true)) continue;
 		cnt++;
 
 		PAIR_VERIFY_WITH_LIST(from, vp);
