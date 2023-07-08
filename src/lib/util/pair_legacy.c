@@ -290,7 +290,11 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			vp->op = raw.op;
 
 			if ((raw.op == T_OP_REG_EQ) || (raw.op == T_OP_REG_NE)) {
-				fr_pair_value_bstrndup(vp, raw.r_opand, strlen(raw.r_opand), false);
+				if (fr_pair_value_bstrndup(vp, raw.r_opand, strlen(raw.r_opand), false) < 0) {
+				free:
+					talloc_free(vp);
+					goto error;
+				}
 
 			} else if ((raw.op == T_OP_CMP_TRUE) || (raw.op == T_OP_CMP_FALSE)) {
 				/*
@@ -301,10 +305,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			}
 
 			if (fr_pair_value_from_str(vp, raw.r_opand, strlen(raw.r_opand),
-						   fr_value_unescape_by_quote[quote], false) < 0) {
-				talloc_free(vp);
-				goto error;
-			}
+						   fr_value_unescape_by_quote[quote], false) < 0) goto free;
 			break;
 		}
 
