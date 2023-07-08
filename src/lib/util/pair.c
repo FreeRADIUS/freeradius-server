@@ -2899,6 +2899,13 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 	 */
 	if (!fr_type_is_structural(vp->vp_type)) {
 		if (vp->data.enumv) fr_dict_attr_verify(file, line, vp->data.enumv);
+	} else {
+		fr_pair_t *parent = fr_pair_parent(vp);
+
+		if (parent && (parent->vp_type != FR_TYPE_GROUP) && (parent->da == vp->da)) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" structural (non-group) type contains itself",
+					     file, line, vp->da->name);
+		}
 	}
 
 	switch (vp->vp_type) {
