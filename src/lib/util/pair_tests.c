@@ -127,6 +127,35 @@ static void test_fr_pair_afrom_child_num(void)
 	talloc_free(vp);
 }
 
+static void test_fr_pair_afrom_da_nested(void)
+{
+	fr_pair_t    *vp, *parent = NULL;
+	fr_pair_list_t	local_pairs;
+
+	fr_pair_list_init(&local_pairs);
+
+	TEST_CASE("Allocation using fr_pair_afrom_da_nested");
+	TEST_CHECK((vp = fr_pair_afrom_da_nested(autofree, &local_pairs, fr_dict_attr_test_tlv_string)) != NULL);
+
+	TEST_CHECK(vp && vp->da == fr_dict_attr_test_tlv_string);
+	TEST_MSG("Expected attr(%s) == vp->da->attr(%s)", fr_dict_attr_test_tlv_string->name, vp->da->name);
+
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
+
+	TEST_CASE("Top list does not have the tlv child attribute");
+	TEST_CHECK(fr_pair_find_by_da(&local_pairs, NULL, fr_dict_attr_test_tlv_string) == NULL);
+
+	TEST_CASE("Top list does have the tlv attribute");
+	parent = fr_pair_find_by_da(&local_pairs, NULL, fr_dict_attr_test_tlv);
+	TEST_CHECK(parent != NULL);
+
+	TEST_CASE("Parent list does have the tlv child attribute");
+	TEST_CHECK(fr_pair_find_by_da(&parent->vp_group, NULL, fr_dict_attr_test_tlv_string) == vp);
+
+	talloc_free(parent);	/* not vp! */
+}
+
 static void test_fr_pair_copy(void)
 {
 	fr_pair_t *vp, *copy;
@@ -1354,6 +1383,7 @@ TEST_LIST = {
 	 */
 	{ "fr_pair_afrom_da",                     test_fr_pair_afrom_da },
 	{ "fr_pair_afrom_child_num",              test_fr_pair_afrom_child_num },
+	{ "fr_pair_afrom_da_nested",              test_fr_pair_afrom_da_nested },
 	{ "fr_pair_copy",                         test_fr_pair_copy },
 	{ "fr_pair_steal",                        test_fr_pair_steal },
 
