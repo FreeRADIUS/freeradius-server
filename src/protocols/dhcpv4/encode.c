@@ -491,22 +491,25 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx)
 {
-	ssize_t			len;
+	ssize_t			len, option_len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
-	fr_dbuff_marker_t	hdr, next_hdr, dest, hdr_io;
+	fr_dbuff_marker_t	hdr, dst, tmp;
 	fr_pair_t const		*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	uint8_t			option_number, option_len;
+	uint8_t			option_number;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
+	/*
+	 *	Where the TLV header starts.
+	 */
 	fr_dbuff_marker(&hdr, &work_dbuff);
+
 	/*
 	 *	These are set before use; their initial value doesn't matter.
 	 */
-	fr_dbuff_marker(&next_hdr, &work_dbuff);
-	fr_dbuff_marker(&dest, &work_dbuff);
-	fr_dbuff_marker(&hdr_io, &work_dbuff);
+	fr_dbuff_marker(&dst, &work_dbuff);
+	fr_dbuff_marker(&tmp, &work_dbuff);
 
 	/*
 	 *	Write out the option number and length (which, unlike RADIUS,
@@ -524,48 +527,54 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 		if (len < 0) return len;
 		if (len == 0) break;		/* Insufficient space */
 
+		option_len += len;
+
 		/*
 		 *	If the newly added data fits within the current option, then
 		 *	update the header, and go to the next option.
 		 */
-		if (option_len + len <= 255) {
-			option_len += len;
-			fr_dbuff_set(&hdr_io, fr_dbuff_current(&hdr) + 1);
-			fr_dbuff_in_bytes(&hdr_io, option_len);
+		if (option_len <= 255) {
+			fr_dbuff_set(&tmp, fr_dbuff_current(&hdr) + 1);
+			fr_dbuff_in_bytes(&tmp, (uint8_t) option_len);
+
 		} else {
-			/*
-			 *	If there was data before the new data, create a new header
-			 *	and advance to it.
-			 */
-			if (option_len > 0) {
-				if (fr_dbuff_extend_lowat(NULL, &work_dbuff, 2) < 2) break;
-				fr_dbuff_advance(&work_dbuff, 2);
-
-				fr_dbuff_set(&next_hdr, fr_dbuff_current(&hdr) + (option_len + 2));
-				fr_dbuff_set(&hdr, &next_hdr);
-
-				fr_dbuff_set(&dest, fr_dbuff_current(&next_hdr) + 2);
-				fr_dbuff_move(&dest, &next_hdr, len);
-
-				option_len = 0;
-				fr_dbuff_set(&hdr_io, &hdr);
-				fr_dbuff_in_bytes(&hdr_io, option_number, option_len);
-			}
+		next_hdr:
+			option_len -= 255;
 
 			/*
-			 *	If the new data fits entirely within the (possibly new,
-			 *	but definitely unused) option, just use it. Otherwise,
-			 *	it must be split across multiple options.
+			 *	Ensure that we have room for another TLV header.
 			 */
-			if (len <= 255) {
-				option_len += len;
-				fr_dbuff_set(&hdr_io, fr_dbuff_current(&hdr) + 1);
-				fr_dbuff_in_bytes(&hdr_io, option_len);
+			if (fr_dbuff_extend_lowat(NULL, &work_dbuff, 2) < 2) break;
+			fr_dbuff_advance(&work_dbuff, 2);
+
+			/*
+			 *	The first TLV is length 255
+			 */
+			fr_dbuff_set(&tmp, fr_dbuff_current(&hdr) + 1);
+			fr_dbuff_in_bytes(&tmp, 255);
+
+			/*
+			 *	Point to where the next header should be
+			 */
+			fr_dbuff_set(&tmp, fr_dbuff_current(&hdr) + 255 + 2);
+			fr_dbuff_set(&hdr, &tmp);
+
+			/*
+			 *	Move the encoded data 2 bytes forward
+			 *	to account for the new header.
+			 */
+			fr_dbuff_set(&dst, fr_dbuff_current(&tmp) + 2);
+			fr_dbuff_move(&dst, &tmp, option_len);
+
+			/*
+			 *	Update the header length
+			 */
+			fr_dbuff_set(&tmp, &hdr);
+			if (option_len < 255) {
+				fr_dbuff_in_bytes(&tmp, option_number, (uint8_t) option_len);
 			} else {
-				if (!extend_option(&work_dbuff, &hdr, len)) break;
-				fr_dbuff_set(&hdr_io, fr_dbuff_current(&hdr) + 1);
-				len = fr_dbuff_out(&option_len, &hdr_io);
-				if (len < 0) return len;
+				fr_dbuff_in_bytes(&tmp, option_number, 0);
+				goto next_hdr;
 			}
 		}
 
