@@ -180,10 +180,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
  *
  * @param[in] dbuff	buffer containing the option
  * @param[in] hdr	marker (with dbuff as parent) set to where the option starts
- * @param[in] len	length of the data being written
+ * @param[in] len        length of the data being written
  * @return
- *	- false if we can't extend the option
- *	- true  if we can, with hdr set to where the next option should start
+ *	- <0 if we can't extend the option
+ *	- >0  if we can, with hdr set to where the next option should start
  * @note	The option starts with a two-byte (type, length) header, where
  *		the length does *not* include the two bytes for the header.
  *		The starting length may be non-zero, hence its counting towards
@@ -191,11 +191,11 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
  *		(All those following start out empty, hence the initialization
  *		of their lengths to zero.)
  */
-static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
+static ssize_t extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, size_t len)
 {
-	size_t header_bytes;
+	size_t 			header_bytes;
 	uint8_t			type = 0, option_len = 0;
-	fr_dbuff_marker_t	src, dest, hdr_io;
+	fr_dbuff_marker_t	dst, tmp;
 
 	/*
 	 *	This can't follow the convention of operating on
@@ -203,80 +203,77 @@ static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
 	 *	already-written data.
 	 */
 
-	fr_dbuff_marker(&src, dbuff);
-	fr_dbuff_marker(&dest, dbuff);
-	fr_dbuff_marker(&hdr_io, dbuff);
+	fr_dbuff_marker(&dst, dbuff);
+	fr_dbuff_marker(&tmp, dbuff);
 
-	fr_dbuff_set(&hdr_io, hdr);
-	if (fr_dbuff_out(&type, &hdr_io) < 0 || fr_dbuff_out(&option_len, &hdr_io) < 0) {
-	error:
-		fr_dbuff_marker_release(&dest);
-		fr_dbuff_marker_release(&src);
-		fr_dbuff_marker_release(&hdr_io);
-		return false;
-	}
+	fr_dbuff_set(&tmp, hdr);
 
 	/*
-	 *	How many bytes we will need to add for headers.
+	 *	Read the current header.
 	 */
-	header_bytes = ((option_len + len) / 255) * 2;
+	if (fr_dbuff_out(&type, &tmp) < 0 || fr_dbuff_out(&option_len, &tmp) < 0) {
+	error:
+		fr_dbuff_marker_release(&dst);
+		fr_dbuff_marker_release(&tmp);
+		return -1;
+	}
+
+	len += option_len;
+
+	/*
+	 *	How many bytes we will need to add for all headers.
+	 */
+	header_bytes = (option_len / 255) * 2;
 
 	/*
 	 *	No room for the new headers and data, we're done.
 	 */
 	if (fr_dbuff_extend_lowat(NULL, dbuff, header_bytes) < header_bytes) goto error;
-	fr_dbuff_advance(dbuff, header_bytes);
 
 	/*
 	 *	Moving the same data repeatedly in a loop is simpler
 	 *	and less error-prone than anything smarter.
 	 */
-	while (len > 0) {
-		int sublen;
+	while (true) {
+		uint8_t sublen;
+
+		sublen = (len > 255) ? 255 : len;
 
 		/*
-		 *	Figure out how much data goes into this
-		 *	option, and how much data we have to move out
-		 *	of the way.
+		 *	Write the new header, including the (possibly partial) length.
 		 */
-		sublen = 255 - option_len;
-		if (sublen > len) sublen = len;
+		fr_dbuff_set(&tmp, fr_dbuff_current(hdr));
+		fr_dbuff_in_bytes(&tmp, type, sublen);
 
 		/*
-		 *	Add in the data left at the current pointer.
+		 *	The data is already where it's supposed to be, and the length is in the header, and
+		 *	the length is small.  We're done.
 		 */
-		option_len += sublen;
 		len -= sublen;
-		fr_dbuff_set(&hdr_io, fr_dbuff_current(hdr) + 1);
-		fr_dbuff_in(&hdr_io, option_len);
+		if (!len) {
+			fr_dbuff_set(dbuff, fr_dbuff_current(hdr) + sublen + 2);
+			len = sublen;
+			break;
+		}
 
 		/*
-		 *	Nothing more to do?  Exit.
+		 *	Take the current header, skip it, and then skip the data we just encoded.  That is the
+		 *	location of the "next" header.
 		 */
-		if (!len) break;
+		fr_dbuff_set(&tmp, fr_dbuff_current(hdr) + 2 + 255);
+		fr_dbuff_set(hdr, &tmp);
 
 		/*
-		 *	The current option is full.  So move the
-		 *	trailing data up by 2 bytes, making room
-		 *	for a new header.
+		 *	The data is currently overlapping with the next header.  We have to move it two bytes forward to
+		 *	make room for the header.
 		 */
-		fr_dbuff_advance(hdr, option_len + 2);
-		fr_dbuff_set(&src, hdr);
-		fr_dbuff_set(&dest, fr_dbuff_current(hdr) + 2);
-		fr_dbuff_move(&dest, &src, len);
-
-		/*
-		 *	Initialize the new header.
-		 */
-		option_len = 0;
-		fr_dbuff_set(&hdr_io, hdr);
-		fr_dbuff_in_bytes(&hdr_io, type, option_len);
+		fr_dbuff_set(&dst, fr_dbuff_current(&tmp) + 2);
+		fr_dbuff_move(&dst, &tmp, len);
 	}
 
-	fr_dbuff_marker_release(&dest);
-	fr_dbuff_marker_release(&src);
-	fr_dbuff_marker_release(&hdr_io);
-	return true;
+	fr_dbuff_marker_release(&dst);
+	fr_dbuff_marker_release(&tmp);
+	return len;
 }
 
 #define DHCPV4_OPT_HDR_LEN (2)
@@ -381,7 +378,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff,
 		fr_dbuff_advance(&hdr, 1);
 		fr_dbuff_in(&hdr, (uint8_t) len);
 
-	} else if (!extend_option(&work_dbuff, &hdr, len)) {
+	} else if (extend_option(&work_dbuff, &hdr, len) < 0) {
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
@@ -515,55 +512,21 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 		if (len < 0) return len;
 		if (len == 0) break;		/* Insufficient space */
 
-		option_len += len;
-
 		/*
 		 *	If the newly added data fits within the current option, then
 		 *	update the header, and go to the next option.
 		 */
-		if (option_len <= 255) {
+		if ((option_len + len) <= 255) {
+			option_len += len;
+
 			fr_dbuff_set(&tmp, fr_dbuff_current(&hdr) + 1);
 			fr_dbuff_in_bytes(&tmp, (uint8_t) option_len);
 
+		} else if ((len = extend_option(&work_dbuff, &hdr, len)) < 0) {
+			return PAIR_ENCODE_FATAL_ERROR;
+
 		} else {
-		next_hdr:
-			option_len -= 255;
-
-			/*
-			 *	Ensure that we have room for another TLV header.
-			 */
-			if (fr_dbuff_extend_lowat(NULL, &work_dbuff, 2) < 2) break;
-			fr_dbuff_advance(&work_dbuff, 2);
-
-			/*
-			 *	The first TLV is length 255
-			 */
-			fr_dbuff_set(&tmp, fr_dbuff_current(&hdr) + 1);
-			fr_dbuff_in_bytes(&tmp, 255);
-
-			/*
-			 *	Point to where the next header should be
-			 */
-			fr_dbuff_set(&tmp, fr_dbuff_current(&hdr) + 255 + 2);
-			fr_dbuff_set(&hdr, &tmp);
-
-			/*
-			 *	Move the encoded data 2 bytes forward
-			 *	to account for the new header.
-			 */
-			fr_dbuff_set(&dst, fr_dbuff_current(&tmp) + 2);
-			fr_dbuff_move(&dst, &tmp, option_len);
-
-			/*
-			 *	Update the header length
-			 */
-			fr_dbuff_set(&tmp, &hdr);
-			if (option_len < 255) {
-				fr_dbuff_in_bytes(&tmp, option_number, (uint8_t) option_len);
-			} else {
-				fr_dbuff_in_bytes(&tmp, option_number, 0);
-				goto next_hdr;
-			}
+			option_len = len;
 		}
 
 		FR_PROTO_STACK_PRINT(da_stack, depth);
