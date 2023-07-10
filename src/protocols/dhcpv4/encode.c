@@ -586,27 +586,22 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_vsio(fr_dbuff_t *dbuff,
-			       fr_da_stack_t *da_stack, unsigned int depth,
-			       fr_dcursor_t *cursor, void *encode_ctx)
+static ssize_t encode_vsio_data(fr_dbuff_t *dbuff,
+				fr_da_stack_t *da_stack, unsigned int depth,
+				fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX(dbuff, 255 - 4 - 1 - 2);
 	fr_dbuff_marker_t	hdr;
-	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_dict_attr_t const	*dv;
+	fr_dict_attr_t const	*da = da_stack->da[depth - 2];
+	fr_dict_attr_t const	*dv = da_stack->da[depth - 1];
 	ssize_t			len;
 	fr_pair_t		*vp;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	fr_dbuff_marker(&hdr, &work_dbuff);
-
-	/*
-	 *	DA should be a VSA type with the value of OPTION_VENDOR_OPTS.
-	 */
-	if (da->type != FR_TYPE_VSA) {
-		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_type_to_str(da->type));
+	if (dv->type != FR_TYPE_VENDOR) {
+		fr_strerror_printf("%s: Expected type \"vendor\" got \"%s\"", __FUNCTION__,
+				   fr_type_to_str(dv->type));
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
@@ -617,17 +612,7 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 	 */
 	FR_DBUFF_REMAINING_RETURN(&work_dbuff, DHCPV4_OPT_HDR_LEN + sizeof(uint32_t) + 3);
 
-	/*
-	 *	Now process the vendor ID part (which is one attribute deeper)
-	 */
-	dv = da_stack->da[++depth];
-	FR_PROTO_STACK_PRINT(da_stack, depth);
-
-	if (dv->type != FR_TYPE_VENDOR) {
-		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_type_to_str(dv->type));
-		return PAIR_ENCODE_FATAL_ERROR;
-	}
+	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	/*
 	 *	Copy in the 32bit PEN (Private Enterprise Number)
@@ -655,11 +640,10 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 	 *    /                               /
 	 *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
-
-	da = da_stack->da[depth + 1];
+	da = da_stack->da[depth];
 
 	while (true) {
-		len = encode_child(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+		len = encode_child(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (len == 0) break; /* insufficient space */
 		if (len < 0) return len;
 
@@ -678,10 +662,33 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 	fr_dbuff_in(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN - 4 - 1));
 
 #ifndef NDEBUG
-	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO header");
+	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO Data");
 #endif
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+static ssize_t encode_vsio(fr_dbuff_t *dbuff,
+			       fr_da_stack_t *da_stack, unsigned int depth,
+			       fr_dcursor_t *cursor, void *encode_ctx)
+{
+	fr_dict_attr_t const	*da = da_stack->da[depth];
+
+	FR_PROTO_STACK_PRINT(da_stack, depth);
+
+	fr_assert(da_stack->da[depth + 1] != NULL);
+	fr_assert(da_stack->da[depth + 2] != NULL);
+
+	/*
+	 *	DA should be a VSA type with the value of OPTION_VENDOR_OPTS.
+	 */
+	if (da->type != FR_TYPE_VSA) {
+		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
+				   fr_type_to_str(da->type));
+		return PAIR_ENCODE_FATAL_ERROR;
+	}
+
+	return encode_vsio_data(dbuff, da_stack, depth + 2, cursor, encode_ctx);
 }
 
 /** Encode a DHCP option and any sub-options.
