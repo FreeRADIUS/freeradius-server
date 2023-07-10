@@ -706,7 +706,7 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 			if (len <= 0) return len;
 		}
 
-		vp = fr_dcursor_next(&vendor_cursor);
+		(void) fr_dcursor_next(&vendor_cursor);
 	}
 
 	/*
