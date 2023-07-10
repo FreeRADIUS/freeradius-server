@@ -642,6 +642,16 @@ static ssize_t encode_vsio_data(fr_dbuff_t *dbuff,
 	 */
 	da = da_stack->da[depth];
 
+	/*
+	 *	RFC 3925 Section 4 says:
+	 *
+	 *	Multiple instances of this option may be present and MUST be concatenated in accordance with
+	 *	RFC 3396.
+	 *
+	 *	@todo - we don't currently allow encoding more data as per extend_option() or encode_tlv().
+	 *	We probably want to do that.  We probably also want to update the decoder so that it
+	 *	concatenates options before decoding, too.
+	 */
 	while (true) {
 		len = encode_child(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (len == 0) break; /* insufficient space */
@@ -673,11 +683,11 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 			       fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dict_attr_t const	*da = da_stack->da[depth];
+	fr_pair_t		*vp;
+	fr_dcursor_t		vendor_cursor;
+	fr_dbuff_t		work_dbuff;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
-
-	fr_assert(da_stack->da[depth + 1] != NULL);
-	fr_assert(da_stack->da[depth + 2] != NULL);
 
 	/*
 	 *	DA should be a VSA type with the value of OPTION_VENDOR_OPTS.
@@ -688,7 +698,61 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	return encode_vsio_data(dbuff, da_stack, depth + 2, cursor, encode_ctx);
+	/*
+	 *	We go here via a flat attribute, so the da_stack has a
+	 *	vendor next, followed by the vendor attributes.
+	 */
+	if (da_stack->da[depth + 1]) {
+		fr_assert(da_stack->da[depth + 2] != NULL);
+
+		return encode_vsio_data(dbuff, da_stack, depth + 2, cursor, encode_ctx);
+	}
+
+	vp = fr_dcursor_current(cursor);
+	fr_assert(vp->da == da);
+
+	work_dbuff = FR_DBUFF(dbuff);
+	fr_pair_dcursor_init(&vendor_cursor, &vp->vp_group);
+
+	/*
+	 *	Loop over all vendors, and inside of that, loop over all VSA attributes.
+	 */
+	while ((vp = fr_dcursor_current(&vendor_cursor)) != NULL) {
+		ssize_t len;
+		fr_dcursor_t vsa_cursor;
+
+		if (vp->da->type != FR_TYPE_VENDOR) continue;
+
+		fr_pair_dcursor_init(&vsa_cursor, &vp->vp_group);
+
+		if ((vp = fr_dcursor_current(&vsa_cursor)) != NULL) {
+			/*
+			 *	RFC 3925 Section 4 says:
+			 *
+			 *	"An Enterprise Number SHOULD only occur once
+			 *	among all instances of this option.  Behavior
+			 *	is undefined if an Enterprise Number occurs
+			 *	multiple times."
+			 *
+			 *	The function encode_vsio_data() builds
+			 *	one header, and then loops over all
+			 *	children of the vsa_cursor.
+			 */
+			fr_proto_da_stack_build(da_stack, vp->da);
+			len = encode_vsio_data(&work_dbuff, da_stack, depth + 2, &vsa_cursor, encode_ctx);
+			if (len <= 0) return len;
+		}
+
+		vp = fr_dcursor_next(&vendor_cursor);
+	}
+
+	/*
+	 *	Skip over the attribute we just encoded.
+	 */
+	vp = fr_dcursor_next(cursor);
+	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode a DHCP option and any sub-options.
