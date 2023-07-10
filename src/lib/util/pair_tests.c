@@ -148,7 +148,7 @@ static void test_fr_pair_afrom_da_nested(void)
 
 	TEST_CASE("Top list does have the tlv attribute");
 	parent = fr_pair_find_by_da(&local_pairs, NULL, fr_dict_attr_test_tlv);
-	TEST_CHECK(parent != NULL);
+	TEST_ASSERT(parent != NULL);
 
 	TEST_CASE("Parent list does have the tlv child attribute");
 	TEST_CHECK(fr_pair_find_by_da(&parent->vp_group, NULL, fr_dict_attr_test_tlv_string) == vp);
