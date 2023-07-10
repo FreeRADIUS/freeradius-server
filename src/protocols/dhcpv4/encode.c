@@ -413,34 +413,22 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 		 */
 		switch (da_stack->da[depth]->type) {
 		case FR_TYPE_TLV:
-			if (!da_stack->da[depth + 1]) goto do_nested_children;
+			if (!da_stack->da[depth + 1]) break;
 
 			return encode_tlv(dbuff, da_stack, depth, cursor, encode_ctx);
 
 		case FR_TYPE_VSA:
-			if (!da_stack->da[depth + 1]) goto do_nested_children;
+			if (!da_stack->da[depth + 1]) break;
 
 			return encode_vsio(dbuff, da_stack, depth, cursor, encode_ctx);
 
 		default:
-			break;
-		}
-
-		return encode_rfc(dbuff, da_stack, depth, cursor, encode_ctx);
-	}
-
-	if (!da_stack->da[depth]) {
-		switch (vp->da->type) {
-		case FR_TYPE_STRUCTURAL:
-			break;
-
-		default:
-			fr_strerror_printf("%s: Internal sanity check failed", __FUNCTION__);
-			return -1;
+			return encode_rfc(dbuff, da_stack, depth, cursor, encode_ctx);
 		}
 	}
 
-do_nested_children:
+	fr_assert(fr_type_is_structural(vp->da->type));
+
 	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 	work_dbuff = FR_DBUFF(dbuff);
 
