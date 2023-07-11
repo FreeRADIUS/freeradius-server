@@ -46,8 +46,6 @@ endif
 #  For sheer laziness, allow "make test.process.foo"
 #
 define PROCESS_TEST
-$(info PROCESS_TEST ${1})
-
 test.process.${1}: $(addprefix $(OUTPUT)/,${1})
 
 test.process.help: TEST_PROCESS_HELP += test.process.${1}
@@ -65,7 +63,6 @@ $(OUTPUT)/${1}: $(DIR)/$(subst /,,$(dir ${1}))/server.conf
 $(OUTPUT)/${1}: | $(DIR)/share/$(subst /,,$(dir ${1})) $(DIR)/share/freeradius $(PROCESS_DICT_TLS)
 endef
 
-$(info FILES $(FILES))
 $(foreach x,$(FILES),$(eval $(call PROCESS_TEST,$x)))
 
 #
