@@ -24,7 +24,8 @@ TEST := test.process
 #
 #  We're left with a set of files to run the tests on.
 #
-FILES := $(filter-out %.ignore %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(patsubst %,$(DIR)/%/*,$(basename $(subst process_,,$(filter process%,$(ALL_TGTS))))))))
+PROTOCOLS := $(subst /server.conf,,$(subst $(DIR)/,,$(wildcard $(DIR)/*/server.conf)))
+FILES := $(filter-out %.ignore %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/${PROTOCOLS}/*)))
 
 $(eval $(call TEST_BOOTSTRAP))
 
