@@ -846,6 +846,7 @@ RESUME(auth_get)
 		COPY(attr_tacacs_client_port);
 		COPY(attr_tacacs_remote_address);
 		COPY(attr_tacacs_privilege_level);
+		COPY(attr_tacacs_authentication_type);
 		REXDENT();
 
 	} else {
