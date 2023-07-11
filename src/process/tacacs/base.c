@@ -801,6 +801,7 @@ RESUME(auth_get)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
 	process_tacacs_session_t	*session;
+	fr_pair_t			*vp, *copy;
 
 	PROCESS_TRACE;
 
@@ -813,7 +814,6 @@ RESUME(auth_get)
 	session = request_data_reference(request, inst, 0);
 	if (!session) {
 		fr_tacacs_packet_t const *packet = (fr_tacacs_packet_t const *) request->packet->data;
-		fr_pair_t *vp, *copy;
 
 		if (!packet_is_authen_start_request(packet)) goto send_reply;
 
@@ -854,10 +854,21 @@ RESUME(auth_get)
 		}
 
 		/*
-		 *	There's no need to cache the User-Password, as the "getpass" packet is the last one in
-		 *	the chain.  The client will send a "continue" packet containing the password, and the
-		 *	admin will reply to that with pass/fail.
+		 *	It is possible that the user name or password are added on subsequent Authentication-Continue
+		 *	packets following replies with Authentication-GetUser or Authentication-GetPass.
+		 *	Check if they are already in the session cache, and if not, add them.
 		 */
+#define COPY_MISSING(_attr) do { \
+	vp = fr_pair_find_by_da(&session->list, NULL, _attr); \
+	if (vp) break; \
+	COPY(_attr); \
+} while (0)
+
+		RDEBUG2("Caching additional session attributes:");
+		RINDENT();
+		COPY_MISSING(attr_user_name);
+		COPY_MISSING(attr_user_password);
+		REXDENT();
 	}
 	session->reply = request->reply->code;
 	session->seq_no = request->packet->data[2];
