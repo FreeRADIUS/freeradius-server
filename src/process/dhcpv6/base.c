@@ -103,6 +103,9 @@ typedef struct {
 	fr_pair_t	*transaction_id;
 	fr_pair_list_t	client_id;
 	fr_pair_list_t	server_id;
+	fr_pair_list_t	iana_iaid;
+	fr_pair_list_t	iata_iaid;
+	fr_pair_list_t	iapd_iaid;
 } process_dhcpv6_client_fields_t;
 
 /** Records fields from the original relay-request so we have a known good copy
@@ -128,6 +131,9 @@ static fr_dict_attr_t const *attr_client_id;
 static fr_dict_attr_t const *attr_server_id;
 static fr_dict_attr_t const *attr_hop_count;
 static fr_dict_attr_t const *attr_interface_id;
+static fr_dict_attr_t const *attr_iana_iaid;
+static fr_dict_attr_t const *attr_iata_iaid;
+static fr_dict_attr_t const *attr_iapd_iaid;
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_relay_link_address;
 static fr_dict_attr_t const *attr_relay_peer_address;
@@ -141,6 +147,9 @@ extern fr_dict_attr_autoload_t process_dhcpv6_dict_attr[];
 fr_dict_attr_autoload_t process_dhcpv6_dict_attr[] = {
 	{ .out = &attr_client_id, .name = "Client-ID", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6 },
 	{ .out = &attr_hop_count, .name = "Hop-Count", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv6 },
+	{ .out = &attr_iana_iaid, .name = "IA-NA.IAID", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
+	{ .out = &attr_iata_iaid, .name = "IA-TA.IAID", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
+	{ .out = &attr_iapd_iaid, .name = "IA-PD.IAID", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
 	{ .out = &attr_interface_id, .name = "Interface-ID", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
 	{ .out = &attr_relay_link_address, .name = "Relay-Link-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
@@ -361,6 +370,9 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 
 	fr_pair_list_init(&rctx->client_id);
 	fr_pair_list_init(&rctx->server_id);
+	fr_pair_list_init(&rctx->iana_iaid);
+	fr_pair_list_init(&rctx->iata_iaid);
+	fr_pair_list_init(&rctx->iapd_iaid);
 
 	/*
 	 *	These should just become straight copies
@@ -402,6 +414,10 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 		}
 		break;
 	}
+
+	if (fr_pair_list_copy_by_ancestor(rctx, &rctx->iana_iaid, &request->request_pairs, attr_iana_iaid) < 0) goto error;
+	if (fr_pair_list_copy_by_ancestor(rctx, &rctx->iata_iaid, &request->request_pairs, attr_iata_iaid) < 0) goto error;
+	if (fr_pair_list_copy_by_ancestor(rctx, &rctx->iapd_iaid, &request->request_pairs, attr_iapd_iaid) < 0) goto error;
 
 	return rctx;
 }
@@ -623,6 +639,11 @@ RESUME(send_to_client)
 		*p_result = RLM_MODULE_FAIL;
 		return CALL_RESUME(send_generic);
 	}
+
+	if (unlikely(restore_field_list(request, &fields->iana_iaid) < 0)) goto fail;
+	if (unlikely(restore_field_list(request, &fields->iata_iaid) < 0)) goto fail;
+	if (unlikely(restore_field_list(request, &fields->iapd_iaid) < 0)) goto fail;
+
 	if (unlikely(restore_field_list(request, &fields->client_id) < 0)) goto fail;
 	if (unlikely(restore_field_list(request, &fields->server_id) < 0)) goto fail;
 
