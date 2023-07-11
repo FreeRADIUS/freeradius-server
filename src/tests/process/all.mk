@@ -25,7 +25,7 @@ TEST := test.process
 #  We're left with a set of files to run the tests on.
 #
 PROTOCOLS := $(subst /server.conf,,$(subst $(DIR)/,,$(wildcard $(DIR)/*/server.conf)))
-FILES := $(filter-out %.ignore %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/${PROTOCOLS}/*)))
+FILES := $(filter-out %.ignore %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(patsubst %,$(DIR)/%/*,$(PROTOCOLS)))))
 
 $(eval $(call TEST_BOOTSTRAP))
 
@@ -46,6 +46,8 @@ endif
 #  For sheer laziness, allow "make test.process.foo"
 #
 define PROCESS_TEST
+$(info PROCESS_TEST ${1})
+
 test.process.${1}: $(addprefix $(OUTPUT)/,${1})
 
 test.process.help: TEST_PROCESS_HELP += test.process.${1}
@@ -62,6 +64,8 @@ $(OUTPUT)/${1}: $(DIR)/$(subst /,,$(dir ${1}))/server.conf
 
 $(OUTPUT)/${1}: | $(DIR)/share/$(subst /,,$(dir ${1})) $(DIR)/share/freeradius $(PROCESS_DICT_TLS)
 endef
+
+$(info FILES $(FILES))
 $(foreach x,$(FILES),$(eval $(call PROCESS_TEST,$x)))
 
 #
