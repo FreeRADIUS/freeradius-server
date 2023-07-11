@@ -52,7 +52,8 @@ ldap {
 	#
 	#  identity::  Administrator account for searching and possibly modifying.
 	#
-	#  WARNING: If using SASL + KRB5 these should be commented out.
+	#  WARNING: If using SASL + (KRB5 | EXTERNAL) identity should be commented out
+	#  as it will set an authzid, which is likely not what you want.
 	#
 #	identity = 'cn=admin,dc=example,dc=org'
 
