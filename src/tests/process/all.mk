@@ -46,6 +46,8 @@ endif
 #  For sheer laziness, allow "make test.process.foo"
 #
 define PROCESS_TEST
+test.process.$(patsubst %/,%,$(dir ${1})) : $(addprefix $(OUTPUT)/,${1})
+
 test.process.${1}: $(addprefix $(OUTPUT)/,${1})
 
 test.process.help: TEST_PROCESS_HELP += test.process.${1}
