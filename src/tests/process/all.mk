@@ -43,7 +43,7 @@ ifneq "$(OPENSSL_LIBS)" ""
 PROCESS_DICT += $(DIR)/share/tls
 endif
 
-$(foreach x,$(PROTOCOLS),$(eval PROCESS_DICT += $(DIR)/share/$x))
+PROCESS_DICT += $(patsubst %,$(DIR)/share/%,${PROTOCOLS})
 
 #
 #  For sheer laziness, allow "make test.process.foo"
