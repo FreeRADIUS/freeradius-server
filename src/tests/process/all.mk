@@ -38,9 +38,12 @@ $(eval $(call TEST_BOOTSTRAP))
 src/tests/process/share/%: ${top_srcdir}/share/dictionary/%
 	$(Q)ln -sf $< $@
 
+PROCESS_DICT := $(DIR)/share/freeradius
 ifneq "$(OPENSSL_LIBS)" ""
-PROCESS_DICT_TLS := $(DIR)/share/tls
+PROCESS_DICT += $(DIR)/share/tls
 endif
+
+$(foreach x,$(PROTOCOLS),$(eval PROCESS_DICT += $(DIR)/share/$x))
 
 #
 #  For sheer laziness, allow "make test.process.foo"
@@ -62,7 +65,6 @@ $(OUTPUT)/${1}: $(patsubst %,${BUILD_DIR}/lib/local/process_%.la,$(subst /,,$(di
 
 $(OUTPUT)/${1}: $(DIR)/$(subst /,,$(dir ${1}))/server.conf
 
-$(OUTPUT)/${1}: | $(DIR)/share/$(subst /,,$(dir ${1})) $(DIR)/share/freeradius $(PROCESS_DICT_TLS)
 endef
 
 $(foreach x,$(FILES),$(eval $(call PROCESS_TEST,$x)))
@@ -92,7 +94,7 @@ PROCESS_ARGS += -D $(DIR)/share -d $(DIR)/
 PROCESS_ARGS += -S use_new_conditions=yes -S forbid_update=yes
 PROCESS_ARGS += -i $(DIR)/test.attrs -f $(DIR)/test.attrs
 
-$(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module $(DIR)/unit_test_module.conf
+$(OUTPUT)/%: $(DIR)/% $(PROCESS_DICT) $(TEST_BIN_DIR)/unit_test_module $(DIR)/unit_test_module.conf
 	$(eval PROTOCOL_NAME=$(lastword $(subst /, ,$(dir $(abspath $@)))))
 	$(eval CMD:=PROCESS=$< PROTOCOL=$(dir $<) $(TEST_BIN)/unit_test_module $(PROCESS_ARGS) -r "$@" -xx)
 	@echo PROCESS-TEST $(PROTOCOL_NAME) $(notdir $@)
