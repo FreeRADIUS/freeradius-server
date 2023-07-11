@@ -834,12 +834,16 @@ RESUME(auth_get)
 	if (!vp) break; \
 	MEM(copy = fr_pair_copy(session, vp));	\
 	fr_pair_append(&session->list, copy); \
+	RDEBUG2("%pP", copy); \
 } while (0)
 
+		RDEBUG2("Caching session attributes:");
+		RINDENT();
 		COPY(attr_user_name);
 		COPY(attr_tacacs_client_port);
 		COPY(attr_tacacs_remote_address);
 		COPY(attr_tacacs_privilege_level);
+		REXDENT();
 
 	} else {
 		session->rounds++;
@@ -893,6 +897,14 @@ RECV(auth_cont)
 			return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 		}
 
+		if (fr_debug_lvl >= L_DBG_LVL_2) {
+			RDEBUG2("Restoring session attributes:");
+			RINDENT();
+			while ((vp = fr_pair_list_next(&session->list, vp))) {
+				RDEBUG2("%pP", vp);
+			}
+			REXDENT();
+		}
 		if (fr_pair_list_copy(request->request_ctx, &request->request_pairs, &session->list) < 0) goto error;
 
 		/*
