@@ -410,8 +410,10 @@ static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, char const *
 	}
 
 	/* Copy the filename into the buffer */
-	/* coverity[check_return] */
-	fr_sbuff_in_bstrncpy(path_buffer, str, len);
+	if (fr_sbuff_in_bstrncpy(path_buffer, str, len) < 0) {
+		RDEBUG2("Cannot copy filename");
+		return 0;
+	}
 
 	/* Add the file attachment as a mime encoded part */
 	part = curl_mime_addpart(mime);
