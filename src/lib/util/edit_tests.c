@@ -82,15 +82,20 @@ static void test_init(void)
 static void add_pairs(fr_pair_list_t *local_pairs)
 {
 	int count;
+	fr_pair_t *element_uint32;
+	fr_pair_t *element_octets;
+	fr_pair_t *element_tlv;
 
 	fr_pair_list_init(local_pairs);
 
-	/* coverity[dereference] */
-	fr_pair_append(local_pairs, fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32));
-	/* coverity[dereference] */
-	fr_pair_append(local_pairs, fr_pair_afrom_da(autofree, fr_dict_attr_test_octets));
-	/* coverity[dereference] */
-	fr_pair_append(local_pairs, fr_pair_afrom_da(autofree, fr_dict_attr_test_tlv));
+	element_uint32 = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32);
+	if (TEST_CHECK(element_uint32 != NULL)) fr_pair_append(local_pairs, element_uint32);
+
+	element_octets = fr_pair_afrom_da(autofree, fr_dict_attr_test_octets);
+	if (TEST_CHECK(element_octets != NULL)) fr_pair_append(local_pairs, element_octets);
+
+	element_tlv = fr_pair_afrom_da(autofree, fr_dict_attr_test_tlv);
+	if (TEST_CHECK(element_tlv != NULL)) fr_pair_append(local_pairs, element_tlv);
 
 	count = fr_pair_list_num_elements(local_pairs);
 	TEST_CASE("Expected (count == 3)");
