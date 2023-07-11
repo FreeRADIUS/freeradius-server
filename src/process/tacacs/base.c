@@ -577,7 +577,7 @@ RESUME(auth_start)
 		/*
 		 *	Last reply was "get username", we now get the password.
 		 */
-		if (session->reply == FR_TAC_PLUS_AUTHEN_STATUS_GETUSER) {
+		if (session->reply == FR_TACACS_CODE_AUTH_GETUSER) {
 			RDEBUG("No User-Password, replying with Authentication-GetPass");
 			request->reply->code = FR_TACACS_CODE_AUTH_GETPASS;
 			goto send_reply;
