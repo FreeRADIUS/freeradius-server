@@ -71,6 +71,7 @@ static fr_dict_attr_t const *attr_tacacs_server_message;
 static fr_dict_attr_t const *attr_tacacs_session_id;
 static fr_dict_attr_t const *attr_tacacs_sequence_number;
 static fr_dict_attr_t const *attr_tacacs_state;
+static fr_dict_attr_t const *attr_tacacs_user_message;
 
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
@@ -104,6 +105,7 @@ fr_dict_attr_autoload_t process_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_sequence_number, .name = "Packet.Sequence-Number", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_server_message, .name = "Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_user_message, .name = "User-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
@@ -883,6 +885,8 @@ RECV(auth_cont)
 	 */
 	session = request_data_reference(request, inst, 0);
 	if (session) {
+		fr_pair_t *vp = NULL, *copy;
+
 		if (request->packet->data[2] <= session->seq_no) {
 			REDEBUG("Client sent invalid sequence number %02x, expected >%02x", request->packet->data[2], session->seq_no);
 		error:
@@ -890,6 +894,33 @@ RECV(auth_cont)
 		}
 
 		if (fr_pair_list_copy(request->request_ctx, &request->request_pairs, &session->list) < 0) goto error;
+
+		/*
+		 *	Copy the returned user_message into the attribute we requested.
+		 */
+#define EXTRACT(_attr) \
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_user_message); \
+	if (!vp) break; \
+	if (pair_append_request(&copy, _attr) < 0) break; \
+	if (fr_pair_value_copy(copy, vp) < 0) { \
+		fr_pair_remove(&request->request_pairs, copy); \
+		talloc_free(copy); \
+		break; \
+	} \
+	RDEBUG2("Populated %pP from user_message", copy)
+
+		switch (session->reply) {
+		case FR_TACACS_CODE_AUTH_GETUSER:
+			EXTRACT(attr_user_name);
+			break;
+
+		case FR_TACACS_CODE_AUTH_GETPASS:
+			EXTRACT(attr_user_password);
+			break;
+
+		default:
+			break;
+		}
 	}
 
 	return CALL_RECV(generic);
