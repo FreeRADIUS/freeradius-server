@@ -623,12 +623,15 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 			DECODE_FIELD_UINT8(attr_tacacs_authentication_service, pkt->authen_start.authen_service);
 
 			/*
-			 *	Decode 4 fields, based on their "length"
+			 *	Decode 3 fields, based on their "length"
+			 *	user and rem_addr are optional - indicated by zero length
 			 */
 			p = body;
-			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->authen_start.user_len);
+			if (pkt->authen_start.user_len > 0) DECODE_FIELD_STRING8(attr_tacacs_user_name,
+										 pkt->authen_start.user_len);
 			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->authen_start.port_len);
-			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->authen_start.rem_addr_len);
+			if (pkt->authen_start.rem_addr_len > 0) DECODE_FIELD_STRING8(attr_tacacs_remote_address,
+										     pkt->authen_start.rem_addr_len);
 
 			/*
 			 *	Check the length on the various
@@ -862,11 +865,13 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 
 			/*
 			 *	Decode 3 fields, based on their "length"
+			 *	rem_addr is optional - indicated by zero length
 			 */
 			p = body;
 			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->author_req.user_len);
 			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->author_req.port_len);
-			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->author_req.rem_addr_len);
+			if (pkt->author_req.rem_addr_len > 0) DECODE_FIELD_STRING8(attr_tacacs_remote_address,
+										   pkt->author_req.rem_addr_len);
 
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)

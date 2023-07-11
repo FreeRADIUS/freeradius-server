@@ -563,10 +563,9 @@ RESUME(auth_start)
 			}
 
 			vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-			if (vp && vp->vp_length == 0) {
+			if (!vp) {
 				RDEBUG("No User-Name, replying with Authentication-GetUser");
 				request->reply->code = FR_TACACS_CODE_AUTH_GETUSER;
-
 			} else {
 				RDEBUG("User-Name = %pV, replying with Authentication-GetPass", &vp->data);
 				request->reply->code = FR_TACACS_CODE_AUTH_GETPASS;
