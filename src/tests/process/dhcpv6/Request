@@ -1,5 +1,6 @@
 subrequest DHCPv6.Request {
 	&Transaction-ID = 0x1e291d
+	&IA-NA.IAID = 1234
 
 	&Server-ID.DUID = LLT
 	&Server-ID.DUID.LLT.Hardware-Type = Ethernet
@@ -35,6 +36,14 @@ subrequest DHCPv6.Request {
 		}
 
 		if (!&reply.Server-ID.DUID.LLT.Hardware-Type.Ethernet.Address) {
+			test_fail
+		}
+
+		if (!&reply.IA-NA.IAID) {
+			test_fail
+		}
+
+		if (&reply.IA-NA.IAID != &request.IA-NA.IAID) {
 			test_fail
 		}
 	}
