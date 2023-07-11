@@ -116,11 +116,13 @@ fr_dict_attr_autoload_t process_tacacs_dict_attr[] = {
 
 static fr_value_box_t const	*enum_auth_type_accept;
 static fr_value_box_t const	*enum_auth_type_reject;
+static fr_value_box_t const	*enum_tacacs_auth_type_ascii;
 
 extern fr_dict_enum_autoload_t process_tacacs_dict_enum[];
 fr_dict_enum_autoload_t process_tacacs_dict_enum[] = {
 	{ .out = &enum_auth_type_accept, .name = "Accept", .attr = &attr_auth_type },
 	{ .out = &enum_auth_type_reject, .name = "Reject", .attr = &attr_auth_type },
+	{ .out = &enum_tacacs_auth_type_ascii, .name = "ASCII", .attr = &attr_tacacs_authentication_type },
 	{ NULL }
 };
 
@@ -559,8 +561,9 @@ RESUME(auth_start)
 			 *	We only do multi-round authentication for the ASCII authentication type.
 			 *	Other authentication types are defined to be one request/reply only.
 			 */
+			vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_authentication_type);
 			if (!packet_is_authen_start_request(packet) ||
-			    (packet->authen_start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
+			    (vp && (fr_value_box_cmp(&vp->data, enum_tacacs_auth_type_ascii) != 0))) {
 				goto auth_type;
 			}
 
