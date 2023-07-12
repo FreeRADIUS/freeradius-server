@@ -449,37 +449,30 @@ fr_pair_t *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
 
 /** Create a pair (and all intermediate parents), and append it to the list
  *
- *  If the relevant leaf pair already exists, then a new one is created.
- *
- *  This function is similar to fr_pair_update_by_da_parent(), except that function requires
- *  a parent pair, and this one takes a separate talloc ctx and pair list.
+ *  Unlike fr_pair_afrom_da_nested(), this function starts off at an intermediate ctx and list.
  *
  * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t.
  * @param[out] list	where the created pair is supposed to go.
  * @param[in] da	the da for the pair to create
+ * @param[in] start	the starting depth. If start != 0, we must have ctx==vp at that depth, and list==&vp->vp_group
  * @return
  *	- A new #fr_pair_t.
  *	- NULL on error.
  */
-fr_pair_t *fr_pair_afrom_da_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_attr_t const *da)
+fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_attr_t const *da, int start)
 {
-	fr_pair_t *vp;
+	fr_pair_t		*vp;
 	unsigned int		i;
 	TALLOC_CTX		*cur_ctx;
 	fr_dict_attr_t const	*find;		/* DA currently being looked for */
 	fr_pair_list_t		*cur_list;	/* Current list being searched */
 	fr_da_stack_t		da_stack;
 
-	if (da->depth <= 1) {
-		if  (fr_pair_append_by_da(ctx, &vp, list, da) < 0) return NULL;
-		return vp;
-	}
-
 	fr_proto_da_stack_build(&da_stack, da);
 	cur_list = list;
 	cur_ctx = ctx;
 
-	for (i = 0; i <= da->depth; i++) {
+	for (i = start; i <= da->depth; i++) {
 		find = da_stack.da[i];
 
 		vp = fr_pair_find_by_da(cur_list, NULL, find);
@@ -498,6 +491,32 @@ fr_pair_t *fr_pair_afrom_da_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dic
 	fr_assert(0);
 
 	return NULL;
+}
+
+/** Create a pair (and all intermediate parents), and append it to the list
+ *
+ *  If the relevant leaf pair already exists, then a new one is created.
+ *
+ *  This function is similar to fr_pair_update_by_da_parent(), except that function requires
+ *  a parent pair, and this one takes a separate talloc ctx and pair list.
+ *
+ * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t.
+ * @param[out] list	where the created pair is supposed to go.
+ * @param[in] da	the da for the pair to create
+ * @return
+ *	- A new #fr_pair_t.
+ *	- NULL on error.
+ */
+fr_pair_t *fr_pair_afrom_da_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_attr_t const *da)
+{
+	if (da->depth <= 1) {
+		fr_pair_t *vp;
+
+		if  (fr_pair_append_by_da(ctx, &vp, list, da) < 0) return NULL;
+		return vp;
+	}
+
+	return fr_pair_afrom_da_depth_nested(ctx, list, da, 0);
 }
 
 /** Copy a single valuepair
