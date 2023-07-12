@@ -1,0 +1,3 @@
+User-Name = "bob"
+User-Password = "hello"
+Vendor-Specific.Cisco.AVPair = "1", Vendor-Specific.Cisco.AVPair += "2", Vendor-Specific.Cisco.AVPair += "3", Vendor-Specific.Cisco.AVPair += "4"
