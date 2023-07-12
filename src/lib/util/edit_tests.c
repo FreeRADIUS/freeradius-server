@@ -86,15 +86,18 @@ static void add_pairs(fr_pair_list_t *local_pairs)
 
 	fr_pair_list_init(local_pairs);
 
-	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32)) != NULL);
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32);
+	TEST_CHECK(vp != NULL);
 	TEST_ASSERT(vp != NULL);
 	fr_pair_append(local_pairs, vp);
 
-	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_octets)) != NULL);
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_octets);
+	TEST_CHECK(vp != NULL);
 	TEST_ASSERT(vp != NULL);
 	fr_pair_append(local_pairs, vp);
 
-	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_tlv)) != NULL);
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_tlv);
+	TEST_CHECK(vp != NULL);
 	TEST_ASSERT(vp != NULL);
 	fr_pair_append(local_pairs, vp);
 
