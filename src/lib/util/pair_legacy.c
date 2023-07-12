@@ -81,7 +81,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 {
 	fr_pair_t		*vp = NULL;
 	fr_pair_t		*my_relative_vp;
-	char const		*p, *next;
+	char const		*p, *next, *op_p;
 	fr_token_t		quote, last_token = T_INVALID;
 	fr_dict_attr_t const	*internal = NULL;
 	fr_pair_list_t		*my_list = list;
@@ -200,6 +200,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 
 		p = next;
 		fr_skip_whitespace(p);
+		op_p = p;
 
 		/*
 		 *	There must be an operator here.
@@ -213,10 +214,21 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 
 		fr_skip_whitespace(p);
 
-		if (!nested || parent_vp)  {
+		if (!nested || parent_vp || (*relative_vp && ((*relative_vp)->da == da->parent)))  {
 			vp = fr_pair_afrom_da(my_ctx, da);
 			if (!vp) goto error;
 			fr_pair_append(my_list, vp);
+
+		} else if (*relative_vp) {
+
+			if (op != T_OP_ADD_EQ) {
+				fr_strerror_const("Relative attributes can only use '+=' for the operator");
+				p = op_p;
+				goto error;
+			}
+
+			vp = fr_pair_afrom_da_depth_nested(my_ctx, my_list, da, (*relative_vp)->da->depth);
+			if (!vp) goto error;
 
 		} else if (op != T_OP_ADD_EQ) {
 			fr_assert(op != T_OP_PREPEND);
