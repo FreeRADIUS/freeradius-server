@@ -52,4 +52,4 @@ condition &TLS-Certificate[&Common-Name == 'user@example.com'] == bar
 match ERROR offset 1: Nesting types such as groups or TLVs cannot be used in condition comparisons
 
 count
-match 13
+match 15
