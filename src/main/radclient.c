@@ -1562,6 +1562,7 @@ int main(int argc, char **argv)
 		int n = parallel;
 		rc_request_t *next;
 		char const *filename = NULL;
+		time_t wake = 0;
 
 		done = true;
 		sleep_time = -1;
@@ -1569,6 +1570,15 @@ int main(int argc, char **argv)
 		/*
 		 *	Walk over the packets, sending them.
 		 */
+		for (this = request_head; this != NULL; this = this->next) {
+			if (this->reply) continue;
+
+			if (!this->timestamp) continue;
+
+			if (!wake || (wake > (this->timestamp + ((int) timeout) * (retries - this->tries)))) {
+				wake = this->timestamp + ((int) timeout) * (retries - this->tries);
+			}
+		}
 
 		for (this = request_head; this != NULL; this = next) {
 			next = this->next;
@@ -1611,6 +1621,10 @@ int main(int argc, char **argv)
 				if (send_one_packet(this) < 0) {
 					talloc_free(this);
 					break;
+				}
+
+				if (!wake || (wake > (this->timestamp + ((int) timeout) * (retries - this->tries)))) {
+					wake = this->timestamp + ((int) timeout) * (retries - this->tries);
 				}
 
 				/*
@@ -1664,7 +1678,18 @@ int main(int argc, char **argv)
 		 *	Still have outstanding requests.
 		 */
 		if (fr_packet_list_num_elements(pl) > 0) {
+			time_t now = time(NULL);
 			done = false;
+
+			/*
+			 *	The last time we wake up for a packet.
+			 *
+			 *	If we're past that time, then give up.
+			 */
+			if (wake < now) {
+				break;
+			}
+
 		} else {
 			sleep_time = 0;
 		}
