@@ -403,11 +403,13 @@ FR_DLIST_TYPES(tmpl_attr_list)
 typedef enum {
 	TMPL_ATTR_FILTER_TYPE_NONE = 0,			//!< No filter present.
 	TMPL_ATTR_FILTER_TYPE_INDEX,			//!< Filter is an index type.
+	TMPL_ATTR_FILTER_TYPE_CONDITION,       		//!< Filter is a condition
 } tmpl_attr_filter_type_t;
 
 typedef struct {
 	tmpl_attr_filter_type_t	_CONST type;		//!< Type of filter this is.
 	int16_t			_CONST num;		//!< For array references.
+	xlat_exp_head_t		_CONST *cond;		//!< xlat condition
 } tmpl_attr_filter_t;
 
 /** An element in a list of nested attribute references
@@ -524,10 +526,12 @@ static inline bool ar_is_raw(tmpl_attr_t const *ar)
 }
 
 #define ar_num				filter.num
+#define ar_cond				filter.cond
 #define ar_filter_type			filter.type
 
 #define ar_filter_is_none(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_NONE)
 #define ar_filter_is_num(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_INDEX)
+#define ar_filter_is_cond(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_CONDITION)
 /** @} */
 
 /** A source or sink of value data.
@@ -1028,6 +1032,7 @@ typedef enum {
 							///< to the one specified.
 	TMPL_ATTR_ERROR_FILTER_NOT_ALLOWED,		//!< Filters disallowed by rules.
 	TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX,		//!< Invalid array index.
+	TMPL_ATTR_ERROR_INVALID_FILTER,			//!< Invalid filter
 	TMPL_ATTR_ERROR_NESTING_TOO_DEEP,		//!< Too many levels of nesting.
 	TMPL_ATTR_ERROR_MISSING_TERMINATOR,		//!< Unexpected text found after attribute reference
 	TMPL_ATTR_ERROR_BAD_CAST			//!< Specified cast was invalid.

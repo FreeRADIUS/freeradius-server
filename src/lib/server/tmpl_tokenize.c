@@ -1349,28 +1349,92 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 	{
 		fr_sbuff_parse_error_t	sberr = FR_SBUFF_PARSE_OK;
 		fr_sbuff_t tmp = FR_SBUFF(&our_name);
-
-		if (fr_sbuff_out(&sberr, &ar->ar_num, &tmp) < 0) {
-			if (sberr == FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
-				fr_strerror_const("Invalid array index");
+		ssize_t rcode;
+		fr_slen_t slen;
+		tmpl_rules_t t_rules;
+		fr_sbuff_parse_rules_t p_rules;
+		fr_sbuff_term_t const filter_terminals = FR_SBUFF_TERMS(L("]"));
+		
+		rcode = fr_sbuff_out(&sberr, &ar->ar_num, &tmp);
+		if ((rcode > 0) && (fr_sbuff_is_char(&tmp, ']'))) {
+			if ((ar->ar_num > 1000) || (ar->ar_num < 0)) {
+				fr_strerror_printf("Invalid array index '%hi' (should be between 0-1000)", ar->ar_num);
+				ar->ar_num = 0;
 				if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 				goto error;
 			}
 
+			fr_sbuff_set(&our_name, &tmp);	/* Advance name _AFTER_ doing checks */
+			break;
+		}
+
+		/*
+		 *	Temporary parsing hack: &User-Name[a] does _not_ match a condition 'a'.
+		 */
+		if (!fr_sbuff_is_char(&tmp, '&')) {	
 			fr_strerror_const("Invalid array index");
 			if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 			goto error;
 		}
 
-		if ((ar->ar_num > 1000) || (ar->ar_num < 0)) {
-			fr_strerror_printf("Invalid array index '%hi' (should be between 0-1000)", ar->ar_num);
-			ar->ar_num = 0;
-			if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
+		/*
+		 *	For now, we don't allow filtering on leaf values. e.g.
+		 *
+		 *		&User-Name[&User-Name == foo]
+		 *
+		 *	@todo - find some sane way of allowing this, without mangling the xlat expression
+		 *	parser too badly.  The simplest way is likely to just parse the expression, and then
+		 *	walk over it, complaining if it contains attribute references other than &User-Name.
+		 *
+		 *	Anything else is likely too hard.
+		 *
+		 *	We also want to disallow basic conditions like "true" or "false".  The conditions
+		 *	should only be using attribute references, and those attribute references should be
+		 *	limited to certain attributes.
+		 *
+		 *	And if the filter attribute is a TLV, the condition code complains with 'Nesting types
+		 *	such as groups or TLVs cannot be used in condition comparisons'.  This is reasonable,
+		 *	as we can't currently compare things like;
+		 *
+		 *		&Group-Thingy == { &foo = bar }
+		 *
+		 *	Which would involve creating the RHS list, doing an element-by-element comparison, and
+		 *	then returning.
+		 *
+		 *	In order to fix that, we have to 
+		 */
+		if (!fr_type_is_structural(ar->ar_da->type)) {
+				fr_strerror_printf("Invalid filter - cannot use filter on leaf attributes");
+				ar->ar_num = 0;
+				if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
+				goto error;
+		}
+
+		fr_assert(ar->ar_da != NULL);
+		fr_assert(fr_type_is_structural(ar->ar_da->type));
+
+		tmp = FR_SBUFF(&our_name);
+		t_rules = (tmpl_rules_t) {};
+		t_rules.attr = *at_rules;	      
+		t_rules.attr.namespace = ar->ar_da;
+
+		p_rules = (fr_sbuff_parse_rules_t) {
+			.terminals = &filter_terminals,
+			.escapes = NULL
+		};
+
+		/*
+		 *	Check if it's a condition.
+		 */
+		slen = xlat_tokenize_condition(ar, &ar->ar_cond, &tmp, &p_rules, &t_rules);
+		if (slen < 0) {
 			goto error;
 		}
+
+		ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_CONDITION;
 		fr_sbuff_set(&our_name, &tmp);	/* Advance name _AFTER_ doing checks */
-	}
 		break;
+	}
 	}
 
 	/*
@@ -4222,6 +4286,7 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 		break;
 
 	default:
+		fr_assert(0);
 		return 0;
 	}
 
@@ -4346,30 +4411,38 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 		}
 		}
 
-		/*
-		 *	Add array subscript.
-		 *
-		 *	Will later be complex filters.
-		 */
-		switch (ar->ar_num) {
-		case NUM_UNSPEC:
-			break;
+		if (ar_filter_is_none(ar)) {
+			/* do nothing */
 
-		case NUM_ALL:
-			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "[*]");
-			break;
+		} else if (ar_filter_is_num(ar)) {
+			switch (ar->ar_num) {
+			case NUM_UNSPEC:
+				break;
 
-		case NUM_COUNT:
-			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "[#]");
-			break;
+			case NUM_ALL:
+				FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "[*]");
+				break;
 
-		case NUM_LAST:
-			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "[n]");
-			break;
+			case NUM_COUNT:
+				FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "[#]");
+				break;
 
-		default:
-			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "[%i]", ar->ar_num);
-			break;
+			case NUM_LAST:
+				FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "[n]");
+				break;
+
+			default:
+				FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "[%i]", ar->ar_num);
+				break;
+			}
+
+		} else if (ar_filter_is_cond(ar)) {
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "[");
+			(void) xlat_print(&our_out, ar->ar_cond, NULL);
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "]");
+
+		} else {
+			fr_assert(0);
 		}
 
 		if (tmpl_attr_list_next(tmpl_attr(vpt), ar)) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');

@@ -1,0 +1,55 @@
+#
+#  Tests for parsing attribute filers
+#
+#  $Id$
+#
+
+proto-dictionary radius
+
+condition &User-Name[0] == "foo"
+match &User-Name[0] == "foo"
+
+#
+#  This is a run-time error.  [#] returns an integer.
+#
+condition &User-Name[#] == "foo"
+match &User-Name[#] == "foo"
+
+#
+#  This is a run-time error.  [*] returns a list.
+#
+condition &User-Name[*] == "foo"
+match &User-Name[*] == "foo"
+
+condition &User-Name[n] == "foo"
+match &User-Name[n] == "foo"
+
+condition &User-Name[-1] == "foo"
+match ERROR offset 12: Invalid array index '-1' (should be between 0-1000)
+
+#
+#  tmpl_dcursor.c has an assert which fails if you try to use
+#  conditional filters.
+#
+#  And we do not (yet) allow for filters on leaf attributes.  See
+#  @todo in tmpl_attr_parse_filter(()
+#
+condition &User-Name[&User-Name == 'bar'] == "foo"
+match ERROR offset 12: Invalid filter - cannot use filter on leaf attributes
+
+#
+#  The condition code doesn't allow &Group-Thingy == { &foo = bar }
+#
+#  Arguably it could, but that wouldn't help here.
+#
+#  What we really want to allow is a filter for use with 'foreach':
+#
+#	foreach &TLS-Certificate[&Common-Name == 'user@example.com'] { ... }
+#
+#  which is a loop that returns &TLS-Certificate.
+#
+condition &TLS-Certificate[&Common-Name == 'user@example.com'] == bar
+match ERROR offset 1: Nesting types such as groups or TLVs cannot be used in condition comparisons
+
+count
+match 13

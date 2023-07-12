@@ -133,6 +133,8 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	ar = ns->ar;
 	vp = fr_dcursor_current(&ns->cursor);
 
+	fr_assert(!ar || ar_filter_is_none(ar) || ar_filter_is_num(ar)); /* @todo - add evaluation of conditions */
+
 	if (ar) switch (ar->ar_num) {
 	/*
 	 *	Get the first instance
