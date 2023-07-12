@@ -185,7 +185,7 @@ The following config items may be listed in any of the sections:
 | `data`         | Send custom freeform data in the HTTP body. `Content-type`
                    may be specified with `body`. Will be expanded.
                    Values from expansion will not be escaped, this should be
-                   done using the appropriate `xlat` method e.g. `%{urlencode:<attr>}`
+                   done using the appropriate `xlat` method e.g. `%{urlquote:<attr>}`
 | `force_to`     | Force the response to be decoded with this decoder.
                    May be 'plain' (creates reply.REST-HTTP-Body), 'post' or 'json'.
 | `tls`          | TLS settings for HTTPS.
