@@ -2033,6 +2033,67 @@ static size_t command_encode_raw(command_result_t *result, command_file_ctx_t *c
 	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, cc->buffer_start, len));
 }
 
+/** Parse a list of pairs
+ *
+ */
+static size_t command_read_file(command_result_t *result, command_file_ctx_t *cc,
+			    char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	ssize_t slen;
+	fr_pair_list_t head;
+	fr_pair_t *vp;
+	bool done = false;
+	char *filename, *p, *end;
+	FILE *fp;
+
+	filename = talloc_asprintf(cc->tmp_ctx, "%s/%s", cc->path, in);
+
+	fp = fopen(filename, "r");
+	talloc_free(filename);
+
+	if (!fp) {
+		fr_strerror_printf("Failed opening %s - %s", in, fr_syserror(errno));
+		RETURN_OK_WITH_ERROR();
+	}
+
+	fr_pair_list_init(&head);
+	slen = fr_pair_list_afrom_file(cc->tmp_ctx, cc->tmpl_rules.attr.dict_def, &head, fp, &done);
+	fclose(fp);
+	if (slen < 0) {
+		RETURN_OK_WITH_ERROR();
+	}
+
+	/*
+	 *	Print the pairs.
+	 */
+	p = data;
+	end = data + COMMAND_OUTPUT_MAX;
+	for (vp = fr_pair_list_head(&head);
+	     vp != NULL;
+	     vp = fr_pair_list_next(&head, vp)) {
+		if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) <= 0) RETURN_OK_WITH_ERROR();
+		p += (size_t)slen;
+
+		if (p >= end) break;
+
+		*(p++) = ',';
+		*(p++) = ' ';
+	}
+
+	/*
+	 *	Delete the trailing ", ".
+	 */
+	if (p > data) p -= 2;
+	*p = 0;
+
+	if (!done) strlcpy(p, "!DONE", (end - p));
+
+	fr_pair_list_free(&head);
+
+	RETURN_OK(p - data);
+}
+
+
 static size_t command_returned(command_result_t *result, command_file_ctx_t *cc,
 			       char *data, UNUSED size_t data_used, UNUSED char *in, UNUSED size_t inlen)
 {
@@ -3133,6 +3194,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_encode_raw,
 					.usage = "raw <string>",
 					.description = "Create nested attributes from OID strings and values"
+				}},
+	{ L("read_file "),		&(command_entry_t){
+					.func = command_read_file,
+					.usage = "read_file <filename>",
+					.description = "Read a list of pairs from a file",
 				}},
 	{ L("returned"),		&(command_entry_t){
 					.func = command_returned,

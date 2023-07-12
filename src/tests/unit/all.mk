@@ -10,7 +10,7 @@ TEST := test.unit
 #
 #  Get all .txt files
 #
-FILES  := $(call FIND_FILES_SUFFIX,$(DIR),*.txt)
+FILES  := $(filter-out $(DIR)/files/%,$(call FIND_FILES_SUFFIX,$(DIR),*.txt))
 
 #
 #  If we don't have OpenSSL, filter out tests which need TLS.

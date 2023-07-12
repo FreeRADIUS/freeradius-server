@@ -147,7 +147,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			p++;
 
 			if (!*relative_vp) {
-				fr_strerror_const("Relative attributes can only be used immediately after an attribute which has children");
+				fr_strerror_const("The '.Attribute' syntax can only be used if the previous attribute is structural, and the line ends with ','");
 				goto error;
 			}
 
@@ -160,6 +160,14 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			my_ctx = *relative_vp;
 		} else {
 			fr_dict_attr_err_t err;
+
+			/*
+			 *	We can find an attribute from the parent, but if the path is fully specified,
+			 *	then we reset any relative VP.  So that the _next_ line we parse cannot use
+			 *	".foo = bar" to get a relative attribute which was used when parsing _this_
+			 *	line.
+			 */
+			*relative_vp = NULL;
 
 			/*
 			 *	Parse the name.
@@ -319,16 +327,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 
 		fr_assert(vp != NULL);
 
-		/*
-		 *	If there's a relative VP, and it's not the one
-		 *	we just added above, and we're not adding this
-		 *	VP to the relative one, then nuke the relative
-		 *	VP.
-		 */
-		if (*relative_vp && (vp != *relative_vp) && (my_ctx != *relative_vp)) {
-			*relative_vp = NULL;
-		}
-
 		PAIR_VERIFY(vp);
 
 		/*
@@ -437,7 +435,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		/*
 		 *	Call our internal function, instead of the public wrapper.
 		 */
-		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), NULL, buf, buf + sizeof(buf), &tmp_list, &last_token, 0, &relative_vp, false) < 0) {
+		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), NULL, buf, buf + strlen(buf), &tmp_list, &last_token, 0, &relative_vp, false) < 0) {
 			goto fail;
 		}
 
@@ -449,15 +447,20 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		 *	it's comments.
 		 */
 		if (!fr_pair_list_num_elements(&tmp_list)) {
-			if (last_token == T_EOL) break;
-
 			/*
 			 *	This is allowed for relative attributes.
 			 */
-			if (relative_vp && (last_token == T_COMMA)) {
-				found = true;
+			if (relative_vp) {
+				if (last_token != T_COMMA) relative_vp = NULL;
 				continue;
 			}
+
+			/*
+			 *	Blank line by itself, with no relative
+			 *	VP, and no output attributes means
+			 *	that we stop reading the file.
+			 */
+			if (last_token == T_EOL) break;
 
 		fail:
 			/*

@@ -1,0 +1,7 @@
+User-Name = "bob"
+User-Password = "hello"
+Vendor-Specific.Cisco = { AVPair = "1" },
+.AVPair += "2",
+.AVPair += "3",
+.AVPair += "4"
+
