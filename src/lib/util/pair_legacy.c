@@ -79,13 +79,12 @@ static fr_sbuff_term_t const 	bareword_terminals =
 static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, fr_pair_t *parent_vp, char const *buffer, char const *end,
 					 fr_pair_list_t *list, fr_token_t *token, unsigned int depth, fr_pair_t **relative_vp, bool nested)
 {
-	fr_pair_list_t		tmp_list;
 	fr_pair_t		*vp = NULL;
 	fr_pair_t		*my_relative_vp;
 	char const		*p, *next;
 	fr_token_t		quote, last_token = T_INVALID;
 	fr_dict_attr_t const	*internal = NULL;
-	fr_pair_list_t		*my_list;
+	fr_pair_list_t		*my_list = list;
 	TALLOC_CTX		*my_ctx;
 	char			rhs[1024];
 
@@ -101,7 +100,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		return 0;
 	}
 
-	fr_pair_list_init(&tmp_list);
 #ifndef NDEBUG
 	if (parent_vp) {
 		fr_assert(ctx == parent_vp);
@@ -185,7 +183,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 					p += -slen;
 
 				error:
-					fr_pair_list_free(&tmp_list);
 					*token = T_INVALID;
 					return -(p - buffer);
 				}
@@ -193,7 +190,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 				da = da_unknown;
 			}
 
-			my_list = &tmp_list;
+			my_list = list;
 			my_ctx = ctx;
 		}
 
@@ -221,9 +218,14 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			if (!vp) goto error;
 			fr_pair_append(my_list, vp);
 
-		} else {
+		} else if (op != T_OP_ADD_EQ) {
+			fr_assert(op != T_OP_PREPEND);
+
 			vp = fr_pair_afrom_da_nested(my_ctx, my_list, da);
 			if (!vp) goto error;
+
+		} else {
+			if (fr_pair_append_by_da_parent(my_ctx, &vp, my_list, da) < 0) goto error;
 		}
 
 		vp->op = op;
@@ -355,8 +357,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		last_token = T_COMMA;
 	}
 
-	if (!fr_pair_list_empty(&tmp_list)) fr_pair_list_append(list, &tmp_list);
-
 	/*
 	 *	And return the last token which we read.
 	 */
@@ -382,8 +382,14 @@ fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
 {
 	fr_token_t token;
 	fr_pair_t    *relative_vp = NULL;
+	fr_pair_list_t tmp_list;
 
-	(void) fr_pair_list_afrom_substr(ctx, parent, NULL, buffer, buffer + len, list, &token, 0, &relative_vp, false);
+	fr_pair_list_init(&tmp_list);
+
+	if (fr_pair_list_afrom_substr(ctx, parent, NULL, buffer, buffer + len, &tmp_list, &token, 0, &relative_vp, false) < 0) return T_INVALID;
+
+	fr_pair_list_append(list, &tmp_list);
+
 	return token;
 }
 
@@ -402,12 +408,18 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 {
 	fr_token_t	last_token = T_EOL;
 	bool		found = false;
-	char		buf[8192];
+	fr_pair_list_t tmp_list;
 	fr_pair_t	*relative_vp = NULL;
+	char		buf[8192];
+
+	/*
+	 *	Read all of the attributes on the current line.
+	 *
+	 *	If we get nothing but an EOL, it's likely OK.
+	 */
+	fr_pair_list_init(&tmp_list);
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
-		fr_pair_list_t tmp_list;
-
 		/*
 		 *      If we get a '\n' by itself, we assume that's
 		 *      the end of that VP list.
@@ -415,7 +427,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		if (buf[0] == '\n') {
 			if (found) {
 				*pfiledone = false;
-				return 0;
+				break;
 			}
 			continue;
 		}
@@ -424,13 +436,6 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		 *	Comments get ignored
 		 */
 		if (buf[0] == '#') continue;
-
-		/*
-		 *	Read all of the attributes on the current line.
-		 *
-		 *	If we get nothing but an EOL, it's likely OK.
-		 */
-		fr_pair_list_init(&tmp_list);
 
 		/*
 		 *	Call our internal function, instead of the public wrapper.
@@ -469,13 +474,14 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 			 *	format error.
 			 */
 			*pfiledone = false;
-			fr_pair_list_free(out);
+			fr_pair_list_free(&tmp_list);
 			return -1;
 		}
 
 		found = true;
-		fr_pair_list_append(out, &tmp_list);
 	}
+
+	fr_pair_list_append(out, &tmp_list);
 
 	*pfiledone = true;
 	return 0;
