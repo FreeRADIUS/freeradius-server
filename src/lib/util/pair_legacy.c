@@ -64,18 +64,20 @@ static fr_sbuff_term_t const 	bareword_terminals =
  *
  * @param[in] ctx	for talloc
  * @param[in] parent	parent DA to start referencing from
+ * @param[in] parent_vp	vp where we place the result
  * @param[in] buffer	to read valuepairs from.
  * @param[in] end	end of the buffer
  * @param[in] list	where the parsed fr_pair_ts will be appended.
  * @param[in,out] token	The last token we parsed
  * @param[in] depth	the nesting depth for FR_TYPE_GROUP
  * @param[in,out] relative_vp for relative attributes
+ * @param[in] nested	create nested attributes (or not)
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *buffer, char const *end,
-					 fr_pair_list_t *list, fr_token_t *token, unsigned int depth, fr_pair_t **relative_vp)
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, fr_pair_t *parent_vp, char const *buffer, char const *end,
+					 fr_pair_list_t *list, fr_token_t *token, unsigned int depth, fr_pair_t **relative_vp, bool nested)
 {
 	fr_pair_list_t		tmp_list;
 	fr_pair_t		*vp = NULL;
@@ -100,6 +102,12 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	}
 
 	fr_pair_list_init(&tmp_list);
+#ifndef NDEBUG
+	if (parent_vp) {
+		fr_assert(ctx == parent_vp);
+		fr_assert(list == &parent_vp->vp_group);
+	}
+#endif
 
 	p = buffer;
 	while (true) {
@@ -139,9 +147,11 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			p++;
 
 			if (!*relative_vp) {
-				fr_strerror_const("Relative attributes can only be used immediately after an attribute of type 'group'");
+				fr_strerror_const("Relative attributes can only be used immediately after an attribute which has children");
 				goto error;
 			}
+
+			// @todo - allow "...." to go back up a hierarchy
 
 			slen = fr_dict_attr_by_oid_substr(&err, &da, (*relative_vp)->da, &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
 			if (err != FR_DICT_ATTR_OK) goto error;
@@ -198,9 +208,15 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 
 		fr_skip_whitespace(p);
 
-		vp = fr_pair_afrom_da(my_ctx, da);
-		if (!vp) goto error;
-		fr_pair_append(my_list, vp);
+		if (!nested || parent_vp)  {
+			vp = fr_pair_afrom_da(my_ctx, da);
+			if (!vp) goto error;
+			fr_pair_append(my_list, vp);
+
+		} else {
+			vp = fr_pair_afrom_da_nested(my_ctx, my_list, da);
+			if (!vp) goto error;
+		}
 
 		vp->op = op;
 
@@ -226,7 +242,8 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			 *	other, and not to our parent relative VP.
 			 */
 			my_relative_vp = NULL;
-			slen = fr_pair_list_afrom_substr(vp, vp->da, p, end, &vp->vp_group, &last_token, depth + 1, &my_relative_vp);
+
+			slen = fr_pair_list_afrom_substr(vp, vp->da, vp, p, end, &vp->vp_group, &last_token, depth + 1, &my_relative_vp, nested);
 			if (slen <= 0) {
 				goto error;
 			}
@@ -312,6 +329,8 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			*relative_vp = NULL;
 		}
 
+		PAIR_VERIFY(vp);
+
 		/*
 		 *	Now look for EOL, hash, etc.
 		 */
@@ -366,7 +385,7 @@ fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
 	fr_token_t token;
 	fr_pair_t    *relative_vp = NULL;
 
-	(void) fr_pair_list_afrom_substr(ctx, parent, buffer, buffer + len, list, &token, 0, &relative_vp);
+	(void) fr_pair_list_afrom_substr(ctx, parent, NULL, buffer, buffer + len, list, &token, 0, &relative_vp, false);
 	return token;
 }
 
@@ -418,7 +437,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		/*
 		 *	Call our internal function, instead of the public wrapper.
 		 */
-		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buf, buf + sizeof(buf), &tmp_list, &last_token, 0, &relative_vp) < 0) {
+		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), NULL, buf, buf + sizeof(buf), &tmp_list, &last_token, 0, &relative_vp, false) < 0) {
 			goto fail;
 		}
 
