@@ -508,7 +508,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 				(void) fr_trie_walk(thread->trie, &thread->num_connections, count_connections);
 
 				if ((thread->num_connections + 1) >= max_connections) {
-					DEBUG("Too many open connections.  Ignoring dynamic client %s.  Discarding packet.", client->radclient->shortname);
+					DEBUG("proto_%s - Ignoring connection from client %s - 'max_connections' limit reached.",
+					      inst->app->common.name, client->radclient->shortname);
 				close_and_return:
 					if (fd >= 0) close(fd);
 					return NULL;
@@ -704,7 +705,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		fr_assert(inst->app_io->connection_set != NULL);
 
 		if (inst->app_io->connection_set(connection->child, connection->address) < 0) {
-			DEBUG("Failed setting connection for socket.");
+			DEBUG("proto_%s - Failed setting connection for socket.", inst->app->common.name);
 			goto cleanup;
 		}
 
@@ -718,7 +719,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 			struct sockaddr_storage src;
 
 			if (inst->app_io->open(connection->child) < 0) {
-				DEBUG("Failed opening connected socket.");
+				DEBUG("proto_%s - Failed opening connected socket.", inst->app->common.name);
 				talloc_free(dl_inst);
 				return NULL;
 			}
@@ -728,13 +729,13 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 			if (fr_ipaddr_to_sockaddr(&src, &salen,
 						  &connection->address->socket.inet.src_ipaddr,
 						  connection->address->socket.inet.src_port) < 0) {
-				DEBUG("Failed getting IP address");
+				DEBUG("proto_%s - Failed getting IP address", inst->app->common.name);
 				talloc_free(dl_inst);
 				return NULL;
 			}
 
 			if (connect(fd, (struct sockaddr *) &src, salen) < 0) {
-				ERROR("Failed in connect: %s", fr_syserror(errno));
+				ERROR("proto_%s - Failed in connect: %s", inst->app->common.name, fr_syserror(errno));
 				goto cleanup;
 			}
 		} else {
@@ -754,7 +755,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		if (!inst->app_io->get_name) {
 			connection->name = fr_asprintf(connection, "proto_%s from client %pV port "
 						       "%u to server %pV port %u",
-						       inst->app_io->common.name,
+						       inst->app->common.name,
 						       fr_box_ipaddr(connection->address->socket.inet.src_ipaddr),
 						       connection->address->socket.inet.src_port,
 						       fr_box_ipaddr(connection->address->socket.inet.dst_ipaddr),
@@ -1347,8 +1348,8 @@ redo:
 		 *	OK.  So don't return -1.
 		 */
 		if (accept_fd < 0) {
-			DEBUG("proto_%s_%s - failed to accept new socket: %s",
-			      inst->app->common.name, inst->transport, fr_syserror(errno));
+			DEBUG("proto_%s - failed to accept new socket: %s",
+			      inst->app->common.name, fr_syserror(errno));
 			return 0;
 		}
 
@@ -2642,7 +2643,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	}
 
 	/*
-	 *
+	 *	Ensure that the dynamic client sections exist
 	 */
 	if (inst->dynamic_clients) {
 		CONF_SECTION *server = cf_item_to_section(cf_parent(conf));
