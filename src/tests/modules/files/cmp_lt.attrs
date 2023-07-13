@@ -1,0 +1,14 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "cmp_lt"
+User-Password = "ltuser"
+NAS-Port = 100
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Reply-Message == 'success-cmp_lt'
+

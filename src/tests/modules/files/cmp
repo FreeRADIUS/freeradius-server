@@ -1,0 +1,11 @@
+DEFAULT User-Name == "cmp_lt", NAS-Port < 10, Password.Cleartext := "ltuser"
+	Reply-Message := "wrong-cmp_lt"
+
+DEFAULT User-Name == "cmp_lt", NAS-Port < 1000, Password.Cleartext := "ltuser"
+	Reply-Message := "success-cmp_lt"
+
+DEFAULT User-Name == "cmp_gt", NAS-Port > 1000, Password.Cleartext := "gtuser"
+	Reply-Message := "wrong-cmp_gt"
+
+DEFAULT User-Name == "cmp_gt", NAS-Port > 10, Password.Cleartext := "gtuser"
+	Reply-Message := "success-cmp_gt"

@@ -107,7 +107,7 @@ greaterthanreply  Password.Cleartext := "testing123"
 #  Note: Filtering "!*" does not apply to control items as this would overload
 #        the operator syntax since "!*" checks that no such attribute in the
 #        request.
-#        
+#
 
 addcontrol  Password.Cleartext := "testing123", Reply-Message := "success1"
             Fall-Through = yes
@@ -119,6 +119,8 @@ regex	NAS-Identifier =~ /der/, Password.Cleartext := "testing123"
 
 DEFAULT	User-Name == "cmp_eq",  Password.Cleartext := "hopping"
 	Reply-Message := "success-cmp_eq"
+
+$INCLUDE cmp
 
 DEFAULT	Password.Cleartext := "stuffnsuch"
 	Reply-Message := "success-default"
