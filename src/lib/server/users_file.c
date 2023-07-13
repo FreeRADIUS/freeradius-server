@@ -315,12 +315,12 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		}
 
 		/*
-		 *	We're trying to read a name.  It MUST have
+		 *	We're trying to read a key value.  It MUST have
 		 *	been at the start of the line.  So whatever
 		 *	this is, it's wrong.
 		 */
 		if (leading_spaces) {
-	    		ERROR_MARKER(&sbuff, "Entry does not begin with a user name");
+	    		ERROR_MARKER(&sbuff, "Entry does not begin with a key value");
 		fail:
 			fclose(fp);
 			return -1;
