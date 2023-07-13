@@ -579,7 +579,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 {
 	ssize_t			slen = -1;
 	uint8_t const		*p, *end;
-	fr_dhcpv6_decode_ctx_t	packet_ctx;
+	fr_dhcpv6_decode_ctx_t	packet_ctx = {};
 	fr_pair_t		*vp;
 	fr_pair_list_t		tmp;
 
