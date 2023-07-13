@@ -381,7 +381,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  *	Common code called by everything below.
  */
 static unlang_action_t file_common(rlm_rcode_t *p_result, UNUSED rlm_files_t const *inst, rlm_files_env_t *env,
-				   request_t *request, char const *filename, fr_htrie_t *tree, PAIR_LIST_LIST *default_list)
+				   request_t *request, fr_htrie_t *tree, PAIR_LIST_LIST *default_list)
 {
 	PAIR_LIST_LIST const	*user_list;
 	PAIR_LIST const 	*user_pl, *default_pl;
@@ -513,7 +513,7 @@ redo:
 			continue;
 		}
 
-		RDEBUG2("Found match \"%s\" on line %d of %s", pl->name, pl->lineno, filename);
+		RDEBUG2("Found match \"%s\" on line %d of %s", pl->name, pl->lineno, pl->filename);
 		found = true;
 		fall_through = false;
 		next_shortest_prefix = false;
@@ -626,7 +626,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
 	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
-	return file_common(p_result, inst, env_data, request, inst->filename,
+	return file_common(p_result, inst, env_data, request,
 			   inst->users ? inst->users : inst->common,
 			   inst->users ? inst->users_def : inst->common_def);
 }
@@ -642,7 +642,7 @@ static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, modul
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
 	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
-	return file_common(p_result, inst, env_data, request, inst->acct_usersfile,
+	return file_common(p_result, inst, env_data, request,
 			   inst->acct_users ? inst->acct_users : inst->common,
 			   inst->acct_users ? inst->acct_users_def : inst->common_def);
 }
@@ -652,7 +652,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
 	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
-	return file_common(p_result, inst, env_data, request, inst->auth_usersfile,
+	return file_common(p_result, inst, env_data, request,
 			   inst->auth_users ? inst->auth_users : inst->common,
 			   inst->auth_users ? inst->auth_users_def : inst->common_def);
 }
@@ -662,7 +662,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
 	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
-	return file_common(p_result, inst, env_data, request, inst->postauth_usersfile,
+	return file_common(p_result, inst, env_data, request,
 			   inst->postauth_users ? inst->postauth_users : inst->common,
 			   inst->postauth_users ? inst->postauth_users_def : inst->common_def);
 }
