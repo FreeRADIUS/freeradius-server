@@ -180,7 +180,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			 */
 			if ((fr_dict_vendor_num_by_da(da) != 0) ||
 			    (da->attr < 0x100)) {
-				WARN("%s[%d] Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
+				WARN("%s[%d] Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for key %s",
 				     entry->filename, entry->lineno,
 				     da->name, da->name,
 				     entry->name);
@@ -220,7 +220,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			 */
 			if (fr_dict_attr_is_top_level(da) && (da->attr > 1000)) {
 				WARN("%s[%d] Check item \"%s\"\n"
-				     "\tfound in reply item list for user \"%s\".\n"
+				     "\tfound in reply item list for key value \"%s\".\n"
 				     "\tThis attribute MUST go on the first line"
 				     " with the other check items", entry->filename, entry->lineno, da->name,
 				     entry->name);
