@@ -32,6 +32,8 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
+bool fr_pair_legacy_nested = false;
+
 static fr_sbuff_term_t const 	bareword_terminals =
 				FR_SBUFF_TERMS(
 					L("\t"),
@@ -71,13 +73,12 @@ static fr_sbuff_term_t const 	bareword_terminals =
  * @param[in,out] token	The last token we parsed
  * @param[in] depth	the nesting depth for FR_TYPE_GROUP
  * @param[in,out] relative_vp for relative attributes
- * @param[in] nested	create nested attributes (or not)
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
 static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, fr_pair_t *parent_vp, char const *buffer, char const *end,
-					 fr_pair_list_t *list, fr_token_t *token, unsigned int depth, fr_pair_t **relative_vp, bool nested)
+					 fr_pair_list_t *list, fr_token_t *token, unsigned int depth, fr_pair_t **relative_vp)
 {
 	fr_pair_t		*vp = NULL;
 	fr_pair_t		*my_relative_vp;
@@ -214,7 +215,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 
 		fr_skip_whitespace(p);
 
-		if (!nested || parent_vp || (*relative_vp && ((*relative_vp)->da == da->parent)))  {
+		if (!fr_pair_legacy_nested || parent_vp || (*relative_vp && ((*relative_vp)->da == da->parent)))  {
 			vp = fr_pair_afrom_da(my_ctx, da);
 			if (!vp) goto error;
 			fr_pair_append(my_list, vp);
@@ -265,7 +266,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			 */
 			my_relative_vp = NULL;
 
-			slen = fr_pair_list_afrom_substr(vp, vp->da, vp, p, end, &vp->vp_group, &last_token, depth + 1, &my_relative_vp, nested);
+			slen = fr_pair_list_afrom_substr(vp, vp->da, vp, p, end, &vp->vp_group, &last_token, depth + 1, &my_relative_vp);
 			if (slen <= 0) {
 				goto error;
 			}
@@ -398,7 +399,7 @@ fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
 
 	fr_pair_list_init(&tmp_list);
 
-	if (fr_pair_list_afrom_substr(ctx, parent, NULL, buffer, buffer + len, &tmp_list, &token, 0, &relative_vp, false) < 0) {
+	if (fr_pair_list_afrom_substr(ctx, parent, NULL, buffer, buffer + len, &tmp_list, &token, 0, &relative_vp) < 0) {
 		fr_pair_list_free(&tmp_list);
 		return T_INVALID;
 	}
@@ -455,7 +456,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		/*
 		 *	Call our internal function, instead of the public wrapper.
 		 */
-		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), NULL, buf, buf + strlen(buf), &tmp_list, &last_token, 0, &relative_vp, false) < 0) {
+		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), NULL, buf, buf + strlen(buf), &tmp_list, &last_token, 0, &relative_vp) < 0) {
 			goto fail;
 		}
 

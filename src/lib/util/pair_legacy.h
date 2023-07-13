@@ -34,6 +34,8 @@ RCSIDH(pair_legacy_h, "$Id$")
 extern "C" {
 #endif
 
+extern bool	fr_pair_legacy_nested; /* for migratipon from legacy flat to new nested */
+
 fr_token_t	fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
 				       char const *buffer, size_t len, fr_pair_list_t *head);
 int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict,
