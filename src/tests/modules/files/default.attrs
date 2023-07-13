@@ -1,0 +1,12 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "default"
+User-Password = "stuffnsuch"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Reply-Message == 'success-default'

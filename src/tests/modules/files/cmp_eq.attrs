@@ -1,0 +1,12 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "cmp_eq"
+User-Password = "hopping"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Reply-Message == 'success-cmp_eq'
