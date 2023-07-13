@@ -73,6 +73,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	ssize_t			slen;
 	fr_pair_t		*vp = NULL;
 	uint8_t			prefix_len;
+	fr_dhcpv6_decode_ctx_t	*packet_ctx = decode_ctx;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_value");
 
@@ -175,7 +176,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		break;
 
 	case FR_TYPE_STRUCT:
-		slen = fr_struct_from_network(ctx, out, parent, data, data_len, false,
+		slen = fr_struct_from_network(ctx, out, parent, data, data_len, packet_ctx->struct_nested,
 					      decode_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (slen < 0) goto raw;
 
