@@ -461,7 +461,7 @@ fr_pair_t *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
  */
 fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_attr_t const *da, int start)
 {
-	fr_pair_t		*vp;
+	fr_pair_t		*vp, *key_vp = NULL;
 	unsigned int		i;
 	TALLOC_CTX		*cur_ctx;
 	fr_dict_attr_t const	*find;		/* DA currently being looked for */
@@ -475,12 +475,28 @@ fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, 
 	for (i = start; i <= da->depth; i++) {
 		find = da_stack.da[i];
 
+		if (key_vp) {
+			fr_assert(find->type == FR_TYPE_STRUCT);
+			key_vp->vp_uint32 = find->attr;
+			key_vp = NULL;
+		}
+
 		vp = fr_pair_find_by_da(cur_list, NULL, find);
 		if (!vp || (vp->da == da)) {
 			if  (fr_pair_append_by_da(cur_ctx, &vp, cur_list, find) < 0) return NULL;
 		}
 
 		if (find == da) return vp;
+
+		/*
+		 *	Create the key field, but do _not_ put the child struct into it.  Instead, the child
+		 *	struct goes appended into this struct.  However, we _do_ automatically set the value
+		 *	of the key field, depending on the number of the child structure.
+		 */
+		if (fr_dict_attr_is_key_field(find)) {
+			key_vp = vp;
+			continue;
+		}
 
 		fr_assert(fr_type_is_structural(vp->da->type));
 

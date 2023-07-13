@@ -73,6 +73,9 @@ KEYWORD_UPDATE_REWRITE_TESTS := update-all update-array update-delete update-rem
 # Tests which can use new conditions, but which can't use tmpl_tokenize_all_nested=yes
 KEYWORD_UPDATE_TMPL_TESTS	:= foreach-regex xlat-dhcpv4
 
+# Tests which can't use pair_legacy_nested=yes
+KEYWORD_PAIR_LEGACY_TESTS	:= map-xlat-struct
+
 #
 #  Migration support.  Some of the tests don't run under the new
 #  conditions, so we don't run them under the new conditions.
@@ -88,8 +91,10 @@ $(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S rewrite_update=yes
 
 else ifneq "$(findstring ${1}, $(KEYWORD_UPDATE_TMPL_TESTS))" ""
 $(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S forbid_update=yes
-else
+else ifneq "$(findstring ${1}, $(KEYWORD_PAIR_LEGACY_TESTS))" ""
 $(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S forbid_update=yes -S tmpl_tokenize_all_nested=yes
+else
+$(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S forbid_update=yes -S tmpl_tokenize_all_nested=yes -S pair_legacy_nested=true
 
 ifeq "${1}" "mschap"
 $(OUTPUT)/${1}: $(BUILD_DIR)/lib/rlm_mschap.la
