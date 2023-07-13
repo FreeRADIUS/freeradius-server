@@ -1500,7 +1500,7 @@ int main_config_parse_option(char const *value)
 
 	offset = fr_table_value_by_substr(config_arg_table, value, p - value, 0);
 	if (offset) {
-		out = (((uintptr_t) main_config) + offset);
+		out = (bool *) (((uintptr_t) main_config) + offset);
 
 	} else if (strncmp(p, "pair_legacy_nested", p - value) != 0) {
 		out = &fr_pair_legacy_nested;
