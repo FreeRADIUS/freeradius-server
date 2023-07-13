@@ -442,18 +442,24 @@ redo:
 		 */
 		if (!default_pl && user_pl) {
 			pl = user_pl;
+
+			RDEBUG3("DEFAULT[] USER[%d]=%s", user_pl->lineno, user_pl->name);
 			user_pl = fr_dlist_next(&user_list->head, user_pl);
 
 		} else if (!user_pl && default_pl) {
 			pl = default_pl;
+			RDEBUG3("DEFAULT[%d]= USER[]=", default_pl->lineno);
 			default_pl = fr_dlist_next(&default_list->head, default_pl);
 
 		} else if (user_pl->order < default_pl->order) {
 			pl = user_pl;
+
+			RDEBUG3("DEFAULT[%d]= USER[%d]=%s (choosing user)", default_pl->lineno, user_pl->lineno, user_pl->name);
 			user_pl = fr_dlist_next(&user_list->head, user_pl);
 
 		} else {
 			pl = default_pl;
+			RDEBUG3("DEFAULT[%d]= USER[%d]=%s (choosing default)", default_pl->lineno, user_pl->lineno, user_pl->name);
 			default_pl = fr_dlist_next(&default_list->head, default_pl);
 		}
 
