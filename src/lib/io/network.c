@@ -114,7 +114,6 @@ struct fr_network_s {
 
 	pthread_t		thread_id;		//!< for self
 
-	bool			started;		//!< Set to true when the first worker is added.
 	bool			suspended;		//!< whether or not we're suspended.
 
 	fr_log_t const		*log;			//!< log destination
@@ -143,6 +142,8 @@ struct fr_network_s {
 
 	int			signal_pipe[2];		//!< Pipe for signalling the worker in an orderly way.
 							///< This is more deterministic than using async signals.
+
+	bool			exiting;		//!< are we exiting?
 
 	fr_network_config_t	config;			//!< configuration
 	fr_network_worker_t	*workers[MAX_WORKERS]; 	//!< each worker
@@ -1507,7 +1508,6 @@ static void fr_network_worker_started_callback(void *ctx, void const *data, size
 	fr_channel_set_recv_reply(w->channel, nr, fr_network_recv_reply);
 
 	nr->num_workers++;
-	nr->started = true;
 
 	/*
 	 *	Insert the worker into the array of workers.
@@ -1732,6 +1732,7 @@ int fr_network_destroy(fr_network_t *nr)
 
 	(void) fr_event_pre_delete(nr->el, fr_network_pre_event, nr);
 	(void) fr_event_post_delete(nr->el, fr_network_post_event, nr);
+	nr->exiting = true;
 	fr_event_fd_delete(nr->el, nr->signal_pipe[0], FR_EVENT_FILTER_IO);
 
 	return 0;
@@ -1772,7 +1773,7 @@ static void _signal_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
  */
 void fr_network(fr_network_t *nr)
 {
-	while (likely(((nr->num_workers > 0) || !nr->started))) {
+	while (likely((nr->num_workers > 0) || !nr->exiting)) {
 		bool wait_for_event;
 		int num_events;
 
@@ -1800,6 +1801,7 @@ void fr_network(fr_network_t *nr)
 			fr_event_service(nr->el);
 		}
 	}
+	return;
 }
 
 /** Signal a network thread to exit

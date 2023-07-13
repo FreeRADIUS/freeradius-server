@@ -383,7 +383,8 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
 
 	if (!fr_atomic_queue_pop(aq, (void **) &m)) return 0;
 
-	fr_assert(m->status == FR_CONTROL_MESSAGE_USED);
+	fr_assert_msg(m->status == FR_CONTROL_MESSAGE_USED, "Bad control message state, expected %u got %u",
+		      FR_CONTROL_MESSAGE_USED, m->status);
 
 	/*
 	 *	There isn't enough room to store the data, die.
