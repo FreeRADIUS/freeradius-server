@@ -172,6 +172,7 @@ typedef struct {
 	int			salt_offset;		//!< for tunnel passwords
 	bool 			tunnel_password_zeros;  //!< check for trailing zeros on decode
 	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
+	bool			struct_nested;		//!< decode structs as nested
 
 	uint8_t			tag;			//!< current tag for encoding
 	fr_radius_tag_ctx_t    	**tags;			//!< for decoding tagged attributes
