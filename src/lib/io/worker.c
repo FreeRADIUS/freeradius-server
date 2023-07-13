@@ -331,6 +331,9 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 
 			ms = fr_channel_responder_uctx_get(ch);
 
+			fr_assert_msg(fr_dlist_num_elements(&worker->channel[i].dlist) == 0,
+				      "Network added messages to channel after sending FR_CHANNEL_CLOSE");
+
 			fr_channel_responder_ack_close(ch);
 			fr_assert(ms != NULL);
 			fr_message_set_gc(ms);
@@ -1045,6 +1048,11 @@ void fr_worker_destroy(fr_worker_t *worker)
 	 */
 	for (i = 0; i < worker->config.max_channels; i++) {
 		if (!worker->channel[i].ch) continue;
+
+		worker_requests_cancel(&worker->channel[i]);
+
+		fr_assert_msg(fr_dlist_num_elements(&worker->channel[i].dlist) == 0,
+			      "Pending messages in channel after cancelling request");
 
 		fr_channel_responder_ack_close(worker->channel[i].ch);
 	}

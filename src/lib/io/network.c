@@ -1507,6 +1507,12 @@ static void fr_network_worker_started_callback(void *ctx, void const *data, size
 	fr_channel_requestor_uctx_add(w->channel, w);
 	fr_channel_set_recv_reply(w->channel, nr, fr_network_recv_reply);
 
+	/*
+	 *	FIXME: This creates a race in the network loop
+	 *	exit condition, because it can theoretically
+	 *	be signalled to exit before the workers have
+	 *	ACKd channel creation.
+	 */
 	nr->num_workers++;
 
 	/*
@@ -1773,7 +1779,20 @@ static void _signal_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
  */
 void fr_network(fr_network_t *nr)
 {
-	while (likely((nr->num_workers > 0) || !nr->exiting)) {
+	/*
+	 *	Run until we're told to exit AND the number of
+	 *	workers has dropped to zero.
+	 *
+	 *	This is important as if we exit too early we
+	 *	free the channels out from underneath the
+	 *	workers and they read uninitialised memory.
+	 *
+	 *	Whenever a worker ACKs our close notification
+	 *	nr->num_workers is decremented, so when
+	 *	nr->num_workers == 0, all workers have ACKd
+	 *	our close and are no longer using the channel.
+	 */
+	while (likely(!(nr->exiting && (nr->num_workers == 0)))) {
 		bool wait_for_event;
 		int num_events;
 

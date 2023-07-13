@@ -35,6 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/radmin.h>
 #include <freeradius-devel/server/request_data.h>
+#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 /** Heap of all lists/modules used to get a common index with module_thread_inst_list
@@ -644,6 +645,11 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_even
 				talloc_set_name_const(ti->data, mi->module->thread_inst_type);
 			}
 		}
+
+		/*
+		 *	So we don't get spurious errors
+		 */
+		fr_strerror_clear();
 
 		DEBUG4("Worker alloced %s thread instance data (%p/%p)", ti->mi->module->name, ti, ti->data);
 		if (mi->module->thread_instantiate &&

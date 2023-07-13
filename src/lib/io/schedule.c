@@ -211,7 +211,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		if (!cs) cs = cf_section_find(sc->cs, "worker", NULL);
 
 		if (sc->worker_thread_instantiate(sw->ctx, sw->el, cs) < 0) {
-			PERROR("%s - Failed calling thread instantiate", worker_name);
+			PERROR("%s - Worker thread instantiation failed", worker_name);
 			goto fail;
 		}
 	}
@@ -461,7 +461,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			if (!subcs) subcs = cf_section_find(sc->cs, "worker", NULL);
 
 			if (sc->worker_thread_instantiate(sc->single_worker, el, subcs) < 0) {
-				PERROR("Failed calling thread instantiate");
+				PERROR("Worker thread instantiation failed");
 			destroy_both:
 				fr_network_destroy(sc->single_network);
 				fr_worker_destroy(sc->single_worker);

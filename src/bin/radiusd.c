@@ -27,6 +27,7 @@
  * @copyright 2000 Jeff Carneal (jeff@apex.net)
  * @copyright 2000 Chad Miller (cmiller@surfsouth.com)
  */
+#include "lib/util/strerror.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
@@ -849,6 +850,10 @@ int main(int argc, char *argv[])
 			el = main_loop_event_list();
 		}
 
+		/*
+		 *	Fix spurious messages
+		 */
+		fr_strerror_clear();
 		sc = fr_schedule_create(NULL, el, &default_log, fr_debug_lvl,
 					thread_instantiate, thread_detach, schedule);
 		if (!sc) {
