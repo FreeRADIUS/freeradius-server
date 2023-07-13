@@ -517,7 +517,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *
 	 *	i.e. No response to the NAS.
 	 */
-	if (packet_len < totallen) {
+	if (totallen > packet_len) {
 		FR_DEBUG_STRERROR_PRINTF("packet is truncated (received %zu <  packet header length of %zu)",
 					 packet_len, totallen);
 		failure = DECODE_FAIL_MIN_LENGTH_MISMATCH;
@@ -530,7 +530,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	"Octets outside the range of the Length field MUST be
 	 *	treated as padding and ignored on reception."
 	 */
-	if (packet_len > totallen) {
+	if (totallen < packet_len) {
 		*packet_len_p = packet_len = totallen;
 	}
 
