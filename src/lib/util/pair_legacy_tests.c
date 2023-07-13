@@ -200,7 +200,6 @@ static void test_fr_pair_list_move_op(void)
 	TEST_CASE("Checking if (Test-String-0 == 'Testing123')");
 	TEST_CHECK(vp && strcmp(vp->vp_strvalue, "Testing123") == 0);
 
-	fr_pair_list_free(&old_list);
 	fr_pair_list_free(&new_list);
 
 	fclose(fp);

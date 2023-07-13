@@ -519,8 +519,8 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
  */
 void fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
 {
-	fr_pair_t *i, *found;
-	fr_pair_list_t head_new, head_prepend;
+	fr_pair_t *vp, *next, *found;
+	fr_pair_list_t head_append, head_prepend;
 
 	if (!to || fr_pair_list_empty(from)) return;
 
@@ -530,7 +530,7 @@ void fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t o
 	 *	be edited, so we create an intermediate list to hold
 	 *	them during the editing process.
 	 */
-	fr_pair_list_init(&head_new);
+	fr_pair_list_init(&head_append);
 
 	/*
 	 *	Any attributes that are requested to be prepended
@@ -542,16 +542,15 @@ void fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t o
 	 *	We're looping over the "from" list, moving some
 	 *	attributes out, but leaving others in place.
 	 */
-	for (i = fr_pair_list_head(from); i; ) {
-		fr_pair_t *j;
-
-		PAIR_VERIFY(i);
+	for (vp = fr_pair_list_head(from); vp != NULL; vp = next) {
+		PAIR_VERIFY(vp);
+		next = fr_pair_list_next(from, vp);
 
 		/*
 		 *	We never move Fall-Through.
 		 */
-		if (fr_dict_attr_is_top_level(i->da) && (i->da->attr == FR_FALL_THROUGH)) {
-			i = fr_pair_list_next(from, i);
+		if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_FALL_THROUGH) &&
+		    (fr_dict_by_da(vp->da) == fr_dict_internal())) {
 			continue;
 		}
 
@@ -561,14 +560,13 @@ void fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t o
 		 *	treatment for passwords or Hint.
 		 */
 
-		switch (i->op) {
+		switch (vp->op) {
 		/*
 		 *	Anything else are operators which
 		 *	shouldn't occur.  We ignore them, and
 		 *	leave them in place.
 		 */
 		default:
-			i = fr_pair_list_next(from, i);
 			continue;
 
 		/*
@@ -576,10 +574,8 @@ void fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t o
 		 *	it doesn't already exist.
 		 */
 		case T_OP_EQ:
-			found = fr_pair_find_by_da(to, NULL, i->da);
+			found = fr_pair_find_by_da(to, NULL, vp->da);
 			if (!found) goto do_add;
-
-			i = fr_pair_list_next(from, i);
 			continue;
 
 		/*
@@ -587,12 +583,11 @@ void fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t o
 		 *	of the same vendor/attr which already exists.
 		 */
 		case T_OP_SET:
-			found = fr_pair_find_by_da(to, NULL, i->da);
+			found = fr_pair_find_by_da(to, NULL, vp->da);
 			if (!found) goto do_add;
 
 			/*
-			 *	Delete *all* of the attributes
-			 *	of the same number.
+			 *	Delete *all* matching attribues.
 			 */
 			fr_pair_delete_by_da(to, found->da);
 			goto do_add;
@@ -603,16 +598,13 @@ void fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t o
 		 */
 		case T_OP_ADD_EQ:
 	do_add:
-			j = fr_pair_list_next(from, i);
-			fr_pair_remove(from, i);
-			fr_pair_append(&head_new, i);
-			i = j;
+			fr_pair_remove(from, vp);
+			fr_pair_append(&head_append, vp);
 			continue;
+
 		case T_OP_PREPEND:
-			j = fr_pair_list_next(from, i);
-			fr_pair_remove(from, i);
-			fr_pair_prepend(&head_prepend, i);
-			i = j;
+			fr_pair_remove(from, vp);
+			fr_pair_prepend(&head_prepend, vp);
 			continue;
 		}
 	} /* loop over the "from" list. */
@@ -622,7 +614,7 @@ void fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t o
 	 *	attributes first as those whose individual operator
 	 *	is prepend should be prepended to the resulting list
 	 */
-	if (op == T_OP_PREPEND) fr_pair_list_prepend(to, &head_new);
+	if (op == T_OP_PREPEND) fr_pair_list_prepend(to, &head_append);
 
 	/*
 	 *	If there are any items in the prepend list prepend
@@ -634,6 +626,7 @@ void fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t o
 	 *	If the op parameter was not prepend, take the "new"
 	 *	list, and append it to the "to" list.
 	 */
-	if (op != T_OP_PREPEND) fr_pair_list_append(to, &head_new);
+	if (op != T_OP_PREPEND) fr_pair_list_append(to, &head_append);
 
+	fr_pair_list_free(from);
 }
