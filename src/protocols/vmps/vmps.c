@@ -491,11 +491,10 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 		id = ntohl(id);
 
 		length = fr_nbo_to_uint16(attr + 4);
-		if ((attr + length) > end) break;
+		if (length > (end - attr)) break;
 
 		fprintf(fp, "\t\t%08x  %04x  ", id, length);
 
-		/* coverity[tainted_data] */
 		print_hex_data(attr + 6, length - 6, 3);
 	}
 }
