@@ -531,7 +531,7 @@ static void dhcp_packet_debug(fr_radius_packet_t *packet, fr_pair_list_t *list, 
 	     vp = fr_pair_list_next(list, vp)) {
 		PAIR_VERIFY(vp);
 
-		fr_pair_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), NULL, vp);
+		(void) fr_pair_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), NULL, vp);
 		printf("\t%s\n", buffer);
 	}
 }

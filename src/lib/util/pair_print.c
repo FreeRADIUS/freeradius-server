@@ -215,7 +215,7 @@ void fr_pair_debug(fr_pair_t const *pair)
 
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 
-	fr_pair_print(&sbuff, NULL, pair);
+	(void) fr_pair_print(&sbuff, NULL, pair);
 
 	fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pV",
 	       fr_box_strvalue_len(fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff)));
