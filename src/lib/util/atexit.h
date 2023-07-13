@@ -195,6 +195,8 @@ void		fr_atexit_thread_local_disarm_all(void);
 
 int		fr_atexit_thread_trigger_all(void);
 
+bool		fr_atexit_thread_is_exiting(void);
+
 /*
  *	If we're building without threading support,
  *	all this becomes much easier, and we just map

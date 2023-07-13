@@ -75,6 +75,7 @@ static pthread_mutex_t			fr_atexit_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static fr_atexit_list_t			*fr_atexit_global = NULL;
 static bool				is_exiting;
+static _Thread_local bool		thread_is_exiting;
 
 /** Call the exit handler
  *
@@ -441,6 +442,7 @@ static void _thread_local_pthread_free(void *list)
  */
 static int _thread_local_free(void *list)
 {
+	thread_is_exiting = true;
 	return talloc_free(list);
 }
 
@@ -621,5 +623,13 @@ int fr_atexit_thread_trigger_all(void)
 	}
 
 	return count;
+}
+
+/** Return whether the thread is currently being cleaned up
+ *
+ */
+bool fr_atexit_thread_is_exiting(void)
+{
+	return thread_is_exiting;
 }
 #endif
