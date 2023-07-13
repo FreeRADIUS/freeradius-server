@@ -398,7 +398,10 @@ fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
 
 	fr_pair_list_init(&tmp_list);
 
-	if (fr_pair_list_afrom_substr(ctx, parent, NULL, buffer, buffer + len, &tmp_list, &token, 0, &relative_vp, false) < 0) return T_INVALID;
+	if (fr_pair_list_afrom_substr(ctx, parent, NULL, buffer, buffer + len, &tmp_list, &token, 0, &relative_vp, false) < 0) {
+		fr_pair_list_free(&tmp_list);
+		return T_INVALID;
+	}
 
 	fr_pair_list_append(list, &tmp_list);
 
