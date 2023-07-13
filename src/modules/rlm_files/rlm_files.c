@@ -471,6 +471,8 @@ redo:
 		while ((map = map_list_next(&pl->check, map))) {
 			fr_pair_list_t tmp_list;
 
+			RDEBUG3("    %s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
+
 			/*
 			 *	Control items get realized to VPs, and
 			 *	copied to a temporary list, which is
@@ -496,7 +498,10 @@ redo:
 				 *	Evaluate the map, including regexes.
 				 */
 			default:
-				if (!fr_cond_eval_map(request, map)) match = false;
+				if (!fr_cond_eval_map(request, map)) {
+					RDEBUG3("    failed match - %s", fr_strerror());
+					match = false;
+				}
 				break;
 			}
 
