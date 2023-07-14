@@ -1,0 +1,38 @@
+#
+#  Tests for parsing files ala radclient or "users"
+#
+#  This is the same as "file.txt", but with the migration flag set.
+#
+#  $Id$
+#
+
+proto-dictionary radius
+migrate pair_legacy_nested = yes
+
+#
+#  Fully specified paths.
+#
+read_file files/cisco_avpair.txt
+match User-Name = "bob", User-Password = "hello", Vendor-Specific = { Cisco = { AVPair = "1", AVPair += "2", AVPair += "3", AVPair += "4" } }
+
+#
+#  Relative attributes, all on the same line.
+#
+read_file files/cisco_relative.txt
+match User-Name = "bob", User-Password = "hello", Vendor-Specific = { Cisco = { AVPair = "1", AVPair += "2", AVPair += "3", AVPair += "4" } }
+
+#
+#  Relative attributes, each on a different line
+#
+read_file files/cisco_multiline_relative.txt
+match User-Name = "bob", User-Password = "hello", Vendor-Specific = { Cisco = { AVPair = "1", AVPair += "2", AVPair += "3", AVPair += "4" } }
+
+
+#
+#  Multiple Cisco AVPAir, all on one line
+#
+read_file files/cisco_single_line.txt
+match User-Name = "bob", User-Password = "hello", Vendor-Specific = { Cisco = { AVPair = "1", AVPair += "2", AVPair += "3", AVPair += "4" } }
+
+count
+match 10

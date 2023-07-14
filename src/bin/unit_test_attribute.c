@@ -2453,6 +2453,49 @@ static size_t command_max_buffer_size(command_result_t *result, command_file_ctx
 	RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "%ld", size));
 }
 
+/** Set or clear migration flags.
+ *
+ */
+static size_t command_migrate(command_result_t *result, UNUSED command_file_ctx_t *cc,
+			      UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	char *p;
+	bool *out;
+
+	fr_skip_whitespace(in);
+	p = in;
+
+	if (strncmp(p, "pair_legacy_nested", sizeof("pair_legacy_nested") - 1) == 0) {
+		p += sizeof("pair_legacy_nested") - 1;
+		out = &fr_pair_legacy_nested;
+
+	} else {
+		fr_strerror_const("Unknown migration flag");
+		RETURN_PARSE_ERROR(0);
+	}
+
+	fr_skip_whitespace(p);
+	if (*p != '=') {
+		fr_strerror_const("Missing '=' after flag");
+		RETURN_PARSE_ERROR(0);
+	}
+	p++;
+
+	fr_skip_whitespace(p);
+	if ((strcmp(p, "yes") == 0) || (strcmp(p, "true") == 0) || (strcmp(p, "1") == 0)) {
+		*out = true;
+
+	} else if ((strcmp(p, "no") == 0) || (strcmp(p, "false") == 0) || (strcmp(p, "0") == 0)) {
+		*out = false;
+
+	} else {
+		fr_strerror_const("Invalid value for flag");
+		RETURN_PARSE_ERROR(0);
+	}
+
+	RETURN_OK(0);
+}
+
 /** Skip the test file if we're missing a particular feature
  *
  */
@@ -3164,6 +3207,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_max_buffer_size,
 					.usage = "max-buffer-size[ <intger>]",
 					.description = "Limit the maximum temporary buffer space available for any command which uses it"
+				}},
+	{ L("migrate "),	&(command_entry_t){
+					.func = command_migrate,
+					.usage = "migrate <flag>=<value>",
+					.description = "Set migration flag"
 				}},
 	{ L("need-feature "),	&(command_entry_t){
 					.func = command_need_feature,
