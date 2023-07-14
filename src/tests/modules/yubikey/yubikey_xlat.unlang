@@ -8,9 +8,7 @@ if (&Tmp-String-1 != "ffc1e0d3d260") {
 #  Invalid modhex string - not even length
 &Tmp-String-0 := "vvrbuctetdh"
 
-update request {
-	&Tmp-String-1 := "%{modhextohex:%{Tmp-String-0}}"
-}
+&Tmp-String-1 := "%{modhextohex:%{Tmp-String-0}}"
 
 if (ok) {
 	test_fail
@@ -25,13 +23,9 @@ if (&Module-Failure-Message != "Modhex string invalid") {
 }
 
 #  Invalid modhex string - invalid characters
-update request {
-	&Tmp-String-0 := "vxrbmctetdhc"
-}
+&Tmp-String-0 := "vxrbmctetdhc"
 
-update request {
-	&Tmp-String-1 := "%{modhextohex:%{Tmp-String-0}}"
-}
+&Tmp-String-1 := "%{modhextohex:%{Tmp-String-0}}"
 
 if (ok) {
 	test_fail
