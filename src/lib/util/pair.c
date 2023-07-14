@@ -461,7 +461,7 @@ fr_pair_t *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
  */
 fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_attr_t const *da, int start)
 {
-	fr_pair_t		*vp, *key_vp = NULL;
+	fr_pair_t		*vp;
 	unsigned int		i;
 	TALLOC_CTX		*cur_ctx;
 	fr_dict_attr_t const	*find;		/* DA currently being looked for */
@@ -475,10 +475,15 @@ fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, 
 	for (i = start; i <= da->depth; i++) {
 		find = da_stack.da[i];
 
-		if (key_vp) {
-			fr_assert(find->type == FR_TYPE_STRUCT);
-			key_vp->vp_uint32 = find->attr;
-			key_vp = NULL;
+		/*
+		 *	If we're asked to create a key field, then do it.
+		 *
+		 *	Otherwise if we're creating a child struct (which is magically parented by the key
+		 *	field), then don't bother creating the key field.  It will be automatically filled in
+		 *	by the encoder.
+		 */
+		if ((find != da) && fr_dict_attr_is_key_field(find)) {
+			continue;
 		}
 
 		vp = fr_pair_find_by_da(cur_list, NULL, find);
@@ -487,16 +492,6 @@ fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, 
 		}
 
 		if (find == da) return vp;
-
-		/*
-		 *	Create the key field, but do _not_ put the child struct into it.  Instead, the child
-		 *	struct goes appended into this struct.  However, we _do_ automatically set the value
-		 *	of the key field, depending on the number of the child structure.
-		 */
-		if (fr_dict_attr_is_key_field(find)) {
-			key_vp = vp;
-			continue;
-		}
 
 		fr_assert(fr_type_is_structural(vp->da->type));
 
