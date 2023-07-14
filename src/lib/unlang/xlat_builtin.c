@@ -616,13 +616,13 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 
 		if (in_vb->vb_length > sizeof(uint32_t)) {
-			fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL);
+			if (unlikely(fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL) < 0)) goto error;
 		} else if (in_vb->vb_length > sizeof(uint16_t)) {
-			fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT32, NULL);
+			if (unlikely(fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT32, NULL) < 0)) goto error;
 		} else if (in_vb->vb_length > sizeof(uint8_t)) {
-			fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT16, NULL);
+			if (unlikely(fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT16, NULL) < 0)) goto error;
 		} else {
-			fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT8, NULL);
+			if (unlikely(fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT8, NULL) < 0)) goto error;
 		}
 
 		break;
