@@ -27,7 +27,6 @@
  * @copyright 2000 Jeff Carneal (jeff@apex.net)
  * @copyright 2000 Chad Miller (cmiller@surfsouth.com)
  */
-#include "lib/util/strerror.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
@@ -39,6 +38,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/size.h>
+#include <freeradius-devel/util/strerror.h>
 
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/log.h>
