@@ -553,17 +553,17 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 
 		FR_PROTO_HEX_DUMP(decrypted, buffer_len, "fr_tacacs_packet_t (unencrypted)");
 
-		if (code) {
-			*code = fr_tacacs_packet_to_code((fr_tacacs_packet_t const *) decrypted);
-			if (*code < 0) goto fail;
-		}
-
 		buffer = decrypted;
 	}
 
 #ifndef NDEBUG
 	if (fr_debug_lvl >= L_DBG_LVL_4) fr_tacacs_packet_log_hex(&default_log, pkt);
 #endif
+
+	if (code) {
+		*code = fr_tacacs_packet_to_code((fr_tacacs_packet_t const *) buffer);
+		if (*code < 0) goto fail;
+	}
 
 	switch (pkt->hdr.type) {
 	case FR_TAC_PLUS_AUTHEN:
