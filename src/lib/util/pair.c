@@ -2236,49 +2236,45 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
  * @param[in] to		where to copy attributes to.
  * @param[in] from		whence to copy #fr_pair_t (s).
  * @param[in] parent_da		to match.
- * @param[in] count		How many instances to copy.
- *				Use 0 for all attributes.
  * @return
- *	- >0 the number of attributes copied.
+ *	- >0 one or more attributes were copied
  *	- 0 if no attributes copied.
  *	- -1 on error.
  */
 int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
-				  fr_pair_list_t const *from, fr_dict_attr_t const *parent_da, unsigned int count)
+				  fr_pair_list_t const *from, fr_dict_attr_t const *parent_da)
 {
-	fr_pair_t	*vp, *new_vp, *tlv;
-	unsigned int	cnt = 0;
-
-	if (count == 0) count = UINT_MAX;
+	fr_pair_t	*tlv;
+	bool		found = false;
 
 	/*
 	 *	Allow for nested attributes.
 	 */
 	tlv = fr_pair_find_by_da(from, NULL, parent_da);
 	if (tlv) {
-		switch (parent_da->type) {
-		case FR_TYPE_STRUCTURAL:
-			from = &tlv->vp_group;
-			break;
+		fr_pair_t *vp;
 
-		default:
-			fr_assert(0);
-		}
+		vp = fr_pair_copy(ctx, tlv);
+		if (!vp) return -1;
+
+		fr_pair_append(to, vp);
+
+		return 1;
 	}
 
-	for (vp = fr_pair_list_head(from);
-	     vp && (cnt < count);
-	     vp = fr_pair_list_next(from, vp)) {
-		if (!tlv && !fr_dict_attr_common_parent(parent_da, vp->da, true)) continue;
-		cnt++;
+	fr_pair_list_foreach(from, vp) {
+		fr_pair_t *new_vp;
 
-		PAIR_VERIFY_WITH_LIST(from, vp);
+		if (!fr_dict_attr_common_parent(parent_da, vp->da, true)) continue;
+
 		new_vp = fr_pair_copy(ctx, vp);
 		if (unlikely(!new_vp)) return -1;
+
 		fr_pair_append(to, new_vp);
+		found = true;
 	}
 
-	return cnt;
+	return found;
 }
 
 /** Duplicate a list of pairs starting at a particular item
@@ -2994,6 +2990,8 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" structural (non-group) type contains itself",
 					     file, line, vp->da->name);
 		}
+
+		fr_pair_list_verify(file, line, vp, &vp->vp_group);
 	}
 
 	switch (vp->vp_type) {

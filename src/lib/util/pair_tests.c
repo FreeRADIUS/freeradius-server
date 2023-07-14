@@ -705,7 +705,7 @@ static void test_fr_pair_list_copy_by_ancestor(void)
 	fr_pair_list_init(&local_pairs);
 
 	TEST_CASE("Copy 'test_pairs' into 'local_pairs'");
-	TEST_CHECK(fr_pair_list_copy_by_ancestor(autofree, &local_pairs, &test_pairs, fr_dict_attr_test_tlv, 0) > 0);
+	TEST_CHECK(fr_pair_list_copy_by_ancestor(autofree, &local_pairs, &test_pairs, fr_dict_attr_test_tlv) > 0);
 
 	TEST_CASE("The 'local_pairs' should have only fr_dict_attr_test_tlv_string (ancestor of 'Test-TLV-Root'");
 	for (vp = fr_pair_dcursor_init(&cursor, &local_pairs);

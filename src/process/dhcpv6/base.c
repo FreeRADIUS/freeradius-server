@@ -367,7 +367,7 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 	 *	when the structure pairs are nested.
 	 */
 	switch (fr_pair_list_copy_by_ancestor(rctx, &rctx->client_id,
-					      &request->request_pairs, attr_client_id, 0)) {
+					      &request->request_pairs, attr_client_id)) {
 	case -1:
 		REDEBUG("Error copying Client-ID");
 	error:
@@ -383,7 +383,7 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 	}
 
 	switch (fr_pair_list_copy_by_ancestor(rctx, &rctx->server_id,
-					      &request->request_pairs, attr_server_id, 0)) {
+					      &request->request_pairs, attr_server_id)) {
 	case -1:
 			REDEBUG("Error copying Server-ID");
 			goto error;

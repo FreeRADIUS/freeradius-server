@@ -640,7 +640,7 @@ int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 
 int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 					      fr_pair_list_t const *from,
-					      fr_dict_attr_t const *parent_da, unsigned int count) CC_HINT(nonnull);
+					      fr_dict_attr_t const *parent_da) CC_HINT(nonnull);
 
 int		fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to,
 				     fr_pair_list_t const *from,
