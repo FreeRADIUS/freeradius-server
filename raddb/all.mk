@@ -21,7 +21,7 @@ LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
 LOCAL_CERT_FILES :=	Makefile README.md xpextensions \
 			ca.cnf server.cnf inner-server.cnf \
-			client.cnf bootstrap
+			client.cnf realms/README.md bootstrap
 
 #
 #  We don't create the installed certs if we're building a package,
@@ -36,7 +36,7 @@ endif
 
 LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users huntgroups hints)
 
-RADDB_DIRS :=		certs mods-available mods-enabled policy.d \
+RADDB_DIRS :=		certs certs/realms mods-available mods-enabled policy.d \
 			sites-available sites-enabled \
 			$(patsubst raddb/%,%,$(shell find raddb/mods-config -type d -print))
 
