@@ -442,7 +442,7 @@ make %_smp_mflags
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/var/run/radiusd
 mkdir -p $RPM_BUILD_ROOT/var/lib/radiusd
-make install R=$RPM_BUILD_ROOT
+make install R=$RPM_BUILD_ROOT PACKAGE='redhat'
 # modify default configuration
 RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/raddb
 perl -i -pe 's/^#user =.*$/user = radiusd/'   $RADDB/radiusd.conf
@@ -703,7 +703,13 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/trigger.conf
 %config(noreplace) %{_sysconfdir}/raddb/users
 %dir %attr(770,root,radiusd) %{_sysconfdir}/raddb/certs
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/*
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/README.md
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/Makefile
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/bootstrap
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/xpextensions
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/*.cnf
+%dir %attr(770,root,radiusd) %{_sysconfdir}/raddb/certs/realms
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/realms/*
 %attr(750,root,radiusd) %{_sysconfdir}/raddb/certs/bootstrap
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/sites-available
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sites-available/*
