@@ -1108,7 +1108,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 */
 	if (((map->lhs->tmpl_list == PAIR_LIST_COA) ||
 	     (map->lhs->tmpl_list == PAIR_LIST_DM)) && !request->coa) {
-		if (request->parent) {
+		if (context->parent) {
 			REDEBUG("You can only do 'update coa' when processing a packet which was received from the network");
 			return -2;
 		}
