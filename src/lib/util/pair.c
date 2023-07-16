@@ -550,6 +550,7 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	if (!n) return NULL;
 
 	n->op = vp->op;
+
 	/*
 	 *	Copy the unknown attribute hierarchy
 	 */
@@ -561,22 +562,18 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 		}
 	}
 
-
 	/*
 	 *	Groups are special.
 	 */
-	switch (n->da->type) {
-	case FR_TYPE_STRUCTURAL:
+	if (fr_type_is_structural(n->da->type)) {
 		if (fr_pair_list_copy(n, &n->vp_group, &vp->vp_group) < 0) {
 			talloc_free(n);
 			return NULL;
 		}
-		return n;
 
-	default:
-		break;
+	} else {
+		fr_value_box_copy(n, &n->data, &vp->data);
 	}
-	fr_value_box_copy(n, &n->data, &vp->data);
 
 	return n;
 }
