@@ -716,8 +716,13 @@ static void test_fr_pair_list_copy_by_ancestor(void)
 	TEST_CHECK(vp != NULL);
 	if (!vp) return;
 
+#ifdef TEST_NESTED_PAIRS
+	TEST_CASE("Expected copied attribute == fr_dict_attr_test_tlv)");
+	TEST_CHECK(vp->da == fr_dict_attr_test_tlv);
+#else
 	TEST_CASE("Expected copied attribute == fr_dict_attr_test_tlv_string)");
 	TEST_CHECK(vp->da == fr_dict_attr_test_tlv_string);
+#endif
 
 	TEST_CASE("Verifying the copied attribute");	
 	PAIR_VERIFY(vp);
