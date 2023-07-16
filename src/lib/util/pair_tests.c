@@ -706,14 +706,17 @@ static void test_fr_pair_list_copy_by_ancestor(void)
 	TEST_CASE("Copy 'test_pairs' into 'local_pairs'");
 	TEST_CHECK(fr_pair_list_copy_by_ancestor(autofree, &local_pairs, &test_pairs, fr_dict_attr_test_tlv) > 0);
 
+	TEST_CASE("The 'local_pairs' should have only one attribute in it");
+	TEST_CHECK(fr_pair_list_num_elements(&local_pairs) == 1);
+
 	TEST_CASE("The 'local_pairs' should have only fr_dict_attr_test_tlv_string (ancestor of 'Test-TLV-Root'");
 	vp = fr_pair_list_head(&local_pairs);
 
-	TEST_CASE("Validating we copied attribute");
+	TEST_CASE("Validating we copied the attribute");
 	TEST_CHECK(vp != NULL);
 	if (!vp) return;
 
-	TEST_CASE("Expected copied attribure == fr_dict_attr_test_tlv_string)");
+	TEST_CASE("Expected copied attribute == fr_dict_attr_test_tlv_string)");
 	TEST_CHECK(vp->da == fr_dict_attr_test_tlv_string);
 
 	TEST_CASE("Verifying the copied attribute");	
