@@ -698,8 +698,7 @@ static void test_fr_pair_list_copy_by_da(void)
 
 static void test_fr_pair_list_copy_by_ancestor(void)
 {
-	fr_dcursor_t   cursor;
-	fr_pair_t      *vp, *needle = NULL;
+	fr_pair_t      *vp;
 	fr_pair_list_t	local_pairs;
 
 	fr_pair_list_init(&local_pairs);
@@ -708,25 +707,20 @@ static void test_fr_pair_list_copy_by_ancestor(void)
 	TEST_CHECK(fr_pair_list_copy_by_ancestor(autofree, &local_pairs, &test_pairs, fr_dict_attr_test_tlv) > 0);
 
 	TEST_CASE("The 'local_pairs' should have only fr_dict_attr_test_tlv_string (ancestor of 'Test-TLV-Root'");
-	for (vp = fr_pair_dcursor_init(&cursor, &local_pairs);
-	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
-		TEST_CASE("Validating PAIR_VERIFY()");
-		PAIR_VERIFY(vp);
+	vp = fr_pair_list_head(&local_pairs);
 
-		if (vp->da == fr_dict_attr_test_tlv_string) {
-			needle = vp;
-			break;
-		}
-	}
+	TEST_CASE("Validating we copied attribute");
+	TEST_CHECK(vp != NULL);
+	if (!vp) return;
 
-	TEST_CASE("Validating PAIR_VERIFY()");
+	TEST_CASE("Expected copied attribure == fr_dict_attr_test_tlv_string)");
+	TEST_CHECK(vp->da == fr_dict_attr_test_tlv_string);
 
-	TEST_CHECK(needle != NULL);
-	if (needle) PAIR_VERIFY(needle);
+	TEST_CASE("Verifying the copied attribute");	
+	PAIR_VERIFY(vp);
 
-	TEST_CASE("Expected (needle->da == fr_dict_attr_test_tlv_string)");
-	TEST_CHECK(needle && needle->da == fr_dict_attr_test_tlv_string);
+	TEST_CASE("Expecting nothing else in local list");
+	TEST_CHECK(fr_pair_list_next(&local_pairs, vp) == NULL);
 
 	fr_pair_list_free(&local_pairs);
 }
