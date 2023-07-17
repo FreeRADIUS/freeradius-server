@@ -385,11 +385,18 @@ static void print_args(fr_log_t const *log, char const *file, int line, size_t a
 	}
 }
 
-void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *packet, char const *file, int line)
+void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *packet, size_t packet_len, char const *file, int line)
 {
 	size_t length;
 	uint8_t const *p = (uint8_t const *) packet;
 	uint8_t const *hdr, *end, *args;
+
+	end = ((uint8_t const *) packet) + packet_len;
+
+	if (packet_len < 12) {
+		print_hex(log, file, line, "header ", p, packet_len, end);
+		return;
+	}
 
 	/*
 	 *	It has to be at least 12 bytes long.
@@ -419,7 +426,11 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 
 	p += 12;
 	hdr = p;
-	end = hdr + length;
+
+	if ((p + length) != end) {
+		fr_log(log, L_DBG, file, line, "length field does not match input packet length %08lx", packet_len - 12);
+		return;
+	}
 
 #define OVERFLOW8(_field, _name) do { \
 	if ((p + _field) > end) { \

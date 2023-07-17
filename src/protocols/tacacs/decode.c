@@ -557,7 +557,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 	}
 
 #ifndef NDEBUG
-	if (fr_debug_lvl >= L_DBG_LVL_4) fr_tacacs_packet_log_hex(&default_log, pkt);
+	if (fr_debug_lvl >= L_DBG_LVL_4) fr_tacacs_packet_log_hex(&default_log, pkt, (end - buffer));
 #endif
 
 	if (code) {

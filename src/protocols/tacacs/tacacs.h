@@ -351,5 +351,5 @@ void		fr_tacacs_free(void);
 
 int		fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body_len, char const *secret, size_t secret_len) CC_HINT(nonnull(1,2,4));
 
-#define fr_tacacs_packet_log_hex(_log, _packet) _fr_tacacs_packet_log_hex(_log, _packet, __FILE__, __LINE__);
-void		_fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *packet, char const *file, int line) CC_HINT(nonnull);
+#define fr_tacacs_packet_log_hex(_log, _packet, _size) _fr_tacacs_packet_log_hex(_log, _packet, _size, __FILE__, __LINE__);
+void		_fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *packet, size_t packet_len, char const *file, int line) CC_HINT(nonnull);

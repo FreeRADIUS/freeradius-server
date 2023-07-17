@@ -978,7 +978,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 		uint8_t flags = packet->hdr.flags;
 
 		packet->hdr.flags |= FR_TAC_PLUS_UNENCRYPTED_FLAG;
-		fr_tacacs_packet_log_hex(&default_log, packet);
+		fr_tacacs_packet_log_hex(&default_log, packet, packet_len);
 		packet->hdr.flags = flags;
 	}
 #endif
