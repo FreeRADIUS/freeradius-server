@@ -78,7 +78,7 @@ static bool is_eap_aka_encodable(void const *item, UNUSED void const *uctx)
 	 *	Bool attribute presence is 'true' in SIM
 	 *	and absence is 'false'
 	 */
-	if ((vp->da->type == FR_TYPE_BOOL) && (vp->vp_bool == false)) return false;
+	if ((vp->vp_type == FR_TYPE_BOOL) && (vp->vp_bool == false)) return false;
 	if (!fr_dict_attr_common_parent(fr_dict_root(dict_eap_aka_sim), vp->da, true)) return false;
 
 	return true;

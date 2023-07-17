@@ -82,7 +82,7 @@ static int _fr_pair_free(fr_pair_t *vp)
 	 *	Pairs with children have the children
 	 *	freed explicitly.
 	 */
-	if (likely(vp->da != NULL)) switch (vp->da->type) {
+	if (likely(vp->da != NULL)) switch (vp->vp_type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_pair_list_free(&vp->vp_group);
 		break;
@@ -374,9 +374,9 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
 	if (vp->da) {
 		if (vp->da == da) return 0;
 
-		if (!fr_type_is_leaf(vp->da->type)) return -1;
+		if (!fr_type_is_leaf(vp->vp_type)) return -1;
 
-		if ((da->type != vp->da->type) && (fr_value_box_cast_in_place(vp, &vp->data, da->type, da) < 0)) return -1;
+		if ((da->type != vp->vp_type) && (fr_value_box_cast_in_place(vp, &vp->data, da->type, da) < 0)) return -1;
 	} else {
 		fr_value_box_init(&vp->data, da->type, da, false);
 	}
@@ -493,7 +493,7 @@ fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, 
 
 		if (find == da) return vp;
 
-		fr_assert(fr_type_is_structural(vp->da->type));
+		fr_assert(fr_type_is_structural(vp->vp_type));
 
 		cur_ctx = vp;
 		cur_list = &vp->vp_group;
@@ -565,7 +565,7 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	/*
 	 *	Groups are special.
 	 */
-	if (fr_type_is_structural(n->da->type)) {
+	if (fr_type_is_structural(n->vp_type)) {
 		if (fr_pair_list_copy(n, &n->vp_group, &vp->vp_group) < 0) {
 			talloc_free(n);
 			return NULL;
@@ -954,7 +954,7 @@ fr_pair_t *fr_pair_find_by_child_num_idx(fr_pair_list_t const *list,
  */
 fr_pair_list_t *fr_pair_children(fr_pair_t *vp)
 {
-	if (!fr_type_is_structural(vp->da->type)) return NULL;
+	if (!fr_type_is_structural(vp->vp_type)) return NULL;
 
 	return &vp->vp_group;
 }
@@ -1190,7 +1190,7 @@ static void *_fr_pair_iter_next_value(fr_dlist_head_t *list, void *current, UNUS
 
 	while ((vp = fr_dlist_next(list, vp))) {
 		PAIR_VERIFY(vp);
-		if (fr_type_is_leaf(vp->da->type)) return &vp->data;
+		if (fr_type_is_leaf(vp->vp_type)) return &vp->data;
 	}
 
 	return NULL;
@@ -1257,7 +1257,7 @@ static void *_fr_pair_iter_next_dcursor_value(UNUSED fr_dlist_head_t *list, void
 	while ((vp = fr_dcursor_next(parent))) {
 		PAIR_VERIFY(vp);
 
-		if (fr_type_is_leaf(vp->da->type)) return &vp->data;
+		if (fr_type_is_leaf(vp->vp_type)) return &vp->data;
 	}
 
 	return NULL;
@@ -1858,7 +1858,7 @@ int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
 		ret = (a_p->da < b_p->da) - (a_p->da > b_p->da);
 		if (ret != 0) return ret;
 
-		switch (a_p->da->type) {
+		switch (a_p->vp_type) {
 		case FR_TYPE_STRUCTURAL:
 			ret = fr_pair_list_cmp(&a_p->vp_group, &b_p->vp_group);
 			if (ret != 0) return ret;
@@ -1974,7 +1974,7 @@ bool fr_pair_validate(fr_pair_t const *failed[2], fr_pair_list_t *filter, fr_pai
 		 *	Note that the RFCs say that for attributes of
 		 *	the same type, order is important.
 		 */
-		switch (check->da->type) {
+		switch (check->vp_type) {
 		case FR_TYPE_STRUCTURAL:
 			if (!fr_pair_validate(failed, &check->vp_group, &match->vp_group)) goto mismatch;
 			break;
@@ -2053,7 +2053,7 @@ bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter
 		for (;
 		     ATTRIBUTE_EQ(match, check);
 		     match = fr_pair_list_next(list, match)) {
-			switch (check->da->type) {
+			switch (check->vp_type) {
 			case FR_TYPE_STRUCTURAL:
 				if (!fr_pair_validate_relaxed(failed, &check->vp_group, &match->vp_group)) goto mismatch;
 				break;
@@ -2146,7 +2146,7 @@ int fr_pair_list_copy_to_box(fr_value_box_t *dst, fr_pair_list_t *from)
 		cnt++;
 		PAIR_VERIFY_WITH_LIST(from, vp);
 
-		if (fr_type_is_structural(vp->da->type)) {
+		if (fr_type_is_structural(vp->vp_type)) {
 			value = fr_value_box_alloc(dst, FR_TYPE_GROUP, NULL, false);
 			if (!value) goto fail;
 
@@ -2156,7 +2156,7 @@ int fr_pair_list_copy_to_box(fr_value_box_t *dst, fr_pair_list_t *from)
 			}
 
 		} else {
-			value = fr_value_box_alloc(dst, vp->data.type, vp->da, vp->data.tainted);
+			value = fr_value_box_alloc(dst, vp->vp_type, vp->da, vp->data.tainted);
 			if (!value) {
 			fail:
 				fr_value_box_list_talloc_free_to_tail(&dst->vb_group, first_added);
@@ -2316,7 +2316,7 @@ void fr_pair_value_clear(fr_pair_t *vp)
 {
 	fr_pair_t *child;
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	default:
 		fr_value_box_clear_value(&vp->data);
 		break;
@@ -2374,10 +2374,10 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, size_t inlen,
 	 *	haven't yet audited the uses of this function for that
 	 *	behavior.
 	 */
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("Attributes of type '%s' are not yet supported",
-				   fr_type_to_str(vp->da->type));
+				   fr_type_to_str(vp->vp_type));
 		return -1;
 
 	default:
@@ -2388,7 +2388,7 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, size_t inlen,
 	 *	We presume that the input data is from a double quoted
 	 *	string, and needs unescaping
 	 */
-	if (fr_value_box_from_str(vp, &vp->data, vp->da->type, vp->da,
+	if (fr_value_box_from_str(vp, &vp->data, vp->vp_type, vp->da,
 				  value, inlen,
 				  uerules,
 				  tainted) < 0) return -1;
@@ -2413,7 +2413,7 @@ int fr_pair_value_strdup(fr_pair_t *vp, char const *src, bool tainted)
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
 
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_strdup(vp, &vp->data, vp->da, src, tainted);
@@ -2435,7 +2435,7 @@ int fr_pair_value_strdup(fr_pair_t *vp, char const *src, bool tainted)
  */
 int fr_pair_value_strdup_shallow(fr_pair_t *vp, char const *src, bool tainted)
 {
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
 
 	fr_value_box_clear(&vp->data);
 	fr_value_box_strdup_shallow(&vp->data, vp->da, src, tainted);
@@ -2456,7 +2456,7 @@ int fr_pair_value_strtrim(fr_pair_t *vp)
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
 
 	ret = fr_value_box_strtrim(vp, &vp->data);
 	if (ret == 0) {
@@ -2478,7 +2478,7 @@ int fr_pair_value_aprintf(fr_pair_t *vp, char const *fmt, ...)
 	int	ret;
 	va_list	ap;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
 
 	fr_value_box_clear(&vp->data);
 	va_start(ap, fmt);
@@ -2509,7 +2509,7 @@ int fr_pair_value_bstr_alloc(fr_pair_t *vp, char **out, size_t size, bool tainte
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
 
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_bstr_alloc(vp, out, &vp->data, vp->da, size, tainted);
@@ -2534,7 +2534,7 @@ int fr_pair_value_bstr_realloc(fr_pair_t *vp, char **out, size_t size)
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
 
 	ret = fr_value_box_bstr_realloc(vp, out, &vp->data, size);
 	if (ret == 0) {
@@ -2563,7 +2563,7 @@ int fr_pair_value_bstrndup(fr_pair_t *vp, char const *src, size_t len, bool tain
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
 
 	fr_value_box_clear(&vp->data);
 	ret = fr_value_box_bstrndup(vp, &vp->data, vp->da, src, len, tainted);
@@ -2589,7 +2589,7 @@ int fr_pair_value_bstrdup_buffer(fr_pair_t *vp, char const *src, bool tainted)
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
 
 	fr_value_box_clear(&vp->data);
 	ret = fr_value_box_bstrdup_buffer(vp, &vp->data, vp->da, src, tainted);
@@ -2612,7 +2612,7 @@ int fr_pair_value_bstrdup_buffer(fr_pair_t *vp, char const *src, bool tainted)
  */
 int fr_pair_value_bstrndup_shallow(fr_pair_t *vp, char const *src, size_t len, bool tainted)
 {
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
 
 	fr_value_box_clear(&vp->data);
 	fr_value_box_bstrndup_shallow(&vp->data, vp->da, src, len, tainted);
@@ -2634,7 +2634,7 @@ int fr_pair_value_bstrdup_buffer_shallow(fr_pair_t *vp, char const *src, bool ta
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
 
 	fr_value_box_clear(&vp->data);
 	ret = fr_value_box_bstrdup_buffer_shallow(NULL, &vp->data, vp->da, src, tainted);
@@ -2659,7 +2659,7 @@ int fr_pair_value_bstrn_append(fr_pair_t *vp, char const *src, size_t len, bool 
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
 
 	ret = fr_value_box_bstrn_append(vp, &vp->data, src, len, tainted);
 	if (ret == 0) {
@@ -2682,7 +2682,7 @@ int fr_pair_value_bstr_append_buffer(fr_pair_t *vp, char const *src, bool tainte
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
 
 	ret = fr_value_box_bstr_append_buffer(vp, &vp->data, src, tainted);
 	if (ret == 0) {
@@ -2709,7 +2709,7 @@ int fr_pair_value_mem_alloc(fr_pair_t *vp, uint8_t **out, size_t size, bool tain
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_OCTETS)) return -1;
 
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_mem_alloc(vp, out, &vp->data, vp->da, size, tainted);
@@ -2734,7 +2734,7 @@ int fr_pair_value_mem_realloc(fr_pair_t *vp, uint8_t **out, size_t size)
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_OCTETS)) return -1;
 
 	ret = fr_value_box_mem_realloc(vp, out, &vp->data, size);
 	if (ret == 0) {
@@ -2766,7 +2766,7 @@ int fr_pair_value_memdup(fr_pair_t *vp, uint8_t const *src, size_t len, bool tai
 		return -1;
 	}
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_OCTETS)) return -1;
 
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_memdup(vp, &vp->data, vp->da, src, len, tainted);
@@ -2790,7 +2790,7 @@ int fr_pair_value_memdup_buffer(fr_pair_t *vp, uint8_t const *src, bool tainted)
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_OCTETS)) return -1;
 
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_memdup_buffer(vp, &vp->data, vp->da, src, tainted);
@@ -2813,7 +2813,7 @@ int fr_pair_value_memdup_buffer(fr_pair_t *vp, uint8_t const *src, bool tainted)
  */
 int fr_pair_value_memdup_shallow(fr_pair_t *vp, uint8_t const *src, size_t len, bool tainted)
 {
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_OCTETS)) return -1;
 
 	fr_value_box_clear(&vp->data);
 	fr_value_box_memdup_shallow(&vp->data, vp->da, src, len, tainted);
@@ -2833,7 +2833,7 @@ int fr_pair_value_memdup_shallow(fr_pair_t *vp, uint8_t const *src, size_t len, 
  */
 int fr_pair_value_memdup_buffer_shallow(fr_pair_t *vp, uint8_t const *src, bool tainted)
 {
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_OCTETS)) return -1;
 
 	fr_value_box_clear(&vp->data);
 	fr_value_box_memdup_buffer_shallow(NULL, &vp->data, vp->da, src, tainted);
@@ -2857,7 +2857,7 @@ int fr_pair_value_mem_append(fr_pair_t *vp, uint8_t *src, size_t len, bool taint
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_OCTETS)) return -1;
 
 	ret = fr_value_box_mem_append(vp, &vp->data, src, len, tainted);
 	if (ret == 0) {
@@ -2880,7 +2880,7 @@ int fr_pair_value_mem_append_buffer(fr_pair_t *vp, uint8_t *src, bool tainted)
 {
 	int ret;
 
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
+	if (!fr_cond_assert(vp->vp_type == FR_TYPE_OCTETS)) return -1;
 
 	ret = fr_value_box_mem_append_buffer(vp, &vp->data, src, tainted);
 	if (ret == 0) {
@@ -3216,7 +3216,7 @@ void fr_pair_list_tainted(fr_pair_list_t *list)
 	fr_pair_list_foreach(list, vp) {
 		PAIR_VERIFY_WITH_LIST(list, vp);
 
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case FR_TYPE_STRUCTURAL:
 			fr_pair_list_tainted(&vp->vp_group);
 			break;
@@ -3285,7 +3285,7 @@ static void pair_list_flatten(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_
 		 *	children of the group into the group itself.
 		 *	And then move the group to the destination.
 		 */
-		if ((vp->da->type == FR_TYPE_GROUP) || (vp->da->type == FR_TYPE_TLV)) {
+		if ((vp->vp_type == FR_TYPE_GROUP) || (vp->vp_type == FR_TYPE_TLV)) {
 			fr_pair_flatten(vp);
 			goto move;
 		}
@@ -3294,7 +3294,7 @@ static void pair_list_flatten(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_
 		 *	Leaf attributes are hoisted up, way... up to
 		 *	the root list.
 		 */
-		if (fr_type_is_leaf(vp->da->type)) {
+		if (fr_type_is_leaf(vp->vp_type)) {
 		move:
 			fr_pair_remove(from, vp);
 			talloc_steal(ctx, vp);
@@ -3324,7 +3324,7 @@ void fr_pair_flatten(fr_pair_t *vp)
 
 	fr_pair_list_init(&list);
 
-	fr_assert(fr_type_is_structural(vp->da->type));
+	fr_assert(fr_type_is_structural(vp->vp_type));
 
 	/*
 	 *	Flatten to an intermediate list, so that we don't loop
@@ -3437,7 +3437,7 @@ static int pair_reparent_struct(fr_pair_t *parent, fr_pair_t *item, fr_pair_t *i
 	for (vp = fr_pair_list_head(&in->vp_group); vp; vp = next) {
 		next = fr_pair_list_next(&in->vp_group, vp);
 
-		fr_assert((vp->da->parent == parent->da) || (parent->da->type == FR_TYPE_GROUP) || (parent->da->type == FR_TYPE_VENDOR));
+		fr_assert((vp->da->parent == parent->da) || (parent->vp_type == FR_TYPE_GROUP) || (parent->vp_type == FR_TYPE_VENDOR));
 
 		/*
 		 *	If we need a new parent, allocate it.
@@ -3482,13 +3482,13 @@ static int pair_reparent_struct(fr_pair_t *parent, fr_pair_t *item, fr_pair_t *i
 		talloc_steal(new_parent, vp);
 		fr_pair_append(&new_parent->vp_group, vp);
 
-		if (fr_type_is_leaf(vp->da->type)) continue;
+		if (fr_type_is_leaf(vp->vp_type)) continue;
 
 		/*
 		 *	If the child is a group, we have to check its
 		 *	children for struct / tlv pairs.
 		 */
-		if (vp->da->type == FR_TYPE_GROUP) {
+		if (vp->vp_type == FR_TYPE_GROUP) {
 			if (pair_reparent_group(vp) < 0) return -1;
 			continue;
 		}
@@ -3496,7 +3496,7 @@ static int pair_reparent_struct(fr_pair_t *parent, fr_pair_t *item, fr_pair_t *i
 		/*
 		 *	Can't have vendor-specific or vendor in a struct.
 		 */
-		fr_assert((vp->da->type == FR_TYPE_STRUCT) || (vp->da->type == FR_TYPE_TLV));
+		fr_assert((vp->vp_type == FR_TYPE_STRUCT) || (vp->vp_type == FR_TYPE_TLV));
 
 		/*
 		 *	The current VP is a struct / tlv, we need to
@@ -3526,7 +3526,7 @@ static int pair_reparent_group(fr_pair_t *in)
 		 *	The leaf is already in the right place, we
 		 *	don't have to create any new pairs.
 		 */
-		if (fr_type_is_leaf(vp->da->type)) continue;
+		if (fr_type_is_leaf(vp->vp_type)) continue;
 
 		/*
 		 *	Check the children of this struct/tlv for sequencing.
@@ -3535,7 +3535,7 @@ static int pair_reparent_group(fr_pair_t *in)
 		 *	vp->da, if the children of vp contain multiple
 		 *	struct/tlvs.
 		 */
-		if ((vp->da->type == FR_TYPE_STRUCT) || (vp->da->type == FR_TYPE_TLV)) {
+		if ((vp->vp_type == FR_TYPE_STRUCT) || (vp->vp_type == FR_TYPE_TLV)) {
 			if (pair_reparent_struct(in, next, vp) < 0) return -1;
 			continue;
 		}
@@ -3591,7 +3591,7 @@ int fr_pair_unflatten(fr_pair_t *in)
 			/*
 			 *	Leaf data types are left at the root.
 			 */
-			if (fr_type_is_leaf(vp->da->type)) continue;
+			if (fr_type_is_leaf(vp->vp_type)) continue;
 
 			/*
 			 *	Other structural attributes are left
@@ -3621,7 +3621,7 @@ int fr_pair_unflatten(fr_pair_t *in)
 		talloc_steal(parent, vp);
 		fr_pair_append(&parent->vp_group, vp);
 
-		if (fr_type_is_leaf(vp->da->type)) continue;
+		if (fr_type_is_leaf(vp->vp_type)) continue;
 
 		/*
 		 *	If the VP is structural, unflatten its
@@ -3725,7 +3725,7 @@ static void fprintf_pair_list(FILE *fp, fr_pair_list_t const *list, int depth)
 	fr_pair_list_foreach(list, vp) {
 		fprintf(fp, "%.*s", depth, spaces);
 
-		if (fr_type_is_leaf(vp->da->type)) {
+		if (fr_type_is_leaf(vp->vp_type)) {
 			fr_fprintf(fp, "%s %s %pV\n", vp->da->name, fr_tokens[vp->op], &vp->data);
 			continue;
 		}
@@ -3748,7 +3748,7 @@ void fr_fprintf_pair(FILE *fp, char const *msg, fr_pair_t const *vp)
 {
 	if (msg) fputs(msg, fp);
 
-	if (fr_type_is_leaf(vp->da->type)) {
+	if (fr_type_is_leaf(vp->vp_type)) {
 		fr_fprintf(fp, "%s %s %pV\n", vp->da->name, fr_tokens[vp->op], &vp->data);
 	} else {
 		fprintf(fp, "%s = {\n", vp->da->name);

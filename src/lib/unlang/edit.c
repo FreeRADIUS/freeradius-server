@@ -177,7 +177,7 @@ static void edit_debug_attr_vp(request_t *request, fr_pair_t *vp, map_t const *m
 	fr_assert(vp != NULL);
 
 	if (map) {
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case FR_TYPE_STRUCTURAL:
 			RDEBUG2("%s = {", map->lhs->name);
 			RINDENT();
@@ -191,7 +191,7 @@ static void edit_debug_attr_vp(request_t *request, fr_pair_t *vp, map_t const *m
 			break;
 		}
 	} else {
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case FR_TYPE_STRUCTURAL:
                         RDEBUG2("%s = {", vp->da->name);
 			RINDENT();
@@ -613,7 +613,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			}
 
 			vp->op = map->op;
-			if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, box) < 0) return -1;
+			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) return -1;
 
 			if (single) break;
 
@@ -639,7 +639,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		if (edit_create_lhs_vp(request, state, current) < 0) goto fail;
 
 		fr_assert(current->lhs.vp_parent != NULL);
-		fr_assert(fr_type_is_structural(current->lhs.vp_parent->da->type));
+		fr_assert(fr_type_is_structural(current->lhs.vp_parent->vp_type));
 
 		vp = current->lhs.vp;
 
@@ -652,7 +652,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		 *	The VP has already been inserted into the edit list, so we don't need to edit it's
 		 *	value, we can just mash it in place.
 		 */
-		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, box) < 0) goto fail;
+		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail;
 		vp->op = T_OP_EQ;
 
 		if (single) goto done;
@@ -664,7 +664,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], box);
 
 			MEM(vp = fr_pair_afrom_da(current->lhs.vp_parent, da));
-			if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, box) < 0) goto fail;
+			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail;
 
 			if (fr_edit_list_insert_pair_tail(state->el, &current->lhs.vp_parent->vp_group, vp) < 0) goto fail;
 			vp->op = T_OP_EQ;
@@ -1313,7 +1313,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		 */
 		current->lhs.create = false;
 
-		if (map->rhs && fr_type_is_structural(vp->da->type) && tmpl_is_exec(map->rhs)) {
+		if (map->rhs && fr_type_is_structural(vp->vp_type) && tmpl_is_exec(map->rhs)) {
 			int rcode;
 
 			current->lhs.vp = vp;

@@ -234,11 +234,11 @@ do { \
  */
 static inline bool vp_da_data_type_check(fr_pair_t *vp)
 {
-	if (vp->data.type == vp->da->type) return true;
+	if (vp->vp_type == vp->da->type) return true;
 
 	fr_strerror_printf("fr_pair_t attribute %p \"%s\" data type (%s) does not match da type (%s)",
 			   vp->da, vp->da->name,
-			   fr_table_str_by_value(fr_type_table, vp->data.type, "invalid"),
+			   fr_table_str_by_value(fr_type_table, vp->vp_type, "invalid"),
 			   fr_table_str_by_value(fr_type_table, vp->da->type, "invalid"));
 	return false;
 }

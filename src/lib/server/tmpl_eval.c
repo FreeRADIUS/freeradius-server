@@ -390,7 +390,7 @@ ssize_t _tmpl_to_type(void *out,
 		if (ret < 0) return -2;
 
 		to_cast = &vp->data;
-		src_type = vp->da->type;
+		src_type = vp->vp_type;
 	}
 		break;
 
@@ -877,7 +877,7 @@ int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 	for (vp = tmpl_dcursor_init(&err, NULL, &cc, &from, request, vpt);
 	     vp;
 	     vp = fr_dcursor_next(&from)) {
-	     	switch (vp->da->type) {
+		switch (vp->vp_type) {
 	     	case FR_TYPE_STRUCTURAL:
 	     		if (fr_pair_list_copy(ctx, out, &vp->vp_group) < 0) {
 	     			err = -4;
@@ -1328,7 +1328,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		 *	shallow copying buffers.
 		 */
 		while (vp != NULL) {
-			if (fr_type_is_structural(vp->da->type)) {
+			if (fr_type_is_structural(vp->vp_type)) {
 				value = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false);
 				if (!value) goto oom;
 
@@ -1349,7 +1349,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		break;
 
 	default:
-		fr_assert(fr_type_is_leaf(vp->da->type));
+		fr_assert(fr_type_is_leaf(vp->vp_type));
 
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
 		if (!value) goto oom;

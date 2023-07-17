@@ -497,7 +497,7 @@ static int cond_realize_attr(request_t *request, fr_value_box_t **realized, fr_v
 	/*
 	 *	No casting needed.  Just return the data.
 	 */
-	if (cast_type == vp->da->type) {
+	if (cast_type == vp->vp_type) {
 	dont_cast:
 		*realized = &vp->data;
 		return 0;

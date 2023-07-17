@@ -791,13 +791,13 @@ void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 
 	oid_buff = log_request_oid_buff();
 
-	if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+	if (parent && (parent->vp_type != FR_TYPE_GROUP)) parent_da = parent->da;
 	if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da, false) <= 0) return;
 
 	/*
 	 *	Recursively print grouped attributes.
 	 */
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case FR_TYPE_STRUCTURAL:
 		RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
 			fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));

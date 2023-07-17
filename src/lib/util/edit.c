@@ -263,7 +263,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			 *	Delete all of the children.
 			 */
 		case FR_EDIT_CLEAR:
-			if (!fr_type_is_structural(vp->da->type)) return 0;
+			if (!fr_type_is_structural(vp->vp_type)) return 0;
 
 			fr_pair_list_free(&vp->vp_group);
 			return 0;
@@ -279,7 +279,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			/*
 			 *	Non-structural types don't have any other work to do.
 			 */
-			if (!fr_type_is_structural(vp->da->type)) return 0;
+			if (!fr_type_is_structural(vp->vp_type)) return 0;
 
 			/*
 			 *	Otherwise we're inserting a VP which has a
@@ -505,7 +505,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 	/*
 	 *	Insert an "ignore" entry.
 	 */
-	if ((op == FR_EDIT_INSERT) && fr_type_is_structural(vp->da->type)) {
+	if ((op == FR_EDIT_INSERT) && fr_type_is_structural(vp->vp_type)) {
 		fr_edit_ignore_t *i;
 
 	insert_ignore:
@@ -836,7 +836,7 @@ static int fr_edit_list_delete_list(fr_edit_list_t *el, fr_pair_list_t *list, fr
 		/*
 		 *	@todo - do this recursively.
 		 */
-		if (fr_type_is_structural(vp->da->type)) continue;
+		if (fr_type_is_structural(vp->vp_type)) continue;
 
 		/*
 		 *	Search the list to edit for VPs which match the ones we're trying to delete.

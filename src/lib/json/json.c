@@ -558,7 +558,7 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 
 		if (vp->da->flags.is_raw) continue;
 
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
 			break;
 		default:

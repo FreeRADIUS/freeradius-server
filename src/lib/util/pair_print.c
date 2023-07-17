@@ -43,7 +43,7 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 
 	PAIR_VERIFY(vp);
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	/*
 	 *	For structural types descend down
 	 */
@@ -102,7 +102,7 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const 
 		token = "<INVALID-TOKEN>";
 	}
 
-	if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+	if (parent && (parent->vp_type != FR_TYPE_GROUP)) parent_da = parent->da;
 
 	if (vp->da->flags.is_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent_da, vp->da, false);
@@ -152,13 +152,13 @@ static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t *pare
 
 		if (vp->da->flags.is_raw) (void) fr_sbuff_in_strcpy(sbuff, "raw.");
 
-		if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+		if (parent && (parent->vp_type != FR_TYPE_GROUP)) parent_da = parent->da;
 		if (fr_dict_attr_oid_print(sbuff, parent_da, vp->da, false) <= 0) return;
 
 		/*
 		 *	Recursively print grouped attributes.
 		 */
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case FR_TYPE_STRUCTURAL:
 			fr_log(log, L_DBG, file, line, "%*s%*s {", lvl * 2, "",
 			       (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));

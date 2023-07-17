@@ -208,7 +208,7 @@ static void debug_attr_list(fr_pair_list_t *list, int indent)
 {
 	fr_pair_t *vp = NULL;
 	while ((vp = fr_pair_list_next(list, vp))) {
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case FR_TYPE_STRUCTURAL:
 			TEST_MSG("%*s%s => {", indent, "", vp->da->name);
 			debug_attr_list(&vp->vp_group, indent + 2);

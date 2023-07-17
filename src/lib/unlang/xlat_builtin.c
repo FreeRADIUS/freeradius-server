@@ -148,7 +148,7 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 	fr_table_num_ordered_t const	*type;
 	size_t				i;
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case FR_TYPE_STRUCTURAL:
 		if (vpt) {
 			RIDEBUG2("&%s.%s = {",
@@ -191,7 +191,7 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 	if (vendor) RIDEBUG2("vendor     : %i (%s)", vendor->pen, vendor->name);
 	RIDEBUG3("type       : %s", fr_type_to_str(vp->vp_type));
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case FR_TYPE_LEAF:
 		if (fr_box_is_variable_size(&vp->data)) {
 			RIDEBUG3("length     : %zu", vp->vp_length);
@@ -353,7 +353,7 @@ static xlat_action_t xlat_func_flatten(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	}
 
 	if ((tmpl_find_vp(&vp, request, vpt) < 0) ||
-	    (vp->da->type != FR_TYPE_GROUP)) {
+	    (vp->vp_type != FR_TYPE_GROUP)) {
 		REDEBUG("Can't find '%s', or it's not a group", fmt);
 		talloc_free(vpt);
 		return XLAT_ACTION_FAIL;
@@ -402,7 +402,7 @@ static xlat_action_t xlat_func_unflatten(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurs
 	}
 
 	if ((tmpl_find_vp(&vp, request, vpt) < 0) ||
-	    (vp->da->type != FR_TYPE_GROUP)) {
+	    (vp->vp_type != FR_TYPE_GROUP)) {
 		REDEBUG("Can't find '%s', or it's not a group", fmt);
 		talloc_free(vpt);
 		return XLAT_ACTION_FAIL;

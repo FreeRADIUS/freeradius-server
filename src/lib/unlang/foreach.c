@@ -89,7 +89,7 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 	 *	Skip any non-leaf attributes - adds sanity to foreach &request.[*]
 	 */
 	while (vp) {
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
 			break;
 		default:
@@ -183,7 +183,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	 */
 	vp = fr_dcursor_current(&state->cursor);
 	while (vp) {
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
 			break;
 		default:

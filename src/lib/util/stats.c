@@ -67,7 +67,7 @@ int fr_stats_pair_add(fr_pair_t *parent, fr_stats_struct_t const *stats, void co
 {
 	fr_stats_entry_t const *entry;
 
-	fr_assert(fr_type_is_structural(parent->da->type));
+	fr_assert(fr_type_is_structural(parent->vp_type));
 
 	for (entry = &stats->table[0]; entry->name != NULL; entry++) {
 		fr_pair_t *vp;

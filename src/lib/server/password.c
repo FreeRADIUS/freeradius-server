@@ -482,7 +482,7 @@ static fr_pair_t *password_normify(TALLOC_CTX *ctx, request_t *request, fr_pair_
 	min_len = MIN_LEN(info);
 	if (min_len >= sizeof(buffer)) return NULL; /* paranoia */
 
-	switch (known_good->da->type) {
+	switch (known_good->vp_type) {
 	case FR_TYPE_OCTETS:
 		decoded = normify(&normalised, buffer, sizeof(buffer),
 				  (char const *)known_good->vp_octets, known_good->vp_length, min_len);
@@ -640,7 +640,7 @@ static fr_pair_t *password_process_header(TALLOC_CTX *ctx, request_t *request, f
 	 *	Ensure this is only ever called with a
 	 *	string type attribute.
 	 */
-	fr_assert(known_good->da->type == FR_TYPE_STRING);
+	fr_assert(known_good->vp_type == FR_TYPE_STRING);
 
 	p = known_good->vp_strvalue;
 	end = p + known_good->vp_length;
