@@ -653,7 +653,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			return XLAT_ACTION_FAIL;
 
 		if (mschap_nt_password_hash(buffer, arg->vb_strvalue) < 0) {
-			REDEBUG("Failed generating NT-Password");
+			REDEBUG("Failed generating Password.NT");
 			*buffer = '\0';
 			return XLAT_ACTION_FAIL;
 		}
@@ -973,7 +973,7 @@ ntlm_auth_err:
  		int		ntlen = sizeof(nt_pass_decrypted);
 
 		if (!nt_password) {
-			RDEBUG2("Local MS-CHAPv2 password change requires NT-Password attribute");
+			RDEBUG2("Local MS-CHAPv2 password change requires Password.NT attribute");
 			return -1;
 		} else {
 			RDEBUG2("Doing MS-CHAPv2 password change locally");
@@ -1013,7 +1013,7 @@ ntlm_auth_err:
 		if ((nt_pass_decrypted[514] != 0) ||
 		    (nt_pass_decrypted[515] != 0)) {
 			REDEBUG("Decrypted new password blob claims length > 65536, "
-				"probably an invalid NT-Password");
+				"probably an invalid Password.NT");
 			return -1;
 		}
 
@@ -1022,7 +1022,7 @@ ntlm_auth_err:
 		 */
 		if (passlen > 512) {
 			REDEBUG("Decrypted new password blob claims length %zu > 512, "
-				"probably an invalid NT-Password", passlen);
+				"probably an invalid Password.NT", passlen);
 			return -1;
 		}
 
@@ -1119,7 +1119,7 @@ ntlm_auth_err:
 		RDEBUG2("MS-CHAPv2 password change succeeded: %s", result);
 
 		/*
-		 *  Update the NT-Password attribute with the new hash this lets us
+		 *  Update the Password.NT attribute with the new hash this lets us
 		 *  fall through to the authentication code using the new hash,
 		 *  not the old one.
 		 */
@@ -1169,7 +1169,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
 		 *	No password: can't do authentication.
 		 */
 		if (!password) {
-			REDEBUG("FAILED: No NT/LM-Password.  Cannot perform authentication");
+			REDEBUG("FAILED: No Password.NT/LM.  Cannot perform authentication");
 			return -1;
 		}
 
@@ -1571,13 +1571,13 @@ static unlang_action_t mschap_error(rlm_rcode_t *p_result, rlm_mschap_t const *i
 }
 
 
-/** Find an NT-Password value, or create one from a Password.Cleartext, or Password.With-Header attribute
+/** Find a Password.NT value, or create one from a Password.Cleartext, or Password.With-Header attribute
  *
  * @param[out] ephemeral	Whether we created a new password
  *				attribute.  Usually the caller will
  *				either want to insert this into a
  *				list or free it.
- * @param[out] out		Our new NT-Password.
+ * @param[out] out		Our new Password.NT.
  * @param[in] inst		Module configuration.
  * @param[in] request		The current request.
  * @return
@@ -1611,7 +1611,7 @@ static int CC_HINT(nonnull(1, 2, 3)) nt_password_find(bool *ephemeral, fr_pair_t
 			/*
 			 *	If we're doing internal auth, then this is an issue
 			 */
-			RWDEBUG2("No &control.%s or &control.%s found.  Cannot create NT-Password",
+			RWDEBUG2("No &control.%s or &control.%s found.  Cannot create Password.NT",
 				 attr_cleartext_password->name, attr_nt_password->name);
 			return -1;
 
@@ -1634,7 +1634,7 @@ found_password:
 		ret = mschap_nt_password_hash(p, password->vp_strvalue);
 
 		if (ret < 0) {
-			RERROR("Failed generating NT-Password");
+			RERROR("Failed generating Password.NT");
 			talloc_free(nt_password);
 			if (*ephemeral) TALLOC_FREE(password);
 			return -1;
@@ -1930,7 +1930,7 @@ static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_respons
 
 #ifdef __APPLE__
 		/*
-		 *  No "known good" NT-Password attribute.  Try to do
+		 *  No "known good" Password.NT attribute.  Try to do
 		 *  OpenDirectory authentication.
 		 *
 		 *  If OD determines the user is an AD user it will return noop, which
@@ -1938,7 +1938,7 @@ static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_respons
 		 *  Otherwise OD will determine auth success/fail.
 		 */
 		if (!nt_password && inst->open_directory) {
-			RDEBUG2("No NT-Password available. Trying OpenDirectory Authentication");
+			RDEBUG2("No Password.NT available. Trying OpenDirectory Authentication");
 			rcode = od_mschap_auth(request, challenge, user_name);
 			if (rcode != RLM_MODULE_NOOP) RETURN_MODULE_RCODE(rcode);
 		}
@@ -2077,9 +2077,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	}
 
 	/*
-	 *	Look for or create an NT-Password
+	 *	Look for or create an Password.NT
 	 *
-	 *      NT-Password can be NULL here if we didn't find an
+	 *      Password.NT can be NULL here if we didn't find an
 	 *	input attribute, and we're calling out to an
 	 *	external password store.
 	 */

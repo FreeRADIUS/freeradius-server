@@ -6,13 +6,13 @@ Passwd-like files authorization module.
 
 Q: Can I use rlm_passwd to authenticate user against Linux shadow
 password file or BSD-style master.passwd? A: Yes, but you need RADIUS
-running as root. Hint: use Crypt-Password attribute. You probably don’t
+running as root. Hint: use Password.Crypt attribute. You probably don’t
 want to use this module with FreeBSD to authenticate against system
 file, as it already takes care of caching passwd file entries, but it
-may be helpfull to authenticate against alternate file.
+may be helpful to authenticate against alternate file.
 
 Q: Can I use rlm_passwd to authenticate user against SAMBA smbpasswd? A:
-Yes, you can. Hint: use LM-Password/NT-Password attribute, set authtype
+Yes, you can. Hint: use Password.LM/Password.NT attribute, set authtype
 = MS-CHAP.
 
 Q: Can I use rlm_password to authenticate user against

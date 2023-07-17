@@ -186,7 +186,7 @@ ldap {
 	#
 	update {
 		&control.Password.With-Header	+= 'userPassword'
-#		&control.NT-Password		:= 'ntPassword'
+#		&control.Password.NT		:= 'ntPassword'
 #		&reply.Reply-Message		:= 'radiusReplyMessage'
 #		&reply.Tunnel-Type		:= 'radiusTunnelType'
 #		&reply.Tunnel-Medium-Type	:= 'radiusTunnelMediumType'

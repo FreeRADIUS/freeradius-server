@@ -836,7 +836,7 @@ recv Access-Request {
 	#
 	#  The `pap` module is also responsible for "normalizing" the
 	#  various kinds of "known good" passwords.
-	#  e.g. `NT-Password` may come as a 16 byte blob, or as a
+	#  e.g. `Password.NT` may come as a 16 byte blob, or as a
 	#  32-byte hex string, or as a base-64 encoded string.  The
 	#  `pap` module will look for common variations of password
 	#  encoding, and convert them all to a normal form.
@@ -925,7 +925,7 @@ authenticate chap {
 #
 #  For users who are using MS-CHAP authentication. A back-end
 #  database listed in the "recv Access-Request" section MUST supply
-#  either a Password.Cleartext attribute, or an NT-Password
+#  either a Password.Cleartext attribute, or a Password.NT
 #  attribute. Encrypted passwords won't work.
 #
 authenticate mschap {

@@ -10,7 +10,7 @@ If you want to support mschap, there are only 3 possibilities:
 FreeRADIUS to read this, and set the `Password.Cleartext` control
 attribute.
 . You have access to the NT (MS-CHAPv2) or LM (MS-CHAPv1) hashes, and
-you configure FreeRADIUS to read this and set the NT/LM-Password control
+you configure FreeRADIUS to read this and set the Password.NT/LM control
 attribute.
 . You have Samba installed, joined into a windows domain, and use the
 ntlm_auth helper binary to pass authentication onwards to a domain
@@ -102,7 +102,7 @@ method.
 
 === Local
 
-If you are performing mschap locally with `Password.Cleartext/NT-Password`,
+If you are performing mschap locally with `Password.Cleartext/Password.NT`,
 you can decrypt and process the password change locally.
 To do this, you configure the `local_cpw` string:
 
@@ -146,7 +146,7 @@ text LANGUAGE plpgsql AS
 ```
 \[
   BEGIN
-    update radcheck set value=ntpassword where username=raduser and attribute='NT-Password';
+    update radcheck set value=ntpassword where username=raduser and attribute='Password.NT';
     if not FOUND then
       -- the user does not exist; die
       return '';
@@ -159,7 +159,7 @@ text LANGUAGE plpgsql AS
 
 The local_cpw xlat has access to two variables:
 
-* MS-CHAP-New-NT-Password - the new value of NT-Password
+* MS-CHAP-New-NT-Password - the new value of Password.NT
 * MS-CHAP-New-Cleartext-PAssword - the new value of Password.Cleartext
 
 This allows you to do things like::
@@ -168,7 +168,7 @@ This allows you to do things like::
 
 ```
 SQL local_cpw = %{sql:update radcheck set value='%{MS-CHAP-New-NT-Password}' where username=%{User-Name} and
-attribute=’NT-Password'}
+attribute=’Password.NT'}
 ```
 
 Or:

@@ -76,7 +76,7 @@ user, for example valid user’s password or it’s hash, login
 restrictions, etc.
 
 A quite common mistake is to place the attributes in the wrong lists,
-for example placing `Auth-Type`, `Password`, `NT-Password` etc in the check
+for example placing `Auth-Type`, `Password`, `Password.NT` etc in the check
 list, or in the reply list. When run in debugging mode, the server will
 normally issue `WARNING` messages saying that the attributes are in the
 wrong list.
@@ -88,7 +88,7 @@ example `MS-CHAP`), then the authorization will fail, because the Password
 in the request items will not match the password in the check
 attributes. You should place Password attribute obtained from database
 into configure items and also place Auth-Type attribute with value of
-`MS-CHAP` into same list. The same goes for `NT-Password` (before calling
-`MS-CHAP` Password attribute should be converted to `NT-Password`, it may be
+`MS-CHAP` into same list. The same goes for `Password.NT` (before calling
+`MS-CHAP` Password attribute should be converted to `Password.NT`, it may be
 achieved by calling mschap module in authorization section after module
 which does actual authorization).

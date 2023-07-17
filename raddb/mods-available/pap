@@ -24,34 +24,34 @@
 #  | Header       | Attribute           | Description
 #  | {clear}      | Password.Cleartext  | Clear-text passwords.
 #  | {cleartext}  | Password.Cleartext  | Clear-text passwords.
-#  | {crypt}      | Crypt-Password      | Unix-style "crypt"ed passwords.
-#  | {md5}        | MD5-Password        | MD5 hashed passwords.
-#  | {base64_md5} | MD5-Password        | MD5 hashed passwords.
-#  | {smd5}       | SMD5-Password       | MD5 hashed passwords, with a salt.
-#  | {sha}        | SHA-Password        | SHA1 hashed passwords.
-#  |              | SHA1-Password       | SHA1 hashed passwords.
-#  | {ssha}       | SSHA-Password       | SHA1 hashed passwords, with a salt.
-#  | {sha2}       | SHA2-Password       | SHA2 hashed passwords.
-#  | {sha224}     | SHA2-Password       | SHA2 hashed passwords.
-#  | {sha256}     | SHA2-Password       | SHA2 hashed passwords.
-#  | {sha384}     | SHA2-Password       | SHA2 hashed passwords.
-#  | {sha512}     | SHA2-Password       | SHA2 hashed passwords.
-#  | {ssha224}    | SSHA2-224-Password  | SHA2 hashed passwords, with a salt.
-#  | {ssha256}    | SSHA2-256-Password  | SHA2 hashed passwords, with a salt.
-#  | {ssha384}    | SSHA2-384-Password  | SHA2 hashed passwords, with a salt.
-#  | {ssha512}    | SSHA2-512-Password  | SHA2 hashed passwords, with a salt.
-#  | {ssha3}      | SHA3-Password       | SHA3 hashed passwords.
-#  | {ssha3-224}  | SHA3-224-Password   | SHA3 hashed passwords, with a salt.
-#  | {ssha3-256}  | SHA3-256-Password   | SHA3 hashed passwords, with a salt.
-#  | {ssha3-384}  | SHA3-384-Password   | SHA3 hashed passwords, with a salt.
-#  | {ssha3-512}  | SHA3-512-Password   | SHA3 hashed passwords, with a salt.
-#  | {nt}         | NT-Password         | Windows NT hashed passwords.
-#  | {nthash}     | NT-Password         | Windows NT hashed passwords.
-#  | {md4}        | NT-Password         | Windows NT hashed passwords.
-#  | {x-nthash}   | NT-Password         | Windows NT hashed passwords.
-#  | {ns-mta-md5} | NS-MTA-MD5-Password | Netscape MTA MD5 hashed passwords.
-#  | {x- orcllmv} | LM-Password         | Windows LANMAN hashed passwords.
-#  | {X- orclntv} | NT-Password         | Windows NT hashed passwords.
+#  | {crypt}      | Password.Crypt      | Unix-style "crypt"ed passwords.
+#  | {md5}        | Password.MD5        | MD5 hashed passwords.
+#  | {base64_md5} | Password.MD5        | MD5 hashed passwords.
+#  | {smd5}       | Password.SMD5       | MD5 hashed passwords, with a salt.
+#  | {sha}        | Password.SHA        | SHA1 hashed passwords.
+#  |              | Password.SHA1       | SHA1 hashed passwords.
+#  | {ssha}       | Password.SSHA       | SHA1 hashed passwords, with a salt.
+#  | {sha2}       | Password.SHA2       | SHA2 hashed passwords.
+#  | {sha224}     | Password.SHA2       | SHA2 hashed passwords.
+#  | {sha256}     | Password.SHA2       | SHA2 hashed passwords.
+#  | {sha384}     | Password.SHA2       | SHA2 hashed passwords.
+#  | {sha512}     | Password.SHA2       | SHA2 hashed passwords.
+#  | {ssha224}    | Password.SSHA2-224  | SHA2 hashed passwords, with a salt.
+#  | {ssha256}    | Password.SSHA2-256  | SHA2 hashed passwords, with a salt.
+#  | {ssha384}    | Password.SSHA2-384  | SHA2 hashed passwords, with a salt.
+#  | {ssha512}    | Password.SSHA2-512  | SHA2 hashed passwords, with a salt.
+#  | {ssha3}      | Password.SHA3       | SHA3 hashed passwords.
+#  | {ssha3-224}  | Password.SHA3-224   | SHA3 hashed passwords, with a salt.
+#  | {ssha3-256}  | Password.SHA3-256   | SHA3 hashed passwords, with a salt.
+#  | {ssha3-384}  | Password.SHA3-384   | SHA3 hashed passwords, with a salt.
+#  | {ssha3-512}  | Password.SHA3-512   | SHA3 hashed passwords, with a salt.
+#  | {nt}         | Password.NT         | Windows NT hashed passwords.
+#  | {nthash}     | Password.NT         | Windows NT hashed passwords.
+#  | {md4}        | Password.NT         | Windows NT hashed passwords.
+#  | {x-nthash}   | Password.NT         | Windows NT hashed passwords.
+#  | {ns-mta-md5} | Password.NS-MTA-MD5 | Netscape MTA MD5 hashed passwords.
+#  | {x- orcllmv} | Password.LM         | Windows LANMAN hashed passwords.
+#  | {X- orclntv} | Password.NT         | Windows NT hashed passwords.
 #  |===
 #
 #  The module tries to be flexible when handling the various password for mats.
@@ -59,7 +59,7 @@
 #  and convert them to a format that the server can  use.
 #
 #  If there is no `Password.With-Header` attribute, the module looks for one
-#  of the `Password.Cleartext`, `NT-Password`, `Crypt-Password`, etc. attributes
+#  of the `Password.Cleartext`, `Password.NT`, `Password.Crypt`, etc. attributes
 #  as listed in the above table. These attributes should contain the relevant
 #  format password directly, without the header prefix.
 #

@@ -254,7 +254,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_smd5(rlm_rcode_t *p_result,
 	uint8_t		digest[MD5_DIGEST_LENGTH];
 
 	if (known_good->vp_length <= MD5_DIGEST_LENGTH) {
-		REDEBUG("\"known-good\" SMD5-Password has incorrect length, expected 16 got %zu", known_good->vp_length);
+		REDEBUG("\"known-good\" Password.SMD5 has incorrect length, expected 16 got %zu", known_good->vp_length);
 		RETURN_MODULE_INVALID;
 	}
 
@@ -286,7 +286,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_sha1(rlm_rcode_t *p_result,
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
 
 	if (known_good->vp_length != SHA1_DIGEST_LENGTH) {
-		REDEBUG("\"known-good\" SHA1-password has incorrect length, expected 20 got %zu", known_good->vp_length);
+		REDEBUG("\"known-good\" Password.SHA1 has incorrect length, expected 20 got %zu", known_good->vp_length);
 		RETURN_MODULE_INVALID;
 	}
 
@@ -313,7 +313,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ssha1(rlm_rcode_t *p_result,
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
 
 	if (known_good->vp_length <= SHA1_DIGEST_LENGTH) {
-		REDEBUG("\"known-good\" SSHA-Password has incorrect length, expected > 20 got %zu", known_good->vp_length);
+		REDEBUG("\"known-good\" Password.SSHA has incorrect length, expected > 20 got %zu", known_good->vp_length);
 		RETURN_MODULE_INVALID;
 	}
 
@@ -470,10 +470,10 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 	uint8_t			hash[EVP_MAX_MD_SIZE];
 	uint8_t			digest[EVP_MAX_MD_SIZE];
 
-	RDEBUG2("Comparing with \"known-good\" PBKDF2-Password");
+	RDEBUG2("Comparing with \"known-good\" Password.PBKDF2");
 
 	if (len <= 1) {
-		REDEBUG("PBKDF2-Password is too short");
+		REDEBUG("Password.PBKDF2 is too short");
 		goto finish;
 	}
 
@@ -485,7 +485,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 
 	q = memchr(p, scheme_sep, end - p);
 	if (!q) {
-		REDEBUG("PBKDF2-Password has no component separators");
+		REDEBUG("Password.PBKDF2 has no component separators");
 		goto finish;
 	}
 
@@ -546,12 +546,12 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 	p = q + 1;
 
 	if (((end - p) < 1) || !(q = memchr(p, iter_sep, end - p))) {
-		REDEBUG("PBKDF2-Password missing iterations component");
+		REDEBUG("Password.PBKDF2 missing iterations component");
 		goto finish;
 	}
 
 	if ((q - p) == 0) {
-		REDEBUG("PBKDF2-Password iterations component too short");
+		REDEBUG("Password.PBKDF2 iterations component too short");
 		goto finish;
 	}
 
@@ -567,7 +567,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 		iterations = strtoul(iterations_buff, &qq, 10);
 		if (*qq != '\0') {
 			REMARKER(iterations_buff, qq - iterations_buff,
-				 "PBKDF2-Password iterations field contains an invalid character");
+				 "Password.PBKDF2 iterations field contains an invalid character");
 
 			goto finish;
 		}
@@ -580,11 +580,11 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 		slen = fr_base64_decode(&FR_DBUFF_TMP((uint8_t *)&iterations, sizeof(iterations)),
 					&FR_SBUFF_IN((char const *)p, (char const *)q), false, false);
 		if (slen <= 0) {
-			RPEDEBUG("Failed decoding PBKDF2-Password iterations component (%.*s)", (int)(q - p), p);
+			RPEDEBUG("Failed decoding Password.PBKDF2 iterations component (%.*s)", (int)(q - p), p);
 			goto finish;
 		}
 		if (slen != sizeof(iterations)) {
-			REDEBUG("Decoded PBKDF2-Password iterations component is wrong size");
+			REDEBUG("Decoded Password.PBKDF2 iterations component is wrong size");
 		}
 
 		iterations = ntohl(iterations);
@@ -598,12 +598,12 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 	if (iterations == 0) iterations = 1;
 
 	if (((end - p) < 1) || !(q = memchr(p, salt_sep, end - p))) {
-		REDEBUG("PBKDF2-Password missing salt component");
+		REDEBUG("Password.PBKDF2 missing salt component");
 		goto finish;
 	}
 
 	if ((q - p) == 0) {
-		REDEBUG("PBKDF2-Password salt component too short");
+		REDEBUG("Password.PBKDF2 salt component too short");
 		goto finish;
 	}
 
@@ -611,7 +611,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 	slen = fr_base64_decode(&FR_DBUFF_TMP(salt, talloc_array_length(salt)),
 				&FR_SBUFF_IN((char const *) p, (char const *)q), false, false);
 	if (slen <= 0) {
-		RPEDEBUG("Failed decoding PBKDF2-Password salt component");
+		RPEDEBUG("Failed decoding Password.PBKDF2 salt component");
 		goto finish;
 	}
 	salt_len = (size_t)slen;
@@ -619,19 +619,19 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 	p = q + 1;
 
 	if ((q - p) == 0) {
-		REDEBUG("PBKDF2-Password hash component too short");
+		REDEBUG("Password.PBKDF2 hash component too short");
 		goto finish;
 	}
 
 	slen = fr_base64_decode(&FR_DBUFF_TMP(hash, sizeof(hash)),
 				&FR_SBUFF_IN((char const *)p, (char const *)end), false, false);
 	if (slen <= 0) {
-		RPEDEBUG("Failed decoding PBKDF2-Password hash component");
+		RPEDEBUG("Failed decoding Password.PBKDF2 hash component");
 		goto finish;
 	}
 
 	if ((size_t)slen != digest_len) {
-		REDEBUG("PBKDF2-Password hash component length is incorrect for hash type, expected %zu, got %zd",
+		REDEBUG("Password.PBKDF2 hash component length is incorrect for hash type, expected %zu, got %zd",
 			digest_len, slen);
 
 		RHEXDUMP2(hash, slen, "hash component");
@@ -679,7 +679,7 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_rcode_t *p_re
 	uint8_t const *p = known_good->vp_octets, *q, *end = p + known_good->vp_length;
 
 	if (end - p < 2) {
-		REDEBUG("PBKDF2-Password too short");
+		REDEBUG("Password.PBKDF2 too short");
 		RETURN_MODULE_INVALID;
 	}
 
@@ -728,7 +728,7 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_rcode_t *p_re
 					     '$', '$', '$', false, password);
 	}
 
-	REDEBUG("Can't determine format of PBKDF2-Password");
+	REDEBUG("Can't determine format of Password.PBKDF2");
 
 	RETURN_MODULE_INVALID;
 }
@@ -742,12 +742,12 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_nt(rlm_rcode_t *p_result,
 	uint8_t digest[MD4_DIGEST_LENGTH];
 	uint8_t ucs2[512];
 
-	RDEBUG2("Comparing with \"known-good\" NT-Password");
+	RDEBUG2("Comparing with \"known-good\" Password.NT");
 
 	fr_assert(password->da == attr_user);
 
 	if (known_good->vp_length != MD4_DIGEST_LENGTH) {
-		REDEBUG("\"known good\" NT-Password has incorrect length, expected 16 got %zu", known_good->vp_length);
+		REDEBUG("\"known good\" Password.NT has incorrect length, expected 16 got %zu", known_good->vp_length);
 		RETURN_MODULE_INVALID;
 	}
 
@@ -778,10 +778,10 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_lm(rlm_rcode_t *p_result,
 	char	charbuf[32 + 1];
 	ssize_t	len;
 
-	RDEBUG2("Comparing with \"known-good\" LM-Password");
+	RDEBUG2("Comparing with \"known-good\" Password.LM");
 
 	if (known_good->vp_length != MD4_DIGEST_LENGTH) {
-		REDEBUG("\"known good\" LM-Password has incorrect length, expected 16 got %zu", known_good->vp_length);
+		REDEBUG("\"known good\" Password.LM has incorrect length, expected 16 got %zu", known_good->vp_length);
 		RETURN_MODULE_INVALID;
 	}
 
@@ -808,20 +808,20 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_resul
 	uint8_t buff[FR_MAX_STRING_LEN];
 	uint8_t buff2[FR_MAX_STRING_LEN + 50];
 
-	RDEBUG2("Using NT-MTA-MD5-Password");
+	RDEBUG2("Using Password.NT-MTA-MD5");
 
 	if (known_good->vp_length != 64) {
-		REDEBUG("\"known good\" NS-MTA-MD5-Password has incorrect length, expected 64 got %zu",
+		REDEBUG("\"known good\" Password.NS-MTA-MD5 has incorrect length, expected 64 got %zu",
 			known_good->vp_length);
 		RETURN_MODULE_INVALID;
 	}
 
 	/*
-	 *	Sanity check the value of NS-MTA-MD5-Password
+	 *	Sanity check the value of Password.NS-MTA-MD5
 	 */
 	if (fr_base16_decode(NULL, &FR_DBUFF_TMP(digest, sizeof(digest)),
 		       &FR_SBUFF_IN(known_good->vp_strvalue, known_good->vp_length), false) != 16) {
-		REDEBUG("\"known good\" NS-MTA-MD5-Password has invalid value");
+		REDEBUG("\"known good\" Password.NS-MTA-MD5 has invalid value");
 		RETURN_MODULE_INVALID;
 	}
 
@@ -831,7 +831,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_resul
 	 *	This really: sizeof(buff) - 2 - 2*32 - strlen(passwd)
 	 */
 	if (password->vp_length >= (sizeof(buff) - 2 - 2 * 32)) {
-		REDEBUG("\"known good\" NS-MTA-MD5-Password is too long");
+		REDEBUG("\"known good\" Password.NS-MTA-MD5 is too long");
 		RETURN_MODULE_INVALID;
 	}
 
