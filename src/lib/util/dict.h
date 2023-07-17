@@ -473,8 +473,6 @@ fr_dict_attr_t const	*fr_dict_attr_by_oid(fr_dict_attr_err_t *err,
 					     fr_dict_attr_t const *parent, char const *oid)
 					     CC_HINT(nonnull(2,3));
 
-bool			fr_dict_attr_compatible(fr_dict_attr_t const *a, fr_dict_attr_t const *b) CC_HINT(nonnull);
-
 bool			fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const *child) CC_HINT(nonnull);
 
 /** @} */
