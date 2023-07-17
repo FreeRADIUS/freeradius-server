@@ -668,6 +668,9 @@ int fr_pair_to_unknown(fr_pair_t *vp)
 
 	fr_dict_unknown_free(&vp->da);	/* Only frees unknown attributes */
 	vp->da = unknown;
+	fr_assert(vp->da->type == FR_TYPE_OCTETS);
+
+	fr_value_box_init(&vp->data, FR_TYPE_OCTETS, NULL, true);
 
 	return 0;
 }
