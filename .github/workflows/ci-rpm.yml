@@ -280,6 +280,13 @@ jobs:
       run: |
         yum install -y *.rpm
 
+    - name: Ensure certificates are created
+      if: ${{ matrix.env.NAME == 'centos-7' }}
+      run: |
+        if [ ! -e /etc/raddb/certs/server.pem ]; then
+          /sbin/runuser -g radiusd -c 'umask 007; /etc/raddb/certs/bootstrap'
+        fi
+
     - name: Config check
       run: |
         radiusd -XC
