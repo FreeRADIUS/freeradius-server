@@ -608,7 +608,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 		 */
 		vp = fr_pair_afrom_da(ctx, attr_hop_count);
 		if (!vp) goto fail;
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL,
+		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, NULL,
 					      &FR_DBUFF_TMP(packet + 1, 1), 1, true) < 0) {
 			goto fail;
 		}
@@ -616,7 +616,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 
 		vp = fr_pair_afrom_da(ctx, attr_relay_link_address);
 		if (!vp) goto fail;
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL,
+		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, NULL,
 					      &FR_DBUFF_TMP(packet + 2, 16), 16, true) < 0) {
 			goto fail;
 		}
@@ -624,7 +624,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 
 		vp = fr_pair_afrom_da(ctx, attr_relay_peer_address);
 		if (!vp) goto fail;
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL,
+		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, NULL,
 					      &FR_DBUFF_TMP(packet + 2 + 16, 16), 16, true) < 0) {
 			goto fail;
 		}
@@ -703,7 +703,7 @@ void *fr_dhcpv6_next_encodable(fr_dlist_head_t *list, void *current, void *uctx)
 	while ((c = fr_dlist_next(list, c))) {
 		PAIR_VERIFY(c);
 		if (c->da->dict != dict || c->da->flags.internal) continue;
-		if (c->da->type == FR_TYPE_BOOL && !c->vp_bool) continue;
+		if (c->vp_type == FR_TYPE_BOOL && !c->vp_bool) continue;
 
 		break;
 	}

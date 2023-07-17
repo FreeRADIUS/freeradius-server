@@ -236,7 +236,7 @@ static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_
 	MEM(vp = fr_pair_afrom_da(my_ctx, da));
 	vp->op = op;
 
-	if ((vp->da->type == FR_TYPE_TLV) && !*value) {
+	if ((vp->vp_type == FR_TYPE_TLV) && !*value) {
 		/*
 		 *	Allow empty values for TLVs: we just create the value.
 		 *

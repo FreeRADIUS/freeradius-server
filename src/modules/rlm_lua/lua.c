@@ -218,7 +218,7 @@ static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_pair_t **out,
 		static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float64) >= sizeof(double),
 			      "fr_value_box_t field smaller than return from lua_tonumber");
 
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		/*
 		 *	Preserve decimal precision.
 		 *
@@ -238,7 +238,7 @@ static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_pair_t **out,
 		}
 
 
-		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &vb) < 0) {
+		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &vb) < 0) {
 			RPEDEBUG("Failed unmarshalling Lua number for \"%s\"", vp->da->name);
 			return -1;
 		}
@@ -259,7 +259,7 @@ static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_pair_t **out,
 
 		fr_value_box_bstrndup_shallow(&vb, NULL, p, len, true);
 
-		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &vb) < 0) {
+		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &vb) < 0) {
 			RPEDEBUG("Failed unmarshalling Lua string for \"%s\"", vp->da->name);
 			return -1;
 		}

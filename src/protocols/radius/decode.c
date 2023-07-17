@@ -1867,7 +1867,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	default:
 	decode:
-		ret = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+		ret = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 						&FR_DBUFF_TMP(p, data_len), data_len, true);
 		if (ret < 0) {
 			/*

@@ -137,7 +137,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		return fr_pair_raw_from_network(ctx, out, da, data, 0);
 	}
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	/*
 	 *	Doesn't include scope, whereas the generic format can
 	 */
@@ -168,7 +168,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		break;
 
 	case FR_TYPE_STRUCTURAL:
-		fr_strerror_printf("Cannot decode type '%s' as value", fr_type_to_str(vp->da->type));
+		fr_strerror_printf("Cannot decode type '%s' as value", fr_type_to_str(vp->vp_type));
 		talloc_free(vp);
 		return 0;
 
@@ -265,7 +265,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		FALL_THROUGH;
 
 	default:
-		slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, da,
+		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, da,
 						&FR_DBUFF_TMP(p, end - p), end - p, true);
 		if (slen < 0) {
 		raw:

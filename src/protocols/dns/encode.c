@@ -92,7 +92,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	/*
 	 *	Nested structs
 	 */
-	if (vp->da->type == FR_TYPE_STRUCT) {
+	if (vp->vp_type == FR_TYPE_STRUCT) {
 		fr_dcursor_t child_cursor;
 
 		fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
@@ -256,7 +256,7 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 		}
 	}
 
-	fr_assert(fr_type_is_structural(vp->da->type));
+	fr_assert(fr_type_is_structural(vp->vp_type));
 
 	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 	work_dbuff = FR_DBUFF(dbuff);
@@ -433,7 +433,7 @@ static ssize_t fr_dns_encode_rr(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 	FR_PROTO_TRACE("encode_rr -- remaining %zd", fr_dbuff_remaining(&work_dbuff));
 
 	vp = fr_dcursor_current(cursor);
-	if (vp->da->type == FR_TYPE_STRUCT) {
+	if (vp->vp_type == FR_TYPE_STRUCT) {
 		fr_dcursor_t child_cursor;
 
 		fr_pair_dcursor_init(&child_cursor, &vp->vp_group);

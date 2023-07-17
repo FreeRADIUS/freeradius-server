@@ -166,7 +166,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 
-		slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 						 &FR_DBUFF_TMP(data, data_len), data_len, true);
 		if (slen < 0) {
 			talloc_free(vp);
@@ -211,7 +211,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		if (data_len < sizeof(vp->vp_ipv6addr)) goto raw;
 
-		slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 						 &FR_DBUFF_TMP(data,  sizeof(vp->vp_ipv6addr)),  sizeof(vp->vp_ipv6addr), true);
 		if (slen < 0) {
 			talloc_free(vp);
@@ -223,7 +223,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 
-		slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 						 &FR_DBUFF_TMP(data, data_len), data_len, true);
 		if (slen < 0) {
 			talloc_free(vp);

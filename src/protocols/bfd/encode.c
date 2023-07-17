@@ -57,7 +57,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	/*
 	 *	This has special requirements.
 	 */
-	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
+	if ((vp->vp_type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
 		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, NULL);
 		goto done;
 	}

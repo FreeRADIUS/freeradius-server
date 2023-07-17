@@ -75,7 +75,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	/*
 	 *	Structures are special.
 	 */
-	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
+	if ((vp->vp_type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
 		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_cursor);
 		if (slen <= 0) return slen;
 
@@ -424,7 +424,7 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 		}
 	}
 
-	fr_assert(fr_type_is_structural(vp->da->type));
+	fr_assert(fr_type_is_structural(vp->vp_type));
 
 	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 	work_dbuff = FR_DBUFF(dbuff);
@@ -684,7 +684,7 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 		ssize_t len;
 		fr_dcursor_t vsa_cursor;
 
-		if (vp->da->type != FR_TYPE_VENDOR) continue;
+		if (vp->vp_type != FR_TYPE_VENDOR) continue;
 
 		fr_pair_dcursor_init(&vsa_cursor, &vp->vp_group);
 

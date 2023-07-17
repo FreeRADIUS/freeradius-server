@@ -300,7 +300,7 @@ void *fr_dhcpv4_next_encodable(fr_dlist_head_t *list, void *current, void *uctx)
 		PAIR_VERIFY(c);
 		if (c->da->dict != dict || c->da->flags.internal) continue;
 
-		if (c->da->type == FR_TYPE_BOOL && da_is_bool_exists(c->da) && !c->vp_bool) continue;
+		if (c->vp_type == FR_TYPE_BOOL && da_is_bool_exists(c->da) && !c->vp_bool) continue;
 
 		break;
 	}

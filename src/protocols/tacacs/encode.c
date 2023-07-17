@@ -164,7 +164,7 @@ static uint8_t tacacs_encode_body_arg_cnt(fr_pair_list_t *vps, fr_dict_attr_t co
 		/*
 		 *	Recurse into children.
 		 */
-		if (vp->da->type == FR_TYPE_VENDOR) {
+		if (vp->vp_type == FR_TYPE_VENDOR) {
 			arg_cnt += tacacs_encode_body_arg_cnt(&vp->vp_group, NULL);
 			continue;
 		}
@@ -205,7 +205,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 			FR_PROTO_TRACE("arg[%d] --> %s", i, vp->vp_strvalue);
 			len = vp->vp_length;
 
-		} else if (vp->da->type == FR_TYPE_VENDOR) {
+		} else if (vp->vp_type == FR_TYPE_VENDOR) {
 			ssize_t slen;
 			uint8_t child_argc;
 

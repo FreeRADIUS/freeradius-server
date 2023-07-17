@@ -390,7 +390,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	/*
 	 *	This has special requirements.
 	 */
-	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
+	if ((vp->vp_type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
 		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value,
 					    encode_tlv);
 		if (slen < 0) return slen;
@@ -435,7 +435,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	tag, then we always encode a tag byte, even one that
 	 *	is zero.
 	 */
-	if ((vp->da->type == FR_TYPE_STRING) && flag_has_tag(&vp->da->flags)) {
+	if ((vp->vp_type == FR_TYPE_STRING) && flag_has_tag(&vp->da->flags)) {
 		if (packet_ctx->tag) {
 			FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)packet_ctx->tag);
 		} else if (TAG_VALID(vp->vp_strvalue[0])) {
@@ -606,7 +606,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	same tunnel.  Valid values for this field are 0x01 through 0x1F,
 	 *	inclusive.  If the Tag field is unused, it MUST be zero (0x00).
 	 */
-	if ((vp->da->type == FR_TYPE_UINT32) && flag_has_tag(&vp->da->flags)) {
+	if ((vp->vp_type == FR_TYPE_UINT32) && flag_has_tag(&vp->da->flags)) {
 		uint8_t	msb = 0;
 		/*
 		 *	Only 24bit integers are allowed here
@@ -1466,7 +1466,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	/*
 	 *	Tags are *top-level*, and are never nested.
 	 */
-	if (vp->da->type == FR_TYPE_GROUP) {
+	if (vp->vp_type == FR_TYPE_GROUP) {
 		fr_radius_ctx_t	*packet_ctx = encode_ctx;
 
 		if (!vp->da->flags.internal ||
@@ -1491,7 +1491,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	/*
 	 *	Check for zero-length attributes.
 	 */
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	default:
 		break;
 
@@ -1527,7 +1527,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	 *	Fast path for the common case.
 	 */
 	if (vp->da->parent->flags.is_root && !vp->da->flags.subtype) {
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
 			da_stack.da[0] = vp->da;
 			da_stack.da[1] = NULL;

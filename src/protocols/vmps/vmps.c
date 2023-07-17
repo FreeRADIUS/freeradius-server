@@ -216,7 +216,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 		 *
 		 *	@todo - if the attribute is malformed, create a "raw" one.
 		 */
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 					      &FR_DBUFF_TMP(ptr, attr_len), attr_len, true) < 0) {
 			talloc_free(vp);
 			return -1;
@@ -312,7 +312,7 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 			continue;
 		}
 
-		if (!fr_type_is_leaf(vp->da->type)) continue;
+		if (!fr_type_is_leaf(vp->vp_type)) continue;
 
 		DEBUG2("&%pP", vp);
 
