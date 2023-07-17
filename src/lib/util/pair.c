@@ -3122,31 +3122,33 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					     "dictionary pointer %p \"%s\" (%s) "
 					     "and global dictionary pointer %p \"%s\" (%s) differ",
 					     file, line, vp->da, vp->da->name,
-					     fr_type_to_str(vp->da->type),
+					     fr_type_to_str(vp->vp_type),
 					     da, da->name,
 					     fr_type_to_str(da->type));
 		}
 	}
 
 	if (vp->da->flags.is_raw || vp->da->flags.is_unknown) {
-		if ((vp->da->parent->type != FR_TYPE_VSA) && (vp->data.type != FR_TYPE_VSA) && (vp->data.type != FR_TYPE_OCTETS) && (vp->da->type != FR_TYPE_TLV)) {
+		if ((vp->da->parent->type != FR_TYPE_VSA) && (vp->vp_type != FR_TYPE_VSA) && (vp->vp_type != FR_TYPE_OCTETS) && (vp->vp_type != FR_TYPE_TLV)) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t (raw/unknown) attribute %p \"%s\" "
 					     "data type incorrect.  Expected %s, got %s",
 					     file, line, vp->da, vp->da->name,
 					     fr_type_to_str(FR_TYPE_OCTETS),
-					     fr_type_to_str(vp->data.type));
+					     fr_type_to_str(vp->vp_type));
 		}
-	} else if (!fr_type_is_structural(vp->da->type) && (vp->da->type != vp->data.type)) {
+	} else if (fr_type_is_leaf(vp->vp_type) && (vp->vp_type != vp->da->type) &&
+		   !((vp->da->type == FR_TYPE_COMBO_IP_ADDR) && ((vp->vp_type == FR_TYPE_IPV4_ADDR) || (vp->vp_type == FR_TYPE_IPV6_ADDR))) &&
+		   !((vp->da->type == FR_TYPE_COMBO_IP_PREFIX) && ((vp->vp_type == FR_TYPE_IPV4_PREFIX) || (vp->vp_type == FR_TYPE_IPV6_PREFIX)))) {
 		char data_type_int[10], da_type_int[10];
 
-		snprintf(data_type_int, sizeof(data_type_int), "%i", vp->data.type);
-		snprintf(da_type_int, sizeof(da_type_int), "%i", vp->da->type);
+		snprintf(data_type_int, sizeof(data_type_int), "%i", vp->vp_type);
+		snprintf(da_type_int, sizeof(da_type_int), "%i", vp->vp_type);
 
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t attribute %p \"%s\" "
 				     "data type (%s) does not match da type (%s)",
 				     file, line, vp->da, vp->da->name,
-				     fr_table_str_by_value(fr_type_table, vp->data.type, data_type_int),
-				     fr_table_str_by_value(fr_type_table, vp->da->type, da_type_int));
+				     fr_table_str_by_value(fr_type_table, vp->vp_type, data_type_int),
+				     fr_table_str_by_value(fr_type_table, vp->vp_type, da_type_int));
 	}
 }
 
