@@ -101,14 +101,13 @@ server tacacs {
 			#  session:: Controls how ongoing
 			#  (multi-round) sessions are handled
 			#
-			#  This section is primarily useful for EAP.
-			#  It controls the number of EAP
-			#  authentication attempts that can occur
-			#  concurrently.
+			#  This section is only useful for ASCII authentications.
+			#  It is the only authentication type which supports
+			#  sending challenges for further data.
 			#
 			session {
 				#
-				#  max:: The maximum number of ongoing sessions
+				#  max:: The maximum number of concurrent ongoing sessions
 				#
 #				max = 4096
 
