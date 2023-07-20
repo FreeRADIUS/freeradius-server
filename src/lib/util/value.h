@@ -165,6 +165,14 @@ struct value_box_s {
 									///< last for packing efficiency.
 };
 
+/** Macro to automatically define a value for the "safe" field based on the current module / library.
+ *
+ * Functions which escape tainted data can mark it "safe" for a
+ * particular purpose.  Each module has it's own version of safety.
+ * e.g. LDAP, SQL, etc.  Each module can then manage its own list of sub-types for safety.
+ */
+#define FR_VALUE_BOX_SAFE(_x) ((LOG_ID_LIB << 8) | _x)
+
 /** @name List and cursor function definitions
  */
 FR_DLIST_FUNCS(fr_value_box_list, fr_value_box_t, entry)
