@@ -5888,16 +5888,16 @@ void fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t co
 
 /** Mark a value-box as "safe", of a particular type.
  *
- *  Tainted data cannot be marked "safe".  And once data is marked
- *  safe, it cannot be marked as a different type of "safe"
+ *  This means that users of that data who understand this particular value of the "safe" flag
+ *  can then ignore the "tainted" flag, and use the value as if it was untainted.  Every other user
+ *  of the data must still treat it as tainted.
+ *
+ *  Tainted data can be marked "safe".  But marking it "safe" does not remove the "tainted" flag.
+ *
+ *  Once data is marked safe, it cannot be marked as a different type of "safe".
  */
 int fr_value_box_mark_safe(fr_value_box_t *box, uint16_t safe)
 {
-	if (box->tainted) {
-		fr_strerror_const("Cannot mark data as 'safe' - it is 'tainted'");
-		return -1;
-	}
-
 	if (box->safe == safe) return 0;
 
 	if (box->safe != 0) {
