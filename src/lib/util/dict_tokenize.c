@@ -1367,7 +1367,10 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	if (type == FR_TYPE_TLV) {
 		int i;
 
-		for (i = 0; i <= ctx->stack[ctx->stack_depth].member_num; i++) {
+		/*
+		 *	@todo - cache the key field in the stack frame, so we don't have to loop over the children.
+		 */
+		for (i = 1; i <= ctx->stack[ctx->stack_depth].member_num; i++) {
 			da = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, i);
 			if (!da) continue; /* really should be WTF? */
 
