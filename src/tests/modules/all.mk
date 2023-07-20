@@ -58,8 +58,8 @@ endef
 #
 #  Ensure that "rlm_foo.a" is built when we run a module from directory "foo"
 #
-FILES := $(filter-out $(FILES_SKIP),$(FILES))
 $(foreach x,$(FILES),$(eval $(call MODULE_FILTER,$(firstword $(subst /, ,$x)),$x)))
+FILES := $(filter-out $(FILES_SKIP),$(FILES))
 $(eval $(call TEST_BOOTSTRAP))
 
 #
