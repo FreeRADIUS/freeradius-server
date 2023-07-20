@@ -347,6 +347,17 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	size_t			len;
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
+
+	/*
+	 *	If it's already safe, just copy it over.
+	 */
+	if (in_vb->safe == FR_VALUE_BOX_SAFE(1)) {
+		fr_value_box_copy(vb, vb, in_vb);
+
+		fr_dcursor_append(out, vb);
+		return XLAT_ACTION_DONE;
+	}
+
 	/*
 	 *	Maximum space needed for output would be 3 times the input if every
 	 *	char needed escaping
@@ -367,6 +378,8 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	fr_sbuff_trim_talloc(&sbuff, len);
 	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
+	fr_value_box_mark_safe(vb, FR_VALUE_BOX_SAFE(1));
+
 	fr_dcursor_append(out, vb);
 	return XLAT_ACTION_DONE;
 }
@@ -419,6 +432,11 @@ static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	size_t			len;
 
 	/*
+	 *	If it's already safe, don't do anything.
+	 */
+	if (vb->safe == FR_VALUE_BOX_SAFE(1)) return 0;
+
+	/*
 	 *	Maximum space needed for output would be 3 times the input if every
 	 *	char needed escaping
 	 */
@@ -435,6 +453,7 @@ static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	fr_sbuff_trim_talloc(&sbuff, len);
 	fr_value_box_clear_value(vb);
 	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), vb->tainted);
+	fr_value_box_mark_safe(vb, FR_VALUE_BOX_SAFE(1));
 
 	return 0;
 }

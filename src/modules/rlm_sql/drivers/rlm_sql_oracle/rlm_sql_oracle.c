@@ -620,6 +620,7 @@ rlm_sql_driver_t rlm_sql_oracle = {
 		.bootstrap			= mod_bootstrap,
 		.detach				= mod_detach
 	},
+	.number				= 5,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,

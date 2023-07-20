@@ -678,6 +678,7 @@ rlm_sql_driver_t rlm_sql_postgresql = {
 		.bootstrap			= mod_bootstrap
 	},
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
+	.number				= 2,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,

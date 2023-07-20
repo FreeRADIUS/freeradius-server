@@ -184,6 +184,8 @@ typedef struct {
 
 	int		flags;
 
+	int		number;				//! for safe operations
+
 	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
 				       fr_time_delta_t timeout);
 

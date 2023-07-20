@@ -972,6 +972,7 @@ rlm_sql_driver_t rlm_sql_cassandra = {
 		.instantiate			= mod_instantiate,
 		.detach				= mod_detach
 	},
+	.number				= 7,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_query,

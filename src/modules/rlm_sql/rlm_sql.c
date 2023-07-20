@@ -170,6 +170,11 @@ static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
 	rlm_sql_t				*inst = talloc_get_type_abort(uctx, rlm_sql_t);
 	fr_value_box_entry_t			entry;
 
+	/*
+	 *	If it's already safe, don't do anything.
+	 */
+	if (vb->safe == FR_VALUE_BOX_SAFE(inst->driver->number)) return 0;
+
 	handle = fr_pool_connection_get(inst->pool, request);
 	if (!handle) {
 		fr_value_box_clear_value(vb);
@@ -193,6 +198,14 @@ static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
 	fr_sbuff_trim_talloc(&sbuff, len);
 	fr_value_box_clear_value(vb);
 	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), vb->tainted);
+
+	/*
+	 *	Different databases have slightly different ideas as
+	 *	to what is safe.  So we track the database type in the
+	 *	safe value.  This means that we don't
+	 *	cross-contaminate "safe" values across databases.
+	 */
+	fr_value_box_mark_safe(vb, FR_VALUE_BOX_SAFE(inst->driver->number));
 	vb->entry = entry;
 
 	fr_pool_connection_release(inst->pool, request, handle);

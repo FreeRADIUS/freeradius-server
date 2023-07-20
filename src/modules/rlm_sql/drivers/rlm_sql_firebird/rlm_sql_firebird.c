@@ -297,6 +297,7 @@ rlm_sql_driver_t rlm_sql_firebird = {
 		.name				= "sql_firebird",
 		.magic				= MODULE_MAGIC_INIT
 	},
+	.number				= 9,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,

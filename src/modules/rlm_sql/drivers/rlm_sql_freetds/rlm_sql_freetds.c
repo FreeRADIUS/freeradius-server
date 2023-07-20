@@ -819,6 +819,7 @@ rlm_sql_driver_t rlm_sql_freetds = {
 		.magic				= MODULE_MAGIC_INIT,
 		.name				= "sql_freetds"
 	},
+	.number				= 10,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
