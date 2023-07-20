@@ -434,7 +434,7 @@ static int cond_realize_tmpl(request_t *request,
 			if (ret < 0) {
 				if (cast_type != FR_TYPE_STRING) return -1;
 
-				box = fr_value_box_alloc(request, FR_TYPE_STRING, NULL, false);
+				box = fr_value_box_alloc(request, FR_TYPE_STRING, NULL);
 				if (!box) return -1;
 			}
 

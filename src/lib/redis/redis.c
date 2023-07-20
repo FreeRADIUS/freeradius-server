@@ -292,7 +292,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 
 		fr_value_box_init(out, FR_TYPE_GROUP, NULL, true);
 
-		verb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, true);
+		verb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL);
 		if (unlikely(!verb)) {
 			fr_strerror_const("Out of memory");
 			return -1;
@@ -300,7 +300,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 		if (fr_value_box_bstrndup(ctx, verb, NULL, reply->str, reply->len, true) < 0) return -1;
 		fr_value_box_list_insert_head(&out->vb_group, verb);
 
-		vtype = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, true);
+		vtype = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL);
 		if (unlikely(!vtype)) {
 			fr_strerror_const("Out of memory");
 			talloc_free(verb);

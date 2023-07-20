@@ -596,17 +596,17 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	 */
 
 	case 'I': /* Request ID */
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
 		value->datum.uint32 = request->packet->id;
 		break;
 
 	case 'n': /* Request number */
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
 		value->datum.uint64 = request->number;
 		break;
 
 	case 's': /* First request in this sequence */
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
 		value->datum.uint64 = request->seq_start;
 		break;
 
@@ -619,7 +619,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		 *	@todo - leave this as FR_TYPE_DATE, but add an enumv which changes the scale to
 		 *	seconds?
 		 */
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
 		value->datum.uint64 = (uint64_t)fr_time_to_sec(fr_time());
 		break;
 
@@ -627,7 +627,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		/*
 		 *	@todo - we probably should remove this now that we have FR_TYPE_DATE with scaling.
 		 */
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
 		value->datum.uint64 = (uint64_t)fr_time_to_usec(fr_time()) % 1000000;
 		break;
 
@@ -642,7 +642,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
 		value->datum.uint8 = ts.tm_mday;
 		break;
 
@@ -658,21 +658,21 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	case 'e': /* Request second */
 		if (!localtime_r(&now, &ts)) goto error;
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
 		value->datum.uint8 = ts.tm_sec;
 		break;
 
 	case 'G': /* Request minute */
 		if (!localtime_r(&now, &ts)) goto error;
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
 		value->datum.uint8 = ts.tm_min;
 		break;
 
 	case 'H': /* Request hour */
 		if (!localtime_r(&now, &ts)) goto error;
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
 		value->datum.uint8 = ts.tm_hour;
 		break;
 
@@ -681,14 +681,14 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		 *	@todo - leave this as FR_TYPE_DATE, but add an enumv which changes the scale to
 		 *	seconds?
 		 */
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
 		value->datum.uint64 = (uint64_t ) now;
 		break;
 
 	case 'm': /* Request month */
 		if (!localtime_r(&now, &ts)) goto error;
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
 		value->datum.uint8 = ts.tm_mon + 1;
 		break;
 
@@ -696,7 +696,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		/*
 		 *	@todo - we probably should remove this now that we have FR_TYPE_DATE with scaling.
 		 */
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
 		value->datum.uint32 = fr_time_to_msec(request->packet->timestamp) % 1000;
 		break;
 
@@ -745,7 +745,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	case 'Y': /* Request year */
 		if (!localtime_r(&now, &ts)) goto error;
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT16, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT16, NULL));
 
 		value->datum.int16 = ts.tm_year + 1900;
 		break;
@@ -1032,7 +1032,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		XLAT_DEBUG("** [%i] %s(child) - continuing %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 			   node->fmt);
 
-		MEM(arg = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false));
+		MEM(arg = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL));
 
 		if (!fr_value_box_list_empty(result)) {
 			VALUE_BOX_TALLOC_LIST_VERIFY(result);
@@ -1167,8 +1167,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				XLAT_DEBUG("** [%i] %s(value) - %s", unlang_interpret_stack_depth(request), __FUNCTION__,
 					   node->vpt->name);
 
-				MEM(value = fr_value_box_alloc(ctx, tmpl_value_type(node->vpt), NULL,
-							       tmpl_value(node->vpt)->tainted));
+				MEM(value = fr_value_box_alloc(ctx, tmpl_value_type(node->vpt), NULL));
 
 				fr_value_box_copy(value, value, tmpl_value(node->vpt));	/* Also dups taint */
 				fr_value_box_list_insert_tail(&result, value);

@@ -452,7 +452,7 @@ static xlat_action_t xlat_paircmp_func(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	These callbacks only implement equality.  Nothing else works.
 	 */
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
 	dst->vb_bool = (paircmp_virtual(request, da, T_OP_CMP_EQ, vb) == 0);
 	fr_dcursor_append(out, dst);
 
@@ -726,7 +726,7 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_va
 done:
 	talloc_free(regmatch);	/* free if not consumed */
 
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
 	dst->vb_bool = (ret == (op == T_OP_REG_EQ));
 
 	fr_dcursor_append(out, dst);
@@ -1264,7 +1264,7 @@ static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_logical_rctx_t));
 	rctx->current = 0;
-	MEM(rctx->box = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
+	MEM(rctx->box = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
 	fr_value_box_list_init(&rctx->list);
 
 	(UNCONST(xlat_ctx_t *, xctx))->rctx = rctx; /* ensure it's there before a resume! */
@@ -1334,7 +1334,7 @@ static xlat_action_t xlat_func_unary_not(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Don't call calc_unary_op(), because we want the enum names.
 	 */
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
 
 	/*
 	 *	!NULL = true
@@ -1436,14 +1436,14 @@ static xlat_action_t xlat_func_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	matches the current rcode.
 	 */
 	if (!src) {
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, attr_module_return_code, false));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, attr_module_return_code));
 		vb->datum.int32 = request->rcode;
 	} else {
 		rlm_rcode_t rcode;
 
 		rcode = fr_table_value_by_str(rcode_table, src->vb_strvalue, RLM_MODULE_NOT_SET);
 
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
 		vb->vb_bool = (request->rcode == rcode);
 	}
 
@@ -1515,7 +1515,7 @@ static xlat_action_t xlat_attr_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_dcursor_t		cursor;
 	tmpl_dcursor_ctx_t	cc;
 
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
 
 	vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	if (!vp) {

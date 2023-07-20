@@ -740,7 +740,7 @@ static xlat_action_t ldap_memberof_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *ou
 	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, ldap_memberof_xlat_ctx_t);
 	fr_value_box_t			*vb;
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	vb->vb_bool = xlat_ctx->found;
 	fr_dcursor_append(out, vb);
 
@@ -802,7 +802,7 @@ static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat
 			return XLAT_ACTION_DONE;
 
 		case RLM_MODULE_OK:
-			MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+			MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 			vb->vb_bool = true;
 			fr_dcursor_append(out, vb);
 			return XLAT_ACTION_DONE;

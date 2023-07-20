@@ -2147,7 +2147,7 @@ int fr_pair_list_copy_to_box(fr_value_box_t *dst, fr_pair_list_t *from)
 		PAIR_VERIFY_WITH_LIST(from, vp);
 
 		if (fr_type_is_structural(vp->vp_type)) {
-			value = fr_value_box_alloc(dst, FR_TYPE_GROUP, NULL, false);
+			value = fr_value_box_alloc(dst, FR_TYPE_GROUP, NULL);
 			if (!value) goto fail;
 
 			if (fr_pair_list_copy_to_box(value, &vp->vp_group) < 0) {
@@ -2156,7 +2156,7 @@ int fr_pair_list_copy_to_box(fr_value_box_t *dst, fr_pair_list_t *from)
 			}
 
 		} else {
-			value = fr_value_box_alloc(dst, vp->vp_type, vp->da, vp->data.tainted);
+			value = fr_value_box_alloc(dst, vp->vp_type, vp->da);
 			if (!value) {
 			fail:
 				fr_value_box_list_talloc_free_to_tail(&dst->vb_group, first_added);

@@ -1429,7 +1429,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	enumv->name_len = len;
 
 	if (child_struct) enumv->child_struct[0] = child_struct;
-	enum_value = fr_value_box_alloc(enumv, da->type, NULL, false);
+	enum_value = fr_value_box_alloc(enumv, da->type, NULL);
 	if (!enum_value) goto oom;
 
 	if (da->type != value->type) {

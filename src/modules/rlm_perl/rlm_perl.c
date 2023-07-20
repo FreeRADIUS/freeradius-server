@@ -327,14 +327,14 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 			break;
 		}
 		DEBUG3("Integer returned");
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT32, NULL, SvTAINTED(sv)));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT32, NULL));
 		vb->vb_int32 = SvIV(sv);
 		break;
 
 	case SVt_NV:
 	/*	Float */
 		DEBUG3("Float returned");
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_FLOAT64, NULL, SvTAINTED(sv)));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_FLOAT64, NULL));
 		vb->vb_float64 = SvNV(sv);
 		break;
 
@@ -406,7 +406,10 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 
 	}
 
-	if (vb) fr_value_box_list_insert_tail(list, vb);
+	if (vb) {
+		vb->tainted = SvTAINTED(sv);
+		fr_value_box_list_insert_tail(list, vb);
+	}
 
 	return 0;
 }

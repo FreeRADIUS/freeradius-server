@@ -244,7 +244,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 	}
 
 	default_list = NULL;
-	box = fr_value_box_alloc(ctx, data_type, NULL, false);
+	box = fr_value_box_alloc(ctx, data_type, NULL);
 
 	/*
 	 *	We've read the entries in linearly, but putting them
@@ -318,7 +318,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			user_list = talloc_zero(ctx, PAIR_LIST_LIST);
 			pairlist_list_init(user_list);
 			user_list->name = entry->name;
-			user_list->box = fr_value_box_alloc(user_list, data_type, NULL, false);
+			user_list->box = fr_value_box_alloc(user_list, data_type, NULL);
 
 			(void) fr_value_box_copy(user_list, user_list->box, box);
 

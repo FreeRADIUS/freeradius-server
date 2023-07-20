@@ -83,7 +83,7 @@ static xlat_action_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, fr_dcursor_t *
 		break;
 	}
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
 	fr_value_box_bstrndup(vb, vb, NULL, method, strlen(method), false);
 	fr_dcursor_append(out, vb);
 
@@ -139,7 +139,7 @@ static xlat_action_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, fr_dcursor_t *ou
 		break;
 	}
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
 	fr_value_box_bstrndup(ctx, vb, NULL, type, strlen(type), false);
 	fr_dcursor_append(out, vb);
 
@@ -172,7 +172,7 @@ static xlat_action_t aka_sim_id_3gpp_temporary_id_key_index_xlat(TALLOC_CTX *ctx
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
 	vb->vb_uint8 = fr_aka_sim_id_3gpp_pseudonym_tag(id->vb_strvalue);
 	fr_dcursor_append(out, vb);
 
@@ -489,7 +489,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
 	fr_value_box_bstrndup(ctx, vb, NULL, encrypted, strlen(encrypted), false);
 	fr_dcursor_append(out, vb);
 

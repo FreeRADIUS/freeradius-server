@@ -539,7 +539,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			box = fr_value_box_list_head(&current->rhs.result);
 
 			if (!box) {
-				MEM(box = fr_value_box_alloc(state, FR_TYPE_STRING, NULL, false));
+				MEM(box = fr_value_box_alloc(state, FR_TYPE_STRING, NULL));
 				fr_value_box_list_insert_tail(&current->rhs.result, box);
 
 			} else if (fr_value_box_list_concat_in_place(box, box, &current->rhs.result, FR_TYPE_STRING,
@@ -1174,7 +1174,7 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 	/*
 	 *	Try to re-parse the box as the destination data type.
 	 */
-	MEM(dst = fr_value_box_alloc(state, type, da, box->tainted));
+	MEM(dst = fr_value_box_alloc(state, type, da));
 
 	erules = fr_value_unescape_by_quote[current->map->lhs->quote];
 

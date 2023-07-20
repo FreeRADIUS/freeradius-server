@@ -115,7 +115,7 @@ static xlat_action_t xlat_func_debug(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *  Expand to previous (or current) level
 	 */
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL));
 	vb->vb_int8 = request->log.lvl;
 	fr_dcursor_append(out, vb);
 
@@ -704,7 +704,7 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL));
 	vb->vb_int8 = 0;	/* Default fail value - changed to 1 on success */
 	fr_dcursor_append(out, vb);
 
@@ -1434,7 +1434,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if ((type == FR_TYPE_STRING) || (type == FR_TYPE_OCTETS)) {
 			fr_value_box_t *dst;
 
-			MEM(dst = fr_value_box_alloc(ctx, type, NULL, false));
+			MEM(dst = fr_value_box_alloc(ctx, type, NULL));
 			fr_dcursor_append(out, dst);
 
 			return XLAT_ACTION_DONE;
@@ -1529,7 +1529,7 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	sep = (separator) ? separator->vb_strvalue : "";
 	to_concat = &list->vb_group;
 
-	result = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false);
+	result = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL);
 	if (!result) {
 	error:
 		RPEDEBUG("Failed concatenating input");
@@ -1745,7 +1745,7 @@ static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_list_foreach(in, vb) {
 		fr_value_box_t *my;
 
-		MEM(my = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
+		MEM(my = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL));
 		if (!fr_type_is_null(vb->type)) my->vb_size = fr_value_box_network_length(vb);
 		fr_dcursor_append(out, my);
 	}
@@ -2006,7 +2006,7 @@ static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	result *= fr_rand();	/* 0..2^32-1 */
 	result >>= 32;
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
 	vb->vb_uint64 = result;
 
 	fr_dcursor_append(out, vb);
@@ -2486,7 +2486,7 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &in_head);
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL));
 
 	if (!in_head) {
 		vb->vb_size = 0;
@@ -2730,12 +2730,12 @@ static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		value = fr_time_to_unix_time(request->packet->timestamp);
 
 	} else if (strcmp(arg->vb_strvalue, "offset") == 0) {
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
 		vb->vb_time_delta = fr_time_gmtoff();
 		goto append;
 
 	} else if (strcmp(arg->vb_strvalue, "dst") == 0) {
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 		vb->vb_bool = fr_time_is_dst();
 		goto append;
 
@@ -2752,7 +2752,7 @@ static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		nsec *= NSEC;
 		nsec += fr_unix_time_unwrap(unix_time) % NSEC;
 
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
 		vb->vb_time_delta = fr_time_delta_wrap(nsec);
 		goto append;
 
@@ -2769,10 +2769,10 @@ static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		nsec *= NSEC;
 		nsec += fr_unix_time_unwrap(unix_time) % NSEC;
 
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
 		vb->vb_time_delta = fr_time_delta_wrap(nsec);
 
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
 		vb->vb_time_delta = fr_time_delta_wrap(nsec);
 		goto append;
 
@@ -2781,7 +2781,7 @@ static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL));
 	vb->vb_date = value;
 
 append:
@@ -3061,7 +3061,7 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Create a value box to hold the decoded count, and add
 	 *	it to the output list.
 	 */
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
 	vb->vb_uint32 = decoded;
 	fr_dcursor_append(out, vb);
 

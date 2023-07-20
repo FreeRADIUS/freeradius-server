@@ -1410,7 +1410,7 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (!timeout) return unlang_xlat_yield(request, unlang_cancel_never_run, NULL, 0, NULL);
 
 	if (ev_p_og) {
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
 
 		/*
 		 *	Return how long before the previous

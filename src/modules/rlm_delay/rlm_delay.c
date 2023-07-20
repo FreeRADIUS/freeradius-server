@@ -187,7 +187,7 @@ static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	delayed = fr_time_sub(fr_time(), *yielded_at);
 	talloc_free(yielded_at);
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
 	vb->vb_time_delta = delayed;
 
 	RDEBUG3("Request delayed by %pVs", vb);

@@ -560,7 +560,7 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	slen = linelog_write(inst, request, vector, i, with_delim);
 	if (slen < 0) return XLAT_ACTION_FAIL;
 
-	MEM(wrote = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
+	MEM(wrote = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL));
 	wrote->vb_size = (size_t)slen;
 
 	fr_dcursor_insert(out, wrote);

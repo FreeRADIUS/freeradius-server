@@ -118,7 +118,7 @@ static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	rlm_icmp_thread_t *t = talloc_get_type_abort(xctx->mctx->thread, rlm_icmp_thread_t);
 	fr_value_box_t	*vb;
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	vb->vb_bool = echo->replied;
 
 	(void) fr_rb_delete(t->tree, echo);

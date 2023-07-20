@@ -53,7 +53,7 @@ static ssize_t util_decode_proto(TALLOC_CTX *ctx, UNUSED fr_pair_list_t *out, ui
 		return data_len;
 	}
 
-	box = fr_value_box_alloc(ctx, type, NULL, true);
+	box = fr_value_box_alloc(ctx, type, NULL);
 	if (!box) return -1;
 
 	rcode = fr_value_box_from_str(box, box, type, NULL, (char const *)data + 1, data_len - 1, NULL, true);

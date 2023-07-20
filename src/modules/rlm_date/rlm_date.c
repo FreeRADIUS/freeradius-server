@@ -101,7 +101,7 @@ static xlat_action_t date_convert_string(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL));
 	vb->vb_date = fr_unix_time_from_sec(date);
 	fr_dcursor_append(out, vb);
 	return XLAT_ACTION_DONE;

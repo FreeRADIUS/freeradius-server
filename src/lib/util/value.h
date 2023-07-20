@@ -485,20 +485,19 @@ void fr_value_box_init_null(fr_value_box_t *vb)
  * @param[in] ctx	to allocate the value_box in.
  * @param[in] type	of value.
  * @param[in] enumv	Enumeration values.
- * @param[in] tainted	Whether data will come from an untrusted source.
  * @return
  *	- A new fr_value_box_t.
  *	- NULL on error.
  */
 static inline CC_HINT(always_inline)
-fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
+fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type, fr_dict_attr_t const *enumv)
 {
 	fr_value_box_t *vb;
 
 	vb = talloc(ctx, fr_value_box_t);
 	if (unlikely(!vb)) return NULL;
 
-	fr_value_box_init(vb, type, enumv, tainted);
+	fr_value_box_init(vb, type, enumv, false);
 
 	return vb;
 }
@@ -515,7 +514,7 @@ fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type, fr_dict_attr
 static inline CC_HINT(always_inline)
 fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
 {
-	return fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL, false);
+	return fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL);
 }
 /** @} */
 

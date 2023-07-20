@@ -139,7 +139,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 		fr_sbuff_trim(&state->exec.stdout_buff, sbuff_char_line_endings);
 
 		fr_value_box_list_init(&state->list);
-		MEM(box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL, true));
+		MEM(box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL));
 		if (fr_value_box_from_str(state->ctx, box, type, NULL,
 					  fr_sbuff_start(&state->exec.stdout_buff),
 					  fr_sbuff_used(&state->exec.stdout_buff),

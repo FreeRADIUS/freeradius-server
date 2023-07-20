@@ -860,13 +860,13 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	switch (EVP_PKEY_verify(t->evp_verify_ctx, sig, sig_len, t->digest_buff, (size_t)digest_len)) {
 	case 1:		/* success (signature valid) */
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 		vb->vb_bool = true;
 		fr_dcursor_append(out, vb);
 		break;
 
 	case 0:		/* failure (signature not valid) */
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 		vb->vb_bool = false;
 		fr_dcursor_append(out, vb);
 		break;
@@ -986,14 +986,16 @@ static xlat_action_t cipher_certificate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return cipher_serial_xlat(ctx, out, xctx, request, in);
 
 	case CIPHER_CERT_ATTR_NOT_BEFORE:
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, true));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL));
 		vb->vb_date = inst->rsa->not_before;
+		vb->tainted = true;
 		fr_dcursor_append(out, vb);
 		return XLAT_ACTION_DONE;
 
 	case CIPHER_CERT_ATTR_NOT_AFTER:
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, true));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL));
 		vb->vb_date = inst->rsa->not_after;
+		vb->tainted = true;
 		fr_dcursor_append(out, vb);
 		return XLAT_ACTION_DONE;
 	}

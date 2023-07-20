@@ -364,7 +364,7 @@ static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*in_head = fr_value_box_list_head(in);
 	fr_value_box_t	*vb;
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, vb);
 
 	if (trigger_exec(unlang_interpret_get(request), NULL, in_head->vb_strvalue, false, NULL) < 0) {
@@ -397,7 +397,7 @@ static xlat_action_t test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*vb;
 
 	fr_value_box_list_foreach(in, vb_p) {
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
 
 		if (fr_value_box_copy(ctx, vb, vb_p) < 0) {
 			talloc_free(vb);

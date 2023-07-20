@@ -1098,7 +1098,7 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	 *	Virtual attributes always have a count of 1
 	 */
 	if (tmpl_attr_tail_num(vpt) == NUM_COUNT) {
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
 		value->datum.uint32 = 1;
 		goto done;
 	}
@@ -1137,7 +1137,7 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	}
 
 	if (tmpl_attr_tail_da(vpt) == attr_module_return_code) {
-		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, tmpl_attr_tail_da(vpt), false));
+		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, tmpl_attr_tail_da(vpt)));
 		value->datum.int32 = request->rcode;
 		goto done;
 	}
@@ -1153,7 +1153,7 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	if (tmpl_attr_tail_da(vpt) == attr_packet_type) {
 		if (!packet || !packet->code) return 0;
 
-		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL, false));
+		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL));
 		value->enumv = tmpl_attr_tail_da(vpt);
 		value->datum.int32 = packet->code;
 
@@ -1208,13 +1208,13 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	} else if (tmpl_attr_tail_da(vpt) == attr_packet_src_port) {
 		if (!fr_socket_is_inet(packet->socket.proto)) return 0;
 
-		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL, true));
+		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL));
 		value->datum.uint16 = packet->socket.inet.src_port;
 
 	} else if (tmpl_attr_tail_da(vpt) == attr_packet_dst_port) {
 		if (!fr_socket_is_inet(packet->socket.proto)) return 0;
 
-		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL, true));
+		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL));
 		value->datum.uint16 = packet->socket.inet.dst_port;
 
 	} else {
@@ -1285,7 +1285,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		 *	Zero count.
 		 */
 		if (tmpl_attr_tail_num(vpt) == NUM_COUNT) {
-			value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
+			value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL);
 			if (!value) {
 			oom:
 				fr_strerror_const("Out of memory");
@@ -1312,7 +1312,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 			vp = fr_dcursor_next(&cursor);
 		}
 
-		value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
+		value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL);
 		if (!value) goto oom;
 		value->datum.uint32 = count;
 		fr_value_box_list_insert_tail(&list, value);
@@ -1329,7 +1329,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		 */
 		while (vp != NULL) {
 			if (fr_type_is_structural(vp->vp_type)) {
-				value = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false);
+				value = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL);
 				if (!value) goto oom;
 
 				if (fr_pair_list_copy_to_box(value, &vp->vp_group) < 0) {
@@ -1338,7 +1338,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 				}
 
 			} else {
-				value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
+				value = fr_value_box_alloc(ctx, vp->data.type, vp->da);
 				if (!value) goto oom;
 				fr_value_box_copy(value, value, &vp->data);
 			}
@@ -1351,7 +1351,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 	default:
 		fr_assert(fr_type_is_leaf(vp->vp_type));
 
-		value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
+		value = fr_value_box_alloc(ctx, vp->data.type, vp->da);
 		if (!value) goto oom;
 
 		fr_value_box_copy(value, value, &vp->data);	/* Also dups taint */
@@ -1417,8 +1417,7 @@ int tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmp
 	}
 
 	if (tmpl_is_data(vpt)) {
-		MEM(value = fr_value_box_alloc(ctx, tmpl_value_type(vpt), NULL,
-					       tmpl_value(vpt)->tainted));
+		MEM(value = fr_value_box_alloc(ctx, tmpl_value_type(vpt), NULL));
 
 		fr_value_box_copy(value, value, tmpl_value(vpt));	/* Also dups taint */
 		goto done;
