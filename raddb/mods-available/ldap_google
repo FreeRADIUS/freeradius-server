@@ -21,7 +21,7 @@
 #  username and password.  That username and password should be used
 #  below.
 #
-#  Ensure the Goolge client configuration which is used for FreeRADIUS
+#  Ensure the Google client configuration which is used for FreeRADIUS
 #  has sufficient permissions to read user information, and, if group
 #  membership is part of the FreeRADIUS policy, ensure that the client
 #  can read group information.  This configuration is done on Google's
