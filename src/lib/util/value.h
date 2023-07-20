@@ -251,6 +251,22 @@ typedef enum {
 
 #define _fr_box(_type, _field, _val) (&(fr_value_box_t){ .type = _type, _field = (_val) })
 
+#define fr_box(_val) _Generic((_val), \
+		bool     : _fr_box(FR_TYPE_BOOL, .vb_bool, _val), \
+		int8_t   : _fr_box(FR_TYPE_INT8, .vb_int8, _val), \
+		int16_t  : _fr_box(FR_TYPE_INT16, .vb_int16, _val), \
+		int32_t  : _fr_box(FR_TYPE_INT32, .vb_int32, _val), \
+		int64_t  : _fr_box(FR_TYPE_INT64, .vb_int64, _val), \
+		uint8_t  : _fr_box(FR_TYPE_UINT8, .vb_uint8, _val), \
+		uint16_t : _fr_box(FR_TYPE_UINT16, .vb_uint16, _val), \
+		uint32_t : _fr_box(FR_TYPE_UINT32, .vb_uint32, _val), \
+		uint64_t : _fr_box(FR_TYPE_UINT64, .vb_uint64, _val), \
+		size_t   : _fr_box(FR_TYPE_SIZE, .vb_size, _val), \
+		float  : _fr_box(FR_TYPE_FLOAT32, .vb_float32, _val), \
+		double  : _fr_box(FR_TYPE_FLOAT64, .vb_float64, _val), \
+		char *  : _fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, strlen(_val)) \
+		default  : (void) 0)
+
 #define fr_box_ipaddr(_val)			_fr_box((((_val).af == AF_INET) ? \
 							(((_val).prefix == 32) ?	FR_TYPE_IPV4_ADDR : \
 										FR_TYPE_IPV4_PREFIX) : \
