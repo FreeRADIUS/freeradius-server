@@ -9,22 +9,21 @@ TEST := test.modules
 #  at precursors.
 #
 FILES := $(patsubst $(DIR)/%.unlang,%,$(call FIND_FILES_SUFFIX,$(DIR),*.unlang))
+FILES_SKIP :=
 
 #
-#  Remove things which are known to fail in CI.
-#  Or which are known to have long runtimes...
-#
-#  Also don't run icmp tests on Linux, they require setcap, or root.
+#  Don't run icmp tests on Linux, they require setcap, or root.
 #  @todo - on Linux, *check* for root, or use "getcap" to see if the
 #  unit_test_module binary has the correct permissions.
 #
-ifeq "$(TRAVIS)" "1"
-  FILES_SKIP := $(filter icmp/%,$(FILES))
+ifeq "$(findstring apple,$(AC_HOSTINFO))" ""
+  FILES_SKIP += $(filter icmp/%,$(FILES))
+endif
 
-else ifeq "$(findstring apple,$(AC_HOSTINFO))" ""
-  FILES_SKIP := $(filter icmp/%,$(FILES))
-
-else ifneq "$(RUN_SLOW_TESTS)" "1"
+#
+#  Remove tests which are known to be slow, unless we want them to be run.
+#
+ifneq "$(RUN_SLOW_TESTS)" "1"
   FILES_SKIP += $(filter imap/%,$(FILES))
 endif
 
@@ -59,8 +58,8 @@ endef
 #
 #  Ensure that "rlm_foo.a" is built when we run a module from directory "foo"
 #
-$(foreach x,$(FILES),$(eval $(call MODULE_FILTER,$(firstword $(subst /, ,$x)),$x)))
 FILES := $(filter-out $(FILES_SKIP),$(FILES))
+$(foreach x,$(FILES),$(eval $(call MODULE_FILTER,$(firstword $(subst /, ,$x)),$x)))
 $(eval $(call TEST_BOOTSTRAP))
 
 #
