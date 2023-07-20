@@ -2242,6 +2242,8 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	fr_pair_t	*tlv;
 	bool		found = false;
 
+	if (!fr_type_is_structural(parent_da->type)) return -1;
+
 	/*
 	 *	Allow for nested attributes.
 	 */
