@@ -1103,6 +1103,13 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		return false;
 	}
 
+	/*
+	 *	Secret things are secret.
+	 */
+	if (flags->subtype > FLAG_TAGGED_TUNNEL_PASSWORD) {
+		flags->secret = true;
+	}
+
 	if (flag_concat(flags)) {
 		if (!parent->flags.is_root) {
 			fr_strerror_const("Attributes with the 'concat' flag MUST be at the root of the dictionary");

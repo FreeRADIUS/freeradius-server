@@ -154,7 +154,8 @@ struct value_box_s {
 	/** Type and flags should appear together for packing efficiency
 	 */
 	fr_type_t		_CONST		type;			//!< Type of this value-box, at the start, see pair.h
-	bool					tainted;		//!< i.e. did it come from an untrusted source
+	unsigned int   				tainted : 1;		//!< i.e. did it come from an untrusted source
+	unsigned int   				secret : 1;		//!< Same as #fr_dict_attr_flags_t secret
 	uint16_t		_CONST		safe;			//!< more detailed safety
 
 	fr_value_box_entry_t			entry;			//!< Doubly linked list entry.
