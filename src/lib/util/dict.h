@@ -46,7 +46,7 @@ extern "C" {
 typedef struct dict_attr_s fr_dict_attr_t;
 typedef struct fr_dict fr_dict_t;
 
-#include <freeradius-devel/util/value.h>
+typedef struct value_box_s fr_value_box_t;
 
 /*
  *	Allow public and private versions of the same structures

@@ -21,6 +21,8 @@
  *
  * @copyright 2019 The FreeRADIUS server project
  */
+#include <freeradius-devel/util/value.h>
+
 #include "attrs.h"
 #include "types.h"
 

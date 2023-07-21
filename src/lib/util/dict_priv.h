@@ -32,6 +32,7 @@ extern "C" {
 #include <freeradius-devel/util/dict_ext_priv.h>
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/util/value.h>
 
 #define DICT_POOL_SIZE		(1024 * 1024 * 2)
 #define DICT_FIXUP_POOL_SIZE	(1024)

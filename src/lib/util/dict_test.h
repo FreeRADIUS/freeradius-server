@@ -24,6 +24,7 @@
 RCSIDH(dict_test_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/value.h>
 
 #ifdef __cplusplus
 extern "C" {

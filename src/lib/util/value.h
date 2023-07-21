@@ -438,9 +438,10 @@ void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const 
 {
 	/* coverity[store_writes_const_field] */
 	memcpy((void *) vb, &(fr_value_box_t){
-	       		.type = type,
+			.type = type,
 			.enumv = enumv,
-			.tainted = tainted
+			.tainted = tainted,
+			.secret = enumv && enumv->flags.secret,
 		}, sizeof(*vb));
 	fr_value_box_list_entry_init(vb);
 
