@@ -467,11 +467,12 @@ DIAG_OFF(format-nonliteral)
  * @param[in] ctx	to allocate buffer in.
  * @param[in] fmt	string.
  * @param[in] ap	variadic argument list.
+ * @param[in] secret_rules rules for escaping value-boxes with a "secret" flag set.
  * @return
  *	- The result of string interpolation.
  *	- NULL if OOM.
  */
-char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
+static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap, fr_sbuff_escape_rules_t const *secret_rules)
 {
 	char const	*p = fmt, *end = p + strlen(fmt), *fmt_p = p, *fmt_q = p;
 	char		*out = NULL, *out_tmp;
@@ -663,7 +664,17 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				fr_value_box_t const *in = va_arg(ap_q, fr_value_box_t const *);
 				fr_sbuff_escape_rules_t const *e_rules = NULL;
 
-				if (*(p + 1) == 'V') e_rules = &fr_value_escape_double;
+				/*
+				 *	Value boxes get escaped as double-quoted strings, unless the value-box
+				 *	in question is secret, AND we've been asked to hide secrets.
+				 *
+				 *	Note that the secret_rules only hides secrets of data type "string"
+				 *	and "octets", which should be good enough for most purposes.
+				 */
+				if (*(p + 1) == 'V') {
+					e_rules = &fr_value_escape_double;
+					if (in->secret) e_rules = secret_rules;
+				}
 
 				/*
 				 *	Allocations that are not part of the output
@@ -831,6 +842,18 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 	return out;
 }
+
+char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
+{
+	return fr_vasprintf_internal(ctx, fmt, ap, &fr_value_escape_double);
+}
+
+char *fr_vasprintf_secure(TALLOC_CTX *ctx, char const *fmt, va_list ap)
+{
+	return fr_vasprintf_internal(ctx, fmt, ap, &fr_value_escape_secret);
+}
+
+
 DIAG_ON(format-nonliteral)
 
 /** Special version of asprintf which implements custom format specifiers

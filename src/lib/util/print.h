@@ -41,6 +41,7 @@ size_t		fr_snprint(char *out, size_t outlen, char const *in, ssize_t inlen, char
 size_t		fr_snprint_len(char const *in, ssize_t inlen, char quote);
 char		*fr_asprint(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
 char		*fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap);
+char		*fr_vasprintf_secure(TALLOC_CTX *ctx, char const *fmt, va_list ap);
 char		*fr_asprintf(TALLOC_CTX *ctx, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 ssize_t 	fr_fprintf(FILE *stream, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
