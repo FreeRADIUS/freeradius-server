@@ -138,18 +138,9 @@ fr_slen_t fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr
 }
 
 /*
- * We have two choices here, both unfortunate. We can fill in the fields of fr_value_box_t, so
- * we can refer to sizeof(fr_value_box_t) in the fr_value_box_init() model, or we can determine
- * its size some other way and #define it to make its meaning clear. Both are subject to changes
- * in src/lib/util/value.h and whatever it (transitive closure of #include)s.
- *
- * OK. Actually giving the details of an fr_value_box_t at a level or so of indirection gets you
- * to a type that's defined via macros, not to mention that it's not clear whether there's a way
- * to force alignment in the "compiler" coverity uses on modeling files, which you'd need to get
- * sizeof(fr_value_box_datum_t), which is part of a fr_value_box_t.
+ * Here we can use __coverity_writeall__(), which tells coverity "however big the thing
+ * pointed at is, consider it all written."
  */
-
-#define REAL_SIZEOF_FR_VALUE_BOX_T	64
 
 typedef enum {
 	FR_TYPE_NULL = 0,			//!< Invalid (uninitialised) attribute type.
@@ -215,7 +206,7 @@ typedef struct {
 
 static void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
 {
-	__coverity_write_buffer_bytes__(vb, REAL_SIZEOF_FR_VALUE_BOX_T);
+	__coverity_writeall__(vb);
 }
 
 ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
