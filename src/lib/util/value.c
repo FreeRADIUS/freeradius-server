@@ -369,6 +369,22 @@ fr_sbuff_escape_rules_t fr_value_escape_double = {
 	.do_oct = true
 };
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wgnu-designator"
+#endif
+
+/** Escape secret fields by simply mashing all data to '.'
+ *
+ *  The length of the secret still leaks, but that is likely fine.  Fixing that is more work.
+ *
+ */
+fr_sbuff_escape_rules_t fr_value_escape_secret = {
+	.name = "secret",
+	.subs = {
+		[ 0 ... 255 ] = '.',
+	},
+};
+
 fr_sbuff_escape_rules_t fr_value_escape_single = {
 	.name = "single",
 	.chr = '\\',
