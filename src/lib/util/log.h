@@ -103,6 +103,8 @@ typedef struct {
 
 	bool			print_level;	//!< sometimes we don't want log levels printed
 
+	bool			suppress_secrets; //!< suppress secrets when printing to this destination
+
 	fr_log_timestamp_t	timestamp;	//!< Prefix log messages with timestamps.
 
 	int			fd;		//!< File descriptor to write messages to.

@@ -115,6 +115,7 @@ static const CONF_PARSER initial_log_config[] = {
 	{ FR_CONF_OFFSET("local_state_dir", FR_TYPE_STRING, main_config_t, local_state_dir), .dflt = "${prefix}/var"},
 	{ FR_CONF_OFFSET("logdir", FR_TYPE_STRING, main_config_t, log_dir), .dflt = "${local_state_dir}/log"},
 	{ FR_CONF_OFFSET("file", FR_TYPE_STRING, main_config_t, log_file), .dflt = "${logdir}/radius.log" },
+	{ FR_CONF_OFFSET("suppress_secrets", FR_TYPE_BOOL, main_config_t, suppress_secrets), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

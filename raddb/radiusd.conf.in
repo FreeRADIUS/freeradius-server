@@ -302,6 +302,23 @@ log {
 	#  don't want to change this.
 	#
 	syslog_facility = daemon
+
+	#  Suppress "secret" values when printing them in debug mode.
+	#
+	#
+	#  Setting this to "yes" means that the server prints a series
+	#  of dots:
+	#
+	#	.......
+	#
+	#  instead of the value, for attributes which contain secret
+	#  information.  e.g. User-Name, Tunnel-Password, etc.
+	#
+	#  This configuration is disabled by default.  It is extremely
+	#  important for administrators to be able to debug user logins
+	#  by seeing what is actually being sent.
+	#
+#	suppress_secrets = no
 }
 
 #

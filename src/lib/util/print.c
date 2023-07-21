@@ -467,12 +467,12 @@ DIAG_OFF(format-nonliteral)
  * @param[in] ctx	to allocate buffer in.
  * @param[in] fmt	string.
  * @param[in] ap	variadic argument list.
- * @param[in] secret_rules rules for escaping value-boxes with a "secret" flag set.
+ * @param[in] suppress_secrets as described
  * @return
  *	- The result of string interpolation.
  *	- NULL if OOM.
  */
-static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap, fr_sbuff_escape_rules_t const *secret_rules)
+static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap, bool suppress_secrets)
 {
 	char const	*p = fmt, *end = p + strlen(fmt), *fmt_p = p, *fmt_q = p;
 	char		*out = NULL, *out_tmp;
@@ -668,12 +668,11 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 				 *	Value boxes get escaped as double-quoted strings, unless the value-box
 				 *	in question is secret, AND we've been asked to hide secrets.
 				 *
-				 *	Note that the secret_rules only hides secrets of data type "string"
-				 *	and "octets", which should be good enough for most purposes.
+				 *	Note that the secret_rules only hides secrets of data type "string",
+				 *	which should be good enough for most purposes.
 				 */
 				if (*(p + 1) == 'V') {
 					e_rules = &fr_value_escape_double;
-					if (in->secret) e_rules = secret_rules;
 				}
 
 				/*
@@ -681,7 +680,10 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 				 *	string need to occur in the NULL ctx so we don't fragment
 				 *	any pool associated with it.
 				 */
-				if (in) {
+				if (in->secret && suppress_secrets) {
+					subst = talloc_typed_strdup(NULL, "<<< secret >>>");
+
+				} else if (in) {
 					fr_value_box_aprint(NULL, &subst, in, e_rules);
 					if (!subst) {
 						talloc_free(out);
@@ -845,12 +847,12 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 
 char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 {
-	return fr_vasprintf_internal(ctx, fmt, ap, &fr_value_escape_double);
+	return fr_vasprintf_internal(ctx, fmt, ap, false);
 }
 
 char *fr_vasprintf_secure(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 {
-	return fr_vasprintf_internal(ctx, fmt, ap, &fr_value_escape_secret);
+	return fr_vasprintf_internal(ctx, fmt, ap, true);
 }
 
 

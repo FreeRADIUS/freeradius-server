@@ -458,7 +458,11 @@ print_fmt:
 	 *  running unit tests which generate errors under CI.
 	 */
 	va_copy(aq, ap);
-	fmt_exp = fr_vasprintf(pool, fmt, aq);
+	if (!log_dst->suppress_secrets) {
+		fmt_exp = fr_vasprintf(pool, fmt, aq);
+	} else {
+		fmt_exp = fr_vasprintf_secure(pool, fmt, aq);
+	}
 	va_end(aq);
 
 	/*

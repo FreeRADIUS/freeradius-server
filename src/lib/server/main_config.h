@@ -62,6 +62,7 @@ struct main_config_s {
 							//!< timing out.
 
 	bool		drop_requests;			//!< Administratively disable request processing.
+	bool		suppress_secrets;		//!< suppress secrets (or not)
 
 	char const	*log_dir;
 	char const	*local_state_dir;

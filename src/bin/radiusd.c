@@ -346,6 +346,7 @@ int main(int argc, char *argv[])
 	default_log.dst = L_DST_NULL;
 	default_log.fd = -1;
 	default_log.print_level = true;
+	default_log.suppress_secrets = true;
 
 	/*
 	 *  Set the panic action and enable other debugging facilities
@@ -450,6 +451,8 @@ int main(int argc, char *argv[])
 			config->spawn_workers = false;
 			config->daemonize = false;
 			fr_debug_lvl += 2;
+			if (fr_debug_lvl > 2) default_log.suppress_secrets = false;
+
 	do_stdout:
 			default_log.dst = L_DST_STDOUT;
 			default_log.fd = STDOUT_FILENO;
@@ -457,6 +460,7 @@ int main(int argc, char *argv[])
 
 		case 'x':
 			fr_debug_lvl++;
+			if (fr_debug_lvl > 2) default_log.suppress_secrets = false;
 			break;
 
 		default:
@@ -596,6 +600,8 @@ int main(int argc, char *argv[])
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
 	if (main_config_init(config) < 0) EXIT_WITH_FAILURE;
+
+	if (!config->suppress_secrets) default_log.suppress_secrets = false;
 
 	/*
 	 *  Check we're the only process using this config.
