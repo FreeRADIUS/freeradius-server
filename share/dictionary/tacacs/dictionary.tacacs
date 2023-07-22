@@ -136,7 +136,7 @@ VALUE	Accounting-Flags		Watchdog-Update		10
 #  However, they need to be explicitly copied to a RADIUS equivalent in order
 #  for them to work in RADIUS.
 #
-DEFINE	User-Password				string
+DEFINE	User-Password				string secret
 DEFINE	CHAP-Password				octets[17]
 DEFINE	CHAP-Challenge				octets
 DEFINE	MS-CHAP-Response			octets[50]
