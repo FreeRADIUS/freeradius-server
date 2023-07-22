@@ -114,6 +114,91 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const 
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
+/** Print one attribute and value to a string with escape rules
+ *
+ *  Similar to fr_pair_print(), but secrets are omitted.  This function duplicates parts of the functionality
+ *  of fr_pair_print(). fr_pair_print_value_quoted(), and fr_value_box_print_quoted(), but for the special
+ *  case of secure strings.
+ *
+ *  Note that only secrets of type "string" and "octets" are omitted.  Other "secret" data types are still
+ *  printed as-is.
+ *
+ *  "octets" are still printed as "<<< secret >>>".  Which won't parse correctly, but that's fine.  Because
+ *  omitted data is not meant to be parsed into real data.
+ *
+ * @param[in] out	Where to write the string.
+ * @param[in] parent	If not NULL, only print OID components from
+ *			this parent to the VP.
+ * @param[in] vp	to print.
+
+ * @return
+ *	- < 0 on error
+ *	- Length of data written to out.
+ *	- value >= outlen on truncation.
+ */
+ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const *vp)
+{
+	char const		*token = NULL;
+	fr_sbuff_t		our_out = FR_SBUFF(out);
+	fr_dict_attr_t const	*parent_da = NULL;
+
+	PAIR_VERIFY(vp);
+
+	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
+		token = fr_tokens[vp->op];
+	} else {
+		token = "<INVALID-TOKEN>";
+	}
+
+	if (parent && (parent->vp_type != FR_TYPE_GROUP)) parent_da = parent->da;
+
+	if (vp->da->flags.is_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
+	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent_da, vp->da, false);
+	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
+	FR_SBUFF_IN_STRCPY_RETURN(&our_out, token);
+	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
+
+	if (fr_type_is_leaf(vp->vp_type)) {
+		switch (vp->vp_type) {
+		case FR_TYPE_STRING:
+			if (vp->data.secret) goto secret;
+			FALL_THROUGH;
+
+		case FR_TYPE_DATE:
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
+			FR_SBUFF_RETURN(fr_value_box_print, &our_out, &vp->data, &fr_value_escape_double);
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
+			break;
+
+		case FR_TYPE_OCTETS:
+			if (vp->data.secret) {
+			secret:
+				FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "<<< secret >>>");
+				break;
+			}
+			FALL_THROUGH;
+
+		default:
+			if (fr_value_box_print(&our_out, &vp->data, NULL) < 0) return -1;
+			break;
+		}
+	} else {
+		fr_pair_t *child;
+		fr_dcursor_t cursor;
+
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ');
+		for (child = fr_pair_dcursor_init(&cursor, &vp->vp_group);
+		     child != NULL;
+		     child = fr_dcursor_next(&cursor)) {
+			FR_SBUFF_RETURN(fr_pair_print_secure, &our_out, vp, child);
+			if (fr_dcursor_next_peek(&cursor)) FR_SBUFF_IN_CHAR_RETURN(&our_out, ',', ' ');
+		}
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ', '}');
+	}
+
+	FR_SBUFF_SET_RETURN(out, &our_out);
+}
+
 /** Print one attribute and value to FP
  *
  * Complete string with '\\t' and '\\n' is written to buffer before printing to

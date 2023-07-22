@@ -680,7 +680,7 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 				 *	string need to occur in the NULL ctx so we don't fragment
 				 *	any pool associated with it.
 				 */
-				if (in->secret && suppress_secrets) {
+				if (unlikely(in->secret && suppress_secrets)) {
 					subst = talloc_typed_strdup(NULL, "<<< secret >>>");
 
 				} else if (in) {
@@ -804,7 +804,12 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 				}
 
 				PAIR_VERIFY(in);
-				fr_pair_aprint(NULL, &subst, NULL, in);
+
+				if (unlikely(in->data.secret && suppress_secrets)) {
+					fr_pair_aprint_secure(NULL, &subst, NULL, in);
+				} else {
+					fr_pair_aprint(NULL, &subst, NULL, in);
+				}
 			}
 				goto do_splice;
 
