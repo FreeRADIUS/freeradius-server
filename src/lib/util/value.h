@@ -261,22 +261,6 @@ typedef enum {
 
 #define _fr_box(_type, _field, _val) (&(fr_value_box_t){ .type = _type, _field = (_val) })
 
-#define fr_box(_val) _Generic((_val), \
-		bool     : _fr_box(FR_TYPE_BOOL, .vb_bool, _val), \
-		int8_t   : _fr_box(FR_TYPE_INT8, .vb_int8, _val), \
-		int16_t  : _fr_box(FR_TYPE_INT16, .vb_int16, _val), \
-		int32_t  : _fr_box(FR_TYPE_INT32, .vb_int32, _val), \
-		int64_t  : _fr_box(FR_TYPE_INT64, .vb_int64, _val), \
-		uint8_t  : _fr_box(FR_TYPE_UINT8, .vb_uint8, _val), \
-		uint16_t : _fr_box(FR_TYPE_UINT16, .vb_uint16, _val), \
-		uint32_t : _fr_box(FR_TYPE_UINT32, .vb_uint32, _val), \
-		uint64_t : _fr_box(FR_TYPE_UINT64, .vb_uint64, _val), \
-		size_t   : _fr_box(FR_TYPE_SIZE, .vb_size, _val), \
-		float  : _fr_box(FR_TYPE_FLOAT32, .vb_float32, _val), \
-		double  : _fr_box(FR_TYPE_FLOAT64, .vb_float64, _val), \
-		char *  : _fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, strlen(_val)) \
-		default  : (void) 0)
-
 #define fr_box_ipaddr(_val)			_fr_box((((_val).af == AF_INET) ? \
 							(((_val).prefix == 32) ?	FR_TYPE_IPV4_ADDR : \
 										FR_TYPE_IPV4_PREFIX) : \
@@ -335,6 +319,46 @@ typedef enum {
 #define fr_box_time_delta_nsec(_val)		fr_box_time_delta_with_res((_val), FR_TIME_RES_NSEC)
 
 #define fr_box_time_delta_usec(_val)		fr_box_time_delta_with_res((_val), FR_TIME_RES_USEC)
+
+/** Create an ephemeral box
+ *
+ * @note This likely shouldn't be used for variable width integers like 'int'
+ * as it obscures the underlying type.
+ *
+ * @param[in] _val	to box.
+ */
+#define fr_box(_val) _Generic((_val), \
+	fr_ipaddr_t *		: fr_box_ipaddr, \
+	fr_ipaddr_t const *	: fr_box_ipaddr, \
+	fr_ethernet_t *		: fr_box_ether, \
+	fr_ethernet_t const *	: fr_box_ether, \
+	bool     		: fr_box_bool, \
+	int8_t   		: fr_box_int8, \
+	int16_t			: fr_box_int16, \
+	int32_t			: fr_box_int32, \
+	int64_t			: fr_box_int16, \
+	uint8_t  		: fr_box_uint8, \
+	uint16_t		: fr_box_uint16, \
+	uint32_t		: fr_box_uint32, \
+	uint64_t		: fr_box_uint64, \
+	size_t			: fr_box_size, \
+	float			: fr_box_float32, \
+	double 			: fr_box_float64 \
+)(_val)
+
+/** Create an ephemeral boxed value with a variable length
+ *
+ * @param[in] _val	C variable to assign value from.
+ * @param[in] _len	of C variable.
+ */
+#define fr_box_len( _val, _len) \
+_Generic((_val), \
+	char *			: fr_box_strvalue_len, \
+	char const *		: fr_box_strvalue_len, \
+	uint8_t *		: fr_box_octets, \
+	uint8_t const *		: fr_box_octets \
+)(_val, _len)
+
 /** @} */
 
 /** @name Type checking macros
