@@ -2725,7 +2725,9 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	 *	unless one already exists.
 	 */
 	if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
-	    !home->tls &&
+#ifdef WITH_RADIUSV11
+	    !request->proxy->radiusv11 &&
+#endif
 	    !fr_pair_find_by_num(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY)) {
 		fr_pair_make(request->proxy, &request->proxy->vps,
 			 "Message-Authenticator", "0x00",
