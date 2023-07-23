@@ -2635,7 +2635,7 @@ typedef enum {
 } ocsp_status_t;
 
 static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
-				fr_tls_server_conf_t *conf)
+				STACK_OF(X509) *untrusted, fr_tls_server_conf_t *conf)
 {
 	OCSP_CERTID	*certid;
 	OCSP_REQUEST	*req;
@@ -2816,7 +2816,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		REDEBUG("ocsp: Response has wrong nonce value");
 		goto ocsp_end;
 	}
-	if (OCSP_basic_verify(bresp, NULL, store, 0)!=1){
+	if (OCSP_basic_verify(bresp, untrusted, store, 0)!=1){
 		REDEBUG("ocsp: Couldn't verify OCSP basic response");
 		goto ocsp_end;
 	}
@@ -3453,7 +3453,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				 *	run the external verification routine.  If it's marked as
 				 *	"skip verify on OK", then we don't do verify.
 				 */
-				my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, conf);
+				my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, untrusted, conf);
 				if (my_ok != OCSP_STATUS_FAILED) {
 					do_verify = !conf->verify_skip_if_ocsp_ok;
 				}
