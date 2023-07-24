@@ -693,7 +693,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 			RDEBUG2("(TLS) Flushing X509 store to re-read data from ca_path dir");
 
 			if ((new_cert_store = fr_init_x509_store(conf)) == NULL) {
-				RERROR("(TLS) Error replacing X509 store, out of memory (?)", conf->name);
+				RERROR("(TLS) %s - Error replacing X509 store, out of memory (?)", conf->name);
 			} else {
 				if (conf->old_x509_store) X509_STORE_free(conf->old_x509_store);
 				/*
