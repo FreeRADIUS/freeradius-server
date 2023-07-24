@@ -1246,23 +1246,26 @@ do {\
 	} /* there's an ENV subsection */
 
 	/*
+	 *	Parse log section of main config.
+	 */
+	if (cf_section_rules_push(cs, initial_server_config) < 0) {
+		fprintf(stderr, "%s: Error: Failed pushing rules for log {} section.\n",
+			config->name);
+		goto failure;
+	}
+
+	DEBUG("Parsing initial logging configuration.");
+	if (cf_section_parse(config, config, cs) < 0) {
+		fprintf(stderr, "%s: Error: Failed to parse log{} section.\n",
+			config->name);
+		goto failure;
+	}
+
+	/*
 	 *	If there was no log destination set on the command line,
 	 *	set it now.
 	 */
 	if (default_log.dst == L_DST_NULL) {
-		if (cf_section_rules_push(cs, initial_server_config) < 0) {
-			fprintf(stderr, "%s: Error: Failed pushing rules for log {} section.\n",
-				config->name);
-			goto failure;
-		}
-
-		DEBUG("Parsing initial logging configuration.");
-		if (cf_section_parse(config, config, cs) < 0) {
-			fprintf(stderr, "%s: Error: Failed to parse log{} section.\n",
-				config->name);
-			goto failure;
-		}
-
 		if (!config->log_dest) {
 			fprintf(stderr, "%s: Error: No log destination specified.\n",
 				config->name);
