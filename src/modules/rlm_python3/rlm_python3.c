@@ -1135,6 +1135,8 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
 		PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
 		main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
+		PyEval_SaveThread();                    /* Unlock GIL */
+
 	}
 	rad_assert(PyEval_ThreadsInitialized());
 
@@ -1203,8 +1205,6 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		inst->pythonconf_dict = PyObject_GetAttrString(inst->module, "config");
 		Py_IncRef(inst->pythonconf_dict);
 	}
-
-	PyEval_SaveThread();
 
 	return 0;
 }

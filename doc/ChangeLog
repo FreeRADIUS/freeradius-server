@@ -17,6 +17,7 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	  canonical attribute
 	* Make FreeRADIUS-Server-EMA* attributes work again for home server
 	  exponential moving average statistics.
+	* Fix rlm_python3 dead-lock in GIL limiting to have more than one instance. Fixes #5111
 
 FreeRADIUS 3.2.3 Fri 26 May 2023 12:00:00 EDT urgency=low
 	Configuration changes
