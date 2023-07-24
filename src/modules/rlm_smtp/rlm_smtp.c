@@ -598,10 +598,12 @@ static int header_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst)
 		fr_sbuff_init_talloc(uctx, &conf_buffer, &conf_ctx, 256, SIZE_MAX);
 
 		/* Format the conf item to be a valid SMTP header */
-		/* coverity[check_return] */
-		fr_sbuff_in_bstrncpy(&conf_buffer, header->name, strlen(header->name));
-		fr_sbuff_in_strcpy(&conf_buffer, ": ");
-		fr_sbuff_in_bstrncpy(&conf_buffer, expanded_rhs, strlen(expanded_rhs));
+		if (unlikely((fr_sbuff_in_bstrncpy(&conf_buffer, header->name, strlen(header->name)) < 0) ||
+			     (fr_sbuff_in_strcpy(&conf_buffer, ": ") < 0) ||
+			     (fr_sbuff_in_bstrncpy(&conf_buffer, expanded_rhs, strlen(expanded_rhs)) < 0))) {
+			RDEBUG2("Skipping: could not generate SMTP header");
+			continue;
+		}
 
 		/* Add the header to the curl slist */
 		uctx->header = curl_slist_append(uctx->header, fr_sbuff_buff(&conf_buffer));
