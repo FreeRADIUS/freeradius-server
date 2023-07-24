@@ -5261,7 +5261,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		 */
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{');
 		FR_SBUFF_RETURN(fr_value_box_list_concat_as_string,
-				NULL, &our_out, UNCONST(fr_value_box_list_t *, &data->vb_group),
+				NULL, NULL, &our_out, UNCONST(fr_value_box_list_t *, &data->vb_group),
 				", ", (sizeof(", ") - 1), e_rules,
 				0, false);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
@@ -5322,6 +5322,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  *
  * @param[out] tainted		If nonnull, will be set to true if any input boxes are tainted.
  *				bool pointed to must be initialised.
+ * @param[out] secret		If nonnull, will be set to true if any input boxes are secret.
  * @param[out] sbuff		to write the result of the concatenation to.
  * @param[in] list		to concatenate.
  * @param[in] sep		Insert a separator between the values.
@@ -5338,7 +5339,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  *	- <0 how many additional bytes we would have needed to
  *	  concat the next box.
  */
-ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
+ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
 					   fr_value_box_list_action_t proc_action, bool flatten)
 {
@@ -5351,7 +5352,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
 		switch (vb->type) {
 		case FR_TYPE_GROUP:
 			if (!flatten) goto print;
-			slen = fr_value_box_list_concat_as_string(tainted, &our_sbuff, &vb->vb_group,
+			slen = fr_value_box_list_concat_as_string(tainted, secret, &our_sbuff, &vb->vb_group,
 								  sep, sep_len, e_rules,
 								  proc_action, flatten);
 			break;
@@ -5400,6 +5401,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
 	 */
 	fr_value_box_list_foreach_safe(list, vb) {
 		if (tainted && vb->tainted) *tainted = true;
+		if (secret && vb->secret) *secret = true;
 
 		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
 		if (vb_should_free_value(proc_action)) fr_value_box_clear(vb);
@@ -5415,6 +5417,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
  *
  * @param[out] tainted		If nonnull, will be set to true if any input boxes are tainted.
  *				bool pointed to must be initialised.
+ * @param[out] secret		If nonnull, will be set to true if any input boxes are secret.
  * @param[out] dbuff		to write the result of the concatenation to.
  * @param[in] list		to concatenate.
  * @param[in] sep		Insert a separator between the values.
@@ -5429,7 +5432,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
  *	- <0 how many additional bytes we would have needed to
  *	  concat the next box.
  */
-ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
+ssize_t fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
 					   uint8_t const *sep, size_t sep_len,
 					   fr_value_box_list_action_t proc_action, bool flatten)
 {
@@ -5443,7 +5446,7 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_
 		switch (vb->type) {
 		case FR_TYPE_GROUP:
 			if (!flatten) goto cast;
-			slen = fr_value_box_list_concat_as_octets(tainted, &our_dbuff, &vb->vb_group,
+			slen = fr_value_box_list_concat_as_octets(tainted, secret, &our_dbuff, &vb->vb_group,
 								  sep, sep_len,
 								  proc_action, flatten);
 			break;
@@ -5500,6 +5503,7 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_
 	 */
 	fr_value_box_list_foreach_safe(list, vb) {
 		if (tainted && vb->tainted) *tainted = true;
+		if (secret && vb->secret) *secret = true;
 
 		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
 		if (vb_should_free_value(proc_action)) fr_value_box_clear(vb);
@@ -5541,6 +5545,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 
 	fr_value_box_t			*head_vb = fr_value_box_list_head(list);
 	bool				tainted = false;
+	bool				secret = true;
 
 	fr_value_box_entry_t		entry;
 
@@ -5586,7 +5591,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			 *	Note that we don't convert 'octets' to a printable string
 			 *	here.  Doing so breaks the keyword tests.
 			 */
-			if (fr_value_box_list_concat_as_string(&tainted, &sbuff, list,
+			if (fr_value_box_list_concat_as_string(&tainted, &secret, &sbuff, list,
 							       NULL, 0, NULL,
 							       FR_VALUE_BOX_LIST_REMOVE, flatten) < 0) {
 				fr_strerror_printf("Concatenation exceeded max_size (%zu)", max_size);
@@ -5609,7 +5614,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			/*
 			 *	Concat the rest of the children...
 			 */
-			if (fr_value_box_list_concat_as_string(&tainted, &sbuff, list,
+			if (fr_value_box_list_concat_as_string(&tainted, &secret, &sbuff, list,
 							       NULL, 0, NULL,
 							       proc_action, flatten) < 0) {
 				fr_value_box_list_insert_head(list, head_vb);
@@ -5618,14 +5623,15 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
 			fr_value_box_bstrndup_shallow(out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted);
+			out->secret = secret;
 			break;
 
 		case FR_TYPE_OCTETS:
-			if (fr_value_box_list_concat_as_octets(&tainted, &dbuff, list,
+			if (fr_value_box_list_concat_as_octets(&tainted, &secret, &dbuff, list,
 							       NULL, 0,
 							       FR_VALUE_BOX_LIST_REMOVE, flatten) < 0) goto error;
 
-			if (fr_value_box_list_concat_as_octets(&tainted, &dbuff, list,
+			if (fr_value_box_list_concat_as_octets(&tainted, &secret, &dbuff, list,
 							       NULL, 0,
 							       proc_action, flatten) < 0) {
 				fr_value_box_list_insert_head(list, head_vb);
@@ -5651,7 +5657,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 	} else {
 		switch (type) {
 		case FR_TYPE_STRING:
-			if (fr_value_box_list_concat_as_string(&tainted, &sbuff, list,
+			if (fr_value_box_list_concat_as_string(&tainted, &secret, &sbuff, list,
 							       NULL, 0, NULL,
 							       proc_action, flatten) < 0) goto error;
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
@@ -5662,7 +5668,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			break;
 
 		case FR_TYPE_OCTETS:
-			if (fr_value_box_list_concat_as_octets(&tainted, &dbuff, list,
+			if (fr_value_box_list_concat_as_octets(&tainted, &secret, &dbuff, list,
 							       NULL, 0,
 							       proc_action, flatten) < 0) goto error;
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);

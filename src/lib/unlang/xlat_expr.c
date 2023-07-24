@@ -686,7 +686,7 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_va
 			/*
 			 *	Concatenate everything, and escape untrusted inputs.
 			 */
-			if (fr_value_box_list_concat_as_string(NULL, agg, &list, NULL, 0, &regex_escape_rules,
+			if (fr_value_box_list_concat_as_string(NULL, NULL, agg, &list, NULL, 0, &regex_escape_rules,
 							       FR_VALUE_BOX_LIST_FREE_BOX, true) < 0) {
 				RPEDEBUG("Failed concatenating regular expression string");
 				talloc_free(regmatch);
@@ -759,7 +759,7 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *      flag to the RHS argument is ignored.  So we just
 	 *      concatenate it here.  We escape the various untrusted inputs.
 	 */
-	if (fr_value_box_list_concat_as_string(NULL, agg, &rctx->list, NULL, 0, &regex_escape_rules,
+	if (fr_value_box_list_concat_as_string(NULL, NULL, agg, &rctx->list, NULL, 0, &regex_escape_rules,
 					       FR_VALUE_BOX_LIST_FREE_BOX, true) < 0) {
 		RPEDEBUG("Failed concatenating regular expression string");
 		return XLAT_ACTION_FAIL;
@@ -1556,7 +1556,7 @@ static xlat_action_t xlat_exists_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	flag to the RHS argument is ignored.  So we just
 	 *	concatenate it here.  We escape the various untrusted inputs.
 	 */
-	if (fr_value_box_list_concat_as_string(NULL, agg, &rctx->list, NULL, 0, NULL,
+	if (fr_value_box_list_concat_as_string(NULL, NULL, agg, &rctx->list, NULL, 0, NULL,
 					       FR_VALUE_BOX_LIST_FREE_BOX, true) < 0) {
 		RPEDEBUG("Failed concatenating attribute name string");
 		return XLAT_ACTION_FAIL;

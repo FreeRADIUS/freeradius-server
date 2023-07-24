@@ -1080,15 +1080,15 @@ ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  *
  * @{
  */
-ssize_t 	fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
+ssize_t 	fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   	  char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
 					   	  fr_value_box_list_action_t proc_action, bool flatten)
-		CC_HINT(nonnull(2,3));
+		CC_HINT(nonnull(3,4));
 
-ssize_t		fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
+ssize_t		fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
 						   uint8_t const *sep, size_t sep_len,
 						   fr_value_box_list_action_t proc_action, bool flatten)
-		CC_HINT(nonnull(2,3));
+		CC_HINT(nonnull(3,4));
 
 int		fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 						  fr_value_box_t *out, fr_value_box_list_t *list, fr_type_t type,
