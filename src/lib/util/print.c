@@ -790,7 +790,11 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 					goto do_splice;
 				}
 
-				subst = fr_value_box_list_aprint(NULL, in, NULL, &fr_value_escape_double);
+				if (suppress_secrets) {
+					subst = fr_value_box_list_aprint_secure(NULL, in, NULL, &fr_value_escape_double);
+				} else {
+					subst = fr_value_box_list_aprint(NULL, in, NULL, &fr_value_escape_double);
+				}
 			}
 				goto do_splice;
 
