@@ -5753,6 +5753,64 @@ char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list,
 	return aggr;
 }
 
+/** Concatenate the string representations of a list of value boxes together hiding "secret" values
+ *
+ * @param[in] ctx	to allocate the buffer in.
+ * @param[in] list	of value boxes.
+ * @param[in] delim	to insert between value box values.
+ * @param[in] e_rules	to control escaping of the concatenated elements.
+ * @return
+ *	- NULL on error.
+ *	- The concatenation of the string values of the value box list on success.
+ */
+char *fr_value_box_list_aprint_secure(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
+				      fr_sbuff_escape_rules_t const *e_rules)
+{
+	fr_value_box_t const	*vb = fr_value_box_list_head(list);
+	char			*aggr, *td = NULL;
+	TALLOC_CTX		*pool = NULL;
+
+	if (!vb) return NULL;
+
+	if (unlikely (vb->secret)) {
+		aggr = talloc_typed_strdup(ctx, "<<< secret >>>");
+	} else {
+		fr_value_box_aprint(ctx, &aggr, vb, e_rules);
+	}
+	if (!aggr) return NULL;
+	if (!fr_value_box_list_next(list, vb)) return aggr;
+
+	/*
+	 *	If we're aggregating more values,
+	 *	allocate a temporary pool.
+	 */
+	pool = talloc_pool(NULL, 255);
+	if (delim) td = talloc_typed_strdup(pool, delim);
+
+	while ((vb = fr_value_box_list_next(list, vb))) {
+		char *str, *new_aggr;
+
+		if (unlikely (vb->secret)) {
+			str = talloc_typed_strdup(pool, "<<< secret >>>");
+		} else {
+			fr_value_box_aprint(pool, &str, vb, e_rules);
+		}
+		if (!str) continue;
+
+		new_aggr = talloc_buffer_append_variadic_buffer(ctx, aggr, 2, td, str);
+		if (unlikely(!new_aggr)) {
+			talloc_free(aggr);
+			talloc_free(pool);
+			return NULL;
+		}
+		aggr = new_aggr;
+		talloc_free(str);
+	}
+	talloc_free(pool);
+
+	return aggr;
+}
+
 /** Hash the contents of a value box
  *
  */

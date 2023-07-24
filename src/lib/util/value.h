@@ -1103,6 +1103,10 @@ char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list
 					  fr_sbuff_escape_rules_t const *e_rules)
 		CC_HINT(nonnull(2));
 
+char		*fr_value_box_list_aprint_secure(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
+						 fr_sbuff_escape_rules_t const *e_rules)
+		CC_HINT(nonnull(2));
+
 int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in)
 		CC_HINT(nonnull(2,3));
 
