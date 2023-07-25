@@ -2179,7 +2179,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 			time_t expires;
 
 			if (ocsp_asn1time_to_epoch(&expires, vp->vp_strvalue) < 0) {
-				RDEBUG2("(TLS) - Failed getting certificate expiration, removing cache entry for session %s - %s", conf->name, buffer, fr_strerror());
+				RDEBUG2("(TLS) %s - Failed getting certificate expiration, removing cache entry for session %s - %s", conf->name, buffer, fr_strerror());
 				SSL_SESSION_free(sess);
 				sess = NULL;
 				goto error;
