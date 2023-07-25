@@ -5545,7 +5545,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 
 	fr_value_box_t			*head_vb = fr_value_box_list_head(list);
 	bool				tainted = false;
-	bool				secret = true;
+	bool				secret = false;
 
 	fr_value_box_entry_t		entry;
 
