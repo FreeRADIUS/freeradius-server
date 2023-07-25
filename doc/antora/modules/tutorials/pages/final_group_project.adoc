@@ -14,20 +14,24 @@ For this task you will need at least two participants.
 
 Each participant should decide on the following:
 
-* A realm e.g. example.com, that their RADIUS server will respond to request for
+* A realm e.g. `example.com`, that their RADIUS server will respond to request for
   the realm must be unique within the group.  This will be referred to as
   `your_realm` in the rest of the text.
 * A shared secret for the realm `your_secret`.
 * A backend module (`your_module`) to use to authenticate their users. Again,
   this should be unique within the group.
   Options are:
++
+--
 ** `files`
 ** `ldap`
 ** `redis`
 ** `rest`
 ** `sql`
-  For everything except `files` it's recommended to pick a module where you're
-  familiar with the backend protocol.
+--
++
+For everything except `files` it's recommended to pick a module where you're
+familiar with the backend protocol.
 * A set of credentials (`your_user`, `your_password`). These should not be
   sensitive credentials as they will be seen by the rest of the group.
 

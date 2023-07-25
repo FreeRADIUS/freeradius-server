@@ -56,7 +56,7 @@ Once the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] validation tests pa
 next step is to xref:modules/ldap/base_configuration/index.adoc[configure the LDAP module].
 
 OpenLDAP configuration examples detailing how to install appropriate schemas and
-populate the server with test data will be provided a the beginning of each
+populate the server with test data will be provided at the beginning of each
 tutorial section.
 
 == Sections in this tutorial

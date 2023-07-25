@@ -1,6 +1,6 @@
 = Expr Module
 
-The `expr` module has been remove, and replaced with an equivalent
+The `expr` module has been removed, and replaced with an equivalent
 `%{expr:...}` in the xref:reference:xlat/builtin.adoc[built-in
 expansions].  The parameters to the `%{expr:...}` is an
 xref:reference:unlang/expression.adoc[Unlang expression].
