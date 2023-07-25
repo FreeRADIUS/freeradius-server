@@ -1296,6 +1296,7 @@ do {\
 					config->name);
 				goto failure;
 			}
+			default_log.file = config->log_file;
 			break;
 
 		default:
