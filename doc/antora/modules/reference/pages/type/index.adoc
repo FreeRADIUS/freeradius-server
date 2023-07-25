@@ -55,7 +55,7 @@ contains special characters that may otherwise confuse the parser.
 `"192.168.0.2"`:: xref:type/string/double.adoc[Double-quoted string].
 +
 The contents of the string are dynamically expanded as described in
-the xref:unlang/xlat/index.adoc[dynamic expansion] page.  The
+the xref:xlat/index.adoc[dynamic expansion] page.  The
 resulting output is then interpreted as the given data type.
 
 `{backtick}/bin/echo 192.168.0.2{backtick}`:: xref:type/string/backticks.adoc[backtick-quoted string].

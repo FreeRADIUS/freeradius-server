@@ -31,7 +31,6 @@
 *** xref:mods-available/escape.adoc[Escape Module]
 *** xref:mods-available/etc_group.adoc[etc_group Module]
 *** xref:mods-available/exec.adoc[Exec Module]
-*** xref:mods-available/expiration.adoc[Expiration Module]
 *** xref:mods-available/expr.adoc[Expr Module]
 *** xref:mods-available/files.adoc[Files Module]
 *** xref:mods-available/idn.adoc[IDN Module]

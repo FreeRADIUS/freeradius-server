@@ -29,7 +29,7 @@ references, function calls, etc.  The table below gives more examples of expansi
 
 Expansions are used inside of
 xref:type/string/double.adoc[double-quoted strings] and for the
-xref:string/backticks.adoc[back-tick quoted strings]
+xref:type/string/backticks.adoc[back-tick quoted strings]
 
 == Caveats
 
@@ -49,7 +49,7 @@ Other than within a dynamically expanded string, very little character
 escaping is needed. The rules of the enclosing string context
 determine whether or not a space or `"` character needs to be escaped.
 See the ref:type/string/double.adoc[double-quoted strings] and
-xref:string/backticks.adoc[back-tick quoted strings] pages for more
+xref:type/string/backticks.adoc[back-tick quoted strings] pages for more
 information.
 
 .Example

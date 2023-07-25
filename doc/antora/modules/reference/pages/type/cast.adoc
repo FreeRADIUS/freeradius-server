@@ -119,7 +119,7 @@ the hex value of its input, without the leading `0x` characters.
 Casting a `string` value to another data type means _parsing_ the
 string as that data type.
 
-See xref:types/string/double.adoc[double-quoted strings] for examples
+See xref:type/string/double.adoc[double-quoted strings] for examples
 of how double-quoted strings are used.
 
 === Other Data Types

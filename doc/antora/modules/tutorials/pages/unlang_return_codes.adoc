@@ -12,7 +12,7 @@
 
 - xref:reference:unlang/condition/index.adoc[Conditional Expressions]
 - xref:reference:unlang/return_codes[Return Codes]
-- xref:reference:unlang/condition/return_code.adoc[The Return Code Operator]
+- xref:reference:unlang/condition/return_codes.adoc[The Return Code Operator]
 - xref:raddb:mods-available/always.adoc[The Always Module]
 - xref:raddb:mods-available/sometimes.adoc[The Sometimes Module]
 

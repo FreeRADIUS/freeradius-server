@@ -37,7 +37,7 @@
 **** xref:unlang/condition/cmp.adoc[Comparisons]
 **** xref:unlang/condition/expression.adoc[mathematical expressions]
 **** xref:unlang/condition/operands.adoc[Operands]
-**** xref:unlang/condition/return_code.adoc[The Return Code Operator]
+**** xref:unlang/condition/return_codes.adoc[The Return Code Operator]
 **** xref:unlang/condition/eq.adoc[The '==' Operator]
 **** xref:unlang/condition/and.adoc[The '&&' Operator]
 **** xref:unlang/condition/or.adoc[The '||' Operator]

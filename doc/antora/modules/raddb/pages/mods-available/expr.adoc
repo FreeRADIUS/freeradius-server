@@ -1,8 +1,8 @@
 = Expr Module
 
 The `expr` module has been remove, and replaced with an equivalent
-`%{expr:...}` in the xref:xlat/builtin.adoc[built-in expansions].  The
-parameters to the `%{expr:...}` is an
+`%{expr:...}` in the xref:reference:xlat/builtin.adoc[built-in
+expansions].  The parameters to the `%{expr:...}` is an
 xref:reference:unlang/expression.adoc[Unlang expression].
 
 Most people should see no change in functionality.  However, the new

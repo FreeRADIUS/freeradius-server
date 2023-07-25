@@ -16,7 +16,7 @@ image::eap-md5.svg[Fig. EAP-MD5]
 *Programs*: radtest
 
 For this exercise, your are assumed to have previously worked
-through and be familiar with the exercise in xref:new_user.aodc[New User] for
+through and be familiar with the exercise in xref:new_user.adoc[New User] for
 user "bob".
 
 While RADIUS is an authentication protocol in its own right, other

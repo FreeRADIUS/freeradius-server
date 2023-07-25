@@ -23,8 +23,8 @@ are executed.  When _<condition-2>_ evaluates false, then
 _statements-2_ are skipped and _statements-3_ are executed.
 
 As with xref:unlang/if.adoc[if], an `elsif` clause does not need to be followed by
-an xref:unlang/else.adoc[else] statement.  However, any xref:else.adoc[else] statement
-must be the last statement in an `elsif` chain. An arbitrary number of
+an xref:unlang/else.adoc[else] statement.  However, any xref:unlang/else.adoc[else]
+statement must be the last statement in an `elsif` chain. An arbitrary number of
 `elsif` statements can be chained together to create a series of
 conditional checks and statements.
 

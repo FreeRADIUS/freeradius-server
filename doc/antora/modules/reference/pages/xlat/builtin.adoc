@@ -148,7 +148,7 @@ data types into a `string`.  For other data types, using
 `%{string:...}` is not necessary.  For example, for any data type
 other than `octets`, the following equivalency holds true.
 
-See xref:types/string/double.adoc[double-quoted strings] and
+See xref:type/string/double.adoc[double-quoted strings] and
 xref:type/cast.adoc[casting] for examples of how strings are used.
 
 .String expansion equivalents
@@ -927,7 +927,7 @@ Return named subcapture value from the last regular expression evaluated.
 
 Results of named capture groups are available using the `%{regex:<named capture
 group>}` expansion. They will also be accessible using the numbered expansions
-described xref:builtin.adoc#_0_32[above].
+described xref:xlat/builtin.adoc#_0_32[above].
 
 Every time a regular expression is evaluated, whether it matches or not,
 the named capture group values will be cleared.

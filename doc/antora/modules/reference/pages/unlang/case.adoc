@@ -14,7 +14,7 @@ outside of a xref:unlang/switch.adoc[switch] statement.
 
 The _<match>_ text *must* be static.  That is, the _<match>_ text
 cannot be an attribute expansion, or an `xlat`
-xref:type/string/index.adoc[string].
+xref:xlat/index.adoc[string].
 
 The keyword `default` can be used to specify the default action to
 take inside of a xref:unlang/switch.adoc[switch] statement.

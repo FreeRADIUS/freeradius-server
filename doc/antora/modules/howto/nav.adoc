@@ -45,7 +45,7 @@
 *** xref:modules/sqlcounter/index.adoc[SQL-Counter]
 *** xref:modules/sqlippool/index.adoc[SQL-IP-Pool]
 **** xref:modules/sqlippool/generating.adoc[Generating IPs]
-**** xref:modules/sqlippool/inserting.adoc[Inserting IPs into SQL]
+**** xref:modules/sqlippool/insert.adoc[Inserting IPs into SQL]
 ** xref:protocols/index.adoc[Protocols]
 ** Vendors
 *** xref:vendors/ascend.adoc[Ascend]
@@ -56,8 +56,8 @@
 *** xref:tuning/performance-testing.adoc[Performance Testing]
 *** xref:tuning/tuning_guide.adoc[Tuning Guide]
 *** Unlang
-**** xref:unlang_conditions.adoc[Unlang Conditions]
-**** xref:unlang_policies.adoc[Unlang Policies]
+**** xref:tutorials:unlang_update_blocks_and_conditions.adoc[Unlang Conditions]
+**** xref:tutorials:unlang_policies.adoc[Unlang Policies]
 *** EAP
 **** xref:eap-md5.adoc[EAP-MD5]
 **** xref:eap-ttls.adoc[EAP-TTLS]

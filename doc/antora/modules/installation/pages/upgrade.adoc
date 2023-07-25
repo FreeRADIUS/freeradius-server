@@ -124,7 +124,7 @@ sections for their replacements.
 The `log` section has been updated to remove many configuration items
 which are specific to RADIUS, and to Access-Request packets. Please see
 `sites-available/default`, and look for the `Access-Request`
-subsection there. See also xref:raddb/templates.conf.adoc[`templates.conf`]
+subsection there. See also xref:raddb:templates.conf.adoc[`templates.conf`]
 for a way to regain one global configuration for `Access-Request`
 packets.
 
@@ -138,9 +138,9 @@ moved to the `mods-available/` and `mods-enabled/` directories.
 i.e. in version 4, just list the virtual module in a file, as if it
 was a real module.
 
-See the xref:mods-available/redundantsql.adoc[redundant_sql module]
-for more information.  In short, a virtual module can be put into the
-`mods-enabled` directory as with any other module, as with the
+See the xref:raddb:mods-available/redundant_sql.adoc[redundant_sql] module
+for more information.  In short, a virtual module can be put into
+the `mods-enabled` directory as with any other module, as with the
 following text:
 
 [source,unlang]

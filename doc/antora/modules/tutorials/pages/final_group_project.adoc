@@ -62,9 +62,9 @@ multiple upstream home servers.
 
 *Files:*
 
-- `etc/raddb/proxy.conf`
-- `etc/raddb/sites-available/default` (optionally)
-- xref:raddb/mods-available/linelog.adoc[`etc/raddb/mods-available/linelog`] (optionally)
+- xref:raddb:mods-available/radius.adoc[`etc/raddb/mods-available/radius`]
+- xref:raddb:sites-available/default.adoc[`etc/raddb/sites-available/default`] (optionally)
+- xref:raddb:mods-available/linelog.adoc[`etc/raddb/mods-available/linelog`] (optionally)
 
 *Time:* 20-30 minutes
 
@@ -100,7 +100,7 @@ The local realm should not have "nostrip" set.
 
 *Files:*
 
-- `etc/raddb/clients.conf`
+- xref:raddb:clients.conf.adoc[`etc/raddb/clients.conf`]
 
 *Time*: 15-20 minutes
 
@@ -143,9 +143,9 @@ login, retrieve the user's password and store it in
 
 - xref:raddb:mods-available/suffix.adoc[`etc/raddb/mods-available/suffix`]
 - xref:raddb:mods-available/files.adoc[`etc/raddb/mods-available/files`]
-- `etc/raddb/users`
+- `etc/raddb/mods-config/files/authorize`
 - xref:raddb:mods-available/ldap.adoc[`etc/raddb/mods-available/ldap`]
-- xref:raddb:mods-available/rest.adoc[`etc/raddb/mods-available/redis`]
+- xref:raddb:mods-available/redis.adoc[`etc/raddb/mods-available/redis`]
 - xref:raddb:mods-available/rest.adoc[`etc/raddb/mods-available/rest`]
 - xref:raddb:mods-available/sql.adoc[`etc/raddb/mods-available/sql`]
 

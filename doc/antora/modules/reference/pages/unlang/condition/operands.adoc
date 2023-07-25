@@ -10,8 +10,8 @@ integer
 `back-quoted string`
 ----
 
-Any text not matching xref:attr.adoc[&Attribute-Name] or
-xref:unlang/condition/return_code.adoc[Return Code] is interpreted as a value for a
+Any text not matching xref:unlang/attr.adoc[&Attribute-Name] or a
+xref:unlang/condition/return_codes.adoc[return code] is interpreted as a value for a
 particular xref:type/index.adoc[data type].
 
 Double-quoted strings and back-quoted strings are dynamically expanded

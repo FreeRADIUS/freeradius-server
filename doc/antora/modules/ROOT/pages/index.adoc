@@ -116,8 +116,9 @@ in a nicely formatted version, instead of as a fixed-width font in a
 text editor.
 
 For specific problem solving, we recommend the xref:howto:index.adoc[how-to]
-guides. These guides give instructions for reaching high-level goals, or
-for configuring and testing individual xref:howto:modules/index.adoc[modules].
+guides. These guides give instructions for reaching high-level goals, or for
+configuring and testing individual
+xref:howto:modules/configuring_modules.adoc[modules].
 
 There is also xref:developers:index.adoc[developer documentation]. This section
 documents the APIs for developers. Most people can ignore it.

@@ -30,10 +30,10 @@ users, groups, and possibly clients.  We highly recommend using
 https://www.openldap.org/[OpenLDAP] for both its flexibility and performance.
 
 If there is not an existing local LDAP server, then it is possible to provision
-one using a xref:modules/ldap/docker.adoc[docker] image, or alternatively,
-if you're using a Debian or RHEL based distribution, using the OpenLDAP LTB
-https://ltb-project.org/documentation/openldap-rpm[RPMs] or
-https://ltb-project.org/documentation/openldap-deb[DEBs].
+one using a xref:modules/ldap/bootstrap_openldap/docker.adoc[docker] image, or
+alternatively, if you're using a Debian or RHEL based distribution, using the
+OpenLDAP LTB https://www.ltb-project.org/documentation/openldap-rpm.html[RPM] or
+https://www.ltb-project.org/documentation/openldap-deb.html[DEB] packages.
 
 For testing purposes it's recommended to install an LDAP instances on the same
 machine (or inter-container network in the case of docker) as the RADIUS server
@@ -62,7 +62,7 @@ tutorial section.
 == Sections in this tutorial
 
 For features and configuration items not covered by this tutorial series
-xref:raddb:modules/ldap.adoc[mods-available/ldap] page provides a complete
+xref:raddb:mods-available/ldap.adoc[mods-available/ldap] page provides a complete
 reference for all the configuration items available for the rlm_ldap module.
 
 === xref:modules/ldap/base_configuration/index.adoc[Base configuration]
