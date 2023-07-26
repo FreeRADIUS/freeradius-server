@@ -954,6 +954,31 @@ int		fr_value_box_mark_safe(fr_value_box_t *box, uint16_t safe)
 void		fr_value_box_mark_unsafe(fr_value_box_t *box)
 		CC_HINT(nonnull);
 
+static inline CC_HINT(nonnull, always_inline)
+bool fr_value_box_is_secret(fr_value_box_t const *box)
+{
+	return box->secret;
+}
+
+static inline CC_HINT(nonnull)
+bool fr_value_box_contains_secret(fr_value_box_t const *box)
+{
+	fr_value_box_t const *vb = NULL;
+
+	if (box->secret) return true;
+	if (box->type == FR_TYPE_GROUP) {
+		while ((vb = fr_value_box_list_next(&box->vb_group, vb))) {
+			if (fr_value_box_contains_secret(vb)) return true;
+		}
+	}
+	return false;
+}
+
+static inline CC_HINT(nonnull, always_inline)
+void fr_value_box_set_secret(fr_value_box_t *box, bool secret)
+{
+	box->secret = secret;
+}
 
 
 /** @name Assign and manipulate binary-unsafe C strings
