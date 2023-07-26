@@ -928,6 +928,7 @@ RECV(auth_cont)
 #define EXTRACT(_attr) \
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_user_message); \
 	if (!vp) break; \
+	fr_value_box_set_secret(&vp->data, _attr->flags.secret); \
 	if (pair_append_request(&copy, _attr) < 0) break; \
 	if (fr_pair_value_copy(copy, vp) < 0) { \
 		fr_pair_remove(&request->request_pairs, copy); \
