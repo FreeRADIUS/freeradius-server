@@ -331,6 +331,18 @@ server tacacs {
 	}
 
 	#
+	#  With ASCII methods, GetUser and GetPass typically send a prompt
+	#  for the client to present to the user.
+	#
+	send Authentication-GetUser {
+		&reply.Server-Message := "Username:"
+	}
+
+	send Authentication-GetPass {
+		&reply.Server-Message := "Password:"
+	}
+
+	#
 	#  ## Authentication-Continue
 	#
 	#  This should handle ASCII methods as PAP with challenge-response.
