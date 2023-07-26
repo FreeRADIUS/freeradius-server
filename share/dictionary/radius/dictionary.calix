@@ -25,17 +25,17 @@ ATTRIBUTE	CMS-User-Group				220	string
 
 # Attribute for alarm filter – optional, default 1 (alarm enabled)
 ATTRIBUTE	CMS-Alarm-Filter			221	integer
-VALUE	CMS-Alarm-Filter		AlarmDisabled		0
-VALUE	CMS-Alarm-Filter		AlarmEnabled		1
+VALUE	CMS-Alarm-Filter		Disabled		0
+VALUE	CMS-Alarm-Filter		Enabled		1
 
 # Attribute for event filter – optional, default 0 (event disabled)
 ATTRIBUTE	CMS-Event-Filter			222	integer
-VALUE	CMS-Event-Filter		EventDisabled		0
-VALUE	CMS-Event-Filter		EventEnabled		1
+VALUE	CMS-Event-Filter		Disabled		0
+VALUE	CMS-Event-Filter		Enabled		1
 
 # Attribute for threshold event filter – optional, default 0 (disabled)
 ATTRIBUTE	CMS-Threshold-Event-Filter		223	integer
-VALUE	CMS-Threshold-Event-Filter	ThresholdEventDisabled	0
-VALUE	CMS-Threshold-Event-Filter	ThresholdEventEnabled	1
+VALUE	CMS-Threshold-Event-Filter	Disabled	0
+VALUE	CMS-Threshold-Event-Filter	Enabled	1
 
 END-VENDOR	Calix
