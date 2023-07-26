@@ -5623,7 +5623,6 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
 			fr_value_box_bstrndup_shallow(out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted);
-			out->secret = secret;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -5682,6 +5681,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			break;
 		}
 	}
+	fr_value_box_set_secret(out, secret);
 
 	return 0;
 }
