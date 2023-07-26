@@ -29,6 +29,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
 
     - name: Install common build dependencies
       run: |
@@ -56,7 +58,10 @@ jobs:
          doxygen Doxyfile;
 
     - name: Build Antora docsite
-      run: antora site.yml
+      run: |
+        LATEST_RELEASE=$(git tag -l 'release_3_2*' | sort | tail -1 | sed -e 's/release_//' -e 's/_/\./g')
+        sed -e "s/%LATEST%/$LATEST_RELEASE/" doc/antora/main-site.yml.in > main-site.yml
+        antora --to-dir build/docsite main-site.yml
 
     - name: Tar output files
       run: tar -czf site.tgz doc/doxygen/html build/docsite
@@ -69,7 +74,7 @@ jobs:
         retention-days: 1
 
   # Actual deployment to GitHub Pages is only on pushes to the head of the master branch
-  deploy-docs:
+  deploy-doxygen-docs:
     if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && ( github.event_name == 'push' )
 
     needs:
@@ -115,3 +120,66 @@ jobs:
     - name: Deploy doxygen content to GitHub pages
       id: deployment
       uses: actions/deploy-pages@v1
+
+  deploy-antora-docs:
+    if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && ( github.event_name == 'push' )
+
+    needs:
+      - build-docs
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+
+    # Ensure only one job is attempting to update the docs repo
+    concurrency:
+      group: "antora-documentation"
+      cancel-in-progress: true
+
+    steps:
+    - name: Setup SSH for git access
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.NR_GIT_SSH_GITHUBACTIONS_KEY }}
+        name: id_rsa-git
+        known_hosts: ${{ secrets.NR_GIT_SSH_KNOWN_HOSTS }}
+        config: |
+          Host git.networkradius.com
+            User git
+            IdentityFile ~/.ssh/id_rsa-git
+
+    - name: Retrieve output
+      uses: actions/download-artifact@v3
+      with:
+        name: compiled-docs
+
+    - name: Extract sites
+      run: tar -zxf site.tgz
+
+    - name: Checkout doc repository
+      run: |
+        git config --global user.email "git@github.com"
+        git config --global user.name "Github Actions"
+        git clone -b master git@git.networkradius.com:www.freeradius.org-docs www.freeradius.org-docs
+
+    - name: Remove existing web site from repo
+      run: |
+        cd www.freeradius.org-docs
+        git ls-files -moc | grep -v ._antora_docs_repo | xargs -r git rm
+
+    - name: Copy new web site to repo
+      run: |
+        rsync -av build/docsite/ www.freeradius.org-docs/
+
+    - name: Commit new web site files
+      run: |
+        cd www.freeradius.org-docs
+        rm -f sitemap*.xml
+        git ls-files -o | xargs -r git add
+        git commit -q -m "Github Actions auto commit $(date)" || true
+
+    - name: Push doc repository
+      run: |
+        cd www.freeradius.org-docs
+        git push origin

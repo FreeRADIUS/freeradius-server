@@ -1,0 +1,49 @@
+#
+#  Used by the GitHub Actions "Documentation" job to build
+#  the FreeRADIUS web site docuementation on each push. To
+#  generate the site locally use 'make docsite' in the top
+#  level directory, not this file.
+#
+
+site:
+  title: The FreeRADIUS project - Documentation
+  url: https://freeradius.org/docs
+  start_page: %LATEST%@freeradius-server:ROOT:index.adoc
+
+content:
+  sources:
+  - url: .
+    branches:
+# latest v4 tree
+      - HEAD
+# latest v3.0 dev branch HEAD
+      - v3.0.x
+# don't include latest v3.2 dev branch HEAD (releases are below)
+#      - v3.2.x
+    tags:
+# don't include all v3.0 releases, antora complains as most don't
+# include any antora documentation
+      - "release_3_0_*"
+      - "!release_3_0_*_*"
+      - "!release_3_0_?"
+      - "!release_3_0_1?"
+      - "!release_3_0_20"
+      - "!release_3_0_21"
+# all v3.2 releases
+      - "release_3_2_*"
+# for future v4 releases
+#      - "release_4_*"
+    start_path: doc/antora
+
+asciidoc:
+  attributes:
+    attribute-missing: skip
+
+ui:
+  bundle:
+    url: https://github.com/FreeRADIUS/freeradius-docs-ui/blob/master-releases/ui-bundle.zip?raw=true
+    snapshot: true
+  default_layout: freeradiusorg
+
+output:
+  clean: true
