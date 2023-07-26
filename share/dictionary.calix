@@ -12,6 +12,7 @@
 
 VENDOR		Calix				6321
 
+ATTRIBUTE	Calix-Role			1 string
 ATTRIBUTE	Calix-CMS-User-Group			220	string
 ATTRIBUTE	Calix-CMS-Alarm-Filter			221	integer
 
