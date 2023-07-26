@@ -99,7 +99,11 @@ DEFINE	Remote-Address				string
 DEFINE	Data					octets
 
 DEFINE	Server-Message				string
-DEFINE	User-Message				string
+
+#
+#  User-Message can contain the password - so it is marked as secret
+#
+DEFINE	User-Message				string secret
 
 DEFINE	Action					byte
 VALUE	Action				LOGIN			1
