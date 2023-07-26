@@ -4,7 +4,6 @@ Alan DeKok
 :release-version: 4.0.0
 :man manual: FreeRADIUS
 :man source: FreeRADIUS
-:page-layout: base
 :manvolnum: 8
 
 == NAME
@@ -13,11 +12,11 @@ radsniff - dump radius protocol
 
 == SYNOPSIS
 
-*radsniff _[ OPTIONS ]_
+*radsniff* _[ OPTIONS ]_
 
 == DESCRIPTION
 
-*radsniff  is a simple wrapper around libpcap. It can also print out the
+*radsniff* is a simple wrapper around libpcap. It can also print out the
 contents of RADIUS packets using the FreeRADIUS dictionaries.
 
 == OPTIONS
@@ -121,7 +120,7 @@ The following options are for statistics gathering.
 
 == SEE ALSO
 
-radiusd(8),pcap(3)
+radiusd(8), pcap(3)
 
 == AUTHOR
 

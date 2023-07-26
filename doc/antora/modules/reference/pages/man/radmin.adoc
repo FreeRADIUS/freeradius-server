@@ -4,7 +4,6 @@ Alan DeKok
 :release-version: 4.0.0
 :man manual: FreeRADIUS
 :man source: FreeRADIUS
-:page-layout: base
 :manvolnum: 8
 
 == NAME
@@ -116,7 +115,7 @@ Only one debug condition can be active at a time.
   address 192.0.2.22.
 
 *debug condition*::
-* Disable debug conditionals.
+  Disable debug conditionals.
 
 == FULL LIST OF COMMANDS
 

@@ -4,7 +4,6 @@ Alan DeKok
 :release-version: 4.0.0
 :man manual: FreeRADIUS
 :man source: FreeRADIUS
-:page-layout: base
 :manvolnum: 8
 
 == NAME
