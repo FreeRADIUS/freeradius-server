@@ -39,13 +39,16 @@ jobs:
 
     - name: Install Antora
       run: |
-        sudo npm i -g @antora/cli@2.0 @antora/site-generator-default@2.0;
+        sudo npm i -g @antora/cli@3.1 @antora/site-generator@3.1;
 
     - name: Show versions
       run: |
         make --version
-        doxygen --version
+        echo -n "doxygen " ; doxygen --version
         asciidoctor --version
+        echo -n "npm " ; npm --version
+        echo -n "node " ; node --version
+        antora --version
 
     - name: Build doxygen content
       run: |
