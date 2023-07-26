@@ -3423,7 +3423,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			}
 		} /* check_cert_cn */
 
-#ifdef HAVE_OPENSSL_OCSP_H
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && defined(HAVE_OPENSSL_OCSP_H)
 		if (my_ok) {
 			/*
 			 *	No OCSP, allow external verification.
