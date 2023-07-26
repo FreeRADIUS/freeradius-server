@@ -1252,6 +1252,7 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 	fr_assert((size_t)elen <= alen);
 	vb->tainted = in->tainted;
+	fr_value_box_set_secret(vb, fr_value_box_is_secret(in));
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -1299,6 +1300,7 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	vb->tainted = in->tainted;
+	fr_value_box_set_secret(vb, fr_value_box_is_secret(in));
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -2586,6 +2588,7 @@ static xlat_action_t xlat_func_subst_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, subject_vb->tainted);
+	fr_value_box_set_secret(vb, fr_value_box_is_secret(subject_vb));
 
 	fr_dcursor_append(out, vb);
 
@@ -2686,6 +2689,7 @@ static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	fr_assert(vb && (vb->type != FR_TYPE_NULL));
+	fr_value_box_set_secret(vb, fr_value_box_is_secret(subject_vb));
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -2909,6 +2913,7 @@ static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	MEM(fr_value_box_bstr_alloc(vb, &buff_p, vb, NULL, outlen, false) == 0);
+	fr_value_box_set_secret(vb, fr_value_box_is_secret(in_head));
 
 	/* Reset p to start position */
 	p = in_head->vb_strvalue;
@@ -2989,6 +2994,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	MEM(fr_value_box_bstr_alloc(vb, &buff_p, vb, NULL, outlen, false) == 0);
+	fr_value_box_set_secret(vb, fr_value_box_is_secret(in_head));
 
 	/* Reset p to start position */
 	p = in_head->vb_strvalue;
