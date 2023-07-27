@@ -14,7 +14,7 @@ outside of a xref:switch.adoc[switch] statement.
 
 
 The `<match>` text can be an attribute reference such as `&User-Name`,
-or it can be a xref:type/string/index.adoc[string].  If the match
+or it can be a xref:type/index.adoc[string].  If the match
 text is a dynamically expanded string, then the match is performed on
 the output of the string expansion.
 

@@ -18,7 +18,7 @@ Conditions are expressed using the following syntax:
 |=====
 | Syntax | Description
 | xref:attr.adoc[&Attribute-Name] | Check for attribute existence.
-| xref:condition/return_code.adoc[rcode] | Check return code of a previous module.
+| xref:condition/return_codes.adoc[rcode] | Check return code of a previous module.
 | xref:condition/operands.adoc[data] | Check value of data.
 | xref:condition/cmp.adoc[lhs OP rhs] | Compare two kinds of data.
 | xref:condition/para.adoc[( condition )] | Check sub-condition

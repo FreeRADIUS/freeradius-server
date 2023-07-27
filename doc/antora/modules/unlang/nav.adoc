@@ -35,7 +35,7 @@
 ** xref:condition/index.adoc[Conditional Expressions]
 *** xref:condition/cmp.adoc[Comparisons]
 *** xref:condition/operands.adoc[Operands]
-*** xref:condition/return_code.adoc[The Return Code Operator]
+*** xref:condition/return_codes.adoc[The Return Code Operator]
 *** xref:condition/eq.adoc[The '==' Operator]
 *** xref:condition/and.adoc[The '&&' Operator]
 *** xref:condition/or.adoc[The '||' Operator]

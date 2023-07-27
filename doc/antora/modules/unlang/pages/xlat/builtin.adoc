@@ -782,7 +782,7 @@ Return named subcapture value from the last regular expression evaluated.
 
 Results of named capture groups are available using the `%{regex:<named capture
 group>}` expansion. They will also be accessible using the numbered expansions
-described xref:builtin.adoc#_0_32[above].
+described xref:#_0_32[above].
 
 Every time a regular expression is evaluated, whether it matches or not,
 the named capture group values will be cleared.

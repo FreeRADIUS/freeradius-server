@@ -47,7 +47,7 @@ Now reload the HAproxy service:
 [source,shell]
 ----
 service haproxy reload
----
+----
 
 
 For Traefik, enable the PROXY Protocol on connections to the RadSec
@@ -79,7 +79,7 @@ test authentication:
 
 [source,shell]
 ----
- echo "User-Name = bob" | radclient 127.0.0.1 auth testing123
+echo "User-Name = bob" | radclient 127.0.0.1 auth testing123
 ----
 
 You should expect to see the familiar output:

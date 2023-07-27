@@ -6,7 +6,7 @@ conditional expressions or when assigning a value to an attribute.
 == Using Data Types
 
 The server support a wide range of data types, as given in the
-xref:unlang/type/all_types.adoc[list of data types] page.  The choice
+xref:type/all_types.adoc[list of data types] page.  The choice
 of which data type applies is determined by the context in which that
 data type is used.  This context is usually taken from an attribute
 which is being assigned a value.
@@ -55,7 +55,7 @@ contains special characters that may otherwise confuse the parser.
 `"192.168.0.2"`:: xref:type/string/double.adoc[Double-quoted string].
 +
 The contents of the string are dynamically expanded as described in
-the xref:unlang/xlat/index.adoc[dynamic expansion] page.  The
+the xref:xlat/index.adoc[dynamic expansion] page.  The
 resulting output is then interpreted as the given data type.
 
 `{backtick}/bin/echo 192.168.0.2{backtick}`:: xref:type/string/backticks.adoc[backtick-quoted string].
@@ -110,7 +110,7 @@ interpreted as the data type `ipaddr`, and not as the literal string
 `"192.0.2."`.
 
 For a full list of data types which can be used in a cast, please see
-the xref:unlang/type/all_types.adoc[list of data types] page, and the
+the xref:type/all_types.adoc[list of data types] page, and the
 "Basic Type Types" section.
 
 // Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

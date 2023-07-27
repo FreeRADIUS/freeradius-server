@@ -1,6 +1,6 @@
 == Configure common reply options
 
-FreeRADIUS includes a powerful xref:unlang/index.adoc[policy language] called
+FreeRADIUS includes a powerful xref:index.adoc[policy language] called
 "unlang".
 
 Statements in unlang may be used to call further policies, update attribute

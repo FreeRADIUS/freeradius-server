@@ -11,7 +11,7 @@ integer
 ----
 
 Any text not matching xref:attr.adoc[&Attribute-Name] or
-xref:condition/return_code.adoc[Return Code] is interpreted as a value for a
+xref:condition/return_codes.adoc[Return Code] is interpreted as a value for a
 particular xref:type/index.adoc[data type].
 
 Double-quoted strings and back-quoted strings are dynamically expanded
