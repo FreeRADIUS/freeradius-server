@@ -12,7 +12,9 @@
 
 VENDOR		Calix				6321
 
-ATTRIBUTE	Calix-Role			1 string
+BEGIN-VENDOR	Calix
+
+ATTRIBUTE	Calix-Role				1	string
 ATTRIBUTE	Calix-CMS-User-Group			220	string
 ATTRIBUTE	Calix-CMS-Alarm-Filter			221	integer
 
@@ -28,3 +30,5 @@ ATTRIBUTE	Calix-CMS-Threshold-Event-Filter	223	integer
 
 VALUE	Calix-CMS-Threshold-Event-Filter Disabled		0
 VALUE	Calix-CMS-Threshold-Event-Filter Enabled		1
+
+END-VENDOR	Calix
