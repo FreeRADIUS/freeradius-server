@@ -1,0 +1,7 @@
+* xref:index.adoc[Developers]
+** xref:bugs.adoc[Bugs]
+** xref:coding-methods.adoc[Coding Methods]
+** xref:coverage.adoc[Code Coverage]
+** xref:profile.adoc[Profiling]
+** xref:contributing.adoc[Contributing]
+** xref:release-method.adoc[Release Method]

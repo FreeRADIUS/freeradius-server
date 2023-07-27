@@ -1,0 +1,60 @@
+= AAA
+
+== Authorization, Authentication, and Accounting request handling
+
+There are a lot of questions about misconfigured FreeRADIUS servers
+because of misunderstanding of FreeRADIUS operations. This document
+explains how the server operates.
+
+Normally there are two steps in processing an authentication request
+coming from a NAS in FreeRADIUS: authorization and authentication.
+If we use FreeRADIUS as a proxy to re-send the request to another
+RADIUS server there will be additional steps.
+
+=== Authorization
+
+Authorization is the process of finding and returning information
+about what the user is allowed to do.  For example, finding out what
+kind of authentication methods they are allowed to run, and what VLAN
+the user should be placed into.
+
+Authorization modules generally "get data" from somewhere,
+e.g. `ldap`, `sql`, `files`, etc.
+
+The authentication method is usually determined when the server gets
+the users credentials from a database.  Once the credentials are
+available, the server can authenticate the user.
+
+=== Authentication
+
+Authentication is simply a process of comparing user’s credentials in
+request with the "known good" credentials retrieved from a
+database. Authentication usually deals with password
+encryption. The modules `pap`, `chap`, `mschap`, etc. do authentication.
+
+Some modules do both authentication and limited authorization. For
+example, the `mschap` module authenticates MS-CHAP credentials, but it
+may also be used as an authorization module, which verifies that
+request contains `MS-CHAP` related attribute.  If so, the module
+instructs the server to use `mschap` for authentication, too
+
+These dual modules are usually related to protocol-specific
+attributes, such as the `pap` module for the `User-Password`
+attribute, `chap` for `CHAP-Password`, `mschap` for `MS-CHAP-*`, etc.
+
+=== Request Processing
+
+When the server processes requests, it manages four
+xref:unlang:list.adoc[attribute lists]:
+
+`request`:: attributes taken from the received packet
+
+`reply`:: attributes which will be sent in the reply
+
+`control`:: attributes used to control how the server operates.  These are never sent in a packet
+
+`session-state`:: attributes which are saved and restroed across multiple request / reply exchanges.
+
+All of these lists are available to all modules.  All of these
+lists are available in xref:unlang:index.adoc[Unlang].
+

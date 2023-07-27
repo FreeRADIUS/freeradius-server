@@ -1,0 +1,8 @@
+= Concepts
+
+This section documents concerning the protocols and modules used by the
+FreeRADIUS server.
+
+It intended to provide more theoretical information about particular subjects
+than would be appropriate to include inline in module configurations or as
+sidebars in howto guides.

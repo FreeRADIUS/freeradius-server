@@ -1,0 +1,194 @@
+= Bugs
+
+== Introduction
+
+The FreeRADIUS web site is at https://freeradius.org/, and most
+information referenced in this document can be found there.
+
+This document is primarily for non-developers of the FreeRADIUS
+server. If you are able to patch the code to work correctly, then
+we invite you to join the development list to discuss it. If
+you’re the type who know little about how to code, then this is
+the place for you!
+
+== You found a bug
+
+Where the server terminates ungracefully due to a bus error,
+segmentation violation, or other memory error, you should create a new
+issue in the issue tracker https://bugs.freeradius.org/, including
+information from the debugging sections below.
+
+For any other issues, you should first discuss them on the
+https://freeradius.org/support/[FreeRADIUS users list], to
+see if anyone can reproduce them. Often there’s a simple explanation of
+why the server behaves as it does, and it’s not necessarily a bug in the
+code, so browse the lists’ archives of the last two months, and if you
+don’t see messages about it, ask!
+
+If the behavior is correct but confusing, we think that’s a bug too, and
+you should file a bug against our documentation.
+
+For more information about the users list, the lists’ archives and the
+faq, please visit https://www.freeradius.org/list/users.html Please make
+sure to READ and RESPECT the house-rules. You will get much better
+response and much faster if you do!
+
+== Core dumps
+
+If the server (or one of the accompanying programs) core dumps, then you
+should rebuild the server as follows:
+
+```
+$ ./configure --enable-developer
+$ make
+$ make install
+```
+
+and then run the program again. You may have to to enable core dumps,
+via:
+
+```
+$ ulimit -c unlimited
+```
+
+When it core dumps, do:
+
+```
+$ gdb /path/to/executable /path/to/core/file
+```
+
+Enable logging in `gdb` via the following commands:
+
+```
+(gdb) set logging file gdb-radiusd.log
+(gdb) set logging on
+```
+
+and follow the instructions in the proceeding section.
+
+You can also enable the `panic_action` given in
+`raddb/radiusd.conf`. See the comments in that file for more details
+about automatically collecting gdb debugging information when the server
+crashes.
+
+== Debugging a live server
+
+If you can’t get a core dump, or the problem doesn’t result in a core
+dump, you may have to run the server under gdb. To do this, ensure that
+you have symbols in the binaries (i.e. a 'non-stripped' binary) by
+re-building the server as described in the previous section. Then, run
+the server under gdb as follows:
+
+```
+$ gdb radiusd
+```
+
+Enable logging in `gdb` via the following commands:
+
+```
+(gdb) set logging file gdb-radiusd.log
+(gdb) set logging on
+```
+
+Tell `gdb` to pass any necessary command-line arguments to the server:
+
+```
+(gdb) set args ...
+```
+
+Where the ``…'' are the command-line arguments you normally pass to
+radiusd. For debugging, you probably want to do:
+
+```
+(gdb) set args -fxx
+```
+
+Then, do:
+
+```
+(gdb) run
+```
+
+When something interesting happens, you can hit CTRL-C in the window,
+and you should be back at the gdb prompt:
+
+```
+(gdb)
+```
+
+And follow the instructions in the next section.
+
+== Obtaining useful information
+
+Once you have a core dump loaded into gdb, or FreeRADIUS running under
+gdb, you may use the commands below to get useful information about the
+state of the server.
+
+If the server was built with threads, you can do:
+
+```
+(gdb) info threads
+```
+
+Which will give you information about the threads. If the server isn’t
+threaded, that command-line will print a message saying so.
+
+Then, do:
+
+```
+(gdb) thread apply all bt full
+```
+
+If the server isn’t threaded, the `thread apply` section isn’t
+necessary
+
+The output should be printed to the screen, and also sent to the
+`gdb-radiusd.log` file.
+
+You should then submit the information from the log file, along with any
+server output, the output of `radiusd -xv`, and information about your
+operating system to:
+
+https://bugs.freeradius.org/
+
+Submitting it to the bug database ensures that the bug report won’t get
+forgotten, and that it will be dealt with in due course.
+
+You should provide the issue number in any mail sent to the user’s list.
+
+== Valgrind
+
+On Linux systems, `valgrind` is a useful tool that can catch certain
+classes of bugs. To use it, run the server via:
+
+```
+$ valgrind --tool=memcheck --leak-check=full radiusd -Xm
+```
+
+It will print out certain kinds of errors to the screen. There may be a
+number of errors related to OpenSSL, dlopen(), or libtldl. We cannot do
+anything about those problems. However, any errors that are inside of
+the FreeRADIUS source should be brought to our attention.
+
+== Running with `screen`
+
+If the bug is a crash of the server, and it takes a long time for the
+crash to happen, perform the following steps:
+
+* Log in as root.
+* Open a https://www.gnu.org/software/screen/[screen] session: `$ screen bash`.
+* Make sure FreeRADIUS is not running.
+* Make sure you have all the debug symbols about, or a debugable version
+of the server installed (one built with `--enable-developer` as above).
+* Configure screen to log to a file by pressing `Ctrl+a`, then `h`.
+* Type `gdb /path/to/radiusd` (or /path/to/freeradius on Debian).
+* At the `(gdb)` prompt, type `run -X`.
+* Detach from screen with `Ctrl+a`, `d`.
+* When you notice FreeRADIUS has died, reconnect to your screen session
+`$ screen -D -r`.
+* At the `(gdb)` prompt type `where` or for _lots_ of info try
+`thread apply all bt full`.
+* Tell screen to stop logging, `Ctrl+a`, `h`.
+* Logout from screen.
+
+FreeRADIUS Project, copyright 2019
