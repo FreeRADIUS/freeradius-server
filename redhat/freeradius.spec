@@ -61,6 +61,7 @@ BuildRequires: autoconf
 BuildRequires: gdbm-devel
 BuildRequires: openssl, openssl-devel
 BuildRequires: pam-devel
+BuildRequires: pcre2-devel
 BuildRequires: zlib-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
