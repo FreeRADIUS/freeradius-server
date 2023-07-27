@@ -469,3 +469,23 @@ int fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 
 	return result;		/* 0 is OK, !0 is !OK, just like memcmp */
 }
+
+void fr_memset_secure(void *ptr, size_t len)
+{
+	if (!len) return;
+
+#if defined(HAVE_MEMSET_S)
+	(void) memset_s(ptr, len, 0, len);
+
+#elif defined(HAVE_EXPLICIT_BZERO)
+	explicit_bzero(ptr, len);
+
+#else
+	volatile unsigned char *volatile p =  (volatile unsigned char *volatile) ptr;
+	size_t i = len;
+	
+	while (i--) {
+		*(p++) = 0;
+	}
+#endif
+}
