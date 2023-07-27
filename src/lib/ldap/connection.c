@@ -341,6 +341,11 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
 
 	c = fr_ldap_connection_alloc(conn);
 	c->conn = conn;
+	/*
+	 *	Initialise tree for outstanding queries handled by this connection
+	 */
+	MEM(c->queries = fr_rb_inline_talloc_alloc(c, fr_ldap_query_t, node, fr_ldap_query_cmp, NULL));
+	fr_dlist_init(&c->refs, fr_ldap_query_t, entry);
 
 	/*
 	 *	Configure/allocate the libldap handle
@@ -358,11 +363,6 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
 	state = fr_ldap_state_next(c);
 	if (state == FR_LDAP_STATE_ERROR) goto error;
 
-	/*
-	 *	Initialise tree for outstanding queries handled by this connection
-	 */
-	MEM(c->queries = fr_rb_inline_talloc_alloc(c, fr_ldap_query_t, node, fr_ldap_query_cmp, NULL));
-	fr_dlist_init(&c->refs, fr_ldap_query_t, entry);
 	fr_connection_add_watch_pre(conn, FR_CONNECTION_STATE_CLOSED, _ldap_connection_close_watch, true, c);
 
 	*h = c;	/* Set the handle */
