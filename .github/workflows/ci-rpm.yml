@@ -289,7 +289,7 @@ jobs:
 
     - name: Config check
       run: |
-        radiusd -XC
+        radiusd -XxC
 
     #
     #  We now perform some post-install tests that depend on the availability

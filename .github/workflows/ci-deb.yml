@@ -184,7 +184,7 @@ jobs:
 
     - name: Config test
       run: |
-        freeradius -XC
+        freeradius -XxC
 
     #
     #  We now perform some post-install tests that depend on the availability
