@@ -520,8 +520,9 @@ static int generate_from_header(fr_mail_ctx_t *uctx, struct curl_slist **out, rl
 	(void) fr_sbuff_in_strcpy(&sbuff, from);
 
 	/* Copy the envelope address as the FROM: source */
-	/* coverity[check_return] */
-	fr_sbuff_in_bstrncpy(&sbuff, inst->envelope_address, strlen(inst->envelope_address));
+	if (unlikely(fr_sbuff_in_bstrncpy(&sbuff, inst->envelope_address, strlen(inst->envelope_address)) < 0)) {
+		return -1;
+	}
 	*out = curl_slist_append(*out, sbuff.buff);
 
 	/* Free the buffer used to generate the FROM header */
@@ -611,7 +612,10 @@ static int header_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst)
 	}
 
 	/* Add the FROM: line */
-	generate_from_header(uctx, &uctx->header, inst);
+	if (unlikely(generate_from_header(uctx, &uctx->header, inst) < 0)) {
+		RDEBUG2("FROM: header could not be added");
+		return -1;
+	}
 
 	/* Add the TO: line if there is one provided in the request by SMTP-TO */
 	tmpl_arr_to_header(uctx, &uctx->header, inst->to_addrs, to);
