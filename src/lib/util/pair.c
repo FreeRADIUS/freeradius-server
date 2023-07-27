@@ -87,13 +87,7 @@ static int _fr_pair_free(fr_pair_t *vp)
 		fr_pair_list_free(&vp->vp_group);
 		break;
 
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
-		if (vp->data.secret) (void) memset_s(vp->vp_ptr, vp->vp_length, 0, vp->vp_length);
-		break;
-
 	default:
-		if (vp->data.secret) (void) memset_s(&vp->data, sizeof(vp->data), 0, sizeof(vp->data));
 		break;
 	}
 
