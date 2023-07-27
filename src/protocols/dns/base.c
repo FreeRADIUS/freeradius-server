@@ -222,7 +222,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			 *	be at least somewhat sane.
 			 */
 			if (*p >= 0xc0) {
-				size_t offset;
+				ptrdiff_t offset;
 
 				if ((p + 2) > end) {
 					DECODE_FAIL(POINTER_OVERFLOWS_PACKET);
@@ -243,12 +243,11 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 				/*
 				 *	Can't point to the current label.
 				 */
-				if ((packet + offset) >= start) {
+				if (offset >= (start - packet)) {
 					DECODE_FAIL(POINTER_LOOPS);
 					return false;
 				}
 
-				/* coverity[tainted_data] */
 				if (!fr_dns_marker[offset]) {
 					DECODE_FAIL(POINTER_TO_NON_LABEL);
 					return false;
