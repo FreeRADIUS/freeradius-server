@@ -9,7 +9,7 @@ greatly increase the chances of your change being accepted.
 
 Note: Only trivial patches will be accepted via email. Large patches, or
 patches that modify a number of files MUST be submitted as a
-pull-request via GitHub.
+https://github.com/FreeRADIUS/freeradius-server/pulls[pull-request via GitHub].
 
 == Hints and tips
 
@@ -23,7 +23,7 @@ things like "update file X", "bug fix for file X", or "this patch
 includes updates for subsystem X. Please apply."
 
 If your description starts to get long, that’s a sign that you probably
-need to split up your commit. See #3, next.
+need to split up your commit. See the next point.
 
 === 2. Separate your changes
 

@@ -6,9 +6,10 @@ There are a lot of questions about misconfigured FreeRADIUS servers
 because of misunderstanding of FreeRADIUS operations. This document
 explains how the server operates.
 
-Normally there are 2 steps in processing authentication request coming
-from NAS in FreeRADIUS (plus additional steps to proxy request if we use
-FreeRADIUS as a proxy): authorization and authentication.
+Normally there are two steps in processing an authentication request
+coming from a NAS in FreeRADIUS: authorization and authentication.
+If we use FreeRADIUS as a proxy to re-send the request to another
+RADIUS server there will be additional steps.
 
 === Authorization
 
@@ -39,7 +40,7 @@ instructs the server to use `mschap` for authentication, too
 
 These dual modules are usually related to protocol-specific
 attributes, such as the `pap` module for the `User-Password`
-attribute, `chap` for `CHAP-Password, `mschap` for `MS-CHAP-*`, etc.
+attribute, `chap` for `CHAP-Password`, `mschap` for `MS-CHAP-*`, etc.
 
 === Request Processing
 

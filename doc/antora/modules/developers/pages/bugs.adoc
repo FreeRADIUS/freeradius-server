@@ -2,22 +2,24 @@
 
 == Introduction
 
-The FreeRADIUS web site is at https://www.freeradius.org, and most
+The FreeRADIUS web site is at https://freeradius.org/, and most
 information referenced in this document can be found there.
 
-This is primarily for non-developers of the FreeRADIUS server. If you
-are able to patch the code to work correctly, then we invite you to join
-the development list to discuss it. If you’re the type who know little
-about how to code, then this is the place for you!
+This document is primarily for non-developers of the FreeRADIUS
+server. If you are able to patch the code to work correctly, then
+we invite you to join the development list to discuss it. If
+you’re the type who know little about how to code, then this is
+the place for you!
 
 == You found a bug
 
 Where the server terminates ungracefully due to a bus error,
 segmentation violation, or other memory error, you should create a new
-issue in the issue tracker https://bugs.freeradius.org, including
+issue in the issue tracker https://bugs.freeradius.org/, including
 information from the debugging sections below.
 
-For other issues, you should first discuss them on the users list, to
+For any other issues, you should first discuss them on the
+https://freeradius.org/support/[FreeRADIUS users list], to
 see if anyone can reproduce them. Often there’s a simple explanation of
 why the server behaves as it does, and it’s not necessarily a bug in the
 code, so browse the lists’ archives of the last two months, and if you
@@ -33,7 +35,7 @@ response and much faster if you do!
 
 == Core dumps
 
-If the server, or one of the accompanying programs core dumps, then you
+If the server (or one of the accompanying programs) core dumps, then you
 should rebuild the server as follows:
 
 ```
@@ -64,7 +66,7 @@ Enable logging in `gdb` via the following commands:
 
 and follow the instructions in the proceeding section.
 
-You can also enable the ``panic_action'' given in
+You can also enable the `panic_action` given in
 `raddb/radiusd.conf`. See the comments in that file for more details
 about automatically collecting gdb debugging information when the server
 crashes.
@@ -73,7 +75,7 @@ crashes.
 
 If you can’t get a core dump, or the problem doesn’t result in a core
 dump, you may have to run the server under gdb. To do this, ensure that
-you have symbols in the binaries (i.e. a non-stripped binary) by
+you have symbols in the binaries (i.e. a 'non-stripped' binary) by
 re-building the server as described in the previous section. Then, run
 the server under gdb as follows:
 
@@ -137,11 +139,11 @@ Then, do:
 (gdb) thread apply all bt full
 ```
 
-If the server isn’t threaded, the ``thread apply'' section isn’t
+If the server isn’t threaded, the `thread apply` section isn’t
 necessary
 
 The output should be printed to the screen, and also sent to the
-gdb-radiusd.log file.
+`gdb-radiusd.log` file.
 
 You should then submit the information from the log file, along with any
 server output, the output of `radiusd -xv`, and information about your
@@ -174,20 +176,19 @@ If the bug is a crash of the server, and it takes a long time for the
 crash to happen, perform the following steps:
 
 * Log in as root.
-* Open a screen session (https://www.gnu.org/software/screen/)
-`$ screen bash`.
+* Open a https://www.gnu.org/software/screen/[screen] session: `$ screen bash`.
 * Make sure FreeRADIUS is not running.
 * Make sure you have all the debug symbols about, or a debugable version
-of the server installed (one built with `--enable developer`).
-* Configure screen to log to a file; Ctrl+a,h
-* Type `gdb /path/to/radius` (or /path/to/freeradius on Debian).
+of the server installed (one built with `--enable-developer` as above).
+* Configure screen to log to a file by pressing `Ctrl+a`, then `h`.
+* Type `gdb /path/to/radiusd` (or /path/to/freeradius on Debian).
 * At the `(gdb)` prompt, type `run -X`.
-* Detach from screen Ctrl+a,d.
+* Detach from screen with `Ctrl+a`, `d`.
 * When you notice FreeRADIUS has died, reconnect to your screen session
 `$ screen -D -r`.
 * At the `(gdb)` prompt type `where` or for _lots_ of info try
 `thread apply all bt full`.
-* Tell screen to stop logging, Ctrl+a,h.
+* Tell screen to stop logging, `Ctrl+a`, `h`.
 * Logout from screen.
 
 FreeRADIUS Project, copyright 2019

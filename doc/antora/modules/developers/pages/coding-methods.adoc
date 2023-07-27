@@ -11,14 +11,14 @@ to write code.
 
 == Comment your code
 
-If you don’t, you’ll be forced to debug it 6 months later, when you have no clue
+If you don’t, you’ll be forced to debug it six months later, when you have no clue
 as to what it’s doing.
 
 If someone _really_ hates you, you’ll be forced to debug un-commented code that
 someone else wrote. You don’t want to do that.
 
-For FreeRADIUS use doxygen `@`-style comments so you get the benefits of
-https://doc.freeradius.org.
+For FreeRADIUS, use doxygen `@`-style comments so you get the
+benefits of the developer documentation site, https://doc.freeradius.org/.
 
 == Give things reasonable names
 
@@ -46,8 +46,9 @@ and you were too lazy to check for garbage input.
 
 [NOTE]
 ====
-GIGO is wrong. If your function gets garbage input, it should
-complain loudly and with great descriptiveness.
+GIGO, "Garbage In, Garbage Out," is wrong. If your function gets
+garbage input, it should complain loudly and with great
+descriptiveness.
 ====
 
 == Write useful error messages
@@ -93,7 +94,7 @@ too.
 
 Having variables containing garbage values makes it easy for the code to do
 garbage things. The contents of local variables are inputs to your function. See
-#3.
+xref:#_check_input_parameters_in_the_functions_you_write[#3].
 
 It’s also nearly impossible for you to debug any problems, as you can’t tell the
 variables with garbage values from the real ones.
@@ -121,10 +122,10 @@ Turn on all of the C compiler warnings possible. You might have to turn some off
 due to broken system header files, though. But the more warnings the merrier.
 
 Getting error messages at compile time is much preferable to getting core dumps
-at run time. See #7.
+at run time. See xref:#_initialize_your_variables[#7].
 
 Notice that the C compiler error messages are helpful? You should write error
-messages like this, too. See #4.
+messages like this, too. See xref:#_write_useful_error_messages[#4].
 
 == Avoid UNIXisms and ASCIIisms and visualisms
 
@@ -150,7 +151,8 @@ arbitrary whitespace, and it’s easy to mess up.
 Though it’s legal to test `if (foo) {}` if you test against the appropriate
 value (like `NULL` or `'\0'`), your code is prettier and easier for others to
 read without having to eyeball your prototypes continuously to figure out what
-you’re doing (especially if your variables aren’t well-named). See #2.
+you’re doing (especially if your variables aren’t well-named). See
+xref:#_give_things_reasonable_names[#2].
 
 == Test your code
 
@@ -169,7 +171,7 @@ for doing so.
 == Read the Documentation and follow the CodingStyle
 
 The FreeRADIUS server has a common coding style. Use real tabs to indent. There
-is whitespace in variable assignments. (`i = 1`, not `i=1`).
+is whitespace in variable assignments (`i = 1`, not `i=1`).
 
 When in doubt, format your code to look the same as code already in the server.
 If your code deviates too much from the current style, it is likely to be
@@ -180,7 +182,7 @@ rejected without further review, and without comment.
 Code cluttered with `#ifdef` s is difficult to read and maintain. Don’t do it.
 Instead, put your `#ifdef` s in a header, and conditionally define `static
 inline` functions, or macros, which are used in the code. Let the compiler
-optimize away the ``no-op'' case.
+optimize away the 'no-op' case.
 
 Simple example, of poor code:
 
@@ -216,11 +218,11 @@ safety, have no length limitations, no formatting limitations, and under gcc
 they are as cheap as macros.
 
 Macros should only be used for cases where a static inline is clearly suboptimal
-[there a few, isolated cases of this in fast paths], or where it is impossible
-to use a static inline function [such as string-izing].
+(there a few, isolated cases of this in fast paths), or where it is impossible
+to use a static inline function (such as string-izing).
 
-`static inline` is preferred over `static __inline__`, `extern inline`, and
-`extern __inline__`.
+`static inline` is preferred over `$$static __inline__$$`, `extern inline`, and
+`$$extern __inline__$$`.
 
 == Don’t over-design
 

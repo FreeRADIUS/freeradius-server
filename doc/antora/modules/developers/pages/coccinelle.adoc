@@ -1,6 +1,6 @@
 = Semantic Patches
 
-Coccinelle is an open source tool that can analyze and transform C code according to specified rules creating SmPL (Semantic Patch Language) patches_. Semantic patches are much more powerful than patches or regular expressions. so, that's why we use it.
+Coccinelle is an open source tool that can analyze and transform C code according to specified rules creating SmPL (Semantic Patch Language) patches. Semantic patches are much more powerful than patches or regular expressions. so, that's why we use it.
 
 About Coccinelle
 

@@ -18,8 +18,8 @@ content:
       - HEAD
 # latest v3.0 dev branch HEAD
       - v3.0.x
-# don't include latest v3.2 dev branch HEAD (releases are below)
-#      - v3.2.x
+# latest v3.2 dev branch HEAD for upcoming release
+      - v3.2.x
     tags:
 # don't include all v3.0 releases, antora complains as most don't
 # include any antora documentation
