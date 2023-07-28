@@ -47,6 +47,8 @@ extern "C" {
 #define REDIS_ERROR_NO_SCRIPT_STR	"NOSCRIPT"
 #define REDIS_DEFAULT_PORT		6379
 
+typedef struct fr_redis_cluster_node_s fr_redis_cluster_node_t;
+
 /** Wrap freeReplyObject so we consistently check for NULL pointers
  *
  * Older versions such as 0.10 (which ship with Ubuntu <= 14.10)
@@ -95,6 +97,7 @@ typedef enum {
  */
 typedef struct {
 	redisContext		*handle;	//!< Hiredis context used when issuing commands.
+	fr_redis_cluster_node_t	*node;		//!< Node this connection is to.
 } fr_redis_conn_t;
 
 /** Configuration parameters for a redis connection

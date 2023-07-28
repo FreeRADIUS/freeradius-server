@@ -1483,6 +1483,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delt
 
 	conn = talloc_zero(ctx, fr_redis_conn_t);
 	conn->handle = handle;
+	conn->node = node;
 	talloc_set_destructor(conn, _cluster_conn_free);
 
 #ifdef HAVE_REDIS_SSL

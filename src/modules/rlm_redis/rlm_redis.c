@@ -142,12 +142,17 @@ static int lua_func_body_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_IT
 	return 0;
 }
 
-/** Change the state of a connection to READONLY execute a command and switch to READWRITE
+/** Issue a command against redis and get a response
+ *
+ * This is a convenience function for dealing with commands which made need to execute against an
+ * ldap replica.  It temporarily places the connection in readonly mode to allow commands to be
+ * run against ldap replicas, then reverts back to readwrite mode.
  *
  * @param[out] status_out	Where to write the status from the command.
  * @param[out] reply_out	Where to write the reply associated with the highest priority status.
  * @param[in] request		The current request.
  * @param[in] conn		to issue commands with.
+ * @param[in] read_only		wrap command in READONLY/READWRITE.
  * @param[in] argc		Redis command argument count.
  * @param[in] argv		Redis command arguments.
  * @param[in] arg_len		Optional array of redis command argument length.
@@ -156,8 +161,10 @@ static int lua_func_body_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_IT
  *	- -1 normal failure.
  *	- -2 failure that may leave the connection in a READONLY state.
  */
-static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **reply_out,
-				   request_t *request, fr_redis_conn_t *conn, int argc, char const **argv, size_t arg_len[])
+static int redis_command(fr_redis_rcode_t *status_out, redisReply **reply_out,
+			 request_t *request, fr_redis_conn_t *conn,
+			 bool read_only,
+			 int argc, char const **argv, size_t arg_len[])
 {
 	bool			maybe_more = false;
 	redisReply		*reply;
@@ -165,9 +172,12 @@ static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **re
 
 	*reply_out = NULL;
 
-	redisAppendCommand(conn->handle, "READONLY");
+	if (read_only) redisAppendCommand(conn->handle, "READONLY");
 	redisAppendCommandArgv(conn->handle, argc, argv, arg_len);
-	redisAppendCommand(conn->handle, "READWRITE");
+	if (read_only) {
+		redisAppendCommand(conn->handle, "READWRITE");
+	} else goto parse_reply;
+
 
 	/*
 	 *	Process the response for READONLY
@@ -192,6 +202,7 @@ static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **re
 
 	fr_redis_reply_free(&reply);
 
+parse_reply:
 	/*
 	 *	Process the response for the command
 	 */
@@ -211,6 +222,8 @@ static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **re
 	*reply_out = reply;
 	reply = NULL;
 	*status_out = status;
+
+	if (!read_only) return 0;	/* No more responses to deal with */
 
 	/*
 	 *	Process the response for READWRITE
@@ -449,10 +462,8 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			for (int i = 2; i < argc; i++) RDEBUG3("[%i] %s", i, argv[i]);
 			REXDENT();
 		}
-		if (!func->read_only) {
-			reply = redisCommandArgv(conn->handle, argc, argv, arg_len);
-			status = fr_redis_command_status(conn, reply);
-		} else if (redis_command_read_only(&status, &reply, request, conn, argc, argv, arg_len) == -2) {
+		if (redis_command(&status, &reply, request, conn,
+				  func->read_only, argc, argv, arg_len) == -2) {
 			state.close_conn = true;
 		}
 
@@ -494,12 +505,9 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			 *	synchronous code will need to be rewritten, so for now
 			 *	we just load the script and try again.
 			 */
-			if (!func->read_only) {
-				reply = redisCommandArgv(conn->handle, NUM_ELEMENTS(script_load_argv),
-							 script_load_argv, script_load_arg_len);
-				status = fr_redis_command_status(conn, reply);
-			} else if (redis_command_read_only(&status, &reply, request, conn, NUM_ELEMENTS(script_load_argv),
-							   script_load_argv, script_load_arg_len) == -2) {
+			if (redis_command(&status, &reply, request, conn, func->read_only,
+					  NUM_ELEMENTS(script_load_argv),
+					  script_load_argv, script_load_arg_len) == -2) {
 				state.close_conn = true;
 			}
 
@@ -663,10 +671,7 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			REXDENT();
 		}
 
-		if (!read_only) {
-			reply = redisCommandArgv(conn->handle, argc, argv, arg_len);
-			status = fr_redis_command_status(conn, reply);
-		} else if (redis_command_read_only(&status, &reply, request, conn, argc, argv, arg_len) == -2) {
+		if (redis_command(&status, &reply, request, conn, read_only, argc, argv, arg_len) == -2) {
 			goto close_conn;
 		}
 
@@ -738,10 +743,7 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			REXDENT();
 		}
 
-		if (!read_only) {
-			reply = redisCommandArgv(conn->handle, argc, argv, arg_len);
-			status = fr_redis_command_status(conn, reply);
-		} else if (redis_command_read_only(&status, &reply, request, conn, argc, argv, arg_len) == -2) {
+		if (redis_command(&status, &reply, request, conn, read_only, argc, argv, arg_len) == -2) {
 			state.close_conn = true;
 		}
 	}
@@ -818,8 +820,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			/*
 			 *	preload onto every node, even replicas.
 			 */
-			if (redis_command_read_only(&status, &reply, NULL, conn,
-						    NUM_ELEMENTS(script_load_argv), script_load_argv, script_load_arg_len) == -2) {
+			if (redis_command(&status, &reply, NULL, conn, false,
+					  NUM_ELEMENTS(script_load_argv), script_load_argv, script_load_arg_len) == -2) {
 			error:
 				fr_pool_connection_release(pool, NULL, conn);
 				talloc_free(nodes);
