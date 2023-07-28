@@ -89,6 +89,7 @@ static int lua_func_body_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_IT
 
 static CONF_PARSER module_lua_func[] = {
 	{ FR_CONF_OFFSET("body", FR_TYPE_STRING, redis_lua_func_t, body), .func = lua_func_body_parse },
+	{ FR_CONF_OFFSET("read_only", FR_TYPE_BOOL, redis_lua_func_t, read_only) },
 	CONF_PARSER_TERMINATOR
 };
 
