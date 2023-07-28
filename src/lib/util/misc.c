@@ -481,11 +481,13 @@ void fr_memset_secure(void *ptr, size_t len)
 	explicit_bzero(ptr, len);
 
 #else
-	volatile unsigned char *volatile p =  (volatile unsigned char *volatile) ptr;
-	size_t i = len;
-	
-	while (i--) {
-		*(p++) = 0;
+	{
+		volatile unsigned char *volatile p =  (volatile unsigned char *volatile) ptr;
+		size_t i = len;
+
+		while (i--) {
+			*(p++) = 0;
+		}
 	}
 #endif
 }
