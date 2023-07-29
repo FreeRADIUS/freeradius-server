@@ -207,7 +207,8 @@ parse_reply:
 	/*
 	 *	Process the response for the command
 	 */
-	if (redisGetReply(conn->handle, (void **)&reply) == REDIS_OK) maybe_more = true;
+	reply = NULL;	/* Doesn't set reply to NULL on error *sigh* */
+	if ((redisGetReply(conn->handle, (void **)&reply) == REDIS_OK) && read_only) maybe_more = true;
 	status = fr_redis_command_status(conn, reply);
 	if (status != REDIS_RCODE_SUCCESS) {
 		*reply_out = reply;
@@ -229,6 +230,7 @@ parse_reply:
 	/*
 	 *	Process the response for READWRITE
 	 */
+	reply = NULL;	/* Doesn't set reply to NULL on error *sigh* */
 	if ((redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) ||
 	    (fr_redis_command_status(conn, reply) != REDIS_RCODE_SUCCESS)) {
 		ROPTIONAL(REDEBUG, ERROR, "Setting READWRITE failed");
