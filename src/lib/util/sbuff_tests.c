@@ -157,7 +157,7 @@ static void test_bstrncpy(void)
 {
 	char const	in[] = "i am a test string";
 	char const	in_long[] = "i am a longer test string";
-	char		out[18 + 1];
+	char		out[18 + 1] = "";
 	fr_sbuff_t	sbuff;
 	ssize_t		slen;
 
