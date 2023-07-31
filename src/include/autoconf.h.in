@@ -100,6 +100,9 @@
 /* define this if we have <execinfo.h> and symbols */
 #undef HAVE_EXECINFO
 
+/* Define to 1 if you have the `explicit_bzero' function. */
+#undef HAVE_EXPLICIT_BZERO
+
 /* Define to 1 if you have the `fchmodat' function. */
 #undef HAVE_FCHMODAT
 
@@ -250,6 +253,9 @@
 
 /* Define to 1 if you have the `memrchr' function. */
 #undef HAVE_MEMRCHR
+
+/* Define to 1 if you have the `memset_explicit' function. */
+#undef HAVE_MEMSET_EXPLICIT
 
 /* Define to 1 if you have the <minix/config.h> header file. */
 #undef HAVE_MINIX_CONFIG_H

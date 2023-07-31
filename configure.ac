@@ -1735,6 +1735,7 @@ AC_CHECK_FUNCS( \
   closefrom \
   ctime_r \
   dladdr \
+  explicit_bzero \
   fchmodat \
   fchownat \
   fcntl \
@@ -1756,6 +1757,7 @@ AC_CHECK_FUNCS( \
   localtime_r \
   mallopt \
   memrchr \
+  memset_explicit \
   mkdirat \
   openat \
   pthread_sigmask \

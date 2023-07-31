@@ -12573,6 +12573,12 @@ then :
   printf "%s\n" "#define HAVE_DLADDR 1" >>confdefs.h
 
 fi
+ac_fn_c_check_func "$LINENO" "explicit_bzero" "ac_cv_func_explicit_bzero"
+if test "x$ac_cv_func_explicit_bzero" = xyes
+then :
+  printf "%s\n" "#define HAVE_EXPLICIT_BZERO 1" >>confdefs.h
+
+fi
 ac_fn_c_check_func "$LINENO" "fchmodat" "ac_cv_func_fchmodat"
 if test "x$ac_cv_func_fchmodat" = xyes
 then :
@@ -12697,6 +12703,12 @@ ac_fn_c_check_func "$LINENO" "memrchr" "ac_cv_func_memrchr"
 if test "x$ac_cv_func_memrchr" = xyes
 then :
   printf "%s\n" "#define HAVE_MEMRCHR 1" >>confdefs.h
+
+fi
+ac_fn_c_check_func "$LINENO" "memset_explicit" "ac_cv_func_memset_explicit"
+if test "x$ac_cv_func_memset_explicit" = xyes
+then :
+  printf "%s\n" "#define HAVE_MEMSET_EXPLICIT 1" >>confdefs.h
 
 fi
 ac_fn_c_check_func "$LINENO" "mkdirat" "ac_cv_func_mkdirat"
