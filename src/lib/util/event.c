@@ -92,7 +92,7 @@ static fr_table_num_sorted_t const kevent_filter_table[] = {
 };
 static size_t kevent_filter_table_len = NUM_ELEMENTS(kevent_filter_table);
 
-#ifdef __linux__
+#ifdef EVFILT_LIBKQUEUE
 static int log_conf_kq;
 #endif
 
