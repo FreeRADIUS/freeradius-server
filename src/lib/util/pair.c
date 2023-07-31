@@ -89,11 +89,11 @@ static int _fr_pair_free(fr_pair_t *vp)
 
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
-		if (vp->data.secret) fr_memset_secure(vp->vp_ptr, vp->vp_length);
+		if (vp->data.secret) memset_explicit(vp->vp_ptr, 0, vp->vp_length);
 		break;
 
 	default:
-		if (vp->data.secret) fr_memset_secure(&vp->data, sizeof(vp->data));
+		if (vp->data.secret) memset_explicit(&vp->data, 0, sizeof(vp->data));
 		break;
 	}
 

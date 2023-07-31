@@ -171,8 +171,6 @@ int8_t		fr_pointer_cmp(void const *a, void const *b);
 void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
 int		fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length) CC_HINT(nonnull);
 
-void		fr_memset_secure(void *ptr, size_t len);
-
 #ifdef __cplusplus
 }
 #endif

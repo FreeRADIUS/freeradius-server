@@ -3525,7 +3525,7 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 	switch (data->type) {
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-		if (data->secret) fr_memset_secure(data->datum.ptr, data->vb_length);
+		if (data->secret) memset_explicit(data->datum.ptr, 0, data->vb_length);
 		talloc_free(data->datum.ptr);
 		break;
 

@@ -169,6 +169,10 @@ int sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags);
 void		closefrom(int fd);
 #endif
 
+#ifndef HAVE_MEMSET_EXPLICIT
+void *memset_explicit(void *ptr, int ch, size_t len);
+#endif
+
 #ifndef HAVE_SETLINEBUF
 #  ifdef HAVE_SETVBUF
 #    define setlinebuf(x) setvbuf(x, NULL, _IOLBF, 0)
