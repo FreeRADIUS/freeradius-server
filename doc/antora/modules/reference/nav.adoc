@@ -2,6 +2,8 @@
 
 ** xref:unlang/index.adoc[Unlang Policy Language]
 
+*** xref:unlang/interpreter.adoc[Interpreter]
+
 *** xref:unlang/keywords.adoc[Keywords]
 **** xref:unlang/break.adoc[break]
 **** xref:unlang/call.adoc[call]
@@ -26,8 +28,6 @@
 **** xref:unlang/switch.adoc[switch]
 **** xref:unlang/timeout.adoc[timeout]
 **** xref:unlang/update.adoc[update]
-
-*** xref:unlang/interpreter.adoc[Interpreter]
 
 *** xref:unlang/module.adoc[Modules]
 **** xref:unlang/module_method.adoc[Module Methods]
