@@ -617,7 +617,12 @@ do_close:
 #endif
 
 #ifndef HAVE_MEMSET_EXPLICIT
-void *memset_explicit(void *ptr, int ch, size_t len)
+void *memset_explicit(void *ptr,
+#ifdef HAVE_EXPLICIT_BZERO
+		      UNUSED
+#endif
+		      int ch,
+		      size_t len)
 {
 	if (!len) return ptr;
 
