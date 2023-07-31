@@ -244,7 +244,7 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 #else
 	case FR_TYPE_UINT32:
 		if (data->vb_uint32 > INT32_MAX) goto do_string;
-		return json_object_new_in(data->vb_uint32);
+		return json_object_new_int(data->vb_uint32);
 #endif
 
 	case FR_TYPE_INT8:
