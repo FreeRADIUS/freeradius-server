@@ -67,7 +67,7 @@ if ((&User-Name == "bob") && (&Calling-Station-Id == "00:01:03:04:05")) {
 }
 ----
 
-== Editing Attribures and lists.
+== Editing Attributes and lists.
 
 xref:unlang/edit.adoc[attribute editing] statements are used to edit
 attributes and lists of attributes.  The old-style
@@ -106,7 +106,7 @@ attributes, databases, and scripts.
 Each attribute used by the server has an associated
 xref:type/index.adoc[data type].  The `unlang` interpreter enforces
 restrictions on assignments, so that only valid data types can be
-assigned to an attribute.  Invalid assignments result in a run-time
+assigned to an attribute.  Invalid assignments result in an
 error.
 
 .Example
@@ -131,12 +131,11 @@ that the language is intended to perform specific actions on requests
 and responses. The client and module sections contain definitions for
 a client or module; they do not define how a request is processed.
 
-`unlang` uses the same the basic syntax as the configuration files.
-The syntax of the configuration file for lines, comments, sections,
-sub-section, etc., all apply to `unlang`.
+`unlang` uses a syntax similar to the configuration files.  The
+policies can contain comments, whitespace, sections, etc.
 
 Where `unlang` differs from the basic configuration file format is in
-complexity and operation.  The normal configuration files are
+its complexity and operation.  The normal configuration files are
 _declarative_ and they are _static_.  That is, they declare variables
 and values for those variables.  Those values do not change when the
 server is running.
