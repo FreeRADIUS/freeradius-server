@@ -313,10 +313,17 @@ server tacacs {
 	}
 
 	#
-	#  Do challenge-response here.
+	#  The automatic state machine will ensure that both User-Name
+	#  and User-Password have been provided by this point making
+	#  ASCII authentication equivalent to PAP.
+	#
+	#  Alternatively, if extra data is requried, set
+	#  &reply.Authentication-Status := Getdata
+	#  to request the extra data, which will be in &User-Message in
+	#  the next packet (if the client provides it)
 	#
 	authenticate ASCII {
-		fail
+		tacacs_pap
 	}
 
 	#
