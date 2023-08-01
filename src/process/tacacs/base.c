@@ -116,12 +116,14 @@ fr_dict_attr_autoload_t process_tacacs_dict_attr[] = {
 
 static fr_value_box_t const	*enum_auth_type_accept;
 static fr_value_box_t const	*enum_auth_type_reject;
+static fr_value_box_t const	*enum_auth_flags_noecho;
 static fr_value_box_t const	*enum_tacacs_auth_type_ascii;
 
 extern fr_dict_enum_autoload_t process_tacacs_dict_enum[];
 fr_dict_enum_autoload_t process_tacacs_dict_enum[] = {
 	{ .out = &enum_auth_type_accept, .name = "Accept", .attr = &attr_auth_type },
 	{ .out = &enum_auth_type_reject, .name = "Reject", .attr = &attr_auth_type },
+	{ .out = &enum_auth_flags_noecho, .name = "No-Echo", .attr = &attr_tacacs_authentication_flags },
 	{ .out = &enum_tacacs_auth_type_ascii, .name = "ASCII", .attr = &attr_tacacs_authentication_type },
 	{ NULL }
 };
@@ -574,6 +576,7 @@ RESUME(auth_start)
 			} else {
 				RDEBUG("User-Name = %pV, replying with Authentication-GetPass", &vp->data);
 				request->reply->code = FR_TACACS_CODE_AUTH_GETPASS;
+				goto add_auth_flags;
 			}
 
 			goto send_reply;
@@ -585,6 +588,17 @@ RESUME(auth_start)
 		if (session->reply == FR_TACACS_CODE_AUTH_GETUSER) {
 			RDEBUG("No User-Password, replying with Authentication-GetPass");
 			request->reply->code = FR_TACACS_CODE_AUTH_GETPASS;
+
+			/*
+			 *	Pre-set the authentication flags reply to No-Echo
+			 *	RFC 8907 says this should be set when the data being
+			 *	requested is sensitive and should not be echoed to the
+			 *	user as it is being entered.
+			 */
+		add_auth_flags:
+			MEM(pair_append_reply(&vp, attr_tacacs_authentication_flags) >= 0);
+			(void) fr_value_box_copy(vp, &vp->data, enum_auth_flags_noecho);
+			vp->data.enumv = attr_tacacs_authentication_flags;
 			goto send_reply;
 		}
 
