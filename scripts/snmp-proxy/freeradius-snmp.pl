@@ -40,7 +40,7 @@ my $cfg = {
 
     radius => {
         host => 'localhost',
-        port => 18120,
+        port => 18121,
         secret => 'adminsecret',
 #        dictionary => '../radiusd/share/dictionary',
         dictionary => 'dictionary.hacked',
