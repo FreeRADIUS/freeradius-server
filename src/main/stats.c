@@ -525,8 +525,8 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	Authentication.
 	 */
-	if (((flag->vp_integer & 0x01) != 0) &&
-	    ((flag->vp_integer & 0xc0) == 0)) {
+	if (((flag->vp_integer & 0x01) != 0) &&		/* auth */
+	    ((flag->vp_integer & 0xc0) == 0)) {		/* not server or home-server */
 		request_stats_addvp(request, authvp, &radius_auth_stats);
 	}
 
@@ -534,8 +534,8 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	Accounting
 	 */
-	if (((flag->vp_integer & 0x02) != 0) &&
-	    ((flag->vp_integer & 0xc0) == 0)) {
+	if (((flag->vp_integer & 0x02) != 0) &&		/* accounting */
+	    ((flag->vp_integer & 0xc0) == 0)) {		/* not server or home-server */
 		request_stats_addvp(request, acctvp, &radius_acct_stats);
 	}
 #endif
@@ -544,8 +544,8 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	Proxied authentication requests.
 	 */
-	if (((flag->vp_integer & 0x04) != 0) &&
-	    ((flag->vp_integer & 0x20) == 0)) {
+	if (((flag->vp_integer & 0x04) != 0) &&		/* proxy-auth */
+	    ((flag->vp_integer & 0x20) == 0)) {		/* not client */
 		request_stats_addvp(request, proxy_authvp, &proxy_auth_stats);
 	}
 
@@ -553,8 +553,8 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	Proxied accounting requests.
 	 */
-	if (((flag->vp_integer & 0x08) != 0) &&
-	    ((flag->vp_integer & 0x20) == 0)) {
+	if (((flag->vp_integer & 0x08) != 0) &&		/* proxy-accounting */
+	    ((flag->vp_integer & 0x20) == 0)) {		/* not client */
 		request_stats_addvp(request, proxy_acctvp, &proxy_acct_stats);
 	}
 #endif
@@ -563,7 +563,7 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	Internal server statistics
 	 */
-	if ((flag->vp_integer & 0x10) != 0) {
+	if ((flag->vp_integer & 0x10) != 0) {		/* internal */
 		vp = radius_pair_create(request->reply, &request->reply->vps,
 				       PW_FREERADIUS_STATS_START_TIME, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = start_time.tv_sec;
@@ -607,7 +607,7 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	For a particular client.
 	 */
-	if ((flag->vp_integer & 0x20) != 0) {
+	if ((flag->vp_integer & 0x20) != 0) { 		/* client */
 		fr_ipaddr_t ipaddr;
 		VALUE_PAIR *server_ip, *server_port = NULL;
 		RADCLIENT *client = NULL;
@@ -764,8 +764,8 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	For a particular "listen" socket.
 	 */
-	if (((flag->vp_integer & 0x40) != 0) &&
-	    ((flag->vp_integer & 0x03) != 0)) {
+	if (((flag->vp_integer & 0x40) != 0) &&		/* server */
+	    ((flag->vp_integer & 0x03) != 0)) {		/* auth or accounting */
 		rad_listen_t *this;
 		VALUE_PAIR *server_ip, *server_port;
 		fr_ipaddr_t ipaddr;
@@ -807,7 +807,7 @@ void request_stats_reply(REQUEST *request)
 		fr_pair_add(&request->reply->vps,
 			fr_pair_copy(request->reply, server_port));
 
-		if ((flag->vp_integer & 0x01) != 0) {
+		if ((flag->vp_integer & 0x01) != 0) {	/* auth */
 			if ((request->listener->type == RAD_LISTEN_AUTH) ||
 			    (request->listener->type == RAD_LISTEN_NONE)) {
 				request_stats_addvp(request, authvp, &this->stats);
@@ -817,7 +817,7 @@ void request_stats_reply(REQUEST *request)
 		}
 
 #ifdef WITH_ACCOUNTING
-		if ((flag->vp_integer & 0x02) != 0) {
+		if ((flag->vp_integer & 0x02) != 0) {	/* accounting */
 			if ((request->listener->type == RAD_LISTEN_ACCT) ||
 			    (request->listener->type == RAD_LISTEN_NONE)) {
 				request_stats_addvp(request, acctvp, &this->stats);
@@ -832,8 +832,8 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	Home servers.
 	 */
-	if (((flag->vp_integer & 0x80) != 0) &&
-	    ((flag->vp_integer & 0x03) != 0)) {
+	if (((flag->vp_integer & 0x80) != 0) &&		/* home-server */
+	    ((flag->vp_integer & 0x03) != 0)) {		/* auth or accounting */
 		home_server_t *home;
 		VALUE_PAIR *server_ip, *server_port;
 		fr_ipaddr_t ipaddr;
@@ -935,7 +935,7 @@ void request_stats_reply(REQUEST *request)
 				       PW_FREERADIUS_STATS_LAST_PACKET_SENT, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = home->last_packet_sent;
 
-		if ((flag->vp_integer & 0x01) != 0) {
+		if ((flag->vp_integer & 0x01) != 0) {	/* auth */
 			if (home->type == HOME_TYPE_AUTH) {
 				request_stats_addvp(request, proxy_authvp,
 						    &home->stats);
@@ -945,7 +945,7 @@ void request_stats_reply(REQUEST *request)
 		}
 
 #ifdef WITH_ACCOUNTING
-		if ((flag->vp_integer & 0x02) != 0) {
+		if ((flag->vp_integer & 0x02) != 0) {	/* accounting */
 			if (home->type == HOME_TYPE_ACCT) {
 				request_stats_addvp(request, proxy_acctvp,
 						    &home->stats);
