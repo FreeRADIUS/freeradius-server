@@ -17,3 +17,5 @@
 ***** xref:protocols/proxy/radsec_with_haproxy.adoc[Proxying RadSec with HAproxy]
 ***** xref:protocols/proxy/radsec_with_traefik.adoc[Proxying RadSec with Traefik]
 ***** xref:protocols/proxy/enable_proxy_protocol.adoc[Enabling PROXY Protocol for RadSec]
+** xref:monitoring/index.adoc[Monitoring]
+*** xref:monitoring/statistics.adoc[Server statistics]
