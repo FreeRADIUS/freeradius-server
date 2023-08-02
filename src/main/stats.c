@@ -526,7 +526,7 @@ void request_stats_reply(REQUEST *request)
 	 *	Authentication.
 	 */
 	if (((flag->vp_integer & 0x01) != 0) &&		/* auth */
-	    ((flag->vp_integer & 0xc0) == 0)) {		/* not server or home-server */
+	    ((flag->vp_integer & 0xe0) == 0)) {		/* not client, server or home-server */
 		request_stats_addvp(request, authvp, &radius_auth_stats);
 	}
 
@@ -535,7 +535,7 @@ void request_stats_reply(REQUEST *request)
 	 *	Accounting
 	 */
 	if (((flag->vp_integer & 0x02) != 0) &&		/* accounting */
-	    ((flag->vp_integer & 0xc0) == 0)) {		/* not server or home-server */
+	    ((flag->vp_integer & 0xe0) == 0)) {		/* not client, server or home-server */
 		request_stats_addvp(request, acctvp, &radius_acct_stats);
 	}
 #endif
