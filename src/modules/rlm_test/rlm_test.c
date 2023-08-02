@@ -379,7 +379,7 @@ static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
-static xlat_arg_parser_t const test_xlat_args[] = {
+static xlat_arg_parser_t const test_xlat_passthrough_args[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -390,9 +390,9 @@ static xlat_arg_parser_t const test_xlat_args[] = {
  *
  * This just copies the input to the output.
  */
-static xlat_action_t test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-			       UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
-			       fr_value_box_list_t *in)
+static xlat_action_t test_xlat_passthrough(TALLOC_CTX *ctx, fr_dcursor_t *out,
+			                   UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
+			                   fr_value_box_list_t *in)
 {
 	fr_value_box_t	*vb;
 
@@ -483,8 +483,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		INFO("inst->tmpl_m is NULL");
 	}
 
-	if (!(xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, test_xlat, FR_TYPE_VOID))) return -1;
-	xlat_func_args_set(xlat, test_xlat_args);
+	if (!(xlat = xlat_func_register_module(inst, mctx, "passthrough", test_xlat_passthrough, FR_TYPE_VOID))) return -1;
+	xlat_func_args_set(xlat, test_xlat_passthrough_args);
 
 	return 0;
 }

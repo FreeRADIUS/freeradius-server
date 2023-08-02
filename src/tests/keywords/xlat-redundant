@@ -2,11 +2,11 @@
 #
 #  PRE: if
 #
-if (!(%(concat:%(test1:foo bar) '|') == "foo|bar")) {
+if (!(%(concat:%(test1.passthrough:foo bar) '|') == "foo|bar")) {
 	test_fail
 }
 
-if (!(%(concat:%(test2:foo bar) '|') == "foo|bar")) {
+if (!(%(concat:%(test2.passthrough:foo bar) '|') == "foo|bar")) {
 	test_fail
 }
 

@@ -1,0 +1,9 @@
+# Verify parsing works correctly with an unquoted xlat
+map json %(test.passthrough:"{ \"foo\":\"bar\" }" {}) {
+	&Tmp-String-0 := '$.foo'
+}
+
+if (!(&Tmp-String-0 == 'bar')) {
+	test_fail
+}
+test_pass
