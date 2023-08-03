@@ -58,6 +58,8 @@ typedef struct fr_socket_limit_t {
 	uint32_t	num_requests;
 	uint32_t	lifetime;
 	uint32_t	idle_timeout;
+	uint32_t	read_timeout;
+	uint32_t	write_timeout;
 } fr_socket_limit_t;
 
 typedef struct home_server {

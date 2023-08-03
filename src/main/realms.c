@@ -452,6 +452,12 @@ static CONF_PARSER limit_config[] = {
 	{ "max_requests", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.max_requests), "0" },
 	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.lifetime), "0" },
 	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.idle_timeout), "0" },
+#ifdef SO_RCVTIMEO
+	{ "read_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.read_timeout), },
+#endif
+#ifdef SO_SNDTIMEO
+	{ "write_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.write_timeout), },
+#endif
 	CONF_PARSER_TERMINATOR
 };
 
