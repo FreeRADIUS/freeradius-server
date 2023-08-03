@@ -845,8 +845,8 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 {
 	uint8_t *buf;
 	size_t len;
-	fr_value_box_t one = (fr_value_box_t){};
-	fr_value_box_t two = (fr_value_box_t){};
+	fr_value_box_t one = {};
+	fr_value_box_t two = {};
 
 	fr_assert(dst->type == FR_TYPE_OCTETS);
 
@@ -984,8 +984,8 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 {
 	char *buf;
 	size_t len;
-	fr_value_box_t one = (fr_value_box_t){};
-	fr_value_box_t two = (fr_value_box_t){};
+	fr_value_box_t one = {};
+	fr_value_box_t two = {};
 
 	fr_assert(dst->type == FR_TYPE_STRING);
 
