@@ -1313,6 +1313,12 @@ static CONF_PARSER limit_config[] = {
 	{ "max_connections", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.max_connections), "16" },
 	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.lifetime), "0" },
 	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.idle_timeout), STRINGIFY(30) },
+#ifdef SO_RCVTIMEO
+	{ "read_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.read_timeout), NULL },
+#endif
+#ifdef SO_SNDTIMEO
+	{ "write_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.write_timeout), NULL },
+#endif
 #endif
 	CONF_PARSER_TERMINATOR
 };
@@ -3175,9 +3181,9 @@ static int listen_bind(rad_listen_t *this)
 #ifdef WITH_TCP
 	if (sock->proto == IPPROTO_TCP) {
 		/*
-		 *	Woker threads are blocking.
+		 *	If we dedicate a worker thread to each socket, then the socket is blocking.
 		 *
-		 *	Otherwise, they're non-blocking.
+		 *	Otherwise, all input TCP sockets are non-blocking.
 		 */
 		if (!this->workers) {
 			if (fr_nonblock(this->fd) < 0) {
@@ -3451,6 +3457,38 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 
 				if (setsockopt(this->fd, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
 					ERROR("(TLS) Failed to set TCP_NODELAY: %s", fr_syserror(errno));
+					goto error;
+				}
+			}
+#endif
+		} else {
+			/*
+			 *	Only set timeouts when the socket is nonblocking.  This allows blocking
+			 *	sockets to still time out when the underlying socket is dead.
+			 */
+#ifdef SO_RCVTIMEO
+			if (sock->limit.read_timeout) {
+				struct timeval tv;
+
+				tv.tv_sec = sock->limit.read_timeout;
+				tv.tv_usec = 0;
+
+				if (setsockopt(this->fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+					ERROR("(TLS) Failed to set read_timeout: %s", fr_syserror(errno));
+					goto error;
+				}
+			}
+#endif
+
+#ifdef SO_SNDTIMEO
+			if (sock->limit.write_timeout) {
+				struct timeval tv;
+
+				tv.tv_sec = sock->limit.write_timeout;
+				tv.tv_usec = 0;
+
+				if (setsockopt(this->fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) < 0) {
+					ERROR("(TLS) Failed to set write_timeout: %s", fr_syserror(errno));
 					goto error;
 				}
 			}

@@ -371,6 +371,21 @@ sql {
 	# of the SQL module.
 	group_attribute = "SQL-Group"
 
+	#  When attributes read from the network are used in SQL queries
+	#  their values are escaped to make them safe.
+	#  By default FreeRADIUS uses its escaping routine which replaces
+	#  unsafe characters with their mime-encoded equivalent.
+	#  The list of safe characters is conservative, to allow for differences
+	#  between different SQL implementations.
+	#
+	#  If you are using the mysql or postgresql drivers, those have their
+	#  own escaping functions which only escape characters as required
+	#  by those databases.
+	#
+	#  Set this option to yes to use the database driver provided escape
+	#  function.
+#	auto_escape = no
+
 	# Read database-specific queries
 	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
 }

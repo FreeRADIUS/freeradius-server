@@ -3372,8 +3372,10 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			if (conf->disallow_untrusted || RDEBUG_ENABLED2) {
 				int  i;
 
-				WARN("Certificate chain - %i cert(s) untrusted",
+				WARN("Certificate chain - %i intermediate CA cert(s) untrusted",
 				     X509_STORE_CTX_get_num_untrusted(ctx));
+				WARN("To forbid these certificates see 'reject_unknown_intermediate_ca'");
+
 				for (i = sk_X509_num(untrusted); i > 0 ; i--) {
 					X509 *this_cert = sk_X509_value(untrusted, i - 1);
 
