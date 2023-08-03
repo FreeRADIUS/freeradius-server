@@ -713,18 +713,20 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		 *	UDP sockets: open a new socket, and then
 		 *	connect it to the client.  This emulates the
 		 *	behavior of accept().
+		 *
+		 *	Note that there is a small window between the
+		 *	bind() and connect() where UDP packets for the
+		 *	wildcard socket can get received by this
+		 *	socket.  We hope that this time frame is as
+		 *	small as possible.
+		 *
+		 *	i.e. we ignore the problem, and don't
+		 *	currently check dst ip/port for UDP packets
+		 *	received on connected sockets.
 		 */
 		if (fd < 0) {
 			socklen_t salen;
 			struct sockaddr_storage src;
-
-			if (inst->app_io->open(connection->child) < 0) {
-				DEBUG("proto_%s - Failed opening connected socket.", inst->app->common.name);
-				talloc_free(dl_inst);
-				return NULL;
-			}
-
-			fd = connection->child->fd;
 
 			if (fr_ipaddr_to_sockaddr(&src, &salen,
 						  &connection->address->socket.inet.src_ipaddr,
@@ -733,6 +735,14 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 				talloc_free(dl_inst);
 				return NULL;
 			}
+
+			if (inst->app_io->open(connection->child) < 0) {
+				DEBUG("proto_%s - Failed opening connected socket.", inst->app->common.name);
+				talloc_free(dl_inst);
+				return NULL;
+			}
+
+			fd = connection->child->fd;
 
 			if (connect(fd, (struct sockaddr *) &src, salen) < 0) {
 				ERROR("proto_%s - Failed in connect: %s", inst->app->common.name, fr_syserror(errno));
