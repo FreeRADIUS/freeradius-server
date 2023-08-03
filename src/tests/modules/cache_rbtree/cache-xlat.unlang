@@ -21,4 +21,12 @@ if (&Tmp-String-3 != "") {
         test_fail
 }
 
+# Regression test for deadlock on notfound
+&Tmp-String-0 := 'testkey0'
+
+&Tmp-String-3 := "%(cache:request.Tmp-String-4)"
+
+# Would previously deadlock
+&Tmp-String-4 := "%(cache:request.Tmp-String-4)"
+
 test_pass

@@ -861,11 +861,9 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	case RLM_MODULE_OK:		/* found */
 		break;
 
-	case RLM_MODULE_NOTFOUND:	/* not found */
-		return XLAT_ACTION_FAIL;
-
 	default:
 		talloc_free(target);
+		cache_release(inst, request, &handle);
 		return XLAT_ACTION_FAIL;
 	}
 
