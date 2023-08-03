@@ -3363,7 +3363,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 	char		buffer[8192];			/* Command buffer */
 	char		data[COMMAND_OUTPUT_MAX + 1];	/* Data written by previous command */
 	ssize_t		data_used = 0;			/* How much data the last command wrote */
-	static char	path[PATH_MAX] = { '\0' };
+	static char	path[PATH_MAX] = "";
 	command_line_range_t	*lr = NULL;
 
 	command_file_ctx_t	*cc;
