@@ -89,7 +89,16 @@ dpsk {
 	#  double quoted: "psk".
 	#
 	#  The mac field is optional.  If it exists, then that PSK
-	#  will be used.
+	#  will be used.  It is highly recommended that the MAC *not* be placed
+	#  into the CSV file.  Instead, the MAC and PSK should be placed into a
+	#  database.  The server can then be configured to look up the MAC in the
+	#  database, which returns the PSK.  That way this module will only ever
+	#  check one PSK, which is fast.
+	#
+	#  i.e. the CSV file should only contain the small number of PSKs where
+	#  you do not yet know the MAC.  As soon as you know the MAC, you should
+	#  put the MAC and PSK into a database, and then remove the MAC and PSK
+	#  from the CSV file.
 	#
 	#  NOTE: the file is opened and read from top to bottom for every
 	#  new request which comes in.  This process can be very slow!
