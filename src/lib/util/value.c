@@ -4907,7 +4907,7 @@ parse:
 	case FR_TYPE_ETHERNET:
 	{
 		uint64_t 		num;
-		fr_ethernet_t		ether;
+		fr_ethernet_t		ether = {};
 		fr_dbuff_t		dbuff;
 		fr_sbuff_parse_error_t	err;
 

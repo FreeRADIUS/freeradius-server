@@ -774,7 +774,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_lm(rlm_rcode_t *p_result,
 						    UNUSED rlm_pap_t const *inst, request_t *request,
 						    fr_pair_t const *known_good, UNUSED fr_pair_t const *password)
 {
-	uint8_t	digest[MD4_DIGEST_LENGTH];
+	uint8_t	digest[MD4_DIGEST_LENGTH] = {};
 	char	charbuf[32 + 1];
 	ssize_t	len;
 
@@ -804,7 +804,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_resul
 							    UNUSED rlm_pap_t const *inst, request_t *request,
 							    fr_pair_t const *known_good, fr_pair_t const *password)
 {
-	uint8_t digest[128];
+	uint8_t digest[128] = {};
 	uint8_t buff[FR_MAX_STRING_LEN];
 	uint8_t buff2[FR_MAX_STRING_LEN + 50];
 

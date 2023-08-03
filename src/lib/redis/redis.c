@@ -457,7 +457,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 {
 	char		*new;
 
-	char		key_buf[256];
+	char		key_buf[256] = "";
 	char		*key;
 	size_t		key_len;
 	ssize_t		slen;

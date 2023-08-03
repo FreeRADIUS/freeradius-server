@@ -1313,7 +1313,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *vp_str,
  */
 int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const *rules)
 {
-	char buffer[256];
+	char buffer[256] = "";
 
 	map_t *map;
 

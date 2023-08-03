@@ -463,7 +463,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		}
 
 		if (conf->print_packet && (fr_debug_lvl >= L_DBG_LVL_2)) {
-			char vector[(RADIUS_AUTH_VECTOR_LENGTH * 2) + 1];
+			char vector[(RADIUS_AUTH_VECTOR_LENGTH * 2) + 1] = "";
 
 			fr_pair_list_sort(list, fr_pair_cmp_by_da);
 			fr_pair_list_log(&default_log, 4, list);
@@ -480,7 +480,7 @@ static void rs_packet_save_in_output_dir(uint64_t count, UNUSED rs_status_t stat
 				  UNUSED struct timeval *elapsed, UNUSED struct timeval *latency, bool response, bool body)
 {
 	fr_log_t output_file;
-	char vector[(RADIUS_AUTH_VECTOR_LENGTH * 2) + 1];
+	char vector[(RADIUS_AUTH_VECTOR_LENGTH * 2) + 1] = "";
 	char const *packet_type = response ? "reply" : "request";
 	char filename[2048];
 
