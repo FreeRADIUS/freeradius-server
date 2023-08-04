@@ -7,7 +7,7 @@
 
 site:
   title: The FreeRADIUS project - Documentation
-  url: https://freeradius.org/docs
+  url: https://freeradius.org/documentation
   start_page: %LATEST%@freeradius-server:ROOT:index.adoc
 
 content:
@@ -44,6 +44,7 @@ ui:
     url: https://github.com/FreeRADIUS/freeradius-docs-ui/blob/master-releases/ui-bundle.zip?raw=true
     snapshot: true
   default_layout: freeradiusorg
+  output_dir: freeradius-server/_
 
 output:
   clean: true
