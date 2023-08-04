@@ -582,10 +582,9 @@ static ssize_t encode_vsio_data(fr_dbuff_t *dbuff,
 	 *
 	 *	And leave room for data-len1
 	 */
-	fr_dbuff_in_bytes(&work_dbuff, (uint8_t) da->attr, 0x00);
-	/* coverity[check_return] */
-	fr_dbuff_in(&work_dbuff, dv->attr);
-	fr_dbuff_in_bytes(&work_dbuff, (uint8_t) 0x00);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) da->attr, 0x00);
+	FR_DBUFF_IN_RETURN(&work_dbuff, dv->attr);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) 0x00);
 
 	/*
 	 *	https://tools.ietf.org/html/rfc3925#section-4
