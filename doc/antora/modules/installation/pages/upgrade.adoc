@@ -274,7 +274,7 @@ required for the new features in v4.
 [cols=",",options="header",]
 |===
 | Old Name                   | New Name
-| `authorize`.               | `recv Access-Request`
+| `authorize`                | `recv Access-Request`
 | `authenticate`             | `authenticate <Auth-Type>`
 | `post-auth`                | `send Access-Accept`
 |                            |
@@ -412,7 +412,7 @@ redundant {
 NOTE: Of course, you will have to use the names of the `radius`
 modules in your configuration, and not `home_server_1`, etc.
 
-* `type = load-balance` - replaced with `unlang`.
+* `type = load-balance` - replaced with `unlang`
 
 [source,unlang]
 ----
@@ -423,7 +423,7 @@ load-balance {
 }
 ----
 
-* `type = client-balance` - replaced with `unlang`.
+* `type = client-balance` - replaced with `unlang`
 
 [source,unlang]
 ----
@@ -434,7 +434,7 @@ load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}" {
 }
 ----
 
-* `type = client-port-balance` - replaced with `unlang`.
+* `type = client-port-balance` - replaced with `unlang`
 
 [source,unlang]
 ----
@@ -591,8 +591,8 @@ keywords, such as `subrequest`.
 
 == Update sections
 
-The `update` sections are deprecated.  See new the attribute
-xref:reference:unlang/edit.adoc[editing] documentation.
+The `update` sections are deprecated.  See the new way to
+xref:reference:unlang/edit.adoc[edit attributes].
 
 The server has limited support for "auto-conversion" of `update`
 sections to the new syntax.
