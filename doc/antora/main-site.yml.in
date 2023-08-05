@@ -10,6 +10,11 @@ site:
   url: https://freeradius.org/documentation
   start_page: %LATEST%@freeradius-server:ROOT:index.adoc
 
+urls:
+  latest_version_segment: current
+  latest_version_segment_strategy: redirect:from
+  redirect_facility: httpd
+
 content:
   sources:
   - url: .

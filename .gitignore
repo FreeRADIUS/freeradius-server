@@ -92,3 +92,6 @@ rpmbuild/
 
 # fuzzer output files
 crash-*
+
+# Antora web site generation
+main-site.yml
