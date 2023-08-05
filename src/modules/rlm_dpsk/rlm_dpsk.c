@@ -265,20 +265,21 @@ static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffe
 	}
 
 	/*
-	 *	Found the cache entry, use the calculated PMK.
+	 *	No provided PSK.  Try to look it up in the cache.  If
+	 *	it isn't there, find it in the config items.
 	 */
-	if (inst->cache && mac) {
-		rlm_dpsk_cache_t *entry;
-
-		entry = dpsk_cache_find(request, inst, buffer, buflen, ssid, mac);
-		if (entry) {
-			memcpy(buffer, entry->pmk, buflen);
-			return 1;
-		}
-		RDEBUG3("Cache entry not found");
-	} /* else no caching */
-
 	if (!psk) {
+		if (inst->cache && mac) {
+			rlm_dpsk_cache_t *entry;
+
+			entry = dpsk_cache_find(request, inst, buffer, buflen, ssid, mac);
+			if (entry) {
+				memcpy(buffer, entry->pmk, buflen);
+				return 1;
+			}
+			RDEBUG3("Cache entry not found");
+		} /* else no caching */
+
 		vp = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
 		if (!vp) {
 			RDEBUG("No &config:Pre-Shared-Key");
@@ -305,13 +306,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	rlm_dpsk_t *inst = instance;
 	VALUE_PAIR *anonce, *key_msg, *ssid, *vp;
 	rlm_dpsk_cache_t *entry;
-	int lineno;
-	size_t len;
+	int lineno = 0;
+	size_t len, psk_len;
 	unsigned int digest_len, mic_len;
 	eapol_attr_t const *eapol;
 	eapol_attr_t *zeroed;
 	FILE *fp = NULL;
-	char const *psk_identity = NULL;
+	char const *psk_identity = NULL, *psk;
 	uint8_t *p;
 	uint8_t const *snonce, *ap_mac;
 	uint8_t const *min_mac, *max_mac;
@@ -378,6 +379,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	vp = fr_pair_find_by_num(request->config, PW_PSK_IDENTITY, 0, TAG_ANY);
 	if (vp) psk_identity = vp->vp_strvalue;
 
+	vp = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
+	if (vp) {
+		psk = vp->vp_strvalue;
+		psk_len = vp->vp_length;
+	} else {
+		psk = NULL;
+		psk_len = 0;
+	}
+
 	/*
 	 *	Get the AP MAC address.
 	 */
@@ -437,7 +447,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	*p = '\0';
 	fr_assert(sizeof(message) == (p + 1 - message));
 
-	if (inst->filename) {
+	if (inst->filename && !psk) {
 		FR_TOKEN token;
 		char const *q;
 		char token_psk[256];
@@ -460,8 +470,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			REDEBUG("Failed opening %s - %s", inst->filename, fr_syserror(errno));
 			return RLM_MODULE_FAIL;
 		}
-
-		lineno = 0;
 
 get_next_psk:
 		q = fgets(buffer, sizeof(buffer), fp);
@@ -551,7 +559,7 @@ get_next_psk:
 	 */
 	vp = fr_pair_find_by_num(request->config, PW_PAIRWISE_MASTER_KEY, 0, TAG_ANY);
 	if (!vp) {
-		if (generate_pmk(request, inst, pmk, sizeof(pmk), ssid, s_mac, NULL, 0) == 0) {
+		if (generate_pmk(request, inst, pmk, sizeof(pmk), ssid, s_mac, psk, psk_len) == 0) {
 			RDEBUG("No &config:Pairwise-Master-Key or &config:Pre-Shared-Key found");
 			fr_assert(!fp);
 			return RLM_MODULE_NOOP;
@@ -674,6 +682,7 @@ make_digest:
 			RDEBUG3("Cache entry saved");
 		}
 		entry->expires = request->timestamp + inst->cache_lifetime;
+
 		/*
 		 *	Add the PSK to the reply items, if it was cached.
 		 */
