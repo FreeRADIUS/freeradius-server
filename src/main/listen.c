@@ -55,7 +55,7 @@ RCSID("$Id$")
 #ifdef WITH_TLS
 #include <netinet/tcp.h>
 
-#  if defined(__APPLE__) || defined(__FreeBSD__)
+#  if defined(__APPLE__) || defined(__FreeBSD__) || defined(__illumos__)
 #    if !defined(SOL_TCP) && defined(IPPROTO_TCP)
 #      define SOL_TCP IPPROTO_TCP
 #    endif
@@ -786,6 +786,7 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 		 */
 		fr_assert(*outlen == 10);
 		sock->radiusv11 = (server[9] == '1');
+		sock->alpn_ok = true;
 
 		RDEBUG("(TLS) ALPN server negotiated application protocol \"%.*s\"", (int) *outlen, server);
 		return SSL_TLSEXT_ERR_OK;
@@ -797,6 +798,19 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 	RDEBUG("(TLS) ALPN failure - no protocols in common");
 	return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
+
+static int radiusv11_client_hello_cb(SSL *s, int *alert, void *arg)
+{
+	rad_listen_t *this = arg;
+	listen_socket_t *sock = this->data;
+
+	if (sock->alpn_ok) return SSL_CLIENT_HELLO_SUCCESS;
+
+	*alert = SSL_AD_NO_APPLICATION_PROTOCOL;
+
+	return SSL_CLIENT_HELLO_ERROR;
+}
+
 
 int fr_radiusv11_client_init(fr_tls_server_conf_t *tls);
 int fr_radiusv11_client_get_alpn(rad_listen_t *listener);
@@ -1073,6 +1087,8 @@ static int dual_tcp_accept(rad_listen_t *listener)
 			if (client->radiusv11 != FR_RADIUSV11_FORBID) {
 				SSL_CTX_set_alpn_select_cb(this->tls->ctx, radiusv11_server_alpn_cb, this);
 				DEBUG("(TLS) ALPN radiusv11 = allow / require");
+
+				SSL_CTX_set_client_hello_cb(this->tls->ctx, radiusv11_client_hello_cb, this);
 			} else {
 				DEBUG("(TLS) ALPN radiusv11 = forbid");
 			}
