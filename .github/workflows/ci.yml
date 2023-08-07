@@ -152,6 +152,16 @@ jobs:
       - name: Prepare Docker environment
         uses: ./.github/actions/docker-prep
 
+      - name: Install build dependencies
+        uses: ./.github/actions/freeradius-deps
+        with:
+          use_docker: true
+          cc: ${{ matrix.env.CC }}
+
+      - name: Install alternative dependencies
+        if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+        uses: ./.github/actions/freeradius-alt-deps
+
       - name: Build FreeRADIUS
         uses: ./.github/actions/build-freeradius
         with:

@@ -185,55 +185,12 @@ jobs:
           corpus-${{ matrix.env.PROTOCOL }}-${{ steps.corpusparams.outputs.corpusct }}-
       if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') }}
 
-    - name: Package manager performance improvements
-      run: |
-        sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
-        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
-        sudo dpkg-reconfigure man-db
-        sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
-
-    # Remove pre-installed package which conflicts with dependency installation
-    - name: Remove package conflicts
-      run: |
-        sudo apt-get remove -y libhashkit2
-
-    #
-    #  NetworkRADIUS repo is needed for up-to-date versions
-    #  of libkqueue.  Although libkqueue is available via
-    #  debian, it's too old and the EVFILT_PROC filter is
-    #  disabled.
-    #
-    - name: NetworkRADIUS signing key
-      shell: bash
-      run: sudo /bin/sh -c "curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -"
-
-    - name: Set up NetworkRADIUS extras repository
-      shell: bash
-      run: |
-        DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
-        RELEASE=$(lsb_release -cs)
-        sudo /bin/sh -c "echo \"deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
-          > /etc/apt/sources.list.d/networkradius-extras.list"
-
-    - name: Install build dependencies based on Debian packages plus extra CI packages
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
-        debian/rules debian/control
-        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
-        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
-
-    - name: Install tacacs_plus
-      run: |
-        pip3 install tacacs_plus
-
-    - name: Install LLVM 12
-      run: |
-        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
-        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
-        sudo apt-get install -y --no-install-recommends clang-12 llvm-12 gdb
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 60 && sudo update-alternatives --set clang /usr/bin/clang-12
-        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-12 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-12
+    - name: Install build dependencies
+      uses: ./.github/actions/freeradius-deps
+      with:
+        use_docker: false
+        cc: ${{ matrix.env.CC }}
+        llvm_ver: 12
 
     - name: Show versions
       run: |

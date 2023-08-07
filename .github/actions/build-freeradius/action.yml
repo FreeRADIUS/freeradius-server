@@ -1,18 +1,15 @@
 name: build-freeradius
 
 inputs:
-  use_docker:
-    desription: True if running in a Docker container
-    default: false
   use_sanitizers:
     desription: Enable sanitizers if true
     default: false
-  llvm_ver:
-    desription: Version of LLVM to use
-    default: 12
-  gcc_ver:
-    desription: Version of GCC to use
-    default: 11
+  cc:
+    desription: Which CC to use
+    default: gcc
+  test_type:
+    desription: What test is being run
+    default: gcc
 
 
 runs:
@@ -44,60 +41,11 @@ runs:
       with:
         path: ${{ env.HOSTAPD_BUILD_DIR }}
         key: hostapd-${{ runner.os }}-${{ env.HOSTAPD_GIT_TAG }}-v4
-      if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
-
-    - name: Package manager performance improvements
-      if: ${{ runner.os != 'macOS' && inputs.use_docker == false}}
-      shell: bash
-      run: |
-        sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
-        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
-        sudo dpkg-reconfigure man-db
-        sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
-
-    #
-    #  NetworkRADIUS repo is needed for up-to-date versions
-    #  of libkqueue.  Although libkqueue is available via
-    #  debian, it's too old and the EVFILT_PROC filter is
-    #  disabled.
-    #
-    #  We don't need this on macOS as it has a native kqueue
-    #  implementation.
-    #
-    - name: NetworkRADIUS signing key
-      if: ${{ runner.os != 'macOS' }}
-      shell: bash
-      run: sudo /bin/sh -c "curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -"
-
-    - name: Set up NetworkRADIUS extras repository
-      if: ${{ runner.os != 'macOS' }}
-      shell: bash
-      run: |
-        DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
-        RELEASE=$(lsb_release -cs)
-        sudo /bin/sh -c "echo \"deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
-          > /etc/apt/sources.list.d/networkradius-extras.list"
-
-    #  Currently GitHub runners have a conflicting version of libhashkit2 installed which breaks dependency installation
-    - name: Remove package conflicts
-      if: ${{ runner.os != 'macOS' }}
-      shell: bash
-      run: |
-        sudo apt-get remove -y libhashkit2
-
-    - name: Install build dependencies based on Debian packages plus extra CI packages
-      if: ${{ runner.os != 'macOS' }}
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
-        debian/rules debian/control
-        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
-        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
+      if: ${{ inputs.test_type != 'fuzzing' }}
 
     #  Has issues in Docker container when running on GitHub...
     - uses: ruby/setup-ruby@v1
-      if: ${{ matrix.env.TEST_TYPE == 'fixtures' && matrix.os.runs_on == 'self-hosted' }}
+      if: ${{ inputs.test_type == 'fixtures' && matrix.os.runs_on == 'self-hosted' }}
       with:
         ruby-version: 2.7
       env:
@@ -105,7 +53,7 @@ runs:
 
     #  ...so install from packages on GitHub
     - name: Install ruby
-      if: ${{ matrix.env.TEST_TYPE == 'fixtures' && matrix.os.runs_on != 'self-hosted' }}
+      if: ${{ inputs.test_type == 'fixtures' && matrix.os.runs_on != 'self-hosted' }}
       shell: bash
       run: |
         sudo apt-get install -y --no-install-recommends ruby-dev
@@ -143,82 +91,10 @@ runs:
         HOMEBREW_NO_INSTALL_CLEANUP: 1
         HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS: 3650
 
-    - name: Install tacacs_plus
-      shell: bash
-      run: |
-        pip3 install tacacs_plus
-
-    - name: Install LLVM ${{ inputs.llvm_ver }}
-      if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' }}
-      shell: bash
-      run: |
-        sudo apt-get install -y --no-install-recommends clang-${{ inputs.llvm_ver }} llvm-${{ inputs.llvm_ver }} gdb lldb
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ inputs.llvm_ver }} 60 && sudo update-alternatives --set clang /usr/bin/clang-${{ inputs.llvm_ver }}
-        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-${{ inputs.llvm_ver }} 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-${{ inputs.llvm_ver }}
-
-    - name: Set compiler to GCC ${{ inputs.gcc_ver }}
-      if: ${{ matrix.env.CC == 'gcc' }}
-      shell: bash
-      run: |
-        sudo apt-get install -y --no-install-recommends gcc-${{ inputs.gcc_ver }} gdb lldb
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ inputs.gcc_ver }} 60 && sudo update-alternatives --set gcc /usr/bin/gcc-${{ inputs.gcc_ver }}
-
-    #
-    #  Ensure the homebrew version of clang is run rather than the Apple compiler.
-    #
-    - name: Set path for clang
-      if: ${{ runner.os == 'macOS' }}
-      shell: bash
-      run: |
-        echo "PATH=`brew --prefix`/opt/llvm@14/bin/:$PATH" >> $GITHUB_ENV
-
-    #
-    #  Build using some alternative libraries
-    #
-    #    PCRE 2       -> PCRE 1
-    #    MIT Kerberos -> HEIMDAL Kerberos
-    #    OpenSSL 1.0  -> OpenSSL 3.0
-    #
-    - name: 'Fetch OpenSSL 3.0 SHA'
-      id: opensslshasum
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      shell: bash
-      run: |
-        wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
-
-    - name: 'Restore OpenSSL 3.0 from the cache'
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      uses: actions/cache@v3
-      id: openssl-cache
-      with:
-        path: /opt/openssl/
-        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
-
-    - name: 'Build OpenSSL 3.0 (if cache stale)'
-      if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
-      shell: bash
-      run: |
-        cd ~
-        wget https://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz
-        tar xzf openssl-$ALT_OPENSSL.tar.gz
-        cd openssl-$ALT_OPENSSL
-        ./Configure --prefix=/opt/openssl --openssldir=. --debug
-        make -j `nproc`
-        make install_sw
-
-    - name: Use alternative libraries
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      shell: bash
-      run: |
-        echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
-        sudo ldconfig
-        sudo apt-get install -y --no-install-recommends libpcre3-dev  # "PCRE 1"
-        sudo apt-get purge -y libpcre2-dev  # Remove default PCRE 2, leaving only PCRE 1
-        sudo apt-get install -y --no-install-recommends heimdal-dev
-
-
     - name: Show versions
       shell: bash
+      env:
+        CC: ${{ inputs.cc }}
       run: |
         $CC --version
         make --version
@@ -232,6 +108,8 @@ runs:
       shell: bash
       env:
         USE_SANITIZERS: ${{ inputs.use_sanitizers }}
+        CC: ${{ inputs.cc }}
+        TEST_TYPE: ${{ inputs.test_type }}
       run: |
         enable_sanitizers=""
         if $CC -v 2>&1 | grep clang > /dev/null; then
@@ -272,23 +150,23 @@ runs:
         cat "./src/include/autoconf.h"
 
     - name: Make
+      if: ${{ inputs.test_type != 'fuzzing' }}
       shell: bash
       run: |
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
         make -j `nproc`
-      if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
 
     # Disabled on MacOS and when fuzzing to reduce the runtime
     - name: Clang Static Analyzer
-      if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' && matrix.env.TEST_TYPE != 'fuzzing' }}
+      if: ${{ inputs.cc == 'clang' && runner.os != 'macOS' && inputs.test_type != 'fuzzing' }}
       shell: bash
       run: |
         make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ];
 
     - name: "Clang Static Analyzer: Store assets on failure"
+      if: ${{ inputs.cc == 'clang' && failure() }}
       uses: actions/upload-artifact@v3
       with:
         name: clang-scan.tgz
         path: build/plist/**/*.html
         retention-days: 30
-      if: ${{ matrix.env.CC == 'clang' && failure() }}

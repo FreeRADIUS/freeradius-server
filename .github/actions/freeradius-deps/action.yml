@@ -1,0 +1,101 @@
+name: freeradius-deps
+
+inputs:
+  use_docker:
+    desription: True if running in a Docker container
+    default: false
+  llvm_ver:
+    desription: Version of LLVM to use
+    default: 12
+  gcc_ver:
+    desription: Version of GCC to use
+    default: 11
+  cc:
+    desription: Which CC to use
+    default: gcc
+
+
+runs:
+  using: composite
+
+  steps:
+
+    - name: Package manager performance improvements
+      if: ${{ runner.os != 'macOS' && inputs.use_docker == false}}
+      shell: bash
+      run: |
+        sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
+        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+        sudo dpkg-reconfigure man-db
+        sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
+
+    #
+    #  NetworkRADIUS repo is needed for up-to-date versions
+    #  of libkqueue.  Although libkqueue is available via
+    #  debian, it's too old and the EVFILT_PROC filter is
+    #  disabled.
+    #
+    #  We don't need this on macOS as it has a native kqueue
+    #  implementation.
+    #
+    - name: NetworkRADIUS signing key
+      if: ${{ runner.os != 'macOS' }}
+      shell: bash
+      run: sudo /bin/sh -c "curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -"
+
+    - name: Set up NetworkRADIUS extras repository
+      if: ${{ runner.os != 'macOS' }}
+      shell: bash
+      run: |
+        DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+        RELEASE=$(lsb_release -cs)
+        sudo /bin/sh -c "echo \"deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
+          > /etc/apt/sources.list.d/networkradius-extras.list"
+
+    #  Currently GitHub runners have a conflicting version of libhashkit2 installed which breaks dependency installation
+    - name: Remove package conflicts
+      if: ${{ runner.os != 'macOS' }}
+      shell: bash
+      run: |
+        sudo apt-get remove -y libhashkit2
+
+    - name: Install build dependencies based on Debian packages plus extra CI packages
+      if: ${{ runner.os != 'macOS' }}
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
+        debian/rules debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
+
+    - name: Install tacacs_plus
+      shell: bash
+      run: |
+        pip3 install tacacs_plus
+
+    - name: Install LLVM ${{ inputs.llvm_ver }}
+      if: ${{ inputs.cc == 'clang' && runner.os != 'macOS' }}
+      shell: bash
+      run: |
+        #wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
+        #sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
+        sudo apt-get install -y --no-install-recommends clang-${{ inputs.llvm_ver }} llvm-${{ inputs.llvm_ver }} gdb lldb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ inputs.llvm_ver }} 60 && sudo update-alternatives --set clang /usr/bin/clang-${{ inputs.llvm_ver }}
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-${{ inputs.llvm_ver }} 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-${{ inputs.llvm_ver }}
+
+    - name: Set compiler to GCC ${{ inputs.gcc_ver }}
+      if: ${{ inputs.cc == 'gcc' }}
+      shell: bash
+      run: |
+        sudo apt-get install -y --no-install-recommends gcc-${{ inputs.gcc_ver }} gdb lldb
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ inputs.gcc_ver }} 60 && sudo update-alternatives --set gcc /usr/bin/gcc-${{ inputs.gcc_ver }}
+
+    #
+    #  Ensure the homebrew version of clang is run rather than the Apple compiler.
+    #
+    - name: Set path for clang
+      if: ${{ runner.os == 'macOS' }}
+      shell: bash
+      run: |
+        echo "PATH=`brew --prefix`/opt/llvm@14/bin/:$PATH" >> $GITHUB_ENV

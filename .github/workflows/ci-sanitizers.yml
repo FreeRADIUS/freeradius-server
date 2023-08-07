@@ -80,11 +80,22 @@ jobs:
         with:
           lfs: false
 
+      - name: Install build dependencies
+        uses: ./.github/actions/freeradius-deps
+        with:
+          use_docker: true
+          cc: ${{ matrix.env.CC }}
+
+      - name: Install alternative dependencies
+        if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+        uses: ./.github/actions/freeradius-alt-deps
+
       - name: Build FreeRADIUS
         uses: ./.github/actions/build-freeradius
         with:
-          use_docker: true
           use_sanitizers: true
+          cc: ${{ matrix.env.CC }}
+          test_type: ${{ matrix.env.TEST_TYPE }}
 
       - name: Run main CI tests
         uses: ./.github/actions/ci-tests
