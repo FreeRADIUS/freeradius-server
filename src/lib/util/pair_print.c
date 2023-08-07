@@ -199,6 +199,43 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
+/** Print a pair list
+ *
+ * @param[in] out	Where to write the string.
+ * @param[in] list	pair list
+ * @return
+ *	- Length of data written to out.
+ *	- value >= outlen on truncation.
+ */
+ssize_t fr_pair_list_print(fr_sbuff_t *out, fr_pair_list_t const *list)
+{
+	fr_pair_t *vp;
+	fr_sbuff_t our_out = FR_SBUFF(out);
+
+	vp = fr_pair_list_head(list);
+	if (!vp) {
+		FR_SBUFF_IN_CHAR_RETURN(out, '\0');
+		return fr_sbuff_used(out);
+	}
+
+	while (true) {
+		ssize_t slen;
+
+		slen = fr_pair_print(&our_out, NULL, vp);
+		if (slen <= 0) {
+			fr_assert(0);
+			return slen;
+		}
+
+		vp = fr_pair_list_next(list, vp);
+		if (!vp) break;
+
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+	}
+
+	FR_SBUFF_SET_RETURN(out, &our_out);
+}
+
 /** Print one attribute and value to FP
  *
  * Complete string with '\\t' and '\\n' is written to buffer before printing to

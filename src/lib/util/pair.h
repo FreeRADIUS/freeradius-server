@@ -775,6 +775,8 @@ ssize_t		fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent,
 ssize_t		fr_pair_print_secure(fr_sbuff_t *out, fr_pair_t const *parent,
 				     fr_pair_t const *vp) CC_HINT(nonnull(1,3));
 
+ssize_t		fr_pair_list_print(fr_sbuff_t *out, fr_pair_list_t const *list);
+
 static inline fr_slen_t CC_HINT(nonnull(2,4))
 		fr_pair_aprint(TALLOC_CTX *ctx, char **out, fr_pair_t const *parent, fr_pair_t const *vp)
 		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print, parent, vp)

@@ -1180,8 +1180,6 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 {
 	fr_pair_list_t 	head;
 	ssize_t		slen;
-	char		*p, *end;
-	fr_pair_t	*vp;
 	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
 
 	fr_pair_list_init(&head);
@@ -1191,39 +1189,17 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 	}
 
 	/*
-	 *	Set p to be the output buffer
-	 */
-	p = data;
-	end = p + COMMAND_OUTPUT_MAX;
-
-	/*
 	 *	Output may be an error, and we ignore
 	 *	it if so.
 	 */
 
-	if (!fr_pair_list_empty(&head)) {
-		for (vp = fr_pair_list_head(&head);
-		     vp;
-		     vp = fr_pair_list_next(&head, vp)) {
-			if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) < 0) {
-			oob:
-				fr_strerror_const("Out of output buffer space for printed pairs");
-				RETURN_COMMAND_ERROR();
-			}
-			p += slen;
-
-			if (fr_pair_list_next(&head, vp)) {
-				slen = strlcpy(p, ", ", end - p);
-				if (is_truncated((size_t)slen, end - p)) goto oob;
-				p += slen;
-			}
-		}
-		fr_pair_list_free(&head);
-	} else { /* zero-length to_decibute */
-		*p = '\0';
+	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), &head);
+	if (slen <= 0) {
+		fr_assert(0);
+		RETURN_OK_WITH_ERROR();
 	}
 
-	RETURN_OK(p - data);
+	RETURN_OK(slen);
 }
 
 static const fr_token_t token2op[UINT8_MAX + 1] = {
@@ -1542,11 +1518,10 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 {
 	fr_test_point_pair_decode_t	*tp = NULL;
 	void		*decode_ctx = NULL;
-	char		*p, *end;
+	char		*p;
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
 	fr_pair_list_t	head;
-	fr_pair_t	*vp;
 	ssize_t		slen;
 
 	fr_pair_list_init(&head);
@@ -1619,41 +1594,17 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 
 	/*
-	 *	Set p to be the output buffer
-	 */
-	p = data;
-	end = p + COMMAND_OUTPUT_MAX;
-
-	/*
 	 *	Output may be an error, and we ignore
 	 *	it if so.
 	 */
-
-	if (!fr_pair_list_empty(&head)) {
-		for (vp = fr_pair_list_head(&head);
-		     vp;
-		     vp = fr_pair_list_next(&head, vp)) {
-			if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) < 0) {
-			oob:
-				fr_strerror_const("Out of output buffer space for printed pairs");
-				CLEAR_TEST_POINT(cc);
-				RETURN_COMMAND_ERROR();
-			}
-			p += slen;
-
-			if (fr_pair_list_next(&head, vp)) {
-				slen = strlcpy(p, ", ", end - p);
-				if (is_truncated((size_t)slen, end - p)) goto oob;
-				p += slen;
-			}
-		}
-		fr_pair_list_free(&head);
-	} else { /* zero-length to_decibute */
-		*p = '\0';
+	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), &head);
+	if (slen <= 0) {
+		fr_assert(0);
+		RETURN_OK_WITH_ERROR();
 	}
 
 	CLEAR_TEST_POINT(cc);
-	RETURN_OK(p - data);
+	RETURN_OK(slen);
 }
 
 static size_t command_decode_proto(command_result_t *result, command_file_ctx_t *cc,
@@ -1665,9 +1616,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
 	fr_pair_list_t	head;
-	fr_pair_t	*vp;
 	ssize_t		slen;
-	fr_sbuff_t	sbuff = FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX);
 
 	p = in;
 	fr_pair_list_init(&head);
@@ -1730,28 +1679,17 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	 *	it if so.
 	 */
 
-	if (!fr_pair_list_empty(&head)) {
-		for (vp = fr_pair_list_head(&head);
-		     vp;
-		     vp = fr_pair_list_next(&head, vp)) {
-			if ((slen = fr_pair_print(&sbuff, NULL, vp)) < 0) {
-			oob:
-				fr_strerror_printf("Out of output buffer space (%zd) for decoded data", slen);
-				CLEAR_TEST_POINT(cc);
-				RETURN_COMMAND_ERROR();
-			}
-
-			if (fr_pair_list_next(&head, vp)) {
-				if (fr_sbuff_in_char(&sbuff, ',', ' ') <= 0) goto oob;
-			}
-		}
-		fr_pair_list_free(&head);
-	} else { /* zero-length to_decibute */
-		*data = '\0';
+	/*
+	 *	Print the pairs.
+	 */
+	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), &head);
+	if (slen <= 0) {
+		fr_assert(0);
+		RETURN_OK_WITH_ERROR();
 	}
 
 	CLEAR_TEST_POINT(cc);
-	RETURN_OK(fr_sbuff_used(&sbuff));
+	RETURN_OK(slen);
 }
 
 /** Parse a dictionary attribute, writing "ok" to the data buffer is everything was ok
@@ -2061,9 +1999,8 @@ static size_t command_read_file(command_result_t *result, command_file_ctx_t *cc
 {
 	ssize_t slen;
 	fr_pair_list_t head;
-	fr_pair_t *vp;
 	bool done = false;
-	char *filename, *p, *end;
+	char *filename;
 	FILE *fp;
 
 	filename = talloc_asprintf(cc->tmp_ctx, "%s/%s", cc->path, in);
@@ -2086,31 +2023,20 @@ static size_t command_read_file(command_result_t *result, command_file_ctx_t *cc
 	/*
 	 *	Print the pairs.
 	 */
-	p = data;
-	end = data + COMMAND_OUTPUT_MAX;
-	for (vp = fr_pair_list_head(&head);
-	     vp != NULL;
-	     vp = fr_pair_list_next(&head, vp)) {
-		if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) <= 0) RETURN_OK_WITH_ERROR();
-		p += (size_t)slen;
-
-		if (p >= end) break;
-
-		*(p++) = ',';
-		*(p++) = ' ';
+	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), &head);
+	if (slen <= 0) {
+		fr_assert(0);
+		RETURN_OK_WITH_ERROR();
 	}
 
-	/*
-	 *	Delete the trailing ", ".
-	 */
-	if (p > data) p -= 2;
-	*p = 0;
-
-	if (!done) strlcpy(p, "!DONE", (end - p));
+	if (!done) {
+		strlcpy(data + slen, "!DONE", COMMAND_OUTPUT_MAX - slen);
+		slen += 5;
+	}
 
 	fr_pair_list_free(&head);
 
-	RETURN_OK(p - data);
+	RETURN_OK(slen);
 }
 
 
@@ -2583,7 +2509,6 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 {
 	ssize_t slen;
 	fr_pair_ctx_t ctx;
-	fr_pair_t *vp;
 	fr_pair_list_t head;
 	char *p, *end;
 
@@ -2610,29 +2535,15 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 
 	PAIR_LIST_VERIFY(&head);
 
-	p = data;
-	end = data + COMMAND_OUTPUT_MAX;
-	for (vp = fr_pair_list_head(&head);
-	     vp != NULL;
-	     vp = fr_pair_list_next(&head, vp)) {
-		if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) <= 0) RETURN_OK_WITH_ERROR();
-		p += (size_t)slen;
-
-		if (p >= end) break;
-
-		*(p++) = ',';
-		*(p++) = ' ';
+	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), &head);
+	if (slen <= 0) {
+		fr_assert(0);
+		RETURN_OK_WITH_ERROR();
 	}
-
-	/*
-	 *	Delete the trailing ", ".
-	 */
-	if (p > data) p -= 2;
-	*p = 0;
 
 	fr_pair_list_free(&head);
 
-	RETURN_OK(p - data);
+	RETURN_OK(slen);
 }
 
 
