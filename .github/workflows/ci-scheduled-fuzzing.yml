@@ -197,6 +197,24 @@ jobs:
       run: |
         sudo apt-get remove -y libhashkit2
 
+    #
+    #  NetworkRADIUS repo is needed for up-to-date versions
+    #  of libkqueue.  Although libkqueue is available via
+    #  debian, it's too old and the EVFILT_PROC filter is
+    #  disabled.
+    #
+    - name: NetworkRADIUS signing key
+      shell: bash
+      run: sudo /bin/sh -c "curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -"
+
+    - name: Set up NetworkRADIUS extras repository
+      shell: bash
+      run: |
+        DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+        RELEASE=$(lsb_release -cs)
+        sudo /bin/sh -c "echo \"deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
+          > /etc/apt/sources.list.d/networkradius-extras.list"
+
     - name: Install build dependencies based on Debian packages plus extra CI packages
       run: |
         sudo apt-get update
