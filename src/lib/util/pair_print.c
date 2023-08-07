@@ -38,8 +38,6 @@
 ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_token_t quote)
 {
 	fr_sbuff_t	our_out;
-	fr_pair_t	*child;
-	fr_dcursor_t	cursor;
 
 	PAIR_VERIFY(vp);
 
@@ -54,12 +52,9 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 		 */
 		our_out = FR_SBUFF(out);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ');
-		for (child = fr_pair_dcursor_init(&cursor, &vp->vp_group);
-		     child != NULL;
-		     child = fr_dcursor_next(&cursor)) {
-			FR_SBUFF_RETURN(fr_pair_print, &our_out, vp, child);
-			if (fr_dcursor_next_peek(&cursor)) FR_SBUFF_IN_CHAR_RETURN(&our_out, ',', ' ');
-		}
+
+		FR_SBUFF_RETURN(fr_pair_list_print, &our_out, vp->da, &vp->vp_group);
+
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ', '}');
 
 		FR_SBUFF_SET_RETURN(out, &our_out);
@@ -88,11 +83,10 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
  *	- Length of data written to out.
  *	- value >= outlen on truncation.
  */
-ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const *vp)
+ssize_t fr_pair_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t const *vp)
 {
 	char const		*token = NULL;
 	fr_sbuff_t		our_out = FR_SBUFF(out);
-	fr_dict_attr_t const	*parent_da = NULL;
 
 	PAIR_VERIFY(vp);
 
@@ -102,10 +96,13 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const 
 		token = "<INVALID-TOKEN>";
 	}
 
-	if (parent && (parent->vp_type != FR_TYPE_GROUP)) parent_da = parent->da;
+	/*
+	 *	Groups are printed from the root.
+	 */
+	if (parent && (parent->type == FR_TYPE_GROUP)) parent = NULL;
 
 	if (vp->da->flags.is_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
-	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent_da, vp->da, false);
+	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
 	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
 	FR_SBUFF_IN_STRCPY_RETURN(&our_out, token);
 	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
@@ -136,11 +133,10 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const 
  *	- Length of data written to out.
  *	- value >= outlen on truncation.
  */
-ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const *vp)
+ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t const *vp)
 {
 	char const		*token = NULL;
 	fr_sbuff_t		our_out = FR_SBUFF(out);
-	fr_dict_attr_t const	*parent_da = NULL;
 
 	PAIR_VERIFY(vp);
 
@@ -150,10 +146,13 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t
 		token = "<INVALID-TOKEN>";
 	}
 
-	if (parent && (parent->vp_type != FR_TYPE_GROUP)) parent_da = parent->da;
+	/*
+	 *	Groups are printed from the root.
+	 */
+	if (parent && (parent->type == FR_TYPE_GROUP)) parent = NULL;
 
 	if (vp->da->flags.is_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
-	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent_da, vp->da, false);
+	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
 	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
 	FR_SBUFF_IN_STRCPY_RETURN(&our_out, token);
 	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
@@ -190,7 +189,7 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t
 		for (child = fr_pair_dcursor_init(&cursor, &vp->vp_group);
 		     child != NULL;
 		     child = fr_dcursor_next(&cursor)) {
-			FR_SBUFF_RETURN(fr_pair_print_secure, &our_out, vp, child);
+			FR_SBUFF_RETURN(fr_pair_print_secure, &our_out, vp->da, child);
 			if (fr_dcursor_next_peek(&cursor)) FR_SBUFF_IN_CHAR_RETURN(&our_out, ',', ' ');
 		}
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ', '}');
@@ -202,12 +201,13 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t
 /** Print a pair list
  *
  * @param[in] out	Where to write the string.
+ * @param[in] parent	parent da to start from.
  * @param[in] list	pair list
  * @return
  *	- Length of data written to out.
  *	- value >= outlen on truncation.
  */
-ssize_t fr_pair_list_print(fr_sbuff_t *out, fr_pair_list_t const *list)
+ssize_t fr_pair_list_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_list_t const *list)
 {
 	fr_pair_t *vp;
 	fr_sbuff_t our_out = FR_SBUFF(out);
@@ -219,13 +219,7 @@ ssize_t fr_pair_list_print(fr_sbuff_t *out, fr_pair_list_t const *list)
 	}
 
 	while (true) {
-		ssize_t slen;
-
-		slen = fr_pair_print(&our_out, NULL, vp);
-		if (slen <= 0) {
-			fr_assert(0);
-			return slen;
-		}
+		FR_SBUFF_RETURN(fr_pair_print, &our_out, parent, vp);
 
 		vp = fr_pair_list_next(list, vp);
 		if (!vp) break;

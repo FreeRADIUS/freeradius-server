@@ -1193,7 +1193,7 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 	 *	it if so.
 	 */
 
-	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), &head);
+	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
 	if (slen <= 0) {
 		fr_assert(0);
 		RETURN_OK_WITH_ERROR();
@@ -1597,7 +1597,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	Output may be an error, and we ignore
 	 *	it if so.
 	 */
-	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), &head);
+	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
 	if (slen <= 0) {
 		fr_assert(0);
 		RETURN_OK_WITH_ERROR();
@@ -1682,7 +1682,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	/*
 	 *	Print the pairs.
 	 */
-	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), &head);
+	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
 	if (slen <= 0) {
 		fr_assert(0);
 		RETURN_OK_WITH_ERROR();
@@ -2023,7 +2023,7 @@ static size_t command_read_file(command_result_t *result, command_file_ctx_t *cc
 	/*
 	 *	Print the pairs.
 	 */
-	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), &head);
+	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
 	if (slen <= 0) {
 		fr_assert(0);
 		RETURN_OK_WITH_ERROR();
@@ -2535,7 +2535,7 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 
 	PAIR_LIST_VERIFY(&head);
 
-	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), &head);
+	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
 	if (slen <= 0) {
 		fr_assert(0);
 		RETURN_OK_WITH_ERROR();
