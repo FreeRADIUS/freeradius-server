@@ -233,6 +233,9 @@ jobs:
       id: pick_commit
       run: |
         while : ; do
+          echo "Testing commit:"
+          git log -n1
+          echo
           CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3" ./configure -C \
             --enable-werror \
             --enable-address-sanitizer \
