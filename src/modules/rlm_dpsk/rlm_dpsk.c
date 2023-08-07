@@ -81,7 +81,7 @@ typedef struct eapol_key_frame_t {
 	uint8_t		reserved[8];		// zeroes
 	uint8_t		mic[16];		// calculated data
 	uint16_t	data_len;		// various other things we don't need.
-	uint8_t		data[];
+//	uint8_t		data[];
 } CC_HINT(__packed__) eapol_key_frame_t;
 
 typedef struct eapol_attr_t {
@@ -94,6 +94,43 @@ typedef struct eapol_attr_t {
  *
  *	It returns the PMK and PSK for the user.
  */
+typedef struct fr_dlist_s fr_dlist_t;
+
+struct fr_dlist_s {
+	fr_dlist_t	*prev;
+	fr_dlist_t	*next;
+};
+
+static inline void fr_dlist_entry_init(fr_dlist_t *entry)
+{
+	entry->prev = entry->next = entry;
+}
+
+static inline CC_HINT(nonnull) void fr_dlist_entry_unlink(fr_dlist_t *entry)
+{
+	entry->prev->next = entry->next;
+	entry->next->prev = entry->prev;
+	entry->prev = entry->next = entry;
+}
+
+static inline CC_HINT(nonnull) void fr_dlist_insert_tail(fr_dlist_t *head, fr_dlist_t *entry)
+{
+	entry->next = head;
+	entry->prev = head->prev;
+	head->prev->next = entry;
+	head->prev = entry;
+}
+
+#ifdef HAVE_PTHREAD_H
+#define PTHREAD_MUTEX_LOCK pthread_mutex_lock
+#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+#else
+#define PTHREAD_MUTEX_LOCK(_x)
+#define PTHREAD_MUTEX_UNLOCK(_x)
+#endif
+
+typedef struct rlm_dpsk_s rlm_dpsk_t;
+
 typedef struct {
 	uint8_t			mac[6];
 	uint8_t			pmk[32];
@@ -107,22 +144,31 @@ typedef struct {
 	uint8_t			*psk;
 	size_t			psk_len;
 	time_t			expires;
+
+	fr_dlist_t		dlist;
+	rlm_dpsk_t		*inst;
 } rlm_dpsk_cache_t;
 
-typedef struct rlm_dpsk_t {
+struct rlm_dpsk_s {
 	char const		*xlat_name;
 	bool			ruckus;
 
 	rbtree_t		*cache;
+
 	uint32_t		cache_size;
 	uint32_t		cache_lifetime;
 
 	char const		*filename;
 
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t		mutex;
+#endif
+	fr_dlist_t		head;
+
 	DICT_ATTR const		*ssid;
 	DICT_ATTR const		*anonce;
 	DICT_ATTR const		*frame;
-} rlm_dpsk_t;
+};
 
 static const CONF_PARSER module_config[] = {
 	{ "ruckus", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_dpsk_t, ruckus), "no" },
@@ -130,11 +176,18 @@ static const CONF_PARSER module_config[] = {
 	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_size), "0" },
 	{ "cache_lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_lifetime), "0" },
 
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, struct rlm_dpsk_t, filename), NULL },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT,  rlm_dpsk_t, filename), NULL },
 
 	CONF_PARSER_TERMINATOR
 };
 
+
+static inline CC_HINT(nonnull) rlm_dpsk_cache_t *fr_dlist_tail(fr_dlist_t const *head)
+{
+	if (head->prev == head) return NULL;
+
+	return (rlm_dpsk_cache_t *) (((uintptr_t) head->prev) - offsetof(rlm_dpsk_cache_t, dlist));
+}
 
 static void rdebug_hex(REQUEST *request, char const *prefix, uint8_t const *data, int len)
 {
@@ -640,12 +693,24 @@ make_digest:
 
 		entry = rbtree_finddata(inst->cache, &my_entry);
 		if (!entry) {
-			if (rbtree_num_elements(inst->cache) > inst->cache_size) goto save_psk;
+			/*
+			 *	Too many entries in the cache.  Delete the oldest one.
+			 */
+			if (rbtree_num_elements(inst->cache) > inst->cache_size) {
+				PTHREAD_MUTEX_LOCK(&inst->mutex);
+				entry = fr_dlist_tail(&inst->head);
+				PTHREAD_MUTEX_UNLOCK(&inst->mutex);
+
+				rbtree_deletebydata(inst->cache, entry);
+			}
 
 			MEM(entry = talloc_zero(NULL, rlm_dpsk_cache_t));
 
 			memcpy(entry->mac, s_mac, sizeof(entry->mac));
 			memcpy(entry->pmk, pmk, sizeof(entry->pmk));
+
+			fr_dlist_entry_init(&entry->dlist);
+			entry->inst = inst;
 
 			/*
 			 *	Save the variable-length SSID.
@@ -678,10 +743,14 @@ make_digest:
 				talloc_free(entry);
 				goto save_found_psk;
 			}
-
 			RDEBUG3("Cache entry saved");
 		}
 		entry->expires = request->timestamp + inst->cache_lifetime;
+
+		PTHREAD_MUTEX_LOCK(&inst->mutex);
+		fr_dlist_entry_unlink(&entry->dlist);
+		fr_dlist_insert_tail(&inst->head, &entry->dlist);
+		PTHREAD_MUTEX_UNLOCK(&inst->mutex);
 
 		/*
 		 *	Add the PSK to the reply items, if it was cached.
@@ -823,7 +892,13 @@ static int cmp_cache_entry(void const *one, void const *two)
 
 static void free_cache_entry(void *data)
 {
-	talloc_free(data);
+	rlm_dpsk_cache_t *entry = (rlm_dpsk_cache_t *) data;
+
+	PTHREAD_MUTEX_LOCK(&entry->inst->mutex);
+	fr_dlist_entry_unlink(&entry->dlist);
+	PTHREAD_MUTEX_UNLOCK(&entry->inst->mutex);
+
+	talloc_free(entry);
 }
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
@@ -845,8 +920,28 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
+	fr_dlist_entry_init(&inst->head);
+#ifdef HAVE_PTHREAD_H
+	if (pthread_mutex_init(&inst->mutex, NULL) < 0) {
+		cf_log_err_cs(conf, "Failed creating mutex");
+		return -1;
+	}
+#endif
+
 	return 0;
 }
+
+#ifdef HAVE_PTHREAD_H
+static int mod_detach(void *instance)
+{
+	rlm_dpsk_t *inst = instance;
+
+	if (!inst->cache_size) return 0;
+
+	pthread_mutex_destroy(&inst->mutex);
+	return 0;
+}
+#endif
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -866,6 +961,9 @@ module_t rlm_dpsk = {
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
+#ifdef HAVE_PTHREAD_H
+	.detach		= mod_detach,
+#endif
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_AUTHENTICATE]	= mod_authenticate,
