@@ -418,14 +418,8 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 			}
 
 			if (fr_sbuff_remaining(&line) > 0) {
-				int err_len;
-			too_much_text:
-				err_len = strlen("ERROR offset " " 'Too much text' ::" "::") + 4 +
-					  fr_sbuff_remaining(&line);
-				if (err_len > (int) sizeof(output_buff) - 1) err_len = (int) sizeof(output_buff) - 1;
 				talloc_free(xlat_ctx);
-				fr_sbuff_in_sprintf(&out, "ERROR offset %d 'Too much text' ::%.*s::",
-						    (int) slen, err_len, fr_sbuff_current(&line));
+				fr_sbuff_in_sprintf(&out,  "ERROR offset %d 'Too much text' ::%s::", (int) slen, fr_sbuff_current(&line));
 				continue;
 			}
 
@@ -471,7 +465,11 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 				continue;
 			}
 
-			if (fr_sbuff_remaining(&line) > 0) goto too_much_text;
+			if (fr_sbuff_remaining(&line) > 0) {
+				talloc_free(xlat_ctx);
+				fr_sbuff_in_sprintf(&out, "ERROR offset %d 'Too much text' ::%s::", (int) slen, fr_sbuff_current(&line));
+				continue;
+			}
 
 			if (xlat_resolve(head, NULL) < 0) {
 				talloc_free(xlat_ctx);
