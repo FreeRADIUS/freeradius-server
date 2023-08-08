@@ -5,7 +5,7 @@ fuzzer-out radius
 decode-pair 05 04 01 02
 match raw.NAS-Port = 0x0102
 
-attribute raw.NAS-Port = 0x0102
+pair raw.NAS-Port = 0x0102
 match raw.NAS-Port = 0x0102
 
 #

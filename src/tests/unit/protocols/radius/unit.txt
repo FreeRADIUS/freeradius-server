@@ -9,7 +9,7 @@ fuzzer-out radius
 encode-pair Extended-Attribute-6.Extended-Vendor-Specific-6.FreeRADIUS.Unit-EVS-6-Integer = 1, Extended-Attribute-6.Extended-Vendor-Specific-6.FreeRADIUS.Unit-EVS-6-Integer = 2
 match f6 0d 1a 00 00 00 2c 50 01 00 00 00 01 f6 0d 1a 00 00 00 2c 50 01 00 00 00 02
 
-attribute Extended-Attribute-1.Unit-Ext-241-Integer = 6809
+pair Extended-Attribute-1.Unit-Ext-241-Integer = 6809
 match Extended-Attribute-1.Unit-Ext-241-Integer = 6809
 
 encode-pair Extended-Attribute-1.Unit-Ext-241-Integer = 6809
@@ -68,7 +68,7 @@ encode-pair -
 match 37 06 00 0d 2f 00
 
 # Can we parse RFC 3339 dates correctly?
-attribute Unit-TLV.Milliseconds = "2019-08-21T07:40:31.123-04:00"
+pair Unit-TLV.Milliseconds = "2019-08-21T07:40:31.123-04:00"
 match Unit-TLV.Milliseconds = "2019-08-21T03:40:31.123Z"
 
 count

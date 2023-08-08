@@ -1172,38 +1172,6 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
 	RETURN_OK(0);
 }
 
-/** Parse an print an attribute pair or pair list.
- *
- */
-static size_t command_normalise_attribute(command_result_t *result, command_file_ctx_t *cc,
-					  char *data, UNUSED size_t data_used, char *in, size_t inlen)
-{
-	fr_pair_list_t 	head;
-	ssize_t		slen;
-	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
-
-	fr_pair_list_init(&head);
-
-	if (fr_pair_list_afrom_str(NULL, fr_dict_root(dict), in, inlen, &head) != T_EOL) {
-		fr_pair_list_free(&head);
-		RETURN_OK_WITH_ERROR();
-	}
-
-	/*
-	 *	Output may be an error, and we ignore
-	 *	it if so.
-	 */
-
-	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
-	if (slen <= 0) {
-		fr_pair_list_free(&head);
-		RETURN_OK_WITH_ERROR();
-	}
-
-	fr_pair_list_free(&head);
-	RETURN_OK(slen);
-}
-
 static const fr_token_t token2op[UINT8_MAX + 1] = {
 	[ '+' ] = T_ADD,
 	[ '-' ] = T_SUB,
@@ -2503,51 +2471,37 @@ static size_t command_no(command_result_t *result, command_file_ctx_t *cc,
 	return data_used;
 }
 
-/** Parse a list of pairs
+/** Parse an print an attribute pair or pair list.
  *
  */
 static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
-			    char *data, UNUSED size_t data_used, char *in, size_t inlen)
+			   char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
-	ssize_t slen;
-	fr_pair_ctx_t ctx;
-	fr_pair_list_t head;
-	char *p, *end;
+	fr_pair_list_t 	head;
+	ssize_t		slen;
+	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
 
 	fr_pair_list_init(&head);
-	ctx.ctx = cc->tmp_ctx;
-	ctx.parent = fr_dict_root(cc->tmpl_rules.attr.dict_def);
-	ctx.list = &head;
 
-	p = in;
-	end = in + inlen;
-
-	while (p < end) {
-		slen = fr_pair_ctx_afrom_str(&ctx, p, end - p);
-		if (slen <= 0) RETURN_PARSE_ERROR(-(slen));
-
-		p += slen;
-		if (p >= end) break;
-
-		if (*p == ',') {
-			p++;
-			continue;
-		}
+	if (fr_pair_list_afrom_str(NULL, fr_dict_root(dict), in, inlen, &head) != T_EOL) {
+		fr_pair_list_free(&head);
+		RETURN_OK_WITH_ERROR();
 	}
 
-	PAIR_LIST_VERIFY(&head);
+	/*
+	 *	Output may be an error, and we ignore
+	 *	it if so.
+	 */
 
 	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
 	if (slen <= 0) {
-		fr_assert(0);
+		fr_pair_list_free(&head);
 		RETURN_OK_WITH_ERROR();
 	}
 
 	fr_pair_list_free(&head);
-
 	RETURN_OK(slen);
 }
-
 
 /** Dynamically load a protocol library
  *
@@ -3024,11 +2978,6 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_allow_unresolved,
 					.usage = "allow-unresolved yes|no",
 					.description = "Allow or disallow unresolved attributes in xlats and references"
-				}},
-	{ L("attribute "),	&(command_entry_t){
-					.func = command_normalise_attribute,
-					.usage = "attribute <attr> = <value>",
-					.description = "Parse and reprint an attribute value pair or list, printing the pair(s) to the data buffer on success"
 				}},
 	{ L("calc "),		&(command_entry_t){
 					.func = command_calc,

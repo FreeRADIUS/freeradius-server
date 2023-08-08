@@ -81,7 +81,7 @@ encode-pair 26.24757.84.9.4 = 0x01
 match 1a 0e 00 00 60 b5 54 08 00 09 05 04 03 01
 
 # and parsing the OID should parse LHS / RHS into the known attribute.
-attribute 26.24757.84.9.4 = 0x01
+pair 26.24757.84.9.4 = 0x01
 match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Direction = 1
 
 encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Direction = 1, Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port = 6809
@@ -131,10 +131,10 @@ match Group list for Capability MUST start with '{'
 #
 #  We don't print raw attributes with a "raw" prefix.  Perhaps we should.
 #
-attribute raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
+pair raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
 match raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
 
-attribute raw.Vendor-Specific.WiMAX.1 = 0x0106312e30020301
+pair raw.Vendor-Specific.WiMAX.1 = 0x0106312e30020301
 match raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
 
 encode-pair -
