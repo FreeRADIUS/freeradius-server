@@ -512,7 +512,7 @@ static int _fr_tls_log_bio_free(void *log_bio)
  * @note The returned BIO should be assumed to be invalid if the request yields.
  *
  * @param[in] file	of caller.
- * @Parma[in] line	of caller.
+ * @param[in] line	of caller.
  * @param[in] request	to temporarily associate with logging BIO.
  * @param[in] type	to temporarily assign to logging bio.
  * @param[in] lvl	to temporarily assign to logging bio.
@@ -560,7 +560,7 @@ BIO *_fr_tls_request_log_bio(char const *file, int line, request_t *request, fr_
  * @note The returned BIO should be assumed to be invalid if the current request yields.
  *
  * @param[in] file	of caller.
- * @Parma[in] line	of caller.
+ * @param[in] line	of caller.
  * @param[in] type	to temporarily assign to logging bio.
  * @param[in] lvl	to temporarily assign to logging bio.
  * @return A thread local BIO to pass to OpenSSL logging functions.
