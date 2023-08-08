@@ -1185,6 +1185,7 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 	fr_pair_list_init(&head);
 
 	if (fr_pair_list_afrom_str(NULL, fr_dict_root(dict), in, inlen, &head) != T_EOL) {
+		fr_pair_list_free(&head);
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -1196,9 +1197,11 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
 	if (slen <= 0) {
 		fr_assert(0);
+		fr_pair_list_free(&head);
 		RETURN_OK_WITH_ERROR();
 	}
 
+	fr_pair_list_free(&head);
 	RETURN_OK(slen);
 }
 
