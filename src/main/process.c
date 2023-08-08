@@ -3250,7 +3250,11 @@ do_home:
 	 *	Once we've decided to proxy a request, we cannot send
 	 *	a CoA packet.  So we free up any CoA packet here.
 	 */
-	if (request->coa) request_done(request->coa, FR_ACTION_COA_CANCELLED);
+	if (request->coa) {
+		RWDEBUG("Cannot proxy and originate CoA packets at the same time.  Cancelling CoA request");
+		request_done(request->coa, FR_ACTION_COA_CANCELLED);
+		request->coa = NULL;
+	}
 #endif
 
 	/*
@@ -3467,6 +3471,7 @@ static int request_proxy(REQUEST *request)
 	if (request->coa) {
 		RWDEBUG("Cannot proxy and originate CoA packets at the same time.  Cancelling CoA request");
 		request_done(request->coa, FR_ACTION_COA_CANCELLED);
+		request->coa = NULL;
 	}
 #endif
 
