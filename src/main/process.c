@@ -1486,7 +1486,7 @@ static void request_finish(REQUEST *request, int action)
 	/*
 	 *	Maybe originate a CoA request.
 	 */
-	if ((action == FR_ACTION_RUN) && !request->proxy && request->coa) {
+	if ((action == FR_ACTION_RUN) && (!request->proxy || request->proxy->dst_port == 0) && request->coa) {
 		request_coa_originate(request);
 	}
 #endif
@@ -4562,9 +4562,9 @@ static void request_coa_originate(REQUEST *request)
 	VERIFY_REQUEST(request);
 
 	rad_assert(request->coa != NULL);
-	rad_assert(request->proxy == NULL);
+	rad_assert(request->proxy == NULL || request->proxy->dst_port == 0);
 	rad_assert(!request->in_proxy_hash);
-	rad_assert(request->proxy_reply == NULL);
+	rad_assert(request->proxy_reply == NULL || request->proxy_reply->src_port == 0);
 
 	/*
 	 *	Check whether we want to originate one, or cancel one.
