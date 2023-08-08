@@ -97,6 +97,10 @@ ATTRIBUTE	Ruckus-DPSK-AKM-Suite			153.1	octets
 ATTRIBUTE	Ruckus-DPSK-Cipher			153.2	byte
 ATTRIBUTE	Ruckus-DPSK-Anonce			153.3	octets
 ATTRIBUTE	Ruckus-DPSK-EAPOL-Key-Frame		153.4	octets
+ATTRIBUTE	Ruckus-Cluster-Name			154	string
+ATTRIBUTE	Ruckus-Domain-Name			155	string
+ATTRIBUTE	Ruckus-Client-Device-Type		156	string
+ATTRIBUTE	Ruckus-Vlan-Name			157	string
 
 # Ruckus SmartCell Insight Attributes
 ATTRIBUTE Ruckus-SCI-Role		200 string
