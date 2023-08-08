@@ -22,6 +22,8 @@
  */
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/pair_legacy.h>
 
 /** Print the value of an attribute to a string
  *
@@ -46,10 +48,6 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 	 *	For structural types descend down
 	 */
 	case FR_TYPE_STRUCTURAL:
-		/*
-		 *	Serialize all child VPs as full quoted
-		 *	<pair> = ["]<child>["]
-		 */
 		our_out = FR_SBUFF(out);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ');
 
@@ -198,10 +196,61 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_p
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
+static ssize_t fr_pair_list_print_unflatten(fr_sbuff_t *out, fr_da_stack_t const *da_stack, unsigned int depth, fr_pair_list_t const *list, fr_pair_t **vp_p)
+{
+	fr_dict_attr_t const *parent;
+	fr_pair_t	*vp = *vp_p;
+	fr_pair_t	*next = fr_pair_list_next(list, vp);
+	fr_sbuff_t	our_out = FR_SBUFF(out);
+
+	fr_assert(depth >= 1);
+
+	/*
+	 *	Not yet at the correct depth, print more parents.
+	 */
+	if (depth < vp->da->depth) {
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, da_stack->da[depth - 1]->name);
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, " = { ");
+
+		FR_SBUFF_RETURN(fr_pair_list_print_unflatten, &our_out, da_stack, depth + 1, list, vp_p);
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, " }");
+		FR_SBUFF_SET_RETURN(out, &our_out);
+	}
+
+	parent = vp->da->parent;
+
+	/*
+	 *	We are at the correct depth.  Print out all of the VPs which match the parent at this depth.
+	 */
+	while (vp->da->parent == parent) {
+		next = fr_pair_list_next(list, vp);
+
+		FR_SBUFF_RETURN(fr_pair_print, &our_out, vp->da->parent, vp);
+
+		/*
+		 *	Flat structures are listed in order.  Which means as soon as we go from 1..N back to
+		 *	1, we have ended the current structure.
+		 */
+		if (next && (vp->da->parent->type == FR_TYPE_STRUCT) &&
+		    (next->da->parent == vp->da->parent) &&
+		    (next->da->attr < vp->da->attr)) {
+			break;
+		}
+
+		vp = next;
+		if (!vp) break;
+
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+	}
+
+	*vp_p = next;
+	FR_SBUFF_SET_RETURN(out, &our_out);
+}
+
 /** Print a pair list
  *
  * @param[in] out	Where to write the string.
- * @param[in] parent	parent da to start from.
+ * @param[in] parent	parent da to start from
  * @param[in] list	pair list
  * @return
  *	- Length of data written to out.
@@ -209,8 +258,8 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_p
  */
 ssize_t fr_pair_list_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_list_t const *list)
 {
-	fr_pair_t *vp;
-	fr_sbuff_t our_out = FR_SBUFF(out);
+	fr_pair_t	*vp;
+	fr_sbuff_t	our_out = FR_SBUFF(out);
 
 	vp = fr_pair_list_head(list);
 	if (!vp) {
@@ -218,10 +267,37 @@ ssize_t fr_pair_list_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pai
 		return fr_sbuff_used(out);
 	}
 
-	while (true) {
-		FR_SBUFF_RETURN(fr_pair_print, &our_out, parent, vp);
+	/*
+	 *	Groups are printed from the root.
+	 */
+	if (parent && (parent->type == FR_TYPE_GROUP)) parent = NULL;
 
-		vp = fr_pair_list_next(list, vp);
+	while (true) {
+		unsigned int depth;
+		fr_da_stack_t da_stack;
+
+		fr_proto_da_stack_build(&da_stack, vp->da);
+
+		if (!fr_pair_legacy_print_nested ||
+		    (!parent && (vp->da->depth == 1)) ||
+		    (parent && (fr_dict_by_da(parent) != fr_dict_by_da(vp->da))) ||
+		    (parent && (da_stack.da[parent->depth] == parent) && (parent->depth + 1 == vp->da->depth))) {
+			FR_SBUFF_RETURN(fr_pair_print, &our_out, parent, vp);
+			vp = fr_pair_list_next(list, vp);
+
+		} else {
+			/*
+			 *	We have to print a partial tree, starting from the root.
+			 */
+			if (!parent) {
+				depth = 1;
+			} else {
+				depth = parent->depth + 1;
+			}
+
+			FR_SBUFF_RETURN(fr_pair_list_print_unflatten, &our_out, &da_stack, depth, list, &vp);
+		}
+
 		if (!vp) break;
 
 		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");

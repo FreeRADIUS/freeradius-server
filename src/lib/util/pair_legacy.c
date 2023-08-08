@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 bool fr_pair_legacy_nested = false;
+bool fr_pair_legacy_print_nested = false;
 
 static fr_sbuff_term_t const 	bareword_terminals =
 				FR_SBUFF_TERMS(

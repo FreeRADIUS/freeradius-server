@@ -2385,6 +2385,10 @@ static size_t command_migrate(command_result_t *result, UNUSED command_file_ctx_
 		p += sizeof("pair_legacy_nested") - 1;
 		out = &fr_pair_legacy_nested;
 
+	} else if (strncmp(p, "pair_legacy_print_nested", sizeof("pair_legacy_print_nested") - 1) == 0) {
+		p += sizeof("pair_legacy_print_nested") - 1;
+		out = &fr_pair_legacy_print_nested;
+
 	} else if (strncmp(p, "parse_new_conditions", sizeof("parse_new_conditions") - 1) == 0) {
 		p += sizeof("parse_new_conditions") - 1;
 		out = &parse_new_conditions;
