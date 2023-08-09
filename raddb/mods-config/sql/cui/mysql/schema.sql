@@ -1,4 +1,4 @@
-CREATE TABLE `cui` (
+CREATE TABLE IF NOT EXISTS `cui` (
   `clientipaddress` varchar(46) NOT NULL default '',
   `callingstationid` varchar(50) NOT NULL default '',
   `username` varchar(64) NOT NULL default '',
