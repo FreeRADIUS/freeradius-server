@@ -1569,7 +1569,6 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 */
 	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
 	if (slen <= 0) {
-		fr_assert(0);
 		RETURN_OK_WITH_ERROR();
 	}
 
