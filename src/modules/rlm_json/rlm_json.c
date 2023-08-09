@@ -83,7 +83,7 @@ typedef struct {
 } rlm_json_jpath_to_eval_t;
 
 static xlat_arg_parser_t const json_quote_xlat_arg[] = {
-	{ .required = true, .type = FR_TYPE_VOID },
+	{ .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -102,7 +102,7 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 1024, SIZE_MAX);
 
-	if (!in_head) {
+	if (fr_value_box_list_num_elements(&in_head->vb_group) == 0) {
 		MEM(vb_out = fr_value_box_alloc_null(ctx));
 		fr_value_box_strdup(vb_out, vb_out, NULL, "null", false);
 		fr_dcursor_append(out, vb_out);
@@ -127,7 +127,7 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const jpath_validate_xlat_arg[] = {
+static xlat_arg_parser_t const json_jpath_validate_xlat_arg[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
@@ -138,7 +138,7 @@ static xlat_arg_parser_t const jpath_validate_xlat_arg[] = {
  *
  * Writes the output (in the format @verbatim<bytes parsed>[:error]@endverbatim).
  */
-static xlat_action_t jpath_validate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t json_jpath_validate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 UNUSED xlat_ctx_t const *xctx,
 					 request_t *request, fr_value_box_list_t *in)
 {
@@ -572,8 +572,8 @@ static int mod_load(void)
 
 	if (unlikely(!(xlat = xlat_func_register(NULL, "json_quote", json_quote_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_args_set(xlat, json_quote_xlat_arg);
-	if (unlikely(!(xlat = xlat_func_register(NULL, "json_jpath_validate", jpath_validate_xlat, FR_TYPE_STRING)))) return -1;
-	xlat_func_mono_set(xlat, jpath_validate_xlat_arg);
+	if (unlikely(!(xlat = xlat_func_register(NULL, "json_jpath_validate", json_jpath_validate_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_mono_set(xlat, json_jpath_validate_xlat_arg);
 
 	return 0;
 }

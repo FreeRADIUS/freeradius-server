@@ -145,7 +145,7 @@ strings.
 
 rlm_json provides the below xlat functions to handle the JSON documents.
 
-### %{jpathvalidate:...}
+### %{json_jpath_validate:...}
 
 Determine if a jpath expression is valid.
 
@@ -158,7 +158,7 @@ NOTE: Validate parser for everything except unions and expressions.
 [source,unlang]
 ----
 &control.Tmp-String-0 := '$.my.json.payload[1]'
-&reply.Reply-Message := "Validation of %{control.Tmp-String-0} is %{jpathvalidate:$.my.json.payload[1]}"
+&reply.Reply-Message := "Validation of %{control.Tmp-String-0} is %{json_jpath_validate:$.my.json.payload[1]}"
 ----
 
 .Output
@@ -167,7 +167,7 @@ NOTE: Validate parser for everything except unions and expressions.
 Validation of $.my.json.payload[1] is 20:$.my.json.payload[1]
 ```
 
-### %{jsonquote:...}
+### %{json_quote:...}
 
 Escapes string for use as a JSON string.
 
@@ -178,7 +178,7 @@ Escapes string for use as a JSON string.
 [source,unlang]
 ----
 &control.Tmp-String-0 := "caipirinha/gelada"
-&reply.Reply-Message := "The string %{control.Tmp-String-0} should be %{jsonquote:%{control.Tmp-String-0}} to be a valid JSON string."
+&reply.Reply-Message := "The string %{control.Tmp-String-0} should be %{json_quote:%{control.Tmp-String-0}} to be a valid JSON string."
 ----
 
 .Output

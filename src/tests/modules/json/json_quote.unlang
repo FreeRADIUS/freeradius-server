@@ -28,4 +28,8 @@ if (!(%(json_quote:%{Tmp-IP-Address-0}) == '"127.0.0.1"')) {
 	test_fail
 }
 
+if (!(%(json_quote:%{Tmp-String-1}) == 'null')) {
+	test_fail
+}
+
 test_pass
