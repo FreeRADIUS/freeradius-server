@@ -501,9 +501,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *reques
 
 /** Convert value pairs to json objects
  *
- * Take the passed value pair and convert it to a json-c JSON object.
- * This code is heavily based on the fr_json_from_pair() function
- * from src/lib/print.c.
+ * Take the passed value pair and convert it to a json-c JSON object..
  *
  * @param  request The request object.
  * @param  vp      The value pair to convert.

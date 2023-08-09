@@ -31,7 +31,11 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/map_proc.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/json/base.h>
 
@@ -79,7 +83,7 @@ typedef struct {
 } rlm_json_jpath_to_eval_t;
 
 static xlat_arg_parser_t const json_quote_xlat_arg[] = {
-	{ .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -92,22 +96,33 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     UNUSED xlat_ctx_t const *xctx,
 				     request_t *request, fr_value_box_list_t *in)
 {
-	fr_value_box_t *vb;
-	fr_value_box_t *in_head = fr_value_box_list_head(in);
-	char *tmp;
+	fr_value_box_t	*vb_out;
+	fr_value_box_t	*in_head = fr_value_box_list_head(in);
+	fr_sbuff_t	*agg;
 
-	if (!in_head) return XLAT_ACTION_DONE;	/* Empty input is allowed */
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 1024, SIZE_MAX);
 
-	MEM(vb = fr_value_box_alloc_null(ctx));
+	if (!in_head) {
+		MEM(vb_out = fr_value_box_alloc_null(ctx));
+		fr_value_box_strdup(vb_out, vb_out, NULL, "null", false);
+		fr_dcursor_append(out, vb_out);
 
-	if (!(tmp = fr_json_from_string(vb, in_head->vb_strvalue, false))) {
-		REDEBUG("Unable to JSON-quote string");
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
+		return XLAT_ACTION_DONE;
 	}
-	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, tmp, false);
 
-	fr_dcursor_append(out, vb);
+	fr_value_box_list_foreach(&in_head->vb_group, vb_in) {
+		MEM(vb_out = fr_value_box_alloc_null(ctx));
+		if (fr_json_str_from_value(agg, vb_in, true) < 0) {
+			RPERROR("Failed creating escaped JSON value");
+			return XLAT_ACTION_FAIL;
+		}
+		if (fr_value_box_bstrndup(vb_out, vb_out, NULL, fr_sbuff_start(agg), fr_sbuff_used(agg), vb_in->tainted) < 0) {
+			RPERROR("Failed assigning escaped JSON value to output box");
+			return XLAT_ACTION_FAIL;
+		}
+		fr_sbuff_reset_talloc(agg);
+		fr_dcursor_append(out, vb_out);
+	}
 
 	return XLAT_ACTION_DONE;
 }
@@ -555,9 +570,9 @@ static int mod_load(void)
 
 	fr_json_version_print();
 
-	if (unlikely(!(xlat = xlat_func_register(NULL, "jsonquote", json_quote_xlat, FR_TYPE_STRING)))) return -1;
-	xlat_func_mono_set(xlat, json_quote_xlat_arg);
-	if (unlikely(!(xlat = xlat_func_register(NULL, "jpathvalidate", jpath_validate_xlat, FR_TYPE_STRING)))) return -1;
+	if (unlikely(!(xlat = xlat_func_register(NULL, "json_quote", json_quote_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_args_set(xlat, json_quote_xlat_arg);
+	if (unlikely(!(xlat = xlat_func_register(NULL, "json_jpath_validate", jpath_validate_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_mono_set(xlat, jpath_validate_xlat_arg);
 
 	return 0;
@@ -565,8 +580,8 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	xlat_func_unregister("jsonquote");
-	xlat_func_unregister("jpathvalidate");
+	xlat_func_unregister("json_quote");
+	xlat_func_unregister("json_jpath_validate");
 }
 
 /*

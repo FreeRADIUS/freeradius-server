@@ -27,6 +27,10 @@
  * @copyright 2015 The FreeRADIUS Server Project
  */
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/base16.h>
+#include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/value.h>
 #include "base.h"
 
 fr_table_num_sorted_t const fr_json_format_table[] = {
@@ -266,111 +270,193 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 	}
 }
 
-/** Escapes string for use as a JSON string
+/** Print a value box as its equivalent JSON format without going via a struct json_object (in most cases)
  *
- * @param ctx Talloc context to allocate this string
- * @param s Input string
- * @param include_quotes Include the surrounding quotes of JSON strings
- * @return New allocated character string, or NULL if something failed.
+ * @param[out] out		buffer to write to.
+ * @param[in] vb		to print.
+ * @param[in] include_quotes	whether we should wrap string values,
+ *				or non-native types like IPv4 addresses in quotes.
+ * @return
+ *	- <0 on error.
+ *	- >= number of bytes written.
  */
-char *fr_json_from_string(TALLOC_CTX *ctx, char const *s, bool include_quotes)
+fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool include_quotes)
 {
-	char const *p;
-	char *out = NULL;
-	struct json_object *json;
-	int len;
+	fr_sbuff_t our_out = FR_SBUFF(out);
 
-	json = json_object_new_string(s);
-	if (!json) return NULL;
+	switch (vb->type) {
+	case FR_TYPE_NULL:
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "null");
+		break;
 
-	if ((p = json_object_to_json_string(json))) {
-		if (include_quotes) {
-			out = talloc_typed_strdup(ctx, p);
-		} else {
-			len = strlen(p);
-			out = talloc_bstrndup(ctx, p + 1, len - 2);	/* to_json_string adds quotes (") */
-		}
-	}
+	case FR_TYPE_BOOL:
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, vb->vb_bool ? "true" : "false");
+		break;
 
 	/*
-	 * Free the JSON structure, it's not needed any more
+	 *	This is identical to JSON-C's escaping function
+	 *	but we avoid creating JSON objects just to be able
+	 *	to escape strings.
 	 */
-	json_object_put_assert(json);
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+	{
+		char const *last_app, *p, *end;
 
-	return out;
-}
+		if (include_quotes) FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
 
-/** Prints attribute as string, escaped suitably for use as JSON string
- *
- *  Returns < 0 if the buffer may be (or have been) too small to write the encoded
- *  JSON value to.
- *
- * @param out Where to write the string.
- * @param outlen Length of output buffer.
- * @param vp to print.
- * @return
- *	- Length of data written to out.
- *	- value >= outlen on truncation.
- */
-size_t fr_json_from_pair(char *out, size_t outlen, fr_pair_t const *vp)
-{
-	ssize_t slen;
-	size_t freespace = outlen;
+		last_app = p = vb->vb_strvalue;
+		end = p + vb->vb_length;
 
-	switch (vp->vp_type) {
-	case FR_TYPE_UINT32:
-		if (vp->da->flags.has_value) break;
+		while (p < end) {
+			if (*p < ' ') {
+				if (p > last_app) FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, last_app, p - last_app);
 
-		return snprintf(out, freespace, "%u", vp->vp_uint32);
+				switch (*p) {
+				case '\b':
+					FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "\\b");
+					break;
 
-	case FR_TYPE_UINT16:
-		if (vp->da->flags.has_value) break;
+				case '\n':
+					FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "\\n");
+					break;
 
-		return snprintf(out, freespace, "%u", (unsigned int) vp->vp_uint16);
+				case '\r':
+					FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "\\r");
+					break;
+
+				case '\t':
+					FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "\\t");
+					break;
+
+				case '\f':
+					FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "\\f");
+					break;
+
+				case '"':
+					FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "\\\"");
+					break;
+
+				case '\\':
+					FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "\\\\");
+					break;
+
+				case '/':
+					FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "\\/");
+					break;
+
+				default:
+					FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "\\u00");
+					fr_base16_encode(&our_out, &FR_DBUFF_TMP((uint8_t const *)p, 1));
+				}
+
+				last_app = p + 1;
+			}
+			p++;
+		}
+		if (end > last_app) FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, last_app, end - last_app);
+		if (include_quotes) FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
+	}
+		break;
 
 	case FR_TYPE_UINT8:
-		if (vp->da->flags.has_value) break;
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", vb->vb_uint8);
+		break;
 
-		return snprintf(out, freespace, "%u", (unsigned int) vp->vp_uint8);
+	case FR_TYPE_UINT16:
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", vb->vb_uint16);
+		break;
+
+	case FR_TYPE_UINT32:
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", vb->vb_uint32);
+		break;
+
+	case FR_TYPE_UINT64:
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", vb->vb_uint64);
+		break;
+
+	case FR_TYPE_INT8:
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%i", vb->vb_int8);
+		break;
+
+	case FR_TYPE_INT16:
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%i", vb->vb_int16);
+		break;
 
 	case FR_TYPE_INT32:
-		return snprintf(out, freespace, "%d", vp->vp_int32);
-
-	default:
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%i", vb->vb_int32);
 		break;
-	}
 
-	if (vp->vp_type == FR_TYPE_STRING) {
-		char *tmp = fr_json_from_string(NULL, vp->vp_strvalue, true);
-		/* Indicate truncation */
-		if (!tmp) return outlen + 1;
-		slen = strlen(tmp);
-		if (freespace <= (size_t)slen) return outlen + 1;
+	case FR_TYPE_INT64:
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%i", vb->vb_int64);
+		break;
 
-		strcpy(out, tmp);
-		talloc_free(tmp);
+	case FR_TYPE_SIZE:
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%zu", vb->vb_size);
+		break;
 
+	/*
+	 *	It's too complex to replicate the float/double printing
+	 *	here, so pass it off to JSON-C's printing functions.
+	 */
+	case FR_TYPE_FLOAT32:
+	{
+		struct json_object *obj;
+		fr_slen_t slen;
+
+		obj = json_object_new_double((double)vb->vb_float32);
+		if (unlikely(obj == NULL)) return -1;
+		slen = fr_sbuff_in_strcpy(&our_out, json_object_to_json_string(obj));
+		json_object_put_assert(obj);
 		return slen;
 	}
+		break;
 
-	/* Indicate truncation */
-	if (freespace < 2) return outlen + 1;
-	*out++ = '"';
-	freespace--;
+	case FR_TYPE_FLOAT64:
+	{
+		struct json_object *obj;
+		fr_slen_t slen;
 
-	slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(out, freespace), vp, T_BARE_WORD);
-	if (slen < 0) return slen;
+		obj = json_object_new_double((double)vb->vb_float64);
+		if (unlikely(obj == NULL)) return -1;
+		slen = fr_sbuff_in_strcpy(&our_out, json_object_to_json_string(obj));
+		json_object_put_assert(obj);
+		return slen;
+	}
+		break;
 
-	out += (size_t)slen;
-	freespace -= (size_t)slen;
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
+	{
+		fr_slen_t slen;
 
-	/* Indicate truncation */
-	if (freespace < 2) return outlen + 1;
-	*out++ = '"';
-	freespace--;
-	*out = '\0'; // We don't increment out, because the nul byte should not be included in the length
+		if (include_quotes) FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
+		slen = fr_value_box_print(&our_out, vb, NULL);
+		if (include_quotes) FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
+		if (slen < 0) return slen;
+	}
+		break;
 
-	return outlen - freespace;
+	case FR_TYPE_STRUCTURAL:
+		fr_strerror_const("Structural boxes not yet supported");
+		return -1;
+
+	case FR_TYPE_VOID:
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_MAX:
+		fr_strerror_printf("Box type %s cannot be converted to string", fr_type_to_str(vb->type));
+		return -1;
+	}
+
+	return fr_sbuff_set(out, &our_out);
 }
 
 /** Print JSON-C version

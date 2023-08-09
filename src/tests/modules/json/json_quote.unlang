@@ -1,0 +1,31 @@
+&Tmp-String-0 := "Hello\n"
+if (!(%(json_quote:%{Tmp-String-0}) == "\"Hello\\n\"")) {
+	test_fail
+}
+
+&Tmp-String-0 := "Hello\nbob"
+if (!(%(json_quote:%{Tmp-String-0}) == "\"Hello\\nbob\"")) {
+	test_fail
+}
+
+&Tmp-String-0 := "\nHello\nbob"
+if (!(%(json_quote:%{Tmp-String-0}) == "\"\\nHello\\nbob\"")) {
+	test_fail
+}
+
+&Tmp-String-0 := "Hello!"
+if (!(%(json_quote:%{Tmp-String-0}) == '"Hello!"')) {
+	test_fail
+}
+
+&Tmp-Integer-0 := 123456
+if (!(%(json_quote:%{Tmp-Integer-0}) == '123456')) {
+	test_fail
+}
+
+&Tmp-IP-Address-0 := 127.0.0.1
+if (!(%(json_quote:%{Tmp-IP-Address-0}) == '"127.0.0.1"')) {
+	test_fail
+}
+
+test_pass

@@ -1,0 +1,12 @@
+if (!(%(test.passthrough:"\"foo\"") == '"foo"')) {
+	test_fail
+}
+
+# Arg style xlat has "foo" and "bar" passed through as literals.
+# Double quotes around expansion results in concatenation so final string is "foo""bar"
+# with no backslash escaping!
+if (!("%(test.passthrough:"\"foo\"" "\"bar\"")" == '"foo""bar"')) {
+	test_fail
+}
+
+success

@@ -253,9 +253,7 @@ int		fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_obje
 
 json_object	*json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *data);
 
-char		*fr_json_from_string(TALLOC_CTX *ctx, char const *s, bool include_quotes);
-
-size_t    	fr_json_from_pair(char *out, size_t outlen, fr_pair_t const *vp);
+fr_slen_t	fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool include_quotes);
 
 void		fr_json_version_print(void);
 
