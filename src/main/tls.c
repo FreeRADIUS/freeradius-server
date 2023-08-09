@@ -892,6 +892,13 @@ after_chain:
 		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
 	}
+#ifdef PSK_MAX_IDENTITY_LEN
+	else if (conf->psk_identity) {
+		RDEBUG2("(TLS) %s - Setting verify peer mode due to PSK", conf->name);
+		verify_mode = SSL_VERIFY_PEER;
+		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
+	}
+#endif
 	SSL_set_verify(state->ssl, verify_mode, cbtls_verify);
 
 	SSL_set_ex_data(state->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
