@@ -1314,6 +1314,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *vp_str,
 int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const *rules)
 {
 	char buffer[256];
+	fr_sbuff_t buffer_sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
 	map_t *map;
 
@@ -1336,8 +1337,8 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	tmpl_attr_set_request_ref(map->lhs, rules->attr.request_def);
 	tmpl_attr_set_list(map->lhs, rules->attr.list_def);
 
-	tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->lhs, TMPL_ATTR_REF_PREFIX_YES, NULL);
-	tmpl_set_name(map->lhs, T_BARE_WORD, buffer, -1);
+	tmpl_print(&buffer_sbuff, map->lhs, TMPL_ATTR_REF_PREFIX_YES, NULL);
+	tmpl_set_name(map->lhs, T_BARE_WORD, fr_sbuff_start(&buffer_sbuff), -1);
 
 	/*
 	 *	Allocate the RHS

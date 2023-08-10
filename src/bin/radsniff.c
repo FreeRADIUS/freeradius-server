@@ -464,13 +464,14 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 
 		if (conf->print_packet && (fr_debug_lvl >= L_DBG_LVL_2)) {
 			char vector[(RADIUS_AUTH_VECTOR_LENGTH * 2) + 1];
+			fr_sbuff_t vector_sbuff = FR_SBUFF_OUT(vector, sizeof(vector));
 
 			fr_pair_list_sort(list, fr_pair_cmp_by_da);
 			fr_pair_list_log(&default_log, 4, list);
 
-			fr_base16_encode(&FR_SBUFF_OUT(vector, sizeof(vector)),
+			fr_base16_encode(&vector_sbuff,
 					 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH));
-			INFO("\tAuthenticator-Field = 0x%s", vector);
+			INFO("\tAuthenticator-Field = 0x%s", fr_sbuff_start(&vector_sbuff));
 		}
 	}
 }
@@ -481,6 +482,7 @@ static void rs_packet_save_in_output_dir(uint64_t count, UNUSED rs_status_t stat
 {
 	fr_log_t output_file;
 	char vector[(RADIUS_AUTH_VECTOR_LENGTH * 2) + 1];
+	fr_sbuff_t vector_sbuff = FR_SBUFF_OUT(vector, sizeof(vector));
 	char const *packet_type = response ? "reply" : "request";
 	char filename[2048];
 
@@ -508,10 +510,10 @@ static void rs_packet_save_in_output_dir(uint64_t count, UNUSED rs_status_t stat
 	fr_pair_list_log(&output_file, 0, list);
 
 	/* then append the Authenticator-Field */
-	fr_base16_encode(&FR_SBUFF_OUT(vector, sizeof(vector)),
+	fr_base16_encode(&vector_sbuff,
 			 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH));
 
-	fprintf(output_file.handle, "Authenticator-Field = 0x%s\n", vector);
+	fprintf(output_file.handle, "Authenticator-Field = 0x%s\n", fr_sbuff_start(&vector_sbuff));
 
 	if (fr_log_close(&output_file) < 0) {
 		ERROR("Failed closing %s output file.", filename);
