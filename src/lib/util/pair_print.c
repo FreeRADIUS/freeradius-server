@@ -196,54 +196,127 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_p
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
-static ssize_t fr_pair_list_print_unflatten(fr_sbuff_t *out, fr_da_stack_t const *da_stack, unsigned int depth, fr_pair_list_t const *list, fr_pair_t **vp_p)
+static ssize_t fr_pair_list_print_unflatten(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_list_t const *list, fr_pair_t **vp_p)
 {
-	fr_dict_attr_t const *parent;
 	fr_pair_t	*vp = *vp_p;
 	fr_pair_t	*next = fr_pair_list_next(list, vp);
+	fr_da_stack_t	da_stack;
 	fr_sbuff_t	our_out = FR_SBUFF(out);
 
-	fr_assert(depth >= 1);
+	fr_proto_da_stack_build(&da_stack, vp->da);
 
+	fr_assert(fr_type_is_structural(parent->type) || fr_dict_attr_is_key_field(parent));
+
+redo:
 	/*
-	 *	Not yet at the correct depth, print more parents.
+	 *	Not yet at the correct parent.  Print out the wrapper, and keep looping while the parent is the same.
 	 */
-	if (depth < vp->da->depth) {
-		FR_SBUFF_IN_STRCPY_RETURN(&our_out, da_stack->da[depth - 1]->name);
+	if (fr_type_is_leaf(vp->vp_type) && (da_stack.da[parent->depth - 1] == parent) && (vp->da->parent != parent)) {
+		fr_assert(da_stack.da[parent->depth] != NULL);
+
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, da_stack.da[parent->depth]->name);
 		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, " = { ");
 
-		FR_SBUFF_RETURN(fr_pair_list_print_unflatten, &our_out, da_stack, depth + 1, list, vp_p);
-		FR_SBUFF_IN_STRCPY_RETURN(&our_out, " }");
-		FR_SBUFF_SET_RETURN(out, &our_out);
-	}
+		while (true) {
+			fr_pair_t *prev = vp;
 
-	parent = vp->da->parent;
+			FR_SBUFF_RETURN(fr_pair_list_print_unflatten, &our_out, da_stack.da[parent->depth], list, &vp);
 
-	/*
-	 *	We are at the correct depth.  Print out all of the VPs which match the parent at this depth.
-	 */
-	while (vp->da->parent == parent) {
-		next = fr_pair_list_next(list, vp);
+			if (!vp) break;
 
-		FR_SBUFF_RETURN(fr_pair_print, &our_out, vp->da->parent, vp);
+			if (vp->da->depth <= parent->depth) break;
 
-		/*
-		 *	Flat structures are listed in order.  Which means as soon as we go from 1..N back to
-		 *	1, we have ended the current structure.
-		 */
-		if (next && (vp->da->parent->type == FR_TYPE_STRUCT) &&
-		    (next->da->parent == vp->da->parent) &&
-		    (next->da->attr < vp->da->attr)) {
-			break;
+			/*
+			 *	Flat structures are listed in order.  Which means as soon as we go from 1..N back to
+			 *	1, we have ended the current structure.
+			 */
+			if ((prev->da->parent->type == FR_TYPE_STRUCT) &&
+			    (vp->da->parent == prev->da->parent) &&
+			    (vp->da->attr < prev->da->attr)) {
+				break;
+			}
+
+			/*
+			 *	We have different parents, stop printing.
+			 */
+			fr_proto_da_stack_build(&da_stack, vp->da);
+
+			if (da_stack.da[parent->depth - 1] != parent) break;
 		}
 
-		vp = next;
-		if (!vp) break;
+		/*
+		 *	We've either hit the end of the list, OR a VP which has a different parent, OR the end
+		 *	of this struct.
+		 */
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, " }");
 
-		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+		if (vp) {
+			next = fr_pair_list_next(list, vp);
+			if (next) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+		} else {
+			next = NULL;
+		}
+
+		*vp_p = next;
+
+		if (!next) FR_SBUFF_SET_RETURN(out, &our_out);
+
+		vp = next;
 	}
 
+	/*
+	 *	Print out things which are at the root.
+	 */
+	while (vp->da->parent->flags.is_root) {
+		FR_SBUFF_RETURN(fr_pair_print, &our_out, vp->da->parent, vp);
+		next = fr_pair_list_next(list, vp);
+		if (!next) goto done;
+
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+		vp = next;
+	}
+
+	/*
+	 *	Allow nested attributes to be mixed with flat attributes.
+	 */
+	while (fr_type_is_structural(vp->vp_type) && (vp->da == parent)) {
+		FR_SBUFF_RETURN(fr_pair_print, &our_out, vp->da->parent, vp);
+		next = fr_pair_list_next(list, vp);
+		if (!next) goto done;
+
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+		vp = next;
+	}
+
+	fr_assert(vp->da->parent == parent);
+
+	/*
+	 *	Finally loop over the correct children.
+	 */
+	while (vp->da->parent == parent) {
+		FR_SBUFF_RETURN(fr_pair_print, &our_out, vp->da->parent, vp);
+		next = fr_pair_list_next(list, vp);
+		if (!next) goto done;
+
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+		vp = next;
+	}
+
+	/*
+	 *	We've printed out all of the VPs at the current depth.  But maybe the next VP is at a
+	 *	different depth.  If so, jump back and keep going.
+	 */
+	if (next) {
+		fr_proto_da_stack_build(&da_stack, next->da);
+		if (da_stack.da[parent->depth - 1] == parent) {
+			vp = next;
+			goto redo;
+		}
+	}
+
+done:
 	*vp_p = next;
+
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
@@ -280,22 +353,29 @@ ssize_t fr_pair_list_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pai
 
 		if (!fr_pair_legacy_print_nested ||
 		    (!parent && (vp->da->depth == 1)) ||
+		    (vp->da->parent == parent) ||
 		    (parent && (fr_dict_by_da(parent) != fr_dict_by_da(vp->da))) ||
 		    (parent && (da_stack.da[parent->depth] == parent) && (parent->depth + 1 == vp->da->depth))) {
 			FR_SBUFF_RETURN(fr_pair_print, &our_out, parent, vp);
 			vp = fr_pair_list_next(list, vp);
-
 		} else {
 			/*
-			 *	We have to print a partial tree, starting from the root.
+			 *      We have to print a partial tree, starting from the root.
 			 */
-			if (!parent) {
-				depth = 1;
-			} else {
-				depth = parent->depth + 1;
-			}
+                      if (!parent) {
+                              depth = 1;
+                      } else {
+                              depth = parent->depth + 1;
+                      }
 
-			FR_SBUFF_RETURN(fr_pair_list_print_unflatten, &our_out, &da_stack, depth, list, &vp);
+		      /*
+		       *	Wrap the children.
+		       */
+		      FR_SBUFF_IN_STRCPY_RETURN(&our_out, da_stack.da[depth - 1]->name);
+		      FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, " = { ");
+
+		      FR_SBUFF_RETURN(fr_pair_list_print_unflatten, &our_out, da_stack.da[depth - 1], list, &vp);
+		      FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, " }");
 		}
 
 		if (!vp) break;
