@@ -209,52 +209,6 @@ static void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t
 	__coverity_writeall__(vb);
 }
 
-ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
-{
-	ssize_t	result;
-
-	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result);
-
-	return result;
-}
-
-size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				     bool const allowed[static UINT8_MAX + 1])
-{
-	size_t	result;
-
-	__coverity_write_buffer_bytes__(out->p, result + 1);
-
-	return result;
-}
-
-typedef struct {
-} 	fr_sbuff_term_t;
-typedef struct {
-} 	fr_sbuff_unescape_rules_t;
-
-size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   fr_sbuff_term_t const *tt,
-				   fr_sbuff_unescape_rules_t const *u_rules)
-{
-	size_t	result;
-
-	__coverity_write_buffer_bytes__(out->p, result + 1);
-
-	return result;
-}
-
-size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				   fr_sbuff_term_t const *tt,
-				   fr_sbuff_unescape_rules_t const *u_rules)
-{
-	size_t	result;
-
-	__coverity_write_buffer_bytes__(out->p, result + 1);
-
-	return result;
-}
-
 ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out,
 			       fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da, bool numeric)
 {

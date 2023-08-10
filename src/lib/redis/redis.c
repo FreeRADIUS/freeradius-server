@@ -458,6 +458,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	char		*new;
 
 	char		key_buf[256];
+	fr_sbuff_t	key_buf_sbuff = FR_SBUFF_OUT(key_buf, sizeof(key_buf));
 	char		*key;
 	size_t		key_len;
 	ssize_t		slen;
@@ -465,14 +466,14 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	fr_assert(tmpl_is_attr(map->lhs));
 	fr_assert(tmpl_is_data(map->rhs));
 
-	slen = tmpl_print(&FR_SBUFF_OUT(key_buf, sizeof(key_buf)), map->lhs, TMPL_ATTR_REF_PREFIX_NO, NULL);
+	slen = tmpl_print(&key_buf_sbuff, map->lhs, TMPL_ATTR_REF_PREFIX_NO, NULL);
 	if (slen < 0) {
 		fr_strerror_printf("Key too long.  Must be < " STRINGIFY(sizeof(key_buf)) " "
 				   "bytes, got %zu bytes", (size_t)(slen * -1));
 		return -1;
 	}
 	key_len = (size_t)slen;
-	key = talloc_bstrndup(pool, key_buf, key_len);
+	key = talloc_bstrndup(pool, fr_sbuff_start(&key_buf_sbuff), key_len);
 	if (!key) return -1;
 
 	switch (tmpl_value_type(map->rhs)) {

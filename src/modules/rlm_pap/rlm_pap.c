@@ -807,6 +807,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_resul
 	uint8_t digest[128];
 	uint8_t buff[FR_MAX_STRING_LEN];
 	uint8_t buff2[FR_MAX_STRING_LEN + 50];
+	fr_dbuff_t digest_dbuff = FR_DBUFF_TMP(digest, sizeof(digest));
 
 	RDEBUG2("Using Password.NT-MTA-MD5");
 
@@ -819,7 +820,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_resul
 	/*
 	 *	Sanity check the value of Password.NS-MTA-MD5
 	 */
-	if (fr_base16_decode(NULL, &FR_DBUFF_TMP(digest, sizeof(digest)),
+	if (fr_base16_decode(NULL, &digest_dbuff,
 		       &FR_SBUFF_IN(known_good->vp_strvalue, known_good->vp_length), false) != 16) {
 		REDEBUG("\"known good\" Password.NS-MTA-MD5 has invalid value");
 		RETURN_MODULE_INVALID;
@@ -853,7 +854,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_resul
 		fr_md5_calc(buff, (uint8_t *) buff2, p - buff2);
 	}
 
-	if (fr_digest_cmp(digest, buff, 16) != 0) {
+	if (fr_digest_cmp(fr_dbuff_start(&digest_dbuff), buff, 16) != 0) {
 		REDEBUG("NS-MTA-MD5 digest does not match \"known good\" digest");
 		RETURN_MODULE_REJECT;
 	}
