@@ -319,7 +319,7 @@ int main(int argc, char **argv)
 		if (strcmp(argv[2], "now") == 0) {
 			now = time(NULL);
 		} else {
-			(void) sscanf(argv[2], "%lu", &now);
+			(void) sscanf(argv[2], "%llu", &now);
 		}
 
 		if (totp_cmp(NULL, (time_t) now, (uint8_t const *) argv[3], strlen(argv[3]), argv[4]) == 0) {
@@ -329,7 +329,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	fprintf(stderr, "Unknown command argv[1]\n", argv[1]);
+	fprintf(stderr, "Unknown command %s\n", argv[1]);
 	return 1;
 }
 #endif
