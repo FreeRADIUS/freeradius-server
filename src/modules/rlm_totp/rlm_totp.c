@@ -142,13 +142,18 @@ static ssize_t base32_decode(uint8_t *out, size_t outlen, char const *in)
 	return b - out;
 }
 
+#ifndef TESTING
+#define TESTING_UNUSED
 #define LEN 6
 #define PRINT "%06u"
 #define DIV 1000000
 
-#ifndef TESTING
-#define TESTING_UNUSED
 #else
+#define LEN 8
+#define PRINT "%08u"
+#define DIV 100000000
+
+
 #undef RDEBUG3
 #define RDEBUG3(fmt, ...)	printf(fmt "\n", ## __VA_ARGS__)
 #define TESTING_UNUSED UNUSED
