@@ -198,6 +198,7 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_p
 
 static ssize_t fr_pair_list_print_unflatten(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_list_t const *list, fr_pair_t **vp_p)
 {
+	bool		comma = false;
 	fr_pair_t	*vp = *vp_p;
 	fr_pair_t	*next = fr_pair_list_next(list, vp);
 	fr_da_stack_t	da_stack;
@@ -212,6 +213,8 @@ redo:
 	 *	Not yet at the correct parent.  Print out the wrapper, and keep looping while the parent is the same.
 	 */
 	if (fr_type_is_leaf(vp->vp_type) && (da_stack.da[parent->depth - 1] == parent) && (vp->da->parent != parent)) {
+		if (comma) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+
 		fr_assert(da_stack.da[parent->depth] != NULL);
 
 		FR_SBUFF_IN_STRCPY_RETURN(&our_out, da_stack.da[parent->depth]->name);
@@ -252,14 +255,17 @@ redo:
 
 		if (vp) {
 			next = fr_pair_list_next(list, vp);
-			if (next) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+			if (next) comma = true;
 		} else {
 			next = NULL;
 		}
 
 		*vp_p = next;
 
-		if (!next) FR_SBUFF_SET_RETURN(out, &our_out);
+		if (!next) {
+			if (comma) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+			FR_SBUFF_SET_RETURN(out, &our_out);
+		}
 
 		vp = next;
 	}
@@ -268,11 +274,13 @@ redo:
 	 *	Print out things which are at the root.
 	 */
 	while (vp->da->parent->flags.is_root) {
+		if (comma) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+
 		FR_SBUFF_RETURN(fr_pair_print, &our_out, vp->da->parent, vp);
 		next = fr_pair_list_next(list, vp);
 		if (!next) goto done;
 
-		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+		comma = true;
 		vp = next;
 	}
 
@@ -280,11 +288,13 @@ redo:
 	 *	Allow nested attributes to be mixed with flat attributes.
 	 */
 	while (fr_type_is_structural(vp->vp_type) && (vp->da == parent)) {
+		if (comma) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+
 		FR_SBUFF_RETURN(fr_pair_print, &our_out, vp->da->parent, vp);
 		next = fr_pair_list_next(list, vp);
 		if (!next) goto done;
 
-		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+		comma = true;
 		vp = next;
 	}
 
@@ -294,11 +304,13 @@ redo:
 	 *	Finally loop over the correct children.
 	 */
 	while (vp->da->parent == parent) {
+		if (comma) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+
 		FR_SBUFF_RETURN(fr_pair_print, &our_out, vp->da->parent, vp);
 		next = fr_pair_list_next(list, vp);
 		if (!next) goto done;
 
-		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+		comma = true;
 		vp = next;
 	}
 
