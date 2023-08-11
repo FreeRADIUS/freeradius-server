@@ -165,8 +165,9 @@ jobs:
       - name: Build FreeRADIUS
         uses: ./.github/actions/build-freeradius
         with:
-          use_docker: true
           use_sanitizers: false
+          cc: ${{ matrix.env.CC }}
+          test_type: ${{ matrix.env.TEST_TYPE }}
 
       - name: Run main CI tests
         uses: ./.github/actions/ci-tests
