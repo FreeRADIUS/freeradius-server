@@ -32,4 +32,9 @@ if (!(%(json_quote:%{Tmp-String-1}) == 'null')) {
 	test_fail
 }
 
+# Test calls in arguments as would be passed to REST module
+if (!(%(test.passthrough:"{\"messages\":[{\"attributes\":{\"acct_status_type\":%(json_quote:%{Acct-Status-Type})}}]}") == '{"messages":[{"attributes":{"acct_status_type":null}}]}')) {
+	test_fail
+}
+
 test_pass
