@@ -29,7 +29,8 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #define TIME_STEP (30)
-
+#define BACK_STEPS (1)
+#define BACK_STEP_SECS (30)
 /*
  *	RFC 4648 base32 decoding.
  */
@@ -174,45 +175,58 @@ static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *
 	char buffer[9];
 	uint8_t data[8];
 	uint8_t digest[SHA1_DIGEST_LENGTH];
-
-	padded = ((uint64_t) now) / TIME_STEP;
-	data[0] = padded >> 56;
-	data[1] = padded >> 48;
-	data[2] = padded >> 40;
-	data[3] = padded >> 32;
-	data[4] = padded >> 24;
-	data[5] = padded >> 16;
-	data[6] = padded >> 8;
-	data[7] = padded & 0xff;
+	time_t then;
+	int i;
 
 	/*
-	 *	Encrypt the network order time with the key.
+	 * First try to authenticate against the current OTP, then step
+	 * back in increments of BACK_STEP_SECS, up to BACK_STEPS times,
+	 * to authenticate properly in cases of long transit delay, as
+	 * described in RFC 6238, secion 5.2.
 	 */
-	fr_hmac_sha1(digest, data, 8, key, keylen);
+	for (i = 0, then = now; i <= BACK_STEPS; i++, then -= BACK_STEP_SECS) {
+	  
+	       padded = (uint64_t) then / TIME_STEP;
+	       data[0] = padded >> 56;
+	       data[1] = padded >> 48;
+	       data[2] = padded >> 40;
+	       data[3] = padded >> 32;
+	       data[4] = padded >> 24;
+	       data[5] = padded >> 16;
+	       data[6] = padded >> 8;
+	       data[7] = padded & 0xff;
 
-	/*
-	 *	Take the least significant 4 bits.
-	 */
-	offset = digest[SHA1_DIGEST_LENGTH - 1] & 0x0f;
+	       /*
+		*	Encrypt the network order time with the key.
+		*/
+	       fr_hmac_sha1(digest, data, 8, key, keylen);
 
-	/*
-	 *	Grab the 32bits at "offset", and drop the high bit.
-	 */
-	challenge = (digest[offset] & 0x7f) << 24;
-	challenge |= digest[offset + 1] << 16;
-	challenge |= digest[offset + 2] << 8;
-	challenge |= digest[offset + 3];
+	       /*
+		*	Take the least significant 4 bits.
+		*/
+	       offset = digest[SHA1_DIGEST_LENGTH - 1] & 0x0f;
 
-	/*
-	 *	The token is the last 6 digits in the number.
-	 */
-	snprintf(buffer, sizeof(buffer), PRINT, challenge % DIV);
+	       /*
+		*	Grab the 32bits at "offset", and drop the high bit.
+		*/
+	       challenge = (digest[offset] & 0x7f) << 24;
+	       challenge |= digest[offset + 1] << 16;
+	       challenge |= digest[offset + 2] << 8;
+	       challenge |= digest[offset + 3];
 
-	RDEBUG3("Time %zu", (size_t) now);
-	RDEBUG3("Expected %s", buffer);
-	RDEBUG3("Received %s", totp);
+	       /*
+		*	The token is the last 6 digits in the number (or 8 for testing)..
+		*/
+	       snprintf(buffer, sizeof(buffer), PRINT, challenge % DIV);
 
-	return rad_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, LEN);
+	       RDEBUG3("Now: %zu, Then: %zu", (size_t) now, (size_t) then);
+	       RDEBUG3("Expected %s", buffer);
+	       RDEBUG3("Received %s", totp);
+
+	       if (rad_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, LEN) == 0)
+		      return 0;
+	}
+	return 1;
 }
 
 #ifndef TESTING
@@ -226,7 +240,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	uint8_t const *key;
 	size_t keylen;
 	uint8_t buffer[80];	/* multiple of 5*8 characters */
-
+	uint64_t now = time(NULL);
 
 	password = fr_pair_find_by_num(request->packet->vps, PW_TOTP_PASSWORD, 0, TAG_ANY);
 	if (!password) return RLM_MODULE_NOOP;
@@ -260,11 +274,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		keylen = len;
 	}
 
-	if (totp_cmp(request, time(NULL), key, keylen, password->vp_strvalue) != 0) return RLM_MODULE_FAIL;
-
-	return RLM_MODULE_OK;
+	if (totp_cmp(request, now, key, keylen, password->vp_strvalue) == 0)
+		     return RLM_MODULE_OK;
+	}
+	return RLM_MODULE_FAIL;
 }
-
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -318,7 +332,7 @@ int main(int argc, char **argv)
 	 */
 	if (strcmp(argv[1], "totp") == 0) {
 		uint64_t now;
-
+		
 		if (argc < 5) return 0;
 
 		if (strcmp(argv[2], "now") == 0) {
@@ -327,8 +341,13 @@ int main(int argc, char **argv)
 			(void) sscanf(argv[2], "%llu", &now);
 		}
 
-		if (totp_cmp(NULL, (time_t) now, (uint8_t const *) argv[3], strlen(argv[3]), argv[4]) == 0) {
-			return 0;
+		printf ("=== Time = %llu, TIME_STEP = %d, BACK_STEPS = %d, BACK_STEP_SECS = %d ===\n",
+			 now, TIME_STEP, BACK_STEPS, BACK_STEP_SECS); 
+
+		if (totp_cmp(NULL, (time_t) now, (uint8_t const *) argv[3],
+			     strlen(argv[3]), argv[4]) == 0) {
+		       return 0;
+		  
 		}
 		printf("Fail\n");
 		return 1;
