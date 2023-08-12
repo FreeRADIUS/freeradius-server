@@ -80,7 +80,7 @@ KEYWORD_UPDATE_TMPL_TESTS	:= foreach-regex xlat-dhcpv4
 ifneq "$(findstring ${1}, paircmp if-paircmp)" ""
 $(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=no
 
-else ifneq "$(findstring ${1}, comments update-to-edit if-regex-multivalue smash wimax unknown $(KEYWORD_UPDATE_TESTS) vendor_specific vendor_specific.raw xlat-unknown update-proto update-proto-error)" ""
+else ifneq "$(findstring ${1}, comments update-to-edit if-regex-multivalue smash unknown $(KEYWORD_UPDATE_TESTS) vendor_specific vendor_specific.raw xlat-unknown update-proto update-proto-error)" ""
 $(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes
 
 else ifneq "$(findstring ${1}, $(KEYWORD_UPDATE_REWRITE_TESTS))" ""
