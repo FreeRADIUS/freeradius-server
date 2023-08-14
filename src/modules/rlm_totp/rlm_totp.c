@@ -319,7 +319,7 @@ int main(int argc, char **argv)
 
 		for (p = key; p < (key + len); p++) {
 			printf("%02x ", *p);
-		};
+		}
 		printf("\n");
 
 		return 0;
@@ -342,7 +342,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	fprintf(stderr, "Unknown command argv[1]\n", argv[1]);
+	fprintf(stderr, "Unknown command %s\n", argv[1]);
 	return 1;
 }
 #endif
