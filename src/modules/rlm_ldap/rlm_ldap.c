@@ -696,10 +696,10 @@ static void ldap_memberof_xlat_cancel(UNUSED request_t *request, UNUSED fr_signa
 }
 
 #define REPEAT_LDAP_MEMBEROF_XLAT_RESULTS \
-	if (unlang_function_repeat_set(request, ldap_memberof_xlat_results) < 0) { \
+	if (unlang_function_repeat_set(request, ldap_memberof_xlat_results) < 0) do { \
 		rcode = RLM_MODULE_FAIL; \
 		goto finish; \
-	}
+	} while (0)
 
 /** Run the state machine for the LDAP membership xlat
  *
@@ -1327,10 +1327,10 @@ static unlang_action_t mod_authorize_start(UNUSED rlm_rcode_t *p_result, UNUSED 
 }
 
 #define REPEAT_MOD_AUTHORIZE_RESUME \
-	if (unlang_function_repeat_set(request, mod_authorize_resume) < 0) { \
+	if (unlang_function_repeat_set(request, mod_authorize_resume) < 0) do { \
 		rcode = RLM_MODULE_FAIL; \
 		goto finish; \
-	}
+	} while (0)
 
 /** Resume function called after each potential yield in LDAP authorization
  *
@@ -1415,7 +1415,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		 *      Retrieve Universal Password if we use eDirectory
 		 */
 		if (inst->edir) {
-			autz_ctx->dn = rlm_find_user_dn_cached(request);;
+			autz_ctx->dn = rlm_find_user_dn_cached(request);
 
 			/*
 			 *	Retrive universal password

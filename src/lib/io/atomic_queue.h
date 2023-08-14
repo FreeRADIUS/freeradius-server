@@ -45,7 +45,7 @@ RCSIDH(atomic_queue_h, "$Id$")
 #define cas_decr(_store, _var)    atomic_compare_exchange_strong_explicit(&_store, &_var, _var - 1, memory_order_release, memory_order_relaxed)
 #define load(_var)           atomic_load_explicit(&_var, memory_order_relaxed)
 #define aquire(_var)         atomic_load_explicit(&_var, memory_order_acquire)
-#define store(_store, _var)  atomic_store_explicit(&_store, _var, memory_order_release);
+#define store(_store, _var)  atomic_store_explicit(&_store, _var, memory_order_release)
 
 #ifdef __cplusplus
 extern "C" {

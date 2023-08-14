@@ -132,7 +132,7 @@ do { \
 
 /** Call a named recv function directly
  */
-#define CALL_RECV(_x) recv_ ## _x(p_result, mctx, request);
+#define CALL_RECV(_x) recv_ ## _x(p_result, mctx, request)
 
 /** Call a named send function directly
  */

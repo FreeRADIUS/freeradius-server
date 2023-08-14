@@ -162,7 +162,7 @@ static inline CC_HINT(always_inline) int cf_tmpl_rules_verify(CONF_SECTION *cs, 
 	return 0;
 }
 
-#define RULES_VERIFY(_cs, _rules) if (cf_tmpl_rules_verify(_cs, _rules) < 0) return NULL;
+#define RULES_VERIFY(_cs, _rules) if (cf_tmpl_rules_verify(_cs, _rules) < 0) return NULL
 
 static ssize_t fr_skip_xlat(char const *start, char const *end);
 
@@ -2796,7 +2796,7 @@ do_frame:
 				    frame->filename);
 			goto pop_stack;
 		}
-	};
+	}
 
 	/*
 	 *	Read, checking for line continuations ('\\' at EOL)

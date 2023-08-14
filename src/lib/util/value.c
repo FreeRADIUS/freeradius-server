@@ -675,7 +675,7 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	 *	Short-hand for simplicity.
 	 */
 #define RETURN(_type) return CMP(a->datum._type, b->datum._type)
-#define COMPARE(_type) return CMP(memcmp(&a->datum._type, &b->datum._type, sizeof(a->datum._type)), 0);
+#define COMPARE(_type) return CMP(memcmp(&a->datum._type, &b->datum._type, sizeof(a->datum._type)), 0)
 
 	case FR_TYPE_BOOL:
 		RETURN(boolean);

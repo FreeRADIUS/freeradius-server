@@ -75,7 +75,7 @@ typedef struct fr_minmax_heap_s minmax_heap_t;
 #define HEAP_GRANDPARENT(_x)	HEAP_PARENT(HEAP_PARENT(_x))
 #define HEAP_LEFT(_x)	(2 * (_x))
 #define HEAP_RIGHT(_x) (2 * (_x) + 1 )
-#define	HEAP_SWAP(_a, _b) { void *_tmp = _a; _a = _b; _b = _tmp; }
+#define	HEAP_SWAP(_a, _b) do { void *_tmp = _a; _a = _b; _b = _tmp; } while (0)
 
 /**
  * @hidecallergraph
@@ -205,8 +205,8 @@ static inline bool has_grandchildren(minmax_heap_t *h, fr_minmax_heap_index_t i)
 	return HEAP_LEFT(HEAP_LEFT(i)) <= h->num_elements;
 }
 
-#define OFFSET_SET(_heap, _idx) index_set(_heap, _heap->p[_idx], _idx);
-#define OFFSET_RESET(_heap, _idx) index_set(_heap, _heap->p[_idx], 0);
+#define OFFSET_SET(_heap, _idx) index_set(_heap, _heap->p[_idx], _idx)
+#define OFFSET_RESET(_heap, _idx) index_set(_heap, _heap->p[_idx], 0)
 
 /*
  *	The minmax heap has the same basic idea as binary heaps:

@@ -1059,13 +1059,13 @@ int fr_ldap_global_config(int debug_level, char const *tls_random_file)
 	if (done_config) return 0;
 
 #define do_ldap_global_option(_option, _name, _value) \
-	if (ldap_set_option(NULL, _option, _value) != LDAP_OPT_SUCCESS) { \
+	if (ldap_set_option(NULL, _option, _value) != LDAP_OPT_SUCCESS) do { \
 		int _ldap_errno; \
 		ldap_get_option(NULL, LDAP_OPT_RESULT_CODE, &_ldap_errno); \
 		ERROR("Failed setting global option %s: %s", _name, \
 			 (_ldap_errno != LDAP_SUCCESS) ? ldap_err2string(_ldap_errno) : "Unknown error"); \
 		return -1;\
-	}
+	} while (0)
 
 #define maybe_ldap_global_option(_option, _name, _value) \
 	if (_value) do_ldap_global_option(_option, _name, _value)

@@ -228,7 +228,7 @@ static inline CC_HINT(always_inline) int unlang_rules_verify(tmpl_rules_t const 
 #if 0
 #define ATTR_RULES_VERIFY(_rules) if (unlang_attr_rules_verify(_rules) < 0) return NULL;
 #endif
-#define RULES_VERIFY(_rules) if (unlang_rules_verify(_rules) < 0) return NULL;
+#define RULES_VERIFY(_rules) do { if (unlang_rules_verify(_rules) < 0) return NULL; } while (0)
 
 static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *ci, fr_dict_t const *dict)
 {
@@ -521,7 +521,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 	 */
 	if (tmpl_cast_set(map->rhs, tmpl_attr_tail_da(map->lhs)->type) < 0) {
 		cf_log_perr(map->ci, "Failed setting rhs type");
-	};
+	}
 
 	if (map->op != T_OP_CMP_EQ) {
 		cf_log_err(map->ci, "Must use '==' for comparisons with virtual attribute %s", map->lhs->name);
@@ -4747,7 +4747,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		fr_assert_msg(method_env->inst_size, "Method environment for module %s, method %s %s declared, "
 			      "but no inst_size set",
 			      inst->module->name, unlang_ctx->section_name1, unlang_ctx->section_name2);
-	};
+	}
 
 	/*
 	 *	If a module reference is a section, then the section

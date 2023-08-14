@@ -523,7 +523,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		len = fr_dhcpv4_encode_option(&work_dbuff,
 					      &cursor, &(fr_dhcpv4_ctx_t){ .root = fr_dict_root(dict_dhcpv4) });
 		if (len <= 0) break;
-	};
+	}
 
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_END_OF_OPTIONS, 0x00);
 

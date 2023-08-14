@@ -579,7 +579,7 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 		}
 		}
 		break;
-	};
+	}
 
 	DA_VERIFY(n);
 

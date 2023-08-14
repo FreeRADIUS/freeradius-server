@@ -469,7 +469,7 @@ static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request
 	if (!state) {
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
-	};
+	}
 
 	(void) talloc_set_type(state, unlang_parallel_state_t);
 	state->result = RLM_MODULE_FAIL;

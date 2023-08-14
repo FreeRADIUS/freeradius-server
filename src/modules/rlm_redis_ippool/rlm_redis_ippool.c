@@ -1136,7 +1136,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	 *	Fall back to lease_time otherwise.
 	 */
 	lease_time = (env->offer_time.type == FR_TYPE_UINT32) ?
-			env->offer_time.vb_uint32 : env->lease_time.vb_uint32;;
+			env->offer_time.vb_uint32 : env->lease_time.vb_uint32;
 	ippool_action_print(request, POOL_ACTION_ALLOCATE, L_DBG_LVL_2, &env->pool_name, NULL,
 			    &env->owner, &env->gateway_id, lease_time);
 	switch (redis_ippool_allocate(inst, request, env, lease_time)) {

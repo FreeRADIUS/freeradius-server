@@ -614,7 +614,7 @@ static ssize_t rest_request_encode_wrapper(char **out, UNUSED rlm_rest_t const *
 		if (alloc > limit) break;
 
 		MEM(buff = talloc_realloc(NULL, buff, char, alloc));
-	};
+	}
 
 	talloc_free(buff);
 
@@ -1908,7 +1908,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	default:
 		fr_assert(0);
 		break;
-	};
+	}
 
 	/*
 	 *	Set user based authentication parameters
@@ -2008,7 +2008,7 @@ do {\
 
 	default:
 		fr_assert(0);
-	};
+	}
 
 	/*
 	 *  Setup encoder specific options

@@ -89,12 +89,12 @@ int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const
 	 *	Set a bunch of LDAP options, using common code.
 	 */
 #define do_ldap_option(_option, _name, _value) \
-	if (ldap_set_option(c->handle, _option, _value) != LDAP_OPT_SUCCESS) { \
+	if (ldap_set_option(c->handle, _option, _value) != LDAP_OPT_SUCCESS) do { \
 		ldap_get_option(c->handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
 		ERROR("Failed setting connection option %s: %s", _name, \
 		      (ldap_errno != LDAP_SUCCESS) ? ldap_err2string(ldap_errno) : "Unknown error"); \
 		goto error;\
-	}
+	} while (0)
 
 DIAG_OFF(unused-macros)
 #define maybe_ldap_option(_option, _name, _value) \

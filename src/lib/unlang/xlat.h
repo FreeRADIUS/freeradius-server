@@ -286,14 +286,14 @@ typedef int (*xlat_thread_detach_t)(xlat_thread_inst_ctx_t const *xctx);
 	do { \
 		*(_a) = fr_value_box_list_head(_list); \
 		XLAT_ARGS_NEXT(_list, _a, _b); \
-	} while (0);
+	} while (0)
 
 #define XLAT_ARGS_3(_list, _a, _b, _c) \
 	do { \
 		*(_a) = fr_value_box_list_head(_list); \
 		XLAT_ARGS_NEXT(_list, _a, _b); \
 		XLAT_ARGS_NEXT(_list, _b, _c); \
-	} while (0);
+	} while (0)
 
 #define XLAT_ARGS_4(_list, _a, _b, _c, _d) \
 	do { \
@@ -301,7 +301,7 @@ typedef int (*xlat_thread_detach_t)(xlat_thread_inst_ctx_t const *xctx);
 		XLAT_ARGS_NEXT(_list, _a, _b); \
 		XLAT_ARGS_NEXT(_list, _b, _c); \
 		XLAT_ARGS_NEXT(_list, _c, _d); \
-	} while (0);
+	} while (0)
 
 #define XLAT_ARGS_5(_list, _a, _b, _c, _d, _e) \
 	do { \
@@ -310,7 +310,7 @@ typedef int (*xlat_thread_detach_t)(xlat_thread_inst_ctx_t const *xctx);
 		XLAT_ARGS_NEXT(_list, _b, _c); \
 		XLAT_ARGS_NEXT(_list, _c, _d); \
 		XLAT_ARGS_NEXT(_list, _d, _e); \
-	} while (0);
+	} while (0)
 
 #define XLAT_ARGS_6(_list, _a, _b, _c, _d, _e, _f) \
 	do { \
@@ -320,7 +320,7 @@ typedef int (*xlat_thread_detach_t)(xlat_thread_inst_ctx_t const *xctx);
 		XLAT_ARGS_NEXT(_list, _c, _d); \
 		XLAT_ARGS_NEXT(_list, _d, _e); \
 		XLAT_ARGS_NEXT(_list, _e, _f); \
-	} while (0);
+	} while (0)
 
 #define XLAT_ARGS_7(_list, _a, _b, _c, _d, _e, _f, _g) \
 	do { \
@@ -331,7 +331,7 @@ typedef int (*xlat_thread_detach_t)(xlat_thread_inst_ctx_t const *xctx);
 		XLAT_ARGS_NEXT(_list, _d, _e); \
 		XLAT_ARGS_NEXT(_list, _e, _f); \
 		XLAT_ARGS_NEXT(_list, _f, _g); \
-	} while (0);
+	} while (0)
 
 #define XLAT_ARGS_8(_list, _a, _b, _c, _d, _e, _f, _g, _h) \
 	do { \
@@ -343,7 +343,7 @@ typedef int (*xlat_thread_detach_t)(xlat_thread_inst_ctx_t const *xctx);
 		XLAT_ARGS_NEXT(_list, _e, _f); \
 		XLAT_ARGS_NEXT(_list, _f, _g); \
 		XLAT_ARGS_NEXT(_list, _g, _h); \
-	} while (0);
+	} while (0)
 
 /** Trampoline macro for selecting which ``XLAT_ARGS_<num>`` macro to expand
  *

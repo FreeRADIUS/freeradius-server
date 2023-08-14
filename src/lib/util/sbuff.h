@@ -559,7 +559,7 @@ static inline int _sbuff_thread_local_free(void *sbtl)
  * @param[in] _max		Maximum size of the sbuff buffer.
  */
 #define FR_SBUFF_TALLOC_THREAD_LOCAL(_out, _init, _max) \
-{ \
+do { \
 	static _Thread_local fr_sbuff_thread_local_t *_sbuff_t_local; \
 	if (!_sbuff_t_local) { \
 		fr_sbuff_thread_local_t *sbtl = talloc_zero(NULL, fr_sbuff_thread_local_t); \
@@ -570,7 +570,7 @@ static inline int _sbuff_thread_local_free(void *sbtl)
 		fr_sbuff_reset_talloc(&_sbuff_t_local->sbuff); \
 		*(_out) = &_sbuff_t_local->sbuff; \
 	} \
-}
+} while (0)
 
 void	fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len);
 
@@ -936,7 +936,7 @@ static inline fr_slen_t _fr_sbuff_error(fr_sbuff_t *sbuff, char const *err)
  * An error at offset 0 will be returned as -1.
  */
 #define fr_sbuff_error(_sbuff_or_marker) \
-	_fr_sbuff_error(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker));
+	_fr_sbuff_error(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
 
 /** Like fr_sbuff_used, but adjusts for the value returned for the amount shifted
  *

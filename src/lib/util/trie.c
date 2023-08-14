@@ -125,7 +125,7 @@ static void trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, int 
 #ifdef WITH_TRIE_VERIFY
 static int trie_verify(fr_trie_t *trie);
 //#define VERIFY(_x) fr_cond_assert(trie_verify((fr_trie_t *) _x) == 0)
-#define VERIFY(_x) do { if (trie_verify((fr_trie_t *) _x) < 0) { fprintf(stderr, "FAIL VERIFY at %d - %s\n", __LINE__, fr_strerror()); fr_cond_assert(0);} } while (0)
+#define VERIFY(_x) if (trie_verify((fr_trie_t *) _x) < 0) do { fprintf(stderr, "FAIL VERIFY at %d - %s\n", __LINE__, fr_strerror()); fr_cond_assert(0); } while (0)
 #else
 #define VERIFY(_x)
 #endif

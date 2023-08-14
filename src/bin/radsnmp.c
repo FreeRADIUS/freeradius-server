@@ -626,7 +626,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 	fr_strerror_clear();
 
 #define NEXT_LINE(_line, _buffer) \
-{ \
+do { \
 	size_t _len; \
 	if (stop) return 0; \
 	errno = 0;\
@@ -636,7 +636,8 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		if ((_len > 0) && (_line[_len - 1] == '\n')) _line[_len - 1] = '\0'; \
 		DEBUG2("read: %s", _line); \
 	} \
-}
+} while (0)
+
 	/*
 	 *	Read commands from pass_persist
 	 */

@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 	if (argc == 0) {
 		fr_perror("radlock - Need file to operate on");
 		usage(64);
-	};
+	}
 
 	if (argc == 1) {
 		fr_perror("radlock - Need action, must be one of (lock|trylock|unlock|remove|info|perm)");

@@ -86,7 +86,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		raw:
 			return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
 
-		};
+		}
 
 		/*
 		 *	Structs used fixed length IPv6 addressews.

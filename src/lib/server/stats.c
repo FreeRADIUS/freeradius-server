@@ -65,10 +65,10 @@ void request_stats_final(request_t *request)
 		return;
 
 #undef INC_AUTH
-#define INC_AUTH(_x) radius_auth_stats._x++;request->client->auth._x++;
+#define INC_AUTH(_x) do { radius_auth_stats._x++;request->client->auth._x++; } while (0)
 
 #undef INC_ACCT
-#define INC_ACCT(_x) radius_acct_stats._x++;request->client->acct._x++
+#define INC_ACCT(_x) do { radius_acct_stats._x++;request->client->acct._x++; } while (0)
 
 	/*
 	 *	Update the statistics.

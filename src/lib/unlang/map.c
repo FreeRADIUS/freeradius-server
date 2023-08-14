@@ -239,7 +239,7 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 
 			break;
 		}
-	};
+	}
 
 	return list_mod_apply(p_result, request);
 }

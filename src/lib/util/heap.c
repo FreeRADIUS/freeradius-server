@@ -38,7 +38,7 @@ RCSID("$Id$")
 #define HEAP_PARENT(_x)	((_x) >> 1)
 #define HEAP_LEFT(_x)	(2 * (_x))
 #define HEAP_RIGHT(_x) (2 * (_x) + 1 )
-#define	HEAP_SWAP(_a, _b) { void *_tmp = _a; _a = _b; _b = _tmp; }
+#define	HEAP_SWAP(_a, _b) do { void *_tmp = _a; _a = _b; _b = _tmp; } while (0)
 
 static void fr_heap_bubble(fr_heap_t *h, fr_heap_index_t child);
 
@@ -99,8 +99,8 @@ static inline CC_HINT(always_inline, nonnull) void index_set(fr_heap_t *h, void 
 	*((fr_heap_index_t *)(((uint8_t *)data) + h->offset)) = idx;
 }
 
-#define OFFSET_SET(_heap, _idx) index_set(_heap, _heap->p[_idx], _idx);
-#define OFFSET_RESET(_heap, _idx) index_set(_heap, _heap->p[_idx], 0);
+#define OFFSET_SET(_heap, _idx) index_set(_heap, _heap->p[_idx], _idx)
+#define OFFSET_RESET(_heap, _idx) index_set(_heap, _heap->p[_idx], 0)
 
 static inline CC_HINT(always_inline)
 int realloc_heap(fr_heap_t **hp, unsigned int n_size)

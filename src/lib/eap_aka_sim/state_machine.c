@@ -52,7 +52,7 @@ RCSID("$Id$")
 							       module_ctx_t const *mctx, \
 							       request_t *request)
 
-#define STATE_TRANSITION(_x) guard_ ## _x(p_result, mctx, request);
+#define STATE_TRANSITION(_x) guard_ ## _x(p_result, mctx, request)
 
 #define CALL_SECTION(_x)	unlang_module_yield_to_section(p_result, \
 					      		       request, \
@@ -1298,7 +1298,7 @@ STATE(common_failure_notification)
 	default:
 	fail:
 		RWDEBUG("Failure-Notification not ACKed correctly, sending EAP-Failure anyway");
-		return STATE_TRANSITION(eap_failure)
+		return STATE_TRANSITION(eap_failure);
 	}
 }
 

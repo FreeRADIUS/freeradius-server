@@ -366,7 +366,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 #undef READFILE
-#define READFILE(_x, _y, _d) do { if (getusersfile(inst, inst->_x, &inst->_y, &inst->_d, inst->key_data_type) != 0) { ERROR("Failed reading %s", inst->_x); return -1;} } while (0)
+#define READFILE(_x, _y, _d) if (getusersfile(inst, inst->_x, &inst->_y, &inst->_d, inst->key_data_type) != 0) do { ERROR("Failed reading %s", inst->_x); return -1;} while (0)
 
 	READFILE(filename, common, common_def);
 	READFILE(usersfile, users, users_def);

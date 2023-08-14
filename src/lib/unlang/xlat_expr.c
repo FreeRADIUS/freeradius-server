@@ -2056,12 +2056,12 @@ static fr_slen_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
 
 	if (!fr_type_is_leaf(*cast)) {
 		fr_strerror_printf("Invalid data type '%s' in cast", fr_type_to_str(*cast));
-		FR_SBUFF_ERROR_RETURN(&our_in)
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	if (!fr_sbuff_next_if_char(&our_in, close)) {
 		fr_strerror_const("Unterminated cast");
-		FR_SBUFF_ERROR_RETURN(&our_in)
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 

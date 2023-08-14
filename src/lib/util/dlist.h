@@ -282,10 +282,10 @@ static inline void fr_dlist_clear(fr_dlist_head_t *list_head)
  *
  */
 #define CHECK_ELEMENT_COUNT(_head, _add) \
-	if (unlikely((_head)->num_elements > (UINT_MAX - (_add)))) { \
+	if (unlikely((_head)->num_elements > (UINT_MAX - (_add)))) do { \
 		fr_strerror_const("Maximum elements in list"); \
 		return -1; \
-	}
+	} while (0)
 
 /** Check if a list entry is part of a list
  *

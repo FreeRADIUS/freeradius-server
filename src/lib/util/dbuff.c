@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 
 #if defined(STATIC_ANALYZER) || !defined(NDEBUG)
-#  define CHECK_DBUFF_INIT(_sbuff)	if (!(_sbuff)->extend && (unlikely(!(_sbuff)->buff) || unlikely(!(_sbuff)->start) || unlikely(!(_sbuff)->end) || unlikely(!(_sbuff)->p))) return 0;
+#  define CHECK_DBUFF_INIT(_sbuff)	do { if (!(_sbuff)->extend && (unlikely(!(_sbuff)->buff) || unlikely(!(_sbuff)->start) || unlikely(!(_sbuff)->end) || unlikely(!(_sbuff)->p))) return 0; } while (0)
 #else
 #  define CHECK_DBUFF_INIT(_sbuff)
 #endif

@@ -125,7 +125,7 @@ static inline int fr_atexit_talloc_free(void *to_free)
  * @param[in] _uctx		data to be passed to free function.
  */
 #define fr_atexit_global_once_ret(_ret, _init, _free, _uctx) \
-{ \
+do { \
 	static atomic_bool	_init_done = false; \
 	static pthread_mutex_t	_init_mutex = PTHREAD_MUTEX_INITIALIZER; \
 	void *_our_uctx = _uctx; /* stop _uctx being evaluated multiple times, it may be a call to malloc() */ \
@@ -140,7 +140,7 @@ static inline int fr_atexit_talloc_free(void *to_free)
 		} \
 		pthread_mutex_unlock(&_init_mutex); \
 	} \
-}
+} while (0)
 
 /** Setup pair of global init/free functions
  *
@@ -184,7 +184,7 @@ do { \
 	void *_our_uctx = _uctx; /* stop _uctx being evaluated multiple times, it may be a call to malloc() */ \
 	_fr_atexit_thread_local(__FILE__, __LINE__, _free, _our_uctx); \
 	_name = _our_uctx; \
-} while (0);
+} while (0)
 
 int		_fr_atexit_thread_local(char const *file, int line,
 					fr_atexit_t func, void const *uctx);

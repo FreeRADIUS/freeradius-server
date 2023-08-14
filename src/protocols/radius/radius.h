@@ -155,7 +155,7 @@ fr_radius_packet_t	*fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, ui
 int		fr_radius_packet_send(fr_radius_packet_t *packet, fr_pair_list_t *list,
 				      fr_radius_packet_t const *original, char const *secret) CC_HINT(nonnull (1,2,4));
 
-#define fr_radius_packet_log_hex(_log, _packet) _fr_radius_packet_log_hex(_log, _packet, __FILE__, __LINE__);
+#define fr_radius_packet_log_hex(_log, _packet) _fr_radius_packet_log_hex(_log, _packet, __FILE__, __LINE__)
 void		_fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *packet, char const *file, int line) CC_HINT(nonnull);
 
 typedef struct {

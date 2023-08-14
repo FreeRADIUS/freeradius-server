@@ -17,12 +17,12 @@ RCSID("$Id$")
 
 #define ind(mm,x)  ((mm)[(x >> 2) &(RANDSIZ-1)])
 #define rngstep(mix, a, b, mm, m, m2, r, x) \
-{ \
+do { \
 	x = *m;  \
 	a = ((a^(mix)) + *(m2++)) & 0xffffffff; \
 	*(m++) = y = (ind(mm, x) + a + b) & 0xffffffff; \
 	*(r++) = b = (ind(mm, y >> RANDSIZL) + x) & 0xffffffff; \
-}
+} while (0)
 
 void fr_isaac(fr_randctx *ctx)
 {
@@ -51,7 +51,7 @@ void fr_isaac(fr_randctx *ctx)
 
 
 #define mix(a,b,c,d,e,f,g,h) \
-{ \
+do { \
 	a ^= b << 11; d += a; b += c; \
 	b ^= c >> 2;  e += b; c += d; \
 	c ^= d << 8;  f += c; d += e; \
@@ -60,7 +60,7 @@ void fr_isaac(fr_randctx *ctx)
 	f ^= g >> 4;  a += f; g += h; \
 	g ^= h << 8;  b += g; h += a; \
 	h ^= a >> 9;  c += h; a += b; \
-}
+} while (0)
 
 /* if (flag==1), then use the contents of randrsl[] to initialize mm[]. */
 void fr_rand_init(fr_randctx *ctx, int flag)

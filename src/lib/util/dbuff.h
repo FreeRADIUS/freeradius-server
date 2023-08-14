@@ -549,7 +549,7 @@ static inline int _dbuff_thread_local_free(void *dbtl)
  * @param[in] _max		Maximum size of the dbuff buffer.
  */
 #define FR_DBUFF_TALLOC_THREAD_LOCAL(_out, _init, _max) \
-{ \
+do { \
 	static _Thread_local fr_dbuff_thread_local_t *_dbuff_t_local; \
 	if (!_dbuff_t_local) { \
 		fr_dbuff_thread_local_t *dbtl = talloc_zero(NULL, fr_dbuff_thread_local_t); \
@@ -560,7 +560,7 @@ static inline int _dbuff_thread_local_free(void *dbtl)
 		fr_dbuff_reset_talloc(&_dbuff_t_local->dbuff); \
 		*(_out) = &_dbuff_t_local->dbuff; \
 	} \
-}
+} while (0)
 /** @} */
 
 /** @name Extension requests

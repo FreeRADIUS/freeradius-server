@@ -530,7 +530,7 @@ print_fmt:
 		break;
 	default:
 		break;
-	};
+	}
 
 	log_always(log_dst, type, file, line,
 		   "%s"			/* prefix */
@@ -1036,7 +1036,7 @@ void log_request_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, 
 		 *	Clear out the existing data
 		 */
 		fr_sbuff_shift(&sbuff, fr_sbuff_used(&m_start));
-	};
+	}
 }
 
 /** Log a fatal error, then exit

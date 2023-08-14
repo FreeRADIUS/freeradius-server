@@ -44,7 +44,7 @@ fr_table_num_ordered_t const sbuff_parse_error_table[] = {
 size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 
 #if defined(STATIC_ANALYZER) || !defined(NDEBUG)
-#  define CHECK_SBUFF_INIT(_sbuff)	if (!(_sbuff)->extend && (unlikely(!(_sbuff)->buff) || unlikely(!(_sbuff)->start) || unlikely(!(_sbuff)->end) || unlikely(!(_sbuff)->p))) return 0;
+#  define CHECK_SBUFF_INIT(_sbuff)	do { if (!(_sbuff)->extend && (unlikely(!(_sbuff)->buff) || unlikely(!(_sbuff)->start) || unlikely(!(_sbuff)->end) || unlikely(!(_sbuff)->p))) return 0; } while (0)
 #else
 #  define CHECK_SBUFF_INIT(_sbuff)
 #endif
@@ -798,7 +798,7 @@ size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 		FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
 
 		if (p != end) break;		/* stopped early, break */
-	};
+	}
 
 done:
 	*out->p = '\0';
@@ -871,7 +871,7 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		FILL_OR_GOTO_DONE(out, &our_in, p - our_in.p);
 
 		if (p != end) break;		/* stopped early, break */
-	};
+	}
 
 done:
 	*out->p = '\0';
@@ -1049,7 +1049,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	next:
 		if (tt && fr_sbuff_terminal_search(in, fr_sbuff_current(&our_in), idx, tt, needle_len)) break;
 		fr_sbuff_advance(&our_in, 1);
-	};
+	}
 
 	/*
 	 *	Copy any remaining data over
@@ -1850,7 +1850,7 @@ size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term_t const *
 
 		total += fr_sbuff_set(sbuff, p);
 		if (p != end) break;	/* stopped early, break */
-	};
+	}
 
 	return total;
 }

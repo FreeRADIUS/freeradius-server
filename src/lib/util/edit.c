@@ -208,7 +208,7 @@ void fr_edit_list_abort(fr_edit_list_t *el)
 		 *	talloc_free(el).  That should be somewhat
 		 *	faster than doing it incrementally.
 		 */
-	};
+	}
 
 	talloc_free(el);
 }

@@ -164,7 +164,7 @@ fr_slen_t fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr
 		FR_DBUFF_IN_BYTES_RETURN(&our_out, (alphabet[us(p[0])] << 4) | alphabet[us(p[1])]);
 
 		fr_sbuff_advance(&our_in, 2);
-	};
+	}
 
 	if (err) *err = FR_SBUFF_PARSE_OK;
 

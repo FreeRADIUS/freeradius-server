@@ -2086,7 +2086,7 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 			pthread_mutex_unlock(&cluster->mutex);
 
 			hostname = inet_ntop(node_addr->inet.dst_ipaddr.af, &node_addr->inet.dst_ipaddr.addr, buffer, sizeof(buffer));
-			fr_assert(hostname);	/* addr.ipaddr is probably corrupt */;
+			fr_assert(hostname);	/* addr.ipaddr is probably corrupt */
 			fr_strerror_printf("No existing node found with address %s, port %i",
 					   hostname, node_addr->inet.dst_port);
 			return -1;

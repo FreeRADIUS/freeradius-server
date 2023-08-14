@@ -177,26 +177,26 @@ void fr_rand_str(uint8_t *out, size_t len, char class)
  *	yeah yeah not perfect distribution
  *	but close enough.
  */
-#define fill(_expr) \
+#define fill(_expr) do { \
 while (p < end) { \
 	if ((mod = ((p - out) & (sizeof(word) - 1))) == 0) word = fr_rand(); \
 	byte = ((uint8_t *)&word)[mod]; \
 	*p++ = (_expr); \
-}
+} } while (0)
 
 	switch (class) {
 	/*
 	 *  Lowercase letters
 	 */
 	case 'c':
-		fill('a' + (byte % 26))
+		fill('a' + (byte % 26));
 		return;
 
 	/*
 	 *  Uppercase letters
 	 */
 	case 'C':
-		fill('A' + (byte % 26))
+		fill('A' + (byte % 26));
 		return;
 
 	/*
@@ -247,7 +247,7 @@ while (p < end) { \
 	 */
 	case 'b':
 	default:
-		fill(byte)
+		fill(byte);
 		return;
 	}
 }

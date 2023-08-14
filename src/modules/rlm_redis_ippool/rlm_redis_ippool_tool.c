@@ -1482,7 +1482,7 @@ do { \
 	p->name = optarg; \
 	p++; \
 	need_pool = true; \
-} while (0);
+} while (0)
 
 	while ((c = getopt(argc, argv, "a:d:r:s:Sm:A:U:O:p:ilLhxo:f:")) != -1) switch (c) {
 		case 'a':

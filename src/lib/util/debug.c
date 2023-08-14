@@ -577,7 +577,7 @@ void backtrace_print(fr_fring_t *fring, void *obj)
 			fprintf(stderr, "Stacktrace for: %p\n", p->obj);
 			backtrace_symbols_fd(p->frames, p->count, STDERR_FILENO);
 		}
-	};
+	}
 
 	if (!found) {
 		fprintf(stderr, "No backtrace available for %p", obj);

@@ -1357,7 +1357,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	default:
 		fr_assert(0);
 		return -1;
-	};
+	}
 
 	return 0;
 }

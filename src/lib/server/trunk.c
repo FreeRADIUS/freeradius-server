@@ -729,12 +729,12 @@ do { \
 /** Remove the current request from the sent list
  *
  */
-#define REQUEST_EXTRACT_SENT(_treq) fr_dlist_remove(&tconn->sent, treq);
+#define REQUEST_EXTRACT_SENT(_treq) fr_dlist_remove(&tconn->sent, treq)
 
 /** Remove the current request from the cancel list
  *
  */
-#define REQUEST_EXTRACT_CANCEL(_treq) fr_dlist_remove(&tconn->cancel, treq);
+#define REQUEST_EXTRACT_CANCEL(_treq) fr_dlist_remove(&tconn->cancel, treq)
 
 /** Remove the current request from the cancel_partial slot
  *
@@ -748,7 +748,7 @@ do { \
 /** Remove the current request from the cancel sent list
  *
  */
-#define REQUEST_EXTRACT_CANCEL_SENT(_treq) fr_dlist_remove(&tconn->cancel_sent, treq);
+#define REQUEST_EXTRACT_CANCEL_SENT(_treq) fr_dlist_remove(&tconn->cancel_sent, treq)
 
 /** Reorder the connections in the active heap
  *
@@ -870,7 +870,7 @@ do { \
 	       fr_table_str_by_value(fr_trunk_states, _new, "<INVALID>")); \
 	CALL_WATCHERS(trunk, _new); \
 	trunk->pub.state = _new; \
-} while (0);
+} while (0)
 
 static void trunk_request_enter_backlog(fr_trunk_request_t *treq, bool new);
 static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_connection_t *tconn, bool new);
@@ -1666,13 +1666,13 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, fr_trunk
 
 #define OVER_MAX_CHECK if (++count > max) return (count - 1)
 
-#define DEQUEUE_ALL(_src_list, _state) \
+#define DEQUEUE_ALL(_src_list, _state) do { \
 	while ((treq = fr_dlist_head(_src_list))) { \
 		OVER_MAX_CHECK; \
 		fr_assert(treq->pub.state == (_state)); \
 		trunk_request_enter_unassigned(treq); \
 		fr_dlist_insert_tail(out, treq); \
-	}
+	} } while (0)
 
 	/*
 	 *	Don't need to do anything with
@@ -4365,7 +4365,7 @@ do { \
 			count += fr_trunk_request_count_by_connection(tconn, req_state); \
 		} \
 	} \
-} while (0);
+} while (0)
 
 	if (conn_state & FR_TRUNK_CONN_ACTIVE) {
 		for (tconn = fr_minmax_heap_iter_init(trunk->active, &iter);
@@ -4565,7 +4565,7 @@ do { \
 			fr_connection_signal_reconnect(((fr_trunk_connection_t *)fr_dlist_tail(&trunk->_list))->pub.conn, reason); \
 		} \
 	} \
-} while (0);
+} while (0)
 
 	/*
 	 *	Connections in the 'connecting' state
@@ -4926,7 +4926,7 @@ do { \
 			    "CONSISTENCY_CHECK_FAILED %s[%i}: trunk request-trunk mismatch", file, line); \
 	fr_fatal_assert_msg(_state == _treq->pub.state, \
 			    "CONSISTENCY_CHECK_FAILED %s[%i}: trunk request-state mismatch", file, line); \
-} while (0);
+} while (0)
 
 #define TREQ_DLIST_VERIFY(_dlist, _state) \
 do { \
@@ -4935,7 +4935,7 @@ do { \
 		fr_trunk_request_verify(file, line, treq); \
 		TCONN_TREQ_CHECKS(treq, _state); \
 	} \
-} while (0);
+} while (0)
 
 #define TREQ_HEAP_VERIFY(_heap, _state) \
 do { \
@@ -4947,7 +4947,7 @@ do { \
 		fr_trunk_request_verify(file, line, treq); \
 		TCONN_TREQ_CHECKS(treq, _state); \
 	} \
-} while (0);
+} while (0)
 
 #define TREQ_OPTION_VERIFY(_option, _state) \
 do { \
@@ -4955,7 +4955,7 @@ do { \
 		fr_trunk_request_verify(file, line, tconn->_option); \
 		TCONN_TREQ_CHECKS(tconn->_option, _state); \
 	} \
-} while (0);
+} while (0)
 
 	/* verify associated requests */
 	TREQ_HEAP_VERIFY(pending, FR_TRUNK_REQUEST_STATE_PENDING);
@@ -5036,7 +5036,7 @@ do { \
 			return true; \
 		} \
 	} \
-} while (0);
+} while (0)
 
 #define TREQ_HEAP_SEARCH(_heap) \
 do { \
@@ -5053,7 +5053,7 @@ do { \
 			return true; \
 		} \
 	} \
-} while (0);
+} while (0)
 
 #define TREQ_OPTION_SEARCH(_option) \
 do { \
@@ -5067,7 +5067,7 @@ do { \
 			return true; \
 		} \
 	} \
-} while (0);
+} while (0)
 
 	/* search associated requests */
 	TREQ_HEAP_SEARCH(pending);

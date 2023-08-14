@@ -737,7 +737,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			PERROR("Failed creating directory for SQLite database");
 
 			return -1;
-		};
+		}
 
 		status = sqlite3_open_v2(inst->filename, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 		if (!db) {

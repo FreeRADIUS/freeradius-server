@@ -240,14 +240,14 @@ CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const
  * @param[in] _type of data to remove.
  * @param[in] _name of data to remove.
  */
-#define		cf_data_remove(_cf, _type, _name) _cf_data_remove(CF_TO_ITEM(_cf), cf_data_find(_cf, _type, _name));
+#define		cf_data_remove(_cf, _type, _name) _cf_data_remove(CF_TO_ITEM(_cf), cf_data_find(_cf, _type, _name))
 
 /** Remove an item from a parent
  *
  * @param[in] _cf conf section or pair to remove data from.
  * @param[in] _cd conf data to remove.
  */
-#define		cf_data_remove_by_data(_cf, _cd) _cf_data_remove(CF_TO_ITEM(_cf), _cd);
+#define		cf_data_remove_by_data(_cf, _cd) _cf_data_remove(CF_TO_ITEM(_cf), _cd)
 void		*_cf_data_remove(CONF_ITEM *ci, CONF_DATA const *_cd);
 
 #define		cf_data_walk(_cf, _type, _cb, _ctx) _cf_data_walk(CF_TO_ITEM(_cf), #_type, _cb, _ctx)

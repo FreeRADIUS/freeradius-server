@@ -107,7 +107,7 @@ static char *stack_unwind_flag_dump(uint8_t unwind)
 	size_t len;
 
 #define UNWIND_FLAG_DUMP(attrib) \
-	if (unwind & attrib) strcat(buf, #attrib" ");
+	if (unwind & attrib) strcat(buf, #attrib" ")
 
 	snprintf(buf, sizeof(buf), "unwind=0x%x (", unwind);
 
@@ -1460,7 +1460,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			error:
 				talloc_free(vb);
 				return XLAT_ACTION_FAIL;
-			};
+			}
 			goto finish;
 		}
 

@@ -685,9 +685,9 @@ do {\
  * @param[in] ...	Additional arguments to print.
  */
 #define _RHEXDUMP_INLINE(_lvl, _data, _len, _fmt, ...) \
-	if (log_rdebug_enabled(_lvl, request)) { \
+	if (log_rdebug_enabled(_lvl, request)) do { \
 		log_request(L_DBG, _lvl, request, __FILE__, __LINE__, _fmt " 0x%pH", ## __VA_ARGS__, fr_box_octets(_data, _len)); \
-	}
+	} while (0)
 
 #define RHEXDUMP_INLINE1(_data, _len, _fmt, ...) _RHEXDUMP_INLINE(L_DBG_LVL_1, _data, _len, _fmt, ## __VA_ARGS__)
 #define RHEXDUMP_INLINE2(_data, _len, _fmt, ...) _RHEXDUMP_INLINE(L_DBG_LVL_2, _data, _len, _fmt, ## __VA_ARGS__)

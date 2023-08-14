@@ -294,7 +294,7 @@ int ldap_sync_cookie_send(sync_packet_ctx_t *sync_packet_ctx)
 	error:
 		talloc_free(local);
 		return -1;
-	};
+	}
 
 	fr_pair_list_append_by_da(local, vp, &pairs, attr_packet_type, (uint32_t)FR_LDAP_SYNC_CODE_COOKIE_STORE, true);
 	if (!vp) goto error;
@@ -425,7 +425,7 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 		if (msg) ldap_msgfree(msg);
 		talloc_free(sync_packet_ctx);
 		return -1;
-	};
+	}
 
 	pcode = sync_packet_code_table[op];
 
@@ -485,7 +485,7 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 							  values[i]->bv_len, NULL, true) < 0) {
 					fr_pair_remove(pairs, vp);
 					talloc_free(vp);
-				};
+				}
 
 				/*  Only += operator adds multiple values */
 				if (map->op != T_OP_ADD_EQ) break;

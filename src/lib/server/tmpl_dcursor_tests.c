@@ -75,7 +75,7 @@ static request_t *request_fake_alloc(void)
 	fr_pair_t	*mid_vp ## _x; \
 	fr_pair_t	*leaf_int32_vp ## _x
 
-#define pair_populate(_x) \
+#define pair_populate(_x) do { \
 	pair_append_request(&int32_vp ## _x, fr_dict_attr_test_int32); \
 	pair_append_request(&string_vp ## _x, fr_dict_attr_test_string); \
 	pair_append_request(&group_vp ## _x, fr_dict_attr_test_group); \
@@ -83,14 +83,16 @@ static request_t *request_fake_alloc(void)
 	pair_append_request(&top_vp ## _x, fr_dict_attr_test_nested_top_tlv); \
 	fr_pair_append_by_da(top_vp ## _x, &mid_vp ## _x, &top_vp ## _x->children, fr_dict_attr_test_nested_child_tlv); \
 	fr_pair_append_by_da(mid_vp ## _x, &leaf_string_vp ## _x, &mid_vp ## _x->children, fr_dict_attr_test_nested_leaf_string); \
-	fr_pair_append_by_da(mid_vp ## _x, &leaf_int32_vp ## _x, &mid_vp ## _x->children, fr_dict_attr_test_nested_leaf_int32);
+	fr_pair_append_by_da(mid_vp ## _x, &leaf_int32_vp ## _x, &mid_vp ## _x->children, fr_dict_attr_test_nested_leaf_int32); \
+     } while (0)
 
-#define pair_populate_thin(_x) \
+#define pair_populate_thin(_x) do { \
 	pair_append_request(&int32_vp ## _x, fr_dict_attr_test_int32); \
 	pair_append_request(&group_vp ## _x, fr_dict_attr_test_group); \
 	pair_append_request(&top_vp ## _x, fr_dict_attr_test_nested_top_tlv); \
 	fr_pair_append_by_da(top_vp ## _x, &mid_vp ## _x, &top_vp ## _x->children, fr_dict_attr_test_nested_child_tlv); \
-	fr_pair_append_by_da(mid_vp ## _x, &leaf_int32_vp ## _x, &mid_vp ## _x->children, fr_dict_attr_test_nested_leaf_int32);
+	fr_pair_append_by_da(mid_vp ## _x, &leaf_int32_vp ## _x, &mid_vp ## _x->children, fr_dict_attr_test_nested_leaf_int32); \
+      } while (0)
 
 /*
  *	Top level attribute names in the test dictionary all have -0 on the end
@@ -122,7 +124,7 @@ typedef struct {
  */
 #define common_vars \
 	tmpl_dcursor_vars_t vars; \
-	request_t *request = request_fake_alloc();
+	request_t *request = request_fake_alloc()
 
 /** Initialise a tmpl using the _attr_str string, and return the first pair
  *
@@ -151,7 +153,7 @@ int _tmpl_setup_and_cursor_init(fr_pair_t **vp_out, tmpl_dcursor_vars_t *vars, r
 }
 
 #define tmpl_setup_and_cursor_init(_vp_out, _ref) \
-	if (_tmpl_setup_and_cursor_init(_vp_out, &vars, request, _ref)) return;
+	if (_tmpl_setup_and_cursor_init(_vp_out, &vars, request, _ref)) return
 
 /** Initialise a tmpl using the _attr_str string, and return the first pair
  *
@@ -180,7 +182,7 @@ int _tmpl_setup_and_cursor_build_init(fr_pair_t **vp_out, tmpl_dcursor_vars_t *v
 }
 
 #define tmpl_setup_and_cursor_build_init(_vp_out, _ref) \
-	if (_tmpl_setup_and_cursor_build_init(_vp_out, &vars, request, _ref)) return;
+	if (_tmpl_setup_and_cursor_build_init(_vp_out, &vars, request, _ref)) return
 
 /*
  *	How every test ends

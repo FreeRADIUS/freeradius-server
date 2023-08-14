@@ -1229,7 +1229,7 @@ done:
 	if (tmpl_eval_cast_in_place(&list, vpt) < 0) {
 		fr_value_box_list_talloc_free(&list);
 		return -1;
-	};
+	}
 
 	fr_value_box_list_move(out, &list);
 	return 0;
@@ -1449,7 +1449,7 @@ done:
 	if (tmpl_eval_cast_in_place(&list, vpt) < 0) {
 		fr_value_box_list_talloc_free(&list);
 		return -1;
-	};
+	}
 
 	fr_value_box_list_move(out, &list);
 	return 0;

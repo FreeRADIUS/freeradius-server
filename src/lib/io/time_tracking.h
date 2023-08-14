@@ -89,7 +89,7 @@ do { \
 	fr_assert(fr_time_lteq((_tt)->ended, (_now))); \
 	fr_assert(fr_time_lteq((_tt)->last_yielded, (_now))); \
 	fr_assert(fr_time_lteq((_tt)->last_resumed, (_now))); \
-} while(0);
+} while(0)
 
 /** Set the last time a tracked entity started in its list of parents
  *
@@ -287,8 +287,8 @@ static inline void fr_time_tracking_end(fr_time_delta_t *predicted,
  */
 static inline CC_HINT(nonnull) void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp)
 {
-#define DPRINT_TIME(_x) fprintf(fp, "\t" #_x " = %"PRIu64"\n", fr_time_unwrap(tt->_x));
-#define DPRINT(_x) fprintf(fp, "\t" #_x " = %"PRIu64"\n", fr_time_delta_unwrap(tt->_x));
+#define DPRINT_TIME(_x) fprintf(fp, "\t" #_x " = %"PRIu64"\n", fr_time_unwrap(tt->_x))
+#define DPRINT(_x) fprintf(fp, "\t" #_x " = %"PRIu64"\n", fr_time_delta_unwrap(tt->_x))
 
 	DPRINT_TIME(started);
 	DPRINT_TIME(ended);

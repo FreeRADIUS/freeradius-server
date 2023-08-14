@@ -115,7 +115,7 @@ typedef struct {
 } fr_dcursor_stack_t;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-#define VALIDATE(_item) if (cursor->dlist->type && (_item)) _talloc_get_type_abort(_item, cursor->dlist->type, __location__);
+#define VALIDATE(_item) do { if (cursor->dlist->type && (_item)) _talloc_get_type_abort(_item, cursor->dlist->type, __location__); } while (0)
 #else
 #define VALIDATE(_item)
 #endif
