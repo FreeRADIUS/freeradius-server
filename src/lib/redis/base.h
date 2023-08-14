@@ -32,9 +32,9 @@ RCSIDH(redis_h, "$Id$")
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/module.h>
 
-DIAG_OFF(extra-semi-stmt)
+//DIAG_OFF(extra-semi-stmt)
 #include <hiredis/hiredis.h>
-DIAG_ON(extra-semi-stmt)
+//DIAG_ON(extra-semi-stmt)
 
 #ifdef __cplusplus
 extern "C" {
