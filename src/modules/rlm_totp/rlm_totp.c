@@ -28,9 +28,33 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
-#define TIME_STEP (30)
-#define BACK_STEPS (1)
-#define BACK_STEP_SECS (30)
+#include <ctype.h>
+
+/* Define a structure for the configuration variables */
+typedef struct rlm_totp_t {
+        char const     *name;                     /* name of this instance */
+        unsigned int    time_step;                /* in seconds */
+        unsigned int    otp_length;		  /* 6 or 8 digits */
+        unsigned int    lookback_steps;           /* number of times to look back */
+        unsigned int    lookback_interval;        /* seconds to look back for each step */
+} rlm_totp_t;
+
+#ifndef TESTING
+/* Map configuration file names to internal variables */
+static const CONF_PARSER module_config[] = {
+        { "time_step", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_totp_t, time_step), "30" },
+        { "otp_length", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_totp_t, otp_length), "6" },
+	{ "lookback_steps", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_totp_t, lookback_steps), "1" },
+	{ "lookback_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_totp_t, lookback_interval), "30" },
+	CONF_PARSER_TERMINATOR
+};
+#endif
+
+#define TIME_STEP      (inst->time_step)
+#define OTP_LEN        (inst->otp_length)
+#define BACK_STEPS     (inst->lookback_steps)
+#define BACK_STEP_SECS (inst->lookback_interval)
+
 /*
  *	RFC 4648 base32 decoding.
  */
@@ -143,21 +167,63 @@ static ssize_t base32_decode(uint8_t *out, size_t outlen, char const *in)
 	return b - out;
 }
 
+
 #ifndef TESTING
 #define TESTING_UNUSED
-#define LEN 6
-#define PRINT "%06u"
-#define DIV 1000000
 
-#else
-#define LEN 8
-#define PRINT "%08u"
-#define DIV 100000000
-
-
+#else /* TESTING */
 #undef RDEBUG3
 #define RDEBUG3(fmt, ...)	printf(fmt "\n", ## __VA_ARGS__)
 #define TESTING_UNUSED UNUSED
+#endif
+
+#ifndef TESTING
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+        rlm_totp_t *inst = instance;
+
+        inst->name = cf_section_name2(conf);
+        if (!inst->name) {
+                inst->name = cf_section_name1(conf);
+        }
+
+	// xlat_register(inst->name, totp_xlat, NULL, inst);
+
+        return 0;
+}
+
+/*
+ *	Do any per-module initialization that is separate to each
+ *	configured instance of the module.  e.g. set up connections
+ *	to external databases, read configuration files, set up
+ *	dictionary entries, etc.
+ *
+ *	If configuration information is given in the config section
+ *	that must be referenced in later calls, store a handle to it
+ *	in *instance otherwise put a null pointer there.
+ */
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
+{
+	rlm_totp_t *inst = instance;
+
+	if (TIME_STEP > 120)
+	        DEBUG ("Warning: TOTP time_step is unusually long (%d seconds)", TIME_STEP);
+	if (BACK_STEPS > 5)
+	        DEBUG ("Warning: TOTP loopback_steps is unusually high (%d steps), may cause security vulnerabilities", BACK_STEPS);
+	if (BACK_STEP_SECS > TIME_STEP) {
+	        cf_log_err_cs(conf, "TOTP back_step_interval cannot be larger than TOTP time_step.");
+	        return -1;
+	}
+
+	if ((OTP_LEN != 6) && (OTP_LEN != 8))  {
+	  cf_log_err_cs(conf, "Invalid TOTP otp_length (%u), must be 6 or 8 digits", OTP_LEN);
+	  return -1;
+	}
+
+	DEBUG ("TOTP Instantiated: Time-Step  = %ul, Lookback-Steps = %ul, Lookback-Interval = %ul, OTP-Length = %ul", TIME_STEP, BACK_STEPS, BACK_STEP_SECS, OTP_LEN);
+	
+	return 0;
+}
 #endif
 
 /*
@@ -167,8 +233,9 @@ static ssize_t base32_decode(uint8_t *out, size_t outlen, char const *in)
  *	for 8-character challenges, and not for 6 character
  *	challenges!
  */
-static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *key, size_t keylen, char const *totp)
+static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *key, size_t keylen, char const *totp, void *instance)
 {
+        rlm_totp_t *inst = instance;
 	uint8_t offset;
 	uint32_t challenge;
 	uint64_t padded;
@@ -176,7 +243,7 @@ static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *
 	uint8_t data[8];
 	uint8_t digest[SHA1_DIGEST_LENGTH];
 	time_t then;
-	int i;
+	unsigned int i;
 
 	/*
 	 * First try to authenticate against the current OTP, then step
@@ -184,6 +251,7 @@ static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *
 	 * to authenticate properly in cases of long transit delay, as
 	 * described in RFC 6238, secion 5.2.
 	 */
+
 	for (i = 0, then = now; i <= BACK_STEPS; i++, then -= BACK_STEP_SECS) {
 	  
 	       padded = (uint64_t) then / TIME_STEP;
@@ -217,13 +285,14 @@ static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *
 	       /*
 		*	The token is the last 6 digits in the number (or 8 for testing)..
 		*/
-	       snprintf(buffer, sizeof(buffer), PRINT, challenge % DIV);
+               snprintf(buffer, sizeof(buffer), ((OTP_LEN == 6) ? "%06u" : "%08u"),
+		        challenge % ((OTP_LEN == 6) ? 1000000 : 100000000));
 
-	       RDEBUG3("Now: %zu, Then: %zu", (size_t) now, (size_t) then);
-	       RDEBUG3("Expected %s", buffer);
-	       RDEBUG3("Received %s", totp);
+	       DEBUG("Now: %zu, Then: %zu", (size_t) now, (size_t) then);
+	       DEBUG("Expected %s", buffer);
+	       DEBUG("Received %s", totp);
 
-	       if (rad_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, LEN) == 0)
+	       if (rad_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, OTP_LEN) == 0)
 		      return 0;
 	}
 	return 1;
@@ -234,19 +303,21 @@ static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *
 /*
  *  Do the authentication
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp, *password;
 	uint8_t const *key;
 	size_t keylen;
 	uint8_t buffer[80];	/* multiple of 5*8 characters */
 	uint64_t now = time(NULL);
-
+	
 	password = fr_pair_find_by_num(request->packet->vps, PW_TOTP_PASSWORD, 0, TAG_ANY);
-	if (!password) return RLM_MODULE_NOOP;
-
-	if (password->vp_length != 6) {
-		REDEBUG("TOTP-Password has incorrect length %d", (int) password->vp_length);
+	if (!password) {
+	        RDEBUG ("TOTP mod_authenticate() did not receive a TOTP-Password");
+		return RLM_MODULE_NOOP;
+	}
+	if ((password->vp_length != 6) && (password->vp_length != 8)) {
+		RDEBUG("TOTP-Password has incorrect length %d", (int) password->vp_length);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -262,8 +333,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		ssize_t len;
 
 		vp = fr_pair_find_by_num(request->config, PW_TOTP_SECRET, 0, TAG_ANY);
-		if (!vp) return RLM_MODULE_NOOP;
-
+		if (!vp) {
+		        RDEBUG("TOTP mod_authenticate() did not receive a TOTP-Secret");
+		        return RLM_MODULE_NOOP;
+		}
 		len = base32_decode(buffer, sizeof(buffer), vp->vp_strvalue);
 		if (len < 0) {
 			REDEBUG("TOTP-Secret cannot be decoded");
@@ -274,7 +347,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		keylen = len;
 	}
 
-	if (totp_cmp(request, now, key, keylen, password->vp_strvalue) == 0)
+	if (totp_cmp(request, now, key, keylen, password->vp_strvalue, instance) == 0) {
 		     return RLM_MODULE_OK;
 	}
 	return RLM_MODULE_FAIL;
@@ -294,6 +367,10 @@ module_t rlm_totp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "totp",
 	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size      = sizeof(rlm_totp_t),
+	.config         = module_config,
+	.bootstrap      = mod_bootstrap,
+	.instantiate    = mod_instantiate,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 	},
@@ -310,7 +387,9 @@ int main(int argc, char **argv)
 	size_t len;
 	uint8_t *p;
 	uint8_t key[80];
-
+	rlm_totp_t instance;
+	rlm_totp_t *inst = &instance;
+	
 	if (argc < 2) return 0;
 
 	if (strcmp(argv[1], "decode") == 0) {
@@ -328,10 +407,15 @@ int main(int argc, char **argv)
 	}
 
 	/*
-	 *	TOTP <time> <key> <8-character-expected-token>
+	 *	TOTP <time> <key> <expected-token>
 	 */
 	if (strcmp(argv[1], "totp") == 0) {
 		uint64_t now;
+		
+		TIME_STEP = 30;
+		BACK_STEPS = 2;
+		BACK_STEP_SECS = 15;
+		OTP_LEN = 8;
 		
 		if (argc < 5) return 0;
 
@@ -345,7 +429,7 @@ int main(int argc, char **argv)
 			 now, TIME_STEP, BACK_STEPS, BACK_STEP_SECS); 
 
 		if (totp_cmp(NULL, (time_t) now, (uint8_t const *) argv[3],
-			     strlen(argv[3]), argv[4]) == 0) {
+			     strlen(argv[3]), argv[4], (void *)inst) == 0) {
 		       return 0;
 		  
 		}
