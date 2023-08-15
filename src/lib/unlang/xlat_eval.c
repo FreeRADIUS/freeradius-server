@@ -799,6 +799,13 @@ void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 	signal(XLAT_CTX(exp->call.inst, t->data, t->mctx, NULL, rctx), request, action);
 }
 
+static xlat_action_t xlat_null_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+				      UNUSED xlat_ctx_t const *xctx,
+				      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	return XLAT_ACTION_DONE;
+}
+
 /** Call an xlat's resumption method
  *
  * @param[in] ctx		to allocate value boxes in.
@@ -854,6 +861,8 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return xa;
 
 	case XLAT_ACTION_DONE:
+		unlang_xlat_yield(request, xlat_null_resume, NULL, 0, NULL);
+
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
 		RDEBUG2("| --> %pV", fr_dcursor_current(out));
 		if (node->call.func &&
@@ -1196,7 +1205,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				xlat_exec_rctx_t *rctx;
 
 				/*
-				 *
+				 *	Allocate and initialize the output context, with value-boxes, exec status, etc.
 				 */
 				MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_exec_rctx_t));
 				fr_value_box_list_init(&rctx->list);
