@@ -1,0 +1,58 @@
+BEFORE TESTING TOTP
+===================
+Make the freeradius-server tree  from the top-level freeradius directory, like
+this:
+
+freeradius-server> make
+
+You will also need an OTP generator, such as the Google Authenticator
+app.
+
+For a configurable online authenticator that can be used to test with
+different OTP lengths and values, you can use;
+
+https://totp.danhersam.com
+
+TO TEST TOTP AUTHENTICATION FUNCTION
+====================================
+In this directory, run:
+
+freeradius/src/tests/modules/totp> make test
+
+Currently tests the authentication functions for 8-bit OTPs.
+
+TO TEST FULL FUNCTIONALITY
+==========================
+
+First, set-up the RADIUS configuration.
+
+Set the TOTP-Secret value (in ./raddb-totp/radiusd.conf) to
+the value in use by your OTP authenticator.  Alternatively,
+you may be able to set the Secret in your authenticator to
+match the value in the radiusd.conf file...  The important
+point is that they need to match.
+
+The configuration defaults to a 6-digit OTP.  If you
+are using an 8-digit OTP or want to test with non-default
+configuration options, you can edit the "totp" section in
+./raddb-totp/radiusd.conf.
+
+In one terminal window, run:
+
+freeradius/src/tests/modules/totp> sh radiusd.sh
+
+To bring up a RADIUS server configured to authenticate with TOTP,
+using the radiusd.conf file in ./raddb-totp and the local ./users
+file.
+
+In another terminal window::
+
+Edit the ./user_password file to set User-Password to the
+current OTP value.
+
+Then, type:
+
+freeradius/src/tests/modules/totp> sh radclient.sh
+
+To run radclient from the local build tree, with input from
+the ./user_password file.
