@@ -37,7 +37,7 @@ suitable for most circumstances, which we describe here.
 
 FreeRADIUS only knows the data consumed during each session if the NAS reports
 this information. A NAS can normally be configured to include total data usage
-statistics for the session in _Accounting Interim-Update_ (“Alive”) requests and
+statistics for the session in _Accounting Interim-Update_ requests and
 _Accounting Stop_ requests.
 
 If sessions may be long-lived you should enable interim-updates with an

@@ -19,6 +19,12 @@ decode-pair -
 match Extended-Attribute-1.Unit-Ext-241-Integer = 6809
 
 #
+#  The server *reads* Alive, but *canonicalizes* it to Interim-Update
+#
+pair Acct-Status-Type = Alive
+match Acct-Status-Type = Interim-Update
+
+#
 #  Encoded as two different top-level attributes.
 #
 encode-pair Extended-Attribute-1.Unit-Ext-241-Integer = 6809, Extended-Attribute-1.Unit-Ext-241-Integer = 2112
@@ -72,4 +78,4 @@ pair Unit-TLV.Milliseconds = "2019-08-21T07:40:31.123-04:00"
 match Unit-TLV.Milliseconds = "2019-08-21T03:40:31.123Z"
 
 count
-match 33
+match 35

@@ -35,8 +35,8 @@ aaa accounting delay-start
 
 This directive will delay the sending of the `Accounting Start` packet
 until after an IP address has been assigned during the PPP negotiation
-process. This will supersede the need to enable the sending of _Alive_
-packets as described below for IOS versions 11.x
+process. This will supersede the need to enable the sending of Accounting-Request packets with
+_Acct-Status-Type = Interim-Update_, as described below for IOS versions 11.x
 
 NOTE: The above it will use the radius server to authenticate your
 inbound `telnet` connections. You will need to create an entry in your
@@ -93,7 +93,7 @@ If you want the IP address of the user to show up in the radutmp file
 
 This is because with `IOS 11.3`, the Cisco first sends a `Start`
 accounting packet without the IP address included. By setting
-`update newinfo` it will send an account `Alive` packet which
+`update newinfo` it will send an accounting `Interim-Update` packet which
 updates the information.
 
 Also you might see a lot of `duplicates` in the logfile. That can be

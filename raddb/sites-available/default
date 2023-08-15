@@ -1343,7 +1343,7 @@ accounting Stop {
 #
 #  Session is still alive
 #
-accounting Alive {
+accounting Interim-Update {
 
 }
 

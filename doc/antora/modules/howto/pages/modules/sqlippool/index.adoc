@@ -125,7 +125,7 @@ updating the state of the IP address.
 FreeRADIUS sends an Accounting-Response to the NAS.
 
 
-=== `Accounting Alive`: A NAS sends an Alive notification for a device's session
+=== `Accounting Interim-Update`: A NAS sends an Interim-Update notification for a device's session
 
 . The NAS sends an `Accounting Interim-Update` request to FreeRADIUS.
 After some processing (modules. `unlang`, etc.), the `sqlippool`
@@ -1170,7 +1170,7 @@ ensures that a IP address is not leases longer than necessary and avoids wasted
 pool space when a group of devices reconnect after their sessions are
 interrupted.
 
-CAUTION: It is essential that Accounting Interim-Update ("Alive") requests are
+CAUTION: It is essential that Accounting Interim-Update requests are
 received reliably. Many NASs will repeat accounting requests that are not
 acknowledged by a RADIUS server or forward them elsewhere. You should
 determine whether accounting requests are delivered reliably in your network.
