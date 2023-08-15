@@ -155,27 +155,27 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 	return
 		"leak:CRYPTO_THREAD_lock_new\n"		/* OpenSSL init leak - reported by heaptrack */
 #if defined(__APPLE__)
+		"leak:*gmtsub*\n"
+		"leak:ImageLoaderMachO::doImageInit\n"
+		"leak:_st_tzset_basic\n"
+		"leak:attachCategories\n"
+		"leak:fork\n"
 		"leak:getaddrinfo\n"
 		"leak:getpwuid_r\n"
-		"leak:*gmtsub*\n"
-		"leak:tzsetwall_basic\n"
-		"leak:ImageLoaderMachO::doImageInit\n"
 		"leak:libSystem_atfork_child\n"
-		"leak:fork\n"
-		"leak:tzset\n"
-		"leak:_st_tzset_basic\n"
-		"leak:newlocale\n"
 		"leak:libsystem_notify\n"
-		"leak:attachCategories\n"
 		"leak:load_images\n"
-		"leak:realizeClassWithoutSwift\n"
+		"leak:newlocale\n"
 		/* Perl >= 5.32.0 - Upstream bug, tracked by https://github.com/Perl/perl5/issues/18108 */
 		"leak:perl_construct"
+		"leak:realizeClassWithoutSwift\n"
+		"leak:tzset\n"
+		"leak:tzsetwall_basic\n"
 #elif defined(__linux__)
-		"leak:kqueue\n"
 		"leak:*getpwnam_r*\n"			/* libc startup leak - reported by heaptrack */
-		"leak:initgroups\n"			/* libc startup leak - reported by heaptrack */
 		"leak:_dl_init"				/* dl startup leak - reported by heaptrack */
+		"leak:initgroups\n"			/* libc startup leak - reported by heaptrack */
+		"leak:kqueue\n"
 #endif
 		;
 }
