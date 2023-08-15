@@ -1341,6 +1341,13 @@ accounting Stop {
 }
 
 #
+#  Session update
+#
+accounting Interim-Update {
+
+}
+
+#
 #  Session is still alive
 #
 accounting Alive {
