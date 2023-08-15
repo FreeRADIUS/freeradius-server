@@ -372,8 +372,8 @@ next:
 		return data_len + 2; /* decoded the whole thing */
 	}
 
+	option_len = p[sizeof(uint32_t)];
 	pen = fr_nbo_to_uint32(p);
-
 	/*
 	 *	Verify that the parent (which should be a VSA)
 	 *	contains a fake attribute representing the vendor.
@@ -394,7 +394,6 @@ next:
 
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor->name);
 
-	option_len = p[0];
 	if ((p + 1 + option_len) > end) {
 		len = fr_pair_raw_from_network(ctx, out, vendor, p, end - p);
 		if (len < 0) return len;
@@ -403,7 +402,6 @@ next:
 	}
 	p++;
 
-	/* coverity[tainted_data] */
 	len = fr_pair_tlvs_from_network(ctx, out, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, false);
 	if (len <= 0) return len;
 
