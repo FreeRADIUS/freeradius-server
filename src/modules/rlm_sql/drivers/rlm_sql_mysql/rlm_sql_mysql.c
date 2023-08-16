@@ -160,8 +160,9 @@ static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 {
 	DEBUG2("Socket destructor called, closing socket");
 
-	if (conn->sock){
+	if (conn->sock) {
 		mysql_close(conn->sock);
+		conn->sock = NULL;
 	}
 
 	return 0;
@@ -419,20 +420,13 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config, char const *query)
 {
-	rlm_sql_mysql_conn_t *conn = handle->conn;
+	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(rlm_sql_mysql_conn_t, handle->conn);
 	sql_rcode_t rcode;
 	char const *info;
 
-	if (!conn->sock) {
-		ERROR("Socket not connected");
-		return RLM_SQL_RECONNECT;
-	}
-
 	mysql_query(conn->sock, query);
 	rcode = sql_check_error(conn->sock, 0);
-	if (rcode != RLM_SQL_OK) {
-		return rcode;
-	}
+	if (rcode != RLM_SQL_OK) return rcode;
 
 	/* Only returns non-null string for INSERTS */
 	info = mysql_info(conn->sock);
@@ -443,14 +437,9 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t c
 
 static sql_rcode_t sql_store_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t *conn = handle->conn;
+	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(rlm_sql_mysql_conn_t, handle->conn);
 	sql_rcode_t rcode;
 	int ret;
-
-	if (!conn->sock) {
-		ERROR("Socket not connected");
-		return RLM_SQL_RECONNECT;
-	}
 
 retry_store_result:
 	conn->result = mysql_store_result(conn->sock);
@@ -471,8 +460,8 @@ retry_store_result:
 
 static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
+	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(rlm_sql_mysql_conn_t, handle->conn);
 	int num = 0;
-	rlm_sql_mysql_conn_t *conn = handle->conn;
 
 #if MYSQL_VERSION_ID >= 32224
 	/*
@@ -514,18 +503,16 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 
 static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t *conn = handle->conn;
+	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(rlm_sql_mysql_conn_t, handle->conn);
 
-	if (conn->result) {
-		return mysql_num_rows(conn->result);
-	}
+	if (conn->result) return mysql_num_rows(conn->result);
 
 	return 0;
 }
 
 static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t *conn = handle->conn;
+	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(rlm_sql_mysql_conn_t, handle->conn);
 
 	unsigned int	fields, i;
 	MYSQL_FIELD	*field_info;
@@ -556,7 +543,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 
 static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t	*conn = handle->conn;
+	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(rlm_sql_mysql_conn_t, handle->conn);
 	sql_rcode_t		rcode;
 	MYSQL_ROW		row;
 	int			ret;
@@ -608,7 +595,7 @@ retry_fetch_row:
 
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t *conn = handle->conn;
+	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(rlm_sql_mysql_conn_t, handle->conn);
 
 	if (conn->result) {
 		mysql_free_result(conn->result);
@@ -639,7 +626,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			   rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t	*conn = handle->conn;
+	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(rlm_sql_mysql_conn_t, handle->conn);
 
 	MYSQL_RES		*result;
 	MYSQL_ROW		row;
@@ -705,11 +692,10 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	rlm_sql_mysql_t		*inst = talloc_get_type_abort(handle->inst->driver_submodule->dl_inst->data, rlm_sql_mysql_t);
-	rlm_sql_mysql_conn_t	*conn = handle->conn;
+	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(rlm_sql_mysql_conn_t, handle->conn);
 	char const		*error;
 	size_t			i = 0;
 
-	fr_assert(conn && conn->sock);
 	fr_assert(outlen > 0);
 
 	error = mysql_error(conn->sock);
@@ -719,7 +705,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	 */
 	if (error && (error[0] != '\0')) {
 		error = talloc_typed_asprintf(ctx, "ERROR %u (%s): %s", mysql_errno(conn->sock), error,
-					mysql_sqlstate(conn->sock));
+					      mysql_sqlstate(conn->sock));
 	}
 
 	/*
@@ -774,7 +760,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 #if (MYSQL_VERSION_ID >= 40100)
-	rlm_sql_mysql_conn_t	*conn = handle->conn;
+	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(rlm_sql_mysql_conn_t, handle->conn);
 	int			ret;
 	MYSQL_RES		*result;
 
@@ -819,7 +805,7 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 
 static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t *conn = handle->conn;
+	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(rlm_sql_mysql_conn_t, handle->conn);
 
 	return mysql_affected_rows(conn->sock);
 }
@@ -828,7 +814,7 @@ static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outle
 {
 	size_t			inlen;
 	rlm_sql_handle_t	*handle = talloc_get_type_abort(arg, rlm_sql_handle_t);
-	rlm_sql_mysql_conn_t	*conn = handle->conn;
+	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(rlm_sql_mysql_conn_t, handle->conn);
 
 	/* Check for potential buffer overflow */
 	inlen = strlen(in);
