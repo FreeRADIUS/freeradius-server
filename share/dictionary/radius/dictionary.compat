@@ -46,3 +46,5 @@ VALUE	Service-Type			Framed			2
 VALUE	Service-Type			Callback-Login		3
 VALUE	Service-Type			Callback-Framed		4
 VALUE	Service-Type			Exec-User		7
+
+VALUE	Acct-Status-Type		Alive			3
