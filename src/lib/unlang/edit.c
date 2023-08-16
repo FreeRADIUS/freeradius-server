@@ -957,17 +957,6 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	}
 
 	/*
-	 *	&Tmp-Integer-0 := { 0, 1 2, 3, 4 }
-	 *
-	 *	@todo - when we support value-box groups on the RHS in
-	 *	apply_edits_to_leaf(), this next block can be deleted.
-	 */
-	if (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type) && (map->op != T_OP_SET) && (map->op != T_OP_EQ)) {
-		REDEBUG("%s[%d] Must use ':=' when editing list of normal data types", MAP_INFO);
-		return -1;
-	}
-
-	/*
 	 *	Allocate a new child structure if necessary.
 	 */
 	child = current->child;
