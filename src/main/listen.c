@@ -3451,7 +3451,9 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_flag)
 		if (override) {
 			cs = cf_section_sub_find_name2(config, "server",
 						       main_config.name);
-			if (cs) this->server = main_config.name;
+			if (!cs) cs = cf_section_sub_find_name2(config, "server",
+						       "default");
+			if (cs) this->server = cf_section_name2(cs);
 		}
 
 		*last = this;
