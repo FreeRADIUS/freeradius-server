@@ -475,6 +475,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t cons
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 
 #if MYSQL_VERSION_ID >= 32224
+	if (!conn->sock) return 0;
 	/*
 	 *	Count takes a connection handle
 	 */
