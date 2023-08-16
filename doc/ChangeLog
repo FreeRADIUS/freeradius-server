@@ -10,6 +10,9 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	* add dpsk module.  See mods-available/dpsk
 	* Print out what cause the TLS operations to be made, such as the EAP
 	  method name (peap, ttls, etc), or RADIUS/TLS listen / proxy socket.
+	* Add auto_escape to sample SQL module config
+	* Add 'if not exists' to mysql create table queries. ref #5032 (#5137)
+	* Add lookback and more configuration to totp.  See mods-available/totp
 
 	Bug fixes
 	* Fix corner case with empty defaults in rlm_files.  Fixes #5035
@@ -19,6 +22,11 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	  exponential moving average statistics.
 	* Don't send the global server stats when asked for client stats. They
 	  use the same attributes, so the result is confusing.
+	* Fix multiple typos in MongoDB query.conf (#5130)
+	* add define for illumos.  Fixes #5135
+	* add client configuration for TLS PSK.
+	* permit originate CoA after proxying to an internal virtual server
+	* Use virtual server "default" when passed "-i" and "-p" on the command line.
 
 FreeRADIUS 3.2.3 Fri 26 May 2023 12:00:00 EDT urgency=low
 	Configuration changes
