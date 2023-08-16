@@ -43,4 +43,27 @@
 #  The module takes no configuration items.
 #
 totp {
+	#
+	#  Default time step between time changes
+	#
+	time_step = 30
+
+	#
+	#  Length of the one-time password.
+	#
+	#  Must be 6 or 8
+	#
+	otp_length = 8
+
+	#
+	#  How many steps backward in time we look for a matching OTP
+	#
+	lookback_steps = 1
+
+	#
+	#  Time delta between steps.
+	#
+	#  Cannot be larger than time_step
+	#
+	lookback_interval = 30
 }
