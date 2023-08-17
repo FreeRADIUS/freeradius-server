@@ -1293,7 +1293,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 				"read the password attribute");
 			RWDEBUG("CHAP / MS-CHAP authentication will *NOT* work with Active Directory (if that is what you "
 				"were trying to configure)");
-			RWDEBUG("PAP authentication to Active Directory *MUST* use LDAP 'bind as user' functionality");
+			RWDEBUG("PAP authentication to Active Directory *MUST* set 'Auth-Type := LDAP'");
 		}
        }
 }
