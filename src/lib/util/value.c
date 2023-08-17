@@ -4934,7 +4934,7 @@ parse:
 		if ((fr_sbuff_out(NULL, &num, &our_in) > 0) && fr_sbuff_is_terminal(&our_in, rules->terminals)) {
 			num = htonll(num);
 
-			fr_dbuff_in_memcpy(&dbuff, ((uint8_t *) &num) + 2, sizeof(dst->vb_ether));
+			FR_DBUFF_IN_MEMCPY_RETURN(&dbuff, ((uint8_t *) &num) + 2, sizeof(dst->vb_ether));
 			fr_value_box_ethernet_addr(dst, dst_enumv, &ether, tainted);
 
 			FR_SBUFF_SET_RETURN(in, &our_in);

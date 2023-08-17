@@ -246,9 +246,9 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 		if (mlen < vlen) return -(vlen - mlen);
 	}
 
-	fr_dbuff_in_memcpy(&len_field, buff, flen);
+	FR_DBUFF_IN_MEMCPY_RETURN(&len_field, buff, flen);
 	enc_byte |= ((flen - 1) << 2);
-	fr_dbuff_in(&enc_field, enc_byte);
+	FR_DBUFF_IN_RETURN(&enc_field, enc_byte);
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff) - vlen, "header");
 

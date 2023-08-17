@@ -639,8 +639,8 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, pad_len);
 	}
 
-	fr_dbuff_in_bytes(&hdr_dbuff, (uint8_t)da->attr,
-			  (uint8_t)(fr_dbuff_used(&work_dbuff) >> 2));
+	FR_DBUFF_IN_BYTES_RETURN(&hdr_dbuff, (uint8_t)da->attr,
+				 (uint8_t)(fr_dbuff_used(&work_dbuff) >> 2));
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done RFC attribute");
 
@@ -923,7 +923,7 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_list_t *to_encode, void *e
 
 	fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 512, 1024);
 
-	fr_dbuff_in_bytes(&dbuff, subtype, 0x00, 0x00);
+	FR_DBUFF_IN_BYTES_RETURN(&dbuff, subtype, 0x00, 0x00);
 
 	/*
 	 *	Add space in the packet for AT_MAC

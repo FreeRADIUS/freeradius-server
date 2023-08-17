@@ -852,7 +852,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			if (!version_byte) {
 				version_byte = 0xc1; /* version 12.1 */
 				fr_dbuff_set(&hdr_io, &hdr);
-				fr_dbuff_in(&hdr_io, version_byte);
+				FR_DBUFF_IN_RETURN(&hdr_io, version_byte);
 			}
 			/*
 			 *	If the caller didn't set a session ID, use a random one.
