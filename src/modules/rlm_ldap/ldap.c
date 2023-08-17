@@ -1291,8 +1291,9 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 		    !fr_pair_find_by_num(request->config, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
 			RWDEBUG("No \"known good\" password added. Ensure the admin user has permission to "
 				"read the password attribute");
-			RWDEBUG("PAP authentication will *NOT* work with Active Directory (if that is what you "
+			RWDEBUG("CHAP / MS-CHAP authentication will *NOT* work with Active Directory (if that is what you "
 				"were trying to configure)");
+			RWDEBUG("PAP authentication to Active Directory *MUST* use LDAP 'bind as user' functionality");
 		}
        }
 }
