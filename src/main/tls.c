@@ -4185,8 +4185,8 @@ post_ca:
 		/*
 		 *	RADIUS 1.1 requires TLS 1.3 or later.
 		 */
-		if (conf->radius11 && (min_version < TLS1_3_VERSION) {
-			WARN(LOG_PREFIX ": The configuration allows TLS <1.3.  RADIUSv1.1 MUST use TLS 1.3");
+		if (conf->radiusv11 && (min_version < TLS1_3_VERSION)) {
+			WARN(LOG_PREFIX ": The configuration allows TLS <1.3.  RADIUS/1.1 MUST use TLS 1.3");
 			WARN(LOG_PREFIX ": Please set: tls_min_version = '1.3'");
 		}
 #endif
