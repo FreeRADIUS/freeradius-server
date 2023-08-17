@@ -58,38 +58,6 @@ static CONF_PARSER const proto_cron_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t const *dict_freeradius;
-
-extern fr_dict_autoload_t proto_cron_dict[];
-fr_dict_autoload_t proto_cron_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-
-	{ NULL }
-};
-
-static fr_dict_attr_t const *attr_packet_dst_ip_address;
-static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
-static fr_dict_attr_t const *attr_packet_dst_port;
-static fr_dict_attr_t const *attr_packet_original_timestamp;
-static fr_dict_attr_t const *attr_packet_src_ip_address;
-static fr_dict_attr_t const *attr_packet_src_ipv6_address;
-static fr_dict_attr_t const *attr_packet_src_port;
-static fr_dict_attr_t const *attr_protocol;
-
-extern fr_dict_attr_autoload_t proto_cron_dict_attr[];
-fr_dict_attr_autoload_t proto_cron_dict_attr[] = {
-	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_packet_original_timestamp, .name = "Packet-Original-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-
-	{ NULL }
-};
-
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
  * @param[in] ctx	to allocate data in (instance of proto_cron).
