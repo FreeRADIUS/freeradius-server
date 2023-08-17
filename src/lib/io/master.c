@@ -2574,7 +2574,6 @@ static int mod_close(fr_listen_t *li)
 	fr_io_instance_t const *inst;
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
-	fr_io_client_t *parent;
 
 	get_inst(li, &inst, NULL, &connection, &child);
 
@@ -2598,15 +2597,6 @@ static int mod_close(fr_listen_t *li)
 	if (connection->client->pending) {
 		TALLOC_FREE(connection->client->pending); /* for any pending packets */
 	}
-
-	/*
-	 *	Remove the connection from the parent's connection set
-	 */
-	parent = connection->parent;
-	pthread_mutex_lock(&parent->mutex);
-	fr_hash_table_remove(parent->ht, connection);
-	pthread_mutex_unlock(&parent->mutex);
-
 	talloc_free(connection->dl_inst);
 
 	return 0;
