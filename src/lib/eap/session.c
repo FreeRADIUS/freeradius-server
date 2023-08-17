@@ -23,6 +23,7 @@
  */
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/util/nbo.h>
 
 #include "attrs.h"
 #include "compose.h"
@@ -234,8 +235,7 @@ static char *eap_identity(request_t *request, eap_session_t *eap_session, eap_pa
 	    (eap_packet->code != FR_EAP_CODE_RESPONSE) ||
 	    (eap_packet->data[0] != FR_EAP_METHOD_IDENTITY)) return NULL;
 
-	memcpy(&len, eap_packet->length, sizeof(uint16_t));
-	len = ntohs(len);
+	len = fr_nbo_to_uint16(eap_packet->length);
 
 	/*
 	 *  Note: The minimum length here is 5.
