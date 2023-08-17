@@ -755,15 +755,16 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 	memcpy(&hack, &out, sizeof(out)); /* const issues */
 
 	/*
-	 *	The RADIUSv11 configuration for this socket is a combination of what we require, and what we
+	 *	The RADIUS/1.1 configuration for this socket is a combination of what we require, and what we
 	 *	require of the client.
 	 */
 	switch (this->radiusv11) {
 		/*
-		 *	If we forbid RADIUSv11, then we never advertised it via ALPN, and this callback should
+		 *	If we forbid RADIUS/1.1, then we never advertised it via ALPN, and this callback should
 		 *	never have been registered.
 		 */
 	case FR_RADIUSV11_FORBID:
+		fr_assert(0);
 		server =  radiusv11_allow_protos + 11;
 		server_len = 11;
 		break;
@@ -795,7 +796,7 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 		 */
 		fr_assert(*outlen == 10);
 		sock->radiusv11 = (server[9] == '1');
-		sock->alpn_ok = true;
+		sock->alpn_checked = true;
 
 		RDEBUG("(TLS) ALPN server negotiated application protocol \"%.*s\"", (int) *outlen, server);
 		return SSL_TLSEXT_ERR_OK;
@@ -813,8 +814,15 @@ static int radiusv11_client_hello_cb(SSL *s, int *alert, void *arg)
 	rad_listen_t *this = arg;
 	listen_socket_t *sock = this->data;
 
-	if (sock->alpn_ok) return SSL_CLIENT_HELLO_SUCCESS;
+	/*
+	 *	The server_alpn_cb ran, and checked that the configured ALPN matches the negotiated one.
+	 */
+	if (sock->alpn_checked) return SSL_CLIENT_HELLO_SUCCESS;
 
+	/*
+	 *	The server_alpn_cb did NOT run (???) but we still have a client hello.  We require ALPN and
+	 *	none was negotiated, so we return an error.
+	 */
 	*alert = SSL_AD_NO_APPLICATION_PROTOCOL;
 
 	return SSL_CLIENT_HELLO_ERROR;
@@ -830,7 +838,7 @@ int fr_radiusv11_client_init(fr_tls_server_conf_t *tls)
 	case FR_RADIUSV11_ALLOW:
 		if (SSL_CTX_set_alpn_protos(tls->ctx, radiusv11_allow_protos, sizeof(radiusv11_allow_protos)) != 0) {
 		fail_protos:
-			ERROR("Failed setting RADIUSv11 negotiation flags");
+			ERROR("Failed setting RADIUS/1.1 negotiation flags");
 			return -1;
 		}
 		break;
@@ -1105,17 +1113,30 @@ static int dual_tcp_accept(rad_listen_t *listener)
 			SSL_CTX_set_tlsext_servername_callback(this->tls->ctx, tls_sni_callback);
 			SSL_CTX_set_tlsext_servername_arg(this->tls->ctx, this->tls);
 #ifdef WITH_RADIUSV11
-			/*
-			 *      Default is "forbid" (0).  In which case we don't set any ALPN callbacks, and
-			 *      the ServerHello does not contain an ALPN section.
-			 */
-			if (client->radiusv11 != FR_RADIUSV11_FORBID) {
+			switch (client->radiusv11) {
+				/*
+				 *	We don't set any callbacks.  If the client sends ALPN (or not), we
+				 *	just do normal RADIUS.
+				 */
+			case FR_RADIUSV11_FORBID:
+				DEBUG("(TLS) ALPN radiusv11 = forbid");
+				break;
+
+				/*
+				 *	Setting the client hello callback catches the case where we send ALPN,
+				 *	and the client doesn't send anything.
+				 */
+			case FR_RADIUSV11_REQUIRE:
+				SSL_CTX_set_client_hello_cb(this->tls->ctx, radiusv11_client_hello_cb, this);
+				/* FALL-THROUGH */
+
+				/*
+				 *	We're willing to do normal RADIUS, but we send ALPN, and then check if
+				 *	(or what) the client sends back as ALPN.
+				 */
+			case FR_RADIUSV11_ALLOW:
 				SSL_CTX_set_alpn_select_cb(this->tls->ctx, radiusv11_server_alpn_cb, this);
 				DEBUG("(TLS) ALPN radiusv11 = allow / require");
-
-				SSL_CTX_set_client_hello_cb(this->tls->ctx, radiusv11_client_hello_cb, this);
-			} else {
-				DEBUG("(TLS) ALPN radiusv11 = forbid");
 			}
 #endif
 		}
