@@ -22,6 +22,7 @@ FreeRADIUS 3.0.27 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	  See "nonblock" configuration sites-available/tls
 	* Clean up state ctx storage for lost packets.  Fixes #5055.
 	* Fix compiler warning when building without TCP.  Fixes #5054.
+	* Use virtual server "default" when passed "-i" and "-p" on the command line.
 
 FreeRADIUS 3.0.26 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	Feature improvements
