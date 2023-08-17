@@ -194,7 +194,7 @@ authorize {
 	#  LDAP servers can only do PAP.  They cannot do CHAP, MS-CHAP,
 	#  or EAP.
 	#
-#	if (!&control.Auth-Type && &User-Password) {
+#	if (!&control:Auth-Type && &User-Password) {
 #		update control {
 #		       &Auth-Type := LDAP
 #		}
