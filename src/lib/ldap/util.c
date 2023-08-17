@@ -708,3 +708,48 @@ int fr_ldap_server_config_check(fr_ldap_config_t *handle_config, char const *ser
 						       (int)len, server, port);
 	return 0;
 }
+
+/** Translate the error code emitted from ldap_url_parse and friends into something accessible with fr_strerror()
+ *
+ * @param[in] ldap_url_err	The error code returned
+ */
+void *fr_ldap_url_err_to_str(int ldap_url_err)
+{
+	switch (ldap_url_err) {
+	case LDAP_URL_SUCCESS:
+		return "success";
+
+	case LDAP_URL_ERR_MEM:
+		return "no memory";
+
+	case LDAP_URL_ERR_PARAM:
+		return "parameter is bad";
+
+	case LDAP_URL_ERR_BADSCHEME:
+		return "URL doesn't begin with \"[c]ldap[si]://\"";
+
+	case LDAP_URL_ERR_BADENCLOSURE:
+		return "URL is missing trailing \">\"";
+
+	case LDAP_URL_ERR_BADURL:
+		return "URL is bad";
+
+	case LDAP_URL_ERR_BADHOST:
+		return "host/port is bad";
+
+	case LDAP_URL_ERR_BADATTRS:
+		return "bad (or missing) attributes";
+
+	case LDAP_URL_ERR_BADSCOPE:
+		return "scope string is invalid (or missing)";
+
+	case LDAP_URL_ERR_BADFILTER:
+		return "bad or missing filter";
+
+	case LDAP_URL_ERR_BADEXTS:
+		return "bad or missing extensions";
+
+	default:
+		return "unknown reason";
+	}
+}
