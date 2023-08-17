@@ -109,7 +109,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		if (da_is_bool_exists(vp->da)) {
 			break;
 		}
-		fr_dbuff_in(&work_dbuff, (uint8_t) (vp->vp_bool == true));
+		FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) (vp->vp_bool == true));
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
@@ -128,7 +128,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		if (da_is_bits_prefix(vp->da)) {
 			size_t num_bytes = (vp->vp_ip.prefix + 0x07) >> 3;
 
-			fr_dbuff_in(&work_dbuff, (uint8_t) vp->vp_ip.prefix);
+			FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) vp->vp_ip.prefix);
 
 			if (num_bytes) {
 				FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
@@ -243,7 +243,7 @@ static ssize_t extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, size_t l
 		 *	Write the new header, including the (possibly partial) length.
 		 */
 		fr_dbuff_set(&tmp, fr_dbuff_current(hdr));
-		fr_dbuff_in_bytes(&tmp, type, sublen);
+		FR_DBUFF_IN_BYTES_RETURN(&tmp, type, sublen);
 
 		/*
 		 *	The data is already where it's supposed to be, and the length is in the header, and
@@ -376,7 +376,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff,
 
 	if (len <= UINT8_MAX) {
 		fr_dbuff_advance(&hdr, 1);
-		fr_dbuff_in(&hdr, (uint8_t) len);
+		FR_DBUFF_IN_RETURN(&hdr, (uint8_t) len);
 
 	} else if (extend_option(&work_dbuff, &hdr, len) < 0) {
 		return PAIR_ENCODE_FATAL_ERROR;
@@ -520,7 +520,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			option_len += len;
 
 			fr_dbuff_set(&tmp, fr_dbuff_current(&hdr) + 1);
-			fr_dbuff_in_bytes(&tmp, (uint8_t) option_len);
+			FR_DBUFF_IN_BYTES_RETURN(&tmp, (uint8_t) option_len);
 
 		} else if ((len = extend_option(&work_dbuff, &hdr, len)) < 0) {
 			return PAIR_ENCODE_FATAL_ERROR;
@@ -629,9 +629,9 @@ static ssize_t encode_vsio_data(fr_dbuff_t *dbuff,
 	}
 
 	fr_dbuff_advance(&hdr, 1);
-	fr_dbuff_in(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN));
+	FR_DBUFF_IN_RETURN(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN));
 	fr_dbuff_advance(&hdr, 4);
-	fr_dbuff_in(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN - 4 - 1));
+	FR_DBUFF_IN_RETURN(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN - 4 - 1));
 
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO Data");
