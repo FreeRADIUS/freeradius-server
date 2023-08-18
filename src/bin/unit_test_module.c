@@ -481,7 +481,7 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 			if (len < 0) {
 				char const *err = fr_strerror();
 				talloc_free(xlat_ctx);
-				fr_sbuff_in_sprintf(&out, "ERROR expanding xlat: %s", *err ? err : "no error provided");
+				FR_SBUFF_IN_SPRINTF_RETURN(&out, "ERROR expanding xlat: %s", *err ? err : "no error provided");
 				continue;
 			}
 
