@@ -293,14 +293,14 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 
 		if (vp->da == attr_packet_type) {
 			fr_dbuff_set(&m, fr_dbuff_current(&hdr) + 1);
-			fr_dbuff_in(&m, (uint8_t)vp->vp_uint32);
+			FR_DBUFF_IN_RETURN(&m, (uint8_t)vp->vp_uint32);
 			fr_dcursor_next(cursor);
 			continue;
 		}
 
 		if (vp->da == attr_error_code) {
 			fr_dbuff_set(&m, fr_dbuff_current(&hdr) + 2);
-			fr_dbuff_in(&m, vp->vp_uint8);
+			FR_DBUFF_IN_RETURN(&m, vp->vp_uint8);
 			fr_dcursor_next(cursor);
 			continue;
 		}
