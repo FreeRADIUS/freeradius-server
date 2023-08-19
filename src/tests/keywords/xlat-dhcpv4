@@ -3,6 +3,8 @@
 #
 
 &Tmp-Octets-0 := 0x520d0103abcdef0206010203040506
+
+# the protocol decoder puts the attributes into a flat namespace
 if (!("%(dhcpv4.decode:%{Tmp-Octets-0})" == 2)) {
 	test_fail
 }

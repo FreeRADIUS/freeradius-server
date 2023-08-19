@@ -1,9 +1,7 @@
 #
 #  PRE: wimax
 #
-update request {
-	&Vendor-Specific.FreeRADIUS.Proxied-To  := 127.0.0.2
-}
+&Vendor-Specific.FreeRADIUS.Proxied-To  := 127.0.0.2
 
 #
 #  Check that a known but malformed attr is malformed
