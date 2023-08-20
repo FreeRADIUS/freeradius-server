@@ -2357,6 +2357,10 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
 	if (dst->data.type != FR_TYPE_NULL) fr_value_box_clear(&dst->data);
 	fr_value_box_copy(dst, &dst->data, &src->data);
 
+	/*
+	 *	If either source or destination is secret, then this value is secret.
+	 */
+	dst->data.secret |= src->da->flags.secret | dst->da->flags.secret;
 	return 0;
 }
 
