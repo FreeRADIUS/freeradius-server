@@ -1,0 +1,42 @@
+#
+#  Tests for immutable values.
+#
+#  They can't be modified or deleted.
+#
+&NAS-Port := 1812
+
+#
+#  Editing it is fine.
+#
+&NAS-Port += 1
+if !(&NAS-Port == 1813) {
+	test_fail
+}
+
+#
+#  Mark it as immutable.  The value shouldn't change.
+#
+%(immutable:&request.NAS-Port[*])
+if !(&NAS-Port == 1813) {
+	test_fail
+}
+
+#
+#  Try to edit it.  The value shouldn't change.
+#
+#  @todo - we don't have run-time exceptions... maybe this should return "fail"?
+#
+&NAS-Port += 1
+if !(&NAS-Port == 1813) {
+	test_fail
+}
+
+#
+#  We can't delete it.  Deletion is a noop
+#
+&request -= &NAS-Port[*]
+if !(&NAS-Port == 1813) {
+	test_fail
+}
+
+success

@@ -534,6 +534,64 @@ static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_immutable_attr_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Mark one or more attributes as immutable
+ *
+ * Example:
+@verbatim
+"%(immutable:&request.State[*])"
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_immutable_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					  UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *args)
+{
+	fr_pair_t		*vp;
+	fr_dcursor_t		cursor;
+	tmpl_dcursor_ctx_t	cc;
+	tmpl_t			*vpt;
+	fr_value_box_t		*attr;
+	char const		*fmt;
+
+	XLAT_ARGS(args, &attr);
+
+	fmt = attr->vb_strvalue;
+
+	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
+				&(tmpl_rules_t){
+					.attr = {
+						.dict_def = request->dict,
+						.list_def = request_attr_request,
+						.allow_wildcard = true,
+						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+					}
+				}) <= 0) {
+		RPEDEBUG("Invalid input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	RIDEBUG("Attributes matching \"%s\"", fmt);
+
+	RINDENT();
+	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	     vp;
+	     vp = fr_dcursor_next(&cursor)) {
+		if (fr_type_is_leaf(vp->vp_type)) fr_value_box_set_immutable(&vp->data);
+	}
+	tmpl_dcursor_clear(&cc);
+	REXDENT();
+
+	talloc_free(vpt);
+
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_arg_parser_t const xlat_func_integer_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -3328,6 +3386,7 @@ do { \
 
 	XLAT_REGISTER_ARGS("debug", xlat_func_debug, FR_TYPE_INT8, xlat_func_debug_args);
 	XLAT_REGISTER_ARGS("debug_attr", xlat_func_debug_attr, FR_TYPE_NULL, xlat_func_debug_attr_args);
+	XLAT_REGISTER_ARGS("immutable", xlat_func_immutable_attr, FR_TYPE_NULL, xlat_func_immutable_attr_args);
 	XLAT_REGISTER_ARGS("nexttime", xlat_func_next_time, FR_TYPE_UINT64, xlat_func_next_time_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, FR_TYPE_STRING, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("subst", xlat_func_subst, FR_TYPE_STRING, xlat_func_subst_args);
