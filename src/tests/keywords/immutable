@@ -39,4 +39,17 @@ if !(&NAS-Port == 1813) {
 	test_fail
 }
 
+#
+#  We can copy the immutable value.  The copy is mutable.
+#
+&Tmp-Integer-0 := &NAS-Port
+if !(&Tmp-Integer-0 == 1813) {
+	test_fail
+}
+
+&Tmp-Integer-0 += 1
+if !(&Tmp-Integer-0 == 1814) {
+	test_fail
+}
+
 success
