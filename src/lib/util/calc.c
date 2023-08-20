@@ -2119,6 +2119,11 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 	if (!fr_type_is_leaf(dst->type)) return invalid_type(dst->type);
 	if (!fr_type_is_leaf(src->type)) return invalid_type(src->type);
 
+	if (dst->immutable) {
+		fr_strerror_printf("Cannot modify immutable value");
+		return -1;
+	}
+
 	/*
 	 *	These operators are included here for testing and completeness.  But see comments in
 	 *	fr_edit_list_apply_pair_assignment() for what the caller should be doing.
@@ -2174,6 +2179,11 @@ int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, 
 	fr_value_box_t one;
 
 	if (!fr_type_is_numeric(src->type)) return invalid_type(src->type);
+
+	if (dst->immutable) {
+		fr_strerror_printf("Cannot modify immutable value");
+		return -1;
+	}
 
 	if (op == T_OP_INCRM) {
 		/*

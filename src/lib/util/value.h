@@ -155,8 +155,11 @@ struct value_box_s {
 	/** Type and flags should appear together for packing efficiency
 	 */
 	fr_type_t		_CONST		type;			//!< Type of this value-box, at the start, see pair.h
+
 	unsigned int   				tainted : 1;		//!< i.e. did it come from an untrusted source
 	unsigned int   				secret : 1;		//!< Same as #fr_dict_attr_flags_t secret
+	unsigned int				immutable : 1;		//!< once set, the value cannot be changed
+
 	uint16_t		_CONST		safe;			//!< more detailed safety
 
 	fr_value_box_entry_t			entry;			//!< Doubly linked list entry.
@@ -466,6 +469,7 @@ void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const 
 			.enumv = enumv,
 			.tainted = tainted,
 			.secret = enumv && enumv->flags.secret,
+			/* don't set the immutable flag.  The caller has to do it once he's finished editing the values */
 		}, sizeof(*vb));
 	fr_value_box_list_entry_init(vb);
 
@@ -978,6 +982,12 @@ static inline CC_HINT(nonnull, always_inline)
 void fr_value_box_set_secret(fr_value_box_t *box, bool secret)
 {
 	box->secret = secret;
+}
+
+static inline CC_HINT(nonnull, always_inline)
+void fr_value_box_set_immutable(fr_value_box_t *box)
+{
+	box->immutable = true;
 }
 
 

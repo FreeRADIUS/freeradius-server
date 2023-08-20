@@ -265,6 +265,11 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 		case FR_EDIT_CLEAR:
 			if (!fr_type_is_structural(vp->vp_type)) return 0;
 
+			if (fr_pair_immutable(vp)) {
+				fr_strerror_printf("Cannot modify immutable value for %s", vp->da->name);
+				return -1;
+			}
+
 			fr_pair_list_free(&vp->vp_group);
 			return 0;
 
@@ -542,6 +547,11 @@ int fr_edit_list_insert_pair_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_
  */
 int fr_edit_list_pair_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp)
 {
+	if (fr_pair_immutable(vp)) {
+		fr_strerror_printf("Cannot modify immutable value for %s", vp->da->name);
+		return -1;
+	}
+
 	if (!el) {
 		fr_pair_delete(list, vp);
 		return 0;
@@ -565,6 +575,8 @@ int fr_edit_list_pair_delete_by_da(fr_edit_list_t *el, fr_pair_list_t *list, fr_
 	 *	Delete all VPs with a matching da.
 	 */
 	fr_pair_list_foreach(list, vp) {
+		if (fr_pair_immutable(vp)) continue;
+
 		if (vp->da != da) continue;
 
 		(void) fr_pair_remove(list, vp);
@@ -597,6 +609,11 @@ int fr_edit_list_replace_pair_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_
 {
 	if (!fr_type_is_leaf(vp->vp_type)) return -1;
 
+	if (vp->data.immutable) {
+		fr_strerror_printf("Cannot modify immutable value for %s", vp->da->name);
+		return -1;
+	}
+
 	if (el && (edit_record(el, FR_EDIT_VALUE, vp, NULL, NULL) < 0)) return -1;
 
 	if (!fr_type_is_fixed_size(vp->vp_type)) fr_value_box_clear(&vp->data);
@@ -614,6 +631,11 @@ int fr_edit_list_replace_pair_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_
 int fr_edit_list_replace_pair(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
 {
 	if (to_replace->da != vp->da) return -1;
+
+	if (fr_pair_immutable(to_replace)) {
+		fr_strerror_printf("Cannot modify immutable value for %s", vp->da->name);
+		return -1;
+	}
 
 	if (!el) {
 		if (fr_pair_insert_after(list, to_replace, vp) < 0) return -1;

@@ -1336,6 +1336,11 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		// &control := ...
 	}
 
+	if (fr_pair_immutable(vp)) {
+		RWDEBUG("Cannot modify immutable value for %s", current->lhs.vpt->name);
+		return -1;
+	}
+
 	/*
 	 *	We found an existing attribute, with a modification operator.
 	 */

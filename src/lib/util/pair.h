@@ -628,6 +628,9 @@ bool		fr_pair_validate(fr_pair_t const *failed[2], fr_pair_list_t *filter,
 bool 		fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter,
 					 fr_pair_list_t *list) CC_HINT(nonnull(2,3));
 
+bool		fr_pair_immutable(fr_pair_t const *vp) CC_HINT(nonnull);
+
+
 /* Lists */
 int		fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const *from);
 

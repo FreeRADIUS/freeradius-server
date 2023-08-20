@@ -1624,6 +1624,8 @@ int fr_pair_delete_by_da(fr_pair_list_t *list, fr_dict_attr_t const *da)
 
 	fr_pair_list_foreach(list, vp) {
 		if (da == vp->da) {
+			if (fr_pair_immutable(vp)) continue;
+
 			cnt++;
 			fr_pair_delete(list, vp);
 		}
@@ -2082,6 +2084,30 @@ bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter
 	}
 
 	return true;
+}
+
+/**
+ *
+ * @param[in] vp	the pair to check
+ * @return
+ *	- true		the pair is immutable, or has an immutable child
+ *	- false		the pair is not immutable, or has no immutable children.
+ */
+bool fr_pair_immutable(fr_pair_t const *vp)
+{
+	if (fr_type_is_leaf(vp->vp_type)) return vp->data.immutable;
+
+	fr_pair_list_foreach(&vp->vp_group, child) {
+		if (fr_type_is_leaf(child->vp_type)) {
+			if (child->data.immutable) return true;
+
+			continue;
+		}
+
+		if (fr_pair_immutable(child)) return true;
+	}
+
+	return false;
 }
 
 /** Steal a list of pairs to a new context
