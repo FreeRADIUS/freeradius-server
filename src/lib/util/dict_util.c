@@ -4261,6 +4261,8 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
 	{
+		fr_hash_table_t *ht;
+
 		if (da->type == FR_TYPE_GROUP) break;
 
 		fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_CHILDREN),
@@ -4276,8 +4278,9 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 		/*
 		 *	Check the namespace hash table is ok
 		 */
-		/* coverity[dereference] */
-		fr_hash_table_verify(dict_attr_namespace(da));
+		ht = dict_attr_namespace(da);
+		if (unlikely(!ht)) break;
+		fr_hash_table_verify(ht);
 	}
 		break;
 
