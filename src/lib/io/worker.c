@@ -672,7 +672,10 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 
 		if (worker->config.unflatten_before_encode) {
 			fr_pair_unflatten(request->pair_list.reply);
-		} /* else noop */
+
+		} else if (worker->config.flatten_before_encode) {
+			fr_pair_flatten(request->pair_list.reply);
+		}
 
 		if (listen->app_io->encode) {
 			slen = listen->app_io->encode(listen->app_io_instance, request,
@@ -856,6 +859,9 @@ nak:
 
 	if (worker->config.unflatten_after_decode) {
 		fr_pair_unflatten(request->pair_list.request);
+
+	} else if (worker->config.flatten_after_decode) {
+		fr_pair_flatten(request->pair_list.request);
 	}
 
 	/*

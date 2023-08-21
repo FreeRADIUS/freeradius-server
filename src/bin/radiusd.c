@@ -846,6 +846,8 @@ int main(int argc, char *argv[])
 		COPY(max_request_time);
 		COPY(unflatten_after_decode);
 		COPY(unflatten_before_encode);
+		COPY(flatten_after_decode);
+		COPY(flatten_before_encode);
 
 		/*
 		 *	Single server mode: use the global event list.
