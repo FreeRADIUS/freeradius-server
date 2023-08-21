@@ -265,10 +265,12 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 		case FR_EDIT_CLEAR:
 			if (!fr_type_is_structural(vp->vp_type)) return 0;
 
-			if (fr_pair_immutable(vp)) {
-				fr_strerror_printf("Cannot modify immutable value for %s", vp->da->name);
-				return -1;
-			}
+			/*
+			 *	The VP is a child of an attribute which was previously inserted as part of
+			 *	this edit.  We therefore allow the "clear" to clear it, even if it contains
+			 *	immutable children.  Because this operation is equivalent to just never
+			 *	creating the children.
+			 */
 
 			fr_pair_list_free(&vp->vp_group);
 			return 0;
