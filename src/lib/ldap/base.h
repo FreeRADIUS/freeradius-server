@@ -945,7 +945,7 @@ int		fr_ldap_server_url_check(fr_ldap_config_t *handle_config, char const *serve
 
 int		fr_ldap_server_config_check(fr_ldap_config_t *handle_config, char const *server, CONF_SECTION *cs);
 
-void		*fr_ldap_url_err_to_str(int ldap_url_err)
+char const	*fr_ldap_url_err_to_str(int ldap_url_err);
 
 /*
  *	referral.c - Handle LDAP referrals

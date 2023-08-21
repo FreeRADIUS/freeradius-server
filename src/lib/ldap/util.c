@@ -713,7 +713,7 @@ int fr_ldap_server_config_check(fr_ldap_config_t *handle_config, char const *ser
  *
  * @param[in] ldap_url_err	The error code returned
  */
-void *fr_ldap_url_err_to_str(int ldap_url_err)
+char const *fr_ldap_url_err_to_str(int ldap_url_err)
 {
 	switch (ldap_url_err) {
 	case LDAP_URL_SUCCESS:
