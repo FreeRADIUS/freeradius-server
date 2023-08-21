@@ -598,6 +598,19 @@ global {
 #
 migrate {
 	#
+	#  flatten_after_decode:: Convert "nested" attribute lists to
+	#  "flat" ones after the protocol decoders have run, but
+	#  before any `unlang` policies are used.
+	#
+	flatten_after_decode = yes
+
+	#
+	#  flatten_before_encode:: Convert "nested" attribute lists to
+	#  "flat" ones before calling the protocol encoders.
+	#
+	flatten_before_encode = yes
+
+	#
 	#  unflatten_after_decode:: Convert "flat" attribute lists to
 	#  "nested" ones after the protocol decoders have run, but
 	#  before any `unlang` policies are used.
