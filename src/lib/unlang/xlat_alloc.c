@@ -258,8 +258,15 @@ static int _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_exp_he
 		 *	Ensure the format string is valid...  At this point
 		 *	they should all be talloc'd strings.
 		 */
-		MEM(node = xlat_exp_alloc(ctx, p->type,
-					  talloc_get_type_abort_const(p->fmt, char), talloc_array_length(p->fmt) - 1));
+		if (p->type == XLAT_ALTERNATE) {
+			/* Alternates don't have format strings */
+			MEM(node = xlat_exp_alloc_null(ctx));
+			xlat_exp_set_type(node, XLAT_ALTERNATE);
+		} else {
+			MEM(node = xlat_exp_alloc(ctx, p->type,
+						  talloc_get_type_abort_const(p->fmt, char), talloc_array_length(p->fmt) - 1));
+		}
+
 		node->quote = p->quote;
 		node->flags = p->flags;
 

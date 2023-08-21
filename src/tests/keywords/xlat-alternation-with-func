@@ -1,0 +1,32 @@
+#
+# PRE:
+#
+
+&Tmp-String-0 := "foo"
+&Tmp-String-1 := "bar"
+
+if (!(%{%(test.passthrough:%{Tmp-String-0}):-%{Tmp-String-1}} == 'foo')) {
+	test_fail
+}
+
+if (!(%{%(test.passthrough:%{Tmp-String-2}):-%{Tmp-String-1}} == 'bar')) {
+	test_fail
+}
+
+if (!(%{%{Tmp-String-0}:-%(test.passthrough:%{Tmp-String-1})} == 'foo')) {
+	test_fail
+}
+
+if (!(%{%{Tmp-String-2}:-%(test.passthrough:%{Tmp-String-1})} == 'bar')) {
+	test_fail
+}
+
+if (!(%{%(test.passthrough:%{Tmp-String-0}):-%(test.passthrough:%{Tmp-String-1})} == 'foo')) {
+	test_fail
+}
+
+if (!(%{%(test.passthrough:%{Tmp-String-2}):-%(test.passthrough:%{Tmp-String-1})} == 'bar')) {
+	test_fail
+}
+
+success
