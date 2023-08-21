@@ -263,7 +263,6 @@ redo:
 		*vp_p = next;
 
 		if (!next) {
-			if (comma) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
 			FR_SBUFF_SET_RETURN(out, &our_out);
 		}
 
