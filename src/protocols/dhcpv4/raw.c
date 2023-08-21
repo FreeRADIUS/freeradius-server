@@ -131,7 +131,7 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer,
 	ip_hdr->ip_p = 17;
 	ip_hdr->ip_sum = 0; /* Filled later */
 
-	/* saddr: Packet-Src-IP-Address (default: 0.0.0.0). */
+	/* saddr: packet src IP addr (default: 0.0.0.0). */
 	ip_hdr->ip_src.s_addr = packet->socket.inet.src_ipaddr.addr.v4.s_addr;
 
 	/* daddr: packet destination IP addr (should be 255.255.255.255 for broadcast). */
