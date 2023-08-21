@@ -1361,8 +1361,8 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		/*
 		 *	&foo[1] exists, don't bother deleting it.  Just over-write its value.
 		 */
-		fr_assert(map->op == T_OP_SET);
-		fr_assert(tmpl_attr_tail_num(map->lhs) != NUM_UNSPEC);
+		fr_assert((map->op == T_OP_SET) || (map->op == T_OP_ADD_EQ));
+		fr_assert((map->op == T_OP_ADD_EQ) || tmpl_attr_tail_num(map->lhs) != NUM_UNSPEC);
 
 		// &control := ...
 	}
