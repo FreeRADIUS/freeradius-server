@@ -357,7 +357,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 		 */
 		RDEBUG2("%s %s %s", current->lhs.vpt->name, fr_tokens[T_OP_SUB_EQ], current->rhs.vpt->name);
 
-		while (vp) {
+		for ( ; vp != NULL; vp = next) {
 			fr_pair_list_t *list;
 
 			next = fr_dcursor_next(&cursor);
@@ -365,12 +365,12 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			list = fr_pair_parent_list(vp);
 			fr_assert(list != NULL);
 
+			if (fr_pair_immutable(vp)) continue;
+
 			if (fr_edit_list_pair_delete(current->el, list, vp) < 0) {
 				tmpl_dcursor_clear(&cc);
 				return -1;
 			}
-
-			vp = next;
 		}
 
 		tmpl_dcursor_clear(&cc);
@@ -1336,7 +1336,13 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		// &control := ...
 	}
 
-	if (fr_pair_immutable(vp)) {
+	/*
+	 *	We forbid operations on immutable leaf attributes.
+	 *
+	 *	If a list contains an immutable attribute, then we can still operate on the list, but instead
+	 *	we look at each VP we're operating on.
+	 */
+	if (fr_type_is_leaf(vp->vp_type) && vp->vp_immutable) {
 		RWDEBUG("Cannot modify immutable value for %s", current->lhs.vpt->name);
 		return -1;
 	}
