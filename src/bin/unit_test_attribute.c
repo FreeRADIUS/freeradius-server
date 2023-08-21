@@ -266,6 +266,7 @@ static char		proto_name_prev[128];
 static dl_t		*dl;
 static dl_loader_t	*dl_loader = NULL;
 static bool		parse_new_conditions = true;
+static bool		unflatten_after_decode = false;
 
 static fr_event_list_t	*el = NULL;
 
@@ -1491,10 +1492,19 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	char		*p;
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
-	fr_pair_list_t	head;
 	ssize_t		slen;
 
-	fr_pair_list_init(&head);
+	fr_dict_attr_t	const *da;
+	fr_pair_t	*head;
+
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), "request");
+	fr_assert(da != NULL);
+	head = fr_pair_afrom_da(cc->tmp_ctx, da);
+	if (!head) {
+		fr_strerror_const_push("Failed allocating memory");
+		RETURN_COMMAND_ERROR();
+	}
+
 	p = in;
 
 	slen = load_test_point_by_command((void **)&tp, in, "tp_decode_pair");
@@ -1539,11 +1549,10 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	point to produce fr_pair_ts.
 	 */
 	while (to_dec < to_dec_end) {
-		slen = tp->func(cc->tmp_ctx, &head, fr_dict_root(cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict),
+		slen = tp->func(head, &head->vp_group, fr_dict_root(cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict),
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
 		cc->last_ret = slen;
 		if (slen <= 0) {
-			fr_pair_list_free(&head);
 			ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 			CLEAR_TEST_POINT(cc);
 			RETURN_OK_WITH_ERROR();
@@ -1563,11 +1572,13 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	fr_strerror_clear();
 	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 
+	if (unflatten_after_decode) fr_pair_unflatten(head);
+
 	/*
 	 *	Output may be an error, and we ignore
 	 *	it if so.
 	 */
-	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
+	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head->vp_group);
 	if (slen <= 0) {
 		RETURN_OK_WITH_ERROR();
 	}
@@ -1584,11 +1595,20 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	char		*p;
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
-	fr_pair_list_t	head;
 	ssize_t		slen;
 
+	fr_dict_attr_t	const *da;
+	fr_pair_t	*head;
+
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), "request");
+	fr_assert(da != NULL);
+	head = fr_pair_afrom_da(cc->tmp_ctx, da);
+	if (!head) {
+		fr_strerror_const_push("Failed allocating memory");
+		RETURN_COMMAND_ERROR();
+	}
+
 	p = in;
-	fr_pair_list_init(&head);
 
 	slen = load_test_point_by_command((void **)&tp, in, "tp_decode_proto");
 	if (!tp) {
@@ -1627,12 +1647,11 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 
 	ASAN_POISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 
-	slen = tp->func(cc->tmp_ctx, &head,
+	slen = tp->func(head, &head->vp_group,
 			(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
 	cc->last_ret = slen;
 	if (slen <= 0) {
 		ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
-		fr_pair_list_free(&head);
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
@@ -1648,10 +1667,12 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	 *	it if so.
 	 */
 
+	if (unflatten_after_decode) fr_pair_unflatten(head);
+
 	/*
 	 *	Print the pairs.
 	 */
-	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head);
+	slen = fr_pair_list_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, &head->vp_group);
 	if (slen <= 0) {
 		fr_assert(0);
 		RETURN_OK_WITH_ERROR();
@@ -2387,6 +2408,10 @@ static size_t command_migrate(command_result_t *result, UNUSED command_file_ctx_
 	} else if (strncmp(p, "pair_legacy_print_nested", sizeof("pair_legacy_print_nested") - 1) == 0) {
 		p += sizeof("pair_legacy_print_nested") - 1;
 		out = &fr_pair_legacy_print_nested;
+
+	} else if (strncmp(p, "unflatten_after_decode", sizeof("unflatten_after_decode") - 1) == 0) {
+		p += sizeof("unflatten_after_decode") - 1;
+		out = &unflatten_after_decode;
 
 	} else if (strncmp(p, "parse_new_conditions", sizeof("parse_new_conditions") - 1) == 0) {
 		p += sizeof("parse_new_conditions") - 1;
