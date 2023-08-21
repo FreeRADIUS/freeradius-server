@@ -352,7 +352,7 @@ authorize {
 	#
 	#  If the request contains FreeRADIUS-802.1X-Anonce
 	#  and FreeRADIUS-802.1X-EAPoL-Key-Msg, then it will set
-	#  	&control.Auth-Type := dpsk
+	#  	&control:Auth-Type := dpsk
 	#
 	#  The "rewrite_called_station_id" policy creates the
 	#  Called-Station-MAC attribute, which is needed by
