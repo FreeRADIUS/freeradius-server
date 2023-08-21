@@ -3399,7 +3399,15 @@ static fr_pair_t *pair_alloc_parent(fr_pair_t *in, fr_pair_t *item, fr_dict_attr
 
 	/*
 	 *	We should never be called with a leaf da.
+	 *
+	 *	If we're asked to create children of a keyed
+	 *	structure, just create the children in the parent.
 	 */
+	if (!fr_type_is_structural(da->type)) {
+		fr_assert(fr_dict_attr_is_key_field(da));
+		da = da->parent;
+	}
+
 	fr_assert(fr_type_is_structural(da->type));
 
 	/*
@@ -3475,7 +3483,8 @@ static int pair_reparent_struct(fr_pair_t *parent, fr_pair_t *item, fr_pair_t *i
 	for (vp = fr_pair_list_head(&in->vp_group); vp; vp = next) {
 		next = fr_pair_list_next(&in->vp_group, vp);
 
-		fr_assert((vp->da->parent == parent->da) || (parent->vp_type == FR_TYPE_GROUP) || (parent->vp_type == FR_TYPE_VENDOR));
+		fr_assert((vp->da->parent == parent->da) || (parent->vp_type == FR_TYPE_GROUP) || (parent->vp_type == FR_TYPE_VENDOR) ||
+			  (fr_dict_attr_is_key_field(vp->da->parent) && vp->da->parent->parent == parent->da));
 
 		/*
 		 *	If we need a new parent, allocate it.
@@ -3644,6 +3653,12 @@ int fr_pair_unflatten(fr_pair_t *in)
 			if (fr_pair_unflatten(vp) < 0) return -1;
 			continue;
 		}
+
+		/*
+		 *	Sub-structures are put into their parent.
+		 */
+		if (fr_dict_attr_is_key_field(vp->da->parent) &&
+		    fr_pair_parent(vp) == in) continue;
 
 		/*
 		 *	Allocate or find the parent attribute.
