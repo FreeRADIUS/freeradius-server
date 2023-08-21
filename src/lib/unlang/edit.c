@@ -1243,7 +1243,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	current->lhs.create = false;
 	current->lhs.vp = NULL;
 
-	DEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
+	DEBUG3("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
 
 	/*
 	 *	Create the attribute, including any necessary parents.
@@ -1280,6 +1280,29 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		if (!map->rhs && fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
 			RWDEBUG("Cannot set one entry to multiple values for %s", current->lhs.vpt->name);
 			return -1;
+		}
+
+	} else if (map->op == T_OP_ADD_EQ) {
+		/*
+		 *	For "+=", if there's no existing attribute, create one, and rewrite the operator we
+		 *	apply to ":=".  Which also means moving the operator be in edit_map_t, and then updating the
+		 *	"apply" funtions above to use that for the operations, but map->op for printing.
+		 *
+		 *	This allows "foo += 4" to set "foo := 4" when the attribute doesn't exist.  It also allows us
+		 *	to do list appending to an empty list.  But likely only for strings, octets, and numbers.
+		 *	Nothing much else makes sense.
+		 */
+
+		switch (tmpl_attr_tail_da(current->lhs.vpt)->type) {
+		case FR_TYPE_NUMERIC:
+		case FR_TYPE_OCTETS:
+		case FR_TYPE_STRING:
+		case FR_TYPE_STRUCTURAL:
+			current->lhs.create = true;
+			break;
+
+		default:
+			break;
 		}
 	}
 

@@ -1,0 +1,28 @@
+#
+#  Add to something which doesn't exist
+#
+
+&Tmp-Integer-0 += 4
+if !(&Tmp-Integer-0 == 4) {
+	test_fail
+}
+
+
+&Tmp-String-0 += "bar"
+if !(&Tmp-String-0 == "bar") {
+	test_fail
+}
+
+&Tmp-Group-0 += {
+	&Filter-Id = "foo"
+}
+
+if !&Tmp-Group-0 {
+	test_fail
+}
+
+if !(&Tmp-Group-0.Filter-Id == "foo") {
+	test_fail
+}
+
+success
