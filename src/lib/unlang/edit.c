@@ -582,9 +582,17 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		pair = true;
 	}
 
-	if (!box && (map->op != T_OP_SET)) {
-		RWDEBUG("%s %s ... - Assignment failed - No value on right-hand side", map->lhs->name, fr_tokens[map->op]);
-		return -1;
+	if (!box) {
+		if (map->op != T_OP_SET) {
+			RWDEBUG("%s %s ... - Assignment failed - No value on right-hand side", map->lhs->name, fr_tokens[map->op]);
+			return -1;
+		}
+
+		/*
+		 *	Set is "delete, then add".
+		 */
+		RDEBUG2("%s :=", current->lhs.vpt->name);
+		goto done;
 	}
 
 	/*
@@ -629,11 +637,6 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 	if (current->lhs.create) {
 		fr_dict_attr_t const *da = tmpl_attr_tail_da(current->lhs.vpt);
 		fr_pair_t *vp;
-
-		if (!box) {
-			RDEBUG2("%s %s ...", current->lhs.vpt->name, fr_tokens[map->op]);
-			goto done;
-		}
 
 		/*
 		 *	Something went wrong creating the value, it's a failure.  Note that we fail _all_
