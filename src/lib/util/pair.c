@@ -2095,11 +2095,11 @@ bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter
  */
 bool fr_pair_immutable(fr_pair_t const *vp)
 {
-	if (fr_type_is_leaf(vp->vp_type)) return vp->data.immutable;
+	if (fr_type_is_leaf(vp->vp_type)) return vp->vp_immutable;
 
 	fr_pair_list_foreach(&vp->vp_group, child) {
 		if (fr_type_is_leaf(child->vp_type)) {
-			if (child->data.immutable) return true;
+			if (child->vp_immutable) return true;
 
 			continue;
 		}

@@ -137,6 +137,7 @@ struct value_pair_s {
 
 #define vp_type			data.type
 #define vp_tainted		data.tainted
+#define vp_immutable		data.immutable
 
 #define ATTRIBUTE_EQ(_x, _y) ((_x && _y) && (_x->da == _y->da))
 

@@ -609,7 +609,7 @@ int fr_edit_list_replace_pair_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_
 {
 	if (!fr_type_is_leaf(vp->vp_type)) return -1;
 
-	if (vp->data.immutable) {
+	if (vp->vp_immutable) {
 		fr_strerror_printf("Cannot modify immutable value for %s", vp->da->name);
 		return -1;
 	}
