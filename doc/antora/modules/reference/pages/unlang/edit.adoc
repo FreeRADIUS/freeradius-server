@@ -356,7 +356,7 @@ change the attribute _value_.
 |=====
 | Operator | Description
 | =        | Set the attribute to the contents of the _<rhs>_, if the _<attribute>_ does not exist.  If the attribute already exists, nothing is done.  If the attribute does not exist, it is created, and the contents set to the value of the _<rhs>_
-| :=       | Override the attribute with the contents with the _<rhs>_.  If the attribute already exists, its value is over-written.  If the attribute does not exist, it is created, and the contents set to thex value of the _<rhs>_
+| :=       | Delete all existing copies of the named attribute, and create a new attribute with the contents set to the value of the _<rhs>_
 | +=       | Perform addition.  The contents of the _<rhs>_ are added to the value of the _<attribute>_.
 | -=       | Perform subtraction. The contents of the _<rhs>_ are subtracted from the value of the _<attribute>_.
 | *=       | Perform multiplication.  The value of the _<attribute>_ is multiplied by the contents of the _<rhs>_.
