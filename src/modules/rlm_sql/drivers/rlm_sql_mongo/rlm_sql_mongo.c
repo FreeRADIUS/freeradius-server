@@ -312,6 +312,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *c
 	bool findandmodify = false;
 	bool find = false;
 	bool insert = false;
+	bool remove = false;
 	bool rcode;
 	char *ptr;
 	char name[256];
@@ -434,6 +435,8 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *c
 		aggregate = true;
 	} else if (strcasecmp(command, "insert") == 0) {
 		insert = true;
+	} else if (strcasecmp(command, "remove") == 0) {
+		remove = true;
 	} else {
 		ERROR("Invalid query - Unknown / unsupported Mongo command '%s'", command);
 		return RLM_SQL_QUERY_INVALID;
@@ -483,7 +486,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *c
 		bson_t bson_reply;
 		bson_value_t const *value;
 		bson_iter_t child;
-		bool upsert, remove, update;
+		bool upsert, update;
 		uint8_t const *document;
 		uint32_t document_len;
 
@@ -690,6 +693,16 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *c
 
 	} else if (insert) {
 		if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, bson, NULL, &conn->error)) goto print_error;
+
+		bson_destroy(bson);
+		mongoc_client_pool_push(conn->pool, client);
+		mongoc_collection_destroy(collection);
+		conn->num_fields = 0;
+
+		return RLM_SQL_OK;
+
+	} else if (remove) {
+		if (!mongoc_collection_remove(collection, MONGOC_REMOVE_NONE, bson, NULL, &conn->error)) goto print_error;
 
 		bson_destroy(bson);
 		mongoc_client_pool_push(conn->pool, client);
