@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/util/encode.h>
+#include <freeradius-devel/io/pair.h>
 
 /** Convert a STRUCT to one or more VPs
  *
@@ -491,7 +492,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 
 	if (!vp) {
 		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	PAIR_VERIFY(vp);
@@ -500,7 +501,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	if (parent->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
 				   fr_type_to_str(parent->type));
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	/*
@@ -539,7 +540,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	if (vp && (vp->da->parent != parent)) {
 		fr_strerror_printf("%s: struct encoding is missing previous attributes (parent %s, expecting %s)",
 				   __FUNCTION__, vp->da->parent->name, parent->name);
-		return -1;
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	key_da = NULL;
@@ -659,7 +660,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 
 				default:
 					fr_strerror_const("Invalid bit field");
-					return -1;
+					return PAIR_ENCODE_FATAL_ERROR;
 			}
 
 			offset = put_bits_dbuff(&work_dbuff, &bit_buffer, offset, child->flags.length, value);
@@ -679,7 +680,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		if (offset != 0) {
 		leftover_bits:
 			fr_strerror_const("leftover bits");
-			return -1;
+			return PAIR_ENCODE_FATAL_ERROR;
 		}
 
 		/*
@@ -720,7 +721,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			/*
 			 *	Determine the nested type and call the appropriate encoder
 			 */
-			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return -1;
+			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
 
 			do {
 				vp = fr_dcursor_next(cursor);
@@ -785,7 +786,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		 */
 		if ((vp->da->parent == key_da) &&
 		    (vp->vp_type != FR_TYPE_TLV)) {
-			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return -1;
+			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
 			(void) fr_dcursor_next(cursor);
 			goto done;
 		}
@@ -803,7 +804,7 @@ done:
 		if (!encode_cursor) {
 			fr_strerror_printf("Asked to encode child attribute %s, but we were not passed an encoding function",
 					   tlv->name);
-			return -1;
+			return PAIR_ENCODE_FATAL_ERROR;
 		}
 
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
@@ -828,7 +829,7 @@ done:
 
 			length += da_length_offset(parent);
 
-			if (length > UINT8_MAX) return -1;
+			if (length > UINT8_MAX) return PAIR_ENCODE_FATAL_ERROR;
 
 			(void) fr_dbuff_in(&hdr, (uint8_t) length);
 		} else {
@@ -836,7 +837,7 @@ done:
 
 			length += da_length_offset(parent);
 
-			if (length > UINT16_MAX) return -1;
+			if (length > UINT16_MAX) return PAIR_ENCODE_FATAL_ERROR;
 
 			(void) fr_dbuff_in(&hdr, (uint16_t) length);
 		}
