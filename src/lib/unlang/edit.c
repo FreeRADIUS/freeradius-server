@@ -365,7 +365,14 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			list = fr_pair_parent_list(vp);
 			fr_assert(list != NULL);
 
-			if (fr_pair_immutable(vp)) continue;
+			/*
+			 *	@todo - if this attribute is structural, then remove all children which aren't
+			 *	immutable.  For now, this is good enough.
+			 */
+			if (fr_pair_immutable(vp)) {
+				RWDEBUG("Not removing immitable %pP", vp);
+				continue;
+			}
 
 			if (fr_edit_list_pair_delete(current->el, list, vp) < 0) {
 				tmpl_dcursor_clear(&cc);
