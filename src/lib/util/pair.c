@@ -1704,12 +1704,46 @@ int8_t fr_pair_cmp_by_da(void const *a, void const *b)
  */
 static inline int8_t pair_cmp_by_num(void const *a, void const *b)
 {
+	int8_t rcode;
+	unsigned int i, min;
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;
+	fr_da_stack_t da_stack_a, da_stack_b;
 
 	PAIR_VERIFY(my_a);
 	PAIR_VERIFY(my_b);
 
+	fr_proto_da_stack_build(&da_stack_a, my_a->da);
+	fr_proto_da_stack_build(&da_stack_b, my_b->da);
+
+	if (da_stack_a.depth <= da_stack_b.depth) {
+		min = da_stack_a.depth;
+	} else {
+		min = da_stack_b.depth;
+	}
+
+	for (i = 0; i < min; i++) {
+		rcode = CMP(da_stack_a.da[i]->attr, da_stack_b.da[i]->attr);
+		if (rcode != 0) return rcode;
+	}
+
+	/*
+	 *	Sort attributes of similar depth together.
+	 *
+	 *	What we really want to do is to sort by entire parent da_stack.
+	 */
+	rcode = CMP(my_a->da->depth, my_b->da->depth);
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	Attributes of the same depth get sorted by their parents.
+	 */
+	rcode = CMP(my_a->da->parent->attr, my_b->da->parent->attr);
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	If the attributes have the same parent, they get sorted by number.
+	 */
 	return CMP(my_a->da->attr, my_b->da->attr);
 }
 
