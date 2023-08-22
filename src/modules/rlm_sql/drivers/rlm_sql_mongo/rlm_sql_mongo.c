@@ -277,6 +277,15 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 	return RLM_SQL_OK;
 }
 
+static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+{
+	rlm_sql_mongo_conn_t *conn = talloc_get_type_abort(handle->conn, rlm_sql_mongo_conn_t);
+
+	if (conn->result) return conn->num_rows;
+
+	return 0;
+}
+
 /*
  *	Only return the number of columns if there's an actual result.
  */
@@ -285,6 +294,25 @@ static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t con
 	rlm_sql_mongo_conn_t *conn = talloc_get_type_abort(handle->conn, rlm_sql_mongo_conn_t);
 
 	return conn->num_fields;
+}
+
+static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+{
+	rlm_sql_mongo_conn_t *conn = talloc_get_type_abort(handle->conn, rlm_sql_mongo_conn_t);
+
+	int		i = 0;
+	char const	**names;
+	bson_iter_t 	iter;
+
+	if (conn->num_fields <= 0 || !bson_iter_init(&iter, conn->result)) return RLM_SQL_ERROR;
+
+	MEM(names = talloc_array(handle, char const *, conn->num_fields));
+
+	while(bson_iter_next(&iter)) names[i++] = talloc_strdup(names, bson_iter_key(&iter));
+
+	*out = names;
+
+	return RLM_SQL_OK;
 }
 
 static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
@@ -1012,7 +1040,9 @@ rlm_sql_driver_t rlm_sql_mongo = {
 	.sql_socket_init		= sql_socket_init,
 	.sql_query				= sql_query,
 	.sql_select_query		= sql_select_query,
+	.sql_fields			= sql_fields,
 	.sql_num_fields			= sql_num_fields,
+	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_free_result		= sql_free_result,
