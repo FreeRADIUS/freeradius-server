@@ -3325,7 +3325,20 @@ bool fr_pair_matches_da(void const *item, void const *uctx)
  */
 static void pair_list_flatten(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t *from)
 {
+	bool skip = true;
 	fr_pair_t *vp, *next;
+
+	/*
+	 *	If the list is already flat, don't do anything.
+	 */
+	for (vp = fr_pair_list_head(from); vp; vp = fr_pair_list_next(from, vp)) {
+		if (fr_type_is_structural(vp->vp_type)) {
+			skip = false;
+			break;
+		}
+	}
+
+	if (skip) return;
 
 	/*
 	 *	Sort the source list before flattening it.  This is
