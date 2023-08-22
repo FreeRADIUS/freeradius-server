@@ -1277,6 +1277,9 @@ do {\
 		config->use_new_conditions = true;
 		config->flatten_after_decode = false;
 		config->flatten_before_encode = false;
+
+		config->unflatten_after_decode = false;
+		config->unflatten_before_encode = false;
 	}
 
 	/*
