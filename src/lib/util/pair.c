@@ -3325,20 +3325,7 @@ bool fr_pair_matches_da(void const *item, void const *uctx)
  */
 static void pair_list_flatten(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t *from)
 {
-	bool skip = true;
 	fr_pair_t *vp, *next;
-
-	/*
-	 *	If the list is already flat, don't do anything.
-	 */
-	for (vp = fr_pair_list_head(from); vp; vp = fr_pair_list_next(from, vp)) {
-		if (fr_type_is_structural(vp->vp_type)) {
-			skip = false;
-			break;
-		}
-	}
-
-	if (skip) return;
 
 	/*
 	 *	Sort the source list before flattening it.  This is
@@ -3407,9 +3394,27 @@ void fr_pair_flatten(fr_pair_t *vp)
 {
 	fr_pair_list_t list;
 
-	fr_pair_list_init(&list);
-
 	fr_assert(fr_type_is_structural(vp->vp_type));
+
+	/*
+	 *	Don't flatten children of a group if they're already flat.
+	 */
+	if (vp->vp_type == FR_TYPE_GROUP) {
+		bool skip = true;
+
+		/*
+		 *	If the list is already flat, don't do anything.
+		 */
+		fr_pair_list_foreach(&vp->vp_group, child) {
+			if (fr_type_is_structural(child->vp_type)) {
+				skip = false;
+				break;
+			}
+		}
+		if (skip) return;
+	}
+
+	fr_pair_list_init(&list);
 
 	/*
 	 *	Flatten to an intermediate list, so that we don't loop
