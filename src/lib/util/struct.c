@@ -538,8 +538,8 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	 *	nested attributes.
 	 */
 	if (vp && (vp->da->parent != parent)) {
-		fr_strerror_printf("%s: struct encoding is missing previous attributes (parent %s, expecting %s)",
-				   __FUNCTION__, vp->da->parent->name, parent->name);
+		fr_strerror_printf("%s: struct encoding is missing previous attributes for %s (parent %s, expecting %s)",
+				   __FUNCTION__, vp->da->name, vp->da->parent->name, parent->name);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
