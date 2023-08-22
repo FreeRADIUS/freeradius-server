@@ -3,7 +3,6 @@ AC_INIT
 AC_CONFIG_SRCDIR([base.c])
 AC_REVISION($Revision$)
 FR_INIT_LIBRARY([libfreeradius-curl], [libcurl support])
-
 AC_CONFIG_HEADERS([config.h])
 
 FR_LIBRARY_START_TESTS

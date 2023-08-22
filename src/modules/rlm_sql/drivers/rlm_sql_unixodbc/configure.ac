@@ -59,14 +59,14 @@ AC_ARG_WITH(unixodbc-dir,
 
 dnl Check for SQLConnect in -lodbc
 smart_try_dir="$unixodbc_lib_dir /usr/local/unixodbc/lib"
-FR_SMART_CHECK_LIB(odbc, SQLConnect)
+FR_SMART_CHECK_LIB(odbc, SQLConnect,[libiodbc])
 if test "x$ac_cv_lib_odbc_SQLConnect" != xyes; then
 	FR_MODULE_FAIL([libodbc])
 fi
 
 dnl Check for sql.h
 smart_try_dir="$unixodbc_include_dir /usr/local/unixodbc/include"
-FR_SMART_CHECK_INCLUDE(sql.h)
+FR_SMART_CHECK_INCLUDE(sql.h,,[libiodbc])
 if test "x$ac_cv_header_sql_h" != xyes; then
 	FR_MODULE_FAIL([sql.h])
 fi

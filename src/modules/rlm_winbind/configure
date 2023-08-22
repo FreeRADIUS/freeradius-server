@@ -3414,9 +3414,15 @@ smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
 
 
 ac_safe=`echo "wbclient.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=""
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -3624,9 +3630,15 @@ fi
 
 
 ac_safe=`echo "core/ntstatus.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=""
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -3841,11 +3853,17 @@ if test "x$ac_cv_header_wbclient_h" = "xyes" && \
 sm_lib_safe=`echo "wbclient" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "wbcCtxAuthenticateUserEx" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=""
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -3869,6 +3887,7 @@ then :
 
 		   smart_lib="-lwbclient"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -3903,6 +3922,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lwbclient"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -3937,6 +3957,7 @@ then :
 
 		   smart_lib="-lwbclient"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -3956,6 +3977,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
 	if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"; then

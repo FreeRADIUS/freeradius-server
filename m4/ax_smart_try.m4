@@ -40,6 +40,15 @@ sm_lib_safe=`echo "$1" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "$2" | sed 'y%./+-%__p_%'`
 
 dnl #
+dnl #  Optional name to set the package, i.e. subdir we're searching in
+dnl #
+if test "x$3" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg="$3"
+fi
+
+dnl #
 dnl #  We pass all arguments for linker testing in CCPFLAGS as these
 dnl #  will be passed to the compiler (then linker) first.
 dnl #
@@ -54,7 +63,7 @@ old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 dnl #
 dnl #  Try first any user-specified directory, otherwise we may pick up
@@ -137,10 +146,18 @@ dnl #
 AC_DEFUN([FR_SMART_CHECK_INCLUDE], [
 
 ac_safe=`echo "$1" | sed 'y%./+-%__pm%'`
+
+dnl #
+dnl #  Optional name to set the package, i.e. subdir we're searching in
+dnl #
+if test "x$3" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg="$3"
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-dnl #  The default directories we search in (in addition to the compilers search path)
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 dnl #  Our local versions
 _smart_try_dir=

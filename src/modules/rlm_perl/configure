@@ -3550,9 +3550,15 @@ printf "%s\n" "$as_me: Sanitized ldopts are \"${mod_ldflags}\"" >&6;}
 
 
 ac_safe=`echo "EXTERN.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=""
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -3752,9 +3758,15 @@ fail="$fail EXTERN.h"
 
 
 ac_safe=`echo "perl.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=""
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=

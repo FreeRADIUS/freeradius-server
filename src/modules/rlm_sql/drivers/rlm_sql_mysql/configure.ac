@@ -138,7 +138,7 @@ fi
 dnl # Check for libmysqlclient_r
 if test "x$have_a_libmysqlclient" != "xyes"; then
 	smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql"
-	FR_SMART_CHECK_LIB(mysqlclient_r, mysql_init)
+	FR_SMART_CHECK_LIB(mysqlclient_r, mysql_init, [mysql-client])
 	if test "x$ac_cv_lib_mysqlclient_r_mysql_init" = "xyes"; then
 		have_a_libmysqlclient='yes'
 	fi
@@ -147,7 +147,7 @@ fi
 dnl # Check for libmysqlclient
 if test "x$have_a_libmysqlclient" != "xyes"; then
 	smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql"
-	FR_SMART_CHECK_LIB(mysqlclient, mysql_init)
+	FR_SMART_CHECK_LIB(mysqlclient, mysql_init, [mysql-client])
 	if test "x$ac_cv_lib_mysqlclient_mysql_init" = "xyes"; then
 		have_a_libmysqlclient='yes'
 	fi
@@ -191,7 +191,7 @@ fi
 
 if test "x$have_mysql_h" != "xyes"; then
 	smart_try_dir="$mysql_include_dir /usr/local/include /usr/local/mysql/include"
-	FR_SMART_CHECK_INCLUDE(mysql/mysql.h)
+	FR_SMART_CHECK_INCLUDE(mysql/mysql.h,,[mysql-client])
 	if test "x$ac_cv_header_mysql_mysql_h" = "xyes"; then
 		AC_DEFINE(HAVE_MYSQL_MYSQL_H, [], [Define if you have <mysql/mysql.h>])
 	else

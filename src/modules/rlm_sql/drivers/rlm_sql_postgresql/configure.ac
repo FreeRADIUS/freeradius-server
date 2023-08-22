@@ -44,7 +44,7 @@ AC_ARG_WITH(rlm-sql-postgresql-include-dir,
 	esac])
 
 smart_try_dir="$rlm_sql_postgresql_include_dir /usr/include/postgresql /usr/local/pgsql/include /usr/include/pgsql"
-FR_SMART_CHECK_INCLUDE(libpq-fe.h)
+FR_SMART_CHECK_INCLUDE(libpq-fe.h,,[libpq])
 if test "x$ac_cv_header_libpqmfe_h" != "xyes"; then
 	FR_MODULE_FAIL([libpq-fe.h])
 else
@@ -93,7 +93,7 @@ else
 fi
 
 smart_try_dir="$rlm_sql_postgresql_lib_dir /usr/lib /usr/local/pgsql/lib"
-FR_SMART_CHECK_LIB(pq, PQconnectdb)
+FR_SMART_CHECK_LIB(pq, PQconnectdb,[libpq])
 if test "x$ac_cv_lib_pq_PQconnectdb" != "xyes"; then
 	FR_MODULE_FAIL([libpq])
 fi

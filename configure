@@ -8423,11 +8423,17 @@ smart_try_dir="$talloc_lib_dir"
 sm_lib_safe=`echo "talloc" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "_talloc" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -8577,11 +8583,17 @@ if test "x$ac_cv_func_kqueue" != "xyes"; then
 sm_lib_safe=`echo "kqueue" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "kqueue" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -8735,11 +8747,17 @@ if test "x$WITH_PCAP" = xyes; then
 sm_lib_safe=`echo "pcap" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "pcap_open_live" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -8916,11 +8934,17 @@ if test "x$WITH_COLLECTDCLIENT" = xyes; then
 sm_lib_safe=`echo "collectdclient" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "lcc_connect" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -9071,11 +9095,17 @@ if test "x$WITH_LIBCAP" = xyes; then
 sm_lib_safe=`echo "cap" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "cap_get_proc" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -9210,11 +9240,17 @@ if test "x$WITH_GPERFTOOLS" = xyes; then
 sm_lib_safe=`echo "profiler" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "ProfilerStart" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -9348,11 +9384,17 @@ if test "x$WITH_SYSTEMD" = xyes; then
 sm_lib_safe=`echo "systemd" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "sd_notify" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -9493,11 +9535,17 @@ else
 sm_lib_safe=`echo "systemd" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "sd_watchdog_enabled" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -9761,9 +9809,15 @@ smart_try_dir="$talloc_include_dir"
 
 
 ac_safe=`echo "talloc.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -9964,9 +10018,15 @@ smart_try_dir="${kqueue_include_dir:-/usr/include/kqueue}"
 
 
 ac_safe=`echo "sys/event.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -10185,11 +10245,17 @@ if test "x$WITH_OPENSSL" = xyes; then
 sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "DH_new" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -10319,11 +10385,17 @@ printf "%s\n" "#define HAVE_LIBCRYPTO 1" >>confdefs.h
 sm_lib_safe=`echo "ssl" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "SSL_new" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -10469,9 +10541,15 @@ See \`config.log' for more details" "$LINENO" 5; }
 
 
 ac_safe=`echo "openssl/ssl.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -10795,9 +10873,15 @@ else
 
 
 ac_safe=`echo "pcap.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -11008,9 +11092,15 @@ else
 
 
 ac_safe=`echo "collectd/client.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -11221,9 +11311,15 @@ else
 
 
 ac_safe=`echo "sys/capability.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -11432,9 +11528,15 @@ else
 
 
 ac_safe=`echo "gperftools/profiler.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -11645,9 +11747,15 @@ else
 
 
 ac_safe=`echo "systemd/sd-daemon.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -11854,9 +11962,15 @@ smart_try_dir="$gnumake_include_dir"
 
 
 ac_safe=`echo "gnumake.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -14092,9 +14206,15 @@ smart_try_dir=$execinfo_include_dir
 
 
 ac_safe=`echo "execinfo.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -14325,11 +14445,17 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
 sm_lib_safe=`echo "execinfo" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "backtrace_symbols" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -14462,9 +14588,15 @@ if test "x$WITH_REGEX" != "xno" && test "x$WITH_PCRE" != "xno"; then
 
 
 ac_safe=`echo "pcre2.h" | sed 'y%./+-%__pm%'`
+
+if test "x#define PCRE2_CODE_UNIT_WIDTH (8)" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "#define PCRE2_CODE_UNIT_WIDTH (8)" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -14662,11 +14794,17 @@ smart_prefix=
 sm_lib_safe=`echo "pcre2-8" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "pcre2_compile_8" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -14798,9 +14936,15 @@ printf "%s\n" "#define HAVE_BINSAFE_REGEX 1" >>confdefs.h
 
 
 ac_safe=`echo "pcre.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -14998,11 +15142,17 @@ smart_prefix=
 sm_lib_safe=`echo "pcre" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "pcre_compile" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__p_%'`
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /opt/homebrew/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -15199,9 +15349,15 @@ if test "x$REGEX" = "x"; then
 
 
 ac_safe=`echo "regex.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=`echo "" | sed 'y%./+-%__pm%'`
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include /opt/homebrew/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=

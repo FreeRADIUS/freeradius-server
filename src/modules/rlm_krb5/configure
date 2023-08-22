@@ -3564,9 +3564,15 @@ else
 
 
 ac_safe=`echo "krb5.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=""
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -3770,11 +3776,17 @@ fail="$fail krb5.h"
 sm_lib_safe=`echo "k5crypto" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_encrypt_data" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=""
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -3798,6 +3810,7 @@ then :
 
 		   smart_lib="-lk5crypto"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -3832,6 +3845,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lk5crypto"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -3866,6 +3880,7 @@ then :
 
 		   smart_lib="-lk5crypto"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -3885,6 +3900,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
 	if test "x$ac_cv_lib_k5crypto_krb5_encrypt_data" = xyes; then
@@ -3897,11 +3913,17 @@ fi
 sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "DH_new" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=""
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -3925,6 +3947,7 @@ then :
 
 		   smart_lib="-lcrypto"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -3959,6 +3982,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lcrypto"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -3993,6 +4017,7 @@ then :
 
 		   smart_lib="-lcrypto"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -4012,6 +4037,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
 		if test "x$ac_cv_lib_crypto_DH_new" = xyes; then
@@ -4029,11 +4055,17 @@ printf "%s\n" "$as_me: WARNING: neither krb5 'k5crypto' nor 'crypto' libraries a
 sm_lib_safe=`echo "com_err" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "set_com_err_hook" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=""
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -4057,6 +4089,7 @@ then :
 
 		   smart_lib="-lcom_err"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -4091,6 +4124,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lcom_err"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -4125,6 +4159,7 @@ then :
 
 		   smart_lib="-lcom_err"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -4144,6 +4179,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
 	if test "x$ac_cv_lib_com_err_set_com_err_hook" != xyes; then
@@ -4156,11 +4192,17 @@ printf "%s\n" "$as_me: WARNING: the comm_err library isn't found!" >&2;}
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_verify_user_opt" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=""
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -4184,6 +4226,7 @@ then :
 
 		   smart_lib="-lkrb5"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -4218,6 +4261,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lkrb5"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -4252,6 +4296,7 @@ then :
 
 		   smart_lib="-lkrb5"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -4271,6 +4316,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
 	if test "x$ac_cv_lib_krb5_krb5_verify_user_opt" = xyes; then
@@ -4283,11 +4329,17 @@ fi
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_get_init_creds_password" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=""
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -4311,6 +4363,7 @@ then :
 
 		   smart_lib="-lkrb5"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -4345,6 +4398,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lkrb5"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -4379,6 +4433,7 @@ then :
 
 		   smart_lib="-lkrb5"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -4398,6 +4453,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
 		if test "x$ac_cv_lib_krb5_krb5_get_init_creds_password" != xyes; then
@@ -4449,11 +4505,17 @@ if test "$krb5threadsafe" != "no"; then
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_is_thread_safe" | sed 'y%./+-%__p_%'`
 
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=""
+fi
+
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
 smart_lib=
 smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib"
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
@@ -4477,6 +4539,7 @@ then :
 
 		   smart_lib="-lkrb5"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -4511,6 +4574,7 @@ if ac_fn_c_try_link "$LINENO"
 then :
 
 	           smart_lib="-lkrb5"
+	           smart_ld_found=""
 	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
@@ -4545,6 +4609,7 @@ then :
 
 		   smart_lib="-lkrb5"
 		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
 		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 		   break
@@ -4564,6 +4629,7 @@ if test "x$smart_lib" != "x"; then
 eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
 LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
 fi
 
 	if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" = xyes; then
@@ -4603,9 +4669,15 @@ if test "$krb5_api_type" = "mit"; then
 
 
 ac_safe=`echo "com_err.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=""
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
@@ -4800,9 +4872,15 @@ smart_prefix=
 
 
 ac_safe=`echo "et/com_err.h" | sed 'y%./+-%__pm%'`
+
+if test "x" = "x"; then
+  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
+else
+  sm_pkg=""
+fi
+
 old_CPPFLAGS="$CPPFLAGS"
-smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
 
 _smart_try_dir=
 _smart_include_dir=
