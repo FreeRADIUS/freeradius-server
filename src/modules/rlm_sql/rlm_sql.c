@@ -1111,7 +1111,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			goto error;
 		}
 
-		if (cf_section_name2(conf)) {
+		if (inst->config.group_attribute) {
+			group_attribute = inst->config.group_attribute;
+		} else if (cf_section_name2(conf)) {
 			snprintf(buffer, sizeof(buffer), "%s.group", mctx->inst->name);
 			group_attribute = buffer;
 		} else {
