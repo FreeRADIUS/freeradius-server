@@ -130,7 +130,6 @@ including syslog, flat files, and raw UDP/TCP sockets.
 | xref:mods-available/escape.adoc[escape]	| Escapes and unescapes strings using the MIME escape format
 | xref:mods-available/idn.adoc[idn]	| Converts internationalized domain names to ASCII.
 | xref:mods-available/json.adoc[json]	| Parses JSON strings into an in memory format using the json-c library.
-| xref:mods-available/logintime.adoc[logintime]	| Enforces the time span during which a user may login to the system.
 | xref:mods-available/sometimes.adoc[sometimes]	| Is a hashing and distribution protocol, that will sometimes return one code or another depending on the input value
 configured.
 | xref:mods-available/sqlcounter.adoc[sqlcounter]	| Records statistics for users such as data transfer and session time, and prevent further logins when limits are reached.

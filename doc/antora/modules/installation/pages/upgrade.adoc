@@ -954,6 +954,14 @@ It is difficult to maintain multiple implementations of the same
 functionality. As a result, we have simplified the server by removing
 duplicate functionality.
 
+== rlm_logintime
+
+This module was poorly documented, and it appears that no one was using it.
+
+The attributes `Time-Of-Day`, `Login-Time`, and `Current-Time` have
+also been removed.  Any configuration which tries to use them will
+result in an error.
+
 == Deleted Functionality
 
 The `Response-Packet-Type` attribute has been removed.  Please replace

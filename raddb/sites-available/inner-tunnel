@@ -138,7 +138,6 @@ recv Access-Request {
 #	daily
 
 	expiration
-	logintime
 
 	#
 	#  If no other module has claimed responsibility for

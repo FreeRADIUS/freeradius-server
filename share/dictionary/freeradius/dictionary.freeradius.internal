@@ -1,4 +1,4 @@
-# -*- text -*-
+	# -*- text -*-
 # Copyright (C) 2022 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
@@ -148,9 +148,8 @@ ATTRIBUTE	Client-Shortname			1011	string virtual
 ATTRIBUTE	User-Category				1013	string
 
 ATTRIBUTE	Pam-Auth				1014	string
-ATTRIBUTE	Login-Time				1015	string
+# 1015 was Current-Time
 
-ATTRIBUTE	Current-Time				1016	string
 ATTRIBUTE	Realm					1017	string
 # 1018 was No-Such-Attribute
 
@@ -174,7 +173,7 @@ ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1041	bool
 ATTRIBUTE	NTLM-User-Name				1042	string
 ATTRIBUTE	MS-CHAP-User-Name			1043	string
 
-ATTRIBUTE	Time-Of-Day				1089	string
+# 1089 was Time-Of-Day
 
 ATTRIBUTE	SQL-Table-Name				1110	string
 ATTRIBUTE	Home-Server-Pool			1111	string

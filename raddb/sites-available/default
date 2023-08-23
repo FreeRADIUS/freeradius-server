@@ -822,13 +822,6 @@ recv Access-Request {
 	expiration
 
 	#
-	#  Look at the `Login-Time` attribute and reject if the user
-	#  is not allowed access at the present time. Otherwise,
-	#  set `Session-Timeout` to the end of the permitted time span.
-	#
-	logintime
-
-	#
 	#  The `pap` module will set `Auth-Type := PAP` if the
 	#  packet contains a `User-Password` attribute.  The module
 	#  does this only if the `Auth-Type` attribute has not already

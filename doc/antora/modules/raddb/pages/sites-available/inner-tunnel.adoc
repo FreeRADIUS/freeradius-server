@@ -272,7 +272,6 @@ recv Access-Request {
 	-ldap
 #	daily
 	expiration
-	logintime
 	pap
 }
 authenticate pap {

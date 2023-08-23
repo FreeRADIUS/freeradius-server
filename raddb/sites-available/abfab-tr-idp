@@ -67,11 +67,6 @@ server abfab-idp {
 		#  .Please see the `mods-available/expiration` for full documentation.
 		#
 		expiration
-
-		#
-		#  .Please see the `mods-available/logintime` for full documentation.
-		#
-		logintime
 	}
 
 	#

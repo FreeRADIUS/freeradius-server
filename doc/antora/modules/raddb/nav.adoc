@@ -40,7 +40,6 @@
 *** xref:mods-available/krb5.adoc[Kerberos Module]
 *** xref:mods-available/ldap.adoc[LDAP (Lightweight Directory Access Protocol) Module]
 *** xref:mods-available/linelog.adoc[Linelog Module]
-*** xref:mods-available/logintime.adoc[Login time Module]
 *** xref:mods-available/logtee.adoc[Logtee Module]
 *** xref:mods-available/lua.adoc[Lua Module]
 *** xref:mods-available/mac2ip.adoc[Mac2IP Module]

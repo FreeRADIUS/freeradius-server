@@ -44,7 +44,7 @@ There are many "commented out" references to modules and
 configurations These references serve as place-holders, and as
 documentation.  If you need the functionality of that module, then:
 
-  * configure the module in link:../mods-available/index.adoc[mods-available/]
+  * configure the module in link:../../../../../../mods-available/index.adoc[mods-available/]
   * enable the module in `mods-enabled`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
   *  uncomment the references to it in this file.
 
@@ -606,7 +606,7 @@ The `auth_log` module will write all `link:https://freeradius.org/rfc/rfc2865.ht
 
 Uncomment the next bit in order to have a log of
 authentication requests.  For more information, see
-link:../mods-available/detail.log.adoc[mods-available/detail.log].
+link:../../../../../../mods-available/detail.log.adoc[mods-available/detail.log].
 
 
 
@@ -710,12 +710,6 @@ is a variant of the `counter` module.
 See if the account has expired: check the time in the
 `Expiration` attribute and reject if we are past it.
 If the account has not expired, set `link:https://freeradius.org/rfc/rfc2865.html#Session-Timeout[Session-Timeout]`.
-
-
-
-Look at the `Login-Time` attribute and reject if the user
-is not allowed access at the present time. Otherwise,
-set `link:https://freeradius.org/rfc/rfc2865.html#Session-Timeout[Session-Timeout]` to the end of the permitted time span.
 
 
 
@@ -871,7 +865,7 @@ can be configured.
 
 The `Auth-Type` attribute would need to be set to
 `proxy-example.com`.  The home servers MUST be defined in
-link:../mods-available/radius.adoc[mods-available/radius].
+link:../../../../../../mods-available/radius.adoc[mods-available/radius].
 
 
 
@@ -930,7 +924,7 @@ Access-Accept. Uncomment the line below if
 
 If you want to have a log of authentication replies,
 uncomment the following line. This is defined in
-link:../mods-available/detail.log.adoc[mods-available/detail.log].
+link:../../../../../../mods-available/detail.log.adoc[mods-available/detail.log].
 
 
 
@@ -964,7 +958,7 @@ calculations, e.g.
 You may want to delete the `MS-MPPE-*-Keys` from the
 reply, as some WiMAX clients behave badly when those
 attributes are included. See the configuration entry
-`delete_mppe_keys` in link:../mods-available/wimax.adoc[mods-available/wimax] for
+`delete_mppe_keys` in link:../../../../../../mods-available/wimax.adoc[mods-available/wimax] for
 more information.
 
 
@@ -1199,7 +1193,7 @@ pool of IPs are used.
 
 Log traffic to an SQL database.
 
-See "Accounting Queries" in link:../mods-available/sql.adoc[mods-available/sql].
+See "Accounting Queries" in link:../../../../../../mods-available/sql.adoc[mods-available/sql].
 
 
 
@@ -1333,7 +1327,6 @@ recv Access-Request {
 	-ldap
 #	dailycounter
 	expiration
-	logintime
 	pap
 }
 recv Status-Server {

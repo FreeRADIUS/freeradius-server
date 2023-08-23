@@ -53,11 +53,7 @@ For EAP requests.
 
 
 
-.Please see the link:../mods-available/expiration.adoc[mods-available/expiration] for full documentation.
-
-
-
-.Please see the link:../mods-available/logintime.adoc[mods-available/logintime] for full documentation.
+.Please see the link:../../../../../../mods-available/expiration.adoc[mods-available/expiration] for full documentation.
 
 
 
@@ -157,7 +153,6 @@ server abfab-idp {
 			ok = return
 		}
 		expiration
-		logintime
 	}
 	authenticate eap {
 		eap
