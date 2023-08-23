@@ -1122,6 +1122,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		 *	Define the new %{sql.group:name} xlat
 		 */
 		xlat = xlat_func_register_module(inst, mctx, group_attribute, sql_group_xlat, FR_TYPE_BOOL);
+		if (!xlat) {
+			PERROR("Failed registering %s expansion", group_attribute);
+			return -1;
+		}
 
 		/*
 		 *	The xlat escape function needs access to inst - so
@@ -1142,6 +1146,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	Register the SQL xlat function
 	 */
 	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
+	if (!xlat) {
+		PERROR("Failed registering %s expansion", mctx->inst->name);
+		return -1;
+	}
 
 	/*
 	 *	The xlat escape function needs access to inst - so
