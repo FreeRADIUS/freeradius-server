@@ -54,32 +54,20 @@ else {
 #
 #  Test paircmp group comparisons
 #
-if (!%{sql.group:groups_group_a}) {
-	test_pass
-}
-else {
+if (%{sql.group:groups_group_a} != false) {
 	test_fail
 }
 
-if (%{sql.group:groups_group_b}) {
-	test_pass
-}
-else {
+if (%{sql.group:groups_group_b} != true) {
 	test_fail
 }
 
-if (%{sql.group:groups_group_c}) {
-	test_pass
-}
-else {
+if (%{sql.group:groups_group_c} != true) {
 	test_fail
 }
 
 # Non-existent group
-if (!%{sql.group:groups_group_d}) {
-	test_pass
-}
-else {
+if (%{sql.group:groups_group_d} != false) {
 	test_fail
 }
 
@@ -88,9 +76,8 @@ else {
 #
 &Tmp-String-0 := 'groups_group_b'
 
-if (%{sql.group:%{Tmp-String-0}}) {
-	test_pass
-}
-else {
+if !(%{sql.group:%{Tmp-String-0}} == yes) {
 	test_fail
 }
+
+test_pass
