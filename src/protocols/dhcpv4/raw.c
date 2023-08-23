@@ -166,7 +166,7 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer,
  *
  *	FIXME: split this into two, recv_raw_packet, and verify(packet, original)
  */
-fr_radius_packet_t *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_layer,
+fr_radius_packet_t *fr_dhcpv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_layer,
 					     fr_radius_packet_t *request, fr_pair_list_t *list)
 {
 	fr_pair_t		*vp;
