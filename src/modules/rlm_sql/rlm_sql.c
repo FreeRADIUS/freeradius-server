@@ -767,6 +767,49 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 	return num_groups;
 }
 
+/** Check if a given group is in the SQL group for this user.
+ *
+ */
+static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *request, char const *name)
+{
+	bool rcode = false;
+	rlm_sql_handle_t	*handle;
+	rlm_sql_grouplist_t	*head, *entry;
+
+	/*
+	 *	Set, escape, and check the user attr here
+	 */
+	if (sql_set_user(inst, request, NULL) < 0)
+		return 1;
+
+	/*
+	 *	Get a socket for this lookup
+	 */
+	handle = fr_pool_connection_get(inst->pool, request);
+	if (!handle) return false;
+
+	/*
+	 *	Get the list of groups this user is a member of
+	 */
+	if (sql_get_grouplist(inst, &handle, request, &head) < 0) {
+		REDEBUG("Error getting group membership");
+		fr_pool_connection_release(inst->pool, request, handle);
+		return false;
+	}
+
+	for (entry = head; entry != NULL; entry = entry->next) {
+		if (strcmp(entry->name, name) == 0) {
+			rcode = true;
+			break;
+		}
+	}
+
+	/* Free the grouplist */
+	talloc_free(head);
+	fr_pool_connection_release(inst->pool, request, handle);
+
+	return rcode;
+}
 
 /*
  * sql groupcmp function. That way we can do group comparisons (in the users file for example)
@@ -778,9 +821,7 @@ static int sql_groupcmp(void *instance, request_t *request, fr_pair_t const *che
 
 static int sql_groupcmp(void *instance, request_t *request, fr_pair_t const *check)
 {
-	rlm_sql_handle_t	*handle;
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(instance, rlm_sql_t);
-	rlm_sql_grouplist_t	*head, *entry;
 
 	/*
 	 *	No group queries, don't do group comparisons.
@@ -797,45 +838,13 @@ static int sql_groupcmp(void *instance, request_t *request, fr_pair_t const *che
 		return 1;
 	}
 
-	/*
-	 *	Set, escape, and check the user attr here
-	 */
-	if (sql_set_user(inst, request, NULL) < 0)
-		return 1;
-
-	/*
-	 *	Get a socket for this lookup
-	 */
-	handle = fr_pool_connection_get(inst->pool, request);
-	if (!handle) {
-		return 1;
+	if (sql_check_group(inst, request, check->vp_strvalue)) {
+		RDEBUG2("sql_groupcmp finished: User is a member of group %s",
+			check->vp_strvalue);
+		return 0;
 	}
-
-	/*
-	 *	Get the list of groups this user is a member of
-	 */
-	if (sql_get_grouplist(inst, &handle, request, &head) < 0) {
-		REDEBUG("Error getting group membership");
-		fr_pool_connection_release(inst->pool, request, handle);
-		return 1;
-	}
-
-	for (entry = head; entry != NULL; entry = entry->next) {
-		if (strcmp(entry->name, check->vp_strvalue) == 0){
-			RDEBUG2("sql_groupcmp finished: User is a member of group %s",
-			       check->vp_strvalue);
-			talloc_free(head);
-			fr_pool_connection_release(inst->pool, request, handle);
-			return 0;
-		}
-	}
-
-	/* Free the grouplist */
-	talloc_free(head);
-	fr_pool_connection_release(inst->pool, request, handle);
 
 	RDEBUG2("sql_groupcmp finished: User is NOT a member of group %pV", &check->data);
-
 	return 1;
 }
 
