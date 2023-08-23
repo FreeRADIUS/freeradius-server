@@ -603,7 +603,6 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		RPEDEBUG("Parsing LDAP URL failed - %s", fr_ldap_url_err_to_str(ldap_url_ret));
 	error:
 		ldap_free_urldesc(ldap_url);
-		talloc_free(query);
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -613,13 +612,14 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	if (!ldap_url->lud_attrs || !ldap_url->lud_attrs[0] || !*ldap_url->lud_attrs[0] ||
 	    (strcmp(ldap_url->lud_attrs[0], "*") == 0) || ldap_url->lud_attrs[1]) {
 		REDEBUG("Bad attributes list in LDAP URL. URL must specify exactly one attribute to retrieve");
-
 		goto error;
 	}
 
 	query = fr_ldap_search_alloc(unlang_interpret_frame_talloc_ctx(request),
 				     ldap_url->lud_dn, ldap_url->lud_scope, ldap_url->lud_filter,
 				     (char const * const*)ldap_url->lud_attrs, NULL, NULL);
+	query->ldap_url = ldap_url;	/* query destructor will free URL */
+
 	if (ldap_url->lud_exts) {
 		LDAPControl	*serverctrls[LDAP_MAX_CONTROLS];
 		int		i;
@@ -627,7 +627,9 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		if (fr_ldap_parse_url_extensions(serverctrls, NUM_ELEMENTS(serverctrls),
 						 query->ldap_url->lud_exts) < 0) {
 			RPERROR("Parsing URL extensions failed");
-			goto error;
+		query_error:
+			talloc_free(query);
+			return XLAT_ACTION_FAIL;
 		}
 
 		for (i = 0; i < LDAP_MAX_CONTROLS; i++) {
@@ -651,10 +653,9 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 					  handle_config->admin_password, request, handle_config);
 	if (!ttrunk) {
 		REDEBUG("Unable to get LDAP query for xlat");
-		goto error;
+		goto query_error;
 	}
 
-	query->ldap_url = ldap_url;	/* query destructor will free URL */
 
 	fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL);
 
@@ -662,7 +663,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			      ldap_query_timeout, query->treq) < 0) {
 		REDEBUG("Unable to set timeout for LDAP query");
 		fr_trunk_request_signal_cancel(query->treq);
-		goto error;
+		goto query_error;
 	}
 
 	return unlang_xlat_yield(request, ldap_xlat_resume, ldap_xlat_signal, ~FR_SIGNAL_CANCEL, query);
