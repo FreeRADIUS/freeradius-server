@@ -278,7 +278,7 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 			/* There is something to read on our socket */
 
 #ifdef HAVE_LINUX_IF_PACKET_H
-			reply = fr_dhcv4_raw_packet_recv(lsockfd, p_ll, request, request_list);
+			reply = fr_dhcpv4_raw_packet_recv(lsockfd, p_ll, request, request_list);
 #else
 #  ifdef HAVE_LIBPCAP
 			reply = fr_dhcpv4_pcap_recv(pcap);
