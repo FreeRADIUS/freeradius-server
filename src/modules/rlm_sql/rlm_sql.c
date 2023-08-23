@@ -131,6 +131,7 @@ static fr_dict_attr_t const *attr_fall_through;
 static fr_dict_attr_t const *attr_sql_user_name;
 static fr_dict_attr_t const *attr_user_profile;
 static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_expr_bool_enum;
 
 extern fr_dict_attr_autoload_t rlm_sql_dict_attr[];
 fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
@@ -138,6 +139,7 @@ fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
 	{ .out = &attr_sql_user_name, .name = "SQL-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_user_profile, .name = "User-Profile", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ NULL }
 };
 
@@ -779,14 +781,18 @@ static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *r
 	/*
 	 *	Set, escape, and check the user attr here
 	 */
-	if (sql_set_user(inst, request, NULL) < 0)
-		return 1;
+	if (sql_set_user(inst, request, NULL) < 0) {
+		return false;
+	}
 
 	/*
 	 *	Get a socket for this lookup
 	 */
 	handle = fr_pool_connection_get(inst->pool, request);
-	if (!handle) return false;
+	if (!handle) {
+		REDEBUG("Failed getting connection handle");
+		return false;
+	}
 
 	/*
 	 *	Get the list of groups this user is a member of
@@ -847,6 +853,34 @@ static int sql_groupcmp(void *instance, request_t *request, fr_pair_t const *che
 	RDEBUG2("sql_groupcmp finished: User is NOT a member of group %pV", &check->data);
 	return 1;
 }
+
+/** Check if the user is a member of a particular group
+ *
+@verbatim
+%{sql.group:<name>}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t sql_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+			      xlat_ctx_t const *xctx,
+			      request_t *request, fr_value_box_list_t *in)
+{
+	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_sql_t);
+	fr_value_box_t		*arg = fr_value_box_list_head(in);
+	char const		*p = arg->vb_strvalue;
+	fr_value_box_t		*vb;
+
+	fr_skip_whitespace(p);
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
+	vb->vb_bool = sql_check_group(inst, request, p);
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+
 
 static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 					      rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
@@ -1076,6 +1110,32 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			PERROR("Failed resolving group attribute");
 			goto error;
 		}
+
+		if (cf_section_name2(conf)) {
+			snprintf(buffer, sizeof(buffer), "%s.group", mctx->inst->name);
+			group_attribute = buffer;
+		} else {
+			group_attribute = "sql.group";
+		}
+
+		/*
+		 *	Define the new %{sql.group:name} xlat
+		 */
+		xlat = xlat_func_register_module(inst, mctx, group_attribute, sql_group_xlat, FR_TYPE_BOOL);
+
+		/*
+		 *	The xlat escape function needs access to inst - so
+		 *	argument parser details need to be defined here
+		 */
+		sql_xlat_arg = talloc_zero_array(inst, xlat_arg_parser_t, 2);
+		sql_xlat_arg[0].type = FR_TYPE_STRING;
+		sql_xlat_arg[0].required = true;
+		sql_xlat_arg[0].concat = true;
+		sql_xlat_arg[0].func = NULL; /* no escaping, we do strcmp() on it */
+		sql_xlat_arg[0].uctx = inst;
+		sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
+
+		xlat_func_mono_set(xlat, sql_xlat_arg);
 	}
 
 	/*
