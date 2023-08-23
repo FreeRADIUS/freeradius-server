@@ -118,7 +118,7 @@ server default {
 	...
 	recv Access-Request {
 		ldap
-		if (%(ldap.memberof:cn=authorized_users,ou=groups,dc=example,dc=com) == 'yes') {
+		if (%(ldap.memberof:cn=authorized_users,ou=groups,dc=example,dc=com) == true) {
 			reject
 		}
 		...

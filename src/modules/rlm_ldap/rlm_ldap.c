@@ -260,6 +260,7 @@ fr_dict_attr_t const *attr_password_with_header;
 
 fr_dict_attr_t const *attr_user_password;
 fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_expr_bool_enum;
 
 extern fr_dict_attr_autoload_t rlm_ldap_dict_attr[];
 fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
@@ -272,6 +273,7 @@ fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
 
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ NULL }
 };
@@ -769,7 +771,7 @@ static xlat_action_t ldap_memberof_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *ou
 	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, ldap_memberof_xlat_ctx_t);
 	fr_value_box_t			*vb;
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
 	vb->vb_bool = xlat_ctx->found;
 	fr_dcursor_append(out, vb);
 

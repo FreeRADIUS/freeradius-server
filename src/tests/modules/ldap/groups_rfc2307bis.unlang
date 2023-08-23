@@ -6,22 +6,22 @@
 #
 #  Resolve using group name attribute
 #
-if (!(%(ldap.memberof:foo) == 'yes')) {
+if !(%(ldap.memberof:foo) == true) {
         test_fail
 }
 
-if (!(%(ldap.memberof:baz) == 'no')) {
+if !(%(ldap.memberof:baz) == false) {
         test_fail
 }
 
 #
 #  Resolve using group DN
 #
-if (!(%(ldap.memberof:cn=foo,ou=groups,dc=example,dc=com) == 'yes')) {
+if !(%(ldap.memberof:cn=foo,ou=groups,dc=example,dc=com) == true) {
         test_fail
 }
 
-if (!(%(ldap.memberof:cn=baz,ou=groups,dc=example,dc=com) == 'no')) {
+if !(%(ldap.memberof:cn=baz,ou=groups,dc=example,dc=com) == false) {
         test_fail
 }
 
