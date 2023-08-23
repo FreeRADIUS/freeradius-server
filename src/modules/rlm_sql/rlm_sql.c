@@ -854,6 +854,14 @@ static int sql_groupcmp(void *instance, request_t *request, fr_pair_t const *che
 	return 1;
 }
 
+/** Dummy escaping function for group membership xlat
+ *
+ */
+static int sql_group_xlat_escape(UNUSED request_t *request, UNUSED fr_value_box_t *vb, UNUSED void *uctx)
+{
+	return 0;
+}
+
 /** Check if the user is a member of a particular group
  *
 @verbatim
@@ -1131,7 +1139,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		sql_xlat_arg[0].type = FR_TYPE_STRING;
 		sql_xlat_arg[0].required = true;
 		sql_xlat_arg[0].concat = true;
-		sql_xlat_arg[0].func = NULL; /* no escaping, we do strcmp() on it */
+		sql_xlat_arg[0].func = sql_group_xlat_escape; /* No real escaping done - we do strcmp() on it */
 		sql_xlat_arg[0].uctx = inst;
 		sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
 
