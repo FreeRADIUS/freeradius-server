@@ -199,6 +199,16 @@ endif
 endif
 
 #
+#  Conf files get converted to Asciidoc via our own magic script.
+#
+doc/antora/modules/raddb/pages/%.adoc: raddb/%
+	@echo ADOC $^
+	${Q}mkdir -p $(dir $@)
+	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
+	${Q}./scripts/asciidoc/conf2adoc -t -a ${top_srcdir}/asciidoc -o $@ < $^
+
+
+#
 #  antora rebuilds the entire documentation site on each run
 #  so we need to pick a single file to compare dependency
 #  timestamps against.
