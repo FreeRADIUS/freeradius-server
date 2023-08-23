@@ -465,14 +465,22 @@ static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
  */
 static void ldap_query_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
-	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
-	fr_ldap_query_t		*query = talloc_get_type_abort(treq->preq, fr_ldap_query_t);
-	request_t		*request = treq->request;
+	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
+	fr_trunk_request_t	*treq;
+	request_t		*request;
+
+	/*
+	 *	If the trunk request has completed but the query
+	 *	has not yet resumed, query->treq will be NULL
+	 */
+	if (!query->treq) return;
+
+	treq = talloc_get_type_abort(query->treq, fr_trunk_request_t);
+	request = treq->request;
 
 	ROPTIONAL(RERROR, ERROR, "Timeout waiting for LDAP query");
-	if (query->msgid) {
-		fr_trunk_request_signal_cancel(query->treq);
-	}
+
+	fr_trunk_request_signal_cancel(query->treq);
 
 	query->ret = LDAP_RESULT_TIMEOUT;
 	unlang_interpret_mark_runnable(request);
@@ -531,6 +539,8 @@ static xlat_action_t ldap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 static void ldap_xlat_signal(xlat_ctx_t const *xctx, request_t *request, UNUSED fr_signal_t action)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(xctx->rctx, fr_ldap_query_t);
+
+	if (!query->treq)	return;
 
 	RDEBUG2("Forcefully cancelling pending LDAP query");
 
@@ -669,7 +679,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	}
 
 	if (fr_event_timer_in(query, unlang_interpret_event_list(request), &query->ev, handle_config->res_timeout,
-			      ldap_query_timeout, query->treq) < 0) {
+			      ldap_query_timeout, query) < 0) {
 		REDEBUG("Unable to set timeout for LDAP query");
 		fr_trunk_request_signal_cancel(query->treq);
 		goto query_error;
