@@ -167,13 +167,13 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 		"leak:load_images\n"
 		"leak:newlocale\n"
 		/* Perl >= 5.32.0 - Upstream bug, tracked by https://github.com/Perl/perl5/issues/18108 */
-		"leak:perl_construct"
+		"leak:perl_construct\n"
 		"leak:realizeClassWithoutSwift\n"
 		"leak:tzset\n"
 		"leak:tzsetwall_basic\n"
 #elif defined(__linux__)
 		"leak:*getpwnam_r*\n"			/* libc startup leak - reported by heaptrack */
-		"leak:_dl_init"				/* dl startup leak - reported by heaptrack */
+		"leak:_dl_init\n"			/* dl startup leak - reported by heaptrack */
 		"leak:initgroups\n"			/* libc startup leak - reported by heaptrack */
 		"leak:kqueue\n"
 #endif
