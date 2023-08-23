@@ -61,7 +61,7 @@ else {
 	test_fail
 }
 
-if (%{sql.roup:groups_group_b}) {
+if (%{sql.group:groups_group_b}) {
 	test_pass
 }
 else {
