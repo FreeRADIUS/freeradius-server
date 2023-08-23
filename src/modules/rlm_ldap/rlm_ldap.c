@@ -656,8 +656,15 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		goto query_error;
 	}
 
+	switch (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
+	case FR_TRUNK_ENQUEUE_OK:
+	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+		break;
 
-	fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL);
+	default:
+		REDEBUG("Unable to enqueue LDAP query for xlat");
+		goto query_error;
+	}
 
 	if (fr_event_timer_in(query, unlang_interpret_event_list(request), &query->ev, handle_config->res_timeout,
 			      ldap_query_timeout, query->treq) < 0) {
