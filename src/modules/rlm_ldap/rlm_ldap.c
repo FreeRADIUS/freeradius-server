@@ -327,7 +327,6 @@ typedef struct {
 	LDAPURLDesc		*ldap_url;
 	fr_ldap_query_t		*query;
 	fr_ldap_map_exp_t	expanded;
-	char const		*host_url;
 } ldap_map_ctx_t;
 
 static xlat_arg_parser_t const ldap_escape_xlat_arg[] = {
@@ -572,6 +571,24 @@ static xlat_arg_parser_t const ldap_xlat_arg[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
+/** Produce canonical LDAP host URI for finding trunks
+ *
+ */
+#define HOST_URI_CANONIFY(_host, _target, _url, _box, _error_target) {\
+LDAPURLDesc temp_desc = { \
+	.lud_scheme = _url->lud_scheme, \
+	.lud_host = _url->lud_host, \
+	.lud_port = _url->lud_port, \
+	.lud_scope = -1 \
+}; \
+_host = ldap_url_desc2str(&temp_desc); \
+if (!_host) { \
+	RPEDEBUG("Invalid LDAP URL - %pV", _box); \
+	goto _error_target; \
+} \
+_target = _host; \
+}
+
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
  * @ingroup xlat_functions
@@ -582,7 +599,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 {
 	fr_ldap_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
 	fr_value_box_t		*uri_components, *uri;
-	char			*host_url;
+	char			*host_url, *host = NULL;
 	fr_ldap_config_t const	*handle_config = t->config;
 	fr_ldap_thread_trunk_t	*ttrunk;
 	fr_ldap_query_t		*query = NULL;
@@ -657,12 +674,12 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	if (!ldap_url->lud_host) {
 		host_url = handle_config->server;
 	} else {
-		host_url = talloc_asprintf(query, "%s://%s:%d", ldap_url->lud_scheme,
-	                        	   ldap_url->lud_host, ldap_url->lud_port);
+		HOST_URI_CANONIFY(host, host_url, ldap_url, uri, query_error)
 	}
 
 	ttrunk = fr_thread_ldap_trunk_get(t, host_url, handle_config->admin_identity,
 					  handle_config->admin_password, request, handle_config);
+	if (host) ldap_memfree(host);
 	if (!ttrunk) {
 		REDEBUG("Unable to get LDAP query for xlat");
 		goto query_error;
@@ -1039,6 +1056,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 
 	fr_value_box_t		*url_head;
 	ldap_map_ctx_t		*map_ctx;
+	char			*host_url, *host = NULL;
 
 	if (fr_uri_escape(url, ldap_uri_parts, NULL) < 0) RETURN_MODULE_FAIL;
 
@@ -1081,14 +1099,14 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
 	 */
 	if (!ldap_url->lud_host) {
-		map_ctx->host_url = inst->handle_config.server;
+		host_url = inst->handle_config.server;
 	} else {
-		map_ctx->host_url = talloc_asprintf(map_ctx, "%s://%s:%d", ldap_url->lud_scheme,
-						    ldap_url->lud_host, ldap_url->lud_port);
+		HOST_URI_CANONIFY(host, host_url, ldap_url, url_head, fail)
 	}
 
-	ttrunk =  fr_thread_ldap_trunk_get(thread, map_ctx->host_url, inst->handle_config.admin_identity,
+	ttrunk =  fr_thread_ldap_trunk_get(thread, host_url, inst->handle_config.admin_identity,
 					   inst->handle_config.admin_password, request, &inst->handle_config);
+	if (host) ldap_memfree(host);
 	if (!ttrunk) goto fail;
 
 	if (unlang_function_push(request, NULL, mod_map_resume, NULL, 0,
