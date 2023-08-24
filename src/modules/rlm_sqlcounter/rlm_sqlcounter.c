@@ -337,7 +337,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	Add the counter to the control list
 	 */
-	MEM(pair_update_control(&vp, inst->paircmp_attr) >= 0);
+	MEM(pair_update_control(&vp, tmpl_attr_tail_da(inst->paircmp_attr)) >= 0);
 	vp->vp_uint64 = counter;
 
 	/*
