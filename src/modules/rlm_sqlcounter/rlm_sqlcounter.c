@@ -245,113 +245,18 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 
 
 /*
- *	Replace %<whatever> in a string.
- *
- *	%b	last_reset
- *	%e	reset_time
- */
-static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, UNUSED request_t *request, char const *fmt)
-{
-	int freespace;
-	char const *p;
-	char *q;
-	char tmpdt[40]; /* For temporary storing of dates */
-
-	q = out;
-	p = fmt;
-	while (*p) {
-		/* Calculate freespace in output */
-		freespace = outlen - (q - out);
-		if (freespace <= 1) {
-			return -1;
-		}
-
-		/*
-		 *	Non-% get copied as-is.
-		 */
-		if (*p != '%') {
-			*q++ = *p++;
-			continue;
-		}
-		p++;
-		if (!*p) {	/* % and then EOS --> % */
-			*q++ = '%';
-			break;
-		}
-
-		if (freespace <= 2) return -1;
-
-		/*
-		 *	We need TWO %% in a row before we do our expansions.
-		 *	If we only get one, just copy the %s as-is.
-		 */
-		if (*p != '%') {
-			*q++ = '%';
-			*q++ = *p++;
-			continue;
-		}
-		p++;
-		if (!*p) {
-			*q++ = '%';
-			*q++ = '%';
-			break;
-		}
-
-		if (freespace <= 3) return -1;
-
-		switch (*p) {
-			case 'b': /* last_reset */
-				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, fr_time_to_sec(inst->last_reset));
-				strlcpy(q, tmpdt, freespace);
-				q += strlen(q);
-				p++;
-				break;
-			case 'e': /* reset_time */
-				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, fr_time_to_sec(inst->reset_time));
-				strlcpy(q, tmpdt, freespace);
-				q += strlen(q);
-				p++;
-				break;
-
-				/*
-				 *	%%s gets copied over as-is.
-				 */
-			default:
-				*q++ = '%';
-				*q++ = '%';
-				*q++ = *p++;
-				break;
-		}
-	}
-	*q = '\0';
-
-	DEBUG2("sqlcounter_expand: '%s'", out);
-
-	return strlen(out);
-}
-
-
-/*
  *	See if the counter matches.
  */
 static int counter_cmp(void *instance, request_t *request, fr_pair_t const *check)
 {
 	rlm_sqlcounter_t const *inst = talloc_get_type_abort_const(instance, rlm_sqlcounter_t);
 	uint64_t counter;
-
-	char query[MAX_QUERY_LEN], subst[MAX_QUERY_LEN];
-	char *expanded = NULL;
 	size_t len;
-
-	/* First, expand %k, %b and %e in query */
-	if (sqlcounter_expand(subst, sizeof(subst), inst, request, inst->query) <= 0) {
-		REDEBUG("Insufficient query buffer space");
-
-		return -1;
-	}
+	char *expanded = NULL;
+	char query[MAX_QUERY_LEN];
 
 	/* Then combine that with the name of the module were using to do the query */
-	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, subst);
+	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, inst->query);
 	if (len >= sizeof(query) - 1) {
 		REDEBUG("Insufficient query buffer space");
 
@@ -366,6 +271,7 @@ static int counter_cmp(void *instance, request_t *request, fr_pair_t const *chec
 	if (sscanf(expanded, "%" PRIu64, &counter) != 1) {
 		RDEBUG2("No integer found in string \"%s\"", expanded);
 	}
+
 	talloc_free(expanded);
 
 	if (counter < check->vp_uint64) return -1;
@@ -387,11 +293,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	fr_pair_t		*reply_item;
 	char			msg[128];
 	int			ret;
-
-	char query[MAX_QUERY_LEN], subst[MAX_QUERY_LEN];
-	char *expanded = NULL;
-
 	size_t len;
+	char *expanded = NULL;
+	char query[MAX_QUERY_LEN];
 
 	/*
 	 *	Before doing anything else, see if we have to reset
@@ -423,15 +327,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	}
 	vp->vp_uint64 = fr_time_to_sec(inst->reset_time);
 
-	/* First, expand %k, %b and %e in query */
-	if (sqlcounter_expand(subst, sizeof(subst), inst, request, inst->query) <= 0) {
-		REDEBUG("Insufficient query buffer space");
-
-		RETURN_MODULE_FAIL;
-	}
-
 	/* Then combine that with the name of the module were using to do the query */
-	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, subst);
+	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, inst->query);
 	if (len >= (sizeof(query) - 1)) {
 		REDEBUG("Insufficient query buffer space");
 
@@ -614,7 +511,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
+	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->end_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining reset_end_start attribute");
 		return -1;
 	}

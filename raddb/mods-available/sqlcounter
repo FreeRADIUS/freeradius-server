@@ -107,7 +107,7 @@ sqlcounter dailycounter {
 
 #	reset_period_start_name = &control.${.:instance}-Reset-Start
 #	reset_period_end_name = &control.${.:instance}-Reset-End
-	counter_name = &Daily-Session-Time
+	counter_name = &control.Daily-Session-Time
 	check_name = &control.Max-Daily-Session
 	reply_name = &reply.Session-Timeout
 	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
