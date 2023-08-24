@@ -346,7 +346,7 @@ sql {
 	group_attribute = "${.:instance}-Group"
 
 	#
-	#  cache_groups: whether or not we cache the list of SQL groups
+	#  cache_groups:: whether or not we cache the list of SQL groups
 	#
 	#  The groups are cached in the `control` list.  So any comparisons must be done as
 	#  `&control.SQL-Group = ...`
