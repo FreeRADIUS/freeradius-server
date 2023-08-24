@@ -664,33 +664,25 @@ void fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, i
 	 *	i.e. <msg>: <error>
 	 */
 	error = fr_strerror_pop();
-	if (error) {
-		if (fmt) {
-			va_list aq;
 
-			va_copy(aq, ap);
-			fr_sbuff_in_vsprintf(&sbuff, fmt, aq);
-			va_end(aq);
+	if (!error && !fmt) return;	/* NOOP */
 
-			/* coverity[check_return] */
-			fr_sbuff_in_strcpy(&sbuff, ": ");
-			/* coverity[check_return] */
-			fr_sbuff_in_strcpy(&sbuff, error);	/* may not be talloced with const */
-			error = fr_sbuff_start(&sbuff);
-		}
-	/*
-	 *	No error, just print the fmt string
-	 */
-	} else {
+	if (fmt) {
 		va_list aq;
 
-		if (!fmt) return;	/* NOOP */
-
 		va_copy(aq, ap);
-		fr_sbuff_in_vsprintf(&sbuff, fmt, ap);
+		fr_sbuff_in_vsprintf(&sbuff, fmt, aq);
 		va_end(aq);
+	}
 
-		error = fr_sbuff_start(&sbuff);
+	if (error && (fmt || f_rules->first_prefix)) {
+		if (fmt) {
+			/* coverity[check_return] */
+			fr_sbuff_in_strcpy(&sbuff, ": ");
+		}
+		/* coverity[check_return] */
+		fr_sbuff_in_strcpy(&sbuff, error);
+		error = fr_sbuff_start(&sbuff);		/* may not be talloced with const */
 	}
 
 	/*
