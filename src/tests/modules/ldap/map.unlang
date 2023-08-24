@@ -28,4 +28,16 @@ if (!notfound) {
 	test_fail
 }
 
+map ldapldapi "ldapi://%2Ftmp%2Fldap%2Fsocket/ou=people,dc=example,dc=com??sub?(uid=John)" {
+	&Tmp-String-2 := 'displayName'
+}
+
+if (!updated) {
+	test_fail
+}
+
+if !(&Tmp-String-2 == 'John Doe') {
+	test_fail
+}
+
 test_pass

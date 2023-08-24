@@ -111,4 +111,11 @@ if (!(&Module-Failure-Message == "Maximum LDAP referral depth (2) exceeded")) {
         test_fail
 }
 
+# Use an ldapi:// connection
+&Tmp-String-4 := "%{ldapldapi:ldapi:///ou=people,dc=example,dc=com?displayName?sub?(uid=john)}"
+
+if !(&Tmp-String-4 == 'John Doe') {
+	test_fail
+}
+
 test_pass
