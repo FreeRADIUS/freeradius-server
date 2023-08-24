@@ -1048,10 +1048,8 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 		RETURN_MODULE_FAIL;
 	}
 
-	if (fr_value_box_list_concat_in_place(request,
-					      url_head, url, FR_TYPE_STRING,
-					      FR_VALUE_BOX_LIST_FREE, true,
-					      SIZE_MAX) < 0) {
+	if (fr_value_box_list_concat_in_place(url_head, url_head, url, FR_TYPE_STRING,
+					      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		REDEBUG("Failed concatenating input");
 		RETURN_MODULE_FAIL;
 	}
