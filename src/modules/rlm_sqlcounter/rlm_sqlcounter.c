@@ -60,10 +60,13 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct {
-	tmpl_t	*paircmp_attr;	//!< Daily-Session-Time.
-	tmpl_t	*limit_attr;  	//!< Max-Daily-Session.
-	tmpl_t	*reply_attr;  	//!< Session-Timeout.
-	tmpl_t	*key;  		//!< User-Name
+	tmpl_t	*start_attr;		//!< &control.${.:instance}-Start
+	tmpl_t	*end_attr;		//!< &control.${.:instance}-End
+
+	tmpl_t	*paircmp_attr;		//!< Daily-Session-Time.
+	tmpl_t	*limit_attr;  		//!< Max-Daily-Session.
+	tmpl_t	*reply_attr;  		//!< Session-Timeout.
+	tmpl_t	*key;  			//!< User-Name
 
 	char const	*sqlmod_inst;	//!< Instance of SQL module to use, usually just 'sql'.
 	char const	*query;		//!< SQL query to retrieve current session time.
@@ -81,6 +84,11 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("reset", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_sqlcounter_t, reset) },
 
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, rlm_sqlcounter_t, key), .dflt = "%{%{Stripped-User-Name}:-%{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
+
+	{ FR_CONF_OFFSET("reset_period_start_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sqlcounter_t, start_attr),
+	  .dflt = "&control.${.:instance}-Start" },
+	{ FR_CONF_OFFSET("reset_period_end_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sqlcounter_t, end_attr),
+	  .dflt = "&control.${.:instance}-End" },
 
 	/* Just used to register a paircmp against */
 	{ FR_CONF_OFFSET("counter_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_sqlcounter_t, paircmp_attr) },
@@ -241,8 +249,6 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
  *
  *	%b	last_reset
  *	%e	reset_time
- *	%S	sqlmod_inst
- *
  */
 static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, UNUSED request_t *request, char const *fmt)
 {
@@ -377,7 +383,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 {
 	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlcounter_t);
 	uint64_t		counter, res;
-	fr_pair_t		*limit;
+	fr_pair_t		*limit, *vp;
 	fr_pair_t		*reply_item;
 	char			msg[128];
 	int			ret;
@@ -401,9 +407,21 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	}
 
 	if (tmpl_find_vp(&limit, request, inst->limit_attr) < 0) {
-		RWDEBUG2("Couldn't find limit attribute, %s, doing nothing...", inst->limit_attr->name);
+		RWDEBUG2("Couldn't find %s, doing nothing...", inst->limit_attr->name);
 		RETURN_MODULE_NOOP;
 	}
+
+	if (tmpl_find_or_add_vp(&vp, request, inst->start_attr) < 0) {
+		RWDEBUG2("Couldn't find %s, doing nothing...", inst->start_attr->name);
+		RETURN_MODULE_NOOP;
+	}
+	vp->vp_uint64 = fr_time_to_sec(inst->last_reset);
+
+	if (tmpl_find_or_add_vp(&vp, request, inst->end_attr) < 0) {
+		RWDEBUG2("Couldn't find %s, doing nothing...", inst->end_attr->name);
+		RETURN_MODULE_NOOP;
+	}
+	vp->vp_uint64 = fr_time_to_sec(inst->reset_time);
 
 	/* First, expand %k, %b and %e in query */
 	if (sqlcounter_expand(subst, sizeof(subst), inst, request, inst->query) <= 0) {
@@ -437,8 +455,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	Check if check item > counter
 	 */
 	if (limit->vp_uint64 <= counter) {
-		fr_pair_t *vp;
-
 		/* User is denied access, send back a reply message */
 		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
 
@@ -593,6 +609,16 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	fr_assert(inst->limit_attr);
 
 	memset(&flags, 0, sizeof(flags));
+	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->start_attr, FR_TYPE_UINT64, &flags) < 0) {
+		cf_log_perr(conf, "Failed defining reset_period_start attribute");
+		return -1;
+	}
+
+	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
+		cf_log_perr(conf, "Failed defining reset_end_start attribute");
+		return -1;
+	}
+
 	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining counter attribute");
 		return -1;
