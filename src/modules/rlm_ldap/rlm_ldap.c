@@ -1035,8 +1035,6 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 
 	LDAPURLDesc		*ldap_url;
 	int			ldap_url_ret;
-	char const 		*url_str;
-
 	fr_ldap_thread_trunk_t	*ttrunk;
 
 	fr_value_box_t		*url_head = fr_value_box_list_head(url);
@@ -1057,9 +1055,8 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 		REDEBUG("Failed concatenating input");
 		RETURN_MODULE_FAIL;
 	}
-	url_str = url_head->vb_strvalue;
 
-	if (!ldap_is_ldap_url(url_str)) {
+	if (!ldap_is_ldap_url(url_head->vb_strvalue)) {
 		REDEBUG("Map query string does not look like a valid LDAP URI");
 		RETURN_MODULE_FAIL;
 	}
@@ -1068,7 +1065,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	talloc_set_destructor(map_ctx, map_ctx_free);
 	map_ctx->maps = maps;
 
-	ldap_url_ret = ldap_url_parse(url_str, &map_ctx->ldap_url);
+	ldap_url_ret = ldap_url_parse(url_head->vb_strvalue, &map_ctx->ldap_url);
 	if (ldap_url_ret != LDAP_URL_SUCCESS){
 		RPEDEBUG("Parsing LDAP URL failed - %s", fr_ldap_url_err_to_str(ldap_url_ret));
 	fail:
