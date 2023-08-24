@@ -1,0 +1,13 @@
+#
+#  Run the "ldap" module
+#
+ldapldapi
+
+if (!(&control.LDAP-UserDN == "uid=john,ou=people,dc=example,dc=com")) {
+        test_fail
+}
+
+# Attempt a bind authentication
+ldapldapi.authenticate
+
+test_pass
