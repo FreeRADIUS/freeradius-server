@@ -1037,12 +1037,12 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	int			ldap_url_ret;
 	fr_ldap_thread_trunk_t	*ttrunk;
 
-	fr_value_box_t		*url_head = fr_value_box_list_head(url);
+	fr_value_box_t		*url_head;
 	ldap_map_ctx_t		*map_ctx;
 
-	/*
-	 *	FIXME - Maybe it can be NULL?
-	 */
+	if (fr_uri_escape(url, ldap_uri_parts, NULL) < 0) RETURN_MODULE_FAIL;
+
+	url_head = fr_value_box_list_head(url);
 	if (!url_head) {
 		REDEBUG("LDAP URL cannot be (null)");
 		RETURN_MODULE_FAIL;
