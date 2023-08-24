@@ -1057,9 +1057,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	Register the group comparison attribute
 	 */
 	if (inst->config.groupmemb_query) {
-		char buffer[256];
-
 		char const *group_attribute;
+		fr_dict_attr_flags_t flags = {};
+		char buffer[256];
 
 		if (inst->config.group_attribute) {
 			group_attribute = inst->config.group_attribute;
@@ -1070,10 +1070,16 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			group_attribute = "SQL-Group";
 		}
 
+		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), group_attribute, -1,
+				     FR_TYPE_STRING, &flags) < 0) {
+			cf_log_perr(conf, "Failed defining group attribute");
+			return -1;
+		}
+
 		inst->group_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius, group_attribute,
 								     false, false);
 		if (!inst->group_da) {
-			PERROR("Failed resolving group attribute");
+			cf_log_perr(conf, "Failed resolving group attribute");
 			return -1;
 		}
 
@@ -1084,7 +1090,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		 */
 		xlat = xlat_func_register_module(inst, mctx, "group", sql_group_xlat, FR_TYPE_BOOL);
 		if (!xlat) {
-			PERROR("Failed registering %s expansion", group_attribute);
+			cf_log_perr(conf, "Failed registering %s expansion", group_attribute);
 			return -1;
 		}
 
@@ -1108,7 +1114,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
 	if (!xlat) {
-		PERROR("Failed registering %s expansion", mctx->inst->name);
+		cf_log_perr(conf, "Failed registering %s expansion", mctx->inst->name);
 		return -1;
 	}
 
