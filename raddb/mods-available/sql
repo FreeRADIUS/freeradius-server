@@ -322,6 +322,27 @@ sql {
 	#
 	#  group_attribute:: The group attribute specific to this instance of `rlm_sql`.
 	#
+	#  The "group_membership_query" is used to select which groups the user is a member of.
+	#
+	#  The module loops over all groups, and places the group name into the "group_attribute".
+	#
+	#  The group attribute is used in the "authorize_group_check_query" and "authorize_group_check_query"
+	#  to select entries which match that particular group.
+	#
+	#  If caching is enabled, then the module is done looping over groups, the module adds the names of
+	#  groups to the `control` list.  The "group_attribute" can then be used to check group membership.
+	#  That check will be done internally, and will not result in a database lookup.  This also means that
+	#  it is now possible to do group comparisons based on regular expressions.
+	#
+	#  It is possible to force a dynamic group lookup via the expansion `%{sql.group:foo}`.  This
+	#  expansion returns `true` if the user is a member of that SQL group, and `false` otherwise.
+	#
+	#  NOTE: The `SQL-Group` attribute is only available after the SQL module has been run.
+	#
+	#  The name of the group attribute is automatically determined from the module name.  By default, the
+	#  name is `SQL-Group`.  if the module is an instance such as `sql sql1 { ... }`, then the name of the
+	#  group attribute is `SQL1-Group`.
+	#
 	group_attribute = "${.:instance}-Group"
 
 	#

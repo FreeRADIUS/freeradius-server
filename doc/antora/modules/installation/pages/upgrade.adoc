@@ -857,6 +857,30 @@ http://wiki.freeradius.org/guide/List-Usage[list usage] guidelines.
 Driver-specific options have moved from `mods-available/sql` to
 `mods-config/sql/driver/<drivername>`.
 
+If caching is enabled, the `SQL-Group` attribute is cached in the
+`control` list after the module has run.  This means it is possible to
+do regular expression comparison on group names.
+
+It also means that any comparison of `&SQL-Group == "foo"` has to be
+updated to use `&control.SQL-Group == "foo"` instead.
+
+This caching also means that the group comparison will be done
+internally, and will not result in a database lookup.  This also means
+that it is now possible to do group comparisons based on regular
+expressions.
+
+It is possible to force a dynamic group lookup via the expansion
+`%{sql.group:foo}`.  This expansion returns `true` if the user is a
+member of that SQL group, and `false` otherwise.
+
+```
+if (%{sql.group:sales}) {
+   ...
+}
+```
+
+will return `true`.
+
 ==== rlm_sql_mysql
 
 Now calls `mysql_real_escape_string` and no longer produces

@@ -817,42 +817,6 @@ static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *r
 	return rcode;
 }
 
-/*
- * sql groupcmp function. That way we can do group comparisons (in the users file for example)
- * with the group memberships reciding in sql
- * The group membership query should only return one element which is the username. The returned
- * username will then be checked with the passed check string.
- */
-static int sql_groupcmp(void *instance, request_t *request, fr_pair_t const *check) CC_HINT(nonnull);
-
-static int sql_groupcmp(void *instance, request_t *request, fr_pair_t const *check)
-{
-	rlm_sql_t const		*inst = talloc_get_type_abort_const(instance, rlm_sql_t);
-
-	/*
-	 *	No group queries, don't do group comparisons.
-	 */
-	if (!inst->config.groupmemb_query) {
-		RWARN("Cannot do group comparison when group_membership_query is not set");
-		return 1;
-	}
-
-	RDEBUG2("sql_groupcmp");
-
-	if (check->vp_length == 0){
-		RDEBUG2("sql_groupcmp: Illegal group name");
-		return 1;
-	}
-
-	if (sql_check_group(inst, request, check->vp_strvalue)) {
-		RDEBUG2("sql_groupcmp finished: User is a member of group %s",
-			check->vp_strvalue);
-		return 0;
-	}
-
-	RDEBUG2("sql_groupcmp finished: User is NOT a member of group %pV", &check->data);
-	return 1;
-}
 
 /** Check if the user is a member of a particular group
  *
@@ -1094,21 +1058,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			group_attribute = "SQL-Group";
 		}
 
-		/*
-		 *	Checks if attribute already exists.
-		 */
-		if (paircmp_register_by_name(group_attribute, attr_user_name,
-						false, sql_groupcmp, inst) < 0) {
-			PERROR("Failed registering group comparison");
-		error:
-			return -1;
-		}
-
 		inst->group_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius, group_attribute,
 								     false, false);
 		if (!inst->group_da) {
 			PERROR("Failed resolving group attribute");
-			goto error;
+			return -1;
 		}
 
 		/*
