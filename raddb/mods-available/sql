@@ -346,6 +346,16 @@ sql {
 	group_attribute = "${.:instance}-Group"
 
 	#
+	#  cache_groups: whether or not we cache the list of SQL groups
+	#
+	#  The groups are cached in the `control` list.  So any comparisons must be done as
+	#  `&control.SQL-Group = ...`
+	#
+	#  Default is `no`.
+	#
+#	cache_groups = no
+
+	#
 	#  .Read database-specific queries.
 	#
 	#  Not all drivers ship with `query.conf` or `schema.sql` files. For those which don't,

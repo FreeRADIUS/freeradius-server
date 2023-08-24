@@ -196,10 +196,10 @@ sql sql2 {
 
 start:: Connections to create during module instantiation.
 
-If the server cannot create specified number of connections during instantiation
-it will exit.
-
-Set to `0` to allow the server to start without the database being available.
+If the server cannot create specified number of
+connections during instantiation it will exit.
+Set to `0` to allow the server to start without the
+external service being available.
 
 
 
@@ -209,14 +209,18 @@ min:: Minimum number of connections to keep open.
 
 max:: Maximum number of connections.
 
-If these connections are all in use and a new one is requested, the request
-will NOT get a connection.
+If these connections are all in use and a new one
+is requested, the request will NOT get a connection.
 
-Setting `max` to LESS than the number of threads means that some threads may starve,
-and you will see errors like _No connections available and at max connection limit_.
+Setting `max` to *LESS* than the number of threads means
+that some threads may starve, and you will see errors
+like _No connections available and at max connection limit_.
 
-Setting `max` to MORE than the number of threads means that there are more
-connections than necessary.
+Setting `max` to MORE than the number of threads means
+that there are more connections than necessary.
+
+If `max` is not specified, then it defaults to the number
+of workers configured.
 
 
 
@@ -280,6 +284,36 @@ When that happens, it will open a new connection.  It will also log a WARNING me
 
 group_attribute:: The group attribute specific to this instance of `rlm_sql`.
 
+The "group_membership_query" is used to select which groups the user is a member of.
+
+The module loops over all groups, and places the group name into the "group_attribute".
+
+The group attribute is used in the "authorize_group_check_query" and "authorize_group_check_query"
+to select entries which match that particular group.
+
+If caching is enabled, then the module is done looping over groups, the module adds the names of
+groups to the `control` list.  The "group_attribute" can then be used to check group membership.
+That check will be done internally, and will not result in a database lookup.  This also means that
+it is now possible to do group comparisons based on regular expressions.
+
+It is possible to force a dynamic group lookup via the expansion `%{sql.group:foo}`.  This
+expansion returns `true` if the user is a member of that SQL group, and `false` otherwise.
+
+NOTE: The `SQL-Group` attribute is only available after the SQL module has been run.
+
+The name of the group attribute is automatically determined from the module name.  By default, the
+name is `SQL-Group`.  if the module is an instance such as `sql sql1 { ... }`, then the name of the
+group attribute is `SQL1-Group`.
+
+
+
+cache_groups: whether or not we cache the list of SQL groups
+
+The groups are cached in the `control` list.  So any comparisons must be done as
+`&control.SQL-Group = ...`
+
+Default is `no`.
+
 
 
 .Read database-specific queries.
@@ -327,6 +361,7 @@ sql {
 		connect_timeout = 3.0
 	}
 	group_attribute = "${.:instance}-Group"
+#	cache_groups = no
 	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
 }
 ```

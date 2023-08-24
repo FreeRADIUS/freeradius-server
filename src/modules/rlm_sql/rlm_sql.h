@@ -106,6 +106,8 @@ typedef struct {
 	char const		*authorize_group_reply_query;	//!< Query used get reply VPs for a group.
 	char const 		*groupmemb_query;		//!< Query to determine group membership.
 
+	bool			cache_groups;			//!< cache group names in &control.SQL-Group
+
 	bool			read_groups;			//!< Read user groups by default.
 								//!< If false, Fall-Through = yes is required
 								//!< in the previous reply list to process

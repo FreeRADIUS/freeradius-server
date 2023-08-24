@@ -900,13 +900,15 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 
 	entry = head;
 	do {
+		bool added;
+		fr_pair_t	*vp;
+
 	next:
 		fr_assert(entry != NULL);
 		fr_pair_value_strdup(sql_group, entry->name, true);
+		added = false;
 
 		if (inst->config.authorize_group_check_query) {
-			fr_pair_t	*vp;
-
 			/*
 			 *	Expand the group query
 			 */
@@ -956,10 +958,15 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			radius_pairmove(request, &request->control_pairs, &check_tmp);
 
 			fr_pair_list_free(&check_tmp);
+
+			if (inst->config.cache_groups) {
+				MEM(pair_update_control(&vp, inst->group_da) >= 0);
+				fr_pair_value_strdup(vp, entry->name, true);
+				added = true;
+			}
 		}
 
 		if (inst->config.authorize_group_reply_query) {
-
 			/*
 			 *	Now get the reply pairs since the paircmp matched
 			 */
@@ -1000,6 +1007,11 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 		 */
 		} else {
 			*do_fall_through = FALL_THROUGH_DEFAULT;
+		}
+
+		if (inst->config.cache_groups && !added) {
+			MEM(pair_update_control(&vp, inst->group_da) >= 0);
+			fr_pair_value_strdup(vp, entry->name, true);
 		}
 
 		entry = entry->next;
