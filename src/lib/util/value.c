@@ -4978,7 +4978,7 @@ parse:
 		fr_base16_decode(&err, &dbuff, &our_in, true);
 		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
 
-		fr_value_box_ethernet_addr(dst, dst_enumv, &ether, tainted);
+		fr_value_box_ethernet_addr(dst, dst_enumv, (fr_ethernet_t * const)fr_dbuff_start(&dbuff), tainted);
 
 		FR_SBUFF_SET_RETURN(in, &our_in);
 	}

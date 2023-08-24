@@ -775,6 +775,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_lm(rlm_rcode_t *p_result,
 						    fr_pair_t const *known_good, UNUSED fr_pair_t const *password)
 {
 	uint8_t	digest[MD4_DIGEST_LENGTH];
+	fr_dbuff_t digest_dbuff = FR_DBUFF_TMP(digest, sizeof(digest));
 	char	charbuf[32 + 1];
 	ssize_t	len;
 
@@ -788,9 +789,9 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_lm(rlm_rcode_t *p_result,
 	len = xlat_eval(charbuf, sizeof(charbuf), request, "%(mschap:LM-Hash %{User-Password})", NULL, NULL);
 	if (len < 0) RETURN_MODULE_FAIL;
 
-	if ((fr_base16_decode(NULL, &FR_DBUFF_TMP(digest, sizeof(digest)), &FR_SBUFF_IN(charbuf, len), false) !=
+	if ((fr_base16_decode(NULL, &digest_dbuff, &FR_SBUFF_IN(charbuf, len), false) !=
 	     (ssize_t)known_good->vp_length) ||
-	    (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0)) {
+	    (fr_digest_cmp(fr_dbuff_start(&digest_dbuff), known_good->vp_octets, known_good->vp_length) != 0)) {
 		REDEBUG("LM digest does not match \"known good\" digest");
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, sizeof(digest)));
 		REDEBUG3("Expected   : %pH", &known_good->data);
