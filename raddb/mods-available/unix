@@ -7,8 +7,8 @@
 #
 #  = Unix Module
 #
-#  The `unix` module calls the system `getpwent()` functions to get
-#  the `known good` password.
+#  The `unix` module calls the system `getpwnam()` functions to get
+#  the `known good` password for the `User-Name`.
 #
 #  If the passwords are in /etc/shadow, you will need to set the
 #  `group` configuration in `radiusd.conf` so that the server can read
@@ -21,13 +21,16 @@
 #
 #  == Group Comparisons
 #
-#  The module also registers a `Unix-Group` comparison, where it is possible
+#  The module also registers a Unix group expansion, where it is possible
 #  to check if the user is a member of a particular Unix group.
 #
-#    if (&Unix-Group == "admin") { ...
+#    if (%{unix.group: admin}) { ...
 #
-#  Note that the old attributes `Group` and `Group-Name` are no longer
-#  supported.  They were confusing, and poorly named.
+#  The expansion returns `true` if the `User-Name` is a membber of the given
+#  group, and `false` otherwise.
+#
+#  The old `Unix-Group`, `Group`, and `Group-Name` attributes and comparisons
+#  are no longer supported.
 #
 
 #

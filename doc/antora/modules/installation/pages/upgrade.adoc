@@ -961,9 +961,14 @@ more information.
 
 === rlm_unix
 
-The `unix` module uses `Unix-Group` instead of `Group` or
-`Group-Name`.  Please use the new names instead of the old names, as
-the old names will no longer work.
+The `unix` module uses an expansion `%{unix.group:<name>}` instead of
+`Unix-Group`, `Group` or `Group-Name`.  The old method of doing
+
+```
+Group == "foo"
+```
+
+will no longer work.
 
 == Deleted Modules
 

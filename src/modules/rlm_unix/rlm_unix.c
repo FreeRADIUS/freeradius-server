@@ -19,10 +19,6 @@
  * @file rlm_unix.c
  * @brief Unixy things
  *
- * authentication: Unix user authentication
- * accounting:     Functions to write radwtmp file.
- * Also contains handler for "Unix-Group".
- *
  * @copyright 2000,2006 The FreeRADIUS server project
  * @copyright 2000 Jeff Carneal (jeff@apex.net)
  * @copyright 2000 Alan Curry (pacman@world.std.com)
@@ -37,6 +33,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/sysutmp.h>
 #include <freeradius-devel/util/perm.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include <grp.h>
 #include <pwd.h>
@@ -80,6 +77,7 @@ static fr_dict_attr_t const *attr_nas_ip_address;
 static fr_dict_attr_t const *attr_nas_port;
 static fr_dict_attr_t const *attr_acct_status_type;
 static fr_dict_attr_t const *attr_acct_delay_time;
+static fr_dict_attr_t const *attr_expr_bool_enum;
 
 extern fr_dict_attr_autoload_t rlm_unix_dict_attr[];
 fr_dict_attr_autoload_t rlm_unix_dict_attr[] = {
@@ -93,48 +91,52 @@ fr_dict_attr_autoload_t rlm_unix_dict_attr[] = {
 	{ .out = &attr_nas_port, .name = "NAS-Port", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ NULL }
 };
 
-/*
- *	The Unix-Group = handler.
+/** Check if the user is in the given group
+ *
  */
-static int groupcmp(UNUSED void *instance, request_t *request, fr_pair_t const *check)
+static bool CC_HINT(nonnull) unix_check_group(UNUSED rlm_unix_t const *inst, request_t *request, char const *name)
 {
+	bool		rcode = false;
 	struct passwd	*pwd;
 	struct group	*grp;
-	char		**member;
-	int		retval = -1;
 	fr_pair_t	*username;
 
 	/*
 	 *	No user name, can't compare.
 	 */
 	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-	if (!username) return -1;
+	if (!username) false;
 
 	if (fr_perm_getpwnam(request, &pwd, username->vp_strvalue) < 0) {
 		RPEDEBUG("Failed resolving user name");
-		return -1;
+		return false;
 	}
 
-	if (fr_perm_getgrnam(request, &grp, check->vp_strvalue) < 0) {
+	if (fr_perm_getgrnam(request, &grp, name) < 0) {
 		RPEDEBUG("Failed resolving group name");
 		talloc_free(pwd);
-		return -1;
+		return false;
 	}
 
 	/*
-	 *	The users default group isn't the one we're looking for,
-	 *	look through the list of group members.
+	 *	The users default group may be the one we're looking
+	 *	for, in which case we use that.
+	 *
+	 *	Otherwise, we go through the list of groups to see if the group name matches.
 	 */
 	if (pwd->pw_gid == grp->gr_gid) {
-		retval = 0;
+		rcode = true;
 
 	} else {
-		for (member = grp->gr_mem; *member && retval; member++) {
+		char **member;
+
+		for (member = grp->gr_mem; *member; member++) {
 			if (strcmp(*member, pwd->pw_name) == 0) {
-				retval = 0;
+				rcode = true;
 				break;
 			}
 		}
@@ -144,7 +146,34 @@ static int groupcmp(UNUSED void *instance, request_t *request, fr_pair_t const *
 	talloc_free(grp);
 	talloc_free(pwd);
 
-	return retval;
+	return rcode;
+}
+
+
+/** Check if the user is a member of a particular unix group
+ *
+@verbatim
+%{unix.group:<name>}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t unix_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				     xlat_ctx_t const *xctx,
+				     request_t *request, fr_value_box_list_t *in)
+{
+	rlm_unix_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_unix_t);
+	fr_value_box_t		*arg = fr_value_box_list_head(in);
+	char const		*p = arg->vb_strvalue;
+	fr_value_box_t		*vb;
+
+	fr_skip_whitespace(p);
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
+	vb->vb_bool = unix_check_group(inst, request, p);
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 
@@ -154,22 +183,33 @@ static int groupcmp(UNUSED void *instance, request_t *request, fr_pair_t const *
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_unix_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_unix_t);
+	xlat_t			*xlat;
+	xlat_arg_parser_t	*xlat_arg;
 
-	if (!cf_section_name2(mctx->inst->conf)) {
-		if (paircmp_register_by_name("Unix-Group", attr_user_name, false, groupcmp, inst) < 0) {
-			PERROR("Failed registering Unix-Group");
-			return -1;
-		}
-	} else {
-		char *unix_group = talloc_asprintf(inst, "%s-Unix-Group", mctx->inst->name);
-
-		if (paircmp_register_by_name(unix_group, attr_user_name, false, groupcmp, inst) < 0) {
-			PERROR("Failed registering %s", unix_group);
-			talloc_free(unix_group);
-			return -1;
-		}
-		talloc_free(unix_group);
+	/*
+	 *	Define the new %{unix.group:name} xlat.  The register
+	 *	function automatically adds the module instance name
+	 *	as a prefix.
+	 */
+	xlat = xlat_func_register_module(inst, mctx, "group", unix_group_xlat, FR_TYPE_BOOL);
+	if (!xlat) {
+		PERROR("Failed registering group expansion");
+		return -1;
 	}
+
+	/*
+	 *	The xlat escape function needs access to inst - so
+	 *	argument parser details need to be defined here
+	 */
+	xlat_arg = talloc_zero_array(inst, xlat_arg_parser_t, 2);
+	xlat_arg[0].type = FR_TYPE_STRING;
+	xlat_arg[0].required = true;
+	xlat_arg[0].concat = true;
+	xlat_arg[0].func = NULL; /* No real escaping done - we do strcmp() on it */
+	xlat_arg[0].uctx = NULL;
+	xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
+
+	xlat_func_mono_set(xlat, xlat_arg);
 
 	return 0;
 }
