@@ -17,6 +17,9 @@ if [ -d /tmp/ldap/schema ]; then
 # Debian
 elif [ -d /etc/ldap/schema ]; then
     ln -fs /etc/ldap/schema /tmp/ldap/schema
+# Symas packages
+elif [ -d /opt/symas/etc/openldap/schema ]; then
+    ln -fs /opt/symas/etc/openldap/schema /tmp/ldap/schema
 # Redhat
 elif [ -d /etc/openldap/schema ]; then
     ln -fs /etc/openldap/schema /tmp/ldap/schema
@@ -28,8 +31,14 @@ else
     exit 1
 fi
 
+if [ -e /opt/symas/lib/slapd ]; then
+  SLAPD=/opt/symas/lib/slapd
+else
+  SLAPD=slapd
+fi
+
 # Start slapd
-slapd -d any -h "ldap://127.0.0.1:3890/" -f scripts/ci/ldap/slapd.conf 2>&1 > /tmp/ldap/slapd.log &
+$SLAPD -d any -h "ldap://127.0.0.1:3890/ ldapi://%2Ftmp%2Fldap%2Fsocket" -f scripts/ci/ldap/slapd.conf 2>&1 > /tmp/ldap/slapd.log &
 
 # Wait for LDAP to start
 sleep 1

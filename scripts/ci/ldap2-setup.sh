@@ -17,6 +17,9 @@ if [ -d /tmp/ldap2/schema ]; then
 # Debian
 elif [ -d /etc/ldap/schema ]; then
     ln -fs /etc/ldap/schema /tmp/ldap2/schema
+# Symas packages
+elif [ -d /opt/symas/etc/openldap/schema ]; then
+    ln -fs /opt/symas/etc/openldap/schema /tmp/ldap2/schema
 # Redhat
 elif [ -d /etc/openldap/schema ]; then
     ln -fs /etc/openldap/schema /tmp/ldap2/schema
@@ -41,8 +44,14 @@ cp raddb/certs/rsa/server.pem /tmp/ldap2/certs/servercert.pem
 # OpenLDAP wants an un-encrypted key
 openssl rsa -in raddb/certs/rsa/server.key -out /tmp/ldap2/certs/serverkey.pem -passin pass:whatever
 
+if [ -e /opt/symas/lib/slapd ]; then
+    SLAPD=/opt/symas/lib/slapd
+else
+    SLAPD=slapd
+fi
+
 # Start slapd
-slapd -h "ldap://127.0.0.1:3891/ ldaps://127.0.0.1:6360" -f scripts/ci/ldap/slapd2.conf 2>&1 > /tmp/ldap/slapd.log &
+$SLAPD -d any -h "ldap://127.0.0.1:3891/ ldaps://127.0.0.1:6360 ldapi://%2Ftmp%2Fldap2%2Fsocket" -f scripts/ci/ldap/slapd2.conf 2>&1 > /tmp/ldap2/slapd.log &
 
 # Wait for LDAP to start
 sleep 1
