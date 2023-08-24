@@ -109,7 +109,7 @@ static bool CC_HINT(nonnull) unix_check_group(UNUSED rlm_unix_t const *inst, req
 	 *	No user name, can't compare.
 	 */
 	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-	if (!username) false;
+	if (!username) return false;
 
 	if (fr_perm_getpwnam(request, &pwd, username->vp_strvalue) < 0) {
 		RPEDEBUG("Failed resolving user name");
