@@ -1389,7 +1389,7 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool const 
 			was_regex = false;
 			continue;
 		}
-		
+
 		if (*p == ')') {
 			if (!depth) {
 				fr_strerror_const("Too many ')'");
@@ -1410,7 +1410,7 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool const 
 				fr_strerror_const("Expansions cannot extend across end of line");
 				return -(p - start);
 			}
-			
+
 			if ((p[1] == '{') || ((p[0] == '$') && (p[1] == '('))) {
 				slen = fr_skip_xlat(p, end);
 
@@ -1631,7 +1631,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 */
 	memcpy(buff[2], stack->ptr, slen);
 	buff[2][slen] = '\0';
-	name2 = buff[2];
 
 	while (slen > 0) {
 		if (!isspace((uint8_t) buff[2][slen])) break;
@@ -1657,6 +1656,8 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			return NULL;
 		}
 
+		name2 = buff[3];
+
 		if (!use_new_conditions) {
 			my_slen = fr_cond_tokenize(cs, &cond, &t_rules, &FR_SBUFF_IN(buff[3], strlen(buff[3])), false);
 			if (my_slen <= 0) {
@@ -1677,8 +1678,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 				talloc_free(cs);
 				return NULL;
 			}
-		} else {
-			name2 = buff[3];
 		}
 	}
 
