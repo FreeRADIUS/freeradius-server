@@ -63,19 +63,25 @@ key:: Specifies the unique identifier for the counter records (usually `link:htt
 The `query` parameter specifies the SQL query used to get the current Counter value
 from the database.
 
-There are `2` parameters that can be used in the query:
 
-[options="header,autowidth"]
-|===
-| Parameter | Description
-| `%%b`	   | unix time value of beginning of the reset period.
-| `%%e`	   | unix time value of end of the reset period.
-|===
+reset_period_start_name::  The name of the attribute which is used to store the
+time that the current reset period started.
 
+The default is `&control.${.:instance}-Start`
+
+Note because we are counting seconds, this attribute is of type `uint64`, and not `date`.
+
+reset_period_end_name::  The name of the attribute which is used to store the
+time that the current reset period will end.
+
+The default is `&control.${.:instance}-End`
+
+Note because we are counting seconds, this attribute is of type `uint64`, and not `date`.
 
 counter_name:: Name of the `check` attribute to use to access the counter in
 the `users` file or SQL `radcheck` or `radgroupcheck` tables.
 
+After the sqlcounter module has run, the counter attribute will exist.
 
 
 
@@ -123,13 +129,16 @@ NOTE: You may need to edit `raddb/dictionary` to add the `Expire-After` attribut
 #	sql_module_instance = sql_foo
 #	reset = 12h
 #	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
-#	DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
-#		 Reply-Message = "You've used up more than one hour today"
+#	if (&control.Daily-Session-Time > 3600) {
+#		 &Reply-Message := "You've used up more than one hour today"
+#		 reject
 #	}
 sqlcounter dailycounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
-	counter_name = &Daily-Session-Time
+#	reset_period_start_name = &control.${.:instance}-Reset-Start
+#	reset_period_end_name = &control.${.:instance}-Reset-End
+	counter_name = &control.Daily-Session-Time
 	check_name = &control.Max-Daily-Session
 	reply_name = &reply.Session-Timeout
 	key = "%{%{Stripped-User-Name}:-%{User-Name}}"

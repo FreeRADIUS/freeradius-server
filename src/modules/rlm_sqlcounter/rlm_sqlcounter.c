@@ -245,41 +245,6 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 
 
 /*
- *	See if the counter matches.
- */
-static int counter_cmp(void *instance, request_t *request, fr_pair_t const *check)
-{
-	rlm_sqlcounter_t const *inst = talloc_get_type_abort_const(instance, rlm_sqlcounter_t);
-	uint64_t counter;
-	size_t len;
-	char *expanded = NULL;
-	char query[MAX_QUERY_LEN];
-
-	/* Then combine that with the name of the module were using to do the query */
-	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, inst->query);
-	if (len >= sizeof(query) - 1) {
-		REDEBUG("Insufficient query buffer space");
-
-		return -1;
-	}
-
-	/* Finally, xlat resulting SQL query */
-	if (xlat_aeval(request, &expanded, request, query, NULL, NULL) < 0) {
-		return -1;
-	}
-
-	if (sscanf(expanded, "%" PRIu64, &counter) != 1) {
-		RDEBUG2("No integer found in string \"%s\"", expanded);
-	}
-
-	talloc_free(expanded);
-
-	if (counter < check->vp_uint64) return -1;
-	if (counter > check->vp_uint64) return 1;
-	return 0;
-}
-
-/*
  *	Find the named user in this modules database.  Create the set
  *	of attribute-value pairs to check and reply with for this user
  *	from the database. The authentication code only needs to check
@@ -368,6 +333,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	res = limit->vp_uint64 - counter;
 	RDEBUG2("Allowing user, %s value (%" PRIu64 ") is greater than counter value (%" PRIu64 ")",
 		inst->limit_attr->name, limit->vp_uint64, counter);
+
+	/*
+	 *	Add the counter to the control list
+	 */
+	MEM(pair_update_control(&vp, inst->paircmp_attr) >= 0);
+	vp->vp_uint64 = counter;
 
 	/*
 	 *	We are assuming that simultaneous-use=1. But
@@ -528,12 +499,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	if (tmpl_attr_tail_da(inst->paircmp_attr)->type != FR_TYPE_UINT64) {
 		cf_log_err(conf, "Counter attribute %s MUST be uint64", tmpl_attr_tail_da(inst->paircmp_attr)->name);
-		return -1;
-	}
-	if (paircmp_register_by_name(tmpl_attr_tail_da(inst->paircmp_attr)->name, NULL, true,
-					counter_cmp, inst) < 0) {
-		cf_log_perr(conf, "Failed registering comparison function for counter attribute %s",
-			    tmpl_attr_tail_da(inst->paircmp_attr)->name);
 		return -1;
 	}
 

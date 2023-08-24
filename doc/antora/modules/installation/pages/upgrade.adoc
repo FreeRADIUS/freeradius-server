@@ -901,7 +901,6 @@ Attribute references:
 The following config items must now be defined as attribute references::
 
 ```
-count_attribute
 counter_name
 check_name
 reply_name
@@ -910,7 +909,6 @@ reply_name
 For example where in v3 you would specify the attribute names as::
 
 ```
-count_attribute = Acct-Session-Time
 counter_name    = Daily-Session-Time
 check_name      = Max-Daily-Session
 reply_name      = Session-Timeout
@@ -920,8 +918,7 @@ key             = User-Name
 In v4 they must now be specified as::
 
 ```
-count_attribute = &Acct-Session-Time
-counter_name    = &Daily-Session-Time
+counter_name    = &control.Daily-Session-Time
 check_name      = &control.Max-Daily-Session
 reply_name      = &reply.Session-Timeout
 key             = "%{%{Stripped-User-Name}:-%{User-Name}}"
@@ -943,6 +940,16 @@ functionality, the key should now be specified as a dynamic expansion:
 ```
 key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 ```
+
+The `count_attribute` has been removed, as it is no longer necessary.
+
+The old expansions `%%b` and `%%e` have been removed.  This should
+only affect people who are editing the queries manually.  See the file
+`mods-availble/sqlcounter` for more information.
+
+The attribute comparison has been removed.  It is no longer possible
+to check `Daily-Session-Time > 4` everywhere.  Instead, the attribute
+exists only after the `sqlcounter` module has been run.
 
 === rlm_sqlippool
 
