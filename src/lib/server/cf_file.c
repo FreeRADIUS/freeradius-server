@@ -1512,7 +1512,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	CONF_SECTION	*cs;
 	uint8_t const   *p;
 	char const	*ptr = stack->ptr;
-	char		*name2;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
@@ -1656,8 +1655,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			return NULL;
 		}
 
-		name2 = buff[3];
-
 		if (!use_new_conditions) {
 			my_slen = fr_cond_tokenize(cs, &cond, &t_rules, &FR_SBUFF_IN(buff[3], strlen(buff[3])), false);
 			if (my_slen <= 0) {
@@ -1681,7 +1678,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		}
 	}
 
-	MEM(cs->name2 = talloc_typed_strdup(cs, name2));
+	MEM(cs->name2 = talloc_typed_strdup(cs, buff[3]));
 	cs->name2_quote = T_BARE_WORD;
 
 	ptr += slen;
