@@ -58,6 +58,7 @@ typedef int (*unlang_edit_expand_t)(request_t *request, unlang_frame_state_edit_
 struct edit_map_s {
 	fr_edit_list_t		*el;			//!< edit list
 
+	TALLOC_CTX		*ctx;
 	edit_map_t		*parent;
 	edit_map_t		*child;
 
@@ -318,7 +319,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 		 *	parent VP.  Because we're going to be moving them to the parent VP at some
 		 *	point.  The ones which aren't moved will get deleted in this function.
 		 */
-		token = fr_pair_list_afrom_str(state, da, box->vb_strvalue, box->vb_length, children);
+		token = fr_pair_list_afrom_str(current->ctx, da, box->vb_strvalue, box->vb_length, children);
 		if (token == T_INVALID) {
 			RPEDEBUG("Failed parsing string '%pV' as attribute list", box);
 			return -1;
@@ -858,7 +859,7 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 			 *	Once that's implemented, we also need to update the edit list API to
 			 *	allow for "please delete children"?
 			 */
-			vp = tmpl_dcursor_init(&err, state, &cc, &cursor, request, current->lhs.vpt);
+			vp = tmpl_dcursor_init(&err, current->ctx, &cc, &cursor, request, current->lhs.vpt);
 			if (!vp) break;
 
 			/*
@@ -995,9 +996,11 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	child->func = expand_lhs;
 
 	if (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
+		child->ctx = child;
 		child->check_lhs = check_lhs_value;
 		child->expanded_lhs = expanded_lhs_value;
 	} else {
+		child->ctx = current->lhs.vp ? current->lhs.vp : child;
 		child->check_lhs = check_lhs_nested;
 		child->expanded_lhs = expanded_lhs_attribute;
 		child->temporary_pair_list = true;
@@ -1228,7 +1231,7 @@ static int check_lhs_nested(request_t *request, unlang_frame_state_edit_t *state
 	 *	parent list, but fr_edit_list_apply_list_assignment() does that
 	 *	anyways.
 	 */
-	MEM(current->lhs.vp = fr_pair_afrom_da(current, tmpl_attr_tail_da(current->lhs.vpt)));
+	MEM(current->lhs.vp = fr_pair_afrom_da(current->ctx, tmpl_attr_tail_da(current->lhs.vpt)));
 	fr_pair_append(&current->parent->rhs.pair_list, current->lhs.vp);
 	current->lhs.vp->op = map->op;
 
@@ -1320,7 +1323,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	 *	use the cursor in apply_edits_to_leaf()
 	 */
 	fr_strerror_clear();
-	vp = tmpl_dcursor_init(&err, state, &cc, &cursor, request, current->lhs.vpt);
+	vp = tmpl_dcursor_init(&err, current->ctx, &cc, &cursor, request, current->lhs.vpt);
 	tmpl_dcursor_clear(&cc);
 	if (!vp) {
 		if (!current->lhs.create) {
@@ -1537,6 +1540,7 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 	 */
 	MEM(state->el = fr_edit_list_alloc(state, map_list_num_elements(&edit->maps)));
 
+	current->ctx = state;
 	current->el = state->el;
 	current->map_head = &edit->maps;
 	current->map = map_list_head(current->map_head);
