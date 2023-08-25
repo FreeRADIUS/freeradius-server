@@ -1094,6 +1094,8 @@ static PyMODINIT_FUNC PyInit_radiusd(void)
  */
 static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 {
+	bool locked = false;
+
 	/*
 	 * prepare radiusd module to be loaded
 	 */
@@ -1135,8 +1137,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
 		PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
 		main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
-	} else {
-		PyEval_AcquireLock();
+		locked = true;
 	}
 	rad_assert(PyEval_ThreadsInitialized());
 
@@ -1155,6 +1156,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		inst->sub_interpreter = main_interpreter;
 	}
 
+	if (!locked) PyEval_AcquireThread(inst->sub_interpreter);
 	PyThreadState_Swap(inst->sub_interpreter);
 
 	/*
