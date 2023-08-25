@@ -145,8 +145,8 @@ xlat \"%t\tfoo\"
 match \"%t\tfoo\"
 
 allow-unresolved yes
-xlat \"%t\t%{Client-IP-Address}\"
-match \"%t\t%{Client-IP-Address}\"
+xlat \"%t\t%{Packet-Src-IP-Address}\"
+match \"%t\t%{Packet-Src-IP-Address}\"
 allow-unresolved no
 
 xlat \"foo %{test:foo}\"

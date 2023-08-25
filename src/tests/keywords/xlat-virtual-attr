@@ -26,10 +26,6 @@ if (!("%{Packet-Authentication-Vector}" == 0x00000000000000000000000000000000)) 
 	test_fail
 }
 
-if (!("%{Client-IP-Address}" == 127.0.0.1)) {
-	test_fail
-}
-
 if (!("%{Packet-Src-IP-Address}" == 127.0.0.1)) {
 	test_fail
 }

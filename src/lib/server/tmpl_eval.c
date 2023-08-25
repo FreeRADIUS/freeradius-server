@@ -51,7 +51,6 @@ fr_dict_autoload_t tmpl_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_client_ip_address;
 static fr_dict_attr_t const *attr_client_shortname;
 static fr_dict_attr_t const *attr_packet_dst_ip_address;
 static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
@@ -71,7 +70,6 @@ extern fr_dict_attr_t const *tmpl_attr_unspec;
 fr_dict_attr_t const *tmpl_attr_unspec;
 
 static fr_dict_attr_autoload_t tmpl_dict_attr[] = {
-	{ .out = &attr_client_ip_address, .name = "Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_client_shortname, .name = "Client-Shortname", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_module_return_code, .name = "Module-Return-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
@@ -1167,17 +1165,7 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		MEM(value = fr_value_box_alloc_null(ctx));
 		fr_value_box_memdup(ctx, value, tmpl_attr_tail_da(vpt), packet->vector, sizeof(packet->vector), true);
 
-	} else if (tmpl_attr_tail_da(vpt) == attr_client_ip_address) {
-		fr_client_t *client = client_from_request(request);
-		if (client) {
-			MEM(value = fr_value_box_alloc_null(ctx));
-			fr_value_box_ipaddr(value, NULL, &client->ipaddr, false);	/* Enum might not match type */
-			goto done;
-		}
-		goto src_ip_address;
-
 	} else if (tmpl_attr_tail_da(vpt) == attr_packet_src_ip_address) {
-	src_ip_address:
 		if (!fr_socket_is_inet(packet->socket.proto) ||
 		    (packet->socket.inet.src_ipaddr.af != AF_INET)) return 0;
 

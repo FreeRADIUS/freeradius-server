@@ -155,7 +155,7 @@ ATTRIBUTE	Realm					1017	string
 
 ATTRIBUTE	Acct-Session-Start-Time			1019	date
 ATTRIBUTE	Acct-Unique-Session-Id			1020	string
-ATTRIBUTE	Client-IP-Address			1021	ipaddr virtual
+# 1021 was Client-IP-Address.  Just use Packet-Src-IP-Address
 ATTRIBUTE	LDAP-UserDN				1022	string
 ATTRIBUTE	SQL-User-Name				1023	string
 

@@ -39,7 +39,7 @@ has a configuration entry named "filename", which by default has the
 following value:
 
 ----------------------------------------------------------------
-filename = ${radacctdir}/%{Client-IP-Address}/detail-%Y%m%d
+filename = ${radacctdir}/%{Packet-Src-IP-Address}/detail-%Y%m%d
 ----------------------------------------------------------------
 
 The configuration entry is composed of two kinds of variable expansion.
