@@ -1000,7 +1000,7 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 		child->check_lhs = check_lhs_value;
 		child->expanded_lhs = expanded_lhs_value;
 	} else {
-		child->ctx = current->lhs.vp ? current->lhs.vp : child;
+		child->ctx = current->lhs.vp ? (TALLOC_CTX *) current->lhs.vp : (TALLOC_CTX *) child;
 		child->check_lhs = check_lhs_nested;
 		child->expanded_lhs = expanded_lhs_attribute;
 		child->temporary_pair_list = true;
