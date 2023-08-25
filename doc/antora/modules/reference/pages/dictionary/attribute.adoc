@@ -49,13 +49,17 @@ Common flags and meanings
 [options="header"]
 [cols="30%,70%"]
 |=====
-| Name         | Description
-| `array`      | For fixed-size types, declare that the contents of the packet can have an array of this value.
-| `enum=...`   | For "leaf" types, copy xref:dictionary/value.adoc[VALUE]s from an `xref:dictionary/enum.adoc[ENUM].
-| `clone=...`  | For `tlv` or 'struct' types, clone (or copy) child definitions from another attribute of the same type
-| `internal`   | This attribute is internal to the server, and will never be sent "on the wire"
-| `ref=...`    | For `group` types, reference another attribute by name as being allowed in the `group`.
+| Name           | Description
+| `array`        | For fixed-size types, declare that the contents of the packet can have an array of this value.
+| `enum=<ref>`   | For "leaf" types, copy xref:dictionary/value.adoc[VALUE]s from an xref:dictionary/enum.adoc[ENUM].
+| `clone=<ref>`  | For `tlv` or 'struct' types, clone (or copy) child definitions from another attribute of the same type
+| `internal`     | This attribute is internal to the server, and will never be sent "on the wire"
+| `ref=<ref>`    | For `group` types, the referenced attributes will be allowed in the group
 |=====
+
+The `<ref>` field in the examples above is an attribute references such as `Foo`, or `Foo.Bar`, or `dhcpv4.foo.bar`.
+
+The `enum` and `clone` flags are essentially the same, in that they copy "children" of the attribute.  However, the `enum` flag copies `VALUE`s, and the `clone` flag copies `ATTRIBUTE`s.
 
 .Examples
 ----
