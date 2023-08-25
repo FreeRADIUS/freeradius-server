@@ -205,7 +205,7 @@ call_env_result_t call_env_value_parse(TALLOC_CTX *ctx, request_t *request, void
 	vb = fr_value_box_list_head(tmpl_expanded);
 	if (!vb) {
 		if (!env->rule->pair.nullable) {
-			RPEDEBUG("Failed to evaluate required module option %s", env->rule->name);
+			RPEDEBUG("Failed to evaluate required module option %s = %s", env->rule->name, env->tmpl->name);
 			return CALL_ENV_MISSING;
 		}
 		return 0;
