@@ -2,26 +2,21 @@
 #  PRE: if update
 #
 update request {
-	&NAS-Identifier = "yes"
+	&NAS-IP-Address := 127.0.0.1
 }
 
 #
 #  test raw values
 #
-if (&Test-Paircmp == 'yes') {
-	success
-
-}
-else {
+if !(&Packet-Src-IP-Address == 127.0.0.1) {
 	test_fail
 }
 
 #
 #  test inter-attribute comparisons
 #
-if (&Test-Paircmp == &NAS-Identifier) {
-	success
-}
-else {
+if !(&Packet-Src-IP-Address == &NAS-IP-Address) {
 	test_fail
 }
+
+success

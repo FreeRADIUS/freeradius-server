@@ -45,9 +45,6 @@ int		paircmp_virtual(request_t *request, fr_dict_attr_t const *da, fr_token_t op
 
 int		paircmp_find(fr_dict_attr_t const *da);
 
-int		paircmp_register_by_name(char const *name, fr_dict_attr_t const *from,
-					 bool first_only, fr_paircmp_func_t func, void *instance);
-
 int		paircmp_register(fr_dict_attr_t const *attribute, fr_dict_attr_t const *from,
 				 bool first_only, fr_paircmp_func_t func, void *instance);
 

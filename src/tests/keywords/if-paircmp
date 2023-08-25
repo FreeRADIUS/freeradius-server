@@ -1,20 +1,11 @@
 #
-# PRE: update if
+# PRE: update if paircmp
 #
-
-#
-#  Paircmp
-#
-
-#
-#  Passing 'yes' causes the test paircmp to return match
-#  Passing 'no' causes the test paircmp to return a non-match
-#
-if (!(&Test-Paircmp == 'yes')) {
+if (!(&Packet-Src-IP-Address == 127.0.0.1)) {
 	test_fail
 }
 
-if (&Test-Paircmp == 'no') {
+if (&Packet-Src-IP-Address == 127.0.0.2) {
 	test_fail
 }
 

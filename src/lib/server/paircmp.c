@@ -663,56 +663,6 @@ int paircmp_find(fr_dict_attr_t const *da)
 	return false;
 }
 
-/** Register a function as compare function
- *
- * @param[in] name		the attribute comparison to register.
- * @param[in] from		the attribute we want to compare with.
- *				Normally this is the same as attribute.
- *				If null call the comparison function on
- *				every attributes in the request if
- *				first_only is false.
- * @param[in] first_only	will decide if we loop over the request
- *				attributes or stop on the first one.
- * @param[in] func		comparison function.
- * @param[in] instance		argument to comparison function.
- * @return
- *	- 0 on success
- *	- <0 on error
- */
-int paircmp_register_by_name(char const *name, fr_dict_attr_t const *from,
-			     bool first_only, fr_paircmp_func_t func, void *instance)
-{
-	fr_dict_attr_flags_t	flags;
-	fr_dict_attr_t const	*da;
-
-	memset(&flags, 0, sizeof(flags));
-
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), name);
-	if (da) {
-		if (paircmp_find(da)) {
-			fr_strerror_printf_push("Cannot register two comparions for attribute %s",
-						name);
-			return -1;
-		}
-	} else if (from) {
-		if (fr_dict_attr_add(fr_dict_unconst(fr_dict_internal()), fr_dict_root(fr_dict_internal()),
-				     name, -1, from->type, &flags) < 0) {
-			fr_strerror_printf_push("Failed creating attribute '%s'", name);
-			return -1;
-		}
-
-		da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), name);
-		if (!da) {
-			fr_strerror_printf("Failed finding attribute '%s'", name);
-			return -1;
-		}
-
-		DEBUG("Creating attribute %s", name);
-	}
-
-	return paircmp_register(da, from, first_only, func, instance);
-}
-
 /** Register a function as compare function.
  *
  * @param[in] da		to register comparison function for.

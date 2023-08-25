@@ -193,16 +193,6 @@ fr_dict_attr_autoload_t rlm_test_dict_attr[] = {
 	{ NULL }
 };
 
-static int rlm_test_cmp(UNUSED void *instance, request_t *request, fr_pair_t const *check)
-{
-	fr_assert(check->vp_type == FR_TYPE_STRING);
-
-	RINFO("Test-Paircmp called with \"%pV\"", &check->data);
-
-	if (strcmp(check->vp_strvalue, "yes") == 0) return 0;
-	return 1;
-}
-
 /*
  *	Find the named user in this modules database.  Create the set
  *	of attribute-value pairs to check and reply with for this user
@@ -448,14 +438,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_test_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_test_t);
 	xlat_t *xlat;
-
-	if (!cf_section_name2(mctx->inst->conf)) {
-		if (paircmp_register_by_name("Test-Paircmp", attr_user_name, false,
-					     rlm_test_cmp, inst) < 0) {
-			PERROR("Failed registering \"Test-Paircmp\"");
-			return -1;
-		}
-	}
 
 	/*
 	 *	Log some messages
