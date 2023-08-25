@@ -540,6 +540,8 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				return -1;
 			}
 
+			if (*value == '&') value++; /* be polite to people */
+
 			/*
 			 *	Allow cloning of any types, so long as
 			 *	the types are the same.  We do the checks later.
@@ -566,6 +568,8 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				fr_strerror_const("'enum=...' references cannot be used for structural types");
 				return -1;
 			}
+
+			if (*value == '&') value++; /* be polite to people */
 
 			*ref = talloc_strdup(ctx->fixup.pool, value);
 
