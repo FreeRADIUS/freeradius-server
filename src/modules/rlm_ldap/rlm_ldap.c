@@ -43,6 +43,8 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/unlang/xlat_func.h>
 
 typedef struct {
+	fr_value_box_t	password;
+	tmpl_t		*password_tmpl;
 	fr_value_box_t	user_base;
 	fr_value_box_t	user_filter;
 	fr_value_box_t	user_sasl_mech;
@@ -103,7 +105,9 @@ static const call_env_t _prefix ## _user_call_env[] = { \
 	CALL_ENV_TERMINATOR \
 }
 
-user_call_env(auth, ldap_auth_call_env_t, { FR_CALL_ENV_SUBSECTION("sasl", NULL, sasl_call_env)} );
+user_call_env(auth, ldap_auth_call_env_t, { FR_CALL_ENV_SUBSECTION("sasl", NULL, sasl_call_env) },
+	      { FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING | FR_TYPE_ATTRIBUTE, ldap_auth_call_env_t, password,
+		password_tmpl, "&User-Password", T_BARE_WORD, true, true, true) } );
 
 user_call_env(autz, ldap_autz_call_env_t);
 
@@ -242,12 +246,10 @@ static const call_method_env_t memberof_method_env = {
 };
 
 static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_ldap_dict[];
 fr_dict_autoload_t rlm_ldap_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
@@ -257,8 +259,6 @@ fr_dict_attr_t const *attr_crypt_password;
 fr_dict_attr_t const *attr_ldap_userdn;
 fr_dict_attr_t const *attr_nt_password;
 fr_dict_attr_t const *attr_password_with_header;
-
-fr_dict_attr_t const *attr_user_password;
 static fr_dict_attr_t const *attr_expr_bool_enum;
 
 extern fr_dict_attr_autoload_t rlm_ldap_dict_attr[];
@@ -269,8 +269,6 @@ fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
 	{ .out = &attr_ldap_userdn, .name = "LDAP-UserDN", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_nt_password, .name = "Password.NT", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_password_with_header, .name = "Password.With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-
-	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ NULL }
@@ -1189,27 +1187,15 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	ldap_auth_ctx_t		*auth_ctx;
 	ldap_auth_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_auth_call_env_t);
 
-	fr_pair_t *password;
-
-	password = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password);
-
-	if (!password) {
+	if (call_env->password.type != FR_TYPE_STRING) {
 		RWDEBUG("You have set \"Auth-Type := LDAP\" somewhere");
-		RWDEBUG("without checking if User-Password is present");
+		RWDEBUG("without checking if %s is present", call_env->password_tmpl->name);
 		RWDEBUG("*********************************************");
 		RWDEBUG("* THAT CONFIGURATION IS WRONG.  DELETE IT.   ");
 		RWDEBUG("* YOU ARE PREVENTING THE SERVER FROM WORKING");
 		RWDEBUG("*********************************************");
 
-		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		RETURN_MODULE_INVALID;
-	}
-
-	/*
-	 *	Make sure the supplied password isn't empty
-	 */
-	if (password->vp_length == 0) {
-		REDEBUG("User-Password must not be empty");
+		REDEBUG("Attribute \"%s\" is required for authentication", call_env->password_tmpl->name);
 		RETURN_MODULE_INVALID;
 	}
 
@@ -1217,14 +1203,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		RDEBUG("Login attempt with password \"%pV\"", &password->data);
+		RDEBUG("Login attempt with password \"%pV\"", &call_env->password);
 	} else {
 		RDEBUG2("Login attempt with password");
 	}
 
 	auth_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_auth_ctx_t);
 	*auth_ctx = (ldap_auth_ctx_t){
-		.password = password->vp_strvalue,
+		.password = call_env->password.vb_strvalue,
 		.thread = thread,
 		.inst = inst,
 		.call_env = call_env
