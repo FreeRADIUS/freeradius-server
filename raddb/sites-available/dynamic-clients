@@ -239,7 +239,7 @@ server dynamic_clients {
 		#  Copy the IP address of the client from
 		#  the request just received
 		&control += {
-			FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
+			&FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
 
 			#  require_message_authenticator
 			&FreeRADIUS-Client-Require-MA = no
