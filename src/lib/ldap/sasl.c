@@ -487,7 +487,6 @@ static unlang_action_t ldap_async_sasl_bind_auth_results(rlm_rcode_t *p_result, 
  * @param[in] request		this bind relates to.
  * @param[in] thread		whose connection the bind should be performed on.
  * @param[in] mechs		SASL mechanisms to use.
- * @param[in] dn		DN to bind as.
  * @param[in] identity		Identity to bind with.
  * @param[in] password		Password to bind with.
  * @param[in] proxy		Identity to proxy.
@@ -496,7 +495,7 @@ static unlang_action_t ldap_async_sasl_bind_auth_results(rlm_rcode_t *p_result, 
  *	- 0 on success.
  *	- -1 on failure.
 */
-int fr_ldap_sasl_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char const *mechs, char const *dn,
+int fr_ldap_sasl_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char const *mechs,
 				 char const *identity, char const *password, char const *proxy, char const *realm)
 {
 	fr_ldap_bind_auth_ctx_t *bind_auth_ctx;
@@ -528,7 +527,6 @@ int fr_ldap_sasl_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, c
 	talloc_set_destructor(bind_auth_ctx->sasl_ctx, _sasl_ctx_free);
 	*bind_auth_ctx->sasl_ctx = (fr_ldap_sasl_ctx_t) {
 		.mechs = mechs,
-		.dn = dn,
 		.identity = identity,
 		.password = password,
 		.proxy = proxy,

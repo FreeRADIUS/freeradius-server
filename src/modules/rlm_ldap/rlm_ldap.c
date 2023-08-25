@@ -1164,7 +1164,7 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 #ifdef WITH_SASL
 		ldap_auth_call_env_t *call_env = auth_ctx->call_env;
 		if (fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
-						 auth_ctx->dn, call_env->user_sasl_authname.vb_strvalue,
+						 call_env->user_sasl_authname.vb_strvalue,
 						 auth_ctx->password, call_env->user_sasl_proxy.vb_strvalue,
 						 call_env->user_sasl_realm.vb_strvalue) < 0) goto fail;
 #else

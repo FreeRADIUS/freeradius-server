@@ -501,7 +501,6 @@ typedef struct {
 typedef struct {
 	fr_ldap_connection_t	*c;			//!< to bind.  Only used when binding as admin user.
 	char const		*mechs;			//!< SASL mechanisms to run
-	char const		*dn;			//!< to bind as.
 	char const		*identity;		//!< of the user.
 	char const		*password;		//!< of the user, may be NULL if no password is specified.
 	char const		*proxy;			//!< Proxy identity, may be NULL in which case identity is used.
@@ -908,7 +907,6 @@ int		fr_ldap_sasl_bind_auth_send(fr_ldap_sasl_ctx_t *sasl_ctx,
 int		fr_ldap_sasl_bind_auth_async(request_t *request,
 					     fr_ldap_thread_t *thread,
 					     char const *mechs,
-					     char const *dn,
 					     char const *identity,
 					     char const *password,
 					     char const *proxy, char const *realm);
