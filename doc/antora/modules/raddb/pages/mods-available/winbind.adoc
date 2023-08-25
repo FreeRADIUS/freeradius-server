@@ -37,6 +37,8 @@ actually want it blank it should be explicitly set here.
 
 group { ... }:: Group membership checking.
 
+Groups can be checked via the expansion `%{winbind.group:<name>}`
+
 
 search_username:: AD username to search for group searches.
 
@@ -53,14 +55,6 @@ generally required.
 
 
 
-attribute:: Attribute to use for group comparisons.
-
-This will normally be `Winbind-Group` if this instance is
-unnamed, otherwise it will be `name-Winbind-Group`. The
-name of this attribute can be overridden here.
-
-
-
 pool { ... }::
 
 Information for the `winbind` connection pool.
@@ -69,14 +63,12 @@ The configuration items below are the same for all modules which
 use the new connection pool.
 
 
-start::
+start:: Connections to create during module instantiation.
 
-Connections to create during module instantiation.
 If the server cannot create specified number of
 connections during instantiation it will exit.
-
 Set to `0` to allow the server to start without the
-winbind daemon being available.
+external service being available.
 
 
 
@@ -89,12 +81,15 @@ max:: Maximum number of connections.
 If these connections are all in use and a new one
 is requested, the request will NOT get a connection.
 
-Setting `max` to LESS than the number of threads means
+Setting `max` to *LESS* than the number of threads means
 that some threads may starve, and you will see errors
-like 'No connections available and at max connection limit'
+like _No connections available and at max connection limit_.
 
 Setting `max` to MORE than the number of threads means
 that there are more connections than necessary.
+
+If `max` is not specified, then it defaults to the number
+of workers configured.
 
 
 
@@ -161,7 +156,6 @@ winbind {
 	group {
 		search_username = "%{%{Stripped-User-Name}:-%{User-Name}}"
 #		add_domain = yes
-#		attribute = "Winbind-Group"
 	}
 	pool {
 		start = 0

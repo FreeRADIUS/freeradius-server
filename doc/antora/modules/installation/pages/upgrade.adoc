@@ -970,6 +970,11 @@ Group == "foo"
 
 will no longer work.
 
+=== rlm_winbind
+
+The `winbind` module uses an expansion `%{winbind.group:<name>}` instead of
+`Winbind-Group == <name>`.
+
 == Deleted Modules
 
 The following modules have been deleted

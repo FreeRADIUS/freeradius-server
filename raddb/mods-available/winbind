@@ -43,6 +43,8 @@ winbind {
 	#
 	#  group { ... }:: Group membership checking.
 	#
+	#  Groups can be checked via the expansion `%{winbind.group:<name>}`
+	#
 	group {
 		#
 		#  search_username:: AD username to search for group searches.
@@ -60,15 +62,6 @@ winbind {
 		#  generally required.
 		#
 #		add_domain = yes
-
-		#
-		#  attribute:: Attribute to use for group comparisons.
-		#
-		#  This will normally be `Winbind-Group` if this instance is
-		#  unnamed, otherwise it will be `name-Winbind-Group`. The
-		#  name of this attribute can be overridden here.
-		#
-#		attribute = "Winbind-Group"
 	}
 
 	#

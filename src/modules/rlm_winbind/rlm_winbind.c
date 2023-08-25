@@ -29,6 +29,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/util/debug.h>
 
 #include "rlm_winbind.h"
@@ -63,12 +64,14 @@ fr_dict_autoload_t rlm_winbind_dict[] = {
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
 static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_expr_bool_enum;
 
 extern fr_dict_attr_autoload_t rlm_winbind_dict_attr[];
 fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ NULL }
 };
 
@@ -82,10 +85,9 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
  *	- 0 user is in group
  *	- 1 failure or user is not in group
  */
-static int winbind_group_cmp(void *instance, request_t *request, fr_pair_t const *check)
+static bool winbind_check_group(rlm_winbind_t const *inst, request_t *request, char const *name)
 {
-	rlm_winbind_t		*inst = talloc_get_type_abort(instance, rlm_winbind_t);
-	int			ret = 1;
+	bool			rcode = false;
 	struct wbcContext	*wb_ctx;
 	wbcErr			err;
 	uint32_t		num_groups, i;
@@ -103,14 +105,9 @@ static int winbind_group_cmp(void *instance, request_t *request, fr_pair_t const
 	size_t			backslash = 0;
 
 	vp_username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-	if (!vp_username) return -1;
+	if (!vp_username) return false;
 
 	RINDENT();
-
-	if (check->vp_length == 0) {
-		REDEBUG("Group name is empty, nothing to check!");
-		goto error;
-	}
 
 	/*
 	 *	Work out what username to check groups for, made up from
@@ -167,37 +164,36 @@ static int winbind_group_cmp(void *instance, request_t *request, fr_pair_t const
 		goto error;
 	}
 
-	REDEBUG2("Trying to find user \"%s\" in group \"%pV\"", username, &check->data);
+	REDEBUG2("Trying to find user \"%s\" in group \"%s\"", username, name);
 
 	err = wbcCtxGetGroups(wb_ctx, username, &num_groups, &wb_groups);
 	switch (err) {
 	case WBC_ERR_SUCCESS:
-		ret = 0;
+		if (!num_groups) {
+			REDEBUG2("No groups returned");
+			goto finish;
+		}
+
 		REDEBUG2("Successfully retrieved user's groups");
 		break;
 
 	case WBC_ERR_WINBIND_NOT_AVAILABLE:
 		RERROR("Failed retrieving groups: Unable to contact winbindd");	/* Global error */
-		break;
+		goto finish;
 
 	case WBC_ERR_DOMAIN_NOT_FOUND:
 		/* Yeah, weird. libwbclient returns this if the username is unknown */
 		REDEBUG("Failed retrieving groups: User or Domain not found");
-		break;
+		goto finish;
 
 	case WBC_ERR_UNKNOWN_USER:
 		REDEBUG("Failed retrieving groups: User cannot be found");
-		break;
+		goto finish;
 
 	default:
 		REDEBUG("Failed retrieving groups: %s", wbcErrorString(err));
-		break;
+		goto finish;
 	}
-
-	if (!num_groups) REDEBUG2("No groups returned");
-
-	if (ret) goto finish;
-	ret = 1;
 
 	/*
 	 *	See if any of the groups match
@@ -217,8 +213,6 @@ static int winbind_group_cmp(void *instance, request_t *request, fr_pair_t const
 	for (i = 0; i < num_groups; i++) {
 		struct group	*group;
 		char		*group_name;
-
-		bool		found = false;
 
 		/* Get the group name from the (fake winbind) gid */
 		err = wbcCtxGetgrgid(wb_ctx, wb_groups[i], &group);
@@ -244,18 +238,17 @@ static int winbind_group_cmp(void *instance, request_t *request, fr_pair_t const
 
 		/* See if the group matches */
 		REDEBUG2("Checking plain group name \"%s\"", group_name);
-		if (!strcasecmp(group_name, check->vp_strvalue)) {
+		if (!strcasecmp(group_name, name)) {
 			REDEBUG2("Found matching group: %s", group_name);
-			found = true;
-			ret = 0;
+			rcode = true;
 		}
 		wbcFreeMemory(group);
 
 		/* Short-circuit to save unnecessary enumeration */
-		if (found) break;
+		if (rcode) break;
 	}
 
-	if (ret) REDEBUG2("No groups found that match");
+	if (!rcode) REDEBUG2("No groups found that match");
 
 finish:
 	wbcFreeMemory(wb_groups);
@@ -267,7 +260,34 @@ error:
 	talloc_const_free(domain);
 	REXDENT();
 
-	return ret;
+	return rcode;
+}
+
+
+/** Check if the user is a member of a particular winbind group
+ *
+@verbatim
+%{winbind.group:<name>}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t winbind_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				     xlat_ctx_t const *xctx,
+				     request_t *request, fr_value_box_list_t *in)
+{
+	rlm_winbind_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_winbind_t);
+	fr_value_box_t		*arg = fr_value_box_list_head(in);
+	char const		*p = arg->vb_strvalue;
+	fr_value_box_t		*vb;
+
+	fr_skip_whitespace(p);
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
+	vb->vb_bool = winbind_check_group(inst, request, p);
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 
@@ -324,22 +344,34 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED fr_t
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_winbind_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_winbind_t);
-	char const		*group_attribute;
-	char			buffer[256];
+	CONF_SECTION		*conf = mctx->inst->conf;
+	xlat_t			*xlat;
+	xlat_arg_parser_t	*xlat_arg;
 
-	if (inst->group_attribute) {
-		group_attribute = inst->group_attribute;
-	} else if (cf_section_name2(mctx->inst->conf)) {
-		snprintf(buffer, sizeof(buffer), "%s-Winbind-Group", mctx->inst->name);
-		group_attribute = buffer;
-	} else {
-		group_attribute = "Winbind-Group";
-	}
-
-	if (paircmp_register_by_name(group_attribute, attr_user_name, false, winbind_group_cmp, inst) < 0) {
-		PERROR("Error registering group comparison");
+	/*
+	 *	Define the new %{winbind.group:name} xlat.  The register
+	 *	function automatically adds the module instance name
+	 *	as a prefix.
+	 */
+	xlat = xlat_func_register_module(inst, mctx, "group", winbind_group_xlat, FR_TYPE_BOOL);
+	if (!xlat) {
+		cf_log_err(conf, "Failed registering group expansion");
 		return -1;
 	}
+
+	/*
+	 *	The xlat escape function needs access to inst - so
+	 *	argument parser details need to be defined here
+	 */
+	xlat_arg = talloc_zero_array(inst, xlat_arg_parser_t, 2);
+	xlat_arg[0].type = FR_TYPE_STRING;
+	xlat_arg[0].required = true;
+	xlat_arg[0].concat = true;
+	xlat_arg[0].func = NULL; /* No real escaping done - we do strcmp() on it */
+	xlat_arg[0].uctx = NULL;
+	xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
+
+	xlat_func_mono_set(xlat, xlat_arg);
 
 	return 0;
 }
