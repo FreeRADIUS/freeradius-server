@@ -824,6 +824,26 @@ The `expiration` module has been replaced with an `unlang` policy.
 The policy is located in `raddb/policy.d/time`.  The `Expiration`
 attribute should continue to work the same as with v3.
 
+=== rlm_ldap
+
+The `ldap` module provides an expansion `%{ldap.memberof:<name>}` instead of
+`LDAP-Group` for dynamically testing group membership.  The old method of
+
+```
+LDAP-Group == "foo"
+```
+
+will no longer work.
+
+The cacheing of group membership into attributes in the `control` list is
+still available, so
+
+```
+&control.LDAP-Group[*] == "foo"
+```
+can also be used to test membership after having called the `ldap` module,
+if `cacheable_name` or `cacheable_dn` are enabled.
+
 === rlm_mschap
 
 The `winbind_*` configuration options are now in a `winbind`
