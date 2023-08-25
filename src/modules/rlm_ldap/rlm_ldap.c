@@ -259,7 +259,6 @@ fr_dict_attr_t const *attr_nt_password;
 fr_dict_attr_t const *attr_password_with_header;
 
 fr_dict_attr_t const *attr_user_password;
-fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_expr_bool_enum;
 
 extern fr_dict_attr_autoload_t rlm_ldap_dict_attr[];
@@ -272,7 +271,6 @@ fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
 	{ .out = &attr_password_with_header, .name = "Password.With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ NULL }
@@ -1157,6 +1155,8 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 		RETURN_MODULE_FAIL;
 	}
 
+	RDEBUG2("Login attempt as \"%s\"", auth_ctx->dn);
+
 	/*
 	 *	Attempt a bind using the thread specific trunk for bind auths
 	 */
@@ -1185,19 +1185,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	ldap_auth_ctx_t		*auth_ctx;
 	ldap_auth_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_auth_call_env_t);
 
-	fr_pair_t *username, *password;
+	fr_pair_t *password;
 
-	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
 	password = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password);
-
-	/*
-	 *	We can only authenticate user requests which HAVE
-	 *	a User-Name attribute.
-	 */
-	if (!username) {
-		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		RETURN_MODULE_INVALID;
-	}
 
 	if (!password) {
 		RWDEBUG("You have set \"Auth-Type := LDAP\" somewhere");
@@ -1227,8 +1217,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	} else {
 		RDEBUG2("Login attempt with password");
 	}
-
-	RDEBUG2("Login attempt by \"%pV\"", &username->data);
 
 	auth_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_auth_ctx_t);
 	*auth_ctx = (ldap_auth_ctx_t){
