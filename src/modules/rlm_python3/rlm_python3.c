@@ -56,11 +56,11 @@ RCSID("$Id$")
 static uint32_t		python_instances = 0;
 static void		*python_dlhandle;
 
-static PyThreadState	*main_interpreter;	//!< Main interpreter (cext safe)
-static PyObject		*main_module;		//!< Pthon configuration dictionary.
+static PyThreadState	*main_interpreter = NULL;	//!< Main interpreter (cext safe)
+static PyObject		*main_module = NULL;		//!< Pthon configuration dictionary.
 
-static rlm_python_t *current_inst;		//!< Needed to pass parameter to PyInit_radiusd
-static CONF_SECTION *current_conf;		//!< Needed to pass parameter to PyInit_radiusd
+static rlm_python_t *current_inst = NULL;		//!< Needed to pass parameter to PyInit_radiusd
+static CONF_SECTION *current_conf = NULL;		//!< Needed to pass parameter to PyInit_radiusd
 
 /*
  *	A mapping of configuration file names to internal variables.
