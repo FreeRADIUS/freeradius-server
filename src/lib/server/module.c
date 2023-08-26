@@ -893,10 +893,6 @@ static int _module_instance_free(module_instance_t *mi)
 	 */
 	if (mi->dl_inst && mi->dl_inst->data) {
 		xlat_func_unregister(mi->name);
-		/*
-		 *	Remove any registered paircmps.
-		 */
-		paircmp_unregister_instance(mi->dl_inst->data);
 		xlat_func_unregister_module(mi->dl_inst);
 	}
 

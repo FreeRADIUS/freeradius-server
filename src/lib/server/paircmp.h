@@ -50,8 +50,6 @@ int		paircmp_register(fr_dict_attr_t const *attribute, fr_dict_attr_t const *fro
 
 void		paircmp_unregister(fr_dict_attr_t const *attr, fr_paircmp_func_t func);
 
-void		paircmp_unregister_instance(void *instance);
-
 int		paircmp_init(void);
 
 void		paircmp_free(void);

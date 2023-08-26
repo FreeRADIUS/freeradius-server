@@ -724,28 +724,6 @@ void paircmp_unregister(fr_dict_attr_t const *da, fr_paircmp_func_t func)
 	talloc_free(c);
 }
 
-/** Unregister comparison function for a module
- *
- *  All paircmp() functions for this module will be unregistered.
- *
- * @param instance the module instance
- */
-void paircmp_unregister_instance(void *instance)
-{
-	paircmp_t *c, **tail;
-
-	tail = &cmp;
-	while ((c = *tail) != NULL) {
-		if (c->instance == instance) {
-			*tail = c->next;
-			talloc_free(c);
-			continue;
-		}
-
-		tail = &(c->next);
-	}
-}
-
 /** Add built in pair comparisons
  *
  */
