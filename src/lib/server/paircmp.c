@@ -95,8 +95,7 @@ fr_dict_attr_autoload_t paircmp_dict_attr[] = {
 	{ NULL }
 };
 
-static paircmp_t *cmp;
-
+static paircmp_t *cmp = NULL;
 
 /*
  *	Compare the request packet type.
@@ -401,8 +400,6 @@ static int paircmp_func(request_t *request,
 
 	/*
 	 *	See if there is a special compare function.
-	 *
-	 *	FIXME: use new RB-Tree code.
 	 */
 	for (c = cmp; c; c = c->next) {
 		if (c->da == check_item->da) {
@@ -688,9 +685,10 @@ int paircmp_init(void)
 	paircmp_register(attr_packet_dst_ip_address, generic_cmp);
 	paircmp_register(attr_packet_src_port, generic_cmp);
 	paircmp_register(attr_packet_dst_port, generic_cmp);
-	paircmp_register(attr_request_processing_stage, generic_cmp);
 	paircmp_register(attr_packet_src_ipv6_address, generic_cmp);
 	paircmp_register(attr_packet_dst_ipv6_address, generic_cmp);
+
+	paircmp_register(attr_request_processing_stage, generic_cmp);
 	paircmp_register(attr_virtual_server, generic_cmp);
 
 	return 0;
@@ -704,11 +702,11 @@ void paircmp_free(void)
 	paircmp_unregister(attr_packet_dst_ip_address, generic_cmp);
 	paircmp_unregister(attr_packet_src_port, generic_cmp);
 	paircmp_unregister(attr_packet_dst_port, generic_cmp);
-	paircmp_unregister(attr_request_processing_stage, generic_cmp);
 	paircmp_unregister(attr_packet_src_ipv6_address, generic_cmp);
 	paircmp_unregister(attr_packet_dst_ipv6_address, generic_cmp);
-	paircmp_unregister(attr_virtual_server, generic_cmp);
 
+	paircmp_unregister(attr_request_processing_stage, generic_cmp);
+	paircmp_unregister(attr_virtual_server, generic_cmp);
 
 	fr_dict_autofree(paircmp_dict);
 }
