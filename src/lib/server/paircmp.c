@@ -40,12 +40,13 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+typedef int (*fr_paircmp_func_t)(request_t *, fr_pair_t const *);
+
 typedef struct paircmp_s paircmp_t;
 struct paircmp_s {
 	fr_dict_attr_t const	*da;
 	fr_dict_attr_t const	*from;
 	bool			first_only;
-	void			*instance; /* module instance */
 	fr_paircmp_func_t	compare;
 	paircmp_t		*next;
 };
@@ -102,9 +103,7 @@ static paircmp_t *cmp;
 /*
  *	Compare the request packet type.
  */
-static int packet_cmp(UNUSED void *instance,
-		      request_t *request,
-		      fr_pair_t const *check_item)
+static int packet_cmp(request_t *request, fr_pair_t const *check_item)
 {
 	PAIR_VERIFY(check_item);
 
@@ -116,9 +115,7 @@ static int packet_cmp(UNUSED void *instance,
 /*
  *	Generic comparisons, via xlat.
  */
-static int generic_cmp(UNUSED void *instance,
-		       request_t *request,
-		       fr_pair_t const *check_item)
+static int generic_cmp(request_t *request, fr_pair_t const *check_item)
 {
 	PAIR_VERIFY(check_item);
 
@@ -436,7 +433,7 @@ static int paircmp_func(request_t *request,
 	 */
 	for (c = cmp; c; c = c->next) {
 		if (c->da == check_item->da) {
-			return (c->compare)(c->instance, request, check_item);
+			return (c->compare)(request, check_item);
 		}
 	}
 
@@ -477,7 +474,7 @@ int paircmp_virtual(request_t *request, fr_dict_attr_t const *da, fr_token_t op,
 			vp->op = op;
 			fr_value_box_copy(vp, &vp->data, value);
 
-			rcode = (c->compare)(c->instance, request, vp);
+			rcode = (c->compare)(request, vp);
 			talloc_free(vp);
 			return rcode;
 		}
@@ -663,47 +660,12 @@ int paircmp_find(fr_dict_attr_t const *da)
 	return false;
 }
 
-/** Register a function as compare function.
- *
- * @param[in] da		to register comparison function for.
- * @param[in] from		the attribute we want to compare with.
- *				Normally this is the same as attribute.
- *				If null call the comparison function
- *				on every attributes in the request if
- *				first_only is false.
- * @param[in] first_only	will decide if we loop over the request
- *				attributes or stop on the first one.
- * @param[in] func		comparison function.
- * @param[in] instance		argument to comparison function.
- * @return 0
- */
-int paircmp_register(fr_dict_attr_t const *da, fr_dict_attr_t const *from,
-		     bool first_only, fr_paircmp_func_t func, void *instance)
-{
-	paircmp_t *c;
-
-	fr_assert(da != NULL);
-
-	paircmp_unregister(da, func);
-
-	MEM(c = talloc_zero(NULL, paircmp_t));
-	c->compare = func;
-	c->da = da;
-	c->from = from;
-	c->first_only = first_only;
-	c->instance = instance;
-	c->next = cmp;
-	cmp = c;
-
-	return 0;
-}
-
 /** Unregister comparison function for an attribute
  *
  * @param[in] da		dict reference to unregister for.
  * @param[in] func		comparison function to remove.
  */
-void paircmp_unregister(fr_dict_attr_t const *da, fr_paircmp_func_t func)
+static void paircmp_unregister(fr_dict_attr_t const *da, fr_paircmp_func_t func)
 {
 	paircmp_t *c, *last;
 
@@ -724,6 +686,39 @@ void paircmp_unregister(fr_dict_attr_t const *da, fr_paircmp_func_t func)
 	talloc_free(c);
 }
 
+/** Register a function as compare function.
+ *
+ * @param[in] da		to register comparison function for.
+ * @param[in] from		the attribute we want to compare with.
+ *				Normally this is the same as attribute.
+ *				If null call the comparison function
+ *				on every attributes in the request if
+ *				first_only is false.
+ * @param[in] first_only	will decide if we loop over the request
+ *				attributes or stop on the first one.
+ * @param[in] func		comparison function.
+ * @return 0
+ */
+static int paircmp_register(fr_dict_attr_t const *da, fr_dict_attr_t const *from,
+			    bool first_only, fr_paircmp_func_t func)
+{
+	paircmp_t *c;
+
+	fr_assert(da != NULL);
+
+	paircmp_unregister(da, func);
+
+	MEM(c = talloc_zero(NULL, paircmp_t));
+	c->compare = func;
+	c->da = da;
+	c->from = from;
+	c->first_only = first_only;
+	c->next = cmp;
+	cmp = c;
+
+	return 0;
+}
+
 /** Add built in pair comparisons
  *
  */
@@ -739,16 +734,16 @@ int paircmp_init(void)
 		return -1;
 	}
 
-	paircmp_register(attr_packet_type, NULL, true, packet_cmp, NULL);
+	paircmp_register(attr_packet_type, NULL, true, packet_cmp);
 
-	paircmp_register(attr_packet_src_ip_address, NULL, true, generic_cmp, NULL);
-	paircmp_register(attr_packet_dst_ip_address, NULL, true, generic_cmp, NULL);
-	paircmp_register(attr_packet_src_port, NULL, true, generic_cmp, NULL);
-	paircmp_register(attr_packet_dst_port, NULL, true, generic_cmp, NULL);
-	paircmp_register(attr_request_processing_stage, NULL, true, generic_cmp, NULL);
-	paircmp_register(attr_packet_src_ipv6_address, NULL, true, generic_cmp, NULL);
-	paircmp_register(attr_packet_dst_ipv6_address, NULL, true, generic_cmp, NULL);
-	paircmp_register(attr_virtual_server, NULL, true, generic_cmp, NULL);
+	paircmp_register(attr_packet_src_ip_address, NULL, true, generic_cmp);
+	paircmp_register(attr_packet_dst_ip_address, NULL, true, generic_cmp);
+	paircmp_register(attr_packet_src_port, NULL, true, generic_cmp);
+	paircmp_register(attr_packet_dst_port, NULL, true, generic_cmp);
+	paircmp_register(attr_request_processing_stage, NULL, true, generic_cmp);
+	paircmp_register(attr_packet_src_ipv6_address, NULL, true, generic_cmp);
+	paircmp_register(attr_packet_dst_ipv6_address, NULL, true, generic_cmp);
+	paircmp_register(attr_virtual_server, NULL, true, generic_cmp);
 
 	return 0;
 }
