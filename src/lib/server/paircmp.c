@@ -40,12 +40,9 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-typedef int (*fr_paircmp_func_t)(request_t *, fr_pair_t const *);
-
 typedef struct paircmp_s paircmp_t;
 struct paircmp_s {
 	fr_dict_attr_t const	*da;
-	fr_paircmp_func_t	compare;
 	paircmp_t		*next;
 };
 
@@ -389,7 +386,7 @@ static int paircmp_func(request_t *request,
 	 */
 	for (c = cmp; c; c = c->next) {
 		if (c->da == check_item->da) {
-			return (c->compare)(request, check_item);
+			return generic_cmp(request, check_item);
 		}
 	}
 
@@ -430,7 +427,7 @@ int paircmp_virtual(request_t *request, fr_dict_attr_t const *da, fr_token_t op,
 			vp->op = op;
 			fr_value_box_copy(vp, &vp->data, value);
 
-			rcode = (c->compare)(request, vp);
+			rcode = generic_cmp(request, vp);
 			talloc_free(vp);
 			return rcode;
 		}
@@ -604,15 +601,14 @@ int paircmp_find(fr_dict_attr_t const *da)
 /** Unregister comparison function for an attribute
  *
  * @param[in] da		dict reference to unregister for.
- * @param[in] func		comparison function to remove.
  */
-static void paircmp_unregister(fr_dict_attr_t const *da, fr_paircmp_func_t func)
+static void paircmp_unregister(fr_dict_attr_t const *da)
 {
 	paircmp_t *c, *last;
 
 	last = NULL;
 	for (c = cmp; c; c = c->next) {
-		if ((c->da == da) && (c->compare == func)) break;
+		if (c->da == da) break;
 		last = c;
 	}
 
@@ -627,22 +623,20 @@ static void paircmp_unregister(fr_dict_attr_t const *da, fr_paircmp_func_t func)
 	talloc_free(c);
 }
 
-/** Register a function as compare function.
+/** Register a compare da.  We always use generic_cmp() for all comparisons.
  *
  * @param[in] da		to register comparison function for.
- * @param[in] func		comparison function.
  * @return 0
  */
-static int paircmp_register(fr_dict_attr_t const *da, fr_paircmp_func_t func)
+static int paircmp_register(fr_dict_attr_t const *da)
 {
 	paircmp_t *c;
 
 	fr_assert(da != NULL);
 
-	paircmp_unregister(da, func);
+	paircmp_unregister(da);
 
 	MEM(c = talloc_zero(NULL, paircmp_t));
-	c->compare = func;
 	c->da = da;
 	c->next = cmp;
 	cmp = c;
@@ -665,30 +659,30 @@ int paircmp_init(void)
 		return -1;
 	}
 
-	paircmp_register(attr_packet_src_ip_address, generic_cmp);
-	paircmp_register(attr_packet_dst_ip_address, generic_cmp);
-	paircmp_register(attr_packet_src_port, generic_cmp);
-	paircmp_register(attr_packet_dst_port, generic_cmp);
-	paircmp_register(attr_packet_src_ipv6_address, generic_cmp);
-	paircmp_register(attr_packet_dst_ipv6_address, generic_cmp);
+	paircmp_register(attr_packet_src_ip_address);
+	paircmp_register(attr_packet_dst_ip_address);
+	paircmp_register(attr_packet_src_port);
+	paircmp_register(attr_packet_dst_port);
+	paircmp_register(attr_packet_src_ipv6_address);
+	paircmp_register(attr_packet_dst_ipv6_address);
 
-	paircmp_register(attr_request_processing_stage, generic_cmp);
-	paircmp_register(attr_virtual_server, generic_cmp);
+	paircmp_register(attr_request_processing_stage);
+	paircmp_register(attr_virtual_server);
 
 	return 0;
 }
 
 void paircmp_free(void)
 {
-	paircmp_unregister(attr_packet_src_ip_address, generic_cmp);
-	paircmp_unregister(attr_packet_dst_ip_address, generic_cmp);
-	paircmp_unregister(attr_packet_src_port, generic_cmp);
-	paircmp_unregister(attr_packet_dst_port, generic_cmp);
-	paircmp_unregister(attr_packet_src_ipv6_address, generic_cmp);
-	paircmp_unregister(attr_packet_dst_ipv6_address, generic_cmp);
+	paircmp_unregister(attr_packet_src_ip_address);
+	paircmp_unregister(attr_packet_dst_ip_address);
+	paircmp_unregister(attr_packet_src_port);
+	paircmp_unregister(attr_packet_dst_port);
+	paircmp_unregister(attr_packet_src_ipv6_address);
+	paircmp_unregister(attr_packet_dst_ipv6_address);
 
-	paircmp_unregister(attr_request_processing_stage, generic_cmp);
-	paircmp_unregister(attr_virtual_server, generic_cmp);
+	paircmp_unregister(attr_request_processing_stage);
+	paircmp_unregister(attr_virtual_server);
 
 	fr_dict_autofree(paircmp_dict);
 }
