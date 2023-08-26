@@ -1148,20 +1148,13 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	packet = tmpl_packet_ptr(request, tmpl_list(vpt));
 	if (!packet) return 0;
 
-	if (tmpl_attr_tail_da(vpt) == attr_packet_type) {
-		if (!packet || !packet->code) return 0;
-
-		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL));
-		value->enumv = tmpl_attr_tail_da(vpt);
-		value->datum.int32 = packet->code;
-
 	/*
 	 *	Virtual attributes which require a temporary fr_pair_t
 	 *	to be allocated. We can't use stack allocated memory
 	 *	because of the talloc checks sprinkled throughout the
 	 *	various VP functions.
 	 */
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_authentication_vector) {
+	if (tmpl_attr_tail_da(vpt) == attr_packet_authentication_vector) {
 		MEM(value = fr_value_box_alloc_null(ctx));
 		fr_value_box_memdup(ctx, value, tmpl_attr_tail_da(vpt), packet->vector, sizeof(packet->vector), true);
 
