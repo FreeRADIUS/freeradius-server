@@ -45,7 +45,6 @@ typedef int (*fr_paircmp_func_t)(request_t *, fr_pair_t const *);
 typedef struct paircmp_s paircmp_t;
 struct paircmp_s {
 	fr_dict_attr_t const	*da;
-	bool			first_only;
 	fr_paircmp_func_t	compare;
 	paircmp_t		*next;
 };
@@ -164,27 +163,6 @@ static int generic_cmp(request_t *request, fr_pair_t const *check_item)
 	 *	Will do the xlat for us
 	 */
 	return paircmp_pairs(request, check_item, NULL);
-}
-
-/** See what attribute we want to compare with.
- *
- * @param[in] da	to find comparison function for.
- * @return
- *	- true if the comparison callback require
- *	  a matching attribute in the request.
- *	- false.
- */
-static bool other_attr(fr_dict_attr_t const *da)
-{
-	paircmp_t *c;
-
-	for (c = cmp; c; c = c->next) {
-		if (c->da == da) {
-			return c->first_only;
-		}
-	}
-
-	return false;
 }
 
 /** Compares check and vp by value.
@@ -497,7 +475,6 @@ int paircmp(request_t *request,
 
 	int			result = 0;
 	int			compare;
-	bool			first_only;
 
 	fr_pair_list_foreach(check_list, check_item) {
 		/*
@@ -538,22 +515,13 @@ int paircmp(request_t *request,
 			if (fr_pair_find_by_da(request_list, NULL, attr_user_password) == NULL) continue;
 		}
 
-		/*
-		 *	See if this item is present in the request.
-		 */
-		first_only = other_attr(check_item->da);
-
 		auth_item = fr_pair_list_head(request_list);
 
 	try_again:
-		if (!first_only) {
-			auth_item = fr_pair_find_by_da(request_list, auth_item, check_item->da);
-		}
-
 		/*
 		 *	Not found, it's not a match.
 		 */
-		if (auth_item == NULL) {
+		if (!auth_item) {
 			/*
 			 *	Didn't find it.  If we were *trying*
 			 *	to not find it, then we succeeded.
@@ -623,8 +591,8 @@ int paircmp(request_t *request,
 		 *	This attribute didn't match, but maybe there's
 		 *	another of the same attribute, which DOES match.
 		 */
-		if ((result != 0) && (!first_only)) {
-			auth_item = fr_pair_list_next(request_list, auth_item);
+		if (result != 0) {
+			auth_item = fr_pair_find_by_da(request_list, auth_item, check_item->da);
 			result = 0;
 			goto try_again;
 		}
@@ -679,12 +647,10 @@ static void paircmp_unregister(fr_dict_attr_t const *da, fr_paircmp_func_t func)
 /** Register a function as compare function.
  *
  * @param[in] da		to register comparison function for.
- * @param[in] first_only	will decide if we loop over the request
- *				attributes or stop on the first one.
  * @param[in] func		comparison function.
  * @return 0
  */
-static int paircmp_register(fr_dict_attr_t const *da, bool first_only, fr_paircmp_func_t func)
+static int paircmp_register(fr_dict_attr_t const *da, fr_paircmp_func_t func)
 {
 	paircmp_t *c;
 
@@ -695,7 +661,6 @@ static int paircmp_register(fr_dict_attr_t const *da, bool first_only, fr_paircm
 	MEM(c = talloc_zero(NULL, paircmp_t));
 	c->compare = func;
 	c->da = da;
-	c->first_only = first_only;
 	c->next = cmp;
 	cmp = c;
 
@@ -717,16 +682,16 @@ int paircmp_init(void)
 		return -1;
 	}
 
-	paircmp_register(attr_packet_type, true, packet_cmp);
+	paircmp_register(attr_packet_type, packet_cmp);
 
-	paircmp_register(attr_packet_src_ip_address, true, generic_cmp);
-	paircmp_register(attr_packet_dst_ip_address, true, generic_cmp);
-	paircmp_register(attr_packet_src_port, true, generic_cmp);
-	paircmp_register(attr_packet_dst_port, true, generic_cmp);
-	paircmp_register(attr_request_processing_stage, true, generic_cmp);
-	paircmp_register(attr_packet_src_ipv6_address, true, generic_cmp);
-	paircmp_register(attr_packet_dst_ipv6_address, true, generic_cmp);
-	paircmp_register(attr_virtual_server, true, generic_cmp);
+	paircmp_register(attr_packet_src_ip_address, generic_cmp);
+	paircmp_register(attr_packet_dst_ip_address, generic_cmp);
+	paircmp_register(attr_packet_src_port, generic_cmp);
+	paircmp_register(attr_packet_dst_port, generic_cmp);
+	paircmp_register(attr_request_processing_stage, generic_cmp);
+	paircmp_register(attr_packet_src_ipv6_address, generic_cmp);
+	paircmp_register(attr_packet_dst_ipv6_address, generic_cmp);
+	paircmp_register(attr_virtual_server, generic_cmp);
 
 	return 0;
 }
