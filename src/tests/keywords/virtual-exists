@@ -1,6 +1,6 @@
 #
 #  PRE: if
 #
-if (&Client-Shortname) {
+if (&Virtual-Server) {
 	success
 }

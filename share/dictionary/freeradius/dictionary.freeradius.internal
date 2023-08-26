@@ -142,9 +142,9 @@ ATTRIBUTE	Stripped-User-Domain			1001	string
 # Connext-Rate, Add-Prefix, Add-Suffix
 ATTRIBUTE	Expiration				1010	date
 
-ATTRIBUTE	Client-Shortname			1011	string virtual
+# 1011 was Client-Shortname.  Use %{client:shortname} instead
 
-# Was Raw-Attribute.  No longer supported
+# 1012 Was Raw-Attribute.  No longer supported
 ATTRIBUTE	User-Category				1013	string
 
 ATTRIBUTE	Pam-Auth				1014	string

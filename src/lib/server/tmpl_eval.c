@@ -51,7 +51,6 @@ fr_dict_autoload_t tmpl_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_client_shortname;
 static fr_dict_attr_t const *attr_packet_dst_ip_address;
 static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
 static fr_dict_attr_t const *attr_packet_dst_port;
@@ -70,7 +69,6 @@ extern fr_dict_attr_t const *tmpl_attr_unspec;
 fr_dict_attr_t const *tmpl_attr_unspec;
 
 static fr_dict_attr_autoload_t tmpl_dict_attr[] = {
-	{ .out = &attr_client_shortname, .name = "Client-Shortname", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_module_return_code, .name = "Module-Return-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPV6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
@@ -1104,24 +1102,15 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	/*
 	 *	Some non-packet expansions
 	 */
-	if (tmpl_attr_tail_da(vpt) == attr_client_shortname) {
-		fr_client_t *client = client_from_request(request);
-		if (!client || !client->shortname) return 0;
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_attr_tail_da(vpt), client->shortname, false) < 0) {
-		error:
-			talloc_free(value);
-			return -1;
-		}
-		goto done;
-	}
-
 	if (tmpl_attr_tail_da(vpt) == attr_request_processing_stage) {
 		if (!request->component) return 0;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(ctx, value, tmpl_attr_tail_da(vpt), request->component, false) < 0) goto error;
+		if (fr_value_box_strdup(ctx, value, tmpl_attr_tail_da(vpt), request->component, false) < 0) {
+		error:
+			talloc_free(value);
+			return -1;
+		}
 		goto done;
 	}
 

@@ -2,10 +2,6 @@
 #  PRE: if
 #
 
-if (!("%{Client-Shortname}" == 'test')) {
-	test_fail
-}
-
 if (!("%{Virtual-Server}" == 'default')) {
 	test_fail
 }
@@ -48,13 +44,6 @@ if (!("%{Packet-Src-Port}" == '18120')) {
 }
 
 if (!("%{Packet-Dst-Port}" == '1812')) {
-	test_fail
-}
-
-
-# We should allow the user to overload virtual attributes
-&Client-Shortname := 'my_test_client'
-if (!("%{Client-Shortname}" == 'my_test_client')) {
 	test_fail
 }
 

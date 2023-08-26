@@ -705,6 +705,12 @@ and the parser is smart enough to figure things out.
 
 The following modules are new in v4.
 
+=== rlm_client
+
+This module handles the `%{client:..}` xlat expansions.
+
+The `Client-Shortname` attribute has been removed.  You should use `%{client:shortname}` instead.
+
 === rlm_radius
 
 The `radius` module has taken over much of the functionality of
