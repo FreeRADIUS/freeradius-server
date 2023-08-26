@@ -34,7 +34,6 @@ extern "C" {
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/pair.h>
 
-/* for paircmp_register */
 int		paircmp_pairs(request_t *request, fr_pair_t const *check, fr_pair_t *vp);
 
 int		paircmp(request_t *request, fr_pair_list_t *request_list, fr_pair_list_t *check_list);

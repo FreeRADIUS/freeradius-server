@@ -45,7 +45,6 @@ typedef int (*fr_paircmp_func_t)(request_t *, fr_pair_t const *);
 typedef struct paircmp_s paircmp_t;
 struct paircmp_s {
 	fr_dict_attr_t const	*da;
-	fr_dict_attr_t const	*from;
 	bool			first_only;
 	fr_paircmp_func_t	compare;
 	paircmp_t		*next;
@@ -170,24 +169,20 @@ static int generic_cmp(request_t *request, fr_pair_t const *check_item)
 /** See what attribute we want to compare with.
  *
  * @param[in] da	to find comparison function for.
- * @param[in] from	reference to compare with.
  * @return
  *	- true if the comparison callback require
  *	  a matching attribute in the request.
  *	- false.
  */
-static bool other_attr(fr_dict_attr_t const *da, fr_dict_attr_t const **from)
+static bool other_attr(fr_dict_attr_t const *da)
 {
 	paircmp_t *c;
 
 	for (c = cmp; c; c = c->next) {
 		if (c->da == da) {
-			*from = c->from;
 			return c->first_only;
 		}
 	}
-
-	*from = da;
 
 	return false;
 }
@@ -499,7 +494,6 @@ int paircmp(request_t *request,
 	    fr_pair_list_t *check_list)
 {
 	fr_pair_t		*auth_item;
-	fr_dict_attr_t const	*from;
 
 	int			result = 0;
 	int			compare;
@@ -547,17 +541,13 @@ int paircmp(request_t *request,
 		/*
 		 *	See if this item is present in the request.
 		 */
-		first_only = other_attr(check_item->da, &from);
+		first_only = other_attr(check_item->da);
 
 		auth_item = fr_pair_list_head(request_list);
 
 	try_again:
 		if (!first_only) {
-			while (auth_item != NULL) {
-				if ((auth_item->da == from) || (!from)) break;
-
-				auth_item = fr_pair_list_next(request_list, auth_item);
-			}
+			auth_item = fr_pair_find_by_da(request_list, auth_item, check_item->da);
 		}
 
 		/*
@@ -689,18 +679,12 @@ static void paircmp_unregister(fr_dict_attr_t const *da, fr_paircmp_func_t func)
 /** Register a function as compare function.
  *
  * @param[in] da		to register comparison function for.
- * @param[in] from		the attribute we want to compare with.
- *				Normally this is the same as attribute.
- *				If null call the comparison function
- *				on every attributes in the request if
- *				first_only is false.
  * @param[in] first_only	will decide if we loop over the request
  *				attributes or stop on the first one.
  * @param[in] func		comparison function.
  * @return 0
  */
-static int paircmp_register(fr_dict_attr_t const *da, fr_dict_attr_t const *from,
-			    bool first_only, fr_paircmp_func_t func)
+static int paircmp_register(fr_dict_attr_t const *da, bool first_only, fr_paircmp_func_t func)
 {
 	paircmp_t *c;
 
@@ -711,7 +695,6 @@ static int paircmp_register(fr_dict_attr_t const *da, fr_dict_attr_t const *from
 	MEM(c = talloc_zero(NULL, paircmp_t));
 	c->compare = func;
 	c->da = da;
-	c->from = from;
 	c->first_only = first_only;
 	c->next = cmp;
 	cmp = c;
@@ -734,16 +717,16 @@ int paircmp_init(void)
 		return -1;
 	}
 
-	paircmp_register(attr_packet_type, NULL, true, packet_cmp);
+	paircmp_register(attr_packet_type, true, packet_cmp);
 
-	paircmp_register(attr_packet_src_ip_address, NULL, true, generic_cmp);
-	paircmp_register(attr_packet_dst_ip_address, NULL, true, generic_cmp);
-	paircmp_register(attr_packet_src_port, NULL, true, generic_cmp);
-	paircmp_register(attr_packet_dst_port, NULL, true, generic_cmp);
-	paircmp_register(attr_request_processing_stage, NULL, true, generic_cmp);
-	paircmp_register(attr_packet_src_ipv6_address, NULL, true, generic_cmp);
-	paircmp_register(attr_packet_dst_ipv6_address, NULL, true, generic_cmp);
-	paircmp_register(attr_virtual_server, NULL, true, generic_cmp);
+	paircmp_register(attr_packet_src_ip_address, true, generic_cmp);
+	paircmp_register(attr_packet_dst_ip_address, true, generic_cmp);
+	paircmp_register(attr_packet_src_port, true, generic_cmp);
+	paircmp_register(attr_packet_dst_port, true, generic_cmp);
+	paircmp_register(attr_request_processing_stage, true, generic_cmp);
+	paircmp_register(attr_packet_src_ipv6_address, true, generic_cmp);
+	paircmp_register(attr_packet_dst_ipv6_address, true, generic_cmp);
+	paircmp_register(attr_virtual_server, true, generic_cmp);
 
 	return 0;
 }
