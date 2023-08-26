@@ -67,7 +67,6 @@ static fr_dict_attr_t const *attr_packet_dst_port;
 static fr_dict_attr_t const *attr_packet_src_ip_address;
 static fr_dict_attr_t const *attr_packet_src_ipv6_address;
 static fr_dict_attr_t const *attr_packet_src_port;
-static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_request_processing_stage;
 static fr_dict_attr_t const *attr_strip_user_name;
 static fr_dict_attr_t const *attr_stripped_user_name;
@@ -89,25 +88,12 @@ fr_dict_attr_autoload_t paircmp_dict_attr[] = {
 	{ .out = &attr_stripped_user_name, .name = "Stripped-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
 
 static paircmp_t *cmp = NULL;
-
-/*
- *	Compare the request packet type.
- */
-static int packet_cmp(request_t *request, fr_pair_t const *check_item)
-{
-	PAIR_VERIFY(check_item);
-
-	if (request->packet->code == check_item->vp_uint32) return 0;
-
-	return 1;
-}
 
 /*
  *	Generic comparisons, via xlat.
@@ -679,8 +665,6 @@ int paircmp_init(void)
 		return -1;
 	}
 
-	paircmp_register(attr_packet_type, packet_cmp);
-
 	paircmp_register(attr_packet_src_ip_address, generic_cmp);
 	paircmp_register(attr_packet_dst_ip_address, generic_cmp);
 	paircmp_register(attr_packet_src_port, generic_cmp);
@@ -696,8 +680,6 @@ int paircmp_init(void)
 
 void paircmp_free(void)
 {
-	paircmp_unregister(attr_packet_type, packet_cmp);
-
 	paircmp_unregister(attr_packet_src_ip_address, generic_cmp);
 	paircmp_unregister(attr_packet_dst_ip_address, generic_cmp);
 	paircmp_unregister(attr_packet_src_port, generic_cmp);
