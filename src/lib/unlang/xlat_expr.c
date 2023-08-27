@@ -190,6 +190,7 @@ static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow)
 
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, arg->vpt->name, len));
 	node->call.func = func;
+	// no need to set dict here
 	node->flags = func->flags;
 
 	/*
@@ -1905,6 +1906,8 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, fr_tokens[func->token], strlen(fr_tokens[func->token])));
 	unary->call.func = func;
+	unary->call.dict = t_rules->attr.dict_def;
+	fr_assert(unary->call.dict != NULL);
 	unary->flags = func->flags;
 
 	if (tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules, out_c, (c == '!')) < 0) {
@@ -1957,6 +1960,7 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 	 */
 	MEM(cast = xlat_exp_alloc(ctx, XLAT_FUNC, "cast", 4));
 	MEM(cast->call.func = xlat_func_find("cast", 4));
+	// no need to set dict here
 	fr_assert(cast->call.func != NULL);
 	cast->flags = cast->call.func->flags;
 
@@ -2671,6 +2675,8 @@ redo:
 	 */
 	MEM(node = xlat_exp_alloc(head, XLAT_FUNC, fr_tokens[op], strlen(fr_tokens[op])));
 	node->call.func = func;
+	node->call.dict = t_rules->attr.dict_def;
+	fr_assert(node->call.dict != NULL);
 	node->flags = func->flags;
 
 	xlat_func_append_arg(node, lhs, logical_ops[op] && cond);
