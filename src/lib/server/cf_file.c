@@ -1516,7 +1516,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
 	tmpl_rules_t	t_rules;
-	bool		use_new_conditions = main_config_migrate_option_get("use_new_conditions");
+	bool		use_new_conditions = true;
 
 	/*
 	 *	Short names are nicer.
