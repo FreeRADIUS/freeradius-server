@@ -3689,7 +3689,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 
 			fr_canonicalize_error(cs, &spaces, &text, slen, name2);
 
-			cf_log_err(cs, "Parse error in condition!!!!");
+			cf_log_err(cs, "Parse error in condition.");
 			cf_log_err(cs, "%s", text);
 			cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
 
