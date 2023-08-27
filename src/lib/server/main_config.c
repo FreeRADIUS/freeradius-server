@@ -194,7 +194,6 @@ static const CONF_PARSER migrate_config[] = {
 	{ FR_CONF_OFFSET("flatten_after_decode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, flatten_after_decode), .dflt = "yes" },
 	{ FR_CONF_OFFSET("flatten_before_encode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, flatten_before_encode), .dflt = "yes" },
 	{ FR_CONF_OFFSET("tmpl_tokenize_all_nested", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, tmpl_tokenize_all_nested) },
-	{ FR_CONF_OFFSET("use_new_conditions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, use_new_conditions) },
 	{ FR_CONF_OFFSET("rewrite_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET("forbid_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, forbid_update) },
 	{ FR_CONF_POINTER("pair_legacy_nested", FR_TYPE_BOOL | FR_TYPE_HIDDEN, &fr_pair_legacy_nested), },
@@ -1009,11 +1008,6 @@ main_config_t *main_config_alloc(TALLOC_CTX *ctx)
 	main_config_raddb_dir_set(config, RADDBDIR);
 	main_config_dict_dir_set(config, DICTDIR);
 
-	/*
-	 *	Force this to be true.
-	 */
-	config->use_new_conditions = true;
-
 	main_config = config;
 
 	return config;
@@ -1279,7 +1273,6 @@ do {\
 	 *	decoding, or before encoding.  The code should handle everything correctly.
 	 */
 	if (config->tmpl_tokenize_all_nested) {
-		config->use_new_conditions = true;
 		config->flatten_after_decode = false;
 		config->flatten_before_encode = false;
 
@@ -1505,7 +1498,6 @@ void main_config_hup(main_config_t *config)
 }
 
 static fr_table_num_ordered_t config_arg_table[] = {
-	{ L("use_new_conditions"),	 offsetof(main_config_t, use_new_conditions) },
 	{ L("tmpl_tokenize_all_nested"), offsetof(main_config_t, tmpl_tokenize_all_nested) },
 	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
 	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
@@ -1562,6 +1554,8 @@ bool main_config_migrate_option_get(char const *name)
 	size_t offset;
 
 	if (!main_config) return false;
+
+	if (strcmp(name, "use_new_conditions") == 0) return true; /* ignore this for migration */
 
 	if (strcmp(name, "pair_legacy_nested") == 0) return fr_pair_legacy_nested;
 

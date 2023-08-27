@@ -267,276 +267,6 @@ static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *c
 	return true;
 }
 
-static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *dict)
-{
-	tmpl_t	*vpt;
-	map_t	*map;
-
-	map = c->data.map;	/* shorter */
-
-	/*
-	 *	Auth-Type := foo
-	 *
-	 *	Where "foo" is dynamically defined.
-	 */
-	if (c->pass2_fixup == PASS2_FIXUP_TYPE) {
-		if (!fr_dict_enum_by_name(tmpl_attr_tail_da(map->lhs), map->rhs->name, -1)) {
-			cf_log_err(map->ci, "Invalid reference to non-existent %s %s { ... }",
-				   tmpl_attr_tail_da(map->lhs)->name,
-				   map->rhs->name);
-			return false;
-		}
-
-		/*
-		 *	These guys can't have a paircmp fixup applied.
-		 */
-		c->pass2_fixup = PASS2_FIXUP_NONE;
-		return true;
-	}
-
-	if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
-		/*
-		 *	Resolve the attribute references first
-		 */
-		if (tmpl_is_attr_unresolved(map->lhs)) {
-			if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, dict)) return false;
-		}
-
-		if (tmpl_is_attr_unresolved(map->rhs)) {
-			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) return false;
-		}
-
-		c->pass2_fixup = PASS2_FIXUP_NONE;
-
-		/*
-		 *	Now that we have known data types for the LHS
-		 *	/ RHS attribute(s), go check them.
-		 */
-		if (fr_cond_promote_types(c, NULL, NULL, NULL, false) < 0) {
-			cf_log_perr(ci, "Failed parsing condition after dynamic attributes were defined");
-			return false;
-		}
-	}
-
-	/*
-	 *	Just in case someone adds a new fixup later.
-	 */
-	fr_assert((c->pass2_fixup == PASS2_FIXUP_NONE) ||
-		   (c->pass2_fixup == PASS2_PAIRCOMPARE));
-
-	/*
-	 *	Precompile xlat's
-	 */
-	if (tmpl_is_xlat_unresolved(map->lhs)) {
-		/*
-		 *	Compile the LHS to an attribute reference only
-		 *	if the RHS is a literal.
-		 *
-		 *	@todo - allow anything anywhere.
-		 */
-		if (!tmpl_is_unresolved(map->rhs)) {
-			if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, dict)) {
-				return false;
-			}
-		} else {
-			if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, dict)) {
-				return false;
-			}
-
-			/*
-			 *	Attribute compared to a literal gets
-			 *	the literal cast to the data type of
-			 *	the attribute.
-			 *
-			 *	The code in parser.c did this for
-			 *
-			 *		&Attr == data
-			 *
-			 *	But now we've just converted "%{Attr}"
-			 *	to &Attr, so we've got to do it again.
-			 */
-			if (tmpl_is_attr(map->lhs)) {
-				if ((map->rhs->len > 0) ||
-				    (map->op != T_OP_CMP_EQ) ||
-				    (tmpl_attr_tail_da(map->lhs)->type == FR_TYPE_STRING) ||
-				    (tmpl_attr_tail_da(map->lhs)->type == FR_TYPE_OCTETS)) {
-
-					if (tmpl_cast_in_place(map->rhs, tmpl_attr_tail_da(map->lhs)->type, tmpl_attr_tail_da(map->lhs)) < 0) {
-						cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
-							   fr_type_to_str(tmpl_attr_tail_da(map->lhs)->type),
-							   fr_box_strvalue_len(map->rhs->name, map->rhs->len));
-						return false;
-					} /* else the cast was successful */
-
-				} else {	/* RHS is empty, it's just a check for empty / non-empty string */
-					vpt = talloc_steal(c, map->lhs);
-					map->lhs = NULL;
-					talloc_free(c->data.map);
-
-					/*
-					 *	"%{Foo}" == '' ---> !Foo
-					 *	"%{Foo}" != '' ---> Foo
-					 */
-					c->type = COND_TYPE_TMPL;
-					c->data.vpt = vpt;
-					c->negate = !c->negate;
-
-					WARN("%s[%d]: Please change (\"%%{%s}\" %s '') to %c&%s",
-					     cf_filename(cf_item_to_section(ci)),
-					     cf_lineno(cf_item_to_section(ci)),
-					     vpt->name, c->negate ? "==" : "!=",
-					     c->negate ? '!' : ' ', vpt->name);
-
-					/*
-					 *	No more RHS, so we can't do more optimizations
-					 */
-					return true;
-				}
-			}
-		}
-	}
-
-	if (tmpl_is_xlat_unresolved(map->rhs)) {
-		/*
-		 *	Convert the RHS to an attribute reference only
-		 *	if the LHS is an attribute reference, AND is
-		 *	of the same type as the RHS.
-		 *
-		 *	We can fix this when the code in evaluate.c
-		 *	can handle strings on the LHS, and attributes
-		 *	on the RHS.  For now, the code in parser.c
-		 *	forbids this.
-		 */
-		if (tmpl_is_attr(map->lhs)) {
-			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) return false;
-		} else {
-			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) return false;
-		}
-	}
-
-	if (tmpl_is_exec_unresolved(map->lhs)) {
-		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, dict)) {
-			return false;
-		}
-	}
-
-	if (tmpl_is_exec_unresolved(map->rhs)) {
-		if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) {
-			return false;
-		}
-	}
-
-	/*
-	 *	Convert bare refs to %{Foreach-Variable-N}
-	 */
-	if (tmpl_is_unresolved(map->lhs) &&
-	    (strncmp(map->lhs->name, "Foreach-Variable-", 17) == 0)) {
-		char *fmt;
-		ssize_t slen;
-
-		fmt = talloc_typed_asprintf(map->lhs, "%%{%s}", map->lhs->name);
-		slen = tmpl_afrom_substr(map, &vpt, &FR_SBUFF_IN(fmt, talloc_array_length(fmt) - 1),
-					 T_DOUBLE_QUOTED_STRING,
-					 NULL,
-					 &(tmpl_rules_t){
-					 	.attr = {
-							.list_def = request_attr_request,
-					 		.allow_unknown = true
-					 	}
-					 });
-		if (!vpt) {
-			char *spaces, *text;
-
-			fr_canonicalize_error(map->ci, &spaces, &text, slen, fr_strerror());
-
-			cf_log_err(map->ci, "Failed converting %s to xlat", map->lhs->name);
-			cf_log_err(map->ci, "%s", fmt);
-			cf_log_err(map->ci, "%s^ %s", spaces, text);
-
-			talloc_free(spaces);
-			talloc_free(text);
-			talloc_free(fmt);
-
-			return false;
-		}
-		talloc_free(map->lhs);
-		map->lhs = vpt;
-	}
-
-#ifdef HAVE_REGEX
-	if (tmpl_is_regex_xlat_unresolved(map->rhs)) {
-		if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) {
-			return false;
-		}
-	}
-	fr_assert(!tmpl_is_regex_xlat_unresolved(map->lhs));
-#endif
-
-	/*
-	 *	Convert &Packet-Type to "%{Packet-Type}", because
-	 *	these attributes don't really exist.  The code to
-	 *	find an attribute reference doesn't work, but the
-	 *	xlat code does.
-	 */
-	vpt = c->data.map->lhs;
-	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
-		if (tmpl_attr_to_xlat(c, &vpt) < 0) return false;
-
-		fr_assert(!tmpl_is_xlat_unresolved(map->lhs));
-	}
-
-	/*
-	 *	@todo - do the same thing for the RHS...
-	 */
-
-	/*
-	 *	Only attributes can have a paircmp registered, and
-	 *	they can only be with the current request_t, and only
-	 *	with the request pairs.
-	 */
-	if (!tmpl_is_attr(map->lhs) ||
-	    !tmpl_request_ref_is_current(tmpl_request(map->lhs)) ||
-	    (tmpl_list(map->lhs) != request_attr_request)) {
-		return true;
-	}
-
-	if (!paircmp_find(tmpl_attr_tail_da(map->lhs))) return true;
-
-	/*
-	 *	It's a pair comparison.  Do additional checks.
-	 */
-	if (tmpl_contains_regex(map->rhs)) {
-		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex", map->lhs->name);
-		return false;
-	}
-
-	if (tmpl_rules_cast(c->data.map->lhs) != FR_TYPE_NULL) {
-		cf_log_err(map->ci, "Cannot cast virtual attribute %s to %s", map->lhs->name,
-			   tmpl_type_to_str(c->data.map->lhs->type));
-		return false;
-	}
-
-	/*
-	 *	Force the RHS to be cast to whatever the LHS da is.
-	 */
-	if (tmpl_cast_set(map->rhs, tmpl_attr_tail_da(map->lhs)->type) < 0) {
-		cf_log_perr(map->ci, "Failed setting rhs type");
-	}
-
-	if (map->op != T_OP_CMP_EQ) {
-		cf_log_err(map->ci, "Must use '==' for comparisons with virtual attribute %s", map->lhs->name);
-		return false;
-	}
-
-	/*
-	 *	Mark it as requiring a paircmp() call, instead of
-	 *	fr_pair_cmp().
-	 */
-	c->pass2_fixup = PASS2_PAIRCOMPARE;
-
-	return true;
-}
-
 /** Fixup ONE map (recursively)
  *
  *  This function resolves most things.  Most notable it CAN leave the
@@ -2608,32 +2338,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		case UNLANG_TYPE_IF:
 			was_if = true;
 
-			if (!main_config->use_new_conditions) {
-				unlang_group_t	*f;
-				unlang_cond_t	*gext;
-
-				f = unlang_generic_to_group(single);
-				gext = unlang_group_to_cond(f);
-
-				switch (gext->cond->type) {
-				case COND_TYPE_TRUE:
-					skip_else = single->debug_name;
-					break;
-
-				case COND_TYPE_FALSE:
-					/*
-					 *	The condition never
-					 *	matches, so we can
-					 *	avoid putting it into
-					 *	the unlang tree.
-					 */
-					talloc_free(single);
-					continue;
-
-				default:
-					break;
-				}
-			} else {
+			{
 				unlang_group_t	*f;
 				unlang_cond_t	*gext;
 
@@ -3649,7 +3354,6 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	unlang_group_t		*g;
 	unlang_cond_t		*gext;
 
-	fr_cond_t		*cond = NULL;
 	xlat_exp_head_t		*head = NULL;
 	bool			is_truthy = false, value = false;
 	xlat_res_rules_t	xr_rules = {
@@ -3666,7 +3370,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	/*
 	 *	Migration support.
 	 */
-	if (main_config->use_new_conditions) {
+	{
 		char const *name2 = cf_section_name2(cs);
 		ssize_t slen;
 
@@ -3712,74 +3416,29 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		 *	If the condition is always false, we don't compile the
 		 *	children.
 		 */
-		if (is_truthy && !value) goto skip;
-
-		goto do_compile;
-	}
-
-	cond = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
-	fr_assert(cond != NULL);
-
-	/*
-	 *	We still do some resolving of old-style conditions,
-	 *	and skipping of sections.
-	 */
-	if (cond->type == COND_TYPE_FALSE) {
-	skip:
-		cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
-				    unlang_ops[ext->type].name);
-
-		/*
-		 *	Free the children, which frees any xlats,
-		 *	conditions, etc. which were defined, but are
-		 *	now entirely unused.
-		 *
-		 *	However, we still need to cache the conditions, as they will be accessed at run-time.
-		 */
-		c = compile_empty(parent, unlang_ctx, cs, ext);
-		cf_section_free_children(cs);
-
-	} else {
-		fr_cond_iter_t	iter;
-		fr_cond_t	*leaf;
-
-		for (leaf = fr_cond_iter_init(&iter, cond);
-		     leaf;
-		     leaf = fr_cond_iter_next(&iter)) {
-			switch (leaf->type) {
-			/*
-			 *	Fix up the template.
-			 */
-			case COND_TYPE_TMPL:
-				fr_assert(!tmpl_is_regex_xlat_unresolved(leaf->data.vpt));
-				if (!pass2_fixup_tmpl(leaf, &leaf->data.vpt, cf_section_to_item(cs),
-						      unlang_ctx->rules->attr.dict_def)) return false;
-				break;
+		if (is_truthy && !value) {
+			cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
+					    unlang_ops[ext->type].name);
 
 			/*
-			 *	Fixup the map
+			 *	Free the children, which frees any xlats,
+			 *	conditions, etc. which were defined, but are
+			 *	now entirely unused.
+			 *
+			 *	However, we still need to cache the conditions, as they will be accessed at run-time.
 			 */
-			case COND_TYPE_MAP:
-				if (!pass2_fixup_cond_map(leaf, cf_section_to_item(cs),
-							  unlang_ctx->rules->attr.dict_def)) return false;
-				break;
-
-			default:
-				continue;
-			}
+			c = compile_empty(parent, unlang_ctx, cs, ext);
+			cf_section_free_children(cs);
+		} else {
+			c = compile_section(parent, unlang_ctx, cs, ext);
 		}
-
-		fr_cond_async_update(cond);
-
-	do_compile:
-		c = compile_section(parent, unlang_ctx, cs, ext);
 	}
+
 	if (!c) return NULL;
 	fr_assert(c != UNLANG_IGNORE);
 
 	g = unlang_generic_to_group(c);
 	gext = unlang_group_to_cond(g);
-	gext->cond = cond;
 
 	gext->head = head;
 	gext->is_truthy = is_truthy;
