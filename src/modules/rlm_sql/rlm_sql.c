@@ -860,7 +860,7 @@ static bool paircmp(request_t *request, fr_pair_list_t *check_list)
 		 *	If the user is setting a configuration value, then don't bother comparing it to any
 		 *	attributes sent to us by the user.  It ALWAYS matches.
 		 */
-		if (!fr_comparison_op(check_item->op)) continue;
+		if (!fr_comparison_op[check->op]) continue;
 
 	next_vp:
 		vp = fr_pair_find_by_da(&request->request_pairs, vp, check->da);
@@ -884,7 +884,7 @@ static bool paircmp(request_t *request, fr_pair_list_t *check_list)
 		/*
 		 *	We want it, and it exists.  We don't care what value it has.
 		 */
-		if (check_item->op == T_OP_CMP_TRUE) continue;
+		if (check->op == T_OP_CMP_TRUE) continue;
 
 		/*
 		 *	This attribute doesn't match.  Maybe there's another one which does match?
