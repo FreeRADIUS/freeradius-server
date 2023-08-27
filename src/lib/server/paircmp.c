@@ -166,7 +166,7 @@ int paircmp_pairs(request_t *request, fr_pair_t const *check, fr_pair_t *vp)
 int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *vp)
 #endif
 {
-	int rcode;
+	int ret = 0;
 
 	/*
 	 *      Check for =* and !* and return appropriately
@@ -243,9 +243,9 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *
 			 *	Add in %{0}. %{1}, etc.
 			 */
 			regex_sub_to_request(request, &preg, &regmatch);
-			rcode = (slen == 1) ? 0 : -1;
+			ret = (slen == 1) ? 0 : -1;
 		} else {
-			rcode = (slen != 1) ? 0 : -1;
+			ret = (slen != 1) ? 0 : -1;
 		}
 
 		talloc_free(regmatch);
@@ -253,11 +253,102 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *
 		talloc_free(expr);
 		talloc_free(value);
 
-		return rcode;
+		goto finish;
 	}
 #endif
 
-	return fr_value_box_cmp_op(check->op, &vp->data, &check->data);
+	/*
+	 *	Attributes must be of the same type.
+	 *
+	 *	FIXME: deal with type mismatch properly if one side contain
+	 *	OCTETS or STRING by converting the other side to
+	 *	a string
+	 *
+	 */
+	if (vp->vp_type != check->vp_type) return -1;
+
+	/*
+	 *	Not a regular expression, compare the types.
+	 */
+	switch (check->vp_type) {
+		case FR_TYPE_OCTETS:
+			if (vp->vp_length != check->vp_length) {
+				ret = 1; /* NOT equal */
+				break;
+			}
+			ret = memcmp(vp->vp_strvalue, check->vp_strvalue, vp->vp_length);
+			break;
+
+		case FR_TYPE_STRING:
+			ret = strcmp(vp->vp_strvalue, check->vp_strvalue);
+			break;
+
+		case FR_TYPE_UINT8:
+			ret = vp->vp_uint8 - check->vp_uint8;
+			break;
+
+		case FR_TYPE_UINT16:
+			ret = vp->vp_uint16 - check->vp_uint16;
+			break;
+
+		case FR_TYPE_UINT32:
+			ret = vp->vp_uint32 - check->vp_uint32;
+			break;
+
+		case FR_TYPE_UINT64:
+			/*
+			 *	Don't want integer overflow!
+			 */
+			if (vp->vp_uint64 < check->vp_uint64) {
+				ret = -1;
+			} else if (vp->vp_uint64 > check->vp_uint64) {
+				ret = +1;
+			} else {
+				ret = 0;
+			}
+			break;
+
+		case FR_TYPE_INT32:
+			ret = CMP(vp->vp_int32, check->vp_int32);
+			break;
+
+		case FR_TYPE_DATE:
+			ret = fr_unix_time_cmp(vp->vp_date, check->vp_date);
+			break;
+
+		case FR_TYPE_IPV4_ADDR:
+			ret = ntohl(vp->vp_ipv4addr) - ntohl(check->vp_ipv4addr);
+			break;
+
+		case FR_TYPE_IPV6_ADDR:
+			ret = memcmp(vp->vp_ip.addr.v6.s6_addr, check->vp_ip.addr.v6.s6_addr,
+				     sizeof(vp->vp_ip.addr.v6.s6_addr));
+			break;
+
+		case FR_TYPE_IPV4_PREFIX:
+		case FR_TYPE_IPV6_PREFIX:
+			ret = fr_pair_cmp_op(check->op, vp, check);
+			if (ret == -1) return -2;   // error
+			if (check->op == T_OP_LT || check->op == T_OP_LE)
+				ret = (ret == 1) ? -1 : 1;
+			else if (check->op == T_OP_GT || check->op == T_OP_GE)
+				ret = (ret == 1) ? 1 : -1;
+			else if (check->op == T_OP_CMP_EQ)
+				ret = (ret == 1) ? 0 : -1;
+			break;
+
+		case FR_TYPE_IFID:
+			ret = memcmp(vp->vp_ifid, check->vp_ifid, sizeof(vp->vp_ifid));
+			break;
+
+		default:
+			break;
+	}
+
+finish:
+	if (ret > 0) return 1;
+	if (ret < 0) return -1;
+	return 0;
 }
 
 /** Compare check_item and request
