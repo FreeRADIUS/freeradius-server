@@ -288,6 +288,7 @@ static int _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_exp_he
 
 		case XLAT_VIRTUAL:
 			node->call.func = p->call.func;
+			node->call.dict = p->call.dict;
 			node->call.ephemeral = p->call.ephemeral;
 			break;
 
@@ -303,6 +304,7 @@ static int _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_exp_he
 			 *	the xlat instantiation table later.
 			 */
 			node->call.func = p->call.func;
+			node->call.dict = p->call.dict;
 			node->call.ephemeral = p->call.ephemeral;
 			if (unlikely(_xlat_copy_internal(NDEBUG_LOCATION_VALS
 							 node, node->call.args, p->call.args) < 0)) goto error;
