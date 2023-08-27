@@ -889,7 +889,7 @@ static bool paircmp(request_t *request, fr_pair_list_t *check_list)
 		/*
 		 *	This attribute doesn't match.  Maybe there's another one which does match?
 		 */
-		if (fr_value_box_cmp_op(check->op, &vp->data, &check->data) != 0) goto next_vp;
+		if (fr_value_box_cmp_op(check->op, &vp->data, &check->data) != 1) goto next_vp;
 	}
 
 	/*
