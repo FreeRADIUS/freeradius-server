@@ -1009,6 +1009,11 @@ main_config_t *main_config_alloc(TALLOC_CTX *ctx)
 	main_config_raddb_dir_set(config, RADDBDIR);
 	main_config_dict_dir_set(config, DICTDIR);
 
+	/*
+	 *	Force this to be true.
+	 */
+	config->use_new_conditions = true;
+
 	main_config = config;
 
 	return config;
