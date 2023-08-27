@@ -1,9 +1,7 @@
 #
-#  PRE: if update
+#  PRE: if
 #
-update request {
-	&NAS-IP-Address := 127.0.0.1
-}
+&NAS-IP-Address := 127.0.0.1
 
 #
 #  test raw values

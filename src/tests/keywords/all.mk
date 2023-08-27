@@ -77,10 +77,7 @@ KEYWORD_UPDATE_TMPL_TESTS	:= xlat-dhcpv4
 #  Migration support.  Some of the tests don't run under the new
 #  conditions, so we don't run them under the new conditions.
 #
-ifneq "$(findstring ${1}, paircmp)" ""
-$(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=no
-
-else ifneq "$(findstring ${1}, update-to-edit $(KEYWORD_UPDATE_TESTS) xlat-unknown )" ""
+ifneq "$(findstring ${1}, update-to-edit $(KEYWORD_UPDATE_TESTS) xlat-unknown )" ""
 $(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes
 
 else ifneq "$(findstring ${1}, $(KEYWORD_UPDATE_REWRITE_TESTS))" ""
