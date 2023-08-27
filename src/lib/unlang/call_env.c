@@ -113,7 +113,7 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 						}) < 0) {
 			error:
 				talloc_free(call_env_parsed);
-				cf_log_perr(cp, "Failed to parse '%s' for %s", cf_pair_value(cp), call_env->name);
+				cf_log_perr(cp, "Failed to parse configuration item '%s = %s'", call_env->name, value);
 				return -1;
 			}
 
