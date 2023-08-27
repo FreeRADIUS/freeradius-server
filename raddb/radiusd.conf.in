@@ -641,7 +641,7 @@ migrate {
 	#  use_new_conditions:: Use the new condition code based on
 	#  xlats, instead of the old condition code.
 	#
-	use_new_conditions = false
+#	use_new_conditions = false
 
 	#
 	#  pair_legacy_nested: make legacy APIs return nested attributes
