@@ -168,15 +168,12 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			 *	Disallow regexes for now.
 			 */
 			if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
-				ERROR("%s[%d] Regular expression for check item %s is not supported",
-				      entry->filename, entry->lineno, map->lhs->name);
-				return -1;
-			}
+				fr_assert(tmpl_is_regex(map->rhs));
 
 			/*
 			 *	Disallow inter-attribute comparisons.
 			 */
-			if (!tmpl_is_data(map->rhs)) {
+			} else if (!tmpl_is_data(map->rhs)) {
 				ERROR("%s[%d] Right side of check item %s is not a leaf value",
 				      entry->filename, entry->lineno, map->lhs->name);
 				return -1;
@@ -403,6 +400,15 @@ static bool files_eval_map(request_t *request, map_t *map)
 	fr_assert(tmpl_is_data(map->rhs));
 
 	if (tmpl_find_vp(&vp, request, map->lhs) < 0) return false;
+
+	/*
+	 *	The RHS is a compiled regex, which we don't yet
+	 *	support.  So just re-parse it at run time for
+	 *	programmer laziness.
+	 */
+	if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
+		return (fr_regex_cmp_op(map->op, &vp->data, fr_box_strvalue(map->rhs->name)) == 1);
+	}
 
 	return (fr_value_box_cmp_op(map->op, &vp->data, tmpl_value(map->rhs)) == 1);
 }
