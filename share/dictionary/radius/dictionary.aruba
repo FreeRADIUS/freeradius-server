@@ -67,12 +67,19 @@ ATTRIBUTE	QoS-Trust-Mode				52	integer
 ATTRIBUTE	UBT-Gateway-Role			53	string
 ATTRIBUTE	Gateway-Zone				54	string
 
+ATTRIBUTE	DPP-Bootstrapping-Key-SHA256		55	string
+ATTRIBUTE	DPP-Bootstrapping-Net-Access-Key-SHA256	56	string
+ATTRIBUTE	DPP-Bootstrapping-Key-B64		57	string
+
 ATTRIBUTE	STP-Admin-Edge-Port			58	integer
 
 ATTRIBUTE	UBT-Gateway-CPPM-Role			59	string
 
 ATTRIBUTE	AP-MAC-Address				60	string
 ATTRIBUTE	Device-MAC-Address			61	string
+
+ATTRIBUTE	Aruba-MPSK-Key-Name			62	string
+
 ATTRIBUTE	Device-Traffic-Class			63	integer
 
 ATTRIBUTE	PVLAN-Port-Type				64	integer
@@ -80,6 +87,13 @@ ATTRIBUTE	Network-Test				65	integer
 ATTRIBUTE	MPSK-Lookup-Info			66	string
 ATTRIBUTE	AVPair					67	string
 ATTRIBUTE	DPP-Service-Type			68	integer
+
+ATTRIBUTE	User-Mgmt-Interface			69	string
+
+ATTRIBUTE	Poe-Allocate-By-Method			70	integer
+
+ATTRIBUTE	DPP-AKMs				71	string
+ATTRIBUTE	DPP-Passphrase				72	string encrypt=2
 
 VALUE	AirGroup-Device-Type		Personal-Device		1
 VALUE	AirGroup-Device-Type		Shared-Device		2
@@ -110,5 +124,8 @@ VALUE	PVLAN-Port-Type			Secondary		2
 VALUE	DPP-Service-Type		DDP-Boostrap-Authorization 1
 VALUE	DPP-Service-Type		DDP-Identity-Update	2
 VALUE	DPP-Service-Type		DDP-Net-Access		3
+
+VALUE	PoE-Allocate-By-Method		Class			1
+VALUE	PoE-Allocate-By-Method		Usage			2
 
 END-VENDOR Aruba
