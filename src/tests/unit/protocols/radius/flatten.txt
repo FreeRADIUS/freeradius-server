@@ -26,7 +26,6 @@ match User-Name = "foo", User-Password = "bar"
 unflatten Tag-1 = { Tunnel-Type = PPTP }
 match Tag-1 = { Tunnel-Type = PPTP }
 
-
 flatten Vendor-Specific = { Cisco = { AVPair = "foo", AVPair = "bar" } }
 match Vendor-Specific.Cisco.AVPair = "foo", Vendor-Specific.Cisco.AVPair = "bar"
 

@@ -7,22 +7,22 @@
 proto-dictionary radius
 
 condition &User-Name[0] == "foo"
-match &User-Name[0] == "foo"
+match (&User-Name[0] == "foo")
 
 #
 #  This is a run-time error.  [#] returns an integer.
 #
 condition &User-Name[#] == "foo"
-match &User-Name[#] == "foo"
+match (&User-Name[#] == "foo")
 
 #
 #  This is a run-time error.  [*] returns a list.
 #
 condition &User-Name[*] == "foo"
-match &User-Name[*] == "foo"
+match (&User-Name[*] == "foo")
 
 condition &User-Name[n] == "foo"
-match &User-Name[n] == "foo"
+match (&User-Name[n] == "foo")
 
 condition &User-Name[-1] == "foo"
 match ERROR offset 12: Invalid array index '-1' (should be between 0-1000)
@@ -48,8 +48,10 @@ match ERROR offset 12: Invalid filter - cannot use filter on leaf attributes
 #
 #  which is a loop that returns &TLS-Certificate.
 #
+#  @todo - this error is misleading and wrong.
+#
 condition &TLS-Certificate[&Common-Name == 'user@example.com'] == bar
-match ERROR offset 1: Nesting types such as groups or TLVs cannot be used in condition comparisons
+match ERROR offset 1: Cannot use list references in condition
 
 count
 match 15

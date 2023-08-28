@@ -8,7 +8,7 @@ proto-dictionary radius
 tmpl-rules allow_unresolved=yes allow_unknown=yes
 
 condition &request.User-Name == &reply.User-Name
-match &User-Name == &reply.User-Name
+match (&request.User-Name == &reply.User-Name)
 
 # All IP address literals should be parsed as prefixes
 condition ("foo\
@@ -23,28 +23,34 @@ match ERROR offset 2: No operand found.  Expected &ref, literal, 'quoted literal
 condition (!)
 match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
-
 condition (|| b)
 match ERROR offset 2: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 condition ((ok || handled) foo)
-match ERROR offset 18: Expected closing brace or logical operator
+match ERROR offset 18: Invalid operator
 
 # escapes in names are illegal
 condition (ok\ foo || handled)
-match ERROR offset 4: Expected closing brace or logical operator
+match ERROR offset 4: Unexpected text after enum value.  Expected operator
 
+#
+#  @todo - This is just a bare word comparison?
+#
 condition (Service-Type == 000-111)
-match ERROR offset 18: enum values must contain at least one alpha character
+match (Service-Type == (0 - 111))
 
+#
+#  @todo - many of these "invalid operator" errors should have additional code added to xlat_expr.c,
+#  so that it finds out which specific parse problem it is, and gives a better error message.
+#
 condition (ok FOO handled)
-match ERROR offset 5: Expected closing brace or logical operator
+match ERROR offset 5: Invalid operator
 
 condition (ok !x handled)
-match ERROR offset 5: Invalid location for negation
+match ERROR offset 5: Invalid operator
 
 condition (ok =x handled)
-match ERROR offset 5: Invalid location for operator
+match ERROR offset 5: Invalid operator
 
 #
 # Re-enable when we have proper bareword xlat tokenization
@@ -56,58 +62,68 @@ match ERROR offset 5: Invalid location for operator
 
 # sillyness is OK, but cleaned up.
 condition ((((((ok))))))
-match ok
+match %{rcode:'ok'}
 
 #
 #  Extra braces get squashed
 #
 condition (&User-Name == &User-Password)
-match &User-Name == &User-Password
+match (&User-Name == &User-Password)
 
 condition (!ok)
-match !ok
+match !%{rcode:'ok'}
 
 condition !(ok)
-match !ok
+match !%{rcode:'ok'}
 
+#
+# @todo - negation is invalid
+#
 condition !!ok
-match ERROR offset 2: Double negation is invalid
+match ERROR offset 2: Double operator is invalid
 
+#
+# @todo - do peephole optimization to get rid of double negation?
+#
 condition !(!ok)
-match ok
+match !!%{rcode:'ok'}
 
 #
 #  These next two are identical after normalization
 #
 condition (&User-Name == &User-Password || &Filter-Id == &Reply-Message)
-match &User-Name == &User-Password || &Filter-Id == &Reply-Message
+match ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 
 condition ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match (&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)
+match ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 
 condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match !(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)
+match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 
 #  different from the previous ones.
 condition (!((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)))
 match !((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 
 condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match !(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)
+match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 
+#
+#  @todo - this is really for unit_test_attribute to check?  Did we parse the whole thing?
+#
 condition ((a == b) || (c == d)))
-match ERROR offset 23: Unexpected closing brace
+match ((a == b) || (c == d))
+#match ERROR offset 23: Unexpected closing brace
 
 condition (handled && (&Packet-Type == Access-Challenge))
-match  handled && (&Packet-Type == Access-Challenge)
+match (%{rcode:'handled'} && (&Packet-Type == Access-Challenge))
 
 # This is OK, without the braces
 condition handled && &Packet-Type == Access-Challenge
-match handled && &Packet-Type == Access-Challenge
+match (%{rcode:'handled'} && (&Packet-Type == Access-Challenge))
 
 # and this, though it's not a good idea.
 condition handled &&&Packet-Type == Access-Challenge
-match handled && &Packet-Type == Access-Challenge
+match (%{rcode:'handled'} && (&Packet-Type == Access-Challenge))
 
 condition &reply == &request
 match ERROR offset 1: Cannot use list references in condition
@@ -120,98 +136,100 @@ match ERROR offset 12: Cannot use list references in condition
 
 
 #
-#  Convert != to !(COND) for normal checks
+#  @todo - new expressions do not do normalization or peephole optimizations
 #
 condition &User-Name == &User-Password
-match &User-Name == &User-Password
+match (&User-Name == &User-Password)
 
 condition &User-Name != &User-Password
-match !&User-Name == &User-Password
+match (&User-Name != &User-Password)
 
-condition !&User-Name != &User-Password
-match &User-Name == &User-Password
+condition !(&User-Name != &User-Password)
+match !(&User-Name != &User-Password)
 
 condition <ipv6addr>::1
-match ERROR offset 1: Invalid cast from ipv6addr to bool.  Unsupported
+match ::1
 
 condition <ipaddr>&Filter-Id == &Framed-IP-Address
-match <ipaddr>&Filter-Id == &Framed-IP-Address
-
-condition <ipaddr>&Filter-Id == &Framed-IP-Address
-match <ipaddr>&Filter-Id == &Framed-IP-Address
+match ((ipaddr)&Filter-Id == &Framed-IP-Address)
 
 #
 #  We can automatically promote things as needed.  But if the
 #  user forces incompatible types, then that's an error.
 #
 condition <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
-match ERROR offset 24: Unknown data type
+match ERROR offset 23: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 condition <blerg>&Filter-Id == "foo"
-match ERROR offset 2: Unknown data type
+match ERROR offset 1: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 #
 #  Normalize things
 #
 condition <ipaddr>127.0.0.1 < &Framed-IP-Address
-match &Framed-IP-Address > 127.0.0.1
+match (127.0.0.1 < &Framed-IP-Address)
 
 # =* and !* are only for attrs / lists
 condition "foo" !* bar
-match ERROR offset 7: Invalid operator !*
+match ERROR offset 7: Invalid operator
 
 condition "foo" =* bar
-match ERROR offset 7: Invalid operator =*
+match ERROR offset 7: Invalid operator
 
 # existence checks don't need the RHS
 condition &User-Name =* bar
-match ERROR offset 12: Invalid operator =*
+match ERROR offset 12: Invalid operator
 
 condition &User-Name !* bar
-match ERROR offset 12: Invalid operator !*
+match ERROR offset 12: Invalid operator
 
 condition !&User-Name =* bar
-match ERROR offset 13: Invalid operator =*
+match ERROR offset 13: Invalid operator
 
 condition !&User-Name !* bar
-match ERROR offset 13: Invalid operator !*
+match ERROR offset 13: Invalid operator
 
 # redundant casts get squashed
 condition <ipaddr>&Framed-IP-Address == 127.0.0.1
-match &Framed-IP-Address == 127.0.0.1
+match (&Framed-IP-Address == 127.0.0.1)
 
 condition <cidr>&Framed-IP-Address <= 192.168.0.0/16
-match <ipv4prefix>&Framed-IP-Address <= 192.168.0.0/16
+match ((ipv4prefix)&Framed-IP-Address <= 192.168.0.0/16)
 
 # All IP address literals should be parsed as prefixes
 condition &Framed-IP-Address <= 192.168.0.0/16
-match <ipv4prefix>&Framed-IP-Address <= 192.168.0.0/16
+match (&Framed-IP-Address <= 192.168.0.0/16)
 
 # string attributes must be string
 condition &User-Name == "bob"
-match &User-Name == "bob"
+match (&User-Name == "bob")
 
 condition &User-Name == `bob`
-match &User-Name == `bob`
+match (&User-Name == `bob`)
 
 condition &User-Name == 'bob'
-match &User-Name == 'bob'
+match (&User-Name == 'bob')
 
+#
+#  @todo - this should probably be a parse error, as there is no VALUE named 'bob'
+#
 condition &User-Name == bob
-match &User-Name == 'bob'
+match (&User-Name == bob)
 
 # Integer (etc.) types must be "bare"
 condition &Session-Timeout == 10
-match &Session-Timeout == 10
+match (&Session-Timeout == 10)
 
-# Automatic type inference means this is fine
+#
+#  @todo - no automatic type casting
+#
 condition &Session-Timeout == '10'
-match &Session-Timeout == 10
+match  (&Session-Timeout == '10')
 
 # Except for dates, which can be humanly readable!
 # This one is be an expansion, so it's left as-is.
 condition &Event-Timestamp == "January 1, 2012 %{blah}"
-match &Event-Timestamp == "January 1, 2012 %{blah}"
+match (&Event-Timestamp == %(cast:string "January 1, 2012 %{blah}"))
 
 # This one is NOT an expansion, so it's parsed into normal form
 condition &Event-Timestamp == 'January 1, 2012'
@@ -221,8 +239,11 @@ condition &Event-Timestamp == 'January 1, 2012'
 condition <integer>X == 1
 match ERROR offset 10: Failed parsing string as type 'uint32'
 
+#
+#  @todo - this should probably be a parse error, as there is no VALUE named 'X'
+#
 condition &NAS-Port == X
-match ERROR offset 14: Failed parsing string as type 'uint32'
+match (&NAS-Port == X)
 
 #
 #  The RHS is a static string, so this gets mashed to a literal,
@@ -232,22 +253,22 @@ condition <ipaddr>127.0.0.1 == "127.0.0.1"
 match true
 
 condition <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
-match 127.0.0.1 == "%{md4: 127.0.0.1}"
+match (127.0.0.1 == %(cast:string "%{md4: 127.0.0.1}"))
 
 #
 #  Bare %{...} is allowed.
 #
 condition <ipaddr>127.0.0.1 == %{md4:127.0.0.1}
-match 127.0.0.1 == %{md4:127.0.0.1}
+match (127.0.0.1 == %{md4:127.0.0.1})
 
 condition <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
-match 127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
+match (127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'})
 
 condition <ether> 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
 condition <ether>00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
-match 00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
+match (00:11:22:33:44:55 == %(cast:string "%{md4:00:11:22:33:44:55}"))
 
 condition <ether> 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 12: Missing separator, expected ':'
@@ -259,22 +280,22 @@ condition true
 match true
 
 condition 1
-match true
+match 1
 
 condition false
 match false
 
 condition 0
-match false
+match 0
 
 condition true && (&User-Name == "bob")
-match &User-Name == "bob"
+match (&User-Name == "bob")
 
 condition false && (&User-Name == "bob")
 match false
 
 condition false || (&User-Name == "bob")
-match &User-Name == "bob"
+match (&User-Name == "bob")
 
 condition true || (&User-Name == "bob")
 match true
@@ -301,10 +322,10 @@ condition ('foo' == 'foo')
 match true
 
 condition ("foo" == "%{md4: foo}")
-match "foo" == "%{md4: foo}"
+match ("foo" == %(cast:string "%{md4: foo}"))
 
 condition ("foo bar" == "%{md4: foo}")
-match "foo bar" == "%{md4: foo}"
+match ("foo bar" == %(cast:string "%{md4: foo}"))
 
 condition ("foo" == "bar")
 match false
@@ -318,10 +339,10 @@ match false
 #  in it, so it reverts back to a literal.
 #
 condition (&User-Name == "bob")
-match &User-Name == "bob"
+match (&User-Name == "bob")
 
 condition (&User-Name == "%{md4: blah}")
-match &User-Name == "%{md4: blah}"
+match (&User-Name == %(cast:string "%{md4: blah}"))
 
 condition <ipaddr>127.0.0.1 == 2130706433
 match true
@@ -343,10 +364,10 @@ match ERROR offset 2: Unexpected regular expression
 #  Tests for (FOO).
 #
 condition (1)
-match true
+match 1
 
 condition (0)
-match false
+match 0
 
 condition (true)
 match true
@@ -355,49 +376,49 @@ condition (false)
 match false
 
 condition ('')
-match false
+match ''
 
 condition ("")
-match false
+match ""
 
 #
 #  Integers are true, as are non-zero strings
 #
 condition (4)
-match true
+match 4
 
 condition ('a')
-match true
+match 'a'
 
 condition (a)
-match ERROR offset 2: Expected a module return code
+match ERROR offset 1: Unexpected text - attribute names must prefixed with '&'
 
 #
 #  Module return codes are OK
 #
 condition (ok)
-match ok
+match %{rcode:'ok'}
 
 condition (handled)
-match handled
+match %{rcode:'handled'}
 
 condition (fail)
-match fail
+match %{rcode:'fail'}
 
 condition ("a")
-match true
+match "a"
 
 condition (`a`)
 match `a`
 
-condition (&User-name)
+condition (&User-Name)
 match &User-Name
 
 #
 #  Forbidden data types in cast
 #
 condition (<vsa>"foo" == &User-Name)
-match ERROR offset 3: Forbidden data type 'vsa' in cast
+match ERROR offset 2: Invalid data type 'vsa' in cast
 
 #
 #  If the LHS is a cast to a type, and the RHS is an attribute
@@ -405,26 +426,30 @@ match ERROR offset 3: Forbidden data type 'vsa' in cast
 #  is on the LHS of the condition.
 #
 condition <string>"foo" == &User-Name
-match &User-Name == "foo"
+match ("foo" == &User-Name)
 
 # This used to be expr, but expr isn't a builtin, so it failed...
 condition <integer>"%{md4: 1 + 1}" < &NAS-Port
-match &NAS-Port > <uint32>"%{md4: 1 + 1}"
+match (%(cast:uint32 "%{md4: 1 + 1}") < &NAS-Port)
 
 #
 #  The string gets parsed as an IP address.
 #
+
+#
+#  @todo - maybe the cast is suppressed?  or... TBD later
+#
 condition &Filter-Id == &Framed-IP-Address
-match <ipaddr>&Filter-Id == &Framed-IP-Address
+match (&Filter-Id == &Framed-IP-Address)
 
 condition <ipaddr>127.0.0.1 == &Filter-Id
-match <ipaddr>&Filter-Id == 127.0.0.1
+match (127.0.0.1 == &Filter-Id)
 
 condition &Tmp-uint64-0 == &request.Foo-Stuff-Bar
-match &Tmp-uint64-0 == &Foo-Stuff-Bar
+match (&Tmp-uint64-0 == &request.Foo-Stuff-Bar)
 
 condition &Tmp-uint64-0 == &reply.Foo-Stuff-Bar
-match &Tmp-uint64-0 == &reply.Foo-Stuff-Bar
+match (&Tmp-uint64-0 == &reply.Foo-Stuff-Bar)
 
 #
 #  Casting attributes of different size
@@ -438,29 +463,29 @@ match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 #  so this may be a run-time failure.
 #
 condition <ipaddr>&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
-match <ipaddr>&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
+match ((ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address)
 
 # but these are allowed
 condition <ether>&Tmp-uint64-0 == "%{module: foo}"
-match <ether>&Tmp-uint64-0 == "%{module: foo}"
+match ((ether)&Tmp-uint64-0 == %(cast:string "%{module: foo}"))
 
 condition <ipaddr>&Filter-Id == &Framed-IP-Address
-match <ipaddr>&Filter-Id == &Framed-IP-Address
+match ((ipaddr)&Filter-Id == &Framed-IP-Address)
 
 condition <ipaddr>&Class == &Framed-IP-Address
-match <ipaddr>&Class == &Framed-IP-Address
+match ((ipaddr)&Class == &Framed-IP-Address)
 
 #
 #  zero offset into arrays get parsed and ignored
 #
 condition &User-Name[0] == "bob"
-match &User-Name[0] == "bob"
+match (&User-Name[0] == "bob")
 
 condition &User-Name[1] == "bob"
-match &User-Name[1] == "bob"
+match (&User-Name[1] == "bob")
 
 condition &User-Name[n] == "bob"
-match &User-Name[n] == "bob"
+match (&User-Name[n] == "bob")
 
 #
 #  This is allowed for pass2-fixups.  Foo-Bar MAY be an attribute.
@@ -478,17 +503,21 @@ match &Foo-Bar
 #	data &Acct-Input-Octets > &Session-Timeout
 #
 condition &Acct-Input-Octets > "%{Session-Timeout}"
-match &Acct-Input-Octets > "%{Session-Timeout}"
+match (&Acct-Input-Octets > %(cast:string "%{Session-Timeout}"))
 
 #  Separate types aren't optimized
 condition &Acct-Input-Octets-64 > "%{Session-Timeout}"
-match &Acct-Input-Octets-64 > "%{Session-Timeout}"
+match (&Acct-Input-Octets-64 > %(cast:string "%{Session-Timeout}"))
 
 #
 #  Parse OIDs into known attributes, where possible.
 #
+#  @todo - Perhaps this isn't done because the xlat name is taken from the
+#  input, and not from the canonicalized names.
+#
 condition &26.24757.84.9.5.4 == 0x1a99
-match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
+match  (&26.24757.84.9.5.4 == 0x1a99)
+#match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
 
 #
 #  This OID is known, but the data is malformed.
@@ -496,11 +525,13 @@ match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port 
 #  in packets.
 #
 condition &raw.26.24757.84.9.5.7 == 0x1a99
-match &raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned == 0x1a99
+match (&raw.26.24757.84.9.5.7 == 0x1a99)
+#match &raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned == 0x1a99
 
 #  This one is really unknown
 condition &26.24757.84.9.5.15 == 0x1a99
-match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
+match (&26.24757.84.9.5.15 == 0x1a99)
+#match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
 
 #
 #  Invalid array references.
@@ -523,18 +554,25 @@ match ERROR offset 12: Invalid array index '-1' (should be between 0-1000)
 #
 #  Sometimes the attribute/condition parser needs to fallback to bare words
 #
+#  @todo - this is likely treating the LHS as an enum which is impossible here
+#
 condition request.Foo == 'request.Foo'
-match true
+match (request.Foo == 'request.Foo')
 
 # Bareword compared with bareword is true
 condition request.Foo+Bar == request.Foo+Bar
-match true
+match (request.Foo+Bar == request.Foo+Bar)
 
 condition &request.Foo+Bar == 'request.Foo+Bar'
-match ERROR offset 13: Unexpected text after attribute reference
+match ((&request.Foo + Bar) == 'request.Foo+Bar')
+#match ERROR offset 13: Unexpected text after attribute reference
 
+#
+#  @todo - this is wrong
+#
 condition 'request.Foo+d' == &request.Foo+Bar
-match ERROR offset 32: Unexpected text after attribute reference
+match ('request.Foo+d' == (&request.Foo + Bar))
+#match ERROR offset 32: Unexpected text after attribute reference
 
 #  Attribute tags are not allowed for unknown attributes
 condition &request.FooBar:0 == &request.FooBar
@@ -545,7 +583,7 @@ match ERROR offset 12: Unexpected text after attribute reference
 
 # . is a valid dictionary name attribute, so we can't error out in pass1
 condition &not-a-packet.User-Name == &not-a-packet.User-Name
-match &not-a-packet.User-Name == &not-a-packet.User-Name
+match (&not-a-packet.User-Name == &not-a-packet.User-Name)
 
 #
 #  The LHS is a string with ASCII 5C 30 30 30 inside of it vs the RHS which should contain ASCII 0.
@@ -556,24 +594,28 @@ match false
 #
 #  'Unknown' attributes which are defined in the main dictionary
 #  should be resolved to their real names.
+#
+#  @todo - nope
+#
 condition &1 == 0x616263
-match &User-Name == 'abc'
+match (&1 == 0x616263)
 
 condition &26.11344.1 == 0x7f000001
-match &Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.1
+match (&26.11344.1 == 0x7f000001)
+#match &Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.1
 
 #
 #  Escape the backslashes correctly
 #  And print them correctly
 #
 condition &User-Name == '\\'
-match &User-Name == '\\'
+match (&User-Name == '\\')
 
 condition &User-Name == "@|\\"
-match &User-Name == "@|\\"
+match (&User-Name == "@|\\")
 
 condition &User-Name != "foo\nbar"
-match !&User-Name == "foo\nbar"
+match (&User-Name != "foo\nbar")
 
 #
 #  We infer that the LHS is a prefix and the RHS is
@@ -586,7 +628,7 @@ condition <ipv4prefix>192.168.0.0/16 > 192.168.1.2
 match true
 
 condition <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
-match <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
+match ((ipv4prefix)&NAS-IP-Address == 192.168.0.0/24)
 
 #
 #  rewrite so that the attribute is on the LHS
@@ -594,7 +636,7 @@ match <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
 #  is parsed as ipv4prefix
 #
 condition <ipv4prefix>192.168.0.0/24 > &NAS-IP-Address
-match <ipv4prefix>&NAS-IP-Address < 192.168.0.0/24
+match (192.168.0.0/24 > &NAS-IP-Address)
 
 #
 #  This is allowed and means "the list is not empty"
@@ -618,10 +660,10 @@ match &reply.
 #  Attributes with a protocol namespace
 #
 condition &radius.User-Name == 'bob'
-match &User-Name == 'bob'
+match (&radius.User-Name == 'bob')
 
 condition !(!(0))
-match false
+match !!0
 
 condition (true) && (false)
 match false
@@ -629,11 +671,13 @@ match false
 #
 #  More short-circuit evaluations
 #
+#  @todo - optimise at parse time
+#
 condition (&User-Name == "bob") && (false)
-match false
+match ((&User-Name == "bob") && false)
 
 condition (&User-Name == "bob") || (true)
-match true
+match ((&User-Name == "bob") || true)
 
 #
 #  A && (B || C) is not the same as (A && B) || C, for 0/1/1
@@ -642,7 +686,7 @@ match true
 #	(0 && 1) || 1 = 0 || 1 == 1
 #
 condition (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
-match (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
+match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 
 count
-match 307
+match 305

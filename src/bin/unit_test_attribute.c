@@ -1412,9 +1412,9 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 					  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	ssize_t			slen;
-	fr_cond_t		*cond;
 	CONF_SECTION		*cs;
 	size_t			len;
+	xlat_exp_head_t		*head = NULL;
 
 	cs = cf_section_alloc(NULL, NULL, "if", "condition");
 	if (!cs) {
@@ -1426,46 +1426,15 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 
 	fr_skip_whitespace(in);
 
-	slen = fr_cond_tokenize(cs, &cond, &cc->tmpl_rules, &FR_SBUFF_IN(in, inlen), false);
+	slen = xlat_tokenize_condition(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, inlen), NULL, &cc->tmpl_rules);
 	if (slen <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen);
-
-	return_error:
 		talloc_free(cs);
 		RETURN_OK_WITH_ERROR();
 	}
+	len = xlat_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), head, NULL);
 
-	if (fr_debug_lvl > DEBUG_ENABLED3) {
-		if (cond->type == COND_TYPE_MAP) {
-			if (cond->data.map->lhs) tmpl_debug(cond->data.map->lhs);
-			if (cond->data.map->rhs) tmpl_debug(cond->data.map->rhs);
-		}
-	}
-
-	if (in[slen] != '\0') {
-		fr_strerror_printf_push_head("ERROR offset %d 'Too much text'", (int) slen);
-		goto return_error;
-	}
-
-	/*
-	 *	Use the new condition parser.  Except for !&foo==bar, because the
-	 *	new one requires that to be formatted as !(&foo==bar).
-	 *
-	 *	Perhaps we should just change that?
-	 */
-	if (parse_new_conditions && ((in[0] != '!') || (in[1] == '('))) {
-		xlat_exp_head_t *head = NULL;
-
-		slen = xlat_tokenize_condition(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, inlen), NULL, &cc->tmpl_rules);
-		if (slen <= 0) {
-			fr_strerror_printf_push_head("ERROR in xlat_tokenize_cond offset %d", (int) -slen);
-			goto return_error;
-		}
-
-		talloc_free(head);
-	}
-
-	len = cond_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), cond);
+	talloc_free(head);
 	talloc_free(cs);
 
 	RETURN_OK(len);

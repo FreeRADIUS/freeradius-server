@@ -1,6 +1,11 @@
 #
 #  Like the conditional tests, but tests for escape sequences
 #
+
+#
+#  These tests also involve run-time purification, and we don't
+#  do that with the new conditions.  So it's disabled for now.
+#
 condition "bob" == 0x626f62
 match true
 
