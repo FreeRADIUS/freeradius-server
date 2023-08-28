@@ -2237,8 +2237,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 					/*
 					 *	And manually free this.
 					 */
-					ptr = cf_data_remove(subcs, fr_cond_t, NULL);
-					talloc_free(ptr);
 					ptr = cf_data_remove(subcs, xlat_exp_head_t, NULL);
 					talloc_free(ptr);
 
