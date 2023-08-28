@@ -306,13 +306,7 @@ static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 			fr_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
 #endif
 
-#ifndef STATIC_ANALYZER
-			/*
-			 *	For static analyzers, fr_assert() is assert(),
-			 * 	changing semantics so the mutex is not released.
-			 */
 			fr_assert(this->in_use == true);
-#endif
 			return this;
 		}
 	}
