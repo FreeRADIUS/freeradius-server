@@ -51,11 +51,6 @@ int server_init(CONF_SECTION *cs)
 	if (trigger_exec_init(cs) < 0) return -1;
 
 	/*
-	 *	Instantiate "permanent" paircmps
-	 */
-	if (paircmp_init() < 0) return -1;
-
-	/*
 	 *	Set up dictionaries and attributes for password comparisons
 	 */
 	if (password_init() < 0) return -1;
@@ -115,11 +110,6 @@ void server_free(void)
 	 *	Free xlat instance data, and call any detach methods
 	 */
 	xlat_instances_free();
-
-	/*
-	 *	The only paircmps remaining are the ones registered by the server core.
-	 */
-	paircmp_free();
 
 	/*
 	 *	The only xlats remaining are the ones registered by the server core.

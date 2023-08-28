@@ -36,14 +36,6 @@ extern "C" {
 
 int		paircmp_pairs(request_t *request, fr_pair_t const *check, fr_pair_t *vp);
 
-int		paircmp_virtual(request_t *request, fr_dict_attr_t const *da, fr_token_t op, fr_value_box_t const *value);
-
-int		paircmp_find(fr_dict_attr_t const *da);
-
-int		paircmp_init(void);
-
-void		paircmp_free(void);
-
 #ifdef __cplusplus
 }
 #endif
