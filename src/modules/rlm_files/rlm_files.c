@@ -397,7 +397,6 @@ static bool files_eval_map(request_t *request, map_t *map)
 
 	fr_assert(tmpl_is_attr(map->lhs));
 	fr_assert(fr_comparison_op[map->op]);
-	fr_assert(tmpl_is_data(map->rhs));
 
 	if (tmpl_find_vp(&vp, request, map->lhs) < 0) return false;
 
@@ -409,6 +408,8 @@ static bool files_eval_map(request_t *request, map_t *map)
 	if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
 		return (fr_regex_cmp_op(map->op, &vp->data, fr_box_strvalue(map->rhs->name)) == 1);
 	}
+
+	fr_assert(tmpl_is_data(map->rhs));
 
 	return (fr_value_box_cmp_op(map->op, &vp->data, tmpl_value(map->rhs)) == 1);
 }
