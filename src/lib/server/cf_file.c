@@ -1507,7 +1507,6 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool const 
 static CONF_ITEM *process_if(cf_stack_t *stack)
 {
 	ssize_t		slen = 0;
-	fr_cond_t	*cond = NULL;
 	fr_dict_t const	*dict = NULL;
 	CONF_SECTION	*cs;
 	uint8_t const   *p;
@@ -1516,7 +1515,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
 	tmpl_rules_t	t_rules;
-	bool		use_new_conditions = true;
 
 	/*
 	 *	Short names are nicer.
@@ -1537,9 +1535,8 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	};
 
 	/*
-	 *	fr_cond_tokenize needs the current section, so we
-	 *	create it first.  We don't pass a name2, as it hasn't
-	 *	yet been parsed.
+	 *	Create the CONF_SECTION.  We don't pass a name2, as it
+	 *	hasn't yet been parsed.
 	 */
 	cs = cf_section_alloc(parent, parent, buff[1], NULL);
 	if (!cs) {
@@ -1574,9 +1571,21 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		 *	Parse failures not at EOL are real errors.
 		 */
 		if (!eol) {
+			char *spaces, *text;
+
 			slen = 0;
 			fr_strerror_const("Unexpected EOF");
-			goto error;
+	error:
+			fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
+
+			cf_log_err(cs, "Parse error in condition");
+			cf_log_err(cs, "%s", text);
+			cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
+
+			talloc_free(spaces);
+			talloc_free(text);
+			talloc_free(cs);
+			return NULL;
 		}
 
 		/*
@@ -1639,43 +1648,12 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	}
 
 	/*
-	 *	Now that we know how big the condition is, see if we
-	 *	need to expand the variables.  If so, free the old
-	 *	condition, expand the variables, and reparse the
-	 *	condition.
+	 *	Expand the variables in the pre-parsed condition.
 	 */
-	{
-		ssize_t my_slen;
-
-		talloc_free(cond);
-
-		if (!cf_expand_variables(frame->filename, frame->lineno, parent,
-					 buff[3], stack->bufsize, buff[2], slen, NULL)) {
-			fr_strerror_const("Failed expanding configuration variable");
-			return NULL;
-		}
-
-		if (!use_new_conditions) {
-			my_slen = fr_cond_tokenize(cs, &cond, &t_rules, &FR_SBUFF_IN(buff[3], strlen(buff[3])), false);
-			if (my_slen <= 0) {
-				char *spaces, *text;
-
-				ptr = buff[3];
-				slen = my_slen;
-
-			error:
-				fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
-
-				cf_log_err(cs, "Parse error in condition");
-				cf_log_err(cs, "%s", text);
-				cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
-
-				talloc_free(spaces);
-				talloc_free(text);
-				talloc_free(cs);
-				return NULL;
-			}
-		}
+	if (!cf_expand_variables(frame->filename, frame->lineno, parent,
+				 buff[3], stack->bufsize, buff[2], slen, NULL)) {
+		fr_strerror_const("Failed expanding configuration variable");
+		return NULL;
 	}
 
 	MEM(cs->name2 = talloc_typed_strdup(cs, buff[3]));
@@ -1690,14 +1668,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		return NULL;
 	}
 	ptr++;
-
-	/*
-	 *	Now that the CONF_SECTION and condition are OK, add
-	 *	the condition to the CONF_SECTION.
-	 */
-	if (!use_new_conditions) {
-		cf_data_add(cs, cond, NULL, true);
-	}
 
 	stack->ptr = ptr;
 
