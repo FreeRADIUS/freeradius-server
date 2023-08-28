@@ -1363,7 +1363,7 @@ int fr_regex_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const
 	TALLOC_CTX *ctx = NULL;
 	size_t lhs_len;
 	char const *lhs;
-	regex_t *regex;
+	regex_t *regex = NULL;
 
 	if (!((op == T_OP_REG_EQ) || (op == T_OP_REG_NE))) {
 		fr_strerror_const("Invalid operator for regex comparison");
