@@ -161,9 +161,26 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 				ERROR("%s[%d] Left side of check item %s is not an attribute",
 				      entry->filename, entry->lineno, map->lhs->name);
 				return -1;
-
 			}
 			da = tmpl_attr_tail_da(map->lhs);
+
+			/*
+			 *	Disallow regexes for now.
+			 */
+			if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
+				ERROR("%s[%d] Regular expression for check item %s is not supported",
+				      entry->filename, entry->lineno, map->lhs->name);
+				return -1;
+			}
+
+			/*
+			 *	Disallow inter-attribute comparisons.
+			 */
+			if (!tmpl_is_data(map->rhs)) {
+				ERROR("%s[%d] Right side of check item %s is not a leaf value",
+				      entry->filename, entry->lineno, map->lhs->name);
+				return -1;
+			}
 
 			/*
 			 *	Ignore attributes which are set
@@ -377,6 +394,20 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static bool files_eval_map(request_t *request, map_t *map)
+{
+	fr_pair_t *vp;
+
+	fr_assert(tmpl_is_attr(map->lhs));
+	fr_assert(fr_comparison_op[map->op]);
+	fr_assert(tmpl_is_data(map->rhs));
+
+	if (tmpl_find_vp(&vp, request, map->lhs) < 0) return false;
+
+	return (fr_value_box_cmp_op(map->op, &vp->data, tmpl_value(map->rhs)) == 1);
+}
+
+
 /*
  *	Common code called by everything below.
  */
@@ -498,7 +529,7 @@ redo:
 				 *	Evaluate the map, including regexes.
 				 */
 			default:
-				if (!fr_cond_eval_map(request, map)) {
+				if (!files_eval_map(request, map)) {
 					RDEBUG3("    failed match - %s", fr_strerror());
 					match = false;
 				}
