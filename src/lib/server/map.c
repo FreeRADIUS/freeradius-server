@@ -28,7 +28,6 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/map.h>
@@ -45,6 +44,15 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <ctype.h>
+
+static fr_table_num_sorted_t const cond_quote_table[] = {
+	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
+	{ L("'"),	T_SINGLE_QUOTED_STRING	},
+	{ L("/"),	T_SOLIDUS_QUOTED_STRING	},
+	{ L("`"),	T_BACK_QUOTED_STRING	}
+};
+static size_t cond_quote_table_len = NUM_ELEMENTS(cond_quote_table);
+
 
 #ifdef DEBUG_MAP
 static void map_dump(request_t *request, map_t const *map)

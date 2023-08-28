@@ -28,7 +28,6 @@ typedef struct fr_connection_s fr_connection_t;
 #define _CONNECTION_PRIVATE 1
 #include <freeradius-devel/server/connection.h>
 
-#include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/trigger.h>
 

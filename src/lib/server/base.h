@@ -33,7 +33,6 @@ RCSIDH(base_h, "$Id$")
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/command.h>
 #include <freeradius-devel/server/components.h>
-#include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/dl_module.h>
@@ -52,7 +51,6 @@ RCSIDH(base_h, "$Id$")
 #include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/password.h>
-#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/pool.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/regex.h>

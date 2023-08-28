@@ -649,7 +649,7 @@ match &reply.
 #  and empty strings
 #
 #  @todo - disabled due to moving cf_expand_variables() from
-#  cond_tokenize() to cf_file.c.  The new xlat expression parser
+#  the condition parser to cf_file.c.  The new xlat expression parser
 #  will *not* optimize this at parse time, but *will* optimize
 #  this at purification time.
 #

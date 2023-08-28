@@ -26,7 +26,6 @@
  * @copyright 2016-2019 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/cf_util.h> /* Need CONF_* definitions */
-#include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/util/debug.h>

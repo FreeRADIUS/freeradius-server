@@ -32,7 +32,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_priv.h>
-#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/util.h>
@@ -3043,20 +3042,18 @@ int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 	 *	cf_data_find(cs, CF_DATA_TYPE_UNLANG, "if");
 	 */
 	if (cs->name2) {
-		fr_cond_t *c;
-
 		fputs(" ", fp);
 
+#if 0
 		c = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
 		if (c) {
 			char buffer[1024];
 
 			cond_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), c);
 			fprintf(fp, "(%s)", buffer);
-
-		} else {	/* dump the string as-is */
+		} else
+#endif
 			cf_string_write(fp, cs->name2, strlen(cs->name2), cs->name2_quote);
-		}
 	}
 
 	fputs(" {\n", fp);

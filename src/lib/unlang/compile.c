@@ -3452,7 +3452,7 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 		.len = sizeof(unlang_cond_t),
 		.type_name = "unlang_cond_t",
 		.pool_headers = 1 + 1 + (TMPL_POOL_DEF_HEADERS * 2),
-		.pool_len = sizeof(fr_cond_t) + sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2)
+		.pool_len = sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2)
 	};
 
 	return compile_if_subsection(parent, unlang_ctx, cs, &if_ext);
@@ -3465,7 +3465,7 @@ static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		.len = sizeof(unlang_cond_t),
 		.type_name = "unlang_cond_t",
 		.pool_headers = 1 + 1 + (TMPL_POOL_DEF_HEADERS * 2),
-		.pool_len = sizeof(fr_cond_t) + sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2)
+		.pool_len = sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2)
 	};
 
 	return compile_if_subsection(parent, unlang_ctx, cs, &elsif_ext);

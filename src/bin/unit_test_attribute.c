@@ -31,7 +31,6 @@ typedef struct request_s request_t;
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/command.h>
-#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/log.h>
