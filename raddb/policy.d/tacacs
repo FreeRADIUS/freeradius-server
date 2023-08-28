@@ -10,19 +10,6 @@ tacacs_set_authentication_status {
 	}
 }
 
-tacacs_pap {
-	subrequest RADIUS.Access-Request {
-		&request.User-Name := &parent.request.User-Name
-		&request.User-Password := &parent.request.User-Password
-		&control.Password.Cleartext := &parent.control.Password.Cleartext
-
-		pap.authorize
-		pap.authenticate
-	}
-
-	tacacs_set_authentication_status
-}
-
 tacacs_chap {
 	subrequest RADIUS.Access-Request {
 		&request.User-Name := &parent.request.User-Name

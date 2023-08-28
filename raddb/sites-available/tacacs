@@ -297,7 +297,7 @@ server tacacs {
 	}
 
 	authenticate PAP {
-		tacacs_pap
+		pap
 	}
 
 	authenticate CHAP {
