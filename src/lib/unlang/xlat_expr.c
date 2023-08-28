@@ -1428,12 +1428,16 @@ static xlat_arg_parser_t const xlat_func_exists_arg[] = {
 /*
  *	We just print the xlat as-is.
  */
-static fr_slen_t xlat_expr_print_exists(fr_sbuff_t *out, UNUSED xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
+static fr_slen_t xlat_expr_print_exists(fr_sbuff_t *out, xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
 {
-	size_t			at_in = fr_sbuff_used_total(out);
+	size_t	at_in = fr_sbuff_used_total(out);
 	xlat_exists_inst_t	*inst = instance;
 
-	xlat_print(out, inst->xlat, e_rules);
+	if (inst->xlat) {
+		xlat_print(out, inst->xlat, e_rules);
+	} else {
+		xlat_print_node(out, node->call.args, xlat_exp_head(node->call.args), e_rules);
+	}
 
 	return fr_sbuff_used_total(out) - at_in;
 }
