@@ -861,6 +861,11 @@ static int fr_value_box_cidr_cmp_op(fr_token_t op, int bytes,
 	return false;
 }
 
+/*
+ *	So we don't have to include <util/regex.h> in a recursive fashion.
+ */
+extern int fr_regex_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b);
+
 /** Compare two attributes using an operator
  *
  * @param[in] op to use in comparison.
@@ -877,6 +882,8 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 
 	if (!fr_cond_assert(a->type != FR_TYPE_NULL)) return -1;
 	if (!fr_cond_assert(b->type != FR_TYPE_NULL)) return -1;
+
+	if (unlikely((op == T_OP_REG_EQ) || (op == T_OP_REG_NE))) return fr_regex_cmp_op(op, a, b);
 
 	switch (a->type) {
 	case FR_TYPE_IPV4_ADDR:

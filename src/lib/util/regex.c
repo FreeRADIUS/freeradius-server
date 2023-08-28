@@ -1340,3 +1340,72 @@ ssize_t regex_flags_print(fr_sbuff_t *sbuff, fr_regex_flags_t const *flags)
 	FR_SBUFF_SET_RETURN(sbuff, &our_sbuff);
 }
 #endif
+
+/** Compare two boxes using an operator
+ *
+ *  @todo - allow /foo/i on the RHS
+ *
+ *  However, this involves allocating intermediate sbuffs for the
+ *  unescaped RHS, and all kinds of extra work.  It's not overly hard,
+ *  but it's something we wish to avoid for now.
+ *
+ * @param[in] op to use in comparison. MUST be T_OP_REG_EQ or T_OP_REG_NE
+ * @param[in] a Value to compare,  MUST be FR_TYPE_STRING
+ * @param[in] b uncompiled regex as FR_TYPE_STRING
+ * @return
+ *	- 1 if true
+ *	- 0 if false
+ *	- -1 on failure.
+ */
+int fr_regex_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b)
+{
+	int rcode;
+	TALLOC_CTX *ctx = NULL;
+	size_t lhs_len;
+	char const *lhs;
+	regex_t *regex;
+
+	if (!((op == T_OP_REG_EQ) || (op == T_OP_REG_NE))) {
+		fr_strerror_const("Invalid operator for regex comparison");
+		return -1;
+	}
+
+	if (b->type != FR_TYPE_STRING) {
+		fr_strerror_const("RHS must be regular expression");
+		return -1;
+	}
+
+	ctx = talloc_init_const("regex_cmp_op");
+	if (!ctx) return -1;
+
+	if ((a->type != FR_TYPE_STRING) && (a->type != FR_TYPE_OCTETS)) {
+		fr_slen_t slen;
+		char *p;
+
+		slen = fr_value_box_aprint(ctx, &p, a, NULL); /* no escaping */
+		if (slen < 0) return slen;
+
+		lhs = p;
+		lhs_len = slen;
+
+	} else {
+		lhs = a->vb_strvalue;
+		lhs_len = b->vb_length;
+	}
+
+	if (regex_compile(ctx, &regex, b->vb_strvalue, b->vb_length, NULL, false, true) < 0) {
+		talloc_free(ctx);
+		return -1;
+	}
+
+	rcode = regex_exec(regex, lhs, lhs_len, NULL);
+	talloc_free(ctx);
+	if (rcode < 0) return rcode;
+
+	/*
+	 *	Invert the sense of the rcode for !~
+	 */
+	if (op == T_OP_REG_NE) rcode = (rcode == 0);
+
+	return rcode;
+}
