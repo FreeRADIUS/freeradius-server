@@ -1142,12 +1142,33 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	ldap_auth_ctx_t	*auth_ctx = talloc_get_type_abort(uctx, ldap_auth_ctx_t);
 
 	/*
+	 *	SASL bind auth will have the mech set.
+	 */
+	if (auth_ctx->call_env->user_sasl_mech.type == FR_TYPE_STRING) {
+#ifdef WITH_SASL
+		ldap_auth_call_env_t *call_env = auth_ctx->call_env;
+
+		RDEBUG2("Login attept using identity \"%pV\"", &call_env->user_sasl_authname);
+
+		if (fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
+						 call_env->user_sasl_authname.vb_strvalue,
+						 auth_ctx->password, call_env->user_sasl_proxy.vb_strvalue,
+						 call_env->user_sasl_realm.vb_strvalue) < 0) goto fail;
+		return UNLANG_ACTION_PUSHED_CHILD;
+#else
+		RDEBUG("Configuration item 'sasl.mech' is not supported.  "
+		       "The linked version of libldap does not provide ldap_sasl_bind( function");
+		RETURN_MODULE_FAIL;
+#endif
+	}
+
+	/*
 	 *	Arriving here from an LDAP search will mean the dn in auth_ctx is NULL.
 	 */
 	if (!auth_ctx->dn) auth_ctx->dn = rlm_find_user_dn_cached(request);
 
 	/*
-	 *	No DN found - can't authenticate the user.
+	 *	No DN found - can't authenticate the user with a simple bind.
 	 */
 	if (!auth_ctx->dn) {
 	fail:
@@ -1157,24 +1178,7 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 
 	RDEBUG2("Login attempt as \"%s\"", auth_ctx->dn);
 
-	/*
-	 *	Attempt a bind using the thread specific trunk for bind auths
-	 */
-	if (auth_ctx->call_env->user_sasl_mech.type == FR_TYPE_STRING) {
-#ifdef WITH_SASL
-		ldap_auth_call_env_t *call_env = auth_ctx->call_env;
-		if (fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
-						 call_env->user_sasl_authname.vb_strvalue,
-						 auth_ctx->password, call_env->user_sasl_proxy.vb_strvalue,
-						 call_env->user_sasl_realm.vb_strvalue) < 0) goto fail;
-#else
-		RDEBUG("Configuration item 'sasl.mech' is not supported.  "
-		       "The linked version of libldap does not provide ldap_sasl_bind( function");
-		RETURN_MODULE_FAIL;
-#endif
-	} else {
-		if (fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password) < 0) goto fail;
-	}
+	if (fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password) < 0) goto fail;
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
@@ -1231,7 +1235,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	auth_ctx->dn = rlm_find_user_dn_cached(request);
 
-	if (unlang_function_push(request, auth_ctx->dn ? NULL : mod_authenticate_start, mod_authenticate_resume,
+	if (unlang_function_push(request, auth_ctx->dn || (call_env->user_sasl_mech.type == FR_TYPE_STRING) ?
+				 NULL : mod_authenticate_start, mod_authenticate_resume,
 				 NULL, 0, UNLANG_SUB_FRAME, auth_ctx) < 0) RETURN_MODULE_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
