@@ -1394,7 +1394,7 @@ int fr_regex_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const
 
 	} else {
 		lhs = a->vb_strvalue;
-		lhs_len = b->vb_length;
+		lhs_len = a->vb_length;
 	}
 
 	if (regex_compile(ctx, &regex, b->vb_strvalue, b->vb_length, NULL, false, true) < 0) {
