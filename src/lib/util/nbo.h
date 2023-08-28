@@ -128,14 +128,6 @@ static inline size_t fr_nbo_from_uint64v(uint8_t out[static sizeof(uint64_t)], u
 	return ret;
 }
 
-
-/*
- *	The seemingly needless d pointer in fr_nbo_to_uint{16,32}()
- *	tries to keep coverity from considering data tainted, which in
- * 	turn makes it think anything accessed via that pointer in the
- *	caller tainted as well.
- */
-
 /** Read an unsigned 16bit integer from wire format (big endian)
  *
  * @param[in] data	To convert to a 16bit unsigned integer of native endianness.
@@ -143,8 +135,7 @@ static inline size_t fr_nbo_from_uint64v(uint8_t out[static sizeof(uint64_t)], u
  */
 static inline uint16_t fr_nbo_to_uint16(uint8_t const data[static sizeof(uint16_t)])
 {
-	uint8_t const *d = data;
-	return (((uint16_t)d[0]) << 8) | d[1];
+	return (((uint16_t)data[0]) << 8) | data[1];
 }
 
 /** Read an unsigned 24bit integer from wire format (big endian)
@@ -154,8 +145,7 @@ static inline uint16_t fr_nbo_to_uint16(uint8_t const data[static sizeof(uint16_
  */
 static inline uint32_t fr_nbo_to_uint24(uint8_t const data[static 3])
 {
-	uint8_t const *d = data;
-	return (((uint32_t)d[0]) << 16) | (((uint32_t)d[1]) << 8) | d[2];
+	return (((uint32_t)data[0]) << 16) | (((uint32_t)data[1]) << 8) | data[2];
 }
 
 /** Read an unsigned 32bit integer from wire format (big endian)
