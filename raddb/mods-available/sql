@@ -127,10 +127,10 @@ sql {
 	postauth_table = "radpostauth"
 
 	#
-	#  NOTE:  Temporarily (2023-08-27), the SQL check items only support "real"
-	#  attributes, and do not support regular expressions.  This limitation will
-	#  be removed when the SQL module is rewritten to support maps (for assignments)
-	#  and xlat expressions (for conditions)
+	#  NOTE: Temporarily (2023-08-27), the SQL check items only
+	#  supports "real" attributes.  This limitation will be
+	#  removed when the SQL module is rewritten to support maps
+	#  (for assignments) and xlat expressions (for conditions)
 	#
 
 	#
