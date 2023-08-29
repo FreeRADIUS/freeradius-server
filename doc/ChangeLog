@@ -13,6 +13,7 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	* Add auto_escape to sample SQL module config
 	* Add 'if not exists' to mysql create table queries. ref #5032 (#5137)
 	* Add lookback and more configuration to totp.  See mods-available/totp
+	* Update dictionary.aruba
 
 	Bug fixes
 	* Fix corner case with empty defaults in rlm_files.  Fixes #5035

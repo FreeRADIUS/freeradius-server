@@ -67,14 +67,31 @@ ATTRIBUTE	Aruba-QoS-Trust-Mode			52	integer
 ATTRIBUTE	Aruba-UBT-Gateway-Role			53	string
 ATTRIBUTE	Aruba-Gateway-Zone			54	string
 
+ATTRIBUTE	Aruba-DPP-Bootstrapping-Key-SHA256	55	string
+ATTRIBUTE	Aruba-DPP-Bootstrapping-Net-Access-Key-SHA256 56	string
+ATTRIBUTE	Aruba-DPP-Bootstrapping-Key-B64		57	string
+
 ATTRIBUTE	Aruba-STP-Admin-Edge-Port		58	integer
 
 ATTRIBUTE	Aruba-UBT-Gateway-CPPM-Role		59	string
 
-ATTRIBUTE  	Aruba-AP-MAC-Address        		60      string
-ATTRIBUTE  	Aruba-Device-MAC-Address    		61      string
+ATTRIBUTE	Aruba-AP-MAC-Address			60	string
+ATTRIBUTE	Aruba-Device-MAC-Address		61	string
+ATTRIBUTE	Aruba-MPSK-Key-Name			62	string
 ATTRIBUTE	Aruba-Device-Traffic-Class		63	integer
 
+ATTRIBUTE	Aruba-PVLAN-Port-Type			64	integer
+ATTRIBUTE	Aruba-Network-Test			65	integer
+ATTRIBUTE	Aruba-MPSK-Lookup-Info			66	string
+ATTRIBUTE	Aruba-AVPair				67	string
+ATTRIBUTE	Aruba-DPP-Service-Type			68	integer
+
+ATTRIBUTE	Aruba-User-Mgmt-Interface		69	string
+
+ATTRIBUTE	Aruba-Poe-Allocate-By-Method		70	integer
+
+ATTRIBUTE	Aruba-DPP-AKMs				71	string
+ATTRIBUTE	Aruba-DPP-Passphrase			72	string encrypt=2
 
 VALUE	Aruba-AirGroup-Device-Type	Personal-Device		1
 VALUE	Aruba-AirGroup-Device-Type	Shared-Device		2
@@ -97,5 +114,16 @@ VALUE	Aruba-QoS-Trust-Mode		None			2
 
 VALUE	Aruba-STP-Admin-Edge-Port	Disable			0
 VALUE	Aruba-STP-Admin-Edge-Port	Enable			1
+
+VALUE	Aruba-PVLAN-Port-Type		None			0
+VALUE	Aruba-PVLAN-Port-Type		Promiscuous		1
+VALUE	Aruba-PVLAN-Port-Type		Secondary		2
+
+VALUE	Aruba-DPP-Service-Type		DDP-Boostrap-Authorization 1
+VALUE	Aruba-DPP-Service-Type		DDP-Identity-Update	2
+VALUE	Aruba-DPP-Service-Type		DDP-Net-Access		3
+
+VALUE	Aruba-PoE-Allocate-By-Method	Class			1
+VALUE	Aruba-PoE-Allocate-By-Method	Usage			2
 
 END-VENDOR Aruba
