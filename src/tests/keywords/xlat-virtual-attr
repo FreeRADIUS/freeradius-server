@@ -2,15 +2,6 @@
 #  PRE: if
 #
 
-if (!("%{Virtual-Server}" == 'default')) {
-	test_fail
-}
-
-ok
-if (!("%{Module-Return-Code}" == 'ok')) {
-	test_fail
-}
-
 if (!("%{Packet-Type}" == 'Access-Request')) {
 	test_fail
 }
@@ -44,19 +35,6 @@ if (!("%{Packet-Src-Port}" == '18120')) {
 }
 
 if (!("%{Packet-Dst-Port}" == '1812')) {
-	test_fail
-}
-
-# Operations on virtual attributes should be the same as on real ones
-if (!("%{Virtual-Server[0]}" == 'default')) {
-	test_fail
-}
-
-if (!("%{Virtual-Server[*]}" == 'default')) {
-	test_fail
-}
-
-if (!(%{Virtual-Server[#]} == 1)) {
 	test_fail
 }
 

@@ -65,18 +65,8 @@ ATTRIBUTE	Auth-Type				12	integer
 ATTRIBUTE	Load-Balance-Key			20	string
 ATTRIBUTE	Proxy-To-Realm				21	string
 # 22 - was Replicate-To-Realm
-ATTRIBUTE	Virtual-Server				23	string virtual
-ATTRIBUTE	Module-Return-Code			24	integer virtual
-
-VALUE	Module-Return-Code		reject			0
-VALUE	Module-Return-Code		fail			1
-VALUE	Module-Return-Code		ok			2
-VALUE	Module-Return-Code		handled			3
-VALUE	Module-Return-Code		invalid			4
-VALUE	Module-Return-Code		disallow		5
-VALUE	Module-Return-Code		notfound		6
-VALUE	Module-Return-Code		noop			7
-VALUE	Module-Return-Code		updated			8
+# 23 was Virtual-Server
+# 24 was Module-Return-Code
 
 #
 #	Cannonical definition of all available module methods
@@ -108,7 +98,7 @@ VALUE	Module-Method			store			22
 VALUE	Module-Method			clear			23
 VALUE	Module-Method			refresh			24
 
-ATTRIBUTE	Request-Processing-Stage		26	string virtual
+# 26 was Request-Processing-Stage
 
 #
 #	Range:	50 - 99

@@ -1457,7 +1457,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	while (*fmt == '.') {
 		if (depth <= 1) {
-			if (fr_value_box_bstrndup(ctx, vb, NULL, "<underflow>", 11, false) < 0) {
+			if (fr_value_box_bstrndup(vb, vb, NULL, "<underflow>", 11, false) < 0) {
 			error:
 				talloc_free(vb);
 				return XLAT_ACTION_FAIL;
@@ -1495,7 +1495,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	The current module
 	 */
 	if (strcmp(fmt, "module") == 0) {
-		if (fr_value_box_strdup(ctx, vb, NULL, request->module, false) < 0) goto error;
+		if (fr_value_box_strdup(vb, vb, NULL, request->module, false) < 0) goto error;
 
 		goto finish;
 	}
@@ -1504,7 +1504,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Name of the instruction.
 	 */
 	if (strcmp(fmt, "name") == 0) {
-		if (fr_value_box_bstrndup(ctx, vb, NULL, instruction->name,
+		if (fr_value_box_bstrndup(vb, vb, NULL, instruction->name,
 					  strlen(instruction->name), false) < 0) goto error;
 		goto finish;
 	}
@@ -1513,7 +1513,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	The request processing stage.
 	 */
 	if (strcmp(fmt, "processing_stage") == 0) {
-		if (fr_value_box_strdup(ctx, vb, NULL, request->component, false) < 0) goto error;
+		if (fr_value_box_strdup(vb, vb, NULL, request->component, false) < 0) goto error;
 
 		goto finish;
 	}
@@ -1522,7 +1522,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	The current return code.
 	 */
 	if (strcmp(fmt, "rcode") == 0) {
-		if (fr_value_box_strdup(ctx, vb, NULL, fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"), false) < 0) goto error;
+		if (fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"), false) < 0) goto error;
 		
 		goto finish;
 	}
@@ -1533,7 +1533,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (strcmp(fmt, "server") == 0) {
 		if (!unlang_call_current(request)) goto finish;
 
-		if (fr_value_box_strdup(ctx, vb, NULL, cf_section_name2(unlang_call_current(request)), false) < 0) goto error;
+		if (fr_value_box_strdup(vb, vb, NULL, cf_section_name2(unlang_call_current(request)), false) < 0) goto error;
 
 		goto finish;
 	}
@@ -1542,7 +1542,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Unlang instruction type.
 	 */
 	if (strcmp(fmt, "type") == 0) {
-		if (fr_value_box_bstrndup(ctx, vb, NULL, unlang_ops[instruction->type].name,
+		if (fr_value_box_bstrndup(vb, vb, NULL, unlang_ops[instruction->type].name,
 					  strlen(unlang_ops[instruction->type].name), false) < 0) goto error;
 
 		goto finish;
@@ -1552,7 +1552,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	All of the remaining things need a CONF_ITEM.
 	 */
 	if (!instruction->ci) {
-		if (fr_value_box_bstrndup(ctx, vb, NULL, "<INVALID>", 3, false) < 0) goto error;
+		if (fr_value_box_bstrndup(vb, vb, NULL, "<INVALID>", 3, false) < 0) goto error;
 
 		goto finish;
 	}
@@ -1570,7 +1570,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Filename of the current section.
 	 */
 	if (strcmp(fmt, "filename") == 0) {
-		if (fr_value_box_strdup(ctx, vb, NULL, cf_filename(instruction->ci), false) < 0) goto error;
+		if (fr_value_box_strdup(vb, vb, NULL, cf_filename(instruction->ci), false) < 0) goto error;
 
 		goto finish;
 	}

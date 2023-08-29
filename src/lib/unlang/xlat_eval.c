@@ -49,12 +49,9 @@ static fr_dict_autoload_t xlat_eval_dict[] = {
 };
 
 fr_dict_attr_t const *attr_expr_bool_enum; /* xlat_expr.c */
-fr_dict_attr_t const *attr_module_return_code; /* xlat_expr.c */
 fr_dict_attr_t const *attr_cast_base; /* xlat_expr.c */
 
 static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
-	{ .out = &attr_module_return_code, .name = "Module-Return-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_cast_base, .name = "Cast-Base", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
 	{ NULL }

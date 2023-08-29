@@ -1,6 +1,0 @@
-#
-#  PRE: if
-#
-if (&Virtual-Server) {
-	success
-}

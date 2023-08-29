@@ -1031,5 +1031,10 @@ result in an error.
 
 == Deleted Functionality
 
-The `Response-Packet-Type` attribute has been removed.  Please replace
-it with `&reply.Packet-Type`.
+Many "virtual" or "fake" attributes have been removed or renamed.
+
+`&Module-Return-Code` should be replaced by `%{interpreter:rcode}`.
+
+`&Response-Packet-Type` should be replaced by `&reply.Packet-Type`.
+
+`&Virtual-Server` should be replaced by `%{interpreter:server}`.

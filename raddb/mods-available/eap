@@ -783,7 +783,7 @@ eap {
 			#  NOTE: OpenSSL only allows 32 bytes of session ctx, so
 			#  the value provided here is digested with SHA256.
 			#
-#			name = "%{EAP-Type}%{Virtual-Server}"
+#			name = "%{EAP-Type}%{interpreter:server}"
 
 			#
 			#  lifetime::

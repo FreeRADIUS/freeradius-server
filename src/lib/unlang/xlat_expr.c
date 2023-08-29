@@ -1394,8 +1394,11 @@ static xlat_action_t xlat_func_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	matches the current rcode.
 	 */
 	if (!src) {
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, attr_module_return_code));
-		vb->datum.int32 = request->rcode;
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+		if (fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"), false) < 0) {
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
 	} else {
 		rlm_rcode_t rcode;
 
