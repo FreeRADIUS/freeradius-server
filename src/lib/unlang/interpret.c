@@ -1451,6 +1451,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*vb;
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
+
 	/*
 	 *	Find the correct stack frame.
 	 */
@@ -1478,7 +1479,25 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Nothing there...
 	 */
 	if (!instruction) {
+		talloc_free(vb);
 		return XLAT_ACTION_DONE;
+	}
+
+	/*
+	 *	How deep the current stack is.
+	 */
+	if (strcmp(fmt, "depth") == 0) {
+		fr_value_box_int32(vb, NULL, depth, false);
+		goto finish;
+	}
+
+	/*
+	 *	The current module
+	 */
+	if (strcmp(fmt, "module") == 0) {
+		if (fr_value_box_strdup(ctx, vb, NULL, request->module, false) < 0) goto error;
+
+		goto finish;
 	}
 
 	/*
@@ -1491,19 +1510,41 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	/*
-	 *	Unlang type.
+	 *	The request processing stage.
 	 */
-	if (strcmp(fmt, "type") == 0) {
-		if (fr_value_box_bstrndup(ctx, vb, NULL, unlang_ops[instruction->type].name,
-					  strlen(unlang_ops[instruction->type].name), false) < 0) goto error;
+	if (strcmp(fmt, "processing_stage") == 0) {
+		if (fr_value_box_strdup(ctx, vb, NULL, request->component, false) < 0) goto error;
+
 		goto finish;
 	}
 
 	/*
-	 *	How deep the current stack is.
+	 *	The current return code.
 	 */
-	if (strcmp(fmt, "depth") == 0) {
-		fr_value_box_int32(vb, NULL, depth, false);
+	if (strcmp(fmt, "rcode") == 0) {
+		if (fr_value_box_strdup(ctx, vb, NULL, fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"), false) < 0) goto error;
+		
+		goto finish;
+	}
+
+	/*
+	 *	The virtual server handling the request
+	 */
+	if (strcmp(fmt, "server") == 0) {
+		if (!unlang_call_current(request)) goto finish;
+
+		if (fr_value_box_strdup(ctx, vb, NULL, cf_section_name2(unlang_call_current(request)), false) < 0) goto error;
+
+		goto finish;
+	}
+
+	/*
+	 *	Unlang instruction type.
+	 */
+	if (strcmp(fmt, "type") == 0) {
+		if (fr_value_box_bstrndup(ctx, vb, NULL, unlang_ops[instruction->type].name,
+					  strlen(unlang_ops[instruction->type].name), false) < 0) goto error;
+
 		goto finish;
 	}
 
@@ -1512,7 +1553,8 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (!instruction->ci) {
 		if (fr_value_box_bstrndup(ctx, vb, NULL, "<INVALID>", 3, false) < 0) goto error;
-			goto finish;
+
+		goto finish;
 	}
 
 	/*
@@ -1520,6 +1562,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (strcmp(fmt, "line") == 0) {
 		fr_value_box_int32(vb, NULL, cf_lineno(instruction->ci), false);
+
 		goto finish;
 	}
 
@@ -1527,14 +1570,18 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Filename of the current section.
 	 */
 	if (strcmp(fmt, "filename") == 0) {
-		char const *filename = cf_filename(instruction->ci);
+		if (fr_value_box_strdup(ctx, vb, NULL, cf_filename(instruction->ci), false) < 0) goto error;
 
-		if (fr_value_box_bstrndup(ctx, vb, NULL, filename, strlen(filename), false) < 0) goto error;
 		goto finish;
 	}
 
 finish:
-	if (vb->type != FR_TYPE_NULL) fr_dcursor_append(out, vb);
+	if (vb->type != FR_TYPE_NULL) {
+		fr_dcursor_append(out, vb);
+	} else {
+		talloc_free(vb);
+	}
+
 	return XLAT_ACTION_DONE;
 }
 
