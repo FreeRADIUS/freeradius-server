@@ -1,5 +1,5 @@
-	# -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# -*- text -*-
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -81,6 +81,13 @@ ATTRIBUTE	Packet-Dst-IPv6-Address			53	ipv6addr virtual
 ATTRIBUTE	Packet-Src-Port				54	short virtual
 ATTRIBUTE	Packet-Dst-Port				55	short virtual
 ATTRIBUTE	Packet-Original-Timestamp		56	date
+
+ATTRIBUTE	Net					60	tlv
+ATTRIBUTE	Src					.1	tlv
+ATTRIBUTE	IP					.1.1	combo-ip
+ATTRIBUTE	Port					.1.2	uint16
+ATTRIBUTE	Dst					.2	tlv clone=Net.Src
+ATTRIBUTE	Timestamp				.3	date
 
 #
 #
