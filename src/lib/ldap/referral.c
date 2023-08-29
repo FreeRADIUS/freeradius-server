@@ -34,6 +34,7 @@ RCSID("$Id$")
 static int _fr_ldap_referral_free(fr_ldap_referral_t *referral)
 {
         if (referral->referral_url) ldap_free_urldesc(referral->referral_url);
+	if (referral->host_uri) ldap_memfree(referral->host_uri);
         return 0;
 }
 
@@ -114,6 +115,7 @@ int fr_ldap_referral_follow(fr_ldap_thread_t *t, request_t *request, fr_ldap_que
 	fr_ldap_thread_trunk_t	*ttrunk = NULL;
 	int			referral_no = -1;
 	fr_ldap_referral_t	*referral;
+	LDAPURLDesc		temp_desc;
 
 	fr_trunk_request_signal_complete(query->treq);
 	query->treq = NULL;
@@ -151,8 +153,17 @@ int fr_ldap_referral_follow(fr_ldap_thread_t *t, request_t *request, fr_ldap_que
 			continue;
 		}
 
-		referral->host_uri = talloc_asprintf(referral, "%s://%s:%d", referral->referral_url->lud_scheme,
-						     referral->referral_url->lud_host, referral->referral_url->lud_port);
+		temp_desc = (LDAPURLDesc){
+			.lud_scheme = referral->referral_url->lud_scheme,
+			.lud_host = referral->referral_url->lud_host,
+			.lud_port = referral->referral_url->lud_port,
+			.lud_scope = -1
+		};
+		referral->host_uri = ldap_url_desc2str(&temp_desc);
+		if (!referral->host_uri) {
+			ROPTIONAL(RERROR, ERROR,
+				 "Failed building LDAP host URI from %s", query->referral_urls[referral_no]);
+		}
 
 		if (config->use_referral_credentials) {
 			char	**ext;
@@ -216,7 +227,7 @@ int fr_ldap_referral_follow(fr_ldap_thread_t *t, request_t *request, fr_ldap_que
 		if (fr_thread_ldap_trunk_state(t, referral->host_uri,
 					       referral->identity) != FR_TRUNK_STATE_ACTIVE) {
 			ROPTIONAL(RDEBUG3, DEBUG3,
-				  "No active LDAP trunk for URI %s, bind DN %s",
+				  "No active LDAP trunk for URI %s, bound as %s",
 				  referral->host_uri, referral->identity);
 			continue;
 		}
