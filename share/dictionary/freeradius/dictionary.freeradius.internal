@@ -64,40 +64,10 @@ ATTRIBUTE	Auth-Type				12	integer
 #
 ATTRIBUTE	Load-Balance-Key			20	string
 ATTRIBUTE	Proxy-To-Realm				21	string
-# 22 - was Replicate-To-Realm
+# 22 was Replicate-To-Realm
 # 23 was Virtual-Server
 # 24 was Module-Return-Code
-
-#
-#	Cannonical definition of all available module methods
-#
-#	This is defined centrally to ensure that typos are
-#	caught early and that methods are reused.
-#
-#	Module may define additional methods in their "load"
-#	callbacks, but it is not recommended except for
-#	proprietary or extremely specialised modules.
-#
-ATTRIBUTE	Module-Method				25	integer
-
-# General packet processing
-VALUE	Module-Method			authorize		1
-VALUE	Module-Method			authenticate		2
-VALUE	Module-Method			preacct			3
-VALUE	Module-Method			accounting		4
-
-# Resource allocation
-VALUE	Module-Method			alloc			10
-VALUE	Module-Method			renew			11
-VALUE	Module-Method			release			12
-VALUE	Module-Method			bulk-release		13
-
-# Storage modules
-VALUE	Module-Method			load			21
-VALUE	Module-Method			store			22
-VALUE	Module-Method			clear			23
-VALUE	Module-Method			refresh			24
-
+# 25 was Module-Method
 # 26 was Request-Processing-Stage
 
 #
