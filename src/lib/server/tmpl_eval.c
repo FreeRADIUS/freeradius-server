@@ -57,7 +57,6 @@ static fr_dict_attr_t const *attr_packet_dst_port;
 static fr_dict_attr_t const *attr_packet_src_ip_address;
 static fr_dict_attr_t const *attr_packet_src_ipv6_address;
 static fr_dict_attr_t const *attr_packet_src_port;
-static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_packet_authentication_vector;
 
 /** Placeholder attribute for uses of unspecified attribute references
@@ -74,7 +73,6 @@ static fr_dict_attr_autoload_t tmpl_dict_attr[] = {
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 
 	{ .out = &attr_packet_authentication_vector, .name = "Packet-Authentication-Vector", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 
