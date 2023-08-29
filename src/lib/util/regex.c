@@ -1398,6 +1398,13 @@ int fr_regex_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const
 		return -1;
 	}
 
+#ifdef STATIC_ANALYZER
+	if (!regex) {
+		talloc_free(ctx);
+		return -1;
+	}
+#endif
+
 	rcode = regex_exec(regex, lhs, lhs_len, NULL);
 	talloc_free(ctx);
 	if (rcode < 0) return rcode;
