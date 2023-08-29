@@ -61,7 +61,7 @@ do {\
 	_cbb->eap_type = PW_EAP_TEAP;\
 } while (0)
 
-static struct teap_imck_t imck_zeros = { 0 };
+static struct teap_imck_t imck_zeros = { };
 
 /**
  * RFC 7170 EAP-TEAP Authentication Phase 1: Key Derivations
