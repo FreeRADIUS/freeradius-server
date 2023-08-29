@@ -84,7 +84,6 @@ fr_dict_attr_t const *attr_chbind_response_code;
 fr_dict_attr_t const *attr_eap_session_id;
 fr_dict_attr_t const *attr_eap_identity;
 fr_dict_attr_t const *attr_eap_type;
-fr_dict_attr_t const *attr_virtual_server;
 
 fr_dict_attr_t const *attr_message_authenticator;
 fr_dict_attr_t const *attr_eap_channel_binding_message;
@@ -104,7 +103,6 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ .out = &attr_eap_session_id, .name = "EAP-Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_eap_channel_binding_message, .name = "Vendor-Specific.UKERNA.EAP-Channel-Binding-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -400,8 +398,11 @@ void eap_add_reply(request_t *request, fr_dict_attr_t const *da, uint8_t const *
  * @param[in] virtual_server	The default virtual server to send the request to.
  * @return the rcode of the last executed section in the virtual server.
  */
-rlm_rcode_t eap_virtual_server(request_t *request, eap_session_t *eap_session, char const *virtual_server)
+rlm_rcode_t eap_virtual_server(UNUSED request_t *request, UNUSED eap_session_t *eap_session, UNUSED char const *virtual_server)
 {
+#if 1
+	return RLM_MODULE_FAIL;
+#else
 	eap_session_t	*eap_session_inner;
 	rlm_rcode_t	rcode;
 	fr_pair_t	*vp;
@@ -456,6 +457,7 @@ rlm_rcode_t eap_virtual_server(request_t *request, eap_session_t *eap_session, c
 	}
 
 	return rcode;
+#endif
 }
 
 /** Initialise the lib eap base library

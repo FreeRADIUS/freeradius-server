@@ -754,6 +754,7 @@ session_ticket_key::
 Sets a persistent key used to encrypt stateless session
 tickets.  If this is not set, then a random key will be
 chosen when the server starts.
+
 As the ticket key length depends on the version/flavour
 of OpenSSL being used, the value provided is fed into
 a HKDF function (digest SHA256,
@@ -992,6 +993,7 @@ server constructed specifically for this purpose.
 If this entry is commented out, the inner tunneled request
 will be sent through the virtual server that processed the
 outer requests.
+
 
 
 require_client_cert::
@@ -1340,11 +1342,10 @@ eap {
 		}
 		session {
 #			mode = auto
-#			name = "%{EAP-Type}%{Virtual-Server}"
+#			name = "%{EAP-Type}%{interpreter:server}"
 #			lifetime = 86400
 #			require_extended_master_secret = yes
 #			require_perfect_forward_secrecy = no
-			*
 #			session_ticket_key = "super-secret-key"
 		}
 	}
