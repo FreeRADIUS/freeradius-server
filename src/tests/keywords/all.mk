@@ -78,16 +78,16 @@ KEYWORD_UPDATE_TMPL_TESTS	:= xlat-dhcpv4
 #  conditions, so we don't run them under the new conditions.
 #
 ifneq "$(findstring ${1}, update-to-edit $(KEYWORD_UPDATE_TESTS) xlat-unknown )" ""
-$(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes
+$(OUTPUT)/${1}: NEW_COND=
 
 else ifneq "$(findstring ${1}, $(KEYWORD_UPDATE_REWRITE_TESTS))" ""
-$(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S rewrite_update=yes -S tmpl_tokenize_all_nested=yes
+$(OUTPUT)/${1}: NEW_COND=-S rewrite_update=yes -S tmpl_tokenize_all_nested=yes
 
 else ifneq "$(findstring ${1}, $(KEYWORD_UPDATE_TMPL_TESTS))" ""
-$(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S forbid_update=yes
+$(OUTPUT)/${1}: NEW_COND=-S forbid_update=yes
 
 else
-$(OUTPUT)/${1}: NEW_COND=-S use_new_conditions=yes -S forbid_update=yes -S tmpl_tokenize_all_nested=yes -S pair_legacy_nested=true
+$(OUTPUT)/${1}: NEW_COND=-S forbid_update=yes -S tmpl_tokenize_all_nested=yes -S pair_legacy_nested=true
 
 ifeq "${1}" "mschap"
 $(OUTPUT)/${1}: $(BUILD_DIR)/lib/rlm_mschap.la

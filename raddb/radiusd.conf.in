@@ -638,12 +638,6 @@ migrate {
 	tmpl_tokenize_all_nested = false
 
 	#
-	#  use_new_conditions:: Use the new condition code based on
-	#  xlats, instead of the old condition code.
-	#
-#	use_new_conditions = false
-
-	#
 	#  pair_legacy_nested: make legacy APIs return nested attributes
 	#
 	#  e.g. the `detail` file, `exec` commands, along with the
