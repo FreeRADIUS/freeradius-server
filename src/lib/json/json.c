@@ -410,7 +410,6 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		json_object_put_assert(obj);
 		return slen;
 	}
-		break;
 
 	case FR_TYPE_FLOAT64:
 	{
@@ -423,7 +422,6 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		json_object_put_assert(obj);
 		return slen;
 	}
-		break;
 
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
