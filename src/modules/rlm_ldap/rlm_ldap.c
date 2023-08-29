@@ -2393,6 +2393,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Build the attribute map
 	 */
 	{
+		map_t const		*map = NULL;
+		tmpl_attr_t const	*ar;
 		tmpl_rules_t	parse_rules = {
 			.attr = {
 				.list_def = request_attr_request,
@@ -2405,6 +2407,19 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 					    &parse_rules, &parse_rules, fr_ldap_map_verify, NULL,
 					    LDAP_MAX_ATTRMAP) < 0)) {
 			return -1;
+		}
+
+		/*
+		 *	Check map to see if a password is being retrieved.
+		 *	fr_ldap_map_verify ensures that all maps have attributes on the LHS.
+		 *	All passwords have a common parent attribute of attr_password
+		 */
+		while ((map = map_list_next(&inst->user_map, map))) {
+			ar = tmpl_attr_tail(map->lhs);
+			if (ar->da->parent == attr_password) {
+				inst->expect_password = true;
+				break;
+			}
 		}
 	}
 
