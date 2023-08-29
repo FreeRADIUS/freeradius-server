@@ -359,10 +359,6 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 	 *	fails when passed NULL match data.
 	 */
 	if (!regmatch) {
-#ifdef STATIC_ANALYZER
-		if (!preg->compiled) return -1;
-#endif
-
 		match_data = pcre2_match_data_create_from_pattern(preg->compiled, fr_pcre2_tls->gcontext);
 		if (!match_data) {
 			fr_strerror_const("Failed allocating temporary match data");

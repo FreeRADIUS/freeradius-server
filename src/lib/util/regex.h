@@ -176,7 +176,7 @@ ssize_t		regex_flags_print(fr_sbuff_t *sbuff, fr_regex_flags_t const *flags);
 
 	ssize_t		regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
 			      fr_regex_flags_t const *flags, bool subcaptures, bool runtime);
-int		regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *regmatch);
+int		regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *regmatch) CC_HINT(nonnull(1,2));
 #ifdef HAVE_REGEX_PCRE2
 int		regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg, fr_regex_flags_t *flags,
 		     		 char const *subject, size_t subject_len,
