@@ -209,8 +209,8 @@ It returns the number of attributes which were decoded.
 
 [source,unlang]
 ----
-%(decode.dhcpv4:0x520d0103abcdef0206010203040506)
-%(decode.radius:0x010641424344)
+%(dhcpv4.decode:0x520d0103abcdef0206010203040506)
+%(radius.decode:0x010641424344)
 ----
 
 .Output
@@ -236,7 +236,7 @@ It returns the raw encoded data
 [source,unlang]
 ----
 %(dhcpv4.encode:&Relay-Agent-Information.Circuit-Id = 0xabcdef  &Relay-Agent-Information.Remote-Id = 0x010203040506)
-%(radius.radius:&User-Name = "ABCD")
+%(radius.encode:&User-Name = "ABCD")
 ----
 
 .Output
