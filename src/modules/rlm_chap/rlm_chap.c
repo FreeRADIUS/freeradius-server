@@ -33,7 +33,13 @@ RCSID("$Id$")
 
 typedef struct {
 	fr_dict_enum_value_t		*auth_type;
+	size_t				min_challenge_len;
 } rlm_chap_t;
+
+static const CONF_PARSER module_config[] = {
+	{ FR_CONF_OFFSET("min_challenge_len", FR_TYPE_SIZE, rlm_chap_t, min_challenge_len), .dflt = "16" },
+	CONF_PARSER_TERMINATOR
+};
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
@@ -321,6 +327,7 @@ module_rlm_t rlm_chap = {
 		.inst_size	= sizeof(rlm_chap_t),
 		.onload		= mod_load,
 		.unload		= mod_unload,
+		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
 	.dict		= &dict_radius,
