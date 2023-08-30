@@ -249,7 +249,7 @@ It returns the raw encoded data
 == Interpreter State
 
 The state of the interpreter can be queried via the
-`%{interpeter:<name>}` expansion.  The individual expansions are
+`%(interpeter:<name>)` expansion.  The individual expansions are
 documented below.
 
 Each expansion given here can be prefixed with one or more dot (`.`)
@@ -257,21 +257,21 @@ characters.  These dots allow the expansion to refer to the current
 request via a `name`, or the parent request via `.name`.  If there is
 no parent, the expansion returns the string `<underflow>`.
 
-=== %{interpeter:module}
+=== %(interpeter:module)
 
 The current module being executed.  If the expansions is done in an
 `unlang` statement and outside of any module, it returns the name of
 the previous module which was executed.
 
-=== %{interpeter:processing_stage}
+=== %(interpeter:processing_stage)
 
 Which section of a virtual server is processing the request.
 
-=== %{interpeter:rcode}
+=== %(interpeter:rcode)
 
 The current interpreter return code, e.g. `handle`, or `ok`, etc.
 
-=== %{interpeter:server}
+=== %(interpeter:server)
 
 The name of the virtual server which is running the request.
 

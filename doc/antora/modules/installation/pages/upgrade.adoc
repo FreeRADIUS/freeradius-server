@@ -1033,8 +1033,8 @@ result in an error.
 
 Many "virtual" or "fake" attributes have been removed or renamed.
 
-`&Module-Return-Code` should be replaced by `%{interpreter:rcode}`.
+`&Module-Return-Code` should be replaced by `%(interpreter:rcode)`.
 
 `&Response-Packet-Type` should be replaced by `&reply.Packet-Type`.
 
-`&Virtual-Server` should be replaced by `%{interpreter:server}`.
+`&Virtual-Server` should be replaced by `%(interpreter:server)`.

@@ -1342,7 +1342,7 @@ eap {
 		}
 		session {
 #			mode = auto
-#			name = "%{EAP-Type}%{interpreter:server}"
+#			name = "%{EAP-Type}%(interpreter:server)"
 #			lifetime = 86400
 #			require_extended_master_secret = yes
 #			require_perfect_forward_secrecy = no
