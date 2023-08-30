@@ -133,8 +133,8 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	rlm_chap_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_chap_t);
 	uint8_t			chap_password[1 + FR_CHAP_CHALLENGE_LENGTH];
 	fr_value_box_t		*vb;
-	uint8_t	const		*vector;
-	size_t			vector_len;
+	uint8_t	const		*challenge;
+	size_t			challenge_len;
 	fr_value_box_t		*in_head = fr_value_box_list_head(in);
 	chap_xlat_call_env_t	*env_data = talloc_get_type_abort(xctx->env_data, chap_xlat_call_env_t);
 
@@ -144,15 +144,15 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if ((env_data->chap_challenge.type == FR_TYPE_OCTETS) &&
 	    (env_data->chap_challenge.vb_length >= inst->min_challenge_len)) {
-		vector = env_data->chap_challenge.vb_octets;
-		vector_len = env_data->chap_challenge.vb_length;
+		challenge = env_data->chap_challenge.vb_octets;
+		challenge_len = env_data->chap_challenge.vb_length;
 	} else {
 		if (env_data->chap_challenge.type == FR_TYPE_OCTETS)
 			RWDEBUG("&request.CHAP-Challenge shorter than minimum length (%ld)", inst->min_challenge_len);
-		vector = request->packet->vector;
-		vector_len = RADIUS_AUTH_VECTOR_LENGTH;
+		challenge = request->packet->vector;
+		challenge_len = RADIUS_AUTH_VECTOR_LENGTH;
 	}
-	fr_chap_encode(chap_password, (uint8_t)(fr_rand() & 0xff), vector, vector_len,
+	fr_chap_encode(chap_password, (uint8_t)(fr_rand() & 0xff), challenge, challenge_len,
 				       in_head->vb_strvalue, in_head->vb_length);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
@@ -226,8 +226,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	fr_dict_attr_t const	*allowed_passwords[] = { attr_cleartext_password };
 	bool			ephemeral;
 
-	uint8_t	const		*vector;
-	size_t			vector_len;
+	uint8_t	const		*challenge;
+	size_t			challenge_len;
 
 	if (env_data->username.type != FR_TYPE_STRING) {
 		REDEBUG("&User-Name attribute is required for authentication");
@@ -274,15 +274,15 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if ((env_data->chap_challenge.type == FR_TYPE_OCTETS) &&
 	    (env_data->chap_challenge.vb_length >= inst->min_challenge_len)) {
-		vector = env_data->chap_challenge.vb_octets;
-		vector_len = env_data->chap_challenge.vb_length;
+		challenge = env_data->chap_challenge.vb_octets;
+		challenge_len = env_data->chap_challenge.vb_length;
 	} else {
 		if (env_data->chap_challenge.type == FR_TYPE_OCTETS)
 			RWDEBUG("&request.CHAP-Challenge shorter than minimum length (%ld)", inst->min_challenge_len);
-		vector = request->packet->vector;
-		vector_len = RADIUS_AUTH_VECTOR_LENGTH;
+		challenge = request->packet->vector;
+		challenge_len = RADIUS_AUTH_VECTOR_LENGTH;
 	}
-	fr_chap_encode(pass_str, env_data->chap_password.vb_octets[0], vector, vector_len,
+	fr_chap_encode(pass_str, env_data->chap_password.vb_octets[0], challenge, challenge_len,
 		       known_good->vp_strvalue, known_good->vp_length);
 
 	/*
