@@ -97,7 +97,7 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	} else {
 		vector = request->packet->vector;
 	}
-	fr_radius_encode_chap_password(chap_password, (uint8_t)(fr_rand() & 0xff), vector,
+	fr_radius_encode_chap_password(chap_password, (uint8_t)(fr_rand() & 0xff), vector, RADIUS_AUTH_VECTOR_LENGTH,
 				       in_head->vb_strvalue, in_head->vb_length);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
@@ -224,7 +224,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	} else {
 		vector = request->packet->vector;
 	}
-	fr_radius_encode_chap_password(pass_str, chap->vp_octets[0], vector,
+	fr_radius_encode_chap_password(pass_str, chap->vp_octets[0], vector, RADIUS_AUTH_VECTOR_LENGTH,
 				       known_good->vp_strvalue, known_good->vp_length);
 
 	/*

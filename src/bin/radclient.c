@@ -1052,7 +1052,7 @@ static int send_one_packet(rc_request_t *request)
 				}
 
 				fr_radius_encode_chap_password(buffer,
-							       fr_rand() & 0xff, vector,
+							       fr_rand() & 0xff, vector, RADIUS_AUTH_VECTOR_LENGTH,
 							       request->password->vp_strvalue,
 							       request->password->vp_length);
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
