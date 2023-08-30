@@ -78,7 +78,7 @@ static xlat_arg_parser_t const xlat_func_chap_password_args[] = {
  *
  * Example:
 @verbatim
-"%(chap_password:<password>)" == 0x<id><md5_hash>
+"%(chap.password:<password>)" == 0x<id><md5_hash>
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -295,19 +295,15 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static int mod_load(void)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	xlat_t	*xlat;
 
-	if (unlikely((xlat = xlat_func_register(NULL, "chap_password", xlat_func_chap_password, FR_TYPE_OCTETS)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register_module(NULL, mctx, "password", xlat_func_chap_password,
+						       FR_TYPE_OCTETS)) == NULL)) return -1;
 	xlat_func_args_set(xlat, xlat_func_chap_password_args);
 
 	return 0;
-}
-
-static void mod_unload(void)
-{
-	xlat_func_unregister("chap_password");
 }
 
 /*
@@ -325,8 +321,7 @@ module_rlm_t rlm_chap = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "chap",
 		.inst_size	= sizeof(rlm_chap_t),
-		.onload		= mod_load,
-		.unload		= mod_unload,
+		.bootstrap	= mod_bootstrap,
 		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
