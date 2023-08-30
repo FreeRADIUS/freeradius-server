@@ -84,26 +84,31 @@ static xlat_arg_parser_t const xlat_func_chap_password_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				 	     UNUSED xlat_ctx_t const *xctx,
+				 	     xlat_ctx_t const *xctx,
 					     request_t *request, fr_value_box_list_t *in)
 {
-	uint8_t		chap_password[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
-	fr_value_box_t	*vb;
-	fr_pair_t	*challenge;
-	uint8_t	const	*vector;
-	fr_value_box_t	*in_head = fr_value_box_list_head(in);
+	rlm_chap_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_chap_t);
+	uint8_t			chap_password[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
+	fr_value_box_t		*vb;
+	fr_pair_t		*challenge;
+	uint8_t	const		*vector;
+	size_t			vector_len;
+	fr_value_box_t		*in_head = fr_value_box_list_head(in);
 
 	/*
 	 *	Use Chap-Challenge pair if present,
 	 *	Request Authenticator otherwise.
 	 */
 	challenge = fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_challenge);
-	if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
+	if (challenge && (challenge->vp_length >= inst->min_challenge_len)) {
 		vector = challenge->vp_octets;
+		vector_len = challenge->vp_length;
 	} else {
+		if (challenge) RWDEBUG("&request.CHAP-Challenge shorter than minimum length (%ld)", inst->min_challenge_len);
 		vector = request->packet->vector;
+		vector_len = RADIUS_AUTH_VECTOR_LENGTH;
 	}
-	fr_radius_encode_chap_password(chap_password, (uint8_t)(fr_rand() & 0xff), vector, RADIUS_AUTH_VECTOR_LENGTH,
+	fr_radius_encode_chap_password(chap_password, (uint8_t)(fr_rand() & 0xff), vector, vector_len,
 				       in_head->vb_strvalue, in_head->vb_length);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
@@ -165,8 +170,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
+	rlm_chap_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_chap_t);
 	fr_pair_t		*known_good;
 	fr_pair_t		*chap, *username;
 	uint8_t			pass_str[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
@@ -178,6 +184,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	fr_pair_t		*challenge;
 	uint8_t	const		*vector;
+	size_t			vector_len;
 
 	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
 	if (!username) {
@@ -225,12 +232,15 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	Request Authenticator otherwise.
 	 */
 	challenge = fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_challenge);
-	if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
+	if (challenge && (challenge->vp_length >= inst->min_challenge_len)) {
 		vector = challenge->vp_octets;
+		vector_len = challenge->vp_length;
 	} else {
+		if (challenge) RWDEBUG("&request.CHAP-Challenge shorter than minimum length (%ld)", inst->min_challenge_len);
 		vector = request->packet->vector;
+		vector_len = RADIUS_AUTH_VECTOR_LENGTH;
 	}
-	fr_radius_encode_chap_password(pass_str, chap->vp_octets[0], vector, RADIUS_AUTH_VECTOR_LENGTH,
+	fr_radius_encode_chap_password(pass_str, chap->vp_octets[0], vector, vector_len,
 				       known_good->vp_strvalue, known_good->vp_length);
 
 	/*
