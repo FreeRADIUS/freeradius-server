@@ -313,6 +313,11 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 		request->async->sequence = 1;
 	}
 
+	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
+		RPEDEBUG("Failed decoding 'Net.*' packet");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -397,6 +402,8 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		RPEDEBUG("Failed signing RADIUS reply");
 		return -1;
 	}
+
+	fr_packet_pairs_to_packet(request->reply, &request->reply_pairs);
 
 	if (RDEBUG_ENABLED) {
 		RDEBUG("Sending %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
