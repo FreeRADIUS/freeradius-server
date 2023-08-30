@@ -17,6 +17,7 @@ SOURCES		:= \
 		   base64.c \
 		   calc.c \
 		   cap.c \
+		   chap.c \
 		   dbuff.c \
 		   debug.c \
 		   decode.c \

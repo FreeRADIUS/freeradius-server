@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/password.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/util/chap.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 typedef struct {
@@ -131,7 +131,7 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, fr_value_box_list_t *in)
 {
 	rlm_chap_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_chap_t);
-	uint8_t			chap_password[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
+	uint8_t			chap_password[1 + FR_CHAP_CHALLENGE_LENGTH];
 	fr_value_box_t		*vb;
 	uint8_t	const		*vector;
 	size_t			vector_len;
@@ -152,7 +152,7 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		vector = request->packet->vector;
 		vector_len = RADIUS_AUTH_VECTOR_LENGTH;
 	}
-	fr_radius_encode_chap_password(chap_password, (uint8_t)(fr_rand() & 0xff), vector, vector_len,
+	fr_chap_encode(chap_password, (uint8_t)(fr_rand() & 0xff), vector, vector_len,
 				       in_head->vb_strvalue, in_head->vb_length);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
@@ -218,7 +218,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 {
 	rlm_chap_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_chap_t);
 	fr_pair_t		*known_good;
-	uint8_t			pass_str[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
+	uint8_t			pass_str[1 + FR_CHAP_CHALLENGE_LENGTH];
 	chap_auth_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, chap_auth_call_env_t);
 
 	int			ret;
@@ -245,7 +245,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		RETURN_MODULE_INVALID;
 	}
 
-	if (env_data->chap_password.vb_length != RADIUS_CHAP_CHALLENGE_LENGTH + 1) {
+	if (env_data->chap_password.vb_length != FR_CHAP_CHALLENGE_LENGTH + 1) {
 		REDEBUG("&request.CHAP-Password has invalid length");
 		RETURN_MODULE_INVALID;
 	}
@@ -282,8 +282,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		vector = request->packet->vector;
 		vector_len = RADIUS_AUTH_VECTOR_LENGTH;
 	}
-	fr_radius_encode_chap_password(pass_str, env_data->chap_password.vb_octets[0], vector, vector_len,
-				       known_good->vp_strvalue, known_good->vp_length);
+	fr_chap_encode(pass_str, env_data->chap_password.vb_octets[0], vector, vector_len,
+		       known_good->vp_strvalue, known_good->vp_length);
 
 	/*
 	 *	The password_find function already emits
@@ -307,8 +307,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		RINDENT();
 		RDEBUG3("CHAP challenge : %pH", fr_box_octets(p, length));
 		RDEBUG3("Client sent    : %pH", fr_box_octets(env_data->chap_password.vb_octets + 1,
-							      RADIUS_CHAP_CHALLENGE_LENGTH));
-		RDEBUG3("We calculated  : %pH", fr_box_octets(pass_str + 1, RADIUS_CHAP_CHALLENGE_LENGTH));
+							      FR_CHAP_CHALLENGE_LENGTH));
+		RDEBUG3("We calculated  : %pH", fr_box_octets(pass_str + 1, FR_CHAP_CHALLENGE_LENGTH));
 		REXDENT();
 	}
 
@@ -316,7 +316,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	Skip the id field at the beginning of the
 	 *	password and chap response.
 	 */
-	ret = fr_digest_cmp(pass_str + 1, env_data->chap_password.vb_octets + 1, RADIUS_CHAP_CHALLENGE_LENGTH);
+	ret = fr_digest_cmp(pass_str + 1, env_data->chap_password.vb_octets + 1, FR_CHAP_CHALLENGE_LENGTH);
 	if (ephemeral) TALLOC_FREE(known_good);
 	if (ret != 0) {
 		REDEBUG("Password comparison failed: password is incorrect");

@@ -34,7 +34,6 @@
 #define RADIUS_MAX_STRING_LENGTH		253
 #define RADIUS_MAX_TUNNEL_PASSWORD_LENGTH	249
 #define RADIUS_AUTH_VECTOR_LENGTH		16
-#define RADIUS_CHAP_CHALLENGE_LENGTH		16
 #define RADIUS_MESSAGE_AUTHENTICATOR_LENGTH	16
 #define RADIUS_MAX_PASS_LENGTH			128
 #define RADIUS_MAX_ATTRIBUTES			255
@@ -190,10 +189,6 @@ ssize_t		fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t dat
 /*
  *	protocols/radius/encode.c
  */
-void		fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE_LENGTH],
-					       uint8_t id, uint8_t const *vector, size_t vector_len,
-					       char const *password, size_t password_len) CC_HINT(nonnull(1,3,5));
-
 ssize_t		fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx);
 
 /*

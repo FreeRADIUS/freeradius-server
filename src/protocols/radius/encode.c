@@ -41,34 +41,6 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 				fr_da_stack_t *da_stack, unsigned int depth,
 				fr_dcursor_t *cursor, void *encode_ctx);
 
-/** Encode a CHAP password
- *
- * @param[out] out		An output buffer of 17 bytes (id + digest).
- * @param[in] id		CHAP ID, a random ID for request/response matching.
- * @param[in] vector		from the original packet or challenge attribute.
- * @param[in] vector_len	Length of the vector.
- * @param[in] password		Input password to hash.
- * @param[in] password_len	Length of input password.
- */
-void fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE_LENGTH],
-				    uint8_t id, uint8_t const *vector, size_t vector_len,
-				    char const *password, size_t password_len)
-{
-	fr_md5_ctx_t	*md5_ctx;
-
-	md5_ctx = fr_md5_ctx_alloc_from_list();
-
-	/*
-	 *	First ingest the ID and the password.
-	 */
-	fr_md5_update(md5_ctx, (uint8_t const *)&id, 1);
-	fr_md5_update(md5_ctx, (uint8_t const *)password, password_len);
-
-	fr_md5_update(md5_ctx, vector, vector_len);
-	out[0] = id;
-	fr_md5_final(out + 1, md5_ctx);
-	fr_md5_ctx_free_from_list(&md5_ctx);
-}
 
 /** "encrypt" a password RADIUS style
  *

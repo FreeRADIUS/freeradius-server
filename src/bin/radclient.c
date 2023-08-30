@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/radius/list.h>
 #include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/util/chap.h>
 #ifdef HAVE_OPENSSL_SSL_H
 #include <openssl/ssl.h>
 #endif
@@ -1051,10 +1052,10 @@ static int send_one_packet(rc_request_t *request)
 					vector = request->packet->vector;
 				}
 
-				fr_radius_encode_chap_password(buffer,
-							       fr_rand() & 0xff, vector, RADIUS_AUTH_VECTOR_LENGTH,
-							       request->password->vp_strvalue,
-							       request->password->vp_length);
+				fr_chap_encode(buffer,
+					       fr_rand() & 0xff, vector, RADIUS_AUTH_VECTOR_LENGTH,
+					       request->password->vp_strvalue,
+					       request->password->vp_length);
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
 
 			} else if (fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_ms_chap_password) != NULL) {
