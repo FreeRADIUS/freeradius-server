@@ -301,7 +301,7 @@ server tacacs {
 	}
 
 	authenticate CHAP {
-		tacacs_chap
+		chap
 	}
 
 	authenticate MSCHAP {
