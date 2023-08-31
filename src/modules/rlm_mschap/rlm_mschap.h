@@ -37,21 +37,6 @@ extern HIDDEN fr_dict_attr_t const *attr_ms_chap_new_cleartext_password;
 extern HIDDEN fr_dict_attr_t const *attr_smb_account_ctrl;
 extern HIDDEN fr_dict_attr_t const *attr_smb_account_ctrl_text;
 
-extern HIDDEN fr_dict_attr_t const *attr_user_name;
-extern HIDDEN fr_dict_attr_t const *attr_ms_chap_error;
-
-extern HIDDEN fr_dict_attr_t const *attr_ms_chap_challenge;
-extern HIDDEN fr_dict_attr_t const *attr_ms_chap_response;
-extern HIDDEN fr_dict_attr_t const *attr_ms_chap2_response;
-extern HIDDEN fr_dict_attr_t const *attr_ms_chap2_success;
-
-extern HIDDEN fr_dict_attr_t const *attr_ms_chap_mppe_keys;
-extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_encryption_policy;
-extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_recv_key;
-extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_send_key;
-extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_encryption_types;
-extern HIDDEN fr_dict_attr_t const *attr_ms_chap2_cpw;
-
 typedef struct {
 	fr_dict_enum_value_t	*auth_type;
 
@@ -82,3 +67,18 @@ typedef struct {
 	bool			open_directory;
 #endif
 } rlm_mschap_t;
+
+typedef struct {
+	tmpl_t const	*username;
+	tmpl_t const	*chap_error;
+	tmpl_t const	*chap_challenge;
+	tmpl_t const	*chap_response;
+	tmpl_t const	*chap2_response;
+	tmpl_t const	*chap2_success;
+	tmpl_t const	*chap_mppe_keys;
+	tmpl_t const	*mppe_encryption_policy;
+	tmpl_t const	*mppe_recv_key;
+	tmpl_t const	*mppe_send_key;
+	tmpl_t const	*mppe_encryption_types;
+	tmpl_t const	*chap2_cpw;
+} mschap_auth_call_env_t;

@@ -360,4 +360,92 @@ mschap {
 	#  An optional retry message.
 	#
 #	retry_msg = "Re-enter (or reset) the password"
+
+	#
+	#  .Attributes
+	#
+	#  The `mschap` module needs to be configured with which attributes contain
+	#  MS-CHAP data in the request and which should be used for MS-CHAP data
+	#  in the reply.
+	#
+	#  This varies for different protocols.  The defaults show below are for
+	#  RADIUS.
+	#
+	attributes {
+		#
+		#  username:: The attribute containing the user name.
+		#
+		username = &User-Name
+
+		#
+		#  chap_challenge::  The attribute containing the CHAP Challenge.
+		#
+		chap_challenge = &Vendor-Specific.Microsoft.CHAP-Challenge
+
+		#
+		#  chap_response::  The attribute containing the CHAP Response for MS-CHAPv1.
+		#
+		chap_response = &Vendor-Specific.Microsoft.CHAP-Response
+
+		#
+		#  chap2_response::  The attribute containing the CHAP Response for MS-CHAPv2.
+		#
+		chap2_response = &Vendor-Specific.Microsoft.CHAP2-Response
+
+		#
+		#  chap2_success::  The attribute MS-CHAPv2 success messages are returned in.
+		#
+		chap2_success = &Vendor-Specific.Microsoft.CHAP2-Success
+
+		#
+		#  chap_error::  The attribute CHAP error messages are returned in.
+		#
+		chap_error = &Vendor-Specific.Microsoft.CHAP-Error
+
+		#
+		#  chap_mppe_keys::  The attribute MPPE keys are returned in for MS-CHAPv1
+		#
+		chap_mppe_keys = &Vendor-Specific.Microsoft.CHAP-MPPE-Keys
+
+		#
+		#  mppe_recv_key::  The attribute MPPE recv key is returned in for MS-CHAPv2
+		#
+		mppe_recv_key = &Vendor-Specific.Microsoft.MPPE-Recv-Key
+
+		#
+		#  mppe_send_key::  The attribute MPPE send key is returned in for MS-CHAPv2
+		#
+		mppe_send_key = &Vendor-Specific.Microsoft.MPPE-Send-Key
+
+		#
+		#  mppe_encryption_policy::  The attribute that MPPE encryption policy is returned in.
+		#
+		mppe_encryption_policy = &Vendor-Specific.Microsoft.MPPE-Encryption-Policy
+
+		#
+		#  mppe_encryption_types::  The attribute that MPPE encryption type is returned in.
+		#
+		mppe_encryption_types = &Vendor-Specific.Microsoft.MPPE-Encryption-Types
+
+		#
+		#  chap2_cpw::  The attribute used to change a users' password
+		#
+		chap2_cpw =  &Vendor-Specific.Microsoft.CHAP2-CPW
+	}
+
+	#
+	#  To use this instance of the mschap module to handle TACACS+ the attribute
+	#  section should be replaced with the following.
+	#
+	#  TACACS+ does not have any inherent support for MPPE keys or password
+	#  changing using MSCHAP.
+	#
+#	attributes {
+#		username = &User-Name
+#		chap_challenge = &MS-CHAP-Challenge
+#		chap_response = &MS-CHAP-Response
+#		chap2_response = &MS-CHAP2-Response
+#		chap2_success = &Data
+#		chap_error = &Server-Message
+#	}
 }
