@@ -274,22 +274,24 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 	call_env_parsed_t const	*env;
 	void		**out;
 
-	call_env_ctx->last_expanded = call_env_parsed_next(call_env_ctx->parsed, call_env_ctx->last_expanded);
+	while ((call_env_ctx->last_expanded = call_env_parsed_next(call_env_ctx->parsed, call_env_ctx->last_expanded))) {
+		env = call_env_ctx->last_expanded;
+
+		if (!env->tmpl_only) break;
+
+		/*
+		 *	If we only need the tmpl, just set the pointer and move the next.
+		 */
+		out = (void **)((uint8_t *)*call_env_ctx->data + env->rule->pair.tmpl_offset);
+		*out = env->tmpl;
+	}
+
 	if (!call_env_ctx->last_expanded) {	/* No more! */
 		if (call_env_ctx->result) *call_env_ctx->result = CALL_ENV_SUCCESS;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	ctx = *call_env_ctx->data;
-	env = call_env_ctx->last_expanded;
-
-	/*
-	 *	If we only need the tmpl, use the repeat function to set the pointer.
-	 */
-	if (env->tmpl_only) {
-		if (unlang_function_repeat_set(request, call_env_expand_repeat) < 0) return UNLANG_ACTION_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
 
 	/*
 	 *	Multi pair options should allocate boxes in the context of the array
