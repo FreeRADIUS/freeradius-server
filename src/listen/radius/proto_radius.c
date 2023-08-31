@@ -592,15 +592,13 @@ static xlat_action_t packet_vector_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static int mod_load(void)
 {
-	xlat_t	*xlat;
-
 	if (fr_radius_init() < 0) {
 		PERROR("Failed initialising protocol library");
 		return -1;
 	}
 
 
-	if (!(xlat = xlat_func_register(NULL, "radius.packet.vector", packet_vector_xlat, FR_TYPE_OCTETS))) return -1;
+	if (!xlat_func_register(NULL, "radius.packet.vector", packet_vector_xlat, FR_TYPE_OCTETS)) return -1;
 
 	return 0;
 }
