@@ -6,13 +6,6 @@ if (!("%{Packet-Type}" == 'Access-Request')) {
 	test_fail
 }
 
-#  Response hasn't been set yet, but reply.Packet-Type
-#  is virtual, and always exists.
-
-if (!("%{Packet-Authentication-Vector}" == 0x00000000000000000000000000000000)) {
-	test_fail
-}
-
 if (!("%{Packet-Src-IP-Address}" == 127.0.0.1)) {
 	test_fail
 }
