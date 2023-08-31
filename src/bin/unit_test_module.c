@@ -322,7 +322,7 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 	char		unescaped[sizeof(output_buff)];
 	request_t	*request;
 	fr_sbuff_t	line;
-	fr_sbuff_t	out = FR_SBUFF_OUT(output_buff, sizeof(output_buff));
+	fr_sbuff_t	out;
 
 	static fr_sbuff_escape_rules_t unprintables = {
 		.name = "unprintables",
@@ -397,9 +397,29 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 		 *	Ignore blank lines and comments
 		 */
 		fr_sbuff_adv_past_whitespace(&line, SIZE_MAX, NULL);
-
 		if (*fr_sbuff_current(&line) < ' ') continue;
 		if (fr_sbuff_is_char(&line, '#')) continue;
+
+		/*
+		 *	Look for "match", as it needs the output_buffer to be left alone.
+		 */
+		if (fr_sbuff_adv_past_str_literal(&line, "match ") > 0) {
+			size_t output_len = strlen(output_buff);
+
+			if (!fr_sbuff_is_str(&line, output_buff, output_len) || (output_len != fr_sbuff_remaining(&line))) {
+				fprintf(stderr, "Mismatch at %s[%u]\n\tgot          : %s (%zu)\n\texpected     : %s (%zu)\n",
+					filename, lineno,  output_buff, output_len, fr_sbuff_current(&line), fr_sbuff_remaining(&line));
+				TALLOC_FREE(request);
+				return false;
+			}
+			continue;
+		}
+
+		/*
+		 *	The rest of the keywords create output.
+		 */
+		output_buff[0] = '\0';
+		out = FR_SBUFF_OUT(output_buff, sizeof(output_buff));
 
 		/*
 		 *	Look for "xlat"
@@ -481,7 +501,7 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 			if (len < 0) {
 				char const *err = fr_strerror();
 				talloc_free(xlat_ctx);
-				FR_SBUFF_IN_SPRINTF_RETURN(&out, "ERROR expanding xlat: %s", *err ? err : "no error provided");
+				fr_sbuff_in_sprintf(&out, "ERROR expanding xlat: %s", *err ? err : "no error provided");
 				continue;
 			}
 
@@ -491,20 +511,6 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 			fr_sbuff_in_escape(&out, unescaped, len, &unprintables);
 
 			TALLOC_FREE(xlat_ctx); /* also frees 'head' */
-			continue;
-		}
-
-		/*
-		 *	Look for "match".
-		 */
-		if (fr_sbuff_adv_past_str_literal(&line, "match ") > 0) {
-			size_t output_len = strlen(output_buff);
-			if (!fr_sbuff_is_str(&line, output_buff, output_len) && (output_len != fr_sbuff_remaining(&line))) {
-				fprintf(stderr, "Mismatch at %s[%u]\n\tgot          : %s (%zu)\n\texpected     : %s (%zu)\n",
-					filename, lineno,  output_buff, output_len, fr_sbuff_current(&line), fr_sbuff_remaining(&line));
-				TALLOC_FREE(request);
-				return false;
-			}
 			continue;
 		}
 
