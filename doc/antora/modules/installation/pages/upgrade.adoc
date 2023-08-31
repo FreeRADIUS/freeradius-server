@@ -1038,3 +1038,5 @@ Many "virtual" or "fake" attributes have been removed or renamed.
 `&Response-Packet-Type` should be replaced by `&reply.Packet-Type`.
 
 `&Virtual-Server` should be replaced by `%(interpreter:server)`.
+
+`&Packet-Authentication-Vector` should be replaced by `%{radius.packet.vector:}`.
