@@ -346,7 +346,7 @@ static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUS
 	}
 
 tmpl_only:
-	if (env->rule->pair.tmpl_offset) tmpl_out = ((uint8_t *)*call_env_ctx->data) + env->rule->pair.tmpl_offset;
+	if (env->rule->pair.tmpl_offset >= 0) tmpl_out = ((uint8_t *)*call_env_ctx->data) + env->rule->pair.tmpl_offset;
 
 	result = call_env_value_parse(*call_env_ctx->data, request, out, tmpl_out, env, &call_env_ctx->tmpl_expanded);
 	if (result != CALL_ENV_SUCCESS) {

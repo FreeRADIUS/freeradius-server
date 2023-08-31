@@ -83,7 +83,7 @@ struct call_env_s {
 			call_env_dest_t	type;		//!< Type of structure boxes will be written to.
 			size_t		size;		//!< Size of structure boxes will be written to.
 			char const	*type_name;	//!< Name of structure type boxes will be written to.
-			size_t		tmpl_offset;	//!< Where to write pointer to tmpl in the output structure.  Optional.
+			ssize_t		tmpl_offset;	//!< Where to write pointer to tmpl in the output structure.  Optional.
 		} pair;
 
 		struct {
@@ -180,7 +180,8 @@ _Generic((((_s *)NULL)->_f), \
 		  .nullable = _nullable, \
 		  .type = FR_CALL_ENV_DST_TYPE(_struct, _field), \
 		  .size = FR_CALL_ENV_DST_SIZE(_struct, _field), \
-		  .type_name = FR_CALL_ENV_DST_TYPE_NAME(_struct, _field) }
+		  .type_name = FR_CALL_ENV_DST_TYPE_NAME(_struct, _field), \
+		  .tmpl_offset = -1 }
 
 /** Version of the above which sets optional field for pointer to tmpl
  */
