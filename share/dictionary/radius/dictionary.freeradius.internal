@@ -69,7 +69,7 @@ VALUE	Packet-Type			Do-Not-Respond		256
 
 # 1001 was Response-Packet-Type.  Now &reply.Packet-Type
 
-ATTRIBUTE	Packet-Authentication-Vector		1002	octets virtual
+ATTRIBUTE	Packet-Authentication-Vector		1002	octets
 
 #
 #  v4 has tags as groups.
