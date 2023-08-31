@@ -226,21 +226,6 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			}
 
 			/*
-			 *	If it's NOT a vendor attribute,
-			 *	and it's NOT a wire protocol
-			 *	and we ignore Fall-Through,
-			 *	then bitch about it, giving a
-			 *	good warning message.
-			 */
-			if (fr_dict_attr_is_top_level(da) && (da->attr > 1000)) {
-				WARN("%s[%d] Check item \"%s\"\n"
-				     "\tfound in reply item list for key value \"%s\".\n"
-				     "\tThis attribute MUST go on the first line"
-				     " with the other check items", entry->filename, entry->lineno, da->name,
-				     entry->name);
-			}
-
-			/*
 			 *	If we allow list qualifiers in
 			 *	users_file.c, then this module also
 			 *	needs to be updated.  Ensure via an

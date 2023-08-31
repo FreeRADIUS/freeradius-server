@@ -135,17 +135,6 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx, c
 			da = tmpl_attr_tail_da(map->lhs);
 
 			/*
-			 * If it's NOT a vendor attribute,
-			 * and it's NOT a wire protocol
-			 * and we ignore Fall-Through,
-			 * then bitch about it, giving a good warning message.
-			 */
-			if (fr_dict_attr_is_top_level(da) && (da->attr > 1000)) {
-				WARN("%s[%d] Check item \"%s\" was found in filter list for entry \"%s\".\n",
-				     filename, entry->lineno, da->name, entry->name);
-			}
-
-			/*
 			 *	Make sure that bad things don't happen.
 			 */
 			if (!map->rhs) {
