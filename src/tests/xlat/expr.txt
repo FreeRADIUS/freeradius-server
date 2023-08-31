@@ -1,5 +1,5 @@
-#  this is "foo" + PRINTABLE version of &Packet-Authentication-Vector
-xlat_expr "foo%{Packet-Authentication-Vector}"
+#  this is "foo" + PRINTABLE version of the packet authentication vector
+xlat_expr "foo%{radius.packet.vector:}"
 match foo\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000
 
 xlat_expr 1 && 2
@@ -106,11 +106,11 @@ match 0x666f6f7f000001
 #  This just casts the octets to 'string', without
 #  any escaping.
 #
-xlat_expr "foo" + (string)&Packet-Authentication-Vector
+xlat_expr "foo" + (string)%{radius.packet.vector:}
 match foo\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000
 
 # string + octets gets promoted to octets
-xlat_expr "foo" + &Packet-Authentication-Vector
+xlat_expr "foo" + 0x00000000000000000000000000000000
 match 0x666f6f00000000000000000000000000000000
 
 # no escaping!
