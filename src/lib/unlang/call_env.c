@@ -58,7 +58,11 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 		if (FR_BASE_TYPE(call_env->type) == FR_TYPE_SUBSECTION) {
 			CONF_SECTION const *subcs;
 			subcs = cf_section_find(cs, call_env->name, call_env->section.ident2);
-			if (!subcs) goto next;
+			if (!subcs) {
+				if (!call_env->section.required) goto next;
+				cf_log_err(cs, "Module %s missing required section %s", name, call_env->name);
+				return -1;
+			}
 
 			if (call_env_parse(ctx, parsed, name, dict_def, subcs, call_env->section.subcs) < 0) return -1;
 			goto next;

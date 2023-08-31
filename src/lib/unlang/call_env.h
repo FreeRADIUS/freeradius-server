@@ -89,6 +89,7 @@ struct call_env_s {
 		struct {
 			char const		*ident2;	//!< Second identifier for a section
 			call_env_t const	*subcs;		//!< Nested definitions for subsection.
+			bool			required;	//!< Section is required.
     		} section;
   	};
 };
@@ -210,11 +211,12 @@ _Generic((((_s *)NULL)->_f), \
 		  .type = CALL_ENV_TYPE_TMPL_ONLY, \
 		  .tmpl_offset = offsetof(_struct, _tmpl_field) }
 
-#define FR_CALL_ENV_SUBSECTION(_name, _ident2, _subcs ) \
+#define FR_CALL_ENV_SUBSECTION(_name, _ident2, _subcs, _required ) \
 	.name = _name, \
 	.type = FR_TYPE_SUBSECTION, \
 	.section = { .ident2 = _ident2, \
-		     .subcs = _subcs }
+		     .subcs = _subcs, \
+		     .required = _required }
 
 int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, fr_dict_t const *dict_def,
 		   CONF_SECTION const *cs, call_env_t const *call_env) CC_HINT(nonnull);

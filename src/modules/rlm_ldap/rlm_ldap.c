@@ -105,7 +105,7 @@ static const call_env_t _prefix ## _user_call_env[] = { \
 	CALL_ENV_TERMINATOR \
 }
 
-user_call_env(auth, ldap_auth_call_env_t, { FR_CALL_ENV_SUBSECTION("sasl", NULL, sasl_call_env) },
+user_call_env(auth, ldap_auth_call_env_t, { FR_CALL_ENV_SUBSECTION("sasl", NULL, sasl_call_env, false) },
 	      { FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING | FR_TYPE_ATTRIBUTE, ldap_auth_call_env_t, password,
 		password_tmpl, "&User-Password", T_BARE_WORD, true, true, true) } );
 
@@ -199,25 +199,25 @@ static const CONF_PARSER module_config[] = {
  *	Method specific call environments
  */
 static const call_env_t authenticate_call_env[] = {
-	{ FR_CALL_ENV_SUBSECTION("user", NULL, auth_user_call_env) },
+	{ FR_CALL_ENV_SUBSECTION("user", NULL, auth_user_call_env, true) },
 	CALL_ENV_TERMINATOR
 };
 
 static const call_env_t authorize_call_env[] = {
-	{ FR_CALL_ENV_SUBSECTION("user", NULL, autz_user_call_env) },
-	{ FR_CALL_ENV_SUBSECTION("group", NULL, autz_group_call_env) },
-	{ FR_CALL_ENV_SUBSECTION("profile", NULL, autz_profile_call_env) },
+	{ FR_CALL_ENV_SUBSECTION("user", NULL, autz_user_call_env, true) },
+	{ FR_CALL_ENV_SUBSECTION("group", NULL, autz_group_call_env, false) },
+	{ FR_CALL_ENV_SUBSECTION("profile", NULL, autz_profile_call_env, false) },
 	CALL_ENV_TERMINATOR
 };
 
 static const call_env_t usermod_call_env[] = {
-	{ FR_CALL_ENV_SUBSECTION("user", NULL, usermod_user_call_env) },
+	{ FR_CALL_ENV_SUBSECTION("user", NULL, usermod_user_call_env, true) },
 	CALL_ENV_TERMINATOR
 };
 
 static const call_env_t memberof_call_env[] = {
-	{ FR_CALL_ENV_SUBSECTION("user", NULL, memberof_user_call_env) },
-	{ FR_CALL_ENV_SUBSECTION("group", NULL, memberof_group_call_env) },
+	{ FR_CALL_ENV_SUBSECTION("user", NULL, memberof_user_call_env, true) },
+	{ FR_CALL_ENV_SUBSECTION("group", NULL, memberof_group_call_env, false) },
 	CALL_ENV_TERMINATOR
 };
 
