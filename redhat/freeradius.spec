@@ -28,7 +28,7 @@
 %bcond_with symas_openldap
 
 # Build with the samba project's winbind client
-%bcond_with wbclient
+%bcond_without wbclient
 
 # Enable asserts and additional debugging
 %bcond_with developer
@@ -89,8 +89,8 @@ BuildRequires: libtalloc-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
 %if %{with wbclient}
-%{?el7:BuildRequires: libwbclient-devel}
-%{?el7:BuildRequires: samba-devel}
+BuildRequires: libwbclient-devel
+BuildRequires: samba-devel
 %endif
 %if %{?_unitdir:1}%{!?_unitdir:0}
 BuildRequires: systemd-devel
@@ -123,7 +123,7 @@ Requires: libtalloc
 Requires: net-snmp
 Requires: readline
 %if %{with wbclient}
-%{?el7:Requires: libwbclient}
+Requires: libwbclient
 %endif
 Requires: zlib
 Requires: pam
