@@ -1102,11 +1102,7 @@ static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	 *	because of the talloc checks sprinkled throughout the
 	 *	various VP functions.
 	 */
-	if (tmpl_attr_tail_da(vpt) == attr_packet_authentication_vector) {
-		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_memdup(ctx, value, tmpl_attr_tail_da(vpt), packet->vector, sizeof(packet->vector), true);
-
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_src_ip_address) {
+	if (tmpl_attr_tail_da(vpt) == attr_packet_src_ip_address) {
 		if (!fr_socket_is_inet(packet->socket.proto) ||
 		    (packet->socket.inet.src_ipaddr.af != AF_INET)) return 0;
 
