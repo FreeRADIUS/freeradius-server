@@ -65,8 +65,10 @@ BuildRequires: pcre-devel
 BuildRequires: zlib-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
-%{?el7:BuildRequires: libwbclient-devel}
-%{?el7:BuildRequires: samba-devel}
+%if 0%{?rhel} >= 7
+BuildRequires: libwbclient-devel
+BuildRequires: samba-devel
+%endif
 %if %{?_unitdir:1}%{!?_unitdir:0}
 BuildRequires: systemd-devel
 %endif
@@ -84,7 +86,9 @@ Requires: libpcap
 Requires: readline
 Requires: libtalloc
 Requires: net-snmp
-%{?el7:Requires: libwbclient}
+%if 0%{?rhel} >= 7
+Requires: libwbclient
+%endif
 Requires: zlib
 Requires: pam
 %{?el6:Requires: redhat-lsb-core}
