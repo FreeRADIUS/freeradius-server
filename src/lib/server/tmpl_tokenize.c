@@ -2895,7 +2895,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 							       p_rules, t_rules);
 			}
 
-			if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
+			if (slen <= 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 			if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
 
