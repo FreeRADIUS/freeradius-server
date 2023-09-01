@@ -144,10 +144,8 @@ match ERROR offset 15: Missing closing brace
 xlat \"%t\tfoo\"
 match \"%t\tfoo\"
 
-allow-unresolved yes
-xlat \"%t\t%{Packet-Src-IP-Address}\"
-match \"%t\t%{Packet-Src-IP-Address}\"
-allow-unresolved no
+xlat \"%t\t%{NAS-IP-Address}\"
+match \"%t\t%{NAS-IP-Address}\"
 
 xlat \"foo %{test:foo}\"
 match \"foo %{test:foo}\"
@@ -349,4 +347,4 @@ xlat %{md5:'arg"'}
 match %{md5:'arg"'}
 
 count
-match 201
+match 199

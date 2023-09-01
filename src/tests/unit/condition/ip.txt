@@ -7,11 +7,11 @@
 proto-dictionary radius
 
 # Check wildcards are OK
-condition &Packet-Src-IPv6-Address == ::
-match (&Packet-Src-IPv6-Address == ::)
+condition &NAS-IPv6-Address == ::
+match (&NAS-IPv6-Address == ::)
 
-condition &Packet-Src-IP-Address == <ipaddr>*
-match (&Packet-Src-IP-Address == 0.0.0.0)
+condition &NAS-IP-Address == <ipaddr>*
+match (&NAS-IP-Address == 0.0.0.0)
 
-condition &Packet-Src-IP-Address == 0.0.0.0
-match (&Packet-Src-IP-Address == 0.0.0.0)
+condition &NAS-IP-Address == 0.0.0.0
+match (&NAS-IP-Address == 0.0.0.0)
