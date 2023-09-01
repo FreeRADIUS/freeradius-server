@@ -214,16 +214,17 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 		}
 	};
 
+	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
+		fprintf(stderr, "Failed converting packet IPs to attributes");
+		return false;
+	}
+
 	/*
 	 *	Fill in the packet header from attributes, and then
 	 *	re-realize the attributes.
 	 */
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL,  attr_packet_type);
-	if (vp) {
-		request->packet->code = vp->vp_uint32;
-	}
-
-	fr_packet_pairs_to_packet(request->packet, &request->request_pairs);
+	if (vp) request->packet->code = vp->vp_uint32;
 
 	/*
 	 *	@todo - add from_packet() as per below, but for now that screws
