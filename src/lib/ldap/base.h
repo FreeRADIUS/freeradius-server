@@ -95,10 +95,10 @@ ldap_create_session_tracking_control LDAP_P((
 							//!< Used to allocate static arrays of control pointers.
 #define LDAP_MAX_ATTRMAP		128		//!< Maximum number of mappings between LDAP and
 							//!< FreeRADIUS attributes.
-#define LDAP_MAP_RESERVED		4		//!< Number of additional items to allocate in expanded
+#define LDAP_MAP_RESERVED		5		//!< Number of additional items to allocate in expanded
 							//!< attribute name arrays. Currently for enable attribute,
 							//!< group membership attribute, valuepair attribute,
-							//!< and profile attribute.
+							//!< profile attribute and profile suspend attribute.
 
 #define LDAP_MAX_CACHEABLE		64		//!< Maximum number of groups we retrieve from the server for
 							//!< a given user which need resolving from name to DN or DN

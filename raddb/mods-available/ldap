@@ -355,6 +355,18 @@ ldap {
 		#  Will result in the user being locked out.
 		#
 #		access_positive = yes
+
+		#
+		#  access_value_negate:: Which value we look for in access_attribute
+		#  to indicate that we should negate the result.
+		#
+#		access_value_negate = 'false'
+
+		#
+		#  access_value_suspend:: Which value we look for in access_attribute
+		#  to indicate that the user should be suspended.
+		#
+#		access_value_suspend = 'suspended'
 	}
 
 	#
@@ -493,6 +505,17 @@ ldap {
 		#  is successful.
 		#
 #		attribute = 'radiusProfileDn'
+
+		#
+		#  attribute_suspended: The LDAP attribute containing profile DNs to apply
+		#  in addition to the default profile above, when the user account is in
+		#  the suspended state
+		#
+		#  These are retrieved from the user object, at the same time as the
+		#  attributes from the update section, are are applied if authorization
+		#  is successful.
+		#
+#		attribute_suspended = 'radiusProfileDn'
 	}
 
 	#

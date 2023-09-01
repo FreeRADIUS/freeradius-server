@@ -72,6 +72,7 @@ static const call_env_t sasl_call_env[] = {
 
 static CONF_PARSER profile_config[] = {
 	{ FR_CONF_OFFSET("attribute", FR_TYPE_STRING, rlm_ldap_t, profile_attr) },
+	{ FR_CONF_OFFSET("attribute_suspend", FR_TYPE_STRING, rlm_ldap_t, profile_attr_suspend) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -92,6 +93,8 @@ static CONF_PARSER user_config[] = {
 
 	{ FR_CONF_OFFSET("access_attribute", FR_TYPE_STRING, rlm_ldap_t, userobj_access_attr) },
 	{ FR_CONF_OFFSET("access_positive", FR_TYPE_BOOL, rlm_ldap_t, access_positive), .dflt = "yes" },
+	{ FR_CONF_OFFSET("access_value_negate", FR_TYPE_STRING, rlm_ldap_t, access_value_negate), .dflt = "false" },
+	{ FR_CONF_OFFSET("access_value_suspend", FR_TYPE_STRING, rlm_ldap_t, access_value_suspend), .dflt = "suspended" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1389,8 +1392,14 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		 *	Check for access.
 		 */
 		if (inst->userobj_access_attr) {
-			rcode = rlm_ldap_check_access(inst, request, autz_ctx->entry);
-			if (rcode != RLM_MODULE_OK) {
+			autz_ctx->access_state = rlm_ldap_check_access(inst, request, autz_ctx->entry);
+			switch (autz_ctx->access_state) {
+			case LDAP_ACCESS_ALLOWED:
+			case LDAP_ACCESS_SUSPENDED:
+				break;
+
+			case LDAP_ACCESS_DISALLOWED:
+				rcode = RLM_MODULE_DISALLOW;
 				goto finish;
 			}
 		}
@@ -1520,9 +1529,35 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		/*
 		 *	Apply a SET of user profiles.
 		 */
-		if (inst->profile_attr) {
-			autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr);
+		switch (autz_ctx->access_state) {
+		case LDAP_ACCESS_ALLOWED:
+			if (inst->profile_attr) {
+				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr);
+
+				if (RDEBUG_ENABLED3) {
+					for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
+						RDEBUG3("Will evaluate suspended profile with DN \"%pV\"", fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
+					}
+				}
+			}
+			break;
+
+		case LDAP_ACCESS_SUSPENDED:
+			if (inst->profile_attr_suspend) {
+				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr_suspend);
+
+				if (RDEBUG_ENABLED3) {
+					for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
+						RDEBUG3("Will evaluate suspended profile with DN \"%pV\"", fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
+					}
+				}
+			}
+			break;
+
+		case LDAP_ACCESS_DISALLOWED:
+			break;
 		}
+
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_USER_PROFILE:
@@ -1618,18 +1653,35 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 						     inst->handle_config.admin_password, request, &inst->handle_config);
 	if (!autz_ctx->ttrunk) goto fail;
 
+#define CHECK_EXPANDED_SPACE(_expanded) fr_assert((size_t)_expanded->count < (NUM_ELEMENTS(_expanded->attrs) - 1));
+
 	/*
 	 *	Add any additional attributes we need for checking access, memberships, and profiles
 	 */
-	if (inst->userobj_access_attr) expanded->attrs[expanded->count++] = inst->userobj_access_attr;
+	if (inst->userobj_access_attr) {
+		CHECK_EXPANDED_SPACE(expanded);
+		expanded->attrs[expanded->count++] = inst->userobj_access_attr;
+	}
 
 	if (inst->userobj_membership_attr && (inst->cacheable_group_dn || inst->cacheable_group_name)) {
+		CHECK_EXPANDED_SPACE(expanded);
 		expanded->attrs[expanded->count++] = inst->userobj_membership_attr;
 	}
 
-	if (inst->profile_attr) expanded->attrs[expanded->count++] = inst->profile_attr;
+	if (inst->profile_attr) {
+		CHECK_EXPANDED_SPACE(expanded);
+		expanded->attrs[expanded->count++] = inst->profile_attr;
+	}
 
-	if (inst->valuepair_attr) expanded->attrs[expanded->count++] = inst->valuepair_attr;
+	if (inst->profile_attr_suspend) {
+		CHECK_EXPANDED_SPACE(expanded);
+		expanded->attrs[expanded->count++] = inst->profile_attr_suspend;
+	}
+
+	if (inst->valuepair_attr) {
+		CHECK_EXPANDED_SPACE(expanded);
+		expanded->attrs[expanded->count++] = inst->valuepair_attr;
+	}
 
 	expanded->attrs[expanded->count] = NULL;
 

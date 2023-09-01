@@ -55,6 +55,12 @@ typedef struct {
 	bool		access_positive;		//!< If true the presence of the attribute will allow access,
 							//!< else it will deny access.
 
+	char const	*access_value_negate;           //!< If the value of the access_attr matches this, the result
+							///< will be negated.
+	char const	*access_value_suspend;          //!< Value that indicates suspension.  Is not affected by
+							///< access_positive and will always allow access, but will apply
+							///< a different profile.
+
 	char const	*valuepair_attr;		//!< Generic dynamic mapping attribute, contains a RADIUS
 							//!< attribute and value.
 
@@ -93,13 +99,15 @@ typedef struct {
 							//!< rlm_ldap module.
 
 	bool		allow_dangling_group_refs;	//!< Don't error if we fail to resolve a group DN referenced
-														///< from a user object.
+							///< from a user object.
 
 	/*
 	 *	Profiles
 	 */
 	char const	*profile_attr;			//!< Attribute that identifies profiles to apply. May appear
 							//!< in userobj or groupobj.
+	char const	*profile_attr_suspend;		//!< Attribute that identifies profiles to apply when the user's
+							///< account is suspended. May appear in userobj or groupobj.
 
 	/*
 	 *	Accounting
@@ -161,6 +169,15 @@ typedef enum {
 	LDAP_AUTZ_MAP
 } ldap_autz_status_t;
 
+/** User's access state
+ *
+ */
+typedef enum {
+	LDAP_ACCESS_ALLOWED = 0,			//!< User is allowed to login.
+	LDAP_ACCESS_DISALLOWED,				//!< User it not allow to login (disabled)
+	LDAP_ACCESS_SUSPENDED				//!< User account has been suspended.
+} ldap_access_state_t;
+
 /** Holds state of in progress async authorization
  *
  */
@@ -177,6 +194,7 @@ typedef struct {
 	int			value_idx;
 	char			*profile_value;
 	char const		*dn;
+	ldap_access_state_t	access_state;		//!< What state a user's account is in.
 } ldap_autz_ctx_t;
 
 /** State list for xlat evaluation of LDAP group membership
@@ -233,7 +251,7 @@ int rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst, request_t 
 			     fr_value_box_t *filter_box, fr_ldap_thread_trunk_t *ttrunk, char const *attrs[],
 			     fr_ldap_query_t **query_out);
 
-rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAPMessage *entry);
+ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAPMessage *entry);
 
 void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_thread_trunk_t const *ttrunk);
 
