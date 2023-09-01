@@ -23,6 +23,7 @@ SOURCES	:= \
 	map_proc.c \
 	module.c \
 	module_rlm.c \
+	packet.c \
 	paircmp.c \
 	pairmove.c \
 	password.c \

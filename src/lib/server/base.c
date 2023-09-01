@@ -96,6 +96,11 @@ int server_init(CONF_SECTION *cs)
 	 */
 	if (xlat_instantiate() < 0) return -1;
 
+	/*
+	 *	load the 'Net.' packet attributes.
+	 */
+	if (packet_global_init() < 0) return -1;
+
 	return 0;
 }
 
@@ -105,6 +110,10 @@ int server_init(CONF_SECTION *cs)
  */
 void server_free(void)
 {
+	/*
+	 *	Free any resources used by 'Net.' packet
+	 */
+	packet_global_free();
 
 	/*
 	 *	Free xlat instance data, and call any detach methods
