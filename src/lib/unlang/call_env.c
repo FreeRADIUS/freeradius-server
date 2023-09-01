@@ -272,7 +272,7 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 	call_env_ctx_t	*call_env_ctx = talloc_get_type_abort(uctx, call_env_ctx_t);
 	TALLOC_CTX	*ctx;
 	call_env_parsed_t const	*env;
-	void		*out;
+	void		**out;
 
 	call_env_ctx->last_expanded = call_env_parsed_next(call_env_ctx->parsed, call_env_ctx->last_expanded);
 	if (!call_env_ctx->last_expanded) {	/* No more! */
@@ -295,7 +295,7 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 	 *	Multi pair options should allocate boxes in the context of the array
 	 */
 	if (env->rule->pair.multi) {
-		out = ((uint8_t *)(*call_env_ctx->data)) + env->rule->offset;
+		out = (void **)((uint8_t *)(*call_env_ctx->data) + env->rule->offset);
 
 		/*
 		 *	For multi pair options, allocate the array before expanding the first entry.
@@ -304,9 +304,9 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 			void *array;
 			MEM(array = _talloc_zero_array((*call_env_ctx->data), env->rule->pair.size,
 						       env->opt_count, env->rule->pair.type_name));
-			*(void **)out = array;
+			*out = array;
 		}
-		ctx = *(void **)out;
+		ctx = *out;
 	}
 
 	if (unlang_tmpl_push(ctx, &call_env_ctx->tmpl_expanded, request, call_env_ctx->last_expanded->tmpl,
