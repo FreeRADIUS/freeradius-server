@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/server/packet.h>
 #include <freeradius-devel/radius/list.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/util/chap.h>
@@ -114,13 +115,6 @@ static fr_dict_attr_t const *attr_ms_chap_challenge;
 static fr_dict_attr_t const *attr_ms_chap_password;
 static fr_dict_attr_t const *attr_ms_chap_response;
 
-static fr_dict_attr_t const *attr_packet_dst_ip_address;
-static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
-static fr_dict_attr_t const *attr_packet_dst_port;
-static fr_dict_attr_t const *attr_packet_src_ip_address;
-static fr_dict_attr_t const *attr_packet_src_ipv6_address;
-static fr_dict_attr_t const *attr_packet_src_port;
-
 static fr_dict_attr_t const *attr_radclient_test_name;
 static fr_dict_attr_t const *attr_request_authenticator;
 
@@ -142,12 +136,6 @@ fr_dict_attr_autoload_t radclient_dict_attr[] = {
 	{ .out = &attr_ms_chap_password, .name = "Password.MS-CHAP", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_response, .name = "Vendor-Specific.Microsoft.CHAP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
-	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_radclient_test_name, .name = "Radclient-Test-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_request_authenticator, .name = "Request-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
@@ -642,20 +630,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			 */
 			if (vp->da == attr_packet_type) {
 				request->packet->code = vp->vp_uint32;
-			} else if (vp->da == attr_packet_dst_port) {
-				request->packet->socket.inet.dst_port = vp->vp_uint16;
-			} else if ((vp->da == attr_packet_dst_ip_address) ||
-				   (vp->da == attr_packet_dst_ipv6_address)) {
-				memcpy(&request->packet->socket.inet.dst_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.dst_ipaddr));
-			} else if (vp->da == attr_packet_src_port) {
-				if (vp->vp_uint16 < 1024) {
-					ERROR("Invalid value '%u' for Packet-Src-Port", vp->vp_uint16);
-					goto error;
-				}
-				request->packet->socket.inet.src_port = vp->vp_uint16;
-			} else if ((vp->da == attr_packet_src_ip_address) ||
-				   (vp->da == attr_packet_src_ipv6_address)) {
-				memcpy(&request->packet->socket.inet.src_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.src_ipaddr));
 			} else if (vp->da == attr_request_authenticator) {
 				if (vp->vp_length > sizeof(request->packet->vector)) {
 					memcpy(request->packet->vector, vp->vp_octets, sizeof(request->packet->vector));
@@ -699,6 +673,12 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Use the default set on the command line
 		 */
 		if (request->packet->code == FR_RADIUS_CODE_UNDEFINED) request->packet->code = packet_code;
+
+		/*
+		 *	Fill in the packet header from attributes, and then
+		 *	re-realize the attributes.
+		 */
+		fr_packet_pairs_to_packet(request->packet, &request->request_pairs);
 
 		/*
 		 *	Default to the filename
@@ -1385,7 +1365,6 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 		stats.lost++;
 		goto packet_done;
 	}
-
 	fr_packet_log(&default_log, request->reply, &request->reply_pairs, true);
 
 	/*
@@ -1762,6 +1741,9 @@ int main(int argc, char **argv)
 			      "Failed to initialize the dictionaries");
 		exit(EXIT_FAILURE);
 	}
+
+	packet_global_init();
+
 	fr_strerror_clear();	/* Clear the error buffer */
 
 	/*
@@ -2072,6 +2054,8 @@ int main(int argc, char **argv)
 	talloc_free(secret);
 
 	fr_radius_free();
+
+	packet_global_free();
 
 	if (fr_dict_autofree(radclient_dict) < 0) {
 		fr_perror("radclient");
