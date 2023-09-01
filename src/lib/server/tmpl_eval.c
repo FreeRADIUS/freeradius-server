@@ -51,27 +51,10 @@ fr_dict_autoload_t tmpl_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_packet_dst_ip_address;
-static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
-static fr_dict_attr_t const *attr_packet_dst_port;
-static fr_dict_attr_t const *attr_packet_src_ip_address;
-static fr_dict_attr_t const *attr_packet_src_ipv6_address;
-static fr_dict_attr_t const *attr_packet_src_port;
-
 /** Placeholder attribute for uses of unspecified attribute references
  */
 extern fr_dict_attr_t const *tmpl_attr_unspec;
 fr_dict_attr_t const *tmpl_attr_unspec;
-
-static fr_dict_attr_autoload_t tmpl_dict_attr[] = {
-	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPV6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ NULL }
-};
 
 
 /** Resolve attribute #fr_pair_list_t value to an attribute list.
@@ -1058,109 +1041,6 @@ int tmpl_value_list_insert_tail(fr_value_box_list_t *list, fr_value_box_t *box, 
 	return 0;
 }
 
-/** Gets the value of a virtual attribute
- *
- * These attribute *may* be overloaded by the user using real attribute.
- *
- * @todo There should be a virtual attribute registry.
- *
- * @param[in] ctx	to allocate boxed value, and buffers in.
- * @param[out] out	Where to write the boxed value.
- * @param[in] request	The current request.
- * @param[in] vpt	Representing the attribute.
- * @return
- *	- <0	on memory allocation errors.
- *	- 0	success.
- */
-static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
-				  request_t *request, tmpl_t const *vpt)
-{
-	fr_radius_packet_t *packet = NULL;
-	fr_value_box_t	*value;
-	fr_value_box_list_t list;
-
-	/*
-	 *	Virtual attributes always have a count of 1
-	 */
-	if (tmpl_attr_tail_num(vpt) == NUM_COUNT) {
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
-		value->datum.uint32 = 1;
-		goto done;
-	}
-
-	/*
-	 *	All of the attributes must now refer to a packet.
-	 *	If there's no packet, we can't print any attribute
-	 *	referencing it.
-	 */
-	packet = tmpl_packet_ptr(request, tmpl_list(vpt));
-	if (!packet) return 0;
-
-	/*
-	 *	Virtual attributes which require a temporary fr_pair_t
-	 *	to be allocated. We can't use stack allocated memory
-	 *	because of the talloc checks sprinkled throughout the
-	 *	various VP functions.
-	 */
-	if (tmpl_attr_tail_da(vpt) == attr_packet_src_ip_address) {
-		if (!fr_socket_is_inet(packet->socket.proto) ||
-		    (packet->socket.inet.src_ipaddr.af != AF_INET)) return 0;
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_attr_tail_da(vpt), &packet->socket.inet.src_ipaddr, true);
-
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_dst_ip_address) {
-		if (!fr_socket_is_inet(packet->socket.proto) ||
-		    (packet->socket.inet.dst_ipaddr.af != AF_INET)) return 0;
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_attr_tail_da(vpt), &packet->socket.inet.dst_ipaddr, true);
-
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_src_ipv6_address) {
-		if (!fr_socket_is_inet(packet->socket.proto) ||
-		    (packet->socket.inet.src_ipaddr.af != AF_INET6)) return 0;
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_attr_tail_da(vpt), &packet->socket.inet.src_ipaddr, true);
-
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_dst_ipv6_address) {
-		if (!fr_socket_is_inet(packet->socket.proto) ||
-		    (packet->socket.inet.dst_ipaddr.af != AF_INET6)) return 0;
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_attr_tail_da(vpt), &packet->socket.inet.dst_ipaddr, true);
-
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_src_port) {
-		if (!fr_socket_is_inet(packet->socket.proto)) return 0;
-
-		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL));
-		value->datum.uint16 = packet->socket.inet.src_port;
-
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_dst_port) {
-		if (!fr_socket_is_inet(packet->socket.proto)) return 0;
-
-		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL));
-		value->datum.uint16 = packet->socket.inet.dst_port;
-
-	} else {
-		RERROR("Attribute \"%s\" incorrectly marked as virtual", tmpl_attr_tail_da(vpt)->name);
-		return -1;
-	}
-
-done:
-	fr_value_box_list_init(&list);
-	fr_value_box_list_insert_tail(&list, value);
-
-	if (tmpl_eval_cast_in_place(&list, vpt) < 0) {
-		fr_value_box_list_talloc_free(&list);
-		return -1;
-	}
-
-	fr_value_box_list_move(out, &list);
-	return 0;
-}
-
-
 /** Gets the value of a real or virtual attribute
  *
  * @param[in] ctx	to allocate boxed value, and buffers in.
@@ -1201,11 +1081,6 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 	 *	the virtual one.
 	 */
 	if (!vp) {
-		if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
-			ret = tmpl_eval_pair_virtual(ctx, &list, request, vpt);
-			goto done;
-		}
-
 		/*
 		 *	Zero count.
 		 */
@@ -1454,11 +1329,6 @@ int tmpl_global_init(void)
 
 	if (fr_dict_autoload(tmpl_dict) < 0) {
 		PERROR("%s", __FUNCTION__);
-		return -1;
-	}
-	if (fr_dict_attr_autoload(tmpl_dict_attr) < 0) {
-		PERROR("%s", __FUNCTION__);
-		fr_dict_autofree(tmpl_dict);
 		return -1;
 	}
 
