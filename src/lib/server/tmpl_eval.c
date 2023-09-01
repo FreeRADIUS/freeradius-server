@@ -1444,7 +1444,7 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 	 */
 	fr_value_box_list_foreach_safe(list, vb) {
 		if (fr_value_box_cast_in_place(vb, vb, cast, NULL) < 0) return -1;
-	}}
+	}
 	return 0;
 }
 
