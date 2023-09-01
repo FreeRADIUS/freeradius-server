@@ -23,6 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/packet.h>
+#include <freeradius-devel/util/pair_legacy.h>
 
 static fr_dict_t const *dict_freeradius;
 
@@ -32,16 +33,20 @@ fr_dict_autoload_t util_packet_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_net_tlv;
+static fr_dict_attr_t const *attr_net;
+static fr_dict_attr_t const *attr_net_src;
 static fr_dict_attr_t const *attr_net_src_ip;
 static fr_dict_attr_t const *attr_net_src_port;
+static fr_dict_attr_t const *attr_net_dst;
 static fr_dict_attr_t const *attr_net_dst_ip;
 static fr_dict_attr_t const *attr_net_dst_port;
 static fr_dict_attr_t const *attr_net_timestamp;
 
 extern fr_dict_attr_autoload_t util_packet_dict_attr[];
 fr_dict_attr_autoload_t util_packet_dict_attr[] = {
-	{ .out = &attr_net_tlv, .name = "Net", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_net, .name = "Net", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_net_src, .name = "Net.Src", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_net_dst, .name = "Net.Dst", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 	{ .out = &attr_net_src_ip, .name = "Net.Src.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_net_src_port, .name = "Net.Src.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_net_dst_ip, .name = "Net.Dst.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
@@ -51,6 +56,27 @@ fr_dict_attr_autoload_t util_packet_dict_attr[] = {
 	{ NULL }
 };
 
+static int inet2pairs(TALLOC_CTX *ctx, fr_pair_list_t *list,
+		      fr_dict_attr_t const *attr_ip, fr_dict_attr_t const *attr_port,
+		      fr_ipaddr_t const *ipaddr, uint16_t port)
+{
+	fr_pair_t *vp;
+
+	vp = fr_pair_afrom_da(ctx, attr_ip);
+	if (!vp) return -1;
+	fr_value_box_ipaddr(&vp->data, attr_ip, ipaddr, false);
+	fr_pair_set_immutable(vp);
+	fr_pair_append(list, vp);
+
+	vp = fr_pair_afrom_da(ctx, attr_port);
+	if (!vp) return -1;
+	vp->vp_uint16 = port;
+	fr_pair_set_immutable(vp);
+	fr_pair_append(list, vp);
+
+	return 0;
+}
+
 /** Allocate a "Net." struct with src/dst host and port.
  *
  * @param      ctx    The context in which the packet is allocated.
@@ -59,73 +85,122 @@ fr_dict_attr_autoload_t util_packet_dict_attr[] = {
  *
  * @return
  *	-  0 on success
- *	- -1 on error.
+ *	- <0 on error.
  */
 int fr_packet_pairs_from_packet(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_radius_packet_t const *packet)
 {
-	fr_pair_t *vp;
+	fr_pair_t *vp, *net, *tlv;
 
 	/*
-	 *	@todo - create nested ones!
-	 *
-	 *	We can't call main_config_migrate_option_get(), as this file is also included in radclient. :(
+	 *	We overload the pair_legacy_nested flag, as we can't
+	 *	call main_config_migrate_option_get(), as this file is
+	 *	also included in radclient. :(
 	 */
-	vp = fr_pair_afrom_da(ctx, attr_net_src_ip);
-	if (!vp) return -1;
-	fr_value_box_ipaddr(&vp->data, attr_net_src_ip, &packet->socket.inet.src_ipaddr, true);
-	fr_pair_append(list, vp);
+	if (!fr_pair_legacy_nested) {
+		if (inet2pairs(ctx, list, attr_net_src_ip, attr_net_src_port, &packet->socket.inet.src_ipaddr, packet->socket.inet.src_port) < 0) return -1;
 
-	vp = fr_pair_afrom_da(ctx, attr_net_src_port);
-	if (!vp) return -1;
-	vp->vp_uint32 = packet->socket.inet.src_port;	
-	fr_pair_append(list, vp);
+		if (inet2pairs(ctx, list, attr_net_dst_ip, attr_net_dst_port, &packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port) < 0) return -1;
 
-	vp = fr_pair_afrom_da(ctx, attr_net_dst_ip);
-	if (!vp) return -1;
-	fr_value_box_ipaddr(&vp->data, attr_net_dst_ip, &packet->socket.inet.dst_ipaddr, true);
-	fr_pair_append(list, vp);
+		vp = fr_pair_afrom_da(ctx, attr_net_timestamp);
+		if (!vp) return -1;
+		vp->vp_date = fr_time_to_unix_time(packet->timestamp);
+		fr_pair_set_immutable(vp);
+		fr_pair_append(list, vp);
 
-	vp = fr_pair_afrom_da(ctx, attr_net_dst_port);
-	if (!vp) return -1;
-	vp->vp_uint32 = packet->socket.inet.dst_port;	
-	fr_pair_append(list, vp);
+		return 0;
+	}
 
-	vp = fr_pair_afrom_da(ctx, attr_net_timestamp);
+	/*
+	 *	Net
+	 */
+	net = fr_pair_afrom_da(ctx, attr_net);
+	if (!net) return -1;
+	fr_pair_append(list, net);
+
+	/*
+	 *	Net.Src
+	 */
+	tlv = fr_pair_afrom_da(net, attr_net_src);
+	if (!tlv) return -1;
+	fr_pair_append(&net->vp_group, tlv);
+
+	if (inet2pairs(tlv, &tlv->vp_group, attr_net_src_ip, attr_net_src_port, &packet->socket.inet.src_ipaddr, packet->socket.inet.src_port) < 0) return -1;
+
+	/*
+	 *	Net.Dst
+	 */
+	tlv = fr_pair_afrom_da(net, attr_net_dst);
+	if (!tlv) return -1;
+	fr_pair_append(&net->vp_group, tlv);
+	
+	if (inet2pairs(tlv, &tlv->vp_group, attr_net_src_ip, attr_net_src_port, &packet->socket.inet.src_ipaddr, packet->socket.inet.src_port) < 0) return -1;
+
+	/*
+	 *	Timestamp
+	 */
+	vp = fr_pair_afrom_da(net, attr_net_timestamp);
 	if (!vp) return -1;
 	vp->vp_date = fr_time_to_unix_time(packet->timestamp);
-	fr_pair_append(list, vp);
+	fr_pair_set_immutable(vp);
+	fr_pair_append(&net->vp_group, vp);
 
 	return 0;
 }
 
-int fr_packet_pairs_to_packet(fr_radius_packet_t *packet, fr_pair_list_t const *list)
+static void pairs2inet(fr_ipaddr_t *ipaddr, uint16_t *port, fr_pair_list_t const *list,
+		       fr_dict_attr_t const *attr_ip, fr_dict_attr_t const *attr_port)
 {
 	fr_pair_t *vp;
+
+	vp = fr_pair_find_by_da(list, NULL, attr_ip);
+	if (vp) *ipaddr = vp->vp_ip;
+	
+	vp = fr_pair_find_by_da(list, NULL, attr_port);
+	if (vp) *port = vp->vp_uint16;
+}
+
+/** Convert pairs to information in a packet.
+ *
+ * @param packet	the packet to send
+ * @param list		the list to check for Net.*
+ */
+void fr_packet_pairs_to_packet(fr_radius_packet_t *packet, fr_pair_list_t const *list)
+{
+	fr_pair_t *vp, *net, *tlv;
 
 	/*
 	 *	@todo - create nested ones!
 	 */
-	vp = fr_pair_find_by_da(list, NULL, attr_net_src_ip);
-	if (vp) packet->socket.inet.src_ipaddr = vp->vp_ip;
+	if (!fr_pair_legacy_nested) {
+		pairs2inet(&packet->socket.inet.src_ipaddr, &packet->socket.inet.src_port, list,
+			   attr_net_src_ip, attr_net_src_port);
 
-	vp = fr_pair_find_by_da(list, NULL, attr_net_src_port);
-	if (vp) packet->socket.inet.src_port = vp->vp_uint16;
+		pairs2inet(&packet->socket.inet.dst_ipaddr, &packet->socket.inet.dst_port, list,
+			   attr_net_dst_ip, attr_net_dst_port);
 
-	vp = fr_pair_find_by_da(list, NULL, attr_net_dst_ip);
-	if (vp) packet->socket.inet.dst_ipaddr = vp->vp_ip;
+		vp = fr_pair_find_by_da(list, NULL, attr_net_timestamp);
+		if (vp) packet->timestamp = fr_time_add(packet->timestamp, vp->vp_time_delta);
+	}
 
-	vp = fr_pair_find_by_da(list, NULL, attr_net_dst_port);
-	if (vp) packet->socket.inet.dst_port = vp->vp_uint16;
+	net = fr_pair_find_by_da(list, NULL, attr_net);
+	if (!net) return;
 
-	vp = fr_pair_find_by_da(list, NULL, attr_net_timestamp);
-	if (vp) packet->timestamp = fr_time_add(packet->timestamp, vp->vp_time_delta);
+	tlv = fr_pair_find_by_da(&net->vp_group, NULL, attr_net_src);
+	if (tlv) {
+		pairs2inet(&packet->socket.inet.src_ipaddr, &packet->socket.inet.src_port, &tlv->vp_group,
+			   attr_net_src_ip, attr_net_src_port);
+	}
 
-	return 0;
+	tlv = fr_pair_find_by_da(&net->vp_group, NULL, attr_net_dst);
+	if (tlv) {
+		pairs2inet(&packet->socket.inet.dst_ipaddr, &packet->socket.inet.dst_port, &tlv->vp_group,
+			   attr_net_dst_ip, attr_net_dst_port);
+	}
 }
 
 /** Initialises the Net. packet attributes.
  *
- * @note Call log free when the server is done to fix any spurious memory leaks.
+ * @note Call packet_global_free() when the server is done to avoid leaks.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

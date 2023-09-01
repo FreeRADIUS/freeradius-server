@@ -30,8 +30,8 @@ extern "C" {
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/socket.h>
 
-int fr_packet_pairs_from_packet(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_radius_packet_t const *packet);
-int fr_packet_pairs_to_packet(fr_radius_packet_t *packet, fr_pair_list_t const *list);
+int fr_packet_pairs_from_packet(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_radius_packet_t const *packet) CC_HINT(nonnull);
+void fr_packet_pairs_to_packet(fr_radius_packet_t *packet, fr_pair_list_t const *list) CC_HINT(nonnull);
 
 int packet_global_init(void);
 void packet_global_free(void);
