@@ -204,7 +204,7 @@ call_env_result_t call_env_value_parse(TALLOC_CTX *ctx, request_t *request, void
 	fr_value_box_t	*vb;
 
 	if (tmpl_out) *tmpl_out = env->tmpl;
-	if (env->tmpl_only) return 0;
+	if (env->tmpl_only) return CALL_ENV_SUCCESS;
 
 	vb = fr_value_box_list_head(tmpl_expanded);
 	if (!vb) {
@@ -212,7 +212,7 @@ call_env_result_t call_env_value_parse(TALLOC_CTX *ctx, request_t *request, void
 			RPEDEBUG("Failed to evaluate required module option %s = %s", env->rule->name, env->tmpl->name);
 			return CALL_ENV_MISSING;
 		}
-		return 0;
+		return CALL_ENV_SUCCESS;
 	}
 
 	/*
