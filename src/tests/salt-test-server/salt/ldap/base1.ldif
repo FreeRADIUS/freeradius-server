@@ -4,7 +4,7 @@ objectClass: olcDatabaseConfig
 objectClass: olcMdbConfig
 olcDatabase: {1}mdb
 olcSuffix: dc=example,dc=com
-olcDbDirectory: /tmp/ldap2/db
+olcDbDirectory: /tmp/ldap1/db
 olcRootDN: cn=admin,dc=example,dc=com
 olcRootPW: {SSHA}SgCZuAcGQA5HlgKi+g5xwVyI2NhXRFYh
 olcDbIndex: objectClass eq

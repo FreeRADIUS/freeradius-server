@@ -191,7 +191,7 @@ runs:
             mysql-setup.sh \
             openresty-setup.sh \
             ldap-setup.sh \
-            ldap2-setup.sh \
+            ldap1-setup.sh \
             389ds-setup.sh \
             redis-setup.sh; do
 
