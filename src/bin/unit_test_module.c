@@ -75,22 +75,10 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_packet_dst_ip_address;
-static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
-static fr_dict_attr_t const *attr_packet_dst_port;
-static fr_dict_attr_t const *attr_packet_src_ip_address;
-static fr_dict_attr_t const *attr_packet_src_ipv6_address;
-static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t unit_test_module_dict_attr[];
 fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
-	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_protocol },
 
 	{ NULL }
@@ -226,23 +214,21 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 		}
 	};
 
-	for (vp = fr_pair_dcursor_init(&cursor, &request->request_pairs);
-	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
-		if (vp->da == attr_packet_type) {
-			request->packet->code = vp->vp_uint32;
-		} else if (vp->da == attr_packet_dst_port) {
-			request->packet->socket.inet.dst_port = vp->vp_uint16;
-		} else if ((vp->da == attr_packet_dst_ip_address) ||
-			   (vp->da == attr_packet_dst_ipv6_address)) {
-			memcpy(&request->packet->socket.inet.dst_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.dst_ipaddr));
-		} else if (vp->da == attr_packet_src_port) {
-			request->packet->socket.inet.src_port = vp->vp_uint16;
-		} else if ((vp->da == attr_packet_src_ip_address) ||
-			   (vp->da == attr_packet_src_ipv6_address)) {
-			memcpy(&request->packet->socket.inet.src_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.src_ipaddr));
-		}
-	} /* loop over the VP's we read in */
+	/*
+	 *	Fill in the packet header from attributes, and then
+	 *	re-realize the attributes.
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL,  attr_packet_type);
+	if (vp) {
+		request->packet->code = vp->vp_uint32;
+	}
+
+	fr_packet_pairs_to_packet(request->packet, &request->request_pairs);
+
+	/*
+	 *	@todo - add from_packet() as per below, but for now that screws
+	 *	up the various tests which look at &request.[*]
+	 */
 
 	if (fr_debug_lvl) {
 		for (vp = fr_pair_dcursor_init(&cursor, &request->request_pairs);
@@ -375,6 +361,11 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 	request->master_state = REQUEST_ACTIVE;
 	request->log.lvl = fr_debug_lvl;
 	request->async = talloc_zero(request, fr_async_t);
+
+	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
+		fprintf(stderr, "Failed converting packet IPs to attributes");
+		return false;
+	}
 
 	while (fgets(line_buff, sizeof(line_buff), fp) != NULL) {
 		lineno++;

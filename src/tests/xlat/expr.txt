@@ -37,16 +37,16 @@ match 2147483648
 xlat_expr %n
 match {0}
 
-xlat_expr &Packet-Src-IP-Address =~ /^127.0/
+xlat_expr &Net.Src.IP =~ /^127.0/
 match true
 
-xlat_expr &Packet-Src-IP-Address =~ /^128.0/
+xlat_expr &Net.Src.IP =~ /^128.0/
 match false
 
-xlat_expr &Packet-Src-IP-Address =~ /foo %{Packet-Dst-IP-Address} foo/
+xlat_expr &Net.Src.IP =~ /foo %{Packet-Dst-IP-Address} foo/
 match false
 
-xlat_expr &Packet-Src-IP-Address =~ /%{Packet-Dst-IP-Address}/
+xlat_expr &Net.Src.IP =~ /%{Packet-Dst-IP-Address}/
 match true
 
 # Auto upcast
@@ -92,13 +92,13 @@ match ERROR expanding xlat: Program failed with status 1
 xlat_expr -&NAS-IP-Address
 match ERROR expanding xlat: Input is empty
 
-xlat_expr "foo" + (string)&Packet-Src-IP-Address
+xlat_expr "foo" + (string)&Net.Src.IP
 match foo127.0.0.1
 
-xlat_expr "foo%{Packet-Src-IP-Address}"
+xlat_expr "foo%{Net.Src.IP}"
 match foo127.0.0.1
 
-xlat_expr "foo" + (octets)&Packet-Src-IP-Address
+xlat_expr "foo" + (octets)&Net.Src.IP
 match 0x666f6f7f000001
 
 #
@@ -125,5 +125,5 @@ match 0x010200047f000001
 xlat_expr (uint16) ((uint32) 1 + (uint8) 2)
 match 3
 
-xlat_expr (&Framed-IP-Address || &Packet-Src-IP-Address) == (ipaddr) 127.0.0.1
+xlat_expr (&Framed-IP-Address || &Net.Src.IP) == (ipaddr) 127.0.0.1
 match true
