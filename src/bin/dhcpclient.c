@@ -160,7 +160,6 @@ static int request_init(fr_radius_packet_t **out, fr_pair_list_t *packet_vps, ch
 	 *	Read the VP's.
 	 */
 	if (fr_pair_list_afrom_file(packet, dict_dhcpv4, packet_vps, fp, &filedone) < 0) {
-	error:
 		fr_perror("dhcpclient");
 		fr_radius_packet_free(&packet);
 		if (fp != stdin) fclose(fp);
