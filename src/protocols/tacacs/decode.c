@@ -703,9 +703,23 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 
 				/*
 				 *	Rework things to make sense.
+				 *	RFC 8079 says that MS-CHAP responses should follow RFC 2433 and 2759
+				 *	which have "Flags" at the end.
+				 *	RADIUS attributes expect "Flags" after the ID as per RFC 2548.
+				 *	Re-arrange to make things consistent.
 				 */
 				hash[0] = p[0];
-				memcpy(hash + 1, p + 1 + challenge_len, want - 1);
+				switch (pkt->authen_start.authen_type) {
+				case FR_AUTHENTICATION_TYPE_VALUE_MSCHAP:
+				case FR_AUTHENTICATION_TYPE_VALUE_MSCHAPV2:
+					hash[1] = p[want - 1];
+					memcpy(hash + 2, p + 1 + challenge_len, want - 2);
+					break;
+
+				default:
+					memcpy(hash + 1, p + 1 + challenge_len, want - 1);
+					break;
+				}
 
 				vp = fr_pair_afrom_da(ctx, da);
 				if (!vp) goto fail;
