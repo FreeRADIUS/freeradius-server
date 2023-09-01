@@ -62,17 +62,13 @@ static int inet2pairs(TALLOC_CTX *ctx, fr_pair_list_t *list,
 {
 	fr_pair_t *vp;
 
-	vp = fr_pair_afrom_da(ctx, attr_ip);
-	if (!vp) return -1;
+	if (fr_pair_find_or_append_by_da(ctx, &vp, list, attr_ip) < 0) return -1;
 	fr_value_box_ipaddr(&vp->data, attr_ip, ipaddr, false);
 	fr_pair_set_immutable(vp);
-	fr_pair_append(list, vp);
 
-	vp = fr_pair_afrom_da(ctx, attr_port);
-	if (!vp) return -1;
+	if (fr_pair_find_or_append_by_da(ctx, &vp, list, attr_port) < 0) return -1;
 	vp->vp_uint16 = port;
 	fr_pair_set_immutable(vp);
-	fr_pair_append(list, vp);
 
 	return 0;
 }
@@ -101,11 +97,9 @@ int fr_packet_pairs_from_packet(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_radius
 
 		if (inet2pairs(ctx, list, attr_net_dst_ip, attr_net_dst_port, &packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port) < 0) return -1;
 
-		vp = fr_pair_afrom_da(ctx, attr_net_timestamp);
-		if (!vp) return -1;
+		if (fr_pair_find_or_append_by_da(ctx, &vp, list, attr_net_timestamp) < 0) return -1;
 		vp->vp_date = fr_time_to_unix_time(packet->timestamp);
 		fr_pair_set_immutable(vp);
-		fr_pair_append(list, vp);
 
 		return 0;
 	}
@@ -113,36 +107,28 @@ int fr_packet_pairs_from_packet(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_radius
 	/*
 	 *	Net
 	 */
-	net = fr_pair_afrom_da(ctx, attr_net);
-	if (!net) return -1;
-	fr_pair_append(list, net);
+	if (fr_pair_find_or_append_by_da(ctx, &net, list, attr_net) < 0) return -1;
 
 	/*
 	 *	Net.Src
 	 */
-	tlv = fr_pair_afrom_da(net, attr_net_src);
-	if (!tlv) return -1;
-	fr_pair_append(&net->vp_group, tlv);
+	if (fr_pair_find_or_append_by_da(net, &tlv, &net->vp_group, attr_net_src) < 0) return -1;
 
 	if (inet2pairs(tlv, &tlv->vp_group, attr_net_src_ip, attr_net_src_port, &packet->socket.inet.src_ipaddr, packet->socket.inet.src_port) < 0) return -1;
 
 	/*
 	 *	Net.Dst
 	 */
-	tlv = fr_pair_afrom_da(net, attr_net_dst);
-	if (!tlv) return -1;
-	fr_pair_append(&net->vp_group, tlv);
+	if (fr_pair_find_or_append_by_da(net, &tlv, &net->vp_group, attr_net_dst) < 0) return -1;
 	
-	if (inet2pairs(tlv, &tlv->vp_group, attr_net_src_ip, attr_net_src_port, &packet->socket.inet.src_ipaddr, packet->socket.inet.src_port) < 0) return -1;
+	if (inet2pairs(tlv, &tlv->vp_group, attr_net_dst_ip, attr_net_dst_port, &packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port) < 0) return -1;
 
 	/*
 	 *	Timestamp
 	 */
-	vp = fr_pair_afrom_da(net, attr_net_timestamp);
-	if (!vp) return -1;
+	if (fr_pair_find_or_append_by_da(net, &vp, &net->vp_group, attr_net_timestamp) < 0) return -1;
 	vp->vp_date = fr_time_to_unix_time(packet->timestamp);
 	fr_pair_set_immutable(vp);
-	fr_pair_append(&net->vp_group, vp);
 
 	return 0;
 }
