@@ -1457,11 +1457,6 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_EDIR_BIND:
-		if (*p_result != RLM_MODULE_OK) {
-			rcode = *p_result;
-			goto finish;
-		}
-
 		if (inst->edir && inst->edir_autz) {
 			fr_pair_t	*password = fr_pair_find_by_da(&request->control_pairs,
 								       NULL, attr_cleartext_password);
