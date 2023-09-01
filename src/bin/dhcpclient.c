@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/pair_legacy.h>
+#include <freeradius-devel/server/packet.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/util/pcap.h>
 
@@ -85,12 +86,6 @@ fr_dict_autoload_t dhcpclient_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_packet_dst_ip_address;
-static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
-static fr_dict_attr_t const *attr_packet_dst_port;
-static fr_dict_attr_t const *attr_packet_src_ip_address;
-static fr_dict_attr_t const *attr_packet_src_ipv6_address;
-static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_dhcp_message_type;
 static fr_dict_attr_t const *attr_dhcp_dhcp_server_identifier;
@@ -98,12 +93,6 @@ static fr_dict_attr_t const *attr_dhcp_your_ip_address;
 
 extern fr_dict_attr_autoload_t dhcpclient_dict_attr[];
 fr_dict_attr_autoload_t dhcpclient_dict_attr[] = {
-	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ .out = &attr_dhcp_dhcp_server_identifier, .name = "Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
@@ -171,6 +160,7 @@ static int request_init(fr_radius_packet_t **out, fr_pair_list_t *packet_vps, ch
 	 *	Read the VP's.
 	 */
 	if (fr_pair_list_afrom_file(packet, dict_dhcpv4, packet_vps, fp, &filedone) < 0) {
+	error:
 		fr_perror("dhcpclient");
 		fr_radius_packet_free(&packet);
 		if (fp != stdin) fclose(fp);
@@ -197,22 +187,15 @@ static int request_init(fr_radius_packet_t **out, fr_pair_list_t *packet_vps, ch
 	     	} else if (vp->da == attr_packet_type) {
 			packet->code = vp->vp_uint32;
 
-		} else if (vp->da == attr_packet_dst_port) {
-			packet->socket.inet.dst_port = vp->vp_uint16;
-
-		} else if ((vp->da == attr_packet_dst_ip_address) ||
-			   (vp->da == attr_packet_dst_ipv6_address)) {
-			memcpy(&packet->socket.inet.dst_ipaddr, &vp->vp_ip, sizeof(packet->socket.inet.src_ipaddr));
-
-		} else if (vp->da == attr_packet_src_port) {
-			packet->socket.inet.src_port = vp->vp_uint16;
-
-		} else if ((vp->da == attr_packet_src_ip_address) ||
-			   (vp->da == attr_packet_src_ipv6_address)) {
-			memcpy(&packet->socket.inet.src_ipaddr, &vp->vp_ip, sizeof(packet->socket.inet.src_ipaddr));
 		} /* switch over the attribute */
 
 	} /* loop over the VP's we read in */
+
+	/*
+	 *	Fill in the packet header from attributes, and then
+	 *	re-realize the attributes.
+	 */
+	fr_packet_pairs_to_packet(packet, packet_vps);
 
 	if (fp != stdin) fclose(fp);
 
@@ -629,6 +612,9 @@ int main(int argc, char **argv)
 		fr_perror("dhcpclient");
 		fr_exit(EXIT_FAILURE);
 	}
+
+	packet_global_init();
+
 	fr_strerror_clear();	/* Clear the error buffer */
 
 	/*
@@ -751,6 +737,8 @@ int main(int argc, char **argv)
 	}
 
 	fr_dhcpv4_global_free();
+
+	packet_global_free();
 
 	if (fr_dict_autofree(dhcpclient_dict) < 0) {
 		fr_perror("dhcpclient");
