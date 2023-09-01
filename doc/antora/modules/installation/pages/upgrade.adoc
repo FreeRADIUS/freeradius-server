@@ -1040,3 +1040,11 @@ Many "virtual" or "fake" attributes have been removed or renamed.
 `&Virtual-Server` should be replaced by `%(interpreter:server)`.
 
 `&Packet-Authentication-Vector` should be replaced by `%{radius.packet.vector:}`.
+
+`&Packet-Dst-IP-Address` and `&Packet-Dst-IPv6-Address` should be replaced by `&Net.Dst.IP`.
+
+`&Packet-Dst-Port` should be replaced by `&Net.Dst.Port`.
+
+`&Packet-Src-IP-Address` and `&Packet-Src-IPv6-Address` should be replaced by `&Net.Src.IP`.
+
+`&Packet-Src-Port` should be replaced by `&Net.Src.Port`.
