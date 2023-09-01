@@ -1,15 +1,21 @@
 #
 # PRE: if concat
 #
-&request -= &Packet-Type[*]
+&control -= &Packet-Type[*]
+&control -= &Password[*]
 
-&request += {
+&control += {
+	&User-Name = &request.User-Name
+	&User-Password = &request.User-Password
 	&Tmp-String-0 = "ab c"
 	&Tmp-String-0 = "de fg"
 	&Tmp-Integer-0 = 123
 }
 
-&control.Tmp-IP-Address-0 := 192.168.1.254
+&request.Tmp-IP-Address-0 := 192.168.1.254
+
+debug_control
+debug_request
 
 #
 #  Don't insert this string into the request list, because we're getting its value
@@ -23,14 +29,14 @@
 #
 #  @todo - fix this...
 #
-&control.Tmp-String-1 := "%(concat:%(join:%{request.[*]} %{control.Tmp-IP-Address-0}) '. ')"
+&control.Tmp-String-1 := "%(concat:%(join:%{control.[*]} %{request.Tmp-IP-Address-0}) '. ')"
 
 if (!(&control.Tmp-String-1 == "bob. hello. ab c. de fg. 123. 192.168.1.254")) {
 	test_fail
 }
 
-&Tmp-String-2 := "%(concat:%(join:%{Tmp-String-0[*]} %{Tmp-Integer-0}) ,)"
-if (!(&Tmp-String-2 == "ab c,de fg,123")) {
+&control.Tmp-String-2 := "%(concat:%(join:%{control.Tmp-String-0[*]} %{control.Tmp-Integer-0}) ,)"
+if (!(&control.Tmp-String-2 == "ab c,de fg,123")) {
 	test_fail
 }
 
