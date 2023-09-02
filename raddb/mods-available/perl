@@ -17,6 +17,10 @@
 #  included in your module. If the module is called for a section which
 #  does not have a function defined, it will return `noop`.
 #
+#  WARNING: The Perl module does _not_ as yet support nested attributes,
+#  or even flat attributes which have parents.  e.g. Vendor-Specific.Cisco.AVPair.
+#  We hope to fix that soon.
+#
 
 #
 #  ## Configuration Settings
