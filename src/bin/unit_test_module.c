@@ -219,16 +219,19 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	 *	re-realize the attributes.
 	 */
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL,  attr_packet_type);
-	if (vp) {
-		request->packet->code = vp->vp_uint32;
-	}
+	if (vp) request->packet->code = vp->vp_uint32;
 
 	fr_packet_pairs_to_packet(request->packet, &request->request_pairs);
 
 	/*
-	 *	@todo - add from_packet() as per below, but for now that screws
-	 *	up the various tests which look at &request.[*]
+	 *	The input might have updated only some of the Net.*
+	 *	attributes.  So for consistency, we create all of them
+	 *	from the packet header.
 	 */
+	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
+		fr_strerror_const("Failed converting packet IPs to attributes");
+		goto error;
+       }
 
 	if (fr_debug_lvl) {
 		for (vp = fr_pair_dcursor_init(&cursor, &request->request_pairs);
