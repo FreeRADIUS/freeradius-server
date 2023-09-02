@@ -33,3 +33,17 @@ src/modules/%/configure: src/modules/%/configure.ac $(wildcard ${top_srcdir}/m4/
 		$(ACLOCAL) -I $(top_builddir)/m4 && \
 		$(AUTOCONF)
 endif
+
+#
+#  This dictionary file loads all of the module-specific ones.
+#
+share/dictionary/freeradius/dictionary: $(patsubst src/modules/rlm_%/dictionary,share/dictionary/freeradius/modules/%.txt,$(wildcard src/modules/rlm_*/dictionary))
+	@touch $@
+
+#
+#  In the modules they're called "dictionary".  In the installed directory, they're just text files.
+#
+#  No one should be editing them.
+#
+share/dictionary/freeradius/modules/%.txt: src/modules/rlm_%/dictionary
+	@cp $< $@
