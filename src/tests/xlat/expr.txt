@@ -43,10 +43,10 @@ match true
 xlat_expr &Net.Src.IP =~ /^128.0/
 match false
 
-xlat_expr &Net.Src.IP =~ /foo %{Packet-Dst-IP-Address} foo/
+xlat_expr &Net.Src.IP =~ /foo %{Net.Dst.IP} foo/
 match false
 
-xlat_expr &Net.Src.IP =~ /%{Packet-Dst-IP-Address}/
+xlat_expr &Net.Src.IP =~ /%{Net.Dst.IP}/
 match true
 
 # Auto upcast
