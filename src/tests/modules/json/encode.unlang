@@ -3,6 +3,19 @@
 #
 &request -= &Packet-Type[*]
 
+#
+#  HACK: the edit code does not currently support deleted by parent
+#  when doing &request -= &Net[*]
+#  or even &request -= &Net.[*]
+#  which returns an error?
+#
+&request -= &Net.Src.IP
+&request -= &Net.Src.Port
+&request -= &Net.Dst.IP
+&request -= &Net.Dst.Port
+&request -= &Net.Timestamp
+&request -= &Net[*]
+
 # 0. Check basic xlat parsing
 &control.Tmp-String-1 := "%{json.encode:&request.[*]}"
 &control.Tmp-String-2 := "%{json.encode:&request.[*] }"

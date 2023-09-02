@@ -76,10 +76,12 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_net;
 
 extern fr_dict_attr_autoload_t unit_test_module_dict_attr[];
 fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_protocol },
+	{ .out = &attr_net, .name = "Net", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 
 	{ NULL }
 };
@@ -231,7 +233,17 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
 		fr_strerror_const("Failed converting packet IPs to attributes");
 		goto error;
-       }
+	}
+
+	/*
+	 *	For lazines in the tests, allow the Net.* to be mutable
+	 */
+	for (vp = fr_pair_dcursor_by_ancestor_init(&cursor, &request->request_pairs, attr_net);
+	     vp != NULL;
+	     vp = fr_dcursor_next(&cursor)) {
+		if (!fr_type_is_leaf(vp->vp_type)) continue;
+		vp->data.immutable = false;
+	}
 
 	if (fr_debug_lvl) {
 		for (vp = fr_pair_dcursor_init(&cursor, &request->request_pairs);
