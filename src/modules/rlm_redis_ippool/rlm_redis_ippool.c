@@ -191,7 +191,7 @@ static const call_env_t redis_ippool_alloc_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, redis_ippool_alloc_call_env_t, lease_time,
 			     NULL, T_INVALID, true, false, false) },
 	{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, redis_ippool_alloc_call_env_t, requested_address,
-			     "%{%{Requested-IP-Address}:-%{Packet-Src-IP-Address}}", T_DOUBLE_QUOTED_STRING,
+			     "%{%{Requested-IP-Address}:-%{Net.Src.IP}}", T_DOUBLE_QUOTED_STRING,
 			     true, true, false) },
 	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("allocated_address_attr", FR_TYPE_ATTRIBUTE, redis_ippool_alloc_call_env_t,
 				       allocated_address_attr, NULL, T_INVALID, true ) },
@@ -212,7 +212,7 @@ static const call_env_t redis_ippool_update_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, redis_ippool_update_call_env_t, lease_time,
 			     NULL, T_INVALID, true, false, false) },
 	{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, redis_ippool_update_call_env_t, requested_address,
-			     "%{%{Requested-IP-Address}:-%{Packet-Src-IP-Address}}", T_DOUBLE_QUOTED_STRING,
+			     "%{%{Requested-IP-Address}:-%{Net.Src.IP}}", T_DOUBLE_QUOTED_STRING,
 			     true, true, false) },
 	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("allocated_address_attr", FR_TYPE_ATTRIBUTE, redis_ippool_update_call_env_t,
 				       allocated_address_attr, NULL, T_INVALID, true ) },
@@ -231,7 +231,7 @@ static const call_env_t redis_ippool_release_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, redis_ippool_release_call_env_t, gateway_id,
 			     "", T_SINGLE_QUOTED_STRING, false, true, true ) },
 	{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, redis_ippool_release_call_env_t, requested_address,
-			     "%{%{Requested-IP-Address}:-%{Packet-Src-IP-Address}}", T_DOUBLE_QUOTED_STRING,
+			     "%{%{Requested-IP-Address}:-%{Net.Src.IP}}", T_DOUBLE_QUOTED_STRING,
 			     true, true, false) },
 	CALL_ENV_TERMINATOR
 };

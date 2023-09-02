@@ -847,7 +847,7 @@ static xlat_action_t sql_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 /*
  *	Simplified version of the old paircmp()
  *
- *	It does not support virtual attributes like Packet-Src-IP-Address, etc.  That limitation will be
+ *	It does not support xlat expansions on the RHS of check items.  That limitation will be
  *	removed when this code is rewritten to support maps (for assignment) and xlat expressions (for
  *	conditions).
  */
