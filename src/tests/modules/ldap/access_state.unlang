@@ -18,6 +18,6 @@ if (&reply.Reply-Message != 'User-Suspended') {
 	test_fail
 }
 
-&reply !* ANY
+&reply = {}
 
 test_pass
