@@ -730,6 +730,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			TALLOC_FREE(*vb_out);
 			return -1;
 		}
+		VALUE_BOX_TALLOC_VERIFY(*vb_out);
 		return 0;
 	}
 
@@ -762,6 +763,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		fr_value_box_field_sizes[dst_type], *((void **)out), fr_value_box_offsets[dst_type]);
 
 	fr_value_box_memcpy_out(out, &from_cast);
+	VALUE_BOX_TALLOC_VERIFY(out);
 
 	/*
 	 *	Frees any memory allocated for temporary buffers
@@ -1038,6 +1040,7 @@ int tmpl_value_list_insert_tail(fr_value_box_list_t *list, fr_value_box_t *box, 
 	if (fr_value_box_cast_in_place(box, box, tmpl_rules_cast(vpt), tmpl_rules_enumv(vpt)) < 0) return -1;
 
 	fr_value_box_list_insert_tail(list, box);
+	VALUE_BOX_TALLOC_LIST_VERIFY(list);
 	return 0;
 }
 
@@ -1175,6 +1178,7 @@ done:
 
 fail:
 	tmpl_dcursor_clear(&cc);
+	VALUE_BOX_TALLOC_LIST_VERIFY(out);
 	return ret;
 }
 
@@ -1232,7 +1236,6 @@ int tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmp
 	 *	tmpl_eval_pair(), too.
 	 */
 	MEM(value = fr_value_box_alloc_null(ctx));
-
 	if (tmpl_aexpand(value, &p, request, vpt, NULL, NULL) < 0) {
 		talloc_free(value);
 		return -1;
@@ -1252,6 +1255,8 @@ done:
 	}
 
 	fr_value_box_list_move(out, &list);
+	VALUE_BOX_TALLOC_LIST_VERIFY(out);
+
 	return 0;
 }
 
@@ -1294,6 +1299,7 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 		slen = fr_value_box_list_concat_in_place(vb, vb, list, FR_TYPE_STRING,
 							 FR_VALUE_BOX_LIST_FREE_BOX, true, SIZE_MAX);
 		if (slen < 0) return -1;
+		VALUE_BOX_TALLOC_LIST_VERIFY(list);
 
 		/*
 		 *	If there's no cast, or it's a cast to
@@ -1320,6 +1326,8 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 	fr_value_box_list_foreach_safe(list, vb) {
 		if (fr_value_box_cast_in_place(vb, vb, cast, NULL) < 0) return -1;
 	}}
+	VALUE_BOX_TALLOC_LIST_VERIFY(list);
+
 	return 0;
 }
 
