@@ -1009,8 +1009,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				break;
 			}
 
-			XLAT_DEBUG("** [%i] %s(alt-first) - string empty, evaluating alternate: %s",
-				   unlang_interpret_stack_depth(request), __FUNCTION__, (*in)->alternate[1]->fmt);
+			XLAT_DEBUG("** [%i] %s(alt-first) - string empty, evaluating alternate",
+				   unlang_interpret_stack_depth(request), __FUNCTION__);
 			*child = (*in)->alternate[1];
 			*alternate = true;
 
@@ -1022,7 +1022,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		xlat_debug_log_expansion(request, *in, NULL, __LINE__);
 		xlat_debug_log_list_result(request, *in, result);
 
-		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 		fr_value_box_list_move((fr_value_box_list_t *)out->dlist, result);
 	}
 		break;
@@ -1295,8 +1294,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 #endif
 
 		case XLAT_ALTERNATE:
-			XLAT_DEBUG("** [%i] %s(alternate) - %%{%%{%s}:-%%{%s}}", unlang_interpret_stack_depth(request),
-				   __FUNCTION__, node->alternate[0]->fmt, node->alternate[1]->fmt);
+			XLAT_DEBUG("** [%i] %s(alternate)", unlang_interpret_stack_depth(request), __FUNCTION__);
 			fr_assert(node->alternate[0] != NULL);
 			fr_assert(node->alternate[1] != NULL);
 
