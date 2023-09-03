@@ -1496,6 +1496,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 			MEM(dst = fr_value_box_alloc(ctx, type, NULL));
 			fr_dcursor_append(out, dst);
+			VALUE_BOX_TALLOC_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 
 			return XLAT_ACTION_DONE;
 		}
@@ -1524,6 +1525,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		fr_value_box_bstrndup(dst, dst, NULL, fr_sbuff_start(agg), fr_sbuff_used(agg), false);
 		fr_dcursor_append(out, dst);
+		VALUE_BOX_TALLOC_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 
 		return XLAT_ACTION_DONE;
 	}
@@ -1549,6 +1551,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			vb = fr_value_box_list_next(&arg->vb_group, p);
 		}
 	}
+	VALUE_BOX_TALLOC_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 
 	return XLAT_ACTION_DONE;
 }
@@ -1849,6 +1852,7 @@ static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
 
 	fr_dcursor_append(out, vb);
+	VALUE_BOX_TALLOC_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 
 	return XLAT_ACTION_DONE;
 }
