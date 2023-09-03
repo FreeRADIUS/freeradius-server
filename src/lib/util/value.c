@@ -5928,7 +5928,7 @@ void fr_value_box_list_untaint(fr_value_box_list_t *head)
 /** Validation function to check that a fr_value_box_t is correctly initialised
  *
  */
-void fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
+void fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb)
 {
 DIAG_OFF(nonnull-compare)
 	/*
@@ -5939,7 +5939,7 @@ DIAG_OFF(nonnull-compare)
 	fr_fatal_assert_msg(vb, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t pointer was NULL", file, line);
 DIAG_ON(nonnull-compare)
 
-	if (talloced) vb = talloc_get_type_abort_const(vb, fr_value_box_t);
+	if (vb->talloced) vb = talloc_get_type_abort_const(vb, fr_value_box_t);
 
 	switch (vb->type) {
 	case FR_TYPE_STRING:
@@ -5961,7 +5961,7 @@ DIAG_ON(nonnull-compare)
 		break;
 
 	case FR_TYPE_GROUP:
-		fr_value_box_list_verify(file, line, &vb->vb_group, talloced);
+		fr_value_box_list_verify(file, line, &vb->vb_group);
 		break;
 
 	default:
@@ -5969,11 +5969,10 @@ DIAG_ON(nonnull-compare)
 	}
 }
 
-void fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list, bool talloced)
+void fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list)
 {
-	fr_value_box_list_foreach(list, vb) fr_value_box_verify(file, line, vb, talloced);
+	fr_value_box_list_foreach(list, vb) fr_value_box_verify(file, line, vb);
 }
-
 
 /** Mark a value-box as "safe", of a particular type.
  *

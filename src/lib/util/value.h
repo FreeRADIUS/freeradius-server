@@ -159,6 +159,7 @@ struct value_box_s {
 	unsigned int   				tainted : 1;		//!< i.e. did it come from an untrusted source
 	unsigned int   				secret : 1;		//!< Same as #fr_dict_attr_flags_t secret
 	unsigned int				immutable : 1;		//!< once set, the value cannot be changed
+	unsigned int				talloced : 1;		//!< Talloced, not stack or text allocated.
 
 	uint16_t		_CONST		safe;			//!< more detailed safety
 
@@ -533,6 +534,7 @@ fr_value_box_t *_fr_value_box_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, fr_typ
 	if (unlikely(!vb)) return NULL;
 
 	_fr_value_box_init(NDEBUG_LOCATION_VALS vb, type, enumv, false);
+	vb->talloced = 1;
 
 	return vb;
 }
@@ -1191,16 +1193,14 @@ uint32_t	fr_value_box_hash(fr_value_box_t const *vb);
 
 /** @} */
 
-void		fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
+void		fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb)
 		CC_HINT(nonnull(3));
-void		fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list, bool talloced)
+void		fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list)
 		CC_HINT(nonnull(3));
 
 #ifdef WITH_VERIFY_PTR
-#  define VALUE_BOX_VERIFY(_x) fr_value_box_verify(__FILE__, __LINE__, _x, false)
-#  define VALUE_BOX_LIST_VERIFY(_x) fr_value_box_list_verify(__FILE__, __LINE__, _x, false)
-#  define VALUE_BOX_TALLOC_VERIFY(_x) fr_value_box_verify(__FILE__, __LINE__, _x, true)
-#  define VALUE_BOX_TALLOC_LIST_VERIFY(_x) fr_value_box_list_verify(__FILE__, __LINE__, _x, true)
+#  define VALUE_BOX_VERIFY(_x) fr_value_box_verify(__FILE__, __LINE__, _x)
+#  define VALUE_BOX_LIST_VERIFY(_x) fr_value_box_list_verify(__FILE__, __LINE__, _x)
 #else
 /*
  *  Even if were building without WITH_VERIFY_PTR
@@ -1209,8 +1209,8 @@ void		fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t c
  */
 #  define VALUE_BOX_VERIFY(_x) fr_assert(_x)
 #  define VALUE_BOX_LIST_VERIFY(_x) fr_assert(_x)
-#  define VALUE_BOX_TALLOC_VERIFY(_x) fr_assert(_x)
-#  define VALUE_BOX_TALLOC_LIST_VERIFY(_x) fr_assert(_x)
+#  define VALUE_BOX_VERIFY(_x) fr_assert(_x)
+#  define VALUE_BOX_LIST_VERIFY(_x) fr_assert(_x)
 #endif
 
 /** @name Debug functions
