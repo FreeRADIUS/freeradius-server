@@ -168,6 +168,10 @@ struct value_box_s {
 
 	fr_value_box_datum_t			datum;			//!< The value held by the value box.  Should appear
 									///< last for packing efficiency.
+#ifndef NDEBUG
+	char const				*file;			//!< File where the box was allocated (if heap allocated).
+	int					line;			//!< Line where the box was allocated (if heap allocated).
+#endif
 };
 
 /** Macro to automatically define a value for the "safe" field based on the current module / library.
@@ -449,19 +453,8 @@ extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
  * @{
  */
 
-/** Initialise a fr_value_box_t
- *
- * The value should be set later with one of the fr_value_box_* functions.
- *
- * @param[in] vb	to initialise.
- * @param[in] type	to set.
- * @param[in] enumv	Enumeration values.
- * @param[in] tainted	Whether data will come from an untrusted source.
- *
- * @hidecallergraph
- */
 static inline CC_HINT(nonnull(1), always_inline)
-void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
+void _fr_value_box_init(NDEBUG_LOCATION_ARGS fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
 {
 	/* coverity[store_writes_const_field] */
 	memcpy((void *) vb, &(fr_value_box_t){
@@ -505,15 +498,43 @@ void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const 
 	default:
 		break;
 	}
+
+#ifndef NDEBUG
+	vb->file = file;
+	vb->line = line;
+#endif
 }
+
+/** Initialise a fr_value_box_t
+ *
+ * The value should be set later with one of the fr_value_box_* functions.
+ *
+ * @param[in] _vb	to initialise.
+ * @param[in] _type	to set.
+ * @param[in] _enumv	Enumeration values.
+ * @param[in] _tainted	Whether data will come from an untrusted source.
+ *
+ * @hidecallergraph
+ */
+#define fr_value_box_init(_vb, _type, _enumv, _tainted) _fr_value_box_init(NDEBUG_LOCATION_EXP _vb, _type, _enumv, _tainted)
 
 /** Initialise an empty/null box that will be filled later
  *
+ * @param[in] _vb	to initalise.
  */
+#define fr_value_box_init_null(_vb) _fr_value_box_init(NDEBUG_LOCATION_EXP _vb, FR_TYPE_NULL, NULL, false)
+
 static inline CC_HINT(always_inline)
-void fr_value_box_init_null(fr_value_box_t *vb)
+fr_value_box_t *_fr_value_box_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, fr_type_t type, fr_dict_attr_t const *enumv)
 {
-	fr_value_box_init(vb, FR_TYPE_NULL, NULL, false);
+	fr_value_box_t *vb;
+
+	vb = talloc(ctx, fr_value_box_t);
+	if (unlikely(!vb)) return NULL;
+
+	_fr_value_box_init(NDEBUG_LOCATION_VALS vb, type, enumv, false);
+
+	return vb;
 }
 
 /** Allocate a value box of a specific type
@@ -521,40 +542,26 @@ void fr_value_box_init_null(fr_value_box_t *vb)
  * Allocates memory for the box, and sets the length of the value
  * for fixed length types.
  *
- * @param[in] ctx	to allocate the value_box in.
- * @param[in] type	of value.
- * @param[in] enumv	Enumeration values.
+ * @param[in] _ctx	to allocate the value_box in.
+ * @param[in] _type	of value.
+ * @param[in] _enumv	Enumeration values.
  * @return
  *	- A new fr_value_box_t.
  *	- NULL on error.
  */
-static inline CC_HINT(always_inline)
-fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type, fr_dict_attr_t const *enumv)
-{
-	fr_value_box_t *vb;
-
-	vb = talloc(ctx, fr_value_box_t);
-	if (unlikely(!vb)) return NULL;
-
-	fr_value_box_init(vb, type, enumv, false);
-
-	return vb;
-}
+#define fr_value_box_alloc(_ctx, _type, _enumv) _fr_value_box_alloc(NDEBUG_LOCATION_EXP _ctx, _type, _enumv)
 
 /** Allocate a value box for later use with a value assignment function
  *
- * @param[in] ctx	to allocate the value_box in.
+ * @param[in] _ctx	to allocate the value_box in.
  * @return
  *	- A new fr_value_box_t.
  *	- NULL on error.
  *
  *  @hidecallergraph
  */
-static inline CC_HINT(always_inline)
-fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
-{
-	return fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL);
-}
+#define fr_value_box_alloc_null(_ctx) _fr_value_box_alloc(NDEBUG_LOCATION_EXP _ctx, FR_TYPE_NULL, NULL)
+
 /** @} */
 
 /** @name Convenience functions
