@@ -95,7 +95,7 @@ cui.accounting {
 	if (!&Chargeable-User-Identity) {
 		&request.Chargeable-User-Identity := %{cuisql:\
 				SELECT cui FROM cui \
-				WHERE clientipaddress = '%{%{Packet-Src-IPv6-Address}:-%{Packet-Src-IP-Address}}' \
+				WHERE clientipaddress = '%{Net.Src.IP}' \
 				AND callingstationid = '%{Calling-Station-Id}' \
 				AND username = '%{User-Name}'}
 	}
