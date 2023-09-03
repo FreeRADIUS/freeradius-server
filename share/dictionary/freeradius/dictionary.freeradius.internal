@@ -74,12 +74,6 @@ ATTRIBUTE	Proxy-To-Realm				21	string
 #	Range:	50 - 99
 #		Packet attributes
 #
-ATTRIBUTE	Packet-Src-IP-Address			50	ipaddr virtual
-ATTRIBUTE	Packet-Dst-IP-Address			51	ipaddr virtual
-ATTRIBUTE	Packet-Src-IPv6-Address			52	ipv6addr virtual
-ATTRIBUTE	Packet-Dst-IPv6-Address			53	ipv6addr virtual
-ATTRIBUTE	Packet-Src-Port				54	short virtual
-ATTRIBUTE	Packet-Dst-Port				55	short virtual
 ATTRIBUTE	Packet-Original-Timestamp		56	date
 
 ATTRIBUTE	Net					60	tlv
