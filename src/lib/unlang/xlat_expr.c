@@ -414,6 +414,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 done:
 	fr_dcursor_append(out, dst);
+	VALUE_BOX_TALLOC_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 	return XLAT_ACTION_DONE;
 }
 
