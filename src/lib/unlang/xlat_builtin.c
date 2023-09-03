@@ -1038,21 +1038,21 @@ static xlat_action_t xlat_func_expr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Parse the input as an expression.
 	 */
 	if (xlat_tokenize_ephemeral_expression(rctx,
-				    &rctx->ex, unlang_interpret_event_list(request),
-				    &FR_SBUFF_IN(arg->vb_strvalue, arg->vb_length),
-				    &(fr_sbuff_parse_rules_t){
-				    	.escapes = &escape_rules
-				    },
-				    &(tmpl_rules_t){
-				    	.attr = {
-						.dict_def = request->dict,
-						.list_def = request_attr_request,
-						.allow_unknown = false,
-						.allow_unresolved = false,
-						.allow_foreign = false,
-					},
-					.at_runtime = true
-				    }) < 0) {
+					       &rctx->ex, unlang_interpret_event_list(request),
+					       &FR_SBUFF_IN(arg->vb_strvalue, arg->vb_length),
+					       &(fr_sbuff_parse_rules_t){
+							.escapes = &escape_rules
+					       },
+					       &(tmpl_rules_t){
+							.attr = {
+								.dict_def = request->dict,
+								.list_def = request_attr_request,
+								.allow_unknown = false,
+								.allow_unresolved = false,
+								.allow_foreign = false,
+							},
+							.at_runtime = true
+					       }) < 0) {
 		RPEDEBUG("Failed parsing expansion");
 	error:
 		talloc_free(rctx);
