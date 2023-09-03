@@ -140,7 +140,7 @@ static xlat_action_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, fr_dcursor_t *ou
 	}
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
-	fr_value_box_bstrndup(ctx, vb, NULL, type, strlen(type), false);
+	fr_value_box_bstrndup(vb, vb, NULL, type, strlen(type), false);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -490,7 +490,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 	}
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
-	fr_value_box_bstrndup(ctx, vb, NULL, encrypted, strlen(encrypted), false);
+	fr_value_box_bstrndup(vb, vb, NULL, encrypted, strlen(encrypted), false);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;

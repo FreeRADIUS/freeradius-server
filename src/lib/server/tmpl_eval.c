@@ -723,7 +723,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		MEM(*vb_out = fr_value_box_alloc_null(ctx));
 
-		ret = needs_dup ? fr_value_box_copy(ctx, *vb_out, to_cast) : fr_value_box_steal(ctx, *vb_out, to_cast);
+		ret = needs_dup ? fr_value_box_copy(*vb_out, *vb_out, to_cast) : fr_value_box_steal(*vb_out, *vb_out, to_cast);
 		talloc_free(tmp_ctx);
 		if (ret < 0) {
 			RPEDEBUG("Failed copying data to output box");

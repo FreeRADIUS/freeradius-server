@@ -515,7 +515,7 @@ static xlat_action_t ldap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			count = ldap_count_values_len(values);
 			for (i = 0; i < count; i++) {
 				MEM(vb = fr_value_box_alloc_null(ctx));
-				if (fr_value_box_bstrndup(ctx, vb, NULL, values[i]->bv_val, values[i]->bv_len, true) < 0) {
+				if (fr_value_box_bstrndup(vb, vb, NULL, values[i]->bv_val, values[i]->bv_len, true) < 0) {
 					talloc_free(vb);
 					RPERROR("Failed creating value from LDAP response");
 					break;

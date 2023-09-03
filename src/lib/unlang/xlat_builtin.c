@@ -512,7 +512,7 @@ static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				if (fr_sbuff_behind(&m_start) == 0) goto advance;
 
 				MEM(vb = fr_value_box_alloc_null(ctx));
-				fr_value_box_bstrndup(ctx, vb, NULL, fr_sbuff_current(&m_start),
+				fr_value_box_bstrndup(vb, vb, NULL, fr_sbuff_current(&m_start),
 						      fr_sbuff_behind(&m_start), string->tainted);
 				fr_dcursor_append(out, vb);
 
@@ -523,7 +523,7 @@ static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			}
 			fr_sbuff_set_to_end(&sbuff);
 			MEM(vb = fr_value_box_alloc_null(ctx));
-			fr_value_box_bstrndup(ctx, vb, NULL, fr_sbuff_current(&m_start),
+			fr_value_box_bstrndup(vb, vb, NULL, fr_sbuff_current(&m_start),
 					      fr_sbuff_behind(&m_start), string->tainted);
 			fr_dcursor_append(out, vb);
 			break;
@@ -709,7 +709,7 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_snprint_uint128(buff, sizeof(buff), ntohlll(ipv6int));
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		fr_value_box_bstrndup(ctx, vb, NULL, buff, strlen(buff), false);
+		fr_value_box_bstrndup(vb, vb, NULL, buff, strlen(buff), false);
 		fr_dcursor_append(out, vb);
 		talloc_free(in_vb);
 		return XLAT_ACTION_DONE;

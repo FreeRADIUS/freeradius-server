@@ -576,7 +576,7 @@ static xlat_action_t xlat_config(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (!value) return XLAT_ACTION_DONE;
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_bstrndup(ctx, vb, NULL, value, strlen(value), false);
+	fr_value_box_bstrndup(vb, vb, NULL, value, strlen(value), false);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;

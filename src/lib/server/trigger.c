@@ -97,7 +97,7 @@ xlat_action_t trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_copy(ctx, vb, &vp->data);
+	fr_value_box_copy(vb, vb, &vp->data);
 	fr_dcursor_append(out, vb);
 	return XLAT_ACTION_DONE;
 }

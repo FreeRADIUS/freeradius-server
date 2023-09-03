@@ -343,7 +343,7 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 		DEBUG3("String returned");
 		tmp = SvPVutf8(sv, len);
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_bstrndup(ctx, vb, NULL, tmp, len, SvTAINTED(sv)) < 0) {
+		if (fr_value_box_bstrndup(vb, vb, NULL, tmp, len, SvTAINTED(sv)) < 0) {
 			talloc_free(vb);
 			RPEDEBUG("Failed to allocate %ld for output", len);
 			return -1;
@@ -378,7 +378,7 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 			 *	Add key first
 			 */
 			MEM(vb = fr_value_box_alloc_null(ctx));
-			if (fr_value_box_bstrndup(ctx, vb, NULL, tmp, sv_len, SvTAINTED(hv_sv)) < 0) {
+			if (fr_value_box_bstrndup(vb, vb, NULL, tmp, sv_len, SvTAINTED(hv_sv)) < 0) {
 				talloc_free(vb);
 				RPEDEBUG("Failed to allocate %d for output", sv_len);
 				return -1;

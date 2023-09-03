@@ -53,7 +53,7 @@ static xlat_action_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	if (fr_value_box_bstrndup(ctx, vb, NULL, da->name, strlen(da->name), false) < 0) {
+	if (fr_value_box_bstrndup(vb, vb, NULL, da->name, strlen(da->name), false) < 0) {
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
@@ -92,7 +92,7 @@ static xlat_action_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	if (fr_value_box_bstrndup(ctx, vb, NULL, da->name, strlen(da->name), false) < 0) {
+	if (fr_value_box_bstrndup(vb, vb, NULL, da->name, strlen(da->name), false) < 0) {
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
@@ -126,7 +126,7 @@ static xlat_action_t xlat_vendor(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	if (fr_value_box_bstrndup(ctx, vb, NULL, vendor->name, strlen(vendor->name), false) < 0) {
+	if (fr_value_box_bstrndup(vb, vb, NULL, vendor->name, strlen(vendor->name), false) < 0) {
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
@@ -181,7 +181,7 @@ static xlat_action_t xlat_attr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	if (fr_value_box_bstrndup(ctx, vb, NULL, vp->da->name, strlen(vp->da->name), false) < 0) {
+	if (fr_value_box_bstrndup(vb, vb, NULL, vp->da->name, strlen(vp->da->name), false) < 0) {
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}

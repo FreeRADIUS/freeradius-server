@@ -1149,7 +1149,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			 *	because references aren't threadsafe.
 			 */
 			MEM(value = fr_value_box_alloc_null(ctx));
-			if (fr_value_box_copy(ctx, value, &node->data) < 0) goto fail;
+			if (fr_value_box_copy(value, value, &node->data) < 0) goto fail;
 			fr_dcursor_append(out, value);
 			continue;
 

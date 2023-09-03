@@ -281,7 +281,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 		if (shallow) {
 			fr_value_box_bstrndup_shallow(to_cast, NULL, reply->str, reply->len, true);
 		} else {
-			if (fr_value_box_bstrndup(ctx, to_cast, NULL, reply->str, reply->len, true) < 0) return -1;
+			if (fr_value_box_bstrndup(to_cast, to_cast, NULL, reply->str, reply->len, true) < 0) return -1;
 		}
 		break;
 
@@ -297,7 +297,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 			fr_strerror_const("Out of memory");
 			return -1;
 		}
-		if (fr_value_box_bstrndup(ctx, verb, NULL, reply->str, reply->len, true) < 0) return -1;
+		if (fr_value_box_bstrndup(verb, verb, NULL, reply->str, reply->len, true) < 0) return -1;
 		fr_value_box_list_insert_head(&out->vb_group, verb);
 
 		vtype = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL);

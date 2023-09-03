@@ -872,7 +872,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		    (tmpl_list(map->lhs) != tmpl_list(target))) continue;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		fr_value_box_copy(ctx, vb, tmpl_value(map->rhs));
+		fr_value_box_copy(vb, vb, tmpl_value(map->rhs));
 		fr_dcursor_append(out, vb);
 		break;
 	}
