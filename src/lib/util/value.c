@@ -2114,7 +2114,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 	 *	What we actually want here is the raw string
 	 */
 	case FR_TYPE_OCTETS:
-		return fr_value_box_bstrndup(dst, dst, dst_enumv,
+		return fr_value_box_bstrndup(ctx, dst, dst_enumv,
 					     (char const *)src->vb_octets, src->vb_length, src->tainted);
 
 	case FR_TYPE_GROUP:
