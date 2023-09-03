@@ -2879,20 +2879,6 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 										  p_rules, t_rules);
 
 		/*
-		 *	::value
-		 *
-		 *	Treated as enum name.
-		 *
-		 *	@todo - move the enum parsing here, and then unresolved tmpls _always_ become xlat references.
-		 *	and when we fix that, change the enum name to include the ::
-		 */
-		if (fr_sbuff_is_str_literal(&our_in, "::")) {
-			(void) fr_sbuff_advance(&our_in, 2);
-			goto do_enum;
-		}
-
-
-		/*
 		 *	Allow bareword xlats if we
 		 *	find a '%' prefix.
 		 */
@@ -2972,6 +2958,20 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		slen = tmpl_afrom_ipv6_substr(ctx, out, &our_in, p_rules);
 		if (slen > 0) goto done_bareword;
 		fr_assert(!*out);
+
+		/*
+		 *	::value
+		 *
+		 *	Treated as enum name.  Note that this check MUST be done after the test for IPv6, as
+		 *	"::1" is an allowed IPv6 address.
+		 *
+		 *	@todo - move the enum parsing here, and then unresolved tmpls _always_ become xlat references.
+		 *	and when we fix that, change the enum name to include the ::
+		 */
+		if (fr_sbuff_is_str_literal(&our_in, "::")) {
+			(void) fr_sbuff_advance(&our_in, 2);
+			goto do_enum;
+		}
 
 		/*
 		 *	See if it's a integer
