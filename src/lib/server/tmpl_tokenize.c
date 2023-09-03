@@ -2879,6 +2879,20 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 										  p_rules, t_rules);
 
 		/*
+		 *	::value
+		 *
+		 *	Treated as enum name.
+		 *
+		 *	@todo - move the enum parsing here, and then unresolved tmpls _always_ become xlat references.
+		 *	and when we fix that, change the enum name to include the ::
+		 */
+		if (fr_sbuff_is_str_literal(&our_in, "::")) {
+			(void) fr_sbuff_advance(&our_in, 2);
+			goto do_enum;
+		}
+
+
+		/*
 		 *	Allow bareword xlats if we
 		 *	find a '%' prefix.
 		 */
@@ -2995,6 +3009,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		/*
 		 *	Attempt to resolve enumeration values
 		 */
+	do_enum:
 		vpt = tmpl_alloc_null(ctx);
 
 		/*
