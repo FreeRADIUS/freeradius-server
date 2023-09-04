@@ -3934,13 +3934,15 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 	} else if (tmpl_contains_attr(vpt)) {
 		fr_type_t		dst_type = tmpl_rules_cast(vpt);
 
+		fr_assert(vpt->quote == T_BARE_WORD); /* 'User-Name' or "User-Name" is not allowed. */
+
 		ret = tmpl_attr_resolve(vpt, tr_rules);
 		if (ret < 0) return ret;
 
 		if (dst_type == tmpl_attr_tail_da(vpt)->type) {
 			vpt->rules.cast = FR_TYPE_NULL;
-		}
-
+		}		
+		
 	/*
 	 *	Convert unresolved tmpls int enumvs, or failing that, string values.
 	 */
