@@ -176,10 +176,12 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 			goto marker;
 		}
 
-		if (tmpl_is_attr(map->lhs) && tmpl_attr_unknown_add(map->lhs) < 0) {
+		if (tmpl_attr_tail_is_unknown(map->lhs) && tmpl_attr_unknown_add(map->lhs) < 0) {
 			cf_log_perr(cp, "Failed creating attribute %s", map->lhs->name);
 			goto error;
 		}
+
+		fr_assert(tmpl_is_attr(map->lhs));
 
 		/*
 		 *	The caller wants the RHS attributes to be
