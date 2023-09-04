@@ -281,7 +281,8 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 		if (shallow) {
 			fr_value_box_bstrndup_shallow(to_cast, NULL, reply->str, reply->len, true);
 		} else {
-			if (fr_value_box_bstrndup(to_cast, to_cast, NULL, reply->str, reply->len, true) < 0) return -1;
+			if (fr_value_box_bstrndup(to_cast->talloced ? to_cast : ctx, to_cast, NULL,
+						  reply->str, reply->len, true) < 0) return -1;
 		}
 		break;
 
