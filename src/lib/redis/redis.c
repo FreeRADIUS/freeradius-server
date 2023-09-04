@@ -410,17 +410,17 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out, request_t *request,
 	case REDIS_REPLY_STRING:
 	case REDIS_REPLY_INTEGER:
 	{
-		fr_value_box_t vpt;
+		fr_value_box_t vb;
 
 		/* Logs own errors */
-		if (fr_redis_reply_to_value_box(map, &vpt, value,
+		if (fr_redis_reply_to_value_box(map, &vb, value,
 						tmpl_attr_tail_da(map->lhs)->type, tmpl_attr_tail_da(map->lhs), false, false) < 0) {
 			RPEDEBUG("Failed converting Redis data");
 			goto error;
 		}
 
 		/* This will only fail only memory allocation errors */
-		if (tmpl_afrom_value_box(map, &map->rhs, &vpt, true) < 0) goto error;
+		if (tmpl_afrom_value_box(map, &map->rhs, &vb, true) < 0) goto error;
 	}
 		break;
 
