@@ -1,0 +1,4 @@
+#
+#  The RHS isn't a number or an enum
+#
+&Tmp-Integer-0 := '$[3][2]'	# ERROR

@@ -190,8 +190,13 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		 */
 		if (!input_rhs_rules) {
 			tmpl_rules_child_init(child_ctx, &my_rhs_rules, lhs_rules, map->lhs);
-			rhs_rules = &my_rhs_rules;
+		} else {
+			my_rhs_rules = *input_rhs_rules;
 		}
+		rhs_rules = &my_rhs_rules;
+
+		da = tmpl_attr_tail_da(map->lhs);
+		if (edit && fr_type_is_leaf(da->type)) my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
 		break;
 	}
 
