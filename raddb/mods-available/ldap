@@ -489,6 +489,14 @@ ldap {
 #		filter = '(objectclass=radiusprofile)'
 
 		#
+		#  scope:: Search scope, may be `base`, `one`, `sub` or `children`.
+		#
+		#  Should usually be left as "base", to retrieve the specific profile
+		#  specified by 'default' or in the user or group objects.
+		#
+#		scope = 'base'
+
+		#
 		#  default:: The default profile. This may be a DN or an attribute reference.
 		#
 		#  NOTE: To get old v2.2.x style behaviour, or to use the `&User-Profile` attribute

@@ -71,6 +71,8 @@ static const call_env_t sasl_call_env[] = {
 };
 
 static CONF_PARSER profile_config[] = {
+	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, rlm_ldap_t, profile_scope), .dflt = "base",
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
 	{ FR_CONF_OFFSET("attribute", FR_TYPE_STRING, rlm_ldap_t, profile_attr) },
 	{ FR_CONF_OFFSET("attribute_suspend", FR_TYPE_STRING, rlm_ldap_t, profile_attr_suspend) },
 	CONF_PARSER_TERMINATOR
@@ -88,7 +90,8 @@ static const call_env_t autz_profile_call_env[] = {
  *	User configuration
  */
 static CONF_PARSER user_config[] = {
-	{ FR_CONF_OFFSET("scope", FR_TYPE_STRING, rlm_ldap_t, userobj_scope_str), .dflt = "sub" },
+	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, rlm_ldap_t, userobj_scope), .dflt = "sub",
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
 	{ FR_CONF_OFFSET("sort_by", FR_TYPE_STRING, rlm_ldap_t, userobj_sort_by) },
 
 	{ FR_CONF_OFFSET("access_attribute", FR_TYPE_STRING, rlm_ldap_t, userobj_access_attr) },
@@ -123,7 +126,8 @@ user_call_env(memberof, ldap_memberof_call_env_t);
  */
 static CONF_PARSER group_config[] = {
 	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, rlm_ldap_t, groupobj_filter) },
-	{ FR_CONF_OFFSET("scope", FR_TYPE_STRING, rlm_ldap_t, groupobj_scope_str), .dflt = "sub" },
+	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, rlm_ldap_t, groupobj_scope), .dflt = "sub",
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len }  },
 
 	{ FR_CONF_OFFSET("name_attribute", FR_TYPE_STRING, rlm_ldap_t, groupobj_name_attr), .dflt = "cn" },
 	{ FR_CONF_OFFSET("membership_attribute", FR_TYPE_STRING, rlm_ldap_t, userobj_membership_attr) },
@@ -1329,7 +1333,7 @@ static unlang_action_t rlm_ldap_map_profile(request_t *request, ldap_autz_ctx_t 
 	}
 
 	return fr_ldap_trunk_search(&ret, profile_ctx, &profile_ctx->query, request, ttrunk, dn,
-				    LDAP_SCOPE_BASE, autz_ctx->call_env->profile_filter.vb_strvalue,
+				    inst->profile_scope, autz_ctx->call_env->profile_filter.vb_strvalue,
 				    expanded->attrs, NULL, NULL);
 }
 
@@ -2341,23 +2345,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				      "'finding' or 'always'", inst->handle_config.dereference_str);
 			goto error;
 		}
-	}
-
-	/*
-	 *	Convert scope strings to enumerated constants
-	 */
-	inst->userobj_scope = fr_table_value_by_str(fr_ldap_scope, inst->userobj_scope_str, -1);
-	if (inst->userobj_scope < 0) {
-		cf_log_err(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
-			   inst->userobj_scope_str);
-		goto error;
-	}
-
-	inst->groupobj_scope = fr_table_value_by_str(fr_ldap_scope, inst->groupobj_scope_str, -1);
-	if (inst->groupobj_scope < 0) {
-		cf_log_err(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
-			   inst->groupobj_scope_str);
-		goto error;
 	}
 
 	/*

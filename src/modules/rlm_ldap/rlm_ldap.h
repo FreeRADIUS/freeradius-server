@@ -44,7 +44,6 @@ typedef struct {
 	/*
 	 *	User object attributes and filters
 	 */
-	char const	*userobj_scope_str;		//!< Scope (sub, one, base).
 	char const	*userobj_sort_by;		//!< List of attributes to sort by.
 	LDAPControl	*userobj_sort_ctrl;		//!< Server side sort control.
 
@@ -69,7 +68,6 @@ typedef struct {
 	 *	Group object attributes and filters
 	 */
 	char const	*groupobj_filter;		//!< Filter to retrieve only group objects.
-	char const	*groupobj_scope_str;		//!< Scope (sub, one, base).
 	int		groupobj_scope;			//!< Search scope.
 
 	char const	*groupobj_name_attr;		//!< The name of the group.
@@ -104,6 +102,7 @@ typedef struct {
 	/*
 	 *	Profiles
 	 */
+	int		profile_scope;			//!< Search scope.
 	char const	*profile_attr;			//!< Attribute that identifies profiles to apply. May appear
 							//!< in userobj or groupobj.
 	char const	*profile_attr_suspend;		//!< Attribute that identifies profiles to apply when the user's
