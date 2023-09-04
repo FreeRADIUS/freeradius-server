@@ -278,6 +278,8 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 #endif
 	case REDIS_REPLY_STRING:
 	case REDIS_REPLY_STATUS:
+		fr_value_box_init(out, FR_TYPE_STRING, NULL, false);
+
 		if (shallow) {
 			fr_value_box_bstrndup_shallow(to_cast, NULL, reply->str, reply->len, true);
 		} else {
