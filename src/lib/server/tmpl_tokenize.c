@@ -2824,6 +2824,81 @@ static ssize_t tmpl_afrom_time_delta(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
+/*
+ *	::value
+ *
+ *	Treated as enum name.  Note that this check MUST be done after the test for IPv6, as
+ *	"::1" is an allowed IPv6 address.
+ *
+ *	@todo - Mark this up as an enum name?  Or do we really care?  Maybe we want to allow
+ *
+ *		Service-Type == 'Framed-User'
+ *
+ *	or
+ *
+ *		Service-Type == "Framed-User'
+ *
+ *	as the second one allows for xlat expansions of enum names.
+ *
+ *	We probably do want to forbid the single-quoted form of enums,
+ *	as that doesn't seem to make sense.
+ *
+ *	We also need to distinguish unresolved bare words as enums
+ *	(with :: prefix) from unresolved attributes without an & prefix.
+ */
+static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+			       fr_sbuff_parse_rules_t const *p_rules,
+			       tmpl_rules_t const *t_rules)
+{
+	tmpl_t		*vpt;
+	char		*str;
+	fr_sbuff_parse_error_t	sberr;
+	fr_sbuff_t	our_in = FR_SBUFF(in);
+
+	if (!fr_sbuff_is_str_literal(&our_in, "::")) return 0;
+
+	(void) fr_sbuff_advance(&our_in, 2);
+
+	vpt = tmpl_alloc_null(ctx);
+
+	/*
+	 *	If it doesn't match any other type of bareword, parse it as an enum name.
+	 *
+	 *	Note that we don't actually try to resolve the enum name.  The caller is responsible
+	 *	for doing that.
+	 */
+	if (fr_dict_enum_name_afrom_substr(vpt, &str, &sberr, &our_in, p_rules ? p_rules->terminals : NULL) < 0) {
+		/*
+		 *	Produce our own errors which make
+		 *	more sense in the context of tmpls
+		 */
+		switch (sberr) {
+		case FR_SBUFF_PARSE_ERROR_NOT_FOUND:
+			fr_strerror_const("No operand found.  Expected &ref, literal, "
+					  "'quoted literal', \"%{expansion}\", or enum value");
+			break;
+
+		case FR_SBUFF_PARSE_ERROR_FORMAT:
+			fr_strerror_const("enum values must contain at least one alpha character");
+			break;
+
+		default:
+			fr_strerror_const("Unexpected text after enum value.  Expected operator");
+			break;
+		}
+
+		talloc_free(vpt);
+		FR_SBUFF_ERROR_RETURN(&our_in);
+	}
+
+	tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, T_BARE_WORD,
+		  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
+	vpt->data.unescaped = str;
+	*out = vpt;
+
+	FR_SBUFF_SET_RETURN(in, &our_in);
+}
+
 /** Convert an arbitrary string into a #tmpl_t
  *
  * @note Unlike #tmpl_afrom_attr_str return code 0 doesn't necessarily indicate failure,
@@ -2959,19 +3034,9 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		if (slen > 0) goto done_bareword;
 		fr_assert(!*out);
 
-		/*
-		 *	::value
-		 *
-		 *	Treated as enum name.  Note that this check MUST be done after the test for IPv6, as
-		 *	"::1" is an allowed IPv6 address.
-		 *
-		 *	@todo - move the enum parsing here, and then unresolved tmpls _always_ become xlat references.
-		 *	and when we fix that, change the enum name to include the ::
-		 */
-		if (fr_sbuff_is_str_literal(&our_in, "::")) {
-			(void) fr_sbuff_advance(&our_in, 2);
-			goto do_enum;
-		}
+		slen = tmpl_afrom_enum(ctx, out, &our_in, p_rules, t_rules);
+		if (slen > 0) goto done_bareword;
+		fr_assert(!*out);
 
 		/*
 		 *	See if it's a integer
@@ -3009,7 +3074,6 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		/*
 		 *	Attempt to resolve enumeration values
 		 */
-	do_enum:
 		vpt = tmpl_alloc_null(ctx);
 
 		/*
@@ -3876,7 +3940,6 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 		if (dst_type == tmpl_attr_tail_da(vpt)->type) {
 			vpt->rules.cast = FR_TYPE_NULL;
 		}
-
 
 	/*
 	 *	Convert unresolved tmpls int enumvs, or failing that, string values.
