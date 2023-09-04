@@ -763,7 +763,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		fr_value_box_field_sizes[dst_type], *((void **)out), fr_value_box_offsets[dst_type]);
 
 	fr_value_box_memcpy_out(out, &from_cast);
-	VALUE_BOX_VERIFY(out);
 
 	/*
 	 *	Frees any memory allocated for temporary buffers
