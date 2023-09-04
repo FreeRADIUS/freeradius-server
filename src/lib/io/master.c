@@ -1245,14 +1245,14 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	fr_io_address_t		address;
 	fr_io_connection_t	my_connection, *connection;
 	fr_io_pending_packet_t	*pending;
-	fr_io_track_t		*track, *new_track;
+	fr_io_track_t		*track;
 	fr_listen_t		*child;
 	int			value, accept_fd = -1;
 	uint32_t		priority = PRIORITY_NORMAL;
 
 	get_inst(li, &inst, &thread, &connection, &child);
 
-	track = new_track = NULL;
+	track = NULL;
 
 	/*
 	 *	There was data left over from the previous read, go
@@ -1583,6 +1583,7 @@ have_client:
 	 *	Track this packet and return it if necessary.
 	 */
 	if (connection || !client->use_connected) {
+		fr_io_track_t *to_free = NULL;
 
 		/*
 		 *	Add the packet to the tracking table, if it's
@@ -1642,7 +1643,7 @@ have_client:
 			/*
 			 *	Got to free this if we don't process the packet.
 			 */
-			new_track = track;
+			to_free = track;
 		}
 
 		/*
@@ -1666,7 +1667,10 @@ have_client:
 			if (!connection && inst->max_pending_packets && (thread->num_pending_packets >= inst->max_pending_packets)) {
 				DEBUG("Too many pending packets for client %pV - discarding packet",
 				      fr_box_ipaddr(client->src_ipaddr));
-				goto done;
+
+			done:
+				talloc_free(to_free);
+				return 0;
 			}
 
 			/*
@@ -1740,7 +1744,7 @@ have_client:
 		 */
 		if (nak) {
 			DEBUG("Discarding packet to NAKed connection %s", connection->name);
-			goto done;
+			return 0;
 		}
 	}
 
@@ -1751,7 +1755,7 @@ have_client:
 		connection = fr_io_connection_alloc(inst, thread, client, -1, &address, NULL);
 		if (!connection) {
 			DEBUG("Failed to allocate connection from client %s.  Discarding packet.", client->radclient->shortname);
-			goto done;
+			return 0;
 		}
 	}
 
@@ -1770,14 +1774,11 @@ have_client:
 	 *	packet, so don't do this.  Instead, the connection
 	 *	will take care of figuring out what to do.
 	 *
-	 *	We don't need "new_track" after this, as it will be
+	 *	We don't need "to_free" after this, as it will be
 	 *	tracked in the connected socket.
 	 */
 	(void) fr_network_listen_inject(connection->nr, connection->listen,
 					buffer, packet_len, recv_time);
-
-done:
-	talloc_free(new_track);
 	return 0;
 }
 
