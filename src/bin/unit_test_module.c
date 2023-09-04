@@ -323,7 +323,7 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 	char		unescaped[sizeof(output_buff)];
 	request_t	*request;
 	fr_sbuff_t	line;
-	fr_sbuff_t	out;
+	fr_sbuff_t	out = FR_SBUFF_OUT(output_buff, sizeof(output_buff));
 
 	static fr_sbuff_escape_rules_t unprintables = {
 		.name = "unprintables",
