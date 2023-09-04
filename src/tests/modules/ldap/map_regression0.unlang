@@ -1,0 +1,19 @@
+
+&net.src.ip := 1.1.1.1
+
+map ldap "ldapi:///ou=clients,dc=example,dc=com??sub?(&(objectClass=radiusClient)(objectClass=freeradiusClient)(freeradiusClientIdentifier=%{net.src.ip}))" {
+	#  secret
+	&control.FreeRADIUS-Client-Secret := 'radiusClientSecret'
+
+	#  shortname
+	&control.FreeRADIUS-Client-Shortname := 'freeradiusClientShortname'
+
+	#  nas_type
+	&control.FreeRADIUS-Client-NAS-Type := 'freeradiusClientType'
+}
+
+if (!(&control.FreeRADIUS-Client-Shortname == 'client1')) {
+	test_fail
+}
+
+test_pass
