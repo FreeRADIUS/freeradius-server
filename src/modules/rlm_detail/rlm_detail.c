@@ -95,10 +95,8 @@ fr_dict_autoload_t rlm_detail_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_packet_src_ipv4_address;
-static fr_dict_attr_t const *attr_packet_dst_ipv4_address;
-static fr_dict_attr_t const *attr_packet_src_ipv6_address;
-static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
+static fr_dict_attr_t const *attr_packet_src_address;
+static fr_dict_attr_t const *attr_packet_dst_address;
 static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_dst_port;
 static fr_dict_attr_t const *attr_protocol;
@@ -107,12 +105,10 @@ static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t rlm_detail_dict_attr[];
 fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
-	{ .out = &attr_packet_dst_ipv4_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ipv4_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_address, .name = "Net.Dst.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_port, .name = "Net.Dst.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_address, .name = "Net.Src.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_port, .name = "Net.Src.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
@@ -308,43 +304,19 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 	}
 
 	if (inst->log_srcdst) {
-		fr_pair_t src_vp, dst_vp;
+		fr_pair_t *src_vp, *dst_vp;
 
-		fr_pair_init_null(&src_vp);
-		fr_pair_init_null(&dst_vp);
+		src_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_packet_src_address);
+		dst_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_packet_dst_address);
 
-		switch (packet->socket.inet.src_ipaddr.af) {
-		case AF_INET:
-			fr_pair_reinit_from_da(NULL, &src_vp, attr_packet_src_ipv4_address);
-			fr_value_box(&src_vp.data, &packet->socket.inet.src_ipaddr, true);
+		detail_fr_pair_fprint(request, out, src_vp);
+		detail_fr_pair_fprint(request, out, dst_vp);
 
-			fr_pair_reinit_from_da(NULL, &dst_vp, attr_packet_dst_ipv4_address);
-			fr_value_box(&dst_vp.data, &packet->socket.inet.dst_ipaddr, true);
-			break;
+		src_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_packet_src_port);
+		dst_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_packet_dst_port);
 
-		case AF_INET6:
-			fr_pair_reinit_from_da(NULL, &src_vp, attr_packet_src_ipv6_address);
-			fr_value_box(&src_vp.data, &packet->socket.inet.src_ipaddr, true);
-
-			fr_pair_reinit_from_da(NULL, &dst_vp, attr_packet_dst_ipv6_address);
-			fr_value_box(&dst_vp.data, &packet->socket.inet.dst_ipaddr, true);
-			break;
-
-		default:
-			break;
-		}
-
-		detail_fr_pair_fprint(request, out, &src_vp);
-		detail_fr_pair_fprint(request, out, &dst_vp);
-
-		fr_pair_reinit_from_da(NULL, &src_vp, attr_packet_src_port);
-		fr_value_box(&src_vp.data, packet->socket.inet.src_port, true);
-
-		fr_pair_reinit_from_da(NULL, &dst_vp, attr_packet_dst_port);
-		fr_value_box(&dst_vp.data, packet->socket.inet.dst_port, true);
-
-		detail_fr_pair_fprint(request, out, &src_vp);
-		detail_fr_pair_fprint(request, out, &dst_vp);
+		detail_fr_pair_fprint(request, out, src_vp);
+		detail_fr_pair_fprint(request, out, dst_vp);
 	}
 
 	/* Write each attribute/value to the log file */
