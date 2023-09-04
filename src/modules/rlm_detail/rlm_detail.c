@@ -95,20 +95,22 @@ fr_dict_autoload_t rlm_detail_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_packet_src_address;
-static fr_dict_attr_t const *attr_packet_dst_address;
-static fr_dict_attr_t const *attr_packet_src_port;
-static fr_dict_attr_t const *attr_packet_dst_port;
+static fr_dict_attr_t const *attr_net;
+static fr_dict_attr_t const *attr_net_src_address;
+static fr_dict_attr_t const *attr_net_dst_address;
+static fr_dict_attr_t const *attr_net_src_port;
+static fr_dict_attr_t const *attr_net_dst_port;
 static fr_dict_attr_t const *attr_protocol;
 
 static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t rlm_detail_dict_attr[];
 fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
-	{ .out = &attr_packet_dst_address, .name = "Net.Dst.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_port, .name = "Net.Dst.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_address, .name = "Net.Src.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_port, .name = "Net.Src.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_net, .name = "Net", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_net_dst_address, .name = "Net.Dst.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_net_dst_port, .name = "Net.Dst.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_net_src_address, .name = "Net.Src.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_net_src_port, .name = "Net.Src.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
@@ -303,11 +305,14 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 		}
 	}
 
+	/*
+	 *	Put these at the top as distinct (not nested) VPs.
+	 */
 	if (inst->log_srcdst) {
 		fr_pair_t *src_vp, *dst_vp;
 
-		src_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_packet_src_address);
-		dst_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_packet_dst_address);
+		src_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_src_address);
+		dst_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_dst_address);
 
 		/*
 		 *	These pairs will exist, but Coverity doesn't know that
@@ -315,8 +320,8 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 		if (src_vp) detail_fr_pair_fprint(request, out, src_vp);
 		if (dst_vp) detail_fr_pair_fprint(request, out, dst_vp);
 
-		src_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_packet_src_port);
-		dst_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_packet_dst_port);
+		src_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_src_port);
+		dst_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_dst_port);
 
 		if (src_vp) detail_fr_pair_fprint(request, out, src_vp);
 		if (dst_vp) detail_fr_pair_fprint(request, out, dst_vp);
@@ -325,6 +330,19 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 	/* Write each attribute/value to the log file */
 	fr_pair_list_foreach(list, vp) {
 		if (inst->ht && fr_hash_table_find(inst->ht, vp->da)) continue;
+
+		/*
+		 *	Skip Net.* if we're not logging src/dst
+		 */
+		if (!inst->log_srcdst && (fr_dict_by_da(vp->da) == dict_freeradius)) {
+			fr_dict_attr_t const *da = vp->da;
+
+			while (da->depth > attr_net->depth) {
+				da = da->parent;
+			}
+
+			if (da == attr_net) continue;
+		}
 
 		/*
 		 *	Don't print passwords in old format...
