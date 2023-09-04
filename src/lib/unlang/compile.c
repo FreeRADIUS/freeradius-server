@@ -230,7 +230,7 @@ static inline CC_HINT(always_inline) int unlang_rules_verify(tmpl_rules_t const 
 #endif
 #define RULES_VERIFY(_rules) do { if (unlang_rules_verify(_rules) < 0) return NULL; } while (0)
 
-static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *ci, fr_dict_t const *dict)
+static bool pass2_fixup_tmpl(UNUSED TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *ci, fr_dict_t const *dict)
 {
 	tmpl_t *vpt = *vpt_p;
 
