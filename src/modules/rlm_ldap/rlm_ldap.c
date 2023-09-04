@@ -1535,7 +1535,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 
 				if (RDEBUG_ENABLED3) {
 					for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
-						RDEBUG3("Will evaluate suspended profile with DN \"%pV\"", fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
+						RDEBUG3("Will evaluate profile with DN \"%pV\"", fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
 					}
 				}
 			}
