@@ -5948,6 +5948,16 @@ DIAG_ON(nonnull-compare)
 		fr_fatal_assert_msg(vb->vb_strvalue[vb->vb_length] == '\0',
 				    "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t strvalue field "
 				    "not null terminated", file, line);
+		if (vb->talloced) {
+			size_t len = talloc_array_length(vb->vb_strvalue);
+
+			/* We always \0 terminate to be safe, even though most things should use the len field */
+			if (len <= vb->vb_length) {
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: Expected fr_value_box_t->vb_strvalue talloc buffer "
+						    "len >= %zu, got %zu",
+						    file, line, vb->vb_length + 1, len);
+			}
+		}
 		break;
 
 	case FR_TYPE_OCTETS:
