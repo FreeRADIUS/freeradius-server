@@ -427,7 +427,7 @@ load-balance {
 
 [source,unlang]
 ----
-load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}" {
+load-balance "%{Net.Src.IP}" {
     home_server_1
     home_server_2
     home_server_3
@@ -438,7 +438,7 @@ load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}" {
 
 [source,unlang]
 ----
-load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}-%{Packet-Src-Port}" {
+load-balance "%%{Net.Src.IP}-%{Net.Src.Port}" {
     home_server_1
     home_server_2
     home_server_3

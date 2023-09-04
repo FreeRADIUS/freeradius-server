@@ -47,14 +47,14 @@ do
 	;;
   D)    extra="$extra -D $OPTARG"
 	;;
-  i)    x="(Packet-Src-IP-Address == $OPTARG)"
+  i)    x="(Net.Src.IP == $OPTARG)"
 	if [ "$condition" = "" ]; then
 	    condition="$x"
 	else
 	  condition="$condition && $x"
 	fi
 	;;
-  I)	x="(Packet-Src-IPv6-Address == $OPTARG)"
+  I)	x="(Net.Src.IP == $OPTARG)"
 	if [ "$condition" = "" ]; then
 	    condition="$x"
 	else

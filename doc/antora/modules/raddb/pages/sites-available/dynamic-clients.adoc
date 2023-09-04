@@ -270,10 +270,10 @@ server dynamic_clients {
 	}
 	new client {
 		&control += {
-			&FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
+			&FreeRADIUS-Client-IP-Address = "%{Net.Src.IP}"
 			&FreeRADIUS-Client-Require-MA = no
 			&FreeRADIUS-Client-Secret = "testing123"
-			&FreeRADIUS-Client-Shortname = "%{Packet-Src-IP-Address}"
+			&FreeRADIUS-Client-Shortname = "%{Net.Src.IP}"
 			&FreeRADIUS-Client-NAS-Type = "other"
 		}
 		ok
