@@ -733,7 +733,6 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 *	Deal with normal attribute (or list)
 	 */
 	} else {
-	do_attr:
 		xlat_exp_set_type(node, XLAT_TMPL);
 		xlat_exp_set_name_buffer_shallow(node, vpt->name);
 		node->vpt = vpt;
