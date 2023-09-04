@@ -5941,6 +5941,10 @@ DIAG_ON(nonnull-compare)
 
 	if (vb->talloced) vb = talloc_get_type_abort_const(vb, fr_value_box_t);
 
+#ifndef NDEBUG
+	fr_fatal_assert_msg(vb->magic == FR_VALUE_BOX_MAGIC, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t magic "
+			    "incorrect, expected %" PRIx64 ", got %" PRIx64, file, line, FR_VALUE_BOX_MAGIC, vb->magic);
+#endif
 	switch (vb->type) {
 	case FR_TYPE_STRING:
 		fr_fatal_assert_msg(vb->vb_strvalue, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t strvalue field "

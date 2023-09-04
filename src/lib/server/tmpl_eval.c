@@ -280,8 +280,8 @@ ssize_t _tmpl_to_type(void *out,
 		      xlat_escape_legacy_t escape, void const *escape_ctx,
 		      fr_type_t dst_type)
 {
-	fr_value_box_t		value_to_cast;
-	fr_value_box_t		value_from_cast = { .type = FR_TYPE_NULL };
+	fr_value_box_t		value_to_cast = FR_VALUE_BOX_INITIALISER_NULL(value_to_cast);
+	fr_value_box_t		value_from_cast = FR_VALUE_BOX_INITIALISER_NULL(value_from_cast);
 	fr_value_box_t const	*to_cast = &value_to_cast;
 	fr_value_box_t const	*from_cast = &value_from_cast;
 
@@ -562,7 +562,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	fr_value_box_t		from_cast;
 
 	fr_pair_t		*vp = NULL;
-	fr_value_box_t		value = (fr_value_box_t){};
+	fr_value_box_t		value = FR_VALUE_BOX_INITIALISER_NULL(value);
 	bool			needs_dup = false;
 
 	ssize_t			slen = -1;

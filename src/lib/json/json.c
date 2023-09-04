@@ -492,7 +492,7 @@ static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
 {
 	struct json_object	*obj;
 	fr_value_box_t const	*vb;
-	fr_value_box_t		vb_str;
+	fr_value_box_t		vb_str = FR_VALUE_BOX_INITIALISER_NULL(vb_str);
 	int			is_enum = 0;
 
 	fr_assert(vp);

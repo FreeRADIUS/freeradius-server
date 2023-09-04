@@ -64,6 +64,26 @@ typedef struct {
 
 static_assert(sizeof(unsigned int) >= 4, "Unsigned integer too small on this platform");
 
+/** Static initialiser for entries
+ *
+ @code {.c}
+   fr_dlist_entry_t my_entry = FR_DLIST_INITIALISER(my_entry)
+ @endcode
+ *
+ * @param[in] _entry	what's being initialised.
+ */
+#define FR_DLIST_ENTRY_INITIALISER(_entry) { .next = &_entry, .prev = &_entry }
+
+/** Static initialiser for list heads
+ *
+ @code {.c}
+   fr_dlist_head_t my_head = FR_DLIST_INITIALISER(my_head)
+ @endcode
+ *
+ * @param[in] _entry	what's being initialised.
+ */
+#define FR_DLIST_HEAD_INITIALISER(_head) { .entry = FR_DLIST_ENTRY_INITIALISER((_head).entry) }
+
 /** Iterate over the contents of a list
  *
  * @param[in] _list_head	to iterate over.

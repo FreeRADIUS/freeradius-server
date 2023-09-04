@@ -87,6 +87,10 @@ extern fr_sbuff_escape_rules_t *fr_value_escape_by_char[UINT8_MAX + 1];
 
 extern fr_sbuff_escape_rules_t fr_value_escape_unprintables;
 
+#ifndef NDEBUG
+#  define FR_VALUE_BOX_MAGIC RADIUSD_MAGIC_NUMBER
+#endif
+
 /** @name List and cursor type definitions
  */
 FR_DLIST_TYPES(fr_value_box_list)
@@ -170,8 +174,9 @@ struct value_box_s {
 	fr_value_box_datum_t			datum;			//!< The value held by the value box.  Should appear
 									///< last for packing efficiency.
 #ifndef NDEBUG
-	char const				*file;			//!< File where the box was allocated (if heap allocated).
-	int					line;			//!< Line where the box was allocated (if heap allocated).
+	uint64_t				magic;			//!< Value to verify that the structure was allocated or initialised properly.
+	char const				*file;			//!< File where the box was allocated or initialised.
+	int					line;			//!< Line where the box was allocated or initialised.
 #endif
 };
 
@@ -208,6 +213,12 @@ typedef enum {
 #define vb_should_free(_action)		((_action & FR_VALUE_BOX_LIST_FREE_BOX) == FR_VALUE_BOX_LIST_FREE_BOX)
 #define vb_should_free_value(_action)	((_action & FR_VALUE_BOX_LIST_FREE_BOX_VALUE) == FR_VALUE_BOX_LIST_FREE_BOX_VALUE)
 #define vb_should_remove(_action)	((_action & FR_VALUE_BOX_LIST_REMOVE) == FR_VALUE_BOX_LIST_REMOVE)
+
+#ifndef NDEBUG
+#define VALUE_BOX_NDEBUG_INITIALISER .file = __FILE__, .line = __LINE__, .magic = FR_VALUE_BOX_MAGIC
+#else
+#define VALUE_BOX_NDEBUG_INITIALISER
+#endif
 
 /** @name Field accessors for #fr_value_box_t
  *
@@ -258,7 +269,7 @@ typedef enum {
  *
  * @{
  */
-#define _fr_box_with_len(_type, _field, _val, _len) &(fr_value_box_t){ .type = _type, _field = _val, .vb_length = _len }
+#define _fr_box_with_len(_type, _field, _val, _len) &(fr_value_box_t){ .type = _type, _field = _val, .vb_length = _len, VALUE_BOX_NDEBUG_INITIALISER }
 
 #define fr_box_strvalue(_val)			_fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, strlen(_val))
 #define fr_box_strvalue_len(_val, _len)		_fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, _len)
@@ -267,7 +278,7 @@ typedef enum {
 #define fr_box_strvalue_buffer(_val)		_fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, talloc_array_length(_val) - 1)
 #define fr_box_octets_buffer(_val)		_fr_box_with_len(FR_TYPE_OCTETS, .vb_octets, _val, talloc_array_length(_val))
 
-#define _fr_box(_type, _field, _val) (&(fr_value_box_t){ .type = _type, _field = (_val) })
+#define _fr_box(_type, _field, _val) (&(fr_value_box_t){ .type = _type, _field = (_val), VALUE_BOX_NDEBUG_INITIALISER })
 
 #define fr_box_ipaddr(_val)			_fr_box((((_val).af == AF_INET) ? \
 							(((_val).prefix == 32) ?	FR_TYPE_IPV4_ADDR : \
@@ -453,6 +464,23 @@ extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
  *
  * @{
  */
+/** A static initialiser for stack/globally allocated boxes
+ *
+ * We can only safely initialise a null box, as many other type need special initialisation
+ */
+#define FR_VALUE_BOX_INITIALISER_NULL(_vb) \
+	{ \
+		.type = FR_TYPE_NULL, \
+		.datum = { \
+			.children = { \
+				FR_DLIST_HEAD_INITIALISER((_vb).datum.children.head) \
+			} \
+		}, \
+		.entry = { \
+			.entry = FR_DLIST_ENTRY_INITIALISER((_vb).entry.entry) \
+		}, \
+ 		VALUE_BOX_NDEBUG_INITIALISER \
+	}
 
 static inline CC_HINT(nonnull(1), always_inline)
 void _fr_value_box_init(NDEBUG_LOCATION_ARGS fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
@@ -501,6 +529,7 @@ void _fr_value_box_init(NDEBUG_LOCATION_ARGS fr_value_box_t *vb, fr_type_t type,
 	}
 
 #ifndef NDEBUG
+	vb->magic = FR_VALUE_BOX_MAGIC;
 	vb->file = file;
 	vb->line = line;
 #endif

@@ -323,7 +323,7 @@ static int kafka_topic_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *
 
 static int kafka_config_parse_single(char const **out, CONF_PAIR *cp, CONF_PARSER const *rule)
 {
-	fr_value_box_t			vb;
+	fr_value_box_t			vb = FR_VALUE_BOX_INITIALISER_NULL(vb);
 	fr_kafka_conf_ctx_t const	*kctx = rule->uctx;
 	fr_type_t			type = FR_BASE_TYPE(rule->type);
 	static _Thread_local char	buff[sizeof("18446744073709551615")];

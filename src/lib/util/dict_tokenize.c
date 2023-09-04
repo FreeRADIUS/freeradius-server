@@ -1472,7 +1472,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int argc)
 {
 	fr_dict_attr_t		*da;
-	fr_value_box_t		value;
+	fr_value_box_t		value = FR_VALUE_BOX_INITIALISER_NULL(value);
 	fr_slen_t		enum_len;
 	fr_dict_attr_t const 	*parent = ctx->stack[ctx->stack_depth].da;
 
@@ -1598,7 +1598,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	int				i;
 	fr_dict_attr_t const   		*da;
 	fr_dict_attr_t const	       	*parent = NULL;
-	fr_value_box_t			value;
+	fr_value_box_t			value = FR_VALUE_BOX_INITIALISER_NULL(value);
 	unsigned int			attr;
 	fr_dict_attr_flags_t		flags;
 	char				*key_attr = argv[1];
@@ -2799,7 +2799,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char c
 	fr_dict_attr_flags_t	flags = { .internal = true };
 	char			*type_name;
 	fr_dict_attr_t		*cast_base;
-	fr_value_box_t		box;
+	fr_value_box_t		box = FR_VALUE_BOX_INITIALISER_NULL(box);
 
 	if (unlikely(!dict_gctx)) {
 		fr_strerror_const("fr_dict_global_ctx_init() must be called before loading dictionary files");
