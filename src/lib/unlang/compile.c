@@ -262,7 +262,7 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 {
 	RULES_VERIFY(rules);
 
-	if (tmpl_is_unresolved(map->lhs)) {
+	if (tmpl_is_data_unresolved(map->lhs)) {
 		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, rules->attr.dict_def)) {
 			return false;
 		}
@@ -281,7 +281,7 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 	}
 
 	if (map->rhs) {
-		if (tmpl_is_unresolved(map->rhs)) {
+		if (tmpl_is_data_unresolved(map->rhs)) {
 			fr_assert(!tmpl_is_regex_xlat_unresolved(map->rhs));
 
 			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->attr.dict_def)) {
@@ -512,7 +512,7 @@ static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
 	}
 
 	switch (map->rhs->type) {
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_ATTR:
@@ -594,7 +594,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 *	We then free the template and alloc a NULL one instead.
 	 */
 	if ((map->op == T_OP_CMP_FALSE) && !tmpl_is_null(map->rhs)) {
-		if (!tmpl_is_unresolved(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
+		if (!tmpl_is_data_unresolved(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
 			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
 			     cf_filename(cp), cf_lineno(cp));
 		}
@@ -639,7 +639,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 */
 	if (map->op == T_OP_CMP_FALSE) return 0;
 
-	if (!tmpl_is_unresolved(map->rhs)) return 0;
+	if (!tmpl_is_data_unresolved(map->rhs)) return 0;
 
 	/*
 	 *	If LHS is an attribute, and RHS is a literal, we can
@@ -648,7 +648,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 *	Unless it's a unary operator in which case we
 	 *	ignore map->rhs.
 	 */
-	if (tmpl_is_attr(map->lhs) && tmpl_is_unresolved(map->rhs)) {
+	if (tmpl_is_attr(map->lhs) && tmpl_is_data_unresolved(map->rhs)) {
 		fr_type_t type = tmpl_attr_tail_da(map->lhs)->type;
 
 		/*
@@ -884,7 +884,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		 *	Limit the allowed template types.
 		 */
 		switch (vpt->type) {
-		case TMPL_TYPE_UNRESOLVED:
+		case TMPL_TYPE_DATA_UNRESOLVED:
 		case TMPL_TYPE_ATTR:
 		case TMPL_TYPE_ATTR_UNRESOLVED:
 		case TMPL_TYPE_XLAT:
@@ -1419,7 +1419,7 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 	fr_assert(map->rhs);
 
 	switch (map->rhs->type) {
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_DATA:
@@ -2803,7 +2803,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *      resolve it to the data type of the parent
 		 *      "switch" tmpl.
 		 */
-		if (tmpl_is_unresolved(vpt)) {
+		if (tmpl_is_data_unresolved(vpt)) {
 			fr_type_t cast_type = tmpl_rules_cast(switch_gext->vpt);
 			fr_dict_attr_t const *da = NULL;
 

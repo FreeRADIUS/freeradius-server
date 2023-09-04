@@ -1059,7 +1059,7 @@ static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR 
 		cf_log_err(cp, "Unknown attribute '%s'", tmpl_attr_tail_unresolved(vpt));
 		return -1;
 
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 		/*
 		 *	Try to realize the underlying type, if at all possible.
 		 */

@@ -35,7 +35,7 @@
  * strings into VPTs. The main parsing function is #tmpl_afrom_substr, which can produce
  * most types of VPTs. It uses the type of quoting (passed as an #fr_token_t) to determine
  * what type of VPT to parse the string as. For example a #T_DOUBLE_QUOTED_STRING will
- * produce either a #TMPL_TYPE_XLAT_UNRESOLVED or a #TMPL_TYPE_UNRESOLVED (depending if the string
+ * produce either a #TMPL_TYPE_XLAT_UNRESOLVED or a #TMPL_TYPE_DATA_UNRESOLVED (depending if the string
  * contained a non-literal expansion).
  *
  * @see tmpl_afrom_substr
@@ -174,9 +174,10 @@ typedef enum tmpl_type_e {
 	/** Unparsed literal string
 	 *
 	 * May be an intermediary phase where the tmpl is created as a
-	 * temporary structure during parsing.
+	 * temporary structure during parsing.  The value here MUST be raw
+	 * data, and cannot be anything else.
 	 */
-	TMPL_TYPE_UNRESOLVED		= 0x0200 | TMPL_FLAG_UNRESOLVED,
+	TMPL_TYPE_DATA_UNRESOLVED	 =  TMPL_TYPE_DATA | TMPL_FLAG_UNRESOLVED,
 
 	/** An attribute reference that we couldn't resolve but looked valid
 	 *
@@ -215,7 +216,7 @@ typedef enum tmpl_type_e {
 #define tmpl_is_regex_uncompiled(vpt)		(vpt->type == TMPL_TYPE_REGEX_UNCOMPILED)
 #define tmpl_is_regex_xlat(vpt) 		(vpt->type == TMPL_TYPE_REGEX_XLAT)
 
-#define tmpl_is_unresolved(vpt) 		(vpt->type == TMPL_TYPE_UNRESOLVED)
+#define tmpl_is_data_unresolved(vpt) 		(vpt->type == TMPL_TYPE_DATA_UNRESOLVED)
 #define tmpl_is_exec_unresolved(vpt) 		(vpt->type == TMPL_TYPE_EXEC_UNRESOLVED)
 #define tmpl_is_attr_unresolved(vpt) 		(vpt->type == TMPL_TYPE_ATTR_UNRESOLVED)
 #define tmpl_is_xlat_unresolved(vpt) 		(vpt->type == TMPL_TYPE_XLAT_UNRESOLVED)
@@ -544,7 +545,7 @@ static inline bool ar_is_raw(tmpl_attr_t const *ar)
  *
  * When used on the RHS it describes the value to assign to the attribute being created and
  * should be one of these types:
- * - #TMPL_TYPE_UNRESOLVED
+ * - #TMPL_TYPE_DATA_UNRESOLVED
  * - #TMPL_TYPE_XLAT_UNRESOLVED
  * - #TMPL_TYPE_ATTR
  * - #TMPL_TYPE_EXEC
@@ -566,7 +567,7 @@ struct tmpl_s {
 	fr_token_t	_CONST quote;		//!< What type of quoting was around the raw string.
 
 	union {
-		char *unescaped;		//!< Unescaped form of the name, used for TMPL_TYPE_UNRESOLVED
+		char *unescaped;		//!< Unescaped form of the name, used for TMPL_TYPE_DATA_UNRESOLVED
 						///< and TMPL_TYPE_REGEX_UNCOMPILED.
 
 		_CONST struct {

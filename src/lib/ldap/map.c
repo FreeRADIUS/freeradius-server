@@ -107,7 +107,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 
 			talloc_free(attr_str);
 
-			if (tmpl_is_unresolved(attr->lhs)) {
+			if (tmpl_is_data_unresolved(attr->lhs)) {
 			    RWDEBUG("Failed parsing left side of \"%pV\", skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
 				talloc_free(attr);
@@ -220,7 +220,7 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 		break;
 
 	case TMPL_TYPE_ATTR_UNRESOLVED:

@@ -522,7 +522,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		/*
 		 *	The tmpl code does NOT return tmpl_type_data
 		 *	for string data without xlat.  Instead, it
-		 *	creates TMPL_TYPE_UNRESOLVED.
+		 *	creates TMPL_TYPE_DATA_UNRESOLVED.
 		 */
 		if (tmpl_resolve(map->lhs, NULL) < 0) {
 			fr_sbuff_set(&our_in, &m_lhs);	/* Marker points to LHS */
@@ -655,13 +655,13 @@ parse_rhs:
 		/*
 		 *	The tmpl code does NOT return tmpl_type_data
 		 *	for string data without xlat.  Instead, it
-		 *	creates TMPL_TYPE_UNRESOLVED.
+		 *	creates TMPL_TYPE_DATA_UNRESOLVED.
 		 */
 		if (tmpl_resolve(map->rhs, NULL) < 0) {
 			fr_sbuff_set(&our_in, &m_rhs);	/* Marker points to RHS */
 			goto error;
 		}
-	} else if (tmpl_is_attr(map->lhs) && (tmpl_is_unresolved(map->rhs) || tmpl_is_data(map->rhs))) {
+	} else if (tmpl_is_attr(map->lhs) && (tmpl_is_data_unresolved(map->rhs) || tmpl_is_data(map->rhs))) {
 		/*
 		 *	If the operator is "true" or "false", just
 		 *	cast the RHS to string, as no one will care
@@ -1607,7 +1607,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		fr_pair_append(out, n);
 		break;
 
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 		fr_assert(tmpl_is_attr(map->lhs));
 		fr_assert(tmpl_attr_tail_da(map->lhs));	/* We need to know which attribute to create */
 
@@ -2336,7 +2336,7 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 	 *	Just print the value being assigned
 	 */
 	default:
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 		fr_pair_aprint_value_quoted(request, &rhs, vp, map->rhs->quote);
 		break;
 

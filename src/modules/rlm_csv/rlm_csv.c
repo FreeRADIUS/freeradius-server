@@ -418,7 +418,7 @@ static int csv_map_verify(map_t *map, void *instance)
 	 *	we're retrieving from LDAP.
 	 */
 	switch (map->rhs->type) {
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 		offset = -1;
 		if (fieldname2offset(inst, map->rhs->name, &offset) < 0) {
 			cf_log_err(map->ci, "Unknown field '%s'", map->rhs->name);
@@ -918,7 +918,7 @@ redo:
 		/*
 		 *	Avoid memory allocations if possible.
 		 */
-		if (!tmpl_is_unresolved(map->rhs)) {
+		if (!tmpl_is_data_unresolved(map->rhs)) {
 			if (tmpl_aexpand(request, &field_name, request, map->rhs, NULL, NULL) < 0) {
 				REXDENT();
 				REDEBUG("Failed expanding RHS at %s", map->lhs->name);

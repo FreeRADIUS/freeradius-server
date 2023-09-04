@@ -330,7 +330,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 #endif
 
 		switch (map->rhs->type) {
-		case TMPL_TYPE_UNRESOLVED:
+		case TMPL_TYPE_DATA_UNRESOLVED:
 			p = map->rhs->name;
 			slen = fr_jpath_parse(cache, &cache->jpath, p, map->rhs->len);
 			if (slen <= 0) {
@@ -484,7 +484,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void *mod_inst
 		/*
 		 *	Cached types
 		 */
-		case TMPL_TYPE_UNRESOLVED:
+		case TMPL_TYPE_DATA_UNRESOLVED:
 		case TMPL_TYPE_DATA:
 			to_eval.jpath = cache->jpath;
 

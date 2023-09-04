@@ -261,7 +261,7 @@ fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
  * @param[in] bufflen		Length of expansion buffer. Must be >= 2.
  * @param[in] request		Current request.
  * @param[in] vpt		to expand. Must be one of the following types:
- *				- #TMPL_TYPE_UNRESOLVED
+ *				- #TMPL_TYPE_DATA_UNRESOLVED
  *				- #TMPL_TYPE_EXEC
  *				- #TMPL_TYPE_XLAT
  *				- #TMPL_TYPE_ATTR
@@ -296,7 +296,7 @@ ssize_t _tmpl_to_type(void *out,
 	fr_assert(!buff || (bufflen >= 2));
 
 	switch (vpt->type) {
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 		RDEBUG4("EXPAND TMPL UNRESOLVED");
 		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, vpt->name, vpt->len, false);
 		src_type = FR_TYPE_STRING;
@@ -540,7 +540,7 @@ ssize_t _tmpl_to_type(void *out,
  * @param out		Where to write pointer to the new buffer.
  * @param request	Current request.
  * @param vpt		to expand. Must be one of the following types:
- *			- #TMPL_TYPE_UNRESOLVED
+ *			- #TMPL_TYPE_DATA_UNRESOLVED
  *			- #TMPL_TYPE_EXEC
  *			- #TMPL_TYPE_XLAT
  *			- #TMPL_TYPE_ATTR
@@ -573,8 +573,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	TMPL_VERIFY(vpt);
 
 	switch (vpt->type) {
-	case TMPL_TYPE_UNRESOLVED:
-		RDEBUG4("EXPAND TMPL UNRESOLVED");
+	case TMPL_TYPE_DATA_UNRESOLVED:
+		RDEBUG4("EXPAND TMPL DATA UNRESOLVED");
 
 		fr_value_box_bstrndup_shallow(&value, NULL, vpt->name, vpt->len, false);
 		to_cast = &value;

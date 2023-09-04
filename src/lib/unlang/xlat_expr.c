@@ -141,7 +141,7 @@ static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow)
 
 	if ((arg->type != XLAT_TMPL) || (arg->quote != T_BARE_WORD)) return 0;
 
-	if (!tmpl_is_unresolved(arg->vpt)) return 0;
+	if (!tmpl_is_data_unresolved(arg->vpt)) return 0;
 
 	len = talloc_array_length(arg->vpt->name) - 1;
 
@@ -533,7 +533,7 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 		return 0;
 	}
 
-	if (tmpl_is_unresolved(regex->vpt)) {
+	if (tmpl_is_data_unresolved(regex->vpt)) {
 		fr_strerror_const("Regex must be resolved before instantiation");
 		return -1;
 	}
@@ -2260,7 +2260,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		 *	On the other hand, if people assign static strings to non-string
 		 *	attributes... they sort of deserve what they get.
 		 */
-		if (tmpl_is_unresolved(vpt) && (tmpl_resolve(vpt, NULL) < 0)) goto error;
+		if (tmpl_is_data_unresolved(vpt) && (tmpl_resolve(vpt, NULL) < 0)) goto error;
 	}
 
 	fr_sbuff_skip_whitespace(&our_in);

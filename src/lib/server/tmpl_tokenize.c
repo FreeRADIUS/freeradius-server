@@ -116,7 +116,7 @@ fr_table_num_ordered_t const tmpl_type_table[] = {
 	{ L("regex-uncompiled"),	TMPL_TYPE_REGEX_UNCOMPILED	},
 	{ L("regex-xlat"),		TMPL_TYPE_REGEX_XLAT		},
 
-	{ L("unresolved"),		TMPL_TYPE_UNRESOLVED 		},
+	{ L("data-unresolved"),		TMPL_TYPE_DATA_UNRESOLVED 	},
 	{ L("attr-unresolved"),		TMPL_TYPE_ATTR_UNRESOLVED	},
 	{ L("exec-unresolved"),		TMPL_TYPE_EXEC_UNRESOLVED	},
 	{ L("xlat-unresolved"),		TMPL_TYPE_XLAT_UNRESOLVED	},
@@ -355,7 +355,7 @@ void tmpl_debug(tmpl_t const *vpt)
 
 	default:
 		if (tmpl_needs_resolving(vpt)) {
-			if (tmpl_is_unresolved(vpt)) {
+			if (tmpl_is_data_unresolved(vpt)) {
 				FR_FAULT_LOG("\tunescaped  : %pR", fr_box_strvalue_buffer(vpt->data.unescaped));
 				FR_FAULT_LOG("\tlen        : %zu", talloc_array_length(vpt->data.unescaped) - 1);
 			} else {
@@ -2891,7 +2891,7 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
-	tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, T_BARE_WORD,
+	tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, T_BARE_WORD,
 		  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 	vpt->data.unescaped = str;
 	*out = vpt;
@@ -3106,7 +3106,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
-		tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote,
+		tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote,
 			  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 		vpt->data.unescaped = str;
 		*out = vpt;
@@ -3126,7 +3126,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		slen = fr_sbuff_out_aunescape_until(vpt, &str, &our_in, SIZE_MAX,
 						    p_rules ? p_rules->terminals : NULL,
 						    p_rules ? p_rules->escapes : NULL);
-		tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen, t_rules);
+		tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen, t_rules);
 		vpt->data.unescaped = str;
 		break;
 
@@ -3167,7 +3167,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			if (xlat_to_string(vpt, &str, &head)) {
 				TALLOC_FREE(head);
 
-				tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote,
+				tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote,
 				         fr_sbuff_start(&our_in), slen, t_rules);
 				vpt->data.unescaped = str;	/* Store the unescaped string for parsing later */
 				break;
@@ -3296,7 +3296,7 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 	/*
 	 *	Copy over the unescaped data
 	 */
-	if (tmpl_is_unresolved(vpt) || tmpl_is_regex_uncompiled(vpt)) {
+	if (tmpl_is_data_unresolved(vpt) || tmpl_is_regex_uncompiled(vpt)) {
 		if (unlikely(!(vpt->data.unescaped = talloc_bstrdup(vpt, in->data.unescaped)))) {
 		error:
 			talloc_free(vpt);
@@ -3451,7 +3451,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 	 */
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_EXEC_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 		break;
@@ -3521,7 +3521,7 @@ ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t con
 
 /** @name Change a #tmpl_t type, usually by casting or resolving a reference
  *
- * #tmpl_cast_in_place can be used to convert #TMPL_TYPE_UNRESOLVED to a #TMPL_TYPE_DATA of a
+ * #tmpl_cast_in_place can be used to convert #TMPL_TYPE_DATA_UNRESOLVED to a #TMPL_TYPE_DATA of a
  * specified #fr_type_t.
  *
  * #tmpl_attr_unknown_add converts a #TMPL_TYPE_ATTR with an unknown #fr_dict_attr_t to a
@@ -3563,13 +3563,13 @@ fr_token_t tmpl_cast_quote(fr_token_t existing_quote,
 }
 
 
-/** Convert #tmpl_t of type #TMPL_TYPE_UNRESOLVED or #TMPL_TYPE_DATA to #TMPL_TYPE_DATA of type specified
+/** Convert #tmpl_t of type #TMPL_TYPE_DATA_UNRESOLVED or #TMPL_TYPE_DATA to #TMPL_TYPE_DATA of type specified
  *
  * @note Conversion is done in place.
- * @note Irrespective of whether the #tmpl_t was #TMPL_TYPE_UNRESOLVED or #TMPL_TYPE_DATA,
+ * @note Irrespective of whether the #tmpl_t was #TMPL_TYPE_DATA_UNRESOLVED or #TMPL_TYPE_DATA,
  *	on successful cast it will be #TMPL_TYPE_DATA.
  *
- * @param[in,out] vpt	The template to modify. Must be of type #TMPL_TYPE_UNRESOLVED
+ * @param[in,out] vpt	The template to modify. Must be of type #TMPL_TYPE_DATA_UNRESOLVED
  *			or #TMPL_TYPE_DATA.
  * @param[in] type	to cast to.
  * @param[in] enumv	Enumerated dictionary values associated with a #fr_dict_attr_t.
@@ -3581,10 +3581,10 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 {
 	TMPL_VERIFY(vpt);
 
-	fr_assert(tmpl_is_unresolved(vpt) || tmpl_is_data(vpt));
+	fr_assert(tmpl_is_data_unresolved(vpt) || tmpl_is_data(vpt));
 
 	switch (vpt->type) {
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	{
 		char *unescaped = vpt->data.unescaped;
 
@@ -3634,7 +3634,7 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 		 *	data types.  They're only used when processing
 		 *	unresolved tmpls.
 		 *
-		 *	i.e. TMPL_TYPE_UNRESOLVED != TMPL_TYPE_DATA(FR_TYPE_STRING)
+		 *	i.e. TMPL_TYPE_DATA_UNRESOLVED != TMPL_TYPE_DATA(FR_TYPE_STRING)
 		 */
 		if (fr_value_box_cast_in_place(vpt, &vpt->data.literal, type, NULL) < 0) return -1;
 
@@ -3944,9 +3944,11 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 		}		
 		
 	/*
-	 *	Convert unresolved tmpls int enumvs, or failing that, string values.
+	 *	Convert unresolved tmpls into enumvs, or failing that, string values.
+	 *
+	 *	Unresolved tmpls are by definition TMPL_TYPE_DATA.
 	 */
-	} else if (tmpl_is_unresolved(vpt)) {
+	} else if (tmpl_is_data_unresolved(vpt)) {
 		fr_type_t		dst_type = tmpl_rules_cast(vpt);
 		fr_dict_attr_t const	*enumv = tmpl_rules_enumv(vpt);
 
@@ -3999,7 +4001,7 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 
 /** Reset the tmpl, leaving only the name in place
  *
- * After calling this function, the tmpl type will revert to TMPL_TYPE_UNRESOLVED
+ * After calling this function, the tmpl type will revert to TMPL_TYPE_DATA_UNRESOLVED
  * and only the name and quoting will be preserved.
  *
  * @param[in] vpt	to reset.
@@ -4007,7 +4009,7 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 void tmpl_unresolve(tmpl_t *vpt)
 {
 	tmpl_t	tmp = {
-			.type = TMPL_TYPE_UNRESOLVED,
+			.type = TMPL_TYPE_DATA_UNRESOLVED,
 			.name = vpt->name,
 			.len = vpt->len,
 			.quote = vpt->quote
@@ -4020,7 +4022,7 @@ void tmpl_unresolve(tmpl_t *vpt)
 		break;
 
 	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_REGEX_UNCOMPILED:
 		break;
 
@@ -4869,9 +4871,9 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 		}
 		break;
 
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 		if (!vpt->data.unescaped) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_UNRESOLVED "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA_UNRESOLVED "
 					     "unescaped field is NULL", file, line);
 		 }
 		break;

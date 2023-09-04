@@ -437,7 +437,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	Unparsed.  These are easy because they
 	 *	can only have a single value.
 	 */
-	if (tmpl_is_unresolved(mutated->rhs)) {
+	if (tmpl_is_data_unresolved(mutated->rhs)) {
 		fr_type_t type = tmpl_attr_tail_da(mutated->lhs)->type;
 
 		fr_assert(tmpl_is_attr(mutated->lhs));
@@ -885,7 +885,7 @@ static inline void map_list_mod_debug(request_t *request,
 	 */
 	default:
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_DATA:
 		rhs = fr_asprintf(request, "%s%pV%s", quote, vb, quote);
 		break;
