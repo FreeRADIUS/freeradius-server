@@ -257,7 +257,10 @@ int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
 			}
 		}
 
-		if (init->func(dl, sym, init->uctx) < 0) return -1;
+		if (init->func(dl, sym, init->uctx) < 0) {
+			fr_strerror_printf("Iinitialiser \"%s\" failed", buffer);
+			return -1;
+		}
 	}
 
 	return 0;

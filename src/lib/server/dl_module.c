@@ -453,7 +453,7 @@ dl_module_t const *dl_module(dl_module_t const *parent, char const *name, dl_mod
 	DEBUG3("%s validated.  Handle address %p, symbol address %p", module_name, dl, common);
 
 	if (dl_symbol_init(dl_module_loader->dl_loader, dl) < 0) {
-		ERROR("Failed calling initializers for module \"%s\"", module_name);
+		PERROR("Failed calling initializers for module \"%s\"", module_name);
 		goto error;
 	}
 
