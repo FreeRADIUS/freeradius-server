@@ -4745,14 +4745,9 @@ static int8_t instruction_cmp(void const *one, void const *two)
 }
 
 
-void unlang_compile_init(void)
+void unlang_compile_init(TALLOC_CTX *ctx)
 {
-	unlang_instruction_tree = fr_rb_alloc(NULL, instruction_cmp, NULL);
-}
-
-void unlang_compile_free(void)
-{
-	TALLOC_FREE(unlang_instruction_tree);
+	unlang_instruction_tree = fr_rb_alloc(ctx, instruction_cmp, NULL);
 }
 
 

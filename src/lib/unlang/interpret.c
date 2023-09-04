@@ -1688,17 +1688,17 @@ unlang_interpret_t *unlang_interpret_get_thread_default(void)
 	return talloc_get_type_abort(intp_thread_default, unlang_interpret_t);
 }
 
-int unlang_interpret_init_global(void)
+int unlang_interpret_init_global(TALLOC_CTX *ctx)
 {
 	xlat_t	*xlat;
 	/*
 	 *  Should be void, but someone decided not to register multiple xlats
 	 *  breaking the convention we use everywhere else in the server...
 	 */
-	if (unlikely((xlat = xlat_func_register(NULL, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(ctx, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_args_set(xlat, unlang_interpret_xlat_args);
 
-	if (unlikely((xlat = xlat_func_register(NULL, "cancel", unlang_cancel_xlat, FR_TYPE_VOID)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(ctx, "cancel", unlang_cancel_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_args_set(xlat, unlang_cancel_xlat_args);
 
 	return 0;

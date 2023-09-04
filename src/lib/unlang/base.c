@@ -69,6 +69,8 @@ void unlang_register(int type, unlang_op_t *op)
 	memcpy(&unlang_ops[type], op, sizeof(unlang_ops[type]));
 }
 
+static TALLOC_CTX *unlang_ctx = NULL;
+
 int unlang_init_global(void)
 {
 	if (instance_count > 0) {
@@ -76,17 +78,35 @@ int unlang_init_global(void)
 		return 0;
 	}
 
+	unlang_ctx = talloc_init("unlang");
+	if (!unlang_ctx) return NULL;
+
 	/*
 	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.
 	 */
-	if (xlat_init() < 0) return -1;
+	if (xlat_init(unlang_ctx) < 0) {
+	fail:
+		TALLOC_FREE(unlang_ctx);
 
-	unlang_interpret_init_global();
+		memset(unlang_ops, 0, sizeof(unlang_ops));
+		return -1;
+	}
 
-	/* Register operations for the default keywords */
-	unlang_compile_init();
+	unlang_interpret_init_global(unlang_ctx);
+
+	/*
+	 *	Operations which can fail, and which require cleanup.
+	 */
+	if (unlang_subrequest_op_init() < 0) goto fail;
+
+	/*
+	 *	Register operations for the default keywords.  The
+	 *	operations listed below cannot fail, and do not
+	 *	require cleanup.
+	 */
+	unlang_compile_init(unlang_ctx);
 	unlang_condition_init();
-	unlang_foreach_init();
+	unlang_foreach_init(unlang_ctx);
 	unlang_function_init();
 	unlang_group_init();
 	unlang_load_balance_init();
@@ -94,7 +114,6 @@ int unlang_init_global(void)
 	unlang_module_init();
 	unlang_parallel_init();
 	unlang_return_init();
-	if (unlang_subrequest_op_init() < 0) return -1;
 	unlang_detach_init();
 	unlang_switch_init();
 	unlang_call_init();
@@ -114,8 +133,10 @@ void unlang_free_global(void)
 {
 	if (--instance_count > 0) return;
 
-	unlang_compile_free();
-	unlang_foreach_free();
 	unlang_subrequest_op_free();
+	TALLOC_FREE(unlang_ctx);
+
+	memset(unlang_ops, 0, sizeof(unlang_ops));
+
 	xlat_free();
 }

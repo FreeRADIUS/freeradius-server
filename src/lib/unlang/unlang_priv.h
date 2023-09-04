@@ -589,9 +589,7 @@ void		unlang_caller_init(void);
 
 void		unlang_condition_init(void);
 
-void		unlang_foreach_init(void);
-
-void		unlang_foreach_free(void);
+void		unlang_foreach_init(TALLOC_CTX *ctx);
 
 void		unlang_function_init(void);
 

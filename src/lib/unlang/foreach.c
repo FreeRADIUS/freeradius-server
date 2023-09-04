@@ -268,14 +268,14 @@ static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-void unlang_foreach_init(void)
+void unlang_foreach_init(TALLOC_CTX *ctx)
 {
 	size_t	i;
 
 	for (i = 0; i < NUM_ELEMENTS(xlat_foreach_names); i++) {
 		xlat_t *x;
 
-		x = xlat_func_register(NULL, xlat_foreach_names[i],
+		x = xlat_func_register(ctx, xlat_foreach_names[i],
 				  unlang_foreach_xlat, FR_TYPE_VOID);
 		fr_assert(x);
 		xlat_func_flags_set(x, XLAT_FUNC_FLAG_INTERNAL);
@@ -294,13 +294,4 @@ void unlang_foreach_init(void)
 				.name = "break",
 				.interpret = unlang_break,
 			   });
-}
-
-void unlang_foreach_free(void)
-{
-	size_t	i;
-
-	for (i = 0; i < NUM_ELEMENTS(xlat_foreach_names); i++) {
-		xlat_func_unregister(xlat_foreach_names[i]);
-	}
 }

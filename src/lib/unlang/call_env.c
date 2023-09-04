@@ -271,11 +271,12 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 {
 	call_env_ctx_t	*call_env_ctx = talloc_get_type_abort(uctx, call_env_ctx_t);
 	TALLOC_CTX	*ctx;
-	call_env_parsed_t const	*env;
+	call_env_parsed_t const	*env = NULL;
 	void		**out;
 
 	while ((call_env_ctx->last_expanded = call_env_parsed_next(call_env_ctx->parsed, call_env_ctx->last_expanded))) {
 		env = call_env_ctx->last_expanded;
+		fr_assert(env != NULL);
 
 		if (!env->tmpl_only) break;
 
@@ -292,6 +293,8 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 	}
 
 	ctx = *call_env_ctx->data;
+
+	fr_assert(env != NULL);
 
 	/*
 	 *	Multi pair options should allocate boxes in the context of the array

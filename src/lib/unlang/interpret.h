@@ -168,7 +168,7 @@ void			unlang_interpret_stack_result_set(request_t *request, rlm_rcode_t code);
 
 TALLOC_CTX		*unlang_interpret_frame_talloc_ctx(request_t *request);
 
-int			unlang_interpret_init_global(void);
+int			unlang_interpret_init_global(TALLOC_CTX *ctx);
 #ifdef __cplusplus
 }
 #endif
