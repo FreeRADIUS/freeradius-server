@@ -79,7 +79,7 @@ int unlang_init_global(void)
 	}
 
 	unlang_ctx = talloc_init("unlang");
-	if (!unlang_ctx) return NULL;
+	if (!unlang_ctx) return -1;
 
 	/*
 	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.
