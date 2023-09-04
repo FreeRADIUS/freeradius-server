@@ -377,6 +377,7 @@ int fr_ldap_map_do(request_t *request,
 			char		*value;
 
 			tmpl_rules_t parse_rules = {
+				.at_runtime = true,
 				.attr = {
 					.dict_def = request->dict,
 					.list_def = request_attr_request,
