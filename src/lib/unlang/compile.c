@@ -243,20 +243,6 @@ static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *c
 	if (!vpt->rules.attr.dict_def) tmpl_set_dict_def(vpt, dict);
 
 	/*
-	 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
-	 */
-	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
-		if (tmpl_attr_to_xlat(ctx, vpt_p) < 0) {
-			return false;
-		}
-
-		/*
-		 *	The VPT has been rewritten, so use the new one.
-		 */
-		vpt = *vpt_p;
-	} /* it's now xlat, so we need to resolve it. */
-
-	/*
 	 *	Fixup any other tmpl types
 	 */
 	if (tmpl_resolve(vpt, &(tmpl_res_rules_t){ .dict_def = dict, .force_dict_def = (dict != NULL)}) < 0) {

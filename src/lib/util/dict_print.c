@@ -39,7 +39,6 @@ ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type
 	FLAG_SET(internal);
 	FLAG_SET(array);
 	FLAG_SET(has_value);
-	FLAG_SET(virtual);
 	FLAG_SET(counter);
 	FLAG_SET(name_only);
 

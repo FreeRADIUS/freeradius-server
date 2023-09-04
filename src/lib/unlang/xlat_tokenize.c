@@ -701,32 +701,9 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	}
 
 	/*
-	 *	Deal with virtual attributes.
-	 */
-	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
-		if (tmpl_attr_num_elements(vpt) > 2) {
-			fr_strerror_const("Virtual attributes cannot be nested.");
-			goto error;
-		}
-
-		/*
-		 *	This allows xlat functions to be
-		 *	used to provide values for virtual
-		 *	attributes.  If we fail to resolve
-		 *	a virtual attribute to a function
-		 *	it's likely going to be handled as
-		 *	a virtual attribute by
-		 *	xlat_eval_pair_virtual
-		 *
-		 *	We really need a virtual attribute
-		 *	registry so we can check if the
-		 *	attribute is valid.
-		 */
-		if (xlat_resolve_virtual_attribute(node, vpt) < 0) goto do_attr;
-	/*
 	 *	Deal with unresolved attributes.
 	 */
-	} else if (tmpl_is_attr_unresolved(vpt)) {
+	if (tmpl_is_attr_unresolved(vpt)) {
 		/*
 		 *	Could it be a virtual attribute?
 		 */
@@ -2053,11 +2030,10 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, tmpl_t **vpt_p)
 	 *	see if it's actually a virtual attribute.
 	 */
 	if ((tmpl_attr_num_elements(vpt) == 1) ||
-	    (((tmpl_attr_list_head(tmpl_attr(vpt))->da) == request_attr_request) && tmpl_attr_num_elements(vpt) == 2)){
-		if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
-			func = xlat_func_find(tmpl_attr_tail_da(vpt)->name, -1);
+	    (((tmpl_attr_list_head(tmpl_attr(vpt))->da) == request_attr_request) && tmpl_attr_num_elements(vpt) == 2)) {
+		if (tmpl_is_attr_unresolved(vpt)) {
+			func = xlat_func_find(tmpl_attr_tail_unresolved(vpt), -1);
 			if (!func) {
-			unresolved:
 				node = xlat_exp_alloc(head, XLAT_VIRTUAL_UNRESOLVED, vpt->name, vpt->len);
 
 				/*
@@ -2070,17 +2046,11 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, tmpl_t **vpt_p)
 				goto done;
 			}
 
-		virtual:
 			node = xlat_exp_alloc(head, XLAT_VIRTUAL, vpt->name, vpt->len);
 			node->vpt = talloc_move(node, vpt_p);
 			node->call.func = func;
 			node->flags = func->flags;
 			goto done;
-
-		} else if (tmpl_is_attr_unresolved(vpt)) {
-			func = xlat_func_find(tmpl_attr_tail_unresolved(vpt), -1);
-			if (!func) goto unresolved;
-			goto virtual;
 		}
 	}
 

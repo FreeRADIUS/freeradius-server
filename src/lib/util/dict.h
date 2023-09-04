@@ -89,8 +89,6 @@ typedef struct {
 
 	unsigned int		has_value : 1;			//!< Has a value.
 
-	unsigned int		virtual : 1;			//!< for dynamic expansion
-
 	unsigned int		is_unsigned : 1;       		//!< hackity hack for dates and time deltas
 
 	unsigned int		counter : 1;       		//!< integer attribute is actually an impulse / counter

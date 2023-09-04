@@ -1484,11 +1484,7 @@ static xlat_action_t xlat_attr_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
 
 	vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
-	if (!vp) {
-		dst->vb_bool = tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual;
-	} else {
-		dst->vb_bool = true;
-	}
+	dst->vb_bool = (vp != NULL);
 
 	if (do_free) talloc_const_free(vpt);
 	tmpl_dcursor_clear(&cc);

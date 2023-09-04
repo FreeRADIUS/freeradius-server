@@ -381,9 +381,6 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 		} else if (strcmp(key, "counter") == 0) {
 			flags->counter = 1;
 
-		} else if (strcmp(key, "virtual") == 0) {
-			flags->virtual = 1;
-
 		} else if (strcmp(key, "secret") == 0) {
 			flags->secret = 1;
 
