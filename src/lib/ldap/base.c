@@ -532,8 +532,6 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 {
 	fr_ldap_config_t const	*handle_config = pconn->config;
 
-	struct timeval			tv;		// Holds timeout values.
-
 	LDAPControl			*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl			*our_clientctrls[LDAP_MAX_CONTROLS];
 
@@ -563,12 +561,6 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 		ROPTIONAL(RDEBUG2, DEBUG2, "Performing unfiltered search in \"%s\", scope \"%s\"", dn,
 			  fr_table_str_by_value(fr_ldap_scope, scope, "<INVALID>"));
 	}
-	/*
-	 *	If LDAP search produced an error it should also be logged
-	 *	to the ld. result should pick it up without us
-	 *	having to pass it explicitly.
-	 */
-	memset(&tv, 0, sizeof(tv));
 
 	if (ldap_search_ext(pconn->handle, dn, scope, filter, search_attrs,
 			    0, our_serverctrls, our_clientctrls, NULL, 0, msgid) != LDAP_SUCCESS) {
