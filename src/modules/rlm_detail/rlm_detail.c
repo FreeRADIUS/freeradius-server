@@ -309,14 +309,17 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 		src_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_packet_src_address);
 		dst_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_packet_dst_address);
 
-		detail_fr_pair_fprint(request, out, src_vp);
-		detail_fr_pair_fprint(request, out, dst_vp);
+		/*
+		 *	These pairs will exist, but Coverity doesn't know that
+		 */
+		if (src_vp) detail_fr_pair_fprint(request, out, src_vp);
+		if (dst_vp) detail_fr_pair_fprint(request, out, dst_vp);
 
 		src_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_packet_src_port);
 		dst_vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_packet_dst_port);
 
-		detail_fr_pair_fprint(request, out, src_vp);
-		detail_fr_pair_fprint(request, out, dst_vp);
+		if (src_vp) detail_fr_pair_fprint(request, out, src_vp);
+		if (dst_vp) detail_fr_pair_fprint(request, out, dst_vp);
 	}
 
 	/* Write each attribute/value to the log file */
