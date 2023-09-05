@@ -129,7 +129,7 @@ int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, proto_ldap_syn
 	memcpy(&ctrls[0]->ldctl_oid, &sync_ctl_oid, sizeof(ctrls[0]->ldctl_oid));
 	ctrl.ldctl_iscritical = 1;
 
-	ret = fr_ldap_search_async(&sync->msgid, NULL, &conn, config->base_dn, config->scope,
+	ret = fr_ldap_search_async(&sync->msgid, NULL, conn, config->base_dn, config->scope,
 				   config->filter, config->attrs, ctrls, NULL);
 	ber_free(ber, 1);
 

@@ -766,15 +766,15 @@ ssize_t		fr_ldap_xlat_filter(request_t *request, char const **sub, size_t sublen
 char const	*fr_ldap_error_str(fr_ldap_connection_t const *conn);
 
 fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, request_t *request,
-				     fr_ldap_connection_t **pconn,
+				     fr_ldap_connection_t *pconn,
 				     char const *dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-fr_ldap_rcode_t	fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
+fr_ldap_rcode_t	fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t *pconn,
 			       char const *dn, LDAPMod *mods[],
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-fr_ldap_rcode_t fr_ldap_extended_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
+fr_ldap_rcode_t fr_ldap_extended_async(int *msgid, request_t *request, fr_ldap_connection_t *pconn,
 				       char const *reqiod, struct berval *reqdata);
 
 fr_ldap_rcode_t	fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_connection_t const *conn,

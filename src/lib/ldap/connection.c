@@ -685,7 +685,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 			 *	If we are chasing a referral, referral_url will be populated and may
 			 *	have a base dn or scope to override the original query
 			 */
-			status = fr_ldap_search_async(&query->msgid, query->treq->request, &ldap_conn,
+			status = fr_ldap_search_async(&query->msgid, query->treq->request, ldap_conn,
 						      (referral_url && referral_url->lud_dn) ?
 						      	referral_url->lud_dn : query->dn,
 						      (referral_url && referral_url->lud_scope) ?
@@ -702,7 +702,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 			POPULATE_LDAP_CONTROLS(our_clientctrls, query->clientctrls);
 
 			status = fr_ldap_modify_async(&query->msgid, query->treq->request,
-						      &ldap_conn, query->dn, query->mods,
+						      ldap_conn, query->dn, query->mods,
 						      our_serverctrls, our_clientctrls);
 			break;
 
@@ -710,7 +710,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 			/*
 			 *	This query is an LDAP extended operation.
 			 */
-			status = fr_ldap_extended_async(&query->msgid, query->treq->request, &ldap_conn,
+			status = fr_ldap_extended_async(&query->msgid, query->treq->request, ldap_conn,
 							query->extended.reqoid, query->extended.reqdata);
 			break;
 
