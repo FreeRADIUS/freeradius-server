@@ -371,7 +371,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			 *	immutable.  For now, this is good enough.
 			 */
 			if (fr_pair_immutable(vp)) {
-				RWDEBUG("Not removing immitable %pP", vp);
+				RWDEBUG("Not removing immutable %pP", vp);
 				continue;
 			}
 
