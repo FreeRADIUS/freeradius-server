@@ -142,7 +142,6 @@ typedef struct {
 	uint32_t		transaction_id;		//!< previous transaction ID
 	uint8_t			*duid;			//!< the expected DUID, in wire format
 	size_t			duid_len;		//!< length of the expected DUID
-	bool			struct_nested;		//!< decode structs as nested
 } fr_dhcpv6_decode_ctx_t;
 
 /*

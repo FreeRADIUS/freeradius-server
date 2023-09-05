@@ -45,7 +45,8 @@ match 00 61 00 18 00 62 00 14 10 80 04 01 01 02 03 04 00 00 00 00 00 00 00 00 00
 #  The same as the input, with an added IP4RD-Map-Rule.IPv6-Prefix = 0x00..
 #
 decode-pair -
-match IP4RD = { IP4RD-Map-Rule.IPv4-Prefix-Len = 16, IP4RD-Map-Rule.IPv6-Prefix-Len = 128, IP4RD-Map-Rule.EA-Len = 4, IP4RD-Map-Rule.WPK-Authorized = 1, IP4RD-Map-Rule.IPv4-Prefix = 0x01020304, IP4RD-Map-Rule.IPv6-Prefix = 0x000000000000000000000000 }
+match IP4RD = { IP4RD-Map-Rule = { IPv4-Prefix-Len = 16, IPv6-Prefix-Len = 128, EA-Len = 4, WPK-Authorized = 1, IPv4-Prefix = 0x01020304, IPv6-Prefix = 0x000000000000000000000000 } }
+
 #
 #  Multiple rules
 #
@@ -53,7 +54,7 @@ encode-pair IP4RD = { IP4RD-Map-Rule.IPv4-Prefix-Len = 16, IP4RD-Map-Rule.IPv6-P
 match 00 61 00 30 00 62 00 14 10 80 04 01 01 02 03 04 00 00 00 00 00 00 00 00 00 00 00 00 00 62 00 14 08 00 04 01 7f 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00
 
 decode-pair -
-match IP4RD = { IP4RD-Map-Rule.IPv4-Prefix-Len = 16, IP4RD-Map-Rule.IPv6-Prefix-Len = 128, IP4RD-Map-Rule.EA-Len = 4, IP4RD-Map-Rule.WPK-Authorized = 1, IP4RD-Map-Rule.IPv4-Prefix = 0x01020304, IP4RD-Map-Rule.IPv6-Prefix = 0x000000000000000000000000, IP4RD-Map-Rule.IPv4-Prefix-Len = 8, IP4RD-Map-Rule.IPv6-Prefix-Len = 0, IP4RD-Map-Rule.EA-Len = 4, IP4RD-Map-Rule.WPK-Authorized = 1, IP4RD-Map-Rule.IPv4-Prefix = 0x7f000001, IP4RD-Map-Rule.IPv6-Prefix = 0x000000000000000000000000 }
+match IP4RD = { IP4RD-Map-Rule = { IPv4-Prefix-Len = 16, IPv6-Prefix-Len = 128, EA-Len = 4, WPK-Authorized = 1, IPv4-Prefix = 0x01020304, IPv6-Prefix = 0x000000000000000000000000 }, IP4RD-Map-Rule = { IPv4-Prefix-Len = 8, IPv6-Prefix-Len = 0, EA-Len = 4, WPK-Authorized = 1, IPv4-Prefix = 0x7f000001, IPv6-Prefix = 0x000000000000000000000000 } }
 
 #
 #   0                   1                   2                   3
@@ -82,7 +83,7 @@ encode-pair IP4RD-Non-Map-Rule.Traffic-Class-Provided = yes, IP4RD-Non-Map-Rule.
 match 00 63 00 02 81 1f
 
 decode-pair -
-match IP4RD-Non-Map-Rule.Traffic-Class-Provided = yes, IP4RD-Non-Map-Rule.Reserved = 0, IP4RD-Non-Map-Rule.Hub-And-Spoke = yes, IP4RD-Non-Map-Rule.Domain-PMTU = 31
+match IP4RD-Non-Map-Rule = { Traffic-Class-Provided = yes, Reserved = 0, Hub-And-Spoke = yes, Domain-PMTU = 31 }
 
 count
 match 15
