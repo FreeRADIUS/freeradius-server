@@ -84,11 +84,11 @@ else
 $(OUTPUT)/${1}: NEW_COND=-S forbid_update=yes -S tmpl_tokenize_all_nested=yes -S pair_legacy_nested=true
 
 ifeq "${1}" "mschap"
-$(OUTPUT)/${1}: $(BUILD_DIR)/lib/rlm_mschap.la
+$(OUTPUT)/${1}: $(BUILD_DIR)/lib/local/rlm_mschap.la $(BUILD_DIR)/lib/rlm_mschap.la
 endif
 
 ifeq "${1}" "xlat-dhcpv4"
-$(OUTPUT)/${1}: $(BUILD_DIR)/lib/libfreeradius-dhcpv4.la
+$(OUTPUT)/${1}: $(BUILD_DIR)/lib/local/libfreeradius-dhcpv4.la $(BUILD_DIR)/lib/libfreeradius-dhcpv4.la
 endif
 endif
 
