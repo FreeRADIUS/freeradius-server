@@ -254,7 +254,15 @@ static xlat_exp_t *logical_peephole_optimize(xlat_exp_t *lhs, fr_token_t op, xla
 	 *	lhs->call.args->flags.can_purify |= rhs->flags.can_purify | rhs->flags.pure;
 	 *	lhs->flags.can_purify = lhs->call.args->flags.can_purify;
 	 */
-	if (!is_truthy(lhs, &value)) return NULL;
+	if (!is_truthy(lhs, &value)) {
+		xlat_exp_t *tmp;
+
+		if (!is_truthy(rhs, &value)) return NULL;
+
+		tmp = lhs;
+		lhs = rhs;
+		rhs = tmp;
+	}
 
 	/*
 	 *	1 && FOO   --> FOO

@@ -649,13 +649,11 @@ match false
 #
 #  More short-circuit evaluations
 #
-#  @todo - peephole - optimise at parse time
-#
 condition (&User-Name == "bob") && (false)
-match ((&User-Name == "bob") && false)
+match false
 
 condition (&User-Name == "bob") || (true)
-match ((&User-Name == "bob") || true)
+match true
 
 #
 #  A && (B || C) is not the same as (A && B) || C, for 0/1/1
