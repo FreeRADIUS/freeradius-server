@@ -410,7 +410,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out, request_t *request,
 	case REDIS_REPLY_STRING:
 	case REDIS_REPLY_INTEGER:
 	{
-		fr_value_box_t vb;
+		fr_value_box_t vb = FR_VALUE_BOX_INITIALISER_NULL(vb);
 
 		/* Logs own errors */
 		if (fr_redis_reply_to_value_box(map, &vb, value,
