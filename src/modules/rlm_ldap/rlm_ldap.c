@@ -298,16 +298,6 @@ typedef struct {
 	ldap_auth_call_env_t	*call_env;
 } ldap_auth_ctx_t;
 
-/** Holds state of in progress async profile lookups
- *
- */
-typedef struct {
-	fr_ldap_query_t		*query;
-	char const		*dn;
-	rlm_ldap_t const	*inst;
-	fr_ldap_map_exp_t	const *expanded;
-} ldap_profile_ctx_t;
-
 /** Holds state of in progress ldap user modifications
  *
  */
@@ -1235,108 +1225,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/** Process the results of a profile lookup
- *
- */
-static unlang_action_t ldap_map_profile_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-					       void *uctx)
-{
-	ldap_profile_ctx_t	*profile_ctx = talloc_get_type_abort(uctx, ldap_profile_ctx_t);
-	fr_ldap_query_t		*query = profile_ctx->query;
-	LDAP			*handle;
-	LDAPMessage		*entry = NULL;
-	int			ldap_errno;
-	rlm_rcode_t		rcode = RLM_MODULE_OK;
-
-	switch (query->ret) {
-	case LDAP_RESULT_SUCCESS:
-		break;
-
-	case LDAP_RESULT_NO_RESULT:
-	case LDAP_RESULT_BAD_DN:
-		RDEBUG2("Profile object \"%s\" not found", profile_ctx->dn);
-		rcode = RLM_MODULE_NOTFOUND;
-		goto finish;
-
-	default:
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
-	}
-
-	fr_assert(query->result);
-	handle = query->ldap_conn->handle;
-
-	entry = ldap_first_entry(handle, query->result);
-	if (!entry) {
-		ldap_get_option(handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
-		rcode = RLM_MODULE_NOTFOUND;
-		goto finish;
-	}
-
-	RDEBUG2("Processing profile attributes");
-	RINDENT();
-	if (fr_ldap_map_do(request, profile_ctx->inst->valuepair_attr,
-			   profile_ctx->expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
-	REXDENT();
-
-finish:
-	talloc_free(profile_ctx);
-	RETURN_MODULE_RCODE(rcode);
-}
-
-/** Cancel an in progress profile lookup
- *
- */
-static void ldap_map_profile_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
-{
-	ldap_profile_ctx_t	*profile_ctx = talloc_get_type_abort(uctx, ldap_profile_ctx_t);
-
-	if (!profile_ctx->query || !profile_ctx->query->treq) return;
-
-	fr_trunk_request_signal_cancel(profile_ctx->query->treq);
-}
-
-/** Search for and apply an LDAP profile
- *
- * LDAP profiles are mapped using the same attribute map as user objects, they're used to add common
- * sets of attributes to the request.
- *
- * @param[in] request		Current request.
- * @param[in] autz_ctx		Authorization context being processed.
- * @param[in] dn		of profile object to apply.
- * @param[in] expanded		Structure containing a list of xlat
- *				expanded attribute names and mapping information.
- * @return One of the RLM_MODULE_* values.
- */
-static unlang_action_t rlm_ldap_map_profile(request_t *request, ldap_autz_ctx_t *autz_ctx,
-					    char const *dn, fr_ldap_map_exp_t const *expanded)
-{
-	rlm_ldap_t const	*inst = autz_ctx->inst;
-	fr_ldap_thread_trunk_t	*ttrunk = autz_ctx->ttrunk;
-	ldap_profile_ctx_t	*profile_ctx;
-	rlm_rcode_t		ret;
-
-	if (!dn || !*dn) return UNLANG_ACTION_CALCULATE_RESULT;
-
-	MEM(profile_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_profile_ctx_t));
-	*profile_ctx = (ldap_profile_ctx_t) {
-		.dn = dn,
-		.expanded = expanded,
-		.inst = inst
-	};
-
-	if (unlang_function_push(request, NULL, ldap_map_profile_resume, ldap_map_profile_cancel,
-				 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, profile_ctx) < 0) {
-		talloc_free(profile_ctx);
-		return UNLANG_ACTION_FAIL;
-	}
-
-	return fr_ldap_trunk_search(&ret, profile_ctx, &profile_ctx->query, request, ttrunk, dn,
-				    inst->profile_scope, autz_ctx->call_env->profile_filter.vb_strvalue,
-				    expanded->attrs, NULL, NULL);
-}
-
 /** Start LDAP authorization with async lookup of user DN
  *
  */
@@ -1507,8 +1395,8 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			unlang_action_t	ret;
 
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(request, autz_ctx, call_env->default_profile.vb_strvalue,
-						   &autz_ctx->expanded);
+			ret = rlm_ldap_map_profile(inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
+						   inst->profile_scope, call_env->default_profile.vb_strvalue, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
 				rcode = RLM_MODULE_FAIL;
@@ -1571,7 +1459,8 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 
 			autz_ctx->profile_value = fr_ldap_berval_to_string(autz_ctx, autz_ctx->profile_values[autz_ctx->value_idx++]);
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(request, autz_ctx, autz_ctx->profile_value, &autz_ctx->expanded);
+			ret = rlm_ldap_map_profile(inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
+						   inst->profile_scope, autz_ctx->call_env->profile_filter.vb_strvalue, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
 				rcode = RLM_MODULE_FAIL;
