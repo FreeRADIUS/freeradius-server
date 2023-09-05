@@ -278,10 +278,7 @@ static xlat_exp_t *logical_peephole_optimize(xlat_exp_t *lhs, fr_token_t op, xla
 
 
 /*
- *	Do some optimizations
- *
- *	@todo check types, if one side is uint8, and the other side is uint32, there are some situations where
- *	the comparison will always fail.  And should therefore be invalid?
+ *	Do peephole optimizations.
  */
 static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
 {
@@ -289,6 +286,62 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 	fr_value_box_t box;
 	xlat_exp_t *node;
 	char *name;
+
+#if 0
+	/*
+	 *	@todo - more peephole optimizations here.  We can't enable this code as yet, because of
+	 *	upcasting rules (e.g. calc.c) where comparisons between IP prefixes and IP addresses (or
+	 *	v4/v6) are upcast, and then the values compared.
+	 *
+	 *	We should probably expose some of the upcast functionality in calc.c so that this function can
+	 *	use it.
+	 */
+
+	/*
+	 *	Attribute op value.
+	 */
+	if ((lhs->type == XLAT_TMPL) && tmpl_is_attr(lhs->vpt) &&
+	    (rhs->type == XLAT_TMPL) && (tmpl_is_data_unresolved(rhs->vpt) || tmpl_is_data(rhs->vpt))) {
+		fr_type_t dst_type;
+		fr_dict_attr_t const *da;
+
+	resolve:
+		dst_type = tmpl_rules_cast(rhs->vpt);
+		da = tmpl_attr_tail_da(lhs->vpt);
+
+		/*
+		 *	Cast to the final type.  If there are two different casts, we ignore the one for the
+		 *	data.
+		 */
+		if (fr_type_is_null(dst_type)) {
+			dst_type = tmpl_rules_cast(lhs->vpt);
+			if (fr_type_is_null(dst_type)) dst_type = da->type;
+		}
+
+		if (tmpl_cast_in_place(rhs->vpt, dst_type, da) < 0) return -1;
+
+		rhs->flags.needs_resolving = false;
+		return 0;
+	}
+
+	/*
+	 *	value op attribute
+	 *
+	 *	We just swap LHS and RHS without caring about the operator, because wee don't use the
+	 *	operator, and the caller has no idea that we swapped the pointers..
+	 */
+	if ((rhs->type == XLAT_TMPL) && tmpl_is_attr(rhs->vpt) &&
+	    (lhs->type == XLAT_TMPL) && (tmpl_is_data_unresolved(lhs->vpt) || tmpl_is_data(lhs->vpt))) {
+		xlat_exp_t *tmp = lhs;
+		lhs = rhs;
+		rhs = tmp;
+		goto resolve;
+	}
+#endif
+
+	/*
+	 *	The tmpl_tokenize code takes care of resolving the data if there's a cast.
+	 */
 
 	lhs_box = xlat_value_box(lhs);
 	if (!lhs_box) return 0;
