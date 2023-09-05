@@ -471,10 +471,20 @@ extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
 #define FR_VALUE_BOX_INITIALISER_NULL(_vb) \
 	{ \
 		.type = FR_TYPE_NULL, \
+		.entry = { \
+			.entry = FR_DLIST_ENTRY_INITIALISER((_vb).entry.entry) \
+		}, \
+ 		VALUE_BOX_NDEBUG_INITIALISER \
+	}
+
+/** A static initialiser for stack/globally allocated boxes
+ *
+ */
+#define FR_VALUE_BOX_INITIALISER(_vb, _type, _field, _val) \
+	{ \
+		.type = _type, \
 		.datum = { \
-			.children = { \
-				FR_DLIST_HEAD_INITIALISER((_vb).datum.children.head) \
-			} \
+			_field = _val, \
 		}, \
 		.entry = { \
 			.entry = FR_DLIST_ENTRY_INITIALISER((_vb).entry.entry) \

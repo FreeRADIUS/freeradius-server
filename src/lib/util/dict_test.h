@@ -91,7 +91,7 @@ typedef enum {
  */
 typedef struct value {
 	char const			*key;		//!< Enumeration name.
-	fr_value_box_t			val;		//!< Enumeration value
+	fr_value_box_t			*val;		//!< Enumeration value
 } fr_dict_test_attr_value_t;
 
 /** Test enumeration attributes

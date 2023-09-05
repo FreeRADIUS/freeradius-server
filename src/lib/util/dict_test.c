@@ -80,6 +80,9 @@ fr_dict_attr_t const *fr_dict_attr_test_nested_leaf_int32;
 
 fr_dict_attr_t const *fr_dict_attr_test_enum;
 
+static fr_value_box_t enum_test_0 = FR_VALUE_BOX_INITIALISER(enum_test_0, FR_TYPE_UINT32, .uint32, 123);
+static fr_value_box_t enum_test_1 = FR_VALUE_BOX_INITIALISER(enum_test_1, FR_TYPE_UINT32, .uint32, 321);
+
 fr_dict_test_attr_t const fr_dict_test_attrs[] = {
 	/*
 	 *	Variable length
@@ -149,8 +152,8 @@ fr_dict_test_attr_t const fr_dict_test_attrs[] = {
 	 */
 	{ .attr = FR_TEST_ATTR_ENUM, .da = &fr_dict_attr_test_enum, .name = "Test-Enum", .type = FR_TYPE_UINT32,
 	  .values = (fr_dict_test_attr_value_t[]){
-		{ .key = "test123", .val = { .type = FR_TYPE_UINT32, .vb_uint32 = 123 } },
-		{ .key = "test321", .val = { .type = FR_TYPE_UINT32, .vb_uint32 = 321 } },
+		{ .key = "test123", .val = &enum_test_0},
+		{ .key = "test321", .val = &enum_test_1},
 		{ .key = NULL, },
 	  }
 	},
@@ -222,7 +225,7 @@ int fr_dict_test_attrs_init(fr_dict_t *dict, fr_dict_test_attr_t const *test_def
 
 			for (v = p->values;
 			     v->key != NULL;
-			     v++) fr_dict_enum_add_name(fr_dict_attr_unconst(attr), v->key, &v->val, false, false);
+			     v++) fr_dict_enum_add_name(fr_dict_attr_unconst(attr), v->key, v->val, false, false);
 		}
 
 		*p->da = attr;

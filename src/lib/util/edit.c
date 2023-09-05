@@ -460,6 +460,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 
 	e->op = op;
 	e->vp = vp;
+	fr_value_box_init_null(&e->data);
 
 	switch (op) {
 	case FR_EDIT_INVALID:
