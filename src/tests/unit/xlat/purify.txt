@@ -139,7 +139,7 @@ xlat_purify 1 < (uint32) 2
 match true
 
 #
-#  @todo - for exec, xlat, etc., if we're doing an existence check of
+#  @todo - peephole - for exec, xlat, etc., if we're doing an existence check of
 #  string / octets, then the check is for "length>0", NOT for parsing
 #  the contents of the data type.
 #

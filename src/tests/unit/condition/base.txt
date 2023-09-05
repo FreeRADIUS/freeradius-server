@@ -34,13 +34,13 @@ condition (ok\ foo || handled)
 match ERROR offset 4: Unexpected text after enum value.  Expected operator
 
 #
-#  @todo - This is just a bare word comparison?
+#  @todo - parsing - This is just a bare word comparison, and should be disallowed?
 #
 condition (Service-Type == 000-111)
 match (Service-Type == (0 - 111))
 
 #
-#  @todo - many of these "invalid operator" errors should have additional code added to xlat_expr.c,
+#  @todo - parsing - many of these "invalid operator" errors should have additional code added to xlat_expr.c,
 #  so that it finds out which specific parse problem it is, and gives a better error message.
 #
 condition (ok FOO handled)
@@ -76,14 +76,11 @@ match !%{rcode:'ok'}
 condition !(ok)
 match !%{rcode:'ok'}
 
-#
-# @todo - negation is invalid
-#
 condition !!ok
 match ERROR offset 2: Double operator is invalid
 
 #
-# @todo - do peephole optimization to get rid of double negation?
+# @todo - peephole - do optimization to get rid of double negation?
 #
 condition !(!ok)
 match !!%{rcode:'ok'}
@@ -108,7 +105,7 @@ condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 
 #
-#  @todo - this is really for unit_test_attribute to check?  Did we parse the whole thing?
+#  @todo - parsing - unit_test_attribute should really check if we read the whole string
 #
 condition ((a == b) || (c == d)))
 match ((a == b) || (c == d))
@@ -134,10 +131,6 @@ match ERROR offset 1: Cannot use list references in condition
 condition "hello" == &reply
 match ERROR offset 12: Cannot use list references in condition
 
-
-#
-#  @todo - new expressions do not do normalization or peephole optimizations
-#
 condition &User-Name == &User-Password
 match (&User-Name == &User-Password)
 
@@ -211,7 +204,7 @@ condition &User-Name == 'bob'
 match (&User-Name == 'bob')
 
 #
-#  @todo - this should probably be a parse error, as there is no VALUE named 'bob'
+#  @todo - parsing - bare-word bob isn't a valid enum name
 #
 condition &User-Name == bob
 match (&User-Name == bob)
@@ -221,7 +214,7 @@ condition &Session-Timeout == 10
 match (&Session-Timeout == 10)
 
 #
-#  @todo - no automatic type casting
+#  @todo - parsing - no automatic type casting
 #
 condition &Session-Timeout == '10'
 match  (&Session-Timeout == '10')
@@ -240,7 +233,7 @@ condition <integer>X == 1
 match ERROR offset 10: Failed parsing string as type 'uint32'
 
 #
-#  @todo - this should probably be a parse error, as there is no VALUE named 'X'
+#  @todo - parsing - there is no enum named "X"
 #
 condition &NAS-Port == X
 match (&NAS-Port == X)
@@ -436,9 +429,6 @@ match (%(cast:uint32 "%{md4: 1 + 1}") < &NAS-Port)
 #  The string gets parsed as an IP address.
 #
 
-#
-#  @todo - maybe the cast is suppressed?  or... TBD later
-#
 condition &Filter-Id == &Framed-IP-Address
 match (&Filter-Id == &Framed-IP-Address)
 
@@ -512,7 +502,7 @@ match (&Acct-Input-Octets-64 > %(cast:string "%{Session-Timeout}"))
 #
 #  Parse OIDs into known attributes, where possible.
 #
-#  @todo - Perhaps this isn't done because the xlat name is taken from the
+#  @todo - peephole - Perhaps this isn't done because the xlat name is taken from the
 #  input, and not from the canonicalized names.
 #
 condition &26.24757.84.9.5.4 == 0x1a99
@@ -554,7 +544,7 @@ match ERROR offset 12: Invalid array index '-1' (should be between 0-1000)
 #
 #  Sometimes the attribute/condition parser needs to fallback to bare words
 #
-#  @todo - this is likely treating the LHS as an enum which is impossible here
+#  @todo - bare word - this is likely treating the LHS as an enum which is impossible here
 #
 condition request.Foo == 'request.Foo'
 match (request.Foo == 'request.Foo')
@@ -568,7 +558,7 @@ match ((&request.Foo + Bar) == 'request.Foo+Bar')
 #match ERROR offset 13: Unexpected text after attribute reference
 
 #
-#  @todo - this is wrong
+#  @todo - bare word - this is wrong
 #
 condition 'request.Foo+d' == &request.Foo+Bar
 match ('request.Foo+d' == (&request.Foo + Bar))
@@ -595,7 +585,7 @@ match false
 #  'Unknown' attributes which are defined in the main dictionary
 #  should be resolved to their real names.
 #
-#  @todo - nope
+#  @todo - peephole - resolve it and change its name
 #
 condition &1 == 0x616263
 match (&1 == 0x616263)
@@ -645,18 +635,6 @@ condition (&reply.)
 match &reply.
 
 #
-#  Expansions of environment variables
-#  and empty strings
-#
-#  @todo - disabled due to moving cf_expand_variables() from
-#  the condition parser to cf_file.c.  The new xlat expression parser
-#  will *not* optimize this at parse time, but *will* optimize
-#  this at purification time.
-#
-#condition ("$ENV{SOMETHING_OR_OTHER}" == '')
-#match true
-
-#
 #  Attributes with a protocol namespace
 #
 condition &radius.User-Name == 'bob'
@@ -671,7 +649,7 @@ match false
 #
 #  More short-circuit evaluations
 #
-#  @todo - optimise at parse time
+#  @todo - peephole - optimise at parse time
 #
 condition (&User-Name == "bob") && (false)
 match ((&User-Name == "bob") && false)

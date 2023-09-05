@@ -12,7 +12,6 @@ match ERROR offset 16: Expected regular expression
 xlat_purify (&User-Name == /foo/)
 match ERROR offset 16: Unexpected regular expression
 
-# @todo - this should be allowed?
 xlat_purify &User-Name =~ &Filter-Id
 match ERROR offset 15: Expected regular expression
 

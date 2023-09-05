@@ -17,9 +17,6 @@ match fe 08 02 06 00 00 00 05
 decode-pair -
 match Unit-TLV = { Delta-MSec = 5 }
 
-#
-#  @todo - not yet converted to make nested TLVs!
-#
 pair Unit-TLV.Delta-Sec = 10
 match Unit-TLV.Delta-Sec = 10
 

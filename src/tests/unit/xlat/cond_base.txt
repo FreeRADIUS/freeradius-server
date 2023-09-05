@@ -116,7 +116,7 @@ xlat_purify ((!"foo") == false)
 match true
 
 #
-#  @todo - add a flag which says to parse the FULL thing, or only parse part of it?
+#  @todo - unit_test_attribute - add a flag which says to parse the FULL thing, or only parse part of it?
 #
 xlat_purify ((&User-Name == &Filter-Id) || (&Reply-Message == &User-Password)))
 match Passed in 67 characters, but only parsed 66 characters
@@ -183,7 +183,7 @@ match ((ipaddr)&Filter-Id == &Framed-IP-Address)
 #  We can automatically promote things as needed.  But if the
 #  user forces incompatible types, then that's an error.
 #
-#  @todo - perhaps better errors for casts?
+#  @todo - parsing - better errors for casts
 #
 xlat_purify <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
 match ERROR offset 23: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
@@ -228,7 +228,7 @@ match (&Session-Timeout == 10)
 # Automatic type inference means this is fine
 
 #
-#  @todo - in binary resolve, cast the RHS to the type of the LHS.
+#  @todo - peephole - resolve the RHS to the type of the LHS
 #
 xlat_purify &Session-Timeout == '10'
 match (&Session-Timeout == '10')
@@ -248,7 +248,7 @@ xlat_purify <integer>X == 1
 match ERROR offset 10: Failed parsing string as type 'uint32'
 
 #
-#  @todo - resolution is delayed, so we don't know where in the input
+#  @todo - parsing - resolution is delayed, so we don't know where in the input
 #  string the RHS is.
 #
 xlat_purify &NAS-Port == X
@@ -294,7 +294,7 @@ match ERROR offset 12: Missing separator, expected ':'
 xlat_purify true
 match true
 
-# @todo - for conditions, this should evaluate to "true".  However, this evaluation
+# @todo - parsing - for conditions, this should evaluate to "true".  However, this evaluation
 #  only occurs in the condition code, and not in the xlat code!
 xlat_purify 1
 match 1
@@ -402,10 +402,6 @@ match 4
 xlat_purify ('a')
 match 'a'
 
-#
-# @todo - modules && return codes.
-#
-
 #xlat_purify (a)
 #match ERROR offset 1: Expected a module return code
 
@@ -447,7 +443,7 @@ match ("foo" == &User-Name)
 # This used to be expr, but expr isn't a builtin, so it failed...
 
 #
-#  @todo - arguably this is a failed thing, we should get:
+#  @todo - peephole - arguably this is a failed thing, we should get:
 #
 #  ERROR: Failed casting 0x002ade8665c69219ca16bd108d92c8d5 to data type uint32: Invalid cast from octets to uint32.  Source length 16 is greater than destination type size 4
 #
@@ -526,7 +522,7 @@ match (&Tmp-uint64-0 > &Session-Timeout)
 #
 #  Parse OIDs into known attributes, where possible.
 #
-# @todo - whoops, resolve it
+# @todo - peephole - resolve the unknown attribute to something real!
 xlat_purify &26.24757.84.9.5.4 == 0x1a99
 match (&26.24757.84.9.5.4 == 0x1a99)
 #match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
@@ -589,12 +585,12 @@ match false
 #
 #  'Unknown' attributes which are defined in the main dictionary
 #  should be resolved to their real names.
-# @todo - resolve!
+# @todo - peephole - resolve it to something real
 xlat_purify &1 == 0x616263
 match (&1 == 0x616263)
 #match (&User-Name == 'abc')
 
-# @todo - resolve!
+# @todo - peephole - resolve it to something real
 #xlat_purify &26.11344.1 == 0x7f000001
 #match &Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.1
 
@@ -618,9 +614,8 @@ xlat_purify 192.168.0.0/16 > 192.168.1.2
 match true
 
 
-# @todo - fix up cast!
-#xlat_purify <ipv4prefix>192.168.0.0/16 > 192.168.1.2
-#match true
+xlat_purify <ipv4prefix>192.168.0.0/16 > 192.168.1.2
+match true
 
 xlat_purify <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
 match ((ipv4prefix)&NAS-IP-Address == 192.168.0.0/24)
@@ -636,7 +631,6 @@ match (192.168.0.0/24 > &NAS-IP-Address)
 #
 #  This is allowed and means "the list is not empty"
 #
-# @todo - we need a "parse as condition" flag!
 xlat_purify (&reply)
 match &reply
 
@@ -650,7 +644,7 @@ match false
 #
 #  Attributes with a protocol namespace
 #
-# @todo - if the explicit namespace is the same as the implicit one, we can omit
+# @todo - normalization - if the explicit namespace is the same as the implicit one, we can omit
 # the explicit one?  But this is largely due to the printing fixes, where we just
 # print the tmpl name as-is.
 xlat_purify &radius.User-Name == 'bob'
@@ -702,10 +696,6 @@ match 1
 xlat_purify 1 || 2 || (&User-Name == "bob")
 match 1
 
-#
-#  @todo - this is arguably incorrect.  It could return
-#  "true", or "1".
-#
 xlat_purify (&User-Name == "bob") || 1 || 2
 match 1
 
@@ -789,4 +779,4 @@ xlat_purify (192.168.0.1 !== 192.168.0.2)
 match true
 
 count
-match 330
+match 332
