@@ -5,15 +5,15 @@
 &Tmp-Octets-0 := 0x520d0103abcdef0206010203040506
 
 # the protocol decoder puts the attributes into a flat namespace
-if (!("%(dhcpv4.decode:%{Tmp-Octets-0})" == 2)) {
+if (!("%(dhcpv4.decode:%{Tmp-Octets-0})" == 1)) {
 	test_fail
 }
 
-if (!(&Relay-Agent-Information.Circuit-Id == 0xabcdef)) {
+if !(&Relay-Agent-Information.Circuit-Id == 0xabcdef) {
 	test_fail
 }
 
-if (!(&Relay-Agent-Information.Remote-Id == 0x010203040506)) {
+if !(&Relay-Agent-Information.Remote-Id == 0x010203040506) {
 	test_fail
 }
 
