@@ -183,6 +183,9 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		return data_len;
 
 	case FR_TYPE_GROUP:
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return PAIR_DECODE_OOM;
+
 		/*
 		 *	Child VPs go into the child group, not in the
 		 *	main parent list.  We start decoding
@@ -191,9 +194,12 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	header, as we're just decoding the values
 		 *	here.
 		 */
-		slen = fr_pair_tlvs_from_network(ctx, out, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx, decode_option, NULL, true);
-		if (slen < 0) goto raw;
-		return data_len;
+		slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx, decode_option, NULL, false);
+		if (slen < 0) {
+			talloc_free(vp);
+			return slen;
+		}
+		break;
 
 	case FR_TYPE_IPV6_ADDR:
 		vp = fr_pair_afrom_da(ctx, parent);
@@ -285,7 +291,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
 
-	return fr_pair_tlvs_from_network(ctx, out, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, true);
+	return fr_pair_tlvs_from_network(ctx, out, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, false);
 }
 
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
@@ -358,7 +364,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = decode_vsa(ctx, out, da, data + 4, len, decode_ctx);
 
 	} else if (da->type == FR_TYPE_TLV) {
-		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_option, NULL, true);
+		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_option, NULL, false);
 
 	} else {
 		slen = decode_value(ctx, out, da, data + 4, len, decode_ctx);
