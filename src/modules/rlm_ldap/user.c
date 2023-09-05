@@ -60,8 +60,18 @@ static unlang_action_t ldap_find_user_async_result(rlm_rcode_t *p_result, UNUSED
 	char			*dn;
 	fr_pair_t		*vp;
 
+	switch (query->ret) {
+	case LDAP_RESULT_SUCCESS:
+		break;
+
+	case LDAP_RESULT_NO_RESULT:
+		RETURN_MODULE_NOTFOUND;
+
+	default:
+		RETURN_MODULE_FAIL;
+	}
+
 	cnt = ldap_count_entries(query->ldap_conn->handle, query->result);
-	if (cnt == 0) RETURN_MODULE_NOTFOUND;
 
 	if ((!user_ctx->inst->userobj_sort_ctrl) && (cnt > 1)) {
 		REDEBUG("Ambiguous search result, returned %i unsorted entries (should return 1 or 0).  "
