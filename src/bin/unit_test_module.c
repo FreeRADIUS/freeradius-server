@@ -116,6 +116,19 @@ static fr_client_t *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *na
 	return client;
 }
 
+static void pair_mutable(fr_pair_t *vp)
+{
+	if (fr_type_is_leaf(vp->vp_type)) {
+		vp->data.immutable = false;
+
+		return;
+	}
+
+	fr_pair_list_foreach(&vp->vp_group, child) {
+		pair_mutable(child);
+	}
+}
+
 static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *client, CONF_SECTION *server_cs)
 {
 	fr_pair_t	*vp;
@@ -236,13 +249,12 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	}
 
 	/*
-	 *	For lazines in the tests, allow the Net.* to be mutable
+	 *	For laziness in the tests, allow the Net.* to be mutable
 	 */
 	for (vp = fr_pair_dcursor_by_ancestor_init(&cursor, &request->request_pairs, attr_net);
 	     vp != NULL;
 	     vp = fr_dcursor_next(&cursor)) {
-		if (!fr_type_is_leaf(vp->vp_type)) continue;
-		vp->data.immutable = false;
+		pair_mutable(vp);
 	}
 
 	if (fr_debug_lvl) {
