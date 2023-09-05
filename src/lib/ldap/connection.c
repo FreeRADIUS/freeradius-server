@@ -661,7 +661,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 	LDAPURLDesc		*referral_url = NULL;
 
 	fr_ldap_query_t		*query = NULL;
-	fr_ldap_rcode_t		status = LDAP_PROC_ERROR;
+	fr_ldap_rcode_t		status;
 
 	while (fr_trunk_connection_pop_request(&treq, tconn) == 0) {
 		LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS + 1];
@@ -715,9 +715,12 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 			break;
 
 		default:
+			status = LDAP_PROC_ERROR;
 			ERROR("Invalid LDAP query for trunk connection");
 		error:
 			fr_trunk_request_signal_fail(query->treq);
+			if (status == LDAP_PROC_BAD_CONN) fr_trunk_connection_signal_reconnect(tconn,
+											       FR_CONNECTION_FAILED);
 			continue;
 
 		}
