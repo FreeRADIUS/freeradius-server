@@ -502,6 +502,25 @@ static void ldap_request_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_connect
 	}
 }
 
+/** Callback to tidy up when a trunk request fails
+ *
+ */
+static void ldap_request_fail(request_t *request, void *preq, UNUSED void *rctx,
+			      UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
+{
+	fr_ldap_query_t		*query = talloc_get_type_abort(preq, fr_ldap_query_t);
+
+	/*
+	 *	Failed trunk requests get freed - so remove association in query.
+	 */
+	query->treq = NULL;
+	query->ret = LDAP_RESULT_ERROR;
+
+	/*
+	 *	Ensure request is runnable.
+	 */
+	if (request) unlang_interpret_mark_runnable(request);
+}
 
 /** I/O read function
  *
@@ -1006,7 +1025,8 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 					      .request_mux = ldap_trunk_request_mux,
 					      .request_demux = ldap_trunk_request_demux,
 					      .request_cancel = ldap_request_cancel,
-					      .request_cancel_mux = ldap_request_cancel_mux
+					      .request_cancel_mux = ldap_request_cancel_mux,
+					      .request_fail = ldap_request_fail,
 					},
 				      thread->trunk_conf,
 				      "rlm_ldap", found, false);
