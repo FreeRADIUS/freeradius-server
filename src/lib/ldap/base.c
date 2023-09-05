@@ -572,12 +572,9 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 
 	if (ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs,
 			    0, our_serverctrls, our_clientctrls, NULL, 0, msgid) != LDAP_SUCCESS) {
-		int ldap_errno;
-
-		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		ERROR("Failed performing search: %s", ldap_err2string(ldap_errno));
-
-		return LDAP_PROC_ERROR;
+		fr_ldap_rcode_t	ret = fr_ldap_error_check(NULL, *pconn, NULL, NULL);
+		ROPTIONAL(RPERROR, PERROR, "Failed performing search");
+		return ret;
 	}
 
 	return LDAP_PROC_SUCCESS;
@@ -779,12 +776,10 @@ fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_con
 
 	RDEBUG2("Modifying object with DN \"%s\"", dn);
 	if(ldap_modify_ext((*pconn)->handle, dn, mods, our_serverctrls, our_clientctrls, msgid) != LDAP_SUCCESS) {
-		int ldap_errno;
+		fr_ldap_rcode_t	ret = fr_ldap_error_check(NULL, *pconn, NULL, NULL);
+		ROPTIONAL(RPEDEBUG, RPERROR, "Failed modifying object");
 
-		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		ROPTIONAL(RPEDEBUG, RPERROR, "Failed modifying object %s", ldap_err2string(ldap_errno));
-
-		return LDAP_PROC_ERROR;
+		return ret;
 	}
 
 	return LDAP_PROC_SUCCESS;
@@ -853,14 +848,14 @@ unlang_action_t fr_ldap_trunk_extended(rlm_rcode_t *p_result,
 fr_ldap_rcode_t fr_ldap_extended_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
 				       char const *reqoid, struct berval *reqdata)
 {
-	int	err;
-
 	fr_assert(*pconn && (*pconn)->handle);
 
 	RDEBUG2("Requesting extended operation with OID %s", reqoid);
-	err = ldap_extended_operation((*pconn)->handle, reqoid, reqdata, NULL, NULL, msgid);
-
-	if (err) return LDAP_PROC_ERROR;
+	if (ldap_extended_operation((*pconn)->handle, reqoid, reqdata, NULL, NULL, msgid)) {
+		fr_ldap_rcode_t	ret = fr_ldap_error_check(NULL, *pconn, NULL, NULL);
+		RPERROR("Failed requesting extended operation");
+		return ret;
+	}
 	return LDAP_PROC_SUCCESS;
 }
 
