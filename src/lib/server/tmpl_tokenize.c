@@ -2855,9 +2855,12 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 	fr_sbuff_parse_error_t	sberr;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 
-	if (!fr_sbuff_is_str_literal(&our_in, "::")) return 0;
+	if (fr_sbuff_is_str_literal(&our_in, "::")) {
+		(void) fr_sbuff_advance(&our_in, 2);
 
-	(void) fr_sbuff_advance(&our_in, 2);
+	} else if (!t_rules->enumv) {
+		return 0;
+	}
 
 	vpt = tmpl_alloc_null(ctx);
 
@@ -2889,6 +2892,23 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 
 		talloc_free(vpt);
 		FR_SBUFF_ERROR_RETURN(&our_in);
+	}
+
+	/*
+	 *	If there's a valid enum name, then we use it.  Otherwise we leave name resolution to run time.
+	 */
+	if (t_rules->enumv) {
+		fr_dict_enum_value_t *dv;
+
+		dv = fr_dict_enum_by_name(t_rules->enumv, str, -1);
+		if (dv) {
+			tmpl_init(vpt, TMPL_TYPE_DATA, T_BARE_WORD,
+				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
+			(void) fr_value_box_copy(vpt, &vpt->data.literal, dv->value);
+
+			*out = vpt;
+			FR_SBUFF_SET_RETURN(in, &our_in);
+		}
 	}
 
 	tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, T_BARE_WORD,
