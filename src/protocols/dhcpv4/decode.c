@@ -56,7 +56,7 @@ static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				     fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
-	return fr_pair_tlvs_from_network(ctx, out, parent, data, data_len, decode_ctx, decode_option, verify_tlvs, false);
+	return fr_pair_tlvs_from_network(ctx, out, parent, data, data_len, decode_ctx, decode_option, verify_tlvs, true);
 }
 
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
@@ -404,7 +404,7 @@ next:
 	p++;
 
 	/* coverity[tainted_data] */
-	len = fr_pair_tlvs_from_network(ctx, out, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, false);
+	len = fr_pair_tlvs_from_network(ctx, out, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, true);
 	if (len <= 0) return len;
 
 	p += len;
@@ -482,7 +482,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = decode_vsa(ctx, out, da, data + 2, len, decode_ctx);
 
 	} else if (da->type == FR_TYPE_TLV) {
-		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len, decode_ctx, decode_option, verify_tlvs, false);
+		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len, decode_ctx, decode_option, verify_tlvs, true);
 
 	} else {
 		slen = decode_value(ctx, out, da, data + 2, len, decode_ctx);
@@ -589,7 +589,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		} else if (da->type == FR_TYPE_TLV) {
 			slen = fr_pair_tlvs_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer,
-							 packet_ctx, decode_option, verify_tlvs, false);
+							 packet_ctx, decode_option, verify_tlvs, true);
 
 		} else if (da->flags.array) {
 			slen = fr_pair_array_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx, decode_value);
