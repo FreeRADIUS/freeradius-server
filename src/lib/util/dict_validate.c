@@ -677,7 +677,7 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	/*
 	 *	Initialize the length field, which is needed for the attr_valid() callback.
 	 */
-	if (!flags->length) {
+	if (!flags->length && fr_type_is_leaf(type) && !fr_type_is_variable_size(type)) {
 		fr_value_box_t box;
 
 		fr_value_box_init(&box, type, NULL, false);
