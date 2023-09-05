@@ -85,6 +85,16 @@ objectClass: radiusprofile
 cn: suspended
 radiusReplyAttribute: Reply-Message := 'User-Suspended'
 
+dn: uid=adminuser,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+uid: adminuser
+sn: User
+givenName: Admin
+cn: Admin User
+displayName: Admin User
+userPassword: verysecret
+authzTo: cn=admin,dc=example,dc=com
+
 dn: uid=john,ou=people,dc=example,dc=com
 objectClass: inetOrgPerson
 objectClass: posixAccount

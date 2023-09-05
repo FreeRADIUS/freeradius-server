@@ -1,0 +1,19 @@
+#
+#  Run the "ldap" module
+#
+ldapsaslproxy
+
+if (!(&control.LDAP-UserDN == "uid=john,ou=people,dc=example,dc=com")) {
+        test_fail
+}
+
+#  The admin bind was as a "normal" user, then proxied to the admin
+#  Check that the password was retrieved
+if (!(&control.Password.With-Header)) {
+	test_fail
+}
+
+#  Authenticate with the retrieved password
+pap.authenticate
+
+test_pass
