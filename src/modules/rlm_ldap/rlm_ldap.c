@@ -684,7 +684,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	if (!ldap_url->lud_host) {
 		host_url = handle_config->server;
 	} else {
-		host_url = host_uri_canonify(request, ldap_url, uri);
+		host_url = host = host_uri_canonify(request, ldap_url, uri);
 		if (unlikely(host_url == NULL)) goto query_error;
 	}
 
@@ -1028,7 +1028,7 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 		if (!xlat_ctx->url->lud_host) {
 			host_url = handle_config->server;
 		} else {
-			host_url = host_uri_canonify(request, xlat_ctx->url, uri);
+			host_url = host = host_uri_canonify(request, xlat_ctx->url, uri);
 			if (unlikely(host_url == NULL)) goto error;
 		}
 	}
@@ -1253,7 +1253,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	if (!ldap_url->lud_host) {
 		host_url = inst->handle_config.server;
 	} else {
-		host_url = host_uri_canonify(request, ldap_url, url_head);
+		host_url = host = host_uri_canonify(request, ldap_url, url_head);
 		if (unlikely(host_url == NULL)) goto fail;
 	}
 
