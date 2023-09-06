@@ -2,6 +2,8 @@ proto radius
 proto-dictionary radius
 fuzzer-out radius
 
+migrate pair_legacy_nested=true
+
 #
 #  Test vectors for WiMAX attributes.
 #
@@ -82,7 +84,7 @@ match 1a 0e 00 00 60 b5 54 08 00 09 05 04 03 01
 
 # and parsing the OID should parse LHS / RHS into the known attribute.
 pair 26.24757.84.9.4 = 0x01
-match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Direction = 1
+match Vendor-Specific = { WiMAX = { Packet-Flow-Descriptor-v2 = { Classifier = { Direction = 1 } } } }
 
 encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Direction = 1, Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port = 6809
 match 1a 14 00 00 60 b5 54 0e 00 09 0b 04 03 01 05 06 04 04 1a 99
@@ -132,10 +134,10 @@ match Group list for Capability MUST start with '{'
 #  We don't print raw attributes with a "raw" prefix.  Perhaps we should.
 #
 pair raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
-match raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
+match Vendor-Specific = { WiMAX = { raw.Capability = 0x0106312e30020301 } }
 
 pair raw.Vendor-Specific.WiMAX.1 = 0x0106312e30020301
-match raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
+match Vendor-Specific = { WiMAX = { raw.Capability = 0x0106312e30020301 } }
 
 encode-pair -
 match 1a 11 00 00 60 b5 01 0b 00 01 06 31 2e 30 02 03 01
@@ -221,8 +223,17 @@ match 1a 25 00 00 60 b5 1c 1f 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 01 04
 encode-pair Acct-Interim-Interval := 3600, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 33, Session-Timeout := 7200
 match 55 06 00 00 0e 10 1a 25 00 00 60 b5 1c 1f 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 01 04 00 21 02 04 00 21 03 06 00 00 00 21 1b 06 00 00 1c 20
 
+pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 32, Session-Timeout := 7200, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 33
+match Vendor-Specific = { WiMAX = { Packet-Flow-Descriptor = { Packet-Data-Flow-Id := 32, Service-Data-Flow-Id := 32, Service-Profile-Id := 32, Packet-Data-Flow-Id := 33, Service-Data-Flow-Id := 33, Service-Profile-Id := 33 } } }, Session-Timeout := 7200
+
 encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 32, Session-Timeout := 7200, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 33
-match 1a 17 00 00 60 b5 1c 11 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 1b 06 00 00 1c 20 1a 17 00 00 60 b5 1c 11 00 01 04 00 21 02 04 00 21 03 06 00 00 00 21
+match 1a 25 00 00 60 b5 1c 1f 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 01 04 00 21 02 04 00 21 03 06 00 00 00 21 1b 06 00 00 1c 20
+
+decode-pair -
+match Vendor-Specific.WiMAX.Packet-Flow-Descriptor = { Packet-Data-Flow-Id = 32, Service-Data-Flow-Id = 32, Service-Profile-Id = 32, Packet-Data-Flow-Id = 33, Service-Data-Flow-Id = 33, Service-Profile-Id = 33 }, Session-Timeout = 7200
+
+decode-pair 1a 17 00 00 60 b5 1c 11 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 1b 06 00 00 1c 20 1a 17 00 00 60 b5 1c 11 00 01 04 00 21 02 04 00 21 03 06 00 00 00 21
+match Vendor-Specific.WiMAX.Packet-Flow-Descriptor = { Packet-Data-Flow-Id = 32, Service-Data-Flow-Id = 32, Service-Profile-Id = 32 }, Session-Timeout = 7200, Vendor-Specific.WiMAX.Packet-Flow-Descriptor = { Packet-Data-Flow-Id = 33, Service-Data-Flow-Id = 33, Service-Profile-Id = 33 }
 
 #
 #  For now, we disallow the create of VPs with an attribute of type TLV, and octets data.
@@ -301,4 +312,4 @@ match Vendor-Specific.WiMAX.Capability = { Release = "1.0", Accounting-Capabilit
 
 
 count
-match 141
+match 148
