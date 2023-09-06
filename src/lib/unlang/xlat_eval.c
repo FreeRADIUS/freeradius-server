@@ -858,7 +858,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return xa;
 
 	case XLAT_ACTION_DONE:
-		unlang_xlat_yield(request, xlat_null_resume, NULL, 0, NULL);
+		if (unlang_xlat_yield(request, xlat_null_resume, NULL, 0, NULL) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
 
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
 		RDEBUG2("| --> %pV", fr_dcursor_current(out));
