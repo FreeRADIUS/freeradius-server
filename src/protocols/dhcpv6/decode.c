@@ -254,6 +254,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
 {
 	uint32_t		pen;
 	fr_dict_attr_t const	*da;
+	fr_pair_t		*vp;
 	fr_dhcpv6_decode_ctx_t	*packet_ctx = decode_ctx;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_vsa");
@@ -288,6 +289,11 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
+
+	vp = fr_pair_find_by_da(out, NULL, da);
+	if (vp) {
+		return fr_pair_tlvs_from_network(vp, &vp->vp_group, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, false);
+	}
 
 	return fr_pair_tlvs_from_network(ctx, out, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, true);
 }
