@@ -961,7 +961,6 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	fr_ldap_thread_trunk_t		*ttrunk;
 	ldap_xlat_profile_ctx_t		*xlat_ctx = NULL;
 
-	LDAPURLDesc			*ldap_url;
 	int				ldap_url_ret;
 
 	char const			*dn;
@@ -995,47 +994,41 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 		filter = env_data->profile_filter.vb_strvalue;
 		scope = inst->profile_scope;
 	} else {
-		ldap_url_ret = ldap_url_parse(uri->vb_strvalue, &ldap_url);
+		ldap_url_ret = ldap_url_parse(uri->vb_strvalue, &xlat_ctx->url);
 		if (ldap_url_ret != LDAP_URL_SUCCESS){
 			RPEDEBUG("Parsing LDAP URL failed - %s", fr_ldap_url_err_to_str(ldap_url_ret));
 		error:
 			talloc_free(xlat_ctx);
-			ldap_free_urldesc(ldap_url);
 			return XLAT_ACTION_FAIL;
 		}
 
 		/*
 		*	The URL must specify a DN
 		*/
-		if (!ldap_url->lud_dn) {
+		if (!xlat_ctx->url->lud_dn) {
 			REDEBUG("LDAP URI must specify a profile DN");
 			goto error;
 		}
 
-		dn = ldap_url->lud_dn;
+		dn = xlat_ctx->url->lud_dn;
 		/*
 		 *	Either we use the filter from the URL or we use the default filter
 		 *	configured for profiles.
 		 */
-		filter = ldap_url->lud_filter ? ldap_url->lud_filter : env_data->profile_filter.vb_strvalue;
+		filter = xlat_ctx->url->lud_filter ? xlat_ctx->url->lud_filter : env_data->profile_filter.vb_strvalue;
 
 		/*
 		 *	Determine if the URL includes a scope.
 		 */
-		scope = ldap_url->lud_scope == LDAP_SCOPE_DEFAULT ? inst->profile_scope : ldap_url->lud_scope;
-
-		/*
-		 *	Bind liftime of URL data to xlat_ctx
-		 */
-		xlat_ctx->url = ldap_url;
+		scope = xlat_ctx->url->lud_scope == LDAP_SCOPE_DEFAULT ? inst->profile_scope : xlat_ctx->url->lud_scope;
 
 		/*
 		 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
 		 */
-		if (!ldap_url->lud_host) {
+		if (!xlat_ctx->url->lud_host) {
 			host_url = handle_config->server;
 		} else {
-			host_url = host_uri_canonify(request, ldap_url, uri);
+			host_url = host_uri_canonify(request, xlat_ctx->url, uri);
 			if (unlikely(host_url == NULL)) goto error;
 		}
 	}
