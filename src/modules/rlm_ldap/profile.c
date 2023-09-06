@@ -41,6 +41,7 @@ USES_APPLE_DEPRECATED_API
  *
  */
 typedef struct {
+	fr_ldap_result_code_t	*ret;			//!< Result of the query and applying the map.
 	fr_ldap_query_t		*query;
 	char const		*dn;
 	rlm_ldap_t const	*inst;
@@ -50,7 +51,7 @@ typedef struct {
 /** Process the results of a profile lookup
  *
  */
-static unlang_action_t ldap_map_profile_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
 					       void *uctx)
 {
 	ldap_profile_ctx_t	*profile_ctx = talloc_get_type_abort(uctx, ldap_profile_ctx_t);
@@ -58,7 +59,11 @@ static unlang_action_t ldap_map_profile_resume(rlm_rcode_t *p_result, UNUSED int
 	LDAP			*handle;
 	LDAPMessage		*entry = NULL;
 	int			ldap_errno;
-	rlm_rcode_t		rcode = RLM_MODULE_OK;
+
+	/*
+	 *	Tell the caller what happened
+	 */
+	if (profile_ctx->ret) *profile_ctx->ret = query->ret;
 
 	switch (query->ret) {
 	case LDAP_RESULT_SUCCESS:
@@ -67,11 +72,9 @@ static unlang_action_t ldap_map_profile_resume(rlm_rcode_t *p_result, UNUSED int
 	case LDAP_RESULT_NO_RESULT:
 	case LDAP_RESULT_BAD_DN:
 		RDEBUG2("Profile object \"%s\" not found", profile_ctx->dn);
-		rcode = RLM_MODULE_NOTFOUND;
 		goto finish;
 
 	default:
-		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
 
@@ -82,19 +85,22 @@ static unlang_action_t ldap_map_profile_resume(rlm_rcode_t *p_result, UNUSED int
 	if (!entry) {
 		ldap_get_option(handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
-		rcode = RLM_MODULE_NOTFOUND;
+		if (profile_ctx->ret) *profile_ctx->ret = LDAP_RESULT_NO_RESULT;
 		goto finish;
 	}
 
 	RDEBUG2("Processing profile attributes");
 	RINDENT();
 	if (fr_ldap_map_do(request, profile_ctx->inst->valuepair_attr,
-			   profile_ctx->expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
+			   profile_ctx->expanded, entry) < 0) {
+		if (profile_ctx->ret) *profile_ctx->ret = LDAP_RESULT_ERROR;
+	}
+
 	REXDENT();
 
 finish:
 	talloc_free(profile_ctx);
-	RETURN_MODULE_RCODE(rcode);
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 /** Cancel an in progress profile lookup
@@ -114,6 +120,7 @@ static void ldap_map_profile_cancel(UNUSED request_t *request, UNUSED fr_signal_
  * LDAP profiles are mapped using the same attribute map as user objects, they're used to add common
  * sets of attributes to the request.
  *
+ * @param[out] ret		Where to write the result of the query.
  * @param[in] request		Current request.
  * @param[in] dn		of profile object to apply.
  * @param[in] scope		to apply when looking up profiles.
@@ -122,7 +129,8 @@ static void ldap_map_profile_cancel(UNUSED request_t *request, UNUSED fr_signal_
  *				expanded attribute names and mapping information.
  * @return One of the RLM_MODULE_* values.
  */
-unlang_action_t rlm_ldap_map_profile(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret,
+				     rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *dn, int scope, char const *filter, fr_ldap_map_exp_t const *expanded)
 {
 	ldap_profile_ctx_t	*profile_ctx;
@@ -131,10 +139,12 @@ unlang_action_t rlm_ldap_map_profile(rlm_ldap_t const *inst, request_t *request,
 
 	MEM(profile_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_profile_ctx_t));
 	*profile_ctx = (ldap_profile_ctx_t) {
+		.ret = ret,
 		.dn = dn,
 		.expanded = expanded,
 		.inst = inst
 	};
+	if (ret) *ret = LDAP_RESULT_ERROR;
 
 	if (unlang_function_push(request, NULL, ldap_map_profile_resume, ldap_map_profile_cancel,
 				 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, profile_ctx) < 0) {
@@ -146,3 +156,4 @@ unlang_action_t rlm_ldap_map_profile(rlm_ldap_t const *inst, request_t *request,
 				    scope, filter,
 				    expanded->attrs, NULL, NULL);
 }
+

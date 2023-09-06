@@ -1105,8 +1105,8 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 		if (unlikely(host_url == NULL)) goto fail;
 	}
 
-	ttrunk =  fr_thread_ldap_trunk_get(thread, host_url, inst->handle_config.admin_identity,
-					   inst->handle_config.admin_password, request, &inst->handle_config);
+	ttrunk = fr_thread_ldap_trunk_get(thread, host_url, inst->handle_config.admin_identity,
+					  inst->handle_config.admin_password, request, &inst->handle_config);
 	if (host) ldap_memfree(host);
 	if (!ttrunk) goto fail;
 
@@ -1403,7 +1403,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			unlang_action_t	ret;
 
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
+			ret = rlm_ldap_map_profile(NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
 						   inst->profile_scope, call_env->default_profile.vb_strvalue, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
@@ -1467,7 +1467,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 
 			autz_ctx->profile_value = fr_ldap_berval_to_string(autz_ctx, autz_ctx->profile_values[autz_ctx->value_idx++]);
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
+			ret = rlm_ldap_map_profile(NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
 						   inst->profile_scope, autz_ctx->call_env->profile_filter.vb_strvalue, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
