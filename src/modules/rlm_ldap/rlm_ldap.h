@@ -150,7 +150,7 @@ typedef struct {
 	fr_value_box_t	user_base;			//!< Base DN in which to search for users.
 	fr_value_box_t	user_filter;			//!< Filter to use when searching for users.
 	fr_value_box_t	group_base;			//!< Base DN in which to search for groups.
-} ldap_memberof_call_env_t;
+} ldap_xlat_memberof_call_env_t;
 
 /** State list for resumption of authorization
  *
@@ -210,7 +210,7 @@ typedef enum {
 typedef struct {
 	rlm_ldap_t const		*inst;
 	fr_value_box_t			*group;
-	ldap_memberof_call_env_t	*env_data;
+	ldap_xlat_memberof_call_env_t	*env_data;
 	bool				group_is_dn;
 	char const			*dn;
 	char const			*attrs[2];

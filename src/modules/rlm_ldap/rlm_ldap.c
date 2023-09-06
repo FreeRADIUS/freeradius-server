@@ -119,7 +119,7 @@ user_call_env(autz, ldap_autz_call_env_t);
 
 user_call_env(usermod, ldap_usermod_call_env_t);
 
-user_call_env(memberof, ldap_memberof_call_env_t);
+user_call_env(memberof, ldap_xlat_memberof_call_env_t);
 
 /*
  *	Group configuration
@@ -147,7 +147,7 @@ static const call_env_t autz_group_call_env[] = {
 };
 
 static const call_env_t memberof_group_call_env[] = {
-	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_memberof_call_env_t, group_base,
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_xlat_memberof_call_env_t, group_base,
 			       NULL, T_INVALID, false, false, true) },
 	CALL_ENV_TERMINATOR
 };
@@ -820,7 +820,7 @@ static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat
 	fr_value_box_t			*vb = NULL, *group_vb = fr_value_box_list_pop_head(in);
 	rlm_ldap_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_ldap_t);
 	fr_ldap_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
-	ldap_memberof_call_env_t	*env_data = talloc_get_type_abort(xctx->env_data, ldap_memberof_call_env_t);
+	ldap_xlat_memberof_call_env_t	*env_data = talloc_get_type_abort(xctx->env_data, ldap_xlat_memberof_call_env_t);
 	bool				group_is_dn;
 	ldap_memberof_xlat_ctx_t	*xlat_ctx;
 
@@ -2094,7 +2094,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	if (unlikely(!(xlat = xlat_func_register_module(NULL, mctx, "memberof", ldap_memberof_xlat,
 							FR_TYPE_BOOL)))) return -1;
 	xlat_func_args_set(xlat, ldap_memberof_xlat_arg);
-	xlat_func_call_env_set(xlat, &memberof_method_env);
+	xlat_func_call_env_set(xlat, &xlat_memberof_method_env);
 
 	map_proc_register(inst, mctx->inst->name, mod_map_proc, ldap_map_verify, 0);
 
