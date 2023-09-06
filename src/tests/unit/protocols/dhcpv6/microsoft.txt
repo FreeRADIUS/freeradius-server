@@ -16,7 +16,7 @@ encode-pair Vendor-Opts.Microsoft.Rogue-Detection-Request = 0x00
 match 00 11 00 09 00 00 01 37 00 5e 00 01 00
 
 decode-pair -
-match Vendor-Opts.Microsoft.Rogue-Detection-Request = 0x00
+match Vendor-Opts.Microsoft = { Rogue-Detection-Request = 0x00 }
 
 count
 match 7

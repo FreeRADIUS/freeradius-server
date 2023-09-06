@@ -19,7 +19,7 @@ encode-pair MOD-Address-List.IS = ::1, MOD-Address-List.CS = ::2
 match 00 36 00 28 00 01 00 10 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 02 00 10 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02
 
 decode-pair -
-match MOD-Address-List.IS = ::1, MOD-Address-List.CS = ::2
+match MOD-Address-List = { IS = ::1, CS = ::2 }
 
 #
 #  And again as nested attributes

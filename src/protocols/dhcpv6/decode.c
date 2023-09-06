@@ -289,7 +289,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
 
-	return fr_pair_tlvs_from_network(ctx, out, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, false);
+	return fr_pair_tlvs_from_network(ctx, out, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, true);
 }
 
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
@@ -362,7 +362,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = decode_vsa(ctx, out, da, data + 4, len, decode_ctx);
 
 	} else if (da->type == FR_TYPE_TLV) {
-		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_option, NULL, false);
+		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_option, NULL, true);
 
 	} else {
 		slen = decode_value(ctx, out, da, data + 4, len, decode_ctx);
