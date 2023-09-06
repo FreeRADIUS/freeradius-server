@@ -202,54 +202,58 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/*
- *	Method specific call environments
- */
-static const call_env_t authenticate_call_env[] = {
-	{ FR_CALL_ENV_SUBSECTION("user", NULL, auth_user_call_env, true) },
-	CALL_ENV_TERMINATOR
-};
-
-static const call_env_t authorize_call_env[] = {
-	{ FR_CALL_ENV_SUBSECTION("user", NULL, autz_user_call_env, true) },
-	{ FR_CALL_ENV_SUBSECTION("group", NULL, autz_group_call_env, false) },
-	{ FR_CALL_ENV_SUBSECTION("profile", NULL, autz_profile_call_env, false) },
-	CALL_ENV_TERMINATOR
-};
-
-static const call_env_t usermod_call_env[] = {
-	{ FR_CALL_ENV_SUBSECTION("user", NULL, usermod_user_call_env, true) },
-	CALL_ENV_TERMINATOR
-};
-
-static const call_env_t memberof_call_env[] = {
-	{ FR_CALL_ENV_SUBSECTION("user", NULL, memberof_user_call_env, true) },
-	{ FR_CALL_ENV_SUBSECTION("group", NULL, memberof_group_call_env, false) },
-	CALL_ENV_TERMINATOR
-};
-
 static const call_method_env_t authenticate_method_env = {
 	.inst_size = sizeof(ldap_auth_call_env_t),
 	.inst_type = "ldap_auth_call_env_t",
-	.env = authenticate_call_env
+	.env = (call_env_t[]) {
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, auth_user_call_env, true) },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 static const call_method_env_t authorize_method_env = {
 	.inst_size = sizeof(ldap_autz_call_env_t),
 	.inst_type = "ldap_autz_call_env_t",
-	.env = authorize_call_env
+	.env = (call_env_t[]) {
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, autz_user_call_env, true) },
+		{ FR_CALL_ENV_SUBSECTION("group", NULL, autz_group_call_env, false) },
+		{ FR_CALL_ENV_SUBSECTION("profile", NULL, autz_profile_call_env, false) },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 static const call_method_env_t usermod_method_env = {
 	.inst_size = sizeof(ldap_usermod_call_env_t),
 	.inst_type = "ldap_usermod_call_env_t",
-	.env = usermod_call_env
+	.env = (call_env_t[]) {
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, usermod_user_call_env, true) },
+		CALL_ENV_TERMINATOR
+	}
 };
 
-static const call_method_env_t memberof_method_env = {
-	.inst_size = sizeof(ldap_memberof_call_env_t),
-	.inst_type = "ldap_memberof_call_env_t",
-	.env = memberof_call_env
+static const call_method_env_t xlat_memberof_method_env = {
+	.inst_size = sizeof(ldap_xlat_memberof_call_env_t),
+	.inst_type = "ldap_xlat_memberof_call_env_t",
+	.env = (call_env_t[]) {
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, memberof_user_call_env, true) },
+		{ FR_CALL_ENV_SUBSECTION("group", NULL, memberof_group_call_env, false) },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+static const call_method_env_t xlat_profile_method_env = {
+	.inst_size = sizeof(ldap_xlat_profile_call_env_t),
+	.inst_type = "ldap_xlat_profile_call_env_t",
+	.env = (call_env_t[]) {
+		{ FR_CALL_ENV_SUBSECTION("profile", NULL,
+					 ((call_env_t[])  {
+						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_xlat_profile_call_env_t, profile_filter,
+								     "(&)", T_SINGLE_QUOTED_STRING, false, false, true ) },	//!< Correct filter for when the DN is known.
+						CALL_ENV_TERMINATOR
+					 }),
+					 false) },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 static fr_dict_t const *dict_freeradius;
@@ -567,19 +571,21 @@ static xlat_arg_parser_t const ldap_xlat_arg[] = {
 /** Produce canonical LDAP host URI for finding trunks
  *
  */
-#define HOST_URI_CANONIFY(_host, _target, _url, _box, _error_target) {\
-LDAPURLDesc temp_desc = { \
-	.lud_scheme = _url->lud_scheme, \
-	.lud_host = _url->lud_host, \
-	.lud_port = _url->lud_port, \
-	.lud_scope = -1 \
-}; \
-_host = ldap_url_desc2str(&temp_desc); \
-if (!_host) { \
-	RPEDEBUG("Invalid LDAP URL - %pV", _box); \
-	goto _error_target; \
-} \
-_target = _host; \
+static inline CC_HINT(always_inline)
+char *host_uri_canonify(request_t *request, LDAPURLDesc *url_parsed, fr_value_box_t *url_in)
+{
+	char *host;
+
+	LDAPURLDesc tmp_desc = {
+		.lud_scheme = url_parsed->lud_scheme,
+		.lud_host = url_parsed->lud_host,
+		.lud_port = url_parsed->lud_port,
+		.lud_scope = -1
+	};
+	host = ldap_url_desc2str(&tmp_desc);
+	if (unlikely(host == NULL)) REDEBUG("Invalid LDAP URL - %pV", url_in); \
+
+	return host;
 }
 
 /** Expand an LDAP URL into a query, and return a string result from that query.
@@ -667,7 +673,8 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	if (!ldap_url->lud_host) {
 		host_url = handle_config->server;
 	} else {
-		HOST_URI_CANONIFY(host, host_url, ldap_url, uri, query_error)
+		host_url = host_uri_canonify(request, ldap_url, uri);
+		if (unlikely(host_url == NULL)) goto query_error;
 	}
 
 	ttrunk = fr_thread_ldap_trunk_get(t, host_url, handle_config->admin_identity,
@@ -1094,7 +1101,8 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	if (!ldap_url->lud_host) {
 		host_url = inst->handle_config.server;
 	} else {
-		HOST_URI_CANONIFY(host, host_url, ldap_url, url_head, fail)
+		host_url = host_uri_canonify(request, ldap_url, url_head);
+		if (unlikely(host_url == NULL)) goto fail;
 	}
 
 	ttrunk =  fr_thread_ldap_trunk_get(thread, host_url, inst->handle_config.admin_identity,
