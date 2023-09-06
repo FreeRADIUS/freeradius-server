@@ -365,7 +365,25 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = fr_pair_array_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_value);
 
 	} else if (da->type == FR_TYPE_VSA) {
-		slen = decode_vsa(ctx, out, da, data + 4, len, decode_ctx);
+		bool append = false;
+		fr_pair_t *vp;
+
+		vp = fr_pair_find_by_da(out, NULL, da);
+		if (!vp) {
+			vp = fr_pair_afrom_da(ctx, da);
+			if (!vp) return PAIR_DECODE_FATAL_ERROR;
+
+			append = true;
+		}
+
+		slen = decode_vsa(vp, &vp->vp_group, da, data + 4, len, decode_ctx);
+		if (append) {
+			if (slen < 0) {
+				TALLOC_FREE(vp);
+			} else {
+				fr_pair_append(out, vp);
+			}
+		}
 
 	} else if (da->type == FR_TYPE_TLV) {
 		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_option, NULL, true);
