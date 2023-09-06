@@ -3498,7 +3498,15 @@ static fr_pair_t *pair_alloc_parent(fr_pair_t *in, fr_pair_t *item, fr_dict_attr
 	vp = fr_pair_afrom_da(parent, da);
 	if (!vp) return NULL;
 
-	fr_pair_append(&parent->vp_group, vp);
+	/*
+	 *	If we are at the root, and have been provided with
+	 *	an entry to insert before, then do that.
+	 */
+	if (item && da->parent->flags.is_root) {
+		fr_pair_insert_before(&parent->vp_group, item, vp);
+	} else {
+		fr_pair_append(&parent->vp_group, vp);
+	}
 	return vp;
 }
 
