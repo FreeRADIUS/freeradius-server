@@ -362,15 +362,12 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 
 next:
 	/*
-	 *	We need at least 4 (PEN) + 1 (data-len) + 1 (vendor option num)
-	 *	to be able to decode vendor specific
-	 *	attributes.
+	 *	We need at least 4 (PEN) + 1 (data-len) + 1 (vendor option num) to be able to decode vendor
+	 *	specific attributes.  If we don't have that, then we return an error.  The caller will free
+	 *	the VSA, and create a "raw.VSA" attribute.
 	 */
 	if ((size_t)(end - p) < (sizeof(uint32_t) + 1 + 1)) {
-		len = fr_pair_raw_from_network(ctx, out, parent, p, end - p);
-		if (len < 0) return len;
-
-		return data_len + 2; /* decoded the whole thing */
+		return -1;
 	}
 
 	pen = fr_nbo_to_uint32(p);
@@ -488,7 +485,25 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = fr_pair_array_from_network(ctx, out, da, data + 2, len, decode_ctx, decode_value);
 
 	} else if (da->type == FR_TYPE_VSA) {
-		slen = decode_vsa(ctx, out, da, data + 2, len, decode_ctx);
+		bool append = false;
+		fr_pair_t *vp;
+
+		vp = fr_pair_find_by_da(out, NULL, da);
+		if (!vp) {
+			vp = fr_pair_afrom_da(ctx, da);
+			if (!vp) return PAIR_DECODE_FATAL_ERROR;
+
+			append = true;
+		}
+
+		slen = decode_vsa(vp, &vp->vp_group, da, data + 2, len, decode_ctx);
+		if (append) {
+			if (slen < 0) {
+				TALLOC_FREE(vp);
+			} else {
+				fr_pair_append(out, vp);
+			}
+		}
 
 	} else if (da->type == FR_TYPE_TLV) {
 		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len, decode_ctx, decode_option, verify_tlvs, true);
