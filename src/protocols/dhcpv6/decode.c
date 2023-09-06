@@ -187,19 +187,17 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (!vp) return PAIR_DECODE_OOM;
 
 		/*
-		 *	Child VPs go into the child group, not in the
-		 *	main parent list.  We start decoding
-		 *	attributes from the dictionary root, not from
-		 *	this parent.  We also don't decode an option
-		 *	header, as we're just decoding the values
-		 *	here.
+		 *	Child VPs go into the child group, not in the main parent list.  BUT, we start
+		 *	decoding attributes from the dictionary root, not from this parent.
 		 */
 		slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx, decode_option, NULL, false);
 		if (slen < 0) {
 			talloc_free(vp);
-			return slen;
+			goto raw;
 		}
-		break;
+
+		fr_pair_append(out, vp);
+		return data_len;
 
 	case FR_TYPE_IPV6_ADDR:
 		vp = fr_pair_afrom_da(ctx, parent);
