@@ -349,6 +349,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 	ssize_t			len;
 	uint8_t			option_len;
 	uint32_t		pen;
+	fr_pair_t		*vp;
 	fr_dict_attr_t const	*vendor;
 	uint8_t const		*end = data + data_len;
 	uint8_t const		*p = data;
@@ -403,8 +404,16 @@ next:
 	}
 	p++;
 
+	vp = fr_pair_find_by_da(out, NULL, vendor);
+	if (!vp) {
+		vp = fr_pair_afrom_da(ctx, vendor);
+		if (!vp) return PAIR_DECODE_FATAL_ERROR;
+
+		fr_pair_append(out, vp);
+	}
+
 	/* coverity[tainted_data] */
-	len = fr_pair_tlvs_from_network(ctx, out, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, true);
+	len = fr_pair_tlvs_from_network(vp, &vp->vp_group, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, false);
 	if (len <= 0) return len;
 
 	p += len;

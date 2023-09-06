@@ -661,13 +661,32 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 	}
 
 	/*
-	 *	We go here via a flat attribute, so the da_stack has a
-	 *	vendor next, followed by the vendor attributes.
+	 *	We are at the VSA.  The next entry in the stack is the vendor.  The entry after that is the vendor data.
 	 */
 	if (da_stack->da[depth + 1]) {
-		fr_assert(da_stack->da[depth + 2] != NULL);
+		ssize_t len;
+		fr_dcursor_t vsa_cursor;
 
-		return encode_vsio_data(dbuff, da_stack, depth + 2, cursor, encode_ctx);
+		if (da_stack->da[depth + 2]) {
+			return encode_vsio_data(dbuff, da_stack, depth + 2, cursor, encode_ctx);
+		}
+
+		vp = fr_dcursor_current(cursor);
+		fr_assert(vp->vp_type == FR_TYPE_VENDOR);
+
+		/*
+		 *	Copied from below.
+		 */
+		fr_pair_dcursor_init(&vsa_cursor, &vp->vp_group);
+		work_dbuff = FR_DBUFF(dbuff);
+
+		while ((vp = fr_dcursor_current(&vsa_cursor)) != NULL) {
+			fr_proto_da_stack_build(da_stack, vp->da);
+			len = encode_vsio_data(&work_dbuff, da_stack, depth + 2, &vsa_cursor, encode_ctx);
+			if (len <= 0) return len;
+		}
+
+		goto done;
 	}
 
 	vp = fr_dcursor_current(cursor);
@@ -687,7 +706,7 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 
 		fr_pair_dcursor_init(&vsa_cursor, &vp->vp_group);
 
-		if ((vp = fr_dcursor_current(&vsa_cursor)) != NULL) {
+		while ((vp = fr_dcursor_current(&vsa_cursor)) != NULL) {
 			/*
 			 *	RFC 3925 Section 4 says:
 			 *
@@ -711,6 +730,7 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 	/*
 	 *	Skip over the attribute we just encoded.
 	 */
+done:
 	vp = fr_dcursor_next(cursor);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
