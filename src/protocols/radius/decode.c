@@ -478,7 +478,7 @@ static ssize_t decode_rfc(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = fr_pair_array_from_network(ctx, out, da, data + 2, len - 2, decode_ctx, decode_value);
 
 	} else if (da->type == FR_TYPE_TLV) {
-		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len - 2, decode_ctx, decode_rfc, NULL, false);
+		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len - 2, decode_ctx, decode_rfc, NULL, true);
 
 	} else {
 		slen = decode_value(ctx, out, da, data + 2, len - 2, decode_ctx);
@@ -1985,11 +1985,6 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			return decode_nas_filter_rule(ctx, out, da, data, data_len, packet_ctx);
 		}
 
-		/*
-		 *	@todo - call fr_pair_tlvs_from_network(..., fr_radius_decode_pair_value)
-		 *
-		 *	And get rid of the hard-coded "concat" crap in the dictionary, and in decode_tlv().
-		 */
 		if (data[0] == FR_DIGEST_ATTRIBUTES) {
 			return decode_digest_attributes(ctx, out, da, data, data_len, packet_ctx);
 		}
