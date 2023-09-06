@@ -1,4 +1,4 @@
-if (!%(ldap.profile:ldap:///cn=profile1,ou=profiles,dc=example,dc=com)) {
+if (!%(ldap.profile:ldap:///cn=profile2,ou=profiles,dc=example,dc=com)) {
 	test_fail
 }
 
