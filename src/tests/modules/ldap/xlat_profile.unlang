@@ -1,0 +1,13 @@
+if (!%(ldap.profile:ldap:///cn=profile1,ou=profiles,dc=example,dc=com)) {
+	test_fail
+}
+
+if (!((&reply.Framed-IP-Netmask == 255.255.0.0) && \
+      (&reply.Acct-Interim-Interval == 1800) && \
+      (&request.Service-Type == ::Framed-User) && \
+      (&control.Framed-IP-Address == 1.2.3.4) && \
+      (&control.Reply-Message == 'Hello world'))) {
+	test_fail
+}
+
+test_pass

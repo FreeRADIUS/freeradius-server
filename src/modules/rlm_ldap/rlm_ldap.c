@@ -34,13 +34,18 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/uri.h>
 
-#include "rlm_ldap.h"
 #include <freeradius-devel/ldap/conf.h>
+#include <freeradius-devel/ldap/base.h>
 
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/unlang/action.h>
+#include <freeradius-devel/unlang/xlat.h>
+
+#include <ldap.h>
+#include "rlm_ldap.h"
 
 typedef struct {
 	fr_value_box_t	password;
@@ -57,6 +62,12 @@ typedef struct {
 	fr_value_box_t	user_base;
 	fr_value_box_t	user_filter;
 } ldap_usermod_call_env_t;
+
+/** Call environment used in the profile xlat
+ */
+typedef struct {
+	fr_value_box_t	profile_filter;			//!< Filter to use when searching for users.
+} ldap_xlat_profile_call_env_t;
 
 static const call_env_t sasl_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, ldap_auth_call_env_t, user_sasl_mech,
@@ -899,6 +910,149 @@ static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat
 	if (unlang_function_push(request, xlat_ctx->dn ? NULL : ldap_memberof_xlat_user_find,
 				 ldap_memberof_xlat_results, ldap_memberof_xlat_cancel, ~FR_SIGNAL_CANCEL,
 				 UNLANG_SUB_FRAME, xlat_ctx) < 0) goto error;
+
+	return XLAT_ACTION_PUSH_UNLANG;
+}
+
+typedef struct {
+	fr_ldap_result_code_t	ret;
+	LDAPURLDesc		*url;
+	fr_ldap_map_exp_t	expanded;
+} ldap_xlat_profile_ctx_t;
+
+/** Return whether evaluating the profile was successful
+ *
+ */
+static xlat_action_t ldap_profile_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+					    UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	ldap_xlat_profile_ctx_t		*xlat_ctx = talloc_get_type_abort(xctx->rctx, ldap_xlat_profile_ctx_t);
+	fr_value_box_t			*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
+	vb->vb_bool = xlat_ctx->ret == LDAP_RESULT_SUCCESS;
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+static int ldap_xlat_profile_ctx_free(ldap_xlat_profile_ctx_t *to_free)
+{
+	if (to_free->url) {
+		ldap_free_urldesc(to_free->url);
+		to_free->url = NULL;
+	}
+	return 0;
+}
+/** Expand an LDAP URL into a query, and return a string result from that query.
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+				       xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *in)
+{
+	rlm_ldap_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_ldap_t);
+	fr_ldap_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
+	ldap_xlat_profile_call_env_t	*env_data = talloc_get_type_abort(xctx->env_data, ldap_xlat_profile_call_env_t);
+	fr_value_box_t			*uri_components, *uri;
+	char				*host_url, *host = NULL;
+	fr_ldap_config_t const		*handle_config = t->config;
+	fr_ldap_thread_trunk_t		*ttrunk;
+	ldap_xlat_profile_ctx_t		*xlat_ctx = NULL;
+
+	LDAPURLDesc			*ldap_url;
+	int				ldap_url_ret;
+
+	char const			*filter;
+	int				scope;
+
+	XLAT_ARGS(in, &uri_components);
+
+	if (fr_uri_escape(&uri_components->vb_group, ldap_uri_parts, NULL) < 0) return XLAT_ACTION_FAIL;
+
+	/*
+	 *	Smush everything into the first URI box
+	 */
+	uri = fr_value_box_list_head(&uri_components->vb_group);
+
+	if (fr_value_box_list_concat_in_place(uri, uri, &uri_components->vb_group,
+					      FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+		REDEBUG("Failed concattenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (!ldap_is_ldap_url(uri->vb_strvalue)) {
+		REDEBUG("String passed does not look like an LDAP URL");
+		return XLAT_ACTION_FAIL;
+	}
+
+	ldap_url_ret = ldap_url_parse(uri->vb_strvalue, &ldap_url);
+	if (ldap_url_ret != LDAP_URL_SUCCESS){
+		RPEDEBUG("Parsing LDAP URL failed - %s", fr_ldap_url_err_to_str(ldap_url_ret));
+	error:
+		talloc_free(xlat_ctx);
+		ldap_free_urldesc(ldap_url);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	The URL must specify a DN
+	 */
+	if (!ldap_url->lud_dn) {
+		REDEBUG("LDAP URI must specify a profile DN");
+		goto error;
+	}
+
+	/*
+	 *	Either we use the filter from the URL or we use the default filter
+	 *	configured for profiles.
+	 */
+	filter = ldap_url->lud_filter ? ldap_url->lud_filter : env_data->profile_filter.vb_strvalue;
+
+	/*
+	 *	Determine if the URL includes a scope.
+	 */
+	scope = ldap_url->lud_scope == LDAP_SCOPE_DEFAULT ? inst->profile_scope : ldap_url->lud_scope;
+
+	/*
+	 *	Allocate a resumption context to store temporary resource and results
+	 */
+	MEM(xlat_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_xlat_profile_ctx_t));
+	*xlat_ctx = (ldap_xlat_profile_ctx_t){
+		.url = ldap_url
+	};
+	talloc_set_destructor(xlat_ctx, ldap_xlat_profile_ctx_free);
+
+	/*
+	 *	Synchronous expansion of maps (fixme!)
+	 */
+	if (fr_ldap_map_expand(xlat_ctx, &xlat_ctx->expanded, request, &inst->user_map) < 0) goto error;
+
+	/*
+	 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
+	 */
+	if (!ldap_url->lud_host) {
+		host_url = handle_config->server;
+	} else {
+		host_url = host_uri_canonify(request, ldap_url, uri);
+		if (unlikely(host_url == NULL)) goto error;
+	}
+
+	ttrunk = fr_thread_ldap_trunk_get(t, host_url, handle_config->admin_identity,
+					  handle_config->admin_password, request, handle_config);
+	if (host) ldap_memfree(host);
+	if (!ttrunk) {
+		REDEBUG("Unable to get LDAP query for xlat");
+		goto error;
+	}
+
+	if (unlang_xlat_yield(request, ldap_profile_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) goto error;
+
+	/*
+	 *	Pushes a frame onto the stack to retrieve and evaluate a profile
+	 */
+	if (rlm_ldap_map_profile(&xlat_ctx->ret, inst, request, ttrunk, ldap_url->lud_dn, scope, filter, &xlat_ctx->expanded) < 0) goto error;
 
 	return XLAT_ACTION_PUSH_UNLANG;
 }
@@ -2095,6 +2249,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 							FR_TYPE_BOOL)))) return -1;
 	xlat_func_args_set(xlat, ldap_memberof_xlat_arg);
 	xlat_func_call_env_set(xlat, &xlat_memberof_method_env);
+
+	if (unlikely(!(xlat = xlat_func_register_module(NULL, mctx, "profile", ldap_profile_xlat,
+							FR_TYPE_BOOL)))) return -1;
+	xlat_func_args_set(xlat, ldap_xlat_arg);
+	xlat_func_call_env_set(xlat, &xlat_profile_method_env);
 
 	map_proc_register(inst, mctx->inst->name, mod_map_proc, ldap_map_verify, 0);
 
