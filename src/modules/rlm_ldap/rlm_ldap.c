@@ -1093,7 +1093,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	/*
 	 *	Expand the RHS of the maps to get the name of the attributes.
 	 */
-	if (fr_ldap_map_expand(&map_ctx->expanded, request, maps) < 0) goto fail;
+	if (fr_ldap_map_expand(map_ctx, &map_ctx->expanded, request, maps) < 0) goto fail;
 
 	/*
 	 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
@@ -1539,7 +1539,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	for many things besides searching for users.
 	 */
 
-	if (fr_ldap_map_expand(expanded, request, &inst->user_map) < 0) {
+	if (fr_ldap_map_expand(autz_ctx, expanded, request, &inst->user_map) < 0) {
 	fail:
 		talloc_free(autz_ctx);
 		RETURN_MODULE_FAIL;
