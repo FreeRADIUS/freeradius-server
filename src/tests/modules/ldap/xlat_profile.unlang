@@ -10,4 +10,8 @@ if (!((&reply.Framed-IP-Netmask == 255.255.0.0) && \
 	test_fail
 }
 
+if (!%(ldap.profile:cn=suspended,ou=profiles,dc=example,dc=com)) {
+      test_fail
+}
+
 test_pass
