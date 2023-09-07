@@ -856,6 +856,7 @@ fi
 /usr/bin/radeapclient
 /usr/bin/radlast
 /usr/bin/radtest
+/usr/bin/radsecret
 /usr/bin/radsniff
 /usr/bin/radsqlrelay
 /usr/bin/raduat

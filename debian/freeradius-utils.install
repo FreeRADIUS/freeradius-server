@@ -3,6 +3,7 @@ usr/bin/smbencrypt
 usr/bin/radclient
 usr/bin/radeapclient
 usr/bin/radwho
+usr/bin/radsecret
 usr/bin/radsniff
 usr/bin/radlast
 usr/bin/radtest
