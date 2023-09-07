@@ -843,7 +843,7 @@ static ssize_t encode_extended_nested(fr_dbuff_t *dbuff,
 			slen = encode_extended(&work_dbuff, da_stack, 0, &child_cursor, encode_ctx);
 
 		} else {
-			slen = encode_extended_nested(&work_dbuff, da_stack, 0, &child_cursor, encode_ctx);
+			slen = encode_extended_nested(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx);
 		}
 
 		if (slen < 0) return slen;
