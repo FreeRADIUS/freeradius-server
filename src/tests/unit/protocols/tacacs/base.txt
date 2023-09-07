@@ -6,8 +6,6 @@ proto tacacs
 proto-dictionary tacacs
 fuzzer-out tacacs
 
-migrate pair_legacy_nested = false
-
 # ./pam_tacplus/tacc -TRA -u bob -p hello -s 172.17.0.2 -r 1.1.1.1 -k testing123 -S ppp -P ip -L pap
 # N.B. decrypted and unencrypted flag has been set
 
@@ -32,6 +30,12 @@ match Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type 
 
 encode-proto -
 match c1 01 02 01 b7 0f c8 0e 00 00 00 06 01 00 00 00 00 00
+
+pair Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 3781589222, Packet.Length = 53, Packet-Body-Type = Request, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", service = "ppp", protocol = "ip"
+match Packet = { Version-Major = Plus, Version-Minor = 0, Packet-Type = Authorization, Sequence-Number = 1, Flags = None, Session-Id = 3781589222, Length = 53 }, Packet-Body-Type = Request, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", service = "ppp", protocol = "ip"
+
+encode-proto -
+match c0 02 01 01 e1 66 78 e6 00 00 00 35 06 00 02 03 03 09 09 02 0b 0b 62 6f 62 74 61 70 69 6f 63 61 2f 30 6c 6f 63 61 6c 68 6f 73 74 73 65 72 76 69 63 65 3d 70 70 70 70 72 6f 74 6f 63 6f 6c 3d 69 70
 
 #
 #  Authorization - Request: (Client -> Server)
@@ -72,4 +76,4 @@ decode-proto c002 20ff 2020 2020 0000 0043 2009 0000 0009 000a 2120 2020 2020 20
 match Argument 3 length 32 overflows packet
 
 count
-match 30
+match 33

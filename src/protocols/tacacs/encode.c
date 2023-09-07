@@ -142,6 +142,8 @@ static uint8_t tacacs_encode_body_arg_cnt(fr_pair_list_t *vps, fr_dict_attr_t co
 
 		if (vp->da->flags.internal) continue;
 
+		if (vp->da == attr_tacacs_packet) continue;
+
 		/*
 		 *	Argument-List = "foo=bar"
 		 */
@@ -192,6 +194,8 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 		if (i > arg_cnt) break;
 
 		if (vp->da->flags.internal) continue;
+
+		if (vp->da == attr_tacacs_packet) continue;
 
 		/*
 		 *	Argument-List = "foo=bar"
@@ -995,7 +999,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	}
 
 #ifndef NDEBUG
-	if (fr_debug_lvl >= L_DBG_LVL_4) {
+//	if (fr_debug_lvl >= L_DBG_LVL_4) {
+	if (1) {
 		uint8_t flags = packet->hdr.flags;
 
 		packet->hdr.flags |= FR_TAC_PLUS_UNENCRYPTED_FLAG;
