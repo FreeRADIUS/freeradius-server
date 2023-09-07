@@ -3,6 +3,8 @@ proto radius
 proto-dictionary radius
 fuzzer-out radius
 
+migrate pair_legacy_nested = true
+
 #
 #  And using the dictionaries
 #
@@ -10,7 +12,7 @@ encode-pair Extended-Attribute-6.Extended-Vendor-Specific-6.FreeRADIUS.Unit-EVS-
 match f6 0d 1a 00 00 00 2c 50 01 00 00 00 01 f6 0d 1a 00 00 00 2c 50 01 00 00 00 02
 
 pair Extended-Attribute-1.Unit-Ext-241-Integer = 6809
-match Extended-Attribute-1.Unit-Ext-241-Integer = 6809
+match Extended-Attribute-1 = { Unit-Ext-241-Integer = 6809 }
 
 encode-pair Extended-Attribute-1.Unit-Ext-241-Integer = 6809
 match f1 07 f1 00 00 1a 99
@@ -75,7 +77,7 @@ match 37 06 00 0d 2f 00
 
 # Can we parse RFC 3339 dates correctly?
 pair Unit-TLV.Milliseconds = "2019-08-21T07:40:31.123-04:00"
-match Unit-TLV.Milliseconds = "2019-08-21T03:40:31.123Z"
+match Unit-TLV = { Milliseconds = "2019-08-21T03:40:31.123Z" }
 
 count
-match 35
+match 36
