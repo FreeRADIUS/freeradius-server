@@ -279,10 +279,17 @@ static unlang_action_t ldap_async_auth_bind_results(rlm_rcode_t *p_result, UNUSE
 		break;
 	}
 
-	/*
-	 *	Bind auth ctx is freed by trunk request free.
-	 */
-	fr_trunk_request_signal_complete(bind_auth_ctx->treq);
+	if (bind_auth_ctx->treq) {
+		/*
+		 *	Bind auth ctx is freed by trunk request free.
+		 */
+		fr_trunk_request_signal_complete(bind_auth_ctx->treq);
+	} else {
+		/*
+		 *	If there is no trunk request, the request failed, and we need to free the ctx
+		 */
+		talloc_free(bind_auth_ctx);
+	}
 
 	RETURN_MODULE_RCODE(rcode);
 }
