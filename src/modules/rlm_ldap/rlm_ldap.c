@@ -2110,7 +2110,7 @@ static int parse_sub_section(module_inst_ctx_t const *mctx,
 /** Initialise thread specific data structure
  *
  */
-static int mod_thread_instatiate(module_thread_inst_ctx_t const *mctx)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_ldap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
 	fr_ldap_thread_t	*t = talloc_get_type_abort(mctx->thread, fr_ldap_thread_t);
@@ -2532,7 +2532,7 @@ module_rlm_t rlm_ldap = {
 		.detach		= mod_detach,
 		.thread_inst_size	= sizeof(fr_ldap_thread_t),
 		.thread_inst_type	= "fr_ldap_thread_t",
-		.thread_instantiate	= mod_thread_instatiate,
+		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach,
 	},
 	.method_names = (module_method_name_t[]){

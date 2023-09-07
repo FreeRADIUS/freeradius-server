@@ -1010,7 +1010,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 	talloc_set_destructor(found, _thread_ldap_trunk_free);
 
 	/*
-	 *	Buld config for this connection - start with module settings and
+	 *	Build config for this connection - start with module settings and
 	 *	override server and bind details
 	 */
 	memcpy(&found->config, config, sizeof(fr_ldap_config_t));
