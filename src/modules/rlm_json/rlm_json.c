@@ -82,19 +82,14 @@ typedef struct {
 	json_object		*root;
 } rlm_json_jpath_to_eval_t;
 
-static xlat_arg_parser_t const json_quote_xlat_arg[] = {
+static xlat_arg_parser_t const json_escape_xlat_arg[] = {
 	{ .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-/** Ensure contents are quoted correctly for a JSON document
- *
- * @ingroup xlat_functions
- *
- */
-static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     UNUSED xlat_ctx_t const *xctx,
-				     request_t *request, fr_value_box_list_t *in)
+static xlat_action_t json_escape(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				 UNUSED xlat_ctx_t const *xctx,
+				 request_t *request, fr_value_box_list_t *in, bool quote)
 {
 	fr_value_box_t	*vb_out;
 	fr_value_box_t	*in_head = fr_value_box_list_head(in);
@@ -112,7 +107,7 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	fr_value_box_list_foreach(&in_head->vb_group, vb_in) {
 		MEM(vb_out = fr_value_box_alloc_null(ctx));
-		if (fr_json_str_from_value(agg, vb_in, true) < 0) {
+		if (fr_json_str_from_value(agg, vb_in, quote) < 0) {
 			RPERROR("Failed creating escaped JSON value");
 			return XLAT_ACTION_FAIL;
 		}
@@ -126,11 +121,41 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
+/** Ensure contents are escaped correctly for a JSON document
+ *
+ * This allows values to be embedded inside JSON strings.
+ *
+ * @ingroup xlat_functions
+ *
+ */
+static xlat_action_t json_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      UNUSED xlat_ctx_t const *xctx,
+				      request_t *request, fr_value_box_list_t *in)
+{
+	return json_escape(ctx, out, xctx, request, in, false);
+}
 
 static xlat_arg_parser_t const json_jpath_validate_xlat_arg[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
+
+/** Ensure contents are quoted correctly for a JSON document
+ *
+ * This emits values with escaping, and appropriate quoting '"' depending on the
+ * type of values being produced.  This lets boxed values be inserted directly
+ * as table values and array elements, without needing to determine if the
+ * expansion needs to be wrapped in quotes.
+ *
+ * @ingroup xlat_functions
+ *
+ */
+static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				     UNUSED xlat_ctx_t const *xctx,
+				     request_t *request, fr_value_box_list_t *in)
+{
+	return json_escape(ctx, out, xctx, request, in, true);
+}
 
 /** Determine if a jpath expression is valid
  *
@@ -570,8 +595,10 @@ static int mod_load(void)
 
 	fr_json_version_print();
 
+	if (unlikely(!(xlat = xlat_func_register(NULL, "json_escape", json_escape_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_args_set(xlat, json_escape_xlat_arg);
 	if (unlikely(!(xlat = xlat_func_register(NULL, "json_quote", json_quote_xlat, FR_TYPE_STRING)))) return -1;
-	xlat_func_args_set(xlat, json_quote_xlat_arg);
+	xlat_func_args_set(xlat, json_escape_xlat_arg);
 	if (unlikely(!(xlat = xlat_func_register(NULL, "json_jpath_validate", json_jpath_validate_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_mono_set(xlat, json_jpath_validate_xlat_arg);
 
