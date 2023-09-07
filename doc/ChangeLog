@@ -14,6 +14,8 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	* Add 'if not exists' to mysql create table queries. ref #5032 (#5137)
 	* Add lookback and more configuration to totp.  See mods-available/totp
 	* Update dictionary.aruba
+	* Added "radsecret" program which generates strong secrets.  See the
+	  top of the "clients.conf" file for more information.
 
 	Bug fixes
 	* Fix corner case with empty defaults in rlm_files.  Fixes #5035
@@ -28,6 +30,7 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	* add client configuration for TLS PSK.
 	* permit originate CoA after proxying to an internal virtual server
 	* Use virtual server "default" when passed "-i" and "-p" on the command line.
+	* Fix locking issues with rlm_python3.
 
 FreeRADIUS 3.2.3 Fri 26 May 2023 12:00:00 EDT urgency=low
 	Configuration changes
