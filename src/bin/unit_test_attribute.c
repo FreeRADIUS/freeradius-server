@@ -2273,10 +2273,6 @@ static size_t command_migrate(command_result_t *result, UNUSED command_file_ctx_
 		p += sizeof("pair_legacy_nested") - 1;
 		out = &fr_pair_legacy_nested;
 
-	} else if (strncmp(p, "pair_legacy_print_nested", sizeof("pair_legacy_print_nested") - 1) == 0) {
-		p += sizeof("pair_legacy_print_nested") - 1;
-		out = &fr_pair_legacy_print_nested;
-
 	} else {
 		fr_strerror_const("Unknown migration flag");
 		RETURN_PARSE_ERROR(0);
@@ -3642,6 +3638,8 @@ int main(int argc, char *argv[])
 		ret = EXIT_SUCCESS;
 		goto cleanup;
 	}
+
+	fr_pair_legacy_nested = true; /* force migration flags */
 
 	if (receipt_file && (fr_unlink(receipt_file) < 0)) {
 		fr_perror("unit_test_attribute");

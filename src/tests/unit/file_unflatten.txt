@@ -7,14 +7,7 @@
 proto-dictionary radius
 
 #
-#  The same as "file.txt", but where we set a migration flag which prints flat attributes as nested.
-#
-migrate pair_legacy_print_nested = true
-
-#
 #  Fully specified paths.
-#
-#  @todo - we arguably want to force nesting on these attributes?  Or change the nesting when printed?
 #
 read_file files/cisco_avpair.txt
 match User-Name = "bob", User-Password = "hello", Vendor-Specific = { Cisco = { AVPair = "1", AVPair += "2", AVPair += "3", AVPair += "4" } }
@@ -39,4 +32,4 @@ read_file files/cisco_single_line.txt
 match User-Name = "bob", User-Password = "hello", Vendor-Specific = { Cisco = { AVPair = "1", AVPair += "2", AVPair += "3", AVPair += "4" } }
 
 count
-match 10
+match 9

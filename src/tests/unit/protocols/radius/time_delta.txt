@@ -5,8 +5,6 @@ proto radius
 proto-dictionary radius
 fuzzer-out radius
 
-migrate pair_legacy_nested = true
-
 #
 #  Time delta in milliseconds.
 #
@@ -121,4 +119,4 @@ decode-pair -
 match Unit-TLV = { Delta-MSec-int32 = 2147483647 }
 
 count
-match 66
+match 65

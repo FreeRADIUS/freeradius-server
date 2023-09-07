@@ -6,6 +6,8 @@ proto tacacs
 proto-dictionary tacacs
 fuzzer-out tacacs
 
+migrate pair_legacy_nested = false
+
 #
 #  Authorization - Response: (Client <- Server)
 #
@@ -17,4 +19,4 @@ encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packe
 match c0 02 02 04 e1 66 78 e6 00 00 00 13 02 59 f9 90 38 81 e1 bb 9d a6 13 93 fc 86 7e 4a 14 1c 24
 
 count
-match 5
+match 6

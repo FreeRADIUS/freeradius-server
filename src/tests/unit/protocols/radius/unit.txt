@@ -3,8 +3,6 @@ proto radius
 proto-dictionary radius
 fuzzer-out radius
 
-migrate pair_legacy_nested = true
-
 #
 #  And using the dictionaries
 #
@@ -80,4 +78,4 @@ pair Unit-TLV.Milliseconds = "2019-08-21T07:40:31.123-04:00"
 match Unit-TLV = { Milliseconds = "2019-08-21T03:40:31.123Z" }
 
 count
-match 36
+match 35

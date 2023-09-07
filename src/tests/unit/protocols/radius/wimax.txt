@@ -2,8 +2,6 @@ proto radius
 proto-dictionary radius
 fuzzer-out radius
 
-migrate pair_legacy_nested=true
-
 #
 #  Test vectors for WiMAX attributes.
 #
@@ -312,4 +310,4 @@ match Vendor-Specific.WiMAX.Capability = { Release = "1.0", Accounting-Capabilit
 
 
 count
-match 148
+match 147

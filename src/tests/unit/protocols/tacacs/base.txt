@@ -6,6 +6,8 @@ proto tacacs
 proto-dictionary tacacs
 fuzzer-out tacacs
 
+migrate pair_legacy_nested = false
+
 # ./pam_tacplus/tacc -TRA -u bob -p hello -s 172.17.0.2 -r 1.1.1.1 -k testing123 -S ppp -P ip -L pap
 # N.B. decrypted and unencrypted flag has been set
 
@@ -70,4 +72,4 @@ decode-proto c002 20ff 2020 2020 0000 0043 2009 0000 0009 000a 2120 2020 2020 20
 match Argument 3 length 32 overflows packet
 
 count
-match 29
+match 30

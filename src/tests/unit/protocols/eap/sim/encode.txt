@@ -4,10 +4,11 @@
 
 # Only run the tests if we have TLS support
 need-feature tls
-
 # Load the EAP-AKA/SIM encoder/decoder
 proto eap-aka-sim
 proto-dictionary eap-aka-sim eap/aka-sim
+
+migrate pair_legacy_nested = false
 
 # Boolean attribute
 encode-pair.sim_tp_encode Any-ID-Req = yes
@@ -125,4 +126,4 @@ encode-pair.sim_tp_encode_rfc4186 IV = 0xcdf7ffa65de04c026b56c86b76b102ea, Encr-
 match 81 05 00 00 cd f7 ff a6 5d e0 4c 02 6b 56 c8 6b 76 b1 02 ea 82 05 00 00 b6 ed d3 82 79 e2 a1 42 3c 1a fc 5c 45 5c 7d 56
 
 count
-match 62
+match 63
