@@ -587,6 +587,12 @@ static request_t *request_clone(request_t *old, int number, CONF_SECTION *server
 	return request;
 }
 
+static void cancel_request(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
+{
+	request_t	*request = talloc_get_type_abort(uctx, request_t);
+	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+}
+
 /**
  *
  * @hidecallgraph
@@ -605,6 +611,7 @@ int main(int argc, char *argv[])
 	fr_pair_list_t		filter_vps;
 	bool			xlat_only = false;
 	fr_event_list_t		*el = NULL;
+	fr_event_timer_t const	*cancel_timer = NULL;
 	fr_client_t		*client = NULL;
 	fr_dict_t		*dict = NULL;
 	fr_dict_t const		*dict_check;
@@ -1016,6 +1023,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (count == 1) {
+		fr_event_timer_in(request, el, &cancel_timer, config->max_request_time, cancel_request, request);
 		unlang_interpret_synchronous(el, request);
 
 	} else {
@@ -1048,6 +1056,7 @@ int main(int argc, char *argv[])
 			}
 #endif
 
+			fr_event_timer_in(request, el, &cancel_timer, config->max_request_time, cancel_request, request);
 			unlang_interpret_synchronous(el, request);
 			talloc_free(request);
 
