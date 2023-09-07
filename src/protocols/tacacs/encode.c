@@ -418,6 +418,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	for (vp = fr_pair_dcursor_init(&cursor, vps);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
+		if (vp->da == attr_tacacs_packet) break;
 		if (vp->da->parent == attr_tacacs_packet) break;
 	}
 
@@ -444,6 +445,26 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 		 *	because the fields 'seq_no' and 'length' are not the same.
 		 */
 		FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(fr_tacacs_packet_hdr_t));
+
+	} else if (vp->da == attr_tacacs_packet) {
+		fr_dcursor_t child_cursor;
+
+		fr_proto_da_stack_build(&da_stack, attr_tacacs_packet);
+		FR_PROTO_STACK_PRINT(&da_stack, 0);
+
+		fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+
+		/*
+		 *	Call the struct encoder to do the actual work,
+		 *	which fills the struct fields with zero if the member VP is not used.
+		 */
+		len = fr_struct_to_network(&work_dbuff, &da_stack, 0, &child_cursor, NULL, NULL, NULL);
+		if (len != sizeof(fr_tacacs_packet_hdr_t)) {
+			fr_strerror_printf("%s: Failed encoding %s using fr_struct_to_network()",
+					   __FUNCTION__, attr_tacacs_packet->name);
+			return -1;
+		}
+		fr_dcursor_next(&cursor);
 
 	} else {
 		fr_proto_da_stack_build(&da_stack, attr_tacacs_packet);
@@ -1041,7 +1062,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx = talloc_zero(ctx, fr_tacacs_ctx_t);
 	if (!test_ctx) return -1;
 
-	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
+//	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
 	test_ctx->root = fr_dict_root(dict_tacacs);
 	talloc_set_destructor(test_ctx, _encode_test_ctx);
 
