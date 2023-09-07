@@ -17,7 +17,7 @@ fuzzer-out tacacs
 #	Authentication: Start Request: (Client -> Server)
 #
 decode-proto c1 01 01 00 b7 0f c8 0e 00 00 00 22 79 d2 9a 66 67 fe fe 87 04 af 61 7e cb 79 20 bb ca 61 cf 8b 25 ab 70 9e 68 af 9f d5 ae de c5 5d 5e 73
-match Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 3071264782, Packet.Length = 34, Packet-Body-Type = Start, Action = LOGIN, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", User-Password = "hello"
+match Packet = { Version-Major = Plus, Version-Minor = 1, Packet-Type = Authentication, Sequence-Number = 1, Flags = None, Session-Id = 3071264782, Length = 34 }, Packet-Body-Type = Start, Action = LOGIN, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", User-Password = "hello"
 
 encode-proto -
 match c1 01 01 01 b7 0f c8 0e 00 00 00 22 01 00 02 03 03 09 09 05 62 6f 62 74 61 70 69 6f 63 61 2f 30 6c 6f 63 61 6c 68 6f 73 74 68 65 6c 6c 6f
@@ -26,7 +26,7 @@ match c1 01 01 01 b7 0f c8 0e 00 00 00 22 01 00 02 03 03 09 09 05 62 6f 62 74 61
 #	Authentication: Reply: (Client <- Server)
 #
 decode-proto c1 01 02 00 b7 0f c8 0e 00 00 00 06 39 51 39 56 ef f4
-match Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 3071264782, Packet.Length = 6, Packet-Body-Type = Reply, Authentication-Status = Pass, Authentication-Flags = 0, Server-Message = "", Data = 0x
+match Packet = { Version-Major = Plus, Version-Minor = 1, Packet-Type = Authentication, Sequence-Number = 2, Flags = None, Session-Id = 3071264782, Length = 6 }, Packet-Body-Type = Reply, Authentication-Status = Pass, Authentication-Flags = 0, Server-Message = "", Data = 0x
 
 encode-proto -
 match c1 01 02 01 b7 0f c8 0e 00 00 00 06 01 00 00 00 00 00
@@ -41,7 +41,7 @@ match c0 02 01 01 e1 66 78 e6 00 00 00 35 06 00 02 03 03 09 09 02 0b 0b 62 6f 62
 #  Authorization - Request: (Client -> Server)
 #
 decode-proto c0 02 01 00 e1 66 78 e6 00 00 00 35 4b c5 ea 62 13 cc ca a6 6a 03 3c 8e 3f c0 5a aa 46 da 12 cd ee 48 62 69 67 9a b8 b4 db 70 98 30 b7 fc f6 93 09 d4 3f 2c a9 58 9e 3c 6a 0e d5 50 20 e6 a5 39 46
-match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 3781589222, Packet.Length = 53, Packet-Body-Type = Request, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", service = "ppp", protocol = "ip"
+match Packet = { Version-Major = Plus, Version-Minor = 0, Packet-Type = Authorization, Sequence-Number = 1, Flags = None, Session-Id = 3781589222, Length = 53 }, Packet-Body-Type = Request, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", service = "ppp", protocol = "ip"
 
 encode-proto -
 match c0 02 01 01 e1 66 78 e6 00 00 00 35 06 00 02 03 03 09 09 02 0b 0b 62 6f 62 74 61 70 69 6f 63 61 2f 30 6c 6f 63 61 6c 68 6f 73 74 73 65 72 76 69 63 65 3d 70 70 70 70 72 6f 74 6f 63 6f 6c 3d 69 70
@@ -50,7 +50,7 @@ match c0 02 01 01 e1 66 78 e6 00 00 00 35 06 00 02 03 03 09 09 02 0b 0b 62 6f 62
 #  Authorization - Response: (Client <- Server)
 #
 decode-proto c0 02 02 00 e1 66 78 e6 00 00 00 13 02 59 f9 90 38 81 e1 bb 9d a6 13 93 fc 86 7e 4a 14 1c 24
-match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 3781589222, Packet.Length = 19, Packet-Body-Type = Response, Authorization-Status = Pass-Add, Server-Message = "", Data = 0x, addr = 1.2.3.4
+match Packet = { Version-Major = Plus, Version-Minor = 0, Packet-Type = Authorization, Sequence-Number = 2, Flags = None, Session-Id = 3781589222, Length = 19 }, Packet-Body-Type = Response, Authorization-Status = Pass-Add, Server-Message = "", Data = 0x, addr = 1.2.3.4
 
 encode-proto -
 match c0 02 02 01 e1 66 78 e6 00 00 00 13 01 01 00 00 00 00 0c 61 64 64 72 3d 31 2e 32 2e 33 2e 34
@@ -59,7 +59,7 @@ match c0 02 02 01 e1 66 78 e6 00 00 00 13 01 01 00 00 00 00 0c 61 64 64 72 3d 31
 #  Accounting - Request: (Client -> Server)
 #
 decode-proto c0 03 01 00 07 9b 35 d9 00 00 00 5b 7c 8a 99 d6 88 f9 32 3c ec 34 6d 23 89 71 72 dd 89 46 75 df 9c 00 a5 96 28 05 fc 57 88 02 0c 11 a3 60 9a 05 8b 71 6d 27 ca 83 b0 ab 2f 00 27 c8 da 58 d3 1a f1 3f 07 17 8d f6 35 c5 7b e2 07 be 29 86 d4 93 16 99 04 01 ef 03 6c 1c 2b ad 3a fb 5b 11 06 61 dc d9 09 1d 6a 08 1e
-match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Accounting, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 127612377, Packet.Length = 91, Packet-Body-Type = Request, Accounting-Flags = Start, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", start_time = "Aug  4 2020 18:27:24 UTC", task_id = "17558", service = "ppp", protocol = "ip"
+match Packet = { Version-Major = Plus, Version-Minor = 0, Packet-Type = Accounting, Sequence-Number = 1, Flags = None, Session-Id = 127612377, Length = 91 }, Packet-Body-Type = Request, Accounting-Flags = Start, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", start_time = "Aug  4 2020 18:27:24 UTC", task_id = "17558", service = "ppp", protocol = "ip"
 
 encode-proto -
 match c0 03 01 01 07 9b 35 d9 00 00 00 5a 02 06 00 02 03 03 09 09 04 15 0d 0b 0b 62 6f 62 74 61 70 69 6f 63 61 2f 30 6c 6f 63 61 6c 68 6f 73 74 73 74 61 72 74 5f 74 69 6d 65 3d 31 35 39 36 35 36 35 36 34 34 74 61 73 6b 5f 69 64 3d 31 37 35 35 38 73 65 72 76 69 63 65 3d 70 70 70 70 72 6f 74 6f 63 6f 6c 3d 69 70
@@ -68,7 +68,7 @@ match c0 03 01 01 07 9b 35 d9 00 00 00 5a 02 06 00 02 03 03 09 09 04 15 0d 0b 0b
 #  Accounting - Response: (Client <- Server)
 #
 decode-proto c0 03 02 00 07 9b 35 d9 00 00 00 05 49 d8 e5 4a 73
-match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Accounting, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 127612377, Packet.Length = 5, Packet-Body-Type = Reply, Server-Message = "", Data = 0x, Accounting-Status = Success
+match Packet = { Version-Major = Plus, Version-Minor = 0, Packet-Type = Accounting, Sequence-Number = 2, Flags = None, Session-Id = 127612377, Length = 5 }, Packet-Body-Type = Reply, Server-Message = "", Data = 0x, Accounting-Status = Success
 encode-proto -
 match c0 03 02 01 07 9b 35 d9 00 00 00 05 00 00 00 00 01
 
