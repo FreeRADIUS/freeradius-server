@@ -2396,7 +2396,7 @@ static size_t command_proto(command_result_t *result, command_file_ctx_t *cc,
 	ssize_t slen;
 
 	if (*in == '\0') {
-		fr_strerror_printf("Load syntax is \"load <lib_name>\"");
+		fr_strerror_printf("Load syntax is \"proto <lib_name>\"");
 		RETURN_PARSE_ERROR(0);
 	}
 
@@ -2936,7 +2936,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 	{ L("encode-proto"),	&(command_entry_t){
 					.func = command_encode_proto,
 					.usage = "encode-proto[.<testpoint_symbol>] (-|<attribute> = <value>[,<attribute = <value>])",
-					.description = "Encode one or more attributes as a packet, writing a hex string to the data buffer.  Protocol must be loaded with \"load <protocol>\" first"
+					.description = "Encode one or more attributes as a packet, writing a hex string to the data buffer.  Protocol must be loaded with \"proto <protocol>\" first"
 				}},
 	{ L("eof"),		&(command_entry_t){
 					.func = command_eof,
