@@ -6,13 +6,12 @@ ENUM <name> <type>
 ----
 
 .Description
-The `ENUM` keyword defines name for set of xref:dictionary/value.adoc[VALUE]s.
+The `ENUM` keyword defines a name for set of xref:dictionary/value.adoc[VALUE]s.
 
 <name>:: The name of the enum.
 +
 These names are in the same namespace as
-xref:dictionary/attribute.adoc[ATTRIBUTE]s, and must follow the same
-rules
+xref:dictionary/attribute.adoc[ATTRIBUTE]s, and must follow the same name format.
 
 <type>:: A xref:type/index.adoc[data type]
 +

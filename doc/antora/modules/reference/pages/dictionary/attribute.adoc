@@ -51,7 +51,7 @@ Common flags and meanings
 |=====
 | Name           | Description
 | `array`        | For fixed-size types, declare that the contents of the packet can have an array of this value.
-| `enum=<ref>`   | For "leaf" types, copy xref:dictionary/value.adoc[VALUE]s from an xref:dictionary/enum.adoc[ENUM].
+| `enum=<ref>`   | For "leaf" types, copy xref:dictionary/value.adoc[VALUE]s from an xref:dictionary/enum.adoc[ENUM] or other attribute.
 | `clone=<ref>`  | For `tlv` or 'struct' types, clone (or copy) child definitions from another attribute of the same type
 | `internal`     | This attribute is internal to the server, and will never be sent "on the wire"
 | `ref=<ref>`    | For `group` types, the referenced attributes will be allowed in the group

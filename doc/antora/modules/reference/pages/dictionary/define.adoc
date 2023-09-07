@@ -33,7 +33,7 @@ Common flags and meanings
 [cols="30%,70%"]
 |=====
 | Name         | Description
-| `enum=...`   | For "leaf" types, copy xref:dictionary/value.adoc[VALUE]s from an `xref:dictionary/enum.adoc[ENUM].
+| `enum=...`   | For "leaf" types, copy xref:dictionary/value.adoc[VALUE]s from an `xref:dictionary/enum.adoc[ENUM] or other attribute.
 | `clone=...`  | For `tlv` or 'struct' types, clone (or copy) child definitions from another attribute of the same type
 |=====
 
