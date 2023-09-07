@@ -18,6 +18,8 @@ FILES_SKIP :=
 #
 ifeq "$(findstring apple,$(AC_HOSTINFO))" ""
   FILES_SKIP += $(filter icmp/%,$(FILES))
+else
+  FILES_SKIP += $(filter unbound/%,$(FILES))
 endif
 
 #
