@@ -555,8 +555,15 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 		break;
 
-	case FR_TYPE_TLV:
 	case FR_TYPE_VSA:
+		if ((type != FR_TYPE_VENDOR) && !flags->internal) {
+			fr_strerror_printf("Attributes of type '%s' cannot be children of the 'vendor' type",
+					   fr_type_to_str(type));
+			return false;
+		}
+		break;
+
+	case FR_TYPE_TLV:
 	case FR_TYPE_VENDOR:
 		break;
 
