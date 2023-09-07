@@ -1077,16 +1077,6 @@ fr_trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const
 	return (found) ? found->trunk->state : FR_TRUNK_STATE_MAX;
 }
 
-/** Free LDAP bind auth ctx when trunk request is "freed" with fr_trunk_request_free()
- *
- */
-static void ldap_trunk_bind_auth_free(UNUSED request_t *request, void *preq_to_free, UNUSED void *uctx)
-{
-	fr_ldap_bind_auth_ctx_t *bind = talloc_get_type_abort(preq_to_free, fr_ldap_bind_auth_ctx_t);
-
-	talloc_free(bind);
-}
-
 /** Take pending LDAP bind auths from the queue and send them.
  *
  * @param[in] el	Event list for timers.
@@ -1371,7 +1361,6 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_bind_trunk_get(fr_ldap_thread_t *thread)
 					      .request_mux = ldap_trunk_bind_auth_mux,
 					      .request_demux = ldap_trunk_bind_auth_demux,
 					      .request_cancel_mux = ldap_bind_auth_cancel_mux,
-					      .request_free = ldap_trunk_bind_auth_free
 					},
 				       thread->bind_trunk_conf,
 				       "rlm_ldap bind auth", ttrunk, false);
