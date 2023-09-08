@@ -136,21 +136,6 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 			return -1;
 		}
 
-		/*
-		 *	If chaddr != 6 bytes it's probably not ethernet, and we should store
-		 *	it as an opaque type (octets).
-		 */
-		if (da == attr_dhcp_client_hardware_address) {
-			/*
-			 *	Skip chaddr if it doesn't exist.
-			 */
-			if ((data[1] == 0) || (data[2] == 0)) continue;
-
-			if ((data[1] == 1) && (data[2] != sizeof(vp->vp_ether))) {
-				fr_pair_to_unknown(vp);
-			}
-		}
-
 		switch (vp->vp_type) {
 		case FR_TYPE_STRING:
 			/*
@@ -166,18 +151,17 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 			if (vp->vp_length == 0) TALLOC_FREE(vp);
 			break;
 
-		case FR_TYPE_OCTETS:
-			if (data[2] == 0) break;
-
-			fr_pair_value_memdup(vp, p, data[2], true);
-			break;
-
 			/*
 			 *	The DHCP header size for CHADDR is not
 			 *	6, so the value_box function doesn't
 			 *	like it.  Just do the copy manually.
 			 */
 		case FR_TYPE_ETHERNET:
+			if ((data[1] != 1) || (data[2] != 6)) {
+				TALLOC_FREE(vp);
+				break;
+			}
+
 			memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
 			break;
 
