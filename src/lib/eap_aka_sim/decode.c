@@ -715,7 +715,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	 *	For unknown attributes copy the entire value, not skipping
 	 *	any reserved bytes.
 	 */
-	if (parent->flags.is_unknown || parent->flags.is_raw) {
+	if (parent->flags.is_unknown) {
 		fr_pair_value_memdup(vp, p, attr_len, true);
 		vp->vp_length = attr_len;
 		goto done;
