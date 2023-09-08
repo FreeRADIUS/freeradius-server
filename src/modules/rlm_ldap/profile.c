@@ -152,7 +152,7 @@ unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	return fr_ldap_trunk_search(NULL, profile_ctx, &profile_ctx->query, request, ttrunk, dn,
+	return fr_ldap_trunk_search(profile_ctx, &profile_ctx->query, request, ttrunk, dn,
 				    scope, filter,
 				    expanded->attrs, NULL, NULL);
 }

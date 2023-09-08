@@ -636,9 +636,8 @@ do { \
 	} \
 } while (0)
 
-/** Run an async or sync search LDAP query on a trunk connection
+/** Run an async search LDAP query on a trunk connection
  *
- * @param[out] p_result		from synchronous evaluation.
  * @param[in] ctx		to allocate the query in.
  * @param[out] out		that has been allocated.
  * @param[in] request		this query relates to.
@@ -653,8 +652,7 @@ do { \
  *	- UNLANG_ACTION_FAIL on error.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  */
-unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
-				     TALLOC_CTX *ctx,
+unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *base_dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls)
@@ -671,7 +669,6 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 
 	default:
 	error:
-		if (p_result) *p_result = RLM_MODULE_FAIL;
 		*out = NULL;
 		talloc_free(query);
 		return UNLANG_ACTION_FAIL;
@@ -689,7 +686,6 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 
 /** Run an async modification LDAP query on a trunk connection
  *
- * @param[out] p_result		from synchronous evaluation.
  * @param[in] ctx		to allocate the query in.
  * @param[out] out		that has been allocated.
  * @param[in] request		this query relates to.
@@ -702,8 +698,7 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
  *	- UNLANG_ACTION_FAIL on error.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  */
-unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
-				     TALLOC_CTX *ctx,
+unlang_action_t fr_ldap_trunk_modify(TALLOC_CTX *ctx,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *dn, LDAPMod *mods[],
 				     LDAPControl **serverctrls, LDAPControl **clientctrls)
@@ -721,7 +716,6 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 	default:
 	error:
 		*out = NULL;
-		*p_result = RLM_MODULE_FAIL;
 		talloc_free(query);
 		return UNLANG_ACTION_FAIL;
 	}
@@ -779,7 +773,6 @@ fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_con
 
 /** Run an async LDAP "extended operation" query on a trunk connection
  *
- * @param[out] p_result		from synchronous evaluation.
  * @param[in] ctx		to allocate the query in.
  * @param[out] out		that has been allocated.
  * @param[in] request		this query relates to.
@@ -792,8 +785,7 @@ fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_con
  *	- UNLANG_ACTION_FAIL on error.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  */
-unlang_action_t fr_ldap_trunk_extended(rlm_rcode_t *p_result,
-				       TALLOC_CTX *ctx,
+unlang_action_t fr_ldap_trunk_extended(TALLOC_CTX *ctx,
 				       fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				       char const *reqoid, struct berval *reqdata,
 				       LDAPControl **serverctrls, LDAPControl **clientctrls)
@@ -811,7 +803,6 @@ unlang_action_t fr_ldap_trunk_extended(rlm_rcode_t *p_result,
 	default:
 	error:
 		*out = NULL;
-		*p_result = RLM_MODULE_FAIL;
 		talloc_free(query);
 		return UNLANG_ACTION_FAIL;
 	}

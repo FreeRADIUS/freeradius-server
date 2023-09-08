@@ -165,11 +165,11 @@ finish:
  * @param uctx		eDir lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_edir_get_password_start(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+static unlang_action_t ldap_edir_get_password_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
 						    void *uctx)
 {
 	ldap_edir_ctx_t	*edir_ctx = talloc_get_type_abort(uctx, ldap_edir_ctx_t);
-	return fr_ldap_trunk_extended(p_result, edir_ctx, &edir_ctx->query, request, edir_ctx->ttrunk,
+	return fr_ldap_trunk_extended(edir_ctx, &edir_ctx->query, request, edir_ctx->ttrunk,
 				      edir_ctx->reqoid, edir_ctx->dn, NULL, NULL);
 }
 
