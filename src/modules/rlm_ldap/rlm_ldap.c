@@ -1424,6 +1424,22 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	LDAP			*handle = fr_ldap_handle_thread_local();
 
+	/*
+	 *	If a previous async call returned one of the "failure" results just return.
+	 */
+	switch (*p_result) {
+	case RLM_MODULE_REJECT:
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_HANDLED:
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_DISALLOW:
+		rcode = *p_result;
+		goto finish;
+
+	default:
+		break;
+	}
+
 	switch (autz_ctx->status) {
 	case LDAP_AUTZ_FIND:
 		/*
