@@ -1304,11 +1304,10 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 
 		RDEBUG2("Login attept using identity \"%pV\"", &call_env->user_sasl_authname);
 
-		if (fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
+		return fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
 						 call_env->user_sasl_authname.vb_strvalue,
 						 auth_ctx->password, call_env->user_sasl_proxy.vb_strvalue,
-						 call_env->user_sasl_realm.vb_strvalue) < 0) goto fail;
-		return UNLANG_ACTION_PUSHED_CHILD;
+						 call_env->user_sasl_realm.vb_strvalue);
 #else
 		RDEBUG("Configuration item 'sasl.mech' is not supported.  "
 		       "The linked version of libldap does not provide ldap_sasl_bind( function");
@@ -1325,15 +1324,13 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	 *	No DN found - can't authenticate the user with a simple bind.
 	 */
 	if (!auth_ctx->dn) {
-	fail:
 		talloc_free(auth_ctx);
 		RETURN_MODULE_FAIL;
 	}
 
 	RDEBUG2("Login attempt as \"%s\"", auth_ctx->dn);
 
-	if (fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password) < 0) goto fail;
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -1542,12 +1539,8 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			 *	Bind as the user
 			 */
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			if (fr_ldap_bind_auth_async(request, thread, autz_ctx->dn, password->vp_strvalue) < 0) {
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
-			}
 			autz_ctx->status = LDAP_AUTZ_POST_EDIR;
-			return UNLANG_ACTION_PUSHED_CHILD;
+			return fr_ldap_bind_auth_async(request, thread, autz_ctx->dn, password->vp_strvalue);
 		}
 		goto skip_edir;
 

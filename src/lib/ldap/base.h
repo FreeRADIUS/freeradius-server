@@ -912,11 +912,11 @@ int		fr_ldap_sasl_bind_auth_async(request_t *request,
 /*
  *	bind.c - Async bind
  */
-int		fr_ldap_bind_async(fr_ldap_connection_t *c,
+unlang_action_t	fr_ldap_bind_async(fr_ldap_connection_t *c,
 				   char const *bind_dn, char const *password,
 				   LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-int		fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread,
+unlang_action_t	fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread,
 					char const *bind_dn, char const *password);
 
 /*

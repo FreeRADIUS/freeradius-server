@@ -501,7 +501,7 @@ static unlang_action_t ldap_async_sasl_bind_auth_results(rlm_rcode_t *p_result, 
  *	- 0 on success.
  *	- -1 on failure.
 */
-int fr_ldap_sasl_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char const *mechs,
+unlang_action_t fr_ldap_sasl_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char const *mechs,
 				 char const *identity, char const *password, char const *proxy, char const *realm)
 {
 	fr_ldap_bind_auth_ctx_t *bind_auth_ctx;
@@ -511,13 +511,13 @@ int fr_ldap_sasl_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, c
 
 	if (!ttrunk) {
 		ERROR("Failed to get trunk connection for LDAP bind");
-		return -1;
+		return UNLANG_ACTION_FAIL;
 	}
 
 	treq = fr_trunk_request_alloc(ttrunk->trunk, request);
 	if (!treq) {
 		ERROR("Failed to allocate trunk request for LDAP bind");
-		return -1;
+		return UNLANG_ACTION_FAIL;
 	}
 
 	MEM(bind_auth_ctx = talloc_zero(treq, fr_ldap_bind_auth_ctx_t));
@@ -549,7 +549,7 @@ int fr_ldap_sasl_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, c
 	default:
 		ERROR("Failed to enqueue bind request");
 		fr_trunk_request_free(&treq);
-		return -1;
+		return UNLANG_ACTION_FAIL;
 	}
 
 	return unlang_function_push(request,
@@ -557,5 +557,5 @@ int fr_ldap_sasl_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, c
 				    ldap_async_sasl_bind_auth_results,
 				    ldap_async_sasl_bind_auth_cancel,
 				    ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
-				    bind_auth_ctx) == UNLANG_ACTION_PUSHED_CHILD ? 0 : -1;
+				    bind_auth_ctx);
 }
