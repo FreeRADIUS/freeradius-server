@@ -1510,13 +1510,9 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			 *	Retrive universal password
 			 */
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			if (fr_ldap_edir_get_password(p_result, request, autz_ctx->dn, autz_ctx->ttrunk,
-						      attr_cleartext_password) < 0) {
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
-			}
 			autz_ctx->status = LDAP_AUTZ_EDIR_BIND;
-			return UNLANG_ACTION_PUSHED_CHILD;
+			return fr_ldap_edir_get_password(request, autz_ctx->dn, autz_ctx->ttrunk,
+							 attr_cleartext_password);
 		}
 		FALL_THROUGH;
 

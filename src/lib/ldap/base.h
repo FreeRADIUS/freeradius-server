@@ -831,7 +831,7 @@ int		fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn);
 /*
  *	edir.c - Edirectory integrations
  */
-int		fr_ldap_edir_get_password(rlm_rcode_t *p_result, request_t *request, char const *dn,
+unlang_action_t	fr_ldap_edir_get_password(request_t *request, char const *dn,
 					  fr_ldap_thread_trunk_t *ttrunk, fr_dict_attr_t const *password_da);
 
 char const	*fr_ldap_edir_errstr(int code);

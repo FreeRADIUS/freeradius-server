@@ -284,24 +284,23 @@ static void ldap_edir_get_password_cancel(UNUSED request_t *request, UNUSED fr_s
 
 /** Initiate retrieval of the universal password from Novell eDirectory
  *
- * @param[in,out] p_result	Current result code.
  * @param[in] request		Current request.
  * @param[in] dn		of the user whose password is to be retrieved.
  * @param[in] ttrunk		on which to send the LDAP request.
  * @param[in] password_da	DA to use when creating password attribute.
  * @return
- *	- 0 on success.
- *	- < 0 on failure.
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *	- UNLANG_ACTION_FAIL on failure.
  */
-int fr_ldap_edir_get_password(rlm_rcode_t *p_result, request_t *request, char const *dn,
-			      fr_ldap_thread_trunk_t *ttrunk, fr_dict_attr_t const *password_da)
+unlang_action_t fr_ldap_edir_get_password(request_t *request, char const *dn, fr_ldap_thread_trunk_t *ttrunk,
+					  fr_dict_attr_t const *password_da)
 {
 	ldap_edir_ctx_t	*edir_ctx;
 	int		err = 0;
 
 	if (!dn || !*dn) {
 		REDEBUG("Missing DN");
-		RETURN_MODULE_FAIL;
+		return UNLANG_ACTION_FAIL;
 	}
 
 	MEM(edir_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_edir_ctx_t));
@@ -315,16 +314,13 @@ int fr_ldap_edir_get_password(rlm_rcode_t *p_result, request_t *request, char co
 	err = ber_encode_request_data(dn, &edir_ctx->dn);
 	if (err) {
 		REDEBUG("Failed to encode user DN: %s", fr_ldap_edir_errstr(err));
-	fail:
 		talloc_free(edir_ctx);
-		RETURN_MODULE_FAIL;
+		return UNLANG_ACTION_FAIL;
 	}
 
-	if (unlang_function_push(request, ldap_edir_get_password_start, ldap_edir_get_password_resume,
-				 ldap_edir_get_password_cancel, ~FR_SIGNAL_CANCEL,
-				 UNLANG_SUB_FRAME, edir_ctx) < 0) goto fail;
-
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return unlang_function_push(request, ldap_edir_get_password_start, ldap_edir_get_password_resume,
+				    ldap_edir_get_password_cancel, ~FR_SIGNAL_CANCEL,
+				    UNLANG_SUB_FRAME, edir_ctx);
 }
 
 char const *fr_ldap_edir_errstr(int code)
