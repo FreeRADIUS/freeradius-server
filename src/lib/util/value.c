@@ -5412,7 +5412,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 		if (secret && vb->secret) *secret = true;
 
 		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
-		if (vb_should_free_value(proc_action)) fr_value_box_clear(vb);
+		if (vb_should_free_value(proc_action)) fr_value_box_clear_value(vb);
 		if (vb_should_free(proc_action)) talloc_free(vb);
 	}}
 
@@ -5514,7 +5514,7 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff
 		if (secret && vb->secret) *secret = true;
 
 		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
-		if (vb_should_free_value(proc_action)) fr_value_box_clear(vb);
+		if (vb_should_free_value(proc_action)) fr_value_box_clear_value(vb);
 		if (vb_should_free(proc_action)) talloc_free(vb);
 	}}
 
