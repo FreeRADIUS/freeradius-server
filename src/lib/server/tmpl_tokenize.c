@@ -218,8 +218,8 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 			     ar->da,
 			     ar->da->attr
 		);
-		FR_FAULT_LOG("\t    is_raw     : %s", ar->da->flags.is_raw ? "yes" : "no");
-		FR_FAULT_LOG("\t    is_unknown : %s", ar->da->flags.is_unknown ? "yes" : "no");
+		FR_FAULT_LOG("\t    is_raw     : %s", ar_is_raw(ar) ? "yes" : "no");
+		FR_FAULT_LOG("\t    is_unknown : %s", ar_is_unknown(ar) ? "yes" : "no");
 		if (ar->ar_parent) FR_FAULT_LOG("\t    parent     : %s (%p)", ar->ar_parent->name, ar->ar_parent);
 		break;
 
@@ -4234,7 +4234,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		 *	unknown whilst not mucking up the
 		 *	types for raw attributes.
 		 */
-		if (!ar->ar_da->flags.is_raw) {
+		if (!ar_is_raw(ar)) {
 			fr_dict_unknown_free(&ar->ar_da);
 			ar->ar_da = known;
 		} else if (!fr_cond_assert(!next)) {
@@ -4964,7 +4964,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 			break;
 		}
 
-		if (tmpl_attr_tail_da(vpt)->flags.is_unknown) {
+		if (tmpl_attr_tail_is_unknown(vpt)) {
 			if (tmpl_attr_tail_da(vpt) != tmpl_attr_tail_unknown(vpt)) {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "da is marked as unknown, but address is not equal to the template's "
@@ -4989,7 +4989,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 			}
 
 			da = tmpl_attr_tail_da(vpt);
-			if (!tmpl_attr_tail_da(vpt)->flags.is_unknown && !tmpl_attr_tail_da(vpt)->flags.is_raw && (da != tmpl_attr_tail_da(vpt))) {
+			if (!tmpl_attr_tail_is_raw(vpt) && (da != tmpl_attr_tail_da(vpt))) {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "dictionary pointer %p \"%s\" (%s) "
 						     "and global dictionary pointer %p \"%s\" (%s) differ",
