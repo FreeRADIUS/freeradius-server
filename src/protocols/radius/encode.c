@@ -839,7 +839,7 @@ static ssize_t encode_extended_nested(fr_dbuff_t *dbuff,
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
 		if (fr_type_is_leaf(vp->vp_type) ||
 		    ((depth > 1) && ((vp->vp_type == FR_TYPE_TLV) || (vp->vp_type == FR_TYPE_STRUCT)))) {
-			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+			fr_proto_da_stack_build(da_stack, vp->da);
 			slen = encode_extended(&work_dbuff, da_stack, 0, &child_cursor, encode_ctx);
 
 		} else {
