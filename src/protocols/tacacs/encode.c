@@ -999,8 +999,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	}
 
 #ifndef NDEBUG
-//	if (fr_debug_lvl >= L_DBG_LVL_4) {
-	if (1) {
+	if (fr_debug_lvl >= L_DBG_LVL_4) {
 		uint8_t flags = packet->hdr.flags;
 
 		packet->hdr.flags |= FR_TAC_PLUS_UNENCRYPTED_FLAG;
