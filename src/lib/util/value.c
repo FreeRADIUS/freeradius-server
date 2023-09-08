@@ -3453,7 +3453,7 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 		vb->entry = entry;
 		return -1;
 	}
-	fr_value_box_clear(&tmp);	/* Clear out any old buffers */
+	fr_value_box_clear_value(&tmp);	/* Clear out any old buffers */
 
 	/*
 	 *	Restore list pointers
