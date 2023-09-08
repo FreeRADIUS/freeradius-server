@@ -93,7 +93,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	uint8_t const *end = data + data_len;
 	bool exact = !da->flags.array;
 
-	FR_PROTO_TRACE("%s called to parse %zu bytes", __FUNCTION__, data_len);
+	FR_PROTO_TRACE("%s called to parse %zu bytes from %s", __FUNCTION__, data_len, da->name);
 	FR_PROTO_HEX_DUMP(data, data_len, NULL);
 
 	/*
@@ -117,7 +117,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
-	if (!vp) return -1;
+	if (!vp) return PAIR_DECODE_OOM;
 
 	/*
 	 *	string / octets / bool can be empty.  Other data types are
