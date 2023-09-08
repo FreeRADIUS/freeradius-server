@@ -3837,13 +3837,6 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 		}
 
 		/*
-		 *	If the user wanted the leaf
-		 *	to be raw, and it's not, correct
-		 *	that now.
-		 */
-		if (ar->ar_unresolved_raw) attr_to_raw(vpt, ar);
-
-		/*
 		 *	Remove redundant attributes
 		 *
 		 *	If it's not a group or does not specify
@@ -4127,7 +4120,7 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 	{
 		ref->da = ref->ar_unknown = fr_dict_unknown_afrom_da(vpt, ref->da);
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
-		ref->ar_unknown->flags.is_raw = 1;
+		ref->is_raw = 1;
 		ref->ar_unknown->flags.is_unknown = 1;
 		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
 	}
@@ -4137,11 +4130,11 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 
 	case TMPL_ATTR_TYPE_UNKNOWN:
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
-		ref->ar_unknown->flags.is_raw = 1;
+		ref->is_raw = 1;
 		break;
 
 	case TMPL_ATTR_TYPE_UNRESOLVED:
-		ref->ar_unresolved_raw = true;
+		ref->is_raw = true;
 		break;
 	}
 

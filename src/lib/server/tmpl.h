@@ -429,7 +429,6 @@ typedef struct {
 
 		struct {
 			char			* _CONST name;		//!< Undefined reference type.
-			bool			_CONST is_raw;		//!< User wants the leaf to be raw.
 			fr_dict_attr_t const	* _CONST namespace;	//!< Namespace we should be trying
 									///< to resolve this attribute in.
 		} unresolved;
@@ -440,9 +439,10 @@ typedef struct {
 							///< Should point to the referenced
 							///< attribute.
 
-	bool			_CONST resolve_only;	//!< This reference and those before it
+	unsigned int   		_CONST resolve_only : 1; //!< This reference and those before it
 							///< in the list can only be used for
 							///< resolution, not building out trees.
+	unsigned int		_CONST is_raw : 1;	/// is a raw reference
 
 	tmpl_attr_type_t	_CONST type;		//!< Type of attribute reference.
 
@@ -489,42 +489,13 @@ FR_DLIST_FUNCS(tmpl_request_list, tmpl_request_t, entry)
 #define ar_parent			parent
 #define ar_unknown			unknown.da
 #define ar_unresolved			unresolved.name
-#define ar_unresolved_raw		unresolved.is_raw
 #define ar_unresolved_namespace		unresolved.namespace
 
 #define ar_is_normal(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_NORMAL)
 #define ar_is_unspecified(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNSPEC)
 #define ar_is_unknown(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNKNOWN)
 #define ar_is_unresolved(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNRESOLVED)
-
-/** Indicate whether an attribute reference is raw
- *
- * Determining whether an attribute reference is raw, is slightly more complex
- * given the raw flag is either coming from the attribute or an internal
- * "is_raw" flag in the unresolved entry.
- *
- * @param[in] ar	to check for rawness.
- * @return
- *	- true if the attribute reference is raw.
- *	- false if the attribute reference is not raw.
- */
-static inline bool ar_is_raw(tmpl_attr_t const *ar)
-{
-	switch (ar->ar_type) {
-	case TMPL_ATTR_TYPE_NORMAL:
-	case TMPL_ATTR_TYPE_UNKNOWN:
-		return ar->ar_da->flags.is_raw;
-
-	case TMPL_ATTR_TYPE_UNRESOLVED:
-		return ar->ar_unresolved_raw;
-
-	case TMPL_ATTR_TYPE_UNSPEC:
-		return false;
-	}
-
-	fr_assert_fail("ar type (%i) is invalid", (int)ar->ar_type);
-	return false;
-}
+#define ar_is_raw(_ar)			((_ar)->is_raw)
 
 #define ar_num				filter.num
 #define ar_cond				filter.cond
