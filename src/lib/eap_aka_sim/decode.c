@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/sha1.h>
+#include <freeradius-devel/util/decode.h>
 
 #include <freeradius-devel/eap/types.h>
 #include "attrs.h"
@@ -525,7 +526,6 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	fr_pair_t		*vp;
 	uint8_t const		*p = data;
 	size_t			prefix = 0;
-	fr_dict_attr_t		*unknown;
 
 	fr_aka_sim_ctx_t	*packet_ctx = decode_ctx;
 
@@ -653,6 +653,8 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 		break;
 
 	case FR_TYPE_OCTETS:
+		if (parent->flags.is_unknown) goto raw;
+
 		/*
 		 *	Get the number of bytes we expect before the value
 		 */
@@ -696,30 +698,15 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 #endif
 		fr_assert(parent->parent);
 
-		/*
-		 *	Re-write the attribute to be "raw".  It is
-		 *	therefore of type "octets", and will be
-		 *	handled below.
-		 */
-		parent = unknown = fr_dict_unknown_attr_afrom_da(ctx, parent);
-		if (!parent) {
-			fr_strerror_printf_push("%s[%d]: Internal sanity check failed", __FUNCTION__, __LINE__);
-			return -1;
-		}
+		if (fr_pair_raw_from_network(ctx, out, parent, p, attr_len) < 0) return -1;
+
+		return attr_len;
 	}
+
+	fr_assert(!parent->flags.is_unknown);
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
-
-	/*
-	 *	For unknown attributes copy the entire value, not skipping
-	 *	any reserved bytes.
-	 */
-	if (parent->flags.is_unknown) {
-		fr_pair_value_memdup(vp, p, attr_len, true);
-		vp->vp_length = attr_len;
-		goto done;
-	}
 
 	switch (parent->type) {
 	/*
