@@ -198,9 +198,10 @@ static void test_fr_pair_steal(void)
 	TEST_CHECK(talloc_parent(vp) == autofree);
 }
 
-static void test_fr_pair_to_unknown(void)
+static void test_fr_pair_raw_from_pair(void)
 {
 	fr_pair_t *vp;
+	uint8_t value = 0;
 
 	TEST_CASE("Allocate a new attribute fr_pair_afrom_da");
 	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_octets)) != NULL);
@@ -209,10 +210,10 @@ static void test_fr_pair_to_unknown(void)
 	PAIR_VERIFY(vp);
 
 	TEST_CASE("Converting regular 'vp' as unkown");
-	TEST_CHECK(fr_pair_to_unknown(vp) == 0);
+	TEST_CHECK(fr_pair_raw_from_pair(vp, &value, 1) == 0);
 
-	TEST_CASE("Checking if a real 'unkown' vp");
-	TEST_CHECK(vp && vp->da->flags.is_unknown == true);
+	TEST_CASE("Checking if a real 'raw' vp");
+	TEST_CHECK(vp && vp->vp_raw);
 }
 
 static void test_fr_pair_dcursor_by_da_init(void)
@@ -1393,7 +1394,7 @@ TEST_LIST = {
 	{ "fr_dcursor_iter_by_da_init",           test_fr_pair_dcursor_by_da_init },
 	{ "fr_pair_dcursor_by_ancestor_init",     test_fr_pair_dcursor_by_ancestor_init },
 	{ "fr_pair_dcursor_value_init",           test_fr_pair_dcursor_value_init },
-	{ "fr_pair_to_unknown",                   test_fr_pair_to_unknown },
+	{ "fr_pair_raw_from_pair",                test_fr_pair_raw_from_pair },
 	{ "fr_pair_find_by_da_idx",                   test_fr_pair_find_by_da_idx },
 	{ "fr_pair_find_by_child_num_idx",            test_fr_pair_find_by_child_num_idx },
 	{ "fr_pair_find_by_da_nested",            test_fr_pair_find_by_da_nested },

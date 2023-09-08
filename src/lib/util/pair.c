@@ -651,35 +651,39 @@ int fr_pair_steal_prepend(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t 
 	return 0;
 }
 
-/** Mark malformed or unrecognised attributed as unknown
+/** Mark malformed attribute as raw
  *
- * @param vp to change fr_dict_attr_t of.
+ * @param[in] vp		to mark as raw.
+ * @param[in] data		to parse.
+ * @param[in] data_len		of data to parse.
+ *
  * @return
- *	- 0 on success (or if already unknown).
+ *	- 0 on success
  *	- -1 on failure.
  */
-int fr_pair_to_unknown(fr_pair_t *vp)
+int fr_pair_raw_from_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len)
 {
 	fr_dict_attr_t *unknown;
 
 	PAIR_VERIFY(vp);
 
-	if (vp->da->flags.is_unknown) return 0;
+	if (!fr_cond_assert(vp->da->flags.is_unknown == false)) return -1;
 
 	if (!fr_cond_assert(vp->da->parent != NULL)) return -1;
 
 	unknown = fr_dict_unknown_afrom_da(vp, vp->da);
 	if (!unknown) return -1;
-	unknown->flags.is_raw = 1;
 
-	fr_dict_unknown_free(&vp->da);	/* Only frees unknown attributes */
 	vp->da = unknown;
 	fr_assert(vp->da->type == FR_TYPE_OCTETS);
 
 	fr_value_box_init(&vp->data, FR_TYPE_OCTETS, NULL, true);
 
+	fr_pair_value_memdup(vp, data, data_len, true);
+
 	return 0;
 }
+
 
 /** Iterate over pairs with a specified da
  *
@@ -2414,7 +2418,7 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
 {
 	if (!fr_cond_assert(src->data.type != FR_TYPE_NULL)) return -1;
 
-	if (dst->data.type != FR_TYPE_NULL) fr_value_box_clear(&dst->data);
+	if (dst->data.type != FR_TYPE_NULL) fr_value_box_clear_value(&dst->data);
 	fr_value_box_copy(dst, &dst->data, &src->data);
 
 	/*
@@ -2840,7 +2844,7 @@ int fr_pair_value_memdup(fr_pair_t *vp, uint8_t const *src, size_t len, bool tai
 
 	if (!fr_cond_assert(vp->vp_type == FR_TYPE_OCTETS)) return -1;
 
-	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
+	fr_value_box_clear_value(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_memdup(vp, &vp->data, vp->da, src, len, tainted);
 	if (ret == 0) PAIR_VERIFY(vp);
 

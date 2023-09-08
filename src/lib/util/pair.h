@@ -453,7 +453,7 @@ int		fr_pair_steal_append(TALLOC_CTX *nctx, fr_pair_list_t *list, fr_pair_t *vp)
 int		fr_pair_steal_prepend(TALLOC_CTX *nctx, fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
 /* Searching and list modification */
-int		fr_pair_to_unknown(fr_pair_t *vp) CC_HINT(nonnull);
+int		fr_pair_raw_from_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len) CC_HINT(nonnull);
 
 bool		fr_pair_matches_da(void const *item, void const *uctx) CC_HINT(nonnull);
 

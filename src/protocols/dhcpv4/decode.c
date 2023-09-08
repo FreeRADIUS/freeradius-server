@@ -266,12 +266,13 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 
 	default:
 		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, da,
-						&FR_DBUFF_TMP(p, end - p), end - p, true);
+						 &FR_DBUFF_TMP(p, end - p), end - p, true);
 		if (slen < 0) {
 		raw:
 			FR_PROTO_TRACE("decoding as unknown type");
-			if (fr_pair_to_unknown(vp) < 0) return -1;
-			fr_pair_value_memdup(vp, p, end - p, true);
+			if (fr_pair_raw_from_pair(vp, p, (end - p)) < 0) {
+				return -1;
+			}
 			p = end;
 			break;
 		}
