@@ -178,7 +178,7 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 
 	RINDENT();
 	RIDEBUG3("da         : %p", vp->da);
-	RIDEBUG3("is_raw     : %pV", fr_box_bool(vp->da->flags.is_raw));
+	RIDEBUG3("is_raw     : %pV", fr_box_bool(vp->vp_raw));
 	RIDEBUG3("is_unknown : %pV", fr_box_bool(vp->da->flags.is_unknown));
 
 	if (RDEBUG_ENABLED3) {

@@ -3182,7 +3182,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 		break;
 	}
 
-	if (vp->da->flags.is_unknown || vp->da->flags.is_raw) {
+	if (vp->da->flags.is_unknown || vp->vp_raw) {
 		(void) talloc_get_type_abort_const(vp->da, fr_dict_attr_t);
 
 	} else {
@@ -3200,7 +3200,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 		}
 	}
 
-	if (vp->da->flags.is_raw || vp->da->flags.is_unknown) {
+	if (vp->vp_raw || vp->da->flags.is_unknown) {
 		if ((vp->da->parent->type != FR_TYPE_VSA) && (vp->vp_type != FR_TYPE_VSA) && (vp->vp_type != FR_TYPE_OCTETS) && (vp->vp_type != FR_TYPE_TLV)) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t (raw/unknown) attribute %p \"%s\" "
 					     "data type incorrect.  Expected %s, got %s",
@@ -3208,6 +3208,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					     fr_type_to_str(FR_TYPE_OCTETS),
 					     fr_type_to_str(vp->vp_type));
 		}
+
 	} else if (fr_type_is_leaf(vp->vp_type) && (vp->vp_type != vp->da->type) &&
 		   !((vp->da->type == FR_TYPE_COMBO_IP_ADDR) && ((vp->vp_type == FR_TYPE_IPV4_ADDR) || (vp->vp_type == FR_TYPE_IPV6_ADDR))) &&
 		   !((vp->da->type == FR_TYPE_COMBO_IP_PREFIX) && ((vp->vp_type == FR_TYPE_IPV4_PREFIX) || (vp->vp_type == FR_TYPE_IPV6_PREFIX)))) {

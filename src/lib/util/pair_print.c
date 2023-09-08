@@ -99,7 +99,7 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t c
 	 */
 	if (parent && (parent->type == FR_TYPE_GROUP)) parent = NULL;
 
-	if (vp->da->flags.is_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
+	if (vp->vp_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
 	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
 	FR_SBUFF_IN_STRCPY_RETURN(&our_out, token);
@@ -149,7 +149,7 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_p
 	 */
 	if (parent && (parent->type == FR_TYPE_GROUP)) parent = NULL;
 
-	if (vp->da->flags.is_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
+	if (vp->vp_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
 	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
 	FR_SBUFF_IN_STRCPY_RETURN(&our_out, token);
@@ -433,7 +433,7 @@ static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t *pare
 
 		fr_sbuff_set_to_start(sbuff);
 
-		if (vp->da->flags.is_raw) (void) fr_sbuff_in_strcpy(sbuff, "raw.");
+		if (vp->vp_raw) (void) fr_sbuff_in_strcpy(sbuff, "raw.");
 
 		if (parent && (parent->vp_type != FR_TYPE_GROUP)) parent_da = parent->da;
 		if (fr_dict_attr_oid_print(sbuff, parent_da, vp->da, false) <= 0) return;
