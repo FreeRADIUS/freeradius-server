@@ -1024,7 +1024,7 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 			break;
 
 	 	case TMPL_ATTR_TYPE_UNKNOWN:
-	 		dst_ar->ar_unknown = fr_dict_unknown_afrom_da(dst_ar, src_ar->ar_unknown);
+	 		dst_ar->ar_unknown = fr_dict_unknown_copy(dst_ar, src_ar->ar_unknown);
 	 		break;
 
 	 	case TMPL_ATTR_TYPE_UNRESOLVED:
@@ -1072,7 +1072,7 @@ int tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 */
 	if (da->flags.is_unknown) {
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
-		ref->da = ref->ar_unknown = fr_dict_unknown_afrom_da(vpt, da);
+		ref->da = ref->ar_unknown = fr_dict_unknown_copy(vpt, da);
 	} else {
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
 		ref->da = da;
@@ -1124,7 +1124,7 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 */
 	if (da->flags.is_unknown) {
 		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
-		ref->da = ref->ar_unknown = fr_dict_unknown_afrom_da(vpt, da);
+		ref->da = ref->ar_unknown = fr_dict_unknown_copy(vpt, da);
 	} else {
 		ref->type = TMPL_ATTR_TYPE_NORMAL;
 		ref->da = da;

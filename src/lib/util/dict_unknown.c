@@ -202,7 +202,7 @@ static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const 
 	 *	the parent from the 'da'.
 	 */
 	if (da->parent && da->parent->flags.is_unknown) {
-		parent = fr_dict_unknown_afrom_da(n, da->parent);
+		parent = fr_dict_unknown_copy(n, da->parent);
 		if (!parent) {
 			talloc_free(n);
 			return NULL;

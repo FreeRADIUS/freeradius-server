@@ -284,7 +284,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	if (da->flags.is_unknown) {
 		fr_dict_attr_t const *unknown;
 
-		unknown = fr_dict_unknown_afrom_da(vp, da);
+		unknown = fr_dict_unknown_copy(vp, da);
 		da = unknown;
 	}
 
@@ -351,7 +351,7 @@ fr_pair_t *fr_pair_afrom_da_with_pool(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
 	if (da->flags.is_unknown) {
 		fr_dict_attr_t const *unknown;
 
-		unknown = fr_dict_unknown_afrom_da(vp, da);
+		unknown = fr_dict_unknown_copy(vp, da);
 		da = unknown;
 	}
 
@@ -561,7 +561,7 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	 *	Copy the unknown attribute hierarchy
 	 */
 	if (n->da->flags.is_unknown) {
-		n->da = fr_dict_unknown_afrom_da(n, n->da);
+		n->da = fr_dict_unknown_copy(n, n->da);
 		if (!n->da) {
 			talloc_free(n);
 			return NULL;
