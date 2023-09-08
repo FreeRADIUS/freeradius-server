@@ -684,7 +684,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 				da_unknown = fr_dict_unknown_attr_afrom_da(ctx, attr_tacacs_data);
 				if (!da_unknown) goto fail;
 
-				da_unknown->flags.is_raw = 1;
 				want = pkt->authen_start.data_len;
 
 				DECODE_FIELD_STRING8(da_unknown, want);

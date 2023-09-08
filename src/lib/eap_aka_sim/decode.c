@@ -706,7 +706,6 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 			fr_strerror_printf_push("%s[%d]: Internal sanity check failed", __FUNCTION__, __LINE__);
 			return -1;
 		}
-		unknown->flags.is_raw = 1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, parent);

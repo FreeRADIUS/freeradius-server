@@ -979,7 +979,6 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		unknown = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, da, data[2]);
 		if (!unknown) return -1;
 
-		unknown->flags.is_raw = true;
 		child = unknown;
 	}
 

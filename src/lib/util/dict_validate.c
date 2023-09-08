@@ -69,7 +69,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	// is_root
 	// is_unknown
-	// is_raw
 	// internal
 	// array
 	// has_value
@@ -84,11 +83,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	if (flags->is_unknown) {
 		fr_strerror_const("The 'unknown' flag cannot be set for attributes in the dictionary.");
-		return false;
-	}
-
-	if (flags->is_raw) {
-		fr_strerror_const("The 'raw' flag cannot be set for attributes in the dictionary.");
 		return false;
 	}
 

@@ -178,6 +178,7 @@ static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const 
 	 *	which we know to be correct.
 	 */
 	flags.is_unknown = 1;
+	flags.is_raw = 1;
 	flags.array = 0;
 	flags.has_value = 0;
 	if (type != FR_TYPE_VENDOR) {
@@ -340,6 +341,7 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t c
 {
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = true,
+					.is_raw = true,
 					.internal = parent->flags.internal,
 				};
 
