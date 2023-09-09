@@ -113,8 +113,9 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	while (true) {
 		ssize_t slen;
 		fr_token_t op;
-		fr_dict_attr_t const *da;
+		fr_dict_attr_t const *da, *my_parent;
 		fr_dict_attr_t *da_unknown = NULL;
+		fr_dict_attr_err_t err;
 
 		fr_skip_whitespace(p);
 
@@ -138,12 +139,9 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		}
 
 		/*
-		 *	Hacky hack...
+		 *	Relative attributes can only exist if there's a relative VP parent.
 		 */
-		if (strncmp(p, "raw.", 4) == 0) goto do_unknown;
-
 		if (*p == '.') {
-			fr_dict_attr_err_t err;
 			p++;
 
 			if (!*relative_vp) {
@@ -151,49 +149,48 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 				goto error;
 			}
 
-			// @todo - allow "...." to go back up a hierarchy
-
-			slen = fr_dict_attr_by_oid_substr(&err, &da, (*relative_vp)->da, &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-			if (err != FR_DICT_ATTR_OK) goto error;
-
+			my_parent = (*relative_vp)->da;
 			my_list = &(*relative_vp)->vp_group;
 			my_ctx = *relative_vp;
 		} else {
-			fr_dict_attr_err_t err;
-
 			/*
 			 *	We can find an attribute from the parent, but if the path is fully specified,
 			 *	then we reset any relative VP.  So that the _next_ line we parse cannot use
 			 *	".foo = bar" to get a relative attribute which was used when parsing _this_
 			 *	line.
 			 */
+			my_parent = parent;
 			*relative_vp = NULL;
-
-			/*
-			 *	Parse the name.
-			 */
-			slen = fr_dict_attr_by_oid_substr(&err, &da, parent, &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-			if ((err != FR_DICT_ATTR_OK) && internal) {
-				slen = fr_dict_attr_by_oid_substr(&err, &da, internal,
-								  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-			}
-			if (err != FR_DICT_ATTR_OK) {
-			do_unknown:
-				slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, parent,
-									&FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-				if (slen < 0) {
-					p += -slen;
-
-				error:
-					*token = T_INVALID;
-					return -(p - buffer);
-				}
-
-				da = da_unknown;
-			}
-
 			my_list = list;
 			my_ctx = ctx;
+
+			/*
+			 *	Raw attributes get a special parser.
+			 */
+			if (strncmp(p, "raw.", 4) == 0) goto do_unknown;
+		}
+
+		/*
+		 *	Parse the name.
+		 */
+		slen = fr_dict_attr_by_oid_substr(&err, &da, my_parent, &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
+		if ((err != FR_DICT_ATTR_OK) && internal) {
+			slen = fr_dict_attr_by_oid_substr(&err, &da, internal,
+							  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
+		}
+		if (err != FR_DICT_ATTR_OK) {
+		do_unknown:
+			slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, my_parent,
+								&FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
+			if (slen < 0) {
+				p += -slen;
+
+			error:
+				*token = T_INVALID;
+				return -(p - buffer);
+			}
+
+			da = da_unknown;
 		}
 
 		next = p + slen;
