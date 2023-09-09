@@ -289,7 +289,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	switch (da->type) {
+	switch (vp->vp_type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_type_to_str(da_stack->da[depth]->type));
@@ -375,7 +375,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		break;
 	}
 
-	switch (da->type) {
+	switch (vp->vp_type) {
 	/*
 	 *	In order to represent the string length properly we include a second
 	 *	16bit length field with the real string length.

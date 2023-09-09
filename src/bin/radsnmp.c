@@ -325,7 +325,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_d
 	 *	fr_pair_ts with no value need a 1 byte value buffer.
 	 */
 	if (!value) {
-		switch (da->type) {
+		switch (vp->vp_type) {
 		case FR_TYPE_OCTETS:
 			fr_pair_value_memdup(vp, (uint8_t const *)"\0", 1, true);
 			break;

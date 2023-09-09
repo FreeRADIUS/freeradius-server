@@ -118,7 +118,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	switch (da->type) {
+	switch (vp->vp_type) {
 	case FR_TYPE_TLV:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
@@ -126,12 +126,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 				   fr_type_to_str(da->type));
 		return PAIR_ENCODE_FATAL_ERROR;
 
-	default:
-		break;
-	}
-
-
-	switch (da->type) {
 	/*
 	 *    0                   1                   2                   3
 	 *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1

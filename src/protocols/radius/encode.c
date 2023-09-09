@@ -424,7 +424,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	fr_dbuff_marker(&src, &value_dbuff);
 	fr_dbuff_marker(&dest, &value_dbuff);
 
-	switch (da->type) {
+	switch (vp->vp_type) {
 		/*
 		 *	IPv4 addresses are normal, but IPv6 addresses are special to RADIUS.
 		 */
