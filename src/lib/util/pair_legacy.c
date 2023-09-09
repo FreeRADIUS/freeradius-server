@@ -111,6 +111,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 
 	p = buffer;
 	while (true) {
+		bool is_raw = false;
 		ssize_t slen;
 		fr_token_t op;
 		fr_dict_attr_t const *da, *my_parent;
@@ -167,32 +168,77 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			/*
 			 *	Raw attributes get a special parser.
 			 */
-			if (strncmp(p, "raw.", 4) == 0) goto do_unknown;
+			if (strncmp(p, "raw.", 4) == 0) {
+				p += 4;
+				is_raw = true;
+			}
 		}
 
 		/*
 		 *	Parse the name.
 		 */
 		slen = fr_dict_attr_by_oid_substr(&err, &da, my_parent, &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-		if ((err != FR_DICT_ATTR_OK) && internal) {
-			slen = fr_dict_attr_by_oid_substr(&err, &da, internal,
-							  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-		}
-		if (err != FR_DICT_ATTR_OK) {
-		do_unknown:
-			slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, my_parent,
-								&FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
-			if (slen < 0) {
-				p += -slen;
+		if (err == FR_DICT_ATTR_NOTFOUND) {
+			if (is_raw) {
+				/*
+				 *	We have something like raw.KNOWN.26, let's go parse the unknown OID
+				 *	portion, starting from where the parsing failed.
+				 */
+				if (((slen > 0) && (p[slen] == '.') && isdigit((int) p[slen + 1])) ||
+				    ((slen == 0) && isdigit((int) *p))) {
+					char const *q = p + slen + (slen > 0);
 
-			error:
-				*token = T_INVALID;
-				return -(p - buffer);
+					slen = fr_dict_unknown_afrom_oid_substr(ctx, &da_unknown, da, &FR_SBUFF_IN(q, (end - q)));
+					if (slen < 0) goto error;
+
+					p = q;
+					da = da_unknown;
+					goto do_next;
+				}
+
+				goto notfound;
 			}
 
+			/*
+			 *	We have an internal dictionary, look up the attribute there.  Note that we
+			 *	can't have raw internal attributes.
+			 */
+			if (internal) {
+				slen = fr_dict_attr_by_oid_substr(&err, &da, internal,
+								  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
+			}
+		}
+		if (err != FR_DICT_ATTR_OK) {
+			if (slen < 0) slen = -slen;
+			p += slen;
+
+			/*
+			 *	Regenerate the error message so that it's for the correct parent.
+			 */
+			if (err == FR_DICT_ATTR_NOTFOUND) {
+				uint8_t const *q;
+
+			notfound:
+				for (q = (uint8_t const *) p; q < (uint8_t const *) end && fr_dict_attr_allowed_chars[*q]; q++) {
+					/* nothing */
+				}
+				fr_strerror_printf("Unknown attribute \"%.*s\" for parent \"%s\"", (int) (q - ((uint8_t const *) p)), p, my_parent->name);
+			}
+		error:
+			*token = T_INVALID;
+			return -(p - buffer);
+		}
+
+		/*
+		 *	If we force it to be raw, then only do that if it's not already unknown.
+		 */
+		if (is_raw && !da_unknown) {
+			da_unknown = fr_dict_unknown_attr_afrom_da(ctx, da);
+			if (!da_unknown) goto error;
 			da = da_unknown;
 		}
 
+	do_next:
 		next = p + slen;
 
 		rhs[0] = '\0';

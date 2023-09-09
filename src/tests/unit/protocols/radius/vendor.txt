@@ -112,23 +112,32 @@ match 1a 0b 00 00 00 09 01 05 66 6f 6f 1a 0b 00 00 00 09 01 05 62 61 72
 #
 #  Unknown attributes with TLVs
 #
-encode-pair 26.6809.1 = 0xabcdef
+encode-pair raw.26.6809.1 = 0xabcdef
 match 1a 0b 00 00 1a 99 01 05 ab cd ef
 
 decode-pair -
 match raw.Vendor-Specific.6809.1 = 0xabcdef
 
-encode-pair 26.6809.1.2 = 0xabcdef
+pair raw.26.6809.1.2 = 0xabcdef
+match Vendor-Specific = { raw.6809 = { raw.1 = { raw.2 = 0xabcdef } } }
+
+#
+#  @todo - pair_legacy - We can't currently encode this, because the pair_legacy code creates "octets" for "raw.1", and not "tlv".
+#
+#encode-pair -
+#match 1a 0d 00 00 1a 99 01 07 02 05 ab cd ef
+
+encode-pair raw.26.6809.1.2 = 0xabcdef
 match 1a 0d 00 00 1a 99 01 07 02 05 ab cd ef
 
 decode-pair -
 match raw.Vendor-Specific.6809.1 = { raw.2 = 0xabcdef }
 
-encode-pair 26.6809.1.2.3 = 0xabcdef
+encode-pair raw.26.6809.1.2.3 = 0xabcdef
 match 1a 0f 00 00 1a 99 01 09 02 07 03 05 ab cd ef
 
 decode-pair -
 match raw.Vendor-Specific.6809.1 = { raw.2 = { raw.3 = 0xabcdef } }
 
 count
-match 64
+match 66

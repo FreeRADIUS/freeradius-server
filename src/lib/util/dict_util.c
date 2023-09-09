@@ -1944,6 +1944,7 @@ fr_slen_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 		fr_dict_attr_t const	*child;
 
 		if ((fr_dict_oid_component(err, &child, our_parent, &our_in, tt) < 0) || !child) {
+			*out = our_parent;
 			fr_sbuff_set(&our_in, &m_c);	/* Reset to the start of the last component */
 			break;	/* Resolved as much as we can */
 		}
