@@ -391,7 +391,7 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t co
  *	- <= 0 on failure.  Negative offset indicates parse error position.
  */
 fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
-					   fr_dict_attr_t **out,
+					   fr_dict_attr_t const **out,
 			      		   fr_dict_attr_t const *parent,
 					   fr_sbuff_t *in)
 {

@@ -115,7 +115,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		ssize_t slen;
 		fr_token_t op;
 		fr_dict_attr_t const *da, *my_parent;
-		fr_dict_attr_t *da_unknown = NULL;
+		fr_dict_attr_t const *da_unknown = NULL;
 		fr_dict_attr_err_t err;
 
 		fr_skip_whitespace(p);
@@ -225,6 +225,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 				fr_strerror_printf("Unknown attribute \"%.*s\" for parent \"%s\"", (int) (q - ((uint8_t const *) p)), p, my_parent->name);
 			}
 		error:
+			fr_dict_unknown_free(&da_unknown);
 			*token = T_INVALID;
 			return -(p - buffer);
 		}
@@ -239,6 +240,10 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		}
 
 	do_next:
+#ifdef STATIC_ANALYZER
+		if (!da) goto error;
+#endif
+
 		next = p + slen;
 
 		rhs[0] = '\0';
@@ -252,7 +257,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		 */
 		op = gettoken(&p, rhs, sizeof(rhs), false);
 		if ((op  < T_EQSTART) || (op  > T_EQEND)) {
-			fr_dict_unknown_free(&da);
 			fr_strerror_const("Expecting operator");
 			goto error;
 		}
@@ -285,6 +289,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			if (fr_pair_append_by_da_parent(my_ctx, &vp, my_list, da) < 0) goto error;
 		}
 
+//		fr_dict_unknown_free(&da_unknown);
 		vp->op = op;
 
 		/*
