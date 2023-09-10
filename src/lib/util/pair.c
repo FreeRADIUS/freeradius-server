@@ -1227,6 +1227,11 @@ int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
 {
 	PAIR_VERIFY(to_add);
 
+#ifdef WITH_VERIFY_PTR
+	fr_assert(!fr_pair_order_list_in_a_list(to_add));
+	list->verified = false;
+#endif
+
 	if (fr_pair_order_list_in_a_list(to_add)) {
 		fr_strerror_printf(IN_A_LIST_MSG, to_add);
 		return -1;
@@ -1253,6 +1258,11 @@ int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 {
 	PAIR_VERIFY(to_add);
 
+#ifdef WITH_VERIFY_PTR
+	fr_assert(!fr_pair_order_list_in_a_list(to_add));
+	list->verified = false;
+#endif
+
 	if (fr_pair_order_list_in_a_list(to_add)) {
 		fr_strerror_printf(IN_A_LIST_MSG, to_add);
 		return -1;
@@ -1275,6 +1285,11 @@ int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 int fr_pair_insert_after(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_add)
 {
 	PAIR_VERIFY(to_add);
+
+#ifdef WITH_VERIFY_PTR
+	fr_assert(!fr_pair_order_list_in_a_list(to_add));
+	list->verified = false;
+#endif
 
 	if (fr_pair_order_list_in_a_list(to_add)) {
 		fr_strerror_printf(IN_A_LIST_MSG, to_add);
@@ -1304,6 +1319,12 @@ int fr_pair_insert_before(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_ad
 {
 	PAIR_VERIFY(to_add);
 
+#ifdef WITH_VERIFY_PTR
+	fr_assert(!fr_pair_order_list_in_a_list(to_add));
+	fr_assert(!pos || fr_pair_order_list_in_a_list(pos));
+	list->verified = false;
+#endif
+
 	if (fr_pair_order_list_in_a_list(to_add)) {
 		fr_strerror_printf(IN_A_LIST_MSG, to_add);
 		return -1;
@@ -1331,6 +1352,12 @@ void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
 {
 	PAIR_VERIFY_WITH_LIST(list, to_replace);
 	PAIR_VERIFY(vp);
+
+#ifdef WITH_VERIFY_PTR
+	fr_assert(!fr_pair_order_list_in_a_list(vp));
+	fr_assert(fr_pair_order_list_in_a_list(to_replace));
+	list->verified = false;
+#endif
 
 	fr_pair_insert_after(list, to_replace, vp);
 	fr_pair_remove(list, to_replace);
@@ -3082,6 +3109,8 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 
        case FR_TYPE_STRUCTURAL:
        {
+	       if (vp->vp_group.verified) break;
+
 	       fr_pair_list_foreach(&vp->vp_group, child) {
 			TALLOC_CTX *parent = talloc_parent(child);
 
@@ -3101,6 +3130,8 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 //			fr_assert(fr_dict_attr_can_contain(vp->da, child->da));
 			fr_pair_verify(file, line, &vp->vp_group, child);
 		}
+
+	       UNCONST(fr_pair_t *, vp)->vp_group.verified = true;
 	}
 	       break;
 
@@ -3165,6 +3196,11 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 
 	if (fr_pair_list_empty(list)) return;	/* Fast path */
 
+	/*
+	 *	Only verify the list if it has been modified.
+	 */
+	if (list->verified) return;
+
 	for (slow = fr_pair_list_head(list), fast = fr_pair_list_head(list);
 	     slow && fast;
 	     slow = fr_pair_list_next(list, slow), fast = fr_pair_list_next(list, fast)) {
@@ -3202,6 +3238,8 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 		parent = talloc_parent(slow);
 		if (expected && (parent != expected)) goto bad_parent;
 	}
+
+	UNCONST(fr_pair_list_t *, list)->verified = true;
 }
 #endif
 

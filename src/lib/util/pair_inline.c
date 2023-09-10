@@ -93,6 +93,11 @@ _INLINE fr_pair_t *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const
  */
 _INLINE fr_pair_t *fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp)
 {
+#ifdef WITH_VERIFY_PTR
+	fr_assert(fr_pair_order_list_in_a_list(vp));
+	list->verified = false;
+#endif
+
 	return fr_pair_order_list_remove(&list->order, vp);
 }
 

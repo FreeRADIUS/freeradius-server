@@ -53,6 +53,10 @@ typedef struct {
         FR_TLIST_HEAD(fr_pair_order_list)	order;			//!< Maintains the relative order of pairs in a list.
 
 	bool				 _CONST is_child;		//!< is a child of a VP
+
+#ifdef WITH_VERIFY_PTR
+	unsigned int		verified : 1;				//!< hack to avoid O(N^3) issues
+#endif
 } fr_pair_list_t;
 
 /** Stores an attribute, a value and various bits of other data
