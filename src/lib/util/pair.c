@@ -558,17 +558,6 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	n->op = vp->op;
 
 	/*
-	 *	Copy the unknown attribute hierarchy
-	 */
-	if (n->da->flags.is_unknown) {
-		n->da = fr_dict_unknown_copy(n, n->da);
-		if (!n->da) {
-			talloc_free(n);
-			return NULL;
-		}
-	}
-
-	/*
 	 *	Groups are special.
 	 */
 	if (fr_type_is_structural(n->vp_type)) {
