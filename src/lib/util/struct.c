@@ -164,7 +164,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			vp = fr_pair_afrom_da(child_ctx, child);
 			if (!vp) {
 				FR_PROTO_TRACE("fr_struct_from_network - failed allocating child VP");
-				goto unknown;
+				return PAIR_DECODE_OOM;
 			}
 
 			switch (child->type) {
