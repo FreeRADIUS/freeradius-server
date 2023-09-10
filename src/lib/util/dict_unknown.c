@@ -147,8 +147,6 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
  */
 void fr_dict_unknown_free(fr_dict_attr_t const **da)
 {
-	fr_dict_attr_t **tmp;
-
 	if (!da || !*da) return;
 
 	/* Don't free real DAs */
@@ -156,10 +154,9 @@ void fr_dict_unknown_free(fr_dict_attr_t const **da)
 		return;
 	}
 
-	memcpy(&tmp, &da, sizeof(*tmp));
-	talloc_free(*tmp);
+	talloc_const_free(*da);
 
-	*tmp = NULL;
+	*da = NULL;
 }
 
 /**  Allocate an unknown DA.
