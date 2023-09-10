@@ -188,12 +188,12 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 				    ((slen == 0) && isdigit((int) *p))) {
 					char const *q = p + slen + (slen > 0);
 
-					slen = fr_dict_unknown_afrom_oid_substr(ctx, &da_unknown, da, &FR_SBUFF_IN(q, (end - q)));
+					slen = fr_dict_unknown_afrom_oid_substr(NULL, &da_unknown, da, &FR_SBUFF_IN(q, (end - q)));
 					if (slen < 0) goto error;
 
 					p = q;
 					da = da_unknown;
-					goto do_next;
+					goto check_for_operator;
 				}
 
 				goto notfound;
@@ -239,7 +239,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			da = da_unknown;
 		}
 
-	do_next:
+	check_for_operator:
 #ifdef STATIC_ANALYZER
 		if (!da) goto error;
 #endif
@@ -289,13 +289,12 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			if (fr_pair_append_by_da_parent(my_ctx, &vp, my_list, da) < 0) goto error;
 		}
 
-//		fr_dict_unknown_free(&da_unknown);
 		vp->op = op;
 
 		/*
 		 *	Allow grouping attributes.
 		 */
-		switch (da->type) {
+		switch (vp->vp_type) {
 		case FR_TYPE_NON_LEAF:
 			if ((op != T_OP_EQ) && (op != T_OP_CMP_EQ)) {
 				fr_strerror_printf("Group list for %s MUST use '=' as the operator", da->name);
@@ -387,7 +386,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		/*
 		 *	Free the unknown attribute, we don't need it any more.
 		 */
-		fr_dict_unknown_free(&da);
+		fr_dict_unknown_free(&da_unknown);
 
 		fr_assert(vp != NULL);
 
