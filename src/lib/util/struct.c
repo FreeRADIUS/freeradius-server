@@ -596,6 +596,24 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		}
 
 		/*
+		 *	The MEMBER may be raw, in which case it is encoded as octets.
+		 *
+		 *	This can happen for the last MEMBER of a struct, such as when the last member is a TLV
+		 *	or GROUP, and the contents are malformed.
+		 *
+		 *	It can also happen if a middle MEMBER has the right length, but the wrong contents.
+		 *	e.g. when the contents have to be a well-formed IP prefix, but the prefix values are
+		 *	out of the permitted range.
+		 */
+		if (vp && (vp->da != child) && (vp->da->parent == parent) && (vp->da->attr == child_num)) {
+			fr_assert(vp->vp_raw);
+			fr_assert(vp->vp_type == FR_TYPE_OCTETS);
+			fr_assert(!da_is_bit_field(child));
+
+			goto raw;
+		}
+
+		/*
 		 *	Skipped a VP, or left one off at the end, fill the struct with zeros.
 		 */
 		if (!vp || (vp->da != child)) {
@@ -721,6 +739,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			/*
 			 *	Determine the nested type and call the appropriate encoder
 			 */
+		raw:
 			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
 
 			do {
