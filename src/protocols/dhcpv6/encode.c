@@ -49,9 +49,9 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_cursor(fr_dbuff_t *dbuff,
-			     fr_da_stack_t *da_stack, unsigned int depth,
-			     fr_dcursor_t *cursor, void *encode_ctx);
+static ssize_t encode_child(fr_dbuff_t *dbuff,
+				  fr_da_stack_t *da_stack, unsigned int depth,
+				  fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Macro-like function for encoding an option header
  *
@@ -93,7 +93,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Pack multiple attributes into into a single option
 	 */
 	if ((vp->vp_type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_cursor);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_child);
 		if (slen <= 0) return slen;
 
 		/*
@@ -435,41 +435,6 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_cursor(fr_dbuff_t *dbuff,
-			  fr_da_stack_t *da_stack, unsigned int depth,
-			  fr_dcursor_t *cursor, void *encode_ctx)
-{
-	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
-	fr_pair_t const	*vp = fr_dcursor_current(cursor);
-	fr_dict_attr_t const	*da = da_stack->da[depth];
-	ssize_t			len;
-	fr_dbuff_extend_status_t	status = FR_DBUFF_EXTENDABLE;
-
-	while (fr_dbuff_extend_lowat(&status, &work_dbuff, DHCPV6_OPT_HDR_LEN) > DHCPV6_OPT_HDR_LEN) {
-		FR_PROTO_STACK_PRINT(da_stack, depth);
-
-		len = encode_child(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-		if (len < 0) return len;
-
-		/*
-		 *	If nothing updated the attribute, stop
-		 */
-		if (!fr_dcursor_current(cursor) || (vp == fr_dcursor_current(cursor))) break;
-
-		/*
-		 *	We can encode multiple sub TLVs, if after
-		 *	rebuilding the TLV Stack, the attribute
-		 *	at this depth is the same.
-		 */
-		if ((da != da_stack->da[depth]) || (da_stack->depth < da->depth)) break;
-		vp = fr_dcursor_current(cursor);
-	}
-
-	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done TLV body");
-
-	return fr_dbuff_set(dbuff, &work_dbuff);
-}
-
 /** Encode an RFC format TLV.
  *
  * This could be a standard attribute, or a TLV data type.
@@ -541,7 +506,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 
 	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);	/* Make room for option header */
 
-	len = encode_cursor(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+	len = fr_pair_cursor_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_child);
 	if (len < 0) return len;
 
 	/*

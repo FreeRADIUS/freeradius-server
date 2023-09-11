@@ -42,10 +42,6 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 				  fr_da_stack_t *da_stack, unsigned int depth,
 				  fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_cursor(fr_dbuff_t *dbuff,
-			     fr_da_stack_t *da_stack, unsigned int depth,
-			     fr_dcursor_t *cursor, void *encode_ctx);
-
 /** Write DHCP option value into buffer
  *
  * Does not include DHCP option length or number.
@@ -76,7 +72,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Structures are special.
 	 */
 	if ((vp->vp_type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_cursor);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_child);
 		if (slen <= 0) return slen;
 
 		/*
@@ -277,42 +273,6 @@ static ssize_t extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, size_t l
 }
 
 #define DHCPV4_OPT_HDR_LEN (2)
-
-static ssize_t encode_cursor(fr_dbuff_t *dbuff,
-			     fr_da_stack_t *da_stack, unsigned int depth,
-			     fr_dcursor_t *cursor, void *encode_ctx)
-{
-	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
-	fr_pair_t const	*vp = fr_dcursor_current(cursor);
-	fr_dict_attr_t const	*da = da_stack->da[depth];
-	ssize_t			len;
-	fr_dbuff_extend_status_t	status = FR_DBUFF_EXTENDABLE;
-
-	while (fr_dbuff_extend_lowat(&status, &work_dbuff, DHCPV4_OPT_HDR_LEN) > DHCPV4_OPT_HDR_LEN) {
-		FR_PROTO_STACK_PRINT(da_stack, depth);
-
-		len = encode_child(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-		if (len < 0) return len;
-
-		/*
-		 *	If nothing updated the attribute, stop
-		 */
-		if (!fr_dcursor_current(cursor) || (vp == fr_dcursor_current(cursor))) break;
-
-		/*
-		 *	We can encode multiple sub TLVs, if after
-		 *	rebuilding the TLV Stack, the attribute
-		 *	at this depth is the same.
-		 */
-		if ((da != da_stack->da[depth]) || (da_stack->depth < da->depth)) break;
-		vp = fr_dcursor_current(cursor);
-	}
-
-	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done TLV body");
-
-	return fr_dbuff_set(dbuff, &work_dbuff);
-}
-
 
 /** Write out an RFC option header and option data
  *
