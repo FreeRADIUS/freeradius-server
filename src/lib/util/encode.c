@@ -40,7 +40,7 @@
  *	- < 0 on error.
  */
 ssize_t fr_pair_array_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, int depth,
-				 fr_dcursor_t *cursor, void *encode_ctx, fr_proto_encode_value_t encode_value)
+				 fr_dcursor_t *cursor, void *encode_ctx, fr_encode_dbuff_t encode_value)
 {
 	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
