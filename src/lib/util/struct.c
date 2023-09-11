@@ -687,10 +687,9 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 				return offset;
 			}
 
-			do {
-				vp = fr_dcursor_next(cursor);
-				if (!vp || !vp->da->flags.internal) break;
-			} while (vp != NULL);
+			vp = fr_dcursor_next(cursor);
+			if (!vp) break;
+
 			goto next;
 		}
 
@@ -742,10 +741,8 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		raw:
 			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
 
-			do {
-				vp = fr_dcursor_next(cursor);
-				if (!vp || !vp->da->flags.internal) break;
-			} while (vp != NULL);
+			vp = fr_dcursor_next(cursor);
+			if (!vp) break;
 
 			if (child->flags.array && (vp->da == child)) goto redo;
 		}
@@ -817,7 +814,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 
 done:
 	vp = fr_dcursor_current(cursor);
-	if (tlv) {
+	if (tlv && vp) {
 		ssize_t slen;
 
 		if (!encode_cursor) {
@@ -826,7 +823,7 @@ done:
 			return PAIR_ENCODE_FATAL_ERROR;
 		}
 
-		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+		fr_proto_da_stack_build(da_stack, vp->da);
 
 		/*
 		 *	Encode any TLV attributes which are part of this structure.
@@ -836,7 +833,9 @@ done:
 			if (slen < 0) return slen;
 
 			vp = fr_dcursor_current(cursor);
-			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+			if (!vp) break;
+
+			fr_proto_da_stack_build(da_stack, vp->da);
 		}
 	}
 
