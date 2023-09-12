@@ -4,9 +4,9 @@
 
 Coverity is a "static analysis" program, lint on steroids, a product of Synopsys. It compiles code to a form on which it can run various "checkers", each of which detects a class of possible errors, or "defects" in coverityese.
 
-As an open source project, FreeRADIUS uses "Coverity Scan", a free service Synopsys provides. Synopsys lets open source projects registered with them check their project with coverity a number of times per day depending on the number of lines of code, with no saving up runs across day boundaries. Given FreeRADIUS's size at the time of writing, it can be checked up to twice a day. Each such project gets a web page where one can set up the project, see the results of runs, and admins can change settings.
+As an open source project, FreeRADIUS uses [Coverity Scan](https://scan.coverity.com/projects/freeradius-freeradius-server), a free service Synopsys provides. Synopsys lets open source projects registered with them check their project with coverity a number of times per day depending on the number of lines of code, with no saving up runs across day boundaries. Given FreeRADIUS's size at the time of writing, it can be checked up to twice a day. Each such project gets a web page where one can set up the project, see the results of runs, and admins can change settings.
 
-Synopsys knows coverity's not perfect; it can miss a defect (false negative) or claim something's a defect that isn't (false positive). Coverity appears to consider a function at a time, looking at what it calls, not how you got there. A programmer may honor a function's preconditions and hence know that the function will always work, and in particular the functions it calls will always work, and therefore write those calls  without error checking. Coverity, at least as it stands, cannot know that, giving rise to "unchecked return value" defects that in a perfect world it could tell won't cause a problem.
+Synopsys knows that Coverity is not perfect; it can miss a defect (false negative) or claim something's a defect that isn't (false positive). Coverity appears to consider a function at a time, looking at what it calls, not how you got there. A programmer may honor a function's preconditions and hence know that the function will always work, and in particular the functions it calls will always work, and therefore write those calls  without error checking. Coverity, at least as it stands, cannot know that, giving rise to "unchecked return value" defects that in a perfect world it could tell won't cause a problem.
 
 Given defects, one can use the web interface to classify them and assign them to a developer, who can do one of the following:
 
@@ -57,7 +57,7 @@ Here is a slightly edited explanatory comment that commonly appears in modeling 
  */
 ----
 
-Note the singular "file"; Coverity Scan only allows one modeling file, which you must upload. For FreeRADIUS, go to `https://scan.coverity.com/projects/freeradius-freeradius-server/` and choose the "Analysis Settings" tab. At the bottom of that page is the interface for uploading or deleting the modelng file.
+Note the singular "file"; Coverity Scan only allows one modeling file, which you must upload. For FreeRADIUS, go to [scan](https://scan.coverity.com/projects/freeradius-freeradius-server/) and choose the "Analysis Settings" tab. At the bottom of that page is the interface for uploading or deleting the modelng file.
 
 You can't include header files, so the modeling file is likely to need typedefs and defines that could otherwise be included, inducing a certain amount of redundancy and possible mismatch between the modeling file and the project headers. This is reduced by the rudimentary (i.e. empty) structures. One might think that if coverity's compiler can deal with members of aggregates, one could have non-rudimentary structures, but
 
