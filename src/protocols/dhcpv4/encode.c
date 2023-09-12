@@ -386,7 +386,7 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 
 	fr_assert(fr_type_is_structural(vp->vp_type));
 
-	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 	work_dbuff = FR_DBUFF(dbuff);
 
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {

@@ -580,6 +580,27 @@ fr_pair_t	*_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const
 fr_pair_t	*_fr_pair_dcursor_init(fr_dcursor_t *cursor, fr_pair_list_t const *list,
 				       bool is_const) CC_HINT(nonnull);
 
+/** Initializes a child dcursor from a parent cursor, with an iteration function.
+ *
+ * Filters can be applied later with fr_dcursor_filter_set.
+ *
+ * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
+ *
+ * @param[out] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @param[in] parent	parent cursor to take the iterator from
+ * @return
+ *	- NULL if src does not point to any items.
+ *	- The first pair in the list.
+ */
+static inline fr_pair_t	*fr_pair_dcursor_child_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const *list, fr_dcursor_t const *parent)
+{
+	fr_pair_t *vp = fr_pair_dcursor_init(cursor, list);
+
+	fr_dcursor_copy_iter(cursor, parent);
+	return vp;
+}
+
 /** Initialise a cursor that will return only attributes matching the specified #fr_dict_attr_t
  *
  * @param[in] _cursor	to initialise.

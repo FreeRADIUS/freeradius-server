@@ -95,7 +95,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	if (vp->vp_type == FR_TYPE_STRUCT) {
 		fr_dcursor_t child_cursor;
 
-		fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+		fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 
 		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx, encode_value, encode_child);
 		if (slen < 0) return slen;
@@ -248,7 +248,7 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 
 	fr_assert(fr_type_is_structural(vp->vp_type));
 
-	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 	work_dbuff = FR_DBUFF(dbuff);
 
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
@@ -391,7 +391,7 @@ static ssize_t fr_dns_encode_rr(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 	if (vp->vp_type == FR_TYPE_STRUCT) {
 		fr_dcursor_t child_cursor;
 
-		fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+		fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 
 		slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, &child_cursor, encode_ctx, encode_value, encode_child);
 		if (slen <= 0) return slen;

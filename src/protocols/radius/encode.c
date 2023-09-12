@@ -251,7 +251,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 				return PAIR_ENCODE_SKIPPED;
 			}
 
-			fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+			fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 			vp = fr_dcursor_current(&child_cursor);
 			fr_proto_da_stack_build(da_stack, vp->da);
 
@@ -855,7 +855,7 @@ static ssize_t encode_extended_nested(fr_dbuff_t *dbuff,
 	parent = fr_dcursor_current(cursor);
 	fr_assert(fr_type_is_structural(parent->vp_type));
 
-	(void) fr_pair_dcursor_init(&child_cursor, &parent->vp_group);
+	(void) fr_pair_dcursor_child_iter_init(&child_cursor, &parent->vp_group, cursor);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -1190,7 +1190,7 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 	fr_assert(vp->da == da);
 	work_dbuff = FR_DBUFF(dbuff);
 
-	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
 		fr_proto_da_stack_build(da_stack, vp->da);
 
@@ -1252,7 +1252,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 	 *	Loop over the children of this Vendor-Specific
 	 *	attribute.
 	 */
-	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
 		fr_proto_da_stack_build(da_stack, vp->da);
 
