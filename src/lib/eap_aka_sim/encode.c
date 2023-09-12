@@ -81,7 +81,7 @@ static bool is_eap_aka_encodable(void const *item, UNUSED void const *uctx)
 	 */
 	if ((vp->vp_type == FR_TYPE_BOOL) && (vp->vp_bool == false)) return false;
 
-	if (vp->da->dict != dict_eap_aka_sim, vp->da) return false;
+	if (vp->da->dict != dict_eap_aka_sim) return false;
 
 	return true;
 }
