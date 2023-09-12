@@ -57,9 +57,9 @@ RCSID("$Id$")
  * of 32 bits, and includes the Type/Length fields.
  */
 
-static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
-			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encode_ctx);
+static ssize_t encode_tlv(fr_dbuff_t *dbuff,
+			  fr_da_stack_t *da_stack, unsigned int depth,
+			  fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Evaluation function for EAP-AKA-encodability
  *
@@ -584,7 +584,7 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
  * If it's a standard attribute, then vp->da->attr == attribute.
  * Otherwise, attribute may be something else.
  */
-static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
+static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx)
 {
 	size_t			pad_len;
@@ -677,9 +677,9 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 		 *	Determine the nested type and call the appropriate encoder
 		 */
 		if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
-			slen = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+			slen = encode_tlv(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		} else {
-			slen = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+			slen = encode_rfc(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
 
 		if (slen <= 0) {
@@ -724,7 +724,7 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
+static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx)
 {
@@ -733,6 +733,8 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	fr_dict_attr_t const	*da;
 	fr_dbuff_t		tl_dbuff;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
+	fr_dcursor_t		*my_cursor = cursor;
+	fr_dcursor_t		child_cursor;
 
 	PAIR_VERIFY(fr_dcursor_current(cursor));
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -744,8 +746,20 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	}
 
 	if (!da_stack->da[depth + 1]) {
-		fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
-		return PAIR_ENCODE_FATAL_ERROR;
+		fr_pair_t *vp;
+
+		vp = fr_dcursor_current(cursor);
+		if ((vp->vp_type != FR_TYPE_TLV) || (fr_pair_list_num_elements(&vp->vp_group) == 0)) {
+			fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
+			return PAIR_ENCODE_FATAL_ERROR;
+		}
+
+		fr_assert(vp->da == da_stack->da[depth]);
+
+		vp = fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
+		my_cursor = &child_cursor;
+
+		fr_proto_da_stack_build(da_stack, vp->da);
 	}
 
 	/*
@@ -764,8 +778,10 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 
 	da = da_stack->da[depth];
 	len = encode_tlv_internal(&FR_DBUFF_MAX_BIND_CURRENT(&work_dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN - 2),
-				  da_stack, depth, cursor, encode_ctx);
+				  da_stack, depth, my_cursor, encode_ctx);
 	if (len <= 0) return len;
+
+	if (my_cursor != cursor) fr_dcursor_next(cursor);
 
 	/*
 	 *	Round attr + len + data length out to a multiple
@@ -788,7 +804,6 @@ ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *en
 	ssize_t			slen;
 
 	fr_da_stack_t		da_stack;
-	fr_dict_attr_t const	*da = NULL;
 
 	fr_dbuff_marker(&m, &work_dbuff);
 	if (!cursor) return PAIR_ENCODE_FATAL_ERROR;
@@ -815,41 +830,19 @@ ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *en
 	 */
 
 	/*
-	 *	Fast path for the common case.
-	 */
-	if ((vp->da->parent == fr_dict_root(dict_eap_aka_sim)) && (vp->vp_type != FR_TYPE_TLV)) {
-		da_stack.da[0] = vp->da;
-		da_stack.da[1] = NULL;
-		da_stack.depth = 1;
-		FR_PROTO_STACK_PRINT(&da_stack, 0);
-		return encode_rfc_hdr(&FR_DBUFF_MAX_BIND_CURRENT(dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN + 2),
-				      &da_stack, 0, cursor, encode_ctx);
-	}
-
-	/*
 	 *	Do more work to set up the stack for the complex case.
 	 */
 	fr_proto_da_stack_build(&da_stack, vp->da);
 	FR_PROTO_STACK_PRINT(&da_stack, 0);
 
-	da = da_stack.da[0];
-
-	switch (da->type) {
-	/*
-	 *	Supported types
-	 */
-	default:
-		slen = encode_rfc_hdr(&FR_DBUFF_MAX_BIND_CURRENT(&work_dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN + 2),
-				      &da_stack, 0, cursor, encode_ctx);
-		if (slen < 0) return slen;
-		break;
-
-	case FR_TYPE_TLV:
-		slen = encode_tlv_hdr(&FR_DBUFF_MAX_BIND_CURRENT(&work_dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN + 2),
-				      &da_stack, 0, cursor, encode_ctx);
-		if (slen < 0) return slen;
-		break;
+	if (da_stack.da[0]->type == FR_TYPE_TLV) {
+		slen = encode_tlv(&FR_DBUFF_MAX_BIND_CURRENT(&work_dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN + 2),
+				  &da_stack, 0, cursor, encode_ctx);
+	} else {
+		slen = encode_rfc(&FR_DBUFF_MAX_BIND_CURRENT(&work_dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN + 2),
+				  &da_stack, 0, cursor, encode_ctx);
 	}
+	if (slen < 0) return slen;
 
 	/*
 	 *	We couldn't do it, so we didn't do anything.
