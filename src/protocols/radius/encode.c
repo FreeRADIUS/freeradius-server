@@ -719,7 +719,7 @@ static ssize_t attr_fragment(fr_dbuff_t *data, size_t data_len, fr_dbuff_marker_
  *
  */
 static ssize_t encode_extended(fr_dbuff_t *dbuff,
-				   fr_da_stack_t *da_stack, UNUSED unsigned int depth,
+				   fr_da_stack_t *da_stack, NDEBUG_UNUSED unsigned int depth,
 				   fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
