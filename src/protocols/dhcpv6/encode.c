@@ -96,9 +96,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_child);
 		if (slen <= 0) return slen;
 
-		/*
-		 *	Rebuild the da_stack for the next option.
-		 */
 		vp = fr_dcursor_current(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return fr_dbuff_set(dbuff, &work_dbuff);
@@ -499,7 +496,6 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	}
 
 	if (!da_stack->da[depth + 1]) {
-		fr_assert(0);
 		fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}

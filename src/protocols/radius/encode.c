@@ -41,7 +41,6 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 				fr_da_stack_t *da_stack, unsigned int depth,
 				fr_dcursor_t *cursor, void *encode_ctx);
 
-
 /** "encrypt" a password RADIUS style
  *
  * Input and output buffers can be identical if in-place encryption is needed.
@@ -364,9 +363,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	This has special requirements.
 	 */
 	if ((vp->vp_type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value,
-					    encode_tlv);
-		if (slen < 0) return slen;
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_child);
+		if (slen <= 0) return slen;
 
 		vp = fr_dcursor_current(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
@@ -728,8 +726,10 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	uint8_t			hlen;
 	size_t			vendor_hdr;
 	bool			extra;
+	int			my_depth;
+	fr_dict_attr_t const	*da;
 	fr_dbuff_marker_t	hdr, length_field;
-	fr_pair_t const	*vp = fr_dcursor_current(cursor);
+	fr_pair_t const		*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t		work_dbuff;
 
 	PAIR_VERIFY(vp);
@@ -752,14 +752,14 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	 *	Encode the header for "short" or "long" attributes
 	 */
 	hlen = 3 + extra;
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth++]->attr);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[0]->attr);
 	fr_dbuff_marker(&length_field, &work_dbuff);
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, hlen); /* this gets overwritten later*/
 
 	/*
 	 *	Encode which extended attribute it is.
 	 */
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[1]->attr);
 
 	if (extra) FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x00);	/* flags start off at zero */
 
@@ -768,26 +768,47 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	/*
 	 *	Handle VSA as "VENDOR + attr"
 	 */
-	if (da_stack->da[depth]->type == FR_TYPE_VSA) {
-		depth++;
+	if (da_stack->da[1]->type == FR_TYPE_VSA) {
+		fr_assert(da_stack->da[2]);
+		fr_assert(da_stack->da[2]->type == FR_TYPE_VENDOR);
 
-		FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) da_stack->da[depth++]->attr);
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
+		FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) da_stack->da[2]->attr);
+
+		fr_assert(da_stack->da[3]);
+
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[3]->attr);
 
 		hlen += 5;
 		vendor_hdr = 5;
 
 		FR_PROTO_STACK_PRINT(da_stack, depth);
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), hlen, "header extended vendor specific");
+
+		my_depth = 3;
 	} else {
 		vendor_hdr = 0;
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), hlen, "header extended");
+
+		my_depth = 1;
 	}
 
 	/*
-	 *	This also handles TLVs
+	 *	We're at the point where we need to encode something.
 	 */
-	slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+	da = da_stack->da[my_depth];
+	fr_assert(vp->da == da);
+
+	if (fr_type_is_leaf(da->type)) {
+		slen = encode_value(&work_dbuff, da_stack, my_depth, cursor, encode_ctx);
+
+	} else if (da->type == FR_TYPE_STRUCT) {
+		slen = fr_struct_to_network(&work_dbuff, da_stack, my_depth, cursor, encode_ctx, encode_value, encode_child);
+
+	} else {
+		fr_assert(da->type == FR_TYPE_TLV);
+
+		slen = encode_tlv(&work_dbuff, da_stack, my_depth, cursor, encode_ctx);
+	}
 	if (slen <= 0) return slen;
 
 	/*
@@ -836,14 +857,16 @@ static ssize_t encode_extended_nested(fr_dbuff_t *dbuff,
 
 	(void) fr_pair_dcursor_init(&child_cursor, &parent->vp_group);
 
+	FR_PROTO_STACK_PRINT(da_stack, depth);
+
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
-		if (fr_type_is_leaf(vp->vp_type) ||
-		    ((depth > 1) && ((vp->vp_type == FR_TYPE_TLV) || (vp->vp_type == FR_TYPE_STRUCT)))) {
-			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-			slen = encode_extended(&work_dbuff, da_stack, 0, &child_cursor, encode_ctx);
+		if ((vp->vp_type == FR_TYPE_VSA) || (vp->vp_type == FR_TYPE_VENDOR)) {
+			slen = encode_extended_nested(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx);
 
 		} else {
-			slen = encode_extended_nested(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx);
+			fr_proto_da_stack_build(da_stack, vp->da);
+			slen = encode_extended(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+			if (slen < 0) return slen;
 		}
 
 		if (slen < 0) return slen;
@@ -851,10 +874,6 @@ static ssize_t encode_extended_nested(fr_dbuff_t *dbuff,
 
 	vp = fr_dcursor_next(cursor);
 
-	/*
-	 *	@fixme: attributes with 'concat' MUST of type
-	 *	'octets', and therefore CANNOT have any TLV data in them.
-	 */
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -929,12 +948,13 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX(dbuff, UINT8_MAX);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
+
+	fr_assert(da_stack->da[depth] != NULL);
+
 	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	hlen = 2;
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, hlen);
-
-	fr_assert(da_stack->da[depth] != NULL);
 
 	slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
@@ -1608,7 +1628,8 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 			slen = encode_child(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 
 		} else if (vp->da != da) {
-			slen = encode_extended(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
+			fr_strerror_printf("extended attributes must be nested");
+			return PAIR_ENCODE_FATAL_ERROR;
 
 		} else {
 			slen = encode_extended_nested(&work_dbuff, &da_stack, 0, cursor, encode_ctx);

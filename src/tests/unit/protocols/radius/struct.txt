@@ -2,6 +2,9 @@ proto radius
 proto-dictionary radius
 fuzzer-out radius
 
+encode-pair Extended-Attribute-1 = { Unit-Ext-241-Struct2 = { Unit-Struct2-Int1 = 1, Unit-Struct2-Short = 4 } }
+match f1 09 f8 00 00 00 01 00 04
+
 #
 #  Structs in RADIUS
 #
@@ -10,6 +13,15 @@ match f1 10 f7 00 00 00 01 00 00 00 02 00 04 66 6f 6f
 
 decode-pair -
 match Extended-Attribute-1.Unit-Ext-241-Struct1.Unit-Struct1-Int1 = 1, Extended-Attribute-1.Unit-Ext-241-Struct1.Unit-Struct1-Int2 = 2, Extended-Attribute-1.Unit-Ext-241-Struct1.Unit-Struct1-Short = 4, Extended-Attribute-1.Unit-Ext-241-Struct1.Unit-Struct1-String = "foo"
+
+pair Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-Int1 = 1, Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-Short = 4, Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-TLV.Unit-Struct2-TLV-Int1 = 6, Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-TLV.Unit-Struct2-TLV-Int2 = 7, Extended-Attribute-1.Unit-Ext-241-Struct2.Unit-Struct2-TLV.Unit-Struct2-TLV-String = "foo"
+match Extended-Attribute-1 = { Unit-Ext-241-Struct2 = { Unit-Struct2-Int1 = 1, Unit-Struct2-Short = 4, Unit-Struct2-TLV = { Unit-Struct2-TLV-Int1 = 6, Unit-Struct2-TLV-Int2 = 7, Unit-Struct2-TLV-String = "foo" } } }
+
+encode-pair Extended-Attribute-1 = { Unit-Ext-241-Struct2 = { Unit-Struct2-Int1 = 1, Unit-Struct2-Short = 4 } }
+match f1 09 f8 00 00 00 01 00 04
+
+encode-pair Extended-Attribute-1 = { Unit-Ext-241-Struct2 = { Unit-Struct2-Int1 = 1, Unit-Struct2-Short = 4, Unit-Struct2-TLV = { Unit-Struct2-TLV-Int1 = 6, Unit-Struct2-TLV-Int2 = 7, Unit-Struct2-TLV-String = "foo" } } }
+match f1 1a f8 00 00 00 01 00 04 01 06 00 00 00 06 02 06 00 00 00 07 03 05 66 6f 6f
 
 #
 # And structs where the last part is a TLV.
@@ -73,4 +85,4 @@ encode-pair -
 match ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
 
 count
-match 33
+match 41

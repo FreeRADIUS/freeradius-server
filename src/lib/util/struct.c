@@ -538,7 +538,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	 *	nested attributes.
 	 */
 	if (vp && (vp->da->parent != parent)) {
-		fr_strerror_printf("%s: struct encoding is missing previous attributes for %s (parent %s, expecting %s)",
+		fr_strerror_printf("%s: Asked to encode %s, but its parent %s is not the expected parent %s",
 				   __FUNCTION__, vp->da->name, vp->da->parent->name, parent->name);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
@@ -814,8 +814,9 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 
 done:
 	vp = fr_dcursor_current(cursor);
-	if (tlv && vp) {
+	if (tlv && vp && (vp->da == tlv) && encode_pair) {
 		ssize_t slen;
+		fr_dcursor_t tlv_cursor;
 
 		if (!encode_pair) {
 			fr_strerror_printf("Asked to encode child attribute %s, but we were not passed an encoding function",
@@ -823,10 +824,17 @@ done:
 			return PAIR_ENCODE_FATAL_ERROR;
 		}
 
-		fr_proto_da_stack_build(da_stack, vp->da);
+		fr_assert(fr_type_is_structural(vp->vp_type));
 
-		slen = fr_pair_cursor_to_network(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx, encode_pair);
-		if (slen < 0) return slen;
+		vp = fr_pair_dcursor_init(&tlv_cursor, &vp->vp_group);
+		if (vp) {
+			FR_PROTO_TRACE("fr_struct_to_network trailing TLVs of %s", tlv->name);
+			fr_proto_da_stack_build(da_stack, vp->da);
+			FR_PROTO_STACK_PRINT(da_stack, depth);
+
+			slen = fr_pair_cursor_to_network(&work_dbuff, da_stack, depth + 1, &tlv_cursor, encode_ctx, encode_pair);
+			if (slen < 0) return slen;
+		}
 	}
 
 	if (do_length) {

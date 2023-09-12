@@ -73,12 +73,15 @@ ssize_t fr_pair_cursor_to_network(fr_dbuff_t *dbuff,
 				  fr_dcursor_t *cursor, void *encode_ctx, fr_encode_dbuff_t encode_pair)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
-	fr_pair_t const		*vp;
+	fr_pair_t const		*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			len;
 
-	while ((vp = fr_dcursor_current(cursor)) != NULL) {
+	while (true) {
 		FR_PROTO_STACK_PRINT(da_stack, depth);
+
+		vp = fr_dcursor_current(cursor);
+		fr_assert(!vp->da->flags.internal);
 
 		len = encode_pair(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		if (len < 0) return len;
@@ -87,6 +90,11 @@ ssize_t fr_pair_cursor_to_network(fr_dbuff_t *dbuff,
 		 *	If nothing updated the attribute, stop
 		 */
 		if (!fr_dcursor_current(cursor) || (vp == fr_dcursor_current(cursor))) break;
+
+		vp = fr_dcursor_current(cursor);
+		if (!vp) break;
+
+		fr_proto_da_stack_build(da_stack, vp->da);
 
 		/*
 		 *	We can encode multiple children, if after
