@@ -53,6 +53,9 @@ void fr_pair_list_init(fr_pair_list_t *list)
 	 */
 	fr_pair_order_list_talloc_init(&list->order);
 
+#ifdef WITH_VERIFY_PTR
+	list->verified = true;
+#endif
 	list->is_child = false;
 }
 

@@ -181,6 +181,9 @@ _INLINE fr_pair_list_t *fr_pair_list_from_dlist(fr_dlist_head_t const *list)
  */
 _INLINE void fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src)
 {
+#ifdef WITH_VERIFY_POINTER
+	dst->verified = false;
+#endif
 	fr_pair_order_list_move(&dst->order, &src->order);
 }
 
