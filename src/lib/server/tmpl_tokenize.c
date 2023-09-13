@@ -401,7 +401,7 @@ fr_slen_t tmpl_attr_list_from_substr(fr_dict_attr_t const **da_p, fr_sbuff_t *in
 	     (da = request_attr_reply)) ||
 	    ((fr_sbuff_adv_past_strcase(&our_in, request_attr_control->name, request_attr_control->name_len)) &&
 	     (da = request_attr_control)) ||
-	    ((fr_sbuff_adv_past_strcase(&our_in, request_attr_state->name, request_attr_state->name_len)) &&	     
+	    ((fr_sbuff_adv_past_strcase(&our_in, request_attr_state->name, request_attr_state->name_len)) &&
 	     (da = request_attr_state))) {
 		/* note: no local variables */
 		*da_p = da;
@@ -1355,7 +1355,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		tmpl_rules_t t_rules;
 		fr_sbuff_parse_rules_t p_rules;
 		fr_sbuff_term_t const filter_terminals = FR_SBUFF_TERMS(L("]"));
-		
+
 		rcode = fr_sbuff_out(&sberr, &ar->ar_num, &tmp);
 		if ((rcode > 0) && (fr_sbuff_is_char(&tmp, ']'))) {
 			if ((ar->ar_num > 1000) || (ar->ar_num < 0)) {
@@ -1372,7 +1372,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		/*
 		 *	Temporary parsing hack: &User-Name[a] does _not_ match a condition 'a'.
 		 */
-		if (!fr_sbuff_is_char(&tmp, '&')) {	
+		if (!fr_sbuff_is_char(&tmp, '&')) {
 			fr_strerror_const("Invalid array index");
 			if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 			goto error;
@@ -1402,7 +1402,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		 *	Which would involve creating the RHS list, doing an element-by-element comparison, and
 		 *	then returning.
 		 *
-		 *	In order to fix that, we have to 
+		 *	In order to fix that, we have to
 		 */
 		if (!fr_type_is_structural(ar->ar_da->type)) {
 				fr_strerror_printf("Invalid filter - cannot use filter on leaf attributes");
@@ -1416,7 +1416,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 
 		tmp = FR_SBUFF(&our_name);
 		t_rules = (tmpl_rules_t) {};
-		t_rules.attr = *at_rules;	      
+		t_rules.attr = *at_rules;
 		t_rules.attr.namespace = ar->ar_da;
 
 		p_rules = (fr_sbuff_parse_rules_t) {
@@ -3981,8 +3981,8 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 
 		if (dst_type == tmpl_attr_tail_da(vpt)->type) {
 			vpt->rules.cast = FR_TYPE_NULL;
-		}		
-		
+		}
+
 	/*
 	 *	Convert unresolved tmpls into enumvs, or failing that, string values.
 	 *
