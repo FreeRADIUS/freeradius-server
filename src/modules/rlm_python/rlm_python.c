@@ -462,8 +462,7 @@ static int mod_populate_vptuple(module_ctx_t const *mctx, request_t *request, Py
 		break;
 
 	case FR_TYPE_NON_LEAF:
-		fr_assert(0);
-		return -1;
+		return 0;
 	}
 
 	if (value == NULL) goto error;
