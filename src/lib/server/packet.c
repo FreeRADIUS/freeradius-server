@@ -88,23 +88,6 @@ int fr_packet_pairs_from_packet(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_radius
 	fr_pair_t *vp, *net, *tlv;
 
 	/*
-	 *	We overload the pair_legacy_nested flag, as we can't
-	 *	call main_config_migrate_option_get(), as this file is
-	 *	also included in radclient. :(
-	 */
-	if (!fr_pair_legacy_nested) {
-		if (inet2pairs(ctx, list, attr_net_src_ip, attr_net_src_port, &packet->socket.inet.src_ipaddr, packet->socket.inet.src_port) < 0) return -1;
-
-		if (inet2pairs(ctx, list, attr_net_dst_ip, attr_net_dst_port, &packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port) < 0) return -1;
-
-		if (fr_pair_find_or_append_by_da(ctx, &vp, list, attr_net_timestamp) < 0) return -1;
-		vp->vp_date = fr_time_to_unix_time(packet->timestamp);
-		fr_pair_set_immutable(vp);
-
-		return 0;
-	}
-
-	/*
 	 *	Net
 	 */
 	if (fr_pair_find_or_append_by_da(ctx, &net, list, attr_net) < 0) return -1;
@@ -152,21 +135,7 @@ static void pairs2inet(fr_ipaddr_t *ipaddr, uint16_t *port, fr_pair_list_t const
  */
 void fr_packet_pairs_to_packet(fr_radius_packet_t *packet, fr_pair_list_t const *list)
 {
-	fr_pair_t *vp, *net, *tlv;
-
-	/*
-	 *	@todo - create nested ones!
-	 */
-	if (!fr_pair_legacy_nested) {
-		pairs2inet(&packet->socket.inet.src_ipaddr, &packet->socket.inet.src_port, list,
-			   attr_net_src_ip, attr_net_src_port);
-
-		pairs2inet(&packet->socket.inet.dst_ipaddr, &packet->socket.inet.dst_port, list,
-			   attr_net_dst_ip, attr_net_dst_port);
-
-		vp = fr_pair_find_by_da(list, NULL, attr_net_timestamp);
-		if (vp) packet->timestamp = fr_time_add(packet->timestamp, vp->vp_time_delta);
-	}
+	fr_pair_t *net, *tlv;
 
 	net = fr_pair_find_by_da(list, NULL, attr_net);
 	if (!net) return;
