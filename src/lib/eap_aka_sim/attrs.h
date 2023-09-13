@@ -63,7 +63,6 @@ extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_next_reauth_id;
 extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_nonce_mt;
 extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_nonce_s;
 extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_notification;
-extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_padding;
 extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_permanent_id_req;
 extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_permanent_identity;
 extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_rand;
