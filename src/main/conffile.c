@@ -1428,8 +1428,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	char const *value;
 	CONF_PAIR *cp = NULL;
 	fr_ipaddr_t *ipaddr;
-	char buffer[8192];
 	CONF_ITEM *c_item;
+	char buffer[8192];
 
 	if (!cs) {
 		cf_log_err(&(cs->item), "No enclosing section for configuration item \"%s\"", name);
@@ -1658,6 +1658,62 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 				cf_log_err(&(cs->item),"Failed expanding variable %s", name);
 				return -1;
 			}
+
+		} else if (cf_new_escape && (cp->rhs_type == T_DOUBLE_QUOTED_STRING) && (strchr(value, '\\') != NULL)) {
+			char const *p = value;
+			char *s = buffer;
+			char *end = buffer + sizeof(buffer);
+			unsigned int x;
+
+			/*
+			 *	We pass !cf_new_escape() to gettoken() when we parse the RHS of a CONF_PAIR
+			 *	above.  But gettoken() unescapes the \", and doesn't unescape anything else.
+			 *	So we do it here.
+			 */
+			while (*p && (s < end)) {
+				if (*p != '\\') {
+					*(s++) = *(p++);
+					continue;
+				}
+
+				p++;
+
+				switch (*p) {
+				case 'r':
+					*s++ = '\r';
+					break;
+				case 'n':
+					*s++ = '\n';
+					break;
+				case 't':
+					*s++ = '\t';
+					break;
+
+				default:
+					if (*p >= '0' && *p <= '9' &&
+					    sscanf(p, "%3o", &x) == 1) {
+						if (!x) {
+							cf_log_err(&(cs->item), "Cannot have embedded zeros in value for %s", name);
+							return -1;
+						}
+
+						*s++ = x;
+						p += 2;
+					} else
+						*s++ = *p;
+					break;
+				}
+				p++;
+			}
+
+			if (s == end) {
+				cf_log_err(&(cs->item), "Failed expanding value for %s", name);
+				return -1;
+			}
+
+			*s = '\0';
+
+			value = buffer;
 		}
 
 		if (cant_be_empty && (value[0] == '\0')) goto cant_be_empty;
