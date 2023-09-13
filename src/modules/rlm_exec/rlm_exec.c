@@ -44,25 +44,38 @@ RCSID("$Id$")
  */
 typedef struct {
 	bool			wait;
-	char const		*program;
 	tmpl_t			*input_list;
 	tmpl_t			*output_list;
 	bool			shell_escape;
 	bool			env_inherit;
 	fr_time_delta_t		timeout;
 	bool			timeout_is_set;
-	tmpl_t			*tmpl;
 } rlm_exec_t;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("wait", FR_TYPE_BOOL, rlm_exec_t, wait), .dflt = "yes" },
-	{ FR_CONF_OFFSET("program", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_exec_t, program) },
 	{ FR_CONF_OFFSET("input_pairs", FR_TYPE_TMPL, rlm_exec_t, input_list) },
 	{ FR_CONF_OFFSET("output_pairs", FR_TYPE_TMPL, rlm_exec_t, output_list) },
 	{ FR_CONF_OFFSET("shell_escape", FR_TYPE_BOOL, rlm_exec_t, shell_escape), .dflt = "yes" },
 	{ FR_CONF_OFFSET("env_inherit", FR_TYPE_BOOL, rlm_exec_t, env_inherit), .dflt = "no" },
 	{ FR_CONF_OFFSET_IS_SET("timeout", FR_TYPE_TIME_DELTA, rlm_exec_t, timeout) },
 	CONF_PARSER_TERMINATOR
+};
+
+typedef struct {
+	tmpl_t	*program;
+} exec_call_env_t;
+
+static const call_env_t exec_call_env[] = {
+	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("program", FR_TYPE_STRING, exec_call_env_t, program, NULL,
+				       T_BACK_QUOTED_STRING, false), .pair.force_quote = true },
+	CALL_ENV_TERMINATOR
+};
+
+static const call_method_env_t exec_method_env = {
+	.inst_size = sizeof(exec_call_env_t),
+	.inst_type = "exec_call_env_t",
+	.env = exec_call_env
 };
 
 static xlat_action_t exec_xlat_oneshot_wait_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
@@ -308,8 +321,9 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(rlm_rcode_t *p
 	fr_pair_list_t		*env_pairs = NULL;
 	TALLOC_CTX		*ctx;
 	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_exec_t);
+	exec_call_env_t		*env_data = talloc_get_type_abort(mctx->env_data, exec_call_env_t);
 
-	if (!inst->tmpl) {
+	if (!env_data->program) {
 		RDEBUG("This module requires 'program' to be set.");
 		RETURN_MODULE_FAIL;
 	}
@@ -332,7 +346,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(rlm_rcode_t *p
 		 *  the resume function we set to actually dispatch the
 		 *  exec request.
 		 */
-		return unlang_module_yield_to_xlat(request, NULL, box, request, tmpl_xlat(inst->tmpl),
+		return unlang_module_yield_to_xlat(request, NULL, box, request, tmpl_xlat(env_data->program),
 						   mod_exec_oneshot_nowait_resume, NULL, 0, box);
 	}
 
@@ -355,54 +369,10 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(rlm_rcode_t *p
 
 	fr_value_box_list_init(&m->box);
 	return unlang_module_yield_to_tmpl(m, &m->box,
-					   request, inst->tmpl,
+					   request, env_data->program,
 					   TMPL_ARGS_EXEC(env_pairs, inst->timeout, true, &m->status),
 					   mod_exec_oneshot_wait_resume,
 					   NULL, 0, &m->box);
-}
-
-/** Instantiate the module
- *
- * Creates a new instance of the module reading parameters from a configuration section.
- *
- * @param[in] mctx to parse.
- * @return
- *	- 0 on success.
- *	- < 0 on failure.
- */
-static int mod_instantiate(module_inst_ctx_t const *mctx)
-{
-	rlm_exec_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_exec_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
-	ssize_t			slen;
-
-	if (!inst->program) return 0;
-
-	slen = tmpl_afrom_substr(inst, &inst->tmpl,
-				 &FR_SBUFF_IN(inst->program, strlen(inst->program)),
-				 T_BACK_QUOTED_STRING, NULL,
-				 &(tmpl_rules_t) {
-				 	.attr = {
-						.list_def = request_attr_request,
-				 		.allow_foreign = true,
-				 		.allow_unresolved = false,
-				 		.allow_unknown = false
-				 	}
-				 });
-	if (!inst->tmpl) {
-		char *spaces, *text;
-
-		fr_canonicalize_error(inst, &spaces, &text, slen, inst->program);
-
-		cf_log_err(conf, "%s", text);
-		cf_log_perr(conf, "%s^", spaces);
-
-		talloc_free(spaces);
-		talloc_free(text);
-		return -1;
-	}
-
-	return 0;
 }
 
 /*
@@ -488,10 +458,10 @@ module_rlm_t rlm_exec = {
 		.inst_size	= sizeof(rlm_exec_t),
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,
-		.instantiate	= mod_instantiate
 	},
         .method_names = (module_method_name_t[]){
-                { .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_exec_dispatch_oneshot },
+                { .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_exec_dispatch_oneshot,
+		  .method_env = &exec_method_env },
                 MODULE_NAME_TERMINATOR
         }
 };
