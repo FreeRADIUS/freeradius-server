@@ -99,7 +99,7 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 			if (cp) {
 				value = cf_pair_value(cp);
 				len = talloc_array_length(value) - 1;
-				quote = cf_pair_value_quote(cp);
+				quote = call_env->pair.force_quote ? call_env->dflt_quote : cf_pair_value_quote(cp);
 			} else {
 				value = call_env->dflt;
 				len = strlen(value);

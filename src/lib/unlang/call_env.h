@@ -80,6 +80,10 @@ struct call_env_s {
 			bool		multi;		//!< Multiple instances of the conf pairs are allowed.  Resulting
 							///< boxes are stored in an array - one entry per conf pair.
 			bool		nullable;	//!< Tmpl expansions are allowed to produce no output.
+			bool		force_quote;	//!< Force quote method when parsing tmpl.  This is for corner cases
+							///< where tmpls should always be parsed with a particular quoting
+							///< regardless of how they are in the config file.  E.g. the `program`
+							///< option of `rlm_exec` should always be parsed as T_BACK_QUOTED_STRING.
 			call_env_dest_t	type;		//!< Type of structure boxes will be written to.
 			size_t		size;		//!< Size of structure boxes will be written to.
 			char const	*type_name;	//!< Name of structure type boxes will be written to.
