@@ -156,6 +156,33 @@ static void test_fr_pair_afrom_da_nested(void)
 	talloc_free(parent);	/* not vp! */
 }
 
+static void test_fr_pair_delete_by_da_nested(void)
+{
+	int		count;
+	fr_pair_t	*vp, *parent = NULL;
+	fr_pair_list_t	local_pairs;
+
+	fr_pair_list_init(&local_pairs);
+
+	TEST_CASE("Allocation using fr_pair_afrom_da_nested");
+	TEST_CHECK((vp = fr_pair_afrom_da_nested(autofree, &local_pairs, fr_dict_attr_test_tlv_string)) != NULL);
+
+	TEST_CHECK(vp && vp->da == fr_dict_attr_test_tlv_string);
+	TEST_MSG("Expected attr(%s) == vp->da->attr(%s)", fr_dict_attr_test_tlv_string->name, vp->da->name);
+
+	TEST_CASE("Deleted nested pair");
+	TEST_CHECK((count = fr_pair_delete_by_da_nested(&local_pairs, fr_dict_attr_test_tlv_string)) == 1);
+
+	TEST_CASE("Top list still has the tlv attribute");
+	parent = fr_pair_find_by_da(&local_pairs, NULL, fr_dict_attr_test_tlv);
+	TEST_ASSERT(parent != NULL);
+
+	TEST_CASE("Parent list does not have the tlv child attribute");
+	TEST_CHECK(fr_pair_find_by_da(&parent->vp_group, NULL, fr_dict_attr_test_tlv_string) == NULL);
+
+	fr_pair_list_free(&local_pairs);
+}
+
 static void test_fr_pair_copy(void)
 {
 	fr_pair_t *vp, *copy;
@@ -1405,6 +1432,7 @@ TEST_LIST = {
 	{ "fr_pair_update_by_da_parent",          test_fr_pair_update_by_da_parent },
 	{ "fr_pair_delete",                       test_fr_pair_delete },
 	{ "fr_pair_delete_by_da",                 test_fr_pair_delete_by_da },
+	{ "fr_pair_delete_by_da_nested",          test_fr_pair_delete_by_da_nested },
 
 	/* Compare */
 	{ "fr_pair_cmp",                          test_fr_pair_cmp },

@@ -1592,6 +1592,93 @@ int fr_pair_delete_by_da(fr_pair_list_t *list, fr_dict_attr_t const *da)
 
 /** Delete matching pairs from the specified list
  *
+ * @param[in,out] list	to search for attributes in or delete attributes from.
+ * @param[in] da	to match.
+ * @return
+ *	- >0 the number of pairs deleted.
+ *	- 0 if no pairs were deleted.
+ */
+int fr_pair_delete_by_da_nested(fr_pair_list_t *list, fr_dict_attr_t const *da)
+{
+	int			cnt = 0;
+	fr_pair_t		*vp;
+	fr_dict_attr_t const	**find;		/* DA currently being looked for */
+	fr_pair_list_t		*cur_list;	/* Current list being searched */
+	fr_da_stack_t		da_stack;
+
+	if (da->depth <= 1) return fr_pair_delete_by_da(list, da);
+
+	if (fr_pair_list_empty(list)) return 0;
+
+	/*
+	 *	Similar to fr_pair_find_by_da_nested()
+	 */
+	fr_proto_da_stack_build(&da_stack, da);
+	cur_list = list;
+	find = &da_stack.da[0];
+	vp = NULL;
+
+	/*
+	 *	Loop over the list at each level until we find a matching da.
+	 */
+	while (true) {
+		fr_pair_t	*next;
+
+		fr_assert((*find)->depth <= da->depth);
+
+		/*
+		 *	Find a vp which matches a given da.  If found,
+		 *	recurse into the child list to find the child
+		 *	attribute.
+		 *
+		 */
+		next = fr_pair_find_by_da(cur_list, vp, *find);
+		if (next) {
+			/*
+			 *	We've found a match for the requested
+			 *	da - delete it
+			 */
+			if ((*find) == da) {
+				do {
+					fr_pair_delete(cur_list, next);
+					cnt++;
+				} while ((next = fr_pair_find_by_da(cur_list, vp, *find)) != NULL);
+
+				return cnt;
+			}
+
+			/*
+			 *	Prepare to search the next level.
+			 */
+			cur_list = &next->vp_group;
+			find++;
+			vp = NULL;
+			continue;
+		}
+
+		/*
+		 *	We hit the end of the top-level list.  Therefore we found nothing.
+		 */
+		if (cur_list == list) break;
+
+		/*
+		 *	We hit the end of *A* list.  Go to the parent
+		 *	VP, and then find its list.
+		 *
+		 *	We still then have to go to the next attribute
+		 *	in the parent list, as we've checked all of the
+		 *	children of this VP.
+		 */
+		find--;
+		vp = fr_pair_list_parent(cur_list);
+		cur_list = fr_pair_parent_list(vp);
+	}
+
+	return fr_pair_delete_by_da(list, da);
+}
+
+/** Delete matching pairs from the specified list
+ *
  * @param[in] list	to delete attributes from.
  * @param[in] parent	to match.
  * @param[in] attr	to match.

@@ -522,6 +522,8 @@ static inline CC_HINT(nonnull(3,4)) int fr_pair_find_or_append_by_da(TALLOC_CTX 
 
 int		fr_pair_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
+int		fr_pair_delete_by_da_nested(fr_pair_list_t *list, fr_dict_attr_t const *da) CC_HINT(nonnull);
+
 fr_pair_t	*fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
 /* functions for FR_TYPE_STRUCTURAL */
