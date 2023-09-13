@@ -598,40 +598,6 @@ global {
 #
 migrate {
 	#
-	#  flatten_after_decode:: Convert "nested" attribute lists to
-	#  "flat" ones after the protocol decoders have run, but
-	#  before any `unlang` policies are used.
-	#
-	flatten_after_decode = yes
-
-	#
-	#  flatten_before_encode:: Convert "nested" attribute lists to
-	#  "flat" ones before calling the protocol encoders.
-	#
-	flatten_before_encode = yes
-
-	#
-	#  unflatten_after_decode:: Convert "flat" attribute lists to
-	#  "nested" ones after the protocol decoders have run, but
-	#  before any `unlang` policies are used.
-	#
-	#  Some protocol decoders still produce "flat" attribute
-	#  lists.  This is in large part because many of the core
-	#  modules still expect to see "flat" lists.
-	#
-	unflatten_after_decode = no
-
-	#
-	#  unflatten_before_encode:: Convert "flat" attribute lists to
-	#  "nested" ones before calling the protocol encoders.
-	#
-	#  All of the protocol encoders currently handle flat or
-	#  nested attributes.  This flag should be forced to `true`,
-	#  and the "flat" code removed from the protocol encoders.
-	#
-	unflatten_before_encode = false
-
-	#
 	#  tmpl_tokenize_all_nested:: Create all internal "tmpl" data
 	#  structures as using nested structures instead of flat ones.
 	#

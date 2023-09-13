@@ -188,10 +188,6 @@ static const CONF_PARSER thread_config[] = {
  *	Migration configuration.
  */
 static const CONF_PARSER migrate_config[] = {
-	{ FR_CONF_OFFSET("unflatten_after_decode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, unflatten_after_decode) },
-	{ FR_CONF_OFFSET("unflatten_before_encode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, unflatten_before_encode) },
-	{ FR_CONF_OFFSET("flatten_after_decode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, flatten_after_decode), .dflt = "yes" },
-	{ FR_CONF_OFFSET("flatten_before_encode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, flatten_before_encode), .dflt = "yes" },
 	{ FR_CONF_OFFSET("tmpl_tokenize_all_nested", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, tmpl_tokenize_all_nested) },
 	{ FR_CONF_OFFSET("rewrite_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET("forbid_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, forbid_update) },
@@ -1259,24 +1255,6 @@ do {\
 		fprintf(stderr, "%s: Error: Failed to parse log{} section.\n",
 			config->name);
 		goto failure;
-	}
-
-	/*
-	 *	Handle migration.
-	 *
-	 *	If all of the tmpls are tokenized as nested, then we
-	 *	MUST use the new conditions.  The old conditions can't
-	 *	handle nested attributes.
-	 *
-	 *	Similarly, we MUST NOT flatten the attributes after
-	 *	decoding, or before encoding.  The code should handle everything correctly.
-	 */
-	if (config->tmpl_tokenize_all_nested) {
-		config->flatten_after_decode = false;
-		config->flatten_before_encode = false;
-
-		config->unflatten_after_decode = false;
-		config->unflatten_before_encode = false;
 	}
 
 	/*
