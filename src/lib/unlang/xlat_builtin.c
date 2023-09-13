@@ -317,104 +317,6 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	return XLAT_ACTION_DONE;
 }
 
-/** Flatten a given group.
- *
- *  This is a temporary function for migration purposes
- *
- * Example:
-@verbatim
-"%(flatten:&request)"
-@endverbatim
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t xlat_func_flatten(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-					  UNUSED xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *args)
-{
-	fr_pair_t		*vp;
-	tmpl_t			*vpt;
-	fr_value_box_t		*attr;
-	char const		*fmt;
-
-	XLAT_ARGS(args, &attr);
-
-	fmt = attr->vb_strvalue;
-	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
-				&(tmpl_rules_t){
-					.attr = {
-						.dict_def = request->dict,
-						.list_def = request_attr_request,
-						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
-					}
-				}) <= 0) {
-		RPEDEBUG("Invalid input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if ((tmpl_find_vp(&vp, request, vpt) < 0) ||
-	    (vp->vp_type != FR_TYPE_GROUP)) {
-		REDEBUG("Can't find '%s', or it's not a group", fmt);
-		talloc_free(vpt);
-		return XLAT_ACTION_FAIL;
-	}
-
-	fr_pair_flatten(vp);
-
-	talloc_free(vpt);
-
-	return XLAT_ACTION_DONE;
-}
-
-/** Unflatten a given group.
- *
- *  This is a temporary function for migration purposes
- *
- * Example:
-@verbatim
-"%(unflatten:&request)"
-@endverbatim
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t xlat_func_unflatten(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-					  UNUSED xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *args)
-{
-	fr_pair_t		*vp;
-	tmpl_t			*vpt;
-	fr_value_box_t		*attr;
-	char const		*fmt;
-
-	XLAT_ARGS(args, &attr);
-
-	fmt = attr->vb_strvalue;
-	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
-				&(tmpl_rules_t){
-					.attr = {
-						.dict_def = request->dict,
-						.list_def = request_attr_request,
-						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
-					}
-				}) <= 0) {
-		RPEDEBUG("Invalid input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if ((tmpl_find_vp(&vp, request, vpt) < 0) ||
-	    (vp->vp_type != FR_TYPE_GROUP)) {
-		REDEBUG("Can't find '%s', or it's not a group", fmt);
-		talloc_free(vpt);
-		return XLAT_ACTION_FAIL;
-	}
-
-	fr_pair_unflatten(vp);
-
-	talloc_free(vpt);
-
-	return XLAT_ACTION_DONE;
-}
-
 static xlat_action_t xlat_func_untaint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       UNUSED xlat_ctx_t const *xctx,
 				       UNUSED request_t *request, fr_value_box_list_t *in)
@@ -3396,12 +3298,6 @@ do { \
 	XLAT_REGISTER_ARGS("subst", xlat_func_subst, FR_TYPE_STRING, xlat_func_subst_args);
 	XLAT_REGISTER_ARGS("time", xlat_func_time, FR_TYPE_VOID, xlat_func_time_args);
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, FR_TYPE_STRING, trigger_xlat_args);
-
-	/*
-	 *	Temporary functions for migration.
-	 */
-	XLAT_REGISTER_ARGS("flatten", xlat_func_flatten, FR_TYPE_NULL, xlat_func_debug_attr_args); /* takes an attribute reference */
-	XLAT_REGISTER_ARGS("unflatten", xlat_func_unflatten, FR_TYPE_NULL, xlat_func_debug_attr_args); /* takes an attribute reference */
 
 	if (unlikely((xlat = xlat_func_register(ctx, "untaint", xlat_func_untaint, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);

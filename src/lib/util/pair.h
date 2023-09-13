@@ -535,10 +535,6 @@ fr_pair_t	*fr_pair_parent(fr_pair_t const *vp);
 
 fr_pair_t	*fr_pair_list_parent(fr_pair_list_t const *list);
 
-void		fr_pair_flatten(fr_pair_t *vp)  CC_HINT(nonnull);
-
-int		fr_pair_unflatten(fr_pair_t *vp)  CC_HINT(nonnull);
-
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
  *
  * Filters can be applied later with fr_dcursor_filter_set.
