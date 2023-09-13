@@ -81,7 +81,7 @@ else ifneq "$(findstring ${1}, $(KEYWORD_UPDATE_REWRITE_TESTS))" ""
 $(OUTPUT)/${1}: NEW_COND=-S rewrite_update=yes -S tmpl_tokenize_all_nested=yes
 
 else
-$(OUTPUT)/${1}: NEW_COND=-S forbid_update=yes -S tmpl_tokenize_all_nested=yes -S pair_legacy_nested=true
+$(OUTPUT)/${1}: NEW_COND=-S forbid_update=yes -S tmpl_tokenize_all_nested=yes
 
 ifeq "${1}" "mschap"
 $(OUTPUT)/${1}: $(BUILD_DIR)/lib/local/rlm_mschap.la $(BUILD_DIR)/lib/rlm_mschap.la

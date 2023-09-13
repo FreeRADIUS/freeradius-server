@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
-bool fr_pair_legacy_nested = true;
 bool fr_pair_legacy_print_nested = false;
 
 static fr_sbuff_term_t const 	bareword_terminals =
@@ -263,7 +262,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 
 		fr_skip_whitespace(p);
 
-		if (!fr_pair_legacy_nested || parent_vp || (*relative_vp && ((*relative_vp)->da == da->parent)))  {
+		if (parent_vp || (*relative_vp && ((*relative_vp)->da == da->parent)))  {
 			vp = fr_pair_afrom_da(my_ctx, da);
 			if (!vp) goto error;
 			fr_pair_append(my_list, vp);

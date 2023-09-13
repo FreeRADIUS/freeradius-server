@@ -191,7 +191,6 @@ static const CONF_PARSER migrate_config[] = {
 	{ FR_CONF_OFFSET("tmpl_tokenize_all_nested", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, tmpl_tokenize_all_nested) },
 	{ FR_CONF_OFFSET("rewrite_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET("forbid_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, forbid_update) },
-	{ FR_CONF_POINTER("pair_legacy_nested", FR_TYPE_BOOL | FR_TYPE_HIDDEN, &fr_pair_legacy_nested), },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -1502,9 +1501,6 @@ int main_config_parse_option(char const *value)
 	if (offset) {
 		out = (bool *) (((uintptr_t) main_config) + offset);
 
-	} else if (strncmp(p, "pair_legacy_nested", p - value) != 0) {
-		out = &fr_pair_legacy_nested;
-
 	} else {
 		return -1;
 	}
@@ -1533,8 +1529,6 @@ bool main_config_migrate_option_get(char const *name)
 	if (!main_config) return false;
 
 	if (strcmp(name, "use_new_conditions") == 0) return true; /* ignore this for migration */
-
-	if (strcmp(name, "pair_legacy_nested") == 0) return fr_pair_legacy_nested;
 
 	offset = fr_table_value_by_substr(config_arg_table, name, strlen(name), 0);
 	if (!offset) return false;

@@ -604,14 +604,6 @@ migrate {
 	tmpl_tokenize_all_nested = false
 
 	#
-	#  pair_legacy_nested: make legacy APIs return nested attributes
-	#
-	#  e.g. the `detail` file, `exec` commands, along with the
-	#  `cron`, and `load` listeners.
-	#
-	pair_legacy_nested = false
-
-	#
 	#  rewrite_update:: Rewrite old `update` sections to use the new
 	#  "edit" code.
 	#
