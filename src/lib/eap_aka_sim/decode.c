@@ -176,7 +176,7 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 
 	if (unlikely(!packet_ctx->k_encr)) {
 		fr_strerror_printf("%s: No k_encr set, cannot decrypt attributes", __FUNCTION__);
-		return PAIR_ENCODE_FATAL_ERROR;
+		return PAIR_DECODE_FATAL_ERROR;
 	}
 
 	evp_ctx = aka_sim_crypto_cipher_ctx();
@@ -374,14 +374,16 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	uint8_t			*decr = NULL;
 	ssize_t			decr_len;
 	fr_dict_attr_t const	*child;
-	fr_pair_list_t		tlv_tmp;
+	fr_pair_t		*tlv;
 	ssize_t			ret;
 
-	fr_pair_list_init(&tlv_tmp);
 	if (data_len < 2) {
 		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
 		return -1; /* minimum attr size */
 	}
+
+	tlv = fr_pair_afrom_da(ctx, parent);
+	if (!tlv) return PAIR_DECODE_OOM;
 
 	/*
 	 *	We have an AES-128-CBC encrypted attribute
@@ -412,6 +414,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	while ((size_t)(end - p) >= sizeof(uint32_t)) {
 		uint8_t	sim_at = p[0];
 		size_t	sim_at_len = ((size_t)p[1]) << 2;
+		fr_dict_attr_t const *unknown_child = NULL;
 
 		if ((p + sim_at_len) > end) {
 			fr_strerror_printf("%s: Malformed nested attribute %d: Length field (%zu bytes) value "
@@ -420,7 +423,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		error:
 			talloc_free(decr);
-			fr_pair_list_free(&tlv_tmp);
+			talloc_free(tlv);
 			return -1;
 		}
 
@@ -470,8 +473,6 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
 		if (!child) {
-			fr_dict_attr_t const *unknown_child;
-
 			FR_PROTO_TRACE("Failed to find child %u of TLV %s", p[0], parent->name);
 
 			/*
@@ -495,12 +496,14 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		}
 		FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
 
-		ret = sim_decode_pair_value(ctx, &tlv_tmp, child, p + 2, sim_at_len - 2, (end - p) - 2,
-					      decode_ctx);
+		ret = sim_decode_pair_value(tlv, &tlv->vp_group, child, p + 2, sim_at_len - 2, (end - p) - 2,
+					    decode_ctx);
+		fr_dict_unknown_free(&unknown_child);
 		if (ret < 0) goto error;
 		p += sim_at_len;
 	}
-	fr_pair_list_append(out, &tlv_tmp);
+	fr_pair_append(out, tlv);
+
 	talloc_free(decr);
 
 	return attr_len;
