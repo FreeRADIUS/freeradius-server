@@ -142,6 +142,8 @@ int exec_pair_to_env(char **env_p, size_t env_len,
 	for (vp = fr_pair_list_head(env_pairs), i = 0;
 	     vp && (i < env_len - 1);
 	     vp = fr_pair_list_next(env_pairs, vp), i++) {
+		if (!fr_type_is_leaf(vp->vp_type)) continue;
+
 		fr_sbuff_marker(&env_m[i], &sbuff);
 
 	     	if (fr_sbuff_in_strcpy(&sbuff, vp->da->name) <= 0) {
