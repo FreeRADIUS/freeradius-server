@@ -49,11 +49,16 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 	 */
 	case FR_TYPE_STRUCTURAL:
 		our_out = FR_SBUFF(out);
-		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ');
+		if (fr_pair_list_empty(&vp->vp_group)) {
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ', '}');
 
-		FR_SBUFF_RETURN(fr_pair_list_print, &our_out, vp->da, &vp->vp_group);
+		} else {
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ');
 
-		FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ', '}');
+			FR_SBUFF_RETURN(fr_pair_list_print, &our_out, vp->da, &vp->vp_group);
+
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ', '}');
+		}
 
 		FR_SBUFF_SET_RETURN(out, &our_out);
 
