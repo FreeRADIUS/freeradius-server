@@ -132,7 +132,7 @@ dnl # check for Antora
 dnl #
 AC_PATH_PROG(ANTORA, antora)
 if test "x$ac_cv_path_ANTORA" = "x"; then
-  AC_MSG_WARN([antora not found - Please install if you want build the site])
+  AC_MSG_WARN([antora not found - Please install if you want build the docs])
 fi
 
 dnl #
