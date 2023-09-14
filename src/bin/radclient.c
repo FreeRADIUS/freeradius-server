@@ -62,8 +62,6 @@ typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 			fr_pair_append(&request->request_pairs, _attr); \
 		} \
 	} while (0)
-#define request_pairs	request_list
-#define reply_pairs	reply_list
 
 static int retries = 3;
 static fr_time_delta_t timeout = fr_time_delta_wrap((int64_t)5 * NSEC);	/* 5 seconds */
@@ -899,8 +897,8 @@ static int8_t request_cmp(void const *one, void const *two)
 	rc_request_t const *a = one, *b = two;
 	fr_pair_t *vp1, *vp2;
 
-	vp1 = fr_pair_find_by_da(&a->request_list, NULL, attr_coa_filter);
-	vp2 = fr_pair_find_by_da(&b->request_list, NULL, attr_coa_filter);
+	vp1 = fr_pair_find_by_da(&a->request_pairs, NULL, attr_coa_filter);
+	vp2 = fr_pair_find_by_da(&b->request_pairs, NULL, attr_coa_filter);
 
 	if (!vp1) return -1;
 	if (!vp2) return +1;
@@ -1365,6 +1363,7 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 		stats.lost++;
 		goto packet_done;
 	}
+	PAIR_LIST_VERIFY(&request->reply_pairs);
 	fr_packet_log(&default_log, request->reply, &request->reply_pairs, true);
 
 	/*
