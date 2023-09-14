@@ -129,7 +129,7 @@ static void test_fr_pair_list_afrom_file(void)
 	fr_pair_t      *vp;
 	fr_pair_list_t list;
 	char const     *buffer = "Test-Uint32-0 = 123\nTest-String-0 = \"Testing123\"\n";
-	FILE           *fp = open_buffer_as_file((uint8_t const *)buffer, strlen(buffer));
+	FILE           *fp = open_buffer_as_file((uint8_t const *)buffer, strlen(buffer) + 1);
 	bool           pfiledone;
 
 	fr_pair_list_init(&list);
@@ -166,7 +166,7 @@ static void test_fr_pair_list_move_op(void)
 	fr_pair_list_t old_list, new_list;
 	bool           pfiledone;
 	char const     *fake_file = "Test-Uint32-0 = 123\nTest-String-0 = \"Testing123\"\n";
-	FILE           *fp = open_buffer_as_file((uint8_t const *)fake_file, strlen(fake_file));
+	FILE           *fp = open_buffer_as_file((uint8_t const *)fake_file, strlen(fake_file) + 1);
 
 	fr_pair_list_init(&old_list);
 	fr_pair_list_init(&new_list);
