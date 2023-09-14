@@ -6,15 +6,26 @@ all: totp
 include ../../../../Make.inc
 
 #
+#  You can watch what it's doing by:
+#
+#	$ VERBOSE=1 make ... args ...
+#
+ifeq "${VERBOSE}" ""
+    Q=@
+else
+    Q=
+endif
+
+#
 #  Hack up stuff so we can build in a subdirectory.
 #
 .PHONY: src
 src:
-	@ln -sf ../../../../src
+	$(Q)ln -sf $(top_srcdir)/src
 
 .PHONY: freeradius-devel
 freeradius-devel:
-	@ln -sf ../../../../src/include freeradius-devel
+	$(Q)ln -sf $(top_srcdir)/src/include freeradius-devel
 
 #
 #  ./totp decode <base32>
@@ -23,18 +34,18 @@ freeradius-devel:
 #
 totp: totp.c | src freeradius-devel
 	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $(LDFLAGS) $(LIBS) \
-			../../../../build/lib/.libs/libfreeradius-util.a \
-			../../../../build/lib/.libs/libfreeradius-totp.a \
+			$(top_srcdir)/build/lib/.libs/libfreeradius-util.a \
+			$(top_srcdir)/build/lib/.libs/libfreeradius-totp.a \
 			totp.c
 
 #
 #  Test vectors from RFC 6238, Appendix B
 #
 test: totp
-	@while IFS= read -r line; do \
+	$(Q)while IFS= read -r line; do \
 		./totp totp $$line || exit 1; \
 	done < sha1.txt
 
 .PHONY: clean
 clean:
-	@rm -f *~ totp src freeradius-devel
+	$(Q)rm -f *~ totp src freeradius-devel

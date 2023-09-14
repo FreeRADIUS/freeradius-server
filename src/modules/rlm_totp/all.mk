@@ -1,6 +1,8 @@
-TARGETNAME	:= rlm_totp
+TARGETNAME  := rlm_totp
 
-TARGET		:= $(TARGETNAME)$(L)
-SOURCES		:= $(TARGETNAME).c
+TARGET      := $(TARGETNAME)$(L)
+SOURCES     := $(TARGETNAME).c
 
-LOG_ID_LIB	= 53
+TGT_PREREQS	:= libfreeradius-util$(L) libfreeradius-totp$(L)
+
+LOG_ID_LIB  = 53
