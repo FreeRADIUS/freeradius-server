@@ -1041,6 +1041,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	uint8_t			*head, *tail;
 	uint8_t	const		*attr, *end;
 	fr_dict_attr_t const	*da;
+	fr_pair_t		*vsa, *vendor;
 
 #ifdef STATIC_ANALYZER
 	if (!packet_ctx->tmp_ctx) return -1;
@@ -1073,17 +1074,21 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		return -1;
 	}
 
+	if (fr_pair_find_or_append_by_da(ctx, &vsa, out, attr_vendor_specific) < 0) return PAIR_DECODE_OOM;
+
+	if (fr_pair_find_or_append_by_da(vsa, &vendor, &vsa->vp_group, parent) < 0) return PAIR_DECODE_OOM;
+
 	da = fr_dict_attr_child_by_num(parent, data[4]);
 	if (!da) da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, data[4]);
 	if (!da) return -1;
 	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
 	/*
-	 *	No continuation, just decode the attributre in place.
+	 *	No continuation, just decode the attribute in place.
 	 */
 	if ((data[6] & 0x80) == 0) {
 		FR_PROTO_TRACE("WiMAX no continuation");
-		ret = fr_radius_decode_pair_value(ctx, out,
+		ret = fr_radius_decode_pair_value(vendor, &vendor->vp_group,
 						  da, data + 7, data[5] - 3, packet_ctx);
 		if (ret < 0) return ret;
 
@@ -1369,9 +1374,9 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 	 *	Vendor-Specific.  If so, loop over them all.
 	 */
 create_attrs:
-	if (fr_pair_find_or_append_by_da(ctx, &vsa, out, parent) < 0) return  PAIR_DECODE_OOM;
+	if (fr_pair_find_or_append_by_da(ctx, &vsa, out, parent) < 0) return PAIR_DECODE_OOM;
 
-	if (fr_pair_find_or_append_by_da(vsa, &vendor, &vsa->vp_group, vendor_da) < 0) return  PAIR_DECODE_OOM;
+	if (fr_pair_find_or_append_by_da(vsa, &vendor, &vsa->vp_group, vendor_da) < 0) return PAIR_DECODE_OOM;
 
 	data += 4;
 	attr_len -= 4;
