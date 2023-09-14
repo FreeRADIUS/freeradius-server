@@ -1058,6 +1058,7 @@ static int mod_load(void)
 		password_da = fr_dict_attr_child_by_num(attr_root, i);
 		if (!fr_cond_assert(password_da)) {
 			ERROR("Could not resolve password attribute %zu", i);
+			fr_dict_autofree(rlm_pap_dict);
 			talloc_free(pap_alloweds);
 			return -1;
 		}
