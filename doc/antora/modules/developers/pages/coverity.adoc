@@ -2,17 +2,17 @@
 
 == Overview
 
-Coverity is a "static analysis" program, lint on steroids, a product of Synopsys. It compiles code to a form on which it can run various "checkers", each of which detects a class of possible errors, or "defects" in coverityese.
+Coverity is a _static analysis_ program, lint on steroids, a product of Synopsys. It compiles code to a form that "checkers" can examine and detect errors (_defects_ in coverityese) of a certain type.
 
-As an open source project, FreeRADIUS uses [Coverity Scan](https://scan.coverity.com/projects/freeradius-freeradius-server), a free service Synopsys provides. Synopsys lets open source projects registered with them check their project with coverity a number of times per day depending on the number of lines of code, with no saving up runs across day boundaries. Given FreeRADIUS's size at the time of writing, it can be checked up to twice a day. Each such project gets a web page where one can set up the project, see the results of runs, and admins can change settings.
+As an open source project, FreeRADIUS uses [Coverity Scan](https://scan.coverity.com/projects/freeradius-freeradius-server), a free service Synopsys provides. Synopsys lets open source projects registered with them check their project with coverity f(LOC(project)) times per day (two for FreeRADIUS as things stand). Each such project gets a web page where one can set up the project, see the results of runs, and admins can change settings.
 
-Synopsys knows that Coverity is not perfect; it can miss a defect (false negative) or claim something's a defect that isn't (false positive). Coverity appears to consider a function at a time, looking at what it calls, not how you got there. A programmer may honor a function's preconditions and hence know that the function will always work, and in particular the functions it calls will always work, and therefore write those calls  without error checking. Coverity, at least as it stands, cannot know that, giving rise to "unchecked return value" defects that in a perfect world it could tell won't cause a problem.
+Coverity can miss a defect (false negative) or claim something's a defect that isn't (false positive). Coverity appears to consider a function at a time, looking at what it calls, not how you got there. A programmer may honor a function's preconditions and hence know that the function, and the functions it calls, will always work, and therefore write those calls without error checking. Coverity, at least as it stands, cannot know that, giving rise to "unchecked return value" defects that in a perfect world it could tell won't cause a problem.
 
 Given defects, one can use the web interface to classify them and assign them to a developer, who can do one of the following:
 
 * Rewrite the code to fix the problem.
-* Annotate the defect with a comment. (Coverity documentation mentins this as a possibility for false positives or intentional defects.)
-* Model functions to give coverity a better idea of what the function does. A function model describes the function's effects in a way coverity can understand. Typically you do this to assist coverity in avoiding false positives. One can also model library functions that Coverity can't see the source for.
+* Annotate the defect with a comment. (Coverity documentation mentions this as a possibility for false positives or intentional defects.)
+* Model functions to give coverity a better idea of what the function does. A function model uses Coverity _primitives_, pseudo-functions, to describe what it does to data. Typically you do this to assist coverity in avoiding false positives. One can also model library functions that Coverity can't see the source for.
 
 == Annotation
 
@@ -26,15 +26,24 @@ To annotate a defect or defects, place one or more comments of the form `/* cove
         len = fr_pair_tlvs_from_network(ctx, out, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, true);
 ----
 
-Note: FreeRADIUS uses macros a lot, in particular macros that expand to C statements. Something about the way Coverity expands macros gets rid of comments in their expansion, so there's no point in placing annotations in macro bodies.
+Note: FreeRADIUS uses macros a lot, in particular macros that expand to multiple C statements. Annotations in macro definitions do not appear in the expansions of those macros.
 
 === Function-scope Annotations
 
-Function definitions can be preceded by a comment describing the behavior of a function.
+Function definitions can be preceded by a comment describing the behavior of a function to indicate actions that the functions take. For example,
+
+[source,c]
+----
+/* coverity[+abort] */
+void my_exit(int code)
+{
+	...
+}
+----
 
 == Modeling
 
-Here is a slightly edited explanatory comment that commonly appears in modeling files in open source C language projects.
+Here is a slightly edited explanatory comment that appears in some modeling files in open source C language projects.
 
 [source,c]
 ----
@@ -57,7 +66,7 @@ Here is a slightly edited explanatory comment that commonly appears in modeling 
  */
 ----
 
-Note the singular "file"; Coverity Scan only allows one modeling file, which you must upload. For FreeRADIUS, go to [scan](https://scan.coverity.com/projects/freeradius-freeradius-server/) and choose the "Analysis Settings" tab. At the bottom of that page is the interface for uploading or deleting the modelng file.
+Note the singular "file"; Coverity Scan only allows one modeling file, which you must upload. For FreeRADIUS, go to [scan](https://scan.coverity.com/projects/freeradius-freeradius-server/) and choose the "Analysis Settings" tab. At the bottom of that page is the interface for uploading or deleting the modeling file. (Coverity Scan uploads the modeling file and then checks it, so keep a copy around to reload in case the newly uploaded version has a problem.)
 
 You can't include header files, so the modeling file is likely to need typedefs and defines that could otherwise be included, inducing a certain amount of redundancy and possible mismatch between the modeling file and the project headers. This is reduced by the rudimentary (i.e. empty) structures. One might think that if coverity's compiler can deal with members of aggregates, one could have non-rudimentary structures, but
 
@@ -68,7 +77,7 @@ Coverity has primitives like `__coverity_writeall__()`, which tells it the model
 
 A model function contains only code to indicate the effects coverity cares about and
 the conditions under which they happen. A very common idiom, which we tried to use to
-tell coverity that `fr_sbuff_in_foo()`, on success, writes to out->p:
+tell coverity that `fr_sbuff_in_foo()`, on success, writes to `out->p`:
 
 [source,c]
 ----
@@ -80,16 +89,13 @@ size_t my_copy(uint8_t *dest, uint8_t const *src, size_t n)
 }
 ----
 
-Coverity doesn't care how result is determined, or how the data is copied; result is just
-checked to determine whether any data was copied, and returned to show what it represents.
+Coverity doesn't care how `result` is determined, or how the data is copied. `result` is just checked to determine whether any data was copied, and returned to show what it represents.
 
-Coverity tends to be stricter than actual compilers, though as gcc and clang improve they
-are adding options to check for more issues. Examples of things coverity will notice but
-gcc and clang currently won't:
+Coverity tends to be stricter than actual compilers, though as gcc and clang improve they are adding options to check for more issues. Examples of things coverity will notice but gcc and clang currently won't:
 
 * Coverity notices and complains about subexpressions of conditionals that don't affect control flow. This tripped up the initial versions of `SBUFF_PARSE_[U]INT_DEF()`, macros used to generate the `fr_sbuff_out_<integral type>()` functions. They return an error if the parsed integer is out of range for the type, but comparing with the min and max values gives a defect for the widest integer types, because no out of range value is representable. The check was recast as "did the conversion preserve the value", but that will need to change if coverity gets sufficiently smart.
-* In C, something with a const-qualified type or, if an aggregate, (transitive closure of has) a member with a const-qualified type can only be set in C via an initialization. (Calling a function semantically is like initializing the parameters.) Currently, at least, one can sneak around it in gcc or clang, but coverity sees through the ruse. `fr_value_box_t` has members that are const-qualified and also has members with members that are const-qualified. Therefore, `fr_value_box_init()` will _always_ report a defect.
-* Coverity considers the result of some pointer casts to be tainted (see below). It calls them "pointer downcasts", an odd term for a non-OOP language like C. The casts in question are from pointers to less aligned types to pointers to more aligned types. Doing that violates some C coding standards, e.g. Carnegie-Mellon's SEI-CERT C Coding Standard, and if at runtime the cast pointer is not sufficiently aligned, dereferencing it is officially ndefined behavior in C. In FreeRADIUS, this happened in `fr_dhcpv4_raw_packet_recv()`, though the pointer points to memory allocated with talloc, which guarantees `TALLOC_ALIGN` alignment... but no coverity primitive assures coverity that a pointer is aligned. There is a `__coverity_alloc__()` primitive that is part of the model for `malloc()`, but it's not documented as telling Coverity about alignment.
+* In C, something that (transitive closure of has) a member with a const-qualified type can only be set in C via an initialization. (Calling a function semantically is like initializing the parameters.) Currently, at least, one can sneak around it in gcc or clang, but coverity sees through the ruse. `fr_value_box_t` has members that are const-qualified and also has members with members that are const-qualified. Therefore, all one can do about `fr_value_box_init()` is annotate the reported `store_writes_const_field` defect.
+* Coverity considers the result of some pointer casts to be tainted (see below). It calls them "pointer downcasts", an odd term for a non-OOP language like C. The casts in question are from pointers to less aligned types to pointers to more aligned types. Doing that violates some C coding standards, e.g. Carnegie-Mellon's SEI-CERT C Coding Standard, and if at runtime the cast pointer is not sufficiently aligned, dereferencing it is officially undefined behavior in C. In FreeRADIUS, this happened in `fr_dhcpv4_raw_packet_recv()`, though the pointer points to memory allocated with talloc, which guarantees `TALLOC_ALIGN` alignment... but no coverity primitive assures coverity that a pointer is aligned. There is a `__coverity_alloc__()` primitive that is part of the model for `malloc()`, but it's not documented as telling Coverity about alignment.
 
 == Taint
 
@@ -97,12 +103,12 @@ Tainted data is suspicious data. Coverity considers data from certain sources to
 
 For example, trunk test code currently simulates mux and demux by writing and writing trunk request pointers to and from sockets. Coverity considers the read trunk request pointer tainted. It will probably take a way to remember written pointers between the write and the read to validate them, or just keeping them in memory instead of writing and reading them to avoid tainted data there.
 
-In a function that loads a tainted value, if it is not validated, each use in that function invocation is considered a defect, including passing it to another function. Coverity does not remember validations once the function invocation containing the validation returns. It may therefore be a good idea if a function calls more than one function using the data to have the first called do the validation and pass the validated value to the rest.
+In a function that loads a tainted value and doesn't validate it, each use in that function invocation is considered a defect, including passing it to another function. Coverity does not remember validations once the function invocation containing the validation returns. It may therefore be a good idea if a function calls more than one function using the data to have the first called do the validation and pass the validated value to the rest.
 
 When the Heartbleed bug appeared, Synopsys looked for a way coverity could detect such bugs. `https://www.synopsys.com/blogs/software-security/detecting-heartbleed-with-static-analysis/` describes what it came up with: a value is considered tainted if
 
 * it's calculated by byte swapping, and
-* it's then assigned to a "tainted sink", e.g. something that's used to index an array or as a length
+* it's then assigned to a "tainted sink", e.g. something used to index an array or as a length
 
 But there must have been more to it than that since then, as evidenced by the `fr_nbo_to_uint*()` functions. The `ntoh*()` functions taint their result...but the `fr_nbo_to_uint*()` functions take a pointer to memory holding a value stored in network byte order. Here's one of them:
 
@@ -156,4 +162,5 @@ CID 1503954 (#1 of 1): Untrusted loop bound (TAINTED_SCALAR)
 == References
 
 * https://sig-product-docs.synopsys.com/bundle/coverity-docs/page/webhelp-files/customize_start.html
-Customizing Coverity. Look especially at the sections "Identifying vulnerable data" and "Models and Primitives" (and in turn the secion in "Models and Primitives" on C and C++ primitives).
+Customizing Coverity. Look especially at the sections "Identifying vulnerable data" and "Models and Primitives" (and in turn the section in "Models and Primitives" on C and C++ primitives).
+* https://www.synopsys.com/blogs/software-security/detecting-heartbleed-with-static-analysis/ "On detecting Heartbleed with static analysis". Describes the method Synopsys developed to detect errors like Heartbleed in a way "that scale[s] to large programs with low false positive rates, yet find[s] critical defects."
