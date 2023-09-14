@@ -1,0 +1,4 @@
+#
+#	ARGV: -d 6 -D sha1
+#
+User-Name = "bob+@TOTP_TOKEN@"
