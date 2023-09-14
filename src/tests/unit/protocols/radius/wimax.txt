@@ -250,11 +250,8 @@ match Vendor-Specific.WiMAX.Packet-Flow-Descriptor = { Packet-Data-Flow-Id = 32,
 encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.IP-Address = 127.0.0.1, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port = 2112, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port-Range = { Start = 2112, End = 6809 }
 match 1a 1d 00 00 60 b5 1c 17 00 0b 14 05 12 01 06 7f 00 00 01 04 04 08 40 05 06 08 40 1a 99
 
-#
-#  Structs not yet decoded into sub-groups
-#
 decode-pair -
-match Vendor-Specific.WiMAX.Packet-Flow-Descriptor = { Classifier = { Src-Spec = { IP-Address = 127.0.0.1, Port = 2112, Port-Range.Start = 2112, Port-Range.End = 6809 } } }
+match Vendor-Specific.WiMAX.Packet-Flow-Descriptor = { Classifier = { Src-Spec = { IP-Address = 127.0.0.1, Port = 2112, Port-Range = { Start = 2112, End = 6809 } } } }
 
 encode-pair Vendor-Specific.WiMAX.DNS-Server = ::1
 match 1a 19 00 00 60 b5 34 13 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01

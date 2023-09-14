@@ -1766,7 +1766,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	attribute, OR it's already been grouped
 		 *	into a contiguous memory buffer.
 		 */
-		ret = fr_struct_from_network(ctx, out, parent, p, attr_len, packet_ctx->struct_nested,
+		ret = fr_struct_from_network(ctx, out, parent, p, attr_len, true,
 					     packet_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (ret < 0) goto raw;
 		return attr_len;
