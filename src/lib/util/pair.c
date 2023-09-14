@@ -306,24 +306,27 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
 	fr_dict_attr_t const *to_free;
 
 	/*
-	 *	This only works for leaf nodes.
-	 */
-	if (!fr_type_is_leaf(da->type)) return -1;
-
-	/*
 	 *	vp may be created from fr_pair_alloc_null(), in which case it has no da.
 	 */
-	if (vp->da) {
+	if (vp->da && !vp->da->flags.is_raw) {
 		if (vp->da == da) return 0;
 
 		if (!fr_type_is_leaf(vp->vp_type)) return -1;
 
 		if ((da->type != vp->vp_type) && (fr_value_box_cast_in_place(vp, &vp->data, da->type, da) < 0)) return -1;
 	} else {
+		fr_assert(fr_type_is_leaf(vp->vp_type) || (fr_pair_list_num_elements(&vp->vp_group) == 0));
+
 		fr_value_box_init(&vp->data, da->type, da, false);
 	}
 
 	to_free = vp->da;
+	vp->da = da;
+
+	/*
+	 *	Only frees unknown fr_dict_attr_t's
+	 */
+	fr_dict_unknown_free(&to_free);
 
 	/*
 	 *	Ensure we update the attribute index in the parent.
@@ -331,17 +334,8 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
 	if (list) {
 		fr_pair_remove(list, vp);
 
-		vp->da = da;
-
 		fr_pair_append(list, vp);
-	} else {
-		vp->da = da;
 	}
-
-	/*
-	 *	Only frees unknown fr_dict_attr_t's
-	 */
-	fr_dict_unknown_free(&to_free);
 
 	return 0;
 }

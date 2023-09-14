@@ -233,7 +233,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		 *	If we force it to be raw, then only do that if it's not already unknown.
 		 */
 		if (is_raw && !da_unknown) {
-			da_unknown = fr_dict_unknown_attr_afrom_da(ctx, da);
+			da_unknown = fr_dict_unknown_afrom_da(ctx, da);
 			if (!da_unknown) goto error;
 			da = da_unknown;
 		}
@@ -289,6 +289,24 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		}
 
 		vp->op = op;
+
+		/*
+		 *	Peek ahead for structural elements which are raw.  If the caller wants to parse them
+		 *	as a set of raw octets, then swap the data type to be octets.
+		 */
+		if (is_raw && (p[0] == '0') && (p[1] == 'x') && (da->type != FR_TYPE_OCTETS)) {
+			fr_dict_unknown_free(&da_unknown);
+
+			da_unknown = fr_dict_unknown_attr_afrom_da(vp, vp->da);
+			if (!da_unknown) goto error;
+
+			fr_assert(da_unknown->type == FR_TYPE_OCTETS);
+
+			if (fr_pair_reinit_from_da(NULL, vp, da_unknown) < 0) goto error;
+
+			da = vp->da;
+			da_unknown = NULL;		/* already parented from vp */
+		}
 
 		/*
 		 *	Allow grouping attributes.
