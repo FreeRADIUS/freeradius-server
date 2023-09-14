@@ -1268,12 +1268,13 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 {
 	size_t			total;
 	ssize_t			ret;
-	uint32_t		vendor;
+	uint32_t		vendor_pen;
 	fr_dict_vendor_t const	*dv;
 	fr_pair_list_t		head;
 	fr_dict_vendor_t	my_dv;
 	fr_dict_attr_t const	*vendor_da;
 	fr_pair_list_t		tlv_tmp;
+	fr_pair_t		*vsa, *vendor;
 
 	fr_pair_list_init(&head);
 
@@ -1292,8 +1293,8 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 
 	FR_PROTO_TRACE("Decoding VSA");
 
-	memcpy(&vendor, data, 4);
-	vendor = ntohl(vendor);
+	memcpy(&vendor_pen, data, 4);
+	vendor_pen = ntohl(vendor_pen);
 
 	/*
 	 *	Verify that the parent (which should be a VSA)
@@ -1303,7 +1304,7 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 	 *	(unlike DHCP) we know vendor attributes have a
 	 *	standard format, so we can decode the data anyway.
 	 */
-	vendor_da = fr_dict_attr_child_by_num(parent, vendor);
+	vendor_da = fr_dict_attr_child_by_num(parent, vendor_pen);
 	if (!vendor_da) {
 		fr_dict_attr_t *n;
 		/*
@@ -1314,16 +1315,18 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 			return -1;
 		}
 
-		n = fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, vendor);
+		n = fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, vendor_pen);
 		if (!n) return -1;
 		vendor_da = n;
+
+		fr_assert(vendor_da->flags.type_size == 1);
 
 		/*
 		 *	Create an unknown DV too...
 		 */
 		memset(&my_dv, 0, sizeof(my_dv));
 
-		my_dv.pen = vendor;
+		my_dv.pen = vendor_pen;
 		my_dv.type = 1;
 		my_dv.length = 1;
 
@@ -1336,7 +1339,7 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 	 *	We found an attribute representing the vendor
 	 *	so it *MUST* exist in the vendor tree.
 	 */
-	dv = fr_dict_vendor_by_num(dict_radius, vendor);
+	dv = fr_dict_vendor_by_num(dict_radius, vendor_pen);
 	if (!fr_cond_assert(dv)) return -1;
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor_da->name);
 
@@ -1361,6 +1364,10 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 	 *	Vendor-Specific.  If so, loop over them all.
 	 */
 create_attrs:
+	if (fr_pair_find_or_append_by_da(ctx, &vsa, out, parent) < 0) return -1;
+
+	if (fr_pair_find_or_append_by_da(vsa, &vendor, &vsa->vp_group, vendor_da) < 0) return -1;
+
 	data += 4;
 	attr_len -= 4;
 	total = 4;
@@ -1372,7 +1379,7 @@ create_attrs:
 		/*
 		 *	Vendor attributes can have subattributes (if you hadn't guessed)
 		 */
-		vsa_len = decode_vsa_internal(ctx, &tlv_tmp,
+		vsa_len = decode_vsa_internal(vendor, &tlv_tmp,
 					      vendor_da, data, attr_len, packet_ctx, dv);
 		if (vsa_len < 0) {
 			FR_PROTO_TRACE("TLV decode failed: %s", fr_strerror());
@@ -1385,7 +1392,7 @@ create_attrs:
 		attr_len -= vsa_len;
 		total += vsa_len;
 	}
-	fr_pair_list_append(out, &tlv_tmp);
+	fr_pair_list_append(&vendor->vp_group, &tlv_tmp);
 
 	/*
 	 *	When the unknown attributes were created by

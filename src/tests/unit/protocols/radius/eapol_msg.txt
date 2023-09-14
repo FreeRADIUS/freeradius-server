@@ -7,7 +7,26 @@ fuzzer-out radius
 #  Snip of packet extracted from eapol_test (GET_RADIUS_REPLY -RAW)
 #
 decode-proto 020200eb8b7a26bee11f1ca308233d49733187720506000030391217506f776572656420627920467265655241444955531a0c000004d23806deadbeef1a0c000000141e06cafecafe1a0c000000141e06cadecade1a1200000be1130c6d792070726f66696c651a0c00000be11006000000051a0c000001370706000000011a2a0000013711248701b3e481d72fa1333b9838a3cd448837eaed62a843295f1c9dd153c6866e499f201a2a0000013710249385f7dc0fd758b02dd0dc43f68266508ec93c678a5fa38525749016edede8eeea0e4f0603fc0004501200e9e565eb053138254850edb41fc013
-match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0x8b7a26bee11f1ca308233d4973318772, NAS-Port = 12345, Reply-Message = "Powered by FreeRADIUS", raw.Vendor-Specific.1234.56 = 0xdeadbeef, raw.Vendor-Specific.20.30 = 0xcafecafe, raw.Vendor-Specific.20.30 = 0xcadecade, Vendor-Specific.Alcatel.FR-Direct-Profile = "my profile", Vendor-Specific.Alcatel.Home-Agent-UDP-Port = 5, Vendor-Specific.Microsoft.MPPE-Encryption-Policy = Encryption-Allowed, raw.Vendor-Specific.Microsoft.MPPE-Recv-Key = 0x8701b3e481d72fa1333b9838a3cd448837eaed62a843295f1c9dd153c6866e499f20, raw.Vendor-Specific.Microsoft.MPPE-Send-Key = 0x9385f7dc0fd758b02dd0dc43f68266508ec93c678a5fa38525749016edede8eeea0e, EAP-Message = 0x03fc0004, Message-Authenticator = 0x00e9e565eb053138254850edb41fc013
+match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0x8b7a26bee11f1ca308233d4973318772, NAS-Port = 12345, Reply-Message = "Powered by FreeRADIUS", Vendor-Specific = { raw.1234 = { raw.56 = 0xdeadbeef }, raw.20 = { raw.30 = 0xcafecafe }, raw.20 = { raw.30 = 0xcadecade }, Alcatel = { FR-Direct-Profile = "my profile", Home-Agent-UDP-Port = 5 }, Microsoft = { MPPE-Encryption-Policy = Encryption-Allowed, raw.MPPE-Recv-Key = 0x8701b3e481d72fa1333b9838a3cd448837eaed62a843295f1c9dd153c6866e499f20, raw.MPPE-Send-Key = 0x9385f7dc0fd758b02dd0dc43f68266508ec93c678a5fa38525749016edede8eeea0e } }, EAP-Message = 0x03fc0004, Message-Authenticator = 0x00e9e565eb053138254850edb41fc013
+
+encode-pair Vendor-Specific = { raw.1234 = { raw.56 = 0xdeadbeef } }
+match 1a 0c 00 00 04 d2 38 06 de ad be ef
+
+decode-pair -
+match Vendor-Specific = { raw.1234 = { raw.56 = 0xdeadbeef } }
+
+encode-pair Vendor-Specific = { raw.1234 = { raw.56 = 0xdeadbeef }, raw.20 = { raw.30 = 0xcafecafe }, raw.20 = { raw.30 = 0xcadecade }, Alcatel = { FR-Direct-Profile = "my profile", Home-Agent-UDP-Port = 5 } }
+match 1a 0c 00 00 04 d2 38 06 de ad be ef 1a 0c 00 00 00 14 1e 06 ca fe ca fe 1a 0c 00 00 00 14 1e 06 ca de ca de 1a 12 00 00 0b e1 13 0c 6d 79 20 70 72 6f 66 69 6c 65 1a 0c 00 00 0b e1 10 06 00 00 00 05
+
+encode-pair NAS-Port = 12345, Reply-Message = "Powered by FreeRADIUS", Vendor-Specific = { raw.1234 = { raw.56 = 0xdeadbeef }, raw.20 = { raw.30 = 0xcafecafe }, raw.20 = { raw.30 = 0xcadecade }, Alcatel = { FR-Direct-Profile = "my profile", Home-Agent-UDP-Port = 5 } }
+
+match 05 06 00 00 30 39 12 17 50 6f 77 65 72 65 64 20 62 79 20 46 72 65 65 52 41 44 49 55 53 1a 0c 00 00 04 d2 38 06 de ad be ef 1a 0c 00 00 00 14 1e 06 ca fe ca fe 1a 0c 00 00 00 14 1e 06 ca de ca de 1a 12 00 00 0b e1 13 0c 6d 79 20 70 72 6f 66 69 6c 65 1a 0c 00 00 0b e1 10 06 00 00 00 05
+
+#
+#  This seems very very wrong.
+#
+decode-pair -
+match  NAS-Port = 12345, Reply-Message = "Powered by FreeRADIUS", Vendor-Specific = { raw.1234 = { raw.56 = 0xdeadbeef }, raw.20 = { raw.30 = 0xcafecafe }, raw.20 = { raw.30 = 0xcadecade }, Alcatel = { FR-Direct-Profile = "my profile", Home-Agent-UDP-Port = 5 } }
 
 count
-match 5
+match 15
