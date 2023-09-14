@@ -369,6 +369,7 @@ ssize_t fr_pair_list_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pai
 
 		if (!fr_pair_legacy_print_nested ||
 		    (!parent && (vp->da->depth == 1)) ||
+		    fr_dict_attr_is_key_field(vp->da->parent) ||
 		    (vp->da->parent == parent) ||
 		    (parent && (fr_dict_by_da(parent) != fr_dict_by_da(vp->da))) ||
 		    (parent && (da_stack.da[parent->depth] == parent) && (parent->depth + 1 == vp->da->depth))) {
