@@ -239,6 +239,9 @@ fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	 */
 	switch (type) {
 	case FR_TYPE_VENDOR:
+		fr_assert(da->flags.type_size != 0);
+		break;
+
 	case FR_TYPE_TLV:
 	case FR_TYPE_VSA:
 		break;
@@ -398,6 +401,8 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = true,
 					.is_raw = true,
+					.type_size = parent->dict->root->flags.type_size,
+					.length = parent->dict->root->flags.length,
 				};
 
 	*out = NULL;
