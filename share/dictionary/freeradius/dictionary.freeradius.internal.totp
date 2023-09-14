@@ -1,0 +1,21 @@
+# -*- text -*-
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Non Protocol Attributes used by FreeRADIUS
+#
+#	$Id$
+#
+
+#
+#  TOTP token and secrets
+#
+
+ATTRIBUTE	TOTP					5300	tlv
+
+BEGIN-TLV	TOTP
+ATTRIBUTE	Secret					1	string	secret
+ATTRIBUTE	Key					2	octets	secret
+ATTRIBUTE	From-User				3	string
+END-TLV		TOTP
