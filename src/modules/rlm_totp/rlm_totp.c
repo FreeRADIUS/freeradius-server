@@ -34,23 +34,33 @@ typedef struct {
 	fr_value_box_t		user_password;
 } rlm_totp_call_env_t;
 
-static const call_env_t call_env[] = {
-	{ FR_CALL_ENV_OFFSET("secret", FR_TYPE_STRING, rlm_totp_call_env_t, secret,
-			     "&control.TOTP.Secret", T_BARE_WORD, false, false, false) },
+/* Define a structure for the configuration variables */
+typedef struct rlm_totp_t {
+	char const	*name;	//!< name of this instance
+	fr_totp_t   totp;	//!< Parameter sets for fr_totp_cmp()
+} rlm_totp_t;
 
-	{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, rlm_totp_call_env_t, key,
-			     "&control.TOTP.key", T_BARE_WORD, false, false, false) },
+static fr_dict_t const *dict_freeradius;
 
-	{ FR_CALL_ENV_OFFSET("user_password", FR_TYPE_STRING, rlm_totp_call_env_t, user_password,
-			     "&request.TOTP.From-User", T_BARE_WORD, false, false, false) },
-
-	CALL_ENV_TERMINATOR
+extern fr_dict_autoload_t rlm_totp_dict[];
+fr_dict_autoload_t rlm_totp_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
 };
 
-static const call_method_env_t method_env = {
-	.inst_size = sizeof(rlm_totp_call_env_t),
-	.inst_type = "rlm_totp_call_env_t",
-	.env = call_env
+static fr_dict_attr_t const *attr_totp;
+static fr_dict_attr_t const *attr_totp_secret;
+static fr_dict_attr_t const *attr_totp_key;
+static fr_dict_attr_t const *attr_totp_from_user;
+
+extern fr_dict_attr_autoload_t rlm_totp_dict_attr[];
+fr_dict_attr_autoload_t rlm_totp_dict_attr[] = {
+	{ .out = &attr_totp, .name = "TOTP", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_totp_secret, .name = "TOTP.Secret", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_totp_key, .name = "TOTP.Key", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_totp_from_user, .name = "TOTP.From-User", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ NULL }
 };
 
 /* Define a structure for the configuration variables */
@@ -331,43 +341,46 @@ static int totp_cmp(TESTING_UNUSED request_t *request, time_t now, uint8_t const
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_totp_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, rlm_totp_call_env_t);
-	rlm_totp_t const	*instance = talloc_get_type_abort_const(mctx->inst->data, rlm_totp_t);
-	fr_value_box_t		*user_password = &env_data->user_password;
-	fr_value_box_t		*secret = &env_data->secret;
-	fr_value_box_t		*key = &env_data->key;
+	rlm_totp_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_totp_t);
+	fr_pair_t        *secret, *from_user, *key;
+	uint8_t const    *our_key;
+	size_t            our_keylen;
+	uint8_t           buffer[80];	/* multiple of 5*8 characters */
+	fr_dbuff_t        out;
 
-	uint8_t const		*our_key;
-	size_t			our_keylen;
-	uint8_t			buffer[80];	/* multiple of 5*8 characters */
+	fr_dbuff_init(&out, (uint8_t *)buffer, sizeof(buffer));
 
-	if (fr_type_is_null(user_password->type)) RETURN_MODULE_NOOP;
-
-	if (user_password->vb_length == 0) {
-		RDEBUG("TOTP.From-User is empty");
-		RETURN_MODULE_FAIL;
+	from_user = fr_pair_find_by_da(&request->request_pairs, NULL, attr_totp_from_user);
+	if (!from_user) {
+		REDEBUG("&request.TOTP.From-User is needed");
+		RETURN_MODULE_INVALID;
 	}
 
-	if ((user_password->vb_length != 6) && (user_password->vb_length != 8)) {
-		RDEBUG("TOTP.From-User has incorrect length. Expected 6 or 8, got %zu", user_password->vb_length);
+	if ((from_user->vp_length != 6) && (from_user->vp_length != 8)) {
+		RDEBUG("&request.TOTP.From-User has incorrect length. Expected 6 or 8, got %zu", from_user->vp_length);
 		RETURN_MODULE_FAIL;
 	}
 
 	/*
-	 *	Look for the raw key first.
+	 *	Look for the raw key first in &request.TOTP.Key
 	 */
-	if (!fr_type_is_null(key->type)) {
-		our_key = key->vb_octets;
-		our_keylen = key->vb_length;
-
+	key = fr_pair_find_by_da(&request->control_pairs, NULL, attr_totp_key);
+	if (key) {
+		our_key = key->vp_octets;
+		our_keylen = key->vp_length;
 	} else {
 		ssize_t len;
 
-		if (!fr_type_is_null(secret->type)) RETURN_MODULE_NOOP;
+		/* then let's see &control.TOTP.Secret */
+		secret = fr_pair_find_by_da(&request->control_pairs, NULL, attr_totp_secret);
+		if (!secret) {
+			REDEBUG("&control.TOTP.Secret is needed");
+			RETURN_MODULE_INVALID;
+		}
 
-		len = base32_decode(buffer, sizeof(buffer), secret->vb_strvalue);
+		len = fr_base32_decode(&out, &FR_SBUFF_IN(secret->vp_strvalue, secret->vp_length), true, true);
 		if (len < 0) {
-			RDEBUG("TOTP-Secret cannot be decoded");
+			RDEBUG("&control.TOTP.Secret cannot be decoded");
 			RETURN_MODULE_FAIL;
 		}
 
@@ -375,7 +388,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		our_keylen = len;
 	}
 
-	if (totp_cmp(request, fr_time_to_sec(request->packet->timestamp), our_key, our_keylen, secret->vb_strvalue, instance) != 0) RETURN_MODULE_FAIL;
+	if (fr_totp_cmp(&inst->totp, fr_time_to_sec(request->packet->timestamp), our_key, our_keylen, from_user->vp_strvalue) != 0) RETURN_MODULE_FAIL;
 
 	RETURN_MODULE_OK;
 }
@@ -400,7 +413,8 @@ module_rlm_t rlm_totp = {
 		.instantiate	= mod_instantiate
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,	.method_env = &method_env },
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,	.method = mod_authenticate },
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,	.method = mod_authenticate },
 		MODULE_NAME_TERMINATOR
 	}
 };
