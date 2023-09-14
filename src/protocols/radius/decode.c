@@ -958,6 +958,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 {
 	ssize_t slen;
 	fr_dict_attr_t const *child;
+	fr_pair_t	*vp;
 
 	/*
 	 *	They MUST have one byte of Extended-Type.  The
@@ -986,7 +987,9 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	One byte of type, and N bytes of data.
 	 */
 	if (!flag_long_extended(&da->flags)) {
-		slen = fr_radius_decode_pair_value(ctx, out, child, data + 3, data[1] - 3, packet_ctx);
+		if (fr_pair_find_or_append_by_da(ctx, &vp, out, da) < 0) return PAIR_DECODE_OOM;
+
+		slen = fr_radius_decode_pair_value(vp, &vp->vp_group, child, data + 3, data[1] - 3, packet_ctx);
 		fr_dict_unknown_free(&child);
 		if (slen < 0 ) return slen;
 		return 3 + slen;
@@ -1005,8 +1008,10 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		return 4;
 	}
 
+	if (fr_pair_find_or_append_by_da(ctx, &vp, out, da) < 0) return PAIR_DECODE_OOM;
+
 	if ((data[3] & 0x80) == 0) {
-		slen = fr_radius_decode_pair_value(ctx, out, child, data + 4, data[1] - 4, packet_ctx);
+		slen = fr_radius_decode_pair_value(vp, &vp->vp_group, child, data + 4, data[1] - 4, packet_ctx);
 		fr_dict_unknown_free(&child);
 		if (slen < 0 ) return slen;
 		return 4 + slen;
@@ -1015,7 +1020,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	/*
 	 *	Concatenate all of the fragments together, and decode the resulting thing.
 	 */
-	slen = decode_extended_fragments(ctx, out, child, data + 2, data[1] - 2, packet_ctx);
+	slen = decode_extended_fragments(vp, &vp->vp_group, child, data + 2, data[1] - 2, packet_ctx);
 	fr_dict_unknown_free(&child);
 	if (slen < 0) return slen;
 	return 2 + slen;
@@ -1364,9 +1369,9 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 	 *	Vendor-Specific.  If so, loop over them all.
 	 */
 create_attrs:
-	if (fr_pair_find_or_append_by_da(ctx, &vsa, out, parent) < 0) return -1;
+	if (fr_pair_find_or_append_by_da(ctx, &vsa, out, parent) < 0) return  PAIR_DECODE_OOM;
 
-	if (fr_pair_find_or_append_by_da(vsa, &vendor, &vsa->vp_group, vendor_da) < 0) return -1;
+	if (fr_pair_find_or_append_by_da(vsa, &vendor, &vsa->vp_group, vendor_da) < 0) return  PAIR_DECODE_OOM;
 
 	data += 4;
 	attr_len -= 4;
@@ -1453,7 +1458,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	int8_t			tag = 0;
 	size_t			data_len;
 	ssize_t			ret;
-	uint32_t		vendor;
 	fr_dict_attr_t const	*child;
 	fr_pair_t		*vp = NULL;
 	uint8_t const		*p = data;
@@ -1688,36 +1692,38 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			return ret;
 
 		} else {
-			fr_dict_attr_t const	*vendor_child;
+			fr_dict_attr_t const	*vendor_da;
+			fr_pair_t		*vsa, *vendor;
+			uint32_t		vendor_pen;
 
 			if (data_len < 6) goto raw; /* vid, vtype, value */
 
-			memcpy(&vendor, p, 4);
-			vendor = ntohl(vendor);
+			memcpy(&vendor_pen, p, 4);
+			vendor_pen = ntohl(vendor_pen);
 
 			/*
 			 *	For simplicity in our attribute tree, vendors are
 			 *	represented as a subtlv(ish) of an EVS or VSA
 			 *	attribute.
 			 */
-			vendor_child = fr_dict_attr_child_by_num(parent, vendor);
-			if (!vendor_child) {
+			vendor_da = fr_dict_attr_child_by_num(parent, vendor_pen);
+			if (!vendor_da) {
 				/*
 				 *	If there's no child, it means the vendor is unknown.  Create a
 				 *	temporary vendor in the packet_ctx.  This will be cleaned up when the
 				 *	decoder exists, which is fine.  Because any unknown attributes which
 				 *	depend on it will copy the entire hierarchy.
 				 */
-				vendor_child = fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, vendor);
-				if (!vendor_child) return PAIR_DECODE_OOM;
+				vendor_da = fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, vendor_pen);
+				if (!vendor_da) return PAIR_DECODE_OOM;
 			}
 
-			child = fr_dict_attr_child_by_num(vendor_child, p[4]);
+			child = fr_dict_attr_child_by_num(vendor_da, p[4]);
 			if (!child) {
 				/*
 				 *	Vendor exists but child didn't, create an unknown child.
 				 */
-				child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, vendor_child, p[4]);
+				child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, vendor_da, p[4]);
 				if (!child) {
 					fr_strerror_printf_push("decoder failed creating unknown attribute in %s",
 								parent->name);
@@ -1729,11 +1735,15 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				break;
 			}
 
+			if (fr_pair_find_or_append_by_da(ctx, &vsa, out, parent) < 0) return PAIR_DECODE_OOM;
+
+			if (fr_pair_find_or_append_by_da(vsa, &vendor, &vsa->vp_group, vendor_da) < 0) return PAIR_DECODE_OOM;
+
 			/*
 			 *	Everything was found in the dictionary, we can
 			 *	now recurse to decode the value.
 			 */
-			ret = fr_radius_decode_pair_value(ctx, out,
+			ret = fr_radius_decode_pair_value(vendor, &vendor->vp_group,
 							  child, p + 5, attr_len - 5,
 							  packet_ctx);
 			if (ret < 0) goto raw;
