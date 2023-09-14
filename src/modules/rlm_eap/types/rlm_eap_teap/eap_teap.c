@@ -438,6 +438,11 @@ unexpected:
 			}
 
 			status = (data[0] << 8) | data[1];
+			// Setting the send_eap_success flag when the client is happy with the final authentication
+			if (status == 1) {
+				t->result_intermed = true;
+				if (attr == EAP_TEAP_TLV_RESULT) t->send_eap_success = true;
+			}
 			if (status == 0) goto unknown_value;
 		}
 
@@ -903,9 +908,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 
 		eap_teap_append_result(tls_session, reply->code);
 		eap_teap_append_crypto_binding(request, tls_session, msk, msklen, emsk, emsklen);
-
 		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
-		if (vp) {
+		// vp we are looking for is been given by client after it receives the  identity request. So using a flag for it now
+		if (!t->result_intermed) {
 			RDEBUG("&session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type set so continuing EAP sequence/chaining");
 
 			/* RFC3748, Section 2.1 - does not explictly tell us to but we need to eat the EAP-Success */
@@ -916,7 +921,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			t->username = NULL;
 
 			/* RFC7170, Appendix C.6 */
-			eap_teap_append_identity(tls_session, vp->vp_short);
+			// Hardcoded to User Cert - Have to update it
+			eap_teap_append_identity(tls_session, 1);
 			eap_teap_append_eap_identity_request(request, tls_session, eap_session);
 
 			goto challenge;
@@ -926,7 +932,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 		eap_teap_append_result(tls_session, reply->code);
 
 		tls_session->authentication_success = true;
-		rcode = RLM_MODULE_OK;
+		rcode = RLM_MODULE_HANDLED;
+		if (t->send_eap_success) rcode = RLM_MODULE_OK;
 
 		break;
 
@@ -1406,7 +1413,8 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 		/* RFC7170, Appendix C.6 */
 		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
-		if (vp) eap_teap_append_identity(tls_session, vp->vp_short);
+		// Hard coded to Machine Cert
+		eap_teap_append_identity(tls_session, 2);
 
 		eap_teap_append_eap_identity_request(request, tls_session, eap_session);
 
@@ -1434,10 +1442,14 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		break;
 
 	case PROVISIONING:
-		if (!t->result_final) {
+/*  It appears we are setting the PROVISIONING way ahead when gotcryptobinding & gotintermedresult is set,
+    Which makes the EAP send the outer success as soon as the first auth is succeeded that results in Unexpected TLV error from client.
+    So commented it out.
+
+        if (!t->result_final) {
 			t->result_final = true;
 			eap_teap_append_result(tls_session, code);
-		}
+		}*/
 
 #if 0
 		if (t->pac.send) {

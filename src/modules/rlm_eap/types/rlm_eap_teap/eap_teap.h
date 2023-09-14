@@ -253,6 +253,8 @@ typedef struct teap_tunnel_t {
 	}			pac;
 
 	bool			result_final;
+	bool            result_intermed;
+	bool            send_eap_success;
 
 #ifdef WITH_PROXY
 	bool		proxy_tunneled_request_as_eap;	//!< Proxy tunneled session as EAP, or as de-capsulated
