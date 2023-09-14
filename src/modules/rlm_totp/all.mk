@@ -1,6 +1,2 @@
-TARGETNAME	:= rlm_totp
+SUBMAKEFILES := rlm_totp.mk libfreeradius-totp.mk
 
-TARGET		:= $(TARGETNAME)$(L)
-SOURCES		:= $(TARGETNAME).c
-
-LOG_ID_LIB	= 53

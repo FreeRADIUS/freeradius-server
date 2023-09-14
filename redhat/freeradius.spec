@@ -946,6 +946,7 @@ fi
 %{_libdir}/freeradius/libfreeradius-tacacs.so
 %{_libdir}/freeradius/libfreeradius-tftp.so
 %{_libdir}/freeradius/libfreeradius-tls.so
+%{_libdir}/freeradius/libfreeradius-totp.so
 %{_libdir}/freeradius/libfreeradius-unlang.so
 %{_libdir}/freeradius/libfreeradius-vmps.so
 

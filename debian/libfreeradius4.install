@@ -14,6 +14,7 @@ usr/lib/freeradius/libfreeradius-sim.so
 usr/lib/freeradius/libfreeradius-tacacs.so
 usr/lib/freeradius/libfreeradius-tftp.so
 usr/lib/freeradius/libfreeradius-tls.so
+usr/lib/freeradius/libfreeradius-totp.so
 usr/lib/freeradius/libfreeradius-unlang.so
 usr/lib/freeradius/libfreeradius-util.so
 usr/lib/freeradius/libfreeradius-vmps.so
