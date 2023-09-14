@@ -71,6 +71,7 @@
 *** xref:mods-available/sqlippool.adoc[SQL-IP-Pool Module]
 *** xref:mods-available/sradutmp.adoc[sRadutmp Module]
 *** xref:mods-available/stats.adoc[Stats Module]
+*** xref:mods-available/totp.adoc[TOTP Module]
 *** xref:mods-available/unbound.adoc[Unbound Module]
 *** xref:mods-available/unix.adoc[Unix Module]
 *** xref:mods-available/unpack.adoc[Unpack Module]
