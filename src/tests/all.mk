@@ -64,6 +64,7 @@ test: \
 		test.tacacs	\
 		test.vmps	\
 		test.ldap_sync	\
+		test.totp	\
 		| build.raddb
 
 clean: clean.test

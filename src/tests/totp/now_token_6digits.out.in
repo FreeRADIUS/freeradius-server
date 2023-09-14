@@ -1,0 +1,5 @@
+Sent Access-Request Id 0 from 0.0.0.0:1235 to 127.0.0.1:12354 length 32 
+        User-Name = "bob+%TOTP_TOKEN%"
+Received Access-Accept Id 0 from 127.0.0.1:12354 to 0.0.0.0:1235 via lo length 29 
+        Reply-Message = "TOTP@%TOTP_TOKEN% OK"
+(0) src/tests/totp/now_token_6digits.txt response code 2
