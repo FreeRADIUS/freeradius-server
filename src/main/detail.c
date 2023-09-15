@@ -910,8 +910,16 @@ open_file:
 			rad_assert(vp != NULL);
 			fr_pair_add(&packet->vps, vp);
 		}
+
+		/*
+		 *	Update Acct-Delay-Time, but make sure that it doesn't go backwards.
+		 */
 		if (data->timestamp != 0) {
-			vp->vp_integer += time(NULL) - data->timestamp;
+			time_t now = time(NULL);
+
+			if (((time_t) data->timestamp) < now) {
+				vp->vp_integer += time(NULL) - data->timestamp;
+			}
 		}
 	}
 
