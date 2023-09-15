@@ -64,6 +64,8 @@ typedef struct detail_instance {
 
 	bool		escape;		//!< do filename escaping, yes / no
 
+	bool		dates_as_integer;
+
 	xlat_escape_t escape_func; //!< escape function
 
 	exfile_t    	*ef;		//!< Log file handler
@@ -79,6 +81,7 @@ static const CONF_PARSER module_config[] = {
 	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_detail_t, perm), "0600" },
 	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_detail_t, group), NULL },
 	{ "locking", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_detail_t, locking), "no" },
+	{ "dates_as_integer", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_detail_t, dates_as_integer), "no" },
 	{ "escape_filenames", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_detail_t, escape), "no" },
 	{ "log_packet_header", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_detail_t, log_srcdst), "no" },
 	CONF_PARSER_TERMINATOR
@@ -317,7 +320,12 @@ static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_
 			 */
 			op = vp->op;
 			vp->op = T_OP_EQ;
-			vp_print(out, vp);
+
+			if ((vp->da->type == PW_TYPE_DATE) && inst->dates_as_integer) {
+				WRITE("\t%s = %u\n", vp->da->name, vp->vp_date);
+			} else {
+				vp_print(out, vp);
+			}
 			vp->op = op;
 		}
 	}
@@ -336,7 +344,7 @@ static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_
 		}
 #endif
 	}
-	WRITE("\tTimestamp = %ld\n", (unsigned long) request->timestamp);
+	WRITE("\tTimestamp = %lu\n", (unsigned long) request->timestamp);
 
 	WRITE("\n");
 

@@ -94,6 +94,39 @@ detail {
 	#
 #	log_packet_header = yes
 
+
+	#
+	#  There are many, many, issues with dates being printed as
+	#  humanly-readable strings.  The server tries hard to both
+	#  print and parse dates correctly, however this is not always
+	#  possible.
+	#
+	#  The detail files may be generated on one machine, and read
+	#  on another.  The two systems may have different languages,
+	#  so the names of the month may not be parseable.  The two
+	#  systems may have different time zones.  Time zone parsing
+	#  is pretty much impossible, as there are multiple time zones
+	#  with the same name!
+	#
+	#  In some cases, the local libraries may not be able to
+	#  correctly parse the time zone it printed!  i.e. the system
+	#  documentation for the C library time functions sometimes
+	#  even says that the time zones are ignored, and the dates
+	#  are parsed as UTC.
+	#
+	#  All of these issues can be avoided by printing the dates as
+	#  integer.  In nearly all cases, the integer printed is
+	#  exactly what was received in the packet.
+	#
+	#  This may resolve some issues, but it's not perfect.  The
+	#  dates received by FreeRADIUS are sent by the NAS, and
+	#  created on the NAS.  So if the time on the NAS is wrong,
+	#  the dates printed by FreeRADIUS will also be wrong.  The
+	#  only solution is to make sure that the NAS is using the
+	#  correct time.
+	#
+#	dates_as_integer = yes
+
 	#
 	# Certain attributes such as User-Password may be
 	# "sensitive", so they should not be printed in the
