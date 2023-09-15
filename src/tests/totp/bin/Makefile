@@ -3,26 +3,29 @@
 #
 all: totp
 
-include ../../../Make.inc
+include ../../../../Make.inc
 
 #
 #  Hack up stuff so we can build in a subdirectory.
 #
 .PHONY: src
 src:
-	@ln -sf ../../../src
+	@ln -sf ../../../../src
 
 .PHONY: freeradius-devel
 freeradius-devel:
-	@ln -sf ../../../src/include freeradius-devel
+	@ln -sf ../../../../src/include freeradius-devel
 
 #
 #  ./totp decode <base32>
 #
 #  ./totp totp <time> <sha1key> <8-character-challenge>
 #
-totp: rlm_totp.c | src freeradius-devel
-	@$(CC) -DTESTING $(CFLAGS) $(OPENSSL_CPPFLAGS) -o $@ $(LDFLAGS) $(LIBS) ../../../build/lib/.libs/libfreeradius-util.a rlm_totp.c
+totp: totp.c | src freeradius-devel
+	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $(LDFLAGS) $(LIBS) \
+			../../../../build/lib/.libs/libfreeradius-util.a \
+			../../../../build/lib/.libs/libfreeradius-totp.a \
+			totp.c
 
 #
 #  Test vectors from RFC 6238, Appendix B
