@@ -31,6 +31,14 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	* permit originate CoA after proxying to an internal virtual server
 	* Use virtual server "default" when passed "-i" and "-p" on the command line.
 	* Fix locking issues with rlm_python3.
+	* Better handle backslashes in strings in the configuration files.
+	  If the configuration items contain backslashes, then behavior may change.
+	  However, the previous behavior didn't work as expected, and therefore is not
+	  likely to be used.
+	* The detail file reader will catch bad times in the file, and will not
+	  update Acct-Delay-Time with extreme values.
+	* The detail module now has a "dates_as_integer" configuration item.
+	  See mods-available/detail for more information.
 
 FreeRADIUS 3.2.3 Fri 26 May 2023 12:00:00 EDT urgency=low
 	Configuration changes
