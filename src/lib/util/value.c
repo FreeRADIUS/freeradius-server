@@ -4366,6 +4366,7 @@ void fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enum
 				 uint8_t const *src, size_t len, bool tainted)
 {
 	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
+	(void) talloc_get_name(src);
 	dst->vb_octets = src;
 	dst->vb_length = len;
 }
@@ -5630,7 +5631,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			}
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
-			fr_value_box_bstrndup_shallow(out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted);
+			fr_value_box_bstrndup(out, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted);
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -5646,7 +5647,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			}
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
 			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
-			fr_value_box_memdup_shallow(out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted);
+			fr_value_box_memdup(out, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted);
 			break;
 
 		default:
@@ -5670,7 +5671,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 
 			entry = out->entry;
-			fr_value_box_bstrndup_shallow(out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted);
+			fr_value_box_bstrndup(out, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted);
 			out->entry = entry;
 			break;
 
@@ -5681,7 +5682,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
 
 			entry = out->entry;
-			fr_value_box_memdup_shallow(out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted);
+			fr_value_box_memdup(out, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted);
 			out->entry = entry;
 			break;
 
