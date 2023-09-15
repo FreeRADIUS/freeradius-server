@@ -133,6 +133,7 @@ static inline size_t fr_nbo_from_uint64v(uint8_t out[static sizeof(uint64_t)], u
  * @param[in] data	To convert to a 16bit unsigned integer of native endianness.
  * @return a 16 bit unsigned integer of native endianness.
  */
+/* coverity[-taint_source : arg-0] */
 static inline uint16_t fr_nbo_to_uint16(uint8_t const data[static sizeof(uint16_t)])
 {
 	return (((uint16_t)data[0]) << 8) | data[1];
@@ -143,6 +144,7 @@ static inline uint16_t fr_nbo_to_uint16(uint8_t const data[static sizeof(uint16_
  * @param[in] data	To convert to a 24bit unsigned integer of native endianness.
  * @return a 24 bit unsigned integer of native endianness.
  */
+/* coverity[-taint_source : arg-0] */
 static inline uint32_t fr_nbo_to_uint24(uint8_t const data[static 3])
 {
 	return (((uint32_t)data[0]) << 16) | (((uint32_t)data[1]) << 8) | data[2];
