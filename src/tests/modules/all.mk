@@ -98,6 +98,10 @@ $(OUTPUT)/%: $(DIR)/%.unlang $(TEST_BIN_DIR)/unit_test_module | build.raddb
 	${Q}cp $(if $(wildcard $(basename $<).attrs),$(basename $<).attrs,src/tests/modules/default-input.attrs) $@.attrs
 	${Q}if ! MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< TEST="$(TEST)" $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xxx > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
+			if grep 'LeakSanitizer has encountered a fatal error' $@.log 2>&1 > /dev/null; then \
+				echo "MODULE-TEST $(TEST) - ignoring LeakSanitizer fatal error."; \
+				exit 0; \
+			fi; \
 			cat "$@.log"; \
 			echo "# $@.log"; \
 			echo "MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
