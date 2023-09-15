@@ -39,9 +39,6 @@
 #
 #  and then run that locally to get an image.
 #  
-#
-#  The module takes no configuration items.
-#
 totp {
 	#
 	#  Default time step between time changes
