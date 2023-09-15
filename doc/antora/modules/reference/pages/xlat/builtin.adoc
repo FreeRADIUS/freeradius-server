@@ -1019,12 +1019,16 @@ not bob!
 === +%(expr:<string>)+
 
 Evaluates the string as an xref:reference:unlang/expression.adoc[Unlang expression], and returns the result.  Please see the
-xref:reference:unlang/expression.adoc[Unlang expression] page for full
-documentation on expressions.
+xref:reference:unlang/expression.adoc[Unlang expression] page for full documentation on expressions.
+
+[NOTE]
+====
+You probably don't want to use this.  In v4, the main use of `%{expr:...}` is inside of strings which can't be split into actual expressions.
+====
 
 .Return: _data_
 
-.Example:
+.Example
 
 [source,unlang]
 ----
@@ -1040,6 +1044,15 @@ update reply
 ```
 3
 ```
+
+.A Better example of not using `%{expr:...}`
+
+[source,unlang]
+----
+&Tmp-String-0 := 1 + 2
+----
+
+
 
 === +%(nexttime:<time>)+
 
