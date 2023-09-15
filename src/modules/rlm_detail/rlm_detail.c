@@ -118,6 +118,32 @@ fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
 	{ NULL }
 };
 
+/** Print one attribute and value to FP
+ *
+ * Complete string with '\\t' and '\\n' is written to buffer before printing to
+ * avoid issues when running with multiple threads.
+ *
+ * @todo - This function should print *flattened* lists.
+ *
+ * @param fp to output to.
+ * @param vp to print.
+ */
+static void CC_HINT(nonnull) fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
+{
+	char		buff[1024];
+	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buff, sizeof(buff));
+
+	PAIR_VERIFY(vp);
+
+	(void) fr_sbuff_in_char(&sbuff, '\t');
+	(void) fr_pair_print(&sbuff, NULL, vp);
+	(void) fr_sbuff_in_char(&sbuff, '\n');
+
+	fputs(buff, fp);
+}
+
+
+
 /** Generic function for parsing conf pair values as int
  *
  * @note This should be used for enum types as c99 6.4.4.3 states that the enumeration

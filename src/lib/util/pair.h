@@ -831,8 +831,6 @@ static inline fr_slen_t CC_HINT(nonnull(2,4))
 		fr_pair_aprint_secure(TALLOC_CTX *ctx, char **out, fr_dict_attr_t const *parent, fr_pair_t const *vp)
 		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print_secure, parent, vp)
 
-void		fr_pair_fprint(FILE *, fr_pair_t const *vp) CC_HINT(nonnull);
-
 #define		fr_pair_list_log(_log, _lvl, _list) _fr_pair_list_log(_log, _lvl, NULL, _list, __FILE__, __LINE__)
 void		_fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent,
 				  fr_pair_list_t const *list, char const *file, int line) CC_HINT(nonnull(1,4));

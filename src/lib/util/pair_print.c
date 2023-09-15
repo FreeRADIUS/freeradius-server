@@ -237,33 +237,6 @@ ssize_t fr_pair_list_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pai
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
-/** Print one attribute and value to FP
- *
- * Complete string with '\\t' and '\\n' is written to buffer before printing to
- * avoid issues when running with multiple threads.
- *
- * This function will print *flattened* lists, as is suitable for use
- * with rlm_detail.  In fact, the only user of this function is
- * rlm_detail.
- *
- * @param fp to output to.
- * @param vp to print.
- */
-void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
-{
-	char		buff[1024];
-	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buff, sizeof(buff));
-
-	PAIR_VERIFY(vp);
-
-	(void) fr_sbuff_in_char(&sbuff, '\t');
-	(void) fr_pair_print(&sbuff, NULL, vp);
-	(void) fr_sbuff_in_char(&sbuff, '\n');
-
-	fputs(buff, fp);
-}
-
-
 static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_list_t const *list, char const *file, int line, fr_sbuff_t *sbuff)
 {
 	fr_dict_attr_t const *parent_da = NULL;
