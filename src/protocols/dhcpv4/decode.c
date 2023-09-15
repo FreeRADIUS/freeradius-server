@@ -410,7 +410,6 @@ next:
 		fr_pair_append(out, vp);
 	}
 
-	/* coverity[tainted_data] */
 	len = fr_pair_tlvs_from_network(vp, &vp->vp_group, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, false);
 	if (len <= 0) return len;
 
