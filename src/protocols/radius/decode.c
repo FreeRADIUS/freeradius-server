@@ -866,7 +866,7 @@ static ssize_t decode_extended_fragments(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (attr_len < 3) return -1;
 
 	/*
-	 *	No continuation, just decode the attributre in place.
+	 *	No continuation, just decode the attribute in place.
 	 */
 	if ((data[1] & 0x80) == 0) {
 		ret = fr_radius_decode_pair_value(ctx, out,
@@ -1010,6 +1010,9 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	if (fr_pair_find_or_append_by_da(ctx, &vp, out, da) < 0) return PAIR_DECODE_OOM;
 
+	/*
+	 *	No continuation - just decode as-is.
+	 */
 	if ((data[3] & 0x80) == 0) {
 		slen = fr_radius_decode_pair_value(vp, &vp->vp_group, child, data + 4, data[1] - 4, packet_ctx);
 		fr_dict_unknown_free(&child);
@@ -1701,6 +1704,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			fr_pair_t		*vsa, *vendor;
 			uint32_t		vendor_pen;
 
+
 			if (data_len < 6) goto raw; /* vid, vtype, value */
 
 			memcpy(&vendor_pen, p, 4);
@@ -1734,10 +1738,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 								parent->name);
 					return -1;
 				}
-				parent = child;
-				p += 5;
-				data_len -= 5;
-				break;
 			}
 
 			if (fr_pair_find_or_append_by_da(ctx, &vsa, out, parent) < 0) return PAIR_DECODE_OOM;
