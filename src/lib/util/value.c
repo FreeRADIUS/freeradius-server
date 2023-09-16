@@ -5631,7 +5631,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			}
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
-			fr_value_box_bstrndup(out, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted);
+			if (fr_value_box_bstrndup(out, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted) < 0) goto error;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -5647,7 +5647,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			}
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
 			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
-			fr_value_box_memdup(out, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted);
+			if (fr_value_box_memdup(out, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted) < 0) goto error;
 			break;
 
 		default:
@@ -5671,7 +5671,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 
 			entry = out->entry;
-			fr_value_box_bstrndup(out, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted);
+			if (fr_value_box_bstrndup(out, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted) < 0) goto error;
 			out->entry = entry;
 			break;
 
@@ -5682,7 +5682,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
 
 			entry = out->entry;
-			fr_value_box_memdup(out, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted);
+			if (fr_value_box_memdup(out, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted) < 0) goto error;
 			out->entry = entry;
 			break;
 
