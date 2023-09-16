@@ -74,7 +74,8 @@ void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR *cp, CONF_PARSER const *rul
 	 *	Print the strings with the correct quotation character and escaping.
 	 */
 	if (fr_type_is_string(base_type)) {
-		value = tmp = fr_asprint(NULL, cp->value, talloc_array_length(cp->value) - 1, cp->rhs_quote);
+		value = tmp = fr_asprint(NULL, cp->value, talloc_array_length(cp->value) - 1, fr_token_quote[cp->rhs_quote]);
+
 	} else {
 		value = cf_pair_value(cp);
 	}
