@@ -767,8 +767,9 @@ int cf_section_pass2(CONF_SECTION *cs)
 		if (!cp->value || !cp->pass2) continue;
 
 		fr_assert((cp->rhs_quote == T_BARE_WORD) ||
-			   (cp->rhs_quote == T_DOUBLE_QUOTED_STRING) ||
-			   (cp->rhs_quote == T_BACK_QUOTED_STRING));
+			  (cp->rhs_quote == T_HASH) ||
+			  (cp->rhs_quote == T_DOUBLE_QUOTED_STRING) ||
+			  (cp->rhs_quote == T_BACK_QUOTED_STRING));
 
 		value = cf_expand_variables(ci->filename, ci->lineno, cs, buffer, sizeof(buffer), cp->value, -1, NULL);
 		if (!value) return -1;
