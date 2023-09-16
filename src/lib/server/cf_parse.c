@@ -125,12 +125,10 @@ void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR *cp, CONF_PARSER const *rul
  */
 int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, CONF_PARSER const *rule)
 {
-	CONF_SECTION	*cs = cf_item_to_section(cf_parent(cp));
 	fr_type_t	type = FR_BASE_TYPE(rule->type);
 
-	if (fr_value_box_from_str(ctx, out, type, NULL,
-				  cf_pair_value(cp), strlen(cf_pair_value(cp)), NULL, false) < 0) {
-		cf_log_perr(cs, "Invalid value \"%s\" for config item %s",
+	if (fr_value_box_from_str(ctx, out, type, NULL, cp->value, talloc_array_length(cp->value) - 1, NULL, false) < 0) {
+		cf_log_perr(cp, "Invalid value \"%s\" for config item %s",
 			    cp->value, cp->attr);
 
 		return -1;
@@ -250,6 +248,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 				goto error;
 			}
 			fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
+
 		} else if (fr_rule_is_attribute(rule)) {
 			cf_log_err(cp, "Invalid quoting.  Unquoted attribute reference is required");
 			goto error;
@@ -363,6 +362,81 @@ static int cf_pair_default(CONF_PAIR **out, void *parent, CONF_SECTION *cs, CONF
 	*out = cp;
 
 	return 1;
+}
+
+static int cf_pair_unescape(CONF_PAIR *cp, CONF_PARSER const *rule)
+{
+	fr_type_t type;
+	char const *p;
+	char *str, *unescaped, *q;
+
+	if (!cp->value) return 0;
+
+	if (cp->rhs_quote != T_DOUBLE_QUOTED_STRING) return 0;
+
+	if (rule->type != FR_TYPE_TMPL) {
+		type = FR_BASE_TYPE(rule->type);
+		if (type != FR_TYPE_STRING) return 0;
+	}
+
+	if (strchr(cp->value, '\\') == NULL) return 0;
+
+	str = talloc_strdup(cp, cp->value);
+	if (!str) return -1;
+
+	p = cp->value;
+	q = str;
+	while (*p) {
+		int x;
+
+		if (*p != '\\') {
+			*(q++) = *(p++);
+			continue;
+		}
+
+		p++;
+		switch (*p) {
+		case 'r':
+			*q++ = '\r';
+			break;
+		case 'n':
+			*q++ = '\n';
+			break;
+		case 't':
+			*q++ = '\t';
+			break;
+
+		default:
+			if (*p >= '0' && *p <= '9' &&
+			    sscanf(p, "%3o", &x) == 1) {
+				if (!x) {
+					cf_log_err(cp, "Cannot have embedded zeros in value for %s", cp->attr);
+					return -1;
+				}
+
+				*q++ = x;
+				p += 2;
+			} else {
+				*q++ = *p;
+			}
+			break;
+		}
+		p++;
+	}
+	*q = '\0';
+
+	unescaped = talloc_typed_strdup(cp, str); /* no embedded NUL */
+	if (!unescaped) return -1;
+
+	talloc_free(str);
+
+	/*
+	 *	Replace the old value with the new one.
+	 */
+	talloc_const_free(cp->value);
+	cp->value = unescaped;
+
+	return 0;
 }
 
 /** Parses a #CONF_PAIR into a C data type, with a default value.
@@ -493,7 +567,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			int		ret;
 			void		*entry;
 			TALLOC_CTX	*value_ctx = array;
-
+			
 			/*
 			 *	Figure out where to write the output
 			 */
@@ -504,6 +578,8 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			} else {
 				entry = ((uint8_t *) array) + (i++ * fr_value_box_field_sizes[FR_BASE_TYPE(type)]);
 			}
+
+			if (cf_pair_unescape(cp, rule) < 0) return -1;
 
 			/*
 			 *	Switch between custom parsing function
@@ -547,6 +623,8 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 				return 0;
 			}
+		} else {
+			if (cf_pair_unescape(cp, rule) < 0) return -1;
 		}
 
 		next = cf_pair_find_next(cs, cp, rule->name);
