@@ -23,6 +23,11 @@ else
 endif
 
 #
+#  Disable Perl until such time as it is updated to create nested attributes
+#
+FILES_SKIP += $(filter unbound/%,$(FILES))
+
+#
 #  Remove tests which are known to be slow, unless we want them to be run.
 #
 ifneq "$(RUN_SLOW_TESTS)" "1"
