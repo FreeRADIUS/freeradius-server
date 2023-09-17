@@ -1916,10 +1916,33 @@ do_suffix:
 		case FR_TYPE_VSA:
 		is_union:
 			/*
-			 *	These structural types are always nested.  Both for parenting, and for
-			 *	namespace.
+			 *	Omit nesting types where the relationship is already
+			 *	described by the dictionaries and there's no filter.
+			 *
+			 *	These attribute references would just use additional
+			 *	memory for no real purpose.
+			 *
+			 *	Because we pre-allocate an attribute reference in
+			 *	each tmpl talloc pool, unless the attribute
+			 *	reference list contains a group, there's no performance
+			 *	penalty in repeatedly allocating and freeing this ar.
+			 *
+			 *	Flatten / nested migration hack. :(
 			 */
-			namespace = our_parent = da;
+			if (1 && main_config && main_config->tmpl_tokenize_all_nested) {
+				our_parent = da;	/* Only update the parent if we're not stripping */
+
+			} else if (ar_filter_is_none(ar) && ar_is_normal(ar)) {
+				TALLOC_FREE(ar);
+			} else {
+				our_parent = da;	/* Only update the parent if we're not stripping */
+			}
+
+			/*
+			 *	The child might not go into the parent list, but the child definitely is in
+			 *	the parents namespace.
+			 */
+			namespace = da;
 			break;
 
 		default:
