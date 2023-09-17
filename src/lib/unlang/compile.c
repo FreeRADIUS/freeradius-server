@@ -1554,12 +1554,22 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 		/*
 		 *	As a set of fixups... we can't do array references in -=
 		 */
-		for (child = map_list_head(&map->child); child != NULL; child = map_list_next(&map->child, child)) {
-			if (!tmpl_is_attr(child->lhs)) continue;
+		if (map->op == T_OP_SUB_EQ) {
+			for (child = map_list_head(&map->child); child != NULL; child = map_list_next(&map->child, child)) {
+				if (!tmpl_is_attr(child->lhs)) continue;
 
-			if (tmpl_attr_tail_num(child->lhs) != NUM_UNSPEC) {
-				cf_log_err(child->ci, "Cannot use array references and values when deleting from a list");
-				goto fail;
+				if (tmpl_attr_tail_num(child->lhs) != NUM_UNSPEC) {
+					cf_log_err(child->ci, "Cannot use array references and values when deleting from a list");
+					goto fail;
+				}
+
+				/*
+				 *	The edit code doesn't do this correctly, so we just forbid it.
+				 */
+				if (tmpl_attr_num_elements(child->lhs) > 1) {
+					cf_log_err(child->ci, "List deletion must operate directly on the final child");
+					goto fail;
+				}
 			}
 		}
 	} else {
