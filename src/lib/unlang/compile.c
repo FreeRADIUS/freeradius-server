@@ -1566,8 +1566,16 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 				/*
 				 *	The edit code doesn't do this correctly, so we just forbid it.
 				 */
-				if (strchr(child->lhs->name, '.') != NULL) {
+				if ((tmpl_attr_num_elements(child->lhs) - tmpl_attr_num_elements(map->lhs)) > 1) {
 					cf_log_err(child->ci, "List deletion must operate directly on the final child");
+					goto fail;
+				}
+
+				/*
+				 *	We don't do list comparisons either.
+				 */
+				if (fr_type_is_structural(tmpl_attr_tail_da(child->lhs)->type)) {
+					cf_log_err(child->ci, "List deletion cannot operate on lists");
 					goto fail;
 				}
 			}
