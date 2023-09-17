@@ -4366,7 +4366,6 @@ void fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enum
 				 uint8_t const *src, size_t len, bool tainted)
 {
 	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
-	(void) talloc_get_name(src);
 	dst->vb_octets = src;
 	dst->vb_length = len;
 }
