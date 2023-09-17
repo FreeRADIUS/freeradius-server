@@ -159,7 +159,6 @@ struct main_config_s {
 	/*
 	 *	Migration tools
 	 */
-	bool		tmpl_tokenize_all_nested;      	//!< tmpl_tokenize will create nested tmpls instead of flat ones
 	bool		rewrite_update;			//!< rewrite "update" to be new edit sections
 	bool		forbid_update;			//!< forbid "update" sections
 };
