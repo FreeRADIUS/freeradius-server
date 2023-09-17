@@ -1566,7 +1566,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 				/*
 				 *	The edit code doesn't do this correctly, so we just forbid it.
 				 */
-				if (tmpl_attr_num_elements(child->lhs) > 1) {
+				if (strchr(child->lhs->name, '.') != NULL) {
 					cf_log_err(child->ci, "List deletion must operate directly on the final child");
 					goto fail;
 				}
