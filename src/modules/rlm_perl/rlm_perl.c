@@ -732,10 +732,9 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 	}
 	fr_assert(da != NULL);
 
-	vp = fr_pair_afrom_da(ctx, da);
+	vp = fr_pair_afrom_da_nested(ctx, vps, da);
 	if (!vp) {
 	fail:
-		talloc_free(vp);
 		RPEDEBUG("Failed to create pair %s.%s = %s", list_name, key, val);
 		return -1;
 	}
@@ -754,7 +753,6 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 	}
 
 	PAIR_VERIFY(vp);
-	(void) fr_pair_append(vps, vp);
 
 	RDEBUG2("&%s.%s = $%s{'%s'} -> '%s'", list_name, key, hash_name, key, val);
 	return 0;
