@@ -25,7 +25,7 @@ endif
 #
 #  Disable Perl until such time as it is updated to create nested attributes
 #
-FILES_SKIP += $(filter unbound/%,$(FILES))
+FILES_SKIP += $(filter perl/%,$(FILES))
 
 #
 #  Remove tests which are known to be slow, unless we want them to be run.
