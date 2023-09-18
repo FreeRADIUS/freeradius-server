@@ -214,6 +214,9 @@ static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_
 
 		my_list = &(*relative_vp)->vp_group;
 		my_ctx = *relative_vp;
+
+		MEM(vp = fr_pair_afrom_da(my_ctx, da));
+		fr_pair_append(my_list, vp);
 	} else {
 		/*
 		 *	Search in our local dictionary
@@ -231,9 +234,10 @@ static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_
 
 		my_list = out;
 		my_ctx = ctx;
+
+		MEM(vp = fr_pair_afrom_da_nested(my_ctx, my_list, da));
 	}
 
-	MEM(vp = fr_pair_afrom_da(my_ctx, da));
 	vp->op = op;
 
 	if ((vp->vp_type == FR_TYPE_TLV) && !*value) {
@@ -248,16 +252,9 @@ static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_
 	} else {
 		if (fr_pair_value_from_str(vp, value, strlen(value), NULL, true) < 0) {
 			RPEDEBUG("Error parsing value");
-
-			talloc_free(vp);
 			return -1;
 		}
 	}
-
-	/*
-	 *	Add the pair into the packet
-	 */
-	fr_pair_append(my_list, vp);
 
 	/*
 	 *	Update the relative vp.
