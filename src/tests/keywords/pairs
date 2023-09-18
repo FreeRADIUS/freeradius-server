@@ -32,10 +32,9 @@ if !(&Tmp-String-3 == 'Tmp-String-0 = "This is a string", Tmp-String-0 = "This i
 }
 
 #
-#  Allow old-style, and with -S tmpl_tokenize_all_nested=yes
+#  Must be nested
 #
-if !((&Tmp-String-4 == 'Password.Cleartext = "hello"') ||
-     (&Tmp-String-4 == 'Password = { Cleartext = "hello" }')) {
+if !(&Tmp-String-4 == 'Password = { Cleartext = "hello" }') {
 	test_fail
 }
 

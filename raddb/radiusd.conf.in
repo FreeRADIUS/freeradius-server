@@ -598,12 +598,6 @@ global {
 #
 migrate {
 	#
-	#  tmpl_tokenize_all_nested:: Create all internal "tmpl" data
-	#  structures as using nested structures instead of flat ones.
-	#
-	tmpl_tokenize_all_nested = false
-
-	#
 	#  rewrite_update:: Rewrite old `update` sections to use the new
 	#  "edit" code.
 	#
