@@ -1929,7 +1929,8 @@ do_suffix:
 			 *
 			 *	Flatten / nested migration hack. :(
 			 */
-			if (main_config && main_config->tmpl_tokenize_all_nested) {
+//			if (main_config && main_config->tmpl_tokenize_all_nested) {
+			if (1) {
 				our_parent = da;	/* Only update the parent if we're not stripping */
 
 			} else if (ar_filter_is_none(ar) && ar_is_normal(ar)) {
