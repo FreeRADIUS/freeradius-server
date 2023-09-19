@@ -3086,7 +3086,15 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 	 *	This field is only valid for non-structural pairs
 	 */
 	if (!fr_type_is_structural(vp->vp_type)) {
+		fr_pair_t *parent = fr_pair_parent(vp);
+
 		if (vp->data.enumv) fr_dict_attr_verify(file, line, vp->data.enumv);
+
+		if (parent && !fr_dict_attr_can_contain(parent->da, vp->da)) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" should be parented by %s, but is parented by %s",
+					     file, line, vp->da->name, vp->da->parent->name, parent->da->name);
+		}
+
 	} else {
 		fr_pair_t *parent = fr_pair_parent(vp);
 
@@ -3207,11 +3215,14 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					    parent, talloc_get_name(parent));
 
 			/*
-			 *	@todo - uncomment this once we fully support nested structures.
-			 *
-			 *	Right now the "flat" nature of attributes prevents this check from working.
+			 *	Check if the child can be in the parent.
 			 */
-//			fr_assert(fr_dict_attr_can_contain(vp->da, child->da));
+			fr_fatal_assert_msg(fr_dict_attr_can_contain(vp->da, child->da),
+					    "CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" should be parented "
+					    "by fr_pair_t \"%s\", but it is instead parented by \"%s\"",
+					    file, line,
+					    child->da->name, child->da->parent->name, vp->da->name);
+
 			fr_pair_verify(file, line, &vp->vp_group, child);
 		}
 

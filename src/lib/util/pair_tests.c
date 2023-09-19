@@ -183,6 +183,13 @@ static void test_fr_pair_delete_by_da_nested(void)
 	fr_pair_list_free(&local_pairs);
 }
 
+static void test_fr_pair_nested_verify(void)
+{
+	TEST_CHECK(!fr_dict_attr_can_contain(fr_dict_attr_test_vsa, fr_dict_attr_test_tlv_string));
+	TEST_MSG("Expected %s cannot parent %s", fr_dict_attr_test_vsa->name, fr_dict_attr_test_tlv_string->name);
+}
+
+
 static void test_fr_pair_copy(void)
 {
 	fr_pair_t *vp, *copy;
@@ -1446,6 +1453,10 @@ TEST_LIST = {
 
 	/* Copy */
 	{ "fr_pair_value_copy",                   test_fr_pair_value_copy },
+
+
+	/* parenting */
+	{ "test_fr_pair_nested_verify",		test_fr_pair_nested_verify },
 
 	/* Strings */
 	{ "fr_pair_value_from_str",               test_fr_pair_value_from_str },

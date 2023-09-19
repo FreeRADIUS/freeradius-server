@@ -4309,8 +4309,20 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 	 */
 	if (child->parent == parent) return true;
 
+	if (child->flags.is_raw) return true; /* let people do stupid things */
+
 	/*
-	 *	Only structural types can have children.
+	 *	Child is a STRUCT which has a parent key field.  The
+	 *	child pair nesting, though, is in the grandparent.
+	 */
+	if (fr_dict_attr_is_key_field(child->parent)) {
+		fr_assert(child->parent->parent == parent);
+
+		return (child->parent->parent == parent);
+	}
+
+	/*
+	 *	Only structural types or key fields can have children.
 	 */
 	if (!fr_type_structural[parent->type]) return false;
 
@@ -4336,6 +4348,7 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 		fr_dict_attr_t const *ref;
 
 		ref = fr_dict_attr_ref(parent);
+
 		return (ref && (ref->dict == child->dict));
 	}
 
