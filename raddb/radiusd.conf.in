@@ -601,6 +601,11 @@ migrate {
 	#  rewrite_update:: Rewrite old `update` sections to use the new
 	#  "edit" code.
 	#
+	#  When this flag is set to `true`, the server will read the
+	#  `update` section, and swap the internal implementation to
+	#  use the new code.  The configuration file can still contain
+	#  the `update` keyword.
+	#
 	#  Not all `update` sections can be automatically converted.
 	#  If the conversion process does not work, then the server
 	#  will produce an error instead of doing the wrong thing.
