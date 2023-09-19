@@ -8,10 +8,10 @@ attributes.
 .Syntax
 [source,unlang]
 ----
-&attribute := value
-&attribute = value
-&attribute += value
-&attribute -= value
+&attribute := <expression>
+&attribute = <expression>
+&attribute += <expression>
+&attribute -= <expression>
 ...
 
 &list1 := &list2
@@ -42,6 +42,8 @@ _<op>_:: The operator such as `=`, `:=`, etc.
 _<rhs>_:: The value which is assigned to the attribute.  This value
 can sometimes be an "in-place" list, in which case it is delimited by
 brackets, as in `{...}`.
+
+The _<rhs>_ may be value such as `192.0.2.1, or `5`, or an expression such as `1 + 2`, or `"foo" + "bar"`.
 
 NOTE: Despite the edit statements having syntax similar to `update`
 sections, the meaning of the operators have changed significantly.
