@@ -647,7 +647,7 @@ void request_global_free(void)
  *	Verify a packet.
  */
 static void packet_verify(char const *file, int line,
-			  request_t const *request, fr_radius_packet_t const *packet, char const *type)
+			  request_t const *request, fr_radius_packet_t const *packet, fr_pair_list_t *list, char const *type)
 {
 	TALLOC_CTX *parent;
 
@@ -664,6 +664,29 @@ static void packet_verify(char const *file, int line,
 				     "by %p (%s), but parented by %p (%s)",
 				     file, line, type, request, talloc_get_name(request),
 				     parent, parent ? talloc_get_name(parent) : "NULL");
+	}
+
+	/*
+	 *	Enforce nesting at the top level.  This catches minor programming bugs in the server core.
+	 *
+	 *	If we care more, we could do these checks recursively.  But the tmpl_tokenize code already
+	 *	enforces parent / child namespaces.  So the end user shouldn't be able to break the parenting.
+	 *
+	 *	This code really only checks for programming bugs where the C code creates a pair, and then
+	 *	adds it to the wrong list.  This was happening during the transition from flat to nested, as
+	 *	the code was in the middle of being fixed.  It should only happen now if the programmer
+	 *	forgets, and uses the wrong APIs.
+	 */
+	fr_pair_list_foreach(list, vp) {
+		if (vp->da->flags.is_raw) continue;
+
+		if (vp->da->flags.internal) continue;
+
+		if (vp->da->depth > 1) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%i]: Expected fr_pair_t %s to be parented "
+				     "by (%s), but it is instead at the top-level %s list",
+					     file, line, vp->da->name, vp->da->parent->name, type);
+		}
 	}
 
 	PACKET_VERIFY(packet);
@@ -707,9 +730,11 @@ void request_verify(char const *file, int line, request_t const *request)
 	fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs);
 
 	if (request->packet) {
-		packet_verify(file, line, request, request->packet, "request");
+		packet_verify(file, line, request, request->packet, &request->request_pairs, "request");
 	}
-	if (request->reply) packet_verify(file, line, request, request->reply, "reply");
+	if (request->reply) {
+		packet_verify(file, line, request, request->reply, &request->reply_pairs, "reply");
+	}
 
 	if (request->async) {
 		(void) talloc_get_type_abort(request->async, fr_async_t);
