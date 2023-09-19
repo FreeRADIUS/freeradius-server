@@ -1012,7 +1012,8 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	CONF_SECTION		*group;
 	unlang_group_t		*g;
 	char			list_buffer[32];
-	char			buffer[2048];
+	char			value_buffer[1024];
+	char			attr_buffer[2048];
 	char const		*list;
 
 	g = unlang_generic_to_group(parent);
@@ -1031,9 +1032,11 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	 *	Hoist this out of the loop, and make sure it always has a '&' prefix.
 	 */
 	if (name2) {
+		if (*name2 == '&') name2++;
 		snprintf(list_buffer, sizeof(list_buffer), "&%s", name2);
 	} else {
 		snprintf(list_buffer, sizeof(list_buffer), "&%s", tmpl_list_name(unlang_ctx->rules->attr.list_def, "<INVALID>"));
+
 	}
 
 	/*
@@ -1059,14 +1062,12 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 		fr_assert(attr);
 		fr_assert(value);
 
-		/*
-		 *	Canonicalize to no leading '&'
-		 */
-		if (*attr == '&') attr++;
-
 		list = list_buffer;
 
+		if (*attr == '&') attr++;
+
 		end = strchr(attr, '.');
+		if (!end) end = attr + strlen(attr);
 
 		/*
 		 *	Separate out the various possibilities for the "name", which could be a list, an
@@ -1079,7 +1080,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 		 *	The good news is that all we care about is whether or not there's a parent / list ref.
 		 *	We don't care what that ref is.
 		 */
-		if (end) {
+		{
 			fr_dict_attr_t const *tmpl_list;
 
 			/*
@@ -1102,15 +1103,24 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 					return NULL;
 				}
 
-				list = attr;
-				attr = NULL;
+				goto attr_is_list;
 
 			/*
 			 *	Doesn't have a parent ref, maybe it's a list ref?
 			 */
 			} else if (tmpl_attr_list_from_substr(&tmpl_list, &FR_SBUFF_IN(attr, (end - attr))) > 0) {
-				list = attr;
+				char *p;
+
+			attr_is_list:
+				snprintf(attr_buffer, sizeof(attr_buffer), "&%s", attr);
+				list = attr_buffer;
 				attr = NULL;
+
+				p = strchr(attr_buffer, '.');
+				if (p) {
+					*(p++) = '\0';
+					attr = p;
+				}
 			}
 		}
 
@@ -1129,13 +1139,12 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 
 			} else {
 				if (strchr(attr, '[') == NULL) {
-					snprintf(buffer, sizeof(buffer), "&%s[*]", attr);
-					value = buffer;
+					snprintf(value_buffer, sizeof(value_buffer), "&%s[*]", attr);
 				} else {
-					value = attr;
+					snprintf(value_buffer, sizeof(value_buffer), "&%s", attr);
 				}
 
-				rcode = edit_pair_alloc(group, NULL, list, T_OP_SUB_EQ, value, T_INVALID);
+				rcode = edit_pair_alloc(group, cp, list, T_OP_SUB_EQ, value_buffer, T_INVALID);
 			}
 			break;
 
@@ -1166,9 +1175,9 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 
 		pair_op:
 			fr_assert(*attr != '&');
-			snprintf(buffer, sizeof(buffer), "%s.%s", list, attr);
+			snprintf(attr_buffer, sizeof(attr_buffer), "%s.%s", list, attr);
 
-			rcode = edit_pair_alloc(group, cp, buffer, op, value, T_INVALID);
+			rcode = edit_pair_alloc(group, cp, attr_buffer, op, value, T_INVALID);
 			break;
 
 		case T_OP_ADD_EQ:
@@ -1178,8 +1187,8 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			rcode = edit_section_alloc(group, &child, list, op);
 			if (rcode < 0) break;
 
-			snprintf(buffer, sizeof(buffer), "&%s", attr);
-			rcode = edit_pair_alloc(child, cp, buffer, T_OP_EQ, value, op);
+			snprintf(attr_buffer, sizeof(attr_buffer), "&%s", attr);
+			rcode = edit_pair_alloc(child, cp, attr_buffer, T_OP_EQ, value, op);
 			break;
 
 			/*
@@ -1202,8 +1211,8 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 				return NULL;
 			}
 
-			snprintf(buffer, sizeof(buffer), "&%s", attr);
-			rcode = edit_pair_alloc(child, cp, buffer, op, value, T_OP_SUB_EQ);
+			snprintf(attr_buffer, sizeof(attr_buffer), "&%s", attr);
+			rcode = edit_pair_alloc(child, cp, attr_buffer, op, value, T_OP_SUB_EQ);
 			break;
 
 			/*
