@@ -1061,6 +1061,12 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 		goto error;
 	}
 
+	/*
+	 * 	Coverity notices that other uses of max_pending are protected with a mutex,
+	 * 	and thus thinks it should be locked/unlocked here...but coverity does not
+	 * 	consider that until this function returns a pointer to a pool, nobody can
+	 * 	use the pool, so there's no point to doing so.
+	 */
 	/* coverity[missing_lock] */
 	pool->pending_window = (pool->max_pending > 0) ? pool->max_pending : pool->max;
 
