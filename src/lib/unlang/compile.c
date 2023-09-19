@@ -957,7 +957,7 @@ static int edit_section_alloc(CONF_SECTION *parent, CONF_SECTION **child, char c
 	return 0;
 }
 
-static int edit_pair_alloc(CONF_SECTION *cs, CONF_PAIR *original, char const *attr, fr_token_t op, char const *value)
+static int edit_pair_alloc(CONF_SECTION *cs, CONF_PAIR *original, char const *attr, fr_token_t op, char const *value, fr_token_t list_op)
 {
 	CONF_PAIR *cp;
 	fr_token_t rhs_quote;
@@ -976,6 +976,29 @@ static int edit_pair_alloc(CONF_SECTION *cs, CONF_PAIR *original, char const *at
 	cf_filename_set(cp, cf_filename(original));
 	cf_lineno_set(cp, cf_lineno(original));
 
+	if (original) {
+		if (fr_debug_lvl >= 3) {
+			if (list_op == T_INVALID) {
+				cf_log_err(original, "%s %s %s --> %s %s %s",
+					    cf_pair_attr(original), fr_tokens[cf_pair_operator(original)], cf_pair_value(original),
+					    attr, fr_tokens[op], value);
+			} else {
+				if (*attr == '&') attr++;
+				cf_log_err(original, "%s %s %s --> %s %s { %s %s %s }",
+					    cf_pair_attr(original), fr_tokens[cf_pair_operator(original)], cf_pair_value(original),
+					    cf_section_name1(cs), fr_tokens[list_op], attr, fr_tokens[op], value);
+			}
+		} else if (fr_debug_lvl >= 2) {
+			if (list_op == T_INVALID) {
+				cf_log_err(original, "--> %s %s %s",
+					    attr, fr_tokens[op], value);
+			} else {
+				cf_log_err(original, "--> %s %s { %s %s %s }",
+					    cf_section_name1(cs), fr_tokens[list_op], attr, fr_tokens[op], value);
+			}
+		}
+	}
+
 	return 0;
 }
 
@@ -988,7 +1011,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	CONF_ITEM		*ci;
 	CONF_SECTION		*group;
 	unlang_group_t		*g;
-	char			list_buffer[32], ref_buffer[1024];
+	char			list_buffer[32];
 	char			buffer[2048];
 	char const		*list;
 
@@ -1023,7 +1046,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 		CONF_SECTION	*child;
 		int		rcode;
 		fr_token_t	op;
-		char const	*attr, *value;
+		char const	*attr, *value, *end;
 
 		if (!cf_item_is_pair(ci)) continue;
 
@@ -1043,84 +1066,52 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 
 		list = list_buffer;
 
+		end = strchr(attr, '.');
+
 		/*
-		 *	Separate out the various possibilities for the
-		 *	"name", which could be a list, an attribute
-		 *	name, or a list followed by an attribute name.
+		 *	Separate out the various possibilities for the "name", which could be a list, an
+		 *	attribute name, or a list followed by an attribute name.
+		 *
+		 *	Note that even if we have "update request { ....}", the v3 parser allowed the contents
+		 *	of the "update" section to still specify parent / lists.  Which makes parsing it all
+		 *	annoying.
+		 *
+		 *	The good news is that all we care about is whether or not there's a parent / list ref.
+		 *	We don't care what that ref is.
 		 */
-		{
-			char const *p, *q;
+		if (end) {
 			fr_dict_attr_t const *tmpl_list;
 
-			p = attr;
-
-			q = strchr(p, '.');
-			if (!q) q = p + strlen(p);
-
 			/*
-			 *	Can refer to multiple request parent, etc.
+			 *	Allow for a "parent" or "outer" reference.  There may be multiple
+			 *	"parent.parent", so we keep processing them until we get a list reference.
 			 */
-			while (fr_table_value_by_substr(tmpl_request_ref_table, p, q - p, REQUEST_UNKNOWN) != REQUEST_UNKNOWN) {
-				if (!*p) {
-					cf_log_err(cp, "Missing list reference");
+			if (fr_table_value_by_substr(tmpl_request_ref_table, attr, end - attr, REQUEST_UNKNOWN) != REQUEST_UNKNOWN) {
+
+				/*
+				 *	Catch one more case where the behavior is different.
+				 *
+				 *	&request += &config[*]
+				 */
+				if ((cf_pair_value_quote(cp) == T_BARE_WORD) && (*value == '&') &&
+				    (strchr(value, '.') == NULL) && (strchr(value, '[') != NULL)) {
+					char const *p = strchr(value, '[');
+
+					cf_log_err(cp, "Cannot do array assignments for lists.  Just use '%s %s %.*s'",
+						   list, fr_tokens[op], (int) (p - value), value);
 					return NULL;
 				}
 
-				p = q + 1;
-				q = strchr(p, '.');
-				if (!q) q = p + strlen(p);
-			}
+				list = attr;
+				attr = NULL;
 
 			/*
-			 *	Can only refer to one list.
-			 *
-			 *	@todo - add support for &config?
+			 *	Doesn't have a parent ref, maybe it's a list ref?
 			 */
-			if (tmpl_attr_list_from_substr(&tmpl_list, &FR_SBUFF_IN(p, (q - p))) > 0) {
-				if (*q) {
-					p = q + 1;
-				} else {
-					p = NULL;
-				}
-			}
-
-			/*
-			 *	Separate the list reference from the attribute reference.
-			 */
-			if (p > (attr + 1)) {
-				snprintf(ref_buffer, sizeof(ref_buffer), "&%.*s", (int) (p - attr) - 1, attr);
-				list = ref_buffer;
-
-				if (*p) {
-					attr = p;
-
-				} else {
-					attr = NULL;
-				}
-
-			} else if (!p) {
-				/*
-				 *	No trailing attribute name, the entire thing is a list
-				 *
-				 *	@todo - handle &control[*]
-				 */
-				list = cf_pair_attr(cp);
+			} else if (tmpl_attr_list_from_substr(&tmpl_list, &FR_SBUFF_IN(attr, (end - attr))) > 0) {
+				list = attr;
 				attr = NULL;
 			}
-		}
-
-		/*
-		 *	Catch one more case where the behavior is different.
-		 *
-		 *	&request += &config[*]
-		 */
-		if (!attr && (cf_pair_value_quote(cp) == T_BARE_WORD) && (*value == '&') &&
-		    (strchr(value, '.') == NULL) && (strchr(value, '[') != NULL)) {
-			char const *p = strchr(value, '[');
-
-			cf_log_err(cp, "Cannot do array assignments for lists.  Just use '%s %s %.*s'",
-				   list, fr_tokens[op], (int) (p - value), value);
-			return NULL;
 		}
 
 		switch (op) {
@@ -1144,7 +1135,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 					value = attr;
 				}
 
-				rcode = edit_pair_alloc(group, NULL, list, T_OP_SUB_EQ, value);
+				rcode = edit_pair_alloc(group, NULL, list, T_OP_SUB_EQ, value, T_INVALID);
 			}
 			break;
 
@@ -1154,7 +1145,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			 */
 			if (!attr) {
 			list_op:
-				rcode = edit_pair_alloc(group, cp, list, op, value);
+				rcode = edit_pair_alloc(group, cp, list, op, value, T_INVALID);
 				break;
 			}
 			goto pair_op;
@@ -1169,7 +1160,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 					return NULL;
 				}
 
-				rcode = edit_pair_alloc(group, cp, list, op, value);
+				rcode = edit_pair_alloc(group, cp, list, op, value, T_INVALID);
 				break;
 			}
 
@@ -1177,7 +1168,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			fr_assert(*attr != '&');
 			snprintf(buffer, sizeof(buffer), "%s.%s", list, attr);
 
-			rcode = edit_pair_alloc(group, cp, buffer, op, value);
+			rcode = edit_pair_alloc(group, cp, buffer, op, value, T_INVALID);
 			break;
 
 		case T_OP_ADD_EQ:
@@ -1188,7 +1179,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			if (rcode < 0) break;
 
 			snprintf(buffer, sizeof(buffer), "&%s", attr);
-			rcode = edit_pair_alloc(child, cp, buffer, T_OP_EQ, value);
+			rcode = edit_pair_alloc(child, cp, buffer, T_OP_EQ, value, op);
 			break;
 
 			/*
@@ -1212,7 +1203,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			}
 
 			snprintf(buffer, sizeof(buffer), "&%s", attr);
-			rcode = edit_pair_alloc(child, cp, buffer, op, value);
+			rcode = edit_pair_alloc(child, cp, buffer, op, value, T_OP_SUB_EQ);
 			break;
 
 			/*
