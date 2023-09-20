@@ -1010,8 +1010,8 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	CONF_SECTION		*group;
 	unlang_group_t		*g;
 	char			list_buffer[32];
-	char			value_buffer[1024];
-	char			attr_buffer[2048];
+	char			value_buffer[256];
+	char			attr_buffer[256];
 	char const		*list;
 
 	g = unlang_generic_to_group(parent);
@@ -1173,9 +1173,9 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 
 		pair_op:
 			fr_assert(*attr != '&');
-			snprintf(attr_buffer, sizeof(attr_buffer), "%s.%s", list, attr);
+			snprintf(value_buffer, sizeof(value_buffer), "%s.%s", list, attr);
 
-			rcode = edit_pair_alloc(group, cp, attr_buffer, op, value, T_INVALID);
+			rcode = edit_pair_alloc(group, cp, value_buffer, op, value, T_INVALID);
 			break;
 
 		case T_OP_ADD_EQ:
