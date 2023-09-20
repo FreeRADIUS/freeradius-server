@@ -957,6 +957,12 @@ do_children:
 			goto error;
 		}
 
+		if (tmpl_is_attr(map->lhs) && tmpl_attr_tail_da(map->lhs)->flags.local) {
+			cf_log_err(ci, "Invalid location for local attribute '%s'", map->lhs->name);
+			talloc_free(map);
+			goto error; /* re-do "goto marker" stuff to print out spaces ? */
+		}
+
 		MAP_VERIFY(map);
 
 		/*
