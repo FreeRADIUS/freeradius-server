@@ -254,15 +254,16 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 
 /** Expand values in an attribute map where needed
  *
- * @param[in] ctx	to allocate any dynamic expansions in.
- * @param[out] expanded	array of attributes. Need not be initialised (we'll initialise).
- * @param[in] request	The current request.
- * @param[in] maps	to expand.
+ * @param[in] ctx		o allocate any dynamic expansions in.
+ * @param[out] expanded		array of attributes. Need not be initialised (we'll initialise).
+ * @param[in] request		The current request.
+ * @param[in] maps		to expand.
+ * @param[in] generic_attr	name to append to the attribute list.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *request, map_list_t const *maps)
+int fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *request, map_list_t const *maps, char const *generic_attr)
 {
 	map_t const	*map = NULL;
 	unsigned int	total = 0;
@@ -288,6 +289,10 @@ int fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *
 		}
 		expanded->attrs[total++] = attr;
 	}
+
+	if (generic_attr) expanded->attrs[expanded->count++] = generic_attr;
+
+	expanded->attrs[expanded->count] = NULL;
 	expanded->attrs[total] = NULL;
 	expanded->count = total;
 	expanded->maps = maps;

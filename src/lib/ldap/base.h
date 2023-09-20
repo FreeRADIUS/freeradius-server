@@ -845,7 +845,7 @@ int		fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 
 int		fr_ldap_map_verify(map_t *map, void *instance);
 
-int		fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *request, map_list_t const *maps);
+int		fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *request, map_list_t const *maps, char const *generic_attr);
 
 int		fr_ldap_map_do(request_t *request,
 			       char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry);

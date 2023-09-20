@@ -1036,7 +1036,7 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	/*
 	 *	Synchronous expansion of maps (fixme!)
 	 */
-	if (fr_ldap_map_expand(xlat_ctx, &xlat_ctx->expanded, request, &inst->user_map) < 0) goto error;
+	if (fr_ldap_map_expand(xlat_ctx, &xlat_ctx->expanded, request, &inst->user_map, inst->valuepair_attr) < 0) goto error;
 	ttrunk = fr_thread_ldap_trunk_get(t, host_url, handle_config->admin_identity,
 					  handle_config->admin_password, request, handle_config);
 	if (host) ldap_memfree(host);
@@ -1244,7 +1244,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	/*
 	 *	Expand the RHS of the maps to get the name of the attributes.
 	 */
-	if (fr_ldap_map_expand(map_ctx, &map_ctx->expanded, request, maps) < 0) goto fail;
+	if (fr_ldap_map_expand(map_ctx, &map_ctx->expanded, request, maps, NULL) < 0) goto fail;
 
 	/*
 	 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
@@ -1695,7 +1695,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	for many things besides searching for users.
 	 */
 
-	if (fr_ldap_map_expand(autz_ctx, expanded, request, &inst->user_map) < 0) {
+	if (fr_ldap_map_expand(autz_ctx, expanded, request, &inst->user_map, inst->valuepair_attr) < 0) {
 	fail:
 		talloc_free(autz_ctx);
 		RETURN_MODULE_FAIL;
@@ -1729,12 +1729,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		CHECK_EXPANDED_SPACE(expanded);
 		expanded->attrs[expanded->count++] = inst->profile_attr_suspend;
 	}
-
-	if (inst->valuepair_attr) {
-		CHECK_EXPANDED_SPACE(expanded);
-		expanded->attrs[expanded->count++] = inst->valuepair_attr;
-	}
-
 	expanded->attrs[expanded->count] = NULL;
 
 	autz_ctx->dlinst = mctx->inst;
