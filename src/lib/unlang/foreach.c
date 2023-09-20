@@ -78,7 +78,6 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
-	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	fr_pair_t			*vp;
 
 	if (is_stack_unwinding_to_break(request->stack)) return UNLANG_ACTION_CALCULATE_RESULT;
@@ -111,17 +110,12 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 	RDEBUG2("# looping with: Foreach-Variable-%d = %pV", state->depth, &vp->data);
 #endif
 
+	repeatable_set(frame);
+
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_STOP_PROCESSING;
-	}
-
-	repeatable_set(frame);
-
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
 }
 
 
@@ -217,17 +211,12 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 
 	frame->process = unlang_foreach_next;
 
+	repeatable_set(frame);
+
 	/*
 	 *	Push the child, and go process it.
 	 */
-	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_STOP_PROCESSING;
-	}
-
-	repeatable_set(frame);
-
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
 }
 
 static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)

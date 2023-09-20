@@ -210,6 +210,46 @@ int unlang_interpret_push(request_t *request, unlang_t const *instruction,
 	return 0;
 }
 
+/** Push the children of the current frame onto a new frame onto the stack
+ *
+ * @param[in] request		to push the frame onto.
+ * @param[in] default_rcode	The default result.
+ * @param[in] do_next_sibling	Whether to only execute the first node in the #unlang_t program
+ *				or to execute subsequent nodes.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *	- UNLANG_ACTION_EXECUTE_NEXT do nothing, but just go to the next sibling instruction
+ *	- UNLANG_ACTION_STOP_PROCESSING, fatal error, usually stack overflow.
+ */
+unlang_action_t unlang_interpret_push_children(rlm_rcode_t *p_result, request_t *request,
+					      rlm_rcode_t default_rcode, bool do_next_sibling)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];	/* Quiet static analysis */
+	unlang_group_t		*g;
+
+	fr_assert(unlang_ops[frame->instruction->type].debug_braces);
+
+	g = unlang_generic_to_group(frame->instruction);
+
+	/*
+	 *	The compiler catches most of these, EXCEPT for the
+	 *	top-level 'recv Access-Request' etc.  Which can exist,
+	 *	and can be empty.
+	 */
+	if (!g->children) {
+		RDEBUG2("<ignoring empty subsection>");
+		return UNLANG_ACTION_EXECUTE_NEXT;
+	}
+
+	if (unlang_interpret_push(request, g->children, default_rcode, do_next_sibling, UNLANG_SUB_FRAME) < 0) {
+		*p_result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
 static void instruction_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx);
 
 /** Update the current result after each instruction, and after popping each stack frame

@@ -74,7 +74,6 @@ static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, 
 static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
-	unlang_group_t			*g;
 	fr_time_t timeout;
 
 	/*
@@ -87,13 +86,6 @@ static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *requ
 	if (fr_event_timer_at(state, unlang_interpret_event_list(request), &state->ev, timeout,
 			      unlang_timeout_handler, state) < 0) {
 		RPEDEBUG("Failed inserting event");
-		goto fail;
-	}
-
-	g = unlang_generic_to_group(frame->instruction);
-
-	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
-	fail:
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
@@ -101,7 +93,7 @@ static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *requ
 	frame_repeat(frame, unlang_timeout_resume_done);
 	state->success = true;
 
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_STOP);
 }
 
 static unlang_action_t unlang_timeout_xlat_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)

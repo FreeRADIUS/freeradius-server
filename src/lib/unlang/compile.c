@@ -1719,6 +1719,8 @@ static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx
 		.local = true,
 	};
 
+	fr_assert(unlang_ops[parent->type].debug_braces);
+
 	/*
 	 *	The variables exist in the parent block.
 	 */

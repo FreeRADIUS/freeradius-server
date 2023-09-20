@@ -52,22 +52,13 @@ static unlang_action_t unlang_call_finalize(UNUSED rlm_rcode_t *p_result, reques
 static unlang_action_t unlang_call_children(rlm_rcode_t *p_result, request_t *request,
 					    unlang_stack_frame_t *frame)
 {
-	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
-
-	fr_assert(g->children);
+	frame_repeat(frame, unlang_call_finalize);
 
 	/*
 	 *      Push the contents of the call { } section onto the stack.
 	 *      This gets executed after the server returns.
 	 */
-	if (unlang_interpret_push(request, g->children, frame->result,
-				  UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_STOP_PROCESSING;
-	}
-
-	frame_repeat(frame, unlang_call_finalize);
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
 }
 
 
