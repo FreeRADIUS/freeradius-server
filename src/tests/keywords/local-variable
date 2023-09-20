@@ -1,13 +1,15 @@
+&Filter-Id := 2
+
 group {
 	uint32 foo
 
 	&foo := 1
 
 	&Filter-Id := &foo
+}
 
-	if !(&Filter-Id == "1") {
-		test_fail
-	}
+if !(&Filter-Id == "1") {
+	test_fail
 }
 
 success
