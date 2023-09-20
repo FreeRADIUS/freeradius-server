@@ -482,9 +482,16 @@ failure:
 			eap_round->request->code = FR_EAP_CODE_SUCCESS;
 
 			if (!fr_pair_list_empty(&data->mppe_keys)) {
+				fr_pair_t *ms;
+
+				ms = fr_pair_find_by_da_nested(&parent->reply_pairs, NULL, attr_microsoft);
+				if (!ms) {
+					MEM(ms = fr_pair_afrom_da_nested(parent->reply_ctx, &parent->reply_pairs, attr_microsoft));
+				}
+
 				RDEBUG2("Adding stored attributes to parent");
 				log_request_pair_list(L_DBG_LVL_2, request, NULL, &data->mppe_keys, "&parent.reply.");
-				MEM(fr_pair_list_copy(parent->reply_ctx, &parent->reply_pairs, &data->mppe_keys) >= 0);
+				MEM(fr_pair_list_copy(ms, &ms->vp_group, &data->mppe_keys) >= 0);
 			} else {
 				RDEBUG2("No stored attributes to copy to parent");
 			}
