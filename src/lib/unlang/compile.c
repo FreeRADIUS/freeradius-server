@@ -1722,6 +1722,26 @@ static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx
 	fr_assert(unlang_ops[parent->type].debug_braces);
 
 	/*
+	 *	Enforce locations for local variables.
+	 */
+	switch (parent->type) {
+	case UNLANG_TYPE_GROUP:
+	case UNLANG_TYPE_IF:
+	case UNLANG_TYPE_ELSE:
+	case UNLANG_TYPE_ELSIF:
+	case UNLANG_TYPE_SWITCH:
+	case UNLANG_TYPE_FOREACH:
+	case UNLANG_TYPE_TIMEOUT:
+	case UNLANG_TYPE_LIMIT:
+	case UNLANG_TYPE_POLICY:
+		break;
+
+	default:
+		cf_log_err(cp, "Local variables cannot be used here");
+		return NULL;
+	}
+
+	/*
 	 *	The variables exist in the parent block.
 	 */
 	group = unlang_generic_to_group(parent);
@@ -1775,10 +1795,12 @@ invalid_type:
 	 *	in var->root will also check the protocol dictionary,
 	 *	so the check here is really only for better error messages.
 	 */
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(t_rules->parent->attr.dict_def), value);
-	if (da) {
-		cf_log_err(cp, "Local variable '%s' duplicates a dictionary attribute.", value);
-		return NULL;
+	if (t_rules && t_rules->parent && t_rules->parent->attr.dict_def) {
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(t_rules->parent->attr.dict_def), value);
+		if (da) {
+			cf_log_err(cp, "Local variable '%s' duplicates a dictionary attribute.", value);
+			return NULL;
+		}
 	}
 
 	/*
@@ -2154,6 +2176,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	 */
 	compile_copy_context(&unlang_ctx2, unlang_ctx_in, unlang_ctx_in->component);
 	unlang_ctx = &unlang_ctx2;
+	t_rules = *unlang_ctx_in->rules;
 
 	/*
 	 *	Loop over the children of this group.
