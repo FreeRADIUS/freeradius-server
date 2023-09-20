@@ -976,26 +976,24 @@ static int edit_pair_alloc(CONF_SECTION *cs, CONF_PAIR *original, char const *at
 	cf_filename_set(cp, cf_filename(original));
 	cf_lineno_set(cp, cf_lineno(original));
 
-	if (original) {
-		if (fr_debug_lvl >= 3) {
-			if (list_op == T_INVALID) {
-				cf_log_err(original, "%s %s %s --> %s %s %s",
-					    cf_pair_attr(original), fr_tokens[cf_pair_operator(original)], cf_pair_value(original),
-					    attr, fr_tokens[op], value);
-			} else {
-				if (*attr == '&') attr++;
-				cf_log_err(original, "%s %s %s --> %s %s { %s %s %s }",
-					    cf_pair_attr(original), fr_tokens[cf_pair_operator(original)], cf_pair_value(original),
-					    cf_section_name1(cs), fr_tokens[list_op], attr, fr_tokens[op], value);
-			}
-		} else if (fr_debug_lvl >= 2) {
-			if (list_op == T_INVALID) {
-				cf_log_err(original, "--> %s %s %s",
-					    attr, fr_tokens[op], value);
-			} else {
-				cf_log_err(original, "--> %s %s { %s %s %s }",
-					    cf_section_name1(cs), fr_tokens[list_op], attr, fr_tokens[op], value);
-			}
+	if (fr_debug_lvl >= 3) {
+		if (list_op == T_INVALID) {
+			cf_log_err(original, "%s %s %s --> %s %s %s",
+				   cf_pair_attr(original), fr_tokens[cf_pair_operator(original)], cf_pair_value(original),
+				   attr, fr_tokens[op], value);
+		} else {
+			if (*attr == '&') attr++;
+			cf_log_err(original, "%s %s %s --> %s %s { %s %s %s }",
+				   cf_pair_attr(original), fr_tokens[cf_pair_operator(original)], cf_pair_value(original),
+				   cf_section_name1(cs), fr_tokens[list_op], attr, fr_tokens[op], value);
+		}
+	} else if (fr_debug_lvl >= 2) {
+		if (list_op == T_INVALID) {
+			cf_log_err(original, "--> %s %s %s",
+				   attr, fr_tokens[op], value);
+		} else {
+			cf_log_err(original, "--> %s %s { %s %s %s }",
+				   cf_section_name1(cs), fr_tokens[list_op], attr, fr_tokens[op], value);
 		}
 	}
 
