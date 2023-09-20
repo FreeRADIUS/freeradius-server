@@ -499,7 +499,7 @@ static inline void frame_pop(request_t *request, unlang_stack_t *stack)
 	 *	we need to keep frame->retry around to ensure that we
 	 *	know how to _stop_ the retries after they've hit a timeout.
 	 */
-	talloc_free(frame->retry);
+	TALLOC_FREE(frame->retry);
 
 	frame_cleanup(frame);
 
