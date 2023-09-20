@@ -1678,6 +1678,12 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 		goto fail;
 	}
 
+	if ((map->op == T_OP_SUB_EQ) && fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type) &&
+	    tmpl_is_attr(map->rhs) && tmpl_attr_tail_da(map->rhs)->flags.local) {
+		cf_log_err(cp, "Cannot delete local variable %s", map->rhs->name);
+		goto fail;
+	}
+
 	/*
 	 *	Do basic sanity checks and resolving.
 	 */

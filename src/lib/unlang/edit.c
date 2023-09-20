@@ -375,6 +375,11 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 				continue;
 			}
 
+			if (vp->da->flags.local) {
+				RWDEBUG("Not removing local variable %pP", vp);
+				continue;
+			}
+
 			if (fr_edit_list_pair_delete(current->el, list, vp) < 0) {
 				tmpl_dcursor_clear(&cc);
 				return -1;
