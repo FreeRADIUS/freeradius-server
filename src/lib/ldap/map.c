@@ -290,9 +290,8 @@ int fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *
 		expanded->attrs[total++] = attr;
 	}
 
-	if (generic_attr) expanded->attrs[expanded->count++] = generic_attr;
+	if (generic_attr) expanded->attrs[total++] = generic_attr;
 
-	expanded->attrs[expanded->count] = NULL;
 	expanded->attrs[total] = NULL;
 	expanded->count = total;
 	expanded->maps = maps;
