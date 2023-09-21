@@ -52,12 +52,20 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 		i=$$((i+1));				\
 	done ;
 	${Q}sleep .1
+	${Q}if [ ! -e $(OUT_DIR)/$(OUT).out ] ; then	\
+		$(MAKE) --no-print-directory test.ldap_sync/persistent_search.radiusd_kill; \
+		cat $(OUT_DIR)/radiusd.log					\
+		echo "LDAP_SYNC FAILED $@ - expected output file not produced";	\
+		rm -rf $(BUILD_DIR)/tests/test.ldap_sync/persistent_search;	\
+		exit 1;								\
+	fi
 	${Q}mv $(OUT_DIR)/$(OUT).out $(FOUND)
 
 	${Q}if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then	\
+		$(MAKE) --no-print-directory test.ldap_sync/persistent_search.radiusd_kill; \
+		cat $(OUT_DIR)/radiusd.log					\
 		echo "LDAP_SYNC FAILED $@";					\
 		rm -rf $(BUILD_DIR)/tests/test.ldap_sync/persistent_search;	\
-		$(MAKE) --no-print-directory test.ldap_sync/persistent_search.radiusd_kill; \
 		exit 1;								\
 	fi
 	${Q}touch $@
