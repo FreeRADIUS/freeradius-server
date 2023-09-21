@@ -944,7 +944,10 @@ static int ldap_xlat_profile_ctx_free(ldap_xlat_profile_ctx_t *to_free)
 	}
 	return 0;
 }
-/** Expand an LDAP URL into a query, and return a string result from that query.
+
+/** Expand an LDAP URL into a query, applying the results using the user update map.
+ *
+ * For fetching profiles by DN.
  *
  * @ingroup xlat_functions
  */
