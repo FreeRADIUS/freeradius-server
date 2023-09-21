@@ -178,9 +178,11 @@ ldap {
 	#  User-Password attribute in the Access-Request packet.
 	#  e.g. PAP, or TTLS/PAP.
 	#
-	#  CONNECTING TO ACTIVE DIRECTORY OVER LDAP WILL NOT WORK FOR
-	#  MS-CHAP OR PEAP/MS-CHAP.  ** EVER ***.  THERE IS NOTHING YOU CAN
-	#  DO TO MAKE IT WORK.
+	#  USING MS-CHAP OR PEAP/MS-CHAP WITH ACTIVE DIRECTORY OVER LDAP WILL NOT WORK.
+	#
+	#		** EVER ***.
+	#
+	#  THERE IS NOTHING YOU CAN DO TO MAKE IT WORK.
 	#
 	#  If you have a local Active Directory server, you can use
 	#  Samba and ntlm_auth.  See the "mschap" and "ntlm_auth"
