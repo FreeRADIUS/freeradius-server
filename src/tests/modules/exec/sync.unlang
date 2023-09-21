@@ -71,4 +71,14 @@ if (&control.Tmp-String-3 == "Failure") {
 	test_fail
 }
 
+&control -= &Tmp-String-1[*]
+#
+#  Call a module which uses an xlat function in its arguments
+#
+exec_sync_xlat_args
+
+if !(&control.Tmp-String-1 == 'TONY') {
+	test_fail
+}
+
 test_pass
