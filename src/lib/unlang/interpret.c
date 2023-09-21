@@ -210,6 +210,22 @@ int unlang_interpret_push(request_t *request, unlang_t const *instruction,
 	return 0;
 }
 
+typedef struct {
+	fr_dict_t const	*dict;
+	request_t	*request;
+} unlang_variable_ref_t;
+
+static int _local_variables_free(unlang_variable_ref_t *ref)
+{
+	fr_pair_list_foreach(&ref->request->request_pairs, vp) {
+		if (vp->da->dict == ref->dict) {
+			(void) fr_pair_delete(&ref->request->request_pairs, vp);
+		}
+	}
+
+	return 0;
+}
+
 /** Push the children of the current frame onto a new frame onto the stack
  *
  * @param[in] request		to push the frame onto.
@@ -227,6 +243,7 @@ unlang_action_t unlang_interpret_push_children(rlm_rcode_t *p_result, request_t 
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];	/* Quiet static analysis */
 	unlang_group_t		*g;
+	unlang_variable_ref_t	*ref;
 
 	fr_assert(unlang_ops[frame->instruction->type].debug_braces);
 
@@ -246,6 +263,22 @@ unlang_action_t unlang_interpret_push_children(rlm_rcode_t *p_result, request_t 
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
+
+	if (!g->variables) return UNLANG_ACTION_PUSHED_CHILD;
+
+	if (!frame->state) {
+		MEM(ref = talloc(stack, unlang_variable_ref_t));
+		frame->state = ref;
+	} else {
+		MEM(ref = talloc(frame->state, unlang_variable_ref_t));
+	}
+
+	/*
+	 *	Set the destructor to clean up local variables.
+	 */
+	ref->dict = g->variables->dict;
+	ref->request = request;
+	talloc_set_destructor(ref, _local_variables_free);
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

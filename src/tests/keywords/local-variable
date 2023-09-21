@@ -1,11 +1,26 @@
 &Filter-Id := 2
 
+if !(&request.[#] == 4) {
+	test_fail
+}
+
 group {
 	uint32 foo
 
 	&foo := 1
 
 	&Filter-Id := &foo
+
+	#
+	#  For now, local variables are in the request.
+	#
+	if !(&request.[#] == 6) {
+		test_fail
+	}
+} # leaving this scope automatically deletes &foo
+
+if !(&request.[#] == 5) {
+	test_fail
 }
 
 if !(&Filter-Id == "1") {
