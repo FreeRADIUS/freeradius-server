@@ -3202,6 +3202,15 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
+		/*
+		 *	Ensure any xlats produced are bootstrapped
+		 *	so that their instance data will be created.
+		 */
+		if (!t_rules->at_runtime && head && (xlat_bootstrap(head) < 0)) {
+			fr_strerror_const("Failed to bootstrap xlat");
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+
 		if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
 
 		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
