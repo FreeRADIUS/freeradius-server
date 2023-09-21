@@ -24,7 +24,7 @@ if (reject) {
 #
 &Tmp-String-1 := "{clear}%{User-Password}"
 &control := {
-	&Password.With-Header = "%{base64:%{Tmp-String-1}}"
+	&Password.With-Header = "%(base64.encode:%{Tmp-String-1})"
 }
 
 pap.authorize
@@ -61,7 +61,7 @@ if (reject) {
 &control.Tmp-Octets-0 := "%{bin:%{control.Tmp-String-1}}"
 
 # To Base64
-&control.Tmp-String-1 := "%{base64:%{control.Tmp-Octets-0}}"
+&control.Tmp-String-1 := "%(base64.encode:%{control.Tmp-Octets-0})"
 &control.Password.With-Header := "{ssha}%{control.Tmp-String-1}"
 
 pap.authorize
@@ -83,8 +83,8 @@ if (reject) {
 &control.Tmp-Octets-0 := "%{bin:%{control.Tmp-String-1}}"
 
 # To Base64
-&control.Tmp-String-1 := "{ssha}%{base64:%{control.Tmp-Octets-0}}"
-&control.Password.With-Header := "%{base64:%{control.Tmp-String-1}}"
+&control.Tmp-String-1 := "{ssha}%(base64.encode:%{control.Tmp-Octets-0})"
+&control.Password.With-Header := "%(base64.encode:%{control.Tmp-String-1})"
 
 pap.authorize
 pap.authenticate {

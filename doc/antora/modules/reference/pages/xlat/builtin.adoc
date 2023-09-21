@@ -601,7 +601,7 @@ toupper of caipirinha is CAIPIRINHA
 
 == String Conversion
 
-=== %{base64: ... }
+=== %(base64.encode: ... )
 
 Encode a string using Base64.
 
@@ -615,7 +615,7 @@ update control {
     &Tmp-String-0 := "Caipirinha"
 }
 update reply {
-    &Reply-Message := "The base64 of %{control.Tmp-String-0} is %{base64:%{control.Tmp-String-0}}"
+    &Reply-Message := "The base64 of %{control.Tmp-String-0} is %(base64.encode:%{control.Tmp-String-0})"
 }
 ----
 
@@ -625,7 +625,7 @@ update reply {
 The base64 of foo is Q2FpcGlyaW5oYQ==
 ```
 
-=== %{base64decode: ... }
+=== %(base64.decode: ... )
 
 Decode a string previously encoded using Base64.
 
@@ -639,14 +639,14 @@ update control {
     &Tmp-String-0 := "Q2FpcGlyaW5oYQ=="
 }
 update reply {
-    &Reply-Message := "The base64decode of %{control.Tmp-String-0} is %{base64decode:%{control.Tmp-String-0}}"
+    &Reply-Message := "The base64.decode of %{control.Tmp-String-0} is %(base64.decode:%{control.Tmp-String-0})"
 }
 ----
 
 .Output
 
 ```
-The base64decode of Q2FpcGlyaW5oYQ== is Caipirinha
+The base64.decode of Q2FpcGlyaW5oYQ== is Caipirinha
 ```
 
 === %{bin: ... }

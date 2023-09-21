@@ -1178,7 +1178,7 @@ static xlat_arg_parser_t const xlat_func_base64_encode_arg[] = {
  *
  * Example:
 @verbatim
-"%{base64:foo}" == "Zm9v"
+"%(base64.encode:foo)" == "Zm9v"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1227,7 +1227,7 @@ static xlat_arg_parser_t const xlat_func_base64_decode_arg[] = {
  *
  * Example:
 @verbatim
-"%{base64decode:Zm9v}" == "foo"
+"%(base64.decode:Zm9v)" == "foo"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -3298,6 +3298,8 @@ do { \
 	XLAT_REGISTER_ARGS("subst", xlat_func_subst, FR_TYPE_STRING, xlat_func_subst_args);
 	XLAT_REGISTER_ARGS("time", xlat_func_time, FR_TYPE_VOID, xlat_func_time_args);
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, FR_TYPE_STRING, trigger_xlat_args);
+	XLAT_REGISTER_ARGS("base64.encode", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
+	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 
 	if (unlikely((xlat = xlat_func_register(ctx, "untaint", xlat_func_untaint, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
@@ -3315,8 +3317,7 @@ do { \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
 
-	XLAT_REGISTER_MONO("base64", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
-	XLAT_REGISTER_MONO("base64decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
+
 	XLAT_REGISTER_MONO("bin", xlat_func_bin, FR_TYPE_OCTETS, xlat_func_bin_arg);
 	XLAT_REGISTER_MONO("hex", xlat_func_hex, FR_TYPE_STRING, xlat_func_hex_arg);
 	XLAT_REGISTER_MONO("map", xlat_func_map, FR_TYPE_INT8, xlat_func_map_arg);
