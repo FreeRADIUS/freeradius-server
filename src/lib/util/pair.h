@@ -260,6 +260,17 @@ static inline bool vp_da_data_type_check(fr_pair_t *vp)
 #define fr_pair_list_foreach(_list_head, _iter) \
 	for (fr_pair_t *JOIN(_next,_iter), *_iter = fr_pair_list_head(_list_head); JOIN(_next,_iter) = fr_pair_list_next(_list_head, _iter), _iter != NULL; _iter = JOIN(_next,_iter))
 
+/** Iterate over the leaf nodes of a #fr_pair_list_t
+ *
+ *  The iteration variable CANNOT be modified.  This is a read-only operation.
+ *
+ * @param[in] _list_head	to iterate over.
+ * @param[in] _iter		Name of iteration variable.
+ *				Will be declared in the scope of the loop.
+ */
+#define fr_pair_list_foreach_leaf(_list_head, _iter) \
+	for (fr_pair_t *_iter = fr_pair_list_iter_leaf(_list_head, NULL); _iter != NULL; _iter = fr_pair_list_iter_leaf(_list_head, _iter))
+
 /** Append a pair to a list, assigning its value.
  *
  * Version for simple C data types
@@ -534,6 +545,8 @@ fr_pair_list_t	*fr_pair_parent_list(fr_pair_t const *vp);
 fr_pair_t	*fr_pair_parent(fr_pair_t const *vp);
 
 fr_pair_t	*fr_pair_list_parent(fr_pair_list_t const *list);
+
+fr_pair_t	*fr_pair_list_iter_leaf(fr_pair_list_t *list, fr_pair_t *vp);
 
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
  *

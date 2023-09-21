@@ -354,7 +354,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 	}
 
 	/* Write each attribute/value to the log file */
-	fr_pair_list_foreach(list, vp) {
+	fr_pair_list_foreach_leaf(list, vp) {
 		if (inst->ht && fr_hash_table_find(inst->ht, vp->da)) continue;
 
 		/*

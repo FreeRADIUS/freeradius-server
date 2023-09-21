@@ -994,6 +994,61 @@ static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dlist_head_t *list, void *
 	return 1;
 }
 
+/** Iterates over the leaves of a list
+ *
+ * @param[in] list	to iterate over.
+ * @param[in] vp	the current CVP
+ * @return
+ *	- NULL when done
+ *	- vp - a leaf pair
+ */
+fr_pair_t *fr_pair_list_iter_leaf(fr_pair_list_t *list, fr_pair_t *vp)
+{
+	fr_pair_t *next, *parent;
+	fr_pair_list_t *parent_list;
+
+	/*
+	 *	Start: return the head of the top-level list.
+	 */
+	if (!vp) {
+		vp = fr_pair_list_head(list);
+
+	next_sibling:
+		if (fr_type_is_leaf(vp->vp_type)) return vp;
+
+		vp = fr_pair_list_iter_leaf(&vp->vp_group, NULL);
+		if (vp) return vp;
+
+		/*
+		 *	vp is NULL, so we've processed all of its children.
+		 */
+	}
+
+	/*
+	 *	Go to the next sibling in the parent list of vp.
+	 */
+redo:
+	parent_list = fr_pair_parent_list(vp);
+	next = fr_pair_list_next(parent_list, vp);
+	if (!next) {
+		/*
+		 *	We're done the top-level list.
+		 */
+		if (parent_list == list) return NULL;
+
+		parent = fr_pair_parent(vp);
+		fr_assert(&parent->vp_group == parent_list);
+		vp = parent;
+		goto redo;
+	}
+
+	/*
+	 *	We do have a "next" attribute. Go check if we can return it.
+	 */
+	vp = next;
+	goto next_sibling;
+}
+
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
  *
  * Filters can be applied later with fr_dcursor_filter_set.
