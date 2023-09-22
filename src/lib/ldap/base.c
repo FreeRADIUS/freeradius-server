@@ -572,11 +572,49 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 	return LDAP_PROC_SUCCESS;
 }
 
+static void ldap_trunk_search_results_debug(request_t *request, fr_ldap_query_t *query)
+{
+	LDAP			*ld = query->ldap_conn->handle;
+	LDAPMessage		*message;
+	char const * const 	*attr;
+	char			*dn;
+	struct berval		**values;
+	int			count;
+
+	count = ldap_count_entries(ld, query->result);
+	RDEBUG3("LDAP query returned %d entr%s", count, count > 1 ? "y" : "ies");
+	message = ldap_first_entry(ld, query->result);
+	RINDENT();
+	while (message) {
+		dn = ldap_get_dn(ld, message);
+		RDEBUG3("Entry DN %s", dn);
+		ldap_memfree(dn);
+		attr = query->search.attrs;
+		if (!attr) goto next;
+		RINDENT();
+		while(*attr) {
+			values = ldap_get_values_len(ld, message, *attr);
+			if (!values) {
+				RDEBUG3("Attribute \"%s\" not found", *attr);
+			} else {
+				count = ldap_count_values_len(values);
+				RDEBUG3("Attribute \"%s\" found %d time%s", *attr, count, count > 1 ? "s" : "");
+			}
+			ldap_value_free_len(values);
+			attr++;
+		}
+		REXDENT();
+	next:
+		message = ldap_next_entry(query->ldap_conn->handle, message);
+	}
+	REXDENT();
+}
+
 /** Handle the return code from parsed LDAP results to set the module rcode
  *
  */
 static unlang_action_t ldap_trunk_query_results(rlm_rcode_t *p_result, UNUSED int *priority,
-						UNUSED request_t *request, void *uctx)
+						request_t *request, void *uctx)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
 
@@ -586,6 +624,7 @@ static unlang_action_t ldap_trunk_query_results(rlm_rcode_t *p_result, UNUSED in
 		return UNLANG_ACTION_YIELD;
 
 	case LDAP_RESULT_SUCCESS:
+		if (DEBUG_ENABLED3 && query->type == LDAP_REQUEST_SEARCH) ldap_trunk_search_results_debug(request, query);
 		RETURN_MODULE_OK;
 
 	case LDAP_RESULT_BAD_DN:
