@@ -619,7 +619,10 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	XLAT_ARGS(in, &uri_components);
 
-	if (fr_uri_escape(&uri_components->vb_group, ldap_uri_parts, NULL) < 0) return XLAT_ACTION_FAIL;
+	if (fr_uri_escape(&uri_components->vb_group, ldap_uri_parts, NULL) < 0){
+		RPERROR("Failed to escape LDAP URI");
+		return XLAT_ACTION_FAIL;
+	}
 
 	/*
 	 *	Smush everything into the first URI box
@@ -972,7 +975,10 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 
 	XLAT_ARGS(in, &uri_components);
 
-	if (fr_uri_escape(&uri_components->vb_group, ldap_uri_parts, NULL) < 0) return XLAT_ACTION_FAIL;
+	if (fr_uri_escape(&uri_components->vb_group, ldap_uri_parts, NULL) < 0) {
+		RPERROR("Failed to escape LDAP URI");
+		return XLAT_ACTION_FAIL;
+	}
 
 	/*
 	 *	Smush everything into the first URI box
@@ -1212,7 +1218,10 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	ldap_map_ctx_t		*map_ctx;
 	char			*host_url, *host = NULL;
 
-	if (fr_uri_escape(url, ldap_uri_parts, NULL) < 0) RETURN_MODULE_FAIL;
+	if (fr_uri_escape(url, ldap_uri_parts, NULL) < 0) {
+		RPERROR("Failed to escape LDAP URI");
+		RETURN_MODULE_FAIL;
+	}
 
 	url_head = fr_value_box_list_head(url);
 	if (!url_head) {
