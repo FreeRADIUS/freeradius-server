@@ -2,11 +2,11 @@ if (!%(ldap.profile:ldap:///cn=profile2,ou=profiles,dc=example,dc=com)) {
 	test_fail
 }
 
-if (!((&reply.Framed-IP-Netmask == 255.255.0.0) && \
-      (&reply.Acct-Interim-Interval == 1800) && \
+if (!((&reply.Framed-IP-Netmask == 255.255.128.0) && \
+      (&reply.Acct-Interim-Interval == 3600) && \
       (&request.Service-Type == ::Framed-User) && \
-      (&control.Framed-IP-Address == 1.2.3.4) && \
-      (&control.Reply-Message == 'Hello world'))) {
+      (&control.Framed-IP-Address == 1.2.3.5) && \
+      (&control.Reply-Message == 'Bonjour'))) {
 	test_fail
 }
 

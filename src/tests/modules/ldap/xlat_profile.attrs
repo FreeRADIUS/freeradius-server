@@ -10,6 +10,6 @@ NAS-IP-Address = 1.2.3.5
 #  Expected answer
 #
 Packet-Type == Access-Accept
-Framed-IP-Netmask == 255.255.0.0
-Acct-Interim-Interval == 1800
+Framed-IP-Netmask == 255.255.128.0
+Acct-Interim-Interval == 3600
 Reply-Message == "User-Suspended"
