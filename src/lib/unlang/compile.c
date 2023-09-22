@@ -1173,7 +1173,10 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 
 		pair_op:
 			fr_assert(*attr != '&');
-			snprintf(value_buffer, sizeof(value_buffer), "%s.%s", list, attr);
+			if (snprintf(value_buffer, sizeof(value_buffer), "%s.%s", list, attr) < 0) {
+				cf_log_err(cp, "RHS of update too long to convert to edit automatically");
+				return NULL;
+			}
 
 			rcode = edit_pair_alloc(group, cp, value_buffer, op, value, T_INVALID);
 			break;
