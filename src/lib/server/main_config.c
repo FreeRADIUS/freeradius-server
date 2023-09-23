@@ -421,32 +421,10 @@ static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	return 0;
 }
 
-static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
+static inline CC_HINT(always_inline)
+uint32_t num_workers_auto(main_config_t *conf, CONF_ITEM *parent)
 {
-	int		ret;
 	uint32_t	value;
-
-	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
-
-	memcpy(&value, out, sizeof(value));
-
-	/*
-	 *	If no value is specified, try and
-	 *	discover it automatically.
-	 */
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, >=, 1);
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, <=, 128);
-
-	memcpy(out, &value, sizeof(value));
-
-	return 0;
-}
-
-static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
-{
-	char		*strvalue;
-	uint32_t	value;
-	main_config_t	*conf = parent;
 
 	value = fr_hw_num_cores_active();
 	if (value == 0) {
@@ -468,6 +446,41 @@ static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_
 	else if (value > (conf->max_networks * 4)) {
 		value -= conf->max_networks;
 	}
+
+	return value;
+}
+
+static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int		ret;
+	uint32_t	value;
+	main_config_t	*conf = parent;
+
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	if (value == 0) value = num_workers_auto(conf, ci);
+
+	/*
+	 *	If no value is specified, try and
+	 *	discover it automatically.
+	 */
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, >=, 1);
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, <=, 128);
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+{
+	char		*strvalue;
+	uint32_t	value;
+	main_config_t	*conf = parent;
+
+	value = num_workers_auto(conf, cf_section_to_item(cs));
 	strvalue = talloc_asprintf(NULL, "%u", value);
 	*out = cf_pair_alloc(cs, rule->name, strvalue, T_OP_EQ, T_BARE_WORD, quote);
 	talloc_free(strvalue);
