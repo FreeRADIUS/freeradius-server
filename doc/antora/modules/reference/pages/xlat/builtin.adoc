@@ -398,7 +398,7 @@ Used to join two or more attributes, separated by an optional delimiter.
 	&Tmp-String-0 = "c"
 }
 
-reply += {
+&reply += {
     &Reply-Message = "%(concat:%{control.Tmp-String-0[*]} ', ')"
     &Reply-Message = "%(concat:%{control.Tmp-String-0[*]} ,)"
 }
@@ -488,14 +488,9 @@ Serialize attributes as comma-delimited string.
 
 [source,unlang]
 ----
-update {
-    &control.Tmp-String-0 := "This is a string"
-    &control.Tmp-String-0 += "This is another one"
-}
-
-update reply {
-    &Reply-Message := "Serialize output: %(pairs:&control.[*])"
-}
+&control.Tmp-String-0 := "This is a string"
+&control.Tmp-String-0 += "This is another one"
+&reply.Reply-Message := "Serialize output: %(pairs:&control.[*])"
 ----
 
 .Output
@@ -514,9 +509,7 @@ Get random string built from character classes.
 
 [source,unlang]
 ----
-update reply {
-    &Reply-Message := "The random string output is %{randstr:aaaaaaaa}"
-}
+&reply.Reply-Message := "The random string output is %{randstr:aaaaaaaa}"
 ----
 
 .Output
@@ -535,12 +528,8 @@ Length of given string.
 
 [source,unlang]
 ----
-update control {
-    &Tmp-String-0 := "Caipirinha"
-}
-update reply {
-    &Reply-Message := "The length of %{control.Tmp-String-0} is %{strlen:&control.Tmp-String-0}"
-}
+&control.Tmp-String-0 := "Caipirinha"
+&reply.Reply-Message := "The length of %{control.Tmp-String-0} is %{strlen:&control.Tmp-String-0}"
 ----
 
 .Output
@@ -560,12 +549,8 @@ it. This definition is only available in version 2.1.10 and later.
 
 [source,unlang]
 ----
-update control {
-    &Tmp-String-0 := "CAIPIRINHA"
-}
-update reply {
-    &Reply-Message := "tolower of %{control.Tmp-String-0} is %{tolower:%{control.Tmp-String-0}}"
-}
+&control.Tmp-String-0 := "CAIPIRINHA"
+&reply.Reply-Message := "tolower of %{control.Tmp-String-0} is %{tolower:%{control.Tmp-String-0}}"
 ----
 
 .Output
@@ -585,12 +570,8 @@ it. This definition is only available in version 2.1.10 and later.
 
 [source,unlang]
 ----
-update control {
-    &Tmp-String-0 := "caipirinha"
-}
-update reply {
-    &Reply-Message := "toupper of %{control.Tmp-String-0} is %{toupper:%{control.Tmp-String-0}}"
-}
+&control.Tmp-String-0 := "caipirinha"
+&reply.Reply-Message := "toupper of %{control.Tmp-String-0} is %{toupper:%{control.Tmp-String-0}}"
 ----
 
 .Output
@@ -611,12 +592,8 @@ Encode a string using Base64.
 
 [source,unlang]
 ----
-update control {
-    &Tmp-String-0 := "Caipirinha"
-}
-update reply {
-    &Reply-Message := "The base64 of %{control.Tmp-String-0} is %(base64.encode:%{control.Tmp-String-0})"
-}
+&control.Tmp-String-0 := "Caipirinha"
+&reply.Reply-Message := "The base64 of %{control.Tmp-String-0} is %(base64.encode:%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -635,12 +612,8 @@ Decode a string previously encoded using Base64.
 
 [source,unlang]
 ----
-update control {
-    &Tmp-String-0 := "Q2FpcGlyaW5oYQ=="
-}
-update reply {
-    &Reply-Message := "The base64.decode of %{control.Tmp-String-0} is %(base64.decode:%{control.Tmp-String-0})"
-}
+&control.Tmp-String-0 := "Q2FpcGlyaW5oYQ=="
+&reply.Reply-Message := "The base64.decode of %{control.Tmp-String-0} is %(base64.decode:%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -659,12 +632,8 @@ Convert string to binary.
 
 [source,unlang]
 ----
-update control {
-    &Tmp-String-0 := "10"
-}
-update reply {
-    &Reply-Message := "The %{control.Tmp-String-0} in binary is %{bin:%{control.Tmp-String-0}}"
-}
+&control.Tmp-String-0 := "10"
+&reply.Reply-Message := "The %{control.Tmp-String-0} in binary is %{bin:%{control.Tmp-String-0}}"
 ----
 
 .Output
@@ -683,12 +652,8 @@ Convert to hex.
 
 [source,unlang]
 ----
-update control {
-    &Tmp-String-0 := "12345"
-}
-update reply {
-    &Reply-Message := "The value of %{control.Tmp-String-0} in hex is %{hex:%{control.Tmp-String-0}}"
-}
+&control.Tmp-String-0 := "12345"
+&reply.Reply-Message := "The value of %{control.Tmp-String-0} in hex is %{hex:%{control.Tmp-String-0}}"
 ----
 
 .Output
@@ -707,12 +672,8 @@ Quote URL special characters.
 
 [source,unlang]
 ----
-update {
-    &control.Tmp-String-0 := "http://example.org/"
-}
-update reply {
-    &Reply-Message += "The urlquote of %{control.Tmp-String-0} is %{urlquote:%{control.Tmp-String-0}}"
-}
+&control.Tmp-String-0 := "http://example.org/"
+&reply.Reply-Message += "The urlquote of %{control.Tmp-String-0} is %{urlquote:%{control.Tmp-String-0}}"
 ----
 
 .Output
@@ -731,12 +692,8 @@ Unquote URL special characters.
 
 [source,unlang]
 ----
-update {
-    &control.Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
-}
-update reply {
-    &Reply-Message += "The urlunquote of %{control.Tmp-String-0} is %{urlunquote:%{control.Tmp-String-0}}"
-}
+&control.Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
+&reply.Reply-Message += "The urlunquote of %{control.Tmp-String-0} is %{urlunquote:%{control.Tmp-String-0}}"
 ----
 
 .Output
@@ -757,17 +714,13 @@ Generate `HMAC-MD5` of string.
 
 [source,unlang]
 ----
-update {
-    &control.Tmp-String-0 := "mykey"
-    &control.Tmp-String-1 := "Caipirinha"
-}
-update {
-    &control.Tmp-Octets-0 := "%(hmacmd5:%{control.Tmp-String-0} %{control.Tmp-String-1})"
-}
+&control.Tmp-String-0 := "mykey"
+&control.Tmp-String-1 := "Caipirinha"
+&reply.control.Tmp-Octets-0 := "%(hmacmd5:%{control.Tmp-String-0} %{control.Tmp-String-1})"
 
-update reply {
-    &Reply-Message := "The HMAC-MD5 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
-    &Reply-Message += "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %{hex:control.Tmp-Octets-0}"
+&reply += {
+    &Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
+    &Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %{hex:control.Tmp-Octets-0}"
 }
 ----
 
@@ -788,17 +741,13 @@ Generate `HMAC-SHA1` of string.
 
 [source,unlang]
 ----
-update {
-    &control.Tmp-String-0 := "mykey"
-    &control.Tmp-String-1 := "Caipirinha"
-}
-update {
-    &control.Tmp-Octets-0 := "%(hmacsha1:%{control.Tmp-String-0} %{control.Tmp-String-1})"
-}
+&control.Tmp-String-0 := "mykey"
+&control.Tmp-String-1 := "Caipirinha"
+&control.Tmp-Octets-0 := "%(hmacsha1:%{control.Tmp-String-0} %{control.Tmp-String-1})"
 
-update reply {
-    &Reply-Message := "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
-    &Reply-Message += "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %{hex:control.Tmp-Octets-0}"
+&reply += {
+    &Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
+    &Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %{hex:control.Tmp-Octets-0}"
 }
 ----
 
@@ -820,12 +769,10 @@ result is binary data.
 
 [source,unlang]
 ----
-update control {
-    &Tmp-String-0 := "Caipirinha"
-}
-update reply {
-    &Reply-Message := "md5 of %{control.Tmp-String-0} is octal=%{md5:%{control.Tmp-String-0}}"
-    &Reply-Message := "md5 of %{control.Tmp-String-0} is hex=%{hex:%{md5:%{control.Tmp-String-0}}}"
+&control.Tmp-String-0 := "Caipirinha"
+&reply += {
+    &Reply-Message = "md5 of %{control.Tmp-String-0} is octal=%{md5:%{control.Tmp-String-0}}"
+    &Reply-Message = "md5 of %{control.Tmp-String-0} is hex=%{hex:%{md5:%{control.Tmp-String-0}}}"
 }
 ----
 
@@ -870,12 +817,10 @@ families of digest functions.
 
 [source,unlang]
 ----
-update {
-    &control.Tmp-String-0 := "Caipirinha"
-}
-update reply {
-    &Reply-Message := "The md5 of %{control.Tmp-String-0} in octal is %{md5:%{control.Tmp-String-0}}"
-    &Reply-Message += "The md5 of %{control.Tmp-String-0} in hex is %{hex:%{md5:%{control.Tmp-String-0}}}"
+&control.Tmp-String-0 := "Caipirinha"
+&reply += {
+    &Reply-Message = "The md5 of %{control.Tmp-String-0} in octal is %{md5:%{control.Tmp-String-0}}"
+    &Reply-Message = "The md5 of %{control.Tmp-String-0} in hex is %{hex:%{md5:%{control.Tmp-String-0}}}"
 }
 ----
 
@@ -936,19 +881,12 @@ Evaluates the string as an expansion, and returns the result.  The main differen
 [source,unlang]
 ----
 if (&User-Name == "bob") {
-    update request {
-        &Tmp-String-0 := "&User-Name"
-   }
+    &request.Tmp-String-0 := "&User-Name"
 } else {
-    update request {
-        &Tmp-String-0 := "not bob!"
-   }
+    &request.Tmp-String-0 := "not bob!"
 }
 
-update reply {
-    &Reply-Message := "%{eval:&Tmp-String-0}"
-}
-
+&reply.Reply-Message := "%{eval:&request.Tmp-String-0}"
 ----
 
 .Output when `&User-Name == bob`
@@ -980,11 +918,7 @@ You probably don't want to use this.  In v4, the main use of `%{expr:...}` is in
 
 [source,unlang]
 ----
-update reply
-        &Tmp-String-0 := "%{expr: 1 + 2}"
-   }
-}
-
+&reply.Tmp-String-0 := "%{expr:1 + 2}"
 ----
 
 .Output
@@ -1014,9 +948,7 @@ With the current time at 16:18, `%(nexttime:1h)` will expand to `2520`.
 
 [source,unlang]
 ----
-update reply {
-    &Reply-Message := "You should wait for %(nexttime:1h)s"
-}
+&reply.Reply-Message := "You should wait for %(nexttime:1h)s"
 ----
 
 .Output
@@ -1040,9 +972,7 @@ See also the `unpack` module, which is the inverse to `pack`.
 
 [source,unlang]
 ----
-update reply {
-    &Class := "%{pack:%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
-}
+&reply.Class := "%{pack:%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
 ----
 
 .Output
@@ -1080,14 +1010,10 @@ The source/destination ports associated with the packet.
 
 [source,unlang]
 ----
-update control {
-    &Tmp-String-0 := "user@example.com"
-}
+&control.Tmp-String-0 := "user@example.com"
 
 if (&control.Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
-    update reply {
-        &Reply-Message := "The %{control.Tmp-String-0} { login=%{regex:login}, domain=%{regex:domain} }"
-    }
+    &reply.Reply-Message := "The %{control.Tmp-String-0} { login=%{regex:login}, domain=%{regex:domain} }"
 }
 ----
 
@@ -1107,12 +1033,8 @@ Substitute text just as easily as it can match it, even using regex patterns.
 
 [source,unlang]
 ----
-update control {
-    &Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
-}
-update reply {
-    &Reply-Message := "%(sub:%{control.Tmp-String-0} / / ,)"
-}
+&control.Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
+&reply.Reply-Message := "%(sub:%{control.Tmp-String-0} / / ,)"
 ----
 
 .Output

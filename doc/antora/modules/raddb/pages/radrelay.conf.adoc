@@ -296,9 +296,7 @@ server radrelay {
 		load_factor = 90
 	}
 	recv Accounting-Request {
-		update control {
-			Proxy-To-Realm := "radrelay"
-		}
+		&control.Proxy-To-Realm := "radrelay"
 	}
 }
 ```

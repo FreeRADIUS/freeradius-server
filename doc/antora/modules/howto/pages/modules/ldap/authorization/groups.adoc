@@ -144,9 +144,7 @@ appropriately.
 [source,unlang]
 ----
 if (%(ldap.memberof:cn=foo,ou=groups,dc=example,dc=com) == true) {
-	update reply {
-		&Reply-Message := "Welcome member of group 'foo'"
-	}
+	&reply.Reply-Message := "Welcome member of group 'foo'"
 }
 ----
 
@@ -155,9 +153,7 @@ if (%(ldap.memberof:cn=foo,ou=groups,dc=example,dc=com) == true) {
 [source,unlang]
 ----
 if (%(ldap.memberof:foo) == true) {
-	update reply {
-		&Reply-Message := "Welcome member of group 'foo'"
-	}
+	&reply.Reply-Message := "Welcome member of group 'foo'"
 }
 ----
 

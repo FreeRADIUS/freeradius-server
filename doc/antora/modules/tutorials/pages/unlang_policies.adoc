@@ -22,9 +22,7 @@ braces containing the body of the policy
 ------------------------------------------------
 a_policy {
 	if (&User-Name =~ /@([\w.+])/) {
-		update reply {
-			Reply-Message := "Hello remote %{User-Name}"
-		}
+		&reply.Reply-Message := "Hello remote %{User-Name}"
 	}
 }
 ------------------------------------------------

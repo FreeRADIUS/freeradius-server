@@ -698,12 +698,8 @@ Escape a string for use in an LDAP filter or DN.
 
 [source,unlang]
 ----
-update control {
-    &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
-}
-update reply {
-    &Reply-Message := "The LDAP url is %{ldap_escape:%{control.Tmp-String-0}}"
-}
+&control.Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+&reply.Reply-Message := "The LDAP url is %{ldap_escape:%{control.Tmp-String-0}}"
 ----
 
 .Output
@@ -722,12 +718,8 @@ Unescape a string for use in an LDAP filter or DN.
 
 [source,unlang]
 ----
-update control {
-    &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
-}
-update reply {
-    &Reply-Message := "The LDAP url is %{ldap_unescape:%{control.Tmp-String-0}}"
-}
+&control.Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
+&reply.Reply-Message := "The LDAP url is %{ldap_unescape:%{control.Tmp-String-0}}"
 ----
 
 .Output
