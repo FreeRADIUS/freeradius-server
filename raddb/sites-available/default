@@ -1133,9 +1133,11 @@ send Access-Accept {
 	#  with the correct ones taken from the cryptographic
 	#  calculations, e.g.
 	#
-#	update reply {
-#		&Vendor-Specific.WiMAX.FA-RK-Key = 0x00
-#		&Vendor-Specific.WiMAX.MSK = "%{reply.EAP-MSK}"
+#	&reply += {
+#		&Vendor-Specific.WiMAX = {
+#			&FA-RK-Key = 0x00
+#			&MSK = &reply.EAP-MSK
+#		}
 #	}
 
 	#  You may want to delete the `MS-MPPE-*-Keys` from the

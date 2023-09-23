@@ -15,12 +15,10 @@ Unlang syntax for an attribute called `Grouped-Foo`
 
 [source,unlang]
 ----
-update request {
-    Grouped-Foo {
-        User-Name = bar
-        Foo = baz
-        ...
-    }
+&request.Grouped-Foo := {
+    User-Name = bar
+    Foo = baz
+    ...
 }
 ----
 

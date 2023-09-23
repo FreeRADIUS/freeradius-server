@@ -149,9 +149,7 @@ You have two options avaliable to you here (`Ctrl-C` the running FreeRADIUS serv
 ----
 -ldap
 if ((ok || updated) && &User-Password) {
-    update {
-        &control.Auth-Type := ldap
-    }
+  &control.Auth-Type := ldap
 }
 ----
  ** FreeRADIUS is now configured to attempt to LDAP bind if the `ldap` module finds a user and the RADIUS request contains a `User-Password` RADIUS attribute
@@ -170,9 +168,7 @@ If you use LDAP bind'ing to perform user authentication, then when `radclient` r
 (0)    ldap - Released connection (0)
 (0)    ldap (ok)
 (0)    if ((ok || updated) && &User-Password) {
-(0)      update {
-(0)        &control.Auth-Type := ldap
-(0)      } # update (noop)
+(0)      &control.Auth-Type := ldap
 (0)    } # if ((ok || updated) && &User-Password) (noop)
 (0)    expiration (noop)
 (0)    pap - WARNING: No "known good" password found for the user.  Not setting Auth-Type

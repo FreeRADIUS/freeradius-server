@@ -1389,9 +1389,11 @@ send Access-Accept {
 #	sql_log
 #	ldap
 #	&request.WiMAX-MN-NAI = "%{User-Name}"
-#	update reply {
-#		&Vendor-Specific.WiMAX.FA-RK-Key = 0x00
-#		&Vendor-Specific.WiMAX.MSK = "%{reply.EAP-MSK}"
+#	&reply += {
+#		&Vendor-Specific.WiMAX = {
+#			&FA-RK-Key = 0x00
+#			&MSK = &reply.EAP-MSK
+#		}
 #	}
 #	wimax
 #	&reply += {

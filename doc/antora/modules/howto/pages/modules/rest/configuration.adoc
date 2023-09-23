@@ -109,9 +109,7 @@ server default {
 	...
 	recv Access-Request {
 		if (&User-Password) {
-			update control {
-				&Auth-Type := rest
-			}
+			&control.Auth-Type := rest
 		}
 	}
 

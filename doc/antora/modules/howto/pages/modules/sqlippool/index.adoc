@@ -272,9 +272,9 @@ send Access-Accept {
                         noop = return
                 }
                 # On failure for any reason, reject
-                update {
-                        &reply.Reply-Message += Module-Failure-Message
-                }
+                &reply += {
+			Reply-Message = Module-Failure-Message
+		}
                 reject
         }
 ...
@@ -520,10 +520,7 @@ echo "INSERT INTO radcheck (username,attribute,op,value)   \
 ----
 send Access-Accept {
 ...
-        update control {
-                &IP-Pool.Name := 'internet'
-        }
-
+        &control.IP-Pool.Name := 'internet'
         sqlippool
 ...
 }
