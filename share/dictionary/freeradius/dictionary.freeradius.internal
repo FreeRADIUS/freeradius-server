@@ -50,6 +50,7 @@ ATTRIBUTE	request					2	group
 ATTRIBUTE	reply					3	group
 ATTRIBUTE	control					4	group
 ATTRIBUTE	session-State				5	group
+ATTRIBUTE	local-variables				6	group
 
 #
 #	Range:	11 - 19

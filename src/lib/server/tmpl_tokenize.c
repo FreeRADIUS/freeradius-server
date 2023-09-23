@@ -401,8 +401,9 @@ fr_slen_t tmpl_attr_list_from_substr(fr_dict_attr_t const **da_p, fr_sbuff_t *in
 	     (da = request_attr_reply)) ||
 	    ((fr_sbuff_adv_past_strcase(&our_in, request_attr_control->name, request_attr_control->name_len)) &&
 	     (da = request_attr_control)) ||
-	    ((fr_sbuff_adv_past_strcase(&our_in, request_attr_state->name, request_attr_state->name_len)) &&
+	    ((fr_sbuff_adv_past_strcase(&our_in, request_attr_state->name, request_attr_state->name_len)) &&	     
 	     (da = request_attr_state))) {
+		/* note: no local variables */
 		*da_p = da;
 		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
@@ -2128,14 +2129,33 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 
 	/*
 	 *	Local variables cannot be given an explicit parent or list modifier.
-	 *
-	 *	@todo - maybe allow parent references for local variables?  But that's just weird.
 	 */
-	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt) && tmpl_attr_tail_da(vpt)->flags.local && (tmpl_attr_list_num_elements(tmpl_attr(vpt)) > 1)) {
-		fr_strerror_printf("Local attributes cannot be used in any list");
-		if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
-		fr_sbuff_set(&our_name, &m_l);
-		goto error;
+	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt) && tmpl_attr_tail_da(vpt)->flags.local) {
+		tmpl_attr_t *ar;
+
+		if (tmpl_attr_list_num_elements(tmpl_attr(vpt)) > 1) {
+			fr_strerror_printf("Local attributes cannot be used in any list");
+			if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
+			fr_sbuff_set(&our_name, &m_l);
+			goto error;
+		}
+
+		/*
+		 *	That being said, local variables are named "foo", but are always put into the local list.
+		 */
+		MEM(ar = talloc(vpt, tmpl_attr_t));
+		*ar = (tmpl_attr_t){
+			.ar_type = TMPL_ATTR_TYPE_NORMAL,
+			.ar_da = request_attr_local,
+			.ar_parent = fr_dict_root(fr_dict_internal())
+		};
+
+
+		/*
+		 *	Prepend the local list ref so it gets evaluated
+		 *	first.
+		 */
+		tmpl_attr_list_insert_head(tmpl_attr(vpt), ar);
 	}
 
 	/*

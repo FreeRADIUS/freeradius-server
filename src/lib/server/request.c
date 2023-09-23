@@ -42,6 +42,7 @@ fr_dict_attr_t const *request_attr_request;
 fr_dict_attr_t const *request_attr_reply;
 fr_dict_attr_t const *request_attr_control;
 fr_dict_attr_t const *request_attr_state;
+fr_dict_attr_t const *request_attr_local;
 
 extern fr_dict_attr_autoload_t request_dict_attr[];
 fr_dict_attr_autoload_t request_dict_attr[] = {
@@ -50,6 +51,7 @@ fr_dict_attr_autoload_t request_dict_attr[] = {
 	{ .out = &request_attr_reply, .name = "reply", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
 	{ .out = &request_attr_control, .name = "control", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
 	{ .out = &request_attr_state, .name = "session-state", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
+	{ .out = &request_attr_local, .name = "local-variables", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
 	{ NULL }
 };
 
@@ -247,6 +249,7 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 		if (!request->pair_list.request) list_init(request->pair_root, request);
 		if (!request->pair_list.reply) list_init(request->pair_root, reply);
 		if (!request->pair_list.control) list_init(request->pair_root, control);
+		if (!request->pair_list.local) list_init(request->pair_root, local);
 		if (!request->pair_list.state) {
 			list_init(NULL, state);
 #ifndef NDEBUG
@@ -728,6 +731,7 @@ void request_verify(char const *file, int line, request_t const *request)
 #endif
 
 	fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs);
+	fr_pair_list_verify(file, line, request->local_ctx, &request->local_pairs);
 
 	if (request->packet) {
 		packet_verify(file, line, request, request->packet, &request->request_pairs, "request");

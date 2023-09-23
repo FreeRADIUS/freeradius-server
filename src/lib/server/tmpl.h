@@ -670,7 +670,8 @@ static inline bool tmpl_attr_is_list_attr(tmpl_attr_t const *ar)
 	return (ar->ar_da == request_attr_request) ||
 	       (ar->ar_da == request_attr_reply) ||
 	       (ar->ar_da == request_attr_control) ||
-	       (ar->ar_da == request_attr_state);
+	       (ar->ar_da == request_attr_state) ||
+	       (ar->ar_da == request_attr_local);
 }
 
 /** Return true if the head attribute reference is a list reference

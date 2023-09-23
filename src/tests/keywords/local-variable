@@ -1,25 +1,39 @@
 &Filter-Id := 2
 
-if !(&request.[#] == 4) {
+if !(&request.[#] == 5) {
+	debug_request
 	test_fail
 }
 
 group {
 	uint32 foo
 
+	#
+	#  We declared it, but it does *not* exist until we assign
+	#  a value to it.
+	#
+	if &foo {
+		test_fail
+	}
+
 	&foo := 1
 
 	&Filter-Id := &foo
 
+	if !(&Filter-Id == &foo) {
+		test_fail
+	}
+
 	#
-	#  For now, local variables are in the request.
+	#  Local variables are *not* in the request.
 	#
-	if !(&request.[#] == 6) {
+	if !(&request.[#] == 5) {
 		test_fail
 	}
 } # leaving this scope automatically deletes &foo
 
 if !(&request.[#] == 5) {
+	debug_request
 	test_fail
 }
 

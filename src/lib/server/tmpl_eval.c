@@ -87,6 +87,8 @@ fr_pair_list_t *tmpl_list_head(request_t *request, fr_dict_attr_t const *list)
 
 	if (list == request_attr_state) return &request->session_state_pairs;
 
+	if (list == request_attr_local) return &request->local_pairs;
+
 	RWDEBUG2("List \"%s\" is not available", tmpl_list_name(list, "<INVALID>"));
 
 	return NULL;
@@ -118,6 +120,8 @@ TALLOC_CTX *tmpl_list_ctx(request_t *request, fr_dict_attr_t const *list)
 	if (list == request_attr_control) return request->control_ctx;
 
 	if (list == request_attr_state) return request->session_state_ctx;
+
+	if (list == request_attr_local) return request->local_ctx;
 
 	return NULL;
 }

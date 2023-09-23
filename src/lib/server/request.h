@@ -80,6 +80,7 @@ extern fr_dict_attr_t const *request_attr_request;
 extern fr_dict_attr_t const *request_attr_reply;
 extern fr_dict_attr_t const *request_attr_control;
 extern fr_dict_attr_t const *request_attr_state;
+extern fr_dict_attr_t const *request_attr_local;
 
 /** Convenience macro for accessing the request list
  *
@@ -125,6 +126,17 @@ extern fr_dict_attr_t const *request_attr_state;
  */
 #define session_state_ctx	pair_list.state
 
+/** Convenience macro for accessing the state list
+ *
+ * This should be used in the form `&request->local_pairs`
+ * to get a pointer to the head of the local list.
+ */
+#define local_pairs	pair_list.local->children
+
+/** Talloc ctx for allocating local variagbles
+ */
+#define local_ctx	pair_list.local
+
 /** Pair lists accessible from the request
  *
  */
@@ -133,6 +145,7 @@ typedef struct {
 	fr_pair_t		*reply;		//!< Pair containing the reply list.
 	fr_pair_t		*control;	//!< Pair containing the control list.
 	fr_pair_t		*state;		//!< Pair containing the state list.
+	fr_pair_t		*local;		//!< Pair containing local variables
 } request_pair_lists_t;
 
 typedef enum {

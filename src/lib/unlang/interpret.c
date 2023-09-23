@@ -217,10 +217,12 @@ typedef struct {
 
 static int _local_variables_free(unlang_variable_ref_t *ref)
 {
-	fr_pair_list_foreach(&ref->request->request_pairs, vp) {
-		if (vp->da->dict == ref->dict) {
-			(void) fr_pair_delete(&ref->request->request_pairs, vp);
-		}
+	fr_pair_t *vp;
+
+	while ((vp = fr_pair_list_tail(&ref->request->local_pairs)) != NULL) {
+		if (vp->da->dict != ref->dict) break;
+
+		(void) fr_pair_delete(&ref->request->local_pairs, vp);
 	}
 
 	return 0;
@@ -266,6 +268,11 @@ unlang_action_t unlang_interpret_push_children(rlm_rcode_t *p_result, request_t 
 
 	if (!g->variables) return UNLANG_ACTION_PUSHED_CHILD;
 
+	/*
+	 *	Note that we do NOT create the variables, This way we don't have to worry about any
+	 *	uninitialized values.  If the admin tries to use the variable without initializing it, they
+	 *	will get a "no such attribute" error.
+	 */
 	if (!frame->state) {
 		MEM(ref = talloc(stack, unlang_variable_ref_t));
 		frame->state = ref;
