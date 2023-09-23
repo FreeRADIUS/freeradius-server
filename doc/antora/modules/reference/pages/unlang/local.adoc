@@ -54,7 +54,7 @@ if (&User-Name == "bob") {
     # declare "len" as ALLOWED to be used
     uint32 len
 
-    # this test ALWAYS fails
+    # this test ALWAYS fails, as "len" has not been assigned a value
     if (&len) {
        ...
     }
@@ -65,6 +65,8 @@ if (&User-Name == "bob") {
     &Reply-Message := "Length of %{User-Name} is %{len}"
 }
 ----
+
+The variable declaration and assignment must be sepaarted.  Constructions like `uint32 len = %(length:%{User-Name})` are not allowed.
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
