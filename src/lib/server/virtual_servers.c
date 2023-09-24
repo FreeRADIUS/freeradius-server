@@ -1115,7 +1115,7 @@ static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_di
 		    (cf_pair_attr_quote(cp) != T_BARE_WORD) ||
 		    (cf_pair_value_quote(cp) != T_BARE_WORD)) {
 			cf_log_err(ci, "Definition is not in 'type name' format");
-			return -1;
+			return NULL;
 		}
 
 		attr = cf_pair_attr(cp);
