@@ -1075,32 +1075,39 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 	return rcode;
 }
 
-static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_dict_t const *dict_def)
+static int define_local_variables(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_attr_t *parent, fr_dict_attr_t const *root)
 {
 	CONF_ITEM *ci = NULL;
-	CONF_SECTION *cs;
-	fr_dict_attr_t const *root;
-	fr_dict_t *dict = NULL;
 
-	root = fr_dict_root(dict_def);
-	fr_assert(root != NULL);
+	fr_dict_attr_flags_t flags = {
+		.internal = true,
+		.local = true,
+	};
 
-	cs = cf_section_find(server_cs, "dictionary", NULL);
-	if (!cs) return dict_def;
+	fr_assert(dict != NULL);
+	fr_assert(parent != NULL);
 
 	while ((ci = cf_item_next(cs, ci))) {
 		fr_type_t type;
 		char const *attr, *value;
 		CONF_PAIR *cp;
-
-		fr_dict_attr_flags_t flags = {
-			.internal = true,
-			.local = true,
-		};
+		CONF_SECTION *subcs = NULL;
 
 		if (cf_item_is_section(ci)) {
-			cf_log_err(ci, "Unexpected dictionary entry");
-			return NULL;
+			subcs = cf_item_to_section(ci);
+			fr_assert(subcs != NULL);
+
+			attr = cf_section_name1(subcs);
+			if (strcmp(attr, "tlv") != 0) goto invalid_type;
+
+			value = cf_section_name2(subcs);
+			if (!value) {
+				cf_log_err(ci, "Definition is not in 'tlv name { ... }' format");
+				return NULL;
+			}
+
+			type = FR_TYPE_TLV;
+			goto check_for_dup;
 		}
 
 		if (!cf_item_is_pair(ci)) continue;
@@ -1115,7 +1122,7 @@ static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_di
 		    (cf_pair_attr_quote(cp) != T_BARE_WORD) ||
 		    (cf_pair_value_quote(cp) != T_BARE_WORD)) {
 			cf_log_err(ci, "Definition is not in 'type name' format");
-			return NULL;
+			return -1;
 		}
 
 		attr = cf_pair_attr(cp);
@@ -1125,45 +1132,63 @@ static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_di
 		if (type == FR_TYPE_NULL) {
 		invalid_type:
 			cf_log_err(ci, "Invalid data type '%s'", attr);
-			return NULL;
+			return -1;
 		}
 
 		/*
-		 *	Leaf and group are OK.  TLV, Vendor, Struct, VSA, etc. are not.
+		 *	Leaf and group are OK.  TLV, Vendor, Struct, VSA, etc. are not as variable definitions.
 		 */
 		if (!(fr_type_is_leaf(type) || (type == FR_TYPE_GROUP))) goto invalid_type;
 
 		/*
 		 *	No duplicates are allowed.
 		 */
-		if (fr_dict_attr_by_name(NULL, root, value) != NULL) {
+	check_for_dup:
+		if (root && (fr_dict_attr_by_name(NULL, root, value) != NULL)) {
 			cf_log_err(ci, "Local variable '%s' duplicates a dictionary attribute.", value);
-			return NULL;
+			return -1;
 		}
 
-		if (dict) {
-			if (fr_dict_attr_by_name(NULL, fr_dict_root(dict), value) != NULL) {
-				cf_log_err(cp, "Local variable '%s' duplicates a previous local attribute.", value);
-				return NULL;
-			}
-		} else {
-			/*
-			 *	Allocate a new overlay dictionary.
-			 */
-			dict = fr_dict_protocol_alloc(dict_def);
-			if (!dict) {
-				cf_log_err(cs, "Failed allocating local dictionary");
-				return NULL;
-			}
+		if (fr_dict_attr_by_name(NULL, parent, value) != NULL) {
+			cf_log_err(cp, "Local variable '%s' duplicates a previous local attribute.", value);
+			return -1;
 		}
 
-		if (fr_dict_attr_add(dict, fr_dict_root(dict), value, -1, type, &flags) < 0) {
+		if (fr_dict_attr_add(dict, parent, value, -1, type, &flags) < 0) {
 			cf_log_err(cp, "Failed adding local variable '%s'", value);
-			return NULL;
+			return -1;
+		}
+
+		if (type == FR_TYPE_TLV) {
+			fr_dict_attr_t const *da;
+
+			if (!subcs) return -1; /* shouldn't happen, but shut up compiler */
+
+			da = fr_dict_attr_by_name(NULL, parent, value);
+			fr_assert(da != NULL);
+
+			if (define_local_variables(subcs, dict, UNCONST(fr_dict_attr_t *, da), NULL) < 0) return -1;
 		}
 	}
 
-	if (!dict) return dict_def;
+	return 0;
+}
+
+static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_dict_t const *dict_def)
+{
+	fr_dict_t *dict;
+	CONF_SECTION *cs;
+
+	cs = cf_section_find(server_cs, "dictionary", NULL);
+	if (!cs) return dict_def;
+
+	dict = fr_dict_protocol_alloc(dict_def);
+	if (!dict) {
+		cf_log_err(cs, "Failed allocating local dictionary");
+		return NULL;
+	}
+
+	if (define_local_variables(cs, dict, UNCONST(fr_dict_attr_t *, fr_dict_root(dict)), fr_dict_root(dict_def)) < 0) return NULL;
 
 	/*
 	 *	Replace the original dictionary with the new one.
