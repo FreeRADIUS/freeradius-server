@@ -1195,8 +1195,8 @@ int virtual_servers_open(fr_schedule_t *sc)
 		fr_virtual_listen_t	**listeners;
 		size_t			j, listener_cnt;
 
- 		listeners = virtual_servers[i]->listeners;
- 		listener_cnt = talloc_array_length(listeners);
+		listeners = virtual_servers[i]->listeners;
+		listener_cnt = talloc_array_length(listeners);
 
 		for (j = 0; j < listener_cnt; j++) {
 			fr_virtual_listen_t *listener = listeners[j];
