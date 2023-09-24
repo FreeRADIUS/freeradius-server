@@ -2128,12 +2128,16 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	if (tmpl_is_attr(vpt) && is_raw) tmpl_attr_to_raw(vpt);
 
 	/*
-	 *	Local variables cannot be given an explicit parent or list modifier.
+	 *	Local variables cannot be given a list modifier.
 	 */
 	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt) && tmpl_attr_tail_da(vpt)->flags.local) {
 		tmpl_attr_t *ar;
 
-		if (tmpl_attr_list_num_elements(tmpl_attr(vpt)) > 1) {
+		for (ar = tmpl_attr_list_head(tmpl_attr(vpt));
+		     ar != NULL;
+		     ar = tmpl_attr_list_next(tmpl_attr(vpt), ar)) {
+			if (ar->ar_da->flags.local) continue;
+
 			fr_strerror_printf("Local attributes cannot be used in any list");
 			if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
 			fr_sbuff_set(&our_name, &m_l);
