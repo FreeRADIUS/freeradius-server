@@ -3444,7 +3444,8 @@ fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 	fr_dict_attr_t *da;
 
 	fr_dict_attr_flags_t flags = {
-		.is_root = 1,
+		.is_root = true,
+		.local = true,
 		.type_size = 2,
 		.length = 2
 	};
@@ -3469,6 +3470,8 @@ fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 		talloc_free(dict);
 		return NULL;
 	}
+
+	da->last_child_attr = fr_dict_root(parent)->last_child_attr;
 
 	dict->root = da;
 	dict->root->dict = dict;
