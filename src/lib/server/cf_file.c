@@ -2163,7 +2163,7 @@ static int parse_input(cf_stack_t *stack)
 			goto check_for_eol;
 		}
 
-		if (!parent->allow_locals) {
+		if (!parent->allow_locals && (strcmp(parent->name1, "dictionary") != 0)) {
 			ERROR("%s[%d]: Parse error: Invalid location for variable definition",
 			      frame->filename, frame->lineno);
 			return -1;

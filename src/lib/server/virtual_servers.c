@@ -223,6 +223,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 		return -1;
 	}
 	cf_data_add(server_cs, mi, "process_module", false);
+	cf_data_add(server_cs, *(process->dict), "dict", false);	
 
 	return 0;
 }
@@ -312,7 +313,8 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 
 	if (module_conf_parse(mi, process_cs) < 0) {
 		cf_log_perr(ci, "Failed bootstrapping process module");
-		cf_data_remove(server_cs, mi, "process_module");
+		cf_data_remove(server_cs, module_instance_t, "process_module");
+		cf_data_remove(server_cs, fr_dict_t, "dict");
 		TALLOC_FREE(server->process_mi);
 		return -1;
 	}
@@ -516,14 +518,10 @@ fr_dict_t const *virtual_server_dict_by_cs(CONF_SECTION const *server_cs)
 {
 	CONF_DATA const *cd;
 
-	cd = cf_data_find(server_cs, module_instance_t, "process_module");
-	if (cd) {
-		module_instance_t const *mi = cf_data_value(cd);
-		fr_process_module_t const *process = (fr_process_module_t const *)mi->module;
+	cd = cf_data_find(server_cs, fr_dict_t, "dict");
+	if (!cd) return NULL;
 
-		return *(process->dict);
-	}
-	return NULL;
+	return (fr_dict_t const *) cf_data_value(cd);
 }
 
 /** Return the namespace for a given virtual server specified by a CONF_ITEM within the virtual server
@@ -537,14 +535,10 @@ fr_dict_t const *virtual_server_dict_by_child_ci(CONF_ITEM const *ci)
 {
 	CONF_DATA const *cd;
 
-	cd = cf_data_find_in_parent(ci, module_instance_t, "process_module");
-	if (cd) {
-		module_instance_t const *mi = cf_data_value(cd);
-		fr_process_module_t const *process = (fr_process_module_t const *)mi->module;
+	cd = cf_data_find_in_parent(ci, fr_dict_t, "dict");
+	if (!cd) return NULL;
 
-		return *(process->dict);
-	}
-	return NULL;
+	return (fr_dict_t const *) cf_data_value(cd);
 }
 
 /** Verify that a given virtual_server exists and is of a particular namespace
@@ -1228,7 +1222,7 @@ int virtual_servers_instantiate(void)
 		if (process->compile_list) {
 			tmpl_rules_t		parse_rules = {
 				.attr = {
-					.dict_def = *(process->dict),
+					.dict_def = cf_data_value(cf_data_find(server_cs, fr_dict_t, "dict")),
 					.list_def = request_attr_request,
 				},
 			};
