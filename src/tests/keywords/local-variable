@@ -30,6 +30,17 @@ group {
 	if !(&request.[#] == 5) {
 		test_fail
 	}
+
+	#
+	#  Local variables can be expanded
+	#
+	&Reply-Message := "This is %{foo}"
+	if !(&Reply-Message == "This is 1") {
+		test_fail
+	}
+
+	&request -= &Reply-Message
+
 } # leaving this scope automatically deletes &foo
 
 if !(&request.[#] == 5) {
