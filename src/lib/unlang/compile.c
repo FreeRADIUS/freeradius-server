@@ -1725,12 +1725,12 @@ static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx
 	 *	Enforce locations for local variables.
 	 */
 	switch (parent->type) {
-	case UNLANG_TYPE_GROUP:
-	case UNLANG_TYPE_IF:
+	case UNLANG_TYPE_CASE:
 	case UNLANG_TYPE_ELSE:
 	case UNLANG_TYPE_ELSIF:
-	case UNLANG_TYPE_SWITCH:
 	case UNLANG_TYPE_FOREACH:
+	case UNLANG_TYPE_GROUP:
+	case UNLANG_TYPE_IF:
 	case UNLANG_TYPE_TIMEOUT:
 	case UNLANG_TYPE_LIMIT:
 	case UNLANG_TYPE_POLICY:
