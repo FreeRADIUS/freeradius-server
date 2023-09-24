@@ -517,11 +517,15 @@ fr_dict_t const *virtual_server_dict_by_name(char const *virtual_server)
 fr_dict_t const *virtual_server_dict_by_cs(CONF_SECTION const *server_cs)
 {
 	CONF_DATA const *cd;
+	fr_dict_t *dict;
 
 	cd = cf_data_find(server_cs, fr_dict_t, "dict");
 	if (!cd) return NULL;
 
-	return (fr_dict_t const *) cf_data_value(cd);
+	dict = cf_data_value(cd);
+	(void) talloc_get_type_abort(dict, fr_dict_t);
+
+	return dict;
 }
 
 /** Return the namespace for a given virtual server specified by a CONF_ITEM within the virtual server
@@ -534,11 +538,15 @@ fr_dict_t const *virtual_server_dict_by_cs(CONF_SECTION const *server_cs)
 fr_dict_t const *virtual_server_dict_by_child_ci(CONF_ITEM const *ci)
 {
 	CONF_DATA const *cd;
+	fr_dict_t *dict;
 
 	cd = cf_data_find_in_parent(ci, fr_dict_t, "dict");
 	if (!cd) return NULL;
 
-	return (fr_dict_t const *) cf_data_value(cd);
+	dict = cf_data_value(cd);
+	(void) talloc_get_type_abort(dict, fr_dict_t);
+
+	return dict;
 }
 
 /** Verify that a given virtual_server exists and is of a particular namespace
@@ -1067,6 +1075,106 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 	return rcode;
 }
 
+static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_dict_t const *dict_def)
+{
+	CONF_ITEM *ci = NULL;
+	CONF_SECTION *cs;
+	fr_dict_attr_t const *root;
+	fr_dict_t *dict = NULL;
+
+	root = fr_dict_root(dict_def);
+	fr_assert(root != NULL);
+
+	cs = cf_section_find(server_cs, "dictionary", NULL);
+	if (!cs) return dict_def;
+
+	while ((ci = cf_item_next(cs, ci))) {
+		fr_type_t type;
+		char const *attr, *value;
+		CONF_PAIR *cp;
+
+		fr_dict_attr_flags_t flags = {
+			.internal = true,
+			.local = true,
+		};
+
+		if (cf_item_is_section(ci)) {
+			cf_log_err(ci, "Unexpected dictionary entry");
+			return NULL;
+		}
+
+		if (!cf_item_is_pair(ci)) continue;
+
+		cp = cf_item_to_pair(ci);
+		fr_assert(cp != NULL);
+
+		/*
+		 *	=* is a hack by the cf parser to say "no operator"
+		 */
+		if ((cf_pair_operator(cp) != T_OP_CMP_TRUE) ||
+		    (cf_pair_attr_quote(cp) != T_BARE_WORD) ||
+		    (cf_pair_value_quote(cp) != T_BARE_WORD)) {
+			cf_log_err(ci, "Definition is not in 'type name' format");
+			return -1;
+		}
+
+		attr = cf_pair_attr(cp);
+		value = cf_pair_value(cp);
+
+		type = fr_table_value_by_str(fr_type_table, attr, FR_TYPE_NULL);
+		if (type == FR_TYPE_NULL) {
+		invalid_type:
+			cf_log_err(ci, "Invalid data type '%s'", attr);
+			return NULL;
+		}
+
+		/*
+		 *	Leaf and group are OK.  TLV, Vendor, Struct, VSA, etc. are not.
+		 */
+		if (!(fr_type_is_leaf(type) || (type == FR_TYPE_GROUP))) goto invalid_type;
+
+		/*
+		 *	No duplicates are allowed.
+		 */
+		if (fr_dict_attr_by_name(NULL, root, value) != NULL) {
+			cf_log_err(ci, "Local variable '%s' duplicates a dictionary attribute.", value);
+			return NULL;
+		}
+
+		if (dict) {
+			if (fr_dict_attr_by_name(NULL, fr_dict_root(dict), value) != NULL) {
+				cf_log_err(cp, "Local variable '%s' duplicates a previous local attribute.", value);
+				return NULL;
+			}
+		} else {
+			/*
+			 *	Allocate a new overlay dictionary.
+			 */
+			dict = fr_dict_protocol_alloc(dict_def);
+			if (!dict) {
+				cf_log_err(cs, "Failed allocating local dictionary");
+				return NULL;
+			}
+		}
+
+		if (fr_dict_attr_add(dict, fr_dict_root(dict), value, -1, type, &flags) < 0) {
+			cf_log_err(cp, "Failed adding local variable '%s'", value);
+			return NULL;
+		}
+	}
+
+	if (!dict) return dict_def;
+
+	/*
+	 *	Replace the original dictionary with the new one.
+	 */
+	cf_data_remove(server_cs, fr_dict_t, "dict");
+	cf_data_add(server_cs, dict, "dict", false);
+
+	return dict;
+}
+
+
 /** Open all the listen sockets
  *
  * @param[in] sc	Scheduler to add I/O paths to.
@@ -1182,11 +1290,15 @@ int virtual_servers_instantiate(void)
 		size_t				j, listener_cnt;
 		CONF_ITEM			*ci = NULL;
 		CONF_SECTION			*server_cs = virtual_servers[i]->server_cs;
+		fr_dict_t const			*dict;
 		fr_virtual_server_t const	*vs = virtual_servers[i];
 		fr_process_module_t const	*process = (fr_process_module_t const *)
 							    vs->process_mi->dl_inst->module->common;
  		listeners = virtual_servers[i]->listeners;
  		listener_cnt = talloc_array_length(listeners);
+
+		dict = virtual_server_local_dict(server_cs, *(process)->dict);
+		if (!dict) return -1;
 
 		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(server_cs));
 
@@ -1222,7 +1334,7 @@ int virtual_servers_instantiate(void)
 		if (process->compile_list) {
 			tmpl_rules_t		parse_rules = {
 				.attr = {
-					.dict_def = cf_data_value(cf_data_find(server_cs, fr_dict_t, "dict")),
+					.dict_def = dict,
 					.list_def = request_attr_request,
 				},
 			};
