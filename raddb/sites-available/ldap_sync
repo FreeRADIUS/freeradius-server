@@ -366,11 +366,11 @@ server ldap_sync {
 		#  server settings as ldap_sync.
 		#
 #		if (!&reply.LDAP-Sync.Cookie) {
-#			update control {
-#				&Tmp-String-0 := "%{ldap:ldap:///%{LDAP-Sync.Directory-Root-DN}?contextCSN?base}"
-#			}
-#			if (&control.Tmp-String-0 != "") {
-#				&reply.LDAP-Sync.Cookie := "rid=000,csn=%{control.Tmp-String-0}"
+#			string csn
+#
+#			&csn := "%{ldap:ldap:///%{LDAP-Sync.Directory-Root-DN}?contextCSN?base}"
+#			if (&csn) {
+#				&reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}"
 #				updated
 #			}
 #		}
