@@ -2163,11 +2163,13 @@ static int parse_input(cf_stack_t *stack)
 			goto check_for_eol;
 		}
 
-		if (!parent->allow_locals && (strcmp(parent->name1, "dictionary") != 0)) {
+		if (!parent->allow_locals && (cf_section_find_in_parent(parent, "dictionary", NULL) == NULL)) {
 			ERROR("%s[%d]: Parse error: Invalid location for variable definition",
 			      frame->filename, frame->lineno);
 			return -1;
 		}
+
+		if (type == FR_TYPE_TLV) goto parse_name2;
 
 		/*
 		 *	We don't have an operator, so set it to a magic value.
@@ -2223,6 +2225,7 @@ check_for_eol:
 	 */
 	if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || ((*ptr == '&') && (ptr[1] != '=')) ||
 	    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((uint8_t) *ptr) || isdigit((uint8_t) *ptr)) {
+	parse_name2:
 		if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			return -1;
