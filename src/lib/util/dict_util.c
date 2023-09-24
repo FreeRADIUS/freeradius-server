@@ -2773,7 +2773,6 @@ redo:
 				parent = dict->next->root;
 				goto redo;
 			}
-
 		}
 
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
@@ -2801,15 +2800,26 @@ fr_dict_attr_t *dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const 
 
 	DA_VERIFY(parent);
 
+redo:
 	namespace = dict_attr_namespace(parent);
 	if (!namespace) {
 		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
 		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
+		fprintf(stderr, "FAIL %d\n", __LINE__);
 		return NULL;
 	}
 
 	da = fr_hash_table_find(namespace, &(fr_dict_attr_t) { .name = name });
 	if (!da) {
+		if (parent->flags.is_root) {
+			fr_dict_t const *dict = fr_dict_by_da(parent);
+
+			if (dict->next) {
+				parent = dict->next->root;
+				goto redo;
+			}
+		}
+
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
 		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", name, parent->name);
 		return NULL;
