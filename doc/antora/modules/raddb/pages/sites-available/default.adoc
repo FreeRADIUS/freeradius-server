@@ -177,6 +177,60 @@ There is currently no configuration for other packet types.
 
 
 
+### Local Dictionaries
+
+It is now possible to have dictionaries which are local to a virtual
+server.  The attributes defined here can be used in policies in this
+virtual server.
+
+Any attribute defined in this section can only be used in policies in
+this virtual server.  The attributes are "internal", and cannot go
+into a packet which is sent on the network.
+
+When a request is proxied internally to another virtual server, these
+attributes are still sent with the proxied request.  However, as the
+definitions do not exist in the other virtual server, they cannot be
+used in policies.
+
+The other virtual server can even define attributes of the same name.
+That virtual server will use those definitions for its policies, and
+will never match the proxied attributes.
+
+In all other aspects, the attributes defined here are just the same
+as if they had been assigned in a dictionary file.
+
+
+The syntax is _<type>_ followed by _<name>_.
+
+The _<type>_ MUST be a leaf type or a `group`.  i.e. not
+`struct`, `vsa`, or `vendor`.
+
+The _<name>_ MUST NOT exist in the `namespace` dictionary.
+
+
+
+tlv:: Define a TLV variable using _tlv <name> { ...}_.
+
+The contents of the `tlv` subsection are more variable
+definitions, including child `tlv`s.
+
+
+
+values:: Define a set of values for attribute _<name>_.
+
+The contents of the `values` section are a list of names and
+values.
+
+
+_<name>_ = _<value>_
+
+The _<name>_ must be unique.
+
+The _<value>_ is parsed according to the data type of
+the attribute.
+
+
+
 ### The listen section
 
 The `listen` sections in v4 are very different from the
@@ -568,6 +622,9 @@ is invalid, reject the request.
 
 See policy.d/filter for the definition of the
 filter_username policy.
+
+
+
 
 
 
@@ -1244,6 +1301,17 @@ server default {
 			}
 		}
 	}
+	dictionary {
+#		uint32 foo
+#		tlv bar {
+#		    uint32 baz
+#		    string arg
+#		}
+		values foo {
+			bar = 1
+			baz = 2
+		}
+	}
 	listen {
 		type = Access-Request
 		type = Status-Server
@@ -1306,6 +1374,12 @@ server default {
 	}
 recv Access-Request {
 	filter_username
+	&foo := bar
+	if (&foo == 1) {
+		&control.Password.Cleartext := "bob"
+	}
+	&bar.baz = 6809
+	&reply.Reply-Message := "Hello from %{bar.baz}"
 #	filter_password
 #	operator-name
 #	if (&User-Name =~ /@example\.com$/) {

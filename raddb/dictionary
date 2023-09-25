@@ -35,6 +35,14 @@
 #  here, nothing bad will happen.
 
 #
+#  ## Dictionaries per Virtual Server
+#
+#  v4 also supports a `dictionary { ... }` subsection in a virtual
+#  server.  If the attributes are used only in one virtual server,
+#  they shuld be defined there.
+#
+
+#
 #  ## Editing the dictionary
 #
 #  Any new/changed attributes *must* be placed in this file.
@@ -45,13 +53,13 @@
 #  All local attributes and `$INCLUDE` directives should
 #  go into this files.
 #
-#  The attribute definitions here should use DEFINE, not ATTRIBUTE.
-#  The DEFINE keyword is exactly like ATTRIBUTE, except it does not
+#  The attribute definitions here should use `DEFINE`, not `ATTRIBUTE`.
+#  The `DEFINE` keyword is exactly like `ATTRIBUTE`, except it does not
 #  require an attribute number.
 #
 #  As a result, there is no need to manually manage numbers.
 #
-#  Any attribute DEFINEd here will not go into a packet.
+#  Any attribute `DEFINE`d here will not go into a packet.
 #
 #  If you do want attributes to go into a RADIUS packet, you
 #  will need to use VSAs. This means requesting allocation
@@ -106,19 +114,19 @@
 #  also used by v3.  This lets you test that v4 works, without going
 #  through a complex "upgrade everything" process.
 #
-#  The old v3 names are in "alias" dictionaries, in the ${dictdir}
+#  The old v3 names are in "alias" dictionaries, in the `${dictdir}`
 #  directory.  To find out where this directory is on your local
 #  system, run "radiusd -h" or "radclient -h".  Then look for the "-D"
 #  command-line option, and it will tell you where the dictionary
 #  files are located.
 #
-#  The v3 names are in ${dictdir}/radius/alias/VENDOR.txt where
-#  VENDOR is the name of the vendor, which is taken from the VENDOR
+#  The v3 names are in `${dictdir}/radius/alias/VENDOR.txt` where
+#  _VENDOR_ is the name of the vendor, which is taken from the `VENDOR`
 #  definition in the v3 dictionaries.
 #
-#  You will need to add a $INCLUDE line for each vendor-specific
+#  You will need to add a `$INCLUD`E line for each vendor-specific
 #  dictionary which is used by your local system.  The default v4
-#  dictionaries do not enable all of v3 compatibilty names.
+#  dictionaries do not enable all of v3 compatibility names.
 #
 #  Yes, we recognize that this process is a bit of work.  However, we
 #  wish to encourage everyone using v4 to upgrade to using the new v4
