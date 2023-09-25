@@ -1075,6 +1075,103 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 	return rcode;
 }
 
+static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
+{
+	char const *ref;
+	fr_dict_attr_t const *da;
+	CONF_ITEM *ci = NULL;
+
+	ref = cf_section_name2(cs);
+	if (!ref) {
+		cf_log_err(cs, "Expected 'values <name> { ... }'");
+		return -1;
+	}
+
+	da = fr_dict_attr_by_name(NULL, parent, ref);
+	if (!da) {
+		cf_log_err(cs, "No such attribute \"%s\"", ref);
+		return -1;
+	}
+
+	if (fr_type_is_structural(da->type)) {
+		cf_log_err(cs, "Cannot define value for structural attribute \"%s\"", ref);
+		return -1;
+	}
+
+	/*
+	 *	This both does not make any sense, and does not get
+	 *	parsed correctly if the string contains backslashes.
+	 */
+	if (da->type == FR_TYPE_STRING) {
+		cf_log_err(cs, "Cannot define value for 'string' attribute \"%s\"", ref);
+		return -1;
+	}
+
+	while ((ci = cf_item_next(cs, ci))) {
+		ssize_t slen, len;
+		char const *attr, *value;
+		CONF_PAIR *cp;
+		fr_dict_enum_value_t *dv;
+		fr_value_box_t box;
+
+		if (cf_item_is_section(ci)) {
+			cf_log_err(ci, "Unexpected subsection");
+			return -1;
+		}
+
+		if (!cf_item_is_pair(ci)) continue;
+
+		cp = cf_item_to_pair(ci);
+		fr_assert(cp != NULL);
+
+		/*
+		 *	=* is a hack by the cf parser to say "no operator"
+		 */
+		if ((cf_pair_operator(cp) != T_OP_EQ) ||
+		    (cf_pair_attr_quote(cp) != T_BARE_WORD)) {
+			cf_log_err(ci, "Definition is not in 'name = value' format");
+			return -1;
+		}
+
+		attr = cf_pair_attr(cp);
+		value = cf_pair_value(cp);
+
+		dv = fr_dict_enum_by_name(parent, attr, talloc_array_length(attr) - 1);
+		if (dv) {
+			cf_log_err(cp, "Duplicate value name");
+			return -1;
+		}
+
+		fr_value_box_init_null(&box);
+
+		len = talloc_array_length(value) - 1;
+
+		/*
+		 *	@todo - unescape for double quoted strings.  Whoops.
+		 */
+		slen = fr_value_box_from_str(NULL, &box, da->type, da, value, len, NULL, false);
+		if (slen < 0) {
+			cf_log_err(cp, "Failed parsing value - %s", fr_strerror());
+			return -1;
+		}
+
+		if (slen != len) {
+			cf_log_err(cp, "Unexpected text after value");
+			return -1;
+		}
+
+		if (fr_dict_enum_add_name(UNCONST(fr_dict_attr_t *, da), attr, &box, false, false) < 0) {
+			cf_log_err(cp, "Failed adding value - %s", fr_strerror());
+			return -1;
+		}
+
+		fr_value_box_clear(&box);
+	}
+
+	return 0;
+}
+
+
 static int define_server_attrs(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_attr_t *parent, fr_dict_attr_t const *root)
 {
 	CONF_ITEM *ci = NULL;
@@ -1097,6 +1194,12 @@ static int define_server_attrs(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_attr_t
 			fr_assert(subcs != NULL);
 
 			attr = cf_section_name1(subcs);
+
+			if (strcmp(attr, "values") == 0) {
+				if (define_server_values(subcs, parent) < 0) return -1;
+				continue;
+			}
+
 			if (strcmp(attr, "tlv") != 0) goto invalid_type;
 
 			value = cf_section_name2(subcs);
