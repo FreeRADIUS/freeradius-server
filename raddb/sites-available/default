@@ -249,7 +249,7 @@ server default {
 		#  The contents of the `values` section are a list of names and
 		#  values.
 		#
-		values foo {
+#		values foo {
 			#
 			#  _<name>_ = _<value>_
 			#
@@ -258,9 +258,9 @@ server default {
 			#  The _<value>_ is parsed according to the data type of
 			#  the attribute.
 			#
-			bar = 1
-			baz = 2
-		}
+#			bar = 1
+#			baz = 2
+#		}
 	}
 
 
