@@ -75,8 +75,6 @@ following limitations:
   * Expansions such as `%{User-Name}` will still work.  But `%{1+2}` will also work!
   * `%{foo:-%{bar}}` will be replaced by `%{foo || bar}`, which is clearer and uses less nesting
 
-
-
 Please be aware that v4 is in "alpha" right now.  If it works, great.
 If it doesn't work, then please return to using v3.
 
