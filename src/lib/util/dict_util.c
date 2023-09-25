@@ -2805,7 +2805,6 @@ redo:
 	if (!namespace) {
 		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
 		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
-		fprintf(stderr, "FAIL %d\n", __LINE__);
 		return NULL;
 	}
 
