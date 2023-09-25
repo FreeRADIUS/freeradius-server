@@ -223,7 +223,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 		return -1;
 	}
 	cf_data_add(server_cs, mi, "process_module", false);
-	cf_data_add(server_cs, *(process->dict), "dict", false);	
+	cf_data_add(server_cs, *(process->dict), "dict", false);
 
 	return 0;
 }
@@ -1149,12 +1149,12 @@ static int define_server_attrs(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_attr_t
 		}
 
 		if (fr_dict_attr_by_name(NULL, parent, value) != NULL) {
-			cf_log_err(cp, "Local variable '%s' duplicates a previous local attribute.", value);
+			cf_log_err(ci, "Local variable '%s' duplicates a previous local attribute.", value);
 			return -1;
 		}
 
 		if (fr_dict_attr_add(dict, parent, value, -1, type, &flags) < 0) {
-			cf_log_err(cp, "Failed adding local variable '%s'", value);
+			cf_log_err(ci, "Failed adding local variable '%s'", value);
 			return -1;
 		}
 
