@@ -324,7 +324,7 @@ static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *l
 }
 
 /*
- *	Read a file compose of xlat's and expected results
+ *	Read a file composed of xlat's and expected results
  */
 static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 {
