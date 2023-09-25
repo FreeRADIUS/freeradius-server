@@ -57,6 +57,34 @@ steps, each of which can be performed quickly.
 We hope that this extended documentation will address any lingering
 concerns about the quality of the FreeRADIUS documentation.
 
+== Current Limitations of 4.0.0
+
+As of the time of writing this documentation, the server has the
+following limitations:
+
+* RADIUS/TLS (RadSec) is not implemented.
+* TTLS, PEAP, TEAP, and EAP-FAST are not implemented.
+* The "haproxy" and "reverse CoA' features are not implemented
+* The Perl, Python, and Lua modules do not fully support the v4 "nested" attributes.
+* We will likely remove the requirement to use `&` as a prefix for attribute names.  This change will likely require you to change all of your configuration.
+
+Please be aware that v4 is in "alpha" right now.  If it works, great.
+If it doesn't work, then please return to using v3.
+
+[WARNING]
+====
+Please do not open bug reports about those features being missing.
+All such bug reports will be closed without comment.
+
+We do not recommend that operating systems or Linux distributions
+create their own packages for 4.0.0-alpha.  Our experience has been
+that packaging "alpha" releases results in confused and upset users.
+People _will_ install it due to the belief that "it's stable because
+it is packaged".  They will then run into issues, and will blame us.
+
+Such behavior is antisocial and is strongly discouraged.
+====
+
 == Changes From Earlier Versions
 
 In previous releases, FreeRADIUS had the following limitations:
