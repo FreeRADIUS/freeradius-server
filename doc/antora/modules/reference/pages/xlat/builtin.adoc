@@ -1109,11 +1109,19 @@ UTC by using the following steps:
 .Example Calculating the UTC value of "tomorrow"
 [source,unlang]
 ----
-&Tmp-Date-0 := %(time:request)
+group {
+    date now
+    date tomorrow
+    time_delta time_of_day
 
-&Tmp-Time-Delta-0 := &Tmp-Date-0 % (time_delta) 1d
+    &now := %(time:request)
 
-&Tmp-Date-1 := &Tmp-Date-0 - &Tmp-Time-Delta-0
+    #  We are this many seconds into one day
+    &time_of_day := &now % (time_delta) 1d
+
+    # calculate the start of today, and then add one day to that
+    &tomorrow := &now - &time_of_day + (time_delta) 1d
+}
 ----
 
 The following example calculates the correct value of "tomorrow" in
@@ -1123,13 +1131,22 @@ time zone offset to the final value.
 .Example Calculating the local value of "tomorrow"
 [source,unlang]
 ----
-&Tmp-Date-0 := %(time:request)
+group {
+    date now
+    date tomorrow
+    time_delta time_of_day
 
-&Tmp-Time-Delta-0 := &Tmp-Date-0 % (time_delta) 1d
+    &now := %(time:request)
 
-&Tmp-Date-1 := &Tmp-Date-0 - &Tmp-Time-Delta-0 + (time_delta) 1d
+    #  We are this many seconds into one day
+    &time_of_day := &now % (time_delta) 1d
 
-&Tmp-Date-1 += %(time:offset)
+    # calculate the start of today, and then add one day to that
+    &tomorrow := &now - &time_of_day + (time_delta) 1d
+
+    #  add in the time zone offset
+    &tomorrow += %(time:offset)
+}
 ----
 
 This kind of math works well for "tomorrow", but it is less useful for
