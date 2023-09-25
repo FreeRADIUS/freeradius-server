@@ -328,6 +328,7 @@ struct tmpl_attr_rules_s {
 struct tmpl_xlat_rules_s {
 	fr_event_list_t		*runtime_el;		//!< The eventlist to use for runtime instantiation
 							///< of xlats.
+	bool			new_functions;		//!< new function syntax
 };
 
 /** Optional arguments passed to vp_tmpl functions

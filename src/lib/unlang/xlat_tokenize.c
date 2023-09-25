@@ -258,6 +258,12 @@ int xlat_validate_function_mono(xlat_exp_t *node)
 	return 0;
 }
 
+static bool const func_chars[UINT8_MAX + 1] = {
+	SBUFF_CHAR_CLASS_ALPHA_NUM,
+	['.'] = true, ['-'] = true, ['_'] = true,
+};
+
+
 /** Parse an xlat function and its child argument
  *
  * Parses a function call string in the format
@@ -279,11 +285,6 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 	 *	Special characters, spaces, etc. cannot be
 	 *	module names.
 	 */
-	static bool const	func_chars[UINT8_MAX + 1] = {
-					SBUFF_CHAR_CLASS_ALPHA_NUM,
-					['.'] = true, ['-'] = true, ['_'] = true,
-				};
-
 	XLAT_DEBUG("FUNC-MONO <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	/*
@@ -541,11 +542,6 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 *	Special characters, spaces, etc. cannot be
 	 *	module names.
 	 */
-	static bool const	func_chars[UINT8_MAX + 1] = {
-					SBUFF_CHAR_CLASS_ALPHA_NUM,
-					['.'] = true, ['-'] = true, ['_'] = true,
-				};
-
 	XLAT_DEBUG("FUNC-ARGS <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	/*
@@ -1006,6 +1002,74 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 			if (slen == 0) TALLOC_FREE(node); /* Free the empty node */
 
 			if (xlat_tokenize_function_args(head, in, t_rules) < 0) goto error;
+			continue;
+		}		
+
+		/*
+		 *	More migration hacks: allow %foo(...)
+		 */
+		if (t_rules->xlat.new_functions && fr_sbuff_next_if_char(in, '%')) {
+			fr_sbuff_marker_t m_s;
+
+			fr_sbuff_marker(&m_s, in);
+			fr_sbuff_adv_past_allowed(in, SIZE_MAX, func_chars, NULL);
+
+			/*
+			 *	Special-case: %% is just %
+			 */
+			if ((fr_sbuff_diff(in, &m_s) == 0) && fr_sbuff_next_if_char(in, '%')) {
+				goto one_letter;
+			}
+
+			if (fr_sbuff_diff(in, &m_s) == 1) {
+				if (!fr_sbuff_next_if_char(in, '(')) {
+					fr_strerror_const("Missing '('");
+					goto error;
+				}
+
+				if (!fr_sbuff_next_if_char(in, ')')) {
+					fr_strerror_const("Missing ')'");
+					goto error;
+				}
+
+			one_letter:
+				fr_sbuff_marker_release(&m_s);
+
+				XLAT_DEBUG("ONE-LETTER <-- %pV",
+					   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
+
+				if (slen == 0) {
+					talloc_free_children(node);	/* re-use empty nodes */
+				} else {
+					node = xlat_exp_alloc_null(head);
+				}
+
+				xlat_exp_set_type(node, XLAT_ONE_LETTER);
+				xlat_exp_set_name(node, fr_sbuff_current(&m_s), 1);
+
+#ifdef STATIC_ANALYZER
+				if (!node->fmt) goto error;
+#endif
+
+				/*
+				 *	%% is pure.  Everything else is not.
+				 */
+				node->flags.pure = (node->fmt[0] == '%');
+
+				xlat_exp_insert_tail(head, node);
+				continue;
+			}
+
+			if (!fr_sbuff_next_if_char(in, '(')) {
+				fr_strerror_const("Missing '('");
+				goto error;
+			}
+
+			/*
+			 *	The next bit is not finished.
+			 */
+			fr_assert(0);
+
 			continue;
 		}
 
