@@ -1075,13 +1075,12 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 	return rcode;
 }
 
-static int define_local_variables(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_attr_t *parent, fr_dict_attr_t const *root)
+static int define_server_attrs(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_attr_t *parent, fr_dict_attr_t const *root)
 {
 	CONF_ITEM *ci = NULL;
 
 	fr_dict_attr_flags_t flags = {
 		.internal = true,
-		.local = true,
 	};
 
 	fr_assert(dict != NULL);
@@ -1167,7 +1166,7 @@ static int define_local_variables(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_att
 			da = fr_dict_attr_by_name(NULL, parent, value);
 			fr_assert(da != NULL);
 
-			if (define_local_variables(subcs, dict, UNCONST(fr_dict_attr_t *, da), NULL) < 0) return -1;
+			if (define_server_attrs(subcs, dict, UNCONST(fr_dict_attr_t *, da), NULL) < 0) return -1;
 		}
 	}
 
@@ -1188,7 +1187,7 @@ static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_di
 		return NULL;
 	}
 
-	if (define_local_variables(cs, dict, UNCONST(fr_dict_attr_t *, fr_dict_root(dict)), fr_dict_root(dict_def)) < 0) return NULL;
+	if (define_server_attrs(cs, dict, UNCONST(fr_dict_attr_t *, fr_dict_root(dict)), fr_dict_root(dict_def)) < 0) return NULL;
 
 	/*
 	 *	Replace the original dictionary with the new one.
