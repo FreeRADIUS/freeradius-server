@@ -1103,7 +1103,7 @@ static int define_local_variables(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_att
 			value = cf_section_name2(subcs);
 			if (!value) {
 				cf_log_err(ci, "Definition is not in 'tlv name { ... }' format");
-				return NULL;
+				return -1;
 			}
 
 			type = FR_TYPE_TLV;
