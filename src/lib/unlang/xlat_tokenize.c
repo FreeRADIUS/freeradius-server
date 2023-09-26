@@ -175,7 +175,6 @@ static inline int xlat_tokenize_alternation(xlat_exp_head_t *head, fr_sbuff_t *i
 				 true, &xlat_expansion_rules, t_rules) < 0) goto error;
 
 	if (!xlat_exp_head(node->alternate[1])) {
-		talloc_free(node);
 		fr_strerror_const("Empty expansion is invalid");
 		goto error;
 	}
