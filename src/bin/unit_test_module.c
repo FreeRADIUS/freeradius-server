@@ -324,6 +324,26 @@ static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *l
 }
 
 /*
+ *	A common function for reports of too much text when handling xlat
+ * 	and xlat_expr in do_xlats().
+ * 	The convolution deals with the edge case of the line being so long
+ * 	that it plus the surrounding text from the format could won't fit
+ * 	in the output sbuff, along with the fact that you don't print the
+ * 	%d or %.*s. OTOH it does include slen, but...
+ * 	* the format string is 41 characters minus 6 for %d and %.*s
+ * 	* given that slen reflects text read from line, once slen is
+ * 	  large enough, we know line will fit
+ */
+static inline CC_HINT(always_inline) void too_much_text(fr_sbuff_t *out, ssize_t slen, fr_sbuff_t *line)
+{
+	char const *format = "ERROR offset %d 'Too much text' ::%.*s::";
+
+	(void) fr_sbuff_in_sprintf(out, format, (int) slen,
+				   fr_sbuff_remaining(out) - (strlen(format) - 5),
+				   fr_sbuff_current(line));
+}
+
+/*
  *	Read a file composed of xlat's and expected results
  */
 static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
@@ -457,7 +477,7 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 
 			if (fr_sbuff_remaining(&line) > 0) {
 				talloc_free(xlat_ctx);
-				fr_sbuff_in_sprintf(&out,  "ERROR offset %d 'Too much text' ::%s::", (int) slen, fr_sbuff_current(&line));
+				too_much_text(&out, slen, &line);
 				continue;
 			}
 
@@ -505,7 +525,7 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 
 			if (fr_sbuff_remaining(&line) > 0) {
 				talloc_free(xlat_ctx);
-				fr_sbuff_in_sprintf(&out, "ERROR offset %d 'Too much text' ::%s::", (int) slen, fr_sbuff_current(&line));
+				too_much_text(&out, slen, &line);
 				continue;
 			}
 
@@ -519,7 +539,7 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 			if (len < 0) {
 				char const *err = fr_strerror();
 				talloc_free(xlat_ctx);
-				fr_sbuff_in_sprintf(&out, "ERROR expanding xlat: %s", *err ? err : "no error provided");
+				(void) fr_sbuff_in_sprintf(&out, "ERROR expanding xlat: %s", *err ? err : "no error provided");
 				continue;
 			}
 
