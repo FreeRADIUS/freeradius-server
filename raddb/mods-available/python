@@ -32,27 +32,6 @@ python {
 	#
 	module = example
 
-	#  path:: Where the modules are loaded from
-	#
-	#  Note that due to limitations on Python, this configuration
-	#  item is GLOBAL TO THE SERVER.  That is, you cannot have two
-	#  instances of the python module, each with a different path.
-	#
-#	path="${modconfdir}/${.:name}:/another_path/to/python_files"
-
-	#
-	#  path_include_default::  Should we use the default Python path
-	#  in addition to the above path.
-	#
-	#  If `yes`, then the above `path` is added to the default Python
-	#  path.
-	#
-	#  If `no`, then the above `path` is the only path which is searched.
-	#
-	#  The default value is `no`.
-	#
-#	path_include_default = yes
-
 	#
 	#  [NOTE]
 	#  ====
