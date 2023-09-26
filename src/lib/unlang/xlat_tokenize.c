@@ -258,7 +258,7 @@ int xlat_validate_function_mono(xlat_exp_t *node)
 	return 0;
 }
 
-static bool const func_chars[UINT8_MAX + 1] = {
+bool const xlat_func_chars[UINT8_MAX + 1] = {
 	SBUFF_CHAR_CLASS_ALPHA_NUM,
 	['.'] = true, ['-'] = true, ['_'] = true,
 };
@@ -291,7 +291,7 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 	 *	%{module:args}
 	 */
 	fr_sbuff_marker(&m_s, in);
-	fr_sbuff_adv_past_allowed(in, SIZE_MAX, func_chars, NULL);
+	fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
 
 	if (!fr_sbuff_is_char(in, ':')) {
 		fr_strerror_const("Can't find function/argument separator");
@@ -548,7 +548,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 *	%(module:args)
 	 */
 	fr_sbuff_marker(&m_s, in);
-	fr_sbuff_adv_past_allowed(in, SIZE_MAX, func_chars, NULL);
+	fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
 
 	if (!fr_sbuff_is_char(in, ':')) {
 		fr_strerror_const("Can't find function/argument separator");
@@ -1012,7 +1012,7 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 			fr_sbuff_marker_t m_s;
 
 			fr_sbuff_marker(&m_s, in);
-			fr_sbuff_adv_past_allowed(in, SIZE_MAX, func_chars, NULL);
+			fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
 
 			/*
 			 *	Special-case: %% is just %
