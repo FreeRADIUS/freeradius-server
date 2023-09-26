@@ -17,6 +17,9 @@
 #  included in your module. If the module is called for a section which
 #  does not have a function defined, it will return `noop`.
 #
+#  Please see the file global.d/python for server-global configuration
+#  items which control the Python path.
+#
 
 #
 #  ## Configuration Settings

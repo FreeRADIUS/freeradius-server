@@ -14,6 +14,9 @@
 #  the contents of a password attribute for later comparison by a module such
 #  as `pap`, or an `eap` method.
 #
+#  Please see the file `global.d/ldap` for server-global configuration items
+#  which control LDAP library debugging.
+#
 
 #
 #  ## Configuration Settings
