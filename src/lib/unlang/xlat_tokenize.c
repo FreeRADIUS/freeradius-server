@@ -1696,6 +1696,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 
 			xlat_exp_set_name_buffer_shallow(child, str);
 			fr_value_box_strdup(child, &child->data, NULL, str, false);
+			child->flags.constant = true;
 			xlat_exp_insert_tail(node->group, child);
 		}
 			break;
