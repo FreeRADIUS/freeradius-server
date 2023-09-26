@@ -327,3 +327,4 @@ tests.runtests:  test.conf | radiusd.kill radiusd.pid
 	${Q}BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 
 tests: tests.runtests tests.eap
+	$(MAKE) radiusd.kill
