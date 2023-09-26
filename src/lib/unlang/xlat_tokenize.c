@@ -1033,8 +1033,6 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 				}
 
 			one_letter:
-				fr_sbuff_marker_release(&m_s);
-
 				XLAT_DEBUG("ONE-LETTER <-- %pV",
 					   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
 
@@ -1046,6 +1044,8 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 
 				xlat_exp_set_type(node, XLAT_ONE_LETTER);
 				xlat_exp_set_name(node, fr_sbuff_current(&m_s), 1);
+
+				fr_sbuff_marker_release(&m_s);
 
 #ifdef STATIC_ANALYZER
 				if (!node->fmt) goto error;
