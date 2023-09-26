@@ -304,12 +304,26 @@ server tacacs {
 		chap
 	}
 
+	#
+	#  [NOTE]
+	#  =====
+	#  In order to use MSCHAP / MSCHAPv2 with TACACS, the instance of
+	#  `rlm_mschap` being called must be configured correctly.
+	#  The default configuration referrs to the attributes relevant to
+	#  RADIUS.  The attributes have different names in TACACS.
+	#
+	#  If both RADIUS and TACACS virtual servers are defined and both
+	#  are using `rlm_mschap`, then two instances of the module will
+	#  need to be configured, one for each protocol.
+	#
+	#  See the `mschap` module for more details.
+	#
 	authenticate MSCHAP {
-		tacacs_mschap
+		mschap
 	}
 
 	authenticate MSCHAPv2 {
-		tacacs_mschap
+		mschap
 	}
 
 	#
@@ -323,7 +337,7 @@ server tacacs {
 	#  the next packet (if the client provides it)
 	#
 	authenticate ASCII {
-		tacacs_pap
+		pap
 	}
 
 	#
