@@ -1009,7 +1009,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 {
 	xlat_exp_t			*node = NULL;
 	fr_slen_t			slen;
-	fr_sbuff_term_t			expansions = FR_SBUFF_TERMS(
+	fr_sbuff_term_t			terminals = FR_SBUFF_TERMS(
 						L("%("),
 						L("%C"),
 						L("%D"),
@@ -1037,10 +1037,11 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 
 	escapes = p_rules ? p_rules->escapes : NULL;
 	tokens = p_rules && p_rules->terminals ?
-			fr_sbuff_terminals_amerge(NULL, p_rules->terminals, &expansions) : &expansions;
+			fr_sbuff_terminals_amerge(NULL, p_rules->terminals, &terminals) : &terminals;
 
 	for (;;) {
 		char *str;
+		fr_sbuff_marker_t m_s;
 
 		/*
 		 *	pre-allocate the node so we don't have to steal it later.
@@ -1050,6 +1051,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		/*
 		 *	Find the next token
 		 */
+		fr_sbuff_marker(&m_s, in);
 		slen = fr_sbuff_out_aunescape_until(node, &str, in, SIZE_MAX, tokens, escapes);
 
 		if (slen < 0) {
@@ -1059,7 +1061,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			/*
 			 *	Free our temporary array of terminals
 			 */
-			if (tokens != &expansions) talloc_free(tokens);
+			if (tokens != &terminals) talloc_free(tokens);
 			return -1;
 		}
 
@@ -1071,9 +1073,13 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			fr_value_box_strdup(node, &node->data, NULL, str, false);
 			node->flags.constant = true;
 
-			XLAT_DEBUG("VALUE-BOX (%s)<-- %pV",
-				   escapes ? escapes->name : "(none)",
-				   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
+			if (!escapes) {
+				XLAT_DEBUG("VALUE-BOX %s <-- %.*s", str,
+					   (int) fr_sbuff_behind(&m_s), fr_sbuff_current(&m_s));
+			} else {
+				XLAT_DEBUG("VALUE-BOX (%s) %s <-- %.*s", escapes->name, str,
+					   (int) fr_sbuff_behind(&m_s), fr_sbuff_current(&m_s));
+			}
 			XLAT_HEXDUMP((uint8_t const *)str, talloc_array_length(str) - 1, " VALUE-BOX ");
 
 			xlat_exp_insert_tail(head, node);
@@ -1157,7 +1163,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 	/*
 	 *	Free our temporary array of terminals
 	 */
-	if (tokens != &expansions) talloc_free(tokens);
+	if (tokens != &terminals) talloc_free(tokens);
 
 	return 0;
 }
