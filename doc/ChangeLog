@@ -16,6 +16,8 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	* Update dictionary.aruba
 	* Added "radsecret" program which generates strong secrets.  See the
 	  top of the "clients.conf" file for more information.
+	* Add "time_since" xlat to calculate elapsed time in seconds, milliseconds
+	  and microseconds.
 
 	Bug fixes
 	* Fix corner case with empty defaults in rlm_files.  Fixes #5035

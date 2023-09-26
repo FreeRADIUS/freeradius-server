@@ -19,9 +19,10 @@
  * @brief Translates timestrings between formats.
  *
  * @author Artur Malinowski <artur@wow.com>
+ * @author Matthew Newton
  *
  * @copyright 2013 Artur Malinowski <artur@wow.com>
- * @copyright 1999-2013 The FreeRADIUS Server Project.
+ * @copyright 1999-2023 The FreeRADIUS Server Project.
  */
 
 #include <freeradius-devel/radiusd.h>
@@ -116,6 +117,161 @@ static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *f
 }
 DIAG_ON(format-nonliteral)
 
+
+/** Get time in ms since either epoch or another value
+ *
+ *  %{time_since:s} - return seconds since epoch
+ *  %{time_since:ms:0} - return milliseconds since epoch
+ *  %{time_since:us:1695745763034443} - return microseconds since Tue 26 Sep 17:29:23.034443 BST 2023
+ *  %{time_since:us:&Tmp-Integer64-1} - return microseconds since value in &Tmp-Integer64-1
+ */
+
+static ssize_t xlat_time_since(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
+{
+	uint64_t time_now = 0;
+	uint64_t time_delta = 0;
+	uint64_t time_since = 0;
+	struct timeval tv;
+
+	enum timebase {
+		S = 1,
+		MS = 1000,
+		US = 1000000,
+	};
+	enum timebase time_base;
+
+	while (isspace((uint8_t) *fmt)) fmt++;
+
+	/*
+	 *  Work out what time base we are using, s, ms or us.
+	 */
+	if (fmt[0] == 'm' && fmt[1] == 's') {
+		time_base = MS;
+		fmt += 2;
+	} else if (fmt[0] == 'u' && fmt[1] == 's') {
+		time_base = US;
+		fmt += 2;
+	} else if (fmt[0] == 's') {
+		time_base = S;
+		fmt++;
+	} else {
+		REDEBUG("Time base (ms, us, s) missing in time_since xlat");
+	error:
+		*out = '\0';
+		return -1;
+	}
+
+	if (fmt[0] != '\0' && fmt[0] != ':') {
+		REDEBUG("Invalid arguments passed to time_since xlat");
+		goto error;
+	}
+
+	if (fmt[0] == ':') fmt++;
+
+	/*
+	 *  Handle the different formats that we can be passed
+	 */
+	if (fmt[0] == '\0') {
+		/*
+		 *  %{time_since:[mu]?s:} - epoch
+		 */
+		time_since = 0;
+
+	} else if (fmt[0] == '&') {
+		/*
+		 *  We were provided with an attribute
+		 *
+		 *  %{time_since:[mu]?s:&Attr-Name}
+		 */
+		value_data_t outnum;
+		VALUE_PAIR *vp;
+
+		if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
+			REDEBUG("Unable to parse attribute in time_ms_since xlat");
+			goto error;
+		}
+
+		if (vp->da->type == PW_TYPE_INTEGER64) {
+			/*
+			 *  Int64 is easy
+			 */
+			time_since = vp->vp_integer64;
+		} else {
+			/*
+			 *  ...but not others - try and convert, but warn it's likely nonsensical.
+			 */
+			if (value_data_cast(request, &outnum,
+					PW_TYPE_INTEGER64, NULL, vp->da->type, NULL,
+					&vp->data, vp->vp_length) < 0) {
+				REDEBUG("Unable to convert %s to integer", fmt);
+				goto error;
+			}
+			if (vp->da->type == PW_TYPE_DATE) {
+				/*
+				 *  Special case a Date - we know it's seconds
+				 */
+				RDEBUG3("Attribute \"%s\" is a date; multiplying seconds by %d", fmt, time_base);
+				time_since = outnum.integer64 * time_base;
+			} else {
+				RWDEBUG("Attribute \"%s\" is not integer, conversion may not make sense", fmt);
+				time_since = outnum.integer64;
+			}
+		}
+
+	} else if (fmt[0] == '-') {
+		REDEBUG("time_since xlat only accepts positive integers");
+		goto error;
+
+	} else {
+		/*
+		 *  Otherwise we hope we were provided with an integer value
+		 *
+		 *  %{time_since:[mu]?s:12345}
+		 */
+		if (sscanf(fmt, "%" PRIu64, &time_since) != 1) {
+			REDEBUG("Failed parsing \"%s\" as integer", fmt);
+			goto error;
+		}
+	}
+
+	/*
+	 *  Get current time and add milli/micro component if needed
+	 */
+	gettimeofday(&tv, NULL);
+
+	time_now = (uint64_t)tv.tv_sec * time_base;
+
+	if (time_base == MS) {
+		time_now += (uint64_t)tv.tv_usec / 1000;
+	} else if (time_base == US) {
+		time_now += (uint64_t)tv.tv_usec;
+	}
+
+	/*
+	 *  time_since needs to be in the past
+	 */
+	if (time_since > time_now) {
+		REDEBUG("time provided to time_since needs to be in the past");
+		goto error;
+	}
+
+	/*
+	 *  Calculate time since provided value
+	 */
+	time_delta = time_now - time_since;
+
+	/*
+	 *  Write out and return
+	 */
+	if ((size_t)snprintf(out, outlen, "%" PRIu64, time_delta) >= outlen) {
+		REDEBUG("Insufficient space to write 64-bit time value");
+		goto error;
+	}
+
+	return 0;
+}
+
+
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_date_t *inst = instance;
@@ -126,6 +282,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	}
 
 	xlat_register(inst->xlat_name, xlat_date_convert, NULL, inst);
+	xlat_register("time_since", xlat_time_since, NULL, inst);
 
 	return 0;
 }

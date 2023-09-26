@@ -1,0 +1,3 @@
+#
+# Test the "date" module
+#

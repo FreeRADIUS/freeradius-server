@@ -33,3 +33,48 @@ date wispr2date {
 	#  default = no
 #	utc = yes
 }
+
+#
+#  The date module also provides the %{time_since:} xlat, which
+#  makes it possible to both:
+#    - get the time since the epoch in seconds, milliseconds or
+#      microseconds; and
+#    - calculate the time elapsed since a given time.
+#
+#  Syntax is: %{time_since:BASE[:(number|&attribute)]}
+#  where "BASE" is "s", "ms" or "us".
+#
+#  Examples:
+#    %{time_since:s}
+#        - time in seconds since the epoch, same as %c
+#
+#    %{time_since:s:1695753388}
+#        - time in seconds since Tue 26 Sep 19:36:28 BST 2023
+#          (which is 1695753388 in UNIX time)
+#
+#    %{time_since:s:&Tmp-Integer-0}
+#        - Time since the number of seconds in Tmp-Integer-0
+#
+#    %{time_since:ms}
+#        - Milliseconds since the epoch
+#
+#    %{time_since:us}
+#        - Microseconds since the epoch
+#
+#  The provided attribute should be an Integer (or Integer64 for
+#  ms or us bases). However, other attributes will be converted if
+#  possible, with a warning given. The only one that might make
+#  sense is a Date attribute (which will be scaled appropriately
+#  according to the base, as Date is always in seconds).
+#
+#  Primary usage would be for taking latenct measurements, for
+#  example to calculate the number of microseconds an LDAP call
+#  took:
+#
+#    update request {
+#      &Tmp-Integer64-0 := %{time_since:us}"
+#    }
+#    ldap
+#    update request {
+#      &Tmp-Integer64-1 := %{time_since:us:&Tmp-Integer64-0}"
+#    }

@@ -1,0 +1,207 @@
+#
+#  Selection of tests for the %{time_since:} xlat
+#
+#  Somewhat limited in what we can do here, as it bases its
+#  responses off the current system time. So we need to do some
+#  comparisons rather than actual value checks.
+#
+
+#
+#  %c and %{time_since:s:0} should match
+#
+update {
+	&Tmp-Integer-9 := 0
+}
+
+update {
+	&Tmp-Integer-0 := "%c"
+	&Tmp-Integer-1 := "%{time_since:s:0}"
+	&Tmp-Integer-2 := "%{time_since:s:&Tmp-Integer-9}"
+}
+
+if (&Tmp-Integer-0 != &Tmp-Integer-1) {
+	if (&Tmp-Integer-0 != "%{expr:&Tmp-Integer-1 - 1}") {
+	# at a push, %{time_since:s:0} might be one second later,
+	# depending on when the test ran
+		test_fail
+	}
+}
+
+if (&Tmp-Integer-1 != &Tmp-Integer-2) {
+	if (&Tmp-Integer-1 != "%{expr:&Tmp-Integer-2 - 1}") {
+		test_fail
+	}
+}
+
+#
+#  If we run time_since 3 times, they should be the same or increasing
+#
+update {
+	&Tmp-Integer64-0 := "%{time_since:s:0}"
+}
+
+update {
+	&Tmp-Integer64-1 := "%{time_since:s:}"
+}
+
+update {
+	&Tmp-Integer64-2 := "%{time_since:s}"
+}
+
+if (&Tmp-Integer64-0 > &Tmp-Integer64-1 || \
+	&Tmp-Integer64-1 > &Tmp-Integer64-2 || \
+	&Tmp-Integer64-0 > &Tmp-Integer64-2) {
+	test_fail
+}
+
+#
+#  It's way past the year 2020, so this should only fail if the
+#  computer's clock is very wrong...
+#
+if (&Tmp-Integer64-0 < 1600000000) {
+	test_fail
+}
+
+
+#
+#  Similar for milliseconds
+#
+update {
+	&Tmp-Integer64-3 := "%{time_since:ms:0}"
+}
+
+update {
+	&Tmp-Integer64-4 := "%{time_since:ms:}"
+}
+
+update {
+	&Tmp-Integer64-5 := "%{time_since:ms}"
+}
+
+if (&Tmp-Integer64-3 > &Tmp-Integer64-4 || \
+	&Tmp-Integer64-4 > &Tmp-Integer64-5 || \
+	&Tmp-Integer64-3 > &Tmp-Integer64-5) {
+	test_fail
+}
+
+
+#
+#  ...and microseconds
+#
+update {
+	&Tmp-Integer64-6 := "%{time_since:us:0}"
+}
+
+update {
+	&Tmp-Integer64-7 := "%{time_since:us:}"
+}
+
+update {
+	&Tmp-Integer64-8 := "%{time_since:us}"
+}
+
+if (&Tmp-Integer64-6 > &Tmp-Integer64-7 || \
+	&Tmp-Integer64-7 > &Tmp-Integer64-8 || \
+	&Tmp-Integer64-6 > &Tmp-Integer64-8) {
+	test_fail
+}
+
+if ("%{expr:&Tmp-Integer64-7 - &Tmp-Integer64-6}" > 250) {
+	# you have a really slow computer if the time between
+	# getting these took more than 250us
+	test_fail
+}
+
+
+#
+#  Seconds component * 1000 must always be same or less than
+#  milliseconds, and microseconds.
+#
+if ("%{expr:%{time_since:s:0} * 1000}" > "%{time_since:ms:0}") {
+	test_fail
+}
+
+if ("%{expr:%{time_since:ms:0} * 1000}" > "%{time_since:us:0}") {
+	test_fail
+}
+
+if ("%{expr:%{time_since:s:0} * 1000000}" > "%{time_since:us:0}") {
+	test_fail
+}
+
+
+#
+#  Test for some errors
+#
+
+#  missing time base
+update {
+	&Tmp-Integer-0 := "%{time_since:}"
+}
+
+if (!(&Module-Failure-Message[*] == 'Time base (ms, us, s) missing in time_since xlat')) {
+	test_fail
+}
+
+update {
+	&Module-Failure-Message !* ANY
+}
+
+
+#  invalid time base
+update {
+	&Tmp-Integer-0 := "%{time_since:bob}"
+}
+
+if (!(&Module-Failure-Message[*] == 'Time base (ms, us, s) missing in time_since xlat')) {
+	test_fail
+}
+
+update {
+	&Module-Failure-Message !* ANY
+}
+
+
+# negative values
+update {
+	&Tmp-Integer-0 := "%{time_since:ms:-1234}"
+}
+
+if (!(&Module-Failure-Message[*] == 'time_since xlat only accepts positive integers')) {
+	test_fail
+}
+
+update {
+	&Module-Failure-Message !* ANY
+}
+
+
+#  invalid attribute
+update {
+	&Tmp-Integer-0 := "%{time_since:us:&Test-Non-Existant-Attr}"
+}
+
+if (!(&Module-Failure-Message[*] == 'Unable to parse attribute in time_ms_since xlat')) {
+	test_fail
+}
+
+update {
+	&Module-Failure-Message !* ANY
+}
+
+
+#  silly text
+update {
+	&Tmp-Integer-0 := "%{time_since:us:test random text}"
+}
+
+if (!(&Module-Failure-Message[*] == 'Failed parsing "test random text" as integer')) {
+	test_fail
+}
+
+update {
+	&Module-Failure-Message !* ANY
+}
+
+
+test_pass
