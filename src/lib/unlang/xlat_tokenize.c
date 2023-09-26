@@ -1053,6 +1053,17 @@ static int xlat_tokenize_input(xlat_exp_head_t *head,
 		 */
 		slen = fr_sbuff_out_aunescape_until(node, &str, in, SIZE_MAX, tokens, escapes);
 
+		if (slen < 0) {
+		error:
+			talloc_free(node);
+
+			/*
+			 *	Free our temporary array of terminals
+			 */
+			if (tokens != &expansions) talloc_free(tokens);
+			return -1;
+		}
+
 		/*
 		 *	It's a value box, create an appropriate node
 		 */
@@ -1067,30 +1078,31 @@ static int xlat_tokenize_input(xlat_exp_head_t *head,
 			XLAT_HEXDUMP((uint8_t const *)str, talloc_array_length(str) - 1, " VALUE-BOX ");
 
 			xlat_exp_insert_tail(head, node);
-		} else if (slen < 0) {
-		error:
-			talloc_free(node);
 
-			/*
-			 *	Free our temporary array of terminals
-			 */
-			if (tokens != &expansions) talloc_free(tokens);
-			return -1;
+			node = NULL;
+		} else {		   /* slen == 0 */
+			TALLOC_FREE(node); /* nope, couldn't use it */
 		}
 
-		if (fr_sbuff_adv_past_str_literal(in, "%{")) {
-			if (slen == 0) TALLOC_FREE(node); /* Free the empty node */
+		/*
+		 *	We have parsed as much as we can as unescaped
+		 *	input.  Either some text (and added the node
+		 *	to the list), or zero text.  We now try to
+		 *	parse '%' expansions.
+		 */
 
+		/*
+		 *	Attribute, function call, or other expansion.
+		 */
+		if (fr_sbuff_adv_past_str_literal(in, "%{")) {
 			if (xlat_tokenize_expansion(head, in, t_rules) < 0) goto error;
 			continue;
 		}
 
 		/*
-		 *	xlat function call with discreet arguments
+		 *	xlat function call with discrete arguments
 		 */
 		if (fr_sbuff_adv_past_str_literal(in, "%(")) {
-			if (slen == 0) TALLOC_FREE(node); /* Free the empty node */
-
 			if (xlat_tokenize_function_args(head, in, t_rules) < 0) goto error;
 			continue;
 		}		
@@ -1099,8 +1111,6 @@ static int xlat_tokenize_input(xlat_exp_head_t *head,
 		 *	More migration hacks: allow %foo(...)
 		 */
 		if (t_rules && t_rules->xlat.new_functions && fr_sbuff_next_if_char(in, '%')) {
-			if (slen == 0) TALLOC_FREE(node);
-
 			/*
 			 *	Tokenize the function arguments using the new method.
 			 */
@@ -1110,16 +1120,13 @@ static int xlat_tokenize_input(xlat_exp_head_t *head,
 
 		/*
 		 *	%[a-z] - A one letter expansion
+		 *
+		 *	@todo - allow only registered one-letter expansions.
 		 */
 		if (fr_sbuff_next_if_char(in, '%') && fr_sbuff_is_alpha(in)) {
 			XLAT_DEBUG("ONE-LETTER <-- %c", fr_sbuff_char(in, '\0'));
 
-
-			if (slen == 0) {
-				talloc_free_children(node);	/* re-use empty nodes */
-			} else {
-				node = xlat_exp_alloc_null(head);
-			}
+			node = xlat_exp_alloc_null(head);
 
 			xlat_exp_set_type(node, XLAT_ONE_LETTER);
 			xlat_exp_set_name(node, fr_sbuff_current(in), 1);
