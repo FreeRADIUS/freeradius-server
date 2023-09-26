@@ -206,7 +206,7 @@ static inline int xlat_tokenize_regex(xlat_exp_head_t *head, fr_sbuff_t *in)
 	fr_sbuff_parse_error_t	err;
 	fr_sbuff_marker_t	m_s;
 
-	XLAT_DEBUG("REGEX <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+	XLAT_DEBUG("REGEX <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
 	fr_sbuff_marker(&m_s, in);
 
@@ -285,7 +285,7 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 	 *	Special characters, spaces, etc. cannot be
 	 *	module names.
 	 */
-	XLAT_DEBUG("FUNC-MONO <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+	XLAT_DEBUG("FUNC-MONO <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
 	/*
 	 *	%{module:args}
@@ -337,8 +337,7 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 	node->call.input_type = XLAT_INPUT_MONO;
 
 	fr_sbuff_next(in);			/* Skip the ':' */
-	XLAT_DEBUG("FUNC-ARGS <-- %s ... %pV",
-		   node->fmt, fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+	XLAT_DEBUG("FUNC-ARGS <-- %s ... %.*s", node->fmt, (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
 	fr_sbuff_set(&m_s, in);
 
@@ -542,7 +541,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 *	Special characters, spaces, etc. cannot be
 	 *	module names.
 	 */
-	XLAT_DEBUG("FUNC-ARGS <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+	XLAT_DEBUG("FUNC-ARGS <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
 	/*
 	 *	%(module:args)
@@ -593,8 +592,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	node->call.input_type = XLAT_INPUT_ARGS;
 
 	fr_sbuff_next(in);			/* Skip the ':' */
-	XLAT_DEBUG("FUNC-ARGS <-- %s ... %pV",
-		   node->fmt, fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+	XLAT_DEBUG("FUNC-ARGS <-- %s ... %.*s", node->fmt, (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
 	fr_sbuff_marker_release(&m_s);
 
@@ -662,8 +660,7 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 		}
 
 	one_letter:
-		XLAT_DEBUG("ONE-LETTER <-- %pV",
-			   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
+		XLAT_DEBUG("ONE-LETTER <-- %c", fr_sbuff_char(&m_s, '\0'));
 		node = xlat_exp_alloc_null(head);
 
 		xlat_exp_set_type(node, XLAT_ONE_LETTER);
@@ -753,7 +750,7 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	fr_sbuff_marker_t	m_s;
 	tmpl_rules_t		 our_t_rules;
 
-	XLAT_DEBUG("ATTRIBUTE <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+	XLAT_DEBUG("ATTRIBUTE <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
 	/*
 	 *	We need a local copy as we always allow unknowns.
@@ -862,7 +859,7 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 					.terminals = &FR_SBUFF_TERM("}")
 				};
 
-	XLAT_DEBUG("EXPANSION <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+	XLAT_DEBUG("EXPANSION <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
 	/*
 	 *	%{...}:-bar}
@@ -1037,7 +1034,7 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 	fr_sbuff_term_t			*tokens;
 	fr_sbuff_unescape_rules_t const	*escapes;
 
-	XLAT_DEBUG("STRING <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+	XLAT_DEBUG("STRING <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
 	escapes = p_rules ? p_rules->escapes : NULL;
 	tokens = p_rules && p_rules->terminals ?
@@ -1115,8 +1112,8 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 		 *	%[a-z] - A one letter expansion
 		 */
 		if (fr_sbuff_next_if_char(in, '%') && fr_sbuff_is_alpha(in)) {
-			XLAT_DEBUG("ONE-LETTER <-- %pV",
-				   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
+			XLAT_DEBUG("ONE-LETTER <-- %c", fr_sbuff_char(in, '\0'));
+
 
 			if (slen == 0) {
 				talloc_free_children(node);	/* re-use empty nodes */
