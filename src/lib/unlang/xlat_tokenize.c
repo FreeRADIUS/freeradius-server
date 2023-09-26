@@ -625,6 +625,99 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	return 0;
 }
 
+/** Parse an xlat function and its child argument
+ *
+ * Parses a function call string in the format
+ * @verbatim %{<func>:<argument>} @endverbatim
+ *
+ * @return
+ *	- 0 if the string was parsed into a function.
+ *	- <0 on parse error.
+ */
+static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmpl_rules_t const *t_rules)
+{
+	xlat_exp_t *node;
+	xlat_t *func;
+	fr_sbuff_marker_t m_s;
+
+	fr_sbuff_marker(&m_s, in);
+	fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
+
+	/*
+	 *	Special-case: %% is just %
+	 */
+	if ((fr_sbuff_diff(in, &m_s) == 0) && fr_sbuff_next_if_char(in, '%')) {
+		goto one_letter;
+	}
+
+	if (fr_sbuff_diff(in, &m_s) == 1) {
+		if (!fr_sbuff_next_if_char(in, '(')) {
+			fr_strerror_const("Missing '('");
+			return -1;
+		}
+
+		if (!fr_sbuff_next_if_char(in, ')')) {
+			fr_strerror_const("Missing ')'");
+			return -1;
+		}
+
+	one_letter:
+		XLAT_DEBUG("ONE-LETTER <-- %pV",
+			   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
+		node = xlat_exp_alloc_null(head);
+
+		xlat_exp_set_type(node, XLAT_ONE_LETTER);
+		xlat_exp_set_name(node, fr_sbuff_current(&m_s), 1);
+
+		fr_sbuff_marker_release(&m_s);
+
+#ifdef STATIC_ANALYZER
+		if (!node->fmt) return -1;
+#endif
+
+		/*
+		 *	%% is pure.  Everything else is not.
+		 */
+		node->flags.pure = (node->fmt[0] == '%');
+
+		xlat_exp_insert_tail(head, node);
+		return 0;
+	}
+
+	func = xlat_func_find(fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
+
+	if (!fr_sbuff_is_char(in, '(')) {
+		fr_strerror_const("Missing '('");
+		return -1;
+	}
+
+	/*
+	 *	Allocate a node to hold the function
+	 */
+	node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
+	if (!func) {
+		if (!t_rules || !t_rules->attr.allow_unresolved) {
+			fr_strerror_const("Unresolved expansion functions are not allowed here");
+			fr_sbuff_set(in, &m_s);		/* backtrack */
+			fr_sbuff_marker_release(&m_s);
+			return -1;
+		}
+		xlat_exp_set_type(node, XLAT_FUNC_UNRESOLVED);
+		node->flags.needs_resolving = true;	/* Needs resolution during pass2 */
+	} else {
+		node->call.func = func;
+		if (t_rules) node->call.dict = t_rules->attr.dict_def;
+		node->flags = func->flags;
+		node->call.input_type = func->input_type;
+	}
+
+	(void) fr_sbuff_next(in); /* skip the ')' */
+
+	// parse the arguments until '('
+
+	return -1;
+}
+
 static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
 {
 	xlat_t	*func;
@@ -1008,68 +1101,13 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 		/*
 		 *	More migration hacks: allow %foo(...)
 		 */
-		if (t_rules->xlat.new_functions && fr_sbuff_next_if_char(in, '%')) {
-			fr_sbuff_marker_t m_s;
-
-			fr_sbuff_marker(&m_s, in);
-			fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
+		if (t_rules && t_rules->xlat.new_functions && fr_sbuff_next_if_char(in, '%')) {
+			if (slen == 0) TALLOC_FREE(node);
 
 			/*
-			 *	Special-case: %% is just %
+			 *	Tokenize the function arguments using the new method.
 			 */
-			if ((fr_sbuff_diff(in, &m_s) == 0) && fr_sbuff_next_if_char(in, '%')) {
-				goto one_letter;
-			}
-
-			if (fr_sbuff_diff(in, &m_s) == 1) {
-				if (!fr_sbuff_next_if_char(in, '(')) {
-					fr_strerror_const("Missing '('");
-					goto error;
-				}
-
-				if (!fr_sbuff_next_if_char(in, ')')) {
-					fr_strerror_const("Missing ')'");
-					goto error;
-				}
-
-			one_letter:
-				XLAT_DEBUG("ONE-LETTER <-- %pV",
-					   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
-
-				if (slen == 0) {
-					talloc_free_children(node);	/* re-use empty nodes */
-				} else {
-					node = xlat_exp_alloc_null(head);
-				}
-
-				xlat_exp_set_type(node, XLAT_ONE_LETTER);
-				xlat_exp_set_name(node, fr_sbuff_current(&m_s), 1);
-
-				fr_sbuff_marker_release(&m_s);
-
-#ifdef STATIC_ANALYZER
-				if (!node->fmt) goto error;
-#endif
-
-				/*
-				 *	%% is pure.  Everything else is not.
-				 */
-				node->flags.pure = (node->fmt[0] == '%');
-
-				xlat_exp_insert_tail(head, node);
-				continue;
-			}
-
-			if (!fr_sbuff_next_if_char(in, '(')) {
-				fr_strerror_const("Missing '('");
-				goto error;
-			}
-
-			/*
-			 *	The next bit is not finished.
-			 */
-			fr_assert(0);
-
+			if (xlat_tokenize_function_new(head, in, t_rules) < 0) goto error;
 			continue;
 		}
 
