@@ -136,7 +136,7 @@ xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_head_t c
 	return node;
 }
 
-static int xlat_tokenize_string(xlat_exp_head_t *head, fr_sbuff_t *in, bool brace,
+static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in, bool brace,
 				fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 static inline int xlat_tokenize_alternation(xlat_exp_head_t *head, fr_sbuff_t *in,
@@ -171,7 +171,7 @@ static inline int xlat_tokenize_alternation(xlat_exp_head_t *head, fr_sbuff_t *i
 	/*
 	 *	Parse the alternate expansion.
 	 */
-	if (xlat_tokenize_string(node->alternate[1], in,
+	if (xlat_tokenize_input(node->alternate[1], in,
 				 true, &xlat_expansion_rules, t_rules) < 0) goto error;
 
 	if (!xlat_exp_head(node->alternate[1])) {
@@ -356,7 +356,7 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 	bareword:
 		arg_group->quote = T_BARE_WORD;
 
-		if (xlat_tokenize_string(arg_group->group, in, true, &xlat_expansion_rules, t_rules) < 0) {
+		if (xlat_tokenize_input(arg_group->group, in, true, &xlat_expansion_rules, t_rules) < 0) {
 			goto error;
 		}
 		xlat_flags_merge(&arg_group->flags, &arg_group->group->flags);
@@ -393,7 +393,7 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 	} else if (fr_sbuff_next_if_char(in, '"')) {
 		arg_group->quote = T_DOUBLE_QUOTED_STRING;
 
-		if (xlat_tokenize_string(arg_group->group, in, false,
+		if (xlat_tokenize_input(arg_group->group, in, false,
 					 &value_parse_rules_double_quoted, t_rules) < 0) {
 			goto error;
 		}
@@ -462,7 +462,7 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 	if (node->type != XLAT_BOX) return 0;
 
 	/*
-	 *	Boxes are always strings, because of xlat_tokenize_string()
+	 *	Boxes are always strings, because of xlat_tokenize_input()
 	 */
 	fr_assert(node->data.type == FR_TYPE_STRING);
 
@@ -1004,7 +1004,7 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int xlat_tokenize_string(xlat_exp_head_t *head,
+static int xlat_tokenize_input(xlat_exp_head_t *head,
 				fr_sbuff_t *in, bool brace,
 				fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
@@ -1562,7 +1562,7 @@ fr_slen_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
 	our_t_rules.xlat.runtime_el = el;
 
 	fr_strerror_clear();	/* Clear error buffer */
-	if (xlat_tokenize_string(head, &our_in, false, p_rules, &our_t_rules) < 0) {
+	if (xlat_tokenize_input(head, &our_in, false, p_rules, &our_t_rules) < 0) {
 		talloc_free(head);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
@@ -1658,7 +1658,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		 *	Barewords --may-contain=%{expansions}
 		 */
 		case T_BARE_WORD:
-			if (xlat_tokenize_string(node->group, &our_in,
+			if (xlat_tokenize_input(node->group, &our_in,
 						  false, our_p_rules, t_rules) < 0) {
 			error:
 				if (our_p_rules != &value_parse_rules_bareword_quoted) {
@@ -1674,7 +1674,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		 *	"Double quoted strings may contain %{expansions}"
 		 */
 		case T_DOUBLE_QUOTED_STRING:
-			if (xlat_tokenize_string(node->group, &our_in,
+			if (xlat_tokenize_input(node->group, &our_in,
 						  false, &value_parse_rules_double_quoted, t_rules) < 0) goto error;
 			break;
 
@@ -1782,7 +1782,7 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 
 	fr_strerror_clear();	/* Clear error buffer */
 
-	if (xlat_tokenize_string(head, &our_in, false, p_rules, t_rules) < 0) {
+	if (xlat_tokenize_input(head, &our_in, false, p_rules, t_rules) < 0) {
 		talloc_free(head);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
