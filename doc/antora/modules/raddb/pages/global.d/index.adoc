@@ -1,0 +1,21 @@
+= Global Configuration Items
+
+Some modules have configuration which is _global_ to the server.
+
+For example, the xref:mods-available/python.adoc[python] module has
+the Python path set once for the server.  Due to how the underlying
+Python APIs are written, this path cannot be configured on a
+per-module basis.  If the configuration items were instead placed in
+each module, then the settings could conflict, and the server would
+have unpredictable behavior.
+
+As a result, some modules have additional configuration items which
+are in the `global.d` directory.  That way the settings are configured
+once, and not in each module.
+
+[options="header"]
+[cols="20%,80%"]
+|=====
+| Configuration | Description
+| xref:global.d/ldap.adoc[ldap]         | LDAP debugging flags
+| xref:global.d/python.adoc[python]	| Python path variables

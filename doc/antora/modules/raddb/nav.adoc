@@ -3,6 +3,10 @@
 
 ** xref:certs/index.adoc[Certificates]
 
+** xref:global.d/index.adoc[Global Configuration]
+** xref:global.d/ldap.adoc[ldap]
+** xref:global.d/python.adoc[ldap]
+
 ** xref:mods-available/index.adoc[Modules]
 *** xref:mods-available/all_modules.adoc[Module List]
 *** xref:mods-available/abfab_psk_sql.adoc[ADFAB PSK Module]
