@@ -25,4 +25,4 @@ $INCLUDE dictionary.freeradius.internal.sim
 #
 #  Include module-specific dictionaries.
 #
-$INCLUDE- modules/*.txt
+#$INCLUDE- modules/*.txt
