@@ -4,7 +4,6 @@
 Packet-Type = Access-Request
 User-Name = 'Bob'
 User-Password = 'Alice'
-Tmp-Integer-1 = "12345"
 
 #
 #  Expected answer

@@ -121,9 +121,9 @@ DIAG_ON(format-nonliteral)
 /** Get time in ms since either epoch or another value
  *
  *  %{time_since:s} - return seconds since epoch
- *  %{time_since:ms:0} - return milliseconds since epoch
- *  %{time_since:us:1695745763034443} - return microseconds since Tue 26 Sep 17:29:23.034443 BST 2023
- *  %{time_since:us:&Tmp-Integer64-1} - return microseconds since value in &Tmp-Integer64-1
+ *  %{time_since:ms 0} - return milliseconds since epoch
+ *  %{time_since:us 1695745763034443} - return microseconds since Tue 26 Sep 17:29:23.034443 BST 2023
+ *  %{time_since:us &Tmp-Integer64-1} - return microseconds since value in &Tmp-Integer64-1
  */
 
 static ssize_t xlat_time_since(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
@@ -161,19 +161,19 @@ static ssize_t xlat_time_since(UNUSED void *instance, REQUEST *request, char con
 		return -1;
 	}
 
-	if (fmt[0] != '\0' && fmt[0] != ':') {
+	if (fmt[0] != '\0' && fmt[0] != ' ') {
 		REDEBUG("Invalid arguments passed to time_since xlat");
 		goto error;
 	}
 
-	if (fmt[0] == ':') fmt++;
+	while (isspace((uint8_t) *fmt)) fmt++;
 
 	/*
 	 *  Handle the different formats that we can be passed
 	 */
 	if (fmt[0] == '\0') {
 		/*
-		 *  %{time_since:[mu]?s:} - epoch
+		 *  %{time_since:[mu]?s} - epoch
 		 */
 		time_since = 0;
 
@@ -181,7 +181,7 @@ static ssize_t xlat_time_since(UNUSED void *instance, REQUEST *request, char con
 		/*
 		 *  We were provided with an attribute
 		 *
-		 *  %{time_since:[mu]?s:&Attr-Name}
+		 *  %{time_since:[mu]?s &Attr-Name}
 		 */
 		value_data_t outnum;
 		VALUE_PAIR *vp;
@@ -226,7 +226,7 @@ static ssize_t xlat_time_since(UNUSED void *instance, REQUEST *request, char con
 		/*
 		 *  Otherwise we hope we were provided with an integer value
 		 *
-		 *  %{time_since:[mu]?s:12345}
+		 *  %{time_since:[mu]?s 12345}
 		 */
 		if (sscanf(fmt, "%" PRIu64, &time_since) != 1) {
 			REDEBUG("Failed parsing \"%s\" as integer", fmt);

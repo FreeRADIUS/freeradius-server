@@ -41,18 +41,18 @@ date wispr2date {
 #      microseconds; and
 #    - calculate the time elapsed since a given time.
 #
-#  Syntax is: %{time_since:BASE[:(number|&attribute)]}
+#  Syntax is: %{time_since:BASE[ (number|&attribute)]}
 #  where "BASE" is "s", "ms" or "us".
 #
 #  Examples:
 #    %{time_since:s}
 #        - time in seconds since the epoch, same as %c
 #
-#    %{time_since:s:1695753388}
+#    %{time_since:s 1695753388}
 #        - time in seconds since Tue 26 Sep 19:36:28 BST 2023
 #          (which is 1695753388 in UNIX time)
 #
-#    %{time_since:s:&Tmp-Integer-0}
+#    %{time_since:s &Tmp-Integer-0}
 #        - Time since the number of seconds in Tmp-Integer-0
 #
 #    %{time_since:ms}
@@ -76,5 +76,5 @@ date wispr2date {
 #    }
 #    ldap
 #    update request {
-#      &Tmp-Integer64-1 := %{time_since:us:&Tmp-Integer64-0}"
+#      &Tmp-Integer64-1 := %{time_since:us &Tmp-Integer64-0}"
 #    }

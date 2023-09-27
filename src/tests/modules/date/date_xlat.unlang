@@ -7,6 +7,19 @@
 #
 
 #
+#  %{time_since:...} should never return 0
+#
+update {
+	&Tmp-Integer64-0 := "%{time_since:s}"
+	&Tmp-Integer64-1 := "%{time_since:ms}"
+	&Tmp-Integer64-2 := "%{time_since:us}"
+}
+
+if (&Tmp-Integer64-0 == 0 || &Tmp-Integer64-1 == 0 || &Tmp-Integer64-2 == 0) {
+	test_fail
+}
+
+#
 #  %c and %{time_since:s:0} should match
 #
 update {
@@ -15,13 +28,13 @@ update {
 
 update {
 	&Tmp-Integer-0 := "%c"
-	&Tmp-Integer-1 := "%{time_since:s:0}"
-	&Tmp-Integer-2 := "%{time_since:s:&Tmp-Integer-9}"
+	&Tmp-Integer-1 := "%{time_since:s 0}"
+	&Tmp-Integer-2 := "%{time_since:s &Tmp-Integer-9}"
 }
 
 if (&Tmp-Integer-0 != &Tmp-Integer-1) {
 	if (&Tmp-Integer-0 != "%{expr:&Tmp-Integer-1 - 1}") {
-	# at a push, %{time_since:s:0} might be one second later,
+	# at a push, %{time_since:s 0} might be one second later,
 	# depending on when the test ran
 		test_fail
 	}
@@ -37,11 +50,11 @@ if (&Tmp-Integer-1 != &Tmp-Integer-2) {
 #  If we run time_since 3 times, they should be the same or increasing
 #
 update {
-	&Tmp-Integer64-0 := "%{time_since:s:0}"
+	&Tmp-Integer64-0 := "%{time_since:s 0}"
 }
 
 update {
-	&Tmp-Integer64-1 := "%{time_since:s:}"
+	&Tmp-Integer64-1 := "%{time_since:s }"
 }
 
 update {
@@ -67,15 +80,15 @@ if (&Tmp-Integer64-0 < 1600000000) {
 #  Similar for milliseconds
 #
 update {
-	&Tmp-Integer64-3 := "%{time_since:ms:0}"
+	&Tmp-Integer64-3 := "%{time_since:ms 0}"
 }
 
 update {
-	&Tmp-Integer64-4 := "%{time_since:ms:}"
+	&Tmp-Integer64-4 := "%{time_since:ms}"
 }
 
 update {
-	&Tmp-Integer64-5 := "%{time_since:ms}"
+	&Tmp-Integer64-5 := "%{time_since:ms &Tmp-Integer-9}"
 }
 
 if (&Tmp-Integer64-3 > &Tmp-Integer64-4 || \
@@ -89,11 +102,11 @@ if (&Tmp-Integer64-3 > &Tmp-Integer64-4 || \
 #  ...and microseconds
 #
 update {
-	&Tmp-Integer64-6 := "%{time_since:us:0}"
+	&Tmp-Integer64-6 := "%{time_since:us 0}"
 }
 
 update {
-	&Tmp-Integer64-7 := "%{time_since:us:}"
+	&Tmp-Integer64-7 := "%{time_since:us         }"
 }
 
 update {
@@ -117,15 +130,15 @@ if ("%{expr:&Tmp-Integer64-7 - &Tmp-Integer64-6}" > 250) {
 #  Seconds component * 1000 must always be same or less than
 #  milliseconds, and microseconds.
 #
-if ("%{expr:%{time_since:s:0} * 1000}" > "%{time_since:ms:0}") {
+if ("%{expr:%{time_since:s 0} * 1000}" > "%{time_since:ms 0}") {
 	test_fail
 }
 
-if ("%{expr:%{time_since:ms:0} * 1000}" > "%{time_since:us:0}") {
+if ("%{expr:%{time_since:ms 0} * 1000}" > "%{time_since:us 0}") {
 	test_fail
 }
 
-if ("%{expr:%{time_since:s:0} * 1000000}" > "%{time_since:us:0}") {
+if ("%{expr:%{time_since:s 0} * 1000000}" > "%{time_since:us 0}") {
 	test_fail
 }
 
@@ -164,7 +177,7 @@ update {
 
 # negative values
 update {
-	&Tmp-Integer-0 := "%{time_since:ms:-1234}"
+	&Tmp-Integer-0 := "%{time_since:ms        -1234}"
 }
 
 if (!(&Module-Failure-Message[*] == 'time_since xlat only accepts positive integers')) {
@@ -178,7 +191,7 @@ update {
 
 #  invalid attribute
 update {
-	&Tmp-Integer-0 := "%{time_since:us:&Test-Non-Existant-Attr}"
+	&Tmp-Integer-0 := "%{time_since:us &Test-Non-Existant-Attr}"
 }
 
 if (!(&Module-Failure-Message[*] == 'Unable to parse attribute in time_ms_since xlat')) {
@@ -192,7 +205,7 @@ update {
 
 #  silly text
 update {
-	&Tmp-Integer-0 := "%{time_since:us:test random text}"
+	&Tmp-Integer-0 := "%{time_since:us     test random text}"
 }
 
 if (!(&Module-Failure-Message[*] == 'Failed parsing "test random text" as integer')) {
