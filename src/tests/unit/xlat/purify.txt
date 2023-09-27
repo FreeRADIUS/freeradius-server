@@ -237,6 +237,12 @@ match "a""b""c""d"
 xlat_purify %md5(foo)
 match 0xacbd18db4cc2f85cedef654fccc4a4d8
 
+xlat_purify %md5(%md5(foo))
+match 0x47847ae721df523d6388aebc9c94d656
+
+xlat_purify %md5('%md5(foo)')
+match 0x5e153571422b69cf5c5f7ce5f03985b5
+
 #
 #  Because this isn't a reference to the contents of &User-Name
 #
@@ -254,4 +260,4 @@ xlat_purify %md5(&User-Name)
 match 0x14d23a6ed8e7d19fcb3a38dc86c1fc0b
 
 count
-match 112
+match 116
