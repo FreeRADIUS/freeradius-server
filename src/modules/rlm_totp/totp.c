@@ -26,6 +26,31 @@
 
 #include "totp.h"
 
+#ifdef TESTING
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/dbuff.h>
+#include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/base32.h>
+
+#undef RDEBUG_ENABLED3
+#define RDEBUG_ENABLED3 (!request)
+#undef RDEBUG3
+#define RDEBUG3(fmt, ...) totp_log(fmt, ## __VA_ARGS__)
+
+DIAG_OFF(format-nonliteral)
+
+static void totp_log(char const *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vfprintf(stdout, fmt, ap);
+	va_end(ap);
+
+	printf("\n");
+}
+#endif
+
 /** Implement RFC 6238 TOTP algorithm (HMAC-SHA1).
  *
  *	Appendix B has test vectors.  Note that the test vectors are
@@ -113,7 +138,7 @@ int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t co
 		snprintf(buffer, sizeof(buffer), ((cfg->otp_length == 6) ? "%06u" : "%08u"),
 				 challenge % ((cfg->otp_length == 6) ? 1000000 : 100000000));
 
-		if (request) {
+		if (RDEBUG_ENABLED3) {
 			char buf_now[32], buf_then[32];
 			fr_sbuff_t snow = FR_SBUFF_IN(buf_now, sizeof(buf_now));
 			fr_sbuff_t sthen = FR_SBUFF_IN(buf_then, sizeof(buf_then));
@@ -131,3 +156,63 @@ int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t co
 
 	return -1;
 }
+
+#ifdef TESTING
+int main(int argc, char **argv)
+{
+	size_t len;
+	uint8_t *p;
+	uint8_t key[80];
+	fr_totp_t totp = {
+		.time_step = 30,
+		.otp_length = 8,
+		.lookback_steps = 1,
+		.lookback_interval = 1,
+	};
+
+	if (argc < 2) {
+		fprintf(stderr, "totp: Expected command 'decode' or 'totp'\n");
+		return 1;
+	}
+
+	if (strcmp(argv[1], "decode") == 0) {
+		if (argc < 3) {
+			fprintf(stderr, "totp: Expected arguments as - decode <base32-data> \n");
+			return 1;
+		}
+
+		len = fr_base32_decode(&FR_DBUFF_TMP(key, sizeof(key)), &FR_SBUFF_IN(argv[2], strlen(argv[2])), true, true);
+		printf("Decoded %ld %s\n", len, key);
+
+		for (p = key; p < (key + len); p++) {
+			printf("%02x ", *p);
+		}
+		printf("\n");
+
+		return 0;
+	}
+
+	/*
+	 *	TOTP <time> <key> <8-character-expected-token>
+	 */
+	if (strcmp(argv[1], "totp") == 0) {
+		uint64_t now;
+
+		if (argc < 5) {
+			fprintf(stderr, "totp: Expected arguments as - totp <time> <key> <totp>\n");
+			return 1;
+		}
+
+		(void) sscanf(argv[2], "%llu", &now);
+
+		if (fr_totp_cmp(&totp, NULL, (time_t) now, (uint8_t const *) argv[3], strlen(argv[3]), argv[4]) == 0) {
+			return 0;
+		}
+		printf("Fail\n");
+		return 1;
+	}
+
+	fprintf(stderr, "Unknown command %s\n", argv[1]);
+	return 1;
+}
+#endif

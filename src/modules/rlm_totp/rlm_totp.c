@@ -62,7 +62,6 @@ typedef struct rlm_totp_t {
 	fr_totp_t	totp;			//! configuration entries passed to libfreeradius-totp
 } rlm_totp_t;
 
-#ifndef TESTING
 /* Map configuration file names to internal variables */
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("time_step", FR_TYPE_UINT32, rlm_totp_t, totp.time_step), .dflt = "30" },
@@ -71,9 +70,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("lookback_interval", FR_TYPE_UINT32, rlm_totp_t, totp.lookback_interval), .dflt = "30" },
 	CONF_PARSER_TERMINATOR
 };
-#endif
 
-#ifndef TESTING
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_totp_t   *inst = talloc_get_type_abort(mctx->inst->data, rlm_totp_t);
@@ -116,9 +113,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	return 0;
 }
-#endif
-
-#ifndef TESTING
 
 /*
  *  Do the authentication
@@ -161,7 +155,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 		len = fr_base32_decode(&FR_DBUFF_TMP((uint8_t *) buffer, sizeof(buffer)), &FR_SBUFF_IN(secret->vb_strvalue, secret->vb_length), true, true);
 		if (len < 0) {
-			RDEBUG("TOTP-Secret cannot be decoded");
+			RDEBUG("TOTP.Secret cannot be decoded");
 			RETURN_MODULE_FAIL;
 		}
 
@@ -198,48 +192,3 @@ module_rlm_t rlm_totp = {
 		MODULE_NAME_TERMINATOR
 	}
 };
-
-#else /* TESTING */
-int main(int argc, char **argv)
-{
-	size_t len;
-	uint8_t *p;
-	uint8_t key[80];
-
-	if (argc < 2) return 0;
-
-	if (strcmp(argv[1], "decode") == 0) {
-		if (argc < 3) return 0;
-
-		len = base32_decode(key, sizeof(key), argv[2]);
-		printf("Decoded %ld %s\n", len, key);
-
-		for (p = key; p < (key + len); p++) {
-			printf("%02x ", *p);
-		}
-		printf("\n");
-
-		return 0;
-	}
-
-	/*
-	 *	TOTP <time> <key> <8-character-expected-token>
-	 */
-	if (strcmp(argv[1], "totp") == 0) {
-		uint64_t now;
-
-		if (argc < 5) return 0;
-
-		(void) sscanf(argv[2], "%llu", &now);
-
-		if (totp_cmp(NULL, (time_t) now, (uint8_t const *) argv[3], strlen(argv[3]), argv[4], NULL) == 0) {
-			return 0;
-		}
-		printf("Fail\n");
-		return 1;
-	}
-
-	fprintf(stderr, "Unknown command %s\n", argv[1]);
-	return 1;
-}
-#endif
