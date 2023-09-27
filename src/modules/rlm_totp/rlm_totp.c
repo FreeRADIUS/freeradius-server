@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/util/base32.h>
 
 typedef struct {
 	fr_value_box_t		secret;
@@ -82,118 +83,6 @@ static const CONF_PARSER module_config[] = {
 #define BACK_STEPS	(1)
 #define BACK_STEP_SECS	(30)
 #endif
-
-/*
- *	RFC 4648 base32 decoding.
- */
-static const uint8_t alphabet[UINT8_MAX] = {
-	['A'] = 1,
-	['B'] = 2,
-	['C'] = 3,
-	['D'] = 4,
-	['E'] = 5,
-	['F'] = 6,
-	['G'] = 7,
-	['H'] = 8,
-	['I'] = 9,
-	['J'] = 10,
-	['K'] = 11,
-	['L'] = 12,
-	['M'] = 13,
-	['N'] = 14,
-	['O'] = 15,
-	['P'] = 16,
-	['Q'] = 17,
-	['R'] = 18,
-	['S'] = 19,
-	['T'] = 20,
-	['U'] = 21,
-	['V'] = 22,
-	['W'] = 23,
-	['X'] = 24,
-	['Y'] = 25,
-	['Z'] = 26,
-	['2'] = 27,
-	['3'] = 28,
-	['4'] = 29,
-	['5'] = 30,
-	['6'] = 31,
-	['7'] = 32,
-};
-
-static ssize_t base32_decode(uint8_t *out, size_t outlen, char const *in)
-{
-	uint8_t *p, *end, *b;
-	char const *q;
-
-	p = out;
-	end = p + outlen;
-
-	memset(out, 0, outlen);
-
-	/*
-	 *	Convert ASCII to binary.
-	 */
-	for (q = in; *q != '\0'; q++) {
-		/*
-		 *	Padding at the end, stop.
-		 */
-		if (*q == '=') {
-			break;
-		}
-
-		if (!alphabet[*((uint8_t const *) q)]) return -1;
-
-		*(p++) = alphabet[*((uint8_t const *) q)] - 1;
-
-		if (p == end) return -1; /* too much data */
-	}
-
-	/*
-	 *	Reset to the end of the actual data we have
-	 */
-	end = p;
-
-	/*
-	 *	Convert input 5-bit groups into output 8-bit groups.
-	 *	We do this in 8-byte blocks.
-	 *
-	 *	00011111 00022222 00033333 00044444 00055555 00066666 00077777 00088888
-	 *
-	 *	Will get converted to
-	 *
-	 *	11111222 22333334 44445555 56666677 77788888
-	 */
-	for (p = b = out; p < end; p += 8) {
-		b[0] = p[0] << 3;
-		b[0] |= p[1] >> 2;
-
-		b[1] = p[1] << 6;
-		b[1] |= p[2] << 1;
-		b[1] |= p[3] >> 4;
-
-		b[2] = p[3] << 4;
-		b[2] |= p[4] >> 1;
-
-		b[3] = p[4] << 7;
-		b[3] |= p[5] << 2;
-		b[3] |= p[6] >> 3;
-
-		b[4] = p[6] << 5;
-		b[4] |= p[7];
-
-		b += 5;
-
-		/*
-		 *	Clear out the remaining 3 octets of this block.
-		 */
-		b[0] = 0;
-		b[1] = 0;
-		b[2] = 0;
-	}
-
-	return b - out;
-}
 
 #ifndef TESTING
 # define TESTING_UNUSED
@@ -361,7 +250,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 		if (!fr_type_is_null(secret->type)) RETURN_MODULE_NOOP;
 
-		len = base32_decode(buffer, sizeof(buffer), secret->vb_strvalue);
+		len = fr_base32_decode(&FR_DBUFF_TMP((uint8_t *) buffer, sizeof(buffer)), &FR_SBUFF_IN(secret->vb_strvalue, secret->vb_length), true, true);
 		if (len < 0) {
 			RDEBUG("TOTP-Secret cannot be decoded");
 			RETURN_MODULE_FAIL;
