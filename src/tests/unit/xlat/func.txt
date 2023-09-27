@@ -11,8 +11,11 @@ migrate xlat_new_functions = yes
 xlat %Y()
 match %Y
 
+xlat %explode("a,b,c,d", ',')
+match %(explode:"a,b,c,d" ',')
+
 #xlat %md5(foo)
 #match foo
 
 count
-match 4
+match 6

@@ -2769,7 +2769,8 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
 							.list_def = request_attr_request,
 						   },
-					   });
+						   .xlat = cc->tmpl_rules.xlat,
+				   });
 	if (dec_len <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
 
@@ -2823,7 +2824,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 						  .list_def = request_attr_request,
 						  .allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					  },
-				  });
+				  }, false);
 	if (slen <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen);
 		RETURN_OK_WITH_ERROR();

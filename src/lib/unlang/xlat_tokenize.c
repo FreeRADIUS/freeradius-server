@@ -107,6 +107,14 @@ static fr_sbuff_parse_rules_t const xlat_multi_arg_rules = {
 	.terminals = &FR_SBUFF_TERM(")")	/* These get merged with other literal terminals */
 };
 
+static fr_sbuff_parse_rules_t const xlat_new_arg_rules = {
+	.escapes = &xlat_unescape,
+	.terminals = &FR_SBUFF_TERMS( /* These get merged with other literal terminals */
+				L(")"),
+				L(","),
+		),
+};
+
 /** Allocate an xlat node to call an xlat function
  *
  * @param[in] ctx	to allocate the new node in.
@@ -385,6 +393,7 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 		xlat_exp_set_name_buffer_shallow(literal, str);
 		fr_value_box_strdup_shallow(&literal->data, NULL, str, false);
 		literal->flags.constant = true;
+		fr_assert(literal->flags.pure);
 		xlat_exp_insert_tail(arg_group->group, literal);
 
 		if (!fr_sbuff_next_if_char(in, '\'')) {
@@ -601,7 +610,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 *	Now parse the child nodes that form the
 	 *	function's arguments.
 	 */
-	if (xlat_tokenize_argv(node, &node->call.args, in, &xlat_multi_arg_rules, t_rules) < 0) {
+	if (xlat_tokenize_argv(node, &node->call.args, in, &xlat_multi_arg_rules, t_rules, false) < 0) {
 		goto error;
 	}
 	xlat_flags_merge(&node->flags, &node->call.args->flags);
@@ -711,9 +720,38 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 
 	(void) fr_sbuff_next(in); /* skip the ')' */
 
-	// parse the arguments until '('
+	/*
+	 *	Now parse the child nodes that form the
+	 *	function's arguments.
+	 */
+	if (xlat_tokenize_argv(node, &node->call.args, in, &xlat_new_arg_rules, t_rules, true) < 0) {
+error:
+		talloc_free(node);
+		return -1;
+	}
 
-	return -1;
+	xlat_flags_merge(&node->flags, &node->call.args->flags);
+
+	if (!fr_sbuff_next_if_char(in, ')')) {
+		fr_strerror_const("Missing closing brace");
+		goto error;
+	}
+
+	/*
+	 *	Validate the arguments.
+	 */
+	if (node->type == XLAT_FUNC) {
+		if (node->call.input_type == XLAT_INPUT_MONO) {
+			if (xlat_validate_function_mono(node) < 0) goto error;
+		} else {
+			if (xlat_validate_function_args(node) < 0) goto error;
+		}
+
+		node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
+	}
+
+	xlat_exp_insert_tail(head, node);
+	return 0;
 }
 
 static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
@@ -1072,6 +1110,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			xlat_exp_set_name_buffer_shallow(node, str);
 			fr_value_box_strdup(node, &node->data, NULL, str, false);
 			node->flags.constant = true;
+			fr_assert(node->flags.pure);
 
 			if (!escapes) {
 				XLAT_DEBUG("VALUE-BOX %s <-- %.*s", str,
@@ -1601,13 +1640,15 @@ fr_slen_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
  * @param[in] p_rules		controlling how to parse the string outside of
  *				any expansions.
  * @param[in] t_rules		controlling how attribute references are parsed.
+ * @param[in] comma		whether the arguments are delimited by commas
  * @return
  *	- < 0 on error.
  *	- >0  on success which is the number of characters parsed.
  */
 fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
-			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool comma)
 {
+	int				argc = 0;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
 	ssize_t				slen;
 	fr_sbuff_marker_t		m;
@@ -1644,6 +1685,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		size_t		len;
 
 		fr_sbuff_set(&m, &our_in);	/* Record start of argument */
+		argc++;
 
 		fr_sbuff_out_by_longest_prefix(&slen, &quote, xlat_quote_table, &our_in, T_BARE_WORD);
 
@@ -1659,6 +1701,8 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		 *	Barewords --may-contain=%{expansions}
 		 */
 		case T_BARE_WORD:
+			XLAT_DEBUG("ARGV bare word <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
+
 			if (xlat_tokenize_input(node->group, &our_in,
 						our_p_rules, t_rules) < 0) {
 			error:
@@ -1675,6 +1719,8 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		 *	"Double quoted strings may contain %{expansions}"
 		 */
 		case T_DOUBLE_QUOTED_STRING:
+			XLAT_DEBUG("ARGV double quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
+
 			if (xlat_tokenize_input(node->group, &our_in,
 						&value_parse_rules_double_quoted, t_rules) < 0) goto error;
 			break;
@@ -1687,9 +1733,9 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			char		*str;
 			xlat_exp_t	*child;
 
-			child = xlat_exp_alloc(node->group, XLAT_BOX, NULL, 0);
-			node->flags.constant = true;
+			XLAT_DEBUG("ARGV single quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
 
+			child = xlat_exp_alloc(node->group, XLAT_BOX, NULL, 0);
 			slen = fr_sbuff_out_aunescape_until(child, &str, &our_in, SIZE_MAX,
 							    value_parse_rules_single_quoted.terminals,
 							    value_parse_rules_single_quoted.escapes);
@@ -1698,6 +1744,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			xlat_exp_set_name_buffer_shallow(child, str);
 			fr_value_box_strdup(child, &child->data, NULL, str, false);
 			child->flags.constant = true;
+			fr_assert(child->flags.pure);
 			xlat_exp_insert_tail(node->group, child);
 		}
 			break;
@@ -1734,6 +1781,23 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		 */
 		fr_sbuff_set(&m, &our_in);
 		len = fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+
+		/*
+		 *	Commas are in the list of terminals, but we skip over them,
+		 */
+		if (comma) {
+			fr_assert(p_rules && p_rules->terminals);
+
+			if (fr_sbuff_next_if_char(&our_in, ',')) {
+				fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+				continue;
+			}
+
+			if (fr_sbuff_is_char(&our_in, ')')) break;
+
+			fr_strerror_printf("Unexpected text after argument %d", argc);
+			goto error;
+		}
 
 		/*
 		 *	Check to see if we have a terminal char

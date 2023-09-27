@@ -430,7 +430,7 @@ int trigger_exec(unlang_interpret_t *intp,
 	trigger->timeout = fr_time_delta_from_sec(5);	/* FIXME - Should be configurable? */
 
 	slen = xlat_tokenize_argv(trigger, &trigger->xlat,
-				  &FR_SBUFF_IN(trigger->command, talloc_array_length(trigger->command) - 1), NULL, NULL);
+				  &FR_SBUFF_IN(trigger->command, talloc_array_length(trigger->command) - 1), NULL, NULL, false);
 	if (slen <= 0) {
 		char *spaces, *text;
 
