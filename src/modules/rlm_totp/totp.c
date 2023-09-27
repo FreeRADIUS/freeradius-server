@@ -40,7 +40,7 @@
  *	-  0  On Success
  *	- -1  On Failure
  */
-int fr_totp_cmp(fr_totp_t const *cfg, time_t now, uint8_t const *key, size_t keylen, char const *totp)
+int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t const *key, size_t keylen, char const *totp)
 {
 	time_t then;
 	unsigned int i;
@@ -50,20 +50,14 @@ int fr_totp_cmp(fr_totp_t const *cfg, time_t now, uint8_t const *key, size_t key
 	uint8_t data[8];
 	uint8_t digest[SHA1_DIGEST_LENGTH];
 	char buffer[9];
-	char buf_now[32], buf_then[32];
 
 	fr_assert(cfg != NULL);
 	fr_assert(cfg->otp_length == 6 || cfg->otp_length == 8);
 	fr_assert(key != NULL);
 	fr_assert(totp != NULL);
 
-	if (!cfg) {
-		fr_strerror_const("Invalid 'cfg' parameter value.");
-		return -1;
-	}
-
 	if (cfg->otp_length != 6 && cfg->otp_length != 8) {
-		fr_strerror_const("The 'cfg->opt_length' has incorrect length. Expected 6 or 8.");
+		fr_strerror_const("The 'opt_length' has incorrect length. Expected 6 or 8.");
 		return -1;
 	}
 
@@ -72,7 +66,7 @@ int fr_totp_cmp(fr_totp_t const *cfg, time_t now, uint8_t const *key, size_t key
 		return -1;
 	}
 
-	if (!totp || strlen(totp) < 1) {
+	if (!*totp) {
 		fr_strerror_const("Invalid 'totp' parameter value.");
 		return -1;
 	}
@@ -85,9 +79,6 @@ int fr_totp_cmp(fr_totp_t const *cfg, time_t now, uint8_t const *key, size_t key
 	 */
 
 	for (i = 0, then = now; i <= cfg->lookback_steps; i++, then -= cfg->lookback_steps) {
-		fr_sbuff_t snow = FR_SBUFF_IN(buf_now, sizeof(buf_now));
-		fr_sbuff_t sthen = FR_SBUFF_IN(buf_then, sizeof(buf_then));
-
 		padded = ((uint64_t) now) / cfg->time_step;
 		data[0] = padded >> 56;
 		data[1] = padded >> 48;
@@ -122,12 +113,18 @@ int fr_totp_cmp(fr_totp_t const *cfg, time_t now, uint8_t const *key, size_t key
 		snprintf(buffer, sizeof(buffer), ((cfg->otp_length == 6) ? "%06u" : "%08u"),
 				 challenge % ((cfg->otp_length == 6) ? 1000000 : 100000000));
 
-		fr_time_strftime_local(&snow, fr_time_wrap(now), "%a %b %d %H:%M:%S %Y");
-		fr_time_strftime_local(&sthen, fr_time_wrap(then), "%a %b %d %H:%M:%S %Y");
+		if (request) {
+			char buf_now[32], buf_then[32];
+			fr_sbuff_t snow = FR_SBUFF_IN(buf_now, sizeof(buf_now));
+			fr_sbuff_t sthen = FR_SBUFF_IN(buf_then, sizeof(buf_then));
 
-		DEBUG3("Now: %zu (%s), Then: %zu (%s)", (size_t) now, fr_sbuff_start(&snow), (size_t) then, fr_sbuff_start(&sthen));
-		DEBUG3("Expected %s", buffer);
-		DEBUG3("Received %s", totp);
+			fr_time_strftime_local(&snow, fr_time_wrap(now), "%a %b %d %H:%M:%S %Y");
+			fr_time_strftime_local(&sthen, fr_time_wrap(then), "%a %b %d %H:%M:%S %Y");
+
+			RDEBUG3("Now: %zu (%s), Then: %zu (%s)", (size_t) now, fr_sbuff_start(&snow), (size_t) then, fr_sbuff_start(&sthen));
+			RDEBUG3("Expected %s", buffer);
+			RDEBUG3("Received %s", totp);
+		}
 
 		if (fr_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, cfg->otp_length) == 0) return 0;
 	}

@@ -37,7 +37,7 @@ typedef struct {
 	uint32_t lookback_interval;	//!< interval in seconds between steps
 } fr_totp_t;
 
-int fr_totp_cmp(fr_totp_t const *cfg, time_t now, uint8_t const *key, size_t keylen, char const *totp);
+int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t const *key, size_t keylen, char const *totp) CC_HINT(nonnull(1,4,6));
 
 #ifdef __cplusplus
 }

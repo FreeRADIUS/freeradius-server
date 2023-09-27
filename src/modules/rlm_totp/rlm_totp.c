@@ -29,6 +29,8 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/base32.h>
 
+#include "totp.h"
+
 typedef struct {
 	fr_value_box_t		secret;
 	fr_value_box_t		key;
@@ -57,41 +59,18 @@ static const call_method_env_t method_env = {
 /* Define a structure for the configuration variables */
 typedef struct rlm_totp_t {
 	char const	*name;			//!< name of this instance */
-	uint32_t	time_step;		//!< seconds
-	uint32_t	otp_length;		//!< forced to 6 or 8
-	uint32_t	lookback_steps;		//!< number of steps to look back
-	uint32_t	lookback_interval;	//!< interval in seconds between steps
+	fr_totp_t	totp;			//! configuration entries passed to libfreeradius-totp
 } rlm_totp_t;
 
 #ifndef TESTING
 /* Map configuration file names to internal variables */
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("time_step", FR_TYPE_UINT32, rlm_totp_t, time_step), .dflt = "30" },
-	{ FR_CONF_OFFSET("otp_length", FR_TYPE_UINT32, rlm_totp_t, otp_length), .dflt = "6" },
-	{ FR_CONF_OFFSET("lookback_steps", FR_TYPE_UINT32, rlm_totp_t, lookback_steps), .dflt = "1" },
-	{ FR_CONF_OFFSET("lookback_interval", FR_TYPE_UINT32, rlm_totp_t, lookback_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("time_step", FR_TYPE_UINT32, rlm_totp_t, totp.time_step), .dflt = "30" },
+	{ FR_CONF_OFFSET("otp_length", FR_TYPE_UINT32, rlm_totp_t, totp.otp_length), .dflt = "6" },
+	{ FR_CONF_OFFSET("lookback_steps", FR_TYPE_UINT32, rlm_totp_t, totp.lookback_steps), .dflt = "1" },
+	{ FR_CONF_OFFSET("lookback_interval", FR_TYPE_UINT32, rlm_totp_t, totp.lookback_interval), .dflt = "30" },
 	CONF_PARSER_TERMINATOR
 };
-
-#define TIME_STEP      (inst->time_step)
-#define OTP_LEN        (inst->otp_length)
-#define BACK_STEPS     (inst->lookback_steps)
-#define BACK_STEP_SECS (inst->lookback_interval)
-#else
-#define TIME_STEP	(30)
-#define OTP_LEN		(8)
-#define BACK_STEPS	(1)
-#define BACK_STEP_SECS	(30)
-#endif
-
-#ifndef TESTING
-# define TESTING_UNUSED
-# define LEN 6
-#else /* TESTING */
-# define LEN 8
-# undef RDEBUG3
-# define RDEBUG3(fmt, ...)	printf(fmt "\n", ## __VA_ARGS__)
-# define TESTING_UNUSED UNUSED
 #endif
 
 #ifndef TESTING
@@ -122,92 +101,22 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_totp_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_totp_t);
 
-	FR_INTEGER_BOUND_CHECK("time_step", inst->time_step, >=, 5);
-	FR_INTEGER_BOUND_CHECK("time_step", inst->time_step, <=, 120);
+	FR_INTEGER_BOUND_CHECK("time_step", inst->totp.time_step, >=, 5);
+	FR_INTEGER_BOUND_CHECK("time_step", inst->totp.time_step, <=, 120);
 
-	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->lookback_steps, >=, 1);
-	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->lookback_steps, <=, 10);
+	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->totp.lookback_steps, >=, 1);
+	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->totp.lookback_steps, <=, 10);
 
-	FR_INTEGER_BOUND_CHECK("lookback_interval", inst->lookback_interval, <=, inst->time_step);
+	FR_INTEGER_BOUND_CHECK("lookback_interval", inst->totp.lookback_interval, <=, inst->totp.time_step);
 
-	FR_INTEGER_BOUND_CHECK("otp_length", inst->otp_length, >=, 6);
-	FR_INTEGER_BOUND_CHECK("otp_length", inst->otp_length, <=, 8);
+	FR_INTEGER_BOUND_CHECK("otp_length", inst->totp.otp_length, >=, 6);
+	FR_INTEGER_BOUND_CHECK("otp_length", inst->totp.otp_length, <=, 8);
 
-	if (inst->otp_length == 7) inst->otp_length = 8;
+	if (inst->totp.otp_length == 7) inst->totp.otp_length = 8;
 
 	return 0;
 }
 #endif
-
-/*
- *	Implement RFC 6238 TOTP algorithm.
- *
- *	Appendix B has test vectors.  Note that the test vectors are
- *	for 8-character challenges, and not for 6 character
- *	challenges!
- */
-static int totp_cmp(TESTING_UNUSED request_t *request, time_t now, uint8_t const *key, size_t keylen, char const *totp, TESTING_UNUSED rlm_totp_t const *inst)
-{
-	time_t then;
-	unsigned int i;
-	uint8_t offset;
-	uint32_t challenge;
-	uint64_t padded;
-	char buffer[9];
-	uint8_t data[8];
-	uint8_t digest[SHA1_DIGEST_LENGTH];
-
-	/*
-	 *	First try to authenticate against the current OTP, then step
-	 *	back in increments of BACK_STEP_SECS, up to BACK_STEPS times,
-	 *	to authenticate properly in cases of long transit delay, as
-	 *	described in RFC 6238, secion 5.2.
-	 */
-
-	for (i = 0, then = now; i <= BACK_STEPS; i++, then -= BACK_STEP_SECS) {
-		padded = ((uint64_t) now) / TIME_STEP;
-		data[0] = padded >> 56;
-		data[1] = padded >> 48;
-		data[2] = padded >> 40;
-		data[3] = padded >> 32;
-		data[4] = padded >> 24;
-		data[5] = padded >> 16;
-		data[6] = padded >> 8;
-		data[7] = padded & 0xff;
-
-		/*
-		 *	Encrypt the network order time with the key.
-		 */
-		fr_hmac_sha1(digest, data, 8, key, keylen);
-
-		/*
-		 *	Take the least significant 4 bits.
-		 */
-		offset = digest[SHA1_DIGEST_LENGTH - 1] & 0x0f;
-
-		/*
-		 *	Grab the 32bits at "offset", and drop the high bit.
-		 */
-		challenge = (digest[offset] & 0x7f) << 24;
-		challenge |= digest[offset + 1] << 16;
-		challenge |= digest[offset + 2] << 8;
-		challenge |= digest[offset + 3];
-
-		/*
-		 *	The token is the last 6 digits in the number (or 8 for testing)..
-		 */
-		snprintf(buffer, sizeof(buffer), ((OTP_LEN == 6) ? "%06u" : "%08u"),
-				 challenge % ((OTP_LEN == 6) ? 1000000 : 100000000));
-
-		RDEBUG3("Now: %zu, Then: %zu", (size_t) now, (size_t) then);
-		RDEBUG3("Expected %s", buffer);
-		RDEBUG3("Received %s", totp);
-
-		if (fr_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, LEN) == 0) return 0;
-	}
-
-	return 1;
-}
 
 #ifndef TESTING
 
@@ -217,7 +126,7 @@ static int totp_cmp(TESTING_UNUSED request_t *request, time_t now, uint8_t const
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_totp_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, rlm_totp_call_env_t);
-	rlm_totp_t const	*instance = talloc_get_type_abort_const(mctx->inst->data, rlm_totp_t);
+	rlm_totp_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_totp_t);
 	fr_value_box_t		*user_password = &env_data->user_password;
 	fr_value_box_t		*secret = &env_data->secret;
 	fr_value_box_t		*key = &env_data->key;
@@ -260,7 +169,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		our_keylen = len;
 	}
 
-	if (totp_cmp(request, fr_time_to_sec(request->packet->timestamp), our_key, our_keylen, secret->vb_strvalue, instance) != 0) RETURN_MODULE_FAIL;
+	if (fr_totp_cmp(&inst->totp, request, fr_time_to_sec(request->packet->timestamp), our_key, our_keylen, secret->vb_strvalue) != 0) RETURN_MODULE_FAIL;
 
 	RETURN_MODULE_OK;
 }
