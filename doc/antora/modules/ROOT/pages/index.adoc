@@ -70,10 +70,10 @@ following limitations:
   * The server still does not always require (or print) the `::` prefix.  That will change.
 * As a result of adding `::` for enums, we can then remove the requirement to use `&` as a prefix for attribute names.
   * This change may require changes to all of the configuration.  We will try to allow `&` or not, but that may not be possible.
-* Dynamic expansions will change from `%{md5:foo}` to `%md5(foo)`.
-  * The new syntax is much clearer
-  * Expansions such as `%{User-Name}` will still work.  But `%{1+2}` will also work!
-  * `%{foo:-%{bar}}` will be replaced by `%{foo || bar}`, which is clearer and uses less nesting
+* Dynamic expansions have changed from `%{md5:foo}` to `%md5(foo)`.
+  * The new syntax is much clearer, and supports multiple comma-separated arguments: `%function(a, b, c)`
+  * Expansions such as `%{User-Name}` will still work.  We plan on making `%{1+2}` work, too.
+  * We plan on replacing `%{foo:-%{bar}}` by `%{foo || bar}`, which is clearer and uses less nesting.
 
 Please be aware that v4 is in "alpha" right now.  If it works, great.
 If it doesn't work, then please return to using v3.
