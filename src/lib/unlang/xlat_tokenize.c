@@ -660,6 +660,25 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 
 	if (fr_sbuff_diff(in, &m_s) == 1) {
 		if (!fr_sbuff_next_if_char(in, '(')) {
+			char c = fr_sbuff_char(&m_s, '\0');
+
+			/*
+			 *	Special-case one-letter expansions for historical compatibility.
+			 *
+			 *	BUT we only allow them either at the end of the input OR if the next character
+			 *	after the one-letter expansion isn't alphanumeric.  This catches most of their
+			 *	use-cases.
+			 *
+			 *	Unfortunately, we can't check for non-"xlat_func_chars", as '-' and '.' are
+			 *	allowed, while the detail writer does "%Y-%m-%d.log".  So all that has to be
+			 *	fixed before we can disable this behavior.
+			 */
+			if (strchr("InscCdDeGHlmMStTY", c) &&
+			    (!fr_sbuff_remaining(in) ||
+			     (!fr_sbuff_is_in_charset(in, sbuff_char_alpha_num)))) {
+				goto one_letter;
+			}
+
 			fr_strerror_const("Missing '('");
 			return -1;
 		}
@@ -1154,7 +1173,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		/*
 		 *	More migration hacks: allow %foo(...)
 		 */
-		if (t_rules && t_rules->xlat.new_functions && fr_sbuff_next_if_char(in, '%')) {
+		if (fr_sbuff_next_if_char(in, '%')) {
 			/*
 			 *	Tokenize the function arguments using the new method.
 			 */
