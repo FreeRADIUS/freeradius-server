@@ -725,8 +725,7 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 	func = xlat_func_find(fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
 
 	if (!fr_sbuff_is_char(in, '(')) {
-			fr_strerror_printf("Missing '(' %zu %c", fr_sbuff_remaining(in), fr_sbuff_char(in, '\0'));
-///		fr_strerror_const("Missing '('");
+		fr_strerror_const("Missing '('");
 		return -1;
 	}
 
