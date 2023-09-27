@@ -644,76 +644,89 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
  */
 static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmpl_rules_t const *t_rules)
 {
+	char c;
 	xlat_exp_t *node;
 	xlat_t *func;
 	fr_sbuff_marker_t m_s;
 
 	fr_sbuff_marker(&m_s, in);
-	fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
 
 	/*
-	 *	Special-case: %% is just %
+	 *	%% is special
 	 */
-	if ((fr_sbuff_diff(in, &m_s) == 0) && fr_sbuff_next_if_char(in, '%')) {
-		goto one_letter;
-	}
+	if (fr_sbuff_next_if_char(in, '%')) goto one_letter;
 
-	if (fr_sbuff_diff(in, &m_s) == 1) {
-		if (!fr_sbuff_next_if_char(in, '(')) {
-			char c = fr_sbuff_char(&m_s, '\0');
-
-			/*
-			 *	Special-case one-letter expansions for historical compatibility.
-			 *
-			 *	BUT we only allow them either at the end of the input OR if the next character
-			 *	after the one-letter expansion isn't alphanumeric.  This catches most of their
-			 *	use-cases.
-			 *
-			 *	Unfortunately, we can't check for non-"xlat_func_chars", as '-' and '.' are
-			 *	allowed, while the detail writer does "%Y-%m-%d.log".  So all that has to be
-			 *	fixed before we can disable this behavior.
-			 */
-			if (strchr("InscCdDeGHlmMStTY", c) &&
-			    (!fr_sbuff_remaining(in) ||
-			     (!fr_sbuff_is_in_charset(in, sbuff_char_alpha_num)))) {
-				goto one_letter;
-			}
-
-			fr_strerror_const("Missing '('");
-			return -1;
-		}
-
-		if (!fr_sbuff_next_if_char(in, ')')) {
-			fr_strerror_const("Missing ')'");
-			return -1;
-		}
-
-	one_letter:
-		XLAT_DEBUG("ONE-LETTER <-- %c", fr_sbuff_char(&m_s, '\0'));
-		node = xlat_exp_alloc_null(head);
-
-		xlat_exp_set_type(node, XLAT_ONE_LETTER);
-		xlat_exp_set_name(node, fr_sbuff_current(&m_s), 1);
-
-		fr_sbuff_marker_release(&m_s);
-
-#ifdef STATIC_ANALYZER
-		if (!node->fmt) return -1;
-#endif
+	/*
+	 *	% and a limited set of characters and non-alphanumeric next character is a one-letter
+	 *	expansion.
+	 *
+	 *	This hack is because '.' and '-' are allowed in xlat function names.  But We also allow %M.%Y
+	 *	and %Y-%M-...
+	 */
+	c = fr_sbuff_char(&m_s, '\0');
+	if (strchr("InscCdDeGHlmMStTY", c) != NULL) {
+		fr_sbuff_next(in);
 
 		/*
-		 *	%% is pure.  Everything else is not.
+		 *	End of buffer == one letter expansion.
 		 */
-		node->flags.pure = (node->fmt[0] == '%');
+		c = fr_sbuff_char(in, '\0');
+		if (!c) goto one_letter;
 
-		xlat_exp_insert_tail(head, node);
-		return 0;
-	}
+		/*
+		 *	%Y() is the new format.
+		 */
+		if (c == '(') {
+			fr_sbuff_next(in);
+
+			if (!fr_sbuff_next_if_char(in, ')')) {
+				fr_strerror_const("Missing ')'");
+				return -1;
+			}
+
+			goto one_letter;
+		}
+
+		/*
+		 *	%M. or %Y- is a one-letter expansion followed by the other character.
+		 */
+		if (!sbuff_char_alpha_num[(unsigned int) c]) {
+
+		one_letter:
+			XLAT_DEBUG("ONE-LETTER <-- %c", c);
+			node = xlat_exp_alloc_null(head);
+
+			xlat_exp_set_type(node, XLAT_ONE_LETTER);
+			xlat_exp_set_name(node, fr_sbuff_current(&m_s), 1);
+
+			fr_sbuff_marker_release(&m_s);
+
+#ifdef STATIC_ANALYZER
+			if (!node->fmt) return -1;
+#endif
+
+			/*
+			 *	%% is pure.  Everything else is not.
+			 */
+			node->flags.pure = (node->fmt[0] == '%');
+
+			xlat_exp_insert_tail(head, node);
+			return 0;
+		}
+
+		/*
+		 *	Anything else, it must be a full function name.
+		 */
+		fr_sbuff_set(in, &m_s);
+	}	      
+
+	fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
 
 	func = xlat_func_find(fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
 
 	if (!fr_sbuff_is_char(in, '(')) {
-		fr_strerror_const("Missing '('");
+			fr_strerror_printf("Missing '(' %zu %c", fr_sbuff_remaining(in), fr_sbuff_char(in, '\0'));
+///		fr_strerror_const("Missing '('");
 		return -1;
 	}
 
