@@ -76,10 +76,8 @@ int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t co
 	uint8_t digest[SHA1_DIGEST_LENGTH];
 	char buffer[9];
 
-	fr_assert(cfg != NULL);
 	fr_assert(cfg->otp_length == 6 || cfg->otp_length == 8);
-	fr_assert(key != NULL);
-	fr_assert(totp != NULL);
+
 
 	if (cfg->otp_length != 6 && cfg->otp_length != 8) {
 		fr_strerror_const("The 'opt_length' has incorrect length. Expected 6 or 8.");
