@@ -181,13 +181,25 @@ static ssize_t xlat_time_since(UNUSED void *instance, REQUEST *request, char con
 		/*
 		 *  We were provided with an attribute
 		 *
-		 *  %{time_since:[mu]?s &Attr-Name}
+		 *  %{time_since:[mu]?s &list:Attr-Name}
 		 */
-		value_data_t outnum;
-		VALUE_PAIR *vp;
+		value_data_t	outnum;
+		VALUE_PAIR	*vp;
+		vp_tmpl_t	vpt;
+		ssize_t         slen;
 
-		if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-			REDEBUG("Unable to parse attribute in time_ms_since xlat");
+		fmt++;
+		slen = tmpl_from_attr_substr(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+		if (slen <= 0) {
+			/* Attribute name doesn't exist */
+			REDEBUG("Unable to parse attribute in time_since xlat");
+			goto error;
+		}
+		fmt += slen;
+
+		if (tmpl_find_vp(&vp, request, &vpt) < 0) {
+			/* Attribute exists but is not in the list */
+			RWDEBUG("Can't find &%.*s", (int)vpt.len, vpt.name);
 			goto error;
 		}
 

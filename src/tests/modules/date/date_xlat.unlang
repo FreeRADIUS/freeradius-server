@@ -20,6 +20,15 @@ if (&Tmp-Integer64-0 == 0 || &Tmp-Integer64-1 == 0 || &Tmp-Integer64-2 == 0) {
 }
 
 #
+#  and they should all be different
+#
+if (&Tmp-Integer64-0 == &Tmp-Integer64-1 || \
+	&Tmp-Integer64-1 == &Tmp-Integer64-2 || \
+	&Tmp-Integer64-2 == &Tmp-Integer64-0) {
+	test_fail
+}
+
+#
 #  %c and %{time_since:s:0} should match
 #
 update {
@@ -80,7 +89,7 @@ if (&Tmp-Integer64-0 < 1600000000) {
 #  Similar for milliseconds
 #
 update {
-	&Tmp-Integer64-3 := "%{time_since:ms 0}"
+	&Tmp-Integer64-3 := "%{time_since:ms &request:Tmp-Integer-6}"
 }
 
 update {
@@ -101,8 +110,12 @@ if (&Tmp-Integer64-3 > &Tmp-Integer64-4 || \
 #
 #  ...and microseconds
 #
+update session-state {
+	&Tmp-Integer-7 := 0
+}
+
 update {
-	&Tmp-Integer64-6 := "%{time_since:us 0}"
+	&Tmp-Integer64-6 := "%{time_since:us   &session-state:Tmp-Integer-7  }"
 }
 
 update {
@@ -194,7 +207,7 @@ update {
 	&Tmp-Integer-0 := "%{time_since:us &Test-Non-Existant-Attr}"
 }
 
-if (!(&Module-Failure-Message[*] == 'Unable to parse attribute in time_ms_since xlat')) {
+if (!(&Module-Failure-Message[*] == 'Unable to parse attribute in time_since xlat')) {
 	test_fail
 }
 
@@ -214,6 +227,16 @@ if (!(&Module-Failure-Message[*] == 'Failed parsing "test random text" as intege
 
 update {
 	&Module-Failure-Message !* ANY
+}
+
+
+#  attribute not in list (warning, so check output)
+update {
+	&Tmp-Integer-0 := "%{time_since:us &reply:Tmp-Integer-4}"
+}
+
+if (&Tmp-Integer-0 != 0) {
+	test_fail
 }
 
 
