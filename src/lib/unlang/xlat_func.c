@@ -206,6 +206,7 @@ xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx
 	fr_assert(xlat_root);
 
 	if (!*name) {
+	invalid_name:
 		ERROR("%s: Invalid xlat name", __FUNCTION__);
 		return NULL;
 	}
@@ -220,6 +221,8 @@ xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx
 	}
 
 	len = strlen(name);
+	if ((len == 1) && (strchr("InscCdDeGHlmMStTY", *name) != NULL)) goto invalid_name;
+
 	in = FR_SBUFF_IN(name, len);
 	fr_sbuff_adv_past_allowed(&in, SIZE_MAX, xlat_func_chars, NULL);
 	used = fr_sbuff_used(&in);
