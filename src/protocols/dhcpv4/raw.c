@@ -171,6 +171,7 @@ fr_radius_packet_t *fr_dhcpv4_raw_packet_recv(int sockfd, struct sockaddr_ll *li
 {
 	fr_pair_t		*vp;
 	fr_radius_packet_t		*packet;
+	dhcp_packet_t		*dhcp_data;
 	uint8_t const		*code;
 	uint32_t		magic, xid;
 	ssize_t			data_len;
@@ -285,13 +286,22 @@ fr_radius_packet_t *fr_dhcpv4_raw_packet_recv(int sockfd, struct sockaddr_ll *li
 	if (xid != (uint32_t)request->id) DISCARD_RP("DHCP transaction ID (0x%04x) != xid from request (0x%04x)",
 						     xid, request->id)
 
-	/* all checks ok! this is a DHCP reply we're interested in. */
+	/*
+	 *	all checks ok! this is a DHCP reply we're interested in.
+	 *
+	 * 	dhcp_data is present to avoid what appears to coverity
+	 * 	to be a cast from a less aligned type to a more aligned
+	 * 	type in the fr_dhcpv4_packet_get_option() call, even though
+	 * 	talloc_memdup() returns a pointer aligned to TALLOC_ALIGN
+	 * 	bytes.
+	 */
 	packet->data_len = dhcp_data_len;
-	packet->data = talloc_memdup(packet, raw_packet + data_offset, dhcp_data_len);
+	dhcp_data = talloc_memdup(packet, raw_packet + data_offset, dhcp_data_len);
+	packet->data = (uint8_t *) dhcp_data;
 	TALLOC_FREE(raw_packet);
 	packet->id = xid;
 
-	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) packet->data,
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *)dhcp_data,
 					   packet->data_len, attr_dhcp_message_type);
 	if (!code) {
 		fr_strerror_const("No message-type option was found in the packet");
