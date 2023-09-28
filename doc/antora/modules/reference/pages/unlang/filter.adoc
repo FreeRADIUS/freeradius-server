@@ -1,0 +1,29 @@
+= The filter Statement
+
+The `filter` keyword has been removed.  Filtering can now be done with
+the new xref:unlang/edit.adoc[edit] syntax.
+
+.Example
+[source,unlang]
+----
+group {
+	uint32 small
+	uint32 large
+
+	&large = 10000
+	&small = 10
+
+	#
+	#  Enforce it
+	#
+	&large <= &small
+
+	# &large now has value '10'
+
+}
+----
+
+See the new xref:unlang/edit.adoc[edit] syntax for more details.
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
