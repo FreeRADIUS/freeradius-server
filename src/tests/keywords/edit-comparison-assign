@@ -2,9 +2,7 @@ group {
 	uint32 small
 	uint32 large
 
-	&User-Name := 'foo'
-
-#	&large = 10000
+	&large = 10000
 	&small = 10
 
 	#
