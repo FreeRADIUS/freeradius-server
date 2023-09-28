@@ -495,6 +495,17 @@ extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
 static inline CC_HINT(nonnull(1), always_inline)
 void _fr_value_box_init(NDEBUG_LOCATION_ARGS fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
 {
+	/*
+	 *	Initializes an fr_value_box_t pointed at by vb appropriately for a given type.
+	 * 	Coverity gets involved here because an fr_value_box_t has members with const-
+	 * 	qualified type (and members that have members with const-qualified type), so an
+	 *	attempt to assign to *vb or any of its cosnt-qualified members will give an error.
+	 *
+	 * 	C compilers, at least currently, let one get around the issue. See the memcpy()
+	 * 	below. Coverity, though, isn't faked out, and reports the store_writes_const_field
+	 * 	defect annotated here. Anything we do has to eventually assign to the whole of *vb
+	 * 	and thus will raise the issue.
+	 */
 	/* coverity[store_writes_const_field] */
 	memcpy((void *) vb, &(fr_value_box_t){
 			.type = type,
