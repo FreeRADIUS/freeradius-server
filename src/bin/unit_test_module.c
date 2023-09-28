@@ -129,6 +129,60 @@ static void pair_mutable(fr_pair_t *vp)
 	}
 }
 
+static request_t *request_from_internal(TALLOC_CTX *ctx)
+{
+	request_t *request;
+
+	/*
+	 *	Create and initialize the new request.
+	 */
+	request = request_alloc_internal(ctx, NULL);
+	if (!request->packet) request->packet = fr_radius_packet_alloc(request, false);
+	if (!request->reply) request->reply = fr_radius_packet_alloc(request, false);
+
+	request->packet->socket = (fr_socket_t){
+		.proto = IPPROTO_UDP,
+		.inet = {
+			.src_ipaddr = {
+				.af = AF_INET,
+				.prefix = 32,
+				.addr = {
+					.v4 = {
+						.s_addr = htonl(INADDR_LOOPBACK)
+					}
+				}
+			},
+			.src_port = 18120,
+			.dst_ipaddr = {
+				.af = AF_INET,
+				.prefix = 32,
+				.addr = {
+					.v4 = {
+						.s_addr = htonl(INADDR_LOOPBACK)
+					}
+				}
+			},
+			.dst_port = 1812
+		}
+	};
+
+	request->log.dst = talloc_zero(request, log_dst_t);
+	request->log.dst->func = vlog_request;
+	request->log.dst->uctx = &default_log;
+
+	request->master_state = REQUEST_ACTIVE;
+	request->log.lvl = fr_debug_lvl;
+	request->async = talloc_zero(request, fr_async_t);
+
+	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
+		talloc_free(request);
+		fprintf(stderr, "Failed converting packet IPs to attributes");
+		return NULL;
+	}
+
+	return request;
+}
+
 static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *client, CONF_SECTION *server_cs)
 {
 	fr_pair_t	*vp;
@@ -326,14 +380,13 @@ static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *l
 /*
  *	Read a file composed of xlat's and expected results
  */
-static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
+static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filename, FILE *fp)
 {
 	int		lineno = 0;
 	ssize_t		len;
 	char		line_buff[8192];
 	char		output_buff[8192];
 	char		unescaped[sizeof(output_buff)];
-	request_t	*request;
 	fr_sbuff_t	line;
 	fr_sbuff_t	out = FR_SBUFF_OUT(output_buff, sizeof(output_buff));
 
@@ -348,52 +401,6 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 		.do_oct = true
 	};
 
-	/*
-	 *	Create and initialize the new request.
-	 */
-	request = request_alloc_internal(NULL, NULL);
-	if (!request->packet) request->packet = fr_radius_packet_alloc(request, false);
-	if (!request->reply) request->reply = fr_radius_packet_alloc(request, false);
-
-	request->packet->socket = (fr_socket_t){
-		.proto = IPPROTO_UDP,
-		.inet = {
-			.src_ipaddr = {
-				.af = AF_INET,
-				.prefix = 32,
-				.addr = {
-					.v4 = {
-						.s_addr = htonl(INADDR_LOOPBACK)
-					}
-				}
-			},
-			.src_port = 18120,
-			.dst_ipaddr = {
-				.af = AF_INET,
-				.prefix = 32,
-				.addr = {
-					.v4 = {
-						.s_addr = htonl(INADDR_LOOPBACK)
-					}
-				}
-			},
-			.dst_port = 1812
-		}
-	};
-
-	request->log.dst = talloc_zero(request, log_dst_t);
-	request->log.dst->func = vlog_request;
-	request->log.dst->uctx = &default_log;
-
-	request->master_state = REQUEST_ACTIVE;
-	request->log.lvl = fr_debug_lvl;
-	request->async = talloc_zero(request, fr_async_t);
-
-	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
-		fprintf(stderr, "Failed converting packet IPs to attributes");
-		return false;
-	}
-
 	while (fgets(line_buff, sizeof(line_buff), fp) != NULL) {
 		lineno++;
 
@@ -402,7 +409,6 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 		if (!fr_sbuff_adv_to_chr(&line, SIZE_MAX, '\n')) {
 			if (!feof(fp)) {
 				fprintf(stderr, "%s[%d] Line too long\n", filename, lineno);
-				TALLOC_FREE(request);
 				return false;
 			}
 		} else {
@@ -427,7 +433,6 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 			if (!fr_sbuff_is_str(&line, output_buff, output_len) || (output_len != fr_sbuff_remaining(&line))) {
 				fprintf(stderr, "Mismatch at %s[%u]\n\tgot          : %s (%zu)\n\texpected     : %s (%zu)\n",
 					filename, lineno,  output_buff, output_len, fr_sbuff_current(&line), fr_sbuff_remaining(&line));
-				TALLOC_FREE(request);
 				return false;
 			}
 			continue;
@@ -533,11 +538,9 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 		}
 
 		fprintf(stderr, "Unknown keyword in %s[%d]\n", filename, lineno);
-		TALLOC_FREE(request);
 		return false;
 	}
 
-	TALLOC_FREE(request);
 	return true;
 }
 
@@ -603,9 +606,10 @@ int main(int argc, char *argv[])
 	int			c;
 	int			count = 1;
 	const char 		*input_file = NULL;
+	const char 		*xlat_input_file = NULL;
 	const char		*output_file = NULL;
 	const char		*filter_file = NULL;
-	FILE			*fp;
+	FILE			*fp = NULL;
 	request_t		*request = NULL;
 	fr_pair_t		*vp;
 	fr_pair_list_t		filter_vps;
@@ -685,7 +689,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "c:d:D:f:hi:mMn:o:O:p:r:S:xXz")) != -1) {
+	while ((c = getopt(argc, argv, "c:d:D:f:hi:I:mMn:o:p:r:S:xXz")) != -1) {
 		switch (c) {
 			case 'c':
 				count = atoi(optarg);
@@ -711,6 +715,11 @@ int main(int argc, char *argv[])
 				input_file = optarg;
 				break;
 
+			case 'I':
+				xlat_input_file = optarg;
+				xlat_only = true;
+				break;
+
 			case 'M':
 				talloc_enable_leak_report();
 				break;
@@ -722,15 +731,6 @@ int main(int argc, char *argv[])
 			case 'o':
 				output_file = optarg;
 				break;
-
-			case 'O':
-				if (strcmp(optarg, "xlat_only") == 0) {
-					xlat_only = true;
-					break;
-				}
-
-				fprintf(stderr, "Unknown option '%s'\n", optarg);
-				fr_exit_now(EXIT_FAILURE);
 
 			case 'p':
 				PROTOCOL_NAME = optarg;
@@ -946,33 +946,48 @@ int main(int argc, char *argv[])
 	memory_used_before = talloc_total_size(autofree);
 #endif
 
-	if (!input_file || (strcmp(input_file, "-") == 0)) {
-		fp = stdin;
-	} else {
-		fp = fopen(input_file, "r");
-		if (!fp) {
-			fprintf(stderr, "Failed reading %s: %s\n",
-				input_file, fr_syserror(errno));
+	if (!input_file && !xlat_only) input_file = "-";
+
+	if (input_file) {
+		if (strcmp(input_file, "-") == 0) {
+			fp = stdin;
+		} else {
+			fp = fopen(input_file, "r");
+			if (!fp) {
+				fprintf(stderr, "Failed reading %s: %s\n",
+					input_file, fr_syserror(errno));
+				EXIT_WITH_FAILURE;
+			}
+		}
+
+		/*
+		 *	Grab the VPs from stdin, or from the file.
+		 */
+		request = request_from_file(autofree, fp, client, server_cs);
+		if (!request) {
+			fr_perror("Failed reading input from %s", input_file);
 			EXIT_WITH_FAILURE;
 		}
+	} else {
+		request = request_from_internal(autofree);
 	}
 
 	/*
 	 *	For simplicity, read xlat's.
 	 */
 	if (xlat_only) {
-		if (!do_xlats(el, input_file, fp)) ret = EXIT_FAILURE;
+		if (fp && (fp != stdin)) fclose(fp);
+
+		fp = fopen(xlat_input_file, "r");
+		if (!fp) {
+			fprintf(stderr, "Failed reading %s: %s\n",
+				xlat_input_file, fr_syserror(errno));
+			EXIT_WITH_FAILURE;
+		}
+
+		if (!do_xlats(el, request, input_file, fp)) ret = EXIT_FAILURE;
 		if (input_file) fclose(fp);
 		goto cleanup;
-	}
-
-	/*
-	 *	Grab the VPs from stdin, or from the file.
-	 */
-	request = request_from_file(autofree, fp, client, server_cs);
-	if (!request) {
-		fr_perror("Failed reading input from %s", input_file);
-		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -983,7 +998,7 @@ int main(int argc, char *argv[])
 	if (!filter_file || filedone ||
 	    ((input_file != NULL) && (strcmp(filter_file, input_file) != 0))) {
 		if (output_file) {
-			fclose(fp);
+			if (fp && (fp != stdin)) fclose(fp);
 			fp = NULL;
 		}
 		filedone = false;

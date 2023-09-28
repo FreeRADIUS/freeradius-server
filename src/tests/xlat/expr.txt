@@ -127,3 +127,18 @@ match 3
 
 xlat_expr (&Framed-IP-Address || &Net.Src.IP) == (ipaddr) 127.0.0.1
 match true
+
+xlat_expr "foo " + "baz" + " bar"
+match foo baz bar
+
+xlat_expr "foo " + &User-Name + " bar"
+match foo bob bar
+
+xlat_expr (octets) %md5('bob')
+match 0x9f9d51bc70ef21ca5c14f307980a29d8
+
+#
+#  @todo - not done yet!
+#
+#xlat_expr (octets) %md5(&User-Name)
+#match 0x9f9d51bc70ef21ca5c14f307980a29d8

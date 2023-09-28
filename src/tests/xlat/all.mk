@@ -20,11 +20,11 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 #  And the actual script to run each test.
 #
-$(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | build.raddb
+$(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module $(DIR)/packet | build.raddb
 	@echo "XLAT-TEST $(notdir $@)"
-	${Q}if ! $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -r "$@" -i "$<" -xx -O xlat_only > "$@.log" 2>&1 || ! test -f "$@"; then \
+	${Q}if ! $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -r "$@" -i $(dir $<)/packet -I "$<" -xx > "$@.log" 2>&1 || ! test -f "$@"; then \
 		cat $@.log; \
-		echo "./$(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -r \"$@\" -i \"$<\" -xx -O xlat_only"; \
+		echo "./$(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -r \"$@\" -I \"$<\" -xx "; \
 		rm -f $(BUILD_DIR)/tests/test.xlat; \
 		exit 1; \
 	fi
