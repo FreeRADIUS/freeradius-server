@@ -610,7 +610,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 *	Now parse the child nodes that form the
 	 *	function's arguments.
 	 */
-	if (xlat_tokenize_argv(node, &node->call.args, in, &xlat_multi_arg_rules, t_rules, false) < 0) {
+	if (xlat_tokenize_argv(node, &node->call.args, in, &xlat_multi_arg_rules, t_rules, false, false) < 0) {
 		goto error;
 	}
 	xlat_flags_merge(&node->flags, &node->call.args->flags);
@@ -755,7 +755,7 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 	 *	Now parse the child nodes that form the
 	 *	function's arguments.
 	 */
-	if (xlat_tokenize_argv(node, &node->call.args, in, &xlat_new_arg_rules, t_rules, true) < 0) {
+	if (xlat_tokenize_argv(node, &node->call.args, in, &xlat_new_arg_rules, t_rules, true, (node->call.input_type == XLAT_INPUT_MONO)) < 0) {
 error:
 		talloc_free(node);
 		return -1;
@@ -810,8 +810,8 @@ static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
 /** Parse an attribute ref or a virtual attribute
  *
  */
-static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
-					  fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+static int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, tmpl_attr_prefix_t attr_prefix)
 {
 	tmpl_attr_error_t	err;
 	tmpl_t			*vpt = NULL;
@@ -837,7 +837,7 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	}
 
 	our_t_rules.attr.allow_unresolved = true;		/* So we can check for virtual attributes later */
-  	our_t_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_NO;	/* Must be NO to stop %{&User-Name} */
+	our_t_rules.attr.prefix = attr_prefix;			/* Must be NO to stop %{&User-Name} */
 
 	fr_sbuff_marker(&m_s, in);
 
@@ -899,11 +899,6 @@ done:
 	 *	Attributes and module calls aren't pure.
 	 */
 	node->flags.pure = false;
-
-	if (!fr_sbuff_next_if_char(in, '}')) {
-		fr_strerror_const("Missing closing brace");
-		goto error;
-	}
 
 	xlat_exp_insert_tail(head, node);
 
@@ -1035,7 +1030,14 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 		fr_sbuff_set(in, &s_m);		/* backtrack */
 		fr_sbuff_marker_release(&s_m);
 
-		return xlat_tokenize_attribute(head, in, &attr_p_rules, t_rules);
+		if (xlat_tokenize_attribute(head, in, &attr_p_rules, t_rules, TMPL_ATTR_REF_PREFIX_NO) < 0) return -1;
+
+		if (!fr_sbuff_next_if_char(in, '}')) {
+			fr_strerror_const("Missing closing brace");
+			return -1;
+		}
+
+		return 0;
 
 	/*
 	 *	Hint token was whitespace
@@ -1672,12 +1674,13 @@ fr_slen_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
  *				any expansions.
  * @param[in] t_rules		controlling how attribute references are parsed.
  * @param[in] comma		whether the arguments are delimited by commas
+ * @param[in] allow_attr	allow attribute references as arguments
  * @return
  *	- < 0 on error.
  *	- >0  on success which is the number of characters parsed.
  */
 fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
-			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool comma)
+			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool comma, bool allow_attr)
 {
 	int				argc = 0;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
@@ -1733,6 +1736,24 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		 */
 		case T_BARE_WORD:
 			XLAT_DEBUG("ARGV bare word <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
+
+			/*
+			 *	&User-Name is an attribute reference
+			 *
+			 *	@todo - only the mono functions allow this automatic conversion.
+			 *	The input args ones (e.g. immutable) take an input string, and parse the tmpl from that.
+			 *
+			 *	We need to signal the tokenize / eval code that the parameter here is a tmpl, and not a string.
+			 *
+			 *	Perhaps &"foo" can dynamically create the string, and then pass it to the the
+			 *	tmpl tokenizer, and then pass the tmpl to the function.  Which also means that
+			 *	we need to be able to have a fr_value_box_t which holds a ptr to a tmpl.  And
+			 *	update the function arguments to say "we want a tmpl, not a string".
+			 */
+			if (allow_attr && fr_sbuff_is_char(&our_in, '&')) {
+				if (xlat_tokenize_attribute(node->group, &our_in, our_p_rules, t_rules, TMPL_ATTR_REF_PREFIX_YES) < 0) goto error;
+				break;
+			}
 
 			if (xlat_tokenize_input(node->group, &our_in,
 						our_p_rules, t_rules) < 0) {

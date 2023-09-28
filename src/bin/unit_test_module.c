@@ -347,7 +347,10 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	request->log.dst = talloc_zero(request, log_dst_t);
 	request->log.dst->func = vlog_request;
 	request->log.dst->uctx = &default_log;
+
+	request->master_state = REQUEST_ACTIVE;
 	request->log.lvl = fr_debug_lvl;
+	request->async = talloc_zero(request, fr_async_t);
 
 
 	/*
@@ -985,7 +988,7 @@ int main(int argc, char *argv[])
 			EXIT_WITH_FAILURE;
 		}
 
-		if (!do_xlats(el, request, input_file, fp)) ret = EXIT_FAILURE;
+		if (!do_xlats(el, request, xlat_input_file, fp)) ret = EXIT_FAILURE;
 		if (input_file) fclose(fp);
 		goto cleanup;
 	}
