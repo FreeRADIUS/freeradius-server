@@ -2193,6 +2193,7 @@ static int parse_input(cf_stack_t *stack)
 	 */
 check_for_eol:
 	if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';') || (*ptr == '}')) {
+		parent->allow_locals = false;
 		value_token = T_INVALID;
 		op_token = T_OP_EQ;
 		value = NULL;
@@ -2426,6 +2427,7 @@ check_for_eol:
 			 */
 			fr_skip_whitespace(ptr2);
 			if (terminal_end_line[(uint8_t) *ptr2]) {
+				parent->allow_locals = false;
 				ptr = ptr2;
 				value = buff[2];
 				goto alloc_pair;
@@ -2497,12 +2499,13 @@ check_for_eol:
 	/*
 	 *	Add parent CONF_PAIR to our CONF_SECTION
 	 */
+	parent->allow_locals = false;
+
 alloc_pair:
 	if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff[3], frame->filename, frame->lineno) < 0) return -1;
 
 added_pair:
 	fr_skip_whitespace(ptr);
-	parent->allow_locals = false;
 
 	/*
 	 *	Skip semicolon if we see it after a
