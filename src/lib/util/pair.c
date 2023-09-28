@@ -198,6 +198,9 @@ static inline CC_HINT(always_inline) void pair_init_from_da(fr_pair_t *vp, fr_di
 		/*
 		 *	Make it very obvious if we failed
 		 *	to initialise something.
+		 * 	Given the definition of fr_value_box_t, this entails
+		 * 	writing const-qualified fields. The compiler allows it,
+		 * 	but Coverity points it out as a defect, so it is annotated.
 		 */
 		/* coverity[store_writes_const_field] */
 		memset(&vp->data, 0xff, sizeof(vp->data));
@@ -205,6 +208,8 @@ static inline CC_HINT(always_inline) void pair_init_from_da(fr_pair_t *vp, fr_di
 
 		/*
 		 *	Hack around const issues...
+		 * 	Here again, the orkaround suffices for the compiler but
+		 * 	not for Coverity, so again we annotate.
 		 */
 		/* coverity[store_writes_const_field] */
 		memcpy(UNCONST(fr_type_t *, &vp->vp_type), &da->type, sizeof(vp->vp_type));
