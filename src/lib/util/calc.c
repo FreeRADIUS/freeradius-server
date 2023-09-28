@@ -2138,10 +2138,10 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 		return fr_value_box_cast(ctx, dst, dst->type, dst->enumv, src); /* cast, as the RHS might not (yet) be the same! */
 	}
 
-	op = assignment2op[op];
-	if (op == T_INVALID) {
+	if (assignment2op[op] == T_INVALID) {
 		return handle_result(dst->type, op, ERR_INVALID);
 	}
+	op = assignment2op[op];
 
 	/*
 	 *	Just call the binary op function.  It already ensures that (a) the inputs are "const", and (b)
