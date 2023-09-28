@@ -61,7 +61,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #endif
 
 #ifdef __APPLE__
-unlang_action_t od_mschap_auth(request_t *request, fr_pair_t *challenge, fr_pair_t *usernamepair,
+unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t *usernamepair,
 			       mschap_auth_call_env_t *env_data);
 #endif
 
@@ -1999,7 +1999,7 @@ static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_respons
 		 */
 		if (!nt_password && inst->open_directory) {
 			RDEBUG2("No Password.NT available. Trying OpenDirectory Authentication");
-			rcode = od_mschap_auth(request, challenge, user_name, env_data);
+			od_mschap_auth(&rcode, request, challenge, user_name, env_data);
 			if (rcode != RLM_MODULE_NOOP) RETURN_MODULE_RCODE(rcode);
 		}
 #endif
