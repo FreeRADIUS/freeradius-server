@@ -1737,7 +1737,7 @@ static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   UNUSED xlat_ctx_t const *xctx,
 				   UNUSED request_t *request, fr_value_box_list_t *args)
 {
-	uint8_t		digest[MD5_DIGEST_LENGTH];
+	uint8_t		digest[MD4_DIGEST_LENGTH];
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head;
 
