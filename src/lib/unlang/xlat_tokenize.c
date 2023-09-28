@@ -651,32 +651,33 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 
 	fr_sbuff_marker(&m_s, in);
 
-	/*
-	 *	%% is special
-	 */
-	if (fr_sbuff_next_if_char(in, '%')) goto one_letter;
+	XLAT_DEBUG("NEW <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	/*
-	 *	% and a limited set of characters and non-alphanumeric next character is a one-letter
-	 *	expansion.
-	 *
-	 *	This hack is because '.' and '-' are allowed in xlat function names.  But We also allow %M.%Y
-	 *	and %Y-%M-...
+	 *	The caller ensures that the first character aftet the percent exists, and is alphanumeric.
 	 */
-	c = fr_sbuff_char(&m_s, '\0');
-	if (strchr("InscCdDeGHlmMStTY", c) != NULL) {
+	c = fr_sbuff_char(in, '\0');
+
+	/*
+	 *	Even if it is alphanumeric, only a limited set of characters are one-letter expansions.
+	 *
+	 *	And even then only if the character after them is a terminal character.
+	 */
+	if (strchr("cCdDeGHIlmMnSstTY", c) != NULL) {
+		char n;
+
 		fr_sbuff_next(in);
 
 		/*
 		 *	End of buffer == one letter expansion.
 		 */
-		c = fr_sbuff_char(in, '\0');
-		if (!c) goto one_letter;
+		n = fr_sbuff_char(in, '\0');
+		if (!n) goto one_letter;
 
 		/*
 		 *	%Y() is the new format.
 		 */
-		if (c == '(') {
+		if (n == '(') {
 			fr_sbuff_next(in);
 
 			if (!fr_sbuff_next_if_char(in, ')')) {
@@ -690,8 +691,7 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 		/*
 		 *	%M. or %Y- is a one-letter expansion followed by the other character.
 		 */
-		if (!sbuff_char_alpha_num[(unsigned int) c]) {
-
+		if (!sbuff_char_alpha_num[(unsigned int) n]) {
 		one_letter:
 			XLAT_DEBUG("ONE-LETTER <-- %c", c);
 			node = xlat_exp_alloc_null(head);
@@ -725,7 +725,7 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 	func = xlat_func_find(fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
 
 	if (!fr_sbuff_is_char(in, '(')) {
-		fr_strerror_const("Missing '('");
+		fr_strerror_printf("Missing '('");
 		return -1;
 	}
 
@@ -1081,25 +1081,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 	xlat_exp_t			*node = NULL;
 	fr_slen_t			slen;
 	fr_sbuff_term_t			terminals = FR_SBUFF_TERMS(
-						L("%("),
-						L("%C"),
-						L("%D"),
-						L("%G"),
-						L("%H"),
-						L("%I"),
-						L("%M"),
-						L("%S"),
-						L("%T"),
-						L("%Y"),
-						L("%c"),
-						L("%d"),
-						L("%e"),
-						L("%l"),
-						L("%m"),
-						L("%n"),
-						L("%s"),
-						L("%t"),
-						L("%{")
+						L("%"),
 					);
 	fr_sbuff_term_t			*tokens;
 	fr_sbuff_unescape_rules_t const	*escapes;
@@ -1140,6 +1122,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		 *	It's a value box, create an appropriate node
 		 */
 		if (slen > 0) {
+		do_value_box:
 			xlat_exp_set_name_buffer_shallow(node, str);
 			fr_value_box_strdup(node, &node->data, NULL, str, false);
 			node->flags.constant = true;
@@ -1157,8 +1140,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			xlat_exp_insert_tail(head, node);
 
 			node = NULL;
-		} else {		   /* slen == 0 */
-			TALLOC_FREE(node); /* nope, couldn't use it */
+			continue;
 		}
 
 		/*
@@ -1172,6 +1154,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		 *	Attribute, function call, or other expansion.
 		 */
 		if (fr_sbuff_adv_past_str_literal(in, "%{")) {
+			TALLOC_FREE(node); /* nope, couldn't use it */
 			if (xlat_tokenize_expansion(head, in, t_rules) < 0) goto error;
 			continue;
 		}
@@ -1180,6 +1163,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		 *	xlat function call with discrete arguments
 		 */
 		if (fr_sbuff_adv_past_str_literal(in, "%(")) {
+			TALLOC_FREE(node); /* nope, couldn't use it */
 			if (xlat_tokenize_function_args(head, in, t_rules) < 0) goto error;
 			continue;
 		}		
@@ -1189,6 +1173,19 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		 */
 		if (fr_sbuff_next_if_char(in, '%')) {
 			/*
+			 *	% non-alphanumeric, create a value-box for just the "%" character.
+			 */
+			if (!fr_sbuff_is_alpha(in)) {
+				if (fr_sbuff_next_if_char(in, '%')) { /* nothing */ }
+
+				slen = 1;
+				str = talloc_typed_strdup(node, "%");
+				goto do_value_box;
+			}
+
+			TALLOC_FREE(node); /* nope, couldn't use it */
+
+			/*
 			 *	Tokenize the function arguments using the new method.
 			 */
 			if (xlat_tokenize_function_new(head, in, t_rules) < 0) goto error;
@@ -1196,39 +1193,10 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		}
 
 		/*
-		 *	%[a-z] - A one letter expansion
-		 *
-		 *	@todo - allow only registered one-letter expansions.
-		 */
-		if (fr_sbuff_next_if_char(in, '%') && fr_sbuff_is_alpha(in)) {
-			XLAT_DEBUG("ONE-LETTER <-- %c", fr_sbuff_char(in, '\0'));
-
-			node = xlat_exp_alloc_null(head);
-
-			xlat_exp_set_type(node, XLAT_ONE_LETTER);
-			xlat_exp_set_name(node, fr_sbuff_current(in), 1);
-			fr_sbuff_next(in);	/* Consumed 1 char */
-
-#ifdef STATIC_ANALYZER
-			if (!node->fmt) goto error;
-#endif
-
-			/*
-			 *	%% is pure.  Everything else is not.
-			 */
-			node->flags.pure = (node->fmt[0] == '%');
-
-			xlat_exp_insert_tail(head, node);
-			continue;
-		}
-
-		/*
 		 *	Nothing we recognize.  Just return nothing.
 		 */
-		if (slen == 0) {
-			TALLOC_FREE(node);
-			XLAT_DEBUG("VALUE-BOX <-- (empty)");
-		}
+		TALLOC_FREE(node);
+		XLAT_DEBUG("VALUE-BOX <-- (empty)");
 		break;
 	}
 
