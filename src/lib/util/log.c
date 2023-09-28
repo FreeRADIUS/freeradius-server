@@ -678,7 +678,6 @@ void fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, i
 	if (error && (fmt || f_rules->first_prefix)) {
 		if (fmt) (void) fr_sbuff_in_strcpy(&sbuff, ": ");
 		(void) fr_sbuff_in_strcpy(&sbuff, error);
-		error = fr_sbuff_start(&sbuff);		/* may not be talloced with const */
 	}
 
 	error = fr_sbuff_start(&sbuff);		/* may not be talloced with const */
