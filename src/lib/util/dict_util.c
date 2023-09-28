@@ -1944,6 +1944,7 @@ fr_slen_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 		fr_dict_attr_t const	*child;
 
 		if ((fr_dict_oid_component(err, &child, our_parent, &our_in, tt) < 0) || !child) {
+			*out = our_parent;
 			fr_sbuff_set(&our_in, &m_c);	/* Reset to the start of the last component */
 			break;	/* Resolved as much as we can */
 		}
@@ -2772,7 +2773,6 @@ redo:
 				parent = dict->next->root;
 				goto redo;
 			}
-
 		}
 
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
@@ -2800,6 +2800,7 @@ fr_dict_attr_t *dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const 
 
 	DA_VERIFY(parent);
 
+redo:
 	namespace = dict_attr_namespace(parent);
 	if (!namespace) {
 		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
@@ -2809,6 +2810,15 @@ fr_dict_attr_t *dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const 
 
 	da = fr_hash_table_find(namespace, &(fr_dict_attr_t) { .name = name });
 	if (!da) {
+		if (parent->flags.is_root) {
+			fr_dict_t const *dict = fr_dict_by_da(parent);
+
+			if (dict->next) {
+				parent = dict->next->root;
+				goto redo;
+			}
+		}
+
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
 		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", name, parent->name);
 		return NULL;
@@ -3443,7 +3453,8 @@ fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 	fr_dict_attr_t *da;
 
 	fr_dict_attr_flags_t flags = {
-		.is_root = 1,
+		.is_root = true,
+		.local = true,
 		.type_size = 2,
 		.length = 2
 	};
@@ -3468,6 +3479,8 @@ fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 		talloc_free(dict);
 		return NULL;
 	}
+
+	da->last_child_attr = fr_dict_root(parent)->last_child_attr;
 
 	dict->root = da;
 	dict->root->dict = dict;
@@ -4308,8 +4321,20 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 	 */
 	if (child->parent == parent) return true;
 
+	if (child->flags.is_raw) return true; /* let people do stupid things */
+
 	/*
-	 *	Only structural types can have children.
+	 *	Child is a STRUCT which has a parent key field.  The
+	 *	child pair nesting, though, is in the grandparent.
+	 */
+	if (fr_dict_attr_is_key_field(child->parent)) {
+		fr_assert(child->parent->parent == parent);
+
+		return (child->parent->parent == parent);
+	}
+
+	/*
+	 *	Only structural types or key fields can have children.
 	 */
 	if (!fr_type_structural[parent->type]) return false;
 
@@ -4335,6 +4360,7 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 		fr_dict_attr_t const *ref;
 
 		ref = fr_dict_attr_ref(parent);
+
 		return (ref && (ref->dict == child->dict));
 	}
 

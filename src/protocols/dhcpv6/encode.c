@@ -49,9 +49,9 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_cursor(fr_dbuff_t *dbuff,
-			     fr_da_stack_t *da_stack, unsigned int depth,
-			     fr_dcursor_t *cursor, void *encode_ctx);
+static ssize_t encode_child(fr_dbuff_t *dbuff,
+				  fr_da_stack_t *da_stack, unsigned int depth,
+				  fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Macro-like function for encoding an option header
  *
@@ -93,12 +93,9 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Pack multiple attributes into into a single option
 	 */
 	if ((vp->vp_type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_cursor);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_child);
 		if (slen <= 0) return slen;
 
-		/*
-		 *	Rebuild the da_stack for the next option.
-		 */
 		vp = fr_dcursor_current(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return fr_dbuff_set(dbuff, &work_dbuff);
@@ -118,7 +115,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	switch (da->type) {
+	switch (vp->vp_type) {
 	case FR_TYPE_TLV:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
@@ -126,12 +123,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 				   fr_type_to_str(da->type));
 		return PAIR_ENCODE_FATAL_ERROR;
 
-	default:
-		break;
-	}
-
-
-	switch (da->type) {
 	/*
 	 *    0                   1                   2                   3
 	 *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -292,7 +283,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	Encode the child options.
 		 */
 		if (!fr_pair_list_empty(&vp->vp_group)) {
-			(void) fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+			(void) fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 
 			while (fr_dcursor_current(&child_cursor) != NULL) {
 				slen = fr_dhcpv6_encode_option(&work_dbuff, &child_cursor, encode_ctx);
@@ -409,7 +400,7 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 
 	fr_assert(fr_type_is_structural(vp->vp_type));
 
-	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 	work_dbuff = FR_DBUFF(dbuff);
 
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
@@ -437,41 +428,6 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 	 */
 	vp = fr_dcursor_next(cursor);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-
-	return fr_dbuff_set(dbuff, &work_dbuff);
-}
-
-static ssize_t encode_cursor(fr_dbuff_t *dbuff,
-			  fr_da_stack_t *da_stack, unsigned int depth,
-			  fr_dcursor_t *cursor, void *encode_ctx)
-{
-	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
-	fr_pair_t const	*vp = fr_dcursor_current(cursor);
-	fr_dict_attr_t const	*da = da_stack->da[depth];
-	ssize_t			len;
-	fr_dbuff_extend_status_t	status = FR_DBUFF_EXTENDABLE;
-
-	while (fr_dbuff_extend_lowat(&status, &work_dbuff, DHCPV6_OPT_HDR_LEN) > DHCPV6_OPT_HDR_LEN) {
-		FR_PROTO_STACK_PRINT(da_stack, depth);
-
-		len = encode_child(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-		if (len < 0) return len;
-
-		/*
-		 *	If nothing updated the attribute, stop
-		 */
-		if (!fr_dcursor_current(cursor) || (vp == fr_dcursor_current(cursor))) break;
-
-		/*
-		 *	We can encode multiple sub TLVs, if after
-		 *	rebuilding the TLV Stack, the attribute
-		 *	at this depth is the same.
-		 */
-		if ((da != da_stack->da[depth]) || (da_stack->depth < da->depth)) break;
-		vp = fr_dcursor_current(cursor);
-	}
-
-	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done TLV body");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -540,14 +496,13 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	}
 
 	if (!da_stack->da[depth + 1]) {
-		fr_assert(0);
 		fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);	/* Make room for option header */
 
-	len = encode_cursor(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+	len = fr_pair_cursor_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_child);
 	if (len < 0) return len;
 
 	/*

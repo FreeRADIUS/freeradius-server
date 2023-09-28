@@ -1,0 +1,13 @@
+group {
+	uint32 foo
+
+	&foo := 1
+
+	debug_request
+
+	&request -= &foo  # ERROR
+
+	debug_request
+}
+
+

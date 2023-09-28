@@ -44,14 +44,14 @@ encode-pair Client-FQDN.No-Server-Update = no, Client-FQDN.Server-Override = yes
 match 00 27 00 0b 03 09 74 61 70 69 6f 63 61 30 31
 
 decode-pair -
-match Client-FQDN.Reserved = 0, Client-FQDN.No-Server-Update = no, Client-FQDN.Server-Override = yes, Client-FQDN.Server-Update = yes, Client-FQDN.Domain-Name = "tapioca01"
+match Client-FQDN = { Reserved = 0, No-Server-Update = no, Server-Override = yes, Server-Update = yes, Domain-Name = "tapioca01" }
 
 # let's try another combination
 encode-pair Client-FQDN.No-Server-Update = yes, Client-FQDN.Server-Override = no, Client-FQDN.Server-Update = no, Client-FQDN.Domain-Name = "tapioca01"
 match 00 27 00 0b 04 09 74 61 70 69 6f 63 61 30 31
 
 decode-pair -
-match Client-FQDN.Reserved = 0, Client-FQDN.No-Server-Update = yes, Client-FQDN.Server-Override = no, Client-FQDN.Server-Update = no, Client-FQDN.Domain-Name = "tapioca01"
+match Client-FQDN = { Reserved = 0, No-Server-Update = yes, Server-Override = no, Server-Update = no, Domain-Name = "tapioca01" }
 
 count
 match 11

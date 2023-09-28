@@ -681,6 +681,8 @@ void fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, i
 		error = fr_sbuff_start(&sbuff);		/* may not be talloced with const */
 	}
 
+	error = fr_sbuff_start(&sbuff);		/* may not be talloced with const */
+
 	/*
 	 *	Log the first line
 	 */

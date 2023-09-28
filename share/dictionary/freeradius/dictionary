@@ -21,3 +21,8 @@ $INCLUDE dictionary.freeradius.internal.ippool
 
 # 5200-5299 SIM management attributes
 $INCLUDE dictionary.freeradius.internal.sim
+
+#
+#  Include module-specific dictionaries.
+#
+#$INCLUDE- modules/*.txt

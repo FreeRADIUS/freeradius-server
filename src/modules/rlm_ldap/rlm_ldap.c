@@ -34,15 +34,22 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/uri.h>
 
-#include "rlm_ldap.h"
 #include <freeradius-devel/ldap/conf.h>
+#include <freeradius-devel/ldap/base.h>
 
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/unlang/action.h>
+#include <freeradius-devel/unlang/xlat.h>
+
+#include <ldap.h>
+#include "rlm_ldap.h"
 
 typedef struct {
+	fr_value_box_t	password;
+	tmpl_t		*password_tmpl;
 	fr_value_box_t	user_base;
 	fr_value_box_t	user_filter;
 	fr_value_box_t	user_sasl_mech;
@@ -55,6 +62,12 @@ typedef struct {
 	fr_value_box_t	user_base;
 	fr_value_box_t	user_filter;
 } ldap_usermod_call_env_t;
+
+/** Call environment used in the profile xlat
+ */
+typedef struct {
+	fr_value_box_t	profile_filter;			//!< Filter to use when searching for users.
+} ldap_xlat_profile_call_env_t;
 
 static const call_env_t sasl_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, ldap_auth_call_env_t, user_sasl_mech,
@@ -69,7 +82,10 @@ static const call_env_t sasl_call_env[] = {
 };
 
 static CONF_PARSER profile_config[] = {
+	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, rlm_ldap_t, profile_scope), .dflt = "base",
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
 	{ FR_CONF_OFFSET("attribute", FR_TYPE_STRING, rlm_ldap_t, profile_attr) },
+	{ FR_CONF_OFFSET("attribute_suspend", FR_TYPE_STRING, rlm_ldap_t, profile_attr_suspend) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -85,11 +101,14 @@ static const call_env_t autz_profile_call_env[] = {
  *	User configuration
  */
 static CONF_PARSER user_config[] = {
-	{ FR_CONF_OFFSET("scope", FR_TYPE_STRING, rlm_ldap_t, userobj_scope_str), .dflt = "sub" },
+	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, rlm_ldap_t, userobj_scope), .dflt = "sub",
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
 	{ FR_CONF_OFFSET("sort_by", FR_TYPE_STRING, rlm_ldap_t, userobj_sort_by) },
 
 	{ FR_CONF_OFFSET("access_attribute", FR_TYPE_STRING, rlm_ldap_t, userobj_access_attr) },
 	{ FR_CONF_OFFSET("access_positive", FR_TYPE_BOOL, rlm_ldap_t, access_positive), .dflt = "yes" },
+	{ FR_CONF_OFFSET("access_value_negate", FR_TYPE_STRING, rlm_ldap_t, access_value_negate), .dflt = "false" },
+	{ FR_CONF_OFFSET("access_value_suspend", FR_TYPE_STRING, rlm_ldap_t, access_value_suspend), .dflt = "suspended" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -103,20 +122,23 @@ static const call_env_t _prefix ## _user_call_env[] = { \
 	CALL_ENV_TERMINATOR \
 }
 
-user_call_env(auth, ldap_auth_call_env_t, { FR_CALL_ENV_SUBSECTION("sasl", NULL, sasl_call_env)} );
+user_call_env(auth, ldap_auth_call_env_t, { FR_CALL_ENV_SUBSECTION("sasl", NULL, sasl_call_env, false) },
+	      { FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING | FR_TYPE_ATTRIBUTE, ldap_auth_call_env_t, password,
+		password_tmpl, "&User-Password", T_BARE_WORD, true, true, true) } );
 
 user_call_env(autz, ldap_autz_call_env_t);
 
 user_call_env(usermod, ldap_usermod_call_env_t);
 
-user_call_env(memberof, ldap_memberof_call_env_t);
+user_call_env(memberof, ldap_xlat_memberof_call_env_t);
 
 /*
  *	Group configuration
  */
 static CONF_PARSER group_config[] = {
 	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, rlm_ldap_t, groupobj_filter) },
-	{ FR_CONF_OFFSET("scope", FR_TYPE_STRING, rlm_ldap_t, groupobj_scope_str), .dflt = "sub" },
+	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, rlm_ldap_t, groupobj_scope), .dflt = "sub",
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len }  },
 
 	{ FR_CONF_OFFSET("name_attribute", FR_TYPE_STRING, rlm_ldap_t, groupobj_name_attr), .dflt = "cn" },
 	{ FR_CONF_OFFSET("membership_attribute", FR_TYPE_STRING, rlm_ldap_t, userobj_membership_attr) },
@@ -136,7 +158,7 @@ static const call_env_t autz_group_call_env[] = {
 };
 
 static const call_env_t memberof_group_call_env[] = {
-	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_memberof_call_env_t, group_base,
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_xlat_memberof_call_env_t, group_base,
 			       NULL, T_INVALID, false, false, true) },
 	CALL_ENV_TERMINATOR
 };
@@ -191,63 +213,65 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/*
- *	Method specific call environments
- */
-static const call_env_t authenticate_call_env[] = {
-	{ FR_CALL_ENV_SUBSECTION("user", NULL, auth_user_call_env) },
-	CALL_ENV_TERMINATOR
-};
-
-static const call_env_t authorize_call_env[] = {
-	{ FR_CALL_ENV_SUBSECTION("user", NULL, autz_user_call_env) },
-	{ FR_CALL_ENV_SUBSECTION("group", NULL, autz_group_call_env) },
-	{ FR_CALL_ENV_SUBSECTION("profile", NULL, autz_profile_call_env) },
-	CALL_ENV_TERMINATOR
-};
-
-static const call_env_t usermod_call_env[] = {
-	{ FR_CALL_ENV_SUBSECTION("user", NULL, usermod_user_call_env) },
-	CALL_ENV_TERMINATOR
-};
-
-static const call_env_t memberof_call_env[] = {
-	{ FR_CALL_ENV_SUBSECTION("user", NULL, memberof_user_call_env) },
-	{ FR_CALL_ENV_SUBSECTION("group", NULL, memberof_group_call_env) },
-	CALL_ENV_TERMINATOR
-};
-
 static const call_method_env_t authenticate_method_env = {
 	.inst_size = sizeof(ldap_auth_call_env_t),
 	.inst_type = "ldap_auth_call_env_t",
-	.env = authenticate_call_env
+	.env = (call_env_t[]) {
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, auth_user_call_env, true) },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 static const call_method_env_t authorize_method_env = {
 	.inst_size = sizeof(ldap_autz_call_env_t),
 	.inst_type = "ldap_autz_call_env_t",
-	.env = authorize_call_env
+	.env = (call_env_t[]) {
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, autz_user_call_env, true) },
+		{ FR_CALL_ENV_SUBSECTION("group", NULL, autz_group_call_env, false) },
+		{ FR_CALL_ENV_SUBSECTION("profile", NULL, autz_profile_call_env, false) },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 static const call_method_env_t usermod_method_env = {
 	.inst_size = sizeof(ldap_usermod_call_env_t),
 	.inst_type = "ldap_usermod_call_env_t",
-	.env = usermod_call_env
+	.env = (call_env_t[]) {
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, usermod_user_call_env, true) },
+		CALL_ENV_TERMINATOR
+	}
 };
 
-static const call_method_env_t memberof_method_env = {
-	.inst_size = sizeof(ldap_memberof_call_env_t),
-	.inst_type = "ldap_memberof_call_env_t",
-	.env = memberof_call_env
+static const call_method_env_t xlat_memberof_method_env = {
+	.inst_size = sizeof(ldap_xlat_memberof_call_env_t),
+	.inst_type = "ldap_xlat_memberof_call_env_t",
+	.env = (call_env_t[]) {
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, memberof_user_call_env, true) },
+		{ FR_CALL_ENV_SUBSECTION("group", NULL, memberof_group_call_env, false) },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+static const call_method_env_t xlat_profile_method_env = {
+	.inst_size = sizeof(ldap_xlat_profile_call_env_t),
+	.inst_type = "ldap_xlat_profile_call_env_t",
+	.env = (call_env_t[]) {
+		{ FR_CALL_ENV_SUBSECTION("profile", NULL,
+					 ((call_env_t[])  {
+						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_xlat_profile_call_env_t, profile_filter,
+								     "(&)", T_SINGLE_QUOTED_STRING, false, false, true ) },	//!< Correct filter for when the DN is known.
+						CALL_ENV_TERMINATOR
+					 }),
+					 false) },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_ldap_dict[];
 fr_dict_autoload_t rlm_ldap_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
@@ -257,9 +281,6 @@ fr_dict_attr_t const *attr_crypt_password;
 fr_dict_attr_t const *attr_ldap_userdn;
 fr_dict_attr_t const *attr_nt_password;
 fr_dict_attr_t const *attr_password_with_header;
-
-fr_dict_attr_t const *attr_user_password;
-fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_expr_bool_enum;
 
 extern fr_dict_attr_autoload_t rlm_ldap_dict_attr[];
@@ -270,9 +291,6 @@ fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
 	{ .out = &attr_ldap_userdn, .name = "LDAP-UserDN", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_nt_password, .name = "Password.NT", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_password_with_header, .name = "Password.With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-
-	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ NULL }
@@ -294,16 +312,6 @@ typedef struct {
 	fr_ldap_thread_t	*thread;
 	ldap_auth_call_env_t	*call_env;
 } ldap_auth_ctx_t;
-
-/** Holds state of in progress async profile lookups
- *
- */
-typedef struct {
-	fr_ldap_query_t		*query;
-	char const		*dn;
-	rlm_ldap_t const	*inst;
-	fr_ldap_map_exp_t	const *expanded;
-} ldap_profile_ctx_t;
 
 /** Holds state of in progress ldap user modifications
  *
@@ -516,7 +524,7 @@ static xlat_action_t ldap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			count = ldap_count_values_len(values);
 			for (i = 0; i < count; i++) {
 				MEM(vb = fr_value_box_alloc_null(ctx));
-				if (fr_value_box_bstrndup(ctx, vb, NULL, values[i]->bv_val, values[i]->bv_len, true) < 0) {
+				if (fr_value_box_bstrndup(vb, vb, NULL, values[i]->bv_val, values[i]->bv_len, true) < 0) {
 					talloc_free(vb);
 					RPERROR("Failed creating value from LDAP response");
 					break;
@@ -574,19 +582,21 @@ static xlat_arg_parser_t const ldap_xlat_arg[] = {
 /** Produce canonical LDAP host URI for finding trunks
  *
  */
-#define HOST_URI_CANONIFY(_host, _target, _url, _box, _error_target) {\
-LDAPURLDesc temp_desc = { \
-	.lud_scheme = _url->lud_scheme, \
-	.lud_host = _url->lud_host, \
-	.lud_port = _url->lud_port, \
-	.lud_scope = -1 \
-}; \
-_host = ldap_url_desc2str(&temp_desc); \
-if (!_host) { \
-	RPEDEBUG("Invalid LDAP URL - %pV", _box); \
-	goto _error_target; \
-} \
-_target = _host; \
+static inline CC_HINT(always_inline)
+char *host_uri_canonify(request_t *request, LDAPURLDesc *url_parsed, fr_value_box_t *url_in)
+{
+	char *host;
+
+	LDAPURLDesc tmp_desc = {
+		.lud_scheme = url_parsed->lud_scheme,
+		.lud_host = url_parsed->lud_host,
+		.lud_port = url_parsed->lud_port,
+		.lud_scope = -1
+	};
+	host = ldap_url_desc2str(&tmp_desc);
+	if (unlikely(host == NULL)) REDEBUG("Invalid LDAP URL - %pV", url_in); \
+
+	return host;
 }
 
 /** Expand an LDAP URL into a query, and return a string result from that query.
@@ -609,7 +619,10 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	XLAT_ARGS(in, &uri_components);
 
-	if (fr_uri_escape(&uri_components->vb_group, ldap_uri_parts, NULL) < 0) return XLAT_ACTION_FAIL;
+	if (fr_uri_escape(&uri_components->vb_group, ldap_uri_parts, NULL) < 0){
+		RPERROR("Failed to escape LDAP URI");
+		return XLAT_ACTION_FAIL;
+	}
 
 	/*
 	 *	Smush everything into the first URI box
@@ -674,7 +687,8 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	if (!ldap_url->lud_host) {
 		host_url = handle_config->server;
 	} else {
-		HOST_URI_CANONIFY(host, host_url, ldap_url, uri, query_error)
+		host_url = host = host_uri_canonify(request, ldap_url, uri);
+		if (unlikely(host_url == NULL)) goto query_error;
 	}
 
 	ttrunk = fr_thread_ldap_trunk_get(t, host_url, handle_config->admin_identity,
@@ -820,7 +834,7 @@ static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat
 	fr_value_box_t			*vb = NULL, *group_vb = fr_value_box_list_pop_head(in);
 	rlm_ldap_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_ldap_t);
 	fr_ldap_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
-	ldap_memberof_call_env_t	*env_data = talloc_get_type_abort(xctx->env_data, ldap_memberof_call_env_t);
+	ldap_xlat_memberof_call_env_t	*env_data = talloc_get_type_abort(xctx->env_data, ldap_xlat_memberof_call_env_t);
 	bool				group_is_dn;
 	ldap_memberof_xlat_ctx_t	*xlat_ctx;
 
@@ -899,6 +913,153 @@ static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat
 	if (unlang_function_push(request, xlat_ctx->dn ? NULL : ldap_memberof_xlat_user_find,
 				 ldap_memberof_xlat_results, ldap_memberof_xlat_cancel, ~FR_SIGNAL_CANCEL,
 				 UNLANG_SUB_FRAME, xlat_ctx) < 0) goto error;
+
+	return XLAT_ACTION_PUSH_UNLANG;
+}
+
+typedef struct {
+	fr_ldap_result_code_t	ret;
+	LDAPURLDesc		*url;
+	fr_ldap_map_exp_t	expanded;
+} ldap_xlat_profile_ctx_t;
+
+/** Return whether evaluating the profile was successful
+ *
+ */
+static xlat_action_t ldap_profile_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+					    UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	ldap_xlat_profile_ctx_t		*xlat_ctx = talloc_get_type_abort(xctx->rctx, ldap_xlat_profile_ctx_t);
+	fr_value_box_t			*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
+	vb->vb_bool = xlat_ctx->ret == LDAP_RESULT_SUCCESS;
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+static int ldap_xlat_profile_ctx_free(ldap_xlat_profile_ctx_t *to_free)
+{
+	if (to_free->url) {
+		ldap_free_urldesc(to_free->url);
+		to_free->url = NULL;
+	}
+	return 0;
+}
+
+/** Expand an LDAP URL into a query, applying the results using the user update map.
+ *
+ * For fetching profiles by DN.
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+				       xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *in)
+{
+	rlm_ldap_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_ldap_t);
+	fr_ldap_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
+	ldap_xlat_profile_call_env_t	*env_data = talloc_get_type_abort(xctx->env_data, ldap_xlat_profile_call_env_t);
+	fr_value_box_t			*uri_components, *uri;
+	char				*host_url, *host = NULL;
+	fr_ldap_config_t const		*handle_config = t->config;
+	fr_ldap_thread_trunk_t		*ttrunk;
+	ldap_xlat_profile_ctx_t		*xlat_ctx = NULL;
+
+	int				ldap_url_ret;
+
+	char const			*dn;
+	char const			*filter;
+	int				scope;
+
+	XLAT_ARGS(in, &uri_components);
+
+	if (fr_uri_escape(&uri_components->vb_group, ldap_uri_parts, NULL) < 0) {
+		RPERROR("Failed to escape LDAP URI");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Smush everything into the first URI box
+	 */
+	uri = fr_value_box_list_head(&uri_components->vb_group);
+
+	if (fr_value_box_list_concat_in_place(uri, uri, &uri_components->vb_group,
+					      FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+		REDEBUG("Failed concattenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Allocate a resumption context to store temporary resource and results
+	 */
+	MEM(xlat_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_xlat_profile_ctx_t));
+	talloc_set_destructor(xlat_ctx, ldap_xlat_profile_ctx_free);
+
+	if (!ldap_is_ldap_url(uri->vb_strvalue)) {
+		host_url = handle_config->server;
+		dn = talloc_typed_strdup_buffer(xlat_ctx, uri->vb_strvalue);
+		filter = env_data->profile_filter.vb_strvalue;
+		scope = inst->profile_scope;
+	} else {
+		ldap_url_ret = ldap_url_parse(uri->vb_strvalue, &xlat_ctx->url);
+		if (ldap_url_ret != LDAP_URL_SUCCESS){
+			RPEDEBUG("Parsing LDAP URL failed - %s", fr_ldap_url_err_to_str(ldap_url_ret));
+		error:
+			talloc_free(xlat_ctx);
+			return XLAT_ACTION_FAIL;
+		}
+
+		/*
+		*	The URL must specify a DN
+		*/
+		if (!xlat_ctx->url->lud_dn) {
+			REDEBUG("LDAP URI must specify a profile DN");
+			goto error;
+		}
+
+		dn = xlat_ctx->url->lud_dn;
+		/*
+		 *	Either we use the filter from the URL or we use the default filter
+		 *	configured for profiles.
+		 */
+		filter = xlat_ctx->url->lud_filter ? xlat_ctx->url->lud_filter : env_data->profile_filter.vb_strvalue;
+
+		/*
+		 *	Determine if the URL includes a scope.
+		 */
+		scope = xlat_ctx->url->lud_scope == LDAP_SCOPE_DEFAULT ? inst->profile_scope : xlat_ctx->url->lud_scope;
+
+		/*
+		 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
+		 */
+		if (!xlat_ctx->url->lud_host) {
+			host_url = handle_config->server;
+		} else {
+			host_url = host = host_uri_canonify(request, xlat_ctx->url, uri);
+			if (unlikely(host_url == NULL)) goto error;
+		}
+	}
+
+	/*
+	 *	Synchronous expansion of maps (fixme!)
+	 */
+	if (fr_ldap_map_expand(xlat_ctx, &xlat_ctx->expanded, request, &inst->user_map, inst->valuepair_attr) < 0) goto error;
+	ttrunk = fr_thread_ldap_trunk_get(t, host_url, handle_config->admin_identity,
+					  handle_config->admin_password, request, handle_config);
+	if (host) ldap_memfree(host);
+	if (!ttrunk) {
+		REDEBUG("Unable to get LDAP query for xlat");
+		goto error;
+	}
+
+	if (unlang_xlat_yield(request, ldap_profile_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) goto error;
+
+	/*
+	 *	Pushes a frame onto the stack to retrieve and evaluate a profile
+	 */
+	if (rlm_ldap_map_profile(&xlat_ctx->ret, inst, request, ttrunk, dn, scope, filter, &xlat_ctx->expanded) < 0) goto error;
 
 	return XLAT_ACTION_PUSH_UNLANG;
 }
@@ -1046,7 +1207,6 @@ static int map_ctx_free(ldap_map_ctx_t *map_ctx)
 static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSED void *proc_inst, request_t *request,
 				    fr_value_box_list_t *url, map_list_t const *maps)
 {
-	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
 
@@ -1058,7 +1218,10 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	ldap_map_ctx_t		*map_ctx;
 	char			*host_url, *host = NULL;
 
-	if (fr_uri_escape(url, ldap_uri_parts, NULL) < 0) RETURN_MODULE_FAIL;
+	if (fr_uri_escape(url, ldap_uri_parts, NULL) < 0) {
+		RPERROR("Failed to escape LDAP URI");
+		RETURN_MODULE_FAIL;
+	}
 
 	url_head = fr_value_box_list_head(url);
 	if (!url_head) {
@@ -1093,7 +1256,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	/*
 	 *	Expand the RHS of the maps to get the name of the attributes.
 	 */
-	if (fr_ldap_map_expand(&map_ctx->expanded, request, maps) < 0) goto fail;
+	if (fr_ldap_map_expand(map_ctx, &map_ctx->expanded, request, maps, NULL) < 0) goto fail;
 
 	/*
 	 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
@@ -1101,18 +1264,19 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	if (!ldap_url->lud_host) {
 		host_url = inst->handle_config.server;
 	} else {
-		HOST_URI_CANONIFY(host, host_url, ldap_url, url_head, fail)
+		host_url = host = host_uri_canonify(request, ldap_url, url_head);
+		if (unlikely(host_url == NULL)) goto fail;
 	}
 
-	ttrunk =  fr_thread_ldap_trunk_get(thread, host_url, inst->handle_config.admin_identity,
-					   inst->handle_config.admin_password, request, &inst->handle_config);
+	ttrunk = fr_thread_ldap_trunk_get(thread, host_url, inst->handle_config.admin_identity,
+					  inst->handle_config.admin_password, request, &inst->handle_config);
 	if (host) ldap_memfree(host);
 	if (!ttrunk) goto fail;
 
 	if (unlang_function_push(request, NULL, mod_map_resume, NULL, 0,
 				 UNLANG_SUB_FRAME, map_ctx) != UNLANG_ACTION_PUSHED_CHILD) goto fail;
 
-	return fr_ldap_trunk_search(&rcode, map_ctx, &map_ctx->query, request, ttrunk, ldap_url->lud_dn,
+	return fr_ldap_trunk_search(map_ctx, &map_ctx->query, request, ttrunk, ldap_url->lud_dn,
 				    ldap_url->lud_scope, ldap_url->lud_filter, map_ctx->expanded.attrs,
 				    NULL, NULL);
 }
@@ -1144,38 +1308,41 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	ldap_auth_ctx_t	*auth_ctx = talloc_get_type_abort(uctx, ldap_auth_ctx_t);
 
 	/*
-	 *	Arriving here from an LDAP search will mean the dn in auth_ctx is NULL.
-	 */
-	if (!auth_ctx->dn) auth_ctx->dn = rlm_find_user_dn_cached(request);
-
-	/*
-	 *	No DN found - can't authenticate the user.
-	 */
-	if (!auth_ctx->dn) {
-	fail:
-		talloc_free(auth_ctx);
-		RETURN_MODULE_FAIL;
-	}
-
-	/*
-	 *	Attempt a bind using the thread specific trunk for bind auths
+	 *	SASL bind auth will have the mech set.
 	 */
 	if (auth_ctx->call_env->user_sasl_mech.type == FR_TYPE_STRING) {
 #ifdef WITH_SASL
 		ldap_auth_call_env_t *call_env = auth_ctx->call_env;
-		if (fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
-						 auth_ctx->dn, call_env->user_sasl_authname.vb_strvalue,
+
+		RDEBUG2("Login attept using identity \"%pV\"", &call_env->user_sasl_authname);
+
+		return fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
+						 call_env->user_sasl_authname.vb_strvalue,
 						 auth_ctx->password, call_env->user_sasl_proxy.vb_strvalue,
-						 call_env->user_sasl_realm.vb_strvalue) < 0) goto fail;
+						 call_env->user_sasl_realm.vb_strvalue);
 #else
 		RDEBUG("Configuration item 'sasl.mech' is not supported.  "
 		       "The linked version of libldap does not provide ldap_sasl_bind( function");
 		RETURN_MODULE_FAIL;
 #endif
-	} else {
-		if (fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password) < 0) goto fail;
 	}
-	return UNLANG_ACTION_PUSHED_CHILD;
+
+	/*
+	 *	Arriving here from an LDAP search will mean the dn in auth_ctx is NULL.
+	 */
+	if (!auth_ctx->dn) auth_ctx->dn = rlm_find_user_dn_cached(request);
+
+	/*
+	 *	No DN found - can't authenticate the user with a simple bind.
+	 */
+	if (!auth_ctx->dn) {
+		talloc_free(auth_ctx);
+		RETURN_MODULE_FAIL;
+	}
+
+	RDEBUG2("Login attempt as \"%s\"", auth_ctx->dn);
+
+	return fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -1185,37 +1352,15 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	ldap_auth_ctx_t		*auth_ctx;
 	ldap_auth_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_auth_call_env_t);
 
-	fr_pair_t *username, *password;
-
-	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-	password = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password);
-
-	/*
-	 *	We can only authenticate user requests which HAVE
-	 *	a User-Name attribute.
-	 */
-	if (!username) {
-		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		RETURN_MODULE_INVALID;
-	}
-
-	if (!password) {
+	if (call_env->password.type != FR_TYPE_STRING) {
 		RWDEBUG("You have set \"Auth-Type := LDAP\" somewhere");
-		RWDEBUG("without checking if User-Password is present");
+		RWDEBUG("without checking if %s is present", call_env->password_tmpl->name);
 		RWDEBUG("*********************************************");
 		RWDEBUG("* THAT CONFIGURATION IS WRONG.  DELETE IT.   ");
 		RWDEBUG("* YOU ARE PREVENTING THE SERVER FROM WORKING");
 		RWDEBUG("*********************************************");
 
-		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		RETURN_MODULE_INVALID;
-	}
-
-	/*
-	 *	Make sure the supplied password isn't empty
-	 */
-	if (password->vp_length == 0) {
-		REDEBUG("User-Password must not be empty");
+		REDEBUG("Attribute \"%s\" is required for authentication", call_env->password_tmpl->name);
 		RETURN_MODULE_INVALID;
 	}
 
@@ -1223,16 +1368,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		RDEBUG("Login attempt with password \"%pV\"", &password->data);
+		RDEBUG("Login attempt with password \"%pV\"", &call_env->password);
 	} else {
 		RDEBUG2("Login attempt with password");
 	}
 
-	RDEBUG2("Login attempt by \"%pV\"", &username->data);
-
 	auth_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_auth_ctx_t);
 	*auth_ctx = (ldap_auth_ctx_t){
-		.password = password->vp_strvalue,
+		.password = call_env->password.vb_strvalue,
 		.thread = thread,
 		.inst = inst,
 		.call_env = call_env
@@ -1243,112 +1386,11 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	auth_ctx->dn = rlm_find_user_dn_cached(request);
 
-	if (unlang_function_push(request, auth_ctx->dn ? NULL : mod_authenticate_start, mod_authenticate_resume,
+	if (unlang_function_push(request, auth_ctx->dn || (call_env->user_sasl_mech.type == FR_TYPE_STRING) ?
+				 NULL : mod_authenticate_start, mod_authenticate_resume,
 				 NULL, 0, UNLANG_SUB_FRAME, auth_ctx) < 0) RETURN_MODULE_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
-}
-
-/** Process the results of a profile lookup
- *
- */
-static unlang_action_t ldap_map_profile_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-					       void *uctx)
-{
-	ldap_profile_ctx_t	*profile_ctx = talloc_get_type_abort(uctx, ldap_profile_ctx_t);
-	fr_ldap_query_t		*query = profile_ctx->query;
-	LDAP			*handle;
-	LDAPMessage		*entry = NULL;
-	int			ldap_errno;
-	rlm_rcode_t		rcode = RLM_MODULE_OK;
-
-	switch (query->ret) {
-	case LDAP_RESULT_SUCCESS:
-		break;
-
-	case LDAP_RESULT_NO_RESULT:
-	case LDAP_RESULT_BAD_DN:
-		RDEBUG2("Profile object \"%s\" not found", profile_ctx->dn);
-		rcode = RLM_MODULE_NOTFOUND;
-		goto finish;
-
-	default:
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
-	}
-
-	fr_assert(query->result);
-	handle = query->ldap_conn->handle;
-
-	entry = ldap_first_entry(handle, query->result);
-	if (!entry) {
-		ldap_get_option(handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
-		rcode = RLM_MODULE_NOTFOUND;
-		goto finish;
-	}
-
-	RDEBUG2("Processing profile attributes");
-	RINDENT();
-	if (fr_ldap_map_do(request, profile_ctx->inst->valuepair_attr,
-			   profile_ctx->expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
-	REXDENT();
-
-finish:
-	talloc_free(profile_ctx);
-	RETURN_MODULE_RCODE(rcode);
-}
-
-/** Cancel an in progress profile lookup
- *
- */
-static void ldap_map_profile_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
-{
-	ldap_profile_ctx_t	*profile_ctx = talloc_get_type_abort(uctx, ldap_profile_ctx_t);
-
-	if (!profile_ctx->query || !profile_ctx->query->treq) return;
-
-	fr_trunk_request_signal_cancel(profile_ctx->query->treq);
-}
-
-/** Search for and apply an LDAP profile
- *
- * LDAP profiles are mapped using the same attribute map as user objects, they're used to add common
- * sets of attributes to the request.
- *
- * @param[in] request		Current request.
- * @param[in] autz_ctx		Authorization context being processed.
- * @param[in] dn		of profile object to apply.
- * @param[in] expanded		Structure containing a list of xlat
- *				expanded attribute names and mapping information.
- * @return One of the RLM_MODULE_* values.
- */
-static unlang_action_t rlm_ldap_map_profile(request_t *request, ldap_autz_ctx_t *autz_ctx,
-					    char const *dn, fr_ldap_map_exp_t const *expanded)
-{
-	rlm_ldap_t const	*inst = autz_ctx->inst;
-	fr_ldap_thread_trunk_t	*ttrunk = autz_ctx->ttrunk;
-	ldap_profile_ctx_t	*profile_ctx;
-	rlm_rcode_t		ret;
-
-	if (!dn || !*dn) return UNLANG_ACTION_CALCULATE_RESULT;
-
-	MEM(profile_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_profile_ctx_t));
-	*profile_ctx = (ldap_profile_ctx_t) {
-		.dn = dn,
-		.expanded = expanded,
-		.inst = inst
-	};
-
-	if (unlang_function_push(request, NULL, ldap_map_profile_resume, ldap_map_profile_cancel,
-				 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, profile_ctx) < 0) {
-		talloc_free(profile_ctx);
-		return UNLANG_ACTION_FAIL;
-	}
-
-	return fr_ldap_trunk_search(&ret, profile_ctx, &profile_ctx->query, request, ttrunk, dn,
-				    LDAP_SCOPE_BASE, autz_ctx->call_env->profile_filter.vb_strvalue,
-				    expanded->attrs, NULL, NULL);
 }
 
 /** Start LDAP authorization with async lookup of user DN
@@ -1391,6 +1433,22 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	LDAP			*handle = fr_ldap_handle_thread_local();
 
+	/*
+	 *	If a previous async call returned one of the "failure" results just return.
+	 */
+	switch (*p_result) {
+	case RLM_MODULE_REJECT:
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_HANDLED:
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_DISALLOW:
+		rcode = *p_result;
+		goto finish;
+
+	default:
+		break;
+	}
+
 	switch (autz_ctx->status) {
 	case LDAP_AUTZ_FIND:
 		/*
@@ -1410,8 +1468,14 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		 *	Check for access.
 		 */
 		if (inst->userobj_access_attr) {
-			rcode = rlm_ldap_check_access(inst, request, autz_ctx->entry);
-			if (rcode != RLM_MODULE_OK) {
+			autz_ctx->access_state = rlm_ldap_check_access(inst, request, autz_ctx->entry);
+			switch (autz_ctx->access_state) {
+			case LDAP_ACCESS_ALLOWED:
+			case LDAP_ACCESS_SUSPENDED:
+				break;
+
+			case LDAP_ACCESS_DISALLOWED:
+				rcode = RLM_MODULE_DISALLOW;
 				goto finish;
 			}
 		}
@@ -1458,22 +1522,13 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			 *	Retrive universal password
 			 */
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			if (fr_ldap_edir_get_password(p_result, request, autz_ctx->dn, autz_ctx->ttrunk,
-						      attr_cleartext_password) < 0) {
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
-			}
 			autz_ctx->status = LDAP_AUTZ_EDIR_BIND;
-			return UNLANG_ACTION_PUSHED_CHILD;
+			return fr_ldap_edir_get_password(request, autz_ctx->dn, autz_ctx->ttrunk,
+							 attr_cleartext_password);
 		}
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_EDIR_BIND:
-		if (*p_result != RLM_MODULE_OK) {
-			rcode = *p_result;
-			goto finish;
-		}
-
 		if (inst->edir && inst->edir_autz) {
 			fr_pair_t	*password = fr_pair_find_by_da(&request->control_pairs,
 								       NULL, attr_cleartext_password);
@@ -1492,12 +1547,8 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			 *	Bind as the user
 			 */
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			if (fr_ldap_bind_auth_async(request, thread, autz_ctx->dn, password->vp_strvalue) < 0) {
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
-			}
 			autz_ctx->status = LDAP_AUTZ_POST_EDIR;
-			return UNLANG_ACTION_PUSHED_CHILD;
+			return fr_ldap_bind_auth_async(request, thread, autz_ctx->dn, password->vp_strvalue);
 		}
 		goto skip_edir;
 
@@ -1520,8 +1571,8 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			unlang_action_t	ret;
 
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(request, autz_ctx, call_env->default_profile.vb_strvalue,
-						   &autz_ctx->expanded);
+			ret = rlm_ldap_map_profile(NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
+						   inst->profile_scope, call_env->default_profile.vb_strvalue, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
 				rcode = RLM_MODULE_FAIL;
@@ -1541,9 +1592,35 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		/*
 		 *	Apply a SET of user profiles.
 		 */
-		if (inst->profile_attr) {
-			autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr);
+		switch (autz_ctx->access_state) {
+		case LDAP_ACCESS_ALLOWED:
+			if (inst->profile_attr) {
+				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr);
+
+				if (RDEBUG_ENABLED3) {
+					for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
+						RDEBUG3("Will evaluate profile with DN \"%pV\"", fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
+					}
+				}
+			}
+			break;
+
+		case LDAP_ACCESS_SUSPENDED:
+			if (inst->profile_attr_suspend) {
+				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr_suspend);
+
+				if (RDEBUG_ENABLED3) {
+					for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
+						RDEBUG3("Will evaluate suspended profile with DN \"%pV\"", fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
+					}
+				}
+			}
+			break;
+
+		case LDAP_ACCESS_DISALLOWED:
+			break;
 		}
+
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_USER_PROFILE:
@@ -1558,7 +1635,8 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 
 			autz_ctx->profile_value = fr_ldap_berval_to_string(autz_ctx, autz_ctx->profile_values[autz_ctx->value_idx++]);
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(request, autz_ctx, autz_ctx->profile_value, &autz_ctx->expanded);
+			ret = rlm_ldap_map_profile(NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
+						   inst->profile_scope, autz_ctx->call_env->profile_filter.vb_strvalue, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
 				rcode = RLM_MODULE_FAIL;
@@ -1629,7 +1707,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	for many things besides searching for users.
 	 */
 
-	if (fr_ldap_map_expand(expanded, request, &inst->user_map) < 0) {
+	if (fr_ldap_map_expand(autz_ctx, expanded, request, &inst->user_map, inst->valuepair_attr) < 0) {
 	fail:
 		talloc_free(autz_ctx);
 		RETURN_MODULE_FAIL;
@@ -1639,19 +1717,30 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 						     inst->handle_config.admin_password, request, &inst->handle_config);
 	if (!autz_ctx->ttrunk) goto fail;
 
+#define CHECK_EXPANDED_SPACE(_expanded) fr_assert((size_t)_expanded->count < (NUM_ELEMENTS(_expanded->attrs) - 1));
+
 	/*
 	 *	Add any additional attributes we need for checking access, memberships, and profiles
 	 */
-	if (inst->userobj_access_attr) expanded->attrs[expanded->count++] = inst->userobj_access_attr;
+	if (inst->userobj_access_attr) {
+		CHECK_EXPANDED_SPACE(expanded);
+		expanded->attrs[expanded->count++] = inst->userobj_access_attr;
+	}
 
 	if (inst->userobj_membership_attr && (inst->cacheable_group_dn || inst->cacheable_group_name)) {
+		CHECK_EXPANDED_SPACE(expanded);
 		expanded->attrs[expanded->count++] = inst->userobj_membership_attr;
 	}
 
-	if (inst->profile_attr) expanded->attrs[expanded->count++] = inst->profile_attr;
+	if (inst->profile_attr) {
+		CHECK_EXPANDED_SPACE(expanded);
+		expanded->attrs[expanded->count++] = inst->profile_attr;
+	}
 
-	if (inst->valuepair_attr) expanded->attrs[expanded->count++] = inst->valuepair_attr;
-
+	if (inst->profile_attr_suspend) {
+		CHECK_EXPANDED_SPACE(expanded);
+		expanded->attrs[expanded->count++] = inst->profile_attr_suspend;
+	}
 	expanded->attrs[expanded->count] = NULL;
 
 	autz_ctx->dlinst = mctx->inst;
@@ -1742,7 +1831,7 @@ static unlang_action_t user_modify_resume(rlm_rcode_t *p_result, UNUSED int *pri
 	if (unlang_function_push(request, NULL, user_modify_final, user_modify_cancel, ~FR_SIGNAL_CANCEL,
 				 UNLANG_SUB_FRAME, usermod_ctx) < 0) goto fail;
 
-	return fr_ldap_trunk_modify(p_result, usermod_ctx, &usermod_ctx->query, request, usermod_ctx->ttrunk,
+	return fr_ldap_trunk_modify(usermod_ctx, &usermod_ctx->query, request, usermod_ctx->ttrunk,
 				    usermod_ctx->dn, modify, NULL, NULL);
 }
 
@@ -2031,7 +2120,7 @@ static int parse_sub_section(module_inst_ctx_t const *mctx,
 /** Initialise thread specific data structure
  *
  */
-static int mod_thread_instatiate(module_thread_inst_ctx_t const *mctx)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_ldap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
 	fr_ldap_thread_t	*t = talloc_get_type_abort(mctx->thread, fr_ldap_thread_t);
@@ -2167,7 +2256,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	if (unlikely(!(xlat = xlat_func_register_module(NULL, mctx, "memberof", ldap_memberof_xlat,
 							FR_TYPE_BOOL)))) return -1;
 	xlat_func_args_set(xlat, ldap_memberof_xlat_arg);
-	xlat_func_call_env_set(xlat, &memberof_method_env);
+	xlat_func_call_env_set(xlat, &xlat_memberof_method_env);
+
+	if (unlikely(!(xlat = xlat_func_register_module(NULL, mctx, "profile", ldap_profile_xlat,
+							FR_TYPE_BOOL)))) return -1;
+	xlat_func_args_set(xlat, ldap_xlat_arg);
+	xlat_func_call_env_set(xlat, &xlat_profile_method_env);
 
 	map_proc_register(inst, mctx->inst->name, mod_map_proc, ldap_map_verify, 0);
 
@@ -2318,23 +2412,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	/*
-	 *	Convert scope strings to enumerated constants
-	 */
-	inst->userobj_scope = fr_table_value_by_str(fr_ldap_scope, inst->userobj_scope_str, -1);
-	if (inst->userobj_scope < 0) {
-		cf_log_err(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
-			   inst->userobj_scope_str);
-		goto error;
-	}
-
-	inst->groupobj_scope = fr_table_value_by_str(fr_ldap_scope, inst->groupobj_scope_str, -1);
-	if (inst->groupobj_scope < 0) {
-		cf_log_err(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
-			   inst->groupobj_scope_str);
-		goto error;
-	}
-
-	/*
 	 *	Build the server side sort control for user objects
 	 */
 	if (inst->userobj_sort_by) {
@@ -2393,6 +2470,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Build the attribute map
 	 */
 	{
+		map_t const		*map = NULL;
+		tmpl_attr_t const	*ar;
 		tmpl_rules_t	parse_rules = {
 			.attr = {
 				.list_def = request_attr_request,
@@ -2405,6 +2484,19 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 					    &parse_rules, &parse_rules, fr_ldap_map_verify, NULL,
 					    LDAP_MAX_ATTRMAP) < 0)) {
 			return -1;
+		}
+
+		/*
+		 *	Check map to see if a password is being retrieved.
+		 *	fr_ldap_map_verify ensures that all maps have attributes on the LHS.
+		 *	All passwords have a common parent attribute of attr_password
+		 */
+		while ((map = map_list_next(&inst->user_map, map))) {
+			ar = tmpl_attr_tail(map->lhs);
+			if (ar->da->parent == attr_password) {
+				inst->expect_password = true;
+				break;
+			}
 		}
 	}
 
@@ -2450,7 +2542,7 @@ module_rlm_t rlm_ldap = {
 		.detach		= mod_detach,
 		.thread_inst_size	= sizeof(fr_ldap_thread_t),
 		.thread_inst_type	= "fr_ldap_thread_t",
-		.thread_instantiate	= mod_thread_instatiate,
+		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach,
 	},
 	.method_names = (module_method_name_t[]){

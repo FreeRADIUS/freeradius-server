@@ -14,6 +14,9 @@
 #  the contents of a password attribute for later comparison by a module such
 #  as `pap`, or an `eap` method.
 #
+#  Please see the file `global.d/ldap` for server-global configuration items
+#  which control LDAP library debugging.
+#
 
 #
 #  ## Configuration Settings
@@ -293,6 +296,12 @@ ldap {
 		}
 
 		#
+		#  password_attribute:: Which attribute in the request should be used as
+		#  the password when performing user binds.
+		#
+#		password_attribute = &User-Password
+
+		#
 		#  scope:: Search scope, may be `base`, `one`, `sub' or `children`.
 		#
 #		scope = 'sub'
@@ -349,6 +358,18 @@ ldap {
 		#  Will result in the user being locked out.
 		#
 #		access_positive = yes
+
+		#
+		#  access_value_negate:: Which value we look for in access_attribute
+		#  to indicate that we should negate the result.
+		#
+#		access_value_negate = 'false'
+
+		#
+		#  access_value_suspend:: Which value we look for in access_attribute
+		#  to indicate that the user should be suspended.
+		#
+#		access_value_suspend = 'suspended'
 	}
 
 	#
@@ -471,6 +492,14 @@ ldap {
 #		filter = '(objectclass=radiusprofile)'
 
 		#
+		#  scope:: Search scope, may be `base`, `one`, `sub` or `children`.
+		#
+		#  Should usually be left as "base", to retrieve the specific profile
+		#  specified by 'default' or in the user or group objects.
+		#
+#		scope = 'base'
+
+		#
 		#  default:: The default profile. This may be a DN or an attribute reference.
 		#
 		#  NOTE: To get old v2.2.x style behaviour, or to use the `&User-Profile` attribute
@@ -487,6 +516,17 @@ ldap {
 		#  is successful.
 		#
 #		attribute = 'radiusProfileDn'
+
+		#
+		#  attribute_suspended: The LDAP attribute containing profile DNs to apply
+		#  in addition to the default profile above, when the user account is in
+		#  the suspended state
+		#
+		#  These are retrieved from the user object, at the same time as the
+		#  attributes from the update section, are are applied if authorization
+		#  is successful.
+		#
+#		attribute_suspended = 'radiusProfileDn'
 	}
 
 	#

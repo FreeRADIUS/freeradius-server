@@ -118,10 +118,10 @@ To actually force a client to change passwords, you must set the expiry
 bit in the `SMB-Account-Ctrl` value - for example::
 
 ```
-update control {
-  # U == user
-  # e == expired SMB-Account-Ctrl-Text := [Ue]
-}
+# U == user
+# e == expired
+
+&control.SMB-Account-Ctrl-Text := '[Ue]'
 ```
 
 This will cause the client to receive `error 648 - password expired`.

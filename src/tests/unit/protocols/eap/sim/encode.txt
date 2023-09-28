@@ -4,7 +4,6 @@
 
 # Only run the tests if we have TLS support
 need-feature tls
-
 # Load the EAP-AKA/SIM encoder/decoder
 proto eap-aka-sim
 proto-dictionary eap-aka-sim eap/aka-sim
@@ -69,28 +68,36 @@ encode-pair.sim_tp_encode Encr-Data.Next-Pseudonym = "testing123"
 match 82 05 00 00 3f b8 34 1f f8 26 e0 4d 4a f3 f9 61 3c a9 84 26
 
 decode-pair.sim_tp_decode -
-match Encr-Data.Next-Pseudonym = "testing123"
+match Encr-Data = { Next-Pseudonym = "testing123" }
 
 # Encrypt attribute requiring padding
 encode-pair.sim_tp_encode Encr-Data.Counter-Too-Small = yes
 match 82 05 00 00 5a f8 99 3c 02 f5 6c 04 b8 6e bb 54 3a af 74 32
 
 decode-pair.sim_tp_decode -
-match Encr-Data.Counter-Too-Small = yes
+match Encr-Data = { Counter-Too-Small = yes }
 
 # Two encrypted attributes, one bool to extend plaintext so it's not a multiple block of block length
 encode-pair.sim_tp_encode Encr-data.Next-Pseudonym = "testing123", Encr-Data.Counter-Too-Small = yes
 match 82 09 00 00 3f b8 34 1f f8 26 e0 4d 4a f3 f9 61 3c a9 84 26 0f 4a 53 ce 33 99 9e 4f 29 df a4 79 18 a9 57 dd
 
 decode-pair.sim_tp_decode -
-match Encr-Data.Next-Pseudonym = "testing123", Encr-Data.Counter-Too-Small = yes
+match Encr-Data = { Next-Pseudonym = "testing123", Counter-Too-Small = yes }
+
+pair Encr-Data.Next-Pseudonym = "testing123", Any-ID-Req = yes, Encr-Data.Counter-Too-Small = yes
+match Encr-Data = { Next-Pseudonym = "testing123", Counter-Too-Small = yes }, Any-ID-Req = yes
 
 # Plaintext and encrypted attributes interleaved (this shouldn't happen usually, due to sorting)
 encode-pair.sim_tp_encode Encr-Data.Next-Pseudonym = "testing123", Any-ID-Req = yes, Encr-Data.Counter-Too-Small = yes
-match 82 05 00 00 3f b8 34 1f f8 26 e0 4d 4a f3 f9 61 3c a9 84 26 0d 01 00 00 82 05 00 00 5a f8 99 3c 02 f5 6c 04 b8 6e bb 54 3a af 74 32
+match 82 09 00 00 3f b8 34 1f f8 26 e0 4d 4a f3 f9 61 3c a9 84 26 0f 4a 53 ce 33 99 9e 4f 29 df a4 79 18 a9 57 dd 0d 01 00 00
+
+#
+#  Old style: NOT nested.  So we put the children of the TLV 82 into different top-level TLVs.
+#
+#match 82 05 00 00 3f b8 34 1f f8 26 e0 4d 4a f3 f9 61 3c a9 84 26 0d 01 00 00 82 05 00 00 5a f8 99 3c 02 f5 6c 04 b8 6e bb 54 3a af 74 32
 
 decode-pair.sim_tp_decode -
-match Encr-Data.Next-Pseudonym = "testing123", Any-ID-Req = yes, Encr-Data.Counter-Too-Small = yes
+match Encr-Data = { Next-Pseudonym = "testing123", Counter-Too-Small = yes }, Any-ID-Req = yes
 
 # Array (one element)
 encode-pair.sim_tp_encode Version-List = 1
@@ -125,4 +132,4 @@ encode-pair.sim_tp_encode_rfc4186 IV = 0xcdf7ffa65de04c026b56c86b76b102ea, Encr-
 match 81 05 00 00 cd f7 ff a6 5d e0 4c 02 6b 56 c8 6b 76 b1 02 ea 82 05 00 00 b6 ed d3 82 79 e2 a1 42 3c 1a fc 5c 45 5c 7d 56
 
 count
-match 62
+match 64

@@ -95,10 +95,10 @@ ldap_create_session_tracking_control LDAP_P((
 							//!< Used to allocate static arrays of control pointers.
 #define LDAP_MAX_ATTRMAP		128		//!< Maximum number of mappings between LDAP and
 							//!< FreeRADIUS attributes.
-#define LDAP_MAP_RESERVED		4		//!< Number of additional items to allocate in expanded
+#define LDAP_MAP_RESERVED		5		//!< Number of additional items to allocate in expanded
 							//!< attribute name arrays. Currently for enable attribute,
 							//!< group membership attribute, valuepair attribute,
-							//!< and profile attribute.
+							//!< profile attribute and profile suspend attribute.
 
 #define LDAP_MAX_CACHEABLE		64		//!< Maximum number of groups we retrieve from the server for
 							//!< a given user which need resolving from name to DN or DN
@@ -501,7 +501,6 @@ typedef struct {
 typedef struct {
 	fr_ldap_connection_t	*c;			//!< to bind.  Only used when binding as admin user.
 	char const		*mechs;			//!< SASL mechanisms to run
-	char const		*dn;			//!< to bind as.
 	char const		*identity;		//!< of the user.
 	char const		*password;		//!< of the user, may be NULL if no password is specified.
 	char const		*proxy;			//!< Proxy identity, may be NULL in which case identity is used.
@@ -734,20 +733,17 @@ fr_ldap_query_t *fr_ldap_modify_alloc(TALLOC_CTX *ctx, char const *dn,
 fr_ldap_query_t *fr_ldap_extended_alloc(TALLOC_CTX *ctx, char const *reqiod, struct berval *reqdata,
 					LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
-				     TALLOC_CTX *ctx,
+unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *base_dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
-				     TALLOC_CTX *ctx,
+unlang_action_t fr_ldap_trunk_modify(TALLOC_CTX *ctx,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *dn, LDAPMod *mods[],
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-unlang_action_t fr_ldap_trunk_extended(rlm_rcode_t *p_result,
-				       TALLOC_CTX *ctx,
+unlang_action_t fr_ldap_trunk_extended(TALLOC_CTX *ctx,
 				       fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				       char const *reqoid, struct berval *reqdata,
 				       LDAPControl **serverctrls, LDAPControl **clientctrls);
@@ -767,15 +763,15 @@ ssize_t		fr_ldap_xlat_filter(request_t *request, char const **sub, size_t sublen
 char const	*fr_ldap_error_str(fr_ldap_connection_t const *conn);
 
 fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, request_t *request,
-				     fr_ldap_connection_t **pconn,
+				     fr_ldap_connection_t *pconn,
 				     char const *dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-fr_ldap_rcode_t	fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
+fr_ldap_rcode_t	fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t *pconn,
 			       char const *dn, LDAPMod *mods[],
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-fr_ldap_rcode_t fr_ldap_extended_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
+fr_ldap_rcode_t fr_ldap_extended_async(int *msgid, request_t *request, fr_ldap_connection_t *pconn,
 				       char const *reqiod, struct berval *reqdata);
 
 fr_ldap_rcode_t	fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_connection_t const *conn,
@@ -835,7 +831,7 @@ int		fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn);
 /*
  *	edir.c - Edirectory integrations
  */
-int		fr_ldap_edir_get_password(rlm_rcode_t *p_result, request_t *request, char const *dn,
+unlang_action_t	fr_ldap_edir_get_password(request_t *request, char const *dn,
 					  fr_ldap_thread_trunk_t *ttrunk, fr_dict_attr_t const *password_da);
 
 char const	*fr_ldap_edir_errstr(int code);
@@ -849,7 +845,7 @@ int		fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 
 int		fr_ldap_map_verify(map_t *map, void *instance);
 
-int		fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, map_list_t const *maps);
+int		fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *request, map_list_t const *maps, char const *generic_attr);
 
 int		fr_ldap_map_do(request_t *request,
 			       char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry);
@@ -908,7 +904,6 @@ int		fr_ldap_sasl_bind_auth_send(fr_ldap_sasl_ctx_t *sasl_ctx,
 int		fr_ldap_sasl_bind_auth_async(request_t *request,
 					     fr_ldap_thread_t *thread,
 					     char const *mechs,
-					     char const *dn,
 					     char const *identity,
 					     char const *password,
 					     char const *proxy, char const *realm);
@@ -917,11 +912,11 @@ int		fr_ldap_sasl_bind_auth_async(request_t *request,
 /*
  *	bind.c - Async bind
  */
-int		fr_ldap_bind_async(fr_ldap_connection_t *c,
+unlang_action_t	fr_ldap_bind_async(fr_ldap_connection_t *c,
 				   char const *bind_dn, char const *password,
 				   LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-int		fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread,
+unlang_action_t	fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread,
 					char const *bind_dn, char const *password);
 
 /*

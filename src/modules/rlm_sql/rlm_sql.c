@@ -348,7 +348,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_t	*vp;
 	char const	*value = uctx;
 
-	vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs));
+	vp = fr_pair_afrom_da_nested(ctx, out, tmpl_attr_tail_da(map->lhs));
 	if (!vp) return -1;
 
 	/*
@@ -357,13 +357,9 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 */
 	if (fr_pair_value_from_str(vp, value, strlen(value), NULL, true) < 0) {
 		RPEDEBUG("Failed parsing value \"%pV\" for attribute %s",
-			 fr_box_strvalue_buffer(value), tmpl_attr_tail_da(map->lhs)->name);
-		talloc_free(vp);
-
+			 fr_box_strvalue_buffer(value), vp->da->name);
 		return -1;
 	}
-
-	fr_pair_append(out, vp);
 
 	return 0;
 }
@@ -844,6 +840,61 @@ static xlat_action_t sql_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+/*
+ *	Simplified version of the old paircmp()
+ *
+ *	It does not support xlat expansions on the RHS of check items.  That limitation will be
+ *	removed when this code is rewritten to support maps (for assignment) and xlat expressions (for
+ *	conditions).
+ */
+static bool paircmp(request_t *request, fr_pair_list_t *check_list)
+{
+	fr_pair_t *vp = NULL;
+
+	fr_pair_list_foreach(check_list, check) {
+		/*
+		 *	If the user is setting a configuration value, then don't bother comparing it to any
+		 *	attributes sent to us by the user.  It ALWAYS matches.
+		 */
+		if (!fr_comparison_op[check->op]) continue;
+
+	next_vp:
+		vp = fr_pair_find_by_da(&request->request_pairs, vp, check->da);
+		if (!vp) {
+			/*
+			 *	Matches if the VP doesn't exist.
+			 */
+			if (check->op == T_OP_CMP_FALSE) continue;
+
+			/*
+			 *	Otherwise doesn't match.
+			 */
+			return false;
+		}
+
+		/*
+		 *	We didn't want it, but it exists.
+		 */
+		if (check->op == T_OP_CMP_FALSE) return false;
+
+		/*
+		 *	We want it, and it exists.  We don't care what value it has.
+		 */
+		if (check->op == T_OP_CMP_TRUE) continue;
+
+		/*
+		 *	This attribute doesn't match.  Maybe there's another one which does match?
+		 */
+		if (fr_value_box_cmp_op(check->op, &vp->data, &check->data) != 1) goto next_vp;
+	}
+
+	/*
+	 *	Everything matched, we're OK.
+	 */
+	return true;
+}
+	    
+
 
 
 static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
@@ -931,8 +982,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			 *	If we got check rows we need to process them before we decide to
 			 *	process the reply rows
 			 */
-			if ((rows > 0) &&
-			    (paircmp(request, &request->request_pairs, &check_tmp) != 0)) {
+			if ((rows > 0) && !paircmp(request,&check_tmp)) {
 				fr_pair_list_free(&check_tmp);
 				entry = entry->next;
 
@@ -1304,7 +1354,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		 */
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
-		if (paircmp(request, &request->request_pairs, &check_tmp) != 0) {
+		if (!paircmp(request, &check_tmp)) {
 			fr_pair_list_free(&check_tmp);
 			goto skip_reply;
 		}

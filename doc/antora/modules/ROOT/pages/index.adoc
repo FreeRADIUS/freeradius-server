@@ -57,6 +57,41 @@ steps, each of which can be performed quickly.
 We hope that this extended documentation will address any lingering
 concerns about the quality of the FreeRADIUS documentation.
 
+== Current Limitations of 4.0.0
+
+As of the time of writing this documentation, the server has the
+following limitations:
+
+* RADIUS/TLS (RadSec) is not implemented.
+* TTLS, PEAP, TEAP, and EAP-FAST are not implemented.
+* The "haproxy" and "reverse CoA' features are not implemented
+* The Perl, Python, and Lua modules do not fully support the v4 "nested" attributes.
+* Enums are now prefixed with `::`, as in `Service-Type == ::Framed-User`.
+  * The server still does not always require (or print) the `::` prefix.  That will change.
+* As a result of adding `::` for enums, we can then remove the requirement to use `&` as a prefix for attribute names.
+  * This change may require changes to all of the configuration.  We will try to allow `&` or not, but that may not be possible.
+* Dynamic expansions have changed from `%{md5:foo}` to `%md5(foo)`.
+  * The new syntax is much clearer, and supports multiple comma-separated arguments: `%function(a, b, c)`
+  * Expansions such as `%{User-Name}` will still work.  We plan on making `%{1+2}` work, too.
+  * We plan on replacing `%{foo:-%{bar}}` by `%{foo || bar}`, which is clearer and uses less nesting.
+
+Please be aware that v4 is in "alpha" right now.  If it works, great.
+If it doesn't work, then please return to using v3.
+
+[WARNING]
+====
+Please do not open bug reports about those features being missing.
+All such bug reports will be closed without comment.
+
+We do not recommend that operating systems or Linux distributions
+create their own packages for 4.0.0-alpha.  Our experience has been
+that packaging "alpha" releases results in confused and upset users.
+People _will_ install it due to the belief that "it's stable because
+it is packaged".  They will then run into issues, and will blame us.
+
+Such behavior is antisocial and is strongly discouraged.
+====
+
 == Changes From Earlier Versions
 
 In previous releases, FreeRADIUS had the following limitations:

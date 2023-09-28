@@ -125,24 +125,10 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx, c
 
 		map = NULL;
 		while ((map = map_list_next(&entry->reply, map))) {
-			fr_dict_attr_t const *da;
-
 			if (!tmpl_is_attr(map->lhs)) {
 				ERROR("%s[%d] Left side of filter %s is not an attribute",
 				      filename, entry->lineno, map->lhs->name);
 				return -1;
-			}
-			da = tmpl_attr_tail_da(map->lhs);
-
-			/*
-			 * If it's NOT a vendor attribute,
-			 * and it's NOT a wire protocol
-			 * and we ignore Fall-Through,
-			 * then bitch about it, giving a good warning message.
-			 */
-			if (fr_dict_attr_is_top_level(da) && (da->attr > 1000)) {
-				WARN("%s[%d] Check item \"%s\" was found in filter list for entry \"%s\".\n",
-				     filename, entry->lineno, da->name, entry->name);
 			}
 
 			/*
@@ -254,7 +240,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 					continue;
 				}
 		     	} else if (check_item->da == attr_relax_filter) {
-				relax_filter = check_item->vp_uint32;
+				relax_filter = check_item->vp_bool;
 		     	}
 
 			/*

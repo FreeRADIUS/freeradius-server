@@ -881,10 +881,10 @@ with a separator
 
 e.g. "%(concat:%(pairs:request.[*]) ', ')" == "User-Name = 'foo', User-Password = 'bar', ..."
 
-.IP %{base64:<string>}
+.IP %(base64.encoded:<string>)
 Encode string as base64.
 
-e.g. "%{base64:foo}" == "Zm9v"
+e.g. "%(base64.encode:foo)" == "Zm9v"
 
 .IP %(explode:&<value_ref>\ <delim>)
 Split an attribute into multiple new attributes based on a delimiter

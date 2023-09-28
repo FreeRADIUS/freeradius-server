@@ -79,33 +79,6 @@ static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unla
 	unlang_cond_t			*gext = unlang_group_to_cond(g);
 	unlang_frame_state_cond_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_cond_t);
 
-	/*
-	 *	Migration support.
-	 */
-	if (!main_config->use_new_conditions) {
-		fr_assert(gext->cond != NULL);
-
-		if (!cond_eval(request, *p_result, gext->cond)) {
-			RDEBUG2("...");
-			return UNLANG_ACTION_EXECUTE_NEXT;
-		}
-
-		/*
-		 *      Tell the main interpreter to skip over the else /
-		 *      elsif blocks, as this "if" condition was taken.
-		 */
-		while (frame->next &&
-		       ((frame->next->type == UNLANG_TYPE_ELSE) ||
-			(frame->next->type == UNLANG_TYPE_ELSIF))) {
-			frame->next = frame->next->next;
-		}
-
-		/*
-		 *      We took the "if".  Go recurse into its' children.
-		 */
-		return unlang_group(p_result, request, frame);
-	}
-
 	fr_assert(gext->head != NULL);
 
 	/*

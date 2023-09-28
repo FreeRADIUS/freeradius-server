@@ -861,6 +861,11 @@ static int fr_value_box_cidr_cmp_op(fr_token_t op, int bytes,
 	return false;
 }
 
+/*
+ *	So we don't have to include <util/regex.h> in a recursive fashion.
+ */
+extern int fr_regex_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b);
+
 /** Compare two attributes using an operator
  *
  * @param[in] op to use in comparison.
@@ -877,6 +882,8 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 
 	if (!fr_cond_assert(a->type != FR_TYPE_NULL)) return -1;
 	if (!fr_cond_assert(b->type != FR_TYPE_NULL)) return -1;
+
+	if (unlikely((op == T_OP_REG_EQ) || (op == T_OP_REG_NE))) return fr_regex_cmp_op(op, a, b);
 
 	switch (a->type) {
 	case FR_TYPE_IPV4_ADDR:
@@ -3446,7 +3453,7 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 		vb->entry = entry;
 		return -1;
 	}
-	fr_value_box_clear(&tmp);	/* Clear out any old buffers */
+	fr_value_box_clear_value(&tmp);	/* Clear out any old buffers */
 
 	/*
 	 *	Restore list pointers
@@ -5405,7 +5412,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 		if (secret && vb->secret) *secret = true;
 
 		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
-		if (vb_should_free_value(proc_action)) fr_value_box_clear(vb);
+		if (vb_should_free_value(proc_action)) fr_value_box_clear_value(vb);
 		if (vb_should_free(proc_action)) talloc_free(vb);
 	}}
 
@@ -5507,7 +5514,7 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff
 		if (secret && vb->secret) *secret = true;
 
 		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
-		if (vb_should_free_value(proc_action)) fr_value_box_clear(vb);
+		if (vb_should_free_value(proc_action)) fr_value_box_clear_value(vb);
 		if (vb_should_free(proc_action)) talloc_free(vb);
 	}}
 
@@ -5623,7 +5630,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			}
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
-			fr_value_box_bstrndup_shallow(out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted);
+			if (fr_value_box_bstrndup(ctx, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted) < 0) goto error;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -5639,7 +5646,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			}
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
 			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
-			fr_value_box_memdup_shallow(out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted);
+			if (fr_value_box_memdup(ctx, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted) < 0) goto error;
 			break;
 
 		default:
@@ -5663,7 +5670,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 
 			entry = out->entry;
-			fr_value_box_bstrndup_shallow(out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted);
+			if (fr_value_box_bstrndup(ctx, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted) < 0) goto error;
 			out->entry = entry;
 			break;
 
@@ -5674,7 +5681,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
 
 			entry = out->entry;
-			fr_value_box_memdup_shallow(out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted);
+			if (fr_value_box_memdup(ctx, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted) < 0) goto error;
 			out->entry = entry;
 			break;
 
@@ -5921,7 +5928,7 @@ void fr_value_box_list_untaint(fr_value_box_list_t *head)
 /** Validation function to check that a fr_value_box_t is correctly initialised
  *
  */
-void fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
+void fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb)
 {
 DIAG_OFF(nonnull-compare)
 	/*
@@ -5932,8 +5939,12 @@ DIAG_OFF(nonnull-compare)
 	fr_fatal_assert_msg(vb, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t pointer was NULL", file, line);
 DIAG_ON(nonnull-compare)
 
-	if (talloced) vb = talloc_get_type_abort_const(vb, fr_value_box_t);
+	if (vb->talloced) vb = talloc_get_type_abort_const(vb, fr_value_box_t);
 
+#ifndef NDEBUG
+	fr_fatal_assert_msg(vb->magic == FR_VALUE_BOX_MAGIC, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t magic "
+			    "incorrect, expected %" PRIx64 ", got %" PRIx64, file, line, FR_VALUE_BOX_MAGIC, vb->magic);
+#endif
 	switch (vb->type) {
 	case FR_TYPE_STRING:
 		fr_fatal_assert_msg(vb->vb_strvalue, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t strvalue field "
@@ -5941,6 +5952,16 @@ DIAG_ON(nonnull-compare)
 		fr_fatal_assert_msg(vb->vb_strvalue[vb->vb_length] == '\0',
 				    "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t strvalue field "
 				    "not null terminated", file, line);
+		if (vb->talloced) {
+			size_t len = talloc_array_length(vb->vb_strvalue);
+
+			/* We always \0 terminate to be safe, even though most things should use the len field */
+			if (len <= vb->vb_length) {
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: Expected fr_value_box_t->vb_strvalue talloc buffer "
+						    "len >= %zu, got %zu",
+						    file, line, vb->vb_length + 1, len);
+			}
+		}
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -5954,7 +5975,7 @@ DIAG_ON(nonnull-compare)
 		break;
 
 	case FR_TYPE_GROUP:
-		fr_value_box_list_verify(file, line, &vb->vb_group, talloced);
+		fr_value_box_list_verify(file, line, &vb->vb_group);
 		break;
 
 	default:
@@ -5962,11 +5983,10 @@ DIAG_ON(nonnull-compare)
 	}
 }
 
-void fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list, bool talloced)
+void fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list)
 {
-	fr_value_box_list_foreach(list, vb) fr_value_box_verify(file, line, vb, talloced);
+	fr_value_box_list_foreach(list, vb) fr_value_box_verify(file, line, vb);
 }
-
 
 /** Mark a value-box as "safe", of a particular type.
  *

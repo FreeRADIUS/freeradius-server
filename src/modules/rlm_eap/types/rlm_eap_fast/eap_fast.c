@@ -461,8 +461,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 		ret = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 						&FR_DBUFF_TMP(p, (size_t)len), len, true);
 		if (ret != len) {
-			fr_pair_to_unknown(vp);
-			fr_pair_value_memdup(vp, p, len, true);
+			fr_pair_raw_from_pair(vp, p, len);
 		}
 		fr_pair_append(out, vp);
 		p += len;
@@ -509,20 +508,20 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 			/* FIXME must be a better way to capture/re-derive this later for ISK */
 			switch (vp->da->attr) {
 			case FR_MSCHAP_MPPE_SEND_KEY:
-				if (vp->vp_length != RADIUS_CHAP_CHALLENGE_LENGTH) {
+				if (vp->vp_length != MD5_DIGEST_LENGTH) {
 				wrong_length:
 					REDEBUG("Found %s with incorrect length.  Expected %u, got %zu",
-						vp->da->name, RADIUS_CHAP_CHALLENGE_LENGTH, vp->vp_length);
+						vp->da->name, MD5_DIGEST_LENGTH, vp->vp_length);
 					rcode = RLM_MODULE_INVALID;
 					break;
 				}
 
-				memcpy(t->isk.mppe_send, vp->vp_octets, RADIUS_CHAP_CHALLENGE_LENGTH);
+				memcpy(t->isk.mppe_send, vp->vp_octets, MD5_DIGEST_LENGTH);
 				break;
 
 			case FR_MSCHAP_MPPE_RECV_KEY:
-				if (vp->vp_length != RADIUS_CHAP_CHALLENGE_LENGTH) goto wrong_length;
-				memcpy(t->isk.mppe_recv, vp->vp_octets, RADIUS_CHAP_CHALLENGE_LENGTH);
+				if (vp->vp_length != MD5_DIGEST_LENGTH) goto wrong_length;
+				memcpy(t->isk.mppe_recv, vp->vp_octets, MD5_DIGEST_LENGTH);
 				break;
 
 			case FR_MSCHAP2_SUCCESS:
@@ -535,7 +534,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 				break;
 			}
 		}
-		RHEXDUMP3((uint8_t *)&t->isk, 2 * RADIUS_CHAP_CHALLENGE_LENGTH, "ISK[j]"); /* FIXME (part of above) */
+		RHEXDUMP3((uint8_t *)&t->isk, 2 * MD5_DIGEST_LENGTH, "ISK[j]"); /* FIXME (part of above) */
 		break;
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
@@ -602,7 +601,7 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, eap_sess
 	 *	Tell the request that it's a fake one.
 	 */
 	MEM(fr_pair_prepend_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
-	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1") - 1, NULL, false);
+	(void)fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1") - 1, NULL, false);
 
 	/*
 	 *	If there's no User-Name in the stored data, look for
@@ -650,14 +649,14 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, eap_sess
 		 */
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
 			MEM(tvp = fr_pair_afrom_da(fake, attr_ms_chap_challenge));
-			fr_pair_value_memdup(tvp, t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
+			fr_pair_value_memdup(tvp, t->keyblock->server_challenge, MD5_DIGEST_LENGTH, false);
 			fr_pair_append(&fake->control_pairs, tvp);
-			RHEXDUMP3(t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 auth_challenge");
+			RHEXDUMP3(t->keyblock->server_challenge, MD5_DIGEST_LENGTH, "MSCHAPv2 auth_challenge");
 
 			MEM(tvp = fr_pair_afrom_da(fake, attr_ms_chap_peer_challenge));
-			fr_pair_value_memdup(tvp, t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
+			fr_pair_value_memdup(tvp, t->keyblock->client_challenge, MD5_DIGEST_LENGTH, false);
 			fr_pair_append(&fake->control_pairs, tvp);
-			RHEXDUMP3(t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 peer_challenge");
+			RHEXDUMP3(t->keyblock->client_challenge, MD5_DIGEST_LENGTH, "MSCHAPv2 peer_challenge");
 		}
 	}
 

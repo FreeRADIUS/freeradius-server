@@ -27,6 +27,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/util/base32.h>
+
+#include "totp.h"
 
 typedef struct {
 	fr_value_box_t		secret;
@@ -53,183 +56,63 @@ static const call_method_env_t method_env = {
 	.env = call_env
 };
 
-#define TIME_STEP (30)
+/* Define a structure for the configuration variables */
+typedef struct rlm_totp_t {
+	char const	*name;			//!< name of this instance */
+	fr_totp_t	totp;			//! configuration entries passed to libfreeradius-totp
+} rlm_totp_t;
 
-/*
- *	RFC 4648 base32 decoding.
- */
-static const uint8_t alphabet[UINT8_MAX] = {
-	['A'] = 1,
-	['B'] = 2,
-	['C'] = 3,
-	['D'] = 4,
-	['E'] = 5,
-	['F'] = 6,
-	['G'] = 7,
-	['H'] = 8,
-	['I'] = 9,
-	['J'] = 10,
-	['K'] = 11,
-	['L'] = 12,
-	['M'] = 13,
-	['N'] = 14,
-	['O'] = 15,
-	['P'] = 16,
-	['Q'] = 17,
-	['R'] = 18,
-	['S'] = 19,
-	['T'] = 20,
-	['U'] = 21,
-	['V'] = 22,
-	['W'] = 23,
-	['X'] = 24,
-	['Y'] = 25,
-	['Z'] = 26,
-	['2'] = 27,
-	['3'] = 28,
-	['4'] = 29,
-	['5'] = 30,
-	['6'] = 31,
-	['7'] = 32,
+/* Map configuration file names to internal variables */
+static const CONF_PARSER module_config[] = {
+	{ FR_CONF_OFFSET("time_step", FR_TYPE_UINT32, rlm_totp_t, totp.time_step), .dflt = "30" },
+	{ FR_CONF_OFFSET("otp_length", FR_TYPE_UINT32, rlm_totp_t, totp.otp_length), .dflt = "6" },
+	{ FR_CONF_OFFSET("lookback_steps", FR_TYPE_UINT32, rlm_totp_t, totp.lookback_steps), .dflt = "1" },
+	{ FR_CONF_OFFSET("lookback_interval", FR_TYPE_UINT32, rlm_totp_t, totp.lookback_interval), .dflt = "30" },
+	CONF_PARSER_TERMINATOR
 };
 
-static ssize_t base32_decode(uint8_t *out, size_t outlen, char const *in)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	uint8_t *p, *end, *b;
-	char const *q;
+	rlm_totp_t   *inst = talloc_get_type_abort(mctx->inst->data, rlm_totp_t);
+	CONF_SECTION *conf = mctx->inst->conf;
 
-	p = out;
-	end = p + outlen;
-
-	memset(out, 0, outlen);
-
-	/*
-	 *	Convert ASCII to binary.
-	 */
-	for (q = in; *q != '\0'; q++) {
-		/*
-		 *	Padding at the end, stop.
-		 */
-		if (*q == '=') {
-			break;
-		}
-
-		if (!alphabet[*((uint8_t const *) q)]) return -1;
-
-		*(p++) = alphabet[*((uint8_t const *) q)] - 1;
-
-		if (p == end) return -1; /* too much data */
+	inst->name = cf_section_name2(conf);
+		if (!inst->name) {
+		inst->name = cf_section_name1(conf);
 	}
 
-	/*
-	 *	Reset to the end of the actual data we have
-	 */
-	end = p;
-
-	/*
-	 *	Convert input 5-bit groups into output 8-bit groups.
-	 *	We do this in 8-byte blocks.
-	 *
-	 *	00011111 00022222 00033333 00044444 00055555 00066666 00077777 00088888
-	 *
-	 *	Will get converted to
-	 *
-	 *	11111222 22333334 44445555 56666677 77788888
-	 */
-	for (p = b = out; p < end; p += 8) {
-		b[0] = p[0] << 3;
-		b[0] |= p[1] >> 2;
-
-		b[1] = p[1] << 6;
-		b[1] |= p[2] << 1;
-		b[1] |= p[3] >> 4;
-
-		b[2] = p[3] << 4;
-		b[2] |= p[4] >> 1;
-
-		b[3] = p[4] << 7;
-		b[3] |= p[5] << 2;
-		b[3] |= p[6] >> 3;
-
-		b[4] = p[6] << 5;
-		b[4] |= p[7];
-
-		b += 5;
-
-		/*
-		 *	Clear out the remaining 3 octets of this block.
-		 */
-		b[0] = 0;
-		b[1] = 0;
-		b[2] = 0;
-	}
-
-	return b - out;
+	return 0;
 }
-
-#ifndef TESTING
-#define LEN 6
-#define PRINT "%06u"
-#define DIV 1000000
-#else
-#define LEN 8
-#define PRINT "%08u"
-#define DIV 100000000
-#endif
 
 /*
- *	Implement RFC 6238 TOTP algorithm.
+ *	Do any per-module initialization that is separate to each
+ *	configured instance of the module.  e.g. set up connections
+ *	to external databases, read configuration files, set up
+ *	dictionary entries, etc.
  *
- *	Appendix B has test vectors.  Note that the test vectors are
- *	for 8-character challenges, and not for 6 character
- *	challenges!
+ *	If configuration information is given in the config section
+ *	that must be referenced in later calls, store a handle to it
+ *	in *instance otherwise put a null pointer there.
  */
-static int totp_cmp(time_t now, uint8_t const *key, size_t keylen, char const *totp)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	uint8_t offset;
-	uint32_t challenge;
-	uint64_t padded;
-	char buffer[9];
-	uint8_t data[8];
-	uint8_t digest[SHA1_DIGEST_LENGTH];
+	rlm_totp_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_totp_t);
 
-	padded = ((uint64_t) now) / TIME_STEP;
-	data[0] = padded >> 56;
-	data[1] = padded >> 48;
-	data[2] = padded >> 40;
-	data[3] = padded >> 32;
-	data[4] = padded >> 24;
-	data[5] = padded >> 16;
-	data[6] = padded >> 8;
-	data[7] = padded & 0xff;
+	FR_INTEGER_BOUND_CHECK("time_step", inst->totp.time_step, >=, 5);
+	FR_INTEGER_BOUND_CHECK("time_step", inst->totp.time_step, <=, 120);
 
-	/*
-	 *	Encrypt the network order time with the key.
-	 */
-	fr_hmac_sha1(digest, data, 8, key, keylen);
+	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->totp.lookback_steps, >=, 1);
+	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->totp.lookback_steps, <=, 10);
 
-	/*
-	 *	Take the least significant 4 bits.
-	 */
-	offset = digest[SHA1_DIGEST_LENGTH - 1] & 0x0f;
+	FR_INTEGER_BOUND_CHECK("lookback_interval", inst->totp.lookback_interval, <=, inst->totp.time_step);
 
-	/*
-	 *	Grab the 32bits at "offset", and drop the high bit.
-	 */
-	challenge = (digest[offset] & 0x7f) << 24;
-	challenge |= digest[offset + 1] << 16;
-	challenge |= digest[offset + 2] << 8;
-	challenge |= digest[offset + 3];
+	FR_INTEGER_BOUND_CHECK("otp_length", inst->totp.otp_length, >=, 6);
+	FR_INTEGER_BOUND_CHECK("otp_length", inst->totp.otp_length, <=, 8);
 
-	/*
-	 *	The token is the last 6 digits in the number.
-	 */
-	snprintf(buffer, sizeof(buffer), PRINT, challenge % DIV);
+	if (inst->totp.otp_length == 7) inst->totp.otp_length = 8;
 
-	return fr_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, LEN);
+	return 0;
 }
-
-#ifndef TESTING
 
 /*
  *  Do the authentication
@@ -237,6 +120,7 @@ static int totp_cmp(time_t now, uint8_t const *key, size_t keylen, char const *t
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_totp_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, rlm_totp_call_env_t);
+	rlm_totp_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_totp_t);
 	fr_value_box_t		*user_password = &env_data->user_password;
 	fr_value_box_t		*secret = &env_data->secret;
 	fr_value_box_t		*key = &env_data->key;
@@ -247,8 +131,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	if (fr_type_is_null(user_password->type)) RETURN_MODULE_NOOP;
 
-	if (user_password->vb_length != 6) {
-		RDEBUG("TOTP-Password has incorrect length.  Expected 6, got %zu", user_password->vb_length);
+	if (user_password->vb_length == 0) {
+		RDEBUG("TOTP.From-User is empty");
+		RETURN_MODULE_FAIL;
+	}
+
+	if ((user_password->vb_length != 6) && (user_password->vb_length != 8)) {
+		RDEBUG("TOTP.From-User has incorrect length. Expected 6 or 8, got %zu", user_password->vb_length);
 		RETURN_MODULE_FAIL;
 	}
 
@@ -264,9 +153,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 		if (!fr_type_is_null(secret->type)) RETURN_MODULE_NOOP;
 
-		len = base32_decode(buffer, sizeof(buffer), secret->vb_strvalue);
+		len = fr_base32_decode(&FR_DBUFF_TMP((uint8_t *) buffer, sizeof(buffer)), &FR_SBUFF_IN(secret->vb_strvalue, secret->vb_length), true, true);
 		if (len < 0) {
-			RDEBUG("TOTP-Secret cannot be decoded");
+			RDEBUG("TOTP.Secret cannot be decoded");
 			RETURN_MODULE_FAIL;
 		}
 
@@ -274,11 +163,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		our_keylen = len;
 	}
 
-	if (totp_cmp(fr_time_to_sec(request->packet->timestamp), our_key, our_keylen, secret->vb_strvalue) != 0) RETURN_MODULE_FAIL;
+	if (fr_totp_cmp(&inst->totp, request, fr_time_to_sec(request->packet->timestamp), our_key, our_keylen, secret->vb_strvalue) != 0) RETURN_MODULE_FAIL;
 
 	RETURN_MODULE_OK;
 }
-
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -294,55 +182,13 @@ module_rlm_t rlm_totp = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "totp",
-		.type		= MODULE_TYPE_THREAD_SAFE
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.config		= module_config,
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate
 	},
 	.method_names = (module_method_name_t[]){
 		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,	.method_env = &method_env },
 		MODULE_NAME_TERMINATOR
 	}
 };
-
-#else /* TESTING */
-int main(int argc, char **argv)
-{
-	size_t len;
-	uint8_t *p;
-	uint8_t key[80];
-
-	if (argc < 2) return 0;
-
-	if (strcmp(argv[1], "decode") == 0) {
-		if (argc < 3) return 0;
-
-		len = base32_decode(key, sizeof(key), argv[2]);
-		printf("Decoded %ld %s\n", len, key);
-
-		for (p = key; p < (key + len); p++) {
-			printf("%02x ", *p);
-		}
-		printf("\n");
-
-		return 0;
-	}
-
-	/*
-	 *	TOTP <time> <key> <8-character-expected-token>
-	 */
-	if (strcmp(argv[1], "totp") == 0) {
-		uint64_t now;
-
-		if (argc < 5) return 0;
-
-		(void) sscanf(argv[2], "%llu", &now);
-
-		if (totp_cmp((time_t) now, (uint8_t const *) argv[3], strlen(argv[3]), argv[4]) == 0) {
-			return 0;
-		}
-		printf("Fail\n");
-		return 1;
-	}
-
-	fprintf(stderr, "Unknown command %s\n", argv[1]);
-	return 1;
-}
-#endif

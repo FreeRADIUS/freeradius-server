@@ -56,7 +56,7 @@ static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				     fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
-	return fr_pair_tlvs_from_network(ctx, out, parent, data, data_len, decode_ctx, decode_option, verify_tlvs, false);
+	return fr_pair_tlvs_from_network(ctx, out, parent, data, data_len, decode_ctx, decode_option, verify_tlvs, true);
 }
 
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
@@ -93,7 +93,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	uint8_t const *end = data + data_len;
 	bool exact = !da->flags.array;
 
-	FR_PROTO_TRACE("%s called to parse %zu bytes", __FUNCTION__, data_len);
+	FR_PROTO_TRACE("%s called to parse %zu bytes from %s", __FUNCTION__, data_len, da->name);
 	FR_PROTO_HEX_DUMP(data, data_len, NULL);
 
 	/*
@@ -117,7 +117,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
-	if (!vp) return -1;
+	if (!vp) return PAIR_DECODE_OOM;
 
 	/*
 	 *	string / octets / bool can be empty.  Other data types are
@@ -266,12 +266,13 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 
 	default:
 		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, da,
-						&FR_DBUFF_TMP(p, end - p), end - p, true);
+						 &FR_DBUFF_TMP(p, end - p), end - p, true);
 		if (slen < 0) {
 		raw:
 			FR_PROTO_TRACE("decoding as unknown type");
-			if (fr_pair_to_unknown(vp) < 0) return -1;
-			fr_pair_value_memdup(vp, p, end - p, true);
+			if (fr_pair_raw_from_pair(vp, p, (end - p)) < 0) {
+				return -1;
+			}
 			p = end;
 			break;
 		}
@@ -349,6 +350,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 	ssize_t			len;
 	uint8_t			option_len;
 	uint32_t		pen;
+	fr_pair_t		*vp;
 	fr_dict_attr_t const	*vendor;
 	uint8_t const		*end = data + data_len;
 	uint8_t const		*p = data;
@@ -361,15 +363,12 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 
 next:
 	/*
-	 *	We need at least 4 (PEN) + 1 (data-len) + 1 (vendor option num)
-	 *	to be able to decode vendor specific
-	 *	attributes.
+	 *	We need at least 4 (PEN) + 1 (data-len) + 1 (vendor option num) to be able to decode vendor
+	 *	specific attributes.  If we don't have that, then we return an error.  The caller will free
+	 *	the VSA, and create a "raw.VSA" attribute.
 	 */
 	if ((size_t)(end - p) < (sizeof(uint32_t) + 1 + 1)) {
-		len = fr_pair_raw_from_network(ctx, out, parent, p, end - p);
-		if (len < 0) return len;
-
-		return data_len + 2; /* decoded the whole thing */
+		return -1;
 	}
 
 	pen = fr_nbo_to_uint32(p);
@@ -403,8 +402,15 @@ next:
 	}
 	p++;
 
-	/* coverity[tainted_data] */
-	len = fr_pair_tlvs_from_network(ctx, out, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, false);
+	vp = fr_pair_find_by_da(out, NULL, vendor);
+	if (!vp) {
+		vp = fr_pair_afrom_da(ctx, vendor);
+		if (!vp) return PAIR_DECODE_FATAL_ERROR;
+
+		fr_pair_append(out, vp);
+	}
+
+	len = fr_pair_tlvs_from_network(vp, &vp->vp_group, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, false);
 	if (len <= 0) return len;
 
 	p += len;
@@ -479,10 +485,28 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = fr_pair_array_from_network(ctx, out, da, data + 2, len, decode_ctx, decode_value);
 
 	} else if (da->type == FR_TYPE_VSA) {
-		slen = decode_vsa(ctx, out, da, data + 2, len, decode_ctx);
+		bool append = false;
+		fr_pair_t *vp;
+
+		vp = fr_pair_find_by_da(out, NULL, da);
+		if (!vp) {
+			vp = fr_pair_afrom_da(ctx, da);
+			if (!vp) return PAIR_DECODE_FATAL_ERROR;
+
+			append = true;
+		}
+
+		slen = decode_vsa(vp, &vp->vp_group, da, data + 2, len, decode_ctx);
+		if (append) {
+			if (slen < 0) {
+				TALLOC_FREE(vp);
+			} else {
+				fr_pair_append(out, vp);
+			}
+		}
 
 	} else if (da->type == FR_TYPE_TLV) {
-		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len, decode_ctx, decode_option, verify_tlvs, false);
+		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len, decode_ctx, decode_option, verify_tlvs, true);
 
 	} else {
 		slen = decode_value(ctx, out, da, data + 2, len, decode_ctx);
@@ -589,7 +613,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		} else if (da->type == FR_TYPE_TLV) {
 			slen = fr_pair_tlvs_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer,
-							 packet_ctx, decode_option, verify_tlvs, false);
+							 packet_ctx, decode_option, verify_tlvs, true);
 
 		} else if (da->flags.array) {
 			slen = fr_pair_array_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx, decode_value);

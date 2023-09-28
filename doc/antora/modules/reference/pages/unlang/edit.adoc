@@ -8,10 +8,10 @@ attributes.
 .Syntax
 [source,unlang]
 ----
-&attribute := value
-&attribute = value
-&attribute += value
-&attribute -= value
+&attribute := <expression>
+&attribute = <expression>
+&attribute += <expression>
+&attribute -= <expression>
 ...
 
 &list1 := &list2
@@ -43,6 +43,8 @@ _<rhs>_:: The value which is assigned to the attribute.  This value
 can sometimes be an "in-place" list, in which case it is delimited by
 brackets, as in `{...}`.
 
+The _<rhs>_ may be value such as `192.0.2.1, or `5`, or an expression such as `1 + 2`, or `"foo" + "bar"`.
+
 NOTE: Despite the edit statements having syntax similar to `update`
 sections, the meaning of the operators have changed significantly.
 You _cannot_ convert an `update` section to the new syntax simply by
@@ -71,6 +73,8 @@ processing as normal.
 
 In short, failed edit operations are effectively a "noop" operation,
 and do not result in any changes.
+
+=== Grouping Edits
 
 Multiple attributes may be grouped into a set by using the `group`
 keyword.  When changes are done in a `group`, then either all of the
@@ -365,6 +369,21 @@ change the attribute _value_.
 | &=       | Perform logical "and".  The value of the _<attribute>_ is "and"ed with the contents of the _<rhs>_.
 | <\<=     | Perform left shift.  The value of the _<attribute>_ is shifted left by the value of _<rhs>_
 | >>=      | Perform right shift.  The value of the _<attribute>_ is shifted right by the value of _<rhs>_
+|=====
+
+There are also _filtering_operators.  These operators ensure that the
+value of the attribute passes the filter.  If the attribute being
+checked does not exist, it is created.
+
+.Attribute Filtering Operators
+[options="header"]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| <        | Ensure that the _<lhs>_ attribute exists, and has value less than the _<rhs>_
+| <=       | Ensure that the _<lhs>_ attribute exists, and has value less than or equal to the _<rhs>_
+| >        | Ensure that the _<lhs>_ attribute exists, and has value greater than the _<rhs>_
+| >=       | Ensure that the _<lhs>_ attribute exists, and has value greater than than or equal to the _<rhs>_
 |=====
 
 The _<rhs>_ can be a reference to another attribute

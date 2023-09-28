@@ -318,4 +318,10 @@ pdf: $(PDF_FILES)
 doc: build/docsite/sitemap.xml $(HTML_FILES)
 
 # end of WITH_DOC
+else
+.PHONY: docsite
+docsite:
+	@echo 'make docsite' requires antora and asciidoctor.
+	@echo Please read the output of 'configure' for more information.
+	@false
 endif

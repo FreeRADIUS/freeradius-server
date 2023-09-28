@@ -32,7 +32,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_priv.h>
-#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/util.h>
@@ -768,8 +767,9 @@ int cf_section_pass2(CONF_SECTION *cs)
 		if (!cp->value || !cp->pass2) continue;
 
 		fr_assert((cp->rhs_quote == T_BARE_WORD) ||
-			   (cp->rhs_quote == T_DOUBLE_QUOTED_STRING) ||
-			   (cp->rhs_quote == T_BACK_QUOTED_STRING));
+			  (cp->rhs_quote == T_HASH) ||
+			  (cp->rhs_quote == T_DOUBLE_QUOTED_STRING) ||
+			  (cp->rhs_quote == T_BACK_QUOTED_STRING));
 
 		value = cf_expand_variables(ci->filename, ci->lineno, cs, buffer, sizeof(buffer), cp->value, -1, NULL);
 		if (!value) return -1;
@@ -1507,7 +1507,6 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool const 
 static CONF_ITEM *process_if(cf_stack_t *stack)
 {
 	ssize_t		slen = 0;
-	fr_cond_t	*cond = NULL;
 	fr_dict_t const	*dict = NULL;
 	CONF_SECTION	*cs;
 	uint8_t const   *p;
@@ -1516,7 +1515,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
 	tmpl_rules_t	t_rules;
-	bool		use_new_conditions = main_config_migrate_option_get("use_new_conditions");
 
 	/*
 	 *	Short names are nicer.
@@ -1537,9 +1535,8 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	};
 
 	/*
-	 *	fr_cond_tokenize needs the current section, so we
-	 *	create it first.  We don't pass a name2, as it hasn't
-	 *	yet been parsed.
+	 *	Create the CONF_SECTION.  We don't pass a name2, as it
+	 *	hasn't yet been parsed.
 	 */
 	cs = cf_section_alloc(parent, parent, buff[1], NULL);
 	if (!cs) {
@@ -1574,9 +1571,21 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		 *	Parse failures not at EOL are real errors.
 		 */
 		if (!eol) {
+			char *spaces, *text;
+
 			slen = 0;
 			fr_strerror_const("Unexpected EOF");
-			goto error;
+	error:
+			fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
+
+			cf_log_err(cs, "Parse error in condition");
+			cf_log_err(cs, "%s", text);
+			cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
+
+			talloc_free(spaces);
+			talloc_free(text);
+			talloc_free(cs);
+			return NULL;
 		}
 
 		/*
@@ -1639,43 +1648,12 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	}
 
 	/*
-	 *	Now that we know how big the condition is, see if we
-	 *	need to expand the variables.  If so, free the old
-	 *	condition, expand the variables, and reparse the
-	 *	condition.
+	 *	Expand the variables in the pre-parsed condition.
 	 */
-	{
-		ssize_t my_slen;
-
-		talloc_free(cond);
-
-		if (!cf_expand_variables(frame->filename, frame->lineno, parent,
-					 buff[3], stack->bufsize, buff[2], slen, NULL)) {
-			fr_strerror_const("Failed expanding configuration variable");
-			return NULL;
-		}
-
-		if (!use_new_conditions) {
-			my_slen = fr_cond_tokenize(cs, &cond, &t_rules, &FR_SBUFF_IN(buff[3], strlen(buff[3])), false);
-			if (my_slen <= 0) {
-				char *spaces, *text;
-
-				ptr = buff[3];
-				slen = my_slen;
-
-			error:
-				fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
-
-				cf_log_err(cs, "Parse error in condition");
-				cf_log_err(cs, "%s", text);
-				cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
-
-				talloc_free(spaces);
-				talloc_free(text);
-				talloc_free(cs);
-				return NULL;
-			}
-		}
+	if (!cf_expand_variables(frame->filename, frame->lineno, parent,
+				 buff[3], stack->bufsize, buff[2], slen, NULL)) {
+		fr_strerror_const("Failed expanding configuration variable");
+		return NULL;
 	}
 
 	MEM(cs->name2 = talloc_typed_strdup(cs, buff[3]));
@@ -1690,14 +1668,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		return NULL;
 	}
 	ptr++;
-
-	/*
-	 *	Now that the CONF_SECTION and condition are OK, add
-	 *	the condition to the CONF_SECTION.
-	 */
-	if (!use_new_conditions) {
-		cf_data_add(cs, cond, NULL, true);
-	}
 
 	stack->ptr = ptr;
 
@@ -2193,11 +2163,13 @@ static int parse_input(cf_stack_t *stack)
 			goto check_for_eol;
 		}
 
-		if (!parent->allow_locals) {
+		if (!parent->allow_locals && (cf_section_find_in_parent(parent, "dictionary", NULL) == NULL)) {
 			ERROR("%s[%d]: Parse error: Invalid location for variable definition",
 			      frame->filename, frame->lineno);
 			return -1;
 		}
+
+		if (type == FR_TYPE_TLV) goto parse_name2;
 
 		/*
 		 *	We don't have an operator, so set it to a magic value.
@@ -2221,6 +2193,7 @@ static int parse_input(cf_stack_t *stack)
 	 */
 check_for_eol:
 	if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';') || (*ptr == '}')) {
+		parent->allow_locals = false;
 		value_token = T_INVALID;
 		op_token = T_OP_EQ;
 		value = NULL;
@@ -2253,6 +2226,7 @@ check_for_eol:
 	 */
 	if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || ((*ptr == '&') && (ptr[1] != '=')) ||
 	    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((uint8_t) *ptr) || isdigit((uint8_t) *ptr)) {
+	parse_name2:
 		if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			return -1;
@@ -2453,6 +2427,7 @@ check_for_eol:
 			 */
 			fr_skip_whitespace(ptr2);
 			if (terminal_end_line[(uint8_t) *ptr2]) {
+				parent->allow_locals = false;
 				ptr = ptr2;
 				value = buff[2];
 				goto alloc_pair;
@@ -2524,12 +2499,13 @@ check_for_eol:
 	/*
 	 *	Add parent CONF_PAIR to our CONF_SECTION
 	 */
+	parent->allow_locals = false;
+
 alloc_pair:
 	if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff[3], frame->filename, frame->lineno) < 0) return -1;
 
 added_pair:
 	fr_skip_whitespace(ptr);
-	parent->allow_locals = false;
 
 	/*
 	 *	Skip semicolon if we see it after a
@@ -3073,20 +3049,18 @@ int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 	 *	cf_data_find(cs, CF_DATA_TYPE_UNLANG, "if");
 	 */
 	if (cs->name2) {
-		fr_cond_t *c;
-
 		fputs(" ", fp);
 
+#if 0
 		c = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
 		if (c) {
 			char buffer[1024];
 
 			cond_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), c);
 			fprintf(fp, "(%s)", buffer);
-
-		} else {	/* dump the string as-is */
+		} else
+#endif
 			cf_string_write(fp, cs->name2, strlen(cs->name2), cs->name2_quote);
-		}
 	}
 
 	fputs(" {\n", fp);

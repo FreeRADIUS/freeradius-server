@@ -402,7 +402,7 @@ fr_slen_t	xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **head,
 					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 fr_slen_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool comma);
 
 fr_slen_t	xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
@@ -503,7 +503,7 @@ xlat_action_t	unlang_xlat_yield(request_t *request,
  *	xlat_builtin.c
  */
 int		xlat_protocols_register(void);
-int		xlat_init(void);
+int		xlat_init(TALLOC_CTX *ctx);
 void		xlat_free(void);
 
 #ifdef __cplusplus

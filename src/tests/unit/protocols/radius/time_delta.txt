@@ -9,7 +9,7 @@ fuzzer-out radius
 #  Time delta in milliseconds.
 #
 pair Unit-TLV.Delta-MSec = 5
-match Unit-TLV.Delta-MSec = 5
+match Unit-TLV = { Delta-MSec = 5 }
 
 encode-pair -
 match fe 08 02 06 00 00 00 05
@@ -17,11 +17,8 @@ match fe 08 02 06 00 00 00 05
 decode-pair -
 match Unit-TLV = { Delta-MSec = 5 }
 
-#
-#  @todo - not yet converted to make nested TLVs!
-#
 pair Unit-TLV.Delta-Sec = 10
-match Unit-TLV.Delta-Sec = 10
+match Unit-TLV = { Delta-Sec = 10 }
 
 encode-pair -
 match fe 08 03 06 00 00 00 0a
@@ -56,7 +53,7 @@ decode-pair -
 match Unit-TLV = { Delta-MSec-int32 = -32768 }
 
 pair Unit-TLV.Delta-MSec-int32 = -32768
-match Unit-TLV.Delta-MSec-int32 = -32768
+match Unit-TLV = { Delta-MSec-int32 = -32768 }
 
 encode-pair Unit-TLV.Delta-MSec-int16 = -32768
 match fe 06 06 04 80 00
@@ -65,7 +62,7 @@ decode-pair -
 match Unit-TLV = { Delta-MSec-int16 = -32768 }
 
 pair Unit-TLV.Delta-MSec-int16 = -32768
-match Unit-TLV.Delta-MSec-int16 = -32768
+match Unit-TLV = { Delta-MSec-int16 = -32768 }
 
 # Regression test for broken signed promotion
 encode-pair Unit-TLV.Delta-MSec-int32 = -32768
@@ -75,7 +72,7 @@ decode-pair -
 match Unit-TLV = { Delta-MSec-int32 = -32768 }
 
 pair Unit-TLV.Delta-MSec-int32 = -32768
-match Unit-TLV.Delta-MSec-int32 = -32768
+match Unit-TLV = { Delta-MSec-int32 = -32768 }
 
 #
 #	Min/Max values & overflows
@@ -83,10 +80,10 @@ match Unit-TLV.Delta-MSec-int32 = -32768
 
 # Internal format is int64_t
 pair Unit-TLV.Delta-MSec-uint16 = 9223372036853
-match Unit-TLV.Delta-MSec-uint16 = 9223372036853
+match Unit-TLV = { Delta-MSec-uint16 = 9223372036853 }
 
 pair Unit-TLV.Delta-MSec-uint32 = 9223372036853
-match Unit-TLV.Delta-MSec-uint32 = 9223372036853
+match Unit-TLV = { Delta-MSec-uint32 = 9223372036853 }
 
 # therefore, the encode should limit to the data type.
 encode-pair Unit-TLV.Delta-MSec-uint16 = 9223372036853

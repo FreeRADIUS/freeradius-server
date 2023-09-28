@@ -262,53 +262,13 @@ while (@ARGV) {
         #  STRUCT name attr value
         #
         if (/^STRUCT\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
-            my $attr = $2;
-            my $len = length $attr;
-
-            if ($len < 32) {
-                my $lenx = 32 - $len;
-                $lenx += 7;                # round up
-                $lenx /= 8;
-                $lenx = int $lenx;
-                $tabsa = "\t" x $lenx;
-                if ($tabsa eq "") {
-                    $tabsa = " ";
-                    $len += 1;
-                } else {
-                    $len -= $len % 8;
-                    $len += 8 * length $tabsa;
-                }
-            } else {
-                $tabsa = " ";
-                $len += 1;
-            }
-
-            #
-            #  For the code below, we assume that the attribute lengths
-            #
-            my $lena;
-            if ($len < 32) {
-                $lena = 0;
-            } else {
-                $lena = $len - 32;
-            }
-
             my $name = $1;
-            $len = length $name;
-            if ($len < 24) {
-                my $lenx = 24 - $lena - $len;
-                $lenx += 7;                # round up
-                $lenx /= 8;
-                $lenx = int $lenx;
-                $tabsn = "\t" x $lenx;
-                if ($tabsn eq "") {
-                    $tabsn = " ";
-                }
-            } else {
-                $tabsn = " ";
-            }
+            my $key = $2;
 
-            push @output, "STRUCT\t$name$tabsa$attr$tabsn$3$4\n";
+            my $tabs = tabs(32, $name);
+            my $tabsv = tabs(24, $key);
+
+            push @output, "STRUCT\t$name$tabs$key$tabsv$3$4\n";
             next;
         }
 
@@ -331,52 +291,12 @@ while (@ARGV) {
         #
         if (/^VALUE\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
             my $attr = $1;
-            my $len = length $attr;
-
-            if ($len < 32) {
-                my $lenx = 32 - $len;
-                $lenx += 7;                # round up
-                $lenx /= 8;
-                $lenx = int $lenx;
-                $tabsa = "\t" x $lenx;
-                if ($tabsa eq "") {
-                    $tabsa = " ";
-                    $len += 1;
-                } else {
-                    $len -= $len % 8;
-                    $len += 8 * length $tabsa;
-                }
-            } else {
-                $tabsa = " ";
-                $len += 1;
-            }
-
-            #
-            #  For the code below, we assume that the attribute lengths
-            #
-            my $lena;
-            if ($len < 32) {
-                $lena = 0;
-            } else {
-                $lena = $len - 32;
-            }
-
             my $name = $2;
-            $len = length $name;
-            if ($len < 24) {
-                my $lenx = 24 - $lena - $len;
-                $lenx += 7;                # round up
-                $lenx /= 8;
-                $lenx = int $lenx;
-                $tabsn = "\t" x $lenx;
-                if ($tabsn eq "") {
-                    $tabsn = " ";
-                }
-            } else {
-                $tabsn = " ";
-            }
 
-            push @output, "VALUE\t$attr$tabsa$name$tabsn$3$4\n";
+	    my $tabs = tabs(32, $attr);
+	    my $tabsa = tabs(24, $name);
+
+            push @output, "VALUE\t$attr$tabs$name$tabsa$3$4\n";
             next;
         }
 

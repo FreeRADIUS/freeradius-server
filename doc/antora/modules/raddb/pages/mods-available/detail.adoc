@@ -115,7 +115,7 @@ NOTE: The attributes should be listed one to a line.
 
 ```
 detail {
-	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/detail-%Y-%m-%d
+	filename = ${radacctdir}/%{Net.Src.IP}/detail-%Y-%m-%d
 #	filename = ${radacctdir}/detail
 	escape_filenames = no
 	permissions = 0600

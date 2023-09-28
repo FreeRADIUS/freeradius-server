@@ -371,7 +371,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			 *	immutable.  For now, this is good enough.
 			 */
 			if (fr_pair_immutable(vp)) {
-				RWDEBUG("Not removing immitable %pP", vp);
+				RWDEBUG("Not removing immutable %pP", vp);
 				continue;
 			}
 
@@ -1074,7 +1074,7 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 
 	data:
 		MEM(box = fr_value_box_alloc_null(state));
-		if (fr_value_box_copy(state, box, tmpl_value(vpt)) < 0) return -1;
+		if (fr_value_box_copy(box, box, tmpl_value(vpt)) < 0) return -1;
 
 		fr_value_box_list_insert_tail(&current->parent->rhs.result, box);
 
@@ -1098,7 +1098,7 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 		vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, vpt);
 		while (vp) {
 			MEM(box = fr_value_box_alloc_null(state));
-			if (fr_value_box_copy(state, box, &vp->data) < 0) return -1;
+			if (fr_value_box_copy(box, box, &vp->data) < 0) return -1;
 
 			fr_value_box_list_insert_tail(&current->parent->rhs.result, box);
 
@@ -1258,7 +1258,8 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	/*
 	 *	Create the attribute, including any necessary parents.
 	 */
-	if (map->op == T_OP_EQ) {
+	if ((map->op == T_OP_EQ) ||
+	    (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type) && fr_comparison_op[map->op])) {
 		if (tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC) {
 			current->lhs.create = true;
 

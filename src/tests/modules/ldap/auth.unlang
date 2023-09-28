@@ -33,6 +33,16 @@ if (!(&reply.Session-Timeout == 7200)) {
         test_fail
 }
 
+# Set from radiusAttribute
+if !(&control.Vendor-Specific.Cisco.AVPair[*] == 'foo') {
+	test_fail
+}
+
+# Set from radiusControlAttribute
+if !(&control.Vendor-Specific.Cisco.AVPair[*] == 'bar') {
+	test_fail
+}
+
 # Attempt a bind authentication
 ldap.authenticate
 

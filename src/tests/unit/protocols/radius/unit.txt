@@ -10,13 +10,13 @@ encode-pair Extended-Attribute-6.Extended-Vendor-Specific-6.FreeRADIUS.Unit-EVS-
 match f6 0d 1a 00 00 00 2c 50 01 00 00 00 01 f6 0d 1a 00 00 00 2c 50 01 00 00 00 02
 
 pair Extended-Attribute-1.Unit-Ext-241-Integer = 6809
-match Extended-Attribute-1.Unit-Ext-241-Integer = 6809
+match Extended-Attribute-1 = { Unit-Ext-241-Integer = 6809 }
 
 encode-pair Extended-Attribute-1.Unit-Ext-241-Integer = 6809
 match f1 07 f1 00 00 1a 99
 
 decode-pair -
-match Extended-Attribute-1.Unit-Ext-241-Integer = 6809
+match Extended-Attribute-1 = { Unit-Ext-241-Integer = 6809 }
 
 #
 #  The server *reads* Alive, but *canonicalizes* it to Interim-Update
@@ -37,7 +37,7 @@ encode-pair Extended-Attribute-2.Extended-Vendor-Specific-2.FreeRADIUS.Unit-EVS-
 match f2 0c 1a 00 00 2c 50 01 00 00 1a 99
 
 decode-pair -
-match Extended-Attribute-2.Extended-Vendor-Specific-2.FreeRADIUS.Unit-EVS-Integer = 6809
+match Extended-Attribute-2 = { Extended-Vendor-Specific-2 = { FreeRADIUS = { Unit-EVS-Integer = 6809 } } }
 
 #
 #  This is ambiguous, so we do something.  Anything...
@@ -49,7 +49,7 @@ encode-pair Extended-Attribute-1.Unit-Ext-241-TLV.Unit-TLV-Integer = 1, Extended
 match f1 0f f3 01 06 00 00 00 01 01 06 00 00 00 02
 
 decode-pair -
-match Extended-Attribute-1.Unit-Ext-241-TLV = { Unit-TLV-Integer = 1, Unit-TLV-Integer = 2 }
+match Extended-Attribute-1 = { Unit-Ext-241-TLV = { Unit-TLV-Integer = 1, Unit-TLV-Integer = 2 } }
 
 #
 #  And "long extended" EVS
@@ -58,7 +58,7 @@ encode-pair Extended-Attribute-6.Extended-Vendor-Specific-6.FreeRADIUS.Unit-EVS-
 match f6 0d 1a 00 00 00 2c 50 01 00 00 00 01 f6 0d 1a 00 00 00 2c 50 01 00 00 00 02
 
 decode-pair -
-match Extended-Attribute-6.Extended-Vendor-Specific-6.FreeRADIUS.Unit-EVS-6-Integer = 1, Extended-Attribute-6.Extended-Vendor-Specific-6.FreeRADIUS.Unit-EVS-6-Integer = 2
+match Extended-Attribute-6 = { Extended-Vendor-Specific-6 = { FreeRADIUS = { Unit-EVS-6-Integer = 1, Unit-EVS-6-Integer = 2 } } }
 
 encode-pair Event-Timestamp := 864000
 match 37 06 00 0d 2f 00
@@ -75,7 +75,7 @@ match 37 06 00 0d 2f 00
 
 # Can we parse RFC 3339 dates correctly?
 pair Unit-TLV.Milliseconds = "2019-08-21T07:40:31.123-04:00"
-match Unit-TLV.Milliseconds = "2019-08-21T03:40:31.123Z"
+match Unit-TLV = { Milliseconds = "2019-08-21T03:40:31.123Z" }
 
 count
 match 35

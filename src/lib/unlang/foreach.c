@@ -78,7 +78,6 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
-	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	fr_pair_t			*vp;
 
 	if (is_stack_unwinding_to_break(request->stack)) return UNLANG_ACTION_CALCULATE_RESULT;
@@ -111,17 +110,12 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 	RDEBUG2("# looping with: Foreach-Variable-%d = %pV", state->depth, &vp->data);
 #endif
 
+	repeatable_set(frame);
+
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_STOP_PROCESSING;
-	}
-
-	repeatable_set(frame);
-
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
 }
 
 
@@ -217,17 +211,12 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 
 	frame->process = unlang_foreach_next;
 
+	repeatable_set(frame);
+
 	/*
 	 *	Push the child, and go process it.
 	 */
-	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_STOP_PROCESSING;
-	}
-
-	repeatable_set(frame);
-
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
 }
 
 static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -263,19 +252,19 @@ static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vp != NULL);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_copy(ctx, vb, &vp->data);
+	fr_value_box_copy(vb, vb, &vp->data);
 	fr_dcursor_append(out, vb);
 	return XLAT_ACTION_DONE;
 }
 
-void unlang_foreach_init(void)
+void unlang_foreach_init(TALLOC_CTX *ctx)
 {
 	size_t	i;
 
 	for (i = 0; i < NUM_ELEMENTS(xlat_foreach_names); i++) {
 		xlat_t *x;
 
-		x = xlat_func_register(NULL, xlat_foreach_names[i],
+		x = xlat_func_register(ctx, xlat_foreach_names[i],
 				  unlang_foreach_xlat, FR_TYPE_VOID);
 		fr_assert(x);
 		xlat_func_flags_set(x, XLAT_FUNC_FLAG_INTERNAL);
@@ -294,13 +283,4 @@ void unlang_foreach_init(void)
 				.name = "break",
 				.interpret = unlang_break,
 			   });
-}
-
-void unlang_foreach_free(void)
-{
-	size_t	i;
-
-	for (i = 0; i < NUM_ELEMENTS(xlat_foreach_names); i++) {
-		xlat_func_unregister(xlat_foreach_names[i]);
-	}
 }

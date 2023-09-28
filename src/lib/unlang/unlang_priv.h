@@ -26,7 +26,6 @@
  * @copyright 2016-2019 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/cf_util.h> /* Need CONF_* definitions */
-#include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/util/debug.h>
@@ -82,7 +81,6 @@ typedef enum {
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
 	UNLANG_TYPE_TMPL,			//!< asynchronously expand a tmpl_t
 	UNLANG_TYPE_EDIT,			//!< edit VPs in place.  After 20 years!
-	UNLANG_TYPE_VARIABLE,			//!< local variables
 	UNLANG_TYPE_MAX
 } unlang_type_t;
 
@@ -141,6 +139,12 @@ typedef struct {
 	char const		*type_name;	//!< Talloc type name.
 } unlang_ext_t;
 
+typedef struct {
+	fr_dict_t		*dict;		//!< our dictionary
+	fr_dict_attr_t const	*root;		//!< the root of our dictionary
+	int			max_attr;	//!< 1..N local attributes have been defined
+} unlang_variable_t;
+
 /** Generic representation of a grouping
  *
  * Can represent IF statements, maps, update sections etc...
@@ -152,6 +156,8 @@ typedef struct {
 	unlang_t		**tail;		//!< pointer to the tail which gets updated
 	CONF_SECTION		*cs;
 	int			num_children;
+
+	unlang_variable_t	*variables;	//!< rarely used, so we don't usually need it
 } unlang_group_t;
 
 /** A naked xlat
@@ -493,7 +499,7 @@ static inline void frame_pop(request_t *request, unlang_stack_t *stack)
 	 *	we need to keep frame->retry around to ensure that we
 	 *	know how to _stop_ the retries after they've hit a timeout.
 	 */
-	talloc_free(frame->retry);
+	TALLOC_FREE(frame->retry);
 
 	frame_cleanup(frame);
 
@@ -559,6 +565,10 @@ int		unlang_interpret_push(request_t *request, unlang_t const *instruction,
 				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame)
 				      CC_HINT(warn_unused_result);
 
+int		unlang_interpret_push_children(rlm_rcode_t *p_result, request_t *request,
+					       rlm_rcode_t default_rcode, bool do_next_sibling)
+					       CC_HINT(warn_unused_result);
+
 int		unlang_op_init(void);
 
 void		unlang_op_free(void);
@@ -590,9 +600,7 @@ void		unlang_caller_init(void);
 
 void		unlang_condition_init(void);
 
-void		unlang_foreach_init(void);
-
-void		unlang_foreach_free(void);
+void		unlang_foreach_init(TALLOC_CTX *ctx);
 
 void		unlang_function_init(void);
 
@@ -624,7 +632,6 @@ void		unlang_timeout_init(void);
 
 void		unlang_limit_init(void);
 
-void		unlang_variable_init(void);
  /** @} */
 
 #ifdef __cplusplus

@@ -29,8 +29,6 @@ FILES := $(filter-out %.ignore %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/
 
 $(eval $(call TEST_BOOTSTRAP))
 
-# -S use_new_conditions=yes -S forbid_update=yes
-
 #
 #  The dictionaries are in "share", because the server tries to load
 #  local dictionaries from "./dictionary".
@@ -91,7 +89,7 @@ $(foreach x,$(FILES),$(eval $(call PROCESS_TEST,$x)))
 #
 PROCESS_ARGS := -p test
 PROCESS_ARGS += -D $(DIR)/share -d $(DIR)/
-PROCESS_ARGS += -S use_new_conditions=yes -S forbid_update=yes
+PROCESS_ARGS += -S forbid_update=yes
 PROCESS_ARGS += -i $(DIR)/test.attrs -f $(DIR)/test.attrs
 
 $(OUTPUT)/%: $(DIR)/% $(PROCESS_DICT) $(TEST_BIN_DIR)/unit_test_module $(DIR)/unit_test_module.conf

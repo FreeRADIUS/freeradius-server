@@ -33,9 +33,7 @@ listen {
 }
 
 authorize {
-    update control {
-        Clearext-Password := "hello"
-    }
+    &control.Clearext-Password := "hello"
     pap
 }
 

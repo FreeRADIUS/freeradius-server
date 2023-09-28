@@ -3,7 +3,7 @@
 #
 &request -= &Packet-Type[*]
 
-&request += {
+&Tmp-Group-0 += {
 	&Tmp-String-0 = "This is a string"
 	&Tmp-String-0 = "This is another one"
 	&Tmp-Octets-0 = 0x000504030201
@@ -11,16 +11,15 @@
 }
 
 &request += {
-	&Tmp-String-1 = "%(concat:%(pairs:request.[*]) ', ')"
-	&Tmp-String-2 = "%(pairs:Tmp-String-0)"
-	&Tmp-String-3 = "%(concat:%(pairs:Tmp-String-0[*]) ', ')"
+	&Tmp-String-1 = "%(concat:%(pairs:Tmp-Group-0.[*]) ', ')"
+	&Tmp-String-2 = "%(pairs:Tmp-Group-0.Tmp-String-0)"
+	&Tmp-String-3 = "%(concat:%(pairs:Tmp-Group-0.Tmp-String-0[*]) ', ')"
 	&Tmp-String-4 = "%(concat:%(pairs:control.[*]) ', ')"
 	&Tmp-String-5 = "%(pairs:control.User-Name)"
-	&Tmp-String-6 = "%(pairs:request)"
-	&Tmp-String-7 = "%(pairs:request.[*])"
+	&Tmp-String-6 = "%(pairs:request.Tmp-Group-0)"
 }
 
-if !(&Tmp-String-1 == 'User-Name = "bob", User-Password = "hello", Tmp-String-0 = "This is a string", Tmp-String-0 = "This is another one", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331') {
+if !(&Tmp-String-1 == 'Tmp-String-0 = "This is a string", Tmp-String-0 = "This is another one", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331') {
 	test_fail
 }
 
@@ -33,10 +32,9 @@ if !(&Tmp-String-3 == 'Tmp-String-0 = "This is a string", Tmp-String-0 = "This i
 }
 
 #
-#  Allow old-style, and with -S tmpl_tokenize_all_nested=yes
+#  Must be nested
 #
-if !((&Tmp-String-4 == 'Password.Cleartext = "hello"') ||
-     (&Tmp-String-4 == 'Password = { Cleartext = "hello" }')) {
+if !(&Tmp-String-4 == 'Password = { Cleartext = "hello" }') {
 	test_fail
 }
 
@@ -44,11 +42,7 @@ if (!(&Tmp-String-5 == '')) {
 	test_fail
 }
 
-if !(&Tmp-String-6 == 'request = { User-Name = "bob", User-Password = "hello", Tmp-String-0 = "This is a string", Tmp-String-0 = "This is another one", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331 }') {
-	test_fail
-}
-
-if !(&Tmp-String-7 == 'User-Name = "bob"User-Password = "hello"Tmp-String-0 = "This is a string"Tmp-String-0 = "This is another one"Tmp-Octets-0 = 0x000504030201Tmp-Integer-0 = 7331') {
+if !(&Tmp-String-6 == 'Tmp-Group-0 = { Tmp-String-0 = "This is a string", Tmp-String-0 = "This is another one", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331 }') {
 	test_fail
 }
 

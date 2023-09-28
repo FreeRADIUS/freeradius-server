@@ -35,7 +35,7 @@
  * strings into VPTs. The main parsing function is #tmpl_afrom_substr, which can produce
  * most types of VPTs. It uses the type of quoting (passed as an #fr_token_t) to determine
  * what type of VPT to parse the string as. For example a #T_DOUBLE_QUOTED_STRING will
- * produce either a #TMPL_TYPE_XLAT_UNRESOLVED or a #TMPL_TYPE_UNRESOLVED (depending if the string
+ * produce either a #TMPL_TYPE_XLAT_UNRESOLVED or a #TMPL_TYPE_DATA_UNRESOLVED (depending if the string
  * contained a non-literal expansion).
  *
  * @see tmpl_afrom_substr
@@ -174,9 +174,10 @@ typedef enum tmpl_type_e {
 	/** Unparsed literal string
 	 *
 	 * May be an intermediary phase where the tmpl is created as a
-	 * temporary structure during parsing.
+	 * temporary structure during parsing.  The value here MUST be raw
+	 * data, and cannot be anything else.
 	 */
-	TMPL_TYPE_UNRESOLVED		= 0x0200 | TMPL_FLAG_UNRESOLVED,
+	TMPL_TYPE_DATA_UNRESOLVED	 =  TMPL_TYPE_DATA | TMPL_FLAG_UNRESOLVED,
 
 	/** An attribute reference that we couldn't resolve but looked valid
 	 *
@@ -215,7 +216,7 @@ typedef enum tmpl_type_e {
 #define tmpl_is_regex_uncompiled(vpt)		(vpt->type == TMPL_TYPE_REGEX_UNCOMPILED)
 #define tmpl_is_regex_xlat(vpt) 		(vpt->type == TMPL_TYPE_REGEX_XLAT)
 
-#define tmpl_is_unresolved(vpt) 		(vpt->type == TMPL_TYPE_UNRESOLVED)
+#define tmpl_is_data_unresolved(vpt) 		(vpt->type == TMPL_TYPE_DATA_UNRESOLVED)
 #define tmpl_is_exec_unresolved(vpt) 		(vpt->type == TMPL_TYPE_EXEC_UNRESOLVED)
 #define tmpl_is_attr_unresolved(vpt) 		(vpt->type == TMPL_TYPE_ATTR_UNRESOLVED)
 #define tmpl_is_xlat_unresolved(vpt) 		(vpt->type == TMPL_TYPE_XLAT_UNRESOLVED)
@@ -327,6 +328,7 @@ struct tmpl_attr_rules_s {
 struct tmpl_xlat_rules_s {
 	fr_event_list_t		*runtime_el;		//!< The eventlist to use for runtime instantiation
 							///< of xlats.
+	bool			new_functions;		//!< new function syntax
 };
 
 /** Optional arguments passed to vp_tmpl functions
@@ -428,7 +430,6 @@ typedef struct {
 
 		struct {
 			char			* _CONST name;		//!< Undefined reference type.
-			bool			_CONST is_raw;		//!< User wants the leaf to be raw.
 			fr_dict_attr_t const	* _CONST namespace;	//!< Namespace we should be trying
 									///< to resolve this attribute in.
 		} unresolved;
@@ -439,9 +440,10 @@ typedef struct {
 							///< Should point to the referenced
 							///< attribute.
 
-	bool			_CONST resolve_only;	//!< This reference and those before it
+	unsigned int   		_CONST resolve_only : 1; //!< This reference and those before it
 							///< in the list can only be used for
 							///< resolution, not building out trees.
+	unsigned int		_CONST is_raw : 1;	/// is a raw reference
 
 	tmpl_attr_type_t	_CONST type;		//!< Type of attribute reference.
 
@@ -488,42 +490,13 @@ FR_DLIST_FUNCS(tmpl_request_list, tmpl_request_t, entry)
 #define ar_parent			parent
 #define ar_unknown			unknown.da
 #define ar_unresolved			unresolved.name
-#define ar_unresolved_raw		unresolved.is_raw
 #define ar_unresolved_namespace		unresolved.namespace
 
 #define ar_is_normal(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_NORMAL)
 #define ar_is_unspecified(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNSPEC)
 #define ar_is_unknown(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNKNOWN)
 #define ar_is_unresolved(_ar)		((_ar)->ar_type == TMPL_ATTR_TYPE_UNRESOLVED)
-
-/** Indicate whether an attribute reference is raw
- *
- * Determining whether an attribute reference is raw, is slightly more complex
- * given the raw flag is either coming from the attribute or an internal
- * "is_raw" flag in the unresolved entry.
- *
- * @param[in] ar	to check for rawness.
- * @return
- *	- true if the attribute reference is raw.
- *	- false if the attribute reference is not raw.
- */
-static inline bool ar_is_raw(tmpl_attr_t const *ar)
-{
-	switch (ar->ar_type) {
-	case TMPL_ATTR_TYPE_NORMAL:
-	case TMPL_ATTR_TYPE_UNKNOWN:
-		return ar->ar_da->flags.is_raw;
-
-	case TMPL_ATTR_TYPE_UNRESOLVED:
-		return ar->ar_unresolved_raw;
-
-	case TMPL_ATTR_TYPE_UNSPEC:
-		return false;
-	}
-
-	fr_assert_fail("ar type (%i) is invalid", (int)ar->ar_type);
-	return false;
-}
+#define ar_is_raw(_ar)			((_ar)->is_raw)
 
 #define ar_num				filter.num
 #define ar_cond				filter.cond
@@ -544,7 +517,7 @@ static inline bool ar_is_raw(tmpl_attr_t const *ar)
  *
  * When used on the RHS it describes the value to assign to the attribute being created and
  * should be one of these types:
- * - #TMPL_TYPE_UNRESOLVED
+ * - #TMPL_TYPE_DATA_UNRESOLVED
  * - #TMPL_TYPE_XLAT_UNRESOLVED
  * - #TMPL_TYPE_ATTR
  * - #TMPL_TYPE_EXEC
@@ -566,7 +539,7 @@ struct tmpl_s {
 	fr_token_t	_CONST quote;		//!< What type of quoting was around the raw string.
 
 	union {
-		char *unescaped;		//!< Unescaped form of the name, used for TMPL_TYPE_UNRESOLVED
+		char *unescaped;		//!< Unescaped form of the name, used for TMPL_TYPE_DATA_UNRESOLVED
 						///< and TMPL_TYPE_REGEX_UNCOMPILED.
 
 		_CONST struct {
@@ -698,7 +671,8 @@ static inline bool tmpl_attr_is_list_attr(tmpl_attr_t const *ar)
 	return (ar->ar_da == request_attr_request) ||
 	       (ar->ar_da == request_attr_reply) ||
 	       (ar->ar_da == request_attr_control) ||
-	       (ar->ar_da == request_attr_state);
+	       (ar->ar_da == request_attr_state) ||
+	       (ar->ar_da == request_attr_local);
 }
 
 /** Return true if the head attribute reference is a list reference

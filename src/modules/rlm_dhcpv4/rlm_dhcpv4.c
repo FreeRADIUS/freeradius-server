@@ -46,8 +46,8 @@ fr_dict_autoload_t rlm_dhcpv4_dict[] = {
 static fr_dict_attr_t const *attr_transaction_id;
 static fr_dict_attr_t const *attr_message_type;
 static fr_dict_attr_t const *attr_packet_type;
-static fr_dict_attr_t const *attr_packet_dst_ip_address;
-static fr_dict_attr_t const *attr_packet_dst_port;
+static fr_dict_attr_t const *attr_net_dst_ip;
+static fr_dict_attr_t const *attr_net_dst_port;
 static fr_dict_attr_t const *attr_gateway_ip_address;
 
 extern fr_dict_attr_autoload_t rlm_dhcpv4_dict_attr[];
@@ -56,8 +56,8 @@ fr_dict_attr_autoload_t rlm_dhcpv4_dict_attr[] = {
 	{ .out = &attr_gateway_ip_address, .name = "Gateway-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4 },
-	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_net_dst_ip, .name = "Net.Dst.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_net_dst_port, .name = "Net.Dst.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ NULL }
 };
 
@@ -253,7 +253,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	/*
 	 *	Set the destination port, defaulting to 67
 	 */
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_packet_dst_port);
+	vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_dst_port);
 	if (vp) {
 		port = vp->vp_uint16;
 	} else {
@@ -263,9 +263,9 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	/*
 	 *	Get the destination address / port, and unicast it there.
 	 */
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_packet_dst_ip_address);
-	if (!vp) {
-		RDEBUG("No Packet-Dst-IP-Address, cannot relay packet");
+	vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_dst_ip);
+	if (!vp || (vp->vp_ip.af != AF_INET)) {
+		RDEBUG("No &control.Net.Dst.IP, cannot relay packet");
 		RETURN_MODULE_NOOP;
 	}
 

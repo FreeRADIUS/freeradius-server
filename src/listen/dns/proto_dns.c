@@ -227,6 +227,11 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	request->packet->socket = address->socket;
 	fr_socket_addr_swap(&request->reply->socket, &address->socket);
 
+	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
+		RPEDEBUG("Failed decoding 'Net.*' packet");
+		return -1;
+	}
+
 	REQUEST_VERIFY(request);
 
 	return 0;
@@ -270,10 +275,12 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	}
 
 	reply->id = original->id;
+	request->reply->data_len = data_len;
 
 	RHEXDUMP3(buffer, data_len, "proto_dns encode packet");
 
-	request->reply->data_len = data_len;
+	fr_packet_pairs_to_packet(request->reply, &request->reply_pairs);
+
 	return data_len;
 }
 

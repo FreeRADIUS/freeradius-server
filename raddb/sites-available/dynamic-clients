@@ -239,7 +239,7 @@ server dynamic_clients {
 		#  Copy the IP address of the client from
 		#  the request just received
 		&control += {
-			&FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
+			&FreeRADIUS-Client-IP-Address = "%{Net.Src.IP}"
 
 			#  require_message_authenticator
 			&FreeRADIUS-Client-Require-MA = no
@@ -247,7 +247,7 @@ server dynamic_clients {
 			&FreeRADIUS-Client-Secret = "testing123"
 
 			#  shortname
-			&FreeRADIUS-Client-Shortname = "%{Packet-Src-IP-Address}"
+			&FreeRADIUS-Client-Shortname = "%{Net.Src.IP}"
 
 			#  nas_type
 			&FreeRADIUS-Client-NAS-Type = "other"

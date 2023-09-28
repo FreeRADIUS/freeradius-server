@@ -178,7 +178,7 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 
 	RINDENT();
 	RIDEBUG3("da         : %p", vp->da);
-	RIDEBUG3("is_raw     : %pV", fr_box_bool(vp->da->flags.is_raw));
+	RIDEBUG3("is_raw     : %pV", fr_box_bool(vp->vp_raw));
 	RIDEBUG3("is_unknown : %pV", fr_box_bool(vp->da->flags.is_unknown));
 
 	if (RDEBUG_ENABLED3) {
@@ -317,104 +317,6 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	return XLAT_ACTION_DONE;
 }
 
-/** Flatten a given group.
- *
- *  This is a temporary function for migration purposes
- *
- * Example:
-@verbatim
-"%(flatten:&request)"
-@endverbatim
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t xlat_func_flatten(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-					  UNUSED xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *args)
-{
-	fr_pair_t		*vp;
-	tmpl_t			*vpt;
-	fr_value_box_t		*attr;
-	char const		*fmt;
-
-	XLAT_ARGS(args, &attr);
-
-	fmt = attr->vb_strvalue;
-	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
-				&(tmpl_rules_t){
-					.attr = {
-						.dict_def = request->dict,
-						.list_def = request_attr_request,
-						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
-					}
-				}) <= 0) {
-		RPEDEBUG("Invalid input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if ((tmpl_find_vp(&vp, request, vpt) < 0) ||
-	    (vp->vp_type != FR_TYPE_GROUP)) {
-		REDEBUG("Can't find '%s', or it's not a group", fmt);
-		talloc_free(vpt);
-		return XLAT_ACTION_FAIL;
-	}
-
-	fr_pair_flatten(vp);
-
-	talloc_free(vpt);
-
-	return XLAT_ACTION_DONE;
-}
-
-/** Unflatten a given group.
- *
- *  This is a temporary function for migration purposes
- *
- * Example:
-@verbatim
-"%(unflatten:&request)"
-@endverbatim
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t xlat_func_unflatten(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-					  UNUSED xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *args)
-{
-	fr_pair_t		*vp;
-	tmpl_t			*vpt;
-	fr_value_box_t		*attr;
-	char const		*fmt;
-
-	XLAT_ARGS(args, &attr);
-
-	fmt = attr->vb_strvalue;
-	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
-				&(tmpl_rules_t){
-					.attr = {
-						.dict_def = request->dict,
-						.list_def = request_attr_request,
-						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
-					}
-				}) <= 0) {
-		RPEDEBUG("Invalid input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if ((tmpl_find_vp(&vp, request, vpt) < 0) ||
-	    (vp->vp_type != FR_TYPE_GROUP)) {
-		REDEBUG("Can't find '%s', or it's not a group", fmt);
-		talloc_free(vpt);
-		return XLAT_ACTION_FAIL;
-	}
-
-	fr_pair_unflatten(vp);
-
-	talloc_free(vpt);
-
-	return XLAT_ACTION_DONE;
-}
-
 static xlat_action_t xlat_func_untaint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       UNUSED xlat_ctx_t const *xctx,
 				       UNUSED request_t *request, fr_value_box_list_t *in)
@@ -512,7 +414,7 @@ static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				if (fr_sbuff_behind(&m_start) == 0) goto advance;
 
 				MEM(vb = fr_value_box_alloc_null(ctx));
-				fr_value_box_bstrndup(ctx, vb, NULL, fr_sbuff_current(&m_start),
+				fr_value_box_bstrndup(vb, vb, NULL, fr_sbuff_current(&m_start),
 						      fr_sbuff_behind(&m_start), string->tainted);
 				fr_dcursor_append(out, vb);
 
@@ -523,7 +425,7 @@ static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			}
 			fr_sbuff_set_to_end(&sbuff);
 			MEM(vb = fr_value_box_alloc_null(ctx));
-			fr_value_box_bstrndup(ctx, vb, NULL, fr_sbuff_current(&m_start),
+			fr_value_box_bstrndup(vb, vb, NULL, fr_sbuff_current(&m_start),
 					      fr_sbuff_behind(&m_start), string->tainted);
 			fr_dcursor_append(out, vb);
 			break;
@@ -709,7 +611,7 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_snprint_uint128(buff, sizeof(buff), ntohlll(ipv6int));
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		fr_value_box_bstrndup(ctx, vb, NULL, buff, strlen(buff), false);
+		fr_value_box_bstrndup(vb, vb, NULL, buff, strlen(buff), false);
 		fr_dcursor_append(out, vb);
 		talloc_free(in_vb);
 		return XLAT_ACTION_DONE;
@@ -782,7 +684,7 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 		break;
 
@@ -1038,21 +940,21 @@ static xlat_action_t xlat_func_expr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Parse the input as an expression.
 	 */
 	if (xlat_tokenize_ephemeral_expression(rctx,
-				    &rctx->ex, unlang_interpret_event_list(request),
-				    &FR_SBUFF_IN(arg->vb_strvalue, arg->vb_length),
-				    &(fr_sbuff_parse_rules_t){
-				    	.escapes = &escape_rules
-				    },
-				    &(tmpl_rules_t){
-				    	.attr = {
-						.dict_def = request->dict,
-						.list_def = request_attr_request,
-						.allow_unknown = false,
-						.allow_unresolved = false,
-						.allow_foreign = false,
-					},
-					.at_runtime = true
-				    }) < 0) {
+					       &rctx->ex, unlang_interpret_event_list(request),
+					       &FR_SBUFF_IN(arg->vb_strvalue, arg->vb_length),
+					       &(fr_sbuff_parse_rules_t){
+							.escapes = &escape_rules
+					       },
+					       &(tmpl_rules_t){
+							.attr = {
+								.dict_def = request->dict,
+								.list_def = request_attr_request,
+								.allow_unknown = false,
+								.allow_unresolved = false,
+								.allow_foreign = false,
+							},
+							.at_runtime = true
+					       }) < 0) {
 		RPEDEBUG("Failed parsing expansion");
 	error:
 		talloc_free(rctx);
@@ -1276,7 +1178,7 @@ static xlat_arg_parser_t const xlat_func_base64_encode_arg[] = {
  *
  * Example:
 @verbatim
-"%{base64:foo}" == "Zm9v"
+"%(base64.encode:foo)" == "Zm9v"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1325,7 +1227,7 @@ static xlat_arg_parser_t const xlat_func_base64_decode_arg[] = {
  *
  * Example:
 @verbatim
-"%{base64decode:Zm9v}" == "foo"
+"%(base64.decode:Zm9v)" == "foo"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1496,6 +1398,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 			MEM(dst = fr_value_box_alloc(ctx, type, NULL));
 			fr_dcursor_append(out, dst);
+			VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 
 			return XLAT_ACTION_DONE;
 		}
@@ -1524,6 +1427,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		fr_value_box_bstrndup(dst, dst, NULL, fr_sbuff_start(agg), fr_sbuff_used(agg), false);
 		fr_dcursor_append(out, dst);
+		VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 
 		return XLAT_ACTION_DONE;
 	}
@@ -1549,6 +1453,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			vb = fr_value_box_list_next(&arg->vb_group, p);
 		}
 	}
+	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 
 	return XLAT_ACTION_DONE;
 }
@@ -1849,6 +1754,7 @@ static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
 
 	fr_dcursor_append(out, vb);
+	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 
 	return XLAT_ACTION_DONE;
 }
@@ -3335,7 +3241,7 @@ int xlat_protocols_register(void)
  *
  * @hidecallgraph
  */
-int xlat_init(void)
+int xlat_init(TALLOC_CTX *ctx)
 {
 	xlat_t *xlat;
 
@@ -3356,7 +3262,7 @@ int xlat_init(void)
 	 */
 #define XLAT_REGISTER_ARGS(_xlat, _func, _return_type, _args) \
 do { \
-	if (unlikely((xlat = xlat_func_register(NULL, _xlat, _func, _return_type)) == NULL)) return -1; \
+	if (unlikely((xlat = xlat_func_register(ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, _args); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
@@ -3379,7 +3285,7 @@ do { \
 #undef XLAT_REGISTER_ARGS
 #define XLAT_REGISTER_ARGS(_xlat, _func, _return_type, _args) \
 do { \
-	if (unlikely((xlat = xlat_func_register(NULL, _xlat, _func, _return_type)) == NULL)) return -1; \
+	if (unlikely((xlat = xlat_func_register(ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, _args); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
@@ -3392,17 +3298,13 @@ do { \
 	XLAT_REGISTER_ARGS("subst", xlat_func_subst, FR_TYPE_STRING, xlat_func_subst_args);
 	XLAT_REGISTER_ARGS("time", xlat_func_time, FR_TYPE_VOID, xlat_func_time_args);
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, FR_TYPE_STRING, trigger_xlat_args);
+	XLAT_REGISTER_ARGS("base64.encode", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
+	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 
-	/*
-	 *	Temporary functions for migration.
-	 */
-	XLAT_REGISTER_ARGS("flatten", xlat_func_flatten, FR_TYPE_NULL, xlat_func_debug_attr_args); /* takes an attribute reference */
-	XLAT_REGISTER_ARGS("unflatten", xlat_func_unflatten, FR_TYPE_NULL, xlat_func_debug_attr_args); /* takes an attribute reference */
-
-	if (unlikely((xlat = xlat_func_register(NULL, "untaint", xlat_func_untaint, FR_TYPE_VOID)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(ctx, "untaint", xlat_func_untaint, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 
-	if (unlikely((xlat = xlat_func_register(NULL, "taint", xlat_func_taint, FR_TYPE_VOID)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(ctx, "taint", xlat_func_taint, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 
 	/*
@@ -3410,13 +3312,12 @@ do { \
 	 */
 #define XLAT_REGISTER_MONO(_xlat, _func, _return_type, _arg) \
 do { \
-	if (unlikely((xlat = xlat_func_register(NULL, _xlat, _func, _return_type)) == NULL)) return -1; \
+	if (unlikely((xlat = xlat_func_register(ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
 	xlat_func_mono_set(xlat, _arg); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
 
-	XLAT_REGISTER_MONO("base64", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
-	XLAT_REGISTER_MONO("base64decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
+
 	XLAT_REGISTER_MONO("bin", xlat_func_bin, FR_TYPE_OCTETS, xlat_func_bin_arg);
 	XLAT_REGISTER_MONO("hex", xlat_func_hex, FR_TYPE_STRING, xlat_func_hex_arg);
 	XLAT_REGISTER_MONO("map", xlat_func_map, FR_TYPE_INT8, xlat_func_map_arg);
@@ -3424,7 +3325,7 @@ do { \
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, FR_TYPE_OCTETS, xlat_func_md5_arg);
 	XLAT_REGISTER_MONO("pack", xlat_func_pack, FR_TYPE_OCTETS, xlat_func_pack_arg);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
-	if (unlikely((xlat = xlat_func_register(NULL, "regex", xlat_func_regex, FR_TYPE_STRING)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(ctx, "regex", xlat_func_regex, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 #endif
 	XLAT_REGISTER_MONO("sha1", xlat_func_sha1, FR_TYPE_OCTETS, xlat_func_sha_arg);
@@ -3458,7 +3359,7 @@ do { \
 #undef XLAT_REGISTER_MONO
 #define XLAT_REGISTER_MONO(_xlat, _func, _return_type, _arg) \
 do { \
-	if (unlikely((xlat = xlat_func_register(NULL, _xlat, _func, _return_type)) == NULL)) return -1; \
+	if (unlikely((xlat = xlat_func_register(ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
 	xlat_func_mono_set(xlat, _arg); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
@@ -3466,7 +3367,7 @@ do { \
 	XLAT_REGISTER_MONO("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
 	XLAT_REGISTER_MONO("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 
-	if (unlikely((xlat = xlat_func_register(NULL, "module", xlat_func_module, FR_TYPE_STRING)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(ctx, "module", xlat_func_module, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 
 	return xlat_register_expressions();

@@ -396,9 +396,9 @@ linelog log_accounting {
 		Start = "Connect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address})"
 		Stop = "Disconnect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address}) %{Acct-Session-Time} seconds"
 		Interim-Update = ""
-		Accounting-On = "NAS %{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just came online"
-		Accounting-Off = "NAS %{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just went offline"
-		unknown = "NAS %{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
+		Accounting-On = "NAS %%{Net.Src.IP} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just came online"
+		Accounting-Off = "NAS %{Net.Src.IP} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just went offline"
+		unknown = "NAS %{Net.Src.IP} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
 	}
 }
 ```

@@ -89,7 +89,7 @@ static CONF_PARSER tls_cache_config[] = {
 			 },
 			 .dflt = "auto" },
 	{ FR_CONF_OFFSET("name", FR_TYPE_TMPL, fr_tls_cache_conf_t, id_name),
-			 .dflt = "%{EAP-Type}%{Virtual-Server}", .quote = T_DOUBLE_QUOTED_STRING },
+			 .dflt = "%{EAP-Type}%(interpreter:server)", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("lifetime", FR_TYPE_TIME_DELTA, fr_tls_cache_conf_t, lifetime), .dflt = "1d" },
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L

@@ -404,10 +404,10 @@ linelog log_accounting {
 		#  Don't log anything for these packets.
 		Interim-Update = ""
 
-		Accounting-On = "NAS %{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just came online"
-		Accounting-Off = "NAS %{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just went offline"
+		Accounting-On = "NAS %{Net.Src.IP} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just came online"
+		Accounting-Off = "NAS %{Net.Src.IP} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just went offline"
 
 		#  Don't log anything for other `Acct-Status-Type` 's.
-		unknown = "NAS %{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
+		unknown = "NAS %{Net.Src.IP} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
 	}
 }

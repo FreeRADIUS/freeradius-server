@@ -252,7 +252,7 @@ TEST_LIST = {
 	{ "base32_hex_encode",		test_base32_hex_encode },
 	{ "base32_hex_decode",		test_base32_hex_decode },
 
-	{ "base64_encode",		test_base64_encode },
-	{ "base64_decode",		test_base64_decode },
+	{ "base64.encode",		test_base64_encode },
+	{ "base64.decode",		test_base64_decode },
 	{ NULL }
 };

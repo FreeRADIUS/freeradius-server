@@ -70,15 +70,15 @@ and are nested by definition.
 
 For v4, the `Cisco-AVPair` attribute is called `AVPair`, and it lives
 inside of the `Cisco` namespace, which in turn lives inside of the
-`Vendor-Specific` namespace.  So the new name for `Cisco-AVPair` is
-`Vendor-Specific.Cisco.AVPair`.
+`Vendor-Specific` namespace.  So the old `Cisco-AVPair` attribute is
+now named `Vendor-Specific.Cisco.AVPair`.
 
-This process continues for many thousands of vendor-specific
+This renaming process continues for many thousands of vendor-specific
 attributes.
 
 Happily, it is possible to (mostly) use the old names with v4.
 There are limitations, but it will mostly work.  The main reason
-for enabling the old names is to try out v4 with a database that is
+for enabling the old names is to try out v4 with a database which is
 also used by v3.  This lets you test that v4 works, without going
 through a complex "upgrade everything" process.
 
@@ -101,11 +101,11 @@ there are situations where the aliases do not behave correctly.
 We recognize that this process is a bit of work.  However, we wish to
 encourage everyone using v4 to upgrade to using the new v4 features.
 Our experience shows that if we automatically enable "compatibility
-functions", then those compatiblity functions will be used for a
-decade.  So we need to find a balance between upgrades and ongoing
-support.  Easy upgrades will mean complex ongoing support.  Complex
-upgrades make ongoing support easier, but also make it less likely
-that people will upgrade.
+features", then those compatiblity features will be used for a decade,
+and no one will upgrade to use the new features.  So we need to find a
+balance between upgrades and ongoing support.  Easy upgrades will mean
+complex ongoing support.  Complex upgrades make ongoing support
+easier, but also make it less likely that people will upgrade.
 
 == radiusd.conf
 
@@ -427,7 +427,7 @@ load-balance {
 
 [source,unlang]
 ----
-load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}" {
+load-balance "%{Net.Src.IP}" {
     home_server_1
     home_server_2
     home_server_3
@@ -438,7 +438,7 @@ load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}" {
 
 [source,unlang]
 ----
-load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}-%{Packet-Src-Port}" {
+load-balance "%%{Net.Src.IP}-%{Net.Src.Port}" {
     home_server_1
     home_server_2
     home_server_3
@@ -705,6 +705,12 @@ and the parser is smart enough to figure things out.
 
 The following modules are new in v4.
 
+=== rlm_client
+
+This module handles the `%{client:..}` xlat expansions.
+
+The `Client-Shortname` attribute has been removed.  You should use `%{client:shortname}` instead.
+
 === rlm_radius
 
 The `radius` module has taken over much of the functionality of
@@ -817,6 +823,26 @@ and then the result is multiplied by one.
 The `expiration` module has been replaced with an `unlang` policy.
 The policy is located in `raddb/policy.d/time`.  The `Expiration`
 attribute should continue to work the same as with v3.
+
+=== rlm_ldap
+
+The `ldap` module provides an expansion `%{ldap.memberof:<name>}` instead of
+`LDAP-Group` for dynamically testing group membership.  The old method of
+
+```
+LDAP-Group == "foo"
+```
+
+will no longer work.
+
+The cacheing of group membership into attributes in the `control` list is
+still available, so
+
+```
+&control.LDAP-Group[*] == "foo"
+```
+can also be used to test membership after having called the `ldap` module,
+if `cacheable_name` or `cacheable_dn` are enabled.
 
 === rlm_mschap
 
@@ -1005,5 +1031,20 @@ result in an error.
 
 == Deleted Functionality
 
-The `Response-Packet-Type` attribute has been removed.  Please replace
-it with `&reply.Packet-Type`.
+Many "virtual" or "fake" attributes have been removed or renamed.
+
+`&Module-Return-Code` should be replaced by `%(interpreter:rcode)`.
+
+`&Response-Packet-Type` should be replaced by `&reply.Packet-Type`.
+
+`&Virtual-Server` should be replaced by `%(interpreter:server)`.
+
+`&Packet-Authentication-Vector` should be replaced by `%{radius.packet.vector:}`.
+
+`&Packet-Dst-IP-Address` and `&Packet-Dst-IPv6-Address` should be replaced by `&Net.Dst.IP`.
+
+`&Packet-Dst-Port` should be replaced by `&Net.Dst.Port`.
+
+`&Packet-Src-IP-Address` and `&Packet-Src-IPv6-Address` should be replaced by `&Net.Src.IP`.
+
+`&Packet-Src-Port` should be replaced by `&Net.Src.Port`.

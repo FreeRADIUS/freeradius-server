@@ -31,7 +31,6 @@ typedef struct request_s request_t;
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/command.h>
-#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/log.h>
@@ -265,8 +264,6 @@ static xlat_action_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 static char		proto_name_prev[128];
 static dl_t		*dl;
 static dl_loader_t	*dl_loader = NULL;
-static bool		parse_new_conditions = true;
-static bool		unflatten_after_decode = false;
 
 static fr_event_list_t	*el = NULL;
 
@@ -1412,9 +1409,9 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 					  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	ssize_t			slen;
-	fr_cond_t		*cond;
 	CONF_SECTION		*cs;
 	size_t			len;
+	xlat_exp_head_t		*head = NULL;
 
 	cs = cf_section_alloc(NULL, NULL, "if", "condition");
 	if (!cs) {
@@ -1426,46 +1423,15 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 
 	fr_skip_whitespace(in);
 
-	slen = fr_cond_tokenize(cs, &cond, &cc->tmpl_rules, &FR_SBUFF_IN(in, inlen), false);
+	slen = xlat_tokenize_condition(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, inlen), NULL, &cc->tmpl_rules);
 	if (slen <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen);
-
-	return_error:
 		talloc_free(cs);
 		RETURN_OK_WITH_ERROR();
 	}
+	len = xlat_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), head, NULL);
 
-	if (fr_debug_lvl > DEBUG_ENABLED3) {
-		if (cond->type == COND_TYPE_MAP) {
-			if (cond->data.map->lhs) tmpl_debug(cond->data.map->lhs);
-			if (cond->data.map->rhs) tmpl_debug(cond->data.map->rhs);
-		}
-	}
-
-	if (in[slen] != '\0') {
-		fr_strerror_printf_push_head("ERROR offset %d 'Too much text'", (int) slen);
-		goto return_error;
-	}
-
-	/*
-	 *	Use the new condition parser.  Except for !&foo==bar, because the
-	 *	new one requires that to be formatted as !(&foo==bar).
-	 *
-	 *	Perhaps we should just change that?
-	 */
-	if (parse_new_conditions && ((in[0] != '!') || (in[1] == '('))) {
-		xlat_exp_head_t *head = NULL;
-
-		slen = xlat_tokenize_condition(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, inlen), NULL, &cc->tmpl_rules);
-		if (slen <= 0) {
-			fr_strerror_printf_push_head("ERROR in xlat_tokenize_cond offset %d", (int) -slen);
-			goto return_error;
-		}
-
-		talloc_free(head);
-	}
-
-	len = cond_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), cond);
+	talloc_free(head);
 	talloc_free(cs);
 
 	RETURN_OK(len);
@@ -1573,8 +1539,6 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	fr_strerror_clear();
 	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 
-	if (unflatten_after_decode) fr_pair_unflatten(head);
-
 	/*
 	 *	Output may be an error, and we ignore
 	 *	it if so.
@@ -1667,8 +1631,6 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	 *	Output may be an error, and we ignore
 	 *	it if so.
 	 */
-
-	if (unflatten_after_decode) fr_pair_unflatten(head);
 
 	/*
 	 *	Print the pairs.
@@ -2037,101 +1999,6 @@ static size_t command_returned(command_result_t *result, command_file_ctx_t *cc,
 	RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "%zd", cc->last_ret));
 }
 
-/** Common code.
- *
- */
-static size_t flatten_common(command_result_t *result, char *data, UNUSED size_t data_used, fr_pair_t *head)
-{
-	ssize_t		slen;
-	char		*p, *end;
-	fr_pair_t	*vp;
-
-	/*
-	 *	Set p to be the output buffer
-	 */
-	p = data;
-	end = p + COMMAND_OUTPUT_MAX;
-
-	/*
-	 *	Output may be an error, and we ignore
-	 *	it if so.
-	 */
-
-	if (!fr_pair_list_empty(&head->vp_group)) {
-		for (vp = fr_pair_list_head(&head->vp_group);
-		     vp;
-		     vp = fr_pair_list_next(&head->vp_group, vp)) {
-			if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) < 0) {
-			oob:
-				fr_strerror_const("Out of output buffer space for printed pairs");
-				RETURN_COMMAND_ERROR();
-			}
-			p += slen;
-
-			if (fr_pair_list_next(&head->vp_group, vp)) {
-				slen = strlcpy(p, ", ", end - p);
-				if (is_truncated((size_t)slen, end - p)) goto oob;
-				p += slen;
-			}
-		}
-	} else {
-		*p = '\0';
-	}
-
-	talloc_free(head);
-
-	RETURN_OK(p - data);
-}
-
-
-/** Flatten a list of value-pairs
- *
- */
-static size_t command_flatten(command_result_t *result, command_file_ctx_t *cc,
-			      char *data, size_t data_used, char *in, size_t inlen)
-{
-	fr_dict_attr_t	const *da;
-	fr_pair_t	*head;
-	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
-
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), "request");
-	fr_assert(da != NULL);
-	head = fr_pair_afrom_da(cc->tmp_ctx, da);
-
-	if (fr_pair_list_afrom_str(head, fr_dict_root(dict), in, inlen, &head->vp_group) != T_EOL) {
-		RETURN_OK_WITH_ERROR();
-	}
-
-	fr_pair_flatten(head);
-
-	return flatten_common(result, data, data_used, head);
-}
-
-
-/** Un-flatten a list of value-pairs
- *
- */
-static size_t command_unflatten(command_result_t *result, command_file_ctx_t *cc,
-			      char *data, size_t data_used, char *in, size_t inlen)
-{
-	fr_dict_attr_t	const *da;
-	fr_pair_t	*head;
-	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
-
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), "request");
-	fr_assert(da != NULL);
-	head = fr_pair_afrom_da(cc->tmp_ctx, da);
-
-	if (fr_pair_list_afrom_str(head, fr_dict_root(dict), in, inlen, &head->vp_group) != T_EOL) {
-		RETURN_OK_WITH_ERROR();
-	}
-
-	fr_pair_unflatten(head);
-
-	return flatten_common(result, data, data_used, head);
-}
-
-
 static size_t command_encode_proto(command_result_t *result, command_file_ctx_t *cc,
 				  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
@@ -2393,7 +2260,7 @@ static size_t command_max_buffer_size(command_result_t *result, command_file_ctx
 /** Set or clear migration flags.
  *
  */
-static size_t command_migrate(command_result_t *result, UNUSED command_file_ctx_t *cc,
+static size_t command_migrate(command_result_t *result, command_file_ctx_t *cc,
 			      UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	char *p;
@@ -2402,21 +2269,9 @@ static size_t command_migrate(command_result_t *result, UNUSED command_file_ctx_
 	fr_skip_whitespace(in);
 	p = in;
 
-	if (strncmp(p, "pair_legacy_nested", sizeof("pair_legacy_nested") - 1) == 0) {
-		p += sizeof("pair_legacy_nested") - 1;
-		out = &fr_pair_legacy_nested;
-
-	} else if (strncmp(p, "pair_legacy_print_nested", sizeof("pair_legacy_print_nested") - 1) == 0) {
-		p += sizeof("pair_legacy_print_nested") - 1;
-		out = &fr_pair_legacy_print_nested;
-
-	} else if (strncmp(p, "unflatten_after_decode", sizeof("unflatten_after_decode") - 1) == 0) {
-		p += sizeof("unflatten_after_decode") - 1;
-		out = &unflatten_after_decode;
-
-	} else if (strncmp(p, "parse_new_conditions", sizeof("parse_new_conditions") - 1) == 0) {
-		p += sizeof("parse_new_conditions") - 1;
-		out = &parse_new_conditions;
+	if (strncmp(p, "xlat_new_functions", sizeof("xlat_new_functions") - 1) == 0) {
+		p += sizeof("xlat_new_functions") - 1;
+		out = &cc->tmpl_rules.xlat.new_functions;
 
 	} else {
 		fr_strerror_const("Unknown migration flag");
@@ -2541,7 +2396,7 @@ static size_t command_proto(command_result_t *result, command_file_ctx_t *cc,
 	ssize_t slen;
 
 	if (*in == '\0') {
-		fr_strerror_printf("Load syntax is \"load <lib_name>\"");
+		fr_strerror_printf("Load syntax is \"proto <lib_name>\"");
 		RETURN_PARSE_ERROR(0);
 	}
 
@@ -2837,6 +2692,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 						.list_def = request_attr_request,
 						.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					},
+					.xlat = cc->tmpl_rules.xlat,
 				});
 	if (dec_len <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
@@ -2913,7 +2769,8 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
 							.list_def = request_attr_request,
 						   },
-					   });
+						   .xlat = cc->tmpl_rules.xlat,
+				   });
 	if (dec_len <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
 
@@ -2967,7 +2824,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 						  .list_def = request_attr_request,
 						  .allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					  },
-				  });
+				  }, false);
 	if (slen <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen);
 		RETURN_OK_WITH_ERROR();
@@ -3081,7 +2938,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 	{ L("encode-proto"),	&(command_entry_t){
 					.func = command_encode_proto,
 					.usage = "encode-proto[.<testpoint_symbol>] (-|<attribute> = <value>[,<attribute = <value>])",
-					.description = "Encode one or more attributes as a packet, writing a hex string to the data buffer.  Protocol must be loaded with \"load <protocol>\" first"
+					.description = "Encode one or more attributes as a packet, writing a hex string to the data buffer.  Protocol must be loaded with \"proto <protocol>\" first"
 				}},
 	{ L("eof"),		&(command_entry_t){
 					.func = command_eof,
@@ -3092,11 +2949,6 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_exit,
 					.usage = "exit[ <num>]",
 					.description = "Exit with the specified error number.  If no <num> is provided, process will exit with 0"
-				}},
-	{ L("flatten"),		&(command_entry_t){
-					.func = command_flatten,
-					.usage = "flatten (-|<attribute> = <value>[,<attribute = <value>])",
-					.description = "Parse the input pairs into a temporary group, and then flatten the resulting pairs.  The input MUST NOT be already flattened, or bad things will happen.",
 				}},
 	{ L("fuzzer-out"),	&(command_entry_t){
 					.func = command_fuzzer_out,
@@ -3178,11 +3030,6 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_touch,
 					.usage = "touch <file>",
 					.description = "Touch a file, updating its created timestamp.  Useful for marking the completion of a series of tests"
-				}},
-	{ L("unflatten"),		&(command_entry_t){
-					.func = command_unflatten,
-					.usage = "unflatten (-|<attribute> = <value>[,<attribute = <value>])",
-					.description = "The opposite of 'flatten'"
 				}},
 	{ L("value "),		&(command_entry_t){
 					.func = command_value_box_normalise,

@@ -859,7 +859,7 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 
 	fr_pair_t		*vp;
 
-	fr_value_box_t		src;
+	fr_value_box_t		src = FR_VALUE_BOX_INITIALISER_NULL(src);
 
 	if (json_object_is_type(leaf, json_type_null)) {
 		RDEBUG3("Got null value for attribute \"%s\" (skipping)", da->name);

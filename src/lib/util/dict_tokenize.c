@@ -381,9 +381,6 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 		} else if (strcmp(key, "counter") == 0) {
 			flags->counter = 1;
 
-		} else if (strcmp(key, "virtual") == 0) {
-			flags->virtual = 1;
-
 		} else if (strcmp(key, "secret") == 0) {
 			flags->secret = 1;
 
@@ -1267,6 +1264,78 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
 	return 0;
 }
 
+static int _dict_from_file(dict_tokenize_ctx_t *ctx,
+			   char  const *dir_name, char const *filename,
+			   char const *src_file, int src_line);
+
+/*
+ *	Process the $INCLUDE command
+ */
+static int dict_read_process_include(dict_tokenize_ctx_t *ctx, char **argv, int argc, char const *dir, char *fn, int line)
+{
+	int rcode;
+	int stack_depth = ctx->stack_depth;
+
+	/*
+	 *	Allow "$INCLUDE" or "$INCLUDE-", but
+	 *	not anything else.
+	 */
+	if ((argv[0][8] != '\0') && ((argv[0][8] != '-') || (argv[0][9] != '\0'))) {
+		fr_strerror_printf("Invalid keyword '%s'", argv[0]);
+		return -1;
+	}
+
+	if (argc != 2) {
+		fr_strerror_printf("Unexpected text after $INCLUDE at %s[%d]", fr_cwd_strip(fn), line);
+		return -1;
+	}
+
+	/*
+	 *	Allow limited macro capability, so
+	 *	people don't have to remember where
+	 *	the root dictionaries are located.
+	 */
+	if (strncmp(argv[1], "${dictdir}/", 11) != 0) {
+		rcode = _dict_from_file(ctx, dir, argv[1], fn, line);
+	} else {
+		rcode = _dict_from_file(ctx, fr_dict_global_ctx_dir(), argv[1] + 11, fn, line);
+	}
+
+	if ((rcode == -2) && (argv[0][8] == '-')) {
+		fr_strerror_clear(); /* delete all errors */
+		return 0;
+	}
+
+	if (rcode < 0) {
+		fr_strerror_printf_push("from $INCLUDE at %s[%d]", fr_cwd_strip(fn), line);
+		return -1;
+	}
+
+	if (ctx->stack_depth < stack_depth) {
+		fr_strerror_printf_push("unexpected END-??? in $INCLUDE at %s[%d]",
+					fr_cwd_strip(fn), line);
+		return -1;
+	}
+
+	while (ctx->stack_depth > stack_depth) {
+		if (ctx->stack[ctx->stack_depth].nest == NEST_NONE) {
+			ctx->stack_depth--;
+			continue;
+		}
+
+		fr_strerror_printf_push("BEGIN-??? without END-... in file $INCLUDEd from %s[%d]",
+					fr_cwd_strip(fn), line);
+		return -1;
+	}
+
+	/*
+	 *	Reset the filename.
+	 */
+	ctx->stack[ctx->stack_depth].filename = fn;
+
+	return 0;
+}
+
 /*
  *	Process the MEMBER command
  */
@@ -1475,7 +1544,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int argc)
 {
 	fr_dict_attr_t		*da;
-	fr_value_box_t		value;
+	fr_value_box_t		value = FR_VALUE_BOX_INITIALISER_NULL(value);
 	fr_slen_t		enum_len;
 	fr_dict_attr_t const 	*parent = ctx->stack[ctx->stack_depth].da;
 
@@ -1601,7 +1670,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	int				i;
 	fr_dict_attr_t const   		*da;
 	fr_dict_attr_t const	       	*parent = NULL;
-	fr_value_box_t			value;
+	fr_value_box_t			value = FR_VALUE_BOX_INITIALISER_NULL(value);
 	unsigned int			attr;
 	fr_dict_attr_flags_t		flags;
 	char				*key_attr = argv[1];
@@ -1997,7 +2066,7 @@ static int dict_finalise(dict_tokenize_ctx_t *ctx)
  * @param[in] dir_name	Directory containing the dictionary we're loading.
  * @param[in] filename	we're parsing.
  * @param[in] src_file	The including file.
- * @param[in] src_line	Line on which the $INCLUDE or $INCLUDE- statement was found.
+ * @param[in] src_line	Line on which the $INCLUDE or $NCLUDE- statement was found.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -2273,15 +2342,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		 *	See if we need to import another dictionary.
 		 */
 		if (strncasecmp(argv[0], "$INCLUDE", 8) == 0) {
-			int ret;
-			int stack_depth = ctx->stack_depth;
-
-			/*
-			 *	Allow "$INCLUDE" or "$INCLUDE-", but
-			 *	not anything else.
-			 */
-			if ((argv[0][8] != '\0') && ((argv[0][8] != '-') || (argv[0][9] != '\0'))) goto invalid_keyword;
-
 			/*
 			 *	Included files operate on a copy of the context.
 			 *
@@ -2292,49 +2352,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	attribute", then it won't affect the
 			 *	parent.
 			 */
-
-			/*
-			 *	Allow limited macro capability, so
-			 *	people don't have to remember where
-			 *	the root dictionaries are located.
-			 */
-			if (strncmp(argv[1], "${dictdir}/", 11) != 0) {
-				ret = _dict_from_file(ctx, dir, argv[1], fn, line);
-			} else {
-				ret = _dict_from_file(ctx, fr_dict_global_ctx_dir(), argv[1] + 11, fn, line);
-			}
-
-			if ((ret == -2) && (argv[0][8] == '-')) {
-				fr_strerror_clear(); /* delete all errors */
-				ret = 0;
-			}
-
-			if (ret < 0) {
-				fr_strerror_printf_push("from $INCLUDE at %s[%d]", fr_cwd_strip(fn), line);
-				goto error;
-			}
-
-			if (ctx->stack_depth < stack_depth) {
-				fr_strerror_printf_push("unexpected END-??? in $INCLUDE at %s[%d]",
-							fr_cwd_strip(fn), line);
-				goto error;
-			}
-
-			while (ctx->stack_depth > stack_depth) {
-				if (ctx->stack[ctx->stack_depth].nest == NEST_NONE) {
-					ctx->stack_depth--;
-					continue;
-				}
-
-				fr_strerror_printf_push("BEGIN-??? without END-... in file $INCLUDEd from %s[%d]",
-							fr_cwd_strip(fn), line);
-				goto error;
-			}
-
-			/*
-			 *	Reset the filename.
-			 */
-			ctx->stack[ctx->stack_depth].filename = fn;
+			if (dict_read_process_include(ctx, argv, argc, dir, fn, line) < 0) goto error;
 			continue;
 		} /* $INCLUDE */
 
@@ -2733,7 +2751,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		/*
 		 *	Any other string: We don't recognize it.
 		 */
-	invalid_keyword:
 		fr_strerror_printf_push("Invalid keyword '%s'", argv[0]);
 		goto error;
 	}
@@ -2802,7 +2819,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char c
 	fr_dict_attr_flags_t	flags = { .internal = true };
 	char			*type_name;
 	fr_dict_attr_t		*cast_base;
-	fr_value_box_t		box;
+	fr_value_box_t		box = FR_VALUE_BOX_INITIALISER_NULL(box);
 
 	if (unlikely(!dict_gctx)) {
 		fr_strerror_const("fr_dict_global_ctx_init() must be called before loading dictionary files");

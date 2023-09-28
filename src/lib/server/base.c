@@ -51,11 +51,6 @@ int server_init(CONF_SECTION *cs)
 	if (trigger_exec_init(cs) < 0) return -1;
 
 	/*
-	 *	Instantiate "permanent" paircmps
-	 */
-	if (paircmp_init() < 0) return -1;
-
-	/*
 	 *	Set up dictionaries and attributes for password comparisons
 	 */
 	if (password_init() < 0) return -1;
@@ -101,6 +96,11 @@ int server_init(CONF_SECTION *cs)
 	 */
 	if (xlat_instantiate() < 0) return -1;
 
+	/*
+	 *	load the 'Net.' packet attributes.
+	 */
+	if (packet_global_init() < 0) return -1;
+
 	return 0;
 }
 
@@ -110,16 +110,15 @@ int server_init(CONF_SECTION *cs)
  */
 void server_free(void)
 {
+	/*
+	 *	Free any resources used by 'Net.' packet
+	 */
+	packet_global_free();
 
 	/*
 	 *	Free xlat instance data, and call any detach methods
 	 */
 	xlat_instances_free();
-
-	/*
-	 *	The only paircmps remaining are the ones registered by the server core.
-	 */
-	paircmp_free();
 
 	/*
 	 *	The only xlats remaining are the ones registered by the server core.

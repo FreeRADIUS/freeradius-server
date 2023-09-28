@@ -15,7 +15,7 @@ inputs:
     default: 3890
   ldaps_test_server_port:
     description: LDAPS server port
-    default: 6360
+    default: 6361
   ldap389_test_server:
     description: 389DS server host
     default: 127.0.0.1
@@ -191,7 +191,7 @@ runs:
             mysql-setup.sh \
             openresty-setup.sh \
             ldap-setup.sh \
-            ldap2-setup.sh \
+            ldap1-setup.sh \
             389ds-setup.sh \
             redis-setup.sh; do
 

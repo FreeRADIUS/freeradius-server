@@ -141,7 +141,7 @@ static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow)
 
 	if ((arg->type != XLAT_TMPL) || (arg->quote != T_BARE_WORD)) return 0;
 
-	if (!tmpl_is_unresolved(arg->vpt)) return 0;
+	if (!tmpl_is_data_unresolved(arg->vpt)) return 0;
 
 	len = talloc_array_length(arg->vpt->name) - 1;
 
@@ -190,6 +190,7 @@ static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow)
 
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, arg->vpt->name, len));
 	node->call.func = func;
+	// no need to set dict here
 	node->flags = func->flags;
 
 	/*
@@ -413,49 +414,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 done:
 	fr_dcursor_append(out, dst);
-	return XLAT_ACTION_DONE;
-}
-
-static xlat_arg_parser_t const xlat_paircmp_xlat_args[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
-/*
- *	Wrapper around &LDAP-Group == "foo"
- */
-static xlat_action_t xlat_paircmp_func(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    UNUSED xlat_ctx_t const *xctx,
-				    request_t *request, fr_value_box_list_t *in)
-{
-	fr_value_box_t	*dst, *vb_da, *vb;
-	fr_dict_attr_t const *da;
-	char const *p;
-
-	vb_da = fr_value_box_list_head(in);
-	vb = fr_value_box_list_next(in, vb_da);
-
-#ifdef STATIC_ANALYZER
-	if (!vb_da || !vb) return XLAT_ACTION_FAIL;
-#endif
-
-	p = vb_da->vb_strvalue;
-	if (*p == '&') p++;
-
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), p);
-	if (!da) {
-		RERROR("Unknown attribute '%s'", vb_da->vb_strvalue);
-		return XLAT_ACTION_FAIL;
-	}
-
-	/*
-	 *	These callbacks only implement equality.  Nothing else works.
-	 */
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
-	dst->vb_bool = (paircmp_virtual(request, da, T_OP_CMP_EQ, vb) == 0);
-	fr_dcursor_append(out, dst);
-
+	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 	return XLAT_ACTION_DONE;
 }
 
@@ -574,7 +533,7 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 		return 0;
 	}
 
-	if (tmpl_is_unresolved(regex->vpt)) {
+	if (tmpl_is_data_unresolved(regex->vpt)) {
 		fr_strerror_const("Regex must be resolved before instantiation");
 		return -1;
 	}
@@ -1436,8 +1395,11 @@ static xlat_action_t xlat_func_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	matches the current rcode.
 	 */
 	if (!src) {
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, attr_module_return_code));
-		vb->datum.int32 = request->rcode;
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+		if (fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"), false) < 0) {
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
 	} else {
 		rlm_rcode_t rcode;
 
@@ -1470,12 +1432,16 @@ static xlat_arg_parser_t const xlat_func_exists_arg[] = {
 /*
  *	We just print the xlat as-is.
  */
-static fr_slen_t xlat_expr_print_exists(fr_sbuff_t *out, UNUSED xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
+static fr_slen_t xlat_expr_print_exists(fr_sbuff_t *out, xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
 {
-	size_t			at_in = fr_sbuff_used_total(out);
+	size_t	at_in = fr_sbuff_used_total(out);
 	xlat_exists_inst_t	*inst = instance;
 
-	xlat_print(out, inst->xlat, e_rules);
+	if (inst->xlat) {
+		xlat_print(out, inst->xlat, e_rules);
+	} else {
+		xlat_print_node(out, node->call.args, xlat_exp_head(node->call.args), e_rules);
+	}
 
 	return fr_sbuff_used_total(out) - at_in;
 }
@@ -1518,11 +1484,7 @@ static xlat_action_t xlat_attr_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
 
 	vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
-	if (!vp) {
-		dst->vb_bool = tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual;
-	} else {
-		dst->vb_bool = true;
-	}
+	dst->vb_bool = (vp != NULL);
 
 	if (do_free) talloc_const_free(vpt);
 	tmpl_dcursor_clear(&cc);
@@ -1734,13 +1696,6 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_UNARY(T_SUB, "unary_minus", xlat_func_unary_minus);
 	XLAT_REGISTER_UNARY(T_COMPLEMENT, "unary_complement", xlat_func_unary_complement);
 	XLAT_REGISTER_UNARY(T_NOT, "unary_not", xlat_func_unary_not);
-
-	/*
-	 *	Callback wrapper around old paircmp() API.
-	 */
-	if (unlikely((xlat = xlat_func_register(NULL, "paircmp", xlat_paircmp_func, FR_TYPE_VOID)) == NULL)) return -1; /* never pure! */
-	xlat_func_args_set(xlat, xlat_paircmp_xlat_args);
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 
 	return 0;
 }
@@ -1955,6 +1910,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, fr_tokens[func->token], strlen(fr_tokens[func->token])));
 	unary->call.func = func;
+	unary->call.dict = t_rules->attr.dict_def;
 	unary->flags = func->flags;
 
 	if (tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules, out_c, (c == '!')) < 0) {
@@ -2007,6 +1963,7 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 	 */
 	MEM(cast = xlat_exp_alloc(ctx, XLAT_FUNC, "cast", 4));
 	MEM(cast->call.func = xlat_func_find("cast", 4));
+	// no need to set dict here
 	fr_assert(cast->call.func != NULL);
 	cast->flags = cast->call.func->flags;
 
@@ -2303,7 +2260,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		 *	On the other hand, if people assign static strings to non-string
 		 *	attributes... they sort of deserve what they get.
 		 */
-		if (tmpl_is_unresolved(vpt) && (tmpl_resolve(vpt, NULL) < 0)) goto error;
+		if (tmpl_is_data_unresolved(vpt) && (tmpl_resolve(vpt, NULL) < 0)) goto error;
 	}
 
 	fr_sbuff_skip_whitespace(&our_in);
@@ -2721,6 +2678,7 @@ redo:
 	 */
 	MEM(node = xlat_exp_alloc(head, XLAT_FUNC, fr_tokens[op], strlen(fr_tokens[op])));
 	node->call.func = func;
+	node->call.dict = t_rules->attr.dict_def;
 	node->flags = func->flags;
 
 	xlat_func_append_arg(node, lhs, logical_ops[op] && cond);

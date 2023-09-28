@@ -60,6 +60,8 @@ def parse_args():
     authentication = command.add_parser('authenticate', help="authenticate against a tacacs+ server")
     if not user_password:
         authentication.add_argument('-p', '--password', required=False, help="user password")
+    authentication.add_argument('-i', '--chap-id', required=False, help="CHAP Identity")
+    authentication.add_argument('-c', '--chap-challenge', required=False, help="CHAP Challenge")
 
     authorization = command.add_parser('authorize', help="authorize a command against a tacacs+ server")
     authorization.add_argument('-c', '--cmds', required=True, nargs='+', help="list of cmds to authorize")
@@ -110,11 +112,13 @@ def authenticate(cli, args):
     if not vars(args).get('password'):
         args.password = getpass.getpass('password for %s: ' % args.username)
 
-    chap_ppp_id = None
-    chap_challenge = None
+    chap_ppp_id = args.chap_id
+    chap_challenge = args.chap_challenge
     if args.authen_type == TAC_PLUS_AUTHEN_TYPE_CHAP:
-        chap_ppp_id = six.moves.input('chap PPP ID: ')
-        chap_challenge = six.moves.input('chap challenge: ')
+        if chap_ppp_id == None:
+            chap_ppp_id = six.moves.input('chap PPP ID: ')
+        if chap_challenge == None:
+            chap_challenge = six.moves.input('chap challenge: ')
     auth = cli.authenticate(args.username, args.password, priv_lvl=args.priv_lvl,
                             authen_type=args.authen_type, chap_ppp_id=chap_ppp_id,
                             chap_challenge=chap_challenge, rem_addr=args.rem_addr,

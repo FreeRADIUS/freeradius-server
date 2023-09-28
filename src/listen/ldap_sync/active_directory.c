@@ -129,7 +129,7 @@ int active_directory_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no,
 	 */
 	ldap_sync_conf_attr_add(UNCONST(sync_config_t *, config), "isDeleted");
 
-	rcode = fr_ldap_search_async(&sync->msgid, NULL, &conn, config->base_dn, config->scope,
+	rcode = fr_ldap_search_async(&sync->msgid, NULL, conn, config->base_dn, config->scope,
 				     filter ? filter : config->filter, config->attrs, ctrls, NULL);
 
 	if (rcode != LDAP_PROC_SUCCESS) goto error;

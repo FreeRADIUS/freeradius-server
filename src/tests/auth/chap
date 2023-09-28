@@ -5,4 +5,4 @@
 #
 #  Set CHAP-Password
 #
-&CHAP-Password := "%(chap_password:%{CHAP-Password})"
+&CHAP-Password := "%(chap.password:%{CHAP-Password})"

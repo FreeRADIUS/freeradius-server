@@ -18,6 +18,7 @@
 **** xref:unlang/group.adoc[group]
 **** xref:unlang/if.adoc[if]
 **** xref:unlang/load-balance.adoc[load-balance]
+**** xref:unlang/local.adoc[local variables]
 **** xref:unlang/limit.adoc[limit]
 **** xref:unlang/map.adoc[map]
 **** xref:unlang/parallel.adoc[parallel]

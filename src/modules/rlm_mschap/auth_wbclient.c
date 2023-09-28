@@ -86,7 +86,7 @@ static char *wbclient_normalise_username(TALLOC_CTX *ctx, struct wbcContext *wb_
  */
 int do_auth_wbclient(rlm_mschap_t const *inst, request_t *request,
 		     uint8_t const *challenge, uint8_t const *response,
-		     uint8_t nthashhash[NT_DIGEST_LENGTH])
+		     uint8_t nthashhash[NT_DIGEST_LENGTH], mschap_auth_call_env_t *env_data)
 {
 	int				ret = -1;
 	struct wbcContext		*wb_ctx = NULL;
@@ -182,13 +182,15 @@ int do_auth_wbclient(rlm_mschap_t const *inst, request_t *request,
 			fr_box_strvalue_buffer(normalised_username));
 
 		/* Recalculate hash */
-		vp_challenge = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_ms_chap_challenge);
+		vp_challenge = fr_pair_find_by_da_nested(&request->request_pairs, NULL,
+							 tmpl_attr_tail_da(env_data->chap_challenge));
 		if (!vp_challenge) {
-			RERROR("Unable to get MS-CHAP-Challenge");
+			RERROR("Unable to get %s", env_data->chap_challenge->name);
 			goto release;
 		}
 
-		vp_response = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_ms_chap2_response);
+		vp_response = fr_pair_find_by_da_nested(&request->request_pairs, NULL,
+							tmpl_attr_tail_da(env_data->chap2_response));
 		if (!vp_response) {
 			RERROR("Unable to get MS-CHAP2-Response");
 			goto release;

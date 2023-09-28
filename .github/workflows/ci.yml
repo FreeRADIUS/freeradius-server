@@ -179,7 +179,7 @@ jobs:
           redis_test_server: 127.0.0.1
           ldap_test_server: 127.0.0.1
           ldap_test_server_port: 3890
-          ldaps_test_server_port: 6360
+          ldaps_test_server_port: 6361
           ldap389_test_server: threeds
           ldap389_test_server_port: 3389
           active_directory_test_server: 127.0.0.1

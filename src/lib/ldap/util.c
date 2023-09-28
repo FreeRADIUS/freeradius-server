@@ -69,7 +69,6 @@ static const bool escapes[UINT8_MAX + 1] = {
  */
 size_t fr_ldap_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
-
 	size_t left = outlen;
 
 	if (*in && ((*in == ' ') || (*in == '#'))) goto encode;

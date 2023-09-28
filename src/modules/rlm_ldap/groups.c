@@ -146,7 +146,7 @@ static unlang_action_t ldap_group_name2dn_start(rlm_rcode_t *p_result, UNUSED in
 					       inst->groupobj_filter ? ")" : "",
 					       group_ctx->group_name[0] && group_ctx->group_name[1] ? ")" : "");
 
-	return fr_ldap_trunk_search(p_result, group_ctx, &group_ctx->query, request, group_ctx->ttrunk,
+	return fr_ldap_trunk_search(group_ctx, &group_ctx->query, request, group_ctx->ttrunk,
 				    group_ctx->base_dn->vb_strvalue, inst->groupobj_scope, filter,
 				    null_attrs, NULL, NULL);
 }
@@ -261,7 +261,7 @@ static unlang_action_t ldap_group_dn2name_start(rlm_rcode_t *p_result, UNUSED in
 
 	RDEBUG2("Resolving group DN \"%s\" to group name", *group_ctx->dn);
 
-	return fr_ldap_trunk_search(p_result, group_ctx, &group_ctx->query, request, group_ctx->ttrunk, *group_ctx->dn,
+	return fr_ldap_trunk_search(group_ctx, &group_ctx->query, request, group_ctx->ttrunk, *group_ctx->dn,
 				    LDAP_SCOPE_BASE, NULL, group_ctx->attrs, NULL, NULL);
 }
 
@@ -571,14 +571,14 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
  * @param[in] uctx		Group lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_cacheable_groupobj_start(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+static unlang_action_t ldap_cacheable_groupobj_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
 						     void *uctx)
 {
 	ldap_group_groupobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupobj_ctx_t);
 	rlm_ldap_t const		*inst = group_ctx->inst;
 
 	group_ctx->attrs[0] = inst->groupobj_name_attr;
-	return fr_ldap_trunk_search(p_result, group_ctx, &group_ctx->query, request, group_ctx->ttrunk,
+	return fr_ldap_trunk_search(group_ctx, &group_ctx->query, request, group_ctx->ttrunk,
 				    group_ctx->base_dn->vb_strvalue, inst->groupobj_scope,
 				    group_ctx->filter, group_ctx->attrs, NULL, NULL);
 }
@@ -858,7 +858,7 @@ static unlang_action_t ldap_dn2name_start (rlm_rcode_t *p_result, UNUSED int *pr
 
 	RDEBUG2("Resolving group DN \"%pV\" to group name", fr_box_strvalue_buffer(group_ctx->lookup_dn));
 
-	return fr_ldap_trunk_search(p_result, group_ctx, &group_ctx->query, request, xlat_ctx->ttrunk,
+	return fr_ldap_trunk_search(group_ctx, &group_ctx->query, request, xlat_ctx->ttrunk,
 				    group_ctx->lookup_dn, LDAP_SCOPE_BASE, NULL, group_ctx->attrs,
 				    NULL, NULL);
 }
@@ -880,13 +880,13 @@ static void ldap_dn2name_cancel(UNUSED request_t *request, UNUSED fr_signal_t ac
  * Used when the user's DN is already known but cached group membership has not been stored
  *
  */
-static unlang_action_t ldap_check_userobj_start(rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t ldap_check_userobj_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
 						request_t *request, void *uctx)
 {
 	ldap_group_userobj_dyn_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_dyn_ctx_t);
 	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(group_ctx->xlat_ctx, ldap_memberof_xlat_ctx_t);
 
-	return fr_ldap_trunk_search(p_result, xlat_ctx, &xlat_ctx->query, request, xlat_ctx->ttrunk, xlat_ctx->dn,
+	return fr_ldap_trunk_search(xlat_ctx, &xlat_ctx->query, request, xlat_ctx->ttrunk, xlat_ctx->dn,
 				    LDAP_SCOPE_BASE, NULL, xlat_ctx->attrs, NULL, NULL);
 }
 

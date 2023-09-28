@@ -27,11 +27,9 @@ extern "C" {
 #endif
 
 #include "unlang_priv.h"
-#include <freeradius-devel/server/cond.h>
 
 typedef struct {
 	unlang_group_t	group;
-	fr_cond_t	*cond;
 	xlat_exp_head_t	*head;
 	bool		is_truthy;
 	bool		value;

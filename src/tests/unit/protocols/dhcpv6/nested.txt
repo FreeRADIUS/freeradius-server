@@ -1,0 +1,67 @@
+#  -*- text -*-
+#  Copyright (C) 2023 Network RADIUS SARL (legal@networkradius.com)
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+#  Tests for deeply nested pairs.
+#
+#  The PAIR_VERIFY macros were recursive, perhaps exponential.  So the tests here would take gradually more
+#  and more time, to more than 30+s.  That's bad.
+#
+
+proto dhcpv6
+proto-dictionary dhcpv6
+fuzzer-out dhcpv6
+
+decode-pair 00 5e 00 04 6a 2b 00 00
+match S46-MAP-Cont-E = { Options = { raw.27179 = 0x } }
+
+decode-pair ff 0f 00 01 fa 
+match raw.65295 = 0xfa
+
+decode-pair 00 00 00 02 00 04
+match raw.0 = 0x0004
+
+decode-pair 00 5f 00 0c 00 5e 00 08 00 5e 00 04 6a 2b 00 00 40 1a 00 00
+match S46-MAP-Cont-T = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { raw.27179 = 0x } } } } } }, raw.16410 = 0x
+
+decode-pair 00 5e 00 10 00 5f 00 0c 00 5e 00 08 00 5e 00 04 6a 2b 00 00 40 1a 00 00
+match S46-MAP-Cont-E = { Options = { S46-MAP-Cont-T = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { raw.27179 = 0x } } } } } } } }, raw.16410 = 0x
+
+decode-pair 00 5e 00 14 00 5e 00 10 00 5f 00 0c 00 5e 00 08 00 5e 00 04 6a 2b 00 00 40 1a 00 00
+match S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-T = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { raw.27179 = 0x } } } } } } } } } }, raw.16410 = 0x
+
+decode-pair 00 5e 00 18 00 5e 00 14 00 5e 00 10 00 5f 00 0c 00 5e 00 08 00 5e 00 04 6a 2b 00 00 40 1a 00 00
+match S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-T = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { raw.27179 = 0x } } } } } } } } } } } }, raw.16410 = 0x
+
+decode-pair 00 5e 00 1c 00 5e 00 18 00 5e 00 14 00 5e 00 10 00 5f 00 0c 00 5e 00 08 00 5e 00 04 6a 2b 00 00 40 1a 00 00
+match S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-T = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { raw.27179 = 0x } } } } } } } } } } } } } }, raw.16410 = 0x
+
+decode-pair 00 5e 00 20 00 5e 00 1c 00 5e 00 18 00 5e 00 14 00 5e 00 10 00 5f 00 0c 00 5e 00 08 00 5e 00 04 6a 2b 00 00 40 1a 00 00
+match S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-T = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { raw.27179 = 0x } } } } } } } } } } } } } } } }, raw.16410 = 0x
+
+decode-pair 00 5e 00 24 00 5e 00 20 00 5e 00 1c 00 5e 00 18 00 5e 00 14 00 5e 00 10 00 5f 00 0c 00 5e 00 08 00 5e 00 04 6a 2b 00 00 40 1a 00 00
+match S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-T = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { raw.27179 = 0x } } } } } } } } } } } } } } } } } }, raw.16410 = 0x
+
+decode-pair 00 5e 00 28 00 5e 00 24 00 5e 00 20 00 5e 00 1c 00 5e 00 18 00 5e 00 14 00 5e 00 10 00 5f 00 0c 00 5e 00 08 00 5e 00 04 6a 2b 00 00 40 1a 00 00
+match S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-T = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { raw.27179 = 0x } } } } } } } } } } } } } } } } } } } }, raw.16410 = 0x
+
+#  00 5e 00 30
+#    00 5e 00 2c
+#      00 5e 00 24
+#        00 5e 00 20
+#          00 5e 00 1c
+#            00 5e 00 18
+#              00 5f 00 14
+#                00 5e 00 10
+#                  00 5f 00 0c
+#                    00 5e 00 08
+#                      00 5e 00 04
+#                        6a 2b 00 00 40 1a 00 00
+
+decode-pair 00 5e 00 30 00 5e 00 2c 00 5e 00 24 00 5e 00 20 00 5e 00 1c 00 5e 00 18 00 5f 00 14 00 5e 00 10 00 5f 00 0c 00 5e 00 08 00 5e 00 04 6a 2b 00 00 40 1a 00 00
+match S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-T = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-T = { Options = { S46-MAP-Cont-E = { Options = { S46-MAP-Cont-E = { Options = { raw.27179 = 0x } } } } } } } } } } } } } } } } } }, raw.16410 = 0x } } } }
+
+count
+match 27

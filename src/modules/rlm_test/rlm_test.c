@@ -389,7 +389,7 @@ static xlat_action_t test_xlat_passthrough(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_list_foreach(in, vb_p) {
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
 
-		if (fr_value_box_copy(ctx, vb, vb_p) < 0) {
+		if (fr_value_box_copy(vb, vb, vb_p) < 0) {
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
 		}

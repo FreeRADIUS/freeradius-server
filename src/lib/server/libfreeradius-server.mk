@@ -8,8 +8,6 @@ SOURCES	:= \
 	cf_util.c \
 	client.c \
 	command.c \
-	cond_eval.c \
-	cond_tokenize.c \
 	connection.c \
 	dependency.c \
 	dl_module.c \
@@ -23,9 +21,9 @@ SOURCES	:= \
 	map.c \
 	map_async.c \
 	map_proc.c \
-	method.c \
 	module.c \
 	module_rlm.c \
+	packet.c \
 	paircmp.c \
 	pairmove.c \
 	password.c \
@@ -67,7 +65,7 @@ LOG_ID_LIB	:= 1
 
 # different pieces of this library
 $(call DEFINE_LOG_ID_SECTION,config,	1,cf_file.c cf_parse.c cf_util.c)
-$(call DEFINE_LOG_ID_SECTION,conditions,2,conf_eval.c cond_tokenize.c)
+# 2 was the old conditions
 $(call DEFINE_LOG_ID_SECTION,exec,	3,exec.c exec_legacy.c)
 $(call DEFINE_LOG_ID_SECTION,modules,	4,dl_module.c module.c module_rlm.c method.c)
 $(call DEFINE_LOG_ID_SECTION,map,	5,map.c map_proc.c map_async.c)

@@ -28,7 +28,6 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/map.h>
@@ -45,6 +44,15 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <ctype.h>
+
+static fr_table_num_sorted_t const cond_quote_table[] = {
+	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
+	{ L("'"),	T_SINGLE_QUOTED_STRING	},
+	{ L("/"),	T_SOLIDUS_QUOTED_STRING	},
+	{ L("`"),	T_BACK_QUOTED_STRING	}
+};
+static size_t cond_quote_table_len = NUM_ELEMENTS(cond_quote_table);
+
 
 #ifdef DEBUG_MAP
 static void map_dump(request_t *request, map_t const *map)
@@ -168,10 +176,12 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 			goto marker;
 		}
 
-		if (tmpl_is_attr(map->lhs) && tmpl_attr_unknown_add(map->lhs) < 0) {
+		if (tmpl_attr_tail_is_unknown(map->lhs) && tmpl_attr_unknown_add(map->lhs) < 0) {
 			cf_log_perr(cp, "Failed creating attribute %s", map->lhs->name);
 			goto error;
 		}
+
+		fr_assert(tmpl_is_attr(map->lhs));
 
 		/*
 		 *	The caller wants the RHS attributes to be
@@ -180,8 +190,13 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		 */
 		if (!input_rhs_rules) {
 			tmpl_rules_child_init(child_ctx, &my_rhs_rules, lhs_rules, map->lhs);
-			rhs_rules = &my_rhs_rules;
+		} else {
+			my_rhs_rules = *input_rhs_rules;
 		}
+		rhs_rules = &my_rhs_rules;
+
+		da = tmpl_attr_tail_da(map->lhs);
+		if (edit && fr_type_is_leaf(da->type)) my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
 		break;
 	}
 
@@ -514,7 +529,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		/*
 		 *	The tmpl code does NOT return tmpl_type_data
 		 *	for string data without xlat.  Instead, it
-		 *	creates TMPL_TYPE_UNRESOLVED.
+		 *	creates TMPL_TYPE_DATA_UNRESOLVED.
 		 */
 		if (tmpl_resolve(map->lhs, NULL) < 0) {
 			fr_sbuff_set(&our_in, &m_lhs);	/* Marker points to LHS */
@@ -647,13 +662,13 @@ parse_rhs:
 		/*
 		 *	The tmpl code does NOT return tmpl_type_data
 		 *	for string data without xlat.  Instead, it
-		 *	creates TMPL_TYPE_UNRESOLVED.
+		 *	creates TMPL_TYPE_DATA_UNRESOLVED.
 		 */
 		if (tmpl_resolve(map->rhs, NULL) < 0) {
 			fr_sbuff_set(&our_in, &m_rhs);	/* Marker points to RHS */
 			goto error;
 		}
-	} else if (tmpl_is_attr(map->lhs) && (tmpl_is_unresolved(map->rhs) || tmpl_is_data(map->rhs))) {
+	} else if (tmpl_is_attr(map->lhs) && (tmpl_is_data_unresolved(map->rhs) || tmpl_is_data(map->rhs))) {
 		/*
 		 *	If the operator is "true" or "false", just
 		 *	cast the RHS to string, as no one will care
@@ -940,6 +955,12 @@ do_children:
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;
+		}
+
+		if (tmpl_is_attr(map->lhs) && tmpl_attr_tail_da(map->lhs)->flags.local) {
+			cf_log_err(ci, "Invalid location for local attribute '%s'", map->lhs->name);
+			talloc_free(map);
+			goto error; /* re-do "goto marker" stuff to print out spaces ? */
 		}
 
 		MAP_VERIFY(map);
@@ -1599,7 +1620,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		fr_pair_append(out, n);
 		break;
 
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 		fr_assert(tmpl_is_attr(map->lhs));
 		fr_assert(tmpl_attr_tail_da(map->lhs));	/* We need to know which attribute to create */
 
@@ -2328,7 +2349,7 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 	 *	Just print the value being assigned
 	 */
 	default:
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 		fr_pair_aprint_value_quoted(request, &rhs, vp, map->rhs->quote);
 		break;
 

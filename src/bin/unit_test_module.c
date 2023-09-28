@@ -75,23 +75,13 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_packet_dst_ip_address;
-static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
-static fr_dict_attr_t const *attr_packet_dst_port;
-static fr_dict_attr_t const *attr_packet_src_ip_address;
-static fr_dict_attr_t const *attr_packet_src_ipv6_address;
-static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_net;
 
 extern fr_dict_attr_autoload_t unit_test_module_dict_attr[];
 fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
-	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_protocol },
+	{ .out = &attr_net, .name = "Net", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 
 	{ NULL }
 };
@@ -124,6 +114,19 @@ static fr_client_t *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *na
 	fr_assert(client);
 
 	return client;
+}
+
+static void pair_mutable(fr_pair_t *vp)
+{
+	if (fr_type_is_leaf(vp->vp_type)) {
+		vp->data.immutable = false;
+
+		return;
+	}
+
+	fr_pair_list_foreach(&vp->vp_group, child) {
+		pair_mutable(child);
+	}
 }
 
 static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *client, CONF_SECTION *server_cs)
@@ -226,23 +229,33 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 		}
 	};
 
-	for (vp = fr_pair_dcursor_init(&cursor, &request->request_pairs);
-	     vp;
+	/*
+	 *	Fill in the packet header from attributes, and then
+	 *	re-realize the attributes.
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL,  attr_packet_type);
+	if (vp) request->packet->code = vp->vp_uint32;
+
+	fr_packet_pairs_to_packet(request->packet, &request->request_pairs);
+
+	/*
+	 *	The input might have updated only some of the Net.*
+	 *	attributes.  So for consistency, we create all of them
+	 *	from the packet header.
+	 */
+	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
+		fr_strerror_const("Failed converting packet IPs to attributes");
+		goto error;
+	}
+
+	/*
+	 *	For laziness in the tests, allow the Net.* to be mutable
+	 */
+	for (vp = fr_pair_dcursor_by_ancestor_init(&cursor, &request->request_pairs, attr_net);
+	     vp != NULL;
 	     vp = fr_dcursor_next(&cursor)) {
-		if (vp->da == attr_packet_type) {
-			request->packet->code = vp->vp_uint32;
-		} else if (vp->da == attr_packet_dst_port) {
-			request->packet->socket.inet.dst_port = vp->vp_uint16;
-		} else if ((vp->da == attr_packet_dst_ip_address) ||
-			   (vp->da == attr_packet_dst_ipv6_address)) {
-			memcpy(&request->packet->socket.inet.dst_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.dst_ipaddr));
-		} else if (vp->da == attr_packet_src_port) {
-			request->packet->socket.inet.src_port = vp->vp_uint16;
-		} else if ((vp->da == attr_packet_src_ip_address) ||
-			   (vp->da == attr_packet_src_ipv6_address)) {
-			memcpy(&request->packet->socket.inet.src_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.src_ipaddr));
-		}
-	} /* loop over the VP's we read in */
+		pair_mutable(vp);
+	}
 
 	if (fr_debug_lvl) {
 		for (vp = fr_pair_dcursor_init(&cursor, &request->request_pairs);
@@ -311,7 +324,7 @@ static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *l
 }
 
 /*
- *	Read a file compose of xlat's and expected results
+ *	Read a file composed of xlat's and expected results
  */
 static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 {
@@ -376,6 +389,11 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 	request->log.lvl = fr_debug_lvl;
 	request->async = talloc_zero(request, fr_async_t);
 
+	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
+		fprintf(stderr, "Failed converting packet IPs to attributes");
+		return false;
+	}
+
 	while (fgets(line_buff, sizeof(line_buff), fp) != NULL) {
 		lineno++;
 
@@ -397,9 +415,29 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 		 *	Ignore blank lines and comments
 		 */
 		fr_sbuff_adv_past_whitespace(&line, SIZE_MAX, NULL);
-
 		if (*fr_sbuff_current(&line) < ' ') continue;
 		if (fr_sbuff_is_char(&line, '#')) continue;
+
+		/*
+		 *	Look for "match", as it needs the output_buffer to be left alone.
+		 */
+		if (fr_sbuff_adv_past_str_literal(&line, "match ") > 0) {
+			size_t output_len = strlen(output_buff);
+
+			if (!fr_sbuff_is_str(&line, output_buff, output_len) || (output_len != fr_sbuff_remaining(&line))) {
+				fprintf(stderr, "Mismatch at %s[%u]\n\tgot          : %s (%zu)\n\texpected     : %s (%zu)\n",
+					filename, lineno,  output_buff, output_len, fr_sbuff_current(&line), fr_sbuff_remaining(&line));
+				TALLOC_FREE(request);
+				return false;
+			}
+			continue;
+		}
+
+		/*
+		 *	The rest of the keywords create output.
+		 */
+		output_buff[0] = '\0';
+		out = FR_SBUFF_OUT(output_buff, sizeof(output_buff));
 
 		/*
 		 *	Look for "xlat"
@@ -481,7 +519,7 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 			if (len < 0) {
 				char const *err = fr_strerror();
 				talloc_free(xlat_ctx);
-				FR_SBUFF_IN_SPRINTF_RETURN(&out, "ERROR expanding xlat: %s", *err ? err : "no error provided");
+				fr_sbuff_in_sprintf(&out, "ERROR expanding xlat: %s", *err ? err : "no error provided");
 				continue;
 			}
 
@@ -491,20 +529,6 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 			fr_sbuff_in_escape(&out, unescaped, len, &unprintables);
 
 			TALLOC_FREE(xlat_ctx); /* also frees 'head' */
-			continue;
-		}
-
-		/*
-		 *	Look for "match".
-		 */
-		if (fr_sbuff_adv_past_str_literal(&line, "match ") > 0) {
-			size_t output_len = strlen(output_buff);
-			if (!fr_sbuff_is_str(&line, output_buff, output_len) && (output_len != fr_sbuff_remaining(&line))) {
-				fprintf(stderr, "Mismatch at %s[%u]\n\tgot          : %s (%zu)\n\texpected     : %s (%zu)\n",
-					filename, lineno,  output_buff, output_len, fr_sbuff_current(&line), fr_sbuff_remaining(&line));
-				TALLOC_FREE(request);
-				return false;
-			}
 			continue;
 		}
 
@@ -563,6 +587,12 @@ static request_t *request_clone(request_t *old, int number, CONF_SECTION *server
 	return request;
 }
 
+static void cancel_request(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
+{
+	request_t	*request = talloc_get_type_abort(uctx, request_t);
+	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+}
+
 /**
  *
  * @hidecallgraph
@@ -581,6 +611,7 @@ int main(int argc, char *argv[])
 	fr_pair_list_t		filter_vps;
 	bool			xlat_only = false;
 	fr_event_list_t		*el = NULL;
+	fr_event_timer_t const	*cancel_timer = NULL;
 	fr_client_t		*client = NULL;
 	fr_dict_t		*dict = NULL;
 	fr_dict_t const		*dict_check;
@@ -992,6 +1023,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (count == 1) {
+		fr_event_timer_in(request, el, &cancel_timer, config->max_request_time, cancel_request, request);
 		unlang_interpret_synchronous(el, request);
 
 	} else {
@@ -1024,6 +1056,7 @@ int main(int argc, char *argv[])
 			}
 #endif
 
+			fr_event_timer_in(request, el, &cancel_timer, config->max_request_time, cancel_request, request);
 			unlang_interpret_synchronous(el, request);
 			talloc_free(request);
 

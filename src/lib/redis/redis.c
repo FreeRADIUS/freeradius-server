@@ -278,10 +278,13 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 #endif
 	case REDIS_REPLY_STRING:
 	case REDIS_REPLY_STATUS:
+		fr_value_box_init(out, FR_TYPE_STRING, NULL, false);
+
 		if (shallow) {
 			fr_value_box_bstrndup_shallow(to_cast, NULL, reply->str, reply->len, true);
 		} else {
-			if (fr_value_box_bstrndup(ctx, to_cast, NULL, reply->str, reply->len, true) < 0) return -1;
+			if (fr_value_box_bstrndup(to_cast->talloced ? to_cast : ctx, to_cast, NULL,
+						  reply->str, reply->len, true) < 0) return -1;
 		}
 		break;
 
@@ -297,7 +300,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 			fr_strerror_const("Out of memory");
 			return -1;
 		}
-		if (fr_value_box_bstrndup(ctx, verb, NULL, reply->str, reply->len, true) < 0) return -1;
+		if (fr_value_box_bstrndup(verb, verb, NULL, reply->str, reply->len, true) < 0) return -1;
 		fr_value_box_list_insert_head(&out->vb_group, verb);
 
 		vtype = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL);
@@ -407,17 +410,17 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out, request_t *request,
 	case REDIS_REPLY_STRING:
 	case REDIS_REPLY_INTEGER:
 	{
-		fr_value_box_t vpt;
+		fr_value_box_t vb = FR_VALUE_BOX_INITIALISER_NULL(vb);
 
 		/* Logs own errors */
-		if (fr_redis_reply_to_value_box(map, &vpt, value,
+		if (fr_redis_reply_to_value_box(map, &vb, value,
 						tmpl_attr_tail_da(map->lhs)->type, tmpl_attr_tail_da(map->lhs), false, false) < 0) {
 			RPEDEBUG("Failed converting Redis data");
 			goto error;
 		}
 
 		/* This will only fail only memory allocation errors */
-		if (tmpl_afrom_value_box(map, &map->rhs, &vpt, true) < 0) goto error;
+		if (tmpl_afrom_value_box(map, &map->rhs, &vb, true) < 0) goto error;
 	}
 		break;
 

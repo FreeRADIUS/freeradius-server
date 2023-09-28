@@ -309,24 +309,23 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_d
 		da = parent;
 	}
 
+	/*
+	 *	TLVs are special, they cannot hold values.  The caller should know this!
+	 */
+	if (da->type == FR_TYPE_TLV) {
+		if (!value) return slen;
+
+		fr_strerror_const("TLVs cannot hold values");
+		return -(slen);
+	}
+
 	MEM(vp = fr_pair_afrom_da(ctx, da));
 
 	/*
 	 *	fr_pair_ts with no value need a 1 byte value buffer.
 	 */
 	if (!value) {
-		switch (da->type) {
-		/*
-		 *	We can blame the authors of RFC 6929 for
-		 *	this hack.  Apparently the presence or absence
-		 *	of an attribute isn't considered a useful means
-		 *	of conveying information, so empty TLVs are
-		 *	disallowed.
-		 */
-		case FR_TYPE_TLV:
-			fr_pair_to_unknown(vp);
-			FALL_THROUGH;
-
+		switch (vp->vp_type) {
 		case FR_TYPE_OCTETS:
 			fr_pair_value_memdup(vp, (uint8_t const *)"\0", 1, true);
 			break;
@@ -344,11 +343,6 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_d
 
 		fr_dcursor_append(cursor, vp);
 		return slen;
-	}
-
-	if (da->type == FR_TYPE_TLV) {
-		fr_strerror_const("TLVs cannot hold values");
-		return -(slen);
 	}
 
 	ret = fr_pair_value_from_str(vp, value, strlen(value), NULL, true);

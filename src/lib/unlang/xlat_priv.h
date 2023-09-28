@@ -290,6 +290,11 @@ extern fr_dict_attr_t const *attr_expr_bool_enum;
 extern fr_dict_attr_t const *attr_module_return_code;
 extern fr_dict_attr_t const *attr_cast_base;
 
+/*
+ *	xlat_tokenize.c
+ */
+extern bool const xlat_func_chars[UINT8_MAX + 1];
+
 void		xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 			    request_t *request, void *rctx, fr_signal_t action);
 

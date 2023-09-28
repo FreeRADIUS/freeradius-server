@@ -47,7 +47,7 @@ acct_unique {
 	#  Using a Class/Session-ID combination is more robust
 	#  than using elements in the Accounting-Request,
 	#  which may be subject to change, such as
-	#  NAS-IP-Address, Packet-Src-IP-Address and
+	#  NAS-IP-Address, Net.Src.IP and
 	#  NAS-Port-ID/NAS-Port.
 	#
 	#  This policy should ensure that session data is not
@@ -75,7 +75,7 @@ acct_unique {
 #	Insert a (hopefully unique) value into class
 #
 insert_acct_class {
-	&reply.Class = "${policy.class_value_prefix}%{md5:%t,%I,%{Packet-Src-Port},%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}},%{NAS-IP-Address},%{Calling-Station-ID},%{User-Name}}"
+	&reply.Class = "${policy.class_value_prefix}%{md5:%t,%I,%{Net.Src.Port},%{Net.Src.IP},%{NAS-IP-Address},%{Calling-Station-ID},%{User-Name}}"
 }
 
 #

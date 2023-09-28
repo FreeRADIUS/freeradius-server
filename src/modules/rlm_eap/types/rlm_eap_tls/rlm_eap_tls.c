@@ -60,12 +60,10 @@ fr_dict_autoload_t rlm_eap_tls_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_eap_tls_require_client_cert;
-static fr_dict_attr_t const *attr_virtual_server;
 
 extern fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[] = {
 	{ .out = &attr_eap_tls_require_client_cert, .name = "EAP-TLS-Require-Client-Cert", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ NULL }
 };
 

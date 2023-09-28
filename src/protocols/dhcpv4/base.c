@@ -556,7 +556,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
  */
 int fr_dhcpv4_global_init(void)
 {
-	fr_value_box_t		value = { .type = FR_TYPE_UINT8 };
+	fr_value_box_t		value = *fr_box_uint8(0);
 	uint8_t			i;
 
 	if (instance_count > 0) {

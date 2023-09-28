@@ -288,7 +288,7 @@ int fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn)
 	ldap_conn->directory = talloc_zero(ldap_conn, fr_ldap_directory_t);
 	if (!ldap_conn->directory) return -1;
 
-	if (fr_ldap_search_async(&msgid, NULL, &ldap_conn, "", LDAP_SCOPE_BASE, "(objectclass=*)", attrs,
+	if (fr_ldap_search_async(&msgid, NULL, ldap_conn, "", LDAP_SCOPE_BASE, "(objectclass=*)", attrs,
 				 NULL, NULL) != LDAP_PROC_SUCCESS) return -1;
 
 	return msgid;

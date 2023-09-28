@@ -1,0 +1,23 @@
+# Bill should be disabled
+&Stripped-User-Name := 'bill'
+ldap {
+	disallow = 1
+}
+if (!disallow) {
+	test_fail
+}
+
+# Test suspended profile application
+&Stripped-User-Name := 'bobby'
+ldap
+if (!updated) {
+	test_fail
+}
+
+if (&reply.Reply-Message != 'User-Suspended') {
+	test_fail
+}
+
+&reply := {}
+
+test_pass

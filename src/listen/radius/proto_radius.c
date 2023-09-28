@@ -24,6 +24,7 @@
  */
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include "proto_radius.h"
 
@@ -312,6 +313,11 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 		request->async->sequence = 1;
 	}
 
+	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
+		RPEDEBUG("Failed decoding 'Net.*' packet");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -396,6 +402,8 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		RPEDEBUG("Failed signing RADIUS reply");
 		return -1;
 	}
+
+	fr_packet_pairs_to_packet(request->reply, &request->reply_pairs);
 
 	if (RDEBUG_ENABLED) {
 		RDEBUG("Sending %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
@@ -563,17 +571,49 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return fr_master_app_io.common.bootstrap(MODULE_INST_CTX(inst->io.dl_inst));
 }
 
+/** Get the authentication vector.
+ *
+ *  Note that we don't allow people to get the reply vector, because
+ *  it doesn't exist until the reply is sent.
+ *
+ */
+static xlat_action_t packet_vector_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					UNUSED xlat_ctx_t const *xctx, request_t *request,
+					UNUSED fr_value_box_list_t *in)
+{
+	fr_value_box_t	*vb;
+
+	if (request->dict != dict_radius) return XLAT_ACTION_FAIL;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL));
+	if (fr_value_box_memdup(vb, vb, NULL, request->packet->vector, sizeof(request->packet->vector), true) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+
 static int mod_load(void)
 {
 	if (fr_radius_init() < 0) {
 		PERROR("Failed initialising protocol library");
 		return -1;
 	}
+
+
+	if (!xlat_func_register(NULL, "radius.packet.vector", packet_vector_xlat, FR_TYPE_OCTETS)) return -1;
+
 	return 0;
 }
 
 static void mod_unload(void)
 {
+	xlat_func_unregister("radius.packet.vector");
+
 	fr_radius_free();
 }
 

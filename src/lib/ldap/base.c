@@ -516,7 +516,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
  *
  * @param[out] msgid		to match response to request.
  * @param[in] request		Current request.
- * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
+ * @param[in] pconn		to use.
  * @param[in] dn		to use as base for the search.
  * @param[in] scope		to use (LDAP_SCOPE_BASE, LDAP_SCOPE_ONE, LDAP_SCOPE_SUB).
  * @param[in] filter		to use, should be pre-escaped.
@@ -526,13 +526,11 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
 fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
-				     fr_ldap_connection_t **pconn,
+				     fr_ldap_connection_t *pconn,
 				     char const *dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
-	fr_ldap_config_t const	*handle_config = (*pconn)->config;
-
-	struct timeval			tv;		// Holds timeout values.
+	fr_ldap_config_t const	*handle_config = pconn->config;
 
 	LDAPControl			*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl			*our_clientctrls[LDAP_MAX_CONTROLS];
@@ -542,12 +540,12 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
 			      NUM_ELEMENTS(our_serverctrls),
 			      NUM_ELEMENTS(our_clientctrls),
-			      *pconn, serverctrls, clientctrls);
+			      pconn, serverctrls, clientctrls);
 
-	fr_assert(*pconn && (*pconn)->handle);
+	fr_assert(pconn && pconn->handle);
 
 	if (DEBUG_ENABLED4 || (request && RDEBUG_ENABLED4)) {
-		fr_ldap_timeout_debug(request, *pconn, fr_time_delta_wrap(0), __FUNCTION__);
+		fr_ldap_timeout_debug(request, pconn, fr_time_delta_wrap(0), __FUNCTION__);
 	}
 
 	/*
@@ -563,31 +561,60 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 		ROPTIONAL(RDEBUG2, DEBUG2, "Performing unfiltered search in \"%s\", scope \"%s\"", dn,
 			  fr_table_str_by_value(fr_ldap_scope, scope, "<INVALID>"));
 	}
-	/*
-	 *	If LDAP search produced an error it should also be logged
-	 *	to the ld. result should pick it up without us
-	 *	having to pass it explicitly.
-	 */
-	memset(&tv, 0, sizeof(tv));
 
-	if (ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs,
+	if (ldap_search_ext(pconn->handle, dn, scope, filter, search_attrs,
 			    0, our_serverctrls, our_clientctrls, NULL, 0, msgid) != LDAP_SUCCESS) {
-		int ldap_errno;
-
-		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		ERROR("Failed performing search: %s", ldap_err2string(ldap_errno));
-
-		return LDAP_PROC_ERROR;
+		fr_ldap_rcode_t	ret = fr_ldap_error_check(NULL, pconn, NULL, NULL);
+		ROPTIONAL(RPERROR, PERROR, "Failed performing search");
+		return ret;
 	}
 
 	return LDAP_PROC_SUCCESS;
+}
+
+static void ldap_trunk_search_results_debug(request_t *request, fr_ldap_query_t *query)
+{
+	LDAP			*ld = query->ldap_conn->handle;
+	LDAPMessage		*message;
+	char const * const 	*attr;
+	char			*dn;
+	struct berval		**values;
+	int			count;
+
+	count = ldap_count_entries(ld, query->result);
+	RDEBUG3("LDAP query returned %d entr%s", count, count > 1 ? "y" : "ies");
+	message = ldap_first_entry(ld, query->result);
+	RINDENT();
+	while (message) {
+		dn = ldap_get_dn(ld, message);
+		RDEBUG3("Entry DN %s", dn);
+		ldap_memfree(dn);
+		attr = query->search.attrs;
+		if (!attr) goto next;
+		RINDENT();
+		while(*attr) {
+			values = ldap_get_values_len(ld, message, *attr);
+			if (!values) {
+				RDEBUG3("Attribute \"%s\" not found", *attr);
+			} else {
+				count = ldap_count_values_len(values);
+				RDEBUG3("Attribute \"%s\" found %d time%s", *attr, count, count > 1 ? "s" : "");
+			}
+			ldap_value_free_len(values);
+			attr++;
+		}
+		REXDENT();
+	next:
+		message = ldap_next_entry(query->ldap_conn->handle, message);
+	}
+	REXDENT();
 }
 
 /** Handle the return code from parsed LDAP results to set the module rcode
  *
  */
 static unlang_action_t ldap_trunk_query_results(rlm_rcode_t *p_result, UNUSED int *priority,
-						UNUSED request_t *request, void *uctx)
+						request_t *request, void *uctx)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
 
@@ -597,6 +624,7 @@ static unlang_action_t ldap_trunk_query_results(rlm_rcode_t *p_result, UNUSED in
 		return UNLANG_ACTION_YIELD;
 
 	case LDAP_RESULT_SUCCESS:
+		if (DEBUG_ENABLED3 && query->type == LDAP_REQUEST_SEARCH) ldap_trunk_search_results_debug(request, query);
 		RETURN_MODULE_OK;
 
 	case LDAP_RESULT_BAD_DN:
@@ -647,9 +675,8 @@ do { \
 	} \
 } while (0)
 
-/** Run an async or sync search LDAP query on a trunk connection
+/** Run an async search LDAP query on a trunk connection
  *
- * @param[out] p_result		from synchronous evaluation.
  * @param[in] ctx		to allocate the query in.
  * @param[out] out		that has been allocated.
  * @param[in] request		this query relates to.
@@ -664,8 +691,7 @@ do { \
  *	- UNLANG_ACTION_FAIL on error.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  */
-unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
-				     TALLOC_CTX *ctx,
+unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *base_dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls)
@@ -682,7 +708,6 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 
 	default:
 	error:
-		if (p_result) *p_result = RLM_MODULE_FAIL;
 		*out = NULL;
 		talloc_free(query);
 		return UNLANG_ACTION_FAIL;
@@ -700,7 +725,6 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 
 /** Run an async modification LDAP query on a trunk connection
  *
- * @param[out] p_result		from synchronous evaluation.
  * @param[in] ctx		to allocate the query in.
  * @param[out] out		that has been allocated.
  * @param[in] request		this query relates to.
@@ -713,8 +737,7 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
  *	- UNLANG_ACTION_FAIL on error.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  */
-unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
-				     TALLOC_CTX *ctx,
+unlang_action_t fr_ldap_trunk_modify(TALLOC_CTX *ctx,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *dn, LDAPMod *mods[],
 				     LDAPControl **serverctrls, LDAPControl **clientctrls)
@@ -732,7 +755,6 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 	default:
 	error:
 		*out = NULL;
-		*p_result = RLM_MODULE_FAIL;
 		talloc_free(query);
 		return UNLANG_ACTION_FAIL;
 	}
@@ -754,14 +776,14 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
  *
  * @param[out] msgid		LDAP message ID.
  * @param[in] request		Current request.
- * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
+ * @param[in] pconn		to use.
  * @param[in] dn		of the object to modify.
  * @param[in] mods		to make, see 'man ldap_modify' for more information.
  * @param[in] serverctrls	Search controls to pass to the server.  May be NULL.
  * @param[in] clientctrls	Search controls for ldap_modify.  May be NULL.
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
+fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t *pconn,
 				     char const *dn, LDAPMod *mods[],
 				     LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
@@ -771,20 +793,18 @@ fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_con
 	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
 			      NUM_ELEMENTS(our_serverctrls),
 			      NUM_ELEMENTS(our_clientctrls),
-			      *pconn, serverctrls, clientctrls);
+			      pconn, serverctrls, clientctrls);
 
-	fr_assert(*pconn && (*pconn)->handle);
+	fr_assert(pconn && pconn->handle);
 
-	if (RDEBUG_ENABLED4) fr_ldap_timeout_debug(request, *pconn, fr_time_delta_wrap(0), __FUNCTION__);
+	if (RDEBUG_ENABLED4) fr_ldap_timeout_debug(request, pconn, fr_time_delta_wrap(0), __FUNCTION__);
 
 	RDEBUG2("Modifying object with DN \"%s\"", dn);
-	if(ldap_modify_ext((*pconn)->handle, dn, mods, our_serverctrls, our_clientctrls, msgid) != LDAP_SUCCESS) {
-		int ldap_errno;
+	if(ldap_modify_ext(pconn->handle, dn, mods, our_serverctrls, our_clientctrls, msgid) != LDAP_SUCCESS) {
+		fr_ldap_rcode_t	ret = fr_ldap_error_check(NULL, pconn, NULL, NULL);
+		ROPTIONAL(RPEDEBUG, RPERROR, "Failed modifying object");
 
-		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		ROPTIONAL(RPEDEBUG, RPERROR, "Failed modifying object %s", ldap_err2string(ldap_errno));
-
-		return LDAP_PROC_ERROR;
+		return ret;
 	}
 
 	return LDAP_PROC_SUCCESS;
@@ -792,7 +812,6 @@ fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_con
 
 /** Run an async LDAP "extended operation" query on a trunk connection
  *
- * @param[out] p_result		from synchronous evaluation.
  * @param[in] ctx		to allocate the query in.
  * @param[out] out		that has been allocated.
  * @param[in] request		this query relates to.
@@ -805,8 +824,7 @@ fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_con
  *	- UNLANG_ACTION_FAIL on error.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  */
-unlang_action_t fr_ldap_trunk_extended(rlm_rcode_t *p_result,
-				       TALLOC_CTX *ctx,
+unlang_action_t fr_ldap_trunk_extended(TALLOC_CTX *ctx,
 				       fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				       char const *reqoid, struct berval *reqdata,
 				       LDAPControl **serverctrls, LDAPControl **clientctrls)
@@ -824,7 +842,6 @@ unlang_action_t fr_ldap_trunk_extended(rlm_rcode_t *p_result,
 	default:
 	error:
 		*out = NULL;
-		*p_result = RLM_MODULE_FAIL;
 		talloc_free(query);
 		return UNLANG_ACTION_FAIL;
 	}
@@ -850,17 +867,17 @@ unlang_action_t fr_ldap_trunk_extended(rlm_rcode_t *p_result,
  * @param[in] reqdata	Data required for the request.
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-fr_ldap_rcode_t fr_ldap_extended_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
+fr_ldap_rcode_t fr_ldap_extended_async(int *msgid, request_t *request, fr_ldap_connection_t *pconn,
 				       char const *reqoid, struct berval *reqdata)
 {
-	int	err;
-
-	fr_assert(*pconn && (*pconn)->handle);
+	fr_assert(pconn && pconn->handle);
 
 	RDEBUG2("Requesting extended operation with OID %s", reqoid);
-	err = ldap_extended_operation((*pconn)->handle, reqoid, reqdata, NULL, NULL, msgid);
-
-	if (err) return LDAP_PROC_ERROR;
+	if (ldap_extended_operation(pconn->handle, reqoid, reqdata, NULL, NULL, msgid)) {
+		fr_ldap_rcode_t	ret = fr_ldap_error_check(NULL, pconn, NULL, NULL);
+		RPERROR("Failed requesting extended operation");
+		return ret;
+	}
 	return LDAP_PROC_SUCCESS;
 }
 

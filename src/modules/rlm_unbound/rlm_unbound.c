@@ -433,6 +433,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	if (res) {
 	error:
 		PERROR("%s", ub_strerror(res));
+	free_error:
+		talloc_free(t->ev_b);
 		return -1;
 	}
 
@@ -444,7 +446,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 	if (unbound_log_init(t, &t->u_log, t->ev_b->ub) < 0) {
 		PERROR("Failed to initialise unbound log");
-		return -1;
+		goto free_error;
 	}
 
 	/*

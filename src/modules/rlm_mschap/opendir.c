@@ -39,7 +39,8 @@ USES_APPLE_DEPRECATED_API
 /*
  *	Only used by rlm_mschap.c
  */
-unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t * usernamepair);
+unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t *usernamepair,
+			       mschap_auth_call_env_t *call_env);
 
 
 static unlang_action_t getUserNodeRef(rlm_rcode_t *p_result, request_t *request, char* inUserName, char **outUserName,
@@ -221,7 +222,8 @@ static unlang_action_t getUserNodeRef(rlm_rcode_t *p_result, request_t *request,
 	RETURN_MODULE_RCODE(result);
 }
 
-unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t * usernamepair)
+unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t *usernamepair,
+			       mschap_auth_call_env_t *env_data)
 {
 	rlm_rcode_t		rcode		 = RLM_MODULE_OK;
 	tDirStatus		status		 = eDSNoErr;
@@ -239,7 +241,7 @@ unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pai
 	unsigned int t;
 #endif
 
-	response = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_ms_chap2_response);
+	response = fr_pair_find_by_da_nested(&request->request_pairs, NULL, tmpl_attr_tail_da(env_data->chap2_response));
 
 	username_string = talloc_array(request, char, usernamepair->vp_length + 1);
 	if (!username_string) RETURN_MODULE_FAIL;
@@ -371,10 +373,9 @@ unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pai
 				mschap_reply[0] = 'S';
 				mschap_reply[1] = '=';
 				memcpy(&(mschap_reply[2]), &(pStepBuff->fBufferData[4]), len);
-				mschap_add_reply(request,
-						 *response->vp_strvalue,
-						 attr_ms_chap2_success,
-						 mschap_reply, len + 2);
+				if (env_data->chap2_success) mschap_add_reply(request, *response->vp_strvalue,
+						 			      tmpl_attr_tail_da(env_data->chap2_success),
+									      mschap_reply, len + 2);
 				RDEBUG2("dsDoDirNodeAuth returns stepbuff: %s (len=%u)\n", mschap_reply, (unsigned int) len);
 			}
 		}

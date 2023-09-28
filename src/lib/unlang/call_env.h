@@ -80,15 +80,20 @@ struct call_env_s {
 			bool		multi;		//!< Multiple instances of the conf pairs are allowed.  Resulting
 							///< boxes are stored in an array - one entry per conf pair.
 			bool		nullable;	//!< Tmpl expansions are allowed to produce no output.
+			bool		force_quote;	//!< Force quote method when parsing tmpl.  This is for corner cases
+							///< where tmpls should always be parsed with a particular quoting
+							///< regardless of how they are in the config file.  E.g. the `program`
+							///< option of `rlm_exec` should always be parsed as T_BACK_QUOTED_STRING.
 			call_env_dest_t	type;		//!< Type of structure boxes will be written to.
 			size_t		size;		//!< Size of structure boxes will be written to.
 			char const	*type_name;	//!< Name of structure type boxes will be written to.
-			size_t		tmpl_offset;	//!< Where to write pointer to tmpl in the output structure.  Optional.
+			ssize_t		tmpl_offset;	//!< Where to write pointer to tmpl in the output structure.  Optional.
 		} pair;
 
 		struct {
 			char const		*ident2;	//!< Second identifier for a section
 			call_env_t const	*subcs;		//!< Nested definitions for subsection.
+			bool			required;	//!< Section is required.
     		} section;
   	};
 };
@@ -179,7 +184,8 @@ _Generic((((_s *)NULL)->_f), \
 		  .nullable = _nullable, \
 		  .type = FR_CALL_ENV_DST_TYPE(_struct, _field), \
 		  .size = FR_CALL_ENV_DST_SIZE(_struct, _field), \
-		  .type_name = FR_CALL_ENV_DST_TYPE_NAME(_struct, _field) }
+		  .type_name = FR_CALL_ENV_DST_TYPE_NAME(_struct, _field), \
+		  .tmpl_offset = -1 }
 
 /** Version of the above which sets optional field for pointer to tmpl
  */
@@ -210,14 +216,15 @@ _Generic((((_s *)NULL)->_f), \
 		  .type = CALL_ENV_TYPE_TMPL_ONLY, \
 		  .tmpl_offset = offsetof(_struct, _tmpl_field) }
 
-#define FR_CALL_ENV_SUBSECTION(_name, _ident2, _subcs ) \
+#define FR_CALL_ENV_SUBSECTION(_name, _ident2, _subcs, _required ) \
 	.name = _name, \
 	.type = FR_TYPE_SUBSECTION, \
 	.section = { .ident2 = _ident2, \
-		     .subcs = _subcs }
+		     .subcs = _subcs, \
+		     .required = _required }
 
 int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, fr_dict_t const *dict_def,
-		   CONF_SECTION const *cs, call_env_t const *call_env);
+		   CONF_SECTION const *cs, call_env_t const *call_env) CC_HINT(nonnull);
 
 size_t call_env_count(size_t *vallen, CONF_SECTION const *cs, call_env_t const *call_env);
 

@@ -66,25 +66,20 @@ static unlang_action_t unlang_limit_resume_done(UNUSED rlm_rcode_t *p_result, UN
 static unlang_action_t unlang_limit_enforce(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_limit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_limit_t);
-	unlang_group_t			*g;
+	unlang_action_t			action;
 
 	state->thread = unlang_thread_instance(frame->instruction);
 	fr_assert(state->thread != NULL);
 
 	if (state->thread->active_callers >= state->limit) return UNLANG_ACTION_FAIL;
 
-	g = unlang_generic_to_group(frame->instruction);
-
-	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_STOP_PROCESSING;
-	}
-
-	state->thread->active_callers++;
-
 	frame_repeat(frame, unlang_limit_resume_done);
 
-	return UNLANG_ACTION_PUSHED_CHILD;
+	action = unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_STOP);
+
+	state->thread->active_callers += (action == UNLANG_ACTION_PUSHED_CHILD);
+
+	return action;
 }
 
 static unlang_action_t unlang_limit_xlat_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)

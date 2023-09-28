@@ -89,8 +89,6 @@ typedef struct {
 
 	unsigned int		has_value : 1;			//!< Has a value.
 
-	unsigned int		virtual : 1;			//!< for dynamic expansion
-
 	unsigned int		is_unsigned : 1;       		//!< hackity hack for dates and time deltas
 
 	unsigned int		counter : 1;       		//!< integer attribute is actually an impulse / counter
@@ -107,6 +105,8 @@ typedef struct {
 	 *	more bit.
 	 */
 	unsigned int		extra : 1;			//!< really "subtype is used by dict, not by protocol"
+
+	unsigned int		local : 1;       		//!< is a local variable
 
 	/*
 	 *	main: extra is set, then this field is is key, bit, or a uint16 length field.
@@ -370,6 +370,13 @@ void			fr_dict_unknown_free(fr_dict_attr_t const **da);
 
 fr_dict_attr_t		*fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
 
+static inline fr_dict_attr_t *fr_dict_unknown_copy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+{
+	fr_assert(da->flags.is_unknown);
+
+	return fr_dict_unknown_afrom_da(ctx, da);
+}
+
 fr_dict_attr_t		*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
 							  fr_dict_attr_t const *parent, unsigned int vendor)
 							  CC_HINT(nonnull(2));
@@ -387,10 +394,10 @@ fr_dict_attr_t		*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t c
 
 
 fr_slen_t		fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
-							 fr_dict_attr_err_t *err, fr_dict_attr_t **out,
+							 fr_dict_attr_t const **out,
 							 fr_dict_attr_t const *parent,
-							 fr_sbuff_t *in, fr_sbuff_term_t const *tt)
-							 CC_HINT(nonnull(3,4,5));
+							 fr_sbuff_t *in)
+							 CC_HINT(nonnull(2,3,4));
 
 int			fr_dict_attr_unknown_parent_to_known(fr_dict_attr_t *da, fr_dict_attr_t const *parent);
 

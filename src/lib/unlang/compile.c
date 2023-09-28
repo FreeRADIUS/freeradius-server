@@ -43,7 +43,6 @@ RCSID("$Id$")
 #include "edit_priv.h"
 #include "timeout_priv.h"
 #include "limit_priv.h"
-#include "variable_priv.h"
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
@@ -230,7 +229,7 @@ static inline CC_HINT(always_inline) int unlang_rules_verify(tmpl_rules_t const 
 #endif
 #define RULES_VERIFY(_rules) do { if (unlang_rules_verify(_rules) < 0) return NULL; } while (0)
 
-static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *ci, fr_dict_t const *dict)
+static bool pass2_fixup_tmpl(UNUSED TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *ci, fr_dict_t const *dict)
 {
 	tmpl_t *vpt = *vpt_p;
 
@@ -243,296 +242,12 @@ static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *c
 	if (!vpt->rules.attr.dict_def) tmpl_set_dict_def(vpt, dict);
 
 	/*
-	 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
-	 */
-	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
-		if (tmpl_attr_to_xlat(ctx, vpt_p) < 0) {
-			return false;
-		}
-
-		/*
-		 *	The VPT has been rewritten, so use the new one.
-		 */
-		vpt = *vpt_p;
-	} /* it's now xlat, so we need to resolve it. */
-
-	/*
 	 *	Fixup any other tmpl types
 	 */
 	if (tmpl_resolve(vpt, &(tmpl_res_rules_t){ .dict_def = dict, .force_dict_def = (dict != NULL)}) < 0) {
 		cf_log_perr(ci, NULL);
 		return false;
 	}
-
-	return true;
-}
-
-static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *dict)
-{
-	tmpl_t	*vpt;
-	map_t	*map;
-
-	map = c->data.map;	/* shorter */
-
-	/*
-	 *	Auth-Type := foo
-	 *
-	 *	Where "foo" is dynamically defined.
-	 */
-	if (c->pass2_fixup == PASS2_FIXUP_TYPE) {
-		if (!fr_dict_enum_by_name(tmpl_attr_tail_da(map->lhs), map->rhs->name, -1)) {
-			cf_log_err(map->ci, "Invalid reference to non-existent %s %s { ... }",
-				   tmpl_attr_tail_da(map->lhs)->name,
-				   map->rhs->name);
-			return false;
-		}
-
-		/*
-		 *	These guys can't have a paircmp fixup applied.
-		 */
-		c->pass2_fixup = PASS2_FIXUP_NONE;
-		return true;
-	}
-
-	if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
-		/*
-		 *	Resolve the attribute references first
-		 */
-		if (tmpl_is_attr_unresolved(map->lhs)) {
-			if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, dict)) return false;
-		}
-
-		if (tmpl_is_attr_unresolved(map->rhs)) {
-			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) return false;
-		}
-
-		c->pass2_fixup = PASS2_FIXUP_NONE;
-
-		/*
-		 *	Now that we have known data types for the LHS
-		 *	/ RHS attribute(s), go check them.
-		 */
-		if (fr_cond_promote_types(c, NULL, NULL, NULL, false) < 0) {
-			cf_log_perr(ci, "Failed parsing condition after dynamic attributes were defined");
-			return false;
-		}
-	}
-
-	/*
-	 *	Just in case someone adds a new fixup later.
-	 */
-	fr_assert((c->pass2_fixup == PASS2_FIXUP_NONE) ||
-		   (c->pass2_fixup == PASS2_PAIRCOMPARE));
-
-	/*
-	 *	Precompile xlat's
-	 */
-	if (tmpl_is_xlat_unresolved(map->lhs)) {
-		/*
-		 *	Compile the LHS to an attribute reference only
-		 *	if the RHS is a literal.
-		 *
-		 *	@todo - allow anything anywhere.
-		 */
-		if (!tmpl_is_unresolved(map->rhs)) {
-			if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, dict)) {
-				return false;
-			}
-		} else {
-			if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, dict)) {
-				return false;
-			}
-
-			/*
-			 *	Attribute compared to a literal gets
-			 *	the literal cast to the data type of
-			 *	the attribute.
-			 *
-			 *	The code in parser.c did this for
-			 *
-			 *		&Attr == data
-			 *
-			 *	But now we've just converted "%{Attr}"
-			 *	to &Attr, so we've got to do it again.
-			 */
-			if (tmpl_is_attr(map->lhs)) {
-				if ((map->rhs->len > 0) ||
-				    (map->op != T_OP_CMP_EQ) ||
-				    (tmpl_attr_tail_da(map->lhs)->type == FR_TYPE_STRING) ||
-				    (tmpl_attr_tail_da(map->lhs)->type == FR_TYPE_OCTETS)) {
-
-					if (tmpl_cast_in_place(map->rhs, tmpl_attr_tail_da(map->lhs)->type, tmpl_attr_tail_da(map->lhs)) < 0) {
-						cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
-							   fr_type_to_str(tmpl_attr_tail_da(map->lhs)->type),
-							   fr_box_strvalue_len(map->rhs->name, map->rhs->len));
-						return false;
-					} /* else the cast was successful */
-
-				} else {	/* RHS is empty, it's just a check for empty / non-empty string */
-					vpt = talloc_steal(c, map->lhs);
-					map->lhs = NULL;
-					talloc_free(c->data.map);
-
-					/*
-					 *	"%{Foo}" == '' ---> !Foo
-					 *	"%{Foo}" != '' ---> Foo
-					 */
-					c->type = COND_TYPE_TMPL;
-					c->data.vpt = vpt;
-					c->negate = !c->negate;
-
-					WARN("%s[%d]: Please change (\"%%{%s}\" %s '') to %c&%s",
-					     cf_filename(cf_item_to_section(ci)),
-					     cf_lineno(cf_item_to_section(ci)),
-					     vpt->name, c->negate ? "==" : "!=",
-					     c->negate ? '!' : ' ', vpt->name);
-
-					/*
-					 *	No more RHS, so we can't do more optimizations
-					 */
-					return true;
-				}
-			}
-		}
-	}
-
-	if (tmpl_is_xlat_unresolved(map->rhs)) {
-		/*
-		 *	Convert the RHS to an attribute reference only
-		 *	if the LHS is an attribute reference, AND is
-		 *	of the same type as the RHS.
-		 *
-		 *	We can fix this when the code in evaluate.c
-		 *	can handle strings on the LHS, and attributes
-		 *	on the RHS.  For now, the code in parser.c
-		 *	forbids this.
-		 */
-		if (tmpl_is_attr(map->lhs)) {
-			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) return false;
-		} else {
-			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) return false;
-		}
-	}
-
-	if (tmpl_is_exec_unresolved(map->lhs)) {
-		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, dict)) {
-			return false;
-		}
-	}
-
-	if (tmpl_is_exec_unresolved(map->rhs)) {
-		if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) {
-			return false;
-		}
-	}
-
-	/*
-	 *	Convert bare refs to %{Foreach-Variable-N}
-	 */
-	if (tmpl_is_unresolved(map->lhs) &&
-	    (strncmp(map->lhs->name, "Foreach-Variable-", 17) == 0)) {
-		char *fmt;
-		ssize_t slen;
-
-		fmt = talloc_typed_asprintf(map->lhs, "%%{%s}", map->lhs->name);
-		slen = tmpl_afrom_substr(map, &vpt, &FR_SBUFF_IN(fmt, talloc_array_length(fmt) - 1),
-					 T_DOUBLE_QUOTED_STRING,
-					 NULL,
-					 &(tmpl_rules_t){
-					 	.attr = {
-							.list_def = request_attr_request,
-					 		.allow_unknown = true
-					 	}
-					 });
-		if (!vpt) {
-			char *spaces, *text;
-
-			fr_canonicalize_error(map->ci, &spaces, &text, slen, fr_strerror());
-
-			cf_log_err(map->ci, "Failed converting %s to xlat", map->lhs->name);
-			cf_log_err(map->ci, "%s", fmt);
-			cf_log_err(map->ci, "%s^ %s", spaces, text);
-
-			talloc_free(spaces);
-			talloc_free(text);
-			talloc_free(fmt);
-
-			return false;
-		}
-		talloc_free(map->lhs);
-		map->lhs = vpt;
-	}
-
-#ifdef HAVE_REGEX
-	if (tmpl_is_regex_xlat_unresolved(map->rhs)) {
-		if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) {
-			return false;
-		}
-	}
-	fr_assert(!tmpl_is_regex_xlat_unresolved(map->lhs));
-#endif
-
-	/*
-	 *	Convert &Packet-Type to "%{Packet-Type}", because
-	 *	these attributes don't really exist.  The code to
-	 *	find an attribute reference doesn't work, but the
-	 *	xlat code does.
-	 */
-	vpt = c->data.map->lhs;
-	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
-		if (tmpl_attr_to_xlat(c, &vpt) < 0) return false;
-
-		fr_assert(!tmpl_is_xlat_unresolved(map->lhs));
-	}
-
-	/*
-	 *	@todo - do the same thing for the RHS...
-	 */
-
-	/*
-	 *	Only attributes can have a paircmp registered, and
-	 *	they can only be with the current request_t, and only
-	 *	with the request pairs.
-	 */
-	if (!tmpl_is_attr(map->lhs) ||
-	    !tmpl_request_ref_is_current(tmpl_request(map->lhs)) ||
-	    (tmpl_list(map->lhs) != request_attr_request)) {
-		return true;
-	}
-
-	if (!paircmp_find(tmpl_attr_tail_da(map->lhs))) return true;
-
-	/*
-	 *	It's a pair comparison.  Do additional checks.
-	 */
-	if (tmpl_contains_regex(map->rhs)) {
-		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex", map->lhs->name);
-		return false;
-	}
-
-	if (tmpl_rules_cast(c->data.map->lhs) != FR_TYPE_NULL) {
-		cf_log_err(map->ci, "Cannot cast virtual attribute %s to %s", map->lhs->name,
-			   tmpl_type_to_str(c->data.map->lhs->type));
-		return false;
-	}
-
-	/*
-	 *	Force the RHS to be cast to whatever the LHS da is.
-	 */
-	if (tmpl_cast_set(map->rhs, tmpl_attr_tail_da(map->lhs)->type) < 0) {
-		cf_log_perr(map->ci, "Failed setting rhs type");
-	}
-
-	if (map->op != T_OP_CMP_EQ) {
-		cf_log_err(map->ci, "Must use '==' for comparisons with virtual attribute %s", map->lhs->name);
-		return false;
-	}
-
-	/*
-	 *	Mark it as requiring a paircmp() call, instead of
-	 *	fr_pair_cmp().
-	 */
-	c->pass2_fixup = PASS2_PAIRCOMPARE;
 
 	return true;
 }
@@ -546,7 +261,7 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 {
 	RULES_VERIFY(rules);
 
-	if (tmpl_is_unresolved(map->lhs)) {
+	if (tmpl_is_data_unresolved(map->lhs)) {
 		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, rules->attr.dict_def)) {
 			return false;
 		}
@@ -565,7 +280,7 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 	}
 
 	if (map->rhs) {
-		if (tmpl_is_unresolved(map->rhs)) {
+		if (tmpl_is_data_unresolved(map->rhs)) {
 			fr_assert(!tmpl_is_regex_xlat_unresolved(map->rhs));
 
 			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->attr.dict_def)) {
@@ -750,7 +465,6 @@ static void unlang_dump(unlang_t *instruction, int depth)
 		case UNLANG_TYPE_RETURN:
 		case UNLANG_TYPE_TMPL:
 		case UNLANG_TYPE_XLAT:
-		case UNLANG_TYPE_VARIABLE:
 			DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
 			break;
 		}
@@ -796,7 +510,7 @@ static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
 	}
 
 	switch (map->rhs->type) {
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_ATTR:
@@ -878,7 +592,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 *	We then free the template and alloc a NULL one instead.
 	 */
 	if ((map->op == T_OP_CMP_FALSE) && !tmpl_is_null(map->rhs)) {
-		if (!tmpl_is_unresolved(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
+		if (!tmpl_is_data_unresolved(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
 			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
 			     cf_filename(cp), cf_lineno(cp));
 		}
@@ -923,7 +637,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 */
 	if (map->op == T_OP_CMP_FALSE) return 0;
 
-	if (!tmpl_is_unresolved(map->rhs)) return 0;
+	if (!tmpl_is_data_unresolved(map->rhs)) return 0;
 
 	/*
 	 *	If LHS is an attribute, and RHS is a literal, we can
@@ -932,7 +646,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 *	Unless it's a unary operator in which case we
 	 *	ignore map->rhs.
 	 */
-	if (tmpl_is_attr(map->lhs) && tmpl_is_unresolved(map->rhs)) {
+	if (tmpl_is_attr(map->lhs) && tmpl_is_data_unresolved(map->rhs)) {
 		fr_type_t type = tmpl_attr_tail_da(map->lhs)->type;
 
 		/*
@@ -1168,7 +882,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		 *	Limit the allowed template types.
 		 */
 		switch (vpt->type) {
-		case TMPL_TYPE_UNRESOLVED:
+		case TMPL_TYPE_DATA_UNRESOLVED:
 		case TMPL_TYPE_ATTR:
 		case TMPL_TYPE_ATTR_UNRESOLVED:
 		case TMPL_TYPE_XLAT:
@@ -1241,7 +955,7 @@ static int edit_section_alloc(CONF_SECTION *parent, CONF_SECTION **child, char c
 	return 0;
 }
 
-static int edit_pair_alloc(CONF_SECTION *cs, CONF_PAIR *original, char const *attr, fr_token_t op, char const *value)
+static int edit_pair_alloc(CONF_SECTION *cs, CONF_PAIR *original, char const *attr, fr_token_t op, char const *value, fr_token_t list_op)
 {
 	CONF_PAIR *cp;
 	fr_token_t rhs_quote;
@@ -1260,6 +974,27 @@ static int edit_pair_alloc(CONF_SECTION *cs, CONF_PAIR *original, char const *at
 	cf_filename_set(cp, cf_filename(original));
 	cf_lineno_set(cp, cf_lineno(original));
 
+	if (fr_debug_lvl >= 3) {
+		if (list_op == T_INVALID) {
+			cf_log_err(original, "%s %s %s --> %s %s %s",
+				   cf_pair_attr(original), fr_tokens[cf_pair_operator(original)], cf_pair_value(original),
+				   attr, fr_tokens[op], value);
+		} else {
+			if (*attr == '&') attr++;
+			cf_log_err(original, "%s %s %s --> %s %s { %s %s %s }",
+				   cf_pair_attr(original), fr_tokens[cf_pair_operator(original)], cf_pair_value(original),
+				   cf_section_name1(cs), fr_tokens[list_op], attr, fr_tokens[op], value);
+		}
+	} else if (fr_debug_lvl >= 2) {
+		if (list_op == T_INVALID) {
+			cf_log_err(original, "--> %s %s %s",
+				   attr, fr_tokens[op], value);
+		} else {
+			cf_log_err(original, "--> %s %s { %s %s %s }",
+				   cf_section_name1(cs), fr_tokens[list_op], attr, fr_tokens[op], value);
+		}
+	}
+
 	return 0;
 }
 
@@ -1272,8 +1007,9 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	CONF_ITEM		*ci;
 	CONF_SECTION		*group;
 	unlang_group_t		*g;
-	char			list_buffer[32], ref_buffer[1024];
-	char			buffer[2048];
+	char			list_buffer[32];
+	char			value_buffer[256];
+	char			attr_buffer[256];
 	char const		*list;
 
 	g = unlang_generic_to_group(parent);
@@ -1292,9 +1028,11 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	 *	Hoist this out of the loop, and make sure it always has a '&' prefix.
 	 */
 	if (name2) {
+		if (*name2 == '&') name2++;
 		snprintf(list_buffer, sizeof(list_buffer), "&%s", name2);
 	} else {
 		snprintf(list_buffer, sizeof(list_buffer), "&%s", tmpl_list_name(unlang_ctx->rules->attr.list_def, "<INVALID>"));
+
 	}
 
 	/*
@@ -1307,7 +1045,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 		CONF_SECTION	*child;
 		int		rcode;
 		fr_token_t	op;
-		char const	*attr, *value;
+		char const	*attr, *value, *end;
 
 		if (!cf_item_is_pair(ci)) continue;
 
@@ -1320,91 +1058,66 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 		fr_assert(attr);
 		fr_assert(value);
 
-		/*
-		 *	Canonicalize to no leading '&'
-		 */
-		if (*attr == '&') attr++;
-
 		list = list_buffer;
 
+		if (*attr == '&') attr++;
+
+		end = strchr(attr, '.');
+		if (!end) end = attr + strlen(attr);
+
 		/*
-		 *	Separate out the various possibilities for the
-		 *	"name", which could be a list, an attribute
-		 *	name, or a list followed by an attribute name.
+		 *	Separate out the various possibilities for the "name", which could be a list, an
+		 *	attribute name, or a list followed by an attribute name.
+		 *
+		 *	Note that even if we have "update request { ....}", the v3 parser allowed the contents
+		 *	of the "update" section to still specify parent / lists.  Which makes parsing it all
+		 *	annoying.
+		 *
+		 *	The good news is that all we care about is whether or not there's a parent / list ref.
+		 *	We don't care what that ref is.
 		 */
 		{
-			char const *p, *q;
 			fr_dict_attr_t const *tmpl_list;
 
-			p = attr;
-
-			q = strchr(p, '.');
-			if (!q) q = p + strlen(p);
-
 			/*
-			 *	Can refer to multiple request parent, etc.
+			 *	Allow for a "parent" or "outer" reference.  There may be multiple
+			 *	"parent.parent", so we keep processing them until we get a list reference.
 			 */
-			while (fr_table_value_by_substr(tmpl_request_ref_table, p, q - p, REQUEST_UNKNOWN) != REQUEST_UNKNOWN) {
-				if (!*p) {
-					cf_log_err(cp, "Missing list reference");
+			if (fr_table_value_by_substr(tmpl_request_ref_table, attr, end - attr, REQUEST_UNKNOWN) != REQUEST_UNKNOWN) {
+
+				/*
+				 *	Catch one more case where the behavior is different.
+				 *
+				 *	&request += &config[*]
+				 */
+				if ((cf_pair_value_quote(cp) == T_BARE_WORD) && (*value == '&') &&
+				    (strchr(value, '.') == NULL) && (strchr(value, '[') != NULL)) {
+					char const *p = strchr(value, '[');
+
+					cf_log_err(cp, "Cannot do array assignments for lists.  Just use '%s %s %.*s'",
+						   list, fr_tokens[op], (int) (p - value), value);
 					return NULL;
 				}
 
-				p = q + 1;
-				q = strchr(p, '.');
-				if (!q) q = p + strlen(p);
-			}
+				goto attr_is_list;
 
 			/*
-			 *	Can only refer to one list.
-			 *
-			 *	@todo - add support for &config?
+			 *	Doesn't have a parent ref, maybe it's a list ref?
 			 */
-			if (tmpl_attr_list_from_substr(&tmpl_list, &FR_SBUFF_IN(p, (q - p))) > 0) {
-				if (*q) {
-					p = q + 1;
-				} else {
-					p = NULL;
-				}
-			}
+			} else if (tmpl_attr_list_from_substr(&tmpl_list, &FR_SBUFF_IN(attr, (end - attr))) > 0) {
+				char *p;
 
-			/*
-			 *	Separate the list reference from the attribute reference.
-			 */
-			if (p > (attr + 1)) {
-				snprintf(ref_buffer, sizeof(ref_buffer), "&%.*s", (int) (p - attr) - 1, attr);
-				list = ref_buffer;
-
-				if (*p) {
-					attr = p;
-
-				} else {
-					attr = NULL;
-				}
-
-			} else if (!p) {
-				/*
-				 *	No trailing attribute name, the entire thing is a list
-				 *
-				 *	@todo - handle &control[*]
-				 */
-				list = cf_pair_attr(cp);
+			attr_is_list:
+				snprintf(attr_buffer, sizeof(attr_buffer), "&%s", attr);
+				list = attr_buffer;
 				attr = NULL;
+
+				p = strchr(attr_buffer, '.');
+				if (p) {
+					*(p++) = '\0';
+					attr = p;
+				}
 			}
-		}
-
-		/*
-		 *	Catch one more case where the behavior is different.
-		 *
-		 *	&request += &config[*]
-		 */
-		if (!attr && (cf_pair_value_quote(cp) == T_BARE_WORD) && (*value == '&') &&
-		    (strchr(value, '.') == NULL) && (strchr(value, '[') != NULL)) {
-			char const *p = strchr(value, '[');
-
-			cf_log_err(cp, "Cannot do array assignments for lists.  Just use '%s %s %.*s'",
-				   list, fr_tokens[op], (int) (p - value), value);
-			return NULL;
 		}
 
 		switch (op) {
@@ -1422,13 +1135,12 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 
 			} else {
 				if (strchr(attr, '[') == NULL) {
-					snprintf(buffer, sizeof(buffer), "&%s[*]", attr);
-					value = buffer;
+					snprintf(value_buffer, sizeof(value_buffer), "&%s[*]", attr);
 				} else {
-					value = attr;
+					snprintf(value_buffer, sizeof(value_buffer), "&%s", attr);
 				}
 
-				rcode = edit_pair_alloc(group, NULL, list, T_OP_SUB_EQ, value);
+				rcode = edit_pair_alloc(group, cp, list, T_OP_SUB_EQ, value_buffer, T_INVALID);
 			}
 			break;
 
@@ -1438,7 +1150,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			 */
 			if (!attr) {
 			list_op:
-				rcode = edit_pair_alloc(group, cp, list, op, value);
+				rcode = edit_pair_alloc(group, cp, list, op, value, T_INVALID);
 				break;
 			}
 			goto pair_op;
@@ -1453,15 +1165,18 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 					return NULL;
 				}
 
-				rcode = edit_pair_alloc(group, cp, list, op, value);
+				rcode = edit_pair_alloc(group, cp, list, op, value, T_INVALID);
 				break;
 			}
 
 		pair_op:
 			fr_assert(*attr != '&');
-			snprintf(buffer, sizeof(buffer), "%s.%s", list, attr);
+			if (snprintf(value_buffer, sizeof(value_buffer), "%s.%s", list, attr) < 0) {
+				cf_log_err(cp, "RHS of update too long to convert to edit automatically");
+				return NULL;
+			}
 
-			rcode = edit_pair_alloc(group, cp, buffer, op, value);
+			rcode = edit_pair_alloc(group, cp, value_buffer, op, value, T_INVALID);
 			break;
 
 		case T_OP_ADD_EQ:
@@ -1471,8 +1186,8 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			rcode = edit_section_alloc(group, &child, list, op);
 			if (rcode < 0) break;
 
-			snprintf(buffer, sizeof(buffer), "&%s", attr);
-			rcode = edit_pair_alloc(child, cp, buffer, T_OP_EQ, value);
+			snprintf(attr_buffer, sizeof(attr_buffer), "&%s", attr);
+			rcode = edit_pair_alloc(child, cp, attr_buffer, T_OP_EQ, value, op);
 			break;
 
 			/*
@@ -1495,8 +1210,8 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 				return NULL;
 			}
 
-			snprintf(buffer, sizeof(buffer), "&%s", attr);
-			rcode = edit_pair_alloc(child, cp, buffer, op, value);
+			snprintf(attr_buffer, sizeof(attr_buffer), "&%s", attr);
+			rcode = edit_pair_alloc(child, cp, attr_buffer, op, value, T_OP_SUB_EQ);
 			break;
 
 			/*
@@ -1703,7 +1418,7 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 	fr_assert(map->rhs);
 
 	switch (map->rhs->type) {
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_DATA:
@@ -1838,12 +1553,30 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 		/*
 		 *	As a set of fixups... we can't do array references in -=
 		 */
-		for (child = map_list_head(&map->child); child != NULL; child = map_list_next(&map->child, child)) {
-			if (!tmpl_is_attr(child->lhs)) continue;
+		if (map->op == T_OP_SUB_EQ) {
+			for (child = map_list_head(&map->child); child != NULL; child = map_list_next(&map->child, child)) {
+				if (!tmpl_is_attr(child->lhs)) continue;
 
-			if (tmpl_attr_tail_num(child->lhs) != NUM_UNSPEC) {
-				cf_log_err(child->ci, "Cannot use array references and values when deleting from a list");
-				goto fail;
+				if (tmpl_attr_tail_num(child->lhs) != NUM_UNSPEC) {
+					cf_log_err(child->ci, "Cannot use array references and values when deleting from a list");
+					goto fail;
+				}
+
+				/*
+				 *	The edit code doesn't do this correctly, so we just forbid it.
+				 */
+				if ((tmpl_attr_num_elements(child->lhs) - tmpl_attr_num_elements(map->lhs)) > 1) {
+					cf_log_err(child->ci, "List deletion must operate directly on the final child");
+					goto fail;
+				}
+
+				/*
+				 *	We don't do list comparisons either.
+				 */
+				if (fr_type_is_structural(tmpl_attr_tail_da(child->lhs)->type)) {
+					cf_log_err(child->ci, "List deletion cannot operate on lists");
+					goto fail;
+				}
 			}
 		}
 	} else {
@@ -1945,6 +1678,12 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 		goto fail;
 	}
 
+	if ((map->op == T_OP_SUB_EQ) && fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type) &&
+	    tmpl_is_attr(map->rhs) && tmpl_attr_tail_da(map->rhs)->flags.local) {
+		cf_log_err(cp, "Cannot delete local variable %s", map->rhs->name);
+		goto fail;
+	}
+
 	/*
 	 *	Do basic sanity checks and resolving.
 	 */
@@ -1967,37 +1706,51 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
  *  Definitions which are adjacent to one another are automatically merged
  *  into one larger variable definition.
  */
-static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_PAIR *cp, tmpl_rules_t *t_rules)
+static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_PAIR *cp, tmpl_rules_t *t_rules)
 {
-	unlang_variable_t *var, *var_free;
-	unlang_t	*c = NULL, *out = UNLANG_IGNORE;
+	unlang_variable_t *var;
 	fr_type_t	type;
 	char const	*attr, *value;
 	fr_dict_attr_t const *da;
+	unlang_group_t	*group;
 
 	fr_dict_attr_flags_t flags = {
 		.internal = true,
+		.local = true,
 	};
 
-	c = *prev;
-	var = var_free = NULL;
+	fr_assert(unlang_ops[parent->type].debug_braces);
 
-	if (c && (c->type == UNLANG_TYPE_VARIABLE)) {
-		var = unlang_generic_to_variable(c);
+	/*
+	 *	Enforce locations for local variables.
+	 */
+	switch (parent->type) {
+	case UNLANG_TYPE_CASE:
+	case UNLANG_TYPE_ELSE:
+	case UNLANG_TYPE_ELSIF:
+	case UNLANG_TYPE_FOREACH:
+	case UNLANG_TYPE_GROUP:
+	case UNLANG_TYPE_IF:
+	case UNLANG_TYPE_TIMEOUT:
+	case UNLANG_TYPE_LIMIT:
+	case UNLANG_TYPE_POLICY:
+		break;
+
+	default:
+		cf_log_err(cp, "Local variables cannot be used here");
+		return NULL;
+	}
+
+	/*
+	 *	The variables exist in the parent block.
+	 */
+	group = unlang_generic_to_group(parent);
+	if (group->variables) {
+		var = group->variables;
 
 	} else {
-		var = talloc_zero(parent, unlang_variable_t);
+		group->variables = var = talloc_zero(parent, unlang_variable_t);
 		if (!var) return NULL;
-
-		c = out = unlang_variable_to_generic(var);
-		c->parent = parent;
-		c->next = NULL;
-		c->name = cf_pair_value(cp);
-		c->debug_name = c->name;
-		c->type = UNLANG_TYPE_VARIABLE;
-		c->ci = CF_TO_ITEM(cp);
-
-		var_free = var;
 
 		var->dict = fr_dict_protocol_alloc(unlang_ctx->rules->attr.dict_def);
 		if (!var->dict) {
@@ -2028,7 +1781,6 @@ static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx
 	type = fr_table_value_by_str(fr_type_table, attr, FR_TYPE_NULL);
 	if (type == FR_TYPE_NULL) {
 invalid_type:
-		talloc_free(var_free);
 		cf_log_err(cp, "Invalid data type '%s'", attr);
 		return NULL;
 	}
@@ -2043,11 +1795,12 @@ invalid_type:
 	 *	in var->root will also check the protocol dictionary,
 	 *	so the check here is really only for better error messages.
 	 */
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(t_rules->parent->attr.dict_def), value);
-	if (da) {
-		talloc_free(var_free);
-		cf_log_err(cp, "Local variable '%s' duplicates a dictionary attribute.", value);
-		return NULL;
+	if (t_rules && t_rules->parent && t_rules->parent->attr.dict_def) {
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(t_rules->parent->attr.dict_def), value);
+		if (da) {
+			cf_log_err(cp, "Local variable '%s' duplicates a dictionary attribute.", value);
+			return NULL;
+		}
 	}
 
 	/*
@@ -2055,22 +1808,18 @@ invalid_type:
 	 */
 	da = fr_dict_attr_by_name(NULL, var->root, value);
 	if (da) {
-		talloc_free(var_free);
 		cf_log_err(cp, "Duplicate variable name '%s'.", value);
 		return NULL;
 	}
 
 	if (fr_dict_attr_add(var->dict, var->root, value, var->max_attr, type, &flags) < 0) {
-		talloc_free(var_free);
 		cf_log_err(cp, "Failed adding variable '%s'", value);
 		return NULL;
 	}
 
 	var->max_attr++;
 
-	*prev = c;
-
-	return out;
+	return UNLANG_IGNORE;
 }
 
 /*
@@ -2415,7 +2164,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	bool		was_if = false;
 	char const	*skip_else = NULL;
 	unlang_t	*edit = NULL;
-	unlang_t	*var = NULL;
 	unlang_compile_t *unlang_ctx;
 	unlang_compile_t unlang_ctx2;
 	tmpl_rules_t	t_rules;
@@ -2428,6 +2176,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	 */
 	compile_copy_context(&unlang_ctx2, unlang_ctx_in, unlang_ctx_in->component);
 	unlang_ctx = &unlang_ctx2;
+	t_rules = *unlang_ctx_in->rules;
 
 	/*
 	 *	Loop over the children of this group.
@@ -2507,8 +2256,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 					/*
 					 *	And manually free this.
 					 */
-					ptr = cf_data_remove(subcs, fr_cond_t, NULL);
-					talloc_free(ptr);
 					ptr = cf_data_remove(subcs, xlat_exp_head_t, NULL);
 					talloc_free(ptr);
 
@@ -2558,15 +2305,13 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			 *	Variable definition.
 			 */
 			if (cf_pair_operator(cp) == T_OP_CMP_TRUE) {
-				single = compile_variable(c, unlang_ctx, &var, cp, &t_rules);
+				single = compile_variable(c, unlang_ctx, cp, &t_rules);
 				if (!single) {
 					talloc_free(c);
 					return NULL;
 				}
 				goto add_child;
 			}
-
-			var = NULL;
 
 			/*
 			 *	Bare "foo = bar" is disallowed.
@@ -2608,32 +2353,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		case UNLANG_TYPE_IF:
 			was_if = true;
 
-			if (!main_config->use_new_conditions) {
-				unlang_group_t	*f;
-				unlang_cond_t	*gext;
-
-				f = unlang_generic_to_group(single);
-				gext = unlang_group_to_cond(f);
-
-				switch (gext->cond->type) {
-				case COND_TYPE_TRUE:
-					skip_else = single->debug_name;
-					break;
-
-				case COND_TYPE_FALSE:
-					/*
-					 *	The condition never
-					 *	matches, so we can
-					 *	avoid putting it into
-					 *	the unlang tree.
-					 */
-					talloc_free(single);
-					continue;
-
-				default:
-					break;
-				}
-			} else {
+			{
 				unlang_group_t	*f;
 				unlang_cond_t	*gext;
 
@@ -3114,7 +2834,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *      resolve it to the data type of the parent
 		 *      "switch" tmpl.
 		 */
-		if (tmpl_is_unresolved(vpt)) {
+		if (tmpl_is_data_unresolved(vpt)) {
 			fr_type_t cast_type = tmpl_rules_cast(switch_gext->vpt);
 			fr_dict_attr_t const *da = NULL;
 
@@ -3649,7 +3369,6 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	unlang_group_t		*g;
 	unlang_cond_t		*gext;
 
-	fr_cond_t		*cond = NULL;
 	xlat_exp_head_t		*head = NULL;
 	bool			is_truthy = false, value = false;
 	xlat_res_rules_t	xr_rules = {
@@ -3666,7 +3385,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	/*
 	 *	Migration support.
 	 */
-	if (main_config->use_new_conditions) {
+	{
 		char const *name2 = cf_section_name2(cs);
 		ssize_t slen;
 
@@ -3689,7 +3408,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 
 			fr_canonicalize_error(cs, &spaces, &text, slen, name2);
 
-			cf_log_err(cs, "Parse error in condition!!!!");
+			cf_log_err(cs, "Parse error in condition.");
 			cf_log_err(cs, "%s", text);
 			cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
 
@@ -3712,74 +3431,29 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		 *	If the condition is always false, we don't compile the
 		 *	children.
 		 */
-		if (is_truthy && !value) goto skip;
-
-		goto do_compile;
-	}
-
-	cond = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
-	fr_assert(cond != NULL);
-
-	/*
-	 *	We still do some resolving of old-style conditions,
-	 *	and skipping of sections.
-	 */
-	if (cond->type == COND_TYPE_FALSE) {
-	skip:
-		cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
-				    unlang_ops[ext->type].name);
-
-		/*
-		 *	Free the children, which frees any xlats,
-		 *	conditions, etc. which were defined, but are
-		 *	now entirely unused.
-		 *
-		 *	However, we still need to cache the conditions, as they will be accessed at run-time.
-		 */
-		c = compile_empty(parent, unlang_ctx, cs, ext);
-		cf_section_free_children(cs);
-
-	} else {
-		fr_cond_iter_t	iter;
-		fr_cond_t	*leaf;
-
-		for (leaf = fr_cond_iter_init(&iter, cond);
-		     leaf;
-		     leaf = fr_cond_iter_next(&iter)) {
-			switch (leaf->type) {
-			/*
-			 *	Fix up the template.
-			 */
-			case COND_TYPE_TMPL:
-				fr_assert(!tmpl_is_regex_xlat_unresolved(leaf->data.vpt));
-				if (!pass2_fixup_tmpl(leaf, &leaf->data.vpt, cf_section_to_item(cs),
-						      unlang_ctx->rules->attr.dict_def)) return false;
-				break;
+		if (is_truthy && !value) {
+			cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
+					    unlang_ops[ext->type].name);
 
 			/*
-			 *	Fixup the map
+			 *	Free the children, which frees any xlats,
+			 *	conditions, etc. which were defined, but are
+			 *	now entirely unused.
+			 *
+			 *	However, we still need to cache the conditions, as they will be accessed at run-time.
 			 */
-			case COND_TYPE_MAP:
-				if (!pass2_fixup_cond_map(leaf, cf_section_to_item(cs),
-							  unlang_ctx->rules->attr.dict_def)) return false;
-				break;
-
-			default:
-				continue;
-			}
+			c = compile_empty(parent, unlang_ctx, cs, ext);
+			cf_section_free_children(cs);
+		} else {
+			c = compile_section(parent, unlang_ctx, cs, ext);
 		}
-
-		fr_cond_async_update(cond);
-
-	do_compile:
-		c = compile_section(parent, unlang_ctx, cs, ext);
 	}
+
 	if (!c) return NULL;
 	fr_assert(c != UNLANG_IGNORE);
 
 	g = unlang_generic_to_group(c);
 	gext = unlang_group_to_cond(g);
-	gext->cond = cond;
 
 	gext->head = head;
 	gext->is_truthy = is_truthy;
@@ -3795,7 +3469,7 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 		.len = sizeof(unlang_cond_t),
 		.type_name = "unlang_cond_t",
 		.pool_headers = 1 + 1 + (TMPL_POOL_DEF_HEADERS * 2),
-		.pool_len = sizeof(fr_cond_t) + sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2)
+		.pool_len = sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2)
 	};
 
 	return compile_if_subsection(parent, unlang_ctx, cs, &if_ext);
@@ -3808,7 +3482,7 @@ static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		.len = sizeof(unlang_cond_t),
 		.type_name = "unlang_cond_t",
 		.pool_headers = 1 + 1 + (TMPL_POOL_DEF_HEADERS * 2),
-		.pool_len = sizeof(fr_cond_t) + sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2)
+		.pool_len = sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2)
 	};
 
 	return compile_if_subsection(parent, unlang_ctx, cs, &elsif_ext);
@@ -5102,14 +4776,9 @@ static int8_t instruction_cmp(void const *one, void const *two)
 }
 
 
-void unlang_compile_init(void)
+void unlang_compile_init(TALLOC_CTX *ctx)
 {
-	unlang_instruction_tree = fr_rb_alloc(NULL, instruction_cmp, NULL);
-}
-
-void unlang_compile_free(void)
-{
-	TALLOC_FREE(unlang_instruction_tree);
+	unlang_instruction_tree = fr_rb_alloc(ctx, instruction_cmp, NULL);
 }
 
 

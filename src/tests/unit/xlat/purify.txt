@@ -139,7 +139,7 @@ xlat_purify 1 < (uint32) 2
 match true
 
 #
-#  @todo - for exec, xlat, etc., if we're doing an existence check of
+#  @todo - peephole - for exec, xlat, etc., if we're doing an existence check of
 #  string / octets, then the check is for "length>0", NOT for parsing
 #  the contents of the data type.
 #
@@ -220,5 +220,44 @@ match "hello 1 bob"
 xlat_purify "hello %{expr:1} bob"
 match "hello 1 bob"
 
+#
+#  New syntax!
+#
+migrate xlat_new_functions = yes
+
+xlat_purify %{md5:foo}
+match 0xacbd18db4cc2f85cedef654fccc4a4d8
+
+xlat_purify %explode("a,b,c,d", ',')
+match "a""b""c""d"
+
+#
+# @todo - bare words should probably be disallowed
+#
+xlat_purify %md5(foo)
+match 0xacbd18db4cc2f85cedef654fccc4a4d8
+
+xlat_purify %md5(%md5(foo))
+match 0x47847ae721df523d6388aebc9c94d656
+
+xlat_purify %md5('%md5(foo)')
+match 0x5e153571422b69cf5c5f7ce5f03985b5
+
+#
+#  Because this isn't a reference to the contents of &User-Name
+#
+xlat_purify %md5(&User-Name)
+match 0x14d23a6ed8e7d19fcb3a38dc86c1fc0b
+
+
+xlat_purify %md5('foo')
+match 0xacbd18db4cc2f85cedef654fccc4a4d8
+
+xlat_purify %md5("foo")
+match 0xacbd18db4cc2f85cedef654fccc4a4d8
+
+xlat_purify %md5(&User-Name)
+match 0x14d23a6ed8e7d19fcb3a38dc86c1fc0b
+
 count
-match 97
+match 116

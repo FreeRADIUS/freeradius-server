@@ -28,6 +28,7 @@ RCSIDH(struct_h, "$Id$")
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/decode.h>
+#include <freeradius-devel/util/encode.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,12 +39,9 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			       bool nested, void *decode_ctx,
 			       fr_pair_decode_value_t decode_value, fr_pair_decode_value_t decode_tlv) CC_HINT(nonnull(2,3,4));
 
-typedef ssize_t (*fr_encode_dbuff_t)(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
-				     fr_dcursor_t *cursor, void *encode_ctx);
-
 ssize_t fr_struct_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
 			     fr_dcursor_t *cursor, void *encode_ctx,
-			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_cursor) CC_HINT(nonnull(1,2,4));
+			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_pair) CC_HINT(nonnull(1,2,4));
 
 #ifdef __cplusplus
 }

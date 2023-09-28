@@ -1145,6 +1145,14 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		return true;
 	}
 
+	/*
+	 *	The RADIUS encoder does not handle groups.
+	 */
+	if ((type == FR_TYPE_GROUP) && !flags->internal) {
+		fr_strerror_const("The RADIUS protocol cannot encode attributes of type 'group'");
+		return false;
+	}
+
 	if (flag_extended(flags)) {
 		if (type != FR_TYPE_TLV) {
 			fr_strerror_const("The 'long' or 'extended' flag can only be used for attributes of type 'tlv'");

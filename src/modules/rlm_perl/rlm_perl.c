@@ -343,7 +343,7 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 		DEBUG3("String returned");
 		tmp = SvPVutf8(sv, len);
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_bstrndup(ctx, vb, NULL, tmp, len, SvTAINTED(sv)) < 0) {
+		if (fr_value_box_bstrndup(vb, vb, NULL, tmp, len, SvTAINTED(sv)) < 0) {
 			talloc_free(vb);
 			RPEDEBUG("Failed to allocate %ld for output", len);
 			return -1;
@@ -378,7 +378,7 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 			 *	Add key first
 			 */
 			MEM(vb = fr_value_box_alloc_null(ctx));
-			if (fr_value_box_bstrndup(ctx, vb, NULL, tmp, sv_len, SvTAINTED(hv_sv)) < 0) {
+			if (fr_value_box_bstrndup(vb, vb, NULL, tmp, sv_len, SvTAINTED(hv_sv)) < 0) {
 				talloc_free(vb);
 				RPEDEBUG("Failed to allocate %d for output", sv_len);
 				return -1;
@@ -732,10 +732,9 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 	}
 	fr_assert(da != NULL);
 
-	vp = fr_pair_afrom_da(ctx, da);
+	vp = fr_pair_afrom_da_nested(ctx, vps, da);
 	if (!vp) {
 	fail:
-		talloc_free(vp);
 		RPEDEBUG("Failed to create pair %s.%s = %s", list_name, key, val);
 		return -1;
 	}
@@ -754,7 +753,6 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 	}
 
 	PAIR_VERIFY(vp);
-	(void) fr_pair_append(vps, vp);
 
 	RDEBUG2("&%s.%s = $%s{'%s'} -> '%s'", list_name, key, hash_name, key, val);
 	return 0;
@@ -779,9 +777,13 @@ static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pai
 			len = av_len(av);
 			for (j = 0; j <= len; j++) {
 				av_sv = av_fetch(av, j, 0);
-				ret = pairadd_sv(ctx, request, vps, key, *av_sv, hash_name, list_name) + ret;
+				if (pairadd_sv(ctx, request, vps, key, *av_sv, hash_name, list_name) < 0) continue;
+				ret++;
 			}
-		} else ret = pairadd_sv(ctx, request, vps, key, res_sv, hash_name, list_name) + ret;
+		} else {
+			if (pairadd_sv(ctx, request, vps, key, res_sv, hash_name, list_name) < 0) continue;
+			ret++;
+		}
 	}
 
 	if (!fr_pair_list_empty(vps)) PAIR_LIST_VERIFY(vps);
@@ -873,30 +875,27 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 		LEAVE;
 
 		fr_pair_list_init(&vps);
-		if ((get_hv_content(request->request_ctx, request, rad_request_hv, &vps, "RAD_REQUEST", "request")) == 0) {
+		if ((get_hv_content(request->request_ctx, request, rad_request_hv, &vps, "RAD_REQUEST", "request")) > 0) {
 			fr_pair_list_free(&request->request_pairs);
 			fr_pair_list_append(&request->request_pairs, &vps);
-			fr_pair_list_init(&vps);
 		}
 
-		if ((get_hv_content(request->reply_ctx, request, rad_reply_hv, &vps, "RAD_REPLY", "reply")) == 0) {
+		if ((get_hv_content(request->reply_ctx, request, rad_reply_hv, &vps, "RAD_REPLY", "reply")) > 0) {
 			fr_pair_list_free(&request->reply_pairs);
 			fr_pair_list_append(&request->reply_pairs, &vps);
-			fr_pair_list_init(&vps);
 		}
 
-		if ((get_hv_content(request->control_ctx, request, rad_config_hv, &vps, "RAD_CONFIG", "control")) == 0) {
+		if ((get_hv_content(request->control_ctx, request, rad_config_hv, &vps, "RAD_CONFIG", "control")) > 0) {
 			fr_pair_list_free(&request->control_pairs);
 			fr_pair_list_append(&request->control_pairs, &vps);
-			fr_pair_list_init(&vps);
 		}
 
-		if ((get_hv_content(request->session_state_ctx, request, rad_state_hv, &vps, "RAD_STATE", "session-state")) == 0) {
+		if ((get_hv_content(request->session_state_ctx, request, rad_state_hv, &vps, "RAD_STATE", "session-state")) > 0) {
 			fr_pair_list_free(&request->session_state_pairs);
 			fr_pair_list_append(&request->session_state_pairs, &vps);
-			fr_pair_list_init(&vps);
 		}
 	}
+
 	RETURN_MODULE_RCODE(ret);
 }
 

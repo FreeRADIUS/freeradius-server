@@ -93,6 +93,16 @@ _INLINE fr_pair_t *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const
  */
 _INLINE fr_pair_t *fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp)
 {
+	/*
+	 *	This check is commented out because it fails for
+	 *	update sections, things really don't work right :(
+	 */
+#if 0
+	fr_assert(fr_pair_order_list_in_a_list(vp));
+	fr_assert(list == fr_pair_parent_list(vp));
+	list->verified = false;
+#endif
+
 	return fr_pair_order_list_remove(&list->order, vp);
 }
 
@@ -171,6 +181,9 @@ _INLINE fr_pair_list_t *fr_pair_list_from_dlist(fr_dlist_head_t const *list)
  */
 _INLINE void fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src)
 {
+#ifdef WITH_VERIFY_POINTER
+	dst->verified = false;
+#endif
 	fr_pair_order_list_move(&dst->order, &src->order);
 }
 

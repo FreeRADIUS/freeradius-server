@@ -29,24 +29,7 @@ RCSID("$Id$")
 
 unlang_action_t unlang_group(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_group_t		*g = unlang_generic_to_group(frame->instruction);
-
-	/*
-	 *	The compiler catches most of these, EXCEPT for the
-	 *	top-level 'recv Access-Request' etc.  Which can exist,
-	 *	and can be empty.
-	 */
-	if (!g->children) {
-		RDEBUG2("<ignoring empty subsection>");
-		return UNLANG_ACTION_EXECUTE_NEXT;
-	}
-
-	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_STOP_PROCESSING;
-	}
-
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
 }
 
 static unlang_action_t unlang_policy(rlm_rcode_t *result, request_t *request, unlang_stack_frame_t *frame)

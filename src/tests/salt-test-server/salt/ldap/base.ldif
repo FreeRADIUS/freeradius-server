@@ -79,6 +79,32 @@ radiusRequestAttribute: Service-Type := 'Framed-User'
 radiusControlAttribute: Framed-IP-Address == 1.2.3.4
 radiusControlAttribute: Reply-Message := "Hello world"
 
+dn: cn=profile2,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: profile2
+radiusReplyAttribute: Framed-IP-Netmask := 255.255.128.0
+radiusReplyAttribute: Acct-Interim-Interval := 3600
+radiusRequestAttribute: Service-Type := 'Framed-User'
+radiusControlAttribute: Framed-IP-Address := 1.2.3.5
+radiusControlAttribute: Reply-Message := "Bonjour"
+
+dn: cn=suspended,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: suspended
+radiusReplyAttribute: Reply-Message := 'User-Suspended'
+
+dn: uid=adminuser,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+uid: adminuser
+sn: User
+givenName: Admin
+cn: Admin User
+displayName: Admin User
+userPassword: verysecret
+authzTo: cn=admin,dc=example,dc=com
+
 dn: uid=john,ou=people,dc=example,dc=com
 objectClass: inetOrgPerson
 objectClass: posixAccount
@@ -96,7 +122,10 @@ homeDirectory: /home/john
 radiusIdleTimeout: 3600
 radiusAttribute: reply.Session-Timeout := 7200
 radiusAttribute: control.NAS-IP-Address := 1.2.3.4
+radiusAttribute: control.Vendor-Specific.Cisco.AVPair += 'foo'
+radiusControlAttribute: Vendor-Specific.Cisco.AVPair += 'bar'
 radiusProfileDN: cn=profile1,ou=profiles,dc=example,dc=com
+dialupAccess: enabled
 
 dn: uid=bob,ou=people,dc=example,dc=com
 objectClass: inetOrgPerson
@@ -113,11 +142,13 @@ uidNumber: 101
 gidNumber: 101
 homeDirectory: /home/bob
 radiusIdleTimeout: 7200
+dialupAccess: enabled
 
 dn: uid=jane,ou=people,dc=example,dc=com
 objectClass: inetOrgPerson
 objectClass: posixAccount
 objectClass: shadowAccount
+objectClass: radiusprofile
 uid: jane
 sn: Davis
 givenName: Jane
@@ -127,11 +158,13 @@ userPassword: secret
 uidNumber: 103
 gidNumber: 103
 homeDirectory: /home/jane
+dialupAccess: enabled
 
 dn: uid=ann,ou=people,dc=example,dc=com
 objectClass: inetOrgPerson
 objectClass: posixAccount
 objectClass: shadowAccount
+objectClass: radiusprofile
 uid: ann
 sn: Williams
 cn: Ann Williams
@@ -140,11 +173,13 @@ userPassword: topsecret
 uidNumber: 104
 gidNumber: 104
 homeDirectory: /home/ann
+dialupAccess: enabled
 
 dn: uid=bill,ou=people,dc=example,dc=com
 objectClass: inetOrgPerson
 objectClass: posixAccount
 objectClass: shadowAccount
+objectClass: radiusprofile
 uid: bill
 sn: Brown
 cn: Bill Brown
@@ -153,6 +188,24 @@ userPassword: NotTelling
 uidNumber: 105
 gidNumber: 105
 homeDirectory: /home/bill
+dialupAccess: disabled
+
+dn: uid=bobby,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: radiusprofile
+uid: bobby
+sn: Brown
+cn: Bobby Brown
+displayName: Bobby Brown
+userPassword: NotTelling
+uidNumber: 106
+gidNumber: 106
+homeDirectory: /home/bobby
+dialupAccess: suspended
+radiusProfileDN: cn=profile1,ou=profiles,dc=example,dc=com
+radiusProfileSuspendedDN: cn=suspended,ou=profiles,dc=example,dc=com
 
 dn: ou=clients,dc=example,dc=com
 objectClass: organizationalUnit

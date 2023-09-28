@@ -502,6 +502,25 @@ static void ldap_request_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_connect
 	}
 }
 
+/** Callback to tidy up when a trunk request fails
+ *
+ */
+static void ldap_request_fail(request_t *request, void *preq, UNUSED void *rctx,
+			      UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
+{
+	fr_ldap_query_t		*query = talloc_get_type_abort(preq, fr_ldap_query_t);
+
+	/*
+	 *	Failed trunk requests get freed - so remove association in query.
+	 */
+	query->treq = NULL;
+	query->ret = LDAP_RESULT_ERROR;
+
+	/*
+	 *	Ensure request is runnable.
+	 */
+	if (request) unlang_interpret_mark_runnable(request);
+}
 
 /** I/O read function
  *
@@ -642,7 +661,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 	LDAPURLDesc		*referral_url = NULL;
 
 	fr_ldap_query_t		*query = NULL;
-	fr_ldap_rcode_t		status = LDAP_PROC_ERROR;
+	fr_ldap_rcode_t		status;
 
 	while (fr_trunk_connection_pop_request(&treq, tconn) == 0) {
 		LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS + 1];
@@ -666,7 +685,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 			 *	If we are chasing a referral, referral_url will be populated and may
 			 *	have a base dn or scope to override the original query
 			 */
-			status = fr_ldap_search_async(&query->msgid, query->treq->request, &ldap_conn,
+			status = fr_ldap_search_async(&query->msgid, query->treq->request, ldap_conn,
 						      (referral_url && referral_url->lud_dn) ?
 						      	referral_url->lud_dn : query->dn,
 						      (referral_url && referral_url->lud_scope) ?
@@ -683,7 +702,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 			POPULATE_LDAP_CONTROLS(our_clientctrls, query->clientctrls);
 
 			status = fr_ldap_modify_async(&query->msgid, query->treq->request,
-						      &ldap_conn, query->dn, query->mods,
+						      ldap_conn, query->dn, query->mods,
 						      our_serverctrls, our_clientctrls);
 			break;
 
@@ -691,14 +710,17 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 			/*
 			 *	This query is an LDAP extended operation.
 			 */
-			status = fr_ldap_extended_async(&query->msgid, query->treq->request, &ldap_conn,
+			status = fr_ldap_extended_async(&query->msgid, query->treq->request, ldap_conn,
 							query->extended.reqoid, query->extended.reqdata);
 			break;
 
 		default:
+			status = LDAP_PROC_ERROR;
 			ERROR("Invalid LDAP query for trunk connection");
 		error:
 			fr_trunk_request_signal_fail(query->treq);
+			if (status == LDAP_PROC_BAD_CONN) fr_trunk_connection_signal_reconnect(tconn,
+											       FR_CONNECTION_FAILED);
 			continue;
 
 		}
@@ -988,7 +1010,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 	talloc_set_destructor(found, _thread_ldap_trunk_free);
 
 	/*
-	 *	Buld config for this connection - start with module settings and
+	 *	Build config for this connection - start with module settings and
 	 *	override server and bind details
 	 */
 	memcpy(&found->config, config, sizeof(fr_ldap_config_t));
@@ -1006,7 +1028,8 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 					      .request_mux = ldap_trunk_request_mux,
 					      .request_demux = ldap_trunk_request_demux,
 					      .request_cancel = ldap_request_cancel,
-					      .request_cancel_mux = ldap_request_cancel_mux
+					      .request_cancel_mux = ldap_request_cancel_mux,
+					      .request_fail = ldap_request_fail,
 					},
 				      thread->trunk_conf,
 				      "rlm_ldap", found, false);
@@ -1052,16 +1075,6 @@ fr_trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const
 	found = fr_rb_find(thread->trunks, &find);
 
 	return (found) ? found->trunk->state : FR_TRUNK_STATE_MAX;
-}
-
-/** Free LDAP bind auth ctx when trunk request is "freed" with fr_trunk_request_free()
- *
- */
-static void ldap_trunk_bind_auth_free(UNUSED request_t *request, void *preq_to_free, UNUSED void *uctx)
-{
-	fr_ldap_bind_auth_ctx_t *bind = talloc_get_type_abort(preq_to_free, fr_ldap_bind_auth_ctx_t);
-
-	talloc_free(bind);
 }
 
 /** Take pending LDAP bind auths from the queue and send them.
@@ -1320,6 +1333,28 @@ static void ldap_bind_auth_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_conne
 	}
 }
 
+/** Callback to tidy up when a bind auth trunk request fails
+ *
+ */
+static void ldap_trunk_bind_auth_fail(request_t *request, void *preq, UNUSED void *rctx,
+				UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
+{
+	fr_ldap_bind_auth_ctx_t	*bind = talloc_get_type_abort(preq, fr_ldap_bind_auth_ctx_t);
+
+	/*
+	 *	Failed trunk requests get freed - so remove association in bind structure,
+	 *	and change talloc parentage so resume function still has something to work with.
+	 */
+	bind->treq = NULL;
+	bind->ret = LDAP_PROC_ERROR;
+	talloc_steal(NULL, bind);
+
+	/*
+	 *	Ensure request is runnable.
+	 */
+	if (request) unlang_interpret_mark_runnable(request);
+}
+
 /** Find the thread specific trunk to use for LDAP bind auths
  *
  * If there is no current trunk then a new one is created.
@@ -1348,7 +1383,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_bind_trunk_get(fr_ldap_thread_t *thread)
 					      .request_mux = ldap_trunk_bind_auth_mux,
 					      .request_demux = ldap_trunk_bind_auth_demux,
 					      .request_cancel_mux = ldap_bind_auth_cancel_mux,
-					      .request_free = ldap_trunk_bind_auth_free
+					      .request_fail = ldap_trunk_bind_auth_fail,
 					},
 				       thread->bind_trunk_conf,
 				       "rlm_ldap bind auth", ttrunk, false);

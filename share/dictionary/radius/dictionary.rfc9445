@@ -1,0 +1,12 @@
+# -*- text -*-
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Attributes and values defined in RFC 9445.
+#	http://www.ietf.org/rfc/rfc9445.txt
+#
+#	$Id$
+#
+ATTRIBUTE	DHCPv6-Options				245.3	octets # formatted as DHCPv6 options
+ATTRIBUTE	DHCPv4-Options				245.4	octets # formatted as DHCPv6 options

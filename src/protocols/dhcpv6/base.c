@@ -907,7 +907,7 @@ void fr_dhcpv6_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 int fr_dhcpv6_global_init(void)
 {
 	fr_dict_attr_t const *child;
-	fr_value_box_t		value = { .type = FR_TYPE_UINT16 };
+	fr_value_box_t		value = *fr_box_uint16(0);
 
 	if (instance_count > 0) {
 		instance_count++;

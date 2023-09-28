@@ -58,13 +58,14 @@ objectclass ( 1.3.6.1.4.1.11344.4.1.1.2.1
 
 #
 # Similar to a freeradiusClient, but uses an alternative identifier, and represents a device which
-# doesn't communicate directly with the freeRADIUS.
+# doesn't communicate directly with the RADIUS server.
 #
 objectclass ( 1.3.6.1.4.1.11344.4.1.1.2.2
 	NAME 'freeradiusAccessDevice'
 	DESC 'freeradiusAccessDevice object class'
 	SUP top
 	STRUCTURAL
+	MUST ( freeradiusClientIdentifier )
 	MAY ( freeradiusClientShortname $ freeradiusClientType $ freeradiusClientComment )
  )
 

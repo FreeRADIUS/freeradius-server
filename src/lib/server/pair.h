@@ -157,8 +157,8 @@ RCSIDH(server_pair_h, "$Id$")
  */
 #define pair_delete(_list, _pair_or_da) \
 	_Generic((_pair_or_da), \
-		 fr_dict_attr_t const *		: fr_pair_delete_by_da(_list, UNCONST(fr_dict_attr_t *, _pair_or_da)),	\
-		 fr_dict_attr_t *		: fr_pair_delete_by_da(_list, UNCONST(fr_dict_attr_t *, _pair_or_da)),	\
+		 fr_dict_attr_t const *		: fr_pair_delete_by_da_nested(_list, UNCONST(fr_dict_attr_t *, _pair_or_da)),	\
+		 fr_dict_attr_t *		: fr_pair_delete_by_da_nested(_list, UNCONST(fr_dict_attr_t *, _pair_or_da)),	\
 		 fr_pair_t *			: fr_pair_delete(_list, UNCONST(fr_pair_t *, _pair_or_da))		\
 	)
 

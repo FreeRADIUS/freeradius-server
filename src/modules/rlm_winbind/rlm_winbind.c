@@ -77,9 +77,9 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
 
 /** Group comparison for Winbind-Group
  *
- * @param instance	Instance of this module
+ * @param inst		Instance of this module
  * @param request	The current request
- * @param check		Value pair containing group to be searched
+ * @param name		Group name to be searched
  *
  * @return
  *	- 0 user is in group

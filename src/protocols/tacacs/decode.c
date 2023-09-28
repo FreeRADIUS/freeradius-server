@@ -509,7 +509,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
-	if (fr_struct_from_network(ctx, out, attr_tacacs_packet, buffer, buffer_len, false, NULL, NULL, NULL) < 0) {
+	if (fr_struct_from_network(ctx, out, attr_tacacs_packet, buffer, buffer_len, true, NULL, NULL, NULL) < 0) {
 		fr_strerror_printf("Failed decoding TACACS header - %s", fr_strerror());
 		return -1;
 	}
@@ -684,7 +684,6 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 				da_unknown = fr_dict_unknown_attr_afrom_da(ctx, attr_tacacs_data);
 				if (!da_unknown) goto fail;
 
-				da_unknown->flags.is_raw = 1;
 				want = pkt->authen_start.data_len;
 
 				DECODE_FIELD_STRING8(da_unknown, want);
@@ -703,9 +702,23 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 
 				/*
 				 *	Rework things to make sense.
+				 *	RFC 8079 says that MS-CHAP responses should follow RFC 2433 and 2759
+				 *	which have "Flags" at the end.
+				 *	RADIUS attributes expect "Flags" after the ID as per RFC 2548.
+				 *	Re-arrange to make things consistent.
 				 */
 				hash[0] = p[0];
-				memcpy(hash + 1, p + 1 + challenge_len, want - 1);
+				switch (pkt->authen_start.authen_type) {
+				case FR_AUTHENTICATION_TYPE_VALUE_MSCHAP:
+				case FR_AUTHENTICATION_TYPE_VALUE_MSCHAPV2:
+					hash[1] = p[want - 1];
+					memcpy(hash + 2, p + 1 + challenge_len, want - 2);
+					break;
+
+				default:
+					memcpy(hash + 1, p + 1 + challenge_len, want - 1);
+					break;
+				}
 
 				vp = fr_pair_afrom_da(ctx, da);
 				if (!vp) goto fail;

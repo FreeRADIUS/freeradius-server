@@ -1,0 +1,7 @@
+&Service-Type := ::Framed-User
+
+if !(&Service-Type == ::Framed-User) {
+	test_fail
+}
+
+success

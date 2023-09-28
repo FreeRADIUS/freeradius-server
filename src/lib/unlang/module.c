@@ -26,7 +26,6 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/server/rcode.h>

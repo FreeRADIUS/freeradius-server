@@ -342,6 +342,11 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 		}
 	}
 
+	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
+		RPEDEBUG("Failed decoding 'Net.*' packet");
+		return -1;
+	}
+
 	return 0;
 }
 

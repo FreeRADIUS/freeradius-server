@@ -65,25 +65,25 @@ See the example in `raddb/sites-available/default`.
 
 ```
 detail auth_log {
-	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/auth-detail-%Y-%m-%d
+	filename = ${radacctdir}/%{Net.Src.IP-Address}/auth-detail-%Y-%m-%d
 	permissions = 0600
 	suppress {
 		User-Password
 	}
 }
 detail reply_log {
-	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/reply-detail-%Y-%m-%d
+	filename = ${radacctdir}/%{Net.Src.IP}/reply-detail-%Y-%m-%d
 	permissions = 0600
 }
 detail pre_proxy_log {
-	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/pre-proxy-detail-%Y-%m-%d
+	filename = ${radacctdir}/%{Net.Src.IP}/pre-proxy-detail-%Y-%m-%d
 	permissions = 0600
 #	suppress {
 #		User-Password
 #	}
 }
 detail post_proxy_log {
-	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/post-proxy-detail-%Y-%m-%d
+	filename = ${radacctdir}/%{Net.Src.IP}/post-proxy-detail-%Y-%m-%d
 	permissions = 0600
 }
 ```

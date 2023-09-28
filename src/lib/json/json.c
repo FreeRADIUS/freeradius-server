@@ -125,7 +125,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 		/*
 		 *	Just copy the string to the box.
 		 */
-		fr_value_box_bstrndup(ctx, out, NULL, value, len, tainted);
+		fr_value_box_bstrndup(out, out, NULL, value, len, tainted);
 	}
 		break;
 
@@ -178,7 +178,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 	{
 		char const *value = json_object_to_json_string(object);
 
-		fr_value_box_bstrndup(ctx, out, NULL, value, strlen(value), tainted);
+		fr_value_box_bstrndup(out, out, NULL, value, strlen(value), tainted);
 	}
 		break;
 	}
@@ -410,7 +410,6 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		json_object_put_assert(obj);
 		return slen;
 	}
-		break;
 
 	case FR_TYPE_FLOAT64:
 	{
@@ -423,7 +422,6 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		json_object_put_assert(obj);
 		return slen;
 	}
-		break;
 
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
@@ -494,7 +492,7 @@ static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
 {
 	struct json_object	*obj;
 	fr_value_box_t const	*vb;
-	fr_value_box_t		vb_str;
+	fr_value_box_t		vb_str = FR_VALUE_BOX_INITIALISER_NULL(vb_str);
 	int			is_enum = 0;
 
 	fr_assert(vp);
@@ -642,7 +640,7 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 		fr_sbuff_t		attr_name;
 		struct json_object	*vp_object, *values, *value, *type_name;
 
-		if (vp->da->flags.is_raw) continue;
+		if (vp->vp_raw) continue;
 
 		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
@@ -776,7 +774,7 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 		struct json_object	*values = NULL;
 		bool			add_single = false;
 
-		if (vp->da->flags.is_raw) continue;
+		if (vp->vp_raw) continue;
 
 		/*
 		 *	Get attribute name and value.
@@ -898,7 +896,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 		struct json_object	*attrobj = NULL;
 		bool			already_seen = false;
 
-		if (vp->da->flags.is_raw) continue;
+		if (vp->vp_raw) continue;
 
 		/*
 		 *	Get attribute name and value.
@@ -1022,7 +1020,7 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_
 	     vp = fr_pair_list_next(vps, vp)) {
 		struct json_object	*value;
 
-		if (vp->da->flags.is_raw) continue;
+		if (vp->vp_raw) continue;
 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
 			fr_strerror_const("Failed to convert attribute value to JSON object");
@@ -1074,7 +1072,7 @@ static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ct
 		fr_sbuff_t		attr_name;
 		struct json_object	*value;
 
-		if (vp->da->flags.is_raw) continue;
+		if (vp->vp_raw) continue;
 
 		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {

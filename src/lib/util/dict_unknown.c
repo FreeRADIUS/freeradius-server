@@ -147,8 +147,6 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
  */
 void fr_dict_unknown_free(fr_dict_attr_t const **da)
 {
-	fr_dict_attr_t **tmp;
-
 	if (!da || !*da) return;
 
 	/* Don't free real DAs */
@@ -156,10 +154,9 @@ void fr_dict_unknown_free(fr_dict_attr_t const **da)
 		return;
 	}
 
-	memcpy(&tmp, &da, sizeof(*tmp));
-	talloc_free(*tmp);
+	talloc_const_free(*da);
 
-	*tmp = NULL;
+	*da = NULL;
 }
 
 /**  Allocate an unknown DA.
@@ -178,6 +175,7 @@ static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const 
 	 *	which we know to be correct.
 	 */
 	flags.is_unknown = 1;
+	flags.is_raw = 1;
 	flags.array = 0;
 	flags.has_value = 0;
 	if (type != FR_TYPE_VENDOR) {
@@ -201,7 +199,7 @@ static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const 
 	 *	the parent from the 'da'.
 	 */
 	if (da->parent && da->parent->flags.is_unknown) {
-		parent = fr_dict_unknown_afrom_da(n, da->parent);
+		parent = fr_dict_unknown_copy(n, da->parent);
 		if (!parent) {
 			talloc_free(n);
 			return NULL;
@@ -241,6 +239,9 @@ fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	 */
 	switch (type) {
 	case FR_TYPE_VENDOR:
+		fr_assert(da->flags.type_size != 0);
+		break;
+
 	case FR_TYPE_TLV:
 	case FR_TYPE_VSA:
 		break;
@@ -340,6 +341,7 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t c
 {
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = true,
+					.is_raw = true,
 					.internal = parent->flags.internal,
 				};
 
@@ -379,98 +381,31 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t co
  *	and will be use the unknown da as its talloc parent.
  *
  * @param[in] ctx		to alloc new attribute in.
- * @param[out] err		Where to write error codes.
  * @param[out] out		Where to write the head of the chain unknown
  *				dictionary attributes.
  * @param[in] parent		Attribute to use as the root for resolving OIDs in.
  *				Usually the root of a protocol dictionary.
  * @param[in] in		of attribute.
- * @param[in] tt		Terminal strings.
  * @return
  *	- The number of bytes parsed on success.
  *	- <= 0 on failure.  Negative offset indicates parse error position.
  */
 fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
-					   fr_dict_attr_err_t *err, fr_dict_attr_t **out,
+					   fr_dict_attr_t const **out,
 			      		   fr_dict_attr_t const *parent,
-			      		   fr_sbuff_t *in, fr_sbuff_term_t const *tt)
+					   fr_sbuff_t *in)
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
-	fr_dict_attr_t const	*our_parent;
+	fr_dict_attr_t const	*our_parent = parent;
 	fr_dict_attr_t		*n = NULL;
-	fr_dict_attr_err_t	our_err;
 	fr_dict_attr_flags_t	flags = {
-					.is_unknown = true
+					.is_unknown = true,
+					.is_raw = true,
+					.type_size = parent->dict->root->flags.type_size,
+					.length = parent->dict->root->flags.length,
 				};
-	bool			is_raw;
 
 	*out = NULL;
-
-	is_raw = fr_sbuff_adv_past_str_literal(&our_in, "raw");
-
-	/*
-	 *	Resolve all the known bits first...
-	 */
-	(void)fr_dict_attr_by_oid_substr(&our_err, &our_parent, parent, &our_in, tt);
-	switch (our_err) {
-	/*
-	 *	Um this is awkward, we were asked to
-	 *	produce an unknown but all components
-	 *	are known...
-	 *
-	 *	Just exit and pass back the known
-	 *	attribute, unless we got a raw prefix
-	 *	in which case process that.
-	 */
-	case FR_DICT_ATTR_OK:
-		if (is_raw) {
-			*out = fr_dict_unknown_attr_afrom_da(ctx, our_parent);
-			if (!*out) {
-				if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-			} else {
-				(*out)->flags.is_raw = 1;
-				if (err) *err = FR_DICT_ATTR_OK;
-			}
-		} else {
-			*out = fr_dict_attr_unconst(our_parent);	/* Which is the resolved attribute in this case */
-			if (err) *err = FR_DICT_ATTR_OK;
-		}
-
-		FR_SBUFF_SET_RETURN(in, &our_in);
-
-	/*
-	 *	This is what we want... Everything
-	 *      up to the non-matching OID was valid.
-	 *
-	 *	our_parent should be left pointing
-	 *	to the last known attribute, or be
-	 *	so to NULL if we couldn't resolve
-	 *	anything.
-	 */
-	case FR_DICT_ATTR_NOTFOUND:
-		if (our_parent) {
-			switch (parent->type) {
-			case FR_TYPE_STRUCTURAL:
-				break;
-
-			default:
-				fr_strerror_printf("Parent OID component (%s) specified a non-structural type (%s)",
-						   our_parent->name,
-						   fr_type_to_str(our_parent->type));
-				goto error;
-			}
-		} else {
-			our_parent = parent;
-		}
-		break;
-
-	/*
-	 *	All other errors are fatal.
-	 */
-	default:
-		if (err) *err = our_err;
-		FR_SBUFF_ERROR_RETURN(&our_in);
-	}
 
 	/*
 	 *	Allocate the final attribute first, so that any
@@ -486,22 +421,6 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	 *	known.
 	 */
 	n = dict_attr_alloc_null(ctx);
-
-	/*
-	 *	fr_dict_attr_by_oid_substr parsed *something*
-	 *	we expected the next component to be a '.'.
-	 */
-	if (fr_sbuff_ahead(&our_in) > 0) {
-		if (!fr_sbuff_next_if_char(&our_in, '.')) {	/* this is likely a logic bug if the test fails ? */
-			fr_strerror_printf("Missing OID component separator %.*s", (int)fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
-		error:
-			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-			talloc_free(n);
-			FR_SBUFF_ERROR_RETURN(&our_in);
-		}
-	} else if (fr_sbuff_next_if_char(&our_in, '.')) {
-		our_parent = fr_dict_root(fr_dict_by_da(parent));		/* From the root */
-	}
 
 	/*
 	 *	Loop until there's no more component separators.
@@ -524,7 +443,11 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 
 				if (fr_sbuff_next_if_char(&our_in, '.')) {
 					ni = fr_dict_unknown_vendor_afrom_num(n, our_parent, num);
-					if (!ni) goto error;
+					if (!ni) {
+					error:
+						talloc_free(n);
+						FR_SBUFF_ERROR_RETURN(&our_in);
+					}
 					our_parent = ni;
 					continue;
 				}
@@ -560,7 +483,6 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 							   fr_type_to_str(our_parent->type));
 					goto error;
 				}
-				flags.is_raw = is_raw;
 				if (dict_attr_init(&n, our_parent, NULL, num, FR_TYPE_OCTETS,
 						   &(dict_attr_args_t){ .flags = &flags }) < 0) goto error;
 				break;

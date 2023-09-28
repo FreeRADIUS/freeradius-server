@@ -160,7 +160,7 @@ int dict_fixup_enumv(dict_fixup_ctx_t *fctx, char const *filename, int line,
 static inline CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_enumv_t *fixup)
 {
 	fr_dict_attr_t 		*da;
-	fr_value_box_t		value;
+	fr_value_box_t		value = FR_VALUE_BOX_INITIALISER_NULL(value);
 	fr_type_t		type;
 	int			ret;
 	fr_dict_attr_t const	*da_const;

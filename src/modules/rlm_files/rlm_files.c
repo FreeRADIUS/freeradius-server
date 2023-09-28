@@ -161,9 +161,23 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 				ERROR("%s[%d] Left side of check item %s is not an attribute",
 				      entry->filename, entry->lineno, map->lhs->name);
 				return -1;
-
 			}
 			da = tmpl_attr_tail_da(map->lhs);
+
+			/*
+			 *	Disallow regexes for now.
+			 */
+			if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
+				fr_assert(tmpl_is_regex(map->rhs));
+
+			/*
+			 *	Disallow inter-attribute comparisons.
+			 */
+			} else if (!tmpl_is_data(map->rhs)) {
+				ERROR("%s[%d] Right side of check item %s is not a leaf value",
+				      entry->filename, entry->lineno, map->lhs->name);
+				return -1;
+			}
 
 			/*
 			 *	Ignore attributes which are set
@@ -209,21 +223,6 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 				ERROR("%s[%d] Cannot use %s when key is not an IP / IP prefix",
 				      entry->filename, entry->lineno, da->name);
 				return -1;
-			}
-
-			/*
-			 *	If it's NOT a vendor attribute,
-			 *	and it's NOT a wire protocol
-			 *	and we ignore Fall-Through,
-			 *	then bitch about it, giving a
-			 *	good warning message.
-			 */
-			if (fr_dict_attr_is_top_level(da) && (da->attr > 1000)) {
-				WARN("%s[%d] Check item \"%s\"\n"
-				     "\tfound in reply item list for key value \"%s\".\n"
-				     "\tThis attribute MUST go on the first line"
-				     " with the other check items", entry->filename, entry->lineno, da->name,
-				     entry->name);
 			}
 
 			/*
@@ -377,6 +376,30 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static bool files_eval_map(request_t *request, map_t *map)
+{
+	fr_pair_t *vp;
+
+	fr_assert(tmpl_is_attr(map->lhs));
+	fr_assert(fr_comparison_op[map->op]);
+
+	if (tmpl_find_vp(&vp, request, map->lhs) < 0) return false;
+
+	/*
+	 *	The RHS is a compiled regex, which we don't yet
+	 *	support.  So just re-parse it at run time for
+	 *	programmer laziness.
+	 */
+	if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
+		return (fr_regex_cmp_op(map->op, &vp->data, fr_box_strvalue(map->rhs->name)) == 1);
+	}
+
+	fr_assert(tmpl_is_data(map->rhs));
+
+	return (fr_value_box_cmp_op(map->op, &vp->data, tmpl_value(map->rhs)) == 1);
+}
+
+
 /*
  *	Common code called by everything below.
  */
@@ -498,7 +521,7 @@ redo:
 				 *	Evaluate the map, including regexes.
 				 */
 			default:
-				if (!fr_cond_eval_map(request, map)) {
+				if (!files_eval_map(request, map)) {
 					RDEBUG3("    failed match - %s", fr_strerror());
 					match = false;
 				}

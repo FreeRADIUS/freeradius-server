@@ -144,10 +144,8 @@ match ERROR offset 15: Missing closing brace
 xlat \"%t\tfoo\"
 match \"%t\tfoo\"
 
-allow-unresolved yes
-xlat \"%t\t%{Packet-Src-IP-Address}\"
-match \"%t\t%{Packet-Src-IP-Address}\"
-allow-unresolved no
+xlat \"%t\t%{NAS-IP-Address}\"
+match \"%t\t%{NAS-IP-Address}\"
 
 xlat \"foo %{test:foo}\"
 match \"foo %{test:foo}\"
@@ -306,9 +304,6 @@ match [0]{ echo }, [1]{ hello }, [2]{ %{Tmp-String-0}:1234 }, [3]{ world }
 xlat %(debug: 5)
 match %(debug: 5)
 
-#
-#  @todo - debug takes an integer, and this is wrong.
-#
 xlat %(debug: "foo")
 match %(debug: "foo")
 
@@ -321,7 +316,7 @@ match %(rpad:&User-Name 5 x)
 #
 #  The second argument should be an integer.
 #
-#  @todo - we don't currently track string offsets for intermediate nodes,
+#  @todo - parsing - we don't currently track string offsets for intermediate nodes,
 #  so the "offset 23" is wrong.  It also doesn't say *which* string is wrong.  We'll fix that later.
 #
 xlat %(rpad:&User-Name foo x)
@@ -349,4 +344,4 @@ xlat %{md5:'arg"'}
 match %{md5:'arg"'}
 
 count
-match 201
+match 199

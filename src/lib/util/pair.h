@@ -53,6 +53,10 @@ typedef struct {
         FR_TLIST_HEAD(fr_pair_order_list)	order;			//!< Maintains the relative order of pairs in a list.
 
 	bool				 _CONST is_child;		//!< is a child of a VP
+
+#ifdef WITH_VERIFY_PTR
+	unsigned int		verified : 1;				//!< hack to avoid O(N^3) issues
+#endif
 } fr_pair_list_t;
 
 /** Stores an attribute, a value and various bits of other data
@@ -138,6 +142,7 @@ struct value_pair_s {
 #define vp_type			data.type
 #define vp_tainted		data.tainted
 #define vp_immutable		data.immutable
+#define vp_raw			da->flags.is_raw
 
 #define ATTRIBUTE_EQ(_x, _y) ((_x && _y) && (_x->da == _y->da))
 
@@ -254,6 +259,17 @@ static inline bool vp_da_data_type_check(fr_pair_t *vp)
  */
 #define fr_pair_list_foreach(_list_head, _iter) \
 	for (fr_pair_t *JOIN(_next,_iter), *_iter = fr_pair_list_head(_list_head); JOIN(_next,_iter) = fr_pair_list_next(_list_head, _iter), _iter != NULL; _iter = JOIN(_next,_iter))
+
+/** Iterate over the leaf nodes of a #fr_pair_list_t
+ *
+ *  The iteration variable CANNOT be modified.  This is a read-only operation.
+ *
+ * @param[in] _list_head	to iterate over.
+ * @param[in] _iter		Name of iteration variable.
+ *				Will be declared in the scope of the loop.
+ */
+#define fr_pair_list_foreach_leaf(_list_head, _iter) \
+	for (fr_pair_t *_iter = fr_pair_list_iter_leaf(_list_head, NULL); _iter != NULL; _iter = fr_pair_list_iter_leaf(_list_head, _iter))
 
 /** Append a pair to a list, assigning its value.
  *
@@ -431,9 +447,6 @@ fr_pair_t	*fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_H
 /** @hidecallergraph */
 fr_pair_t	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(warn_unused_result) CC_HINT(nonnull(2));
 
-fr_pair_t	*fr_pair_afrom_da_with_pool(TALLOC_CTX *ctx, fr_dict_attr_t const *da, size_t value_len)
-		CC_HINT(warn_unused_result) CC_HINT(nonnull(2));
-
 int		fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t const *da)
 		CC_HINT(nonnull(2, 3));
 
@@ -452,7 +465,7 @@ int		fr_pair_steal_append(TALLOC_CTX *nctx, fr_pair_list_t *list, fr_pair_t *vp)
 int		fr_pair_steal_prepend(TALLOC_CTX *nctx, fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
 /* Searching and list modification */
-int		fr_pair_to_unknown(fr_pair_t *vp) CC_HINT(nonnull);
+int		fr_pair_raw_from_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len) CC_HINT(nonnull);
 
 bool		fr_pair_matches_da(void const *item, void const *uctx) CC_HINT(nonnull);
 
@@ -503,7 +516,24 @@ int		fr_pair_append_by_da_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_
 int		fr_pair_update_by_da_parent(fr_pair_t *parent, fr_pair_t **out,
 					    fr_dict_attr_t const *da) CC_HINT(nonnull(1,3));
 
+static inline CC_HINT(nonnull(3,4)) int fr_pair_find_or_append_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
+								     fr_dict_attr_t const *da)
+{
+	fr_pair_t *vp;
+
+	vp = fr_pair_find_by_da(list, NULL, da);
+	if (vp) {
+		*out = vp;
+		return 0;
+	}
+
+	return fr_pair_append_by_da(ctx, out, list, da);
+}
+
+
 int		fr_pair_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da) CC_HINT(nonnull);
+
+int		fr_pair_delete_by_da_nested(fr_pair_list_t *list, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
 fr_pair_t	*fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
@@ -516,9 +546,7 @@ fr_pair_t	*fr_pair_parent(fr_pair_t const *vp);
 
 fr_pair_t	*fr_pair_list_parent(fr_pair_list_t const *list);
 
-void		fr_pair_flatten(fr_pair_t *vp)  CC_HINT(nonnull);
-
-int		fr_pair_unflatten(fr_pair_t *vp)  CC_HINT(nonnull);
+fr_pair_t	*fr_pair_list_iter_leaf(fr_pair_list_t *list, fr_pair_t *vp);
 
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
  *
@@ -562,6 +590,27 @@ fr_pair_t	*_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const
 				      IS_CONST(fr_pair_list_t *, _list))
 fr_pair_t	*_fr_pair_dcursor_init(fr_dcursor_t *cursor, fr_pair_list_t const *list,
 				       bool is_const) CC_HINT(nonnull);
+
+/** Initializes a child dcursor from a parent cursor, with an iteration function.
+ *
+ * Filters can be applied later with fr_dcursor_filter_set.
+ *
+ * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
+ *
+ * @param[out] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @param[in] parent	parent cursor to take the iterator from
+ * @return
+ *	- NULL if src does not point to any items.
+ *	- The first pair in the list.
+ */
+static inline fr_pair_t	*fr_pair_dcursor_child_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const *list, fr_dcursor_t const *parent)
+{
+	fr_pair_t *vp = fr_pair_dcursor_init(cursor, list);
+
+	fr_dcursor_copy_iter(cursor, parent);
+	return vp;
+}
 
 /** Initialise a cursor that will return only attributes matching the specified #fr_dict_attr_t
  *
@@ -630,6 +679,12 @@ bool 		fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filt
 					 fr_pair_list_t *list) CC_HINT(nonnull(2,3));
 
 bool		fr_pair_immutable(fr_pair_t const *vp) CC_HINT(nonnull);
+
+static inline CC_HINT(nonnull, always_inline)
+void fr_pair_set_immutable(fr_pair_t *vp)
+{
+	fr_value_box_set_immutable(&vp->data);
+}
 
 
 /* Lists */
@@ -788,8 +843,6 @@ static inline fr_slen_t CC_HINT(nonnull(2,4))
 static inline fr_slen_t CC_HINT(nonnull(2,4))
 		fr_pair_aprint_secure(TALLOC_CTX *ctx, char **out, fr_dict_attr_t const *parent, fr_pair_t const *vp)
 		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print_secure, parent, vp)
-
-void		fr_pair_fprint(FILE *, fr_pair_t const *vp) CC_HINT(nonnull);
 
 #define		fr_pair_list_log(_log, _lvl, _list) _fr_pair_list_log(_log, _lvl, NULL, _list, __FILE__, __LINE__)
 void		_fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent,

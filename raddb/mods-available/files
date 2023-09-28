@@ -9,7 +9,15 @@
 #
 #  The `users` file as located in `raddb/mods-config/files/authorize`. (Livingston-style format).
 #
-#  See "man 1 users" for more information.
+#  See `man 1 users` for more information.
+#
+
+#
+#  NOTE: Temporarily (2023-08-27), the check items only supports
+#  "real" attributes.  This limitation will be removed when the module
+#  is rewritten to support xlat expressions for conditions.
+#
+#  The module also does not support xlat expansions on the RHS.
 #
 
 #

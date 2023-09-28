@@ -87,6 +87,10 @@ extern fr_sbuff_escape_rules_t *fr_value_escape_by_char[UINT8_MAX + 1];
 
 extern fr_sbuff_escape_rules_t fr_value_escape_unprintables;
 
+#ifndef NDEBUG
+#  define FR_VALUE_BOX_MAGIC RADIUSD_MAGIC_NUMBER
+#endif
+
 /** @name List and cursor type definitions
  */
 FR_DLIST_TYPES(fr_value_box_list)
@@ -159,6 +163,7 @@ struct value_box_s {
 	unsigned int   				tainted : 1;		//!< i.e. did it come from an untrusted source
 	unsigned int   				secret : 1;		//!< Same as #fr_dict_attr_flags_t secret
 	unsigned int				immutable : 1;		//!< once set, the value cannot be changed
+	unsigned int				talloced : 1;		//!< Talloced, not stack or text allocated.
 
 	uint16_t		_CONST		safe;			//!< more detailed safety
 
@@ -168,6 +173,11 @@ struct value_box_s {
 
 	fr_value_box_datum_t			datum;			//!< The value held by the value box.  Should appear
 									///< last for packing efficiency.
+#ifndef NDEBUG
+	uint64_t				magic;			//!< Value to verify that the structure was allocated or initialised properly.
+	char const				*file;			//!< File where the box was allocated or initialised.
+	int					line;			//!< Line where the box was allocated or initialised.
+#endif
 };
 
 /** Macro to automatically define a value for the "safe" field based on the current module / library.
@@ -203,6 +213,12 @@ typedef enum {
 #define vb_should_free(_action)		((_action & FR_VALUE_BOX_LIST_FREE_BOX) == FR_VALUE_BOX_LIST_FREE_BOX)
 #define vb_should_free_value(_action)	((_action & FR_VALUE_BOX_LIST_FREE_BOX_VALUE) == FR_VALUE_BOX_LIST_FREE_BOX_VALUE)
 #define vb_should_remove(_action)	((_action & FR_VALUE_BOX_LIST_REMOVE) == FR_VALUE_BOX_LIST_REMOVE)
+
+#ifndef NDEBUG
+#define VALUE_BOX_NDEBUG_INITIALISER .file = __FILE__, .line = __LINE__, .magic = FR_VALUE_BOX_MAGIC
+#else
+#define VALUE_BOX_NDEBUG_INITIALISER
+#endif
 
 /** @name Field accessors for #fr_value_box_t
  *
@@ -253,7 +269,7 @@ typedef enum {
  *
  * @{
  */
-#define _fr_box_with_len(_type, _field, _val, _len) &(fr_value_box_t){ .type = _type, _field = _val, .vb_length = _len }
+#define _fr_box_with_len(_type, _field, _val, _len) &(fr_value_box_t){ .type = _type, _field = _val, .vb_length = _len, VALUE_BOX_NDEBUG_INITIALISER }
 
 #define fr_box_strvalue(_val)			_fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, strlen(_val))
 #define fr_box_strvalue_len(_val, _len)		_fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, _len)
@@ -262,7 +278,7 @@ typedef enum {
 #define fr_box_strvalue_buffer(_val)		_fr_box_with_len(FR_TYPE_STRING, .vb_strvalue, _val, talloc_array_length(_val) - 1)
 #define fr_box_octets_buffer(_val)		_fr_box_with_len(FR_TYPE_OCTETS, .vb_octets, _val, talloc_array_length(_val))
 
-#define _fr_box(_type, _field, _val) (&(fr_value_box_t){ .type = _type, _field = (_val) })
+#define _fr_box(_type, _field, _val) (&(fr_value_box_t){ .type = _type, _field = (_val), VALUE_BOX_NDEBUG_INITIALISER })
 
 #define fr_box_ipaddr(_val)			_fr_box((((_val).af == AF_INET) ? \
 							(((_val).prefix == 32) ?	FR_TYPE_IPV4_ADDR : \
@@ -448,21 +464,48 @@ extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
  *
  * @{
  */
-
-/** Initialise a fr_value_box_t
+/** A static initialiser for stack/globally allocated boxes
  *
- * The value should be set later with one of the fr_value_box_* functions.
- *
- * @param[in] vb	to initialise.
- * @param[in] type	to set.
- * @param[in] enumv	Enumeration values.
- * @param[in] tainted	Whether data will come from an untrusted source.
- *
- * @hidecallergraph
+ * We can only safely initialise a null box, as many other type need special initialisation
  */
+#define FR_VALUE_BOX_INITIALISER_NULL(_vb) \
+	{ \
+		.type = FR_TYPE_NULL, \
+		.entry = { \
+			.entry = FR_DLIST_ENTRY_INITIALISER((_vb).entry.entry) \
+		}, \
+ 		VALUE_BOX_NDEBUG_INITIALISER \
+	}
+
+/** A static initialiser for stack/globally allocated boxes
+ *
+ */
+#define FR_VALUE_BOX_INITIALISER(_vb, _type, _field, _val) \
+	{ \
+		.type = _type, \
+		.datum = { \
+			_field = _val, \
+		}, \
+		.entry = { \
+			.entry = FR_DLIST_ENTRY_INITIALISER((_vb).entry.entry) \
+		}, \
+ 		VALUE_BOX_NDEBUG_INITIALISER \
+	}
+
 static inline CC_HINT(nonnull(1), always_inline)
-void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
+void _fr_value_box_init(NDEBUG_LOCATION_ARGS fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
 {
+	/*
+	 *	Initializes an fr_value_box_t pointed at by vb appropriately for a given type.
+	 * 	Coverity gets involved here because an fr_value_box_t has members with const-
+	 * 	qualified type (and members that have members with const-qualified type), so an
+	 *	attempt to assign to *vb or any of its cosnt-qualified members will give an error.
+	 *
+	 * 	C compilers, at least currently, let one get around the issue. See the memcpy()
+	 * 	below. Coverity, though, isn't faked out, and reports the store_writes_const_field
+	 * 	defect annotated here. Anything we do has to eventually assign to the whole of *vb
+	 * 	and thus will raise the issue.
+	 */
 	/* coverity[store_writes_const_field] */
 	memcpy((void *) vb, &(fr_value_box_t){
 			.type = type,
@@ -505,15 +548,45 @@ void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const 
 	default:
 		break;
 	}
+
+#ifndef NDEBUG
+	vb->magic = FR_VALUE_BOX_MAGIC;
+	vb->file = file;
+	vb->line = line;
+#endif
 }
+
+/** Initialise a fr_value_box_t
+ *
+ * The value should be set later with one of the fr_value_box_* functions.
+ *
+ * @param[in] _vb	to initialise.
+ * @param[in] _type	to set.
+ * @param[in] _enumv	Enumeration values.
+ * @param[in] _tainted	Whether data will come from an untrusted source.
+ *
+ * @hidecallergraph
+ */
+#define fr_value_box_init(_vb, _type, _enumv, _tainted) _fr_value_box_init(NDEBUG_LOCATION_EXP _vb, _type, _enumv, _tainted)
 
 /** Initialise an empty/null box that will be filled later
  *
+ * @param[in] _vb	to initalise.
  */
+#define fr_value_box_init_null(_vb) _fr_value_box_init(NDEBUG_LOCATION_EXP _vb, FR_TYPE_NULL, NULL, false)
+
 static inline CC_HINT(always_inline)
-void fr_value_box_init_null(fr_value_box_t *vb)
+fr_value_box_t *_fr_value_box_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, fr_type_t type, fr_dict_attr_t const *enumv)
 {
-	fr_value_box_init(vb, FR_TYPE_NULL, NULL, false);
+	fr_value_box_t *vb;
+
+	vb = talloc(ctx, fr_value_box_t);
+	if (unlikely(!vb)) return NULL;
+
+	_fr_value_box_init(NDEBUG_LOCATION_VALS vb, type, enumv, false);
+	vb->talloced = 1;
+
+	return vb;
 }
 
 /** Allocate a value box of a specific type
@@ -521,40 +594,26 @@ void fr_value_box_init_null(fr_value_box_t *vb)
  * Allocates memory for the box, and sets the length of the value
  * for fixed length types.
  *
- * @param[in] ctx	to allocate the value_box in.
- * @param[in] type	of value.
- * @param[in] enumv	Enumeration values.
+ * @param[in] _ctx	to allocate the value_box in.
+ * @param[in] _type	of value.
+ * @param[in] _enumv	Enumeration values.
  * @return
  *	- A new fr_value_box_t.
  *	- NULL on error.
  */
-static inline CC_HINT(always_inline)
-fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type, fr_dict_attr_t const *enumv)
-{
-	fr_value_box_t *vb;
-
-	vb = talloc(ctx, fr_value_box_t);
-	if (unlikely(!vb)) return NULL;
-
-	fr_value_box_init(vb, type, enumv, false);
-
-	return vb;
-}
+#define fr_value_box_alloc(_ctx, _type, _enumv) _fr_value_box_alloc(NDEBUG_LOCATION_EXP _ctx, _type, _enumv)
 
 /** Allocate a value box for later use with a value assignment function
  *
- * @param[in] ctx	to allocate the value_box in.
+ * @param[in] _ctx	to allocate the value_box in.
  * @return
  *	- A new fr_value_box_t.
  *	- NULL on error.
  *
  *  @hidecallergraph
  */
-static inline CC_HINT(always_inline)
-fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
-{
-	return fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL);
-}
+#define fr_value_box_alloc_null(_ctx) _fr_value_box_alloc(NDEBUG_LOCATION_EXP _ctx, FR_TYPE_NULL, NULL)
+
 /** @} */
 
 /** @name Convenience functions
@@ -1184,16 +1243,14 @@ uint32_t	fr_value_box_hash(fr_value_box_t const *vb);
 
 /** @} */
 
-void		fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
+void		fr_value_box_verify(char const *file, int line, fr_value_box_t const *vb)
 		CC_HINT(nonnull(3));
-void		fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list, bool talloced)
+void		fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list)
 		CC_HINT(nonnull(3));
 
 #ifdef WITH_VERIFY_PTR
-#  define VALUE_BOX_VERIFY(_x) fr_value_box_verify(__FILE__, __LINE__, _x, false)
-#  define VALUE_BOX_LIST_VERIFY(_x) fr_value_box_list_verify(__FILE__, __LINE__, _x, false)
-#  define VALUE_BOX_TALLOC_VERIFY(_x) fr_value_box_verify(__FILE__, __LINE__, _x, true)
-#  define VALUE_BOX_TALLOC_LIST_VERIFY(_x) fr_value_box_list_verify(__FILE__, __LINE__, _x, true)
+#  define VALUE_BOX_VERIFY(_x) fr_value_box_verify(__FILE__, __LINE__, _x)
+#  define VALUE_BOX_LIST_VERIFY(_x) fr_value_box_list_verify(__FILE__, __LINE__, _x)
 #else
 /*
  *  Even if were building without WITH_VERIFY_PTR
@@ -1202,8 +1259,8 @@ void		fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t c
  */
 #  define VALUE_BOX_VERIFY(_x) fr_assert(_x)
 #  define VALUE_BOX_LIST_VERIFY(_x) fr_assert(_x)
-#  define VALUE_BOX_TALLOC_VERIFY(_x) fr_assert(_x)
-#  define VALUE_BOX_TALLOC_LIST_VERIFY(_x) fr_assert(_x)
+#  define VALUE_BOX_VERIFY(_x) fr_assert(_x)
+#  define VALUE_BOX_LIST_VERIFY(_x) fr_assert(_x)
 #endif
 
 /** @name Debug functions

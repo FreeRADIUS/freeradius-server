@@ -26,13 +26,13 @@
 #  |===
 #
 #  NOTE: `<ciphertext>` and `<signature>` are ingested and excreted to in their raw form.
-#  You should use armouring expansions i.e. `%{base64_encode:}`, `%{base64_decode:}` if the values
+#  You should use armouring expansions i.e. `%(base64.encode:)`, `%(base64.decode:)` if the values
 #  are to be passed outside of FreeRADIUS.
 #
 #  e.g:
 #
-#    %{base64_encode:%{cipher_encrypt:<plaintext>}}
-#    %{cipher_decrypt:%{base64_decode:<ciphertext>}}
+#    %(base64.encode:%{cipher_encrypt:<plaintext>})
+#    %{cipher_decrypt:%(base64.decode:<ciphertext>})
 #
 #  NOTE: The supported versions are determined _entirely_ by the version of OpenSSL used, we
 #  pass the name of the digest off to OpenSSL and it tells _us_ whether it's valid/supported

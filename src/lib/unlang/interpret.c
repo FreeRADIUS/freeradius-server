@@ -210,6 +210,84 @@ int unlang_interpret_push(request_t *request, unlang_t const *instruction,
 	return 0;
 }
 
+typedef struct {
+	fr_dict_t const	*dict;
+	request_t	*request;
+} unlang_variable_ref_t;
+
+static int _local_variables_free(unlang_variable_ref_t *ref)
+{
+	fr_pair_list_foreach(&ref->request->local_pairs, vp) {
+		if (vp->da->dict != ref->dict) break;
+
+		(void) fr_pair_delete(&ref->request->local_pairs, vp);
+	}
+
+	return 0;
+}
+
+/** Push the children of the current frame onto a new frame onto the stack
+ *
+ * @param[in] request		to push the frame onto.
+ * @param[in] default_rcode	The default result.
+ * @param[in] do_next_sibling	Whether to only execute the first node in the #unlang_t program
+ *				or to execute subsequent nodes.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *	- UNLANG_ACTION_EXECUTE_NEXT do nothing, but just go to the next sibling instruction
+ *	- UNLANG_ACTION_STOP_PROCESSING, fatal error, usually stack overflow.
+ */
+unlang_action_t unlang_interpret_push_children(rlm_rcode_t *p_result, request_t *request,
+					      rlm_rcode_t default_rcode, bool do_next_sibling)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];	/* Quiet static analysis */
+	unlang_group_t		*g;
+	unlang_variable_ref_t	*ref;
+
+	fr_assert(unlang_ops[frame->instruction->type].debug_braces);
+
+	g = unlang_generic_to_group(frame->instruction);
+
+	/*
+	 *	The compiler catches most of these, EXCEPT for the
+	 *	top-level 'recv Access-Request' etc.  Which can exist,
+	 *	and can be empty.
+	 */
+	if (!g->children) {
+		RDEBUG2("<ignoring empty subsection>");
+		return UNLANG_ACTION_EXECUTE_NEXT;
+	}
+
+	if (unlang_interpret_push(request, g->children, default_rcode, do_next_sibling, UNLANG_SUB_FRAME) < 0) {
+		*p_result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
+	if (!g->variables) return UNLANG_ACTION_PUSHED_CHILD;
+
+	/*
+	 *	Note that we do NOT create the variables, This way we don't have to worry about any
+	 *	uninitialized values.  If the admin tries to use the variable without initializing it, they
+	 *	will get a "no such attribute" error.
+	 */
+	if (!frame->state) {
+		MEM(ref = talloc(stack, unlang_variable_ref_t));
+		frame->state = ref;
+	} else {
+		MEM(ref = talloc(frame->state, unlang_variable_ref_t));
+	}
+
+	/*
+	 *	Set the destructor to clean up local variables.
+	 */
+	ref->dict = g->variables->dict;
+	ref->request = request;
+	talloc_set_destructor(ref, _local_variables_free);
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
 static void instruction_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx);
 
 /** Update the current result after each instruction, and after popping each stack frame
@@ -1451,12 +1529,13 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*vb;
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
+
 	/*
 	 *	Find the correct stack frame.
 	 */
 	while (*fmt == '.') {
 		if (depth <= 1) {
-			if (fr_value_box_bstrndup(ctx, vb, NULL, "<underflow>", 11, false) < 0) {
+			if (fr_value_box_bstrndup(vb, vb, NULL, "<underflow>", 11, false) < 0) {
 			error:
 				talloc_free(vb);
 				return XLAT_ACTION_FAIL;
@@ -1478,25 +1557,8 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Nothing there...
 	 */
 	if (!instruction) {
+		talloc_free(vb);
 		return XLAT_ACTION_DONE;
-	}
-
-	/*
-	 *	Name of the instruction.
-	 */
-	if (strcmp(fmt, "name") == 0) {
-		if (fr_value_box_bstrndup(ctx, vb, NULL, instruction->name,
-					  strlen(instruction->name), false) < 0) goto error;
-		goto finish;
-	}
-
-	/*
-	 *	Unlang type.
-	 */
-	if (strcmp(fmt, "type") == 0) {
-		if (fr_value_box_bstrndup(ctx, vb, NULL, unlang_ops[instruction->type].name,
-					  strlen(unlang_ops[instruction->type].name), false) < 0) goto error;
-		goto finish;
 	}
 
 	/*
@@ -1508,11 +1570,69 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	/*
+	 *	The current module
+	 */
+	if (strcmp(fmt, "module") == 0) {
+		if (fr_value_box_strdup(vb, vb, NULL, request->module, false) < 0) goto error;
+
+		goto finish;
+	}
+
+	/*
+	 *	Name of the instruction.
+	 */
+	if (strcmp(fmt, "name") == 0) {
+		if (fr_value_box_bstrndup(vb, vb, NULL, instruction->name,
+					  strlen(instruction->name), false) < 0) goto error;
+		goto finish;
+	}
+
+	/*
+	 *	The request processing stage.
+	 */
+	if (strcmp(fmt, "processing_stage") == 0) {
+		if (fr_value_box_strdup(vb, vb, NULL, request->component, false) < 0) goto error;
+
+		goto finish;
+	}
+
+	/*
+	 *	The current return code.
+	 */
+	if (strcmp(fmt, "rcode") == 0) {
+		if (fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"), false) < 0) goto error;
+		
+		goto finish;
+	}
+
+	/*
+	 *	The virtual server handling the request
+	 */
+	if (strcmp(fmt, "server") == 0) {
+		if (!unlang_call_current(request)) goto finish;
+
+		if (fr_value_box_strdup(vb, vb, NULL, cf_section_name2(unlang_call_current(request)), false) < 0) goto error;
+
+		goto finish;
+	}
+
+	/*
+	 *	Unlang instruction type.
+	 */
+	if (strcmp(fmt, "type") == 0) {
+		if (fr_value_box_bstrndup(vb, vb, NULL, unlang_ops[instruction->type].name,
+					  strlen(unlang_ops[instruction->type].name), false) < 0) goto error;
+
+		goto finish;
+	}
+
+	/*
 	 *	All of the remaining things need a CONF_ITEM.
 	 */
 	if (!instruction->ci) {
-		if (fr_value_box_bstrndup(ctx, vb, NULL, "<INVALID>", 3, false) < 0) goto error;
-			goto finish;
+		if (fr_value_box_bstrndup(vb, vb, NULL, "<INVALID>", 3, false) < 0) goto error;
+
+		goto finish;
 	}
 
 	/*
@@ -1520,6 +1640,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (strcmp(fmt, "line") == 0) {
 		fr_value_box_int32(vb, NULL, cf_lineno(instruction->ci), false);
+
 		goto finish;
 	}
 
@@ -1527,14 +1648,18 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Filename of the current section.
 	 */
 	if (strcmp(fmt, "filename") == 0) {
-		char const *filename = cf_filename(instruction->ci);
+		if (fr_value_box_strdup(vb, vb, NULL, cf_filename(instruction->ci), false) < 0) goto error;
 
-		if (fr_value_box_bstrndup(ctx, vb, NULL, filename, strlen(filename), false) < 0) goto error;
 		goto finish;
 	}
 
 finish:
-	if (vb->type != FR_TYPE_NULL) fr_dcursor_append(out, vb);
+	if (vb->type != FR_TYPE_NULL) {
+		fr_dcursor_append(out, vb);
+	} else {
+		talloc_free(vb);
+	}
+
 	return XLAT_ACTION_DONE;
 }
 
@@ -1641,17 +1766,17 @@ unlang_interpret_t *unlang_interpret_get_thread_default(void)
 	return talloc_get_type_abort(intp_thread_default, unlang_interpret_t);
 }
 
-int unlang_interpret_init_global(void)
+int unlang_interpret_init_global(TALLOC_CTX *ctx)
 {
 	xlat_t	*xlat;
 	/*
 	 *  Should be void, but someone decided not to register multiple xlats
 	 *  breaking the convention we use everywhere else in the server...
 	 */
-	if (unlikely((xlat = xlat_func_register(NULL, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(ctx, "interpreter", unlang_interpret_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_args_set(xlat, unlang_interpret_xlat_args);
 
-	if (unlikely((xlat = xlat_func_register(NULL, "cancel", unlang_cancel_xlat, FR_TYPE_VOID)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(ctx, "cancel", unlang_cancel_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_args_set(xlat, unlang_cancel_xlat_args);
 
 	return 0;

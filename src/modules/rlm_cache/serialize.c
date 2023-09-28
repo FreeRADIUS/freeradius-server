@@ -136,7 +136,7 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 			goto error;
 		}
 
-		if (!tmpl_is_unresolved(map->rhs)) {
+		if (!tmpl_is_data_unresolved(map->rhs)) {
 			fr_strerror_printf("Pair right hand side \"%s\" parsed as %s, needed literal.  "
 					   "Check serialized data quoting", map->rhs->name,
 					   tmpl_type_to_str(map->rhs->type));

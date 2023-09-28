@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/command.h>
-#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/modpriv.h>
@@ -224,6 +223,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 		return -1;
 	}
 	cf_data_add(server_cs, mi, "process_module", false);
+	cf_data_add(server_cs, *(process->dict), "dict", false);
 
 	return 0;
 }
@@ -313,7 +313,8 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 
 	if (module_conf_parse(mi, process_cs) < 0) {
 		cf_log_perr(ci, "Failed bootstrapping process module");
-		cf_data_remove(server_cs, mi, "process_module");
+		cf_data_remove(server_cs, module_instance_t, "process_module");
+		cf_data_remove(server_cs, fr_dict_t, "dict");
 		TALLOC_FREE(server->process_mi);
 		return -1;
 	}
@@ -516,15 +517,15 @@ fr_dict_t const *virtual_server_dict_by_name(char const *virtual_server)
 fr_dict_t const *virtual_server_dict_by_cs(CONF_SECTION const *server_cs)
 {
 	CONF_DATA const *cd;
+	fr_dict_t *dict;
 
-	cd = cf_data_find(server_cs, module_instance_t, "process_module");
-	if (cd) {
-		module_instance_t const *mi = cf_data_value(cd);
-		fr_process_module_t const *process = (fr_process_module_t const *)mi->module;
+	cd = cf_data_find(server_cs, fr_dict_t, "dict");
+	if (!cd) return NULL;
 
-		return *(process->dict);
-	}
-	return NULL;
+	dict = cf_data_value(cd);
+	(void) talloc_get_type_abort(dict, fr_dict_t);
+
+	return dict;
 }
 
 /** Return the namespace for a given virtual server specified by a CONF_ITEM within the virtual server
@@ -537,15 +538,15 @@ fr_dict_t const *virtual_server_dict_by_cs(CONF_SECTION const *server_cs)
 fr_dict_t const *virtual_server_dict_by_child_ci(CONF_ITEM const *ci)
 {
 	CONF_DATA const *cd;
+	fr_dict_t *dict;
 
-	cd = cf_data_find_in_parent(ci, module_instance_t, "process_module");
-	if (cd) {
-		module_instance_t const *mi = cf_data_value(cd);
-		fr_process_module_t const *process = (fr_process_module_t const *)mi->module;
+	cd = cf_data_find_in_parent(ci, fr_dict_t, "dict");
+	if (!cd) return NULL;
 
-		return *(process->dict);
-	}
-	return NULL;
+	dict = cf_data_value(cd);
+	(void) talloc_get_type_abort(dict, fr_dict_t);
+
+	return dict;
 }
 
 /** Verify that a given virtual_server exists and is of a particular namespace
@@ -1074,6 +1075,233 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 	return rcode;
 }
 
+static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
+{
+	char const *ref;
+	fr_dict_attr_t const *da;
+	CONF_ITEM *ci = NULL;
+
+	ref = cf_section_name2(cs);
+	if (!ref) {
+		cf_log_err(cs, "Expected 'values <name> { ... }'");
+		return -1;
+	}
+
+	da = fr_dict_attr_by_name(NULL, parent, ref);
+	if (!da) {
+		cf_log_err(cs, "No such attribute \"%s\"", ref);
+		return -1;
+	}
+
+	if (fr_type_is_structural(da->type)) {
+		cf_log_err(cs, "Cannot define value for structural attribute \"%s\"", ref);
+		return -1;
+	}
+
+	/*
+	 *	This both does not make any sense, and does not get
+	 *	parsed correctly if the string contains backslashes.
+	 */
+	if (da->type == FR_TYPE_STRING) {
+		cf_log_err(cs, "Cannot define value for 'string' attribute \"%s\"", ref);
+		return -1;
+	}
+
+	while ((ci = cf_item_next(cs, ci))) {
+		ssize_t slen, len;
+		char const *attr, *value;
+		CONF_PAIR *cp;
+		fr_dict_enum_value_t *dv;
+		fr_value_box_t box;
+
+		if (cf_item_is_section(ci)) {
+			cf_log_err(ci, "Unexpected subsection");
+			return -1;
+		}
+
+		if (!cf_item_is_pair(ci)) continue;
+
+		cp = cf_item_to_pair(ci);
+		fr_assert(cp != NULL);
+
+		/*
+		 *	=* is a hack by the cf parser to say "no operator"
+		 */
+		if ((cf_pair_operator(cp) != T_OP_EQ) ||
+		    (cf_pair_attr_quote(cp) != T_BARE_WORD)) {
+			cf_log_err(ci, "Definition is not in 'name = value' format");
+			return -1;
+		}
+
+		attr = cf_pair_attr(cp);
+		value = cf_pair_value(cp);
+
+		dv = fr_dict_enum_by_name(parent, attr, talloc_array_length(attr) - 1);
+		if (dv) {
+			cf_log_err(cp, "Duplicate value name");
+			return -1;
+		}
+
+		fr_value_box_init_null(&box);
+
+		len = talloc_array_length(value) - 1;
+
+		/*
+		 *	@todo - unescape for double quoted strings.  Whoops.
+		 */
+		slen = fr_value_box_from_str(NULL, &box, da->type, da, value, len, NULL, false);
+		if (slen < 0) {
+			cf_log_err(cp, "Failed parsing value - %s", fr_strerror());
+			return -1;
+		}
+
+		if (slen != len) {
+			cf_log_err(cp, "Unexpected text after value");
+			return -1;
+		}
+
+		if (fr_dict_enum_add_name(UNCONST(fr_dict_attr_t *, da), attr, &box, false, false) < 0) {
+			cf_log_err(cp, "Failed adding value - %s", fr_strerror());
+			return -1;
+		}
+
+		fr_value_box_clear(&box);
+	}
+
+	return 0;
+}
+
+
+static int define_server_attrs(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_attr_t *parent, fr_dict_attr_t const *root)
+{
+	CONF_ITEM *ci = NULL;
+
+	fr_dict_attr_flags_t flags = {
+		.internal = true,
+	};
+
+	fr_assert(dict != NULL);
+	fr_assert(parent != NULL);
+
+	while ((ci = cf_item_next(cs, ci))) {
+		fr_type_t type;
+		char const *attr, *value;
+		CONF_PAIR *cp;
+		CONF_SECTION *subcs = NULL;
+
+		if (cf_item_is_section(ci)) {
+			subcs = cf_item_to_section(ci);
+			fr_assert(subcs != NULL);
+
+			attr = cf_section_name1(subcs);
+
+			if (strcmp(attr, "values") == 0) {
+				if (define_server_values(subcs, parent) < 0) return -1;
+				continue;
+			}
+
+			if (strcmp(attr, "tlv") != 0) goto invalid_type;
+
+			value = cf_section_name2(subcs);
+			if (!value) {
+				cf_log_err(ci, "Definition is not in 'tlv name { ... }' format");
+				return -1;
+			}
+
+			type = FR_TYPE_TLV;
+			goto check_for_dup;
+		}
+
+		if (!cf_item_is_pair(ci)) continue;
+
+		cp = cf_item_to_pair(ci);
+		fr_assert(cp != NULL);
+
+		/*
+		 *	=* is a hack by the cf parser to say "no operator"
+		 */
+		if ((cf_pair_operator(cp) != T_OP_CMP_TRUE) ||
+		    (cf_pair_attr_quote(cp) != T_BARE_WORD) ||
+		    (cf_pair_value_quote(cp) != T_BARE_WORD)) {
+			cf_log_err(ci, "Definition is not in 'type name' format");
+			return -1;
+		}
+
+		attr = cf_pair_attr(cp);
+		value = cf_pair_value(cp);
+
+		type = fr_table_value_by_str(fr_type_table, attr, FR_TYPE_NULL);
+		if (type == FR_TYPE_NULL) {
+		invalid_type:
+			cf_log_err(ci, "Invalid data type '%s'", attr);
+			return -1;
+		}
+
+		/*
+		 *	Leaf and group are OK.  TLV, Vendor, Struct, VSA, etc. are not as variable definitions.
+		 */
+		if (!(fr_type_is_leaf(type) || (type == FR_TYPE_GROUP))) goto invalid_type;
+
+		/*
+		 *	No duplicates are allowed.
+		 */
+	check_for_dup:
+		if (root && (fr_dict_attr_by_name(NULL, root, value) != NULL)) {
+			cf_log_err(ci, "Local variable '%s' duplicates a dictionary attribute.", value);
+			return -1;
+		}
+
+		if (fr_dict_attr_by_name(NULL, parent, value) != NULL) {
+			cf_log_err(ci, "Local variable '%s' duplicates a previous local attribute.", value);
+			return -1;
+		}
+
+		if (fr_dict_attr_add(dict, parent, value, -1, type, &flags) < 0) {
+			cf_log_err(ci, "Failed adding local variable '%s'", value);
+			return -1;
+		}
+
+		if (type == FR_TYPE_TLV) {
+			fr_dict_attr_t const *da;
+
+			if (!subcs) return -1; /* shouldn't happen, but shut up compiler */
+
+			da = fr_dict_attr_by_name(NULL, parent, value);
+			fr_assert(da != NULL);
+
+			if (define_server_attrs(subcs, dict, UNCONST(fr_dict_attr_t *, da), NULL) < 0) return -1;
+		}
+	}
+
+	return 0;
+}
+
+static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_dict_t const *dict_def)
+{
+	fr_dict_t *dict;
+	CONF_SECTION *cs;
+
+	cs = cf_section_find(server_cs, "dictionary", NULL);
+	if (!cs) return dict_def;
+
+	dict = fr_dict_protocol_alloc(dict_def);
+	if (!dict) {
+		cf_log_err(cs, "Failed allocating local dictionary");
+		return NULL;
+	}
+
+	if (define_server_attrs(cs, dict, UNCONST(fr_dict_attr_t *, fr_dict_root(dict)), fr_dict_root(dict_def)) < 0) return NULL;
+
+	/*
+	 *	Replace the original dictionary with the new one.
+	 */
+	cf_data_remove(server_cs, fr_dict_t, "dict");
+	cf_data_add(server_cs, dict, "dict", false);
+
+	return dict;
+}
+
+
 /** Open all the listen sockets
  *
  * @param[in] sc	Scheduler to add I/O paths to.
@@ -1094,8 +1322,8 @@ int virtual_servers_open(fr_schedule_t *sc)
 		fr_virtual_listen_t	**listeners;
 		size_t			j, listener_cnt;
 
- 		listeners = virtual_servers[i]->listeners;
- 		listener_cnt = talloc_array_length(listeners);
+		listeners = virtual_servers[i]->listeners;
+		listener_cnt = talloc_array_length(listeners);
 
 		for (j = 0; j < listener_cnt; j++) {
 			fr_virtual_listen_t *listener = listeners[j];
@@ -1189,11 +1417,15 @@ int virtual_servers_instantiate(void)
 		size_t				j, listener_cnt;
 		CONF_ITEM			*ci = NULL;
 		CONF_SECTION			*server_cs = virtual_servers[i]->server_cs;
+		fr_dict_t const			*dict;
 		fr_virtual_server_t const	*vs = virtual_servers[i];
 		fr_process_module_t const	*process = (fr_process_module_t const *)
 							    vs->process_mi->dl_inst->module->common;
  		listeners = virtual_servers[i]->listeners;
  		listener_cnt = talloc_array_length(listeners);
+
+		dict = virtual_server_local_dict(server_cs, *(process)->dict);
+		if (!dict) return -1;
 
 		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(server_cs));
 
@@ -1229,7 +1461,7 @@ int virtual_servers_instantiate(void)
 		if (process->compile_list) {
 			tmpl_rules_t		parse_rules = {
 				.attr = {
-					.dict_def = *(process->dict),
+					.dict_def = dict,
 					.list_def = request_attr_request,
 				},
 			};

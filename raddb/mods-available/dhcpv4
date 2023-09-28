@@ -13,13 +13,14 @@
 #
 #  The DHCPv4 module is used as a relay.
 #
-#  For reach request, you should set &request.Packet-Dst-IP-Address to
-#  the address of the DHCPv4 server (or next relay).
+#  For reach request, you should set `&control.Net.Dst.IP` and maybe
+#  `&control.Net.Dst.Port` to the address of the next DHCPv4 server or
+#  relay.
 #
-#  Packets MUST also have a Gateway-IP-Address option, otherwise they
-#  will be dropped.  This module does not (yet) support receiving
-#  replies from the DHCPv4 server.  Any packets sent to the socket
-#  IP/port will be dropped.
+#  Packets MUST also have a `Gateway-IP-Address` option, otherwise
+#  they will be dropped.  This module does not (yet) support receiving
+#  replies from the DHCPv4 server.  Any packets sent to the outgoing
+#  socket will be discarded.
 #
 dhcpv4 {
 	#

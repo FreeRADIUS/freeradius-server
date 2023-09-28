@@ -24,6 +24,7 @@
  */
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/server/packet.h>
 #include <freeradius-devel/util/debug.h>
 #include "proto_arp.h"
 
@@ -85,6 +86,11 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
 
+	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
+		RPEDEBUG("Failed decoding 'Net.*' packet");
+		return -1;
+	}
+
 	REQUEST_VERIFY(request);
 
 	if (RDEBUG_ENABLED) {
@@ -129,6 +135,8 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	if (memcmp(arp->sha, zeros, sizeof(arp->sha)) == 0) {
 		RDEBUG("WARNING: Sender-Hardware-Address of zeros will likely cause problems");
 	}
+
+	fr_packet_pairs_to_packet(request->reply, &request->reply_pairs);
 
 	if (RDEBUG_ENABLED) {
 		RDEBUG("Sending %d via socket %s",

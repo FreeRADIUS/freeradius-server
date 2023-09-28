@@ -39,7 +39,7 @@ amount of control over the server.
 
 The following command-line options are accepted by the program.
 
-*-d config_directory*:: 
+*-d config_directory*::
   Defaults to _/etc/raddb_. *radmin* looks here for the server
   configuration files to find the "listen" section that defines the
   control socket filename.
@@ -109,7 +109,7 @@ prompt for more information.
 +
 Only one debug condition can be active at a time.
 
-*debug condition '((User-Name == ""bob"") || (Packet-Src-IP-Address == 192.0.2.22))'*::
+*debug condition '((User-Name == ""bob"") || (Net.Src.IP == 192.0.2.22))'*::
   A more complex condition that enables debugging output for requests
   containing User-Name "bob", or requests that originate from source IP
   address 192.0.2.22.

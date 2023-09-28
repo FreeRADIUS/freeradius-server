@@ -34,7 +34,6 @@
 #define RADIUS_MAX_STRING_LENGTH		253
 #define RADIUS_MAX_TUNNEL_PASSWORD_LENGTH	249
 #define RADIUS_AUTH_VECTOR_LENGTH		16
-#define RADIUS_CHAP_CHALLENGE_LENGTH		16
 #define RADIUS_MESSAGE_AUTHENTICATOR_LENGTH	16
 #define RADIUS_MAX_PASS_LENGTH			128
 #define RADIUS_MAX_ATTRIBUTES			255
@@ -172,7 +171,6 @@ typedef struct {
 	int			salt_offset;		//!< for tunnel passwords
 	bool 			tunnel_password_zeros;  //!< check for trailing zeros on decode
 	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
-	bool			struct_nested;		//!< decode structs as nested
 
 	uint8_t			tag;			//!< current tag for encoding
 	fr_radius_tag_ctx_t    	**tags;			//!< for decoding tagged attributes
@@ -190,10 +188,6 @@ ssize_t		fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t dat
 /*
  *	protocols/radius/encode.c
  */
-void		fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENGE_LENGTH],
-					       uint8_t id, uint8_t const vector[static RADIUS_AUTH_VECTOR_LENGTH],
-					       char const *password, size_t password_len) CC_HINT(nonnull(1,3,4));
-
 ssize_t		fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx);
 
 /*

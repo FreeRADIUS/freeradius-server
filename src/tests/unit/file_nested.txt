@@ -7,7 +7,6 @@
 #
 
 proto-dictionary radius
-migrate pair_legacy_nested = yes
 
 #
 #  Fully specified paths.
@@ -35,4 +34,4 @@ read_file files/cisco_single_line.txt
 match User-Name = "bob", User-Password = "hello", Vendor-Specific = { Cisco = { AVPair = "1", AVPair += "2", AVPair += "3", AVPair += "4" } }
 
 count
-match 10
+match 9

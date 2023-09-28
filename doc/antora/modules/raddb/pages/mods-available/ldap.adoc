@@ -11,6 +11,9 @@ NOTE: May also perform user authentication using LDAP binds, or by retrieving
 the contents of a password attribute for later comparison by a module such
 as `pap`, or an `eap` method.
 
+Please see the file `global.d/ldap` for server-global configuration items
+which control LDAP library debugging.
+
 
 
 ## Configuration Settings
@@ -44,7 +47,8 @@ port:: Port to connect on, defaults to 389, will be ignored for LDAP URIs.
 
 identity::  Administrator account for searching and possibly modifying.
 
-WARNING: If using SASL + KRB5 these should be commented out.
+WARNING: If using SASL + (KRB5 | EXTERNAL) identity should be commented out
+as it will set an authzid, which is likely not what you want.
 
 
 
@@ -239,11 +243,21 @@ mech:: SASL mechanism.
 
 
 
+authname:: SASL authentication name.  Mechanism specific value
+to use when prompted for the client authentication name.
+
+
+
 proxy:: SASL authorisation identity to proxy.
 
 
 
 realm:: SASL realm. Used for kerberos.
+
+
+
+password_attribute:: Which attribute in the request should be used as
+the password when performing user binds.
 
 
 
@@ -298,6 +312,16 @@ With an LDAP object containing:
   userAccessAllowed: false
 
 Will result in the user being locked out.
+
+
+
+access_value_negate:: Which value we look for in access_attribute
+to indicate that we should negate the result.
+
+
+
+access_value_suspend:: Which value we look for in access_attribute
+to indicate that the user should be suspended.
 
 
 
@@ -405,6 +429,13 @@ filter:: Filter for RADIUS profile objects.
 
 
 
+scope:: Search scope, may be `base`, `one`, `sub` or `children`.
+
+Should usually be left as "base", to retrieve the specific profile
+specified by 'default' or in the user or group objects.
+
+
+
 default:: The default profile. This may be a DN or an attribute reference.
 
 NOTE: To get old v2.2.x style behaviour, or to use the `&User-Profile` attribute
@@ -414,6 +445,16 @@ to specify the default profile, set this to `&control.User-Profile`.
 
 attribute:: The LDAP attribute containing profile DNs to apply
 in addition to the default profile above.
+
+These are retrieved from the user object, at the same time as the
+attributes from the update section, are are applied if authorization
+is successful.
+
+
+
+attribute_suspended: The LDAP attribute containing profile DNs to apply
+in addition to the default profile above, when the user account is in
+the suspended state
 
 These are retrieved from the user object, at the same time as the
 attributes from the update section, are are applied if authorization
@@ -546,6 +587,12 @@ NOTE: `LDAP_OPT_X_KEEPALIVE_INTERVAL` is set to this value.
 
 
 
+net_timeout:: Sets the timeout for establishing connections.
+
+NOTE: `LDAP_OPT_NETWORK_TIMEOUT` is set to this value.
+
+
+
 reconnection_delay:: Sets the time in seconds before a failed connection
 will attempt reconnection.  This includes failures to bind as the admin
 user due to incorrect credentials.
@@ -597,11 +644,13 @@ setting this to "1.2"
 
 ### Connection Pool
 
-The connection pool is new for >= 3.0, and will be used in many
-modules, for all kinds of connection-related activity.
+The connection pool is a set of per-thread parameters for connections
+to the LDAP server.
 
-When the server is not threaded, the connection pool limits are
-ignored, and only one connection is used.
+This connection pool is used for LDAP queries run as the administrative user.
+
+All LDAP operations are perfomed asynchronously, meaning that many queries
+can be active on a single connection simultaneously.
 
 
 start:: Connections to create during module instantiation.
@@ -619,22 +668,14 @@ min:: Minimum number of connections to keep open.
 
 max:: Maximum number of connections.
 
-If these connections are all in use and a new one
-is requested, the request will NOT get a connection.
-
-Setting `max` to *LESS* than the number of threads means
-that some threads may starve, and you will see errors
-like _No connections available and at max connection limit_.
-
-Setting `max` to MORE than the number of threads means
-that there are more connections than necessary.
+If these connections are all fully in use (refer to per_connection_max below)
+and a new one is requested, the request will NOT get a connection.
 
 
 
-spare:: Spare connections to be left idle.
+connecting:: Number of connections which can be starting at once
 
-NOTE: Idle connections WILL be closed if `idle_timeout`
-is set. This should be less than or equal to `max` above.
+Used to throttle connection spawning.
 
 
 
@@ -644,43 +685,58 @@ NOTE: A setting of `0` means infinite (no limit).
 
 
 
-retry_delay:: The number of seconds to wait after the server tries
-to open a connection, and fails.
-
-During this time, no new connections will be opened.
-
-
-
 lifetime:: The lifetime (in seconds) of the connection.
 
 
 
-idle_timeout:: Idle timeout (in seconds).
+open_delay:: Open delay (in seconds).
 
-A connection which is unused for this length of time will be closed.
+How long must we be above the target utilisation for connections to be openned.
 
 
+close_delay:: Close delay (in seconds).
 
-connect_timeout:: Connection timeout (in seconds).
-
-The maximum amount of time to wait for a new connection to be established.
-
-NOTE: Sets `LDAP_OPT_NETWORK_TIMEOUT` in libldap.
+How long we must be below the target utilisation for connections to be closed
 
 
 
-[NOTE]
-====
-All configuration settings are enforced.  If a
-connection is closed because of `idle_timeout`,
-`uses`, or `lifetime`, then the total number of
-connections MAY fall below `min`.  When that
-happens, it will open a new connection.  It will
-also log a WARNING message.
+manage_interval:: How often to manage the connection pool.
 
-The solution is to either lower the `min` connections,
-or increase lifetime/idle_timeout.
-====
+
+
+request:: Options specific to requests handled by this connection pool
+
+
+per_connection_max::  Maximum number of active queries there can be on a
+single connection.
+
+
+
+per_connection_target::  Target number of active queries on a single connection.
+
+
+
+free_delay:: How long must a request in the unassigned (free) list not have been
+used for before it's cleaned up and actually freed.
+
+Unassigned requests can be re-used, multiple times, reducing memory allocation
+and freeing overheads.
+
+
+
+### Bind Connection Pool
+
+This connection pool is used for LDAP binds used to authenticate requests when
+calling the ldap module in authenticate context.  If passwords are retrieved
+from the ldap directory and FreeRADIUS performs the authentication then this is
+not used.
+
+The options are essentially identical to the pool section above with certain
+limitations.  Since only one bind operation can be in progress on a connection at
+a time, `per_connection_max` and `per_connection_target` are always set to 1.
+
+This limitation means that `max` represents the maximum number of in progress
+binds which there can be on a single thread.
 
 
 
@@ -773,13 +829,17 @@ ldap {
 #		filter = "(&(objectClass=user)(sAMAccountName=%{%{Stripped-User-Name}:-%{User-Name}})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
 		sasl {
 #			mech = 'PLAIN'
+#			authname = &User-Name
 #			proxy = &User-Name
 #			realm = 'example.org'
 		}
+#		password_attribute = &User-Password
 #		scope = 'sub'
 #		sort_by = '-uid'
 #		access_attribute = 'dialupAccess'
 #		access_positive = yes
+#		access_value_negate = 'false'
+#		access_value_suspend = 'suspended'
 	}
 	group {
 		base_dn = "${..base_dn}"
@@ -796,8 +856,10 @@ ldap {
 	}
 	profile {
 #		filter = '(objectclass=radiusprofile)'
+#		scope = 'base'
 #		default = 'cn=radprofile,dc=example,dc=org'
 #		attribute = 'radiusProfileDn'
+#		attribute_suspended = 'radiusProfileDn'
 	}
 	accounting {
 		reference = "%{tolower:type.%{Acct-Status-Type}}"
@@ -836,6 +898,7 @@ ldap {
 		idle = 60
 		probes = 3
 		interval = 3
+		net_timeout = 10
 		reconnection_delay = 10
 	}
 	tls {
@@ -850,14 +913,24 @@ ldap {
 	}
 	pool {
 		start = 0
-		min = 0
-#		max =
-		spare = 1
+		min = 1
+		max = 5
+		connecting = 2
 		uses = 0
-		retry_delay = 30
 		lifetime = 0
-		idle_timeout = 60
-		connect_timeout = 3.0
+#		open_delay = 0.2
+#		close_delay = 10
+#		manage_interval = 0.2
+		request {
+#			per_connection_max = 2000
+#			per_connection_target = 1000
+#			free_delay = 10
+		}
+	}
+	bind_pool {
+		start = 0
+		min = 1
+		max = 1000
 	}
 }
 ```

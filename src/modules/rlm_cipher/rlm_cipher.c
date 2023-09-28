@@ -809,7 +809,7 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (in_head->type != FR_TYPE_OCTETS) {
 		REDEBUG("Signature argument wrong type, expected %s, got %s.  "
-			"Use %%{base64_decode:<text>} or %%{hex_decode:<text>} if signature is armoured",
+			"Use %%(base64.decode:<text>) or %%{hex_decode:<text>} if signature is armoured",
 			fr_type_to_str(FR_TYPE_OCTETS),
 			fr_type_to_str(in_head->type));
 		return XLAT_ACTION_FAIL;

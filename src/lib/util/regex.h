@@ -31,6 +31,7 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/value.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -173,9 +174,9 @@ ssize_t		regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
 
 ssize_t		regex_flags_print(fr_sbuff_t *sbuff, fr_regex_flags_t const *flags);
 
-ssize_t		regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
+	ssize_t		regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
 			      fr_regex_flags_t const *flags, bool subcaptures, bool runtime);
-int		regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *regmatch);
+int		regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *regmatch) CC_HINT(nonnull(1,2));
 #ifdef HAVE_REGEX_PCRE2
 int		regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg, fr_regex_flags_t *flags,
 		     		 char const *subject, size_t subject_len,
@@ -184,6 +185,9 @@ int		regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg
 #endif
 uint32_t	regex_subcapture_count(regex_t const *preg);
 fr_regmatch_t	*regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count);
+
+int		fr_regex_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b) CC_HINT(nonnull);
+
 #  ifdef __cplusplus
 }
 #  endif

@@ -51,7 +51,7 @@ Common flags and meanings
 |=====
 | Name           | Description
 | `array`        | For fixed-size types, declare that the contents of the packet can have an array of this value.
-| `enum=<ref>`   | For "leaf" types, copy xref:dictionary/value.adoc[VALUE]s from an xref:dictionary/enum.adoc[ENUM].
+| `enum=<ref>`   | For "leaf" types, copy xref:dictionary/value.adoc[VALUE]s from an xref:dictionary/enum.adoc[ENUM] or other attribute.
 | `clone=<ref>`  | For `tlv` or 'struct' types, clone (or copy) child definitions from another attribute of the same type
 | `internal`     | This attribute is internal to the server, and will never be sent "on the wire"
 | `ref=<ref>`    | For `group` types, the referenced attributes will be allowed in the group
@@ -59,7 +59,7 @@ Common flags and meanings
 
 The `<ref>` field in the examples above is an attribute references such as `Foo`, or `Foo.Bar`, or `dhcpv4.foo.bar`.
 
-The `enum` and `clone` flags are essentially the same, in that they copy "children" of the attribute.  However, the `enum` flag copies `VALUE`s, and the `clone` flag copies `ATTRIBUTE`s.
+The `enum` and `clone` flags are essentially the same, in that they copy "children" of the attribute.  However, the `enum` flag copies values, and `clone` copies attributes.
 
 .Examples
 ----
@@ -69,13 +69,31 @@ ATTRIBUTE baz 3 ipv4addr
 ----
 
 
+== Enum
+
+In some cases, attributes need to re-use the same set of `VALUE` statements.
+The `enum=...` flag allows an attribute to copy enumerated vl
+
+The `enum` flag can only be used for "leaf" data types.  i.e. ones
+which can contain a `VALUE`.
+
+.Enum Examples
+----
+ATTRIBUTE Foo 1 integer
+VALUE Zero Foo 0
+
+ATTRIBUTE Bar 2 integer enum=Foo
+----
+
+The result of the above dictionary is that the `Bar` attribute also has `VALUE` defined, with name `Zero`.
+
 == Clone
 
 In some cases, structured attributes have different parents, but
 identical children. The `clone=...` flag allows an attribute to copy
 or "clone" the children of another attribute.
 
-The `clone` flag can only be used for the data type `tlv`.
+The `clone` flag can only be used for data types `tlv` and `struct`.
 
 .Clone Examples
 ----
@@ -84,18 +102,22 @@ ATTRIBUTE Bar 1.1 ipaddr
 ATTRIBUTE Baz 2 tlv clone=Foo
 ----
 
-== References
+The result of the above dictionary is that the `Baz` attribute also has child attribute, of name `Bar`.
+
+== Ref
 
 In some cases, attributes can "group" other attributes without adding
-a new hierarchy.  The `ref=...` flag allows an attribute to reference
-another attribute.
+a new hierarchy.  The `ref=...` flag allows a grouped attribute to
+reference another attribute.  The grouped attribute can then contain
+the referenced attributes, as if those other attributes were members
+of the group.
 
 If `ref` is not given for an attribute of type `group` then the
 reference is assumed to be to the "root" of the current protocol
 dictionary.
 
-The `ref` flag can only be used for the data type `group`.
-
+The `ref` flag can only be used for the data type `group`.  The referenced attribute must be of data type `group` or `tlv`.
+613 816 8331
 == Fixed Size Data types
 
 The following data types can be marked up as having fixed size, by

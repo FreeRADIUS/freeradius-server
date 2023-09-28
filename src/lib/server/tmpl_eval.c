@@ -51,40 +51,10 @@ fr_dict_autoload_t tmpl_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_client_shortname;
-static fr_dict_attr_t const *attr_packet_dst_ip_address;
-static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
-static fr_dict_attr_t const *attr_packet_dst_port;
-static fr_dict_attr_t const *attr_packet_src_ip_address;
-static fr_dict_attr_t const *attr_packet_src_ipv6_address;
-static fr_dict_attr_t const *attr_packet_src_port;
-static fr_dict_attr_t const *attr_packet_type;
-static fr_dict_attr_t const *attr_packet_authentication_vector;
-static fr_dict_attr_t const *attr_request_processing_stage;
-static fr_dict_attr_t const *attr_virtual_server;
-static fr_dict_attr_t const *attr_module_return_code;
-
 /** Placeholder attribute for uses of unspecified attribute references
  */
 extern fr_dict_attr_t const *tmpl_attr_unspec;
 fr_dict_attr_t const *tmpl_attr_unspec;
-
-static fr_dict_attr_autoload_t tmpl_dict_attr[] = {
-	{ .out = &attr_client_shortname, .name = "Client-Shortname", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_module_return_code, .name = "Module-Return-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPV6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_request_processing_stage, .name = "Request-Processing-Stage", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-
-	{ .out = &attr_packet_authentication_vector, .name = "Packet-Authentication-Vector", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ NULL }
-};
 
 
 /** Resolve attribute #fr_pair_list_t value to an attribute list.
@@ -117,6 +87,8 @@ fr_pair_list_t *tmpl_list_head(request_t *request, fr_dict_attr_t const *list)
 
 	if (list == request_attr_state) return &request->session_state_pairs;
 
+	if (list == request_attr_local) return &request->local_pairs;
+
 	RWDEBUG2("List \"%s\" is not available", tmpl_list_name(list, "<INVALID>"));
 
 	return NULL;
@@ -148,6 +120,8 @@ TALLOC_CTX *tmpl_list_ctx(request_t *request, fr_dict_attr_t const *list)
 	if (list == request_attr_control) return request->control_ctx;
 
 	if (list == request_attr_state) return request->session_state_ctx;
+
+	if (list == request_attr_local) return request->local_ctx;
 
 	return NULL;
 }
@@ -291,7 +265,7 @@ fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
  * @param[in] bufflen		Length of expansion buffer. Must be >= 2.
  * @param[in] request		Current request.
  * @param[in] vpt		to expand. Must be one of the following types:
- *				- #TMPL_TYPE_UNRESOLVED
+ *				- #TMPL_TYPE_DATA_UNRESOLVED
  *				- #TMPL_TYPE_EXEC
  *				- #TMPL_TYPE_XLAT
  *				- #TMPL_TYPE_ATTR
@@ -310,8 +284,8 @@ ssize_t _tmpl_to_type(void *out,
 		      xlat_escape_legacy_t escape, void const *escape_ctx,
 		      fr_type_t dst_type)
 {
-	fr_value_box_t		value_to_cast;
-	fr_value_box_t		value_from_cast = { .type = FR_TYPE_NULL };
+	fr_value_box_t		value_to_cast = FR_VALUE_BOX_INITIALISER_NULL(value_to_cast);
+	fr_value_box_t		value_from_cast = FR_VALUE_BOX_INITIALISER_NULL(value_from_cast);
 	fr_value_box_t const	*to_cast = &value_to_cast;
 	fr_value_box_t const	*from_cast = &value_from_cast;
 
@@ -326,7 +300,7 @@ ssize_t _tmpl_to_type(void *out,
 	fr_assert(!buff || (bufflen >= 2));
 
 	switch (vpt->type) {
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 		RDEBUG4("EXPAND TMPL UNRESOLVED");
 		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, vpt->name, vpt->len, false);
 		src_type = FR_TYPE_STRING;
@@ -570,7 +544,7 @@ ssize_t _tmpl_to_type(void *out,
  * @param out		Where to write pointer to the new buffer.
  * @param request	Current request.
  * @param vpt		to expand. Must be one of the following types:
- *			- #TMPL_TYPE_UNRESOLVED
+ *			- #TMPL_TYPE_DATA_UNRESOLVED
  *			- #TMPL_TYPE_EXEC
  *			- #TMPL_TYPE_XLAT
  *			- #TMPL_TYPE_ATTR
@@ -592,7 +566,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	fr_value_box_t		from_cast;
 
 	fr_pair_t		*vp = NULL;
-	fr_value_box_t		value = (fr_value_box_t){};
+	fr_value_box_t		value = FR_VALUE_BOX_INITIALISER_NULL(value);
 	bool			needs_dup = false;
 
 	ssize_t			slen = -1;
@@ -603,8 +577,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	TMPL_VERIFY(vpt);
 
 	switch (vpt->type) {
-	case TMPL_TYPE_UNRESOLVED:
-		RDEBUG4("EXPAND TMPL UNRESOLVED");
+	case TMPL_TYPE_DATA_UNRESOLVED:
+		RDEBUG4("EXPAND TMPL DATA UNRESOLVED");
 
 		fr_value_box_bstrndup_shallow(&value, NULL, vpt->name, vpt->len, false);
 		to_cast = &value;
@@ -753,13 +727,14 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		MEM(*vb_out = fr_value_box_alloc_null(ctx));
 
-		ret = needs_dup ? fr_value_box_copy(ctx, *vb_out, to_cast) : fr_value_box_steal(ctx, *vb_out, to_cast);
+		ret = needs_dup ? fr_value_box_copy(*vb_out, *vb_out, to_cast) : fr_value_box_steal(*vb_out, *vb_out, to_cast);
 		talloc_free(tmp_ctx);
 		if (ret < 0) {
 			RPEDEBUG("Failed copying data to output box");
 			TALLOC_FREE(*vb_out);
 			return -1;
 		}
+		VALUE_BOX_VERIFY(*vb_out);
 		return 0;
 	}
 
@@ -1068,161 +1043,9 @@ int tmpl_value_list_insert_tail(fr_value_box_list_t *list, fr_value_box_t *box, 
 	if (fr_value_box_cast_in_place(box, box, tmpl_rules_cast(vpt), tmpl_rules_enumv(vpt)) < 0) return -1;
 
 	fr_value_box_list_insert_tail(list, box);
+	VALUE_BOX_LIST_VERIFY(list);
 	return 0;
 }
-
-/** Gets the value of a virtual attribute
- *
- * These attribute *may* be overloaded by the user using real attribute.
- *
- * @todo There should be a virtual attribute registry.
- *
- * @param[in] ctx	to allocate boxed value, and buffers in.
- * @param[out] out	Where to write the boxed value.
- * @param[in] request	The current request.
- * @param[in] vpt	Representing the attribute.
- * @return
- *	- <0	on memory allocation errors.
- *	- 0	success.
- */
-static int tmpl_eval_pair_virtual(TALLOC_CTX *ctx, fr_value_box_list_t *out,
-				  request_t *request, tmpl_t const *vpt)
-{
-	fr_radius_packet_t *packet = NULL;
-	fr_value_box_t	*value;
-	fr_value_box_list_t list;
-
-	/*
-	 *	Virtual attributes always have a count of 1
-	 */
-	if (tmpl_attr_tail_num(vpt) == NUM_COUNT) {
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
-		value->datum.uint32 = 1;
-		goto done;
-	}
-
-	/*
-	 *	Some non-packet expansions
-	 */
-	if (tmpl_attr_tail_da(vpt) == attr_client_shortname) {
-		fr_client_t *client = client_from_request(request);
-		if (!client || !client->shortname) return 0;
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_attr_tail_da(vpt), client->shortname, false) < 0) {
-		error:
-			talloc_free(value);
-			return -1;
-		}
-		goto done;
-	}
-
-	if (tmpl_attr_tail_da(vpt) == attr_request_processing_stage) {
-		if (!request->component) return 0;
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(ctx, value, tmpl_attr_tail_da(vpt), request->component, false) < 0) goto error;
-		goto done;
-	}
-
-	if (tmpl_attr_tail_da(vpt) == attr_virtual_server) {
-		if (!unlang_call_current(request)) return 0;
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_attr_tail_da(vpt),
-					       cf_section_name2(unlang_call_current(request)), false) < 0) goto error;
-		goto done;
-	}
-
-	if (tmpl_attr_tail_da(vpt) == attr_module_return_code) {
-		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, tmpl_attr_tail_da(vpt)));
-		value->datum.int32 = request->rcode;
-		goto done;
-	}
-
-	/*
-	 *	All of the attributes must now refer to a packet.
-	 *	If there's no packet, we can't print any attribute
-	 *	referencing it.
-	 */
-	packet = tmpl_packet_ptr(request, tmpl_list(vpt));
-	if (!packet) return 0;
-
-	if (tmpl_attr_tail_da(vpt) == attr_packet_type) {
-		if (!packet || !packet->code) return 0;
-
-		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL));
-		value->enumv = tmpl_attr_tail_da(vpt);
-		value->datum.int32 = packet->code;
-
-	/*
-	 *	Virtual attributes which require a temporary fr_pair_t
-	 *	to be allocated. We can't use stack allocated memory
-	 *	because of the talloc checks sprinkled throughout the
-	 *	various VP functions.
-	 */
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_authentication_vector) {
-		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_memdup(ctx, value, tmpl_attr_tail_da(vpt), packet->vector, sizeof(packet->vector), true);
-
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_src_ip_address) {
-		if (!fr_socket_is_inet(packet->socket.proto) ||
-		    (packet->socket.inet.src_ipaddr.af != AF_INET)) return 0;
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_attr_tail_da(vpt), &packet->socket.inet.src_ipaddr, true);
-
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_dst_ip_address) {
-		if (!fr_socket_is_inet(packet->socket.proto) ||
-		    (packet->socket.inet.dst_ipaddr.af != AF_INET)) return 0;
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_attr_tail_da(vpt), &packet->socket.inet.dst_ipaddr, true);
-
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_src_ipv6_address) {
-		if (!fr_socket_is_inet(packet->socket.proto) ||
-		    (packet->socket.inet.src_ipaddr.af != AF_INET6)) return 0;
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_attr_tail_da(vpt), &packet->socket.inet.src_ipaddr, true);
-
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_dst_ipv6_address) {
-		if (!fr_socket_is_inet(packet->socket.proto) ||
-		    (packet->socket.inet.dst_ipaddr.af != AF_INET6)) return 0;
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		fr_value_box_ipaddr(value, tmpl_attr_tail_da(vpt), &packet->socket.inet.dst_ipaddr, true);
-
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_src_port) {
-		if (!fr_socket_is_inet(packet->socket.proto)) return 0;
-
-		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL));
-		value->datum.uint16 = packet->socket.inet.src_port;
-
-	} else if (tmpl_attr_tail_da(vpt) == attr_packet_dst_port) {
-		if (!fr_socket_is_inet(packet->socket.proto)) return 0;
-
-		MEM(value = fr_value_box_alloc(ctx, tmpl_attr_tail_da(vpt)->type, NULL));
-		value->datum.uint16 = packet->socket.inet.dst_port;
-
-	} else {
-		RERROR("Attribute \"%s\" incorrectly marked as virtual", tmpl_attr_tail_da(vpt)->name);
-		return -1;
-	}
-
-done:
-	fr_value_box_list_init(&list);
-	fr_value_box_list_insert_tail(&list, value);
-
-	if (tmpl_eval_cast_in_place(&list, vpt) < 0) {
-		fr_value_box_list_talloc_free(&list);
-		return -1;
-	}
-
-	fr_value_box_list_move(out, &list);
-	return 0;
-}
-
 
 /** Gets the value of a real or virtual attribute
  *
@@ -1264,11 +1087,6 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 	 *	the virtual one.
 	 */
 	if (!vp) {
-		if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)->flags.virtual) {
-			ret = tmpl_eval_pair_virtual(ctx, &list, request, vpt);
-			goto done;
-		}
-
 		/*
 		 *	Zero count.
 		 */
@@ -1363,6 +1181,7 @@ done:
 
 fail:
 	tmpl_dcursor_clear(&cc);
+	VALUE_BOX_LIST_VERIFY(out);
 	return ret;
 }
 
@@ -1420,7 +1239,6 @@ int tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmp
 	 *	tmpl_eval_pair(), too.
 	 */
 	MEM(value = fr_value_box_alloc_null(ctx));
-
 	if (tmpl_aexpand(value, &p, request, vpt, NULL, NULL) < 0) {
 		talloc_free(value);
 		return -1;
@@ -1440,6 +1258,8 @@ done:
 	}
 
 	fr_value_box_list_move(out, &list);
+	VALUE_BOX_LIST_VERIFY(out);
+
 	return 0;
 }
 
@@ -1482,6 +1302,7 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 		slen = fr_value_box_list_concat_in_place(vb, vb, list, FR_TYPE_STRING,
 							 FR_VALUE_BOX_LIST_FREE_BOX, true, SIZE_MAX);
 		if (slen < 0) return -1;
+		VALUE_BOX_LIST_VERIFY(list);
 
 		/*
 		 *	If there's no cast, or it's a cast to
@@ -1508,6 +1329,8 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 	fr_value_box_list_foreach_safe(list, vb) {
 		if (fr_value_box_cast_in_place(vb, vb, cast, NULL) < 0) return -1;
 	}}
+	VALUE_BOX_LIST_VERIFY(list);
+
 	return 0;
 }
 
@@ -1517,11 +1340,6 @@ int tmpl_global_init(void)
 
 	if (fr_dict_autoload(tmpl_dict) < 0) {
 		PERROR("%s", __FUNCTION__);
-		return -1;
-	}
-	if (fr_dict_attr_autoload(tmpl_dict_attr) < 0) {
-		PERROR("%s", __FUNCTION__);
-		fr_dict_autofree(tmpl_dict);
 		return -1;
 	}
 

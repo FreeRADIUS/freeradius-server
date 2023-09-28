@@ -53,6 +53,9 @@ void fr_pair_list_init(fr_pair_list_t *list)
 	 */
 	fr_pair_order_list_talloc_init(&list->order);
 
+#ifdef WITH_VERIFY_PTR
+	list->verified = true;
+#endif
 	list->is_child = false;
 }
 
@@ -195,6 +198,9 @@ static inline CC_HINT(always_inline) void pair_init_from_da(fr_pair_t *vp, fr_di
 		/*
 		 *	Make it very obvious if we failed
 		 *	to initialise something.
+		 * 	Given the definition of fr_value_box_t, this entails
+		 * 	writing const-qualified fields. The compiler allows it,
+		 * 	but Coverity points it out as a defect, so it is annotated.
 		 */
 		/* coverity[store_writes_const_field] */
 		memset(&vp->data, 0xff, sizeof(vp->data));
@@ -202,6 +208,8 @@ static inline CC_HINT(always_inline) void pair_init_from_da(fr_pair_t *vp, fr_di
 
 		/*
 		 *	Hack around const issues...
+		 * 	Here again, the orkaround suffices for the compiler but
+		 * 	not for Coverity, so again we annotate.
 		 */
 		/* coverity[store_writes_const_field] */
 		memcpy(UNCONST(fr_type_t *, &vp->vp_type), &da->type, sizeof(vp->vp_type));
@@ -284,74 +292,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	if (da->flags.is_unknown) {
 		fr_dict_attr_t const *unknown;
 
-		unknown = fr_dict_unknown_afrom_da(vp, da);
-		da = unknown;
-	}
-
-	pair_init_from_da(vp, da);
-
-	return vp;
-}
-
-/** Allocate a pooled object that can hold a fr_pair_t any unknown attributes and value buffer
- *
- * @param[in] ctx		to allocate the pooled object in.
- * @param[in] da		If unknown, will be duplicated.
- * @param[in] value_len		The expected length of the buffer.  +1 will be added if this
- *				if a FR_TYPE_STRING attribute.
- */
-fr_pair_t *fr_pair_afrom_da_with_pool(TALLOC_CTX *ctx, fr_dict_attr_t const *da, size_t value_len)
-{
-	fr_pair_t *vp;
-
-	unsigned int headers = 1;
-
-	/*
-	 *	Dict attributes allocate extensions
-	 *      contiguously, so we only need one
-	 *	header even though there's a variable
-	 *	length name buff.
-	 */
-	if (da->flags.is_unknown) {
-		headers++;
-		value_len += talloc_array_length(da);	/* accounts for all extensions */
-	}
-
-	switch (da->type) {
-	case FR_TYPE_OCTETS:
-		headers++;
-		break;
-
-	case FR_TYPE_STRING:
-		headers++;
-		value_len++;
-		break;
-
-	default:
-		fr_strerror_printf("Pooled fr_pair_t can only be allocated for "
-				   "'string' and 'octets' types not '%s'",
-				   fr_type_to_str(da->type));
-		return NULL;
-
-	}
-
-	vp = talloc_zero_pooled_object(ctx, fr_pair_t, headers, value_len);
-	if (unlikely(!vp)) {
-		fr_strerror_printf("Out of memory");
-		return NULL;
-	}
-	talloc_set_destructor(vp, _fr_pair_free);
-
-	pair_init_null(vp);
-
-	/*
-	 *	If we get passed an unknown da, we need to ensure that
-	 *	it's parented by "vp".
-	 */
-	if (da->flags.is_unknown) {
-		fr_dict_attr_t const *unknown;
-
-		unknown = fr_dict_unknown_afrom_da(vp, da);
+		unknown = fr_dict_unknown_copy(vp, da);
 		da = unknown;
 	}
 
@@ -370,24 +311,27 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
 	fr_dict_attr_t const *to_free;
 
 	/*
-	 *	This only works for leaf nodes.
-	 */
-	if (!fr_type_is_leaf(da->type)) return -1;
-
-	/*
 	 *	vp may be created from fr_pair_alloc_null(), in which case it has no da.
 	 */
-	if (vp->da) {
+	if (vp->da && !vp->da->flags.is_raw) {
 		if (vp->da == da) return 0;
 
 		if (!fr_type_is_leaf(vp->vp_type)) return -1;
 
 		if ((da->type != vp->vp_type) && (fr_value_box_cast_in_place(vp, &vp->data, da->type, da) < 0)) return -1;
 	} else {
+		fr_assert(fr_type_is_leaf(vp->vp_type) || (fr_pair_list_num_elements(&vp->vp_group) == 0));
+
 		fr_value_box_init(&vp->data, da->type, da, false);
 	}
 
 	to_free = vp->da;
+	vp->da = da;
+
+	/*
+	 *	Only frees unknown fr_dict_attr_t's
+	 */
+	fr_dict_unknown_free(&to_free);
 
 	/*
 	 *	Ensure we update the attribute index in the parent.
@@ -395,17 +339,8 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
 	if (list) {
 		fr_pair_remove(list, vp);
 
-		vp->da = da;
-
 		fr_pair_append(list, vp);
-	} else {
-		vp->da = da;
 	}
-
-	/*
-	 *	Only frees unknown fr_dict_attr_t's
-	 */
-	fr_dict_unknown_free(&to_free);
 
 	return 0;
 }
@@ -558,17 +493,6 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	n->op = vp->op;
 
 	/*
-	 *	Copy the unknown attribute hierarchy
-	 */
-	if (n->da->flags.is_unknown) {
-		n->da = fr_dict_unknown_afrom_da(n, n->da);
-		if (!n->da) {
-			talloc_free(n);
-			return NULL;
-		}
-	}
-
-	/*
 	 *	Groups are special.
 	 */
 	if (fr_type_is_structural(n->vp_type)) {
@@ -651,35 +575,39 @@ int fr_pair_steal_prepend(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t 
 	return 0;
 }
 
-/** Mark malformed or unrecognised attributed as unknown
+/** Mark malformed attribute as raw
  *
- * @param vp to change fr_dict_attr_t of.
+ * @param[in] vp		to mark as raw.
+ * @param[in] data		to parse.
+ * @param[in] data_len		of data to parse.
+ *
  * @return
- *	- 0 on success (or if already unknown).
+ *	- 0 on success
  *	- -1 on failure.
  */
-int fr_pair_to_unknown(fr_pair_t *vp)
+int fr_pair_raw_from_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len)
 {
 	fr_dict_attr_t *unknown;
 
 	PAIR_VERIFY(vp);
 
-	if (vp->da->flags.is_unknown) return 0;
+	if (!fr_cond_assert(vp->da->flags.is_unknown == false)) return -1;
 
 	if (!fr_cond_assert(vp->da->parent != NULL)) return -1;
 
 	unknown = fr_dict_unknown_afrom_da(vp, vp->da);
 	if (!unknown) return -1;
-	unknown->flags.is_raw = 1;
 
-	fr_dict_unknown_free(&vp->da);	/* Only frees unknown attributes */
 	vp->da = unknown;
 	fr_assert(vp->da->type == FR_TYPE_OCTETS);
 
 	fr_value_box_init(&vp->data, FR_TYPE_OCTETS, NULL, true);
 
+	fr_pair_value_memdup(vp, data, data_len, true);
+
 	return 0;
 }
+
 
 /** Iterate over pairs with a specified da
  *
@@ -1071,6 +999,61 @@ static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dlist_head_t *list, void *
 	return 1;
 }
 
+/** Iterates over the leaves of a list
+ *
+ * @param[in] list	to iterate over.
+ * @param[in] vp	the current CVP
+ * @return
+ *	- NULL when done
+ *	- vp - a leaf pair
+ */
+fr_pair_t *fr_pair_list_iter_leaf(fr_pair_list_t *list, fr_pair_t *vp)
+{
+	fr_pair_t *next, *parent;
+	fr_pair_list_t *parent_list;
+
+	/*
+	 *	Start: return the head of the top-level list.
+	 */
+	if (!vp) {
+		vp = fr_pair_list_head(list);
+
+	next_sibling:
+		if (fr_type_is_leaf(vp->vp_type)) return vp;
+
+		vp = fr_pair_list_iter_leaf(&vp->vp_group, NULL);
+		if (vp) return vp;
+
+		/*
+		 *	vp is NULL, so we've processed all of its children.
+		 */
+	}
+
+	/*
+	 *	Go to the next sibling in the parent list of vp.
+	 */
+redo:
+	parent_list = fr_pair_parent_list(vp);
+	next = fr_pair_list_next(parent_list, vp);
+	if (!next) {
+		/*
+		 *	We're done the top-level list.
+		 */
+		if (parent_list == list) return NULL;
+
+		parent = fr_pair_parent(vp);
+		fr_assert(&parent->vp_group == parent_list);
+		vp = parent;
+		goto redo;
+	}
+
+	/*
+	 *	We do have a "next" attribute. Go check if we can return it.
+	 */
+	vp = next;
+	goto next_sibling;
+}
+
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
  *
  * Filters can be applied later with fr_dcursor_filter_set.
@@ -1301,6 +1284,11 @@ int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
 {
 	PAIR_VERIFY(to_add);
 
+#ifdef WITH_VERIFY_PTR
+	fr_assert(!fr_pair_order_list_in_a_list(to_add));
+	list->verified = false;
+#endif
+
 	if (fr_pair_order_list_in_a_list(to_add)) {
 		fr_strerror_printf(IN_A_LIST_MSG, to_add);
 		return -1;
@@ -1327,6 +1315,11 @@ int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 {
 	PAIR_VERIFY(to_add);
 
+#ifdef WITH_VERIFY_PTR
+	fr_assert(!fr_pair_order_list_in_a_list(to_add));
+	list->verified = false;
+#endif
+
 	if (fr_pair_order_list_in_a_list(to_add)) {
 		fr_strerror_printf(IN_A_LIST_MSG, to_add);
 		return -1;
@@ -1349,6 +1342,11 @@ int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 int fr_pair_insert_after(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_add)
 {
 	PAIR_VERIFY(to_add);
+
+#ifdef WITH_VERIFY_PTR
+	fr_assert(!fr_pair_order_list_in_a_list(to_add));
+	list->verified = false;
+#endif
 
 	if (fr_pair_order_list_in_a_list(to_add)) {
 		fr_strerror_printf(IN_A_LIST_MSG, to_add);
@@ -1378,6 +1376,12 @@ int fr_pair_insert_before(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_ad
 {
 	PAIR_VERIFY(to_add);
 
+#ifdef WITH_VERIFY_PTR
+	fr_assert(!fr_pair_order_list_in_a_list(to_add));
+	fr_assert(!pos || fr_pair_order_list_in_a_list(pos));
+	list->verified = false;
+#endif
+
 	if (fr_pair_order_list_in_a_list(to_add)) {
 		fr_strerror_printf(IN_A_LIST_MSG, to_add);
 		return -1;
@@ -1405,6 +1409,12 @@ void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
 {
 	PAIR_VERIFY_WITH_LIST(list, to_replace);
 	PAIR_VERIFY(vp);
+
+#ifdef WITH_VERIFY_PTR
+	fr_assert(!fr_pair_order_list_in_a_list(vp));
+	fr_assert(fr_pair_order_list_in_a_list(to_replace));
+	list->verified = false;
+#endif
 
 	fr_pair_insert_after(list, to_replace, vp);
 	fr_pair_remove(list, to_replace);
@@ -1632,6 +1642,93 @@ int fr_pair_delete_by_da(fr_pair_list_t *list, fr_dict_attr_t const *da)
 	}
 
 	return cnt;
+}
+
+/** Delete matching pairs from the specified list
+ *
+ * @param[in,out] list	to search for attributes in or delete attributes from.
+ * @param[in] da	to match.
+ * @return
+ *	- >0 the number of pairs deleted.
+ *	- 0 if no pairs were deleted.
+ */
+int fr_pair_delete_by_da_nested(fr_pair_list_t *list, fr_dict_attr_t const *da)
+{
+	int			cnt = 0;
+	fr_pair_t		*vp;
+	fr_dict_attr_t const	**find;		/* DA currently being looked for */
+	fr_pair_list_t		*cur_list;	/* Current list being searched */
+	fr_da_stack_t		da_stack;
+
+	if (da->depth <= 1) return fr_pair_delete_by_da(list, da);
+
+	if (fr_pair_list_empty(list)) return 0;
+
+	/*
+	 *	Similar to fr_pair_find_by_da_nested()
+	 */
+	fr_proto_da_stack_build(&da_stack, da);
+	cur_list = list;
+	find = &da_stack.da[0];
+	vp = NULL;
+
+	/*
+	 *	Loop over the list at each level until we find a matching da.
+	 */
+	while (true) {
+		fr_pair_t	*next;
+
+		fr_assert((*find)->depth <= da->depth);
+
+		/*
+		 *	Find a vp which matches a given da.  If found,
+		 *	recurse into the child list to find the child
+		 *	attribute.
+		 *
+		 */
+		next = fr_pair_find_by_da(cur_list, vp, *find);
+		if (next) {
+			/*
+			 *	We've found a match for the requested
+			 *	da - delete it
+			 */
+			if ((*find) == da) {
+				do {
+					fr_pair_delete(cur_list, next);
+					cnt++;
+				} while ((next = fr_pair_find_by_da(cur_list, vp, *find)) != NULL);
+
+				return cnt;
+			}
+
+			/*
+			 *	Prepare to search the next level.
+			 */
+			cur_list = &next->vp_group;
+			find++;
+			vp = NULL;
+			continue;
+		}
+
+		/*
+		 *	We hit the end of the top-level list.  Therefore we found nothing.
+		 */
+		if (cur_list == list) break;
+
+		/*
+		 *	We hit the end of *A* list.  Go to the parent
+		 *	VP, and then find its list.
+		 *
+		 *	We still then have to go to the next attribute
+		 *	in the parent list, as we've checked all of the
+		 *	children of this VP.
+		 */
+		find--;
+		vp = fr_pair_list_parent(cur_list);
+		cur_list = fr_pair_parent_list(vp);
+	}
+
+	return fr_pair_delete_by_da(list, da);
 }
 
 /** Delete matching pairs from the specified list
@@ -2414,7 +2511,7 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
 {
 	if (!fr_cond_assert(src->data.type != FR_TYPE_NULL)) return -1;
 
-	if (dst->data.type != FR_TYPE_NULL) fr_value_box_clear(&dst->data);
+	if (dst->data.type != FR_TYPE_NULL) fr_value_box_clear_value(&dst->data);
 	fr_value_box_copy(dst, &dst->data, &src->data);
 
 	/*
@@ -2840,7 +2937,7 @@ int fr_pair_value_memdup(fr_pair_t *vp, uint8_t const *src, size_t len, bool tai
 
 	if (!fr_cond_assert(vp->vp_type == FR_TYPE_OCTETS)) return -1;
 
-	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
+	fr_value_box_clear_value(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_memdup(vp, &vp->data, vp->da, src, len, tainted);
 	if (ret == 0) PAIR_VERIFY(vp);
 
@@ -3049,7 +3146,15 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 	 *	This field is only valid for non-structural pairs
 	 */
 	if (!fr_type_is_structural(vp->vp_type)) {
+		fr_pair_t *parent = fr_pair_parent(vp);
+
 		if (vp->data.enumv) fr_dict_attr_verify(file, line, vp->data.enumv);
+
+		if (parent && !fr_dict_attr_can_contain(parent->da, vp->da)) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" should be parented by %s, but is parented by %s",
+					     file, line, vp->da->name, vp->da->parent->name, parent->da->name);
+		}
+
 	} else {
 		fr_pair_t *parent = fr_pair_parent(vp);
 
@@ -3156,6 +3261,8 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 
        case FR_TYPE_STRUCTURAL:
        {
+	       if (vp->vp_group.verified) break;
+
 	       fr_pair_list_foreach(&vp->vp_group, child) {
 			TALLOC_CTX *parent = talloc_parent(child);
 
@@ -3168,13 +3275,18 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					    parent, talloc_get_name(parent));
 
 			/*
-			 *	@todo - uncomment this once we fully support nested structures.
-			 *
-			 *	Right now the "flat" nature of attributes prevents this check from working.
+			 *	Check if the child can be in the parent.
 			 */
-//			fr_assert(fr_dict_attr_can_contain(vp->da, child->da));
+			fr_fatal_assert_msg(fr_dict_attr_can_contain(vp->da, child->da),
+					    "CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" should be parented "
+					    "by fr_pair_t \"%s\", but it is instead parented by \"%s\"",
+					    file, line,
+					    child->da->name, child->da->parent->name, vp->da->name);
+
 			fr_pair_verify(file, line, &vp->vp_group, child);
 		}
+
+	       UNCONST(fr_pair_t *, vp)->vp_group.verified = true;
 	}
 	       break;
 
@@ -3182,7 +3294,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 		break;
 	}
 
-	if (vp->da->flags.is_unknown || vp->da->flags.is_raw) {
+	if (vp->da->flags.is_unknown || vp->vp_raw) {
 		(void) talloc_get_type_abort_const(vp->da, fr_dict_attr_t);
 
 	} else {
@@ -3200,7 +3312,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 		}
 	}
 
-	if (vp->da->flags.is_raw || vp->da->flags.is_unknown) {
+	if (vp->vp_raw || vp->da->flags.is_unknown) {
 		if ((vp->da->parent->type != FR_TYPE_VSA) && (vp->vp_type != FR_TYPE_VSA) && (vp->vp_type != FR_TYPE_OCTETS) && (vp->vp_type != FR_TYPE_TLV)) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t (raw/unknown) attribute %p \"%s\" "
 					     "data type incorrect.  Expected %s, got %s",
@@ -3208,6 +3320,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					     fr_type_to_str(FR_TYPE_OCTETS),
 					     fr_type_to_str(vp->vp_type));
 		}
+
 	} else if (fr_type_is_leaf(vp->vp_type) && (vp->vp_type != vp->da->type) &&
 		   !((vp->da->type == FR_TYPE_COMBO_IP_ADDR) && ((vp->vp_type == FR_TYPE_IPV4_ADDR) || (vp->vp_type == FR_TYPE_IPV6_ADDR))) &&
 		   !((vp->da->type == FR_TYPE_COMBO_IP_PREFIX) && ((vp->vp_type == FR_TYPE_IPV4_PREFIX) || (vp->vp_type == FR_TYPE_IPV6_PREFIX)))) {
@@ -3237,6 +3350,11 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 	TALLOC_CTX		*parent;
 
 	if (fr_pair_list_empty(list)) return;	/* Fast path */
+
+	/*
+	 *	Only verify the list if it has been modified.
+	 */
+	if (list->verified) return;
 
 	for (slow = fr_pair_list_head(list), fast = fr_pair_list_head(list);
 	     slow && fast;
@@ -3275,6 +3393,8 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 		parent = talloc_parent(slow);
 		if (expected && (parent != expected)) goto bad_parent;
 	}
+
+	UNCONST(fr_pair_list_t *, list)->verified = true;
 }
 #endif
 
@@ -3315,117 +3435,6 @@ bool fr_pair_matches_da(void const *item, void const *uctx)
 	fr_pair_t const		*vp = item;
 	fr_dict_attr_t const	*da = uctx;
 	return da == vp->da;
-}
-
-/** Flatten a source list into a destination list.
- *
- * @param[in] ctx	new talloc ctx for the VPs we move
- * @param[in] to	list to which the VPs are moved
- * @param[in] from	list from which the VPs are removed
- */
-static void pair_list_flatten(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t *from)
-{
-	fr_pair_t *vp, *next;
-
-	/*
-	 *	Sort the source list before flattening it.  This is
-	 *	really necessary only for struct and tlv types.  But
-	 *	it doesn't hurt to do it for other types.
-	 *
-	 *	Since the VPs are already in a tree, we don't need to
-	 *	sort by parent da.  We just sort by number, and the
-	 *	encoders will ignore non-protocol attributes.
-	 *
-	 *	The input tree MUST be correct, and MUST NOT contain
-	 *	parts which are "tree" like, and parts which are
-	 *	"flattened", otherwise who knows what will happen.
-	 */
-	fr_pair_list_sort(from, pair_cmp_by_num);
-
-	/*
-	 *	Flatten the list.
-	 */
-	for (vp = fr_pair_list_head(from); vp; vp = next) {
-		next = fr_pair_list_next(from, vp);
-
-		/*
-		 *	The members of a group are left in the group,
-		 *	but each member flattened into the groups children.
-		 *
-		 *	Note that a group MAY change dictionaries, but
-		 *	we don't care.  We just flatten all of the
-		 *	children of the group into the group itself.
-		 *	And then move the group to the destination.
-		 */
-		if ((vp->vp_type == FR_TYPE_GROUP) || (vp->vp_type == FR_TYPE_TLV)) {
-			fr_pair_flatten(vp);
-			goto move;
-		}
-
-		/*
-		 *	Leaf attributes are hoisted up, way... up to
-		 *	the root list.
-		 */
-		if (fr_type_is_leaf(vp->vp_type)) {
-		move:
-			fr_pair_remove(from, vp);
-			talloc_steal(ctx, vp);
-			fr_pair_append(to, vp);
-			continue;
-		}
-
-
-		/*
-		 *	Structural types have their children flattened
-		 *	to the output list.  Then the structural
-		 *	container is empty, so we delete it.
-		 */
-		fr_pair_remove(from, vp);
-		pair_list_flatten(ctx, to, &vp->vp_group);
-		talloc_free(vp);
-	}
-}
-
-/** Flatten VSA / vendor / etc. in a pair list
- *
- * @param[in] vp	where the children will be flattened into.
- */
-void fr_pair_flatten(fr_pair_t *vp)
-{
-	fr_pair_list_t list;
-
-	fr_assert(fr_type_is_structural(vp->vp_type));
-
-	/*
-	 *	Don't flatten children of a group if they're already flat.
-	 */
-	if (vp->vp_type == FR_TYPE_GROUP) {
-		bool skip = true;
-
-		/*
-		 *	If the list is already flat, don't do anything.
-		 */
-		fr_pair_list_foreach(&vp->vp_group, child) {
-			if (fr_type_is_structural(child->vp_type)) {
-				skip = false;
-				break;
-			}
-		}
-		if (skip) return;
-	}
-
-	fr_pair_list_init(&list);
-
-	/*
-	 *	Flatten to an intermediate list, so that we don't loop
-	 *	over things we already flattened.
-	 */
-	pair_list_flatten(vp, &list, &vp->vp_group);
-
-	/*
-	 *	The input group should really be empty by now.
-	 */
-	fr_pair_list_append(&vp->vp_group, &list);
 }
 
 /** Find or allocate a parent attribute.
@@ -3498,259 +3507,16 @@ static fr_pair_t *pair_alloc_parent(fr_pair_t *in, fr_pair_t *item, fr_dict_attr
 	vp = fr_pair_afrom_da(parent, da);
 	if (!vp) return NULL;
 
-	fr_pair_append(&parent->vp_group, vp);
-	return vp;
-}
-
-static int pair_reparent_group(fr_pair_t *in);
-
-/** Reparent childrent of a struct / tlv as necessary.
- *
- *	The fr_pair_unflatten() routine created a tree which had all
- *	pairs allocated with a 1-1 correlation between parent VPs and
- *	parent DAs.  However, for structs and TLVs, the flat list has
- *	an *implicit* new parent VP when the child attribute number
- *	decreases.
- *
- *	i.e. we have
- *
- *		struct = { 1, 2, 3, 1, 2, 3 }
- *
- *	And we want to turn that into
- *
- *		struct = { 1, 2, 3 }, struct = { 1, 2, 3 }
- *
- *	We walk over the children, and find the point where a new
- *	parent is needed.  Then, create the new parent.
- *
-*	The subsquent children of the current structure are moved (in
- *	order) into the new parent.
- */
-static int pair_reparent_struct(fr_pair_t *parent, fr_pair_t *item, fr_pair_t *in)
-{
-	fr_pair_t *vp, *next;
-	unsigned int child_num = 0;
-	fr_pair_t *new_parent = in;
-
-	for (vp = fr_pair_list_head(&in->vp_group); vp; vp = next) {
-		next = fr_pair_list_next(&in->vp_group, vp);
-
-		fr_assert((vp->da->parent == parent->da) || (parent->vp_type == FR_TYPE_GROUP) || (parent->vp_type == FR_TYPE_VENDOR) ||
-			  (fr_dict_attr_is_key_field(vp->da->parent) && vp->da->parent->parent == parent->da));
-
-		/*
-		 *	If we need a new parent, allocate it.
-		 *
-		 *	MEMBERs of a struct can never have value 0.
-		 */
-		if (child_num >= vp->da->attr) {
-			new_parent = fr_pair_afrom_da(parent, in->da);
-			if (!new_parent) return -1;
-
-			/*
-			 *	Ensure that the new parent is
-			 *	*appended* to the list, either before
-			 *	the next item, or if there's no next
-			 *	item, then at the end of the list.
-			 */
-			if (item) {
-				fr_pair_insert_before(&parent->vp_group, item, new_parent);
-			} else {
-				fr_pair_append(&parent->vp_group, new_parent);
-			}
-
-			child_num = 0;
-		} else {
-			/*
-			 *	Track the child number so we can
-			 *	notice when it decreases.
-			 */
-			child_num = vp->da->attr;
-
-			/*
-			 *	The child is already in the correct
-			 *	parent, so we don't need to move it.
-			 */
-			if (new_parent == in) continue;
-		}
-
-		/*
-		 *	Move the child to the new parent.
-		 */
-		fr_pair_remove(&in->vp_group, vp);
-		talloc_steal(new_parent, vp);
-		fr_pair_append(&new_parent->vp_group, vp);
-
-		if (fr_type_is_leaf(vp->vp_type)) continue;
-
-		/*
-		 *	If the child is a group, we have to check its
-		 *	children for struct / tlv pairs.
-		 */
-		if (vp->vp_type == FR_TYPE_GROUP) {
-			if (pair_reparent_group(vp) < 0) return -1;
-			continue;
-		}
-
-		/*
-		 *	Can't have vendor-specific or vendor in a struct.
-		 */
-		fr_assert((vp->vp_type == FR_TYPE_STRUCT) || (vp->vp_type == FR_TYPE_TLV));
-
-		/*
-		 *	The current VP is a struct / tlv, we need to
-		 *	recursively check its children for struct /
-		 *	tlv pairs.  If we're inserting the new
-		 *	children into "in", then do so before the
-		 *	"next" VP of this list.  Otherwise insert into
-		 *	the tail of the new parent.
-		 */
-		if (pair_reparent_struct(new_parent, (new_parent == in) ? next : NULL, vp) < 0) return -1;
-	}
-
-	return 0;
-}
-
-/** Reparent children of a group.
- *
- */
-static int pair_reparent_group(fr_pair_t *in)
-{
-	fr_pair_t *vp, *next;
-
-	for (vp = fr_pair_list_head(&in->vp_group); vp; vp = next) {
-		next = fr_pair_list_next(&in->vp_group, vp);
-
-		/*
-		 *	The leaf is already in the right place, we
-		 *	don't have to create any new pairs.
-		 */
-		if (fr_type_is_leaf(vp->vp_type)) continue;
-
-		/*
-		 *	Check the children of this struct/tlv for sequencing.
-		 *
-		 *	This function will create new parents of type
-		 *	vp->da, if the children of vp contain multiple
-		 *	struct/tlvs.
-		 */
-		if ((vp->vp_type == FR_TYPE_STRUCT) || (vp->vp_type == FR_TYPE_TLV)) {
-			if (pair_reparent_struct(in, next, vp) < 0) return -1;
-			continue;
-		}
-
-		/*
-		 *	Restructure the children of this group, but
-		 *	don't add more group attributes.
-		 */
-		if (pair_reparent_group(vp) < 0) return -1;
-	}
-
-	return 0;
-}
-
-/** Move children of a VP from a flat list to as nested as possible.
- *
- *  We still have to pay attention to members of struct/tlv, where the
- *  children are ordered, and we create a new parent as soon as we go
- *  from child N to child 1.
- *
- *  In addition, this function MUST ONLY be called immediately after
- *  the decoder, and before any "internal" attributes are added to the
- *  list.  If there are internal attributes mixed in with the
- *  protocol-specific ones, it may erroneously create new struct/tlv
- *  parents when the children should have been placed into the
- *  previous struct/tlv parent.
- *
- * @param[in] in	attribute to modify in-place.
- * @return
- *	- <0 on error, memory allocation failed
- *	- 0 on success
- */
-int fr_pair_unflatten(fr_pair_t *in)
-{
-	fr_pair_t *vp, *next;
-
-	for (vp = fr_pair_list_head(&in->vp_group); vp; vp = next) {
-		fr_pair_t *parent;
-
-		next = fr_pair_list_next(&in->vp_group, vp);
-		PAIR_VERIFY(vp);
-
-		/*
-		 *	The VP is already at the root (dictionary, or
-		 *	parent vp).
-		 *
-		 *	This VP is not necessarily the root of
-		 *	protocol dictionary, as we may have internal
-		 *	attributes, too.  But it's already at *a*
-		 *	root.
-		 */
-		if (vp->da->parent->flags.is_root || (vp->da->parent == in->da)) {
-			/*
-			 *	Leaf data types are left at the root.
-			 */
-			if (fr_type_is_leaf(vp->vp_type)) continue;
-
-			/*
-			 *	Other structural attributes are left
-			 *	at the root, but their children are
-			 *	unflattened.
-			 *
-			 *	This step isn't strictly necessary, as
-			 *	flattened lists shouldn't have
-			 *	structural members.  But it's worth
-			 *	doing for consistency.
-			 */
-			if (fr_pair_unflatten(vp) < 0) return -1;
-			continue;
-		}
-
-		/*
-		 *	Sub-structures are put into their parent.
-		 */
-		if (fr_dict_attr_is_key_field(vp->da->parent) &&
-		    fr_pair_parent(vp) == in) continue;
-
-		/*
-		 *	Allocate or find the parent attribute.
-		 *
-		 *	If the parent is created, it's inserted before
-		 *	the "next" pair, so that we don't walk over
-		 *	the newly created pair.
-		 */
-		parent = pair_alloc_parent(in, next, vp->da->parent);
-		if (!parent) return -1;
-
-		fr_pair_remove(&in->vp_group, vp);
-		talloc_steal(parent, vp);
-		fr_pair_append(&parent->vp_group, vp);
-
-		if (fr_type_is_leaf(vp->vp_type)) continue;
-
-		/*
-		 *	If the VP is structural, unflatten its
-		 *	children, too.
-		 */
-		if (fr_pair_unflatten(vp) < 0) return -1;
-	}
-
 	/*
-	 *	The above code puts all of the child pairs into one
-	 *	parent pair.  This is OK for group, vendor-specific,
-	 *	and vendor.  But it's not OK for struct and tlv.  For
-	 *	those types, we have to walk over the children, and
-	 *	create a new parent when the child number decreases.
-	 *
-	 *	For now, it's easier to just walk over everything
-	 *	twice, rather than trying to keep track of child
-	 *	numbers across multiple layers of parents.
+	 *	If we are at the root, and have been provided with
+	 *	an entry to insert before, then do that.
 	 */
-	if (pair_reparent_group(in) < 0) return -1;
-
-	PAIR_VERIFY(in);
-
-	return 0;
+	if (item && da->parent->flags.is_root) {
+		fr_pair_insert_before(&parent->vp_group, item, vp);
+	} else {
+		fr_pair_append(&parent->vp_group, vp);
+	}
+	return vp;
 }
 
 /** Parse a list of VPs from a value box.

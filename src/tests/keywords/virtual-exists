@@ -1,6 +1,0 @@
-#
-#  PRE: if
-#
-if (&Client-Shortname) {
-	success
-}

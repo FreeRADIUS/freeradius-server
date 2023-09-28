@@ -1,6 +1,6 @@
-#  this is "foo" + PRINTABLE version of &Packet-Authentication-Vector
-xlat_expr "foo%{Packet-Authentication-Vector}"
-match foo\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000
+#  this is "foo" + PRINTABLE version of the packet authentication vector
+xlat_expr "foo%{bin:000000}"
+match foo\000\000\000
 
 xlat_expr 1 && 2
 match 2
@@ -37,16 +37,16 @@ match 2147483648
 xlat_expr %n
 match {0}
 
-xlat_expr &Packet-Src-IP-Address =~ /^127.0/
+xlat_expr &Net.Src.IP =~ /^127.0/
 match true
 
-xlat_expr &Packet-Src-IP-Address =~ /^128.0/
+xlat_expr &Net.Src.IP =~ /^128.0/
 match false
 
-xlat_expr &Packet-Src-IP-Address =~ /foo %{Packet-Dst-IP-Address} foo/
+xlat_expr &Net.Src.IP =~ /foo %{Net.Dst.IP} foo/
 match false
 
-xlat_expr &Packet-Src-IP-Address =~ /%{Packet-Dst-IP-Address}/
+xlat_expr &Net.Src.IP =~ /%{Net.Dst.IP}/
 match true
 
 # Auto upcast
@@ -92,13 +92,13 @@ match ERROR expanding xlat: Program failed with status 1
 xlat_expr -&NAS-IP-Address
 match ERROR expanding xlat: Input is empty
 
-xlat_expr "foo" + (string)&Packet-Src-IP-Address
+xlat_expr "foo" + (string)&Net.Src.IP
 match foo127.0.0.1
 
-xlat_expr "foo%{Packet-Src-IP-Address}"
+xlat_expr "foo%{Net.Src.IP}"
 match foo127.0.0.1
 
-xlat_expr "foo" + (octets)&Packet-Src-IP-Address
+xlat_expr "foo" + (octets)&Net.Src.IP
 match 0x666f6f7f000001
 
 #
@@ -106,12 +106,13 @@ match 0x666f6f7f000001
 #  This just casts the octets to 'string', without
 #  any escaping.
 #
-xlat_expr "foo" + (string)&Packet-Authentication-Vector
-match foo\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000
+xlat_expr "foo" + (string)%{bin:0x0001020304}
+match foo\000\001\002\003\004
+
 
 # string + octets gets promoted to octets
-xlat_expr "foo" + &Packet-Authentication-Vector
-match 0x666f6f00000000000000000000000000000000
+xlat_expr "foo" + %{bin:0x0001020304}
+match 0x666f6f0001020304
 
 # no escaping!
 xlat_expr 'foo%{Packet-Authentication-Vector}'
@@ -124,5 +125,5 @@ match 0x010200047f000001
 xlat_expr (uint16) ((uint32) 1 + (uint8) 2)
 match 3
 
-xlat_expr (&Framed-IP-Address || &Packet-Src-IP-Address) == (ipaddr) 127.0.0.1
+xlat_expr (&Framed-IP-Address || &Net.Src.IP) == (ipaddr) 127.0.0.1
 match true

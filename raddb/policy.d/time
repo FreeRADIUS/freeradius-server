@@ -1,27 +1,20 @@
-# Returns the current epoch time in ms
 #
-# Sets Tmp-uint64-0 with the current epoch time in ms
-time_current_ms {
-	&request.Tmp-uint64-0 := "%{expr:(%c*1000) + (%C/1000)}"
-}
-
-# Returns elapsed time in ms since time_current_ms
-#
-# Sets Tmp-uint64-1 with number of milliseconds
-time_elapsed_ms {
-	&request.Tmp-uint64-1 := "%{expr:(%c*1000) + (%C/1000) - %{Tmp-uint64-0}}"
-}
-
 # Handles the Expiration attribute
 #
 expiration {
 	if (&control.Expiration) {
-		if (&control.Expiration < "%l") {
+		time_delta timeout
+
+		#
+		#  %l is "when the server received the reuest"
+		#
+		if (&control.Expiration < %l) {
 			disallow
+			return
 		}
 
-		elsif (!&reply.Session-Timeout || (&Session-Timeout > "%{expr:%{Expiration} - %l}")) {
-			&reply.Session-Timeout := %{expr:%{Expiration} - %l}
-		}
+		&timeout = &control.Expiration - %l
+
+		&reply.Session-Timeout <= &timeout
 	}
 }

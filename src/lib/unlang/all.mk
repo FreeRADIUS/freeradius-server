@@ -25,7 +25,6 @@ SOURCES	:=	base.c \
 		switch.c \
 		timeout.c \
 		tmpl.c \
-		variable.c \
 		xlat.c \
 		xlat_alloc.c \
 		xlat_builtin.c \

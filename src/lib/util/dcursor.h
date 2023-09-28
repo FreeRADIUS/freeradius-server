@@ -195,6 +195,33 @@ static inline void fr_dcursor_copy(fr_dcursor_t *out, fr_dcursor_t const *in)
 	if (in->copy) fr_dcursor_copy(out, in);
 }
 
+/** Copy a read-only iterator from a parent to a child cursor
+ *
+ * @param[out] out	Where to copy the cursor to.
+ * @param[in] in	cursor to copy.
+ *
+ * @hidecallergraph
+ */
+CC_HINT(nonnull)
+static inline void fr_dcursor_copy_iter(fr_dcursor_t *out, fr_dcursor_t const *in)
+{
+	fr_assert(!out->iter);
+	fr_assert(!out->iter_uctx);
+
+	out->iter = in->iter;
+	out->iter_uctx = in->iter_uctx;
+
+#ifndef NDEBUG
+	/*
+	 *	The output cursor has to be read-only.
+	 */
+	out->insert = NULL;
+	out->remove = NULL;
+	out->mod_uctx = NULL;
+	out->copy = NULL;
+#endif
+}
+
 /** Rewind cursor to the start of the list
  *
  * @param[in] cursor	to operate on.

@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/client.h>
-#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/map_proc.h>
@@ -189,15 +188,8 @@ static const CONF_PARSER thread_config[] = {
  *	Migration configuration.
  */
 static const CONF_PARSER migrate_config[] = {
-	{ FR_CONF_OFFSET("unflatten_after_decode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, unflatten_after_decode) },
-	{ FR_CONF_OFFSET("unflatten_before_encode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, unflatten_before_encode) },
-	{ FR_CONF_OFFSET("flatten_after_decode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, flatten_after_decode), .dflt = "yes" },
-	{ FR_CONF_OFFSET("flatten_before_encode", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, flatten_before_encode), .dflt = "yes" },
-	{ FR_CONF_OFFSET("tmpl_tokenize_all_nested", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, tmpl_tokenize_all_nested) },
-	{ FR_CONF_OFFSET("use_new_conditions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, use_new_conditions) },
 	{ FR_CONF_OFFSET("rewrite_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET("forbid_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, forbid_update) },
-	{ FR_CONF_POINTER("pair_legacy_nested", FR_TYPE_BOOL | FR_TYPE_HIDDEN, &fr_pair_legacy_nested), },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -429,32 +421,10 @@ static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	return 0;
 }
 
-static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
+static inline CC_HINT(always_inline)
+uint32_t num_workers_auto(main_config_t *conf, CONF_ITEM *parent)
 {
-	int		ret;
 	uint32_t	value;
-
-	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
-
-	memcpy(&value, out, sizeof(value));
-
-	/*
-	 *	If no value is specified, try and
-	 *	discover it automatically.
-	 */
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, >=, 1);
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, <=, 128);
-
-	memcpy(out, &value, sizeof(value));
-
-	return 0;
-}
-
-static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
-{
-	char		*strvalue;
-	uint32_t	value;
-	main_config_t	*conf = parent;
 
 	value = fr_hw_num_cores_active();
 	if (value == 0) {
@@ -476,6 +446,41 @@ static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_
 	else if (value > (conf->max_networks * 4)) {
 		value -= conf->max_networks;
 	}
+
+	return value;
+}
+
+static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int		ret;
+	uint32_t	value;
+	main_config_t	*conf = parent;
+
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	if (value == 0) value = num_workers_auto(conf, ci);
+
+	/*
+	 *	If no value is specified, try and
+	 *	discover it automatically.
+	 */
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, >=, 1);
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, <=, 128);
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+{
+	char		*strvalue;
+	uint32_t	value;
+	main_config_t	*conf = parent;
+
+	value = num_workers_auto(conf, cf_section_to_item(cs));
 	strvalue = talloc_asprintf(NULL, "%u", value);
 	*out = cf_pair_alloc(cs, rule->name, strvalue, T_OP_EQ, T_BARE_WORD, quote);
 	talloc_free(strvalue);
@@ -578,7 +583,7 @@ static xlat_action_t xlat_config(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (!value) return XLAT_ACTION_DONE;
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_bstrndup(ctx, vb, NULL, value, strlen(value), false);
+	fr_value_box_bstrndup(vb, vb, NULL, value, strlen(value), false);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -1264,25 +1269,6 @@ do {\
 	}
 
 	/*
-	 *	Handle migration.
-	 *
-	 *	If all of the tmpls are tokenized as nested, then we
-	 *	MUST use the new conditions.  The old conditions can't
-	 *	handle nested attributes.
-	 *
-	 *	Similarly, we MUST NOT flatten the attributes after
-	 *	decoding, or before encoding.  The code should handle everything correctly.
-	 */
-	if (config->tmpl_tokenize_all_nested) {
-		config->use_new_conditions = true;
-		config->flatten_after_decode = false;
-		config->flatten_before_encode = false;
-
-		config->unflatten_after_decode = false;
-		config->unflatten_before_encode = false;
-	}
-
-	/*
 	 *	If there was no log destination set on the command line,
 	 *	set it now.
 	 */
@@ -1500,8 +1486,6 @@ void main_config_hup(main_config_t *config)
 }
 
 static fr_table_num_ordered_t config_arg_table[] = {
-	{ L("use_new_conditions"),	 offsetof(main_config_t, use_new_conditions) },
-	{ L("tmpl_tokenize_all_nested"), offsetof(main_config_t, tmpl_tokenize_all_nested) },
 	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
 	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
 };
@@ -1527,9 +1511,6 @@ int main_config_parse_option(char const *value)
 	offset = fr_table_value_by_substr(config_arg_table, value, p - value, 0);
 	if (offset) {
 		out = (bool *) (((uintptr_t) main_config) + offset);
-
-	} else if (strncmp(p, "pair_legacy_nested", p - value) != 0) {
-		out = &fr_pair_legacy_nested;
 
 	} else {
 		return -1;
@@ -1558,7 +1539,7 @@ bool main_config_migrate_option_get(char const *name)
 
 	if (!main_config) return false;
 
-	if (strcmp(name, "pair_legacy_nested") == 0) return fr_pair_legacy_nested;
+	if (strcmp(name, "use_new_conditions") == 0) return true; /* ignore this for migration */
 
 	offset = fr_table_value_by_substr(config_arg_table, name, strlen(name), 0);
 	if (!offset) return false;

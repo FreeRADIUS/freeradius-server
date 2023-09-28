@@ -14,6 +14,9 @@ NOTE: Uncomment any `func_*` configuration items below which are
 included in your module. If the module is called for a section which
 does not have a function defined, it will return `noop`.
 
+Please see the file global.d/python for server-global configuration
+items which control the Python path.
+
 
 
 ## Configuration Settings
@@ -26,53 +29,6 @@ module::
 
 Module to load functions from.
 
-
-
-cext_compat::
-
-Uncomment the following line (and set to true) if you need
-to call Python C extensions that acquire the GIL.
-
-This will use the first Python interpreter (*not a sub-interpreter*)
-to provide the execution environment for this module instance.
-
-The tradeoff is, that any module instance with `cext_compat = true`,
-will share the same environment, and will use the same user
-configurable configuration items, and `python_path`, as the first
-instance of `rlm_python` to be loaded with `cext_compat` enabled.
-
-Not all Python functions use the GIL as it prevents parallel
-execution.  A good indication of whether `cext_compat` is needed
-is whether your script locks up or crashes when calling a
-Python C extension.
-
-[NOTE]
-====
-This functionality is only available when building with Python 2.7
-or below.  For Python 3 you should build against Python 3.8 which
-has a proper fix for this issue (per interpreter GILs)
-====
-
-
-
-python_path::
-
-The search path for Python modules.  It must include the path to your
-Python module.
-
-
-
-python_path_include_conf_dir::
-
-If "yes", include the directory containing this file in Python's
-module search path.
-
-
-
-python_path_include_default::
-
-If "yes", retain the default search path.  Any additional search
-path components will be prepended to the the default search path.
 
 
 [NOTE]
@@ -115,10 +71,6 @@ radiusd.config['sub-config']['name']
 ```
 python {
 	module = example
-#	cext_compat = false
-#	python_path = ${modconfdir}/${.:name}
-#	python_path_include_conf_dir = "yes"
-#	python_path_include_default = "yes"
 #	func_instantiate = instantiate
 #	func_detach = detach
 #	func_authorize = authorize

@@ -199,6 +199,72 @@ server default {
 	}
 
 	#
+	#  ### Local Dictionaries
+	#
+	#  It is now possible to have dictionaries which are local to a virtual
+	#  server.  The attributes defined here can be used in policies in this
+	#  virtual server.
+	#
+	#  Any attribute defined in this section can only be used in policies in
+	#  this virtual server.  The attributes are "internal", and cannot go
+	#  into a packet which is sent on the network.
+	#
+	#  When a request is proxied internally to another virtual server, these
+	#  attributes are still sent with the proxied request.  However, as the
+	#  definitions do not exist in the other virtual server, they cannot be
+	#  used in policies.
+	#
+	#  The other virtual server can even define attributes of the same name.
+	#  That virtual server will use those definitions for its policies, and
+	#  will never match the proxied attributes.
+	#
+	#  In all other aspects, the attributes defined here are just the same
+	#  as if they had been assigned in a dictionary file.
+	#
+	dictionary {
+		#
+		#  The syntax is _<type>_ followed by _<name>_.
+		#
+		#  The _<type>_ MUST be a leaf type or a `group`.  i.e. not
+		#  `struct`, `vsa`, or `vendor`.
+		#
+		#  The _<name>_ MUST NOT exist in the `namespace` dictionary.
+		#
+#		uint32 foo
+
+		#
+		#  tlv:: Define a TLV variable using _tlv <name> { ...}_.
+		#
+		#  The contents of the `tlv` subsection are more variable
+		#  definitions, including child `tlv`s.
+		#
+#		tlv bar {
+#		    uint32 baz
+#		    string arg
+#		}
+
+		#
+		#  values:: Define a set of values for attribute _<name>_.
+		#
+		#  The contents of the `values` section are a list of names and
+		#  values.
+		#
+#		values foo {
+			#
+			#  _<name>_ = _<value>_
+			#
+			#  The _<name>_ must be unique.
+			#
+			#  The _<value>_ is parsed according to the data type of
+			#  the attribute.
+			#
+#			bar = 1
+#			baz = 2
+#		}
+	}
+
+
+	#
 	#  ### The listen section
 	#
 	#  The `listen` sections in v4 are very different from the
@@ -1133,9 +1199,11 @@ send Access-Accept {
 	#  with the correct ones taken from the cryptographic
 	#  calculations, e.g.
 	#
-#	update reply {
-#		&Vendor-Specific.WiMAX.FA-RK-Key = 0x00
-#		&Vendor-Specific.WiMAX.MSK = "%{reply.EAP-MSK}"
+#	&reply += {
+#		&Vendor-Specific.WiMAX = {
+#			&FA-RK-Key = 0x00
+#			&MSK = &reply.EAP-MSK
+#		}
 #	}
 
 	#  You may want to delete the `MS-MPPE-*-Keys` from the

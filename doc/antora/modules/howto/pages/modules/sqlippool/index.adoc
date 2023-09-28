@@ -272,9 +272,9 @@ send Access-Accept {
                         noop = return
                 }
                 # On failure for any reason, reject
-                update {
-                        &reply.Reply-Message += Module-Failure-Message
-                }
+                &reply += {
+			Reply-Message = Module-Failure-Message
+		}
                 reject
         }
 ...
@@ -520,10 +520,7 @@ echo "INSERT INTO radcheck (username,attribute,op,value)   \
 ----
 send Access-Accept {
 ...
-        update control {
-                &IP-Pool.Name := 'internet'
-        }
-
+        &control.IP-Pool.Name := 'internet'
         sqlippool
 ...
 }
@@ -671,7 +668,7 @@ where this information is given in the request.
 
 . The `NAS-IP-Address` has been provided. If not then you may need to
 reconfigure your NAS to provide this or instantiate this attribute from
-`Packet-Src-IP-Address` using an unlang policy in FreeRADIUS. Otherwise when
+`Net.Src.IP` using an unlang policy in FreeRADIUS. Otherwise when
 the NAS reboots you will not be able to match the affected IP addresses to the
 device.
 

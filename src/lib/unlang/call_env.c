@@ -58,7 +58,11 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 		if (FR_BASE_TYPE(call_env->type) == FR_TYPE_SUBSECTION) {
 			CONF_SECTION const *subcs;
 			subcs = cf_section_find(cs, call_env->name, call_env->section.ident2);
-			if (!subcs) goto next;
+			if (!subcs) {
+				if (!call_env->section.required) goto next;
+				cf_log_err(cs, "Module %s missing required section %s", name, call_env->name);
+				return -1;
+			}
 
 			if (call_env_parse(ctx, parsed, name, dict_def, subcs, call_env->section.subcs) < 0) return -1;
 			goto next;
@@ -95,7 +99,7 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 			if (cp) {
 				value = cf_pair_value(cp);
 				len = talloc_array_length(value) - 1;
-				quote = cf_pair_value_quote(cp);
+				quote = call_env->pair.force_quote ? call_env->dflt_quote : cf_pair_value_quote(cp);
 			} else {
 				value = call_env->dflt;
 				len = strlen(value);
@@ -113,7 +117,7 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 						}) < 0) {
 			error:
 				talloc_free(call_env_parsed);
-				cf_log_perr(cp, "Failed to parse '%s' for %s", cf_pair_value(cp), call_env->name);
+				cf_log_perr(cp, "Failed to parse configuration item '%s = %s'", call_env->name, value);
 				return -1;
 			}
 
@@ -200,15 +204,15 @@ call_env_result_t call_env_value_parse(TALLOC_CTX *ctx, request_t *request, void
 	fr_value_box_t	*vb;
 
 	if (tmpl_out) *tmpl_out = env->tmpl;
-	if (env->tmpl_only) return 0;
+	if (env->tmpl_only) return CALL_ENV_SUCCESS;
 
 	vb = fr_value_box_list_head(tmpl_expanded);
 	if (!vb) {
 		if (!env->rule->pair.nullable) {
-			RPEDEBUG("Failed to evaluate required module option %s", env->rule->name);
+			RPEDEBUG("Failed to evaluate required module option %s = %s", env->rule->name, env->tmpl->name);
 			return CALL_ENV_MISSING;
 		}
-		return 0;
+		return CALL_ENV_SUCCESS;
 	}
 
 	/*
@@ -267,31 +271,36 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 {
 	call_env_ctx_t	*call_env_ctx = talloc_get_type_abort(uctx, call_env_ctx_t);
 	TALLOC_CTX	*ctx;
-	call_env_parsed_t const	*env;
-	void		*out;
+	call_env_parsed_t const	*env = NULL;
+	void		**out;
 
-	call_env_ctx->last_expanded = call_env_parsed_next(call_env_ctx->parsed, call_env_ctx->last_expanded);
+	while ((call_env_ctx->last_expanded = call_env_parsed_next(call_env_ctx->parsed, call_env_ctx->last_expanded))) {
+		env = call_env_ctx->last_expanded;
+		fr_assert(env != NULL);
+
+		if (!env->tmpl_only) break;
+
+		/*
+		 *	If we only need the tmpl, just set the pointer and move the next.
+		 */
+		out = (void **)((uint8_t *)*call_env_ctx->data + env->rule->pair.tmpl_offset);
+		*out = env->tmpl;
+	}
+
 	if (!call_env_ctx->last_expanded) {	/* No more! */
 		if (call_env_ctx->result) *call_env_ctx->result = CALL_ENV_SUCCESS;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	ctx = *call_env_ctx->data;
-	env = call_env_ctx->last_expanded;
 
-	/*
-	 *	If we only need the tmpl, use the repeat function to set the pointer.
-	 */
-	if (env->tmpl_only) {
-		if (unlang_function_repeat_set(request, call_env_expand_repeat) < 0) return UNLANG_ACTION_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	fr_assert(env != NULL);
 
 	/*
 	 *	Multi pair options should allocate boxes in the context of the array
 	 */
 	if (env->rule->pair.multi) {
-		out = ((uint8_t *)(*call_env_ctx->data)) + env->rule->offset;
+		out = (void **)((uint8_t *)(*call_env_ctx->data) + env->rule->offset);
 
 		/*
 		 *	For multi pair options, allocate the array before expanding the first entry.
@@ -300,9 +309,9 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 			void *array;
 			MEM(array = _talloc_zero_array((*call_env_ctx->data), env->rule->pair.size,
 						       env->opt_count, env->rule->pair.type_name));
-			*(void **)out = array;
+			*out = array;
 		}
-		ctx = *(void **)out;
+		ctx = *out;
 	}
 
 	if (unlang_tmpl_push(ctx, &call_env_ctx->tmpl_expanded, request, call_env_ctx->last_expanded->tmpl,
@@ -342,7 +351,7 @@ static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUS
 	}
 
 tmpl_only:
-	if (env->rule->pair.tmpl_offset) tmpl_out = ((uint8_t *)*call_env_ctx->data) + env->rule->pair.tmpl_offset;
+	if (env->rule->pair.tmpl_offset >= 0) tmpl_out = ((uint8_t *)*call_env_ctx->data) + env->rule->pair.tmpl_offset;
 
 	result = call_env_value_parse(*call_env_ctx->data, request, out, tmpl_out, env, &call_env_ctx->tmpl_expanded);
 	if (result != CALL_ENV_SUCCESS) {

@@ -107,7 +107,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 
 			talloc_free(attr_str);
 
-			if (tmpl_is_unresolved(attr->lhs)) {
+			if (tmpl_is_data_unresolved(attr->lhs)) {
 			    RWDEBUG("Failed parsing left side of \"%pV\", skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
 				talloc_free(attr);
@@ -141,13 +141,12 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 				goto next_pair;
 			}
 
-			if (map_to_vp(ctx, &tmp_list, request, attr, NULL) < 0) {
+			if (map_to_request(request, attr, map_to_vp, NULL) < 0) {
 				RWDEBUG("Failed creating attribute for valuepair \"%pV\", skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
 				goto next_pair;
 			}
 
-			fr_pair_list_append(&head, &tmp_list);
 			talloc_free(attr);
 
 			/*
@@ -220,7 +219,7 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 		break;
 
 	case TMPL_TYPE_ATTR_UNRESOLVED:
@@ -254,26 +253,28 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 
 /** Expand values in an attribute map where needed
  *
- * @param[out] expanded array of attributes. Need not be initialised (we'll initialise).
- * @param[in] request The current request.
- * @param[in] maps to expand.
+ * @param[in] ctx		o allocate any dynamic expansions in.
+ * @param[out] expanded		array of attributes. Need not be initialised (we'll initialise).
+ * @param[in] request		The current request.
+ * @param[in] maps		to expand.
+ * @param[in] generic_attr	name to append to the attribute list.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, map_list_t const *maps)
+int fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *request, map_list_t const *maps, char const *generic_attr)
 {
 	map_t const	*map = NULL;
 	unsigned int	total = 0;
 
-	TALLOC_CTX	*ctx = NULL;
+	TALLOC_CTX	*our_ctx = NULL;
 	char const	*attr;
 	char		attr_buff[1024 + 1];	/* X.501 says we need to support at least 1024 chars for attr names */
 
 	while ((map = map_list_next(maps, map))) {
 		if (tmpl_expand(&attr, attr_buff, sizeof(attr_buff), request, map->rhs, NULL, NULL) < 0) {
 			REDEBUG("Expansion of LDAP attribute \"%s\" failed", map->rhs->name);
-			TALLOC_FREE(ctx);
+			TALLOC_FREE(our_ctx);
 			return -1;
 		}
 
@@ -281,14 +282,16 @@ int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, map_list
 		 *	Dynamic value
 		 */
 		if (attr == attr_buff) {
-			if (!ctx) ctx = talloc_new(NULL);
-			expanded->attrs[total++] = talloc_strdup(ctx, attr_buff);
+			if (!our_ctx) our_ctx = talloc_new(ctx);
+			expanded->attrs[total++] = talloc_strdup(our_ctx, attr_buff);
 			continue;
 		}
 		expanded->attrs[total++] = attr;
 	}
+
+	if (generic_attr) expanded->attrs[total++] = generic_attr;
+
 	expanded->attrs[total] = NULL;
-	expanded->ctx = ctx;	/* Freeing this frees any dynamic values */
 	expanded->count = total;
 	expanded->maps = maps;
 
@@ -377,6 +380,7 @@ int fr_ldap_map_do(request_t *request,
 			char		*value;
 
 			tmpl_rules_t parse_rules = {
+				.at_runtime = true,
 				.attr = {
 					.dict_def = request->dict,
 					.list_def = request_attr_request,

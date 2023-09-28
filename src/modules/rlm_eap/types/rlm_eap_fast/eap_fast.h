@@ -29,6 +29,7 @@ RCSIDH(eap_fast_h, "$Id$")
 
 #include <freeradius-devel/eap/tls.h>
 #include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/util/chap.h>
 
 #define EAP_FAST_VERSION			1
 
@@ -158,8 +159,8 @@ typedef enum eap_fast_tlv_crypto_binding_tlv_subtype_t {
 /* RFC 5422: Section 3.3 - Key Derivations Used in the EAP-FAST Provisioning Exchange */
 typedef struct {
 	uint8_t	session_key_seed[EAP_FAST_SKS_LEN];
-	uint8_t	server_challenge[RADIUS_CHAP_CHALLENGE_LENGTH];
-	uint8_t	client_challenge[RADIUS_CHAP_CHALLENGE_LENGTH];
+	uint8_t	server_challenge[MD5_DIGEST_LENGTH];
+	uint8_t	client_challenge[MD5_DIGEST_LENGTH];
 } CC_HINT(__packed__) eap_fast_keyblock_t;
 
 typedef struct {
@@ -174,8 +175,8 @@ typedef struct {
 	uint8_t			*cmk;
 	int			imck_count;
 	struct {
-		uint8_t		mppe_send[RADIUS_CHAP_CHALLENGE_LENGTH];
-		uint8_t		mppe_recv[RADIUS_CHAP_CHALLENGE_LENGTH];
+		uint8_t		mppe_send[MD5_DIGEST_LENGTH];
+		uint8_t		mppe_recv[MD5_DIGEST_LENGTH];
 	} CC_HINT(__packed__)	isk;
 	uint8_t			*msk;
 	uint8_t			*emsk;

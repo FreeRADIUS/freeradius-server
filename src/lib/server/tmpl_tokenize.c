@@ -116,7 +116,7 @@ fr_table_num_ordered_t const tmpl_type_table[] = {
 	{ L("regex-uncompiled"),	TMPL_TYPE_REGEX_UNCOMPILED	},
 	{ L("regex-xlat"),		TMPL_TYPE_REGEX_XLAT		},
 
-	{ L("unresolved"),		TMPL_TYPE_UNRESOLVED 		},
+	{ L("data-unresolved"),		TMPL_TYPE_DATA_UNRESOLVED 	},
 	{ L("attr-unresolved"),		TMPL_TYPE_ATTR_UNRESOLVED	},
 	{ L("exec-unresolved"),		TMPL_TYPE_EXEC_UNRESOLVED	},
 	{ L("xlat-unresolved"),		TMPL_TYPE_XLAT_UNRESOLVED	},
@@ -218,8 +218,8 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 			     ar->da,
 			     ar->da->attr
 		);
-		FR_FAULT_LOG("\t    is_raw     : %s", ar->da->flags.is_raw ? "yes" : "no");
-		FR_FAULT_LOG("\t    is_unknown : %s", ar->da->flags.is_unknown ? "yes" : "no");
+		FR_FAULT_LOG("\t    is_raw     : %s", ar_is_raw(ar) ? "yes" : "no");
+		FR_FAULT_LOG("\t    is_unknown : %s", ar_is_unknown(ar) ? "yes" : "no");
 		if (ar->ar_parent) FR_FAULT_LOG("\t    parent     : %s (%p)", ar->ar_parent->name, ar->ar_parent);
 		break;
 
@@ -355,7 +355,7 @@ void tmpl_debug(tmpl_t const *vpt)
 
 	default:
 		if (tmpl_needs_resolving(vpt)) {
-			if (tmpl_is_unresolved(vpt)) {
+			if (tmpl_is_data_unresolved(vpt)) {
 				FR_FAULT_LOG("\tunescaped  : %pR", fr_box_strvalue_buffer(vpt->data.unescaped));
 				FR_FAULT_LOG("\tlen        : %zu", talloc_array_length(vpt->data.unescaped) - 1);
 			} else {
@@ -403,6 +403,7 @@ fr_slen_t tmpl_attr_list_from_substr(fr_dict_attr_t const **da_p, fr_sbuff_t *in
 	     (da = request_attr_control)) ||
 	    ((fr_sbuff_adv_past_strcase(&our_in, request_attr_state->name, request_attr_state->name_len)) &&
 	     (da = request_attr_state))) {
+		/* note: no local variables */
 		*da_p = da;
 		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
@@ -1024,7 +1025,7 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 			break;
 
 	 	case TMPL_ATTR_TYPE_UNKNOWN:
-	 		dst_ar->ar_unknown = fr_dict_unknown_afrom_da(dst_ar, src_ar->ar_unknown);
+	 		dst_ar->ar_unknown = fr_dict_unknown_copy(dst_ar, src_ar->ar_unknown);
 	 		break;
 
 	 	case TMPL_ATTR_TYPE_UNRESOLVED:
@@ -1072,7 +1073,7 @@ int tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 */
 	if (da->flags.is_unknown) {
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
-		ref->da = ref->ar_unknown = fr_dict_unknown_afrom_da(vpt, da);
+		ref->da = ref->ar_unknown = fr_dict_unknown_copy(vpt, da);
 	} else {
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
 		ref->da = da;
@@ -1124,7 +1125,7 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 */
 	if (da->flags.is_unknown) {
 		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
-		ref->da = ref->ar_unknown = fr_dict_unknown_afrom_da(vpt, da);
+		ref->da = ref->ar_unknown = fr_dict_unknown_copy(vpt, da);
 	} else {
 		ref->type = TMPL_ATTR_TYPE_NORMAL;
 		ref->da = da;
@@ -1354,7 +1355,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		tmpl_rules_t t_rules;
 		fr_sbuff_parse_rules_t p_rules;
 		fr_sbuff_term_t const filter_terminals = FR_SBUFF_TERMS(L("]"));
-		
+
 		rcode = fr_sbuff_out(&sberr, &ar->ar_num, &tmp);
 		if ((rcode > 0) && (fr_sbuff_is_char(&tmp, ']'))) {
 			if ((ar->ar_num > 1000) || (ar->ar_num < 0)) {
@@ -1371,7 +1372,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		/*
 		 *	Temporary parsing hack: &User-Name[a] does _not_ match a condition 'a'.
 		 */
-		if (!fr_sbuff_is_char(&tmp, '&')) {	
+		if (!fr_sbuff_is_char(&tmp, '&')) {
 			fr_strerror_const("Invalid array index");
 			if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 			goto error;
@@ -1401,7 +1402,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		 *	Which would involve creating the RHS list, doing an element-by-element comparison, and
 		 *	then returning.
 		 *
-		 *	In order to fix that, we have to 
+		 *	In order to fix that, we have to
 		 */
 		if (!fr_type_is_structural(ar->ar_da->type)) {
 				fr_strerror_printf("Invalid filter - cannot use filter on leaf attributes");
@@ -1415,7 +1416,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 
 		tmp = FR_SBUFF(&our_name);
 		t_rules = (tmpl_rules_t) {};
-		t_rules.attr = *at_rules;	      
+		t_rules.attr = *at_rules;
 		t_rules.attr.namespace = ar->ar_da;
 
 		p_rules = (fr_sbuff_parse_rules_t) {
@@ -1863,6 +1864,18 @@ do_suffix:
 	if (tmpl_attr_parse_filter(err, ar, name, at_rules) < 0) goto error;
 
 	/*
+	 *	Local variables are always unitary.
+	 *
+	 *	[0] is allowed, as is [n], [*], and [#].  But [1], etc. aren't allowed.
+	 */
+	if (da->flags.local && (ar->ar_num > 0)) {
+		fr_strerror_printf("Invalid array reference for local variable");
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
+		fr_sbuff_set(name, &m_s);
+		goto error;
+	}
+
+	/*
 	 *	At the end of the attribute reference. If there's a
 	 *	trailing '.' then there's another attribute reference
 	 *	we need to parse, otherwise we're done.
@@ -1916,33 +1929,9 @@ do_suffix:
 		case FR_TYPE_VSA:
 		is_union:
 			/*
-			 *	Omit nesting types where the relationship is already
-			 *	described by the dictionaries and there's no filter.
-			 *
-			 *	These attribute references would just use additional
-			 *	memory for no real purpose.
-			 *
-			 *	Because we pre-allocate an attribute reference in
-			 *	each tmpl talloc pool, unless the attribute
-			 *	reference list contains a group, there's no performance
-			 *	penalty in repeatedly allocating and freeing this ar.
-			 *
-			 *	Flatten / nested migration hack. :(
+			 *	Structural types are parented and namespaced from their parent da.
 			 */
-			if (main_config && main_config->tmpl_tokenize_all_nested) {
-				our_parent = da;	/* Only update the parent if we're not stripping */
-
-			} else if (ar_filter_is_none(ar) && ar_is_normal(ar)) {
-				TALLOC_FREE(ar);
-			} else {
-				our_parent = da;	/* Only update the parent if we're not stripping */
-			}
-
-			/*
-			 *	The child might not go into the parent list, but the child definitely is in
-			 *	the parents namespace.
-			 */
-			namespace = da;
+			namespace = our_parent = da;
 			break;
 
 		default:
@@ -2139,10 +2128,39 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	if (tmpl_is_attr(vpt) && is_raw) tmpl_attr_to_raw(vpt);
 
 	/*
-	 *	Check to see what the first attribute reference
-	 *	was.  If it wasn't a known list group attribute,
-	 *	then we need to add in a default list.
+	 *	Local variables cannot be given a list modifier.
 	 */
+	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt) && tmpl_attr_tail_da(vpt)->flags.local) {
+		tmpl_attr_t *ar;
+
+		for (ar = tmpl_attr_list_head(tmpl_attr(vpt));
+		     ar != NULL;
+		     ar = tmpl_attr_list_next(tmpl_attr(vpt), ar)) {
+			if (ar->ar_da->flags.local) continue;
+
+			fr_strerror_printf("Local attributes cannot be used in any list");
+			if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
+			fr_sbuff_set(&our_name, &m_l);
+			goto error;
+		}
+
+		/*
+		 *	That being said, local variables are named "foo", but are always put into the local list.
+		 */
+		MEM(ar = talloc(vpt, tmpl_attr_t));
+		*ar = (tmpl_attr_t){
+			.ar_type = TMPL_ATTR_TYPE_NORMAL,
+			.ar_da = request_attr_local,
+			.ar_parent = fr_dict_root(fr_dict_internal())
+		};
+
+
+		/*
+		 *	Prepend the local list ref so it gets evaluated
+		 *	first.
+		 */
+		tmpl_attr_list_insert_head(tmpl_attr(vpt), ar);
+	}
 
 	/*
 	 *	Check whether the tmpl has a list qualifier.
@@ -2824,6 +2842,101 @@ static ssize_t tmpl_afrom_time_delta(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
+/*
+ *	::value
+ *
+ *	Treated as enum name.  Note that this check MUST be done after the test for IPv6, as
+ *	"::1" is an allowed IPv6 address.
+ *
+ *	@todo - Mark this up as an enum name?  Or do we really care?  Maybe we want to allow
+ *
+ *		Service-Type == 'Framed-User'
+ *
+ *	or
+ *
+ *		Service-Type == "Framed-User'
+ *
+ *	as the second one allows for xlat expansions of enum names.
+ *
+ *	We probably do want to forbid the single-quoted form of enums,
+ *	as that doesn't seem to make sense.
+ *
+ *	We also need to distinguish unresolved bare words as enums
+ *	(with :: prefix) from unresolved attributes without an & prefix.
+ */
+static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+			       fr_sbuff_parse_rules_t const *p_rules,
+			       tmpl_rules_t const *t_rules)
+{
+	tmpl_t		*vpt;
+	char		*str;
+	fr_sbuff_parse_error_t	sberr;
+	fr_sbuff_t	our_in = FR_SBUFF(in);
+
+	if (fr_sbuff_is_str_literal(&our_in, "::")) {
+		(void) fr_sbuff_advance(&our_in, 2);
+
+	} else if (!t_rules->enumv) {
+		return 0;
+	}
+
+	vpt = tmpl_alloc_null(ctx);
+
+	/*
+	 *	If it doesn't match any other type of bareword, parse it as an enum name.
+	 *
+	 *	Note that we don't actually try to resolve the enum name.  The caller is responsible
+	 *	for doing that.
+	 */
+	if (fr_dict_enum_name_afrom_substr(vpt, &str, &sberr, &our_in, p_rules ? p_rules->terminals : NULL) < 0) {
+		/*
+		 *	Produce our own errors which make
+		 *	more sense in the context of tmpls
+		 */
+		switch (sberr) {
+		case FR_SBUFF_PARSE_ERROR_NOT_FOUND:
+			fr_strerror_const("No operand found.  Expected &ref, literal, "
+					  "'quoted literal', \"%{expansion}\", or enum value");
+			break;
+
+		case FR_SBUFF_PARSE_ERROR_FORMAT:
+			fr_strerror_const("enum values must contain at least one alpha character");
+			break;
+
+		default:
+			fr_strerror_const("Unexpected text after enum value.  Expected operator");
+			break;
+		}
+
+		talloc_free(vpt);
+		FR_SBUFF_ERROR_RETURN(&our_in);
+	}
+
+	/*
+	 *	If there's a valid enum name, then we use it.  Otherwise we leave name resolution to run time.
+	 */
+	if (t_rules->enumv) {
+		fr_dict_enum_value_t *dv;
+
+		dv = fr_dict_enum_by_name(t_rules->enumv, str, -1);
+		if (dv) {
+			tmpl_init(vpt, TMPL_TYPE_DATA, T_BARE_WORD,
+				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
+			(void) fr_value_box_copy(vpt, &vpt->data.literal, dv->value);
+
+			*out = vpt;
+			FR_SBUFF_SET_RETURN(in, &our_in);
+		}
+	}
+
+	tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, T_BARE_WORD,
+		  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
+	vpt->data.unescaped = str;
+	*out = vpt;
+
+	FR_SBUFF_SET_RETURN(in, &our_in);
+}
+
 /** Convert an arbitrary string into a #tmpl_t
  *
  * @note Unlike #tmpl_afrom_attr_str return code 0 doesn't necessarily indicate failure,
@@ -2895,7 +3008,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 							       p_rules, t_rules);
 			}
 
-			if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
+			if (slen <= 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 			if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
 
@@ -2956,6 +3069,10 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	See if it's an IPv6 address or prefix
 		 */
 		slen = tmpl_afrom_ipv6_substr(ctx, out, &our_in, p_rules);
+		if (slen > 0) goto done_bareword;
+		fr_assert(!*out);
+
+		slen = tmpl_afrom_enum(ctx, out, &our_in, p_rules, t_rules);
 		if (slen > 0) goto done_bareword;
 		fr_assert(!*out);
 
@@ -3027,7 +3144,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
-		tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote,
+		tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote,
 			  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 		vpt->data.unescaped = str;
 		*out = vpt;
@@ -3047,7 +3164,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		slen = fr_sbuff_out_aunescape_until(vpt, &str, &our_in, SIZE_MAX,
 						    p_rules ? p_rules->terminals : NULL,
 						    p_rules ? p_rules->escapes : NULL);
-		tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen, t_rules);
+		tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen, t_rules);
 		vpt->data.unescaped = str;
 		break;
 
@@ -3088,7 +3205,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			if (xlat_to_string(vpt, &str, &head)) {
 				TALLOC_FREE(head);
 
-				tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote,
+				tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote,
 				         fr_sbuff_start(&our_in), slen, t_rules);
 				vpt->data.unescaped = str;	/* Store the unescaped string for parsing later */
 				break;
@@ -3121,9 +3238,18 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	FIXME - We need an ephemeral version of this
 		 *	too.
 		 */
-		slen = xlat_tokenize_argv(vpt, &head, &our_in, p_rules, t_rules);
+		slen = xlat_tokenize_argv(vpt, &head, &our_in, p_rules, t_rules, false);
 		if (slen < 0) {
 			talloc_free(vpt);
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+
+		/*
+		 *	Ensure any xlats produced are bootstrapped
+		 *	so that their instance data will be created.
+		 */
+		if (!t_rules->at_runtime && head && (xlat_bootstrap(head) < 0)) {
+			fr_strerror_const("Failed to bootstrap xlat");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
@@ -3217,7 +3343,7 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 	/*
 	 *	Copy over the unescaped data
 	 */
-	if (tmpl_is_unresolved(vpt) || tmpl_is_regex_uncompiled(vpt)) {
+	if (tmpl_is_data_unresolved(vpt) || tmpl_is_regex_uncompiled(vpt)) {
 		if (unlikely(!(vpt->data.unescaped = talloc_bstrdup(vpt, in->data.unescaped)))) {
 		error:
 			talloc_free(vpt);
@@ -3372,7 +3498,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 	 */
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_EXEC_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 		break;
@@ -3442,7 +3568,7 @@ ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t con
 
 /** @name Change a #tmpl_t type, usually by casting or resolving a reference
  *
- * #tmpl_cast_in_place can be used to convert #TMPL_TYPE_UNRESOLVED to a #TMPL_TYPE_DATA of a
+ * #tmpl_cast_in_place can be used to convert #TMPL_TYPE_DATA_UNRESOLVED to a #TMPL_TYPE_DATA of a
  * specified #fr_type_t.
  *
  * #tmpl_attr_unknown_add converts a #TMPL_TYPE_ATTR with an unknown #fr_dict_attr_t to a
@@ -3484,13 +3610,13 @@ fr_token_t tmpl_cast_quote(fr_token_t existing_quote,
 }
 
 
-/** Convert #tmpl_t of type #TMPL_TYPE_UNRESOLVED or #TMPL_TYPE_DATA to #TMPL_TYPE_DATA of type specified
+/** Convert #tmpl_t of type #TMPL_TYPE_DATA_UNRESOLVED or #TMPL_TYPE_DATA to #TMPL_TYPE_DATA of type specified
  *
  * @note Conversion is done in place.
- * @note Irrespective of whether the #tmpl_t was #TMPL_TYPE_UNRESOLVED or #TMPL_TYPE_DATA,
+ * @note Irrespective of whether the #tmpl_t was #TMPL_TYPE_DATA_UNRESOLVED or #TMPL_TYPE_DATA,
  *	on successful cast it will be #TMPL_TYPE_DATA.
  *
- * @param[in,out] vpt	The template to modify. Must be of type #TMPL_TYPE_UNRESOLVED
+ * @param[in,out] vpt	The template to modify. Must be of type #TMPL_TYPE_DATA_UNRESOLVED
  *			or #TMPL_TYPE_DATA.
  * @param[in] type	to cast to.
  * @param[in] enumv	Enumerated dictionary values associated with a #fr_dict_attr_t.
@@ -3502,10 +3628,10 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 {
 	TMPL_VERIFY(vpt);
 
-	fr_assert(tmpl_is_unresolved(vpt) || tmpl_is_data(vpt));
+	fr_assert(tmpl_is_data_unresolved(vpt) || tmpl_is_data(vpt));
 
 	switch (vpt->type) {
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	{
 		char *unescaped = vpt->data.unescaped;
 
@@ -3555,7 +3681,7 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 		 *	data types.  They're only used when processing
 		 *	unresolved tmpls.
 		 *
-		 *	i.e. TMPL_TYPE_UNRESOLVED != TMPL_TYPE_DATA(FR_TYPE_STRING)
+		 *	i.e. TMPL_TYPE_DATA_UNRESOLVED != TMPL_TYPE_DATA(FR_TYPE_STRING)
 		 */
 		if (fr_value_box_cast_in_place(vpt, &vpt->data.literal, type, NULL) < 0) return -1;
 
@@ -3738,13 +3864,6 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 		}
 
 		/*
-		 *	If the user wanted the leaf
-		 *	to be raw, and it's not, correct
-		 *	that now.
-		 */
-		if (ar->ar_unresolved_raw) attr_to_raw(vpt, ar);
-
-		/*
 		 *	Remove redundant attributes
 		 *
 		 *	If it's not a group or does not specify
@@ -3855,6 +3974,8 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 	} else if (tmpl_contains_attr(vpt)) {
 		fr_type_t		dst_type = tmpl_rules_cast(vpt);
 
+		fr_assert(vpt->quote == T_BARE_WORD); /* 'User-Name' or "User-Name" is not allowed. */
+
 		ret = tmpl_attr_resolve(vpt, tr_rules);
 		if (ret < 0) return ret;
 
@@ -3862,11 +3983,12 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 			vpt->rules.cast = FR_TYPE_NULL;
 		}
 
-
 	/*
-	 *	Convert unresolved tmpls int enumvs, or failing that, string values.
+	 *	Convert unresolved tmpls into enumvs, or failing that, string values.
+	 *
+	 *	Unresolved tmpls are by definition TMPL_TYPE_DATA.
 	 */
-	} else if (tmpl_is_unresolved(vpt)) {
+	} else if (tmpl_is_data_unresolved(vpt)) {
 		fr_type_t		dst_type = tmpl_rules_cast(vpt);
 		fr_dict_attr_t const	*enumv = tmpl_rules_enumv(vpt);
 
@@ -3919,7 +4041,7 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 
 /** Reset the tmpl, leaving only the name in place
  *
- * After calling this function, the tmpl type will revert to TMPL_TYPE_UNRESOLVED
+ * After calling this function, the tmpl type will revert to TMPL_TYPE_DATA_UNRESOLVED
  * and only the name and quoting will be preserved.
  *
  * @param[in] vpt	to reset.
@@ -3927,7 +4049,7 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 void tmpl_unresolve(tmpl_t *vpt)
 {
 	tmpl_t	tmp = {
-			.type = TMPL_TYPE_UNRESOLVED,
+			.type = TMPL_TYPE_DATA_UNRESOLVED,
 			.name = vpt->name,
 			.len = vpt->len,
 			.quote = vpt->quote
@@ -3940,7 +4062,7 @@ void tmpl_unresolve(tmpl_t *vpt)
 		break;
 
 	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_REGEX_UNCOMPILED:
 		break;
 
@@ -4025,7 +4147,7 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 	{
 		ref->da = ref->ar_unknown = fr_dict_unknown_afrom_da(vpt, ref->da);
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
-		ref->ar_unknown->flags.is_raw = 1;
+		ref->is_raw = 1;
 		ref->ar_unknown->flags.is_unknown = 1;
 		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
 	}
@@ -4035,11 +4157,11 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 
 	case TMPL_ATTR_TYPE_UNKNOWN:
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
-		ref->ar_unknown->flags.is_raw = 1;
+		ref->is_raw = 1;
 		break;
 
 	case TMPL_ATTR_TYPE_UNRESOLVED:
-		ref->ar_unresolved_raw = true;
+		ref->is_raw = true;
 		break;
 	}
 
@@ -4132,7 +4254,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		 *	unknown whilst not mucking up the
 		 *	types for raw attributes.
 		 */
-		if (!ar->ar_da->flags.is_raw) {
+		if (!ar_is_raw(ar)) {
 			fr_dict_unknown_free(&ar->ar_da);
 			ar->ar_da = known;
 		} else if (!fr_cond_assert(!next)) {
@@ -4789,9 +4911,9 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 		}
 		break;
 
-	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 		if (!vpt->data.unescaped) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_UNRESOLVED "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA_UNRESOLVED "
 					     "unescaped field is NULL", file, line);
 		 }
 		break;
@@ -4862,7 +4984,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 			break;
 		}
 
-		if (tmpl_attr_tail_da(vpt)->flags.is_unknown) {
+		if (tmpl_attr_tail_is_unknown(vpt)) {
 			if (tmpl_attr_tail_da(vpt) != tmpl_attr_tail_unknown(vpt)) {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "da is marked as unknown, but address is not equal to the template's "
@@ -4887,7 +5009,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 			}
 
 			da = tmpl_attr_tail_da(vpt);
-			if (!tmpl_attr_tail_da(vpt)->flags.is_unknown && !tmpl_attr_tail_da(vpt)->flags.is_raw && (da != tmpl_attr_tail_da(vpt))) {
+			if (!tmpl_attr_tail_is_raw(vpt) && (da != tmpl_attr_tail_da(vpt))) {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "dictionary pointer %p \"%s\" (%s) "
 						     "and global dictionary pointer %p \"%s\" (%s) differ",

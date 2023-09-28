@@ -199,11 +199,14 @@ xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx
 {
 	xlat_t	*c;
 	module_inst_ctx_t *our_mctx = NULL;
+	size_t len, used;
+	fr_sbuff_t in;
 	char inst_name[256];
 
 	fr_assert(xlat_root);
 
 	if (!*name) {
+	invalid_name:
 		ERROR("%s: Invalid xlat name", __FUNCTION__);
 		return NULL;
 	}
@@ -215,6 +218,18 @@ xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx
 	if (mctx && name != mctx->inst->name) {
 		snprintf(inst_name, sizeof(inst_name), "%s.%s", mctx->inst->name, name);
 		name = inst_name;
+	}
+
+	len = strlen(name);
+	if ((len == 1) && (strchr("InscCdDeGHlmMStTY", *name) != NULL)) goto invalid_name;
+
+	in = FR_SBUFF_IN(name, len);
+	fr_sbuff_adv_past_allowed(&in, SIZE_MAX, xlat_func_chars, NULL);
+	used = fr_sbuff_used(&in);
+
+	if (used < len) {
+		ERROR("%s: Invalid character '%c' in dynamic expansion name '%s'", __FUNCTION__, name[used], name);
+		return NULL;
 	}
 
 	/*

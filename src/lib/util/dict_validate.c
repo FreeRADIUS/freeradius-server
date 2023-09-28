@@ -44,7 +44,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	uint32_t all_flags;
 	uint32_t shift_is_root, shift_internal;
 	uint32_t shift_array, shift_has_value;
-	uint32_t shift_virtual, shift_subtype, shift_extra;
+	uint32_t shift_subtype, shift_extra;
 	uint32_t shift_counter;
 	fr_dict_attr_t const *v;
 
@@ -60,7 +60,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	SET_FLAG(internal);
 	SET_FLAG(array);
 	SET_FLAG(has_value);
-	SET_FLAG(virtual);
 	SET_FLAG(extra);
 	SET_FLAG(counter);
 	SET_FLAG(subtype);
@@ -70,11 +69,9 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	// is_root
 	// is_unknown
-	// is_raw
 	// internal
 	// array
 	// has_value
-	// virtual
 	// extra
 	// encrypt
 	// length
@@ -86,11 +83,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	if (flags->is_unknown) {
 		fr_strerror_const("The 'unknown' flag cannot be set for attributes in the dictionary.");
-		return false;
-	}
-
-	if (flags->is_raw) {
-		fr_strerror_const("The 'raw' flag cannot be set for attributes in the dictionary.");
 		return false;
 	}
 
@@ -156,24 +148,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 
 		FORBID_OTHER_FLAGS(has_value);
-	}
-
-	/*
-	 *	virtual attributes are special.
-	 */
-	if (flags->virtual) {
-		if (!parent->flags.is_root) {
-			fr_strerror_const("The 'virtual' flag can only be used for normal attributes");
-			return false;
-		}
-
-		if (attr && !flags->internal && (*attr <= (1 << (8 * parent->flags.type_size)))) {
-			fr_strerror_const("The 'virtual' flag can only be used for non-protocol attributes");
-			return false;
-		}
-
-		ALLOW_FLAG(internal);
-		FORBID_OTHER_FLAGS(virtual);
 	}
 
 	/*
@@ -575,8 +549,15 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 		break;
 
-	case FR_TYPE_TLV:
 	case FR_TYPE_VSA:
+		if ((type != FR_TYPE_VENDOR) && !flags->internal) {
+			fr_strerror_printf("Attributes of type '%s' cannot be children of the 'vsa' type",
+					   fr_type_to_str(type));
+			return false;
+		}
+		break;
+
+	case FR_TYPE_TLV:
 	case FR_TYPE_VENDOR:
 		break;
 
@@ -697,7 +678,7 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	/*
 	 *	Initialize the length field, which is needed for the attr_valid() callback.
 	 */
-	if (!flags->length) {
+	if (!flags->length && fr_type_is_leaf(type) && !fr_type_is_variable_size(type)) {
 		fr_value_box_t box;
 
 		fr_value_box_init(&box, type, NULL, false);

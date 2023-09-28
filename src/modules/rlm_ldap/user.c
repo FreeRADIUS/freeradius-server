@@ -60,8 +60,18 @@ static unlang_action_t ldap_find_user_async_result(rlm_rcode_t *p_result, UNUSED
 	char			*dn;
 	fr_pair_t		*vp;
 
+	switch (query->ret) {
+	case LDAP_RESULT_SUCCESS:
+		break;
+
+	case LDAP_RESULT_NO_RESULT:
+		RETURN_MODULE_NOTFOUND;
+
+	default:
+		RETURN_MODULE_FAIL;
+	}
+
 	cnt = ldap_count_entries(query->ldap_conn->handle, query->result);
-	if (cnt == 0) RETURN_MODULE_NOTFOUND;
 
 	if ((!user_ctx->inst->userobj_sort_ctrl) && (cnt > 1)) {
 		REDEBUG("Ambiguous search result, returned %i unsorted entries (should return 1 or 0).  "
@@ -169,7 +179,7 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst
 		return UNLANG_ACTION_FAIL;
 	}
 
-	return fr_ldap_trunk_search(NULL, user_ctx, &user_ctx->query, request, user_ctx->ttrunk,
+	return fr_ldap_trunk_search(user_ctx, &user_ctx->query, request, user_ctx->ttrunk,
 				    user_ctx->base_dn, user_ctx->inst->userobj_scope, user_ctx->filter,
 				    user_ctx->attrs, serverctrls, NULL);
 }
@@ -183,31 +193,46 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst
  *	- #RLM_MODULE_DISALLOW if the user was denied access.
  *	- #RLM_MODULE_OK otherwise.
  */
-rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAPMessage *entry)
+ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAPMessage *entry)
 {
-	rlm_rcode_t rcode = RLM_MODULE_OK;
+	ldap_access_state_t ret = LDAP_ACCESS_ALLOWED;
 	struct berval **values = NULL;
 
 	values = ldap_get_values_len(fr_ldap_handle_thread_local(), entry, inst->userobj_access_attr);
 	if (values) {
+		size_t negate_value_len = talloc_array_length(inst->access_value_negate) - 1;
 		if (inst->access_positive) {
-			if ((values[0]->bv_len >= 5) && (strncasecmp(values[0]->bv_val, "false", 5) == 0)) {
-				REDEBUG("\"%s\" attribute exists but is set to 'false' - user locked out",
-				        inst->userobj_access_attr);
-				rcode = RLM_MODULE_DISALLOW;
+			if ((values[0]->bv_len >= negate_value_len) &&
+			    (strncasecmp(values[0]->bv_val, inst->access_value_negate, negate_value_len) == 0)) {
+				REDEBUG("\"%s\" attribute exists but is set to '%s' - user locked out",
+				        inst->userobj_access_attr, inst->access_value_negate);
+				ret = LDAP_ACCESS_DISALLOWED;
+				goto done;
 			}
 			/* RLM_MODULE_OK set above... */
-		} else if ((values[0]->bv_len < 5) || (strncasecmp(values[0]->bv_val, "false", 5) != 0)) {
+		} else if ((values[0]->bv_len < negate_value_len) ||
+		           (strncasecmp(values[0]->bv_val, inst->access_value_negate, negate_value_len) != 0)) {
 			REDEBUG("\"%s\" attribute exists - user locked out", inst->userobj_access_attr);
-			rcode = RLM_MODULE_DISALLOW;
+			ret = LDAP_ACCESS_DISALLOWED;
+			goto done;
 		}
+		{
+			size_t suspend_value_len = talloc_array_length(inst->access_value_suspend) - 1;
+			if ((values[0]->bv_len == suspend_value_len) &&
+			    (strncasecmp(values[0]->bv_val, inst->access_value_suspend, suspend_value_len) == 0)) {
+				REDEBUG("\"%s\" attribute exists and indicates suspension", inst->userobj_access_attr);
+				ret = LDAP_ACCESS_SUSPENDED;
+				goto done;
+			}
+		}
+	done:
 		ldap_value_free_len(values);
 	} else if (inst->access_positive) {
 		REDEBUG("No \"%s\" attribute - user locked out", inst->userobj_access_attr);
-		rcode = RLM_MODULE_DISALLOW;
+		ret = LDAP_ACCESS_DISALLOWED;
 	}
 
-	return rcode;
+	return ret;
 }
 
 /** Verify we got a password from the search
@@ -236,7 +261,6 @@ void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_
 
 	if (!fr_pair_find_by_da_nested(&parent->vp_group, NULL, attr_cleartext_password) &&
 	    !fr_pair_find_by_da_nested(&parent->vp_group, NULL, attr_nt_password) &&
-	    !fr_pair_find_by_da(&request->control_pairs, NULL, attr_user_password) &&
 	    !fr_pair_find_by_da_nested(&parent->vp_group, NULL, attr_password_with_header) &&
 	    !fr_pair_find_by_da_nested(&parent->vp_group, NULL, attr_crypt_password)) {
 		switch (ttrunk->directory->type) {

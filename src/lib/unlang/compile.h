@@ -38,9 +38,7 @@ typedef struct {
 	fr_retry_config_t	retry;
 } unlang_actions_t;
 
-void		unlang_compile_init(void);
-
-void		unlang_compile_free(void);
+void		unlang_compile_init(TALLOC_CTX *ctx);
 
 int		unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t const *rules, void **instruction);
 

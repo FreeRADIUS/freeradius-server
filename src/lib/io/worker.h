@@ -65,12 +65,6 @@ typedef struct {
 
 	fr_time_delta_t	max_request_time;	//!< maximum time a request can be processed
 
-	bool		unflatten_after_decode;	 //!< the worker will call "unflatten" after protocol decoding
-	bool		unflatten_before_encode; //!< the worker will call "unflatten" before all encoding
-
-	bool		flatten_after_decode;	 //!< the worker will call "flatten" after protocol decoding
-	bool		flatten_before_encode;	 //!< the worker will call "flatten" before all encoding
-
 	size_t		talloc_pool_size;	//!< for each request
 } fr_worker_config_t;
 

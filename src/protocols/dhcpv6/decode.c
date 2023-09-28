@@ -73,7 +73,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	ssize_t			slen;
 	fr_pair_t		*vp = NULL;
 	uint8_t			prefix_len;
-	fr_dhcpv6_decode_ctx_t	*packet_ctx = decode_ctx;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_value");
 
@@ -176,7 +175,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		break;
 
 	case FR_TYPE_STRUCT:
-		slen = fr_struct_from_network(ctx, out, parent, data, data_len, packet_ctx->struct_nested,
+		slen = fr_struct_from_network(ctx, out, parent, data, data_len, true,
 					      decode_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (slen < 0) goto raw;
 
@@ -188,19 +187,17 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (!vp) return PAIR_DECODE_OOM;
 
 		/*
-		 *	Child VPs go into the child group, not in the
-		 *	main parent list.  We start decoding
-		 *	attributes from the dictionary root, not from
-		 *	this parent.  We also don't decode an option
-		 *	header, as we're just decoding the values
-		 *	here.
+		 *	Child VPs go into the child group, not in the main parent list.  BUT, we start
+		 *	decoding attributes from the dictionary root, not from this parent.
 		 */
 		slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx, decode_option, NULL, false);
 		if (slen < 0) {
 			talloc_free(vp);
-			return slen;
+			goto raw;
 		}
-		break;
+
+		fr_pair_append(out, vp);
+		return data_len;
 
 	case FR_TYPE_IPV6_ADDR:
 		vp = fr_pair_afrom_da(ctx, parent);
@@ -257,6 +254,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
 {
 	uint32_t		pen;
 	fr_dict_attr_t const	*da;
+	fr_pair_t		*vp;
 	fr_dhcpv6_decode_ctx_t	*packet_ctx = decode_ctx;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_vsa");
@@ -292,7 +290,12 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
 
-	return fr_pair_tlvs_from_network(ctx, out, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, false);
+	vp = fr_pair_find_by_da(out, NULL, da);
+	if (vp) {
+		return fr_pair_tlvs_from_network(vp, &vp->vp_group, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, false);
+	}
+
+	return fr_pair_tlvs_from_network(ctx, out, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, true);
 }
 
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
@@ -362,10 +365,28 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = fr_pair_array_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_value);
 
 	} else if (da->type == FR_TYPE_VSA) {
-		slen = decode_vsa(ctx, out, da, data + 4, len, decode_ctx);
+		bool append = false;
+		fr_pair_t *vp;
+
+		vp = fr_pair_find_by_da(out, NULL, da);
+		if (!vp) {
+			vp = fr_pair_afrom_da(ctx, da);
+			if (!vp) return PAIR_DECODE_FATAL_ERROR;
+
+			append = true;
+		}
+
+		slen = decode_vsa(vp, &vp->vp_group, da, data + 4, len, decode_ctx);
+		if (append) {
+			if (slen < 0) {
+				TALLOC_FREE(vp);
+			} else {
+				fr_pair_append(out, vp);
+			}
+		}
 
 	} else if (da->type == FR_TYPE_TLV) {
-		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_option, NULL, false);
+		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_option, NULL, true);
 
 	} else {
 		slen = decode_value(ctx, out, da, data + 4, len, decode_ctx);
