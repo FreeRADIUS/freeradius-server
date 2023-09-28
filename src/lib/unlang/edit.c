@@ -1258,7 +1258,8 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	/*
 	 *	Create the attribute, including any necessary parents.
 	 */
-	if (map->op == T_OP_EQ) {
+	if ((map->op == T_OP_EQ) ||
+	    (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type) && fr_comparison_op[map->op])) {
 		if (tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC) {
 			current->lhs.create = true;
 

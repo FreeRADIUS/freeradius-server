@@ -371,6 +371,21 @@ change the attribute _value_.
 | >>=      | Perform right shift.  The value of the _<attribute>_ is shifted right by the value of _<rhs>_
 |=====
 
+There are also _filtering_operators.  These operators ensure that the
+value of the attribute passes the filter.  If the attribute being
+checked does not exist, it is created.
+
+.Attribute Filtering Operators
+[options="header"]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| <        | Ensure that the _<lhs>_ attribute exists, and has value less than the _<rhs>_
+| <=       | Ensure that the _<lhs>_ attribute exists, and has value less than or equal to the _<rhs>_
+| >        | Ensure that the _<lhs>_ attribute exists, and has value greater than the _<rhs>_
+| >=       | Ensure that the _<lhs>_ attribute exists, and has value greater than than or equal to the _<rhs>_
+|=====
+
 The _<rhs>_ can be a reference to another attribute
 (e.g. `request.Filter-Id`).  If the field is a double-quoted string,
 it undergoes xref:xlat/index.adoc[dynamic expansion], and the resulting

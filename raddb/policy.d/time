@@ -3,12 +3,18 @@
 #
 expiration {
 	if (&control.Expiration) {
-		if (&control.Expiration < "%l") {
+		time_delta timeout
+
+		#
+		#  %l is "when the server received the reuest"
+		#
+		if (&control.Expiration < %l) {
 			disallow
+			return
 		}
 
-		elsif (!&reply.Session-Timeout || (&Session-Timeout > "%{expr:%{Expiration} - %l}")) {
-			&reply.Session-Timeout := %{expr:%{Expiration} - %l}
-		}
+		&timeout = &control.Expiration - %l
+
+		&reply.Session-Timeout <= &timeout
 	}
 }

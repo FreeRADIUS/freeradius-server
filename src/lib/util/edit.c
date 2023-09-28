@@ -896,6 +896,31 @@ static int fr_edit_list_delete_list(fr_edit_list_t *el, fr_pair_list_t *list, fr
  */
 int fr_edit_list_apply_pair_assignment(fr_edit_list_t *el, fr_pair_t *vp, fr_token_t op, fr_value_box_t const *in)
 {
+	fr_value_box_t box;
+
+	switch (op) {
+	case T_OP_LE:
+	case T_OP_LT:
+	case T_OP_GT:
+	case T_OP_GE:
+		if (fr_value_calc_binary_op(vp, &box, FR_TYPE_BOOL, &vp->data, op, in) < 0) return -1;
+
+		if (box.vb_bool) return 0;
+
+		if (el && (fr_edit_list_save_pair_value(el, vp) < 0)) return -1;
+
+		fr_value_box_clear_value(&vp->data);
+
+		/*
+		 *	The input type may be different, so we can't just copy it.
+		 */
+		return fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->data.enumv, in);
+
+	default:
+		break;
+
+	}
+
 	if (el && (fr_edit_list_save_pair_value(el, vp) < 0)) return -1;
 
 	return fr_value_calc_assignment_op(vp, &vp->data, op, in);
