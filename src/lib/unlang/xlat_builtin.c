@@ -1775,7 +1775,7 @@ static xlat_arg_parser_t const xlat_func_md5_arg[] = {
  */
 static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   UNUSED xlat_ctx_t const *xctx,
-				   request_t *request, fr_value_box_list_t *args)
+				   UNUSED request_t *request, fr_value_box_list_t *args)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
 	fr_value_box_t	*vb;
@@ -1784,8 +1784,6 @@ static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &in_head);
 
 	if (in_head) {
-		RDEBUG("INPUT IS %pV", in_head);
-
 		fr_md5_calc(digest, in_head->vb_octets, in_head->vb_length);
 	} else {
 		/* Digest of empty string */
