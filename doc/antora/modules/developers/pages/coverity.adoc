@@ -125,7 +125,7 @@ static inline uint16_t fr_nbo_to_uint16(uint8_t const data[static sizeof(uint16_
 }
 ----
 
-Coverity considers not only the value fr_nbo_to_uint16() tainted, but the pointer as well. One can range check a length--how does one validate a pointer?
+Coverity considers not only the value fr_nbo_to_uint16() tainted, but the pointer as well. One can range check a length--how does one validate a pointer? Actually, there are ways. The talloc library lets you associate a string with allocated memory indicating its type, and gives you `talloc_get_type()` and `talloc_get_type_abort()` to check that type, and once that's known, if there's some property things of that type have, you can check that too. That reduces the issue to letting Coverity know that those actions validate the pointer--Coverity can recognize range checks on numeric values as validation, but this it won't recognize. The way around it is to split that out into a function and model it as verifying the pointer. That brings its own problem. If in the original function the state of the pointed at object affects what is done with it, that state checking code will have to be replicated in it.
 
 === Taint propagation
 
