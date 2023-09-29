@@ -1804,6 +1804,14 @@ invalid_type:
 	}
 
 	/*
+	 *	We can't name variables for data types.
+	 */
+	if (fr_table_value_by_str(fr_type_table, value, FR_TYPE_NULL) != FR_TYPE_NULL) {
+		cf_log_err(cp, "Invalid variable name '%s'.", value);
+		return NULL;
+	}
+
+	/*
 	 *	No local dups
 	 */
 	da = fr_dict_attr_by_name(NULL, var->root, value);
