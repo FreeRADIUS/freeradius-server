@@ -171,7 +171,7 @@ xlat_purify (ipv6addr)::1
 match ::1
 
 xlat_purify (ipv6addr)"xxx"
-match ERROR offset 12: Failed to parse IPv6 address string "xxx"
+match ERROR offset 11: Failed to parse IPv6 address string "xxx"
 
 #
 #  Various casts

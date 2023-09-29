@@ -2137,15 +2137,26 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_sbuff_marker_t	opand_m;
 	tmpl_rules_t		our_t_rules = *t_rules;
-	tmpl_t			*vpt;
+	tmpl_t			*vpt = NULL;
 	fr_token_t		quote;
+	fr_type_t		cast_type = FR_TYPE_NULL;
+	xlat_exp_t		*cast = NULL;
 
 	XLAT_DEBUG("FIELD <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	/*
 	 *	Allow for explicit casts.  Non-leaf types are forbidden.
 	 */
-	if (expr_cast_from_substr(&our_t_rules.cast, &our_in) < 0) return -1;
+	if (expr_cast_from_substr(&cast_type, &our_in) < 0) return -1;
+
+	/*
+	 *	If there is a cast, try to pass it recursively to the parser.  This allows us to set default
+	 *	data types, etc.
+	 *
+	 *	We may end up removing the cast later, if for example the tmpl is an attribute whose data type
+	 *	matches the cast.
+	 */
+	if (cast_type != FR_TYPE_NULL) our_t_rules.cast = cast_type;
 
 	/*
 	 *	If we still have '(', then recurse for other expressions
@@ -2158,35 +2169,17 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 *	value when we get the output of the expression.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '(')) {
-		xlat_exp_t *cast = NULL;
-		xlat_exp_head_t *my_head = head;
-
-		if (!fr_type_is_null(our_t_rules.cast)) {
-			MEM(cast = expr_cast_alloc(head, our_t_rules.cast));
-			my_head = cast->call.args;
-		}
-
 		/*
 		 *	No input rules means "ignore external terminal sequences, as we're expecting a ')' as
 		 *	our terminal sequence.
 		 */
-		if (tokenize_expression(my_head, &node, &our_in, bracket_rules, t_rules, T_INVALID, bracket_rules, NULL, cond) < 0) {
-			talloc_free(cast);
+		if (tokenize_expression(head, &node, &our_in, bracket_rules, t_rules, T_INVALID, bracket_rules, NULL, cond) < 0) {
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		if (!fr_sbuff_next_if_char(&our_in, ')')) {
-			talloc_free(cast);
 			fr_strerror_printf("Failed to find trailing ')'");
 			FR_SBUFF_ERROR_RETURN(&our_in);
-		}
-
-		/*
-		 *	Wrap the entire sub-expression in a "cast", and then return the cast as the parsed node.
-		 */
-		if (cast) {
-			xlat_func_append_arg(cast, node, false);
-			node = cast;
 		}
 
 		/*
@@ -2216,9 +2209,20 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		fr_sbuff_set(&our_in, &opand_m);	/* Error points to the quoting char at the start of the string */
 		goto error;
 
-	case T_BACK_QUOTED_STRING:
 	case T_DOUBLE_QUOTED_STRING:
 	case T_SINGLE_QUOTED_STRING:
+		/*
+		 *	We want to force the output to be a string.
+		 */
+		if (cast_type == FR_TYPE_NULL) cast_type = FR_TYPE_STRING;
+		FALL_THROUGH;
+
+	case T_BACK_QUOTED_STRING:
+		/*
+		 *	Don't put the cast in the tmpl, but put it instead in the expression.
+		 */
+		if (cast_type != FR_TYPE_NULL) our_t_rules.cast = FR_TYPE_NULL;
+
 		p_rules = value_parse_rules_quoted[quote];
 		break;
 	}
@@ -2237,6 +2241,20 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	if (tmpl_afrom_substr(node, &vpt, &our_in, quote, p_rules, &our_t_rules) < 0) {
 	error:
 		FR_SBUFF_ERROR_RETURN(&our_in);
+	}
+
+	/*
+	 *	The tmpl has a cast, and it's the same as our cast For xlats, we reset the tmpl cast to
+	 *	nothing.  For attr & data, we reset our cast to nothing.
+	 *
+	 *	This prevents us from having duplicate casts.
+	 */
+	if ((tmpl_rules_cast(vpt) != FR_TYPE_NULL) && (tmpl_rules_cast(vpt) == cast_type)) {
+		if (!tmpl_contains_xlat(vpt)) {
+			cast_type = FR_TYPE_NULL;
+		} else {
+			(void) tmpl_cast_set(vpt, FR_TYPE_NULL);
+		}
 	}
 
 	if (quote != T_BARE_WORD) {
@@ -2273,44 +2291,12 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 *	Don't keep an intermediate tmpl for xlats.  Just hoist
 	 *	the xlat to be a child of this node. Exec and regexes
 	 *	are left alone, as they are handled by different code.
-	 *
-	 *	However, we also add a cast if the tmpl had a cast.
-	 *	And if there was no cast, but the input was a string,
-	 *	then we cast the result to a string, too.
 	 */
 	if (tmpl_is_xlat(vpt) || tmpl_is_xlat_unresolved(vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(vpt);
-		fr_type_t	type = FR_TYPE_NULL;
 		xlat_exp_t	*arg = NULL;
-		xlat_exp_t	*cast = NULL;
 
 		XLAT_HEAD_VERIFY(xlat);
-
-		/*
-		 *	Enforce a cast type.
-		 */
-		if (tmpl_rules_cast(vpt) != FR_TYPE_NULL) {
-			type = tmpl_rules_cast(vpt);
-
-		} else if (quote != T_BARE_WORD) {
-			type = FR_TYPE_STRING;
-
-			/*
-			 *	The string is T_DOUBLE_QUOTED_STRING, or T_BACK_QUOTED_STRING,
-			 *	both of which have double-quoting rules.
-			 *
-			 *	'foo' can't contain an xlat.
-			 *	/foo/ is forbidden, as we don't expect a regex here.
-			 *
-			 *	We rely on xlat_func_cast() to see the `string` cast, and then to
-			 *	_print_ the result to a string.
-			 */
-		}
-
-		if (type != FR_TYPE_NULL) {
-			MEM(cast = expr_cast_alloc(head, type));
-			head = cast->call.args;	/* Arguments */
-		}
 
 		MEM(arg = xlat_exp_alloc(head, XLAT_GROUP, vpt->name, strlen(vpt->name)));
 
@@ -2326,27 +2312,35 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		arg->flags = xlat->flags;
 
 		talloc_free(node);	/* also frees tmpl, leaving just the xlat */
-
-		if (cast) {
-			xlat_func_append_arg(cast, arg, false);
-			node = cast;
-		} else {
-			node = arg;
-		}
+		node = arg;
 
 		goto done;
 	}
 
 	/*
-	 *	Try and add any unknown attributes to the dictionary
-	 *	immediately.  This means any future references point
-	 *	to the same da.
+	 *	Try and add any unknown attributes to the dictionary immediately.  This means any future
+	 *	references will all point to the same da.
 	 */
 	if (tmpl_is_attr(vpt)) {
+		fr_dict_attr_t const *da;
+
 		if (tmpl_attr_unknown_add(vpt) < 0) {
 			fr_strerror_printf("Failed defining attribute %s", tmpl_attr_tail_da(vpt)->name);
 			fr_sbuff_set(&our_in, &opand_m);
 			goto error;
+		}
+
+		fr_assert(!tmpl_is_attr_unresolved(vpt));
+
+		da = tmpl_attr_tail_da(vpt); /* could be a list! */
+
+		/*
+		 *	Omit the cast if the da type matches our cast.  BUT don't do this for enums!  In that
+		 *	case, the cast will convert the value-box to one _without_ an enumv entry, which means
+		 *	that the value will get printed as its underlying data type, and not as the enum name.
+		 */
+		if (da && !da->flags.has_value && (da->type == cast_type)) {
+			cast_type = FR_TYPE_NULL;
 		}
 	}
 
@@ -2362,6 +2356,8 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 
 	if (tmpl_is_data(vpt)) {
+		fr_assert(!tmpl_is_data_unresolved(vpt));
+
 		/*
 		 *	Print "true" and "false" instead of "yes" and "no".
 		 */
@@ -2370,11 +2366,41 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		}
 
 		node->flags.constant = true;
+
+		/*
+		 *	Omit our cast type if the data is already of the right type.
+		 *
+		 *	Otherwise if we have a cast, then convert the data now, and then reset the cast_type
+		 *	to nothing.
+		 */
+		if (tmpl_value_type(vpt) == cast_type) {
+			cast_type = FR_TYPE_NULL;
+
+		} else if (cast_type != FR_TYPE_NULL) {
+			/*
+			 *	Cast it now, and remove the cast type.
+			 */
+			if (tmpl_cast_in_place(vpt, cast_type, NULL) < 0) {
+				fr_sbuff_set(&our_in, &opand_m);
+				goto error;
+			}
+
+			cast_type = FR_TYPE_NULL;
+		}
 	}
 
 	fr_assert(!tmpl_contains_regex(vpt));
 
 done:
+	/*
+	 *	If there is a cast, then reparent the node with a cast wrapper.
+	 */
+	if (cast_type != FR_TYPE_NULL) {
+		MEM(cast = expr_cast_alloc(head, cast_type));
+		xlat_func_append_arg(cast, node, false);
+		node = cast;
+	}
+
 	*out = node;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
