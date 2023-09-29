@@ -16,7 +16,7 @@
 ok	# separate updates
 
 &control += {
-	&Tmp-String-1 = "%(concat:%{control.[*]} ', ')"
+	&Tmp-String-1 = %concat(%{control.[*]}, ', ')
 }
 
 "%{control.Tmp-String-1}"
@@ -25,7 +25,7 @@ if (!(&control.Tmp-String-1 == "bob, hello, ab c, de fg, 123")) {
 }
 
 &control += {
-	&Tmp-String-2 = "%(concat:%{control.Tmp-String-0[*]} ', ')"
+	&Tmp-String-2 = %concat(%{control.Tmp-String-0[*]}, ', ')
 }
 
 if (!(&control.Tmp-String-2 == "ab c, de fg")) {
@@ -34,7 +34,7 @@ if (!(&control.Tmp-String-2 == "ab c, de fg")) {
 
 # Empty separator
 &control += {
-	&Tmp-String-3 = "%(concat:%{control.Tmp-String-0[*]})"
+	&Tmp-String-3 = %concat(%{control.Tmp-String-0[*]})
 }
 
 if (!(&control.Tmp-String-3 == "ab cde fg")) {
@@ -43,7 +43,7 @@ if (!(&control.Tmp-String-3 == "ab cde fg")) {
 
 # Single character separator
 &control += {
-	&Tmp-String-4 = "%(concat:%{control.Tmp-String-0[*]} ,)"
+	&Tmp-String-4 = %concat(%{control.Tmp-String-0[*]}, ',')
 }
 
 if (!(&control.Tmp-String-4 == "ab c,de fg")) {
@@ -52,7 +52,7 @@ if (!(&control.Tmp-String-4 == "ab c,de fg")) {
 
 # Multi character separator not delimited
 &control += {
-	&Tmp-String-5 = "%(concat:%{control.Tmp-String-0[*]} |-)"
+	&Tmp-String-5 = %concat(%{control.Tmp-String-0[*]}, '|-')
 }
 
 if !(&control.Tmp-String-5 == "ab c|-de fg") {

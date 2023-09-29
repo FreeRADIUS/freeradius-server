@@ -16,7 +16,7 @@ if !(&NAS-Port == 1813) {
 #
 #  Mark it as immutable.  The value shouldn't change.
 #
-%(immutable:&request.NAS-Port[*])
+%immutable(&request.NAS-Port[*])
 if !(&NAS-Port == 1813) {
 	test_fail
 }
