@@ -37,42 +37,6 @@ The length of 192.168.0.2 is 4
 ....
 ====
 
-=== %(integer:<value>)
-
-Convert a value to an integer.
-
-In normal operation, `integer` attributes are printed using the name
-given by a `VALUE` statement in a dictionary. Similarly, date
-attributes are printed as dates, i.e., "January 1 2010.
-
-The `integer` expansion applies only to attributes which can be
-converted to an integer. For all other inputs, it returns `0`.
-
-A common usage is to find the difference between two dates.
-
-For example, if a request contains `Service-Type = Login-User`, the
-expansion of `%(integer:%{Service-Type})` will yield `1`, which is the
-value associated with the `Login-User` name. Using
-`%(integer:%{Event-Timestamp})` will return the event timestamp as an
-unsigned 32-bit number.
-
-.Return: _string_
-
-.Determining the integer value of an enumerated attribute
-====
-[source,unlang]
-----
-&control.Service-Type := Login-User
-&reply.Reply-Message := "The value of Service-Type is %(integer:%{control.Service-Type})"
-----
-
-.Output
-
-```
-The value of Service-Type is 1
-```
-====
-
 === %{rand:<number>}
 
 Generate random number from `0` to `<number>-1`.

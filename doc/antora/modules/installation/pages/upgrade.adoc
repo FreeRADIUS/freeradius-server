@@ -698,8 +698,11 @@ postgresql).
 
 == Xlat expansions
 
-The use of `%%` to escape `%` is no longer supported.  Just use `%`,
-and the parser is smart enough to figure things out.
+Xlat expansions have been changed from syntax like `%{md5:...}` to `%md5(...)`.
+
+=== Removed expansions
+
+`%{integer:...}` has been removed.  Just use a cast, such as `(integer) &Service-Type`.
 
 == New Modules
 
