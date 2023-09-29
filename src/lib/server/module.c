@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/radmin.h>
 #include <freeradius-devel/server/request_data.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
@@ -577,13 +578,84 @@ static int _module_thread_inst_list_free(void *tilp)
 	return talloc_free(til);
 }
 
+/** Allocate thread-local instance data for a module
+ *
+ * The majority of modules will have a single set of thread-specific instance data.
+ *
+ * An exception is dynamic modules, which may have multiple sets of thread-specific instance data tied to
+ * a sepcific dynamic use of that module.
+ *
+ * @param[in] ctx	Talloc ctx to bind thread specific data to.
+ * @param[out] out	Where to write the allocated #module_thread_instance_t.
+ * @param[in] ml	Module list to perform thread instantiation for.
+ * @param[in] mi	Module instance to perform thread instantiation for.
+ * @param[in] el	Event list serviced by this thread.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int module_thread_instantiate(TALLOC_CTX *ctx, module_thread_instance_t **out, module_list_t const *ml, module_instance_t *mi, fr_event_list_t *el)
+{
+	module_thread_instance_t	*ti;
+	TALLOC_CTX			*our_ctx = ctx;
+
+	/*
+	 *	Check the list pointers are ok
+	 */
+	(void)talloc_get_type_abort(mi->ml, module_list_t);
+
+	MEM(ti = talloc_zero(our_ctx, module_thread_instance_t));
+	talloc_set_destructor(ti, _module_thread_inst_free);
+	ti->el = el;
+	ti->mi = mi;
+
+	if (mi->module->thread_inst_size) {
+		module_instance_t *rmi;
+
+		MEM(ti->data = talloc_zero_array(ti, uint8_t, mi->module->thread_inst_size));
+		rmi = module_root(mi);
+
+		/*
+		 *	Fixup the type name, incase something calls
+		 *	talloc_get_type_abort() on it...
+		 */
+		if (!mi->module->thread_inst_type) {
+			talloc_set_name(ti->data, "%s_%s_thread_t",
+					fr_table_str_by_value(dl_module_type_prefix,
+								rmi ? rmi->dl_inst->module->type :
+									mi->dl_inst->module->type,
+								"<INVALID>"),
+					mi->module->name);
+		} else {
+			talloc_set_name_const(ti->data, mi->module->thread_inst_type);
+		}
+	}
+
+	/*
+	 *	So we don't get spurious errors
+	 */
+	fr_strerror_clear();
+
+	DEBUG4("Alloced %s thread instance data (%p/%p)", ti->mi->module->name, ti, ti->data);
+	if (mi->module->thread_instantiate &&
+		mi->module->thread_instantiate(MODULE_THREAD_INST_CTX(mi->dl_inst, ti->data, el)) < 0) {
+		PERROR("Thread instantiation failed for module \"%s\"", mi->name);
+		/* Leave module_thread_inst_list intact, other modules may need to clean up */
+		modules_thread_detach(ml);
+		return -1;
+	}
+	*out = ti;
+
+	return 0;
+}
+
 /** Creates per-thread instance data for modules which need it
  *
  * Must be called by any new threads before attempting to execute unlang sections.
  *
  * @param[in] ctx	Talloc ctx to bind thread specific data to.
  * @param[in] ml	Module list to perform thread instantiation for.
- * @param[in] el	Event list servived by this thread.
+ * @param[in] el	Event list serviced by this thread.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -610,55 +682,10 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_even
 	for (instance = fr_rb_iter_init_inorder(&iter, ml->name_tree);
 	     instance;
 	     instance = fr_rb_iter_next_inorder(&iter)) {
-		module_instance_t		*mi = talloc_get_type_abort(instance, module_instance_t), *rmi;
+		module_instance_t		*mi = talloc_get_type_abort(instance, module_instance_t);
 		module_thread_instance_t	*ti;
-		TALLOC_CTX			*our_ctx = ctx;
 
-		/*
-		 *	Check the list pointers are ok
-		 */
-		(void)talloc_get_type_abort(mi->ml, module_list_t);
-
-		MEM(ti = talloc_zero(our_ctx, module_thread_instance_t));
-		talloc_set_destructor(ti, _module_thread_inst_free);
-		ti->el = el;
-		ti->mi = mi;
-
-		if (mi->module->thread_inst_size) {
-			MEM(ti->data = talloc_zero_array(ti, uint8_t, mi->module->thread_inst_size));
-
-			rmi = module_root(mi);
-
-			/*
-			 *	Fixup the type name, incase something calls
-			 *	talloc_get_type_abort() on it...
-			 */
-			if (!mi->module->thread_inst_type) {
-				talloc_set_name(ti->data, "%s_%s_thread_t",
-						fr_table_str_by_value(dl_module_type_prefix,
-								      rmi ? rmi->dl_inst->module->type :
-								            mi->dl_inst->module->type,
-								      "<INVALID>"),
-						mi->module->name);
-			} else {
-				talloc_set_name_const(ti->data, mi->module->thread_inst_type);
-			}
-		}
-
-		/*
-		 *	So we don't get spurious errors
-		 */
-		fr_strerror_clear();
-
-		DEBUG4("Worker alloced %s thread instance data (%p/%p)", ti->mi->module->name, ti, ti->data);
-		if (mi->module->thread_instantiate &&
-		    mi->module->thread_instantiate(MODULE_THREAD_INST_CTX(mi->dl_inst, ti->data, el)) < 0) {
-			PERROR("Thread instantiation failed for module \"%s\"", mi->name);
-			/* Leave module_thread_inst_list intact, other modules may need to clean up */
-			modules_thread_detach(ml);
-			return -1;
-		}
-
+		if (module_thread_instantiate(ctx, &ti, ml, mi, el) < 0) return -1;
 		module_thread_inst_list[ti->mi->inst_idx - 1] = ti;
 	}
 
