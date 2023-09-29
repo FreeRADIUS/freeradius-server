@@ -1,0 +1,42 @@
+= Functions
+
+.Syntax
+[source,unlang]
+----
+%function(_<arg1>_, _<arg2>, ...)
+----
+
+.Description
+Functions allow for complex expansions at run time.  There are many
+xref:xlat/builtin.adoc[built-in expansions].  Many modules also define
+their own expansions.  The module-specific expansions are documented in each module.
+
+function:: The name of the function.  e.g. `md5` or `sql`, etc.
+
+<args>:: A list of comma-separated arguments.
+
+Each argument is parsed using the same rules as parsing
+xref:unlang/edit.adoc[edit] statements.  The arguments can be
+single-quoted string, double-quoted strings, attribute references,
+expansion, or other function calls.
+
+Each function defines its own list of arguments.  Please consult the
+documentation for a function in order to determine what the function
+call syntax is for that function.
+
+.Example
+[source,unlang]
+----
+if (&User-Name == %md5(&NAS-Identifier)) {
+    reject
+}
+----
+
+.Examples
+[source,unlang]
+----
+&reply.Reply-Message := %sql(SELECT name FROM mytable WHERE username = %{User-Name})
+----
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

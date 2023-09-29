@@ -63,10 +63,10 @@
 
 ** xref:xlat/index.adoc[Dynamic Expansion]
 *** xref:xlat/alternation.adoc[Alternation Syntax]
+*** xref:xlat/function.adoc[Functions]
 *** xref:xlat/builtin.adoc[Built-in Expansions]
 *** xref:xlat/character.adoc[Single Letter Expansions]
 *** xref:xlat/attribute.adoc[Attribute References]
-*** xref:xlat/module.adoc[Module References]
 
 ** xref:dictionary/index.adoc[Dictionaries]
 *** xref:dictionary/alias.adoc[ALIAS]

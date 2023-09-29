@@ -1,25 +1,19 @@
 = Single Letter Expansions
 
-The following are single letter expansions.  These expansions do not
-use the typical `%{...}` format.
+The following are single letter expansions.
 
-[NOTE]
-====
-In general, these expansions _should not be used_.
-====
-
-The xref:xlat/builtin.adoc[builtin] `%(time:...)` expansion and the
+The xref:xlat/builtin.adoc[builtin] `%time(...)` expansion and the
 xref:raddb:mods-available/date.adoc[date] module should be used
 instead of these expansions.
 
 
 == Current Time
 
-`%c`::
+`%c()`::
 
 The current Unix epoch time in seconds. This is an unsigned decimal number.
 
-`%C`::
+`%C()`::
 
 The microsecond component of the current epoch time. This is an unsigned
 decimal number.
@@ -33,7 +27,7 @@ precision and scale.
 
 == Request Time
 
-`%l`::
+`%l()`::
 
 The Unix timestamp of when the request was received. This is an
 unsigned decimal number, and returns an integer number of seconds
@@ -43,53 +37,53 @@ This expansion is only useful where the time resolution is in seconds.
 If more resolution is needed, the xref:xlat/builtin.adoc[builtin]
 `%(time:...)` expansion should be used instead.
 
-`%Y`::
+`%Y()`::
 
 Four-digit year when the request was received.
 
-`%m`::
+`%m()`::
 
 Numeric month when the request was received.
 
-`%d`::
+`%d()`::
 
 Numeric day of the month when the request was received.
 
-`%H`::
+`%H()`::
 
 Hour of the day when the request was received.
 
-`%G`::
+`%G()`::
 
 Minute component of the time when the request was received.
 
-`%e`::
+`%e()`::
 
 Second component of the time when the request was received.
 
-`%M`::
+`%M()`::
 
 Microsecond component of the time when the request was received.
 
-`%D`::
+`%D()`::
 
 Request date in the format `YYYYMMDD`.
 
-`%S`::
+`%S()`::
 
 Request timestamp in SQL format, `YYYY-mmm-ddd HH:MM:SS`.
 
 The xref:raddb:mods-available/date.adoc[date] module should be used
 instead.
 
-`%t`::
+`%t()`::
 
 Request timestamp in _ctime_ format, `Www Mmm dd HH:MM:SS YYYY`.
 
 The xref:raddb:mods-available/date.adoc[date] module should be used
 instead.
 
-`%T`::
+`%T()`::
 
 Request timestamp in ISO format, `YYYY-mm-ddTHH:MM:SS.000`.
 
