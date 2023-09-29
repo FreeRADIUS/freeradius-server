@@ -24,6 +24,7 @@ else
 
 	AC_MSG_NOTICE([ExtUtil's ccopts were \"${perl_cflags}\"])
 
+	dnl # -flto=auto causes linker errors under clang for some unknown reason
 	mod_cflags=`echo $perl_cflags | sed -e '\
 		s/-I[ ]*/-isystem /g;\
 		s/-arch [^ ]*//g;\
@@ -31,6 +32,7 @@ else
 		s/^ *//;\
 		s/ *$//;\
 		s/-fstack-clash-protection[[[:blank:]]]*//g; \
+		s/-flto=auto//g; \
 		'`
 
 	AC_MSG_NOTICE([Sanitized ccopts are \"${mod_cflags}\"])

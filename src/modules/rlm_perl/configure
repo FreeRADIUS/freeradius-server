@@ -3512,13 +3512,14 @@ printf "%s\n" "$as_me: Calling ExtUtils::Embed to get 'ccopts'" >&6;}
 	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: ExtUtil's ccopts were \"${perl_cflags}\"" >&5
 printf "%s\n" "$as_me: ExtUtil's ccopts were \"${perl_cflags}\"" >&6;}
 
-	mod_cflags=`echo $perl_cflags | sed -e '\
+		mod_cflags=`echo $perl_cflags | sed -e '\
 		s/-I */-isystem /g;\
 		s/-arch ^ *//g;\
 		s/  / /g;\
 		s/^ *//;\
 		s/ *$//;\
 		s/-fstack-clash-protection[[:blank:]]*//g; \
+		s/-flto=auto//g; \
 		'`
 
 	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: Sanitized ccopts are \"${mod_cflags}\"" >&5
