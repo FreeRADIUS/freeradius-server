@@ -358,6 +358,11 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_evp_md(rlm_rcode_t *p_result,
 	unsigned int	digest_len;
 
 	ctx = EVP_MD_CTX_create();
+	// add check against NULL
+	if(!ctx)
+	{
+		RETURN_MODULE_INVALID;
+	}
 	EVP_DigestInit_ex(ctx, md, NULL);
 	EVP_DigestUpdate(ctx, password->vb_octets, password->vb_length);
 	EVP_DigestFinal_ex(ctx, digest, &digest_len);
@@ -387,6 +392,11 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_evp_md_salted(rlm_rcode_t *p_re
 
 	min_len = EVP_MD_size(md);
 	ctx = EVP_MD_CTX_create();
+	// add check against NULL
+	if(!ctx)
+	{
+		RETURN_MODULE_INVALID;
+	}
 	EVP_DigestInit_ex(ctx, md, NULL);
 	EVP_DigestUpdate(ctx, password->vb_octets, password->vb_length);
 	EVP_DigestUpdate(ctx, known_good->vp_octets + min_len, known_good->vp_length - min_len);

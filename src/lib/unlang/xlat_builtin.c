@@ -2359,6 +2359,11 @@ static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &in_head);
 
 	md_ctx = EVP_MD_CTX_create();
+	// add check against NULL
+	if(!md_ctx)
+	{
+		return XLAT_ACTION_FAIL;
+	}
 	EVP_DigestInit_ex(md_ctx, md, NULL);
 	if (in_head) {
 		EVP_DigestUpdate(md_ctx, in_head->vb_octets, in_head->vb_length);
