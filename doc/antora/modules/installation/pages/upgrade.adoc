@@ -1048,3 +1048,38 @@ Many "virtual" or "fake" attributes have been removed or renamed.
 `&Packet-Src-IP-Address` and `&Packet-Src-IPv6-Address` should be replaced by `&Net.Src.IP`.
 
 `&Packet-Src-Port` should be replaced by `&Net.Src.Port`.
+
+== Recommended Changes
+
+In v3, many people had a habit of just adding `"..."` around _everything_.  For example:
+
+.Bad practice - using "" everywhere
+[source,unlang]
+----
+update reply {
+	&Reply-Message := "%{User-Name}"
+}
+
+...
+
+if ("%{User-Name}" == "bob") {
+   ...
+}
+----
+
+This practice is not recommended.  It was never necessary, and it's not clear why it became a (bad) habit.
+
+In v4, it is clearer, simpler, and faster to just use `unlang` syntax correctly.
+
+.Good practice - just rely on the server to do the right thing
+
+[source,unlang]
+----
+&reply.Reply-Message := &User-Name
+
+...
+
+if (&User-Name == "bob") {
+   ...
+}
+----
