@@ -4633,9 +4633,11 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	/*
 	 *	Lookup any names before continuing
 	 */
-	if (dst_enumv) {
+	if (dst_enumv && dst_enumv->flags.has_value) {
 		size_t			name_len;
 		fr_dict_enum_value_t	*enumv;
+
+		(void) fr_sbuff_adv_past_str_literal(&our_in, "::");
 
 		/*
 		 *	Create a thread-local extensible buffer to
@@ -4678,7 +4680,7 @@ parse:
 		/*
 		 *	We've not unescaped the string yet, produce an unescaped version
 		 */
-		if (!dst_enumv) {
+		if (!dst_enumv || !unescaped) {
 			char *buff;
 
 			if (unlikely(fr_sbuff_out_aunescape_until(ctx, &buff, &our_in, SIZE_MAX,
@@ -4708,7 +4710,7 @@ parse:
 		 *	is literal data, not hex encoded data.
 		 */
 		if (rules->escapes || !fr_sbuff_adv_past_strcase_literal(&our_in, "0x")) {
-			if (!dst_enumv) {
+			if (!dst_enumv || !unescaped) {
 				char	*buff = NULL;
 				uint8_t	*bin;
 
