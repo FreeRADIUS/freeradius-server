@@ -135,5 +135,14 @@ match (&reply && (1 < 2))
 xlat_expr 5 + 5 - 10
 match ((5 + 5) - 10)
 
+#
+#  This is arguably wrong
+#
+xlat_expr (integer) &Service-Type
+match &Service-Type
+
+xlat_expr (uint32) (&Service-Type)
+match %(cast:uint32 &Service-Type)
+
 count
-match 65
+match 69

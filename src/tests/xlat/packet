@@ -2,3 +2,4 @@ Packet-Type = Access-Request
 User-Name = "bob"
 User-Password = "hello"
 NAS-Identifier = "test"
+Service-Type = ::Framed-User

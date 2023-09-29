@@ -158,3 +158,9 @@ match 0x9f9d51bc70ef21ca5c14f307980a29d8
 #
 xlat_expr (octets) %md5(&User-Name)
 match 0x9f9d51bc70ef21ca5c14f307980a29d8
+
+xlat_expr &Service-Type
+match Framed-User
+
+xlat_expr (uint32) (&Service-Type)
+match 2
