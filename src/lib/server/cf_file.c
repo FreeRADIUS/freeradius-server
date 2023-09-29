@@ -1239,10 +1239,24 @@ static ssize_t fr_skip_xlat(char const *start, char const *end)
 
 	p++;
 	if ((*p != '{') && (*p != '(')) {
+		char const *q = p;
+
+		/*
+		 *	New xlat syntax: %foo(...)
+		 */
+		while (isalnum((int) *q) || (*q == '.') || (*q == '_') || (*q == '-')) {
+			q++;
+		}
+		if (*q == '(') {
+			p = q;
+			goto do_quote;
+		}
+
 		fr_strerror_const("Invalid character after '%'");
 		return -(p - start);
 	}
 
+do_quote:
 	quote = *(p++);
 	if (quote == '{') {
 		end_quote = '}';

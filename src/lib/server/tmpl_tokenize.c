@@ -5207,8 +5207,32 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		}
 
 		if ((p[1] != '{') && (p[1] != '(')) {
-			p++;
-			return_P("Invalid character after '%'");
+			char const *q;
+
+			q = p + 1;
+
+			/*
+			 *	New xlat syntax: %foo(...)
+			 */
+			while ((q < end) && (isalnum((int) *q) || (*q == '.') || (*q == '_') || (*q == '-'))) {
+				q++;
+			}
+
+			if (*q != '(') {
+				p++;
+				return_P("Invalid character after '%'");
+			}
+
+			/*
+			 *	Return the whole %foo(...) string.
+			 */
+			*out = p;
+			if (*type == T_INVALID) *type = T_BARE_WORD;
+			close = ')';
+
+			p = q + 1;
+			depth = 1;
+			goto loop;
 		}
 
 		/*
@@ -5226,6 +5250,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		 *	escapes, so we need to do special escaping.
 		 */
 		*out = p;
+	loop:
 		while (*p) {
 			/*
 			 *	End of expansion.  Return the entire
