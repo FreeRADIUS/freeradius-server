@@ -696,9 +696,15 @@ Some modules such as rlm_sql_postgresql can have their timeout set via
 an alternative configuration item (e.g. `radius_db` in the case of
 postgresql).
 
+== Unlang Syntax
+
+Many new xref:reference:unlang/index.adoc[unlang] keywords have been added.
+
+Data type casts have changed from `<ipaddr> ...` to `(ipaddr) ...`
+
 == Xlat expansions
 
-Xlat expansions have been changed from syntax like `%{md5:...}` to `%md5(...)`.
+xref:reference:xlat/index.adoc[xlat] expansions have been changed from syntax like `%{md5:...}` to `%md5(...)`.
 
 === Removed expansions
 

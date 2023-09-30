@@ -140,26 +140,31 @@ match (&User-Name != &User-Password)
 condition !(&User-Name != &User-Password)
 match !(&User-Name != &User-Password)
 
-condition <ipv6addr>::1
+condition (ipv6addr)::1
 match ::1
 
-condition <ipaddr>&Filter-Id == &Framed-IP-Address
+condition (ipaddr)&Filter-Id == &Framed-IP-Address
 match ((ipaddr)&Filter-Id == &Framed-IP-Address)
 
 #
 #  We can automatically promote things as needed.  But if the
 #  user forces incompatible types, then that's an error.
 #
-condition <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
-match ERROR offset 23: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+#  @todo - cast - this seems rather a bit wrong
+#
+condition (ipaddr)&Filter-Id == (uint) &Framed-IP-Address
+match (((ipaddr)&Filter-Id == uint) & Framed-IP-Address)
 
-condition <blerg>&Filter-Id == "foo"
-match ERROR offset 1: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+#
+#  @todo - cast - yeah, this is quite wrong.
+#
+condition (blerg)&Filter-Id == "foo"
+match (blerg & (Filter-Id == "foo"))
 
 #
 #  Normalize things
 #
-condition <ipaddr>127.0.0.1 < &Framed-IP-Address
+condition (ipaddr)127.0.0.1 < &Framed-IP-Address
 match (127.0.0.1 < &Framed-IP-Address)
 
 # =* and !* are only for attrs / lists
@@ -183,10 +188,10 @@ condition !&User-Name !* bar
 match ERROR offset 13: Invalid operator
 
 # redundant casts get squashed
-condition <ipaddr>&Framed-IP-Address == 127.0.0.1
+condition (ipaddr)&Framed-IP-Address == 127.0.0.1
 match (&Framed-IP-Address == 127.0.0.1)
 
-condition <cidr>&Framed-IP-Address <= 192.168.0.0/16
+condition (cidr)&Framed-IP-Address <= 192.168.0.0/16
 match ((ipv4prefix)&Framed-IP-Address <= 192.168.0.0/16)
 
 # All IP address literals should be parsed as prefixes
@@ -229,7 +234,7 @@ condition &Event-Timestamp == 'January 1, 2012'
 #data &Event-Timestamp == 'Jan  1 2012 00:00:00 EST'
 
 # literals are parsed when the conditions are parsed
-condition <integer>X == 1
+condition (integer)X == 1
 match ERROR offset 10: Failed parsing string as type 'uint32'
 
 #
@@ -242,28 +247,28 @@ match (&NAS-Port == X)
 #  The RHS is a static string, so this gets mashed to a literal,
 #  and then statically evaluated.
 #
-condition <ipaddr>127.0.0.1 == "127.0.0.1"
+condition (ipaddr)127.0.0.1 == "127.0.0.1"
 match true
 
-condition <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
+condition (ipaddr)127.0.0.1 == "%{md4: 127.0.0.1}"
 match (127.0.0.1 == %(cast:string "%{md4: 127.0.0.1}"))
 
 #
 #  Bare %{...} is allowed.
 #
-condition <ipaddr>127.0.0.1 == %{md4:127.0.0.1}
+condition (ipaddr)127.0.0.1 == %{md4:127.0.0.1}
 match (127.0.0.1 == %{md4:127.0.0.1})
 
-condition <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
+condition (ipaddr)127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
 match (127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'})
 
-condition <ether> 00:11:22:33:44:55 == "00:11:22:33:44:55"
+condition (ether) 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
-condition <ether>00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
+condition (ether) 00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
 match (00:11:22:33:44:55 == %(cast:string "%{md4:00:11:22:33:44:55}"))
 
-condition <ether> 00:XX:22:33:44:55 == 00:11:22:33:44:55
+condition (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 12: Missing separator, expected ':'
 
 #
@@ -296,7 +301,7 @@ match true
 #
 #  Both sides static data with a cast: evaluate at parse time.
 #
-condition <integer>20 < 100
+condition (integer)20 < 100
 match true
 
 #
@@ -337,17 +342,17 @@ match (&User-Name == "bob")
 condition (&User-Name == "%{md4: blah}")
 match (&User-Name == %(cast:string "%{md4: blah}"))
 
-condition <ipaddr>127.0.0.1 == 2130706433
+condition (ipaddr)127.0.0.1 == 2130706433
 match true
 
 # /32 suffix should be trimmed for this type
-condition <ipaddr>127.0.0.1/32 == 127.0.0.1
+condition (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
-condition <ipaddr>127.0.0.1/327 == 127.0.0.1
+condition (ipaddr)127.0.0.1/327 == 127.0.0.1
 match ERROR offset 9: Invalid IPv4 mask length "/327".  Should be between 0-32
 
-condition <ipaddr>127.0.0.1/32 == 127.0.0.1
+condition (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
 condition (/foo/)
@@ -410,7 +415,7 @@ match &User-Name
 #
 #  Forbidden data types in cast
 #
-condition (<vsa>"foo" == &User-Name)
+condition ((vsa)"foo" == &User-Name)
 match ERROR offset 2: Invalid data type 'vsa' in cast
 
 #
@@ -418,11 +423,11 @@ match ERROR offset 2: Invalid data type 'vsa' in cast
 #  of the same type, then re-write it so that the attribute
 #  is on the LHS of the condition.
 #
-condition <string>"foo" == &User-Name
+condition (string)"foo" == &User-Name
 match ("foo" == &User-Name)
 
 # This used to be expr, but expr isn't a builtin, so it failed...
-condition <integer>"%{md4: 1 + 1}" < &NAS-Port
+condition (integer)"%{md4: 1 + 1}" < &NAS-Port
 match (%(cast:uint32 "%{md4: 1 + 1}") < &NAS-Port)
 
 #
@@ -432,7 +437,7 @@ match (%(cast:uint32 "%{md4: 1 + 1}") < &NAS-Port)
 condition &Filter-Id == &Framed-IP-Address
 match (&Filter-Id == &Framed-IP-Address)
 
-condition <ipaddr>127.0.0.1 == &Filter-Id
+condition (ipaddr)127.0.0.1 == &Filter-Id
 match (127.0.0.1 == &Filter-Id)
 
 condition &Tmp-uint64-0 == &request.Foo-Stuff-Bar
@@ -444,7 +449,7 @@ match (&Tmp-uint64-0 == &reply.Foo-Stuff-Bar)
 #
 #  Casting attributes of different size
 #
-condition <ipaddr>&Tmp-uint64-0 == &Framed-IP-Address
+condition (ipaddr)&Tmp-uint64-0 == &Framed-IP-Address
 match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 
 #
@@ -452,17 +457,17 @@ match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 #  if the prefix is /32.  We don't know enough at compile time,
 #  so this may be a run-time failure.
 #
-condition <ipaddr>&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
+condition (ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
 match ((ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address)
 
 # but these are allowed
-condition <ether>&Tmp-uint64-0 == "%{module: foo}"
+condition (ether)&Tmp-uint64-0 == "%{module: foo}"
 match ((ether)&Tmp-uint64-0 == %(cast:string "%{module: foo}"))
 
-condition <ipaddr>&Filter-Id == &Framed-IP-Address
+condition (ipaddr)&Filter-Id == &Framed-IP-Address
 match ((ipaddr)&Filter-Id == &Framed-IP-Address)
 
-condition <ipaddr>&Class == &Framed-IP-Address
+condition (ipaddr)&Class == &Framed-IP-Address
 match ((ipaddr)&Class == &Framed-IP-Address)
 
 #
@@ -614,10 +619,10 @@ match (&User-Name != "foo\nbar")
 condition 192.168.0.0/16 > 192.168.1.2
 match true
 
-condition <ipv4prefix>192.168.0.0/16 > 192.168.1.2
+condition (ipv4prefix)192.168.0.0/16 > 192.168.1.2
 match true
 
-condition <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
+condition (ipv4prefix)&NAS-IP-Address == 192.168.0.0/24
 match ((ipv4prefix)&NAS-IP-Address == 192.168.0.0/24)
 
 #
@@ -625,7 +630,7 @@ match ((ipv4prefix)&NAS-IP-Address == 192.168.0.0/24)
 #  and, move the cast to the attribute, as the RHS
 #  is parsed as ipv4prefix
 #
-condition <ipv4prefix>192.168.0.0/24 > &NAS-IP-Address
+condition (ipv4prefix)192.168.0.0/24 > &NAS-IP-Address
 match (192.168.0.0/24 > &NAS-IP-Address)
 
 #

@@ -36,7 +36,7 @@ if (!("%{eval:\%{Tmp-String-1[%{Tmp-Integer-0[2]}]\}}" == 'bar')) {
 #
 #  Check yielding works
 #
-if (<time_delta>"%(reschedule:)" > 1s) {
+if ((time_delta)"%(reschedule:)" > 1s) {
 	test_fail
 }
 

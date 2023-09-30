@@ -1990,18 +1990,11 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 
 static fr_slen_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
 {
-	char			close = '\0';
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_sbuff_marker_t	m;
 	ssize_t			slen;
 
-	if (fr_sbuff_next_if_char(&our_in, '<')) {
-		close = '>';
-
-	} else if (fr_sbuff_next_if_char(&our_in, '(')) {
-		close = ')';
-
-	} else {
+	if (!fr_sbuff_next_if_char(&our_in, '(')) {
 	no_cast:
 		*cast = FR_TYPE_NULL;
 		return 0;
@@ -2009,17 +2002,24 @@ static fr_slen_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
 
 	fr_sbuff_marker(&m, &our_in);
 	fr_sbuff_out_by_longest_prefix(&slen, cast, fr_type_table, &our_in, FR_TYPE_NULL);
-	if (fr_type_is_null(*cast)) goto no_cast;
+
+	/*
+	 *	We didn't read anything, there's no cast.
+	 */
+	if (fr_sbuff_diff(&our_in, &m) == 0) goto no_cast;
+
+	if (!fr_sbuff_next_if_char(&our_in, ')')) goto no_cast;
+
+	if (fr_type_is_null(*cast)) {
+		fr_strerror_printf("Invalid data type in cast");
+		FR_SBUFF_ERROR_RETURN(&m);
+	}
 
 	if (!fr_type_is_leaf(*cast)) {
 		fr_strerror_printf("Invalid data type '%s' in cast", fr_type_to_str(*cast));
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
-	if (!fr_sbuff_next_if_char(&our_in, close)) {
-		fr_strerror_const("Unterminated cast");
-		FR_SBUFF_ERROR_RETURN(&our_in);
-	}
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
 	FR_SBUFF_SET_RETURN(in, &our_in);

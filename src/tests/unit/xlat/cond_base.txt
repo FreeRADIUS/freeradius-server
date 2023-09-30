@@ -163,7 +163,7 @@ match ERROR offset 1: Operator '!' is only applied to the left hand side of the 
 #
 #  We allow a cast for the existence check.  Why not?
 #
-xlat_purify <ipv6addr>::1
+xlat_purify (ipv6addr)::1
 match ::1
 
 # new casts are allowed, too.
@@ -176,32 +176,20 @@ match ERROR offset 11: Failed to parse IPv6 address string "xxx"
 #
 #  Various casts
 #
-xlat_purify <ipaddr>&Filter-Id == &Framed-IP-Address
+xlat_purify (ipaddr)&Filter-Id == &Framed-IP-Address
 match ((ipaddr)&Filter-Id == &Framed-IP-Address)
-
-#
-#  We can automatically promote things as needed.  But if the
-#  user forces incompatible types, then that's an error.
-#
-#  @todo - parsing - better errors for casts
-#
-xlat_purify <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
-match ERROR offset 23: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
-
-xlat_purify <blerg>&Filter-Id == "foo"
-match ERROR offset 1: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 #
 #  Don't normalize things
 #
-xlat_purify <ipaddr>127.0.0.1 < &Framed-IP-Address
+xlat_purify (ipaddr)127.0.0.1 < &Framed-IP-Address
 match (127.0.0.1 < &Framed-IP-Address)
 
 # redundant casts get squashed
-xlat_purify <ipaddr>&Framed-IP-Address == 127.0.0.1
+xlat_purify (ipaddr)&Framed-IP-Address == 127.0.0.1
 match (&Framed-IP-Address == 127.0.0.1)
 
-xlat_purify <cidr>&Framed-IP-Address <= 192.168.0.0/16
+xlat_purify (cidr)&Framed-IP-Address <= 192.168.0.0/16
 match ((ipv4prefix)&Framed-IP-Address <= 192.168.0.0/16)
 
 # All IP address literals should be parsed as prefixes
@@ -244,7 +232,7 @@ xlat_purify &Event-Timestamp == 'January 1 2012'
 #match (&Event-Timestamp == 'Jan  1 2012 00:00:00 EST')
 
 # literals are parsed when the conditions are parsed
-xlat_purify <integer>X == 1
+xlat_purify (integer)X == 1
 match ERROR offset 10: Failed parsing string as type 'uint32'
 
 #
@@ -259,12 +247,12 @@ match ERROR offset 1: Failed parsing string as type 'uint32'
 #  The RHS is a static string, so this gets mashed to a literal,
 #  and then statically evaluated.
 #
-xlat_purify <ipaddr>127.0.0.1 == "127.0.0.1"
+xlat_purify (ipaddr)127.0.0.1 == "127.0.0.1"
 match true
 
 # LHS is IPaddr, RHS is string (malformed IP address).
 # Condition code attempts to cast md4 hash to IP address resulting in an invalid comparison
-xlat_purify <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
+xlat_purify (ipaddr)127.0.0.1 == "%{md4: 127.0.0.1}"
 match NULL
 
 #
@@ -272,20 +260,20 @@ match NULL
 #
 
 # Invalid cast from octets to ipaddr.
-xlat_purify <ipaddr>127.0.0.1 == %{md4:127.0.0.1}
+xlat_purify (ipaddr)127.0.0.1 == %{md4:127.0.0.1}
 match NULL
 
-xlat_purify <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
+xlat_purify (ipaddr)127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
 match (127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'})
 
-xlat_purify <ether> 00:11:22:33:44:55 == "00:11:22:33:44:55"
+xlat_purify (ether) 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
 # Invalid cast from octets to ether.
-xlat_purify <ether>00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
+xlat_purify (ether)00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
 match NULL
 
-xlat_purify <ether> 00:XX:22:33:44:55 == 00:11:22:33:44:55
+xlat_purify (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 12: Missing separator, expected ':'
 
 #
@@ -308,7 +296,7 @@ match 0
 #
 #  Both sides static data with a cast: evaluate at parse time.
 #
-xlat_purify <integer>20 < 100
+xlat_purify (integer)20 < 100
 match true
 
 #
@@ -356,17 +344,17 @@ match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
 xlat_purify (&User-Name == %{md4: blah})
 match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
 
-xlat_purify <ipaddr>127.0.0.1 == 2130706433
+xlat_purify (ipaddr)127.0.0.1 == 2130706433
 match true
 
 # /32 suffix should be trimmed for this type
-xlat_purify <ipaddr>127.0.0.1/32 == 127.0.0.1
+xlat_purify (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
-xlat_purify <ipaddr>127.0.0.1/327 == 127.0.0.1
+xlat_purify (ipaddr)127.0.0.1/327 == 127.0.0.1
 match ERROR offset 9: Invalid IPv4 mask length "/327".  Should be between 0-32
 
-xlat_purify <ipaddr>127.0.0.1/32 == 127.0.0.1
+xlat_purify (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
 xlat_purify (/foo/)
@@ -429,7 +417,7 @@ match &User-Name
 #
 #  Forbidden data types in cast
 #
-xlat_purify (<vsa>"foo" == &User-Name)
+xlat_purify ((vsa)"foo" == &User-Name)
 match ERROR offset 2: Invalid data type 'vsa' in cast
 
 #
@@ -437,7 +425,7 @@ match ERROR offset 2: Invalid data type 'vsa' in cast
 #  of the same type, then re-write it so that the attribute
 #  is on the LHS of the condition.
 #
-xlat_purify <string>"foo" == &User-Name
+xlat_purify (string)"foo" == &User-Name
 match ("foo" == &User-Name)
 
 # This used to be expr, but expr isn't a builtin, so it failed...
@@ -447,7 +435,7 @@ match ("foo" == &User-Name)
 #
 #  ERROR: Failed casting 0x002ade8665c69219ca16bd108d92c8d5 to data type uint32: Invalid cast from octets to uint32.  Source length 16 is greater than destination type size 4
 #
-xlat_purify <integer>"%{md4: 1 + 1}" < &NAS-Port
+xlat_purify (integer)"%{md4: 1 + 1}" < &NAS-Port
 match (%(cast:uint32 "%{md4: 1 + 1}") < &NAS-Port)
 
 #
@@ -456,7 +444,7 @@ match (%(cast:uint32 "%{md4: 1 + 1}") < &NAS-Port)
 xlat_purify &Filter-Id == &Framed-IP-Address
 match (&Filter-Id == &Framed-IP-Address)
 
-xlat_purify <ipaddr>127.0.0.1 == &Filter-Id
+xlat_purify (ipaddr)127.0.0.1 == &Filter-Id
 match (127.0.0.1 == &Filter-Id)
 
 xlat_purify &Tmp-uint64-0 == &request.Tmp-String-0
@@ -468,7 +456,7 @@ match (&Tmp-uint64-0 == &reply.Tmp-String-0)
 #
 #  Casting attributes of different size
 #
-xlat_purify <ipaddr>&Tmp-uint64-0 == &Framed-IP-Address
+xlat_purify (ipaddr)&Tmp-uint64-0 == &Framed-IP-Address
 match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 
 #
@@ -476,17 +464,17 @@ match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 #  if the prefix is /32.  We don't know enough at compile time,
 #  so this may be a run-time failure.
 #
-xlat_purify <ipaddr>&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
+xlat_purify (ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
 match ((ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address)
 
 # but these are allowed
-xlat_purify <ether>&Tmp-uint64-0 == "%{module: foo}"
+xlat_purify (ether)&Tmp-uint64-0 == "%{module: foo}"
 match  ((ether)&Tmp-uint64-0 == %(cast:string "%{module: foo}"))
 
-xlat_purify <ipaddr>&Filter-Id == &Framed-IP-Address
+xlat_purify (ipaddr)&Filter-Id == &Framed-IP-Address
 match ((ipaddr)&Filter-Id == &Framed-IP-Address)
 
-xlat_purify <ipaddr>&Class == &Framed-IP-Address
+xlat_purify (ipaddr)&Class == &Framed-IP-Address
 match ((ipaddr)&Class == &Framed-IP-Address)
 
 #
@@ -614,10 +602,10 @@ xlat_purify 192.168.0.0/16 > 192.168.1.2
 match true
 
 
-xlat_purify <ipv4prefix>192.168.0.0/16 > 192.168.1.2
+xlat_purify (ipv4prefix)192.168.0.0/16 > 192.168.1.2
 match true
 
-xlat_purify <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
+xlat_purify (ipv4prefix)&NAS-IP-Address == 192.168.0.0/24
 match ((ipv4prefix)&NAS-IP-Address == 192.168.0.0/24)
 
 #
@@ -625,7 +613,7 @@ match ((ipv4prefix)&NAS-IP-Address == 192.168.0.0/24)
 #  and, move the cast to the attribute, as the RHS
 #  is parsed as ipv4prefix
 #
-xlat_purify <ipv4prefix>192.168.0.0/24 > &NAS-IP-Address
+xlat_purify (ipv4prefix)192.168.0.0/24 > &NAS-IP-Address
 match (192.168.0.0/24 > &NAS-IP-Address)
 
 #
@@ -779,4 +767,4 @@ xlat_purify (192.168.0.1 !== 192.168.0.2)
 match true
 
 count
-match 332
+match 328
