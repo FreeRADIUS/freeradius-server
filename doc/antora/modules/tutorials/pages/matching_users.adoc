@@ -61,4 +61,4 @@ network?
 4.  How does this kind of simple configuration scale to many users?
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
+// This documentation was developed by Network RADIUS SAS.

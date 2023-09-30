@@ -93,4 +93,4 @@ arguments have side effects, then those side effects can be applied
 multiple times, once for each `redundant-load-balance` attempt.
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
+// This documentation was developed by Network RADIUS SAS.

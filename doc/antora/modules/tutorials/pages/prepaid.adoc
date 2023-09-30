@@ -40,4 +40,4 @@ from an SQL database?
 addition to enforcing `Simultaneous-Use`?
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
+// This documentation was developed by Network RADIUS SAS.

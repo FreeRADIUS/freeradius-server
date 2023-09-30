@@ -73,4 +73,4 @@ change the datas _value_.  That is, a cast allows you to convert an
 contain non-printable characters.
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
+// This documentation was developed by Network RADIUS SAS.

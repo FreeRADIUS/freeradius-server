@@ -31,4 +31,4 @@ PROTOCOL RADIUS 1 verify=lib
 ----
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
+// This documentation was developed by Network RADIUS SAS.

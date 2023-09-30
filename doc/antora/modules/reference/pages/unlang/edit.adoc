@@ -424,4 +424,4 @@ data, and therefore not a printable string.  As a result, it is more
 useful for strings to have `^=` be a "prepend" operation.
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
+// This documentation was developed by Network RADIUS SAS.

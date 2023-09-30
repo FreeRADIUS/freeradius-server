@@ -1076,4 +1076,4 @@ This kind of math works well for "tomorrow", but it is less useful for
 expansion above should be used for those time operations.
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
+// This documentation was developed by Network RADIUS SAS.

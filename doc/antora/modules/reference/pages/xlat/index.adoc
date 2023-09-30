@@ -52,4 +52,4 @@ Reply-Message := "%{User-Name} with a literal %%"
 ----
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
+// This documentation was developed by Network RADIUS SAS.

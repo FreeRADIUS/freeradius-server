@@ -75,4 +75,4 @@ versions of the server.  When upgrading, you should just add a `.`
 between the list name and the array reference `[`.
 
 // Copyright (C) 2022 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
+// This documentation was developed by Network RADIUS SAS.

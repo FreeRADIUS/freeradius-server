@@ -69,4 +69,4 @@ if (&User-Name == "bob") {
 The variable declaration and assignment must be sepaarted.  Constructions like `uint32 len = %(length:%{User-Name})` are not allowed.
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
+// This documentation was developed by Network RADIUS SAS.

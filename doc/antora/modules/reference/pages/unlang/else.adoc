@@ -29,4 +29,4 @@ else {
 The last entry in an `else` section can also be an xref:unlang/actions.adoc[actions] subsection.
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// Development of this documentation was sponsored by Network RADIUS SAS.
+// This documentation was developed by Network RADIUS SAS.
