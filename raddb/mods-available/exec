@@ -13,15 +13,25 @@
 #  the `instantiate` section.  You can then do dynamic translation of
 #  attributes like:
 #
-#    Attribute-Name = "%exec(/path/to/program,args, ...)"
+#    Attribute-Name = %exec(/path/to/program,args, ...)
+#
+#  The output of `exec` is interpreted as the data type of the attribute.
+#
+#  The output of `exec` can even be pairs, such as `User-Name = foo`.
+#  Those pairs can be assigned to a list.  If the program fails, it
+#  will output nothing.
+#
+#  Note that when the assignment is to a list, the `exec` call _must_ be
+#  inside of a double-quoted string.
+#
+#    &request += "%exec(/path/to/program,args, ...)"
 #
 #  The value of the attribute will be replaced with the output of the
-#  program which is executed.  Due to RADIUS protocol limitations,
-#  any output over `253` bytes will be ignored.
+#  program which is executed.
 #
-#  The RADIUS attributes from the list referenced in the `input_pairs`
+#  The attributes from the list referenced in the `input_pairs`
 #  configuraton item will be placed into environment variables of the executed
-#  program, as described in `man unlang` and in `doc/unlang/xlat.adoc`
+#  program.
 #
 #  Alternatively, by setting the `program` item of the module configuration,
 #  the module can be called as a module rather than as an xlat function.
