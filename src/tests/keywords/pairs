@@ -46,8 +46,17 @@ if !(&Tmp-String-6 == 'Tmp-Group-0 = { Tmp-String-0 = "This is a string", Tmp-St
 	test_fail
 }
 
-&request -= &Tmp-Group-0
+&request -= &Tmp-Group-0[*]
+if (&request.Tmp-Group-0.Tmp-String-0) {
+	test_fail
+}
 
-
+#
+#  Parse pairs from a string!
+#
+&request += "%{Tmp-String-6}"
+if !(&request.Tmp-Group-0.Tmp-String-0 == 'This is a string') {
+	test_fail
+}
 
 success
