@@ -6,7 +6,7 @@ which operate on inputs, and produce an output.
 
 == Attribute Manipulation
 
-=== %(length: ... )
+=== %length( ... )
 
 The `length` expansion returns the size of the input as an integer.
 When the input is a string, then the output is identical to the
@@ -25,8 +25,8 @@ the attributes data as encoded "on the wire".
 &Framed-IP-Address := 192.0.2.1
 
 &reply += {
-	&Reply-Message = "The length of %{control.Tmp-String-0} is %(length:&control.Tmp-String-0)"
-	&Reply-Message = "The length of %{control.Framed-IP-Address} is %(length:&control.Framed-IP-Address)"
+	&Reply-Message = "The length of %{control.Tmp-String-0} is %length(&control.Tmp-String-0)"
+	&Reply-Message = "The length of %{control.Framed-IP-Address} is %length(&control.Framed-IP-Address)"
 }
 ----
 
@@ -37,7 +37,7 @@ The length of 192.168.0.2 is 4
 ....
 ====
 
-=== %{rand:<number>}
+=== %rand(<number>)
 
 Generate random number from `0` to `<number>-1`.
 
@@ -47,7 +47,7 @@ Generate random number from `0` to `<number>-1`.
 ====
 [source,unlang]
 ----
-&reply.Reply-Message := "The random number is %{rand:512}"
+&reply.Reply-Message := "The random number is %rand(512}"
 ----
 
 .Output
@@ -57,7 +57,7 @@ The random number is 347
 ```
 ====
 
-=== %{string:<data>}
+=== %string(<data>)
 
 Convert input to a string if (possible).  For _octets_ type
 attributes, this means interpreting the data as a UTF8 string.  Any
@@ -69,7 +69,7 @@ time for date types, enumeration values for attributes such as `radius.Service-T
 
 In practice, the only real use of this expansion is to insert `octets`
 data types into a `string`.  For other data types, using
-`%{string:...}` is not necessary.  For example, for any data type
+`%string(...)` is not necessary.  For example, for any data type
 other than `octets`, the following equivalency holds true.
 
 See xref:type/string/double.adoc[double-quoted strings] and
@@ -106,12 +106,12 @@ That being said, the main use of these expansions is for the
 decode any attribute from any protocol.
 
 If you need to store attributes in an external database, then it is
-possible to encode them via `%(internal.encode:...)`.  The result will
+possible to encode them via `%internal.encode(...)`.  The result will
 be an opaque hex string which can be treated as an opaque blob, and
 stored externally.  Then, when the data is needed again, it can be
-turned back into attributes via `%(internal.decode:...)`.
+turned back into attributes via `%internal.decode(...)`.
 
-=== %(PROTO.decode:<data>)
+=== %PROTO.decode(<data>)
 
 Decodes _data_ as the named protocol.  The _data_ string can be an
 expansion, which is usually a reference to an attribute of type `octets.
@@ -133,8 +133,8 @@ It returns the number of attributes which were decoded.
 
 [source,unlang]
 ----
-%(dhcpv4.decode:0x520d0103abcdef0206010203040506)
-%(radius.decode:0x010641424344)
+%dhcpv4.decode(0x520d0103abcdef0206010203040506)
+%radius.decode(0x010641424344)
 ----
 
 .Output
@@ -144,7 +144,7 @@ It returns the number of attributes which were decoded.
 &User-Name = "ABCD"
 ```
 
-=== %(PROTO.encode:<list>)
+=== %PROTO.encode(<list>)
 
 Encodes _list_ as the named protocol.  The _list_ can also be a series of attributes.
 
@@ -159,8 +159,8 @@ It returns the raw encoded data
 
 [source,unlang]
 ----
-%(dhcpv4.encode:&Relay-Agent-Information.Circuit-Id = 0xabcdef  &Relay-Agent-Information.Remote-Id = 0x010203040506)
-%(radius.encode:&User-Name = "ABCD")
+%dhcpv4.encode(&Relay-Agent-Information.Circuit-Id = 0xabcdef  &Relay-Agent-Information.Remote-Id = 0x010203040506)
+%radius.encode(&User-Name = "ABCD")
 ----
 
 .Output
@@ -173,7 +173,7 @@ It returns the raw encoded data
 == Interpreter State
 
 The state of the interpreter can be queried via the
-`%(interpeter:<name>)` expansion.  The individual expansions are
+`%interpeter(<name>)` expansion.  The individual expansions are
 documented below.
 
 Each expansion given here can be prefixed with one or more dot (`.`)
@@ -181,27 +181,27 @@ characters.  These dots allow the expansion to refer to the current
 request via a `name`, or the parent request via `.name`.  If there is
 no parent, the expansion returns the string `<underflow>`.
 
-=== %(interpeter:module)
+=== %interpeter(module)
 
 The current module being executed.  If the expansions is done in an
 `unlang` statement and outside of any module, it returns the name of
 the previous module which was executed.
 
-=== %(interpeter:processing_stage)
+=== %interpeter(processing_stage)
 
 Which section of a virtual server is processing the request.
 
-=== %(interpeter:rcode)
+=== %interpeter(rcode)
 
 The current interpreter return code, e.g. `handle`, or `ok`, etc.
 
-=== %(interpeter:server)
+=== %interpeter(server)
 
 The name of the virtual server which is running the request.
 
 == Server Configuration
 
-=== %(config:<key>)
+=== %config(<key>)
 
 Refers to a variable in the configuration file. See the documentation
 on configuration file references.
@@ -212,8 +212,8 @@ on configuration file references.
 
 [source,unlang]
 ----
-"Server installed in %(config:prefix)"
-"Module rlm_exec.shell_escape = %(config:modules.exec.shell_escape)"
+"Server installed in %config(prefix)"
+"Module rlm_exec.shell_escape = %config(modules.exec.shell_escape)"
 ----
 
 .Output
@@ -223,7 +223,7 @@ Server installed in /opt/freeradius
 Module rlm_exec.shell_escape = yes
 ```
 
-=== %(client:<key>)
+=== %client(<key>)
 
 Refers to a variable that was defined in the client section for the
 current client. See the sections `client { ... }` in `clients.conf`.
@@ -234,7 +234,7 @@ current client. See the sections `client { ... }` in `clients.conf`.
 
 [source,unlang]
 ----
-"The client ipaddr is %(client:ipaddr)"
+"The client ipaddr is %client(ipaddr)"
 ----
 
 .Output
@@ -243,7 +243,7 @@ current client. See the sections `client { ... }` in `clients.conf`.
 The client ipaddr is 192.168.5.9
 ```
 
-=== %{debug:<level>}
+=== %debug(<level>)
 
 Dynamically change the debug level to something high, recording the old level.
 
@@ -255,9 +255,9 @@ Dynamically change the debug level to something high, recording the old level.
 ----
 recv Access-Request {
     if (&request.User-Name == "bob") {
-        "%{debug:4}"
+        "%debug(4)"
     } else {
-        "%{debug:0}"
+        "%debug(0)"
     }
     ...
 }
@@ -269,7 +269,7 @@ recv Access-Request {
 ...
 (0)  recv Access-Request {
 (0)    if (&request.User-Name == "bob") {
-(0)      EXPAND %{debug:4}
+(0)      EXPAND %debug(4)
 (0)        --> 2
 (0)    } # if (&request.User-Name == "bob") (...)
 (0)    filter_username {
@@ -315,7 +315,7 @@ recv Access-Request {
 ...
 ```
 
-=== %(interpreter:<state>)
+=== %interpreter(<state>)
 
 Get information about the interpreter state.
 
@@ -335,7 +335,7 @@ Get information about the interpreter state.
 
 [source,unlang]
 ----
-"Failure in test at line %(interpreter:...filename):%(interpreter:...line)"
+"Failure in test at line %interpreter(...filename):%interpreter(...line)"
 ----
 
 .Output
@@ -346,7 +346,7 @@ Failure in test at line /path/raddb/sites-enaled/default:231
 
 == String manipulation
 
-=== %(concat:<&ref:[idx]> <delim>)
+=== %concat(<&ref:[idx]> <delim>)
 
 Used to join two or more attributes, separated by an optional delimiter.
 
@@ -363,8 +363,8 @@ Used to join two or more attributes, separated by an optional delimiter.
 }
 
 &reply += {
-    &Reply-Message = "%(concat:%{control.Tmp-String-0[*]} ', ')"
-    &Reply-Message = "%(concat:%{control.Tmp-String-0[*]} ,)"
+    &Reply-Message = "%concat(%{control.Tmp-String-0[*]} ', ')"
+    &Reply-Message = "%concat(%{control.Tmp-String-0[*]} ,)"
 }
 ----
 
@@ -375,11 +375,11 @@ aaa, bb, c
 aaa,bb,c
 ```
 
-=== %(explode:<&ref> <delim>)
+=== %explode(<&ref> <delim>)
 
 Split an string into multiple new strings based on a delimiter.
 
-This expansion is the opposite of `%(concat: ... )`.
+This expansion is the opposite of `%concat( ... )`.
 
 .Return: _the number exploded list of strings_.
 
@@ -389,7 +389,7 @@ This expansion is the opposite of `%(concat: ... )`.
 ----
 &control.Tmp-String-0 := "bob.toba@domain.com"
 
-&control.Tmp-String-1 := "%(explode:&control.Tmp-String-0 @)"
+&control.Tmp-String-1 := "%explode(&control.Tmp-String-0 @)"
 
 &reply.Reply-Message := "Welcome %{control.Tmp-String-1[0]}"
 ----
@@ -400,7 +400,7 @@ This expansion is the opposite of `%(concat: ... )`.
 Welcome bob.toba
 ```
 
-=== %(lpad:<string> <val> <char>)
+=== %lpad(<string> <val> <char>)
 
 Left-pad a string.
 
@@ -412,7 +412,7 @@ Left-pad a string.
 ----
 &control.Tmp-String-0 := "123"
 
-&reply.Reply-Message := "Maximum should be %(lpad:%{control.Tmp-String-0} 11 0)"
+&reply.Reply-Message := "Maximum should be %lpad(%{control.Tmp-String-0} 11 0)"
 ----
 
 .Output
@@ -421,7 +421,7 @@ Left-pad a string.
 Maximum should be 00000000123
 ```
 
-=== %(rpad:<string> <val> <char>)
+=== %rpad(<string> <val> <char>)
 
 Right-pad a string.
 
@@ -433,7 +433,7 @@ Right-pad a string.
 ----
 &control.Tmp-String-0 := "123"
 
-&reply.Reply-Message := "Maximum should be %(rpad:%{control.Tmp-String-0} 11 0)"
+&reply.Reply-Message := "Maximum should be %rpad(%{control.Tmp-String-0} 11 0)"
 ----
 
 .Output
@@ -442,7 +442,7 @@ Right-pad a string.
 Maximum should be 12300000000
 ```
 
-=== %(pairs:<list>.[*])
+=== %pairs(<list>.[*])
 
 Serialize attributes as comma-delimited string.
 
@@ -453,7 +453,7 @@ Serialize attributes as comma-delimited string.
 [source,unlang]
 ----
 &control.Tmp-String-0 := { "This is a string", "This is another one" }
-&reply.Reply-Message := "Serialize output: %(pairs:&control.[*])"
+&reply.Reply-Message := "Serialize output: %pairs(&control.[*])"
 ----
 
 .Output
@@ -462,7 +462,7 @@ Serialize attributes as comma-delimited string.
 Serialize output: Tmp-String-0 = \"This is a string\"Tmp-String-0 = \"This is another one\"
 ```
 
-=== %{randstr: ...}
+=== %randstr( ...)
 
 Get random string built from character classes.
 
@@ -472,7 +472,7 @@ Get random string built from character classes.
 
 [source,unlang]
 ----
-&reply.Reply-Message := "The random string output is %{randstr:aaaaaaaa}"
+&reply.Reply-Message := "The random string output is %randstr(aaaaaaaa}"
 ----
 
 .Output
@@ -481,9 +481,9 @@ Get random string built from character classes.
 The random string output is 4Uq0gPyG
 ```
 
-=== %{strlen: ... }
+=== %strlen( ... )
 
-Length of given string.
+Length of given string.  This expansion is deprecated. The `%length(...)` function should be used instead.
 
 .Return: _integer_
 
@@ -492,7 +492,7 @@ Length of given string.
 [source,unlang]
 ----
 &control.Tmp-String-0 := "Caipirinha"
-&reply.Reply-Message := "The length of %{control.Tmp-String-0} is %{strlen:&control.Tmp-String-0}"
+&reply.Reply-Message := "The length of %{control.Tmp-String-0} is %strlen(&control.Tmp-String-0)"
 ----
 
 .Output
@@ -501,7 +501,7 @@ Length of given string.
 The length of Caipirinha is 21
 ```
 
-=== %{tolower: ... }
+=== %tolower( ... )
 
 Dynamically expands the string and returns the lowercase version of
 it. This definition is only available in version 2.1.10 and later.
@@ -513,7 +513,7 @@ it. This definition is only available in version 2.1.10 and later.
 [source,unlang]
 ----
 &control.Tmp-String-0 := "CAIPIRINHA"
-&reply.Reply-Message := "tolower of %{control.Tmp-String-0} is %{tolower:%{control.Tmp-String-0}}"
+&reply.Reply-Message := "tolower of %{control.Tmp-String-0} is %tolower(%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -522,7 +522,7 @@ it. This definition is only available in version 2.1.10 and later.
 tolower of CAIPIRINHA is caipirinha
 ```
 
-=== %{toupper: ... }
+=== %toupper( ... )
 
 Dynamically expands the string and returns the uppercase version of
 it. This definition is only available in version 2.1.10 and later.
@@ -534,7 +534,7 @@ it. This definition is only available in version 2.1.10 and later.
 [source,unlang]
 ----
 &control.Tmp-String-0 := "caipirinha"
-&reply.Reply-Message := "toupper of %{control.Tmp-String-0} is %{toupper:%{control.Tmp-String-0}}"
+&reply.Reply-Message := "toupper of %{control.Tmp-String-0} is " + %toupper(%{control.Tmp-String-0})
 ----
 
 .Output
@@ -545,7 +545,7 @@ toupper of caipirinha is CAIPIRINHA
 
 == String Conversion
 
-=== %(base64.encode: ... )
+=== %base64.encode( ... )
 
 Encode a string using Base64.
 
@@ -556,7 +556,7 @@ Encode a string using Base64.
 [source,unlang]
 ----
 &control.Tmp-String-0 := "Caipirinha"
-&reply.Reply-Message := "The base64 of %{control.Tmp-String-0} is %(base64.encode:%{control.Tmp-String-0})"
+&reply.Reply-Message := "The base64 of %{control.Tmp-String-0} is %base64.encode(%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -565,7 +565,7 @@ Encode a string using Base64.
 The base64 of foo is Q2FpcGlyaW5oYQ==
 ```
 
-=== %(base64.decode: ... )
+=== %base64.decode( ... )
 
 Decode a string previously encoded using Base64.
 
@@ -576,7 +576,7 @@ Decode a string previously encoded using Base64.
 [source,unlang]
 ----
 &control.Tmp-String-0 := "Q2FpcGlyaW5oYQ=="
-&reply.Reply-Message := "The base64.decode of %{control.Tmp-String-0} is %(base64.decode:%{control.Tmp-String-0})"
+&reply.Reply-Message := "The base64.decode of %{control.Tmp-String-0} is %base64.decode(%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -585,7 +585,7 @@ Decode a string previously encoded using Base64.
 The base64.decode of Q2FpcGlyaW5oYQ== is Caipirinha
 ```
 
-=== %{bin: ... }
+=== %bin( ... )
 
 Convert string to binary.
 
@@ -596,7 +596,7 @@ Convert string to binary.
 [source,unlang]
 ----
 &control.Tmp-String-0 := "10"
-&reply.Reply-Message := "The %{control.Tmp-String-0} in binary is %{bin:%{control.Tmp-String-0}}"
+&reply.Reply-Message := "The %{control.Tmp-String-0} in binary is %bin(%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -605,7 +605,7 @@ Convert string to binary.
 The 10 in binary is \020
 ```
 
-=== %{hex: ... }
+=== %hex( ... )
 
 Convert to hex.
 
@@ -616,7 +616,7 @@ Convert to hex.
 [source,unlang]
 ----
 &control.Tmp-String-0 := "12345"
-&reply.Reply-Message := "The value of %{control.Tmp-String-0} in hex is %{hex:%{control.Tmp-String-0}}"
+&reply.Reply-Message := "The value of %{control.Tmp-String-0} in hex is %hex(%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -625,7 +625,7 @@ Convert to hex.
 The value of 12345 in hex is 3132333435
 ```
 
-=== %{urlquote: ... }
+=== %urlquote( ... )
 
 Quote URL special characters.
 
@@ -637,7 +637,7 @@ Quote URL special characters.
 ----
 &control.Tmp-String-0 := "http://example.org/"
 &reply += {
-	&Reply-Message = "The urlquote of %{control.Tmp-String-0} is %{urlquote:%{control.Tmp-String-0}}"
+	&Reply-Message = "The urlquote of %{control.Tmp-String-0} is %urlquote(%{control.Tmp-String-0})"
 }
 ----
 
@@ -647,7 +647,7 @@ Quote URL special characters.
 The urlquote of http://example.org/ is http%3A%2F%2Fexample.org%2F
 ```
 
-=== %{urlunquote: ... }
+=== %urlunquote( ... )
 
 Unquote URL special characters.
 
@@ -659,7 +659,7 @@ Unquote URL special characters.
 ----
 &control.Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
 &reply += {
-	&Reply-Message = "The urlunquote of %{control.Tmp-String-0} is %{urlunquote:%{control.Tmp-String-0}}"
+	&Reply-Message = "The urlunquote of %{control.Tmp-String-0} is %urlunquote(%{control.Tmp-String-0})"
 }
 ----
 
@@ -671,7 +671,7 @@ The urlunquote of http%3A%2F%2Fexample.org%2F is http://example.org/
 
 == Hashing and Encryption
 
-=== %(hmacmd5:<shared_key> <string>)
+=== %hmacmd5(<shared_key> <string>)
 
 Generate `HMAC-MD5` of string.
 
@@ -683,11 +683,11 @@ Generate `HMAC-MD5` of string.
 ----
 &control.Tmp-String-0 := "mykey"
 &control.Tmp-String-1 := "Caipirinha"
-&reply.control.Tmp-Octets-0 := "%(hmacmd5:%{control.Tmp-String-0} %{control.Tmp-String-1})"
+&reply.control.Tmp-Octets-0 := "%hmacmd5(%{control.Tmp-String-0} %{control.Tmp-String-1})"
 
 &reply += {
     &Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
-    &Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %{hex:control.Tmp-Octets-0}"
+    &Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %hex(control.Tmp-Octets-0)"
 }
 ----
 
@@ -698,7 +698,7 @@ The HMAC-MD5 of Caipirinha in octets is \317}\264@K\216\371\035\304\367\202,c\37
 The HMAC-MD5 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
 ```
 
-=== %(hmacsha1:<shared_key> <string>)
+=== %hmacsha1(<shared_key> <string>)
 
 Generate `HMAC-SHA1` of string.
 
@@ -710,11 +710,11 @@ Generate `HMAC-SHA1` of string.
 ----
 &control.Tmp-String-0 := "mykey"
 &control.Tmp-String-1 := "Caipirinha"
-&control.Tmp-Octets-0 := "%(hmacsha1:%{control.Tmp-String-0} %{control.Tmp-String-1})"
+&control.Tmp-Octets-0 := "%hmacsha1(%{control.Tmp-String-0} %{control.Tmp-String-1})"
 
 &reply += {
     &Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
-    &Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %{hex:control.Tmp-Octets-0}"
+    &Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %hex(control.Tmp-Octets-0}"
 }
 ----
 
@@ -725,7 +725,7 @@ The HMAC-SHA1 of Caipirinha in octets is \311\007\212\234j\355\207\035\225\256\3
 The HMAC-SHA1 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
 ```
 
-=== %{md5: ... }
+=== %md5( ... }
 
 Dynamically expands the string and performs an MD5 hash on it. The
 result is binary data.
@@ -738,8 +738,8 @@ result is binary data.
 ----
 &control.Tmp-String-0 := "Caipirinha"
 &reply += {
-    &Reply-Message = "md5 of %{control.Tmp-String-0} is octal=%{md5:%{control.Tmp-String-0}}"
-    &Reply-Message = "md5 of %{control.Tmp-String-0} is hex=%{hex:%{md5:%{control.Tmp-String-0}}}"
+    &Reply-Message = "md5 of %{control.Tmp-String-0} is octal=%md5(%{control.Tmp-String-0})"
+    &Reply-Message = "md5 of %{control.Tmp-String-0} is hex=%hex(%md5(%{control.Tmp-String-0}))"
 }
 ----
 
@@ -754,29 +754,29 @@ md5 of Caipirinha is hex=14840b6d647c7c98a3e732f833d86ea9
 
 The following hashes are supported for all versions of OpenSSL.
 
-* `%{md2: ... }`
-* `%{md4: ... }`
-* `%{md5: ... }`
-* `%{sha1: ... }`
-* `%{sha224: ... }`
-* `%{sha256: ... }`
-* `%{sha384: ... }`
-* `%{sha512: ... }`
+* `%md2( ... }`
+* `%md4( ... }`
+* `%md5( ... }`
+* `%sha1( ... }`
+* `%sha224( ... }`
+* `%sha256( ... }`
+* `%sha384( ... }`
+* `%sha512( ... }`
 
 The following hashes are supported for when OpenSSL 1.1.1 or greater
 is installed.  This version adds support for the `sha3` and `blake`
 families of digest functions.
 
-* `%{blake2s_256: ... }`
-* `%{blake2b_512: ... }`
-* `%{sha2_224: ... }`
-* `%{sha2_256: ... }`
-* `%{sha2_384: ... }`
-* `%{sha2_512: ... }`
-* `%{sha3_224: ... }`
-* `%{sha3_256: ... }`
-* `%{sha3_384: ... }`
-* `%{sha3_512: ... }`
+* `%blake2s_256( ... )`
+* `%blake2b_512( ... )`
+* `%sha2_224( ... )`
+* `%sha2_256( ... )`
+* `%sha2_384( ... )`
+* `%sha2_512( ... )`
+* `%sha3_224( ... )`
+* `%sha3_256( ... )`
+* `%sha3_384( ... )`
+* `%sha3_512( ... )`
 
 .Return: _octal_
 
@@ -786,8 +786,8 @@ families of digest functions.
 ----
 &control.Tmp-String-0 := "Caipirinha"
 &reply += {
-    &Reply-Message = "The md5 of %{control.Tmp-String-0} in octal is %{md5:%{control.Tmp-String-0}}"
-    &Reply-Message = "The md5 of %{control.Tmp-String-0} in hex is %{hex:%{md5:%{control.Tmp-String-0}}}"
+    &Reply-Message = "The md5 of %{control.Tmp-String-0} in octal is %md5(%{control.Tmp-String-0}}"
+    &Reply-Message = "The md5 of %{control.Tmp-String-0} in hex is %hex(%md5(%{control.Tmp-String-0}}}"
 }
 ----
 
@@ -800,7 +800,7 @@ The md5 of Caipirinha in hex is 14840b6d647c7c98a3e732f833d86ea9
 
 == Miscellaneous Expansions
 
-=== +%{0}+..+%{32}+
+=== %{0}+..+%{32}
 
 `%{0}` expands to the portion of the subject that matched the last regular
 expression evaluated. `%{1}`..`%{32}` expand to the contents of any capture
@@ -809,11 +809,11 @@ groups in the pattern.
 Every time a regular expression is evaluated, whether it matches or not,
 the numbered capture group values will be cleared.
 
-=== +%{regex:<named capture group>}+
+=== +%regex(<named capture group>}+
 
 Return named subcapture value from the last regular expression evaluated.
 
-Results of named capture groups are available using the `%{regex:<named capture
+Results of named capture groups are available using the `%regex(<named capture
 group>}` expansion. They will also be accessible using the numbered expansions
 described xref:xlat/builtin.adoc#_0_32[above].
 
@@ -837,7 +837,7 @@ Debug :   pcre2                    : 10.33 (2019-04-16) - retrieved at build tim
 ....
 ====
 
-=== +%(eval:<string>)+
+=== +%eval(<string>)+
 
 Evaluates the string as an expansion, and returns the result.  The main difference between using this expansion and just using `%{...}` is that the string being evaluated can be dynamically changed.
 
@@ -853,7 +853,7 @@ if (&User-Name == "bob") {
     &request.Tmp-String-0 := "not bob!"
 }
 
-&reply.Reply-Message := "%{eval:&request.Tmp-String-0}"
+&reply.Reply-Message := "%eval(&request.Tmp-String-0}"
 ----
 
 .Output when `&User-Name == bob`
@@ -869,14 +869,14 @@ not bob!
 ```
 
 
-=== +%(expr:<string>)+
+=== %expr(<string>)
 
 Evaluates the string as an xref:reference:unlang/expression.adoc[Unlang expression], and returns the result.  Please see the
 xref:reference:unlang/expression.adoc[Unlang expression] page for full documentation on expressions.
 
 [NOTE]
 ====
-You probably don't want to use this.  In v4, the main use of `%{expr:...}` is inside of strings which can't be split into actual expressions.
+You probably don't want to use this.  In v4, the main use of `%expr(...(` is inside of strings which can't be split into actual expressions.
 ====
 
 .Return: _data_
@@ -885,7 +885,7 @@ You probably don't want to use this.  In v4, the main use of `%{expr:...}` is in
 
 [source,unlang]
 ----
-&reply.Tmp-String-0 := "%{expr:1 + 2}"
+&reply.Tmp-String-0 := "%expr(1 + 2}"
 ----
 
 .Output
@@ -894,7 +894,7 @@ You probably don't want to use this.  In v4, the main use of `%{expr:...}` is in
 3
 ```
 
-.A Better example of not using `%{expr:...}`
+.A Better example of not using `%expr(...)`
 
 [source,unlang]
 ----
@@ -903,7 +903,7 @@ You probably don't want to use this.  In v4, the main use of `%{expr:...}` is in
 
 
 
-=== +%(nexttime:<time>)+
+=== %nexttime(<time>)
 
 Calculate number of seconds until next n hour(`s`), day(`s`), week(`s`), year(`s`).
 
@@ -911,11 +911,11 @@ Calculate number of seconds until next n hour(`s`), day(`s`), week(`s`), year(`s
 
 .Example
 
-With the current time at 16:18, `%(nexttime:1h)` will expand to `2520`.
+With the current time at 16:18, `%nexttime(1h)` will expand to `2520`.
 
 [source,unlang]
 ----
-&reply.Reply-Message := "You should wait for %(nexttime:1h)s"
+&reply.Reply-Message := "You should wait for %nexttime(1h)s"
 ----
 
 .Output
@@ -924,7 +924,7 @@ With the current time at 16:18, `%(nexttime:1h)` will expand to `2520`.
 You should wait for 2520s
 ```
 
-=== +%{pack:%{Attribute-Name}%{Attribute-Name}...}+
+=== +%pack(%{Attribute-Name}%{Attribute-Name}...)+
 
 Pack multiple multiple attributes and/or literals into a binary string.
 For best results, each attribute passed to `pack` should be fixed size.
@@ -939,7 +939,7 @@ See also the `unpack` module, which is the inverse to `pack`.
 
 [source,unlang]
 ----
-&reply.Class := "%{pack:%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
+&reply.Class := "%pack(%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
 ----
 
 .Output
@@ -948,49 +948,7 @@ See also the `unpack` module, which is the inverse to `pack`.
 You should wait for 2520s
 ```
 
-=== +%{Packet-Type}+
-
-The packet type (`Access-Request`, etc.)
-
-=== +%{Packet-SRC-IP-Address} and %{Packet-SRC-IPv6-Address}+
-
-The source IPv4 or IPv6 address of the packet. See also the expansions
-`%(client:ipaddr)` and `%(client:ipv6addr)`. The two expansions
-should be identical, unless `%(client:ipaddr)` contains a DNS hostname.
-
-=== +%{Packet-DST-IP-Address} and %{Packet-DST-IPv6-Address}+
-
-The destination IPv4 or IPv6 address of the packet. See also the
-expansions `%{listen:ipaddr}` and `%{listen:ipv6addr}`. If the socket
-is listening on a "wildcard" address, then these two expansions will be
-different, as follows: the `%{listen:ipaddr}` will be the wildcard
-address and `%{Packet-DST-IP-Address}` will be the unicast address to
-which the packet was sent.
-
-=== +%{Packet-SRC-Port} and %{Packet-DST-Port}+
-
-The source/destination ports associated with the packet.
-
-.Return: _string_.
-
-.Example
-
-[source,unlang]
-----
-&control.Tmp-String-0 := "user@example.com"
-
-if (&control.Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
-    &reply.Reply-Message := "The %{control.Tmp-String-0} { login=%{regex:login}, domain=%{regex:domain} }"
-}
-----
-
-.Output
-
-```
-The user@example.com { login=user, domain=example.com }
-```
-
-### %(sub:<subject> /<regex>/[flags] <replace>)
+### %sub(<subject> /<regex>/[flags] <replace>)
 
 Substitute text just as easily as it can match it, even using regex patterns.
 
@@ -1001,7 +959,7 @@ Substitute text just as easily as it can match it, even using regex patterns.
 [source,unlang]
 ----
 &control.Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
-&reply.Reply-Message := "%(sub:%{control.Tmp-String-0} / / ,)"
+&reply.Reply-Message := "%sub(%{control.Tmp-String-0} / / ,)"
 ----
 
 .Output
@@ -1010,7 +968,7 @@ Substitute text just as easily as it can match it, even using regex patterns.
 Caipirinha,is,a,light,and,refreshing,drink!
 ```
 
-### %(time:)
+### %time()
 
 Return the current time.
 
@@ -1030,7 +988,7 @@ If no argument is passed, it returns the current time.  Otherwise if the argumen
 
 [source,unlang]
 ----
-&Acct-Start-Time := %(time:now)
+&Acct-Start-Time := %time(now)
 ----
 
 [NOTE]
@@ -1060,7 +1018,7 @@ In order to correctly calculate the local value of "tomorrow", it is
 necessary to add the local time zone offset to the UTC time.
 
 Note that the server will automatically determine (and use) any
-daylight savings time differences.  So the value of `%(time:offset)`
+daylight savings time differences.  So the value of `%time(offset)`
 may change while the server is running!
 
 The following example calculates the correct value of "tomorrow" in
@@ -1078,7 +1036,7 @@ group {
     date tomorrow
     time_delta time_of_day
 
-    &now := %(time:request)
+    &now := %time(request)
 
     #  We are this many seconds into one day
     &time_of_day := &now % (time_delta) 1d
@@ -1100,7 +1058,7 @@ group {
     date tomorrow
     time_delta time_of_day
 
-    &now := %(time:request)
+    &now := %time(request)
 
     #  We are this many seconds into one day
     &time_of_day := &now % (time_delta) 1d
@@ -1109,12 +1067,12 @@ group {
     &tomorrow := &now - &time_of_day + (time_delta) 1d
 
     #  add in the time zone offset
-    &tomorrow += %(time:offset)
+    &tomorrow += %time(offset)
 }
 ----
 
 This kind of math works well for "tomorrow", but it is less useful for
-"next week Monday", or "start of next month".  The `%{nexttime:..}`
+"next week Monday", or "start of next month".  The `%nexttime(...)`
 expansion above should be used for those time operations.
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
