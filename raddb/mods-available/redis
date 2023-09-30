@@ -8,7 +8,7 @@
 #  = REDIS Module
 #
 #  The `redis` module handles connections to a redis database,
-#  and the `%{redis: ...}` dynamic expansion.
+#  and the `%redis( ...)` dynamic expansion.
 #
 #  See also https://redis.io/documentation for documentation on the
 #  Redis database.

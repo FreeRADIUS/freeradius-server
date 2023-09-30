@@ -344,7 +344,7 @@ sql {
 	#  That check will be done internally, and will not result in a database lookup.  This also means that
 	#  it is now possible to do group comparisons based on regular expressions.
 	#
-	#  It is possible to force a dynamic group lookup via the expansion `%{sql.group:foo}`.  This
+	#  It is possible to force a dynamic group lookup via the expansion `%sql.group(foo)`.  This
 	#  expansion returns `true` if the user is a member of that SQL group, and `false` otherwise.
 	#
 	#  NOTE: The `SQL-Group` attribute is only available after the SQL module has been run.
