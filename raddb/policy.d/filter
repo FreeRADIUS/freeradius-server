@@ -37,7 +37,7 @@ filter_username {
 		#
 		#  reject mixed case e.g. "UseRNaMe"
 		#
-		#if (&User-Name != "%{tolower:%{User-Name}}") {
+		#if (&User-Name != "%tolower(%{User-Name}}") {
 		#	reject
 		#}
 
@@ -119,9 +119,9 @@ filter_username {
 #
 filter_password {
 	if (&User-Password && \
-	   (&User-Password != "%{string:User-Password}")) {
-		&request.Tmp-String-0 := %{string:User-Password}
-		&request.User-Password := %{string:Tmp-String-0}
+	   (&User-Password != "%string(User-Password}")) {
+		&request.Tmp-String-0 := %string(User-Password)
+		&request.User-Password := %string(Tmp-String-0)
 	 }
 }
 
@@ -148,7 +148,7 @@ filter_inner_identity {
 		#  Get the outer realm.
 		#
 		if (&outer.request.User-Name =~ /@([^@]+)$/) {
-			&request.Outer-Realm-Name = "%{1}"
+			&request.Outer-Realm-Name = %{1}
 
 			#
 			#  When we have an outer realm name, the user portion
@@ -183,7 +183,7 @@ filter_inner_identity {
 		#  Get the inner realm.
 		#
 		if (&User-Name =~ /@([^@]+)$/) {
-			&request.Inner-Realm-Name = "%{1}"
+			&request.Inner-Realm-Name = %{1}
 
 			#
 			#  Note that we do EQUALITY checks for realm names.

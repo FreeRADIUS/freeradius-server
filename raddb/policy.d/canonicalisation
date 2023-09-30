@@ -52,7 +52,7 @@ mac-addr-regexp = '([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^
 #
 rewrite_called_station_id {
 	if (&Called-Station-Id && (&Called-Station-Id =~ /^${policy.mac-addr-regexp}([^0-9a-f](.+))?$/i)) {
-		&request.Called-Station-Id := "%{toupper:%{1}-%{2}-%{3}-%{4}-%{5}-%{6}}"
+		&request.Called-Station-Id := "%toupper(%{1}-%{2}-%{3}-%{4}-%{5}-%{6})"
 
 		# SSID component?
 		if ("%{8}") {
@@ -74,7 +74,7 @@ rewrite_called_station_id {
 #
 rewrite_calling_station_id {
 	if (&Calling-Station-Id && (&Calling-Station-Id =~ /^${policy.mac-addr-regexp}$/i)) {
-		&request.Calling-Station-Id := "%{toupper:%{1}-%{2}-%{3}-%{4}-%{5}-%{6}}"
+		&request.Calling-Station-Id := "%toupper(%{1}-%{2}-%{3}-%{4}-%{5}-%{6})"
 
 		updated
 	}
