@@ -44,7 +44,7 @@ The core `xlat`, `%T` returns the request timestamp in `ISO` format
 including milliseconds. This expansion returns it without the
 millisecond component.
 
-Use e.g. `%(date_iso:request):`
+Use e.g. `%date_iso(request):`
 
 
 

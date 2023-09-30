@@ -228,7 +228,7 @@ rest {
 	#    <attribute>: <value>
 	#
 	#  `control.REST-HTTP-Header` attributes will be consumed after each call
-	#  to the rest module, and each `%(rest:)` expansion.
+	#  to the rest module, and each `%rest(...)` expansion.
 	#
 
 	#
@@ -403,8 +403,8 @@ rest {
 			#  Any requests to allocate a connection handle beyond
 			#  this number will cause a temporary handle to be allocated.
 			#  This is less efficient than the block allocation so
-			# `max` should be set to reflect the number of outstanding
-			# requests expected at peak load.
+			#  `max` should be set to reflect the number of outstanding
+			#  requests expected at peak load.
 			max = 100
 
 			#

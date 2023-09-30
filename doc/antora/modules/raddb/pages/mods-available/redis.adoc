@@ -44,9 +44,59 @@ port:: Port to connect to
 The default port is 6379.
 
 
+
 password:: The password used to authenticate to the server.
 
 We recommend using a strong password.
+
+
+
+use_tls:: Use TLS (requires hiredis 1.0+)
+
+TLS parameters can be specified in the optional adjacent tls {} section
+
+
+
+use_cluster_map:: Use cluster map
+
+Build cluster map during initialization.
+
+The cluster client can operate, albeit inefficiently, without a cluster map
+by following '-ASK' and '-MOVE' redirects.
+
+Disabling cluster map can be required for stunnel-based deployments.
+Alternatively, cluster map is not built during initialization when pool.start == 0
+
+
+lua { ... }::
+
+Configuration options which control the execution of lua scripts
+on redis nodes.
+
+
+function <name> { ... }::
+
+Every function section listed here will be registered as an expansion with a name
+in the format `<inst>.<name>`.
+
+For example the function below would be callable as `%redis.hello_world(...)`.
+
+expansion functions take the same arguments as the redis `EVALSHA` command,
+i.e. `<numkeys> [<key> [<key> ...]] [<arg> [<arg> ...]]`.
+
+`numkeys` specifies how many of the proceeding arguments should be treated as keys.
+
+The redis module will use the first key to determine which cluster node the function
+should called on.
+
+The redis module pre-calcualtes the SHA1 hash of all lua functions on startup.
+When an expansion function is called, it uses the `EVALSHA` command to attempt to
+call lua function on a remote redis node.  If `EVALSHA` fails with an error indicating
+no script could be found with the calculated SHA1 hash, the lua function will be
+loaded transparently using `SCRIPT LOAD`.
+
+
+body:: Lua code to send to redis nodes with SCRIPT LOAD
 
 
 
@@ -57,11 +107,11 @@ are the same for all modules which use the new connection pool.
 
 
 start:: Connections to create during module instantiation.
-If the server cannot create specified number of connections
-during instantiation it will exit.
 
-Set to `0` to allow the server to start without the web service
-being available.
+If the server cannot create specified number of
+connections during instantiation it will exit.
+Set to `0` to allow the server to start without the
+external service being available.
 
 
 
@@ -74,12 +124,15 @@ max:: Maximum number of connections.
 If these connections are all in use and a new one
 is requested, the request will NOT get a connection.
 
-Setting `max` to LESS than the number of threads means
+Setting `max` to *LESS* than the number of threads means
 that some threads may starve, and you will see errors
-like 'No connections available and at max connection limit'
+like _No connections available and at max connection limit_.
 
 Setting `max` to MORE than the number of threads means
 that there are more connections than necessary.
+
+If `max` is not specified, then it defaults to the number
+of workers configured.
 
 
 
@@ -152,6 +205,14 @@ redis {
 #	database = 0
 	port = 6379
 #	password = thisisreallysecretandhardtoguess
+#	use_tls = no
+#	tls { }
+#	use_cluster_map = yes
+	lua {
+		function hello_world {
+			body = 'return "hello world"'
+		}
+	}
 	pool {
 		start = 0
 		min = 0

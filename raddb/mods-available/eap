@@ -783,7 +783,7 @@ eap {
 			#  NOTE: OpenSSL only allows 32 bytes of session ctx, so
 			#  the value provided here is digested with SHA256.
 			#
-#			name = "%{EAP-Type}%(interpreter:server)"
+#			name = "%{EAP-Type}%interpreter(server)"
 
 			#
 			#  lifetime::
@@ -1298,7 +1298,7 @@ eap {
 #
 #  The rlm_eap module provides the below functions to interact with the `3GPP` and `SIM` protocols.
 #
-#  ### %(3gpp_pseudonym_decrypt:...)
+#  ### %3gpp_pseudonym_decrypt('...)
 #
 #  TODO
 #
@@ -1317,7 +1317,7 @@ eap {
 #  TODO
 #  ```
 #
-#  ### %(3gpp_pseudonym_encrypt:...)
+#  ### %3gpp_pseudonym_encrypt(...)
 #
 #  TODO
 #
@@ -1336,7 +1336,7 @@ eap {
 #  TODO
 #  ```
 #
-#  ### %(3gpp_pseudonym_key_index:...)
+#  ### %3gpp_pseudonym_key_index(...)
 #
 #  TODO
 #
@@ -1355,7 +1355,7 @@ eap {
 #  TODO
 #  ```
 #
-#  ### %(aka_sim_id_method:...)
+#  ### %aka_sim_id_method(...)
 #
 #  TODO
 #
@@ -1374,7 +1374,7 @@ eap {
 #  TODO
 #  ```
 #
-#  ### %(aka_sim_id_type:...)
+#  ### %aka_sim_id_type(...)
 #
 #  TODO
 #

@@ -47,8 +47,8 @@ unbound dns {
 #  .Example
 #
 #  ```
-#  %(dns:www.example.com A)
-#  %(dns:www.example.com AAAA)
+#  %dns(www.example.com, A)
+#  %dns(www.example.com, AAAA)
 #  ```
 #
 #  Given an instance `dns` the above xlats will perform A record and
@@ -57,7 +57,7 @@ unbound dns {
 #  .Example
 #
 #  ```
-#  %(dns:1.1.168.192.in-addr.arpa PTR)
+#  %dns(1.1.168.192.in-addr.arpa, PTR)
 #  ```
 #
 #  The above example will perform reverse DNS lookup on 192.168.1.1
@@ -65,7 +65,7 @@ unbound dns {
 #  .Example
 #
 #  ```
-#  %(dns:example.com MX 1)
+#  %dns(example.com, MX, 1)
 #  ```
 #
 #  The above example will perform an MX lookup on example.com returning

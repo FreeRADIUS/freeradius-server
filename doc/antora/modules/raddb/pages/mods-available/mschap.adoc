@@ -115,7 +115,7 @@ module will do the authentication itself, without calling `ntlm_auth`.
 
 You can also try setting the user name as:
 
-`... --username=%(mschap:User-Name) ...`
+`... --username=%mschap(User-Name) ...`
 
 In that case, the `mschap` module will look at the `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`
 attribute, and do prefix/suffix checks in order to obtain the _best_
@@ -184,19 +184,16 @@ configuration items below are the same for all modules
 which use the connection pool.
 
 
-start::
+start:: Connections to create during module instantiation.
 
-Connections to create during module instantiation.
 If the server cannot create specified number of
 connections during instantiation it will exit.
-Set to 0 to allow the server to start without the
-winbind daemon being available.
+Set to `0` to allow the server to start without the
+external service being available.
 
 
 
-min::
-
-Minimum number of connections to keep open.
+min:: Minimum number of connections to keep open.
 
 
 
@@ -205,12 +202,15 @@ max:: Maximum number of connections.
 If these connections are all in use and a new one
 is requested, the request will NOT get a connection.
 
-Setting `max` to LESS than the number of threads means
+Setting `max` to *LESS* than the number of threads means
 that some threads may starve, and you will see errors
-like 'No connections available and at max connection limit'
+like _No connections available and at max connection limit_.
 
 Setting `max` to MORE than the number of threads means
 that there are more connections than necessary.
+
+If `max` is not specified, then it defaults to the number
+of workers configured.
 
 
 
@@ -324,6 +324,72 @@ retry_msg::
 An optional retry message.
 
 
+
+.Attributes
+
+The `mschap` module needs to be configured with which attributes contain
+MS-CHAP data in the request and which should be used for MS-CHAP data
+in the reply.
+
+This varies for different protocols.  The defaults show below are for
+RADIUS.
+
+
+username:: The attribute containing the user name.
+
+
+
+chap_challenge::  The attribute containing the CHAP Challenge.
+
+
+
+chap_response::  The attribute containing the CHAP Response for MS-CHAPv1.
+
+
+
+chap2_response::  The attribute containing the CHAP Response for MS-CHAPv2.
+
+
+
+chap2_success::  The attribute MS-CHAPv2 success messages are returned in.
+
+
+
+chap_error::  The attribute CHAP error messages are returned in.
+
+
+
+chap_mppe_keys::  The attribute MPPE keys are returned in for MS-CHAPv1
+
+
+
+mppe_recv_key::  The attribute MPPE recv key is returned in for MS-CHAPv2
+
+
+
+mppe_send_key::  The attribute MPPE send key is returned in for MS-CHAPv2
+
+
+
+mppe_encryption_policy::  The attribute that MPPE encryption policy is returned in.
+
+
+
+mppe_encryption_types::  The attribute that MPPE encryption type is returned in.
+
+
+
+chap2_cpw::  The attribute used to change a users' password
+
+
+
+To use this instance of the mschap module to handle TACACS+ the attribute
+section should be replaced with the following.
+
+TACACS+ does not have any inherent support for MPPE keys or password
+changing using MSCHAP.
+
+
 == Default Configuration
 
 ```
@@ -333,11 +399,11 @@ mschap {
 #	require_encryption = yes
 #	require_strong = yes
 #	with_ntdomain_hack = no
-#	ntlm_auth = "/path/to/ntlm_auth --request-nt-key  --allow-mschapv2 --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%(mschap:Challenge):-00} --nt-response=%{%(mschap:NT-Response):-00}"
+#	ntlm_auth = "/path/to/ntlm_auth --request-nt-key  --allow-mschapv2 --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%mschap(Challenge):-00} --nt-response=%{%mschap(NT-Response):-00}"
 #	ntlm_auth_timeout = 10
 	winbind {
-#		username = "%(mschap:User-Name)"
-#		domain = "%(mschap:NT-Domain)"
+#		username = "%mschap(User-Name)"
+#		domain = "%mschap(NT-Domain)"
 #		retry_with_normalised_username = no
 	}
 	pool {
@@ -353,13 +419,35 @@ mschap {
 	}
 	passchange {
 #		ntlm_auth = "/usr/bin/ntlm_auth --helper-protocol=ntlm-change-password-1"
-#		ntlm_auth_username = "username: %(mschap:User-Name)"
-#		ntlm_auth_domain = "nt-domain: %(mschap:NT-Domain)"
-#		local_cpw = "%(exec:/path/to/script %(mschap:User-Name) %{MS-CHAP-New-Password.Cleartext})"
-#		local_cpw = "%{sql:UPDATE radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name}' and attribute='Password.NT'}"
+#		ntlm_auth_username = "username: %mschap(User-Name)"
+#		ntlm_auth_domain = "nt-domain: %mschap(NT-Domain)"
+#		local_cpw = "%exec(/path/to/script %mschap(User-Name) %{MS-CHAP-New-Password.Cleartext})"
+#		local_cpw = "%sql(UPDATE radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name}' and attribute='Password.NT'}"
 	}
 #	use_open_directory = yes
 #	allow_retry = yes
 #	retry_msg = "Re-enter (or reset) the password"
+	attributes {
+		username = &User-Name
+		chap_challenge = &Vendor-Specific.Microsoft.CHAP-Challenge
+		chap_response = &Vendor-Specific.Microsoft.CHAP-Response
+		chap2_response = &Vendor-Specific.Microsoft.CHAP2-Response
+		chap2_success = &Vendor-Specific.Microsoft.CHAP2-Success
+		chap_error = &Vendor-Specific.Microsoft.CHAP-Error
+		chap_mppe_keys = &Vendor-Specific.Microsoft.CHAP-MPPE-Keys
+		mppe_recv_key = &Vendor-Specific.Microsoft.MPPE-Recv-Key
+		mppe_send_key = &Vendor-Specific.Microsoft.MPPE-Send-Key
+		mppe_encryption_policy = &Vendor-Specific.Microsoft.MPPE-Encryption-Policy
+		mppe_encryption_types = &Vendor-Specific.Microsoft.MPPE-Encryption-Types
+		chap2_cpw =  &Vendor-Specific.Microsoft.CHAP2-CPW
+	}
+#	attributes {
+#		username = &User-Name
+#		chap_challenge = &MS-CHAP-Challenge
+#		chap_response = &MS-CHAP-Response
+#		chap2_response = &MS-CHAP2-Response
+#		chap2_success = &Data
+#		chap_error = &Server-Message
+#	}
 }
 ```

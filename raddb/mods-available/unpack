@@ -22,7 +22,7 @@
 #  To use it, add it to the `raddb/mods-enabled/` directory.  Then,
 #  use it on the right-hand side of a variable assignment.
 #
-#   %(unpack:<data> <offset> <data_type>)
+#   %unpack(<data>, <offset>, <data_type>)
 #
 #  The arguments are three fields:
 #
@@ -47,7 +47,7 @@
 #
 #  if we have `Class = 0x000001020304`, then
 #
-#    %(unpack:%{Class} 4 uint16)
+#    %unpack(%{Class}, 4, uint16)
 #
 #  will unpack octets `4` and `5` as a `uint16`, which has value `0x0304`.
 #

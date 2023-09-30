@@ -91,7 +91,7 @@ redis {
 		#  Every function section listed here will be registered as an expansion with a name
 		#  in the format `<inst>.<name>`.
 		#
-		#  For example the function below would be callable as `%(redis.hello_world:...)`.
+		#  For example the function below would be callable as `%redis.hello_world(...)`.
 		#
 		#  expansion functions take the same arguments as the redis `EVALSHA` command,
 		#  i.e. `<numkeys> [<key> [<key> ...]] [<arg> [<arg> ...]]`.

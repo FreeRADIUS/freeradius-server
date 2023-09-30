@@ -51,7 +51,7 @@ date {
 #  including milliseconds. This expansion returns it without the
 #  millisecond component.
 #
-#  Use e.g. `%(date_iso:request):`
+#  Use e.g. `%date_iso(request):`
 #
 date date_iso {
 	format = "%Y-%m-%dT%H:%M:%SZ"
@@ -59,7 +59,7 @@ date date_iso {
 }
 
 #
-# ### xlat expansions
+#  ### xlat expansions
 #
 #  The `date` module defines an expansion `%{date:}` When the
 #  expansion is not passed an argument, it returns the current date

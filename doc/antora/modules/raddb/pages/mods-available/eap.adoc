@@ -212,7 +212,7 @@ the following sections:
 |===
 
 More information about the various sections can be found in
-link:../sites-available/tls.adoc[sites-available/tls].
+link:../../../../../../sites-available/tls.adoc[sites-available/tls].
 
 
 auto_chain::
@@ -862,7 +862,7 @@ Both `copy_request_to_tunnel` and `use_tunneled_reply` have been
 removed in v4.0.
 
 See the new policy `copy_request_to_tunnel` in
-link:../sites-available/inner-tunnel.adoc[sites-available/inner-tunnel], and in `policy.d/eap`
+link:../../../../../../sites-available/inner-tunnel.adoc[sites-available/inner-tunnel], and in `policy.d/eap`
 for more information.
 ====
 
@@ -971,7 +971,7 @@ Both `copy_request_to_tunnel` and `use_tunneled_reply` have been
 removed in v4.0.
 
 See the new policy `copy_request_to_tunnel` in
-link:../sites-available/inner-tunnel.adoc[sites-available/inner-tunnel], and in `policy.d/eap`
+link:../../../../../../sites-available/inner-tunnel.adoc[sites-available/inner-tunnel], and in `policy.d/eap`
 for more information.
 ====
 
@@ -1180,7 +1180,7 @@ require user configuration.
 
 The rlm_eap module provides the below functions to interact with the `3GPP` and `SIM` protocols.
 
-### %(3gpp_pseudonym_decrypt:...)
+### %3gpp_pseudonym_decrypt('...)
 
 TODO
 
@@ -1199,7 +1199,7 @@ TODO
 TODO
 ```
 
-### %(3gpp_pseudonym_encrypt:...)
+### %3gpp_pseudonym_encrypt(...)
 
 TODO
 
@@ -1218,7 +1218,7 @@ TODO
 TODO
 ```
 
-### %(3gpp_pseudonym_key_index:...)
+### %3gpp_pseudonym_key_index(...)
 
 TODO
 
@@ -1237,7 +1237,7 @@ TODO
 TODO
 ```
 
-### %(aka_sim_id_method:...)
+### %aka_sim_id_method(...)
 
 TODO
 
@@ -1256,7 +1256,7 @@ TODO
 TODO
 ```
 
-### %(aka_sim_id_type:...)
+### %aka_sim_id_type(...)
 
 TODO
 
@@ -1342,7 +1342,7 @@ eap {
 		}
 		session {
 #			mode = auto
-#			name = "%{EAP-Type}%(interpreter:server)"
+#			name = "%{EAP-Type}%interpreter(server)"
 #			lifetime = 86400
 #			require_extended_master_secret = yes
 #			require_perfect_forward_secrecy = no
