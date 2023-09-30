@@ -60,9 +60,9 @@ returned by the instance.
 .Example
 
 ```
-%{db_status:ok}
-%{db_status:fail}
-%{db_status:notfound}
+%db_status(ok)
+%db_status(fail)
+%db_status(notfound)
 ...
 ```
 
@@ -72,7 +72,7 @@ current status without affecting it call the xlat with an empty argument:
 .Example
 
 ```
-%{db_status:}
+%db_status()
 ```
 
 

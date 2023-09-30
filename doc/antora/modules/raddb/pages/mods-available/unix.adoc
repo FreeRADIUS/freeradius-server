@@ -21,7 +21,7 @@ with `CHAP`, `MS-CHAP`, `PEAP`, etc*.
 The module also registers a Unix group expansion, where it is possible
 to check if the user is a member of a particular Unix group.
 
-  if (%{unix.group: admin}) { ...
+  if (%unix.group(admin)) { ...
 
 The expansion returns `true` if the `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` is a membber of the given
 group, and `false` otherwise.

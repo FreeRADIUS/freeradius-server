@@ -1324,7 +1324,7 @@ eap {
 		ca_file = ${cadir}/rsa/ca.pem
 #		psk_identity = "test"
 #		psk_hexphrase = "036363823"
-#		psk_query = "%{sql:select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}'}"
+#		psk_query = "%sql(select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}')"
 		dh_file = ${certdir}/dh
 #		fragment_size = 1024
 		ca_path = ${cadir}

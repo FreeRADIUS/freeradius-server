@@ -109,7 +109,7 @@ couchbase {
 	#
 	#  user_key:: Couchbase document key for user documents (`unlang` supported).
 	#
-	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
+	user_key = "raduser_%md5(%tolower(%{%{Stripped-User-Name}:-%{User-Name}}))"
 
 	#
 	#  read_clients:: Set to `yes` to read radius clients from the Couchbase view specified below.

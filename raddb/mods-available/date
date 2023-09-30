@@ -61,19 +61,19 @@ date date_iso {
 #
 #  ### xlat expansions
 #
-#  The `date` module defines an expansion `%{date:}` When the
+#  The `date` module defines an expansion `%date()` When the
 #  expansion is not passed an argument, it returns the current date
 #  printed according to the `format` string defined above.
 #
 #  ."Attribute" mode:
 #
-#  If the argument to `%{date:...}` is an attribute of `date` or
+#  If the argument to `%date(...)` is an attribute of `date` or
 #  `integer` type, the date used will be the time given by the
 #  relevant attribute.   If the attributes is of type `string`, the
 #  string will be parsed according to the `format` configuration,
 #  and a Unix date will be returned, as integer seconds since the epoch.
 #
-#  For example, `%{date:&Event-Timestamp}` will use the date from the
+#  For example, `%date(&Event-Timestamp)` will use the date from the
 #  `Event-Timestamp` attribute as the source of the date for printing.
 #
 #  ."Get time" mode:
@@ -89,11 +89,11 @@ date date_iso {
 #  string is interpreted as if the string had been given in the
 #  `format` configuration item.
 #
-#  For example `%{date:'+%A'}` will return `Monday` if today is Monday.
+#  For example `%date('+%A')` will return `Monday` if today is Monday.
 #
 #  Note that the `%` character is special for xlat expansions, and therefore
 #  either has to be "protected" by string quotation, or the `%` character has
-#  to be escaped itself, as in `%{date:+%%A}`
+#  to be escaped itself, as in `%date(+%%A)`
 #
 #  ."Integer output"
 #

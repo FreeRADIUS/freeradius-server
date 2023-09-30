@@ -145,7 +145,7 @@ strings.
 
 rlm_json provides the below xlat functions to handle the JSON documents.
 
-### %{json_jpath_validate:...}
+### %json_jpath_validate(...)
 
 Determine if a jpath expression is valid.
 
@@ -158,7 +158,7 @@ NOTE: Validate parser for everything except unions and expressions.
 [source,unlang]
 ----
 &control.Tmp-String-0 := '$.my.json.payload[1]'
-&reply.Reply-Message := "Validation of %{control.Tmp-String-0} is %{json_jpath_validate:$.my.json.payload[1]}"
+&reply.Reply-Message := "Validation of %{control.Tmp-String-0} is %json_jpath_validate($.my.json.payload[1])"
 ----
 
 .Output
@@ -167,7 +167,7 @@ NOTE: Validate parser for everything except unions and expressions.
 Validation of $.my.json.payload[1] is 20:$.my.json.payload[1]
 ```
 
-### %{json_quote:...}
+### %json_quote(...)
 
 Escapes string for use as a JSON string.
 
@@ -178,7 +178,7 @@ Escapes string for use as a JSON string.
 [source,unlang]
 ----
 &control.Tmp-String-0 := "caipirinha/gelada"
-&reply.Reply-Message := "The string %{control.Tmp-String-0} should be %{json_quote:%{control.Tmp-String-0}} to be a valid JSON string."
+&reply.Reply-Message := "The string %{control.Tmp-String-0} should be %json_quote(%{control.Tmp-String-0}) to be a valid JSON string."
 ----
 
 .Output
@@ -187,7 +187,7 @@ Escapes string for use as a JSON string.
 The string caipirinha/gelada should be caipirinha\\/gelada to be a valid JSON string.
 ```
 
-### %{json.encode:...}
+### %json.encode(...)
 
 Generates a JSON document from a given list of attribute templates. The
 format of document generated can be controlled with the 'encode' section in
@@ -210,7 +210,7 @@ it, `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` and `lin
 .Example
 
 ```
-%{json.encode:&User-Name &Calling-Station-Id}
+%json.encode(&User-Name, &Calling-Station-Id)
 ```
 
 The following will include all attributes in the RADIUS request, except for
@@ -219,7 +219,7 @@ The following will include all attributes in the RADIUS request, except for
 .Example
 
 ```
-%{json.encode:&request[*] !&User-Password}
+%json.encode(&request[*], !&User-Password)
 ```
 
 In another (contrived) example, all the attributes in the RADIUS request will
@@ -229,7 +229,7 @@ be included in the document, _except_ any attributes in the RADIUS reply.
 .Example
 
 ```
-%{json.encode:&request[*] !&reply[*] &control.User-Name}
+%json.encode(&request[*], !&reply[*], &control.User-Name)
 ```
 
 #### Output format modes

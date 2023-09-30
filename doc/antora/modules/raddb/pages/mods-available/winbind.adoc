@@ -37,7 +37,7 @@ actually want it blank it should be explicitly set here.
 
 group { ... }:: Group membership checking.
 
-Groups can be checked via the expansion `%{winbind.group:<name>}`
+Groups can be checked via the expansion `%winbind.group(<name>)`
 
 
 search_username:: AD username to search for group searches.

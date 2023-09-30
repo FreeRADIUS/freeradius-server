@@ -477,7 +477,7 @@ eap {
 		#  Note that this query is just an example.  You will
 		#  need to customize it for your installation.
 		#
-#		psk_query = "%{sql:select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}'}"
+#		psk_query = "%sql(select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}')"
 
 		#
 		#  For DH cipher suites to work, you have to run OpenSSL to

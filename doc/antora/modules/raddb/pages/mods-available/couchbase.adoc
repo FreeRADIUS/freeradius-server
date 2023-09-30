@@ -105,10 +105,11 @@ modules, for all kinds of connection-related activity.
 
 
 start:: Connections to create during module instantiation.
-If the server cannot create specified number of connections
-during instantiation it will exit.
-Set to `0` to allow the server to start without the couchbase
-being available.
+
+If the server cannot create specified number of
+connections during instantiation it will exit.
+Set to `0` to allow the server to start without the
+external service being available.
 
 
 
@@ -121,12 +122,15 @@ max:: Maximum number of connections.
 If these connections are all in use and a new one
 is requested, the request will NOT get a connection.
 
-Setting `max` to LESS than the number of threads means
+Setting `max` to *LESS* than the number of threads means
 that some threads may starve, and you will see errors
-like '_No connections available and at max connection limit_'
+like _No connections available and at max connection limit_.
 
 Setting `max` to MORE than the number of threads means
 that there are more connections than necessary.
+
+If `max` is not specified, then it defaults to the number
+of workers configured.
 
 
 
@@ -218,7 +222,7 @@ couchbase {
 		&Acct-Output-Gigawords	= 'outputGigawords'
 		&Event-Timestamp	= 'lastUpdated'
 	}
-	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
+	user_key = "raduser_%md5(%tolower(%{%{Stripped-User-Name}:-%{User-Name}}))"
 #	read_clients = no
 	client {
 		view = "_design/client/_view/by_id"

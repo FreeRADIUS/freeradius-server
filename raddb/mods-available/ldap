@@ -555,7 +555,7 @@ ldap {
 	#  replaced with a single attribute.
 	#
 	accounting {
-		reference = "%{tolower:type.%{Acct-Status-Type}}"
+		reference = "%tolower(type.%{Acct-Status-Type})"
 
 		type {
 			start {
@@ -832,7 +832,7 @@ ldap {
 #		manage_interval = 0.2
 
 		#
-		# request:: Options specific to requests handled by this connection pool
+		#  request:: Options specific to requests handled by this connection pool
 		#
 		request {
 			#
@@ -884,7 +884,7 @@ ldap {
 #
 #  The rlm_ldap provides the below xlat's functions.
 #
-#  ### %{ldap_escape:...}
+#  ### %ldap_escape(...}
 #
 #  Escape a string for use in an LDAP filter or DN.
 #
@@ -898,7 +898,7 @@ ldap {
 #      &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 #  }
 #  update reply {
-#      &Reply-Message := "The LDAP url is %{ldap_escape:%{control.Tmp-String-0}}"
+#      &Reply-Message := "The LDAP url is %ldap_escape(%{control.Tmp-String-0}}"
 #  }
 #  ----
 #
@@ -908,7 +908,7 @@ ldap {
 #  "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 #  ```
 #
-#  ### %{ldap_unescape:...}
+#  ### %ldap_unescape(...)
 #
 #  Unescape a string for use in an LDAP filter or DN.
 #
@@ -922,7 +922,7 @@ ldap {
 #      &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 #  }
 #  update reply {
-#      &Reply-Message := "The LDAP url is %{ldap_unescape:%{control.Tmp-String-0}}"
+#      &Reply-Message := "The LDAP url is %ldap_unescape(%{control.Tmp-String-0})"
 #  }
 #  ----
 #

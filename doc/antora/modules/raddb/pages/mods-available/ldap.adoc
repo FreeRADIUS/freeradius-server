@@ -744,7 +744,7 @@ binds which there can be on a single thread.
 
 The rlm_ldap provides the below xlat's functions.
 
-### %{ldap_escape:...}
+### %ldap_escape(...}
 
 Escape a string for use in an LDAP filter or DN.
 
@@ -758,7 +758,7 @@ update control {
     &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 }
 update reply {
-    &Reply-Message := "The LDAP url is %{ldap_escape:%{control.Tmp-String-0}}"
+    &Reply-Message := "The LDAP url is %ldap_escape(%{control.Tmp-String-0}}"
 }
 ----
 
@@ -768,7 +768,7 @@ update reply {
 "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 ```
 
-### %{ldap_unescape:...}
+### %ldap_unescape(...)
 
 Unescape a string for use in an LDAP filter or DN.
 
@@ -782,7 +782,7 @@ update control {
     &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 }
 update reply {
-    &Reply-Message := "The LDAP url is %{ldap_unescape:%{control.Tmp-String-0}}"
+    &Reply-Message := "The LDAP url is %ldap_unescape(%{control.Tmp-String-0})"
 }
 ----
 
@@ -862,7 +862,7 @@ ldap {
 #		attribute_suspended = 'radiusProfileDn'
 	}
 	accounting {
-		reference = "%{tolower:type.%{Acct-Status-Type}}"
+		reference = "%tolower(type.%{Acct-Status-Type})"
 		type {
 			start {
 				update {

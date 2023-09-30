@@ -43,7 +43,7 @@ winbind {
 	#
 	#  group { ... }:: Group membership checking.
 	#
-	#  Groups can be checked via the expansion `%{winbind.group:<name>}`
+	#  Groups can be checked via the expansion `%winbind.group(<name>)`
 	#
 	group {
 		#

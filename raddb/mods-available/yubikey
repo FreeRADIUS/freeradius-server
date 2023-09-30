@@ -265,7 +265,7 @@ yubikey {
 #
 #  The rlm_yubikey provides the below xlat's functions.
 #
-#  ### %{modhextohex:...}
+#  ### %modhextohex(...)
 #
 #  Convert Yubikey modhex to standard hex.
 #
@@ -275,7 +275,7 @@ yubikey {
 #
 #  [source,unlang]
 #  ----
-#  "%{modhextohex:vvrbuctetdhc}" == "ffc1e0d3d260"
+#  "%modhextohex(vvrbuctetdhc)" == "ffc1e0d3d260"
 #  ----
 #
 #  .Output

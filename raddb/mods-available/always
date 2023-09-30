@@ -68,9 +68,9 @@
 #  .Example
 #
 #  ```
-#  %{db_status:ok}
-#  %{db_status:fail}
-#  %{db_status:notfound}
+#  %db_status(ok)
+#  %db_status(fail)
+#  %db_status(notfound)
 #  ...
 #  ```
 #
@@ -80,7 +80,7 @@
 #  .Example
 #
 #  ```
-#  %{db_status:}
+#  %db_status()
 #  ```
 #
 

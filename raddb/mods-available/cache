@@ -248,7 +248,7 @@ cache {
 		&reply.Reply-Message += "Cache last updated at %t"
 
 		#  Add your own value for `Class`.
-		&reply.Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
+		&reply.Class := "%randstr(ssssssssssssssssssssssssssssssss)"
 	}
 
 	#
