@@ -13,7 +13,7 @@ if (&Fall-Through != ${d_term}) {
 	test_fail
 }
 
-if (<bool>"${d_term}" != yes) {
+if ((bool)"${d_term}" != yes) {
 	test_fail
 }
 
