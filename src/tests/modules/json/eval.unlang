@@ -370,7 +370,7 @@ if !(&Tmp-Integer-0 == 2147483647) {
 map json &Tmp-String-0 {
 	&Tmp-int64-0 := '$[0]'
 }
-if !(&Tmp-int64-0 == <int64>9223372036854775807) {
+if !(&Tmp-int64-0 == (int64)9223372036854775807) {
 	test_fail
 }
 

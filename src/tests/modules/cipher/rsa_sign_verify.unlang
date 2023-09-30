@@ -5,7 +5,7 @@ if (!&Tmp-Octets-0) {
 	test_fail
 }
 
-if (<octets>&Tmp-String-0[0] == &Tmp-Octets-0[0]) {
+if ((octets)&Tmp-String-0[0] == &Tmp-Octets-0[0]) {
 	test_fail
 }
 
@@ -38,7 +38,7 @@ if (!&Tmp-Octets-0) {
 	test_fail
 }
 
-if (<octets>&Tmp-String-0[0] == &Tmp-Octets-0[0]) {
+if ((octets)&Tmp-String-0[0] == &Tmp-Octets-0[0]) {
 	test_fail
 }
 
