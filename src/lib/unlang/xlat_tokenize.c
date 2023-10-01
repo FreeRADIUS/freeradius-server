@@ -1023,7 +1023,7 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 			return ret;
 		}
 
-		if (!fr_sbuff_next_if_char(in, '}')) {
+		if (!fr_sbuff_is_char(in, '}')) {
 			fr_strerror_const("Missing closing brace");
 			return -1;
 		}
@@ -1034,6 +1034,11 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 
 		tmpl_set_xlat(node->vpt, child);
 		xlat_exp_insert_tail(head, node);
+
+		node->flags = child->flags;
+		fr_assert(tmpl_xlat(node->vpt) != NULL);
+
+		(void) fr_sbuff_next(in); /* skip '}' */
 		return ret;
 	}
 
