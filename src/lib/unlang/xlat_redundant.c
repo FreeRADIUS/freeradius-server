@@ -186,6 +186,35 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
+/** Allocate an xlat node to call an xlat function
+ *
+ * @param[in] ctx	to allocate the new node in.
+ * @param[in] func	to call.
+ * @param[in] args	Arguments to the function.  Will be copied,
+ *			and freed when the new xlat node is freed.
+ */
+static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_head_t const *args)
+{
+	xlat_exp_t *node;
+
+	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, func->name, strlen(func->name)));
+	node->call.func = func;
+	if (unlikely(xlat_copy(node, node->call.args, args) < 0)) {
+		talloc_free(node);
+		return NULL;
+	}
+	node->flags = func->flags;
+	xlat_flags_merge(&node->flags, &args->flags);
+
+	/*
+	 *	If the function is pure, AND it's arguments are pure,
+	 *	then remember that we need to call a pure function.
+	 */
+	node->flags.can_purify = (func->flags.pure && args->flags.pure) | args->flags.can_purify;
+
+	return node;
+}
+
 
 /** Allocate additional nodes for evaluation
  *

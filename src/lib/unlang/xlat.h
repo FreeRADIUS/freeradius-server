@@ -436,8 +436,6 @@ void		xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt);
 /*
  *	xlat_tokenize.c
  */
-xlat_exp_t	*xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_head_t const *args);
-
 tmpl_t		*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *xlat);
 
 int		xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **head, tmpl_t **vpt_p);
