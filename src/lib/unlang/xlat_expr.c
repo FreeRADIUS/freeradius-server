@@ -2300,14 +2300,8 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 		MEM(arg = xlat_exp_alloc(head, XLAT_GROUP, vpt->name, strlen(vpt->name)));
 
-		/*
-		 *	This is less efficient than just stealing the
-		 *	xlat into the context of the new node...
-		 *
-		 *	But talloc_steal can be extremely inefficient O(N)
-		 *	where N is chunk siblings.
-		 */
-		xlat_copy(arg->group, arg->group, xlat);
+		talloc_steal(arg->group, xlat);
+		arg->group = xlat;
 		arg->quote = quote;
 		arg->flags = xlat->flags;
 
