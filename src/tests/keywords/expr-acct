@@ -2,7 +2,7 @@
 #  PRE: if edit
 #
 
-&Tmp-String-0 := "%{expr:((uint64)&Acct-Input-Gigawords << 32) | (uint64)&Acct-Input-Octets}"
+&Tmp-String-0 := "%{((uint64)&Acct-Input-Gigawords << 32) | (uint64)&Acct-Input-Octets}"
 
 if (!(&Tmp-String-0 == '')) {
 	test_fail
