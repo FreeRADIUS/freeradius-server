@@ -956,17 +956,23 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 	}
 
 #ifdef HAVE_REGEX
+	fr_sbuff_marker(&s_m, in);
+	len = fr_sbuff_adv_past_allowed(in, SIZE_MAX, sbuff_char_class_uint, NULL);
+
 	/*
 	 *	Handle regex's %{<num>} specially.  But '3GPP-Foo' is an attribute.  :(
 	 */
-	if (fr_sbuff_is_digit(in)) {
+	if (len && fr_sbuff_is_char(in, '}')) {
 		int ret;
 
+		fr_sbuff_set(in, &s_m);		/* backtrack */
 		ret = xlat_tokenize_regex(head, in);
 		if (ret <= 0) return ret;
 
 		/* ret==1 means "nope, it's an attribute" */
 	}
+	fr_sbuff_set(in, &s_m);		/* backtrack */
+
 #endif /* HAVE_REGEX */
 
 	/*
