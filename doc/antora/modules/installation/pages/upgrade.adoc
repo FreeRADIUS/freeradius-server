@@ -710,6 +710,8 @@ xref:reference:xlat/index.adoc[xlat] expansions have been changed from syntax li
 
 `%{integer:...}` has been removed.  Just use a cast, such as `(integer) &Service-Type`.
 
+`%{expr:...}` has been removed.  You can instead use in-place expressions, such as `%{1 + 2}` or `%{&NAS-Port + 14}`.
+
 == New Modules
 
 The following modules are new in v4.
