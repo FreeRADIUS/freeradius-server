@@ -2156,7 +2156,10 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 *	We may end up removing the cast later, if for example the tmpl is an attribute whose data type
 	 *	matches the cast.
 	 */
-	if (cast_type != FR_TYPE_NULL) our_t_rules.cast = cast_type;
+	if (cast_type != FR_TYPE_NULL) {
+		our_t_rules.cast = cast_type;
+		our_t_rules.enumv = NULL;
+	}
 
 	/*
 	 *	If we still have '(', then recurse for other expressions
@@ -2169,11 +2172,14 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 *	value when we get the output of the expression.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '(')) {
+		our_t_rules.cast = FR_TYPE_NULL;
+		our_t_rules.enumv = NULL;
+
 		/*
 		 *	No input rules means "ignore external terminal sequences, as we're expecting a ')' as
 		 *	our terminal sequence.
 		 */
-		if (tokenize_expression(head, &node, &our_in, bracket_rules, t_rules, T_INVALID, bracket_rules, NULL, cond) < 0) {
+		if (tokenize_expression(head, &node, &our_in, bracket_rules, &our_t_rules, T_INVALID, bracket_rules, NULL, cond) < 0) {
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
