@@ -625,9 +625,6 @@ filter_username policy.
 
 
 
-
-
-
 Some broken equipment sends passwords with embedded
 zeros, i.e. the debug output will show:
 
@@ -1307,10 +1304,10 @@ server default {
 #		    uint32 baz
 #		    string arg
 #		}
-		values foo {
-			bar = 1
-			baz = 2
-		}
+#		values foo {
+#			bar = 1
+#			baz = 2
+#		}
 	}
 	listen {
 		type = Access-Request
@@ -1374,12 +1371,6 @@ server default {
 	}
 recv Access-Request {
 	filter_username
-	&foo := bar
-	if (&foo == 1) {
-		&control.Password.Cleartext := "bob"
-	}
-	&bar.baz = 6809
-	&reply.Reply-Message := "Hello from %{bar.baz}"
 #	filter_password
 #	operator-name
 #	if (&User-Name =~ /@example\.com$/) {
@@ -1493,9 +1484,9 @@ send Access-Reject {
 }
 recv Accounting-Request {
 #	acct_counters64
-#	&request.FreeRADIUS-Acct-Session-Start-Time = "%{expr: %{%{Event-Timestamp}:-%l} - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
+#	&request.FreeRADIUS-Acct-Session-Start-Time = "%{(&Event-Timestamp || %l) - (&Acct-Session-Time || 0) - (&Acct-Delay-Time || 0)}"
 	if (!&Event-Timestamp) {
-		&request.Event-Timestamp := "%{expr:%l - &Acct-Delay-Time}"
+		&request.Event-Timestamp := %{%l - &Acct-Delay-Time}
 	}
 	acct_unique
 	files

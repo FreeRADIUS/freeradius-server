@@ -112,7 +112,7 @@ server tls-cache {
 	#  and will just cause the server to emit a warning.
 	#
 	store ocsp-state {
-		&control.Cache-TTL := "%{expr:&reply.TLS-OCSP-Next-Update * -1}"
+		&control.Cache-TTL := "%{&reply.TLS-OCSP-Next-Update * -1}"
 		&control.Cache-Allow-Merge := no
 
 		cache_ocsp

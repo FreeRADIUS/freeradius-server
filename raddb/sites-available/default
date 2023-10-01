@@ -1355,13 +1355,13 @@ recv Accounting-Request {
 	#
 	#  The start time is: NOW - delay - session_length
 	#
-#	&request.FreeRADIUS-Acct-Session-Start-Time = "%{expr: %{%{Event-Timestamp}:-%l} - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
+#	&request.FreeRADIUS-Acct-Session-Start-Time = "%{(&Event-Timestamp || %l) - (&Acct-Session-Time || 0) - (&Acct-Delay-Time || 0)}"
 
 	#
 	#  The packet should have a timestamp.  If not, use "now" from the server.
 	#
 	if (!&Event-Timestamp) {
-		&request.Event-Timestamp := "%{expr:%l - &Acct-Delay-Time}"
+		&request.Event-Timestamp := %{%l - &Acct-Delay-Time}
 	}
 
 	#

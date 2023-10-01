@@ -1,24 +1,23 @@
 = Alternation Syntax
 
-Alternation syntax similar to that used in Unix shells may also be
-used:
+The v3 alternation syntax of `%{foo:-bar}` is no longer necessary, and has been removed.
 
-`%{%{Foo}:-bar}`
+The new approach is simpler and clearer: just use short-circuit `||`
+in an expression.  This approach also means that nested alternation is no longer necessary.
 
-This code returns the value of `%{Foo}`, if it has a value.
-Otherwise, it returns a literal string bar.
+.Old Style - no longer supported
+[source,unlang]
+----
+&Reply-Message := "Hello %{%{User-Name}:-none}"
+&Reply-Message := "Hello %{%{NAS-Identifer}:-%{%{User-Name}:-none}}"
+----
 
-`%{%{Foo}:-%{Bar}}`
-
-This code returns the value of `%{Foo}`, if it has a value.
-Otherwise, it returns the expansion of `%{Bar}`.
-
-These conditional expansions can be nested to almost any depth, such
-as with `%{%{One}:-%{%{Two}:-%{Three}}}`.
-
-.Examples
-`%{%{Stripped-User-Name}:-%{User-Name}}` +
-`%{%{Framed-IP-Address}:-<none>}`
+.New Alternation
+[source,unlang]
+----
+&Reply-Message := "Hello %{&User-Name || 'none'}"
+&Reply-Message := "Hello %{&NAS-Identifier || &User-Name || 'none'}"
+----
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

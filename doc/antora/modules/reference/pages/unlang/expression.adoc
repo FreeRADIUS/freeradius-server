@@ -49,7 +49,15 @@ This expression will return `6` if the users name is `bob`, and `5` otherwise.
 
 Similarly, expressions are also supported in conditions.  There is no
 need to use `%{expr:...}` in conditions, as was needed in earlier
-versions of the server.
+versions of the server.  You can just use math in-place.
+
+You do not even need to use `%{expr:...}` in double-quoted strings.
+You can just put math in-place, as with the following example:
+
+[source,unlang]
+----
+&Filter-Id = "Adding %{NAS-Port} + 4 = %{&NAS-Port + 4}"
+----
 
 == Data Types
 

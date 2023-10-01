@@ -69,7 +69,7 @@ demonstrates how to use the `expr` module.
 
 -------------------------------------------------------------------------------
 bob	Password.Cleartext := "hello"
-	Session-Timeout = `%{expr: 60 * 60}`
+	Session-Timeout = "%{60 * 60}"
 -------------------------------------------------------------------------------
 
 Dynamically translated strings may also be used as "check items" to match
@@ -83,11 +83,11 @@ first entry and should send another request with a different NAS-Port.
 -------------------------------------------------------------------------------
 bob	Password.Cleartext := "hello", NAS-Port == "%(exec:/usr/bin/id -u)"
 	Reply-Message = "Your port is very nice.",
-	Session-Timeout = "%{expr: 60 * 60}"
+	Session-Timeout = "%{60 * 60}"
 
 bob	Password.Cleartext := "hello", NAS-Port != "%(exec:/usr/bin/id -u)"
         Reply-Message = "Your port is less nice.",
-        Session-Timeout = "%{expr: 60 * 2}"
+        Session-Timeout = "%{60 * 2}"
 -------------------------------------------------------------------------------
 
 The run-time variables may be nested, too. The following file entry
@@ -95,7 +95,7 @@ demonstrates this nesting.
 
 -------------------------------------------------------------------------------
 bob	Password.Cleartext := "hello"
-	Session-Timeout = "%{expr: 60 * %(exec:/usr/bin/id -u})"
+	Session-Timeout = "%{60 * %exec(/usr/bin/id -u})"
 -------------------------------------------------------------------------------
 
 In this case, the user "bob" is given one minute of access time,

@@ -113,9 +113,9 @@ In general, the following rules apply:
 
 * There is no need to quote values, unless the value is a string.  `192.0.2.1` is always preferable to `"192.0.2.1"`
 
-* There is no longer a need to use `%{expr:..}` to do math in conditions.  `if (1 + 2 == 3)` will work.  See xref:unlang/condition/expression.adoc[expressions].
+* There is no longer a need to use `%{expr:..}` to do math in conditions.  Using the math in-place will work, as with `if (1 + 2 == 3)`.  See xref:unlang/condition/expression.adoc[expressions].
 
-* If you want to check that an attribute exists _and_ has a particular value, use `if !(&Attr == value)`, instead of `if (&Attr != value)`.
+* If you want to check that an attribute exists _and_ has a particular value, use `if !(&Attr == value)`, instead of `if (&Attr != value)`.  The difference us that if the attribute does not exist, it will match the condition `(&Attr != value)`, because the attribute has no value.
 
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

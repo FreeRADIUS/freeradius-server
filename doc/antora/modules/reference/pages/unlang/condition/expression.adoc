@@ -10,7 +10,8 @@ if (&NAS-Port + 1 == 2 + 3) {
 }
 ----
 
-There is no longer any need to use the `%{expr:...}` expansion inside of a condition.
+There is no longer any need to use the `%{expr:...}` expansion inside
+of a condition.  You can just use the math in-place.
 
 See the main xref:unlang/expression.adoc[expressions] page for a list
 of supported operators.  In short, mathematical operations will work,

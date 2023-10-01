@@ -164,6 +164,5 @@ allowed the separation of list assignments from value modifications,
 which meant that xref:unlang/expression.adoc[expressions] became
 became simpler.
 
-
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -22,7 +22,7 @@ references, function calls, etc.  The table below gives more examples of expansi
 | Keyword                                           | Description
 | xref:xlat/attribute.adoc[attributes]              | Expand the value of a named attribute.
 | xref:xlat/character.adoc[single character]        | Single character expansions.
-| xref:xlat/functions.adoc[funtions]                | Function call syntax
+| xref:xlat/functions.adoc[functions]               | Function call syntax
 | xref:xlat/alternation.adoc[condition]             | Conditionally expand a string.
 | xref:xlat/builtin.adoc[built-in expansions]       | Functions as string length, tolower, etc...
 |=====
@@ -48,7 +48,7 @@ information.
 
 [source,unlang]
 ----
-Reply-Message := "%{User-Name} with a literal %%"
+&Reply-Message := "%{User-Name} with a literal %%"
 ----
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
