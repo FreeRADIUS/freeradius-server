@@ -28,9 +28,9 @@ Multiple local variables may be defined.  All definitions must be at the top of 
 
 Local variables cannot be deleted.  Multiple local variables of the same name cannot be used.  The local variables exist in their own list, and cannot be added to the normal lists `request`, `reply`, `control`, etc.
 
-Local variables are _not_ automatically created.
+Local variables are _not_ automatically created.  There is no way to automatically determine what the "right" value is for a local variable.  Instead, they are declared at the top of a block, and are created only when they are first assigned a value.
 
-When the current scope exits, the local variable is deleted and is no longer accessible.
+Local variables _cannot_ be deleted.  When the current scope exits, the local variable is deleted and is no longer accessible.
 
 .Example
 [source,unlang]
