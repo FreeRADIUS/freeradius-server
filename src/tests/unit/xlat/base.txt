@@ -237,19 +237,19 @@ xlat %{[baz}
 match ERROR offset 3: Missing attribute name
 
 xlat %{ }
-match ERROR offset 3: Invalid char ' ' in expression
+match ERROR offset 4: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 xlat %{\t}
-match ERROR offset 3: Invalid attribute name
+match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 xlat %{\n}
-match ERROR offset 3: Invalid attribute name
+match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 xlat %{foo }
-match ERROR offset 6: Invalid char ' ' in expression
+match ERROR offset 7: Unexpected text - attribute names must prefixed with '&'
 
 xlat %{foo bar}
-match ERROR offset 6: Invalid char ' ' in expression
+match ERROR offset 7: Invalid operator
 
 xlat %{test:
 match ERROR offset 8: Missing closing brace
@@ -294,8 +294,12 @@ xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id}"
 match [0]{ /bin/sh }, [1]{ foo bar }, [2]{ %{User-Name} %{Filter-Id} }
 
 # and errors
+#
+#  @todo - we should really be unescaping the input in the sbuff, OR passing in the terminals
+#  to xlat_tokenize_expansion()
+#
 xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id"
-match ERROR offset 45: Missing closing brace
+match ERROR offset 44: Unexpected text after enum value.  Expected operator
 
 # and text immediately after a variable expansion
 xlat_argv echo hello %{Tmp-String-0}:1234 world

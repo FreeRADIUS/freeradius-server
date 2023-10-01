@@ -1197,7 +1197,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 
 				if (tmpl_eval_pair(ctx, &result, request, node->vpt) < 0) goto fail;
 
-			} else if (tmpl_is_exec(node->vpt)) { /* exec only */
+			} else if (tmpl_is_exec(node->vpt) || tmpl_is_xlat(node->vpt)) {
 				xlat_exec_rctx_t *rctx;
 
 				/*

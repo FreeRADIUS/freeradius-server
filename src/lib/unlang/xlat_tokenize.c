@@ -906,6 +906,13 @@ done:
 	return 0;
 }
 
+static bool const tmpl_attr_allowed_chars[UINT8_MAX + 1] = {
+	SBUFF_CHAR_CLASS_ALPHA_NUM,
+	['-'] = true, ['/'] = true, ['_'] = true,			// fr_dict_attr_allowed_chars
+	['.'] = true, ['*'] = true, ['#'] = true,
+	['['] = true, [']'] = true, 					// tmpls and attribute arrays
+};
+
 int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 			    tmpl_rules_t const *t_rules)
 {
@@ -963,6 +970,71 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 #endif /* HAVE_REGEX */
 
 	/*
+	 *	See if it's an old-style function name.
+	 */
+	fr_sbuff_marker(&s_m, in);
+	len = fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
+	if (fr_sbuff_is_char(in, ':')) {
+		if (!len) goto missing_function;
+		goto check_for_attr;
+	}
+
+	/*
+	 *	See if it's an attribute reference, with possible array stuff.
+	 */
+	len += fr_sbuff_adv_past_allowed(in, SIZE_MAX, tmpl_attr_allowed_chars, NULL);
+	if (fr_sbuff_is_char(in, '}')) {
+		if (!len) goto empty_disallowed;
+		goto check_for_attr;
+	}
+
+	if (!fr_sbuff_extend(in)) {
+		fr_strerror_const("Missing closing brace");
+		fr_sbuff_marker_release(&s_m);
+		return -1;
+	}
+
+	/*
+	 *	It must be an expression.
+	 *
+	 *	We wrap the xlat in a tmpl, so that the result is just a value, and not wrapped in another
+	 *	XLAT_GROUP, which turns into a wrapper of FR_TYPE_GROUP in the value-box.
+	 */
+	{
+		int ret;
+		char *fmt;
+		xlat_exp_t *node;
+		xlat_exp_head_t *child;
+
+		fr_sbuff_set(in, &s_m);		/* backtrack to the start of the expression */
+
+		MEM(node = xlat_exp_alloc(head, XLAT_TMPL, NULL, 0));
+		MEM(node->vpt = tmpl_alloc(node, TMPL_TYPE_XLAT, T_BARE_WORD, "", 1));
+
+		ret = xlat_tokenize_expression(node->vpt, &child, in, &attr_p_rules, t_rules);
+		if (ret <= 0) {
+			talloc_free(node);
+			return ret;
+		}
+
+		if (!fr_sbuff_next_if_char(in, '}')) {
+			fr_strerror_const("Missing closing brace");
+			return -1;
+		}
+
+		MEM(fmt = talloc_bstrndup(node, fr_sbuff_current(&s_m), fr_sbuff_behind(&s_m)));
+		xlat_exp_set_name_buffer_shallow(node, fmt);
+		tmpl_set_name_shallow(node->vpt, T_BARE_WORD, fmt, fr_sbuff_behind(&s_m));
+
+		tmpl_set_xlat(node->vpt, child);
+		xlat_exp_insert_tail(head, node);
+		return ret;
+	}
+
+check_for_attr:
+	fr_sbuff_set(in, &s_m);		/* backtrack */
+
+	/*
 	 *	%{Attr-Name}
 	 *	%{Attr-Name[#]}
 	 *	%{request.Attr-Name}
@@ -993,10 +1065,12 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 	if (len == 0) {
 		switch (hint) {
 		case '}':
+		empty_disallowed:
 			fr_strerror_const("Empty expression is invalid");
 			return -1;
 
 		case ':':
+		missing_function:
 			fr_strerror_const("Missing expansion function");
 			return -1;
 
