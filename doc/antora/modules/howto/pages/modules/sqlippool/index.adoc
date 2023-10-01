@@ -873,7 +873,7 @@ release_clear = "\
                 nasipaddress = '', \
                 pool_key = 0, \
                 expiry_time = NOW() \
-        WHERE nasipaddress = '%{%{Nas-IP-Address}:-%{Nas-IPv6-Address}}' \
+        WHERE nasipaddress = '%{&NAS-IP-Address || &NAS-IPv6-Address}' \
         AND pool_key = '${pool_key}' \
         AND username = '%{User-Name}' \
         AND callingstationid = '%{Calling-Station-Id}' \
@@ -885,7 +885,7 @@ bulk_release_clear = "\
                 nasipaddress = '', \
                 pool_key = 0, \
                 expiry_time = NOW() \
-        WHERE nasipaddress = '%{%{Nas-IP-Address}:-%{Nas-IPv6-Address}}'"
+        WHERE nasipaddress = '%{&NAS-IP-Address || &NAS-IPv6-Address}'"
 
 ...
 ----

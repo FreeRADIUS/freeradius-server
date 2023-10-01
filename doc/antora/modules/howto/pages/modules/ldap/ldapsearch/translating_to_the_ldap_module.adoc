@@ -23,7 +23,7 @@
 |===
 | Purpose                                     | `ldap { user { ... } }` config item
 | Specify where to search for users           | ```base_dn = '<user_base_dn>'```
-| Specify how to find a user                  | ```filter = "(&(<user_filter>)(<user_uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}})"```
+| Specify how to find a user                  | ```filter = "(&(<user_filter>)(<user_uid_attribute>=%{&Stripped-User-Name || &User-Name)"```
 | Retrieve a "known good" password            | ```&control.Password.With-Header = <user_password_attribute>```
 | Allow accounts to be explicitly disabled    | ```access_attribute = '<user_access_disabled_attribute>'``` +
                                                 ```access_positive = 'no'```
@@ -79,7 +79,7 @@ Group objects reference users using user names.
 [width="100%",cols="30%,70%",options="header",]
 |===
 | Purpose                                     | `ldap { group { ... } }` config item
-| Specify how to find group objects referencing a user by name. | ```membership_filter = "(<group_membership_uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}})"```
+| Specify how to find group objects referencing a user by name. | ```membership_filter = "(<group_membership_uid_attribute>=%{&Stripped-User-Name || &User-Name)"```
 |===
 
 .Mixing and matching group membership schemes
@@ -95,6 +95,6 @@ both on user DN and user name e.g.
 
 [source,config]
 ----
-membership_filter = "(|(<group_membership_filter_by_uid>=%{control.Ldap-UserDn})(<group_membership_filter_by_name>=%{%{Stripped-User-Name}:-%{User-Name}}))"
+membership_filter = "(|(<group_membership_filter_by_uid>=%{control.Ldap-UserDn})(<group_membership_filter_by_name>=%{&Stripped-User-Name || &User-Name))"
 ----
 ****

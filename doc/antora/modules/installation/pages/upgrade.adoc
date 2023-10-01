@@ -958,7 +958,7 @@ In v4 they must now be specified as::
 counter_name    = &control.Daily-Session-Time
 check_name      = &control.Max-Daily-Session
 reply_name      = &reply.Session-Timeout
-key             = "%{%{Stripped-User-Name}:-%{User-Name}}"
+key             = "%{&Stripped-User-Name || &User-Name}"
 ```
 
 Just adding the `&` prefix to the attribute name is not sufficient.
@@ -975,7 +975,7 @@ functionality has been moved to the configuration.  To get the same
 functionality, the key should now be specified as a dynamic expansion:
 
 ```
-key = "%{%{Stripped-User-Name}:-%{User-Name}}"
+key = "%{&Stripped-User-Name || &User-Name}"
 ```
 
 The `count_attribute` has been removed, as it is no longer necessary.
