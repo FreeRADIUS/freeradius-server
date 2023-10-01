@@ -3379,9 +3379,17 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 	}
 
 	/*
-	 *	Copy the xlat component
+	 *	Copy the xlat component.
+	 *
+	 *	@todo - in general we can't copy an xlat, as the instances need resolving!
+	 *
+	 *	We add an assertion here because nothing allocates the head, and we need it.
 	 */
-	if (tmpl_contains_xlat(vpt) && unlikely(xlat_copy(vpt, vpt->data.xlat.ex, in->data.xlat.ex) < 0)) goto error;
+	if (tmpl_contains_xlat(vpt)) {
+		fr_assert(vpt->data.xlat.ex != NULL);
+
+		if (unlikely(xlat_copy(vpt, vpt->data.xlat.ex, in->data.xlat.ex) < 0)) goto error;
+	}
 
 	return vpt;
 }
