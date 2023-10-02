@@ -349,8 +349,8 @@ flags:
 }
 
 static xlat_arg_parser_t const binary_op_xlat_args[] = {
-	{ .required = true, .type = FR_TYPE_VOID },
-	{ .required = true, .type = FR_TYPE_VOID },
+	{ .required = false, .type = FR_TYPE_VOID },
+	{ .required = false, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -371,35 +371,55 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	a = fr_value_box_list_head(in);
 	b = fr_value_box_list_next(in, a);
 
-#ifdef STATIC_ANALYZER
-	if (!a || !b) return XLAT_ACTION_FAIL;
-#else
-	fr_assert(a != NULL);
-	fr_assert(b != NULL);
-#endif
+	if (!a && !b) return XLAT_ACTION_FAIL;
 
-	fr_assert(a->type == FR_TYPE_GROUP);
-	fr_assert(b->type == FR_TYPE_GROUP);
+	fr_assert(!a || (a->type == FR_TYPE_GROUP));
+	fr_assert(!b || (b->type == FR_TYPE_GROUP));
 
 	if (fr_comparison_op[op]) {
+		if (!a || !b) return XLAT_ACTION_FAIL;
+
 		rcode = fr_value_calc_list_cmp(dst, dst, &a->vb_group, op, &b->vb_group);
 	} else {
-		if (fr_value_box_list_num_elements(&a->vb_group) != 1) {
+		fr_value_box_t one, two;
+
+		if (fr_value_box_list_num_elements(&a->vb_group) > 1) {
 			REDEBUG("Expected one value as the first argument, got %d",
 				fr_value_box_list_num_elements(&a->vb_group));
 			return XLAT_ACTION_FAIL;
 		}
+		a = fr_value_box_list_head(&a->vb_group);
 
-		if (fr_value_box_list_num_elements(&b->vb_group) != 1) {
+		if (fr_value_box_list_num_elements(&b->vb_group) > 1) {
 			REDEBUG("Expected one value as the second argument, got %d",
 				fr_value_box_list_num_elements(&b->vb_group));
 			return XLAT_ACTION_FAIL;
 		}
+		b = fr_value_box_list_head(&b->vb_group);
 
-		rcode = fr_value_calc_binary_op(dst, dst, default_type,
-						fr_value_box_list_head(&a->vb_group),
-						op,
-						fr_value_box_list_head(&b->vb_group));
+		if (!a && !b) return XLAT_ACTION_FAIL;
+
+		if (!a) {
+			if (!fr_type_is_numeric(b->type) && (b->type != FR_TYPE_STRING) && (b->type != FR_TYPE_OCTETS)) {
+				REDEBUG("First argument is missing");
+				return XLAT_ACTION_FAIL;
+			}
+
+			a = &one;
+			fr_value_box_init(a, b->type, NULL, false);
+		}
+
+		if (!b) {
+			if (!fr_type_is_numeric(a->type) && (a->type != FR_TYPE_STRING) && (a->type != FR_TYPE_OCTETS)) {
+				REDEBUG("Second argument is missing");
+				return XLAT_ACTION_FAIL;
+			}
+
+			b = &two;
+			fr_value_box_init(b, a->type, NULL, false);
+		}
+
+		rcode = fr_value_calc_binary_op(dst, dst, default_type, a, op, b);
 	}
 	if (rcode < 0) {
 		RPEDEBUG("Failed calculating result, returning NULL");
