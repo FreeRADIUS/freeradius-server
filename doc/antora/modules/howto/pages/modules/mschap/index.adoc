@@ -81,8 +81,8 @@ mschap {
 
     # initial data to send
     # this MUST be supplied
-    ntlm_auth_username = "username: %(mschap:User-Name)"
-    ntlm_auth_domain = "nt-domain: %{%(mschap:NT-Domain) || 'YOURDOMAIN'}"
+    ntlm_auth_username = "username: %mschap(User-Name)"
+    ntlm_auth_domain = "nt-domain: %{%mschap(NT-Domain) || 'YOURDOMAIN'}"
 
     # Or, you could try:
     ntlm_auth_username = "full-username: %{User-Name}"
@@ -109,7 +109,7 @@ To do this, you configure the `local_cpw` string:
 ```
 mschap {
   passchange {
-    local_cpw = "%{xlat:…}
+    local_cpw = "%function{…}
   }
 }
 ```
