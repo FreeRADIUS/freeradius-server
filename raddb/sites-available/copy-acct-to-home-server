@@ -1,5 +1,8 @@
 #  -*- text -*-
 ######################################################################
+##
+#  WARNING: This configuration file has not been updated for v4,
+#            and therefore WILL NOT WORK.  Please do not use it.
 #
 #	In 2.0.0, radrelay functionality is integrated into the
 #	server core.  This virtual server gives an example of

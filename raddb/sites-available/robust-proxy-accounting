@@ -1,6 +1,9 @@
 #  -*- text -*-
 ######################################################################
 #
+#  WARNING: This configuration file has not been updated for v4,
+#            and therefore WILL NOT WORK.  Please do not use it.
+#
 #	This is a sample configuration for robust proxy accounting.
 #	accounting packets are proxied, OR logged locally if all
 #	home servers are down.  When the home servers come back up,
