@@ -871,37 +871,12 @@ not bob!
 
 === %expr(<string>)
 
-Evaluates the string as an xref:reference:unlang/expression.adoc[Unlang expression], and returns the result.  Please see the
-xref:reference:unlang/expression.adoc[Unlang expression] page for full documentation on expressions.
-
-[NOTE]
-====
-You probably don't want to use this.  In v4, the main use of `%expr(...(` is inside of strings which can't be split into actual expressions.
-====
-
-.Return: _data_
-
-.Example
+This expansion has been removed.  Instead, just use `%{...}` with math inside of the brackets.
 
 [source,unlang]
 ----
-&reply.Tmp-String-0 := "%expr(1 + 2}"
+&reply.Reply-Message := "Adding 1 + 2 = %{1 + 2}"
 ----
-
-.Output
-
-```
-3
-```
-
-.A Better example of not using `%expr(...)`
-
-[source,unlang]
-----
-&Tmp-String-0 := 1 + 2
-----
-
-
 
 === %nexttime(<time>)
 
