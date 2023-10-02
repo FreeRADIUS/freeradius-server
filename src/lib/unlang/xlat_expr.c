@@ -457,6 +457,12 @@ XLAT_BINARY_FUNC(op_xor,  T_XOR)
 XLAT_BINARY_FUNC(op_rshift, T_RSHIFT)
 XLAT_BINARY_FUNC(op_lshift, T_LSHIFT)
 
+static xlat_arg_parser_t const binary_cmp_xlat_args[] = {
+	{ .required = true, .type = FR_TYPE_VOID },
+	{ .required = true, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 #define XLAT_CMP_FUNC(_name, _op)  \
 static xlat_action_t xlat_func_ ## _name(TALLOC_CTX *ctx, fr_dcursor_t *out, \
 				   xlat_ctx_t const *xctx, \
@@ -1622,7 +1628,7 @@ do { \
 #define XLAT_REGISTER_BINARY_CMP(_op, _name) \
 do { \
 	if (unlikely((xlat = xlat_func_register(NULL, "cmp_" STRINGIFY(_name), xlat_func_cmp_ ## _name, FR_TYPE_VOID)) == NULL)) return -1; \
-	xlat_func_args_set(xlat, binary_op_xlat_args); \
+	xlat_func_args_set(xlat, binary_cmp_xlat_args); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 	xlat_func_print_set(xlat, xlat_expr_print_binary); \
 	xlat_func_resolve_set(xlat, xlat_expr_resolve_binary); \
