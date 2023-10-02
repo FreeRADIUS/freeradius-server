@@ -1484,7 +1484,7 @@ send Access-Reject {
 }
 recv Accounting-Request {
 #	acct_counters64
-#	&request.FreeRADIUS-Acct-Session-Start-Time = "%{(&Event-Timestamp || %l) - (&Acct-Session-Time || 0) - (&Acct-Delay-Time || 0)}"
+#	&request.FreeRADIUS-Acct-Session-Start-Time = "%{(&Event-Timestamp || %l) - &Acct-Session-Time - &Acct-Delay-Time}"
 	if (!&Event-Timestamp) {
 		&request.Event-Timestamp := %{%l - &Acct-Delay-Time}
 	}
