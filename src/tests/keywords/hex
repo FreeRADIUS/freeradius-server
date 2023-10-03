@@ -17,14 +17,14 @@
 ok  # break up edit sections
 
 &Tmp-String-1 := {
-	"%{hex:%{Tmp-String-0}}"
-	"%{hex:%{Tmp-Octets-0}}"
-	"%{hex:%{Tmp-IP-Address-0}}"
-	"%{hex:%{Tmp-Integer-0}}"
-	"%{hex:%{Tmp-Cast-Ifid}}"
-	"%{hex:%{Tmp-Cast-IPv6Addr}}"
-	"%{hex:%{Tmp-Cast-IPv6Prefix}}"
-	"%{hex:%{Tmp-Cast-Byte}}"
+	%hex(%{Tmp-String-0})
+	%hex(%{Tmp-Octets-0})
+	%hex(%{Tmp-IP-Address-0})
+	%hex(%{Tmp-Integer-0})
+	%hex(%{Tmp-Cast-Ifid})
+	%hex(%{Tmp-Cast-IPv6Addr})
+	%hex(%{Tmp-Cast-IPv6Prefix})
+	%hex(%{Tmp-Cast-Byte})
 }
 
 # String
@@ -68,10 +68,10 @@ if (!(&Tmp-String-1[7] == '3a')) {
 }
 
 &Tmp-String-1 := {
-	"%{hex:%{Tmp-Cast-Short}}"
-	"%{hex:%{Tmp-Cast-Ether}}"
-	"%{hex:%{Tmp-Cast-Integer64}}"
-	"%{hex:%{Tmp-Cast-IPv4Prefix}}"
+	%hex(%{Tmp-Cast-Short})
+	%hex(%{Tmp-Cast-Ether})
+	%hex(%{Tmp-Cast-Integer64})
+	%hex(%{Tmp-Cast-IPv4Prefix})
 }
 
 # short

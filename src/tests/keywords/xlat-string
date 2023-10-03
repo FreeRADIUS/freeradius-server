@@ -11,10 +11,10 @@
 }
 
 &request += {
-	&Tmp-String-0 = "%{string:%{Tmp-Octets-0}}"
-	&Tmp-String-1 = "%{string:%{Tmp-Octets-1}}"
-	&Tmp-String-2 = "%{string:%{Tmp-Octets-2}}"
-	&Tmp-String-3 = "%{string:%{Tmp-Octets-3}}"
+	&Tmp-String-0 = %string(%{Tmp-Octets-0})
+	&Tmp-String-1 = %string(%{Tmp-Octets-1})
+	&Tmp-String-2 = %string(%{Tmp-Octets-2})
+	&Tmp-String-3 = %string(%{Tmp-Octets-3})
 }
 
 if (!(&Tmp-String-0 == "\\\\")) {
@@ -24,15 +24,22 @@ if (!(&Tmp-String-0 == "\\\\")) {
 #
 #  Test interpolation between string expansions and strings
 #
-if (!("%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}" == "test1test2")) {
+if (!("%string(%{Tmp-Octets-4})%string(%{Tmp-Octets-5})" == "test1test2")) {
 	test_fail
 }
 
-if (!("test0%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}" == "test0test1test2")) {
+#
+#  We don't need %string(...) either.
+#
+if !("%{(string) &Tmp-Octets-4}%{(string) &Tmp-Octets-5}" == "test1test2") {
 	test_fail
 }
 
-if (!("%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}test3" == "test1test2test3")) {
+if (!("test0%string(%{Tmp-Octets-4})%string(%{Tmp-Octets-5})" == "test0test1test2")) {
+	test_fail
+}
+
+if (!("%string(%{Tmp-Octets-4})%string(%{Tmp-Octets-5})test3" == "test1test2test3")) {
 	test_fail
 }
 

@@ -2,13 +2,13 @@
 # PRE: if
 #
 &Tmp-String-0	:= "AbCdE"
-&Tmp-String-0	:= "%{tolower:%{Tmp-String-0}}"
-&Tmp-String-1	:= "%{tolower:AAbbCCdd}"
+&Tmp-String-0	:= %tolower(%{Tmp-String-0})
+&Tmp-String-1	:= %tolower(AAbbCCdd)
 
 #
 #  Doesn't exist
 #
-&Tmp-String-2	:= "%{tolower:%{Tmp-String-9}}"
+&Tmp-String-2	:= "%tolower(%{Tmp-String-9})"
 
 
 if (!(&Tmp-String-0 == "abcde")) {
