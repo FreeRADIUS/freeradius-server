@@ -436,7 +436,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				break;
 
 			case FR_TYPE_OCTETS:
-				fr_value_box_strdup_shallow(b, NULL, (void const *) "", false);
+				fr_value_box_memdup_shallow(b, NULL, (void const *) "", 0, false);
 				break;
 
 			default:
