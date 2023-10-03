@@ -406,7 +406,20 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			}
 
 			a = &one;
-			fr_value_box_init(a, b->type, NULL, false);
+
+			switch (a->type) {
+			case FR_TYPE_STRING:
+				fr_value_box_strdup_shallow(a, NULL, "", false);
+				break;
+
+			case FR_TYPE_OCTETS:
+				fr_value_box_strdup_shallow(a, NULL, (void *) "", false);
+				break;
+
+			default:
+				fr_value_box_init(a, b->type, NULL, false);
+				break;
+			}
 		}
 
 		if (!b) {
@@ -416,7 +429,20 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			}
 
 			b = &two;
-			fr_value_box_init(b, a->type, NULL, false);
+
+			switch (b->type) {
+			case FR_TYPE_STRING:
+				fr_value_box_strdup_shallow(b, NULL, "", false);
+				break;
+
+			case FR_TYPE_OCTETS:
+				fr_value_box_strdup_shallow(b, NULL, (void *) "", false);
+				break;
+
+			default:
+				fr_value_box_init(b, a->type, NULL, false);
+				break;
+			}
 		}
 
 		rcode = fr_value_calc_binary_op(dst, dst, default_type, a, op, b);
