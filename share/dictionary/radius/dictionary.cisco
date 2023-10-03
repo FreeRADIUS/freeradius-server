@@ -227,3 +227,5 @@ VALUE	Disconnect-Cause		VPN-Session-Limit	607
 VALUE	Disconnect-Cause		VPN-Call-Redirect	608
 
 END-VENDOR	Cisco
+
+ALIAS		Cisco Vendor-Specific.Cisco

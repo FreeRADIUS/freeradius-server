@@ -1575,6 +1575,29 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
 	return fr_sbuff_set(name, &our_name);
 }
 
+/*
+ *	Add attr_ref when we've parsed an intermediate dictionary name
+ *	which is itself a ref.
+ */
+static void tmpl_attr_ref_fixup(TALLOC_CTX *ctx, tmpl_t *vpt, fr_dict_attr_t const *da)
+{
+	tmpl_attr_t *ar;
+
+	if (tmpl_attr_tail_da(vpt) == da) return;
+
+	if (!da->parent->flags.is_root) tmpl_attr_ref_fixup(ctx, vpt, da->parent);
+
+	MEM(ar = talloc(ctx, tmpl_attr_t));
+	*ar = (tmpl_attr_t) {
+		.ar_num = NUM_UNSPEC,
+		.ar_type = TMPL_ATTR_TYPE_NORMAL,
+		.ar_da = da,
+		.ar_parent = da->parent,
+	};
+
+	tmpl_attr_insert(vpt, ar);
+}
+
 /** Parse an attribute reference, either an OID or attribute name
  *
  * @note Do not call directly.
@@ -1662,7 +1685,10 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 */
 		if (da) {
 			our_parent = da->parent;
-			fr_assert(our_parent->flags.is_root);
+
+			if (!our_parent->flags.is_root) {
+				tmpl_attr_ref_fixup(ctx, vpt, our_parent);
+			}
 		}
 	} else {
 		fr_assert(parent != NULL);

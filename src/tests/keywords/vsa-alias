@@ -1,0 +1,10 @@
+#
+#  Alias from Cisco -> Vendor-Specific.Cisco
+#
+&Cisco.AVPair := "foo"
+
+if !(&Vendor-Specific.Cisco.AVPair == "foo") {
+	test_fail
+}
+
+success
