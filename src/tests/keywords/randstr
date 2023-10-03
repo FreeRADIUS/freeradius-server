@@ -1,8 +1,8 @@
 &request += {
-	&Tmp-String-1 = "%{randstr:nnn}"
-	&Tmp-String-2 = "%{randstr:24a}"
-	&Tmp-String-3 = "%{randstr:1030aa}"
-	&Tmp-String-5 = "%{randstr:10b}"
+	&Tmp-String-1 = "%randstr(nnn)"
+	&Tmp-String-2 = "%randstr(24a)"
+	&Tmp-String-3 = "%randstr(1030aa)"
+	&Tmp-String-5 = "%randstr(10b)"
 }
 
 #
@@ -38,7 +38,7 @@ if (!(%{strlen:%{Tmp-String-3}} == 1025)) {
 #
 #  Check invalid character class
 #
-&Tmp-String-4 := "%{randstr:G}"
+&Tmp-String-4 := "%randstr(G)"
 
 if !(&Tmp-String-4 == "") {
 	test_fail
