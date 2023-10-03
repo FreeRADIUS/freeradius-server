@@ -112,14 +112,27 @@ bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len)
 
 		/*
 		 *	Length is 2 bytes
-		 *
+		 */
+		attrlen = fr_nbo_to_uint16(ptr + 4);
+
+		/*
+		 *	Total of attribute lengths shouldn't exceed *packet_len - header length,
+		 *	which happens iff at some point, attrlen exceeds data_lan.
+		 */
+		if (attrlen > data_len) {
+			fr_strerror_printf("Packet attributes cause total length "
+					   "plus header length to exceed packet length %lx",
+					   *packet_len);
+			return false;
+		}
+
+		/*
 		 *	We support short lengths, as there's no reason
 		 *	for bigger lengths to exist... admins won't be
 		 *	typing in a 32K vlan name.
 		 *
 		 *	It's OK for ethernet frames to be longer.
 		 */
-		attrlen = fr_nbo_to_uint16(ptr + 4);
 		if ((ptr[3] != 5) && (attrlen > 250)) {
 			fr_strerror_printf("Packet contains attribute with invalid length %02x %02x", ptr[4], ptr[5]);
 			return false;
