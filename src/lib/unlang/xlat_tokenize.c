@@ -743,13 +743,20 @@ error:
 	 *	Validate the arguments.
 	 */
 	if (node->type == XLAT_FUNC) {
-		if (node->call.input_type == XLAT_INPUT_MONO) {
-			if (xlat_validate_function_mono(node) < 0) goto error;
-		} else {
-			if (xlat_validate_function_args(node) < 0) goto error;
-		}
+		switch (node->call.input_type) {
+		case XLAT_INPUT_UNPROCESSED:
+			break;
 
-		node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
+		case XLAT_INPUT_MONO:
+			if (xlat_validate_function_mono(node) < 0) goto error;
+			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
+			break;
+
+		case XLAT_INPUT_ARGS:
+			if (xlat_validate_function_args(node) < 0) goto error;
+			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
+			break;
+		}
 	}
 
 	xlat_exp_insert_tail(head, node);
