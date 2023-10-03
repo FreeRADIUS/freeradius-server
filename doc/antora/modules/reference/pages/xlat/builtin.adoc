@@ -57,38 +57,6 @@ The random number is 347
 ```
 ====
 
-=== %string(<data>)
-
-Convert input to a string if (possible).  For _octets_ type
-attributes, this means interpreting the data as a UTF8 string.  Any
-non-printable characters are left in place.
-
-For other types, this means printing the value in its _presentation_ format,
-i.e. dotted quads for IPv4 addresses, link:https://en.wikipedia.org/wiki/ISO_8601[ISO 8601]
-time for date types, enumeration values for attributes such as `radius.Service-Type` etc.
-
-In practice, the only real use of this expansion is to insert `octets`
-data types into a `string`.  For other data types, using
-`%string(...)` is not necessary.  For example, for any data type
-other than `octets`, the following equivalency holds true.
-
-See xref:type/string/double.adoc[double-quoted strings] and
-xref:type/cast.adoc[casting] for examples of how strings are used.
-
-.String expansion equivalents
-====
-[source,unlang]
-----
-"foo" + (string)&Bar == "foo%{Bar}"
-----
-====
-
-.Output
-
-```
-The string value of 0x7465737431 is test1
-```
-
 == Encoders and Decoders
 
 The server supports manual encoding and decoding of a variety of
@@ -481,26 +449,6 @@ Get random string built from character classes.
 The random string output is 4Uq0gPyG
 ```
 
-=== %strlen( ... )
-
-Length of given string.  This expansion is deprecated. The `%length(...)` function should be used instead.
-
-.Return: _integer_
-
-.Example
-
-[source,unlang]
-----
-&control.Tmp-String-0 := "Caipirinha"
-&reply.Reply-Message := "The length of %{control.Tmp-String-0} is %strlen(&control.Tmp-String-0)"
-----
-
-.Output
-
-```
-The length of Caipirinha is 21
-```
-
 === %tolower( ... )
 
 Dynamically expands the string and returns the lowercase version of
@@ -868,16 +816,6 @@ bob
 not bob!
 ```
 
-
-=== %expr(<string>)
-
-This expansion has been removed.  Instead, just use `%{...}` with math inside of the brackets.
-
-[source,unlang]
-----
-&reply.Reply-Message := "Adding 1 + 2 = %{1 + 2}"
-----
-
 === %nexttime(<time>)
 
 Calculate number of seconds until next n hour(`s`), day(`s`), week(`s`), year(`s`).
@@ -1049,6 +987,41 @@ group {
 This kind of math works well for "tomorrow", but it is less useful for
 "next week Monday", or "start of next month".  The `%nexttime(...)`
 expansion above should be used for those time operations.
+
+== Deprecated or removed Expansions.
+
+=== %expr(<string>)
+
+This expansion has been removed.  Instead, just use `%{ ... }`.
+
+[source,unlang]
+----
+&reply.Reply-Message := "The 1 + 2 = %{1 + 2}"
+----
+
+=== %integer(..)
+
+This expansion has been removed.  Instead, just use `%{(integer) ...}` with math inside of the brackets.
+
+[source,unlang]
+----
+&reply.Reply-Message := "Value of Service-Type is %{(integer) &Service-Type}"
+----
+
+=== %string(...)
+
+This expansion has been removed.  Instead, just use `%{(string) ...}` with math inside of the brackets.
+
+[source,unlang]
+----
+&reply.Reply-Message := "The printable version of Class is %{(string) &Class}"
+----
+
+=== %strlen( ... )
+
+This expansion is deprecated and will be removed.  Just use `%length(...)` instead.
+
+
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
